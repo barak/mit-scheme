@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.1 1994/12/19 19:46:29 cph Exp $
+;;;	$Id: os2term.scm,v 1.2 1995/01/06 01:12:44 cph Exp $
 ;;;
-;;;	Copyright (c) 1994 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -45,13 +45,14 @@
 ;;; Package: (edwin screen os2-screen)
 
 (declare (usual-integrations))
+(declare (integrate-external "..\\runtime\\os2winp"))
 
 (define os2-display-type)
 (define screen-list)
 (define event-queue)
+(define event-descriptor)
 (define virtual-key-table)
 (define signal-interrupts?)
-(define event-descriptor)
 (define previewer-registration)
 (define reading-event?)
 (define desktop-width)
@@ -67,17 +68,34 @@
 			   with-editor-interrupts-from-os2
 			   with-os2-interrupts-enabled
 			   with-os2-interrupts-disabled))
-  (set! screen-list '())
-  (set! event-queue (make-queue))
   (set! virtual-key-table (make-virtual-key-table))
-  (set! event-descriptor (os2win-event-descriptor))
-  unspecific)
+  (set! event-descriptor #f)
+  (add-event-receiver! event:before-exit finalize-pm-state))
+
+(define (initialize-pm-state)
+  (if (not event-descriptor)
+      (begin
+	(set! screen-list '())
+	(set! event-queue (make-queue))
+	(set! event-descriptor (os2win-open-event-qid))
+	unspecific)))
+
+(define (finalize-pm-state)
+  (if event-descriptor
+      (begin
+	(do () ((null? screen-list))
+	  (os2-screen/discard! (car screen-list)))
+	(set! event-queue)
+	(os2win-close-event-qid event-descriptor)
+	(set! event-descriptor #f)
+	unspecific)))
 
 (define (with-editor-interrupts-from-os2 receiver)
   (fluid-let ((reading-event? #f)
 	      (signal-interrupts? #t)
 	      (previewer-registration))
     (dynamic-wind (lambda ()
+		    (initialize-pm-state)
 		    (preview-event-stream)
 		    (set! desktop-width (os2win-desktop-width))
 		    (set! desktop-height (os2win-desktop-height))
@@ -85,7 +103,8 @@
 		  (lambda ()
 		    (receiver (lambda (thunk) (thunk)) '()))
 		  (lambda ()
-		    (deregister-input-thread-event previewer-registration)))))
+		    (deregister-input-thread-event previewer-registration)
+		    (finalize-pm-state)))))
 
 (define (with-os2-interrupts-enabled thunk)
   (with-signal-interrupts #t thunk))
@@ -106,6 +125,11 @@
 		    unspecific))))
 
 (define (make-os2-screen)
+  ;; Call to INITIALIZE-PM-STATE needed because first screen is built
+  ;; before the display is grabbed.  This is a bug that should be
+  ;; fixed -- the display grab should be the very first thing that
+  ;; happens.
+  (initialize-pm-state)
   (call-with-values open-window
     (lambda (state x-size y-size)
       (let ((screen
@@ -133,7 +157,7 @@
 	screen))))
 
 (define (open-window)
-  (let ((wid (os2win-open "Edwin")))
+  (let ((wid (os2win-open-1 event-descriptor 0 "Edwin")))
     (let ((metrics (set-normal-font! wid current-font)))
       (os2win-set-colors wid
 			 (face-foreground-color normal-face)
@@ -153,7 +177,7 @@
 				       (make-vector size normal-face))
 		    x-size
 		    y-size)))))))
-
+
 (define (os2-screen/beep screen)
   screen
   (os2win-beep 880 50))
@@ -197,11 +221,11 @@
   (os2win-clear (screen-wid screen)
 		0 (screen-pel-width screen)
 		0 (screen-pel-height screen)))
-
+
 (define (os2-screen/discard! screen)
   (set! screen-list (delq! screen screen-list))
   (os2win-close (screen-wid screen)))
-
+
 (define (os2-screen/enter! screen)
   screen
   unspecific)
@@ -360,7 +384,7 @@
   (set! highlight-face
 	(make-face color (face-background-color highlight-face)))
   unspecific)
-
+
 (define (os2-screen/set-font! screen font)
   (set-screen-font-metrics! screen (set-normal-font! (screen-wid screen) font))
   (set! current-font font)
@@ -544,11 +568,6 @@
 (define-integrable (set-screen-current-face! screen face)
   (set-screen-state/current-face! (screen-state screen) face))
 
-(define-structure (font-metrics (type vector) (conc-name font-metrics/))
-  (width #f read-only #t)
-  (height #f read-only #t)
-  (descender #f read-only #t))
-
 (define-integrable (screen-char-width screen)
   (font-metrics/width (screen-font-metrics screen)))
 
@@ -638,24 +657,29 @@
     (let ((event
 	   (if (queue-empty? event-queue)
 	       (if (eq? 'IN-UPDATE block?)
-		   (os2win-get-event #f)
+		   (os2win-get-event event-descriptor #f)
 		   (read-event-1 block?))
 	       (dequeue!/unsafe event-queue))))
       (set! reading-event? #f)
-      (if (and (vector? event)
-	       (fix:= (vector-ref event 0) event-type:paint))
+      (if (and (vector? event) (fix:= (event-type event) event-type:paint))
 	  (begin
 	    (process-paint-event event)
 	    (loop))
 	  event))))
 
 (define (read-event-1 block?)
-  (or (os2win-get-event #f)
+  (or (os2win-get-event event-descriptor #f)
       (let loop ()
 	(let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
 	  (cond (inferior-thread-changes?
 		 (set-interrupt-enables! interrupt-mask)
 		 event:inferior-thread-output)
+		((process-output-available?)
+		 (set-interrupt-enables! interrupt-mask)
+		 event:process-output)
+		((process-status-changes?)
+		 (set-interrupt-enables! interrupt-mask)
+		 event:process-status)
 		(else
 		 (let ((flag
 			(test-for-input-on-descriptor event-descriptor
@@ -667,6 +691,10 @@
 		     ((INTERRUPT) (loop))
 		     (else (read-event-1 block?))))))))))
 
+(define-integrable event:process-output -2)
+(define-integrable event:process-status -3)
+(define-integrable event:inferior-thread-output -4)
+
 (define (preview-event-stream)
   (set! previewer-registration
 	(permanently-register-input-thread-event
@@ -674,7 +702,7 @@
 	 (current-thread)
 	 (lambda ()
 	   (if (not reading-event?)
-	       (let ((event (os2win-get-event #f)))
+	       (let ((event (os2win-get-event event-descriptor #f)))
 		 (if event
 		     (if (and signal-interrupts?
 			      (vector? event)
@@ -708,7 +736,7 @@
 	       (cdr events)))
       ((null? events))
     (enqueue!/unsafe queue (car events))))
-
+
 (define (signal-interrupt!)
   (editor-beep)
   (temporary-message "Quit")
@@ -721,7 +749,8 @@
 	  (meta (if (fix:= 0 (fix:and flags KC_ALT)) 0 1)))
       (let ((process-code
 	     (lambda (code)
-	       (if (and (fix:<= #o040 code) (not (fix:= 0 control)))
+	       (if (and (fix:<= #o100 code) (fix:< code #o140)
+			(not (fix:= 0 control)))
 		   (make-char (fix:and code #o037) meta)
 		   (make-char code (fix:or meta control))))))
 	(if (fix:= 0 (fix:and flags KC_VIRTUALKEY))
@@ -742,13 +771,18 @@
 	(else (error "Illegal change event:" event))))
 
 (define (process-paint-event event)
-  (let ((wid (event-wid event)))
+  (let ((wid (event-wid event))
+	(xl (paint-event/xl event))
+	(xh (paint-event/xh event))
+	(yl (paint-event/yl event))
+	(yh (paint-event/yh event)))
+    (os2win-clear wid xl xh yl yh)
     (let ((screen (wid->screen wid)))
       (if screen
-	  (let ((cxl (xl->cxl screen (paint-event/xl event)))
-		(cxh (xh->cxh screen (paint-event/xh event)))
-		(cyl (yh->cyl screen (paint-event/yh event)))
-		(cyh (yl->cyh screen (paint-event/yl event)))
+	  (let ((cxl (xl->cxl screen xl))
+		(cxh (xh->cxh screen xh))
+		(cyl (yh->cyl screen yh))
+		(cyh (yl->cyh screen yl))
 		(char-map (screen-char-map screen))
 		(face-map (screen-face-map screen))
 		(x-size (screen-x-size screen))
@@ -777,7 +811,7 @@
 				      (outer index
 					     (fix:+ cxl (fix:- index start)))))
 				(inner (fix:+ index 1)))))))))))))))
-
+
 (define (process-special-event event)
   (let ((handler (vector-ref event-handlers (event-type event)))
 	(screen (wid->screen (event-wid event))))
@@ -786,9 +820,9 @@
 	 (handler screen event))))
 
 (define event-handlers
-  (make-vector number-of-event-types false))
-
-(define-integrable (define-event-handler event-type handler)
+  (make-vector number-of-event-types #f))
+
+(define (define-event-handler event-type handler)
   (vector-set! event-handlers event-type handler))
 
 (define-event-handler event-type:button
@@ -923,160 +957,3 @@
     (vector-set! table VK_EREOF		'EREOF)
     (vector-set! table VK_PA1		'PA1)
     table))
-
-(define-primitives
-  (os2win-beep 2)
-  (os2win-open 1)
-  (os2win-close 1)
-  (os2win-show 2)
-  (os2win-write 6)
-  (os2win-move-cursor 3)
-  (os2win-shape-cursor 4)
-  (os2win-show-cursor 2)
-  (os2win-clear 5)
-  (os2win-scroll 7)
-  (os2win-invalidate 5)
-  (os2win-set-font 3)
-  (os2win-set-grid 3)
-  (os2win-activate 1)
-  (os2win-get-pos 1)
-  (os2win-set-pos 3)
-  (os2win-get-size 1)
-  (os2win-set-size 3)
-  (os2win-focus? 1)
-  (os2win-set-state 2)
-  (os2win-set-colors 3)
-  (os2win-get-event 1)
-  (os2win-event-ready? 1)
-  (os2win-event-descriptor 0)
-  (os2win-console-wid 0)
-  (os2win-desktop-width 0)
-  (os2win-desktop-height 0))
-
-(define-integrable event:process-output -2)
-(define-integrable event:process-status -3)
-(define-integrable event:inferior-thread-output -4)
-
-(define-integrable (event-type event) (vector-ref event 0))
-(define-integrable (event-wid event) (vector-ref event 1))
-
-(define-macro (define-event name type . slots)
-  `(BEGIN
-     (DEFINE-INTEGRABLE ,(symbol-append 'EVENT-TYPE: name) ,type)
-     ,@(let loop ((slots slots) (index 2))
-	 (if (null? slots)
-	     '()
-	     (cons `(DEFINE-INTEGRABLE
-		      (,(symbol-append name '-EVENT/ (car slots)) EVENT)
-		      (VECTOR-REF EVENT ,index))
-		   (loop (cdr slots) (+ index 1)))))))
-
-;; These must match "microcode/pros2pm.c"
-(define-event button     0 number type x y flags)
-(define-event close      1)
-(define-event focus      2 gained?)
-(define-event key        3 code flags repeat)
-(define-event paint      4 xl xh yl yh)
-(define-event resize     5 width height)
-(define-event visibility 6 shown?)
-
-(define-integrable number-of-event-types 7)
-
-(define-integrable button-event-type:down 0)
-(define-integrable button-event-type:up 1)
-(define-integrable button-event-type:click 2)
-(define-integrable button-event-type:double-click 3)
-
-;;; Constants from OS/2 header file "pmwin.h":
-
-(define-integrable CURSOR_SOLID		#x0000)
-(define-integrable CURSOR_HALFTONE	#x0001)
-(define-integrable CURSOR_FRAME		#x0002)
-(define-integrable CURSOR_FLASH		#x0004)
-
-(define-integrable VK_BUTTON1		#x01)
-(define-integrable VK_BUTTON2		#x02)
-(define-integrable VK_BUTTON3		#x03)
-(define-integrable VK_BREAK		#x04)
-(define-integrable VK_BACKSPACE		#x05)
-(define-integrable VK_TAB		#x06)
-(define-integrable VK_BACKTAB		#x07)
-(define-integrable VK_NEWLINE		#x08)
-(define-integrable VK_SHIFT		#x09)
-(define-integrable VK_CTRL		#x0A)
-(define-integrable VK_ALT		#x0B)
-(define-integrable VK_ALTGRAF		#x0C)
-(define-integrable VK_PAUSE		#x0D)
-(define-integrable VK_CAPSLOCK		#x0E)
-(define-integrable VK_ESC		#x0F)
-(define-integrable VK_SPACE		#x10)
-(define-integrable VK_PAGEUP		#x11)
-(define-integrable VK_PAGEDOWN		#x12)
-(define-integrable VK_END		#x13)
-(define-integrable VK_HOME		#x14)
-(define-integrable VK_LEFT		#x15)
-(define-integrable VK_UP		#x16)
-(define-integrable VK_RIGHT		#x17)
-(define-integrable VK_DOWN		#x18)
-(define-integrable VK_PRINTSCRN		#x19)
-(define-integrable VK_INSERT		#x1A)
-(define-integrable VK_DELETE		#x1B)
-(define-integrable VK_SCRLLOCK		#x1C)
-(define-integrable VK_NUMLOCK		#x1D)
-(define-integrable VK_ENTER		#x1E)
-(define-integrable VK_SYSRQ		#x1F)
-(define-integrable VK_F1		#x20)
-(define-integrable VK_F2		#x21)
-(define-integrable VK_F3		#x22)
-(define-integrable VK_F4		#x23)
-(define-integrable VK_F5		#x24)
-(define-integrable VK_F6		#x25)
-(define-integrable VK_F7		#x26)
-(define-integrable VK_F8		#x27)
-(define-integrable VK_F9		#x28)
-(define-integrable VK_F10		#x29)
-(define-integrable VK_F11		#x2A)
-(define-integrable VK_F12		#x2B)
-(define-integrable VK_F13		#x2C)
-(define-integrable VK_F14		#x2D)
-(define-integrable VK_F15		#x2E)
-(define-integrable VK_F16		#x2F)
-(define-integrable VK_F17		#x30)
-(define-integrable VK_F18		#x31)
-(define-integrable VK_F19		#x32)
-(define-integrable VK_F20		#x33)
-(define-integrable VK_F21		#x34)
-(define-integrable VK_F22		#x35)
-(define-integrable VK_F23		#x36)
-(define-integrable VK_F24		#x37)
-(define-integrable VK_ENDDRAG		#x38)
-(define-integrable VK_CLEAR		#x39)
-(define-integrable VK_EREOF		#x3A)
-(define-integrable VK_PA1		#x3B)
-(define-integrable virtual-key-supremum #x3C)
-
-(define-integrable KC_NONE		#x0000)
-(define-integrable KC_CHAR		#x0001)
-(define-integrable KC_VIRTUALKEY	#x0002)
-(define-integrable KC_SCANCODE		#x0004)
-(define-integrable KC_SHIFT		#x0008)
-(define-integrable KC_CTRL		#x0010)
-(define-integrable KC_ALT		#x0020)
-(define-integrable KC_KEYUP		#x0040)
-(define-integrable KC_PREVDOWN		#x0080)
-(define-integrable KC_LONEKEY		#x0100)
-(define-integrable KC_DEADKEY		#x0200)
-(define-integrable KC_COMPOSITE		#x0400)
-(define-integrable KC_INVALIDCOMP	#x0800)
-(define-integrable KC_TOGGLE		#x1000)
-(define-integrable KC_INVALIDCHAR	#x2000)
-
-(define-integrable window-state:top        0)
-(define-integrable window-state:bottom     1)
-(define-integrable window-state:show       2)
-(define-integrable window-state:hide       3)
-(define-integrable window-state:activate   4)
-(define-integrable window-state:deactivate 5)
-(define-integrable window-state:minimize   6)
-(define-integrable window-state:maximize   7)
-(define-integrable window-state:restore    8)
