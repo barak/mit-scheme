@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.81 2000/05/22 03:55:22 cph Exp $
+;;; $Id: imail-top.scm,v 1.82 2000/05/22 04:01:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -419,9 +419,9 @@ FLAGS should be a comma-separated list of flag names.
 If FLAGS is empty, the last set of flags specified is used.
 With prefix argument N moves forward N messages with these flags."
   (lambda ()
-    (list (command-argument)
+    (list (command-argument-numeric-value (command-argument))
 	  (imail-prompt-for-flags "Move to next message with flags")))
-  (lambda (n flags)
+  (lambda (delta flags)
     (let ((flags (burst-comma-list-string flags)))
       (if (null? flags)
 	  (editor-error "No flags have been specified."))
@@ -429,7 +429,7 @@ With prefix argument N moves forward N messages with these flags."
 		  (if (not (message-flag? flag))
 		      (error "Invalid flag name:" flag)))
 		flags)
-      (move-relative n
+      (move-relative delta
 		     (lambda (message)
 		       (there-exists? flags
 			 (lambda (flag)
@@ -446,10 +446,10 @@ FLAGS should be a comma-separated list of flag names.
 If FLAGS is empty, the last set of flags specified is used.
 With prefix argument N moves backward N messages with these flags."
   (lambda ()
-    (list (command-argument)
+    (list (command-argument-numeric-value (command-argument))
 	  (imail-prompt-for-flags "Move to previous message with flags")))
-  (lambda (n flags)
-    ((ref-command imail-next-flagged-message) (- n) flags)))
+  (lambda (delta flags)
+    ((ref-command imail-next-flagged-message) (- delta) flags)))
 
 (define (imail-prompt-for-flags prompt)
   (prompt-for-string prompt
@@ -458,34 +458,37 @@ With prefix argument N moves backward N messages with these flags."
 		     'HISTORY 'IMAIL-PROMPT-FOR-FLAGS
 		     'HISTORY-INDEX 0))
 
-(define (move-relative-any delta operation)
-  (move-relative delta #f "message" operation))
+(define (move-relative-any argument operation)
+  (move-relative argument #f "message" operation))
 
-(define (move-relative-undeleted delta operation)
-  (move-relative delta message-undeleted? "undeleted message" operation))
+(define (move-relative-undeleted argument operation)
+  (move-relative argument message-undeleted? "undeleted message" operation))
 
-(define (move-relative delta predicate noun operation)
-  (if (not (= 0 delta))
-      (call-with-values
-	  (lambda ()
-	    (if (< delta 0)
-		(values (- delta) navigator/previous-message "previous")
-		(values delta navigator/next-message "next")))
-	(lambda (n step direction)
-	  (let ((folder (selected-folder))
-		(msg (selected-message)))
-	    (if (and operation (> delta 0))
-		(operation msg))
-	    (let loop ((n n) (msg msg) (winner #f))
-	      (let ((next (step msg predicate)))
-		(cond ((not next)
-		       (if winner (select-message folder winner))
-		       (message "No " direction " " noun))
-		      ((= n 1)
-		       (select-message folder next))
-		      (else
-		       (if operation (operation next))
-		       (loop (- n 1) next next))))))))))
+(define (move-relative argument predicate noun operation)
+  (if argument
+      (let ((delta (command-argument-numeric-value argument)))
+	(if (not (= 0 delta))
+	    (call-with-values
+		(lambda ()
+		  (if (< delta 0)
+		      (values (- delta) navigator/previous-message "previous")
+		      (values delta navigator/next-message "next")))
+	      (lambda (n step direction)
+		(let ((folder (selected-folder))
+		      (msg (selected-message)))
+		  (if (and operation (> delta 0))
+		      (operation msg))
+		  (let loop ((n n) (msg msg) (winner #f))
+		    (let ((next (step msg predicate)))
+		      (cond ((not next)
+			     (if winner (select-message folder winner))
+			     (message "No " direction " " noun))
+			    ((= n 1)
+			     (select-message folder next))
+			    (else
+			     (if operation (operation next))
+			     (loop (- n 1) next next))))))))))
+      (if operation (operation (selected-message)))))
 
 (define (select-message folder selector #!optional force? full-headers?)
   (let ((buffer (imail-folder->buffer folder #t))
@@ -823,10 +826,8 @@ With prefix argument N, removes FLAG to next N messages,
     (list (command-argument)
 	  (imail-read-flag "Add flag" #f)))
   (lambda (argument flag)
-    (if argument
-	(move-relative-any (command-argument-numeric-value argument)
-			   (lambda (m) (set-message-flag m flag)))
-	(set-message-flag (selected-message) flag))))
+    (move-relative-any argument
+		       (lambda (message) (set-message-flag message flag)))))
 
 (define-command imail-kill-flag
   "Remove FLAG from flags associated with current IMAIL message.
@@ -837,10 +838,8 @@ With prefix argument N, removes FLAG from next N messages,
     (list (command-argument)
 	  (imail-read-flag "Remove flag" #t)))
   (lambda (argument flag)
-    (if argument
-	(move-relative-any (command-argument-numeric-value argument)
-			   (lambda (m) (clear-message-flag m flag)))
-	(clear-message-flag (selected-message) flag))))
+    (move-relative-any argument
+		       (lambda (message) (clear-message-flag message flag)))))
 
 (define (imail-read-flag prompt require-match?)
   (prompt-for-string-table-name
@@ -886,16 +885,11 @@ With prefix argument N, removes FLAG from next N messages,
 	  (command-argument)))
   (lambda (url-string argument)
     (let ((delete? (ref-variable imail-delete-after-output)))
-      (let ((output-message
-	     (lambda (message)
-	       (append-message message (imail-parse-partial-url url-string))
-	       (message-filed message)
-	       (if delete? (delete-message message))))
-	    (argument (or argument (and delete? 1))))
-	(if argument
-	    (move-relative-undeleted (command-argument-value argument)
-				     output-message)
-	    (output-message (selected-message)))))))
+      (move-relative-undeleted (or argument (and delete? 1))
+	(lambda (message)
+	  (append-message message (imail-parse-partial-url url-string))
+	  (message-filed message)
+	  (if delete? (delete-message message)))))))
 
 (define-command imail-create-folder
   "Create a new folder with the specified name.
