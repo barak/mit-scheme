@@ -2,6 +2,8 @@
 
 (declare (usual-integrations))
 
+;; This list must be kept in alphabetical order by filename.
+
 (standard-scheme-find-file-initialization
  '#(("argred"  (edwin command-argument)
 	       edwin-syntax-table)
@@ -45,9 +47,9 @@
 	       syntax-table/system-internal)
     ("clsmac"  (edwin class-macros)
 	       syntax-table/system-internal)
-    ("comman"  (edwin)
-	       edwin-syntax-table)
     ("comint"  (edwin)
+	       edwin-syntax-table)
+    ("comman"  (edwin)
 	       edwin-syntax-table)
     ("comred"  (edwin command-reader)
 	       edwin-syntax-table)
@@ -113,10 +115,10 @@
 	       edwin-syntax-table)
     ("macros"  (edwin macros)
 	       syntax-table/system-internal)
-    ("malias"  (edwin mail-alias)
-	       edwin-syntax-table)
     ("make"    ()
 	       syntax-table/system-internal)
+    ("malias"  (edwin mail-alias)
+	       edwin-syntax-table)
     ("midas"   (edwin)
 	       edwin-syntax-table)
     ("modefs"  (edwin)
