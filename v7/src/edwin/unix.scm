@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.77 1997/06/06 05:04:57 cph Exp $
+;;;	$Id: unix.scm,v 1.78 1997/06/06 05:05:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -437,7 +437,7 @@ of the filename suffixes \".gz\" or \".Z\"."
   '("gz" "Z"))
 
 (define (read-compressed-file program pathname mark)
-  (temporary-message "Uncompressing file " (->namestring pathname) "...")
+  (message "Uncompressing file " (->namestring pathname) "...")
   (let ((value
 	 (call-with-temporary-file-pathname
 	  (lambda (temporary)
@@ -465,7 +465,7 @@ of the filename suffixes \".gz\" or \".Z\"."
     value))
 
 (define (write-compressed-file program region pathname)
-  (temporary-message "Compressing file " (->namestring pathname) "...")
+  (message "Compressing file " (->namestring pathname) "...")
   (if (not (equal? '(EXITED . 0)
 		   (shell-command region
 				  #f
@@ -524,7 +524,7 @@ filename suffix \".ky\"."
 
 (define (write-encrypted-file region pathname)
   (let ((password (prompt-for-confirmed-password)))
-    (temporary-message "Encrypting file " (->namestring pathname) "...")
+    (message "Encrypting file " (->namestring pathname) "...")
     (let ((the-encrypted-file
 	   (encrypt (extract-string (region-start region) (region-end region))
 		    password)))

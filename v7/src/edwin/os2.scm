@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.38 1997/05/21 18:00:39 cph Exp $
+;;;	$Id: os2.scm,v 1.39 1997/06/06 05:06:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
@@ -290,7 +290,7 @@ filename suffix \".gz\"."
        (equal? "gz" (pathname-type pathname))))
 
 (define (read-compressed-file program pathname mark)
-  (temporary-message "Uncompressing file " (->namestring pathname) "...")
+  (message "Uncompressing file " (->namestring pathname) "...")
   (let ((value
 	 (call-with-temporary-file-pathname
 	  (lambda (temporary)
@@ -318,7 +318,7 @@ filename suffix \".gz\"."
     value))
 
 (define (write-compressed-file program region pathname)
-  (temporary-message "Compressing file " (->namestring pathname) "...")
+  (message "Compressing file " (->namestring pathname) "...")
   (if (not (equal? '(EXITED . 0)
 		   (shell-command region
 				  #f
@@ -340,8 +340,8 @@ filename suffix \".gz\"."
 (define-variable enable-encrypted-files
   "If true, encrypted files are automatically decrypted when read,
 and recrypted when written.  An encrypted file is identified by the
-filename suffix \".KY\"."
-  true
+filename suffix \".ky\"."
+  #t
   boolean?)
 
 (define (read/write-encrypted-file? group pathname)
@@ -350,7 +350,7 @@ filename suffix \".KY\"."
 
 (define (read-encrypted-file pathname mark)
   (let ((password (prompt-for-password "Password: ")))
-    (temporary-message "Decrypting file " (->namestring pathname) "...")
+    (message "Decrypting file " (->namestring pathname) "...")
     (insert-string (let ((the-encrypted-file
 			  (call-with-binary-input-file pathname
 			    (lambda (port)
@@ -374,7 +374,7 @@ filename suffix \".KY\"."
 
 (define (write-encrypted-file region pathname)
   (let ((password (prompt-for-confirmed-password)))
-    (temporary-message "Encrypting file " (->namestring pathname) "...")
+    (message "Encrypting file " (->namestring pathname) "...")
     (let ((the-encrypted-file
 	   (encrypt (extract-string (region-start region) (region-end region))
 		    password)))
