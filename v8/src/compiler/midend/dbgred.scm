@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.16 1995/08/30 19:54:46 adams Exp $
+$Id: dbgred.scm,v 1.17 1995/09/04 20:41:14 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -768,12 +768,9 @@ reachable.
   (define (compress-closure-ref op)
     ;; (CALL '%*-closure-ref '#F <closure> <index> 'name)
     (let* ((closure (dbg-red/compress-expression (fourth form)))
-	   (ix-expr (fifth form))
-	   (name (quote/text (sixth form))))
-      (vector op closure (if (QUOTE/? ix-expr)
-			     (quote/text ix-expr)
-			     (quote/text (CALL/%vector-index/vector ix-expr)))
-	      name)))
+	   (layout  (quote/text (fifth form)))
+	   (name    (quote/text (sixth form))))
+      (vector op closure layout name)))
 
   (define (compress-ordinary-call form)
     (let ((exprs* (map dbg-red/compress-expression (call/operands form))))
