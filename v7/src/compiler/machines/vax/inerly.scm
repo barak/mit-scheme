@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/inerly.scm,v 1.2 1987/08/23 07:55:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/inerly.scm,v 1.3 1987/08/23 08:15:59 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -76,7 +76,7 @@ MIT in each case. |#
 ;; *** Is this right? ***
 
 (syntax-table-define early-syntax-table 'DEFINE-TRANSFORMER
-  (macro (name . value)
+  (macro (name value)
     `(define-early-transformer ',name ,value)))
 
 (syntax-table-define early-syntax-table 'DEFINE-EA-TRANSFORMER
