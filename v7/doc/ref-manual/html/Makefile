@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.1 2000/07/10 22:15:12 cph Exp $
+# $Id: Makefile,v 1.2 2000/07/10 22:15:36 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -20,5 +20,8 @@
 all:	scheme_toc.html
 
 scheme_toc.html:	../scheme.texinfo
-	-rm -rf *.html
+	rm -rf *.html
 	texi2html -split_chapter ../scheme.texinfo
+
+clean:
+	rm -rf *.html
