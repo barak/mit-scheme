@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.36 1991/11/04 20:35:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.37 1991/12/02 18:46:57 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -156,7 +156,7 @@ MIT in each case. |#
 	    (compile-bin-file input output))))))
 
 (define (compiler:batch-error-handler condition)
-  (let ((port (nearest-cmdl/output-port)))
+  (let ((port (nearest-cmdl/port)))
     (newline port)
     (write-condition-report condition port))
   (compiler:abort false))
