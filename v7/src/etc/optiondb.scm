@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.7 2001/04/30 02:45:59 cph Exp $
+$Id: optiondb.scm,v 1.8 2001/10/16 19:42:53 cph Exp $
 
 Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
@@ -80,6 +80,9 @@ USA.
 (define-load-option 'IMAIL
   (guarded-system-loader '(edwin imail) "imail"))
 
+(define-load-option '*PARSER
+  (guarded-system-loader '(runtime *parser) "star-parser"))
+
 (define-load-option 'PC-SAMPLE
   (guarded-system-loader '(pc-sample) "pcsample"))
 
@@ -100,5 +103,8 @@ USA.
 
 (define-load-option 'WIN32
   (guarded-system-loader '(win32) "win32"))
+
+(define-load-option 'XML
+  (guarded-system-loader '(runtime xml) "xml"))
 
 (further-load-options standard-load-options)
