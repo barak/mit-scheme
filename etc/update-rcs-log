@@ -5,4 +5,4 @@
 PATH=/usr/contrib/bin:/usr/local/bin:/usr/bin:/bin
 export PATH
 
-bgx -ioe /raid/jmiller/scheme/compiler/etc/rcs scheme -large
+bgx -ioe /scheme/etc/update-rcs-log scheme-8.0-new -large -no-init-file

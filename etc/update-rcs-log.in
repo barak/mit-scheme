@@ -1,8 +1,8 @@
 ;; -*- Scheme -*-
 
 (begin
-  (cd "/scheme/700/rcs")
-  (load "make")
+  (cd "/scheme/8.0/700/rcs")
+  (load-latest "make")
   (let ((rcs-directory-log (access rcs-directory-log (->environment '(RCS)))))
     (define (make-log directory . subdirectories)
       (with-working-directory-pathname directory
@@ -14,16 +14,35 @@
 			      (string-append subdirectory "/RCS"))
 			    subdirectories))))))
 
-
-    (make-log "/raid/jmiller/scheme/compiler"
-	      "/raid/ssmith/scheme/compiler/machines/i386"
-	      "back" "base" "doc" "machines/spectrum"
-	      "midend" "rtlbase" "rtlopt")
-
-    (make-log "/raid/jmiller/new-scheme/microcode")
-    (make-log "/raid/jmiller/new-scheme/runtime")
     (make-log "/raid/jmiller/scheme/bench")
 
-    'done)
-  (load "mklogs")			; /scheme/src logs
-  )
+    ;;(make-log "/scheme/8.0/src/6001")
+    (make-log "/scheme/8.0/src/compiler" "back" "base" "documentation" "etc"
+	      "machines/i386" "machines/spectrum"
+	      "rtlbase" "rtlopt")
+    (make-log "/scheme/8.0/src/cref")
+    (make-log "/scheme/8.0/src/edwin")
+    (make-log "/scheme/8.0/src/microcode"
+	      "cmpauxmd" "cmpintmd" "dosutl" "m" "ntutl" "s" "unxutl")
+    (make-log "/scheme/8.0/src/rcs")
+    (make-log "/scheme/8.0/src/runtime")
+    (make-log "/scheme/8.0/src/sf")
+    ;;(make-log "/scheme/8.0/src/sicp")
+    ;;(make-log "/scheme/8.0/src/win32" "dibutils")
+
+
+    ;;(make-log "/scheme/7.4/src/6001")
+    (make-log "/scheme/7.4/src/compiler" "back" "base" "documentation" "etc" "fggen"
+	      "fgopt" "machines/C" "machines/alpha" "machines/bobcat"
+	      "machines/i386" "machines/mips" "machines/sparc"
+	      "machines/spectrum" "machines/vax" "rtlbase" "rtlgen" "rtlopt")
+    ;;(make-log "/scheme/7.4/src/cref")
+    ;;(make-log "/scheme/7.4/src/edwin")
+    (make-log "/scheme/7.4/src/microcode"
+	      "cmpauxmd" "cmpintmd" "dosutl" "m" "ntutl" "s" "unxutl")
+    ;;(make-log "/scheme/7.4/src/rcs")
+    (make-log "/scheme/7.4/src/runtime")
+    (make-log "/scheme/7.4/src/sf")
+    ;;(make-log "/scheme/7.4/src/sicp")
+    ;;(make-log "/scheme/7.4/src/win32" "dibutils")
+    ))
