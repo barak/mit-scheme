@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.91 2001/07/31 03:11:39 cph Exp $
+$Id: interp.c,v 9.92 2001/08/10 04:37:13 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -1136,21 +1136,19 @@ Pop_Return_Non_Trapping:
 
     case RC_EXECUTE_DEFINITION_FINISH:
       {
-	SCHEME_OBJECT value;
+	SCHEME_OBJECT name
+	  = (FAST_MEMORY_REF ((Fetch_Expression ()), DEFINE_NAME));
+	SCHEME_OBJECT value = Val;
         long result;
 
-	value = Val;
         Restore_Env();
 	Export_Registers();
-        result
-	  = (define_variable
-	     ((Fetch_Env ()),
-	      (FAST_MEMORY_REF ((Fetch_Expression ()), DEFINE_NAME)),
-	      Val));
+        result = (define_variable ((Fetch_Env ()), name, value));
         Import_Registers();
         if (result == PRIM_DONE)
 	  {
 	    End_Subproblem();
+	    Val = name;
 	    break;
 	  }
 	Save_Env();
