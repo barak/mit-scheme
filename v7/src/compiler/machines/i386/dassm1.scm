@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm1.scm,v 1.2 1992/02/13 03:34:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm1.scm,v 1.3 1992/02/13 03:35:38 jinx Exp $
 $MC68020-Header: dassm1.scm,v 4.15 90/07/12 16:42:39 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -104,17 +104,6 @@ MIT in each case. |#
 	(newline)
 	(disassembler/write-compiled-code-block block info)))))
 
-;;; Operations exported from the disassembler package
-
-(define disassembler/instructions)
-(define disassembler/instructions/null?)
-(define disassembler/instructions/read)
-(define disassembler/lookup-symbol)
-(define disassembler/read-variable-cache)
-(define disassembler/read-procedure-cache)
-(define compiled-code-block/objects-per-procedure-cache)
-(define compiled-code-block/objects-per-variable-cache)
-
 (define (disassembler/write-compiled-code-block block info)
   (let ((symbol-table (and info (dbg-info/labels info))))
     (write-string "Disassembly of ")
