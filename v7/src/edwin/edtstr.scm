@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.15 1991/05/10 04:56:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.16 1991/05/10 05:50:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -76,7 +76,6 @@
 			(list screen)
 			screen
 			bufferset
-			(make-ring 10)
 			(make-ring 100)
 			halt-update?
 			char-ready?
