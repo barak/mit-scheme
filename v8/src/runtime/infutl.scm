@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.12 1989/08/18 19:08:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.13 1989/10/03 22:55:38 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -70,7 +70,13 @@ MIT in each case. |#
 (define (read-debugging-info descriptor)
   (cond ((string? descriptor)
 	 (let ((binf (read-binf-file descriptor)))
-	   (and binf (dbg-info? binf) binf)))	((and (pair? descriptor)
+	   (and binf
+		(if (dbg-info? binf)
+		    binf
+		    (and (vector? binf)
+			 (not (zero? (vector-length binf)))
+			 (vector-ref binf 0))))))
+	((and (pair? descriptor)
 	      (string? (car descriptor))
 	      (integer? (cdr descriptor))
 	      (not (negative? (cdr descriptor))))
