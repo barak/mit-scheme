@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vhdl.scm,v 1.2 1997/03/08 00:16:14 cph Exp $
+;;;	$Id: vhdl.scm,v 1.3 1997/03/08 00:21:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1997 Massachusetts Institute of Technology
 ;;;
@@ -253,9 +253,6 @@
 (define parse-forward-past-semicolon
   (parse-forward-past-char #\;))
 
-(define parse-forward-past-colon
-  (parse-forward-past-char #\:))
-
 (define (parse-forward-past-token token)
   (parse-forward-past
    (let ((regexp
@@ -268,20 +265,8 @@
 (define parse-forward-past-is
   (parse-forward-past-token "is"))
 
-(define parse-forward-past-=>
-  (parse-forward-past-token "=>"))
-
 (define parse-forward-past-then
   (parse-forward-past-token "then"))
-
-(define parse-forward-past-units
-  (parse-forward-past-token "units"))
-
-(define parse-forward-past-loop
-  (parse-forward-past-token "loop"))
-
-(define parse-forward-past-generate/loop
-  (parse-forward-past-token (regexp-group "generate" "loop")))
 
 (define parse-forward-past-generate/then
   (parse-forward-past-token (regexp-group "generate" "then")))
@@ -344,8 +329,10 @@
 	       ("configuration" #f ,parse-forward-past-is)
 	       ("entity" #f ,parse-forward-past-is ,begin-frag)
 	       ("for" ,match-for-block ,parse-forward-noop)
-	       ("for" ,match-for-component ,parse-forward-past-colon)
-	       ("for" ,match-for-loop ,parse-forward-past-generate/loop)
+	       ("for" ,match-for-component ,(parse-forward-past-char #\:))
+	       ("for" ,match-for-loop
+		      ,(parse-forward-past-token
+			(regexp-group "generate" "loop")))
 	       ("function" #f ,parse-forward-past-is ,begin-frag)
 	       ("pure" #f ,parse-forward-past-is ,begin-frag)
 	       ("impure" #f ,parse-forward-past-is ,begin-frag)
@@ -354,30 +341,31 @@
 		     ,(standard-keyword "elsif" #f parse-forward-past-then)
 		     ,(standard-keyword "else" #f parse-forward-noop))
 	       ("if" ,match-if-generate ,parse-forward-past-generate/then)
+	       ("loop" #f ,parse-forward-noop)
 	       ("package" #f ,parse-forward-past-is)
 	       ("procedure" #f ,parse-forward-past-is ,begin-frag)
 	       ("process" #f ,parse-process-header ,begin-frag)
 	       ("postponed" #f ,parse-postponed-header ,begin-frag)
-	       ("range" #f ,parse-forward-past-units)
+	       ("range" #f ,(parse-forward-past-token "units"))
 	       ("record" #f ,parse-forward-noop)
-	       ("while" #f ,parse-forward-past-loop)))
+	       ("while" #f ,(parse-forward-past-token "loop"))))
 	(list
-	 (let ((when (standard-keyword "when" #f parse-forward-past-=>)))
+	 (let ((when
+		(standard-keyword "when" #f (parse-forward-past-token "=>"))))
 	   (list when
 		 (standard-keyword "end" #f parse-forward-past-semicolon
 				   'POP-CONTAINER 1)
 		 when))))))
-	
 
    'STATEMENT-LEADERS
    `((,(re-compile-pattern "[a-zA-Z0-9_]+\\s *:" #f) . ,parse-forward-noop))
-   
+
    'FIND-STATEMENT-END
    parse-forward-past-semicolon
 
    'INDENT-CONTINUED-STATEMENT
    continued-statement-indent
-   
+
    'INDENT-CONTINUED-COMMENT
    (lambda (mark)
      (mark-column (or (vhdl-comment-match-start mark) mark)))))
