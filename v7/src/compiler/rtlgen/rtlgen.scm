@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.6 1988/08/18 01:37:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.7 1988/08/18 01:46:45 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -158,7 +158,7 @@ MIT in each case. |#
     (if (and (not (continuation/always-known-operator? continuation))
 	     (block/dynamic-link? block))
 	(rtl:make-pop-link)
-	(make-null-cfg)))))
+	(make-null-cfg))))
 
 (define (generate/node node)
   (let ((memoization (cfg-node-get node memoization-tag)))
