@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.12 1996/05/15 06:10:56 cph Exp $
+;;;	$Id: snr.scm,v 1.13 1996/10/14 05:06:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -739,9 +739,9 @@ With negative argument -N, show the N oldest unread articles."
       (for-each-vector-element (news-server-buffer:groups buffer)
 	(lambda (group)
 	  (if (news-group:subscribed? group)
-	      (begin
-		(read-news-group-headers buffer group)
-		(update-screens! '(IGNORE-INPUT))))))
+	      (read-news-group-headers buffer group)
+	      (refresh-news-group buffer group))
+	  (update-screens! '(IGNORE-INPUT))))
       (news-server-buffer:save-groups buffer))))
 
 (define-command news-read-group-headers
@@ -1119,7 +1119,11 @@ This shows News groups that have been created since the last time that
 			       (loop next)))))))))
        (news-group:purge-header-cache group news-header:article-seen? #t)
        (news-group:purge-and-compact-headers! group #f)
-       (set-news-group:ignored-subjects! group 'UNKNOWN)))))
+       (set-news-group:ignored-subjects! group 'UNKNOWN)
+       (let ((buffer (news-server-buffer buffer #t)))
+	 (write-groups-init-file (news-group:connection group)
+				 (news-server-buffer:groups buffer)
+				 buffer))))))
 
 (define (news-group-buffer:select group-buffer window)
   (news-group-buffer:delete-context-window group-buffer window))
