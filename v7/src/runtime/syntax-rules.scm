@@ -1,25 +1,26 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: syntax-rules.scm,v 14.2 2002/11/20 19:46:23 cph Exp $
-;;;
-;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: syntax-rules.scm,v 14.3 2003/01/31 05:00:52 cph Exp $
+
+Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; Rule-based Syntactic Expanders
 
@@ -56,10 +57,7 @@
 		 (,r-form ,r-rename ,r-compare)
 		 ,r-compare		;prevent compiler warnings
 		 ,(let loop ((clauses clauses))
-		    (if (null? clauses)
-			`(,(rename 'BEGIN)
-			  ,r-rename	;prevent compiler warnings
-			  (,(rename 'ILL-FORMED-SYNTAX) ,r-form))
+		    (if (pair? clauses)
 			(let ((pattern (caar clauses)))
 			  (let ((sids
 				 (parse-pattern rename compare keywords
@@ -71,7 +69,10 @@
 			      ,(generate-output rename compare r-rename
 						sids (cadar clauses)
 						syntax-error)
-			      ,(loop (cdr clauses))))))))))))
+			      ,(loop (cdr clauses)))))
+			`(,(rename 'BEGIN)
+			  ,r-rename	;prevent compiler warnings
+			  (,(rename 'ILL-FORMED-SYNTAX) ,r-form)))))))))
       (syntax-error "Ill-formed special form:" form)))
 
 (define (parse-pattern rename compare keywords pattern expression)
@@ -181,7 +182,7 @@
     (cond ((identifier? template)
 	   (let ((sid
 		  (let loop ((sids sids))
-		    (and (not (null? sids))
+		    (and (pair? sids)
 			 (if (eq? (sid-name (car sids)) template)
 			     (car sids)
 			     (loop (cdr sids)))))))
