@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.1 1995/01/06 00:50:16 cph Exp $
+$Id: os2graph.scm,v 1.2 1995/01/31 22:00:21 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -70,7 +70,19 @@ MIT in each case. |#
 	   (set-coordinate-limits ,os2-graphics/set-coordinate-limits)
 	   (set-drawing-mode ,os2-graphics/set-drawing-mode)
 	   (set-foreground-color ,os2-graphics/set-foreground-color)
-	   (set-line-style ,os2-graphics/set-line-style))))
+	   (set-line-style ,os2-graphics/set-line-style)
+	   (window-size ,os2-graphics/window-size)
+	   (set-window-size ,os2-graphics/set-window-size)
+	   (window-position ,os2-graphics/window-position)
+	   (set-window-position ,os2-graphics/set-window-position)
+	   (set-window-title ,os2-graphics/set-window-title)
+	   (hide-window ,os2-graphics/hide-window)
+	   (minimize-window ,os2-graphics/minimize-window)
+	   (maximize-window ,os2-graphics/maximize-window)
+	   (restore-window ,os2-graphics/restore-window)
+	   (raise-window ,os2-graphics/raise-window)
+	   (lower-window ,os2-graphics/lower-window)
+	   (desktop-size ,os2-graphics/desktop-size))))
   (register-graphics-device-type 'OS/2 os2-graphics-device-type)
   (set! event-descriptor #f)
   (set! event-previewer-registration #f)
@@ -550,6 +562,47 @@ MIT in each case. |#
 
 (define-integrable (set-os2-graphics-device/background-color! device color)
   (set-os2-window/background-color! (graphics-device/descriptor device) color))
+
+(define (os2-graphics/window-size device)
+  (let ((w.h (os2win-get-size (os2-graphics-device/wid device))))
+    (values (car w.h)
+	    (cdr w.h))))
+
+(define (os2-graphics/set-window-size device width height)
+  (os2win-set-size (os2-graphics-device/wid device) width height))
+
+(define (os2-graphics/window-position device)
+  (let ((x.y (os2win-get-pos (os2-graphics-device/wid device))))
+    (values (car x.y)
+	    (cdr x.y))))
+
+(define (os2-graphics/set-window-position device x y)
+  (os2win-set-pos (os2-graphics-device/wid device) x y))
+
+(define (os2-graphics/set-window-title device title)
+  (os2win-set-title (os2-graphics-device/wid device) title))
+
+(define (os2-graphics/hide-window device)
+  (os2win-set-state (os2-graphics-device/wid device) window-state:hide))
+
+(define (os2-graphics/minimize-window device)
+  (os2win-set-state (os2-graphics-device/wid device) window-state:minimize))
+
+(define (os2-graphics/maximize-window device)
+  (os2win-set-state (os2-graphics-device/wid device) window-state:maximize))
+
+(define (os2-graphics/restore-window device)
+  (os2win-set-state (os2-graphics-device/wid device) window-state:restore))
+
+(define (os2-graphics/raise-window device)
+  (os2win-set-state (os2-graphics-device/wid device) window-state:top))
+
+(define (os2-graphics/lower-window device)
+  (os2win-set-state (os2-graphics-device/wid device) window-state:bottom))
+
+(define (os2-graphics/desktop-size device)
+  device
+  (values (os2win-desktop-width) (os2win-desktop-height)))
 
 ;;;; Protection lists
 
