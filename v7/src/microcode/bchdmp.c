@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.32 1987/06/15 19:25:22 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.33 1987/06/18 21:14:40 jinx Rel $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -443,6 +443,7 @@ Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
 		      ((long) (Free_Constant - Constant_Space)),
 		      Constant_Space, (Free - 1));
   result = (result && Close_Dump_File());
+  Band_Dump_Exit_Hook();
   if (result)
     PRIMITIVE_RETURN(TRUTH);
   else

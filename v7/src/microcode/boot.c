@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.36 1987/06/05 04:12:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.37 1987/06/18 21:14:55 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -142,11 +142,12 @@ Exit_Scheme_Declarations;
 forward void Start_Scheme();
 extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
 
-void
+main_type
 main(argc, argv)
      int argc;
      char **argv;
-{ Boolean FASL_It = false;
+{
+  Boolean FASL_It = false;
   char *File_Name = NULL;
   int Saved_Heap_Size, Saved_Stack_Size, Saved_Constant_Size;
   extern void compiler_initialize();

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.2 1987/05/14 13:50:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.3 1987/06/18 21:15:47 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -144,7 +144,7 @@ Built_In_Primitive (Prim_Char_To_Syntax_Code, 2, "CHAR->SYNTAX-CODE", 0x17E)
 
 /* Parser Initialization */
 
-#define STANDARD_INITIALIZATION_COMMON(primitive_initialization)	\
+#define NORMAL_INITIALIZATION_COMMON(primitive_initialization)		\
   fast char *start;							\
   char *first_char, *end;						\
   long entry;								\
@@ -161,20 +161,20 @@ Built_In_Primitive (Prim_Char_To_Syntax_Code, 2, "CHAR->SYNTAX-CODE", 0x17E)
   gap_length = (GROUP_GAP_LENGTH (Arg2));				\
   gap_end = (first_char + (GROUP_GAP_END (Arg2)))
 
-#define STANDARD_INITIALIZATION_FORWARD(primitive_initialization)	\
+#define NORMAL_INITIALIZATION_FORWARD(primitive_initialization)		\
   char *gap_start;							\
   fast char *gap_end;							\
-  STANDARD_INITIALIZATION_COMMON (primitive_initialization);		\
+  NORMAL_INITIALIZATION_COMMON (primitive_initialization);		\
   if (start >= gap_start)						\
     start += gap_length;						\
   if (end >= gap_start)							\
     end += gap_length
 
-#define STANDARD_INITIALIZATION_BACKWARD(primitive_initialization)	\
+#define NORMAL_INITIALIZATION_BACKWARD(primitive_initialization)	\
   fast char *gap_start;							\
   char *gap_end;							\
   Boolean quoted;							\
-  STANDARD_INITIALIZATION_COMMON (primitive_initialization);		\
+  NORMAL_INITIALIZATION_COMMON (primitive_initialization);		\
   if (start > gap_start)						\
     start += gap_length;						\
   if (end > gap_start)							\
@@ -293,7 +293,7 @@ do									\
 
 Built_In_Primitive (Prim_Quoted_Char_P, 4, "QUOTED-CHAR?", 0x17F)
 {
-  STANDARD_INITIALIZATION_BACKWARD (Primitive_4_Args);
+  NORMAL_INITIALIZATION_BACKWARD (Primitive_4_Args);
 
   RIGHT_QUOTED_P (start, quoted);
   return (quoted ? TRUTH : NIL);
@@ -305,7 +305,7 @@ Built_In_Primitive (Prim_Quoted_Char_P, 4, "QUOTED-CHAR?", 0x17F)
 Built_In_Primitive (Prim_Scan_Backward_Prefix_Chars, 4,
 		    "SCAN-BACKWARD-PREFIX-CHARS", 0x17D)
 {
-  STANDARD_INITIALIZATION_BACKWARD (Primitive_4_Args);
+  NORMAL_INITIALIZATION_BACKWARD (Primitive_4_Args);
 
   while (true)
     {
@@ -319,10 +319,10 @@ Built_In_Primitive (Prim_Scan_Backward_Prefix_Chars, 4,
 
 /* Word Parsers */
 
-Built_In_Primitive
-  (Prim_Scan_Forward_To_Word, 4, "SCAN-FORWARD-TO-WORD", 0x17C)
+Built_In_Primitive (Prim_Scan_Forward_To_Word, 4,
+		    "SCAN-FORWARD-TO-WORD", 0x17C)
 {
-  STANDARD_INITIALIZATION_FORWARD (Primitive_4_Args);
+  NORMAL_INITIALIZATION_FORWARD (Primitive_4_Args);
 
   while (true)
     {
@@ -334,7 +334,7 @@ Built_In_Primitive
 
 Built_In_Primitive (Prim_Scan_Word_Forward, 4, "SCAN-WORD-FORWARD", 0x177)
 {
-  STANDARD_INITIALIZATION_FORWARD (Primitive_4_Args);
+  NORMAL_INITIALIZATION_FORWARD (Primitive_4_Args);
 
   while (true)
     {
@@ -353,7 +353,7 @@ Built_In_Primitive (Prim_Scan_Word_Forward, 4, "SCAN-WORD-FORWARD", 0x177)
 
 Built_In_Primitive (Prim_Scan_Word_Backward, 4, "SCAN-WORD-BACKWARD", 0x178)
 {
-  STANDARD_INITIALIZATION_BACKWARD (Primitive_4_Args);
+  NORMAL_INITIALIZATION_BACKWARD (Primitive_4_Args);
 
   while (true)
     {
@@ -374,7 +374,7 @@ Built_In_Primitive (Prim_Scan_Word_Backward, 4, "SCAN-WORD-BACKWARD", 0x178)
 
 Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 {
-  SCAN_LIST_INITIALIZATION (STANDARD_INITIALIZATION_FORWARD);
+  SCAN_LIST_INITIALIZATION (NORMAL_INITIALIZATION_FORWARD);
 
   while (true)
     {
@@ -498,7 +498,7 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 
 Built_In_Primitive (Prim_Scan_List_Backward, 7, "SCAN-LIST-BACKWARD", 0x17A)
 {
-  SCAN_LIST_INITIALIZATION (STANDARD_INITIALIZATION_BACKWARD);
+  SCAN_LIST_INITIALIZATION (NORMAL_INITIALIZATION_BACKWARD);
 
   while (true)
     {
@@ -649,7 +649,7 @@ Built_In_Primitive (Prim_Scan_Sexps_Forward, 7, "SCAN-SEXPS-FORWARD", 0x17B)
   struct levelstruct *level_end;
   char c;
   Pointer result;
-  STANDARD_INITIALIZATION_FORWARD (Primitive_7_Args);
+  NORMAL_INITIALIZATION_FORWARD (Primitive_7_Args);
 
   CHECK_ARG (5, FIXNUM_P);
   FIXNUM_VALUE (Arg5, target_depth);

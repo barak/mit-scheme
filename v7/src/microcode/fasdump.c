@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.28 1987/06/05 04:14:05 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.29 1987/06/18 21:15:11 jinx Rel $
 
    This file contains code for fasdump and dump-band.
 */
@@ -339,5 +339,6 @@ Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
 		      ((long) (Free_Constant - Constant_Space)),
 		      Constant_Space, (Free - 1));
   result = (result && Close_Dump_File());
+  Band_Dump_Exit_Hook();
   PRIMITIVE_RETURN(result ? TRUTH : NIL);
 }

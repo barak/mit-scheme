@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.26 1987/05/23 14:31:17 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.27 1987/06/18 21:15:37 jinx Rel $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
@@ -122,7 +122,7 @@ Pointer C_Name()
 
 #define Special_Primitive_Interrupt(Local_Mask)			\
 {								\
-  special_interrupt_from_primitive (Local_Mask);		\
+  specl_interrupt_from_primitive (Local_Mask);			\
 }
 
 #define Primitive_GC(Amount)					\

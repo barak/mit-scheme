@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.23 1987/05/29 02:22:51 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.24 1987/06/18 21:15:25 jinx Rel $
  *
  * This file contains hooks and handles for the new fluid bindings
  * scheme for multiprocessors.
@@ -185,7 +185,7 @@ new_fluid_binding_restart:
 	break;
 
       case TRAP_COMPILER_CACHED:
-      case TRAP_COMPILED_CACHED_DANGEROUS:
+      case TRAP_COMPILER_CACHED_DANGEROUS:
 	cell = Nth_Vector_Loc(Fast_Vector_Ref(*cell, TRAP_EXTRA),
 			      TRAP_EXTENSION_CELL);
 	goto new_fluid_binding_restart;
@@ -292,7 +292,7 @@ Define_Primitive(Prim_Make_Fluid_Binding, 3, "MAKE-FLUID-BINDING!")
     default:
       Primitive_Error(ERR_ARG_2_WRONG_TYPE);
   }
-
+
   if (cell == unbound_trap_object)
   {
     long message;
@@ -310,9 +310,13 @@ Define_Primitive(Prim_Make_Fluid_Binding, 3, "MAKE-FLUID-BINDING!")
     if (message != PRIM_DONE)
     {
       if (message == PRIM_INTERRUPT)
+      {
 	Primitive_Interrupt();
+      }
       else
+      {
 	Primitive_Error(message);
+      }
     }
   }
 
