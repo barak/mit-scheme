@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.20 1988/10/21 15:28:23 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.21 1988/10/21 16:30:23 cph Exp $
 
 (require 'scheme)
 
@@ -451,7 +451,7 @@ reading-string         reading prompt string")
   "This variable, if nil, indicates that the scheme process is
 waiting for input.  Otherwise, it is busy evaluating something.")
 
-(defconst xscheme-control-g-synchronization-p (eq system-type 'hpux)
+(defconst xscheme-control-g-synchronization-p t
   "If non-nil, insert markers in the scheme input stream to indicate when
 control-g interrupts were signalled.  Do not allow more control-g's to be
 signalled until the scheme process acknowledges receipt.")
