@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.117 1991/08/22 15:43:39 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.118 1991/08/29 21:14:53 sybok Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1473,6 +1473,7 @@ MIT in each case. |#
 	  *pp-primitives-by-name*
 	  *pp-save-vertical-space?*
 	  *pp-uninterned-symbols-by-name*
+	  *pp-avoid-circularity?*
 	  make-pretty-printer-highlight
 	  pp
 	  pretty-print)
