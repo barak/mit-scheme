@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.23 1987/04/16 02:32:25 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.24 1987/04/21 15:22:08 cph Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -662,14 +662,26 @@ C_String_To_Scheme_String (C_String)
   Max_Length = ((Space_Before_GC() - STRING_CHARS) *
                 sizeof( Pointer));
   if (C_String == NULL)
-    Length = 0;
+    {
+      Length = 0;
+      if (Max_Length < 0)
+	Primitive_GC(3);
+    }
   else
-    for (Length = 0;
-	 (*C_String != '\0') && (Length < Max_Length);
-	 Length += 1)
-      *Next++ = *C_String++;
-  if (Length >= Max_Length)
-    Primitive_GC( MemTop - Free);
+    {
+      for (Length = 0;
+	   (*C_String != '\0') && (Length < Max_Length);
+	   Length += 1)
+	*Next++ = *C_String++;
+      if (Length >= Max_Length)
+	{
+	  while (*C_String++ != '\0')
+	    Length += 1;
+	  Primitive_GC(2 +
+		       (((Length + 1) + (sizeof( Pointer) - 1))
+			/ sizeof( Pointer)));
+	}
+    }
   *Next = '\0';
   Free += (2 + ((Length + sizeof( Pointer)) / sizeof( Pointer)));
   Vector_Set(Result, STRING_LENGTH, Length);
