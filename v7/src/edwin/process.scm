@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.45 1996/05/14 00:13:04 cph Exp $
+;;;	$Id: process.scm,v 1.46 1996/05/14 01:07:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -619,6 +619,7 @@ after the listing is made.)"
     (lambda (copy-input)
       (call-with-output-copier process output-mark
 	(lambda (copy-output)
+	  (if allow-redisplay? (update-screens! #f))
 	  (let loop ()
 	    (copy-input)
 	    (if (and (> (copy-output) 0) allow-redisplay?)
