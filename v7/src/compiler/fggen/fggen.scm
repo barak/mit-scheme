@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fggen.scm,v 4.30 1993/03/02 01:15:49 gjr Exp $
+$Id: fggen.scm,v 4.31 1994/01/25 23:57:50 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -859,7 +859,8 @@ MIT in each case. |#
 	 block continuation context
 	 (list->vector
 	  (map (lambda (subpr)
-		 (constant-value (subproblem-rvalue subpr)))
+		 (unmap-reference-trap
+		  (constant-value (subproblem-rvalue subpr))))
 	       operands)))
 	(generate/operator block continuation context expression
 			   (ucode-primitive vector)
