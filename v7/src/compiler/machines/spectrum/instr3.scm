@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/instr3.scm,v 1.1 1990/01/25 16:37:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/instr3.scm,v 1.2 1990/11/15 10:26:36 cph Rel $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -381,14 +381,14 @@ DIAG
   (floatarith-1 FCPY   2 0))
 
 (define-instruction FCMP
-  ((((? cond fpcond) (? fmt fpformat)) (? reg1) (? reg2))
+  ((((? condition fpcond) (? fmt fpformat)) (? reg1) (? reg2))
    (LONG (6 #x0c)
 	 (5 reg1)
 	 (5 reg2)
 	 (3 #b000)
 	 (2 fmt)
 	 (6 #b100000)
-	 (5 cond))))
+	 (5 condition))))
 
 (let-syntax ((fpconvert
 	      (macro (keyword extn)
