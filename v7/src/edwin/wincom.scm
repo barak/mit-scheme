@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: wincom.scm,v 1.129 2000/10/26 04:36:47 cph Exp $
+;;; $Id: wincom.scm,v 1.130 2000/10/27 04:01:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1987, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -543,6 +543,7 @@ Also kills any pop up window it may have created."
 	  (let ((limit (* 2 (ref-variable window-min-height))))
 	    (if (< (ref-variable split-height-threshold) limit)
 		(set-variable! split-height-threshold limit))
+	    (maybe-deselect-buffer-layout screen)
 	    (cond ((and (use-multiple-screens?)
 			(other-screen screen 1 #t))
 		   => (lambda (screen)
