@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.0 1987/03/10 13:24:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.1 1987/04/25 20:06:59 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -71,6 +71,7 @@ MIT in each case. |#
 
     VECTOR-CONS VECTOR-LENGTH VECTOR-REF VECTOR-SET!
     LIST->VECTOR SUBVECTOR->LIST
+    SUBVECTOR-MOVE-RIGHT! SUBVECTOR-MOVE-LEFT! SUBVECTOR-FILL!
 
     ;; Strings
     STRING-ALLOCATE STRING? STRING-REF STRING-SET!
@@ -96,6 +97,7 @@ MIT in each case. |#
     BIT-SUBSTRING-MOVE-RIGHT!
     BIT-STRING->UNSIGNED-INTEGER UNSIGNED-INTEGER->BIT-STRING
     READ-BITS! WRITE-BITS!
+    BIT-SUBSTRING-FIND-NEXT-SET-BIT
 
     MAKE-CELL CELL? CELL-CONTENTS SET-CELL-CONTENTS!
 
