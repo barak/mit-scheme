@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpress.scm,v 1.10 1999/01/02 06:11:34 cph Exp $
+$Id: cpress.scm,v 1.11 1999/08/09 18:23:40 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -618,11 +618,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (let ((end (fix:+ start nb)))
       (if (fix:<= end buffer-size)
 	  (begin
-	    (write-substring string start end)
+	    (write-bytes string start end)
 	    (set! command-bp (if (fix:= end buffer-size) 0 end)))
 	  (let ((end (fix:- end buffer-size)))
-	    (write-substring string start buffer-size)
-	    (write-substring string 0 end)
+	    (write-bytes string start buffer-size)
+	    (write-bytes string 0 end)
 	    (set! command-bp end)))))
   unspecific)
 
@@ -691,7 +691,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (set-car! ob 0))
 	  (set-car! ob (fix:+ index 1))))))
 
-(define (write-substring string start end)
+(define (write-bytes string start end)
   (let ((ob output-buffer))
     (let ((index (car ob)))
       (let ((new-index (fix:+ index (fix:- end start))))
@@ -710,7 +710,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (flush-output-buffer)
   (let ((ob output-buffer))
     (if (fix:< 0 (car ob))
-	(output-port/write-substring output-port (cdr ob) 0 (car ob))))
+	(output-port/write-bytes output-port (cdr ob) 0 (car ob))))
   (output-port/flush-output output-port))
 
 (define (uncompress ifile ofile)
