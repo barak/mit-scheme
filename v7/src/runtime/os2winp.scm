@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2winp.scm,v 1.4 1995/02/14 00:36:04 cph Exp $
+$Id: os2winp.scm,v 1.5 1995/02/21 23:13:58 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define-primitives
+  (os2pm-synchronize 0)
   (os2ps-bitblt 6)
   (os2ps-clear 5)
   (os2ps-create-bitmap 3)
@@ -45,6 +46,7 @@ MIT in each case. |#
   (os2ps-destroy-bitmap 1)
   (os2ps-destroy-memory-ps 1)
   (os2ps-draw-point 3)
+  (os2ps-get-bitmap 1)
   (os2ps-get-bitmap-bits 5)
   (os2ps-get-bitmap-parameters 1)
   (os2ps-line 3)
@@ -94,6 +96,7 @@ MIT in each case. |#
 
 (define-integrable (event-type event) (vector-ref event 0))
 (define-integrable (event-wid event) (vector-ref event 1))
+(define-integrable (set-event-wid! event wid) (vector-set! event 1 wid))
 
 (define-macro (define-event name type . slots)
   `(BEGIN
