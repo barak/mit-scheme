@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.4 1993/10/28 02:56:17 gjr Exp $
+$Id: rules3.scm,v 1.5 1993/10/28 05:00:04 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -193,7 +193,9 @@ MIT in each case. |#
   (define-special-primitive-invocation -1+)
   (define-special-primitive-invocation zero?)
   (define-special-primitive-invocation positive?)
-  (define-special-primitive-invocation negative?))
+  (define-special-primitive-invocation negative?)
+  (define-special-primitive-invocation quotient)
+  (define-special-primitive-invocation remainder))
 
 ;;;; Invocation Prefixes
 
