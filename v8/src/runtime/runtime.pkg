@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.172 1993/01/28 23:21:21 adams Exp $
+$Id: runtime.pkg,v 14.173 1993/01/29 00:09:09 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1508,7 +1508,13 @@ MIT in each case. |#
   (parent (runtime pathname))
   (file-case os-type
    ((dos) "dospth")
-   ((nt) "dospth")
+   (else))
+  (initialization (initialize-package!)))
+
+(define-package (runtime pathname nt)
+  (parent (runtime pathname))
+  (file-case os-type
+   ((nt) "ntpth")
    (else))
   (initialization (initialize-package!)))
 

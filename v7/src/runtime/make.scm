@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.39 1992/12/07 19:06:47 cph Exp $
+$Id: make.scm,v 14.40 1993/01/29 00:11:17 adams Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -369,6 +369,7 @@ MIT in each case. |#
    ;; Typically only one of them is loaded.
    (RUNTIME PATHNAME UNIX)
    (RUNTIME PATHNAME DOS)
+   (RUNTIME PATHNAME NT)
    (RUNTIME PATHNAME)
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME LOAD)
