@@ -88,7 +88,8 @@
      "tximod"
      "undo"
      "unix"
-     "wincom")))
+     "wincom"
+     "xcom")))
 
 (fluid-let ((sf/default-syntax-table
 	     (access class-syntax-table (->environment '(EDWIN)))))
