@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.12 2001/02/28 21:42:32 cph Exp $
+$Id: crypto.scm,v 14.13 2001/03/08 19:27:35 cph Exp $
 
 Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
@@ -26,6 +26,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; The mhash library
 
+(define mhash-initialized?)
 (define mhash-algorithm-names)
 (define mhash-contexts)
 (define mhash-hmac-contexts)
@@ -204,7 +205,29 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 v)))))
 
 (define (mhash-available?)
-  (implemented-primitive-procedure? (ucode-primitive mhash 4)))
+  (load-library-object-file "prmhash" #f)
+  (and (implemented-primitive-procedure? (ucode-primitive mhash 4))
+       (begin
+	 (if (not mhash-initialized?)
+	     (begin
+	       (set! mhash-algorithm-names
+		     (make-names-vector
+		      (ucode-primitive mhash_count 0)
+		      (ucode-primitive mhash_get_hash_name 1)))
+	       (set! mhash-contexts
+		     (make-gc-finalizer (ucode-primitive mhash_end 1)))
+	       (set! mhash-hmac-contexts
+		     (make-gc-finalizer (ucode-primitive mhash_hmac_end 1)))
+	       (set! mhash-keygen-names
+		     (make-names-vector
+		      (ucode-primitive mhash_keygen_count 0)
+		      (ucode-primitive mhash_get_keygen_name 1)))
+	       (set! mhash-initialized? #t)))
+	 #t)))
+
+(define (reset-mhash-variables!)
+  (set! mhash-initialized? #f)
+  unspecific)
 
 (define (mhash-file hash-type filename)
   (call-with-binary-input-file filename
@@ -256,7 +279,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (md5-available?)
   (or (mhash-available?)
-      (implemented-primitive-procedure? (ucode-primitive md5-init 0))))
+      (begin
+	(load-library-object-file "prmd5" #f)
+	(implemented-primitive-procedure? (ucode-primitive md5-init 0)))))
 
 (define (md5-file filename)
   (if (mhash-available?)
@@ -294,6 +319,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; The mcrypt library
 
+(define mcrypt-initialized?)
 (define mcrypt-algorithm-names-vector)
 (define mcrypt-mode-names-vector)
 (define mcrypt-contexts)
@@ -304,7 +330,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (error:wrong-type-argument object "mcrypt context" procedure)))
 
 (define (mcrypt-available?)
-  (implemented-primitive-procedure? (ucode-primitive mcrypt_module_open 2)))
+  (load-library-object-file "prmcrypt" #f)
+  (and (implemented-primitive-procedure?
+	(ucode-primitive mcrypt_module_open 2))
+       (begin
+	 (if (not mcrypt-initialized?)
+	     (begin
+	       (set! mcrypt-contexts
+		     (make-gc-finalizer
+		      (ucode-primitive mcrypt_generic_end 1)))
+	       (set! mcrypt-algorithm-names-vector
+		     ((ucode-primitive mcrypt_list_algorithms 0)))
+	       (set! mcrypt-mode-names-vector
+		     ((ucode-primitive mcrypt_list_modes 0)))
+	       (set! mcrypt-initialized? #t)))
+	 #t)))
+
+(define (reset-mcrypt-variables!)
+  (set! mcrypt-initialized? #f)
+  unspecific)
 
 (define (mcrypt-algorithm-names)
   (names-vector->list mcrypt-algorithm-names-vector))
@@ -436,27 +480,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Package initialization
 
 (define (initialize-package!)
-  (if (mhash-available?)
-      (begin
-	(set! mhash-algorithm-names
-	      (make-names-vector (ucode-primitive mhash_count 0)
-				 (ucode-primitive mhash_get_hash_name 1)))
-	(set! mhash-contexts
-	      (make-gc-finalizer (ucode-primitive mhash_end 1)))
-	(set! mhash-hmac-contexts
-	      (make-gc-finalizer (ucode-primitive mhash_hmac_end 1)))
-	(set! mhash-keygen-names
-	      (make-names-vector (ucode-primitive mhash_keygen_count 0)
-				 (ucode-primitive mhash_get_keygen_name 1)))))
-  (if (mcrypt-available?)
-      (begin
-	(set! mcrypt-contexts
-	      (make-gc-finalizer (ucode-primitive mcrypt_generic_end 1)))
-	(set! mcrypt-algorithm-names-vector
-	      ((ucode-primitive mcrypt_list_algorithms 0)))
-	(set! mcrypt-mode-names-vector
-	      ((ucode-primitive mcrypt_list_modes 0)))))
-  unspecific)
+  (reset-mhash-variables!)
+  (add-event-receiver! event:after-restart reset-mhash-variables!)
+  (reset-mcrypt-variables!)
+  (add-event-receiver! event:after-restart reset-mcrypt-variables!))
 
 (define (make-names-vector get-count get-name)
   (let ((n (get-count)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.22 2001/03/01 04:10:42 cph Exp $
+$Id: blowfish.scm,v 1.23 2001/03/08 19:27:33 cph Exp $
 
 Copyright (c) 1997-2001 Massachusetts Institute of Technology
 
@@ -31,6 +31,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define blowfish-ofb64 (ucode-primitive blowfish-ofb64-substring 8))
 
 (define (blowfish-available?)
+  (load-library-object-file "prbfish" #f)
   (implemented-primitive-procedure? blowfish-cfb64))
 
 (define (blowfish-encrypt-port input output key init-vector encrypt?)
