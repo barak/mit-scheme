@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.181 2000/06/20 19:36:09 cph Exp $
+;;; $Id: imail-top.scm,v 1.182 2000/06/22 20:18:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -905,7 +905,9 @@ original message into it."
   (lambda ()
     (make-mail-buffer '(("To" "") ("Subject" ""))
 		      (chase-imail-buffer (selected-buffer))
-		      select-buffer-other-window)))
+		      (lambda (mail-buffer)
+			(initialize-imail-mail-buffer mail-buffer)
+			(select-buffer-other-window mail-buffer)))))
 
 (define-command imail-reply
   "Reply to the current message.
@@ -919,6 +921,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
       (make-mail-buffer (imail-reply-headers message (not just-sender?))
 			(chase-imail-buffer (selected-buffer))
 			(lambda (mail-buffer)
+			  (initialize-imail-mail-buffer mail-buffer)
 			  (message-answered message)
 			  (select-buffer-other-window mail-buffer))))))
 
@@ -930,6 +933,13 @@ While composing the reply, use \\[mail-yank-original] to yank the
 ;; This procedure is invoked by M-x mail-yank-original in Mail mode.
 (define (imail-yank-original buffer left-margin mark)
   (insert-message (selected-message #t buffer) #t left-margin mark))
+
+(define (initialize-imail-mail-buffer buffer)
+  (buffer-put! buffer 'MAILER-VERSION-STRING imail-mailer-version-string))
+
+(define (imail-mailer-version-string generic)
+  (string-append "IMAIL/" (get-subsystem-version-string "IMAIL")
+		 "; " generic))
 
 (define-command imail-forward
   "Forward the current message to another user.
@@ -957,6 +967,7 @@ see the documentation of `imail-resend'."
 	  "]")))
      #f
      (lambda (mail-buffer)
+       (initialize-imail-mail-buffer mail-buffer)
        (let ((raw? (ref-variable imail-forward-all-headers mail-buffer)))
 	 (if (ref-variable imail-forward-using-mime mail-buffer)
 	     (add-buffer-mime-attachment!
@@ -999,6 +1010,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 		    (string-ci=? (header-field-name header) "sender")))))
        #f
        (lambda (mail-buffer)
+	 (initialize-imail-mail-buffer mail-buffer)
 	 (with-buffer-point-preserved mail-buffer
 	   (lambda ()
 	     (insert-message-body message (buffer-end mail-buffer))))

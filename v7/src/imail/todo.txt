@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.93 2000/06/20 20:38:25 cph Exp $
+$Id: todo.txt,v 1.94 2000/06/22 20:19:08 cph Exp $
 
 Bug fixes
 ---------
@@ -39,8 +39,6 @@ New features
 * Implement generic operation to say whether a folder rename can work.
   Use this to extend M-x imail-rename-folder to work in all cases by
   using copy/delete when rename inapplicable.
-
-* Generate more specific X-Mailer header.
 
 * Add variable to control how multipart/alternative shows the
   secondary alternatives.
