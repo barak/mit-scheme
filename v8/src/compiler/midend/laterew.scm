@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.13 1995/08/19 15:30:43 adams Exp $
+$Id: laterew.scm,v 1.14 1995/08/23 14:07:19 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -365,6 +365,68 @@ MIT in each case. |#
 	 ((READ)	`(CALL ',%vector-ref '#F ,cell ,(index)))
 	 ((WRITE)	`(CALL ',%vector-set! '#F ,cell ,(index) ,value/s))
 	 ((MAKE)	`(CALL ',%vector '#F ,@value/s)))))))
+
+(define-rewrite/late %flo:make-multicell
+  (lambda (form rands)
+    (let ((cont    (first rands))
+	  (layout  (second rands))
+	  (values  (cddr rands)))
+      (let ((name (and (QUOTE/? layout)
+		       (= (vector-length (quote/text layout)) 1)
+		       `(QUOTE ,(vector-ref (quote/text layout) 0)))))
+	(laterew/flo:multicell-operation cont layout name 'MAKE #F values)))))
+
+(define-rewrite/late %flo:multicell-ref
+  (lambda (form rands)
+    (let ((cont    (first rands))
+	  (cell    (second rands))
+	  (layout  (third rands))
+	  (name    (fourth rands)))
+      (laterew/flo:multicell-operation cont layout name 'READ cell #F))))
+
+(define-rewrite/late %flo:multicell-set!
+  (lambda (form rands)
+    (let ((cont    (first rands))
+	  (cell    (second rands))
+	  (value   (third rands))
+	  (layout  (fourth rands))
+	  (name    (fifth rands)))
+      (laterew/flo:multicell-operation cont layout name 'WRITE cell value))))
+
+(define (laterew/flo:multicell-operation cont layout name operation cell value/s)
+  (if (not (equal? cont '(QUOTE #F)))
+      (internal-error "Bad continuation for Multicell operation" cont))
+  (let ((layout
+	 (if (QUOTE/? layout)
+	     (quote/text layout)
+	     (internal-error "Multicell operation needs constant LAYOUT"
+			     layout)))
+	(name
+	 (cond ((eq? name #F)  #F)
+	       ((QUOTE/? name) (quote/text name))
+	       (else (internal-error "Multicell operation needs constant NAME"
+				     name)))))
+    (define (index)
+      (let ((value  (vector-find-next-element layout name)))
+	(if value
+	    `(QUOTE ,value)
+	    (internal-error "Multicell operation: name not found"
+			    name layout))))
+    (case operation
+      ((READ)	`(CALL ',flo:vector-ref '#F ,cell ,(index)))
+      ((WRITE)	`(CALL ',flo:vector-set! '#F ,cell ,(index) ,value/s))
+      ((MAKE)
+       (let ((cell (laterew/new-name 'FLONUM-VECTOR)))
+	 `(LET ((,cell (CALL ',flo:vector-cons '#F ',(vector-length layout))))
+	    (BEGIN
+	      ,@(map (lambda (index value)
+		       `(CALL ',flo:vector-set! '#F
+			      (LOOKUP ,cell)
+			      (QUOTE ,index)
+			      ,value/s))
+		     (iota (length values))
+		     values)
+	      (LOOKUP ,cell))))))))
 
 (define-rewrite/late %vector-check
   (let ((vector-tag (machine-tag 'VECTOR)))

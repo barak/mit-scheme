@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.14 1995/08/19 01:34:04 adams Exp $
+$Id: dbgred.scm,v 1.15 1995/08/23 14:07:05 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -614,6 +614,18 @@ reachable.
 			   (vector-index (quote/text layout)
 					 (quote/text name)))
 			  cell-path))))
+	    ((CALL/%flo:multicell-ref? expr)
+	     (let ((cell-path
+		    (reconstruct-expression (call/%flo:multicell-ref/cell expr)))
+		   (layout  (call/%flo:multicell-ref/layout expr))
+		   (name    (call/%flo:multicell-ref/name expr)))
+	       (and cell-path
+		    (QUOTE/? layout)
+		    (QUOTE/? name)
+		    (cons (dbgred/FLONUM-CELL 
+			   (vector-index (quote/text layout)
+					 (quote/text name)))
+			  cell-path))))
 	    ((or (CALL/%stack-closure-ref? expr)
 		 (CALL/%heap-closure-ref? expr))
 	     (internal-error "DBG expression should have been compressed" expr))
@@ -683,6 +695,7 @@ reachable.
 (define dbgred/STACK           (dbg-reduce/indexed-path 'STACK))
 (define dbgred/CLOSURE         (dbg-reduce/indexed-path 'CLOSURE))
 (define dbgred/CELL            (dbg-reduce/indexed-path 'CELL))
+(define dbgred/FLONUM-CELL     (dbg-reduce/indexed-path 'FLONUM-CELL))
 
 (define dbg-reduce/equivalent-operators (make-monotonic-strong-eq-hash-table))
 

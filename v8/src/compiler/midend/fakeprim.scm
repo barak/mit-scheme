@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.21 1995/08/19 01:36:13 adams Exp $
+$Id: fakeprim.scm,v 1.22 1995/08/23 14:07:44 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -696,7 +696,7 @@ MIT in each case. |#
 (define %make-multicell
   ;; (CALL ',%make-multicell '#F 'LAYOUT <value> <value> ...)
   (make-operator/simple "#[make-multicell]"))
-(cookie-call %make-multicell '#F 'LAYOUT #!rest values)
+;;(cookie-call %make-multicell '#F 'LAYOUT #!rest values)
 
 (define %multicell-ref
   ;; (CALL ',%multicell-ref '#F cell 'LAYOUT 'NAME)
@@ -708,7 +708,23 @@ MIT in each case. |#
   ;; Note:
   ;;   Always used in statement position - has no value.
   (make-operator/simple* "#[multicell-set!]" '(UNSPECIFIC-RESULT)))
-(cookie-call %multicell-set! '#F cell value 'LAYOUT 'NAME)
+;;(cookie-call %multicell-set! '#F cell value 'LAYOUT 'NAME)
+
+(define %flo:make-multicell
+  ;; (CALL ',%flo:make-multicell '#F 'LAYOUT <value> <value> ...)
+  (make-operator/simple "#[flo:make-multicell]"))
+;;(cookie-call %make-multicell '#F 'LAYOUT #!rest values)
+
+(define %flo:multicell-ref
+  ;; (CALL ',%flo:multicell-ref '#F cell 'LAYOUT 'NAME)
+  (make-operator/effect-sensitive "#[flo:multicell-ref]" '(RESULT-TYPE FLONUM))
+(cookie-call %multicell-ref '#F cell 'LAYOUT 'NAME)
+
+(define %flo:multicell-set!
+  ;; (CALL ',%flo:multicell-set! '#F cell value 'LAYOUT 'NAME)
+  ;; Note:
+  ;;   Always used in statement position - has no value.
+  (make-operator/simple* "#[flo:multicell-set!]" '(UNSPECIFIC-RESULT)))
 
 
 ;; Tuples are collections of values.  Each slot is named.  LAYOUT
@@ -1013,14 +1029,23 @@ MIT in each case. |#
        fix:-1+ fix:1+ fix:+ fix:- fix:*
        fix:quotient fix:remainder ; fix:gcd
        fix:andc fix:and fix:or fix:xor fix:not fix:lsh
-       flo:+ flo:- flo:* flo:/
-       flo:negate flo:abs flo:sqrt
-       flo:floor flo:ceiling flo:truncate flo:round
-       flo:exp flo:log flo:sin flo:cos flo:tan flo:asin
-       flo:acos flo:atan flo:atan2 flo:expt
        flo:floor->exact flo:ceiling->exact
        flo:truncate->exact flo:round->exact
        ascii->char integer->char char->ascii char-code char->integer))
+
+(for-each
+ (lambda (simple-operator)
+   (define-operator-properties
+     simple-operator
+     (list '(SIMPLE)
+	   '(SIDE-EFFECT-INSENSITIVE)
+	   '(SIDE-EFFECT-FREE)
+	   '(RESULT-TYPE FLONUM))))
+ (list flo:+ flo:- flo:* flo:/
+       flo:negate flo:abs flo:sqrt
+       flo:floor flo:ceiling flo:truncate flo:round
+       flo:exp flo:log flo:sin flo:cos flo:tan flo:asin
+       flo:acos flo:atan flo:atan2 flo:expt))
 
 (for-each
  (lambda (simple-operator)
@@ -1031,11 +1056,20 @@ MIT in each case. |#
  (list cell-contents car cdr %record-ref
        vector-ref
        string-ref
-       string-length vector-8b-ref flo:vector-ref
+       string-length vector-8b-ref
        system-pair-car system-pair-cdr
        system-hunk3-cxr0 system-hunk3-cxr1 system-hunk3-cxr2
        (make-primitive-procedure 'PRIMITIVE-GET-FREE)
        (make-primitive-procedure 'PRIMITIVE-OBJECT-REF)))
+
+(for-each
+ (lambda (simple-operator)
+   (define-operator-properties
+     simple-operator
+     (list '(SIMPLE)
+	   '(SIDE-EFFECT-FREE)
+	   '(RESULT-TYPE FLONUM))))
+ (list flo:vector-ref))
 
 (for-each
  (lambda (operator)
