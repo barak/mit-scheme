@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.1 1987/05/07 00:23:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.2 1987/05/15 19:46:15 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -94,16 +94,19 @@ MIT in each case. |#
        (error "Unknown temporary type" lvalue)))))
 
 (define (assignment/value-register block expression subproblem?)
-  (if subproblem? (error "Return node has next"))
-  (scfg*scfg->scfg!
-   (rtl:make-assignment register:value expression)
-   (if (stack-block? block)
-       (if (stack-parent? block)
-	   (rtl:make-message-sender:value (block-frame-size block))
-	   (scfg*scfg->scfg!
-	    (rtl:make-pop-frame (block-frame-size block))
-	    (rtl:make-return)))
-       (rtl:make-return))))
+;  (if subproblem? (error "Return node has next"))
+  (let ((assignment (rtl:make-assignment register:value expression)))
+    (if subproblem?
+	assignment
+	(scfg*scfg->scfg!
+	 assignment
+	 (if (stack-block? block)
+	     (if (stack-parent? block)
+		 (rtl:make-message-sender:value (block-frame-size block))
+		 (scfg*scfg->scfg!
+		  (rtl:make-pop-frame (block-frame-size block))
+		  (rtl:make-return)))
+	     (rtl:make-return))))))
 
 (define-assignment value-ignore-tag
   (lambda (block lvalue rvalue subproblem? wrap-expression)
