@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.112 2001/02/27 17:47:51 cph Exp $
+;;; $Id: intmod.scm,v 1.113 2001/02/27 17:49:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -237,12 +237,8 @@ evaluated in the specified inferior REPL buffer."
   (signal-thread-event (port/thread port) #f))
 
 (define (standard-prompt-spacing port)
-  (let ((fresh-lines (port/operation port 'FRESH-LINES)))
-    (if fresh-lines
-	(fresh-lines port 2)
-	(begin
-	  (fresh-line port)
-	  (newline port))))
+  (fresh-line port)
+  (newline port)
   (enqueue-output-operation! port
     (lambda (mark transcript?)
       transcript?
@@ -866,11 +862,6 @@ If this is an error, the debugger examines the error condition."
    port
    (lambda (mark transcript?) transcript? (guarantee-newline mark) #t)))
 
-(define (operation/fresh-lines port n)
-  (enqueue-output-operation!
-   port
-   (lambda (mark transcript?) transcript? (guarantee-newlines n mark) #t)))
-
 (define (operation/beep port)
   (enqueue-output-operation!
    port
@@ -1136,7 +1127,6 @@ If this is an error, the debugger examines the error condition."
    `((WRITE-CHAR ,operation/write-char)
      (WRITE-SUBSTRING ,operation/write-substring)
      (FRESH-LINE ,operation/fresh-line)
-     (FRESH-LINES ,operation/fresh-lines)
      (BEEP ,operation/beep)
      (X-SIZE ,operation/x-size)
      (DEBUGGER-FAILURE ,operation/debugger-failure)
