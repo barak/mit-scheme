@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.34 1993/04/27 09:14:07 cph Exp $
+$Id: io.scm,v 14.35 1993/06/16 15:00:21 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -667,14 +667,17 @@ MIT in each case. |#
 
   (define (output-buffer/write-translated-newline)
     (let ((translation (output-buffer/line-translation buffer))
-	  (string (output-buffer/string buffer))
-	  (posn (output-buffer/position buffer)))
+	  (string (output-buffer/string buffer)))
       (let ((tlen (string-length translation)))
-	(and (fix:<= tlen (fix:- (string-length string) posn))
-	     (begin
-	       (substring-move-left! translation 0 tlen string posn)
-	       (set-output-buffer/position! buffer (fix:+ posn tlen))
-	       true)))))
+	(let loop ((posn (output-buffer/position buffer)))
+	  (if (fix:<= tlen (fix:- (string-length string) posn))
+	      (begin
+		(substring-move-left! translation 0 tlen string posn)
+		(set-output-buffer/position! buffer (fix:+ posn tlen))
+		true)
+	      (and (output-buffer/drain buffer)
+		   (loop (output-buffer/position buffer))))))))
+		
   
   (define (find-next-newline posn)
     (and (fix:< posn end)
