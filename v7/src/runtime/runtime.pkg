@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.315 1999/02/18 04:01:40 cph Exp $
+$Id: runtime.pkg,v 14.316 1999/02/23 21:31:53 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -3191,6 +3191,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  create-thread
 	  create-thread-continuation
 	  current-thread
+	  deregister-all-events
 	  deregister-input-thread-event
 	  deregister-timer-event
 	  detach-thread

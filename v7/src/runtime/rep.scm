@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.53 1999/02/18 03:54:13 cph Exp $
+$Id: rep.scm,v 14.54 1999/02/23 21:32:22 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -142,6 +142,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (loop
 		  (bind-abort-restart cmdl
 		    (lambda ()
+		      (deregister-thread-events)
 		      (with-interrupt-mask interrupt-mask/all
 			(lambda (interrupt-mask)
 			  interrupt-mask

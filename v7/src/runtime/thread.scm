@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.24 1999/01/02 06:19:10 cph Exp $
+$Id: thread.scm,v 1.25 1999/02/23 21:31:46 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -769,6 +769,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-integrable (threads-pending-timer-events?)
   timer-records)
+
+(define (deregister-all-events)
+  (let ((thread (current-thread)))
+    (set-interrupt-enables! interrupt-mask/gc-ok)
+    (let ((block-events? (thread/block-events? thread)))
+      (set-thread/block-events?! thread #t)
+      (ring/discard-all (thread/pending-events thread))
+      (%deregister-input-thread-events thread)
+      (%discard-thread-timer-records thread)
+      (set-thread/block-events?! thread block-events?))
+    (set-interrupt-enables! interrupt-mask/all)))
 
 (define (%discard-thread-timer-records thread)
   (let loop ((record timer-records) (prev #f))
