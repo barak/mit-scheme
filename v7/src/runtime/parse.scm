@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.1 1988/06/13 11:49:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.2 1988/07/13 18:41:16 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -94,13 +94,7 @@ MIT in each case. |#
 			    parse-object/special-undefined
 			    collect-list/special-undefined)))
     (for-each (lambda (entry)
-		(parser-table/set-entry!
-		 table
-		 (car entry)
-		 (cadr entry)
-		 (if (null? (cddr entry))
-		     (collect-list-wrapper (cadr entry))
-		     (caddr entry))))
+		(apply parser-table/set-entry! table entry))
 	      `(("#" ,parse-object/special ,collect-list/special)
 		(,char-set/symbol-leaders ,parse-object/symbol)
 		(("#b" "#B") ,parse-object/numeric-prefix)

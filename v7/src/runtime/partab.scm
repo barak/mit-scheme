@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/partab.scm,v 14.2 1988/06/13 11:49:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/partab.scm,v 14.3 1988/07/13 18:41:33 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -84,13 +84,18 @@ MIT in each case. |#
       (receiver (vector-ref parse-object-table index)
 		(vector-ref collect-list-table index)))))
 
-(define (parser-table/set-entry! table char parse-object collect-list)
+(define (parser-table/set-entry! table char
+				 parse-object #!optional collect-list)
   (let ((kernel
-	 (lambda (char)
-	   (decode-parser-char table char
-	     (lambda (index parse-object-table collect-list-table)
-	       (vector-set! parse-object-table index parse-object)
-	       (vector-set! collect-list-table index collect-list))))))
+	 (let ((collect-list
+		(if (default-object? collect-list)
+		    (collect-list-wrapper parse-object)
+		    collect-list)))
+	   (lambda (char)
+	     (decode-parser-char table char
+	       (lambda (index parse-object-table collect-list-table)
+		 (vector-set! parse-object-table index parse-object)
+		 (vector-set! collect-list-table index collect-list)))))))
     (cond ((char-set? char) (for-each kernel (char-set-members char)))
 	  ((pair? char) (for-each kernel char))
 	  (else (kernel char)))))
