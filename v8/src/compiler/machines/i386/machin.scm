@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.1 1995/01/10 21:48:43 adams Exp $
+$Id: machin.scm,v 1.2 1995/01/10 21:55:11 ssmith Exp $
 
 Copyright (c) 1992-1995 Massachusetts Institute of Technology
 
@@ -196,6 +196,9 @@ MIT in each case. |#
 	 value-class=float)
 	(else
 	 (error "illegal machine register" register))))
+
+(define *rtlgen/argument-registers*
+  (vector ecx edx))
 
 (define-integrable register-block/memtop-offset 0)
 (define-integrable register-block/int-mask-offset 1)
