@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.3 1993/02/14 06:26:55 gjr Exp $
+$Id: lapopt.scm,v 1.4 1993/02/14 22:02:38 gjr Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -310,4 +310,4 @@ MIT in each case. |#
 	   (fix-sequences (cdr instrs)
 			  (cons (car instrs) tail)))))
 
-  (fix-sequences (reverse instructions) '()))
+  (fix-sequences (reverse! instructions) '()))
