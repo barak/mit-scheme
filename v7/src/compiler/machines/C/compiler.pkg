@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.7 1993/12/09 03:23:53 gjr Exp $
+$Id: compiler.pkg,v 1.8 1994/01/08 21:06:17 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -34,7 +34,7 @@ MIT in each case. |#
 
 ;;;; Compiler Packaging
 
-(global-definitions "../runtime/runtim")
+(global-definitions "../runtime/runtime")
 
 (define-package (compiler)
   (files "base/switch"

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.50 1993/11/18 00:47:19 cph Exp $
+$Id: make.scm,v 14.51 1994/01/08 21:02:52 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -325,7 +325,7 @@ MIT in each case. |#
 			       (car names))
 	(loop (cdr names)))))
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
-(eval (fasload "runtim.bcon" #f) system-global-environment)
+(eval (fasload "runtime.bcon" #f) system-global-environment)
 
 ;;; Global databases.  Load, then initialize.
 (let ((files1
@@ -371,11 +371,11 @@ MIT in each case. |#
 ;; Note: The following code needs MAP* and MEMBER-PROCEDURE
 ;; from runtime/list. Fortunately that file has already been loaded.
 
-  ((eval (fasload "runtim.bldr" #f) system-global-environment)
+  ((eval (fasload "runtime.bldr" #f) system-global-environment)
    (let ((to-avoid
 	  (cons "packag"
-		(map* (if (file-exists? "runtim.bad")
-			  (fasload "runtim.bad" #f)
+		(map* (if (file-exists? "runtime.bad")
+			  (fasload "runtime.bad" #f)
 			  '())
 		      car
 		      (append files1 files2))))
