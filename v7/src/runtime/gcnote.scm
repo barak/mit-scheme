@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.7 1991/09/07 05:30:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.8 1991/09/08 02:31:35 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -94,18 +94,33 @@ MIT in each case. |#
   (write-string (gc-statistic->string statistic)))
 
 (define (gc-statistic->string statistic)
-  (let ((intervals->string
+  (let* ((ticks/second 1000)
+	 (intervals->string
 	 (lambda (start end last-end)
 	   (let ((gc-length (- end start))
 		 (period (- end last-end)))
 	     (string-append
-	      (number->string (internal-time/ticks->seconds gc-length))
-	      " ("
-	      (if (zero? period)
-		  "100"
-		  (number->string
-		   (round->exact (* (/ gc-length period) 100))))
-	      "%)")))))
+	      (string-pad-left
+	       (number->string (quotient gc-length ticks/second))
+	       3)
+	      "."
+	      (string-pad-right
+	       (number->string
+		(round->exact (/ (remainder gc-length ticks/second)
+				 10))
+		#d10)
+	       2
+	       #\0)
+	      (string-pad-left
+	       (string-append
+		"("
+		(if (zero? period)
+		    "100"
+		    (number->string
+		     (round->exact (* (/ gc-length period) 100))
+		     #d10))
+		"%)")
+	       7))))))
 	     
     (string-append "GC #"
 		   (number->string (gc-statistic/meter statistic))
@@ -114,7 +129,7 @@ MIT in each case. |#
 		    (gc-statistic/this-gc-start statistic)
 		    (gc-statistic/this-gc-end statistic)
 		    (gc-statistic/last-gc-end statistic))
-		   " process time, "
+		   " CPU time, "
 		   (intervals->string
 		    (gc-statistic/this-gc-start-clock statistic)
 		    (gc-statistic/this-gc-end-clock statistic)
