@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/xeval.scm,v 1.1 1989/08/03 23:04:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/xeval.scm,v 1.2 1989/08/15 10:00:56 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -38,37 +38,41 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (extended-scode-eval expression environment)
-  (if (interpreter-environment? environment)
-      (scode-eval expression environment)
-      (with-values (lambda () (split-environment environment))
-	(lambda (bound-names interpreter-environment)
-	  (scode-eval
-	   (cond ((null? bound-names)
-		  expression)
-		 ((or (definition? expression)
-		      (and (open-block? expression)
-			   (open-block-components expression
-			     (lambda (names declarations body)
-			       declarations body
-			       (not (null? names))))))
-		  (error
-		   "Can't perform definition in compiled-code environment:"
-		   (unsyntax expression)))
-		 (else
-		  (rewrite/expression expression environment bound-names)))
-	   interpreter-environment)))))
+  (cond ((interpreter-environment? environment)
+	 (scode-eval expression environment))
+	((scode-constant? expression)
+	 expression)
+	(else
+	 (with-values (lambda () (split-environment environment))
+	   (lambda (bound-names interpreter-environment)
+	     (scode-eval
+	      (cond ((null? bound-names)
+		     expression)
+		    ((or (definition? expression)
+			 (and (open-block? expression)
+			      (open-block-components expression
+				(lambda (names declarations body)
+				  declarations body
+				  (not (null? names))))))
+		     (error
+		      "Can't perform definition in compiled-code environment:"
+		      (unsyntax expression)))
+		    (else
+		     (rewrite/expression expression environment bound-names)))
+	      interpreter-environment))))))
 
 (define (split-environment environment)
   (let ((finish
 	 (lambda (bound-names environment)
 	   (values (apply append (reverse! bound-names)) environment))))
-    (let loop ((environment environment) (bound-names '()))
+    (let loop ((bound-names '()) (environment environment))
       (if (interpreter-environment? environment)
 	  (finish bound-names environment)
 	  (let ((bound-names
 		 (cons (environment-bound-names environment) bound-names)))
 	    (if (environment-has-parent? environment)
-		(loop (environment-parent environment) bound-names)		(finish bound-names
+		(loop bound-names (environment-parent environment))
+		(finish bound-names
 			(make-null-interpreter-environment))))))))
 
 (define (difference items items*)
