@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.88 2000/05/23 21:39:58 cph Exp $
+;;; $Id: imail-imap.scm,v 1.89 2000/05/25 04:53:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -570,75 +570,72 @@
 ;;; operation atomically.
 
 (define (set-imap-folder-length! folder count)
-  (if (or (imap-folder-messages-synchronized? folder)
-	  (= 0 (imap-folder-n-messages folder)))
-      (let ((n
-	     (without-interrupts
-	      (lambda ()
-		(let ((v (imap-folder-messages folder))
-		      (n (imap-folder-n-messages folder)))
-		  (cond ((> count n)
-			 (let ((new-length (compute-messages-length v count)))
-			   (if new-length
-			       (set-imap-folder-messages!
-				folder
-				(vector-grow v new-length #f))))
-			 (set-imap-folder-n-messages! folder count)
-			 (fill-messages-vector! folder n)
-			 (set-imap-folder-messages-synchronized?! folder #t)
-			 (folder-modified! folder 'INCREASE-LENGTH)
-			 n)
-			((= count n)
-			 (set-imap-folder-messages-synchronized?! folder #t)
-			 #f)
-			(else
-			 (error "EXISTS response decreased folder length:"
-				folder))))))))
-	(if n
-	    (read-message-headers! folder n)))
-      (let ((v.n
-	     (without-interrupts
-	      (lambda ()
-		(detach-all-messages! folder)
-		(let ((v (imap-folder-messages folder))
-		      (n (imap-folder-n-messages folder)))
-		  (set-imap-folder-n-messages! folder count)
-		  (set-imap-folder-messages!
-		   folder
-		   (make-vector (or (compute-messages-length v count)
-				    (vector-length v))
-				#f))
-		  (fill-messages-vector! folder 0)
-		  (set-imap-folder-messages-synchronized?! folder #t)
-		  (folder-modified! folder 'SET-LENGTH)
-		  (cons v n))))))
-	((imail-message-wrapper "Reading message UIDs")
-	 (lambda ()
-	   (imap:command:fetch-all (imap-folder-connection folder) '(UID))))
-	(without-interrupts
-	 (lambda ()
-	   (let ((v (car v.n))
-		 (n (cdr v.n))
-		 (v* (imap-folder-messages folder))
-		 (n* (imap-folder-n-messages folder)))
-	     (let loop ((i 0) (i* 0))
-	       (if (and (fix:< i n) (fix:< i* n*))
-		   (let ((m (vector-ref v i))
-			 (m* (vector-ref v* i*)))
-		     (if (= (imap-message-uid m) (imap-message-uid m*))
-			 (begin
-			   ;; Flags might have been updated while
-			   ;; reading the UIDs.
-			   (if (%message-flags-initialized? m*)
-			       (%set-message-flags! m (message-flags m*)))
-			   (detach-message! m*)
-			   (attach-message! m folder i*)
-			   (vector-set! v* i* m)
-			   (loop (fix:+ i 1) (fix:+ i* 1)))
-			 (begin
-			   (if (> (imap-message-uid m) (imap-message-uid m*))
-			       (error "Message inserted into folder:" m*))
-			   (loop (fix:+ i 1) i*))))))))))))
+  (with-interrupt-mask interrupt-mask/gc-ok
+    (lambda (interrupt-mask)
+      (if (or (imap-folder-messages-synchronized? folder)
+	      (= 0 (imap-folder-n-messages folder)))
+	  (let ((v (imap-folder-messages folder))
+		(n (imap-folder-n-messages folder)))
+	    (cond ((> count n)
+		   (let ((new-length (compute-messages-length v count)))
+		     (if new-length
+			 (set-imap-folder-messages!
+			  folder
+			  (vector-grow v new-length #f))))
+		   (set-imap-folder-n-messages! folder count)
+		   (fill-messages-vector! folder n)
+		   (set-imap-folder-messages-synchronized?! folder #t)
+		   (with-interrupt-mask interrupt-mask
+		     (lambda (interrupt-mask)
+		       interrupt-mask
+		       (read-message-headers! folder n)))
+		   (folder-modified! folder 'INCREASE-LENGTH))
+		  ((= count n)
+		   (set-imap-folder-messages-synchronized?! folder #t))
+		  (else
+		   (error "EXISTS response decreased folder length:"
+			  folder))))
+	  (begin
+	    (detach-all-messages! folder)
+	    (let ((v (imap-folder-messages folder))
+		  (n (imap-folder-n-messages folder)))
+	      (set-imap-folder-n-messages! folder count)
+	      (set-imap-folder-messages!
+	       folder
+	       (make-vector (or (compute-messages-length v count)
+				(vector-length v))
+			    #f))
+	      (fill-messages-vector! folder 0)
+	      (set-imap-folder-messages-synchronized?! folder #t)
+	      (with-interrupt-mask interrupt-mask
+		(lambda (interrupt-mask)
+		  interrupt-mask
+		  ((imail-message-wrapper "Reading message UIDs")
+		   (lambda ()
+		     (imap:command:fetch-all (imap-folder-connection folder)
+					     '(UID))))))
+	      (folder-modified! folder 'SET-LENGTH)
+	      (let ((v* (imap-folder-messages folder))
+		    (n* (imap-folder-n-messages folder)))
+		(let loop ((i 0) (i* 0))
+		  (if (and (fix:< i n) (fix:< i* n*))
+		      (let ((m (vector-ref v i))
+			    (m* (vector-ref v* i*)))
+			(if (= (imap-message-uid m) (imap-message-uid m*))
+			    (begin
+			      ;; Flags might have been updated while
+			      ;; reading the UIDs.
+			      (if (%message-flags-initialized? m*)
+				  (%set-message-flags! m (message-flags m*)))
+			      (detach-message! m*)
+			      (attach-message! m folder i*)
+			      (vector-set! v* i* m)
+			      (loop (fix:+ i 1) (fix:+ i* 1)))
+			    (begin
+			      (if (> (imap-message-uid m)
+				     (imap-message-uid m*))
+				  (error "Message inserted into folder:" m*))
+			      (loop (fix:+ i 1) i*)))))))))))))
 
 ;;;; Message datatype
 
