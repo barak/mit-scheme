@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.10 1995/04/10 20:22:42 cph Exp $
+;;;	$Id: os2.scm,v 1.11 1995/04/10 23:06:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -234,20 +234,6 @@ Includes the new backup.  Must be > 0."
 		(cons (substring filename root-start root-end)
 		      version))))))
 
-(define (os/auto-save-pathname pathname buffer)
-  (let ((pathname
-	 (or pathname
-	     (let ((name (buffer-name buffer))
-		   (directory (buffer-default-directory buffer)))
-	       (merge-pathnames (if (os2/fs-long-filenames? directory)
-				    (string-append "%" name)
-				    "%buffer%")
-				directory)))))
-    (if (os2/fs-long-filenames? pathname)
-	(merge-pathnames (string-append "#" (file-namestring pathname) "#")
-			 (directory-pathname pathname))
-	(pathname-new-type pathname "sav"))))
-
 (define (os/auto-save-filename? filename)
   (or (re-match-string-forward (re-compile-pattern "^#.+#$" #f)
 			       #f
@@ -270,6 +256,41 @@ Includes the new backup.  Must be > 0."
 		  pathname)
 		(loop (+ i 1))))))
       (os/auto-save-pathname pathname #f)))
+
+(define (os/auto-save-pathname pathname buffer)
+  (let ((pathname
+	 (or pathname
+	     (let ((directory (buffer-default-directory buffer)))
+	       (merge-pathnames (if (os2/fs-long-filenames? directory)
+				    (string-append "%"
+						   (buffer-hpfs-name buffer))
+				    "%buffer%")
+				directory)))))
+    (if (os2/fs-long-filenames? pathname)
+	(merge-pathnames (string-append "#" (file-namestring pathname) "#")
+			 (directory-pathname pathname))
+	(pathname-new-type pathname "sav"))))
+
+(define (buffer-hpfs-name buffer)
+  (let ((name (buffer-name buffer)))
+    (let ((length (string-length name)))
+      (let ((copy (make-string length)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((fix:= i length))
+	  (string-set!
+	   copy i
+	   (let ((char (string-ref name i)))
+	     (if (char-set-member? char-set:valid-hpfs-chars
+				   char)
+		 char
+		 #\_))))
+	copy))))
+
+(define char-set:valid-hpfs-chars
+  (char-set-invert
+   (char-set-union (char-set #\\ #\/ #\: #\* #\? #\" #\< #\> #\|)
+		   (char-set-union (ascii-range->char-set 0 #x21)
+				   (ascii-range->char-set #x7F #x100)))))
 
 ;;;; Miscellaneous
 
