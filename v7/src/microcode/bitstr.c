@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.43 1990/06/14 17:30:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.44 1990/06/14 19:54:00 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -713,27 +713,41 @@ bit_string_to_bignum (nbits, bitstr)
 {
   static unsigned int bstb_producer ();
   struct bitstr_to_bignm_context context;
+  int ndigits, skip;
 
-  context.source_ptr =
-    ((unsigned char *) (BIT_STRING_HIGH_PTR (bitstr)));
+  ndigits = ((nbits + (CHAR_BIT - 1)) / CHAR_BIT);
+
   context.mask = (LOW_MASK (((nbits - 1) % (CHAR_BIT)) + 1));
+  context.source_ptr =
+    ((unsigned char *)
+     (MEMORY_LOC (bitstr, (BIT_STRING_INDEX_TO_WORD (bitstr, (nbits - 1))))));
+
+  if (ndigits != 0)
+  {
+    skip = ((sizeof (SCHEME_OBJECT)) -
+	    (((ndigits - 1) % (sizeof (SCHEME_OBJECT))) + 1));
+    while ((--skip) >= 0)
+    {
+      DEC_BIT_STRING_PTR (context.source_ptr);
+    }
+  }
 
   return
-    (digit_stream_to_bignum
-     (((nbits + (CHAR_BIT - 1)) / CHAR_BIT),
-      bstb_producer, (&context),
-      (1 << CHAR_BIT), 0));
+    (digit_stream_to_bignum (ndigits, bstb_producer,
+			     (&context), (1 << CHAR_BIT),
+			     0));
 }
 
 static unsigned int
 bstb_producer (context)
      struct bitstr_to_bignm_context *context;
 {
-  unsigned int mask;
+  unsigned int result;
 
-  mask = context->mask;
+  result = (context->mask & (BIT_STRING_WORD (context->source_ptr)));
   context->mask = (LOW_MASK (CHAR_BIT));
-  return (mask & (* (DEC_BIT_STRING_PTR (context->source_ptr))));
+  DEC_BIT_STRING_PTR (context->source_ptr);
+  return (result);
 }
 
 /* (UNSIGNED-INTEGER->BIT-STRING length integer)
