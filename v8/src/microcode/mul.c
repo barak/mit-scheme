@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/mul.c,v 9.22 1987/04/16 02:26:41 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/mul.c,v 9.23 1988/06/29 08:01:51 arthur Exp $
  *
  * This file contains the portable fixnum multiplication procedure.
  * Returns NIL if the result does not fit in a fixnum.
@@ -49,7 +49,7 @@ Mul(Arg1, Arg2)
      long Arg1, Arg2;
 {
   long A, B, C;
-  fast long Hi_A, Hi_B, Lo_A, Lo_B, Lo_C, Middle_C;
+  fast unsigned long Hi_A, Hi_B, Lo_A, Lo_B, Lo_C, Middle_C;
   Boolean Sign;
 
   Sign_Extend(Arg1, A);
@@ -59,15 +59,15 @@ Mul(Arg1, Arg2)
   B = ABS(B);
   Hi_A = ((A >> HALF_WORD_SIZE) & HALF_WORD_MASK);
   Hi_B = ((B >> HALF_WORD_SIZE) & HALF_WORD_MASK);
+  if ((Hi_A > 0) && (Hi_B > 0))
+    return NIL;
   Lo_A = (A & HALF_WORD_MASK);
   Lo_B = (B & HALF_WORD_MASK);
   Lo_C = (Lo_A * Lo_B);
-  if (Lo_C > FIXNUM_SIGN_BIT)
+  if (Lo_C >= FIXNUM_SIGN_BIT)
     return NIL;
   Middle_C = (Lo_A * Hi_B) + (Hi_A * Lo_B);
   if (Middle_C >= MAX_MIDDLE)
-    return NIL;
-  if ((Hi_A > 0) && (Hi_B > 0))
     return NIL;
   C = Lo_C + (Middle_C << HALF_WORD_SIZE);
   if (Fixnum_Fits(C))
