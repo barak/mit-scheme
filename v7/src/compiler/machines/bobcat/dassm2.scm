@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.17 1990/05/03 15:17:04 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.18 1991/05/07 13:46:04 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,38 +65,6 @@ MIT in each case. |#
 		 (vector 'COMPILED
 			 (read-procedure (+ offset 2))
 			 arity))
-		#|
-		((#x4eb9)		; JSR <value>.L
-		 (let* ((new-block
-			 (compiled-code-address->block
-			  (read-procedure (+ offset 2))))
-			(offset
-			 (fluid-let ((*block new-block))
-			   (read-unsigned-integer 14 16))))
-		   (case offset
-		     ((#xf6)		; lookup
-		      (vector 'VARIABLE
-			      (variable-cache-name
-			       (system-vector-ref new-block 3))
-			      arity))
-		     ((#xfc		; interpreted
-		       #x114		; fixed arity primitive
-		       #x11a)		; lexpr primitive
-		      (vector 'INTERPRETED
-			      (system-vector-ref new-block 3)
-			      arity))
-		     ((#x102		; arity
-		       #x10e		; entity
-		       #x258 #x25e #x264 #x26a #x270 ; specialized arity
-		       #x276 #x27c #x282 #x288 #x28e)
-		      (vector 'COMPILED
-			      (system-vector-ref new-block 3)
-			      arity))
-		     (else		; including #x108, APPLY
-		      (error
-		       "disassembler/read-procedure-cache: Unknown offset"
-		       offset block index)))))
-		|#
 		(else
 		 (error "disassembler/read-procedure-cache: Unknown opcode"
 			opcode block index))))))))
@@ -374,6 +342,12 @@ MIT in each case. |#
 	   zero?
 	   positive?
 	   negative?
+	   primitive-error
+	   allocate-closure
+	   closure-hook
+	   quotient
+	   remainder
+	   ;; modulo		; No hook space.
 	   ))
       ;; Compiled code temporaries
       ,@(let loop ((i 0) (index first-temp))
