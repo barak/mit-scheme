@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.8 1989/10/24 06:05:08 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.9 1989/10/26 04:23:27 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.35 88/10/26 20:02:13 GMT cph Exp $
@@ -146,6 +146,9 @@ do {                                                                    \
 
 #define ENTRY_TO_OBJECT(entry)						\
 MAKE_POINTER_OBJECT(TC_COMPILED_ENTRY, ((SCHEME_OBJECT *) (entry)))
+
+#define MAKE_CC_BLOCK(block_addr)					\
+(MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_addr))
 
 /* Imports from the rest of the "microcode" */
 
@@ -207,6 +210,24 @@ extern C_TO_SCHEME long
   comp_link_caches_restart();
 
 extern SCHEME_UTILITY struct utility_result
+  comutil_return_to_interpreter(),
+  comutil_operator_apply_trap(),
+  comutil_operator_arity_trap(),
+  comutil_operator_entity_trap(),
+  comutil_operator_interpreted_trap(),
+  comutil_operator_lexpr_trap(),
+  comutil_operator_primitive_trap(),
+  comutil_operator_lookup_trap(),
+  comutil_operator_1_0_trap(),
+  comutil_operator_2_1_trap(),
+  comutil_operator_2_0_trap(),
+  comutil_operator_3_2_trap(),
+  comutil_operator_3_1_trap(),
+  comutil_operator_3_0_trap(),
+  comutil_operator_4_3_trap(),
+  comutil_operator_4_2_trap(),
+  comutil_operator_4_1_trap(),
+  comutil_operator_4_0_trap(),
   comutil_primitive_apply(),
   comutil_primitive_lexpr_apply(),
   comutil_apply(),
@@ -215,8 +236,13 @@ extern SCHEME_UTILITY struct utility_result
   comutil_link(),
   comutil_interrupt_closure(),
   comutil_interrupt_procedure(),
-  comutil_interrupt_ic_procedure(),
   comutil_interrupt_continuation(),
+  comutil_interrupt_ic_procedure(),
+  comutil_assignment_trap(),
+  comutil_cache_lookup_apply(),
+  comutil_lookup_trap(),
+  comutil_safe_lookup_trap(),
+  comutil_unassigned_p_trap(),
   comutil_decrement(),
   comutil_divide(),
   comutil_equal(),
@@ -228,7 +254,106 @@ extern SCHEME_UTILITY struct utility_result
   comutil_negative(),
   comutil_plus(),
   comutil_positive(),
-  comutil_zero();
+  comutil_zero(),
+  comutil_access(),
+  comutil_reference(),
+  comutil_safe_reference(),
+  comutil_unassigned_p(),
+  comutil_unbound_p(),
+  comutil_assignment(),
+  comutil_definition(),
+  comutil_lookup_apply();
+
+extern struct utility_result
+  (*utility_table)()[];
+
+/*
+  Utility table used by the assembly language interface to invoke
+  the SCHEME_UTILITY procedures that appear in this file.
+
+  Important: Do NOT reorder this table without changing the indices
+  defined on the following page and the corresponding table in the
+  compiler.
+ */
+
+struct utility_result
+  (*utility_table)()[] =
+{
+  comutil_return_to_interpreter,		/* 0x0 */
+  comutil_operator_apply_trap,			/* 0x1 */
+  comutil_operator_arity_trap,			/* 0x2 */
+  comutil_operator_entity_trap,			/* 0x3 */
+  comutil_operator_interpreted_trap,		/* 0x4 */
+  comutil_operator_lexpr_trap,			/* 0x5 */
+  comutil_operator_primitive_trap,		/* 0x6 */
+  comutil_operator_lookup_trap,			/* 0x7 */
+  comutil_operator_1_0_trap,			/* 0x8 */
+  comutil_operator_2_1_trap,			/* 0x9 */
+  comutil_operator_2_0_trap,			/* 0xa */
+  comutil_operator_3_2_trap,			/* 0xb */
+  comutil_operator_3_1_trap,			/* 0xc */
+  comutil_operator_3_0_trap,			/* 0xd */
+  comutil_operator_4_3_trap,			/* 0xe */
+  comutil_operator_4_2_trap,			/* 0xf */
+  comutil_operator_4_1_trap,			/* 0x10 */
+  comutil_operator_4_0_trap,			/* 0x11 */
+  comutil_primitive_apply,			/* 0x12 */
+  comutil_primitive_lexpr_apply,		/* 0x13 */
+  comutil_apply,				/* 0x14 */
+  comutil_error,				/* 0x15 */
+  comutil_lexpr_apply,				/* 0x16 */
+  comutil_link,					/* 0x17 */
+  comutil_interrupt_closure,			/* 0x18 */
+  comutil_interrupt_procedure,			/* 0x19 */
+  comutil_interrupt_continuation,		/* 0x1a */
+  comutil_interrupt_ic_procedure,		/* 0x1b */
+  comutil_assignment_trap,			/* 0x1c */
+  comutil_cache_lookup_apply,			/* 0x1d */
+  comutil_lookup_trap,				/* 0x1e */
+  comutil_safe_lookup_trap,			/* 0x1f */
+  comutil_unassigned_p_trap,			/* 0x20 */
+  comutil_decrement,				/* 0x21 */
+  comutil_divide,				/* 0x22 */
+  comutil_equal,				/* 0x23 */
+  comutil_greater,				/* 0x24 */
+  comutil_increment,				/* 0x25 */
+  comutil_less,					/* 0x26 */
+  comutil_minus,				/* 0x27 */
+  comutil_multiply,				/* 0x28 */
+  comutil_negative,				/* 0x29 */
+  comutil_plus,					/* 0x2a */
+  comutil_positive,				/* 0x2b */
+  comutil_zero,					/* 0x2c */
+  comutil_access,				/* 0x2d */
+  comutil_reference,				/* 0x2e */
+  comutil_safe_reference,			/* 0x2f */
+  comutil_unassigned_p,				/* 0x30 */
+  comutil_unbound_p,				/* 0x31 */
+  comutil_assignment,				/* 0x32 */
+  comutil_definition,				/* 0x33 */
+  comutil_lookup_apply				/* 0x34 */
+  };
+
+/* These definitions reflect the indices into the table above. */
+
+#define TRAMPOLINE_K_RETURN			0x0
+#define TRAMPOLINE_K_APPLY			0x1
+#define TRAMPOLINE_K_ARITY			0x2
+#define TRAMPOLINE_K_ENTITY			0x3
+#define TRAMPOLINE_K_INTERPRETED		0x4
+#define TRAMPOLINE_K_LEXPR_PRIMITIVE		0x5
+#define TRAMPOLINE_K_PRIMITIVE			0x6
+#define TRAMPOLINE_K_LOOKUP			0x7
+#define TRAMPOLINE_K_1_0			0x8
+#define TRAMPOLINE_K_2_1			0x9
+#define TRAMPOLINE_K_2_0			0xa
+#define TRAMPOLINE_K_3_2			0xb
+#define TRAMPOLINE_K_3_1			0xc
+#define TRAMPOLINE_K_3_0			0xd
+#define TRAMPOLINE_K_4_3			0xe
+#define TRAMPOLINE_K_4_2			0xf
+#define TRAMPOLINE_K_4_1			0x10
+#define TRAMPOLINE_K_4_0			0x11
 
 /* Main compiled code entry points.
    These are the primary entry points that the interpreter
@@ -247,7 +372,7 @@ enter_compiled_expression()
 
   compiled_entry_address = (OBJECT_ADDRESS (Fetch_Expression ()));
   if ((COMPILED_ENTRY_FORMAT_WORD (compiled_entry)) !=
-      (FORMAT_WORD_EXPRESSION))
+      (FORMAT_WORD_EXPR))
   {
     /* It self evaluates. */
     Val = (Fetch_Expression ());
@@ -401,7 +526,7 @@ setup_lexpr_invocation (nactuals, nmax)
     SCHEME_OBJECT *last_loc;
 
     last_loc = open_gap (nactuals, delta);
-    (STACK_LOCATIVE_PUSH (last_loc)) = NIL;
+    (STACK_LOCATIVE_PUSH (last_loc)) = EMPTY_LIST;
     return (PRIM_DONE);
   }
   else if (delta == 0)
@@ -422,7 +547,7 @@ setup_lexpr_invocation (nactuals, nmax)
     temp = *gap_location;
     *gap_location = (MAKE_POINTER_OBJECT (TC_LIST, local_free));
     *local_free++ = temp;
-    *local_free = NIL;
+    *local_free = EMPTY_LIST;
     return (PRIM_DONE);
   }
 
@@ -450,7 +575,7 @@ setup_lexpr_invocation (nactuals, nmax)
     /* Place the arguments in the list, and link it. */
 
     source_location = (STACK_LOC (nactuals - 1));
-    (*(--gap_location)) = NIL;
+    (*(--gap_location)) = EMPTY_LIST;
 
     while ((--delta) >= 0)
     {
@@ -495,11 +620,14 @@ setup_lexpr_invocation (nactuals, nmax)
 /*
   This is how compiled Scheme code normally returns back to the
   Scheme interpreter.
+  It is invoked by a trampoline, which passes the address of the
+  trampoline storage block (empty) to it.
  */
 
 SCHEME_UTILITY struct utility_result
-comutil_return_to_interpreter (ignore_1, ignore_2, ignore_3, ignore_4)
-     long ignore_1, ignore_2, ignore_3, ignore_4;
+comutil_return_to_interpreter (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
+     long ignore_2, ignore_3, ignore_4;
 {
   RETURN_TO_C (PRIM_DONE);
 }
@@ -687,7 +815,7 @@ link_cc_block (block_address, offset, last_header_offset,
   long result, kind, total_count;
   long (*cache_handler)();
 
-  block = (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_address));
+  block = (MAKE_CC_BLOCK (block_address));
 
   while ((--sections) >= 0)
   {
@@ -847,8 +975,13 @@ comp_link_caches_restart ()
    The trampolines themselves are made by make_uuo_link,
    make_fake_uuo_link, and coerce_to_compiled.  The trampoline looks
    like a Scheme closure, containing some code to jump to one of
-   these procedures and additional information which will be passed as
-   arguments to the procedure.
+   these procedures and additional information to be used by the
+   procedure.
+
+   These procedures expect a single argument, the address of the
+   information block where they can find the relevant data, typically
+   the procedure to invoke and the number of arguments to invoke it
+   with.
 */
 
 SCHEME_UTILITY struct utility_result
@@ -856,10 +989,10 @@ comutil_operator_apply_trap (tramp_data, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
-  /* Used by coerce_to_compiled.  TRAMPOLINE_APPLY */
+  /* Used by coerce_to_compiled.  TRAMPOLINE_K_APPLY */
 
   return (comutil_apply ((tramp_data[0]),
-			 (OBJECT_DATUM(tramp_data[1])),
+			 (OBJECT_DATUM (tramp_data[1])),
 			 0, 0));
 }
 
@@ -868,10 +1001,10 @@ comutil_operator_arity_trap (tramp_data, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
-  /* Linker saw an argument count mismatch. TRAMPOLINE_ARITY */
+  /* Linker saw an argument count mismatch. TRAMPOLINE_K_ARITY */
 
   return (comutil_apply ((tramp_data[0]),
-			 (OBJECT_DATUM(tramp_data[1])),
+			 (OBJECT_DATUM (tramp_data[1])),
 			 0, 0));
 }
 
@@ -880,34 +1013,34 @@ comutil_operator_entity_trap (tramp_data, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
-  /* Linker saw an entity to be applied. TRAMPOLINE_ENTITY */
+  /* Linker saw an entity to be applied. TRAMPOLINE_K_ENTITY */
 
   return (comutil_apply ((tramp_data[0]),
-			 (OBJECT_DATUM(tramp_data[1])),
+			 (OBJECT_DATUM (tramp_data[1])),
 			 0, 0));
 }
-
+
 SCHEME_UTILITY struct utility_result
 comutil_operator_interpreted_trap (tramp_data, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   /* Linker saw an interpreted procedure or a procedure that it cannot
-     link directly.  TRAMPOLINE_INTERPRETED
+     link directly.  TRAMPOLINE_K_INTERPRETED
    */
 
   return (comutil_apply ((tramp_data[0]),
-			 (OBJECT_DATUM(tramp_data[1])),
+			 (OBJECT_DATUM (tramp_data[1])),
 			 0, 0));
 }
-
+
 SCHEME_UTILITY struct utility_result
 comutil_operator_lexpr_trap (tramp_data, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   /* Linker saw a primitive of arbitrary number of arguments.
-     TRAMPOLINE_LEXPR_PRIMITIVE
+     TRAMPOLINE_K_LEXPR_PRIMITIVE
    */
 
   Regs[REGBLOCK_LEXPR_ACTUALS] =
@@ -920,16 +1053,94 @@ comutil_operator_primitive_trap (tramp_data, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
-  /* Linker saw a primitive of fixed and matching arity. TRAMPOLINE_PRIMITIVE */
+  /* Linker saw a primitive of fixed matching arity. TRAMPOLINE_K_PRIMITIVE */
 
   return (comutil_primitive_apply ((tramp_data[0]), 0, 0, 0));
 }
 
+/* The linker either couldn't find a binding or the binding was
+   unassigned, unbound, or a deep-bound (parallel processor) fluid.
+   This must report the correct name of the missing variable and the
+   environment in which the lookup begins for the error cases, or do
+   the correct deep reference for fluids.
+
+   "extension" is the linker object corresponding to the operator
+   variable (it contains the actual value cell, the name, and linker
+   tables). code_block and offset point to the cache cell in question.
+   tramp_data contains extension, code_block, offset.  TRAMPOLINE_K_LOOKUP
+*/
+
+SCHEME_UTILITY struct utility_result
+comutil_operator_lookup_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
+     long ignore_2, ignore_3, ignore_4;
+{
+  extern long complr_operator_reference_trap();
+  SCHEME_OBJECT true_operator, *cache_cell;
+  long code, nargs;
+
+  code = (complr_operator_reference_trap (&true_operator, (tramp_data[0])));
+  cache_cell = (MEMORY_LOC ((tramp_data[1]),
+			    (OBJECT_DATUM (tramp_data[2]))));
+  EXTRACT_OPERATOR_LINK_ARITY (nargs, cache_cell);
+  if (code == PRIM_DONE)
+  {
+    return (comutil_apply (true_operator, nargs, 0, 0));
+  }
+
+  else /* Error or interrupt */
+  {
+    SCHEME_OBJECT *trampoline, environment, name;
+
+    /* This could be done by bumpint tramp_data to the entry point.
+       It would probably be better.
+     */
+    EXTRACT_OPERATOR_LINK_ADDRESS (trampoline, cache_cell);
+    environment = (compiled_block_environment (tramp_data[1]));
+    name = (compiler_var_error ((tramp_data[0]), environment));
+
+    STACK_PUSH(ENTRY_TO_OBJECT(trampoline));
+    STACK_PUSH(MAKE_UNSIGNED_FIXNUM(nargs)); /* For debugger */
+    STACK_PUSH(environment);    /* For debugger */
+    Store_Expression(name);
+    Store_Return(RC_COMP_OP_REF_TRAP_RESTART);
+    Save_Cont();
+    RETURN_TO_C(code);
+  }
+}
+
+/*
+  Re-start after processing an error/interrupt encountered in the previous
+  utility.
+  Extract the new trampoline or procedure (the user may have defined the
+  missing variable) and invoke it.
+ */
+
+C_TO_SCHEME long
+comp_op_lookup_trap_restart ()
+{
+  SCHEME_OBJECT *old_trampoline, code_block, new_procedure;
+  long offset;
+
+  /* Discard env. and nargs */
+
+  Stack_Pointer = (Simulate_Popping (2));
+  old_trampoline = (OBJECT_ADDRESS (STACK_POP ()));
+  code_block = ((TRAMPOLINE_STORAGE (old_trampoline))[1]);
+  offset = (OBJECT_DATUM ((TRAMPOLINE_STORAGE (old_trampoline))[2]));
+  EXTRACT_OPERATOR_LINK_ADDRESS (new_procedure,
+				 (MEMORY_LOC (code_block, offset)));
+  return (C_to_interface ((machine_word *) (OBJECT_ADDRESS (new_procedure))));
+}
+
 /* ARITY Mismatch handling
    These receive the entry point as an argument and must fill the
    Scheme stack with the missing unassigned values.
-   They are invoked by TRAMPOLINE_n_m where n and m are the same
+   They are invoked by TRAMPOLINE_K_n_m where n and m are the same
    as in the name of the procedure.
+   The single item of information in the trampoline data area is
+   the real procedure to invoke.  All the arguments are on the
+   Scheme stack.
  */
 
 SCHEME_UTILITY struct utility_result
@@ -938,7 +1149,7 @@ comutil_operator_1_0_trap (tramp_data, ignore_2, ignore_3, ignore_4)
      long ignore_2, ignore_3, ignore_4;
 {
   STACK_PUSH (UNASSIGNED_OBJECT);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
 
 SCHEME_UTILITY struct utility_result
@@ -951,7 +1162,7 @@ comutil_operator_2_1_trap (tramp_data, ignore_2, ignore_3, ignore_4)
   Top = STACK_POP ();
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
 
 SCHEME_UTILITY struct utility_result
@@ -961,9 +1172,9 @@ comutil_operator_2_0_trap (tramp_data, ignore_2, ignore_3, ignore_4)
 {
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
-
+
 SCHEME_UTILITY struct utility_result
 comutil_operator_3_2_trap (tramp_data, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT *tramp_data;
@@ -976,9 +1187,9 @@ comutil_operator_3_2_trap (tramp_data, ignore_2, ignore_3, ignore_4)
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Next);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
-
+
 SCHEME_UTILITY struct utility_result
 comutil_operator_3_1_trap (tramp_data, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT *tramp_data;
@@ -990,7 +1201,7 @@ comutil_operator_3_1_trap (tramp_data, ignore_2, ignore_3, ignore_4)
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
 
 SCHEME_UTILITY struct utility_result
@@ -1001,7 +1212,7 @@ comutil_operator_3_0_trap (tramp_data, ignore_2, ignore_3, ignore_4)
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
 
 SCHEME_UTILITY struct utility_result
@@ -1019,9 +1230,9 @@ comutil_operator_4_3_trap (tramp_data, ignore_2, ignore_3, ignore_4)
   STACK_PUSH (Bottom);
   STACK_PUSH (Middle);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
-
+
 SCHEME_UTILITY struct utility_result
 comutil_operator_4_2_trap (tramp_data, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT *tramp_data;
@@ -1035,9 +1246,9 @@ comutil_operator_4_2_trap (tramp_data, ignore_2, ignore_3, ignore_4)
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Next);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
-
+
 SCHEME_UTILITY struct utility_result
 comutil_operator_4_1_trap (tramp_data, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT *tramp_data;
@@ -1050,7 +1261,7 @@ comutil_operator_4_1_trap (tramp_data, ignore_2, ignore_3, ignore_4)
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
 
 SCHEME_UTILITY struct utility_result
@@ -1062,77 +1273,7 @@ comutil_operator_4_0_trap (tramp_data, ignore_2, ignore_3, ignore_4)
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
-}
-
-/* The linker either couldn't find a binding or the binding was
-   unassigned, unbound, or a deep-bound (parallel processor) fluid.
-   This must report the correct name of the missing variable and the
-   environment in which the lookup begins for the error cases, or do
-   the correct deep reference for fluids.
-
-   "extension" is the linker object corresponding to the operator
-   variable (it contains the actual value cell, the name, and linker
-   tables). code_block and offset point to the cache cell in question.
-   TRAMPOLINE_LOOKUP
-*/
-
-SCHEME_UTILITY struct utility_result
-comutil_operator_lookup_trap (tramp_data, ignore_2, ignore_3, ignore_4)
-     SCHEME_OBJECT *tramp_data;
-     long ignore_2, ignore_3, ignore_4;
-{
-  /* tramp_data contains extension, code_block, offset. */
-
-  extern long complr_operator_reference_trap();
-  SCHEME_OBJECT true_operator, *cache_cell;
-  long code, nargs;
-
-  code = (complr_operator_reference_trap (&true_operator, (tramp_data[0])));
-  cache_cell = (MEMORY_LOC ((tramp_data[1]),
-			    (OBJECT_DATUM (tramp_data[2]))));
-  EXTRACT_OPERATOR_LINK_ARITY (nargs, cache_cell);
-  if (code == PRIM_DONE)
-  {
-    return (comutil_apply (true_operator, nargs, 0, 0));
-  }
-  else /* Error or interrupt */
-  {
-    SCHEME_OBJECT *trampoline, environment, name;
-
-    EXTRACT_OPERATOR_LINK_ADDRESS (trampoline, cache_cell);
-    environment = (compiled_block_environment (tramp_data[1]));
-    name = (compiler_var_error ((tramp_data[0]), environment));
-
-    STACK_PUSH(ENTRY_TO_OBJECT(trampoline));
-    STACK_PUSH(MAKE_UNSIGNED_FIXNUM(nargs)); /* For debugger */
-    STACK_PUSH(environment);    /* For debugger */
-    Store_Expression(name);
-    Store_Return(RC_COMP_OP_REF_TRAP_RESTART);
-    Save_Cont();
-    RETURN_TO_C(code);
-  }
-}
-
-/* Extract the new trampoline (the user may have defined the missing
-   variable) and invoke it.
- */
-
-C_TO_SCHEME long
-comp_op_lookup_trap_restart ()
-{
-  SCHEME_OBJECT *old_trampoline, code_block, new_trampoline;
-  long offset;
-
-  /* Discard env. and nargs */
-
-  Stack_Pointer = (Simulate_Popping (2));
-  old_trampoline = (OBJECT_ADDRESS (STACK_POP ()));
-  code_block = ((TRAMPOLINE_STORAGE (old_trampoline))[1]);
-  offset = (OBJECT_DATUM ((TRAMPOLINE_STORAGE (old_trampoline))[2]));
-  EXTRACT_OPERATOR_LINK_ADDRESS (new_trampoline,
-				 (MEMORY_LOC (code_block, offset)));
-  return (C_to_interface ((machine_word *) (OBJECT_ADDRESS (new_trampoline))));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
 
 /* INTERRUPT/GC from Scheme
@@ -1189,7 +1330,10 @@ comutil_interrupt_closure (ignore_1, ignore_2, ignore_3, ignore_4)
 }
 
 /* State is the live data; no entry point on the stack
-   *** THE COMPILER MUST BE CHANGED to either pass NIL or a dynamic link. ***
+   *** THE COMPILER MUST BE CHANGED to either pass SHARP_F or a dynamic link. ***
+   Alternatively, there can be another entry in assembly language to recover
+   this information.  Procedures with dynamic links would use this entry
+   rather than the standard one.
  */
 
 SCHEME_UTILITY struct utility_result
@@ -1323,7 +1467,7 @@ comutil_cache_lookup_apply (extension_addr, block_address, nactuals, ignore_4)
   {
     SCHEME_OBJECT block, environment, name;
 
-    block = (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_address));
+    block = (MAKE_CC_BLOCK (block_address));
     STACK_PUSH (block);
     STACK_PUSH (MAKE_UNSIGNED_FIXNUM (nactuals));
     environment = (compiled_block_environment (block));
@@ -1554,6 +1698,7 @@ restart_name ()								\
   code = (c_proc (environment, variable));				\
   if (code == PRIM_DONE)						\
   {									\
+    Regs[REGBLOCK_ENV] = environment;					\
     return (C_to_interface (OBJECT_ADDRESS (STACK_POP ())));		\
   }									\
   else									\
@@ -1605,6 +1750,7 @@ restart_name ()								\
   code = (c_proc (environment, variable, value));			\
   if (code == PRIM_DONE)						\
   {									\
+    Regs[REGBLOCK_ENV] = environment;					\
     return (C_to_interface (OBJECT_ADDRESS (STACK_POP ())));		\
   }									\
   else									\
@@ -1765,7 +1911,7 @@ compiled_entry_to_block (entry)
   SCHEME_OBJECT *block_address;
 
   Get_Compiled_Block (block_address, (OBJECT_ADDRESS (entry)));
-  return MAKE_POINTER_OBJECT(TC_COMPILED_CODE_BLOCK, block_address);
+  return (MAKE_CC_BLOCK (block_address));
 }
 
 /* Returns the offset from the block to the entry point. */
@@ -1851,8 +1997,8 @@ compiled_closure_to_entry (entry)
 
 #define CONTINUATION_NORMAL                     0
 #define CONTINUATION_DYNAMIC_LINK               1
-#define CONTINUATION_RETURN_TO_INTERPRETER      2
-
+#define CONTINUATION_RETURN_TO_INTERPRETER      2			\
+									\
 C_UTILITY void
 compiled_entry_type (entry, buffer)
      SCHEME_OBJECT entry, *buffer;
@@ -2004,6 +2150,12 @@ make_trampoline (slot, format_word, kind, size, value1, value2, value3)
   *local_free++ = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
 				(TRAMPOLINE_ENTRY_SIZE + 1)));
   local_free += 1;
+
+  /* Note: at this point local_free is the address of the actual
+     entry point of the trampoline procedure.  The distance (in chars)
+     to the beginning of the block should be CC_BLOCK_FIRST_ENTRY_OFFSET.
+   */
+
   (COMPILED_ENTRY_FORMAT_WORD (local_free)) = format_word;
   (COMPILED_ENTRY_OFFSET_WORD (local_free)) =
     (MAKE_OFFSET_WORD (local_free, block, false));
@@ -2039,8 +2191,8 @@ make_redirection_trampoline (slot, kind, procedure)
 			   kind,
 			   1,
 			   procedure,
-			   NIL,
-			   NIL));
+			   SHARP_F,
+			   SHARP_F));
 }
 
 static long
@@ -2055,7 +2207,7 @@ make_apply_trampoline (slot, kind, procedure, nactuals)
 			   2,
 			   procedure,
 			   (MAKE_UNSIGNED_FIXNUM (nactuals)),
-			   NIL));
+			   SHARP_F));
 }
 
 #define TRAMPOLINE_TABLE_SIZE   4
@@ -2063,22 +2215,22 @@ make_apply_trampoline (slot, kind, procedure, nactuals)
 static long
 trampoline_arity_table[TRAMPOLINE_TABLE_SIZE * TRAMPOLINE_TABLE_SIZE] =
 {
-  TRAMPOLINE_1_0,                       /* 1_0 */
-  TRAMPOLINE_ARITY,                     /* 1_1 should not get here */
-  TRAMPOLINE_ARITY,                     /* 1_2 should not get here */
-  TRAMPOLINE_ARITY,                     /* 1_3 should not get here */
-  TRAMPOLINE_2_0,                       /* 2_0 */
-  TRAMPOLINE_2_1,                       /* 2_1 */
-  TRAMPOLINE_ARITY,                     /* 2_2 should not get here */
-  TRAMPOLINE_ARITY,                     /* 2_3 should not get here */
-  TRAMPOLINE_3_0,                       /* 3_0 */
-  TRAMPOLINE_3_1,                       /* 3_1 */
-  TRAMPOLINE_3_2,                       /* 3_2 */
-  TRAMPOLINE_ARITY,                     /* 3_3 should not get here */
-  TRAMPOLINE_4_0,                       /* 4_0 */
-  TRAMPOLINE_4_1,                       /* 4_1 */
-  TRAMPOLINE_4_2,                       /* 4_2 */
-  TRAMPOLINE_4_3                        /* 4_3 */
+  TRAMPOLINE_K_1_0,		/* 1_0 */
+  TRAMPOLINE_K_ARITY,		/* 1_1 should not get here */
+  TRAMPOLINE_K_ARITY,		/* 1_2 should not get here */
+  TRAMPOLINE_K_ARITY,		/* 1_3 should not get here */
+  TRAMPOLINE_K_2_0,		/* 2_0 */
+  TRAMPOLINE_K_2_1,		/* 2_1 */
+  TRAMPOLINE_K_ARITY,		/* 2_2 should not get here */
+  TRAMPOLINE_K_ARITY,		/* 2_3 should not get here */
+  TRAMPOLINE_K_3_0,		/* 3_0 */
+  TRAMPOLINE_K_3_1,		/* 3_1 */
+  TRAMPOLINE_K_3_2,		/* 3_2 */
+  TRAMPOLINE_K_ARITY,		/* 3_3 should not get here */
+  TRAMPOLINE_K_4_0,		/* 4_0 */
+  TRAMPOLINE_K_4_1,		/* 4_1 */
+  TRAMPOLINE_K_4_2,		/* 4_2 */
+  TRAMPOLINE_K_4_3		/* 4_3 */
 };
 
 /*
@@ -2139,22 +2291,22 @@ make_uuo_link (procedure, extension, block, offset)
           (nactuals <= TRAMPOLINE_TABLE_SIZE) &&
           (nmax <= (TRAMPOLINE_TABLE_SIZE + 1)))
       {
-        kind = trampoline_arity_table[((nmax - 1) * TRAMPOLINE_TABLE_SIZE) +
-                                      nactuals];
+        kind = (trampoline_arity_table[((nmax - 1) * TRAMPOLINE_TABLE_SIZE) +
+				       nactuals]);
 	/* Paranoia */
-	if (kind != TRAMPOLINE_ARITY)
+	if (kind != TRAMPOLINE_K_ARITY)
 	{
 	  nactuals = 0;
 	  break;
 	}
       }
-      kind = TRAMPOLINE_ARITY;
+      kind = TRAMPOLINE_K_ARITY;
       break;
     }
 
     case TC_ENTITY:
     {
-      kind = TRAMPOLINE_ENTITY;
+      kind = TRAMPOLINE_K_ENTITY;
       break;
     }
 
@@ -2167,15 +2319,15 @@ make_uuo_link (procedure, extension, block, offset)
       if (arity == (nactuals - 1))
       {
 	nactuals = 0;
-        kind = TRAMPOLINE_PRIMITIVE;
+        kind = TRAMPOLINE_K_PRIMITIVE;
       }
       else if (arity == LEXPR_PRIMITIVE_ARITY)
       {
-        kind = TRAMPOLINE_LEXPR_PRIMITIVE;
+        kind = TRAMPOLINE_K_LEXPR_PRIMITIVE;
       }
       else
       {
-        kind = TRAMPOLINE_INTERPRETED;
+        kind = TRAMPOLINE_K_INTERPRETED;
       }
       break;
     }
@@ -2183,7 +2335,7 @@ make_uuo_link (procedure, extension, block, offset)
     default:
     uuo_link_interpreted:
     {
-      kind = TRAMPOLINE_INTERPRETED;
+      kind = TRAMPOLINE_K_INTERPRETED;
       break;
     }
   }
@@ -2212,7 +2364,7 @@ make_fake_uuo_link (extension, block, offset)
 
   result = (make_trampoline (&trampoline,
 			     ((machine_word) FORMAT_WORD_CMPINT),
-			     TRAMPOLINE_LOOKUP,
+			     TRAMPOLINE_K_LOOKUP,
 			     3,
 			     extension,
 			     block,
@@ -2247,57 +2399,126 @@ coerce_to_compiled (procedure, arity, location)
     return (make_trampoline (location,
 			     ((machine_word)
 			      (MAKE_FORMAT_WORD (frame_size, frame_size))),
-			     TRAMPOLINE_APPLY,
+			     TRAMPOLINE_K_APPLY,
 			     2,
 			     procedure,
 			     (MAKE_UNSIGNED_FIXNUM (frame_size)),
-			     NIL));
+			     SHARP_F));
   }
   (*location) = procedure;
   return (PRIM_DONE);
 }
 
-/* *** HERE *** */
+/* Initialization */
 
-/* Priorities:
-   - initialization and register block
-   - change interpreter to match this
- */
+#define COMPILER_INTERFACE_VERSION		2
 
+#define COMPILER_REGBLOCK_N_FIXED		16
+#define COMPILER_REGBLOCK_N_HOOKS		64
+#define COMPILER_REGBLOCK_N_TEMPS		128
+
+#if (REGBLOCK_MINIMUM_LENGTH > COMPILER_REGBLOCK_FIXED_LENGTH)
+#include "error: cmpint.c and const.h disagree on REGBLOCK_MINIMUM_LENGTH!"
+#endif
+
+#define COMPILER_FIXED_SIZE	1	/* ((sizeof(long)) / (sizeof(long))) */
+
+#ifndef COMPILER_HOOK_SIZE
+#define COMPILER_HOOK_SIZE	(OPERATOR_LINK_ENTRY_SIZE)
+#endif
+
+#ifndef COMPILER_TEMP_SIZE
+#define COMPILER_TEMP_SIZE	((sizeof (double)) / (sizeof (long)))
+#endif
+
+#define REGBLOCK_LENGTH							\
+((COMPILER_REGBLOCK_N_FIXED * COMPILER_FIXED_SIZE)		+	\
+ (COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)		+	\
+ (COMPILER_REGBLOCK_N_TEMPS * COMPILER_TEMP_SIZE))
+
+#ifndef INTERFACE_INITIALIZE
+#define INTERFACE_INITIALIZE()						\
+do {									\
+} while (0)
+#endif
+
 long
-  compiler_interface_version,
-  compiler_processor_type;
+  compiler_processor_type,
+  compiler_interface_version;
 
 SCHEME_OBJECT
-  Registers[REGBLOCK_MINIMUM_LENGTH],
   compiler_utilities,
-  return_to_interpreter;
+  return_to_interpreter,
+  Registers[REGBLOCK_LENGTH];
 
-/* >>>>>>>>>> WRITE THESE <<<<<<<<< */
+static void
+compiler_reset_internal ()
+{
+  /* Other stuff can be placed here. */
 
+  return_to_interpreter =
+    (ENTRY_TO_OBJECT ((SCHEME_OBJECT *)
+		      (((char *) (OBJECT_ADDRESS (compiler_utilities))) +
+		       CC_BLOCK_FIRST_ENTRY_OFFSET)));
+
+  initialize_compiler_arithmetic ();
+  return;
+}
+
 C_UTILITY void
 compiler_reset (new_block)
      SCHEME_OBJECT new_block;
 {
-  extern void compiler_reset_error ();
-
-  initialize_compiler_arithmetic();
-  if (new_block != NIL)
+  if ((OBJECT_TYPE (new_block)) != TC_COMPILED_CODE_BLOCK)
   {
+    extern void compiler_reset_error ();
+
     compiler_reset_error ();
+  }
+  else
+  {
+    compiler_utilities = new_block;
+    compiler_reset_internal ();
   }
   return;
 }
 
 C_UTILITY void
-compiler_initialize ()
+compiler_initialize (fasl_p)
+     long fasl_p;
 {
-  compiler_processor_type = 0;
-  compiler_interface_version = 0;
-  compiler_utilities = NIL;
-  return_to_interpreter =
-    (MAKE_OBJECT (TC_RETURN_CODE, RC_POP_FROM_COMPILED_CODE));
-  initialize_compiler_arithmetic()
-  return;
+  long code;
+  SCHEME_OBJECT trampoline, *block, *block;
 
+  compiler_processor_type = COMPILER_PROCESSOR_TYPE;
+  compiler_interface_version = COMPILER_INTERFACE_VERSION;
+  if (fasl_p)
+  {
+    extern SCHEME_OBJECT *copy_to_constant_space();
+
+    code = (make_trampoline (&trampoline,
+			     FORMAT_WORD_RETURN,
+			     TRAMPOLINE_K_RETURN,
+			     0, SHARP_F, SHARP_F, SHARP_F));
+    if (code != PRIM_DONE)
+    {
+      fprintf (stderr,
+	       "compiler_initialize: Not enough space!\n");
+      Microcode_Termination (TERM_NO_SPACE);
+    }
+    block = (compiled_entry_to_block_address (trampoline));
+    block = (copy_to_constant_space (block, (1 + (OBJECT_DATUM (block[0])))));
+    compiler_utilities = (MAKE_CC_BLOCK (block));
+    compiler_reset_internal ();
+  }
+  else
+  {
+    compiler_utilities = SHARP_F;
+    return_to_interpreter = SHARP_F;
+  }
+  return;
 }
+
+/* *** To do *** 
+   - change interpreter to match this.
+ */
