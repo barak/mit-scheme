@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.47 1992/11/25 06:27:09 gjr Exp $
+$Id: hooks.c,v 9.48 1992/12/15 20:37:46 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -296,6 +296,7 @@ DEFUN (CWCC, (return_code, reuse_flag, receiver),
     }
     if (Consistency_Check && (Stack_Pointer != Stack_Top))
       Microcode_Termination (TERM_BAD_STACK);
+    CLEAR_INTERRUPT (INT_Stack_Overflow);
     STACK_RESET ();
     Will_Push (CONTINUATION_SIZE);
     Store_Return (RC_JOIN_STACKLETS);
@@ -375,6 +376,7 @@ DEFINE_PRIMITIVE ("WITHIN-CONTROL-POINT", Prim_within_control_point, 2, 2,
 
   /* This KNOWS the direction of stack growth. */
   Stack_Pointer = (Get_End_Of_Stacklet ());
+  CLEAR_INTERRUPT (INT_Stack_Overflow);
 
  Will_Push (CONTINUATION_SIZE);
   Store_Expression (control_point);
