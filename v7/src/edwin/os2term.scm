@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.15 1996/05/03 20:00:14 cph Exp $
+;;;	$Id: os2term.scm,v 1.16 1996/05/11 08:50:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -680,6 +680,9 @@
 	    (let ((event (read-event block?)))
 	      (cond ((not event)
 		     (set! pending #f))
+		    ((input-event? event)
+		     (set! pending event)
+		     (set! repeat 1))
 		    ((not (vector? event))
 		     (let ((flag (process-change-event event)))
 		       (if flag
@@ -767,21 +770,30 @@
 	   (if (not reading-event?)
 	       (let ((event (os2win-get-event event-descriptor #f)))
 		 (if event
-		     (if (and signal-interrupts?
-			      (vector? event)
-			      (fix:= event-type:key (event-type event))
-			      ;; This tests for CTRL on, ALT off, and
-			      ;; not a virtual key:
-			      (fix:= #x10
-				     (fix:and #x32 (key-event/flags event)))
-			      (let ((code (key-event/code event)))
-				(or (fix:= code (char->integer #\G))
-				    (fix:= code (char->integer #\g)))))
-			 (begin
-			   (clean-event-queue event-queue)
-			   (signal-interrupt!))
-			 (enqueue!/unsafe event-queue event))))))))
+		     (preview-event event)))))))
   unspecific)
+
+(define (preview-event event)
+  (cond ((not (vector? event))
+	 (enqueue!/unsafe event-queue event))
+	((and signal-interrupts?
+	      (fix:= event-type:key (event-type event))
+	      ;; This tests for CTRL on, ALT off, and
+	      ;; not a virtual key:
+	      (fix:= #x10 (fix:and #x32 (key-event/flags event)))
+	      (let ((code (key-event/code event)))
+		(or (fix:= code (char->integer #\G))
+		    (fix:= code (char->integer #\g)))))
+	 (clean-event-queue event-queue)
+	 (signal-interrupt!))
+	((fix:= (event-type event) event-type:visibility)
+	 (let ((result (process-special-event event)))
+	   (if result
+	       (enqueue!/unsafe event-queue result))))
+	((fix:= (event-type event) event-type:paint)
+	 (process-paint-event event))
+	(else
+	 (enqueue!/unsafe event-queue event))))
 
 (define (clean-event-queue queue)
   ;; Flush keyboard and mouse events from the input queue.  Other
