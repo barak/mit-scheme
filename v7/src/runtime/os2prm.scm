@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.9 1995/04/09 22:57:49 cph Exp $
+$Id: os2prm.scm,v 1.10 1995/04/15 06:12:21 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -105,6 +105,22 @@ MIT in each case. |#
    modification-time))
 
 (define (file-time->string time)
+  ;; Except for the missing time zone, this is an RFC-822 date/time string.
+  (let ((dt (decode-file-time time))
+	(d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
+    (string-append (number->string (decoded-time/year dt))
+		   " "
+		   (month/short-string (decoded-time/month dt))
+		   " "
+		   (number->string (modulo (decoded-time/year dt) 100))
+		   " "
+		   (d2 (decoded-time/hour dt))
+		   ":"
+		   (d2 (decoded-time/minute dt))
+		   ":"
+		   (d2 (decoded-time/second dt)))))
+
+(define (decode-file-time time)
   (let* ((twosecs (remainder time 32))
 	 (time    (quotient  time 32))
 	 (minutes (remainder time 64))
@@ -115,21 +131,12 @@ MIT in each case. |#
 	 (time    (quotient  time 32))
 	 (month   (remainder time 16))
 	 (year    (quotient  time 16)))
-    (string-append (vector-ref '#("Jan" "Feb" "Mar" "Apr" "May" "Jun"
-					"Jul" "Aug" "Sep" "Oct" "Nov" "Dec")
-			       (if (<= 1 month 12)
-				   (- month 1)
-				   0))
-		   " "
-		   (string-pad-left (number->string day) 2 #\space)
-		   " "
-		   (string-pad-left (number->string hours) 2 #\0)
-		   ":"
-		   (string-pad-left (number->string minutes) 2 #\0)
-		   ":"
-		   (string-pad-left (number->string (* twosecs 2)) 2 #\0)
-		   " "
-		   (number->string (+ 1980 year)))))
+    (make-decoded-time (limit 0 (* twosecs 2) 59)
+		       (limit 0 minutes 59)
+		       (limit 0 hours 23)
+		       (limit 1 day 31)
+		       (limit 1 month 12)
+		       (+ 1980 year))))
 
 (define (file-attributes filename)
   ((ucode-primitive file-info 1)
