@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.51 1992/11/30 03:00:18 gjr Exp $
+$Id: bitstr.c,v 9.52 1992/11/30 03:04:03 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -692,7 +692,7 @@ DEFUN (bignum_to_bit_string, (length, bignum),
     }
 }
 
-static void
+void
 DEFUN (btbs_consumer, (result_ptr, digit),
        unsigned char ** result_ptr
        AND unsigned int digit)
@@ -738,7 +738,7 @@ DEFUN (bit_string_to_bignum, (nbits, bitstr),
 			     0));
 }
 
-static unsigned int
+unsigned int
 DEFUN (bstb_producer, (context),
        struct bitstr_to_bignm_context * context)
 {
@@ -943,7 +943,7 @@ extern void EXFUN (bit_string_set, (SCHEME_OBJECT, long, int));
 
 void
 DEFUN (bit_string_set, (bitstr, index, value),
-       SCHEME_OBJECT bitstr AND long index AND value)
+       SCHEME_OBJECT bitstr AND long index AND int value)
 {
   unsigned long mask;
   SCHEME_OBJECT * ptr;
