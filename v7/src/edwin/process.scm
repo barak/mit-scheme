@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.43 1996/05/12 07:13:03 cph Exp $
+;;;	$Id: process.scm,v 1.44 1996/05/13 05:01:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -689,9 +689,11 @@ after the listing is made.)"
 			       (loop))))))))))
 	  (channel-nonblocking channel)
 	  (let ((status (receiver copy-output)))
-	    (channel-blocking channel)
-	    (copy-output)
-	    (channel-close channel)
+	    (if (channel-open? channel)
+		(begin
+		  (channel-blocking channel)
+		  (copy-output)
+		  (channel-close channel)))
 	    status)))
       (receiver (lambda () unspecific))))
 
