@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/inerly.scm,v 1.5 1988/06/14 08:46:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/inerly.scm,v 1.6 1988/08/31 06:00:59 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -39,8 +39,8 @@ MIT in each case. |#
 ;;;; Transformers and utilities
 
 (define early-instructions '())
-
 (define early-transformers '())
+(define early-ea-database)
 
 (define (define-early-transformer name transformer)
   (set! early-transformers
@@ -83,9 +83,9 @@ MIT in each case. |#
 
 (syntax-table-define early-syntax-table 'DEFINE-INSTRUCTION
   (macro (opcode . patterns)
-    `(set! early-instructions
-	   (cons
-	    (list ',opcode
+    `(SET! EARLY-INSTRUCTIONS
+	   (CONS
+	    (LIST ',opcode
 		  ,@(map (lambda (pattern)
 			   `(early-parse-rule
 			     ',(car pattern)
@@ -99,18 +99,17 @@ MIT in each case. |#
 						      (cddr pattern)
 						      true)))))))
 			 patterns))
-		 early-instructions))))
+		 EARLY-INSTRUCTIONS))))
 
 (syntax-table-define early-syntax-table 'EXTENSION-WORD
   (macro descriptors
     (expand-descriptors descriptors
       (lambda (instruction size source destination)
 	(if (or source destination)
-	    (error "Source or destination used" 'EXTENSION-WORD)
-	    (if (zero? (remainder size 16))
-		(optimize-group-syntax instruction true)
-		(error "EXTENSION-WORD: Extensions must be 16 bit multiples"
-		       size)))))))
+	    (error "EXTENSION-WORD: Source or destination used"))
+	(if (not (zero? (remainder size 16)))
+	    (error "EXTENSION-WORD: Extensions must be 16 bit multiples" size))
+	(optimize-group-syntax instruction true)))))
 
 (syntax-table-define early-syntax-table 'VARIABLE-EXTENSION
   (macro (binding . clauses)
@@ -129,13 +128,13 @@ MIT in each case. |#
 
 (syntax-table-define early-syntax-table 'DEFINE-EA-DATABASE
   (macro rules
-    `(define early-ea-database
-       (list
-	,@(map (lambda (rule)
-		 (if (null? (cdddr rule))
-		     (apply make-position-dependent-early rule)
-		     (apply make-position-independent-early rule)))
-	       rules)))))
+    `(SET! EARLY-EA-DATABASE
+	   (LIST
+	    ,@(map (lambda (rule)
+		     (if (null? (cdddr rule))
+			 (apply make-position-dependent-early rule)
+			 (apply make-position-independent-early rule)))
+		   rules)))))
 
 (define (make-ea-selector-expander late-name index)
   (scode->scode-expander
@@ -158,8 +157,7 @@ MIT in each case. |#
 		  (default)
 		  (if-expanded (list-ref operands index))))))))))
 
-;; The indeces here are the argument number to MAKE-EFFECTIVE-ADDRESS.
-
+;; The indices here are the argument number to MAKE-EFFECTIVE-ADDRESS.
 (define ea-keyword-expander (make-ea-selector-expander 'EA-KEYWORD 0))
 (define ea-mode-expander (make-ea-selector-expander 'EA-MODE 1))
 (define ea-register-expander (make-ea-selector-expander 'EA-REGISTER 2))
@@ -171,13 +169,13 @@ MIT in each case. |#
 (define (make-position-independent-early pattern categories mode register
 					 . extension)
   (let ((keyword (car pattern)))
-    `(early-parse-rule
+    `(EARLY-PARSE-RULE
       ',pattern
-      (lambda (pat vars)
-	(list pat
-	      vars
+      (LAMBDA (PAT VARS)
+	(LIST PAT
+	      VARS
 	      ',categories
-	      (scode-quote
+	      (SCODE-QUOTE
 	       (MAKE-EFFECTIVE-ADDRESS
 		',keyword
 		,(integer-syntaxer mode 'UNSIGNED 3)
