@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.42 1987/06/24 04:53:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.43 1987/07/15 02:59:21 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,28 +39,14 @@ MIT in each case. |#
 (define-integrable (make-symbol-table)
   (symbol-hash-table/make 271))
 
-(define-integrable (symbol-table-bindings table)
-  (map (lambda (entry)
-	 (cons (car entry)
-	       (or (binding-value (cdr entry))
-		   (error "Missing binding value" entry))))
-       (symbol-hash-table/bindings table)))
-
 (define (symbol-table-define! table key value)
   (symbol-hash-table/modify! table key
     (lambda (binding)
+      (error "symbol-table-define!: Redefining" key)
       (set-binding-value! binding value)
       binding)
     (lambda ()
       (make-binding value))))
-
-(define (symbol-table-binding table key)
-  (symbol-hash-table/lookup* table key
-    identity-procedure
-    (lambda ()
-      (let ((nothing (make-binding #F)))
-	(symbol-hash-table/insert! table key nothing)
-	nothing))))
 
 (define (symbol-table-value table key)
   (symbol-hash-table/lookup* table key
@@ -70,24 +56,19 @@ MIT in each case. |#
     (lambda ()
       (error "SYMBOL-TABLE-VALUE: Undefined key" key))))
 
-(define-integrable (symbol-table-undefined-names table)
-  (map car (symbol-hash-table/negative-bindings table binding-value)))
+(define (symbol-table->assq-list table)
+  (map (lambda (pair)
+	 (cons (car pair) (binding-value (cdr pair))))
+       (symbol-table-bindings table)))
+
+(define-integrable (symbol-table-bindings table)
+  (symbol-hash-table/bindings table))
 
 (define-integrable (make-binding initial-value)
-  (vector initial-value '()))
+  (cons initial-value '()))
 
 (define-integrable (binding-value binding)
-  (vector-ref binding 0))
+  (car binding))
 
 (define (set-binding-value! binding value)
-  (if (vector-ref binding 0)
-      (error "Attempt to redefine variable" binding))
-  (vector-set! binding 0 value)
-  (for-each (lambda (daemon) (daemon binding))
-	    (vector-ref binding 1)))
-
-(define (add-binding-daemon! binding daemon)
-  (vector-set! binding 1 (cons daemon (vector-ref binding 1))))
-
-(define (remove-binding-daemon! binding daemon)
-  (vector-set! binding 1 (delq! daemon (vector-ref binding 1))))
+  (set-car! binding value))

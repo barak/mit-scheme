@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.17 1987/07/10 20:33:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.18 1987/07/15 02:59:48 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -92,14 +92,16 @@ MIT in each case. |#
 			   "rgstmt" "rlife" "rtlgen")
 	  (filename/append "back-end" "lapgn1" "lapgn2" "lapgn3")))
 
+(define filenames/dependency-chain/bits
+  (filename/append "back-end" "symtab" "bitutl" "bittop"))
+
 (file-dependency/integration/chain
  (reverse
   (append filenames/dependency-chain/base
 	  filenames/dependency-chain/rcse)))
 
-(file-dependency/integration/join
- (filename/append "back-end" "laptop")
- (filename/append "back-end" "symtab" "block"))
+(file-dependency/integration/chain
+ (reverse filenames/dependency-chain/bits))
 
 (file-dependency/integration/join filenames/dependency-group/base
 				  filenames/dependency-chain/base)
@@ -180,8 +182,8 @@ MIT in each case. |#
 			  "rcsesa" "rdeath" "rdebug" "rgcomb" "rgpcom" "rgpred"
 			  "rgproc" "rgrval" "rgstmt" "rlife" "rtlgen")
 	 (filename/append "back-end"
-			  "asmmac" "block" "insseq" "lapgn1" "lapgn2" "lapgn3"
-			  "laptop" "regmap" "symtab" "syntax")
+			  "asmmac" "bittop" "bitutl" "insseq" "lapgn1" "lapgn2"
+			  "lapgn3" "regmap" "symtab" "syntax")
 	 (filename/append "machines/bobcat" "insmac" "machin"))
  compiler-syntax-table)
 

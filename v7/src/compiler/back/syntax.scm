@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.15 1987/07/08 22:03:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.16 1987/07/15 02:57:43 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -45,20 +45,6 @@ MIT in each case. |#
 	     directives)
       (cons directive directives)))
 
-(define (convert-output directives)
-  (define (internal directives)
-    (map (lambda (directive)
-	   (cond ((bit-string? directive) (vector 'CONSTANT directive))
-		 ((pair? directive)
-		  (if (eq? (car directive) 'GROUP)
-		      (vector 'GROUP (internal (cdr directive)))
-		      (list->vector directive)))
-		 ((vector? directive) directive)
-		 (else
-		  (error "CONVERT-OUTPUT: Unknown directive" directive))))
-	 directives))
-  (internal (instruction-sequence->directives directives)))
-
 (define-export (lap:syntax-instruction instruction)
   (if (memq (car instruction) '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL))
       (directive->instruction-sequence instruction)
@@ -93,7 +79,7 @@ MIT in each case. |#
 (define (syntax-evaluation expression coercion)
   (if (integer? expression)
       (coercion expression)
-      (vector 'EVALUATION expression (coercion-size coercion) coercion)))
+      (list 'EVALUATION expression (coercion-size coercion) coercion)))
 
 (define (optimize-group . components)
   (optimize-group-internal components
