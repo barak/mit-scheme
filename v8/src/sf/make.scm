@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.27 1993/09/01 00:10:47 cph Exp $
+$Id: make.scm,v 4.28 1993/11/18 01:21:39 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -36,7 +36,12 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package/system-loader "sf" '() 'QUERY)
+((access with-directory-rewriting-rule
+	 (->environment '(RUNTIME COMPILER-INFO)))
+ (working-directory-pathname)
+ (pathname-as-directory "sf")
+ (lambda ()
+   (package/system-loader "sf" '() 'QUERY)))
 ((package/reference (find-package '(SCODE-OPTIMIZER))
 		    'USUAL-INTEGRATIONS/CACHE!))
-(add-system! (make-system "SF" 4 27 '()))
+(add-system! (make-system "SF" 4 28 '()))

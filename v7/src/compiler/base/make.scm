@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.101 1993/11/13 19:33:53 gjr Exp $
+$Id: make.scm,v 4.102 1993/11/18 01:21:12 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -37,10 +37,15 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (lambda (architecture-name)
-  (load-option 'COMPRESS)
-  (load-option 'HASH-TABLE)
-  (load-option 'RB-TREE)
-  (package/system-loader "comp" '() 'QUERY)
+  ((access with-directory-rewriting-rule
+	   (->environment '(RUNTIME COMPILER-INFO)))
+   (working-directory-pathname)
+   (pathname-as-directory "compiler")
+   (lambda ()
+     (load-option 'COMPRESS)
+     (load-option 'HASH-TABLE)
+     (load-option 'RB-TREE)
+     (package/system-loader "comp" '() 'QUERY)))
   (let ((initialize-package!
 	 (lambda (package-name)
 	   ((environment-lookup (->environment package-name)
@@ -49,5 +54,5 @@ MIT in each case. |#
     (initialize-package! '(COMPILER DECLARATIONS)))
   (add-system!
    (make-system (string-append "Liar (" architecture-name ")")
-		4 100
+		4 101
 		'())))

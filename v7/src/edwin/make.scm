@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.81 1993/11/15 21:49:08 cph Exp $
+$Id: make.scm,v 3.82 1993/11/18 01:20:59 cph Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,9 +36,14 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(declare-shared-library "edwin" (lambda () true))
-(package/system-loader
- "edwin"
- `((os-type . ,(intern (microcode-identification-item 'OS-NAME-STRING))))
- 'QUERY)
-(add-system! (make-system "Edwin" 3 81 '()))
+((access with-directory-rewriting-rule
+	 (->environment '(RUNTIME COMPILER-INFO)))
+ (working-directory-pathname)
+ (pathname-as-directory "edwin")
+ (lambda ()
+   (declare-shared-library "edwin" (lambda () true))
+   (package/system-loader
+    "edwin"
+    `((os-type . ,(intern (microcode-identification-item 'OS-NAME-STRING))))
+    'QUERY)))
+(add-system! (make-system "Edwin" 3 82 '()))

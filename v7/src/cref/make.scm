@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.9 1993/10/11 23:31:42 cph Exp $
+$Id: make.scm,v 1.10 1993/11/18 01:21:24 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -36,6 +36,11 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(load-option 'RB-TREE)
-(package/system-loader "cref" '() false)
-(add-system! (make-system "CREF" 1 9 '()))
+((access with-directory-rewriting-rule
+	 (->environment '(RUNTIME COMPILER-INFO)))
+ (working-directory-pathname)
+ (pathname-as-directory "cref")
+ (lambda ()
+   (load-option 'RB-TREE)
+   (package/system-loader "cref" '() false)))
+(add-system! (make-system "CREF" 1 10 '()))
