@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dragon4.scm,v 1.11 1997/07/26 07:14:37 cph Exp $
+$Id: dragon4.scm,v 1.12 1997/07/26 07:39:07 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -63,7 +63,7 @@ not much different to numbers within a few orders of magnitude of 1.
 	     (call-with-values (lambda () (dragon4-normalize x p))
 	       (lambda (f e)
 		 (call-with-values flonum-unparser-cutoff-args
-		   (lambda (cutoff-mode cutoff display-mode)
+		   (lambda (cutoff-mode cutoff display-procedure)
 		     (dragon4 f e p radix cutoff-mode cutoff
 		       (lambda (u k generate)
 			 (let ((digits
@@ -74,13 +74,7 @@ not much different to numbers within a few orders of magnitude of 1.
 				       '()
 				       (cons (digit->char u radix)
 					     (generate loop)))))))
-			   (case display-mode
-			     ((ENGINEERING)
-			      (scientific-output digits k radix (modulo k 3)))
-			     ((SCIENTIFIC)
-			      (scientific-output digits k radix 0))
-			     (else
-			      (normal-output digits k radix))))))))))))))
+			   (display-procedure digits k radix))))))))))))
     (or (and flonum-unparser-hook
 	     (flonum-unparser-hook x radix))
 	(cond ((flo:positive? x)
@@ -97,7 +91,7 @@ not much different to numbers within a few orders of magnitude of 1.
 	      (else
 	       (string-copy "#[NaN]"))))))
 
-(define (normal-output digits k radix)
+(define (flonum-unparser:normal-output digits k radix)
   (let ((k+1 (+ k 1)))
     (let ((k+1-l (- k+1 (string-length digits)))
 	  (n (flo:significand-digits radix)))
@@ -113,6 +107,12 @@ not much different to numbers within a few orders of magnitude of 1.
 	     (string-append digits (make-string k+1-l #\0) "."))
 	    (else
 	     (scientific-output digits k radix 0))))))
+
+(define (flonum-unparser:scientific-output digits k radix)
+  (scientific-output digits k radix 0))
+
+(define (flonum-unparser:engineering-output digits k radix)
+  (scientific-output digits k radix (modulo k 3)))
 
 (define (scientific-output digits k radix kr)
   (let ((l (string-length digits))
@@ -131,7 +131,7 @@ not much different to numbers within a few orders of magnitude of 1.
 
 (define (flonum-unparser-cutoff-args)
   (cond ((eq? 'NORMAL flonum-unparser-cutoff)
-	 (values 'NORMAL 0 'NORMAL))
+	 (values 'NORMAL 0 flonum-unparser:normal-output))
 	((and (pair? flonum-unparser-cutoff)
 	      (pair? (cdr flonum-unparser-cutoff))
 	      (let ((mode (car flonum-unparser-cutoff))
@@ -143,17 +143,27 @@ not much different to numbers within a few orders of magnitude of 1.
 	      (or (null? (cddr flonum-unparser-cutoff))
 		  (and (pair? (cddr flonum-unparser-cutoff))
 		       (null? (cdddr flonum-unparser-cutoff))
-		       (memq (caddr flonum-unparser-cutoff)
-			     '(NORMAL SCIENTIFIC ENGINEERING)))))
+		       (let ((mode (caddr flonum-unparser-cutoff)))
+			 (or (memq mode '(NORMAL SCIENTIFIC ENGINEERING))
+			     (and (procedure? mode)
+				  (procedure-arity-valid? mode 3)))))))
 	 (values (car flonum-unparser-cutoff)
 		 (- (cadr flonum-unparser-cutoff))
 		 (if (null? (cddr flonum-unparser-cutoff))
-		     'NORMAL
-		     (caddr flonum-unparser-cutoff))))
+		     flonum-unparser:normal-output
+		     (lookup-symbolic-display-mode
+		      (caddr flonum-unparser-cutoff)))))
 	(else
 	 (warn "illegal flonum unparser cutoff parameter"
 	       flonum-unparser-cutoff)
-	 (values 'NORMAL 0 'NORMAL))))
+	 (values 'NORMAL 0 flonum-unparser:normal-output))))
+
+(define (lookup-symbolic-display-mode mode)
+  (case mode
+    ((ENGINEERING) flonum-unparser:engineering-output)
+    ((SCIENTIFIC) flonum-unparser:scientific-output)
+    ((NORMAL) flonum-unparser:normal-output)
+    (else mode)))
 
 (define flonum-unparser-hook #f)
 (define flonum-unparser-cutoff 'NORMAL)

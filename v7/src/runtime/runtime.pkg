@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.285 1997/07/15 16:33:29 adams Exp $
+$Id: runtime.pkg,v 14.286 1997/07/26 07:40:41 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -1530,6 +1530,9 @@ MIT in each case. |#
 	  exp
 	  expt
 	  flonum-unparser-cutoff
+	  flonum-unparser:engineering-output
+	  flonum-unparser:normal-output
+	  flonum-unparser:scientific-output
 	  floor
 	  floor->exact
 	  gcd
