@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.4 2004/07/15 19:50:43 cph Exp $
+$Id: xhtml.scm,v 1.5 2004/07/18 04:34:00 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -277,4 +277,13 @@ USA.
 	  ""))))
 
 (define (html:comment . strings)
-  (make-xml-comment (string-append " " (apply string-append strings) " ")))
+  (make-xml-comment
+   (let* ((s (apply string-append (map canonicalize-char-data strings)))
+	  (ws (utf8-string->wide-string s))
+	  (n (wide-string-length ws)))
+     (if (fix:> n 0)
+	 (string-append
+	  (if (char-whitespace? (wide-string-ref ws 0)) "" " ")
+	  s
+	  (if (char-whitespace? (wide-string-ref ws (fix:- n 1))) "" " "))
+	 " "))))
