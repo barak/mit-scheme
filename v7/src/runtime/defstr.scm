@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.10 1989/08/09 13:41:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.11 1989/08/10 15:18:03 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -114,6 +114,7 @@ must be defined when the defstruct is evaluated.
   (if (not (list? options))
       (error "Structure options must be a list" options))
   (let ((conc-name (symbol-append name '-))
+	(default-constructor-disabled? false)
 	(boa-constructors '())
 	(keyword-constructors '())
 	(copier-name false)
@@ -146,28 +147,31 @@ must be defined when the defstruct is evaluated.
 	  ((KEYWORD-CONSTRUCTOR)
 	   (check-arguments 0 1)
 	   (set! keyword-constructors
-		 (cons (cons option
+		 (cons (list option
 			     (if (null? arguments)
-				 (list (symbol-append 'make- name))
-				 arguments))
+				 (symbol-append 'make- name)
+				 (car arguments)))
 		       keyword-constructors)))
 	  ((CONSTRUCTOR)
 	   (check-arguments 0 2)
-	   (set! boa-constructors
-		 (cons (cons option
-			     (if (null? arguments)
-				 (list (symbol-append 'make- name))
-				 arguments))
-		       boa-constructors)))
-	  ((COPIER)
+	   (let ((name (car arguments)))
+	     (if (memq name '(#F FALSE NIL))
+		 (set! default-constructor-disabled? true)
+		 (set! boa-constructors
+		       (cons (cons* option
+				    (if (null? arguments)
+					(symbol-append 'make- name)
+					(car arguments))
+				    (cdr arguments))
+			     keyword-constructors)))))	  ((COPIER)
 	   (check-arguments 0 1)
 	   (if (not (null? arguments))
 	       (set! copier-name (symbol-option (symbol-append 'copy- name)))))
-
 	  ((PREDICATE)
 	   (check-arguments 0 1)
 	   (if (not (null? arguments))
 	       (set! predicate-name (symbol-option (symbol-append name '?)))))
+
 	  ((PRINT-PROCEDURE)
 	   (check-arguments 1 1)
 	   (set! print-procedure
@@ -216,10 +220,14 @@ must be defined when the defstruct is evaluated.
 	    conc-name
 	    false
 	    (map cdr keyword-constructors)
-	    (if (and (null? boa-constructors)
-		     (null? keyword-constructors))
-		(list (list (symbol-append 'make- name)))
-		(map cdr boa-constructors))	    copier-name
+	    (cond ((or (not (null? boa-constructors))
+		       (not (null? keyword-constructors)))
+		   (map cdr boa-constructors))
+		  ((not default-constructor-disabled?)
+		   (list (list (symbol-append 'make- name))))
+		  (else
+		   '()))
+	    copier-name
 	    predicate-name
 	    (if (eq? print-procedure default-value)
 		`(,(absolute 'UNPARSER/STANDARD-METHOD) ',name)
