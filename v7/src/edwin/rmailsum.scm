@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.6 1991/08/23 18:11:02 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.7 1991/08/25 21:37:58 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -311,15 +311,19 @@ mail message is displayed in the rmail buffer.
 
 n       Move to next undeleted message, or arg messages.
 p       Move to previous undeleted message, or arg messages.
-C-n	Move to next, or forward arg messages.
-C-p	Move to previous, or previous arg messages.
+M-n	Move to next, or forward arg messages.
+M-p	Move to previous, or previous arg messages.
 j       Jump to the message at the cursor location.
 d       Delete the message at the cursor location and move to next message.
+D       Delete the message at the cursor location and move to previous message.
+M-d     Delete the message at the cursor location.
 u	Undelete this or previous deleted message.
+U	Undelete this or next deleted message.
+M-u     Undelete this message.
 q	Quit Rmail.
 x	Exit and kill the summary window.
 space   Scroll message in other window forward.
-delete  Scroll message backward.
+delete  Scroll message in other window backward.
 
 Entering this mode calls value of hook variable rmail-summary-mode-hook."
   (let ((buffer (current-buffer)))
@@ -353,26 +357,25 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 (define-key 'rmail-summary #\M-u	'rmail-summary-undelete-message)
 (define-key 'rmail-summary #\q		'rmail-summary-quit)
 (define-key 'rmail-summary #\x		'rmail-summary-exit)
+(define-key 'rmail-summary #\.		'rmail-summary-beginning-of-buffer)
+(define-key 'rmail-summary #\e		'rmail-summary-expunge)
+(define-key 'rmail-summary #\x		'rmail-summary-expunge)
+(define-key 'rmail-summary #\s		'rmail-summary-expunge-and-save)
+(define-key 'rmail-summary #\t		'rmail-summary-toggle-header)
+(define-key 'rmail-summary #\c-o	'rmail-summary-output)
+(define-key 'rmail-summary #\o		'rmail-summary-output-to-rmail-file)
 
-;;; (define-key 'rmail #\.		'beginning-of-buffer)
 ;;; (define-key 'rmail #\a		'rmail-add-label)
 ;;; (define-key 'rmail #\k		'rmail-kill-label)
-;;; (define-key 'rmail #\e		'rmail-expunge)
-;;; (define-key 'rmail #\x		'rmail-expunge)
-;;; (define-key 'rmail #\s		'rmail-expunge-and-save)
 ;;; (define-key 'rmail #\g		'rmail-get-new-mail)
-;;; (define-key 'rmail #\c-m-h	'rmail-summary)
 ;;; (define-key 'rmail #\l		'rmail-summary-by-labels)
 ;;; (define-key 'rmail #\c-m-l	'rmail-summary-by-labels)
 ;;; (define-key 'rmail #\c-m-r	'rmail-summary-by-recipients)
-;;; (define-key 'rmail #\t		'rmail-toggle-header)
 ;;; (define-key 'rmail #\m		'rmail-mail)
 ;;; (define-key 'rmail #\r		'rmail-reply)
 ;;; (define-key 'rmail #\c		'rmail-continue)
 ;;; (define-key 'rmail #\f		'rmail-forward)
 ;;; (define-key 'rmail #\m-s	'rmail-search)
-;;; (define-key 'rmail #\o		'rmail-output-to-rmail-file)
-;;; (define-key 'rmail #\c-o	'rmail-output)
 ;;; (define-key 'rmail #\i		'rmail-input)
 ;;; (define-key 'rmail #\q		'rmail-quit)
 ;;; (define-key 'rmail #\>		'rmail-last-message)
@@ -581,3 +584,67 @@ and undelete it."
   (lambda ()
     ((ref-command rmail-summary-exit))
     ((ref-command rmail-quit))))
+
+(define-command rmail-summary-beginning-of-buffer
+  "Go to top of message currently being displayed."
+  '()
+  (lambda ()
+    (select-buffer-other-window rmail-buffer)
+    ((ref-command beginning-of-buffer) 0)
+    (select-buffer-other-window rmail-summary-buffer)))
+
+(define-command rmail-summary-expunge
+  "Remove deleted messages, and recompute header lines.
+Calls whatever function is bound to #\e in RMAIL mode."
+  '()
+  (lambda ()
+    (select-buffer-other-window rmail-buffer)
+    ((command-procedure
+      (comtab-entry (mode-comtabs (current-major-mode)) #\e)))
+    ((ref-command rmail-summary))))
+
+(define-command rmail-summary-expunge-and-save
+  "Expunge and save RMAIL file.
+Calls whatever function is bound to #\s in RMAIL mode."
+  '()
+  (lambda ()
+    (select-buffer-other-window rmail-buffer)
+    ((command-procedure
+      (comtab-entry (mode-comtabs (current-major-mode)) #\s)))
+    ((ref-command rmail-summary))))
+
+(define-command rmail-summary-toggle-header
+  "Toggle between pruned and full header for message.
+Calls whatever function is bound to #\t in RMAIL mode."
+  '()
+  (lambda ()
+    (select-buffer-other-window rmail-buffer)
+    ((command-procedure
+      (comtab-entry (mode-comtabs (current-major-mode)) #\t)))
+    (select-buffer-other-window rmail-summary-buffer)))
+
+(define-command rmail-summary-output
+  "Append this message to Unix mail file named FILE-NAME.
+Calls whatever function is bound to #\c-o in RMAIL mode."
+  '()
+  (lambda ()
+    (select-buffer-other-window rmail-buffer)
+    (let ((the-command
+	   (comtab-entry (mode-comtabs (current-major-mode)) #\c-o)))
+      (apply (command-procedure the-command)
+	     ((access interactive-arguments (->environment '(edwin command-reader))) 
+	      the-command false)))
+    ((ref-command rmail-summary))))
+
+(define-command rmail-summary-output-to-rmail-file
+  "Append this message to RMAIL file named FILE-NAME.
+Calls whatever function is bound to #\o in RMAIL mode."
+  '()
+  (lambda ()
+    (select-buffer-other-window rmail-buffer)
+    (let ((the-command
+	   (comtab-entry (mode-comtabs (current-major-mode)) #\o)))
+      (apply (command-procedure the-command)
+	     ((access interactive-arguments (->environment '(edwin command-reader))) 
+	      the-command false)))
+    ((ref-command rmail-summary))))
