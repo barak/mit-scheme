@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.5 2000/12/08 19:12:36 cph Exp $
+# $Id: Makefile.in,v 1.6 2000/12/08 19:16:58 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -68,10 +68,12 @@ EDOPTS = eystep manual midas nntp pasmod print pwedit pwparse snr sort \
 	 techinfo telnet tximod verilog vhdl webster
 EODIR = $(EDDIR)/autoload
 
-all:
+all: compile
+	$(srcdir)/etc/build-bands.sh
+
+compile:
 	( cd microcode && $(MAKE) $@ )
 	scheme -compiler -heap 4000 < $(srcdir)/etc/compile.scm
-	$(srcdir)/etc/build-bands.sh
 
 mostlyclean clean distclean maintainer-clean:
 	$(srcdir)/Clean.sh $@ $(SUBDIRS)
@@ -79,8 +81,10 @@ mostlyclean clean distclean maintainer-clean:
 tags TAGS:
 	$(srcdir)/Tags.sh $(SUBDIRS)
 
-install: all
+install: compile
 	( cd microcode; $(MAKE) $@ )
+
+	$(srcdir)/etc/build-bands.sh
 
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC
@@ -125,4 +129,5 @@ install: all
 	$(INSTALL_DATA) imail/imail.bld $(DESTDIR)$(AUXDIR)/imail/.
 	$(INSTALL_DATA) $(srcdir)/imail/load.scm $(DESTDIR)$(AUXDIR)/imail/.
 
-.PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install
+.PHONY: all compile mostlyclean clean distclean maintainer-clean
+.PHONY: tags TAGS install
