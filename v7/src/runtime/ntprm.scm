@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.14 1997/11/11 13:20:21 cph Exp $
+$Id: ntprm.scm,v 1.15 1997/11/12 08:40:05 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -241,43 +241,86 @@ MIT in each case. |#
 
 )				; End LET
 
-(define (current-home-directory)
-  (or (nt/current-home-directory)
-      (user-home-directory (current-user-name))))
+(define current-user-name)
+(define current-home-directory)
+(define user-home-directory)
+(letrec
+    ((trydir
+      (lambda (directory)
+	(and directory
+	     (file-directory? directory)
+	     (pathname-as-directory directory))))
+     (%current-user-name
+      (lambda ()
+	(or (get-environment-variable "USERNAME")
+	    (get-environment-variable "USER"))))
+     (%current-home-directory
+      (lambda ()
+	(or (let ((homedrive (get-environment-variable "HOMEDRIVE"))
+		  (homepath (get-environment-variable "HOMEPATH")))
+	      (and homedrive
+		   homepath
+		   (trydir (merge-pathnames homepath homedrive))))
+	    (trydir (get-environment-variable "HOME")))))
+     (%users-directory
+      (lambda ()
+	(trydir (get-environment-variable "USERDIR"))))
+     (%system-root-directory
+      (lambda ()
+	(let ((sysdrive (get-environment-variable "SYSTEM_DRIVE")))
+	  (if (not sysdrive)
+	      (error "Unable to find Windows system drive."))
+	  (trydir (string-append sysdrive "\\"))))))
 
-(define (current-user-name)
-  (or (get-environment-variable "USERNAME")
-      (get-environment-variable "USER")
-      (let ((homedir (nt/current-home-directory)))
-	(and homedir
-	     (pathname-name
-	      (directory-pathname-as-file (directory-pathname homedir)))))
-      (error "Unable to determine current user name.")))
+  (set! current-user-name
+	(lambda ()
+	  (or (%current-user-name)
+	      ;; If the home directory is defined, use the last part of the
+	      ;; path as the user's name.  If the home directory is the root
+	      ;; of a drive, this won't do anything.
+	      (let ((homedir (%current-home-directory)))
+		(and homedir
+		     (pathname-name (directory-pathname-as-file homedir))))
+	      (error "Unable to determine current user name."))))
 
-(define (user-home-directory user-name)
-  (let ((try
-	 (lambda (directory)
-	   (pathname-as-directory
-	    (merge-pathnames user-name directory)))))
-    (cond ((get-environment-variable "USERDIR")
-	   => (lambda (userdir)
-		(try (pathname-as-directory (merge-pathnames userdir)))))
-	  ((nt/current-home-directory)
-	   => (lambda (homedir)
-		(if (string=? user-name (current-user-name))
-		    homedir
-		    (try (directory-pathname-as-file homedir)))))
-	  (else
-	   (error "Can't find user's home directory:" user-name)))))
+  (set! current-home-directory
+	(lambda ()
+	  (or (%current-home-directory)
+	      (let ((user-name (%current-user-name)))
+		;; If home directory not defined, look for directory
+		;; with user's name in users directory and in root
+		;; directory of system drive.  If still nothing, use
+		;; root directory of system drive.
+		(or (let ((usersdir (%users-directory)))
+		      (and usersdir
+			   (trydir (merge-pathnames user-name usersdir))))
+		    (let ((rootdir (%system-root-directory)))
+		      (or (trydir (merge-pathnames user-name rootdir))
+			  rootdir)))))))
 
-(define (nt/current-home-directory)
-  (let ((homedrive (get-environment-variable "HOMEDRIVE"))
-	(homepath (get-environment-variable "HOMEPATH"))
-	(home (get-environment-variable "HOME")))
-    (and (or homepath home)
-	 (pathname-as-directory
-	  (merge-pathnames (or homepath home) homedrive)))))
-
+  (set! user-home-directory
+	(lambda (user-name)
+	  (let ((homedir (%current-home-directory)))
+	    ;; If USER-NAME is current user, use current home
+	    ;; directory.
+	    (or (let ((user-name* (%current-user-name)))
+		  (and user-name*
+		       (string=? user-name user-name*)
+		       homedir))
+		;; Look for USER-NAME in users directory.
+		(let ((usersdir (%users-directory)))
+		  (and usersdir
+		       (trydir (merge-pathnames user-name usersdir))))
+		;; Look for USER-NAME in same directory as current
+		;; user's home directory.
+		(and homedir
+		     (trydir (merge-pathnames user-name homedir)))
+		;; Look for USER-NAME in root directory of system
+		;; drive.  Failing that, use root directory itself.
+		(let ((rootdir (%system-root-directory)))
+		  (or (trydir (merge-pathnames user-name rootdir))
+		      rootdir)))))))
+
 (define dos/user-home-directory user-home-directory)
 (define dos/current-user-name current-user-name)
 (define dos/current-home-directory current-home-directory)
