@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.133 1989/04/15 00:49:07 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.134 1989/04/20 08:14:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -415,42 +415,96 @@ If a file with the new name already exists, confirmation is requested first."
 
 (define (prompt-for-filename prompt default require-match?)
   (let ((default (pathname-directory-path default)))
-    (let ((pathname-completions
-	   (lambda (string)
-	     (let ((pathname
-		    (merge-pathnames (prompt-string->pathname string)
-				     default)))
-	       (let ((directory (pathname-directory-string pathname)))
-		 (map (lambda (filename)
-			;; This is valid on all the operating systems
-			;; I can think of, and is faster than doing
-			;; pathname operations.  Hopefully it will not
-			;; cause a problem later.
-			(string-append directory filename))
-		      (os/directory-list-completions
-		       directory
-		       (pathname-name-string pathname))))))))
-      (prompt-for-completed-string
-       prompt
-       (pathname-directory-string default)
-       'INSERTED-DEFAULT
-       (lambda (string if-unique if-not-unique if-not-found)
-	 (let ((filenames (pathname-completions string)))
-	   (cond ((null? filenames)
-		  (if-not-found))
-		 ((null? (cdr filenames))
-		  (if-unique (car filenames)))
-		 (else
-		  (let ((string (string-greatest-common-prefix filenames)))
+    (prompt-for-completed-string
+     prompt
+     (pathname-directory-string default)
+     'INSERTED-DEFAULT
+     (lambda (string if-unique if-not-unique if-not-found)
+       (define (loop directory filenames)
+	 (let ((unique-case
+		(lambda (filenames)
+		  (let ((filename
+			 (os/make-filename directory (car filenames))))
+		    (if (os/file-directory? filename)
+			(let ((directory (os/filename-as-directory filename)))
+			  (let ((filenames (os/directory-list directory)))
+			    (if (null? filenames)
+				(if-unique directory)
+				(loop directory filenames))))
+			(if-unique filename)))))
+	       (non-unique-case
+		(lambda (filenames*)
+		  (let ((string (string-greatest-common-prefix filenames*)))
 		    (if-not-unique
-		     string
+		     (os/make-filename directory string)
 		     (lambda ()
-		       (list-transform-positive filenames
-			 (lambda (filename)
-			   (string-prefix? string filename))))))))))
-       pathname-completions
-       file-exists?
-       require-match?))))
+		       (canonicalize-filename-completions
+			directory
+			(list-transform-positive filenames
+			  (lambda (filename)
+			    (string-prefix? string filename))))))))))
+	   (if (null? (cdr filenames))
+	       (unique-case filenames)
+	       (let ((filtered-filenames
+		      (list-transform-negative filenames
+			(lambda (filename)
+			  (completion-ignore-filename?
+			   (os/make-filename directory filename))))))
+		 (cond ((null? filtered-filenames)
+			(non-unique-case filenames))
+		       ((null? (cdr filtered-filenames))
+			(unique-case filtered-filenames))
+		       (else
+			(non-unique-case filtered-filenames)))))))
+       (let ((pathname
+	      (merge-pathnames (prompt-string->pathname string) default)))
+	 (let ((directory (pathname-directory-string pathname))
+	       (prefix (pathname-name-string pathname)))
+	   (cond ((not (os/file-directory? directory))
+		  (if-not-found))
+		 ((string-null? prefix)
+		  ;; This optimization assumes that all directories
+		  ;; contain at least one file.
+		  (if-not-unique directory
+				 (lambda ()
+				   (canonicalize-filename-completions
+				    directory
+				    (os/directory-list directory)))))
+		 (else
+		  (let ((filenames
+			 (os/directory-list-completions directory prefix)))
+		    (if (null? filenames)
+			(if-not-found)
+			(loop directory filenames))))))))
+     (lambda (string)
+       (let ((pathname
+	      (merge-pathnames (prompt-string->pathname string) default)))
+	 (let ((directory (pathname-directory-string pathname)))
+	   (canonicalize-filename-completions
+	    directory
+	    (os/directory-list-completions
+	     directory
+	     (pathname-name-string pathname))))))
+     file-exists?
+     require-match?)))
+
+(define (canonicalize-filename-completions directory filenames)
+  (map (lambda (filename)
+	 (if (os/file-directory? (os/make-filename directory filename))
+	     (os/filename-as-directory filename)
+	     filename))
+       (sort filenames string<?)))
+
+(define (completion-ignore-filename? filename)
+  (and (not (os/file-directory? filename))
+       (there-exists? (ref-variable completion-ignored-extensions)
+	 (lambda (extension)
+	   (and (string? extension)
+		(string-suffix? extension filename))))))
+
+(define-variable completion-ignored-extensions
+  "*Completion ignores filenames ending in any string in this list."
+  (os/completion-ignored-extensions))
 
 (define (prompt-for-input-truename prompt default)
   (pathname->input-truename
