@@ -1,7 +1,41 @@
-;;; -*- Scheme -*-
+#| -*- Scheme -*-
+
+$Id: ed-ffi.scm,v 1.6 1993/08/30 19:50:01 ziggy Exp $
+
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; Edwin buffer packaging info
 
 (declare (usual-integrations))
-
+
 (standard-scheme-find-file-initialization
  '#(
     ("advice"	(runtime advice)
@@ -10,6 +44,8 @@
 		syntax-table/system-internal)
     ("bitstr"	()
 		syntax-table/system-internal)
+    ("binut"	(runtime pc-sample)
+		syntax-table/system-internal)
     ("boole"	()
 		syntax-table/system-internal)
     ("boot"	()
@@ -17,6 +53,8 @@
     ("char"	(runtime character)
 		syntax-table/system-internal)
     ("chrset"	(runtime character-set)
+		syntax-table/system-internal)
+    ("coblprof" (runtime pc-sample  code-block-profiling)
 		syntax-table/system-internal)
     ("codwlk"	(runtime scode-walker)
 		syntax-table/system-internal)
@@ -76,6 +114,7 @@
 		syntax-table/system-internal)
     ("hashtb"	(runtime hash-table)
 		syntax-table/system-internal)
+
     ("histry"	(runtime history)
 		syntax-table/system-internal)
     ("infstr"	(runtime compiler-info)
@@ -87,6 +126,8 @@
     ("intrpt"	(runtime interrupt-handler)
 		syntax-table/system-internal)
     ("io"	(runtime primitive-io)
+		syntax-table/system-internal)
+    ("iproprof" (runtime pc-sample interp-proc-profiling)
 		syntax-table/system-internal)
     ("krypt"	(runtime krypt)
 		syntax-table/system-internal)
@@ -118,6 +159,10 @@
 		syntax-table/system-internal)
     ("pathnm"	(runtime pathname)
 		syntax-table/system-internal)
+    ("pcsample" (runtime pc-sample)
+		syntax-table/system-internal)
+    ("pcsdisp"  (runtime pc-sample display)
+		syntax-table/system-internal)
     ("poplat"	(runtime population)
 		syntax-table/system-internal)
     ("port"	(runtime port)
@@ -148,6 +193,7 @@
 		syntax-table/system-internal)
     ("scode"	(runtime scode)
 		syntax-table/system-internal)
+
     ("scomb"	(runtime scode-combinator)
 		syntax-table/system-internal)
     ("sdata"	(runtime scode-data)
@@ -222,3 +268,5 @@
 		syntax-table/system-internal)
     ("xeval"	(runtime extended-scode-eval)
 		syntax-table/system-internal)))
+
+;;; fini
