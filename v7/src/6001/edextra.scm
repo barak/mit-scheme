@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.21 1996/09/28 18:29:33 cph Exp $
+$Id: edextra.scm,v 1.22 1997/12/23 05:16:06 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -48,7 +48,11 @@ MIT in each case. |#
 	  (standard-login-initialization))))
 
 (define (standard-login-initialization)
-  (set! student-root-directory "~u6001/")
+  (set! student-root-directory
+	(let ((6001-dir (get-environment-variable "MITSCHEME_6001_DIRECTORY")))
+	  (if (and 6001-dir (file-directory? 6001-dir))
+	      (pathname-as-directory 6001-dir)
+	      "~u6001/")))
   (set! student-work-directory "~/work/")
   (if (not (file-directory? student-root-directory))
       (set! student-root-directory (user-homedir-pathname)))
