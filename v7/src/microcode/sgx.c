@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx.c,v 1.4 1988/08/15 20:33:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx.c,v 1.5 1989/03/01 00:16:30 gjs Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -93,11 +93,11 @@ x_error_handler (display, error_event)
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-DISPLAY", Prim_x_graphics_open_display, 1, 1,
-  "Opens display DISPLAY-NAME.  DISPLAY-NAME may be #F, in which case the
-default display is opened (based on the DISPLAY environment
-variable).  Returns #T if the open succeeds, #F otherwise.
-
-This primitive is additionally useful for determining whether the
+  "Opens display DISPLAY-NAME.  DISPLAY-NAME may be #F, in which case the\n\
+default display is opened (based on the DISPLAY environment\n\
+variable).  Returns #T if the open succeeds, #F otherwise.\n\
+\n\
+This primitive is additionally useful for determining whether the\n\
 X server is running on the named display.")
 {
   PRIMITIVE_HEADER (1);
