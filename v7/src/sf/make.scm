@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 4.15 1990/10/16 21:07:02 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 4.16 1991/04/20 06:21:12 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,4 +39,4 @@ MIT in each case. |#
 (package/system-loader "sf" '() 'QUERY)
 ((package/reference (find-package '(SCODE-OPTIMIZER))
 		    'USUAL-INTEGRATIONS/CACHE!))
-(add-system! (make-system "SF" 4 15 '()))
+(add-system! (make-system "SF" 4 16 '()))
