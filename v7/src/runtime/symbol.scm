@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.13 2003/09/24 19:21:58 cph Exp $
+$Id: symbol.scm,v 1.14 2004/01/15 20:59:12 cph Exp $
 
-Copyright 1992,1993,2001,2003 Massachusetts Institute of Technology
+Copyright 1992,1993,2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -62,6 +62,10 @@ USA.
   ;; is created.
   (or ((ucode-primitive find-symbol) string)
       ((ucode-primitive string->symbol) (string-copy string))))
+
+(define (%string->symbol string)
+  (or ((ucode-primitive find-symbol) string)
+      ((ucode-primitive string->symbol) string)))
 
 (define (substring->symbol string start end)
   ((ucode-primitive string->symbol) (substring string start end)))
