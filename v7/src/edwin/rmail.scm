@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmail.scm,v 1.68 2000/03/23 03:19:16 cph Exp $
+;;; $Id: rmail.scm,v 1.69 2000/03/23 06:33:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -1576,7 +1576,7 @@ buffer visiting that file."
 	       (fetch-first-field "from" start (header-end start end)))
 	      "unknown")
 	  " "
-	  (universal-time->ctime-string (get-universal-time))
+	  (universal-time->local-ctime-string (get-universal-time))
 	  "\n")
 	 start)))
     (define-variable-local-value! buffer
