@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.80 2000/05/23 02:57:21 cph Exp $
+;;; $Id: imail-imap.scm,v 1.81 2000/05/23 04:23:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -309,28 +309,33 @@
 				       (or (imap-url-port url) "imap2")
 				       #f
 				       "\n")))
-	  (set-imap-connection-greeting!
-	   connection
-	   (let ((response (imap:read-server-response port)))
-	     (if (imap:response:ok? response)
-		 (imap:response:response-text-string response)
-		 response)))
-	  (set-imap-connection-port! connection port)
-	  (reset-imap-connection connection)
-	  (if (not (memq 'IMAP4REV1 (imap:command:capability connection)))
-	      (begin
-		(close-imap-connection connection)
-		(error "Server doesn't support IMAP4rev1:" url)))
-	  (let ((response
-		 (imail-call-with-pass-phrase (imap-connection-url connection)
-		   (lambda (pass-phrase)
-		     (imap:command:login connection
-					 (imap-url-user-id url)
-					 pass-phrase)))))
-	    (if (imap:response:no? response)
-		(begin
-		  (close-imap-connection connection)
-		  (error "Unable to log in:" response)))))
+	  (let ((finished? #f))
+	    (dynamic-wind
+	     (lambda () unspecific)
+	     (lambda ()
+	       (set-imap-connection-port! connection port)
+	       (set-imap-connection-greeting!
+		connection
+		(let ((response (imap:read-server-response port)))
+		  (if (imap:response:ok? response)
+		      (imap:response:response-text-string response)
+		      response)))
+	       (reset-imap-connection connection)
+	       (if (not (memq 'IMAP4REV1 (imap:command:capability connection)))
+		   (error "Server doesn't support IMAP4rev1:" url))
+	       (let ((response
+		      (imail-call-with-pass-phrase
+		       (imap-connection-url connection)
+		       (lambda (pass-phrase)
+			 (imap:command:login connection
+					     (imap-url-user-id url)
+					     pass-phrase)))))
+		 (if (imap:response:no? response)
+		     (error "Unable to log in:" response)))
+	       (set! finished? #t))
+	     (lambda ()
+	       (if (not finished?)
+		   (close-imap-connection connection))))))
 	#t)))
 
 (define (test-imap-connection-open connection)
