@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.224 1998/06/29 04:10:43 cph Exp $
+$Id: edwin.pkg,v 1.225 1998/08/31 04:14:38 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -103,6 +103,7 @@ MIT in each case. |#
 	 "notify"			; mode-line notifications
 	 "outline"			; outline minor mode
 	 "sort"				; sorting commands
+	 "webster"			; access a Webster server
 	 )
 
   (parent ())

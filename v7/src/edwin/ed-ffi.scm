@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.43 1998/06/29 04:10:39 cph Exp $
+$Id: ed-ffi.scm,v 1.44 1998/08/31 04:14:51 cph Exp $
 
 Copyright (c) 1990-98 Massachusetts Institute of Technology
 
@@ -326,6 +326,8 @@ of that license should have been included along with this file.
     ("verilog"	(edwin verilog)
 		edwin-syntax-table)
     ("vhdl"	(edwin vhdl)
+		edwin-syntax-table)
+    ("webster"	(edwin)
 		edwin-syntax-table)
     ("win32"	(edwin screen win32)
 		edwin-syntax-table)

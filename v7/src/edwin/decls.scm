@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.60 1998/06/29 04:10:34 cph Exp $
+$Id: decls.scm,v 1.61 1998/08/31 04:14:47 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -223,6 +223,7 @@ MIT in each case. |#
 		"vc"
 		"verilog"
 		"vhdl"
+		"webster"
 		"wincom"
 		"winout"
 		"xcom"

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.32 1997/10/22 05:10:38 cph Exp $
+;;;	$Id: loadef.scm,v 1.33 1998/08/31 04:14:31 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -286,6 +286,54 @@ is open the that server, its buffer is selected.")
   "Extra indent for lines not starting new statements."
   2
   exact-nonnegative-integer?)
+
+;;;; Webster
+
+(define-library 'WEBSTER
+  '("webster" (EDWIN)))
+
+(define-autoload-major-mode webster read-only "Webster" 'WEBSTER
+  "Major mode for interacting with webster server.
+Commands:
+
+\\[webster-define]	look up the definition of a word
+\\[webster-spellings]	look up possible correct spellings for a word
+\\[webster-define]	look up possible endings for a word
+\\[webster-quit]	close connection to the Webster server
+
+Use webster-mode-hook for customization.")
+
+(define-autoload-command 'webster 'WEBSTER
+  "Look up a word in Webster's dictionary.")
+
+(define-autoload-command 'webster-define 'WEBSTER
+  "Look up a word in Webster's dictionary.")
+
+(define-autoload-command 'webster-endings 'WEBSTER
+  "Look up possible endings for a word in Webster's dictionary.")
+
+(define-autoload-command 'webster-spellings 'WEBSTER
+  "Look up possible correct spellings for a word in Webster's dictionary.")
+
+(define-variable webster-server
+  "Host name of a webster server, specified as a string."
+  #f
+  string-or-false?)
+
+(define-variable webster-port
+  "TCP port of webster server on webster-server, specified as an integer.
+This is usually 103 or 2627."
+  103
+  exact-nonnegative-integer?)
+
+(define-variable webster-mode-hook
+  "Hook to be run by webster-mode, after everything else."
+  (make-event-distributor))
+
+(define-variable webster-buffer-name
+  "The name to use for webster interaction buffer."
+  "*webster*"
+  string?)
 
 ;;;; DOS-specific commands
 
