@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.14 1993/10/19 08:17:39 cph Exp $
+$Id: hashtb.scm,v 1.15 1993/10/20 21:48:27 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -786,7 +786,7 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! address-hash-tables '())
   (add-primitive-gc-daemon! mark-address-hash-tables!)
-  (set! make-eq-hash-table (weak-hash-table/constructor eq-hash-mod eq?))
+  (set! make-eq-hash-table (weak-hash-table/constructor eq-hash-mod eq? #t))
   ;; EQV? hash tables are weak except for numbers and #F.  It's
   ;; important to keep numbers in the table, and handling #F specially
   ;; makes it easier to deal with weak pairs.
@@ -807,13 +807,14 @@ MIT in each case. |#
 				(lambda (entry)
 				  (system-pair-cdr entry))
 				(lambda (entry datum)
-				  (system-pair-set-cdr! entry datum))))
+				  (system-pair-set-cdr! entry datum))
+				#t))
   (set! make-equal-hash-table
-	(strong-hash-table/constructor equal-hash-mod equal?))
+	(strong-hash-table/constructor equal-hash-mod equal? #t))
   (set! make-symbol-hash-table make-eq-hash-table)
   (set! make-object-hash-table make-eqv-hash-table)
   (set! make-string-hash-table
-	(strong-hash-table/constructor string-hash-mod string=?))
+	(strong-hash-table/constructor string-hash-mod string=? #f))
   unspecific)
 
 (define (check-arg object default predicate description procedure)
