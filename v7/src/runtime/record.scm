@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.33 2003/03/07 18:32:38 cph Exp $
+$Id: record.scm,v 1.34 2003/03/07 19:08:28 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -137,7 +137,7 @@ USA.
 	   (default-record (%make-record (fix:+ 1 n) #f))
 	   (record-type
 	    (%record record-type-type-tag
-		     (->string type-name)
+		     (->type-name type-name)
 		     names
 		     #f
 		     default-record))
@@ -398,10 +398,17 @@ USA.
 					(error:no-such-slot record-type name)
 					error?))))))
 
-(define (->string object)
-  (if (string? object)
-      object
-      (write-to-string object)))
+(define (->type-name object)
+  (let* ((string
+	  (if (string? object)
+	      object
+	      (write-to-string object)))
+	 (n (string-length string)))
+    (if (and (fix:> n 2)
+	     (char=? (string-ref string 0) #\<)
+	     (char=? (string-ref string (fix:- n 1)) #\>))
+	(substring string 1 (fix:- n 1))
+	string)))
 
 (define-integrable (guarantee-list-of-unique-symbols object procedure)
   (if (not (list-of-unique-symbols? object))
