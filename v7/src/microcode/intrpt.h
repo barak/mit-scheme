@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intrpt.h,v 1.9 1992/09/11 21:59:03 cph Exp $
+$Id: intrpt.h,v 1.10 1992/09/14 20:34:20 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -36,11 +36,15 @@ MIT in each case. */
 
 /* The interrupt control registers. */
 
-#define IntCode ((long) (Regs[REGBLOCK_INT_CODE])) /* interrupts requesting */
-#define IntEnb ((long) (Regs[REGBLOCK_INT_MASK])) /* interrupts enabled */
+/* interrupts requesting */
+#define IntCode ((long) (Registers[REGBLOCK_INT_CODE]))
+#define set_IntCode(code)						\
+  (Registers[REGBLOCK_INT_CODE]) = ((SCHEME_OBJECT) (code))
 
-#define set_IntCode(code) (Regs[REGBLOCK_INT_CODE]) = ((SCHEME_OBJECT) (code))
-#define set_IntEnb(mask) (Regs[REGBLOCK_INT_MASK]) = ((SCHEME_OBJECT) (mask))
+/* interrupts enabled */
+#define IntEnb ((long) (Registers[REGBLOCK_INT_MASK]))
+#define set_IntEnb(mask)						\
+  (Registers[REGBLOCK_INT_MASK]) = ((SCHEME_OBJECT) (mask))
 
 /* Interrupt bits -- scanned from LSB (1) to MSB (16) */
 
