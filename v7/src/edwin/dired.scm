@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.189 2001/06/04 17:12:33 cph Exp $
+;;; $Id: dired.scm,v 1.190 2001/12/19 01:42:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -110,14 +110,8 @@ Space and Rubout can be used to move down and up by lines.
 (define-key 'dired #\M-rubout 'dired-unmark-all-files)
 (define-key 'dired #\space 'dired-next-line)
 
-(let-syntax ((define-function-key
-               (macro (mode key command)
-                 (let ((token (if (pair? key) (car key) key)))
-                   `(if (not (lexical-unreferenceable? (the-environment)
-                                                       ',token))
-                        (define-key ,mode ,key ,command))))))
-  (define-function-key 'dired down 'dired-next-line)
-  (define-function-key 'dired up 'dired-previous-line))
+(define-key 'dired down 'dired-next-line)
+(define-key 'dired up 'dired-previous-line)
 
 (define-command dired
   "\"Edit\" directory DIRNAME--delete, rename, print, etc. some files in it.
