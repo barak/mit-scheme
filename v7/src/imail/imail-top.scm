@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.200 2000/06/29 17:52:18 cph Exp $
+;;; $Id: imail-top.scm,v 1.201 2000/06/29 17:54:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1717,16 +1717,15 @@ Negative argument means search in reverse."
 		      (if (and index (< index (folder-length folder)))
 			  (get-message folder index)
 			  (last-message folder)))))
+	       ((exact-nonnegative-integer? selector)
+		(if (< selector (folder-length folder))
+		    (get-message folder selector)
+		    (error:bad-range-argument selector 'SELECT-MESSAGE)))
 	       ((not selector)
 		(last-message folder))
-	       ((and (exact-integer? selector)
-		     (<= 0 selector)
-		     (< selector (folder-length folder)))
-		(get-message folder selector))
 	       (else
 		(error:wrong-type-argument selector "message selector"
-					   'SELECT-MESSAGE))))
-	(raw? (if (default-object? raw?) #f raw?)))
+					   'SELECT-MESSAGE)))))
     (if (or (if (default-object? force?) #f force?)
 	    (not (eq? message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN))))
 	(begin
@@ -1740,17 +1739,17 @@ Negative argument means search in reverse."
 	      (lambda ()
 		(if message
 		    (begin
-		      (store-property! message 'RAW? raw?)
+		      (store-property! message 'RAW?
+				       (if (default-object? raw?) #f raw?))
 		      (insert-message message #f 0 mark))
 		    (insert-string "[This folder has no messages in it.]"
 				   mark))))
 	    (mark-temporary! mark))
 	  (set-buffer-point! buffer (buffer-start buffer))
 	  (buffer-not-modified! buffer)))
-    (if message
-	(message-seen message))
+    (if message (message-seen message))
     (folder-event folder 'SELECT-MESSAGE message)))
-
+
 (define (selected-folder #!optional error? buffer)
   (or (let ((buffer
 	     (chase-imail-buffer
