@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.44 1990/09/17 19:54:34 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.45 1990/11/27 19:13:10 cph Rel $
  *
  * This file contains symbol lookup and modification routines.  See
  * Hal Abelson for a paper describing and justifying the algorithm.
@@ -2081,7 +2081,7 @@ SCHEME_OBJECT *shadowed_value_cell = ((SCHEME_OBJECT *) NULL);
 
 #ifndef SPACE_PER_LINK		/* So it can be overriden from config.h */
 #define SPACE_PER_LINK		10
-#endif SPACE_PER_LINK
+#endif
 
 /* The spaces are 0 because the pairs are reused!  If that ever changes,
    they should all become SPACE_PER_ENTRY + curent value.

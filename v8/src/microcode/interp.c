@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.59 1990/11/21 07:04:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.60 1990/11/27 19:13:48 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -899,7 +899,7 @@ lookup_end_restart:
 	  break;
       }
 
-#else No_In_Line_Lookup
+#else /* No_In_Line_Lookup */
 
       Set_Time_Zone(Zone_Lookup);
       temp = Lex_Ref(Fetch_Env(), Fetch_Expression());
@@ -907,7 +907,7 @@ lookup_end_restart:
       if (temp == PRIM_DONE)
 	goto Pop_Return;
 
-#endif No_In_Line_Lookup
+#endif /* No_In_Line_Lookup */
 
       /* Back out of the evaluation. */
 
@@ -1260,7 +1260,7 @@ external_assignment_return:
 
 /* Interpret(), continued */
 
-#else No_In_Line_Lookup
+#else /* No_In_Line_Lookup */
 
       value = Val;
       Set_Time_Zone(Zone_Lookup);
@@ -1276,7 +1276,7 @@ external_assignment_return:
 	break;
       }
 
-#endif No_In_Line_Lookup
+#endif /* No_In_Line_Lookup */
 
       Set_Time_Zone(Zone_Working);
       Save_Env();

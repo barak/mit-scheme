@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.35 1990/09/08 00:10:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.36 1990/11/27 19:13:28 cph Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -495,11 +495,11 @@ if ((ADDRESS_CONSTANT_P (OBJECT_ADDRESS (Old_Pointer))) &&		\
     *Where++ = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0));		\
 }
 
-#else not FLOATING_ALIGNMENT
+#else /* not FLOATING_ALIGNMENT */
 
 #define HEAP_BUFFER_SPACE		 (TRAP_MAX_IMMEDIATE + 1)
 
 #define INITIAL_ALIGN_FLOAT(Where)
 #define ALIGN_FLOAT(Where)
 
-#endif FLOATING_ALIGNMENT
+#endif /* not FLOATING_ALIGNMENT */
