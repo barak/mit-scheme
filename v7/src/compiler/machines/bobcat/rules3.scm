@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.16 1987/11/21 18:46:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.17 1987/12/04 06:16:41 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,6 +36,13 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define-rule statement
+  (RETURN)
+  (disable-frame-pointer-offset!
+   (LAP ,@(clear-map!)
+	(CLR B (@A 7))
+	(RTS))))
+
 ;;;; Invocations
 
 (define-rule statement
@@ -102,17 +109,6 @@ MIT in each case. |#
 	  (JMP ,entry:compiler-lookup-apply)))))
 
 (define-rule statement
-  (INVOCATION:PRIMITIVE (? frame-size) (? prefix) (? continuation)
-			(? primitive))
-  (disable-frame-pointer-offset!
-   (LAP ,@(generate-invocation-prefix prefix '())
-	,@(if (eq? primitive compiled-error-procedure)
-	      (LAP ,(load-dnw frame-size 0)
-		   (JMP ,entry:compiler-error))
-	      (LAP (MOV L (@PCR ,(constant->label primitive)) (D 6))
-		   (JMP ,entry:compiler-primitive-apply))))))
-
-(define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? prefix) (? continuation) (? name))
   (disable-frame-pointer-offset!
    (LAP ,@(generate-invocation-prefix prefix '())
@@ -126,6 +122,28 @@ MIT in each case. |#
 	(MOV L (D 1) (A 0))
 	(JMP (@A 0)))))
 
+(define-rule statement
+  (INVOCATION:PRIMITIVE (? frame-size) (? prefix) (? continuation)
+			(? primitive))
+  (disable-frame-pointer-offset!
+   (LAP ,@(generate-invocation-prefix prefix '())
+	,@(let ((arity (primitive-procedure-arity primitive)))
+	    (cond ((eq? primitive compiled-error-procedure)
+		   (LAP ,(load-dnw frame-size 0)
+			(JMP ,entry:compiler-error)))
+		  ((not (negative? arity))
+		   (LAP (MOV L (@PCR ,(constant->label primitive)) (D 6))
+			(JMP ,entry:compiler-primitive-apply)))
+		  ((= arity -1)
+		   (LAP (MOV L (& ,frame-size) ,reg:lexpr-primitive-arity)
+			(MOV L (@PCR ,(constant->label primitive)) (D 6))
+			(JMP ,entry:compiler-primitive-apply)))
+		  (else
+		   ;; Unknown primitive arity.  Go through apply.
+		   (LAP ,(load-dnw frame-size 0)
+			(MOV L (@PCR ,(constant->label primitive)) (@-A 7))
+			(JMP ,entry:compiler-apply))))))))
+
 (let-syntax
     ((define-special-primitive-invocation
        (macro (name)
@@ -152,13 +170,6 @@ MIT in each case. |#
   (define-special-primitive-invocation zero?)
   (define-special-primitive-invocation positive?)
   (define-special-primitive-invocation negative?))
-
-(define-rule statement
-  (RETURN)
-  (disable-frame-pointer-offset!
-   (LAP ,@(clear-map!)
-	(CLR B (@A 7))
-	(RTS))))
 
 (define (generate-invocation-prefix prefix needed-registers)
   (let ((clear-map (clear-map!)))
