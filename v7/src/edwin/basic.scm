@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.116 1991/11/04 20:50:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.117 1992/01/06 21:50:40 markf Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -272,19 +272,25 @@ For a normal exit, you should use \\[exit-recursive-edit], NOT this command."
 With argument, saves visited file first."
   "P"
   (lambda (argument)
-    (if argument (save-buffer (current-buffer) false))
-    (set! edwin-finalization
-	  (lambda ()
-	    (set! edwin-finalization false)
-	    (quit)
-	    (edit)))
-    ((ref-command suspend-edwin))))
+    (if (prompt-for-yes-or-no? "Suspend Scheme")
+	(begin
+	  (if argument (save-buffer (current-buffer) false))
+	  (set! edwin-finalization
+		(lambda ()
+		  (set! edwin-finalization false)
+		  (quit)
+		  (edit)))
+	  (abort-edwin)))))
 
 (define-command suspend-edwin
   "Stop Edwin and return to Scheme."
   ()
   (lambda ()
-    (editor-abort *the-non-printing-object*)))
+    (if (prompt-for-yes-or-no? "Suspend Edwin")
+	(abort-edwin))))
+
+(define (abort-edwin)
+  (editor-abort *the-non-printing-object*))
 
 (define-command save-buffers-kill-scheme
   "Offer to save each buffer, then kill Scheme.
@@ -298,7 +304,7 @@ With prefix arg, silently save all file-visiting buffers, then kill."
 		(lambda ()
 		  (set! edwin-finalization false)
 		  (%exit)))
-	  ((ref-command suspend-edwin))))))
+	  (abort-edwin)))))
 
 (define-command save-buffers-kill-edwin
   "Offer to save each buffer, then kill Edwin, returning to Scheme.
@@ -326,7 +332,7 @@ With prefix arg, silently save all file-visiting buffers, then kill."
 		(lambda ()
 		  (set! edwin-finalization false)
 		  (reset-editor)))
-	  ((ref-command suspend-edwin))))))
+	  (abort-edwin)))))
 
 ;;;; Comment Commands
 
