@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.9 1989/05/04 19:47:33 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.10 1990/06/28 18:10:05 jinx Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -89,10 +89,19 @@ MIT in each case. |#
        (if name
 	   condition-type:hardware-trap
 	   condition-type:user-microcode-reset)
-       (if name
-	   (list (error-irritant/noise " ")
-		 (error-irritant/noise name))
-	   '())
+       (if (not name)
+	   '()
+	   (let ((code
+		  (let ((stack-frame
+			 (continuation/first-subproblem trap-continuation)))
+		    (and (hardware-trap-frame? stack-frame)
+			 (hardware-trap-frame/code stack-frame)))))
+	     `(,(error-irritant/noise " ")
+	       ,(error-irritant/noise name)
+	       ,@(if code
+		     (list (error-irritant/noise ": ")
+			   (error-irritant/noise code))
+		     '()))))
        trap-continuation)))))
 
 ;;; (PROCEED) means retry error expression, (PROCEED value) means
