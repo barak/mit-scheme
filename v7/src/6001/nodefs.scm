@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/nodefs.scm,v 1.2 1991/12/06 23:14:19 sasha Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/nodefs.scm,v 1.3 1991/12/06 23:20:06 sasha Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -54,8 +54,7 @@ MIT in each case. |#
     (make-sequence
      (map (lambda (expression)
 	    (if (definition? expression)
-		(let ((name (definition-name expression))
-		      (value (definition-value expression)))
+		(let ((name (definition-name expression)))
 		  (make-sequence
 		   (list expression
 			 (make-combination write-definition-value
