@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.11 1995/02/07 23:54:55 cph Exp $
+$Id: os2top.c,v 1.12 1995/03/08 21:37:54 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #define SCM_OS2TOP_C
+#include "scheme.h"
 #include "os2.h"
 #include "ostop.h"
 #include "option.h"
@@ -137,7 +138,143 @@ OS2_version_string (void)
   return (result);
 }
 
+#define PAGESIZE 4096
+#define PAGE_PERMS (PAG_READ | PAG_WRITE | PAG_EXECUTE)
+#define N_STACK_GUARD_PAGES 2
+
+#define ROUND_UP_TO_PAGE(size)						\
+  (((((size) + (PAGESIZE - 1)) / PAGESIZE) + N_STACK_GUARD_PAGES + 1)	\
+   * PAGESIZE)
+
+typedef struct
+{
+  char * low;
+  unsigned int enabled_p : 1;
+} guard_page_state_t;
+
+static guard_page_state_t guard_page_states [N_STACK_GUARD_PAGES];
+
+static void *
+commit_heap_helper (void * base, unsigned long size)
+{
+  /* Complicated arrangement to detect stack overflow with reasonable
+     reliability.  We allocate three extra pages past the end of the
+     stack; the first two (adjacent to the stack) are committed as
+     guard pages so that OS/2 will deliver an exception when we access
+     them.  If we overrun the first guard page, the trap handler
+     should recognize this and terminate Scheme gracefully, using the
+     second guard page as its stack.  The third page, on the other
+     side of the guard pages, is uncommitted -- if for some reason we
+     overrun the second guard page, this uncommitted page will cause a
+     hard fault that will kill Scheme right away.
+
+     This is slightly kludgey, because we take advantage of the fact
+     that the Scheme stack occupies the low-order addresses in the
+     allocated block, and particularly that the stack grows towards
+     lower addresses.  Thus we can put the guard pages just below the
+     allocated block.  If the memory layout is altered, this will have
+     to change.  The reason for this fragile implementation is that it
+     requires the least change to the existing memory allocation
+     mechanism.  */
+  char * p = base;
+  /* Skip uncommitted page, then commit rest of memory block.  */
+  p += PAGESIZE;
+  if ((dos_set_mem (p, (size - PAGESIZE), (PAG_COMMIT | PAG_DEFAULT)))
+      != NO_ERROR)
+    return (0);
+  /* Initialize the stack guard pages and get pointer to first page
+     past the guard pages.  */
+  {
+    guard_page_state_t * scan = guard_page_states;
+    guard_page_state_t * end = (scan + N_STACK_GUARD_PAGES);
+    while (scan < end)
+      {
+	(scan -> low) = p;
+	(scan -> enabled_p) = 0;
+	scan += 1;
+	p += PAGESIZE;
+      }
+    OS2_stack_reset ();
+  }
+  return (p);
+}
+
+static void
+enable_stack_guard (guard_page_state_t * page, int enable_p)
+{
+  (void) dos_set_mem ((page -> low),
+		      PAGESIZE,
+		      (enable_p ? (PAGE_PERMS | PAG_GUARD) : PAGE_PERMS));
+  (page -> enabled_p) = enable_p;
+}
+
+int
+OS2_disable_stack_guard (void * p)
+{
+  char * cp = p;
+  guard_page_state_t * scan = guard_page_states;
+  guard_page_state_t * end = (scan + N_STACK_GUARD_PAGES);
+  while (1)
+    {
+      if (scan == end)
+	return (0);
+      if (((scan -> low) <= cp) && (cp < ((scan -> low) + PAGESIZE)))
+	{
+	  enable_stack_guard (scan, 0);
+	  return (1);
+	}
+      scan += 1;
+    }
+}
+
+void
+OS2_stack_reset (void)
+{
+  {
+    guard_page_state_t * scan = guard_page_states;
+    guard_page_state_t * end = (scan + N_STACK_GUARD_PAGES);
+    while (1)
+      {
+	if (scan == end)
+	  return;
+	if (! (scan -> enabled_p))
+	  break;
+	scan += 1;
+      }
+  }
+  enable_stack_guard ((&guard_page_states[1]), 0);
+  {
+    SCHEME_OBJECT * p = ((SCHEME_OBJECT *) ((guard_page_states[1]) . low));
+    (*p) = (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, p));
+  }
+  {
+    guard_page_state_t * scan = guard_page_states;
+    guard_page_state_t * end = (scan + N_STACK_GUARD_PAGES);
+    while (scan < end)
+      enable_stack_guard ((scan++), 1);
+  }
+}
+
+int
+OS2_stack_overflowed_p (void)
+{
+  SCHEME_OBJECT * p = ((SCHEME_OBJECT *) ((guard_page_states[1]) . low));
+  return
+    ((! ((guard_page_states[1]) . enabled_p))
+     && ((*p) != (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, p))));
+}
+
 #if 0
+
+/* This is an attempt to allocate Scheme's memory as early as
+   possible, in order to obtain the lowest possible addresses before
+   `malloc' grabs them for some uninteresting purpose.  However, there
+   are two reasons not to do this: first, it doesn't seem to gain any
+   advantage at present (in OS/2 Warp 3.0 with C Set++/2 2.1), because
+   the returned addresses are about the same in both cases.  Second,
+   this sometimes causes a fatal error in the debugger, apparently
+   because it cares about how much memory the debugged process has
+   allocated, even if it's not committed.  */
 
 static void * OS2_heap_base;
 
@@ -159,8 +296,7 @@ OS2_alloc_heap (void)
 void *
 OS2_commit_heap (unsigned long size)
 {
-  APIRET rc = (dos_set_mem (OS2_heap_base, size, (PAG_COMMIT | PAG_DEFAULT)));
-  return ((rc == NO_ERROR) ? OS2_heap_base : 0);
+  return (commit_heap_helper (OS2_heap_base, (ROUND_UP_TO_PAGE (size))));
 }
 
 #else
@@ -173,7 +309,13 @@ OS2_alloc_heap (void)
 void *
 OS2_commit_heap (unsigned long size)
 {
-  return (malloc (size));
+  unsigned long actual = (ROUND_UP_TO_PAGE (size));
+  void * heap_base;
+  APIRET rc
+    = (dos_alloc_mem ((& heap_base),
+		      actual,
+		      (PAG_EXECUTE | PAG_READ | PAG_WRITE)));
+  return ((rc == NO_ERROR) ? (commit_heap_helper (heap_base, actual)) : 0);
 }
 
 #endif

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.1 1994/12/19 22:23:24 cph Exp $
+$Id: os2xcpt.c,v 1.2 1995/03/08 21:38:49 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,6 +40,7 @@ MIT in each case. */
 extern int pc_to_utility_index (unsigned long);
 extern int pc_to_builtin_index (unsigned long);
 extern SCHEME_OBJECT * find_constant_space_block (SCHEME_OBJECT *);
+extern int OS2_disable_stack_guard (void *);
 
 extern ULONG C_Stack_Pointer;
 extern ULONG C_Frame_Pointer;
@@ -212,22 +213,46 @@ OS2_exception_handler (PEXCEPTIONREPORTRECORD report,
 	     || ((report -> ExceptionNum) == XCPT_FLOAT_OVERFLOW)
 	     || ((report -> ExceptionNum) == XCPT_FLOAT_STACK_CHECK)
 	     || ((report -> ExceptionNum) == XCPT_FLOAT_UNDERFLOW)
+	     || ((report -> ExceptionNum) == XCPT_GUARD_PAGE_VIOLATION)
 	     || ((report -> ExceptionNum) == XCPT_ILLEGAL_INSTRUCTION)
 	     || ((report -> ExceptionNum) == XCPT_INTEGER_DIVIDE_BY_ZERO)
 	     || ((report -> ExceptionNum) == XCPT_INTEGER_OVERFLOW)
 	     || ((report -> ExceptionNum) == XCPT_PRIVILEGED_INSTRUCTION))))
     return (XCPT_CONTINUE_SEARCH);
-
-  old_trap_state = trap_state;
+  exception_number = (report -> ExceptionNum);
   stack_overflowed_p = (STACK_OVERFLOWED_P ());
 
+  /* If this is a guard page violation, we're only interested if it
+     occurred in one of the Scheme stack guard pages.  Test this by
+     examining the second parameter, which is the address of the
+     access within the guard page.  `OS2_disable_stack_guard' will
+     perform this test, additionally disabling the guard page if it is
+     one of ours.  */
+  if (exception_number == XCPT_GUARD_PAGE_VIOLATION)
+    {
+      if (!OS2_disable_stack_guard ((void *) ((report -> ExceptionInfo) [1])))
+	return (XCPT_CONTINUE_SEARCH);
+      /* OK, we've determined that this is one of our guard pages, and
+	 it has been disabled.  If `stack_overflowed_p' is true, we
+	 can't recover cleanly and must terminate Scheme.  Otherwise,
+	 we still have some maneuvering room -- so signal a Scheme
+	 stack-overflow interrupt and continue.  When Scheme takes the
+	 interrupt, it will do a throw, and the throw will re-enable
+	 the stack guard.  */
+      if (!stack_overflowed_p)
+	{
+	  REQUEST_INTERRUPT (INT_Stack_Overflow);
+	  return (XCPT_CONTINUE_EXECUTION);
+	}
+    }
+
+  old_trap_state = trap_state;
   if (old_trap_state == trap_state_exitting_hard)
     _exit (1);
   if (old_trap_state == trap_state_exitting_soft)
     trap_immediate_termination ();
   trap_state = trap_state_trapped;
 
-  exception_number = (report -> ExceptionNum);
   noise_start ();
   if (WITHIN_CRITICAL_SECTION_P ())
     {
