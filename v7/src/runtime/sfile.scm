@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.29 2001/06/02 15:39:02 cph Exp $
+$Id: sfile.scm,v 14.30 2001/07/17 02:08:50 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -59,7 +59,7 @@ USA.
 			    UNIX-NAMED-PIPE
 			    UNIX-SOCKET
 			    OS2-NAMED-PIPE
-			    WIN32-NAMED_PIPE)))
+			    WIN32-NAMED-PIPE)))
 		    (if (fix:< n (vector-length types))
 			(vector-ref types n)
 			'UNKNOWN))))))))
@@ -77,6 +77,7 @@ USA.
 (define (file-symbolic-link? filename)
   ((ucode-primitive file-symlink? 1)
    (->namestring (merge-pathnames filename))))
+(define file-soft-link? file-symbolic-link?)
 
 (define (file-access filename amode)
   ((ucode-primitive file-access 2)
