@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.44 1991/07/03 01:32:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.45 1991/08/27 19:36:35 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -609,6 +609,10 @@ DEFUN (Move_Memory, (From, N, To),
 
 #endif
 
+#if false
+
+/* This appears to be a fossil. */
+
 void
 DEFUN (Relocate_Objects, (from, how_many, disp),
        fast SCHEME_OBJECT *from AND
@@ -630,7 +634,7 @@ DEFUN (Relocate_Objects, (from, how_many, disp),
       case TC_BIG_FIXNUM:
       case TC_BIG_FLONUM:
       case TC_CHARACTER_STRING:
-	*from++ ==
+	*from++ =
 	  (OBJECT_NEW_DATUM ((*from), (disp + (OBJECT_DATUM (*from)))));
 	break;
 
@@ -644,6 +648,8 @@ DEFUN (Relocate_Objects, (from, how_many, disp),
   }
   return;
 }
+
+#endif
 
 #define Relocate_Into(Where, Addr)					\
 {									\
