@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intext.h,v 1.3 1993/02/10 23:31:23 adams Exp $
+$Id: intext.h,v 1.4 1993/06/08 04:05:18 gjr Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,6 +55,7 @@ extern void EXFUN (exit_interruption_extent, (void));
 
 #define INTERRUPTABLE_EXTENT(result, expression)			\
 {									\
+  int saved_errno;							\
   struct interruptable_extent * INTERRUPTABLE_EXTENT_frame =		\
     (enter_interruptable_extent ());					\
   if ((setjmp (INTERRUPTABLE_EXTENT_frame -> control_point)) == 0)	\
@@ -67,7 +68,9 @@ extern void EXFUN (exit_interruption_extent, (void));
       errno = EINTR;							\
       (result) = (-1);							\
     }									\
+  saved_errno = errno;							\
   dstack_set_position (current_interruptable_extent -> position);	\
+  errno = saved_errno;							\
 }
 
 #endif /* SCM_INTEXT_H */
