@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.7 2001/12/20 21:45:26 cph Exp $
+$Id: rulfix.scm,v 1.8 2002/02/22 05:14:11 cph Exp $
 
-Copyright (c) 1989, 1991, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1989, 1991, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -547,52 +547,53 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((binary/commutative
-      (lambda (name instr eql)
-	`(define-fixnum-method ',name fixnum-methods/2-args
-	   (lambda (target source1 source2)
-	     (if (ea/same? source1 source2)
-		 (,eql target
-		       (if (or (eq? target source1)
-			       (eq? target source2))
-			   target
-			   source1))
-		 (commute target source1 source2
-			  (lambda (source*)
-			    (LAP (,instr L ,',source* ,',target)))
-			  (lambda ()
-			    (LAP (,instr L ,',source1 ,',source2
-					 ,',target)))))))))
-
-     (binary/noncommutative
-      (lambda (name instr)
-	`(define-fixnum-method ',name fixnum-methods/2-args
-	   (lambda (target source1 source2)
-	     (cond ((ea/same? source1 source2)
-		    (load-fixnum-constant 0 target))
-		   ((eq? target source1)
-		    (LAP (,instr L ,',source2 ,',target)))
-		   (else
-		    (LAP (,instr L ,',source2 ,',source1 ,',target)))))))))
-
+      (sc-macro-transformer
+       (lambda (form environment)
+	 `(DEFINE-FIXNUM-METHOD ',(cadr form) FIXNUM-METHODS/2-ARGS
+	    (LAMBDA (TARGET SOURCE1 SOURCE2)
+	      (IF (EA/SAME? SOURCE1 SOURCE2)
+		  (,(close-syntax (cadddr form) environment)
+		   TARGET
+		   (IF (OR (EQ? TARGET SOURCE1)
+			   (EQ? TARGET SOURCE2))
+		       TARGET
+		       SOURCE1))
+		  (COMMUTE TARGET SOURCE1 SOURCE2
+			   (LAMBDA (SOURCE*)
+			     (LAP (,(caddr form) L ,',SOURCE* ,',TARGET)))
+			   (LAMBDA ()
+			     (LAP (,(caddr form) L ,',SOURCE1 ,',SOURCE2
+						 ,',TARGET)))))))))))
   (binary/commutative PLUS-FIXNUM ADD
 		      (lambda (target source)
 			(if (eq? target source)
 			    (LAP (ADD L ,source ,target))
 			    (LAP (ADD L ,source ,source ,target)))))
-
   (binary/commutative FIXNUM-OR BIS
 		      (lambda (target source)
 			(if (eq? target source)
 			    (LAP)
 			    (LAP (MOV L ,source ,target)))))
-
   (binary/commutative FIXNUM-XOR XOR
 		      (lambda (target source)
 			source		; ignored
-			(load-fixnum-constant target)))
+			(load-fixnum-constant target))))
 
+(let-syntax
+     ((binary/noncommutative
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-FIXNUM-METHOD ',(cadr form) FIXNUM-METHODS/2-ARGS
+	     (LAMBDA (TARGET SOURCE1 SOURCE2)
+	       (COND ((EA/SAME? SOURCE1 SOURCE2)
+		      (LOAD-FIXNUM-CONSTANT 0 TARGET))
+		     ((EQ? TARGET SOURCE1)
+		      (LAP (,(caddr form) L ,',SOURCE2 ,',TARGET)))
+		     (ELSE
+		      (LAP (,(caddr form) L ,',SOURCE2 ,',SOURCE1
+					  ,',TARGET))))))))))
   (binary/noncommutative MINUS-FIXNUM SUB)
-
   (binary/noncommutative FIXNUM-ANDC BIC))
 
 (define-fixnum-method 'FIXNUM-AND fixnum-methods/2-args
@@ -692,28 +693,29 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((binary-fixnum/constant
-      (lambda (name instr null ->constant identity?)
-	`(define-fixnum-method ',name fixnum-methods/2-args-constant
-	   (lambda (target source n)
-	     (cond ((eqv? n ,null)
-		    (load-fixnum-constant ,null target))
-		   ((,identity? n)
-		    (ea/copy source target))
-		   (else
-		    (let ((constant (* fixnum-1 (,->constant n))))
-		      (if (ea/same? source target)
-			  (LAP (,instr L ,',(make-immediate constant)
-				       ,',target))
-			  (LAP (,instr L ,',(make-immediate constant)
-				       ,',source ,',target)))))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((->constant (close-syntax (list-ref form 4) environment))
+	       (identity? (close-syntax (list-ref form 5) environment)))
+	   `(DEFINE-FIXNUM-METHOD ',(cadr form) FIXNUM-METHODS/2-ARGS-CONSTANT
+	      (LAMBDA (TARGET SOURCE N)
+		(COND ((EQV? N ,(cadddr form))
+		       (LOAD-FIXNUM-CONSTANT ,(cadddr form) TARGET))
+		      ((,identity? N)
+		       (EA/COPY SOURCE TARGET))
+		      (ELSE
+		       (LET ((CONSTANT (* FIXNUM-1 (,->constant N))))
+			 (IF (EA/SAME? SOURCE TARGET)
+			     (LAP (,(caddr form) L ,',(make-immediate constant)
+						 ,',target))
+			     (LAP (,(caddr form) L
+						 ,',(make-immediate constant)
+						 ,',source
+						 ,',target)))))))))))))
 
   (binary-fixnum/constant FIXNUM-OR BIS -1 identity-procedure zero?)
-
   (binary-fixnum/constant FIXNUM-XOR XOR 'SELF identity-procedure zero?)
-
-  (binary-fixnum/constant FIXNUM-AND BIC 0 fix:not
-			  (lambda (n)
-			    (= n -1))))
+  (binary-fixnum/constant FIXNUM-AND BIC 0 fix:not (lambda (n) (= n -1))))
 
 (define-fixnum-method 'FIXNUM-ANDC fixnum-methods/2-args-constant
   (lambda (target source n)
