@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.270 2001/09/14 21:16:07 cph Exp $
+;;; $Id: imail-top.scm,v 1.271 2001/09/14 21:19:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1473,7 +1473,7 @@ With prefix argument, sort them in reverse order."
 With prefix argument, sort them in reverse order."
   "P"
   (lambda (reverse?)
-    (sort-selected-folder (if reverse? string>? string<?)
+    (sort-selected-folder (if reverse? string-ci>? string-ci<?)
 			  message-subject)))
 
 (define-command imail-sort-by-author
