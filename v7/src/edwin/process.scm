@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.66 2004/02/16 05:43:52 cph Exp $
+$Id: process.scm,v 1.67 2004/02/17 04:59:54 cph Exp $
 
 Copyright 1991,1992,1993,1996,1997,1999 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
@@ -586,10 +586,22 @@ after the listing is made.)"
 		'INPUT input-port
 		'OUTPUT output-port
 		'REDISPLAY-HOOK
-		(and (if (pair? output-mark) (cdr output-mark) #f)
+		(and (pair? output-mark)
+		     (cdr output-mark)
 		     (lambda () (update-screens! '(IGNORE-INPUT))))
 		'WORKING-DIRECTORY directory
-		'USE-PTY? pty?)))))
+		'USE-PTY? pty?
+		'LINE-ENDING
+		(if (cond (input-region
+			   (ref-variable translate-file-data-on-output
+					 (region-start input-region)))
+			  (output-mark
+			   (ref-variable translate-file-data-on-input
+					 output-mark))
+			  (else #t))
+		    #f
+		    'NEWLINE)
+		)))))
       (if input-port (close-port input-port))
       (if output-port (close-port output-port))
       result)))
