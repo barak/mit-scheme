@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.17 1995/09/13 19:58:39 cph Exp $
+$Id: process.scm,v 1.18 1995/09/13 21:25:13 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -86,7 +86,7 @@ MIT in each case. |#
   (1d-table/remove! (subprocess-properties process) key))
 
 (define (subprocess-i/o-port process #!optional
-			     input-line-translation outnput-line-translation)
+			     input-line-translation output-line-translation)
   (let* ((input-line-translation
 	  (if (default-object? input-line-translation)
 	      'DEFAULT
