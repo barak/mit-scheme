@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.55 1995/03/06 21:45:34 cph Exp $
+$Id: bitstr.c,v 9.56 1995/04/21 04:28:25 adams Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -105,11 +105,10 @@ DEFUN (clear_bit_string, (bit_string), SCHEME_OBJECT bit_string)
     (* (DEC_BIT_STRING_PTR (scanner))) = 0;
 }
 
-/* (MAKE-BIT-STRING size initialization)
-   Returns a bit string of the specified size with all the bits
-   set to zero if the initialization is false, one otherwise. */
-
-DEFINE_PRIMITIVE ("MAKE-BIT-STRING", Prim_make_bit_string, 2, 2, 0)
+DEFINE_PRIMITIVE ("MAKE-BIT-STRING", Prim_make_bit_string, 2, 2,
+ "(SIZE INITIALIZATION)\n\
+Returns a bit string of the specified size with all the bits\n\
+set to zero if the initialization is false, one otherwise.")
 {
   SCHEME_OBJECT result;
   PRIMITIVE_HEADER (2);
@@ -118,11 +117,10 @@ DEFINE_PRIMITIVE ("MAKE-BIT-STRING", Prim_make_bit_string, 2, 2, 0)
   PRIMITIVE_RETURN (result);
 }
 
-/* (BIT-STRING-FILL! bit-string initialization)
-   Fills the bit string with zeros if the initialization is false,
-   otherwise fills it with ones. */
-
-DEFINE_PRIMITIVE ("BIT-STRING-FILL!", Prim_bit_string_fill_x, 2, 2, 0)
+DEFINE_PRIMITIVE ("BIT-STRING-FILL!", Prim_bit_string_fill_x, 2, 2,
+  "(BIT-STRING INITIALIZATION)\n\
+Fills the bit string with zeros if the initialization is false, \
+otherwise fills it with ones.")
 {
   PRIMITIVE_HEADER (2);
   CHECK_ARG (1, BIT_STRING_P);
@@ -130,10 +128,11 @@ DEFINE_PRIMITIVE ("BIT-STRING-FILL!", Prim_bit_string_fill_x, 2, 2, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-/* (BIT-STRING-LENGTH bit-string)
-   Returns the number of bits in BIT-STRING. */
+/*  */
 
-DEFINE_PRIMITIVE ("BIT-STRING-LENGTH", Prim_bit_string_length, 1, 1, 0)
+DEFINE_PRIMITIVE ("BIT-STRING-LENGTH", Prim_bit_string_length, 1, 1,
+  "(BIT-STRING)\n\
+Returns the number of bits in BIT-STRING.")
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, BIT_STRING_P);
@@ -158,20 +157,19 @@ DEFINE_PRIMITIVE ("BIT-STRING-LENGTH", Prim_bit_string_length, 1, 1, 0)
      (bit_string, (BIT_STRING_INDEX_TO_WORD (bit_string, index))));	\
   mask = (1L << (index % OBJECT_LENGTH))
 
-/* (BIT-STRING-REF bit-string index)
-   Returns the boolean value of the indexed bit. */
-
-DEFINE_PRIMITIVE ("BIT-STRING-REF", Prim_bit_string_ref, 2, 2, 0)
+DEFINE_PRIMITIVE ("BIT-STRING-REF", Prim_bit_string_ref, 2, 2,
+  "(BIT-STRING INDEX)\n\
+Returns the boolean value of the indexed bit.")
 {
   REF_INITIALIZATION ();
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (((BIT_STRING_WORD (ptr)) & mask) != 0));
 }
 
-/* (BIT-STRING-CLEAR! bit-string index)
-   Sets the indexed bit to zero, returning its previous value
-   as a boolean. */
+/*  */
 
-DEFINE_PRIMITIVE ("BIT-STRING-CLEAR!", Prim_bit_string_clear_x, 2, 2, 0)
+DEFINE_PRIMITIVE ("BIT-STRING-CLEAR!", Prim_bit_string_clear_x, 2, 2,
+  "(BIT-STRING INDEX)\n\
+Sets the indexed bit to zero, returning its previous value as a boolean.")
 {
   REF_INITIALIZATION ();
   if (((BIT_STRING_WORD (ptr)) & mask) == 0)
@@ -180,11 +178,9 @@ DEFINE_PRIMITIVE ("BIT-STRING-CLEAR!", Prim_bit_string_clear_x, 2, 2, 0)
   PRIMITIVE_RETURN (SHARP_T);
 }
 
-/* (BIT-STRING-SET! bit-string index)
-   Sets the indexed bit to one, returning its previous value
-   as a boolean. */
-
-DEFINE_PRIMITIVE ("BIT-STRING-SET!", Prim_bit_string_set_x, 2, 2, 0)
+DEFINE_PRIMITIVE ("BIT-STRING-SET!", Prim_bit_string_set_x, 2, 2, 
+  "(BIT-STRING INDEX)\n\
+Sets the indexed bit to one, returning its previous value as a boolean.")
 {
   REF_INITIALIZATION ();
   if (((BIT_STRING_WORD (ptr)) & mask) != 0)
@@ -201,10 +197,9 @@ DEFINE_PRIMITIVE ("BIT-STRING-SET!", Prim_bit_string_set_x, 2, 2, 0)
   PRIMITIVE_RETURN (SHARP_T);						\
 }
 
-/* (BIT-STRING-ZERO? bit-string)
-   Returns true the argument has no "set" bits. */
-
-DEFINE_PRIMITIVE ("BIT-STRING-ZERO?", Prim_bit_string_zero_p, 1, 1, 0)
+DEFINE_PRIMITIVE ("BIT-STRING-ZERO?", Prim_bit_string_zero_p, 1, 1,
+ "(BIT-STRING)\n\
+Returns true the argument has no \"set\" bits.")
 {
   fast SCHEME_OBJECT bit_string;
   fast SCHEME_OBJECT *scan;
@@ -238,10 +233,9 @@ DEFINE_PRIMITIVE ("BIT-STRING-ZERO?", Prim_bit_string_zero_p, 1, 1, 0)
   PRIMITIVE_RETURN (SHARP_T);						\
 }
 
-/* (BIT-STRING=? bit-string-1 bit-string-2)
-   Returns true iff the two bit strings contain the same bits. */
-
-DEFINE_PRIMITIVE ("BIT-STRING=?", Prim_bit_string_equal_p, 2, 2, 0)
+DEFINE_PRIMITIVE ("BIT-STRING=?", Prim_bit_string_equal_p, 2, 2, 
+  "(BIT-STRING-1 BIT-STRING-2)\n\
+Returns true iff the two bit strings contain the same bits.")
 {
   SCHEME_OBJECT bit_string_1, bit_string_2;
   long length;
@@ -321,13 +315,12 @@ DEFINE_PRIMITIVE ("BIT-STRING-ANDC!", Prim_bit_string_andc_x, 2, 2, 0)
 DEFINE_PRIMITIVE ("BIT-STRING-XOR!", Prim_bit_string_xor_x, 2, 2, 0)
      BITWISE_OP (^=)
 
-/* (BIT-SUBSTRING-MOVE-RIGHT! source start1 end1 destination start2)
-   Destructively copies the substring of SOURCE between START1 and
-   END1 into DESTINATION at START2.  The copying is done from the
-   MSB to the LSB (which only matters when SOURCE and DESTINATION
-   are the same). */
-
-DEFINE_PRIMITIVE ("BIT-SUBSTRING-MOVE-RIGHT!", Prim_bit_substring_move_right_x, 5, 5, 0)
+DEFINE_PRIMITIVE ("BIT-SUBSTRING-MOVE-RIGHT!", Prim_bit_substring_move_right_x, 5, 5, 
+ "(SOURCE START1 END1 DESTINATION START2)\n\
+Destructively copies the substring of SOURCE between START1 and \
+END1 into DESTINATION at START2.  The copying is done from the \
+MSB to the LSB (which only matters when SOURCE and DESTINATION \
+are the same).")
 {
   fast SCHEME_OBJECT bit_string_1, bit_string_2;
   long start1, end1, start2, end2, nbits;
@@ -690,12 +683,11 @@ DEFUN (bstb_producer, (context),
   return (result);
 }
 
-/* (UNSIGNED-INTEGER->BIT-STRING length integer)
-   INTEGER, which must be a non-negative integer, is converted to
-   a bit-string of length LENGTH.  If INTEGER is too large, an
-   error is signalled. */
-
-DEFINE_PRIMITIVE ("UNSIGNED-INTEGER->BIT-STRING", Prim_unsigned_to_bit_string, 2, 2, 0)
+DEFINE_PRIMITIVE ("UNSIGNED-INTEGER->BIT-STRING", Prim_unsigned_to_bit_string, 2, 2, 
+ "(LENGTH INTEGER)\n\
+INTEGER, which must be a non-negative integer, is converted to \
+a bit-string of length LENGTH.  If INTEGER is too large, an \
+error is signalled.")
 {
   fast long length;
   fast SCHEME_OBJECT object;
@@ -716,11 +708,12 @@ DEFINE_PRIMITIVE ("UNSIGNED-INTEGER->BIT-STRING", Prim_unsigned_to_bit_string, 2
   /* NOTREACHED */
 }
 
-/* (BIT-STRING->UNSIGNED-INTEGER bit-string)
-   BIT-STRING is converted to the appropriate non-negative integer.
-   This operation is the inverse of `unsigned-integer->bit-string'. */
+/*  */
 
-DEFINE_PRIMITIVE ("BIT-STRING->UNSIGNED-INTEGER", Prim_bit_string_to_unsigned, 1, 1, 0)
+DEFINE_PRIMITIVE ("BIT-STRING->UNSIGNED-INTEGER", Prim_bit_string_to_unsigned, 1, 1,
+ "(BIT-STRING)\n\
+BIT-STRING is converted to the appropriate non-negative integer. \
+This operation is the inverse of `unsigned-integer->bit-string'.")
 {
   fast SCHEME_OBJECT bit_string, *scan;
   long nwords, nbits, word;
@@ -763,11 +756,9 @@ DEFINE_PRIMITIVE ("BIT-STRING->UNSIGNED-INTEGER", Prim_bit_string_to_unsigned, 1
   COMPUTE_READ_BITS_OFFSET (offset, end)
 
 
-/* (READ-BITS! pointer offset bit-string)
-   Read the contents of memory at the address (POINTER,OFFSET)
-   into BIT-STRING. */
-
-DEFINE_PRIMITIVE ("READ-BITS!", Prim_read_bits_x, 3, 3, 0)
+DEFINE_PRIMITIVE ("READ-BITS!", Prim_read_bits_x, 3, 3,
+ "(POINTER OFFSET BIT-STRING)\n\
+Read the contents of memory at the address (POINTER,OFFSET) into BIT-STRING.")
 {
   READ_BITS_INITIALIZE ();
   copy_bits (start,
@@ -780,11 +771,9 @@ DEFINE_PRIMITIVE ("READ-BITS!", Prim_read_bits_x, 3, 3, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-/* (WRITE-BITS! pointer offset bit-string)
-   Write the contents of BIT-STRING in memory at the address
-   (POINTER,OFFSET). */
-
-DEFINE_PRIMITIVE ("WRITE-BITS!", Prim_write_bits_x, 3, 3, 0)
+DEFINE_PRIMITIVE ("WRITE-BITS!", Prim_write_bits_x, 3, 3,
+ "(POINTER OFFSET BIT-STRING)\n\
+Write the contents of BIT-STRING in memory at the address (POINTER,OFFSET).")
 {
   READ_BITS_INITIALIZE ();
   copy_bits ((MEMORY_LOC
@@ -837,7 +826,8 @@ DEFINE_PRIMITIVE ("WRITE-BITS!", Prim_write_bits_x, 3, 3, 0)
     }									\
 }
 
-DEFINE_PRIMITIVE ("BIT-SUBSTRING-FIND-NEXT-SET-BIT", Prim_bitstr_find_next_set_bit, 3, 3, 0)
+DEFINE_PRIMITIVE ("BIT-SUBSTRING-FIND-NEXT-SET-BIT", Prim_bitstr_find_next_set_bit, 3, 3,
+  "(BIT-STRING START END)")
 {
   SUBSTRING_FIND_NEXT_INITIALIZE ();
   if (word == end_word)
