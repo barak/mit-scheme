@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rexp.scm,v 1.19 2002/11/20 19:46:22 cph Exp $
+$Id: rexp.scm,v 1.20 2002/12/19 21:31:29 cph Exp $
 
-Copyright (c) 2000, 2001 Massachusetts Institute of Technology
+Copyright (c) 2000, 2001, 2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -228,7 +228,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let loop ((chars (char-set-members c)) (chars* '()))
     (if (pair? chars)
 	(loop (cdr chars)
-	      (if (char-alphabetic? c)
-		  (cons* (char-upcase c) (char-downcase c) chars*)
-		  chars*))
+	      (let ((c (car chars)))
+		(if (char-alphabetic? c)
+		    (cons* (char-upcase c) (char-downcase c) chars*)
+		    chars*)))
 	(apply char-set chars*))))
