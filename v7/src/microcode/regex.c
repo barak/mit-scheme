@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: regex.c,v 1.15 1994/12/19 22:27:11 cph Exp $
+$Id: regex.c,v 1.16 1996/03/04 20:37:25 cph Exp $
 
-Copyright (c) 1987-94 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -98,7 +98,7 @@ extern void free ();
   ((((char_set) [((ascii) / ASCII_LENGTH)]) &				\
     (1 << ((ascii) % ASCII_LENGTH)))					\
    != 0)
-
+
 #define READ_PATTERN_CHAR(target) do					\
 {									\
   if (pattern_pc >= pattern_end)					\
@@ -147,7 +147,7 @@ extern void free ();
 } while (0)
 
 #define BAD_PATTERN() RE_RETURN (-2)
-
+
 #define PUSH_FAILURE_POINT(pattern_pc, match_pc) do			\
 {									\
   if (stack_pointer == stack_end)					\
@@ -260,7 +260,7 @@ DEFUN (re_compile_fastmap,
     FOR_ALL_ASCII (i)
       (fastmap [i]) = FASTMAP_FALSE;
   }
-
+
  loop:
   if (pattern_pc >= pattern_end)
     RE_RETURN (1);
@@ -315,7 +315,7 @@ DEFUN (re_compile_fastmap,
 	  goto return_point;
 	goto next;
       }
-
+
     case regexpcode_char_set:
       {
 	fast int length;
@@ -343,7 +343,7 @@ DEFUN (re_compile_fastmap,
 	  (fastmap [(TRANSLATE_CHAR (ascii))]) = FASTMAP_TRUE;
 	goto next;
       }
-
+
     case regexpcode_word_char:
       {
 	fast int ascii;
@@ -384,7 +384,7 @@ DEFUN (re_compile_fastmap,
 	  (fastmap [(TRANSLATE_CHAR (ascii))]) = FASTMAP_TRUE;
 	goto next;
       }
-
+
     case regexpcode_start_memory:
     case regexpcode_stop_memory:
       {
@@ -404,7 +404,7 @@ DEFUN (re_compile_fastmap,
 	  (fastmap [ascii]) = FASTMAP_TRUE;
 	RE_RETURN (1);
       }
-
+
     case regexpcode_jump:
     case regexpcode_finalize_jump:
     case regexpcode_maybe_finalize_jump:
@@ -510,7 +510,7 @@ beq_translate (scan1, scan2, length, translation)
 }
 
 int re_max_failures = 1000;
-
+
 int
 DEFUN (re_match,
        (pattern_start, pattern_end, buffer, registers, match_start, match_end),
@@ -551,7 +551,7 @@ DEFUN (re_match,
 
   unsigned char *register_start[RE_NREGS];
   unsigned char *register_end[RE_NREGS];
-
+
   pattern_pc = pattern_start;
   match_pc = match_start;
   gap_start = (buffer -> gap_start);
@@ -602,7 +602,7 @@ DEFUN (re_match,
 	}
       RE_RETURN (ADDRESS_TO_INDEX (match_pc));
     }
-
+
   SWITCH_ENUM (regexpcode, (*pattern_pc++))
     {
     case regexpcode_unused:
@@ -644,7 +644,7 @@ DEFUN (re_match,
 	  goto re_match_fail;
 	goto re_match_loop;
       }
-
+
 #define RE_MATCH_CHAR_SET(winning_label, losing_label)			\
       {									\
 	fast int ascii;							\
@@ -697,7 +697,7 @@ DEFUN (re_match,
 	  ((match_pc == gap_end) ? gap_start : match_pc);
 	goto re_match_loop;
       }
-
+
     case regexpcode_duplicate:
       {
 	fast int register_number;
@@ -748,24 +748,27 @@ DEFUN (re_match,
 	match_pc = ((new_end == gap_start) ? gap_end : new_end);
 	goto re_match_loop;
       }
-
+
     case regexpcode_buffer_start:
       {
-	if (match_pc == (buffer -> text_start))
+	if ((ADDRESS_TO_INDEX (match_pc))
+	    == (ADDRESS_TO_INDEX (buffer -> text_start)))
 	  goto re_match_loop;
 	goto re_match_fail;
       }
 
     case regexpcode_buffer_end:
       {
-	if (match_pc == (buffer -> text_end))
+	if ((ADDRESS_TO_INDEX (match_pc))
+	    == (ADDRESS_TO_INDEX (buffer -> text_end)))
 	  goto re_match_loop;
 	goto re_match_fail;
       }
 
     case regexpcode_line_start:
       {
-	if (match_pc == (buffer -> text_start))
+	if ((ADDRESS_TO_INDEX (match_pc))
+	    == (ADDRESS_TO_INDEX (buffer -> text_start)))
 	  goto re_match_loop;
 	if ((TRANSLATE_CHAR
 	     (((match_pc == gap_end) ? gap_start : match_pc) [-1]))
@@ -776,26 +779,25 @@ DEFUN (re_match,
 
     case regexpcode_line_end:
       {
-	if ((match_pc == (buffer -> text_end)) ||
-	    ((TRANSLATE_CHAR (match_pc [0])) == '\n'))
+	if (((ADDRESS_TO_INDEX (match_pc))
+	     == (ADDRESS_TO_INDEX (buffer -> text_end)))
+	    || ((TRANSLATE_CHAR (match_pc [0])) == '\n'))
 	  goto re_match_loop;
 	goto re_match_fail;
       }
-
+
 #define RE_MATCH_WORD_BOUND(word_bound_p)				\
   if ((match_pc == gap_end)						\
-      ? (word_bound_p (((gap_start != (buffer -> text_start)) &&	\
-			(WORD_CONSTITUENT_P (TRANSLATE_CHAR (gap_start [-1])) \
-			 )),						\
-		       ((gap_end != (buffer -> text_end)) &&		\
-			(WORD_CONSTITUENT_P (TRANSLATE_CHAR (gap_end [0]))) \
-			)))						\
-      : (word_bound_p (((match_pc != (buffer -> text_start)) &&		\
-			(WORD_CONSTITUENT_P (TRANSLATE_CHAR (match_pc [-1]))) \
-			),						\
-		       ((match_pc != (buffer -> text_end)) &&		\
-			(WORD_CONSTITUENT_P (TRANSLATE_CHAR (match_pc [0]))) \
-			))))						\
+      ? (word_bound_p							\
+	 (((gap_start != (buffer -> text_start))			\
+	   && (WORD_CONSTITUENT_P (TRANSLATE_CHAR (gap_start[-1])))),	\
+	  ((gap_end != (buffer -> text_end))				\
+	   && (WORD_CONSTITUENT_P (TRANSLATE_CHAR (gap_end[0]))))))	\
+      : (word_bound_p							\
+	 (((match_pc != (buffer -> text_start))				\
+	   && (WORD_CONSTITUENT_P (TRANSLATE_CHAR (match_pc[-1])))),	\
+	  ((match_pc != (buffer -> text_end))				\
+	   && (WORD_CONSTITUENT_P (TRANSLATE_CHAR (match_pc[0])))))))	\
       goto re_match_loop;						\
     goto re_match_fail
 
@@ -820,7 +822,7 @@ DEFUN (re_match,
 #undef WORD_END_P
 
 #undef RE_MATCH_WORD_BOUND
-
+
     case regexpcode_syntax_spec:
       {
 	fast int ascii;
@@ -864,7 +866,7 @@ DEFUN (re_match,
 	  goto re_match_loop;
 	goto re_match_fail;
       }
-
+
     /* "or" constructs ("|") are handled by starting each alternative
        with an on_failure_jump that points to the start of the next
        alternative.  Each alternative except the last ends with a jump
@@ -889,7 +891,7 @@ DEFUN (re_match,
 	PUSH_FAILURE_POINT ((pattern_pc + offset), match_pc);
 	goto re_match_loop;
       }
-
+
     /* The end of a smart repeat has a maybe_finalize_jump back.
        Change it either to a finalize_jump or an ordinary jump. */
 
@@ -923,7 +925,7 @@ DEFUN (re_match,
 	  default:
 	    goto dont_finalize_jump;
 	  }
-
+
 	/* (pattern_pc [(offset - 3)]) is an `on_failure_jump'.
 	   Examine what follows that. */
 	SWITCH_ENUM (regexpcode, (pattern_pc [offset]))
@@ -974,7 +976,7 @@ DEFUN (re_match,
 	(pattern_pc [-1]) = ((unsigned char) regexpcode_jump);
 	goto re_match_jump;
       }
-
+
     case regexpcode_finalize_jump:
     re_match_finalize_jump:
       {
@@ -1058,7 +1060,7 @@ DEFUN (name,								\
 #define RE_SEARCH_TEST(start)						\
   (re_match								\
    (pattern_start, pattern_end, buffer, registers, (start), match_end))
-
+
 #define RE_SEARCH_FORWARD_FAST(limit) do				\
 {									\
   while (true)								\
@@ -1108,7 +1110,7 @@ DEFINE_RE_SEARCH (re_search_forward)
 	}
     }
 }
-
+
 #define RE_SEARCH_BACKWARD_FAST(limit) do				\
 {									\
   while (true)								\
