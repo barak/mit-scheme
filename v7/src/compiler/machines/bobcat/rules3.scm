@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.2 1987/06/22 18:24:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.3 1987/06/22 19:21:13 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -263,7 +263,7 @@ MIT in each case. |#
     (append! (case (procedure-name procedure) ;really `procedure/type'.
 	       ((IC)
 		`((ENTRY-POINT ,external-label)
-		  ,@(make-external-label external-label)))
+		  (EQUATE ,external-label ,internal-label)))
 	       ((CLOSURE)
 		(let ((required (1+ (procedure-required procedure)))
 		      (optional (procedure-optional procedure)))
@@ -287,7 +287,7 @@ MIT in each case. |#
 		 `((LABEL ,gc-label)
 		   (JSR ,entry:compiler-interrupt-procedure))
 		 '())
-	     `(,@(make-external-label internal-label)))))
+	     (make-external-label internal-label))))
 
 (define (make-external-label label)
   `((DC W (- ,label ,*block-start-label*))
