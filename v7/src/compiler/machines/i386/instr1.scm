@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr1.scm,v 1.4 1992/02/09 14:55:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr1.scm,v 1.5 1992/02/13 02:43:12 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -154,7 +154,7 @@ MIT in each case. |#
 (define-instruction ARPL
   (((? target r/mW) (R (? source)))
    (BYTE (8 #x63))
-   (ModR/M source target 16)))
+   (ModR/M source target)))
 
 (define-instruction BOUND
   (((R (? source)) (? bounds mW))
