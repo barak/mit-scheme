@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.15 1992/02/10 15:02:57 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.16 1992/02/12 06:40:08 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -114,6 +114,10 @@ Called with the start and end marks of the header as arguments."
 
 (define-variable rmail-mode-hook
   "An event distributor that is invoked when entering RMAIL mode."
+  (make-event-distributor))
+
+(define-variable rmail-new-mail-hook
+  "An event distributor that is invoked when RMAIL incorporates new mail."
   (make-event-distributor))
 
 (define-major-mode rmail read-only "RMAIL"
@@ -385,7 +389,8 @@ and use that file as the inbox."
 	   (cond ((not (msg-memo? memo)) 0)
 		 ((> (msg-memo/number (msg-memo/last memo)) n-messages)
 		  (+ n-messages 1))
-		 (else (msg-memo/number memo)))))))))
+		 (else (msg-memo/number memo)))))
+	(event-distributor/invoke! (ref-variable rmail-new-mail-hook))))))
 
 (define (get-new-mail buffer inbox-list delete-inboxes?)
   (let ((start (mark-right-inserting-copy (buffer-end buffer)))

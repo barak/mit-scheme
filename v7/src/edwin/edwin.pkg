@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.75 1992/02/08 15:23:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.76 1992/02/12 06:40:22 arthur Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -960,6 +960,7 @@ MIT in each case. |#
 	  edwin-variable$rmail-last-rmail-file
 	  edwin-variable$rmail-message-filter
 	  edwin-variable$rmail-mode-hook
+	  edwin-variable$rmail-new-mail-hook
 	  edwin-variable$rmail-primary-inbox-list
 	  edwin-variable$rmail-reply-with-re
 	  rmail-spool-directory))
