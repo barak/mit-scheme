@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: window.scm,v 1.157 1996/05/14 01:44:11 cph Exp $
+;;;	$Id: window.scm,v 1.158 1996/05/14 01:51:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -265,21 +265,21 @@
 (define (display-style/discard-screen-contents? display-style)
   (if (pair? display-style)
       (memq 'DISCARD-SCREEN-CONTENTS display-style)
-      display-style))
+      (and display-style (not (null? display-style)))))
 
-(define (display-style/screen-output? display-style)
-  (or (not (pair? display-style))
-      (memq 'SCREEN-OUTPUT display-style)))
+(define (display-style/no-screen-output? display-style)
+  (and (pair? display-style)
+       (memq 'NO-SCREEN-OUTPUT display-style)))
 
 (define (display-style/ignore-redisplay-flags? display-style)
   (if (pair? display-style)
       (memq 'IGNORE-REDISPLAY-FLAGS display-style)
-      display-style))
+      (and display-style (not (null? display-style)))))
 
 (define (display-style/ignore-input? display-style)
   (if (pair? display-style)
       (memq 'IGNORE-INPUT display-style)
-      display-style))
+      (and display-style (not (null? display-style)))))
 
 ;;;; Standard Methods
 ;;;  All windows support these operations

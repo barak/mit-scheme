@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: eystep.scm,v 1.2 1994/10/13 04:26:01 cph Exp $
+;;;	$Id: eystep.scm,v 1.3 1996/05/14 01:52:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -295,7 +295,7 @@ c	contract the step under the cursor")
 	  (let ((start (ynode-start-mark regions (cadr last-event))))
 	    (if start
 		(set-buffer-point! buffer start))))))
-  (if redisplay? (update-screens! #f)))
+  (if redisplay? (update-screens! '(IGNORE-INPUT))))
 
 (define (output-and-mung-region point thunk region-munger)
   ;; Display something in the stepper buffer and then run something on

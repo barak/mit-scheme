@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.46 1996/05/14 01:07:46 cph Exp $
+;;;	$Id: process.scm,v 1.47 1996/05/14 01:52:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -619,11 +619,11 @@ after the listing is made.)"
     (lambda (copy-input)
       (call-with-output-copier process output-mark
 	(lambda (copy-output)
-	  (if allow-redisplay? (update-screens! #f))
+	  (if allow-redisplay? (update-screens! '(IGNORE-INPUT)))
 	  (let loop ()
 	    (copy-input)
 	    (if (and (> (copy-output) 0) allow-redisplay?)
-		(update-screens! #f))
+		(update-screens! '(IGNORE-INPUT)))
 	    (let ((status (subprocess-status process)))
 	      (if (eq? status 'RUNNING)
 		  (loop)
