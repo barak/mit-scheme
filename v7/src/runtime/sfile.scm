@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.4 1990/06/20 20:30:05 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.5 1991/10/22 12:12:46 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,13 +37,38 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define (canonicalize-existing-filename filename)
+  (pathname->string (canonicalize-existing-pathname filename)))
+
+(define (canonicalize-existing-pathname filename)
+  (let ((pathname (->pathname filename)))
+    (or (pathname->existing-truename pathname)
+	(canonicalize-existing-pathname
+	 (error:open-file pathname "The file does not exist.")))))
+
+(define (pathname->existing-truename pathname)
+  (let ((pathname (pathname->absolute-pathname pathname))
+	(truename-exists?
+	 (lambda (pathname)
+	   ;; This primitive, a unix-specific one, is used, because it
+	   ;; is the simplest way to do an lstat on the file.  The
+	   ;; usual primitive, FILE-EXISTS?, does a stat.
+	   (and ((ucode-primitive file-mod-time 1) (pathname->string pathname))
+		pathname))))
+    (cond ((not (eq? 'NEWEST (pathname-version pathname)))
+	   (truename-exists? pathname))
+	  ((not pathname-newest)
+	   (truename-exists? (pathname-new-version pathname false)))
+	  (else
+	   (pathname-newest pathname)))))
+
 (define (rename-file from to)
-  ((ucode-primitive rename-file) (canonicalize-input-filename from)
+  ((ucode-primitive file-rename) (canonicalize-existing-filename from)
 				 (canonicalize-output-filename to)))
 
-(define (delete-file name)
-  (let ((truename (pathname->input-truename (->pathname name))))
+(define (delete-file filename)
+  (let ((truename (pathname->existing-truename (->pathname filename))))
     (and truename
 	 (begin
-	   ((ucode-primitive remove-file) (pathname->string truename))
+	   ((ucode-primitive file-remove) (pathname->string truename))
 	   true))))
