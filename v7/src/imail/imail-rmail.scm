@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.35 2000/05/22 03:01:24 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.36 2000/05/22 14:50:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -39,7 +39,7 @@
   (let ((type-filter (file-type-filter "rmail")))
     (lambda (pathname)
       (or (string-ci=? (file-namestring pathname) "rmail")
-	  (type-filter string)))))
+	  (type-filter pathname)))))
 
 ;;;; Server operations
 
