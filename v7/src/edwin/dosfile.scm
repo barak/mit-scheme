@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosfile.scm,v 1.24 1999/01/14 18:37:44 cph Exp $
+;;; $Id: dosfile.scm,v 1.25 1999/01/16 06:32:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
 ;;;
@@ -572,7 +572,7 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
      . ,(lambda (pathname mark visit?)
 	  visit?
 	  (read-compressed-file "gzip -d" pathname mark)))
-    (,read/write-encrypted-file?
+    (,(read/write-encrypted-file? #f)
      . ,(lambda (pathname mark visit?)
 	  visit?
 	  (read-encrypted-file pathname mark)))))
@@ -582,7 +582,7 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
      . ,(lambda (region pathname visit?)
 	  visit?
 	  (write-compressed-file "gzip" region pathname)))
-    (,read/write-encrypted-file?
+    (,(read/write-encrypted-file? #t)
      . ,(lambda (region pathname visit?)
 	  visit?
 	  (write-encrypted-file region pathname)))))
@@ -671,11 +671,11 @@ filename suffixes \".bf\" and \".ky\"."
   #t
   boolean?)
 
-(define (read/write-encrypted-file? group pathname)
+(define ((read/write-encrypted-file? write?) group pathname)
   (and (ref-variable enable-encrypted-files group)
        (or (and (equal? "bf" (pathname-type pathname))
 		(blowfish-available?)
-		(blowfish-file? pathname))
+		(or write? (blowfish-file? pathname)))
 	   (equal? "ky" (pathname-type pathname)))))
 
 (define (read-encrypted-file pathname mark)
