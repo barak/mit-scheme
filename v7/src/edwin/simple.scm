@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.40 1991/11/26 07:58:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.41 1992/02/17 22:09:45 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -216,7 +216,7 @@
   (cond (*executing-keyboard-macro?* unspecific)
 	((not mark) (editor-beep))
 	((window-mark-visible? (current-window) mark)
-	 (if (not ((editor-char-ready? current-editor)))
+	 (if (not (keyboard-peek-no-hang))
 	     (with-current-point mark
 	       (lambda ()
 		 (sit-for 500)))))
@@ -231,13 +231,12 @@
 	      (else (extract-string start end))))))))
 
 (define (sit-for interval)
-  (let ((time-limit (+ (real-time-clock) interval))
-	(char-ready? (editor-char-ready? current-editor)))
-    (if (not (char-ready?))
+  (let ((time-limit (+ (real-time-clock) interval)))
+    (if (not (keyboard-peek-no-hang))
 	(begin
 	 (update-screens! false)
 	 (let loop ()
-	   (if (and (not (char-ready?))
+	   (if (and (not (keyboard-peek-no-hang))
 		    (< (real-time-clock) time-limit))
 	       (loop)))))))
 

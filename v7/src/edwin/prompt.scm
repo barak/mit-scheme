@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.152 1992/02/04 04:03:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.153 1992/02/17 22:09:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -69,7 +69,7 @@
 
 (define (within-typein-edit thunk)
   (let ((value
-	 (call-with-protected-continuation
+	 (call-with-current-continuation
 	  (lambda (continuation)
 	    (fluid-let ((typein-edit-continuation continuation)
 			(typein-edit-depth (1+ typein-edit-depth))
@@ -79,8 +79,8 @@
 			(typein-saved-windows
 			 (cons (current-window)
 			       typein-saved-windows)))
-	      (unwind-protect
-	       false
+	      (dynamic-wind
+	       (lambda () unspecific)
 	       (lambda ()
 		 (let ((window (typein-window)))
 		   (select-window window)
@@ -608,51 +608,57 @@ a repetition of this command will exit."
 
 (define (temporary-typein-message string)
   (let ((point) (start) (end))
-    (unwind-protect (lambda ()
-		      (set! point (current-point))
-		      (set! end (buffer-end (current-buffer)))
-		      (set! start (mark-right-inserting end))
-		      unspecific)
-		    (lambda ()
-		      (insert-string string start)
-		      (set-current-point! start)
-		      (sit-for 2000))
-		    (lambda ()
-		      (delete-string start end)
-		      (set-current-point! point)))))
+    (dynamic-wind (lambda ()
+		    (set! point (current-point))
+		    (set! end (buffer-end (current-buffer)))
+		    (set! start (mark-right-inserting end))
+		    unspecific)
+		  (lambda ()
+		    (insert-string string start)
+		    (set-current-point! start)
+		    (sit-for 2000))
+		  (lambda ()
+		    (delete-string start end)
+		    (set-current-point! point)))))
 
 ;;;; Character Prompts
 
 (define (prompt-for-char prompt)
-  (with-editor-interrupts-disabled
-   (lambda ()
-     (prompt-for-typein (string-append prompt ": ") false
-       (lambda ()
-	 (let ((key (keyboard-read)))
-	   (if (not (and (char? key)
-			 (char-ascii? key)))
-	       (editor-error "Not an ASCII character" key))
-	   (set-typein-string! (key-name key) true)
-	   key))))))
+  (let ((input
+	 (prompt-for-typein (string-append prompt ": ") false
+	   (lambda ()
+	     (let ((input (with-editor-interrupts-disabled keyboard-read)))
+	       (if (and (char? input) (char-ascii? input))
+		   (set-typein-string! (key-name input) true))
+	       input)))))
+    (cond ((and (char? input) (char-ascii? input))
+	   input)
+	  ((input-event? input)
+	   (abort-current-command input))
+	  (else
+	   (editor-error "Not an ASCII character:" input)))))
 
 (define (prompt-for-key prompt #!optional comtab)
   (let ((comtab (if (default-object? comtab) (current-comtabs) comtab)))
     (prompt-for-typein (string-append prompt ": ") false
       (lambda ()
-	(with-editor-interrupts-disabled
-	 (lambda ()
-	   (let outer-loop ((prefix '()))
-	     (let inner-loop ((char (keyboard-read)))
-	       (let ((chars (append! prefix (list char))))
-		 (set-typein-string! (xkey->name chars) true)
-		 (if (prefix-key-list? comtab chars)
-		     (outer-loop chars)
-		     (let ((command (comtab-entry comtab chars)))
-		       (if (memq command extension-commands)
-			   (inner-loop
-			    (fluid-let ((execute-extended-keys? false))
-			      (dispatch-on-command command)))
-			   chars))))))))))))
+	(let outer-loop ((prefix '()))
+	  (let inner-loop
+	      ((char (with-editor-interrupts-disabled keyboard-read)))
+	    (if (input-event? char)
+		(within-continuation typein-edit-continuation
+		  (lambda ()
+		    (abort-current-command char))))
+	    (let ((chars (append! prefix (list char))))
+	      (set-typein-string! (xkey->name chars) true)
+	      (if (prefix-key-list? comtab chars)
+		  (outer-loop chars)
+		  (let ((command (comtab-entry comtab chars)))
+		    (if (memq command extension-commands)
+			(inner-loop
+			 (fluid-let ((execute-extended-keys? false))
+			   (dispatch-on-command command)))
+			chars))))))))))
 
 ;;;; Confirmation Prompts
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.76 1992/02/12 06:40:22 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.77 1992/02/17 22:09:04 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -100,7 +100,8 @@ MIT in each case. |#
 	 "pasmod"
 	 "tximod"
 	 "manual"			; man page display
-	 "print")			; printer output
+	 "print"			; printer output
+	 "notify")			; mode line notifications
   (parent ())
   (import (runtime rep)
 	  hook/repl-eval)
@@ -452,31 +453,32 @@ MIT in each case. |#
   (parent (edwin))
   (export (edwin)
 	  abort-current-command
+	  apply-input-event
 	  auto-argument-mode?
 	  command-argument
 	  command-history-list
 	  command-message-receive
 	  command-reader
-	  command-reader/reset-and-execute
 	  current-command
 	  current-command-key
 	  dispatch-on-key
 	  dispatch-on-command
+	  execute-button-command
 	  execute-key
 	  execute-command
 	  execute-command-history-entry
 	  initialize-command-reader!
+	  input-event?
 	  keyboard-keys-read
 	  last-command
 	  last-command-key
+	  make-input-event
 	  override-next-command!
 	  read-and-dispatch-on-key
 	  set-command-argument!
 	  set-command-message!
 	  set-current-command!
-	  top-level-command-reader)
-  (export (edwin inferior-repl)
-	  command-reader-reset-continuation))
+	  top-level-command-reader))
 
 (define-package (edwin keyboard)
   (files "input")
@@ -493,6 +495,7 @@ MIT in each case. |#
 	  initialize-typeout!
 	  keyboard-read
 	  keyboard-peek
+	  keyboard-peek-no-hang
 	  keyboard-read-char
 	  message
 	  message-args->string

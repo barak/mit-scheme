@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.27 1992/02/11 19:01:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.28 1992/02/17 22:09:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -177,7 +177,7 @@
 	     (loop (cdr screens))))))
 
 (define (xterm-screen/wrap-update! screen thunk)
-  (unwind-protect
+  (dynamic-wind
    (lambda ()
      (xterm-enable-cursor (screen-xterm screen) false))
    thunk
@@ -258,7 +258,7 @@
 (define (get-xterm-input-operations)
   (let ((display x-display-data)
 	(queue x-display-events)
-	(pending-key false)
+	(pending-result false)
 	(string false)
 	(start 0)
 	(end 0)
@@ -277,10 +277,8 @@
 	     (set! end (string-length string))
 	     (set! start end)
 	     (cond ((fix:= end 0)
-		    (set! pending-key
-			  (x-make-special-key (vector-ref event 4)
-					      (vector-ref event 3)))
-		    true)
+		    (x-make-special-key (vector-ref event 4)
+					(vector-ref event 3)))
 		   ((fix:= end 1)
 		    (let ((char
 			   (if (or (fix:= (vector-ref event 3) 0)
@@ -290,25 +288,25 @@
 					  (fix:andc (vector-ref event 3) 2)))))
 		      (if (and signal-interrupts? (char=? char #\BEL))
 			  (begin
-			    (set! pending-key false)
 			    (signal-interrupt!)
 			    false)
-			  (begin
-			    (set! pending-key char)
-			    true))))
+			  char)))
 		   (else
-		    (set! start 0)
-		    (set! pending-key false)
-		    (if signal-interrupts?
-			(let ((i (string-find-previous-char string #\BEL)))
-			  (if i
-			      (begin
-				(set! start (fix:+ i 1))
-				(signal-interrupt!)
-				(fix:< start end))
-			      true))
-			true))))))
-      (let ((read-until-key
+		    (let ((i
+			   (and signal-interrupts?
+				(string-find-previous-char string #\BEL))))
+		      (if i
+			  (begin
+			    (set! start (fix:+ i 1))
+			    (signal-interrupt!)
+			    (and (fix:< start end)
+				 (let ((result (string-ref string start)))
+				   (set! start (fix:+ start 1))
+				   result)))
+			  (begin
+			    (set! start 1)
+			    (string-ref string 0)))))))))
+      (let ((read-until-result
 	     (lambda (time-limit)
 	       (let loop ()
 		 (let ((event (get-next-event time-limit)))
@@ -322,46 +320,44 @@
 			 ((fix:= event-type:key-press (vector-ref event 0))
 			  (or (process-key-press-event event) (loop)))
 			 (else
-			  (process-special-event event)
-			  (loop))))))))
+			  (or (process-special-event event) (loop)))))))))
 	(values
 	 (lambda ()			;halt-update?
-	   (or pending-key
+	   (or pending-result
 	       (fix:< start end)
 	       pending-event
-	       (let ((event (get-next-event 0)))
+	       (let ((event (read-event queue display 0)))
 		 (if event (set! pending-event event))
 		 event)))
-	 (lambda ()			;char-ready?
-	   (or pending-key
+	 (lambda ()			;peek-no-hang
+	   (or pending-result
 	       (fix:< start end)
-	       (read-until-key 0)))
-	 (letrec ((peek-char
-		   (lambda ()
-		     (or pending-key
-			 (if (fix:< start end)
-			     (string-ref string start)
-			     (begin
-			       (read-until-key false)
-			       (peek-char)))))))
-	   peek-char)
-	 (letrec ((read-char
-		   (lambda ()
-		     (cond (pending-key
-			    => (lambda (key)
-				 (set! pending-key false)
-				 key))
-			   ((fix:< start end)
-			    (let ((char (string-ref string start)))
-			      (set! start (fix:+ start 1))
-			      char))
-			   (else
-			    (read-until-key false)
-			    (read-char))))))
-	   read-char))))))
+	       (let ((result (read-until-result 0)))
+		 (if result
+		     (set! pending-result result))
+		 result)))
+	 (lambda ()			;peek
+	   (or pending-result
+	       (if (fix:< start end)
+		   (string-ref string start)
+		   (let ((result (read-until-result false)))
+		     (if result
+			 (set! pending-result result))
+		     result))))
+	 (lambda ()			;read
+	   (cond (pending-result
+		  => (lambda (key)
+		       (set! pending-result false)
+		       key))
+		 ((fix:< start end)
+		  (let ((char (string-ref string start)))
+		    (set! start (fix:+ start 1))
+		    char))
+		 (else
+		  (read-until-result false)))))))))
 
 (define (read-event queue display time-limit)
-  (unwind-protect
+  (dynamic-wind
    (lambda ()
      (lock-thread-mutex event-stream-mutex))
    (lambda ()
@@ -382,7 +378,11 @@
 		(if inferior-thread-changes? event (loop)))
 	       ((and (vector? event)
 		     (fix:= (vector-ref event 0) event-type:expose))
-		(process-expose-event event)
+		(xterm-dump-rectangle (vector-ref event 1)
+				      (vector-ref event 2)
+				      (vector-ref event 3)
+				      (vector-ref event 4)
+				      (vector-ref event 5))
 		(loop))
 	       (else event)))))
    (lambda ()
@@ -441,18 +441,12 @@
 	     (error "Illegal change event:" event)))
       (update-screens! false)))
 
-(define (process-expose-event event)
-  (xterm-dump-rectangle (vector-ref event 1)
-			(vector-ref event 2)
-			(vector-ref event 3)
-			(vector-ref event 4)
-			(vector-ref event 5)))
-
 (define (process-special-event event)
   (let ((handler (vector-ref event-handlers (vector-ref event 0)))
 	(screen (xterm->screen (vector-ref event 1))))
-    (if (and handler screen)
-	(handler screen event))))
+    (and handler
+	 screen
+	 (handler screen event))))
 
 (define event-handlers
   (make-vector number-of-event-types false))
@@ -472,47 +466,43 @@
 		      (= y-size (screen-y-size screen))))
 	    (begin
 	      (set-screen-size! screen x-size y-size)
-	      (update-screen! screen true)))))))
+	      (update-screen! screen true)))))
+    false))
 
 (define-event-handler event-type:button-down
   (lambda (screen event)
     (set! last-focus-time (vector-ref event 5))
     (let ((xterm (screen-xterm screen)))
-      (send (screen-root-window screen) ':button-event!
-	    (make-down-button (vector-ref event 4))
-	    (xterm-map-x-coordinate xterm (vector-ref event 2))
-	    (xterm-map-y-coordinate xterm (vector-ref event 3))))
-    (update-screen! screen false)))
+      (make-input-event execute-button-command
+			screen
+			(make-down-button (vector-ref event 4))
+			(xterm-map-x-coordinate xterm (vector-ref event 2))
+			(xterm-map-y-coordinate xterm (vector-ref event 3))))))
 
 (define-event-handler event-type:button-up
   (lambda (screen event)
     (set! last-focus-time (vector-ref event 5))
     (let ((xterm (screen-xterm screen)))
-      (send (screen-root-window screen) ':button-event!
-	    (make-up-button (vector-ref event 4))
-	    (xterm-map-x-coordinate xterm (vector-ref event 2))
-	    (xterm-map-y-coordinate xterm (vector-ref event 3))))
-    (update-screen! screen false)))
-
+      (make-input-event execute-button-command
+			screen
+			(make-up-button (vector-ref event 4))
+			(xterm-map-x-coordinate xterm (vector-ref event 2))
+			(xterm-map-y-coordinate xterm (vector-ref event 3))))))
+
 (define-event-handler event-type:focus-in
   (lambda (screen event)
     event
-    (if (not (selected-screen? screen))
-	(command-reader/reset-and-execute
-	 (lambda ()
-	   (select-screen screen))))))
+    (make-input-event select-screen screen)))
 
 (define-event-handler event-type:delete-window
   (lambda (screen event)
     event
-    (if (not (screen-deleted? screen))
-	(if (other-screen screen true)
-	    (delete-screen! screen)
-	    (begin
-	      (save-buffers-kill-edwin)
-	      ;; Return here only if user changes mind about killing
-	      ;; editor.  In that case, the screen will need updating.
-	      (update-screen! screen false))))))
+    (and (not (screen-deleted? screen))
+	 (if (selected-screen? screen)
+	     (make-input-event delete-screen! screen)
+	     (begin
+	       (delete-screen! screen)
+	       false)))))
 
 (define-event-handler event-type:map
   (lambda (screen event)
@@ -520,23 +510,24 @@
     (if (not (screen-deleted? screen))
 	(begin
 	  (set-screen-visibility! screen 'VISIBLE)
-	  (update-screen! screen true)))))
+	  (update-screen! screen true)))
+    false))
 
 (define-event-handler event-type:unmap
   (lambda (screen event)
     event
-    (if (not (screen-deleted? screen))
-	(begin
-	  (set-screen-visibility! screen 'INVISIBLE)
-	  (if (selected-screen? screen)
-	      (let ((screen (other-screen screen false)))
-		(if screen
-		    (select-screen screen))))))))
+    (and (not (screen-deleted? screen))
+	 (begin
+	   (set-screen-visibility! screen 'INVISIBLE)
+	   (and (selected-screen? screen)
+		(let ((screen (other-screen screen false)))
+		  (and screen
+		       (make-input-event select-screen screen))))))))
 
 (define-event-handler event-type:take-focus
   (lambda (screen event)
     (set! last-focus-time (vector-ref event 2))
-    (select-screen screen)))
+    (make-input-event select-screen screen)))
 
 (define signal-interrupts?)
 (define event-stream-mutex)
@@ -558,14 +549,15 @@
 
 (define (with-signal-interrupts enabled? thunk)
   (let ((old))
-    (unwind-protect (lambda ()
-		      (set! old signal-interrupts?)
-		      (set! signal-interrupts? enabled?)
-		      unspecific)
-		    thunk
-		    (lambda ()
-		      (set! signal-interrupts? old)
-		      unspecific))))
+    (dynamic-wind (lambda ()
+		    (set! old signal-interrupts?)
+		    (set! signal-interrupts? enabled?)
+		    unspecific)
+		  thunk
+		  (lambda ()
+		    (set! enabled? signal-interrupts?)
+		    (set! signal-interrupts? old)
+		    unspecific))))
 
 (define (signal-interrupt!)
   (editor-beep)

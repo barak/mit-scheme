@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.91 1992/02/04 04:03:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.92 1992/02/17 22:09:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -178,17 +178,20 @@ B 3BAB8C
 (define (keyboard-peek)
   (if *executing-keyboard-macro?*
       (keyboard-macro-peek-key)
-      (keyboard-read-1 (editor-peek-char current-editor))))
+      (keyboard-read-1 (editor-peek current-editor))))
 
 (define (keyboard-read)
   (set! keyboard-keys-read (1+ keyboard-keys-read))
   (if *executing-keyboard-macro?*
       (keyboard-macro-read-key)
-      (let ((key (keyboard-read-1 (editor-read-char current-editor))))
+      (let ((key (keyboard-read-1 (editor-read current-editor))))
 	(set! auto-save-keystroke-count (fix:+ auto-save-keystroke-count 1))
 	(ring-push! (current-char-history) key)
 	(if *defining-keyboard-macro?* (keyboard-macro-write-key key))
 	key)))
+
+(define (keyboard-peek-no-hang)
+  ((editor-peek-no-hang current-editor)))
 
 (define (keyboard-read-char)
   (let loop ((key (keyboard-read)))
@@ -199,12 +202,11 @@ B 3BAB8C
 (define read-key-timeout/fast 500)
 (define read-key-timeout/slow 2000)
 
-(define (keyboard-read-1 read-key)
+(define (keyboard-read-1 reader)
   (remap-alias-key
-   (let ((char-ready? (editor-char-ready? current-editor)))
-     (if (not (char-ready?))
+   (let ((peek-no-hang (editor-peek-no-hang current-editor)))
+     (if (not (peek-no-hang))
 	 (begin
-	   (update-screens! false)
 	   (if (let ((interval (ref-variable auto-save-interval))
 		     (count auto-save-keystroke-count))
 		 (and (fix:> count 20)
@@ -212,12 +214,13 @@ B 3BAB8C
 		      (> count interval)))
 	       (begin
 		 (do-auto-save)
-		 (set! auto-save-keystroke-count 0)))))
+		 (set! auto-save-keystroke-count 0)))
+	   (update-screens! false)))
      (let ((wait
 	    (lambda (timeout)
 	      (let ((t (+ (real-time-clock) timeout)))
 		(let loop ()
-		  (cond ((char-ready?) false)
+		  (cond ((peek-no-hang) false)
 			((>= (real-time-clock) t) true)
 			(else (loop))))))))
        ;; Perform the appropriate juggling of the minibuffer message.
@@ -239,4 +242,4 @@ B 3BAB8C
 		    (set! command-prompt-displayed? true)
 		    (set-current-message! command-prompt-string))
 		  (clear-current-message!)))))
-     (read-key))))
+     (reader))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.11 1992/02/12 12:06:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.12 1992/02/17 22:09:51 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -176,7 +176,7 @@ MIT in each case. |#
 			(if transcript-port
 			    (output-port/write-substring
 			     transcript-port string 0 n))
-			true)
+			(string-ref string 0))
 		       ((or (fix:= n event:process-output)
 			    (fix:= n event:process-status))
 			(maybe-process-changes n))
@@ -198,15 +198,15 @@ MIT in each case. |#
 	 (or pending-event
 	     (fix:< start end)
 	     (fill-buffer 'NO-PROCESSING)))
-       (lambda ()			;char-ready?
+       (lambda ()			;peek-no-hang
 	 (if pending-event (process-pending-event))
 	 (or (fix:< start end)
 	     (fill-buffer 'NONBLOCKING)))
-       (lambda ()			;peek-char
+       (lambda ()			;peek
 	 (if pending-event (process-pending-event))
 	 (if (not (fix:< start end)) (fill-buffer 'BLOCKING))
 	 (string-ref string start))
-       (lambda ()			;read-char
+       (lambda ()			;read
 	 (if pending-event (process-pending-event))
 	 (if (not (fix:< start end)) (fill-buffer 'BLOCKING))
 	 (let ((char (string-ref string start)))

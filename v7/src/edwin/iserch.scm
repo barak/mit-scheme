@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.16 1992/02/04 04:03:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.17 1992/02/17 22:09:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -52,8 +52,8 @@
     (let ((point (window-point window))
 	  (y-point (window-point-y window)))
       (let ((result
-	     (unwind-protect
-	      false
+	     (dynamic-wind
+	      (lambda () unspecific)
 	      (lambda ()
 		(with-editor-interrupts-disabled
 		 (lambda ()
@@ -70,21 +70,28 @@
 	       (if result (execute-key (current-comtabs) result))))))))
 
 (define (isearch-loop state)
-  (if (not ((editor-char-ready? current-editor)))
+  (if (not (keyboard-peek-no-hang))
       (begin
 	(set-current-point! (search-state-point state))
 	(message (search-state-message state))))
-  (let ((char (keyboard-read-char)))
+  (let ((char (keyboard-read)))
     (let ((test-for
 	   (lambda (char*)
 	     (char=? char (remap-alias-key char*)))))
-      (cond ((test-for (ref-variable search-quote-char))
-	     (isearch-append-char
-	      state
-	      (prompt-for-typein
-	       (string-append (search-state-message state) "^Q")
-	       false
-	       keyboard-read-char)))
+      (cond ((not (char? char))
+	     (isearch-exit state)
+	     char)
+	    ((test-for (ref-variable search-quote-char))
+	     (let ((char
+		    (prompt-for-typein
+		     (string-append (search-state-message state) "^Q")
+		     false
+		     keyboard-read)))
+	       (if (char? char)
+		   (isearch-append-char state char)
+		   (begin
+		     (isearch-exit state)
+		     char))))
 	    ((test-for (ref-variable search-exit-char))
 	     (if (string-null? (search-state-text state))
 		 (nonincremental-search (search-state-forward? state)
@@ -120,31 +127,37 @@
 	     (isearch-append-char state char))))))
 
 (define (nonincremental-search forward? regexp?)
-  (cond ((let ((key (remap-alias-key (ref-variable search-yank-word-char))))
-	   (and (char? key)
-		(char=?
-		 key
-		 (prompt-for-typein
-		  (if regexp?
-		      (prompt-for-string/prompt
-		       (if forward? "RE search" "RE search backward")
-		       (write-to-string (ref-variable search-last-regexp)))
-		      (prompt-for-string/prompt
-		       (if forward? "Search" "Search backward")
-		       (write-to-string (ref-variable search-last-string))))
-		  false
-		  (lambda () (keyboard-peek))))))
-	 (if forward?
-	     (ref-command-object word-search-forward)
-	     (ref-command-object word-search-backward)))
-	(regexp?
-	 (if forward?
-	     (ref-command-object re-search-forward)
-	     (ref-command-object re-search-backward)))
-	(else
-	 (if forward?
-	     (ref-command-object search-forward)
-	     (ref-command-object search-backward)))))
+  (let ((yank-word (remap-alias-key (ref-variable search-yank-word-char)))
+	(not-word-search
+	 (lambda ()
+	   (if regexp?
+	       (if forward?
+		   (ref-command-object re-search-forward)
+		   (ref-command-object re-search-backward))
+	       (if forward?
+		   (ref-command-object search-forward)
+		   (ref-command-object search-backward))))))
+    (if (char? yank-word)
+	(let ((char
+	       (prompt-for-typein
+		(if regexp?
+		    (prompt-for-string/prompt
+		     (if forward? "RE search" "RE search backward")
+		     (write-to-string (ref-variable search-last-regexp)))
+		    (prompt-for-string/prompt
+		     (if forward? "Search" "Search backward")
+		     (write-to-string (ref-variable search-last-string))))
+		false
+		keyboard-peek)))
+	  (cond ((not (char? char))
+		 char)
+		((char=? yank-word char)
+		 (if forward?
+		     (ref-command-object word-search-forward)
+		     (ref-command-object word-search-backward)))
+		(else
+		 (not-word-search))))
+	(not-word-search))))
 
 (define (isearch-append-char state char)
   (isearch-append-string state (string char)))
@@ -348,7 +361,7 @@
 	      initial-point))))))
 
 (define (perform-search forward? regexp? text start)
-  (call-with-protected-continuation
+  (call-with-current-continuation
    (lambda (continuation)
      (bind-condition-handler (list condition-type:re-compile-pattern)
 	 (lambda (condition)

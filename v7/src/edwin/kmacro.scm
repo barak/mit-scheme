@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.36 1992/02/04 04:03:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.37 1992/02/17 22:09:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -58,9 +58,9 @@
 (define (with-keyboard-macro-disabled thunk)
   (fluid-let ((*executing-keyboard-macro?* false)
 	      (*defining-keyboard-macro?* false))
-    (unwind-protect keyboard-macro-event
-		    thunk
-		    keyboard-macro-event)))
+    (dynamic-wind keyboard-macro-event
+		  thunk
+		  keyboard-macro-event)))
 
 (define (keyboard-macro-disable)
   (set! *defining-keyboard-macro?* false)
@@ -92,7 +92,7 @@
 	      (*keyboard-macro-continuation*))
     (define (loop n)
       (set! *keyboard-macro-position* *macro)
-      (if (call-with-protected-continuation
+      (if (call-with-current-continuation
 	   (lambda (c)
 	     (set! *keyboard-macro-continuation* c)
 	     (command-reader)))
@@ -247,11 +247,16 @@ Without argument, reads a character.  Your options are:
 		     (lambda ()
 		       (set-command-prompt!
 			"Proceed with macro? (Space, DEL, C-d, C-r or C-l)")
-		       (keyboard-read-char)))))
+		       (keyboard-read)))))
 	       (let ((test-for
 		      (lambda (char*)
 			(char=? char (remap-alias-key char*)))))
-		 (cond ((test-for #\space)
+		 (cond ((input-event? char)
+			(abort-current-command char))
+		       ((not (char? char))
+			(editor-beep)
+			(loop))
+		       ((test-for #\space)
 			unspecific)
 		       ((test-for #\rubout)
 			(*keyboard-macro-continuation* true))

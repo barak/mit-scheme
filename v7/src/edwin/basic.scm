@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.121 1992/02/10 15:31:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.122 1992/02/17 22:06:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -57,13 +57,15 @@ With an argument, insert the character that many times."
 (define (read-quoted-char prompt-string)
   (let ((read-ascii-char
 	 (lambda ()
-	   (let ((key (with-editor-interrupts-disabled keyboard-read)))
-	     (or (and (char? key)
-		      (char-ascii? key))
-		 (editor-error "Not an ASCII character" (key-name key)))
-	     (set-command-prompt!
-	      (string-append (command-prompt) (key-name key)))
-	     key))))
+	   (let ((input (with-editor-interrupts-disabled keyboard-read)))
+	     (if (input-event? input)
+		 (abort-current-command input)
+		 (begin
+		   (if (not (and (char? input) (char-ascii? input)))
+		       (editor-error "Can't quote non-ASCII char:" input))
+		   (set-command-prompt!
+		    (string-append (command-prompt) (key-name input)))
+		   input))))))
     (let ((read-digit
 	   (lambda ()
 	     (or (char->digit (read-ascii-char) 8)
@@ -177,12 +179,14 @@ It reads another character (a subcommand) and dispatches on it."
   ()
   (lambda ()
     (set-command-prompt-prefix!)
-    (let ((prefix-key (current-command-key)))
-      (dispatch-on-key
-       (current-comtabs)
-       ((if (pair? prefix-key) append cons)
-	prefix-key
-	(list (with-editor-interrupts-disabled keyboard-read)))))))
+    (let ((input (with-editor-interrupts-disabled keyboard-read)))
+      (if (input-event? input)
+	  (apply-input-event input)
+	  (dispatch-on-key (current-comtabs)
+			   (let ((prefix-key (current-command-key)))
+			     ((if (pair? prefix-key) append cons)
+			      prefix-key
+			      (list input))))))))
 
 (define (set-command-prompt-prefix!)
   (set-command-prompt!
