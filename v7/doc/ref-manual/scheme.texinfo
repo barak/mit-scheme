@@ -5183,7 +5183,7 @@ Returns a newly allocated string created by removing all characters that
 are not in @var{char-set} from: (@code{string-trim}) both ends of
 @var{string}; (@code{string-trim-left}) the beginning of @var{string};
 or (@code{string-trim-right}) the end of @var{string}.  @var{Char-set}
-defaults to @code{char-set:whitespace}.
+defaults to @code{char-set:not-whitespace}.
 @end deffn
 
 @node Searching Strings, Matching Strings, Cutting and Pasting Strings, Strings
