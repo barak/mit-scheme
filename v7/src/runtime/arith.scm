@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.14 1990/02/02 17:25:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.15 1990/09/09 03:11:16 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -62,11 +62,11 @@ MIT in each case. |#
 	      (and (binary-comparator x y)
 		   (loop y (cdr rest))))))))
 
-(define (reduce-max/min max x1 xs)
+(define (reduce-max/min max/min x1 xs)
   (let loop ((x1 x1) (xs xs))
     (if (null? xs)
 	x1
-	(loop (max x1 (car xs)) (cdr xs)))))
+	(loop (max/min x1 (car xs)) (cdr xs)))))
 
 ;;;; Primitives
 
@@ -1733,9 +1733,10 @@ MIT in each case. |#
 			(pair? (cdr modifier))
 			(memq (cadr modifier) '(B O D X))
 			(or (null? (cddr modifier))
-			    (pair? (cddr modifier))
-			    (memq (caddr modifier) '(E S))
-			    (null? (cdddr modifier))))		   (if (and (pair? (cddr modifier))
+			    (and (pair? (cddr modifier))
+				 (memq (caddr modifier) '(E S))
+				 (null? (cdddr modifier)))))
+		   (if (and (pair? (cddr modifier))
 			    (eq? (caddr modifier) 'E))
 		       (warn
 			"NUMBER->STRING: ignoring radix expression modifier"
