@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.19 1993/10/10 07:50:46 cph Exp $
+$Id: usiexp.scm,v 4.20 1993/11/20 21:30:32 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -579,6 +579,7 @@ MIT in each case. |#
     cddddr
     cdddr
     cddr
+    cell?
     char=?
     char?
     complex?
@@ -660,6 +661,7 @@ MIT in each case. |#
    cddddr-expansion
    cdddr-expansion
    cddr-expansion
+   cell?-expansion
    char=?-expansion
    char?-expansion
    complex?-expansion
