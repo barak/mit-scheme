@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.43 1990/11/21 22:38:40 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.44 1992/01/15 21:25:55 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -72,6 +72,8 @@ MIT in each case. */
 
 #include "ansidecl.h"
 #include <stdio.h>
+
+#define ASSUME_ANSIDECL
 
 /* For macros toupper, isalpha, etc,
    supposedly on the standard library.  */
@@ -512,11 +514,20 @@ DEFUN (dump, (check),
     {
       /* Print declarations. */
       fprintf (output, "extern SCHEME_OBJECT\n");
-      for (count = 0; (count < max_index); count += 1)
-	fprintf (output, "       %s (),\n",
+      for (count = 0; (count <= max_index); count += 1)
+      {
+#ifdef ASSUME_ANSIDECL
+	fprintf (output, "  EXFUN (%s, (void))",
 		 (((* data_buffer) [count]) . c_name));
-      fprintf (output, "       %s ();\n\n",
-	       (((* data_buffer) [max_index]) . c_name));
+#else
+	fprintf (output, "       %s ()",
+		 (((* data_buffer) [count]) . c_name));
+#endif
+	if (count == max_index)
+	  fprintf (output, ";\n\n");
+	else
+	  fprintf (output, ",\n");
+      }
     }
 
   print_procedure
@@ -532,7 +543,13 @@ DEFUN (print_procedure, (output, primitive_descriptor, error_string),
        char * error_string)
 {
   fprintf (output, "SCHEME_OBJECT\n");
-  fprintf (output, "%s ()\n", (primitive_descriptor -> c_name));
+#ifdef ASSUME_ANSIDECL
+  fprintf (output, "DEFUN_VOID (%s)\n",
+	   (primitive_descriptor -> c_name));
+#else
+  fprintf (output, "%s ()\n",
+	   (primitive_descriptor -> c_name));
+#endif
   fprintf (output, "{\n");
   fprintf (output, "  PRIMITIVE_HEADER (%s);\n",
 	   (primitive_descriptor -> arity));
@@ -540,6 +557,7 @@ DEFUN (print_procedure, (output, primitive_descriptor, error_string),
   fprintf (output, "  %s;\n", error_string);
   fprintf (output, "  /%cNOTREACHED%c/\n", '*', '*');
   fprintf (output, "}\n");
+
   return;
 }
 
@@ -555,8 +573,13 @@ DEFUN (print_primitives, (output, limit),
   last = (limit - 1);
 
   /* Print the procedure table. */
+#ifdef ASSUME_ANSIDECL
+  fprintf (output, "\f\nSCHEME_OBJECT EXFUN ((* (%s_Procedure_Table [])), (void)) = {\n",
+	   the_kind);
+#else
   fprintf (output, "\f\nSCHEME_OBJECT (* (%s_Procedure_Table [])) () = {\n",
 	   the_kind);
+#endif
   for (count = 0; (count < limit); count += 1)
     {
       print_entry (output, count, (result_buffer [count]));
