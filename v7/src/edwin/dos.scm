@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.4 1992/09/30 04:00:09 jinx Exp $
+;;;	$Id: dos.scm,v 1.5 1992/11/13 22:54:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -208,8 +208,8 @@ Includes the new backup.  Must be > 0."
 	  result)
 	filename)))
 
-(define (os/backup-by-copying? truename) 
-  truename
+(define (os/backup-by-copying? truename buffer) 
+  truename buffer
   false)
 	
 (define (os/buffer-backup-pathname truename)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.110 1992/11/12 18:00:30 cph Exp $
+;;;	$Id: fileio.scm,v 1.111 1992/11/13 22:54:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -377,7 +377,7 @@ backup-by-copying-when-mismatch ."
 (define-variable backup-by-copying
   "True means always use copying to create backup files.
 See documentation of variable  make-backup-files."
- false
+  false
   boolean?)
 
 (define-variable file-precious-flag
@@ -647,9 +647,8 @@ Otherwise, a message is written both before and after long file writes."
 			  false))
 		      (lambda ()
 			(if (or (ref-variable file-precious-flag buffer)
-				(file-symbolic-link? truename)
 				(ref-variable backup-by-copying buffer)
-				(os/backup-by-copying? truename))
+				(os/backup-by-copying? truename buffer))
 			    (begin
 			      (copy-file truename backup-pathname)
 			      false)

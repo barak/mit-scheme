@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.28 1992/10/30 00:33:08 arthur Exp $
+;;;	$Id: unix.scm,v 1.29 1992/11/13 22:54:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -46,6 +46,13 @@
 
 (declare (usual-integrations))
 
+(define-variable backup-by-copying-when-symlink
+  "True means use copying to create backups for a symbolic name.
+This causes the actual names to refer to the latest version as edited.
+'QUERY means ask whether to backup by copying and write through, or rename.
+This variable is relevant only if  backup-by-copying  is false."
+  false)
+
 (define-variable backup-by-copying-when-linked
   "True means use copying to create backups for files with multiple names.
 This causes the alternate names to refer to the latest version as edited.
@@ -156,14 +163,29 @@ Includes the new backup.  Must be > 0."
 	  result)
 	filename)))
 
-(define (os/backup-by-copying? truename)
+(define (os/backup-by-copying? truename buffer)
   (let ((attributes (file-attributes truename)))
-    (and (ref-variable backup-by-copying-when-linked)
-	 (> (file-attributes/n-links attributes) 1))
-    (and (ref-variable backup-by-copying-when-mismatch)
-	 (not (and (= (file-attributes/uid attributes) (unix/current-uid))
-		   (= (file-attributes/gid attributes) (unix/current-gid)))))))
-
+    (or (and (ref-variable backup-by-copying-when-linked buffer)
+	     (> (file-attributes/n-links attributes) 1))
+	(let ((flag (ref-variable backup-by-copying-when-symlink buffer)))
+	  (and flag
+	       (string? (file-attributes/type attributes))
+	       (or (not (eq? flag 'QUERY))
+		   (prompt-for-confirmation?
+		    (string-append "Write through symlink to "
+				   (->namestring
+				    (enough-pathname
+				     (pathname-simplify
+				      (merge-pathnames
+				       (file-attributes/type attributes)
+				       (buffer-pathname buffer)))
+				     (buffer-default-directory buffer))))))))
+	(and (ref-variable backup-by-copying-when-mismatch buffer)
+	     (not (and (= (file-attributes/uid attributes)
+			  (unix/current-uid))
+		       (= (file-attributes/gid attributes)
+			  (unix/current-gid))))))))
+
 (define (os/buffer-backup-pathname truename)
   (with-values
       (lambda ()
