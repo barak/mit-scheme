@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.167 1994/11/02 02:20:20 adams Exp $
+;;;	$Id: buffer.scm,v 1.168 1995/04/19 01:56:44 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -237,10 +237,11 @@ The buffer is guaranteed to be deselected at that time."
 (define (buffer-visible? buffer)
   (there-exists? (buffer-windows buffer) window-visible?))
 
-(define (buffer-get buffer key)
+(define (buffer-get buffer key #!optional default)
   (let ((entry (assq key (buffer-alist buffer))))
-    (and entry
-	 (cdr entry))))
+    (if entry
+	(cdr entry)
+	(if (default-object? default) #f default))))
 
 (define (buffer-put! buffer key value)
   (if value
