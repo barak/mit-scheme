@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.9 1993/09/03 17:54:57 gjr Exp $
+$Id: ntenv.c,v 1.10 1994/10/25 14:36:04 adams Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -86,12 +86,22 @@ DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
   return (t);
 }
 
+#define FILETIME_TO_MSECS(ft) \
+  (((4294967296.0 * (double)  ft.dwHighDateTime) + ft.dwLowDateTime)*100e-6)
+
 double
 DEFUN_VOID (OS_process_clock)
 {
   /* This must not signal an error in normal use. */
   /* Return answer in milliseconds, was in 1/100th seconds */
-  return ((((double) (clock ())) * 1000.0) / ((double) CLOCKS_PER_SEC));
+
+  FILETIME  creation_time, exit_time, kernel_time, user_time;
+  if(GetProcessTimes(GetCurrentProcess(),
+		     &creation_time, &exit_time, &kernel_time, &user_time)) {
+    return  FILETIME_TO_MSECS(user_time) + FILETIME_TO_MSECS(kernel_time);
+  } else {
+    return ((((double) (clock ())) * 1000.0) / ((double) CLOCKS_PER_SEC));
+  }
 }
 
 double
