@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.106 1993/01/09 01:16:02 cph Exp $
+;;;	$Id: curren.scm,v 1.107 1993/08/01 05:27:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -426,19 +426,27 @@
 	     (set-window-buffer! window buffer)))
 	 (set-window-buffer! window buffer)))))
 
-(define-variable select-buffer-hook
-  "An event distributor that is invoked when a buffer is selected.
-The new buffer and the window in which it is selected are passed as arguments.
-The buffer is guaranteed to be selected at that time."
-  (make-event-distributor))
-
 (define (change-selected-buffer window buffer record? selection-thunk)
   (change-local-bindings! (current-buffer) buffer selection-thunk)
   (set-buffer-point! buffer (window-point window))
   (if record?
       (bufferset-select-buffer! (current-bufferset) buffer))
+  (for-each (lambda (hook) (hook buffer))
+	    (get-buffer-hooks buffer 'SELECT-BUFFER-HOOKS))
   (if (not (minibuffer? buffer))
       (event-distributor/invoke! (ref-variable select-buffer-hook) buffer)))
+
+(define-integrable (add-select-buffer-hook buffer hook)
+  (add-buffer-hook buffer 'SELECT-BUFFER-HOOKS hook))
+
+(define-integrable (remove-select-buffer-hook buffer hook)
+  (remove-buffer-hook buffer 'SELECT-BUFFER-HOOKS hook))
+
+(define-variable select-buffer-hook
+  "An event distributor that is invoked when a buffer is selected.
+The new buffer and the window in which it is selected are passed as arguments.
+The buffer is guaranteed to be selected at that time."
+  (make-event-distributor))
 
 (define (with-selected-buffer buffer thunk)
   (let ((old-buffer))
