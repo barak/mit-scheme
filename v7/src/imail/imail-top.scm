@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.194 2000/06/26 22:15:32 cph Exp $
+;;; $Id: imail-top.scm,v 1.195 2000/06/27 02:41:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -425,7 +425,6 @@ Instead, these commands are available:
 (define-key 'imail #\m-s	'imail-search)
 (define-key 'imail #\t		'imail-toggle-header)
 (define-key 'imail #\c-t	'imail-toggle-attachment)
-(define-key 'imail #\c-m-t	'imail-toggle-message)
 (define-key 'imail #\u		'imail-undelete-previous-message)
 (define-key 'imail #\m-u	'imail-first-unseen-message)
 (define-key 'imail #\x		'imail-expunge)
@@ -437,6 +436,7 @@ Instead, these commands are available:
 (define-key 'imail #\?		'describe-mode)
 (define-key 'imail '(#\c-c #\c-n)	'imail-next-same-subject)
 (define-key 'imail '(#\c-c #\c-p)	'imail-previous-same-subject)
+(define-key 'imail '(#\c-c #\c-t)	'imail-toggle-message)
 
 ;; Putting these after the group above exploits behavior in the comtab
 ;; abstraction that makes these bindings the ones that show up during
