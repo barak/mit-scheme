@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.126 1991/05/06 00:55:21 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.127 1991/05/06 22:29:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -92,7 +92,7 @@ Digits and - are bound to prefix argument commands.")
   "Major mode for read-only buffers.
 Like Fundamental mode, but no self-inserting characters.")
 
-(define-key 'read-only char-set:graphic 'undefined)
+(define-key 'read-only-noarg char-set:graphic 'undefined)
 
 (define-key 'fundamental #\c-% 'replace-string)
 (define-key 'fundamental #\c-- 'negative-argument)
