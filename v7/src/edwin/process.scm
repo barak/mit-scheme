@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.2 1991/04/03 00:18:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.3 1991/04/11 03:06:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -455,7 +455,8 @@ after the listing is made.)"
 
 (define (shell-command command output-mark)
   (let ((process
-	 (start-pipe-subprocess "/bin/sh" (vector "sh" "-c" command) false)))
+	 (start-pipe-subprocess "/bin/sh" (vector "sh" "-c" command) false))
+	(output-mark (mark-left-inserting output-mark)))
     (channel-close (subprocess-output-channel process))
     (let ((output-channel (subprocess-input-channel process)))
       (channel-nonblocking output-channel)
@@ -506,6 +507,7 @@ after the listing is made.)"
 (define (shell-command-region command output-mark input-region)
   (let ((process
 	 (start-pipe-subprocess "/bin/sh" (vector "sh" "-c" command) false))
+	(output-mark (mark-left-inserting output-mark))
 	(group (region-group input-region))
 	(start-index (region-start-index input-region))
 	(end-index (region-end-index input-region)))
