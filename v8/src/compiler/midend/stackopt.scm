@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: stackopt.scm,v 1.2 1994/11/25 16:29:40 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -135,9 +135,14 @@ End of Big Note A |#
   `(LOOKUP ,name))
 
 (define-stack-optimizer LAMBDA (state lambda-list body)
-  state					; ignored
-  `(LAMBDA ,lambda-list
-     ,(stackopt/expr false body)))
+  (define (wrap body)
+    `(LAMBDA ,lambda-list ,body))
+  (cond ((form/match stackopt/fat-procedure-body-pattern body)
+	 => (lambda (result)
+	      (wrap (stackopt/fat-procedure state body result))))
+	(else
+	 (wrap (stackopt/expr false body)))))
+
 
 (define-stack-optimizer LET (state bindings body)
   `(LET ,(lmap (lambda (binding)
@@ -293,6 +298,25 @@ End of Big Note A |#
 	     ,stackopt/?body))
 	 (QUOTE ,stackopt/?call-side-frame-vector)
 	 ,@stackopt/?closure-elts))
+
+
+(define stackopt/fat-procedure-body-pattern
+  `(LET ((,stackopt/?frame-name
+	  (CALL (QUOTE ,%fetch-stack-closure)
+		(QUOTE #F)
+		(QUOTE ,stackopt/?frame-vector))))
+     ,stackopt/?body))
+
+
+(define (stackopt/fat-procedure state lambda-body match-result)
+  (if state
+      (internal-error "Model exists at non-continuation lambda!" state))
+  (let* ((frame  (cadr (assq stackopt/?frame-vector match-result)))
+	 (model  (stackopt/model/make #F frame #T))
+	 (form*  (stackopt/expr model lambda-body)))
+    (set-stackopt/model/form! model #F)
+    (stackopt/reorder! model)
+    form*))
 
 
 (define (stackopt/call/can-see-both-frames state handler match-result)
