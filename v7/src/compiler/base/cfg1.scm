@@ -37,7 +37,7 @@
 
 ;;;; Control Flow Graph Abstraction
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.140 1986/12/17 19:32:04 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.141 1986/12/18 03:36:31 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -660,15 +660,6 @@
     (if entry
 	(make-scfg entry (sframe-next-hooks sframe))
 	(make-null-cfg))))
-
-(define (sframe-edit! sframe procedure)
-  (let ((entry (frame-&entry sframe))
-	(next (sframe-&next sframe)))
-    (let ((scfg
-	   (procedure (entry-holder-disconnect! entry)
-		      (node-previous-disconnect! next))))
-      (entry-holder-connect! entry (cfg-entry-node scfg))
-      (hooks-connect! (scfg-next-hooks scfg) next))))
 
 (define pframe-tag (make-vector-tag frame-tag 'PFRAME))
 (define-vector-slots pframe 2 &consequent &alternative)
@@ -704,18 +695,6 @@
 		   (pframe-consequent-hooks pframe)
 		   (pframe-alternative-hooks pframe))
 	(make-null-cfg))))
-
-(define (pframe-edit! pframe procedure)
-  (let ((entry (frame-&entry pframe))
-	(consequent (pframe-&consequent pframe))
-	(alternative (pframe-&alternative pframe)))
-    (let ((pcfg
-	   (procedure (entry-holder-disconnect! entry)
-		      (node-previous-disconnect! consequent)
-		      (node-previous-disconnect! alternative))))
-      (entry-holder-connect! entry (cfg-entry-node pcfg))
-      (hooks-connect! (pcfg-consequent-hooks pcfg) consequent)
-      (hooks-connect! (pcfg-alternative-hooks pcfg) alternative))))
 
 ;;; end USING-SYNTAX
 )
