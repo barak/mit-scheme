@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.186 2002/02/09 05:55:05 cph Exp $
+;;; $Id: buffer.scm,v 1.187 2002/03/06 20:07:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
@@ -319,7 +319,8 @@ The buffer is guaranteed to be deselected at that time."
 ;;;; Local Bindings
 
 (define (define-variable-local-value! buffer variable value)
-  (let ((value (normalize-variable-value variable value)))
+  (let ((buffer (->buffer buffer))
+	(value (normalize-variable-value variable value)))
     (without-editor-interrupts
      (lambda ()
        (let ((binding (search-local-bindings buffer variable)))
@@ -334,18 +335,19 @@ The buffer is guaranteed to be deselected at that time."
        (invoke-variable-assignment-daemons! buffer variable)))))
 
 (define (undefine-variable-local-value! buffer variable)
-  (without-editor-interrupts
-   (lambda ()
-     (let ((binding (search-local-bindings buffer variable)))
-       (if binding
-	   (begin
-	     (set-buffer-local-bindings!
-	      buffer
-	      (delq! binding (buffer-local-bindings buffer)))
-	     (if (buffer-local-bindings-installed? buffer)
-		 (set-variable-%value! variable
-				       (variable-default-value variable)))
-	     (invoke-variable-assignment-daemons! buffer variable)))))))
+  (let ((buffer (->buffer buffer)))
+    (without-editor-interrupts
+     (lambda ()
+       (let ((binding (search-local-bindings buffer variable)))
+	 (if binding
+	     (begin
+	       (set-buffer-local-bindings!
+		buffer
+		(delq! binding (buffer-local-bindings buffer)))
+	       (if (buffer-local-bindings-installed? buffer)
+		   (set-variable-%value! variable
+					 (variable-default-value variable)))
+	       (invoke-variable-assignment-daemons! buffer variable))))))))
 
 (define (variable-local-value buffer variable)
   (let ((not-mark-local
@@ -366,25 +368,27 @@ The buffer is guaranteed to be deselected at that time."
 
 (define (variable-local-value? buffer variable)
   (or (not buffer)
-      (search-local-bindings buffer variable)))
+      (search-local-bindings (->buffer buffer) variable)))
 
 (define (set-variable-local-value! buffer variable value)
-  (cond ((not buffer)
-	 (set-variable-default-value! variable value))
-	((variable-buffer-local? variable)
-	 (define-variable-local-value! buffer variable value))
-	((search-local-bindings buffer variable)
-	 =>
-	 (lambda (binding)
-	   (let ((value (normalize-variable-value variable value)))
-	     (without-editor-interrupts
-	      (lambda ()
-		(set-cdr! binding value)
-		(if (buffer-local-bindings-installed? buffer)
-		    (set-variable-%value! variable value))
-		(invoke-variable-assignment-daemons! buffer variable))))))
-	(else
-	 (set-variable-default-value! variable value))))
+  (if buffer
+      (let ((buffer (->buffer buffer)))
+	(cond ((variable-buffer-local? variable)
+	       (define-variable-local-value! buffer variable value))
+	      ((search-local-bindings buffer variable)
+	       =>
+	       (lambda (binding)
+		 (let ((value (normalize-variable-value variable value)))
+		   (without-editor-interrupts
+		    (lambda ()
+		      (set-cdr! binding value)
+		      (if (buffer-local-bindings-installed? buffer)
+			  (set-variable-%value! variable value))
+		      (invoke-variable-assignment-daemons! buffer
+							   variable))))))
+	      (else
+	       (set-variable-default-value! variable value))))
+      (set-variable-default-value! variable value)))
 
 (define (set-variable-default-value! variable value)
   (if within-editor?
