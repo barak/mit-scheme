@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.18 2001/12/19 05:26:28 cph Exp $
+$Id: toplev.scm,v 4.19 2001/12/20 06:36:23 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -313,7 +313,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (syntax* s-expression
 	   (make-syntax-table
 	    (if (or (default-object? syntax-table) (not syntax-table))
-		system-global-syntax-table
+		system-global-environment
 		syntax-table))))
 
 (define (phase:transform scode)

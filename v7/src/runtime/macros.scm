@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.3 1999/01/02 06:11:34 cph Exp $
+$Id: macros.scm,v 1.4 2001/12/20 06:34:37 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; More Special Forms
@@ -26,8 +27,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (initialize-package!)
   (for-each (lambda (keyword transform)
-	      (syntax-table-define system-global-syntax-table keyword
-		transform))
+	      (syntax-table/define system-global-environment
+				   keyword
+				   transform))
 	    '(AND
 	      CASE
 	      CONS-STREAM
@@ -300,7 +302,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      ,rest))))
 
 (define transform/define-integrable
-  (macro (pattern . body)
+  (lambda (pattern . body)
     (parse-define-syntax pattern body
       (lambda (name body)
 	`(BEGIN (DECLARE (INTEGRATE ,pattern))

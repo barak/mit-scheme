@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.28 2001/11/20 04:07:08 cph Exp $
+;;; $Id: parser.scm,v 1.29 2001/12/20 06:40:11 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -71,7 +71,7 @@
       (hash-table/put! parser-preprocessors name procedure))
   name)
 
-(syntax-table/define system-global-syntax-table 'DEFINE-*PARSER-MACRO
+(syntax-table/define system-global-environment 'DEFINE-*PARSER-MACRO
   (lambda (bvl expression)
     (cond ((symbol? bvl)
 	   `(DEFINE-*PARSER-EXPANDER ',bvl
@@ -173,7 +173,7 @@
 
 ;;;; Compiler
 
-(syntax-table/define system-global-syntax-table '*PARSER
+(syntax-table/define system-global-environment '*PARSER
   (lambda (expression)
     (generate-parser-code expression)))
 

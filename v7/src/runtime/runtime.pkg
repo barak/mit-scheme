@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.391 2001/12/19 21:41:07 cph Exp $
+$Id: runtime.pkg,v 14.392 2001/12/20 06:49:06 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -3765,8 +3765,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  syntax*
 	  syntax-closure/expression
 	  syntax-closure?
-	  syntax/top-level?
-	  system-global-syntax-table)
+	  syntax/top-level?)
   (export (runtime defstruct)
 	  parse-lambda-list)
   (initialization (initialize-package!)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.8 2001/12/19 04:03:54 cph Exp $
+;;; $Id: load.scm,v 1.9 2001/12/20 06:38:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
 ;;;
@@ -26,7 +26,7 @@
 (let ((install
        (let ((environment (package/environment (find-package '(SOS MACROS)))))
 	 (lambda (mname tname)
-	   (syntax-table/define system-global-syntax-table
+	   (syntax-table/define system-global-environment
 				mname
 				(environment-lookup environment tname))))))
   (install 'DEFINE-CLASS 'TRANSFORM:DEFINE-CLASS)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml.pkg,v 1.8 2001/10/04 16:51:27 cph Exp $
+;;; $Id: xml.pkg,v 1.9 2001/12/20 06:46:58 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -26,12 +26,11 @@
 (global-definitions "../star-parser/parser")
 
 (define-package (runtime xml)
-  (files)
-  (parent ()))
+  (parent (runtime)))
 
 (define-package (runtime xml structure)
   (files "xml-struct")
-  (parent ())
+  (parent (runtime xml))
   (export ()
 	  make-xml-!attlist
 	  make-xml-!element
@@ -142,12 +141,12 @@
 
 (define-package (runtime xml parser)
   (files "xml-chars" "xml-parser")
-  (parent ())
+  (parent (runtime xml))
   (export ()
 	  parse-xml-document))
 
 (define-package (runtime xml output)
   (files "xml-output")
-  (parent ())
+  (parent (runtime xml))
   (export ()
 	  write-xml))

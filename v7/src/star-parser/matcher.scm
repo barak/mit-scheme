@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.25 2001/11/20 04:07:05 cph Exp $
+;;; $Id: matcher.scm,v 1.26 2001/12/20 06:39:41 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -74,7 +74,7 @@
       (hash-table/put! matcher-preprocessors name procedure))
   name)
 
-(syntax-table/define system-global-syntax-table 'DEFINE-*MATCHER-MACRO
+(syntax-table/define system-global-environment 'DEFINE-*MATCHER-MACRO
   (lambda (bvl expression)
     (cond ((symbol? bvl)
 	   `(DEFINE-*MATCHER-EXPANDER ',bvl
@@ -184,7 +184,7 @@
 
 ;;;; Compiler
 
-(syntax-table/define system-global-syntax-table '*MATCHER
+(syntax-table/define system-global-environment '*MATCHER
   (lambda (expression)
     (generate-matcher-code expression)))
 

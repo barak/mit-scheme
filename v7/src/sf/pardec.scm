@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pardec.scm,v 4.12 2001/07/19 18:24:33 cph Exp $
+$Id: pardec.scm,v 4.13 2001/12/20 06:35:49 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -273,8 +273,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      (append-map (lambda (specification)
 		   (let ((value
 			  (scode-eval
-			   (syntax specification
-				   system-global-syntax-table)
+			   (syntax specification system-global-environment)
 			   syntaxer/default-environment)))
 		     (if (pair? value)
 			 (map ->pathname value)

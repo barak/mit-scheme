@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: ed-ffi.scm,v 1.4 2001/11/11 06:00:26 cph Exp $
+;;; $Id: ed-ffi.scm,v 1.5 2001/12/20 06:38:42 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -22,11 +22,7 @@
 ;;;; Parser language: Edwin buffer packaging info
 
 (standard-scheme-find-file-initialization
- '#(("matcher"	(runtime *parser)
-		system-global-syntax-table)
-    ("parser"	(runtime *parser)
-		system-global-syntax-table)
-    ("shared"	(runtime *parser)
-		system-global-syntax-table)
-    ("synchk"	(runtime *parser)
-		system-global-syntax-table)))
+ '#(("matcher"	(runtime *parser))
+    ("parser"	(runtime *parser))
+    ("shared"	(runtime *parser))
+    ("synchk"	(runtime *parser))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.39 2001/12/19 05:22:09 cph Exp $
+$Id: syntax.scm,v 14.40 2001/12/20 06:49:28 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -30,61 +30,58 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (enable-scan-defines!)
   (set! *disallow-illegal-definitions?* #t)
   (set! hook/syntax-expression default/syntax-expression)
-  (set! system-global-syntax-table (make-system-global-syntax-table))
-  (set-environment-syntax-table! system-global-environment
-				 system-global-syntax-table)
+  (set-environment-syntax-table! system-global-environment (make-syntax-table))
+  (install-system-global-syntax!)
   (set-environment-syntax-table! user-initial-environment
 				 (make-syntax-table system-global-environment))
   (set! syntaxer/default-environment
 	(extend-interpreter-environment system-global-environment))
   unspecific)
 
-(define system-global-syntax-table)
 (define *syntax-table*)
 (define *current-keyword* #f)
 (define *syntax-top-level?*)
 (define *disallow-illegal-definitions?*)
 
-(define (make-system-global-syntax-table)
-  (let ((table (make-syntax-table)))
-    (for-each (lambda (entry)
-		(syntax-table-define table (car entry)
-		  (make-primitive-syntaxer (cadr entry))))
-	      `(
-		;; R*RS special forms
-		(BEGIN ,syntax/begin)
-		(COND ,syntax/cond)
-		(DEFINE ,syntax/define)
-		(DELAY ,syntax/delay)
-		(IF ,syntax/if)
-		(LAMBDA ,syntax/lambda)
-		(LET ,syntax/let)
-		(OR ,syntax/or)
-		(QUOTE ,syntax/quote)
-		(SET! ,syntax/set!)
+(define (install-system-global-syntax!)
+  (for-each (lambda (entry)
+	      (syntax-table/define system-global-environment
+				   (car entry)
+				   (make-primitive-syntaxer (cadr entry))))
+	    `(
+	      ;; R*RS special forms
+	      (BEGIN ,syntax/begin)
+	      (COND ,syntax/cond)
+	      (DEFINE ,syntax/define)
+	      (DELAY ,syntax/delay)
+	      (IF ,syntax/if)
+	      (LAMBDA ,syntax/lambda)
+	      (LET ,syntax/let)
+	      (OR ,syntax/or)
+	      (QUOTE ,syntax/quote)
+	      (SET! ,syntax/set!)
 
-		;; Syntax extensions
-		(DEFINE-SYNTAX ,syntax/define-syntax)
-		(DEFINE-MACRO ,syntax/define-macro)
-		(LET-SYNTAX ,syntax/let-syntax)
-		(MACRO ,syntax/lambda)
-		(USING-SYNTAX ,syntax/using-syntax)
+	      ;; Syntax extensions
+	      (DEFINE-SYNTAX ,syntax/define-syntax)
+	      (DEFINE-MACRO ,syntax/define-macro)
+	      (LET-SYNTAX ,syntax/let-syntax)
+	      (MACRO ,syntax/lambda)
+	      (USING-SYNTAX ,syntax/using-syntax)
 
-		;; Environment extensions
-		(ACCESS ,syntax/access)
-		(IN-PACKAGE ,syntax/in-package)
-		(THE-ENVIRONMENT ,syntax/the-environment)
-		(UNASSIGNED? ,syntax/unassigned?)
-		;; To facilitate upgrade to new option argument mechanism.
-		(DEFAULT-OBJECT? ,syntax/unassigned?)
+	      ;; Environment extensions
+	      (ACCESS ,syntax/access)
+	      (IN-PACKAGE ,syntax/in-package)
+	      (THE-ENVIRONMENT ,syntax/the-environment)
+	      (UNASSIGNED? ,syntax/unassigned?)
+	      ;; To facilitate upgrade to new option argument mechanism.
+	      (DEFAULT-OBJECT? ,syntax/unassigned?)
 
-		;; Miscellaneous extensions
-		(DECLARE ,syntax/declare)
-		(FLUID-LET ,syntax/fluid-let)
-		(LOCAL-DECLARE ,syntax/local-declare)
-		(NAMED-LAMBDA ,syntax/named-lambda)
-		(SCODE-QUOTE ,syntax/scode-quote)))
-    table))
+	      ;; Miscellaneous extensions
+	      (DECLARE ,syntax/declare)
+	      (FLUID-LET ,syntax/fluid-let)
+	      (LOCAL-DECLARE ,syntax/local-declare)
+	      (NAMED-LAMBDA ,syntax/named-lambda)
+	      (SCODE-QUOTE ,syntax/scode-quote))))
 
 ;;;; Top Level Syntaxers
 
