@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.3 1992/09/10 09:03:32 cph Exp $
+$Id: floppy.scm,v 1.4 1992/09/14 21:18:46 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -40,9 +40,26 @@ MIT in each case. |#
 
 (define (standard-login-initialization)
   (set! floppy-contents-loaded? false)
-  (set-default-directory working-directory)
-  (set-working-directory-pathname! working-directory)
-  (standard-configuration 'login login-loop)
+  (let ((homedir (user-homedir-pathname)))
+    (let ((workdir (merge-pathnames "work/" homedir)))
+      (set! working-directory (->namestring workdir))
+      (set-default-directory workdir)
+      (set-working-directory-pathname! workdir))
+    (standard-configuration 'login login-loop)
+    (let ((buffer (temporary-buffer "*motd*")))
+      (call-with-current-continuation
+       (lambda (k)
+	 (bind-condition-handler (list condition-type:file-error)
+	     (lambda (condition)
+	       condition
+	       (kill-buffer buffer)
+	       (k unspecific))
+	   (lambda ()
+	     (%insert-file (buffer-start buffer)
+			   (merge-pathnames "motd" homedir)
+			   false)))
+	 (set-buffer-point! buffer (buffer-start buffer))
+	 (select-buffer buffer)))))
   (message "Login completed."))
 
 (define floppy-contents-loaded?)
@@ -644,7 +661,7 @@ M-x rename-file, or use the `r' command in Dired.")
   (string-append working-directory (file-record/name record)))
 
 (define working-directory
-  "/users/u6001/work/")
+  "~u6001/work/")
 
 (define (file-record/name=? x y)
   (string=? (file-record/name x) (file-record/name y)))
