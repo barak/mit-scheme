@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comman.scm,v 1.76 1993/10/15 02:09:17 cph Exp $
+$Id: comman.scm,v 1.77 1993/10/18 23:19:30 cph Exp $
 
 Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 
@@ -179,9 +179,10 @@ of that license should have been included along with this file.
 	(set-variable-assignment-daemons! variable (cons daemon daemons)))))
 
 (define (invoke-variable-assignment-daemons! buffer variable)
-  (do ((daemons (variable-assignment-daemons variable) (cdr daemons)))
-      ((null? daemons))
-    ((car daemons) buffer variable)))
+  (if within-editor?
+      (do ((daemons (variable-assignment-daemons variable) (cdr daemons)))
+	  ((null? daemons))
+	((car daemons) buffer variable))))
 
 (define editor-variables
   (make-string-table 50))
