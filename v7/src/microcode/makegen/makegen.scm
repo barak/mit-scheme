@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: makegen.scm,v 1.2 2000/12/05 21:23:50 cph Exp $
+$Id: makegen.scm,v 1.3 2001/07/29 02:16:05 cph Exp $
 
-Copyright (c) 2000 Massachusetts Institute of Technology
+Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Generate "Makefile.in" from template.
@@ -139,7 +140,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (unbreak-lines
     (with-string-output-port
       (lambda (port)
-	(run-shell-command (string-append "gcc -M " filename)
+	(run-shell-command (string-append "gcc -M -DMIT_SCHEME " filename)
 			   'OUTPUT port))))))
 
 (define (unbreak-lines string)
