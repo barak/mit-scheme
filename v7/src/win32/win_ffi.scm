@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/win32/win_ffi.scm,v 1.1 1993/09/20 01:13:04 adams Exp $
+$Id: win_ffi.scm,v 1.2 1993/11/10 21:41:48 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
