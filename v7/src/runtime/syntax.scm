@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.2 1988/06/16 06:29:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.3 1988/07/15 22:28:01 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -303,7 +303,8 @@ MIT in each case. |#
 (define (syntax/if predicate consequent . rest)
   (make-conditional (syntax-expression predicate)
 		    (syntax-expression consequent)
-		    (cond ((null? rest) undefined-conditional-branch)
+		    (cond ((null? rest)
+			   undefined-conditional-branch)
 			  ((null? (cdr rest))
 			   (syntax-expression (car rest)))
 			  (else
@@ -313,38 +314,39 @@ MIT in each case. |#
   (expand-disjunction expressions))
 
 (define (syntax/cond clause . rest)
-  (let loop ((clause clause) (rest rest))
+  (define (loop clause rest)
     (cond ((eq? (car clause) 'ELSE)
 	   (if (null? rest)
-	       (syntax-sequence (cdr clause))
-	       (syntax-error "ELSE not last clause" rest)))
+	       (syntax-error "ELSE not last clause" rest))
+	   (syntax-sequence (cdr clause)))
 	  ((null? (cdr clause))
-	   (make-disjunction (syntax-expression (car clause))
-			     (if (null? rest)
-				 undefined-conditional-branch
-				 (loop (car rest) (cdr rest)))))
+	   (make-disjunction (syntax-expression (car clause)) (next rest)))
 	  ((and (pair? (cdr clause))
 		(eq? (cadr clause) '=>))
-	   (syntax-expression
-	    `((ACCESS SYNTAXER/COND-=>-HELPER '())
-	      ,(car clause)
-	      (LAMBDA () ,@(cddr clause))
-	      (LAMBDA ()
-		,(if (null? rest)
-		     undefined-conditional-branch
-		     `(COND ,@rest))))))
+	   (if (not (and (pair? (cddr clause))
+			 (null? (cdddr clause))))
+	       (syntax-error "Misformed => clause" clause))
+	   (let ((predicate (string->uninterned-symbol "PREDICATE")))
+	     (make-closed-block lambda-tag:let
+				(list predicate)
+				(list (syntax-expression (car clause)))
+	       (let ((predicate (syntax-expression predicate)))
+		 (make-conditional
+		  predicate
+		  (make-combination* (syntax-expression (caddr clause))
+				     predicate)
+		  (next rest))))))
 	  (else
 	   (make-conditional (syntax-expression (car clause))
 			     (syntax-sequence (cdr clause))
-			     (if (null? rest)
-				 undefined-conditional-branch
-				 (loop (car rest) (cdr rest))))))))
+			     (next rest)))))
 
-(define (syntaxer/cond-=>-helper form1-result thunk2 thunk3)
-  (if form1-result
-      ((thunk2) form1-result)
-      (thunk3)))
-
+  (define (next rest)
+    (if (null? rest)
+	undefined-conditional-branch
+	(loop (car rest) (cdr rest))))
+
+  (loop clause rest))
 ;;;; Procedures
 
 (define (syntax/lambda pattern . body)
