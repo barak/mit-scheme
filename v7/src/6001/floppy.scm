@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.2 1992/09/10 08:17:59 cph Exp $
+$Id: floppy.scm,v 1.3 1992/09/10 09:03:32 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -407,10 +407,7 @@ then answer \"yes\" to the prompt below.")
 			  floppy-directory))
       (lambda (files-to-copy pairs files-to-delete)
 	(for-each (lambda (pair)
-		    ;; Compensate for one-minute time-stamp
-		    ;; granularity.  At worst, this will cause a few
-		    ;; files to be copied when it isn't necessary.
-		    (if (> (+ (file-record/time (car pair)) 60)
+		    (if (> (file-record/time (car pair))
 			   (file-record/time (cdr pair)))
 			(set! files-to-copy
 			      (cons (car pair) files-to-copy))))
