@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.177 1995/05/21 10:03:30 cph Exp $
+$Id: edwin.pkg,v 1.178 1995/09/15 19:28:42 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -991,6 +991,7 @@ MIT in each case. |#
     (parent (edwin screen))
     (export (edwin)
 	    x-screen-auto-raise
+	    x-screen-ignore-focus-button?
 	    xterm-screen/flush!
 	    xterm-screen/grab-focus!)
     (export (edwin x-commands)

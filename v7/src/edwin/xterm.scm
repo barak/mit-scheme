@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.46 1993/09/10 19:13:44 cph Exp $
+;;;	$Id: xterm.scm,v 1.47 1995/09/15 19:28:51 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -571,24 +571,32 @@
 (define-event-handler event-type:button-down
   (lambda (screen event)
     (set! last-focus-time (vector-ref event 5))
-    (let ((xterm (screen-xterm screen)))
-      (make-input-event 'BUTTON
-			execute-button-command
-			screen
-			(make-down-button (vector-ref event 4))
-			(xterm-map-x-coordinate xterm (vector-ref event 2))
-			(xterm-map-y-coordinate xterm (vector-ref event 3))))))
+    (if (eq? ignore-button-state 'IGNORE-BUTTON-DOWN)
+	(begin
+	  (set! ignore-button-state 'IGNORE-BUTTON-UP)
+	  #f)
+	(let ((xterm (screen-xterm screen)))
+	  (make-input-event 'BUTTON
+			    execute-button-command
+			    screen
+			    (make-down-button (vector-ref event 4))
+			    (xterm-map-x-coordinate xterm (vector-ref event 2))
+			    (xterm-map-y-coordinate xterm (vector-ref event 3)))))))
 
 (define-event-handler event-type:button-up
   (lambda (screen event)
     (set! last-focus-time (vector-ref event 5))
-    (let ((xterm (screen-xterm screen)))
-      (make-input-event 'BUTTON
-			execute-button-command
-			screen
-			(make-up-button (vector-ref event 4))
-			(xterm-map-x-coordinate xterm (vector-ref event 2))
-			(xterm-map-y-coordinate xterm (vector-ref event 3))))))
+    (if (eq? ignore-button-state 'IGNORE-BUTTON-UP)
+	(begin
+	  (set! ignore-button-state #f)
+	  #f)
+	(let ((xterm (screen-xterm screen)))
+	  (make-input-event 'BUTTON
+			    execute-button-command
+			    screen
+			    (make-up-button (vector-ref event 4))
+			    (xterm-map-x-coordinate xterm (vector-ref event 2))
+			    (xterm-map-y-coordinate xterm (vector-ref event 3)))))))
 
 (define-event-handler event-type:configure
   (lambda (screen event)
@@ -607,9 +615,13 @@
 				  (update-screen! screen #t))))))
 		      screen event)))
 
+(define x-screen-ignore-focus-button? #f)
+
 (define-event-handler event-type:focus-in
   (lambda (screen event)
     event
+    (if x-screen-ignore-focus-button?
+	(set! ignore-button-state 'IGNORE-BUTTON-DOWN))
     (and (not (selected-screen? screen))
 	 (make-input-event 'SELECT-SCREEN select-screen screen))))
 
@@ -662,12 +674,14 @@
 (define signal-interrupts?)
 (define last-focus-time)
 (define previewer-registration)
+(define ignore-button-state)
 
 (define (with-editor-interrupts-from-x receiver)
   (fluid-let ((reading-event? #f)
 	      (signal-interrupts? #t)
 	      (last-focus-time #f)
-	      (previewer-registration))
+	      (previewer-registration)
+	      (ignore-button-state #f))
     (dynamic-wind
      preview-event-stream
      (lambda () (receiver (lambda (thunk) (thunk)) '()))
