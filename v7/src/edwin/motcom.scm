@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.43 1991/08/06 22:04:26 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.44 1991/10/04 06:09:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -107,11 +107,15 @@ With arg from 0 to 10, goes up that many tenths of the file from the end."
 	 (quotient (* n (region-count-chars region)) 10)))
 
 (define-command goto-char
-  "Goto line ARG, counting from char 1 at beginning of buffer."
+  "Goto char ARG, counting from char 1 at beginning of buffer."
   "NGoto char"
   (lambda (n)
-    (set-current-point!
-     (mark+ (buffer-start (current-buffer)) (- n 1) 'ERROR))))
+    (let ((group (buffer-group (current-buffer))))
+      (let ((index (- n 1)))
+	(if (or (< index (group-start-index group))
+		(> index (group-end-index group)))
+	    (editor-error))
+	(set-current-point! (make-mark group index))))))
 
 (define-variable goal-column
   "Semipermanent goal column for vertical motion,
