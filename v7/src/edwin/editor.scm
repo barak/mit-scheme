@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.206 1991/08/01 22:55:04 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.207 1991/10/04 06:06:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -166,7 +166,11 @@
       (begin
 	(let ((filename (os/init-file-name)))
 	  (if (file-exists? filename)
-	      (load-edwin-file filename '(EDWIN) true)))
+	      (let ((buffer (temporary-buffer " *dummy*")))
+		(with-selected-buffer buffer
+		  (lambda ()
+		    (load-edwin-file filename '(EDWIN) true)))
+		(kill-buffer buffer))))
 	(set! init-file-loaded? true)))
   (if (not (ref-variable inhibit-startup-message))
       (let ((window (current-window)))
