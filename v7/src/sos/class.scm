@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: class.scm,v 1.16 2003/03/13 03:10:20 cph Exp $
+$Id: class.scm,v 1.17 2003/07/22 02:35:06 cph Exp $
 
 Copyright 1995,1997,2002,2002,2003 Massachusetts Institute of Technology
 
@@ -375,11 +375,11 @@ USA.
   (assign-type 'PROCEDURE <procedure>)
   (assign-type 'ENTITY <entity>)
 
-  (if (> microcode-id/version 11)
+  (if (fix:= (object-type 1) (object-type -1))
+      (assign-type 'FIXNUM <fixnum>)
       (begin
 	(assign-type 'POSITIVE-FIXNUM <fixnum>)
-	(assign-type 'NEGATIVE-FIXNUM <fixnum>))
-      (assign-type 'FIXNUM <fixnum>))
+	(assign-type 'NEGATIVE-FIXNUM <fixnum>)))
   (assign-type 'BIGNUM <bignum>)
   (assign-type 'RATNUM <ratnum>)
   (assign-type 'FLONUM <flonum>)
