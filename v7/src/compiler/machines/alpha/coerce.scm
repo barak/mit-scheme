@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.1 1992/08/29 13:51:16 jinx Exp $
+$Id: coerce.scm,v 1.2 1993/11/12 18:10:42 jmiller Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -56,6 +56,7 @@ case.
 (define coerce-11-bit-unsigned (make-coercion 'UNSIGNED 11))
 (define coerce-16-bit-unsigned (make-coercion 'UNSIGNED 16))
 (define coerce-26-bit-unsigned (make-coercion 'UNSIGNED 26))
+(define coerce-32-bit-unsigned (make-coercion 'UNSIGNED 32))
 
 (define coerce-14-bit-signed (make-coercion 'SIGNED 14))
 (define coerce-16-bit-signed (make-coercion 'SIGNED 16))
