@@ -1,18 +1,17 @@
 #!/bin/csh -f
 ###
-###	$Id: nt.m4,v 1.1 1993/06/24 08:04:38 gjr Exp $
+### $Id: nt.m4,v 1.2 1995/10/24 06:29:51 cph Exp $
 ###
-###	Copyright (c) 1993 Massachusetts Institute of Technology
+### Copyright (c) 1993-95 Massachusetts Institute of Technology
 ###
-####	Postprocessing to get valid nt assembly language from cmpauxmd/i386.m4
+### Processing to get Win32 assembly language from "i386.m4".
 
 set tmpfil = "m4.tmp"
 set seen_input = 0
 rm -f "$tmpfil"
 
 echo changecom\(\`\;\'\) >> "$tmpfil"
-echo "define(DOS,1)" >> "$tmpfil"
-echo "define(WINNT,1)" >> "$tmpfil"
+echo "define(WIN32,1)" >> "$tmpfil"
 while ($#argv != 0)
   if ("$argv[1]" == "-P") then
     echo "$argv[2]" >> "$tmpfil"
