@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntab.scm,v 14.2 1988/06/13 11:52:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntab.scm,v 14.3 1989/05/25 16:23:46 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -75,6 +75,9 @@ MIT in each case. |#
 
 (define syntax-table-define
   syntax-table/define)
+
+(define (syntax-table/defined-names table)
+  (map car (syntax-table/alist table)))
 
 (define (syntax-table/copy table)
   (guarantee-syntax-table table)

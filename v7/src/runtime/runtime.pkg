@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.36 1989/04/21 19:25:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.37 1989/05/25 16:24:00 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -1577,6 +1577,7 @@ MIT in each case. |#
 	  syntax-table-ref
 	  syntax-table/copy
 	  syntax-table/define
+	  syntax-table/defined-names
 	  syntax-table/extend
 	  syntax-table/parent
 	  syntax-table/ref
