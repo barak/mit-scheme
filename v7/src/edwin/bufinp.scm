@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bufinp.scm,v 1.12 2004/02/16 05:42:49 cph Exp $
+$Id: bufinp.scm,v 1.13 2004/03/30 04:27:48 cph Exp $
 
 Copyright 1989,1990,1991,1999,2004 Massachusetts Institute of Technology
 
@@ -71,7 +71,9 @@ USA.
       ,(lambda (port)
 	(let ((state (port/state port)))
 	  (make-mark (bstate-group state)
-		     (bstate-start state)))))
+		     (if (port/unread port)
+			 (- (bstate-start state) 1)
+			 (bstate-start state))))))
      (CHAR-READY?
       ,(lambda (port)
 	 (let ((state (port/state port)))
