@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.7 1989/11/11 19:12:57 jinx Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.8 1990/01/16 19:58:23 cph Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -40,6 +40,11 @@ Ppband: xmakefile doppband
 
 doppband:
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Ppband
+
+install: xmakefile doinstall
+
+doinstall:
+	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} install
 
 # If you have a problem with cc -E here, changing
 # the definition of CPP above may fix it.

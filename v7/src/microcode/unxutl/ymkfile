@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.17 1989/11/30 21:16:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.18 1990/01/16 19:57:23 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -196,6 +196,16 @@ USER_LIBS =
 
 SHELL = /bin/sh
 
+#ifdef INSTALL_PROGRAM
+INSTALL = INSTALL_PROGRAM
+#else
+INSTALL = install -c
+#endif
+#ifdef INSTALL_BINARY_DIRECTORY
+BINDIR = INSTALL_BINARY_DIRECTORY
+#else
+BINDIR = /usr/local/bin
+#endif
 #ifdef ALTERNATE_CC
 CC = ALTERNATE_CC
 #else
@@ -365,51 +375,43 @@ all: Psbtobin scheme
 
 scheme xscheme : $(OBJECTS) $(SCHEME_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
-	-mv -f $@ $@.busy
-	rm -f $@.busy
 	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
 
 bchscheme : $(BCHOBJECTS) $(SCHEME_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
-	-mv -f $@ $@.busy
-	rm -f $@.busy
 	$(CC) $(LDFLAGS) -o $@ $(BCHOBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
 
 Findprim : Findprim.o
 	@ECHO "#** Re-linking" $@ because of $?
-	-mv -f $@ $@.busy
-	rm -f $@.busy
 	$(CC) $(LDFLAGS) -o $@ Findprim.o
 
 Bintopsb : Bintopsb.o
 	@ECHO "#** Re-linking" $@ because of $?
-	-mv -f $@ $@.busy
-	rm -f $@.busy
 	$(CC) $(LDFLAGS) -o $@ Bintopsb.o
 
 Psbtobin : Psbtobin.o
 	@ECHO "#** Re-linking" $@ because of $?
-	-mv -f $@ $@.busy
-	rm -f $@.busy
 	$(CC) $(LDFLAGS) -o $@ Psbtobin.o
 
 Breakup : Breakup.o
 	@ECHO "#** Re-linking" $@ because of $?
-	-mv -f $@ $@.busy
-	rm -f $@.busy
 	$(CC) $(LDFLAGS) -o $@ Breakup.o
 
 Wsize : Wsize.o
 	@ECHO "#** Re-linking" $@ because of $?
-	-mv -f $@ $@.busy
-	rm -f $@.busy
 	$(CC) $(LDFLAGS) -o $@ Wsize.o LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
 Ppband : Ppband.o
 	@ECHO "#** Re-linking" $@ because of $?
-	-mv -f $@ $@.busy
-	rm -f $@.busy
 	$(CC) $(LDFLAGS) -o $@ Ppband.o
+
+install: scheme bchscheme
+	-mv -f $(BINDIR)/scheme $(BINDIR)/scheme.busy
+	rm -f $(BINDIR)/scheme.busy
+	$(INSTALL) scheme $(BINDIR)/scheme
+	-mv -f $(BINDIR)/bchscheme $(BINDIR)/bchscheme.busy
+	rm -f $(BINDIR)/bchscheme.busy
+	$(INSTALL) bchscheme $(BINDIR)/bchscheme
 
 /* Primitive table files */
 

@@ -1,9 +1,9 @@
 /* -*-C-*-
    System file for HP-UX
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.3 1989/07/26 23:59:35 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.4 1990/01/16 19:57:57 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,4 +47,8 @@ MIT in each case. */
 
 #ifndef HAVE_CURSES
 #define LIBS_SYSTEM -lcurses
+#endif
+
+#ifndef INSTALL_PROGRAM
+#define INSTALL_PROGRAM cp
 #endif

@@ -10,10 +10,13 @@ world: all bchscheme scm6003
 
 everything: world Bintopsb Ppband
 
+install.world: install scm6003
+	-mv -f $(BINDIR)/scm6003 $(BINDIR)/scm6003.busy
+	rm -f $(BINDIR)/scm6003.busy
+	$(INSTALL) scm6003 $(BINDIR)/scm6003
+
 scm6003 : $(OBJECTS) $(6003_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
-	-mv -f $@ $@.busy
-	rm -f $@.busy
 	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(6003_OBJECTS) $(6003_LIB)
 
 usr6003.c : $(6003_SOURCES) $(SOURCES) usrdef.touch Findprim xmakefile
