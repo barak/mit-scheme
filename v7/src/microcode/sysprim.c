@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.34 1990/06/20 17:42:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.35 1990/11/05 11:55:19 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -72,7 +72,8 @@ DEFINE_PRIMITIVE ("SET-RUN-LIGHT!", Prim_set_run_light, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 #ifdef RUN_LIGHT_IS_BEEP
-  OS_tty_beep ();
+  fputs ((OS_tty_command_beep ()), stdout);
+  fflush (stdout);
   PRIMITIVE_RETURN (SHARP_T);
 #else
   PRIMITIVE_RETURN (SHARP_F);

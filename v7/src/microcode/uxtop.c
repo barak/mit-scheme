@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.4 1990/08/16 23:36:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.5 1990/11/05 11:55:38 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -53,8 +53,6 @@ extern void EXFUN (UX_reset_channels, (void));
 extern void EXFUN (UX_reset_processes, (void));
 extern void EXFUN (UX_reset_terminals, (void));
 extern void EXFUN (execute_reload_cleanups, (void));
-
-extern void EXFUN (OS_initialize_transcript_file, (void));
 
 extern void EXFUN (UX_ctty_save_external_state, (void));
 extern void EXFUN (UX_ctty_save_internal_state, (void));
@@ -109,7 +107,6 @@ DEFUN_VOID (OS_initialize)
   UX_initialize_signals ();
   UX_initialize_trap_recovery ();
   UX_initialize_directory_reader ();
-  OS_initialize_transcript_file ();
   OS_Name = SYSTEM_NAME;
   OS_Variant = SYSTEM_VARIANT;
   fprintf (stdout, "MIT Scheme running under %s\n", OS_Variant);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.3 1990/11/01 04:33:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.4 1990/11/05 11:55:01 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -37,8 +37,6 @@ MIT in each case. */
 
 #include "os.h"
 
-extern int EXFUN (OS_terminal_read_char, (Tchannel channel));
-extern int EXFUN (OS_terminal_char_ready_p, (Tchannel channel, clock_t delay));
 extern unsigned int EXFUN (OS_terminal_get_ispeed, (Tchannel channel));
 extern unsigned int EXFUN (OS_terminal_get_ospeed, (Tchannel channel));
 extern unsigned int EXFUN (arg_baud_index, (unsigned int argument));

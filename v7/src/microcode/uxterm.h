@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.h,v 1.1 1990/06/20 19:37:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.h,v 1.2 1990/11/05 11:55:34 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -44,6 +44,5 @@ extern void EXFUN (terminal_state_nonbuffered, (Ttty_state * s, int polling));
 extern void EXFUN (terminal_state_raw, (Ttty_state * s));
 extern void EXFUN (get_terminal_state, (Tchannel channel, Ttty_state * s));
 extern void EXFUN (set_terminal_state, (Tchannel channel, Ttty_state * s));
-extern Ttty_state * EXFUN (preserve_terminal_state, (Tchannel channel));
 
 #endif /* SCM_UXTERM_H */

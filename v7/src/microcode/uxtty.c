@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.2 1990/06/21 20:01:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.3 1990/11/05 11:55:43 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -38,93 +38,20 @@ MIT in each case. */
 #include "uxio.h"
 #include "uxterm.h"
 
-/* Standard Input */
+/* Standard Input and Output */
 
 static Tchannel input_channel;
+static Tchannel output_channel;
+static int tty_x_size;
+static int tty_y_size;
+static CONST char * tty_command_beep;
+static CONST char * tty_command_clear;
 
 Tchannel
 DEFUN_VOID (OS_tty_input_channel)
 {
   return (input_channel);
 }
-
-/* New input interface doesn't require the following, because they
-   can be provided by standard terminal and channel operations. */
-
-static unsigned char
-DEFUN (tty_read_char, (immediate), int immediate)
-{
-  if ((OS_channel_type (input_channel)) == channel_type_terminal)
-    {
-      transaction_begin ();
-      preserve_terminal_state (input_channel);
-      if (immediate)
-	OS_terminal_nonbuffered (input_channel);
-      else
-	OS_terminal_buffered (input_channel);
-      {
-	int c = (OS_terminal_read_char (input_channel));
-	if (c == (-1))
-	  termination_eof ();
-	transaction_commit ();
-	return ((unsigned char) c);
-      }
-    }
-  else
-    {
-      unsigned char c;
-      if ((OS_channel_read (input_channel, (&c), 1)) != 1)
-	termination_eof ();
-      if ((OS_channel_type (input_channel)) == channel_type_file)
-	OS_tty_write_char (c);
-      return (c);
-    }
-}
-
-unsigned char
-DEFUN_VOID (OS_tty_read_char)
-{
-  return (tty_read_char (0));
-}
-
-unsigned char
-DEFUN_VOID (OS_tty_read_char_immediate)
-{
-  return (tty_read_char (1));
-}
-
-int
-DEFUN (OS_tty_char_ready_p, (delay), clock_t delay)
-{
-  if ((OS_channel_type (input_channel)) == channel_type_terminal)
-    return (OS_terminal_char_ready_p (input_channel, delay));
-  if (delay > 0)
-    {
-      clock_t limit = ((OS_real_time_clock ()) + delay);
-      while ((OS_real_time_clock ()) < limit)
-	;
-    }
-  return (0);
-}
-
-int
-DEFUN (OS_tty_clean_interrupts, (mode, interrupt_char),
-       enum tty_clean_mode mode AND
-       cc_t interrupt_char)
-{
-  if (parent_process_is_emacs && (mode == tty_clean_most_recent))
-    while ((OS_tty_read_char_immediate ()) != '\0')
-      ;
-  return (1);
-}
-
-/* Standard Output */
-
-static Tchannel output_channel;
-static int tty_x_size;
-static int tty_y_size;
-static CONST char * tty_command_beep;
-static CONST char * tty_command_clear;
 
 Tchannel
 DEFUN_VOID (OS_tty_output_channel)
@@ -168,29 +95,6 @@ CONST char *
 DEFUN_VOID (OS_tty_command_clear)
 {
   return (tty_command_clear);
-}
-
-/* Old output interface requires output buffering at the microcode
-   level.  The new runtime system will provide the buffering so that
-   the microcode doesn't have to. */
-
-void
-DEFUN (OS_tty_write_char, (c), unsigned char c)
-{
-  if ((OS_channel_write (output_channel, (&c), 1)) != 1)
-    error_external_return ();
-}
-
-void
-DEFUN (OS_tty_write_string, (s), CONST char * s)
-{
-  OS_channel_write_string (output_channel, s);
-}
-
-void
-DEFUN_VOID (OS_tty_beep)
-{
-  OS_channel_write_string (output_channel, tty_command_beep);
 }
 
 #ifndef TERMCAP_BUFFER_SIZE

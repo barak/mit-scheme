@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.5 1990/11/01 04:33:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.6 1990/11/05 11:55:29 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -101,22 +101,22 @@ DEFUN (terminal_open, (channel), Tchannel channel)
   get_terminal_state (channel, (& (TERMINAL_ORIGINAL_STATE (channel))));
 }
 
-int
-DEFUN (OS_terminal_read_char, (channel), Tchannel channel)
+void
+DEFUN (get_terminal_state, (channel, s), Tchannel channel AND Ttty_state * s)
 {
-  {
-    int c = (TERMINAL_BUFFER (channel));
-    if (c >= 0)
-      {
-	(TERMINAL_BUFFER (channel)) = (-1);
-	return (c);
-      }
-  }
-  {
-    unsigned char c;
-    long nread = (OS_channel_read (channel, (&c), 1));
-    return ((nread == 1) ? c : (-1));
-  }
+  STD_VOID_SYSTEM_CALL
+    ("terminal_get_state",
+     (UX_terminal_get_state ((CHANNEL_DESCRIPTOR (channel)), s)));
+}
+
+void
+DEFUN (set_terminal_state, (channel, s), Tchannel channel AND Ttty_state * s)
+{
+  extern int EXFUN (UX_terminal_control_ok, (int fd));
+  if (UX_terminal_control_ok (CHANNEL_DESCRIPTOR (channel)))
+    STD_VOID_SYSTEM_CALL
+      ("terminal_set_state",
+       (UX_terminal_set_state ((CHANNEL_DESCRIPTOR (channel)), s)));
 }
 
 unsigned int
@@ -268,115 +268,6 @@ DEFUN (terminal_state_buffered, (s, channel),
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
-
-void
-DEFUN (get_terminal_state, (channel, s), Tchannel channel AND Ttty_state * s)
-{
-  STD_VOID_SYSTEM_CALL
-    ("tty_get_state",
-     (UX_terminal_get_state ((CHANNEL_DESCRIPTOR (channel)), s)));
-}
-
-void
-DEFUN (set_terminal_state, (channel, s), Tchannel channel AND Ttty_state * s)
-{
-  STD_VOID_SYSTEM_CALL
-    ("tty_set_state",
-     (UX_terminal_set_state ((CHANNEL_DESCRIPTOR (channel)), s)));
-}
-
-struct terminal_state_record
-{
-  Tchannel channel;
-  Ttty_state state;
-};
-
-static void
-DEFUN (restore_terminal_state, (ap), PTR ap)
-{
-  set_terminal_state ((((struct terminal_state_record *) ap) -> channel),
-		      (& (((struct terminal_state_record *) ap) -> state)));
-}
-
-Ttty_state *
-DEFUN (preserve_terminal_state, (channel), Tchannel channel)
-{
-  struct terminal_state_record * record =
-    (dstack_alloc (sizeof (struct terminal_state_record)));
-  (record -> channel) = channel;
-  get_terminal_state (channel, (& (record -> state)));
-  transaction_record_action (tat_always, restore_terminal_state, record);
-  return (& (record -> state));
-}
-
-#ifdef HAVE_FIONREAD
-/* This covers HAVE_BSD_TTY_DRIVER and some others. */
-
-int
-DEFUN (OS_terminal_char_ready_p, (channel, delay),
-       Tchannel channel AND clock_t delay)
-{
-  clock_t limit;
-  if (delay > 0)
-    limit = ((OS_real_time_clock ()) + delay);
-  while (1)
-    {
-      long n;
-      int scr;
-      INTERRUPTABLE_EXTENT
-	(scr, (UX_ioctl ((CHANNEL_DESCRIPTOR (channel)), FIONREAD, (&n))));
-      if (scr < 0)
-	UX_prim_check_errno ("ioctl_FIONREAD");
-      else if (n > 0)
-	return (1);
-      else if ((delay <= 0) || ((OS_real_time_clock ()) >= limit))
-	return (0);
-    }
-}
-
-#else /* not HAVE_FIONREAD */
-#if defined(HAVE_TERMIO) || defined(HAVE_TERMIOS)
-
-int
-DEFUN (OS_terminal_char_ready_p, (channel, delay),
-       Tchannel channel AND clock_t delay)
-{
-  clock_t limit;
-  if (delay > 0)
-    limit = ((OS_real_time_clock ()) + delay);
-  transaction_begin ();
-  {
-    /* Must split declaration and assignment because some compilers
-       do not permit aggregate initializers. */
-    Ttty_state s;
-    s = (* (preserve_terminal_state (channel)));
-    terminal_state_nonbuffered ((&s), 1);
-    set_terminal_state (channel, (&s));
-  }
-  while (1)
-    {
-      unsigned char c;
-      int nread;
-      INTERRUPTABLE_EXTENT
-	(nread, (UX_read ((CHANNEL_DESCRIPTOR (channel)), (&c), 1)));
-      if (nread < 0)
-	UX_prim_check_errno ("read");
-      else if (nread == 1)
-	{
-	  (TERMINAL_BUFFER (channel)) = c;
-	  transaction_commit ();
-	  return (1);
-	}
-      if ((delay <= 0) || ((OS_real_time_clock ()) >= limit))
-	{
-	  transaction_commit ();
-	  return (0);
-	}
-    }
-}
-
-#endif /* HAVE_TERMIO or HAVE_TERMIOS */
-#endif /* HAVE_FIONREAD */
 
 unsigned int
 DEFUN (OS_terminal_get_ispeed, (channel), Tchannel channel)

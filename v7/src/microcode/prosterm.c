@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.4 1990/11/01 06:16:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.5 1990/11/05 11:55:10 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -47,27 +47,6 @@ DEFUN (arg_terminal, (argument_number), int argument_number)
   if (! ((type == channel_type_terminal) || (type == channel_type_pty_master)))
     error_bad_range_arg (argument_number);
   return (channel);
-}
-
-DEFINE_PRIMITIVE ("TERMINAL-READ-CHAR", Prim_terminal_read_char, 1, 1,
-  "Read and return a single character from TERMINAL.")
-{
-  PRIMITIVE_HEADER (1);
-  {
-    int c = (OS_terminal_read_char (arg_terminal (1)));
-    PRIMITIVE_RETURN ((c < 0) ? SHARP_F : (ASCII_TO_CHAR (c)));
-  }
-}
-
-DEFINE_PRIMITIVE ("TERMINAL-CHAR-READY?", Prim_terminal_char_ready_p, 2, 2,
-  "Return #T if a character from TERMINAL.\n\
-Second arg DELAY says how long to wait for one to arrive, in milliseconds.")
-{
-  PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT
-     (OS_terminal_char_ready_p ((arg_terminal (1)),
-				(arg_nonnegative_integer (2)))));
 }
 
 DEFINE_PRIMITIVE ("TERMINAL-GET-ISPEED", Prim_terminal_get_ispeed, 1, 1, 0)
