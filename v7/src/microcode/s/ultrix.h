@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Ultrix
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.3 1989/07/27 08:17:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.4 1989/08/03 19:56:36 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -39,6 +39,34 @@ MIT in each case. */
 #define C_SWITCH_SYSTEM -Dbsd -DULTRIX
 
 #define LIBS_SYSTEM -ltermcap
+
+/* Fix random bug in Ultrix "libX11.a"; I quote:
+
+   "Linker library processing works this way.  If the library hasn't
+   had ranlib(1) run on it, the Linker searches the library
+   sequentially exactly once, loading every module that resolves a
+   reference on the undefined symbol list.  If the library has been
+   processed by ranlib(1), the Linker searches the index that ranlib
+   built for unresolved external references and loads any modules that
+   resolve those references.  It repeatedly searches the index until
+   either it has no more unresolved references or until a search
+   results in no more modules being loaded.  The Linker then processes
+   the next item on the command line.
+
+   This explains why -lc -lX11 -lc works but -lX11 -lc doesn't.  The
+   emacs code itself references calloc or cfree somewhere.  If the
+   Linker encounters libc.a before libX11.a, it will use libc.a's
+   version of calloc/cfree.  By the time it encounters libX11.a,
+   calloc and cfree are not on the undefined symbol list and thus
+   there is no reason to load XvmsAlloc.o.  You need the second
+   reference to libc.a on the command line to resolve any references
+   from modules in libX11.a to modules in libc.a not already loaded.
+   If you put libX11.a first, calloc and cfree references cause
+   XvmsAlloc.o to be loaded.  This module also defines free, malloc,
+   and realloc, causing the multiple symbol definitions message from
+   ld(1)." */
+
+#define LIBX11_SYSTEM -lc
 
 #define SOURCES_SYSTEM unixprim.c
 #define OBJECTS_SYSTEM unixprim.o
