@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rerite.scm,v 1.2 1992/02/17 21:41:52 jinx Exp $
+$Id: rerite.scm,v 1.3 1993/07/01 03:30:28 gjr Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -172,3 +172,27 @@ MIT in each case. |#
   (OBJECT->ADDRESS (? source))
   (QUALIFIER (value-class=address? (rtl:expression-value-class source)))
   source)
+
+;; KLUDGE!  This is unsafe, but currently works.
+;; Probably closure bumping should not use byte-offset-address, and use
+;; a new rtl type, but...
+
+(define-rule add-pre-cse-rewriting-rule!
+  (CONS-POINTER (MACHINE-CONSTANT (? type))
+		(REGISTER (? datum register-known-value)))
+  (QUALIFIER
+   (and (= (ucode-type compiled-entry) type)
+	(rtl:byte-offset-address? datum)
+	(let ((v (let ((v (rtl:byte-offset-address-base datum)))
+		   (if (rtl:register? v)
+		       (register-known-value (rtl:register-number v))
+		       v))))
+	  (and v
+	       (rtl:object->address? v)))))
+  (rtl:make-byte-offset-address
+   (rtl:object->address-expression
+    (let ((v (rtl:byte-offset-address-base datum)))
+      (if (rtl:register? v)
+	  (register-known-value (rtl:register-number v))
+	  v)))
+   (rtl:byte-offset-address-offset datum)))
