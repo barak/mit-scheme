@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.43 1996/04/24 03:48:01 cph Exp $
+$Id: x11graph.scm,v 1.44 1996/07/12 20:20:56 adams Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -82,6 +82,7 @@ MIT in each case. |#
   (x-window-y-size 1)
   (x-graphics-copy-area 8)
   (x-graphics-drag-cursor 3)
+  (x-graphics-draw-arc 8)
   (x-graphics-draw-line 5)
   (x-graphics-draw-lines 3)
   (x-graphics-draw-point 3)
@@ -161,6 +162,8 @@ MIT in each case. |#
 	   (create-image ,x-graphics/create-image)
 	   (device-coordinate-limits ,x-graphics/device-coordinate-limits)
 	   (drag-cursor ,x-graphics/drag-cursor)
+	   (draw-arc ,x-graphics/draw-arc)
+	   (draw-circle ,x-graphics/draw-circle)
 	   (draw-image ,image/draw)
 	   (draw-line ,x-graphics/draw-line)
 	   (draw-lines ,x-graphics/draw-lines)
@@ -168,6 +171,7 @@ MIT in each case. |#
 	   (draw-points ,x-graphics/draw-points)
 	   (draw-subimage ,image/draw-subimage)
 	   (draw-text ,x-graphics/draw-text)
+	   (fill-circle ,x-graphics/fill-circle)
 	   (fill-polygon ,x-graphics/fill-polygon)
 	   (flush ,x-graphics/flush)
 	   (font-structure ,x-graphics/font-structure)
@@ -649,6 +653,23 @@ MIT in each case. |#
 
 ;;;; Miscellaneous Operations
 
+(define (x-graphics/draw-arc
+	 device
+	 x y radius-x radius-y angle-start angle-sweep fill?)
+  (x-graphics-draw-arc (x-graphics-device/xw device)
+		       x y radius-x radius-y angle-start angle-sweep fill?))
+   
+(define (x-graphics/draw-circle device x y radius)
+  (x-graphics-draw-arc (x-graphics-device/xw device)
+		       x y radius radius 0 360 #F))
+   
+(define (x-graphics/fill-circle device x y radius)
+  (x-graphics-draw-arc (x-graphics-device/xw device)
+		       x y radius radius 0 360 #T))
+   
+(define (x-graphics/fill-polygon device point-vector)
+  (x-graphics-fill-polygon (x-graphics-device/xw device) point-vector))
+   
 (define (x-graphics/fill-polygon device point-vector)
   (x-graphics-fill-polygon (x-graphics-device/xw device) point-vector))
    
