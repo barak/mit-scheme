@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.14 1992/10/08 18:03:52 jinx Exp $
+$Id: dosprm.scm,v 1.15 1992/10/17 22:23:47 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -160,18 +160,33 @@ MIT in each case. |#
 
 (define get-environment-variable)
 (define set-environment-variable!)
+(define set-environment-variable-default!)
 (define delete-environment-variable!)
 (define reset-environment-variables!)
 
-(let ((environment-variables '()))
+(let ((environment-variables '())
+      (environment-defaults '()))
+
   ;; Kludge: since getenv returns false for unbound,
   ;; that can also be the marker for a deleted variable
   (define-integrable *variable-deleted* false)
+
+  (define (env-error proc var)
+    (error "Variable must be a string" proc var))
+
+  (define (default-variable! var val)
+    (if (and (not (assoc var environment-variables))
+	     (not ((ucode-primitive get-environment-variable 1)
+		   var)))
+	(set! environment-variables
+	      (cons (cons var val)
+		    environment-variables)))
+    unspecific)
+
   (set! get-environment-variable
 	(lambda (variable)
 	  (if (not (string? variable))
-	      (error "GET-ENVIRONMENT-VARIABLE: Variable must be a string"
-		     variable)
+	      (env-error 'GET-ENVIRONMENT-VARIABLE variable)
 	      (let ((variable (string-upcase variable)))
 		(cond ((assoc variable environment-variables) => cdr)
 		      (else ((ucode-primitive get-environment-variable 1)
@@ -179,7 +194,8 @@ MIT in each case. |#
 
   (set! set-environment-variable!
 	(lambda (variable value)
-	  (if (string? variable)
+	  (if (not (string? variable))
+	      (env-error 'SET-ENVIRONMENT-VARIABLE! variable)
 	      (let ((variable (string-upcase variable)))
 		(cond ((assoc variable environment-variables)
 		       =>
@@ -188,17 +204,36 @@ MIT in each case. |#
 		      (else
 		       (set! environment-variables
 			     (cons (cons variable value)
-				   environment-variables)))))
-	      (error "SET-ENVIRONMENT-VARIABLE!: Variable must be a string"
-		     variable value))
+				   environment-variables))))))
 	  unspecific))
 
   (set! delete-environment-variable!
 	(lambda (variable)
-	  (set-environment-variable! variable *variable-deleted*)))
+	  (if (not (string? variable))
+	      (env-error 'DELETE-ENVIRONMENT-VARIABLE! variable)
+	      (set-environment-variable! variable *variable-deleted*))))
 
   (set! reset-environment-variables!
-	(lambda () (set! environment-variables '())))
+	(lambda ()
+	  (set! environment-variables '())
+	  (for-each (lambda (def)
+		      (default-variable! (car def) (cdr def)))
+		    environment-defaults)
+	  unspecific))
+
+  (set! set-environment-variable-default!
+	(lambda (var val)
+	  (if (not (string? var))
+	      (env-error 'SET-ENVIRONMENT-VARIABLE-DEFAULT! var)
+	      (let ((var (string-upcase var)))
+		(cond ((assoc var environment-defaults)
+		       => (lambda (pair)
+			    (set-cdr! pair val)))
+		      (else
+		       (set! environment-defaults
+			     (cons (cons var val)
+				   environment-defaults))))
+		(default-variable! var val)))))
 
   unspecific)				; End LET
 
