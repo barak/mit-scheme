@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.23 1987/02/03 16:10:17 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.24 1987/02/07 15:25:07 jinx Exp $ */
 
 /* Memory management top level.
 
@@ -48,7 +48,7 @@ MIT in each case. */
 #include "primitive.h"
 #include "gccode.h"
 
-extern void Clear_Memory(), Setup_Memory();
+extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
 
 /* 	Memory Allocation, sequential processor:
 
@@ -94,25 +94,31 @@ void
 Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
 int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 {
-/* First, assign values for the start of the areas */
-
+  /* Consistency check 1 */
   if (Our_Heap_Size == 0)
   { printf("Configuration won't hold initial data.\n");
     exit(1);
   }
+
+  /* Allocate */
   Highest_Allocated_Address = 
     Allocate_Heap_Space(Stack_Allocation_Size(Our_Stack_Size) + 
 	                2*Our_Heap_Size + Our_Constant_Size);
+
+  /* Consistency check 2 */
   if (Heap == NULL)
   { fprintf(stderr, "Not enough memory for this configuration.\n");
     exit(1);
   }
+
+  /* Initialize the various global parameters */
   Align_Float(Heap);
   Unused_Heap = Heap+Our_Heap_Size;
   Align_Float(Unused_Heap);
   Constant_Space = Heap + 2*Our_Heap_Size;
   Align_Float(Constant_Space);
-  /* The extra word is needed by the garbage collector */
+
+  /* Consistency check 3 */
   if (((C_To_Scheme(Highest_Allocated_Address)) & TYPE_CODE_MASK) != 0)
   { fprintf(stderr,
 	    "Largest address does not fit in datum field of Pointer.\n");
@@ -124,6 +130,12 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
   Heap_Bottom = Heap;
   Clear_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size);
   return;
+}
+
+/* In this version, this does nothing. */
+void
+Reset_Memory()
+{ return;
 }
 
 /* Utilities for the garbage collector top level.
@@ -317,7 +329,7 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
   if (Free > Heap_Top)
   { fprintf(stderr, "\nGC has been delayed too long, and you are truly out of room!\n");
     fprintf(stderr, "Free=0x%x, MemTop=0x%x, Heap_Top=0x%x\n", Free, MemTop, Heap_Top);
-    Microcode_Termination(TERM_EXIT);
+    Microcode_Termination(TERM_NO_SPACE);
   }
   GC_Reserve = Get_Integer(Arg1);
   GCFlip();
@@ -331,7 +343,7 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
     fprintf(stderr,
 	    "is at 0x%x, and we are trying to cons 0x%x objects.  Dead!\n",
 	   MemTop, GC_Space_Needed);
-    Microcode_Termination(TERM_EXIT);
+    Microcode_Termination(TERM_NO_SPACE);
   }
   GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
   if (GC_Daemon_Proc == NIL)
