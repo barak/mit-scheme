@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modefs.scm,v 1.149 1995/04/13 23:26:56 cph Exp $
+;;;	$Id: modefs.scm,v 1.150 1996/04/23 23:09:44 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -278,6 +278,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\0) 'delete-window)
 (define-key 'fundamental '(#\c-x #\1) 'delete-other-windows)
 (define-key 'fundamental '(#\c-x #\2) 'split-window-vertically)
+(define-key 'fundamental '(#\c-x #\3) 'split-window-horizontally)
 (define-prefix-key 'fundamental '(#\c-x #\4))
 (define-key 'fundamental '(#\c-x #\4 #\c-f) 'find-file-other-window)
 (define-key 'fundamental '(#\c-x #\4 #\.) 'find-tag-other-window)
@@ -285,7 +286,16 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\4 #\d) 'dired-other-window)
 (define-key 'fundamental '(#\c-x #\4 #\f) 'find-file-other-window)
 (define-key 'fundamental '(#\c-x #\4 #\m) 'mail-other-window)
-(define-key 'fundamental '(#\c-x #\5) 'split-window-horizontally)
+(define-prefix-key 'fundamental '(#\c-x #\5))
+(define-key 'fundamental '(#\c-x #\5 #\c-f) 'find-file-other-frame)
+(define-key 'fundamental '(#\c-x #\5 #\.) 'find-tag-other-frame)
+(define-key 'fundamental '(#\c-x #\5 #\0) 'delete-frame)
+(define-key 'fundamental '(#\c-x #\5 #\2) 'make-frame)
+(define-key 'fundamental '(#\c-x #\5 #\b) 'switch-to-buffer-other-frame)
+(define-key 'fundamental '(#\c-x #\5 #\d) 'dired-other-frame)
+(define-key 'fundamental '(#\c-x #\5 #\f) 'find-file-other-frame)
+(define-key 'fundamental '(#\c-x #\5 #\m) 'mail-other-frame)
+(define-key 'fundamental '(#\c-x #\5 #\o) 'other-frame)
 (define-key 'fundamental '(#\c-x #\;) 'set-comment-column)
 (define-key 'fundamental '(#\c-x #\=) 'what-cursor-position)
 (define-key 'fundamental '(#\c-x #\[) 'backward-page)
