@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.20 1992/02/04 16:00:13 jinx Exp $
+   $Id: y300.lcl,v 1.21 1992/10/01 19:01:44 cph Exp $
  */
 
 COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
@@ -27,9 +27,13 @@ COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJ
    libndvio.a is a copy of libdvio.a with __dup, ___fcntl, _ioctl, __open,
    __read, and __write defined to the same values as the names with
    only one underscore.
+
+   (We have since changed to a different release of HP-UX, and the new
+    release links without editing the library.  For now, we'll use the
+    original library.  -- CPH)
 */
 
-#if 0
+#if 1
 #define LIB_DVIO -ldvio
 #else
 #define LIB_DVIO -lndvio
