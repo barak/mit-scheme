@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.4 1992/09/14 21:18:46 cph Exp $
+$Id: floppy.scm,v 1.5 1992/09/14 21:21:32 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -41,7 +41,11 @@ MIT in each case. |#
 (define (standard-login-initialization)
   (set! floppy-contents-loaded? false)
   (let ((homedir (user-homedir-pathname)))
-    (let ((workdir (merge-pathnames "work/" homedir)))
+    (let ((workdir
+	   (let ((workdir (merge-pathnames "work/" homedir)))
+	     (if (file-directory? workdir)
+		 workdir
+		 homedir))))
       (set! working-directory (->namestring workdir))
       (set-default-directory workdir)
       (set-working-directory-pathname! workdir))
@@ -660,8 +664,7 @@ M-x rename-file, or use the `r' command in Dired.")
 (define (file-record/unix-name record)
   (string-append working-directory (file-record/name record)))
 
-(define working-directory
-  "~u6001/work/")
+(define working-directory)
 
 (define (file-record/name=? x y)
   (string=? (file-record/name x) (file-record/name y)))
