@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: winout.scm,v 1.10 1999/01/02 06:11:34 cph Exp $
+;;;$Id: winout.scm,v 1.11 1999/02/16 00:44:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -61,7 +61,7 @@
 		 (region-insert-char! point char)))
 	  (region-insert-char! point char)))))
 
-(define (operation/write-string port string)
+(define (operation/write-substring port string start end)
   (let ((window (port/state port)))
     (let ((buffer (window-buffer window))
 	  (point (window-point window)))
@@ -70,24 +70,19 @@
 	       (buffer-auto-save-modified? buffer)
 	       (or (not (window-needs-redisplay? window))
 		   (window-direct-update! window false))
-	       (let loop ((i (- (string-length string) 1)))
-		 (or (< i 0)
-		     (let ((char  (string-ref string i)))
+	       (let loop ((i (- end 1)))
+		 (or (< i start)
+		     (let ((char (string-ref string i)))
 		       (and (not (char=? char #\newline))
 			    (not (char=? char #\tab))
 			    (let ((image (window-char->image window char)))
 			      (and (= (string-length image) 1)
 				   (char=? (string-ref image 0) char)
 				   (loop (- i 1))))))))
-	       ;; above loop expression replaces
-	       ;;(not(string-find-next-char-in-set string char-set:not-graphic))
-	       (< (+ (string-length string) (window-point-x window))
+	       (< (+ (- end start) (window-point-x window))
 		  (window-x-size window)))
-	  (window-direct-output-insert-substring! window
-						  string
-						  0
-						  (string-length string))
-	  (region-insert-string! point string)))))
+	  (window-direct-output-insert-substring! window string start end)
+	  (region-insert-substring! point string start end)))))
 
 (define (operation/flush-output port)
   (let ((window (port/state port)))
@@ -106,6 +101,6 @@
 		      (FRESH-LINE ,operation/fresh-line)
 		      (PRINT-SELF ,operation/print-self)
 		      (WRITE-CHAR ,operation/write-char)
-		      (WRITE-STRING ,operation/write-string)
+		      (WRITE-SUBSTRING ,operation/write-substring)
 		      (X-SIZE ,operation/x-size))
 		    false))
