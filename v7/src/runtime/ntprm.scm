@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.42 2003/09/14 01:01:45 cph Exp $
+$Id: ntprm.scm,v 1.43 2003/09/14 01:52:35 cph Exp $
 
 Copyright 1995,1996,1998,1999,2000,2001 Massachusetts Institute of Technology
 Copyright 2003 Massachusetts Institute of Technology
@@ -657,7 +657,7 @@ USA.
 (define (os/parse-path-string string)
   (let ((end (string-length string))
 	(substring
-	 (let ((cs (char-set #\")))
+	 (let ((cs (char-set-invert (char-set #\"))))
 	   (lambda (string start end)
 	     (pathname-as-directory (string-trim (substring string start end)
 						 cs))))))
