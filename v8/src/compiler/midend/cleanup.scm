@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.8 1995/02/21 06:33:13 adams Exp $
+$Id: cleanup.scm,v 1.9 1995/02/26 16:35:19 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -92,29 +92,29 @@ MIT in each case. |#
   `(DECLARE ,@anything))
 
 (define-cleanup-handler IF (env pred conseq alt)
-  (let ((pred* (cleanup/expr env pred)))
+  (let ((pred*    (cleanup/expr env pred))
+	(conseq*  (cleanup/expr env conseq))
+	(alt*     (cleanup/expr env alt)))
     (define (default)
-      `(IF ,pred* 
-	   ,(cleanup/expr env conseq)
-	   ,(cleanup/expr env alt)))
+      `(IF ,pred* ,conseq* ,alt*))
     (cond ((QUOTE/? pred*)
 	   (case (boolean/discriminate (quote/text pred*))
-	     ((FALSE)
-	      (cleanup/expr env alt))
-	     ((TRUE)
-	      (cleanup/expr env conseq))
-	     (else
-	      (default))))
-	  ((CALL/? pred*)
-	   ;; (if (not p) c a) => (if p a c)
-	   (let ((pred-rator (call/operator pred*)))
-	     (if (and (QUOTE/? pred-rator)
-		      (eq? (quote/text pred-rator) not)
-		      (equal? (call/continuation pred*) `(QUOTE #F)))
-		 `(IF ,(first (call/operands pred*))
-		      ,(cleanup/expr env alt)
-		      ,(cleanup/expr env conseq))
-		 (default))))
+	     ((FALSE)    alt*)
+	     ((TRUE)     conseq*)
+	     (else       (default))))
+	  (;; (if p p #F) => p    (Some generic arith diamonds)
+	   (and (equal? alt* '(QUOTE #F))
+		(equal? pred* conseq*)
+		(form/simple&side-effect-free? pred*))
+	   pred*)
+	  (;; (if (not p) c a) => (if p a c)
+	   (and (CALL/? pred*)
+		(QUOTE/? (call/operator pred*))
+		(eq? (quote/text (call/operator pred*)) not)
+		(equal? (call/continuation pred*) `(QUOTE #F)))
+	   `(IF ,(first (call/operands pred*))
+		,alt*
+		,conseq*))
 	  (else
 	   (default)))))
 
