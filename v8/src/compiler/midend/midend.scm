@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.21 1996/03/08 22:11:34 adams Exp $
+$Id: midend.scm,v 1.22 1996/03/09 18:29:04 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -460,7 +460,11 @@ Example:
   ;; Turn FORM into something to put in an error message or warning that
   ;; can help the user figure out where the error is.  Currently
   ;; pretty-prints the DBG expression for FORM if it can be found, and
-  ;; prefixes each line with ";  ".
+  ;; prefixes each line with "; ", then wraps the whole text in an
+  ;; error irritant.
+  ;;
+  ;; If nothing helpful can be found returns #F.  This happens only if
+  ;; there is a problem in tracking dbg info.
   (define (string-split string separator)
     (let ((end (string-length string)))
       (let loop ((i 0))
@@ -486,7 +490,7 @@ Example:
 	  ((new-dbg-continuation/outer dbg-object)
 	   => get-source)
 	  (else (unhelpful))))
-  (define (unhelpful) (error-irritant/noise ""))
+  (define (unhelpful) #F)  #|(error-irritant/noise "")|#
   (cond ((code-rewrite/original-form form) => get-source)
 	((code-rewrite/original-form/previous form) => get-source)
 	(else (unhelpful))))

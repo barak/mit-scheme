@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.30 1995/09/08 00:56:01 adams Exp $
+$Id: utils.scm,v 1.31 1996/03/09 18:27:52 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -800,14 +800,20 @@ Example use of FORM/COPY-TRANSFORMING:
   (if (not (= (length args) len))
       (internal-error "Wrong number of arguments" len args)))
 
-(define (lambda-list/applicate lambda-list args)
-  ;; No #!AUX allowed here
+(define (lambda-list/applicate form lambda-list args)
+  ;; If LAMBDA-LIST is to be simplified by removing #!OPTIONAL and #!REST
+  ;; markers, then the ARGS must be processed to ensure the lambda
+  ;; bindings are bould to the same values.  Returns a list of
+  ;; expressions. #!AUX is not allowed.  FORM is used only for error
+  ;; reporting to locate the user's source.
+  (define (bad message)
+    (user-error message	(form->source-irritant form)))
   (let loop ((ll lambda-list)
 	     (ops args)
 	     (ops* '()))
     (cond ((null? ll)
 	   (if (not (null? ops))
-	       (user-error "Too many arguments" lambda-list args))
+	       (bad "Too many arguments"))
 	   (reverse! ops*))
 	  ((eq? (car ll) '#!OPTIONAL)
 	   (loop (if (or (null? (cddr ll))
@@ -834,7 +840,7 @@ Example use of FORM/COPY-TRANSFORMING:
 			       ,(listify (cdr ops)))))
 		  ops*)))
 	  ((null? ops)
-	   (user-error "Too few arguments" lambda-list args))
+	   (bad "Too few arguments"))
 	  (else
 	   (loop (cdr ll) (cdr ops) (cons (car ops) ops*))))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.28 1996/03/04 05:10:46 adams Exp $
+$Id: cleanup.scm,v 1.29 1996/03/09 18:28:42 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -176,7 +176,7 @@ MIT in each case. |#
               (lambda (bindings* body*)
                 (cleanup/pseudo-letify rator bindings* body*))
               env
-              (cleanup/lambda-list->bindings let-names let-values)
+              (cleanup/lambda-list->bindings form let-names let-values)
               lambda-body))
 
 	   (if (call/%make-stack-closure? cont)
@@ -561,11 +561,11 @@ MIT in each case. |#
 (define (cleanup/letify bindings body)
   `(LET ,bindings ,body))
 
-(define (cleanup/lambda-list->bindings lambda-list operands)
+(define (cleanup/lambda-list->bindings form lambda-list operands)
   ;; returns LET-like bindings
   (map (lambda (name operand) (list name operand))
        (lambda-list->names lambda-list)
-       (lambda-list/applicate lambda-list operands)))
+       (lambda-list/applicate form lambda-list operands)))
 
 (define (cleanup/pseudo-letify rator bindings body)
   ;; If the body is a lookup

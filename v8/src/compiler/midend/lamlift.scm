@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lamlift.scm,v 1.8 1995/07/04 17:56:11 adams Exp $
+$Id: lamlift.scm,v 1.9 1996/03/09 18:28:04 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -455,7 +455,7 @@ MIT in each case. |#
    call
    `(CALL (LOOKUP ,var)
 	  ,@(reorder (append extra-args
-			     (lambda-list/applicate lambda-list
+			     (lambda-list/applicate call lambda-list
 			      (call/cont-and-operands call)))))))
 
 (define (lamlift/reorderer original final)

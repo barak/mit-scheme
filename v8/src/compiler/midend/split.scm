@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: split.scm,v 1.6 1995/09/04 21:55:10 adams Exp $
+$Id: split.scm,v 1.7 1996/03/09 18:28:22 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -231,14 +231,14 @@ MIT in each case. |#
 			       ,(split/remember*
 				 `(CALL (LOOKUP ,new-name)
 					,(third form)
-					,@(lambda-list/applicate
+					,@(lambda-list/applicate form
 					   (cdr lambda-list)
 					   (list-tail form 5)))
 				 form)))
 			   ((HEAP)
 			    `(CALL (LOOKUP ,new-name)
 				   ,(third form)
-				   ,@(lambda-list/applicate
+				   ,@(lambda-list/applicate form
 				      (cdr lambda-list)
 				      (list-tail form 4))))
 			   (else (internal-error "Unknown format"
