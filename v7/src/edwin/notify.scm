@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.9 1992/08/28 18:44:39 jinx Exp $
+;;;	$Id: notify.scm,v 1.10 1992/09/17 00:26:15 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -184,11 +184,11 @@ which can show various things including time, load average, and mail status."
 				    ((cdr element))
 				    ""))
 			      notifier-elements)))
-  (if mail-notify-hook-installed?
-      (update-notify-string!
-       (if (ref-variable notify-show-mail)
-	   (notifier:mail-present)
-	   "")))
+  (update-notify-string!
+   (if (and mail-notify-hook-installed?
+	    (ref-variable notify-show-mail))
+       (notifier:mail-present)
+       ""))
   true)
 
 (define-command kill-notifier
