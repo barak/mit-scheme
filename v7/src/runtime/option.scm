@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.28 1994/03/28 06:14:42 ziggy Exp $
+$Id: option.scm,v 14.29 1994/09/30 02:37:48 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -37,38 +37,85 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define *initial-options-file*  #F)
+
+(define loaded-options  '())
+
+
+(define (initial-options-file-pathname)
+  (define (library-file? library-internal-path)
+    (let* ((library    (library-directory-pathname ""))
+	   (pathname   (merge-pathnames library-internal-path library)))
+      (and (file-exists? pathname)
+	   pathname)))
+  (or *initial-options-file*
+      (get-environment-variable "MITSCHEME_LOAD_OPTIONS")
+      (library-file? "options.db")
+      (library-file? "options/options.db")
+      (error "Cannot locate an options database")
+      "options.db"))
+
+
 (define (load-option name)
-  (let ((entry (assq name options)))
-    (if (not entry)
-	(error "Unknown option name" name))
-    (if (not (memq name loaded-options))
-	(let ((directory (delay (library-directory-pathname "options"))))
-	  (for-each
-	   (lambda (descriptor)
-	     (let ((environment
-		    (package/environment (find-package (car descriptor)))))
-	       (for-each
-		(lambda (filename)
-		  (cond (((ucode-primitive initialize-c-compiled-block 1)
-			  (string-append "runtime_" filename))
-			 => (lambda (obj)
-			      (purify obj)
-			      (scode-eval obj environment)))
-			(else
-			 (let ((path
-				(merge-pathnames filename (force directory))))
-			   (with-working-directory-pathname
-			     (directory-pathname path)
-			     (lambda ()
-			       (load path
-				     environment
-				     syntax-table/system-internal
-				     true)))))))
-		(cddr descriptor))
-	       (eval (cadr descriptor) environment)))
-	   (cdr entry))
-	  (set! loaded-options (cons name loaded-options))))
-    name))
+  
+  (define (eval-filename form)
+    (eval form system-global-environment))
+
+  (define (process-descriptor descriptor)
+    (let ((environment (package/environment (find-package (car descriptor)))))
+      (for-each
+	  (lambda (filename-form)
+	    (let ((filename  (eval-filename filename-form)))
+	      (cond 
+	       (((ucode-primitive initialize-c-compiled-block 1)
+		 (string-append "runtime_" filename))
+		=> (lambda (obj)
+		     (purify obj)
+		     (scode-eval obj environment)))
+	       (else
+		(let ((path (merge-pathnames filename (library-directory-pathname "options"))))
+		  (with-working-directory-pathname
+		   (directory-pathname path)
+		   (lambda ()
+		     (load path
+			   environment
+			   syntax-table/system-internal
+			   true))))))))
+	(cddr descriptor))
+      (eval (cadr descriptor) environment)))
+  
+  (define (load-entry entry)
+    (for-each process-descriptor (cdr entry))
+    (set! loaded-options (cons name loaded-options))
+    unspecific)
+
+  (define (file-loop options-file)
+    (let ((options (with-input-from-file options-file read)))
+      (verify-options-syntax options options-file)
+      (cond ((assq name (cdr options)) => load-entry)
+	    ((car options)
+	     (file-loop
+	      (merge-pathnames (eval-filename (car options))
+			       (library-directory-pathname ""))))
+	    (else
+	     (error "Unknown option name:" name)))))
+
+  (define (verify-options-syntax options filename)
+    (define (verify-entry thing)
+      (if (not (and (pair? thing)
+		    (symbol? (car thing))
+		    (list? (cdr thing))))
+	  (error "Bad entry in options database" filename thing)))
+    (if (and (pair? options)
+	     (list? (cdr options)))
+	(for-each verify-entry (cdr options))
+	(error "Bad options database" filename options)))
+
+
+  (if (not (memq name loaded-options))
+      (file-loop  (initial-options-file-pathname)))
+  name)
+
 
 (define (library-directory-pathname name)
   (or (system-library-directory-pathname name)
@@ -80,23 +127,6 @@ MIT in each case. |#
 			     library-directory-pathname
 			     (list name)))))
 
-(define options
-  '((ARITHMETIC-INTERFACE ((RUNTIME NUMBER INTERFACE) #F "numint"))
-    (COMPRESS ((RUNTIME COMPRESS) #F "cpress"))
-    (DOSPROCESS (() #F "dosproc"))
-    (FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))
-    (HASH-TABLE ((RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb"))
-    (HEADHUNT (() #F "../wabbit/load"))	; wabbit = headhunt [ziggy]
-    (KRYPT ((RUNTIME KRYPT) #F "krypt"))
-    (PC-SAMPLE (() #F "../pcsample/load"))
-    (RB-TREE ((runtime rb-tree) #F "rbtree"))
-    (SWAT (() #F "../swat/load"))
-    (WABBIT (() #F "../wabbit/load"))
-    (WT-TREE ((runtime wt-tree) #F "wttree"))
-    (SUBPROCESS ((RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process"))))
-
-(define loaded-options
-  '())
 
 (define (declare-shared-library shared-library thunk)
   (let ((thunk-valid?
