@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.60 1990/02/09 19:11:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.61 1990/02/10 23:45:06 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -645,6 +645,40 @@ MIT in each case. |#
 	  object-unhash
 	  unhash
 	  valid-hash-number?)
+  (initialization (initialize-package!)))
+
+(define-package (runtime hash-table)
+  (file-case options
+    ((load) "hashtb")
+    (else))
+  (parent ())
+  (export ()
+	  hash-table/clean!
+	  hash-table/clear!
+	  hash-table/constructor
+	  hash-table/count
+	  hash-table/entries-list
+	  hash-table/entries-vector
+	  hash-table/entry-key
+	  hash-table/entry-value
+	  hash-table/for-each
+	  hash-table/get
+	  hash-table/key-hash
+	  hash-table/key=?
+	  hash-table/lookup
+	  hash-table/make-entry
+	  hash-table/put!
+	  hash-table/rehash-size
+	  hash-table/rehash-threshold
+	  hash-table/remove!
+	  hash-table/set-entry-value!
+	  hash-table/size
+	  hash-table?
+	  make-object-hash-table
+	  make-string-hash-table
+	  make-symbol-hash-table
+	  set-hash-table/rehash-size!
+	  set-hash-table/rehash-threshold!)
   (initialization (initialize-package!)))
 
 (define-package (runtime history)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.6 1989/11/09 03:44:56 gjs Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.7 1990/02/10 23:45:01 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -63,5 +63,4 @@ MIT in each case. |#
 (define options
   '((ARITHMETIC-INTERFACE ((RUNTIME NUMBER INTERFACE) #F "numint"))
     (FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))
-    (STARBASE ((RUNTIME OLD-STARBASE-GRAPHICS) (INITIALIZE-PACKAGE!) "Sgraph"))
-    ))
+    (HASH-TABLE ((RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb"))))
