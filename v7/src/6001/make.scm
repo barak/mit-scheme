@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.22 1995/02/24 00:37:51 cph Exp $
+$Id: make.scm,v 15.23 1995/02/24 00:38:28 cph Exp $
 
 Copyright (c) 1991-95 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. |#
   (if (eq? 'UNIX microcode-id/operating-system)
       (load "floppy" edwin)))
 ((access initialize-package! (->environment '(student scode-rewriting))))
-(add-system! (make-system "6.001" 15 21 '()))
+(add-system! (make-system "6.001" 15 23 '()))
 
 ;;; Customize the runtime system:
 (set! repl:allow-restart-notifications? false)

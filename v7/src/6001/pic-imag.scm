@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pic-imag.scm,v 1.6 1995/02/21 23:23:42 cph Exp $
+$Id: pic-imag.scm,v 1.7 1995/02/24 00:37:57 cph Exp $
 
 Copyright (c) 1991-95 Massachusetts Institute of Technology
 
@@ -175,15 +175,17 @@ MIT in each case. |#
 				   (let m-loop ((m n))
 				     (if (fix:< m m-end)
 					 (begin
-					   (vector-8b-set! byte-string
-							   m v)
+					   (vector-8b-set! byte-string m v)
 					   (m-loop (fix:+ m 1)))
 					 (n-loop (fix:+ n image-width)))))
 				 (x-loop (fix:+ px 1) (fix:+ ix h-sf)))))
 			 (y-loop (fix:- py 1) 
 				 (fix:+ iy-index rect-index-height)))))))))
-    
+    ;; Kludge: IMAGE/FILL-FROM-BYTE-VECTOR should take an argument
+    ;; that specifies what color a given byte in BYTE-STRING maps to.
+    ;; OS/2 requires this information, so we supply it here.
+    (if (eq? 'OS/2 microcode-id/operating-system)
+	(os2-image/set-colormap image os2-image-colormap:gray-256))
     (image/fill-from-byte-vector image byte-string)
     (1d-table/put! (graphics-device/properties window) image #t)
     image))
-

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: picture.scm,v 1.22 1995/02/21 23:22:24 cph Exp $
+$Id: picture.scm,v 1.23 1995/02/24 00:38:06 cph Exp $
 
 Copyright (c) 1991-95 Massachusetts Institute of Technology
 
@@ -141,6 +141,13 @@ MIT in each case. |#
 				(- dy (+ y fy)))))))
     window))
 
+(define os2-image-colormap:gray-256
+  (make-initialized-vector 256
+    (lambda (index)
+      (+ (* index #x10000)
+	 (* index #x100)
+	 index))))
+
 (define (resize-window window width height)
   (let ((name (graphics-type-name (graphics-type window))))
     (case name
@@ -158,7 +165,8 @@ MIT in each case. |#
   (let ((name (graphics-type-name (graphics-type window))))
     (case name
       ((X) (n-gray-map/X11 window))
-      ((WIN32 OS/2) (n-gray-map/win32 window))
+      ((WIN32) (n-gray-map/win32 window))
+      ((OS/2) (n-gray-map/os2 window))
       (else (error "Unsupported graphics type:" name)))))
 
 (define (n-gray-map/X11 window)
@@ -217,21 +225,19 @@ MIT in each case. |#
 (define-integrable visual-class:true-color 4)
 (define-integrable visual-class:direct-color 5)
 
-(define (n-gray-map/win32 window)
-  window
-  (if (not 128->128-gray-map)
-      (set! 128->128-gray-map
-	    (let ((s (make-string 128)))
-	      (let loop ((i 0))
-		(if (fix:< i 128)
-		    (begin
-		      (vector-8b-set! s i i)
-		      (loop (fix:+ i 1)))))
-	      s)))
-  128->128-gray-map)
+(define n-gray-map/win32
+  (let ((map (make-string 128)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:= i 128))
+      (vector-8b-set! map i i))
+    (lambda (window) window map)))
 
-(define 128->128-gray-map
-  #f)
+(define n-gray-map/os2
+  (let ((map (make-string 256)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:= i 256))
+      (vector-8b-set! map i i))
+    (lambda (window) window map)))
 
 ;;;; Pictures
 
@@ -324,8 +330,8 @@ MIT in each case. |#
     (lambda (x1 y1 x2 y2)
       (set! *last-picture-displayed* pic)
       (graphics-set-coordinate-limits window 0 (- y2 y1) (- x2 x1) 0)
-      (let* ((win-wid (fix:+ 1 (fix:- x2 x1)))
-	     (win-hgt (fix:+ 1 (fix:- y1 y2)))
+      (let* ((win-wid (+ 1 (abs (- x2 x1))))
+	     (win-hgt (+ 1 (abs (- y1 y2))))
 	     (len&margin (integer-divide win-wid (picture-width pic)))
 	     (wid&margin (integer-divide win-hgt (picture-height pic)))
 	     (h-margin (integer-divide-remainder len&margin))
@@ -349,10 +355,10 @@ MIT in each case. |#
 					 brick-wid brick-hgt
 					 pic-min pic-max))))
 	      (graphics-clear window)
-	      (graphics-operation window 'draw-image
-			    (quotient h-margin 2)
-			    (- (quotient v-margin 2))
-			    image)
+	      (image/draw window
+			  (quotient h-margin 2)
+			  (- (quotient v-margin 2))
+			  image)
 	      (if (and true-min-max? (not image-cached?))
 		  (picture-set-image! pic image))))))))
 
