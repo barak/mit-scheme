@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: calias.scm,v 1.27 2003/01/10 18:50:20 cph Exp $
+$Id: calias.scm,v 1.28 2003/01/10 18:52:09 cph Exp $
 
 Copyright 1986,1989,1991,1992,1994,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -155,7 +155,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (key? object)
   (or (char? object)
       (special-key? object)
-      (button? key)))
+      (button? object)))
 
 (define (key-bucky-bits key)
   (cond ((char? key) (char-bits key))
