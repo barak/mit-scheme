@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.177 1993/04/27 09:14:09 cph Exp $
+$Id: runtime.pkg,v 14.178 1993/04/27 20:21:14 hal Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2453,6 +2453,7 @@ MIT in each case. |#
 	  create-thread-continuation
 	  current-thread
 	  deregister-input-thread-event
+	  deregister-timer-event
 	  detach-thread
 	  exit-current-thread
 	  join-thread
@@ -2461,6 +2462,7 @@ MIT in each case. |#
 	  other-running-threads?
 	  permanently-register-input-thread-event
 	  register-input-thread-event
+	  register-timer-event
 	  set-thread-timer-interval!
 	  signal-thread-event
 	  sleep-current-thread

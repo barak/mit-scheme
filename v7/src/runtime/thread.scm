@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.10 1993/04/27 09:14:10 cph Exp $
+$Id: thread.scm,v 1.11 1993/04/27 20:21:26 hal Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -405,18 +405,21 @@ MIT in each case. |#
 (define (block-on-input-descriptor descriptor)
   (without-interrupts
    (lambda ()
-     (let ((event (lambda () descriptor))
+     (let ((delivered? #f)
 	   (registration))
        (dynamic-wind
 	(lambda ()
 	  (set! registration
 		(%register-input-thread-event descriptor
 					      (current-thread)
-					      event
+					      (lambda ()
+						(set! delivered? #t)
+						unspecific)
 					      #t))
 	  unspecific)
 	(lambda ()
-	  (eq? event (%suspend-current-thread)))
+	  (%suspend-current-thread)
+	  delivered?)
 	(lambda ()
 	  (%deregister-input-thread-event registration)))))))
 
@@ -618,29 +621,35 @@ MIT in each case. |#
 (define timer-interval)
 
 (define-structure (timer-record
-		   (type vector)
 		   (conc-name timer-record/))
   (time false read-only false)
-  (thread false read-only true)
-  next
-  delivered?)
+  thread
+  event
+  next)
+
+(define (register-timer-event interval event)
+  (let ((time (+ (real-time-clock) interval)))
+    (let ((new-record (make-timer-record time (current-thread) event false)))
+      (without-interrupts
+       (lambda ()
+	 (let loop ((record timer-records) (prev false))
+	   (if (or (not record) (< time (timer-record/time record)))
+	       (begin
+		 (set-timer-record/next! new-record record)
+		 (if prev
+		     (set-timer-record/next! prev new-record)
+		     (set! timer-records new-record)))
+	       (loop (timer-record/next record) record)))))
+      new-record)))
 
 (define (sleep-current-thread interval)
-  (let ((time (+ (real-time-clock) interval)))
+  (let ((time (+ (real-time-clock) interval))
+	(delivered? #f))
     (let ((block-events? (block-thread-events)))
-      (let ((new-record (vector time (current-thread) false false)))
-	(without-interrupts
-	 (lambda ()
-	   (let loop ((record timer-records) (prev false))
-	     (if (or (not record) (< time (timer-record/time record)))
-		 (begin
-		   (set-timer-record/next! new-record record)
-		   (if prev
-		       (set-timer-record/next! prev new-record)
-		       (set! timer-records new-record)))
-		 (loop (timer-record/next record) record)))))
-	(do () ((timer-record/delivered? new-record))
-	  (suspend-current-thread)))
+      (register-timer-event interval
+			    (lambda () (set! delivered? #t) unspecific))
+      (do () (delivered?)
+	(suspend-current-thread))
       (if (not block-events?)
 	  (unblock-thread-events)))))
 
@@ -669,12 +678,29 @@ MIT in each case. |#
       (if (or (not record) (< time (timer-record/time record)))
 	  (set! timer-records record)
 	  (begin
-	    (set-timer-record/delivered?! record true)
-	    (let ((thread (timer-record/thread record)))
-	      (if (thread-waiting? thread)
-		  (%thread-running thread)))
+	    (let ((thread (timer-record/thread record))
+		  (event (timer-record/event record)))
+	      (set-timer-record/thread! record #f)
+	      (set-timer-record/event! record #f)
+	      (%signal-thread-event thread event))
 	    (loop (timer-record/next record))))))
   unspecific)
+
+(define (deregister-timer-event registration)
+  (if (not (timer-record? registration))
+      (error:wrong-type-argument registration "timer event registration"
+				 'DEREGISTER-TIMER-EVENT))
+  (without-interrupts
+   (lambda ()
+     (let loop ((record timer-records) (prev #f))
+       (if record
+	   (let ((next (timer-record/next record)))
+	     (if (eq? record registration)
+		 (if prev
+		     (set-timer-record/next! prev next)
+		     (set! timer-records next))
+		 (loop next record)))))
+     (%maybe-toggle-thread-timer))))
 
 (define-integrable (threads-pending-timer-events?)
   timer-records)
@@ -690,7 +716,7 @@ MIT in each case. |#
 		    (set! timer-records next))
 		(loop next prev))
 	      (loop next record))))))
-
+
 (define (thread-timer-interval)
   timer-interval)
 
