@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.38 2003/11/25 23:55:33 cph Exp $
+$Id: datime.scm,v 14.39 2003/11/26 02:27:14 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1993 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2000,2003 Massachusetts Institute of Technology
@@ -342,7 +342,7 @@ USA.
 (define (ctime-string->decoded-time string #!optional zone)
   (let ((zone (if (default-object? zone) #f zone))
 	(lose (lambda () (error "Ill-formed ctime() string:" string))))
-    (if (and zone (not (time-zone? zone)))
+    (if (not (or (not zone) (time-zone? zone)))
 	(error:wrong-type-argument zone "time zone"
 				   'CTIME-STRING->DECODED-TIME))
     (let ((tokens (burst-string string #\space #t)))
@@ -428,9 +428,8 @@ USA.
 (define (universal-time->global-iso8601-string time)
   (decoded-time->iso8601-string (universal-time->global-decoded-time time)))
 
-(define (iso8601-string->universal-time string #!optional zone)
-  (decoded-time->universal-time
-   (iso8601-string->decoded-time string (if (default-object? zone) #f zone))))
+(define (iso8601-string->universal-time string)
+  (decoded-time->universal-time (iso8601-string->decoded-time string)))
 
 (define (file-time->local-iso8601-string time)
   (decoded-time->iso8601-string (file-time->local-decoded-time time)))
@@ -438,9 +437,8 @@ USA.
 (define (file-time->global-iso8601-string time)
   (decoded-time->iso8601-string (file-time->global-decoded-time time)))
 
-(define (iso8601-string->file-time string #!optional zone)
-  (decoded-time->file-time
-   (iso8601-string->decoded-time string (if (default-object? zone) #f zone))))
+(define (iso8601-string->file-time string)
+  (decoded-time->file-time (iso8601-string->decoded-time string)))
 
 (define parse-8601-date/time
   (*parser
