@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.45 1993/10/15 12:49:57 cph Exp $
+;;;	$Id: evlcom.scm,v 1.46 1993/10/21 04:59:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -419,7 +419,7 @@ Set by Scheme evaluation code to update the mode line."
 (define (editor-eval buffer sexp environment)
   (let ((core
 	 (lambda ()
-	   (with-input-from-string ""
+	   (with-input-from-port dummy-i/o-port
 	     (lambda ()
 	       (let ((value))
 		 (let ((output-string
