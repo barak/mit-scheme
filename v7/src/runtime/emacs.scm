@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.36 2004/09/15 02:56:51 cph Exp $
+$Id: emacs.scm,v 14.37 2004/09/27 17:08:34 cph Exp $
 
 Copyright 1986,1987,1991,1993,1994,1999 Massachusetts Institute of Technology
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
@@ -164,7 +164,7 @@ USA.
 	(operation port))))
 
 (define (emacs/read-finish port)
-  (let ((operation (deferred-operation 'READ-START)))
+  (let ((operation (deferred-operation 'READ-FINISH)))
     (if operation
 	(operation port)))
   (transmit-signal port #\f))
