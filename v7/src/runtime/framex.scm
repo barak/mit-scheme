@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.16 1992/02/08 15:08:24 cph Exp $
+$Id: framex.scm,v 14.17 1994/11/20 17:10:23 gjr Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -236,38 +236,44 @@ MIT in each case. |#
 	     (let ((source-code (dbg-continuation/source-code object)))
 	       (if (and (vector? source-code)
 			(not (zero? (vector-length source-code))))
-		   (let ((expression (vector-ref source-code 1)))
-		     (let ((win
-			    (lambda (select-subexpression)
-			      (values
-			       expression
-			       environment
-			       (validate-subexpression
-				frame
-				(select-subexpression expression))))))
-		       (case (vector-ref source-code 0)
-			 ((SEQUENCE-2-SECOND)
-			  (win &pair-car))
-			 ((ASSIGNMENT-CONTINUE
-			   DEFINITION-CONTINUE)
-			  (win &pair-cdr))
-			 ((SEQUENCE-3-SECOND
-			   CONDITIONAL-DECIDE)
-			  (win &triple-first))
-			 ((SEQUENCE-3-THIRD)
-			  (win &triple-second))
-			 ((COMBINATION-OPERAND)
-			  (values
-			   expression
-			   environment
-			   (validate-subexpression
-			    frame
-			    (if (zero? (vector-ref source-code 2))
-				(combination-operator expression)
-				(list-ref (combination-operands expression)
-					  (-1+ (vector-ref source-code 2)))))))
-			 (else
-			  (lose)))))
+		   (let* ((expression (vector-ref source-code 1))
+			  (win2
+			   (lambda (subexp)
+			     (values expression
+				     environment
+				     (validate-subexpression frame subexp))))
+			  (win
+			   (lambda (select-subexp)
+			     (win2 (select-subexp expression)))))
+		     (case (vector-ref source-code 0)
+		       ((SEQUENCE-2-SECOND)
+			(win &pair-car))
+		       ((ASSIGNMENT-CONTINUE
+			 DEFINITION-CONTINUE)
+			(win &pair-cdr))
+		       ((SEQUENCE-3-SECOND
+			 CONDITIONAL-DECIDE)
+			(win &triple-first))
+		       ((SEQUENCE-3-THIRD)
+			(win &triple-second))
+		       ((COMBINATION-OPERAND)
+			(values
+			 expression
+			 environment
+			 (validate-subexpression
+			  frame
+			  (if (zero? (vector-ref source-code 2))
+			      (combination-operator expression)
+			      (list-ref (combination-operands expression)
+					(-1+ (vector-ref source-code 2)))))))
+		       ((COMBINATION-ELEMENT)
+			(win2 (vector-ref source-code 2)))
+		       ((SEQUENCE-ELEMENT)
+			(win2 (vector-ref source-code 2)))
+		       ((CONDITIONAL-PREDICATE)
+			(win2 (vector-ref source-code 2)))
+		       (else
+			(lose))))
 		   (lose))))
 	    ((dbg-procedure? object)
 	     (values (lambda-body (dbg-procedure/source-code object))
