@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/object.scm,v 4.2 1989/04/18 16:32:34 cph Rel $
+$Id: object.scm,v 4.3 1992/11/04 10:17:32 jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; SCode Optimizer: Data Types
+;;; package: (scode-optimizer)
 
 (declare (usual-integrations)
 	 (automagic-integrations)
@@ -232,8 +233,21 @@ MIT in each case. |#
 ;;; end LET-SYNTAX
 )
 
+(define-integrable (global-ref/make name)
+  ;; system-global-environment = ()
+  (access/make (constant/make '()) name))
+
+(define (global-ref? obj)
+  (and (access? obj)
+       (constant? (access/environment obj))
+       (eq? (constant/value (access/environment obj)) '())
+       (access/name obj)))
+
 (define-integrable (constant->integration-info constant)
   (make-integration-info (constant/make constant) '()))
+
+(define-integrable (integration-info? obj)
+  (pair? obj))
 
 (define-integrable (make-integration-info expression uninterned-variables)
   (cons expression uninterned-variables))

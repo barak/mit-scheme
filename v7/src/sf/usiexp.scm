@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.9 1991/05/06 18:46:23 jinx Exp $
+$Id: usiexp.scm,v 4.10 1992/11/04 10:17:40 jinx Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -253,8 +253,8 @@ MIT in each case. |#
   block
   (if (< 1 (length operands) 10)
       (if-expanded
-       (make-combination
-	(ucode-primitive apply)
+       (combination/make
+	(global-ref/make 'APPLY)
 	(list (car operands) (cons*-expansion-loop (cdr operands)))))
       (if-not-expanded)))
 

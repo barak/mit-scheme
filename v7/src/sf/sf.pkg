@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.pkg,v 4.6 1990/03/26 20:45:32 jinx Rel $
+$Id: sf.pkg,v 4.7 1992/11/04 10:17:36 jinx Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -95,7 +95,9 @@ MIT in each case. |#
   (export (scode-optimizer)
 	  integrate/top-level
 	  integrate/get-top-level-block
-	  variable/final-value))
+	  variable/final-value)
+  (import (runtime parser)
+	  lambda-optional-tag))
 
 (define-package (scode-optimizer cgen)
   (files "cgen")
@@ -110,6 +112,7 @@ MIT in each case. |#
   (parent (scode-optimizer))
   (export (scode-optimizer)
 	  reducer/make
+	  replacement/make
 	  usual-integrations/expansion-names
 	  usual-integrations/expansion-values
 	  usual-integrations/expansion-alist)

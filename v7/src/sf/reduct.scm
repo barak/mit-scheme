@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/reduct.scm,v 4.2 1991/07/19 03:45:52 cph Exp $
+$Id: reduct.scm,v 4.3 1992/11/04 10:17:34 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; SCode Optimizer: User defined reductions
+;;; package: (scode-optimizer expansion)
 
 (declare (usual-integrations)
 	 (automagic-integrations)
@@ -40,29 +41,56 @@ MIT in each case. |#
 	 (eta-substitution)
 	 (integrate-external "object"))
 
-;;;; Reductions
+;;;; Reductions and replacements
 
 #|
 
+REPLACE-OPERATOR declaration
+
+Generates SF-time expanders (transformers for sf) for operations
+that act differently depending on the number of arguments.
+
+(replace-operator (<name> (<nargs1> <value1>) (<nargs2> <value2>) ...))
+
+<name> is a symbol
+<nargs1> is a non-negative integer or one of the symbols ANY, ELSE, and OTHERWISE.
+<valueN> is a simple expression:
+  <symbol>					; means a variable
+  (QUOTE <constant>) = '<constant>		; means a constant
+  (PRIMITIVE <primitive name> { <arity> })	; means a primitive
+  (GLOBAL <variable>)				; means a global variable
+
+replaces non-shadowed calls to <name> with <nargsN> arguments
+with a call to <valueN> with the same arguments.
+
+Examples:
+
+(replace-operator (map (2 map-2) (3 map-3)))
+
+replaces (map f l) with (map-2 f l)
+and (map (lambda (x) (car x)) (frob l))
+with (map-3 (lambda (x) (car x)) (frob l))
+|#
+
+#|
 REDUCE-OPERATOR declaration
 
-Generates syntax time expanders (transformers for sf) for operations
+Generates SF-time expanders (transformers for sf) for operations
 obtained by REDUCEing a binary operator.
 
 (reduce-operator (<name> <binop>
 		  { (group <ordering>)
 		    (null-value <value> <null-option>)
 		    (singleton <unop>)
-		    (wrapper <wrap>)
+		    (wrapper <wrap> {<n>})
+		    (maximum <m>)
 		    }))
 
 <name> is a symbol
 
-<binop>, <value>, <unop>, and <wrap> are simple expressions
-(currently not checked):
-  '<constant>
-  <variable>
-  (primitive <primitive name> { <arity> })
+<n> and <m> are non-negative integers.
+
+<binop>, <value>, <unop>, and <wrap> are simple expressions as above.
 
 <null-option> is a member of {ALWAYS, ANY, ONE, SINGLE, NONE, EMPTY}
 
@@ -97,14 +125,28 @@ which can only take the value NONE.
 
 6) The wrapper option specifies a function, <wrap>, to be invoked on the
 result of the outermost call to <binop> after the expansion.
+If <n> is provided it must be a non-negative integer indicating a number
+of arguments that are transferred verbatim from the original call to
+the wrapper.  They are passed to the left of the reduction.
+
+7) The maximum option specifies that calls with more than <m> arguments
+should not be reduced.
 
 Examples:
 
 (declare (reduce-operator
-	  (CONS* (primitive cons))
-	  (LIST (primitive cons) (NULL-VALUE '() ANY))
+	  (CONS* (PRIMITIVE cons))
+	  (LIST (PRIMITIVE cons)
+		(NULL-VALUE '() ANY))
 	  (+ %+ (NULL-VALUE 0 NONE) (GROUP RIGHT))
-	  (- %- (NULL-VALUE 0 SINGLE) (GROUP LEFT))))
+	  (- %- (NULL-VALUE 0 SINGLE) (GROUP LEFT))
+	  (VECTOR (PRIMITIVE cons)
+		  (GROUP RIGHT)
+		  (NULL-VALUE '() ALWAYS)
+		  (WRAPPER list->vector))
+	  (APPLY (PRIMITIVE cons)
+		 (GROUP RIGHT)
+		 (WRAPPER (GLOBAL apply) 1))))
 
 |#
 
@@ -129,10 +171,7 @@ Examples:
    (or (block/lookup-name block name false)
        (block/lookup-name (integrate/get-top-level-block) name true))))
 
-(declare (integrate-operator handle-variable))
-
-(define (handle-variable object core)
-  (declare (integrate object core))
+(define-integrable (handle-variable object core)
   (if (variable? object)
       (let ((name (variable/name object)))
 	(core (lambda (block)
@@ -142,25 +181,40 @@ Examples:
 	      block			; ignore
 	      object))))
 
-(define (->expression exp block)
+(define (->expression procedure exp block)
+  (define (fail)
+    (error "Bad primitive expression" procedure exp))
+
+  (define-integrable (constant value)
+    (constant/make value))
+
   (cond ((symbol? exp)
 	 (variable/make block exp '()))
 	((not (pair? exp))
-	 (constant/make exp))
+	 (constant exp))
 	((eq? (car exp) 'PRIMITIVE)
 	 (cond ((or (null? (cdr exp)) (not (list? exp)))
-		(error "MAKE-REDUCER: Bad PRIMITIVE expression" exp))
+		(fail))
 	       ((null? (cddr exp))
-		(constant/make (make-primitive-procedure (cadr exp))))
+		(constant (make-primitive-procedure (cadr exp))))
 	       ((null? (cdddr exp))
-		(constant/make
+		(constant
 		 (make-primitive-procedure (cadr exp) (caddr exp))))
 	       (else
-		(error "MAKE-REDUCER: Bad PRIMITIVE expression" exp))))
+		(fail))))
 	((eq? (car exp) 'QUOTE)
-	 (cadr exp))
+	 (if (or (not (pair? (cdr exp)))
+		 (not (null? (cddr exp))))
+	     (fail))
+	 (constant (cadr exp)))
+	((eq? (car exp) 'GLOBAL)
+	 (if (or (not (pair? (cdr exp)))
+		 (not (null? (cddr exp)))
+		 (not (symbol? (cadr exp))))
+	     (fail))
+	 (global-ref/make (cadr exp)))
 	(else
-	 (error "MAKE-REDUCER: Bad expression" exp))))
+	 (fail))))
 
 ;; any-shadowed? prevents reductions in any environment where any of
 ;; the names introduced by the reduction has been shadowed.  The
@@ -210,7 +264,7 @@ Examples:
    (lambda (null)
      (declare (integrate null))
      (lambda (block value combiner)
-       (combiner value (null block))))))
+       (combiner block value (null block))))))
   
 (define (->mapper-combiner mapper)
   (handle-variable mapper
@@ -224,11 +278,13 @@ Examples:
   (handle-variable mapper
    (lambda (mapper)
      (declare (integrate mapper))
-     (lambda (block reduced)
-       (combine-1 (mapper block) reduced)))))
+     (lambda (block not-reduced reduced)
+       (combination/make (mapper block)
+			 (append not-reduced
+				 (list reduced)))))))
 
-(define (identity-wrapper block reduced)
-  block					; ignored
+(define (identity-wrapper block not-reduced reduced)
+  block not-reduced			; ignored
   reduced)
 
 (define (->error-thunk name)
@@ -249,9 +305,11 @@ Examples:
 
 ;;;; Groupers
 
-(define (make-grouper map1 map2 binop source-block exprs
+(define (make-grouper spare-args min-args max-args
+		      map1 map2
+		      binop source-block exprs
 		      wrap last single none)
-  (let ((expr (->expression binop source-block)))
+  (let ((expr (->expression 'REDUCE-OPERATOR binop source-block)))
     (let ((vars (filter-vars (cons expr exprs)))
 	  (binop (map1
 		  (handle-variable
@@ -269,38 +327,50 @@ Examples:
 		     (car l)
 		     (group (cdr l)))))
 
-	(if (any-shadowed? vars source-block block)
+	(if (or (any-shadowed? vars source-block block)
+		(let ((l (length operands)))
+		  (or (< l min-args)
+		      (and max-args (> l max-args)))))
 	    (if-not-expanded)
 	    (if-expanded
-	     (let ((l (map2 operands)))
-	       (cond ((null? l)
-		      (none block))
-		     ((null? (cdr l))
+	     (let ((l1 (list-head operands spare-args))
+		   (l2 (map2 (list-tail operands spare-args))))
+	       (cond ((null? l2)
 		      (wrap block
+			    l1
+			    (none block)))
+		     ((null? (cdr l2))
+		      (wrap block
+			    l1
 			    (single block
-				    (car l)
-				    (lambda (x y)
+				    (car l2)
+				    (lambda (block x y)
 				      (binop block x y)))))
 		     (else
-		      (wrap block (binop block (car l)
-					 (group (cdr l)))))))))))))
+		      (wrap block
+			    l1
+			    (binop block (car l2)
+				   (group (cdr l2)))))))))))))
 
-(define (group-right binop source-block exprs wrap last single none)
-  (make-grouper identity-procedure identity-procedure binop
-		source-block exprs wrap
-		last single none))
+(define (group-right spare-args min-args max-args
+		     binop source-block exprs
+		     wrap last single none)
+  (make-grouper spare-args min-args max-args
+		identity-procedure identity-procedure
+		binop source-block exprs
+		wrap last single none))
 
-(define (group-left binop source-block exprs wrap last single none)
-  (make-grouper invert reverse binop
-		source-block exprs wrap
-		last single none))
+(define (group-left spare-args min-args max-args
+		    binop source-block exprs
+		    wrap last single none)
+  (make-grouper spare-args min-args max-args
+		invert reverse
+		binop source-block exprs
+		wrap last single none))
 
 ;;;; Keyword and convenience utilities
 
-(declare (integrate-operator with-arguments-from))
-
-(define (with-arguments-from list procedure)
-  (declare (integrate list procedure))
+(define-integrable (with-arguments-from list procedure)
   (apply procedure list))
 
 ;;; Keyword decoder
@@ -311,7 +381,7 @@ Examples:
 	'()
 	(cons
 	 (let ((place (assq (car keys) options)))
-	   (if (null? place)
+	   (if (not place)
 	       '()
 	       (cdr place)))
 	 (collect (cdr keys)))))
@@ -334,18 +404,22 @@ Examples:
 ;;;; Error and indentation utilities
 
 (define (fail name value)
-  (error "MAKE-REDUCER: Bad option" `(,name ,@value)))
+  (error "REDUCE-OPERATOR: Bad option" `(,name ,@value)))
 
 (define (incompatible name1 val1 name2 val2)
-  (error "MAKE-REDUCER: Incompatible options"
+  (error "REDUCE-OPERATOR: Incompatible options"
 	 `(,name1 ,val1) `(,name2 ,val2)))
 
 (define (with-wrapper wrapper block receiver)
   (cond ((not wrapper)
-	 (receiver identity-wrapper '()))
+	 (receiver 0 identity-wrapper '()))
 	((null? (cdr wrapper))
-	 (let ((expr (->expression (car wrapper) block)))
-	   (receiver (->wrapper expr) (list expr))))
+	 (let ((expr (->expression 'REDUCE-OPERATOR (car wrapper) block)))
+	   (receiver 0 (->wrapper expr) (list expr))))
+	((and (null? (cddr wrapper))
+	      (exact-nonnegative-integer? (cadr wrapper)))
+	 (let ((expr (->expression 'REDUCE-OPERATOR (car wrapper) block)))
+	   (receiver (cadr wrapper) (->wrapper expr) (list expr))))
 	(else
 	 (fail 'WRAPPER wrapper))))
 
@@ -353,42 +427,52 @@ Examples:
   (cond ((not singleton)
 	 (receiver identity-combiner '()))
 	((null? (cdr singleton))
-	 (let ((expr (->expression (car singleton) block)))
+	 (let ((expr (->expression 'REDUCE-OPERATOR (car singleton) block)))
 	   (receiver (->mapper-combiner expr)
 		     (list expr))))
 	(else
 	 (fail 'SINGLETON singleton))))
 
-;;;; Top level
+;;;; Reduction top level
 
 (define (reducer/make rule block)
   (with-arguments-from rule
     (lambda (name binop . options)
-      (decode-options
-	  '(NULL-VALUE GROUP SINGLETON WRAPPER)
+      (decode-options '(NULL-VALUE GROUP SINGLETON WRAPPER MAXIMUM)
 	  options
-	(lambda (null-value group singleton wrapper)
+	(lambda (null-value group singleton wrapper maximum)
 
 	  (define (make-reducer-internal grouper)
 	    (with-wrapper wrapper block
 
-	      (lambda (wrap wrap-expr)
+	      (lambda (spare-args wrap wrap-expr)
 		(with-singleton singleton block
 
 		  (lambda (single-combiner single-expr)
 
-		    (define (invoke null-expr last single none)
-		      (grouper binop block
-			       (append null-expr wrap-expr single-expr)
-			       wrap last single none))
+		    (define (invoke min-args null-expr last single none)
+		      (let ((max-args
+			     (and maximum
+				  (if (or (not (null? (cdr maximum)))
+					  (not (exact-nonnegative-integer?
+						(car maximum))))
+				      (fail 'MAXIMUM maximum)
+				      (car maximum)))))
+			(grouper spare-args min-args max-args
+				 binop block
+				 (append null-expr wrap-expr single-expr)
+				 wrap last single none)))
 
 		    (cond ((not null-value)
-			   (invoke '() single-combiner
+			   (invoke (+ spare-args (if singleton 1 2))
+				   '() single-combiner
 				   single-combiner (->error-thunk name)))
 			  ((not (= (length null-value) 2))
 			   (fail 'NULL-VALUE null-value))
 			  (else
-			   (let* ((val (->expression (car null-value) block))
+			   (let* ((val (->expression 'REDUCE-OPERATOR
+						     (car null-value)
+						     block))
 				  (combiner (->singleton-combiner val))
 				  (null (->value-thunk val)))
 			     (case (cadr null-value)
@@ -396,16 +480,18 @@ Examples:
 				(if singleton
 				    (incompatible 'SINGLETON singleton
 						  'NULL-VALUE null-value))
-				(invoke (list val) combiner
+				(invoke spare-args (list val) combiner
 					combiner null))
 			       ((ONE SINGLE)
 				(if singleton
 				    (incompatible 'SINGLETON singleton
 						  'NULL-VALUE null-value))
-				(invoke (list val) identity-combiner
+				(invoke (1+ spare-args) (list val)
+					identity-combiner
 					combiner null))
 			       ((NONE EMPTY)
-				(invoke (list val) single-combiner
+				(invoke spare-args
+					(list val) single-combiner
 					single-combiner null))
 			       (else
 				(fail 'NULL-VALUE null-value)))))))))))
@@ -422,6 +508,82 @@ Examples:
 		    (make-reducer-internal group-left))
 		   (else
 		    (fail 'GROUP group))))))))))
+
+;;;; Replacement top level
+
+(define (replacement/make replacement decl-block)
+  (with-values
+      (lambda ()
+	(parse-replacement (car replacement)
+			   (cdr replacement)
+			   decl-block))
+    (lambda (table default)
+      (lambda (operands if-expanded if-not-expanded block)
+	(let* ((len (length operands))
+	       (candidate (or (and (< len (vector-length table))
+				   (vector-ref table len))
+			      default)))
+	  (if (or (not (pair? candidate))
+		  (and (car candidate)
+		       (shadowed? (car candidate) decl-block block)))
+	      (if-not-expanded)
+	      (if-expanded
+	       (combination/make (let ((frob (cdr candidate)))
+				   (if (variable? frob)
+				       (lookup (variable/name frob) block)
+				       frob))
+				 operands))))))))
+
+(define (parse-replacement name ocases block)
+  (define (collect len cases default)
+    (let ((output (make-vector len false)))
+      (let loop ((cases cases))
+	(if (null? cases)
+	    (values output default)
+	    (let* ((a-case (car cases))
+		   (index (car a-case)))
+	      (if (vector-ref output index)
+		  (error "REPLACE-OPERATOR: Duplicate arity" name ocases))
+	      (vector-set! output index (cdr a-case))
+	      (loop (cdr cases)))))))
+
+  (define (fail a-case)
+    (error "REPLACE-OPERATOR: Bad replacement" name a-case))
+
+  (define (expr->case expr)
+    (cons (and (symbol? expr) expr)
+	  (->expression 'REPLACE-OPERATOR
+			expr
+			block)))
+
+  (let parse ((cases ocases)
+	      (parsed '())
+	      (len 0)
+	      (default false))
+    (if (null? cases)
+	(collect len parsed default)
+	(let ((a-case (car cases)))
+	  (cond ((or (not (pair? a-case))
+		     (not (pair? (cdr a-case)))
+		     (not (null? (cddr a-case))))
+		 (fail a-case))
+		((exact-nonnegative-integer? (car a-case))
+		 (let ((len* (car a-case))
+		       (expr (cadr a-case)))
+		   (parse (cdr cases)
+			  (cons (cons len* (expr->case expr))
+				parsed)
+			  (max (1+ len*) len)
+			  default)))
+		((memq (car a-case) '(ANY ELSE OTHERWISE))
+		 (if default
+		     (error "REPLACE-OPERATOR: Duplicate default" ocases))
+		 (parse (cdr cases)
+			parsed
+			len
+			(expr->case (cadr a-case))))
+		(else
+		 (fail a-case)))))))
 
 ;;; Local Variables:
 ;;; eval: (put 'decode-options 'scheme-indent-hook 2)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 4.6 1990/06/07 19:53:16 cph Rel $
+$Id: subst.scm,v 4.7 1992/11/04 10:17:37 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; SCode Optimizer: Beta Substitution
+;;; package: (scode-optimizer integrate)
 
 (declare (usual-integrations)
 	 (eta-substitution)
@@ -103,110 +104,7 @@ MIT in each case. |#
 (define define-method/integrate
   (expression/make-method-definer dispatch-vector))
 
-;;;; Lookup
-
-(define *eager-integration-switch #f)
-
-(define-method/integrate 'REFERENCE
-  (lambda (operations environment expression)
-    (let ((variable (reference/variable expression)))
-      (operations/lookup operations variable
-        (lambda (operation info)
-	  (case operation
-	    ((INTEGRATE-OPERATOR EXPAND)
-	     (variable/reference! variable)
-	     expression)
-	    ((INTEGRATE)
-	     (integrate/name expression info environment
-			     (lambda (new-expression)
-			       (variable/integrated! variable)
-			       new-expression)
-			     (lambda ()
-			       (variable/reference! variable)
-			       expression)))
-	    (else (error "Unknown operation" operation))))
-	(lambda ()
-	  (if *eager-integration-switch
-	      (integrate/name-if-safe expression environment
-				      (lambda (new-expression)
-					(variable/integrated! variable)
-					new-expression)
-				      (lambda ()
-					(variable/reference! variable)
-					expression))
-	      (begin (variable/reference! variable)
-		     expression)))))))
-
-(define (integrate/name-if-safe reference environment if-win if-fail)
-  (let ((variable (reference/variable reference)))
-    (if (or (variable/side-effected variable)
-	    (not (block/safe? (variable/block variable))))
-	(if-fail)
-	(let ((finish
-	       (lambda (value)
-		 (if (constant-value? value)
-		     (if-win
-		      (copy/expression/intern (reference/block reference)
-					      value
-					      #f))
-		     (if-fail)))))
-	  (environment/lookup environment variable
-            (lambda (value)
-	      (if (delayed-integration? value)
-		  (if (delayed-integration/in-progress? value)
-		      (if-fail)
-		      (finish (delayed-integration/force value)))
-		  (finish value)))
-	    (lambda () (if-fail))
-	    (lambda () (if-fail)))))))
-
-(define (constant-value? value)
-  (or (constant? value)
-      (and (reference? value)
-	   (not (variable/side-effected (reference/variable value)))
-	   (block/safe? (variable/block (reference/variable value))))))
-
-(define (integrate/reference-operator operations environment operator operands)
-  (let ((variable (reference/variable operator)))
-    (let ((dont-integrate
-	   (lambda ()
-	     (variable/reference! variable)
-	     (combination/optimizing-make operator operands)))
-	  (mark-integrated!
-	   (lambda ()
-	     (variable/integrated! variable))))
-      (operations/lookup operations variable
-        (lambda (operation info)
-	  (case operation
-	    ((#F) (dont-integrate))
-	    ((INTEGRATE INTEGRATE-OPERATOR)
-	     (integrate/name operator info environment
-			     (lambda (operator)
-			       (mark-integrated!)
-			       (integrate/combination operations environment
-						      operator
-						      operands))
-			     dont-integrate))
-	    ((EXPAND)
-	     (info operands
-		   (lambda (new-expression)
-		     (mark-integrated!)
-		     (integrate/expression operations environment
-					   new-expression))
-		   dont-integrate
-		   (reference/block operator)))
-	    (else (error "Unknown operation" operation))))
-	(lambda ()
-	  (if *eager-integration-switch
-	      (integrate/name-if-safe operator environment
-				      (lambda (operator)
-					(mark-integrated!)
-					(integrate/combination operations
-							       environment
-							       operator
-							       operands))
-				      dont-integrate)
-	      (dont-integrate)))))))
+;;;; Variables
 
 (define-method/integrate 'ASSIGNMENT
   (lambda (operations environment assignment)
@@ -228,6 +126,135 @@ MIT in each case. |#
 		       (integrate/expression operations
 					     environment
 					     (assignment/value assignment))))))
+
+(define *eager-integration-switch #f)
+
+(define-method/integrate 'REFERENCE
+  (lambda (operations environment expression)
+    (let ((variable (reference/variable expression)))
+      (letrec ((integration-success
+		(lambda (new-expression)
+		  (variable/integrated! variable)
+		  new-expression))
+	       (integration-failure
+		(lambda ()
+		  (variable/reference! variable)
+		  expression))
+	       (try-safe-integration
+		(lambda ()
+		  (integrate/name-if-safe expression environment operations
+					  integration-success
+					  integration-failure))))
+	(operations/lookup operations variable
+	 (lambda (operation info)
+	   (case operation
+	     ((INTEGRATE-OPERATOR EXPAND)
+	      (variable/reference! variable)
+	      expression)
+	     ((INTEGRATE)
+	      (integrate/name expression info environment
+			      integration-success
+			      integration-failure))
+	     ((INTEGRATE-SAFELY)
+	      (try-safe-integration))
+	     (else
+	      (error "Unknown operation" operation))))
+	 (lambda ()
+	   (if *eager-integration-switch
+	       (try-safe-integration)
+	       (integration-failure))))))))
+
+(define (integrate/name-if-safe reference environment operations
+				if-win if-fail)
+  (let ((variable (reference/variable reference)))
+    (if (or (variable/side-effected variable)
+	    (not (block/safe? (variable/block variable))))
+	(if-fail)
+	(let ((finish
+	       (lambda (value)
+		 (if (constant-value? value environment operations)
+		     (if-win
+		      (copy/expression/intern (reference/block reference)
+					      value
+					      #f))
+		     (if-fail)))))
+	  (environment/lookup environment variable
+            (lambda (value)
+	      (if (delayed-integration? value)
+		  (if (delayed-integration/in-progress? value)
+		      (if-fail)
+		      (finish (delayed-integration/force value)))
+		  (finish value)))
+	    (lambda () (if-fail))
+	    (lambda () (if-fail)))))))
+
+(define (constant-value? value environment operations)
+  (let check ((value value) (top? true))
+    (or (constant? value)
+	(and (reference? value)
+	     (or (not top?)
+		 (let ((var (reference/variable value)))
+		   (and (not (variable/side-effected var))
+			(block/safe? (variable/block var))
+			(environment/lookup environment var
+			 (lambda (value*)
+			   (check value* false))
+			 (lambda ()
+			   ;; unknown value
+			   (operations/lookup operations var
+			    (lambda (operation info)
+			      operation info
+			      false)
+			    (lambda ()
+			      ;; No operations
+			      true)))
+			 (lambda ()
+			   ;; not found variable
+			   true)))))))))
+
+(define (integrate/reference-operator operations environment operator operands)
+  (let ((variable (reference/variable operator)))
+    (letrec ((mark-integrated!
+	      (lambda ()
+		(variable/integrated! variable)))
+	     (integration-failure
+	      (lambda ()
+		(variable/reference! variable)
+		(combination/optimizing-make operator operands)))
+	     (integration-success
+	      (lambda (operator)
+		(mark-integrated!)
+		(integrate/combination operations environment
+				       operator operands)))
+	     (try-safe-integration
+	      (lambda ()
+		(integrate/name-if-safe operator environment operations
+					integration-success
+					integration-failure))))
+      (operations/lookup operations variable
+       (lambda (operation info)
+	 (case operation
+	   ((#F) (integration-failure))
+	   ((INTEGRATE INTEGRATE-OPERATOR)
+	    (integrate/name operator info environment
+			    integration-success
+			    integration-failure))
+	   ((INTEGRATE-SAFELY)
+	    (try-safe-integration))
+	   ((EXPAND)
+	    (info operands
+		  (lambda (new-expression)
+		    (mark-integrated!)
+		    (integrate/expression operations environment
+					  new-expression))
+		  integration-failure
+		  (reference/block operator)))
+	   (else
+	    (error "Unknown operation" operation))))
+       (lambda ()
+	 (if *eager-integration-switch
+	     (try-safe-integration)
+	     (integration-failure)))))))
 
 ;;;; Binding
 
@@ -407,6 +434,12 @@ you ask for.
 	((and (access? operator)
 	      (system-global-environment? (access/environment operator)))
 	 (integrate/access-operator operations environment operator operands))
+	((and (constant? operator)
+	      (eq? (constant/value operator) (ucode-primitive apply))
+	      (integrate/hack-apply? operands))
+	 => (lambda (operands*)
+	      (integrate/combination operations environment
+				     (car operands*) (cdr operands*))))
 	(else
 	 (combination/optimizing-make
 	  (if (procedure? operator)
@@ -559,21 +592,7 @@ you ask for.
 		(access/make environment* name)))
 	  (access/make (integrate/expression operations environment
 					     environment*)
-		       name)))))
-
-(define (integrate/access-operator operations environment operator operands)
-  (let ((name (access/name operator))
-	(dont-integrate
-	 (lambda ()
-	   (combination/make operator operands))))
-    (let ((entry (assq name usual-integrations/constant-alist)))
-      (if entry
-	  (integrate/combination operations environment (cdr entry) operands)
-	  (let ((entry (assq name usual-integrations/expansion-alist)))
-	    (if entry
-		((cdr entry) operands identity-procedure
-			     dont-integrate false)
-		(dont-integrate)))))))
+		       name)))))  
 
 (define (system-global-environment? expression)
   (and (constant? expression)
@@ -599,6 +618,26 @@ you ask for.
     (lambda (operations environment expression)
       operations environment		;ignore
       expression)))
+
+(define (integrate/access-operator operations environment operator operands)
+  (let ((name (access/name operator))
+	(dont-integrate
+	 (lambda ()
+	   (combination/make operator operands))))
+    (cond ((and (eq? name 'APPLY)
+		(integrate/hack-apply? operands))
+	   => (lambda (operands*)
+		(integrate/combination operations environment
+				       (car operands*) (cdr operands*))))
+	  ((assq name usual-integrations/constant-alist)
+	   => (lambda (entry)
+		(integrate/combination operations environment (cdr entry) operands)))
+	  ((assq name usual-integrations/expansion-alist)
+	   => (lambda (entry)
+		((cdr entry) operands identity-procedure
+			     dont-integrate false)))
+	  (else
+	   (dont-integrate)))))
 
 ;;;; Environment
 
@@ -676,7 +715,48 @@ you ask for.
 
   (bind-required environment (procedure/required procedure)))
 
+(define (integrate/hack-apply? operands)
+  (define (check operand)
+    (cond ((constant? operand)
+	   (if (null? (constant/value operand))
+	       '()
+	       'FAIL))
+	  ((not (combination? operand))
+	   'FAIL)
+	  (else
+	   (let ((rator (combination/operator operand)))
+	     (if (or (and (constant? rator)
+			  (eq? (ucode-primitive cons)
+			       (constant/value rator)))
+		     (eq? 'cons (global-ref? rator)))
+		 (let* ((rands (combination/operands operand))
+			(next (check (cadr rands))))
+		   (if (eq? next 'FAIL)
+		       'FAIL
+		       (cons (car rands) next)))
+		 'FAIL)))))
+
+  (and (not (null? operands))
+       (let ((tail (check (car (last-pair operands)))))
+	 (and (not (eq? tail 'FAIL))
+	      (append (except-last-pair operands)
+		      tail)))))
+
 (define (simulate-application environment procedure operands)
+  (define (procedure->pretty procedure)
+    (let ((arg-list (append (procedure/required procedure)
+			    (if (null? (procedure/optional procedure))
+				'()
+				(cons lambda-optional-tag
+				      (procedure/optional procedure)))
+			    (if (not (procedure/rest procedure))
+				'()
+				(procedure/rest procedure)))))
+      (if (procedure/name procedure)
+	  `(named-lambda (,(procedure/name procedure) ,@arg-list)
+	     ...)
+	  `(lambda ,arg-list
+	     ...))))
 
   (define (match-required environment required operands)
     (cond ((null? required)
@@ -684,7 +764,9 @@ you ask for.
 			   (procedure/optional procedure)
 			   operands))
 	  ((null? operands)
-	   (error "Too few operands in call to procedure" procedure))
+	   (error "Too few operands in call to procedure"
+		  procedure
+		  (procedure->pretty procedure)))
 	  (else
 	   (match-required (environment/bind environment
 					     (car required)
@@ -704,16 +786,27 @@ you ask for.
 			   (cdr optional)
 			   (cdr operands)))))
 
+  (define (listify-tail operands)
+    (let ((const-null (constant/make '())))
+      (if (null? operands)
+	  const-null
+	  (let ((const-cons (constant/make (ucode-primitive cons))))
+	    (let walk ((operands operands))
+	      (if (null? operands)
+		  const-null
+		  (combination/make const-cons
+				    (list (car operands)
+					  (walk (cdr operands))))))))))			  
+
   (define (match-rest environment rest operands)
     (cond (rest
-	   ;; Other cases are too hairy -- don't bother.
-	   (if (null? operands)
-	       (environment/bind environment rest (constant/make '()))
-	       environment))
+	   (environment/bind environment rest (listify-tail operands)))
 	  ((null? operands)
 	   environment)
 	  (else
-	   (error "Too many operands in call to procedure" procedure))))
+	   (error "Too many operands in call to procedure"
+		  procedure
+		  (procedure->pretty procedure)))))
 
   (match-required environment (procedure/required procedure) operands))
 
@@ -756,15 +849,14 @@ you ask for.
        (set-delayed-integration/value! delayed-integration value)))
     ((INTEGRATED) 'DONE)
     ((BEING-INTEGRATED)
-     (error "Attempt to re-force delayed integration" delayed-integration))
+     (error "Attempt to re-force delayed integration"
+	    delayed-integration))
     (else
-     (error "Delayed integration has unknown state" delayed-integration)))
+     (error "Delayed integration has unknown state"
+	    delayed-integration)))
   (delayed-integration/value delayed-integration))
 
 ;;;; Optimizations
-
-(define combination/optimizing-make)
-(let ()
 
 #|
 Simple LET-like combination.  Delete any unreferenced
@@ -799,8 +891,10 @@ forms are simply removed.
 	   (foldable-constants? (cdr list)))))
 
 (define (foldable-constant-value thing)
-  (cond ((constant? thing) (constant/value thing))
-	(else (error "can't happen"))))
+  (cond ((constant? thing)
+	 (constant/value thing))
+	(else
+	 (error "foldable-constant-value: can't happen" thing))))
 
 (define *foldable-primitive-procedures
   (map make-primitive-procedure
@@ -818,57 +912,60 @@ forms are simply removed.
 ;;; Actually, we really don't want to hack with these for various
 ;;; reasons
 
-(set! combination/optimizing-make
-  (lambda (operator operands)
-    (cond (
-	   ;; fold constants
-	   (and (foldable-operator? operator)
-		(foldable-constants? operands))
-	   (constant/make (apply (constant/value operator)
-				 (map foldable-constant-value operands))))
+(define (combination/optimizing-make operator operands)
+  (cond (
+	 ;; fold constants
+	 (and (foldable-operator? operator)
+	      (foldable-constants? operands))
+	 (constant/make (apply (constant/value operator)
+			       (map foldable-constant-value operands))))
 
-	  (
-	   ;; (force (delay x)) ==> x
-	   (and (constant? operator)
-		(eq? (constant/value operator) force)
-		(= (length operands) 1)
-		(delay? (car operands)))
-	   (delay/expression (car operands)))
+	(
+	 ;; (force (delay x)) ==> x
+	 (and (constant? operator)
+	      (eq? (constant/value operator) force)
+	      (= (length operands) 1)
+	      (delay? (car operands)))
+	 (delay/expression (car operands)))
 
-	  ((and (procedure? operator)
-		(null? (procedure/optional operator))
-		(not (procedure/rest operator))
-		(block/safe? (procedure/block operator)))
-	   (delete-unreferenced-parameters
-	    (procedure/required operator)
-	    (procedure/body operator)
-	    operands
-	    (lambda (required referenced-operands unreferenced-operands)
-	      (let ((form
-		     (if (and (null? required)
-			      ;; need to avoid things like this
-			      ;; (foo bar (let () (define (baz) ..) ..))
-			      ;; optimizing into
-			      ;; (foo bar (define (baz) ..) ..)
-			      (not (open-block? (procedure/body operator))))
-			 (procedure/body operator)
-			 (combination/make
-			  (procedure/make
-			   (procedure/block operator)
-			   (procedure/name operator)
-			   required
-			   '()
-			   false
-			   (procedure/body operator))
-			  referenced-operands))))
-		(if (null? unreferenced-operands)
-		    form
-		    (sequence/optimizing-make
-		     (append unreferenced-operands (list form))))))))
-	  (else
-	   (combination/make operator operands)))))
+	((and (procedure? operator)
+	      (block/safe? (procedure/block operator))
+	      (for-all? (procedure/optional operator)
+		variable/integrated)
+	      (or (not (procedure/rest operator))
+		  (variable/integrated (procedure/rest operator))))
+	 (delete-unreferenced-parameters
+	  (append (procedure/required operator)
+		  (procedure/optional operator))
+	  (procedure/rest operator)
+	  (procedure/body operator)
+	  operands
+	  (lambda (required referenced-operands unreferenced-operands)
+	    (let ((form
+		   (if (and (null? required)
+			    ;; need to avoid things like this
+			    ;; (foo bar (let () (define (baz) ..) ..))
+			    ;; optimizing into
+			    ;; (foo bar (define (baz) ..) ..)
+			    (not (open-block? (procedure/body operator))))
+		       (procedure/body operator)
+		       (combination/make
+			(procedure/make
+			 (procedure/block operator)
+			 (procedure/name operator)
+			 required
+			 '()
+			 false
+			 (procedure/body operator))
+			referenced-operands))))
+	      (if (null? unreferenced-operands)
+		  form
+		  (sequence/optimizing-make
+		   (append unreferenced-operands (list form))))))))
+	(else
+	 (combination/make operator operands))))
 
-(define (delete-unreferenced-parameters parameters body operands receiver)
+(define (delete-unreferenced-parameters parameters rest body operands receiver)
   (let ((free-in-body (free/expression body)))
     (let loop ((parameters 		parameters)
 	       (operands   		operands)
@@ -876,40 +973,36 @@ forms are simply removed.
 	       (referenced-operands	'())
 	       (unreferenced-operands	'()))
     (cond ((null? parameters)
-	   (if (null? operands)
+	   (if (or rest (null? operands))
 	       (receiver (reverse required-parameters) ; preserve order
 			 (reverse referenced-operands)
-			 unreferenced-operands)
+			 (append operands unreferenced-operands))
 	       (error "Argument mismatch" operands)))
 	  ((null? operands)
 	   (error "Argument mismatch" parameters))
-	  (else (let ((this-parameter (car parameters))
-		      (this-operand   (car operands)))
-		  (cond ((set/member? free-in-body this-parameter)
-			 (loop (cdr parameters)
-			       (cdr operands)
-			       (cons this-parameter required-parameters)
-			       (cons this-operand   referenced-operands)
-			       unreferenced-operands))
-			((variable/integrated this-parameter)
-			 (loop (cdr parameters)
-			       (cdr operands)
-			       required-parameters
-			       referenced-operands
-			       unreferenced-operands))
-			(else
-			 (loop (cdr parameters)
-			       (cdr operands)
-			       required-parameters
-			       referenced-operands
-			       (cons this-operand unreferenced-operands))))))))
-      ))
-
-
-;;; end COMBINATION/OPTIMIZING-MAKE
-)
+	  (else
+	   (let ((this-parameter (car parameters))
+		 (this-operand   (car operands)))
+	     (cond ((set/member? free-in-body this-parameter)
+		    (loop (cdr parameters)
+			  (cdr operands)
+			  (cons this-parameter required-parameters)
+			  (cons this-operand   referenced-operands)
+			  unreferenced-operands))
+		   ((variable/integrated this-parameter)
+		    (loop (cdr parameters)
+			  (cdr operands)
+			  required-parameters
+			  referenced-operands
+			  unreferenced-operands))
+		   (else
+		    (loop (cdr parameters)
+			  (cdr operands)
+			  required-parameters
+			  referenced-operands
+			  (cons this-operand
+				unreferenced-operands))))))))))
 
-
 (define *block-optimizing-switch #f)
 
 ;; This is overly hairy, but if it works, no one need know.
@@ -925,13 +1018,8 @@ forms are simply removed.
 ;; 5 Re-optimize the code in the body.  This can help if the
 ;;    eta-substitution-switch is on.
 
-(define open-block/optimizing-make)
-
-(let ()
-
-(set! open-block/optimizing-make
-  (named-lambda (open-block/optimizing-make block vars values actions
-					    operations environment)
+(define (open-block/optimizing-make block vars values actions
+				    operations environment)
   (if (and *block-optimizing-switch
 	   (block/safe? block))
       (let ((table:var->vals (associate-vars-and-vals vars values))
@@ -939,24 +1027,25 @@ forms are simply removed.
 	(let ((table:vals->free
 	       (get-free-vars-in-bindings bound-variables values))
 	      (body-free  (get-body-free-vars bound-variables actions)))
-;	  (write-string "Free vars in body")
-;	  (display (map variable/name body-free))
+					;	  (write-string "Free vars in body")
+					;	  (display (map variable/name body-free))
 	  (let ((graph (build-graph vars
 				    table:var->vals
 				    table:vals->free
 				    body-free)))
 	    (collapse-circularities! graph)
-	    ;(print-graph graph)
+					;(print-graph graph)
 	    (label-node-depth! graph)
 	    (let ((template (linearize graph)))
-	     ; (print-template template)
+					; (print-template template)
 	      (integrate/expression
 	       operations
 	       environment (build-new-code template
-			       (block/parent block)
-			       table:var->vals actions))))))
-      (open-block/make block vars values actions #t))))
+					   (block/parent block)
+					   table:var->vals actions))))))
+      (open-block/make block vars values actions #t)))
 
+#|
 (define (print-template template)
   (if (null? template)
       '()
@@ -965,6 +1054,7 @@ forms are simply removed.
 	(display (car this))
 	(display (map variable/name (cdr this)))
 	(print-template (cdr template)))))
+|#
 
 (define (associate-vars-and-vals vars vals)
   (let ((table (make-generic-eq?-table)))
@@ -1051,27 +1141,18 @@ forms are simply removed.
 (define-integrable (make-letrec-node variable-set)
   (%make-node 'LETREC variable-set))
 
-(declare (integrate add-node-need!
-		    remove-node-need!
-		    add-node-needed-by!
-		    remove-node-needed-by!))
-
-(define (add-node-need! needer what-i-need)
-  (declare (integrate what-i-need))
+(define-integrable (add-node-need! needer what-i-need)
   (set-%node-needs! needer (set/adjoin (%node-needs needer) what-i-need)))
 
-(define (remove-node-need! needer what-i-no-longer-need)
-  (declare (integrate what-i-no-longer-need))
+(define-integrable (remove-node-need! needer what-i-no-longer-need)
   (set-%node-needs! needer
 		    (set/remove (%node-needs needer) what-i-no-longer-need)))
 
-(define (add-node-needed-by! needee what-needs-me)
-  (declare (integrate what-needs-me))
+(define-integrable (add-node-needed-by! needee what-needs-me)
   (set-%node-needed-by! needee
 			(set/adjoin (%node-needed-by needee) what-needs-me)))
 
-(define (remove-node-needed-by! needee what-needs-me)
-  (declare (integrate what-needs-me))
+(define-integrable (remove-node-needed-by! needee what-needs-me)
   (set-%node-needed-by! needee
 			(set/remove (%node-needed-by needee) what-needs-me)))
 
@@ -1087,24 +1168,20 @@ forms are simply removed.
     (link-nodes! body-free table:var->vals table:vals->free vars
 		 table:variable->node)))
 
-(declare (integrate link-2-nodes!))
-
-(define (link-2-nodes! from-node to-node)
+(define-integrable (link-2-nodes! from-node to-node)
   (add-node-need! from-node to-node)
   (add-node-needed-by! to-node from-node))
 
 (define (unlink-node! node)
   (set/for-each (lambda (needer)
-	      (remove-node-needed-by! needer node))
-	    (%node-needs node))
+		  (remove-node-needed-by! needer node))
+		(%node-needs node))
   (set/for-each (lambda (needee)
-	      (remove-node-need! needee node))
-	    (%node-needed-by node))
+		  (remove-node-need! needee node))
+		(%node-needed-by node))
   (set-%node-type! node 'UNLINKED))
 
-(declare (integrate unlink-nodes!))
-
-(define (unlink-nodes! nodelist)
+(define-integrable (unlink-nodes! nodelist)
   (for-each unlink-node! nodelist))
 
 (define (link-nodes! body-free
@@ -1195,7 +1272,8 @@ forms are simply removed.
 		      nodeset)))
 
     (let ((letrec-node (make-letrec-node varset)))
-      (set/for-each (lambda (need) (link-2-nodes! letrec-node need)) needs-set)
+      (set/for-each (lambda (need) (link-2-nodes! letrec-node need))
+		    needs-set)
       (set/for-each
        (lambda (needer) (link-2-nodes! needer letrec-node)) needed-by)
       ;; now delete nodes in nodelist
@@ -1212,6 +1290,7 @@ forms are simply removed.
 	   (1+ depth)))))
   (label-nodes! (singleton-nodeset graph) 0))
 
+#|
 (define (print-graph node)
   (if (null? node)
       '()
@@ -1224,6 +1303,7 @@ forms are simply removed.
 			(display (variable/name variable)))
 		      (%node-vars node))
 	(set/for-each print-graph (%node-needs node)))))
+|#
 
 (define (collapse-parallel-nodelist depth nodeset)
   (if (set/empty? nodeset)
@@ -1304,6 +1384,3 @@ forms are simply removed.
 				     open-block/value-marker)
 				    (list code))
 			    #t)))))))))))
-
-;; End of OPEN-BLOCK/OPTIMIZING-MAKE
-)

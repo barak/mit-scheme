@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 4.8 1991/11/04 20:31:46 cph Exp $
+$Id: toplev.scm,v 4.9 1992/11/04 10:17:39 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; SCode Optimizer: Top Level
+;;; package: (scode-optimizer top-level)
 
 (declare (usual-integrations))
 
@@ -56,11 +57,13 @@ MIT in each case. |#
 	       (if (default-object? bin-string) false bin-string)
 	       (if (default-object? spec-string) false spec-string)))
 
+#|
 (define (scold input-string #!optional bin-string spec-string)
   "Use this only for syntaxing the cold-load root file.
 Currently only the 68000 implementation needs this."
   (fluid-let ((wrapping-hook wrap-with-control-point))
     (syntax-file input-string bin-string spec-string)))
+|#
 
 (define (syntax&integrate s-expression declarations #!optional syntax-table)
   (fluid-let ((sf:noisy? false))
@@ -278,6 +281,7 @@ Currently only the 68000 implementation needs this."
 (define (wrapping-hook scode)
   scode)
 
+#|
 (define control-point-tail
   `(3 ,(object-new-type (microcode-type 'NULL) 16)
       () () () () () () () () () () () () () () ()))
@@ -298,6 +302,7 @@ Currently only the 68000 implementation needs this."
 
 (define return-address-non-existent-continuation
   (make-return-address (microcode-return 'NON-EXISTENT-CONTINUATION)))
+|#
 
 ;;;; Optimizer Top Level
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 4.5 1991/10/30 21:01:22 cph Exp $
+$Id: pardec.scm,v 4.6 1992/11/04 10:17:33 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; SCode Optimizer: Parse Declarations
+;;; package: (scode-optimizer declarations)
 
 (declare (usual-integrations)
 	 (open-block-optimizations)
@@ -47,26 +48,29 @@ MIT in each case. |#
   (let ((bindings
 	 (accumulate
 	  (lambda (bindings declaration)
-	    (let ((association (assq (car declaration) known-declarations)))
-	      (if (not association)
-		  bindings
-		  (let ((before-bindings? (car (cdr association)))
-			(parser (cdr (cdr association))))
-		    (let ((block
-			   (if before-bindings?
-			       (let ((block (block/parent block)))
-				 (if (block/parent block)
-				     (warn "Declaration not at top level"
-					   declaration))
-				 block)
-			       block)))
-		      (parser block
-			      (bindings/cons block before-bindings?)
-			      bindings
-			      (cdr declaration)))))))
+	    (parse-declaration block bindings/cons bindings declaration))
 	  (cons '() '())
 	  declarations)))
     (declarations/make declarations (car bindings) (cdr bindings))))
+
+(define (parse-declaration block table/conser bindings declaration)
+  (let ((association (assq (car declaration) known-declarations)))
+    (if (not association)
+	bindings
+	(let ((before-bindings? (car (cdr association)))
+	      (parser (cdr (cdr association))))
+	  (let ((block
+		 (if before-bindings?
+		     (let ((block (block/parent block)))
+		       (if (block/parent block)
+			   (warn "Declaration not at top level"
+				 declaration))
+		       block)
+		     block)))
+	    (parser block
+		    (table/conser block before-bindings?)
+		    bindings
+		    (cdr declaration)))))))
 
 (define (bindings/cons block before-bindings?)
   (lambda (bindings global? operation export? names values)
@@ -294,17 +298,44 @@ symbol				; obvious.
 
 (define-declaration 'INTEGRATE-EXTERNAL true
   (lambda (block table/cons table specifications)
-    block				;ignored
     (accumulate
      (lambda (table extern)
-       (bind/values table/cons table (vector-ref extern 1) false
-		    (list (vector-ref extern 0))
-		    (list
-		     (intern-type (vector-ref extern 2)
-				  (vector-ref extern 3)))))
+       (let ((operation (vector-ref extern 1))
+	     (vref2 (vector-ref extern 2))
+	     (vref3 (vector-ref extern 3)))
+	 (if (and (eq? operation 'EXPAND)
+		  (eq? vref2 '*DUMPED-EXPANDER*))
+	     (parse-declaration
+	      block
+	      (lambda (block before-bindings?)
+		block				; ignored
+		(if before-bindings?
+		    (warn "INTEGRATE-EXTERNAL: before-bindings expander"
+			  (car vref3)))
+		table/cons)
+	      table
+	      vref3)
+	     (bind/general table/cons table true
+			   operation false
+			   (list (vector-ref extern 0))
+			   (list (intern-type vref2 vref3))))))
      table
      (append-map! read-externs-file
 		  (append-map! specification->pathnames specifications)))))
+
+(define-declaration 'INTEGRATE-SAFELY false
+  (lambda (block table/cons table names)
+    block				;ignored
+    (bind/no-values table/cons table 'INTEGRATE-SAFELY true names)))
+
+(define-declaration 'IGNORE false
+  (lambda (block table/cons table names)
+    (declare (ignore table/cons))
+    (for-each (lambda (var)
+		(and var
+		     (variable/can-ignore! var)))
+	      (block/lookup-names block names false))
+    table))
 
 (define (specification->pathnames specification)
   (let ((value
@@ -325,24 +356,72 @@ symbol				; obvious.
 		    (vector (variable/name variable)
 			    operation
 			    block
-			    expression)))))))
-	(if info
-	    (finish (integration-info/expression info))
-	    (variable/final-value variable environment finish if-not))))))
-
-;;;; User provided reductions and expansions
+			    expression))))))
+	    (fail
+	     (lambda ()
+	       (error "operations->external: Unrecognized processor" info))))
 
-;;; Reductions.  See reduct.scm for a description.
+	(cond ((not info)
+	       (variable/final-value variable environment finish if-not))
+	      ((integration-info? info)
+	       (finish (integration-info/expression info)))
+	      ((entity? info)
+	       (let ((xtra (entity-extra info)))
+		 (if (or (not (pair? xtra))
+			 (not (eq? '*DUMPABLE-EXPANDER* (car xtra))))
+		     (fail))
+		 (if-ok
+		  (vector (variable/name variable)
+			  operation
+			  '*DUMPED-EXPANDER*
+			  (cdr xtra)))))
+	      (else
+	       (fail)))))))
+
+;;;; User provided reductions and expansions.
+;; See reduct.scm for description of REDUCE-OPERATOR and REPLACE-OPERATOR.
 
 (define-declaration 'REDUCE-OPERATOR false
   (lambda (block table/cons table reduction-rules)
     block				;ignored
-    ;; Maybe it wants to be exported?
-    (bind/general table/cons table false 'EXPAND false
+    (check-declaration-syntax 'REDUCE-OPERATOR reduction-rules)
+    (bind/general table/cons table false 'EXPAND true
 		  (map car reduction-rules)
 		  (map (lambda (rule)
-			 (reducer/make rule block))
+			 (dumpable-expander
+			  'REDUCE-OPERATOR
+			  rule
+			  (reducer/make rule block)))
 		       reduction-rules))))
+
+(define-declaration 'REPLACE-OPERATOR false
+  (lambda (block table/cons table replacements)
+    block
+    (check-declaration-syntax 'REPLACE-OPERATOR replacements)
+    (bind/general table/cons table false 'EXPAND true
+		  (map car replacements)
+		  (map (lambda (replacement)
+			 (dumpable-expander
+			  'REPLACE-OPERATOR
+			  replacement
+			  (replacement/make replacement block)))
+		       replacements))))
+
+(define (dumpable-expander declaration text expander)
+  (make-entity (lambda (self operands if-expanded if-not-expanded block)
+		 self			; ignored
+		 (expander operands if-expanded if-not-expanded block))
+	       (cons '*DUMPABLE-EXPANDER*
+		     (list declaration text))))
+
+(define (check-declaration-syntax kind decls)
+  (if (or (not (list? decls))
+	  (there-exists? decls
+	    (lambda (decl)
+	      (or (not (pair? decl))
+		  (not (list? (cdr decl)))
+		  (not (symbol? (car decl)))))))
+      (error "Bad declaration" kind decls)))
 
 ;;; Expansions.  These should be used with great care, and require
 ;;; knowing a fair amount about the internals of sf.  This declaration
