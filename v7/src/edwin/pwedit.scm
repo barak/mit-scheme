@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: pwedit.scm,v 1.6 1999/05/04 17:41:20 cph Exp $
+;;; $Id: pwedit.scm,v 1.7 1999/05/04 17:47:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -35,11 +35,16 @@ Reads the file specified in the variable password-file.
 If password-file is #f, or if prefix arg supplied, prompts for a filename."
   (lambda ()
     (list
-     (let ((filename (ref-variable password-file)))
-       (if (and filename (not (command-argument)))
-	   filename
-	   (prompt-for-existing-file "View password file"
-				     (and filename (list filename)))))))
+     (let ((pathname
+	    (let ((filename (ref-variable password-file)))
+	      (and filename
+		   (merge-pathnames filename (user-homedir-pathname)))))
+	   (prompt
+	    (lambda (default)
+	      (prompt-for-existing-file "View password file" default))))
+       (cond ((not pathname) (prompt #f))
+	     ((command-argument) (prompt (list pathname)))
+	     (else pathname)))))
   (lambda (pathname)
     (let ((forms
 	   (call-with-temporary-buffer " view-pw-file"

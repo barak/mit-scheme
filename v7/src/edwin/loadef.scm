@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: loadef.scm,v 1.39 1999/05/04 17:23:04 cph Exp $
+;;; $Id: loadef.scm,v 1.40 1999/05/04 17:47:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -324,6 +324,7 @@ If password-file is #f, or if prefix arg supplied, prompts for a filename.")
 
 (define-variable password-file
   "Name of file containing passwords, or #F meaning prompt for name.
+If this specifies a relative pathname, it is relative to the home directory.
 See \\[view-password-file]."
   #f
   (lambda (object)
