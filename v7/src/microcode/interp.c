@@ -1,9 +1,9 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.101 2004/11/18 18:14:06 cph Exp $
+$Id: interp.c,v 9.102 2004/11/19 04:16:07 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
-Copyright 1992,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1992,2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1411,7 +1411,7 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 		  if (rest_flag)
 		    (*scan++) = EMPTY_LIST;
 		  for (i = auxes; (--i) >= 0; )
-		    (*scan++) = DEFAULT_OBJECT;
+		    (*scan++) = UNASSIGNED_OBJECT;
 		}
 	      else
 		{
@@ -1422,7 +1422,7 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 		    (*scan++) = (STACK_POP ());
 		  (*scan++) = list;
 		  for (i = auxes; (--i) >= 0; )
-		    (*scan++) = DEFAULT_OBJECT;
+		    (*scan++) = UNASSIGNED_OBJECT;
 		  /* Now scan == OBJECT_ADDRESS (list) */
 		  for (i = (nargs - params); (--i) >= 0; )
 		    {
