@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.9 1991/04/11 03:24:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.10 1991/07/09 00:49:30 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -42,7 +42,8 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! *current-output-port* console-output-port)
   (set! beep (wrap-custom-operation-0 'BEEP))
-  (set! clear (wrap-custom-operation-0 'CLEAR)))
+  (set! clear (wrap-custom-operation-0 'CLEAR))
+  unspecific)
 
 (define (output-port/unparse state port)
   ((unparser/standard-method 'OUTPUT-PORT
@@ -200,9 +201,19 @@ MIT in each case. |#
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee-output-port port))))
-    (output-port/write-char port #\Newline)
-    (output-port/flush-output port))
-  unspecific)
+    (output-port/write-char port #\newline)
+    (output-port/flush-output port)))
+
+(define (fresh-line #!optional port)
+  (let ((port
+	 (if (default-object? port)
+	     (current-output-port)
+	     (guarantee-output-port port))))
+    (let ((operation (output-port/custom-operation port 'FRESH-LINE)))
+      (if operation
+	  (operation port)
+	  (output-port/write-char port #\newline)))
+    (output-port/flush-output port)))
 
 (define (write-char char #!optional port)
   (let ((port
@@ -210,8 +221,7 @@ MIT in each case. |#
 	     (current-output-port)
 	     (guarantee-output-port port))))
     (output-port/write-char port char)
-    (output-port/flush-output port))
-  unspecific)
+    (output-port/flush-output port)))
 
 (define (write-string string #!optional port)
   (let ((port
@@ -219,14 +229,12 @@ MIT in each case. |#
 	     (current-output-port)
 	     (guarantee-output-port port))))
     (output-port/write-string port string)
-    (output-port/flush-output port))
-  unspecific)
+    (output-port/flush-output port)))
 
 (define (close-output-port port)
   (let ((operation (output-port/custom-operation port 'CLOSE)))
     (if operation
-	(operation port)))
-  unspecific)
+	(operation port))))
 
 (define (wrap-custom-operation-0 operation-name)
   (lambda (#!optional port)
@@ -238,8 +246,7 @@ MIT in each case. |#
 	(if operation
 	    (begin
 	      (operation port)
-	      (output-port/flush-output port)))))
-    unspecific))
+	      (output-port/flush-output port)))))))
 
 (define beep)
 (define clear)
@@ -256,8 +263,7 @@ MIT in each case. |#
     (if (string? object)
 	(output-port/write-string port object)
 	(unparse-object/internal object port 0 false unparser-table))
-    (output-port/flush-output port))
-  unspecific)
+    (output-port/flush-output port)))
 
 (define (write object #!optional port unparser-table)
   (let ((port
@@ -269,8 +275,7 @@ MIT in each case. |#
 	     (current-unparser-table)
 	     (guarantee-unparser-table unparser-table))))
     (unparse-object/internal object port 0 true unparser-table)
-    (output-port/flush-output port))
-  unspecific)
+    (output-port/flush-output port)))
 
 (define (write-line object #!optional port unparser-table)
   (let ((port
@@ -283,5 +288,4 @@ MIT in each case. |#
 	     (guarantee-unparser-table unparser-table))))
     (output-port/write-char port #\Newline)
     (unparse-object/internal object port 0 true unparser-table)
-    (output-port/flush-output port))
-  unspecific)
+    (output-port/flush-output port)))

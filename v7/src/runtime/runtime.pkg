@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.111 1991/07/02 19:24:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.112 1991/07/09 00:50:15 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1297,6 +1297,7 @@ MIT in each case. |#
 	  close-output-port
 	  current-output-port
 	  display
+	  fresh-line
 	  guarantee-output-port
 	  make-output-port
 	  newline
