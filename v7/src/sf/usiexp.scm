@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.31 1993/12/22 14:59:09 adams Exp $
+$Id: usiexp.scm,v 4.32 1994/01/29 01:47:20 gjr Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -442,6 +442,7 @@ MIT in each case. |#
 (define cdddar-expansion (general-car-cdr-expansion #b10001))
 (define cddddr-expansion (general-car-cdr-expansion #b10000))
 
+(define first-expansion (general-car-cdr-expansion #b11))
 (define second-expansion  cadr-expansion)
 (define third-expansion   caddr-expansion)
 (define fourth-expansion  cadddr-expansion)
@@ -601,6 +602,7 @@ MIT in each case. |#
     exact-rational?
     expt
     fifth
+    first
     fix:<=
     fix:=
     fix:>=
@@ -684,6 +686,7 @@ MIT in each case. |#
    exact-rational?-expansion
    expt-expansion
    fifth-expansion
+   first-expansion
    fix:<=-expansion
    fix:=-expansion
    fix:>=-expansion

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.18 1994/01/28 04:07:52 gjr Exp $
+$Id: gconst.scm,v 4.19 1994/01/29 01:47:26 gjr Exp $
 
 Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
@@ -89,7 +89,6 @@ MIT in each case. |#
     ERROR-PROCEDURE
     FALSE
     FALSE?
-    FIRST
     FIX:*
     FIX:+
     FIX:-
