@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.15 1990/05/03 15:11:50 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.16 1991/05/06 22:43:36 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -189,15 +189,21 @@ MIT in each case. |#
 				(reference-context/block context)
 				name)))
 	  (lambda (name)
-	    (if (memq 'UUO-LINK (variable-declarations variable))
-		(invocation/uuo-link frame-size
-				     continuation
-				     (prefix frame-size 0)
-				     name)
-		(invocation/cache-reference frame-size
-					    continuation
-					    prefix
-					    name)))))))
+	    (cond ((and (pair? name) (eq? (cdr name) '*GLOBAL*))
+		   (invocation/global-link frame-size
+					   continuation
+					   (prefix frame-size 0)
+					   (car name)))
+		  ((memq 'UUO-LINK (variable-declarations variable))
+		   (invocation/uuo-link frame-size
+					continuation
+					(prefix frame-size 0)
+					name))
+		  (else
+		   (invocation/cache-reference frame-size
+					       continuation
+					       prefix
+					       name))))))))
 
 (define (invocation/lookup frame-size continuation prefix environment variable)
   (let ((make-invocation
@@ -220,6 +226,12 @@ MIT in each case. |#
 		    (rtl:make-invocation:uuo-link (1+ frame-size)
 						  continuation
 						  name)))
+
+(define (invocation/global-link frame-size continuation prefix name)
+  (scfg*scfg->scfg! prefix
+		    (rtl:make-invocation:global-link (1+ frame-size)
+						     continuation
+						     name)))
 
 (define (invocation/cache-reference frame-size continuation prefix name)
   (load-temporary-register scfg*scfg->scfg!
