@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/emodel.scm,v 3.3 1987/07/08 04:39:27 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/emodel.scm,v 3.4 1988/03/22 17:36:18 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 

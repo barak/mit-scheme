@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/chtype.scm,v 1.1 1987/03/21 00:23:49 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/chtype.scm,v 1.2 1988/03/22 17:35:34 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,6 +35,7 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Intern object types
 
 (declare (usual-integrations))
+(declare (automagic-integrations))
 
 (define (change-type/external block expression)
   (change-type/block block)
@@ -51,6 +52,8 @@ MIT in each case. |#
 (define (change-type/expressions expressions)
   (for-each change-type/expression expressions))
 
+(declare (integrate-operator change-type/expression))
+
 (define (change-type/expression expression)
   (change-type/object enumeration/expression expression)
   ((expression/method dispatch-vector expression) expression))
@@ -60,6 +63,8 @@ MIT in each case. |#
 
 (define define-method/change-type
   (expression/make-method-definer dispatch-vector))
+
+(declare (integrate-operator change-type/object))
 
 (define (change-type/object enumeration object)
   (object/set-enumerand!
@@ -88,6 +93,7 @@ MIT in each case. |#
 
 (define-method/change-type 'CONSTANT
   (lambda (expression)
+    expression ; ignored
     'DONE))
 
 (define-method/change-type 'DECLARATION
@@ -115,7 +121,14 @@ MIT in each case. |#
 (define-method/change-type 'OPEN-BLOCK
   (lambda (expression)
     (change-type/expressions (open-block/values expression))
-    (change-type/expressions (open-block/actions expression))))
+    (change-type/open-block-actions (open-block/actions expression))))
+
+(define (change-type/open-block-actions actions)
+  (cond ((null? actions) 'DONE)
+	((eq? (car actions) open-block/value-marker)
+	 (change-type/open-block-actions (cdr actions)))
+	(else (change-type/expression (car actions))
+	      (change-type/open-block-actions (cdr actions)))))
 
 (define-method/change-type 'QUOTATION
   (lambda (expression)
@@ -126,6 +139,7 @@ MIT in each case. |#
 
 (define-method/change-type 'REFERENCE
   (lambda (expression)
+    expression ; ignored
     'DONE))
 
 (define-method/change-type 'SEQUENCE
@@ -134,4 +148,5 @@ MIT in each case. |#
 
 (define-method/change-type 'THE-ENVIRONMENT
   (lambda (expression)
+    expression ; ignored
     'DONE))

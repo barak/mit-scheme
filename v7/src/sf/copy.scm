@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/copy.scm,v 3.6 1987/07/08 04:35:44 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/copy.scm,v 3.7 1988/03/22 17:36:06 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,6 +35,9 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Copy Expression
 
 (declare (usual-integrations))
+(declare (open-block-optimizations))
+(declare (eta-substitution))
+(declare (automagic-integrations))
 
 (define root-block)
 
@@ -61,6 +64,8 @@ MIT in each case. |#
 	 (copy/expression block environment expression))
        expressions))
 
+(declare (integrate-operator copy/expression))
+
 (define (copy/expression block environment expression)
   ((expression/method dispatch-vector expression)
    block environment expression))
@@ -85,18 +90,22 @@ MIT in each case. |#
 	(old-bound (block/bound-variables block)))
     (let ((new-bound
 	   (map (lambda (variable)
-		  (variable/make result (variable/name variable)))
+		  (variable/make result
+				 (variable/name variable)
+				 (variable/flags variable)))
 		old-bound)))
       (let ((environment (environment/bind environment old-bound new-bound)))
 	(block/set-bound-variables! result new-bound)
 	(block/set-declarations!
 	 result
 	 (copy/declarations block environment (block/declarations block)))
+	(block/set-flags! result (block/flags block))
 	(return-2 result environment)))))
 
 (define copy/variable/free)
 
 (define (copy/variable block environment variable)
+  block ; ignored
   (environment/lookup environment variable
     identity-procedure
     (copy/variable/free variable)))
@@ -129,6 +138,7 @@ MIT in each case. |#
 (define copy/declarations)
 
 (define (copy/declarations/intern block environment declarations)
+  block ; ignored
   (if (null? declarations)
       '()
       (declarations/map declarations
@@ -215,6 +225,7 @@ MIT in each case. |#
 
 (define-method/copy 'CONSTANT
   (lambda (block environment expression)
+    block environment ; ignored
     expression))
 
 (define-method/copy 'DECLARATION
@@ -269,10 +280,12 @@ MIT in each case. |#
 		(if (eq? action open-block/value-marker)
 		    action
 		    (copy/expression block environment action)))
-	      (open-block/actions expression)))))))
+	      (open-block/actions expression))
+	 (open-block/optimized expression))))))
 
 (define-method/copy 'QUOTATION
   (lambda (block environment expression)
+    block environment ; ignored
     (copy/quotation expression)))
 
 (define-method/copy 'REFERENCE
@@ -288,4 +301,5 @@ MIT in each case. |#
 
 (define-method/copy 'THE-ENVIRONMENT
   (lambda (block environment expression)
+    block environment expression ; ignored
     (error "Attempt to integrate expression containing (THE-ENVIRONMENT)")))

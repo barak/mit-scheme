@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/object.scm,v 3.1 1987/03/13 04:12:53 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/object.scm,v 3.2 1988/03/22 17:37:47 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,6 +35,8 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Data Types
 
 (declare (usual-integrations))
+(declare (automagic-integrations))
+(declare (open-block-optimizations))
 
 (let-syntax ()
 
@@ -120,7 +122,8 @@ MIT in each case. |#
 
 (declare (integrate-operator enumerand/enumeration enumerand/name
 			     enumerand/index enumeration/cardinality
-			     enumeration/index->enumerand))
+			     enumeration/index->enumerand
+			     enumeration/name->enumerand))
 
 (define (enumerand/enumeration enumerand)
   (declare (integrate enumerand))
@@ -159,12 +162,12 @@ MIT in each case. |#
      )))
 
 (define-type block random
-  (parent children safe? declarations bound-variables))
+  (parent children safe? declarations bound-variables flags))
 
 (define (block/make parent safe?)
   (let ((block
 	 (object/allocate block/enumerand parent '() safe?
-			  (declarations/make-null) '())))
+			  (declarations/make-null) '() '())))
     (if parent
 	(block/set-children! parent (cons block (block/children parent))))
     block))
@@ -180,14 +183,37 @@ MIT in each case. |#
 		   operations expression))
 
 (define-simple-type variable random
-  (block name))
+  (block name flags))
 
 (define (variable/make&bind! block name)
-  (let ((variable (variable/make block name)))
+  (let ((variable (variable/make block name '())))
     (block/set-bound-variables! block
 				(cons variable
 				      (block/bound-variables block)))
     variable))
+
+(define (variable/flag? variable flag)
+  (memq flag (variable/flags variable)))
+
+(define (variable/set-flag! variable flag)
+  (declare (integrate variable/flag))
+  (if (not (variable/flag? variable flag))
+      (variable/set-flags! variable
+			   (cons flag (variable/flags variable)))))
+
+(let-syntax ((define-flag
+	       (macro (name tester setter)
+		 `(BEGIN
+		    (DEFINE (,tester VARIABLE)
+		      (VARIABLE/FLAG? VARIABLE (QUOTE ,name)))
+		    (DEFINE (,setter VARIABLE)
+		      (VARIABLE/SET-FLAG! VARIABLE (QUOTE ,name)))))))
+
+  (define-flag SIDE-EFFECTED variable/side-effected variable/side-effect!)
+  (define-flag REFERENCED    variable/referenced    variable/reference!)
+  (define-flag INTEGRATED    variable/integrated    variable/integrated!)
+  (define-flag CAN-IGNORE    variable/can-ignore?   variable/can-ignore!)
+  )
 
 (define open-block/value-marker
   ;; This must be an interned object because we will fasdump it and
@@ -245,7 +271,8 @@ MIT in each case. |#
 (define-simple-type delay expression (expression))
 (define-simple-type disjunction expression (predicate alternative))
 (define-simple-type in-package expression (environment quotation))
-(define-simple-type open-block expression (block variables values actions))
+(define-simple-type open-block expression (block variables values actions
+						 optimized))
 (define-simple-type procedure expression
   (block name required optional rest body))
 (define-simple-type quotation expression (block expression))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.5 1987/07/08 04:43:50 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.6 1988/03/22 17:40:50 jrm Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,6 +35,9 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Transform Input Expression
 
 (declare (usual-integrations))
+(declare (eta-substitution))
+(declare (automagic-integrations))
+(declare (open-block-optimizations))
 
 ;;; GLOBAL-BLOCK is used to handle (USUAL-INTEGRATIONS), as follows.
 ;;; This declaration refers to a large group of names, which are
@@ -82,6 +85,8 @@ MIT in each case. |#
 	 (transform/expression block environment expression))
        expressions))
 
+(declare (integrate-operator transform/expression))
+
 (define (transform/expression block environment expression)
   ((transform/dispatch expression) block environment expression))
 
@@ -108,7 +113,8 @@ MIT in each case. |#
     (transform/open-block* (block/make block true) environment)))
 
 (define ((transform/open-block* block environment) auxiliary declarations body)
-  (let ((variables (map (lambda (name) (variable/make block name)) auxiliary)))
+  (let ((variables (map (lambda (name) (variable/make block name '()))
+			auxiliary)))
     (block/set-bound-variables! block
 				(append (block/bound-variables block)
 					variables))
@@ -153,6 +159,7 @@ MIT in each case. |#
 (define (transform/assignment block environment expression)
   (assignment-components expression
     (lambda (name value)
+      (variable/side-effect! variable)
       (assignment/make block
 		       (environment/lookup block environment name)
 		       (transform/expression block environment value)))))
@@ -162,7 +169,8 @@ MIT in each case. |#
     (lambda (name required optional rest body)
       (let ((block (block/make block true)))
 	(transmit-values
-	    (let ((name->variable (lambda (name) (variable/make block name))))
+	    (let ((name->variable 
+		   (lambda (name) (variable/make block name '()))))
 	      (return-3 (map name->variable required)
 			(map name->variable optional)
 			(and rest (name->variable rest))))
@@ -189,6 +197,7 @@ MIT in each case. |#
       (transform/expression block environment expression)))
 
 (define (transform/definition block environment expression)
+  block environment ; ignored
   (definition-components expression
     (lambda (name value)
       (error "Unscanned definition encountered.  Unable to proceed." name))))
@@ -217,6 +226,7 @@ MIT in each case. |#
        (transform/expression block environment alternative)))))
 
 (define (transform/constant block environment expression)
+  block environment ; ignored
   (constant/make expression))
 
 (define (transform/declaration block environment expression)
@@ -252,6 +262,7 @@ MIT in each case. |#
 		       (transform/quotation* expression)))))
 
 (define (transform/quotation block environment expression)
+  block environment ;ignored
   (transform/quotation* (quotation-expression expression)))
 
 (define (transform/quotation* expression)
@@ -263,6 +274,7 @@ MIT in each case. |#
    (transform/expressions block environment (sequence-actions expression))))
 
 (define (transform/the-environment block environment expression)
+  environment expression ; ignored
   (block/unsafe! block)
   (the-environment/make block))
 

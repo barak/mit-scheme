@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/free.scm,v 3.2 1987/03/13 04:12:30 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/free.scm,v 3.3 1988/03/22 17:36:49 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,12 +35,30 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Free Variable Analysis
 
 (declare (usual-integrations))
+(declare (automagic-integrations))
+(declare (open-block-optimizations))
+(declare (eta-substitution))
 
+
+(declare (integrate-operator no-free-variables singleton-variable
+			     list->variable-set))
+
+(define (no-free-variables) 
+  (empty-set variable? eq?))
+
+(define (singleton-variable variable) 
+  (singleton-set variable? eq? variable))
+
+(define (list->variable-set variable-list)
+  (list->set variable? eq? variable-list))
+
 (define (free/expressions expressions)
   (if (null? expressions)
-      eq?-set/null
-      (eq?-set/union (free/expression (car expressions))
-		     (free/expressions (cdr expressions)))))
+      (no-free-variables)
+      (set/union (free/expression (car expressions))
+		 (free/expressions (cdr expressions)))))
+
+(declare (integrate-operator free/expression))
 
 (define (free/expression expression)
   ((expression/method dispatch-vector expression) expression))
@@ -57,24 +75,25 @@ MIT in each case. |#
 
 (define-method/free 'ASSIGNMENT
   (lambda (expression)
-    (eq?-set/adjoin (assignment/variable expression)
-		    (free/expression (assignment/value expression)))))
+    (set/adjoin (free/expression (assignment/value expression))
+		(assignment/variable expression))))
 
 (define-method/free 'COMBINATION
   (lambda (expression)
-    (eq?-set/union (free/expression (combination/operator expression))
-		   (free/expressions (combination/operands expression)))))
+    (set/union (free/expression (combination/operator expression))
+	       (free/expressions (combination/operands expression)))))
 
 (define-method/free 'CONDITIONAL
   (lambda (expression)
-    (eq?-set/union
+    (set/union*
      (free/expression (conditional/predicate expression))
-     (eq?-set/union (free/expression (conditional/consequent expression))
-		    (free/expression (conditional/alternative expression))))))
+     (free/expression (conditional/consequent expression))
+     (free/expression (conditional/alternative expression)))))
 
 (define-method/free 'CONSTANT
-  (lambda (expression)
-    eq?-set/null))
+  (lambda (expression) 
+    expression
+    (no-free-variables)))
 
 (define-method/free 'DECLARATION
   (lambda (expression)
@@ -86,8 +105,8 @@ MIT in each case. |#
 
 (define-method/free 'DISJUNCTION
   (lambda (expression)
-    (eq?-set/union (free/expression (disjunction/predicate expression))
-		   (free/expression (disjunction/alternative expression)))))
+    (set/union (free/expression (disjunction/predicate expression))
+	       (free/expression (disjunction/alternative expression)))))
 
 (define-method/free 'IN-PACKAGE
   (lambda (expression)
@@ -95,34 +114,38 @@ MIT in each case. |#
 
 (define-method/free 'PROCEDURE
   (lambda (expression)
-    (eq?-set/difference (free/expression (procedure/body expression))
-			(block/bound-variables (procedure/block expression)))))
+    (set/difference (free/expression (procedure/body expression))
+		    (list->variable-set
+		     (block/bound-variables (procedure/block expression))))))
 
 (define-method/free 'OPEN-BLOCK
   (lambda (expression)
-    (eq?-set/difference
-     (eq?-set/union (free/expressions (open-block/values expression))
-		    (let loop ((actions (open-block/actions expression)))
-		      (cond ((null? actions) eq?-set/null)
-			    ((eq? (car actions) open-block/value-marker)
-			     (loop (cdr actions)))
-			    (else
-			     (eq?-set/union (free/expression (car actions))
-					    (loop (cdr actions)))))))
-     (block/bound-variables (open-block/block expression)))))
+    (set/difference
+     (set/union (free/expressions (open-block/values expression))
+		(let loop ((actions (open-block/actions expression)))
+		  (cond ((null? actions) (no-free-variables))
+			((eq? (car actions) open-block/value-marker)
+			 (loop (cdr actions)))
+			(else
+			 (set/union (free/expression (car actions))
+				    (loop (cdr actions)))))))
+     (list->variable-set 
+      (block/bound-variables (open-block/block expression))))))
 
 (define-method/free 'QUOTATION
-  (lambda (expression)
-    eq?-set/null))
+  (lambda (expression) 
+    expression
+    (no-free-variables)))
 
 (define-method/free 'REFERENCE
-  (lambda (expression)
-    (eq?-set/singleton (reference/variable expression))))
+  (lambda (expression) 
+    (singleton-variable (reference/variable expression))))
 
 (define-method/free 'SEQUENCE
   (lambda (expression)
     (free/expressions (sequence/actions expression))))
 
 (define-method/free 'THE-ENVIRONMENT
-  (lambda (expression)
-    eq?-set/null))
+  (lambda (expression) 
+    expression
+    (no-free-variables)))

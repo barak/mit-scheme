@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usicon.scm,v 3.2 1987/05/04 23:50:04 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usicon.scm,v 3.3 1988/03/22 17:40:30 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,6 +35,7 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Usual Integrations: Constants
 
 (declare (usual-integrations))
+(declare (automagic-integrations))
 
 (define usual-integrations/constant-names)
 (define usual-integrations/constant-values)
@@ -63,5 +64,8 @@ MIT in each case. |#
 	     usual-integrations/constant-names))
   'DONE)
 
+(declare (integrate-operator constant->integration-info))
+
 (define (constant->integration-info constant)
+  (declare (integrate constant))
   (return-2 (constant/make constant) '()))

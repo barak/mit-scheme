@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.5 1987/07/08 04:42:52 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.6 1988/03/22 17:38:09 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,6 +35,9 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Parse Declarations
 
 (declare (usual-integrations))
+(declare (open-block-optimizations))
+(declare (automagic-integrations))
+(declare (eta-substitution))
 
 (define (declarations/make-null)
   (declarations/make '() '() '()))
@@ -218,6 +221,7 @@ MIT in each case. |#
 
 (define-declaration 'USUAL-INTEGRATIONS true
   (lambda (block table/cons table deletions)
+    block ; ignored
     (let ((finish
 	   (lambda (table operation names values)
 	     (transmit-values
@@ -255,6 +259,7 @@ MIT in each case. |#
 	(bind/values table/cons table 'INTEGRATE true names values)))))
 
 (define (parse-primitive-specification block specification)
+  block ; ignored
   (let ((finish
 	 (lambda (variable-name primitive-name)
 	   (return-2 variable-name
@@ -269,18 +274,79 @@ MIT in each case. |#
 	  ((symbol? specification) (finish specification specification))
 	  (else (error "Bad primitive specification" specification)))))
 
+;;; Special declarations courtesy JRM
+
+;; I return the operations table unmodified, but bash on the
+;; block.  This actually works pretty well.
+
+;; One problem here with this multiple values hack is that
+;; table is a multiple value -- yuck!
+
+(define-declaration 'AUTOMAGIC-INTEGRATIONS false
+  (lambda (block table/cons table names)
+    table/cons
+    names
+    (block/set-flags! block 
+		      (cons 'AUTOMAGIC-INTEGRATIONS (block/flags block)))
+    table))
+
+(define-declaration 'ETA-SUBSTITUTION false
+  (lambda (block table/cons table names)
+    table/cons
+    names
+    (block/set-flags! block
+		      (cons 'ETA-SUBSTITUTION (block/flags block)))
+    table))
+
+(define-declaration 'OPEN-BLOCK-OPTIMIZATIONS false
+  (lambda (block table/cons table names)
+    table/cons
+    names
+    (block/set-flags! block
+		      (cons 'OPEN-BLOCK-OPTIMIZATIONS (block/flags block)))
+    table))
+
+(define-declaration 'NO-AUTOMAGIC-INTEGRATIONS false
+  (lambda (block table/cons table names)
+    table/cons
+    names
+    (block/set-flags! block 
+		      (cons 'NO-AUTOMAGIC-INTEGRATIONS (block/flags block)))
+    table))
+
+(define-declaration 'NO-ETA-SUBSTITUTION false
+  (lambda (block table/cons table names)
+    table/cons
+    names
+    (block/set-flags! block
+		      (cons 'NO-ETA-SUBSTITUTION (block/flags block)))
+    table))
+
+(define-declaration 'NO-OPEN-BLOCK-OPTIMIZATIONS false
+  (lambda (block table/cons table names)
+    table/cons
+    names
+    (block/set-flags! block
+		      (cons 'NO-OPEN-BLOCK-OPTIMIZATIONS 
+			    (block/flags block)))
+    table))
+
+
 ;;;; Integration of User Code
 
 (define-declaration 'INTEGRATE false
   (lambda (block table/cons table names)
+    block ; ignored
     (bind/no-values table/cons table 'INTEGRATE true names)))
 
 (define-declaration 'INTEGRATE-OPERATOR false
   (lambda (block table/cons table names)
+    block ; ignored
     (bind/no-values table/cons table 'INTEGRATE-OPERATOR true names)))
 
 (define-declaration 'INTEGRATE-EXTERNAL true
   (lambda (block table/cons table specifications)
+    block ; ignored
     (accumulate
      (lambda (extern table)
        (bind/values table/cons table (vector-ref extern 1) false
@@ -315,6 +381,7 @@ MIT in each case. |#
 	(if info
 	    (transmit-values info
 	      (lambda (value uninterned)
+		uninterned ; ignored
 		(finish value)))
 	    (variable/final-value variable environment finish if-not))))))
 
@@ -326,6 +393,7 @@ MIT in each case. |#
 
 (define-declaration 'EXPAND-OPERATOR true
   (lambda (block table/cons table expanders)
+    block ; ignored
     (bind/general table/cons table false 'EXPAND false
 		  (map car expanders)
 		  (map (lambda (expander)

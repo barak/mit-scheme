@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/cgen.scm,v 3.4 1987/07/02 20:35:58 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/cgen.scm,v 3.5 1988/03/22 17:35:09 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,6 +35,9 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Generate SCode from Expression
 
 (declare (usual-integrations))
+(declare (automagic-integrations))
+(declare (open-block-optimizations))
+(declare (eta-substitution))
 
 (define (cgen/external quotation)
   (fluid-let ((flush-declarations? true))
@@ -79,6 +82,8 @@ MIT in each case. |#
 	 (cgen/expression interns expression))
        expressions))
 
+(declare (integrate-operator cgen/expression))
+
 (define (cgen/expression interns expression)
   ((expression/method dispatch-vector expression) interns expression))
 
@@ -121,6 +126,7 @@ MIT in each case. |#
 
 (define-method/cgen 'CONSTANT
   (lambda (interns expression)
+    interns ; is ignored
     (constant/value expression)))
 
 (define-method/cgen 'DECLARATION
@@ -147,6 +153,7 @@ MIT in each case. |#
 
 (define-method/cgen 'PROCEDURE
   (lambda (interns procedure)
+    interns ; ignored
     (make-lambda* (procedure/name procedure)
 		  (map variable/name (procedure/required procedure))
 		  (map variable/name (procedure/optional procedure))
@@ -161,6 +168,7 @@ MIT in each case. |#
 
 (define-method/cgen 'OPEN-BLOCK
   (lambda (interns expression)
+    interns ; is ignored
     (let ((block (open-block/block expression)))
       (make-open-block '()
 		       (maybe-flush-declarations (block/declarations block))
@@ -184,6 +192,7 @@ MIT in each case. |#
 
 (define-method/cgen 'QUOTATION
   (lambda (interns expression)
+    interns ; ignored
     (make-quotation (cgen/top-level expression))))
 
 (define-method/cgen 'REFERENCE
@@ -196,4 +205,5 @@ MIT in each case. |#
 
 (define-method/cgen 'THE-ENVIRONMENT
   (lambda (interns expression)
+    interns expression ; ignored
     (make-the-environment)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 3.15 1988/02/28 23:00:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 3.16 1988/03/22 17:37:26 jrm Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -61,45 +61,56 @@ MIT in each case. |#
     (make-environment
       (define :name "SF")
       (define :version 3)
-      (define :modification 15)
+      (define :modification 16)
       (define :files)
 
       (define :files-lists
 	(list
+	 (cons system-global-environment
+	       '(
+		 "sfmac.bin"		; Macros for SF
+		 ))
 	 (cons package/scode-optimizer
-	       '("mvalue.bin"		;Multiple Value Support
-		 "eqsets.bin"		;Set Data Abstraction
-		 "pthmap.bin"		;Pathname Map Abstraction
-		 "object.bin"		;Data Structures
-		 "emodel.bin"		;Environment Model
-		 "gconst.bin"		;Global Primitives List
-		 "usicon.bin"		;Usual Integrations: Constants
-		 "tables.bin"		;Table Abstractions
-		 "packag.bin"		;Global packaging
+	       '(
+		 "mvalue.bin"		; Multiple Value Support
+		 "lsets.bin"		; Set Data Abstraction
+		 "table.bin"		; Table Abstraction
+		 "pthmap.bin"		; Pathname Map Abstraction
+		 "object.bin"		; Data Structures
+		 "emodel.bin"		; Environment Model
+		 "gconst.bin"		; Global Primitives List
+		 "usicon.bin"		; Usual Integrations: Constants
+		 "tables.bin"		; Operation Table Abstractions
+		 "packag.bin"		; Global packaging
 		 ))
 	 (cons package/top-level
-	       '("toplev.bin"))		;Top Level
+	       '("toplev.bin"))		; Top Level
 	 (cons package/transform
-	       '("xform.bin"))		;SCode -> Internal
+	       '("xform.bin"))		; SCode -> Internal
 	 (cons package/integrate
-	       '("subst.bin"))		;Beta Substitution Optimizer
+	       '("subst.bin"))		; Beta Substitution Optimizer
 	 (cons package/cgen
-	       '("cgen.bin"))		;Internal -> SCode
+	       '("cgen.bin"))		; Internal -> SCode
 	 (cons package/expansion
-	       '("usiexp.bin"))		;Usual Integrations: Expanders
+	       '("usiexp.bin"))		; Usual Integrations: Expanders
 	 (cons package/declarations
-	       '("pardec.bin"))		;Declaration Parser
+	       '("pardec.bin"))		; Declaration Parser
 	 (cons package/copy
-	       '("copy.bin"))		;Copy Expressions
+	       '("copy.bin"))		; Copy Expressions
 	 (cons package/free
-	       '("free.bin"))		;Free Variable Analysis
+	       '("free.bin"))		; Free Variable Analysis
 	 (cons package/change-type
-	       '("chtype.bin"))		;Type interning
+	       '("chtype.bin"))		; Type interning
 	 ))))
 
   (load-system! scode-optimizer/system true)
 
   (scode-optimizer/initialize!))
 
+#|
+
+See also the file SFSF.scm
+
+|#
 ;;; end IN-PACKAGE SYSTEM-GLOBAL-ENVIRONMENT
 )

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.5 1987/12/23 04:20:38 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.6 1988/03/22 17:40:40 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,6 +35,9 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Usual Integrations: Combination Expansions
 
 (declare (usual-integrations))
+(declare (automagic-integrations))
+(declare (open-block-optimizations))
+(declare (eta-substitution))
 
 ;;;; N-ary Arithmetic Predicates
 
@@ -47,6 +50,7 @@ MIT in each case. |#
 
 (define (pairwise-test binary-predicate if-left-zero if-right-zero)
   (lambda (operands if-expanded if-not-expanded block)
+    block ; ignored
     (cond ((or (null? operands)
 	       (null? (cdr operands)))
 	   (error "Too few operands" operands))
@@ -88,6 +92,7 @@ MIT in each case. |#
 
 (define (right-accumulation identity make-binary)
   (lambda (operands if-expanded if-not-expanded block)
+    block ; ignored
     (let ((operands (delq identity operands)))
       (let ((n (length operands)))
 	(cond ((zero? n)
@@ -155,6 +160,7 @@ MIT in each case. |#
 
 (define (divide-component-expansion divide selector)
   (lambda (operands if-expanded if-not-expanded block)
+    if-not-expanded block ; ignored
     (if-expanded
      (make-combination selector
 		       (list (make-combination divide operands))))))
@@ -176,6 +182,7 @@ MIT in each case. |#
 (define apply*-expansion
   (let ((apply-primitive (make-primitive-procedure 'APPLY)))
     (lambda (operands if-expanded if-not-expanded block)
+      block ; ignored
       (let ((n (length operands)))
 	(cond ((< n 2) (error "APPLY*-EXPANSION: Too few arguments" n))
 	      ((< n 10)
@@ -187,6 +194,7 @@ MIT in each case. |#
 	      (else (if-not-expanded)))))))
 
 (define (cons*-expansion operands if-expanded if-not-expanded block)
+  block ; ignored
   (let ((n (length operands)))
     (cond ((zero? n) (error "CONS*-EXPANSION: No arguments!"))
 	  ((< n 9) (if-expanded (cons*-expansion-loop operands)))
@@ -200,6 +208,7 @@ MIT in each case. |#
 			      (cons*-expansion-loop (cdr rest))))))
 
 (define (list-expansion operands if-expanded if-not-expanded block)
+  block ; ignored
   (if (< (length operands) 9)
       (if-expanded (list-expansion-loop operands))
       (if-not-expanded)))
@@ -215,6 +224,7 @@ MIT in each case. |#
 
 (define (general-car-cdr-expansion encoding)
   (lambda (operands if-expanded if-not-expanded block)
+    if-not-expanded block ; ignored
     (if (= (length operands) 1)
 	(if-expanded
 	 (make-combination general-car-cdr
@@ -264,6 +274,7 @@ MIT in each case. |#
 ;;;; Miscellaneous
 
 (define (make-string-expansion operands if-expanded if-not-expanded block)
+  block ; ignored
   (let ((n (length operands)))
     (cond ((zero? n)
 	   (error "MAKE-STRING-EXPANSION: No arguments"))
@@ -274,6 +285,7 @@ MIT in each case. |#
 
 (define (identity-procedure-expansion operands if-expanded if-not-expanded
 				      block)
+  if-not-expanded block ; ignored
   (if (not (= (length operands) 1))
       (error "IDENTITY-PROCEDURE-EXPANSION: wrong number of arguments"
 	     (length operands)))

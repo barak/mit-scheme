@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pthmap.scm,v 1.1 1987/05/09 23:22:21 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pthmap.scm,v 1.2 1988/03/22 17:38:21 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,6 +35,9 @@ MIT in each case. |#
 ;;;; Pathname Maps
 
 (declare (usual-integrations))
+(declare (automagic-integrations))
+(declare (open-block-optimizations))
+(declare (eta-substitution))
 
 (define pathname-map/make)
 (define pathname-map?)
@@ -62,6 +65,8 @@ MIT in each case. |#
       (write-string "PATHNAME-MAP ")
       (write (hash map))))))
 
+(declare (integrate-operator node/make))
+
 (define (node/make)
   (cons unbound-value '()))
 
@@ -83,6 +88,8 @@ MIT in each case. |#
 			    (cons-if (pathname-type pathname)
 				     (cons-if (pathname-version pathname)
 					      '()))))))
+
+(declare (integrate-operator cons-if))
 
 (define (cons-if item rest)
   (if item

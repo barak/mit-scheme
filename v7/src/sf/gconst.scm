@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.5 1987/12/23 04:19:28 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.6 1988/03/22 17:37:01 jrm Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 

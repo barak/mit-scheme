@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.5 1988/02/28 22:59:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.6 1988/03/22 17:40:18 jrm Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -35,6 +35,8 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Top Level
 
 (declare (usual-integrations))
+(declare (automagic-integrations))
+(declare (open-block-optimizations))
 
 ;;;; User Interface
 
@@ -259,6 +261,7 @@ Currently only the 68000 implementation needs this."
 ;;;; Optimizer Top Level
 
 (define (integrate/file file-name syntax-table declarations compute-free?)
+  compute-free? ; ignored
   (integrate/kernel (lambda ()
 		      (phase:syntax (phase:read file-name) syntax-table))
 		    declarations))
@@ -268,12 +271,14 @@ Currently only the 68000 implementation needs this."
       (integrate/kernel (lambda () (preprocessor input)) declarations)
     (or receiver
 	(lambda (expression externs events)
+	  externs events ; ignored
 	  expression))))
 
 (define (integrate/kernel get-scode declarations)
-  (fluid-let ((previous-time false)
-	      (previous-name false)
-	      (events '()))
+  (fluid-let ((previous-real-time 	false)
+	      (previous-process-time	false)
+	      (previous-name 		false)
+	      (events			 '()))
     (transmit-values
 	(transmit-values
 	    (transmit-values
@@ -317,7 +322,8 @@ Currently only the 68000 implementation needs this."
   (return-2 (operations->external operations environment)
 	    (cgen/expression expression)))
 
-(define previous-time)
+(define previous-real-time)
+(define previous-process-time)
 (define previous-name)
 (define events)
 
@@ -330,12 +336,17 @@ Currently only the 68000 implementation needs this."
   (set! previous-name this-name))
 
 (define (end-phase)
-  (let ((this-time (runtime)))
-    (if previous-time
-	(let ((dt (- this-time previous-time)))
+  (let ((this-time (real-time-clock))
+	(this-process-time (runtime)))
+    (if previous-real-time
+	(let ((dt (- this-time previous-real-time))
+	      (dpt (- this-process-time previous-process-time)))
 	  (set! events (cons (cons previous-name dt) events))
 	  (newline)
 	  (write-string "    Time: ")
-	  (write dt)
-	  (write-string " seconds.")))
-    (set! previous-time this-time)))
+	  (write (floor (/ dt 1000.)))
+	  (write-string " seconds (real); ")
+	  (write dpt)
+	  (write-string " seconds (process).")))
+    (set! previous-real-time this-time)
+    (set! previous-process-time this-process-time)))
