@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.3 1993/06/24 02:08:32 gjr Exp $
+$Id: ntsig.c,v 1.4 1993/07/18 22:25:44 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -1282,22 +1282,37 @@ DEFUN_VOID (install_timer)
     return  0;
 }
 
-
+/* This sets up the interrupt handlers for both DOS and NT,
+   so that bands can be shared.
+ */
 
 void
 DEFUN (NT_initialize_fov, (fov), SCHEME_OBJECT fov)
 {
+  int ctr, in;
+  SCHEME_OBJECT iv, imv, prim, mask;
   extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
-  SCHEME_OBJECT iv, prim;
+  static int interrupt_numbers[] = {
+    Global_GC_Level,
+    Global_1_Level
+    };
+  static long interrupt_masks[] = {
+    0,				/* No interrupts allowed */
+    (INT_Stack_Overflow | INT_Global_GC | INT_GC)
+    };
 
-  prim = make_primitive ("NT-DEFAULT-POLL-GUI-INTERRUPT");
-  iv = FAST_VECTOR_REF (fov, System_Interrupt_Vector);
-//  VECTOR_SET (iv, Global_GC_Level, prim);
-  VECTOR_SET (iv, Global_1_Level, prim);
+  iv = (FAST_VECTOR_REF (fov, System_Interrupt_Vector));
+  imv = (FAST_VECTOR_REF (fov, FIXOBJ_INTERRUPT_MASK_VECTOR));
+  prim = (make_primitive ("MICROCODE-POLL-INTERRUPT-HANDLER"));
+
+  for (ctr = 0; ctr < ((sizeof (interrupt_numbers)) / (sizeof (int))); ctr++)
+  {
+    in = interrupt_numbers[ctr];
+    VECTOR_SET (iv, in, prim);
+    VECTOR_SET (imv, in, (long_to_integer (interrupt_masks[ctr])));
+  }
   return;
 }
-
-
 
 void
 DEFUN_VOID (NT_initialize_signals)

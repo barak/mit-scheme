@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.2 1993/06/24 02:02:05 gjr Exp $
+$Id: ntgui.c,v 1.3 1993/07/18 22:25:50 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -184,7 +184,7 @@ DEFUN_VOID (nt_gui_default_poll)
 }
 
 
-DEFINE_PRIMITIVE ("NT-DEFAULT-POLL-GUI-INTERRUPT",
+DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER",
                   Prim_nt_default_poll_gui_interrupt, 2, 2,
 		  "NT High-priority timer interrupt handler for Windows I/O.")
 {

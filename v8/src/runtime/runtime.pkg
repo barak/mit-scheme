@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.184 1993/07/07 20:01:39 gjr Exp $
+$Id: runtime.pkg,v 14.185 1993/07/18 22:25:37 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1508,17 +1508,19 @@ MIT in each case. |#
    (else))
   (initialization (initialize-package!)))
 
+;; DOS and NT pathanme packages present in both to allow band sharing.
+
 (define-package (runtime pathname dos)
   (parent (runtime pathname))
   (file-case os-type
-   ((dos) "dospth")
+   ((dos nt) "dospth")
    (else))
   (initialization (initialize-package!)))
 
 (define-package (runtime pathname nt)
   (parent (runtime pathname))
   (file-case os-type
-   ((nt) "ntpth")
+   ((nt dos) "ntpth")
    (else))
   (initialization (initialize-package!)))
 

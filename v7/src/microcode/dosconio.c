@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosconio.c,v 1.10 1993/07/16 20:56:45 gjr Exp $
+$Id: dosconio.c,v 1.11 1993/07/18 22:25:57 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -262,20 +262,35 @@ DEFUN_VOID (DOS_initialize_conio)
 
 extern void EXFUN (DOS_initialize_fov, (SCHEME_OBJECT));
 
+/* This sets up the interrupt handlers for both DOS and NT,
+   so that bands can be shared.
+ */
+
 void
 DEFUN (DOS_initialize_fov, (fov), SCHEME_OBJECT fov)
 {
-  int in;
-  SCHEME_OBJECT iv, imv, prim;
+  int ctr, in;
+  SCHEME_OBJECT iv, imv, prim, mask;
   extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
+  static int interrupt_numbers[] = {
+    Global_GC_Level,
+    Global_1_Level
+    };
+  static long interrupt_masks[] = {
+    0,				/* No interrupts allowed */
+    (INT_Stack_Overflow | INT_Global_GC | INT_GC)
+    };
 
-  in = Global_GC_Level;
-  prim = (make_primitive ("DOS-HIGH-PRIORITY-TIMER-INTERRUPT"));
   iv = (FAST_VECTOR_REF (fov, System_Interrupt_Vector));
-  VECTOR_SET (iv, in, prim);
   imv = (FAST_VECTOR_REF (fov, FIXOBJ_INTERRUPT_MASK_VECTOR));
-  /* No interrupts allowed while processing this interrupt. */
-  VECTOR_SET (imv, in, (long_to_integer (0)));
+  prim = (make_primitive ("MICROCODE-POLL-INTERRUPT-HANDLER"));
+
+  for (ctr = 0; ctr < ((sizeof (interrupt_numbers)) / (sizeof (int))); ctr++)
+  {
+    in = interrupt_numbers[ctr];
+    VECTOR_SET (iv, in, prim);
+    VECTOR_SET (imv, in, (long_to_integer (interrupt_masks[ctr])));
+  }
   return;
 }
 
@@ -359,8 +374,8 @@ DEFUN (console_read, (buffer, nbytes, buffered_p, blocking_p, intrpt_p),
   return (0);
 }
 
-DEFINE_PRIMITIVE ("DOS-HIGH-PRIORITY-TIMER-INTERRUPT", Prim_dos_high_priority_timer, 2, 2,
-		  "DOS High-priority timer interrupt handler.")
+DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER", Prim_dos_high_priority_timer, 2, 2,
+		  "DOS Polling interrupt handler---timer and keyboard.")
 {
   extern void EXFUN (dos_process_timer_interrupt, (void));
   PRIMITIVE_HEADER (2);
