@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.3 1992/05/26 05:51:54 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.4 1992/05/28 18:12:14 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -139,8 +139,43 @@ MIT in each case. |#
 (define file-modification-time
   file-modification-time-indirect)
 
-(define-integrable get-environment-variable
-  (ucode-primitive get-environment-variable))
+
+(define get-environment-variable)
+(define set-environment-variable!)
+(define delete-environment-variable!)
+
+(let ((environment-variables '())
+      (*variable-deleted* "This var deleted"))
+  (set! get-environment-variable
+	(lambda (variable)
+	  (if (string? variable)
+	      (let ((scheme-value (assoc variable environment-variables)))
+		(cond ((not scheme-value)
+		       ((ucode-primitive get-environment-variable) variable))
+		      ((eq? (cdr scheme-value) *variable-deleted*)
+		       false)
+		      (else
+		       (cdr scheme-value))))
+	      (error "GET-ENVIRONMENT-VARIABLE: Variable must be a string"
+		     variable))))
+  (set! set-environment-variable!
+	(lambda (variable value)
+	  (if (string? variable)
+	      (cond ((assoc variable environment-variables)
+		     =>
+		     (lambda (pair)
+		       (set-cdr! pair value)))
+		    (else
+		     (set! environment-variables
+			   (cons (cons variable value)
+				 environment-variables))))
+	      (error "SET-ENVIRONMENT-VARIABLE: Variable must be a string"
+		     variable value))
+	  unspecific))
+  (set! delete-environment-variable!
+	(lambda (variable)
+	  (set-environment-variable! variable *variable-deleted*)))
+) ; End LET
 
 (define (dos/user-home-directory user-name)
   (let ((directory ((ucode-primitive get-user-home-directory) user-name)))
