@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.1 2004/11/01 19:21:05 cph Exp $
+$Id: load.scm,v 1.2 2004/11/02 03:57:41 cph Exp $
 
 Copyright 2004 Massachusetts Institute of Technology
 
@@ -26,6 +26,23 @@ USA.
 ;;;; XDOC loader
 
 (load-option 'ssp)
+;; Backwards compatibility:
+(let ((from-env (->environment '(runtime xml html)))
+      (to-env (->environment '(runtime ssp-expander-environment))))
+  (let ((export
+	 (lambda (from to)
+	   (link-variables to-env to from-env from))))
+    (for-each (lambda (name)
+		(let ((name (xml-name-local name)))
+		  (if (not (memq name '(map style)))
+		      (export (symbol 'html: name) name))))
+	      (html-element-names))
+    (for-each (lambda (name)
+		(export (symbol 'html: name) name))
+	      '(href id-def id-ref rel-link style-link http-equiv))
+    (export 'html:style-attr 'style)
+    (export 'xml-attrs 'attributes)
+    (export 'xml-comment 'comment)))
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (package/system-loader "xdoc" '() 'query)))
