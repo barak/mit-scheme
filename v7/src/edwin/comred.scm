@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.77 1989/08/08 10:05:47 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.78 1989/08/09 13:16:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -353,9 +353,10 @@
       ((#\v)
        (prompting (variable-name (prompt-for-variable prompt))))
       ((#\x)
-       (prompting (prompt-for-expression prompt false)))
+       (prompting (prompt-for-expression prompt)))
       ((#\X)
-       (prompting (prompt-for-expression-value prompt false)))      (else
+       (prompting (prompt-for-expression-value prompt)))
+      (else
        (editor-error "Invalid control letter "
 		     char
 		     " in interactive calling string")))))

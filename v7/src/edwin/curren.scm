@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.84 1989/08/08 10:05:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.85 1989/08/09 13:17:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -133,6 +133,9 @@
 
 (define-integrable (buffer-names)
   (bufferset-names (current-bufferset)))
+
+(define-integrable (current-buffer? buffer)
+  (eq? buffer (current-buffer)))
 
 (define-integrable (current-buffer)
   (window-buffer (current-window)))
@@ -311,11 +314,12 @@
 
 ;;;; Modes and Comtabs
 
-(define-integrable (current-modes)
-  (buffer-modes (current-buffer)))
-
 (define-integrable (current-major-mode)
   (buffer-major-mode (current-buffer)))
+
+(define-integrable (current-minor-modes)
+  (buffer-minor-modes (current-buffer)))
+
 (define-integrable (current-comtabs)
   (buffer-comtabs (current-buffer)))
 

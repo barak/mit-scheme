@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.134 1989/04/28 22:52:09 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.135 1989/08/09 13:18:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -43,6 +43,7 @@
 ;;;
 
 ;;;; User Prompting
+;;; Package: (edwin prompt)
 
 (declare (usual-integrations))
 
@@ -559,7 +560,7 @@ a repetition of this command will exit."
      (prompt-for-typein (string-append prompt ": ") false
        (lambda ()
 	 (let ((char (keyboard-read-char)))
-	   (set-typein-string! (char-name char))
+	   (set-typein-string! (char-name char) true)
 	   char))))))
 
 (define (prompt-for-key prompt #!optional comtab)
@@ -571,7 +572,7 @@ a repetition of this command will exit."
 	   (let outer-loop ((prefix '()))
 	     (let inner-loop ((char (keyboard-read-char)))
 	       (let ((chars (append! prefix (list char))))
-		 (set-typein-string! (xchar->name chars))
+		 (set-typein-string! (xchar->name chars) true)
 		 (if (prefix-char-list? comtab chars)
 		     (outer-loop chars)
 		     (let ((command (comtab-entry comtab chars)))
@@ -590,11 +591,11 @@ a repetition of this command will exit."
 	(let ((char (char-upcase (keyboard-read-char))))
 	  (cond ((or (char=? char #\Y)
 		     (char=? char #\Space))
-		 (set-typein-string! "Yes")
+		 (set-typein-string! "yes" true)
 		 true)
 		((or (char=? char #\N)
 		     (char=? char #\Rubout))
-		 (set-typein-string! "No")
+		 (set-typein-string! "no" true)
 		 false)
 		(else
 		 (editor-failure)
@@ -607,19 +608,21 @@ a repetition of this command will exit."
      (typein-editor-thunk (ref-mode-object minibuffer-local-yes-or-no)))))
 
 (define-major-mode minibuffer-local-yes-or-no fundamental #f
-  "Enter either \"Yes\" or \"No\".")
+  "Enter either \"yes\" or \"no\".")
 
 (define-key 'minibuffer-local-yes-or-no #\return 'exit-minibuffer-yes-or-no)
 
 (define-command exit-minibuffer-yes-or-no
-  "Like \\[exit-minibuffer], but insists on \"Yes\" or \"No\" as an answer."
+  "Like \\[exit-minibuffer], but insists on \"yes\" or \"no\" as an answer."
   ()
   (lambda ()
     (let ((string (typein-string)))
       (if (or (string-ci=? "yes" string)
 	      (string-ci=? "no" string))
 	  (exit-typein-edit)
-	  (editor-error "Please enter \"Yes\" or \"No\"")))))
+	  (begin
+	    (set-typein-string! "" false)
+	    (editor-error "Please enter \"yes\" or \"no\""))))))
 
 ;;;; Command History Prompt
 
@@ -642,13 +645,17 @@ Whilst editing the command, the following commands are available:
       (execute-command-history-entry
        (read-from-string
 	(prompt-for-string "Redo"
-			   (write-to-string
+			   (command-history-entry->string
 			    (list-ref *command-history* (-1+ argument)))
 			   'INSERTED-DEFAULT
 			   (ref-mode-object repeat-complex-command)))))))
 
 (define *command-history*)
 (define *command-history-index*)
+
+(define (command-history-entry->string command)
+  (fluid-let ((*unparse-with-maximum-readability?* true))
+    (write-to-string command)))
 
 (define-major-mode repeat-complex-command minibuffer-local #f
   "Major mode for editing command history.")
@@ -670,7 +677,9 @@ Whilst editing the command, the following commands are available:
 			    "No preceeding item in command history")))
       (set! *command-history-index* index)
       (set-typein-string!
-       (write-to-string (list-ref *command-history* (-1+ index))))      (set-current-point! (buffer-start (current-buffer))))))
+       (command-history-entry->string (list-ref *command-history* (-1+ index)))
+       true)
+      (set-current-point! (buffer-start (current-buffer))))))
 
 (define-command previous-complex-command
   "Inserts the next element of `command-history' into the minibuffer."

@@ -71,6 +71,7 @@
      "midas"
      "modefs"
      "modes"
+     "modlin"
      "motcom"
      "pasmod"
      "prompt"

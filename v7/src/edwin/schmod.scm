@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.12 1989/08/07 08:45:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.13 1989/08/09 13:18:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -57,17 +57,13 @@
 \\[lisp-indent-line] indents the current line for Scheme.
 \\[indent-sexp] indents the next s-expression.
 
-\\[eval-previous-sexp-into-buffer] evaluates the expression preceding point.
-    All output is inserted into the buffer at point.
-\\[eval-expression] reads and evaluates an expression in the typein window.
+The following commands evaluate Scheme expressions;
+normally they record the associated output in a transcript buffer:
 
-The following evaluation commands keep a transcript of all output in
-the buffer *Transcript*:
-
+\\[eval-expression] reads and evaluates an expression in minibuffer.
+\\[eval-previous-sexp] evaluates the expression preceding point.
 \\[eval-definition] evaluates the current definition.
 \\[eval-buffer] evaluates the buffer.
-\\[eval-next-sexp] evaluates the expression following point.
-\\[eval-previous-sexp] evaluates the expression preceding point.
 \\[eval-region] evaluates the current region."
 
   (local-set-variable! syntax-table scheme-mode:syntax-table)
@@ -93,23 +89,22 @@ the buffer *Transcript*:
 (define-key 'scheme #\) 'lisp-insert-paren)
 (define-key 'scheme #\m-o 'eval-buffer)
 (define-key 'scheme #\m-z 'eval-definition)
-(define-key 'scheme #\c-m-= 'eval-previous-sexp-into-buffer)
 (define-key 'scheme #\c-m-q 'indent-sexp)
-(define-key 'scheme #\c-m-x 'eval-expression)
 (define-key 'scheme #\c-m-z 'eval-region)
 
 ;;;; Read Syntax
 
 (define scheme-mode:syntax-table (make-syntax-table))
 
-(modify-syntax-entries! scheme-mode:syntax-table #\NUL #\/ "_")
+(modify-syntax-entries! scheme-mode:syntax-table #\nul #\/ "_")
 (modify-syntax-entries! scheme-mode:syntax-table #\: #\@ "_")
 (modify-syntax-entries! scheme-mode:syntax-table #\[ #\` "_")
-(modify-syntax-entries! scheme-mode:syntax-table #\{ #\Rubout "_")
+(modify-syntax-entries! scheme-mode:syntax-table #\{ #\rubout "_")
 
-(modify-syntax-entry! scheme-mode:syntax-table #\Space " ")
-(modify-syntax-entry! scheme-mode:syntax-table #\Tab " ")
-(modify-syntax-entry! scheme-mode:syntax-table #\Page " ")(modify-syntax-entry! scheme-mode:syntax-table #\[ " ")
+(modify-syntax-entry! scheme-mode:syntax-table #\space " ")
+(modify-syntax-entry! scheme-mode:syntax-table #\tab " ")
+(modify-syntax-entry! scheme-mode:syntax-table #\page " ")
+(modify-syntax-entry! scheme-mode:syntax-table #\[ " ")
 (modify-syntax-entry! scheme-mode:syntax-table #\] " ")
 (modify-syntax-entry! scheme-mode:syntax-table #\{ " ")
 (modify-syntax-entry! scheme-mode:syntax-table #\} " ")

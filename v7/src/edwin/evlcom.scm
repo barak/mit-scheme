@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.15 1989/08/07 08:44:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.16 1989/08/09 13:17:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -43,21 +43,20 @@
 ;;;
 
 ;;;; Evaluation Commands
+;;; Package: (edwin)
 
 (declare (usual-integrations))
 
+;;;; Variables
+
 (define-variable scheme-environment
   "The environment used by the evaluation commands, or 'DEFAULT.
 If 'DEFAULT, use the default (REP loop) environment."
   'DEFAULT)
 
 (define-variable scheme-syntax-table
-  "The syntax table used by the evaluation commands, or false.
-If false, use the default (REP loop) syntax-table."
-  false)
-
-(define-variable previous-evaluation-expression
-  "The last expression evaluated in the typein window."
+  "The syntax table used by the evaluation commands, or #F
+If #F, use the default (REP loop) syntax-table."
   false)
 
 (define-variable debug-on-evaluation-error
@@ -65,67 +64,75 @@ If false, use the default (REP loop) syntax-table."
 This does not affect editor errors."
   true)
 
+(define-variable enable-transcript-buffer
+  "If true, output from evaluation commands is recorded in transcript buffer."
+  true)
+
+(define-variable transcript-buffer-name
+  "Name of evaluation transcript buffer.
+This can also be a buffer object."
+  "*scratch*")
+
+(define-variable transcript-buffer-mode
+  "Mode of evaluation transcript buffer.
+This can be either a mode object or the name of one."
+  'scheme-interaction)
+
+(define-variable transcript-input-recorder
+  "A procedure which receives each input region before evaluation.
+If #F, disables input recording."
+  false)
+
+(define-variable transcript-output-wrapper
+  "A procedure which is called to setup transcript output.
+It is passed a thunk as its only argument.
+If #F, normal transcript output is done."
+  false)
+
+(define-variable transcript-value-truncate
+  "True means evaluation results are printed with depth and breadth limits."
+  true)
+
+;;;; Commands
+
 (define-command eval-definition
   "Evaluate the definition at point.
 Prints the result in the typein window.
-With an argument, prompts for the evaluation environment.
-Output goes to the transcript buffer."
+With an argument, prompts for the evaluation environment."
   "P"
   (lambda (argument)
-    (evaluate-from-mark (current-definition-start)
-			(evaluation-environment argument))))
+    (evaluate-from-mark (current-definition-start) argument)))
 
 (define-command eval-next-sexp
   "Evaluate the expression following point.
 Prints the result in the typein window.
-With an argument, prompts for the evaluation environment.
-Output goes to the transcript buffer."
+With an argument, prompts for the evaluation environment."
   "P"
   (lambda (argument)
-    (evaluate-from-mark (current-point)
-			(evaluation-environment argument))))
+    (evaluate-from-mark (current-point) argument)))
 
 (define-command eval-previous-sexp
   "Evaluate the expression preceding point.
 Prints the result in the typein window.
-With an argument, prompts for the evaluation environment.
-Output goes to the transcript buffer."
+With an argument, prompts for the evaluation environment."
   "P"
   (lambda (argument)
-    (evaluate-from-mark (backward-one-sexp (current-point))
-			(evaluation-environment argument))))
+    (evaluate-from-mark (backward-sexp (current-point) 1 'ERROR) argument)))
 
 (define-command eval-region
   "Evaluate the region, printing the results in the typein window.
-With an argument, prompts for the evaluation environment.
-Output goes to the transcript buffer."
+With an argument, prompts for the evaluation environment."
   "r\nP"
   (lambda (region argument)
-    (evaluate-region region (evaluation-environment argument))))
+    (evaluate-region region argument)))
 
-(define-command eval-current-buffer
+(define-command eval-buffer
   "Evaluate the buffer.
 The values are printed in the typein window.
-With an argument, prompts for the evaluation environment.
-Output goes to the transcript buffer."
+With an argument, prompts for the evaluation environment."
   "P"
   (lambda (argument)
-    (evaluate-region (buffer-region (current-buffer))
-		     (evaluation-environment argument))))
-
-(define-command eval-previous-sexp-into-buffer
-  "Evaluate the expression preceding point.
-With an argument, prompts for the evaluation environment.
-Output is inserted into the buffer at point."
-  "P"
-  (lambda (argument)
-    (let ((start (backward-sexp (current-point) 1 false)))
-      (if (not start) (editor-error "No previous expression"))
-      (let ((environment (evaluation-environment argument)))
-	(with-output-to-current-point
-	 (lambda ()
-	   (write-line
-	    (eval-with-history (read-from-mark start) environment))))))))
+    (evaluate-region (buffer-region (current-buffer)) argument)))
 
 (define-command eval-expression
   "Read an evaluate an expression in the typein window.
@@ -140,30 +147,79 @@ With an argument, prompts for the evaluation environment."
   (lambda (environment)
     (set-repl/environment! (nearest-repl) (->environment environment))))
 
-(define (evaluation-environment argument)
-  (cond (argument
-	 (->environment
-	  (prompt-for-expression-value "Evaluate in environment" false)))
-	((eq? 'DEFAULT (ref-variable scheme-environment))
-	 (nearest-repl/environment))
-	(else
-	 (->environment (ref-variable scheme-environment)))))
-
 (define-command set-syntactic-environment
   "Sets the current syntactic environment."
   "XSet syntactic environment"
   (lambda (syntactic-environment)
     (set-repl/syntax-table! (nearest-repl) syntactic-environment)))
 
+(define-command select-transcript-buffer
+  "Select the transcript buffer."
+  ()
+  (lambda ()
+    (select-buffer (transcript-buffer))))
+
+;;;; Expression Prompts
+
+(define (prompt-for-expression-value prompt #!optional default)
+  (eval-with-history (if (default-object? default)
+			 (prompt-for-expression prompt)
+			 (prompt-for-expression prompt default))
+		     (evaluation-environment false)))
+
+(define (prompt-for-expression prompt #!optional default-object default-type)
+  (read-from-string
+   (prompt-for-string prompt
+		      (and (not (default-object? default-object))
+			   (write-to-string default-object))
+		      (if (default-object? default-type)
+			  'VISIBLE-DEFAULT
+			  default-type)
+		      (ref-mode-object prompt-for-expression))))
+(define-major-mode prompt-for-expression scheme #f
+  "Major mode for editing solicited input expressions.
+Depending on what is being solicited, either defaulting or completion
+may be available.  The following commands are special to this mode:
+
+\\[exit-minibuffer] terminates the input.
+\\[minibuffer-yank-default] yanks the default string, if there is one.")
+
+(define-key 'prompt-for-expression #\return 'exit-minibuffer)
+(define-key 'prompt-for-expression #\c-m-y 'minibuffer-yank-default)
+
+;;;; Evaluation
+
+(define (evaluate-from-mark input-mark argument)
+  (evaluate-region (make-region input-mark (forward-sexp input-mark 1 'ERROR))
+		   argument))
+
+(define (evaluate-region region argument)
+  (let ((transcript-input-recorder (ref-variable transcript-input-recorder)))
+    (if transcript-input-recorder
+	(transcript-input-recorder region)))
+  (let ((environment (evaluation-environment argument)))
+    (with-input-from-region region
+      (lambda ()
+	(let loop ((sexp (read)))
+	  (if (not (eof-object? sexp))
+	      (begin
+		(editor-eval sexp environment)
+		(loop (read)))))))))
+
+(define (evaluation-environment argument)
+  (if argument
+      (if (environment? argument)
+	  argument
+	  (->environment
+	   (prompt-for-expression-value "Evaluate in environment")))
+      (let ((environment (ref-variable scheme-environment)))
+	(if (eq? 'DEFAULT environment)
+	    (nearest-repl/environment)
+	    (->environment environment)))))
+
 (define (evaluation-syntax-table)
   (or (ref-variable scheme-syntax-table)
       (nearest-repl/syntax-table)))
-
-(define (evaluate-from-mark input-mark environment)
-  (editor-eval (read-from-mark input-mark) environment))
-
-(define (read-from-mark input-mark)
-  (with-input-from-mark input-mark read))
 
 (define (editor-eval sexp environment)
   (with-output-to-transcript-buffer
@@ -172,23 +228,16 @@ With an argument, prompts for the evaluation environment."
        (transcript-write value)
        value))))
 
-(define (evaluate-region region environment)
-  (with-output-to-transcript-buffer
-    (lambda ()
-      (with-input-from-region region
-	(lambda ()
-	  (let loop ((object (read)))
-	    (if (not (eof-object? object))
-		(begin
-		  (transcript-write (eval-with-history object environment))
-		  (loop (read))))))))))
-
 (define (eval-with-history expression environment)
-  (let ((scode (syntax expression (evaluation-syntax-table))))
-    (bind-condition-handler '()
-	(lambda (condition)
-	  (and (not (condition/internal? condition))
-	       (error? condition)
+  (scode-eval-with-history (syntax expression (evaluation-syntax-table))
+			   environment))
+
+(define (scode-eval-with-history scode environment)
+  (bind-condition-handler '()
+      (lambda (condition)
+	(and (not (condition/internal? condition))
+	     (error? condition)
+	     (begin
 	       (if (ref-variable debug-on-evaluation-error)
 		   (debug-scheme-error condition)
 		   (let ((string
@@ -201,89 +250,58 @@ With an argument, prompts for the evaluation environment."
 			      (< (string-column-length string 18) 80))
 			 (message "Evaluation error: " string)
 			 (begin
-			   (with-output-to-temporary-buffer "*error*" string)
+			   (string->temporary-buffer string "*Error*")
 			   (message "Evaluation error")))))
-	       (%editor-error)))
-      (lambda ()
-	(with-new-history
-	 (lambda () (extended-scode-eval scode environment)))))))
-
-(define (prompt-for-expression-value prompt default)
-  (eval-with-history (prompt-for-expression prompt default)
-		     (evaluation-environment false)))
-
-(define (prompt-for-expression prompt default-object #!optional default-type)
-  (read-from-string
-   (prompt-for-string prompt
-		      (and default-object
-			   (write-to-string default-object))
-		      (if (default-object? default-type)
-			  'VISIBLE-DEFAULT
-			  default-type)
-		      (ref-mode-object prompt-for-expression))))
-
-(define-major-mode prompt-for-expression scheme #f
-  "Major mode for editing solicited input expressions.
-Depending on what is being solicited, either defaulting or completion
-may be available.  The following commands are special to this mode:
-
-\\[exit-minibuffer] terminates the input.
-\\[minibuffer-yank-default] yanks the default string, if there is one.")
-
-(define-key 'prompt-for-expression #\return 'exit-minibuffer)
-(define-key 'prompt-for-expression #\c-m-y 'minibuffer-yank-default)
+	       (%editor-error))))
+    (lambda ()
+      (with-new-history
+       (lambda ()
+	 (extended-scode-eval scode environment))))))
 
 ;;;; Transcript Buffer
 
-(define-variable transcript-buffer-name
-  "Name of buffer to which evaluation commands record their output."
-  "*Transcript*")
-
-(define-variable enable-transcript-buffer
-  "If true, I/O from evaluation commands is recorded in transcript buffer.
-Recording is done only for commands that write their output to the
-message area, not commands that write to a specific buffer."
-  false)
-
-(define (transcript-buffer)
-  (find-or-create-buffer (ref-variable transcript-buffer-name)))
-
-(define (transcript-write value)
-  (if (ref-variable enable-transcript-buffer)
-      (write-line value))
-  (if (or (not (ref-variable enable-transcript-buffer))
-	  (null? (buffer-windows (transcript-buffer))))
-      (message (write-to-string value))))
-
 (define (with-output-to-transcript-buffer thunk)
   (if (ref-variable enable-transcript-buffer)
-      (with-interactive-output-port (transcript-output-port) thunk)
-      (thunk)))
+      (let ((output-wrapper (ref-variable transcript-output-wrapper)))
+	(if output-wrapper
+	    (output-wrapper thunk)
+	    (with-output-to-port
+	     (let ((buffer (transcript-buffer)))
+	       (mark->output-port (buffer-end buffer) buffer))
+	     (lambda ()
+	       (fresh-lines 1)
+	       (thunk)))))
+      (let ((value))
+	(let ((output
+	       (with-output-to-string
+		 (lambda ()
+		   (set! value (thunk))
+		   unspecific))))
+	  (if (not (string-null? output))
+	      (string->temporary-buffer output "*Unsolicited-Output*")))
+	value)))
 
-(define (transcript-output-port)
-  (output-port/copy transcript-output-port-template (transcript-buffer)))
+(define (transcript-write value)
+  (let ((value-string
+	 (with-output-to-string
+	   (lambda ()
+	     (write-value value (ref-variable transcript-value-truncate))))))
+    (let ((value-message (lambda () (message value-string))))
+      (if (ref-variable enable-transcript-buffer)
+	  (begin
+	    (fresh-lines 1)	    (write-string value-string)
+	    (fresh-lines 2)
+	    (if (null? (buffer-windows (transcript-buffer)))
+		(value-message)))
+	  (value-message)))))
 
-(define (operation/write-char port char)
-  (region-insert-char! (buffer-end (output-port/state port)) char))
-
-(define (operation/write-string port string)
-  (region-insert-string! (buffer-end (output-port/state port)) string))
-
-(define (operation/flush-output port)
-  (let ((buffer (output-port/state port)))
-    (let ((end (buffer-end buffer)))
-      (for-each (lambda (window)
-		  (set-window-point! window end)
-		  (window-direct-update! window false))
-		(buffer-windows buffer)))))
-
-(define (operation/print-self state port)
-  (unparse-string state "to transcript buffer ")
-  (unparse-object state (output-port/state port)))
-
-(define transcript-output-port-template
-  (make-output-port `((FLUSH-OUTPUT ,operation/flush-output)
-		      (PRINT-SELF ,operation/print-self)
-		      (WRITE-CHAR ,operation/write-char)
-		      (WRITE-STRING ,operation/write-string))
-		    false))
+(define (transcript-buffer)
+  (let ((name (ref-variable transcript-buffer-name)))
+    (if (buffer? name)
+	name
+	(or (find-buffer name)
+	    (let ((buffer (create-buffer name)))
+	      (set-buffer-major-mode!
+	       buffer
+	       (->mode (ref-variable transcript-buffer-mode)))
+	      buffer)))))

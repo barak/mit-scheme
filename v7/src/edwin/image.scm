@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/image.scm,v 1.123 1989/04/28 22:50:11 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/image.scm,v 1.124 1989/08/09 13:17:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -56,7 +56,7 @@
 
 ;;; *** One important note: the image abstraction will not "correctly"
 ;;; display strings that contain newlines.  Currently, a newline in
-;;; such a string will be represented by the string "^N" (or perhaps
+;;; such a string will be represented by the string "^J" (or perhaps
 ;;; "^M").  This is so because images are intended to be used on a
 ;;; per-line basis; that is, the string should be for a single line.
 
@@ -89,38 +89,45 @@
 
 (define-structure (image (type vector) (constructor false))
   (string false read-only true)
+  (start-index false read-only true)
+  (start-column false read-only true)
   (parse false read-only true)
   (column-size false read-only true))
 
 (define (make-null-image)
-  (vector "" '() 0))
+  (vector "" 0 0 '() 0))
 
-(define (make-image string)
-  (parse-string-for-image string
+(define-integrable (string->image string start-column)
+  (string-head->image string 0 start-column))
+
+(define (string-head->image string start start-column)
+  (parse-substring-for-image string start (string-length string) start-column
     (lambda (parse column-size)
-      (vector string parse column-size))))
+      (vector string start start-column parse column-size))))
 
-(define-integrable (image-index-size image)
-  (string-length (image-string image)))
+(define (image-index-size image)
+  (- (string-length (image-string image)) (image-start-index image)))
 
 (define (image-direct-output-insert-char! image char)
   (vector-set! image 0 (string-append-char (vector-ref image 0) char))
-  (vector-set! image 2 (1+ (vector-ref image 2)))
+  (vector-set! image 4 (1+ (vector-ref image 4)))
   unspecific)
 
 (define (image-direct-output-insert-substring! image string start end)
   (vector-set! image 0
 	       (string-append-substring (vector-ref image 0)
 					string start end))
-  (vector-set! image 2 (+ (vector-ref image 2) (- end start)))
+  (vector-set! image 4 (+ (vector-ref image 4) (- end start)))
   unspecific)
 
 (define (image-representation image)
   (let ((string (image-string image))
-	(result-end (image-column-size image)))
-    (let ((string-end (string-length string))
-	  (result (string-allocate result-end)))
-      (let loop ((parse (image-parse image)) (string-start 0) (result-start 0))
+	(result (string-allocate (image-column-size image))))
+    (let ((string-end (string-length string)))
+      (let loop
+	  ((parse (image-parse image))
+	   (string-start (image-start-index image))
+	   (result-start 0))
 	(cond ((null? parse)
 	       (substring-move-right! string string-start string-end
 				      result result-start))
@@ -139,7 +146,10 @@
       result)))
 
 (define (image-index->column image index)
-  (let loop ((parse (image-parse image)) (start 0) (column 0))
+  (let loop
+      ((parse (image-parse image))
+       (start (image-start-index image))
+       (column (image-start-column image)))
     (cond ((null? parse)
 	   (+ column (- index start)))
 	  ((string? (car parse))
@@ -158,7 +168,10 @@
 	   (error "Bad parse element" (car parse))))))
 
 (define (image-column->index image column)
-  (let loop ((parse (image-parse image)) (start 0) (c 0))
+  (let loop
+      ((parse (image-parse image))
+       (start (image-start-index image))
+       (c (image-start-column image)))
     (cond ((null? parse)
 	   (+ start (- column c)))
 	  ((string? (car parse))
@@ -174,10 +187,36 @@
 	  (else
 	   (error "Bad parse element" (car parse))))))
 
-;;;; Parsing
+;;;; String Operations
 
-(define (parse-string-for-image string receiver)
-  (parse-substring-for-image string 0 (string-length string) receiver))
+(define (string-representation string start-column)
+  (substring-representation string 0 (string-length string) start-column))
+
+(define (substring-representation string start end start-column)
+  (let ((result
+	 (string-allocate
+	  (- (substring-column-length string start end start-column)
+	     start-column))))
+    (let loop ((start start) (column start-column) (rindex 0))
+      (let* ((index
+	      (substring-find-next-char-in-set string start end
+					       char-set:not-graphic))
+	     (copy-representation!
+	      (lambda (column rindex)
+		(let* ((representation
+			(char-representation (string-ref string index) column))
+		       (size (string-length representation)))
+		  (substring-move-right! representation 0 size result rindex)
+		  (loop (1+ index) (+ column size) (+ rindex size))))))
+	(cond ((not index)
+	       (substring-move-right! string start end result rindex)
+	       result)
+	      ((= start index)
+	       (copy-representation! column rindex))
+	      (else
+	       (substring-move-right! string start index result rindex)
+	       (let ((size (- index start)))
+		 (copy-representation! (+ column size) (+ rindex size)))))))))
 
 (define (string-column-length string start-column)
   (substring-column-length string 0 (string-length string) start-column))
@@ -185,109 +224,106 @@
 (define (string-index->column string start-column index)
   (+ start-column (substring-column-length string 0 index start-column)))
 
+(define (substring-column-length string start end start-column)
+  (let loop ((i start) (c start-column))
+    (let ((index
+	   (substring-find-next-char-in-set string i end
+					    char-set:not-graphic)))
+      (if (not index)
+	  (+ c (- end i))
+	  (loop (1+ index)
+		(let ((c (+ c (- index i))))
+		  (+ c (char-column-length (string-ref string index) c))))))))
+
 (define (string-column->index string start-column column if-lose)
   (substring-column->index string 0 (string-length string) start-column
 			   column if-lose))
 
-(define (char-column-length char start-column)
-  (string-length (char-representation char start-column)))
+(define (substring-column->index string start end start-column column
+				 #!optional if-lose)
+  (if (zero? column)
+      start
+      (let loop ((i start) (c start-column) (left (- column start-column)))
+	(let ((index
+	       (substring-find-next-char-in-set string i end
+						char-set:not-graphic)))
+	  (if (not index)
+	      (let ((n (- end i)))
+		(cond ((<= left n) (+ i left))
+		      ((default-object? if-lose) end)
+		      (else (if-lose (+ c n)))))
+	      (let ((n (- index i)))
+		(if (<= left n)
+		    (+ i left)
+		    (let ((c (+ c n))
+			  (left (- left n)))
+		      (let ((n
+			     (char-column-length (string-ref string index) c)))
+			(cond ((< left n) index)
+			      ((= left n) (1+ index))
+			      (else
+			       (loop (1+ index) (+ c n) (- left n)))))))))))))
+
+;;;; Parsing
 
-(define parse-substring-for-image)
-(define substring-column-length)
-(define substring-column->index)
-(define char-representation)
-(let ()
-
-(set! parse-substring-for-image
-(named-lambda (parse-substring-for-image string start end receiver)
-  (define (loop start column receiver)
-    (let ((index (substring-find-next-char-in-set string start end
-						  char-set:not-graphic)))
+(define (parse-substring-for-image string start end start-column receiver)
+  (let loop ((start start) (column start-column) (receiver receiver))
+    (let ((index
+	   (substring-find-next-char-in-set string start end
+					    char-set:not-graphic)))
       (if (not index)
 	  (receiver '() (+ column (- end start)))
 	  (let ((column (+ column (- index start))))
-	    (let ((representation (char-rep string index column)))
+	    (let ((representation
+		   (char-representation (string-ref string index) column)))
 	      (loop (1+ index)
 		    (+ column (string-length representation))
 		    (lambda (parse column-size)
 		      (receiver (if (= index start)				    (cons representation parse)
 				    (cons index (cons representation parse)))
-				column-size))))))))
-  (loop start 0 receiver)))
+				column-size)))))))))
 
-(set! substring-column-length
-(named-lambda (substring-column-length string start end start-column)
-  (define (loop i c)
-    (let ((index (substring-find-next-char-in-set string i end
-						  char-set:not-graphic)))
-      (if (not index)
-	  (+ c (- end i))
-	  (let ((c (+ c (- index i))))
-	    (loop (1+ index)
-		  (+ c (string-length (char-rep string index c))))))))
-  (loop start start-column)))
-
-(set! substring-column->index
-(named-lambda (substring-column->index string start end start-column
-				       column #!optional if-lose)
-  (define (loop i c left)
-    (let ((index (substring-find-next-char-in-set string i end
-						  char-set:not-graphic)))
-      (if (not index)
-	  (let ((n (- end i)))
-	    (cond ((<= left n) (+ i left))
-		  ((default-object? if-lose) end)
-		  (else (if-lose (+ c n)))))
-	  (let ((n (- index i)))
-	    (if (<= left n)
-		(+ i left)
-		(let ((c (+ c n)) (left (- left n)))
-		  (let ((n (string-length (char-rep string index c))))
-		    (cond ((< left n) index)
-			  ((= left n) (1+ index))
-			  (else (loop (1+ index) (+ c n) (- left n)))))))))))
-  (if (zero? column)
-      start
-      (loop start start-column (- column start-column)))))
-
-(define-integrable (char-rep string index column)
-  (char-representation (string-ref string index) column))
-
-(set! char-representation
-(named-lambda (char-representation char column)
-  (if (char=? char #\Tab)
-      (vector-ref tab-display-images (remainder column 8))
-      (vector-ref display-images (char->ascii char)))))
-
-(define tab-display-images
-  #("        " "       " "      " "     " "    " "   " "  " " "))
-
-(define display-images
-  #("^@" "^A" "^B" "^C" "^D" "^E" "^F" "^G"
-    "^H" "^I" "^J" "^K" "^L" "^M" "^N" "^O"
-    "^P" "^Q" "^R" "^S" "^T" "^U" "^V" "^W"
-    "^X" "^Y" "^Z" "^[" "^\\" "^]" "^^" "^_"
-    " " "!" "\"" "#" "$" "%" "&" "'" "(" ")" "*" "+" "," "-" "." "/"
-    "0" "1" "2" "3" "4" "5" "6" "7" "8" "9" ":" ";" "<" "=" ">" "?"
-    "@" "A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O"
-    "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z" "[" "\\" "]" "^" "_"
-    "`" "a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o"
-    "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z" "{" "|" "}" "~" "^?"
-    "\200" "\201" "\202" "\203" "\204" "\205" "\206" "\207"
-    "\210" "\211" "\212" "\213" "\214" "\215" "\216" "\217"
-    "\220" "\221" "\222" "\223" "\224" "\225" "\226" "\227"
-    "\230" "\231" "\232" "\233" "\234" "\235" "\236" "\237"
-    "\240" "\241" "\242" "\243" "\244" "\245" "\246" "\247"
-    "\250" "\251" "\252" "\253" "\254" "\255" "\256" "\257"
-    "\260" "\261" "\262" "\263" "\264" "\265" "\266" "\267"
-    "\270" "\271" "\272" "\273" "\274" "\275" "\276" "\277"
-    "\300" "\301" "\302" "\303" "\304" "\305" "\306" "\307"
-    "\310" "\311" "\312" "\313" "\314" "\315" "\316" "\317"
-    "\320" "\321" "\322" "\323" "\324" "\325" "\326" "\327"
-    "\330" "\331" "\332" "\333" "\334" "\335" "\336" "\337"
-    "\340" "\341" "\342" "\343" "\344" "\345" "\346" "\347"
-    "\350" "\351" "\352" "\353" "\354" "\355" "\356" "\357"
-    "\360" "\361" "\362" "\363" "\364" "\365" "\366" "\367"
-    "\370" "\371" "\372" "\373" "\374" "\375" "\376" "\377"))
-
-)
+(define char-column-length)
+(define char-representation)
+(let ((tab-display-images
+       #("        " "       " "      " "     " "    " "   " "  " " "))
+      (display-images
+       #("^@" "^A" "^B" "^C" "^D" "^E" "^F" "^G"
+	 "^H" "^I" "^J" "^K" "^L" "^M" "^N" "^O"
+	 "^P" "^Q" "^R" "^S" "^T" "^U" "^V" "^W"
+	 "^X" "^Y" "^Z" "^[" "^\\" "^]" "^^" "^_"
+	 " " "!" "\"" "#" "$" "%" "&" "'" "(" ")" "*" "+" "," "-" "." "/"
+	 "0" "1" "2" "3" "4" "5" "6" "7" "8" "9" ":" ";" "<" "=" ">" "?"
+	 "@" "A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O"
+	 "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z" "[" "\\" "]" "^" "_"
+	 "`" "a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o"
+	 "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z" "{" "|" "}" "~" "^?"
+	 "\200" "\201" "\202" "\203" "\204" "\205" "\206" "\207"
+	 "\210" "\211" "\212" "\213" "\214" "\215" "\216" "\217"
+	 "\220" "\221" "\222" "\223" "\224" "\225" "\226" "\227"
+	 "\230" "\231" "\232" "\233" "\234" "\235" "\236" "\237"
+	 "\240" "\241" "\242" "\243" "\244" "\245" "\246" "\247"
+	 "\250" "\251" "\252" "\253" "\254" "\255" "\256" "\257"
+	 "\260" "\261" "\262" "\263" "\264" "\265" "\266" "\267"
+	 "\270" "\271" "\272" "\273" "\274" "\275" "\276" "\277"
+	 "\300" "\301" "\302" "\303" "\304" "\305" "\306" "\307"
+	 "\310" "\311" "\312" "\313" "\314" "\315" "\316" "\317"
+	 "\320" "\321" "\322" "\323" "\324" "\325" "\326" "\327"
+	 "\330" "\331" "\332" "\333" "\334" "\335" "\336" "\337"
+	 "\340" "\341" "\342" "\343" "\344" "\345" "\346" "\347"
+	 "\350" "\351" "\352" "\353" "\354" "\355" "\356" "\357"
+	 "\360" "\361" "\362" "\363" "\364" "\365" "\366" "\367"
+	 "\370" "\371" "\372" "\373" "\374" "\375" "\376" "\377")))
+  (set! char-representation
+	(lambda (char column)
+	  (if (char=? char #\Tab)
+	      (vector-ref tab-display-images (remainder column 8))
+	      (vector-ref display-images (char->ascii char)))))
+  (let ((tab-display-lengths (vector-map tab-display-images string-length))
+	(display-lengths (vector-map display-images string-length)))
+    (set! char-column-length
+	  (lambda (char column)
+	    (if (char=? char #\Tab)
+		(vector-ref tab-display-lengths (remainder column 8))
+		(vector-ref display-lengths (char->ascii char)))))
+    unspecific))

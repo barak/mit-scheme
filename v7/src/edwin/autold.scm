@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.44 1989/08/03 23:33:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.45 1989/08/09 13:16:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -198,7 +198,8 @@
     (temporary-message "Loading file \"" (pathname->string pathname) "\"")
     (let ((scode (fasload pathname true)))
       (if (or (default-object? purify?) purify?) (purify scode))
-      (scode-eval scode (->environment package))))  (append-message " -- done"))
+      (scode-eval-with-history scode (->environment package))))
+  (append-message " -- done"))
 
 (define-command load-file
   "Load an Edwin binary file.

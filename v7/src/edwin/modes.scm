@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modes.scm,v 1.23 1989/04/28 22:51:33 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modes.scm,v 1.24 1989/08/09 13:17:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -75,8 +75,7 @@
 (define-integrable (mode-comtab mode)
   (car (mode-comtabs mode)))
 
-(define editor-modes
-  (make-string-table))
+(define editor-modes (make-string-table))
 
 (define (name->mode name)
   (let ((name (canonicalize-name name)))
@@ -87,3 +86,6 @@
 		   '()
 		   ""
 		   (lambda () (error "Undefined mode" name))))))
+
+(define (->mode object)
+  (if (mode? object) object (name->mode object)))

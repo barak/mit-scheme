@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.1 1989/08/08 22:00:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.2 1989/08/09 13:17:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -110,7 +110,8 @@ The error that started the debugger is:
 	      (hook/prompt-for-expression
 	       (lambda (cmdl prompt)
 		 cmdl			;ignore
-		 (prompt-for-expression prompt false)))	      (hook/debugger-failure
+		 (prompt-for-expression prompt)))
+	      (hook/debugger-failure
 	       (lambda (string)
 		 (message string)
 		 (editor-beep)))

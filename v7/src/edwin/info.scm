@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.92 1989/08/03 23:32:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.93 1989/08/09 13:17:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -115,22 +115,18 @@ s	Search through this Info file for specified regexp,
   (local-set-variable! info-current-node false)
   (local-set-variable! info-tag-table-start false)
   (local-set-variable! info-tag-table-end false)
-  (buffer-put! (current-buffer) 'MODELINE-STRING info-modeline-string))
+  (info-set-mode-line!))
 
-(define (info-modeline-string window)
-  (string-append "--"
-		 (modeline-modified-string window)
-		 "-Info:  ("
-		 (let ((pathname (ref-variable info-current-file)))
-		   (if pathname
-		       (pathname-name-string pathname)
-		       ""))
-		 ")"
-		 (or (ref-variable info-current-node) "")
-		 "      "
-		 (modeline-mode-string window)
-		 "--"
-		 (modeline-percentage-string window)))
+(define (info-set-mode-line!)
+  (local-set-variable! mode-line-buffer-identification
+		       (string-append
+			"Info:  ("
+			(let ((pathname (ref-variable info-current-file)))
+			  (if pathname
+			      (pathname-name-string pathname)
+			      ""))
+			")"
+			(or (ref-variable info-current-node) ""))))
 
 (define-key 'info #\space 'scroll-up)
 (define-key 'info #\. 'beginning-of-buffer)
@@ -634,7 +630,8 @@ The name may be an abbreviation of the reference name."
       (if (string=? nodename "*")
 	  (begin
 	    (set-variable! info-current-subfile false)
-	    (set-variable! info-current-node nodename))
+	    (set-variable! info-current-node nodename)
+	    (info-set-mode-line!))
 	  (select-node
 	   (let ((end (buffer-end buffer)))
 	     (let loop ((start (node-search-start nodename)))
@@ -662,7 +659,9 @@ The name may be an abbreviation of the reference name."
 
 (define (select-node point)
   (let ((node (node-start point (group-start point))))
-    (set-variable! info-current-node (extract-node-name node))    ;; **** need to add active node hacking here ****
+    (set-variable! info-current-node (extract-node-name node))
+    (info-set-mode-line!)
+    ;; **** need to add active node hacking here ****
     (region-clip! (node-region node))
     (set-current-point! point)))
 

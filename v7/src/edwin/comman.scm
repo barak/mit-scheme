@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.59 1989/08/08 10:05:43 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.60 1989/08/09 13:16:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -74,8 +74,7 @@
     (vector-set! command command-index:procedure procedure)
     command))
 
-(define editor-commands
-  (make-string-table 500))
+(define editor-commands (make-string-table 500))
 
 (define (name->command name)
   (let ((name (canonicalize-name name)))
@@ -89,6 +88,9 @@
 		     (editor-error "Undefined command: "
 				   (command-name-string command))))))
 	  command))))
+
+(define (->command object)
+  (if (command? object) object (name->command object)))
 
 (define-named-structure "Variable"
   name
@@ -130,13 +132,16 @@
   (for-each (lambda (daemon) (daemon variable))
 	    (variable-assignment-daemons variable)))
 
-(define editor-variables
-  (make-string-table 50))
+(define editor-variables (make-string-table 50))
 
 (define (name->variable name)
   (let ((name (canonicalize-name name)))
     (or (string-table-get editor-variables (symbol->string name))
 	(make-variable name "" false))))
+
+(define (->variable object)
+  (if (variable? object) object (name->variable object)))
+
 (define (set-variable-value! variable value)
   (if (variable-buffer-local? variable)
       (make-local-binding! variable value)

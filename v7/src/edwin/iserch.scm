@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.6 1989/04/28 22:50:31 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.7 1989/08/09 13:17:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -167,7 +167,8 @@
 	    "I-search"
 	    (if (search-state-forward? state) "" " backward")
 	    ": "
-	    (image-representation (make-image (search-state-text state)))	    (if invalid-regexp (string-append " [" invalid-regexp "]") ""))))
+	    (string-representation (search-state-text state) 0)
+	    (if invalid-regexp (string-append " [" invalid-regexp "]") ""))))
       (string-set! m 0 (char-upcase (string-ref m 0)))
       m)))
 

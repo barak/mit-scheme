@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.119 1989/08/08 10:06:25 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.120 1989/08/09 13:17:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -68,22 +68,16 @@ Most other major modes are defined by comparison to this one."
   (ref-mode-object fundamental))
 
 (define initial-buffer-name
-  "*scratch*")
+  (ref-variable transcript-buffer-name))
 
 (define initial-buffer-mode
-  (ref-mode-object scheme-interaction))
+  (->mode (ref-variable transcript-buffer-mode)))
 
 (define-variable file-type-to-major-mode
   "Specifies the major mode for new buffers based on file type.
 This is an alist, the cars of which are pathname types,
 and the cdrs of which are major modes."
-  `(("ASM" . midas)
-    ("C" . c)
-    ("PAS" . pascal)
-    ("S" . scheme)
-    ("SCM" . scheme)
-    ("TXI" . texinfo)
-    ("TXT" . text)))
+  (os/file-type-to-major-mode))
 
 (define-default-key 'fundamental '^r-bad-command)
 
@@ -231,7 +225,10 @@ and the cdrs of which are major modes."
 (define-key 'fundamental #\c-m-v 'scroll-other-window)
 (define-key 'fundamental #\c-m-w 'append-next-kill)
 (define-key 'fundamental #\c-m-rubout 'backward-kill-sexp)
-(define-key 'fundamental '(#\c-h #\a) 'command-apropos)(define-key 'fundamental '(#\c-h #\c) 'describe-key-briefly)
+
+(define-key 'fundamental '(#\c-c #\c-s) 'select-transcript-buffer)
+
+(define-key 'fundamental '(#\c-h #\a) 'command-apropos)(define-key 'fundamental '(#\c-h #\c) 'describe-key-briefly)
 (define-key 'fundamental '(#\c-h #\d) 'describe-command)(define-key 'fundamental '(#\c-h #\i) 'info)
 (define-key 'fundamental '(#\c-h #\k) 'describe-key)
 (define-key 'fundamental '(#\c-h #\l) 'view-lossage)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.8 1989/08/07 08:45:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.9 1989/08/09 13:18:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -272,3 +272,35 @@ Includes the new backup.  Must be > 0"
    '(".o" ".elc" "~" ".bin" ".lbin" ".fasl"
      ".dvi" ".toc" ".log" ".aux"
      ".lof" ".blg" ".bbl" ".glo" ".idx" ".lot")))
+
+(define (os/file-type-to-major-mode)
+  (alist-copy
+   `(("article" . text)
+     ("asm" . midas)
+     ("bib" . text)
+     ("c" . c)
+     ("cc" . c)
+     ("h" . c)
+     ("pas" . pascal)
+     ("s" . scheme)
+     ("scm" . scheme)
+     ("text" . text)
+     ("txi" . texinfo)
+     ("txt" . text)
+     ("y" . c))))
+
+(define (os/truncate-filename-for-modeline filename width)
+  (let ((length (string-length filename)))
+    (if (< 0 width length)
+	(let ((result
+	       (substring
+		filename
+		(let ((index (- length width)))
+		  (or (and (not (char=? #\/ (string-ref filename index)))
+			   (substring-find-next-char filename index length
+						     #\/))
+		      (1+ index)))
+		length)))
+	  (string-set! result 0 #\$)
+	  result)
+	filename)))

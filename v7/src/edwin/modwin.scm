@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.29 1989/04/28 22:51:38 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.30 1989/08/09 13:17:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -59,27 +59,31 @@
 						 xl xu yl yu display-style)
   display-style				;ignore
   (if (< yl yu)
-      (with-inverse-video! screen (ref-variable mode-line-inverse-video)
-	(lambda ()
-	  (screen-write-substring!
-	   screen x-start y-start
-	   (string-pad-right (modeline-string superior) x-size #\-)
-	   xl xu))))
-  true)
+      (let ((thunk
+	     (lambda ()
+	       (screen-write-substring!
+		screen x-start y-start
+		(string-pad-right (modeline-string superior) x-size #\-)
+		xl xu))))
+	(if (and (variable-local-value
+		  (window-buffer superior)
+		  (ref-variable-object mode-line-inverse-video))
+		 (let ((x-size (screen-x-size screen)))
+		   (or (= x-size (window-x-size superior))
+		       (= x-size (window-x-size (window-superior superior))))))	    (with-inverse-video! screen thunk)
+	    (thunk))))  true)
 
-(define (with-inverse-video! screen flag? thunk)
-  (if flag?
-      (let ((old-inverse? (screen-inverse-video! screen false))
-	    (new-inverse? true))
-	(screen-inverse-video! screen old-inverse?)
-	(dynamic-wind (lambda ()
-			(set! old-inverse?
-			      (screen-inverse-video! screen new-inverse?)))
-		      thunk
-		      (lambda ()
-			(set! new-inverse?
-			      (screen-inverse-video! screen old-inverse?)))))
-      (thunk)))
+(define (with-inverse-video! screen thunk)
+  (let ((old-inverse? (screen-inverse-video! screen false))
+	(new-inverse? true))
+    (screen-inverse-video! screen old-inverse?)
+    (dynamic-wind (lambda ()
+		    (set! old-inverse?
+			  (screen-inverse-video! screen new-inverse?)))
+		  thunk
+		  (lambda ()
+		    (set! new-inverse?
+			  (screen-inverse-video! screen old-inverse?))))))
 
 (define-method modeline-window (:event! window type)
   (case type
@@ -96,60 +100,3 @@
      (else 
       (setup-redisplay-flags! redisplay-flags)))
   unspecific)
-
-(define (modeline-string window)
-  ((or (buffer-get (window-buffer window) 'MODELINE-STRING)
-       standard-modeline-string)
-   window))
-
-(define (standard-modeline-string window)
-  (string-append "--"
-		 (modeline-modified-string window)
-		 "-Edwin: "
-		 (string-pad-right (buffer-display-name (window-buffer window))
-				   30)
-		 " "
-		 (modeline-mode-string window)
-		 "--"
-		 (modeline-percentage-string window)))
-
-(define (modeline-modified-string window)
-  (let ((buffer (window-buffer window)))
-    (cond ((not (buffer-writeable? buffer)) "%%")
-	  ((buffer-modified? buffer) "**")
-	  (else "--"))))
-
-(define (modeline-mode-string window)
-  (let ((buffer (window-buffer window)))
-    (string-append
-     (make-string recursive-edit-level #\[)
-     "("
-     (let loop ((modes (buffer-modes buffer)))
-       (if (null? (cdr modes))
-	   (string-append (mode-display-name (car modes))
-			  (if *defining-keyboard-macro?* " Def" "")
-			  (if (group-clipped? (buffer-group buffer))
-			      " Narrow" ""))
-	   (string-append (mode-display-name (car modes))
-			  " "
-			  (loop (cdr modes)))))
-     ")"
-     (make-string recursive-edit-level #\]))))
-
-(define (modeline-percentage-string window)
-  (let ((buffer (window-buffer window)))
-    (if (window-mark-visible? window (buffer-start buffer))
-	(if (window-mark-visible? window (buffer-end buffer))
-	    "All" "Top")
-	(if (window-mark-visible? window (buffer-end buffer))
-	    "Bot"
-	    (string-append
-	     (string-pad-left
-	      (number->string
-	       (round
-		(* 100
-		   (let ((start-index (mark-index (buffer-start buffer))))
-		     (/ (- (mark-index (window-start-mark window)) start-index)
-			(- (mark-index (buffer-end buffer)) start-index))))))
-	      2)
-	     "%")))))

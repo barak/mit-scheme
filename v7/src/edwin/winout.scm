@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.3 1989/04/28 22:54:48 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.4 1989/08/09 13:18:18 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -43,6 +43,7 @@
 ;;;
 
 ;;;; Buffer I/O Ports
+;;; package: (edwin window-output-port)
 
 (declare (usual-integrations))
 
@@ -59,6 +60,19 @@
 
 (define (window-output-port window)
   (output-port/copy window-output-port-template window))
+
+(define (operation/fresh-line port)
+  (if (not (line-start? (window-point (output-port/state port))))
+      (operation/write-char port #\newline)))
+
+(define (operation/fresh-lines port n)
+  (let loop
+      ((n
+	(if (line-start? (window-point (output-port/state port))) (-1+ n) n)))
+    (if (positive? n)
+	(begin
+	  (operation/write-char port #\newline)
+	  (loop (-1+ n))))))
 
 (define (operation/write-char port char)
   (let ((window (output-port/state port)))
@@ -112,7 +126,10 @@
   (unparse-object state (output-port/state port)))
 
 (define window-output-port-template
-  (make-output-port `((FLUSH-OUTPUT ,operation/flush-output)		      (PRINT-SELF ,operation/print-self)
+  (make-output-port `((FLUSH-OUTPUT ,operation/flush-output)
+		      (FRESH-LINE ,operation/fresh-line)
+		      (FRESH-LINES ,operation/fresh-lines)
+		      (PRINT-SELF ,operation/print-self)
 		      (WRITE-CHAR ,operation/write-char)
 		      (WRITE-STRING ,operation/write-string))
 		    false))

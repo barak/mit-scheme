@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.82 1989/04/28 22:47:10 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.83 1989/08/09 13:16:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -191,6 +191,14 @@ Just like what happens when the file is first visited."
 		   (if buffer
 		       (search-loop 2)
 		       name))))
+
+(define (string->temporary-buffer string name)
+  (let ((buffer (temporary-buffer name)))
+    (insert-string string (buffer-point buffer))
+    (set-buffer-point! buffer (buffer-start buffer))
+    (buffer-not-modified! buffer)
+    (pop-up-buffer buffer false)))
+
 (define (with-output-to-temporary-buffer name thunk)
   (let ((buffer (temporary-buffer name)))
     (with-output-to-mark (buffer-point buffer) thunk)

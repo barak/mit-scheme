@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.35 1989/04/28 22:50:26 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.36 1989/08/09 13:17:37 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -43,6 +43,7 @@
 ;;;
 
 ;;;; Interaction Mode
+;;; Package: (edwin)
 
 (declare (usual-integrations))
 
@@ -56,110 +57,70 @@
   "Major mode for evaluating Scheme expressions interactively.
 Same as Scheme mode, except for
 
-\\[scheme-interaction-eval-previous-sexp] evaluates the current expression.
-\\[scheme-interaction-eval-definition] evaluates the current definition.
-\\[scheme-interaction-eval-region] evaluates the region.
 \\[scheme-interaction-yank] yanks the most recently evaluated expression.
 \\[scheme-interaction-yank-pop] yanks an earlier expression, replacing a yank."
-  (local-set-variable! scheme-interaction-kill-ring (make-ring 32))
-  (local-set-variable! scheme-environment (ref-variable scheme-environment))
-  (local-set-variable! scheme-syntax-table (ref-variable scheme-syntax-table)))
+  (local-set-variable! enable-transcript-buffer true)
+  (local-set-variable! transcript-buffer-name (current-buffer))
+  (local-set-variable! transcript-input-recorder
+		       scheme-interaction-input-recorder)
+  (local-set-variable! transcript-output-wrapper
+		       scheme-interaction-output-wrapper)
+  (local-set-variable! scheme-interaction-kill-ring (make-ring 32)))
 
-(define-prefix-key 'scheme-interaction #\C-x 'prefix-char)
+(define (scheme-interaction-input-recorder region)
+  (ring-push! (ref-variable scheme-interaction-kill-ring)
+	      (region->string region)))
+
+(define (scheme-interaction-output-wrapper thunk)
+  (set-current-point! (buffer-end (current-buffer)))
+  (with-output-to-current-point
+   (lambda ()
+     (intercept-^G-interrupts
+      (lambda ()
+	(fresh-line)
+	(write-string ";Abort!")
+	(fresh-lines 2)
+	(^G-signal))
+      thunk))))
+
 (define-prefix-key 'scheme-interaction #\C-c 'prefix-char)
-(define-key 'scheme-interaction '(#\C-x #\C-e)
-  'scheme-interaction-eval-previous-sexp)
-(define-key 'scheme-interaction #\M-return
-  'scheme-interaction-eval-previous-sexp)
-(define-key 'scheme-interaction #\M-z 'scheme-interaction-eval-definition)
-(define-key 'scheme-interaction #\C-M-z 'scheme-interaction-eval-region)
 (define-key 'scheme-interaction '(#\C-c #\C-y) 'scheme-interaction-yank)
 (define-key 'scheme-interaction '(#\C-c #\C-r) 'scheme-interaction-yank-pop)
-
+
 (define-variable scheme-interaction-kill-ring
   "Kill ring used by Interaction mode evaluation commands.")
 
-(define (scheme-interaction-eval-region region argument)
-  (set-current-point! (region-end region))
-  (let ((string (region->string region)))
-    (ring-push! (ref-variable scheme-interaction-kill-ring) string)
-    (let ((expression (with-input-from-string string read)))
-      (let ((value
-	     (with-output-to-current-point
-	      (lambda ()
-		(intercept-^G-interrupts
-		 (lambda ()
-		   (guarantee-newline)
-		   (insert-string "Abort!")
-		   (insert-newlines 2)
-		   (^G-signal))
-		 (lambda ()
-		   (eval-with-history expression
-				      (evaluation-environment argument))))))))
-	(guarantee-newline)
-	(if (undefined-value? value)
-	    (insert-string ";No value")
-	    (begin
-	      (insert-string ";Value: ")
-	      (insert-string (scheme-interaction-object->string value))))
-	(guarantee-newlines 2)))))
-
-(define (scheme-interaction-object->string object)
-  (fluid-let ((*unparser-list-depth-limit* 5)
-	      (*unparser-list-breadth-limit* 10))
-    (write-to-string object)))
-
-(define-command scheme-interaction-eval-previous-sexp
-  "Evaluate the expression to the left of point."
-  "P"
-  (lambda (argument)
-    (let ((point (current-point)))
-      (scheme-interaction-eval-region
-       (make-region (backward-one-sexp point) point)
-       argument))))
-
-(define-command scheme-interaction-eval-definition
-  "Evaluate the definition at point.
-Moves point to the definition's end.
-Output and the result are written at that point.
-With an argument, prompts for the evaluation environment."
-  "P"
-  (lambda (argument)
-    (scheme-interaction-eval-region
-     (let ((start (current-definition-start)))
-       (make-region start (forward-one-definition-end start)))
-     argument)))
-
-(define-command scheme-interaction-eval-region
-  "Evaluate the definition at point.
-Moves point to the definition's end.
-Output and the result are written at that point.
-With an argument, prompts for the evaluation environment."
-  "r\nP"
-  scheme-interaction-eval-region)
-
-(define scheme-interaction-mode:yank-command-message
-  "Yank")
+(define scheme-interaction-mode:yank-command-message "Yank")
 
 (define-command scheme-interaction-yank
-  "Yank the last input expression."
+  "Re-insert the last input expression.
+Puts point after it and the mark before it."
   ()
   (lambda ()
-    (push-current-mark! (mark-right-inserting (current-point)))
-    (insert-string (ring-ref (ref-variable scheme-interaction-kill-ring) 0))
-    (set-command-message! scheme-interaction-mode:yank-command-message)))
+    (let ((kill-ring (ref-variable scheme-interaction-kill-ring)))
+      (if (ring-empty? kill-ring)
+	  (editor-error "Nothing to yank"))
+      (push-current-mark! (mark-right-inserting (current-point)))
+      (insert-string (ring-ref kill-ring 0))
+      (set-command-message! scheme-interaction-mode:yank-command-message))))
 
 (define-command scheme-interaction-yank-pop
-  "Yank the last input expression."
+  "Correct after \\[scheme-interaction-yank] to use an earlier expression.
+Requires that the region contain the most recent expression,
+as it does immediately after using \\[scheme-interaction-yank].
+It is deleted and replaced with the previous expression,
+which is rotated to the front of the expression ring."
   ()
   (lambda ()
-    (command-message-receive scheme-interaction-mode:yank-command-message
-      (lambda ()
-	(delete-string (pop-current-mark!) (current-point))
-	(push-current-mark! (mark-right-inserting (current-point)))
-	(ring-pop! (ref-variable scheme-interaction-kill-ring))
-	(insert-string
-	 (ring-ref (ref-variable scheme-interaction-kill-ring) 0))
-	(set-command-message! scheme-interaction-mode:yank-command-message))
-      (lambda ()
-	(editor-error "No previous yank to replace")))))
+    (let ((kill-ring (ref-variable scheme-interaction-kill-ring)))
+      (if (ring-empty? kill-ring)
+	  (editor-error "Nothing to yank"))
+      (command-message-receive scheme-interaction-mode:yank-command-message
+	(lambda ()
+	  (delete-string (pop-current-mark!) (current-point))
+	  (push-current-mark! (mark-right-inserting (current-point)))
+	  (ring-pop! kill-ring)
+	  (insert-string (ring-ref kill-ring 0))
+	  (set-command-message! scheme-interaction-mode:yank-command-message))
+	(lambda ()
+	  (editor-error "No previous yank to replace"))))))

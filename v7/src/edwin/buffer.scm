@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.131 1989/08/08 10:05:22 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.132 1989/08/09 13:16:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -290,32 +290,25 @@ The buffer is guaranteed to be deselected at that time."
 		  thunk
 		  (lambda ()
 		    (if read-only? (set-group-read-only! group))))))
-
-;;;; Buffer Display Name
 
-(define (buffer-display-name buffer)
-  (let ((name (buffer-name buffer))
-	(pathname (or (buffer-truename buffer) (buffer-pathname buffer))))
-    (let ((display-string
-	   (lambda (name)
-	     (if (pathname-version pathname)
-		 (let ((version
-			(pathname-version
-			 (or (buffer-truename buffer) pathname))))
-		   (if (integer? version)
-		       (string-append name " (" (number->string version) ")")
-		       name))
-		 name))))
-      (if (not pathname)
-	  name
-	  (let ((name* (pathname->buffer-name pathname)))
-	    (if (or (string-ci=? name name*)
-		    (let ((i (string-match-forward-ci name name*)))
-		      (and i
-			   (= i (string-length name*))
-			   (char=? (string-ref name i) #\<))))
-		(display-string name)
-		(string-append name " [" (display-string name*) "]")))))))
+(define (add-buffer-initialization! buffer thunk)
+  (without-interrupts (lambda () (%add-buffer-initialization! buffer thunk))))
+
+(define (%add-buffer-initialization! buffer thunk)
+  (if (current-buffer? buffer)
+      (thunk)
+      (vector-set! buffer
+		   buffer-index:initializations
+		   (append! (buffer-initializations buffer) (list thunk)))))
+
+(define (perform-buffer-initializations! buffer)
+  ;; Assumes that interrupts are disabled and BUFFER is selected.
+  (let loop ((thunks (buffer-initializations buffer)))
+    (if (not (null? thunks))
+	(begin
+	  ((car thunks))
+	  (loop))))  (vector-set! buffer buffer-index:initializations '())
+  unspecific)
 
 ;;;; Local Bindings
 
@@ -350,17 +343,14 @@ The buffer is guaranteed to be deselected at that time."
      unspecific)))
 
 (define (undo-local-bindings!)
-  (without-interrupts
-   (lambda ()
-     (let ((buffer (current-buffer)))
-       (for-each (lambda (binding)
-		   (let ((variable (car binding)))
-		     (%set-variable-value! variable (cdr binding))
-		     (invoke-variable-assignment-daemons! variable)))
-		 (buffer-local-bindings buffer))
-       (vector-set! buffer buffer-index:local-bindings '()))
-     unspecific)))
-
+  (let ((buffer (current-buffer)))
+    (for-each (lambda (binding)
+		(let ((variable (car binding)))
+		  (%set-variable-value! variable (cdr binding))
+		  (invoke-variable-assignment-daemons! variable)))
+	      (buffer-local-bindings buffer))
+    (vector-set! buffer buffer-index:local-bindings '()))
+  unspecific)
 (define (change-local-bindings! old-buffer new-buffer select-buffer!)
   ;; Assumes that interrupts are disabled and that OLD-BUFFER is selected.
   (let ((variables '()))
@@ -391,18 +381,19 @@ The buffer is guaranteed to be deselected at that time."
 	(for-each invoke-variable-assignment-daemons! variables))))
 
 (define (variable-local-value buffer variable)
-  (let ((buffer* (current-buffer))
-	(in-cell
+  (let ((in-cell
 	 (lambda ()
 	   (variable-value variable))))
-    (if (eq? buffer buffer*)
+    (if (current-buffer? buffer)
 	(in-cell)
 	(let ((binding (assq variable (buffer-local-bindings buffer))))
 	  (cond (binding
 		 (cdr binding))
-		((variable-buffer-local? variable)
+		((and (variable-buffer-local? variable)
+		      (within-editor?))
 		 (let ((binding
-			(assq variable (buffer-local-bindings buffer*))))
+			(assq variable
+			      (buffer-local-bindings (current-buffer)))))
 		   (if binding
 		       (cdr binding)
 		       (in-cell))))
@@ -410,7 +401,7 @@ The buffer is guaranteed to be deselected at that time."
 		 (in-cell)))))))
 
 (define (set-variable-local-value! buffer variable value)
-  (if (eq? buffer (current-buffer))
+  (if (current-buffer? buffer)
       (set-variable-value! variable value)
       (let ((binding (assq variable (buffer-local-bindings buffer))))
 	(if binding
@@ -418,6 +409,20 @@ The buffer is guaranteed to be deselected at that time."
 	      (set-cdr! binding value)
 	      unspecific)
 	    (set-variable-value! variable value)))))
+
+(define (define-variable-local-value! buffer variable value)
+  (if (current-buffer? buffer)
+      (make-local-binding! variable value)
+      (without-interrupts
+       (lambda ()
+	 (let ((bindings (buffer-local-bindings buffer)))
+	   (let ((binding (assq variable bindings)))
+	     (if binding
+		 (set-cdr! binding value)
+		 (vector-set! buffer
+			      buffer-index:local-bindings
+			      (cons (cons variable value) bindings)))
+	     unspecific))))))
 
 (define (variable-local-value? buffer variable)
   (assq variable (buffer-local-bindings buffer)))
@@ -453,14 +458,17 @@ The buffer is guaranteed to be deselected at that time."
        (set-cdr! modes '()))
      (set-buffer-comtabs! buffer (mode-comtabs mode))
      (vector-set! buffer buffer-index:alist '())
-     (buffer-modeline-event! buffer 'BUFFER-MODES)
      (vector-set! buffer buffer-index:initializations '())
-     (add-buffer-initialization! buffer undo-local-bindings!)
-     (add-buffer-initialization! buffer (mode-initialization mode)))))
+     (buffer-modeline-event! buffer 'BUFFER-MODES)
+     (%add-buffer-initialization! buffer undo-local-bindings!)
+     (%add-buffer-initialization! buffer (mode-initialization mode)))))
+
+(define-integrable (buffer-minor-modes buffer)
+  (cdr (buffer-modes buffer)))
 
 (define (buffer-minor-mode? buffer mode)
   (if (mode-major? mode) (error "Not a minor mode" mode))
-  (memq mode (buffer-modes buffer)))
+  (memq mode (buffer-minor-modes buffer)))
 
 (define (enable-buffer-minor-mode! buffer mode)
   (if (mode-major? mode) (error "Not a minor mode" mode))
@@ -473,9 +481,8 @@ The buffer is guaranteed to be deselected at that time."
 	     (set-buffer-comtabs! buffer
 				  (cons (mode-comtab mode)
 					(buffer-comtabs buffer)))
-	     (buffer-modeline-event! buffer 'BUFFER-MODES)
-	     (add-buffer-initialization! buffer
-					 (mode-initialization mode))))))))
+	     (%add-buffer-initialization! buffer (mode-initialization mode))
+	     (buffer-modeline-event! buffer 'BUFFER-MODES)))))))
 
 (define (disable-buffer-minor-mode! buffer mode)
   (if (mode-major? mode) (error "Not a minor mode" mode))
@@ -489,20 +496,3 @@ The buffer is guaranteed to be deselected at that time."
 				  (delq! (mode-comtab mode)
 					 (buffer-comtabs buffer)))
 	     (buffer-modeline-event! buffer 'BUFFER-MODES)))))))
-
-(define (add-buffer-initialization! buffer thunk)
-  (if (eq? buffer (current-buffer))
-      (thunk)
-      (vector-set! buffer
-		   buffer-index:initializations
-		   (append! (buffer-initializations buffer) (list thunk)))))
-
-(define (perform-buffer-initializations! buffer)
-  ;; Assumes that BUFFER is selected.
-  (let loop ()
-    (let ((thunks (buffer-initializations buffer)))
-      (if (not (null? thunks))
-	  (begin
-	    (vector-set! buffer buffer-index:initializations (cdr thunks))
-	    ((car thunks))
-	    (loop))))))
