@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/graphics.scm,v 1.4 1991/07/23 08:20:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/graphics.scm,v 1.5 1992/03/16 19:27:32 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -216,7 +216,7 @@ MIT in each case. |#
   (let ((value
 	 (apply (graphics-device-type/operation (graphics-device/type device)
 						name)
-		(graphics-device/descriptor device)
+		device
 		arguments)))
     (maybe-flush device)
     value))
@@ -234,34 +234,27 @@ MIT in each case. |#
       (graphics-flush device)))
 
 (define (graphics-close device)
-  ((graphics-device/operation/close device)
-   (graphics-device/descriptor device)))
+  ((graphics-device/operation/close device) device))
 
 (define-integrable (graphics-flush device)
-  ((graphics-device/operation/flush device)
-   (graphics-device/descriptor device)))
+  ((graphics-device/operation/flush device) device))
 
 (define (graphics-device-coordinate-limits device)
-  ((graphics-device/operation/device-coordinate-limits device)
-   (graphics-device/descriptor device)))
+  ((graphics-device/operation/device-coordinate-limits device) device))
 
 (define (graphics-coordinate-limits device)
-  ((graphics-device/operation/coordinate-limits device)
-   (graphics-device/descriptor device)))
+  ((graphics-device/operation/coordinate-limits device) device))
 
 (define (graphics-set-coordinate-limits device x-left y-bottom x-right y-top)
   ((graphics-device/operation/set-coordinate-limits device)
-   (graphics-device/descriptor device)
-   x-left y-bottom x-right y-top))
+   device x-left y-bottom x-right y-top))
 
 (define (graphics-set-clip-rectangle device x-left y-bottom x-right y-top)
   ((graphics-device/operation/set-clip-rectangle device)
-   (graphics-device/descriptor device)
-   x-left y-bottom x-right y-top))
+   device x-left y-bottom x-right y-top))
 
 (define (graphics-reset-clip-rectangle device)
-  ((graphics-device/operation/reset-clip-rectangle device)
-   (graphics-device/descriptor device)))
+  ((graphics-device/operation/reset-clip-rectangle device) device))
 
 (define-integrable drawing-mode:erase 0)
 (define-integrable drawing-mode:non-dominant 1)
@@ -279,8 +272,7 @@ MIT in each case. |#
 
 (define (graphics-set-drawing-mode device drawing-mode)
   ((graphics-device/operation/set-drawing-mode device)
-   (graphics-device/descriptor device)
-   drawing-mode)
+   device drawing-mode)
   (set-graphics-device/drawing-mode! device drawing-mode))
 
 (define-integrable line-style:solid 0)
@@ -302,20 +294,15 @@ MIT in each case. |#
        (graphics-set-line-style device old-style)))))
 
 (define (graphics-set-line-style device line-style)
-  ((graphics-device/operation/set-line-style device)
-   (graphics-device/descriptor device)
-   line-style)
+  ((graphics-device/operation/set-line-style device) device line-style)
   (set-graphics-device/line-style! device line-style))
 
 (define (graphics-clear device)
-  ((graphics-device/operation/clear device)
-   (graphics-device/descriptor device))
+  ((graphics-device/operation/clear device) device)
   (maybe-flush device))
 
 (define (graphics-draw-point device x y)
-  ((graphics-device/operation/draw-point device)
-   (graphics-device/descriptor device)
-   x y)
+  ((graphics-device/operation/draw-point device) device x y)
   (maybe-flush device))
 
 (define (graphics-erase-point device x y)
@@ -324,24 +311,17 @@ MIT in each case. |#
       (graphics-draw-point device x y))))
 
 (define (graphics-draw-text device x y text)
-  ((graphics-device/operation/draw-text device)
-   (graphics-device/descriptor device)
-   x y text)
+  ((graphics-device/operation/draw-text device) device x y text)
   (maybe-flush device))
 
 (define (graphics-draw-line device x-start y-start x-end y-end)
   ((graphics-device/operation/draw-line device)
-   (graphics-device/descriptor device)
-   x-start y-start x-end y-end)
+   device x-start y-start x-end y-end)
   (maybe-flush device))
 
 (define (graphics-move-cursor device x y)
-  ((graphics-device/operation/move-cursor device)
-   (graphics-device/descriptor device)
-   x y))
+  ((graphics-device/operation/move-cursor device) device x y))
 
 (define (graphics-drag-cursor device x y)
-  ((graphics-device/operation/drag-cursor device)
-   (graphics-device/descriptor device)
-   x y)
+  ((graphics-device/operation/drag-cursor device) device x y)
   (maybe-flush device))
