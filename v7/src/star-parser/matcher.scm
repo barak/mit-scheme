@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.8 2001/07/02 05:08:16 cph Exp $
+;;; $Id: matcher.scm,v 1.9 2001/07/02 12:14:29 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -50,12 +50,13 @@
 	  (lambda ()
 	    (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
 				 (cdr internal-bindings))
-			    (compile-matcher-expression expression
-				(no-pointers)
-			      (simple-backtracking-continuation `#T)
-			      (simple-backtracking-continuation `#F)))))))))
+	      (call-with-unknown-pointer
+	       (lambda (pointer)
+		 (compile-matcher-expression expression pointer
+		   (simple-backtracking-continuation `#T)
+		   (simple-backtracking-continuation `#F)))))))))))
 
-(define (compile-matcher-expression expression pointers if-succeed if-fail)
+(define (compile-matcher-expression expression pointer if-succeed if-fail)
   (cond ((and (pair? expression)
 	      (symbol? (car expression))
 	      (list? (cdr expression))
@@ -65,16 +66,16 @@
 		    (compiler (cdr entry)))
 		(if (and arity (not (= (length (cdr expression)) arity)))
 		    (error "Incorrect arity for matcher:" expression))
-		(apply compiler pointers if-succeed if-fail
+		(apply compiler pointer if-succeed if-fail
 		       (if arity
 			   (cdr expression)
 			   (list (cdr expression)))))))
 	((symbol? expression)
-	 (handle-pending-backtracking pointers
-	   (lambda (pointers)
+	 (handle-pending-backtracking pointer
+	   (lambda (pointer)
 	     `(IF (,expression ,*buffer-name*)
-		  ,(if-succeed (no-pointers))
-		  ,(if-fail pointers)))))
+		  ,(call-with-unknown-pointer if-succeed)
+		  ,(if-fail pointer)))))
 	(else
 	 (error "Malformed matcher:" expression))))
 
@@ -182,10 +183,10 @@
 	(parameters (cdr form)))
     (if (symbol? parameters)
 	`(DEFINE-MATCHER-COMPILER ',name #F
-	   (LAMBDA (POINTERS IF-SUCCEED IF-FAIL ,parameters)
+	   (LAMBDA (POINTER IF-SUCCEED IF-FAIL ,parameters)
 	     ,@compiler-body))
 	`(DEFINE-MATCHER-COMPILER ',name ,(length parameters)
-	   (LAMBDA (POINTERS IF-SUCCEED IF-FAIL ,@parameters)
+	   (LAMBDA (POINTER IF-SUCCEED IF-FAIL ,@parameters)
 	     ,@compiler-body)))))
 
 (define (define-matcher-compiler keyword arity compiler)
@@ -197,11 +198,11 @@
 
 (define-macro (define-atomic-matcher form test-expression)
   `(DEFINE-MATCHER ,form
-     (HANDLE-PENDING-BACKTRACKING POINTERS
-       (LAMBDA (POINTERS)
+     (HANDLE-PENDING-BACKTRACKING POINTER
+       (LAMBDA (POINTER)
 	 `(IF ,,test-expression
-	      ,(IF-SUCCEED (NO-POINTERS))
-	      ,(IF-FAIL POINTERS))))))
+	      ,(CALL-WITH-UNKNOWN-POINTER IF-SUCCEED)
+	      ,(IF-FAIL POINTER))))))
 
 (define-atomic-matcher (char char)
   `(MATCH-PARSER-BUFFER-CHAR ,*buffer-name* ,char))
@@ -225,59 +226,50 @@
   `(MATCH-PARSER-BUFFER-STRING-CI ,*buffer-name* ,string))
 
 (define-matcher (with-pointer identifier expression)
-  (with-current-pointer pointers
-    (lambda (pointers)
-      `(LET ((,identifier ,(current-pointer pointers)))
-	 ,(compile-matcher-expression expression pointers
-	    if-succeed if-fail)))))
+  `(LET ((,identifier ,(pointer-reference pointer)))
+     ,(compile-matcher-expression expression pointer if-succeed if-fail)))
 
 (define-matcher (* expression)
   if-fail
-  (handle-pending-backtracking pointers
-    (lambda (pointers)
-      pointers
-      (let ((pointers (no-pointers))
-	    (v (generate-uninterned-symbol)))
-	`(BEGIN
-	   (LET ,v ()
-	     ,(compile-matcher-expression expression pointers
-		(simple-backtracking-continuation `(,v))
-		(simple-backtracking-continuation `UNSPECIFIC)))
-	   ,(if-succeed pointers))))))
+  (handle-pending-backtracking pointer
+    (lambda (pointer)
+      pointer
+      (call-with-unknown-pointer
+       (lambda (pointer)
+	 (let ((v (generate-uninterned-symbol)))
+	   `(BEGIN
+	      (LET ,v ()
+		,(compile-matcher-expression expression pointer
+		   (simple-backtracking-continuation `(,v))
+		   (simple-backtracking-continuation `UNSPECIFIC)))
+	      ,(if-succeed pointer))))))))
 
 (define-matcher (seq . expressions)
-  (with-current-pointer pointers
-    (lambda (start)
-      (let loop
-	  ((expressions expressions)
-	   (pointers start))
-	(if (pair? expressions)
-	    (compile-matcher-expression (car expressions) pointers
-	      (lambda (pointers)
-		(loop (cdr expressions) pointers))
-	      (lambda (pointers)
-		(if-fail (new-backtrack-pointer start pointers))))
-	    (if-succeed pointers))))))
+  (let loop ((expressions expressions) (pointer* pointer))
+    (if (pair? expressions)
+	(compile-matcher-expression (car expressions) pointer*
+	  (lambda (pointer*)
+	    (loop (cdr expressions) pointer*))
+	  (lambda (pointer*)
+	    (if-fail (backtrack-to pointer pointer*))))
+	(if-succeed pointer*))))
 
 (define-matcher (alt . expressions)
   (cond ((not (pair? expressions))
-	 (if-fail pointers))
+	 (if-fail pointer))
 	((not (pair? (cdr expressions)))
-	 (compile-matcher-expression expression pointers if-succeed if-fail))
+	 (compile-matcher-expression expression pointer if-succeed if-fail))
 	(else
-	 (handle-pending-backtracking pointers
-	   (lambda (pointers)
-	     (with-current-pointer pointers
-	       (lambda (pointers)
-		 (let ((s (simple-backtracking-continuation '#T))
-		       (f (simple-backtracking-continuation '#F))))
-		 `(IF (OR ,@(map (lambda (expression)
-				   (compile-matcher-expression expression
-				       pointers
-				     s f))
-				 expressions))
-		      ,(if-succeed (no-pointers))
-		      ,(if-fail pointers)))))))))
+	 (handle-pending-backtracking pointer
+	   (lambda (pointer)
+	     `(IF (OR ,@(map (let ((s (simple-backtracking-continuation '#T))
+				   (f (simple-backtracking-continuation '#F)))
+			       (lambda (expression)
+				 (compile-matcher-expression expression pointer
+				   s f)))
+			     expressions))
+		  ,(call-with-unknown-pointer if-succeed)
+		  ,(if-fail pointer)))))))
 
 ;;; Edwin Variables:
 ;;; Eval: (scheme-indent-method 'handle-pending-backtracking 1)

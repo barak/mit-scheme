@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.12 2001/07/02 05:08:19 cph Exp $
+;;; $Id: parser.scm,v 1.13 2001/07/02 12:14:32 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -40,13 +40,13 @@
 (define (generate-parser-code expression)
   (with-canonical-parser-expression expression
     (lambda (expression)
-      (compile-parser-expression
-       expression
-       (no-pointers)
-       simple-backtracking-succeed
-       (simple-backtracking-continuation `#F)))))
+      (call-with-unknown-pointer
+       (lambda (pointer)
+	 (compile-parser-expression expression pointer
+	   simple-backtracking-succeed
+	   (simple-backtracking-continuation `#F)))))))
 
-(define (compile-parser-expression expression pointers if-succeed if-fail)
+(define (compile-parser-expression expression pointer if-succeed if-fail)
   (cond ((and (pair? expression)
 	      (symbol? (car expression))
 	      (list? (cdr expression))
@@ -56,26 +56,28 @@
 		    (compiler (cdr entry)))
 		(if (and arity (not (= (length (cdr expression)) arity)))
 		    (error "Incorrect arity for parser:" expression))
-		(apply compiler pointers if-succeed if-fail
+		(apply compiler pointer if-succeed if-fail
 		       (if arity
 			   (cdr expression)
 			   (list (cdr expression)))))))
 	((symbol? expression)
-	 (handle-pending-backtracking pointers
-	   (lambda (pointers)
+	 (handle-pending-backtracking pointer
+	   (lambda (pointer)
 	     (with-variable-binding `(,expression ,*buffer-name*)
 	       (lambda (result)
 		 `(IF ,result
-		      ,(if-succeed (no-pointers) result)
-		      ,(if-fail pointers)))))))
+		      ,(call-with-unknown-pointer
+			(lambda (pointer)
+			  (if-succeed pointer result)))
+		      ,(if-fail pointer)))))))
 	(else
 	 (error "Malformed matcher:" expression))))
 
 (define (backtracking-succeed handler)
-  (lambda (pointers result)
-    (handle-pending-backtracking pointers
-      (lambda (pointers)
-	pointers
+  (lambda (pointer result)
+    (handle-pending-backtracking pointer
+      (lambda (pointer)
+	pointer
 	(handler result)))))
 
 (define simple-backtracking-succeed
@@ -175,10 +177,10 @@
 	(parameters (cdr form)))
     (if (symbol? parameters)
 	`(DEFINE-PARSER-COMPILER ',name #F
-	   (LAMBDA (POINTERS IF-SUCCEED IF-FAIL ,parameters)
+	   (LAMBDA (POINTER IF-SUCCEED IF-FAIL ,parameters)
 	     ,@compiler-body))
 	`(DEFINE-PARSER-COMPILER ',name ,(length parameters)
-	   (LAMBDA (POINTERS IF-SUCCEED IF-FAIL ,@parameters)
+	   (LAMBDA (POINTER IF-SUCCEED IF-FAIL ,@parameters)
 	     ,@compiler-body)))))
 
 (define (define-parser-compiler keyword arity compiler)
@@ -189,130 +191,127 @@
   (make-eq-hash-table))
 
 (define-parser (match matcher)
-  (with-current-pointer pointers
-    (lambda (start)
-      (compile-matcher-expression matcher start
-	(lambda (pointers)
-	  (with-variable-binding
-	      `(VECTOR
-		(GET-PARSER-BUFFER-TAIL ,*buffer-name*
-					,(current-pointer start)))
-	    (lambda (v)
-	      (if-succeed pointers v))))
-	if-fail))))
+  (compile-matcher-expression matcher pointer
+    (lambda (pointer*)
+      (with-variable-binding
+	  `(VECTOR
+	    (GET-PARSER-BUFFER-TAIL ,*buffer-name*
+				    ,(pointer-reference pointer)))
+	(lambda (v)
+	  (if-succeed pointer* v))))
+    if-fail))
 
 (define-parser (noise matcher)
-  (compile-matcher-expression matcher pointers
-    (lambda (pointers) (if-succeed pointers `(VECTOR)))
+  (compile-matcher-expression matcher pointer
+    (lambda (pointer) (if-succeed pointer `(VECTOR)))
     if-fail))
 
 (define-parser (default value parser)
   if-fail
-  (compile-parser-expression parser pointers if-succeed
-    (lambda (pointers)
-      (if-succeed pointers `(VECTOR ,value)))))
+  (compile-parser-expression parser pointer if-succeed
+    (lambda (pointer)
+      (if-succeed pointer `(VECTOR ,value)))))
 
 (define-parser (transform transform parser)
-  (with-current-pointer pointers
-    (lambda (start)
-      (compile-parser-expression parser start
-	(lambda (pointers result)
-	  (with-variable-binding `(,transform ,result)
-	    (lambda (result)
-	      `(IF ,result
-		   ,(if-succeed pointers result)
-		   ,(if-fail (new-backtrack-pointer start pointers))))))
-	if-fail))))
+  (compile-parser-expression parser pointer
+    (lambda (pointer* result)
+      (with-variable-binding `(,transform ,result)
+	(lambda (result)
+	  `(IF ,result
+	       ,(if-succeed pointer* result)
+	       ,(if-fail (backtrack-to pointer pointer*))))))
+    if-fail))
 
 (define-parser (element-transform transform parser)
-  (compile-parser-expression parser pointers
-    (lambda (pointers result)
-      (if-succeed pointers `(VECTOR-MAP ,transform ,result)))
+  (compile-parser-expression parser pointer
+    (lambda (pointer result)
+      (if-succeed pointer `(VECTOR-MAP ,transform ,result)))
     if-fail))
 
 (define-parser (encapsulate transform parser)
-  (compile-parser-expression parser pointers
-    (lambda (pointers result)
-      (if-succeed pointers `(VECTOR (,transform ,result))))
+  (compile-parser-expression parser pointer
+    (lambda (pointer result)
+      (if-succeed pointer `(VECTOR (,transform ,result))))
     if-fail))
 
 (define-parser (complete parser)
-  (with-current-pointer pointers
-    (lambda (start)
-      (compile-parser-expression parser start
-	(lambda (pointers result)
-	  `(IF (PEEK-PARSER-BUFFER-CHAR ,*buffer-name*)
-	       ,(if-fail (new-backtrack-pointer start pointers))
-	       (BEGIN
-		 (DISCARD-PARSER-BUFFER-HEAD! ,*buffer-name*)
-		 ,(if-succeed pointers result))))
-	if-fail))))
+  (compile-parser-expression parser pointer
+    (lambda (pointer* result)
+      `(IF (PEEK-PARSER-BUFFER-CHAR ,*buffer-name*)
+	   ,(if-fail (backtrack-to pointer pointer*))
+	   (BEGIN
+	     (DISCARD-PARSER-BUFFER-HEAD! ,*buffer-name*)
+	     ,(if-succeed pointer* result))))
+    if-fail))
 
 (define-parser (top-level parser)
-  (compile-parser-expression parser pointers
-    (lambda (pointers result)
+  (compile-parser-expression parser pointer
+    (lambda (pointer result)
       `(BEGIN
 	 (DISCARD-PARSER-BUFFER-HEAD! ,*buffer-name*)
-	 ,(if-succeed pointers result)))
+	 ,(if-succeed pointer result)))
     if-fail))
 
 (define-parser (with-pointer identifier expression)
-  (with-current-pointer pointers
-    (lambda (pointers)
-      `(LET ((,identifier ,(current-pointer pointers)))
-	 ,(compile-parser-expression expression pointers
-	    if-succeed if-fail)))))
+  `(LET ((,identifier ,(pointer-reference pointer)))
+     ,(compile-parser-expression expression pointer
+	if-succeed if-fail)))
 
-(define-parser (seq . ps)
-  (if (pair? ps)
-      (if (pair? (cdr ps))
-	  (with-current-pointer pointers
-	    (lambda (start)
-	      (let loop ((ps ps) (pointers start) (results '()))
-		(compile-parser-expression (car ps) pointers
-		  (lambda (pointers result)
-		    (let ((results (cons result results)))
-		      (if (pair? (cdr ps))
-			  (loop (cdr ps) pointers results)
-			  (if-succeed pointers
-				      `(VECTOR-APPEND ,@(reverse results))))))
-		  (lambda (pointers)
-		    (if-fail (new-backtrack-pointer start pointers)))))))
-	  (compile-parser-expression (car ps) pointers if-succeed if-fail))
-      (if-succeed pointers `(VECTOR))))
+(define-parser (seq . expressions)
+  (if (pair? expressions)
+      (if (pair? (cdr expressions))
+	  (let loop
+	      ((expressions expressions)
+	       (pointer* pointer)
+	       (results '()))
+	    (compile-parser-expression (car expressions) pointer*
+	      (lambda (pointer* result)
+		(let ((results (cons result results)))
+		  (if (pair? (cdr expressions))
+		      (loop (cdr expressions) pointer* results)
+		      (if-succeed pointer*
+				  `(VECTOR-APPEND ,@(reverse results))))))
+	      (lambda (pointer*)
+		(if-fail (backtrack-to pointer pointer*)))))
+	  (compile-parser-expression (car expressions) pointer
+	    if-succeed
+	    if-fail))
+      (if-succeed pointer `(VECTOR))))
 
-(define-parser (alt . ps)
-  (handle-pending-backtracking pointers
-    (lambda (pointers)
-      (with-current-pointer pointers
-	(lambda (pointers)
-	  (with-variable-binding
-	      `(OR ,@(map (lambda (p)
-			    (compile-parser-expression p pointers
-			      simple-backtracking-succeed
-			      (simple-backtracking-continuation `#F)))
-			  ps))
-	    (lambda (result)
-	      `(IF ,result
-		   ,(if-succeed (no-pointers) result)
-		   ,(if-fail pointers)))))))))
+(define-parser (alt . expressions)
+  (handle-pending-backtracking pointer
+    (lambda (pointer)
+      (with-variable-binding
+	  `(OR ,@(map (lambda (expression)
+			(compile-parser-expression expression pointer
+			  simple-backtracking-succeed
+			  (simple-backtracking-continuation `#F)))
+		      expressions))
+	(lambda (result)
+	  `(IF ,result
+	       ,(call-with-unknown-pointer
+		 (lambda (pointer)
+		   (if-succeed pointer result)))
+	       ,(if-fail pointer)))))))
 
 (define-parser (* parser)
   if-fail
-  (handle-pending-backtracking pointers
-    (lambda (pointers)
-      pointers
-      (with-variable-binding
-	  (let ((loop (generate-uninterned-symbol))
-		(elements (generate-uninterned-symbol)))
-	    `(LET ,loop ((,elements (VECTOR)))
-	       ,(compile-parser-expression parser (no-pointers)
-		  (backtracking-succeed
-		   (lambda (element)
-		     `(,loop (VECTOR-APPEND ,elements ,element))))
-		  (simple-backtracking-continuation elements))))
-	(lambda (elements)
-	  (if-succeed (no-pointers) elements))))))
+  (handle-pending-backtracking pointer
+    (lambda (pointer)
+      pointer
+      (call-with-unknown-pointer
+       (lambda (pointer)
+	 (with-variable-binding
+	     (let ((loop (generate-uninterned-symbol))
+		   (elements (generate-uninterned-symbol)))
+	       `(LET ,loop ((,elements (VECTOR)))
+		  ,(compile-parser-expression parser pointer
+		     (backtracking-succeed
+		      (lambda (element)
+			`(,loop (VECTOR-APPEND ,elements ,element))))
+		     (simple-backtracking-continuation elements))))
+	   (lambda (elements)
+	     (if-succeed pointer elements))))))))
 
 ;;; Edwin Variables:
 ;;; Eval: (scheme-indent-method 'handle-pending-backtracking 1)

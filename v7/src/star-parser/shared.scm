@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.6 2001/07/02 05:08:22 cph Exp $
+;;; $Id: shared.scm,v 1.7 2001/07/02 12:14:35 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -90,61 +90,48 @@
 
 ;;;; Buffer pointers
 
-(define (no-pointers)
-  ;; Initial pointer set, used only when we know nothing about the
-  ;; context that an expression is expanding in.
-  (cons #f #f))
+(define (call-with-unknown-pointer procedure)
+  (let ((v.u (cons (generate-uninterned-symbol) #f)))
+    (let ((x (procedure (cons v.u #f))))
+      (if (cdr v.u)
+	  `(LET ((,(car v.u) (GET-PARSER-BUFFER-POINTER ,*buffer-name*)))
+	     ,x)
+	  x))))
 
-(define (with-current-pointer pointers procedure)
-  ;; Get a pointer to the current position, if any.  This is called
-  ;; wherever we potentially need a pointer reference.  But we track
-  ;; usage of the pointer, so that we only generate calls to
-  ;; GET-PARSER-BUFFER-POINTER when the pointer is used.
-  (if (or (cdr pointers) (car pointers))
-      (procedure pointers)
-      (let ((v.u (cons (generate-uninterned-symbol) #f)))
-	(let ((x (procedure (cons v.u (cdr pointers)))))
-	  (if (cdr v.u)
-	      `(LET ((,(car v.u) (GET-PARSER-BUFFER-POINTER ,*buffer-name*)))
-		 ,x)
-	      x)))))
-
-(define (current-pointer pointers)
-  (let ((pointer
-	 (or (cdr pointers)
-	     (car pointers)
-	     (error "Missing required current pointer:" pointers))))
-    (set-cdr! pointer #t)
-    (car pointer)))
-
-(define (new-backtrack-pointer backtrack-pointers pointers)
+(define (backtrack-to backtrack-pointer pointer)
   ;; Specify that we want to backtrack to the position specified in
-  ;; BACKTRACK-POINTERS.  But don't actually change the position yet.
+  ;; BACKTRACK-POINTER.  But don't actually change the position yet.
   ;; Instead delay the move until it's actually needed.  Without the
   ;; delay, we can generate multiple sequential calls to change the
   ;; position, which is wasteful since only the last call in the
   ;; sequence is meaningful.
-  (cons (car pointers)
-	(if (eq? (car pointers) (car backtrack-pointers))
-	    #f
-	    (car backtrack-pointers))))
+  (cons (car pointer)
+	(let ((p (or (cdr pointer) (car pointer))))
+	  (if (eq? (car pointer) (car backtrack-pointer))
+	      #f
+	      (car backtrack-pointer)))))
 
-(define (handle-pending-backtracking pointers procedure)
+(define (handle-pending-backtracking pointer procedure)
   ;; Perform a pending backtracking operation, if any.
-  (if (cdr pointers)
+  (if (cdr pointer)
       (begin
-	(set-cdr! (cdr pointers) #t)
+	(set-cdr! (cdr pointer) #t)
 	`(BEGIN
-	   (SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,(car (cdr pointers)))
-	   ,(procedure (cons (cdr pointers) #f))))
-      (procedure (cons (car pointers) #f))))
+	   (SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,(car (cdr pointer)))
+	   ,(procedure (cons (cdr pointer) #f))))
+      (procedure (cons (car pointer) #f))))
 
 (define (simple-backtracking-continuation value)
-  (lambda (pointers)
-    (handle-pending-backtracking pointers
-      (lambda (pointers)
-	pointers
+  (lambda (pointer)
+    (handle-pending-backtracking pointer
+      (lambda (pointer)
+	pointer
 	value))))
+
+(define (pointer-reference pointer)
+  (let ((p (or (cdr pointer) (car pointer))))
+    (set-cdr! p #t)
+    (car p)))
 
 ;;;; Code optimizer
 
