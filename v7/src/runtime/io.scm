@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.47 1996/05/15 18:47:19 cph Exp $
+$Id: io.scm,v 14.48 1996/05/18 06:15:16 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -38,13 +38,11 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define open-channels-list)
-(define traversing?)
 (define open-directories-list)
 (define have-select?)
 
 (define (initialize-package!)
   (set! open-channels-list (list 'OPEN-CHANNELS-LIST))
-  (set! traversing? false)
   (add-gc-daemon! close-lost-open-files-daemon)
   (set! open-directories-list (make-protection-list))
   (add-gc-daemon! close-lost-open-directories-daemon)
@@ -60,18 +58,34 @@ MIT in each case. |#
   (type false read-only true)
   port)
 
-(define (make-channel descriptor)
-  ;; Make sure that interrupts are disabled before `descriptor' is
-  ;; created until after this procedure returns.
-  (let ((channel
-	 (%make-channel descriptor (descriptor-type-name descriptor) #f)))
-    (with-absolutely-no-interrupts
+(define (open-channel procedure)
+  ;; A bunch of hair to permit microcode descriptors be opened with
+  ;; interrupts turned on, yet not leave a dangling descriptor around
+  ;; if the open is interrupted before the runtime system's data
+  ;; structures are updated.
+  (let ((p (system-pair-cons (ucode-type weak-cons) #f #f)))
+    (dynamic-wind
+     (lambda () unspecific)
      (lambda ()
-       (set-cdr! open-channels-list
-		 (cons (system-pair-cons (ucode-type weak-cons)
-					 channel
-					 descriptor)
-		       (cdr open-channels-list)))))
+       (and (procedure p)
+	    (make-channel-1 p)))
+     (lambda ()
+       (if (and (not (system-pair-car p)) (system-pair-cdr p))
+	   (begin
+	     ((ucode-primitive channel-close 1) (system-pair-cdr p))
+	     (system-pair-set-cdr! p #f)))))))
+
+(define (make-channel descriptor)
+  (make-channel-1 (system-pair-cons (ucode-type weak-cons) #f descriptor)))
+
+(define (make-channel-1 p)
+  (let ((channel
+	 (let ((d (system-pair-cdr p)))
+	   (%make-channel d (descriptor-type-name d) #f))))
+    (without-interrupts
+     (lambda ()
+       (system-pair-set-car! p channel)
+       (set-cdr! open-channels-list (cons p (cdr open-channels-list)))))
     channel))
 
 (define (descriptor->channel descriptor)
@@ -81,23 +95,10 @@ MIT in each case. |#
 	     (system-pair-car (car channels))
 	     (loop (cdr channels))))))
 
-(define descriptor-type-name
-  (let ((channel-type-name (ucode-primitive channel-type-name 1))
-	(channel-type (ucode-primitive channel-type 1)))
-    (lambda (descriptor)
-      (if (implemented-primitive-procedure? channel-type-name)
-	  (let ((name (channel-type-name descriptor)))
-	    (and name
-		 (intern name)))
-	  ;; For upwards compatibility with old microcodes:
-	  (let ((index (channel-type descriptor))
-		(types
-		 '#(#F FILE UNIX-PIPE UNIX-FIFO TERMINAL
-		       UNIX-PTY-MASTER UNIX-STREAM-SOCKET
-		       TCP-STREAM-SOCKET TCP-SERVER-SOCKET DIRECTORY
-		       UNIX-CHARACTER-DEVICE UNIX-BLOCK-DEVICE)))
-	    (and (< index (vector-length types))
-		 (vector-ref types index)))))))
+(define (descriptor-type-name descriptor)
+  (let ((name ((ucode-primitive channel-type-name 1) descriptor)))
+    (and name
+	 (intern name))))
 
 (define-integrable (channel-type=unknown? channel)
   (false? (channel-type channel)))
@@ -115,27 +116,21 @@ MIT in each case. |#
 	(eq? 'OS/2-CONSOLE type))))
 
 (define (channel-close channel)
-  ;; This is locked from interrupts, but GC can occur since the
-  ;; procedure itself hangs on to the channel until the last moment,
-  ;; when it returns the channel's name.  The list will not be spliced
-  ;; by the daemon behind its back because of the traversing? flag.
-  (fluid-let ((traversing? true))
-    (without-interrupts
-     (lambda ()
-       (if (channel-descriptor channel)
-	   (begin
-	     ((ucode-primitive channel-close 1) (channel-descriptor channel))
-	     (set-channel-descriptor! channel false)
-	     (let loop
-		 ((l1 open-channels-list)
-		  (l2 (cdr open-channels-list)))
-	       (cond ((null? l2)
-		      (set! traversing? false)
-		      (error "CHANNEL-CLOSE: lost channel" channel))
-		     ((eq? channel (system-pair-car (car l2)))
-		      (set-cdr! l1 (cdr l2)))
-		     (else
-		      (loop l2 (cdr l2)))))))))))
+  (without-interrupts
+   (lambda ()
+     (if (channel-descriptor channel)
+	 (begin
+	   ((ucode-primitive channel-close 1) (channel-descriptor channel))
+	   (set-channel-descriptor! channel false)
+	   (let loop
+	       ((l1 open-channels-list)
+		(l2 (cdr open-channels-list)))
+	     (cond ((null? l2)
+		    (error "CHANNEL-CLOSE: lost channel" channel))
+		   ((eq? channel (system-pair-car (car l2)))
+		    (set-cdr! l1 (cdr l2)))
+		   (else
+		    (loop l2 (cdr l2))))))))))
 
 (define-integrable (channel-open? channel)
   (channel-descriptor channel))
@@ -147,49 +142,38 @@ MIT in each case. |#
   (close-all-open-files-internal (ucode-primitive channel-close 1)))
 
 (define (primitive-io/reset!)
-  ;; This is invoked after disk-restoring.  It "cleans" the new runtime system.
+  ;; This is invoked after disk-restoring.
+  ;; It "cleans" the new runtime system.
   (close-all-open-files-internal (lambda (ignore) ignore))
   (drop-all-protected-objects open-directories-list)
   (set! have-select? ((ucode-primitive have-select? 0)))
   unspecific)
 
 (define (close-all-open-files-internal action)
-  (fluid-let ((traversing? true))
-    (without-interrupts
-     (lambda ()
-       (let loop ((l (cdr open-channels-list)))
-	 (if (not (null? l))
-	     (begin
-	       (let ((channel (system-pair-car (car l))))
-		 (if channel
-		     (set-channel-descriptor! channel false)))
-	       (action (system-pair-cdr (car l)))
-	       (let ((l (cdr l)))
-		 (set-cdr! open-channels-list l)
-		 (loop l)))))))))
+  (without-interrupts
+   (lambda ()
+     (let loop ((l (cdr open-channels-list)))
+       (if (not (null? l))
+	   (begin
+	     (let ((channel (system-pair-car (car l))))
+	       (if channel
+		   (set-channel-descriptor! channel false)))
+	     (action (system-pair-cdr (car l)))
+	     (let ((l (cdr l)))
+	       (set-cdr! open-channels-list l)
+	       (loop l))))))))
 
-;;; This is the daemon which closes files which no one points to.
-;;; Runs with GC, and lower priority interrupts, disabled.
-;;; It is unsafe because of the (unnecessary) consing by the
-;;; interpreter while it executes the loop.
-
-;;; Replaced by a primitive installed below.
-#|
 (define (close-lost-open-files-daemon)
-  (if (not traversing?)
-      (let loop ((l1 open-channels-list) (l2 (cdr open-channels-list)))
-	(cond ((null? l2)
-	       true)
-	      ((system-pair-car (car l2))
-	       (loop l2 (cdr l2)))
-	      (else
-	       ((ucode-primitive channel-close 1) (system-pair-cdr (car l2)))
-	       (set-cdr! l1 (cdr l2))
-	       (loop l1 (cdr l1)))))))
-|#
-(define (close-lost-open-files-daemon)
-  (if (not traversing?)
-      ((ucode-primitive close-lost-open-files 1) open-channels-list)))
+  ;; This is the daemon that closes files that no one points to.
+  (let loop ((l1 open-channels-list) (l2 (cdr open-channels-list)))
+    (cond ((null? l2)
+	   unspecific)
+	  ((system-pair-car (car l2))
+	   (loop l2 (cdr l2)))
+	  (else
+	   ((ucode-primitive channel-close 1) (system-pair-cdr (car l2)))
+	   (set-cdr! l1 (cdr l2))
+	   (loop l1 (cdr l1))))))
 
 ;;;; Channel Primitives
 
@@ -325,23 +309,19 @@ MIT in each case. |#
       (thunk)))
 
 (define (channel-table)
-  (fluid-let ((traversing? true))
-    (without-interrupts
-     (lambda ()
-       (let ((descriptors ((ucode-primitive channel-table 0))))
-	 (and descriptors
-	      (vector-map descriptors
-		(lambda (descriptor)
-		  (or (descriptor->channel descriptor)
-		      (make-channel descriptor))))))))))
+  (without-interrupts
+   (lambda ()
+     (let ((descriptors ((ucode-primitive channel-table 0))))
+       (and descriptors
+	    (vector-map descriptors
+	      (lambda (descriptor)
+		(or (descriptor->channel descriptor)
+		    (make-channel descriptor)))))))))
 
 ;;;; File Primitives
 
 (define (file-open primitive filename)
-  (let ((channel
-	 (without-interrupts
-	  (lambda ()
-	    (make-channel (primitive filename))))))
+  (let ((channel (open-channel (lambda (p) (primitive filename p)))))
     (if (or (channel-type=directory? channel)
 	    (channel-type=unknown? channel))
 	(begin
@@ -350,16 +330,16 @@ MIT in each case. |#
     channel))
 
 (define (file-open-input-channel filename)
-  (file-open (ucode-primitive file-open-input-channel 1) filename))
+  (file-open (ucode-primitive new-file-open-input-channel 2) filename))
 
 (define (file-open-output-channel filename)
-  (file-open (ucode-primitive file-open-output-channel 1) filename))
+  (file-open (ucode-primitive new-file-open-output-channel 2) filename))
 
 (define (file-open-io-channel filename)
-  (file-open (ucode-primitive file-open-io-channel 1) filename))
+  (file-open (ucode-primitive new-file-open-io-channel 2) filename))
 
 (define (file-open-append-channel filename)
-  (file-open (ucode-primitive file-open-append-channel 1) filename))
+  (file-open (ucode-primitive new-file-open-append-channel 2) filename))
 
 (define (channel-file-length channel)
   ((ucode-primitive file-length-new 1) (channel-descriptor channel)))

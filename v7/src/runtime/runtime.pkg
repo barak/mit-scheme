@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.270 1996/05/14 00:53:56 cph Exp $
+$Id: runtime.pkg,v 14.271 1996/05/18 06:16:11 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -1725,7 +1725,7 @@ MIT in each case. |#
 	  channel-descriptor)
   (export (runtime socket)
 	  channel-descriptor
-	  make-channel)
+	  open-channel)
   (export (runtime subprocess)
 	  channel-descriptor)
   (export (runtime generic-i/o-port)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.7 1996/05/17 17:49:45 cph Exp $
+$Id: socket.scm,v 1.8 1996/05/18 06:15:24 cph Exp $
 
 Copyright (c) 1990-96 Massachusetts Institute of Technology
 
@@ -50,10 +50,11 @@ MIT in each case. |#
 (define (open-tcp-stream-socket-channel host-name service)
   (let ((host (vector-ref (get-host-by-name host-name) 0))
 	(port (tcp-service->port service)))
-    (without-background-interrupts
-     (lambda ()
-       (make-channel
-	((ucode-primitive open-tcp-stream-socket 2) host port))))))
+    (open-channel
+     (lambda (p)
+       (with-thread-timer-stopped
+	 (lambda ()
+	   ((ucode-primitive new-open-tcp-stream-socket 3) host port p)))))))
 
 (define (get-host-by-name host-name)
   (with-thread-timer-stopped
@@ -61,16 +62,20 @@ MIT in each case. |#
       ((ucode-primitive get-host-by-name 1) host-name))))
 
 (define (open-unix-stream-socket-channel filename)
-  (without-background-interrupts
-   (lambda ()
-     (make-channel ((ucode-primitive open-unix-stream-socket 1) filename)))))
+  (open-channel
+   (lambda (p)
+     (with-thread-timer-stopped
+       (lambda ()
+	 ((ucode-primitive new-open-unix-stream-socket 2) filename p))))))
 
 (define (open-tcp-server-socket service)
-  (without-background-interrupts
-   (lambda ()
-     (make-channel
-      ((ucode-primitive open-tcp-server-socket 1)
-       (tcp-service->port service))))))
+  (open-channel
+   (lambda (p)
+     (with-thread-timer-stopped
+       (lambda ()
+	 ((ucode-primitive new-open-tcp-server-socket 2)
+	  (tcp-service->port service)
+	  p))))))
 
 (define (tcp-service->port service)
   (if (exact-nonnegative-integer? service)
@@ -86,23 +91,16 @@ MIT in each case. |#
 (define (tcp-server-connection-accept server-socket block?)
   (let ((peer-address (allocate-host-address)))
     (let ((channel
-	   (with-channel-blocking server-socket false
+	   (with-channel-blocking server-socket block?
 	     (lambda ()
-	       (let loop ()
-		 (or (without-background-interrupts
-		      (lambda ()
-			(let ((descriptor
-			       ((ucode-primitive tcp-server-connection-accept
-						 2)
-				(channel-descriptor server-socket)
-				peer-address)))
-			  (and descriptor
-			       (make-channel descriptor)))))
-		     (and block?
-			  (begin
-			    (if (other-running-threads?)
-				(yield-current-thread))
-			    (loop)))))))))
+	       (open-channel
+		(lambda (p)
+		  (with-thread-timer-stopped
+		    (lambda ()
+		      ((ucode-primitive new-tcp-server-connection-accept 3)
+		       (channel-descriptor server-socket)
+		       peer-address
+		       p)))))))))
       (if channel
 	  (let ((port (make-generic-i/o-port channel channel 64 64)))
 	    (values port port peer-address))
