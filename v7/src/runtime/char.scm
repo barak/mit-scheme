@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.5 1995/11/04 02:51:18 cph Exp $
+$Id: char.scm,v 14.6 1997/04/20 05:10:43 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,53 +55,170 @@ MIT in each case. |#
   (make-char code 0))
 
 (define-integrable (char=? x y)
-  (= (char->integer x) (char->integer y)))
+  (fix:= (char->integer x) (char->integer y)))
 
 (define-integrable (char<? x y)
-  (< (char->integer x) (char->integer y)))
+  (fix:< (char->integer x) (char->integer y)))
 
 (define-integrable (char<=? x y)
-  (<= (char->integer x) (char->integer y)))
+  (fix:<= (char->integer x) (char->integer y)))
 
 (define-integrable (char>? x y)
-  (> (char->integer x) (char->integer y)))
+  (fix:> (char->integer x) (char->integer y)))
 
 (define-integrable (char>=? x y)
-  (>= (char->integer x) (char->integer y)))
+  (fix:>= (char->integer x) (char->integer y)))
 
 (define-integrable (char-ci->integer char)
   (char->integer (char-upcase char)))
 
 (define-integrable (char-ci=? x y)
-  (= (char-ci->integer x) (char-ci->integer y)))
+  (fix:= (char-ci->integer x) (char-ci->integer y)))
 
 (define-integrable (char-ci<? x y)
-  (< (char-ci->integer x) (char-ci->integer y)))
+  (fix:< (char-ci->integer x) (char-ci->integer y)))
 
 (define-integrable (char-ci<=? x y)
-  (<= (char-ci->integer x) (char-ci->integer y)))
+  (fix:<= (char-ci->integer x) (char-ci->integer y)))
 
 (define-integrable (char-ci>? x y)
-  (> (char-ci->integer x) (char-ci->integer y)))
+  (fix:> (char-ci->integer x) (char-ci->integer y)))
 
 (define-integrable (char-ci>=? x y)
-  (>= (char-ci->integer x) (char-ci->integer y)))
+  (fix:>= (char-ci->integer x) (char-ci->integer y)))
 
 (define 0-code)
 (define upper-a-code)
 (define lower-a-code)
-(define space-char)
 (define hyphen-char)
 (define backslash-char)
 
 (define (initialize-package!)
   (set! 0-code (char-code (ascii->char #x30)))
-  (set! upper-a-code (char-code (ascii->char #x41)))
-  (set! lower-a-code (char-code (ascii->char #x61)))
-  (set! space-char (ascii->char #x20))
+  ;; Next two codes are offset by 10 to speed up CHAR->DIGIT.
+  (set! upper-a-code (fix:- (char-code (ascii->char #x41)) 10))
+  (set! lower-a-code (fix:- (char-code (ascii->char #x61)) 10))
   (set! hyphen-char (ascii->char #x2D))
-  (set! backslash-char (ascii->char #x5C)))
+  (set! backslash-char (ascii->char #x5C))
+  unspecific)
 
+(define (digit->char digit #!optional radix)
+  (if (not (fix:fixnum? digit))
+      (error:wrong-type-argument digit "digit" 'DIGIT->CHAR))
+  (and (fix:<= 0 digit)
+       (fix:< digit
+	      (cond ((default-object? radix)
+		     10)
+		    ((and (fix:fixnum? radix)
+			  (fix:<= 2 radix) (fix:<= radix 36))
+		     radix)
+		    (else
+		     (error:wrong-type-argument radix "radix" 'DIGIT->CHAR))))
+       (string-ref "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" digit)))
+
+(define (char->digit char #!optional radix)
+  (if (not (char? char))
+      (error:wrong-type-argument char "character" 'CHAR->DIGIT))
+  (and (fix:= 0 (char-bits char))
+       (let ((code (char-code char))
+	     (radix
+	      (cond ((default-object? radix)
+		     10)
+		    ((and (fix:fixnum? radix)
+			  (fix:<= 2 radix) (fix:<= radix 36))
+		     radix)
+		    (else
+		     (error:wrong-type-argument radix "radix" 'CHAR->DIGIT)))))
+	 (let ((n (fix:- code 0-code)))
+	   (if (and (fix:<= 0 n) (fix:< n radix))
+	       n
+	       (let ((n (fix:- code upper-a-code)))
+		 (if (and (fix:<= 10 n) (fix:< n radix))
+		     n
+		     (let ((n (fix:- code lower-a-code)))
+		       (if (and (fix:<= 10 n) (fix:< n radix))
+			   n
+			   #f)))))))))
+
+;;;; Character Names
+
+(define (name->char string)
+  (let ((end (string-length string))
+	(bits '()))
+    (define (loop start)
+      (let ((left (fix:- end start)))
+	(cond ((fix:= 0 left)
+	       (error "Missing character name"))
+	      ((fix:= 1 left)
+	       (let ((char (string-ref string start)))
+		 (if (char-graphic? char)
+		     (char-code char)
+		     (error "Non-graphic character" char))))
+	      (else
+	       (let ((hyphen (substring-find-next-char string start end
+						       hyphen-char)))
+		 (if (not hyphen)
+		     (name->code string start end)
+		     (let ((bit (-map-> named-bits string start hyphen)))
+		       (if (not bit)
+			   (name->code string start end)
+			   (begin (if (not (memv bit bits))
+				      (set! bits (cons bit bits)))
+				  (loop (fix:+ hyphen 1)))))))))))
+    (let ((code (loop 0)))
+      (make-char code (apply + bits)))))
+
+(define (name->code string start end)
+  (if (substring-ci=? string start end "Newline" 0 7)
+      (char-code char:newline)
+      (or (-map-> named-codes string start end)
+	  (error "Unknown character name" (substring string start end)))))
+
+(define (char->name char #!optional slashify?)
+  (if (default-object? slashify?) (set! slashify? false))
+  (define (loop weight bits)
+    (if (fix:= 0 bits)
+	(let ((code (char-code char)))
+	  (let ((base-char (code->char code)))
+	    (cond ((<-map- named-codes code))
+		  ((and slashify?
+			(not (fix:= 0 (char-bits char)))
+			(or (char=? base-char backslash-char)
+			    (char-set-member? char-set/atom-delimiters
+					      base-char)))
+		   (string-append "\\" (string base-char)))
+		  ((char-graphic? base-char)
+		   (string base-char))
+		  (else
+		   (string-append "<code "
+				  (write-to-string code)
+				  ">")))))
+	(let ((qr (integer-divide bits 2)))
+	  (let ((rest (loop (fix:* weight 2) (integer-divide-quotient qr))))
+	    (if (fix:= 0 (integer-divide-remainder qr))
+		rest
+		(string-append (or (<-map- named-bits weight)
+				   (string-append "<bit "
+						  (write-to-string weight)
+						  ">"))
+			       "-"
+			       rest))))))
+  (loop 1 (char-bits char)))
+
+(define (-map-> alist string start end)
+  (and (not (null? alist))
+       (let ((key (caar alist)))
+	 (if (substring-ci=? string start end
+			     key 0 (string-length key))
+	     (cdar alist)
+	     (-map-> (cdr alist) string start end)))))
+
+(define (<-map- alist n)
+  (and (not (null? alist))
+       (if (fix:= n (cdar alist))
+	   (caar alist)
+	   (<-map- (cdr alist) n))))
+
 (define named-codes
   '(
     ;; Some are aliases for previous definitions, and will not appear
@@ -172,115 +289,3 @@ MIT in each case. |#
     ("T" . #x10)
     ("Top" . #x10)
     ))
-
-(define (-map-> alist string start end)
-  (define (loop entries)
-    (and (not (null? entries))
-	 (let ((key (caar entries)))
-	   (if (substring-ci=? string start end
-			       key 0 (string-length key))
-	       (cdar entries)
-	       (loop (cdr entries))))))
-  (loop alist))
-
-(define (<-map- alist n)
-  (define (loop entries)
-    (and (not (null? entries))
-	 (if (= n (cdar entries))
-	     (caar entries)
-	     (loop (cdr entries)))))
-  (loop alist))
-
-(define (digit->char digit #!optional radix)
-  (define exact-integer? fix:fixnum?)	; good enough
-  (let ((radix
-	 (cond ((default-object? radix) 10)
-	       ((and (exact-integer? radix) (<= 2 radix) (<= radix 36)) radix)
-	       (else (error:wrong-type-argument radix "Radix" 'DIGIT->CHAR)))))
-    (if (exact-integer? digit)
-	(and (<= 0 digit) (< digit radix)
-	     (string-ref "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" digit))
-	(error:wrong-type-argument digit "exact integer" 'DIGIT->CHAR))))
-
-
-(define (char->digit char #!optional radix)
-  (define exact-integer? fix:fixnum?)	; good enough
-  (let ((radix
-	 (cond ((default-object? radix)  10)
-	       ((and (exact-integer? radix) (<= 2 radix) (<= radix 36)) radix)
-	       (else (error:wrong-type-argument radix "Radix" 'CHAR->DIGIT)))))
-    (if (not (char? char))
-	(error:wrong-type-argument char "character" 'CHAR->DIGIT))
-    (and (zero? (char-bits char))
-	 (let ((code (char-code char)))
-	   (define (try base-digit base-code)
-	     (let ((n (fix:+ base-digit (fix:- code base-code))))
-	       (and (<= base-digit n)
-		    (< n radix)
-		    n)))
-	   (or (try 0 0-code)
-	       (try 10 upper-a-code)
-	       (try 10 lower-a-code))))))
-
-(define (name->char string)
-  (let ((end (string-length string))
-	(bits '()))
-    (define (loop start)
-      (let ((left (- end start)))
-	(cond ((zero? left)
-	       (error "Missing character name"))
-	      ((= left 1)
-	       (let ((char (string-ref string start)))
-		 (if (char-graphic? char)
-		     (char-code char)
-		     (error "Non-graphic character" char))))
-	      (else
-	       (let ((hyphen (substring-find-next-char string start end
-						       hyphen-char)))
-		 (if (not hyphen)
-		     (name->code string start end)
-		     (let ((bit (-map-> named-bits string start hyphen)))
-		       (if (not bit)
-			   (name->code string start end)
-			   (begin (if (not (memv bit bits))
-				      (set! bits (cons bit bits)))
-				  (loop (1+ hyphen)))))))))))
-    (let ((code (loop 0)))
-      (make-char code (apply + bits)))))
-
-(define (name->code string start end)
-  (if (substring-ci=? string start end "Newline" 0 7)
-      (char-code char:newline)
-      (or (-map-> named-codes string start end)
-	  (error "Unknown character name" (substring string start end)))))
-
-(define (char->name char #!optional slashify?)
-  (if (default-object? slashify?) (set! slashify? false))
-  (define (loop weight bits)
-    (if (zero? bits)
-	(let ((code (char-code char)))
-	  (let ((base-char (code->char code)))
-	    (cond ((<-map- named-codes code))
-		  ((and slashify?
-			(not (zero? (char-bits char)))
-			(or (char=? base-char backslash-char)
-			    (char-set-member? char-set/atom-delimiters
-					      base-char)))
-		   (string-append "\\" (string base-char)))
-		  ((char-graphic? base-char)
-		   (string base-char))
-		  (else
-		   (string-append "<code "
-				  (write-to-string code)
-				  ">")))))
-	(let ((qr (integer-divide bits 2)))
-	  (let ((rest (loop (* weight 2) (integer-divide-quotient qr))))
-	    (if (zero? (integer-divide-remainder qr))
-		rest
-		(string-append (or (<-map- named-bits weight)
-				   (string-append "<bit "
-						  (write-to-string weight)
-						  ">"))
-			       "-"
-			       rest))))))
-  (loop 1 (char-bits char)))
