@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosfile.scm,v 1.42 2003/07/12 04:20:34 cph Exp $
+$Id: dosfile.scm,v 1.43 2003/07/14 20:23:43 cph Exp $
 
 Copyright 1995,1996,1999,2000,2002,2003 Massachusetts Institute of Technology
 
@@ -449,6 +449,7 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
      ("xht" . html)
      ("xhtml" . html)
      ("xml" . html)
+     ("xsl" . html)
      ("y" . c))))
 
 (define (os/init-file-name)

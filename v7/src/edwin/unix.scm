@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unix.scm,v 1.115 2003/07/12 04:19:11 cph Exp $
+$Id: unix.scm,v 1.116 2003/07/14 20:23:47 cph Exp $
 
 Copyright 1989,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1999,2000,2002,2003 Massachusetts Institute of Technology
@@ -334,6 +334,7 @@ Includes the new backup.  Must be > 0."
      ("xht" . html)
      ("xhtml" . html)
      ("xml" . html)
+     ("xsl" . html)
      ("y" . c))))
 
 (define (os/init-file-name) "~/.edwin")
