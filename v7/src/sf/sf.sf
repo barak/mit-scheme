@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.sf,v 4.4 1989/08/03 23:39:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.sf,v 4.5 1989/10/26 06:28:11 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -32,7 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-(fluid-let ((sf/default-syntax-table system-global-syntax-table)	    (sf/top-level-definitions 
+(fluid-let ((sf/default-syntax-table syntax-table/system-internal)
+	    (sf/top-level-definitions 
 	     '(ACCESS?
 	       ASSIGNMENT?
 	       COMBINATION?

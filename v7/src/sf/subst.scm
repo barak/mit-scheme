@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 4.4 1988/11/05 22:14:02 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 4.5 1989/10/26 06:28:14 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -806,9 +806,8 @@ forms are simply removed.
   (map make-primitive-procedure
        '(PRIMITIVE-TYPE PRIMITIVE-TYPE?
          NOT EQ? NULL? PAIR? ZERO? POSITIVE? NEGATIVE?
-	 &= &< &> &+ &- &* &/ INTEGER-DIVIDE 1+ -1+
-	 TRUNCATE ROUND FLOOR CEILING
-	 SQRT EXP LOG SIN COS &ATAN)))
+	 &= &< &> &+ &- &* &/ 1+ -1+)))
+
 (define (foldable-operator? operator)
   (and (constant? operator)
        (primitive-procedure? (constant/value operator))
