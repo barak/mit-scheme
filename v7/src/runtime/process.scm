@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.24 1999/02/01 05:13:24 cph Exp $
+$Id: process.scm,v 1.25 2000/05/14 03:30:32 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,26 +24,27 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations))
 
-(define subprocesses)
+(define subprocess-finalizer)
 (define scheme-subprocess-environment)
 (define global-status-tick)
 
 (define (initialize-package!)
+  (set! subprocess-finalizer
+	(make-gc-finalizer (ucode-primitive process-delete 1) #t))
   (reset-package!)
   (add-event-receiver! event:after-restore reset-package!)
   (add-event-receiver! event:before-exit delete-all-processes))
 
 (define (reset-package!)
-  (set! subprocesses '())
   (set! scheme-subprocess-environment ((ucode-primitive scheme-environment 0)))
   (set! global-status-tick (cons false false))
   unspecific)
 
 (define (delete-all-processes)
-  (for-each subprocess-delete subprocesses))
+  (for-each subprocess-delete (subprocess-list)))
 
 (define (subprocess-list)
-  (list-copy subprocesses))
+  (gc-finalizer-elements subprocess-finalizer))
 
 (define-structure (subprocess
 		   (constructor %make-subprocess
@@ -186,7 +187,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    (set-subprocess-exit-reason!
 		     process
 		     ((ucode-primitive process-reason 1) index))
-		    (set! subprocesses (cons process subprocesses))
+		    (add-to-gc-finalizer! subprocess-finalizer process index)
 		    process))))))))
     (if (and (eq? ctty 'FOREGROUND)
 	     (eqv? (%subprocess-status process) 0))
@@ -198,8 +199,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (lambda ()
      (if (subprocess-index process)
 	 (begin
-	   ((ucode-primitive process-delete 1) (subprocess-index process))
-	   (set! subprocesses (delq! process subprocesses))
+	   (remove-from-gc-finalizer! subprocess-finalizer process)
 	   (set-subprocess-index! process false)
 	   (%close-subprocess-i/o process))))))
 
@@ -277,7 +277,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (for-each (lambda (process)
 		  (if (memq (subprocess-status process) '(EXITED SIGNALLED))
 		      (close-subprocess-i/o process)))
-		subprocesses)))
+		(subprocess-list))))
 
 (define-integrable subprocess-job-control-available?
   (ucode-primitive os-job-control? 0))
