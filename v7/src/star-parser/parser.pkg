@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.pkg,v 1.7 2001/07/11 21:22:24 cph Exp $
+;;; $Id: parser.pkg,v 1.8 2001/07/12 03:08:30 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -74,10 +74,15 @@
   (files "unicode")
   (parent ())
   (export ()
+	  8-bit-alphabet?
 	  alphabet+
 	  alphabet-
+	  alphabet->char-set
+	  alphabet->code-points
+	  alphabet->string
 	  alphabet?
 	  char-in-alphabet?
+	  char-set->alphabet
 	  code-point->utf8-string
 	  code-point-in-alphabet?
 	  code-points->alphabet
@@ -85,4 +90,5 @@
 	  read-utf8-code-point
 	  string->alphabet
 	  unicode-code-point?
-	  utf8-string->code-point))
+	  utf8-string->code-point
+	  well-formed-code-points-list?))

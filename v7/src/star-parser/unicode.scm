@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unicode.scm,v 1.1 2001/07/11 21:23:02 cph Exp $
+;;; $Id: unicode.scm,v 1.2 2001/07/12 03:08:33 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -48,10 +48,10 @@
 	      0)))
 
 (define-integrable (alphabet-low-set! low code-point)
-  (vector-set! low
-	       (fix:lsh code-point -3)
-	       (fix:or (vector-ref low (fix:lsh code-point -3))
-		       (fix:lsh 1 (fix:and code-point 7)))))
+  (vector-8b-set! low
+		  (fix:lsh code-point -3)
+		  (fix:or (vector-8b-ref low (fix:lsh code-point -3))
+			  (fix:lsh 1 (fix:and code-point 7)))))
 
 (define null-alphabet
   (make-alphabet (make-alphabet-low) '#() '#()))
@@ -83,18 +83,8 @@
 (define (char-in-alphabet? char alphabet)
   (code-point-in-alphabet? (char-code char) alphabet))
 
-(define (string->alphabet string)
-  (if (not (string? string))
-      (error:wrong-type-argument string "string" 'STRING->ALPHABET))
-  (let ((n (string-length string))
-	(low (make-alphabet-low)))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i n))
-      (alphabet-low-set! low (vector-8b-ref string i)))
-    (make-alphabet low '#() '#())))
-
 (define (code-points->alphabet items)
-  (if (not (well-formed-items? items))
+  (if (not (well-formed-code-points-list? items))
       (error:wrong-type-argument items "code-points list"
 				 'CODE-POINTS->ALPHABET))
   (call-with-values (lambda () (split-list items #x800))
@@ -139,7 +129,7 @@
 			 (cons (cons limit (cdr item)) items)))))
 	(values low '()))))
 
-(define (well-formed-items? items)
+(define (well-formed-code-points-list? items)
   (or (not (pair? items))
       (and (well-formed-item? (car items))
 	   (let loop ((a (car items)) (items (cdr items)))
@@ -157,6 +147,79 @@
 	   (unicode-code-point? (cdr item))
 	   (< (car item) (cdr item)))
       (unicode-code-point? item)))
+
+(define (char-set->alphabet char-set)
+  (let ((low (make-alphabet-low)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:= i #x100))
+      (alphabet-low-set! low (char-set-member? char-set (integer->char i))))
+    (make-alphabet low '#() '#())))
+
+(define (alphabet->char-set alphabet)
+  (predicate->char-set (lambda (char) (char-in-alphabet? char alphabet))))
+
+(define (string->alphabet string)
+  (if (not (string? string))
+      (error:wrong-type-argument string "string" 'STRING->ALPHABET))
+  (let ((n (string-length string))
+	(low (make-alphabet-low)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:= i n))
+      (alphabet-low-set! low (vector-8b-ref string i)))
+    (make-alphabet low '#() '#())))
+
+(define (alphabet->string alphabet)
+  (let loop ((i 0) (chars '()))
+    (if (fix:< i #x100)
+	(loop (fix:+ i 1)
+	      (if (code-point-in-alphabet? i alphabet)
+		  (cons (integer->char i) chars)
+		  chars))
+	(apply string (reverse! chars)))))
+
+(define (8-bit-alphabet? alphabet)
+  (and (fix:= (vector-length (alphabet-high1 alphabet)) 0)
+       (let ((low (alphabet-low alphabet)))
+	 (let loop ((i #x20))
+	   (or (fix:= i #x100)
+	       (and (fix:= (vector-8b-ref low i) 0)
+		    (loop (fix:+ i 1))))))))
+
+(define (alphabet->code-points alphabet)
+  (append! (alphabet-low->code-points (alphabet-low alphabet))
+	   (alphabet-high->code-points (alphabet-high1 alphabet)
+				       (alphabet-high2 alphabet))))
+
+(define (alphabet-low->code-points low)
+  (let find-lower ((i 0) (result '()))
+    (if (fix:< i #x800)
+	(if (alphabet-low-ref low i)
+	    (let ((lower i))
+	      (let find-upper ((i (fix:+ i 1)))
+		(if (fix:< i #x800)
+		    (if (alphabet-low-ref low i)
+			(find-upper (fix:+ i 1))
+			(find-lower i
+				    (cons (if (fix:= lower (fix:- i 1))
+					      lower
+					      (cons lower (fix:- i 1)))
+					  result)))
+		    (reverse!
+		     (cons (if (fix:= lower (fix:- i 1))
+			       lower
+			       (cons lower (fix:- i 1)))
+			   result)))))
+	    (find-lower (fix:+ i 1) result))
+	(reverse! result))))
+
+(define (alphabet-high->code-points lower upper)
+  (let ((n (vector-length lower)))
+    (let loop ((i 0) (result '()))
+      (if (fix:< i n)
+	  (loop (fix:+ i 1)
+		(cons (cons (vector-ref lower i) (vector-ref upper i))
+		      result))
+	  (reverse! result)))))
 
 (define (alphabet+ . alphabets)
   (for-each (lambda (alphabet)
