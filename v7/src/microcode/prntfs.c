@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.7 1996/10/07 17:54:58 cph Exp $
+$Id: prntfs.c,v 1.8 1996/11/18 21:13:55 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -54,6 +54,11 @@ static void EXFUN (protect_fd, (int fd));
 #ifndef FILE_TOUCH_OPEN_TRIES
 #define FILE_TOUCH_OPEN_TRIES 5
 #endif
+
+#define STAT_IGNORE_ERROR_P(code)					\
+  (((code) == ERROR_FILE_NOT_FOUND)					\
+   || ((code) == ERROR_PATH_NOT_FOUND)					\
+   || ((code) == ERROR_SHARING_VIOLATION))
 
 struct file_info
 {
@@ -94,7 +99,7 @@ get_file_info (const char * namestring, struct file_info * info)
     DWORD code = (GetLastError ());
     if (hfile != INVALID_HANDLE_VALUE)
       (void) CloseHandle (hfile);
-    if (! ((code == ERROR_FILE_NOT_FOUND) || (code == ERROR_PATH_NOT_FOUND)))
+    if (!STAT_IGNORE_ERROR_P (code))
       error_system_call (code, syscall_lstat);
     return (0);
   }
@@ -114,7 +119,7 @@ create_file_for_info (const char * namestring)
   if (hfile == INVALID_HANDLE_VALUE)
     {
       DWORD code = (GetLastError ());
-      if (! ((code == ERROR_FILE_NOT_FOUND) || (code == ERROR_PATH_NOT_FOUND)))
+      if (!STAT_IGNORE_ERROR_P (code))
 	error_system_call (code, syscall_open);
     }
   return (hfile);
@@ -460,8 +465,7 @@ DEFINE_PRIMITIVE ("NT-GET-FILE-ATTRIBUTES", Prim_NT_get_file_attributes, 1, 1, 0
     if (attributes == 0xFFFFFFFF)
       {
 	DWORD error_code = (GetLastError ());
-	if (! ((error_code == ERROR_FILE_NOT_FOUND)
-	       || (error_code == ERROR_PATH_NOT_FOUND)))
+	if (!STAT_IGNORE_ERROR_P (error_code))
 	  error_system_call (error_code, syscall_stat);
 	PRIMITIVE_RETURN (SHARP_F);
       }
