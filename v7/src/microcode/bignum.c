@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.45 1997/07/04 16:02:18 adams Exp $
+$Id: bignum.c,v 9.46 1997/07/08 19:12:51 adams Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -43,6 +43,7 @@ MIT in each case. */
 
 #include "bignmint.h"
 #include "limits.h"
+#include <math.h>
 
 #ifndef MIT_SCHEME
 
@@ -134,6 +135,14 @@ static void EXFUN (bignum_destructive_copy,
 		   (bignum_type, bignum_type));
 static void EXFUN (bignum_destructive_zero,
 		   (bignum_type));
+
+#define ULONG_LENGTH_IN_BITS(digit, len)		\
+do {							\
+  fast unsigned long w = digit;				\
+  len = 0;						\
+  while (w > 0xff) { len += 8; w >>= 8; }		\
+  while (w > 0)    { len += 1; w >>= 1; }		\
+} while (0)
 
 /* Exports */
 
@@ -601,6 +610,10 @@ DEFUN (double_to_bignum, (x), double x)
 
 #undef DTB_WRITE_DIGIT
 
+/*  This version sometimes gets the answer wrong due to rounding errors.
+    It would be slightly better if the digits were accumulated lsb to msb.
+ */
+/*
 double
 DEFUN (bignum_to_double, (bignum), bignum_type bignum)
 {
@@ -615,6 +628,148 @@ DEFUN (bignum_to_double, (bignum), bignum_type bignum)
     return ((BIGNUM_NEGATIVE_P (bignum)) ? (-accumulator) : accumulator);
   }
 }
+*/
+
+double
+DEFUN (bignum_to_double, (bignum), bignum_type bignum)
+{
+  if (BIGNUM_ZERO_P (bignum))
+    return (0.0);
+
+  {
+    bignum_length_type length = (BIGNUM_LENGTH (bignum));
+    bignum_length_type index = length - 1;
+    bignum_length_type scale_words = length - 1;
+    bignum_digit_type msd = (BIGNUM_REF (bignum, (index)));
+#if (FLT_RADIX == 2)
+    int bits_to_get = DBL_MANT_DIG; /* includes implicit 1 */
+#else
+#include "error: must have FLT_RADIX==2"
+#endif
+    double value = 0;
+    bignum_digit_type mask = 0;
+    bignum_digit_type guard_bit_mask = BIGNUM_RADIX>>1;
+    bignum_digit_type rounding_correction = 0;
+    int current_digit_bit_count = 0;
+
+    ULONG_LENGTH_IN_BITS (msd, current_digit_bit_count);
+    mask = (1 << (current_digit_bit_count)) - 1;
+
+    while (1) {
+      if (current_digit_bit_count > bits_to_get) {
+	guard_bit_mask = (1 << (current_digit_bit_count - bits_to_get - 1));
+	mask &= ~((guard_bit_mask << 1) - 1);
+	current_digit_bit_count = bits_to_get;
+	bits_to_get = 0;
+      } else {
+	bits_to_get -= current_digit_bit_count;
+      }
+
+      value = (value * BIGNUM_RADIX) + ((BIGNUM_REF (bignum, index)) & mask);
+
+      if (bits_to_get == 0) {
+	scale_words = index;
+	if (current_digit_bit_count == BIGNUM_DIGIT_LENGTH) {
+	  if (index == 0) /* there is no guard bit */
+	    goto finished;
+	  guard_bit_mask = (1 << (BIGNUM_DIGIT_LENGTH - 1));
+	  rounding_correction = 1;
+	  index -= 1;
+	} else {
+	  rounding_correction = (guard_bit_mask << 1);
+	}
+	break;
+      }
+      if (index == 0)  /* fewer than DBL_MANT_DIG bits */
+	goto finished;
+
+      index -= 1;
+      current_digit_bit_count = BIGNUM_DIGIT_LENGTH;
+      mask = BIGNUM_DIGIT_MASK;
+    }
+
+    /* round-to-even depending on lsb, guard and following bits: lgfffff */
+
+    if ((BIGNUM_REF(bignum,index) & guard_bit_mask) == 0) /* case x0xxxx */
+      goto round_down;
+
+    if ((BIGNUM_REF(bignum,index) & (guard_bit_mask-1)) != 0) /* case x1xx1x */
+      goto round_up;
+
+    /* cases 110000 and 1101xx: test "odd?", i.e. round-to-even rounds up */
+    if ((guard_bit_mask << 1) == BIGNUM_RADIX) {
+      if (((BIGNUM_REF (bignum, index+1)) & 1) != 0)  /* "odd?" */
+	goto round_up;
+    } else {
+      if (((BIGNUM_REF (bignum, index)) & (guard_bit_mask << 1)) != 0)
+	goto round_up;
+    }
+
+    if (index==0)   /* case 010000, no more words of following bits */
+      goto finished;
+
+    { /* distinguish between cases 0100...00 and 0100..1xx, multiple words */
+      bignum_length_type index2 = index - 1;
+      while (index2 >= 0) {
+	if ((BIGNUM_REF (bignum, index2)) != 0)
+	  goto round_up;
+	index2--;
+      }
+      goto round_down;
+    }
+
+  round_up:
+    value += rounding_correction;
+  round_down:
+    /* note, ldexp `sticks' at the maximal non-infinity value, which
+       is a reasonable compromise for numbers with DBL_MAX_EXP bits
+       that round up */
+    if (scale_words > 0)
+      value = ldexp (value, scale_words * BIGNUM_DIGIT_LENGTH);
+
+  finished:
+    return ((BIGNUM_NEGATIVE_P (bignum)) ? (-value) : value);
+  }
+}
+
+/*
+;; Code to test bignum_to_double
+
+(declare (usual-integrations))
+
+(define integer->flonum (make-primitive-procedure 'integer->flonum 2))
+
+(define (check n)
+  (let ((f1 (integer->flonum n #b10))
+	(f2 (exact->inexact n)))
+    (if (and f1 (= f1 f2))
+	(number->string f1 2)
+	(begin
+	  (pp n)
+	  (pp (number->string f1 2))
+	  (pp (number->string f2 2))))))
+
+(define (test)
+  (define n 0)
+  (do ((i 0 (+ i 1)))			; guard bit zone patterns
+      ((= i 256))
+    (do ((j 0 (+ j 1)))			; general word alignment
+	((= j 30))
+      (do ((e 0 (+ e 1)))		; random `insignificant' bit
+	  ((= e 2))
+	(do ((up 0 (+ up 1)))		; test potential for carry
+	    ((= up 2))
+	  (do ((end-pad 0 (+ end-pad 100)))
+	      ((> end-pad 100))
+	    (set! n (+ n 1)) (if (= (remainder n 1000) 0) (pp `(test ,n)))
+	    (let ((s (string-append "1"
+				   (make-string 48 (vector-ref '#(#\0 #\1) up))
+				   (string-pad-left (number->string i 2) 8 #\0)
+				    (make-string (* j 23) #\0) ; gcd(23,30)=1
+				    (number->string e)
+				    (make-string end-pad #\0))))
+	      (check (string->number s 2)))))))))
+*/
 
 int
 DEFUN (bignum_fits_in_word_p, (bignum, word_length, twos_complement_p),
@@ -650,15 +805,13 @@ DEFUN (bignum_length_in_bits, (bignum), bignum_type bignum)
   {
     bignum_length_type index = ((BIGNUM_LENGTH (bignum)) - 1);
     fast bignum_digit_type digit = (BIGNUM_REF (bignum, index));
+    fast bignum_digit_type delta = 0;
     fast bignum_type result = (bignum_allocate (2, 0));
     (BIGNUM_REF (result, 0)) = index;
     (BIGNUM_REF (result, 1)) = 0;
     bignum_destructive_scale_up (result, BIGNUM_DIGIT_LENGTH);
-    while (digit > 0)
-      {
-	bignum_destructive_add (result, ((bignum_digit_type) 1));
-	digit >>= 1;
-      }
+    ULONG_LENGTH_IN_BITS (digit, delta);
+    bignum_destructive_add (result, ((bignum_digit_type) delta));
     return (bignum_trim (result));
   }
 }
@@ -679,14 +832,9 @@ DEFUN (bignum_shift_left, (n, m), bignum_type n AND unsigned long m)
   unsigned long delta = 0;
   if (m == 0)
     return (n);
-  {
-    bignum_digit_type digit = (BIGNUM_REF (n, (ln - 1)));
-    while (digit > 0)
-      {
-	delta += 1;
-	digit >>= 1;
-      }
-  }
+
+  ULONG_LENGTH_IN_BITS ((BIGNUM_REF (n, (ln - 1))), delta);
+
   {
     unsigned long zeroes = (m / BIGNUM_DIGIT_LENGTH);
     unsigned long shift = (m % BIGNUM_DIGIT_LENGTH);
@@ -727,14 +875,9 @@ DEFUN (unsigned_long_to_shifted_bignum, (n, m, sign),
   unsigned long delta = 0;
   if (n == 0)
     return (BIGNUM_ZERO ());
-  {
-    unsigned long n1 = n;
-    while (n1 > 0)
-      {
-	delta += 1;
-	n1 >>= 1;
-      }
-  }
+
+  ULONG_LENGTH_IN_BITS (n, delta);
+
   {
     unsigned long zeroes = (m / BIGNUM_DIGIT_LENGTH);
     unsigned long shift = (m % BIGNUM_DIGIT_LENGTH);
@@ -776,13 +919,8 @@ DEFUN (digit_stream_to_bignum,
   {
     bignum_length_type length;
     {
-      fast unsigned int radix_copy = radix;
       fast unsigned int log_radix = 0;
-      while (radix_copy > 0)
-	{
-	  radix_copy >>= 1;
-	  log_radix += 1;
-	}
+      ULONG_LENGTH_IN_BITS (radix, log_radix);
       /* This length will be at least as large as needed. */
       length = (BIGNUM_BITS_TO_DIGITS (n_digits * log_radix));
     }
