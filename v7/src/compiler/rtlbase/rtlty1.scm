@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.7 1988/05/19 15:22:29 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.8 1988/08/22 20:10:18 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -57,6 +57,9 @@ MIT in each case. |#
 (define-rtl-expression offset-address rtl: register number)
 (define-rtl-expression unassigned rtl:)
 
+(define-rtl-expression generic-unary rtl: operator operand)
+(define-rtl-expression generic-binary rtl: operator operand-1 operand-2)
+
 (define-rtl-expression fixnum-1-arg rtl: operator operand)
 (define-rtl-expression fixnum-2-args rtl: operator operand-1 operand-2)
 
@@ -66,6 +69,8 @@ MIT in each case. |#
 (define-rtl-predicate true-test % expression)
 (define-rtl-predicate type-test % expression type)
 (define-rtl-predicate unassigned-test % expression)
+
+(define-rtl-predicate overflow-test rtl:)
 
 (define-rtl-statement assign % address expression)
 
