@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.2 1988/06/16 06:31:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.3 1988/10/21 00:18:13 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -70,10 +70,11 @@ MIT in each case. |#
   (install))
 
 (define-primitives
-  (setup-timer-interrupt 2)
-  get-next-interrupt-character
+  (clear-interrupts! 1)
   check-and-clean-up-input-channel
-  set-fixed-objects-vector!)
+  get-next-interrupt-character
+  set-fixed-objects-vector!
+  (setup-timer-interrupt 2))
 
 (define-integrable stack-overflow-slot 0)
 (define-integrable gc-slot 2)
@@ -89,6 +90,7 @@ MIT in each case. |#
 
 (define (timer-interrupt-handler interrupt-code interrupt-enables)
   interrupt-code interrupt-enables
+  (clear-interrupts! interrupt-bit/timer)
   (timer-interrupt))
 
 (define timer-interrupt)
@@ -98,6 +100,7 @@ MIT in each case. |#
 
 (define (suspend-interrupt-handler interrupt-code interrupt-enables)
   interrupt-code interrupt-enables
+  (clear-interrupts! interrupt-bit/suspend)
   (bind-condition-handler '() (lambda (condition) condition (%exit))
     (lambda ()
       (if (not (disk-save (merge-pathnames (string->pathname "scheme_suspend")
@@ -119,6 +122,7 @@ MIT in each case. |#
 
 (define (external-interrupt-handler interrupt-code interrupt-enables)
   interrupt-code
+  (clear-interrupts! interrupt-bit/kbd)
   (external-interrupt (get-next-interrupt-character) interrupt-enables))
 
 (define (with-external-interrupts-handler handler thunk)
