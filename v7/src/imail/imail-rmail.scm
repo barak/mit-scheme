@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.5 2000/01/14 18:07:45 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.6 2000/01/18 20:54:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -280,7 +280,7 @@
 			(let ((inbox (read-rmail-inbox folder pathname #t)))
 			  (let ((n (count-messages inbox)))
 			    (do ((index 0 (fix:+ index 1)))
-				((fix:= i n))
+				((fix:= index n))
 			      (append-message folder
 					      (get-message inbox index))))
 			  inbox))
