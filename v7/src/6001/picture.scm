@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.6 1992/04/13 19:19:13 hal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.7 1992/05/28 21:35:45 u6001 Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -110,7 +110,8 @@ MIT in each case. |#
 			       (x-graphics/display window))
 			      '6001-GRAY-MAP
 			      gm)))))
-      (cond ((find-info visual-class:static-gray 256 256)
+      (cond ((or (find-info visual-class:static-gray 256 256)
+		 (find-info visual-class:gray-scale 256 256))
 	     (make-gray-map 256))
 	    ((find-info visual-class:pseudo-color 250 256)
 	     (make-gray-map 128))
