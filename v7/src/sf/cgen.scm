@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/cgen.scm,v 3.3 1987/03/20 23:49:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/cgen.scm,v 3.4 1987/07/02 20:35:58 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -47,8 +47,10 @@ MIT in each case. |#
 (define (cgen/top-level quotation)
   (let ((block (quotation/block quotation))
 	(expression (quotation/expression quotation)))
-    (cgen/declaration (block/declarations block)
-		      (cgen/expression (list block) expression))))
+    (let ((result (cgen/expression (list block) expression)))
+      (if (open-block? expression)
+	  result
+	  (cgen/declaration (block/declarations block) result)))))
 
 (define (cgen/declaration declarations expression)
   (let ((declarations (maybe-flush-declarations declarations)))
@@ -63,13 +65,15 @@ MIT in each case. |#
       '()
       (let ((declarations (declarations/original declarations)))
 	(if flush-declarations?
-	    (begin (for-each (lambda (declaration)
-			       (if (not (declarations/known? declaration))
-				   (warn "Unused declaration" declaration)))
-			     declarations)
-		   '())
+	    (let loop ((declarations declarations))
+	      (cond ((null? declarations) '())
+		    ((declarations/known? (car declarations))
+		     (loop (cdr declarations)))
+		    (else
+		     (warn "Unused declaration" (car declarations))
+		     (cons (car declarations) (loop (cdr declarations))))))
 	    declarations))))
-
+
 (define (cgen/expressions interns expressions)
   (map (lambda (expression)
 	 (cgen/expression interns expression))
