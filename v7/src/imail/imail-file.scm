@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.71 2001/05/24 01:13:44 cph Exp $
+;;; $Id: imail-file.scm,v 1.72 2001/05/24 17:46:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -49,9 +49,17 @@
   (make-eq-hash-table))
 
 (define-method container-url ((url <pathname-url>))
-  (make-directory-url
-   (directory-pathname
-    (directory-pathname-as-file (pathname-url-pathname url)))))
+  (make-directory-url (pathname-container (pathname-url-pathname url))))
+
+(define-method container-url-for-prompt ((url <pathname-url>))
+  (make-directory-url (pathname-container (pathname-url-pathname url))))
+
+(define-method url-child-name ((url <pathname-url>))
+  (let ((pathname (pathname-url-pathname url)))
+    (enough-namestring pathname (pathname-container pathname))))
+
+(define (pathname-container pathname)
+  (directory-pathname (directory-pathname-as-file pathname)))
 
 (define (define-pathname-url-predicates class
 	  file-predicate
@@ -162,7 +170,7 @@
 		       ""))
 		 (url:encode-string (file-namestring pathname))))
 
-;;;; File folders
+;;;; File URLs
 
 (define-class <file-url> (<folder-url> <pathname-url>))
 (define make-file-url (pathname-url-constructor <file-url>))
@@ -170,13 +178,10 @@
 (define-method url-exists? ((url <file-url>))
   (file-exists? (pathname-url-pathname url)))
 
-(define-method url-presentation-name ((url <file-url>))
-  (file-namestring (pathname-url-pathname url)))
-
 (define-method url-base-name ((url <file-url>))
   (pathname-name (pathname-url-pathname url)))
 
-;;;; File containers
+;;;; Directory URLs
 
 (define-class <directory-url> (<container-url> <pathname-url>))
 
@@ -191,16 +196,21 @@
 (define-method url-exists? ((url <directory-url>))
   (file-directory? (pathname-url-pathname url)))
 
-(define-method url-presentation-name ((url <directory-url>))
-  (let ((pathname (pathname-url-pathname url)))
-    (let ((directory (pathname-directory pathname)))
-      (if (pair? (cdr directory))
-	  (car (last-pair directory))
-	  (->namestring pathname)))))
-
 (define-method make-child-url ((url <directory-url>) name)
   (let ((pathname (merge-pathnames name (pathname-url-pathname url))))
     ((standard-pathname-url-constructor pathname) pathname)))
+
+(define-method container-url-contents ((url <directory-url>))
+  (simple-directory-read (pathname-url-pathname url)
+    (lambda (name directory result)
+      (if (or (string=? name ".") (string=? name ".."))
+	  result
+	  (let* ((pathname
+		  (parse-namestring (string-append directory name) #f #f))
+		 (constructor (pathname-url-filter pathname)))
+	    (if constructor
+		(cons (constructor pathname) result)
+		result))))))
 
 ;;;; Server operations
 
@@ -482,18 +492,6 @@
 (define-method save-resource ((container <file-container>))
   container
   #f)
-
-(define-method container-contents ((container <file-container>))
-  (simple-directory-read (pathname-url-pathname (resource-locator container))
-    (lambda (name directory result)
-      (if (or (string=? name ".") (string=? name ".."))
-	  result
-	  (let* ((pathname
-		  (parse-namestring (string-append directory name) #f #f))
-		 (constructor (pathname-url-filter pathname)))
-	    (if constructor
-		(cons (constructor pathname) result)
-		result))))))
 
 ;;;; Message
 

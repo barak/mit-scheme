@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.159 2001/05/24 01:13:53 cph Exp $
+;;; $Id: imail-imap.scm,v 1.160 2001/05/24 17:46:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -114,32 +114,15 @@
 	 (null? (cdr responses))
 	 (car responses))))
 
-(define-method url-presentation-name ((url <imap-url>))
-  (let* ((mailbox (imap-url-mailbox url))
-	 (end
-	  (let ((n (string-length mailbox)))
-	    (if (string-suffix? "/" mailbox)
-		(fix:- n 1)
-		n))))
-    (substring mailbox
-	       (let ((index (substring-find-previous-char mailbox 0 end #\/)))
-		 (if index
-		     (fix:+ index 1)
-		     0))
-	       end)))
-
-(define-method url-pass-phrase-key ((url <imap-url>))
-  (make-url-string (url-protocol url) (make-imap-url-string url #f)))
-
 (define-method url-base-name ((url <imap-folder-url>))
   (let ((mailbox (imap-url-mailbox url)))
-    (let ((index (string-find-previous-char mailbox #\/)))
+    (let ((index (imap-mailbox-container-slash mailbox)))
       (if index
 	  (string-tail mailbox (fix:+ index 1))
 	  mailbox))))
 
-(define-method make-child-url ((url <imap-container-url>) base-name)
-  (imap-url-new-mailbox url (string-append (imap-url-mailbox url) base-name)))
+(define-method url-pass-phrase-key ((url <imap-url>))
+  (make-url-string (url-protocol url) (make-imap-url-string url #f)))
 
 (define-method parse-url-body (string (default-url <imap-url>))
   (call-with-values (lambda () (parse-imap-url-body string default-url))
@@ -177,20 +160,40 @@
 ;;;; Container heirarchy
 
 (define-method container-url ((url <imap-url>))
-  (imap-url-new-mailbox
-   url
-   (let ((mailbox (imap-url-mailbox url)))
-     (let ((index
-	    (substring-find-previous-char mailbox
-					  0
-					  (let ((n (string-length mailbox)))
-					    (if (string-suffix? "/" mailbox)
-						(fix:- n 1)
-						n))
-					  #\/)))
-       (if index
-	   (string-head mailbox (fix:+ index 1))
-	   (or (get-personal-namespace url) ""))))))
+  (imap-url-new-mailbox url
+			(or (imap-url-container-mailbox url)
+			    "")))
+
+(define-method container-url-for-prompt ((url <imap-url>))
+  (imap-url-new-mailbox url
+			(or (imap-url-container-mailbox url)
+			    (get-personal-namespace url)
+			    "")))
+
+(define-method url-child-name ((url <imap-url>))
+  (let* ((mailbox (imap-url-mailbox url))
+	 (index (imap-mailbox-container-slash mailbox)))
+    (if index
+	(string-tail mailbox (fix:+ index 1))
+	mailbox)))
+
+(define-method make-child-url ((url <imap-container-url>) child-name)
+  (imap-url-new-mailbox url (string-append (imap-url-mailbox url) child-name)))
+
+(define (imap-url-container-mailbox url)
+  (let* ((mailbox (imap-url-mailbox url))
+	 (index (imap-mailbox-container-slash mailbox)))
+    (and index
+	 (string-head mailbox (fix:+ index 1)))))
+
+(define (imap-mailbox-container-slash mailbox)
+  (substring-find-previous-char mailbox
+				0
+				(let ((n (string-length mailbox)))
+				  (if (string-suffix? "/" mailbox)
+				      (fix:- n 1)
+				      n))
+				#\/))
 
 (define (get-personal-namespace url)
   (let ((response
@@ -215,7 +218,7 @@
 			  (string-replace prefix (string-ref delimiter 0) #\/))
 		      prefix)))))))
 
-(define (imap-container-url-contents url)
+(define-method container-url-contents ((url <imap-container-url>))
   (with-open-imap-connection url
     (lambda (connection)
       (map (lambda (response)
@@ -1378,9 +1381,6 @@
 (define-method save-resource ((container <imap-container>))
   container
   #f)
-
-(define-method container-contents ((container <imap-container>))
-  (imap-container-url-contents (resource-locator container)))
 
 ;;;; IMAP command invocation
 

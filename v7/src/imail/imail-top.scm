@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.249 2001/05/24 03:43:17 cph Exp $
+;;; $Id: imail-top.scm,v 1.250 2001/05/24 17:46:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1352,9 +1352,10 @@ The folder's type may not be changed."
 				    'HISTORY 'IMAIL-RENAME-FOLDER-SOURCE
 				    'REQUIRE-MATCH? #t)))
       (list from
-	    (prompt-for-folder "Rename folder to"
-			       (container-url (imail-parse-partial-url from))
-			       'HISTORY 'IMAIL-RENAME-FOLDER-TARGET))))
+	    (prompt-for-folder
+	     "Rename folder to"
+	     (container-url-for-prompt (imail-parse-partial-url from))
+	     'HISTORY 'IMAIL-RENAME-FOLDER-TARGET))))
   (lambda (from to)
     (let ((from (imail-parse-partial-url from))
 	  (to (imail-parse-partial-url to)))
@@ -1383,7 +1384,7 @@ If it doesn't exist, it is created first."
 				 (lambda ()
 				   (imail-parse-partial-url (car history))))))
 			   (and (url? url)
-				(container-url url)))))
+				(container-url-for-prompt url)))))
 		  (imail-default-container))
 	      (url-base-name (imail-parse-partial-url from)))
 	     'HISTORY 'IMAIL-COPY-FOLDER-TARGET))))
@@ -1635,7 +1636,7 @@ Negative argument means search in reverse."
   (let ((container (selected-container #f)))
     (if container
 	(resource-locator container)
-	(container-url (imail-default-url #f)))))
+	(container-url-for-prompt (imail-default-url #f)))))
 
 (define (maybe-prompt-for-folder prompt . options)
   (or (selected-url-string #f)

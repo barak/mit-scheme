@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.134 2001/05/24 03:41:28 cph Exp $
+;;; $Id: imail-core.scm,v 1.135 2001/05/24 17:46:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -133,24 +133,40 @@
 ;; Return #T iff URL both exists and can be opened.
 (define-generic url-is-selectable? (folder-url))
 
-;; Return a reference to the container of URL.
-;; E.g. the container of "imap://localhost/inbox/foo" is
-;; "imap://localhost/inbox/" (except that for IMAP folders, the result
-;; may be affected by the NAMESPACE prefix information).
+;; Return a locator for the container of URL.  E.g. the container URL
+;; of "imap://localhost/inbox/foo" is "imap://localhost/inbox/".
 (define-generic container-url (url))
 
-;; Return the base name of FOLDER-URL.  This is the PATHNAME-NAME of a
-;; file-based folder, and for IMAP it's the part of the mailbox name
-;; following the rightmost delimiter.
-(define-generic url-base-name (folder-url))
+;; Like CONTAINER-URL except that the returned container URL is
+;; allowed to be different from the true container URL when this
+;; results in a better prompt.
+;;
+;; For example, when URL is "imap://localhost/inbox" and the IMAP
+;; server is Cyrus, this will return "imap://localhost/inbox/".
+(define-generic container-url-for-prompt (url))
 
-;; Return a URL that refers to the child NAME of the container
+;; Return the child name of a URL.  The child name of a URL is the
+;; suffix of the URL that uniquely identifies the resource with
+;; respect to its container.
+;;
+;; Here are some examples:
+;;
+;; URL					child name
+;; ---------------------------		----------
+;; imap://localhost/inbox/foo		foo
+;; imap://localhost/inbox/foo/		foo/
+;; file:/usr/home/cph/foo.mail		foo.mail
+(define-generic url-child-name (url))
+
+;; Return a URL that refers to the child CHILD-NAME of the container
 ;; referred to by CONTAINER-URL.
-(define-generic make-child-url (container-url name))
+(define-generic make-child-url (container-url child-name))
 
-;; Return a string that concisely identifies URL, for use in the
-;; presentation layer.
-(define-generic url-presentation-name (url))
+;; Return the base name of FOLDER-URL.  This is the child name of
+;; FOLDER-URL, but presented in a type-independent way.  For example,
+;; if the child name of a file URL is "foo.mail", the base name is
+;; just "foo".
+(define-generic url-base-name (folder-url))
 
 ;; Return a string that uniquely identifies the server and account for
 ;; URL.  E.g. for IMAP this could be the URL string without the
@@ -197,6 +213,12 @@
 
 (define url-protocols
   (make-string-hash-table))
+
+(define (url-presentation-name url)
+  (let ((child-name (url-child-name url)))
+    (if (string-suffix? "/" child-name)
+	(string-head child-name (fix:- (string-length child-name) 1))
+	child-name)))
 
 ;; Do completion on URL-STRING, which is a partially-specified URL.
 ;; Tail-recursively calls one of the three procedure arguments, as
@@ -314,6 +336,13 @@
   (let ((container (get-memoized-resource (container-url url))))
     (if container
 	(apply object-modified! container type url arguments))))
+
+;; -------------------------------------------------------------------
+;; Return a list of URLs referring to the contents of CONTAINER-URL.
+;; The result can contain both folder and container URLs.
+;; The result is not sorted.
+
+(define-generic container-url-contents (container-url))
 
 ;;;; Resources
 
@@ -337,6 +366,9 @@
 
 (define-method container-url ((resource <resource>))
   (container-url (resource-locator resource)))
+
+(define-method container-url-for-prompt ((resource <resource>))
+  (container-url-for-prompt (resource-locator resource)))
 
 (define-class <folder> (<resource>))
 (define-class <container> (<resource>))
@@ -500,13 +532,6 @@
 ;; enhancement.
 
 (define-generic preload-folder-outlines (folder))
-
-;; -------------------------------------------------------------------
-;; Return a list of URLs referring to the contents of CONTAINER.
-;; The result can contain both folder and container URLs.
-;; The result is not sorted.
-
-(define-generic container-contents (container))
 
 ;;;; Message type
 
