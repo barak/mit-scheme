@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.36 1992/05/26 23:23:42 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.37 1992/05/27 04:03:35 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -95,8 +95,7 @@ MIT in each case. |#
     (if (file-exists? pathname)
 	(fasload-loader (->namestring pathname))
 	(find-alternate-file-type pathname
-				  `(("binf" . ,fasload-loader)
-				    ("inf" . ,fasload-loader)
+				  `(("inf" . ,fasload-loader)
 				    ("bif" . ,fasload-loader)
 				    ("bci" . ,compressed-loader))))))
 
