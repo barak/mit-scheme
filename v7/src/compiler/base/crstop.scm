@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.1 1989/05/17 20:44:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.2 1989/05/21 02:38:50 jinx Exp $
 $MC68020-Header: toplev.scm,v 4.16 89/04/26 05:09:52 GMT cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
@@ -73,8 +73,7 @@ MIT in each case. |#
    (and (not (default-object? output-string)) output-string)
    (make-pathname false false false false "bits.x" 'NEWEST)
    (lambda (input-pathname output-pathname)
-     (fasdump (cross-compile-scode-end (compiler-fasload input-pathname))
-	      output-pathname))))
+     (cross-compile-scode-end (compiler-fasload input-pathname)))))
 
 (define (cross-compile-scode-end cross-compilation)
   (in-compiler
