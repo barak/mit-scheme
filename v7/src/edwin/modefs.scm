@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: modefs.scm,v 1.155 1999/01/28 04:45:52 cph Exp $
+;;; $Id: modefs.scm,v 1.156 2000/02/24 01:32:14 cph Exp $
 ;;;
-;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -65,6 +65,11 @@ Like Fundamental mode, but no self-inserting characters.")
 
 (define-key 'read-only-noarg char-set:self-insert-keys 'undefined)
 (define-key 'read-only-noarg '(#\c-x #\c-q) 'no-toggle-read-only)
+
+(define global-modes
+  (list (ref-mode-object fundamental)
+	(ref-mode-object read-only)
+	(ref-mode-object read-only-noarg)))
 
 (define-key 'fundamental #\c-space 'set-mark-command)
 (define-key 'fundamental #\c-% 'replace-string)

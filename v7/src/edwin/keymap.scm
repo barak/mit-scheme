@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: keymap.scm,v 1.16 2000/02/24 01:31:11 cph Exp $
+;;;$Id: keymap.scm,v 1.17 2000/02/24 01:32:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -141,11 +141,6 @@ Previous contents of that buffer are killed first."
 				(eq? (cdr comtabs) (mode-comtabs mode)))))))
 	      (loop (cdr comtabs))
 	      '()))))
-
-(define global-modes
-  (list (ref-mode-object fundamental)
-	(ref-mode-object read-only)
-	(ref-mode-object read-only-noarg)))
 
 (define (sort-and-simplify elements)
   (map (lambda (element)
