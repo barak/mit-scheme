@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: editor.scm,v 1.245 1999/05/11 20:31:01 cph Exp $
+;;; $Id: editor.scm,v 1.246 2000/01/10 03:24:54 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -349,8 +349,10 @@ This does not affect editor errors or evaluation errors."
 	     (lambda ()
 	       (if (and (not in-prompt?)
 			(not (string-find-next-char report-string #\newline))
-			(< (string-columns report-string 0 8
-					   default-char-image-strings)
+			(< (string-columns
+			    report-string 0 8
+			    (variable-default-value
+			     (ref-variable-object char-image-strings)))
 			   (window-x-size (typein-window))))
 		   (typein-report)
 		   (error-buffer-report)))))

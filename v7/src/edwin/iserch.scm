@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: iserch.scm,v 1.21 1999/01/02 06:11:34 cph Exp $
+;;; $Id: iserch.scm,v 1.22 2000/01/10 03:25:19 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -181,8 +181,9 @@
 	    "I-search"
 	    (if (search-state-forward? state) "" " backward")
 	    ": "
-	    (string-image (search-state-text state) 0 false
-			  default-char-image-strings)
+	    (string-image (search-state-text state) 0 #f
+			  (ref-variable char-image-strings
+					(search-state-start-point state)))
 	    (if invalid-regexp (string-append " [" invalid-regexp "]") ""))))
       (string-set! m 0 (char-upcase (string-ref m 0)))
       m)))
@@ -211,7 +212,7 @@
 	(unsuccessful-search-state state
 				   text
 				   (search-state-forward? state)))))
-
+
 (define regexp-retry-chars
   ;; If one of these characters is entered, retry the regexp search
   ;; from the initial point since it may now match something that it

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffrm.scm,v 1.54 1999/03/18 02:27:56 cph Exp $
+;;; $Id: buffrm.scm,v 1.55 2000/01/10 03:23:41 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -313,7 +313,7 @@ Index 0 might contain \"^@\" so ascii NUL appears as ^@.
 The indices for normal printing characters usually contain a
 string containing just that character, e.g. index 65 usually contains \"A\".
 Automatically becomes local when set in any fashion."
-  default-char-image-strings
+  (os/default-char-image-strings)
   (lambda (object)
     (and (vector? object)
 	 (= (vector-length object) 256)

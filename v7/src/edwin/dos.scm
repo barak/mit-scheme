@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dos.scm,v 1.49 1999/02/01 03:33:56 cph Exp $
+;;; $Id: dos.scm,v 1.50 2000/01/10 03:23:27 cph Exp $
 ;;;
-;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -66,6 +66,9 @@
 		 (lambda (entry)
 		   (fix:= (fix:and (file-attributes/modes (cdr entry)) mask)
 			  0))))))))
+
+(define (os/default-char-image-strings)
+  default-char-image-strings/ansi)
 
 ;;;; Win32 Clipboard Interface
 

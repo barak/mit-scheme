@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: snr.scm,v 1.54 1999/11/08 18:28:47 cph Exp $
+;;; $Id: snr.scm,v 1.55 2000/01/10 03:25:14 cph Exp $
 ;;;
-;;; Copyright (c) 1995-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1995-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -2250,7 +2250,8 @@ This is useful when the subject has been truncated by the one-line display."
     (let ((subject
 	   (canonicalize-subject (news-header:subject (current-news-header)))))
       (if (and (not argument)
-	       (< (string-columns subject 0 8 default-char-image-strings)
+	       (< (string-columns subject 0 8
+				  (ref-variable char-image-strings))
 		  (window-x-size (typein-window))))
 	  (message subject)
 	  (pop-up-temporary-buffer " news-header subject"

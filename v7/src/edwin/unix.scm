@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.103 1999/12/22 02:41:18 cph Exp $
+;;; $Id: unix.scm,v 1.104 2000/01/10 03:23:37 cph Exp $
 ;;;
-;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -668,3 +668,6 @@ option, instead taking -P <filename>."
 	"/usr/local/info"
 	"/usr/share/info"
 	"/usr/info"))
+
+(define (os/default-char-image-strings)
+  default-char-image-strings)

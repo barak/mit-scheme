@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: modlin.scm,v 1.20 1999/01/02 06:11:34 cph Exp $
+;;; $Id: modlin.scm,v 1.21 2000/01/10 03:24:58 cph Exp $
 ;;;
-;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -319,7 +319,8 @@ If #F, the normal method is used."
     (substring-image! string start end
 		      line column max-end
 		      #f 0 results
-		      default-char-image-strings)
+		      (variable-default-value
+		       (ref-variable-object char-image-strings)))
     (if (fix:< (vector-ref results 1) min-end)
 	(begin
 	  (do ((x (vector-ref results 1) (fix:+ x 1)))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: os2.scm,v 1.46 1999/02/01 16:09:29 cph Exp $
+;;; $Id: os2.scm,v 1.47 2000/01/10 03:23:33 cph Exp $
 ;;;
-;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -55,6 +55,9 @@
 		(if attr
 		    (cons (cons (file-namestring (car pathnames)) attr) result)
 		    result))))))
+
+(define (os/default-char-image-strings)
+  default-char-image-strings)
 
 ;;;; OS/2 Clipboard Interface
 
