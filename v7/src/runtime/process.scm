@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.25 2000/05/14 03:30:32 cph Exp $
+$Id: process.scm,v 1.26 2000/05/14 03:31:11 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -37,7 +37,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (reset-package!)
   (set! scheme-subprocess-environment ((ucode-primitive scheme-environment 0)))
-  (set! global-status-tick (cons false false))
+  (set! global-status-tick (cons #f #f))
   unspecific)
 
 (define (delete-all-processes)
@@ -51,21 +51,21 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				(filename arguments index pty-master
 					  input-channel output-channel))
 		   (conc-name subprocess-))
-  (filename false read-only true)
-  (arguments false read-only true)
+  (filename #f read-only #t)
+  (arguments #f read-only #t)
   index
   pty-master
   input-channel
   output-channel
-  (id ((ucode-primitive process-id 1) index) read-only true)
-  (%i/o-port false)
-  (%status false)
-  (exit-reason false)
-  (%status-tick false)
-  (properties (make-1d-table) read-only true))
+  (id ((ucode-primitive process-id 1) index) read-only #t)
+  (%i/o-port #f)
+  (%status #f)
+  (exit-reason #f)
+  (%status-tick #f)
+  (properties (make-1d-table) read-only #t))
 
 (define (subprocess-get process key)
-  (1d-table/get (subprocess-properties process) key false))
+  (1d-table/get (subprocess-properties process) key #f))
 
 (define (subprocess-put! process key datum)
   (1d-table/put! (subprocess-properties process) key datum))
@@ -102,7 +102,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			    (make-generic-output-port output-channel
 						      512
 						      output-line-translation)
-			    false)))))
+			    #f)))))
 	     (set-subprocess-%i/o-port! process port)
 	     port))))))
 
@@ -123,21 +123,21 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ;; Assumes that interrupts are locked.
   (cond ((subprocess-%i/o-port process)
 	 => (lambda (port)
-	      (set-subprocess-%i/o-port! process false)
-	      (set-subprocess-input-channel! process false)
-	      (set-subprocess-output-channel! process false)
+	      (set-subprocess-%i/o-port! process #f)
+	      (set-subprocess-input-channel! process #f)
+	      (set-subprocess-output-channel! process #f)
 	      (close-port port))))
   (cond ((subprocess-input-channel process)
 	 => (lambda (input-channel)
-	      (set-subprocess-input-channel! process false)
+	      (set-subprocess-input-channel! process #f)
 	      (channel-close input-channel))))
   (cond ((subprocess-output-channel process)
 	 => (lambda (output-channel)
-	      (set-subprocess-output-channel! process false)
+	      (set-subprocess-output-channel! process #f)
 	      (channel-close output-channel))))
   (cond ((subprocess-pty-master process)
 	 => (lambda (pty-master)
-	      (set-subprocess-pty-master! process false)
+	      (set-subprocess-pty-master! process #f)
 	      (channel-close pty-master)))))
 
 (define (make-subprocess filename arguments environment
@@ -146,7 +146,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((process
 	 (let ((ctty-allowed? (string? ctty)))
 	   (define-integrable (convert-stdio-arg stdio)
-	     (cond ((not stdio) false)
+	     (cond ((not stdio) #f)
 		   ((eq? stdio 'INHERIT) -1)
 		   ((and ctty-allowed? (eq? stdio 'CTTY)) -2)
 		   ((channel? stdio) (channel-descriptor stdio))
@@ -200,7 +200,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (if (subprocess-index process)
 	 (begin
 	   (remove-from-gc-finalizer! subprocess-finalizer process)
-	   (set-subprocess-index! process false)
+	   (set-subprocess-index! process #f)
 	   (%close-subprocess-i/o process))))))
 
 (define (subprocess-status process)
@@ -235,12 +235,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (set-subprocess-exit-reason!
 	      process
 	      ((ucode-primitive process-reason 1) index))
-	     (set-subprocess-%status-tick! process false))))))
+	     (set-subprocess-%status-tick! process #f))))))
   (subprocess-%status process))
 
 (define (subprocess-status-tick process)
   (or (subprocess-%status-tick process)
-      (let ((tick (cons false false)))
+      (let ((tick (cons #f #f)))
 	(set-subprocess-%status-tick! process tick)
 	tick)))
 
@@ -248,7 +248,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (without-interrupts
    (lambda ()
      (if ((ucode-primitive process-status-sync-all 0))
-	 (let ((tick (cons false false)))
+	 (let ((tick (cons #f #f)))
 	   (set! global-status-tick tick)
 	   tick)
 	 global-status-tick))))
@@ -311,18 +311,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (start-batch-subprocess filename arguments environment)
   (make-subprocess filename arguments environment
-		   false false false false
-		   false false false))
+		   #f #f #f #f
+		   #f #f #f))
 
 (define (start-subprocess-in-background filename arguments environment)
   (make-subprocess filename arguments environment
 		   'BACKGROUND 'INHERIT 'INHERIT 'INHERIT
-		   false false false))
+		   #f #f #f))
 
 (define (run-subprocess-in-foreground filename arguments environment)
   (make-subprocess filename arguments environment
 		   'FOREGROUND 'INHERIT 'INHERIT 'INHERIT
-		   false false false))
+		   #f #f #f))
 
 (define (start-pipe-subprocess filename arguments environment)
   (with-values make-pipe
@@ -331,8 +331,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(lambda (parent-read child-write)
 	  (let ((process
 		 (make-subprocess filename arguments environment
-				  false child-read child-write child-write
-				  false parent-read parent-write)))
+				  #f child-read child-write child-write
+				  #f parent-read parent-write)))
 	    (channel-close child-read)
 	    (channel-close child-write)
 	    process))))))
