@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: reduct.scm,v 4.5 1993/08/03 20:54:45 gjr Exp $
+$Id: reduct.scm,v 4.6 1993/08/03 21:53:35 jacob Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -510,29 +510,31 @@ Examples:
 
 (define (replacement/make replacement decl-block)
   (call-with-values
-      (lambda ()
-	(parse-replacement (car replacement)
-			   (cdr replacement)
-			   decl-block))
-    (lambda (table default)
-      (lambda (operands if-expanded if-not-expanded block)
-	(let* ((len (length operands))
-	       (candidate (or (and (< len (vector-length table))
-				   (vector-ref table len))
-			      default)))
-	  (if (or (not (pair? candidate))
-		  (and (car candidate)
-		       (block/limited-lookup block
-					     (car candidate)
-					     decl-block)))
-	      (if-not-expanded)
-	      (if-expanded
+   (lambda ()
+     (parse-replacement (car replacement)
+			(cdr replacement)
+			decl-block))
+   (lambda (table default)
+     (lambda (expr operands if-expanded if-not-expanded block)
+       (let* ((len (length operands))
+	      (candidate (or (and (< len (vector-length table))
+				  (vector-ref table len))
+			     default)))
+	 (if (or (not (pair? candidate))
+		 (and (car candidate)
+		      (block/limited-lookup block
+					    (car candidate)
+					    decl-block)))
+	     (if-not-expanded)
+	     (if-expanded
+	      (reassign
+	       expr
 	       (combination/make false
 				 (let ((frob (cdr candidate)))
 				   (if (variable? frob)
 				       (lookup (variable/name frob) block)
 				       frob))
-				 operands))))))))
+				 operands)))))))))
 
 (define (parse-replacement name ocases block)
   (define (collect len cases default)
