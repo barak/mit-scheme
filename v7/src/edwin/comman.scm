@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.64 1991/02/15 18:12:40 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.65 1991/03/15 23:49:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -157,8 +157,9 @@
 		     (cons daemon daemons)))))
 
 (define (invoke-variable-assignment-daemons! variable)
-  (for-each (lambda (daemon) (daemon variable))
-	    (variable-assignment-daemons variable)))
+  (do ((daemons (variable-assignment-daemons variable) (cdr daemons)))
+      ((null? daemons))
+    ((car daemons) variable)))
 
 (define editor-variables (make-string-table 50))
 
