@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.15 1990/09/11 20:45:26 cph Rel $
+$Id: udata.scm,v 14.16 1993/09/11 21:08:49 gjr Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990, 1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -116,8 +116,15 @@ MIT in each case. |#
     (and (not (negative? offset))
 	 offset)))
 
-(define-integrable (compiled-continuation/return-to-interpreter? entry)
-  (= 2 (system-hunk3-cxr1 ((ucode-primitive compiled-entry-kind 1) entry))))
+(define (compiled-continuation/return-to-interpreter? entry)
+  (let ((kind ((ucode-primitive compiled-entry-kind 1) entry)))
+    (and (fix:= (system-hunk3-cxr1 kind) 2)
+	 (fix:= (system-hunk3-cxr2 kind) 0))))
+
+(define (compiled-continuation/reflect-to-interface? entry)
+  (let ((kind ((ucode-primitive compiled-entry-kind 1) entry)))
+    (and (fix:= (system-hunk3-cxr1 kind) 2)
+	 (not (fix:= (system-hunk3-cxr2 kind) 0)))))
 
 (define (stack-address->index address start-offset)
   (if (not (stack-address? address))

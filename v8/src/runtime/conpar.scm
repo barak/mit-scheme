@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.27 1993/09/01 22:15:56 gjr Exp $
+$Id: conpar.scm,v 14.28 1993/09/11 21:08:54 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -300,7 +300,7 @@ MIT in each case. |#
 			n-elements
 			(parser-state/next-control-point state)
 			type))))
-
+
 (define (parser/standard type elements state)
   (parse/standard-next type elements state
 		       (and (stack-frame-type/history-subproblem? type)
@@ -326,34 +326,65 @@ MIT in each case. |#
 			  (element-stream/head stream)))))))
     (parse/standard-next type elements state
 			 valid-history? valid-history?)))
+
+(define-integrable code/special-compiled/internal-apply 0)
+(define-integrable code/special-compiled/restore-interrupt-mask 1)
+(define-integrable code/special-compiled/stack-marker 2)
+(define-integrable code/special-compiled/compiled-code-bkpt 3)
+
+(define (parser/special-compiled type elements state)
+  (let ((code (vector-ref elements 1)))
+    (cond ((fix:= code code/special-compiled/internal-apply)
+	   (parse/standard-next type elements state false false))
+	  ((fix:= code code/special-compiled/restore-interrupt-mask)
+	   (parser/%%stack-marker (parser-state/dynamic-state state)
+				  (vector-ref elements 2)
+				  type elements state))
+	  ((fix:= code code/special-compiled/stack-marker)
+	   (parser/%stack-marker (vector-ref elements 2)
+				 (vector-ref elements 3)
+				 type elements state))
+	  ((fix:= code code/special-compiled/compiled-code-bkpt)
+	   (parse/standard-next type elements state false false))
+	  (else
+	   (error "Unknown special compiled frame" code)))))
 
 (define (parser/stack-marker type elements state)
-  (let ((marker (vector-ref elements 1))
-	(continue
+  (parser/%stack-marker (vector-ref elements 1)
+			(vector-ref elements 2)
+			type elements state))
+
+(define (parser/%stack-marker marker marker2 type elements state)
+  (let ((continue
 	 (lambda (dynamic-state interrupt-mask)
-	   (parser/standard
-	    type
-	    elements
-	    (make-parser-state
-	     dynamic-state
-	     interrupt-mask
-	     (parser-state/history state)
-	     (parser-state/previous-history-offset state)
-	     (parser-state/previous-history-control-point state)
-	     (parser-state/element-stream state)
-	     (parser-state/n-elements state)
-	     (parser-state/next-control-point state)
-	     (parser-state/previous-type state))))))
+	   (parser/%%stack-marker dynamic-state interrupt-mask
+				  type elements state))))
     (cond ((eq? marker %translate-to-state-point)
 	   (continue (merge-dynamic-state (parser-state/dynamic-state state)
-					  (vector-ref elements 2))
+					  marker2)
 		     (parser-state/interrupt-mask state)))
 	  ((eq? marker set-interrupt-enables!)
 	   (continue (parser-state/dynamic-state state)
-		     (vector-ref elements 2)))
+		     marker2))
 	  (else
 	   (continue (parser-state/dynamic-state state)
 		     (parser-state/interrupt-mask state))))))
+
+(define (parser/%%stack-marker dynamic-state interrupt-mask
+			       type elements state)
+  (parser/standard
+   type
+   elements
+   (make-parser-state
+    dynamic-state
+    interrupt-mask
+    (parser-state/history state)
+    (parser-state/previous-history-offset state)
+    (parser-state/previous-history-control-point state)
+    (parser-state/element-stream state)
+    (parser-state/n-elements state)
+    (parser-state/next-control-point state)
+    (parser-state/previous-type state))))
 
 (define (stack-frame/repl-eval-boundary? stack-frame)
   (let ((type (stack-frame/type stack-frame)))
@@ -460,10 +491,48 @@ MIT in each case. |#
 	  (1+ frame-size)
 	  (stack-address->index (element-stream/ref stream 1) offset)))))
 
+(define (length/special-compiled stream offset)
+  ;; return address is reflect-to-interface
+  offset
+  (let ((code (element-stream/ref stream 1)))
+    (define (default)
+      (error "length/special-compiled: Unknown code" code))
+
+    (cond ((not (fix:fixnum? code))
+	   (default))
+	  ((fix:= code code/special-compiled/internal-apply)
+	   ;; Very infrequent!
+	   (fix:+ 3 (object-datum (element-stream/ref stream 2))))
+	  ((fix:= code code/special-compiled/restore-interrupt-mask)
+	   3)
+	  ((fix:= code code/special-compiled/stack-marker)
+	   4)
+	  ((fix:= code code/special-compiled/compiled-code-bkpt)
+	   ;; Very infrequent!
+	   (fix:+ 5 (compiled-code-address/frame-size
+		     (element-stream/ref stream 2))))
+	  (else
+	   (default)))))
+
 (define (length/interrupt-compiled-procedure stream offset)
   offset				; ignored
   (1+ (compiled-procedure-frame-size (element-stream/head stream))))
 
+(define (compiled-code-address/frame-size cc-address)
+  (cond ((not (compiled-code-address? cc-address))
+	 (error "compiled-code-address/frame-size: Unexpected object"
+		cc-address))
+	((compiled-return-address? cc-address)
+	 (let ((offset
+		(compiled-continuation/next-continuation-offset cc-address)))
+	   (and offset
+		(fix:+ offset 1))))
+	((compiled-procedure? cc-address)
+	 (fix:+ (compiled-procedure-frame-size cc-address) 1))
+	(else
+	 (error "compiled-code-address/frame-size: Unexpected object"
+		cc-address))))	 
+
 (define (verify paranoia-index stream offset)
   (or (zero? paranoia-index)
       (stream-null? stream)
@@ -529,9 +598,12 @@ MIT in each case. |#
 		 (error "return-code has no type" code))
 	     type)))
 	((compiled-return-address? return-address)
-	 (if (compiled-continuation/return-to-interpreter? return-address)
-	     stack-frame-type/return-to-interpreter
-	     stack-frame-type/compiled-return-address))
+	 (cond ((compiled-continuation/return-to-interpreter? return-address)
+		stack-frame-type/return-to-interpreter)
+	       ((compiled-continuation/reflect-to-interface? return-address)
+		stack-frame-type/special-compiled)
+	       (else
+		stack-frame-type/compiled-return-address)))
 	((and allow-extended? (compiled-procedure? return-address))
 	 stack-frame-type/interrupt-compiled-procedure)
 	((and allow-extended? (compiled-expression? return-address))
@@ -557,6 +629,10 @@ MIT in each case. |#
 	(make-stack-frame-type false false true
 			       1
 			       parser/standard))
+  (set! stack-frame-type/special-compiled
+	(make-stack-frame-type false true false
+			       length/special-compiled
+			       parser/special-compiled))
   (set! stack-frame-type/interrupt-compiled-procedure
 	(make-stack-frame-type false true false
 			       length/interrupt-compiled-procedure
@@ -577,6 +653,7 @@ MIT in each case. |#
 (define stack-frame-types)
 (define stack-frame-type/compiled-return-address)
 (define stack-frame-type/return-to-interpreter)
+(define stack-frame-type/special-compiled)
 (define stack-frame-type/hardware-trap)
 (define stack-frame-type/stack-marker)
 (define stack-frame-type/interrupt-compiled-procedure)
