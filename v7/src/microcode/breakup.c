@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/breakup.c,v 9.22 1989/09/20 23:04:34 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/breakup.c,v 9.23 1991/08/13 06:20:37 cph Exp $ */
 
 #include <stdio.h>
 
@@ -122,7 +122,7 @@ re_dispatch:
 		  c);
 	break;
       case '"':
-	after_new_line == false;
+	after_new_line = false;
 	putchar(c);
 	c = getchar();
 	while (true)
