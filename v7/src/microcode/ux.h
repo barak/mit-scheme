@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.5 1990/07/30 17:05:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.6 1990/07/30 17:31:28 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -677,23 +677,21 @@ extern int EXFUN
 #endif /* HAVE_SELECT */
 
 #ifdef _BSD
-
 #define BSD_DEV_TTY "/dev/tty"
+#endif
 
-#if defined(_POSIX) || defined(_SUNOS) || defined(_ULTRIX)
-#define UX_ctermid ctermid
-#else
+#if !defined(_POSIX) && defined(_BSD) && !defined(_SUNOS) && !defined(_ULTRIX)
 #define L_ctermid ((strlen (BSD_DEV_TTY)) + 1);
 extern char * EXFUN (UX_ctermid, (char * s));
-#endif
-
-#if defined(_POSIX) || defined(_SUNOS)
-#define UX_kill kill
 #else
-extern int EXFUN (UX_kill, (pid_t pid, int sig));
+#define UX_ctermid ctermid
 #endif
 
-#endif /* _BSD */
+#if !defined(_POSIX) && defined(_BSD) && !defined(_SUNOS)
+extern int EXFUN (UX_kill, (pid_t pid, int sig));
+#else
+#define UX_kill kill
+#endif
 
 #ifdef HAVE_POSIX_SIGNALS
 
