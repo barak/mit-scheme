@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.19 1989/10/26 06:46:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.20 1990/02/08 00:05:26 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -298,6 +298,7 @@ MIT in each case. |#
    (RUNTIME 2D-PROPERTY)
    (RUNTIME HASH)
    (RUNTIME RANDOM-NUMBER)
+   (RUNTIME RECORD)
    ;; Microcode data structures
    (RUNTIME HISTORY)
    (RUNTIME LAMBDA-ABSTRACTION)

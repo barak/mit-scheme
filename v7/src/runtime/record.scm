@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.3 1990/02/07 23:25:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.4 1990/02/08 00:04:23 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -125,7 +125,9 @@ MIT in each case. |#
 
 ;;; Abstraction-Breaking Operations
 
-(define record-type?
+(define record-type?)
+
+(define (initialize-package!)
   (let ((record-type (make-record-type "foo" '())))
     (let ((size (vector-length record-type))
 	  (tag (vector-ref record-type 0)))
@@ -143,10 +145,12 @@ MIT in each case. |#
 	    (UPDATER-CONSTRUCTOR ,(vector-ref record-type 4))
 	    (TYPE-NAME ,(vector-ref record-type 5))
 	    (FIELD-NAMES ,(vector-ref record-type 6)))))
-      (lambda (object)
-	(and (vector? object)
-	     (= (vector-length object) size)
-	     (eq? (vector-ref object 0) tag))))))
+      (set! record-type?
+	    (lambda (object)
+	      (and (vector? object)
+		   (= (vector-length object) size)
+		   (eq? (vector-ref object 0) tag))))))
+  unspecific)
 
 (define (guarantee-record-type object)
   (if (not (record-type? object))

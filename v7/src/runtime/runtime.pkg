@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.57 1990/01/15 21:27:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.58 1990/02/08 00:04:43 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1243,6 +1243,25 @@ MIT in each case. |#
   (export ()
 	  random
 	  randomize)
+  (initialization (initialize-package!)))
+
+(define-package (runtime record)
+  (files "record")
+  (parent ())
+  (export ()
+	  guarantee-record
+	  guarantee-record-type
+	  make-record-type
+	  record-accessor
+	  record-constructor
+	  record-predicate
+	  record-type-descriptor
+	  record-type-field-names
+	  record-type-name
+	  record-type?
+	  record-updater
+	  record?
+	  set-record-type-unparser-method!)
   (initialization (initialize-package!)))
 
 (define-package (runtime reference-trap)
