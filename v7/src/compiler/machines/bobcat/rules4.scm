@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.1 1987/12/30 07:06:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.2 1988/03/14 20:18:11 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -62,29 +62,7 @@ MIT in each case. |#
 	   ,@clear-map
 	   ,(load-constant name (INST-EA (A 1)))
 	   (JSR ,entry)
-	   ,@(make-external-label (generate-label))))))
-
-(define-rule statement
-  (INTERPRETER-CALL:ENCLOSE (? number-pushed))
-  (LAP (MOV L (A 5) ,reg:enclose-result)
-       (MOV B (& ,(ucode-type vector)) ,reg:enclose-result)
-       ,(load-non-pointer (ucode-type manifest-vector) number-pushed
-			  (INST-EA (@A+ 5)))
-
-       ,@(generate-n-times
-	  number-pushed 5
-	  (lambda () (INST (MOV L (@A+ 7) (@A+ 5))))
-	  (lambda (generator)
-	    (generator (allocate-temporary-register! 'DATA)))))
-  #| Alternate sequence which minimizes code size. ;
-  DO NOT USE THIS!  The `clear-registers!' call does not distinguish between
-  registers containing objects and registers containing unboxed things, and
-  as a result can write unboxed stuff to memory.
-  (LAP ,@(clear-registers! a0 a1 d0)
-       (MOV W (& ,number-pushed) (D 0))
-       (JSR ,entry:compiler-enclose))
-  |#
-  )
+	   ,@(make-external-label continuation-code-word (generate-label))))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name) (? value))
@@ -105,7 +83,7 @@ MIT in each case. |#
 	     ,@clear-map
 	     ,(load-constant name (INST-EA (A 1)))
 	     (JSR ,entry)
-	     ,@(make-external-label (generate-label)))))))
+	     ,@(make-external-label continuation-code-word (generate-label)))))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name)
@@ -132,7 +110,32 @@ MIT in each case. |#
 	     (MOV L ,reg:temp (A 2))
 	     ,(load-constant name (INST-EA (A 1)))
 	     (JSR ,entry)
-	     ,@(make-external-label (generate-label)))))))
+	     ,@(make-external-label continuation-code-word (generate-label)))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:DEFINE (? environment) (? name)
+			   (CONS-POINTER (CONSTANT (? type))
+					 (ENTRY:PROCEDURE (? label))))
+  (assignment-call:cons-pointer entry:compiler-define environment name type
+				label))
+
+(define-rule statement
+  (INTERPRETER-CALL:SET! (? environment) (? name)
+			 (CONS-POINTER (CONSTANT (? type))
+				       (ENTRY:PROCEDURE (? label))))
+  (assignment-call:cons-pointer entry:compiler-set! environment name type
+				label))
+
+(define (assignment-call:cons-pointer entry environment name type label)
+  (let ((set-environment (expression->machine-register! environment a0)))
+    (LAP ,@set-environment
+	 ,@(clear-map!)
+	 (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
+	 (MOV B (& ,type) (@A 7))
+	 (MOV L (@A+ 7) (A 2))
+	 ,(load-constant name (INST-EA (A 1)))
+	 (JSR ,entry)
+	 ,@(make-external-label continuation-code-word (generate-label)))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-REFERENCE (? extension) (? safe?))
@@ -143,7 +146,7 @@ MIT in each case. |#
 	   (JSR ,(if safe?
 		     entry:compiler-safe-reference-trap
 		     entry:compiler-reference-trap))
-	   ,@(make-external-label (generate-label))))))
+	   ,@(make-external-label continuation-code-word (generate-label))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
@@ -155,7 +158,7 @@ MIT in each case. |#
 	     ,@set-value
 	     ,@clear-map
 	     (JSR ,entry:compiler-assignment-trap)
-	     ,@(make-external-label (generate-label)))))))
+	     ,@(make-external-label continuation-code-word (generate-label)))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension)
@@ -170,7 +173,19 @@ MIT in each case. |#
 	     ,@clear-map
 	     (MOV L ,reg:temp (A 1))
 	     (JSR ,entry:compiler-assignment-trap)
-	     ,@(make-external-label (generate-label)))))))
+	     ,@(make-external-label continuation-code-word (generate-label)))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension)
+				     (CONS-POINTER (CONSTANT (? type))
+						   (ENTRY:PROCEDURE (? label))))
+  (let ((set-extension (expression->machine-register! extension a0)))
+    (LAP ,@set-extension
+	 ,@(clear-map!)
+	 (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
+	 (MOV B (& ,type) (@A 7))	 (MOV L (@A+ 7) (A 1))
+	 (JSR ,entry:compiler-assignment-trap)
+	 ,@(make-external-label continuation-code-word (generate-label)))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? extension))
@@ -179,4 +194,4 @@ MIT in each case. |#
       (LAP ,@set-extension
 	   ,@clear-map
 	   (JSR ,entry:compiler-unassigned?-trap)
-	   ,@(make-external-label (generate-label))))))
+	   ,@(make-external-label continuation-code-word (generate-label))))))
