@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.40 1992/08/18 02:56:22 cph Exp $
+$Id: load.scm,v 14.41 1993/03/08 07:08:01 gjr Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
+  (set! *purification-root-marker* (intern "#[PURIFICATION-ROOT]"))
   (set! load-noisily? false)
   (set! load/loading? false)
   (set! load/suppress-loading-message? false)
@@ -239,12 +240,23 @@ MIT in each case. |#
 		  (write-stream (value-stream)
 				(lambda (value) value false)))))))))
 
-(define (load/purification-root scode)
-  (or (and (comment? scode)
-	   (let ((text (comment-text scode)))
+(define *purification-root-marker*)
+
+(define (load/purification-root object)
+  (or (and (comment? object)
+	   (let ((text (comment-text object)))
 	     (and (dbg-info-vector? text)
 		  (dbg-info-vector/purification-root text))))
-      scode))
+      (and (object-type? (ucode-type compiled-entry) object)
+	   (let* ((block ((ucode-primitive compiled-code-address->block 1)
+			  object))
+		  (index (- (system-vector-length block) 2)))
+	     (and (not (negative? index))
+		  (let ((frob (system-vector-ref block index)))
+		    (and (pair? frob)
+			 (eq? (car frob) *purification-root-marker*)
+			 (cdr frob))))))
+      object))
 
 (define (read-stream port)
   (parse-objects port
