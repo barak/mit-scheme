@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.7 1988/12/14 12:42:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.8 1988/12/15 17:17:47 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -104,11 +104,15 @@ from the continuation, and then "glued" into place afterwards.
 (define-vector-tag-unparser block-tag
   (lambda (state block)
     ((standard-unparser
-      "BLOCK"      (and (let ((procedure (block-procedure block)))
-	     (and procedure (rvalue/procedure? procedure)))
-	   (lambda (state block)
-	     (unparse-object state
-			     (procedure-label (block-procedure block))))))
+      "BLOCK"      (lambda (state block)
+	(unparse-object state
+			(enumeration/index->name block-types
+						 (block-type block)))
+	(let ((procedure (block-procedure block)))
+	  (if (and procedure (rvalue/procedure? procedure))
+	      (begin
+		(unparse-string state " ")
+		(unparse-label state (procedure-label procedure)))))))
      state block)))
 
 (define-integrable (rvalue/block? rvalue)
