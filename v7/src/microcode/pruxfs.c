@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.23 1987/11/23 06:37:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.24 1987/11/23 06:46:36 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,6 +36,7 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "primitive.h"
+#include "string.h"
 #include <pwd.h>
 #include <grp.h>
 #include <sys/types.h>
