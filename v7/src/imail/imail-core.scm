@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.8 2000/01/14 22:40:35 cph Exp $
+;;; $Id: imail-core.scm,v 1.9 2000/01/15 04:59:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -396,27 +396,32 @@
   (if (not (message-flag? object))
       (error:wrong-type-argument object "message flag" procedure)))
 
+(define (string->message-flag string)
+  (let loop ((flags standard-message-flags))
+    (if (pair? flags)
+	(if (string-ci=? string (symbol-name (car flags)))
+	    (car flags)
+	    (loop (cdr flags)))
+	string)))
+
+(define (message-flag->string flag)
+  (if (symbol? flag)
+      (symbol->string flag)
+      flag))
+
 (define standard-message-flags
   '(ANSWERED DELETED EDITED FILED FORWARDED RESENT SEEN))
 
 (define (message-flags->header-field flags)
-  (make-header-field
-   message-flags:name
-   (apply string-append
-	  (map (lambda (flag)
-		 (if (symbol? flag)
-		     (string-append " :" (symbol->string flag))
-		     (string-append " " flag)))
-	       flags))))
+  (make-header-field message-flags:name
+		     (separated-append (map message-flag->string flags)
+				       " ")))
 
 (define (header-field->message-flags header)
   (and (string-ci=? message-flags:name (header-field-name header))
        ;; Extra pair needed to distinguish #F from ().
        (cons 'YUK
-	     (map (lambda (token)
-		    (if (char=? #\: (string-ref token 0))
-			(intern (string-tail token 1))
-			token))
+	     (map string->message-flag
 		  (burst-string (header-field-value header)
 				char-set:lwsp
 				#t)))))
