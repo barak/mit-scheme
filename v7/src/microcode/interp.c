@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.40 1988/03/12 16:06:40 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.41 1988/03/13 15:52:28 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -1313,12 +1313,12 @@ external_assignment_return:
   Save_Cont();								\
 }
                           
-#define Apply_Error(N)
-{
-  Store_Return(RC_INTERNAL_APPLY);
-  Store_Expression(NIL);
-  Val = NIL;
-  Pop_Return_Error(N);
+#define Apply_Error(N)							\
+{									\
+  Store_Return(RC_INTERNAL_APPLY);					\
+  Store_Expression(NIL);						\
+  Val = NIL;								\
+  Pop_Return_Error(N);							\
 }
 
 /* Interpret() continues on the next page */
