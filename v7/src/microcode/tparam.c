@@ -109,6 +109,11 @@ what you give them.   Help stamp out software-hoarding!  */
 #include "config.h"
 #endif
 
+#include "ansidecl.h"
+
+extern char * EXFUN (tparam, (char *, char*, int, int, ...));
+extern char * EXFUN (tgoto, (char *, int, int));
+
 /* Assuming STRING is the value of a termcap string entry
    containing `%' constructs to expand parameters,
    merge in parameter values and store result in block OUTSTRING points to.
@@ -121,7 +126,7 @@ what you give them.   Help stamp out software-hoarding!  */
 
    The fourth and following args to tparam serve as the parameter values.  */
 
-static char *tparam1 ();
+char * EXFUN (tparam1, (char *, char *, int, char *, char *, int *));
 
 /* VARARGS 2 */
 char *
