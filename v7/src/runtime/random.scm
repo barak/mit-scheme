@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.12 1995/07/19 05:22:08 cph Exp $
+$Id: random.scm,v 14.13 1995/08/02 03:56:44 adams Exp $
 
 Copyright (c) 1993-95 Massachusetts Institute of Technology
 
@@ -69,7 +69,7 @@ MIT in each case. |#
     ;; integer.  Otherwise, the result is a real number.
     (cond ((flo:flonum? modulus)
 	   (flo:* element modulus))
-	  ((int:integer? modulus)
+	  ((exact-integer? modulus)
 	   (flo:truncate->exact (flo:* element (int:->flonum modulus))))
 	  (else
 	   (* (inexact->exact element) modulus)))))
