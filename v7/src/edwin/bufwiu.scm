@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.6 1989/03/30 16:39:27 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.7 1989/04/05 18:14:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -293,9 +293,12 @@
   (with-instance-variables buffer-window window (display-style)
     (if (not saved-screen)
 	(error "Window needs normal redisplay -- can't direct update" window))
-    (and (update-buffer-window! window saved-screen saved-x-start saved-y-start
-				saved-xl saved-xu saved-yl saved-yu
-				display-style)
+    (and (with-screen-in-update! saved-screen
+	   (lambda ()
+	     (update-buffer-window! window saved-screen
+				    saved-x-start saved-y-start
+				    saved-xl saved-xu saved-yl saved-yu
+				    display-style)))
 	 (begin
 	   (set-car! redisplay-flags false)
 	   true))))
