@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.86 1995/01/06 17:41:59 cph Exp $
+$Id: config.h,v 9.87 1995/03/08 21:36:54 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -537,7 +537,23 @@ extern void * OS2_commit_heap (unsigned long);
 #define EXIT_SCHEME_DECLARATIONS extern void OS2_exit_scheme (int)
 #define EXIT_SCHEME OS2_exit_scheme
 
+extern void OS2_stack_reset (void);
+#define STACK_RESET OS2_stack_reset
+
+extern int OS2_stack_overflowed_p (void);
+#define STACK_OVERFLOWED_P OS2_stack_overflowed_p
+
 #endif /* _OS2 */
+
+#ifdef DOS386
+extern void EXFUN (dos386_stack_reset, (void));
+#define STACK_RESET dos386_stack_reset
+#endif /* DOS386 */
+
+#ifdef WINNT
+extern void EXFUN (winnt_stack_reset, (void));
+#define STACK_RESET winnt_stack_reset
+#endif /* WINNT */
 
 /* These (pdp10, nu) haven't worked in a while.
    Should be upgraded or flushed some day.  */

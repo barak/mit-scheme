@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: stack.h,v 9.36 1993/10/14 19:20:58 gjr Exp $
+$Id: stack.h,v 9.37 1995/03/08 21:36:44 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,20 +34,9 @@ MIT in each case. */
 
 /* This file contains macros for manipulating stacks and stacklets. */
 
-#ifdef DOS386
-  extern void EXFUN (dos386_stack_reset, (void));
-# define STACK_RESET() dos386_stack_reset()
-#endif /* DOS386 */
-
-#ifdef WINNT
-  extern void EXFUN (winnt_stack_reset, (void));
-# define STACK_RESET() winnt_stack_reset()
-#endif /* WINNT */
-
 #ifndef STACK_RESET
 # define STACK_RESET() do {} while (0)
 #endif /* STACK_RESET */
-
 
 #ifdef USE_STACKLETS
 
@@ -292,11 +281,12 @@ Pushed()
 #define Stack_Check(P) do						\
 {									\
   if ((P) <= Stack_Guard)						\
-  {									\
-    if ((P) <= Stack_Bottom)						\
-      Microcode_Termination (TERM_STACK_OVERFLOW);			\
-    REQUEST_INTERRUPT (INT_Stack_Overflow);				\
-  }									\
+    {									\
+      extern void EXFUN (stack_death, (CONST char *));			\
+      if (STACK_OVERFLOWED_P ())					\
+	stack_death ("Stack_Check");					\
+      REQUEST_INTERRUPT (INT_Stack_Overflow);				\
+    }									\
 } while (0)
 
 #define Internal_Will_Push(N)	Stack_Check(Stack_Pointer - (N))
