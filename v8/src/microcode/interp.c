@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.46 1988/09/29 04:58:42 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.47 1988/11/10 06:14:18 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -664,7 +664,7 @@ Eval_Non_Trapping:
 
 	compiled_expression = (Fetch_Expression ());
 	execute_compiled_setup();
-	Store_Expression ((Pointer) (Get_Pointer (compiled_expression)));
+	Store_Expression (compiled_expression);
 	Export_Registers();
 	Which_Way = enter_compiled_expression();
 	goto return_from_compiled_code;
