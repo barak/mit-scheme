@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.2 1993/10/26 17:27:06 gjr Exp $
+$Id: rules3.scm,v 1.3 1993/10/27 22:10:14 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -572,7 +572,7 @@ MIT in each case. |#
     (LAP "*--stack_pointer = (LONG_TO_UNSIGNED_FIXNUM (1L));\n\t"
 	 ,@(label-statement label)
 	 "{\n\t  "
-	 "static const short sections []\n\t    = {\t0"
+	 "static CONST short sections []\n\t    = {\t0"
 	 ,@(sections->c-sections false 17 (vector->list n-sections))
 	 "};\n\t  "
 	 "long counter = (OBJECT_DATUM (* stack_pointer));\n\t  "
