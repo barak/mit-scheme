@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.102 1991/11/26 07:50:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.103 1992/03/13 10:11:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -114,17 +114,27 @@ W  where-is.  Type a command name and get its key binding."
 ;;;; Commands and Keys
 
 (define-command command-apropos
-  "Prompts for a regexp, lists all commands containing a match for it."
+  "Show all commands whose names contain a match for REGEXP."
   "sCommand apropos (regexp)"
   (lambda (regexp)
     (with-output-to-help-display
      (lambda ()
-       (for-each (lambda (command)
-		   (write-string (command-name-string command))
-		   (newline)
-		   (print-key-bindings command)
-		   (print-short-description (command-description command)))
-		 (string-table-apropos editor-commands regexp))))))
+       (command-apropos regexp)))))
+
+(define-command apropos-command
+  (command-description (ref-command-object command-apropos))
+  (command-interactive-specification (ref-command-object command-apropos))
+  (command-procedure (ref-command-object command-apropos)))
+
+(define (command-apropos regexp)
+  (for-each (lambda (command)
+	      (let ((name (command-name-string command)))
+		(write-string name)
+		(print-key-bindings command (string-length name)))
+	      (newline)
+	      (print-short-description "Command"
+				       (command-description command)))
+	    (string-table-apropos editor-commands regexp)))
 
 (define-command describe-function
   "Prompts for a command, and describes it.
@@ -179,17 +189,25 @@ Prints the full documentation for that command."
 ;;;; Variables
 
 (define-command variable-apropos
-  "Prompts for a regexp, lists all variables containing a match for it."
+  "Show all variables whose names contain a match for REGEXP."
   "sVariable apropos (regexp)"
   (lambda (regexp)
     (with-output-to-help-display
      (lambda ()
-       (for-each (lambda (variable)
-		   (write-string (variable-name-string variable))
-		   (newline)
-		   (print-variable-binding variable)
-		   (print-short-description (variable-description variable)))
-		 (string-table-apropos editor-variables regexp))))))
+       (variable-apropos regexp)))))
+
+(define-command apropos-variable
+  (command-description (ref-command-object variable-apropos))
+  (command-interactive-specification (ref-command-object variable-apropos))
+  (command-procedure (ref-command-object variable-apropos)))
+
+(define (variable-apropos regexp)
+  (for-each (lambda (variable)
+	      (write-string (variable-name-string variable))
+	      (newline)
+	      (print-short-description "Variable"
+				       (variable-description variable)))
+	    (string-table-apropos editor-variables regexp)))
 
 (define-command describe-variable
   "Prompts for a variable, and describes it.
@@ -242,6 +260,23 @@ If you want VALUE to be a string, you must surround it with doublequotes."
     (undefine-variable-local-value! (current-buffer) (name->variable name))))
 
 ;;;; Other Stuff
+
+(define-command apropos
+  "Show all commands, variables, and modes whose names contain a match for REGEXP."
+  "sApropos (regexp)"
+  (lambda (regexp)
+    (with-output-to-help-display
+     (lambda ()
+       (command-apropos regexp)
+       (variable-apropos regexp)
+       (mode-apropos regexp)))))
+
+(define (mode-apropos regexp)
+  (for-each (lambda (mode)
+	      (write (mode-name mode))
+	      (newline)
+	      (print-short-description "Mode" (mode-description mode)))
+	    (string-table-apropos editor-modes regexp)))
 
 (define-command view-lossage
   "Print the keyboard history."
@@ -297,12 +332,15 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 (define (write-description description)
   (write-string (substitute-command-keys description)))
 
-(define (print-key-bindings command)
+(define (print-key-bindings command column)
   (let ((bindings (comtab-key-bindings (current-comtabs) command)))
     (if (not (null? bindings))
-	(begin (write-string "    which is bound to:    ")
-	       (write-string (key-list-string bindings))
-	       (newline)))))
+	(begin
+	  (write-string
+	   (if (< column 30)
+	       (make-string (- 30 column) #\space)
+	       " "))
+	  (write-string (key-list-string bindings))))))
 
 (define (key-list-string xkeys)
   (let loop ((xkeys (sort xkeys xkey<?)))
@@ -317,8 +355,12 @@ If you want VALUE to be a string, you must surround it with doublequotes."
   (write (variable-value variable))
   (newline))
 
-(define (print-short-description description)
+(define (print-short-description prefix description)
   (write-string "    ")
+  (if prefix
+      (begin
+	(write-string prefix)
+	(write-string ": ")))
   (write-description (string-first-line description))
   (newline))
 
