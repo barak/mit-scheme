@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.22 2000/05/08 20:38:12 cph Exp $
+;;; $Id: imail-imap.scm,v 1.23 2000/05/08 20:48:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -334,7 +334,8 @@
 ;;; operation atomically.
 
 (define (set-imap-folder-length! folder count)
-  (if (imap-folder-messages-synchronized? folder)
+  (if (or (imap-folder-messages-synchronized? folder)
+	  (= 0 (imap-folder-n-messages folder)))
       (read-message-headers!
        folder
        (without-interrupts
