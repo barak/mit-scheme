@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.29 1995/06/23 12:41:35 adams Exp $
+$Id: rtlgen.scm,v 1.30 1995/07/10 03:14:58 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -101,33 +101,34 @@ MIT in each case. |#
 	     (let ((cont-name  (cadr (assq rtlgen/?cont-name result)))
 		   (lam-expr   (cadr (assq rtlgen/?lambda-expression result))))
 	       (if (not (eq? continuation-name cont-name))
-		   (fail)
-		   (let* ((label (rtlgen/new-name 'TOP-LEVEL))
-			  (code (rtlgen/%%procedure
-				 label
-				 form
-				 lam-expr
-				 #F
-				 rtlgen/wrap-trivial-closure)))
-		     (values code label))))))
+		   (fail))
+	       (let* ((label (rtlgen/new-name 'TOP-LEVEL))
+		      (code (rtlgen/%%procedure
+			     label
+			     lam-expr	;dbg-form  form
+			     lam-expr
+			     #F
+			     rtlgen/wrap-trivial-closure)))
+		 (values code label)))))
        ((form/match rtlgen/top-level-heap-closure-pattern body)
 	=> (lambda (result)
 	     (sample/1 '(rtlgen/procedures-by-kind histogram)
 		       'Top-level-heap-closure)
-	     (let ((cont-name  (cadr (assq rtlgen/?cont-name result))))
+	     (let ((cont-name  (cadr (assq rtlgen/?cont-name result)))
+		   (lam-expr   (cadr (assq rtlgen/?lambda-expression result))))
 	       (if (not (eq? continuation-name cont-name))
-		   (fail)
-		   (let* ((label (rtlgen/new-name 'TOP-LEVEL-CLOSURE))
-			  (code
-			   (rtlgen/%%procedure
-			    label
-			    form
-			    `(LAMBDA (,cont-name ,env-name)
-			       ,body)
-			    'SELF-ARG
-			    rtlgen/wrap-trivial-closure)))
-		     (set! *procedure-result?* 'CALL-ME)
-		     (values code label))))))
+		   (fail))
+	       (let* ((label (rtlgen/new-name 'TOP-LEVEL-CLOSURE))
+		      (code
+		       (rtlgen/%%procedure
+			label
+			lam-expr ;dbg-form  form
+			`(LAMBDA (,cont-name ,env-name)
+			   ,body)
+			'SELF-ARG
+			rtlgen/wrap-trivial-closure)))
+		 (set! *procedure-result?* 'CALL-ME)
+		 (values code label)))))
        (else
 	(sample/1 '(rtlgen/procedures-by-kind histogram)
 		  'top-level-expression)
@@ -187,30 +188,30 @@ MIT in each case. |#
 	      *rtlgen/procedures*))
   unspecific)
 
-(define (rtlgen/%%procedure label orig-form lam-expr self-arg? wrap)
+(define (rtlgen/%%procedure label dbg-form lam-expr self-arg? wrap)
   ;; This is called directly for top-level expressions and procedures.
   ;; All other calls are from rtlgen/%procedure which adds the result
   ;; to the list of all procedures (*rtlgen/procedures*)
-  (rtlgen/%body-with-stack-references label orig-form lam-expr self-arg? wrap
+  (rtlgen/%body-with-stack-references label dbg-form lam-expr self-arg? wrap
    (lambda ()
      (let ((lambda-list (lambda/formals lam-expr))
 	   (body        (lambda/body lam-expr)))
        (rtlgen/body
 	body
-	(lambda (body*) (wrap label orig-form body* lambda-list 0))
+	(lambda (body*) (wrap label dbg-form body* lambda-list 0))
 	(lambda () (rtlgen/initial-state lambda-list self-arg? false body)))))))
 
-(define (rtlgen/wrap-expression label form body lambda-list saved-size)
+(define (rtlgen/wrap-expression label dbg-form body lambda-list saved-size)
   lambda-list				; Not used
   saved-size				; only continuations
   (cons `(EXPRESSION ,label ,(new-dbg-expression->old-dbg-expression
 			      label
-			      (rtlgen/debugging-info form)))
+			      (rtlgen/debugging-info dbg-form)))
 	(rtlgen/wrap-with-interrupt-check/expression
 	 body
 	 `(INTERRUPT-CHECK:CONTINUATION ,label (MACHINE-CONSTANT 1)))))
 
-(define (rtlgen/wrap-continuation label form body lambda-list saved-size)
+(define (rtlgen/wrap-continuation label dbg-form body lambda-list saved-size)
   (let* ((arity (lambda-list/count-names lambda-list))
 	 (frame-size
 	  (+ (- saved-size 1)		; Don't count the return address
@@ -220,35 +221,35 @@ MIT in each case. |#
 			   ,(new-dbg-continuation->old-dbg-continuation
 			     label
 			     frame-size
-			     (rtlgen/debugging-info form))
+			     (rtlgen/debugging-info dbg-form))
 			   (MACHINE-CONSTANT ,frame-size)
 			   (MACHINE-CONSTANT 1))
 	  (rtlgen/wrap-with-interrupt-check/continuation
 	   body
 	   `(INTERRUPT-CHECK:CONTINUATION ,label (MACHINE-CONSTANT 2))))))
 
-(define (rtlgen/wrap-closure label form body lambda-list saved-size)
+(define (rtlgen/wrap-closure label dbg-form body lambda-list saved-size)
   saved-size				; only continuations have this
   (let ((frame-size (lambda-list/count-names lambda-list)))
     (cons `(CLOSURE ,label
 		    ,(new-dbg-procedure->old-dbg-procedure
 		      label
 		      'CLOSURE
-		      (rtlgen/debugging-info form))
+		      (rtlgen/debugging-info dbg-form))
 		    (MACHINE-CONSTANT ,frame-size))
 	  (rtlgen/wrap-with-interrupt-check/procedure
 	   true
 	   body
 	   `(INTERRUPT-CHECK:CLOSURE (MACHINE-CONSTANT ,frame-size))))))
 
-(define (rtlgen/wrap-trivial-closure label form body lambda-list saved-size)
+(define (rtlgen/wrap-trivial-closure label dbg-form body lambda-list saved-size)
   saved-size				; only continuations have this
   (let ((frame-size (lambda-list/count-names lambda-list)))
     (cons `(TRIVIAL-CLOSURE ,label
 			    ,(new-dbg-procedure->old-dbg-procedure
 			      label
 			      'TRIVIAL-CLOSURE
-			      (rtlgen/debugging-info form))
+			      (rtlgen/debugging-info dbg-form))
 			    ,@(map
 			       (lambda (value)
 				 `(MACHINE-CONSTANT ,value))
@@ -260,7 +261,7 @@ MIT in each case. |#
 	     ,label
 	     (MACHINE-CONSTANT ,frame-size))))))
 
-(define (rtlgen/wrap-procedure label form body lambda-list saved-size)
+(define (rtlgen/wrap-procedure label dbg-form body lambda-list saved-size)
   saved-size				; only continuations have this
   (let* ((frame-size (lambda-list/count-names lambda-list))
 	 (procedure-header
@@ -268,7 +269,7 @@ MIT in each case. |#
 		      ,(new-dbg-procedure->old-dbg-procedure
 			label
 			'PROCEDURE
-			(rtlgen/debugging-info form))
+			(rtlgen/debugging-info dbg-form))
 		      (MACHINE-CONSTANT ,frame-size))))
     (if (rtlgen/omit-interrupt-check? label)
 	(cons procedure-header
@@ -304,15 +305,14 @@ MIT in each case. |#
 	  (- n i 1)
 	  (loop (cdr lst) (- i 1))))))
 
-(define (rtlgen/%%continuation label orig-form lam-expr wrap)
+(define (rtlgen/%%continuation label dbg-form lam-expr wrap)
   (rtlgen/%body-with-stack-references
-   label orig-form lam-expr #F wrap
+   label dbg-form lam-expr #F wrap
    (lambda ()
-     (internal-error "continuation without stack frame"
-		     lam-expr))))
+     (internal-error "continuation without stack frame" lam-expr))))
 
 (define (rtlgen/%body-with-stack-references
-	 label orig-form lam-expr self-arg? wrap no-stack-refs)
+	 label dbg-form lam-expr self-arg? wrap no-stack-refs)
   (sample/1 '(rtlgen/formals-per-lambda histogram vector)
 	    (lambda-list/count-names (lambda/formals lam-expr)))
   (cond ((form/match rtlgen/continuation-pattern lam-expr)
@@ -331,7 +331,7 @@ MIT in each case. |#
 			      (- frame-size
 				 (rtlgen/->number-of-args-on-stack
 				  lambda-list frame-vector))))
-			 (wrap label orig-form body* lambda-list saved-size)))
+			 (wrap label dbg-form body* lambda-list saved-size)))
 		     (lambda ()
 		       (rtlgen/initial-state lambda-list self-arg?
 					     frame-vector body))))))))
