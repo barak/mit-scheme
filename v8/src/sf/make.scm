@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.28 1993/11/18 01:21:39 cph Exp $
+$Id: make.scm,v 4.29 1994/06/21 19:37:25 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,12 +36,15 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-((access with-directory-rewriting-rule
-	 (->environment '(RUNTIME COMPILER-INFO)))
- (working-directory-pathname)
- (pathname-as-directory "sf")
- (lambda ()
-   (package/system-loader "sf" '() 'QUERY)))
-((package/reference (find-package '(SCODE-OPTIMIZER))
-		    'USUAL-INTEGRATIONS/CACHE!))
+(with-working-directory-pathname
+    (directory-pathname (current-load-pathname))
+  (lambda ()
+    ((access with-directory-rewriting-rule
+	     (->environment '(RUNTIME COMPILER-INFO)))
+     (working-directory-pathname)
+     (pathname-as-directory "sf")
+     (lambda ()
+       (package/system-loader "sf" '() 'QUERY)))
+    ((package/reference (find-package '(SCODE-OPTIMIZER))
+			'USUAL-INTEGRATIONS/CACHE!))))
 (add-system! (make-system "SF" 4 28 '()))
