@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.21 2000/04/23 04:02:48 cph Exp $
+;;; $Id: imail-top.scm,v 1.22 2000/04/26 18:39:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -99,18 +99,16 @@ May be called with an IMAIL folder URL as argument;
     (if (not url-string)
 	((ref-command imail-get-new-mail) #f))))
 
-(define (imail-authenticator url)
-  (let ((user-name
-	 (or (url-user-id url)
-	     (ref-variable imail-user-name)
-	     (current-user-name))))
-    (values user-name
-	    (call-with-pass-phrase
-	     (string-append "Password for user "
-			    user-name
-			    " to access IMAIL folder "
-			    (url->string url))
-	     string-copy))))
+(define (imail-authenticator url user-id receiver)
+  (call-with-pass-phrase (string-append "Password for user "
+					user-id
+					" to access IMAIL folder "
+					(url->string url))
+			 receiver))
+
+(define (imail-default-user-id)
+  (or (ref-variable imail-user-name)
+      (current-user-name)))
 
 (define (associate-imail-folder-with-buffer folder buffer)
   (buffer-put! buffer 'IMAIL-FOLDER folder)
