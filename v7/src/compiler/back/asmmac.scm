@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asmmac.scm,v 1.14 2002/02/12 00:25:08 cph Exp $
+$Id: asmmac.scm,v 1.15 2002/02/14 01:24:24 cph Exp $
 
 Copyright (c) 1988, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -35,7 +35,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		pattern
 		(if (not (pair? actions))
 		    (error "DEFINE-INSTRUCTION: Too few forms."))
-		(parse-instruction (car actions) (cdr actions) #f))))
+		(parse-instruction (car actions) (cdr actions) #f
+				   environment))))
 	 (ill-formed-syntax form)))))
 
 (define (compile-database cases environment procedure)
