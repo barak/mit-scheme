@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.7 1992/03/31 19:55:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.8 1992/05/14 19:09:00 cph Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,22 +62,6 @@ MIT in each case. |#
    (rtl:make-machine-constant
     (object-type (rtl:constant-value (rtl:object->type-expression datum))))
    datum))
-
-(define-rule rewriting
-  (CONS-POINTER (? type) (REGISTER (? datum register-known-value)))
-  (QUALIFIER (rtl:machine-constant? datum))
-  (rtl:make-cons-pointer type datum))
-
-(define-rule rewriting
-  (CONS-POINTER (? type) (REGISTER (? datum register-known-value)))
-  (QUALIFIER
-   (and (rtl:object->datum? datum)
-	(rtl:constant-non-pointer? (rtl:object->datum-expression datum))))
-  (rtl:make-cons-pointer
-   type
-   (rtl:make-machine-constant
-    (careful-object-datum
-     (rtl:constant-value (rtl:object->datum-expression datum))))))
 
 (define-rule rewriting
   (OBJECT->TYPE (REGISTER (? source register-known-value)))
