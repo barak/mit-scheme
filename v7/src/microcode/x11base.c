@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.58 1995/09/18 22:49:07 cph Exp $
+$Id: x11base.c,v 1.59 1995/09/18 22:52:36 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -2246,9 +2246,9 @@ DEFINE_PRIMITIVE ("X-GET-WINDOW-PROPERTY", Prim_x_get_window_property, 7, 7, 0)
 		  (((req_type != AnyPropertyType)
 		    && (req_type != actual_type))
 		   ? SHARP_F
-		   : (format == 32)
+		   : (actual_format == 32)
 		   ? (convert_32_bit_property_data (data, nitems))
-		   : (format == 16)
+		   : (actual_format == 16)
 		   ? (convert_16_bit_property_data (data, nitems))
 		   : (memory_to_string (nitems, data))));
       XFree (data);
@@ -2349,12 +2349,12 @@ DEFINE_PRIMITIVE ("X-GET-SELECTION-OWNER", Prim_x_get_selection_owner, 2, 2, 0)
 DEFINE_PRIMITIVE ("X-CONVERT-SELECTION", Prim_x_convert_selection, 6, 6, 0)
 {
   PRIMITIVE_HEADER (6);
-  XSetSelectionOwner ((XD_DISPLAY (x_display_arg (1))),
-		      (arg_ulong_integer (2)),
-		      (arg_ulong_integer (3)),
-		      (arg_ulong_integer (4)),
-		      (arg_ulong_integer (5)),
-		      (arg_ulong_integer (6)));
+  XConvertSelection ((XD_DISPLAY (x_display_arg (1))),
+		     (arg_ulong_integer (2)),
+		     (arg_ulong_integer (3)),
+		     (arg_ulong_integer (4)),
+		     (arg_ulong_integer (5)),
+		     (arg_ulong_integer (6)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -2378,5 +2378,6 @@ DEFINE_PRIMITIVE ("X-SEND-SELECTION-NOTIFY", Prim_x_send_selection_notify, 5, 5,
 DEFINE_PRIMITIVE ("X-MAX-REQUEST-SIZE", Prim_x_max_request_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (XMaxRequestSize (x_display_arg (1))));
+  PRIMITIVE_RETURN
+    (long_to_integer (XMaxRequestSize (XD_DISPLAY (x_display_arg (1)))));
 }
