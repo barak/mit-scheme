@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.10 1993/02/18 06:43:01 gjr Exp $
+$Id: lapopt.scm,v 1.11 1993/02/28 16:50:14 gjr Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -207,21 +207,34 @@ MIT in each case. |#
 	    (list-difference (cdr whole) suffix))))
 
 (define (fix-complex-return ret frame junk instr avoid)
-  (let ((ret (list-search-positive
-		 (list ret regnum:first-arg regnum:second-arg
-		       regnum:third-arg regnum:fourth-arg)
-	       (lambda (reg)
-		 (not (memq reg avoid))))))
-    `(,@(reverse junk)
-      (LDW () (OFFSET ,frame 0 ,regnum:stack-pointer) ,ret)
-      ,instr
-      (DEP () ,regnum:quad-bitmask
-	   ,(-1+ scheme-type-width)
-	   ,scheme-type-width
-	   ,ret)
-      (BV () 0 ,ret)
-      (LDO () (OFFSET ,(+ frame 4) 0 ,regnum:stack-pointer)
-	   ,regnum:stack-pointer))))
+  (let ((syll `(OFFSET ,frame 0 ,regnum:stack-pointer)))
+    (if (and (eq? (car instr) 'STW)
+	     (equal? (cadddr instr) syll))
+	;; About to store return address.  Forego store completely
+	(let ((ret (caddr instr)))
+	  `(,@(reverse junk)
+	    (DEP () ,regnum:quad-bitmask
+		 ,(-1+ scheme-type-width)
+		 ,scheme-type-width
+		 ,ret)
+	    (BV () 0 ,ret)
+	    (LDO () (OFFSET ,(+ frame 4) 0 ,regnum:stack-pointer)
+		 ,regnum:stack-pointer)))
+	(let ((ret (list-search-positive
+		       (list ret regnum:first-arg regnum:second-arg
+			     regnum:third-arg regnum:fourth-arg)
+		     (lambda (reg)
+		       (not (memq reg avoid))))))
+	  `(,@(reverse junk)
+	    (LDW () ,syll ,ret)
+	    ,instr
+	    (DEP () ,regnum:quad-bitmask
+		 ,(-1+ scheme-type-width)
+		 ,scheme-type-width
+		 ,ret)
+	    (BV () 0 ,ret)
+	    (LDO () (OFFSET ,(+ frame 4) 0 ,regnum:stack-pointer)
+		 ,regnum:stack-pointer))))))
 
 (define (fix-simple-return ret frame junk)
   `(,@(reverse junk)
