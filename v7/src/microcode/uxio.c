@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.12 1991/03/14 23:02:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.13 1991/03/28 05:38:47 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -372,7 +372,9 @@ DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
   extern int EXFUN (UX_process_any_status_change, (void));
   int status_change_p;
   int nfds;
-  SELECT_TYPE readable = input_descriptors;
+  SELECT_TYPE readable;
+
+  readable = input_descriptors;
   FD_SET (fd, (&readable));
   while (1)
     {
