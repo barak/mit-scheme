@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 4.1 1988/06/13 12:30:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 4.2 1988/08/09 19:59:12 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -105,7 +105,7 @@ MIT in each case. |#
 
 ;;;; Lookup
 
-(define *eager-integration-switch #t)
+(define *eager-integration-switch #f)
 
 (define-method/integrate 'REFERENCE
   (lambda (operations environment expression)
