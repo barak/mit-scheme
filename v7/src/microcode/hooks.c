@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.42 1991/03/01 00:54:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.43 1992/02/03 23:30:25 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -317,43 +317,39 @@ DEFINE_PRIMITIVE ("FORCE", Prim_force, 1, 1, 0)
   CHECK_ARG (1, PROMISE_P);
   {
     fast SCHEME_OBJECT thunk = (ARG_REF (1));
-    switch (MEMORY_REF (thunk, THUNK_SNAPPED))
-      {
-      case SHARP_T:
-	PRIMITIVE_RETURN (MEMORY_REF (thunk, THUNK_VALUE));
-
-      case FIXNUM_ZERO:
-	{
-	  /* New-style thunk used by compiled code. */
-	  PRIMITIVE_CANONICALIZE_CONTEXT();
-	  POP_PRIMITIVE_FRAME (1);
-	Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
-	  Store_Return (RC_SNAP_NEED_THUNK);
-	  Store_Expression (thunk);
-	  Save_Cont ();
-	  STACK_PUSH (MEMORY_REF (thunk, THUNK_VALUE));
-	  STACK_PUSH (STACK_FRAME_HEADER);
-	Pushed ();
-	  PRIMITIVE_ABORT (PRIM_APPLY);
-	  /*NOTREACHED*/
-	}
-
-      default:
-	{
-	  /* Old-style thunk used by interpreted code. */
-	  PRIMITIVE_CANONICALIZE_CONTEXT();
-	  POP_PRIMITIVE_FRAME (1);
-	Will_Push (CONTINUATION_SIZE);
-	  Store_Return (RC_SNAP_NEED_THUNK);
-	  Store_Expression (thunk);
-	  Save_Cont ();
-	Pushed ();
-	  Store_Env (FAST_MEMORY_REF (thunk, THUNK_ENVIRONMENT));
-	  Store_Expression (FAST_MEMORY_REF (thunk, THUNK_PROCEDURE));
-	  PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
-	  /*NOTREACHED*/
-	}
-      }
+    fast SCHEME_OBJECT State = (MEMORY_REF (thunk, THUNK_SNAPPED));
+    if (State == SHARP_T)
+      PRIMITIVE_RETURN (MEMORY_REF (thunk, THUNK_VALUE));
+    else if (State ==  FIXNUM_ZERO)
+    {
+      /* New-style thunk used by compiled code. */
+      PRIMITIVE_CANONICALIZE_CONTEXT();
+      POP_PRIMITIVE_FRAME (1);
+     Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
+      Store_Return (RC_SNAP_NEED_THUNK);
+      Store_Expression (thunk);
+      Save_Cont ();
+      STACK_PUSH (MEMORY_REF (thunk, THUNK_VALUE));
+      STACK_PUSH (STACK_FRAME_HEADER);
+     Pushed ();
+      PRIMITIVE_ABORT (PRIM_APPLY);
+      /*NOTREACHED*/
+    }
+    else
+    {
+      /* Old-style thunk used by interpreted code. */
+      PRIMITIVE_CANONICALIZE_CONTEXT();
+      POP_PRIMITIVE_FRAME (1);
+     Will_Push (CONTINUATION_SIZE);
+      Store_Return (RC_SNAP_NEED_THUNK);
+      Store_Expression (thunk);
+      Save_Cont ();
+     Pushed ();
+      Store_Env (FAST_MEMORY_REF (thunk, THUNK_ENVIRONMENT));
+      Store_Expression (FAST_MEMORY_REF (thunk, THUNK_PROCEDURE));
+      PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
+      /*NOTREACHED*/
+    }
   }
 }
 
