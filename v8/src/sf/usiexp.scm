@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.6 1995/08/29 14:56:39 adams Exp $
+$Id: usiexp.scm,v 1.7 1995/09/07 20:53:56 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -681,7 +681,7 @@ MIT in each case. |#
       (second             . ,second-expansion)
       (seventh            . ,seventh-expansion)
       (sixth              . ,sixth-expansion)
-      (string->symbol     . ,string->symbol-expansion)
+      ;;(string->symbol     . ,string->symbol-expansion)
       (symbol?            . ,symbol?-expansion)
       (third              . ,third-expansion)
       (values             . ,values-expansion)
@@ -709,6 +709,11 @@ MIT in each case. |#
     ASIN
     ATAN
     COS
+    EQV?
+    ERROR
+    ERROR:BAD-RANGE-ARGUMENT
+    ERROR:WRONG-TYPE-ARGUMENT
+    ERROR:WRONG-TYPE-DATUM
     EXP
     EXPT
     FOR-EACH
@@ -716,6 +721,7 @@ MIT in each case. |#
     MEMQ
     SIN
     SQRT
+    STRING->SYMBOL
     TAN
     ))
 
