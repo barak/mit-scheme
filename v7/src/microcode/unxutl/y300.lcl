@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.16 1990/11/15 23:20:35 cph Rel $
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.17 1991/03/28 05:36:55 jinx Exp $
  */
 
 /* These extra files are for 6003.  They assume we're using HP-UX. */
@@ -50,6 +50,15 @@ LYN_OBJECTS = $(X_OBJECTS) $(CTERM_OBJECTS) $(GRAPHICS_OBJECTS)\
 LYN_LIB =  $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB)\
 	-lm
 
+/* Jinx's personal scheme: ordinary + dump. */
+
+JINX_SOURCES = $(X_SOURCES) $(TERMCAP_SOURCES) $(GRAPHICS_SOURCES)\
+	SOURCES_SYSTEM SOURCES_MACHINE dmpwrld.c
+JINX_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS) $(GRAPHICS_OBJECTS)\
+	OBJECTS_SYSTEM OBJECTS_MACHINE dmpwrld.o usrjinx.o
+JINX_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
+	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
+
 
 world: all bchscheme scm6003 kitscheme
 
@@ -98,3 +107,12 @@ usrLYN.c : $(LYN_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xm
 
 gpio.o : gpio.c scheme.touch prims.h
 
+jinxscheme : $(OBJECTS) $(JINX_OBJECTS)
+	@ECHO "#** Re-linking" $@ because of $?
+	rm -f $@
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(JINX_OBJECTS) $(JINX_LIB)
+
+usrjinx.c : $(JINX_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
+	@ECHO "#** Re-making" $@ because of $?
+	rm -f usrjinx.c
+	./Findprim $(JINX_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrjinx.c
