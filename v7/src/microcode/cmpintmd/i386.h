@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.28 1995/10/15 00:40:18 cph Exp $
+$Id: i386.h,v 1.29 1995/10/24 06:21:44 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -54,7 +54,11 @@ MIT in each case. */
 #if defined(_OS2) && (defined(__IBMC__) || defined(__WATCOMC__))
 #define ASM_ENTRY_POINT(name) (_System name)
 #else
+#if defined(WINNT) && defined(__WATCOMC__)
+#define ASM_ENTRY_POINT(name) (__cdecl name)
+#else
 #define ASM_ENTRY_POINT(name) name
+#endif
 #endif
 
 /*
