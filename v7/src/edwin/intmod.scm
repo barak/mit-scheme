@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.90 1998/03/08 08:25:25 cph Exp $
+;;;	$Id: intmod.scm,v 1.91 1998/06/01 05:49:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -343,9 +343,25 @@ REPL uses current evaluation environment."
 	     (if (and (ref-variable-object debug-on-evaluation-error)
 		      (let ((start? (ref-variable debugger-start-on-error?)))
 			(if (eq? 'ASK start?)
-			    (begin
-			      (beep)
-			      (prompt-for-confirmation "Start debugger"))
+			    (let loop ()
+			      (fresh-line port)
+			      (write-string ";Start debugger? (y or n): " port)
+			      (let ((char
+				     (read-command-char port
+							(cmdl/level repl))))
+				(write-char char port)
+				(cond ((or (char-ci=? char #\y)
+					   (char-ci=? char #\space))
+				       (fresh-line port)
+				       (write-string ";Starting debugger..."
+						     port)
+				       #t)
+				      ((or (char-ci=? char #\n)
+					   (char-ci=? char #\rubout))
+				       #f)
+				      (else
+				       (beep port)
+				       (loop)))))
 			    start?)))
 		 (start-debugger))))))))
 
