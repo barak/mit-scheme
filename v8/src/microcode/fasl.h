@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fasl.h,v 9.27 1988/02/10 04:21:32 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fasl.h,v 9.28 1988/04/25 15:43:08 cph Exp $
 
    Contains information relating to the format of FASL files.
    The machine/opsys information is contained in config.h
@@ -90,8 +90,8 @@ extern Boolean Open_Dump_File(), Close_Dump_File();
 		   (((Version) << (ADDRESS_LENGTH / 2)) |	\
 		    (Processor_Type)))
 
-#define WRITE_FLAG		"w"
-#define OPEN_FLAG		"r"
+#define WRITE_FLAG		1
+#define OPEN_FLAG		0
 
 /* "Memorable" FASL versions -- ones where we modified something
    and want to remain backwards compatible.
