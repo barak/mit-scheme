@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.11 1990/02/06 22:04:04 pas Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.12 1990/04/17 21:54:56 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -1326,7 +1326,7 @@ DEFINE_PRIMITIVE ("READ-COLORS-FROM-FILE", Prim_read_colors_from_file, 2,2, 0)
   device = (SB_DEVICE_ARG (1));
   CHECK_ARG (2, STRING_P);
 
-  fp = (fopen ((ARG_REF (2)), "r"));
+  fp = (fopen (((char *) (STRING_LOC ((ARG_REF (2)), 0))), "r"));
   if (fp == ((FILE *) 0))
     error_bad_range_arg (2);
   if (feof (fp))
@@ -1357,7 +1357,7 @@ DEFINE_PRIMITIVE ("SAVE-COLORS-IN-FILE", Prim_save_colors_in_file, 2,2, 0)
   PRIMITIVE_HEADER (2);
   device = (SB_DEVICE_ARG (1));
   CHECK_ARG (2, STRING_P);
-  fp = (fopen ((ARG_REF (2)), "w"));
+  fp = (fopen (((char *) (STRING_LOC ((ARG_REF (2)), 0))), "w"));
   if (fp == ((FILE *) 0))
     error_bad_range_arg (2);
   inquire_color_table
