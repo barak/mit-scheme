@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.49 1998/05/31 03:20:10 cph Exp $
+$Id: unxprm.scm,v 1.50 1998/06/18 19:13:51 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -308,6 +308,7 @@ MIT in each case. |#
     (if (or (string-ci=? "fat" type)
 	    (string-ci=? "hpfs" type)
 	    (string-ci=? "iso9660" type)
+	    (string-ci=? "ntfs" type)
 	    (string-ci=? "smb" type))
 	"\r\n"
 	#f)))
