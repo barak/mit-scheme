@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.27 2001/05/09 03:14:54 cph Exp $
+$Id: ntfs.c,v 1.28 2001/05/22 02:21:10 cph Exp $
 
 Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
@@ -179,7 +179,7 @@ OS_file_type_direct (const char * name)
 {
   BY_HANDLE_FILE_INFORMATION info;
   return
-    (((NT_get_file_info ((STRING_ARG (1)), (&info), 0)) == gfi_not_found)
+    (((NT_get_file_info (name, (&info), 0)) == gfi_not_found)
      ? file_type_nonexistent
      : (((info . dwFileAttributes) & FILE_ATTRIBUTE_DIRECTORY) == 0)
      ? file_type_regular
