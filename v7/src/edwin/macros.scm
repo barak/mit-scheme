@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.55 1992/08/28 18:46:48 jinx Exp $
+;;;	$Id: macros.scm,v 1.56 1992/10/20 20:46:51 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -108,7 +108,7 @@
       (let ((scheme-name (command-name->scheme-name name)))
 	`(DEFINE ,scheme-name
 	   (MAKE-COMMAND ',name
-			 ',description
+			 ,description
 			 ,(if (null? interactive)
 			      `'()
 			      interactive)
