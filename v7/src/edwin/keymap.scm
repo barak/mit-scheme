@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: keymap.scm,v 1.12 1999/01/02 06:11:34 cph Exp $
+;;;$Id: keymap.scm,v 1.13 2000/02/23 19:40:24 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -29,38 +29,43 @@ The list is put in a buffer, which is displayed."
   (lambda ()
     (with-output-to-help-display
      (lambda ()
-       (let ((alists (comtabs->alists (current-comtabs))))
-	 (if (not (null? alists))
-	     (let ((n
-		    (+ (reduce max 0
-			       (map (lambda (elements)
-				      (reduce max 0
-					      (map (lambda (element)
-						     (string-length
-						      (car element)))
-						   elements)))
-				    alists))
-		       2)))
-	       (let ((write-element
-		      (lambda (element)
-			(write-string
-			 (string-append (pad-on-right-to (car element) n)
-					" "
-					(cdr element)))
-			(newline))))
-		 (let ((write-elements
-			(lambda (elements)
-			  (write-element '("key" . "binding"))
-			  (write-element '("---" . "-------"))
-			  (for-each (lambda (elements)
-				      (newline)
-				      (for-each write-element elements))
-				    (sort-by-prefix elements)))))
-		   (write-elements (car alists))
-		   (for-each (lambda (elements)
-			       (newline)
-			       (write-elements elements))
-			     (cdr alists)))))))))))
+       (describe-bindings (current-comtabs) (current-output-port))))))
+
+(define (describe-bindings comtabs port)
+  (let ((alists (comtabs->alists comtabs)))
+    (if (pair? alists)
+	(let ((n
+	       (+ (reduce max 0
+			  (map (lambda (elements)
+				 (reduce max 0
+					 (map (lambda (element)
+						(string-length (car element)))
+					      elements)))
+			       alists))
+		  2)))
+	  (let ((write-element
+		 (lambda (element port)
+		   (write-string
+		    (string-append (pad-on-right-to (car element) n)
+				   " "
+				   (cdr element))
+		    port)
+		   (newline port))))
+	    (let ((write-elements
+		   (lambda (elements port)
+		     (write-element '("key" . "binding") port)
+		     (write-element '("---" . "-------") port)
+		     (for-each (lambda (elements)
+				 (newline port)
+				 (for-each (lambda (element)
+					     (write-element element port))
+					   elements))
+			       (sort-by-prefix elements)))))
+	      (write-elements (car alists) port)
+	      (for-each (lambda (elements)
+			  (newline port)
+			  (write-elements elements port))
+			(cdr alists))))))))
 
 (define-command make-command-summary
   "Make a summary of current key bindings in the buffer *Summary*.
@@ -69,34 +74,34 @@ Previous contents of that buffer are killed first."
   (lambda ()
     (with-output-to-help-display
      (lambda ()
-       (let ((alists (comtabs->alists (current-comtabs))))
-	 (if (not (null? alists))
-	     (begin
-	       (write-summary-keymap (car alists))
-	       (for-each (lambda (alist)
-			   (write-string separator)
-			   (write-summary-keymap alist))
-			 (cdr alists)))))))))
+       (make-command-summary (current-comtabs) (current-output-port))))))
+
+(define (make-command-summary comtabs port)
+  (let ((alists (comtabs->alists comtabs)))
+    (if (pair? alists)
+	(begin
+	  (write-summary-keymap (car alists) port)
+	  (for-each (lambda (alist)
+		      (write-string separator port)
+		      (write-summary-keymap alist port))
+		    (cdr alists))))))
 
 (define separator
-  "
-===============================================================================
+  (string-append "\n" (make-string 79 #\=) "\n\n"))
 
-")
-
-(define (write-summary-keymap alist)
+(define (write-summary-keymap alist port)
   (let ((element-lists (sort-by-prefix alist)))
     (if (not (null? element-lists))
 	(let loop
 	    ((entry (car element-lists))
 	     (element-lists (cdr element-lists)))
-	  (write-summary-style-elements entry)
+	  (write-summary-style-elements entry port)
 	  (if (not (null? element-lists))
 	      (begin
-		(newline)
+		(newline port)
 		(loop (car element-lists) (cdr element-lists))))))))
 
-(define (write-summary-style-elements elements)
+(define (write-summary-style-elements elements port)
   (let loop ((elements (reorder-list elements)))
     (if (not (null? elements))
 	(let ((element->string
@@ -113,13 +118,13 @@ Previous contents of that buffer are killed first."
 	  (let ((string (element->string (car elements))))
 	    (if (null? (cdr elements))
 		(begin
-		  (write-string string)
-		  (newline))
+		  (write-string string port)
+		  (newline port))
 		(begin
-		  (write-string (pad-on-right-to string 39))
-		  (write-char #\space)
-		  (write-string (element->string (cadr elements)))
-		  (newline)
+		  (write-string (pad-on-right-to string 39) port)
+		  (write-char #\space port)
+		  (write-string (element->string (cadr elements)) port)
+		  (newline port)
 		  (loop (cddr elements)))))))))
 
 (define (reorder-list items)
