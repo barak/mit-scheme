@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xdoc.pkg,v 1.4 2004/11/24 20:54:54 cph Exp $
+$Id: xdoc.pkg,v 1.5 2004/11/24 20:56:35 cph Exp $
 
 Copyright 2004 Massachusetts Institute of Technology
 
@@ -170,10 +170,11 @@ USA.
   (export (runtime ssp)
 	  close-database
 	  with-database-connection)
+  (export (runtime ssp)
+	  db-get-user-password)
   (export (runtime ssp xdoc)
 	  db-delete-persistent-value!
 	  db-get-persistent-value
-	  db-get-user-password
 	  db-intern-persistent-value!
 	  db-previously-saved-input
 	  db-previously-saved-output
