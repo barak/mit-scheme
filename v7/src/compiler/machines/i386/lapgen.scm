@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.10 1992/02/13 07:46:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.11 1992/02/13 19:03:55 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -113,7 +113,7 @@ MIT in each case. |#
 
 (define (make-external-label code label)
   (set! *external-labels* (cons label *external-labels*))
-  (LAP (DC UW ,code)
+  (LAP (WORD U ,code)
        (BLOCK-OFFSET ,label)
        (LABEL ,label)))
 
@@ -418,7 +418,7 @@ MIT in each case. |#
 
 (define-integrable (invoke-interface/call code)
   (LAP (MOV W (R ,eax) (& ,code))
-       (JSR ,entry:compiler-scheme-to-interface/call)))
+       (CALL ,entry:compiler-scheme-to-interface/call)))
 
 (let-syntax ((define-entries
 	       (macro (start . names)

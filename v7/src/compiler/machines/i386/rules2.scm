@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules2.scm,v 1.3 1992/02/13 07:48:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules2.scm,v 1.4 1992/02/13 19:04:05 jinx Exp $
 $MC68020-Header: rules2.scm,v 4.12 90/01/18 22:44:04 GMT cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -47,7 +47,7 @@ MIT in each case. |#
 (define-rule predicate
   (TYPE-TEST (REGISTER (? register)) (? type))
   (set-equal-branches!)
-  (LAP (CMP B ,(reference-alias-register! register) (&U ,type))))
+  (LAP (CMP B ,(reference-alias-register! register 'GENERAL) (&U ,type))))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register-1)) (REGISTER (? register-2)))

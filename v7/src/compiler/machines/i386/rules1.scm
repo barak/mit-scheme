@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.8 1992/02/13 07:46:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.9 1992/02/13 19:04:16 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -179,9 +179,16 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n)) (REGISTER (? r)))
   (QUALIFIER (register-value-class=word? r))
-  (LAP (MOV W
-	    ,(target-indirect-reference! a n)
-	    ,(source-register-reference r))))
+  (let ((source (source-register-reference r)))
+    (LAP (MOV W
+	      ,(target-indirect-reference! a n)
+	      ,source))))
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? a)) (? n)) (CONSTANT (? value)))
+  (QUALIFIER (non-pointer-object? value))
+  (LAP (MOV W ,(target-indirect-reference! a n)
+	    (&U ,(non-pointer->literal value)))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
@@ -204,7 +211,7 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 4) -1) (REGISTER (? r)))
   (QUALIFIER (register-value-class=word? r))
-  (LAP (PUSH W ,(source-register-reference r))))
+  (LAP (PUSH ,(source-register-reference r))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 4) -1)

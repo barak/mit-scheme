@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.10 1992/02/13 06:37:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.11 1992/02/13 19:03:46 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -150,39 +150,35 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
-  #|
-  (define-integrable (invoke code entry)
-    code				; ignored
-    (LAP (JMP ,entry)))
-  |#
-  (define-integrable (invoke code entry)
-    entry				; ignored
-    (invoke-interface code))
-
   continuation				; ignored
-  (if (eq? primitive compiled-error-procedure)
-      (LAP ,@(clear-map!)
-	   (MOV W (R ,ecx) (& ,frame-size))
-	   ,@(invoke code:compiler-error entry:compiler-error))
-      (let ((arity (primitive-procedure-arity primitive))
-	    (get-code (object->machine-register! primitive ecx)))
-	(cond ((not (negative? arity))
-	       (LAP ,@get-code
-		    ,@(clear-map!)
-		    ,@(invoke code:compiler-apply
-			      entry:compiler-primitive-apply)))
-	      ((= arity -1)
-	       (LAP ,@get-code
-		    ,@(clear-map!)
-		    (MOV W ,reg:lexpr-primitive-arity (& ,(-1+ frame-size)))
-		    ,@(invoke code:compiler-primitive-lexpr-apply
-			      entry:compiler-primitive-lexpr-apply)))
-	      (else
-	       ;; Unknown primitive arity.  Go through apply.
-	       (LAP ,@get-code
-		    ,@(clear-map!)
-		    (MOV W (R ,edx) (& ,frame-size))
-		    ,@(invoke-interface code:compiler-apply)))))))
+  (define-integrable (invoke-entry entry)
+    (LAP (JMP ,entry)))
+  (let-syntax ((invoke
+		(macro (code entry)
+		  `(invoke-interface ,code))))
+    (if (eq? primitive compiled-error-procedure)
+	(LAP ,@(clear-map!)
+	     (MOV W (R ,ecx) (& ,frame-size))
+	     ,@(invoke code:compiler-error entry:compiler-error))
+	(let ((arity (primitive-procedure-arity primitive))
+	      (get-code (object->machine-register! primitive ecx)))
+	  (cond ((not (negative? arity))
+		 (LAP ,@get-code
+		      ,@(clear-map!)
+		      ,@(invoke code:compiler-apply
+				entry:compiler-primitive-apply)))
+		((= arity -1)
+		 (LAP ,@get-code
+		      ,@(clear-map!)
+		      (MOV W ,reg:lexpr-primitive-arity (& ,(-1+ frame-size)))
+		      ,@(invoke code:compiler-primitive-lexpr-apply
+				entry:compiler-primitive-lexpr-apply)))
+		(else
+		 ;; Unknown primitive arity.  Go through apply.
+		 (LAP ,@get-code
+		      ,@(clear-map!)
+		      (MOV W (R ,edx) (& ,frame-size))
+		      ,@(invoke-interface code:compiler-apply))))))))
 
 (let-syntax
     ((define-special-primitive-invocation
@@ -596,8 +592,6 @@ MIT in each case. |#
 		  ,@(make-external-label (continuation-code-word false)
 					 (generate-label))))))
 
-;;; **** here ****
-
 (define (generate/constants-block constants references assignments
 				  uuo-links global-links static-vars)
   (let ((constant-info
