@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.18 1993/11/16 16:09:15 gjr Exp $
+$Id: cout.scm,v 1.19 1993/11/16 16:36:44 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -733,7 +733,7 @@ MIT in each case. |#
   (char-set-union char-set:not-graphic (char-set #\\ #\")))
 
 (define char-set:C-named-chars
-  (char-set #\\ #\" #\' #\Tab #\BS
+  (char-set #\\ #\" #\Tab #\BS  ;; #\' Scheme does not quote it in strings
 	    ;; #\VT #\BEL	;; Cannot depend on ANSI C
 	    #\Linefeed #\Return #\Page))
 
@@ -746,6 +746,10 @@ MIT in each case. |#
 	 (C-quotify-string-char (string-ref string index))
 	 (C-quotify-string
 	  (substring string (1+ index) (string-length string)))))))
+
+;; The following two routines rely on the fact that Scheme and C
+;; use the same quoting convention for the named characters when they
+;; appear in strings.
 
 (define (C-quotify-string-char char)
   (cond ((char-set-member? char-set:C-named-chars char)
@@ -764,13 +768,15 @@ MIT in each case. |#
 
 (define (C-quotify-char char)
   (cond ((not (char-set-member? char-set:C-char-quoted char))
-	 (string-append "'" (make-string 1 char) "'"))
+	 (string #\' char #\'))
 	((char-set-member? char-set:C-named-chars char)
 	 (string-append
 	  "'"
 	  (let ((s (write-to-string (make-string 1 char))))
 	    (substring s 1 (-1+ (string-length s))))
 	  "'"))
+	((char=? char #\')
+	 "'\\''")
 	((char=? char #\NUL)
 	 "'\\0'")
 	(else
