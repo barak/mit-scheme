@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: key-x11.scm,v 1.3 1995/04/13 23:28:37 cph Exp $
+;;;	$Id: key-x11.scm,v 1.4 1996/10/24 16:14:04 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -48,10 +48,12 @@
 		    bucky-bits))
 
 (define (keysym->name keysym)
-  (cdr (vector-binary-search x-key-translation-table
-			     (lambda (u v) (< u v))
-			     (lambda (pair) (car pair))
-			     keysym)))
+  (let ((entry
+	 (vector-binary-search x-key-translation-table
+			       (lambda (u v) (< u v))
+			       (lambda (pair) (car pair))
+			       keysym)))
+    (and entry (cdr entry))))
 
 ;; This table is a simple translation of /usr/include/X11/keysym.h.
 ;; However, that the vendor-specific marker (bit 28, numbered from 0)
