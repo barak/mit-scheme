@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.17 1992/05/26 05:31:03 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.18 1992/05/26 05:55:47 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -77,7 +77,7 @@ MIT in each case. |#
 	(let ((dir (->namestring
 		    (pathname-as-directory
 		     (merge-pathnames (car eligible-directories))))))
-	  (if (file-writable? dir)
+	  (if (and (file-directory? dir) (file-writable? dir))
 	      (let ((base-name
 		     (string-append dir "_" (unix/current-user-name) "_scm")))
 		(let unique-file ((ext 0))
