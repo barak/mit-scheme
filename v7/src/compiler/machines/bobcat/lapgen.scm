@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.29 1990/03/13 00:20:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.30 1990/03/14 21:05:05 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -451,11 +451,12 @@ MIT in each case. |#
 		,@(operate target source2)))))
     (reuse-machine-target! target-type target
       (lambda (target)
-	(reuse-pseudo-register-alias! source1 target-type
+	(reuse-pseudo-register-alias source1 target-type
 	  (lambda (alias)
 	    (let ((source2 (if (= source1 source2)
 			       (register-reference alias)
 			       (source-reference source2))))
+	      (delete-register! alias)
 	      (delete-dead-registers!)
 	      (add-pseudo-register-alias! target alias)
 	      (operate (register-reference alias) source2)))
