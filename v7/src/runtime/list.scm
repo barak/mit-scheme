@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.27 2001/11/02 03:27:50 cph Exp $
+$Id: list.scm,v 14.28 2001/12/20 21:23:31 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -547,7 +547,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((mapping-procedure
-      (macro (name combiner initial-value procedure first rest)
+      (lambda (name combiner initial-value procedure first rest)
 	`(BEGIN
 	   (DEFINE (MAP-1 L)
 	     (COND ((PAIR? L)

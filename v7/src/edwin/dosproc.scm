@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosproc.scm,v 1.5 2000/10/26 02:28:04 cph Exp $
+;;; $Id: dosproc.scm,v 1.6 2001/12/20 21:27:57 cph Exp $
 ;;;
-;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Dummy subprocess support
 ;; package: (edwin process)
@@ -41,7 +42,7 @@
     (editor-error "Processes not implemented" name process)))
 
 (let-syntax ((define-process-operation
-	       (macro (name)
+	       (lambda (name)
 		 `(define ,name (process-operation ',name)))))
 
   (define-process-operation delete-process))

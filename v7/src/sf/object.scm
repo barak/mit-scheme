@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 4.10 2001/12/20 16:28:23 cph Exp $
+$Id: object.scm,v 4.11 2001/12/20 21:24:54 cph Exp $
 
 Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
@@ -65,7 +65,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-enumeration
-       (macro (enumeration-name enumerand-names)
+       (lambda (enumeration-name enumerand-names)
 	 `(BEGIN
 	    (DEFINE ,enumeration-name
 	      (ENUMERATION/MAKE ',enumerand-names))
@@ -120,7 +120,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-simple-type
-       (macro (name slots #!optional scode?)
+       (lambda (name slots #!optional scode?)
 	 `(DEFINE-STRUCTURE (,name (TYPE VECTOR)
 				   (NAMED ,(symbol-append name '/ENUMERAND))
 				   (CONC-NAME ,(symbol-append name '/))
@@ -165,7 +165,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-flag
-       (macro (name tester setter)
+       (lambda (name tester setter)
 	 `(BEGIN
 	    (DEFINE (,tester VARIABLE)
 	      (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))

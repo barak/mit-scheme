@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: scomb.scm,v 14.16 1999/01/02 06:19:10 cph Exp $
+$Id: scomb.scm,v 14.17 2001/12/20 21:24:08 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SCode Combinator Abstractions
@@ -280,7 +281,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((combination-dispatch
-      (macro (name combination case-0 case-1 case-2 case-n)
+      (lambda (name combination case-0 case-1 case-2 case-n)
 	`(COND ((OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-0)
 			      ,combination)
 		,case-0)

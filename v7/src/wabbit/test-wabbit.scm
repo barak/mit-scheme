@@ -2,7 +2,7 @@
 
 (DECLARE (USUAL-INTEGRATIONS))	; MIT Scheme-ism: promise not to redefine prims
 
-;;; $Id: test-wabbit.scm,v 1.1 1995/07/14 04:04:42 ziggy Exp $
+;;; $Id: test-wabbit.scm,v 1.2 2001/12/20 21:26:00 cph Exp $
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;									     ;;
@@ -22,7 +22,7 @@
 ;;	- Document dependencies
 ;;	- [SCREWS] see last page
 
-;;; $Id: test-wabbit.scm,v 1.1 1995/07/14 04:04:42 ziggy Exp $
+;;; $Id: test-wabbit.scm,v 1.2 2001/12/20 21:26:00 cph Exp $
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;									     ;;
@@ -204,7 +204,7 @@
   (access %entity-extra/apply-hook? (->environment '(runtime procedure))))
 |#
 
-(let-syntax ((ucode-type (macro (name) (microcode-type name))))
+(let-syntax ((ucode-type (lambda (name) (microcode-type name))))
 
   (define   apply-hook-tag 
     (access apply-hook-tag (->environment '(runtime procedure))))

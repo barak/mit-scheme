@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.6 1999/01/02 06:06:43 cph Exp $
+$Id: arith.scm,v 1.7 2001/12/20 21:29:22 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Scheme Arithmetic for 6.001
@@ -45,7 +46,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((define-standard-unary
-       (macro (name flo:op int:op)
+       (lambda (name flo:op int:op)
 	 `(DEFINE (,name X)
 	    (IF (FLONUM? X)
 		(,flo:op X)
@@ -76,7 +77,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((define-standard-binary
-       (macro (name flo:op int:op)
+       (lambda (name flo:op int:op)
 	 `(DEFINE (,name X Y)
 	    (IF (FLONUM? X)
 		(IF (FLONUM? Y)
@@ -183,7 +184,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((define-integer-binary
-       (macro (name operator)
+       (lambda (name operator)
 	 `(DEFINE (,name N M)
 	    (IF (FLONUM? N)
 		(INT:->FLONUM
@@ -214,7 +215,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((define-transcendental-unary
-       (macro (name hole? hole-value function)
+       (lambda (name hole? hole-value function)
 	 `(DEFINE (,name X)
 	    (IF (,hole? X)
 		,hole-value

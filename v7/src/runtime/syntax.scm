@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.45 2001/12/20 20:51:16 cph Exp $
+$Id: syntax.scm,v 14.46 2001/12/20 21:28:41 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -64,7 +64,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	      ;; Syntax extensions
 	      (DEFINE-SYNTAX ,syntax/define-syntax)
 	      (LET-SYNTAX ,syntax/let-syntax)
-	      (MACRO ,syntax/lambda)
 
 	      ;; Environment extensions
 	      (ACCESS ,syntax/access)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.46 2001/12/20 20:51:16 cph Exp $
+$Id: arith.scm,v 1.47 2001/12/20 21:22:31 cph Exp $
 
 Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 
@@ -141,7 +141,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
   (let-syntax
       ((commutative
-	(macro (name generic-binary identity primitive-binary)
+	(lambda (name generic-binary identity primitive-binary)
 	  `(SET! ,name
 		 (MAKE-ENTITY
 		  (NAMED-LAMBDA (,name SELF . ZS)
@@ -161,7 +161,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
   (let-syntax
       ((non-commutative
-	(macro (name generic-unary generic-binary
+	(lambda (name generic-unary generic-binary
 		     generic-inverse inverse-identity primitive-binary)
 	  `(SET! ,name
 		 (MAKE-ENTITY
@@ -180,7 +180,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
   (let-syntax
       ((relational
-	(macro (name generic-binary primitive-binary correct-type? negated?)
+	(lambda (name generic-binary primitive-binary correct-type? negated?)
 	  `(SET! ,name
 		 (MAKE-ENTITY
 		  (NAMED-LAMBDA (,name SELF . ZS)
@@ -206,7 +206,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
   (let-syntax
       ((max/min
-	(macro (name generic-binary)
+	(lambda (name generic-binary)
 	  `(SET! ,name
 		 (MAKE-ENTITY
 		  (NAMED-LAMBDA (,name SELF X . XS)
@@ -510,7 +510,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-addition-operator
-       (macro (name int:op)
+       (lambda (name int:op)
 	 `(define (,name u/u* v/v*)
 	    (rat:binary-operator u/u* v/v*
 	      ,int:op
@@ -669,7 +669,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-integer-coercion
-       (macro (name operation-name coercion)
+       (lambda (name operation-name coercion)
 	 `(DEFINE (,name Q)
 	    (COND ((RATNUM? Q)
 		   (,coercion (RATNUM-NUMERATOR Q) (RATNUM-DENOMINATOR Q)))
@@ -920,7 +920,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-standard-unary
-       (macro (name flo:op rat:op)
+       (lambda (name flo:op rat:op)
 	 `(DEFINE (,name X)
 	    (IF (FLONUM? X)
 		(,flo:op X)
@@ -948,7 +948,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-standard-binary
-       (macro (name flo:op rat:op)
+       (lambda (name flo:op rat:op)
 	 `(DEFINE (,name X Y)
 	    (IF (FLONUM? X)
 		(IF (FLONUM? Y)
@@ -1032,7 +1032,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-integer-binary
-       (macro (name operator-name operator)
+       (lambda (name operator-name operator)
 	 (let ((flo->int
 		(lambda (n)
 		  `(IF (FLO:INTEGER? ,n)
@@ -1060,7 +1060,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-rational-unary
-       (macro (name operator)
+       (lambda (name operator)
 	 `(DEFINE (,name Q)
 	    (IF (FLONUM? Q)
 		(RAT:->INEXACT (,operator (FLO:->RATIONAL Q)))
@@ -1070,7 +1070,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-transcendental-unary
-       (macro (name hole? hole-value function)
+       (lambda (name hole? hole-value function)
 	 `(DEFINE (,name X)
 	    (IF (,hole? X)
 		,hole-value

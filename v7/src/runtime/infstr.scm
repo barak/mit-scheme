@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infstr.scm,v 1.11 2001/08/10 17:09:18 cph Exp $
+$Id: infstr.scm,v 1.12 2001/12/20 21:23:14 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -152,7 +152,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((dbg-block-name
-      (macro (name)
+      (lambda (name)
 	(let ((symbol (symbol-append 'DBG-BLOCK-NAME/ name)))
 	  `(DEFINE-INTEGRABLE ,symbol
 	     ',((ucode-primitive string->symbol)

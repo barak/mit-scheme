@@ -122,7 +122,7 @@ This is some debugging stuff for probing the space usage.
 (define (record-free-pointer trace)
   (if allow-free-trace?
       (let-syntax ((ucode-primitive
-		    (macro arguments
+		    (lambda arguments
 		      (apply make-primitive-procedure arguments))))
 	(vector-set! (cdr trace)
 		     (car trace)
@@ -155,7 +155,7 @@ end of debugging stuff
   (restart-thread uitk-thread #T (lambda () (initial-thread-state 'go))))
 
 (let-syntax ((last-reference
-	      (macro (variable)
+	      (lambda (variable)
 		`(let ((foo ,variable))
 		   (set! ,variable #F)
 		   foo))))

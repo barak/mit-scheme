@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.30 1999/02/18 04:14:36 cph Exp $
+$Id: tterm.scm,v 1.31 2001/12/20 21:28:04 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Termcap(3) Screen Implementation
@@ -441,12 +442,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (key-table false))
 
 (let-syntax ((define-accessor
-	       (macro (name)
+	       (lambda (name)
 		 `(DEFINE-INTEGRABLE (,(symbol-append 'SCREEN- name) SCREEN)
 		    (,(symbol-append 'TERMINAL-STATE/ name)
 		     (SCREEN-STATE SCREEN)))))
 	     (define-updater
-	       (macro (name)
+	       (lambda (name)
 		 `(DEFINE-INTEGRABLE
 		    (,(symbol-append 'SET-SCREEN- name '!) SCREEN ,name)
 		    (,(symbol-append 'SET-TERMINAL-STATE/ name '!)
