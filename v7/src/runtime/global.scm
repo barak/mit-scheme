@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.19 1990/10/04 02:41:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.20 1990/11/14 13:24:16 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -214,7 +214,7 @@ MIT in each case. |#
     (if (not ((ucode-primitive primitive-fasdump) object filename false))
 	(error "FASDUMP: Object is too large to be dumped" object))
     (write-string " -- done" port))
-  object)
+  unspecific)
 
 (define (undefined-value? object)
   ;; Note: the unparser takes advantage of the fact that objects
