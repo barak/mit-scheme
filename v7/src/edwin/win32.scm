@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: win32.scm,v 1.10 1999/03/03 05:29:31 cph Exp $
+;;; $Id: win32.scm,v 1.11 2000/04/15 02:42:25 cph Exp $
 ;;;
-;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -102,7 +102,7 @@
 
 (define (win32-screen/beep screen)
   screen
-  (message-beep -1))
+  (message-beep MB_OK))
 
 (define (expand-rect screen top bottom left right)
   (define-integrable (min u v)  (if (fix:< u v) u v))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.251 2000/04/05 14:22:55 cph Exp $
+$Id: edwin.pkg,v 1.252 2000/04/15 02:42:32 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1174,6 +1174,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    get-window-rect
 	    load-icon
 	    make-rect
+	    mb_ok
 	    message-beep
 	    rect/bottom
 	    rect/left
