@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.42 1998/09/07 07:10:04 cph Exp $
+;;;	$Id: snr.scm,v 1.43 1998/09/08 04:12:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
@@ -2359,20 +2359,6 @@ Otherwise, the standard pruned header is shown."
   (let ((start (buffer-start buffer)))
     (delete-string start (mark1+ (mail-header-end start)))))
 
-(define (with-current-article-buffer receiver)
-  (let ((buffer (current-buffer)))
-    (cond ((news-article-buffer? buffer)
-	   (receiver buffer))
-	  ((news-group-buffer? buffer)
-	   (call-with-values
-	       (lambda ()
-		 (get-article-buffer buffer (current-news-header)))
-	     (lambda (buffer new?)
-	       (receiver buffer)
-	       (if new? (kill-buffer buffer)))))
-	  (else
-	   (editor-error "No article selected.")))))
-
 (define (get-article-buffer group-buffer header)
   (if (not (news-header:real? header))
       (editor-error "Can't select a placeholder article."))
@@ -2555,16 +2541,19 @@ Kill the current buffer in either case."
 	  (if (not header)
 	      (begin
 		(message "No more articles.")
-		(select-buffer group-buffer))
+		(select-buffer group-buffer)
+		(kill-buffer buffer)
+		#f)
 	      (let ((article-buffer
 		     (or (find-news-article-buffer group-buffer header)
 			 (make-news-article-buffer group-buffer header))))
 		(if article-buffer
 		    (begin
 		      (news-group-buffer:move-to-header group-buffer header)
-		      (select-buffer article-buffer))
-		    (loop header)))))))
-    (kill-buffer buffer)))
+		      (select-buffer article-buffer)
+		      (kill-buffer buffer)
+		      #t)
+		    (loop header)))))))))
 
 (define-command news-toggle-article-header
   "Show original article header if pruned header currently shown, or vice versa.
@@ -2627,45 +2616,73 @@ This is a small window showing a few lines around the subject line of the
   "Append the current article to an Rmail file named FILE-NAME.
 If the file does not exist, ask if it should be created.
 If file is being visited, the article is appended to the
- buffer visiting that file."
+ buffer visiting that file.
+With prefix argument, appends next several articles."
   (lambda ()
     (list (prompt-for-rmail-output-filename
 	   "Output article to Rmail file"
-	   (ref-variable rmail-last-rmail-file))))
-  (lambda (pathname)
+	   (ref-variable rmail-last-rmail-file))
+	  (command-argument)))
+  (lambda (pathname argument)
     (set-variable! rmail-last-rmail-file (->namestring pathname))
-    (with-editor-interrupts-disabled
-      (lambda ()
-	(with-current-article-buffer
+    (call-on-news-article-buffers argument
+      (lambda (article-buffer)
+	(with-article-output-buffer article-buffer
 	  (lambda (buffer)
-	    (let ((buffer (get-article-output-buffer buffer)))
-	      (rfc822-region->babyl (buffer-region buffer))
-	      (rmail-output-to-rmail-file (buffer-region buffer) pathname)
-	      (kill-buffer buffer))))))))
+	    (rfc822-region->babyl (buffer-region buffer))
+	    (rmail-output-to-rmail-file (buffer-region buffer) pathname)))))))
 
 (define-command news-output-article
-  "Append this article to Unix mail file named FILE-NAME."
+  "Append this article to Unix mail file named FILE-NAME.
+With prefix argument, appends next several articles."
   (lambda ()
     (list (prompt-for-rmail-output-filename "Output article to Unix mail file"
-					    (ref-variable rmail-last-file))))
-  (lambda (pathname)
+					    (ref-variable rmail-last-file))
+	  (command-argument)))
+  (lambda (pathname argument)
     (set-variable! rmail-last-file (->namestring pathname))
-    (with-editor-interrupts-disabled
-      (lambda ()
-	(with-current-article-buffer
+    (call-on-news-article-buffers argument
+      (lambda (article-buffer)
+	(with-article-output-buffer article-buffer
 	  (lambda (buffer)
-	    (let ((buffer (get-article-output-buffer buffer)))
-	      (rmail-output-to-unix-mail-file (buffer-region buffer) pathname)
-	      (kill-buffer buffer))))))))
+	    (rmail-output-to-unix-mail-file (buffer-region buffer)
+					    pathname)))))))
 
-(define (get-article-output-buffer buffer)
-  (let ((buffer* (temporary-buffer " news conversion")))
-    (insert-region (buffer-absolute-start buffer)
-		   (buffer-absolute-end buffer)
-		   (buffer-start buffer*))
-    (delete-news-header buffer*)
-    (insert-news-header (news-article-buffer:header buffer) buffer* #f)
-    buffer*))
+(define (call-on-news-article-buffers argument procedure)
+  (let ((buffer (selected-buffer)))
+    (cond ((news-article-buffer? buffer)
+	   (let loop
+	       ((buffer buffer)
+		(n (command-argument-numeric-value argument)))
+	     (if (> n 0)
+		 (begin
+		   (procedure buffer)
+		   (if ((ref-command news-next-article))
+		       (loop (selected-buffer) (- n 1)))))))
+	  ((news-group-buffer? buffer)
+	   (header-iteration argument
+	     (lambda (group-buffer header)
+	       (call-with-values
+		   (lambda () (get-article-buffer group-buffer header))
+		 (lambda (article-buffer new?)
+		   (procedure article-buffer)
+		   (if new? (kill-buffer article-buffer)))))))
+	  (else
+	   (editor-error "No article selected.")))))
+
+(define (with-article-output-buffer article-buffer procedure)
+  (with-editor-interrupts-disabled
+    (lambda ()
+      (let ((buffer (temporary-buffer " news conversion")))
+	(insert-region (buffer-absolute-start article-buffer)
+		       (buffer-absolute-end article-buffer)
+		       (buffer-start buffer))
+	(delete-news-header buffer)
+	(insert-news-header (news-article-buffer:header article-buffer)
+			    buffer
+			    #f)
+	(procedure buffer)
+	(kill-buffer buffer)))))
 
 (define-command news-reply-to-article
   "Mail a reply to the author of the current News article.
