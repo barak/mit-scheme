@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.43 1987/04/18 00:22:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.44 1987/04/21 14:29:17 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -68,13 +68,13 @@ MIT in each case. |#
   (pnode->pcfg (make-pnode unbound-test-tag block variable)))
 
 (define-snode combination block compilation-type value operator operands
-  procedures known-operator)
+  procedures known-operator constant?)
 (define *combinations*)
 
 (define (make-combination block compilation-type value operator operands)
   (let ((combination
 	 (make-snode combination-tag block compilation-type value operator
-		     operands '() false)))
+		     operands '() false false)))
     (set! *combinations* (cons combination *combinations*))
     (set-block-combinations! block
 			     (cons combination (block-combinations block)))
