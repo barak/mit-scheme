@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.137 2002/03/25 16:35:58 cph Exp $
+$Id: todo.txt,v 1.138 2002/03/26 03:53:46 cph Exp $
 
 Bug fixes
 ---------
@@ -17,16 +17,6 @@ Bug fixes
   to the new URL rather than the old.  The operation must close the
   folder if it is open, then discard all the state, and finally
   reinitialize it to be a closed reference to the new URL.
-
-* When network connection gets wedged, Edwin locks up and can't be
-  interrupted with C-g.  This is fundamentally an Edwin problem, but
-  it occurs much more frequently with IMAIL.  See if there's a better
-  way to handle this -- if Edwin were running under a terminal window,
-  it would have a real interrupt character, which would do what we
-  want.  This should happen under X as well.
-
-  [I think this should be improved now that I've fixed the problem
-  with `poll' not handling errors right.]
 
 * When Rmail parser encounters corruption, tell the user what message
   is corrupted and attempt to recover the parse by looking for the
