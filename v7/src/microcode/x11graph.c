@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.11 1991/07/02 18:18:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.12 1991/07/03 16:15:46 markf Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -519,13 +519,13 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-DASHES", Prim_x_graphics_set_dashes, 3, 3, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3, 0)
-{
-  /* Arguments: Window, width, height
-     Returns:   A Scheme image
+DEFINE_PRIMITIVE ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3,
+  " Arguments: Window, width, height
+    Returns:   A Scheme image
 
-     The window is used to find the Display, Visual, and Depth
-     information needed to crate an XImage structure.  */
+    The window is used to find the Display, Visual, and Depth
+    information needed to crate an XImage structure.")
+{
   extern allocate_x_image ();
   PRIMITIVE_HEADER (3);
   {
@@ -560,6 +560,32 @@ DEFINE_PRIMITIVE ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3, 0)
 	  bytes_per_line));
       return (XI_TO_OBJECT (xi));
     }
+  }
+}
+
+DEFINE_PRIMITIVE ("X-BYTES-INTO-IMAGE", Prim_x_bytes_into_image, 2, 2,
+  "Stick the bytes from the vector-8b (first arg) into the x_image
+(second arg).")
+{
+  PRIMITIVE_HEADER (2);
+  {
+    SCHEME_OBJECT vector = ARG_REF (1);
+    XImage * image = XI_IMAGE (x_image_arg (2));
+    char * image_scan;
+    unsigned long width = (image -> width);
+    unsigned long height = (image -> height);
+    int x, y;
+
+    if (! (STRING_P (vector)))
+      error_wrong_type_arg (1);
+    if (STRING_LENGTH(vector) != (width * height))
+      error_bad_range_arg (1);
+
+    image_scan = ((char *) STRING_LOC (vector, 0));
+    for (y = 0; y < height; y++)
+      for (x = 0; x < width; x++)
+	XPutPixel (image, x, y, ((unsigned long) *image_scan++));
+    PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
 
