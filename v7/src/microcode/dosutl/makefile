@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.8 1993/08/03 08:39:52 gjr Exp $
+###	$Id: makefile,v 1.9 1993/08/23 01:42:02 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -58,7 +58,7 @@ AS = mlx
 LDFLAGS =
 CFLAGS = -DMIT_SCHEME $(MACHINE_SWITCHES) -D__STDC__ -Jm -o
 
-all: bintopsb.exe psbtobin.exe scheme.exe bchscheme.exe # mswload.exe
+all: bintopsb.exe psbtobin.exe scheme.exe bchschem.exe # mswload.exe
 
 .c.obj:
 	$(CC) $(CFLAGS) -c $*.c
@@ -266,24 +266,24 @@ OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(DOS_OBJECTS) $(OS_PRIM_OBJECTS) us
 BCHSOURCES = $(CORE_SOURCES) $(BCH_GC_SOURCES)
 BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(DOS_OBJECTS) $(OS_PRIM_OBJECTS) bchdef.obj
 
-FLASHTEK = x32v.lib
+XTNDRLIB = x32v.lib
 
 scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scm-ztc.lst
-	$(CC) @scm-ztc.lst $(FLASHTEK)
-bchscheme.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bch-ztc.lst
-	$(CC) @bch-ztc.lst $(FLASHTEK)
+	$(CC) @scm-ztc.lst $(XTNDRLIB)
+bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bch-ztc.lst
+	$(CC) @bch-ztc.lst $(XTNDRLIB)
 findprim.exe : findprim.obj
-	$(CC) findprim.obj $(MACHINE_SWITCHES) $(FLASHTEK)
+	$(CC) findprim.obj $(MACHINE_SWITCHES) $(XTNDRLIB)
 bintopsb.exe : bintopsb.obj missing.obj
-	$(CC) bintopsb.obj missing.obj $(MACHINE_SWITCHES) $(LDFLAGS) $(FLASHTEK)
+	$(CC) bintopsb.obj missing.obj $(MACHINE_SWITCHES) $(LDFLAGS) $(XTNDRLIB)
 psbtobin.exe : psbtobin.obj missing.obj
-	$(CC) psbtobin.obj missing.obj $(MACHINE_SWITCHES) $(LDFLAGS) $(FLASHTEK)
+	$(CC) psbtobin.obj missing.obj $(MACHINE_SWITCHES) $(LDFLAGS) $(XTNDRLIB)
 breakup.exe : breakup.obj
 	$(CC) breakup.obj $(MACHINE_SWITCHES) $(LDFLAG)
 wsize.exe : wsize.obj
 	$(CC) wsize.obj $(MACHINE_SWITCHES) $(LDFLAGS)
 ppband.exe : ppband.obj
-	$(CC) ppband.obj $(MACHINE_SWITCHES) $(LDFLAGS) $(FLASHTEK)
+	$(CC) ppband.obj $(MACHINE_SWITCHES) $(LDFLAGS) $(XTNDRLIB)
 
 usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) dosconio.c usrdef.tch findprim.exe scm-prm.lst
 	rm -f usrdef.c
@@ -336,7 +336,7 @@ fasload.obj : scheme.tch prims.h osscheme.h osfile.h osio.h $(GC_HEAD_FILES) \
 	trap.h option.h prmcon.h load.c fasl.h
 fasdump.obj : scheme.tch prims.h osio.h osfile.h osfs.h $(GC_HEAD_FILES) \
 	trap.h lookup.h fasl.h dump.c
-memmag.obj : scheme.tch prims.h $(GC_HEAD_FILES)
+memmag.obj : scheme.tch prims.h $(GC_HEAD_FILES) memmag.h
 gcloop.obj : scheme.tch $(GC_HEAD_FILES)
 purify.obj : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
 purutl.obj : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
@@ -357,7 +357,7 @@ BCHGCC_H = bchgcc.h oscond.h $(GC_HEAD_FILES)
 bchdmp.obj : scheme.tch prims.h dosio.h osio.h osfile.h trap.h lookup.h \
 	$(BCHGCC_H) fasl.h dump.c
 bchdrn.obj : ansidecl.h bchdrn.h
-bchmmg.obj : scheme.tch prims.h msdos.h $(BCHGCC_H) option.h bchdrn.h
+bchmmg.obj : scheme.tch prims.h msdos.h $(BCHGCC_H) option.h bchdrn.h memmag.h
 bchgcl.obj : scheme.tch $(BCHGCC_H)
 bchpur.obj : scheme.tch prims.h $(BCHGCC_H) zones.h
 bchutl.obj : ansidecl.h
@@ -373,13 +373,13 @@ ppband.obj : ansidecl.h config.h errors.h types.h const.h object.h \
 fft.obj : scheme.tch prims.h zones.h array.h image.h
 array.obj image.obj : scheme.tch prims.h array.h
 cmpint.obj : scheme.tch prim.h $(GC_HEAD_FILES)
-osscheme.obj : scheme.tch posixtype.h os.h osscheme.h
-ostty.obj : ansidecl.h oscond.h posixtype.h os.h ostty.h osscheme.h
+osscheme.obj : scheme.tch posixtyp.h os.h osscheme.h
+ostty.obj : ansidecl.h oscond.h posixtyp.h os.h ostty.h osscheme.h
 error.obj ptrvec.obj transact.obj : ansidecl.h dstack.h
 wind.obj : ansidecl.h dstack.h obstack.h
 obstack.obj : obstack.h
 
-OS_PRIM_DEPENDENCIES = scheme.tch prims.h posixtype.h os.h
+OS_PRIM_DEPENDENCIES = scheme.tch prims.h posixtyp.h os.h
 prosenv.obj : osenv.h ostop.h $(OS_PRIM_DEPENDENCIES)
 prosfile.obj : osfile.h $(OS_PRIM_DEPENDENCIES)
 prosfs.obj : osfs.h $(OS_PRIM_DEPENDENCIES)
@@ -389,7 +389,7 @@ prosterm.obj : osterm.h osio.h $(OS_PRIM_DEPENDENCIES)
 prostty.obj : ostty.h osctty.h ossig.h osfile.h osio.h $(OS_PRIM_DEPENDENCIES)
 prmcon.obj : scheme.tch prims.h prmcon.h $(OS_PRIM_DEPENDENCIES)
 
-DOS_DEPENDENCIES = oscond.h ansidecl.h posixtype.h intext.h \
+DOS_DEPENDENCIES = oscond.h ansidecl.h posixtyp.h intext.h \
 		   dstack.h os.h osscheme.h msdos.h dossys.h syscall.h
 dosenv.obj : osenv.h $(DOS_DEPENDENCIES)
 dosfile.obj : osfile.h osio.h dosio.h $(DOS_DEPENDENCIES)
