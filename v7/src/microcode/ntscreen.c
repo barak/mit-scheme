@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.30 1997/06/19 05:14:14 cph Exp $
+$Id: ntscreen.c,v 1.31 1997/11/29 04:37:25 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -3465,9 +3465,11 @@ parse_logfont (char * name, LOGFONT * lf)
 {
   int i = 0;
   int name_ended = 0;
+  int number_p;
   int len;
   char * start = name;
   char * end = name;
+  char * scan;
 
   while (1)
     {
@@ -3476,11 +3478,27 @@ parse_logfont (char * name, LOGFONT * lf)
       if ((*start) == '\0')
 	return (TRUE);
       end = start;
-      while (((*end) != ' ') && ((*end) != 0))
+      while (((*end) != ' ') && ((*end) != '\0'))
 	end += 1;
       len = (end - start);
-
-      if ((((*start) >= '0') && ((*start) <= '9')) || ((*start) == '-'))
+      scan = start;
+      number_p = 0;
+      if (scan < end)
+	while (1)
+	  {
+	    if (scan == end)
+	      {
+		number_p = 1;
+		break;
+	      }
+	    if (! (((*scan) >= '0') && ((*scan) <= '9')))
+	      {
+		number_p = 0;
+		break;
+	      }
+	    scan += 1;
+	  }
+      if (number_p)
 	{
 	  long points = (atol (start));
 	  (lf -> lfHeight) = (- (points_to_logical_units (points)));
