@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.33 1987/08/07 17:08:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.34 1987/09/03 05:10:05 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -57,7 +57,7 @@ MIT in each case. |#
 		     (normal-primitive-constant? callee)
 		     (let ((open-coder
 			    (assq (constant-value callee)
-				  primitive-open-coders)))
+				  (cdr primitive-open-coders))))
 		       (and open-coder
 			    ((cdr open-coder) combination
 					      subproblem?
@@ -138,22 +138,26 @@ MIT in each case. |#
 	      (else
 	       (error "Unknown combination value" value)))))))
 
-(define (define-open-coder primitive open-coder)
-  (let ((kernel
-	 (lambda (primitive)
-	   (let ((entry (assq primitive primitive-open-coders)))
-	     (if entry
-		 (set-cdr! entry open-coder)
-		 (set! primitive-open-coders
-		       (cons (cons primitive open-coder)
-			     primitive-open-coders)))))))
-    (if (pair? primitive)
-	(for-each kernel primitive)
-	(kernel primitive)))
-  primitive)
+(define (define-primitive-handler data-base)
+  (lambda (primitive handler)
+    (let ((kernel
+	   (lambda (primitive)
+	     (let ((entry (assq primitive (cdr data-base))))
+	       (if entry
+		   (set-cdr! entry handler)
+		   (set-cdr! data-base
+			     (cons (cons primitive handler)
+				   (cdr data-base))))))))
+      (if (pair? primitive)
+	  (for-each kernel primitive)
+	  (kernel primitive)))
+    primitive))
 
 (define primitive-open-coders
-  '())
+  (list 'PRIMITIVE-OPEN-CODERS))
+
+(define define-open-coder
+  (define-primitive-handler primitive-open-coders))
 
 (define (combination/subproblem combination operator operands)
   (let ((block (combination-block combination)))
@@ -274,12 +278,22 @@ MIT in each case. |#
 
 (define (make-call/primitive combination operator operands prefix continuation)
   (make-call false combination operator operands
-    (lambda (number-pushed)
-      (rtl:make-invocation:primitive
-       (1+ number-pushed)
-       (prefix combination number-pushed)
-       continuation
-       (constant-value (combination-known-operator combination))))))
+   (let* ((prim (constant-value (combination-known-operator combination)))
+	  (special-handler (assq prim (cdr special-primitive-handlers))))
+     (if special-handler
+	 ((cdr special-handler) combination prefix continuation)
+	 (lambda (number-pushed)
+	   (rtl:make-invocation:primitive
+	    (1+ number-pushed)
+	    (prefix combination number-pushed)
+	    continuation
+	    prim))))))
+
+(define special-primitive-handlers
+  (list 'SPECIAL-PRIMITIVE-HANDLERS))
+
+(define define-special-primitive-handler
+  (define-primitive-handler special-primitive-handlers))
 
 (define (make-call/reference combination operator operands prefix continuation)
   (make-call false combination operator operands

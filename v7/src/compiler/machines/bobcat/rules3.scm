@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.13 1987/07/30 21:44:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.14 1987/09/03 05:14:52 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -125,6 +125,33 @@ MIT in each case. |#
 	(AND L (D 7) (D 1))
 	(MOV L (D 1) (A 0))
 	(JMP (@A 0)))))
+
+(let-syntax
+    ((define-special-primitive-invocation
+       (macro (name)
+	 `(define-rule statement
+	    (INVOCATION:SPECIAL-PRIMITIVE ,name (? frame-size)
+					  (? prefix) (? continuation))
+	    (disable-frame-pointer-offset!
+	     ,(list 'LAP
+		    (list 'UNQUOTE-SPLICING
+			  '(generate-invocation-prefix prefix '()))
+		    (list 'JMP
+			  (list 'UNQUOTE
+				(symbol-append 'ENTRY:COMPILER- name)))))))))
+
+  (define-special-primitive-invocation &+)
+  (define-special-primitive-invocation &-)
+  (define-special-primitive-invocation &*)
+  (define-special-primitive-invocation &/)
+  (define-special-primitive-invocation &=)
+  (define-special-primitive-invocation &<)
+  (define-special-primitive-invocation &>)
+  (define-special-primitive-invocation 1+)
+  (define-special-primitive-invocation -1+)
+  (define-special-primitive-invocation zero?)
+  (define-special-primitive-invocation positive?)
+  (define-special-primitive-invocation negative?))
 
 (define-rule statement
   (RETURN)

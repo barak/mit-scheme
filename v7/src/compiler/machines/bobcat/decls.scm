@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.23 1987/08/23 03:34:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.24 1987/09/03 05:17:16 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -90,7 +90,8 @@ MIT in each case. |#
 			   "ralloc" "rcseep" "rdeath" "rdebug" "rgcomb"
 			   "rgpcom" "rgpred" "rgproc" "rgrval" "rgstmt" "rlife"
 			   "rtlgen")
-	  (filename/append "back-end" "lapgn1" "lapgn2" "lapgn3")))
+	  (filename/append "back-end" "lapgn1" "lapgn2" "lapgn3")
+	  (filename/append "machines/bobcat" "rgspcm")))
 
 (define filenames/dependency-chain/bits
   (filename/append "back-end" "symtab" "bitutl" "bittop"))

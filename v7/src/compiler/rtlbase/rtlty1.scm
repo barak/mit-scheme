@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.12 1987/07/03 18:56:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.13 1987/09/03 05:15:29 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -83,6 +83,8 @@ MIT in each case. |#
   environment name)
 (define-rtl-statement invocation:primitive % pushed prefix continuation
   procedure)
+(define-rtl-statement invocation:special-primitive % name pushed prefix
+  continuation)
 (define-rtl-statement invocation:uuo-link % pushed prefix continuation name)
 
 (define-rtl-statement message-sender:value rtl: size)

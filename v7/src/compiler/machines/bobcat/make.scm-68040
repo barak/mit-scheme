@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.42 1987/08/07 17:13:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.43 1987/09/03 05:13:32 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -46,11 +46,11 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 3)
-      (define :modification 0)
+      (define :modification 1)
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.42 1987/08/07 17:13:18 cph Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.43 1987/09/03 05:13:32 jinx Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -129,6 +129,7 @@ MIT in each case. |#
 		 "front-end/rgrval.bin"	;RTL generator: RValues
 		 "front-end/rgcomb.bin"	;RTL generator: Combinations
 		 "front-end/rgpcom.bin"	;RTL generator: Primitive open-coding
+		 "machines/bobcat/rgspcm.bin" ;RTL generator: primitives treated specially.
 		 ))
 
 	 (cons rtl-cse-package
