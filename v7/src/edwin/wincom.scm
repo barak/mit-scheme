@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: wincom.scm,v 1.119 1996/04/24 01:48:50 cph Exp $
+;;;	$Id: wincom.scm,v 1.120 1996/05/11 08:44:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -435,46 +435,60 @@ or if the window is the only window of its frame."
   "Kills the most recently popped up buffer, if one exists.
 Also kills any pop up window it may have created."
   ()
-  (lambda ()
-    (kill-pop-up-buffer #t '())))
+  (lambda () (kill-pop-up-buffer #t)))
 
 (define (cleanup-pop-up-buffers thunk)
-  (let ((window-alist
-	 (map (lambda (window)
-		(weak-cons window (window-buffer window)))
-	      (window-list))))
-    (fluid-let ((*previous-popped-up-window* (weak-cons #f #f))
-		(*previous-popped-up-buffer* (weak-cons #f #f))
-		(*minibuffer-scroll-window* (weak-cons #f #f)))
-      (dynamic-wind
-       (lambda () unspecific)
-       thunk
-       (lambda () (kill-pop-up-buffer #f window-alist))))))
+  (fluid-let ((*previous-popped-up-window* (weak-cons #f #f))
+	      (*previous-popped-up-buffer* (weak-cons #f #f))
+	      (*minibuffer-scroll-window* (weak-cons #f #f))
+	      (*pop-up-buffer-window-alist*
+	       (map (lambda (window)
+		      (weak-cons window (window-buffer window)))
+		    (window-list))))
+    (dynamic-wind
+     (lambda () unspecific)
+     thunk
+     (lambda () (kill-pop-up-buffer #f)))))
 
-(define (kill-pop-up-buffer error-if-none? #!optional window-alist)
-  (let ((window-alist (if (default-object? window-alist) '() window-alist)))
-    (let ((window (weak-car *previous-popped-up-window*)))
-      (if window
-	  (begin
-	    (weak-set-car! *previous-popped-up-window* #f)
-	    (if (and (window-live? window)
-		     (not (window-has-no-neighbors? window)))
-		(window-delete! window)))))
-    (let ((buffer (weak-car *previous-popped-up-buffer*)))
-      (cond ((and buffer (buffer-alive? buffer))
-	     (for-each (lambda (window)
-			 (let ((entry (weak-assq window window-alist)))
-			   (if entry
-			       (set-window-buffer! window (weak-cdr entry)))))
-		       (buffer-windows buffer))
-	     (weak-set-car! *previous-popped-up-buffer* #f)
-	     (kill-buffer-interactive buffer))
-	    (error-if-none?
-	     (editor-error "No previous pop up buffer."))))))
+(define (kill-pop-up-buffer error-if-none?)
+  (let ((window (weak-car *previous-popped-up-window*)))
+    (if window
+	(begin
+	  (weak-set-car! *previous-popped-up-window* #f)
+	  (if (and (window-live? window)
+		   (not (window-has-no-neighbors? window)))
+	      (window-delete! window)))))
+  (let ((buffer (weak-car *previous-popped-up-buffer*)))
+    (cond ((and buffer (buffer-alive? buffer))
+	   (for-each
+	    (lambda (window)
+	      (let ((entry (weak-assq window *pop-up-buffer-window-alist*)))
+		(if entry
+		    (set-window-buffer! window (weak-cdr entry)))))
+	    (buffer-windows buffer))
+	   (weak-set-car! *previous-popped-up-buffer* #f)
+	   (kill-buffer-interactive buffer))
+	  (error-if-none?
+	   (editor-error "No previous pop up buffer.")))))
+
+(define (maybe-kill-pop-up-buffer buffer)
+  (if (and buffer (eq? buffer (popped-up-buffer)))
+      (kill-pop-up-buffer #f)))
+
+(define (popped-up-buffer)
+  (weak-car *previous-popped-up-buffer*))
+
+(define (keep-pop-up-buffer buffer)
+  (if (or (not buffer)
+	  (eq? buffer (weak-car *previous-popped-up-buffer*)))
+      (begin
+	(weak-set-car! *previous-popped-up-window* #f)
+	(weak-set-car! *previous-popped-up-buffer* #f))))
 
 (define *previous-popped-up-window* (weak-cons #f #f))
 (define *previous-popped-up-buffer* (weak-cons #f #f))
 (define *minibuffer-scroll-window* (weak-cons #f #f))
+(define *pop-up-buffer-window-alist* '())
 
 (define (pop-up-buffer buffer #!optional select? not-current-window?)
   ;; If some new window is created by this procedure, it is returned
