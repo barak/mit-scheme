@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.2 1988/08/05 20:49:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.3 1989/03/14 02:18:01 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,7 +46,11 @@ MIT in each case. |#
 				 (canonicalize-output-filename to)))
 
 (define (delete-file name)
-  ((ucode-primitive remove-file) (canonicalize-input-filename name)))
+  (let ((truename (pathname->input-truename (->pathname name))))
+    (and truename
+	 (begin
+	   ((ucode-primitive remove-file) (pathname->string truename))
+	   true))))
 
 (define (transcript-on filename)
   (if (not ((ucode-primitive photo-open)
