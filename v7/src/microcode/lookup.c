@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.65 2001/08/14 01:15:05 cph Exp $
+$Id: lookup.c,v 9.66 2001/12/07 03:57:00 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -456,7 +456,7 @@ define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 	  : 0));
 
     /* Create the binding.  */
-    pair = (cons (symbol, value));
+    pair = (cons (symbol, (MAP_TO_UNASSIGNED (value))));
     ((GET_EXTENDED_FRAME_BINDINGS (environment)) [length]) = pair;
     SET_EXTENDED_FRAME_LENGTH (environment, (length + 1));
 
