@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.28 1992/02/04 22:44:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.29 1992/02/04 22:53:53 jinx Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -802,7 +802,7 @@ DEFUN (hppa_reset_hook, (table_length, utility_table),
 #define ASM_RESET_HOOK() do						\
 {									\
   hppa_reset_hook (((sizeof (utility_table)) / (sizeof (PTR))),		\
-		   &utility_table[0]);					\
+		   ((PTR *) (&utility_table[0])));			\
 } while (0)
 
 #endif /* IN_CMPINT_C */
