@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.23 1993/10/26 00:37:57 cph Exp $
+;;;	$Id: debug.scm,v 1.24 1993/10/26 01:12:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -93,13 +93,15 @@
 
 (define (highlight-region-excluding-indentation start end)
   (let loop ((start start))
-    (let ((lend (line-end start 0)))
+    (let ((start (horizontal-space-end start))
+	  (lend (line-end start 0)))
       (if (mark<= lend end)
  	  (begin
- 	    (highlight-region (horizontal-space-region start) #t)
+	    (let ((end (horizontal-space-start lend)))
+	      (if (mark< start end)
+		  (highlight-region (make-region start end) #t)))
  	    (loop (mark1+ lend)))
-	  (let ((start (horizontal-space-end start))
-		(end (horizontal-space-start end)))
+	  (let ((end (horizontal-space-start end)))
 	    (if (mark< start end)
 		(highlight-region (make-region start end) #t)))))))
 
