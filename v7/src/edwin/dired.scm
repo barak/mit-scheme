@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.165 1996/10/02 17:00:10 cph Exp $
+;;;	$Id: dired.scm,v 1.166 1997/03/04 06:43:01 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -294,11 +294,8 @@ Type `h' after entering dired for more info."
       (let ((filename (dired-filename-string lstart)))
 	(if (and filename
 		 (or (not (string? dired-trivial-filenames))
-		     (not (re-match-string-forward
-			   (re-compile-pattern dired-trivial-filenames #f)
-			   #f
-			   syntax-table
-			   filename))))
+		     (not (re-string-match dired-trivial-filenames
+					   filename #f syntax-table))))
 	    lstart
 	    (let ((lstart (line-start lstart 1 #f)))
 	      (and lstart

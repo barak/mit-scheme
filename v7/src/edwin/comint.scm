@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.22 1996/04/23 22:12:11 cph Exp $
+$Id: comint.scm,v 1.23 1997/03/04 06:42:55 cph Exp $
 
-Copyright (c) 1991-96 Massachusetts Institute of Technology
+Copyright (c) 1991-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -219,8 +219,10 @@ Thus it can, for instance, track cd/pushd/popd commands issued to the shell."
 Only inputs answering true to this procedure are saved on the input
 history list.  Default is to save anything that isn't all whitespace."
   (lambda (string)
-    (not (re-match-string-forward (re-compile-pattern "\\`\\s *\\'" false)
-				  false (ref-variable syntax-table) string))))
+    (not (re-string-match "\\`\\s *\\'"
+			  string
+			  #f
+			  (ref-variable syntax-table)))))
 
 (define-command send-invisible
   "Read a string without echoing, and send it to the process running

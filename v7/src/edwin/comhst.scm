@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comhst.scm,v 1.4 1994/04/23 04:53:27 cph Exp $
+$Id: comhst.scm,v 1.5 1997/03/04 06:42:53 cph Exp $
 
-Copyright (c) 1992-94 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -133,10 +133,10 @@ license should have been included along with this file. |#
 		     (set-command-message! comint-input-ring-tag
 					   start left right)
 		     (editor-failure "Not found"))
-		    ((re-search-string-forward pattern
-					       false
-					       syntax-table
-					       (ring-ref ring (- index 1)))
+		    ((re-string-search pattern
+				       (ring-ref ring (- index 1))
+				       #f
+				       syntax-table)
 		     (set-variable! comint-last-input-match string)
 		     ((ref-command comint-previous-input) (- index start)))
 		    (else

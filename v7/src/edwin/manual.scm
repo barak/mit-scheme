@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: manual.scm,v 1.12 1996/04/23 22:24:05 cph Exp $
+;;;	$Id: manual.scm,v 1.13 1997/03/04 06:43:19 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -53,12 +53,8 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
   "sManual entry (topic): "
   (lambda (topic #!optional section)
     (if (and (default-object? section)
-	     (re-match-string-forward
-	      (re-compile-pattern
-	       "\\`[ \t]*\\([^( \t]+\\)[ \t]*(\\(.+\\))[ \t]*\\'"
-	       false)
-	      true
-	      false
+	     (re-string-match
+	      "\\`[ \t]*\\([^( \t]+\\)[ \t]*(\\(.+\\))[ \t]*\\'"
 	      topic))
 	(begin
 	  (set! section
@@ -189,7 +185,6 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
     (let ((syntax-table (group-syntax-table group)))
       (let loop ((index (group-start-index group)))
 	(if (re-search-buffer-forward pattern
-				      case-fold-search
 				      syntax-table
 				      group
 				      index

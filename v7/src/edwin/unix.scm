@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.74 1996/12/24 22:32:15 cph Exp $
+;;;	$Id: unix.scm,v 1.75 1997/03/04 06:43:49 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -94,9 +94,7 @@ Includes the new backup.  Must be > 0."
 	     (or (fix:= index (string-length prefix))
 		 (and (fix:> index 0)
 		      (char=? (string-ref prefix (fix:- index 1)) #\/)))
-	     (re-match-substring-forward (re-compile-pattern "[/$~]" #t)
-					 #t #f string index
-					 (string-length string)))
+	     (re-substring-match "[/$~]" string index (string-length string)))
 	(string-tail string index)
 	string)))
 
@@ -215,8 +213,8 @@ Includes the new backup.  Must be > 0."
 			  (let loop ((filenames filenames))
 			    (cond ((null? filenames)
 				   '())
-				  ((re-match-substring-forward
-				    pattern false false
+				  ((re-substring-match
+				    pattern
 				    (car filenames)
 				    prefix-length
 				    (string-length (car filenames)))

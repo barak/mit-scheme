@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.8 1996/10/09 15:44:37 cph Exp $
+;;;	$Id: dosfile.scm,v 1.9 1997/03/04 06:43:04 cph Exp $
 ;;;
-;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -94,9 +94,8 @@ Includes the new backup.  Must be > 0."
 		 (and (fix:> index 0)
 		      (or (char=? (string-ref prefix (fix:- index 1)) #\/)
 			  (char=? (string-ref prefix (fix:- index 1)) #\\))))
-	     (re-match-substring-forward
-	      (re-compile-pattern "[\\/$~]\\|[a-zA-Z]:" #t)
-	      #t #f string index (string-length string)))
+	     (re-substring-match "[\\/$~]\\|[a-zA-Z]:"
+				 string index (string-length string)))
 	(string-tail string index)
 	string)))
 
@@ -227,18 +226,10 @@ Includes the new backup.  Must be > 0."
       (let ((type (pathname-type filename)))
 	(and (string? type)
 	     (or (string-ci=? "bak" type)
-		 (re-match-string-forward (re-compile-pattern ".[0-9][0-9]" #f)
-					  #f
-					  #f
-					  type))))))
+		 (re-string-match ".[0-9][0-9]" type))))))
 
 (define (os/numeric-backup-filename? filename)
-  (and (let ((try
-	      (lambda (pattern)
-		(re-search-string-forward (re-compile-pattern pattern #f)
-					  #f
-					  #f
-					  filename))))
+  (and (let ((try (lambda (pattern) (re-string-search pattern filename))))
 	 (or (try "^\\([^.]+\\)\\.\\([0-9][0-9][0-9]\\)$")
 	     (try "^\\([^.]+\\.[^.]\\)\\([0-9][0-9]\\)$")
 	     (there-exists? dos/backup-suffixes
@@ -257,10 +248,7 @@ Includes the new backup.  Must be > 0."
 		      version))))))
 
 (define (os/auto-save-filename? filename)
-  (or (re-match-string-forward (re-compile-pattern "^#.+#$" #f)
-			       #f
-			       #f
-			       (file-namestring filename))
+  (or (re-string-match "^#.+#$" (file-namestring filename))
       (let ((type (pathname-type filename)))
 	(and (string? type)
 	     (string-ci=? "sav" type)))))

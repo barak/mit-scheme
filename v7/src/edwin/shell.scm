@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: shell.scm,v 1.13 1996/05/11 08:36:59 cph Exp $
+$Id: shell.scm,v 1.14 1997/03/04 06:43:37 cph Exp $
 
-Copyright (c) 1991-96 Massachusetts Institute of Technology
+Copyright (c) 1991-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -155,19 +155,15 @@ Otherwise, one argument `-i' is passed to the shell."
 (define (shell-directory-tracker string)
   (if (ref-variable shell-dirtrack?)
       (let ((start
-	     (re-match-string-forward (re-compile-pattern "^\\s *" false)
-				      false
-				      (ref-variable syntax-table)
-				      string))
+	     (re-string-match "^\\s *" string #f (ref-variable syntax-table)))
 	    (end (string-length string)))
 	(let ((try
 	       (let ((match
 		      (lambda (regexp start)
-			(re-match-substring-forward
-			 (re-compile-pattern regexp false)
-			 false
-			 (ref-variable syntax-table)
-			 string start end))))
+			(re-substring-match regexp
+					    string start end
+					    #f
+					    (ref-variable syntax-table)))))
 		 (lambda (command)
 		   (let ((eoc (match command start)))
 		     (cond ((not eoc)
@@ -235,8 +231,7 @@ Otherwise, one argument `-i' is passed to the shell."
 	   (shell-dirstack-message)))))
 
 (define (shell-extract-num string)
-  (and (re-match-string-forward (re-compile-pattern "^\\+[1-9][0-9]*$" false)
-				false false string)
+  (and (re-string-match "^\\+[1-9][0-9]*$" string)
        (string->number string)))
 
 (define (shell-process-cd filename)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: verilog.scm,v 1.1 1996/04/23 22:39:44 cph Exp $
+;;;	$Id: verilog.scm,v 1.2 1997/03/04 06:43:51 cph Exp $
 ;;;
-;;;	Copyright (c) 1996 Massachusetts Institute of Technology
+;;;	Copyright (c) 1996-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -293,7 +293,7 @@
 (define (match-statement-keyword start)
   (let loop ((records verilog-statement-keywords))
     (and (not (null? records))
-	 (if (match-pattern (keyword-record/pattern (car records)) start)
+	 (if (re-match-forward (keyword-record/pattern (car records)) start)
 	     (car records)
 	     (loop (cdr records))))))
 
@@ -301,16 +301,7 @@
   (let ((record (and (pair? nesting) (cdar nesting))))
     (and record
 	 (keyword-record/ending-pattern record)
-	 (match-pattern (keyword-record/ending-pattern record) mark))))
-
-(define (match-pattern pattern mark)
-  (let ((group (mark-group mark)))
-    (re-match-buffer-forward pattern
-			     #f
-			     (group-syntax-table group)
-			     group
-			     (mark-index mark)
-			     (group-end-index group))))
+	 (re-match-forward (keyword-record/ending-pattern record) mark))))
 
 (define (parse-forward-past-semicolon start end)
   (let loop ((start start) (state #f))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: telnet.scm,v 1.9 1993/02/14 23:14:18 gjr Exp $
+$Id: telnet.scm,v 1.10 1997/03/04 06:43:46 cph Exp $
 
-Copyright (c) 1991-1993 Massachusetts Institute of Technology
+Copyright (c) 1991-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -84,11 +84,7 @@ use it instead of the default."
 		     (if (not new-process?)
 			 buffer-name
 			 (new-buffer buffer-name)))))
-	     (if (re-match-string-forward
-		  (re-compile-pattern "\\([^ ]+\\) \\([^ ]+\\)" false)
-		  true
-		  false
-		  host)
+	     (if (re-string-match "\\([^ ]+\\) \\([^ ]+\\)" host)
 		 (let ((host
 			(substring host
 				   (re-match-start-index 1)

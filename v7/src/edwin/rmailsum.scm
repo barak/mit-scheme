@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmailsum.scm,v 1.32 1993/09/30 19:21:47 bal Exp $
+;;;	$Id: rmailsum.scm,v 1.33 1997/03/04 06:43:34 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -48,7 +48,7 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Id: rmailsum.scm,v 1.32 1993/09/30 19:21:47 bal Exp $"
+  "$Id: rmailsum.scm,v 1.33 1997/03/04 06:43:34 cph Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
@@ -153,14 +153,11 @@ RECIPIENTS is a string of names separated by commas."
 	     (the-from-field (fetch-first-field "from" inner-start inner-end))
 	     (the-cc-fields  (fetch-all-fields "cc" inner-start inner-end)))
 	 (or (and the-to-field
-		  (re-search-string-forward recip-regexp true false
-					    the-to-field))
+		  (re-string-search recip-regexp the-to-field))
 	     (and the-from-field
-		  (re-search-string-forward recip-regexp true false
-					    the-from-field))
+		  (re-string-search recip-regexp the-from-field))
 	     (and (and (not primary-only) the-cc-fields)
-		  (re-search-string-forward recip-regexp true false
-					    the-cc-fields))))))))
+		  (re-string-search recip-regexp the-cc-fields))))))))
 
 (define rmail-new-summary
   (lambda (description function . args)

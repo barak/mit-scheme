@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: regexp.scm,v 1.68 1997/03/03 23:04:13 cph Exp $
+;;;	$Id: regexp.scm,v 1.69 1997/03/04 06:43:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -183,34 +183,31 @@
     (group-delete! group start (re-match-end-index 0))
     (make-mark group start)))
 
-(define (re-search-buffer-forward pattern case-fold-search syntax-table
-				  group start end)
+(define (re-search-buffer-forward regexp syntax-table group start end)
   (let ((index
 	 ((ucode-primitive re-search-buffer-forward)
-	  pattern
-	  (re-translation-table case-fold-search)
+	  (compiled-regexp/byte-stream regexp)
+	  (compiled-regexp/translation-table regexp)
 	  (syntax-table-argument syntax-table)
 	  registers group start end)))
     (set! match-group (compute-match-group group index))
     index))
 
-(define (re-search-buffer-backward pattern case-fold-search syntax-table
-				   group start end)
+(define (re-search-buffer-backward regexp syntax-table group start end)
   (let ((index
 	 ((ucode-primitive re-search-buffer-backward)
-	  pattern
-	  (re-translation-table case-fold-search)
+	  (compiled-regexp/byte-stream regexp)
+	  (compiled-regexp/translation-table regexp)
 	  (syntax-table-argument syntax-table)
 	  registers group start end)))
     (set! match-group (compute-match-group group index))
     index))
 
-(define (re-match-buffer-forward pattern case-fold-search syntax-table
-				 group start end)
+(define (re-match-buffer-forward regexp syntax-table group start end)
   (let ((index
 	 ((ucode-primitive re-match-buffer)
-	  pattern
-	  (re-translation-table case-fold-search)
+	  (compiled-regexp/byte-stream regexp)
+	  (compiled-regexp/translation-table regexp)
 	  (syntax-table-argument syntax-table)
 	  registers group start end)))
     (set! match-group (compute-match-group group index))
@@ -221,43 +218,39 @@
       (group-hash-number group)
       hash-of-false))
 
-(define (re-match-string-forward pattern case-fold-search syntax-table string)
-  (re-match-substring-forward pattern case-fold-search syntax-table
+(define (re-match-string-forward regexp syntax-table string)
+  (re-match-substring-forward regexp syntax-table
 			      string 0 (string-length string)))
 
-(define (re-match-substring-forward pattern case-fold-search syntax-table
-				    string start end)
+(define (re-match-substring-forward regexp syntax-table string start end)
   (set! match-group hash-of-false)
   ((ucode-primitive re-match-substring)
-   pattern
-   (re-translation-table case-fold-search)
+   (compiled-regexp/byte-stream regexp)
+   (compiled-regexp/translation-table regexp)
    (syntax-table-argument syntax-table)
    registers string start end))
 
-(define (re-search-string-forward pattern case-fold-search syntax-table string)
-  (re-search-substring-forward pattern case-fold-search syntax-table
+(define (re-search-string-forward regexp syntax-table string)
+  (re-search-substring-forward regexp syntax-table
 			       string 0 (string-length string)))
 
-(define (re-search-substring-forward pattern case-fold-search syntax-table
-				     string start end)
+(define (re-search-substring-forward regexp syntax-table string start end)
   (set! match-group hash-of-false)
   ((ucode-primitive re-search-substring-forward)
-   pattern
-   (re-translation-table case-fold-search)
+   (compiled-regexp/byte-stream regexp)
+   (compiled-regexp/translation-table regexp)
    (syntax-table-argument syntax-table)
    registers string start end))
 
-(define (re-search-string-backward pattern case-fold-search syntax-table
-				   string)
-  (re-search-substring-backward pattern case-fold-search syntax-table
+(define (re-search-string-backward regexp syntax-table string)
+  (re-search-substring-backward regexp syntax-table
 				string 0 (string-length string)))
 
-(define (re-search-substring-backward pattern case-fold-search syntax-table
-				      string start end)
+(define (re-search-substring-backward regexp syntax-table string start end)
   (set! match-group hash-of-false)
   ((ucode-primitive re-search-substring-backward)
-   pattern
-   (re-translation-table case-fold-search)
+   (compiled-regexp/byte-stream regexp)
+   (compiled-regexp/translation-table regexp)
    (syntax-table-argument syntax-table)
    registers string start end))
 
@@ -309,8 +302,9 @@
 (define (%re-search string start end case-fold-search compile-string search)
   (let ((group (mark-group start)))
     (let ((index
-	   (search (compile-string string case-fold-search)
-		   case-fold-search
+	   (search (if (compiled-regexp? string)
+		       string
+		       (compile-string string case-fold-search))
 		   (group-syntax-table group)
 		   group
 		   (mark-index start)
@@ -323,9 +317,10 @@
 	(case-fold-search (default-case-fold-search case-fold-search start))
 	(group (mark-group start)))
     (let ((index
-	   (re-match-buffer-forward (re-compile-pattern regexp
-							case-fold-search)
-				    case-fold-search
+	   (re-match-buffer-forward (if (compiled-regexp? regexp)
+					regexp
+					(re-compile-pattern regexp
+							    case-fold-search))
 				    (group-syntax-table group)
 				    group
 				    (mark-index start)
@@ -336,8 +331,9 @@
 (define (re-string-match regexp string #!optional case-fold syntax-table)
   (let ((case-fold (if (default-object? case-fold) #f case-fold))
 	(syntax-table (if (default-object? syntax-table) #f syntax-table)))
-    (re-match-string-forward (re-compile-pattern regexp case-fold)
-			     case-fold
+    (re-match-string-forward (if (compiled-regexp? regexp)
+				 regexp
+				 (re-compile-pattern regexp case-fold))
 			     syntax-table
 			     string)))
 
@@ -345,16 +341,18 @@
 			    #!optional case-fold syntax-table)
   (let ((case-fold (if (default-object? case-fold) #f case-fold))
 	(syntax-table (if (default-object? syntax-table) #f syntax-table)))
-    (re-match-substring-forward (re-compile-pattern regexp case-fold)
-				case-fold
+    (re-match-substring-forward (if (compiled-regexp? regexp)
+				    regexp
+				    (re-compile-pattern regexp case-fold))
 				syntax-table
 				string start end)))
 
 (define (re-string-search regexp string #!optional case-fold syntax-table)
   (let ((case-fold (if (default-object? case-fold) #f case-fold))
 	(syntax-table (if (default-object? syntax-table) #f syntax-table)))
-    (re-search-string-forward (re-compile-pattern regexp case-fold)
-			      case-fold
+    (re-search-string-forward (if (compiled-regexp? regexp)
+				  regexp
+				  (re-compile-pattern regexp case-fold))
 			      syntax-table
 			      string)))
 
@@ -362,8 +360,9 @@
 			    #!optional case-fold syntax-table)
   (let ((case-fold (if (default-object? case-fold) #f case-fold))
 	(syntax-table (if (default-object? syntax-table) #f syntax-table)))
-    (re-search-substring-forward (re-compile-pattern regexp case-fold)
-				 case-fold
+    (re-search-substring-forward (if (compiled-regexp? regexp)
+				     regexp
+				     (re-compile-pattern regexp case-fold))
 				 syntax-table
 				 string start end)))
 

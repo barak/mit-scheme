@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.141 1997/01/03 04:40:03 cph Exp $
+;;;	$Id: fileio.scm,v 1.142 1997/03/04 06:43:11 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -260,7 +260,7 @@ of the predicates is satisfied, the file is written in the usual way."
   (or (let ((filename (->namestring pathname)))
 	(let loop ((types (ref-variable auto-mode-alist buffer)))
 	  (and (not (null? types))
-	       (if (re-match-string-forward (caar types) false false filename)
+	       (if (re-string-match (caar types) filename)
 		   (->mode (cdar types))
 		   (loop (cdr types))))))
       (let ((type (os/pathname-type-for-mode pathname)))

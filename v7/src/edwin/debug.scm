@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.40 1997/02/23 06:24:31 cph Exp $
+;;;	$Id: debug.scm,v 1.41 1997/03/04 06:42:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-97 Massachusetts Institute of Technology
 ;;;
@@ -1044,10 +1044,7 @@ The buffer below describes the current subproblem or reduction.
 (define (geometry? geometry)
   (let ((geometry-pattern
 	 "[0-9]+x[0-9]+\\(-[0-9]+\\|+[0-9]+\\|\\)\\(-[0-9]+\\|+[0-9]+\\|\\)"))
-    (re-match-string-forward (re-compile-pattern geometry-pattern #f)
-			     #f
-			     #f
-			     geometry)))
+    (re-string-match (re-compile-pattern geometry-pattern #f) geometry)))
 
 (define default-screen-geometry #f)
 

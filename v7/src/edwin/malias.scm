@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/malias.scm,v 1.2 1991/05/04 20:14:43 cph Exp $
+;;;	$Id: malias.scm,v 1.3 1997/03/04 06:43:17 cph Exp $
 ;;;
-;;;	Copyright (c) 1991 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -145,12 +145,8 @@
 	(let ((line (read-mailrc-line port)))
 	  (if line
 	      (let ((index
-		     (re-match-string-forward
-		      (re-compile-pattern "^\\(a\\|alias\\|g\\|group\\)[ \t]+"
-					  false)
-		      false
-		      false
-		      line)))
+		     (re-string-match "^\\(a\\|alias\\|g\\|group\\)[ \t]+"
+				      line)))
 		(if index
 		    (let ((parsed-line (parse-mailrc-line line index)))
 		      (if (null? (cdr parsed-line))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: occur.scm,v 1.2 1995/05/19 18:55:50 cph Exp $
+;;;	$Id: occur.scm,v 1.3 1997/03/04 06:43:21 cph Exp $
 ;;;
-;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -61,41 +61,36 @@ Applies to all lines after point."
   (command-procedure (ref-command-object keep-lines)))
 
 (define (keep-lines start end regexp)
-  (let ((case-fold-search (ref-variable case-fold-search start))
+  (let ((pattern
+	 (re-compile-pattern regexp (ref-variable case-fold-search start)))
 	(syntax-table (ref-variable syntax-table start))
 	(group (mark-group start))
 	(start (mark-index start))
 	(anchor (mark-left-inserting-copy start))
 	(end (mark-left-inserting-copy end)))
-    (let ((pattern (re-compile-pattern regexp case-fold-search)))
-      (letrec
-	  ((loop
-	    (lambda (start point)
-	      (let ((point
-		     (re-search-buffer-forward pattern
-					       case-fold-search
-					       syntax-table
-					       group
-					       point
-					       (mark-index end))))
-		(if point
-		    (begin
-		      (set-mark-index! anchor point)
-		      (let ((end
-			     (line-start-index group
-					       (re-match-start-index 0))))
-			(if (< start end)
-			    (group-delete! group start end)))
-		      (continue (mark-index anchor)))
-		    (group-delete! group start (mark-index end))))))
-	   (continue
-	    (lambda (point)
-	      (let ((start (line-end-index group point)))
-		(if (< start (mark-index end))
-		    (loop (+ start 1) point))))))
-	(if (line-start-index? group start)
-	    (loop start start)
-	    (continue start))))
+    (letrec
+	((loop
+	  (lambda (start point)
+	    (let ((point
+		   (re-search-buffer-forward pattern syntax-table
+					     group point (mark-index end))))
+	      (if point
+		  (begin
+		    (set-mark-index! anchor point)
+		    (let ((end
+			   (line-start-index group (re-match-start-index 0))))
+		      (if (< start end)
+			  (group-delete! group start end)))
+		    (continue (mark-index anchor)))
+		  (group-delete! group start (mark-index end))))))
+	 (continue
+	  (lambda (point)
+	    (let ((start (line-end-index group point)))
+	      (if (< start (mark-index end))
+		  (loop (+ start 1) point))))))
+      (if (line-start-index? group start)
+	  (loop start start)
+	  (continue start)))
     (mark-temporary! anchor)
     (mark-temporary! end)))
 
@@ -114,24 +109,23 @@ Applies to lines after point."
   (command-procedure (ref-command-object flush-lines)))
 
 (define (flush-lines start end regexp)
-  (let ((case-fold-search (ref-variable case-fold-search start))
+  (let ((pattern
+	 (re-compile-pattern regexp (ref-variable case-fold-search start)))
 	(syntax-table (ref-variable syntax-table start))
 	(group (mark-group start))
 	(start (mark-left-inserting-copy start))
 	(end (mark-left-inserting-copy end)))
-    (let ((pattern (re-compile-pattern regexp case-fold-search)))
-      (do ()
-	  ((not (re-search-buffer-forward pattern
-					  case-fold-search
-					  syntax-table
-					  group
-					  (mark-index start)
-					  (mark-index end))))
-	(let ((point (line-end-index group (re-match-end-index 0))))
-	  (set-mark-index! start point)
-	  (group-delete! group
-			 (line-start-index group (re-match-start-index 0))
-			 (if (< point (mark-index end)) (+ point 1) point)))))
+    (do ()
+	((not (re-search-buffer-forward pattern
+					syntax-table
+					group
+					(mark-index start)
+					(mark-index end))))
+      (let ((point (line-end-index group (re-match-end-index 0))))
+	(set-mark-index! start point)
+	(group-delete! group
+		       (line-start-index group (re-match-start-index 0))
+		       (if (< point (mark-index end)) (+ point 1) point))))
     (mark-temporary! start)
     (mark-temporary! end)))
 
@@ -149,22 +143,17 @@ Applies to lines after point."
   (command-procedure (ref-command-object count-matches)))
 
 (define (count-matches start end regexp)
-  (let ((case-fold-search (ref-variable case-fold-search start))
+  (let ((pattern
+	 (re-compile-pattern regexp (ref-variable case-fold-search start)))
 	(syntax-table (ref-variable syntax-table start))
 	(group (mark-group start))
 	(end (mark-index end)))
-    (let ((pattern (re-compile-pattern regexp case-fold-search)))
-      (let loop ((start (mark-index start)) (result 0))
-	(let ((match
-	       (re-search-buffer-forward pattern
-					 case-fold-search
-					 syntax-table
-					 group
-					 start
-					 end)))
-	  (if match
-	      (loop match (+ result 1))
-	      result))))))
+    (let loop ((start (mark-index start)) (result 0))
+      (let ((match
+	     (re-search-buffer-forward pattern syntax-table group start end)))
+	(if match
+	    (loop match (+ result 1))
+	    result)))))
 
 (define-major-mode occur fundamental "Occur"
   "Major mode for output from \\[occur].
@@ -246,25 +235,18 @@ It serves as a menu to find any of the occurrences in this buffer.
   (command-procedure (ref-command-object occur)))
 
 (define (re-occurrences start end regexp)
-  (let ((case-fold-search (ref-variable case-fold-search start))
+  (let ((pattern
+	 (re-compile-pattern regexp (ref-variable case-fold-search start)))
 	(syntax-table (ref-variable syntax-table start))
 	(group (mark-group start))
 	(end (mark-index end)))
-    (let ((pattern (re-compile-pattern regexp case-fold-search)))
-      (let loop ((start (mark-index start)))
-	(let ((match
-	       (re-search-buffer-forward pattern
-					 case-fold-search
-					 syntax-table
-					 group
-					 start
-					 end)))
-	  (if match
-	      (cons (make-temporary-mark group
-					 (line-start-index group match)
-					 false)
-		    (loop (line-end-index group match)))
-	      '()))))))
+    (let loop ((start (mark-index start)))
+      (let ((match
+	     (re-search-buffer-forward pattern syntax-table group start end)))
+	(if match
+	    (cons (make-temporary-mark group (line-start-index group match) #f)
+		  (loop (line-end-index group match)))
+	    '())))))
 
 (define (format-occurrences occurrences nlines output)
   (if (null? occurrences)

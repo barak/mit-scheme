@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rgxcmp.scm,v 1.107 1995/10/19 08:39:38 cph Exp $
+;;;	$Id: rgxcmp.scm,v 1.108 1997/03/04 06:43:26 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -193,7 +193,7 @@
   (let ((result (string-allocate 2)))
     (vector-8b-set! result 0 re-code:exact-1)
     (string-set! result 1 (if case-fold? (char-upcase char) char))
-    result))
+    (make-compiled-regexp result case-fold?)))
 
 (define re-compile-string
   (cached-procedure 16
@@ -201,7 +201,7 @@
       (let ((string (if case-fold? (string-upcase string) string)))
 	(let ((n (string-length string)))
 	  (if (fix:zero? n)
-	      string
+	      (make-compiled-regexp string case-fold?)
 	      (let ((result
 		     (string-allocate 
 		      (let ((qr (integer-divide n 255)))
@@ -216,13 +216,13 @@
 			 (vector-8b-set! result
 					 (fix:1+ p)
 					 (vector-8b-ref string i))
-			 result)
+			 (make-compiled-regexp result case-fold?))
 			((fix:< n 256)
 			 (vector-8b-set! result p re-code:exact-n)
 			 (vector-8b-set! result (fix:1+ p) n)
 			 (substring-move-right! string i (fix:+ i n)
 						result (fix:+ p 2))
-			 result)
+			 (make-compiled-regexp result case-fold?))
 			(else
 			 (vector-8b-set! result p re-code:exact-n)
 			 (vector-8b-set! result (fix:1+ p) 255)
@@ -358,6 +358,15 @@
 		       '(MESSAGE)
 		       standard-error-handler))
 
+(define-structure (compiled-regexp
+		   (constructor %make-compiled-regexp)
+		   (conc-name compiled-regexp/))
+  (byte-stream #f read-only #t)
+  (translation-table #f read-only #t))
+
+(define (make-compiled-regexp byte-stream case-fold?)
+  (%make-compiled-regexp byte-stream (re-translation-table case-fold?)))
+
 (define input-list)
 (define current-byte)
 (define translation-table)
@@ -396,7 +405,9 @@
 		      (store-jump! fixup-jump re-code:jump (output-position)))
 		  (if (not (stack-empty?))
 		      (compilation-error "Unmatched \\("))
-		  (list->string (map ascii->char (cdr output-head))))
+		  (make-compiled-regexp
+		   (list->string (map ascii->char (cdr output-head)))
+		   case-fold?))
 		(begin
 		  (compile-pattern-char)
 		  (loop)))))))))

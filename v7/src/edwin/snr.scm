@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.27 1997/02/23 06:24:43 cph Exp $
+;;;	$Id: snr.scm,v 1.28 1997/03/04 06:43:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -2267,23 +2267,14 @@ This kills the current buffer."
   (let ((regexp (ref-variable rmail-ignored-headers hstart)))
     (if regexp
 	(let ((point (mark-right-inserting-copy hstart))
-	      (group (mark-group hstart))
 	      (p1 (re-compile-pattern regexp #t))
 	      (p2 (re-compile-pattern "\n[^ \t]" #f)))
 	  (do ()
-	      ((not (re-search-buffer-forward p1 #t #f
-					      group
-					      (mark-index point)
-					      (mark-index hend))))
+	      ((not (re-search-forward p1 point hend)))
 	    (move-mark-to! point (line-start (re-match-start 0) 0))
 	    (delete-string
 	     point
-	     (make-mark group
-			(fix:- (re-search-buffer-forward p2 #f #f
-							 group
-							 (mark-index point)
-							 (mark-index hend))
-			       1))))
+	     (mark-1+ (re-search-forward p2 point hend))))
 	  (mark-temporary! point)))))
 
 (define (delete-news-header buffer)

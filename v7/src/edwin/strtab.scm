@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: strtab.scm,v 1.44 1993/08/10 07:05:47 cph Exp $
+;;;	$Id: strtab.scm,v 1.45 1997/03/04 06:43:44 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -160,18 +160,14 @@
 
 (define (string-table-apropos table regexp)
   (let ((end (string-table-size table))
-	(case-fold-search (string-table-ci? table)))
-    (let ((pattern (re-compile-pattern regexp case-fold-search)))
-      (let loop ((index 0))
-	(if (= index end)
-	    '()
-	    (let ((entry (vector-ref (string-table-vector table) index)))
-	      (if (re-search-string-forward pattern
-					    case-fold-search
-					    false
-					    (string-table-entry-string entry))
-		  (cons (string-table-entry-value entry) (loop (1+ index)))
-		  (loop (1+ index)))))))))
+	(pattern (re-compile-pattern regexp (string-table-ci? table))))
+    (let loop ((index 0))
+      (if (= index end)
+	  '()
+	  (let ((entry (vector-ref (string-table-vector table) index)))
+	    (if (re-string-search pattern (string-table-entry-string entry))
+		(cons (string-table-entry-value entry) (loop (1+ index)))
+		(loop (1+ index))))))))
 
 (define (%string-table-complete table string
 				if-unique if-not-unique if-not-found)

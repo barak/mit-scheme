@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.8 1992/11/12 19:36:05 bal Exp $
+;;;	$Id: rmailsrt.scm,v 1.9 1997/03/04 06:43:32 cph Exp $
 ;;;
-;;;	Copyright (c) 1991 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -81,7 +81,7 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 				       (msg-memo/end memo))
 		    "")))
 	   ;; Remove `Re:'
-	   (if (re-match-string-forward re-pattern true false key)
+	   (if (re-string-match re-pattern key)
 	       (string-tail key (re-match-end-index 0))
 	       key))))
      string<?)))
@@ -188,14 +188,15 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 
 (define rmail-sortable-date-string
   (lambda (date)
-    (let ((month '(("JAN" . "01")("FEB" . "02")("MAR" . "03")
-				 ("APR" . "04")("MAY" . "05")("JUN" . "06")
-				 ("JUL" . "07")("AUG" . "08")("SEP" . "09")
-				 ("OCT" . "10")("NOV" . "11")("DEC" . "12")
-				 ("JANUARY" . "01")("FEBRUARY" . "02")("MARCH" . "03")
-				 ("APRIL" . "04")("JUNE" . "06")("JULY" . "07")
-				 ("AUGUST" . "08")("SEPTEMBER" . "09")("OCTOBER" . "10")
-				 ("NOVEMBER" . "11")("DECEMBER" . "12")))
+    (let ((month '(("JAN" . "01")
+		   ("FEB" . "02")("MAR" . "03")
+		   ("APR" . "04")("MAY" . "05")("JUN" . "06")
+		   ("JUL" . "07")("AUG" . "08")("SEP" . "09")
+		   ("OCT" . "10")("NOV" . "11")("DEC" . "12")
+		   ("JANUARY" . "01")("FEBRUARY" . "02")("MARCH" . "03")
+		   ("APRIL" . "04")("JUNE" . "06")("JULY" . "07")
+		   ("AUGUST" . "08")("SEPTEMBER" . "09")("OCTOBER" . "10")
+		   ("NOVEMBER" . "11")("DECEMBER" . "12")))
 	  (date (or date "")))
     ;; Can understand the following styles:
     ;; (1) 14 Apr 89 03:20:12 GMT
@@ -205,10 +206,9 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
     ;; added [ ]+ to the regexp to handle date string put out
     ;; by hx.lcs.mit.edu (they use 2 spaces instead of 1)
     ;; made seconds optional since research.att.com doesn't send it out
-      (if (re-search-string-forward
-	   (re-compile-pattern
-	    "\\([0-9]+\\) \\([^ ,]+\\) \\([0-9]+\\)[ ]+\\([0-9]?[0-9]\\):?\\([0-9][0-9]\\):?\\([0-9]*\\)" true)
-	   true false date)
+      (if (re-string-search
+	   "\\([0-9]+\\) \\([^ ,]+\\) \\([0-9]+\\)[ ]+\\([0-9]?[0-9]\\):?\\([0-9][0-9]\\):?\\([0-9]*\\)"
+	   date)
 	  (string-append
 	   ;; Year
 	   (let ((year
@@ -235,7 +235,8 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 	     (string-pad-left day 2 #\0))
 	   ;; Time
 	   (string-pad-left
-	    (substring date (re-match-start-index 4) (re-match-end-index 4)) 2 #\0)
+	    (substring date (re-match-start-index 4) (re-match-end-index 4))
+	    2 #\0)
 	   (substring date (re-match-start-index 5) (re-match-end-index 5))
 	   (substring date (re-match-start-index 6) (re-match-end-index 6)))
       ;; Cannot understand DATE string.
@@ -249,56 +250,42 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 
 (define mail-strip-quoted-names
   (lambda (address)
-    (let ((pos))
-      (if (re-search-string-forward (re-compile-pattern "\\`[ \t\n]*" true)
-				   true false address)
-	  (set! address (string-tail address (re-match-end-index 0))))
-      ;; strip surrounding whitespace
-      (if (re-search-string-forward (re-compile-pattern "[ \t\n]*\\'" true)
-				   true false address)
-	  (set! address (string-head address (re-match-start-index 0))))
-      (let loop ()
-       (let ((the-pattern 
-	      (re-compile-pattern
-	       "[ \t]*(\\([^)\"\\]\\|\\\\.\\|\\\\\n\\)*)" true)))
-	 (set! pos (re-search-string-forward the-pattern true false address))
-	 (if pos
-	     (begin
-	       (set! address (mail-string-delete
-			      address 
-			      (re-match-start-index 0)
-			      (re-match-end-index 0)))
-	       (loop)))))
-     ;; strip `quoted' names (This is supposed to hack `"Foo Bar" <bar@host>')
-     (let loop ((the-pos 0))
-       (let ((the-pattern
-	      (re-compile-pattern
-	       "[ \t]*\"\\([^\"\\]\\|\\\\.\\|\\\\\n\\)*\"[ \t\n]*"
-	       true)))
-	 (set! pos
-	       (re-match-substring-forward the-pattern true false address
-					   the-pos (string-length address)))
-	 (if pos
-	     (if (and (> (string-length address) (re-match-end-index 0))
-		      (char=? (string-ref address (re-match-end-index 0)) #\@))
-		 (loop pos)
-		 (begin
-		   (set! address
-			 (mail-string-delete address
-					     the-pos (re-match-end-index 0)))
-		   (loop the-pos))))))
-     ;; Retain only part of address in <> delims, if there is such a thing.
-     (let loop ()
-       (let ((the-pattern
-	      (re-compile-pattern
-	       "\\(,\\|\\`\\)[^,]*<\\([^>,]*>\\)"
-	       true)))
-	 (set! pos (re-search-string-forward the-pattern true false address))
-	 (if pos
-	     (let ((junk-beg (re-match-end-index 1))
-		   (junk-end (re-match-start-index 2))
-		   (close (re-match-end-index 0)))
-	       (set! address (mail-string-delete address (-1+ close) close))
-	       (set! address (mail-string-delete address junk-beg junk-end))
-	       (loop)))))
-     address)))
+    (if (re-string-search "\\`[ \t\n]*" address)
+	(set! address (string-tail address (re-match-end-index 0))))
+    ;; strip surrounding whitespace
+    (if (re-string-search "[ \t\n]*\\'" address)
+	(set! address (string-head address (re-match-start-index 0))))
+    (let loop ()
+      (if (re-string-search "[ \t]*(\\([^)\"\\]\\|\\\\.\\|\\\\\n\\)*)"
+			    address)
+	  (begin
+	    (set! address (mail-string-delete
+			   address 
+			   (re-match-start-index 0)
+			   (re-match-end-index 0)))
+	    (loop))))
+    ;; strip `quoted' names (This is supposed to hack `"Foo Bar" <bar@host>')
+    (let loop ((the-pos 0))
+      (let ((pos
+	     (re-substring-match
+	      "[ \t]*\"\\([^\"\\]\\|\\\\.\\|\\\\\n\\)*\"[ \t\n]*"
+	      address the-pos (string-length address))))
+	(if pos
+	    (if (and (> (string-length address) (re-match-end-index 0))
+		     (char=? (string-ref address (re-match-end-index 0)) #\@))
+		(loop pos)
+		(begin
+		  (set! address
+			(mail-string-delete address
+					    the-pos (re-match-end-index 0)))
+		  (loop the-pos))))))
+    ;; Retain only part of address in <> delims, if there is such a thing.
+    (let loop ()
+      (if (re-string-search "\\(,\\|\\`\\)[^,]*<\\([^>,]*>\\)" address)
+	  (let ((junk-beg (re-match-end-index 1))
+		(junk-end (re-match-start-index 2))
+		(close (re-match-end-index 0)))
+	    (set! address (mail-string-delete address (-1+ close) close))
+	    (set! address (mail-string-delete address junk-beg junk-end))
+	    (loop))))
+    address))

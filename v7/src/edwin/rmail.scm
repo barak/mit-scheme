@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.56 1997/01/15 07:09:05 cph Exp $
+;;;	$Id: rmail.scm,v 1.57 1997/03/04 06:43:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
@@ -1245,7 +1245,7 @@ original message into it."
     (let loop ((addresses addresses))
       (cond ((null? addresses)
 	     '())
-	    ((re-match-string-forward pattern true false (car addresses))
+	    ((re-string-match pattern (car addresses))
 	     (loop (cdr addresses)))
 	    (else
 	     (cons (car addresses) (loop (cdr addresses))))))))
@@ -1270,14 +1270,11 @@ original message into it."
 	(message-id
 	 ;; Append from field to message-id if needed.
 	 (let ((from (rfc822-first-address from)))
-	   (if (re-search-string-forward
-		(re-compile-string
-		 (if (re-search-string-forward
-		      (re-compile-pattern "@[^@]*\\'" #f) #f #f from)
-		     (string-head from (re-match-start-index 0))
-		     from)
-		 #t)
-		#t #f message-id)
+	   (if (re-string-search
+		(if (re-string-search "@[^@]*\\'" from #f)
+		    (string-head from (re-match-start-index 0))
+		    from)
+		message-id #t)
 	       message-id
 	       (string-append message-id " (" from ")"))))
 	(else

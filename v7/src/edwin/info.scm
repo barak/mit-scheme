@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.122 1997/02/23 06:24:38 cph Exp $
+;;;	$Id: info.scm,v 1.123 1997/03/04 06:43:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -511,8 +511,7 @@ except for \\[info-cease-edit] to return to Info."
 	(group (mark-group mark)))
     (let ((end (group-end-index group)))
       (let loop ((start (mark-index mark)))
-	(if (re-search-buffer-forward pattern false false
-				      group start end)
+	(if (re-search-buffer-forward pattern #f group start end)
 	    (let ((item (re-match-start-index 1)))
 	      (let ((keyword
 		     (group-extract-string group
@@ -527,8 +526,7 @@ except for \\[info-cease-edit] to return to Info."
 	(group (mark-group mark)))
     (let ((end (group-end-index group)))
       (let loop ((start (mark-index mark)))
-	(if (re-search-buffer-forward pattern false false
-				      group start end)
+	(if (re-search-buffer-forward pattern #f group start end)
 	    (let ((item (re-match-start-index 1)))
 	      (marker group
 		      item
