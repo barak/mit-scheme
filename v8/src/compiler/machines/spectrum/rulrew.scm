@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.5 1995/07/27 14:23:46 adams Exp $
+$Id: rulrew.scm,v 1.6 1996/07/22 04:46:15 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -129,8 +129,9 @@ MIT in each case. |#
 (define-rule rewriting
   (CONS-POINTER (? type) (REGISTER (? datum register-known-value)))
   (QUALIFIER (and (rtl:object->datum? datum)
-		  (not (rtl:constant-non-pointer?
-			(rtl:object->datum-expression datum)))))
+		  (let ((datum-expression (rtl:object->datum-expression datum)))
+		    (and (rtl:constant? datum-expression)
+			 (not (rtl:constant-non-pointer? datum-expression))))))
   ;; Since we use DEP/DEPI, there is no need to clear the old bits
   (rtl:make-cons-pointer type (rtl:object->datum-expression datum)))
 
