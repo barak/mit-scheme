@@ -1,21 +1,23 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.59 2002/08/21 02:21:56 cph Exp $
+### $Id: i386.m4,v 1.60 2002/11/20 19:46:16 cph Exp $
 ###
 ### Copyright (c) 1992-2002 Massachusetts Institute of Technology
 ###
-### This program is free software; you can redistribute it and/or
-### modify it under the terms of the GNU General Public License as
-### published by the Free Software Foundation; either version 2 of the
-### License, or (at your option) any later version.
+### This file is part of MIT Scheme.
 ###
-### This program is distributed in the hope that it will be useful,
-### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MIT Scheme is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published
+### by the Free Software Foundation; either version 2 of the License,
+### or (at your option) any later version.
+###
+### MIT Scheme is distributed in the hope that it will be useful, but
+### WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ### General Public License for more details.
 ###
 ### You should have received a copy of the GNU General Public License
-### along with this program; if not, write to the Free Software
+### along with MIT Scheme; if not, write to the Free Software
 ### Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ### 02111-1307, USA.
 
