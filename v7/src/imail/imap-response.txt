@@ -1,4 +1,4 @@
-$Id: imap-response.txt,v 1.4 2000/05/27 14:42:09 cph Exp $
+$Id: imap-response.txt,v 1.5 2000/05/28 15:16:47 cph Exp $
 
 Notes on IMAP server responses
 
@@ -259,9 +259,8 @@ Notes on IMAP server responses
 	| (RFC822.HEADER <string-or-false>)
 	| (RFC822.TEXT <string-or-false>)
 	| (RFC822.SIZE <nonnegative-exact-integer>)
+	| (BODY <section> <number-or-false> <string-or-false>)
 	| (BODY <body>)
-	| (BODY (<section> <string-or-false>))
-	| (BODY (<section> <nonnegative-exact-integer> <string-or-false>))
 	| (BODYSTRUCTURE <body>)
 	| (UID <positive-exact-integer>)
 
@@ -295,6 +294,14 @@ Notes on IMAP server responses
 	| (#f #f #f #f)			;end of group
 
 <body>					;too complicated to describe
+
+<string-or-false>
+	= <string>
+	| #F
+
+<number-or-false
+	= <nonnegative-exact-integer>
+	| #F
 
 Notes about handling responses:
 

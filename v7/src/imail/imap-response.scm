@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.25 2000/05/23 17:39:48 cph Exp $
+;;; $Id: imap-response.scm,v 1.26 2000/05/28 15:16:51 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -164,47 +164,38 @@
   (read-list port
     (lambda (port)
       (let ((x (intern (read-fetch-keyword port))))
-	(list x
-	      (case x
-		((ENVELOPE)
-		 (discard-known-char #\space port)
-		 (read-generic port))
-		((FLAGS)
-		 (read-flags-response port))
-		((INTERNALDATE)
-		 (discard-known-char #\space port)
-		 (parse-date-time (read-quoted port)))
-		((RFC822 RFC822.HEADER RFC822.TEXT)
-		 (discard-known-char #\space port)
-		 (read-nstring port))
-		((RFC822.SIZE)
-		 (discard-known-char #\space port)
-		 (read-number port))
-		((BODY)
-		 (if (char=? #\[ (peek-char-no-eof port))
-		     (let ((section
-			    (parse-section (read-bracketed-string port))))
-		       (discard-known-char #\space port)
-		       (cons section
-			     (if (char=? #\< (peek-char-no-eof port))
-				 (begin
-				   (discard-char port)
-				   (let ((n (read-number port)))
-				     (discard-known-char #\> port)
-				     (discard-known-char #\space port)
-				     (list n (read-nstring port))))
-				 (list (read-nstring port)))))
-		     (begin
-		       (discard-known-char #\space port)
-		       (read-generic port))))
-		((BODYSTRUCTURE)
-		 (discard-known-char #\space port)
-		 (read-generic port))
-		((UID)
-		 (discard-known-char #\space port)
-		 (read-nz-number port))
-		(else
-		 (error "Illegal fetch keyword:" x))))))))
+	(if (and (eq? 'BODY x)
+		 (char=? #\[ (peek-char-no-eof port)))
+	    (let ((section
+		   (parse-section (read-bracketed-string port))))
+	      (discard-known-char #\space port)
+	      (let ((origin
+		      (and (char=? #\< (peek-char-no-eof port))
+			   (begin
+			     (discard-char port)
+			     (let ((n (read-number port)))
+			       (discard-known-char #\> port)
+			       (discard-known-char #\space port)
+			       n)))))
+		(list x section origin (read-nstring port))))
+	    (begin
+	      (discard-known-char #\space port)
+	      (list x
+		    (case x
+		      ((ENVELOPE BODY BODYSTRUCTURE)
+		       (read-generic port))
+		      ((FLAGS)
+		       (read-list port read-flag))
+		      ((INTERNALDATE)
+		       (parse-date-time (read-quoted port)))
+		      ((RFC822 RFC822.HEADER RFC822.TEXT)
+		       (read-nstring port))
+		      ((RFC822.SIZE)
+		       (read-number port))
+		      ((UID)
+		       (read-nz-number port))
+		      (else
+		       (error "Illegal fetch keyword:" x))))))))))
 
 (define (parse-section string)
   (let ((pv (parse-string imap:parse:section string)))
