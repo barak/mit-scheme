@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.43 1996/11/26 14:46:17 adams Exp $
+;;;	$Id: hppa.m4,v 1.44 1996/11/26 15:15:46 adams Exp $
 ;;;
 ;;;	Copyright (c) 1989-1996 Massachusetts Institute of Technology
 ;;;
@@ -2027,7 +2027,7 @@ copy_closure_pattern
 	ADD	gr29,gr31,gr29			; addr of pattern
 	LDWS,MA	4(0,gr29),gr28			; load pattern header
 	LDO	8(rs_free),gr25			; preserve for FDC & FIC
-	STWS,MA	gr28,4(0,rs_free)			; store pattern header
+	STWS,MA	gr28,4(0,rs_free)		; store pattern header
 	FLDDS,MA	8(0,gr29),fpr10		; load entry
 	FLDDS,MA	8(0,gr29),fpr11
 	FSTDS,MA	fpr10,8(0,rs_free)	; store entry
@@ -2035,6 +2035,7 @@ copy_closure_pattern
 	FDC	0(0,gr25)
 	FDC	0(0,rs_free)
 	SYNC
+	FIC	0(spr5,rs_free)
 	FIC	0(spr5,gr25)
 	SYNC
 	NOP
