@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.8 1990/11/15 09:03:12 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.9 1991/01/05 23:09:06 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -222,6 +222,16 @@ DEFUN (terminal_state_nonbuffered, (s, polling),
   (s -> sg . sg_flags) &=~ (ECHO | CRMOD);
   (s -> sg . sg_flags) |= (ANYP | CBREAK);
   (s -> lmode) |= (LPASS8 | LNOFLSH);
+  (s -> tc . t_startc) = (-1);
+  (s -> tc . t_stopc) = (-1);
+  (s -> tc . t_eofc) = (-1);
+  (s -> tc . t_brkc) = (-1);
+#ifdef HAVE_BSD_JOB_CONTROL
+  (s -> ltc . t_rprntc) = (-1);
+  (s -> ltc . t_flushc) = (-1);
+  (s -> ltc . t_werasc) = (-1);
+  (s -> ltc . t_lnextc) = (-1);
+#endif /* HAVE_BSD_JOB_CONTROL */
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
@@ -242,6 +252,20 @@ DEFUN (terminal_state_raw, (s), Ttty_state * s)
   (s -> sg . sg_flags) &=~ (ECHO | CRMOD);
   (s -> sg . sg_flags) |= (ANYP | RAW);
   (s -> lmode) |= (LPASS8 | LNOFLSH);
+  (s -> tc . t_intrc) = (-1);
+  (s -> tc . t_quitc) = (-1);
+  (s -> tc . t_startc) = (-1);
+  (s -> tc . t_stopc) = (-1);
+  (s -> tc . t_eofc) = (-1);
+  (s -> tc . t_brkc) = (-1);
+#ifdef HAVE_BSD_JOB_CONTROL
+  (s -> ltc . t_suspc) = (-1);
+  (s -> ltc . t_dsuspc) = (-1);
+  (s -> ltc . t_rprntc) = (-1);
+  (s -> ltc . t_flushc) = (-1);
+  (s -> ltc . t_werasc) = (-1);
+  (s -> ltc . t_lnextc) = (-1);
+#endif /* HAVE_BSD_JOB_CONTROL */
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
@@ -267,6 +291,20 @@ DEFUN (terminal_state_buffered, (s, channel),
   (s -> sg . sg_flags) |= ((os -> sg . sg_flags) & (ECHO | CRMOD));
   (s -> lmode) &=~ LNOFLSH;
   (s -> lmode) |= LPASS8;
+  (s -> tc . t_intrc) = (os -> tc . t_intrc);
+  (s -> tc . t_quitc) = (os -> tc . t_quitc);
+  (s -> tc . t_startc) = (os -> tc . t_startc);
+  (s -> tc . t_stopc) = (os -> tc . t_stopc);
+  (s -> tc . t_eofc) = (os -> tc . t_eofc);
+  (s -> tc . t_brkc) = (os -> tc . t_brkc);
+#ifdef HAVE_BSD_JOB_CONTROL
+  (s -> ltc . t_suspc) = (os -> ltc . t_suspc);
+  (s -> ltc . t_dsuspc) = (os -> ltc . t_dsuspc);
+  (s -> ltc . t_rprntc) = (os -> ltc . t_rprntc);
+  (s -> ltc . t_flushc) = (os -> ltc . t_flushc);
+  (s -> ltc . t_werasc) = (os -> ltc . t_werasc);
+  (s -> ltc . t_lnextc) = (os -> ltc . t_lnextc);
+#endif /* HAVE_BSD_JOB_CONTROL */
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
