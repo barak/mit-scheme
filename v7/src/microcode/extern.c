@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.27 1988/08/15 23:08:55 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.28 1988/09/27 01:46:59 cph Rel $ */
 
 #include "scheme.h"
 #include "prims.h"
@@ -39,13 +39,13 @@ MIT in each case. */
    primitives and return addresses.  */
 
 DEFINE_PRIMITIVE ("MAP-CODE-TO-MACHINE-ADDRESS", Prim_map_code_to_address, 2, 2,
-  "For return codes and primitives, this returns the internal
-representation of the return address or primitive address given the
-external representation.
-
-This accepts two arguments, TYPE-CODE and VALUE-CODE.  TYPE-CODE is
-the microcode type of the object to be returned; it must be either a
-return address or primitive procedure type.  VALUE-CODE is the index
+  "For return codes and primitives, this returns the internal\n\
+representation of the return address or primitive address given the\n\
+external representation.\n\
+\n\
+This accepts two arguments, TYPE-CODE and VALUE-CODE.  TYPE-CODE is\n\
+the microcode type of the object to be returned; it must be either a\n\
+return address or primitive procedure type.  VALUE-CODE is the index\n\
 number (i.e. external representation) of the desired result.")
 {
   Pointer result;
@@ -87,9 +87,9 @@ number (i.e. external representation) of the desired result.")
 }
 
 DEFINE_PRIMITIVE ("MAP-MACHINE-ADDRESS-TO-CODE", Prim_map_address_to_code, 2, 2,
-  "This is the inverse operation of `map-code-to-machine-address'.  Given
-a machine ADDRESS and a TYPE-CODE (either return code or primitive
-procedure), it finds the number for the external representation for
+  "This is the inverse operation of `map-code-to-machine-address'.  Given\n\
+a machine ADDRESS and a TYPE-CODE (either return code or primitive\n\
+procedure), it finds the number for the external representation for\n\
 the internal address.")
 {
   long tc, number;
@@ -153,7 +153,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-DOCUMENTATION", Prim_primitive_procedure_
 }
 
 DEFINE_PRIMITIVE ("GET-PRIMITIVE-COUNTS", Prim_get_primitive_counts, 0, 0,
-  "Returns a pair of the number of primitives defined in this interpreter
+  "Returns a pair of the number of primitives defined in this interpreter\n\
 and the number of primitives referenced but not defined.")
 {
   Primitive_0_Args();
@@ -164,7 +164,7 @@ and the number of primitives referenced but not defined.")
 }
 
 DEFINE_PRIMITIVE ("GET-PRIMITIVE-NAME", Prim_get_primitive_name, 1, 1,
-  "Given a primitive procedure, returns the string for the name of that
+  "Given a primitive procedure, returns the string for the name of that\n\
 procedure.")
 {
   extern Pointer primitive_name();
@@ -185,12 +185,12 @@ procedure.")
 }
 
 DEFINE_PRIMITIVE ("GET-PRIMITIVE-ADDRESS", Prim_get_primitive_address, 2, 2,
-  "Given a symbol NAME, return the primitive object corresponding to this
-name.
-ARITY is the number of arguments which the primitive should expect.
-If ARITY is #F, #F is returned if the primitive is not implemented,
-even if the name already exists.
-If ARITY is an integer, a primitive object will always be returned,
+  "Given a symbol NAME, return the primitive object corresponding to this\n\
+name.\n\
+ARITY is the number of arguments which the primitive should expect.\n\
+If ARITY is #F, #F is returned if the primitive is not implemented,\n\
+even if the name already exists.\n\
+If ARITY is an integer, a primitive object will always be returned,\n\
 whether the corresponding primitive is implemented or not.")
 {
   extern Pointer find_primitive();
