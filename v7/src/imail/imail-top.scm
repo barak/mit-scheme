@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.268 2001/06/12 01:05:44 cph Exp $
+;;; $Id: imail-top.scm,v 1.269 2001/09/14 17:22:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -486,10 +486,16 @@ Instead, these commands are available:
 (define-key 'imail #\^		'imail-browser-view-container)
 (define-key 'imail '(#\c-c #\c-n)	'imail-next-same-subject)
 (define-key 'imail '(#\c-c #\c-p)	'imail-previous-same-subject)
+(define-key 'imail '(#\c-c #\c-s #\c-a)	'imail-sort-by-author)
+(define-key 'imail '(#\c-c #\c-s #\c-c)	'imail-sort-by-correspondent)
+(define-key 'imail '(#\c-c #\c-s #\c-d)	'imail-sort-by-date)
+(define-key 'imail '(#\c-c #\c-s #\c-r)	'imail-sort-by-recipient)
+(define-key 'imail '(#\c-c #\c-s #\c-s)	'imail-sort-by-subject)
 (define-key 'imail '(#\c-c #\c-t #\c-e)	'imail-toggle-mime-entity)
 (define-key 'imail '(#\c-c #\c-t #\c-h)	'imail-toggle-header)
 (define-key 'imail '(#\c-c #\c-t #\c-m)	'imail-toggle-message)
 (define-key 'imail '(#\c-c #\c-t #\c-w)	'imail-toggle-wrap-entity)
+
 
 ;; Putting these after the group above exploits behavior in the comtab
 ;; abstraction that makes these bindings the ones that show up during
@@ -511,11 +517,6 @@ Instead, these commands are available:
 ;; These commands not yet implemented.
 ;;(define-key 'imail #\m-m	'imail-retry-failure)
 ;;(define-key 'imail #\w		'imail-output-body-to-file)
-;;(define-key 'imail '(#\c-c #\c-s #\c-d)	'imail-sort-by-date)
-;;(define-key 'imail '(#\c-c #\c-s #\c-s)	'imail-sort-by-subject)
-;;(define-key 'imail '(#\c-c #\c-s #\c-a)	'imail-sort-by-author)
-;;(define-key 'imail '(#\c-c #\c-s #\c-r)	'imail-sort-by-recipient)
-;;(define-key 'imail '(#\c-c #\c-s #\c-c)	'imail-sort-by-correspondent)
 ;;(define-key 'imail '(#\c-c #\c-s #\c-l)	'imail-sort-by-lines)
 ;;(define-key 'imail '(#\c-c #\c-s #\c-k)	'imail-sort-by-keywords)
 
@@ -1297,6 +1298,17 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	(set-variable! imail-dont-reply-to-names regexp #f)
 	regexp)))
 
+(define (header-field->mail-header header)
+  (list (header-field-name header)
+	(header-field-value->string (header-field-value header))))
+
+(define (with-buffer-point-preserved buffer thunk)
+  (let ((point (mark-right-inserting-copy (buffer-point buffer))))
+    (let ((value (thunk)))
+      (set-buffer-point! buffer point)
+      (mark-temporary! point)
+      value)))
+
 (define (message-subject message)
   (let ((subject (get-first-header-field-value message "subject" #f)))
     (if subject
@@ -1308,16 +1320,20 @@ ADDRESSES is a string consisting of several addresses separated by commas."
       (strip-subject-re (string-trim-left (string-tail subject 3)))
       subject))
 
-(define (header-field->mail-header header)
-  (list (header-field-name header)
-	(header-field-value->string (header-field-value header))))
+(define (message-author message)
+  (or (get-first-header-field-address message "from" #f)
+      (get-first-header-field-address message "sender" #f)
+      ""))
 
-(define (with-buffer-point-preserved buffer thunk)
-  (let ((point (mark-right-inserting-copy (buffer-point buffer))))
-    (let ((value (thunk)))
-      (set-buffer-point! buffer point)
-      (mark-temporary! point)
-      value)))
+(define (message-recipient message)
+  (or (get-first-header-field-address message "to" #f)
+      (get-first-header-field-address message "apparently-to" #f)
+      ""))
+
+(define (get-first-header-field-address message name error?)
+  (let ((v (get-first-header-field-value message name error?)))
+    (and v
+	 (rfc822:first-address v))))
 
 ;;;; Folder Operations
 
@@ -1431,6 +1447,75 @@ If it doesn't exist, it is created first."
 			     (not reference-string))
 			 (string-append "to " (url->string new-url))
 			 reference-string))))))))
+
+;;;; Sorting
+
+(define-command imail-sort-by-arrival
+  "Sort messages of current folder by arrival time.
+This is the default order if no sorting has been done."
+  ()
+  (lambda ()
+    (set-folder-order! (selected-folder) #f)))
+
+(define-command imail-sort-by-date
+  "Sort messages of current folder by date.
+With prefix argument, sort them in reverse order."
+  "P"
+  (lambda (reverse?)
+    (sort-selected-folder (if reverse? > <)
+			  (lambda (m)
+			    (or (message-time m)
+				(message-internal-time m))))))
+
+(define-command imail-sort-by-subject
+  "Sort messages of current folder by subject.
+With prefix argument, sort them in reverse order."
+  "P"
+  (lambda (reverse?)
+    (sort-selected-folder (if reverse? string>? string<?)
+			  message-subject)))
+
+(define-command imail-sort-by-author
+  "Sort messages of current folder by author.
+With prefix argument, sort them in reverse order."
+  "P"
+  (lambda (reverse?)
+    (sort-selected-folder (if reverse? string-ci>? string-ci<?)
+			  message-author)))
+
+(define-command imail-sort-by-recipient
+  "Sort messages of current folder by recipient.
+With prefix argument, sort them in reverse order."
+  "P"
+  (lambda (reverse?)
+    (sort-selected-folder (if reverse? string-ci>? string-ci<?)
+			  message-recipient)))
+
+(define-command imail-sort-by-correspondent
+  "Sort messages of current folder by other correspondent.
+With prefix argument, sort them in reverse order."
+  "P"
+  (lambda (reverse?)
+    (sort-selected-folder (if reverse? string-ci>? string-ci<?)
+			  message-correspondent)))
+
+(define (message-correspondent message)
+  (let loop ((names '("from" "sender" "to" "apparently-to")))
+    (if (pair? names)
+	(or (let ((v (get-first-header-field-value message (car names) #f)))
+	      (and v
+		   (let ((addresses
+			  (imail-dont-reply-to (rfc822:string->addresses v))))
+		     (and (pair? addresses)
+			  (car addresses)))))
+	    (loop (cdr names)))
+	"")))
+
+(define (sort-selected-folder < message-key)
+  (set-folder-order! (selected-folder)
+		     (make-folder-order
+		      (lambda (a b)
+			(< (message-key a) (message-key b))))))
 
 ;;;; Miscellany
 
