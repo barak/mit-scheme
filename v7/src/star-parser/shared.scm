@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.19 2001/11/14 20:16:45 cph Exp $
+;;; $Id: shared.scm,v 1.20 2001/11/14 20:53:32 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -302,15 +302,6 @@
 ;;; effects, the buffer name is wrapped in PROTECT, to imply that all
 ;;; operations on the buffer contain side effects.
 
-;;; Note that the WITH-POINTER forms use a stylized binding in which
-;;; the operand of the binding always contains PROTECT.  This often
-;;; produces non-optimal code, but in the absence of the PROTECT, the
-;;; binding will be discarded by the optimizer.  The reason for this
-;;; is that the references to the binding are themselves stored within
-;;; PROTECT forms, and thus not seen by the optimizer.  A better way
-;;; to deal with this would be to identify these bindings somehow, and
-;;; refuse to discard them.
-
 (define (bind-delayed-lambdas body-generator . operands)
   `(,(let ((parameters (map (lambda (operand) ((car operand))) operands)))
        `(LAMBDA ,parameters
@@ -427,9 +418,10 @@
 		       (cdr counts)
 		       bindings
 		       substitutions))
-		((or (operand-copyable? operand)
-		     (and (= 1 count)
-			  (operand-substitutable? operand body)))
+		((and (internal-identifier? identifier)
+		      (or (operand-copyable? operand)
+			  (and (= 1 count)
+			       (operand-substitutable? operand body))))
 		 (loop (cdr identifiers)
 		       (cdr operands)
 		       (cdr counts)
@@ -490,11 +482,14 @@
 (define (discard-unused-loop-bindings identifier bindings body)
   ;; Discard unused parameters of a LET loop.
   (let ((discards
-	 (map (lambda (count operand)
-		(and (= 0 count)
-		     (operand-discardable? operand)))
-	      (count-references (map car bindings) body)
-	      (map cadr bindings))))
+	 (let ((identifiers (map car bindings)))
+	   (map (lambda (count identifier operand)
+		  (and (= 0 count)
+		       (internal-identifier? identifier)
+		       (operand-discardable? operand)))
+		(count-references identifiers body)
+		identifiers
+		(map cadr bindings)))))
     (if (there-exists? discards (lambda (discard) discard))
 	(values identifier
 		(apply-discards-to-list discards bindings)
