@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.9 1993/08/24 06:27:19 gjr Exp $
+$Id: ntscreen.c,v 1.10 1993/08/24 16:15:06 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -2940,7 +2940,7 @@ MIT_TranslateMessage (CONST MSG * lpmsg)
 	  return (MIT_post_char_message (lpmsg, ((WPARAM) ASCII_DEL)));
 
 	case VK_DELETE:
-	  return (MIT_post_char_message (lpmsg, ((WPARAM) ASCII_BS)));
+	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'D'-64)));
 	  
 	case VK_SPACE:
 	  if (
