@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.3 1989/04/05 04:27:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.4 1989/04/20 01:28:01 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -287,14 +287,11 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
   (if (or (null? directory)
 	  (not (list? directory)))
       directory
-      (let ((directory (delq 'SELF directory)))
-	(cond ((null? directory)
-	       directory)
-	      ((eq? (car directory) 'ROOT)
-	       (cons 'ROOT
-		     (simplify-tail (simplify-root-tail (cdr directory)))))
-	      (else
-	       (simplify-tail directory))))))
+      (let ((head (car directory))
+	    (tail (delq 'SELF (cdr directory))))
+	(if (eq? head 'ROOT)
+	    (cons 'ROOT (simplify-tail (simplify-root-tail tail)))
+	    (simplify-tail (cons head tail))))))
 
 (define (simplify-root-tail directory)
   (if (and (not (null? directory))
