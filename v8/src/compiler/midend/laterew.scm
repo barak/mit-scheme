@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.2 1995/02/14 02:39:50 adams Exp $
+$Id: laterew.scm,v 1.3 1995/02/21 05:32:05 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -169,9 +169,9 @@ MIT in each case. |#
 			 (LOOKUP ,name)
 			 (QUOTE ,n-bits)))))))
     (lambda (rands)
-      (let ((cont (car rands))
-	    (x (cadr rands))
-	    (y (caddr rands)))
+      (let ((cont (first rands))
+	    (x    (second rands))
+	    (y    (third rands)))
 	(laterew/verify-hook-continuation cont)
 	(let ((%continue
 	       (if (eq? (car cont) 'QUOTE)
@@ -182,9 +182,9 @@ MIT in each case. |#
 			    ,cont
 			    ,expr)))))
 		   
-	  (cond ((laterew/number? x)
+	  (cond ((form/number? x)
 		 => (lambda (x-value)
-		      (cond ((laterew/number? y)
+		      (cond ((form/number? y)
 			     => (lambda (y-value)
 				  `(QUOTE ,(op x-value y-value))))
 			    (right-sided?
@@ -203,7 +203,7 @@ MIT in each case. |#
 					    (QUOTE ,x-value)
 					    (LOOKUP ,y-name)))))))))
 
-		((laterew/number? y)
+		((form/number? y)
 		 => (lambda (y-value)
 		      (let ((x-name (laterew/new-name 'X)))
 			`(LET ((,x-name ,x))
@@ -247,8 +247,7 @@ MIT in each case. |#
 		      cont))
   unspecific)
 
-(define *late-rewritten-operators*
-  (make-eq-hash-table 311))
+(define *late-rewritten-operators* (make-eq-hash-table))
 
 (define-integrable (rewrite-operator/late? rator)
   (hash-table/get *late-rewritten-operators* rator false))
@@ -261,11 +260,6 @@ MIT in each case. |#
 		       operator-name-or-object
 		       (make-primitive-procedure operator-name-or-object))
 		   handler))
-
-(define (laterew/number? form)
-  (and (QUOTE/? form)
-       (number? (quote/text form))
-       (quote/text form)))
 
 (define-rewrite/late '&+
   (laterew/binaryop + fix:+ %+ 1))
