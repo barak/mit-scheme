@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.5 1993/08/26 05:48:53 gjr Exp $
+$Id: asstop.scm,v 1.6 1993/08/26 05:49:41 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -85,10 +85,10 @@ MIT in each case. |#
     (thunk)))
 
 (define (bind-assembler&linker-variables thunk)
-  (fluid-let ((*block-label*)
+  (fluid-let ((*block-associations*)
+	      (*block-label*)
 	      (*external-labels*)
 	      (*end-of-block-code*)
-	      (*block-associations*)
 	      (*next-constant*)
 	      (*interned-constants*)
 	      (*interned-variables*)
