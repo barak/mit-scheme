@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.367 2001/05/22 03:18:47 cph Exp $
+$Id: runtime.pkg,v 14.368 2001/06/09 00:34:58 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -2326,6 +2326,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  get-host-by-address
 	  get-host-by-name
 	  get-host-name
+	  host-address-any
+	  host-address-loopback
 	  open-tcp-server-socket
 	  open-tcp-stream-socket
 	  open-tcp-stream-socket-channel
@@ -2380,6 +2382,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  subprocess-wait
 	  subprocess?)
   (export (runtime primitive-io)
+	  handle-subprocess-status-change)
+  (export (runtime socket)
 	  handle-subprocess-status-change)
   (initialization (initialize-package!)))
 
