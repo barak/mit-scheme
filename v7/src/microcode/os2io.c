@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2io.c,v 1.3 1995/01/06 00:02:36 cph Exp $
+$Id: os2io.c,v 1.4 1995/04/28 06:45:37 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -63,8 +63,6 @@ OS2_initialize_channels (void)
       }
   }
   add_reload_cleanup (OS2_channel_close_all_noerror);
-  SET_MSG_TYPE_LENGTH (mt_readahead, sm_readahead_t);
-  SET_MSG_TYPE_LENGTH (mt_readahead_ack, sm_readahead_ack_t);
 }
 
 void
