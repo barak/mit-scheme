@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dstack.h,v 1.3 1992/01/20 16:03:50 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dstack.h,v 1.4 1992/01/20 16:29:00 jinx Exp $ */
 
 #ifndef __DSTACK_H__
 #define __DSTACK_H__
@@ -23,8 +23,9 @@
 #include <setjmp.h>
 
 extern void
-  EXFUN (free, (void *)),
-  EXFUN (abort, (void));
+  EXFUN (abort, (void)),
+  EXFUN (exit, (int)),
+  EXFUN (free, (void *));
 
 extern void EXFUN (dstack_initialize, (void));
 /* Call this once to initialize the stack. */

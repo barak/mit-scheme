@@ -133,11 +133,16 @@ struct obstack		/* control current object in current chunk */
   char	*chunk_limit;		/* address of char after current chunk */
   int	temp;			/* Temporary for some macros.  */
   int   alignment_mask;		/* Mask of alignment for each object. */
-  struct _obstack_chunk *(*chunkfun) (); /* User's fcn to allocate a chunk.  */
-  void (*freefun) ();		/* User's function to free a chunk.  */
+				 /* User's fcn to allocate a chunk.  */
+  struct _obstack_chunk * EXFUN ((*chunkfun), (long));
+				/* User's function to free a chunk.  */
+  void EXFUN ((*freefun), (PTR));
 };
 
 /* Declare the external functions we use; they are in obstack.c.  */
+
+extern void
+  EXFUN (abort, (void));
 
 #ifdef __STDC__
   extern void _obstack_newchunk (struct obstack *, int);
