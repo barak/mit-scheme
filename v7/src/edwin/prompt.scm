@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.175 1999/01/28 03:59:56 cph Exp $
+;;; $Id: prompt.scm,v 1.176 1999/01/28 05:44:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -38,6 +38,7 @@
   (set! typein-saved-windows '())
   (set! map-name/internal->external identity-procedure)
   (set! map-name/external->internal identity-procedure)
+  (set! prompt-histories (make-eq-hash-table))
   unspecific)
 
 (define (make-typein-buffer-name depth)
@@ -199,23 +200,26 @@
 (define *options*)
 
 (define (%prompt-for-string prompt options)
-  (fluid-let ((*options* options))
-    (let ((type (default-type))
-	  (string (default-string)))
-      (prompt-for-typein
-       (prompt-for-string/prompt prompt
-				 (and (eq? 'VISIBLE-DEFAULT type)
-				      string
-				      (write-to-string string)))
-       #t
-       (let ((thunk (typein-editor-thunk (options/mode *options*))))
-	 (if (and (eq? type 'INSERTED-DEFAULT) string)
-	     (begin
-	       (set-options/default-string! options #f)
-	       (lambda ()
-		 (insert-string string)
-		 ((thunk))))
-	     thunk))))))
+  (let ((value
+	 (fluid-let ((*options* options))
+	   (let ((type (default-type))
+		 (string (default-string)))
+	     (prompt-for-typein
+	      (prompt-for-string/prompt prompt
+					(and (eq? 'VISIBLE-DEFAULT type)
+					     string
+					     (write-to-string string)))
+	      #t
+	      (let ((thunk (typein-editor-thunk (options/mode *options*))))
+		(if (and (eq? type 'INSERTED-DEFAULT) string)
+		    (begin
+		      (set-options/default-string! options #f)
+		      (lambda ()
+			(insert-string string)
+			((thunk))))
+		    thunk)))))))
+    (record-in-history! value (options/history options))
+    value))
 
 (define (default-type) (options/default-type *options*))
 (define (default-string) (options/default-string *options*))
@@ -287,23 +291,21 @@
 				    (if (default-object? ci?) #t ci?))
 				   'REQUIRE-MATCH? #t)))
 
-(define (prompt-for-command prompt)
+(define (prompt-for-command prompt . options)
   (fluid-let ((map-name/external->internal editor-name/external->internal)
 	      (map-name/internal->external editor-name/internal->external))
-    (prompt-for-string-table-value prompt
-				   #f
-				   editor-commands
-				   'DEFAULT-TYPE 'NO-DEFAULT
-				   'REQUIRE-MATCH? #t)))
+    (apply prompt-for-string-table-value prompt #f editor-commands
+	   'DEFAULT-TYPE 'NO-DEFAULT
+	   'REQUIRE-MATCH? #t
+	   options)))
 
-(define (prompt-for-variable prompt)
+(define (prompt-for-variable prompt . options)
   (fluid-let ((map-name/external->internal editor-name/external->internal)
 	      (map-name/internal->external editor-name/internal->external))
-    (prompt-for-string-table-value prompt
-				   #f
-				   editor-variables
-				   'DEFAULT-TYPE 'NO-DEFAULT
-				   'REQUIRE-MATCH? #t)))
+    (apply prompt-for-string-table-value prompt #f editor-variables
+	   'DEFAULT-TYPE 'NO-DEFAULT
+	   'REQUIRE-MATCH? #t
+	   options)))
 
 ;;;; Prompt Options
 
@@ -325,7 +327,7 @@
   (default-type 'VISIBLE-DEFAULT)
   (confirm-completion? #f)
   (case-insensitive-completion? #f)
-  (history '())
+  (history 'MINIBUFFER-DEFAULT)
   (history-index 0))
 
 (define (parse-prompt-options option-structure options)
@@ -395,8 +397,41 @@
 		       (if require-match?
 			   (ref-mode-object minibuffer-local-must-match)))
     (set-options/confirm-completion?! options (eq? 'CONFIRM require-match?))))
+
+;;;; Prompt History Mechanism
 
-(define-prompt-option 'HISTORY list?
+(define prompt-histories)
+
+(define (name->history name)
+  (if (not (symbol? name))
+      (error:wrong-type-argument name "symbol" 'NAME->HISTORY))
+  (or (hash-table-get prompt-histories name #f)
+      (let ((history (list 'PROMPT-HISTORY)))
+	(hash-table-put! prompt-histories name history)
+	history)))
+
+(define (history-length name)
+  (length (cdr (name->history name))))
+
+(define (history-item name index)
+  (list-ref (cdr (name->history name)) index))
+
+(define (record-in-history! string name)
+  (let ((history (name->history name)))
+    (if (not (and (pair? (cdr history))
+		  (string=? string (car (cdr history)))))
+	(set-cdr! history (cons string (cdr history))))))
+
+(define (prompt-history-strings name)
+  (list-copy (cdr (name->history name))))
+
+(define (set-prompt-history-strings! name strings)
+  (if (not (list-of-strings? strings))
+      (error:wrong-type-argument strings "list of strings"
+				 'SET-PROMPT-HISTORY-STRINGS!))
+  (set-cdr! (name->history name) strings))
+
+(define-prompt-option 'HISTORY symbol?
   (lambda (options history)
     (set-options/history! options history)
     (history->default-string options)))
@@ -409,13 +444,12 @@
 (define (history->default-string options)
   (let ((history (options/history options))
 	(index (options/history-index options)))
-    (if (and (pair? history)
-	     (not (< index (length history))))
+    (if (let ((length (history-length history)))
+	  (and (> length 0)
+	       (not (< index length))))
 	(error "History index out of range:" index))
     (if (not (memq 'DEFAULT-STRING (options/seen options)))
-	(set-options/default-string!
-	 options
-	 (history-entry->string (list-ref history index))))))
+	(set-options/default-string! options (history-item history index)))))
 
 ;;;; String Prompt Modes
 
@@ -858,17 +892,16 @@ With argument, skips forward that many items in the history."
   (lambda (argument)
     (let ((history (options/history *options*))
 	  (index (options/history-index *options*)))
-      (if (and (pair? history) (not (zero? argument)))
-	  (let ((index*
-		 (let ((index* (- index argument)))
-		   (cond ((< index* 0) 0)
-			 ((>= index* (length history)) (- (length history) 1))
-			 (else index*)))))
-	    (set-options/history-index! *options* index*)
-	    (set-typein-string!
-	     (history-entry->string (list-ref history index*))
-	     #t)
-	    (set-current-point! (buffer-start (current-buffer))))))))
+      (let ((hl (history-length history)))
+	(if (and (> hl 0) (not (zero? argument)))
+	    (let ((index*
+		   (let ((index* (- index argument)))
+		     (cond ((< index* 0) 0)
+			   ((>= index* hl) (- hl 1))
+			   (else index*)))))
+	      (set-options/history-index! *options* index*)
+	      (set-typein-string! (history-item history index*) #t)
+	      (set-current-point! (buffer-start (current-buffer)))))))))
 
 (define-command previous-prompt-history-item
   "Inserts the previous item of the prompt history into the minibuffer.
@@ -878,10 +911,6 @@ With argument, skips backward that many items in the history."
   "p"
   (lambda (argument)
     ((ref-command next-prompt-history-item) (- argument))))
-
-(define (history-entry->string command)
-  (fluid-let ((*unparse-with-maximum-readability?* #t))
-    (write-to-string command)))
 
 (define-command repeat-complex-command
   "Edit and re-evaluate last complex command, or ARGth from last.
@@ -894,11 +923,18 @@ Whilst editing the command, the following commands are available:
 \\{repeat-complex-command}"
   "p"
   (lambda (argument)
+    ;; Kludge.
+    (set-prompt-history-strings!
+     'REPEAT-COMPLEX-COMMAND
+     (map (lambda (command)
+	    (fluid-let ((*unparse-with-maximum-readability?* #t))
+	      (write-to-string command)))
+	  (command-history-list)))
     (execute-command-history-entry
      (read-from-string
       (prompt-for-string "Redo" #f
 			 'DEFAULT-TYPE 'INSERTED-DEFAULT
-			 'HISTORY (command-history-list)
+			 'HISTORY 'REPEAT-COMPLEX-COMMAND
 			 'HISTORY-INDEX (- argument 1))))))
 
 ;;; Password Prompts

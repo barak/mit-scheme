@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.233 1999/01/28 03:59:49 cph Exp $
+$Id: edwin.pkg,v 1.234 1999/01/28 05:44:51 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -479,6 +479,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  prompt-for-typein
 	  prompt-for-variable
 	  prompt-for-yes-or-no?
+	  prompt-history-strings
+	  set-prompt-history-strings!
 	  standard-completion
 	  temporary-typein-message
 	  typein-edit-other-window
