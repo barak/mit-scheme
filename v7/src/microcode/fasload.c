@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.75 1993/11/04 23:50:45 gjr Exp $
+$Id: fasload.c,v 9.76 1993/11/05 20:36:46 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -552,7 +552,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	Scan += 1;
 	count = (MANIFEST_CLOSURE_COUNT (Scan));
 	word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
-	area_end = ((MANIFEST_CLOSURE_END (Scan, count)) + 1);
+	area_end = (MANIFEST_CLOSURE_END (Scan, count));
 
 	while ((--count) >= 0)
 	{
@@ -563,8 +563,8 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	  address = ((long) (RELOCATE (address)));
 	  STORE_CLOSURE_ENTRY_ADDRESS ((ADDR_TO_SCHEME_ADDR (address)), Scan);
 	}
-	Scan = area_end;
-	END_CLOSURE_RELOCATION (Scan);
+	END_CLOSURE_RELOCATION (area_end);
+	Scan = (area_end + 1);
 	break;
       }
 
