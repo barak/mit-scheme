@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.48 1994/03/08 20:32:45 cph Exp $
+$Id: edwin.ldr,v 1.49 1994/10/08 08:57:28 cph Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -80,7 +80,7 @@ MIT in each case. |#
 
       (if (eq? (lookup 'OS-TYPE) 'UNIX)
 	  (begin
-	    (load-option 'KRYPT)
+	    (load-option 'KRYPT #t)	;no error if not present.
 	    (load-option 'SUBPROCESS)))
       (load-option 'RB-TREE)
       (load-option 'HASH-TABLE)
