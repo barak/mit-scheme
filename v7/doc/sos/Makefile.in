@@ -1,7 +1,7 @@
 
-# $Id: Makefile.in,v 2.3 2000/12/23 05:15:00 cph Exp $
+# $Id: Makefile.in,v 2.4 2001/02/23 04:36:10 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -60,11 +60,13 @@ htmldir = @htmldir@
 pdfdir = @pdfdir@
 psdir = @psdir@
 
-all: sos.info sos.html sos.pdf sos.ps
+INFO_TARGET = mit-scheme-sos.info
 
-sos.info: sos.texinfo gfdl.texinfo
-	rm -f sos.info*
-	makeinfo sos.texinfo
+all: $(INFO_TARGET) sos.html sos.pdf sos.ps
+
+$(INFO_TARGET): sos.texinfo gfdl.texinfo
+	rm -f $(INFO_TARGET)*
+	makeinfo --output=$(INFO_TARGET) sos.texinfo
 
 sos.html: sos.texinfo gfdl.texinfo
 	rm -f sos*.html
@@ -96,7 +98,7 @@ mostlyclean:
 	rm -f sos.dvi
 
 clean: mostlyclean
-	rm -f sos.info* sos*.html sos.pdf sos.ps
+	rm -f $(INFO_TARGET)* sos*.html sos.pdf sos.ps
 
 distclean: clean
 
@@ -105,12 +107,12 @@ maintainer-clean: distclean
 # The install rules depend on macro variables passwd down from the
 # makefile in the top-level documentation directory.
 
-install-info: sos.info
-	-rm -f $(DESTDIR)$(infodir)/sos.info*
-	$(INSTALL_DATA) sos.info* $(DESTDIR)$(infodir)/.
+install-info: $(INFO_TARGET)
+	-rm -f $(DESTDIR)$(infodir)/$(INFO_TARGET)*
+	$(INSTALL_DATA) $(INFO_TARGET)* $(DESTDIR)$(infodir)/.
 
 install-info-gz: install-info
-	gzip -v $(DESTDIR)$(infodir)/sos.info*
+	gzip -v $(DESTDIR)$(infodir)/$(INFO_TARGET)*
 
 install-html: sos.html
 	$(INSTALL_DATA) sos*.html $(DESTDIR)$(htmldir)/.
