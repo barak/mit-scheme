@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.5 1992/02/03 14:26:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.6 1992/02/04 00:58:32 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -38,6 +38,12 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+;; ****
+;; Missing: 2 argument operations and predicates with non-trivial
+;; constant arguments.
+;; Also missing with (OBJECT->FLOAT (REGISTER ...)) operands.
+;; ****
+
 (define-integrable (->sti reg)
   (- reg fr0))
 
@@ -435,13 +441,7 @@ MIT in each case. |#
 
 (define-rule predicate
   (FLONUM-PRED-1-ARG (? predicate) (REGISTER (? source)))
-  (let ((sti (flonum-source! source)))
-    (if (zero? sti)
-	(flonum-branch! predicate
-			(LAP (FTST)))
-	(flonum-branch! (commute-flonum-predicate predicate)
-			(LAP (FLDZ)
-			     (FCOMP D (ST ,(1+ sti))))))))
+  (flonum-compare-zero predicate source))
 
 (define-rule predicate
   (FLONUM-PRED-2-ARGS (? predicate)
@@ -460,27 +460,66 @@ MIT in each case. |#
 			   (LAP (FLD D (ST ,st1))
 				(FCOMP D (ST ,(1+ st2)))))))))
 
+(define-rule predicate
+  (FLONUM-PRED-2-ARGS (? predicate)
+		      (REGISTER (? source))
+		      (OBJECT->FLOAT (CONSTANT 0.)))
+  (flonum-compare-zero predicate source))
+
+(define-rule predicate
+  (FLONUM-PRED-2-ARGS (? predicate)
+		      (OBJECT->FLOAT (CONSTANT 0.))
+		      (REGISTER (? source)))
+  (flonum-compare-zero (commute-flonum-predicate predicate) source))
+
+(define-rule predicate
+  (FLONUM-PRED-2-ARGS (? predicate)
+		      (REGISTER (? source))
+		      (OBJECT->FLOAT (CONSTANT 1.)))
+  (flonum-compare-one predicate source))
+
+(define-rule predicate
+  (FLONUM-PRED-2-ARGS (? predicate)
+		      (OBJECT->FLOAT (CONSTANT 1.))
+		      (REGISTER (? source)))
+  (flonum-compare-one (commute-flonum-predicate predicate) source))
+
+(define (flonum-compare-zero predicate source)
+  (let ((sti (flonum-source! source)))
+    (if (zero? sti)
+	(flonum-branch! predicate
+			(LAP (FTST)))
+	(flonum-branch! (commute-flonum-predicate predicate)
+			(LAP (FLDZ)
+			     (FCOMP D (ST ,(1+ sti))))))))
+
+(define (flonum-compare-one predicate source)
+  (let ((sti (flonum-source! source)))
+    (flonum-branch! (commute-flonum-predicate predicate)
+		    (LAP (FLD1)
+			 (FCOMP D (ST ,(1+ sti)))))))
+
 (define (commute-flonum-predicate pred)
   (case pred
-    ((FLONUM-EQUAL?) 'FLONUM-EQUAL?)
-    ((FLONUM-LESS?) 'FLONUM-GREATER?)
-    ((FLONUM-GREATER?) 'FLONUM-LESS?)
+    ((FLONUM-EQUAL? FLONUM-ZERO?) 'FLONUM-EQUAL?)
+    ((FLONUM-LESS? FLONUM-NEGATIVE?) 'FLONUM-GREATER?)
+    ((FLONUM-GREATER? FLONUM-POSITIVE?) 'FLONUM-LESS?)
     (else
      (error "commute-flonum-predicate: Unknown predicate" pred))))
 
 (define (flonum-branch! predicate prefix)
   (case predicate
-    ((FLONUM-ZERO? FLONUM-EQUAL?)
+    ((FLONUM-EQUAL? FLONUM-ZERO?)
      (set-current-branches! (lambda (label)
 			      (LAP (JE (@PCR ,label))))
 			    (lambda (label)
 			      (LAP (JNE (@PCR ,label))))))
-    ((FLONUM-NEGATIVE? FLONUM-LESS?)
+    ((FLONUM-LESS? FLONUM-NEGATIVE?)
      (set-current-branches! (lambda (label)
 			      (LAP (JB (@PCR ,label))))
 			    (lambda (label)
 			      (LAP (JAE (@PCR ,label))))))
-    ((FLONUM-POSITIVE? FLONUM-GREATER?)
+    ((FLONUM-GREATER? FLONUM-POSITIVE?)
      (set-current-branches! (lambda (label)
 			      (LAP (JA (@PCR ,label))))
 			    (lambda (label)
@@ -491,6 +530,3 @@ MIT in each case. |#
   (LAP ,@prefix
        (FSTSW (R ,eax))
        (SAHF)))
-
-;; **** Missing: 2 argument operations and predicates with constant
-;; arguments.  Also missing with (OBJECT->FLOAT ...) operands. ****
