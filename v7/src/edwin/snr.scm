@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.6 1996/05/06 00:09:30 cph Exp $
+;;;	$Id: snr.scm,v 1.7 1996/05/11 08:51:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -739,7 +739,9 @@ With negative argument -N, show the N oldest unread articles."
       (for-each-vector-element (news-server-buffer:groups buffer)
 	(lambda (group)
 	  (if (news-group:subscribed? group)
-	      (read-news-group-headers buffer group)))))))
+	      (begin
+		(read-news-group-headers buffer group)
+		(update-screens! #f))))))))
 
 (define-command news-read-group-headers
   "Read the unread headers for the News group indicated by point.
@@ -766,7 +768,8 @@ This command has no effect in the all-groups buffer."
       (if (news-server-buffer? buffer)
 	  (for-each-vector-element (news-server-buffer:groups buffer)
 	    (lambda (group)
-	      (refresh-news-group buffer group)))))))
+	      (refresh-news-group buffer group)
+	      (update-screens! #f)))))))
 
 (define-command news-refresh-group
   "Update the unread-message estimate for the News group indicated by point.
