@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.14 1994/11/20 05:06:56 cph Exp $
+$Id: sfile.scm,v 14.15 1994/12/19 21:06:39 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -98,11 +98,11 @@ MIT in each case. |#
 			 (if (= n-read buffer-length)
 			     (+ (loop (- source-length buffer-length))
 				buffer-length)
-			     n-read)))))))
-	 (set-file-modes! to (file-modes from)))
+			     n-read))))))))
        (lambda ()
 	 (if output-channel (channel-close output-channel))
-	 (if input-channel (channel-close input-channel)))))))
+	 (if input-channel (channel-close input-channel)))))
+    (set-file-modes! output-filename (file-modes input-filename))))
 
 (define (file-eq? x y)
   ((ucode-primitive file-eq?) (->namestring (merge-pathnames x))
