@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.11 1994/03/16 23:32:41 cph Exp $
+;;;	$Id: vc.scm,v 1.12 1994/03/18 21:40:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -480,7 +480,26 @@ If `F.~REV~' already exists, it is used instead of being re-created."
 Headers are inserted at the start of the buffer."
   ()
   (lambda ()
-    (editor-error "VC-INSERT-HEADERS not implemented.")))
+    (let ((master (current-vc-master)))
+      (let ((buffer
+	     (or (vc-workfile-buffer master)
+		 (find-file-other-window (vc-workfile-pathname master)))))
+	(without-group-clipped! (buffer-group buffer)
+	  (lambda ()
+	    (if (or (not (vc-backend-check-headers master buffer))
+		    (prompt-for-confirmation?
+		     "Version headers already exist.  Insert another set"))
+		(insert-string
+		 (string-append
+		  (or (ref-variable comment-start buffer) "#")
+		  "\t"
+		  (vc-type-header-keyword (vc-master-type master))
+		  (let ((end (or (ref-variable comment-end buffer) "")))
+		    (if (string-null? end)
+			end
+			(string-append "\t" end)))
+		  "\n")
+		 (buffer-start buffer)))))))))
 
 (define-command vc-print-log
   "List the change log of the current buffer in a window."
@@ -967,6 +986,9 @@ the value of vc-log-mode-hook."
 	      (set-vc-master-%time! master time)
 	      (set-vc-master-%admin! master (vc-call 'GET-ADMIN master))
 	      (loop)))))))
+
+(define (vc-backend-check-headers master buffer)
+  (vc-call 'CHECK-HEADERS master buffer))
 
 ;;;; RCS Commands
 
@@ -1031,6 +1053,13 @@ the value of vc-log-mode-hook."
 (define-vc-type-operation 'GET-ADMIN vc-type:rcs
   (lambda (master)
     (parse-rcs-admin (vc-master-pathname master))))
+
+(define-vc-type-operation 'CHECK-HEADERS vc-type:rcs
+  (lambda (master buffer)
+    (re-search-forward (string-append "\\$[A-Za-z\300-\326\330-\366\370-\377]+"
+				      "\\(: [\t -#%-\176\240-\377]*\\)?\\$")
+		       (buffer-start buffer)
+		       (buffer-end buffer))))
 
 (define-vc-type-operation 'LIKELY-CONTROL-TYPE? vc-type:rcs
   (lambda (workfile)
