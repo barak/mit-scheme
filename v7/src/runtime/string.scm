@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.9 1993/10/13 07:40:50 cph Exp $
+$Id: string.scm,v 14.10 1994/03/02 16:48:59 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -203,11 +203,13 @@ MIT in each case. |#
   (substring->list string 0 (string-length string)))
 
 (define (substring->list string start end)
-  (let loop ((index start))
+  (let loop ((index start)
+	     (accum '()))
     (if (fix:< index end)
-	(cons (string-ref string index)
-	      (loop (fix:+ index 1)))
-	'())))
+	(loop (fix:+ index 1)
+	      (cons (string-ref string index)
+		    accum))
+	(reverse! accum))))
 
 (define (string-copy string)
   (let ((size (string-length string)))
