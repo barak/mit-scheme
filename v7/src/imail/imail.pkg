@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.83 2001/05/26 02:58:30 cph Exp $
+;;; $Id: imail.pkg,v 1.84 2001/05/29 20:08:59 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -21,9 +21,9 @@
 
 ;;;; IMAIL mail reader: packaging
 
-(global-definitions "$bscm/runtime/runtime")
-(global-definitions "$bscm/sos/sos")
-(global-definitions "$bscm/edwin/edwinunx")
+(global-definitions "../runtime/runtime")
+(global-definitions "../sos/sos")
+(global-definitions "../edwin/edwinunx")
 
 (define-package (edwin imail rexp)
   (files "rexp")
