@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: pwedit.scm,v 1.3 1999/01/14 21:40:35 cph Exp $
+;;; $Id: pwedit.scm,v 1.4 1999/01/29 20:03:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -151,7 +151,8 @@
 
 (define (short-pw-body-region point)
   (let ((end (line-end point 0)))
-    (let ((start (next-specific-property-change* point end 'PW-FORM)))
+    (let ((start
+	   (next-specific-property-change* (line-start point 0) end 'PW-FORM)))
       (and start
 	   (mark< start end)
 	   (make-region start end)))))
