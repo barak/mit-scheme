@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.31 1991/03/16 00:02:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.32 1991/03/22 00:27:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -141,6 +141,21 @@
 	  (group-delete! group index1 index2)
 	  (group-delete! group index2 index1)))))
 
+(define (extract-and-delete-string mark #!optional point)
+  (let ((point (if (default-object? point) (current-point) point)))
+    (let ((group (mark-group mark))
+	  (index1 (mark-index mark))
+	  (index2 (mark-index point)))
+      (if (not (eq? group (mark-group point)))
+	  (error "EXTRACT-AND-DELETE-STRING: Marks not related" mark point))
+      (if (< index1 index2)
+	  (let ((string (group-extract-string group index1 index2)))
+	    (group-delete! group index1 index2)
+	    string)
+	  (let ((string (group-extract-string group index2 index1)))
+	    (group-delete! group index2 index1)
+	    string)))))
+
 (define (match-string string mark #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
     (let ((group (mark-group mark))
@@ -163,7 +178,7 @@
       (cond ((= index1 index2) (zero? length))
 	    ((< index1 index2) (kernel index1 index2))
 	    (else (kernel index2 index1))))))
-
+
 (define (downcase-area mark #!optional point)
   (region-transform!
    (make-region mark (if (default-object? point) (current-point) point))
@@ -185,7 +200,7 @@
      (string-downcase! string)
      (string-set! string 0 (char-upcase (string-ref string 0)))
      string)))
-
+
 (define (mark-flash mark #!optional type)
   (cond (*executing-keyboard-macro?* unspecific)
 	((not mark) (editor-beep))
