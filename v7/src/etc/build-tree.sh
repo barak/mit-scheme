@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: build-tree.sh,v 1.3 2000/10/16 18:05:44 cph Exp $
+# $Id: build-tree.sh,v 1.4 2000/10/16 18:57:16 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -30,7 +30,7 @@ for directory in 6001 cref edwin imail rcs runtime sf sos win32
 do
   (cd $directory; ln -s ../Makefile.std Makefile)
 done
-for directory in 6001 compiler cref edwin imail rcs runtime sf sos win32
+for directory in 6001 compiler cref edwin imail rcs runtime sf sos swat win32
 do
   (cd $directory; make TAGS)
 done
@@ -41,6 +41,7 @@ done
 (cd microcode; scheme -load os2pm.scm < /dev/null)
 (cd microcode; etags -r '/^DEF[A-Za-z_ \t(]+"\([^"]+\)"/' *.[ch])
 (cd microcode/cmpauxmd; make all)
+(cd pcsample; etags *.scm *.c)
 (cd compiler/machines/vax;
   for n in 1 2 3
   do
