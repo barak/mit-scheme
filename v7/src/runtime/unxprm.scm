@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.53 1999/02/01 03:42:13 cph Exp $
+$Id: unxprm.scm,v 1.54 1999/02/25 22:15:37 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -98,10 +98,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (let ((value (get-environment-variable name)))
 	       (and value
 		    (try-directory value))))))
-      (or (try-variable "TEMP")
+      (or (try-variable "TMPDIR")
+	  (try-variable "TEMP")
 	  (try-variable "TMP")
-	  (try-directory "/tmp")
+	  (try-directory "/var/tmp")
 	  (try-directory "/usr/tmp")
+	  (try-directory "/tmp")
 	  (error "Can't find temporary directory.")))))
 
 (define (file-attributes-direct filename)

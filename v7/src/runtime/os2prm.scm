@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.40 1999/02/01 03:42:01 cph Exp $
+$Id: os2prm.scm,v 1.41 1999/02/25 22:15:41 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -183,14 +183,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (lambda (name)
 	     (let ((value (get-environment-variable name)))
 	       (and value
-		    (try-directory value))))))
-      (or (try-variable "TEMP")
+		    (try-directory value)))))
+	  (try-system-directory
+	   (lambda (directory)
+	     (try-directory
+	      (merge-pathnames directory (os2/system-root-directory))))))
+      (or (try-variable "TMPDIR")
+	  (try-variable "TEMP")
 	  (try-variable "TMP")
-	  (try-directory "\\tmp")
-	  (try-directory "c:\\")
+	  (try-system-directory "\\temp")
+	  (try-system-directory "\\tmp")
+	  (try-system-directory "")
 	  (try-directory ".")
-	  (try-directory "\\")
 	  (error "Can't find temporary directory.")))))
+
+(define (os2/system-root-directory)
+  (let ((system.ini (get-environment-variable "SYSTEM_INI")))
+    (if (not (file-exists? system.ini))
+	(error "Unable to find OS/2 system.ini file:" system.ini))
+    (pathname-new-directory (directory-pathname system.ini) '(ABSOLUTE))))
 
 (define-integrable os2/current-pid
   (ucode-primitive current-pid 0))
@@ -212,14 +223,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(trydir (get-environment-variable "HOME"))))
      (%users-directory
       (lambda ()
-	(trydir (get-environment-variable "USERDIR"))))
-     (%system-root-directory
-      (lambda ()
-	(let ((system.ini (get-environment-variable "SYSTEM_INI")))
-	  (if (not (file-exists? system.ini))
-	      (error "Unable to find OS/2 system.ini file:" system.ini))
-	  (pathname-new-directory (directory-pathname system.ini)
-				  '(ABSOLUTE))))))
+	(trydir (get-environment-variable "USERDIR")))))
 
   (set! current-user-name
 	(lambda ()
@@ -243,7 +247,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(or (let ((usersdir (%users-directory)))
 		      (and usersdir
 			   (trydir (merge-pathnames user-name usersdir))))
-		    (let ((rootdir (%system-root-directory)))
+		    (let ((rootdir (os2/system-root-directory)))
 		      (or (trydir (merge-pathnames user-name rootdir))
 			  rootdir)))))))
 
@@ -268,7 +272,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			      (directory-pathname-as-file homedir))))
 		;; Look for USER-NAME in root directory of system
 		;; drive.
-		(trydir (merge-pathnames user-name (%system-root-directory)))
+		(trydir
+		 (merge-pathnames user-name (os2/system-root-directory)))
 		;; OK, give up:
 		(error "Can't find user's home directory:" user-name))))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.27 1999/02/01 03:42:09 cph Exp $
+$Id: ntprm.scm,v 1.28 1999/02/25 22:15:45 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -222,16 +222,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (trydir (get-environment-variable "HOME")))))
      (%users-directory
       (lambda ()
-	(trydir (get-environment-variable "USERDIR"))))
-     (%system-root-directory
-      (lambda ()
-	(let ((sysroot
-	       (or (trydir (get-environment-variable "SystemRoot"))
-		   (trydir (get-environment-variable "windir"))
-		   (trydir (get-environment-variable "winbootdir")))))
-	  (if (not sysroot)
-	      (error "Unable to find Windows system root."))
-	  (pathname-new-directory sysroot '(ABSOLUTE))))))
+	(trydir (get-environment-variable "USERDIR")))))
 
   (set! current-user-name
 	(lambda ()
@@ -256,7 +247,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (and user-name
 			   usersdir
 			   (trydir (merge-pathnames user-name usersdir))))
-		    (let ((rootdir (%system-root-directory)))
+		    (let ((rootdir (nt/system-root-directory)))
 		      (or (and user-name
 			       (trydir (merge-pathnames user-name rootdir)))
 			  rootdir)))))))
@@ -282,7 +273,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			      (directory-pathname-as-file homedir))))
 		;; Look for USER-NAME in root directory of system
 		;; drive.
-		(trydir (merge-pathnames user-name (%system-root-directory)))
+		(trydir (merge-pathnames user-name (nt/system-root-directory)))
 		;; OK, give up:
 		(error "Can't find user's home directory:" user-name))))))
 
@@ -325,14 +316,28 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (lambda (name)
 	     (let ((value (get-environment-variable name)))
 	       (and value
-		    (try-directory value))))))
-      (or (try-variable "TEMP")
+		    (try-directory value)))))
+	  (try-system-directory
+	   (lambda (directory)
+	     (try-directory
+	      (merge-pathnames directory (nt/system-root-directory))))))
+      (or (try-variable "TMPDIR")
+	  (try-variable "TEMP")
 	  (try-variable "TMP")
-	  (try-directory "/tmp")
-	  (try-directory "c:/")
+	  (try-system-directory "\\temp")
+	  (try-system-directory "\\tmp")
+	  (try-system-directory "")
 	  (try-directory ".")
-	  (try-directory "/")
 	  (error "Can't find temporary directory.")))))
+
+(define (nt/system-root-directory)
+  (let ((sysroot
+	 (or (trydir (get-environment-variable "SystemRoot"))
+	     (trydir (get-environment-variable "windir"))
+	     (trydir (get-environment-variable "winbootdir")))))
+    (if (not sysroot)
+	(error "Unable to find Windows system root."))
+    (pathname-new-directory sysroot '(ABSOLUTE))))
 
 (define (os/file-end-of-line-translation pathname)
   (if (let ((type (dos/fs-drive-type pathname)))
