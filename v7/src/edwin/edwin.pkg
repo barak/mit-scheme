@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.14 1989/08/14 10:23:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.15 1990/08/31 20:18:01 markf Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -85,6 +85,7 @@ MIT in each case. |#
 	 "motcom"			; motion commands
 	 "replaz"			; replace commands
 	 "schmod"			; scheme mode
+	 "scrcom"			; screen commands
 	 "sercom"			; search commands
 	 "texcom"			; text commands
 	 "wincom"			; window commands
@@ -241,7 +242,8 @@ MIT in each case. |#
 	  button3-up
 	  button4-up
 	  button5-up
-	  x-display-type)
+	  x-display-type
+	  x-display-type-name)
   (export (edwin x-commands)
 	  screen-xterm)
   (initialization (initialize-package!)))
@@ -276,12 +278,16 @@ MIT in each case. |#
 	  button-downify
 	  button-upify
 	  button?
+	  change-reading
+	  editor-frame-input-port
 	  editor-frame-select-cursor!
 	  editor-frame-select-window!
 	  editor-frame-selected-window
 	  editor-frame-typein-window
+	  editor-frame-typein-bufferset
 	  editor-frame-window0
 	  editor-frame-windows
+	  editor-frame-screen
 	  edwin-variable$cursor-centering-point
 	  edwin-variable$mode-line-inverse-video
 	  edwin-variable$scroll-step
@@ -315,6 +321,7 @@ MIT in each case. |#
 	  window-point-coordinates
 	  window-point-x
 	  window-point-y
+	  window-root-window
 	  window-redraw!
 	  window-redraw-preserving-point!
 	  window-scroll-y-absolute!
@@ -407,6 +414,8 @@ MIT in each case. |#
 	  message-args->string
 	  reset-command-prompt!
 	  set-command-prompt!
+	  set-editor-input-port!
+	  set-reader-do-before-next-read!
 	  temporary-message
 	  with-editor-input-port))
 

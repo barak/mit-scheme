@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.193 1990/06/20 23:01:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.194 1990/08/31 20:12:00 markf Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -108,7 +108,7 @@
       (initialize-display-type!))
   (set! edwin-editor
 	(let ((screen (apply make-editor-screen make-screen-args)))
-	  (make-editor "Edwin" screen (make-editor-input-port screen))))
+	  (make-editor "Edwin" screen)))
   (set! edwin-initialization
 	(lambda ()
 	  (set! edwin-initialization false)
@@ -120,7 +120,9 @@
    (lambda ()
      (if edwin-editor
 	 (begin
-	   (screen-discard! (editor-screen edwin-editor))
+	   (for-each (lambda (screen)
+		       (screen-discard! screen))
+		     (editor-screens edwin-editor))
 	   (set! edwin-editor false)
 	   unspecific)))))
 
@@ -177,6 +179,13 @@ with the contents of the startup message."
 
 (define (within-editor?)
   (not (unassigned? current-editor)))
+
+;;; There is a problem with recursive edits and multiple screens.
+;;; When you switch screens the recursive edit aborts. The problem
+;;; is that a top level ^G in a recursive edit aborts the recursive
+;;; edit and a ^G is signalled when you switch screens. I think that
+;;; ^G should not abort a recursive edit.
+
 (define (enter-recursive-edit)
   (let ((value
 	 (call-with-current-continuation

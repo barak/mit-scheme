@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.79 1989/08/11 11:50:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.80 1990/08/31 20:12:04 markf Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -55,7 +55,15 @@
    selected-window
    cursor-window
    select-time
-   properties))
+   properties
+   typein-bufferset
+   input-port
+   ;; The reader-continuation is intended to be used to switch
+   ;; between reader loops for different editor frames. However,
+   ;; its interactions with typein and typeout don't quite work, so
+   ;; I'm commenting out the code that deals with this.
+   ;reader-continuation
+   ))
 
 (define (make-editor-frame root-screen main-buffer typein-buffer)
   (let ((window (make-object editor-frame)))
@@ -68,6 +76,9 @@
       (set! redisplay-flags (list false))
       (set! inferiors '())
       (set! properties (make-1d-table))
+      (set! typein-bufferset (make-bufferset typein-buffer))
+      (set! input-port (make-editor-input-port root-screen))
+      (bufferset-guarantee-buffer! typein-bufferset typein-buffer)
       (let ((main-window (make-buffer-frame window main-buffer true))
 	    (typein-window (make-buffer-frame window typein-buffer false)))
 	(set! screen root-screen)
@@ -78,9 +89,31 @@
 	(set! select-time 2)
 	(set-window-select-time! main-window 1)
 	(=> (window-cursor main-window) :enable!))
-      (set-editor-frame-size! window x-size y-size))
+      (set-editor-frame-size! window x-size y-size)
+#|
+      (set! reader-continuation (lambda (who-cares)
+				  who-cares ;ignore
+				  (top-level-command-reader
+				   (lambda ()
+				     (initialize-typein!)
+				     (initialize-typeout!)))))
+|#
+      )
     window))
+#|
+(define (set-editor-frame-reader-continuation! window cont)
+  (with-instance-variables editor-frame window (cont)
+    (set! reader-continuation cont)))
 
+(define (change-reader new-window old-window)
+  (with-instance-variables editor-frame new-window ()
+    (switch-reader
+     reader-continuation
+     (lambda (current-reader)
+       (set-editor-frame-reader-continuation!
+	old-window
+	current-reader)))))
+|#
 (define-method editor-frame (:update-root-display! window display-style)
   (with-instance-variables editor-frame window (display-style)
     (with-screen-in-update! screen
@@ -132,6 +165,15 @@
 (define-integrable (editor-frame-screen window)
   (with-instance-variables editor-frame window ()
     screen))
+
+(define-integrable (editor-frame-typein-bufferset window)
+  (with-instance-variables editor-frame window ()
+    typein-bufferset))
+
+(define-integrable (editor-frame-input-port window)
+  (with-instance-variables editor-frame window ()
+    input-port))
+
 (define (editor-frame-windows window)
   (cons (editor-frame-typein-window window)
 	(let ((start (editor-frame-window0 window)))

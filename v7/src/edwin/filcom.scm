@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.139 1989/08/12 08:32:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.140 1990/08/31 20:12:39 markf Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -51,6 +51,9 @@
 
 (define (find-file-other-window filename)
   (select-buffer-other-window (find-file-noselect filename true)))
+
+(define (find-file-in-new-screen filename)
+  (create-new-frame (find-file-noselect filename true)))
 
 (define (find-file-noselect filename warn?)
   (let ((pathname (pathname->absolute-pathname (->pathname filename))))
@@ -107,6 +110,11 @@ Like \\[kill-buffer] followed by \\[find-file]."
 	    (let ((buffer* (new-buffer "*dummy*")))
 	      (do-it)
 	      (kill-buffer buffer*)))))))
+
+(define-command find-file-in-new-screen
+  "Visit a file in a new screen."
+  "FFind file in new screen"
+  find-file-in-new-screen)
 
 (define-command revert-buffer
   "Replace the buffer text with the text of the visited file on disk.

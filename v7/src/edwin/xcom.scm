@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.3 1989/08/12 08:32:52 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.4 1990/08/31 20:13:00 markf Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -69,7 +69,9 @@
   (x-window-set-internal-border-width 2)
   (xterm-x-size 1)
   (xterm-y-size 1)
-  (xterm-set-size 3))
+  (xterm-set-size 3)
+  (x-set-window-name 2)
+  (x-set-icon-name 2))
 
 (define (current-xterm)
   (screen-xterm (current-screen)))
@@ -243,6 +245,18 @@ When called interactively, completion is available on the input."
      "watch"
      "xterm"))
 
+(define-command x-set-window-name
+  "Set X window name to NAME."
+  "sSet X window name"
+  (lambda (name)
+    (x-set-window-name (current-xterm) name)))
+
+(define-command x-set-icon-name
+  "Set X window icon name to NAME."
+  "sSet X window icon name"
+  (lambda (name)
+    (x-set-icon-name (current-xterm) name)))
+
 ;;;; Mouse Commands
 
 (define-command x-mouse-select
@@ -317,3 +331,22 @@ Display cursor at that position for a second."
 (define-key 'fundamental button5-up 'x-mouse-ignore)
 
 (define-key 'fundamental button1-down 'x-mouse-set-point)
+
+;;; set X window name and X icon name to current buffer name
+(let ((old-hook (ref-variable select-buffer-hook))
+      (new-hook
+       (lambda (buffer window)
+	 (if (eq? (editor-display-type) x-display-type-name)
+	     (let ((xterm
+		    (screen-xterm
+		     (editor-frame-screen (window-root-window window))))
+		   (name (buffer-name buffer)))
+	       (x-set-window-name xterm name)
+	       (x-set-icon-name xterm name))))))
+  (set-variable!
+   select-buffer-hook
+   (if old-hook
+       (lambda (buffer window)
+	 (old-hook buffer window)
+	 (new-hook buffer window))
+       new-hook)))

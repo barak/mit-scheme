@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.8 1989/08/12 08:32:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.9 1990/08/31 20:13:06 markf Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -65,7 +65,11 @@
   (xterm-read-chars 2)
   (xterm-button 1)
   (xterm-pointer-x 1)
-  (xterm-pointer-y 1))
+  (xterm-pointer-y 1)
+  (x-dequeue-global-event 0)
+  (x-window-pixel-coord->char-coord 2)
+  (x-set-window-name 2)
+  (x-set-icon-name 2))
 
 (define-structure (xterm-screen-state
 		   (constructor make-xterm-screen-state (xterm))
@@ -74,40 +78,52 @@
   (highlight 0))
 
 (define (make-xterm-screen #!optional geometry)
-  (make-screen (make-xterm-screen-state
-		(xterm-open-window (or (get-x-display)
+  (let* ((xterm (xterm-open-window (or (get-x-display)
 				       (error "unable to open display"))
 				   (and (not (default-object? geometry))
 					geometry)
 				   false))
-	       xterm-screen/beep
-	       xterm-screen/finish-update!
-	       xterm-screen/flush!
-	       xterm-screen/inverse-video!
-	       xterm-screen/start-update!
-	       xterm-screen/subscreen-clear!
-	       xterm-screen/write-char!
-	       xterm-screen/write-cursor!
-	       xterm-screen/write-substring!
-	       xterm-screen/write-substrings!
-	       xterm-screen/x-size
-	       xterm-screen/y-size
-	       xterm-screen/wipe!
-	       xterm-screen/enter!
-	       xterm-screen/exit!
-	       xterm-screen/discard!))
+	 (screen (make-screen (make-xterm-screen-state xterm)
+			      xterm-screen/beep
+			      xterm-screen/finish-update!
+			      xterm-screen/flush!
+			      xterm-screen/inverse-video!
+			      xterm-screen/start-update!
+			      xterm-screen/subscreen-clear!
+			      xterm-screen/write-char!
+			      xterm-screen/write-cursor!
+			      xterm-screen/write-substring!
+			      xterm-screen/write-substrings!
+			      xterm-screen/x-size
+			      xterm-screen/y-size
+			      xterm-screen/wipe!
+			      xterm-screen/enter!
+			      xterm-screen/exit!
+			      xterm-screen/discard!)))
+    (add-to-xterm-screen-alist xterm screen)
+    screen))
 
 (define-integrable (screen-xterm screen)
   (xterm-screen-state/xterm (screen-state screen)))
 
 (define-integrable (screen-highlight screen)
   (xterm-screen-state/highlight (screen-state screen)))
+
+(define xterm-screen-alist '())
+
+(define (add-to-xterm-screen-alist xterm screen)
+  (set! xterm-screen-alist (cons (cons xterm screen) xterm-screen-alist)))
+
+(define (xterm->screen xterm)
+  (let ((entry (assv xterm xterm-screen-alist)))
+    (and entry (cdr entry))))
 
 (define-integrable (set-screen-highlight! screen highlight)
   (set-xterm-screen-state/highlight! (screen-state screen) highlight))
 
 (define (xterm-screen/start-update! screen)
-  (xterm-screen/process-events! screen))
+  screen				;ignored
+  unspecific)
 
 (define (xterm-screen/finish-update! screen)
   (x-window-flush (screen-xterm screen)))
@@ -176,7 +192,8 @@
   unspecific)
 
 (define (xterm-screen/enter! screen)
-  screen				; ignored
+  (if (not (eq? screen (current-screen)))
+      (change-screen screen))
   unspecific)
 
 (define (xterm-screen/exit! screen)
@@ -259,19 +276,17 @@
 
 (define (refill-buffer! state index)
   (let ((screen (xterm-input-port-state/screen state)))
-    (let loop ()
-      (let ((buffer (xterm-screen/read-chars screen false)))
-	(if (not buffer)
-	    (loop)
-	    (begin
-	      (check-for-interrupts! state buffer index)
-	      (string-ref buffer 0)))))))
+    (let ((buffer (xterm-screen/read-chars screen #f)))
+      (and buffer
+	   (begin
+	     (check-for-interrupts! state buffer index)
+	     (string-ref buffer 0))))))
 
 (define (xterm-screen/read-chars screen interval)
   (let ((result (xterm-read-chars (screen-xterm screen) interval)))
     (if (and (not (screen-in-update? screen))
-	     (xterm-screen/process-events! screen))
-	(update-screen! screen false))
+	     (xterm-process-events!))
+	(update-screens! false))
     result))
 
 (define (check-for-interrupts! state buffer index)
@@ -319,76 +334,91 @@
 		    (if (and old-mask pending-interrupt?)
 			(signal-interrupt!))))))
 
-(define (xterm-screen/process-events! screen)
-  (let ((xterm (screen-xterm screen))
-	(window (screen-window screen)))
-    (and window
-	 (let ((handlers
-		(vector-ref xterm-event-flags->handlers
-			    (x-window-read-event-flags! xterm))))
-	   (and (not (null? handlers))
-		(begin
-		  (for-each (lambda (handler) (handler xterm window)) handlers)
-		  true))))))
 
-(define-integrable xterm-event-flag:resized 0)
-(define-integrable xterm-event-flag:button-down 1)
-(define-integrable xterm-event-flag:button-up 2)
-(define-integrable xterm-number-of-event-flags 3)
+;;; The values of these flags must be equal to the corresponding 
+;;; event types in microcode/x11.h
+
+(define-integrable x-event-type:unknown 0)
+(define-integrable x-event-type:resized 1)
+(define-integrable x-event-type:button-down 2)
+(define-integrable x-event-type:button-up 3)		
+(define-integrable x-event-type:focus_in 4)	
+(define-integrable x-event-type:focus_out 5)		
+(define-integrable x-event-type:enter 6)		
+(define-integrable x-event-type:leave 7)		
+(define-integrable x-event-type:motion 8)		
+(define-integrable x-event-type:configure 9)			
+(define-integrable x-event-type:map 10)		
+(define-integrable x-event-type:unmap 11)		
+(define-integrable x-event-type:expose 12)
+(define-integrable x-event-type:no_expose 13) 
+(define-integrable x-event-type:graphics_expose 14) 
+(define-integrable x-event-type:key_press 15) 
+
+(define-integrable xterm-number-of-event-types 16)
+
+(define-integrable event-type car)
+(define-integrable event-xterm cadr)
+(define-integrable event-extra cddr)
+
+(define (xterm-process-events!)
+  (let ((event (x-dequeue-global-event)))
+    (and event
+	 (let loop ((event event))
+	   (if (null? event)
+	       true
+	       (let ((event-type (event-type event))
+		     (screen (xterm->screen (event-xterm event)))
+		     (extra (event-extra event)))
+		 (let ((handler (x-event-type->handler event-type)))
+		   (if handler (apply handler screen extra))
+		   (if (eq? event-type x-event-type:key_press)
+		       true
+		       (loop (x-dequeue-global-event))))))))))
+
+(define xterm-event-handlers
+  (make-vector xterm-number-of-event-types false))
+
+(define-integrable (x-event-type->handler event-type)
+  (vector-ref xterm-event-handlers event-type))
 
 (define (define-xterm-event-handler event handler)
   (vector-set! xterm-event-handlers event handler)
-  (set! xterm-event-flags->handlers
-	(binary-powerset-vector xterm-event-handlers))
   unspecific)
 
-(define (binary-powerset-vector items)
-  (let ((n-items (vector-length items)))
-    (let ((table-length (expt 2 n-items)))
-      (let ((table (make-vector table-length '())))
-	(let loop ((i 1))
-	  (if (< i table-length)
-	      (begin
-		(vector-set!
-		 table
-		 i
-		 (let loop ((i i) (index 0))
-		   (if (zero? i)
-		       '()
-		       (let ((qr (integer-divide i 2)))
-			 (let ((rest
-				(loop (integer-divide-quotient qr)
-				      (1+ index))))
-			   (if (zero? (integer-divide-remainder qr))
-			       rest
-			       (cons (vector-ref items index) rest)))))))
-		(loop (1+ i)))))
-	table))))
+(define-xterm-event-handler x-event-type:configure
+  (lambda (screen)
+    (let ((xterm (screen-xterm screen)))
+      (send (screen-window screen) ':set-size!
+	    (xterm-x-size xterm)
+	    (xterm-y-size xterm)))))
 
-(define xterm-event-handlers
-  (make-vector xterm-number-of-event-flags false))
+(define-xterm-event-handler x-event-type:button-down
+  (lambda (screen button x y)
+    (let ((character-coords
+	  (x-window-pixel-coord->char-coord
+	   (screen-xterm screen)
+	   (cons x y))))
+      (send (screen-window screen) ':button-event!
+	    (button-downify button)
+	    (car character-coords)
+	    (cdr character-coords)))))
 
-(define xterm-event-flags->handlers)
-  
-(define-xterm-event-handler xterm-event-flag:resized
-  (lambda (xterm window)
-    (send window ':set-size!
-	  (xterm-x-size xterm)
-	  (xterm-y-size xterm))))
+(define-xterm-event-handler x-event-type:button-up
+  (lambda (screen button x y)
+    (let ((character-coords
+	  (x-window-pixel-coord->char-coord
+	   (screen-xterm screen)
+	   (cons x y))))
+      (send (screen-window screen) ':button-event!
+	    (button-upify button)
+	    (car character-coords)
+	    (cdr character-coords)))))
 
-(define-xterm-event-handler xterm-event-flag:button-down
-  (lambda (xterm window)
-    (send window ':button-event!
-	  (button-downify (xterm-button xterm))
-	  (xterm-pointer-x xterm)
-	  (xterm-pointer-y xterm))))
+(define-xterm-event-handler x-event-type:focus_in
+  (lambda (screen)
+    (xterm-screen/enter! screen)))
 
-(define-xterm-event-handler xterm-event-flag:button-up
-  (lambda (xterm window)
-    (send window ':button-event!
-	  (button-upify (xterm-button xterm))
-	  (xterm-pointer-x xterm)
-	  (xterm-pointer-y xterm))))
 
 (define button1-down)
 (define button2-down)
@@ -417,9 +447,11 @@
   (set! x-display-data false)
   unspecific)
 
+(define x-display-type-name 'X)
+
 (define (initialize-package!)
   (set! x-display-type
-	(make-display-type 'X
+	(make-display-type x-display-type-name
 			   get-x-display
 			   make-xterm-screen
 			   make-xterm-input-port

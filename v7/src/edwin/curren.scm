@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.86 1989/08/12 08:31:40 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.87 1990/08/31 20:11:51 markf Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -45,6 +45,82 @@
 ;;;; Current State
 
 (declare (usual-integrations))
+
+;;;; Editor frames
+
+(define (change-frame new-frame)
+  (set-editor-current-frame-window! current-editor new-frame))
+
+(define (create-new-frame #!optional buffer)
+  (without-interrupts
+   (lambda ()
+     (let* ((new-screen (make-editor-screen #f))
+	    (new-frame
+	     (make-editor-frame
+	      new-screen
+	      (if (default-object? buffer)
+		  (current-buffer)
+		  buffer)
+	      (make-buffer " *Typein-0*"))))
+       (set-screen-window! new-screen new-frame)
+       (editor-add-screen! current-editor new-screen)
+       (editor-add-frame! current-editor new-frame)
+       (let ((hook (ref-variable select-buffer-hook)))
+	 (if hook (hook buffer new-frame)))))))
+
+(define (delete-frame! frame)
+  (let ((screen (editor-frame-screen frame)))
+    (editor-delete-screen! current-editor screen)
+    (editor-delete-frame! current-editor frame)
+    (screen-discard! screen)))
+
+(define (delete-current-frame!) (delete-frame! (current-editor-frame)))
+
+;;;; Screens
+
+;; This version of change-screen was meant to be used in conjunction
+;; with the reader-continuation stuff in edtfrm.scm and input.scm. But
+;; since that stuff doesn't quite work I'm commenting out this
+;; version.
+#|
+(define (change-screen screen)
+  (let ((old-frame (current-editor-frame))
+	(my-frame (screen-window screen)))
+    (change-frame  my-frame)
+    (set-editor-input-port! (current-editor-input-port))
+    (without-interrupts
+     (lambda ()
+       (change-local-bindings!
+	(window-buffer (editor-frame-selected-window old-frame))
+	(window-buffer (editor-frame-selected-window my-frame))
+	(lambda () unspecific))))
+    (update-screens! #t)
+    (change-reading my-frame old-frame)))
+|#
+
+(define (change-screen screen)
+  (let ((old-frame (current-editor-frame))
+	(my-frame (screen-window screen)))
+    (set-reader-do-before-next-read!
+     (lambda ()
+       (change-frame  my-frame)
+       (set-editor-input-port! (current-editor-input-port))
+       (without-interrupts
+	(lambda ()
+	  (change-local-bindings!
+	   (window-buffer (editor-frame-selected-window old-frame))
+	   (window-buffer (editor-frame-selected-window my-frame))
+	   (lambda () unspecific))))
+       (update-screens! #t)))
+    (^G-signal)))
+
+(define (delete-screen! screen)
+  (let ((frame (screen-window screen)))
+    (editor-delete-frame! current-editor frame)
+    (editor-delete-screen! current-editor screen)
+    (screen-discard! screen)))
+
+(define (delete-current-screen!) (delete-screen! (current-screen)))
 
 ;;;; Windows
 
@@ -183,6 +259,13 @@
 	  (loop (cdr windows) new-buffer))))
   (bufferset-kill-buffer! (current-bufferset) buffer))
 
+(define-variable select-buffer-hook
+  "If not false, a procedure to call when a buffer is selected.
+The procedure is passed the new buffer and the window in which 
+it is selected.
+The buffer is guaranteed to be selected at that time."
+  false)
+
 (define-integrable (select-buffer buffer)
   (set-window-buffer! (current-window) buffer true))
 
@@ -202,7 +285,11 @@
 	    buffer
 	    (lambda () (%set-window-buffer! window buffer)))
 	   (if record? (bufferset-select-buffer! (current-bufferset) buffer)))
-	 (%set-window-buffer! window buffer)))))
+	 (%set-window-buffer! window buffer))
+     (if (not (minibuffer? buffer))
+	 (let ((hook (ref-variable select-buffer-hook)))
+	   (if hook (hook buffer window)))))))
+
 (define (with-selected-buffer buffer thunk)
   (let ((old-buffer))
     (dynamic-wind (lambda ()

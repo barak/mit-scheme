@@ -46,50 +46,71 @@
 
 (define-structure (editor (constructor %make-editor))
   (name false read-only true)
-  (screen false read-only true)
-  (input-port false read-only true)
-  (frame-window false read-only true)
+  (screens false)
+  (current-frame-window false)
   (bufferset false read-only true)
   (kill-ring false read-only true)
   (char-history false read-only true)
-  (button-event false))
+  (button-event false)
+  (frame-windows false))
 
-(define (make-editor name screen input-port)
+(define (make-editor name screen)
   (let ((initial-buffer (make-buffer initial-buffer-name initial-buffer-mode)))
     (let ((bufferset (make-bufferset initial-buffer)))
       (let ((frame
 	     (make-editor-frame screen
 				initial-buffer
-				(bufferset-create-buffer bufferset
-							 " *Typein-0*"))))
+				(make-buffer " *Typein-0*"))))
 	(set-screen-window! screen frame)
 	(%make-editor name
-		      screen
-		      input-port
+		      (list screen)
 		      frame
 		      bufferset
 		      (make-ring 10)
 		      (make-ring 100)
-		      false)))))
+		      false
+		      (list frame))))))
+
+(define (editor-add-screen! editor screen)
+  (if (not (memq screen (editor-screens editor)))
+      (set-editor-screens! editor
+			   (cons screen
+				 (editor-screens editor)))))
+
+(define (editor-delete-screen! editor screen)
+  (set-editor-screens! editor
+		       (delq screen
+			     (editor-screens editor))))
+
+(define (editor-add-frame! editor screen)
+  (if (not (memq screen (editor-frame-windows editor)))
+      (set-editor-frame-windows! editor
+			   (cons screen
+				 (editor-frame-windows editor)))))
+
+(define (editor-delete-frame! editor screen)
+  (set-editor-frame-windows! editor
+		       (delq screen
+			     (editor-frame-windows editor))))
 
 (define-integrable (current-screen)
-  (editor-screen current-editor))
+  (editor-frame-screen (current-editor-frame)))
 
 (define-integrable (all-screens)
-  (list (current-screen)))
+  (editor-screens current-editor))
 
 (define-integrable (current-editor-input-port)
-  (editor-input-port current-editor))
+  (editor-frame-input-port (current-editor-frame)))
 
 (define-integrable (current-editor-frame)
-  (editor-frame-window current-editor))
+  (editor-current-frame-window current-editor))
 
 (define-integrable (all-editor-frames)
-  (list (current-editor-frame)))
+  (editor-frame-windows current-editor))
 
 (define-integrable (all-windows)
-  #|(append-map editor-frame-windows (all-editor-frames))|#
-  (editor-frame-windows (current-editor-frame)))
+  (append-map editor-frame-windows (all-editor-frames)))
+
 (define-integrable (current-bufferset)
   (editor-bufferset current-editor))
 

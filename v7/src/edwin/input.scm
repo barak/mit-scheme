@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.81 1989/08/12 08:32:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.82 1990/08/31 20:12:44 markf Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -172,11 +172,20 @@ B 3BAB8C
 	(if (not command-prompt-displayed?)
 	    (clear-message!)))))
 
+;; The reader-continuation is intended to be used to switch
+;; between reader loops for different editor frames. However,
+;; its interactions with typein and typeout don't quite work, so
+;; I'm commenting out the code that deals with this.
+;(define *reader-continuation* #f)
+
 (define editor-input-port)
 
 (define (with-editor-input-port new-port thunk)
   (fluid-let ((editor-input-port new-port))
     (thunk)))
+
+(define-integrable (set-editor-input-port! new-port)
+  (set! editor-input-port new-port))
 
 (define-integrable (keyboard-active? delay)
   (char-ready? editor-input-port delay))
@@ -231,4 +240,39 @@ B 3BAB8C
 	       (set! command-prompt-displayed? true)
 	       (set-message! command-prompt-string))
 	     (clear-message!))))
-  (remap-alias-char (read-char editor-input-port)))
+  (remap-alias-char
+   (let loop ()
+     (before-reading-maybe-do-something)
+     (let ((char
+#| see comment for *reader-continuation* 
+	    (call-with-current-continuation
+	     (lambda (continuation)
+	       (fluid-let ((*reader-continuation* continuation))
+|#
+		 (read-char editor-input-port)))
+#|
+	     )))
+|#
+       (if (and char (not (eof-object? char)))
+	   char
+	   (loop))))))
+
+#| see comment for *reader-continuation*
+(define (switch-reader new-reader save-old-reader)
+  (if *reader-continuation*
+      (save-old-reader *reader-continuation*))
+  (if (within-typein-edit?)
+      (abort-current-command (lambda () (new-reader #f)))
+      (new-reader #f)))
+|#
+
+(define *reader-do-before-next-read* #f)
+
+(define (set-reader-do-before-next-read! to-do)
+  (set! *reader-do-before-next-read* to-do))
+
+(define (before-reading-maybe-do-something)
+  (if *reader-do-before-next-read*
+      (begin
+	(*reader-do-before-next-read*)
+	(set! *reader-do-before-next-read* #f))))

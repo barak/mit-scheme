@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.136 1989/08/14 09:49:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.137 1990/08/31 20:12:48 markf Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -89,7 +89,8 @@ recursive minibuffers."
 		 (let ((window (typein-window)))
 		   (select-window window)
 		   (select-buffer
-		    (find-or-create-buffer
+		    (bufferset-find-or-create-buffer
+		     (editor-frame-typein-bufferset (current-editor-frame))
 		     (string-append " *Typein-"
 				    (number->string typein-edit-depth)
 				    "*")))
@@ -516,11 +517,13 @@ a repetition of this command will exit."
 	 (lambda (new-string)
 	   (let ((end (string-length new-string)))
 	     (let ((index
-		    (substring-find-next-char-not-of-syntax
-		     new-string
-		     (string-length string)
-		     end
-		     #\w)))	       (if index
+		    (and (string-prefix? string new-string)
+			 (substring-find-next-char-not-of-syntax
+			  new-string
+			  (string-length string)
+			  end
+			  #\w))))
+	       (if index
 		   (substring new-string 0 (1+ index))
 		   new-string))))))
     (let ((if-unique

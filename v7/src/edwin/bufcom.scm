@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.83 1989/08/09 13:16:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.84 1990/08/31 20:11:47 markf Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -73,6 +73,21 @@ specifying a non-existent buffer will cause it to be created."
   (prompt-for-select-buffer "Switch to buffer")
   (lambda (buffer)
     (select-buffer (find-buffer buffer))))
+
+(define-command switch-to-buffer-in-new-screen
+  "Select buffer in a new screen."
+  (prompt-for-select-buffer "Switch to buffer in a new screen.")
+  (lambda (buffer)
+    (create-new-frame (find-buffer buffer))))
+
+(define-command create-buffer-in-new-screen
+  "Create a new buffer with a given name, and select it in a new screen."
+  "sCreate buffer in a new screen"
+  (lambda (name)
+    (let ((buffer (new-buffer name)))
+      (set-buffer-major-mode! buffer (ref-variable editor-default-mode))
+      (create-new-frame buffer))))
+
 (define-command switch-to-buffer-other-window
   "Select buffer in another window."
   (prompt-for-select-buffer "Switch to buffer in other window")
