@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.21 1987/01/22 14:14:27 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.22 1987/07/07 02:22:55 jinx Rel $ */
 
 #include <stdio.h>
 #include <math.h>
@@ -48,10 +48,12 @@ extern free();
 #endif
 
 #ifdef hack_signal
+
 #define setup_error() signal(SIGFPE, range_error)
 
 range_error()
-{ setup_error();
+{
+  setup_error();
   errno = ERANGE;
 }
 #else
@@ -71,13 +73,15 @@ static long dummy[ARR_SIZE];
 */
 
 main()
-{ double accum, delta;
+{
+  double accum, delta;
   int count, expt_size, char_size, mant_size;
   unsigned long to_be_shifted;
   unsigned bogus;
   char *temp;
 
   setup_error();
+
   for(bogus = ((unsigned) -1), count = 0;
       bogus != 0;
       count += 1)
@@ -120,10 +124,15 @@ main()
       delta /= 2.0,
       mant_size += 1) ;
 
-  for(errno = 0, expt_size = 0, bogus = 1;
+  for(errno = 0, expt_size = 0, bogus = 1, accum = 0.0;
       errno != ERANGE;
       expt_size += 1, bogus <<= 1)
+  {
+    delta = accum;
     accum = pow(2.0, ((double) bogus));
+    if (accum == delta)
+      break;
+  }
 
   expt_size -= 1;
 
