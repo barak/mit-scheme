@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.26 1996/10/09 15:41:36 cph Exp $
+$Id: ntscreen.c,v 1.27 1996/11/18 21:12:50 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -1121,7 +1121,7 @@ ResetScreen (SCREEN screen)
      if (AdjustedSize (screen, &width, &height))
        MoveWindow (hWnd, rcWindow.left, rcWindow.top, width, height, TRUE);
      else
-       PostMessage (hWnd, WM_SIZE, SIZENORMAL,
+       SendMessage (hWnd, WM_SIZE, SIZENORMAL,
 		    ((LPARAM) (MAKELONG (width,height))));
    }
    return  TRUE;
@@ -1348,7 +1348,7 @@ SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
 
         Since we protect this procedure against minimizing in the WndProc, we
         can get here only when window is launched in a minimized state.  We
-        get here because of the PostMessage in ScreenReset.  Our duty is to
+        get here because of the SendMessage in ScreenReset.  Our duty is to
 	fake a normal position and size.
         Luckily none of the scrolling businness happens because all the cursor
         etc are at zero. (Hopefully it would be clipped).
