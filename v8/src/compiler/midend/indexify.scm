@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: indexify.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: indexify.scm,v 1.2 1995/01/28 04:04:40 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -45,10 +45,10 @@ MIT in each case. |#
     (call-with-values
      (lambda () (%matchup bindings '(handler) '(cdr form)))
      (lambda (names code)
-       `(define ,proc-name
-	  (let ((handler (lambda ,names ,@body)))
-	    (named-lambda (,proc-name form)
-	      (indexify/remember ,code form))))))))
+       `(DEFINE ,proc-name
+	  (LET ((HANDLER (LAMBDA ,names ,@body)))
+	    (NAMED-LAMBDA (,proc-name FORM)
+	      (INDEXIFY/REMEMBER ,code FORM))))))))
 
 (define-indexifier LOOKUP (name)
   `(LOOKUP ,name))
@@ -86,23 +86,20 @@ MIT in each case. |#
   `(BEGIN ,@(indexify/expr* actions)))
 
 (define-indexifier CALL (rator cont #!rest rands)
-  (let ((constant? (lambda (form)
-		     (and (pair? form)
-			  (eq? (car form) 'QUOTE)))))
-    (cond ((or (not (constant? rator))
-	       (not (eq? (cadr rator) %vector-index)))
-	   `(CALL ,(indexify/expr rator)
-		  ,(indexify/expr cont)
-		  ,@(indexify/expr* rands)))
-	  ((or (not (equal? cont '(QUOTE #F)))
-	       (not (= (length rands) 2))
-	       (not (constant? (car rands)))
-	       (not (constant? (cadr rands))))
-	   (internal-error "Unexpected use of %vector-index"
-			   `(CALL ,rator ,cont ,@rands)))
-	  (else
-	   `(QUOTE ,(vector-index (cadr (car rands))
-				  (cadr (cadr rands))))))))
+  (cond ((or (not (QUOTE/? rator))
+	     (not (eq? (QUOTE/text rator) %vector-index)))
+	 `(CALL ,(indexify/expr rator)
+		,(indexify/expr cont)
+		,@(indexify/expr* rands)))
+	((or (not (equal? cont '(QUOTE #F)))
+	     (not (= (length rands) 2))
+	     (not (QUOTE/? (first rands)))
+	     (not (QUOTE/? (second rands))))
+	 (internal-error "Unexpected use of %vector-index"
+			 `(CALL ,rator ,cont ,@rands)))
+	(else
+	 `(QUOTE ,(vector-index (QUOTE/text (first rands))
+				(QUOTE/text (second rands)))))))
 
 (define (indexify/expr expr)
   (if (not (pair? expr))
