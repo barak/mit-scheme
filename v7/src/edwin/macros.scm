@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.49 1989/08/11 11:50:41 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.50 1991/03/15 23:26:19 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -75,7 +75,7 @@
 	(define (slot-loop slot-names n)
 	  (if (null? slot-names)
 	      '()
-	      (cons `(DEFINE ,(car slot-names) ,n)
+	      (cons `(DEFINE-INTEGRABLE ,(car slot-names) ,n)
 		    (slot-loop (cdr slot-names) (1+ n)))))
 
 	(define (selector-loop selector-names n)
@@ -105,15 +105,22 @@
 (syntax-table-define edwin-syntax-table 'DEFINE-COMMAND
   (lambda (name description interactive procedure)
     (let ((name (canonicalize-name name)))
-      `(BEGIN
-	 (DEFINE ,(command-name->scheme-name name)
-	   (MAKE-COMMAND ',name
-			 ',description
-			 ,(if (null? interactive)
-			      `'()
-			      interactive)
-			 ,procedure))
-	 ',name))))
+      (let ((scheme-name (command-name->scheme-name name)))
+	`(BEGIN
+	   (DEFINE ,scheme-name
+	     (MAKE-COMMAND ',name
+			   ',description
+			   ,(if (null? interactive)
+				`'()
+				interactive)
+			   ,(if (and (pair? procedure)
+				     (eq? 'LAMBDA (car procedure))
+				     (pair? (cdr procedure)))
+				`(NAMED-LAMBDA (,scheme-name
+						,@(cadr procedure))
+				   ,@(cddr procedure))
+				procedure)))
+	   ',name)))))
 
 (syntax-table-define edwin-syntax-table 'REF-COMMAND-OBJECT
   (lambda (name)
@@ -129,15 +136,20 @@
 
 (let ((variable-definition
        (lambda (buffer-local?)
-	 (lambda (name description #!optional value)
+	 (lambda (name description #!optional value test)
 	   (let ((name (canonicalize-name name)))
-	     `(BEGIN
-		(DEFINE ,(variable-name->scheme-name name)
-		  (MAKE-VARIABLE ',name
-				 ',description
-				 ,(if (default-object? value) '#F value)
-				 ',buffer-local?))
-		',name))))))
+	     (let ((scheme-name (variable-name->scheme-name name)))
+	       `(BEGIN
+		  (DEFINE ,scheme-name
+		    (MAKE-VARIABLE ',name
+				   ',description
+				   ,(if (default-object? value) '#F value)
+				   ',buffer-local?))
+		  ,@(if (default-object? test)
+			'()
+			`((DEFINE-VARIABLE-VALUE-VALIDITY-TEST ,scheme-name
+			    ,test)))
+		  ',name)))))))
   (syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE
     (variable-definition false))
   (syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE-PER-BUFFER
