@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lambda.scm,v 14.14 1999/01/02 06:11:34 cph Exp $
+$Id: lambda.scm,v 14.15 1999/05/15 19:01:15 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -383,7 +383,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				  (if (pair? optional) '(#!optional) '()) 
 				  optional
 				  (if rest `(#!rest ,rest) '())
-				  (if (pair? auxiliary) `(#!aux) '())
+				  (if (pair? auxiliary) (list #!aux) '())
 				  auxiliary))))))))
 
   (let ((body* (if (null? declarations)
