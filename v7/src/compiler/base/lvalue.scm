@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.10 1988/12/13 13:02:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.11 1988/12/13 13:58:45 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -199,9 +199,6 @@ MIT in each case. |#
 
 (define-integrable (lvalue-mark-set? lvalue mark)
   (memq mark (lvalue-marks lvalue)))
-
-(define-integrable (variable-auxiliary! variable)
-  (set-variable-auxiliary?! variable true))
 
 (define (variable-assigned! variable assignment)
   (set-variable-assignments!
