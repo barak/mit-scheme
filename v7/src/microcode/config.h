@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.51 1989/11/30 03:03:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.52 1990/01/22 22:22:14 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -487,6 +487,18 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #define ADDRESS_TO_DATUM(address)					\
 ((SCHEME_OBJECT) (((unsigned long) (address)) & (~(HPPA_QUAD_BIT))))
+
+/* HPPA compiled binaries are large! */
+
+#ifdef HAS_COMPILER_SUPPORT
+#ifndef CONSTANT_SIZE
+#define CONSTANT_SIZE		600	/* Default Kcells for constant */
+#endif
+#endif
+
+#ifndef COMPILER_CONSTANT_SIZE
+#define COMPILER_CONSTANT_SIZE	1300
+#endif
 
 #endif /* spectrum */
 
