@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.27 1993/11/29 21:09:30 cph Exp $
+$Id: unxprm.scm,v 1.28 1993/11/29 23:19:02 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -89,7 +89,8 @@ MIT in each case. |#
 	    pathname
 	    (begin
 	      (if (> ext 999)
-		  (error "Can't find unique temporary pathname:" root))
+		  (error "Can't find unique temporary pathname:"
+			 (merge-pathnames root-string directory)))
 	      (loop (+ ext 1))))))))
 
 (define (temporary-directory-pathname)
