@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.5 1990/06/14 00:02:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.6 1990/06/27 14:07:17 jinx Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,6 +59,57 @@ MIT in each case. |#
 	       COMPILED-CODE-ADDRESS->BLOCK
 	       COMPILED-CODE-ADDRESS->OFFSET
 	       EQ?
+	       FIX:*
+	       FIX:+
+	       FIX:-
+	       FIX:-1+
+	       FIX:1+
+	       FIX:<
+	       FIX:=
+	       FIX:>
+	       FIX:AND
+	       FIX:ANDC
+	       FIX:DIVIDE
+	       FIX:GCD
+	       FIX:NEGATIVE?
+	       FIX:NOT
+	       FIX:OR
+	       FIX:POSITIVE?
+	       FIX:QUOTIENT
+	       FIX:REMAINDER
+	       FIX:XOR
+	       FIX:ZERO?
+	       FLO:*
+	       FLO:+
+	       FLO:-
+	       FLO:/
+	       FLO:<
+	       FLO:=
+	       FLO:>
+	       FLO:ABS
+	       FLO:ACOS
+	       FLO:ASIN
+	       FLO:ATAN
+	       FLO:ATAN2
+	       FLO:CEILING
+	       FLO:CEILING->EXACT
+	       FLO:COS
+	       FLO:EXP
+	       FLO:EXPT
+	       FLO:FLOOR
+	       FLO:FLOOR->EXACT
+	       FLO:LOG
+	       FLO:NEGATE
+	       FLO:NEGATIVE?
+	       FLO:POSITIVE?
+	       FLO:ROUND
+	       FLO:ROUND->EXACT
+	       FLO:SIN
+	       FLO:SQRT
+	       FLO:TAN
+	       FLO:TRUNCATE
+	       FLO:TRUNCATE->EXACT
+	       FLO:ZERO?
 	       INTEGER->CHAR
 	       MAKE-CHAR
 	       MAKE-NON-POINTER-OBJECT
