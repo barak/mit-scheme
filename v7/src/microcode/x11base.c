@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.2 1989/06/23 04:34:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.3 1989/06/27 10:09:48 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -187,17 +187,38 @@ x_decode_color (display, color_map, color_name, default_color)
     return (cdef . pixel);
   return (default_color);
 }
-
-unsigned long
-x_default_color (display, resource_name, property_name, default_color)
+
+char *
+x_get_default (display, resource_name, property_name, class_name, sdefault)
      Display * display;
      char * resource_name;
      char * property_name;
+     char * class_name;
+     char * sdefault;
+{
+  char * result;
+
+  result = (XGetDefault (display, resource_name, property_name));
+  if (result != ((char *) 0))
+    return (result);
+  result = (XGetDefault (display, resource_name, class_name));
+  if (result != ((char *) 0))
+    return (result);
+  return (sdefault);
+}
+
+unsigned long
+x_default_color (display, resource_name, property_name, class_name,
+		 default_color)
+     Display * display;
+     char * resource_name;
+     char * property_name;
+     char * class_name;
      unsigned long default_color;
 {
-  char * color_name;
-
-  color_name = (XGetDefault (display, resource_name, property_name));
+  char * color_name =
+    (x_get_default
+     (display, resource_name, property_name, class_name, ((char *) 0)));
   if (color_name == ((char *) 0))
     return (default_color);
   return
@@ -206,51 +227,6 @@ x_default_color (display, resource_name, property_name, default_color)
       (DefaultColormap (display, (DefaultScreen (display)))),
       color_name,
       default_color));
-}
-
-void
-x_default_attributes (display, resource_name, attributes)
-     Display * display;
-     char * resource_name;
-     struct drawing_attributes * attributes;
-{
-  int screen_number = (DefaultScreen (display));
-
-  {
-    char * font_name;
-
-    font_name = (XGetDefault (display, resource_name, "Font"));
-    if (font_name == ((char *) 0))
-      font_name = "9x15";
-    (attributes -> font) = (XLoadQueryFont (display, font_name));
-    if ((attributes -> font) == ((XFontStruct *) 0))
-      error_external_return ();
-  }
-  {
-    char * s;
-
-    s = (XGetDefault (display, resource_name, "BorderWidth"));
-    (attributes -> border_width) = ((s == ((char *) 0)) ? 2 : (atoi (s)));
-    s = (XGetDefault (display, resource_name, "InternalBorder"));
-    (attributes -> internal_border_width) =
-      ((s == ((char *) 0)) ? 4 : (atoi (s)));
-  }
-  {
-    unsigned long white_pixel = (WhitePixel (display, screen_number));
-    unsigned long black_pixel = (BlackPixel (display, screen_number));
-
-    (attributes -> background_pixel) =
-      (x_default_color (display, resource_name, "Background", white_pixel));
-    (attributes -> foreground_pixel) =
-      (x_default_color (display, resource_name, "Foreground", black_pixel));
-    (attributes -> border_pixel) =
-      (x_default_color (display, resource_name, "BorderColor", black_pixel));
-    (attributes -> cursor_pixel) =
-      (x_default_color (display, resource_name, "CursorColor", black_pixel));
-    (attributes -> mouse_pixel) =
-      (x_default_color (display, resource_name, "pointerColor", black_pixel));
-  }
-  return;
 }
 
 void
@@ -270,6 +246,63 @@ x_set_mouse_colors (display, mouse_cursor, mouse_pixel, background_pixel)
   XQueryColor (display, color_map, (& background_color));
   XRecolorCursor
     (display, mouse_cursor, (& mouse_color), (& background_color));
+  return;
+}
+
+void
+x_default_attributes (display, resource_name, attributes)
+     Display * display;
+     char * resource_name;
+     struct drawing_attributes * attributes;
+{
+  int screen_number = (DefaultScreen (display));
+
+  (attributes -> font) =
+    (XLoadQueryFont
+     (display,
+      (x_get_default
+       (display, resource_name, "font", "Font", "9x15"))));
+  if ((attributes -> font) == ((XFontStruct *) 0))
+    error_external_return ();
+  {
+    char * s =
+      (x_get_default
+       (display, resource_name, "borderWidth", "BorderWidth", ((char *) 0)));
+    (attributes -> border_width) = ((s == ((char *) 0)) ? 2 : (atoi (s)));
+  }
+  {
+    char * s =
+      (x_get_default
+       (display, resource_name,
+	"internalBorder", "BorderWidth", ((char *) 0)));
+    (attributes -> internal_border_width) =
+      ((s == ((char *) 0)) ? (attributes -> border_width) : (atoi (s)));
+  }
+  {
+    unsigned long white_pixel = (WhitePixel (display, screen_number));
+    unsigned long black_pixel = (BlackPixel (display, screen_number));
+    unsigned long foreground_pixel;
+
+    (attributes -> background_pixel) =
+      (x_default_color
+       (display, resource_name, "background", "Background", white_pixel));
+    foreground_pixel =
+      (x_default_color
+       (display, resource_name, "foreground", "Foreground", black_pixel));
+    (attributes -> foreground_pixel) = foreground_pixel;
+    (attributes -> border_pixel) =
+      (x_default_color
+       (display, resource_name,
+	"borderColor", "BorderColor", foreground_pixel));
+    (attributes -> cursor_pixel) =
+      (x_default_color
+       (display, resource_name,
+	"cursorColor", "Foreground", foreground_pixel));
+    (attributes -> mouse_pixel) =
+      (x_default_color
+       (display, resource_name,
+	"pointerColor", "Foreground", foreground_pixel));
+  }
   return;
 }
 
@@ -646,7 +679,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-FLUSH", Prim_x_window_flush, 1, 1, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-WINDOW-GET-DEFAULT", Prim_x_get_default, 3, 3, 0)
+DEFINE_PRIMITIVE ("X-WINDOW-GET-DEFAULT", Prim_x_window_get_default, 3, 3, 0)
 {
   char * result;
   PRIMITIVE_HEADER (3);
