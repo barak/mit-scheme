@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.405 2002/01/07 03:38:41 cph Exp $
+$Id: runtime.pkg,v 14.406 2002/01/12 02:56:35 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -1241,17 +1241,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "defstr")
   (parent (runtime))
   (export ()
-	  define-structure
-	  define-structure/keyword-parser
-	  define-structure/list-accessor
-	  define-structure/list-modifier
-	  define-structure/vector-accessor
-	  define-structure/vector-modifier
-	  make-define-structure-type
-	  named-structure/description
-	  named-structure?)
-  (export (runtime unparser)
-	  structure-tag/unparser-method))
+	  define-structure))
 
 (define-package (runtime directory)
   (parent (runtime))
@@ -2657,7 +2647,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  %record-ref
 	  %record-set!
 	  %record?
+	  define-structure/keyword-parser
+	  define-structure/list-accessor
+	  define-structure/list-modifier
+	  define-structure/vector-accessor
+	  define-structure/vector-modifier
+	  make-define-structure-type
 	  make-record-type
+	  named-structure/description
+	  named-structure?
 	  record-accessor
 	  record-constructor
 	  record-copy
@@ -2675,6 +2673,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  unparse-record)
   (export (runtime record-slot-access)
 	  record-type-field-index)
+  (export (runtime unparser)
+	  structure-tag/unparser-method)
   (initialization (initialize-package!)))
 
 (define-package (runtime reference-trap)

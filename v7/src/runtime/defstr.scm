@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.36 2001/12/23 17:20:59 cph Exp $
+$Id: defstr.scm,v 14.37 2002/01/12 02:56:14 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -364,75 +364,87 @@ differences:
 
 ;;;; Descriptive Structure
 
-(define structure-rtd)
-(define make-structure)
-(define structure?)
-(define structure/name)
-(define structure/conc-name)
-(define structure/keyword-constructors)
-(define structure/boa-constructors)
-(define structure/copier-name)
-(define structure/predicate-name)
-(define structure/print-procedure)
-(define structure/type)
-(define structure/named?)
-(define structure/type-name)
-(define structure/tag-expression)
-(define structure/safe-accessors?)
-(define structure/offset)
-(define structure/slots)
+(define structure-rtd
+  (make-record-type
+   "structure"
+   '(NAME CONC-NAME KEYWORD-CONSTRUCTORS BOA-CONSTRUCTORS COPIER-NAME
+	  PREDICATE-NAME PRINT-PROCEDURE TYPE NAMED? TYPE-NAME
+	  TAG-EXPRESSION SAFE-ACCESSORS? OFFSET SLOTS)))
 
-(define slot-rtd)
-(define make-slot)
-(define slot/name)
-(define slot/default)
-(define slot/type)
-(define slot/read-only?)
-(define slot/index)
-(define set-slot/index!)
-(define slot-assoc)
+(define make-structure
+  (record-constructor structure-rtd))
 
-(define (initialize-structure-types!)
-  (set! structure-rtd
-	(make-record-type
-	 "structure"
-	 '(NAME CONC-NAME KEYWORD-CONSTRUCTORS BOA-CONSTRUCTORS COPIER-NAME
-		PREDICATE-NAME PRINT-PROCEDURE TYPE NAMED? TYPE-NAME
-		TAG-EXPRESSION SAFE-ACCESSORS? OFFSET SLOTS)))
-  (set! make-structure (record-constructor structure-rtd))
-  (set! structure? (record-predicate structure-rtd))
-  (set! structure/name (record-accessor structure-rtd 'NAME))
-  (set! structure/conc-name (record-accessor structure-rtd 'CONC-NAME))
-  (set! structure/keyword-constructors
-	(record-accessor structure-rtd 'KEYWORD-CONSTRUCTORS))
-  (set! structure/boa-constructors
-	(record-accessor structure-rtd 'BOA-CONSTRUCTORS))
-  (set! structure/copier-name (record-accessor structure-rtd 'COPIER-NAME))
-  (set! structure/predicate-name
-	(record-accessor structure-rtd 'PREDICATE-NAME))
-  (set! structure/print-procedure
-	(record-accessor structure-rtd 'PRINT-PROCEDURE))
-  (set! structure/type (record-accessor structure-rtd 'TYPE))
-  (set! structure/named? (record-accessor structure-rtd 'NAMED?))
-  (set! structure/type-name (record-accessor structure-rtd 'TYPE-NAME))
-  (set! structure/tag-expression
-	(record-accessor structure-rtd 'TAG-EXPRESSION))
-  (set! structure/safe-accessors?
-	(record-accessor structure-rtd 'SAFE-ACCESSORS?))
-  (set! structure/offset (record-accessor structure-rtd 'OFFSET))
-  (set! structure/slots (record-accessor structure-rtd 'SLOTS))
-  (set! slot-rtd
-	(make-record-type "slot" '(NAME DEFAULT TYPE READ-ONLY? INDEX)))
-  (set! make-slot
-	(record-constructor slot-rtd '(NAME DEFAULT TYPE READ-ONLY?)))
-  (set! slot/name (record-accessor slot-rtd 'NAME))
-  (set! slot/default (record-accessor slot-rtd 'DEFAULT))
-  (set! slot/type (record-accessor slot-rtd 'TYPE))
-  (set! slot/read-only? (record-accessor slot-rtd 'READ-ONLY?))
-  (set! slot/index (record-accessor slot-rtd 'INDEX))
-  (set! set-slot/index! (record-modifier slot-rtd 'INDEX))
-  (set! slot-assoc (association-procedure eq? slot/name))
-  (initialize-structure-type-type!))
+(define structure?
+  (record-predicate structure-rtd))
+
+(define structure/name
+  (record-accessor structure-rtd 'NAME))
+
+(define structure/conc-name
+  (record-accessor structure-rtd 'CONC-NAME))
+
+(define structure/keyword-constructors
+  (record-accessor structure-rtd 'KEYWORD-CONSTRUCTORS))
+
+(define structure/boa-constructors
+  (record-accessor structure-rtd 'BOA-CONSTRUCTORS))
+
+(define structure/copier-name
+  (record-accessor structure-rtd 'COPIER-NAME))
+
+(define structure/predicate-name
+  (record-accessor structure-rtd 'PREDICATE-NAME))
+
+(define structure/print-procedure
+  (record-accessor structure-rtd 'PRINT-PROCEDURE))
+
+(define structure/type
+  (record-accessor structure-rtd 'TYPE))
+
+(define structure/named?
+  (record-accessor structure-rtd 'NAMED?))
+
+(define structure/type-name
+  (record-accessor structure-rtd 'TYPE-NAME))
+
+(define structure/tag-expression
+  (record-accessor structure-rtd 'TAG-EXPRESSION))
+
+(define structure/safe-accessors?
+  (record-accessor structure-rtd 'SAFE-ACCESSORS?))
+
+(define structure/offset
+  (record-accessor structure-rtd 'OFFSET))
+
+(define structure/slots
+  (record-accessor structure-rtd 'SLOTS))
+
+(define slot-rtd
+  (make-record-type "slot" '(NAME DEFAULT TYPE READ-ONLY? INDEX)))
+
+(define make-slot
+  (record-constructor slot-rtd '(NAME DEFAULT TYPE READ-ONLY?)))
+
+(define slot/name
+  (record-accessor slot-rtd 'NAME))
+
+(define slot/default
+  (record-accessor slot-rtd 'DEFAULT))
+
+(define slot/type
+  (record-accessor slot-rtd 'TYPE))
+
+(define slot/read-only?
+  (record-accessor slot-rtd 'READ-ONLY?))
+
+(define slot/index
+  (record-accessor slot-rtd 'INDEX))
+
+(define set-slot/index!
+  (record-modifier slot-rtd 'INDEX))
+
+(define slot-assoc
+  (association-procedure eq? slot/name))
 
 ;;;; Code Generation
 
@@ -556,24 +568,6 @@ differences:
 	     `(,(absolute 'APPLY) ,(absolute 'VECTOR) ,@list-cons))
 	    ((LIST)
 	     `(,(absolute 'CONS*) ,@list-cons))))))))
-
-(define (define-structure/keyword-parser argument-list default-alist)
-  (if (null? argument-list)
-      (map cdr default-alist)
-      (let ((alist
-	     (map (lambda (entry) (cons (car entry) (cdr entry)))
-		  default-alist)))
-	(let loop ((arguments argument-list))
-	  (if (not (null? arguments))
-	      (begin
-		(if (null? (cdr arguments))
-		    (error "Keyword list does not have even length:"
-			   argument-list))
-		(set-cdr! (or (assq (car arguments) alist)
-			      (error "Unknown keyword:" (car arguments)))
-			  (cadr arguments))
-		(loop (cddr arguments)))))
-	(map cdr alist))))
 
 (define (constructor-definition/boa structure name lambda-list)
   (make-constructor structure name lambda-list
@@ -692,179 +686,3 @@ differences:
 		       ,(structure/tag-expression structure)
 		       ,type-expression)))))))
       '()))
-
-;;;; Exported type structure
-
-(define structure-type-rtd)
-(define make-define-structure-type)
-(define structure-type?)
-(define structure-type/type)
-(define structure-type/name)
-(define structure-type/field-names)
-(define structure-type/field-indexes)
-(define structure-type/unparser-method)
-(define set-structure-type/unparser-method!)
-
-(define (initialize-structure-type-type!)
-  (set! structure-type-rtd
-	(make-record-type "structure-type"
-			  '(TYPE NAME FIELD-NAMES FIELD-INDEXES
-				 UNPARSER-METHOD)))
-  (set! make-define-structure-type
-	(record-constructor structure-type-rtd))
-  (set! structure-type?
-	(record-predicate structure-type-rtd))
-  (set! structure-type/type
-	(record-accessor structure-type-rtd 'TYPE))
-  (set! structure-type/name
-	(record-accessor structure-type-rtd 'NAME))
-  (set! structure-type/field-names
-	(record-accessor structure-type-rtd 'FIELD-NAMES))
-  (set! structure-type/field-indexes
-	(record-accessor structure-type-rtd 'FIELD-INDEXES))
-  (set! structure-type/unparser-method
-	(record-accessor structure-type-rtd 'UNPARSER-METHOD))
-  (set! set-structure-type/unparser-method!
-	(record-modifier structure-type-rtd 'UNPARSER-METHOD))
-  unspecific)
-
-(define (structure-tag/unparser-method tag type)
-  (let ((structure-type (tag->structure-type tag type)))
-    (and structure-type
-	 (structure-type/unparser-method structure-type))))
-
-(define (named-structure? object)
-  (cond ((record? object)
-	 true)
-	((vector? object)
-	 (and (not (zero? (vector-length object)))
-	      (tag->structure-type (vector-ref object 0) 'VECTOR)))
-	((pair? object)
-	 (tag->structure-type (car object) 'LIST))
-	(else
-	 false)))
-
-(define (named-structure/description structure)
-  (cond ((record? structure)
-	 (record-description structure))
-	((named-structure? structure)
-	 =>
-	 (lambda (type)
-	   (let ((accessor (if (pair? structure) list-ref vector-ref)))
-	     (map (lambda (field-name index)
-		    `(,field-name ,(accessor structure index)))
-		  (structure-type/field-names type)
-		  (structure-type/field-indexes type)))))
-	(else
-	 (error:wrong-type-argument structure "named structure"
-				    'NAMED-STRUCTURE/DESCRIPTION))))
-
-(define (tag->structure-type tag type)
-  (if (structure-type? tag)
-      (and (eq? (structure-type/type tag) type)
-	   tag)
-      (let ((structure-type (named-structure/get-tag-description tag)))
-	(and (structure-type? structure-type)
-	     (eq? (structure-type/type structure-type) type)
-	     structure-type))))
-
-;;;; Support for safe accessors
-
-(define (define-structure/vector-accessor tag field-name)
-  (call-with-values
-      (lambda () (accessor-parameters tag field-name 'VECTOR 'ACCESSOR))
-    (lambda (tag index type-name accessor-name)
-      (if tag
-	  (lambda (structure)
-	    (check-vector structure tag index type-name accessor-name)
-	    (vector-ref structure index))
-	  (lambda (structure)
-	    (check-vector-untagged structure index type-name accessor-name)
-	    (vector-ref structure index))))))
-
-(define (define-structure/vector-modifier tag field-name)
-  (call-with-values
-      (lambda () (accessor-parameters tag field-name 'VECTOR 'MODIFIER))
-    (lambda (tag index type-name accessor-name)
-      (if tag
-	  (lambda (structure value)
-	    (check-vector structure tag index type-name accessor-name)
-	    (vector-set! structure index value))
-	  (lambda (structure value)
-	    (check-vector-untagged structure index type-name accessor-name)
-	    (vector-set! structure index value))))))
-
-(define (define-structure/list-accessor tag field-name)
-  (call-with-values
-      (lambda () (accessor-parameters tag field-name 'LIST 'ACCESSOR))
-    (lambda (tag index type-name accessor-name)
-      (if tag
-	  (lambda (structure)
-	    (check-list structure tag index type-name accessor-name)
-	    (list-ref structure index))
-	  (lambda (structure)
-	    (check-list-untagged structure index type-name accessor-name)
-	    (list-ref structure index))))))
-
-(define (define-structure/list-modifier tag field-name)
-  (call-with-values
-      (lambda () (accessor-parameters tag field-name 'LIST 'MODIFIER))
-    (lambda (tag index type-name accessor-name)
-      (if tag
-	  (lambda (structure value)
-	    (check-list structure tag index type-name accessor-name)
-	    (set-car! (list-tail structure index) value))
-	  (lambda (structure value)
-	    (check-list-untagged structure index type-name accessor-name)
-	    (set-car! (list-tail structure index) value))))))
-
-(define-integrable (check-vector structure tag index type accessor-name)
-  (if (not (and (vector? structure)
-		(fix:> (vector-length structure) index)
-		(eq? tag (vector-ref structure 0))))
-      (error:wrong-type-argument structure type accessor-name)))
-
-(define-integrable (check-vector-untagged structure index type accessor-name)
-  (if (not (and (vector? structure)
-		(fix:> (vector-length structure) index)))
-      (error:wrong-type-argument structure type accessor-name)))
-
-(define-integrable (check-list structure tag index type accessor-name)
-  (if (not (and (list-to-index? structure index)
-		(eq? tag (car structure))))
-      (error:wrong-type-argument structure type accessor-name)))
-
-(define-integrable (check-list-untagged structure index type accessor-name)
-  (if (not (list-to-index? structure index))
-      (error:wrong-type-argument structure type accessor-name)))
-
-(define (list-to-index? object index)
-  (and (pair? object)
-       (or (fix:= 0 index)
-	   (list-to-index? (cdr object) (fix:- index 1)))))
-
-(define (accessor-parameters tag field-name structure-type accessor-type)
-  (if (exact-nonnegative-integer? tag)
-      (values #f
-	      tag
-	      (string-append (symbol->string structure-type)
-			     " of length >= "
-			     (number->string (+ tag 1)))
-	      `(,accessor-type ,tag ',field-name))
-      (let ((type (tag->structure-type tag structure-type)))
-	(if (not type)
-	    (error:wrong-type-argument tag "structure tag" accessor-type))
-	(values tag
-		(structure-type/field-index type field-name)
-		(structure-type/name type)
-		`(,accessor-type ,type ',field-name)))))
-
-(define (structure-type/field-index type name)
-  (let loop
-      ((names (structure-type/field-names type))
-       (indexes (structure-type/field-indexes type)))
-    (if (pair? names)
-	(if (eq? name (car names))
-	    (car indexes)
-	    (loop (cdr names) (cdr indexes)))
-	(error:bad-range-argument name 'STRUCTURE-TYPE/FIELD-INDEX))))
