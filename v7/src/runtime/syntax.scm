@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.48 1987/05/29 16:51:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.49 1987/06/02 13:13:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -513,7 +513,7 @@
 	   (else (syntax-error "Bad syntax description" name))))))
 
 (define (syntax-MACRO-form expression)
-  (make-combination* (expand-access '(MACRO-SPREADER '()) make-access)
+  (make-combination* (make-absolute-reference 'MACRO-SPREADER)
 		     (syntax-LAMBDA-form expression)))
 
 (define (syntax-DEFINE-MACRO-form expression)
@@ -522,26 +522,24 @@
   (caadr expression))
 
 (set! macro-spreader
-(named-lambda ((macro-spreader transformer) expression)
-  (syntax-expression (apply transformer (cdr expression)))))
+  (named-lambda ((macro-spreader transformer) expression)
+    (syntax-expression (apply transformer (cdr expression)))))
 
 ;;;; Grab Bag
 
 (define (syntax-ERROR-LIKE-form procedure-name)
   (spread-arguments
    (lambda (message . rest)
-     (make-combination* (make-variable procedure-name)
+     (make-combination* (make-absolute-reference procedure-name)
 			(syntax-expression message)
 			(cond ((null? rest)
-			       ;; Slightly crockish, but prevents
-			       ;; hidden variable reference.
-			       (make-access (make-null)
-					    '*THE-NON-PRINTING-OBJECT*))
+			       (make-absolute-reference
+				'*THE-NON-PRINTING-OBJECT*))
 			      ((null? (cdr rest))
 			       (syntax-expression (car rest)))
 			      (else
 			       (make-combination
-				(make-access (make-null) 'LIST)
+				(make-absolute-reference 'LIST)
 				(syntax-expressions rest))))
 			(make-the-environment)))))
 
@@ -614,7 +612,7 @@
   ;;        ...
   ;;        <body>))
   (let ((with-saved-fluid-bindings
-	 (make-primitive-procedure 'WITH-SAVED-FLUID-BINDINGS #t)))
+	 (make-primitive-procedure 'WITH-SAVED-FLUID-BINDINGS true)))
     (spread-arguments
      (lambda (bindings . body)
        (syntax-fluid-bindings bindings
@@ -666,13 +664,13 @@
 	       (syntax-error "Binding not a pair" binding)))))))
 
 (set! syntax-FLUID-LET-form-deep
-      (make-fluid-let (make-primitive-procedure 'ADD-FLUID-BINDING! #t)
-		      lambda-tag:deep-fluid-let))
+  (make-fluid-let (make-primitive-procedure 'ADD-FLUID-BINDING! true)
+		  lambda-tag:deep-fluid-let))
 
 (set! syntax-FLUID-LET-form-common-lisp
-      ;; This -- groan -- is for Common Lisp support
-      (make-fluid-let (make-primitive-procedure 'MAKE-FLUID-BINDING! #t)
-		      lambda-tag:common-lisp-fluid-let))
+  ;; This -- groan -- is for Common Lisp support
+  (make-fluid-let (make-primitive-procedure 'MAKE-FLUID-BINDING! true)
+		  lambda-tag:common-lisp-fluid-let))
 
 ;;; end special FLUID-LETs.
 )
@@ -747,6 +745,12 @@
 
 (define (make-sequence operands)
   (internal-make-sequence operands))
+
+(define (make-absolute-reference name . rest)
+  (let loop ((reference (make-access (make-null) name)) (rest rest))
+    (if (null? rest)
+	reference
+	(loop (make-access reference (car rest)) (cdr rest)))))
 
 (define (make-thunk body)
   (make-lambda '() body))
@@ -830,26 +834,26 @@
 (define internal-make-lambda)
 
 (set! enable-scan-defines!
-(named-lambda (enable-scan-defines!)
-  (set! internal-make-sequence scanning-make-sequence)
-  (set! internal-make-lambda scanning-make-lambda)))
+  (named-lambda (enable-scan-defines!)
+    (set! internal-make-sequence scanning-make-sequence)
+    (set! internal-make-lambda scanning-make-lambda)))
 
 (set! with-scan-defines-enabled
-(named-lambda (with-scan-defines-enabled thunk)
-  (fluid-let ((internal-make-sequence scanning-make-sequence)
-	      (internal-make-lambda scanning-make-lambda))
-    (thunk))))
+  (named-lambda (with-scan-defines-enabled thunk)
+    (fluid-let ((internal-make-sequence scanning-make-sequence)
+		(internal-make-lambda scanning-make-lambda))
+      (thunk))))
 
 (set! disable-scan-defines!
-(named-lambda (disable-scan-defines!)
-  (set! internal-make-sequence no-scan-make-sequence)
-  (set! internal-make-lambda no-scan-make-lambda)))
+  (named-lambda (disable-scan-defines!)
+    (set! internal-make-sequence no-scan-make-sequence)
+    (set! internal-make-lambda no-scan-make-lambda)))
 
 (set! with-scan-defines-disabled
-(named-lambda (with-scan-defines-disabled thunk)
-  (fluid-let ((internal-make-sequence no-scan-make-sequence)
-	      (internal-make-lambda no-scan-make-lambda))
-    (thunk))))
+  (named-lambda (with-scan-defines-disabled thunk)
+    (fluid-let ((internal-make-sequence no-scan-make-sequence)
+		(internal-make-lambda no-scan-make-lambda))
+      (thunk))))
 
 (define ((fluid-let-maker marker which-kind) #!optional name)
   (if (unassigned? name) (set! name 'FLUID-LET))
@@ -857,11 +861,13 @@
   (add-syntax! name which-kind))
   
 (set! shallow-fluid-let!
-      (fluid-let-maker 'SHALLOW syntax-fluid-let-form-shallow))
+  (fluid-let-maker 'SHALLOW syntax-fluid-let-form-shallow))
+
 (set! deep-fluid-let!
-      (fluid-let-maker 'DEEP syntax-fluid-let-form-deep))
+  (fluid-let-maker 'DEEP syntax-fluid-let-form-deep))
+
 (set! common-lisp-fluid-let!
-      (fluid-let-maker 'COMMON-LISP syntax-fluid-let-form-common-lisp))
+  (fluid-let-maker 'COMMON-LISP syntax-fluid-let-form-common-lisp))
 
 ;;;; Top Level Syntaxers
 
@@ -882,8 +888,11 @@
 	     (fluid-let ((syntax-table table))
 	       (syntaxer expression)))))
 
-(set! syntax (make-syntax-top-level syntax-expression))
-(set! syntax* (make-syntax-top-level syntax-sequence))
+(set! syntax
+  (make-syntax-top-level syntax-expression))
+
+(set! syntax*
+  (make-syntax-top-level syntax-sequence))
 
 (define (syntax-eval scode)
   (scode-eval scode syntax-environment))
@@ -894,118 +903,118 @@
   '(SYNTAX-TABLE))
 
 (set! syntax-table?
-(named-lambda (syntax-table? object)
-  (and (pair? object)
-       (eq? (car object) syntax-table-tag))))
+  (named-lambda (syntax-table? object)
+    (and (pair? object)
+	 (eq? (car object) syntax-table-tag))))
 
 (define (check-syntax-table table name)
   (if (not (syntax-table? table))
       (error "Not a syntax table" name table)))
 
 (set! make-syntax-table
-(named-lambda (make-syntax-table #!optional parent)
-  (cons syntax-table-tag
-	(cons '()
-	      (if (unassigned? parent)
-		  '()
-		  (cdr parent))))))
+  (named-lambda (make-syntax-table #!optional parent)
+    (cons syntax-table-tag
+	  (cons '()
+		(if (unassigned? parent)
+		    '()
+		    (cdr parent))))))
 
 (set! extend-syntax-table
-(named-lambda (extend-syntax-table alist #!optional table)
-  (if (unassigned? table) (set! table (current-syntax-table)))
-  (check-syntax-table table 'EXTEND-SYNTAX-TABLE)
-  (cons syntax-table-tag (cons alist (cdr table)))))
+  (named-lambda (extend-syntax-table alist #!optional table)
+    (if (unassigned? table) (set! table (current-syntax-table)))
+    (check-syntax-table table 'EXTEND-SYNTAX-TABLE)
+    (cons syntax-table-tag (cons alist (cdr table)))))
 
 (set! copy-syntax-table
-(named-lambda (copy-syntax-table #!optional table)
-  (if (unassigned? table) (set! table (current-syntax-table)))
-  (check-syntax-table table 'COPY-SYNTAX-TABLE)
-  (cons syntax-table-tag
-	(map (lambda (alist)
-	       (map (lambda (pair)
-		      (cons (car pair) (cdr pair)))
-		    alist))
-	     (cdr table)))))
+  (named-lambda (copy-syntax-table #!optional table)
+    (if (unassigned? table) (set! table (current-syntax-table)))
+    (check-syntax-table table 'COPY-SYNTAX-TABLE)
+    (cons syntax-table-tag
+	  (map (lambda (alist)
+		 (map (lambda (pair)
+			(cons (car pair) (cdr pair)))
+		      alist))
+	       (cdr table)))))
 
 (set! syntax-table-ref
-(named-lambda (syntax-table-ref table name)
-  (define (loop frames)
-    (and (not (null? frames))
-	 (let ((entry (assq name (car frames))))
-	   (if entry
-	       (cdr entry)
-	       (loop (cdr frames))))))
-  (check-syntax-table table 'SYNTAX-TABLE-REF)
-  (loop (cdr table))))
+  (named-lambda (syntax-table-ref table name)
+    (define (loop frames)
+      (and (not (null? frames))
+	   (let ((entry (assq name (car frames))))
+	     (if entry
+		 (cdr entry)
+		 (loop (cdr frames))))))
+    (check-syntax-table table 'SYNTAX-TABLE-REF)
+    (loop (cdr table))))
 
 (set! syntax-table-define
-(named-lambda (syntax-table-define table name quantum)
-  (check-syntax-table table 'SYNTAX-TABLE-DEFINE)
-  (let ((entry (assq name (cadr table))))
-    (if entry
-	(set-cdr! entry quantum)
-	(set-car! (cdr table)
-		  (cons (cons name quantum)
-			(cadr table)))))))
+  (named-lambda (syntax-table-define table name quantum)
+    (check-syntax-table table 'SYNTAX-TABLE-DEFINE)
+    (let ((entry (assq name (cadr table))))
+      (if entry
+	  (set-cdr! entry quantum)
+	  (set-car! (cdr table)
+		    (cons (cons name quantum)
+			  (cadr table)))))))
 
 (set! syntax-table-shadow
-(named-lambda (syntax-table-shadow table name)
-  (check-syntax-table table 'SYNTAX-TABLE-SHADOW)
-  (let ((entry (assq name (cadr table))))
-    (if entry
-	(set-cdr! entry false)
-	(set-car! (cdr table)
-		  (cons (cons name false)
-			(cadr table)))))))
+  (named-lambda (syntax-table-shadow table name)
+    (check-syntax-table table 'SYNTAX-TABLE-SHADOW)
+    (let ((entry (assq name (cadr table))))
+      (if entry
+	  (set-cdr! entry false)
+	  (set-car! (cdr table)
+		    (cons (cons name false)
+			  (cadr table)))))))
 
 (set! syntax-table-undefine
-(named-lambda (syntax-table-undefine table name)
-  (check-syntax-table table 'SYNTAX-TABLE-UNDEFINE)
-  (if (assq name (cadr table))
-      (set-car! (cdr table) 
-		(del-assq! name (cadr table))))))
+  (named-lambda (syntax-table-undefine table name)
+    (check-syntax-table table 'SYNTAX-TABLE-UNDEFINE)
+    (if (assq name (cadr table))
+	(set-car! (cdr table) 
+		  (del-assq! name (cadr table))))))
 
 ;;;; Default Syntax
 
 (enable-scan-defines!)
 
 (set! system-global-syntax-table
-      (cons syntax-table-tag
-	    `(((ACCESS           . ,syntax-ACCESS-form)
-	       (AND              . ,syntax-CONJUNCTION-form)
-	       (BEGIN            . ,syntax-SEQUENCE-form)
-	       (BKPT             . ,syntax-BKPT-form)
-	       (COND             . ,syntax-COND-form)
-	       (CONS-STREAM      . ,syntax-CONS-STREAM-form)
-	       (DECLARE          . ,syntax-DECLARE-form)
-	       (DEFINE           . ,syntax-DEFINE-form)
-	       (DEFINE-SYNTAX    . ,syntax-DEFINE-SYNTAX-form)
-	       (DEFINE-MACRO     . ,syntax-DEFINE-MACRO-form)
-	       (DELAY            . ,syntax-DELAY-form)
-	       (ERROR            . ,syntax-ERROR-form)
-	       (FLUID-LET        . ,syntax-FLUID-LET-form-shallow)
-	       (IF               . ,syntax-IF-form)
-	       (IN-PACKAGE       . ,syntax-IN-PACKAGE-form)
-	       (LAMBDA           . ,syntax-LAMBDA-form)
-	       (LET              . ,syntax-LET-form)
-	       (LET-SYNTAX       . ,syntax-LET-SYNTAX-form)
-	       (LOCAL-DECLARE    . ,syntax-LOCAL-DECLARE-form)
-	       (MACRO            . ,syntax-MACRO-form)
-	       (MAKE-ENVIRONMENT . ,syntax-MAKE-ENVIRONMENT-form)
-	       (NAMED-LAMBDA     . ,syntax-NAMED-LAMBDA-form)
-	       (OR               . ,syntax-DISJUNCTION-form)
-	       ;; The funniness here prevents QUASIQUOTE from being
-	       ;; seen as a nested backquote.
-	       (,'QUASIQUOTE       . ,syntax-QUASIQUOTE-form)
-	       (QUOTE            . ,syntax-QUOTE-form)
-	       (SCODE-QUOTE      . ,syntax-SCODE-QUOTE-form)
-	       (SEQUENCE         . ,syntax-SEQUENCE-form)
-	       (SET!             . ,syntax-SET!-form)
-	       (THE-ENVIRONMENT  . ,syntax-THE-ENVIRONMENT-form)
-	       (UNASSIGNED?      . ,syntax-UNASSIGNED?-form)
-	       (UNBOUND?         . ,syntax-UNBOUND?-form)
-	       (USING-SYNTAX     . ,syntax-USING-SYNTAX-form)
-	       ))))
+  (cons syntax-table-tag
+	`(((ACCESS           . ,syntax-ACCESS-form)
+	   (AND              . ,syntax-CONJUNCTION-form)
+	   (BEGIN            . ,syntax-SEQUENCE-form)
+	   (BKPT             . ,syntax-BKPT-form)
+	   (COND             . ,syntax-COND-form)
+	   (CONS-STREAM      . ,syntax-CONS-STREAM-form)
+	   (DECLARE          . ,syntax-DECLARE-form)
+	   (DEFINE           . ,syntax-DEFINE-form)
+	   (DEFINE-SYNTAX    . ,syntax-DEFINE-SYNTAX-form)
+	   (DEFINE-MACRO     . ,syntax-DEFINE-MACRO-form)
+	   (DELAY            . ,syntax-DELAY-form)
+	   (ERROR            . ,syntax-ERROR-form)
+	   (FLUID-LET        . ,syntax-FLUID-LET-form-shallow)
+	   (IF               . ,syntax-IF-form)
+	   (IN-PACKAGE       . ,syntax-IN-PACKAGE-form)
+	   (LAMBDA           . ,syntax-LAMBDA-form)
+	   (LET              . ,syntax-LET-form)
+	   (LET-SYNTAX       . ,syntax-LET-SYNTAX-form)
+	   (LOCAL-DECLARE    . ,syntax-LOCAL-DECLARE-form)
+	   (MACRO            . ,syntax-MACRO-form)
+	   (MAKE-ENVIRONMENT . ,syntax-MAKE-ENVIRONMENT-form)
+	   (NAMED-LAMBDA     . ,syntax-NAMED-LAMBDA-form)
+	   (OR               . ,syntax-DISJUNCTION-form)
+	   ;; The funniness here prevents QUASIQUOTE from being
+	   ;; seen as a nested backquote.
+	   (,'QUASIQUOTE       . ,syntax-QUASIQUOTE-form)
+	   (QUOTE            . ,syntax-QUOTE-form)
+	   (SCODE-QUOTE      . ,syntax-SCODE-QUOTE-form)
+	   (SEQUENCE         . ,syntax-SEQUENCE-form)
+	   (SET!             . ,syntax-SET!-form)
+	   (THE-ENVIRONMENT  . ,syntax-THE-ENVIRONMENT-form)
+	   (UNASSIGNED?      . ,syntax-UNASSIGNED?-form)
+	   (UNBOUND?         . ,syntax-UNBOUND?-form)
+	   (USING-SYNTAX     . ,syntax-USING-SYNTAX-form)
+	   ))))
 
 ;;; end SYNTAXER-PACKAGE
 )
