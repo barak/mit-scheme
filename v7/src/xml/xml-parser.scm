@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.35 2003/08/20 17:22:54 cph Exp $
+$Id: xml-parser.scm,v 1.36 2003/08/23 05:39:20 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -169,8 +169,9 @@ USA.
       (encapsulate
 	  (lambda (v)
 	    (transform-declaration (vector-ref v 0) text-decl? p))
-	(sbracket description "<?xml" "?>"
-	  parse-declaration-attributes))))))
+	(seq "<?xml"
+	     parse-declaration-attributes
+	     "?>"))))))
 
 (define parse-declaration		;[23,24,32,80]
   (xml-declaration-parser "XML declaration" #f))
