@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 13.41 1987/01/23 00:09:44 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 13.42 1987/02/11 02:21:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -70,6 +70,13 @@
    PRIMITIVE-SET-TYPE MAKE-NON-POINTER-OBJECT
    PRIMITIVE-TYPE? PRIMITIVE-TYPE PRIMITIVE-DATUM
    OBJECT-DANGEROUS? MAKE-OBJECT-SAFE MAKE-OBJECT-DANGEROUS
+
+   ;; List Operations
+   ;; (these appear here for the time being because the compiler
+   ;; couldn't handle the `in-package' required to put them in
+   ;; `list.scm'.  They should be moved back when that is fixed.
+   CONS PAIR? NULL? LENGTH CAR CDR SET-CAR! SET-CDR!
+   GENERAL-CAR-CDR MEMQ ASSQ
 
    ;; System Compound Datatypes
    MAKE-CELL CELL? CELL-CONTENTS SET-CELL-CONTENTS!
