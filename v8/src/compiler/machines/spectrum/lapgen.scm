@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.6 1996/07/19 02:28:32 adams Exp $
+$Id: lapgen.scm,v 1.7 1996/07/24 03:33:54 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -256,6 +256,10 @@ MIT in each case. |#
 (define-integrable ldil-scale
   ;; (expt 2 11) ***
   2048)
+
+(define (fits-in-ldil-field? value)
+  (and (exact-integer? value)
+       (zero? (remainder value ldil-scale))))
 
 (define (load-immediate i t)
   (if (fits-in-14-bits-signed? i)
@@ -620,27 +624,21 @@ MIT in each case. |#
 (define (standard-move-to-temporary! source)
   (move-to-temporary-register! source (register-type source)))
 
-(define (register-expression expression)
+(define (constant-register-expression expression)
+  ;; returns the register number of a register holding the constant value.
+  ;;  r0 holds 0.
   (case (rtl:expression-type expression)
-    ((REGISTER)
-     (rtl:register-number expression))
     ((CONSTANT)
      (let ((object (rtl:constant-value expression)))
        (cond ((and (zero? (object-type object))
 		   (zero? (object-datum object)))
 	      0)
-	     ((eq? object #F)
-	      regnum:false-value)
-	     ((eq? object '())
-	      regnum:empty-list)
-	     (else
-	      false))))
+	     ((eq? object #F)	 regnum:false-value)
+	     ((eq? object '())	 regnum:empty-list)
+	     (else   	         false))))
     ((MACHINE-CONSTANT)
-     (let ((value (rtl:machine-constant-value expression)))
-       (cond ((zero? value)
-	      0)
-	     (else
-	      false))))
+     (and (zero? (rtl:machine-constant-value expression))
+	  0))
     ((CONS-POINTER)
      (and (let ((type (rtl:cons-pointer-type expression)))
 	    (and (rtl:machine-constant? type)
@@ -650,6 +648,15 @@ MIT in each case. |#
 		 (zero? (rtl:machine-constant-value datum))))
 	  0))
     (else false)))
+
+(define (register-expression expression)
+  ;; returns the register number of a register holding this expression.
+  ;; Use instead of pattern (REGISTER (? regnum))
+  (case (rtl:expression-type expression)
+    ((REGISTER)
+     (rtl:register-number expression))
+    (else
+     (constant-register-expression expression))))
 
 (define (define-arithmetic-method operator methods method)
   (let ((entry (assq operator (cdr methods))))
@@ -666,13 +673,16 @@ MIT in each case. |#
   (assq operator (cdr methods)))  
 
 (define (fits-in-5-bits-signed? value)
-  (<= #x-10 value #xF))
+  (and (fixnum? value)
+       (<= #x-10 value #xF)))
 
 (define (fits-in-11-bits-signed? value)
-  (<= #x-400 value #x3FF))
-
+  (and (fixnum? value)
+       (<= #x-400 value #x3FF)))
+  
 (define (fits-in-14-bits-signed? value)
-  (<= #x-2000 value #x1FFF))
+  (and (fixnum? value)
+       (<= #x-2000 value #x1FFF)))
 
 (define-integrable (ea/mode ea) (car ea))
 (define-integrable (register-ea/register ea) (cadr ea))
