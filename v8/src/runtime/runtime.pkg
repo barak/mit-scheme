@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.335 1999/08/09 18:10:44 cph Exp $
+$Id: runtime.pkg,v 14.336 1999/08/13 18:40:39 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -2272,7 +2272,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (files "socket")
   (parent ())
   (export ()
+	  allocate-host-address
+	  canonical-host-name
 	  close-tcp-server-socket
+	  get-host-by-address
+	  get-host-by-name
+	  get-host-name
 	  open-tcp-server-socket
 	  open-tcp-stream-socket
 	  open-tcp-stream-socket-channel

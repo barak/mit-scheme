@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.14 1999/07/26 21:20:44 cph Exp $
+$Id: socket.scm,v 1.15 1999/08/13 18:40:30 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -52,15 +52,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (lambda ()
 	   ((ucode-primitive new-open-tcp-stream-socket 3) host port p)))))))
 
-(define (get-host-by-name host-name)
-  (with-thread-timer-stopped
-    (lambda ()
-      ((ucode-primitive get-host-by-name 1) host-name))))
-
-(define (os/hostname)
-  ((ucode-primitive canonical-host-name 1)
-   ((ucode-primitive get-host-name 0))))
-
 (define (open-unix-stream-socket-channel filename)
   (open-channel
    (lambda (p)
@@ -85,23 +76,41 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (close-tcp-server-socket server-socket)
   (channel-close server-socket))
 
+(define (tcp-server-connection-accept server-socket block? peer-address)
+  (let ((channel
+	 (with-channel-blocking server-socket block?
+	   (lambda ()
+	     (open-channel
+	      (lambda (p)
+		(with-thread-timer-stopped
+		  (lambda ()
+		    ((ucode-primitive new-tcp-server-connection-accept 3)
+		     (channel-descriptor server-socket)
+		     peer-address
+		     p)))))))))
+    (and channel
+	 (make-generic-i/o-port channel channel 64 64))))
+
+(define (get-host-by-name host-name)
+  (with-thread-timer-stopped
+    (lambda ()
+      ((ucode-primitive get-host-by-name 1) host-name))))
+
+(define (get-host-by-address host-address)
+  (with-thread-timer-stopped
+    (lambda ()
+      ((ucode-primitive get-host-by-address 1) host-address))))
+
+(define (canonical-host-name host-name)
+  (with-thread-timer-stopped
+    (lambda ()
+      ((ucode-primitive canonical-host-name 1) host-name))))
+
+(define get-host-name
+  (ucode-primitive get-host-name 0))
+
+(define (os/hostname)
+  (canonical-host-name (get-host-name)))
+
 (define (allocate-host-address)
   (string-allocate ((ucode-primitive host-address-length 0))))
-
-(define (tcp-server-connection-accept server-socket block?)
-  (let ((peer-address (allocate-host-address)))
-    (let ((channel
-	   (with-channel-blocking server-socket block?
-	     (lambda ()
-	       (open-channel
-		(lambda (p)
-		  (with-thread-timer-stopped
-		    (lambda ()
-		      ((ucode-primitive new-tcp-server-connection-accept 3)
-		       (channel-descriptor server-socket)
-		       peer-address
-		       p)))))))))
-      (if channel
-	  (let ((port (make-generic-i/o-port channel channel 64 64)))
-	    (values port peer-address))
-	  (values #f #f)))))
