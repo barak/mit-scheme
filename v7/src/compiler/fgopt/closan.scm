@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.15 1990/05/03 15:09:07 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.16 1991/05/05 17:14:12 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -147,9 +147,7 @@ MIT in each case. |#
 		       combination))))
 
 (define (compatibility-class procs)
-  (if (or (not (for-all? procs rvalue/procedure?))
-	  ;; This is a cop-out!
-	  (there-exists? procs pending-undrifting?))			 
+  (if (not (for-all? procs rvalue/procedure?))
       'APPLY-COMPATIBILITY
       (let* ((model (car procs))
 	     (model-env (procedure-closing-block model)))
@@ -158,7 +156,9 @@ MIT in each case. |#
 	    (let loop
 		((procs (cdr procs))
 		 (class
-		  (if (procedure/closure? model) 'COMPATIBILITY 'POTENTIAL)))
+		  (if (or (procedure/closure? model) (pending-undrifting? model))
+		      'COMPATIBILITY	; Cop-out.  Could be postponed 'til later.
+		      'POTENTIAL)))
 	      (if (null? procs)
 		  class
 		  (let ((this (car procs)))
@@ -169,7 +169,8 @@ MIT in each case. |#
 			    (loop (cdr procs)
 				  (if (and (not (procedure/closure? this))
 					   (eq? (procedure-closing-block this)
-						model-env))
+						model-env)
+					   (not (pending-undrifting? this)))
 				      class
 				      'COMPATIBILITY))
 			    'APPLY-COMPATIBILITY)))))))))))
