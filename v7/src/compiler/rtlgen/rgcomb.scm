@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.27 1987/06/23 03:31:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.28 1987/07/03 18:57:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -283,7 +283,8 @@ MIT in each case. |#
     (lambda (number-pushed)
       (let ((operator (subproblem-value (combination-operator combination)))
 	    (frame-size (1+ number-pushed)))
-	(let ((make-application
+	(let ((variable (reference-variable operator))
+	      (make-application
 	       (lambda (operator)
 		 (scfg*scfg->scfg!
 		  (rtl:make-push operator)
@@ -291,8 +292,7 @@ MIT in each case. |#
 		   frame-size
 		   (prefix combination frame-size)
 		   continuation)))))
-	  (find-variable (reference-block operator)
-			 (reference-variable operator)
+	  (find-variable (reference-block operator) variable
 	    (lambda (locative)
 	      (make-application (rtl:make-fetch locative)))
 	    (lambda (environment name)
@@ -303,26 +303,35 @@ MIT in each case. |#
 	       environment
 	       (intern-scode-variable! (reference-block operator) name)))
 	    (lambda (name)
-	      (let* ((temp (make-temporary))
-		     (cell (rtl:make-fetch temp))
-		     (contents (rtl:make-fetch cell)))
-		(let ((n1 (rtl:make-assignment temp
-					       (rtl:make-variable-cache name)))
-		      (n2 (rtl:make-type-test (rtl:make-object->type contents)
-					      (ucode-type reference-trap)))
-		      (n3 (make-application contents))
-		      (n4
-		       (rtl:make-invocation:cache-reference
-			frame-size
-			(prefix combination number-pushed)
-			continuation
-			cell)))
-		  (scfg-next-connect! n1 n2)
-		  (pcfg-consequent-connect! n2 n4)
-		  (pcfg-alternative-connect! n2 n3)
-		  (make-scfg (cfg-entry-node n1)
-			     (hooks-union (scfg-next-hooks n3)
-					  (scfg-next-hooks n4))))))))))))
+	      (if (memq 'UUO-LINK (variable-declarations variable))
+		  (rtl:make-invocation:uuo-link
+		   frame-size
+		   (prefix combination number-pushed)
+		   continuation
+		   name)
+		  (let* ((temp (make-temporary))
+			 (cell (rtl:make-fetch temp))
+			 (contents (rtl:make-fetch cell)))
+		    (let ((n1
+			   (rtl:make-assignment
+			    temp
+			    (rtl:make-variable-cache name)))
+			  (n2
+			   (rtl:make-type-test (rtl:make-object->type contents)
+					       (ucode-type reference-trap)))
+			  (n3 (make-application contents))
+			  (n4
+			   (rtl:make-invocation:cache-reference
+			    frame-size
+			    (prefix combination number-pushed)
+			    continuation
+			    cell)))
+		      (scfg-next-connect! n1 n2)
+		      (pcfg-consequent-connect! n2 n4)
+		      (pcfg-alternative-connect! n2 n3)
+		      (make-scfg (cfg-entry-node n1)
+				 (hooks-union (scfg-next-hooks n3)
+					      (scfg-next-hooks n4)))))))))))))
 
 (define (make-call/child combination operator operands make-receiver)
   (scfg*scfg->scfg!
