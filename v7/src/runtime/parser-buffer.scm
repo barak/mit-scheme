@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parser-buffer.scm,v 1.12 2004/02/17 05:46:20 cph Exp $
+$Id: parser-buffer.scm,v 1.13 2004/02/23 20:51:40 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -35,62 +35,48 @@ USA.
   start
   end
   ;; The offset of the string buffer within the character stream.
-  ;; This is always zero if SOURCE is #F.
+  ;; This is always zero if PORT is #F.
   base-offset
   ;; Our current position in the buffer.
   index
-  ;; A procedure that is used to replenish the buffer when the
-  ;; buffered characters are used up.  The procedure takes three
-  ;; arguments, (STRING START END), and attempts to fill the
-  ;; corresponding substring, returning the number of characters
-  ;; actually written.  If SOURCE is #F, the buffered characters are
-  ;; the entire stream.
-  source
+  ;; An input port that is used to replenish the buffer when the
+  ;; buffered characters are used up.  If PORT is #F, the buffered
+  ;; characters are the entire stream.
+  port
   ;; True if there are no more characters past END.
   at-end?
   ;; The number of newlines to the left of the current position.
   line)
 
-;;; The two basic kinds of buffers: substring and source.  A substring
-;;; buffer is one that reads from a pre-filled substring.  A source
-;;; buffer is one that reads from an unbuffered source of unbounded
-;;; length.
+;;; The two basic kinds of buffers: string and port.  A string buffer
+;;; is one that reads from a pre-filled string.  A port buffer is one
+;;; that reads from an input port.
 
-(define (wide-string->parser-buffer string)
-  (guarantee-wide-string string 'WIDE-STRING->PARSER-BUFFER)
-  (make-parser-buffer string 0 (%wide-string-length string) 0 0 #f #t 0))
-
-(define (wide-substring->parser-buffer string start end)
-  (guarantee-wide-substring string start end 'WIDE-SUBSTRING->PARSER-BUFFER)
-  (make-parser-buffer string start end 0 start #f #t 0))
-
-(define (string->parser-buffer string)
-  (guarantee-string string 'STRING->PARSER-BUFFER)
-  (%substring->parser-buffer string 0 (string-length string)))
-
-(define (substring->parser-buffer string start end)
-  (guarantee-substring string start end 'SUBSTRING->PARSER-BUFFER)
-  (%substring->parser-buffer string start end))
-
-(define (%substring->parser-buffer string start end)
-  (let ((n (fix:- end start)))
-    (let ((s (make-wide-string n)))
-      (let ((v (wide-string-contents s)))
-	(do ((i start (fix:+ i 1))
-	     (j 0 (fix:+ j 1)))
-	    ((not (fix:< i end)))
-	  (vector-set! v j (string-ref string i))))
-      (wide-substring->parser-buffer s 0 n))))
+(define (string->parser-buffer string #!optional start end)
+  (if (string? string)
+      (let ((string
+	     (string->wide-string string
+				  (if (default-object? start) #f start)
+				  (if (default-object? end) #f end))))
+	(make-parser-buffer string 0 (%wide-string-length string) 0 0 #f #t 0))
+      (begin
+	(guarantee-wide-string string 'STRING->PARSER-BUFFER)
+	(let* ((end
+		(if (or (default-object? end) (not end))
+		    (%wide-string-length string)
+		    (guarantee-substring-end-index end
+						   (%wide-string-length string)
+						   'STRING->PARSER-BUFFER)))
+	       (start
+		(if (or (default-object? start) (not start))
+		    0
+		    (guarantee-substring-start-index start end
+						     'STRING->PARSER-BUFFER))))
+	  (make-parser-buffer string start end 0 0 #f #t 0)))))
 
 (define (input-port->parser-buffer port)
-  (source->parser-buffer
-   (lambda (string start end)
-     (port/with-input-blocking-mode port 'BLOCKING
-       (lambda ()
-	 (input-port/read-wide-substring! port string start end))))))
-
-(define (source->parser-buffer source)
-  (make-parser-buffer (make-wide-string min-length) 0 0 0 0 source #f 0))
+  (guarantee-input-port port 'INPUT-PORT->PARSER-BUFFER)
+  (make-parser-buffer (make-wide-string min-length) 0 0 0 0 port #f 0))
 
 (define-integrable min-length 256)
 
@@ -339,47 +325,10 @@ USA.
 	    (set-parser-buffer-line! buffer n)))
       (set-parser-buffer-index! buffer j))))
 
-(define-integrable (guarantee-buffer-chars buffer n)
-  (or (fix:<= (fix:+ (parser-buffer-index buffer) n)
-	      (parser-buffer-end buffer))
-      (guarantee-buffer-chars-1 buffer n)))
-
-(define (guarantee-buffer-chars-1 buffer n)
-  (let ((min-end (fix:+ (parser-buffer-index buffer) n))
-	(end (parser-buffer-end buffer)))
-    (and (not (parser-buffer-at-end? buffer))
-	 (begin
-	   (let* ((string (parser-buffer-string buffer))
-		  (v1 (wide-string-contents string))
-		  (max-end (vector-length v1))
-		  (max-end*
-		   (let loop ((max-end* max-end))
-		     (if (fix:<= min-end max-end*)
-			 max-end*
-			 (loop (fix:* max-end* 2))))))
-	     (if (fix:> max-end* max-end)
-		 (let ((string* (make-wide-string max-end*)))
-		   (let ((v2 (wide-string-contents string*)))
-		     (do ((i 0 (fix:+ i 1)))
-			 ((not (fix:< i end)))
-		       (vector-set! v2 i (vector-ref v1 i))))
-		   (set-parser-buffer-string! buffer string*))))
-	   (let ((n-read
-		  (let ((string (parser-buffer-string buffer)))
-		    ((parser-buffer-source buffer)
-		     string end (%wide-string-length string)))))
-	     (if (fix:> n-read 0)
-		 (let ((end (fix:+ end n-read)))
-		   (set-parser-buffer-end! buffer end)
-		   (fix:<= min-end end))
-		 (begin
-		   (set-parser-buffer-at-end?! buffer #t)
-		   #f)))))))
-
 (define (discard-parser-buffer-head! buffer)
   ;; Tell the buffer that it is safe to discard all characters to the
   ;; left of the current position.
-  (if (parser-buffer-source buffer)
+  (if (parser-buffer-port buffer)
       (let ((string (parser-buffer-string buffer))
 	    (index (parser-buffer-index buffer))
 	    (end (parser-buffer-end buffer)))
@@ -402,3 +351,44 @@ USA.
 		  buffer
 		  (+ (parser-buffer-base-offset buffer) index)))))))
       (set-parser-buffer-start! buffer (parser-buffer-index buffer))))
+
+(define-integrable (guarantee-buffer-chars buffer n)
+  (or (fix:<= (fix:+ (parser-buffer-index buffer) n)
+	      (parser-buffer-end buffer))
+      (guarantee-buffer-chars-1 buffer n)))
+
+(define (guarantee-buffer-chars-1 buffer n)
+  (and (not (parser-buffer-at-end? buffer))
+       (let ((min-end (fix:+ (parser-buffer-index buffer) n))
+	     (end (parser-buffer-end buffer)))
+	 (let* ((string (parser-buffer-string buffer))
+		(v1 (wide-string-contents string))
+		(max-end (vector-length v1))
+		(max-end*
+		 (let loop ((max-end* max-end))
+		   (if (fix:<= min-end max-end*)
+		       max-end*
+		       (loop (fix:* max-end* 2))))))
+	   (if (fix:> max-end* max-end)
+	       (let ((string* (make-wide-string max-end*)))
+		 (let ((v2 (wide-string-contents string*)))
+		   (do ((i 0 (fix:+ i 1)))
+		       ((not (fix:< i end)))
+		     (vector-set! v2 i (vector-ref v1 i))))
+		 (set-parser-buffer-string! buffer string*))))
+	 (let ((n-read
+		(let ((port (parser-buffer-port buffer))
+		      (string (parser-buffer-string buffer)))
+		  (let ((l (%wide-string-length string)))
+		    (or (input-port/read-wide-substring! port string end l)
+			(port/with-input-blocking-mode port 'BLOCKING
+			  (lambda ()
+			    (input-port/read-wide-substring!
+			     port string end l))))))))
+	   (if (fix:> n-read 0)
+	       (let ((end (fix:+ end n-read)))
+		 (set-parser-buffer-end! buffer end)
+		 (fix:<= min-end end))
+	       (begin
+		 (set-parser-buffer-at-end?! buffer #t)
+		 #f))))))

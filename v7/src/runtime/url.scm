@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.14 2003/02/14 18:28:34 cph Exp $
+$Id: url.scm,v 1.15 2004/02/23 20:51:47 cph Exp $
 
-Copyright (c) 2000, 2001, 2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -111,7 +111,7 @@ USA.
 (define url:substring-encoded?
   (let ((matcher (*matcher (complete (* url:match:xchar)))))
     (lambda (string start end)
-      (matcher (substring->parser-buffer string start end)))))
+      (matcher (string->parser-buffer string start end)))))
 
 (define (url:encode-string string)
   (url:encode-substring string 0 (string-length string)))
