@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.93 1989/08/09 13:17:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.94 1989/08/11 11:06:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -47,6 +47,15 @@
 
 (declare (usual-integrations))
 
+(define-command info
+  "Create a buffer for Info, the documentation browser program."
+  ()
+  (lambda ()
+    (let ((buffer (find-buffer info-buffer-name)))
+      (if buffer
+	  (select-buffer buffer)
+	  ((ref-command info-directory))))))
+
 (define info-buffer-name "*info*")
 
 (define-variable info-history
@@ -74,7 +83,7 @@ or #F if file has no tag table.")
 (define-variable info-tag-table-end
   "Mark pointing at end of current Info file's tag table,
 or #F if file has no tag table.")
-
+
 (define-major-mode info fundamental "Info"
   "Info mode provides commands for browsing through the Info documentation tree.
 Documentation in Info is divided into \"nodes\", each of which
@@ -116,17 +125,6 @@ s	Search through this Info file for specified regexp,
   (local-set-variable! info-tag-table-start false)
   (local-set-variable! info-tag-table-end false)
   (info-set-mode-line!))
-
-(define (info-set-mode-line!)
-  (local-set-variable! mode-line-buffer-identification
-		       (string-append
-			"Info:  ("
-			(let ((pathname (ref-variable info-current-file)))
-			  (if pathname
-			      (pathname-name-string pathname)
-			      ""))
-			")"
-			(or (ref-variable info-current-node) ""))))
 
 (define-key 'info #\space 'scroll-up)
 (define-key 'info #\. 'beginning-of-buffer)
@@ -151,45 +149,18 @@ s	Search through this Info file for specified regexp,
 (define-key 'info #\u 'info-up)
 (define-key 'info #\rubout 'scroll-down)
 
-(define-major-mode info-edit text "Info-Edit"
-  "Major mode for editing the contents of an Info node.
-The editing commands are the same as in Text mode,
-except for \\[info-cease-edit] to return to Info."
-  (local-set-variable! page-delimiter
-		       (string-append "^\f\\|"
-				      (ref-variable page-delimiter))))
-
-(define-prefix-key 'info-edit #\c-c 'prefix-char)
-(define-key 'info-edit '(#\c-c #\c-c) 'info-cease-edit)
-
-(define-command info-edit
-  "Edit the contents of this Info node.
-Allowed only if the variable Info Enable Edit is not false."
-  ()
-  (lambda ()
-    (if (not (ref-variable info-enable-edit))
-	(editor-error "Editing Info nodes is not enabled"))
-    (set-buffer-writeable! (current-buffer))
-    (set-current-major-mode! (ref-mode-object info-edit))
-    (message "Editing: Type C-c C-c to return to Info")))
-
-(define-command info-cease-edit
-  "Finish editing Info node; switch back to Info proper."
-  ()
-  (lambda ()
-    (save-buffer-changes (current-buffer))
-    (set-current-major-mode! (ref-mode-object info))
-    (set-buffer-read-only! (current-buffer))
-    (clear-message)))
+(define (info-set-mode-line!)
+  (local-set-variable! mode-line-buffer-identification
+		       (string-append
+			"Info:  ("
+			(let ((pathname (ref-variable info-current-file)))
+			  (if pathname
+			      (pathname-name-string pathname)
+			      ""))
+			")"
+			(or (ref-variable info-current-node) ""))))
 
-(define-command info
-  "Create a buffer for Info, the documentation browser program."
-  ()
-  (lambda ()
-    (let ((buffer (find-buffer info-buffer-name)))
-      (if buffer
-	  (select-buffer buffer)
-	  ((ref-command info-directory))))))
+;;;; Motion
 
 (define-command info-directory
   "Go to the Info directory node."
@@ -225,8 +196,15 @@ Allowed only if the variable Info Enable Edit is not false."
     (follow-pointer extract-node-up "Up")))
 
 (define (follow-pointer extractor name)
-  (goto-node (or (extractor (buffer-start (current-buffer)))
-		 (editor-error "Node has no " name))))
+  (goto-node
+   (or (extractor (buffer-start (current-buffer)))
+       (editor-error "Node has no " name))))
+
+(define-command info-goto-node
+  "Go to Info node of given name.  Give just NODENAME or (FILENAME)NODENAME."
+  "sGoto node"
+  (lambda (name)
+    (goto-node name)))
 
 (define-command info-last
   "Go back to the last node visited."
@@ -241,6 +219,8 @@ Allowed only if the variable Info Enable Edit is not false."
       (set-current-point!
        (mark+ (region-start (buffer-unclipped-region (current-buffer)))
 	      (vector-ref entry 2))))))
+
+;;;; Miscellaneous
 
 (define-command info-exit
   "Exit Info by selecting some other buffer."
@@ -249,12 +229,69 @@ Allowed only if the variable Info Enable Edit is not false."
     (let ((buffer (current-buffer)))
       (select-buffer (previous-buffer))
       (bury-buffer buffer))))
+
+(define-command info-summary
+  "Display a brief summary of all Info commands."
+  ()
+  (lambda ()
+    (let ((buffer (temporary-buffer "*Help*")))
+      (with-output-to-mark (buffer-point buffer)
+	(lambda ()
+	  (write-description (mode-description (current-major-mode)))))
+      (set-buffer-point! buffer (buffer-start buffer))
+      (buffer-not-modified! buffer)
+      (with-selected-buffer buffer
+	(lambda ()
+	  (let loop ()
+	    (update-screens! false)
+	    (let ((end-visible?
+		   (window-mark-visible? (current-window)
+					 (buffer-end buffer))))
+	      (message (if end-visible?
+			   "Type Space to return to Info"
+			   "Type Space to see more"))
+	      (let ((char (keyboard-peek-char)))
+		(if (char=? char #\Space)
+		    (begin
+		      (keyboard-read-char)
+		      (if (not end-visible?)
+			  (begin
+			    ((ref-command scroll-up) false)
+			    (loop))))))))
+	  (clear-message))))))
+
+(define-command info-edit
+  "Edit the contents of this Info node.
+Allowed only if the variable Info Enable Edit is not false."
+  ()
+  (lambda ()
+    (if (not (ref-variable info-enable-edit))
+	(editor-error "Editing Info nodes is not enabled"))
+    (set-buffer-writeable! (current-buffer))
+    (set-current-major-mode! (ref-mode-object info-edit))
+    (message "Editing: Type C-c C-c to return to Info")))
+
+(define-major-mode info-edit text "Info-Edit"
+  "Major mode for editing the contents of an Info node.
+The editing commands are the same as in Text mode,
+except for \\[info-cease-edit] to return to Info."
+  (local-set-variable! page-delimiter
+		       (string-append "^\f\\|"
+				      (ref-variable page-delimiter))))
+
+(define-prefix-key 'info-edit #\c-c 'prefix-char)
+(define-key 'info-edit '(#\c-c #\c-c) 'info-cease-edit)
+
+(define-command info-cease-edit
+  "Finish editing Info node; switch back to Info proper."
+  ()
+  (lambda ()
+    (save-buffer-changes (current-buffer))
+    (set-current-major-mode! (ref-mode-object info))
+    (set-buffer-read-only! (current-buffer))
+    (clear-message)))
 
-(define-command info-goto-node
-  "Go to Info node of given name.  Give just NODENAME or (FILENAME)NODENAME."
-  "sGoto node"
-  (lambda (name)
-    (goto-node name)))
+;;;; Search
 
 (define-command info-search
   "Search for regexp, starting from point, and select node it's found in."
@@ -324,36 +361,7 @@ Allowed only if the variable Info Enable Edit is not false."
 			   (string-ci=? original-node
 					(ref-variable info-current-node)))))
 	    (record-node original-file original-node original-point))))))
-
-(define-command info-summary
-  "Display a brief summary of all Info commands."
-  ()
-  (lambda ()
-    (let ((buffer (temporary-buffer "*Help*")))
-      (with-output-to-mark (buffer-point buffer)
-	(lambda ()
-	  (write-description (mode-description (current-major-mode)))))
-      (set-buffer-point! buffer (buffer-start buffer))
-      (buffer-not-modified! buffer)
-      (with-selected-buffer buffer
-	(lambda ()
-	  (let loop ()
-	    (update-screens! false)
-	    (let ((end-visible?
-		   (window-mark-visible? (current-window)
-					 (buffer-end buffer))))
-	      (message (if end-visible?
-			   "Type Space to return to Info"
-			   "Type Space to see more"))
-	      (let ((char (keyboard-peek-char)))
-		(if (char=? char #\Space)
-		    (begin
-		      (keyboard-read-char)
-		      (if (not end-visible?)
-			  (begin
-			    ((ref-command scroll-up) false)
-			    (loop))))))))
-			      (clear-message))))))
+
 ;;;; Menus
 
 (define-command info-menu
