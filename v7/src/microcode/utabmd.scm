@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.26 1987/04/25 20:27:27 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.27 1987/04/29 13:19:32 cph Exp $
 
 (declare (usual-integrations))
 
@@ -91,7 +91,7 @@
 	       COMPILER-ERROR-PROCEDURE			;20
 	       LOST-OBJECT-BASE				;21
 	       STATE-SPACE-ROOT				;22
-	       MICROCODE-TABLE-IDENTIFICATION		;23
+	       PRIMITIVE-PROFILING-TABLE		;23
 	       ))
 
 ;;; [] Types
@@ -854,4 +854,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.26 1987/04/25 20:27:27 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.27 1987/04/29 13:19:32 cph Exp $"
