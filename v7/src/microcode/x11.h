@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.1 1989/06/21 10:17:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.2 1989/06/27 10:09:14 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -117,11 +117,13 @@ extern int x_allocation_index_arg ();
 extern char * x_malloc ();
 extern char * x_realloc ();
 extern unsigned long x_decode_color ();
+extern char * x_get_default ();
 extern unsigned long x_default_color ();
+extern void x_set_mouse_colors ();
 extern void x_default_attributes ();
-extern struct xwindow * x_window_to_xw ();
 extern struct xwindow * x_make_window ();
 extern Pointer x_window_to_object ();
+extern struct xwindow * x_window_to_xw ();
 extern Display * x_close_window ();
 extern void x_close_display ();
 extern void xw_enqueue_event ();
