@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lambdx.scm,v 14.8 1999/01/02 06:11:34 cph Exp $
+$Id: lambdx.scm,v 14.9 2000/10/14 00:56:20 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,13 +28,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (scan-defines
    body
    (lambda (auxiliary declarations body*)
-     (let ((ordinary (append required optional (if rest (list rest) '()))))
-       (make-lambda name required optional rest
-		    (list-transform-negative auxiliary
-		      (lambda (aux)
-			(memq aux ordinary)))
-		    declarations
-		    body*)))))
+     (make-lambda name required optional rest auxiliary declarations body*))))
 
 (define (lambda-components* *lambda receiver)
   (lambda-components *lambda

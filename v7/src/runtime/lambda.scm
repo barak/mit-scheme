@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lambda.scm,v 14.15 1999/05/15 19:01:15 cph Exp $
+$Id: lambda.scm,v 14.16 2000/10/14 00:56:03 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -141,7 +141,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (if (wrapper? (physical-body *lambda))
 	 (set-wrapper-original-body! (physical-body *lambda) new-body)
 	 (set-physical-body! *lambda new-body)))))
-
+
 (define-integrable (make-wrapper original-body new-body state)
   (make-comment (vector wrapper-tag original-body state) new-body))
 
@@ -297,12 +297,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (make-combination (make-internal-lambda auxiliary body)
 			 (make-unassigned auxiliary)))
    (list->vector
-    (cons name (append required optional (if (false? rest) '() (list rest)))))
+    (cons name (append required optional (if rest (list rest) '()))))
    (make-non-pointer-object
     (+ (length optional)
        (* 256
 	  (+ (length required)
-	     (if (false? rest) 0 256)))))))
+	     (if rest 256 0)))))))
 
 (define-integrable (xlambda? object)
   (object-type? xlambda-type object))
@@ -362,7 +362,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (xlambda? object)))
 
 (define (make-lambda name required optional rest auxiliary declarations body)
-
   (let ((interface (append required optional (if rest (list rest) '()))))
     (let ((dup-interface (find-list-duplicates interface))
 	  (dup-auxiliary (find-list-duplicates auxiliary)))
@@ -373,43 +372,30 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    ((not (null? dup-auxiliary))
 	     (error "duplicate internal definitions for" dup-auxiliary
 		    (error-irritant/noise " in")
-		    name))
-	    (else
-	     (let ((dup (find-list-duplicates (append interface auxiliary))))
-	       (if (not (null? dup))
-		   (error "duplicate parameters" dup
-			  (error-irritant/noise " in")
-			  (append required
-				  (if (pair? optional) '(#!optional) '()) 
-				  optional
-				  (if rest `(#!rest ,rest) '())
-				  (if (pair? auxiliary) (list #!aux) '())
-				  auxiliary))))))))
-
-  (let ((body* (if (null? declarations)
-		   body
-		   (make-sequence (list (make-block-declaration declarations)
-					body)))))
+		    name)))))
+  (let ((body*
+	 (if (null? declarations)
+	     body
+	     (make-sequence (list (make-block-declaration declarations)
+				  body)))))
     (cond ((and (< (length required) 256)
 		(< (length optional) 256)
 		(or (not (null? optional))
-		    (not (false? rest))		;;!(not (null? rest))
+		    rest
 		    (not (null? auxiliary))))
 	   (make-xlambda name required optional rest auxiliary body*))
 	  ((not (null? optional))
 	   (error "Optionals not implemented" 'MAKE-LAMBDA))
-	  ((false? rest)  ;;!
-	   (make-clambda name required auxiliary body*))
+	  (rest
+	   (make-clexpr name required rest auxiliary body*))
 	  (else
-	   (make-clexpr name required rest auxiliary body*)))))
+	   (make-clambda name required auxiliary body*)))))
 
 (define (lambda-components *lambda receiver)
   (&lambda-components *lambda
     (lambda (name required optional rest auxiliary body)
-      (let ((actions (and (sequence? body)
-			  (sequence-actions body))))
-	(if (and actions
-		 (block-declaration? (car actions)))
+      (let ((actions (and (sequence? body) (sequence-actions body))))
+	(if (and actions (block-declaration? (car actions)))
 	    (receiver name required optional rest auxiliary
 		      (block-declaration-text (car actions))
 		      (make-sequence (cdr actions)))
@@ -417,7 +403,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (find-list-duplicates items)
   (let loop ((items items) (duplicates '()))
-    (cond ((null? items) (reverse! duplicates))
+    (cond ((null? items)
+	   (reverse! duplicates))
 	  ((memq (car items) (cdr items))
 	   (if (memq (car items) duplicates)
 	       (loop (cdr items) duplicates)
@@ -453,7 +440,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (type vector)
 		   (named ((ucode-primitive string->symbol)
 			   "#[Block Declaration]")))
-  (text false read-only true))
+  (text #f read-only #t))
 
 ;;;; Simple Lambda/Lexpr
 
