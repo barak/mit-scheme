@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.5 1988/08/29 22:35:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.6 1988/11/07 13:54:44 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -269,6 +269,47 @@ registers into some interesting sorting order.
 					 (delq alias
 					       (map-entry-aliases entry)))))
 
+(define (register-map:keep-live-entries map live-registers)
+  (let loop
+      ((entries (map-entries map))
+       (registers (map-registers map))
+       (entries* '()))
+    (cond ((null? entries)
+	   (make-register-map (reverse! entries*)
+			      (sort-machine-registers registers)))
+	  ((let ((home (map-entry-home (car entries))))
+	     (and home
+		  (regset-member? live-registers home)))
+	   (loop (cdr entries)
+		 registers
+		 (cons (car entries) entries*)))
+	  (else
+	   (loop (cdr entries)
+		 (append (map-entry-aliases (car entries)) registers)
+		 entries*)))))
+
+(define (map-equal? x y)
+  (let loop
+      ((x-entries (map-entries x))
+       (y-entries (list-transform-positive (map-entries y) map-entry-home)))
+    (cond ((null? x-entries)
+	   (null? y-entries))
+	  ((not (map-entry-home (car x-entries)))
+	   (loop (cdr x-entries) y-entries))
+	  (else
+	   (and (not (null? y-entries))
+		(let ((y-entry
+		       (list-search-positive y-entries
+			 (let ((home (map-entry-home (car x-entries))))
+			   (lambda (entry)
+			     (eqv? (map-entry-home entry) home))))))
+		  (and y-entry
+		       (boolean=? (map-entry-saved-into-home? (car x-entries))
+				  (map-entry-saved-into-home? y-entry))
+		       (eqv-set-same-set? (map-entry-aliases (car x-entries))
+					  (map-entry-aliases y-entry))
+		       (loop (cdr x-entries) (delq! y-entry y-entries)))))))))
+
 ;;;; Register Allocator
 
 (define (make-free-register map type needed-registers)
@@ -312,7 +353,7 @@ registers into some interesting sorting order.
 				  (register-map:delete-alias map entry alias)
 				  (save-into-home-instruction entry))))))))
    (error "MAKE-FREE-REGISTER: Unable to allocate register")))
-
+
 (define (find-free-register map type needed-registers)
   (define (reallocate-alias entry)
     (let ((alias (map-entry:find-alias entry type needed-registers)))
@@ -481,21 +522,19 @@ for REGISTER.  If no such register exists, returns #F."
 		  (map-entry-aliases entry))
 	(receiver map '()))))
 
-(define (delete-pseudo-registers map registers receiver)
+(define (delete-pseudo-registers map registers)
   ;; Used to remove dead registers from the map.
-  (let loop ((registers registers)
-	     (receiver
-	      (lambda (entries aliases)
-		(receiver (register-map:delete-entries map entries)
-			  aliases))))
-    (if (null? registers)
-	(receiver '() '())
-	(loop (cdr registers)
-	  (let ((entry (map-entries:find-home map (car registers))))
-	    (if entry
-		(lambda (entries aliases)
-		  (receiver (cons entry entries) aliases))
-		receiver))))))
+  (let ((entries
+	 (let loop ((registers registers))
+	   (if (null? registers)
+	       '()
+	       (let ((entry (map-entries:find-home map (car registers))))
+		 (if entry
+		     (cons entry (loop (cdr registers)))
+		     (loop (cdr registers))))))))
+    (if (null? entries)
+	map
+	(register-map:delete-entries map entries))))
 
 (define (delete-other-locations map register)
   ;; Used in assignments to indicate that other locations containing
@@ -522,11 +561,10 @@ for REGISTER.  If no such register exists, returns #F."
   (let loop ((entries (map-entries map)))
     (if (null? entries)
 	'()
-	(let ((home (map-entry-home (car entries)))
-	      (rest (loop (cdr entries))))
+	(let ((home (map-entry-home (car entries))))
 	  (if home
-	      (cons home rest)
-	      rest)))))
+	      (cons home (loop (cdr entries)))
+	      (loop (cdr entries)))))))
 
 (define (register-map-clear? map)
   (for-all? (map-entries map) map-entry-saved-into-home?))
@@ -544,57 +582,55 @@ for REGISTER.  If no such register exists, returns #F."
 		  (map-entries input-map)
 		  (map-entries output-map)
     (lambda (input-entries shared-entries output-entries)
-      ((input-loop input-map
-		   ((shared-loop (output-loop (empty-register-map)
-					      output-entries))
-		    shared-entries))
-       input-entries))))
+      (input-loop input-entries
+		  (shared-loop shared-entries
+			       (output-loop (empty-register-map)
+					    output-entries))))))
 
 (define-export (clear-map-instructions input-map)
-  ((input-loop input-map '()) (map-entries input-map)))
+  input-map
+  (input-loop (map-entries input-map) (LAP)))
 
-(define (input-loop map tail)
-  map
-  (define (loop entries)
-    (if (null? entries)
-	tail
-	(let ((instructions (loop (cdr entries))))
-	  (if (map-entry-saved-into-home? (car entries))
-	      instructions
-	      (LAP ,@(save-into-home-instruction (car entries))
-		   ,@instructions)))))
-  loop)
+(define (input-loop entries tail)
+  (let loop ((entries entries))
+    (cond ((null? entries)
+	   tail)
+	  ((map-entry-saved-into-home? (car entries))
+	   (loop (cdr entries)))
+	  (else
+	   (LAP ,@(save-into-home-instruction (car entries))
+		,@(loop (cdr entries)))))))
 
-(define (shared-loop tail)
-  (define (loop entries)
+(define (shared-loop entries tail)
+  (let entries-loop ((entries entries))
     (if (null? entries)
 	tail
 	(let ((input-aliases (map-entry-aliases (caar entries))))
-	  (define (loop output-aliases)
+	  (let aliases-loop
+	      ((output-aliases
+		(eqv-set-difference (map-entry-aliases (cdar entries))
+				    input-aliases)))
 	    (if (null? output-aliases)
-		(shared-loop (cdr entries))
+		(entries-loop (cdr entries))
 		(LAP ,@(register->register-transfer (car input-aliases)
 						    (car output-aliases))
-		     ,@(loop (cdr output-aliases)))))
-	  (loop (eqv-set-difference (map-entry-aliases (cdar entries))
-				    input-aliases)))))
-  loop)
-
+		     ,@(aliases-loop (cdr output-aliases)))))))))
+
 (define (output-loop map entries)
-  (if (null? entries)
-      '()
-      (let ((instructions (output-loop map (cdr entries)))
-	    (home (map-entry-home (car entries))))
-	(if home
-	    (let ((aliases (map-entry-aliases (car entries))))
-	      (define (loop registers)
-		(if (null? registers)
-		    instructions
-		    (LAP ,@(register->register-transfer (car aliases)
-							(car registers))
-			 ,@(loop (cdr registers)))))
-	      (LAP ,@(home->register-transfer home (car aliases))
-		   ,@(loop (cdr aliases))))
-	    instructions))))
+  (let entries-loop ((entries entries))
+    (if (null? entries)
+	'()
+	(let ((home (map-entry-home (car entries))))
+	  (if home
+	      (let ((aliases (map-entry-aliases (car entries))))
+		(LAP ,@(home->register-transfer home (car aliases))
+		     ,@(let registers-loop ((registers (cdr aliases)))
+			 (if (null? registers)
+			     (entries-loop (cdr entries))
+			     (LAP ,@(register->register-transfer
+				     (car aliases)
+				     (car registers))
+				  ,@(loop (cdr registers)))))))
+	      (entries-loop (cdr entries)))))))
 
 )
