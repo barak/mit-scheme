@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.5 1993/07/27 21:00:51 gjr Exp $
+$Id: ntio.c,v 1.6 1993/07/28 20:28:14 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -311,29 +311,30 @@ DEFUN (OS_channel_read, (channel, buffer, nbytes),
 }
 
 static int
-DEFUN (dos_write, (fd, buffer, nbytes),
+DEFUN (raw_write, (fd, buffer, nbytes),
        HANDLE fd AND CONST unsigned char * buffer AND DWORD nbytes)
 {
-  DWORD  bytesWritten;
-  if (Screen_IsScreenHandle (fd)) {
+  DWORD bytesWritten;
+  if (Screen_IsScreenHandle (fd))
+  {
     SendMessage (fd, SCREEN_WRITE, (WPARAM)nbytes, (LPARAM)buffer);
-    return  nbytes;
+    return (nbytes);
   }
   if (IsConsoleHandle (fd))
-    return  dos_console_write (buffer, nbytes);
-  if (WriteFile(fd, buffer, nbytes, &bytesWritten, 0))
-    return  bytesWritten;
+    return (dos_console_write (buffer, nbytes));
+  if (WriteFile (fd, buffer, nbytes, &bytesWritten, 0))
+    return (bytesWritten);
   else
-    return  -1;
+    return (-1);
 }
 
-#define Syscall_Write(fd, buffer, size, so_far)		\
-do							\
-{ size_t _size = (size);				\
-  int _written;						\
-  _written = dos_write ((fd), (buffer), (_size));	\
-  if (_size != _written)				\
-    return ((_written < 0) ? -1 : (so_far) + _written); \
+#define SYSCALL_WRITE(fd, buffer, size, so_far) do			\
+{									\
+  size_t _size = (size);						\
+  int _written;								\
+  _written = raw_write ((fd), (buffer), (_size));			\
+  if (_size != _written)						\
+    return ((_written < 0) ? -1 : (so_far) + _written);			\
 } while (0)
 
 long
@@ -341,28 +342,30 @@ DEFUN (text_write, (hFile, buffer, nbytes),
        HANDLE hFile AND CONST unsigned char * buffer AND size_t nbytes)
 { /* Map LF to CR/LF */
   static CONST unsigned char crlf[] = {CARRIAGE_RETURN, LINEFEED};
-  CONST unsigned char *start;
+  CONST unsigned char * start;
   size_t i;
 
   for (i = 0, start = buffer; i < nbytes; start = &buffer[i])
   { size_t len;
 
-    while ((i < nbytes) && (buffer[i] != LINEFEED)) i++;
+    while ((i < nbytes) && (buffer[i] != LINEFEED))
+      i++;
     len = (&buffer[i] - start);
 
-    Syscall_Write (hFile, start, len, (i - len));
+    if (len != 0)
+      SYSCALL_WRITE (hFile, start, len, (i - len));
 
     if ((i < nbytes) && (buffer[i] == LINEFEED))
     { /* We are sitting on a linefeed. Write out CRLF */
       /* This backs out incorrectly if only CR is written out */
-      Syscall_Write (hFile, crlf, (sizeof (crlf)), i);
+      SYSCALL_WRITE (hFile, crlf, (sizeof (crlf)), i);
       i = i + 1; /* Skip over special character */
     }
   }
-  return nbytes;
+  return (nbytes);
 }
 
-#undef Syscall_Write
+#undef SYSCALL_WRITE
 
 long
 DEFUN (OS_channel_write, (channel, buffer, nbytes),
@@ -379,7 +382,7 @@ DEFUN (OS_channel_write, (channel, buffer, nbytes),
     hFile = CHANNEL_HANDLE(channel);
     scr = ((CHANNEL_COOKED (channel))
 	   ? (text_write (hFile, buffer, nbytes))
-	   : (dos_write (hFile, buffer, nbytes)));
+	   : (raw_write (hFile, buffer, nbytes)));
 
     if (scr < 0)
     {
@@ -596,12 +599,12 @@ void
 DEFUN (OS_channel_unregister, (channel), Tchannel channel)
 {
   if (CHANNEL_REGISTERED (channel))
-    {
-      OS_channels_registered -= 1;
-      (CHANNEL_REGISTERED (channel)) = 0;
-    }
+  {
+    OS_channels_registered -= 1;
+    (CHANNEL_REGISTERED (channel)) = 0;
+  }
+  return;
 }
-
 
 /* No SELECT in DOS */
 CONST int OS_have_select_p = 0;
