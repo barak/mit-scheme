@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.11 1989/12/29 19:19:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.12 1990/01/10 23:19:57 hal Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -1432,9 +1432,9 @@ MIT in each case. |#
   (let ((general-case
 	 (lambda ()
 	   (complex:exp (complex:* (complex:log z1) z2)))))
-    (cond ((and (recnum? z1)
-		(rec:exact? z1))
-	   (if (int:integer? z2)
+    (cond ((recnum? z1)
+	   (if (and (rec:exact? z1)
+		    (int:integer? z2))
 	       (let ((exact-method
 		      (lambda (z2)
 			(if (int:= 1 z2)
