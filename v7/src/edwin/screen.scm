@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.91 1991/04/01 10:07:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.92 1991/04/11 03:15:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -688,58 +688,6 @@
 	      (vector-set! new-hl y chy)
 	      (boolean-vector-set! new-hl-enable y false))
 	    (boolean-vector-set! current-hl-enable y false))))))
-
-(define (update-line-no-highlight screen y oline nline)
-  (let ((x-size (screen-x-size screen)))
-    (let ((olen (substring-non-space-end oline 0 x-size))
-	  (nlen (substring-non-space-end nline 0 x-size)))
-      (let ((len (fix:min olen nlen)))
-	(let find-mismatch ((x 0))
-	  (cond ((fix:= x len)
-		 (if (fix:< x nlen)
-		     (terminal-output-substring screen x y
-						nline x nlen false)))
-		((fix:= (vector-8b-ref oline x)
-			(vector-8b-ref nline x))
-		 (find-mismatch (fix:+ x 1)))
-		(else
-		 (let find-match ((x* (fix:+ x 1)))
-		   (cond ((fix:= x* len)
-			  (terminal-output-substring screen x y
-						     nline x nlen false))
-			 ((not (fix:= (vector-8b-ref oline x*)
-				      (vector-8b-ref nline x*)))
-			  (find-match (fix:+ x* 1)))
-			 (else
-			  ;; Ignore matches of 4 characters or less.
-			  ;; The overhead of moving the cursor and
-			  ;; drawing the characters is too much except
-			  ;; for very slow terminals.
-			  (let find-end-match ((x** (fix:+ x* 1)))
-			    (cond ((fix:= x** len)
-				   (if (fix:< (fix:- x** x*) 5)
-				       (terminal-output-substring screen x y
-								  nline x nlen
-								  false)
-				       (begin
-					 (terminal-output-substring screen x y
-								    nline x x*
-								    false)
-					 (if (fix:< x** nlen)
-					     (terminal-output-substring
-					      screen x** y
-					      nline x** nlen false)))))
-				  ((fix:= (vector-8b-ref oline x**)
-					  (vector-8b-ref nline x**))
-				   (find-end-match (fix:+ x** 1)))
-				  ((fix:< (fix:- x** x*) 5)
-				   (find-match x**))
-				  (else
-				   (terminal-output-substring screen x y
-							      nline x x* false)
-				   (find-mismatch x**)))))))))))
-      (if (fix:< nlen olen)
-	  (terminal-clear-line screen nlen y olen)))))
 
 (define (update-line-ignore-current screen y nline highlight x-size)
   (cond ((not (boolean-subvector-uniform? highlight 0 x-size))
@@ -766,8 +714,80 @@
     (if (fix:< xe x-size)
 	(terminal-clear-line screen xe y x-size))))
 
+(define (update-line-no-highlight screen y oline nline)
+  (let ((x-size (screen-x-size screen)))
+    (let ((olen (substring-non-space-end oline 0 x-size))
+	  (nlen (substring-non-space-end nline 0 x-size)))
+      (cond ((fix:= 0 olen)
+	     (let ((nstart (substring-non-space-start nline 0 nlen)))
+	       (if (fix:< nstart nlen)
+		   (terminal-output-substring screen nstart y
+					      nline nstart nlen false))))
+	    ((fix:= 0 nlen)
+	     (terminal-clear-line screen nlen y olen))
+	    (else
+	     (let ((len (fix:min olen nlen)))
+	       (let find-mismatch ((x 0))
+		 (cond ((fix:= x len)
+			(if (fix:< x nlen)
+			    (terminal-output-substring screen x y
+						       nline x nlen false)))
+		       ((fix:= (vector-8b-ref oline x)
+			       (vector-8b-ref nline x))
+			(find-mismatch (fix:+ x 1)))
+		       (else
+			(let find-match ((x* (fix:+ x 1)))
+			  (cond ((fix:= x* len)
+				 (terminal-output-substring
+				  screen x y nline x nlen false))
+				((not (fix:= (vector-8b-ref oline x*)
+					     (vector-8b-ref nline x*)))
+				 (find-match (fix:+ x* 1)))
+				(else
+				 ;; Ignore matches of 4 characters or less.
+				 ;; The overhead of moving the cursor and
+				 ;; drawing the characters is too much except
+				 ;; for very slow terminals.
+				 (let find-end-match ((x** (fix:+ x* 1)))
+				   (cond ((fix:= x** len)
+					  (if (fix:< (fix:- x** x*) 5)
+					      (terminal-output-substring
+					       screen x y nline x nlen false)
+					      (begin
+						(terminal-output-substring
+						 screen x y nline x x* false)
+						(if (fix:< x** nlen)
+						    (terminal-output-substring
+						     screen x** y
+						     nline x** nlen false)))))
+					 ((fix:= (vector-8b-ref oline x**)
+						 (vector-8b-ref nline x**))
+					  (find-end-match (fix:+ x** 1)))
+					 ((fix:< (fix:- x** x*) 5)
+					  (find-match x**))
+					 (else
+					  (terminal-output-substring
+					   screen x y nline x x* false)
+					  (find-mismatch x**)))))))))))
+	     (if (fix:< nlen olen)
+		 (terminal-clear-line screen nlen y olen)))))))
+
+(define (screen-line-draw-cost screen y)
+  (let ((line (vector-ref (matrix-contents (screen-current-matrix screen)) y)))
+    (let ((end (substring-non-space-end line 0 (string-length line))))
+      (if (fix:= 0 end)
+	  0
+	  (fix:- end (substring-non-space-start line 0 end))))))
+
 (define-integrable (fix:min x y) (if (fix:< x y) x y))
 (define-integrable (fix:max x y) (if (fix:> x y) x y))
+
+(define-integrable (substring-non-space-start string start end)
+  (do ((index start (fix:+ index 1)))
+      ((or (fix:= end index)
+	   (not (fix:= (vector-8b-ref string index)
+		       (char->integer #\space))))
+       index)))
 
 (define-integrable (substring-non-space-end string start end)
   (do ((index end (fix:- index 1)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.27 1991/04/01 10:07:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.28 1991/04/11 03:15:44 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -223,6 +223,7 @@ MIT in each case. |#
 	  screen-exit!
 	  screen-get-output-line
 	  screen-in-update?
+	  screen-line-draw-cost
 	  screen-modeline-event!
 	  screen-move-cursor
 	  screen-needs-update?
@@ -635,6 +636,7 @@ MIT in each case. |#
   (files "dired")
   (parent (edwin))
   (export (edwin)
+	  edwin-variable$dired-listing-switches
 	  edwin-variable$list-directory-unpacked
 	  make-dired-buffer))
 
