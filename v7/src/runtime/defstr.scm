@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.14 1990/02/23 18:47:56 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.15 1991/01/11 22:08:09 markf Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -52,6 +52,8 @@ functionality is not implemented.
 
 * By default, no COPIER procedure is generated.
 
+* COPIERS are not allowed for structures of type RECORD.
+
 * The side effect procedure corresponding to the accessor "foo" is
 given the name "set-foo!".
 
@@ -75,7 +77,7 @@ evaluated whenever the tag name is needed).  If used, structure
 instances will be tagged with that variable's value.  The variable
 must be defined when the defstruct is evaluated.
 
-* The TYPE option is restricted to the values VECTOR and LIST.
+* The TYPE option is restricted to the values VECTOR, LIST and RECORD.
 
 * The INCLUDE option is not implemented.
 
@@ -92,6 +94,13 @@ must be defined when the defstruct is evaluated.
       (structure/set-slots! structure
 			    (parse/slot-descriptions structure
 						     slot-descriptions))
+      (if (eq? (structure/scheme-type structure) 'RECORD)
+	  (let ((tag-name (structure/tag-name structure)))
+	    (structure/set-type! structure
+				 (make-record-type
+				  (make-record-type-name structure)
+				  (map slot/name
+				       (structure/slots structure))))))
       `(BEGIN ,@(type-definitions structure)
 	      ,@(constructor-definitions structure)
 	      ,@(accessor-definitions structure)
@@ -233,17 +242,20 @@ must be defined when the defstruct is evaluated.
 	    (if (eq? print-procedure default-value)
 		`(,(absolute 'UNPARSER/STANDARD-METHOD) ',name)
 		print-procedure)
-	    type
+	    type 
 	    (cond ((eq? type 'STRUCTURE) 'VECTOR)
 		  ((eq? type 'VECTOR) 'VECTOR)
 		  ((eq? type 'LIST) 'LIST)
+		  ((eq? type 'RECORD) 'RECORD)
 		  (else (error "Unsupported structure type" type)))
 	    (and (or (not type-seen?) named-seen?)
 		 (if (eq? tag-name default-value) 'DEFAULT true))
 	    (if (eq? tag-name default-value)
 		name
 		tag-name)
-	    offset
+	    (if (and (eq? type 'RECORD) (not (zero? offset)))
+		(error "Offset not allowed for record type structures" offset)
+		offset)
 	    include
 	    '())))
 
@@ -374,17 +386,50 @@ must be defined when the defstruct is evaluated.
 
 (define (structure? object)
   (and (vector? object)
-       (not (zero? (vector-length object)))
-       (eq? structure (vector-ref object 0))))
+	   (not (zero? (vector-length object)))
+	   (eq? structure (vector-ref object 0))))
 
 (define (tag->structure tag)
   (if (structure? tag)
       tag
       (named-structure/get-tag-description tag)))
 
+(define record-type-name-tag
+  (string->symbol "#[defstruct-tag]"))
+
+(unparser/set-tagged-vector-method! record-type-name-tag
+  (lambda (state record-type-name)
+    (unparse-object
+     state
+     (record-type-name->tag-name record-type-name))))
+
+(define-integrable (make-record-type-name structure-descriptor)
+  (vector
+   record-type-name-tag
+   (structure/tag-name structure-descriptor)
+   structure-descriptor))
+
+(define-integrable (record-type-name->tag-name type-name)
+  (and (vector? type-name)
+       (= 3 (vector-length type-name))
+       (vector-second type-name)))
+
+(define-integrable (record-type-name->structure-descriptor type-name)
+  (and (vector? type-name)
+       (= 3 (vector-length type-name))
+       (vector-third type-name)))
+
+(define-integrable (record-is-structure? record)
+  (eq? (record-type-name->structure-descriptor record)
+       record-type-name-tag))
+
 (define (named-structure? object)
   (let ((object
-	 (cond ((vector? object)
+	 (cond ((and (record? object) (record-is-structure? object))
+		(tag->structure
+		 (record-type-name->structure-descriptor
+		  (record-type-name (record-type-descriptor object)))))
+	       ((vector? object)
 		(and (not (zero? (vector-length object)))
 		     (tag->structure (vector-ref object 0))))
 	       ((pair? object)
@@ -398,21 +443,35 @@ must be defined when the defstruct is evaluated.
 	 (tag->structure
 	  (cond ((vector? instance) (vector-ref instance 0))
 		((pair? instance) (car instance))
+		((record? instance)
+		 (record-type-name->structure-descriptor
+		  (record-type-name (record-type-descriptor instance))))
 		(else (error "Illegal structure instance" instance))))))
     (cond ((structure? structure)
 	   (let ((scheme-type (structure/scheme-type structure)))
 	     (if (not (case scheme-type
 			((VECTOR) (vector? instance))
 			((LIST) (list? instance))
+			((RECORD) (record? instance))
 			(else (error "Illegal structure type" scheme-type))))
 		 (error "Malformed structure instance" instance))
 	     (let ((accessor
 		    (case scheme-type
-		      ((VECTOR) vector-ref)
-		      ((LIST) list-ref))))
+		      ((VECTOR)
+		       (lambda (instance slot)
+			 (vector-ref instance (slot/index slot))))
+		      ((LIST)
+		       (lambda (instance slot)
+			 (list-ref instance (slot/index slot))))
+		      ((RECORD)
+		       (lambda (instance slot)
+			 ((record-accessor
+			   (structure/type structure)
+			   (slot/name slot))
+			  instance))))))
 	       (map (lambda (slot)
 		      `(,(slot/name slot)
-			,(accessor instance (slot/index slot))))
+			,(accessor instance slot)))
 		    (structure/slots structure)))))
 	  ((procedure? structure)
 	   (structure instance))
@@ -431,16 +490,25 @@ must be defined when the defstruct is evaluated.
 		       (symbol-append (structure/conc-name structure)
 				      (slot/name slot))
 		       (slot/name slot))))
-	      `((DECLARE (INTEGRATE-OPERATOR ,accessor-name))
-		(DEFINE (,accessor-name STRUCTURE)
-		  (DECLARE (INTEGRATE STRUCTURE))
-		  ,(case (structure/scheme-type structure)
-		     ((VECTOR)
-		      `(,(absolute 'VECTOR-REF) STRUCTURE ,(slot/index slot)))
-		     ((LIST)
-		      `(,(absolute 'LIST-REF) STRUCTURE ,(slot/index slot)))
-		     (else
-		      (error "Unknown scheme type" structure)))))))
+	      (if (eq? (structure/scheme-type structure) 'RECORD)
+		  `((DECLARE (INTEGRATE-OPERATOR ,accessor-name))
+		    (DEFINE ,accessor-name
+		      (,(absolute 'RECORD-ACCESSOR)
+		       ,(structure/type structure)
+		       ',(slot/name slot))))
+		  `((DECLARE (INTEGRATE-OPERATOR ,accessor-name))
+		    (DEFINE (,accessor-name STRUCTURE)
+		      (DECLARE (INTEGRATE STRUCTURE))
+		      ,(case (structure/scheme-type structure)
+			 ((VECTOR)
+			  `(,(absolute 'VECTOR-REF)
+			    STRUCTURE
+			    ,(slot/index slot)))
+			 ((LIST)
+			  `(,(absolute 'LIST-REF)
+			    STRUCTURE
+			    ,(slot/index slot)))
+			 (error "Unknown scheme type" structure)))))))
 	  (structure/slots structure)))
 
 (define (settor-definitions structure)
@@ -456,21 +524,27 @@ must be defined when the defstruct is evaluated.
 			   (symbol-append 'SET-
 					  (slot/name slot)
 					  '!))))
-		  `((DECLARE (INTEGRATE-OPERATOR ,settor-name))
-		    (DEFINE (,settor-name STRUCTURE VALUE)
-		      (DECLARE (INTEGRATE STRUCTURE VALUE))
-		      ,(case (structure/scheme-type structure)
-			 ((VECTOR)
-			  `(,(absolute 'VECTOR-SET!) STRUCTURE
-						     ,(slot/index slot)
-						     VALUE))
-			 ((LIST)
-			  `(,(absolute 'SET-CAR!)
-			    (,(absolute 'LIST-TAIL) STRUCTURE
-						    ,(slot/index slot))
-			    VALUE))
-			 (else
-			  (error "Unknown scheme type" structure))))))))
+		  (if (eq? (structure/scheme-type structure) 'RECORD)
+		      `((DECLARE (INTEGRATE-OPERATOR ,settor-name))
+			(DEFINE ,settor-name
+			  (,(absolute 'RECORD-UPDATER)
+			   ,(structure/type structure)
+			   ',(slot/name slot))))
+		      `((DECLARE (INTEGRATE-OPERATOR ,settor-name))
+			(DEFINE (,settor-name STRUCTURE VALUE)
+			  (DECLARE (INTEGRATE STRUCTURE VALUE))
+			  ,(case (structure/scheme-type structure)
+			     ((VECTOR)
+			      `(,(absolute 'VECTOR-SET!) STRUCTURE
+							 ,(slot/index slot)
+							 VALUE))
+			     ((LIST)
+			      `(,(absolute 'SET-CAR!)
+				(,(absolute 'LIST-TAIL) STRUCTURE
+							,(slot/index slot))
+				VALUE))
+			     (else
+			      (error "Unknown scheme type" structure)))))))))
 	  (structure/slots structure)))
 
 (define (constructor-definitions structure)
@@ -492,11 +566,17 @@ must be defined when the defstruct is evaluated.
 	 (map (lambda (slot)
 		(string->uninterned-symbol (symbol->string (slot/name slot))))
 	      (structure/slots structure))))
-    `(DEFINE (,name ,@slot-names)
-       ;; *** Kludge -- SCHEME-TYPE happens to be same as constructor.
-       (,(absolute (structure/scheme-type structure))
-	,@(constructor-prefix-slots structure)
-	,@slot-names))))
+    (if (eq? (structure/scheme-type structure) 'RECORD)
+	`(DEFINE ,name
+	   (,(absolute 'RECORD-CONSTRUCTOR)
+	    ,(structure/type structure)
+	    ',(map slot/name
+		   (structure/slots structure))))
+	`(DEFINE (,name ,@slot-names)
+	   ;; *** Kludge -- SCHEME-TYPE happens to be same as constructor.
+	   (,(absolute (structure/scheme-type structure))
+	    ,@(constructor-prefix-slots structure)
+	    ,@slot-names)))))
 
 (define (constructor-definition/keyword structure name)
   (let ((keyword-list (string->uninterned-symbol "keyword-list")))
@@ -516,6 +596,9 @@ must be defined when the defstruct is evaluated.
 	     `(,(absolute 'LIST->VECTOR) ,list-cons))
 	    ((LIST)
 	     list-cons)
+	    ((RECORD)
+	     `((,(absolute 'RECORD-CONSTRUCTOR) (structure/type structure))
+	       ,list-cons))
 	    (else
 	     (error "Unknown scheme type" structure)))))))
 
@@ -539,8 +622,12 @@ must be defined when the defstruct is evaluated.
 
 (define (constructor-definition/boa structure name lambda-list)
   `(DEFINE (,name . ,lambda-list)
-     ;; *** Kludge -- SCHEME-TYPE happens to be same as constructor.
-     (,(absolute (structure/scheme-type structure))
+     (,(let ((scheme-type (structure/scheme-type structure)))
+	 (if (eq? scheme-type 'RECORD)
+	     ((absolute 'RECORD-CONSTRUCTOR)
+	      (structure/type structure))
+	     ;; *** Kludge -- SCHEME-TYPE happens to be same as constructor.
+	     (absolute scheme-type)))
       ,@(constructor-prefix-slots structure)
       ,@(parse-lambda-list lambda-list
 	  (lambda (required optional rest)
@@ -589,7 +676,8 @@ must be defined when the defstruct is evaluated.
 	   `((DEFINE (,(structure/predicate-name structure) ,variable)
 	       (AND (,(absolute 'VECTOR?) ,variable)
 		    (,(absolute 'NOT)
-		     (,(absolute 'ZERO?) (,(absolute 'VECTOR-LENGTH) ,variable)))
+		     (,(absolute 'ZERO?)
+		      (,(absolute 'VECTOR-LENGTH) ,variable)))
 		    (,(absolute 'EQ?) (,(absolute 'VECTOR-REF) ,variable 0)
 				      ,(structure/tag-name structure))))))
 	  ((LIST)
@@ -597,6 +685,10 @@ must be defined when the defstruct is evaluated.
 	       (AND (,(absolute 'PAIR?) ,variable)
 		    (,(absolute 'EQ?) (,(absolute 'CAR) ,variable)
 				      ,(structure/tag-name structure))))))
+	  ((RECORD)
+	   `((DEFINE ,(structure/predicate-name structure)
+	       (,(absolute 'RECORD-PREDICATE)
+		,(structure/type structure)))))
 	  (else
 	   (error "Unknown scheme type" structure))))
       '()))
@@ -614,6 +706,8 @@ must be defined when the defstruct is evaluated.
 	      `(DEFINE (,copier-name OBJECT)
 		 (DECLARE (INTEGRATE OBJECT))
 		 (,(absolute 'LIST-COPY) OBJECT)))
+	     ((RECORD)
+	      (error "No copiers for record type structures" structure))
 	     (else
 	      (error "Unknown scheme type" structure))))
 	'())))
@@ -621,10 +715,15 @@ must be defined when the defstruct is evaluated.
 (define (print-procedure-definitions structure)
   (if (and (structure/print-procedure structure)
 	   (structure/named? structure))
-      `((,(absolute (case (structure/scheme-type structure)
-		      ((VECTOR) 'UNPARSER/SET-TAGGED-VECTOR-METHOD!)
-		      ((LIST) 'UNPARSER/SET-TAGGED-PAIR-METHOD!)
-		      (else (error "Unknown scheme type" structure))))
-	 ,(structure/tag-name structure)
-	 ,(structure/print-procedure structure)))
+      (let ((scheme-type (structure/scheme-type structure)))
+	`((,(absolute (case scheme-type
+			((VECTOR) 'UNPARSER/SET-TAGGED-VECTOR-METHOD!)
+			((LIST) 'UNPARSER/SET-TAGGED-PAIR-METHOD!)
+			((RECORD) 'SET-RECORD-TYPE-UNPARSER-METHOD!)
+			(else (error "Unknown scheme type" structure))))
+	   ,((if (eq? scheme-type 'RECORD)
+		 structure/type
+		 structure/tag-name)
+	     structure)
+	   ,(structure/print-procedure structure))))
       '()))
