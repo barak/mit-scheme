@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.21 1999/04/08 05:00:59 cph Exp $
+$Id: datime.scm,v 14.22 1999/04/27 17:23:16 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -53,7 +53,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			   'MAKE-DECODED-TIME)
   (let ((zone (if (default-object? zone) #f zone)))
     (if (and zone (not (time-zone? zone)))
-	(error:bad-range-argument zone "time zone" 'MAKE-DECODED-TIME))
+	(error:wrong-type-argument zone "time zone" 'MAKE-DECODED-TIME))
     (if zone
 	(%make-decoded-time second minute hour day month year
 			    (compute-day-of-week day month year)
