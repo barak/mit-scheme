@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.266 2001/06/04 19:25:09 cph Exp $
+;;; $Id: imail-top.scm,v 1.267 2001/06/12 00:58:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1954,9 +1954,19 @@ Negative argument means search in reverse."
 	  (directory-pathname (file-folder-pathname folder))
 	  (user-homedir-pathname)))
      (receive-modification-events folder notice-folder-event)
+     (add-kill-buffer-hook buffer disassociate-buffer-from-folder)
      (add-kill-buffer-hook buffer delete-associated-buffers)
-     (add-kill-buffer-hook buffer stop-probe-folder-thread)
-     (start-probe-folder-thread buffer))))
+     (if (eq? (folder-connection-status folder) 'ONLINE)
+	 (start-probe-folder-thread folder)))))
+
+(define (disassociate-buffer-from-folder buffer)
+  (without-interrupts
+   (lambda ()
+     (let ((folder (buffer-get buffer 'IMAIL-FOLDER #f)))
+       (if folder
+	   (begin
+	     (ignore-modification-events folder notice-folder-event)
+	     (remove-property! folder 'BUFFER)))))))
 
 (define (delete-associated-buffers folder-buffer)
   (for-each (lambda (buffer)
@@ -2062,7 +2072,11 @@ Negative argument means search in reverse."
 ;;;; Folder-event handling
 
 (define (notice-folder-event folder type parameters)
-  type parameters
+  parameters
+  (if (eq? type 'STATUS)
+      (case (folder-connection-status folder)
+	((ONLINE) (start-probe-folder-thread folder))
+	((OFFLINE) (stop-probe-folder-thread folder))))
   (maybe-add-command-suffix! notice-folder-modifications folder))
 
 (define (notice-folder-modifications folder)
@@ -2113,13 +2127,12 @@ Negative argument means search in reverse."
 
 ;;;; Probe-folder thread
 
-(define (start-probe-folder-thread buffer)
-  (stop-probe-folder-thread buffer)
+(define (start-probe-folder-thread folder)
+  (stop-probe-folder-thread folder)
   (without-interrupts
    (lambda ()
-     (let ((folder (buffer-get buffer 'IMAIL-FOLDER #f))
-	   (interval (ref-variable imail-update-interval #f)))
-       (if (and folder interval)
+     (let ((interval (ref-variable imail-update-interval #f)))
+       (if interval
 	   (store-property! folder
 			    'PROBE-REGISTRATION
 			    (start-standard-polling-thread
@@ -2130,20 +2143,22 @@ Negative argument means search in reverse."
 (define ((probe-folder-output-processor folder))
   (let ((folder (weak-car folder)))
     (and folder
-	 (eq? (folder-connection-status folder) 'ONLINE)
-	 (begin
-	   (probe-folder folder)
-	   #t))))
+	 (if (and (imail-folder->buffer folder #f)
+		  (eq? (folder-connection-status folder) 'ONLINE))
+	     (begin
+	       (probe-folder folder)
+	       #t)
+	     (begin
+	       (stop-probe-folder-thread folder)
+	       #f)))))
 
-(define (stop-probe-folder-thread buffer)
+(define (stop-probe-folder-thread folder)
   (without-interrupts
    (lambda ()
-     (let ((folder (buffer-get buffer 'IMAIL-FOLDER #f)))
-       (if folder
+     (let ((holder (get-property folder 'PROBE-REGISTRATION #f)))
+       (if holder
 	   (begin
-	     (let ((holder (get-property folder 'PROBE-REGISTRATION #f)))
-	       (if holder
-		   (stop-standard-polling-thread holder)))
+	     (stop-standard-polling-thread holder)
 	     (remove-property! folder 'PROBE-REGISTRATION)))))))
 
 ;;;; Message insertion procedures

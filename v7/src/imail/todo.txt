@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.130 2001/06/04 19:25:11 cph Exp $
+$Id: todo.txt,v 1.131 2001/06/12 00:58:15 cph Exp $
 
 Bug fixes
 ---------
@@ -10,11 +10,6 @@ Bug fixes
 * Various changes to Dired that might affect our browsers: t command
   means toggle sense of marked lines (*t also does this, perhaps is
   preferable).  S and H do links.  P prints file.
-
-* The PROBE-FOLDER thread is left running even when connection to
-  server is severed.  In fact it is running as long as the buffer is
-  around.  It should be started when the connection is established,
-  and stopped when the connection is dropped.
 
 * The RENAME-FOLDER operation must change the folder object to refer
   to the new URL rather than the old.  The operation must close the
