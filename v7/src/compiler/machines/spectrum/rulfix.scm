@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 4.49 2001/12/20 21:45:25 cph Exp $
+$Id: rulfix.scm,v 4.50 2002/02/22 04:56:28 cph Exp $
 
-Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -189,29 +189,36 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((unary-fixnum
-      (lambda (name instr nsv fixed-operand)
-	`(define-arithmetic-method ',name fixnum-methods/1-arg
-	   (lambda (tgt src overflow?)
-	     (if overflow?
-		 (LAP (,instr (,nsv) ,fixed-operand ,',src ,',tgt))
-		 (LAP (,instr () ,fixed-operand ,',src ,',tgt)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-ARITHMETIC-METHOD ',(cadr form) FIXNUM-METHODS/1-ARG
+	    (LAMBDA (TGT SRC OVERFLOW?)
+	      (IF OVERFLOW?
+		  (LAP (,(caddr form) (,(cadddr form))
+				      ,(list-ref form 4) ,',SRC ,',TGT))
+		  (LAP (,(caddr form) () ,fixed-operand ,',SRC ,',TGT))))))))
 
      (binary-fixnum
-      (lambda (name instr nsv)
-	`(define-arithmetic-method ',name fixnum-methods/2-args
-	   (lambda (tgt src1 src2 overflow?)
-	     (if overflow?
-		 (LAP (,instr (,nsv) ,',src1 ,',src2 ,',tgt))
-		 (LAP (,instr () ,',src1 ,',src2 ,',tgt)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-ARITHMETIC-METHOD ',(cadr form) FIXNUM-METHODS/2-ARGS
+	    (LAMBDA (TGT SRC1 SRC2 OVERFLOW?)
+	      (IF OVERFLOW?
+		  (LAP (,(caddr form) (,(cadddr form)) ,',SRC1 ,',SRC2 ,',TGT))
+		  (LAP (,(caddr form) () ,',SRC1 ,',SRC2 ,',TGT))))))))
 
      (binary-out-of-line
-      (lambda (name . regs)
-	`(define-arithmetic-method ',name fixnum-methods/2-args/special
-	   (cons ,(symbol-append 'HOOK:COMPILER- name)
-		 (lambda ()
-		   ,(if (null? regs)
-			`(LAP)
-			`(require-registers! ,@regs))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-ARITHMETIC-METHOD ',(cadr form) FIXNUM-METHODS/2-ARGS/SPECIAL
+	    (CONS ,(symbol-append 'HOOK:COMPILER- (cadr form))
+		  (LAMBDA ()
+		    ,(if (null? (cddr form))
+			 `(LAP)
+			 `(REQUIRE-REGISTERS! ,@(cddr form))))))))))
 
   (unary-fixnum ONE-PLUS-FIXNUM ADDI NSV ,fixnum-1)
   (unary-fixnum MINUS-ONE-PLUS-FIXNUM ADDI NSV ,(- fixnum-1))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.43 2001/12/20 21:45:25 cph Exp $
+$Id: rules3.scm,v 4.44 2002/02/22 04:52:22 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -170,38 +170,47 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-special-primitive-invocation
-       (lambda (name)
-	 `(define-rule statement
-	    (INVOCATION:SPECIAL-PRIMITIVE
-	     (? frame-size)
-	     (? continuation)
-	     ,(make-primitive-procedure name true))
-	    frame-size continuation
-	    (special-primitive-invocation
-	     ,(symbol-append 'CODE:COMPILER- name)))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  `(DEFINE-RULE STATEMENT
+	     (INVOCATION:SPECIAL-PRIMITIVE
+	      (? frame-size)
+	      (? continuation)
+	      ,(make-primitive-procedure (cadr form) #t))
+	     FRAME-SIZE CONTINUATION
+	     (SPECIAL-PRIMITIVE-INVOCATION
+	      ,(close-syntax (symbol-append 'CODE:COMPILER- (cadr form))
+			     environment))))))
 
      (define-optimized-primitive-invocation
-       (lambda (name)
-	 `(define-rule statement
-	    (INVOCATION:SPECIAL-PRIMITIVE
-	     (? frame-size)
-	     (? continuation)
-	     ,(make-primitive-procedure name true))
-	    frame-size continuation
-	    (optimized-primitive-invocation
-	     ,(symbol-append 'HOOK:COMPILER- name)))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  `(DEFINE-RULE STATEMENT
+	     (INVOCATION:SPECIAL-PRIMITIVE
+	      (? frame-size)
+	      (? continuation)
+	      ,(make-primitive-procedure (cadr form) #t))
+	     FRAME-SIZE CONTINUATION
+	     (OPTIMIZED-PRIMITIVE-INVOCATION
+	      ,(close-syntax (symbol-append 'HOOK:COMPILER- (cadr form))
+			     environment))))))
 
      (define-allocation-primitive
-       (lambda (name)
-	 (let ((prim (make-primitive-procedure name true)))
-	 `(define-rule statement
-	    (INVOCATION:SPECIAL-PRIMITIVE
-	     (? frame-size)
-	     (? continuation)
-	     ,prim)
-	    (open-code-block-allocation ',name ',prim
-					,(symbol-append 'HOOK:COMPILER- name)
-					frame-size continuation))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  (let ((prim (make-primitive-procedure (cadr form) #t)))
+	    `(DEFINE-RULE STATEMENT
+	       (INVOCATION:SPECIAL-PRIMITIVE
+		(? frame-size)
+		(? continuation)
+		,prim)
+	       (OPEN-CODE-BLOCK-ALLOCATION
+		',(cadr form)
+		',prim
+		,(close-syntax (symbol-append 'HOOK:COMPILER- (cadr form))
+			       environment)
+		FRAME-SIZE
+		CONTINUATION)))))))
 
   (define-optimized-primitive-invocation &+)
   (define-optimized-primitive-invocation &-)

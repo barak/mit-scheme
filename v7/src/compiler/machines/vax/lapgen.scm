@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.17 2001/12/20 21:45:25 cph Exp $
+$Id: lapgen.scm,v 4.18 2002/02/22 05:04:57 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -535,16 +535,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-integrable reg:stack-guard		(INST-EA (@RO B 10 #x002C)))
 
 (let-syntax ((define-codes
-	       (lambda (start . names)
-		 (define (loop names index)
-		   (if (null? names)
-		       '()
-		       (cons `(DEFINE-INTEGRABLE
-				,(symbol-append 'CODE:COMPILER-
-						(car names))
-				,index)
-			     (loop (cdr names) (1+ index)))))
-		 `(BEGIN ,@(loop names start)))))
+	       (sc-macro-transformer
+		(lambda (form environment)
+		  environment
+		  `(BEGIN
+		     ,@(let loop ((names (cddr form)) (index (cadr form)))
+			 (if (pair? names)
+			     (cons `(DEFINE-INTEGRABLE
+				      ,(symbol-append 'CODE:COMPILER-
+						      (car names))
+				      ,index)
+				   (loop (cdr names) (+ index 1)))
+			     '())))))))
   (define-codes #x012
     primitive-apply primitive-lexpr-apply
     apply error lexpr-apply link
@@ -557,16 +559,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     set! define lookup-apply))
 
 (let-syntax ((define-entries
-	       (lambda (start . names)
-		 (define (loop names index)
-		   (if (null? names)
-		       '()
-		       (cons `(DEFINE-INTEGRABLE
-				,(symbol-append 'ENTRY:COMPILER-
-						(car names))
-				(INST-EA (@RO B 10 ,index)))
-			     (loop (cdr names) (+ index 8)))))
-		 `(BEGIN ,@(loop names start)))))
+	       (sc-macro-transformer
+		(lambda (form environment)
+		  environment
+		  `(BEGIN
+		     ,@(let loop ((names (cddr form)) (index (cadr form)))
+			 (if (pair? names)
+			     (cons `(DEFINE-INTEGRABLE
+				      ,(symbol-append 'ENTRY:COMPILER-
+						      (car names))
+				      (INST-EA (@RO B 10 ,index)))
+				   (loop (cdr names) (+ index 8)))
+			     '())))))))
   (define-entries #x40
     scheme-to-interface			; Main entry point (only one necessary)
     scheme-to-interface-jsb		; Used by rules3&4, for convenience.

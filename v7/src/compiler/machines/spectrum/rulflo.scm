@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 4.41 2001/12/20 21:45:25 cph Exp $
+$Id: rulflo.scm,v 4.42 2002/02/22 04:58:51 cph Exp $
 
-Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -361,10 +361,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-flonum-operation
-       (lambda (primitive-name opcode)
-	 `(define-arithmetic-method ',primitive-name flonum-methods/1-arg
-	    (lambda (target source)
-	      (LAP (,opcode (DBL) ,',source ,',target)))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-ARITHMETIC-METHOD ',(cadr form) FLONUM-METHODS/1-ARG
+	     (LAMBDA (TARGET SOURCE)
+	       (LAP (,(caddr form) (DBL) ,',SOURCE ,',TARGET))))))))
   (define-flonum-operation FLONUM-ABS FABS)
   (define-flonum-operation FLONUM-SQRT FSQRT)
   (define-flonum-operation FLONUM-ROUND FRND))
@@ -387,9 +389,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (list 'FLONUM-METHODS/1-ARG/SPECIAL))
 
 (let-syntax ((define-out-of-line
-	       (lambda (name)
-		 `(define-arithmetic-method ',name flonum-methods/1-arg/special
-		    ,(symbol-append 'HOOK:COMPILER- name)))))
+	       (sc-macro-transformer
+		(lambda (form environment)
+		  `(DEFINE-ARITHMETIC-METHOD ',(cadr form)
+		     FLONUM-METHODS/1-ARG/SPECIAL
+		     ,(close-syntax (symbol-append 'HOOK:COMPILER- (cadr form))
+				    environment))))))
   (define-out-of-line FLONUM-SIN)
   (define-out-of-line FLONUM-COS)
   (define-out-of-line FLONUM-TAN)
@@ -475,10 +480,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-flonum-operation
-       (lambda (primitive-name opcode)
-	 `(define-arithmetic-method ',primitive-name flonum-methods/2-args
-	    (lambda (target source1 source2)
-	      (LAP (,opcode (DBL) ,',source1 ,',source2 ,',target)))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-ARITHMETIC-METHOD ',(cadr form) FLONUM-METHODS/2-ARGS
+	     (LAMBDA (TARGET SOURCE1 SOURCE2)
+	       (LAP (,(caddr form) (DBL)
+				   ,',SOURCE1 ,',SOURCE2 ,',TARGET))))))))
   (define-flonum-operation flonum-add fadd)
   (define-flonum-operation flonum-subtract fsub)
   (define-flonum-operation flonum-multiply fmpy)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dassm2.scm,v 4.14 2001/12/20 21:45:25 cph Exp $
+$Id: dassm2.scm,v 4.15 2002/02/22 05:03:14 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,10 +27,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (disassembler/read-variable-cache block index)
   (let-syntax ((ucode-type
-		(lambda (name) (microcode-type name)))
+		(sc-macro-transformer
+		 (lambda (form environment)
+		   environment
+		   (apply microcode-type (cdr form)))))
 	       (ucode-primitive
-		(lambda (name arity)
-		  (make-primitive-procedure name arity))))
+		(sc-macro-transformer
+		 (lambda (form environment)
+		   environment
+		   (apply make-primitive-procedure (cdr form))))))
     ((ucode-primitive primitive-object-set-type 2)
      (ucode-type quad)
      (system-vector-ref block index))))
@@ -187,10 +192,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (with-absolutely-no-interrupts
    (lambda ()
      (let-syntax ((ucode-type
-		   (lambda (name) (microcode-type name)))
+		   (sc-macro-transformer
+		    (lambda (form environment)
+		      environment
+		      (apply microcode-type (cdr form)))))
 		  (ucode-primitive
-		   (lambda (name arity)
-		     (make-primitive-procedure name arity))))
+		   (sc-macro-transformer
+		    (lambda (form environment)
+		      environment
+		      (apply make-primitive-procedure (cdr form))))))
        ((ucode-primitive primitive-object-set-type 2)
 	(ucode-type compiled-entry)
 	((ucode-primitive make-non-pointer-object 1)

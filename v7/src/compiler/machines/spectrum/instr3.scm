@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr3.scm,v 1.4 2001/12/20 21:45:25 cph Exp $
+$Id: instr3.scm,v 1.5 2002/02/22 04:45:53 cph Exp $
 
-Copyright (c) 1987, 1989, 1990, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,17 +28,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Computation instructions
 
 (let-syntax ((arith-logical
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		  (((? compl complal) (? source-reg1) (? source-reg2)
-				      (? target-reg))
-		   (LONG (6 #x02)
-			 (5 source-reg2)
-			 (5 source-reg1)
-			 (3 (car compl))
-			 (1 (cadr compl))
-			 (7 ,extn)
-			 (5 target-reg)))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl complal) (? source-reg1) (? source-reg2)
+					(? target-reg))
+		     (LONG (6 #x02)
+			   (5 source-reg2)
+			   (5 source-reg1)
+			   (3 (car compl))
+			   (1 (cadr compl))
+			   (7 ,(caddr form))
+			   (5 target-reg))))))))
 
   (arith-logical ANDCM    #x00)
   (arith-logical AND      #x10)
@@ -104,17 +106,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (5 #b00000))))
 
 (let-syntax ((immed-arith
-	      (lambda (keyword opcode extn)
-		`(define-instruction ,keyword
-		   (((? compl complal) (? immed-11) (? source-reg)
-				       (? target-reg))
-		    (LONG (6 ,opcode)
-			  (5 source-reg)
-			  (5 target-reg)
-			  (3 (car compl))
-			  (1 (cadr compl))
-			  (1 ,extn)
-			  (11 immed-11 RIGHT-SIGNED)))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl complal) (? immed-11) (? source-reg)
+					(? target-reg))
+		     (LONG (6 ,(caddr form))
+			   (5 source-reg)
+			   (5 target-reg)
+			   (3 (car compl))
+			   (1 (cadr compl))
+			   (1 ,(cadddr form))
+			   (11 immed-11 RIGHT-SIGNED))))))))
   (immed-arith ADDI    #x2d 0)
   (immed-arith ADDIO   #x2d 1)
   (immed-arith ADDIT   #x2c 0)
@@ -145,82 +149,95 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (5 (- 31 pos))
 	 (5 target-reg))))
 
-(let-syntax ((extr (lambda (keyword extn)
-		     `(define-instruction ,keyword
-			(((? compl compled) (? source-reg) (? pos) (? len)
-					    (? target-reg))
-			 (LONG (6 #x34)
-			       (5 source-reg)
-			       (5 target-reg)
-			       (3 compl)
-			       (3 ,extn)
-			       (5 pos)
-			       (5 (- 32 len)))))))
-	     (vextr (lambda (keyword extn)
-		      `(define-instruction ,keyword
-			 (((? compl compled) (? source-reg) (? len)
-					     (? target-reg))
-			  (LONG (6 #x34)
-				(5 source-reg)
-				(5 target-reg)
-				(3 compl)
-				(3 ,extn)
-				(5 #b00000)
-				(5 (- 32 len))))))))
+(let-syntax ((extr
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl compled) (? source-reg) (? pos) (? len)
+					(? target-reg))
+		     (LONG (6 #x34)
+			   (5 source-reg)
+			   (5 target-reg)
+			   (3 compl)
+			   (3 ,(caddr form))
+			   (5 pos)
+			   (5 (- 32 len))))))))
+	     (vextr
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl compled) (? source-reg) (? len)
+					(? target-reg))
+		     (LONG (6 #x34)
+			   (5 source-reg)
+			   (5 target-reg)
+			   (3 compl)
+			   (3 ,(caddr form))
+			   (5 #b00000)
+			   (5 (- 32 len)))))))))
   (extr  EXTRU  6)
   (extr  EXTRS  7)
   (vextr VEXTRU 4)
   (vextr VEXTRS 5))
 
 (let-syntax ((depos
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   (((? compl compled) (? source-reg) (? pos) (? len)
-				       (? target-reg))
-		    (LONG (6 #x35)
-			  (5 target-reg)
-			  (5 source-reg)
-			  (3 compl)
-			  (3 ,extn)
-			  (5 (- 31 pos))
-			  (5 (- 32 len)))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl compled) (? source-reg) (? pos) (? len)
+					(? target-reg))
+		     (LONG (6 #x35)
+			   (5 target-reg)
+			   (5 source-reg)
+			   (3 compl)
+			   (3 ,(caddr form))
+			   (5 (- 31 pos))
+			   (5 (- 32 len))))))))
 	     (vdepos
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   (((? compl compled) (? source-reg) (? len)
-				       (? target-reg))
-		    (LONG (6 #x35)
-			  (5 target-reg)
-			  (5 source-reg)
-			  (3 compl)
-			  (3 ,extn)
-			  (5 #b00000)
-			  (5 (- 32 len)))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl compled) (? source-reg) (? len)
+					(? target-reg))
+		     (LONG (6 #x35)
+			   (5 target-reg)
+			   (5 source-reg)
+			   (3 compl)
+			   (3 ,(caddr form))
+			   (5 #b00000)
+			   (5 (- 32 len))))))))
 	     (idepos
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   (((? compl compled) (? immed) (? pos) (? len)
-				       (? target-reg))
-		    (LONG (6 #x35)
-			  (5 target-reg)
-			  (5 immed RIGHT-SIGNED)
-			  (3 compl)
-			  (3 ,extn)
-			  (5 (- 31 pos))
-			  (5 (- 32 len)))))))
-
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl compled) (? immed) (? pos) (? len)
+					(? target-reg))
+		     (LONG (6 #x35)
+			   (5 target-reg)
+			   (5 immed RIGHT-SIGNED)
+			   (3 compl)
+			   (3 ,(caddr form))
+			   (5 (- 31 pos))
+			   (5 (- 32 len))))))))
 	     (videpos
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   (((? compl compled) (? immed) (? len)
-				       (? target-reg))
-		    (LONG (6 #x35)
-			  (5 target-reg)
-			  (5 immed RIGHT-SIGNED)
-			  (3 compl)
-			  (3 ,extn)
-			  (5 #b00000)
-			  (5 (- 32 len))))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl compled) (? immed) (? len)
+					(? target-reg))
+		     (LONG (6 #x35)
+			   (5 target-reg)
+			   (5 immed RIGHT-SIGNED)
+			   (3 compl)
+			   (3 ,(caddr form))
+			   (5 #b00000)
+			   (5 (- 32 len)))))))))
 
   (idepos  DEPI   7)
   (idepos  ZDEPI  6)
@@ -232,17 +249,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (vdepos  ZVDEP  0))
 
 (let-syntax ((Probe-Read-Write
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   ((() (OFFSET 0 (? space) (? base)) (? priv-reg)
-		     (? target-reg))
-		    (LONG (6 1)
-			  (5 base)
-			  (5 priv-reg)
-			  (2 space)
-			  (8 ,extn)
-			  (1 #b0)
-			  (5 target-reg)))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((() (OFFSET 0 (? space) (? base)) (? priv-reg)
+			 (? target-reg))
+		     (LONG (6 1)
+			   (5 base)
+			   (5 priv-reg)
+			   (2 space)
+			   (8 ,(caddr form))
+			   (1 #b0)
+			   (5 target-reg))))))))
   (Probe-Read-Write PROBER  #x46)
   (Probe-Read-Write PROBEW  #x47)
   (Probe-Read-Write PROBERI #xc6)
@@ -333,30 +352,34 @@ DIAG
 |#
 
 (let-syntax ((floatarith-1
-	      (lambda (keyword extn-a extn-b)
-		`(define-instruction ,keyword
-		   ((((? fmt fpformat)) (? source-reg) (? target-reg))
-		    (LONG (6 #x0c)
-			  (5 source-reg)
-			  (5 #b00000)
-			  (3 ,extn-a)
-			  (2 fmt)
-			  (2 ,extn-b)
-			  (4 #b0000)
-			  (5 target-reg))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((((? fmt fpformat)) (? source-reg) (? target-reg))
+		     (LONG (6 #x0c)
+			   (5 source-reg)
+			   (5 #b00000)
+			   (3 ,(caddr form))
+			   (2 fmt)
+			   (2 ,(cadddr form))
+			   (4 #b0000)
+			   (5 target-reg)))))))
 	     (floatarith-2
-	      (lambda (keyword extn-a extn-b)
-		`(define-instruction ,keyword
-		   ((((? fmt fpformat)) (? source-reg1) (? source-reg2)
-					(? target-reg))
-		    (LONG (6 #x0c)
-			  (5 source-reg1)
-			  (5 source-reg2)
-			  (3 ,extn-a)
-			  (2 fmt)
-			  (2 ,extn-b)
-			  (4 #b0000)
-			  (5 target-reg)))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((((? fmt fpformat)) (? source-reg1) (? source-reg2)
+					 (? target-reg))
+		     (LONG (6 #x0c)
+			   (5 source-reg1)
+			   (5 source-reg2)
+			   (3 ,(caddr form))
+			   (2 fmt)
+			   (2 ,(cadddr form))
+			   (4 #b0000)
+			   (5 target-reg))))))))
 
   (floatarith-2 FADD   0 3)
   (floatarith-2 FSUB   1 3)
@@ -379,19 +402,21 @@ DIAG
 	 (5 condition))))
 
 (let-syntax ((fpconvert
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   ((((? sf fpformat) (? df fpformat))
-		     (? source-reg1)
-		     (? reg-t))
-		    (LONG (6 #x0c)
-			  (5 source-reg1)
-			  (4 #b0000)
-			  (2 ,extn)
-			  (2 df)
-			  (2 sf)
-			  (6 #b010000)
-			  (5 reg-t)))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((((? sf fpformat) (? df fpformat))
+		      (? source-reg1)
+		      (? reg-t))
+		     (LONG (6 #x0c)
+			   (5 source-reg1)
+			   (4 #b0000)
+			   (2 ,(caddr form))
+			   (2 df)
+			   (2 sf)
+			   (6 #b010000)
+			   (5 reg-t))))))))
   (fpconvert FCNVFF  0)
   (fpconvert FCNVFX  1)
   (fpconvert FCNVXF  2)
@@ -410,14 +435,16 @@ DIAG
 ;;	     tested before use.    WLH  11/18/86
 
 (let-syntax ((multdiv
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   ((() (? reg-1) (? reg-2))
-		    (LONG (6 #x04)
-			  (5 reg-2)
-			  (5 reg-1)
-			  (5 ,extn)
-			  (11 #b11000000000)))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((() (? reg-1) (? reg-2))
+		     (LONG (6 #x04)
+			   (5 reg-2)
+			   (5 reg-1)
+			   (5 ,(caddr form))
+			   (11 #b11000000000))))))))
   (multdiv MPYS    #x08)
   (multdiv MPYU    #x0a)
   (multdiv MPYSCV  #x0c)
@@ -440,15 +467,17 @@ DIAG
 	 (16 #b1000000000000000))))
 
 (let-syntax ((multdivresult
-	      (lambda (keyword extn-a extn-b)
-		`(define-instruction ,keyword
-		   ((() (? reg-t))
-		    (LONG (6 #x04)
-			  (10 #b0000000000)
-			  (5 ,extn-a)
-			  (5 #b01000)
-			  (1 ,extn-b)
-			  (5 reg-t)))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((() (? reg-t))
+		     (LONG (6 #x04)
+			   (10 #b0000000000)
+			   (5 ,(caddr form))
+			   (5 #b01000)
+			   (1 ,(cadddr form))
+			   (5 reg-t))))))))
   (multdivresult MDLO    4 0)
   (multdivresult MDLNV   4 1)
   (multdivresult MDLV    5 1)

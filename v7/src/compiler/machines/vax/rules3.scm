@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.13 2001/12/20 21:45:26 cph Exp $
+$Id: rules3.scm,v 4.14 2002/02/22 05:07:18 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -164,23 +164,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-special-primitive-invocation
-       (lambda (name)
-	 `(define-rule statement
-	    (INVOCATION:SPECIAL-PRIMITIVE
-	     (? frame-size)
-	     (? continuation)
-	     ,(make-primitive-procedure name true))
-	    frame-size continuation	; ignored
-	    ,(list 'LAP
-		   (list 'UNQUOTE-SPLICING '(clear-map!))
-		   #|
-		   (list 'JMP
-			 (list 'UNQUOTE
-			       (symbol-append 'ENTRY:COMPILER- name)))
-		   |#
-		   (list 'UNQUOTE-SPLICING
-			 `(INVOKE-INTERFACE ,(symbol-append 'CODE:COMPILER-
-							    name))))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  `(DEFINE-RULE STATEMENT
+	     (INVOCATION:SPECIAL-PRIMITIVE
+	      (? frame-size)
+	      (? continuation)
+	      ,(make-primitive-procedure (cadr form) #t))
+	     FRAME-SIZE CONTINUATION	; ignored
+	     ,(list 'LAP
+		    (list 'UNQUOTE-SPLICING '(CLEAR-MAP!))
+		    #|
+		    (list 'JMP
+			  (list 'UNQUOTE
+				(close-syntax (symbol-append 'ENTRY:COMPILER-
+							     (cadr form))
+					      environment)))
+		    |#
+		    (list 'UNQUOTE-SPLICING
+			  `(INVOKE-INTERFACE
+			    ,(close-syntax (symbol-append 'CODE:COMPILER-
+							  (cadr form))
+					   environment)))))))))
   (define-special-primitive-invocation &+)
   (define-special-primitive-invocation &-)
   (define-special-primitive-invocation &*)
