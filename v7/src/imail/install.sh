@@ -1,2 +1,2 @@
 #!/bin/sh
-cpx -c ~/new/imail $bscm/lib/.
+cpx -c ~/new/imail $scm/.
