@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.17 1993/11/23 02:33:10 cph Exp $
+$Id: uxproc.c,v 1.18 1993/11/23 03:30:24 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -354,7 +354,7 @@ DEFUN (OS_make_subprocess,
 		|| ((SLAVE_PTY_P (ctty_name)) && (! (SETUP_SLAVE_PTY (fd))))
 #endif
 		|| (! (isatty (fd)))
-#ifdef TIOCSCTTY
+#ifdef __osf__
 		|| ((UX_ioctl (fd, TIOCSCTTY, 0)) < 0)
 #endif
 		/* Tell the controlling terminal its process group. */
