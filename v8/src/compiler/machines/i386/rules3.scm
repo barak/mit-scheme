@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.10 1995/01/20 22:45:55 ssmith Exp $
+$Id: rules3.scm,v 1.11 1995/01/20 22:51:58 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -358,7 +358,10 @@ MIT in each case. |#
 	       (if (< reg 8)
 		   (if (< reg 4)
 		       (bit-string-set! int-mask reg)
-		       (error "Register number too high to preserve:" reg))
+		       (if (and (not use-ebp-as-mask?)
+				(= reg ebp))
+			   (bit-string-set! int-mask 4)
+			   (error "Register number too high to preserve:" reg)))
 		   (bit-string-set! flo-mask (- reg 8)))
 	       (loop (cdr regs))))
 	    ((bit-string-zero? flo-mask)
