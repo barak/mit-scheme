@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.41 1991/05/20 19:41:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.42 1991/05/21 02:05:04 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -448,6 +448,7 @@ MIT in each case. |#
   (files "prompt")
   (parent (edwin))
   (export (edwin)
+	  completion-message
 	  edwin-command$exit-minibuffer
 	  edwin-command$exit-minibuffer-yes-or-no
 	  edwin-command$minibuffer-complete
@@ -466,6 +467,8 @@ MIT in each case. |#
 	  edwin-variable$enable-recursive-minibuffers
 	  edwin-variable$completion-auto-help
 	  initialize-typein!
+	  pop-up-completions-list
+	  pop-up-generated-completions
 	  prompt-for-alist-value
 	  prompt-for-char
 	  prompt-for-command
@@ -480,6 +483,8 @@ MIT in each case. |#
 	  prompt-for-typein
 	  prompt-for-variable
 	  prompt-for-yes-or-no?
+	  standard-completion
+	  temporary-typein-message
 	  typein-edit-other-window
 	  within-typein-edit
 	  within-typein-edit?

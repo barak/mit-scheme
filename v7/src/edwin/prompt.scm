@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.145 1991/05/18 03:11:46 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.146 1991/05/21 02:04:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -133,22 +133,24 @@
 	   (not (ref-variable enable-recursive-minibuffers))
 	   (typein-window? (current-window)))
       (editor-error "Command attempted to use minibuffer while in minibuffer"))
-  (within-typein-edit
+  (cleanup-pop-up-buffers
    (lambda ()
-     (insert-string prompt-string)
-     (let ((mark (current-point)))
-       (with-text-clipped (mark-right-inserting mark)
-			  (mark-left-inserting mark)
-	 (lambda ()
-	   (intercept-^G-interrupts
+     (within-typein-edit
+      (lambda ()
+	(insert-string prompt-string)
+	(let ((mark (current-point)))
+	  (with-text-clipped (mark-right-inserting mark)
+			     (mark-left-inserting mark)
 	    (lambda ()
-	      (cond ((not (eq? (current-window) (typein-window)))
-		     (abort-current-command))
-		    (typein-edit-continuation
-		     (typein-edit-continuation typein-edit-abort-flag))
-		    (else
-		     (error "illegal ^G signaled in typein window"))))
-	    thunk)))))))
+	      (intercept-^G-interrupts
+	       (lambda ()
+		 (cond ((not (eq? (current-window) (typein-window)))
+			(abort-current-command))
+		       (typein-edit-continuation
+			(typein-edit-continuation typein-edit-abort-flag))
+		       (else
+			(error "illegal ^G signaled in typein window"))))
+	       thunk)))))))))
 
 (define ((typein-editor-thunk mode))
   (let ((buffer (current-buffer)))
@@ -179,24 +181,6 @@
 (define (update-typein!)
     (if (not *executing-keyboard-macro?*)
 	(window-direct-update! (typein-window) false)))
-
-(define (temporary-typein-message string)
-  (let ((point) (start) (end))
-    (dynamic-wind (lambda ()
-		    (set! point (current-point))
-		    (set! end (buffer-end (current-buffer)))
-		    (set! start (mark-right-inserting end))
-		    (insert-string string start)
-		    (set-current-point! start))
-		  (lambda ()
-		    (sit-for 2000))
-		  (lambda ()
-		    (delete-string start end)
-		    (set-current-point! point)
-		    (set! point)
-		    (set! start)
-		    (set! end)
-		    unspecific))))
 
 ;;;; String Prompt
 
@@ -231,13 +215,11 @@
 	      (completion-procedure/list-completions list-completions)
 	      (completion-procedure/verify-final-value? verify-final-value?)
 	      (*completion-confirm?* (not (eq? require-match? true))))
-    (cleanup-pop-up-buffers
-     (lambda ()
-       (%prompt-for-string
-	prompt
-	(if require-match?
-	    (ref-mode-object minibuffer-local-must-match)
-	    (ref-mode-object minibuffer-local-completion)))))))
+    (%prompt-for-string
+     prompt
+     (if require-match?
+	 (ref-mode-object minibuffer-local-must-match)
+	 (ref-mode-object minibuffer-local-completion)))))
 
 (define (%prompt-for-string prompt mode)
   (prompt-for-typein
@@ -446,17 +428,9 @@ The following commands are special to this mode:
        (completion-procedure/list-completions (typein-string))))))
 
 (define (minibuffer-completion-help list-completions)
-  (let ((window (typein-window)))
-    (window-set-override-message! window "Making completion list...")
-    (window-direct-update! window true)
-    (let ((completions (list-completions)))
-      (window-clear-override-message! window)
-      (if (null? completions)
-	  (begin
-	   (editor-beep)
-	   (temporary-typein-message " [No completions]"))
-	  (write-completions-list
-	   (map map-name/internal->external completions))))))
+  (pop-up-generated-completions
+   (lambda ()
+     (map map-name/internal->external (list-completions)))))
 
 (define-command minibuffer-complete-and-exit
   "Complete the minibuffer contents, and maybe exit.
@@ -513,16 +487,6 @@ a repetition of this command will exit."
 	(temporary-typein-message " [No match]")
 	'NO-MATCH))))
 
-(define (write-completions-list strings)
-  (with-output-to-temporary-buffer " *Completions*"
-    (lambda ()
-      (if (null? strings)
-	  (write-string
-	   "There are no possible completions of what you have typed.")
-	  (begin
-	    (write-string "Possible completions are:\n")
-	    (write-strings-densely strings))))))
-
 (define (completion-procedure/complete-word string
 					    if-unique
 					    if-not-unique
@@ -572,6 +536,82 @@ a repetition of this command will exit."
 			  (if-not-unique string (lambda () completions))))))))
 	      (if-not-unique new-string list-completions)))
 	if-not-found))))
+
+;;;; Support for Completion
+
+(define (standard-completion prefix complete-string insert-completed-string)
+  (complete-string prefix
+    (lambda (completion)
+      (if (not (string=? prefix completion))
+	  (insert-completed-string completion)
+	  (completion-message "Sole completion")))
+    (lambda (completion generate-completions)
+      (cond ((not (string=? prefix completion))
+	     (insert-completed-string completion))
+	    ((ref-variable completion-auto-help)
+	     (pop-up-generated-completions generate-completions))
+	    (else
+	     (completion-message "Next char not unique"))))
+    (lambda ()
+      (editor-beep)
+      (completion-message "No completions"))))
+
+(define (pop-up-generated-completions generate-completions)
+  (message "Making completion list...")
+  (let ((completions (generate-completions)))
+    (clear-message)
+    (if (null? completions)
+	(begin
+	  (editor-beep)
+	  (completion-message "No completions"))
+	(begin
+	  (pop-up-completions-list completions)
+	  (if (not (typein-window? (current-window)))
+	      (begin
+		(message "Hit space to flush.")
+		(reset-command-prompt!)
+		(let ((char (keyboard-peek-char)))
+		  (if (char=? #\space char)
+		      (begin
+			(keyboard-read-char)
+			(kill-pop-up-buffer false))))
+		(clear-message)))))))
+
+(define (pop-up-completions-list strings)
+  (with-output-to-temporary-buffer " *Completions*"
+    (lambda ()
+      (write-completions-list strings))))
+
+(define (write-completions-list strings)
+  (if (null? strings)
+      (write-string
+       "There are no possible completions of what you have typed.")
+      (begin
+	(write-string "Possible completions are:\n")
+	(write-strings-densely strings))))
+
+(define (completion-message string)
+  (if (typein-window? (current-window))
+      (temporary-typein-message (string-append " [" string "]"))
+      (message string)))
+
+(define (temporary-typein-message string)
+  (let ((point) (start) (end))
+    (dynamic-wind (lambda ()
+		    (set! point (current-point))
+		    (set! end (buffer-end (current-buffer)))
+		    (set! start (mark-right-inserting end))
+		    (insert-string string start)
+		    (set-current-point! start))
+		  (lambda ()
+		    (sit-for 2000))
+		  (lambda ()
+		    (delete-string start end)
+		    (set-current-point! point)
+		    (set! point)
+		    (set! start)
+		    (set! end)
+		    unspecific))))
 
 ;;;; Character Prompts
 
