@@ -1,5 +1,5 @@
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.8 1991/08/15 18:32:50 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.9 1991/10/30 23:33:21 cph Exp $
 #
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
@@ -28,9 +28,9 @@ listing:
 	prlist comp.pkg $(SOURCES:foo=*.scm)
 
 locked:
-	for subdir in ./ $(SUBDIRS); \
+	for subdir in . back base fggen fgopt rtlbase rtlgen rtlopt machines/*; \
 	do \
-	rlog -L -R $${subdir}RCS/*,v ; \
+	rlog -L -R $${subdir}/RCS/*,v ; \
 	done
 
 stage1:
