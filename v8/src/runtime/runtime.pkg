@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.321 1999/02/23 21:31:59 cph Exp $
+$Id: runtime.pkg,v 14.322 1999/02/24 04:41:10 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -3234,6 +3234,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  thread-timer-interrupt-handler)
   (export (runtime primitive-io)
 	  block-on-input-descriptor)
+  (export (runtime continuation)
+	  get-thread-event-block
+	  set-thread-event-block!)
   (initialization (initialize-package!)))
 
 (define-package (runtime rb-tree)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.26 1999/02/24 04:41:06 cph Exp $
+$Id: thread.scm,v 1.27 1999/02/24 04:43:19 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -239,7 +239,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(maybe-signal-input-thread-events)
 	(let ((any-events? (handle-thread-events thread)))
 	  (set-thread/block-events?! thread block-events?)
-	  (if (not events?)
+	  (if (not any-events?)
 	      (call-with-current-continuation
 	       (lambda (continuation)
 		 (set-thread/continuation! thread continuation)
@@ -656,7 +656,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (lambda ()
 	 (let ((thread first-running-thread))
 	   (if thread
-	       (set-thread/block-events? thread block?)))))))
+	       (set-thread/block-events?! thread block?)))))))
 
 (define (signal-thread-event thread event)
   (guarantee-thread thread signal-thread-event)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: contin.scm,v 14.9 1999/02/24 04:40:59 cph Exp $
+$Id: contin.scm,v 14.10 1999/02/24 04:44:04 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -157,6 +157,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-integrable (continuation/dynamic-state continuation)
   (%continuation/dynamic-state (entity-extra continuation)))
+
+(define-integrable (continuation/block-thread-events? continuation)
+  (%continuation/block-thread-events? (entity-extra continuation)))
 
 (define-structure (%continuation (constructor make-%continuation)
 				 (conc-name %continuation/))
