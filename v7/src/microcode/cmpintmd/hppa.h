@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.9 1989/12/03 13:09:30 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.10 1989/12/06 10:56:13 jinx Exp $
  *
  * Compiled code interface macros.
  *
@@ -229,18 +229,14 @@ procedures and continuations differ from closures) */
   For a closure
 
   DEPI		tc_closure>>1,4,5,31
-  STWS,MB	31,-4(0,Rstack)
-  COMBT,>=,N	Rfree,Rmemtop,interrupt
-
-  Where interrupt must be downstream so that the following instruction
-  is nullified on a failing forward branch.
-
-  After those instructions, we must have
-
+  STWM		31,-4(0,Rstack)
+  COMB,>=	Rfree,Rmemtop,interrupt
   LDW		0(0,Regs),Rmemtop
 
-  until the interrupt handler is changed to do this at interrupt time.
-  While the nullification is currently spurious, it will not be later.
+  The LDW can be eliminated once the C interrupt handler is changed to
+  update Rmemtop directly.  At that point, the instruction following the
+  COMB instruction will have to be nullified whenever the interrupt
+  branch is processed.
 
  */
 
@@ -255,7 +251,7 @@ procedures and continuations differ from closures) */
 
    LDIL		L'target,26
    BLE		R'target(5,26)
-   SUBI		12,31,31
+   ADDI		-12,31,31
  */
 
 #define COMPILED_CLOSURE_ENTRY_SIZE     16
