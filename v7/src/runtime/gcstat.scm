@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 14.2 1990/03/26 19:38:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 14.3 1990/03/26 19:42:44 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -44,7 +44,7 @@ MIT in each case. |#
 	  (BOUNDED . ,bounded:install-history!)
 	  (UNBOUNDED . ,unbounded:install-history!)))
   (set-history-mode! 'BOUNDED)
-  (set! meter (cons 0 0))
+  (set! timestamp (cons 0 0))
   (statistics-reset!)
   (add-event-receiver! event:after-restore statistics-reset!)
   (set! hook/gc-start recorder/gc-start)
@@ -58,23 +58,23 @@ MIT in each case. |#
     (increment-non-runtime! (- end-time start-time))
     (statistics-flip start-time end-time space-remaining)))
 
-(define meter)
+(define timestamp)
 (define total-gc-time)
 (define last-gc-start)
 (define last-gc-end)
 
 (define (gc-timestamp)
-  meter)
+  timestamp)
 
 (define (statistics-reset!)
-  (set! meter (cons 1 (1+ (cdr meter))))
+  (set! timestamp (cons 1 (1+ (cdr timestamp))))
   (set! total-gc-time 0)
   (set! last-gc-start false)
   (set! last-gc-end (process-time-clock))
   (reset-recorder! '()))
 
 (define-structure (gc-statistic (conc-name gc-statistic/))
-  (meter false read-only true)
+  (timestamp false read-only true)
   (heap-left false read-only true)
   (this-gc-start false read-only true)
   (this-gc-end false read-only true)
@@ -83,15 +83,18 @@ MIT in each case. |#
 
 (define (statistics-flip start-time end-time heap-left)
   (let ((statistic
-	 (make-gc-statistic meter heap-left
+	 (make-gc-statistic timestamp heap-left
 			    start-time end-time
 			    last-gc-start last-gc-end)))
-    (set! meter (cons (1+ (car meter)) (cdr meter)))
+    (set! timestamp (cons (1+ (car timestamp)) (cdr timestamp)))
     (set! total-gc-time (+ (- end-time start-time) total-gc-time))
     (set! last-gc-start start-time)
     (set! last-gc-end end-time)
     (record-statistic! statistic)
     (hook/record-statistic! statistic)))
+
+(define (gc-statistic/meter stat)
+  (car (gc-statistic/timestamp stat)))
 
 (define hook/record-statistic!)
 
