@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.3 1990/07/28 18:57:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.4 1990/10/16 20:53:55 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -35,23 +35,46 @@ MIT in each case. */
 #include "ux.h"
 #include "uxterm.h"
 #include "uxio.h"
+
+#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+
+#ifndef ISTRIP
+#define ISTRIP 0
+#endif
+#ifndef CS8
+#define CS8 0
+#endif
+#ifndef PARENB
+#define PARENB 0
+#endif
+
+#else
+#ifdef HAVE_BSD_TTY_DRIVER
+
+/* LPASS8 is new in 4.3, and makes cbreak mode provide all 8 bits.  */
+#ifndef LPASS8
+#define LPASS8 0
+#endif
+
+#endif /* HAVE_BSD_TTY_DRIVER */
+#endif /* not HAVE_TERMIOS nor HAVE_TERMIO */
 
 struct terminal_state
 {
   int buffer;
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
-  char saved_echo;
-  cc_t saved_vmin;
-  cc_t saved_vtime;
-#endif
+  Ttty_state state;
 };
 
 static struct terminal_state * terminal_table;
 #define TERMINAL_BUFFER(channel) ((terminal_table[(channel)]) . buffer)
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
-#define TERMINAL_ECHO(channel) ((terminal_table[(channel)]) . saved_echo)
-#define TERMINAL_VMIN(channel) ((terminal_table[(channel)]) . saved_vmin)
-#define TERMINAL_VTIME(channel) ((terminal_table[(channel)]) . saved_vtime)
+#define TERMINAL_ORIGINAL_STATE(channel) ((terminal_table[(channel)]) . state)
+
+#ifdef HAVE_TERMIOS
+#define TIO(s) (s)
+#else
+#ifdef HAVE_TERMIO
+#define TIO(s) (& ((s) -> tio))
+#endif
 #endif
 
 void
@@ -79,20 +102,7 @@ void
 DEFUN (terminal_open, (channel), Tchannel channel)
 {
   (TERMINAL_BUFFER (channel)) = (-1);
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
-  {
-    Ttty_state s;
-#ifdef HAVE_TERMIOS
-    struct termios * tio = (&s);
-#else
-    struct termio * tio = (& (s . tio));
-#endif
-    get_terminal_state (channel, (&s));
-    (TERMINAL_ECHO (channel)) = (((tio -> c_lflag) & ECHO) != 0);
-    (TERMINAL_VMIN (channel)) = ((tio -> c_cc) [VMIN]);
-    (TERMINAL_VTIME (channel)) = ((tio -> c_cc) [VTIME]);
-  }
-#endif
+  get_terminal_state (channel, (& (TERMINAL_ORIGINAL_STATE (channel))));
 }
 
 int
@@ -113,42 +123,87 @@ DEFUN (OS_terminal_read_char, (channel), Tchannel channel)
   }
 }
 
+unsigned int
+DEFUN (terminal_state_get_ospeed, (s), Ttty_state * s)
+{
+#ifdef HAVE_TERMIOS
+  return (cfgetospeed (s));
+#else
+#ifdef HAVE_TERMIO
+  return (((TIO (s)) -> c_cflag) & CBAUD);
+#else
+#ifdef HAVE_BSD_TTY_DRIVER
+  return (s -> sg . sg_ospeed);
+#endif /* HAVE_BSD_TTY_DRIVER */
+#endif /* not HAVE_TERMIO */
+#endif /* not HAVE_TERMIOS */
+}
+
+unsigned int
+DEFUN (terminal_state_get_ispeed, (s), Ttty_state * s)
+{
+#ifdef HAVE_TERMIOS
+  return (cfgetispeed (s));
+#else
+#ifdef HAVE_TERMIO
+  return (((TIO (s)) -> c_cflag) & CBAUD);
+#else
+#ifdef HAVE_BSD_TTY_DRIVER
+  return (s -> sg . sg_ispeed);
+#endif /* HAVE_BSD_TTY_DRIVER */
+#endif /* not HAVE_TERMIO */
+#endif /* not HAVE_TERMIOS */
+}
+
 int
-DEFUN (terminal_state_buffered_p, (s), Ttty_state * s)
+DEFUN (terminal_state_cooked_output_p, (s), Ttty_state * s)
 {
 #if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
-#ifdef HAVE_TERMIOS
-  struct termios * tio = s;
-#else
-  struct termio * tio = (& (s -> tio));
-#endif
-  return (((tio -> c_lflag) & ICANON) != 0);
+  return ((((TIO (s)) -> c_oflag) & OPOST) != 0);
 #else /* not HAVE_TERMIOS nor HAVE_TERMIO */
 #ifdef HAVE_BSD_TTY_DRIVER
-  return (((s -> sg . sg_flags) & CBREAK) == 0);
+  return (((s -> sg . sg_flags) & LLITOUT) == 0);
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
 
 void
-DEFUN (terminal_state_buffered, (s, channel),
-       Ttty_state * s AND
-       Tchannel channel)
+DEFUN (terminal_state_raw_output, (s), Ttty_state * s)
 {
 #if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
-#ifdef HAVE_TERMIOS
-  struct termios * tio = s;
-#else
-  struct termio * tio = (& (s -> tio));
-#endif
-  (tio -> c_lflag) |= ICANON;
-  if (TERMINAL_ECHO (channel))
-    (tio -> c_lflag) |= ECHO;
-  ((tio -> c_cc) [VMIN]) = (TERMINAL_VMIN (channel));
-  ((tio -> c_cc) [VTIME]) = (TERMINAL_VTIME (channel));
+  ((TIO (s)) -> c_oflag) &=~ OPOST;
 #else /* not HAVE_TERMIOS nor HAVE_TERMIO */
 #ifdef HAVE_BSD_TTY_DRIVER
-  (s -> sg . sg_flags) &=~ CBREAK;
+  (s -> sg . sg_flags) &=~ ALLDELAY;
+  (s -> lmode) |= LLITOUT;
+#endif /* HAVE_BSD_TTY_DRIVER */
+#endif /* HAVE_TERMIOS or HAVE_TERMIO */
+}
+
+void
+DEFUN (terminal_state_cooked_output, (s, channel),
+       Ttty_state * s AND Tchannel channel)
+{
+  Ttty_state * os = (& (TERMINAL_ORIGINAL_STATE (channel)));
+#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+  ((TIO (s)) -> c_oflag) = ((TIO (os)) -> c_oflag);
+#else /* not HAVE_TERMIOS nor HAVE_TERMIO */
+#ifdef HAVE_BSD_TTY_DRIVER
+  (s -> sg . sg_flags) =
+    (((s -> sg . sg_flags) &~ ALLDELAY) | ((os -> sg . sg_flags) & ALLDELAY));
+  (s -> lmode) = (((s -> lmode) &~ LLITOUT) | ((os -> lmode) & LLITOUT));
+#endif /* HAVE_BSD_TTY_DRIVER */
+#endif /* HAVE_TERMIOS or HAVE_TERMIO */
+}
+
+int
+DEFUN (terminal_state_buffered_p, (s), Ttty_state * s)
+{
+#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+  return ((((TIO (s)) -> c_lflag) & ICANON) != 0);
+#else /* not HAVE_TERMIOS nor HAVE_TERMIO */
+#ifdef HAVE_BSD_TTY_DRIVER
+  return (((s -> sg . sg_flags) & (CBREAK | RAW)) == 0);
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
@@ -158,17 +213,19 @@ DEFUN (terminal_state_nonbuffered, (s, polling),
        Ttty_state * s AND int polling)
 {
 #if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
-#ifdef HAVE_TERMIOS
-  struct termios * tio = s;
-#else
-  struct termio * tio = (& (s -> tio));
-#endif
-  (tio -> c_lflag) &=~ (ICANON | ECHO);
-  ((tio -> c_cc) [VMIN]) = (polling ? 0 : 1);
-  ((tio -> c_cc) [VTIME]) = 0;
+  ((TIO (s)) -> c_lflag) &=~ (ICANON | ECHO);
+  ((TIO (s)) -> c_lflag) |= ISIG;
+  ((TIO (s)) -> c_iflag) |= IGNBRK;
+  ((TIO (s)) -> c_iflag) &=~ (ICRNL | IXON | ISTRIP);
+  ((TIO (s)) -> c_cflag) |= CS8;
+  ((TIO (s)) -> c_cflag) &=~ PARENB;
+  (((TIO (s)) -> c_cc) [VMIN]) = (polling ? 0 : 1);
+  (((TIO (s)) -> c_cc) [VTIME]) = 0;
 #else /* not HAVE_TERMIOS nor HAVE_TERMIO */
 #ifdef HAVE_BSD_TTY_DRIVER
-  (s -> sg . sg_flags) |= CBREAK;
+  (s -> sg . sg_flags) &=~ (ECHO | CRMOD);
+  (s -> sg . sg_flags) |= (ANYP | CBREAK);
+  (s -> lmode) |= (LPASS8 | LNOFLSH);
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
@@ -177,17 +234,40 @@ void
 DEFUN (terminal_state_raw, (s), Ttty_state * s)
 {
 #if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
-#ifdef HAVE_TERMIOS
-  struct termios * tio = s;
-#else
-  struct termio * tio = (& (s -> tio));
-#endif
-  (tio -> c_lflag) &=~ (ICANON | ECHO | ISIG);
-  ((tio -> c_cc) [VMIN]) = 1;
-  ((tio -> c_cc) [VTIME]) = 0;
+  ((TIO (s)) -> c_lflag) &=~ (ICANON | ECHO | ISIG);
+  ((TIO (s)) -> c_iflag) |= IGNBRK;
+  ((TIO (s)) -> c_iflag) &=~ (ICRNL | IXON | ISTRIP);
+  (((TIO (s)) -> c_cc) [VMIN]) = 1;
+  (((TIO (s)) -> c_cc) [VTIME]) = 0;
 #else /* not HAVE_TERMIOS nor HAVE_TERMIO */
 #ifdef HAVE_BSD_TTY_DRIVER
-  (s -> sg . sg_flags) |= RAW;
+  (s -> sg . sg_flags) &=~ (ECHO | CRMOD);
+  (s -> sg . sg_flags) |= (ANYP | RAW);
+  (s -> lmode) |= (LPASS8 | LNOFLSH);
+#endif /* HAVE_BSD_TTY_DRIVER */
+#endif /* HAVE_TERMIOS or HAVE_TERMIO */
+}
+
+void
+DEFUN (terminal_state_buffered, (s, channel),
+       Ttty_state * s AND
+       Tchannel channel)
+{
+  Ttty_state * os = (& (TERMINAL_ORIGINAL_STATE (channel)));
+#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+  ((TIO (s)) -> c_lflag) = ((TIO (os)) -> c_lflag);
+  ((TIO (s)) -> c_iflag) = ((TIO (os)) -> c_iflag);
+  ((TIO (s)) -> c_cflag) = ((TIO (os)) -> c_cflag);
+  (((TIO (s)) -> c_cc) [VMIN]) = (((TIO (os)) -> c_cc) [VMIN]);
+  (((TIO (s)) -> c_cc) [VTIME]) = (((TIO (os)) -> c_cc) [VTIME]);
+#else /* not HAVE_TERMIOS nor HAVE_TERMIO */
+#ifdef HAVE_BSD_TTY_DRIVER
+  (s -> sg . sg_flags) =
+    (((s -> sg . sg_flags) &~ (ECHO | CRMOD | ANYP | CBREAK | RAW))
+     | ((os -> sg . sg_flags) & (ECHO | CRMOD | ANYP | CBREAK | RAW)));
+  (s -> lmode) =
+    (((s -> lmode) &~ (LPASS8 | LNOFLSH))
+     | ((os -> lmode) & (LPASS8 | LNOFLSH)));
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
@@ -301,6 +381,87 @@ DEFUN (OS_terminal_char_ready_p, (channel, delay),
 #endif /* HAVE_TERMIO or HAVE_TERMIOS */
 #endif /* HAVE_FIONREAD */
 
+unsigned int
+DEFUN (OS_terminal_get_ispeed, (channel), Tchannel channel)
+{
+  Ttty_state s;
+  get_terminal_state (channel, (&s));
+  return (terminal_state_get_ispeed (&s));
+}
+
+unsigned int
+DEFUN (OS_terminal_get_ospeed, (channel), Tchannel channel)
+{
+  Ttty_state s;
+  get_terminal_state (channel, (&s));
+  return (terminal_state_get_ospeed (&s));
+}
+
+static unsigned int baud_convert [] =
+#ifdef _HPUX
+  {
+    0, 50, 75, 110, 135, 150, 200, 300, 600, 900, 1200,
+    1800, 2400, 3600, 4800, 7200, 9600, 19200, 38400
+  };
+#else
+  {
+    0, 50, 75, 110, 135, 150, 200, 300, 600, 1200,
+    1800, 2400, 4800, 9600, 19200, 38400
+  };
+#endif
+
+#define BAUD_CONVERT_LENGTH						\
+  ((sizeof (baud_convert)) / (sizeof (baud_convert[0])))
+
+unsigned int
+DEFUN (arg_baud_index, (argument), unsigned int argument)
+{
+  return (arg_index_integer (argument, BAUD_CONVERT_LENGTH));
+}
+
+unsigned int
+DEFUN (OS_baud_index_to_rate, (index), unsigned int index)
+{
+  return (baud_convert [index]);
+}
+
+int
+DEFUN (OS_baud_rate_to_index, (rate), unsigned int rate)
+{
+  unsigned int * scan = baud_convert;
+  unsigned int * end = (scan + BAUD_CONVERT_LENGTH);
+  while (scan < end)
+    if ((*scan++) = rate)
+      return ((scan - 1) - baud_convert);
+  return (-1);
+}
+
+int
+DEFUN (OS_terminal_cooked_output_p, (channel), Tchannel channel)
+{
+  Ttty_state s;
+  get_terminal_state (channel, (&s));
+  return (terminal_state_cooked_output_p (&s));
+}
+
+void
+DEFUN (OS_terminal_raw_output, (channel), Tchannel channel)
+{
+  Ttty_state s;
+  get_terminal_state (channel, (&s));
+  terminal_state_raw_output (&s);
+  set_terminal_state (channel, (&s));
+}
+
+void
+DEFUN (OS_terminal_cooked_output, (channel), Tchannel channel)
+{
+  Ttty_state s;
+  get_terminal_state (channel, (&s));
+  terminal_state_cooked_output ((&s), channel);
+  set_terminal_state (channel, (&s));
+}
+
 int
 DEFUN (OS_terminal_buffered_p, (channel), Tchannel channel)
 {

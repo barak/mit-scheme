@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.10 1990/08/17 20:05:32 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.11 1990/10/16 20:53:48 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -571,6 +571,7 @@ typedef struct
 #ifdef HAVE_BSD_JOB_CONTROL
   struct ltchars ltc;
 #endif
+  int lmode;
 } Ttty_state;
 
 #endif /* HAVE_BSD_TTY_DRIVER */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.29 1990/10/02 22:52:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.30 1990/10/16 20:54:17 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -127,6 +127,22 @@ MIT in each case. */
 #define LIBX11_SYSTEM
 #endif
 
+#ifdef HAVE_TERMINFO
+#ifndef LIBS_TERMCAP
+#define LIBS_TERMCAP -lcurses
+#endif
+TERMCAP_OBJECTS = terminfo.o tterm.o
+#else /* not HAVE_TERMINFO */
+#ifndef LIBS_TERMCAP
+#define LIBS_TERMCAP
+TERMCAP_OBJECTS = termcap.o tparam.o tterm.o
+#else /* LIBS_TERMCAP */
+TERMCAP_OBJECTS = tparam.o tterm.o
+#endif /* LIBS_TERMCAP */
+#endif /* not HAVE_TERMINFO */
+TERMCAP_SOURCES = tterm.c
+TERMCAP_LIBS = LIBS_TERMCAP
+
 #ifdef HAVE_X_WINDOWS
 X_SOURCES = x11base.c x11term.c x11graph.c 
 X_OBJECTS = x11base.o x11term.o x11graph.o
@@ -142,16 +158,6 @@ GRAPHICS_SOURCES =
 GRAPHICS_OBJECTS =
 GRAPHICS_LIBS =
 #endif /* HAVE_STARBASE_GRAPHICS */
-
-#ifdef HAVE_CURSES
-CTERM_SOURCES = cterm.c
-CTERM_OBJECTS = cterm.o
-CTERM_LIB = -lcurses
-#else /* not HAVE_CURSES */
-CTERM_SOURCES =
-CTERM_OBJECTS =
-CTERM_LIB =
-#endif /* HAVE_CURSES */
 
 #if (PROC_TYPE == PROC_TYPE_68020)
 #define PROC_TYPE_KNOWN
@@ -270,9 +276,9 @@ CFLAGS = -DMIT_SCHEME C_OPTIMIZE_SWITCH C_DEBUG_SWITCH C_SWITCH_MACHINE C_SWITCH
 
 /* Source and object files */
 
-SCHEME_SOURCES = $(X_SOURCES) $(CTERM_SOURCES) $(GRAPHICS_SOURCES) SOURCES_SYSTEM SOURCES_MACHINE $(USER_PRIM_SOURCES) missing.c
-SCHEME_OBJECTS = $(X_OBJECTS) $(CTERM_OBJECTS) $(GRAPHICS_OBJECTS) OBJECTS_SYSTEM OBJECTS_MACHINE $(USER_PRIM_OBJECTS) missing.o usrdef.o
-SCHEME_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB) LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
+SCHEME_SOURCES = $(X_SOURCES) $(TERMCAP_SOURCES) $(GRAPHICS_SOURCES) SOURCES_SYSTEM SOURCES_MACHINE $(USER_PRIM_SOURCES) missing.c
+SCHEME_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS) $(GRAPHICS_OBJECTS) OBJECTS_SYSTEM OBJECTS_MACHINE $(USER_PRIM_OBJECTS) missing.o usrdef.o
+SCHEME_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(TERMCAP_LIBS) LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
 SOURCES = \
 $(MACHINE_SOURCES) \
@@ -576,6 +582,7 @@ fixnum.o : scheme.touch prims.h mul.c
 storage.o : scheme.touch gctype.c
 
 char.o string.o : scheme.touch prims.h
+tterm.o : scheme.touch prims.h osterm.h
 
 boot.o : scheme.touch prims.h version.h paths.h ostop.h
 term.o : scheme.touch
@@ -598,7 +605,6 @@ dmpwrld.o : unexec.c getpagesize.h
 
 x11base.o x11graph.o x11term.o starbasex.o : scheme.touch prims.h x11.h
 x11base.o : ux.h
-cterm.o : scheme.touch prims.h
 starbase.o : scheme.touch prims.h
 
 Sgraph.o Sgraph_xt.o SgX.o : scheme.touch prims.h Sgraph.h

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.1 1990/06/20 19:38:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.2 1990/10/16 20:53:32 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -70,6 +70,62 @@ Second arg DELAY says how long to wait for one to arrive, in milliseconds.")
 				(arg_nonnegative_integer (2)))));
 }
 
+DEFINE_PRIMITIVE ("TERMINAL-GET-ISPEED", Prim_terminal_get_ispeed, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS_terminal_get_ispeed (arg_terminal (1))));
+}
+
+DEFINE_PRIMITIVE ("TERMINAL-GET-OSPEED", Prim_terminal_get_ospeed, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS_terminal_get_ospeed (arg_terminal (1))));
+}
+
+DEFINE_PRIMITIVE ("BAUD-INDEX->RATE", Prim_baud_index_to_rate, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS_baud_index_to_rate [arg_baud_index (1)]));
+}
+
+DEFINE_PRIMITIVE ("BAUD-RATE->INDEX", Prim_baud_rate_to_index, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    int index = (OS_baud_rate_to_index (arg_nonnegative_integer (1)));
+    if (index < 0)
+      error_bad_range_arg (1);
+    PRIMITIVE_RETURN (long_to_integer (index));
+  }
+}
+
+DEFINE_PRIMITIVE ("TERMINAL-COOKED-OUTPUT?", Prim_terminal_cooked_output_p, 1, 1,
+  "Return #F iff TERMINAL is not in cooked output mode.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (OS_terminal_cooked_output_p (arg_terminal (1))));
+}
+
+DEFINE_PRIMITIVE ("TERMINAL-RAW-OUTPUT", Prim_terminal_raw_output, 1, 1,
+  "Put TERMINAL into raw output mode.")
+{
+  PRIMITIVE_HEADER (1);
+  OS_terminal_raw_output (arg_terminal (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("TERMINAL-COOKED-OUTPUT", Prim_terminal_cooked_output, 1, 1,
+  "Put TERMINAL into cooked output mode.")
+{
+  PRIMITIVE_HEADER (1);
+  OS_terminal_cooked_output (arg_terminal (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
 DEFINE_PRIMITIVE ("TERMINAL-BUFFERED?", Prim_terminal_buffered_p, 1, 1,
   "Return #F iff TERMINAL is not in buffered mode.")
 {
@@ -117,7 +173,7 @@ DEFINE_PRIMITIVE ("TERMINAL-DRAIN-OUTPUT", Prim_terminal_drain_output, 1, 1,
   OS_terminal_drain_output (arg_terminal (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("OPEN-PTY-MASTER", Prim_open_pty_master, 0, 0,
   "Open a PTY master, returning the master's channel and the slave's name.\n\
 The result is a pair whose car is a channel and whose cdr is a filename.\n\

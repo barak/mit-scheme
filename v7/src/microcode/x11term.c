@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.11 1990/10/07 13:34:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.12 1990/10/16 20:54:09 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -690,15 +690,13 @@ DEFINE_PRIMITIVE ("XTERM-CLEAR-RECTANGLE!", Prim_xterm_clear_rectangle, 6, 6, 0)
 }
 
 static void
-DEFUN (xterm_scroll_lines_up,
-       (xw, x_start, x_end, y_start, y_end, lines, hl),
+DEFUN (xterm_scroll_lines_up, (xw, x_start, x_end, y_start, y_end, lines),
        struct xwindow * xw AND
        unsigned int x_start AND
        unsigned int x_end AND
        unsigned int y_start AND
        unsigned int y_end AND
-       unsigned int lines AND
-       unsigned int hl)
+       unsigned int lines)
 {
   {
     unsigned int y_to = y_start;
@@ -716,14 +714,13 @@ DEFUN (xterm_scroll_lines_up,
 	     (((y_end - y_start) - lines) * (FONT_HEIGHT (XW_FONT (xw)))),
 	     (XTERM_X_PIXEL (xw, x_start)),
 	     (XTERM_Y_PIXEL (xw, y_start)));
-  xterm_clear_rectangle (xw, x_start, x_end, (y_end - lines), y_end, hl);
 }
 
-DEFINE_PRIMITIVE ("XTERM-SCROLL-LINES-UP", Prim_xterm_scroll_lines_up, 7, 7,
-  "(XTERM-SCROLL-LINES-UP XTERM X-START X-END Y-START Y-END LINES HL)\n\
-Scroll the contents of the region up by LINES, clearing with HL.")
+DEFINE_PRIMITIVE ("XTERM-SCROLL-LINES-UP", Prim_xterm_scroll_lines_up, 6, 6,
+  "(XTERM-SCROLL-LINES-UP XTERM X-START X-END Y-START Y-END LINES)\n\
+Scroll the contents of the region up by LINES.")
 {
-  PRIMITIVE_HEADER (7);
+  PRIMITIVE_HEADER (6);
   {
     struct xwindow * xw = (x_window_arg (1));
     unsigned int x_end = (arg_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
@@ -731,21 +728,18 @@ Scroll the contents of the region up by LINES, clearing with HL.")
     unsigned int y_end = (arg_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
     unsigned int y_start = (arg_index_integer (4, (y_end + 1)));
     unsigned int lines = (arg_index_integer (6, ((y_end - y_start) + 1)));
-    unsigned int hl = (HL_ARG (7));
     if ((lines > 0) && (x_start < x_end) && (y_start < y_end))
       {
 	unsigned int y_mid = (y_start + lines);
 	if (CURSOR_IN_RECTANGLE (xw, x_start, x_end, y_mid, y_end))
 	  {
 	    xterm_erase_cursor (xw);
-	    xterm_scroll_lines_up
-	      (xw, x_start, x_end, y_start, y_end, lines, hl);
+	    xterm_scroll_lines_up (xw, x_start, x_end, y_start, y_end, lines);
 	    xterm_draw_cursor (xw);
 	  }
 	else
 	  {
-	    xterm_scroll_lines_up
-	      (xw, x_start, x_end, y_start, y_end, lines, hl);
+	    xterm_scroll_lines_up (xw, x_start, x_end, y_start, y_end, lines);
 	    if (CURSOR_IN_RECTANGLE (xw, x_start, x_end, y_start, y_mid))
 	      {
 		(XW_CURSOR_VISIBLE_P (xw)) = 0;
@@ -758,15 +752,13 @@ Scroll the contents of the region up by LINES, clearing with HL.")
 }
 
 static void
-DEFUN (xterm_scroll_lines_down,
-       (xw, x_start, x_end, y_start, y_end, lines, hl),
+DEFUN (xterm_scroll_lines_down, (xw, x_start, x_end, y_start, y_end, lines),
        struct xwindow * xw AND
        unsigned int x_start AND
        unsigned int x_end AND
        unsigned int y_start AND
        unsigned int y_end AND
-       unsigned int lines AND
-       unsigned int hl)
+       unsigned int lines)
 {
   {
     unsigned int y_to = y_end;
@@ -784,14 +776,13 @@ DEFUN (xterm_scroll_lines_down,
 	     (((y_end - y_start) - lines) * (FONT_HEIGHT (XW_FONT (xw)))),
 	     (XTERM_X_PIXEL (xw, x_start)),
 	     (XTERM_Y_PIXEL (xw, (y_start + lines))));
-  xterm_clear_rectangle (xw, x_start, x_end, y_start, (y_start + lines), hl);
 }
 
-DEFINE_PRIMITIVE ("XTERM-SCROLL-LINES-DOWN", Prim_xterm_scroll_lines_down, 7, 7,
-  "(XTERM-SCROLL-LINES-DOWN XTERM X-START X-END Y-START Y-END LINES HL)\n\
-Scroll the contents of the region down by LINES, clearing with HL.")
+DEFINE_PRIMITIVE ("XTERM-SCROLL-LINES-DOWN", Prim_xterm_scroll_lines_down, 6, 6,
+  "(XTERM-SCROLL-LINES-DOWN XTERM X-START X-END Y-START Y-END LINES)\n\
+Scroll the contents of the region down by LINES.")
 {
-  PRIMITIVE_HEADER (7);
+  PRIMITIVE_HEADER (6);
   {
     struct xwindow * xw = (x_window_arg (1));
     unsigned int x_end = (arg_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
@@ -799,7 +790,6 @@ Scroll the contents of the region down by LINES, clearing with HL.")
     unsigned int y_end = (arg_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
     unsigned int y_start = (arg_index_integer (4, (y_end + 1)));
     unsigned int lines = (arg_index_integer (6, ((y_end - y_start) + 1)));
-    unsigned int hl = (HL_ARG (7));
     if ((lines > 0) && (x_start < x_end) && (y_start < y_end))
       {
 	unsigned int y_mid = (y_end - lines);
@@ -807,13 +797,13 @@ Scroll the contents of the region down by LINES, clearing with HL.")
 	  {
 	    xterm_erase_cursor (xw);
 	    xterm_scroll_lines_down
-	      (xw, x_start, x_end, y_start, y_end, lines, hl);
+	      (xw, x_start, x_end, y_start, y_end, lines);
 	    xterm_draw_cursor (xw);
 	  }
 	else
 	  {
 	    xterm_scroll_lines_down
-	      (xw, x_start, x_end, y_start, y_end, lines, hl);
+	      (xw, x_start, x_end, y_start, y_end, lines);
 	    if (CURSOR_IN_RECTANGLE (xw, x_start, x_end, y_mid, y_end))
 	      {
 		(XW_CURSOR_VISIBLE_P (xw)) = 0;

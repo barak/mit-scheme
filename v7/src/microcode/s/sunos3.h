@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for SUNOS
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/sunos3.h,v 1.1 1990/06/20 19:55:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/sunos3.h,v 1.2 1990/10/16 20:57:13 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -33,15 +33,12 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* This says we have curses terminal support for Edwin. */
-#define HAVE_CURSES
-
 #ifndef ALTERNATE_CC
 #define C_SWITCH_SYSTEM -D_SUNOS3 -DCAST_FUNCTION_TO_INT_BUG
 #else
 #define C_SWITCH_SYSTEM -D_SUNOS3
 #endif
 
-#define LIBS_SYSTEM -ltermcap
+#define LIBS_TERMCAP -ltermcap
 
 #define ALTERNATE_M4 s/ultrix.m4

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.1 1990/06/20 19:36:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.2 1990/10/16 20:53:21 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -39,6 +39,14 @@ MIT in each case. */
 
 extern int EXFUN (OS_terminal_read_char, (Tchannel channel));
 extern int EXFUN (OS_terminal_char_ready_p, (Tchannel channel, clock_t delay));
+extern unsigned int EXFUN (OS_terminal_get_ispeed, (Tchannel channel));
+extern unsigned int EXFUN (OS_terminal_get_ospeed, (Tchannel channel));
+extern unsigned int EXFUN (arg_baud_index, (unsigned int argument));
+extern unsigned int EXFUN (OS_baud_index_to_rate, (unsigned int index));
+extern int EXFUN (OS_baud_rate_to_index, (unsigned int rate));
+extern int EXFUN (OS_terminal_cooked_output_p, (Tchannel channel));
+extern void EXFUN (OS_terminal_raw_output, (Tchannel channel));
+extern void EXFUN (OS_terminal_cooked_output, (Tchannel channel));
 extern int EXFUN (OS_terminal_buffered_p, (Tchannel channel));
 extern void EXFUN (OS_terminal_buffered, (Tchannel channel));
 extern void EXFUN (OS_terminal_nonbuffered, (Tchannel channel));

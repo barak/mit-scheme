@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Ultrix
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.10 1990/10/10 02:36:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.11 1990/10/16 20:57:25 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -36,15 +36,12 @@ MIT in each case. */
 /* Why? -- ask JMiller */
 #undef	ultrix
 
-/* This says we have curses terminal support for Edwin. */
-#define HAVE_CURSES
-
 /* This is in mips.h for some reason. */
 /* #define LIB_DEBUG */
 
 #define C_SWITCH_SYSTEM -D_ULTRIX -YPOSIX
 
-#define LIBS_SYSTEM -ltermcap
+#define LIBS_TERMCAP -ltermcap
 
 /* Fix random bug in Ultrix "libX11.a"; I quote:
 

@@ -1,9 +1,9 @@
 /* -*-C-*-
    System file for Encore UMAX42 and Mach
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/umax.h,v 1.2 1990/06/20 19:55:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/umax.h,v 1.3 1990/10/16 20:57:29 cph Rel $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,9 +33,6 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* This says we have curses terminal support for Edwin. */
-#define HAVE_CURSES
-
 #define C_SWITCH_SYSTEM -D_BSD4_2 -Dumax
 
-#define LIBS_SYSTEM -ltermcap
+#define LIBS_TERMCAP -ltermcap

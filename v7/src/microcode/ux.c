@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.2 1990/08/16 22:33:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.3 1990/10/16 20:53:43 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -130,7 +130,8 @@ DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
 #ifdef HAVE_BSD_JOB_CONTROL
       || ((UX_ioctl (fd, TIOCGLTC, (& (s -> ltc)))) < 0)
 #endif
-      ) ? (-1) : 0);
+      || ((UX_ioctl (fd, TIOCLGET, (& (s -> lmode)))) < 0))
+     ? (-1) : 0);
 }
 
 int
@@ -142,7 +143,8 @@ DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
 #ifdef HAVE_BSD_JOB_CONTROL
       || ((UX_ioctl (fd, TIOCSLTC, (& (s -> ltc)))) < 0)
 #endif
-      ) ? (-1) : 0);
+      || ((UX_ioctl (fd, TIOCLSET, (& (s -> lmode)))) < 0))
+     ? (-1) : 0);
 }
 
 #endif /* HAVE_BSD_TTY_DRIVER */

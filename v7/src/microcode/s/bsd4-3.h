@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for BSD4.3
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/bsd4-3.h,v 1.1 1990/06/20 19:55:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/bsd4-3.h,v 1.2 1990/10/16 20:56:53 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -33,11 +33,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* This says we have curses terminal support for Edwin. */
-#define HAVE_CURSES
-
 #define C_SWITCH_SYSTEM -D_BSD4_3
 
-#define LIBS_SYSTEM -ltermcap
+#define LIBS_TERMCAP -ltermcap
 
 #define ALTERNATE_M4 s/ultrix.m4

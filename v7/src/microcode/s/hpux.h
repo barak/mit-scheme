@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for HP-UX
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.6 1990/06/20 19:54:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.7 1990/10/16 20:57:00 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,18 +33,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* This says we have curses terminal support for Edwin. */
-#define HAVE_CURSES
+#define HAVE_TERMINFO
 
 /* Define HAVE_STARBASE_GRAPHICS if you want Starbase graphics support. */
 /* #define HAVE_STARBASE_GRAPHICS */
 
 /* No special libraries are needed for debugging. */
 #define LIB_DEBUG
-
-#ifndef HAVE_CURSES
-#define LIBS_SYSTEM -lcurses
-#endif
 
 #ifndef INSTALL_PROGRAM
 #define INSTALL_PROGRAM cp
