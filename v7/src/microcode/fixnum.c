@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.31 1990/07/15 22:49:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.32 1990/07/19 19:11:32 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -313,11 +313,11 @@ DEFINE_PRIMITIVE ("FIXNUM-LSH", Prim_fixnum_lsh, 2, 2, 0)
 
   if (y < 0)
   {
-    z = (x >> (- y));
+    z = ((y < (- FIXNUM_LENGTH)) ? 0 : (x >> (- y)));
   }
   else
   {
-    z = (x << y);
+    z = ((y > FIXNUM_LENGTH) ? 0 : (x << y));
   }
   return (LONG_TO_FIXNUM (z));
 }
