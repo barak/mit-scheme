@@ -1,11 +1,12 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Id: config,v 1.29 1995/06/29 23:19:49 cph Exp $
+# $Id: config,v 1.30 1998/07/19 20:35:01 cph Exp $
 # Modelled on the configuration script for GNU CC
 # The section between lines is the copyright prefix from the GNU CC config.
 #----------------------------------------------------------------------
 
 #   Copyright (C) 1988 Free Software Foundation, Inc.
+#   Copyright (C) 1988-1998 Massachusetts Institute of Technology
 
 #This file is part of GNU CC.
 
@@ -40,7 +41,7 @@ usage()
 	echo "Usage: $progname [-C-back-end | -native-back-end | -no-back-end] machine"
 	echo "Where \`machine' is one of:"
 	echo "alpha-osf alpha"
-	echo "mips-ultrix dec-3100 dec-5100 pmax nws3250 sgi4d"
+	echo "mips-ultrix dec-3100 dec-5100 pmax nws3250 sgi-irix4 sgi-irix6"
 	echo "hp9k300 hp9k400 hp9k700 hp9k800 next"
 	echo "sun3 sun3-os3 sun3-nfp sun3-os3-nfp sun4 sparc"
 	echo "i386-sysv 386bsd umax i386-linux"
@@ -71,8 +72,14 @@ discriminate()
 		cmpint_file=mips.h
 		cmpaux_file=mips.m4
 		;;
- 	sgi4d)
+ 	sgi-irix4 | sgi4d)
  		system_file=irix4
+ 		machine_file=mips
+ 		cmpint_file=mips.h
+		cmpaux_file=mips.m4
+ 		;;
+ 	sgi-irix6)
+ 		system_file=irix6
  		machine_file=mips
  		cmpint_file=mips.h
 		cmpaux_file=mips.m4
