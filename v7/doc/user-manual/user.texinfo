@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.47 1996/04/08 21:12:20 cph Exp $
+@comment $Id: user.texinfo,v 1.48 1996/04/08 21:18:53 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -54,7 +54,7 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.47
+@subtitle Edition 1.48
 @subtitle for Scheme Release 7.4
 @subtitle 8 April 1996
 @author by Stephen Adams
@@ -254,7 +254,7 @@ including GNU/Linux, HP-UX, Ultrix, NeXT, and SunOS.  The term
 3.0 Warp.  We use the term @dfn{Windows} to collectively refer to the
 Microsoft Windows operating systems: Windows 3.1, Windows 95, and
 Windows NT.  We use the term @dfn{PC} to refer to any computer running
-OS/2 or Windows.  Thus we consider a @dfn{PC} to be a system with a
+OS/2 or Windows.  Thus we consider a PC to be a system with a
 @sc{dos}-like file system, using backslashes for directory separators,
 drive letters, @sc{cr-lf} line termination, and (potentially) the
 hideous 8.3 short filenames.
@@ -1707,7 +1707,7 @@ by this invocation of Scheme, and this option is not set.
 @item -gc-start-position @var{number}
 @findex -gc-start-position
 @findex MITSCHEME_GC_START_POSITION
-Specifies the first byte position in @samp{-gc-file} at which the Scheme
+Specifies the first byte position in @sc{gc} file at which the Scheme
 process can write.  If not given, the value of the environment variable
 @samp{MITSCHEME_GC_START_POSITION} is used, and if that is not defined,
 @samp{0} is used, meaning the beginning of the file.  The area of the
@@ -1717,7 +1717,7 @@ file used (and locked if possible) is the region between
 @item -gc-end-position @var{number}
 @findex -gc-end-position
 @findex MITSCHEME_GC_END_POSITION
-Specifies the last byte position in @samp{-gc-file} at which the Scheme
+Specifies the last byte position in @sc{gc} file at which the Scheme
 process can write.  If not given, the value of the environment variable
 @samp{MITSCHEME_GC_END_POSITION} is used, and if that is not defined,
 the sum of the start position (as specified by
