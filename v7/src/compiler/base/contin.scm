@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.5 1988/10/13 10:34:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.6 1988/12/12 21:51:21 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -48,12 +48,7 @@ MIT in each case. |#
 		      (snode->scfg (make-fg-noop))))))
 
 (define-enumeration continuation-type
-  (effect
-   predicate
-   procedure
-   push
-   register
-   value))
+  (effect predicate procedure push register value))
 
 (define-integrable (procedure-continuation? procedure)
   (not (eq? (procedure-type procedure) continuation-type/procedure)))
@@ -79,7 +74,7 @@ MIT in each case. |#
 (define-integrable set-continuation/offset! set-procedure-closure-offset!)
 (define-integrable continuation/passed-out? procedure-passed-out?)
 (define-integrable set-continuation/passed-out?! set-procedure-passed-out?!)
-
+
 (define (continuation/register continuation)
   (or (procedure-register continuation)
       (let ((register (rtl:make-pseudo-register)))
@@ -94,17 +89,7 @@ MIT in each case. |#
 
 (define-integrable return-operator/subproblem? rvalue/procedure?)
 (define-integrable return-operator/reduction? rvalue/reference?)
-
-(define-integrable reduction-continuation/block reference-block)
 (define-integrable reduction-continuation/lvalue reference-lvalue)
-
-(define-integrable (reduction-continuation/popping-limit continuation)
-  (variable-popping-limit (reference-lvalue continuation)))
-
-(define (return-operator/popping-limit operator)
-  (if (return-operator/reduction? operator)
-      (reduction-continuation/popping-limit operator)
-      (continuation/closing-block operator)))
 
 (define (continuation/frame-size continuation)
   (let ((closing-block (continuation/closing-block continuation)))
