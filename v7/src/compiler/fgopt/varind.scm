@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/varind.scm,v 1.1 1989/10/26 07:40:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/varind.scm,v 1.2 1989/10/27 07:27:13 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -40,7 +40,10 @@ MIT in each case. |#
   (with-new-lvalue-marks
    (lambda ()
      (for-each (lambda (lvalue)
-		 (if (lvalue/variable? lvalue)		     (initialize-variable-indirection! lvalue)))
+		 (if (and (lvalue/variable? lvalue)
+			  (not (variable/continuation-variable? lvalue))
+			  (not (variable/value-variable? lvalue)))
+		     (initialize-variable-indirection! lvalue)))
 	       lvalues))))
 
 (define (initialize-variable-indirection! variable)
