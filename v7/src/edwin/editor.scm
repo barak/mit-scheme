@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.220 1992/04/07 08:38:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.221 1992/04/22 21:03:05 mhwu Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -121,7 +121,7 @@
   unspecific)
 
 (define create-editor-args
-  (list false))
+  '())
 
 (define (create-editor . args)
   (let ((args
@@ -138,16 +138,23 @@
     (initialize-inferior-repls!)
     (set! edwin-editor
 	  (make-editor "Edwin"
-		       (let ((name (car args)))
-			 (cond (name
-				(name->display-type name))
-			       ((display-type/available? console-display-type)
-				console-display-type)
-			       ((display-type/available? x-display-type)
-				x-display-type)
-			       (else
-				(error "can't find usable display type"))))
-		       (cdr args)))
+		       (let ((name (and (not (null? args))
+                                        (car args))))
+			 (if name
+                             (name->display-type name true)
+                             (let loop ((display-type-names '(CONSOLE X)))
+                               (if (null? display-type-names)
+                                   (error "can't find usable display type")
+                                   (let ((next (name->display-type 
+                                                 (car display-type-names)
+                                                 false)))
+                                     (if (and next 
+                                              (display-type/available? next))
+                                         next
+                                         (loop (cdr display-type-names))))))))
+		       (if (null? args)
+			   '()
+			   (cdr args))))
     (set! edwin-initialization
 	  (lambda ()
 	    (set! edwin-initialization false)
