@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.60 2001/12/19 05:21:42 cph Exp $
+$Id: load.scm,v 14.61 2002/06/28 18:25:20 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -272,7 +272,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			   (nearest-repl/environment)
 			   environment)))
 
-(define (load-library-object-file name errors?)
+(define (load-library-object-file name errors? #!optional noisy?)
   (let ((directory (system-library-directory-pathname "lib"))
 	(nsf
 	 (lambda ()
@@ -295,7 +295,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		       (find "sl")))))
 	    (cond ((not pathname*)
 		   (nsf))
-		  ((ignore-errors (lambda () (load pathname*)))
+		  ((ignore-errors
+		    (lambda ()
+		      (fluid-let ((load/suppress-loading-message?
+				   (if (default-object? noisy?) #f noisy?)))
+			(load pathname*))))
 		   => (lambda (condition)
 			(if errors?
 			    (signal-condition condition)
