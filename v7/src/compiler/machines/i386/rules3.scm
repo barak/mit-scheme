@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.28 1997/10/17 01:25:41 adams Exp $
+$Id: rules3.scm,v 1.29 1997/10/17 01:32:18 adams Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-1997 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,6 +44,8 @@ MIT in each case. |#
 
 (define-rule statement
   (POP-RETURN)
+  ;; The continuation is on the stack.
+  ;; The type code needs to be cleared first.
   (cond ((block-association 'POP-RETURN)
 	 => current-bblock-continue!)
 	(else
@@ -52,8 +54,8 @@ MIT in each case. |#
 		 (let ((interrupt-label (generate-label 'INTERRUPT)))
 		   (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
 			(JGE (@PCR ,interrupt-label))
-			(POP (R ,eax))
-			(AND W (R ,eax) (R ,regnum:datum-mask))
+			(POP (R ,eax))	; continuation
+			(AND W (R ,eax) (R ,regnum:datum-mask)) ; clear type
 			(JMP (R ,eax))
 			(LABEL ,interrupt-label)
 			,@(invoke-hook
@@ -96,7 +98,7 @@ MIT in each case. |#
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
        (POP (R ,eax))
-       (AND W (R ,eax) (R ,regnum:datum-mask))
+       (AND W (R ,eax) (R ,regnum:datum-mask)) ;clear type code
        (JMP (R ,eax))))
 
 (define-rule statement
@@ -115,7 +117,7 @@ MIT in each case. |#
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
        (POP (R ,ecx))
-       (AND W (R ,ecx) (R ,regnum:datum-mask))
+       (AND W (R ,ecx) (R ,regnum:datum-mask)) ; clear type code
        (MOV W (R ,edx) (& ,number-pushed))
        ,@(invoke-interface code:compiler-lexpr-apply)))
 
