@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.22 1999/01/02 06:11:34 cph Exp $
+$Id: process.scm,v 1.23 1999/02/01 03:29:24 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -342,3 +342,34 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (make-subprocess filename arguments environment
 		       slave-name 'CTTY 'CTTY 'CTTY
 		       master-channel master-channel master-channel))))
+
+;;;; Environment Bindings
+
+(define (process-environment-bind environment . bindings)
+  (let ((bindings* (vector->list environment)))
+    (for-each (lambda (binding)
+		(let ((b
+		       (find-environment-variable
+			(environment-binding-name binding)
+			bindings*)))
+		  (if b
+		      (set-car! b binding)
+		      (begin
+			(set! bindings* (cons binding bindings*))
+			unspecific))))
+	      bindings)
+    (list->vector bindings*)))
+
+(define (environment-binding-name binding)
+  (let ((index (string-find-next-char binding #\=)))
+    (if (not index)
+	binding
+	(string-head binding index))))
+
+(define (find-environment-variable name bindings)
+  (let ((prefix (string-append name "=")))
+    (let loop ((bindings bindings))
+      (and (not (null? bindings))
+	   (if (string-prefix? prefix (car bindings))
+	       bindings
+	       (loop (cdr bindings)))))))
