@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.2 1993/10/27 22:12:16 gjr Exp $
+$Id: pruxdld.c,v 1.3 1993/10/28 01:09:44 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -136,7 +136,7 @@ DEFINE_PRIMITIVE ("OBJECT-LOOKUP-SYMBOL", Prim_object_lookup_symbol, 3, 3,
   char * sym;
   short type;
   PTR result;
-  dyn_load_handle_t prim_lib_handle, arg_handle;
+  dyn_load_handle_t prim_lib_handle, * arg_handle;
   PRIMITIVE_HEADER (3);
 
   switch (ARG_REF (1))
