@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.10 1993/09/18 05:47:35 gjr Exp $
+$Id: gc.scm,v 14.11 1993/09/20 19:10:58 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -76,6 +76,9 @@ MIT in each case. |#
 (define default-safety-margin)
 
 (define (default/gc-flip safety-margin)
+  (define (real-default)
+    (gc-flip-internal safety-margin))
+
   (cond ((not (null? pure-space-queue))
 	 (let ((result (purify-internal pure-space-queue true safety-margin)))
 	   (cond ((not (car result))
@@ -85,7 +88,7 @@ MIT in each case. |#
 		  (set! pure-space-queue '()))
 		 (else
 		  ;; Wrong phase -- wait until next time.
-		  unspecific))
+		  (real-default)))
 	   (cdr result)))
 	((not (null? constant-space-queue))
 	 (let ((result
@@ -97,10 +100,10 @@ MIT in each case. |#
 		  (set! constant-space-queue '()))
 		 (else
 		  ;; Wrong phase -- wait until next time.
-		  unspecific))
+		  (real-default)))
 	   (cdr result)))
 	(else
-	 (gc-flip-internal safety-margin))))
+	 (real-default))))
 
 (define (queued-purification-failure)
   (warn "Unable to purify all queued items; dequeuing one"))
