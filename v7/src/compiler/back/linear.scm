@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.11 1990/04/03 23:20:21 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.12 1992/05/14 02:56:11 jinx Exp $
 
 Copyright (c) 1987, 1988, 1990 Massachusetts Institute of Technology
 
@@ -184,9 +184,24 @@ MIT in each case. |#
 	     bblock))))
 
   (linearize-bblock bblock))
+
+(define *end-of-block-code*)
 
 (define linearize-lap
   (make-linearizer bblock-linearize-lap
     (lambda () (LAP))
     (lambda (x y) (LAP ,@x ,@y))
-    identity-procedure))
+    (lambda (linearized-lap)
+      (let ((end-code *end-of-block-code*))
+	(set! *end-of-block-code* (LAP))
+	(LAP ,@linearized-lap
+	     ,@end-code)))))
+
+(define (add-end-of-block-code! code-thunk)
+  (set! *end-of-block-code*
+	(LAP ,@*end-of-block-code*
+	     ,@(code-thunk)))
+  'done)
+
+(define (initialize-lap-linearizer!)
+  (set! *end-of-block-code* (LAP)))
