@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: instance.scm,v 1.2 1997/06/04 22:28:54 cph Exp $
+;;; $Id: instance.scm,v 1.3 1997/06/04 22:44:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -158,7 +158,8 @@
   (dispatch-tag-contents (tagged-vector-tag instance)))
 
 (define (instance-predicate class)
-  (guarantee-class class 'INSTANCE-PREDICATE)
+  (if (not (class? class))
+      (error:wrong-type-argument class "class" 'INSTANCE-PREDICATE))
   (let ((predicate (make-generic-procedure 1)))
     (let ((add
 	   (lambda (c v)
