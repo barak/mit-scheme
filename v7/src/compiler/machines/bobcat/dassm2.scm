@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.2 1987/12/31 05:51:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.3 1988/03/14 19:16:00 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -77,17 +77,23 @@ MIT in each case. |#
 	      (*ir)
 	      (*valid? true))
     (set! *ir (get-word))
-    (let ((instruction
-	   (if (external-label-marker? symbol-table offset state)
-	       (make-dc 'W *ir)
-	       (let ((instruction
-		      (((vector-ref opcode-dispatch (extract *ir 12 16))))))
-		 (if *valid?
-		     instruction
-		     (make-dc 'W *ir))))))
-      (receiver *current-offset
-		instruction
-		(disassembler/next-state instruction state)))))
+    ;; External label markers come in two parts:
+    ;; An entry type descriptor, and a gc offset.
+    (cond ((eq? state 'EXTERNAL-LABEL-OFFSET)
+	   (receiver *current-offset
+		     (make-dc 'W *ir)
+		     'INSTRUCTION))
+	  ((external-label-marker? symbol-table offset state)
+	   (receiver *current-offset
+		     (make-dc 'W *ir)
+		     'EXTERNAL-LABEL-OFFSET))
+	  (else
+	   (let* ((inst
+		   (((vector-ref opcode-dispatch (extract *ir 12 16)))))
+		  (instruction (if *valid? inst (make-dc 'W *ir))))
+	     (receiver *current-offset
+		       inst
+		       (disassembler/next-state inst state)))))))
 
 (define (disassembler/initial-state)
   'INSTRUCTION-NEXT)
@@ -99,8 +105,7 @@ MIT in each case. |#
 		    (let ((entry
 			   (interpreter-register? (cadr instruction))))
 		      (and entry
-			   (eq? (car entry) 'ENTRY)
-			   (not (eq? (cadr entry) 'SETUP-LEXPR)))))))
+			   (eq? (car entry) 'ENTRY))))))
       'EXTERNAL-LABEL
       'INSTRUCTION))
 
@@ -114,11 +119,11 @@ MIT in each case. |#
 (define (external-label-marker? symbol-table offset state)
   (if symbol-table
       (sorted-vector/there-exists? symbol-table
-				   (+ offset 2)
+				   (+ offset 4)
 				   label-info-external?)
       (and *block
 	   (not (eq? state 'INSTRUCTION))
-	   (let loop ((offset (+ offset 2)))
+	   (let loop ((offset (+ offset 4)))
 	     (let ((contents (read-bits (- offset 2) 16)))
 	       (if (bit-string-clear! contents 0)
 		   (let ((offset
@@ -243,23 +248,15 @@ MIT in each case. |#
 		    (loop (+ index 4) (1+ i)))))
       ;; Interpreter entry points
       ,@(make-entries
-	 #x00F0
-	 '(apply error wrong-number-of-arguments
-		 interrupt-procedure interrupt-continuation
-		 lookup-apply lookup access unassigned? unbound? set!
-		 define primitive-apply enclose setup-lexpr
-		 return-to-interpreter safe-lookup cache-variable
-		 reference-trap assignment-trap))
-      ,@(make-entries
-	 #x0228
-	 '(uuo-link uuo-link-trap cache-reference-apply
-		    safe-reference-trap unassigned?-trap
-		    cache-variable-multiple uuo-link-multiple
-		    &+ &- &* &/ &= &< &> 1+ -1+ zero? positive?
-		    negative? cache-assignment cache-assignment-multiple
-		    operator-trap)))))
-
-)
+	 #x012c
+	 '(link error apply
+		lexpr-apply primitive-apply primitive-lexpr-apply
+		cache-reference-apply lookup-apply
+		interrupt-continuation interrupt-ic-procedure
+		interrupt-procedure interrupt-closure
+		lookup safe-lookup set! access unassigned? unbound? define
+		reference-trap safe-reference-trap assignment-trap unassigned?-trap
+		&+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?))))))
 
 (define (make-pc-relative thunk)
   (let ((reference-offset *current-offset))

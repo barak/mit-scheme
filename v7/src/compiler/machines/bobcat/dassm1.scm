@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.2 1987/12/31 05:50:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.3 1988/03/14 19:15:45 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,15 +37,13 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ;;; Flags that control disassembler behavior
+
 (define disassembler/symbolize-output? true)
 (define disassembler/compiled-code-heuristics? true)
 (define disassembler/write-offsets? true)
+(define disassembler/write-addresses? false)
 
-;;; Operations exported from the disassembler package
-(define disassembler/instructions)
-(define disassembler/instructions/null?)
-(define disassembler/instructions/read)
-(define disassembler/lookup-symbol)
+;;;; Top level entries
 
 (define (compiler:write-lap-file filename #!optional symbol-table?)
   (let ((pathname (->pathname filename)))
@@ -59,6 +57,30 @@ MIT in each case. |#
 		    symbol-table?)
 		(compiler-info/symbol-table
 		 (compiler-info/read-file pathname)))))))))
+
+(define disassembler/base-address)
+
+(define (disassembler/write-compiled-entry entry)
+  (let ((the-block (compiled-code-address->block entry)))
+    (fluid-let ((disassembler/write-offsets? true)
+		(disassembler/write-addresses? true)
+		(disassembler/base-address (primitive-datum the-block)))
+      (let ((info
+	     (compiler-info/read-file
+	      (system-vector-ref the-block
+				 (-  (system-vector-size the-block) 2)))))
+	(newline)
+	(newline)
+	(disassembler/write-compiled-code-block
+	 the-block
+	 (compiler-info/symbol-table info))))))
+
+;;; Operations exported from the disassembler package
+
+(define disassembler/instructions)
+(define disassembler/instructions/null?)
+(define disassembler/instructions/read)
+(define disassembler/lookup-symbol)
 
 (define (disassembler/write-compiled-code-block block symbol-table)
   (write-string "Code:\n\n")
@@ -76,7 +98,7 @@ MIT in each case. |#
 
 (define (disassembler/instructions/address start-address end-address)
   (disassembler/instructions false start-address end-address false))
-
+
 (define (disassembler/write-instruction-stream symbol-table instruction-stream)
   (fluid-let ((*unparser-radix* 16))
     (disassembler/for-each-instruction instruction-stream
@@ -144,11 +166,21 @@ MIT in each case. |#
 	  (write-string (string-downcase (label-info-name label)))
 	  (write-char #\:)
 	  (newline))))
+
+  (if disassembler/write-addresses?
+      (begin
+	(write-string
+	 ((access unparse-number-heuristically number-unparser-package)
+	  (+ offset disassembler/base-address) 16 false false))
+	(write-char #\Tab)))
+  
   (if disassembler/write-offsets?
-      (begin (write-string
-	      ((access unparse-number-heuristically number-unparser-package)
-	       offset 16 false false))
-	     (write-char #\Tab)))
+      (begin
+	(write-string
+	 ((access unparse-number-heuristically number-unparser-package)
+	  offset 16 false false))
+	(write-char #\Tab)))
+
   (if symbol-table
       (write-string "    "))
   (write-instruction)

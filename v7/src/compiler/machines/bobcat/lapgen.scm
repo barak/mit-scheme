@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.1 1987/12/30 07:05:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.2 1988/03/14 19:16:33 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -168,7 +168,7 @@ MIT in each case. |#
     (let ((result
 	   (case (car expression)
 	     ((REGISTER)
-	      (LAP (MOV L ,(coerce->any (cadr expression)) ,target)))
+	      (coerce->target (cadr expression) register))
 	     ((OFFSET)
 	      (LAP
 	       (MOV L
@@ -217,6 +217,12 @@ MIT in each case. |#
       (register-reference register)
       (reference-alias-register! register false)))
 
+(define (coerce->target source register)
+  (if (is-alias-for-register? register source)
+      (LAP)
+      (LAP (MOV L ,(coerce->any source)
+		,(register-reference register)))))
+
 (define (code-object-label-initialize code-object)
   false)
 
@@ -251,11 +257,8 @@ MIT in each case. |#
   (INST (BRA (@PCR ,label))))
 
 (define-export (lap:make-entry-point label block-start-label)
-  (set! compiler:external-labels
-	(cons label compiler:external-labels))
   (LAP (ENTRY-POINT ,label)
-       (BLOCK-OFFSET ,label)
-       (LABEL ,label)))
+       ,@(make-external-label expression-code-word label)))
 
 ;;;; Registers/Entries
 
@@ -270,16 +273,15 @@ MIT in each case. |#
 				(INST-EA (@AO 6 ,index)))
 			     (loop (cdr names) (+ index 6)))))
 		 `(BEGIN ,@(loop names start)))))
-  (define-entries #x00F0 apply error wrong-number-of-arguments
-    interrupt-procedure interrupt-continuation lookup-apply lookup access
-    unassigned? unbound? set! define primitive-apply enclose setup-lexpr
-    return-to-interpreter safe-lookup cache-variable reference-trap
-    assignment-trap)
-  (define-entries #x0228 uuo-link uuo-link-trap cache-reference-apply
-    safe-reference-trap unassigned?-trap cache-variable-multiple
-    uuo-link-multiple &+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?
-    cache-assignment cache-assignment-multiple operator-trap
-    primitive-lexpr-apply))
+  (define-entries #x012c
+    link error apply
+    lexpr-apply primitive-apply primitive-lexpr-apply
+    cache-reference-apply lookup-apply
+    interrupt-continuation interrupt-ic-procedure
+    interrupt-procedure interrupt-closure
+    lookup safe-lookup set! access unassigned? unbound? define
+    reference-trap safe-reference-trap assignment-trap unassigned?-trap
+    &+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?))
 
 (define-integrable reg:compiled-memtop (INST-EA (@A 6)))
 (define-integrable reg:environment (INST-EA (@AO 6 #x000C)))
