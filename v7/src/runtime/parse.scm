@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.25 1994/03/24 18:24:01 gjr Exp $
+$Id: parse.scm,v 14.26 1994/12/01 19:01:09 adams Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -504,10 +504,12 @@ MIT in each case. |#
 
 (define-accretor (parse-object/string-quote)
   (discard-char)
-  (let loop ()
+  (let loop ((fragments '()))
     (let ((head (read-string char-set/string-delimiters)))
       (if (char=? #\" (read-char))
-	  head
+	  (if (null? fragments)
+	      head
+	      (apply string-append (reverse! (cons head fragments))))
 	  (let ((char
 		 (let ((char (read-char)))
 		   (cond ((char-ci=? char #\n) #\Newline)
@@ -521,9 +523,7 @@ MIT in each case. |#
 			  (let ((c2 (read-char)))
 			    (octal->char char c2 (read-char))))
 			 (else char)))))
-	    (string-append head
-			   (string char)
-			   (loop)))))))
+	    (loop (cons* (string char) head fragments)))))))
 
 (define (octal->char c1 c2 c3)
   (let ((d1 (char->digit c1 8))
