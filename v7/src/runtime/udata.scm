@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: udata.scm,v 14.19 1999/01/02 06:19:10 cph Exp $
+$Id: udata.scm,v 14.20 1999/03/25 03:44:20 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -201,6 +201,7 @@ contains constants derived from the source program.
 		   ;; and contain symbols and fixnums]
 		   (let ((kind  (quotient datum #x10000))
 			 (count (remainder datum #x10000)))
+		     kind
 		     (loop (+ index 1 count))))
 		  (else
 		   index)))))))
