@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.1 1988/06/13 12:29:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.2 1988/08/05 20:15:15 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -217,6 +217,7 @@ MIT in each case. |#
     TRUNCATE
     UNDEFINED-CONDITIONAL-BRANCH
     UNSIGNED-INTEGER->BIT-STRING
+    UNSPECIFIC
     VECTOR
     VECTOR-8B-FILL!
     VECTOR-8B-FIND-NEXT-CHAR

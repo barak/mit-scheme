@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.3 1988/06/16 06:30:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.4 1988/08/05 20:15:45 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -250,4 +250,11 @@ MIT in each case. |#
   (or (eq? object undefined-conditional-branch)
       ;; same as `undefined-conditional-branch'.
       ;; (eq? object *the-non-printing-object*)
+      ;; (eq? object unspecific)
       (eq? object (microcode-object/unassigned))))
+
+(define *the-non-printing-object*
+  (object-new-type (ucode-type true) 1))
+
+(define unspecific
+  (object-new-type (ucode-type true) 1))
