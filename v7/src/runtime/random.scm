@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.35 2004/01/09 20:22:22 cph Exp $
+$Id: random.scm,v 14.36 2004/11/19 17:34:27 cph Exp $
 
 Copyright 1988,1989,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -131,9 +131,7 @@ USA.
 ;;;; Operations producing random values
 
 (define (random modulus #!optional state)
-  (let ((state
-	 (guarantee-random-state (if (default-object? state) #f state)
-				 'RANDOM)))
+  (let ((state (guarantee-random-state state 'RANDOM)))
     ;; Kludge: an exact integer modulus means that result is an exact
     ;; integer.  Otherwise, the result is a real number.
     (cond ((int:integer? modulus)
@@ -159,9 +157,7 @@ USA.
   (flo:/ (int:->flonum (%random-integer flimit state)) flimit.))
 
 (define (random-byte-vector n #!optional state)
-  (let ((state
-	 (guarantee-random-state (if (default-object? state) #f state)
-				 'RANDOM-BYTE-VECTOR))
+  (let ((state (guarantee-random-state state 'RANDOM-BYTE-VECTOR))
 	(s (make-string n)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i n))
@@ -200,27 +196,26 @@ USA.
 ;;;; Operations on state
 
 (define (make-random-state #!optional state)
-  (let ((state (if (default-object? state) #f state)))
-    (if (or (eq? #t state) (int:integer? state))
-	;; Use good random source if available
-	(if (file-readable? "/dev/urandom")
-	    (call-with-input-file "/dev/urandom"
-	      (lambda (port)
-		(initial-random-state
-		 (lambda (b)
-		   (let outer ()
-		     (let inner
-			 ((m #x100)
-			  (n (char->integer (read-char port))))
-		       (cond ((< m b)
-			      (inner (* m #x100)
-				     (+ (* n #x100)
-					(char->integer (read-char port)))))
-			     ((< n b) n)
-			     (else (outer)))))))))
-	    (simple-random-state))
-	(copy-random-state
-	 (guarantee-random-state state 'MAKE-RANDOM-STATE)))))
+  (if (or (eq? #t state) (int:integer? state))
+      ;; Use good random source if available
+      (if (file-readable? "/dev/urandom")
+	  (call-with-input-file "/dev/urandom"
+	    (lambda (port)
+	      (initial-random-state
+	       (lambda (b)
+		 (let outer ()
+		   (let inner
+		       ((m #x100)
+			(n (char->integer (read-char port))))
+		     (cond ((< m b)
+			    (inner (* m #x100)
+				   (+ (* n #x100)
+				      (char->integer (read-char port)))))
+			   ((< n b) n)
+			   (else (outer)))))))))
+	  (simple-random-state))
+      (copy-random-state
+       (guarantee-random-state state 'MAKE-RANDOM-STATE))))
 
 (define (simple-random-state)
   (initial-random-state
@@ -373,7 +368,7 @@ USA.
 	 (flo:vector-set! v1 i (flo:vector-ref v2 i)))))))
 
 (define (guarantee-random-state state procedure)
-  (if state
+  (if (if (default-object? state) #f state)
       (begin
 	(if (not (random-state? state))
 	    (error:wrong-type-argument state "random state" procedure))

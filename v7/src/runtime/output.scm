@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.34 2004/05/26 17:03:14 cph Exp $
+$Id: output.scm,v 14.35 2004/11/19 17:37:48 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1999,2001,2002,2003 Massachusetts Institute of Technology
@@ -84,17 +84,6 @@ USA.
 
 ;;;; High level
 
-(define-syntax optional-output-port
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(EXPRESSION EXPRESSION) (cdr form))
-	 (let ((port (close-syntax (cadr form) environment))
-	       (caller (close-syntax (caddr form) environment)))
-	   `(IF (DEFAULT-OBJECT? ,port)
-		(CURRENT-OUTPUT-PORT)
-		(GUARANTEE-OUTPUT-PORT ,port ,caller)))
-	 (ill-formed-syntax form)))))
-
 (define (write-char char #!optional port)
   (let ((port (optional-output-port port 'WRITE-CHAR)))
     (if (let ((n (output-port/write-char port char)))
@@ -149,17 +138,6 @@ USA.
 	       (fix:> n 0)))
 	(output-port/discretionary-flush port))))
 
-(define-syntax optional-unparser-table
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(EXPRESSION EXPRESSION) (cdr form))
-	 (let ((unparser-table (close-syntax (cadr form) environment))
-	       (caller (close-syntax (caddr form) environment)))
-	   `(IF (DEFAULT-OBJECT? ,unparser-table)
-		(CURRENT-UNPARSER-TABLE)
-		(GUARANTEE-UNPARSER-TABLE ,unparser-table ,caller)))
-	 (ill-formed-syntax form)))))
-
 (define (display object #!optional port unparser-table)
   (let ((port (optional-output-port port 'DISPLAY)))
     (unparse-object/top-level object port #f
@@ -195,6 +173,16 @@ USA.
 
 (define beep (wrap-custom-operation-0 'BEEP))
 (define clear (wrap-custom-operation-0 'CLEAR))
+
+(define (optional-output-port port caller)
+  (if (default-object? port)
+      (current-output-port)
+      (guarantee-output-port port caller)))
+
+(define (optional-unparser-table unparser-table caller)
+  (if (default-object? unparser-table)
+      (current-unparser-table)
+      (guarantee-unparser-table unparser-table caller)))
 
 ;;;; Tabular output
 

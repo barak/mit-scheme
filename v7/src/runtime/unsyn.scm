@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.31 2004/11/19 06:56:37 cph Exp $
+$Id: unsyn.scm,v 14.32 2004/11/19 17:38:51 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1994,1995,1996,2001,2002 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -46,7 +47,6 @@ USA.
 			     (QUOTATION ,unsyntax-QUOTATION)
 			     (SEQUENCE ,unsyntax-SEQUENCE-object)
 			     (THE-ENVIRONMENT ,unsyntax-THE-ENVIRONMENT-object)
-			     (UNASSIGNED? ,unsyntax-UNASSIGNED?-object)
 			     (VARIABLE ,unsyntax-VARIABLE-object))))
   unspecific)
 
@@ -189,9 +189,6 @@ USA.
       '()
       `(,(unsyntax-object value))))
 
-(define (unsyntax-UNASSIGNED?-object object)
-  `(DEFAULT-OBJECT? ,(unassigned?-name object)))
-
 (define (unsyntax-COMMENT-object comment)
   (let ((expression (unsyntax-object (comment-expression comment))))
     (if unsyntaxer:show-comments?

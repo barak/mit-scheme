@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.29 2004/11/19 06:59:41 cph Exp $
+$Id: input.scm,v 14.30 2004/11/19 17:40:30 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1997,1999,2002,2003 Massachusetts Institute of Technology
@@ -142,17 +142,6 @@ USA.
 
 ;;;; High level
 
-(define-syntax optional-input-port
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(EXPRESSION EXPRESSION) (cdr form))
-	 (let ((port (close-syntax (cadr form) environment))
-	       (caller (close-syntax (caddr form) environment)))
-	   `(IF (DEFAULT-OBJECT? ,port)
-		(CURRENT-INPUT-PORT)
-		(GUARANTEE-INPUT-PORT ,port ,caller)))
-	 (ill-formed-syntax form)))))
-
 (define (char-ready? #!optional port interval)
   (let ((port (optional-input-port port 'CHAR-READY?))
 	(interval
@@ -232,3 +221,8 @@ USA.
 	   (input-port/read-external-substring! port string start end))
 	  (else
 	   (error:wrong-type-argument string "string" 'READ-SUBSTRING!)))))
+
+(define (optional-input-port port caller)
+  (if (default-object? port)
+      (current-input-port)
+      (guarantee-input-port port caller)))

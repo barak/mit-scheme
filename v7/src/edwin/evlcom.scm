@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: evlcom.scm,v 1.68 2003/02/14 18:28:12 cph Exp $
+$Id: evlcom.scm,v 1.69 2004/11/19 17:35:08 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -253,23 +253,21 @@ Has no effect if evaluate-in-inferior-repl is false."
   (let ((buffer (current-buffer)))
     (eval-with-history (apply prompt-for-expression
 			      prompt
-			      (cond ((default-object? default)
-				     default-object-kludge)
-				    ((or (symbol? default)
-					 (pair? default)
-					 (vector? default))
-				     `',default)
-				    (else default))
+			      (if (or (symbol? default)
+				      (pair? default)
+				      (vector? default))
+				  `',default
+				  default)
 			      options)
 		       (evaluation-environment buffer))))
 
-(define (prompt-for-expression prompt #!optional default-object . options)
+(define (prompt-for-expression prompt #!optional default . options)
   (read-from-string
    (apply prompt-for-string
 	  prompt
-	  (and (not (or (default-object? default-object)
-			(eq? default-object-kludge default-object)))
-	       (write-to-string default-object))
+	  (if (default-object? default)
+	      #f
+	      (write-to-string default))
 	  'MODE
 	  (let ((environment (ref-variable scheme-environment)))
 	    (lambda (buffer)
@@ -279,9 +277,6 @@ Has no effect if evaluate-in-inferior-repl is false."
 	      ;; so that completion of variables works right.
 	      (local-set-variable! scheme-environment environment buffer)))
 	  options)))
-
-(define default-object-kludge
-  (list 'DEFAULT-OBJECT-KLUDGE))
 
 (define (read-from-string string)
   (bind-condition-handler (list condition-type:error) evaluation-error-handler
