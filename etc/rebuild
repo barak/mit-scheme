@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild,v 1.3 1991/08/22 21:09:04 arthur Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild,v 1.4 1991/08/23 02:38:27 arthur Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
@@ -15,7 +15,11 @@
 # is re-built as well.
 
 # If the 6.001 (student) band is re-built, the range- and type-checked
-# runtime system (runtime-check) is recompiled first.
+# runtime system (runtime-check) is recompiled first.  Since the
+# runtime-check/ directory uses symbolic links to .bin files in the
+# runtime/ directory, the 6.001 band will not reflect changes to the
+# runtime system that have not yet been resyntaxed in the runtime/
+# directory.
 
 # This script silently ignores additional arguments.
 
@@ -100,8 +104,8 @@ if ("$4" != "none") then
   set student="$root/lib/BACKUP/6001-$stver.Z"
   echo \(cd\ \"../runtime-check\"\) >> $script
   echo \(load\ \"runtim.cbf\"\) >> $script
-  echo "###   (Must syntax Edwin in order to syntax the 6.001 make.scm file.)"
   if ("$edwin" == "") then
+    echo ";;; Must syntax Edwin in order to syntax the 6.001 make.scm file." >> $script
     echo \(cd\ \"../edwin\"\) >> $script
     echo \(load\ \"edwin.sf\"\) >> $script
   endif
@@ -126,7 +130,10 @@ endif
 
 # Stage 3: Re-compile sources
 
+echo "### cd $root/runtime"
 cd $root/runtime
+
+echo "### scheme -compiler -no-init-file"
 scheme -compiler -no-init-file <$script
 
 set result="$status"
@@ -142,8 +149,10 @@ endif
 # Stage 4: Re-build bands in staging area
 
 if ("$runtime" != "") then
+  echo "### cd $root/runtime"
   cd $root/runtime
   rm -f ../tmp/runtime.com
+  echo "### scheme -large -fasl make.com -no-init-file"
   scheme -large -fasl make.com -no-init-file <<*END*
 (begin
   (disk-save "../tmp/runtime.com")
@@ -165,8 +174,10 @@ endif
 
 
 if ("$complr" != "") then
+  echo "### cd $root/sf"
   cd $root/sf
   rm -f ../tmp/complr.com
+  echo "### scheme -large $runbandarg -no-init-file"
   scheme -large $runbandarg -no-init-file <<*END*
 (begin
   (load "make.com")
@@ -191,8 +202,10 @@ endif
 
 
 if ("$edwin" != "") then
+  echo "### cd $root/edwin"
   cd $root/edwin
   rm -f ../tmp/edwin.com
+  echo "### scheme -large $runbandarg -no-init-file"
   scheme -large $runbandarg -no-init-file <<*END*
 (begin
   (load "make.com")
@@ -213,8 +226,10 @@ endif
 
 
 if (("$edwin" != "") || ("$complr" != "")) then
+  echo "### cd $root/edwin"
   cd $root/edwin
   rm -f ../tmp/c+e.com
+  echo "### scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file"
   scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file <<*END*
 (begin
   (load "make.com")
@@ -235,8 +250,10 @@ endif
 
 
 if ("$student" != "") then
+  echo "### cd $root/runtime-check"
   cd $root/runtime-check
   rm -f ../tmp/6001.com
+  echo "### scheme -large -fasl make.com -no-init-file"
   scheme -large -fasl make.com -no-init-file <<*END*
 (begin
   (cd "../edwin")
