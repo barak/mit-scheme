@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 13.43 1987/04/13 18:43:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 13.44 1987/06/26 01:01:16 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -240,33 +240,34 @@
       (print-statistic statistic))))
 
 (set! toggle-gc-notification!
-(named-lambda (toggle-gc-notification!)
-  (if (null? normal-recorder)
-      (begin (set! normal-recorder
-		   (access record-statistic! gc-statistics-package))
-	     (set! (access record-statistic! gc-statistics-package)
-		   gc-notification))
-      (begin (set! (access record-statistic! gc-statistics-package)
-		   normal-recorder)
-	     (set! normal-recorder '())))
-  *the-non-printing-object*))
+  (named-lambda (toggle-gc-notification!)
+    (if (null? normal-recorder)
+	(begin (set! normal-recorder
+		     (access record-statistic! gc-statistics-package))
+	       (set! (access record-statistic! gc-statistics-package)
+		     gc-notification))
+	(begin (set! (access record-statistic! gc-statistics-package)
+		     normal-recorder)
+	       (set! normal-recorder '())))
+    *the-non-printing-object*))
 
 (set! print-gc-statistics
-(named-lambda (print-gc-statistics)
-  (for-each print-statistic (gc-statistics))))
+  (named-lambda (print-gc-statistics)
+    (for-each print-statistic (gc-statistics))))
 
 (define (print-statistic statistic)
-  (apply (lambda (meter
-		  this-gc-start this-gc-end
-		  last-gc-start last-gc-end
-		  heap-left)
-	   (let ((delta-time (- this-gc-end this-gc-start)))
-	     (newline) (write-string "GC #") (write meter)
-	     (write-string " took: ") (write delta-time)
-	     (write-string " (")
-	     (write (round (* (/ delta-time (- this-gc-end last-gc-end))
-			      100)))
-	     (write-string "%) free: ") (write heap-left)))
-	 (vector->list statistic)))
+  (fluid-let ((*unparser-radix* 10))
+    (apply (lambda (meter
+		    this-gc-start this-gc-end
+		    last-gc-start last-gc-end
+		    heap-left)
+	     (let ((delta-time (- this-gc-end this-gc-start)))
+	       (newline) (write-string "GC #") (write meter)
+	       (write-string " took: ") (write delta-time)
+	       (write-string " (")
+	       (write (round (* (/ delta-time (- this-gc-end last-gc-end))
+				100)))
+	       (write-string "%) free: ") (write heap-left)))
+	   (vector->list statistic))))
 
 )
