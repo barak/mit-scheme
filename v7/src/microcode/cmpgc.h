@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.20 1992/07/06 13:17:37 jinx Exp $
+$Id: cmpgc.h,v 1.21 1992/08/29 12:54:14 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -135,11 +135,27 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
   }									\
 }
 
+#ifdef AUTOCLOBBER_BUG
+# define AUTOCLOBBER_BUMP(Old, To) do					\
+{									\
+  if (OBJECT_TYPE(*Old) == TC_MANIFEST_VECTOR)				\
+  {									\
+    *To = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,				\
+			((PAGE_SIZE / (sizeof (SCHEME_OBJECT)))		\
+			 - 1)));					\
+    To += (PAGE_SIZE / (sizeof (SCHEME_OBJECT)));			\
+  }									\
+} while (0)								\
+#else
+#  define AUTOCLOBBER_BUMP(Old, To) do { } while (0)
+#endif
+
 #define Transport_Compiled()						\
 {									\
   SCHEME_OBJECT *Saved_Old = Old;					\
 									\
   Real_Transport_Vector();						\
+  AUTOCLOBBER_BUMP (Saved_Old, To);					\
   *Saved_Old = New_Address;						\
   Temp = (RELOCATE_COMPILED (Temp,					\
 			     (OBJECT_ADDRESS (New_Address)),		\
