@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.81 1998/01/03 05:02:32 cph Exp $
+;;;	$Id: unix.scm,v 1.82 1998/02/01 06:42:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -182,78 +182,62 @@ Includes the new backup.  Must be > 0."
 			  (unix/current-gid))))))))
 
 (define (os/buffer-backup-pathname truename buffer)
-  (with-values
+  (call-with-values
       (lambda ()
-	;; Handle compressed files specially.
 	(let ((type (pathname-type truename)))
 	  (if (member type unix/encoding-pathname-types)
-	      (values (->namestring (pathname-new-type truename false))
+	      (values (pathname-new-type truename #f)
 		      (string-append "~." type))
-	      (values (->namestring truename) "~"))))
-    (lambda (filename suffix)
-      (let ((no-versions
-	     (lambda ()
-	       (values (->pathname (string-append filename suffix)) '()))))
-	(if (eq? 'NEVER (ref-variable version-control buffer))
-	    (no-versions)
-	    (let ((prefix (string-append (file-namestring filename) ".~")))
-	      (let ((filenames
-		     (os/directory-list-completions
-		      (directory-namestring filename)
-		      prefix))
-		    (prefix-length (string-length prefix)))
-		(let ((versions
-		       (sort
-			(let ((pattern
-			       (re-compile-pattern
-				(string-append "\\([0-9]+\\)"
-					       (re-quote-string suffix)
-					       "$")
-				false)))
-			  (let loop ((filenames filenames))
-			    (cond ((null? filenames)
-				   '())
-				  ((re-substring-match
-				    pattern
-				    (car filenames)
-				    prefix-length
-				    (string-length (car filenames)))
-				   (let ((version
-					  (string->number
-					   (substring
-					    (car filenames)
-					    (re-match-start-index 1)
-					    (re-match-end-index 1)))))
-				     (cons version
-					   (loop (cdr filenames)))))
-				  (else
-				   (loop (cdr filenames))))))
-			<)))
-		  (let ((high-water-mark (apply max (cons 0 versions))))
-		    (if (or (ref-variable version-control buffer)
-			    (positive? high-water-mark))
-			(let ((version->pathname
-			       (let ((directory
-				      (directory-pathname filename)))
-				 (lambda (version)
-				   (merge-pathnames
-				    (string-append prefix
-						   (number->string version)
-						   suffix)
-				    directory)))))
-			  (values
-			   (version->pathname (+ high-water-mark 1))
-			   (let ((start
-				  (ref-variable kept-old-versions buffer))
-				 (end
-				  (- (length versions)
-				     (- (ref-variable kept-new-versions buffer)
-					1))))
-			     (if (< start end)
-				 (map version->pathname
-				      (sublist versions start end))
-				 '()))))
-			(no-versions)))))))))))
+	      (values truename "~"))))
+    (lambda (truename suffix)
+      (if (eq? 'NEVER (ref-variable version-control buffer))
+	  (values (unix/make-backup-pathname truename #f suffix) '())
+	  (let ((prefix (string-append (file-namestring truename) ".~")))
+	    (let ((backups
+		   (let loop
+		       ((filenames
+			 (os/directory-list-completions
+			  (directory-namestring truename)
+			  prefix))
+			(backups '()))
+		     (if (null? filenames)
+			 (sort backups (lambda (x y) (< (cdr x) (cdr y))))
+			 (loop (cdr filenames)
+			       (let ((root.version
+				      (os/numeric-backup-filename?
+				       (car filenames))))
+				 (if root.version
+				     (cons (cons (car filenames)
+						 (cdr root.version))
+					   backups)
+				     backups)))))))
+	      (if (null? backups)
+		  (values (unix/make-backup-pathname
+			   truename
+			   (and (ref-variable version-control buffer) 1)
+			   suffix)
+			  '())
+		  (values (unix/make-backup-pathname
+			   truename
+			   (+ (apply max (map cdr backups)) 1)
+			   suffix)
+			  (let ((start (ref-variable kept-old-versions buffer))
+				(end
+				 (- (length backups)
+				    (- (ref-variable kept-new-versions buffer)
+				       1))))
+			    (if (< start end)
+				(map (let ((dir (directory-pathname truename)))
+				       (lambda (entry)
+					 (merge-pathnames (car entry) dir)))
+				     (sublist backups start end))
+				'()))))))))))
+
+(define (unix/make-backup-pathname pathname version suffix)
+  (string-append (->namestring pathname)
+		 (if version
+		     (string-append ".~" (number->string version) suffix)
+		     suffix)))
 
 (define (os/directory-list directory)
   (let ((channel (directory-channel-open directory)))
