@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.35 1993/10/21 14:52:45 cph Exp $
+$Id: x11graph.scm,v 1.36 1993/11/01 22:06:18 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -533,15 +533,17 @@ MIT in each case. |#
 				    (number->string y))
 		     "")))
 
-
 (define x-graphics-default-geometry "512x512")
 (define x-graphics-default-display-name #f)
 
 (define (x-graphics/open #!optional display geometry suppress-map?)
   (let ((display
-	 (cond ((default-object? display) (x-graphics/open-display #f))
-	       ((x-display? display)      display)
-	       (else  	                  (x-graphics/open-display display)))))
+	 (let ((display
+		(and (not (default-object? display))
+		     display)))
+	   (if (x-display? display)
+	       display
+	       (x-graphics/open-display display)))))
     (call-with-values
 	(lambda ()
 	  (decode-suppress-map-arg (and (not (default-object? suppress-map?))
