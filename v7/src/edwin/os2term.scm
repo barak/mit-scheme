@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.4 1995/02/08 01:21:05 cph Exp $
+;;;	$Id: os2term.scm,v 1.5 1995/02/24 00:36:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -427,8 +427,17 @@
 (define (os2-screen/lower! screen)
   (os2win-set-state (screen-wid screen) window-state:bottom))
 
+(define (os2-screen/show! screen)
+  (os2win-set-state (screen-wid screen) window-state:show))
+
 (define (os2-screen/hide! screen)
   (os2win-set-state (screen-wid screen) window-state:hide))
+
+(define (os2-screen/activate! screen)
+  (os2win-set-state (screen-wid screen) window-state:activate))
+
+(define (os2-screen/deactivate! screen)
+  (os2win-set-state (screen-wid screen) window-state:deactivate))
 
 (define (os2-screen/minimize! screen)
   (os2win-set-state (screen-wid screen) window-state:minimize))

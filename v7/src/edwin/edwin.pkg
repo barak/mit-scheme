@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.163 1995/02/14 00:30:44 cph Exp $
+$Id: edwin.pkg,v 1.164 1995/02/24 00:36:53 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1170,12 +1170,15 @@ MIT in each case. |#
     (export (edwin)
 	    os2-screen/get-frame-size
 	    os2-screen/get-position
+	    os2-screen/activate!
+	    os2-screen/deactivate!
 	    os2-screen/hide!
 	    os2-screen/lower!
 	    os2-screen/maximize!
 	    os2-screen/minimize!
 	    os2-screen/raise!
 	    os2-screen/restore!
+	    os2-screen/show!
 	    os2-screen/set-background-color!
 	    os2-screen/set-font!
 	    os2-screen/set-foreground-color!
