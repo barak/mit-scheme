@@ -1,30 +1,36 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: rexp.scm,v 1.15 2000/07/08 00:41:45 cph Exp $
-;;;
-;;; Copyright (c) 2000 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#| -*-Scheme-*-
+
+$Id: rexp.scm,v 1.16 2001/10/05 15:43:04 cph Exp $
+
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+|#
 
 ;;;; List-based Regular Expressions
+
+;;; This is an abstraction layer upon regular expressions, to make
+;;; them easier to read and write.  Expressions written this way can
+;;; be compiled into ordinary regular expressions using REXP->REGEXP.
 
 (declare (usual-integrations))
 
 (define (rexp? rexp)
-  (or (char-set? rexp)
-      (string? rexp)
+  (or (string? rexp)
+      (char-set? rexp)
       (and (pair? rexp)
 	   (list? (cdr rexp))
 	   (let ((one-arg
@@ -109,7 +115,7 @@
 (define (rexp-groupify rexp)
   (let ((group (lambda () `(GROUP ,rexp)))
 	(no-group (lambda () (error "Expression can't be grouped:" rexp))))
-    (cond ((and (string? rexp) (not (char-set? rexp)))
+    (cond ((string? rexp)
 	   (case (string-length rexp)
 	     ((0) (no-group))
 	     ((1) rexp)
@@ -137,7 +143,7 @@
 (define (rexp-not-syntax-char type) `(NOT-SYNTAX-CHAR ,type))
 
 (define (rexp-case-fold rexp)
-  (cond ((and (string? rexp) (not (char-set? rexp)))
+  (cond ((or (string? rexp) (char-set? rexp))
 	 `(CASE-FOLD ,rexp))
 	((and (pair? rexp)
 	      (memq (car rexp) '(ALTERNATIVES SEQUENCE GROUP OPTIONAL * +))
@@ -151,10 +157,10 @@
 
 (define (rexp->regexp rexp)
   (let ((lose (lambda () (error "Malformed rexp:" rexp))))
-    (cond ((char-set? rexp)
-	   (char-set->regexp rexp))
-	  ((string? rexp)
+    (cond ((string? rexp)
 	   (re-quote-string rexp))
+	  ((char-set? rexp)
+	   (char-set->regexp rexp))
 	  ((and (pair? rexp) (list? (cdr rexp)))
 	   (let ((one-arg
 		  (lambda ()
@@ -179,9 +185,9 @@
 		 ((+) (string-append (rexp-arg) "+"))
 		 ((CASE-FOLD)
 		  (let ((arg (one-arg)))
-		    (if (and (string? arg) (not (char-set? arg)))
-			(case-fold-string arg)
-			(lose))))
+		    (cond ((string? arg) (case-fold-string arg))
+			  ((char-set? arg) (case-fold-char-et arg))
+			  (else (lose)))))
 		 ((ANY-CHAR) ".")
 		 ((LINE-START) "^")
 		 ((LINE-END) "$")
@@ -215,3 +221,12 @@
 			  (substring s start index))
 			 parts))
 	    (apply string-append (reverse! parts)))))))
+
+(define (case-fold-char-set c)
+  (let loop ((chars (char-set-members c)) (chars* '()))
+    (if (pair? chars)
+	(loop (cdr chars)
+	      (if (char-alphabetic? c)
+		  (cons* (char-upcase c) (char-downcase c) chars*)
+		  chars*))
+	(apply char-set chars*))))
