@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.63 1999/01/14 21:37:52 cph Exp $
+$Id: decls.scm,v 1.64 1999/05/13 03:06:36 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -84,7 +84,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      "paths"
 	      "rcsparse"
 	      "rename"
-	      "rgxcmp"
 	      "ring"
 	      "strpad"
 	      "strtab"

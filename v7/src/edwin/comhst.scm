@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comhst.scm,v 1.6 1999/01/02 06:11:34 cph Exp $
+$Id: comhst.scm,v 1.7 1999/05/13 03:06:36 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -115,10 +115,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (set-command-message! comint-input-ring-tag
 					   start left right)
 		     (editor-failure "Not found"))
-		    ((re-string-search pattern
-				       (ring-ref ring (- index 1))
-				       #f
-				       syntax-table)
+		    ((re-string-search-forward pattern
+					       (ring-ref ring (- index 1))
+					       #f
+					       syntax-table)
 		     (set-variable! comint-last-input-match string)
 		     ((ref-command comint-previous-input) (- index start)))
 		    (else

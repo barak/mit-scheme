@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmailsrt.scm,v 1.10 1999/01/02 06:11:34 cph Exp $
+;;; $Id: rmailsrt.scm,v 1.11 1999/05/13 03:06:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -182,7 +182,7 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
     ;; added [ ]+ to the regexp to handle date string put out
     ;; by hx.lcs.mit.edu (they use 2 spaces instead of 1)
     ;; made seconds optional since research.att.com doesn't send it out
-      (if (re-string-search
+      (if (re-string-search-forward
 	   "\\([0-9]+\\) \\([^ ,]+\\) \\([0-9]+\\)[ ]+\\([0-9]?[0-9]\\):?\\([0-9][0-9]\\):?\\([0-9]*\\)"
 	   date)
 	  (string-append
@@ -226,14 +226,14 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 
 (define mail-strip-quoted-names
   (lambda (address)
-    (if (re-string-search "\\`[ \t\n]*" address)
+    (if (re-string-search-forward "\\`[ \t\n]*" address)
 	(set! address (string-tail address (re-match-end-index 0))))
     ;; strip surrounding whitespace
-    (if (re-string-search "[ \t\n]*\\'" address)
+    (if (re-string-search-forward "[ \t\n]*\\'" address)
 	(set! address (string-head address (re-match-start-index 0))))
     (let loop ()
-      (if (re-string-search "[ \t]*(\\([^)\"\\]\\|\\\\.\\|\\\\\n\\)*)"
-			    address)
+      (if (re-string-search-forward "[ \t]*(\\([^)\"\\]\\|\\\\.\\|\\\\\n\\)*)"
+				    address)
 	  (begin
 	    (set! address (mail-string-delete
 			   address 
@@ -257,7 +257,7 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 		  (loop the-pos))))))
     ;; Retain only part of address in <> delims, if there is such a thing.
     (let loop ()
-      (if (re-string-search "\\(,\\|\\`\\)[^,]*<\\([^>,]*>\\)" address)
+      (if (re-string-search-forward "\\(,\\|\\`\\)[^,]*<\\([^>,]*>\\)" address)
 	  (let ((junk-beg (re-match-end-index 1))
 		(junk-end (re-match-start-index 2))
 		(close (re-match-end-index 0)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: regexp.scm,v 1.71 1999/01/02 06:11:34 cph Exp $
+;;; $Id: regexp.scm,v 1.72 1999/05/13 03:06:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -22,31 +22,18 @@
 
 (declare (usual-integrations))
 
-(define registers (make-vector 20))
-(define hash-of-false (object-hash false))
+(define hash-of-false (object-hash #f))
 (define match-group hash-of-false)
 
-(define-integrable (re-match-start-index i)
-  (vector-ref registers i))
-
-(define-integrable (re-match-end-index i)
-  (vector-ref registers (+ i 10)))
-
 (define (re-match-start i)
-  (guarantee-re-register i 'RE-MATCH-START)
   (let ((index (re-match-start-index i)))
     (and index
 	 (make-mark (re-match-group) index))))
 
 (define (re-match-end i)
-  (guarantee-re-register i 'RE-MATCH-END)
   (let ((index (re-match-end-index i)))
     (and index
 	 (make-mark (re-match-group) index))))
-
-(define (guarantee-re-register i operator)
-  (if (not (and (exact-nonnegative-integer? i) (< i 10)))
-      (error:wrong-type-argument i "RE register" operator)))
 
 (define (re-match-group)
   (let ((group (object-unhash match-group)))
@@ -58,42 +45,39 @@
   (let ((group (object-unhash match-group)))
     (cons group
 	  (if group
-	      (let ((v (make-vector 20 false)))
-		(do ((i 0 (+ i 1)))
-		    ((= i 20))
-		  (let ((index (vector-ref registers i)))
+	      (let ((v (make-vector 20 #f))
+		    (rv (re-registers)))
+		(do ((i 0 (fix:+ i 1)))
+		    ((fix:= i 20))
+		  (let ((index (vector-ref rv i)))
 		    (if index
 			(vector-set!
 			 v i
 			 ;; Start marks are right-inserting,
 			 ;; end marks are left-inserting.
-			 (make-permanent-mark group index (>= i 10))))))
+			 (make-permanent-mark group index (fix:>= i 10))))))
 		v)
-	      (vector-copy registers)))))
+	      (re-registers)))))
 
 (define (set-re-match-data! data)
   (let ((group (car data))
 	(marks (cdr data)))
     (set! match-group (if group (group-hash-number group) hash-of-false))
-    (set! registers
-	  (if group
-	      (vector-map marks
-			  (lambda (mark)
-			    (and mark
-				 (let ((index (mark-index mark)))
-				   (mark-temporary! mark)
-				   index))))
-	      marks)))
-  unspecific)
+    (set-re-registers!
+     (if group
+	 (vector-map marks
+		     (lambda (mark)
+		       (and mark
+			    (let ((index (mark-index mark)))
+			      (mark-temporary! mark)
+			      index))))
+	 marks))))
 
 (define (preserving-match-data thunk)
   (let ((data unspecific))
     (unwind-protect (lambda () (set! data (re-match-data)) unspecific)
 		    thunk
 		    (lambda () (set-re-match-data! data)))))
-
-(define-integrable (syntax-table-argument syntax-table)
-  (syntax-table/entries (or syntax-table standard-syntax-table)))
 
 (define (replace-match replacement #!optional preserve-case? literal?)
   (let ((start (re-match-start 0))
@@ -159,77 +143,6 @@
     (group-delete! group start (re-match-end-index 0))
     (make-mark group start)))
 
-(define (re-search-buffer-forward regexp syntax-table group start end)
-  (let ((index
-	 ((ucode-primitive re-search-buffer-forward)
-	  (compiled-regexp/byte-stream regexp)
-	  (compiled-regexp/translation-table regexp)
-	  (syntax-table-argument syntax-table)
-	  registers group start end)))
-    (set! match-group (compute-match-group group index))
-    index))
-
-(define (re-search-buffer-backward regexp syntax-table group start end)
-  (let ((index
-	 ((ucode-primitive re-search-buffer-backward)
-	  (compiled-regexp/byte-stream regexp)
-	  (compiled-regexp/translation-table regexp)
-	  (syntax-table-argument syntax-table)
-	  registers group start end)))
-    (set! match-group (compute-match-group group index))
-    index))
-
-(define (re-match-buffer-forward regexp syntax-table group start end)
-  (let ((index
-	 ((ucode-primitive re-match-buffer)
-	  (compiled-regexp/byte-stream regexp)
-	  (compiled-regexp/translation-table regexp)
-	  (syntax-table-argument syntax-table)
-	  registers group start end)))
-    (set! match-group (compute-match-group group index))
-    index))
-
-(define (compute-match-group group index)
-  (if index
-      (group-hash-number group)
-      hash-of-false))
-
-(define (re-match-string-forward regexp syntax-table string)
-  (re-match-substring-forward regexp syntax-table
-			      string 0 (string-length string)))
-
-(define (re-match-substring-forward regexp syntax-table string start end)
-  (set! match-group hash-of-false)
-  ((ucode-primitive re-match-substring)
-   (compiled-regexp/byte-stream regexp)
-   (compiled-regexp/translation-table regexp)
-   (syntax-table-argument syntax-table)
-   registers string start end))
-
-(define (re-search-string-forward regexp syntax-table string)
-  (re-search-substring-forward regexp syntax-table
-			       string 0 (string-length string)))
-
-(define (re-search-substring-forward regexp syntax-table string start end)
-  (set! match-group hash-of-false)
-  ((ucode-primitive re-search-substring-forward)
-   (compiled-regexp/byte-stream regexp)
-   (compiled-regexp/translation-table regexp)
-   (syntax-table-argument syntax-table)
-   registers string start end))
-
-(define (re-search-string-backward regexp syntax-table string)
-  (re-search-substring-backward regexp syntax-table
-				string 0 (string-length string)))
-
-(define (re-search-substring-backward regexp syntax-table string start end)
-  (set! match-group hash-of-false)
-  ((ucode-primitive re-search-substring-backward)
-   (compiled-regexp/byte-stream regexp)
-   (compiled-regexp/translation-table regexp)
-   (syntax-table-argument syntax-table)
-   registers string start end))
-
 (define-macro (default-end-mark start end)
   `(IF (DEFAULT-OBJECT? ,end)
        (GROUP-END ,start)
@@ -287,7 +200,7 @@
 		   (mark-index end))))
       (and index
 	   (make-mark group index)))))
-
+
 (define (re-match-forward regexp start #!optional end case-fold-search)
   (let ((end (default-end-mark start end))
 	(case-fold-search (default-case-fold-search case-fold-search start))
@@ -303,54 +216,41 @@
 				    (mark-index end))))
       (and index
 	   (make-mark group index)))))
+
+(define (re-search-buffer-forward regexp syntax-table group start end)
+  (let ((index
+	 ((ucode-primitive re-search-buffer-forward)
+	  (compiled-regexp/byte-stream regexp)
+	  (compiled-regexp/translation-table regexp)
+	  (syntax-table-argument syntax-table)
+	  registers group start end)))
+    (set! match-group (compute-match-group group index))
+    index))
 
-(define (re-string-match regexp string #!optional case-fold syntax-table)
-  (let ((case-fold (if (default-object? case-fold) #f case-fold))
-	(syntax-table (if (default-object? syntax-table) #f syntax-table)))
-    (re-match-string-forward (if (compiled-regexp? regexp)
-				 regexp
-				 (re-compile-pattern regexp case-fold))
-			     syntax-table
-			     string)))
+(define (re-search-buffer-backward regexp syntax-table group start end)
+  (let ((index
+	 ((ucode-primitive re-search-buffer-backward)
+	  (compiled-regexp/byte-stream regexp)
+	  (compiled-regexp/translation-table regexp)
+	  (syntax-table-argument syntax-table)
+	  registers group start end)))
+    (set! match-group (compute-match-group group index))
+    index))
 
-(define (re-substring-match regexp string start end
-			    #!optional case-fold syntax-table)
-  (let ((case-fold (if (default-object? case-fold) #f case-fold))
-	(syntax-table (if (default-object? syntax-table) #f syntax-table)))
-    (re-match-substring-forward (if (compiled-regexp? regexp)
-				    regexp
-				    (re-compile-pattern regexp case-fold))
-				syntax-table
-				string start end)))
+(define (re-match-buffer-forward regexp syntax-table group start end)
+  (let ((index
+	 ((ucode-primitive re-match-buffer)
+	  (compiled-regexp/byte-stream regexp)
+	  (compiled-regexp/translation-table regexp)
+	  (syntax-table-argument syntax-table)
+	  registers group start end)))
+    (set! match-group (compute-match-group group index))
+    index))
 
-(define (re-string-search regexp string #!optional case-fold syntax-table)
-  (let ((case-fold (if (default-object? case-fold) #f case-fold))
-	(syntax-table (if (default-object? syntax-table) #f syntax-table)))
-    (re-search-string-forward (if (compiled-regexp? regexp)
-				  regexp
-				  (re-compile-pattern regexp case-fold))
-			      syntax-table
-			      string)))
+(define-integrable (syntax-table-argument syntax-table)
+  (char-syntax-table/entries (or syntax-table standard-char-syntax-table)))
 
-(define (re-substring-search regexp string start end
-			    #!optional case-fold syntax-table)
-  (let ((case-fold (if (default-object? case-fold) #f case-fold))
-	(syntax-table (if (default-object? syntax-table) #f syntax-table)))
-    (re-search-substring-forward (if (compiled-regexp? regexp)
-				     regexp
-				     (re-compile-pattern regexp case-fold))
-				 syntax-table
-				 string start end)))
-
-(define (regexp-group . alternatives)
-  (let ((alternatives
-	 (list-transform-positive alternatives identity-procedure)))
-    (if (null? alternatives)
-	"\\(\\)"
-	(apply string-append
-	       (cons "\\("
-		     (let loop ((alternatives alternatives))
-		       (cons (car alternatives)
-			     (if (null? (cdr alternatives))
-				 (list "\\)")
-				 (cons "\\|" (loop (cdr alternatives)))))))))))
+(define (compute-match-group group index)
+  (if index
+      (group-hash-number group)
+      hash-of-false))

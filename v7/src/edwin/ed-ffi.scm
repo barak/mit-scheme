@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.46 1999/01/14 21:37:56 cph Exp $
+$Id: ed-ffi.scm,v 1.47 1999/05/13 03:06:37 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -240,8 +240,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		syntax-table/system-internal)
     ("replaz"	(edwin)
 		edwin-syntax-table)
-    ("rgxcmp"	(edwin regular-expression-compiler)
-		syntax-table/system-internal)
     ("ring"	(edwin)
 		syntax-table/system-internal)
     ("rmail"	(edwin rmail)

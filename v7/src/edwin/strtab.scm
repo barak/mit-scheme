@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: strtab.scm,v 1.46 1999/01/02 06:11:34 cph Exp $
+;;; $Id: strtab.scm,v 1.47 1999/05/13 03:06:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -141,7 +141,8 @@
       (if (= index end)
 	  '()
 	  (let ((entry (vector-ref (string-table-vector table) index)))
-	    (if (re-string-search pattern (string-table-entry-string entry))
+	    (if (re-string-search-forward pattern
+					  (string-table-entry-string entry))
 		(cons (string-table-entry-value entry) (loop (1+ index)))
 		(loop (1+ index))))))))
 

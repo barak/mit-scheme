@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.64 1999/02/01 03:53:42 cph Exp $
+$Id: edwin.ldr,v 1.65 1999/05/13 03:06:38 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -73,6 +73,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (load-option 'SYNCHRONOUS-SUBPROCESS)))
       (load-option 'RB-TREE)
       (load-option 'HASH-TABLE)
+      (load-option 'REGULAR-EXPRESSION)
 
       (let ((environment (->environment '(EDWIN))))
 	(load "utils" environment)
@@ -139,7 +140,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(load "tparse" environment)
 	(load "syntax" environment)
 	(load "regexp" (->environment '(EDWIN REGULAR-EXPRESSION)))
-	(load "rgxcmp" (->environment '(EDWIN REGULAR-EXPRESSION-COMPILER)))
 	(load "comatch" environment)
 	(load "keyparse" (->environment '(EDWIN KEYPARSER)))
 	(load "linden" (->environment '(EDWIN LISP-INDENTATION)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.327 1999/05/11 20:30:37 cph Exp $
+$Id: runtime.pkg,v 14.328 1999/05/13 03:04:25 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -189,7 +189,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  vector-8b-find-previous-char
 	  vector-8b-find-previous-char-ci
 	  vector-8b-ref
-	  vector-8b-set!))
+	  vector-8b-set!)
+  (export (runtime char-syntax)
+	  guarantee-substring))
 
 (define-package (runtime 1d-property)
   (files "prop1d")
@@ -3485,3 +3487,64 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  eqht/get
 	  eqht/put!
 	  make-eqht))
+
+(define-package (runtime regular-expression)
+  (file-case options
+    ((load) "regexp")
+    (else))
+  (parent ())
+  (export ()
+	  guarantee-re-register
+	  guarantee-re-registers
+	  preserving-re-registers
+	  re-match-end-index
+	  re-match-start-index
+	  re-registers
+	  re-registers?
+	  re-string-match
+	  re-string-search-backward
+	  re-string-search-forward
+	  re-substring-match
+	  re-substring-search-backward
+	  re-substring-search-forward
+	  regexp-group
+	  set-re-registers!)
+  (initialization (initialize-package!)))
+
+(define-package (runtime regular-expression-compiler)
+  (file-case options
+    ((load) "rgxcmp")
+    (else))
+  (parent ())
+  (export ()
+	  compiled-regexp?
+	  compiled-regexp/byte-stream
+	  compiled-regexp/translation-table
+	  condition-type:re-compile-pattern
+	  re-compile-char
+	  re-compile-char-set
+	  re-compile-pattern
+	  re-compile-string
+	  re-disassemble-pattern
+	  re-quote-string
+	  re-translation-table))
+
+(define-package (runtime char-syntax)
+  (file-case options
+    ((load) "chrsyn")
+    (else))
+  (parent ())
+  (export ()
+	  char->syntax-code
+	  char-syntax->string
+	  char-syntax-table?
+	  get-char-syntax
+	  make-char-syntax-table
+	  set-char-syntax!
+	  standard-char-syntax-table
+	  string->char-syntax
+	  substring-find-next-char-not-of-syntax
+	  substring-find-next-char-of-syntax)
+  (export (runtime regular-expression)
+	  char-syntax-table/entries)
+  (initialization (initialize-package!)))

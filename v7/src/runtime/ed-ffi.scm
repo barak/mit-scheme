@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.20 1999/05/07 21:23:35 cph Exp $
+$Id: ed-ffi.scm,v 1.21 1999/05/13 03:04:06 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -44,6 +44,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     ("char"	(runtime character)
 		syntax-table/system-internal)
     ("chrset"	(runtime character-set)
+		syntax-table/system-internal)
+    ("chrsyn"	(runtime char-syntax)
 		syntax-table/system-internal)
     ("codwlk"	(runtime scode-walker)
 		syntax-table/system-internal)
@@ -211,7 +213,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		syntax-table/system-internal)
     ("recslot"	(runtime record-slot-access)
 		syntax-table/system-internal)
+    ("regexp"	(runtime regular-expression)
+		syntax-table/system-internal)
     ("rep"	(runtime rep)
+		syntax-table/system-internal)
+    ("rgxcmp"	(runtime regular-expression-compiler)
 		syntax-table/system-internal)
     ("savres"	(runtime save/restore)
 		syntax-table/system-internal)

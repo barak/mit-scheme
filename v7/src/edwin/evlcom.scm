@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: evlcom.scm,v 1.61 1999/01/31 04:09:21 cph Exp $
+;;; $Id: evlcom.scm,v 1.62 1999/05/13 03:06:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -49,7 +49,7 @@ If #F, use the default (REP loop) syntax-table."
   (lambda (object)
     (or (not object)
 	(symbol? object)
-	(scheme-syntax-table? object))))
+	(syntax-table? object))))
 
 (let ((daemon
        (lambda (buffer variable)
@@ -390,20 +390,17 @@ Has no effect if evaluate-in-inferior-repl is false."
   (let ((syntax-table (ref-variable scheme-syntax-table buffer)))
     (cond ((or (not syntax-table) (eq? 'DEFAULT syntax-table))
 	   (environment-syntax-table environment))
-	  ((scheme-syntax-table? syntax-table)
+	  ((syntax-table? syntax-table)
 	   syntax-table)
 	  ((symbol? syntax-table)
 	   (or (and (not (lexical-unreferenceable? environment syntax-table))
 		    (let ((syntax-table
 			   (lexical-reference environment syntax-table)))
-		      (and (scheme-syntax-table? syntax-table)
+		      (and (syntax-table? syntax-table)
 			   syntax-table)))
 	       (editor-error "Undefined syntax table: " syntax-table)))
 	  (else
 	   (editor-error "Illegal syntax table: " syntax-table)))))
-
-(define scheme-syntax-table?
-  (access syntax-table? system-global-environment))
 
 (define-variable run-light
   "Scheme run light.  Not intended to be modified by users.

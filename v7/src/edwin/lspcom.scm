@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: lspcom.scm,v 1.158 1999/01/02 06:11:34 cph Exp $
+;;; $Id: lspcom.scm,v 1.159 1999/05/13 03:06:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -213,7 +213,7 @@ No argument is equivalent to zero: just insert () and leave point between."
     (if argument
 	(set-current-point! (skip-chars-forward " \t"))
 	(or (group-start? (current-point))
-	    (memv (char->syntax-code standard-syntax-table
+	    (memv (char->syntax-code standard-char-syntax-table
 				     (mark-left-char (current-point)))
 		  '(#\\ #\> #\( #\space #\.))
 	    (insert-char #\space)))
@@ -226,7 +226,7 @@ No argument is equivalent to zero: just insert () and leave point between."
 		       (current-point)))
       (or argument
 	  (group-end? (current-point))
-	  (memv (char->syntax-code standard-syntax-table
+	  (memv (char->syntax-code standard-char-syntax-table
 				   (mark-right-char (current-point)))
 		'(#\\ #\> #\( #\) #\space))
 	  (insert-char #\space))

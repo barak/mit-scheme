@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rgxcmp.scm,v 1.109 1999/01/02 06:11:34 cph Exp $
+;;; $Id: rgxcmp.scm,v 1.110 1999/05/13 03:04:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -368,11 +368,11 @@
 		    (output-tail output)
 		    (output-length 0)
 		    (stack '())
-		    (fixup-jump false)
+		    (fixup-jump #f)
 		    (register-number 1)
 		    (begin-alternative)
-		    (pending-exact false)
-		    (last-start false))
+		    (pending-exact #f)
+		    (last-start #f))
 	  (set! begin-alternative (output-pointer))
 	  (let loop ()
 	    (if (input-end?)
@@ -437,7 +437,7 @@
   unspecific)
 
 (define-integrable (output-re-code! code)
-  (set! pending-exact false)
+  (set! pending-exact #f)
   (output! code))
 
 (define-integrable (output-start! code)
@@ -633,10 +633,10 @@
 	 (repeater-loop zero? many?))
 	((input-match? (input-peek) #\+)
 	 (input-discard!)
-	 (repeater-loop false many?))
+	 (repeater-loop #f many?))
 	((input-match? (input-peek) #\?)
 	 (input-discard!)
-	 (repeater-loop zero? false))
+	 (repeater-loop zero? #f))
 	(else
 	 (repeater-finish zero? many?))))
 
@@ -660,9 +660,9 @@
 		    re-code:dummy-failure-jump
 		    (fix:+ (pointer-position last-start) 6))))
 
-(define-repeater-char #\* true true)
-(define-repeater-char #\+ false true)
-(define-repeater-char #\? true false)
+(define-repeater-char #\* #t #t)
+(define-repeater-char #\+ #f #t)
+(define-repeater-char #\? #t #f)
 
 ;;;; Character Sets
 
@@ -735,8 +735,8 @@
 		 fixup-jump
 		 register-number
 		 begin-alternative)
-    (set! last-start false)
-    (set! fixup-jump false)
+    (set! last-start #f)
+    (set! fixup-jump #f)
     (set! register-number (fix:1+ register-number))
     (set! begin-alternative (output-pointer))
     unspecific))
@@ -768,8 +768,8 @@
     (output! re-code:unused)
     (output! re-code:unused)
     (output! re-code:unused)
-    (set! pending-exact false)
-    (set! last-start false)
+    (set! pending-exact #f)
+    (set! last-start #f)
     (set! begin-alternative (output-pointer))
     unspecific))
 
@@ -794,12 +794,12 @@
 ;;;; Compiled Pattern Disassembler
 
 (define (hack-fastmap pattern)
-  (let ((compiled-pattern (re-compile-pattern pattern false))
+  (let ((compiled-pattern (re-compile-pattern pattern #f))
 	(cs (char-set)))
     ((ucode-primitive re-compile-fastmap)
      compiled-pattern
-     (re-translation-table false)
-     (syntax-table/entries (make-syntax-table))
+     (re-translation-table #f)
+     (get-char-syntax standard-char-syntax-table)
      cs)
     (char-set-members cs)))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.237 1999/05/11 20:31:06 cph Exp $
+$Id: edwin.pkg,v 1.238 1999/05/13 03:06:39 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -102,6 +102,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  make-output-buffer
 	  output-buffer/drain-block
 	  output-buffer/write-substring-block)
+  (import (runtime char-syntax)
+	  char-syntax-table/entries)
   (export (edwin class-macros)
 	  class-instance-transforms)
   (export ()
@@ -340,7 +342,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  editor-frame-windows
 	  make-editor-frame))
 
-
 (define-package (edwin window combination)
   (files "comwin")
   (parent (edwin window))
@@ -522,46 +523,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  re-match-buffer-forward
 	  re-match-data
 	  re-match-end
-	  re-match-end-index
 	  re-match-forward
 	  re-match-start
-	  re-match-start-index
-	  re-match-string-forward
-	  re-match-substring-forward
 	  re-search-backward
 	  re-search-buffer-backward
 	  re-search-buffer-forward
 	  re-search-forward
-	  re-search-string-backward
-	  re-search-string-forward
-	  re-search-substring-backward
-	  re-search-substring-forward
-	  re-string-match
-	  re-string-search
-	  re-substring-match
-	  re-substring-search
 	  re-substitute-registers
-	  regexp-group
 	  replace-match
 	  search-backward
 	  search-forward
-	  set-re-match-data!))
-
-(define-package (edwin regular-expression-compiler)
-  (files "rgxcmp")
-  (parent (edwin))
-  (export (edwin)
-	  compiled-regexp?
-	  compiled-regexp/byte-stream
-	  compiled-regexp/translation-table
-	  condition-type:re-compile-pattern
-	  re-compile-char
-	  re-compile-char-set
-	  re-compile-pattern
-	  re-compile-string
-	  re-disassemble-pattern
-	  re-quote-string
-	  re-translation-table))
+	  set-re-match-data!)
+  (import (runtime regular-expression)
+	  registers))
 
 (define-package (edwin lisp-indentation)
   (files "linden")

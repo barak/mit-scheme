@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.6 1999/01/29 22:47:08 cph Exp $
+$Id: optiondb.scm,v 1.7 1999/05/13 03:04:08 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -59,6 +59,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  (lambda (spec)
    (define-load-option (car spec) (apply standard-option-loader (cdr spec))))
  '((COMPRESS	(RUNTIME COMPRESS)	#F			"cpress")
+   (DOSPROCESS	()			#F			"dosproc")
    (FORMAT	(RUNTIME FORMAT)	(INITIALIZE-PACKAGE!)	"format")
    (GDBM	(RUNTIME GDBM)		(INITIALIZE-PACKAGE!)	"gdbm")
    (HASH-TABLE	(RUNTIME HASH-TABLE)	(INITIALIZE-PACKAGE!)	"hashtb")
@@ -70,5 +71,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (WT-TREE	(RUNTIME WT-TREE)	#F			"wttree")
    ))
 
-(define-load-option 'DOSPROCESS
-  (standard-option-loader '() #F "dosproc"))
+(define-load-option 'REGULAR-EXPRESSION
+  (standard-option-loader '(RUNTIME REGULAR-EXPRESSION-COMPILER)
+			  #F
+			  "rgxcmp")
+  (standard-option-loader '(RUNTIME CHAR-SYNTAX)
+			  '(INITIALIZE-PACKAGE!)
+			  "chrsyn")
+  (standard-option-loader '(RUNTIME REGULAR-EXPRESSION)
+			  '(INITIALIZE-PACKAGE!)
+			  "regexp"))
