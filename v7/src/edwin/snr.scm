@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.20 1996/11/30 22:17:17 cph Exp $
+;;;	$Id: snr.scm,v 1.21 1996/12/07 07:25:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -461,12 +461,13 @@ Only one News reader may be open per server; if a previous News reader
 	(lambda ()
 	  (if (news-group? group)
 	      (values (news-group:subscribed? group)
+		      (news-group:articles-marked? group)
 		      (news-group:number-of-articles group)
 		      (news-group:name group))
-	      (values #f #f group)))
-      (lambda (subscribed? n-articles name)
+	      (values #f #f #f group)))
+      (lambda (subscribed? marked? n-articles name)
 	(insert-char (if subscribed? #\space #\U) mark)
-	(insert-char (if (news-group:articles-marked? group) #\M #\space) mark)
+	(insert-char (if marked? #\M #\space) mark)
 	(insert-char #\space mark)
 	(insert-string-pad-left (if n-articles (number->string n-articles) "")
 				5 #\space mark)
