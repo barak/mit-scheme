@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.52 1994/10/25 01:46:12 adams Exp $
+$Id: decls.scm,v 1.53 1994/12/19 19:38:30 cph Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -91,6 +91,7 @@ MIT in each case. |#
 	      "macros"
 	      "make"
 	      "nvector"
+	      "os2term"
 	      "paths"
 	      "rcsparse"
 	      "rename"
@@ -176,6 +177,8 @@ MIT in each case. |#
 		"notify"
 		"outline"
 		"occur"
+		"os2"
+		"os2com"
 		"pasmod"
 		"print"
 		"process"

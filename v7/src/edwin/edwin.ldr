@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.51 1994/11/03 05:03:53 adams Exp $
+$Id: edwin.ldr,v 1.52 1994/12/19 19:39:14 cph Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -108,8 +108,8 @@ MIT in each case. |#
 	(load "image" environment)
 	(load "comman" environment)
 	(load "docstr" environment)
-	(if (not (memq (lookup 'os-type) '(dos nt)))
-	    (set! (access *external-doc-strings?* environment) false))
+	(if (not (memq (lookup 'OS-TYPE) '(DOS NT)))
+	    (set! (access *external-doc-strings?* environment) #f))
 	(load "comtab" (->environment '(EDWIN COMTAB)))
 	(load "modes" environment)
 	(load "buffer" environment)
@@ -151,20 +151,25 @@ MIT in each case. |#
 	(load "rgxcmp" (->environment '(EDWIN REGULAR-EXPRESSION-COMPILER)))
 	(load "linden" (->environment '(EDWIN LISP-INDENTATION)))
 
-	(load-case 'os-type '((unix . "unix") (dos . "dos") (nt . "dos"))
+	(load-case 'OS-TYPE
+		   '((UNIX . "unix")
+		     (DOS . "dos")
+		     (NT . "dos")
+		     (OS/2 . "os2"))
 		   environment)
 
 	(load "fileio" environment)
 
-	(let ((env (->environment '(EDWIN SCREEN CONSOLE-SCREEN))))
-	  (load-set-and-initialize! '("termcap" "tterm") env)
-	  (if (memq (lookup 'os-type) '(dos nt))
-	      (begin
-		(load "ansi" env)
-		(if (load "bios" env)
-		    ((access bios-initialize-package! env))))))
+	(if (not (eq? 'OS/2 (lookup 'OS-TYPE)))
+	    (let ((env (->environment '(EDWIN SCREEN CONSOLE-SCREEN))))
+	      (load-set-and-initialize! '("termcap" "tterm") env)
+	      (if (memq (lookup 'OS-TYPE) '(DOS NT))
+		  (begin
+		    (load "ansi" env)
+		    (if (load "bios" env)
+			((access bios-initialize-package! env)))))))
 
-        (case (lookup 'os-type)
+        (case (lookup 'OS-TYPE)
 	  ((NT)
 	   (load-set-and-initialize! '("win32")
 				     (->environment '(EDWIN SCREEN WIN32)))
@@ -174,22 +179,30 @@ MIT in each case. |#
 	   (load-set-and-initialize! '("xterm")
 				     (->environment '(EDWIN SCREEN X-SCREEN)))
 	   (load-set-and-initialize! '("key-x11")
-				     (->environment '(EDWIN X-KEYS)))))
+				     (->environment '(EDWIN X-KEYS))))
+	  ((OS/2)
+	   (load-set-and-initialize! '("os2term")
+				     (->environment
+				      '(EDWIN SCREEN OS2-SCREEN)))))
 
-	(load-case 'os-type '((unix . "process")
-			      (dos . "dosproc")
-			      (nt . "dosproc"))
+	(load-case 'OS-TYPE
+		   '((UNIX . "process")
+		     (DOS . "dosproc")
+		     (NT . "dosproc")
+		     (OS/2 . "dosproc"))
 		   (->environment '(EDWIN PROCESS)))
 
 	(load "mousecom" environment)
-	(load "xcom" (->environment '(EDWIN X-COMMANDS)))
-	(load "win32com" (->environment '(EDWIN WIN-COMMANDS)))
+        (case (lookup 'OS-TYPE)
+	  ((UNIX) (load "xcom" (->environment '(EDWIN X-COMMANDS))))
+	  ((NT) (load "win32com" (->environment '(EDWIN WIN-COMMANDS))))
+	  ((OS/2) (load "os2com" (->environment '(EDWIN OS2-COMMANDS)))))
 	;; debug depends on button1-down defined in mousecom
 	(load "debug" (->environment '(EDWIN DEBUGGER)))
 
 	(let ((env (->environment '(EDWIN DIRED))))
 	  (load "dired" env)
-	  (if (eq? (lookup 'os-type) 'unix)
+	  (if (eq? (lookup 'OS-TYPE) 'unix)
 	      (load "dirunx" env)))
 
 	(load "argred" (->environment '(EDWIN COMMAND-ARGUMENT)))
@@ -239,7 +252,7 @@ MIT in each case. |#
 	      (load "vc" (->environment '(EDWIN VC)))))
 	(load "wincom" environment)
 	(load "scrcom" environment)
-	(load-set '("modefs" "xmodef") environment)
+	(load "modefs" environment)
 	(load "rename" environment)
 	(load "loadef" environment)
 	#|

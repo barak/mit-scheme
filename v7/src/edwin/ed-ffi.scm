@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.35 1994/10/25 01:46:12 adams Exp $
+$Id: ed-ffi.scm,v 1.36 1994/12/19 19:38:44 cph Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -195,6 +195,12 @@ of that license should have been included along with this file.
 	       syntax-table/system-internal)
     ("occur"   (edwin occurrence)
 	       edwin-syntax-table)
+    ("os2"     (edwin)
+	       edwin-syntax-table)
+    ("os2com"  (edwin os2-commands)
+	       edwin-syntax-table)
+    ("os2term" (edwin screen os2-screen)
+	       syntax-table/system-internal)
     ("outline" (edwin)
 	       edwin-syntax-table)
     ("pasmod"  (edwin)
@@ -287,9 +293,11 @@ of that license should have been included along with this file.
 	       syntax-table/system-internal)
     ("utlwin"  (edwin window)
 	       class-syntax-table)
+    ("vc"      (edwin vc)
+	       edwin-syntax-table)
     ("win32"   (edwin screen win32)
 	       edwin-syntax-table)
-    ("vc"      (edwin vc)
+    ("win32com" (edwin win-commands)
 	       edwin-syntax-table)
     ("wincom"  (edwin)
 	       edwin-syntax-table)
