@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.5 1989/02/09 03:45:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.6 1989/02/22 07:16:34 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -52,6 +52,7 @@ MIT in each case. |#
 	  (DEFINE . ,print-procedure)
 	  (LAMBDA . ,print-procedure)
 	  (NAMED-LAMBDA . ,print-procedure)))
+  (set! dispatch-default print-combination)
   (set! walk-dispatcher default/walk-dispatcher))
 
 (define *named-lambda->define?* true)
@@ -149,8 +150,14 @@ MIT in each case. |#
   (*unparse-char #\Newline))
 
 (define (print-non-code-node node column depth)
-  (fluid-let ((dispatch-list '()))
+  (fluid-let ((dispatch-list '())
+	      (dispatch-default print-data-column))
     (print-node node column depth)))
+
+(define (print-data-column nodes column depth)
+  (*unparse-open)
+  (print-column nodes (1+ column) (1+ depth))
+  (*unparse-close))
 
 (define (print-node node column depth)
   (cond ((list-node? node) (print-list-node node column depth))
@@ -167,7 +174,7 @@ MIT in each case. |#
       (let ((subnodes (node-subnodes node)))
 	((or (let ((association (assq (car subnodes) dispatch-list)))
 	       (and association (cdr association)))
-	     print-combination)
+	     dispatch-default)
 	 subnodes column depth))))
 
 (define (print-guaranteed-node node)
@@ -222,6 +229,7 @@ MIT in each case. |#
   (*unparse-close))
 
 (define dispatch-list)
+(define dispatch-default)
 
 (define ((special-printer procedure) nodes column depth)
   (*unparse-open)
