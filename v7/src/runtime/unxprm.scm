@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.28 1993/11/29 23:19:02 cph Exp $
+$Id: unxprm.scm,v 1.29 1994/03/11 05:19:06 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,13 +65,16 @@ MIT in each case. |#
   (file-access filename 4))
 
 (define (file-writable? filename)
-  (let ((pathname (merge-pathnames filename)))
-    (let ((filename (->namestring pathname)))
-      (or ((ucode-primitive file-access 2) filename 2)
-	  (and (not ((ucode-primitive file-exists? 1) filename))
-	       ((ucode-primitive file-access 2)
-		(directory-namestring pathname)
-		2))))))
+  ((ucode-primitive file-access 2)
+   (let ((pathname (merge-pathnames filename)))
+     (let ((filename (->namestring pathname)))
+       (if ((ucode-primitive file-exists? 1) filename)
+	   filename
+	   (directory-namestring pathname))))
+   2))
+
+(define (file-executable? filename)
+  (file-access filename 1))
 
 (define (temporary-file-pathname)
   (let ((root-string
