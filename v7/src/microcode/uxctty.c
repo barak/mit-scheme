@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.9 1992/02/12 12:07:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.10 1992/02/12 12:18:30 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -79,7 +79,7 @@ static struct terminal_state_recording inside_stdout_state;
 static void EXFUN (ctty_update_interrupt_chars, (void));
 
 static int
-DEFUN (get_terminal_state, (fd, s), int fd AND Ttty_state s)
+DEFUN (get_terminal_state, (fd, s), int fd AND Ttty_state * s)
 {
   while (1)
     {
@@ -90,7 +90,7 @@ DEFUN (get_terminal_state, (fd, s), int fd AND Ttty_state s)
 }
 
 static int
-DEFUN (set_terminal_state, (fd, s), int fd AND Ttty_state s)
+DEFUN (set_terminal_state, (fd, s), int fd AND Ttty_state * s)
 {
   while (1)
     {
