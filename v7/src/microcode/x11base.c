@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.55 1994/09/17 17:35:12 adams Exp $
+$Id: x11base.c,v 1.56 1994/09/28 21:07:21 cph Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -2010,43 +2010,43 @@ DEFINE_PRIMITIVE ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure, 1, 1,
 
 DEFINE_PRIMITIVE ("X-LIST-FONTS", Prim_x_list_fonts, 3, 3,
  "(display pattern limit)\n\
-  LIMIT is an exact non-negative integer or #F for no limit\n\
+  LIMIT is an exact non-negative integer or #F for no limit.\n\
   Returns #F or a vector of at least one string.")
 {
-    PRIMITIVE_HEADER (1);
+  PRIMITIVE_HEADER (1);
+  {
+    int actual_count = 0;
+    char ** names =
+      (XListFonts ((XD_DISPLAY (x_display_arg (1))),
+		   (STRING_ARG (2)),
+		   ((FIXNUM_P (ARG_REF (3)))
+		    ? (FIXNUM_TO_LONG (ARG_REF (3)))
+		    : 1000000),
+		   (&actual_count)));
+    if (names == 0)
+      PRIMITIVE_RETURN (SHARP_F);
     {
-	SCHEME_OBJECT result;
-	Display *display = XD_DISPLAY (x_display_arg (1));
-	char *pattern = STRING_ARG (2);
-	int maxnames =
-	  (FIXNUM_P (ARG_REF (3))) ? FIXNUM_TO_LONG (ARG_REF (3))
-                                   : 1000000;
-	int actual_count = 0;
-	int words;
-	int i;
-	char **names = XListFonts (display, pattern, maxnames, &actual_count);
-
-	if (!names)
-	  PRIMITIVE_RETURN (SHARP_F);
-
-	words = actual_count + 1; /* the vector of strings */
-
-	for (i=0; i<actual_count; i++)
-	    words += STRING_LENGTH_TO_GC_LENGTH (strlen (names[i]));
-	
-	if (GC_Check (words)) {
-	    /* this causes the primitive to be restarted, so deallocate names */
-	    XFreeFontNames (names);
-	    Primitive_GC (words);
-	    /* notreached */
+      unsigned int words = (actual_count + 1); /* the vector of strings */
+      unsigned int i;
+      for (i = 0; (i < actual_count); i += 1)
+	words += (STRING_LENGTH_TO_GC_LENGTH (strlen (names[i])));
+      if (GC_Check (words))
+	{
+	  /* this causes the primitive to be restarted, so deallocate names */
+	  XFreeFontNames (names);
+	  Primitive_GC (words);
+	  /* notreached */
 	}
-
-	result = allocate_marked_vector (TC_VECTOR, actual_count, false);
-
-	for (i = 0;  i<actual_count;  i++)
-	  VECTOR_SET (result, i, char_pointer_to_string (names[i]));
-	
-	XFreeFontNames (names);
-	PRIMITIVE_RETURN (result);
     }
+    {
+      SCHEME_OBJECT result =
+	(allocate_marked_vector (TC_VECTOR, actual_count, false));
+      unsigned int i;
+      for (i = 0;  (i < actual_count);  i += 1)
+	VECTOR_SET (result, i,
+		    (char_pointer_to_string ((unsigned char *) (names[i]))));
+      XFreeFontNames (names);
+      PRIMITIVE_RETURN (result);
+    }
+  }
 }
