@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.121 2001/05/27 05:01:55 cph Exp $
+$Id: todo.txt,v 1.122 2001/05/27 05:04:24 cph Exp $
 
 Bug fixes
 ---------
@@ -81,21 +81,12 @@ New features
   Use this to extend M-x imail-rename-folder to work in all cases by
   using copy/delete when rename inapplicable.
 
-* Write folder browser for IMAP servers.
-
 * Examine spec for text/enriched and see if it can be incorporated
   into the reader.
 
 * Implement cache that saves information about messages on disk.  This
   should use UIDs for IMAP folders; for other folders perhaps the
   message ID can be used.
-
-  For file folders, this might be used to aid in reading large
-  folders: a contiguous message file could be incrementally read from
-  the source file, and any changes written back to the cache.  When
-  the folder was saved, the updated file could be recreated by
-  merging the (cached) modified messages back into the original file,
-  then deleting the cache.
 
 * Set the IMAIL buffer's modification bit to indicate whether the
   folder is locally modified.  Meaningful only for file folders.  Hook
@@ -107,9 +98,6 @@ New features
 
 Design changes
 --------------
-
-* We must be able to read larger RMAIL files.  See suggestion above
-  for using a cache to accomplish this.
 
 * Move pathname-completion code into the runtime system.
 
