@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.5 1989/11/27 20:22:42 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.6 1989/11/28 05:00:45 jinx Exp $
  *
  * Compiled code interface macros.
  *
@@ -53,12 +53,6 @@ MIT in each case. */
 /* Processor type.  Choose a number from the above list, or allocate your own. */
 
 #define COMPILER_PROCESSOR_TYPE			COMPILER_SPECTRUM_TYPE
-
-/* Size of an assembly language hook if different from the executable
-   portion of an execute cache.
-   Not needed for PA.
-   define COMPILER_HOOK_SIZE			17 
-*/
 
 /* Size (in long words) of the contents of a floating point register if
    different from a double.  For example, an MC68881 saves registers
@@ -135,10 +129,15 @@ typedef unsigned short format_word;
      The following instruction is nullified if nullify_p is true.	\
      The w and w1 fields are 0, and so are the top and bottom bits	\
      of w2.								\
+									\
+     Note: the space register field is also bit-munged:			\
+     it is LSB,MSB,MiddleB, rather than MSB,MiddleB,LSB.		\
+     Thus space register 5 (#b101) is represented as #b110 = 6.		\
    */									\
 									\
   *addr =								\
-    ((0x39 << 26) | (26 << 21) | (5 << 13) | ((ble_offset << 1) << 2) |	\
+    ((0x39 << 26) | (26 << 21) | (6 << 13) |				\
+     ((ble_offset << 1) << 2) |						\
      ((nullify_p) ? 2 : 0));						\
 }
 
@@ -264,7 +263,7 @@ procedures and continuations differ from closures) */
 									\
   /*	BLE	0(4,3) */						\
 									\
-  *PC++ = ((unsigned long) 0xe4608000);					\
+  *PC++ = ((unsigned long) 0xe4604000);					\
 									\
   /*	LDO	index(0),28 */						\
 									\
@@ -455,12 +454,5 @@ procedures and continuations differ from closures) */
 
 #define COMPILED_ENTRY_MAXIMUM_ARITY    COMPILED_ENTRY_FORMAT_LOW
 #define COMPILED_ENTRY_MINIMUM_ARITY    COMPILED_ENTRY_FORMAT_HIGH
-
-#define ASM_REGISTER_BLOCK	/* Registers temporarily allocated and 
-				   laid out in cmpaux-mc68k.m4 */
-#define ASM_RESET_HOOK()		\
-do { extern void asm_reset_hook();	\
-     asm_reset_hook();			\
-   } while (0)
 
 #endif /* CMPINT2_H_INCLUDED */
