@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.42 1993/02/25 02:02:48 gjr Exp $
+$Id: make.scm,v 14.43 1993/02/25 03:20:22 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -295,6 +295,7 @@ MIT in each case. |#
     (if (implemented-primitive-procedure? prim)
 	prim
 	(lambda (name)
+	  name				; ignored
 	  false))))
 
 ;; Construct the package structure.
