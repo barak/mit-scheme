@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: screen.scm,v 1.103 1993/08/16 08:04:03 cph Exp $
+;;;	$Id: screen.scm,v 1.104 1994/03/08 22:04:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -650,7 +650,8 @@
 	       (lambda ()
 		 (and (thunk)
 		      (or (not (screen-needs-update? screen))
-			  (screen-update screen display-style))
+			  (and (not (eq? 'NO-OUTPUT display-style))
+			       (screen-update screen display-style)))
 		      (begin
 			(screen-update-cursor screen)
 			true))))))
