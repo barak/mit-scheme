@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dsyn.scm,v 1.1 1987/08/19 05:31:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dsyn.scm,v 1.2 1987/08/20 18:03:45 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -56,7 +56,7 @@ MIT in each case. |#
   (let ((prefix (cons name (find-pattern-prefix (car case))))
 	(opcode-field (cadr case))
 	(operands (cddr case)))
-    (if (not (eq? (car opcode) 'BYTE))
+    (if (not (eq? (car opcode-field) 'BYTE))
 	(error "process-instruciton-definition: unhandled opcode kind"
 	       opcode-field))
     (let ((opcode (cadadr opcode-field)))
