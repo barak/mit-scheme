@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.143 2000/12/01 06:28:20 cph Exp $
+;;; $Id: curren.scm,v 1.144 2001/05/18 00:52:36 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Current State
 
@@ -400,8 +401,7 @@ The frame is guaranteed to be deselected at that time."
 (define (rename-buffer buffer new-name)
   (without-interrupts
    (lambda ()
-     (for-each (lambda (hook) (hook buffer new-name))
-	       (get-buffer-hooks buffer 'RENAME-BUFFER-HOOKS))
+     (run-buffer-hooks 'RENAME-BUFFER-HOOKS buffer new-name)
      (bufferset-rename-buffer (current-bufferset) buffer new-name))))
 
 (define (add-rename-buffer-hook buffer hook)
@@ -419,8 +419,7 @@ The frame is guaranteed to be deselected at that time."
 		 (hangup-process process #t)
 		 (set-process-buffer! process #f))
 	       (buffer-processes buffer))
-     (for-each (lambda (hook) (hook buffer))
-	       (get-buffer-hooks buffer 'KILL-BUFFER-HOOKS))
+     (run-buffer-hooks 'KILL-BUFFER-HOOKS buffer)
      (delete-buffer-layout buffer)
      (bufferset-kill-buffer! (current-bufferset) buffer))))
 
@@ -440,17 +439,18 @@ The frame is guaranteed to be deselected at that time."
   (remove-buffer-hook buffer 'KILL-BUFFER-HOOKS hook))
 
 (define (add-buffer-hook buffer key hook)
-  (let ((hooks (get-buffer-hooks buffer key)))
+  (let ((hooks (buffer-get buffer key '())))
     (cond ((null? hooks)
 	   (buffer-put! buffer key (list hook)))
 	  ((not (memq hook hooks))
 	   (set-cdr! (last-pair hooks) (list hook))))))
 
 (define (remove-buffer-hook buffer key hook)
-  (buffer-put! buffer key (delq! hook (get-buffer-hooks buffer key))))
+  (buffer-put! buffer key (delq! hook (buffer-get buffer key '()))))
 
-(define (get-buffer-hooks buffer key)
-  (or (buffer-get buffer key) '()))
+(define (run-buffer-hooks key buffer . arguments)
+  (for-each (lambda (hook) (apply hook buffer arguments))
+	    (list-copy (buffer-get buffer key '()))))
 
 (define (select-buffer buffer #!optional window)
   (select-buffer-in-window buffer
@@ -484,8 +484,7 @@ The frame is guaranteed to be deselected at that time."
   (change-local-bindings! (selected-buffer) buffer selection-thunk)
   (set-buffer-point! buffer (window-point window))
   (if record? (bufferset-select-buffer! (current-bufferset) buffer))
-  (for-each (lambda (hook) (hook buffer window))
-	    (get-buffer-hooks buffer 'SELECT-BUFFER-HOOKS))
+  (run-buffer-hooks 'SELECT-BUFFER-HOOKS buffer window)
   (if (not (minibuffer? buffer))
       (event-distributor/invoke! (ref-variable select-buffer-hook #f)
 				 buffer
