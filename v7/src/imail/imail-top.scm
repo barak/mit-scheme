@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.258 2001/05/31 19:57:40 cph Exp $
+;;; $Id: imail-top.scm,v 1.259 2001/05/31 19:58:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -2100,11 +2100,10 @@ Negative argument means search in reverse."
    (lambda ()
      (let ((folder (buffer-get buffer 'IMAIL-FOLDER #f))
 	   (interval (ref-variable imail-update-interval #f)))
-       (if (and folder interval
-		(not (get-property folder 'PROBE-REGISTRATION #f)))
+       (if (and folder interval)
 	   (store-property! folder
 			    'PROBE-REGISTRATION
-			    (start-standard-output-polling-thread
+			    (start-standard-polling-thread
 			     (* 1000 interval)
 			     (probe-folder-output-processor
 			      (weak-cons folder unspecific)))))))))
@@ -2125,7 +2124,7 @@ Negative argument means search in reverse."
 	   (begin
 	     (let ((holder (get-property folder 'PROBE-REGISTRATION #f)))
 	       (if holder
-		   (stop-standard-output-polling-thread holder)))
+		   (stop-standard-polling-thread holder)))
 	     (remove-property! folder 'PROBE-REGISTRATION)))))))
 
 ;;;; Message insertion procedures
