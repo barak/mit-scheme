@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.14 1991/11/26 07:05:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.15 1992/02/08 15:03:05 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -63,11 +63,12 @@ MIT in each case. |#
   (if (string? name) (write-string name port) (write name port)))
 
 (define (write-dbg-upcase-name name port)
-  (let ((string
-	 (if (string? name)
-	     name
-	     (with-output-to-string (lambda () (write name))))))
-    (write-string (string-upcase string) port)))
+  (cond ((string? name)
+	 (write-string (string-upcase name)))
+	((interned-symbol? name)
+	 (write-string (string-upcase (symbol->string name)) port))
+	(else
+	 (write name port))))
 
 (define (debug/read-eval-print-1 environment port)
   (let ((value
