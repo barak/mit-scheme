@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.13 1990/06/07 19:56:35 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.14 1991/05/06 22:48:40 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Assembler Top Level
+;;; package: (compiler assembler)
 
 (declare (usual-integrations))
 
@@ -68,17 +69,20 @@ MIT in each case. |#
 	   (if (null? instructions)
 	       '()
 	       (let ((holder (list 'HOLDER)))
-		 (let loop
-		     ((tail holder)
-		      (instructions
-		       (let ((i instructions))
-			 (set! instructions)
-			 i)))
+		 (let loop ((tail holder)
+			    (instructions
+			     (let ((i instructions))
+			       (set! instructions)
+			       i)))
 		   (if (not (null? instructions))
-		       (begin
-			 (set-cdr! tail
-				   (lap:syntax-instruction (car instructions)))
-			 (loop (last-pair tail) (cdr instructions)))))
+		       (let ((first (car instructions)))
+			 (if (and (pair? first)
+				  (eq? (car first) 'COMMENT))
+			     (loop tail (cdr instructions))
+			     (begin
+			       (set-cdr! tail
+					 (lap:syntax-instruction first))
+			       (loop (last-pair tail) (cdr instructions)))))))
 		 (cdr holder)))))
       (lambda (directives vars)
 	(let* ((count (relax! directives vars))
@@ -313,17 +317,9 @@ MIT in each case. |#
 		   (error "initial-phase: Unknown directive" this))
 		  (else
 		   (case (car this)
-		     ((LABEL)
-		      (process-label! this)
-		      (loop (cdr to-convert) pcmin pcmax pc-stack '() vars))
-
 		     ((CONSTANT)
 		      (process-fixed-width (list->vector this)
 					   (bit-string-length (cadr this))))
-
-		     ((BLOCK-OFFSET)
-		      (process-fixed-width (list->vector this)
-					   block-offset-width))
 
 		     ((EVALUATION)
 		      (process-fixed-width (list->vector this)
@@ -348,6 +344,12 @@ MIT in each case. |#
 		      (new-directive! (vector 'TICK false))
 		      (loop (cdr to-convert) pcmin pcmax
 			    (cdr pc-stack) '() vars))
+		     ((LABEL)
+		      (process-label! this)
+		      (loop (cdr to-convert) pcmin pcmax pc-stack '() vars))
+		     ((BLOCK-OFFSET)
+		      (process-fixed-width (list->vector this)
+					   block-offset-width))
 		     ((EQUATE)
 		      (add-to-queue! *equates* (cdr this))
 		      (process-trivial-directive))
