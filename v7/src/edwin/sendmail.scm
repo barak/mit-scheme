@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.33 1996/04/23 23:07:43 cph Exp $
+;;;	$Id: sendmail.scm,v 1.34 1996/04/24 01:30:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -46,6 +46,37 @@
 
 (declare (usual-integrations))
 
+(define-variable user-mail-address
+  "Full mailing address of this user.
+This is initialized based on `mail-host-address',
+after your init file is read, in case it sets `mail-host-address'."
+  #f
+  string-or-false?)
+
+(define-variable mail-host-address
+  "Name of this machine, for purposes of naming users."
+  #f
+  string-or-false?)
+
+(define-variable mail-full-name
+  "Your full name.
+Appears in the From: field of mail and news messages, following the address.
+If set to the null string, From: field contains only the email address."
+  ""
+  string?)
+
+(define-variable mail-organization
+  "The name of your organization.
+Appears in the Organization: field of mail and news messages.
+If set to the null string, no Organization: field is generated."
+  ""
+  string?)
+
+(define-variable mail-identify-reader
+  "Switch controlling generation of X-Mailer headers in messages."
+  #t
+  boolean?)
+
 (define-variable mail-default-reply-to
   "Address to insert as default Reply-to field of outgoing messages."
   false
@@ -98,24 +129,11 @@ False means let mailer mail back a message to report errors."
   string?)
 
 (define-variable mail-header-function
-  "A function of one argument, POINT (the current point), which
-inserts additional header lines into a mail message.  By default,
-this function inserts the header line \"X-Scheme-Mailer: Edwin\"
-followed by the version number of Edwin.  The function is called
-immediately after the Reply-to: header is inserted, if any.  If this
-variable is false, it is ignored."  
-  (lambda (point)
-    (insert-string "X-Scheme-Mailer:" point)
-    (for-each-system!
-     (lambda (system)
-       (if (string=? "Edwin"
-		     (system/name system))
-	   (begin
-	     (insert-string " " point)
-	     (insert-string 
-	      (system/identification-string system)
-	      point)))))
-    (insert-newline point))
+  "A function of one argument, POINT (the current point), which inserts
+additional header lines into a mail message.  The function is called
+after all other headers are inserted.  If this variable is false, it
+is ignored."
+  #f
   (lambda (object)
     (or (false? object)
 	(and (procedure? object)
@@ -162,12 +180,12 @@ is inserted."
   (lambda (no-erase?) (mail-command no-erase? select-buffer)))
 
 (define-command mail-other-window
-  "Like \\[mail] command, but display mail buffer in another window."
+  "Like \\[mail], but display mail buffer in another window."
   "P"
   (lambda (no-erase?) (mail-command no-erase? select-buffer-other-window)))
 
 (define-command mail-other-frame
-  "Like \\[mail] command, but display mail buffer in another frame."
+  "Like \\[mail], but display mail buffer in another frame."
   "P"
   (lambda (no-erase?) (mail-command no-erase? select-buffer-other-screen)))
 
@@ -226,7 +244,8 @@ is inserted."
 			  (or (and (not (default-object? mode)) mode)
 			      (ref-mode-object mail)))
   (local-set-variable! mail-reply-buffer reply-buffer buffer)
-  (let ((point (mark-left-inserting-copy (buffer-start buffer)))
+  (let ((headers (add-standard-headers headers buffer))
+	(point (mark-left-inserting-copy (buffer-start buffer)))
 	(fill
 	 (lambda (start end)
 	   (fill-region-as-paragraph start end
@@ -251,54 +270,90 @@ is inserted."
 			  (insert-newline point)))))
 		headers)
       (mark-temporary! start))
-    (let ((mail-default-reply-to (ref-variable mail-default-reply-to buffer)))
-      (let ((mail-default-reply-to
-	     (if (procedure? mail-default-reply-to)
-		 (mail-default-reply-to)
-		 mail-default-reply-to)))
-	(if (string? mail-default-reply-to)
-	    (begin
-	      (insert-string "Reply-to: " point)
-	      (insert-string mail-default-reply-to point)
-	      (insert-newline point)))))
     (let ((mail-header-function (ref-variable mail-header-function buffer)))
       (if mail-header-function
 	  (mail-header-function point)))
-    (if (ref-variable mail-self-blind buffer)
-	(begin
-	  (insert-string "BCC: " point)
-	  (insert-string (current-user-name) point)
-	  (insert-newline point)))
-    (let ((mail-archive-file-name
-	   (ref-variable mail-archive-file-name buffer)))
-      (if mail-archive-file-name
-	  (begin
-	    (insert-string "FCC: " point)
-	    (insert-string mail-archive-file-name point)
-	    (insert-newline point))))
     (insert-string (ref-variable mail-header-separator buffer) point)
     (insert-newline point)
-    (mark-temporary! point))
-  (let ((given-header?
-	 (lambda (name null-true?)
-	   (let ((header
-		  (list-search-positive headers
-		    (lambda (header)
-		      (string-ci=? (car header) name)))))
-	     (and header
-		  (cadr header)
-		  (if null-true?
-		      (string-null? (cadr header))
-		      (not (string-null? (cadr header)))))))))
-    (set-buffer-point! buffer
-		       (if (given-header? "To" #t)
-			   (mail-position-on-field buffer "To")
-			   (buffer-end buffer)))
-    (if (not (or (given-header? "To" #f)
-		 (given-header? "Subject" #f)
-		 (given-header? "In-reply-to" #f)))
-	(buffer-not-modified! buffer)))
+    (mark-temporary! point)
+    (let ((given-header?
+	   (lambda (name null-true?)
+	     (let ((header
+		    (list-search-positive headers
+		      (lambda (header)
+			(string-ci=? (car header) name)))))
+	       (and header
+		    (cadr header)
+		    (if null-true?
+			(string-null? (cadr header))
+			(not (string-null? (cadr header)))))))))
+      (set-buffer-point! buffer
+			 (if (given-header? "To" #t)
+			     (mail-position-on-field buffer "To")
+			     (buffer-end buffer)))
+      (if (not (or (given-header? "To" #f)
+		   (given-header? "Subject" #f)
+		   (given-header? "In-reply-to" #f)))
+	  (buffer-not-modified! buffer))))
   (event-distributor/invoke! (ref-variable mail-setup-hook buffer) buffer))
+
+(define (add-standard-headers headers buffer)
+  (let ((add
+	 (lambda (key value)
+	   (if (string? value)
+	       (list (list key value #f))
+	       '()))))
+    (let ((add-unique
+	   (lambda (key value)
+	     (add key
+		  (and (not (list-search-positive headers
+			      (lambda (header)
+				(string-ci=? (car header) key))))
+		       value)))))
+      (append headers
+	      (add "Reply-to"
+		   (let ((mail-default-reply-to
+			  (ref-variable mail-default-reply-to buffer)))
+		     (if (procedure? mail-default-reply-to)
+			 (mail-default-reply-to)
+			 mail-default-reply-to)))
+	      (add "BCC"
+		   (and (ref-variable mail-self-blind buffer)
+			(mail-from-string buffer)))
+	      (add "FCC" (ref-variable mail-archive-file-name buffer))
+	      (add-unique "Organization" (mail-organization-string buffer))
+	      (add-unique "X-Mailer" (mailer-version-string buffer))))))
+
+(define (mail-from-string buffer)
+  (string-append (or (ref-variable user-mail-address buffer)
+		     (string-append (current-user-name)
+				   "@"
+				   (or (ref-variable mail-host-address buffer)
+				       (os/hostname))))
+		 (let ((full-name (ref-variable mail-full-name buffer)))
+		   (if (string-null? full-name)
+		       ""
+		       (string-append " (" full-name ")")))))
+
+(define (mail-organization-string buffer)
+  (let ((organization (ref-variable mail-organization buffer)))
+    (and (not (string-null? organization))
+	 organization)))
+
+(define (mailer-version-string buffer)
+  (and (ref-variable mail-identify-reader buffer)
+       (let ((id
+	      (system/identification-string
+	       (list-search-positive known-systems
+		 (lambda (system)
+		   (string-ci=? "edwin" (system/name system)))))))
+	 (let ((space (string-find-next-char id #\space)))
+	   (string-append (string-head id space)
+			  " [version"
+			  (string-tail id space)
+			  ", MIT Scheme Release "
+			  microcode-id/release-string
+			  "]")))))
 
 (define-variable mail-setup-hook
   "An event distributor invoked immediately after a mail buffer is initialized.
@@ -640,7 +695,7 @@ the user from the mailer."
       (insert-string "From " end)
       (insert-string (current-user-name) end)
       (insert-string " " end)
-      (insert-string (file-time->string (current-file-time)) end)
+      (insert-string (universal-time->string (get-universal-time)) end)
       (insert-newline end)
       (insert-region (buffer-start mail-buffer)
 		     (buffer-end mail-buffer)

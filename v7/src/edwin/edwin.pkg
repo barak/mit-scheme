@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.188 1996/04/24 01:20:29 cph Exp $
+$Id: edwin.pkg,v 1.189 1996/04/24 01:29:31 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -851,8 +851,7 @@ MIT in each case. |#
 	  reduction-expression
 	  set-current-subproblem!
 	  set-dstate/environment-list!
-	  set-dstate/reduction-number!
-	  write-restarts)
+	  set-dstate/reduction-number!)
   (import (runtime debugger-utilities)
 	  print-binding
 	  output-to-string
@@ -863,7 +862,8 @@ MIT in each case. |#
   (import (edwin buffer-output-port)
 	  port/mark)
   (import (runtime rep)
-	  default/repl-eval))
+	  default/repl-eval
+	  write-restarts))
 
 (define-package (edwin text-properties)
   (files "txtprp")
@@ -1154,28 +1154,32 @@ MIT in each case. |#
 	    get-handle
 	    get-window-rect
 	    load-icon
-	    make-rect rect/top rect/left rect/bottom rect/right
+	    make-rect
 	    message-beep
+	    rect/bottom
+	    rect/left
+	    rect/right
+	    rect/top
 	    send-message
 	    set-active-window
 	    set-focus
 	    set-window-pos
 	    set-window-text
-	    sleep
 	    show-window
+	    sleep
 	    sw_showminnoactive
-	    SWP_NOSIZE
-	    SWP_NOZORDER
+	    swp_nosize
+	    swp_nozorder
 	    update-window)
     (export (edwin win-commands)
 	    win32-screen/get-position
-	    win32-screen/set-name!
+	    win32-screen/set-background-color!
 	    win32-screen/set-font!
-	    win32-screen/set-icon!
-	    win32-screen/set-size!
-	    win32-screen/set-position!
 	    win32-screen/set-foreground-color!
-	    win32-screen/set-background-color!)
+	    win32-screen/set-icon!
+	    win32-screen/set-name!
+	    win32-screen/set-position!
+	    win32-screen/set-size!)
     (initialization (initialize-package!)))
 
   (define-package (edwin win32-keys)
@@ -1415,29 +1419,39 @@ MIT in each case. |#
 	  edwin-mode$mail
 	  edwin-variable$mail-archive-file-name
 	  edwin-variable$mail-default-reply-to
+	  edwin-variable$mail-full-name
 	  edwin-variable$mail-header-function
 	  edwin-variable$mail-header-separator
+	  edwin-variable$mail-host-address
+	  edwin-variable$mail-identify-reader
 	  edwin-variable$mail-interactive
 	  edwin-variable$mail-mode-hook
+	  edwin-variable$mail-organization
 	  edwin-variable$mail-reply-buffer
-	  edwin-variable$mail-setup-hook
 	  edwin-variable$mail-self-blind
+	  edwin-variable$mail-setup-hook
 	  edwin-variable$mail-yank-ignored-headers
 	  edwin-variable$send-mail-procedure
 	  edwin-variable$sendmail-program
+	  edwin-variable$user-mail-address
 	  mail-field-end
 	  mail-field-end!
 	  mail-field-region
 	  mail-field-start
+	  mail-from-string
 	  mail-header-end
 	  mail-insert-field
 	  mail-match-header-separator
+	  mail-organization-string
 	  mail-position-on-field
 	  mail-position-on-cc-field
 	  mail-setup
+	  mailer-version-string
 	  make-mail-buffer
 	  prepare-mail-buffer-for-sending
-	  send-mail-buffer))
+	  send-mail-buffer)
+  (import (runtime system)
+	  known-systems))
 
 (define-package (edwin mail-alias)
   (files "malias")
