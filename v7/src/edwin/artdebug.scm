@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.9 1991/08/29 01:47:58 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.10 1991/09/14 20:29:57 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -48,9 +48,6 @@
 
 #| TO DO
 
-Change RETURN-TO and RETURN-FROM to not prompt, but evaluate the
-expression before the point.
-
 Make environment browsing mode; the debugger mode can be a superset
 of that mode: Add optional marker lines for environments.  If you do
 the C-c C-a command to describe the environment frames in the current
@@ -59,19 +56,26 @@ environment when you do evaluations in those environment frames.
 Make commands for moving by environment level.  Later, change this to
 execute Where in another buffer depending on the state of a flag.
 
-Add variable to optionally prompt the user if more than a certain
-number of variables are about to be printed during an
+Make a variable that specifies whether to prompt the user if more
+than a certain number of variables are about to be printed during an
 environment-browsing command.
+
+By default, when the debugger starts, don't show history levels
+inside the system.  To detect system code, see
+~arthur/new6001/detect.scm.  Predicate SYSTEM-EXPRESSION? is already
+in place.
+
+MarkF has code to use the correct syntax tables for evaluation.
+
+Add limits to the depth and breadth of objects printed by the
+debugger, to avoid problems caused by displaying circular objects.
+Note $se/evlcom.scm: TRANSCRIPT-LIST-DEPTH-LIMIT and
+TRANSCRIPT-LIST-BREADTH-LIMIT.
 
 Make C-c C-k evaluate in the environment in which the error occurred.
 Otherwise, the "Define x to a given value" restart for unbound
-variable errors won't work.
-
-Make C-c C-k and C-c C-z not get confused about where to finish their
-output if you evaluate buggy code in *scratch*, causing Debug to
-fire, then restart or return when buffer *foo* is the next buffer
-instead of *scratch*.  Currently, this causes output intended for
-*foo* to go to *scratch*.
+variable errors won't work.  This seems to be a bug in the regular
+debugger, too.
 
 Make C-c C-z work in the case where an error happens during
 evaluation of the return expression, the debugger starts on the new
@@ -80,33 +84,17 @@ the first back into the original computation.  The restart itself
 works, but the message "Scheme error" is printed upon starting the
 second debugger.
 
-By default, when the debugger starts, don't show history levels inside
-the system.  To detect system code to ignore it in the debugger, see
-~arthur/new6001/detect.scm.
-
-MarkF has code to use the correct syntax tables for evaluation.
-
 Jinx: Depending on the state of a flag, never invoke debugger on
-unbound variabe errors from the expression you eval in the
+unbound variable errors from the expression you eval in the
 interaction buffer (or debugger buffer).  Actually, how about a
 general filter on conditions that will start the debugger?  Provide a
-default filter for unbound variables.
+default filter for ignoring unbound variables.
 
 Jinx: Display the offending expression evaluated by the user.  Display
 it just above the error message line.
 
-Make command to redraw marker lines when window width changes.
-
-Add limits to the depth and breadth of objects printed by the
-debugger, to avoid problems causes by displaying circular objects.
-Note $se/evlcom.scm: TRANSCRIPT-LIST-DEPTH-LIMIT and
-TRANSCRIPT-LIST-BREADTH-LIMIT.
-
 Make a way to restrict the possible restarts to not include restarts
 that could stop Edwin.
-
-The debugger might be better if it didn't use the DSTATE data
-structure.
 
 Make a narrow interface between Edwin and the debugger so it will be
 easy to write this debugger for Emacs.
@@ -120,6 +108,12 @@ and contract subproblems and reductions.
 
 |#
 
+(define-variable debugger-confirm-return?
+  "True means to prompt for confirmation in RETURN-FROM and RETURN-TO
+commands before returning the value."
+  true
+  boolean?)
+
 (define-variable debugger-split-window?
   "True means use another window for the debugger buffer; false means
 use the current window."
@@ -250,25 +244,12 @@ or #F meaning no limit."
   Use \\[kill-buffer] to quit the debugger.
 ")
 
-(define (with-buffer-selected buffer thunk)
-  (let ((current (current-buffer)))
-    (dynamic-wind
-     (lambda ()
-       (select-buffer buffer))
-     thunk
-     (lambda ()
-       (select-buffer current)))))
-
-(define (print-help-message buffer object)
-  (with-buffer-selected
+(define (print-help-message buffer)
+  (with-selected-buffer
    buffer
    (lambda ()
      (write-string
       (substitute-command-keys debugger-help-message))))
-  (if (condition? object)
-      (let ((port (current-output-port)))
-	(write-string "\nThe error that started the debugger is:\n" port)
-	(write-condition-report object port)))
   (newline))
 
 (define (find-debugger-buffers)
@@ -314,7 +295,15 @@ or #F meaning no limit."
 	    (buffer-start buffer)
 	    (lambda ()
 	      (if (ref-variable debugger-show-help-message?)
-		  (print-help-message buffer object))
+		  (print-help-message buffer))
+	      (if (condition? object)
+		  (let ((port (current-output-port)))
+		    (write-string
+		     "The error that started the debugger is:\n  ")
+		    (write-condition-report object port)
+		    (newline)
+		    (newline)
+		    (print-restarts object buffer)))
 	      (case
 		  (non-reentrant-call-with-current-continuation
 		   (lambda (finish)
@@ -348,6 +337,24 @@ or #F meaning no limit."
 	  (buffer-not-modified! buffer)
 	  (temporary-message (string-append start-message "done"))
 	  buffer)))))
+
+(define (print-restarts condition buffer)
+  (let ((restarts (condition/restarts condition)))
+    (if (not (null? restarts))
+	(let ((n-restarts (length restarts))
+	      (write-index (lambda (index port)
+			     (write-string
+			      (string-pad-left (number->string index) 3)
+			      port)
+			     (write-string ":" port))))
+	  (write-string "Restart options:")
+	  (write-restarts restarts (current-output-port) write-index)
+	  (write-string
+	   (with-selected-buffer buffer
+	     (lambda ()
+	       (substitute-command-keys
+		"Use \\[continuation-browser-condition-restart] to invoke any of these restarts."))))
+	  (newline)))))
 
 (define (count-subproblems dstate)
   (do ((i 0 (1+ i))
@@ -584,7 +591,7 @@ or #F meaning no limit."
 	 (mark= previous-marker previous-subproblem))))
 
 (define (display-more-subproblems-message buffer)
-  (with-buffer-selected buffer
+  (with-selected-buffer buffer
     (lambda ()
       (local-set-variable! mode-line-process
 			   '(run-light
@@ -593,7 +600,7 @@ or #F meaning no limit."
   (buffer-modeline-event! buffer 'PROCESS-STATUS))
 
 (define (remove-more-subproblems-message buffer)
-  (with-buffer-selected buffer
+  (with-selected-buffer buffer
     (lambda ()
 	(local-set-variable! mode-line-process
 			     (variable-default-value
@@ -727,18 +734,24 @@ or #F meaning no limit."
 		 dstate)
 	  (editor-error "Cannot find environment for evaluation.")))))
 
+(define (dstate-evaluation-environment dstate)
+  (let ((environment-list (dstate/environment-list dstate)))
+    (if (and (pair? environment-list)
+	     (environment? (car environment-list)))
+	(car environment-list)
+	(let ((environment (ref-variable scheme-environment)))
+	  (if (eq? 'DEFAULT environment)
+	      (nearest-repl/environment)
+	      (->environment environment))))))
+
+(define (dstate-evaluation-information dstate)
+  (values (dstate-evaluation-environment dstate)
+	  (stack-frame->continuation (dstate/subproblem dstate))))
+
 (define (debug-evaluation-information mark)
   (let ((dstate (debug-dstate mark)))
     (if dstate
-	(values (let ((environment-list (dstate/environment-list dstate)))
-		  (if (and (pair? environment-list)
-			   (environment? (car environment-list)))
-		      (car environment-list)
-		      (let ((environment (ref-variable scheme-environment)))
-			(if (eq? 'DEFAULT environment)
-			    (nearest-repl/environment)
-			    (->environment environment)))))
-		(stack-frame->continuation (dstate/subproblem dstate)))
+	(dstate-evaluation-information dstate)
 	(editor-error "Point must be between frame marker lines"))))
 
 (define (debugger-command-invocation command)
@@ -783,41 +796,78 @@ or #F meaning no limit."
       (newline)
       (newline))))
 
-(define (continuation-browser-evaluate-region region)
+(define (continuation-browser-start-eval region)
   (fluid-let ((in-debugger-evaluation? true))
     (if (region-contains-marker? region)
 	(editor-error "Cannot evaluate a region that contains markers.")
 	(let ((end (region-end region)))
 	  (set-buffer-point! (mark-buffer end) end)
-	  (with-values
-	      (lambda ()
-		(debug-evaluation-information (region-start region)))
-	    (lambda (environment continuation)
-	      (call-with-current-continuation
-	       (lambda (new-continuation)
-		 (within-continuation
-		  continuation
-		  (lambda ()
-		    (new-continuation
-		     (evaluate-region region environment))))))))))))
+	  (debug-evaluation-information (region-start region))))))
+
+(define (continuation-browser-evaluate-region/static region)
+  (with-values (lambda () (continuation-browser-start-eval region))
+    (lambda (environment continuation)
+      continuation			;ignored
+      (evaluate-region region environment))))
+
+(define (continuation-browser-evaluate-region/dynamic region)
+  (with-values (lambda () (continuation-browser-start-eval region))
+    (lambda (environment continuation)
+      (let ((repl-eval hook/repl-eval))
+	(fluid-let
+	    ((hook/repl-eval
+	      (lambda (repl sexp env syntax-table)
+		(let ((unique (cons 'unique 'id)))
+		  (let ((result
+			 (call-with-current-continuation
+			  (lambda (new-continuation)
+			    (within-continuation
+				continuation
+			      (lambda ()
+				(bind-condition-handler
+				    '()
+				    (lambda (condition)
+				      (new-continuation
+				       (cons unique condition)))
+				  (lambda ()
+				    (new-continuation
+				     (repl-eval repl
+						sexp
+						env
+						syntax-table))))))))))
+		    (if (and (pair? result)
+			     (eq? unique (car result)))
+			(error (cdr result))
+			result))))))
+	  (evaluate-region region environment))))))
 
 (define (continuation-browser-evaluate-from-mark input-mark)
-  (continuation-browser-evaluate-region
+  (continuation-browser-evaluate-region/static
    (make-region input-mark (forward-sexp input-mark 1 'ERROR))))
 
-(define-command continuation-browser-eval-last-expression
+(define-command continuation-browser-eval-last-expression/static
   "Evaluate the expression before the point."
   ()
   (lambda ()
     (continuation-browser-evaluate-from-mark
      (backward-sexp (current-point) 1))))
 
+(define-command continuation-browser-eval-last-expression/dynamic
+  "Evaluate the expression before the point in the dynamic state of the
+continuation of the current frame."
+  ()
+  (lambda ()
+    (let ((input-mark (backward-sexp (current-point) 1)))
+      (continuation-browser-evaluate-region/dynamic
+       (make-region input-mark
+		    (forward-sexp input-mark 1 'ERROR))))))
+
 (define-command continuation-browser-eval-region
   "Evaluate the expressions in the region.  Give an error if the
 region includes part of any subproblem or reduction marker."
   "r"
   (lambda (region)
-    (continuation-browser-evaluate-region region)))
+    (continuation-browser-evaluate-region/static region)))
 
 (define-command continuation-browser-eval-definition
   "Evaluate the definition the point is in or before."
@@ -920,16 +970,12 @@ subproblem number is too high."
   (lambda (argument)
     (let ((subproblem-number
 	   (if argument
-	       (let ((argument
-		      (if (pair? argument)
-			  (car argument)
-			  argument)))
-		 (let ((number
-			(current-subproblem-number
-			 (group-end (current-point)))))
-		   (if number
-		       (+ number argument)
-		       (editor-error "Cannot find subproblem marker."))))
+	       (let ((number
+		      (current-subproblem-number
+		       (group-end (current-point)))))
+		 (if number
+		     (+ number (command-argument-numeric-value argument))
+		     (editor-error "Cannot find subproblem marker.")))
 	       (-1+ (count-subproblems
 		     (buffer-dstate (current-buffer)))))))
       (let ((point (mark-right-inserting-copy (current-point))))
@@ -1028,33 +1074,67 @@ reduction shown in the previous subproblem."
   ()
   (debugger-command-invocation command/show-all-frames))
 
+(define (subproblem-enter subproblem value avoid-deletion?)
+  (if (or (not (ref-variable debugger-confirm-return?))
+	  (prompt-for-confirmation? "Continue with this value"))
+      (begin
+	(if (and (not avoid-deletion?)
+		 (ref-variable debugger-quit-on-return?))
+	    (kill-buffer-interactive (current-buffer)))
+	((stack-frame->continuation subproblem)
+	 value))))
+
+(define (guarantee-next-subproblem dstate)
+  (or (stack-frame/next-subproblem (dstate/subproblem dstate))
+      (editor-error "Can't continue.")))
+
+(define-command continuation-browser-retry
+  "Retry the offending expression, returning from the current
+subproblem with its value.
+Prefix argument means do not kill the debugger buffer."
+  "P"
+  (lambda (avoid-deletion?)
+    (let* ((dstate (debug-dstate (current-point)))
+	   (next (guarantee-next-subproblem dstate)))
+      (subproblem-enter
+       next
+       (let ((expression (dstate/expression dstate)))
+	 (if (invalid-expression? expression)
+	     (editor-error "Cannot retry; invalid expression."
+			   expression)
+	     (extended-scode-eval
+	      expression
+	      (dstate-evaluation-environment dstate))))
+       avoid-deletion?))))
+
 (define-command continuation-browser-return-from
   "Return FROM the current subproblem with a value.
 Invoke the continuation that is waiting for the value of the current
-subproblem, prompting for an expression to evaluate to yield a value.
+subproblem on the value of the expression before the point.
 Prefix argument means do not kill the debugger buffer."
   "P"
   (lambda (avoid-deletion?)
-    (fluid-let ((hook/debugger-before-return
-		 (lambda ()
-		   (if (and (not avoid-deletion?)
-			    (ref-variable debugger-quit-on-return?))
-		       (kill-buffer-interactive (current-buffer))))))
-      (invoke-debugger-command command/return-from (current-point)))))
+    (let ((next
+	   (guarantee-next-subproblem
+	    (debug-dstate (current-point)))))
+      (subproblem-enter
+       next
+       (continuation-browser-evaluate-from-mark
+	(backward-sexp (current-point) 1))
+       avoid-deletion?))))
 
 (define-command continuation-browser-return-to
   "Return TO the current subproblem with a value.
-Invoke the continuation corresponding to this subproblem, prompting
-for an expression to yield a value.
+Invoke the continuation corresponding to this subproblem on the value
+of the expression before the point.
 Prefix argument means do not kill the debugger buffer."
   "P"
   (lambda (avoid-deletion?)
-    (fluid-let ((hook/debugger-before-return
-		 (lambda ()
-		   (if (and (not avoid-deletion?)
-			    (ref-variable debugger-quit-on-return?))
-		       (kill-buffer-interactive (current-buffer))))))
-      (invoke-debugger-command command/return-to (current-point)))))
+    (let ((subproblem (dstate/subproblem (debug-dstate (current-point)))))
+      (subproblem-enter subproblem
+			(continuation-browser-evaluate-from-mark
+			 (backward-sexp (current-point) 1))
+			avoid-deletion?))))
 
 (define-command continuation-browser-frame
   "Show the current subproblem's stack frame in internal format."
@@ -1062,12 +1142,14 @@ Prefix argument means do not kill the debugger buffer."
   (debugger-command-invocation command/frame))
 
 (define-command continuation-browser-condition-restart
-  "Continue the program using a standard restart option."
-  ()
-  (lambda ()
+  "Continue the program using a standard restart option.
+Prefix argument means do not kill the debugger buffer."
+  "P"
+  (lambda (avoid-deletion?)
     (fluid-let ((hook/before-restart
 		 (lambda ()
-		   (if (ref-variable debugger-quit-on-restart?)
+		   (if (and (not avoid-deletion?)
+			    (ref-variable debugger-quit-on-restart?))
 		       (kill-buffer-interactive (current-buffer))))))
       (invoke-debugger-command command/condition-restart (current-point)))))
 
@@ -1090,8 +1172,10 @@ Editing and evaluation commands are similar to those of Scheme Interaction mode.
 
 Evaluate expressions
 
-  \\[continuation-browser-eval-last-expression] evaluates the expression preceding the point in the
-  environment of the current frame.
+  \\[continuation-browser-eval-last-expression/static] evaluates the expression preceding the point in the
+    environment of the current frame.
+  \\[continuation-browser-eval-last-expression/dynamic] evaluates the expression preceding the point in the
+    environment AND DYNAMIC STATE of the current frame.
 
 Move between subproblems and reductions
 
@@ -1118,7 +1202,12 @@ Display debugging information
 Miscellany
 
   \\[continuation-browser-condition-restart] continues the program using a standard restart option.
-  \\[continuation-browser-return] returns (continues with) an expression after evaluating it.
+  \\[continuation-browser-return-from] returns from the current subproblem with the value of the expression
+    preceding the point.
+  \\[continuation-browser-return-to] returns to the current subproblem with the value of the expression
+    preceding the point.
+  \\[continuation-browser-retry] retries the offending expression, returning from the current
+    subproblem with its value.
 
 Use \\[kill-buffer] to quit the debugger."
   (local-set-variable! enable-transcript-buffer true)
@@ -1154,7 +1243,9 @@ Use \\[kill-buffer] to quit the debugger."
 ;; Evaluation
 
 (define-key 'continuation-browser '(#\C-x #\C-e)
-  'continuation-browser-eval-last-expression)
+  'continuation-browser-eval-last-expression/static)
+(define-key 'continuation-browser '(#\C-x #\C-r)
+  'continuation-browser-eval-last-expression/dynamic)
 (define-key 'continuation-browser #\M-z
   'continuation-browser-eval-definition)
 (define-key 'continuation-browser '(#\M-C-z)
@@ -1197,7 +1288,7 @@ Use \\[kill-buffer] to quit the debugger."
   'continuation-browser-print-expression)
 (define-key 'continuation-browser '(#\C-c #\C-o)
   'continuation-browser-print-environment-procedure)
-(define-key 'continuation-browser '(#\C-c #\C-r)
+(define-key 'continuation-browser '(#\C-c #\C-m)
   'continuation-browser-expand-reductions)
 (define-key 'continuation-browser '(#\C-c #\C-t)
   'continuation-browser-print-subproblem-or-reduction)
@@ -1214,3 +1305,5 @@ Use \\[kill-buffer] to quit the debugger."
   'continuation-browser-return-to)
 (define-key 'continuation-browser '(#\C-c #\C-z)
   'continuation-browser-return-from)
+(define-key 'continuation-browser '(#\C-c #\C-d)
+  'continuation-browser-retry)
