@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pros2io.c,v 1.1 1994/12/19 22:23:24 cph Exp $
+$Id: pros2io.c,v 1.2 1995/01/05 23:47:02 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,6 +35,9 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "os2.h"
+
+extern int OS2_process_any_status_change (void);
+extern qid_t OS2_channel_thread_descriptor (Tchannel);
 
 DEFINE_PRIMITIVE ("OS2-SELECT-REGISTRY-LUB", Prim_OS2_select_registry_lub, 0, 0, 0)
 {
@@ -47,12 +50,10 @@ DEFINE_PRIMITIVE ("CHANNEL-DESCRIPTOR", Prim_channel_descriptor, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   {
     Tchannel channel = (arg_channel (1));
-    if (! (((CHANNEL_OPERATOR (channel)) != 0) && (CHANNEL_INPUTP (channel))))
+    if (! ((CHANNEL_ABSTRACT_P (channel)) && (CHANNEL_INPUTP (channel))))
       error_bad_range_arg (1);
     PRIMITIVE_RETURN
-      (LONG_TO_UNSIGNED_FIXNUM
-       (CHANNEL_CONTEXT_READER_QID
-	((channel_context_t *) (CHANNEL_OPERATOR_CONTEXT (channel)))));
+      (LONG_TO_UNSIGNED_FIXNUM (OS2_channel_thread_descriptor (channel)));
   }
 }
 
@@ -147,7 +148,9 @@ DEFINE_PRIMITIVE ("OS2-SELECT-REGISTRY-TEST", Prim_OS2_select_registry_test, 3, 
       PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (0));
     else if (!interruptp)
       PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (1));
-    else
+    else if (!OS2_process_any_status_change ())
       PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (2));
+    else
+      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (3));
   }
 }
