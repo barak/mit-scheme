@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.85 1987/04/17 07:38:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.86 1987/05/07 00:12:20 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -85,6 +85,9 @@ MIT in each case. |#
       '()
       (cons (cons (caar alist) (cdar alist))
 	    (copy-alist (cdr alist)))))
+
+(define (boolean=? x y)
+  (if x y (not y)))
 
 (define (warn message . irritants)
   (newline)
