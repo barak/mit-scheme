@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.43 1992/08/19 13:59:03 jinx Exp $
+$Id: rulfix.scm,v 4.44 1992/09/30 21:57:27 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -673,7 +673,7 @@ MIT in each case. |#
 	 (cond ((not xpt)
 		(error "fixnum-quotient: Inconsistency" constant))
 	       ((>= xpt scheme-datum-width)
-		(if ovfwl?
+		(if ovflw?
 		    (LAP (COPY (TR) 0 ,tgt))
 		    (copy 0 tgt)))
 	       (else
