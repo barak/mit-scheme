@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strpad.scm,v 1.4 1989/04/28 22:53:27 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strpad.scm,v 1.5 1991/05/17 23:42:30 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -45,25 +45,6 @@
 ;;;; String Padding Stuff
 
 (declare (usual-integrations))
-
-(define (add-padding-on-right string n)
-  (if (zero? n)
-      string
-      (let ((l (string-length string)))
-	(let ((lr (+ l n)))
-	  (let ((result (string-allocate lr)))
-	    (substring-move-right! string 0 l result 0)
-	    (substring-fill! result l lr #\space)
-	    result)))))
-
-(define (add-padding-on-left string n)
-  (if (zero? n)
-      string
-      (let ((l (string-length string)))
-	(let ((result (string-allocate (+ l n))))
-	  (substring-fill! result 0 n #\space)
-	  (substring-move-right! string 0 l result n)
-	  result))))
 
 (define (pad-on-right-to string n)
   (let ((l (string-length string)))
@@ -84,40 +65,14 @@
 	    result)
 	  string))))
 
-(define (write-strings-densely strings)
-  (pad-strings-on-right strings
-    (lambda (n strings)
-      (let ((n-per-line (max 1 (quotient 79 (+ 2 n)))))
-	(let loop ((strings strings) (i 1))
-	  (if (not (null? strings))
-	      (begin
-		(write-string "  ")
-		(write-string (car strings))
-		(if (= i n-per-line)
-		    (begin
-		      (newline)
-		      (loop (cdr strings) 1))
-		    (loop (cdr strings) (1+ i))))))))))
-
-(define ((pad-strings-to-max-column pad) strings receiver)
-  (define (max-loop strings n acc)
-    (if (null? strings)
-	(adjust-loop acc n '())
-	(let ((c (string-length (car strings))))
-	  (max-loop (cdr strings)
-		    (if (> c n) c n)
-		    (cons (cons (car strings) c) acc)))))
-  (define (adjust-loop strings n acc)
-    (if (null? strings)
-	(receiver n acc)
-	(adjust-loop (cdr strings)
-		     n
-		     (cons (pad (caar strings) (- n (cdar strings)))
-			   acc))))
-  (max-loop strings 0 '()))
-
-(define pad-strings-on-right
-  (pad-strings-to-max-column add-padding-on-right))
-
-(define pad-strings-on-left
-  (pad-strings-to-max-column add-padding-on-left))
+(define (write-strings-densely strings #!optional port x-size)
+  (let ((port (if (default-object? port) (current-output-port) port))
+	(n (reduce max 0 (map string-length strings))))
+    (let ((x-size
+	   (if (default-object? x-size) (output-port/x-size port) x-size)))
+      (let ((n-per-line (max 1 (quotient (+ x-size 1) (+ 2 n)))))
+	(do ((strings strings (cdr strings))
+	     (i 1 (if (< i n-per-line) (+ i 1) (begin (newline) 1))))
+	    ((null? strings) unspecific)
+	  (if (> i 1) (write-string "  " port))
+	  (write-string (pad-on-right-to (car strings) n) port))))))
