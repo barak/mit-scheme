@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.17 1993/02/26 08:17:14 cph Exp $
+$Id: list.scm,v 14.18 1993/09/30 17:08:17 adams Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -489,6 +489,23 @@ MIT in each case. |#
 	(if (not (null? list))
 	    (error:wrong-type-argument list "list" 'REDUCE-RIGHT))
 	initial)))
+
+(define (fold-left procedure initial list)
+  (if (pair? list)
+      (fold-left procedure (procedure initial (car list)) (cdr list))
+      (begin
+	(if (not (null? list))
+	    (error:wrong-type-argument list "list" 'FOLD-LEFT))
+	initial)))
+
+(define (fold-right procedure initial list)
+  (if (pair? list)
+      (procedure (car list) (fold-right procedure initial (cdr list)))
+      (begin
+	(if (not (null? list))
+	    (error:wrong-type-argument list "list" 'FOLD-RIGHT))
+	initial)))
+
 
 ;;;; Generalized List Operations
 
