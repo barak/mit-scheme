@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.48 1993/07/06 00:56:23 gjr Exp $
+$Id: lapgen.scm,v 4.49 1993/07/08 01:06:53 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -40,12 +40,16 @@ MIT in each case. |#
 ;;;; Register-Allocator Interface
 
 (define (reference->register-transfer source target)
-  (if (or (and (effective-address/data-register? source)
-	       (= (lap:ea-operand-1 source) target))
-	  (and (effective-address/address-register? source)
-	       (= (+ 8 (lap:ea-operand-1 source)) target)))
-      (LAP)
-      (memory->machine-register source target)))
+  (cond ((or (and (effective-address/data-register? source)
+		  (= (lap:ea-operand-1 source) target))
+	     (and (effective-address/address-register? source)
+		  (= (+ 8 (lap:ea-operand-1 source)) target)))
+	 (LAP))
+	((effective-address/float-register? source)
+	 ;; Assume target is a float register
+	 (LAP (FMOVE ,source ,(register-reference target))))
+	(else
+	 (memory->machine-register source target))))
 
 (define (register->register-transfer source target)
   (machine->machine-register source target))
