@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.145 2000/06/08 21:07:28 cph Exp $
+;;; $Id: imail-top.scm,v 1.146 2000/06/09 04:14:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1768,10 +1768,11 @@ see the documentation of `imail-resend'."
 	  "]")))
      #f
      (lambda (mail-buffer)
-       (with-buffer-point-preserved mail-buffer
-	 (lambda ()
-	   (insert-header-fields message #f (buffer-end mail-buffer))
-	   (insert-string (message-body message) (buffer-end mail-buffer))))
+       (add-buffer-mime-attachment! mail-buffer
+				    'MESSAGE 'RFC822 '() '(INLINE)
+				    (map header-field->mail-header
+					 (message-header-fields message))
+				    (message-body message))
        (if (window-has-no-neighbors? (current-window))
 	   (select-buffer mail-buffer)
 	   (select-buffer-other-window mail-buffer))
@@ -1798,9 +1799,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	 ,@(if (ref-variable mail-self-blind buffer)
 	       `(("Resent-Bcc" ,(mail-from-string buffer)))
 	       '())
-	 ,@(map (lambda (header)
-		  (list (header-field-name header)
-			(header-field-value header)))
+	 ,@(map header-field->mail-header
 		(list-transform-negative (message-header-fields message)
 		  (lambda (header)
 		    (string-ci=? (header-field-name header) "sender")))))
@@ -1809,8 +1808,15 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	 (with-buffer-point-preserved mail-buffer
 	   (lambda ()
 	     (insert-string (message-body message) (buffer-end mail-buffer))))
-	 (with-selected-buffer mail-buffer (ref-command mail-send))
+	 (disable-buffer-mime-processing! mail-buffer)
 	 (message-resent message))))))
+
+(define (header-field->mail-header header)
+  (list (header-field-name header)
+	(let ((v (header-field-value header)))
+	  (if (string-prefix? " " v)
+	      (string-tail v 1)
+	      v))))
 
 (define-command imail-reply
   "Reply to the current message.
