@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.86 1996/10/02 19:01:28 cph Exp $
+$Id: interp.c,v 9.87 1997/02/12 08:23:35 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,6 +50,12 @@ extern void EXFUN (free, (PTR ptr));
 #define obstack_chunk_free free
 extern void EXFUN (back_out_of_primitive_internal, (void));
 extern void EXFUN (preserve_signal_mask, (void));
+
+#ifdef COMPILE_STEPPER
+#define Microcode_Does_Stepping	true
+#else
+#define Microcode_Does_Stepping	false
+#endif
 
 /* In order to make the interpreter tail recursive (i.e.
  * to avoid calling procedures and thus saving unnecessary

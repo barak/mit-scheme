@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: scheme.h,v 9.36 1993/08/30 16:11:01 gjr Exp $
+$Id: scheme.h,v 9.37 1997/02/12 08:21:30 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,12 +55,6 @@ MIT in each case. */
 #ifdef ENABLE_PRIMITIVE_PROFILING
 #undef ENABLE_PRIMITIVE_PROFILING
 #endif
-#endif
-
-#ifdef COMPILE_STEPPER
-#define Microcode_Does_Stepping	true
-#else
-#define Microcode_Does_Stepping	false
 #endif
 
 #define forward		extern	/* For forward references */
