@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.65 1999/11/24 04:51:03 cph Exp $
+@comment $Id: user.texinfo,v 1.66 1999/12/27 21:03:15 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -41,9 +41,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.65
+@subtitle Edition 1.66
 @subtitle for Scheme Release 7.5
-@subtitle 23 November 1999
+@subtitle 27 December 1999
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -283,14 +283,15 @@ After unpacking the @sc{zip} file, @file{os2.zip}, you will have these
 directories containing the following files:
 
 @table @file
-@item bin
+@item exe
 The executable programs @file{scheme.exe} and @file{bchschem.exe}.
+
+@item dll
+The dynamic link libraries @file{blowfish.dll}, @file{gdbm.dll}, and
+@file{md5.dll}.
 
 @item doc
 Documentation files in @sc{html}.
-
-@item icons
-A directory containing some icons.
 
 @item lib
 A directory containing the data files needed by Scheme when it is
@@ -302,12 +303,23 @@ Perform the following steps to install Scheme:
 @enumerate
 @item
 Move the executable files @file{scheme.exe} and @file{bchschem.exe} from
-@file{bin} to any directory that appears in your @code{PATH}
-environment variable.  Depending on your needs, you may want to keep
-only one of these files; chances are you'll only be using one of them.
-Of course, you can also keep both programs around if you think you might
-use them both.  @xref{Memory Usage}, for more information about the
-tradeoffs between these two programs.
+@file{exe} to any directory that appears in your @code{PATH}
+environment variable.  You may either add the @file{exe} directory to
+your path by editing @file{config.sys} and rebooting, or you may move
+the files in @file{exe} to an existing directory that is already on your
+@code{PATH}.
+
+Depending on your needs, you may want to keep only one of these files;
+chances are you'll only be using one of them.  Of course, you may also
+keep both programs around if you think you might use them both.
+@xref{Memory Usage}, for more information about the tradeoffs between
+these two programs.
+
+@item
+Move the dynamic link libraries from @file{dll} to any directory that
+appears in your @code{LIBPATH} environment variable.  As above, you may
+either add @file{dll} to your @code{LIBPATH}, or move the files in
+@file{dll} to a directory that is already on your @code{LIBPATH}.
 
 @item
 You may move the @file{lib} directory anywhere you like.  You may
@@ -343,10 +355,6 @@ and pass it the @code{-library} option automatically.
 @item
 @emph{Optional:} Move the @file{doc} directory anywhere you like, or
 delete it if you do not want to keep the documentation.
-
-@item
-@emph{Optional:} The @file{icons} directory contains some Scheme-ish icon
-files.  Again, move this directory wherever you like, or delete it.
 
 @item
 @emph{Optional:} Consider setting some of the environment variables
