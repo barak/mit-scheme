@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.12 2000/01/18 20:38:41 cph Exp $
+$Id: redpkg.scm,v 1.13 2001/08/09 03:06:17 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Package Model Reader
@@ -328,12 +329,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (set-package-description/exports!
 		  package
 		  (append (package-description/exports package)
-			  (list (parse-export (cdr option))))))
+			  (list (parse-import/export (cdr option))))))
 		((IMPORT)
 		 (set-package-description/imports!
 		  package
 		  (append (package-description/imports package)
-			  (list (parse-import (cdr option))))))
+			  (list (parse-import/export (cdr option))))))
 		((INITIALIZATION)
 		 (if (package-description/initialization package)
 		     (error "Multiple INITIALIZATION options:" option))
@@ -378,15 +379,23 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (error "illegal initialization" initialization))
   (car initialization))
 
-(define (parse-import import)
-  (if (not (and (pair? import) (check-list (cdr import) symbol?)))
-      (error "illegal import" import))
-  (cons (parse-name (car import)) (cdr import)))
-
-(define (parse-export export)
-  (if (not (and (pair? export) (check-list (cdr export) symbol?)))
-      (error "illegal export" export))
-  (cons (parse-name (car export)) (cdr export)))
+(define (parse-import/export object)
+  (if (not (and (pair? object)
+		(check-list (cdr object)
+			    (lambda (item)
+			      (or (symbol? item)
+				  (and (pair? item)
+				       (symbol? (car item))
+				       (pair? (cdr item))
+				       (symbol? (cadr item))
+				       (null? (cddr item))))))))
+      (error "illegal import/export list" object))
+  (cons (parse-name (car object))
+	(map (lambda (entry)
+	       (if (pair? entry)
+		   (cons (car entry) (cadr entry))
+		   (cons entry entry)))
+	     (cdr object))))
 
 (define (check-list items predicate)
   (and (list? items)
@@ -495,14 +504,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (set-package/initialization! package initialization))
   (for-each (lambda (export)
 	      (let ((destination (get-package (car export) #t)))
-		(for-each (lambda (name)
-			    (link! package name destination name))
+		(for-each (lambda (names)
+			    (link! package (car names)
+				   destination (cdr names)))
 			  (cdr export))))
 	    (package-description/exports description))
   (for-each (lambda (import)
 	      (let ((source (get-package (car import) #t)))
-		(for-each (lambda (name)
-			    (link! source name package name))
+		(for-each (lambda (names)
+			    (link! source (cdr names)
+				   package (car names)))
 			  (cdr import))))
 	    (package-description/imports description)))
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: conpkg.scm,v 1.7 2000/01/18 20:43:28 cph Exp $
+$Id: conpkg.scm,v 1.8 2001/08/09 03:06:12 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Generate construction program from package model
@@ -38,11 +39,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (append-map construct-links (pmodel/extra-packages pmodel))
 		 construct-links packages)))
 	   (if (pair? links)
-	       `((LET ((ENVIRONMENT-LINK-NAME
+	       `((LET ((LINK-VARIABLES
 			(LET-SYNTAX
 			    ((UCODE-PRIMITIVE
-			      (MACRO (NAME) (MAKE-PRIMITIVE-PROCEDURE NAME))))
-			  (UCODE-PRIMITIVE ENVIRONMENT-LINK-NAME))))
+			      (MACRO (NAME ARITY)
+				(MAKE-PRIMITIVE-PROCEDURE NAME ARITY))))
+			  (UCODE-PRIMITIVE LINK-VARIABLES 4))))
 		   ,@links))
 	       '()))
 	 construct-definitions
@@ -72,8 +74,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (map (lambda (link)
 		(let ((source (link/source link))
 		      (destination (link/destination link)))
-		  `(ENVIRONMENT-LINK-NAME
+		  `(LINK-VARIABLES
 		    ,(package-reference (binding/package destination))
+		    ',(binding/name destination)
 		    ,(package-reference (binding/package source))
 		    ',(binding/name source))))
 	      (binding/links binding)))
