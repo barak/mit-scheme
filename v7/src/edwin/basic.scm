@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.111 1991/05/14 02:26:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.112 1991/05/16 21:21:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -211,6 +211,26 @@ For more information type the HELP key while entering the name."
 
 (define (barf-if-read-only)
   (editor-error "Trying to modify read only text."))
+
+(define (check-first-group-modification group)
+  (let ((buffer (group-buffer group)))
+    (if (and buffer
+	     (buffer-truename buffer)
+	     (buffer-modification-time buffer)
+	     (not (verify-visited-file-modification-time? buffer)))
+	(ask-user-about-supercession-threat buffer))))
+
+(define (ask-user-about-supercession-threat buffer)
+  (if (not
+       (with-selected-buffer buffer
+	 (lambda ()
+	   (prompt-for-confirmation?
+	    "File has changed on disk; really want to edit the buffer"))))
+      (editor-error "File changed on disk: "
+		    (pathname->string (buffer-pathname buffer))))
+  (message
+   "File on disk now will become a backup file if you save these changes.")
+  (set-buffer-backed-up?! buffer false))
 
 (define (editor-failure . strings)
   (cond ((not (null? strings)) (apply temporary-message strings))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.13 1991/04/24 00:54:21 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.14 1991/05/16 21:20:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -106,6 +106,7 @@
 
 (define-integrable (%group-insert-char! group index char)
   (if (group-read-only? group) (barf-if-read-only))
+  (if (not (group-modified? group)) (check-first-group-modification group))
   (move-gap-to! group index)
   (guarantee-gap-length! group 1)
   (let ((gap-start* (fix:1+ index)))
@@ -132,6 +133,7 @@
 
 (define-integrable (%group-insert-substring! group index string start end)
   (if (group-read-only? group) (barf-if-read-only))
+  (if (not (group-modified? group)) (check-first-group-modification group))
   (move-gap-to! group index)
   (let ((n (fix:- end start)))
     (guarantee-gap-length! group n)
@@ -164,6 +166,8 @@
      (if (not (fix:= start end))
 	 (begin
 	   (if (group-read-only? group) (barf-if-read-only))
+	   (if (not (group-modified? group))
+	       (check-first-group-modification group))
 	   ;; Guarantee that the gap is between START and END.
 	   (let ((gap-start (group-gap-start group)))
 	     (cond ((fix:< gap-start start) (move-gap-to-right! group start))
