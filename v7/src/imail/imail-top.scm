@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.4 2000/01/18 20:58:33 cph Exp $
+;;; $Id: imail-top.scm,v 1.5 2000/01/19 06:00:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -29,12 +29,12 @@
 
 (define-command imail
   "Read and edit incoming mail.
-May be called with an imail folder URL as argument;
- then performs imail editing on that folder,
+May be called with an IMAIL folder URL as argument;
+ then performs IMAIL editing on that folder,
  but does not copy any new mail into the folder."
   (lambda ()
     (list (and (command-argument)
-	       (prompt-for-string "Run imail on folder" #f))))
+	       (prompt-for-string "Run IMAIL on folder" #f))))
   (lambda (url-string)
     (bind-authenticator imail-authenticator
       (lambda ()
@@ -44,8 +44,8 @@ May be called with an imail folder URL as argument;
 	  (select-buffer
 	   (or (imail-folder->buffer folder)
 	       (let ((buffer (new-buffer (imail-url->buffer-name url))))
-		 (buffer-put! buffer 'IMAIL-FOLDER folder)
-		 (select-message buffer (first-unseen-message-index folder))
+		 (associate-imail-folder-with-buffer folder buffer)
+		 (select-message folder (first-unseen-message folder))
 		 buffer))))))
     (if (not url-string)
 	((ref-command imail-get-new-mail) #f))))
@@ -58,63 +58,60 @@ May be called with an imail folder URL as argument;
 	    (call-with-pass-phrase
 	     (string-append "Password for user "
 			    user-name
-			    " to access imail folder "
+			    " to access IMAIL folder "
 			    (url->string url))
 	     string-copy))))
 
-(define (imail-folder->buffer folder)
-  (list-search-positive (buffer-list)
-    (lambda (buffer)
-      (eq? folder (buffer-get buffer 'IMAIL-FOLDER #f)))))
+(define (associate-imail-folder-with-buffer folder buffer)
+  (buffer-put! buffer 'IMAIL-FOLDER folder)
+  (folder-put! folder 'BUFFER buffer))
 
-(define (imail-buffer->folder buffer error?)
+(define (imail-folder->buffer folder)
+  (or (folder-get folder 'BUFFER #f)
+      (error:bad-range-argument buffer 'IMAIL-FOLDER->BUFFER)))
+
+(define (buffer->imail-folder buffer)
   (or (buffer-get buffer 'IMAIL-FOLDER #f)
-      (and error? (error:bad-range-argument buffer 'IMAIL-BUFFER->FOLDER))))
+      (error:bad-range-argument buffer 'BUFFER->IMAIL-FOLDER)))
+
+(define (selected-folder)
+  (buffer->imail-folder (selected-buffer)))
 
 (define (imail-url->buffer-name url)
   (url-body url))
-
-(define (first-unseen-message-index folder)
-  (let ((n (count-messages folder)))
-    (let loop ((i 0))
-      (if (or (>= i n)
-	      (not (message-seen? (get-message folder i))))
-	  i
-	  (loop (+ i 1))))))
 
 (define-command imail-get-new-mail
   "Get new mail from this folder's inbox."
   ()
   (lambda ()
-    (let ((buffer (selected-buffer)))
-      (let ((folder (imail-buffer->folder buffer #t)))
-	(maybe-revert-folder folder
-	  (lambda (folder)
-	    (prompt-for-yes-or-no?
-	     (string-append
-	      "Persistent copy of folder has changed since last read.  "
-	      (if (folder-modified? folder)
-		  "Discard your changes"
-		  "Re-read folder")))))
-	(let ((n-new (poll-folder folder)))
-	  (cond ((not n-new)
-		 (message "(This folder has no associated inbox.)"))
-		((= 0 n-new)
-		 (message "(No new mail has arrived.)"))
-		(else
-		 (select-message buffer (- (count-messages folder) n-new))
-		 (event-distributor/invoke! (ref-variable imail-new-mail-hook))
-		 (message n-new
-			  " new message"
-			  (if (= n-new 1) "" "s")
-			  " read"))))))))
+    (let ((folder (selected-folder)))
+      (maybe-revert-folder folder
+	(lambda (folder)
+	  (prompt-for-yes-or-no?
+	   (string-append
+	    "Persistent copy of folder has changed since last read.  "
+	    (if (folder-modified? folder)
+		"Discard your changes"
+		"Re-read folder")))))
+      (let ((n-new (poll-folder folder)))
+	(cond ((not n-new)
+	       (message "(This folder has no associated inbox.)"))
+	      ((= 0 n-new)
+	       (message "(No new mail has arrived.)"))
+	      (else
+	       (select-message folder (- (count-messages folder) n-new))
+	       (event-distributor/invoke! (ref-variable imail-new-mail-hook))
+	       (message n-new
+			" new message"
+			(if (= n-new 1) "" "s")
+			" read")))))))
 
 (define-variable imail-new-mail-hook
   "An event distributor that is invoked when IMAIL incorporates new mail."
   (make-event-distributor))
 
 (define-major-mode imail read-only "IMAIL"
-  "IMAIL Mode is used by \\[imail] for editing IMAIL files.
+  "IMAIL mode is used by \\[imail] for editing IMAIL files.
 All normal editing commands are turned off.
 Instead, these commands are available:
 
@@ -137,7 +134,7 @@ DEL	Scroll to previous screen of this message.
 \\[imail-synchronize]	Synchonize the folder with the server.
 	For file folders, synchronizes with the file.
 
-\\[imail-quit]       Quit imail: save, then switch to another buffer.
+\\[imail-quit]       Quit IMAIL: save, then switch to another buffer.
 
 \\[imail-get-new-mail]	Read any new mail from the associated inbox into this folder.
 
@@ -164,7 +161,7 @@ DEL	Scroll to previous screen of this message.
 
 \\[imail-toggle-header]	Toggle between full headers and reduced headers.
 	  Normally only reduced headers are shown.
-\\[imail-edit-current-message]	Edit the current message.  C-c C-c to return to imail."
+\\[imail-edit-current-message]	Edit the current message.  C-c C-c to return to IMAIL."
   (lambda (buffer)
     ;;(local-set-variable! mode-line-modified "--- " buffer)
     (local-set-variable! imail-last-output-url
@@ -231,22 +228,23 @@ DEL	Scroll to previous screen of this message.
 
 (define-command imail-input
   "Append messages to this folder from a specified folder."
-  "sInput from imail folder"
+  "sInput from IMAIL folder"
   (lambda (url-string)
     ???))
 
 (define-command imail-quit
-  ""
+  "Quit out of IMAIL."
   ()
   (lambda ()
-    ???))
+    ((ref-command save-buffer) #f)
+    ((ref-command bury-buffer))))
 
 (define-command imail-synchronize
   "Synchronize the current folder with the master copy on the server.
 Currently meaningless for file-based folders."
   ()
   (lambda ()
-    (synchronize-folder (imail-buffer->folder (selected-buffer) #t))))
+    (synchronize-folder (selected-folder))))
 
 ;;;; Navigation
 
@@ -254,16 +252,17 @@ Currently meaningless for file-based folders."
   "Show message number N (prefix argument), counting from start of folder."
   "p"
   (lambda (index)
-    (select-message (selected-buffer) index)))
+    (let ((folder (selected-folder)))
+      (if (not (<= 1 index (count-messages folder)))
+	  (editor-error "Message index out of bounds:" index))
+      (select-message folder (- index 1)))))
 
 (define-command imail-last-message
   "Show last message in folder."
   ()
   (lambda ()
-    (let* ((buffer (selected-buffer))
-	   (folder (imail-buffer->folder buffer #t))
-	   (count (count-messages folder)))
-      (select-message buffer (if (> count 0) (- count 1) 0)))))
+    (let ((folder (selected-folder)))
+      (select-message folder (last-message folder)))))
 
 (define-command imail-next-message
   "Show following message whether deleted or not.
@@ -341,77 +340,120 @@ With prefix argument N moves backward N messages with these flags."
 
 (define (move-relative delta predicate noun)
   (if (not (= 0 delta))
-      (let* ((buffer (selected-buffer))
-	     (folder (imail-buffer->folder buffer #t)))
-	(call-with-values
-	    (lambda ()
-	      (if (< delta 0)
-		  (values (- delta)
-			  (lambda (index)
-			    (and (> index 0)
-				 (- index 1)))
-			  "previous")
-		  (values delta
-			  (let ((count (count-messages folder)))
-			    (lambda (index)
-			      (let ((index (+ index 1)))
-				(and (< index count)
-				     index))))
-			  "next")))
-	  (lambda (delta step direction)
-	    (let loop
-		((delta delta)
-		 (index (imail-buffer-index buffer))
-		 (winner #f))
-	      (let ((next
-		     (let loop ((index index))
-		       (let ((next (step index)))
-			 (if (or (not next)
-				 (predicate (get-message folder next)))
-			     next
-			     (loop next))))))
-		(cond ((not next)
-		       (if winner (select-message buffer winner))
-		       (message "No " direction " " noun))
-		      ((= delta 1)
-		       (select-message buffer next))
-		      (else
-		       (loop (- delta 1) next next))))))))))
+      (call-with-values
+	  (lambda ()
+	    (if (< delta 0)
+		(values (- delta) previous-message "previous")
+		(values delta next-message "next")))
+	(lambda (delta step direction)
+	  (let loop
+	      ((delta delta)
+	       (message (selected-message))
+	       (winner #f))
+	    (let ((next (step message predicate)))
+	      (cond ((not next)
+		     (if winner (select-message folder winner))
+		     (message "No " direction " " noun))
+		    ((= delta 1)
+		     (select-message folder next))
+		    (else
+		     (loop (- delta 1) next next)))))))))
 
-(define (select-message buffer index)
-  (if (not (exact-nonnegative-integer? index))
-      (error:wrong-type-argument index "exact non-negative integer"
-				 'SELECT-MESSAGE))
-  (let ((folder (imail-buffer->folder buffer #t)))
-    (let ((count (count-messages folder)))
-      (let ((index
-	     (cond ((< index count) index)
-		   ((< 0 count) (- count 1))
-		   (else 0))))
-	(buffer-reset! buffer)
-	(buffer-put! buffer 'IMAIL-INDEX index)
-	(let ((mark (mark-left-inserting-copy (buffer-start buffer))))
-	  (if (< index count)
-	      (let ((message (get-message folder index)))
-		(for-each (lambda (line)
-			    (insert-string line mark)
-			    (insert-newline mark))
-			  (let ((displayed
-				 (get-message-property
-				  message
-				  "displayed-header-fields"
-				  '())))
-			    (if (eq? '() displayed)
-				(message-header-fields message)
-				displayed)))
-		(insert-newline mark)
-		(insert-string (message-body message) mark))
-	      (insert-string "[This folder has no messages in it.]" mark))
-	  (guarantee-newline mark)
-	  (mark-temporary! mark))
-	(set-buffer-major-mode! buffer (ref-mode-object imail))))))
+(define (select-message folder selector)
+  (let ((buffer (imail-folder->buffer folder))
+	(message
+	 (cond ((or (not selector) (message? selector))
+		selector)
+	       ((and (exact-integer? selector)
+		     (<= 0 selector)
+		     (< selector (count-messages folder)))
+		(get-message folder selector))
+	       (else
+		(error:wrong-type-argument selector "message selector"
+					   'SELECT-MESSAGE)))))
+    (if (not (eq? message (buffer-get buffer 'IMAIL-MESSAGE #f)))
+	(begin
+	  (buffer-reset! buffer)
+	  (buffer-put! buffer 'IMAIL-MESSAGE message)
+	  (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
+	    (if message
+		(begin
+		  (for-each (lambda (line)
+			      (insert-string line mark)
+			      (insert-newline mark))
+			    (let ((displayed
+				   (get-message-property
+				    message
+				    "displayed-header-fields"
+				    '())))
+			      (if (eq? '() displayed)
+				  (header-fields message)
+				  displayed)))
+		  (insert-newline mark)
+		  (insert-string (message-body message) mark))
+		(insert-string "[This folder has no messages in it.]" mark))
+	    (guarantee-newline mark)
+	    (mark-temporary! mark))
+	  (set-buffer-major-mode! buffer (ref-mode-object imail))))))
+
+(define (selected-message)
+  (or (buffer-get (selected-buffer) 'SELECTED-MESSAGE #f)
+      (error "No selected IMAIL message.")))
 
-;;; Edwin Variables:
-;;; scheme-environment: '(edwin)
-;;; scheme-syntax-table: edwin-syntax-table
-;;; End:
+;;;; Message deletion
+
+(define-command imail-delete-message
+  "Delete this message and stay on it."
+  ()
+  (lambda ()
+    (let ((message (selected-message)))
+      (if message
+	  (delete-message message)))))
+
+(define-command imail-delete-forward
+  "Delete this message and move to next nondeleted one.
+Deleted messages stay in the file until the \\[imail-expunge] command is given.
+With prefix argument, delete and move backward."
+  "P"
+  (lambda (backward?)
+    (let ((message (selected-message)))
+      (if message
+	  (delete-message message)))
+    ((ref-command imail-next-undeleted-message) (if backward? -1 1))))
+
+(define-command imail-delete-backward
+  "Delete this message and move to previous nondeleted one.
+Deleted messages stay in the file until the \\[imail-expunge] command is given."
+  ()
+  (lambda ()
+    ((ref-command imail-delete-forward) #t)))
+
+(define-command imail-undelete-previous-message
+  "Back up to deleted message, select it, and undelete it."
+  ()
+  (lambda ()
+    (let ((message (selected-message)))
+      (if message
+	  (if (message-deleted? message)
+	      (undelete-message message)
+	      (let ((message (previous-deleted-message message)))
+		(if (not message)
+		    (editor-error "No previous deleted message."))
+		(undelete-message message)
+		(select-message (message-folder message) message)))))))
+
+(define-command imail-expunge
+  "Actually erase all deleted messages in the folder."
+  ()
+  (lambda ()
+    (let ((folder (selected-folder))
+	  (message (selected-message)))
+      (let ((message*
+	     (if (message-deleted? message)
+		 (or (next-undeleted-message message)
+		     (previous-undeleted-message message))
+		 message)))
+	(expunge-deleted-messages folder)
+	(if (eq? message message*)
+	    (maybe-redisplay-message message)
+	    (select-message folder message*))))))
