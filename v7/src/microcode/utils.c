@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.62 1993/08/10 16:17:44 adams Exp $
+$Id: utils.c,v 9.63 1993/08/23 04:47:15 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -542,9 +542,7 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
     int *From = &(local_circle[0]), *To = &(debug_circle[0]), i;
 
     for (i = 0; i < local_nslots; i++)
-    {
       *To++ = *From++;
-    }
     debug_nslots = local_nslots;
     debug_slotno = local_slotno;
   }
@@ -598,10 +596,8 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
   if ((Err < 0) || (Err >= (VECTOR_LENGTH (Error_Vector))))
   {
     if (VECTOR_LENGTH (Error_Vector) == 0)
-    {
       error_death (Err, "No error handlers: Empty handlers vector");
       /*NOTREACHED*/
-    }
     Handler = (VECTOR_REF (Error_Vector, ERR_BAD_ERROR_CODE));
   }
   else
@@ -626,13 +622,9 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
       STACK_PUSH (v);
     }
   else if ((Err >= SMALLEST_FIXNUM) && (Err <= BIGGEST_FIXNUM))
-    {
       STACK_PUSH (LONG_TO_FIXNUM (Err));
-    }
   else
-    {
       STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (ERR_BAD_ERROR_CODE));
-    }
   /* Procedure: Handler   */
   STACK_PUSH (Handler);
   STACK_PUSH (STACK_FRAME_HEADER + 2);
@@ -790,9 +782,7 @@ DEFUN (Restore_History, (hist_obj), SCHEME_OBJECT hist_obj)
 
   new_hist = (copy_history (hist_obj));
   if (new_hist == SHARP_F)
-  {
     return (false);
-  }
   else if (new_hist == SHARP_T)
   {
     outf_fatal ("\nBad history to restore.\n");
@@ -896,9 +886,7 @@ DEFUN (Allocate_New_Stacklet, (N), long N)
     {
       Request_GC(size);
       if ((Free + size) >= Heap_Top)
-      {
 	Microcode_Termination(TERM_STACK_OVERFLOW);
-      }
     }
     Free[STACKLET_LENGTH] = MAKE_OBJECT (TC_MANIFEST_VECTOR, (size - 1));
     SET_STACK_GUARD (& (Free[STACKLET_HEADER_SIZE]));
@@ -1000,13 +988,9 @@ DEFUN (Translate_To_Point, (Target), SCHEME_OBJECT Target)
     (UNSIGNED_FIXNUM_TO_LONG
      (FAST_MEMORY_REF (Target, STATE_POINT_DISTANCE_TO_ROOT)));
   if (State_Space == SHARP_F)
-  {
     Current_Location = Current_State_Point;
-  }
   else
-  {
     Current_Location = MEMORY_REF (State_Space, STATE_SPACE_NEAREST_POINT);
-  }
 
   if (Target == Current_Location)
   {
@@ -1029,18 +1013,14 @@ DEFUN (Translate_To_Point, (Target), SCHEME_OBJECT Target)
   for (Path_Point = Current_Location, Merge_Depth = From_Depth;
        Merge_Depth > Distance;
        Merge_Depth--)
-  {
     Path_Point = FAST_MEMORY_REF (Path_Point, STATE_POINT_NEARER_POINT);
-  }
 
   for (Path_Ptr = (&(Path[Merge_Depth]));
        Merge_Depth >= 0;
        Merge_Depth--, Path_Ptr--)
   {
     if (*Path_Ptr == Path_Point)
-    {
       break;
-    }
     Path_Point = FAST_MEMORY_REF (Path_Point, STATE_POINT_NEARER_POINT);
   }
 
@@ -1080,19 +1060,18 @@ SCHEME_OBJECT
 DEFUN_VOID (Compiler_Get_Fixed_Objects)
 {
   if (Valid_Fixed_Obj_Vector())
-  {
     return (Get_Fixed_Obj_Slot(Me_Myself));
-  }
   else
-  {
     return (SHARP_F);
-  }
 }
 
 extern SCHEME_OBJECT EXFUN (Re_Enter_Interpreter, (void));
 extern SCHEME_OBJECT EXFUN (C_call_scheme,
 			    (SCHEME_OBJECT, long, SCHEME_OBJECT *));
 
+#ifdef WINNT
+#include <windows.h>
+#endif
 
 SCHEME_OBJECT
 DEFUN (C_call_scheme, (proc, nargs, argvec),
@@ -1102,56 +1081,61 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
 {
   SCHEME_OBJECT primitive, prim_lexpr, * sp, result;
 
-#ifdef I386
-  extern void *C_Frame_Pointer, *C_Stack_Pointer;
-  void *cfp, *csp;
+#ifdef i386
+  extern void * C_Frame_Pointer, * C_Stack_Pointer;
+  void * cfp, * csp;
   
-  cfp = C_Frame_Pointer, csp = C_Stack_Pointer;
-#endif
-  
-  primitive = (Regs [REGBLOCK_PRIMITIVE]);
-  prim_lexpr = (Regs [REGBLOCK_LEXPR_ACTUALS]);
+  cfp = C_Frame_Pointer;
+  csp = C_Stack_Pointer;
+#ifdef WINNT
+  try
+#endif /* WINNT */
+#endif /* i386 */
+  {  
+    primitive = (Regs [REGBLOCK_PRIMITIVE]);
+    prim_lexpr = (Regs [REGBLOCK_LEXPR_ACTUALS]);
 
-  if (! (PRIMITIVE_P (primitive)))
-  {
-    abort_to_interpreter (ERR_CANNOT_RECURSE);
-    /*NOTREACHED*/
+    if (! (PRIMITIVE_P (primitive)))
+      abort_to_interpreter (ERR_CANNOT_RECURSE);
+      /*NOTREACHED*/
+    sp = Stack_Pointer;
+
+   Will_Push ((2 * CONTINUATION_SIZE) + (nargs + STACK_ENV_EXTRA_SLOTS + 1));
+    {
+      long i;
+
+      Store_Return (RC_END_OF_COMPUTATION);
+      Store_Expression (primitive);
+      Save_Cont ();
+
+      for (i = nargs; --i >= 0; )
+	STACK_PUSH (argvec[i]);
+      STACK_PUSH (proc);
+      STACK_PUSH (STACK_FRAME_HEADER + nargs);
+
+      Store_Return (RC_INTERNAL_APPLY);
+      Store_Expression (SHARP_F);
+      Save_Cont ();
+    }
+   Pushed ();
+    result = (Re_Enter_Interpreter ());
+
+    if (Stack_Pointer != sp)
+      signal_error_from_primitive (ERR_STACK_HAS_SLIPPED);
+      /*NOTREACHED*/
+
+    Regs [REGBLOCK_LEXPR_ACTUALS] = prim_lexpr;
+    Regs [REGBLOCK_PRIMITIVE] = primitive;
   }
-  sp = Stack_Pointer;
-
-  Will_Push ((2 * CONTINUATION_SIZE) + (nargs + STACK_ENV_EXTRA_SLOTS + 1));
+#ifdef i386
+#ifdef WINNT
+  finally  
+#endif /* WINNT */
   {
-    long i;
-
-    Store_Return (RC_END_OF_COMPUTATION);
-    Store_Expression (primitive);
-    Save_Cont ();
-
-    for (i = nargs; --i >= 0; )
-      STACK_PUSH (argvec[i]);
-    STACK_PUSH (proc);
-    STACK_PUSH (STACK_FRAME_HEADER + nargs);
-
-    Store_Return (RC_INTERNAL_APPLY);
-    Store_Expression (SHARP_F);
-    Save_Cont ();
+    C_Frame_Pointer = cfp;
+    C_Stack_Pointer = csp;
   }
-  Pushed ();
-  result = (Re_Enter_Interpreter ());
-
-  if (Stack_Pointer != sp)
-  {
-    signal_error_from_primitive (ERR_STACK_HAS_SLIPPED);
-    /*NOTREACHED*/
-  }
-
-  Regs [REGBLOCK_LEXPR_ACTUALS] = prim_lexpr;
-  Regs [REGBLOCK_PRIMITIVE] = primitive;
-
-#ifdef I386
-  C_Frame_Pointer = cfp;
-  C_Stack_Pointer = csp;
-#endif
+#endif /* i386 */
 
   return  result;
 }
