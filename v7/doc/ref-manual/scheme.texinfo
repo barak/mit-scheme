@@ -368,6 +368,7 @@ Pathnames
 * Filenames and Pathnames::     Filenames and Pathnames
 * Components of Pathnames::     Components of Pathnames
 * Operations on Pathnames::     Operations on Pathnames
+* Miscellaneous Pathnames::     Miscellaneous Pathname Functions
 
 Error System
 
@@ -10283,6 +10284,7 @@ MULTICS         >udd>LispIO>format.fasl
 TENEX           <LISPIO>FORMAT.FASL;13
 VAX/VMS         [LISPIO]FORMAT.FAS;13
 UNIX            /usr/lispio/format.fasl
+MS-DOS          C:\USR\LISPIO\FORMAT.FAS
 @end group
 @end example
 
@@ -10291,14 +10293,14 @@ UNIX            /usr/lispio/format.fasl
 It would be impossible for each program that deals with file names to
 know about each different file name format that exists; a new operating
 system to which Scheme was ported might use a format different from any
-of its predecessors.  Therefore, MIT Scheme provides @emph{two}
-ways to represent file names: @dfn{filenames}, which are strings in the
-implementation-dependent form customary for the file system, and
-@dfn{pathnames}, which are special abstract data objects that represent
-file names in an implementation-independent way.  Procedures are
-provided to convert between these two representations, and all
-manipulations of files can be expressed in machine-independent terms by
-using pathnames.
+of its predecessors.  Therefore, MIT Scheme provides @emph{two} ways to
+represent file names: @dfn{filenames} (also called @dfn{namestrings}),
+which are strings in the implementation-dependent form customary for the
+file system, and @dfn{pathnames}, which are special abstract data
+objects that represent file names in an implementation-independent way.
+Procedures are provided to convert between these two representations,
+and all manipulations of files can be expressed in machine-independent
+terms by using pathnames.
 
 @cindex host, in filename
 In order to allow MIT Scheme programs to operate in a network
@@ -10318,6 +10320,7 @@ external representations.
 * Filenames and Pathnames::     Filenames and Pathnames
 * Components of Pathnames::     Components of Pathnames
 * Operations on Pathnames::     Operations on Pathnames
+* Miscellaneous Pathnames::     Miscellaneous Pathname Functions
 @end menu
 
 @node Filenames and Pathnames, Components of Pathnames, Pathnames, Pathnames
@@ -10325,43 +10328,71 @@ external representations.
 
 Pathname objects are usually created by parsing filenames (character
 strings) into component parts.  MIT Scheme provides operations that
-convert filenames into pathnames and vice versa.  In addition,
-@code{->pathname} will convert other objects, such as symbols, into
-pathnames.
+convert filenames into pathnames and vice versa.
 
 @deffn {procedure+} ->pathname object
 @cindex construction, of pathname
 Returns a pathname that is the equivalent of @var{object}.
-@var{Object} must be a pathname, a string, or a symbol.  If @var{object}
+@var{Object} must be a pathname or a string.  If @var{object}
 is a pathname, it is returned.  If @var{object} is a string, this
-procedure acts like @code{string->pathname}.  If @var{object} is a
-symbol, it is converted to a string, passed to @code{string->pathname},
-and the result returned.
+procedure returns the pathname that corresponds to the string.
 
 @example
 @group
 (->pathname "foo")              @result{}  #[pathname 65 "foo"]
-(->pathname '/usr/morris)       @result{}  #[pathname 66 "/usr/morris"]
+(->pathname "/usr/morris")      @result{}  #[pathname 66 "/usr/morris"]
 @end group
 @end example
 @end deffn
 
-@deffn {procedure+} string->pathname string
-@cindex string, converting to pathname
-Returns the pathname that corresponds to the filename @var{string}.
-This operation is the inverse of @code{pathname->string}.
+
+@deffn {procedure+} parse-namestring thing #!optional host defaults
+@cindex construction, of pathname
+This turns @var{thing} into a pathname.
+@var{Thing} must be a pathname or a string.
+If @var{thing} is a pathname, it is returned.  If @var{thing} is a
+string, this procedure returns the pathname that corresponds to the
+string, parsed according to the syntax of the file system specified by
+@var{host}.
+This function @emph{does not} do defaulting of pathname components.
+The defaults are used to determine what syntax should be used for
+parsing the string.
+In general this is only really useful if your implementation of
+MIT Scheme supports more than one file system, otherwise you would use
+@code{->pathname}.
+If @var{host} is given it must be a valid host component of a pathname,
+or @code{#f}, in which case the host component of the pathname
+@var{defaults} is used.
+The @var{defaults} argument defaults to the value of
+@code{*default-pathname-defaults*}.
 @end deffn
 
-@deffn {procedure+} pathname->string pathname
-@findex string->pathname
-Returns a newly allocated string that is the filename corresponding to
-@var{pathname}.  This operation is the inverse of
-@code{string->pathname}.
-
+@deffn {procedure+} ->namestring pathname
+@cindex conversion, pathname to string
+@code{->namestring} returns a newly allocated string that is the
+filename corresponding to @var{pathname}.
 @example
 @group
-(pathname->string (string->pathname "/usr/morris/foo"))
-     @result{}  "/usr/morris/foo"
+(->namestring (->pathname "/usr/morris/minor.van"))
+     @result{}  "/usr/morris/minor.van"
+@end group
+@end example
+@end deffn
+
+
+@deffn {procedure+} pathname-simplify pathname
+@cindex simplification, of pathname
+Returns a pathname that locates the same file or directory as
+@var{pathname}, but is in some sense simpler.
+Note that @code{pathname-simplify} might not always be able to simplify
+the pathname, e.g.@: on unix with symbolic links the directory
+@code{/usr/morris/../} need not be the same as @code{/usr/}
+In cases of uncertainty the behaviour is conservative, returning the
+original or a partly simplified pathname.
+@example
+@group
+(pathname-simplify "/usr/morris/../morris/dance")
+     @result{}  #[pathname "/usr/morris/dance"]
 @end group
 @end example
 @end deffn
@@ -10380,16 +10411,13 @@ of by the Scheme implementation.
 
 @table @var
 @item host
-The name of the file system on which the file resides.  In the current
-implementation of MIT Scheme, this component is not used and should
-always be @code{#f}.
+The name of the file system on which the file resides.
 @cindex host, pathname component
 
 @item device
 Corresponds to the ``device'' or ``file structure'' concept in many host
 file systems: the name of a (logical or physical) device containing
-files.  In the current implementation of MIT Scheme, this component
-is not used and should always be @code{#f}.
+files.
 @cindex device, pathname component
 
 @item directory
@@ -10414,8 +10442,7 @@ and a third the listing of error messages from the compiler.
 @item version
 Corresponds to the ``version number'' concept in many host file systems.
 Typically this is a number that is incremented every time the file is
-modified.  In the current implementation of MIT Scheme, this
-component is not used and should always be @code{#f}.
+modified.
 @cindex version, pathname component
 @end table
 
@@ -10431,9 +10458,37 @@ a pathname depends on the state of the file system.  In file systems
 with such facilities as ``links'', multiple file names, logical devices,
 and so on, two pathnames that look quite different may turn out to
 address the same file.  To access a file given a pathname, one must do a
-file-system operation such as @code{open-input-file}.@footnote{This
-description is adapted from @cite{Common Lisp, The Language}, second
-edition, section 23.1.1.}
+file-system operation such as @code{open-input-file}.
+
+Two important operations involving pathnames are @dfn{parsing} and
+@dfn{merging}.  Parsing is the conversion of a filename (which might be
+something supplied interactively  by the users when asked to supply the
+name of a file) into a pathname object.  This operation is
+implementation-dependent, because the format of filenames is
+implementation-dependent.  Merging takes a pathname with missing
+components and supplies values for those components from a source of
+default values.
+
+Not all of the components of a pathname need to be specified.  If a
+component of a pathname is missing, its value is @code{#f}.
+Before the file system interface can do anything interesting with a
+file, such as opening the file, all the missing components of a pathname
+must be filled in.  Pathnames with missing components are used
+internally for various purposes; in particular, parsing a namestring
+that does not specify certain components will result in a pathname with
+missing components.
+
+Any component of a pathname may be the symbol @code{unspecific}, meaning
+that the component simply does not exist, for file systems in which such
+a value makes no sense.
+For example, UNIX and MS-DOS file systems usually does not support
+version numbers, so the version component for a UNIX of MS-DOS host
+might be @code{unspecific}.
+Similarly, the file type is usually regarded in a UNIX file system as
+the part of a name after the period, but some file names contain no
+periods and therefore have no file types).@footnote{This description is
+adapted from @cite{Common Lisp, The Language}, second edition, section
+23.1.1.}
 @comment **** end CLTL ****
 
 Each component in a pathname is typically one of the following (with
@@ -10479,16 +10534,21 @@ meanings.  Here are the other values allowed for these components:
 
 @itemize @bullet
 @item
+The host component is of an implementation defined type which may be
+tested for by using the @code{host?} predicate.
+
+@item
 A directory, if it is not one of the above values, must be a non-empty
 list, which represents a @dfn{directory path}: a sequence of
 directories, each of which has a name in the previous directory, the
 last of which is the directory specified by the entire path.  Each
 element in such a path specifies the name of the directory relative to
-the directory specified by the elements to its left.  If the first
-element in the list is the symbol @code{root}, then the directory
+the directory specified by the elements to its left.
+The first element of the list is either the symbol @code{absolute} or the symbol @code{relative}.  If the first
+element in the list is the symbol @code{absolute}, then the directory
 component (and subsequently the pathname) is @dfn{absolute}; the first
 component in the sequence is to be found at the ``root'' of the file
-system.  Otherwise, the directory is @dfn{relative}, meaning that the
+system.  If the directory is @dfn{relative} then the
 first component is to be found in some as yet unspecified directory;
 typically this is later specified to be the @dfn{current working
 directory}.
@@ -10496,25 +10556,22 @@ directory}.
 @cindex directory path (defn)
 @cindex path, directory (defn)
 
-@cindex self, as pathname component
 @cindex up, as pathname component
 @cindex parent, of directory
-Aside from the special case of @code{root}, which may only appear as the
-first element of the list (if it appears at all), each element in the
-list is either a string or the symbol @code{wild} (each with the same
-meaning as described above), or one of these symbols: @code{self}, which
-means the next directory in the sequence is the same as the previous
-one, or @code{up}, which means the next directory is the ``parent'' of
-the previous one.  @code{self} and @code{up} correspond to the files
-@file{.} and @file{..} in unix file systems.
+Aside from @code{absolute} and @code{relative}, which may only appear as
+the first element of the list, each subsequent element in the list is
+either a string or the symbol @code{wild} (each with the same meaning as
+described above), or @code{up}, which means the next directory is the
+``parent'' of the previous one.  @code{up} corresponds to the file
+@file{..} in unix file systems.
 
 In file systems that do not have ``heirarchical'' structure, a specified
 directory component will always be a list whose first element is
-@code{root}.  If the system does not support directories other than a
+@code{absolute}.  If the system does not support directories other than a
 single global directory, the list will have no other elements.  If the
 system supports ``flat'' directories, i.e.@: a global set of directories
 with no subdirectories, then the list will contain a second element,
-whiich is either a string or @code{wild}.  In other words, a
+which is either a string or @code{wild}.  In other words, a
 non-heirarchical file system is treated as if it were heirarchical, but
 the heirarchical features are unused.  This representation is somewhat
 inconvenient for such file systems, but it discourages programmers from
@@ -10528,7 +10585,7 @@ means to choose the largest available version number for that file; or
 the symbol @code{oldest}, which means to choose the smallest version
 number.  In the future some other possible values may be added, e.g.@:
 @code{installed}.  Note that in the current implementation this
-component is not used and should be @code{#f}.
+component is not used and should be specified as @code{#f}.
 @cindex newest, as pathname component
 @cindex oldest, as pathname component
 @cindex installed, as pathname component
@@ -10542,7 +10599,7 @@ component, which were outlined above.
 
 @example
 @group
-(make-pathname #f #f '(root "usr" "morris") "foo" "scm" #f)
+(make-pathname #f #f '(absolute "usr" "morris") "foo" "scm" #f)
      @result{}  #[pathname 67 "/usr/morris/foo.scm"]
 @end group
 @end example
@@ -10559,36 +10616,26 @@ Returns a particular component of @var{pathname}.
 @example
 @group
 (define x (->pathname "/usr/morris/foo.scm"))
-(pathname-host x)       @result{}  #f
-(pathname-device x)     @result{}  #f
-(pathname-directory x)  @result{}  (root "usr" "morris")
+(pathname-host x)       @result{}  #[host 1]
+(pathname-device x)     @result{}  unspecific
+(pathname-directory x)  @result{}  (absolute "usr" "morris")
 (pathname-name x)       @result{}  "foo"
 (pathname-type x)       @result{}  "scm"
-(pathname-version x)    @result{}  #f
+(pathname-version x)    @result{}  unspecific
 @end group
 @end example
 @end deffn
 
-@deffn {procedure+} pathname-components pathname receiver
-Calls @var{receiver} with the six components of @var{pathname}, and
-returns the result yielded by @var{receiver}.
-
-@example
-@group
-(pathname-components (->pathname "/usr/morris/foo.scm") list)
-     @result{}  (#f #f (root "usr" "morris") "foo" "scm" #f)
-@end group
-@end example
-@end deffn
-
-@deffn {procedure+} pathname-new-host pathname host
-@deffnx {procedure+} pathname-new-device pathname device
+@deffn {procedure+} pathname-new-device pathname device
 @deffnx {procedure+} pathname-new-directory pathname directory
 @deffnx {procedure+} pathname-new-name pathname name
 @deffnx {procedure+} pathname-new-type pathname type
 @deffnx {procedure+} pathname-new-version pathname version
 Returns a new copy of @var{pathname} with the respective component
 replaced by the second argument.  @var{Pathname} is unchanged.
+Portable programs should not explicity replace a component with
+@code{unspecific} because this might not be permitted in some
+situations.
 
 @example
 @group
@@ -10597,7 +10644,7 @@ p
      @result{}  #[pathname 71 "/usr/blisp/rel15"]
 (pathname-new-name p "rel100")
      @result{}  #[pathname 72 "/usr/blisp/rel100"]
-(pathname-new-directory p '("test" "morris"))
+(pathname-new-directory p '(relative "test" "morris"))
      @result{}  #[pathname 73 "test/morris/rel15"]
 p
      @result{}  #[pathname 71 "/usr/blisp/rel15"]
@@ -10605,93 +10652,17 @@ p
 @end example
 @end deffn
 
-@deffn {procedure+} pathname-name-path pathname
-Extracts the name, type, and version components of @var{pathname} and
-returns a pathname with just these components.  For example,
-
-@example
-@group
-(pathname-name-path (->pathname "/usr/blisp/rel5"))
-     @result{}  #[pathname 69 "rel5"]
-@end group
-@end example
+@deffn {procedure+} pathname-default-device pathname device
+@deffnx {procedure+} pathname-default-directory pathname directory
+@deffnx {procedure+} pathname-default-name pathname name
+@deffnx {procedure+} pathname-default-type pathname type
+@deffnx {procedure+} pathname-default-version pathname version
+These operations are similar to the @code{pathname-new-@var{component}}
+operations, except that they only change the specified @var{component}
+if it has the value @code{#f} in @var{pathname}.
 @end deffn
 
-@deffn {procedure+} pathname-directory-path pathname
-Extracts the host, device, and directory components of @var{pathname}
-and returns a pathname with just these components.
-
-@example
-@group
-(pathname-directory-path (->pathname "/usr/blisp/rel5"))
-     @result{}  #[pathname 70 "/usr/blisp/"]
-@end group
-@end example
-@end deffn
-
-@deffn {procedure+} pathname-as-directory pathname
-@cindex directory, converting pathname to
-Returns a pathname that is equivalent to pathname, but in which any file
-components have been converted to a directory component.  If
-@var{pathname} does not have name, type, or version components, it is
-returned.  Otherwise, these file components are converted into a string,
-and the string is added to the end of the list of directory components.
-Note the difference between this procedure and
-@code{pathname-directory-path}.
-
-@example
-@group
-(pathname-as-directory (->pathname "/usr/blisp/rel5"))
-     @result{}  #[pathname "/usr/blisp/rel5/"]
-@end group
-@end example
-@end deffn
-
-@deffn {procedure+} pathname-name-string pathname
-Extracts the name, type, and version components of @var{pathname} and
-returns a newly allocated filename (string) with just these components.
-For example,
-
-@example
-@group
-(pathname-name-string (->pathname "/usr/blisp/rel5"))
-     @result{}  "rel5"
-@end group
-@end example
-
-@code{pathname-name-string} could have been defined as follows:
-
-@example
-@group
-(define (pathname-name-string pathname)
-  (pathname->string (pathname-name-path pathname)))
-@end group
-@end example
-@end deffn
-
-@deffn {procedure+} pathname-directory-string pathname
-Extracts the host, device, and directory components of @var{pathname}
-and returns a newly allocated filename (string) with just these
-components.
-
-@example
-@group
-(pathname-directory-string (->pathname "/usr/blisp/rel5"))
-     @result{}  "/usr/blisp/"
-@end group
-@end example
-
-@code{pathname-directory-string} could have been defined as follows:
-
-@example
-@group
-(define (pathname-directory-string pathname)
-  (pathname->string (pathname-directory-path pathname)))
-@end group
-@end example
-@end deffn
-
-@node Operations on Pathnames,  , Components of Pathnames, Pathnames
+@node Operations on Pathnames, Miscellaneous Pathnames, Components of Pathnames, Pathnames
 @subsection Operations on Pathnames
 
 @deffn {procedure+} pathname? object
@@ -10700,19 +10671,51 @@ Returns @code{#t} if @var{object} is a pathname; otherwise returns
 @code{#f}.
 @end deffn
 
-@deffn {procedure+} merge-pathnames pathname1 pathname2
+@deffn {procedure+} pathname=? pathname1 pathname2
+@cindex equivalence predicate, for pathnames
+Returns @code{#t} if @var{pathname1} is equivalent to @var{pathname2};
+otherwise returns @code{#f}.
+Pathnames are equivalent if all of their components are equivalent,
+hence two pathnames that are equivalent must identify the same file or
+equivalent partial pathnames.
+However, the converse is not true: non-equivalent pathnames may specify
+the same file (e.g.@: via absolute and relative directory components),
+and pathnames that specify no file at all (e.g.@: name and directory
+components unspecified) may be equivalent.
+@end deffn
+
+@deffn {procedure+} pathname-absolute? pathname
+Returns @code{#t} if @var{pathname} is an absolute rather than relative
+pathname object; otherwise returns @code{#f}.  All pathnames are either
+absolute or relative, so if this procedure returns @code{#f}, the
+argument is a relative pathname.
+@end deffn
+
+@deffn {procedure+} pathname-wild? pathname
+Returns @code{#t} if @var{pathname} contains any wildcard components;
+otherwise returns @code{#f}.
+@end deffn
+
+@deffn {procedure+} merge-pathnames pathname #!optional defaults default-version
 @cindex merging, of pathnames
 @cindex defaulting, of pathname
 Returns a pathname whose components are obtained by combining those of
-@var{pathname1} and @var{pathname2}.  The pathnames are combined by
-components: if @var{pathname1} has a non-missing component, that is the
-resulting component, otherwise the component from @var{pathname2} is
-used.  The directory component is handled specially: if both pathnames
-have directory components that are lists, and the directory component
-from @var{pathname1} is relative (i.e.@: does not start with @code{root}),
-the the resulting directory component is formed by appending
-@var{pathname1}'s component to @var{pathname2}'s component.  For
-example:
+@var{pathname} and @var{defaults}.
+@code{defaults} defaults to the value of
+@code{*default-pathname-defaults*} and @code{default-version} defaults
+to @code{newest}.
+
+The pathnames are combined by components: if @var{pathname} has a
+non-missing component, that is the resulting component, otherwise the
+component from @var{defaults} is used.
+The default version can be @code{#f} to preserve the information that
+the component was missing from @var{pathname}.
+The directory component is handled specially: if both pathnames have
+directory components that are lists, and the directory component from
+@var{pathname} is relative (i.e.@: starts with @code{relative}), then the
+resulting directory component is formed by appending @var{pathname}'s
+component to @var{defaults}'s component.
+For example:
 
 @example
 @group
@@ -10728,29 +10731,41 @@ path2
      @result{}  #[pathname 77 "/usr/morris.scm"]
 @end group
 @end example
+
+The merging rules for the version are more complex and depend on whether
+@code{pathname} specifies a name.
+If the pathname does not specify a name, then the version, if not
+provided, will come from the defaults.
+However, if the pathname does specify a name then the version is not
+affected by the defaults.
+The reason is that the version ``belongs to'' some other file name and
+is unlikely to have anything to do with the new one.
+Finally, if this process leaves the version missing, then
+@code{default-version} is used.
+
+The net effect is that if the user supplies just a name, then the host,
+device, directory and type will come from the defaults, but the version
+will come from the default version argument to the merging operation.
+If the user supplies nothing, or just a directory, the name, type and
+version will come over from the defaults together.
 @end deffn
 
-@deffn {procedure+} pathname-default-host pathname host
-@deffnx {procedure+} pathname-default-device pathname device
-@deffnx {procedure+} pathname-default-directory pathname directory
-@deffnx {procedure+} pathname-default-name pathname name
-@deffnx {procedure+} pathname-default-type pathname type
-@deffnx {procedure+} pathname-default-version pathname version
-These operations are similar to the @code{pathname-new-@var{component}}
-operations, except that they only change the specified @var{component}
-if it has the value @code{#f} in @var{pathname}.
+@deffn {variable+} *default-pathname-defaults*
+@cindex defaulting, of pathname
+This is the default pathname-defaults pathname; if any pathname
+primitive that needs a set of defaults is not given one, it uses this
+one.
 @end deffn
 
-@deffn {procedure+} pathname-default pathname host device directory name type version
+@deffn {procedure+} pathname-default pathname device directory name type version
 This procedure defaults all of the components of @var{pathname}
 simultaneously.  It could have been defined by:
 
 @example
 @group
 (define (pathname-default pathname
-                          host device directory
-                          name type version)
-  (make-pathname (or (pathname-host pathname) host)
+                          device directory name type version)
+  (make-pathname (pathname-host pathname)
                  (or (pathname-device pathname) device)
                  (or (pathname-directory pathname) directory)
                  (or (pathname-name pathname) name)
@@ -10759,6 +10774,150 @@ simultaneously.  It could have been defined by:
 @end group
 @end example
 @end deffn
+
+@deffn {procedure+} file-namestring pathname
+@deffnx {procedure+} directory-namestring pathname
+@deffnx {procedure+} host-namestring pathname
+@deffnx {procedure+} enough-namestring pathname #!optional defaults
+@cindex conversion, pathname to string
+These functions return a string corresponding to a subset of the
+@var{pathname} information.
+@code{file-namestring} returns a string representing just the
+@var{name}, @var{type} and @var{version} components of @var{pathname};
+the result of @code{directory-namestring} represents just the
+@var{directory} portion; and @code{host-namestring} returns a string for
+just the @var{host-name} portion.
+
+@code{enough-namestring} takes another argument, @var{defaults}.
+It returns an abbreviated namestring that is just sufficient to identify
+the file named by @var{pathname} when considered relative to the
+@var{defaults} (which defaults to @code{*default-pathname-defaults*}.
+@example
+@group
+(file-namestring "/usr/morris/minor.van")
+     @result{}  "minor.van"
+(directory-namestring "/usr/morris/minor.van")
+     @result{}  "/usr/morris/"
+(enough-namestring "/usr/morris/men")
+     @result{}  "men"      @var{perhaps}
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} file-pathname pathname
+@deffnx {procedure+} directory-pathname pathname
+@deffnx {procedure+} enough-pathname pathname #!optional defaults
+@cindex selection, components of pathname
+These functions return a pathname corresponding to a subset of the
+@var{pathname} information.
+@code{file-pathname} returns a pathname with just the
+@var{name}, @var{type} and @var{version} components of @var{pathname}.
+The result of @code{directory-pathname} is a pathname containing the
+@var{host}, @var{device} and @var{directory} components of @var{pathname}.
+
+@code{enough-pathname} takes another argument, @var{defaults}.
+It returns an abbreviated pathname that is just sufficient to identify
+the file named by @var{pathname} when considered relative to the
+@var{defaults} (which defaults to @code{*default-pathname-defaults*}).
+
+These functions are similar to @code{file-namestring},
+@code{directory-namestring} and @code{enough-namestring}, but they
+return pathnames instead of strings.
+@end deffn
+
+@deffn {procedure+} directory-pathname-as-file pathname
+@cindex file, converting pathname directory to
+Returns a pathname that is equivalent to @var{pathname}, but in which
+the directory component is represented as a file.
+The last directory is removed from the directory component and converted
+into name and type components.
+This is the inverse operation to @code{pathname-as-directory}.
+@example
+@group
+(directory-pathname-as-file (->pathname "/usr/blisp/"))
+     @result{}  #[pathname "/usr/blisp"]
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} pathname-as-directory pathname
+@cindex directory, converting pathname to
+Returns a pathname that is equivalent to @var{pathname}, but in which
+any file components have been converted to a directory component.  If
+@var{pathname} does not have name, type, or version components, it is
+returned.  Otherwise, these file components are converted into a string,
+and the string is added to the end of the list of directory components.
+This is the inverse operation to @code{directory-pathname-as-file}.
+
+@example
+@group
+(pathname-as-directory (->pathname "/usr/blisp/rel5"))
+     @result{}  #[pathname "/usr/blisp/rel5/"]
+@end group
+@end example
+@end deffn
+
+
+@node Miscellaneous Pathnames, , Operations on Pathnames, Pathnames
+@subsection Miscellaneous Pathname Functions
+@cindex directory, reading
+
+
+@deffn {procedure+} host? object
+@cindex type predicate, for pathname host
+Returns @code{#t} if @var{object} is a pathname host; otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn {procedure+} host=? host1 host2
+@cindex equivalence predicate, for pathname host
+Returns @code{#t} if @var{host1} and @var{host2} denote the same
+pathname host; otherwise returns @code{#f}.
+@end deffn
+
+@deffn {procedure+} init-file-pathname #!optional host
+@cindex home directory, as pathname
+Returns a pathname for the user's initialization file on @var{host}.
+The @var{host} arguments defaults to @code{local-host}.
+If the initialization file does not exist this function returns @code{#f}.
+@end deffn
+
+@deffn {variable+} local-host
+This variable has as its value the host object that describes the local
+host's file system.
+@end deffn
+
+@deffn {procedure+} system-library-pathname pathname
+@cindex library, system pathname
+Locates the pathname in MIT Scheme's system library directory.
+An error is signalled if @var{pathname} cannot be located on the library
+search path.
+system libraries.
+@example
+@group
+(system-library-pathname "compiler.com")
+     @result{}  #[pathname "/usr/local/lib/mit-scheme/compiler.com"]
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} system-library-directory-pathname pathname
+@cindex library, system pathname
+Locates the pathname of a MIT Scheme system library directory.
+@end deffn
+
+@deffn {procedure+} user-homedir-pathname #!optional host
+@cindex home directory, as pathname
+Returns a pathname for the user's ``home directory'' on @var{host}.
+The @var{host} arguments defaults to @code{local-host}.
+The concept of a ``home directory'' is itself somewhat
+implementation-dependent, but it should be the place where the user
+keeps personal files, such as initialization files and mail.
+For example, on unix this is the user's unix home directory, whereas
+on MS-DOS the home directory is determined from the HOME, USER and
+USERDIR environment variables.
+@end deffn
+
 
 @node Working Directory, File Manipulation, Pathnames, File-System Interface
 @section Working Directory
@@ -10770,12 +10929,7 @@ simultaneously.  It could have been defined by:
 @cindex directory, current working (defn)
 @cindex current working directory (defn)
 @cindex working directory (see current working directory)
-A pathname may be absolute or relative.  An @dfn{absolute pathname} is a
-complete path from the top level of the file system to the destination
-resource (under unix, a filename corresponding to an absolute pathname
-begins with the slash character, @samp{/}).  A @dfn{relative pathname}
-is a partial path that's interpreted relative to the current working
-directory.  When MIT Scheme is started, the @dfn{current working
+When MIT Scheme is started, the @dfn{current working
 directory} (or simply, @dfn{working directory}) is initialized in an
 operating-system dependent manner; usually, it is the directory in which
 Scheme was invoked.  The working directory can be determined from within
@@ -10794,14 +10948,12 @@ programs and the short name for interactive use.
 @deffn {procedure+} set-working-directory-pathname! filename
 @deffnx {procedure+} cd filename
 @findex ->pathname
-@findex pathname->absolute-pathname
 @findex pathname-as-directory
 Makes @var{filename} the current working directory and returns the new
 current working directory as a pathname.  @var{Filename} is coerced
-using @code{->pathname}, @code{pathname->absolute-pathname}, and
-@code{pathname-as-directory}.  @code{cd} is an alias for
-@code{set-working-directory-pathname!}.  The long name is intended for
-programs and the short name for interactive use.
+using @code{->pathname} and @code{pathname-as-directory}.  @code{cd} is
+an alias for @code{set-working-directory-pathname!}.  The long name is
+intended for programs and the short name for interactive use.
 
 @example
 @group
@@ -10839,20 +10991,6 @@ exactly the same way as fluid binding of a variable (@pxref{Fluid
 Binding}).
 @end deffn
 
-@deffn {procedure+} pathname->absolute-pathname pathname
-Converts @var{pathname} into an absolute pathname.  If @var{pathname} is
-relative, it is converted to absolute form starting at the current
-working directory.  If @var{pathname} is already an absolute pathname,
-it is returned.
-@end deffn
-
-@deffn {procedure+} pathname-absolute? pathname
-Returns @code{#t} if @var{pathname} is an absolute rather than relative
-pathname object; otherwise returns @code{#f}.  All pathnames are either
-absolute or relative, so if this procedure returns @code{#f}, the
-argument is a relative pathname.
-@end deffn
-
 @node File Manipulation, Directory Reader, Working Directory, File-System Interface
 @section File Manipulation
 
@@ -10885,37 +11023,12 @@ In the unix implementation, this will not rename across file systems.
 Deletes the file named @var{filename}.
 @end deffn
 
-@deffn {procedure+} canonicalize-input-filename filename
-@cindex canonicalization, of filename
-If @var{filename} refers to an existing file or directory, returns as a
-string the absolute pathname of the file (or directory).  If
-@var{filename} doesn't refer to an existing file or directory, an error
-is signalled.
-@end deffn
-
-@deffn {procedure+} canonicalize-output-filename filename
-Returns as a string the absolute pathname of @var{filename}, whether or
-not the file or directory that @var{filename} refers to exists.
-
-@example
-@group
-(pwd)
-     @result{}  #[pathname "/usr/morris/"]
-(canonicalize-output-filename "foo")
-     @result{}  "/usr/morris/foo"
-@end group
-@end example
-@end deffn
-
-@deffn {procedure+} pathname->input-truename pathname
+@deffn {procedure+} ->truename pathname
 @cindex truename, of input file
-Converts @var{pathname} into the corresponding absolute pathname.  If
-pathname doesn't exist, returns @code{#f}.
-@end deffn
-
-@deffn {procedure+} pathname->output-truename pathname
-@cindex truename, of output file
-Converts @var{pathname} into the corresponding absolute pathname.
+This function attempts to discover and return the ``true name'' of the
+file associated with the @var{pathname} within the file system.  An
+error is signalled if the appropriate file cannot be located within the
+file system.
 @end deffn
 
 @deffn {procedure+} file-modification-time filename
@@ -10986,6 +11099,7 @@ the file's mode bits.
 The inode number of the file, an exact non-negative integer.
 @end enumerate
 @end deffn
+
 
 @node Directory Reader,  , File Manipulation, File-System Interface
 @section Directory Reader
