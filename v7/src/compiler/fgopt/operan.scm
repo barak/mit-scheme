@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/operan.scm,v 4.4 1988/10/24 22:18:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/operan.scm,v 4.5 1989/04/17 17:07:19 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,13 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (operator-analysis)
-
-(define-export (operator-analysis procedures applications)
-  (for-each (lambda (procedure)
-	      (if (procedure-continuation? procedure)
-		  (set-continuation/combinations! procedure '())))
-	    procedures)
+(define (operator-analysis procedures applications)
   (for-each (lambda (application)
 	      (if (eq? (application-type application) 'COMBINATION)
 		  (analyze/combination application)))
@@ -68,7 +62,7 @@ MIT in each case. |#
 	       (cons combination
 		     (continuation/combinations continuation))))
 	    (rvalue-values (combination/continuation combination))))
-
+
 (define (continuation-passed-out? continuation)
   (there-exists? (continuation/combinations continuation)
     (lambda (combination)
@@ -110,6 +104,3 @@ MIT in each case. |#
 		(lambda (combination)
 		  (eq? (rvalue-known-value (combination/operator combination))
 		       procedure)))))))
-
-;;; end OPERATOR-ANALYSIS
-)
