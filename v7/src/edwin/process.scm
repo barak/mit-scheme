@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.41 1996/05/10 18:39:28 cph Exp $
+;;;	$Id: process.scm,v 1.42 1996/05/11 08:41:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -605,107 +605,83 @@ after the listing is made.)"
 	   (and (ref-variable translate-file-data-on-output mark)
 		(mark-translation mark)))
 	 'DEFAULT)))
-  (if input-region
-      (call-with-protected-continuation
-       (lambda (continuation)
-	 (bind-condition-handler (list condition-type:system-call-error)
-	     (lambda (condition)
-	       (if (and (eq? 'WRITE (system-call-name condition))
-			(eq? 'BROKEN-PIPE (system-call-error condition)))
-		   (continuation (subprocess-wait process))))
-	   (lambda ()
-	     (if output-mark
-		 (call-with-output-copier process output-mark
-		   (lambda (copy-output)
-		     (call-with-input-copier process input-region
-		       (lambda (copy-input)
-			 (let loop ()
-			   (copy-input)
-			   (copy-output)
-			   (let ((status (subprocess-status process)))
-			     (if (eq? status 'RUNNING)
-				 (loop)
-				 status)))))))
-		 (begin
-		   (let ((port (subprocess-output-port process)))
-		     (group-write-to-port (region-group input-region)
-					  (region-start-index input-region)
-					  (region-end-index input-region)
-					  port)
-		     (close-port port))
-		   (subprocess-wait process)))))))
-      (begin
-	(channel-close (subprocess-output-channel process))
-	(if output-mark
-	    (let ((buffer (make-string 512))
-		  (port (subprocess-input-port process))
-		  (output-mark (mark-left-inserting-copy output-mark)))
-	      (let ((read-chars (port/operation port 'READ-CHARS)))
-		(let loop ()
-		  (let ((n (read-chars port buffer)))
-		    (if (> n 0)
-			(begin
-			  (insert-substring buffer 0 n output-mark)
-			  (loop))))))
-	      (close-port port)))
-	(subprocess-wait process))))
+  (call-with-input-copier process input-region
+    (lambda (copy-input)
+      (call-with-output-copier process output-mark
+	(lambda (copy-output)
+	  (let loop ()
+	    (copy-input)
+	    (copy-output)
+	    (update-screens! #f)
+	    (let ((status (subprocess-status process)))
+	      (if (eq? status 'RUNNING)
+		  (loop)
+		  status))))))))
 
-(define (call-with-output-copier process output-mark receiver)
-  (let ((channel (subprocess-input-channel process)))
-    (let ((copy-output
-	   (let ((port (subprocess-input-port process))
-		 (buffer (make-string 512)))
-	     (let ((read-chars (port/operation port 'READ-CHARS)))
-	       (lambda ()
-		 (let loop ()
-		   (let ((n (read-chars port buffer)))
-		     (if (and n (> n 0))
-			 (begin
-			   (insert-substring buffer 0 n output-mark)
-			   (loop))))))))))
-      (channel-nonblocking channel)
-      (let ((status (receiver copy-output)))
-	(channel-blocking channel)
-	(copy-output)
-	(channel-close channel)
-	status))))
-
 (define (call-with-input-copier process input-region receiver)
-  (let ((group (region-group input-region))
-	(start-index (region-start-index input-region))
-	(end-index (region-end-index input-region))
-	(channel (subprocess-output-channel process))
-	(port (subprocess-output-port process))
-	(buffer (make-string 512)))
-    (channel-nonblocking channel)
-    (call-with-protected-continuation
-     (lambda (continuation)
-       (bind-condition-handler (list condition-type:system-call-error)
-	   (lambda (condition)
-	     (if (and (eq? 'WRITE (system-call-name condition))
-		      (eq? 'BROKEN-PIPE (system-call-error condition)))
-		 (continuation (subprocess-wait process))))
-	 (lambda ()
-	   (receiver
-	    (letrec
-		((loop
-		  (lambda ()
-		    (if (< start-index end-index)
-			(let ((index (min (+ start-index 512) end-index)))
-			  (group-copy-substring! group start-index index
-						 buffer 0)
-			  (let ((end (- index start-index)))
-			    (output-port/write-substring port buffer 0 end)
-			    (set! start-index (+ start-index end)))
-			  (loop))
-			(channel-close channel)))))
-	      loop))))))))
+  (if input-region
+      (let ((group (region-group input-region))
+	    (start-index (region-start-index input-region))
+	    (end-index (region-end-index input-region))
+	    (channel (subprocess-output-channel process))
+	    (port (subprocess-output-port process))
+	    (buffer (make-string 512)))
+	(channel-nonblocking channel)
+	(handle-broken-pipe process
+	  (lambda ()
+	    (receiver
+	     (letrec
+		 ((loop
+		   (lambda ()
+		     (if (< start-index end-index)
+			 (let ((index (min (+ start-index 512) end-index)))
+			   (group-copy-substring! group start-index index
+						  buffer 0)
+			   (let ((end (- index start-index)))
+			     (output-port/write-substring port buffer 0 end)
+			     (set! start-index (+ start-index end)))
+			   (loop))
+			 (channel-close channel)))))
+	       loop)))))
+      (receiver (lambda () unspecific))))
+
+(define (handle-broken-pipe process thunk)
+  (call-with-current-continuation
+   (lambda (continuation)
+     (bind-condition-handler (list condition-type:system-call-error)
+	 (lambda (condition)
+	   (if (and (eq? 'WRITE (system-call-name condition))
+		    (eq? 'BROKEN-PIPE (system-call-error condition)))
+	       (continuation (subprocess-wait process))))
+       thunk))))
 
 (define system-call-name
   (condition-accessor condition-type:system-call-error 'SYSTEM-CALL))
 
 (define system-call-error
   (condition-accessor condition-type:system-call-error 'ERROR-TYPE))
+
+(define (call-with-output-copier process output-mark receiver)
+  (if output-mark
+      (let ((channel (subprocess-input-channel process)))
+	(let ((copy-output
+	       (let ((port (subprocess-input-port process))
+		     (buffer (make-string 512)))
+		 (let ((read-chars (port/operation port 'READ-CHARS)))
+		   (lambda ()
+		     (let loop ()
+		       (let ((n (read-chars port buffer)))
+			 (if (and n (> n 0))
+			     (begin
+			       (insert-substring buffer 0 n output-mark)
+			       (loop))))))))))
+	  (channel-nonblocking channel)
+	  (let ((status (receiver copy-output)))
+	    (channel-blocking channel)
+	    (copy-output)
+	    (channel-close channel)
+	    status)))
+      (receiver (lambda () unspecific))))
 
 (define-command shell-command
   "Execute string COMMAND in inferior shell; display output, if any.
