@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.80 2003/04/25 03:08:04 cph Exp $
+$Id: x11base.c,v 1.81 2004/02/03 18:46:50 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,2000,2001 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -952,10 +952,10 @@ DEFUN (convert_bucky_bits, (state, allp), unsigned int state AND int allp)
   long bucky = 0;
   if (state & Mod1Mask)    bucky |= 0x0001; /* meta */
   if (state & ControlMask) bucky |= 0x0002; /* control */
-  if (state & Mod2Mask)    bucky |= 0x0004; /* super */
-  if (state & Mod3Mask)    bucky |= 0x0008; /* hyper */
   if (allp)
     {
+      if (state & Mod2Mask)    bucky |= 0x0004; /* super */
+      if (state & Mod3Mask)    bucky |= 0x0008; /* hyper */
       if (state & ShiftMask)   bucky |= 0x0010;
       if (state & LockMask)    bucky |= 0x0020;
       if (state & Mod4Mask)    bucky |= 0x0040;
