@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.11 1992/02/11 23:01:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.12 1992/03/27 20:32:53 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -96,10 +96,10 @@ Seventh arg STDERR is the error channel for the subprocess.\n\
   {
     PTR position = dstack_position;
     CONST char * filename = (STRING_ARG (1));
-    CONST char ** argv =
-      ((CONST char **) (convert_string_vector (ARG_REF (2))));
+    char * CONST * argv =
+      ((char * CONST *) (convert_string_vector (ARG_REF (2))));
     SCHEME_OBJECT env_object = (ARG_REF (3));
-    char ** env = 0;
+    char * CONST * env = 0;
     CONST char * working_directory = 0;
     enum process_ctty_type ctty_type;
     char * ctty_name = 0;
@@ -120,7 +120,7 @@ Seventh arg STDERR is the error channel for the subprocess.\n\
       {
 	if (! (string_vector_p (env_object)))
 	  error_wrong_type_arg (3);
-	env = (convert_string_vector (env_object));
+	env = ((char * CONST *) (convert_string_vector (env_object)));
       }
     if ((ARG_REF (4)) == SHARP_F)
       ctty_type = process_ctty_type_none;
