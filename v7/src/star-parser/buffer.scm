@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.9 2001/10/04 15:50:40 cph Exp $
+;;; $Id: buffer.scm,v 1.10 2001/10/04 15:53:52 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -169,6 +169,18 @@
   (char-matcher not-char-ci (not (char-ci=? char reference)))
   (char-matcher char-in-set (char-set-member? reference char)))
 
+(define (match-utf8-char-in-alphabet buffer alphabet)
+  (if (let ((n
+	     (read-utf8-code-point-from-source
+	      (lambda ()
+		(read-parser-buffer-char buffer)))))
+	(and n
+	     (code-point-in-alphabet? n alphabet)))
+      #t
+      (begin
+	(set-parser-buffer-pointer! buffer p)
+	#f)))
+
 (let-syntax
     ((string-matcher
       (lambda (suffix)

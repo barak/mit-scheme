@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.pkg,v 1.10 2001/10/04 15:53:16 cph Exp $
+;;; $Id: parser.pkg,v 1.11 2001/10/04 15:54:20 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -49,6 +49,7 @@
 	  match-parser-buffer-substring-ci
 	  match-parser-buffer-substring-ci-no-advance
 	  match-parser-buffer-substring-no-advance
+	  match-utf8-char-in-alphabet
 	  parser-buffer-line
 	  parser-buffer-pointer-index
 	  parser-buffer-pointer-line
