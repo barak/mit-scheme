@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.15 1995/05/20 10:15:14 cph Exp $
+$Id: os2pmcon.c,v 1.16 1995/10/30 08:07:22 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -34,6 +34,10 @@ MIT in each case. */
 
 #define INCL_WIN
 #include "os2.h"
+#include "os2pmcon.h"
+
+/* For the "about" dialog box.  */
+#include "version.h"
 
 /* #define CONSOLE_WRAP */
 
@@ -44,12 +48,14 @@ static unsigned short cy2y (unsigned short, int);
 static unsigned short x2cx (unsigned short, int);
 static unsigned short y2cy (unsigned short, int);
 static void process_events (int);
+static void enqueue_pending_event (msg_t *);
 static void console_resize (unsigned short, unsigned short);
 static void console_paint
   (unsigned short, unsigned short, unsigned short, unsigned short);
 static void console_clear
   (unsigned short, unsigned short, unsigned short, unsigned short);
 static void console_clear_all (void);
+static int do_paste (void);
 static int translate_key_event (msg_t *);
 static const char * find_nonprint (const char *, const char *);
 static void do_carriage_return (void);
@@ -117,7 +123,15 @@ OS2_initialize_pm_console (void)
     OS2_make_qid_pair ((&console_event_qid), (&remote));
     OS2_open_qid (console_event_qid, console_tqueue);
     console_pm_qid = (OS2_create_pm_qid (console_tqueue));
-    console_wid = (OS2_window_open (console_pm_qid, remote, 0, "Scheme"));
+    console_wid
+      = (OS2_window_open (console_pm_qid, remote,
+			  (FCF_TITLEBAR | FCF_SYSMENU
+			   | FCF_SHELLPOSITION | FCF_SIZEBORDER
+			   | FCF_MINMAX | FCF_TASKLIST
+			   | FCF_MENU | FCF_ACCELTABLE),
+			  NULLHANDLE,
+			  ID_PMCON_RESOURCES,
+			  0, "Scheme"));
   }
   OS2_window_permanent (console_wid);
   {
@@ -242,19 +256,10 @@ process_events (int blockp)
 	{
 	case mt_key_event:
 	case mt_close_event:
-	  {
-	    msg_list_t * element = (OS_malloc (sizeof (msg_list_t)));
-	    (element -> message) = message;
-	    (element -> next) = 0;
-	    if (pending_events_head == 0)
-	      pending_events_head = element;
-	    else
-	      (pending_events_tail -> next) = element;
-	    pending_events_tail = element;
-	    if (blockp)
-	      return;
-	    break;
-	  }
+	  enqueue_pending_event (message);
+	  if (blockp)
+	    return;
+	  break;
 	case mt_resize_event:
 	  {
 	    unsigned short new_pel_width = (SM_RESIZE_EVENT_WIDTH (message));
@@ -295,11 +300,62 @@ process_events (int blockp)
 	    OS2_window_activate (SM_BUTTON_EVENT_WID (message));
 	  OS2_destroy_message (message);
 	  break;
+	case mt_command_event:
+	  switch (SM_COMMAND_EVENT_COMMAND (message))
+	    {
+	    case IDM_CUT:
+	    case IDM_COPY:
+	    case IDM_PASTE:
+	      enqueue_pending_event (message);
+	      if (blockp)
+		return;
+	      break;
+	    case IDM_FONT:
+	      {
+		const char * font_spec
+		  = (OS2_window_font_dialog (console_wid,
+					     "Console Window Font"));
+		if (font_spec != 0)
+		  {
+		    (void) OS2_ps_set_font (console_psid, 1, font_spec);
+		    OS_free ((void *) font_spec);
+		  }
+	      }
+	      break;
+	    case IDM_EXIT:
+	      termination_normal (0);
+	      break;
+	    case IDM_ABOUT:
+	      {
+		char buffer [256];
+		sprintf (buffer,
+			 "This is MIT Scheme Release %s, built on %s.  "
+			 "Brought to you by the MIT Scheme Team.\n",
+			 RELEASE, __DATE__);
+		(void) WinMessageBox (HWND_DESKTOP, NULLHANDLE, buffer, "", 0,
+				      MB_OK);
+	      }
+	      break;
+	    }
+	  break;
 	default:
 	  OS2_destroy_message (message);
 	  break;
 	}
     }
+}
+
+static void
+enqueue_pending_event (msg_t * message)
+{
+  msg_list_t * element = (OS_malloc (sizeof (msg_list_t)));
+  (element -> message) = message;
+  (element -> next) = 0;
+  if (pending_events_head == 0)
+    pending_events_head = element;
+  else
+    (pending_events_tail -> next) = element;
+  pending_events_tail = element;
 }
 
 static void
@@ -408,30 +464,48 @@ OS2_pm_console_getch (void)
 		    readahead_repeat = repeat;
 		    goto do_read;
 		  }
-		else if (translation == (-2))
-		  {
-		    readahead_insert
-		      = (OS2_clipboard_read_text (console_pm_qid));
-		    if ((*readahead_insert) != '\0')
-		      {
-			readahead_insert_scan = readahead_insert;
-			goto do_read;
-		      }
-		    else
-		      OS_free ((void *) readahead_insert);
-		  }
 		break;
 	      }
 	    case mt_close_event:
-	      console_closedp = 1;
-	      {
-		wid_t wid = (SM_CLOSE_EVENT_WID (message));
-		OS2_destroy_message (message);
-		OS2_window_close (wid);
-	      }
-	      OS2_close_qid (console_event_qid);
-	      OS2_close_std_tqueue (console_tqueue);
-	      goto do_read;
+	      switch
+		(WinMessageBox
+		 (HWND_DESKTOP,
+		  NULLHANDLE, /* client window handle */
+		  "You have requested that this window be closed.\n\n"
+		  "Press \"Yes\" to close this window and terminate Scheme; "
+		  "doing so will discard data in unsaved Edwin buffers.\n\n"
+		  "Press \"No\" to close only this window, leaving Scheme "
+		  "running; the program will continue to run until the "
+		  "next time it tries to read from the console.\n\n"
+		  "Press \"Cancel\" if you don't want to close this window.",
+		  "Terminate Scheme?",
+		  0,
+		  (MB_YESNOCANCEL | MB_WARNING)))
+		  {
+		  case MBID_YES:
+		    termination_normal (0);
+		    break;
+		  case MBID_NO:
+		    console_closedp = 1;
+		    {
+		      wid_t wid = (SM_CLOSE_EVENT_WID (message));
+		      OS2_destroy_message (message);
+		      OS2_window_close (wid);
+		    }
+		    OS2_close_qid (console_event_qid);
+		    OS2_close_std_tqueue (console_tqueue);
+		    goto do_read;
+		  }
+	      break;
+	    case mt_command_event:
+	      switch (SM_COMMAND_EVENT_COMMAND (message))
+		{
+		case IDM_PASTE:
+		  if (do_paste ())
+		    goto do_read;
+		  break;
+		}
+	      break;
 	    default:
 	      OS2_logic_error ("Unknown message type received by PM console.");
 	      break;
@@ -455,6 +529,23 @@ OS2_pm_console_getch (void)
       return (readahead_char);
     }
   return (-1);
+}
+
+static int
+do_paste (void)
+{
+  const char * text = (OS2_clipboard_read_text (console_pm_qid));
+  if ((*text) != '\0')
+    {
+      readahead_insert = text;
+      readahead_insert_scan = text;
+      return (1);
+    }
+  else
+    {
+      OS_free ((void *) text);
+      return (0);
+    }
 }
 
 static int
@@ -481,8 +572,6 @@ translate_key_event (msg_t * message)
       case VK_ENTER:
 	code = '\r';
 	break;
-      case VK_INSERT:
-	return (((flags & KC_SHIFT) != 0) ? (-2) : (-1));
       default:
 	return (-1);
       }
