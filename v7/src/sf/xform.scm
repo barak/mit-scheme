@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.3 1987/03/20 23:49:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.4 1987/06/05 21:36:10 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -223,6 +223,15 @@ MIT in each case. |#
        (transform/expression block environment predicate)
        (transform/expression block environment alternative)))))
 
+(define (transform/error-combination block environment expression)
+  (combination-components expression
+    (lambda (operator operands)
+      (combination/make
+       (transform/expression block environment operator)
+       (list (transform/expression block environment (car operands))
+	     (transform/expression block environment (cadr operands))
+	     (the-environment/make block))))))
+
 (define (transform/in-package block environment expression)
   (in-package-components expression
     (lambda (environment* expression)
@@ -239,11 +248,11 @@ MIT in each case. |#
 (define (transform/sequence block environment expression)
   (sequence/make
    (transform/expressions block environment (sequence-actions expression))))
-
+
 (define (transform/the-environment block environment expression)
   (block/unsafe! block)
   (the-environment/make block))
-
+
 (define transform/dispatch
   (make-type-dispatcher
    `((,access-type ,transform/access)
@@ -255,6 +264,7 @@ MIT in each case. |#
      (,definition-type ,transform/definition)
      (,delay-type ,transform/delay)
      (,disjunction-type ,transform/disjunction)
+     (,error-combination-type ,transform/error-combination)
      (,in-package-type ,transform/in-package)
      (,lambda-type ,transform/lambda)
      (,open-block-type ,transform/open-block)
