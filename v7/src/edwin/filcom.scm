@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.155 1991/05/15 17:42:25 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.156 1991/05/15 18:46:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -266,7 +266,7 @@ invocation."
 	      (add-buffer-initialization! buffer database)
 	      (message
 	       "Ill-formed find-file initialization file: "
-	       (os/pathname->display-string (->pathname filename))))))))
+	       (os/filename->display-string filename)))))))
 
 (define (standard-scheme-find-file-initialization database)
   ;; DATABASE -must- be a vector whose elements are all three element
@@ -576,8 +576,14 @@ If a file with the new name already exists, confirmation is requested first."
       (os/pathname->display-string directory)
       'INSERTED-DEFAULT
       (lambda (string if-unique if-not-unique if-not-found)
-	(filename-complete-string (prompt-string->pathname string directory)
-				  if-unique if-not-unique if-not-found))
+	(filename-complete-string
+	 (prompt-string->pathname string directory)
+	 (lambda (filename)
+	   (if-unique (os/filename->display-string filename)))
+	 (lambda (prefix get-completions)
+	   (if-not-unique (os/filename->display-string prefix)
+			  get-completions))
+	 if-not-found))
       (lambda (string)
 	(filename-completions-list
 	 (prompt-string->pathname string directory)))
