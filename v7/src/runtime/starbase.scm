@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.9 1992/02/04 23:59:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.10 1993/09/15 04:12:20 adams Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -94,6 +94,7 @@ MIT in each case. |#
 	   (text-rotation ,operation/text-rotation)
 	   (text-slant ,operation/text-slant)
 	   (write-image-file ,operation/write-image-file))))
+  (register-graphics-device-type 'starbase starbase-graphics-device-type)
   unspecific)
 
 (define starbase-graphics-device-type)
