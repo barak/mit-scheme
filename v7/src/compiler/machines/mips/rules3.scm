@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.7 1991/07/25 08:43:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.8 1991/08/21 04:14:25 cph Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.30 1991/05/07 13:45:31 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
@@ -520,11 +520,11 @@ MIT in each case. |#
       ;;   25: GC offset and arity information
       ;; NOTE: setup of 25 has implict the endian-ness!
       (LAP ,@flush-reg
+	   (LI ,regnum:first-arg
+	       (- ,(rtl-procedure/external-label (label->object label))
+		  ,return-label))
 	   ,@(load-immediate (+ size closure-entry-size) 1)
 	   (LUI 25 ,(quotient gc-offset-word #x10000))
-	   (ADDI ,regnum:first-arg 0
-		 (- ,(rtl-procedure/external-label (label->object label))
-		    ,return-label))
 	   (ADDI ,dest ,regnum:scheme-to-interface -88)
 	   (JALR 31 ,dest)
 	   (ORI 25 25 ,(remainder gc-offset-word #x10000))
@@ -575,11 +575,11 @@ MIT in each case. |#
 		    (make-procedure-code-word (cadr entry) (caddr entry))))
 		  (return-label (generate-label)))
 	      (LAP
+	       (LI ,regnum:first-arg
+		   (- ,(rtl-procedure/external-label
+			(label->object (car entry)))
+		      ,return-label))
 	       (LUI 1 ,(quotient gc-offset-word #x10000))
-	       (ADDI ,regnum:first-arg 0
-		     (- ,(rtl-procedure/external-label
-			  (label->object (car entry)))
-			,return-label))
 	       (ADDI ,temp ,regnum:scheme-to-interface -80)
 	       (JALR 31 ,temp)
 	       (ORI 1 1 ,(remainder gc-offset-word #x10000))
