@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.34 1990/02/12 23:07:31 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.35 1991/07/13 01:19:33 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,7 +37,8 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "zones.h"
-
+#include <errno.h>
+
 double
 arg_flonum (arg_number)
      int arg_number;
@@ -138,23 +139,32 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
 
 #define SIMPLE_TRANSCENDENTAL_FUNCTION(function)			\
 {									\
-  extern double function ();						\
+  extern double EXFUN (function, (double));				\
+  double result;							\
   PRIMITIVE_HEADER (1);							\
   Set_Time_Zone (Zone_Math);						\
-  FLONUM_RESULT (function (arg_flonum (1)));				\
+  errno = 0;								\
+  result = (function (arg_flonum (1)));					\
+  if (errno != 0)							\
+    error_bad_range_arg (1);						\
+  FLONUM_RESULT (result);						\
 }
 
 #define RESTRICTED_TRANSCENDENTAL_FUNCTION(function, restriction)	\
 {									\
-  extern double function ();						\
+  extern double EXFUN (function, (double));				\
+  double x;								\
+  double result;							\
   PRIMITIVE_HEADER (1);							\
   Set_Time_Zone (Zone_Math);						\
-  {									\
-    fast double x = (arg_flonum (1));					\
-    if (! (restriction))						\
-      error_bad_range_arg (1);						\
-    FLONUM_RESULT (function (x));					\
-  }									\
+  x = (arg_flonum (1));							\
+  if (! (restriction))							\
+    error_bad_range_arg (1);						\
+  errno = 0;								\
+  result = (function (x));						\
+  if (errno != 0)							\
+    error_bad_range_arg (1);						\
+  FLONUM_RESULT (result);						\
 }
 
 DEFINE_PRIMITIVE ("FLONUM-EXP", Prim_flonum_exp, 1, 1, 0)
