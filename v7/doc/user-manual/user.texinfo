@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.64 1999/11/24 04:43:49 cph Exp $
+@comment $Id: user.texinfo,v 1.65 1999/11/24 04:51:03 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -41,7 +41,7 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.64
+@subtitle Edition 1.65
 @subtitle for Scheme Release 7.5
 @subtitle 23 November 1999
 @author by Stephen Adams
@@ -124,7 +124,7 @@ The primary distribution site for this software is
 
 @example
 http://www.swiss.ai.mit.edu/scheme-home.html
-ftp://swiss-ftp.ai.mit.edu/pub
+ftp://ftp.swiss.ai.mit.edu/pub
 @end example
 
 @noindent
