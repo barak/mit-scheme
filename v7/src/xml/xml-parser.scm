@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.23 2003/03/02 02:48:39 cph Exp $
+$Id: xml-parser.scm,v 1.24 2003/03/02 03:49:46 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -65,18 +65,6 @@ USA.
 				   (cadr elements)))
 	  (set-cdr! elements (cddr elements)))))
   elements)
-
-(define (parse-coalesced-element parser v description ptr)
-  (let ((v (coalesce-elements v)))
-    (if (and (fix:= (vector-length v) 1)
-	     (string? (vector-ref v 0)))
-	(let ((v* (parser (string->parser-buffer (vector-ref v 0)))))
-	  (if (not v*)
-	      (perror ptr
-		      (string-append "Malformed " description)
-		      (vector-ref v 0)))
-	  v*)
-	v)))
 
 (define (string-parser description alphabet)
   (let ((a1 (alphabet- alphabet (string->alphabet "\"")))
@@ -160,23 +148,23 @@ USA.
 	      parse-pi:misc
 	      (map normalize-line-endings (match S))))))))
 
-(define (xml-declaration-parser description allow-standalone?)
+(define (xml-declaration-parser description text-decl?)
   (*parser
    (top-level
     (with-pointer p
       (encapsulate
 	  (lambda (v)
-	    (transform-declaration (vector-ref v 0) allow-standalone? p))
+	    (transform-declaration (vector-ref v 0) text-decl? p))
 	(sbracket description "<?xml" "?>"
 	  parse-attribute-list))))))
 
 (define parse-declaration		;[23,24,32,80]
-  (xml-declaration-parser "XML declaration" #t))
+  (xml-declaration-parser "XML declaration" #f))
 
 (define parse-text-decl			;[77]
-  (xml-declaration-parser "XML text declaration" #f))
+  (xml-declaration-parser "XML text declaration" #t))
 
-(define (transform-declaration attributes allow-standalone? p)
+(define (transform-declaration attributes text-decl? p)
   (if (not (for-all? attributes
 	     (lambda (attribute)
 	       (and (pair? (cdr attribute))
@@ -185,23 +173,27 @@ USA.
       (perror p "XML declaration can't contain entity refs" attributes))
   (let ((finish
 	 (lambda (version encoding standalone)
-	   (if (not (match-xml-version (string->parser-buffer version)))
+	   (if (and (not text-decl?) (not version))
+	       (perror p "Missing XML version"))
+	   (if (not (if version
+			(match-xml-version (string->parser-buffer version))
+			#t))
 	       (perror p "Malformed XML version" version))
-	   (if (and encoding
-		    (not (match-encoding (string->parser-buffer encoding))))
+	   (if (not (if encoding
+			(match-encoding (string->parser-buffer encoding))
+			(not text-decl?)))
 	       (perror p "Malformed encoding attribute" encoding))
 	   (if standalone
 	       (begin
-		 (if (not allow-standalone?)
-		     (perror
-		      p
-		      "Standalone attribute not allowed in text declaration"))
 		 (if (not (member standalone '("yes" "no")))
 		     (perror p "Malformed standalone attribute" standalone))))
 	   (make-xml-declaration version encoding standalone))))
     (let loop
 	((attributes attributes)
-	 (names '(version encoding standalone))
+	 (names
+	  (if text-decl?
+	      '(version encoding)
+	      '(version encoding standalone)))
 	 (results '()))
       (if (pair? names)
 	  (if (pair? attributes)
@@ -219,7 +211,9 @@ USA.
 	  (begin
 	    (if (pair? attributes)
 		(perror p "Extra attributes in XML declaration" attributes))
-	    (finish (caddr results) (cadr results) (car results)))))))
+	    (if text-decl?
+		(finish (cadr results) (car results) #f)
+		(finish (caddr results) (cadr results) (car results))))))))
 
 (define match-xml-version		;[26]
   (let ((a (alphabet+ alphabet:alphanumeric (string->alphabet "_.:-"))))
@@ -466,11 +460,15 @@ USA.
 (define parse-entity-reference-deferred
   (*parser (match (seq (string "&") match-name (string ";")))))
 
-(define parse-parameter-entity-reference ;[69]
+(define parse-parameter-entity-reference-name ;[69]
+  (*parser
+   (sbracket "parameter-entity reference" "%" ";"
+     parse-required-name)))
+
+(define parse-parameter-entity-reference
   (*parser
    (map dereference-parameter-entity
-	(sbracket "parameter-entity reference" "%" ";"
-	  parse-required-name))))
+	parse-parameter-entity-reference-name)))
 
 ;;;; Attributes
 
@@ -521,7 +519,17 @@ USA.
    (*parser
     (alt parse-char-reference
 	 parse-entity-reference-deferred
-	 parse-parameter-entity-reference))))
+	 (with-pointer p
+	   (sexp
+	    (lambda (buffer)
+	      (let ((v (parse-parameter-entity-reference-name buffer)))
+		(and v
+		     (let ((name (vector-ref v 0)))
+		       (if (not *external-expansion?*)
+			   (perror p "PE reference in internal subset" name))
+		       (dereference-parameter-entity name)))))))))))
+
+(define *external-expansion?* #f)
 
 (define parse-attribute-value		;[10]
   (let ((parser
@@ -805,11 +813,10 @@ USA.
 	      (lambda (v)
 		(let ((value (vector-ref v 0)))
 		  (if (string? value)
-		      (parse-coalesced-element parse-external-subset-decl
-					       (vector
-						(string-append " " value " "))
-					       "parameter-entity value"
-					       p)
+		      (reparse-text (vector (string-append " " value " "))
+				    parse-external-subset-decl
+				    "parameter-entity value"
+				    p)
 		      v)))
 	    parse-parameter-entity-reference))
 	S)))
@@ -1042,7 +1049,7 @@ USA.
        (with-pointer p
 	 (transform
 	     (lambda (v)
-	       (parse-coalesced-element parse-decl v "markup declaration" p))
+	       (reparse-text v parse-decl "markup declaration" p))
 	   (seq
 	    (match prefix)
 	    (require-success "Malformed markup declaration"
@@ -1053,6 +1060,20 @@ USA.
 			     (seq (char #\') (* (alphabet a3)) (char #\'))))
 		       parse-parameter-entity-reference))
 	       (match (string ">")))))))))))
+
+(define (reparse-text v parser description ptr)
+  (let ((v (coalesce-elements v)))
+    (if (and (fix:= (vector-length v) 1)
+	     (string? (vector-ref v 0)))
+	(let ((v*
+	       (fluid-let ((*external-expansion?* #t))
+		 (parser (string->parser-buffer (vector-ref v 0))))))
+	  (if (not v*)
+	      (perror ptr
+		      (string-append "Malformed " description)
+		      (vector-ref v 0)))
+	  v*)
+	v)))
 
 (define parse-external-markup-decl	;[29]
   (let ((parse-!element
@@ -1126,10 +1147,7 @@ USA.
    (with-pointer p
      (transform
 	 (lambda (v)
-	   (parse-coalesced-element parse-conditional-section
-				    v
-				    "conditional section"
-				    p))
+	   (reparse-text v parse-conditional-section "conditional section" p))
        (bracket "parameterized conditional section"
 	   (seq (match (string conditional-start))
 		S?
