@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.438 2003/03/13 21:50:40 cph Exp $
+$Id: runtime.pkg,v 14.439 2003/03/14 20:11:53 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1307,7 +1307,8 @@ USA.
 	  set-apply-hook-extra!
 	  set-apply-hook-procedure!
 	  set-entity-extra!
-	  set-entity-procedure!)
+	  set-entity-procedure!
+	  thunk?)
   (export (runtime continuation-parser)
 	  compiled-procedure-frame-size))
 
