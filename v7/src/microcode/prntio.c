@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntio.c,v 1.1 1993/09/01 18:45:38 gjr Exp $
+$Id: prntio.c,v 1.2 1993/09/03 17:52:46 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -39,6 +39,7 @@ MIT in each case. */
 #include "prims.h"
 #include "ntio.h"
 #include "nt.h"
+#include "ntscreen.h"
 #include "syscall.h"
 
 DEFINE_PRIMITIVE ("CHANNEL-DESCRIPTOR", Prim_channel_descriptor, 1, 1, 0)
@@ -80,6 +81,7 @@ DEFUN (wait_result, (result, limit_object, limit_abandoned),
 
 DEFINE_PRIMITIVE ("NT:MSGWAITFORMULTIPLEOBJECTS", Prim_nt_msgwaitformultipleobjects, 4, 4, 0)
 {
+  extern HANDLE master_tty_window;
   PRIMITIVE_HEADER (4);
   {
     SCHEME_OBJECT schhands = (VECTOR_ARG (1));
@@ -87,9 +89,15 @@ DEFINE_PRIMITIVE ("NT:MSGWAITFORMULTIPLEOBJECTS", Prim_nt_msgwaitformultipleobje
     int timeout = (arg_nonnegative_integer (3));
     int mask = (arg_nonnegative_integer (4));
     int nhand = (VECTOR_LENGTH (schhands));
-    HANDLE * handles = (to_win_hand_vec (nhand, (VECTOR_LOC (schhands, 0))));
-    DWORD result = (MsgWaitForMultipleObjects (nhand, handles, wait_for_all,
-					       timeout, mask));
+    HANDLE * handles;
+    DWORD result;
+
+    if (Screen_PeekEvent (master_tty_window, ((SCREEN_EVENT *) NULL)))
+      return (long_to_integer (1 + nhand));
+
+    handles = (to_win_hand_vec (nhand, (VECTOR_LOC (schhands, 0))));
+    result = (MsgWaitForMultipleObjects (nhand, handles, wait_for_all,
+					 timeout, mask));
 
     if (handles != ((HANDLE *) NULL))
       free (handles);
@@ -97,7 +105,7 @@ DEFINE_PRIMITIVE ("NT:MSGWAITFORMULTIPLEOBJECTS", Prim_nt_msgwaitformultipleobje
   }
 }
 
-DEFINE_PRIMITIVE ("NT:WAITFORMULTIPLEOBJECTS", Prim_waitformultipleobjects, 3, 3, 0)
+DEFINE_PRIMITIVE ("NT:WAITFORMULTIPLEOBJECTS", Prim_nt_waitformultipleobjects, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
