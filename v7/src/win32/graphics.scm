@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.10 1996/03/21 16:44:27 adams Exp $
+$Id: graphics.scm,v 1.11 1997/05/15 00:18:35 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -764,6 +764,10 @@ MIT in each case. |#
   (implemented-primitive-procedure?
    (ucode-primitive set-general-scheme-wndproc 1)))
 
+(define (win32-graphics/image-depth device)
+  device
+  8)
+
 ;;----------------------------------------------------------------------------
 
 (define (win32-graphics/move-window device x y)
@@ -915,6 +919,7 @@ MIT in each case. |#
 	   (fill-polygon   ,win32-graphics/fill-polygon)
 	   (find-color   ,win32-graphics/find-color)
 	   (flush ,win32-graphics/flush)
+	   (image-depth ,win32-graphics/image-depth)
 	   (load-bitmap ,win32-graphics/load-bitmap)
 	   (save-bitmap ,win32-graphics/save-bitmap)
 	   (move-cursor ,win32-graphics/move-cursor)
