@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.16 1993/10/20 22:05:02 cph Exp $
+$Id: hashtb.scm,v 1.17 1993/12/08 21:13:14 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -336,7 +336,17 @@ MIT in each case. |#
   (table->list table (table-entry-datum table)))
 
 (define (table->list table entry->element)
-  (let ((buckets (table-buckets table)))
+  (let ((buckets (table-buckets table))
+	(cons-element
+	 (let ((entry-valid? (table-entry-valid? table)))
+	   (if (eq? strong-valid? entry-valid?)
+	       (lambda (entry result)
+		 (cons (entry->element entry) result))
+	       (lambda (entry result)
+		 (let ((element (entry->element entry)))
+		   (if (entry-valid? entry)
+		       (cons element result)
+		       result)))))))
     (let ((n-buckets (vector-length buckets)))
       (let loop ((n 0) (result '()))
 	(if (fix:< n n-buckets)
@@ -345,7 +355,7 @@ MIT in each case. |#
 		    (if (null? entries)
 			result
 			(loop (cdr entries)
-			      (cons (entry->element (car entries)) result)))))
+			      (cons-element (car entries) result)))))
 	    result)))))
 
 ;;;; Parameters
