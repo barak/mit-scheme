@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -37,12 +37,14 @@
 
 ;;;; Machine Model for Spectrum
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/machin.scm,v 1.40 1987/02/13 09:41:41 cph Exp $
+
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
-;(define (rtl:message-receiver-size:closure) 2)
-;(define (rtl:message-receiver-size:stack) 2)
-;(define (rtl:message-receiver-size:subproblem) 2)
+(define (rtl:message-receiver-size:closure) 1)
+(define (rtl:message-receiver-size:stack) 1)
+(define (rtl:message-receiver-size:subproblem) 1)
 
 (define-integrable (stack->memory-offset offset)
   offset)
@@ -56,6 +58,7 @@
   (case rtl-register
     ((STACK-POINTER) (interpreter-stack-pointer))
     ((INTERPRETER-CALL-RESULT:ACCESS) (interpreter-register:access))
+    ((INTERPRETER-CALL-RESULT:ENCLOSE) (interpreter-register:enclose))
     ((INTERPRETER-CALL-RESULT:LOOKUP) (interpreter-register:lookup))
     ((INTERPRETER-CALL-RESULT:UNASSIGNED?) (interpreter-register:unassigned?))
     ((INTERPRETER-CALL-RESULT:UNBOUND?) (interpreter-register:unbound?))
@@ -68,7 +71,6 @@
     ((VALUE) 2)
     ((ENVIRONMENT) 3)
     ((TEMPORARY) 4)
-    ((INTERPRETER-CALL-RESULT:ENCLOSE) 5)
     (else false)))
 
 (define (rtl:interpreter-register->offset locative)
@@ -109,17 +111,18 @@
 (define-integrable r31 31)
 
 (define number-of-machine-registers 32)
-(define machine-register<? >)
+
+(define-integrable (sort-machine-registers registers)
+  registers)
 
 (define (pseudo-register=? x y)
   (= (register-renumber x) (register-renumber y)))
 
 (define available-machine-registers
-  (sort (list r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15 r16 r17 r18
-	      r19 r20 r21 r22)
-	machine-register<?))
+  (list r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15 r16 r17 r18
+	r19 r20 r21 r22))
 
-(define-integrable (stripped-register? register)
+(define-integrable (register-contains-address? register)
   (memv register '(23 24 25 30)))
 
 (define-integrable (register-type register)
@@ -142,6 +145,9 @@
 (define-integrable regnum:stack-pointer r30)
 
 (define-integrable (interpreter-register:access)
+  (rtl:make-machine-register regnum:call-value))
+
+(define-integrable (interpreter-register:enclose)
   (rtl:make-machine-register regnum:call-value))
 
 (define-integrable (interpreter-register:lookup)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -36,6 +36,8 @@
 ;;;
 
 ;;;; RTL Rules for Spectrum
+
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 1.134 1987/02/13 09:37:17 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -106,32 +108,30 @@
 
 (define-integrable (short-offset? offset)
   (< offset 2048))
+
+(define (load-memory source offset target)
+  `(LDW () ,(index-reference source offset) ,target))
+
+(define (store-memory source target offset)
+  `(STW () ,source ,(index-reference target offset)))
+
+(define (load-memory-increment source offset target)
+  `(LDWM () ,(index-reference source offset) ,target))
+
+(define (store-memory-increment source target offset)
+  `(STWM () ,source ,(index-reference target offset)))
 
 ;;;; Instruction Sequence Generators
 
 (define (indirect-reference! register offset)
-  (index-reference (coerce->indirect-register! register) offset))
-
-(define (coerce->indirect-register! register)
-  (if (stripped-register? register)
-      register
-      (with-temporary-register! false
-	(lambda (temp0)
-	  (prefix-instructions!
-	   (let ((simple-case
-		  (lambda (register)
-		    (object->address register temp0))))
-	     (if (machine-register? register)
-		 (simple-case register)
-		 (let ((alias (register-alias register false)))
-		   (if alias
-		       (simple-case alias)
-		       `(,(pseudo->machine-register register r1)
-			 ,(machine->machine-register
-			   regnum:address-offset
-			   temp0)
-			 (DEP () ,r1 31 24 ,temp0)))))))
-	  temp0))))
+  (index-reference
+   (if (machine-register? register)
+       register
+       (or (register-alias register false)
+	   ;; This means that someone has written an address out
+	   ;; to memory, something that should never happen.
+	   (error "Needed to load indirect register!" register)))
+   offset))
 
 (define (object->address source #!optional target)
   (if (unassigned? target) (set! target source))
@@ -146,13 +146,27 @@
 	    (machine->machine-register alias target)
 	    (pseudo->machine-register register target)))))
 
+(define (expression->machine-register! expression register)
+  (let ((result
+	 (case (car expression)
+	   ((REGISTER)
+	    `(,(register->machine-register (cadr expression) register)))
+	   ((OFFSET)
+	    `(,(memory->machine-register
+		(indirect-reference! (cadadr expression) (caddr expression))
+		register)))
+	   ((CONSTANT)
+	    (scheme-constant->machine-register (cadr expression) register))
+	   (else (error "Bad expression type" (car expression))))))
+    (delete-machine-register! register)
+    result))
+
 (package (register->memory
 	  register->memory-post-increment
 	  register->memory-pre-decrement)
   (define ((->memory machine-register->memory) register target)
-    (guarantee-machine-register! register false
-      (lambda (alias)
-	`(,(machine-register->memory alias target)))))
+    `(,(machine-register->memory (guarantee-machine-register! register false)
+				 target)))
   (define-export register->memory
     (->memory machine-register->memory))
   (define-export register->memory-post-increment
@@ -171,6 +185,19 @@
   (define-export memory->memory-post-increment
     (->memory machine-register->memory-post-increment))
   (define-export memory->memory-pre-decrement
+    (->memory machine-register->memory-pre-decrement)))
+
+(package (memory-post-increment->memory
+	  memory-post-increment->memory-post-increment
+	  memory-post-increment->memory-pre-decrement)
+  (define ((->memory machine-register->memory) source target)
+    `(,(memory-post-increment->machine-register source r1)
+      ,(machine-register->memory r1 target)))
+  (define-export memory-post-increment->memory
+    (->memory machine-register->memory))
+  (define-export memory-post-increment->memory-post-increment
+    (->memory machine-register->memory-post-increment))
+  (define-export memory-post-increment->memory-pre-decrement
     (->memory machine-register->memory-pre-decrement)))
 
 (package (scheme-constant->memory
@@ -195,9 +222,10 @@
 				   target))))
 
 (define-integrable (scheme-constant-reference constant)
-  `(INDEX (label->machine-constant (scheme-constant-label constant)) 0
+  `(INDEX ,(label->machine-constant (constant->label constant))
+	  0
 	  ,regnum:code-object-base))
-
+
 (define (non-pointer->machine-register type datum target)
   (if (and (zero? datum)
 	   (deposit-type-constant? type))
@@ -209,62 +237,101 @@
       (let ((number (make-non-pointer type datum)))
 	(if (<= -8192 number 8191)
 	    `((LDI () ,number ,target))
-	    (long-machine-constant->machine-register number target)))))
-
+	    `((LDIL () (LEFT ,number) ,target)
+	      (LDO () (OFFSET (RIGHT ,number) ,target) ,target))))))
+
+(package (non-pointer->memory
+	  non-pointer->memory-post-increment
+	  non-pointer->memory-pre-decrement)
+  (define ((->memory machine-register->memory) constant target)
+    `(,@(non-pointer->machine-register constant r1)
+      ,(machine-register->memory r1 target)))
+  (define-export non-pointer->memory
+    (->memory machine-register->memory))
+  (define-export non-pointer->memory-post-increment
+    (->memory machine-register->memory-post-increment))
+  (define-export non-pointer->memory-pre-decrement
+    (->memory machine-register->memory-pre-decrement)))
+
 (define (machine-constant->machine-register constant target)
   (non-pointer->machine-register (machine-constant->type constant)
 				 (machine-constant->datum constant)
 				 target))
 
-(define (long-machine-constant->machine-register number target)
-  `((LDIL () (LEFT ,number) ,target)
-    (LDO () (OFFSET (RIGHT ,number) ,target) ,target)))
-
-(define (label->machine-register type label target)
+(package (machine-constant->memory
+	  machine-constant->memory-post-increment
+	  machine-constant->memory-pre-decrement)
+  (define ((->memory machine-register->memory) constant target)
+    `(,@(machine-constant->machine-register constant r1)
+      ,(machine-register->memory r1 target)))
+  (define-export machine-constant->memory
+    (->memory machine-register->memory))
+  (define-export machine-constant->memory-post-increment
+    (->memory machine-register->memory-post-increment))
+  (define-export machine-constant->memory-pre-decrement
+    (->memory machine-register->memory-pre-decrement)))
+
+(define (label->machine-register label target)
   (let ((constant (label->machine-constant label)))
     `((ADDIL () (LEFT ,constant) ,regnum:code-object-base)
-      (LDO () (OFFSET (RIGHT ,constant) ,r1) ,target)
-      ,@(cons-pointer->machine-register type target target))))
+      (LDO () (OFFSET (RIGHT ,constant) ,r1) ,target))))
 
 (define-integrable (label->machine-constant label)
   `(- ,label ,(code-object-base)))
 
-(package (label->memory-post-increment
+(package (label->memory
+	  label->memory-post-increment
 	  label->memory-pre-decrement)
-  (define ((label->memory machine-register->memory) type label target)
-    (with-temporary-register! false
-      (lambda (temp)
-	`(,@(label->machine-register type label temp)
-	  ,(machine-register->memory temp target)))))
+  (define ((->memory machine-register->memory) type label target)
+    (let ((temp (allocate-temporary-register! false)))
+      `(,@(label->machine-register type label temp)
+	,(machine-register->memory temp target))))
+  (define-export label->memory
+    (->memory machine-register->memory))
   (define-export label->memory-post-increment
-    (label->memory machine-register->memory-post-increment))
+    (->memory machine-register->memory-post-increment))
   (define-export label->memory-pre-decrement
-    (label->memory machine-register->memory-pre-decrement)))
+    (->memory machine-register->memory-pre-decrement)))
 
+(define (typed-label->machine-register type label target)
+  `(,@(label->machine-register label target)
+    ,@(cons-pointer->machine-register type target target)))
+
+(package (typed-label->memory
+	  typed-label->memory-post-increment
+	  typed-label->memory-pre-decrement)
+  (define ((->memory machine-register->memory) type label target)
+    (let ((temp (allocate-temporary-register! false)))
+      `(,@(typed-label->machine-register type label temp)
+	,(machine-register->memory temp target))))
+  (define-export typed-label->memory
+    (->memory machine-register->memory))
+  (define-export typed-label->memory-post-increment
+    (->memory machine-register->memory-post-increment))
+  (define-export typed-label->memory-pre-decrement
+    (->memory machine-register->memory-pre-decrement)))
+
 (define (cons-pointer->machine-register type source target)
-  (guarantee-machine-register! source false
-    (lambda (source)
-      (if (eqv? source target)
-	  (with-temporary-register! false
-	    (lambda (temp)
-	      `(,@(cons-pointer->machine-register type source temp)
-		,(machine->machine-register temp source))))
-	  `(,@(if (deposit-type-constant? type)
-		  (with-type-deposit-parameters type
-		    (lambda (type end)
-		      `((ZDEPI () ,type ,end 8 ,target))))
-		  `((LDI () ,type ,target)
-		    (ZDEP () ,target 7 8 ,target)))
-	    (DEP () ,source 31 24 ,target))))))
+  (let ((source (guarantee-machine-register! source false)))
+    (if (eqv? source target)
+	(let ((temp (allocate-temporary-register! false)))
+	  `(,@(cons-pointer->machine-register type source temp)
+	    ,(machine->machine-register temp source)))
+	`(,@(if (deposit-type-constant? type)
+		(with-type-deposit-parameters type
+		  (lambda (type end)
+		    `((ZDEPI () ,type ,end 8 ,target))))
+		`((LDI () ,type ,target)
+		  (ZDEP () ,target 7 8 ,target)))
+	  (DEP () ,source 31 24 ,target)))))
 
 (package (cons-pointer->memory
 	  cons-pointer->memory-post-increment
 	  cons-pointer->memory-pre-decrement)
   (define ((->memory machine-register->memory) type source target)
-    (with-temporary-register! false
-      (lambda (temp)
-	`(,@(cons-pointer->machine-register type source temp)
-	  ,(machine-register->memory temp target)))))
+    (let ((temp (allocate-temporary-register! false)))
+      `(,@(cons-pointer->machine-register type source temp)
+	,(machine-register->memory temp target))))
   (define cons-pointer->memory
     (->memory machine-register->memory))
   (define cons-pointer->memory-post-increment
@@ -315,47 +382,42 @@
 	   ,@(test:machine/machine-register condition r1 source receiver)))))
 
 (define (test:machine-constant/register condition constant source receiver)
-  (guarantee-machine-register! source false
-    (lambda (alias)
-      (test:machine-constant/machine-register condition constant alias
-					      receiver))))
+  (test:machine-constant/machine-register
+   condition constant (guarantee-machine-register! source false) receiver))
 
 (define (test:machine-constant/memory condition constant source receiver)
-  (with-temporary-register! false
-    (lambda (temp)
-      `(,(memory->machine-register source temp)
-	,@(test:machine-constant/machine-register condition constant temp
-						  receiver)))))
+  (let ((temp (allocate-temporary-register! false)))
+    `(,(memory->machine-register source temp)
+      ,@(test:machine-constant/machine-register condition constant temp
+						receiver))))
 
 (define (test:type/machine-register condition type source receiver)
-  (with-temporary-register! false
-    (lambda (temp)
-      `(,(extract-type-machine->machine-register source temp)
-	,@(test:machine-constant/machine-register condition type temp
-						  receiver)))))
+  (let ((temp (allocate-temporary-register! false)))
+    `(,(extract-type-machine->machine-register source temp)
+      ,@(test:machine-constant/machine-register condition type temp
+						receiver))))
 
 (define (test:type/register condition type source receiver)
-  (guarantee-machine-register! source false
-    (lambda (alias)
-      (test:type/machine-register condition type alias receiver))))
+  (test:type/machine-register condition type
+			      (guarantee-machine-register! source false)
+			      receiver))
 
 (define (test:type/memory condition type source receiver)
-  (with-temporary-register! false
-    (lambda (temp)
-      `(,(memory->machine-register source temp)
-	,@(cond ((zero? type)
-		 (test:machine/machine-register condition 0 temp receiver))
-		((test-short-constant? type)
-		 `(,(extract-type-machine->machine-register temp temp)
-		   ,@(test:short-machine-constant/machine-register condition
-								   type
-								   temp
-								   receiver)))
-		(else
-		 `(,@(non-pointer->machine-register 0 type r1)
-		   ,(extract-type-machine->machine-register temp temp)
-		   ,@(test:machine/machine-register condition r1 temp
-						    receiver))))))))
+  (let ((temp (allocate-temporary-register! false)))
+    `(,(memory->machine-register source temp)
+      ,@(cond ((zero? type)
+	       (test:machine/machine-register condition 0 temp receiver))
+	      ((test-short-constant? type)
+	       `(,(extract-type-machine->machine-register temp temp)
+		 ,@(test:short-machine-constant/machine-register condition
+								 type
+								 temp
+								 receiver)))
+	      (else
+	       `(,@(non-pointer->machine-register 0 type r1)
+		 ,(extract-type-machine->machine-register temp temp)
+		 ,@(test:machine/machine-register condition r1 temp
+						  receiver)))))))
 
 (define (standard-predicate-receiver prefix consequent alternative)
   (set-current-branches! consequent alternative)
@@ -442,12 +504,11 @@
     set! define primitive-apply enclose setup-lexpr setup-ic-procedure))
 
 (define reg:temp `(INDEX #x0010 0 ,regnum:regs-pointer))
-(define reg:enclose-result `(INDEX #x0014 0 ,regnum:regs-pointer))
 (define reg:compiled-memtop `(INDEX 0 0 ,regnum:regs-pointer))
 
-;(define popper:apply-closure '(INDEX ??? 0 ,regnum:regs-pointer))
-;(define popper:apply-stack '(INDEX ??? 0 ,regnum:regs-pointer))
-;(define popper:value '(INDEX ??? 0 ,regnum:regs-pointer))
+(define popper:apply-closure '(INDEX 400 5 ,regnum:regs-pointer))
+(define popper:apply-stack '(INDEX 528 5 ,regnum:regs-pointer))
+(define popper:value '(INDEX 656 5 ,regnum:regs-pointer))
 
 (package (type->machine-constant
 	  make-non-pointer
@@ -478,10 +539,6 @@
 
 ;;;; Transfers to Registers
 
-(define-rule statement
-  (ASSIGN (REGISTER 30) (OFFSET-ADDRESS (REGISTER 30) (? n)))
-  `((LDO () ,(offset-reference regnum:stack-pointer n) ,r30)))
-
 ;;; All assignments to pseudo registers are required to delete the
 ;;; dead registers BEFORE performing the assignment.  This is because
 ;;; the register being assigned may be PSEUDO-REGISTER=? to one of the
@@ -489,22 +546,55 @@
 ;;; happened after the assignment.
 
 (define-rule statement
-  (ASSIGN (REGISTER (? p)) (OFFSET (REGISTER (? a0)) (? n)))
-  (QUALIFIER (and (pseudo-register? p) (short-offset? n)))
-  (let ((ir (indirect-reference! a0 n)))
-    (delete-dead-registers!)
-    (allocate-register-for-assignment! p false
-      (lambda (target)
-	`(,(memory->machine-register ir target))))))
-
-;;;; Transfers to Memory
+  (ASSIGN (REGISTER 30) (OFFSET-ADDRESS (REGISTER 30) (? n)))
+  `((LDO () ,(offset-reference regnum:stack-pointer n) ,r30)))
 
 (define-rule statement
-  ;; The code assumes r cannot be trashed
-  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
-	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
-  (QUALIFIER (short-offset? n))
-  (cons-pointer->memory type r (indirect-reference! a n)))
+  (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
+  (QUALIFIER (pseudo-register? target))
+  (scheme-constant->machine-register source
+				     (allocate-assignment-alias! target
+								 false)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
+  (QUALIFIER (pseudo-register? target))
+  (move-to-alias-register! source false target)
+  '())
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (object->address (move-to-alias-register! source false target)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((target (move-to-alias-register! source false target)))
+    `(,(extract-type-machine->machine-register target target))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
+  (QUALIFIER (and (pseudo-register? target) (short-offset? offset)))
+  (let ((source (indirect-reference! address offset))) ;force eval order.
+    `(,(memory->machine-register source
+				 (allocate-assignment-alias! target false)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER (? source)) 1))
+  (QUALIFIER (pseudo-register? target))
+  (memory-post-increment->machine-register
+   source
+   (allocate-assignment-alias! target false)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
+  (QUALIFIER (pseudo-register? target))
+  (cons-pointer->machine-register type datum
+				  (allocate-assignment-alias! target false)))
+
+;;;; Transfers to Memory
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
@@ -517,6 +607,19 @@
 	  (REGISTER (? r)))
   (QUALIFIER (short-offset? n))
   (register->memory r (indirect-reference! a n)))
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
+	  (POINTER-INCREMENT (REGISTER (? source)) 1))
+  (QUALIFIER (short-offset? n))
+  (memory-post-increment->memory source (indirect-reference! a n)))
+
+(define-rule statement
+  ;; The code assumes r cannot be trashed
+  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
+	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
+  (QUALIFIER (short-offset? n))
+  (cons-pointer->memory type r (indirect-reference! a n)))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? r-target)) (? n-target))
@@ -541,9 +644,9 @@
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 25) 1) (ENTRY:PROCEDURE (? procedure)))
-  (label->memory-post-increment (ucode-type compiled-expression)
-				(procedure-external-label procedure)
-				r25))
+  (typed-label->memory-post-increment (ucode-type compiled-expression)
+				      (procedure-external-label procedure)
+				      r25))
 
 ;;;; Pushes
 
@@ -560,6 +663,11 @@
   (register->memory-pre-decrement r r30))
 
 (define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 30) -1)
+	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
+  (cons-pointer->memory-pre-decrement type r r30))
+
+(define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 30) -1) (OFFSET (REGISTER (? r)) (? n)))
   (QUALIFIER (short-offset? n))
   (memory->memory-pre-decrement (indirect-reference! r n) r30))
@@ -568,24 +676,18 @@
   (ASSIGN (PRE-INCREMENT (REGISTER 30) -1)
 	  (OFFSET-ADDRESS (REGISTER 30) (? n)))
   (QUALIFIER (short-offset? n))
-  (with-temporary-register! false
-    (lambda (temp)
-      `((LDI () ,(ucode-type stack-environment) ,temp)
-	(LDO () ,(offset-reference r30 n) ,r1)
-	(DEP () ,temp 7 8 ,r1)
-	,(register->memory-pre-decrement r1 r30)))))
+  (let ((temp (allocate-temporary-register! false)))
+    `((LDI () ,(ucode-type stack-environment) ,temp)
+      (LDO () ,(offset-reference r30 n) ,r1)
+      (DEP () ,temp 7 8 ,r1)
+      ,(register->memory-pre-decrement r1 r30))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 30) -1)
 	  (ENTRY:CONTINUATION (? continuation)))
-  (label->memory-pre-decrement (ucode-type return-address)
-			       (continuation-label continuation)
-			       r30))
-
-(define-rule statement
-  (ASSIGN (PRE-INCREMENT (REGISTER 30) -1)
-	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
-  (cons-pointer->memory-pre-decrement type r r30))
+  (typed-label->memory-pre-decrement (ucode-type return-address)
+				     (continuation-label continuation)
+				     r30))
 
 ;;;; Predicates
 
@@ -601,21 +703,21 @@
 				standard-predicate-receiver))
 
 (define-rule predicate
-  (TRUE-TEST (TYPE-TEST (REGISTER (? register)) (? type)))
+  (TYPE-TEST (REGISTER (? register)) (? type))
+  (test:machine-constant/machine-register 'LTGT type register
+					  standard-predicate-receiver))
+
+(define-rule predicate
+  (TYPE-TEST (OBJECT->TYPE (REGISTER (? register))) (? type))
   (test:type/register 'LTGT type register standard-predicate-receiver))
 
 (define-rule predicate
-  (TRUE-TEST (TYPE-TEST (OFFSET (REGISTER (? register)) (? offset)) (? type)))
-  (test:type/memory 'LTGT type (indirect-reference! register offset)
-		    standard-predicate-receiver))
-
-(define-rule predicate
-  (TRUE-TEST (UNASSIGNED-TEST (REGISTER (? register))))
+  (UNASSIGNED-TEST (REGISTER (? register)))
   (test:machine-constant/register 'LTGT constant:unassigned register
 				  standard-predicate-receiver))
 
 (define-rule predicate
-  (TRUE-TEST (UNASSIGNED-TEST (OFFSET (REGISTER (? register)) (? offset))))
+  (UNASSIGNED-TEST (OFFSET (REGISTER (? register)) (? offset)))
   (test:machine-constant/memory 'LTGT constant:unassigned
 				(indirect-reference! register offset)
 				standard-predicate-receiver))
@@ -629,7 +731,25 @@
 			   entry:compiler-apply)))
 
 (define-rule statement
+  (INVOCATION:JUMP (? n)
+		   (APPLY-CLOSURE (? frame-size) (? receiver-offset))
+		   (? continuation) (? procedure))
+  `(,@(clear-map!)
+    ,@(apply-closure-sequence frame-size receiver-offset
+			      (procedure-label procedure))))
+
+(define-rule statement
+  (INVOCATION:JUMP (? n)
+		   (APPLY-STACK (? frame-size) (? receiver-offset)
+				(? n-levels))
+		   (? continuation) (? procedure))
+  `(,@(clear-map!)
+    ,@(apply-stack-sequence frame-size receiver-offset n-levels
+			    (procedure-label procedure))))
+
+(define-rule statement
   (INVOCATION:JUMP (? number-pushed) (? prefix) (? continuation) (? procedure))
+  (QUALIFIER (not (memq (car prefix) '(APPLY-CLOSURE APPLY-STACK))))
   `(,@(generate-invocation-prefix prefix)
     ,(branch->label (procedure-label procedure))))
 
@@ -639,17 +759,18 @@
   `(,@(generate-invocation-prefix prefix)
     ,@(machine-constant->machine-register number-pushed regnum:frame-size)
     ,(branch->label (procedure-label procedure))))
-
+
 (define-rule statement
   (INVOCATION:LOOKUP (? number-pushed) (? prefix) (? continuation)
 		     (? environment) (? name))
-  (let ((set-environment (expression->address-register! environment a0)))
+  (let ((set-environment
+	 (expression->machine-register! environment regnum:call-argument-0)))
     (delete-dead-registers!)
     `(,@set-environment
       ,@(generate-invocation-prefix prefix)
-      ,(load-constant name '(A 1))
-      (MOVE W (& ,(1+ number-pushed)) (D 0))
-      ,(invoke-entry entry:compiler-lookup-apply))))
+      ,@(scheme-constant->machine-register name regnum:call-argument-1)
+      ,@(assign&invoke-entry (1+ number-pushed) regnum:frame-size
+			     entry:compiler-lookup-apply))))
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? number-pushed) (? prefix) (? continuation)
@@ -677,19 +798,11 @@
 	((NULL) '())
 	((MOVE-FRAME-UP)
 	 (apply generate-invocation-prefix:move-frame-up (cdr prefix)))
+	((APPLY-CLOSURE)
+	 (apply generate-invocation-prefix:apply-closure (cdr prefix)))
+	((APPLY-STACK)
+	 (apply generate-invocation-prefix:apply-stack (cdr prefix)))
 	(else (error "GENERATE-INVOCATION-PREFIX: bad prefix type" prefix)))))
-
-(define (load-memory source offset target)
-  `(LDW () ,(index-reference source offset) ,target))
-
-(define (store-memory source target offset)
-  `(STW () ,source ,(index-reference target offset)))
-
-(define (load-memory-increment source offset target)
-  `(LDWM () ,(index-reference source offset) ,target))
-
-(define (store-memory-increment source target offset)
-  `(STWM () ,source ,(index-reference target offset)))
 
 (define (generate-invocation-prefix:move-frame-up frame-size how-far)
   (cond ((or (zero? frame-size) (zero? how-far)) '())
@@ -698,33 +811,133 @@
 				   r1)
 	   ,(store-memory r1 regnum:stack-pointer 0)))
 	((= frame-size 2)
-	 (with-temporary-register! false
-	   (lambda (temp)
-	     `(,(load-memory-increment regnum:stack-pointer 1 r1)
-	       ,(load-memory-increment regnum:stack-pointer (-1+ how-far) temp)
-	       ,(store-memory r1 regnum:stack-pointer 0)
-	       ,(store-memory temp regnum:stack-pointer 1)))))
+	 (let ((temp (allocate-temporary-register! false)))
+	   `(,(load-memory-increment regnum:stack-pointer 1 r1)
+	     ,(load-memory-increment regnum:stack-pointer (-1+ how-far) temp)
+	     ,(store-memory r1 regnum:stack-pointer 0)
+	     ,(store-memory temp regnum:stack-pointer 1))))
 	(else
-	 (with-temporary-register! false
-	   (lambda (temp0)
-	     (with-temporary-register! false
-	       (lambda (temp1)
-		 `((LDO ()
-			,(offset-reference regnum:stack-pointer frame-size)
-			,temp0)
-		   (LDO ()
-			,(offset-reference regnum:stack-pointer
-					   (+ frame-size how-far))
-			,temp1)
-		   ,@(generate-n-times
-		      frame-size 5
-		      `(,(load-memory-increment temp0 -1 r1))
-		      (store-memory-increment r1 temp1 -1)
-		      (lambda (generator)
-			(with-temporary-register! false generator)))
-		   ,(machine->machine-register temp1
-					       regnum:stack-pointer)))))))))
+	 (let ((temp0 (allocate-temporary-register! false))
+	       (temp1 (allocate-temporary-register! false)))
+	   `((LDO ()
+		  ,(offset-reference regnum:stack-pointer frame-size)
+		  ,temp0)
+	     (LDO ()
+		  ,(offset-reference regnum:stack-pointer
+				     (+ frame-size how-far))
+		  ,temp1)
+	     ,@(generate-n-times
+		frame-size 5
+		`(,(load-memory-increment temp0 -1 r1))
+		(store-memory-increment r1 temp1 -1)
+		(lambda (generator)
+		  (generator (allocate-temporary-register! false))))
+	     ,(machine->machine-register temp1 regnum:stack-pointer))))))
+
+(define (generate-invocation-prefix:apply-closure frame-size receiver-offset)
+  (let ((label (generate-label)))
+    `(,@(apply-closure-sequence frame-size receiver-offset label)
+      (LABEL ,label))))
+
+(define (generate-invocation-prefix:apply-stack frame-size receiver-offset
+						n-levels)
+  (let ((label (generate-label)))
+    `(,@(apply-stack-sequence frame-size receiver-offset n-levels label)
+      (LABEL ,label))))
 
+;;;; Environment Calls
+
+(define-rule statement
+  (INTERPRETER-CALL:ACCESS (? environment) (? name))
+  (lookup-call entry:compiler-access environment name))
+
+(define-rule statement
+  (INTERPRETER-CALL:LOOKUP (? environment) (? name))
+  (lookup-call entry:compiler-lookup environment name))
+
+(define-rule statement
+  (INTERPRETER-CALL:UNASSIGNED? (? environment) (? name))
+  (lookup-call entry:compiler-unassigned? environment name))
+
+(define-rule statement
+  (INTERPRETER-CALL:UNBOUND? (? environment) (? name))
+  (lookup-call entry:compiler-unbound? environment name))
+
+(define (lookup-call entry environment name)
+  (let ((set-environment
+	 (expression->machine-register! environment regnum:call-argument-0)))
+    (let ((clear-map (clear-map!)))
+      `(,@set-environment
+	,@clear-map
+	,(scheme-constant->machine-register name regnum:argument-1)
+	(BLE (N) ,entry)
+	,@(make-external-label (generate-label))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:ENCLOSE (? number-pushed))
+  `(,@(cons-pointer->machine-register (ucode-type vector) regnum:free-pointer
+				      regnum:call-value)
+    ,@(non-pointer->memory-post-increment (ucode-type manifest-vector)
+					  number-pushed
+					  regnum:free-pointer)
+    ,@(generate-n-times number-pushed 5
+			`(,(load-memory-increment regnum:stack-pointer 1 r1))
+			(store-memory-increment r1 regnum:free-pointer 1)
+	(lambda (generator)
+	  (generator (allocate-temporary-register! false))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:DEFINE (? environment) (? name) (? value))
+  (QUALIFIER (not (eq? 'CONS-POINTER (car value))))
+  (assignment-call:default entry:compiler-define environment name value))
+
+(define-rule statement
+  (INTERPRETER-CALL:SET! (? environment) (? name) (? value))
+  (QUALIFIER (not (eq? 'CONS-POINTER (car value))))
+  (assignment-call:default entry:compiler-set! environment name value))
+
+(define (assignment-call:default entry environment name value)
+  (let ((set-environment
+	 (expression->machine-register! environment regnum:call-argument-0)))
+    (let ((set-value
+	   (expression->machine-register! value regnum:call-argument-2)))
+      (let ((clear-map (clear-map!)))
+	`(,@set-environment
+	  ,@set-value
+	  ,@clear-map
+	  ,@(scheme-constant->machine-register name regnum:call-argument-1)
+	  (BLE (N) ,entry)
+	  ,@(make-external-label (generate-label)))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:DEFINE (? environment) (? name)
+			   (CONS-POINTER (CONSTANT (? type))
+					 (REGISTER (? datum))))
+  (assignment-call:cons-pointer entry:compiler-define environment name type
+				datum))
+
+(define-rule statement
+  (INTERPRETER-CALL:SET! (? environment) (? name)
+			 (CONS-POINTER (CONSTANT (? type))
+				       (REGISTER (? datum))))
+  (assignment-call:cons-pointer entry:compiler-set! environment name type
+				datum))
+
+(define (assignment-call:cons-pointer entry environment name type datum)
+  (let ((set-environment
+	 (expression->machine-register! environment regnum:call-argument-0)))
+    (let ((set-value
+	   (cons-pointer->machine-register type datum regnum:call-argument-2)))
+      (let ((clear-map (clear-map!)))
+	`(,@set-environment
+	  ,@set-value
+	  ,@clear-map
+	  ,@(scheme-constant->machine-register name regnum:call-argument-1)
+	  (BLE (N) ,entry)
+	  ,@(make-external-label (generate-label)))))))
+
+;;;; Procedure/Continuation Entries
+
 ;;; The following calls MUST appear as the first thing at the entry
 ;;; point of a procedure.  They assume that the register map is clear
 ;;; and that no register contains anything of value.
@@ -795,44 +1008,42 @@
   `((WORD (- ,label ,*block-start-label*))
     (LABEL ,label)))
 
-;;;; Environment Calls
+;;;; Poppers
 
 (define-rule statement
-  (INTERPRETER-CALL:ACCESS (? environment) (? name))
-  (lookup-call entry:compiler-access environment name))
+  (MESSAGE-RECEIVER:CLOSURE (? frame-size))
+  (machine-constant->memory-pre-decrement (* frame-size 4) r30))
 
 (define-rule statement
-  (INTERPRETER-CALL:LOOKUP (? environment) (? name))
-  (lookup-call entry:compiler-lookup environment name))
+  (MESSAGE-RECEIVER:STACK (? frame-size))
+  (machine-constant->memory-pre-decrement (+ #x00200000 (* frame-size 4))
+					       r30))
 
 (define-rule statement
-  (INTERPRETER-CALL:UNASSIGNED? (? environment) (? name))
-  (lookup-call entry:compiler-unassigned? environment name))
+  (MESSAGE-RECEIVER:SUBPROBLEM (? continuation))
+  `(,@(typed-label->memory-pre-decrement (ucode-type return-address)
+					 (continuation-label continuation)
+					 r30)
+    ,@(machine-constant->memory-pre-decrement #x00400000 r30)))
+
+(define (apply-closure-sequence frame-size receiver-offset label)
+  `(,@(machine-constant->machine-register (* frame-size 4) r19)
+    (LDO () ,(offset-reference r30 (* receiver-offset 4)) r20)
+    ,@(label->machine-register label r21)
+    (BLE (N) ,popper:apply-closure)))
+
+(define (apply-stack-sequence frame-size receiver-offset n-levels label)
+  `(,@(machine-constant->machine-register (* frame-size 4) r19)
+    (LDO () ,(offset-reference r30 (* receiver-offset 4)) r20)
+    ,@(label->machine-register label r21)
+    ,@(machine-constant->machine-register n-levels r22)
+    (BLE (N) ,popper:apply-stack)))
 
 (define-rule statement
-  (INTERPRETER-CALL:UNBOUND? (? environment) (? name))
-  (lookup-call entry:compiler-unbound? environment name))
-
-(define (lookup-call entry environment name)
-  (let ((set-environment (expression->address-register! environment a0))
-	(label (generate-label)))
-    `(,@set-environment
-      ,@(clear-map!)
-      ,(constant->machine-register name regnum:argument-1)
-      (BLE (N) ,entry)
-      ,@(make-external-label label))))
-
-(define-rule statement
-  (INTERPRETER-CALL:SET! (? environment) (? name) (? value))
-  (let ((set-environment (expression->address-register! environment a0))
-	(label (generate-label)))
-    (let ((set-value (expression->address-register! value a2)))
-    `(,@set-environment
-      ,@set-value
-      ,@(clear-map!)
-      ,(load-constant name '(A 1))
-      (JSR ,entry:compiler-set!)
-      ,@(make-external-label label)))))
+  (MESSAGE-SENDER:VALUE (? receiver-offset))
+  `(,@(clear-map!)
+    (LDO () ,(offset-reference r30 (* receiver-offset 4)) r30)
+    (BLE (N) ,popper:value)))
 
 ;;; end USING-SYNTAX
 )
