@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.5 1990/10/16 21:07:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.6 1990/10/19 22:05:45 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -51,13 +51,11 @@ MIT in each case. |#
 
 (define (unary-arithmetic primitive)
   (lambda (operands if-expanded if-not-expanded block)
-    if-not-expanded block ; ignored
-    (cond ((null? operands)
-	   (error "Too few operands" operands))
-	  ((null? (cdr operands))
-	   (if-expanded (make-combination primitive operands)))
-	  (else
-	   (error "Too many operands" operands)))))
+    block
+    (if (and (pair? operands)
+	     (null? (cdr operands)))
+	(if-expanded (make-combination primitive operands))
+	(if-not-expanded))))
 
 (define zero?-expansion
   (unary-arithmetic (ucode-primitive zero?)))
@@ -76,20 +74,18 @@ MIT in each case. |#
 
 (define (pairwise-test binary-predicate if-left-zero if-right-zero)
   (lambda (operands if-expanded if-not-expanded block)
-    block ; ignored
-    (cond ((or (null? operands)
-	       (null? (cdr operands)))
-	   (error "Too few operands" operands))
-	  ((null? (cddr operands))
-	   (if-expanded
-	    (cond ((constant-eq? (car operands) 0)
-		   (make-combination if-left-zero (list (cadr operands))))
-		  ((constant-eq? (cadr operands) 0)
-		   (make-combination if-right-zero (list (car operands))))
-		  (else
-		   (make-combination binary-predicate operands)))))
-	  (else
-	   (if-not-expanded)))))
+    block
+    (if (and (pair? operands)
+	     (pair? (cdr operands))
+	     (null? (cddr operands)))
+	(if-expanded
+	 (cond ((constant-eq? (car operands) 0)
+		(make-combination if-left-zero (list (cadr operands))))
+	       ((constant-eq? (cadr operands) 0)
+		(make-combination if-right-zero (list (car operands))))
+	       (else
+		(make-combination binary-predicate operands))))
+	(if-not-expanded))))
 
 (define (pairwise-test-inverse inverse-expansion)
   (lambda (operands if-expanded if-not-expanded block)
@@ -121,42 +117,46 @@ MIT in each case. |#
 ;;;; Fixnum Operations
 
 (define (fix:zero?-expansion operands if-expanded if-not-expanded block)
-  block if-not-expanded
-  (if (not (and (pair? operands) (null? (cdr operands))))
-      (error "wrong number of operands" operands))
-  (if-expanded
-   (make-combination (ucode-primitive eq?) (list (car operands) 0))))
+  block
+  (if (and (pair? operands) (null? (cdr operands)))
+      (if-expanded
+       (make-combination (ucode-primitive eq?) (list (car operands) 0)))
+      (if-not-expanded)))
 
 (define (fix:=-expansion operands if-expanded if-not-expanded block)
-  block if-not-expanded
-  (if (not (and (pair? operands)
-		(pair? (cdr operands))
-		(null? (cddr operands))))
-      (error "wrong number of operands" operands))
-  (if-expanded (make-combination (ucode-primitive eq?) operands)))
+  block
+  (if (and (pair? operands)
+	   (pair? (cdr operands))
+	   (null? (cddr operands)))
+      (if-expanded (make-combination (ucode-primitive eq?) operands))
+      (if-not-expanded)))
+
+(define char=?-expansion
+  fix:=-expansion)
 
 (define (fix:<=-expansion operands if-expanded if-not-expanded block)
-  block if-not-expanded
-  (if (not (and (pair? operands)
+  block
+  (if (and (pair? operands)
 		(pair? (cdr operands))
-		(null? (cddr operands))))
-      (error "wrong number of operands" operands))
-  (if-expanded
-   (make-combination
-    (ucode-primitive not)
-    (list (make-combination (ucode-primitive greater-than-fixnum?)
-			    operands)))))
+		(null? (cddr operands)))
+      (if-expanded
+       (make-combination
+	(ucode-primitive not)
+	(list (make-combination (ucode-primitive greater-than-fixnum?)
+				operands))))
+      (if-not-expanded)))
 
 (define (fix:>=-expansion operands if-expanded if-not-expanded block)
-  block if-not-expanded
-  (if (not (and (pair? operands)
-		(pair? (cdr operands))
-		(null? (cddr operands))))
-      (error "wrong number of operands" operands))
-  (if-expanded
-   (make-combination
-    (ucode-primitive not)
-    (list (make-combination (ucode-primitive less-than-fixnum?) operands)))))
+  block
+  (if (and (pair? operands)
+	   (pair? (cdr operands))
+	   (null? (cddr operands)))
+      (if-expanded
+       (make-combination
+	(ucode-primitive not)
+	(list (make-combination (ucode-primitive less-than-fixnum?)
+				operands))))
+      (if-not-expanded)))
 
 ;;;; N-ary Arithmetic Field Operations
 
@@ -203,7 +203,7 @@ MIT in each case. |#
 		  x
 		  (make-binary x y))))))
       (cond ((null? operands)
-	     (error "Too few operands"))
+	     (if-not-expanded))
 	    ((null? (cdr operands))
 	     (expand (constant/make identity) (car operands)))
 	    (else
@@ -228,23 +228,19 @@ MIT in each case. |#
 ;;;; N-ary List Operations
 
 (define (apply*-expansion operands if-expanded if-not-expanded block)
-  block ; ignored
-  (let ((n (length operands)))
-    (cond ((< n 2) (error "APPLY*-EXPANSION: Too few arguments" n))
-	  ((< n 10)
-	   (if-expanded
-	    (make-combination
-	     (ucode-primitive apply)
-	     (list (car operands)
-		   (cons*-expansion-loop (cdr operands))))))
-	  (else (if-not-expanded)))))
+  block
+  (if (< 1 (length operands) 10)
+      (if-expanded
+       (make-combination
+	(ucode-primitive apply)
+	(list (car operands) (cons*-expansion-loop (cdr operands)))))
+      (if-not-expanded)))
 
 (define (cons*-expansion operands if-expanded if-not-expanded block)
-  block ; ignored
-  (let ((n (length operands)))
-    (cond ((zero? n) (error "CONS*-EXPANSION: No arguments!"))
-	  ((< n 9) (if-expanded (cons*-expansion-loop operands)))
-	  (else (if-not-expanded)))))
+  block
+  (if (< -1 (length operands) 9)
+      (if-expanded (cons*-expansion-loop operands))
+      (if-not-expanded)))
 
 (define (cons*-expansion-loop rest)
   (if (null? (cdr rest))
@@ -270,13 +266,13 @@ MIT in each case. |#
 
 (define (general-car-cdr-expansion encoding)
   (lambda (operands if-expanded if-not-expanded block)
-    if-not-expanded block ; ignored
+    block
     (if (= (length operands) 1)
 	(if-expanded
 	 (make-combination (ucode-primitive general-car-cdr)
 			   (list (car operands)
 				 (constant/make encoding))))
-	(error "Wrong number of arguments" (length operands)))))
+	(if-not-expanded))))
 
 (define caar-expansion (general-car-cdr-expansion #b111))
 (define cadr-expansion (general-car-cdr-expansion #b110))
@@ -320,24 +316,20 @@ MIT in each case. |#
 ;;;; Miscellaneous
 
 (define (make-string-expansion operands if-expanded if-not-expanded block)
-  block					;ignored
-  (let ((n (length operands)))
-    (cond ((zero? n)
-	   (error "MAKE-STRING-EXPANSION: No arguments"))
-	  ((= n 1)
-	   (if-expanded
-	    (make-combination (ucode-primitive string-allocate) operands)))
-	  (else
-	   (if-not-expanded)))))
+  block
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (if-expanded
+       (make-combination (ucode-primitive string-allocate) operands))
+      (if-not-expanded)))
 
 (define (type-test-expansion type)
   (lambda (operands if-expanded if-not-expanded block)
-    if-not-expanded block		;ignored
-    (let ((n-operands (length operands)))
-      (if (not (= n-operands 1))
-	  (error "TYPE-TEST-EXPANSION: wrong number of arguments"
-		 n-operands)))
-    (if-expanded (make-type-test type (car operands)))))
+    block
+    (if (and (pair? operands)
+	     (null? (cdr operands)))
+	(if-expanded (make-type-test type (car operands)))
+	(if-not-expanded))))
 
 (define char?-expansion (type-test-expansion (ucode-type character)))
 (define vector?-expansion (type-test-expansion (ucode-type vector)))
@@ -346,38 +338,38 @@ MIT in each case. |#
 (define fix:fixnum?-expansion (type-test-expansion (ucode-type fixnum)))
 
 (define (exact-integer?-expansion operands if-expanded if-not-expanded block)
-  if-not-expanded block			;ignored
-  (let ((n-operands (length operands)))
-    (if (not (= n-operands 1))
-	(error "wrong number of arguments" n-operands)))
-  (if-expanded
-   (make-disjunction
-    (make-type-test (ucode-type fixnum) (car operands))
-    (make-type-test (ucode-type big-fixnum) (car operands)))))
+  block
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (if-expanded
+       (make-disjunction
+	(make-type-test (ucode-type fixnum) (car operands))
+	(make-type-test (ucode-type big-fixnum) (car operands))))
+      (if-not-expanded)))
 
 (define (exact-rational?-expansion operands if-expanded if-not-expanded block)
-  if-not-expanded block			;ignored
-  (let ((n-operands (length operands)))
-    (if (not (= n-operands 1))
-	(error "wrong number of arguments" n-operands)))
-  (if-expanded
-   (make-disjunction
-    (make-type-test (ucode-type fixnum) (car operands))
-    (make-type-test (ucode-type big-fixnum) (car operands))
-    (make-type-test (ucode-type ratnum) (car operands)))))
+  block
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (if-expanded
+       (make-disjunction
+	(make-type-test (ucode-type fixnum) (car operands))
+	(make-type-test (ucode-type big-fixnum) (car operands))
+	(make-type-test (ucode-type ratnum) (car operands))))
+      (if-not-expanded)))
 
 (define (complex?-expansion operands if-expanded if-not-expanded block)
-  if-not-expanded block			;ignored
-  (let ((n-operands (length operands)))
-    (if (not (= n-operands 1))
-	(error "wrong number of arguments" n-operands)))
-  (if-expanded
-   (make-disjunction
-    (make-type-test (ucode-type fixnum) (car operands))
-    (make-type-test (ucode-type big-fixnum) (car operands))
-    (make-type-test (ucode-type ratnum) (car operands))
-    (make-type-test (ucode-type big-flonum) (car operands))
-    (make-type-test (ucode-type recnum) (car operands)))))
+  block
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (if-expanded
+       (make-disjunction
+	(make-type-test (ucode-type fixnum) (car operands))
+	(make-type-test (ucode-type big-fixnum) (car operands))
+	(make-type-test (ucode-type ratnum) (car operands))
+	(make-type-test (ucode-type big-flonum) (car operands))
+	(make-type-test (ucode-type recnum) (car operands))))
+      (if-not-expanded)))
 
 (define (make-disjunction . clauses)
   (let loop ((clauses clauses))
@@ -434,6 +426,7 @@ MIT in each case. |#
     cddddr
     cdddr
     cddr
+    char=?
     char?
     complex?
     cons*
@@ -505,6 +498,7 @@ MIT in each case. |#
    cddddr-expansion
    cdddr-expansion
    cddr-expansion
+   char=?-expansion
    char?-expansion
    complex?-expansion
    cons*-expansion
