@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: tximod.scm,v 1.23 2000/02/29 02:47:53 cph Exp $
+;;; $Id: tximod.scm,v 1.24 2000/09/06 15:15:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1987-2000 Massachusetts Institute of Technology
 ;;;
@@ -54,11 +54,11 @@ commands to save keystrokes.
      "^@\\(chapter\\|unnumbered \\|appendix \\|majorheading\\|chapheading\\)"
      buffer)
     (local-set-variable! paragraph-start
-			 (string-append "^\010\\|^@[a-zA-Z]*[ \n]\\|"
+			 (string-append "\010\\|@[a-zA-Z]*[ \n]\\|"
 					(ref-variable paragraph-start buffer))
 			 buffer)
     (local-set-variable! paragraph-separate
-			 (string-append "^\010\\|^@[a-zA-Z]*[ \n]\\|"
+			 (string-append "\010\\|@[a-zA-Z]*[ \n]\\|"
 					(ref-variable paragraph-separate
 						      buffer))
 			 buffer)

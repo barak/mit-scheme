@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: htmlmode.scm,v 1.3 2000/02/29 03:59:35 cph Exp $
+;;; $Id: htmlmode.scm,v 1.4 2000/09/06 15:15:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
     (event-distributor/invoke! (ref-variable html-mode-hook buffer) buffer)))
 
 (define html-paragraph-separator
-  "^[ \t]*$\\|^[ \t]*</?\\([A-Za-z]\\([-.A-Za-z0-9= \t\n]\\|\"[^\"]*\"\\|'[^']*'\\)*\\)?>$")
+  "[ \t]*$\\|[ \t]*</?\\([A-Za-z]\\([-.A-Za-z0-9= \t\n]\\|\"[^\"]*\"\\|'[^']*'\\)*\\)?>$")
 
 (define-command html-mode
   "Enter HTML mode."
