@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.32 1990/06/14 19:54:57 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.33 1990/12/29 22:00:54 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -50,7 +50,7 @@ bignum_malloc (length)
       bignum_length_type length;
 {
   extern char * malloc ();
-  char * result = (malloc (length * (sizeof (bignum_digit_type))));
+  char * result = (malloc ((length + 1) * (sizeof (bignum_digit_type))));
   BIGNUM_ASSERT (result != ((char *) 0));
   return ((bignum_type) result);
 }
@@ -62,7 +62,8 @@ bignum_realloc (bignum, length)
 {
   extern char * realloc ();
   char * result =
-    (realloc (((char *) bignum), (length * (sizeof (bignum_digit_type)))));
+    (realloc (((char *) bignum),
+	      ((length + 1) * (sizeof (bignum_digit_type)))));
   BIGNUM_ASSERT (result != ((char *) 0));
   return ((bignum_type) result);
 }
@@ -1598,7 +1599,7 @@ bignum_shorten_length (bignum, length)
     {
       BIGNUM_SET_HEADER
 	(bignum, length, ((length != 0) && (BIGNUM_NEGATIVE_P (bignum))));
-      BIGNUM_REDUCE_LENGTH (bignum, bignum, length)
+      BIGNUM_REDUCE_LENGTH (bignum, bignum, length);
     }
   return (bignum);
 }
