@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.5 1989/10/26 06:28:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.6 1989/11/15 02:44:07 cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -144,7 +144,9 @@ MIT in each case. |#
     INT:-1+
     INT:1+
     INT:<
-    INT:=    INT:DIVIDE
+    INT:=
+    INT:>
+    INT:DIVIDE
     INT:NEGATE
     INT:NEGATIVE?
     INT:POSITIVE?
