@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.218 1992/03/13 10:08:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.219 1992/04/04 13:07:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -240,6 +240,16 @@ with the contents of the startup message."
 
 (define recursive-edit-continuation)
 (define recursive-edit-level)
+
+(define (editor-gc-daemon)
+  (let ((editor edwin-editor))
+    (if editor
+	(do ((buffers (bufferset-buffer-list (editor-bufferset editor))
+		      (cdr buffers)))
+	    ((null? buffers))
+	  (clean-group-marks! (buffer-group (car buffers)))))))
+
+(add-gc-daemon! editor-gc-daemon)
 
 (define (internal-error-handler condition)
   (cond (debug-internal-errors?

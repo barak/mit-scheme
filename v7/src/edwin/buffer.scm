@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.152 1992/02/10 21:57:09 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.153 1992/04/04 13:07:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -62,7 +62,7 @@
   local-bindings-installed?
   initializations
   auto-save-pathname
-  auto-save-state
+  auto-saved?
   save-length
   backed-up?
   modification-time
@@ -85,9 +85,6 @@ The buffer is guaranteed to be deselected at that time."
     (let ((group (make-group (string-copy "") buffer)))
       (vector-set! buffer buffer-index:name name)
       (vector-set! buffer buffer-index:group group)
-      (let ((daemon (buffer-modification-daemon buffer)))
-	(add-group-insert-daemon! group daemon)
-	(add-group-delete-daemon! group daemon))
       (add-group-clip-daemon! group (buffer-clip-daemon buffer))
       (if (not (minibuffer? buffer))
 	  (enable-group-undo! group))
@@ -109,7 +106,7 @@ The buffer is guaranteed to be deselected at that time."
 		   buffer-index:initializations
 		   (list (mode-initialization mode)))
       (vector-set! buffer buffer-index:auto-save-pathname false)
-      (set-buffer-auto-save-state! buffer 'NO-CHANGES)
+      (vector-set! buffer buffer-index:auto-saved? false)
       (vector-set! buffer buffer-index:save-length 0)
       (vector-set! buffer buffer-index:backed-up? false)
       (vector-set! buffer buffer-index:modification-time false)
@@ -138,7 +135,7 @@ The buffer is guaranteed to be deselected at that time."
      (vector-set! buffer buffer-index:truename false)
      (buffer-modeline-event! buffer 'BUFFER-PATHNAME)
      (vector-set! buffer buffer-index:auto-save-pathname false)
-     (set-buffer-auto-save-state! buffer 'NO-CHANGES)
+     (vector-set! buffer buffer-index:auto-saved? false)
      (vector-set! buffer buffer-index:save-length 0))))
 
 (define (set-buffer-name! buffer name)
@@ -162,9 +159,6 @@ The buffer is guaranteed to be deselected at that time."
 
 (define-integrable (set-buffer-auto-save-pathname! buffer pathname)
   (vector-set! buffer buffer-index:auto-save-pathname pathname))
-
-(define-integrable (set-buffer-auto-save-state! buffer state)
-  (vector-set! buffer buffer-index:auto-save-state state))
 
 (define-integrable (set-buffer-save-length! buffer)
   (vector-set! buffer buffer-index:save-length (buffer-length buffer)))
@@ -291,34 +285,23 @@ The buffer is guaranteed to be deselected at that time."
 	   (begin
 	     (set-group-modified! group false)
 	     (buffer-modeline-event! buffer 'BUFFER-MODIFIED)
-	     (set-buffer-auto-save-state! buffer 'NO-CHANGES)))))))
+	     (vector-set! buffer buffer-index:auto-saved? false)))))))
 
 (define (buffer-modified! buffer)
   (without-interrupts
    (lambda ()
-     (%buffer-modified! buffer (buffer-group buffer)))))
+     (let ((group (buffer-group buffer)))
+       (if (not (group-modified? group))
+	   (begin
+	     (set-group-modified! group true)
+	     (buffer-modeline-event! buffer 'BUFFER-MODIFIED)))))))
 
-(define (buffer-modification-daemon buffer)
-  (lambda (group start end)
-    start end				;ignore
-    (%buffer-modified! buffer group)))
-
-(define-integrable (%buffer-modified! buffer group)
-  (cond ((not (group-modified? group))
-	 (set-group-modified! group true)
-	 (buffer-modeline-event! buffer 'BUFFER-MODIFIED)
-	 (set-buffer-auto-save-state! buffer 'UNSAVED-CHANGES))
-	((eq? 'AUTO-SAVED (buffer-auto-save-state buffer))
-	 (set-buffer-auto-save-state! buffer 'AUTO-SAVED+CHANGES))))
-
-(define-integrable (set-buffer-auto-saved! buffer)
-  (set-buffer-auto-save-state! buffer 'AUTO-SAVED))
+(define (set-buffer-auto-saved! buffer)
+  (vector-set! buffer buffer-index:auto-saved? true)
+  (set-group-modified! (buffer-group buffer) 'AUTO-SAVED))
 
 (define-integrable (buffer-auto-save-modified? buffer)
-  (memq (buffer-auto-save-state buffer) '(UNSAVED-CHANGES AUTO-SAVED+CHANGES)))
-
-(define-integrable (buffer-auto-saved? buffer)
-  (memq (buffer-auto-save-state buffer) '(AUTO-SAVED AUTO-SAVED+CHANGES)))
+  (eq? true (group-modified? (buffer-group buffer))))
 
 (define (buffer-clip-daemon buffer)
   (lambda (group start end)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.106 1992/02/04 04:03:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.107 1992/04/04 13:07:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -125,25 +125,14 @@ Each procedure is called with three arguments:
     (let ((length (file-length channel)))
       (without-interrupts
        (lambda ()
-	 (move-gap-to! group index)
-	 (guarantee-gap-length! group length)))
+	 (prepare-gap-for-insert! group index length)))
       (let ((n
 	     (channel-read channel (group-text group) index (+ index length))))
 	(without-interrupts
 	 (lambda ()
 	   (let ((gap-start* (fix:+ index n)))
 	     (undo-record-insertion! group index gap-start*)
-	     (vector-set! group
-			  group-index:gap-length
-			  (fix:- (group-gap-length group) n))
-	     (vector-set! group group-index:gap-start gap-start*)
-	     (for-each-mark group
-	       (lambda (mark)
-		 (let ((index* (mark-index mark)))
-		   (if (or (fix:> index* index)
-			   (and (fix:= index* index)
-				(mark-left-inserting? mark)))
-		       (set-mark-index! mark (fix:+ index* n))))))
+	     (finish-group-insert! group index n)
 	     (record-insertion! group index gap-start*))))
 	(channel-close channel)
 	n))))

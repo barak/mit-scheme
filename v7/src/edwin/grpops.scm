@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.15 1992/01/24 23:02:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.16 1992/04/04 13:07:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -54,11 +54,11 @@
 
 ;;; This parameter controls how much extra space (in characters) is
 ;;; allocated when the gap is too small to contain a given insertion.
-(define gap-allocation-extra 2000)
+(define-integrable gap-allocation-extra 2000)
 
 ;;; This parameter controls how large the gap is allowed to be between
 ;;; operations.  It must be at least `gap-allocation-extra'.
-(define gap-maximum-extra 20000)
+(define-integrable gap-maximum-extra 20000)
 
 ;;;; Extractions
 
@@ -104,7 +104,7 @@
 
 (define (group-left-char group index)
   (string-ref (group-text group)
-	      (fix:-1+ (group-index->position-integrable group index false))))
+	      (fix:- (group-index->position-integrable group index false) 1)))
 
 (define (group-right-char group index)
   (string-ref (group-text group)
@@ -118,136 +118,68 @@
 ;;;; Insertions
 
 (define (group-insert-char! group index char)
-  (without-interrupts
-   (lambda ()
-     (%group-insert-char! group index char)
-     (record-insertion! group index (group-gap-start group)))))
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (declare (integrate %group-insert-char!))
+    (%group-insert-char! group index char)
+    (if (not (null? (group-insert-daemons group)))
+	(invoke-group-daemons! (group-insert-daemons group)
+			       group index (group-gap-start group)))
+    (set-interrupt-enables! interrupt-mask)))
 
-(define-integrable (%group-insert-char! group index char)
-  (if (group-read-only? group) (barf-if-read-only))
-  (if (not (group-modified? group)) (check-first-group-modification group))
-  (move-gap-to! group index)
-  (guarantee-gap-length! group 1)
-  (let ((gap-start* (fix:1+ index)))
-    (undo-record-insertion! group index gap-start*)
-    (vector-set! group group-index:gap-start gap-start*))
-  (vector-set! group group-index:gap-length (fix:-1+ (group-gap-length group)))
+(define (%group-insert-char! group index char)
+  (if (group-read-only? group)
+      (barf-if-read-only))
+  (if (not (group-modified? group))
+      (check-first-group-modification group))
+  (if (group-undo-data group)
+      (undo-record-insertion! group index (fix:+ index 1)))
+  (prepare-gap-for-insert! group index 1)
   (string-set! (group-text group) index char)
-  (for-each-mark group
-    (lambda (mark)
-      (let ((index* (mark-index mark)))
-	(if (or (fix:> index* index)
-		(and (fix:= index* index)
-		     (mark-left-inserting? mark)))
-	    (set-mark-index! mark (fix:+ index* 1)))))))
+  (finish-group-insert! group index 1))
 
 (define (group-insert-string! group index string)
   (group-insert-substring! group index string 0 (string-length string)))
 
 (define (group-insert-substring! group index string start end)
-  (without-interrupts
-   (lambda ()
-     (%group-insert-substring! group index string start end)
-     (record-insertion! group index (group-gap-start group)))))
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (declare (integrate %group-insert-substring!))
+    (%group-insert-substring! group index string start end)
+    (if (not (null? (group-insert-daemons group)))
+	(invoke-group-daemons! (group-insert-daemons group)
+			       group index (group-gap-start group)))
+    (set-interrupt-enables! interrupt-mask)))
 
-(define-integrable (%group-insert-substring! group index string start end)
-  (if (group-read-only? group) (barf-if-read-only))
-  (if (not (group-modified? group)) (check-first-group-modification group))
-  (move-gap-to! group index)
+(define (%group-insert-substring! group index string start end)
+  (if (group-read-only? group)
+      (barf-if-read-only))
+  (if (not (group-modified? group))
+      (check-first-group-modification group))
   (let ((n (fix:- end start)))
-    (guarantee-gap-length! group n)
-    (let ((gap-start* (fix:+ index n)))
-      (undo-record-insertion! group index gap-start*)
-      (vector-set! group group-index:gap-start gap-start*))
-    (vector-set! group
-		 group-index:gap-length
-		 (fix:- (group-gap-length group) n))
+    (if (group-undo-data group)
+	(undo-record-insertion! group index (fix:+ index n)))
+    (prepare-gap-for-insert! group index n)
     (substring-move-right! string start end (group-text group) index)
-    (for-each-mark group
-      (lambda (mark)
-	(let ((index* (mark-index mark)))
-	  (if (or (fix:> index* index)
-		  (and (fix:= index* index)
-		       (mark-left-inserting? mark)))
-	      (set-mark-index! mark (fix:+ index* n))))))))
+    (finish-group-insert! group index n)))
 
-;;;; Deletions
-
-(define (group-delete-left-char! group index)
-  (group-delete! group (fix:-1+ index) index))
-
-(define (group-delete-right-char! group index)
-  (group-delete! group index (fix:1+ index)))
-
-(define (group-delete! group start end)
-  (without-interrupts
-   (lambda ()
-     (if (not (fix:= start end))
-	 (begin
-	   (if (group-read-only? group) (barf-if-read-only))
-	   (if (not (group-modified? group))
-	       (check-first-group-modification group))
-	   ;; Guarantee that the gap is between START and END.
-	   (let ((gap-start (group-gap-start group)))
-	     (cond ((fix:< gap-start start) (move-gap-to-right! group start))
-		   ((fix:> gap-start end) (move-gap-to-left! group end))))
-	   (undo-record-deletion! group start end)
-	   (record-deletion! group start end)
-	   (let ((length (fix:- end start)))
-	     (for-each-mark group
-	       (lambda (mark)
-		 (let ((index (mark-index mark)))
-		   (cond ((fix:> index end)
-			  (set-mark-index! mark (fix:- index length)))
-			 ((fix:>= index start)
-			  (set-mark-index! mark start)))))))
-	   (vector-set! group group-index:gap-start start)
-	   (let ((gap-end (fix:+ end (group-gap-length group)))
-		 (max-gap-length gap-maximum-extra))
-	     (if (fix:> (fix:- gap-end start) max-gap-length)
-		 (let* ((new-gap-end (fix:+ start max-gap-length))
-			(text (group-text group))
-			(text-end (string-length text))
-			(new-text-end
-			 (fix:- text-end
-				(fix:- (fix:- gap-end start) max-gap-length))))
-		   (substring-move-left! text gap-end text-end
-					 text new-gap-end)
-		   (set-string-maximum-length! text new-text-end)
-		   (vector-set! group group-index:gap-end new-gap-end)
-		   (vector-set! group group-index:gap-length max-gap-length))
-		 (begin
-		   (vector-set! group group-index:gap-end gap-end)
-		   (vector-set! group group-index:gap-length
-				(fix:- gap-end start))))))))))
-
-;;;; The Gap
-
-(define (move-gap-to! group index)
-  (let ((gap-start (group-gap-start group)))
-    (cond ((fix:< index gap-start) (move-gap-to-left! group index))
-	  ((fix:> index gap-start) (move-gap-to-right! group index)))))
-
-(define (move-gap-to-left! group new-start)
-  (let ((start (group-gap-start group))
-	(length (group-gap-length group))
-	(text (group-text group)))
-    (let ((new-end (fix:+ new-start length)))
-      (substring-move-right! text new-start start text new-end)
-      (vector-set! group group-index:gap-start new-start)
-      (vector-set! group group-index:gap-end new-end))))
-
-(define (move-gap-to-right! group new-start)
-  (let ((start (group-gap-start group))
-	(end (group-gap-end group))
-	(length (group-gap-length group))
-	(text (group-text group)))
-    (let ((new-end (fix:+ new-start length)))
-      (substring-move-left! text end new-end text start)
-      (vector-set! group group-index:gap-start new-start)
-      (vector-set! group group-index:gap-end new-end))))
-
-(define (guarantee-gap-length! group n)
+(define-integrable (prepare-gap-for-insert! group new-start n)
+  (cond ((fix:< new-start (group-gap-start group))
+	 (let ((new-end (fix:+ new-start (group-gap-length group))))
+	   (substring-move-right! (group-text group)
+				  new-start
+				  (group-gap-start group)
+				  (group-text group)
+				  new-end)
+	   (vector-set! group group-index:gap-start new-start)
+	   (vector-set! group group-index:gap-end new-end)))
+	((fix:> new-start (group-gap-start group))
+	 (let ((new-end (fix:+ new-start (group-gap-length group))))
+	   (substring-move-left! (group-text group)
+				 (group-gap-end group)
+				 new-end
+				 (group-text group)
+				 (group-gap-start group))
+	   (vector-set! group group-index:gap-start new-start)
+	   (vector-set! group group-index:gap-end new-end))))
   (if (fix:< (group-gap-length group) n)
       (let ((n
 	     (fix:+ (fix:- n (group-gap-length group))
@@ -264,3 +196,88 @@
 	    (vector-set! group group-index:text text*)
 	    (vector-set! group group-index:gap-end new-end)))
 	(vector-set! group group-index:gap-length (fix:+ length n)))))
+
+(define-integrable (finish-group-insert! group index n)
+  (vector-set! group group-index:gap-start (fix:+ index n))
+  (vector-set! group group-index:gap-length (fix:- (group-gap-length group) n))
+  (do ((marks (group-marks group) (system-pair-cdr marks)))
+      ((null? marks))
+    (if (and (system-pair-car marks)
+	     (or (fix:> (mark-index (system-pair-car marks)) index)
+		 (and (fix:= (mark-index (system-pair-car marks)) index)
+		      (mark-left-inserting? (system-pair-car marks)))))
+	(set-mark-index! (system-pair-car marks)
+			 (fix:+ (mark-index (system-pair-car marks)) n))))
+  ;; The MODIFIED? bit must not be set until after the undo record is made.
+  (set-group-modified! group true))
+
+;;;; Deletions
+
+(define (group-delete-left-char! group index)
+  (group-delete! group (fix:- index 1) index))
+
+(define (group-delete-right-char! group index)
+  (group-delete! group index (fix:+ index 1)))
+
+(define (group-delete! group start end)
+  (if (not (fix:= start end))
+      (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+	(if (group-read-only? group)
+	    (barf-if-read-only))
+	(if (not (group-modified? group))
+	    (check-first-group-modification group))
+	(if (group-undo-data group)
+	    (undo-record-deletion! group start end))
+	(if (not (null? (group-delete-daemons group)))
+	    (invoke-group-daemons! (group-delete-daemons group)
+				   group start end))
+	;; The MODIFIED? bit must not be set until after the undo
+	;; record is made.
+	(set-group-modified! group true)
+	(let ((length (fix:- end start)))
+	  (do ((marks (group-marks group) (system-pair-cdr marks)))
+	      ((null? marks))
+	    (cond ((or (not (system-pair-car marks))
+		       (fix:< (mark-index (system-pair-car marks)) start))
+		   unspecific)
+		  ((fix:<= (mark-index (system-pair-car marks)) end)
+		   (set-mark-index! (system-pair-car marks) start))
+		  (else
+		   (set-mark-index!
+		    (system-pair-car marks)
+		    (fix:- (mark-index (system-pair-car marks)) length))))))
+	;; Guarantee that the gap is between START and END.
+	(cond ((fix:< (group-gap-start group) start)
+	       (let ((text (group-text group))
+		     (new-end (fix:+ start (group-gap-length group))))
+		 (do ((index (group-gap-end group) (fix:+ index 1))
+		      (index* (group-gap-start group) (fix:+ index* 1)))
+		     ((not (fix:< index new-end)))
+		   (string-set! text index* (string-ref text index)))))
+	      ((fix:> (group-gap-start group) end)
+	       (let ((text (group-text group)))
+		 (do ((index (group-gap-start group) (fix:- index 1))
+		      (index* (group-gap-end group) (fix:- index* 1)))
+		     ((not (fix:< end index)))
+		   (string-set! text
+				(fix:- index* 1)
+				(string-ref text (fix:- index 1)))))))
+	(vector-set! group group-index:gap-start start)
+	(let ((gap-end (fix:+ end (group-gap-length group))))
+	  (if (fix:> (fix:- gap-end start) gap-maximum-extra)
+	      (let* ((new-gap-end (fix:+ start gap-allocation-extra))
+		     (text (group-text group))
+		     (text-end (string-length text)))
+		(substring-move-left! text gap-end text-end
+				      text new-gap-end)
+		(set-string-maximum-length! text
+					    (fix:+ new-gap-end
+						   (fix:- text-end gap-end)))
+		(vector-set! group group-index:gap-end new-gap-end)
+		(vector-set! group group-index:gap-length
+			     gap-allocation-extra))
+	      (begin
+		(vector-set! group group-index:gap-end gap-end)
+		(vector-set! group group-index:gap-length
+			     (fix:- gap-end start)))))
+	(set-interrupt-enables! interrupt-mask))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.44 1992/01/13 19:15:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.45 1992/04/04 13:07:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -105,15 +105,6 @@
 		(receiver n-existing (1+ n-gced)))))
 	(receiver 0 0))))
 
-(define-command debug-clean-marks
-  "Perform a GC, then remove GC'ed marks from all buffers."
-  ()
-  (lambda ()
-    (gc-flip)
-    ((ref-command debug-count-marks))
-    (for-each (lambda (buffer) (clean-group-marks! (buffer-group buffer)))
-	      (buffer-list))))
-
 (define-command debug-show-standard-marks
   ""
   ()

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.82 1992/03/26 00:02:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.83 1992/04/04 13:07:07 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -159,6 +159,7 @@ MIT in each case. |#
   (export (edwin)
 	  %group-insert-char!
 	  %group-insert-substring!
+	  finish-group-insert!
 	  gap-allocation-extra
 	  group-copy-substring!
 	  group-delete!
@@ -171,8 +172,7 @@ MIT in each case. |#
 	  group-insert-substring!
 	  group-left-char
 	  group-right-char
-	  guarantee-gap-length!
-	  move-gap-to!))
+	  prepare-gap-for-insert!))
 
 (define-package (edwin comtab)
   (files "comtab")
@@ -739,9 +739,7 @@ MIT in each case. |#
 	  stack-frame/compiled-code?
 	  write-restarts)
   (import (runtime error-handler)
-	  hook/invoke-restart)
-  (import (runtime unparser)
-	  *unparse-primitives-by-name?*))
+	  hook/invoke-restart))
 
 (define-package (edwin dired)
   (files "dired")
