@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile.wcc,v 1.1 1995/10/24 09:32:03 cph Exp $
+###     $Id: makefile.wcc,v 1.2 1995/10/24 09:33:04 cph Exp $
 ###
-###     Copyright (c) 1992-1993 Massachusetts Institute of Technology
+###     Copyright (c) 1992-95 Massachusetts Institute of Technology
 ###
 ###     This material was developed by the Scheme project at the
 ###     Massachusetts Institute of Technology, Department of
@@ -38,7 +38,7 @@
 ###
 
 #### Makefile for Scheme under Win32 compiled by Watcom C/C++
-#!include <ntwin32.mak>
+###  This makefile is meant to be used with Watcom make.
 
 USER_PRIM_SOURCES =
 USER_PRIM_OBJECTS =

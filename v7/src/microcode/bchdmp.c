@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.81 1995/10/15 00:35:36 cph Exp $
+$Id: bchdmp.c,v 9.82 1995/10/24 09:29:17 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -104,6 +104,8 @@ static char FASDUMP_FILENAME[] = "\\tmp\\faXXXXXX";
 #include <io.h>
 #endif
 
+#endif /* _OS2 */
+
 #if defined(__IBMC__) || defined(__WATCOMC__)
 
 #include <io.h>
@@ -150,7 +152,6 @@ DEFUN (mktemp, (fname), unsigned char * fname)
 }
 
 #endif /* __IBMC__ or __WATCOMC__ */
-#endif /* _OS2 */
 
 #ifndef FASDUMP_FILENAME_DEFINED
 
