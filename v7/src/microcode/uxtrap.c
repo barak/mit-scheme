@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.12 1991/07/11 03:56:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.13 1991/07/12 23:17:37 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -111,7 +111,7 @@ DEFUN (trap_handler, (message, signo, info, scp),
        SIGINFO_T info AND
        struct FULL_SIGCONTEXT * scp)
 {
-  int code = (SIGINFO_CODE (info));
+  int code = ((SIGINFO_VALID_P (info)) ? (SIGINFO_CODE (info)) : 0);
   Boolean constant_space_broken = (!(CONSTANT_SPACE_SEALED ()));
   enum trap_state old_trap_state = trap_state;
   trap_state = trap_state_trapped;
@@ -148,7 +148,9 @@ DEFUN (trap_handler, (message, signo, info, scp),
 		   ">> [The earlier trap raised signal %d (%s), code %d.]\n",
 		   saved_signo,
 		   (find_signal_name (saved_signo)),
-		   (SIGINFO_CODE (saved_info)));
+		   ((SIGINFO_VALID_P (saved_info))
+		    ? (SIGINFO_CODE (saved_info))
+		    : 0));
 	  fputs (((WITHIN_CRITICAL_SECTION_P ())
 		  ? ">> Successful recovery is extremely unlikely.\n"
 		  : ">> Successful recovery is unlikely.\n"),
@@ -262,21 +264,27 @@ DEFUN (find_signal_code_name, (signo, info, scp),
        SIGINFO_T info AND
        struct FULL_SIGCONTEXT * scp)
 {
-  unsigned long code = (SIGINFO_CODE (info));
+  unsigned long code = 0;
   char * name = 0;
-#ifdef SPECIAL_SIGNAL_CODE_NAMES
-  SPECIAL_SIGNAL_CODE_NAMES ();
-  if (name == 0)
-#endif
+  if (SIGINFO_VALID_P (info))
     {
-      struct ux_sig_code_desc * entry = (& (ux_signal_codes [0]));
-      while ((entry -> signo) != 0)
-	if (((entry -> signo) == signo)
-	    && (((entry -> code_mask) & code) == (entry -> code_value)))
-	  {
-	    name = (entry -> name);
-	    break;
-	  }
+      code = (SIGINFO_CODE (info));
+#ifdef SPECIAL_SIGNAL_CODE_NAMES
+      SPECIAL_SIGNAL_CODE_NAMES ();
+      if (name == 0)
+#endif
+	{
+	  struct ux_sig_code_desc * entry = (& (ux_signal_codes [0]));
+	  while ((entry -> signo) != 0)
+	    if (((entry -> signo) == signo)
+		&& (((entry -> code_mask) & code) == (entry -> code_value)))
+	      {
+		name = (entry -> name);
+		break;
+	      }
+	    else
+	      entry += 1;
+	}
     }
   return (cons ((long_to_integer ((long) code)),
 		((name == 0) ? SHARP_F : (char_pointer_to_string (name)))));
