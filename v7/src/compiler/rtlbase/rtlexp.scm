@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.13 1989/10/26 07:38:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.14 1989/12/05 23:55:00 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -57,7 +57,6 @@ MIT in each case. |#
 (define (rtl:trivial-expression? expression)
   (case (rtl:expression-type expression)
     ((ASSIGNMENT-CACHE
-      CONS-CLOSURE
       CONSTANT
       ENTRY:CONTINUATION
       ENTRY:PROCEDURE
