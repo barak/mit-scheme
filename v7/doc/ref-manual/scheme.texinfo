@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.73 1999/06/22 18:31:35 cph Exp $
+@comment $Id: scheme.texinfo,v 1.74 1999/08/04 01:42:54 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.73
+@subtitle Edition 1.74
 @subtitle for Scheme Release 7.5
-@subtitle 22 June 1999
+@subtitle 3 August 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -361,6 +361,7 @@ Operating-System Interface
 * Date and Time::               
 * Machine Time::                
 * Subprocesses::                
+* TCP Sockets::                 
 * Miscellaneous OS Facilities::  
 
 Pathnames
@@ -13680,6 +13681,7 @@ the formats, and generating human-readable time strings.
 * Date and Time::               
 * Machine Time::                
 * Subprocesses::                
+* TCP Sockets::                 
 * Miscellaneous OS Facilities::  
 @end menu
 
@@ -15607,7 +15609,7 @@ overhead.
 @end example
 @end deffn
 
-@node Subprocesses, Miscellaneous OS Facilities, Machine Time, Operating-System Interface
+@node Subprocesses, TCP Sockets, Machine Time, Operating-System Interface
 @section Subprocesses
 
 @cindex subprocess
@@ -15965,7 +15967,125 @@ found by searching the path.
 @end example
 @end deffn
 
-@node Miscellaneous OS Facilities,  , Subprocesses, Operating-System Interface
+@node TCP Sockets, Miscellaneous OS Facilities, Subprocesses, Operating-System Interface
+@section TCP Sockets
+
+@cindex socket
+MIT Scheme provides access to @dfn{sockets}, which are a mechanism for
+inter-process communication.  @sc{tcp} stream sockets are supported,
+which communicate between computers over a @sc{tcp/ip} network.
+@sc{tcp} sockets are supported on all operating systems.
+
+@cindex client socket
+@cindex server socket
+@sc{tcp} sockets have two distinct interfaces: one interface to
+implement a @dfn{client} and another to implement a @dfn{server}.  The
+basic protocol is that servers set up a listening port and wait for
+connections from clients.  Implementation of clients is simpler and will
+be treated first.
+
+@cindex hostname, TCP
+The socket procedures accept two special arguments, called
+@var{host-name} and @var{service}.  @var{Host-name} is a string which
+must be the name of an internet host.  It is looked up using the
+ordinary lookup rules for your computer.  For example, if your host is
+@code{foo.mit.edu} and @var{host-name} is @code{"bar"}, then it
+specifies @code{bar.mit.edu}.
+
+@cindex service, TCP
+@cindex port number, TCP
+@var{Service} specifies the service to which you will connect.  A
+networked computer normally provides several different services, such as
+telnet or @sc{ftp}.  Each service is associated with a unique @dfn{port
+number}; for example, the @code{"www"} service is associated with port
+@code{80}.  The @var{service} argument specifies the port number, either
+by a string, or directly as an exact non-negative integer.  Port strings
+are decoded by the operating system using a table; for example, on unix
+the table is in @file{/etc/services}.  Usually you will use a port
+string rather than a number.
+
+@deffn {procedure+} open-tcp-stream-socket host-name service [buffer-size [line-translation]]
+@code{open-tcp-stream-socket} opens a connection to the host specified
+by @var{host-name}.  @var{Host-name} is looked up using the ordinary
+lookup rules for your computer.  The connection is established to the
+service specified by @var{service}.  The returned value is an @sc{i/o}
+port, to which you can read and write characters using ordinary Scheme
+@sc{i/o} procedures such as @code{read-char} and @code{write-char}.
+
+@var{Buffer-size} specifies the size of the read and write buffers used
+by the port; if this is unspecified or @code{#f}, the buffers will hold
+@code{4096} bytes.
+
+@var{Line-translation} specifies how end-of-line characters will be
+translated when reading or writing to the socket.  If this is
+unspecified or @code{#f}, then lines will be terminated by @sc{cr-lf},
+which is the standard for most internet protocols.  Otherwise, it must
+be a string, which specifies the line-ending character sequence to use.
+
+When you wish to close the connection, just use @code{close-port}.
+
+As an example, here is how you can open a connection to a web server:
+
+@example
+(open-tcp-stream-socket "web.mit.edu" "www")
+@end example
+@end deffn
+
+@cindex server socket
+Next we will treat setting up a @sc{tcp} server, which is slightly more
+complicated.  Creating a server is a two-part process.  First, you must
+open a @dfn{server socket}, which causes the operating system to listen
+to the network on a port that you specify.  Once the server socket is
+opened, the operating system will allow clients to connect to your
+computer on that port.
+
+In the second step of the process, you @dfn{accept} the connection,
+which completes the connection initiated by the client, and allows you
+to communicate with the client.  Accepting a connection does not affect
+the server socket; it continues to listen for additional client
+connections.  You can have multiple client connections to the same
+server socket open simultaneously.
+
+@deffn {procedure+} open-tcp-server-socket service
+This procedure opens a server socket that listens for connections to
+@var{service}; the socket will continue to listen until you close it.
+The returned value is a server socket object.
+
+An error is signalled if another process is already listening on the
+service.  Additionally, ports whose number is less than @code{1024} are
+privileged on many operating systems, and cannot be used by
+non-privileged processes; attempting to open a server socket to one of
+these ports will signal an error if you do not have administrative
+privileges.
+@end deffn
+
+@deffn {procedure+} tcp-server-connection-accept server-socket block?
+Checks to see if a client has connected to @var{server-socket}.  If so,
+two values are returned: an @sc{i/o} port, and a string representing the
+@sc{IP} address of the client (this is the 4-byte @sc{IP} number, where
+each character in the string is one of the bytes).  The returned port
+can be read and written using ordinary Scheme @sc{i/o} procedures such
+as @code{read-char} and @code{write-char}.
+
+The argument @var{block?} says what to do if no client has connected at
+the time of the call.  If @code{#f}, it says to return immediately with
+two values of @code{#f}.  Otherwise, the call waits until a client
+connects.
+
+Note that closing the port returned by this procedure does not affect
+@var{server-socket}; it just closes the particular client connection
+that was opened by the call.  To close @var{server-socket}, use
+@code{close-tcp-server-socket}.
+@end deffn
+
+@deffn {procedure+} close-tcp-server-socket server-socket
+Closes the server socket @var{server-socket}.  The operating system will
+cease listening for network connections to that service.  Client
+connections to @var{server-socket} that have already been accepted will
+not be affected.
+@end deffn
+
+@node Miscellaneous OS Facilities,  , TCP Sockets, Operating-System Interface
 @section Miscellaneous OS Facilities
 
 This section contains assorted operating-system facilities that don't
