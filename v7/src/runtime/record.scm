@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.11 1991/11/15 05:15:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.12 1991/11/26 06:50:09 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -81,7 +81,7 @@ MIT in each case. |#
 
 (define (record-type? object)
   (and (vector? object)
-       (= (vector-length object) 3)
+       (fix:= (vector-length object) 3)
        (eq? (vector-ref object 0) record-type-marker)))
 
 (define (record-type-name record-type)
@@ -95,8 +95,8 @@ MIT in each case. |#
 				 'RECORD-TYPE-FIELD-NAMES))
   (list-copy (vector-ref record-type 2)))
 
-(define-integrable (record-type-record-length record-type)
-  (+ (length (vector-ref record-type 2)) 1))
+(define (record-type-record-length record-type)
+  (fix:+ (length (vector-ref record-type 2)) 1))
 
 (define (record-type-field-index record-type field-name procedure-name)
   (let loop ((field-names (vector-ref record-type 2)) (index 1))
@@ -104,7 +104,7 @@ MIT in each case. |#
 	(error:bad-range-argument field-name procedure-name))
     (if (eq? field-name (car field-names))
 	index
-	(loop (cdr field-names) (+ index 1)))))
+	(loop (cdr field-names) (fix:+ index 1)))))
 
 (define (record-type-error record record-type procedure)
   (error:wrong-type-argument
@@ -139,7 +139,7 @@ MIT in each case. |#
 					   'RECORD-CONSTRUCTOR))
 		field-names)))
       (lambda field-values
-	(if (not (= (length field-values) number-of-inits))
+	(if (not (fix:= (length field-values) number-of-inits))
 	    (error "wrong number of arguments to record constructor"
 		   field-values record-type field-names))
 	(let ((record (make-vector record-length)))
@@ -151,7 +151,7 @@ MIT in each case. |#
 
 (define (record? object)
   (and (vector? object)
-       (> (vector-length object) 0)
+       (fix:> (vector-length object) 0)
        (record-type? (vector-ref object 0))))
 
 (define (record-type-descriptor record)
@@ -168,7 +168,7 @@ MIT in each case. |#
   (let ((record-length (record-type-record-length record-type)))
     (lambda (object)
       (and (vector? object)
-	   (= (vector-length object) record-length)
+	   (fix:= (vector-length object) record-length)
 	   (eq? (vector-ref object 0) record-type)))))
 
 (define (record-accessor record-type field-name)
@@ -180,12 +180,12 @@ MIT in each case. |#
 	 (record-type-field-index record-type field-name 'RECORD-ACCESSOR)))
     (lambda (record)
       (if (not (and (vector? record)
-		    (= (vector-length record) record-length)
+		    (fix:= (vector-length record) record-length)
 		    (eq? (vector-ref record 0) record-type)))
 	  (record-type-error record record-type procedure-name))
       (vector-ref record index))))
 
-(define (record-updater record-type field-name)
+(define (record-modifier record-type field-name)
   (if (not (record-type? record-type))
       (error:wrong-type-argument record-type "record type" 'RECORD-UPDATER))
   (let ((record-length (record-type-record-length record-type))
@@ -194,7 +194,10 @@ MIT in each case. |#
 	 (record-type-field-index record-type field-name 'RECORD-UPDATER)))
     (lambda (record field-value)
       (if (not (and (vector? record)
-		    (= (vector-length record) record-length)
+		    (fix:= (vector-length record) record-length)
 		    (eq? (vector-ref record 0) record-type)))
 	  (record-type-error record record-type procedure-name))
       (vector-set! record index field-value))))
+
+(define record-updater
+  record-modifier)
