@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.82 1994/01/08 17:02:13 gjr Exp $
+$Id: cmpint.c,v 1.83 1994/01/10 21:31:20 gjr Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -1206,7 +1206,7 @@ exit_proc:
     SCHEME_OBJECT * ret_add_block;
     unsigned long block_len = (((unsigned long) (* block_address)) + 1);
     
-    Get_Compiled_Block (ret_add_block, ret_add);
+    Get_Compiled_Block (ret_add_block, ((SCHEME_OBJECT *) ret_add));
     if (ret_add_block == block_address)
       FLUSH_I_CACHE_REGION (block_address, block_len);
     else
