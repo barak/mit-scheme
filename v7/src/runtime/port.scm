@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/port.scm,v 1.2 1991/11/26 07:06:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/port.scm,v 1.3 1992/02/25 22:55:53 cph Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,6 +40,7 @@ MIT in each case. |#
 (define port-rtd
   (make-record-type "port"
     '(STATE
+      THREAD-MUTEX
       OPERATION-NAMES
       CUSTOM-OPERATIONS
       ;; input operations:
@@ -59,6 +60,7 @@ MIT in each case. |#
 (define port? (record-predicate port-rtd))
 (define port/state (record-accessor port-rtd 'STATE))
 (define set-port/state! (record-updater port-rtd 'STATE))
+(define port/thread-mutex (record-accessor port-rtd 'THREAD-MUTEX))
 (define port/operation-names (record-accessor port-rtd 'OPERATION-NAMES))
 (define set-port/operation-names! (record-updater port-rtd 'OPERATION-NAMES))
 (define port/custom-operations (record-accessor port-rtd 'CUSTOM-OPERATIONS))
@@ -214,11 +216,13 @@ MIT in each case. |#
 
 (define make-port
   (let ((constructor
-	 (record-constructor port-rtd
-			     '(STATE OPERATION-NAMES CUSTOM-OPERATIONS))))
+	 (record-constructor
+	  port-rtd
+	  '(STATE THREAD-MUTEX OPERATION-NAMES CUSTOM-OPERATIONS))))
     (lambda (operations state procedure-name input? output?)
       (let ((port
 	     (constructor state
+			  (make-thread-mutex)
 			  '()
 			  (parse-operations-list operations procedure-name))))
 	(install-input-operations! port input?)

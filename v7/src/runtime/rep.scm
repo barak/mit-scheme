@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.23 1992/02/08 15:08:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.24 1992/02/25 22:56:08 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -140,7 +140,8 @@ MIT in each case. |#
 			   ((cmdl/driver cmdl) cmdl)))))))))))))
     (if operation
 	(operation cmdl thunk)
-	(thunk))))
+	(with-thread-mutex-locked (port/thread-mutex (cmdl/port cmdl))
+	  thunk))))
 
 (define *nearest-cmdl*)
 

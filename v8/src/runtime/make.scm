@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.33 1992/02/08 15:08:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.34 1992/02/25 22:55:38 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -323,6 +323,8 @@ MIT in each case. |#
    ;; Condition System
    (RUNTIME ERROR-HANDLER)
    (RUNTIME MICROCODE-ERRORS)
+   ;; Threads
+   (RUNTIME THREAD)
    ;; I/O
    (RUNTIME GENERIC-I/O-PORT)
    (RUNTIME FILE-I/O-PORT)
@@ -348,7 +350,6 @@ MIT in each case. |#
    (RUNTIME INTERRUPT-HANDLER)
    (RUNTIME GC-STATISTICS)
    (RUNTIME REP)
-   (RUNTIME THREAD)
    ;; Debugging
    (RUNTIME COMPILER-INFO)
    (RUNTIME ADVICE)
@@ -400,6 +401,5 @@ MIT in each case. |#
 )
 
 (package/add-child! system-global-package 'USER user-initial-environment)
-(set-keyboard-interrupt-thread! (current-thread))
 (start-thread-timer)
 (initial-top-level-repl)

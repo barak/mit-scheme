@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.133 1992/02/08 15:08:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.134 1992/02/25 22:56:37 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -543,6 +543,7 @@ MIT in each case. |#
 	  condition-type:datum-out-of-range
 	  condition-type:derived-file-error
 	  condition-type:derived-port-error
+	  condition-type:derived-thread-error
 	  condition-type:divide-by-zero
 	  condition-type:error
 	  condition-type:file-error
@@ -556,6 +557,7 @@ MIT in each case. |#
 	  condition-type:simple-condition
 	  condition-type:simple-error
 	  condition-type:simple-warning
+	  condition-type:thread-error
 	  condition-type:unassigned-variable
 	  condition-type:unbound-variable
 	  condition-type:variable-error
@@ -581,6 +583,7 @@ MIT in each case. |#
 	  error:datum-out-of-range
 	  error:derived-file
 	  error:derived-port
+	  error:derived-thread
 	  error:divide-by-zero
 	  error:file-operation
 	  error:no-such-restart
@@ -918,6 +921,7 @@ MIT in each case. |#
 	  port/set-output-blocking-mode
 	  port/set-output-terminal-mode
 	  port/state
+	  port/thread-mutex
 	  port/with-input-blocking-mode
 	  port/with-input-terminal-mode
 	  port/with-output-blocking-mode
@@ -986,9 +990,6 @@ MIT in each case. |#
 (define-package (runtime interrupt-handler)
   (files "intrpt")
   (parent ())
-  (export ()
-	  keyboard-interrupt-thread
-	  set-keyboard-interrupt-thread!)
   (export (runtime emacs-interface)
 	  hook/^G-interrupt
 	  hook/clean-input/flush-typeahead)
@@ -2303,9 +2304,10 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  block-thread-events
+	  condition-type:thread-dead
 	  condition-type:thread-deadlock
 	  condition-type:thread-detached
-	  condition-type:thread-error
+	  condition-type:thread-control-error
 	  create-thread
 	  current-thread
 	  detach-thread
@@ -2322,12 +2324,14 @@ MIT in each case. |#
 	  suspend-current-thread
 	  thread-continuation
 	  thread-dead?
+	  thread-mutex-owner
 	  thread-mutex?
 	  thread-timer-interval
 	  thread?
 	  try-lock-thread-mutex
 	  unblock-thread-events
 	  unlock-thread-mutex
+	  with-thread-mutex-locked
 	  yield-current-thread)
   (export (runtime interrupt-handler)
 	  thread-timer-interrupt-handler)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/thread.scm,v 1.1 1992/02/08 15:32:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/thread.scm,v 1.2 1992/02/25 22:56:21 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -407,7 +407,17 @@ MIT in each case. |#
   (waiting-threads (make-ring) read-only true)
   (owner false))
 
+(define-integrable (guarantee-thread-mutex mutex procedure)
+  (declare (integrate-operator thread-mutex?))
+  (if (not (thread-mutex? mutex))
+      (error:wrong-type-argument mutex "thread-mutex" procedure)))
+
+(define (thread-mutex-owner mutex)
+  (guarantee-thread-mutex mutex thread-mutex-owner)
+  (thread-mutex/owner mutex))
+
 (define (lock-thread-mutex mutex)
+  (guarantee-thread-mutex mutex lock-thread-mutex)
   (without-interrupts
    (lambda ()
      (let ((thread (current-thread))
@@ -418,12 +428,15 @@ MIT in each case. |#
 	      (signal-thread-deadlock thread "lock thread mutex"
 				      lock-thread-mutex mutex))
 	     (else
-	      (ring/enqueue (thread-mutex/waiting-threads mutex) thread)
-	      (do ()
-		  ((eq? thread (thread-mutex/owner mutex)))
-		(suspend-current-thread))))))))
+	      (%lock-thread-mutex mutex thread)))))))
+
+(define-integrable (%lock-thread-mutex mutex thread)
+  (ring/enqueue (thread-mutex/waiting-threads mutex) thread)
+  (do () ((eq? thread (thread-mutex/owner mutex)))
+    (suspend-current-thread)))
 
 (define (try-lock-thread-mutex mutex)
+  (guarantee-thread-mutex mutex try-lock-thread-mutex)
   (without-interrupts
    (lambda ()
      (and (not (thread-mutex/owner mutex))
@@ -432,14 +445,39 @@ MIT in each case. |#
 	    true)))))
 
 (define (unlock-thread-mutex mutex)
+  (guarantee-thread-mutex mutex unlock-thread-mutex)
   (without-interrupts
    (lambda ()
      (if (not (eq? (thread-mutex/owner mutex) (current-thread)))
 	 (error "Don't own mutex:" mutex))
-     (let ((thread (ring/dequeue (thread-mutex/waiting-threads mutex) false)))
-       (set-thread-mutex/owner! mutex thread)
-       (if thread
-	   (signal-thread-event thread false))))))
+     (%unlock-thread-mutex mutex))))
+
+(define-integrable (%unlock-thread-mutex mutex)
+  (let ((thread (ring/dequeue (thread-mutex/waiting-threads mutex) false)))
+    (set-thread-mutex/owner! mutex thread)
+    (if thread
+	(signal-thread-event thread false))))
+
+(define (with-thread-mutex-locked mutex thunk)
+  (guarantee-thread-mutex mutex lock-thread-mutex)
+  (let ((thread (current-thread))
+	(grabbed-lock?))
+    (dynamic-wind
+     (lambda ()
+       (let ((owner (thread-mutex/owner mutex)))
+	 (if (eq? owner thread)
+	     (begin
+	       (set! grabbed-lock? false)
+	       unspecific)
+	     (begin
+	       (set! grabbed-lock? true)
+	       (if owner
+		   (%lock-thread-mutex mutex thread)
+		   (set-thread-mutex/owner! mutex thread))))))
+     thunk
+     (lambda ()
+       (if (and grabbed-lock? (eq? (thread-mutex/owner mutex) thread))
+	   (%unlock-thread-mutex mutex))))))
 
 ;;;; Circular Rings
 
@@ -479,8 +517,8 @@ MIT in each case. |#
 
 ;;;; Error Conditions
 
-(define condition-type:thread-error)
-(define thread-error/thread)
+(define condition-type:thread-control-error)
+(define thread-control-error/thread)
 (define condition-type:thread-deadlock)
 (define signal-thread-deadlock)
 (define thread-deadlock/description)
@@ -493,18 +531,19 @@ MIT in each case. |#
 (define thread-dead/verb)
 
 (define (initialize-error-conditions!)
-  (set! condition-type:thread-error
-	(make-condition-type 'THREAD-ERROR condition-type:control-error
+  (set! condition-type:thread-control-error
+	(make-condition-type 'THREAD-CONTROL-ERROR condition-type:control-error
 	    '(THREAD)
 	  (lambda (condition port)
 	    (write-string "Anonymous error associated with " port)
-	    (write (thread-error/thread condition) port)
+	    (write (thread-control-error/thread condition) port)
 	    (write-string "." port))))
-  (set! thread-error/thread
-	(condition-accessor condition-type:thread-error 'THREAD))
+  (set! thread-control-error/thread
+	(condition-accessor condition-type:thread-control-error 'THREAD))
 
   (set! condition-type:thread-deadlock
-	(make-condition-type 'THREAD-DEADLOCK condition-type:thread-error
+	(make-condition-type 'THREAD-DEADLOCK
+	    condition-type:thread-control-error
 	    '(DESCRIPTION OPERATOR OPERAND)
 	  (lambda (condition port)
 	    (write-string "Deadlock detected while trying to " port)
@@ -524,10 +563,12 @@ MIT in each case. |#
 	(condition-accessor condition-type:thread-deadlock 'OPERAND))
 
   (set! condition-type:thread-detached
-	(make-condition-type 'THREAD-DETACHED condition-type:thread-error '()
+	(make-condition-type 'THREAD-DETACHED
+	    condition-type:thread-control-error
+	    '()
 	  (lambda (condition port)
 	    (write-string "Attempt to join detached thread: " port)
-	    (write-string (thread-error/thread condition) port)
+	    (write-string (thread-control-error/thread condition) port)
 	    (write-string "." port))))
   (set! signal-thread-detached
 	(condition-signaller condition-type:thread-detached
@@ -535,13 +576,13 @@ MIT in each case. |#
 			     standard-error-handler))
 
   (set! condition-type:thread-dead
-	(make-condition-type 'THREAD-DEAD condition-type:thread-error
+	(make-condition-type 'THREAD-DEAD condition-type:thread-control-error
 	    '(VERB OPERATOR OPERANDS)
 	  (lambda (condition port)
 	    (write-string "Unable to " port)
 	    (write-string (thread-dead/verb condition) port)
 	    (write-string " thread " port)
-	    (write-string (thread-error/thread condition) port)
+	    (write-string (thread-control-error/thread condition) port)
 	    (write-string "because it is dead." port))))
   (set! signal-thread-dead
 	(let ((signaller

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.29 1991/11/26 07:05:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.30 1992/02/25 22:54:36 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -510,7 +510,16 @@ MIT in each case. |#
     (if hook
 	(fluid-let ((standard-error-hook false))
 	  (hook condition))))
-  (repl/start (push-repl 'INHERIT 'INHERIT condition '() "error>")))
+  (let ((thread (current-thread))
+	(owner (thread-mutex-owner (port/thread-mutex (nearest-cmdl/port)))))
+    (if (and owner (not (eq? thread owner)))
+	(begin
+	  (signal-thread-event owner
+	    (lambda ()
+	      (unblock-thread-events)
+	      (error:derived-thread thread condition)))
+	  (suspend-current-thread))
+	(repl/start (push-repl 'INHERIT 'INHERIT condition '() "error>")))))
 
 (define (standard-warning-handler condition)
   (let ((hook standard-warning-hook))
@@ -600,6 +609,7 @@ MIT in each case. |#
 (define condition-type:datum-out-of-range)
 (define condition-type:derived-file-error)
 (define condition-type:derived-port-error)
+(define condition-type:derived-thread-error)
 (define condition-type:divide-by-zero)
 (define condition-type:error)
 (define condition-type:file-error)
@@ -613,6 +623,7 @@ MIT in each case. |#
 (define condition-type:simple-condition)
 (define condition-type:simple-error)
 (define condition-type:simple-warning)
+(define condition-type:thread-error)
 (define condition-type:unassigned-variable)
 (define condition-type:unbound-variable)
 (define condition-type:variable-error)
@@ -631,6 +642,7 @@ MIT in each case. |#
 (define error:no-such-restart)
 (define error:derived-file)
 (define error:derived-port)
+(define error:derived-thread)
 (define error:wrong-number-of-arguments)
 (define error:wrong-type-argument)
 (define error:wrong-type-datum)
@@ -820,7 +832,8 @@ MIT in each case. |#
 	       (write-string "." port))))))
     (set! condition-type:port-error (anonymous-error 'PORT-ERROR 'PORT))
     (set! condition-type:file-error (anonymous-error 'FILE-ERROR 'FILENAME))
-    (set! condition-type:cell-error (anonymous-error 'CELL-ERROR 'LOCATION)))
+    (set! condition-type:cell-error (anonymous-error 'CELL-ERROR 'LOCATION))
+    (set! condition-type:thread-error (anonymous-error 'THREAD-ERROR 'THREAD)))
 
   (set! condition-type:derived-port-error
 	(make-condition-type 'DERIVED-PORT-ERROR condition-type:port-error
@@ -828,7 +841,7 @@ MIT in each case. |#
 	  (lambda (condition port)
 	    (write-string "The port " port)
 	    (write (access-condition condition 'PORT) port)
-	    (write-string " received an error:" port)
+	    (write-string " signalled an error:" port)
 	    (newline port)
 	    (write-condition-report (access-condition condition 'CONDITION)
 				    port))))
@@ -850,7 +863,7 @@ MIT in each case. |#
 	  (lambda (condition port)
 	    (write-string "The file " port)
 	    (write (access-condition condition 'FILENAME) port)
-	    (write-string " received an error:" port)
+	    (write-string " signalled an error:" port)
 	    (newline port)
 	    (write-condition-report (access-condition condition 'CONDITION)
 				    port))))
@@ -864,6 +877,28 @@ MIT in each case. |#
 	    (error (make-condition (%condition/continuation condition)
 				   (%condition/restarts condition)
 				   filename
+				   condition)))))
+
+  (set! condition-type:derived-thread-error
+	(make-condition-type 'DERIVED-THREAD-ERROR condition-type:thread-error
+	    '(CONDITION)
+	  (lambda (condition port)
+	    (write-string "The thread " port)
+	    (write (access-condition condition 'THREAD) port)
+	    (write-string " signalled an error:" port)
+	    (newline port)
+	    (write-condition-report (access-condition condition 'CONDITION)
+				    port))))
+
+  (set! error:derived-thread
+	(let ((make-condition
+	       (condition-constructor condition-type:derived-thread-error
+				      '(THREAD CONDITION))))
+	  (lambda (thread condition)
+	    (guarantee-condition condition 'ERROR:DERIVED-THREAD)
+	    (error (make-condition (%condition/continuation condition)
+				   (%condition/restarts condition)
+				   thread
 				   condition)))))
 
   (set! condition-type:file-operation-error

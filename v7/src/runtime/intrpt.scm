@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.9 1992/02/08 15:08:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.10 1992/02/25 22:55:20 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -42,7 +42,6 @@ MIT in each case. |#
 	(fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))
   (set! index:termination-vector
 	(fixed-objects-vector-slot 'MICROCODE-TERMINATIONS-PROCEDURES))
-  (set! keyboard-thread false)
   (set! hook/clean-input/flush-typeahead false)
   (set! hook/clean-input/keep-typeahead false)
   (set! hook/^B-interrupt false)
@@ -117,24 +116,12 @@ MIT in each case. |#
 ;;;; Keyboard Interrupts
 
 (define keyboard-interrupt-vector)
-(define keyboard-thread)
 (define hook/clean-input/flush-typeahead)
 (define hook/clean-input/keep-typeahead)
 (define hook/^B-interrupt)
 (define hook/^G-interrupt)
 (define hook/^U-interrupt)
 (define hook/^X-interrupt)
-
-(define (keyboard-interrupt-thread)
-  keyboard-thread)
-
-(define (set-keyboard-interrupt-thread! thread)
-  (if (not (or (not thread) (thread? thread)))
-      (error:wrong-type-argument thread
-				 "thread or #f"
-				 set-keyboard-interrupt-thread!))
-  (set! keyboard-thread thread)
-  unspecific)
 
 (define (external-interrupt-handler interrupt-code interrupt-mask)
   interrupt-code interrupt-mask
@@ -148,34 +135,37 @@ MIT in each case. |#
 (define (^B-interrupt-handler char)
   (if hook/^B-interrupt
       (hook/^B-interrupt))
-  (if (and (or (not hook/clean-input/keep-typeahead)
-	       (hook/clean-input/keep-typeahead char))
-	   keyboard-thread)
-      (signal-thread-event keyboard-thread cmdl-interrupt/breakpoint)))
+  (signal-interrupt hook/clean-input/keep-typeahead
+		    char
+		    cmdl-interrupt/breakpoint))
 
 (define (^G-interrupt-handler char)
   (if hook/^G-interrupt
       (hook/^G-interrupt))
-  (if (and (or (not hook/clean-input/flush-typeahead)
-	       (hook/clean-input/flush-typeahead char))
-	   keyboard-thread)
-      (signal-thread-event keyboard-thread cmdl-interrupt/abort-top-level)))
+  (signal-interrupt hook/clean-input/flush-typeahead
+		    char
+		    cmdl-interrupt/abort-top-level))
 
 (define (^U-interrupt-handler char)
   (if hook/^U-interrupt
       (hook/^U-interrupt))
-  (if (and (or (not hook/clean-input/flush-typeahead)
-	       (hook/clean-input/flush-typeahead char))
-	   keyboard-thread)
-      (signal-thread-event keyboard-thread cmdl-interrupt/abort-previous)))
+  (signal-interrupt hook/clean-input/flush-typeahead
+		    char
+		    cmdl-interrupt/abort-previous))
 
 (define (^X-interrupt-handler char)
   (if hook/^X-interrupt
       (hook/^X-interrupt))
-  (if (and (or (not hook/clean-input/flush-typeahead)
-	       (hook/clean-input/flush-typeahead char))
-	   keyboard-thread)
-      (signal-thread-event keyboard-thread cmdl-interrupt/abort-nearest)))
+  (signal-interrupt hook/clean-input/flush-typeahead
+		    char
+		    cmdl-interrupt/abort-nearest))
+
+(define (signal-interrupt hook/clean-input char interrupt)
+  (if (or (not hook/clean-input)
+	  (hook/clean-input char))
+      (let ((thread (thread-mutex-owner (port/thread-mutex console-i/o-port))))
+	(if thread
+	    (signal-thread-event thread interrupt)))))
 
 (define (install)
   (without-interrupts
