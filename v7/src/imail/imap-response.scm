@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.32 2000/06/01 18:44:35 cph Exp $
+;;; $Id: imap-response.scm,v 1.33 2000/06/01 20:07:07 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -199,8 +199,9 @@
 
 (define (parse-section string)
   (let ((pv (parse-string imap:parse:section string)))
-    (and pv
-	 (parser-token pv 'SECTION))))
+    (if (not pv)
+	(error:bad-range-argument string 'PARSE-SECTION))
+    (parser-token pv 'SECTION)))
 
 (define (parse-date-time string)
   (decoded-time->universal-time
