@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.27 1992/09/18 02:05:26 jinx Exp $
+###	$Id: i386.m4,v 1.28 1992/09/18 05:52:35 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -175,6 +175,10 @@ ifdef(`DOS',
       `define(declare_alignment,`	.align $1')')
 
 ifdef(`DOS',
+      `define(allocate_word,`_$1 dw 0')',
+      `define(allocate_word,`	.comm _$1,2')')
+
+ifdef(`DOS',
       `define(allocate_longword,`_$1 dd 0')',
       `define(allocate_longword,`	.comm _$1,4')')
 
@@ -293,9 +297,9 @@ use_external_data(Ext_Stack_Pointer)
 use_external_data(utility_table)
 
 IFDOS(`define_data(C_Stack_Segment_Selector)
-allocate_longword(C_Stack_Segment_Selector)
+allocate_word(C_Stack_Segment_Selector)
 define_data(Scheme_Stack_Segment_Selector)
-allocate_longword(Scheme_Stack_Segment_Selector)')
+allocate_word(Scheme_Stack_Segment_Selector)')
 
 define_data(C_Stack_Pointer)
 allocate_longword(C_Stack_Pointer)
@@ -322,11 +326,12 @@ define_c_label(i386_interface_initialize)
 
 							# Initialize stack
 							# selectors
-IFDOS(`	OP(xor,l)	TW(REG(eax),REG(eax))
-	OP(mov,w)	TW(REG(ss),REG(ax))
-	OP(mov,l)	TW(REG(eax),EDR(C_Stack_Segment_Selector))
-	OP(mov,w)	TW(REG(ds),REG(ax))
-	OP(mov,l)	TW(REG(eax),EDR(Scheme_Stack_Segment_Selector))')
+IFDOS(`	OP(mov,w)	TW(REG(ss),EDR(C_Stack_Segment_Selector))
+	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ax))
+	OP(cmp,w)	TW(IMM(0),REG(ax))
+	jne		skip_assignment
+	OP(mov,w)	TW(REG(ds),EDR(Scheme_Stack_Segment_Selector))
+skip_assignment:')
 
 	OP(xor,l)	TW(REG(eax),REG(eax))		# No 387 available
 
