@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wind.scm,v 14.2 1988/06/22 21:24:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wind.scm,v 14.3 1989/03/06 19:59:05 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -91,8 +91,23 @@ MIT in each case. |#
   ((ucode-primitive current-dynamic-state)
    (if (default-object? state-space) system-state-space state-space)))
 
-;;; NOTE: the "before" thunk is executed IN THE NEW STATE, the "after"
-;;; thunk is executed IN THE OLD STATE.  Your programs should not
-;;; depend on this if it can be avoided.
 (define (dynamic-wind before during after)
+  ;; NOTE: the "before" thunk is executed IN THE NEW STATE, the
+  ;; "after" thunk is executed IN THE OLD STATE.  Your programs should
+  ;; not depend on this if it can be avoided.
   (execute-at-new-state-point system-state-space before during after))
+
+(define (object-component-binder get-component set-component!)
+  (lambda (object new-value thunk)
+    (let ((old-value))
+      (dynamic-wind (lambda ()
+		      (set! old-value (get-component object))
+		      (set-component! object new-value)
+		      (set! new-value false)
+		      unspecific)
+		    thunk
+		    (lambda ()
+		      (set! new-value (get-component object))
+		      (set-component! object old-value)
+		      (set! old-value false)
+		      unspecific)))))
