@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mit-syntax.scm,v 14.1 2002/02/03 03:38:56 cph Exp $
+;;; $Id: mit-syntax.scm,v 14.2 2002/02/13 01:04:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -473,7 +473,7 @@
 						 ,(loop (cdr operands))))
 		     (car operands))))
 	     `#F))))))
-
+
 (define-er-macro-transformer 'CASE system-global-environment
   (lambda (form rename compare)
     (capture-expansion-history
@@ -491,8 +491,7 @@
 			      (null? rest))
 			 `(,(rename 'BEGIN) ,@(cdr clause)))
 			((list? (car clause))
-			 `(,(rename 'IF) (,(rename 'MEMV) ,(rename 'TEMP)
-							  ',(car clause))
+			 `(,(rename 'IF) ,(process-predicate (car clause))
 					 (,(rename 'BEGIN) ,@(cdr clause))
 					 ,(process-rest rest)))
 			(else
@@ -501,7 +500,41 @@
 		(lambda (rest)
 		  (if (pair? rest)
 		      (process-clause (car rest) (cdr rest))
-		      (unspecific-expression)))))
+		      (unspecific-expression))))
+	       (process-predicate
+		(lambda (items)
+		  ;; Optimize predicate for speed in compiled code.
+		  (cond ((null? (cdr items))
+			 (single-test (car items)))
+			((null? (cddr items))
+			 `(,(rename 'OR) ,(single-test (car items))
+					 ,(single-test (cadr items))))
+			((null? (cdddr items))
+			 `(,(rename 'OR) ,(single-test (car items))
+					 ,(single-test (cadr items))
+					 ,(single-test (caddr items))))
+			((null? (cddddr items))
+			 `(,(rename 'OR) ,(single-test (car items))
+					 ,(single-test (cadr items))
+					 ,(single-test (caddr items))
+					 ,(single-test (cadddr items))))
+			(else
+			 `(,(rename
+			     (if (for-all? items eq-testable?) 'MEMQ 'MEMV))
+			   ,(rename 'TEMP)
+			   ',items)))))
+	       (single-test
+		(lambda (item)
+		  `(,(rename (if (eq-testable? item) 'EQ? 'EQV?))
+		    ,(rename 'TEMP)
+		    ',item)))
+	       (eq-testable?
+		(lambda (item)
+		  (or (symbol? item)
+		      (boolean? item)
+		      ;; remainder are implementation dependent:
+		      (char? item)	
+		      (fix:fixnum? item)))))
 	    `(,(rename 'LET) ((,(rename 'TEMP) ,(cadr form)))
 			     ,(process-clause (caddr form)
 					      (cdddr form))))))))))
@@ -908,8 +941,13 @@
 				     (cdr varset)
 				     (selector/add-cdr selector))))
 		    (else varset)))))))
+  (define-declaration 'CONSTANT varset)
+  (define-declaration 'IGNORE-ASSIGNMENT-TRAPS varset)
   (define-declaration 'IGNORE-REFERENCE-TRAPS varset)
-  (define-declaration 'IGNORE-ASSIGNMENT-TRAPS varset))
+  (define-declaration 'PURE-FUNCTION varset)
+  (define-declaration 'SIDE-EFFECT-FREE varset)
+  (define-declaration 'USUAL-DEFINITION varset)
+  (define-declaration 'UUO-LINK varset))
 
 (define-declaration 'REPLACE-OPERATOR
   (lambda (declaration environment history selector)
