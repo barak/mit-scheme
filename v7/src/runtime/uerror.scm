@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.26 1991/05/13 22:44:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.27 1991/06/24 22:50:33 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -48,7 +48,6 @@ MIT in each case. |#
 (define condition-type:hardware-trap)
 (define condition-type:impurify-object-too-large)
 (define condition-type:inapplicable-object)
-(define condition-type:microcode-asynchronous)
 (define condition-type:out-of-file-handles)
 (define condition-type:primitive-io-error)
 (define condition-type:primitive-procedure-error)
@@ -878,14 +877,8 @@ MIT in each case. |#
 
 ;;;; Asynchronous Microcode Errors
 
-(set! condition-type:microcode-asynchronous
-  (make-condition-type 'MICROCODE-ASYNCHRONOUS condition-type:serious-condition
-      '()
-    false))
-
 (set! condition-type:hardware-trap
-  (make-condition-type 'HARDWARE-TRAP condition-type:microcode-asynchronous
-      '(NAME CODE)
+  (make-condition-type 'HARDWARE-TRAP condition-type:error '(NAME CODE)
     (lambda (condition port)
       (write-string "Hardware trap " port)
       (display (access-condition condition 'NAME) port)
@@ -896,8 +889,7 @@ MIT in each case. |#
 	      (write code port)))))))
 
 (set! condition-type:user-microcode-reset
-  (make-condition-type 'USER-MICROCODE-RESET
-      condition-type:microcode-asynchronous
+  (make-condition-type 'USER-MICROCODE-RESET condition-type:serious-condition
       '()
     "User microcode reset"))
 
