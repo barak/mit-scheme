@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.12 1989/04/15 00:53:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.13 1989/04/23 23:28:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -123,7 +123,8 @@
 	     (write-string "No")
 	     false)
 	    (else
-	     (editor-beep)
+	     (if (not (char=? char #\newline))
+		 (beep))
 	     (loop)))))
   (newline)
   (for-each write-string strings)
