@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.62 2003/03/10 20:53:34 cph Exp $
+$Id: error.scm,v 14.63 2003/10/10 17:35:01 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
@@ -498,12 +498,6 @@ USA.
   (fluid-let ((dynamic-handler-frames
 	       (cons (cons types handler) dynamic-handler-frames)))
     (thunk)))
-
-(define (ignore-errors thunk)
-  (call-with-current-continuation
-   (lambda (continuation)
-     (bind-condition-handler (list condition-type:error) continuation
-       thunk))))
 
 (define (break-on-signals types)
   (guarantee-condition-types types 'BREAK-ON-SIGNALS)
@@ -1164,6 +1158,24 @@ USA.
   unspecific)
 
 ;;;; Utilities
+
+(define (ignore-errors thunk #!optional map-error)
+  (let ((handler
+	 (cond ((or (default-object? map-error)
+		    (not map-error))
+		k)
+	       ((and (procedure? map-error)
+		     (procedure-arity-valid? map-error 1))
+		(lambda (condition)
+		  (k (map-error condition))))
+	       (else
+		(error:wrong-type-argument map-error
+					   "map-error procedure"
+					   'IGNORE-ERRORS)))))
+    (call-with-current-continuation
+     (lambda (k)
+       (bind-condition-handler (list condition-type:error) handler
+	 thunk)))))
 
 (define (format-error-message message irritants port)
   (fluid-let ((*unparser-list-depth-limit* 2)
