@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfile.c,v 1.1 1990/06/20 19:37:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfile.c,v 1.2 1990/11/08 11:07:33 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -42,7 +42,8 @@ static enum channel_type
 DEFUN (fd_channel_type, (fd), int fd)
 {
   struct stat stat_buf;
-  STD_VOID_SYSTEM_CALL ("fstat", (UX_fstat (fd, (&stat_buf))));
+  if ((UX_fstat (fd, (&stat_buf))) < 0)
+    return (channel_type_unknown);
   {
     mode_t type = ((stat_buf . st_mode) & S_IFMT);
     return
@@ -51,6 +52,7 @@ DEFUN (fd_channel_type, (fd), int fd)
 #ifdef S_IFIFO
        : (type == S_IFIFO) ? channel_type_fifo
 #endif
+       : (type == S_IFDIR) ? channel_type_directory
        : channel_type_unknown);
   }
 }
@@ -100,6 +102,17 @@ DEFUN (OS_open_append_file, (filename), CONST char * filename)
 
 #endif
 
+static Tchannel
+DEFUN (make_load_channel, (fd), int fd)
+{
+  enum channel_type type = (fd_channel_type (fd));
+  if ((type == channel_type_terminal)
+      || (type == channel_type_directory)
+      || (type == channel_type_unknown))
+    return (NO_CHANNEL);
+  MAKE_CHANNEL (fd, type, return);
+}
+
 Tchannel
 DEFUN (OS_open_load_file, (filename), CONST char * filename)
 {
@@ -107,7 +120,7 @@ DEFUN (OS_open_load_file, (filename), CONST char * filename)
     {
       int fd = (UX_open (filename, O_RDONLY, MODE_REG));
       if (fd >= 0)
-	MAKE_CHANNEL (fd, channel_type_file, return);
+	return (make_load_channel (fd));
       if (errno != EINTR)
 	return (NO_CHANNEL);
     }
@@ -121,7 +134,7 @@ DEFUN (OS_open_dump_file, (filename), CONST char * filename)
     {
       int fd = (UX_open (filename, (O_WRONLY | O_CREAT | O_TRUNC), MODE_REG));
       if (fd >= 0)
-	MAKE_CHANNEL (fd, channel_type_file, return);
+	return (make_load_channel (fd));
       if (errno != EINTR)
 	return (NO_CHANNEL);
     }
