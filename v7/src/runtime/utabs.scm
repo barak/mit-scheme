@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.46 1987/04/29 15:41:59 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.47 1987/11/17 20:12:41 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -63,8 +63,6 @@
 (define microcode-termination)
 (define microcode-termination-name)
 
-(define number-of-internal-primitive-procedures)
-(define number-of-external-primitive-procedures)
 (define make-primitive-procedure)
 (define primitive-procedure?)
 (define primitive-procedure-name)
@@ -84,16 +82,16 @@
 (define :release)
 
 (let-syntax ((define-primitive
-	       (macro (name)
-		 `(DEFINE ,name ,(make-primitive-procedure name)))))
-  (define-primitive binary-fasload)
-  (define-primitive microcode-identify)
-  (define-primitive microcode-tables-filename)
-  (define-primitive map-machine-address-to-code)
-  (define-primitive map-code-to-machine-address)
-  (define-primitive get-external-counts)
-  (define-primitive get-external-number)
-  (define-primitive get-external-name))
+	       (macro (name arity)
+		 `(DEFINE ,name ,(make-primitive-procedure name arity)))))
+  (define-primitive binary-fasload 1)
+  (define-primitive microcode-identify 0)
+  (define-primitive microcode-tables-filename 0)
+  (define-primitive map-machine-address-to-code 2)
+  (define-primitive map-code-to-machine-address 2)
+  (define-primitive get-primitive-address 2)
+  (define-primitive get-primitive-name 1)
+  (define-primitive get-primitive-counts 0))
 
 ;;;; Fixed Objects Vector
 
@@ -139,7 +137,6 @@
     (EXTENDED-PROCEDURE . PROCEDURE)
     (COMPILED-PROCEDURE . PROCEDURE)
     (PRIMITIVE . PRIMITIVE-PROCEDURE)
-    (PRIMITIVE-EXTERNAL . PRIMITIVE-PROCEDURE)
     (LEXPR . LAMBDA)
     (EXTENDED-LAMBDA . LAMBDA)
     (COMBINATION-1 . COMBINATION)
@@ -230,45 +227,56 @@
 
 ;;;; Microcode Primitives
 
-(define primitives-slot)
 (define primitive-type-code)
-(define external-type-code)
+
+(define renamed-user-primitives
+  '((NOT . NULL?)
+    (FALSE? . NULL?)
+    (FIRST . CAR)
+    (FIRST-TAIL . CDR)
+    (SET-FIRST! . SET-CAR!)
+    (SET-FIRST-TAIL! . SET-CDR!)
+    (VECTOR-SIZE . VECTOR-LENGTH)
+    (STRING-SIZE . VECTOR-8B-SIZE)
+    (&OBJECT-REF . SYSTEM-MEMORY-REF)
+    (&OBJECT-SET! . SYSTEM-MEMORY-SET!)))
 
 (set! primitive-procedure?
 (named-lambda (primitive-procedure? object)
-  (or (primitive-type? primitive-type-code object)
-      (primitive-type? external-type-code object))))
+  (primitive-type? primitive-type-code object)))
 
 (set! make-primitive-procedure
-(named-lambda (make-primitive-procedure name #!optional force?)
-  (let ((code (name->code primitives-slot 'PRIMITIVE name)))
-    (if code
-	(map-code-to-machine-address primitive-type-code code)
-	(or (get-external-number name (if (unassigned? force?) #f force?))
-	    (error "MAKE-PRIMITIVE-PROCEDURE: Unknown name" name))))))
+(named-lambda (make-primitive-procedure name #!optional arity)
+  (if (unassigned? arity)
+      (set! arity false))
+  (let* ((name (let ((place (assq name renamed-user-primitives)))
+		 (if (not (null? place))
+		     (cdr place)
+		     name)))
+	 (result (get-primitive-address name arity)))
+    (cond ((or (primitive-type? primitive-type-code result)
+	       (eq? arity true))
+	   result)
+	  ((false? result)
+	   (error "MAKE-PRIMITIVE-PROCEDURE: Unknown name" name))
+	  (else
+	   (error "MAKE-PRIMITIVE-PROCEDURE: Inconsistent arity"
+		  `(,name new: ,arity old: ,result)))))))
 
 (set! implemented-primitive-procedure?
 (named-lambda (implemented-primitive-procedure? object)
-  (cond ((primitive-type? primitive-type-code object) true)
-	((primitive-type? external-type-code object)
-	 (get-external-number (external-code->name (primitive-datum object))
-			      false))
-	(else
-	 (error "Not a primitive procedure" implemented-primitive-procedure?
-		object)))))
+  (if (primitive-type? primitive-type-code object)
+      (get-primitive-address (get-primitive-name (primitive-datum object))
+			     false)
+      (error "Not a primitive procedure" implemented-primitive-procedure?
+	     object))))
 
 (set! primitive-procedure-name
 (named-lambda (primitive-procedure-name primitive-procedure)
-  (cond ((primitive-type? primitive-type-code primitive-procedure)
-	 (code->name primitives-slot
-		     'PRIMITIVE
-		     (map-machine-address-to-code primitive-type-code
-						  primitive-procedure)))
-	((primitive-type? external-type-code primitive-procedure)
-	 (external-code->name (primitive-datum primitive-procedure)))
-	(else
-	 (error "Not a primitive procedure" primitive-procedure-name
-		primitive-procedure)))))
+  (if (primitive-type? primitive-type-code primitive-procedure)
+      (get-primitive-name (primitive-datum primitive-procedure))
+      (error "Not a primitive procedure" primitive-procedure-name
+	     primitive-procedure))))
 
 (define (name->code slot type name)
   (or (and (pair? name)
@@ -285,15 +293,6 @@
   (or (and (not (negative? code))
 	   (microcode-table-ref slot code))
       (list type code)))
-
-(define (external-code->name code)
-  (let ((current-counts (get-external-counts)))
-    (cond ((< code (car current-counts)) (get-external-name code))
-	  ((< code (+ (car current-counts) (cdr current-counts)))
-	   (get-external-name code))	;Maybe should warn about undefined
-	  (else
-	   (error "Not an external procedure name" external-code->name
-		  code)))))
 
 ;;;; Initialization
 
@@ -321,15 +320,7 @@
   (set! number-of-microcode-errors
 	(vector-length (vector-ref fixed-objects errors-slot)))
 
-  (set! primitives-slot
-	(fixed-objects-vector-slot 'MICROCODE-PRIMITIVES-VECTOR))
   (set! primitive-type-code (microcode-type 'PRIMITIVE))
-  (set! number-of-internal-primitive-procedures
-	(vector-length (vector-ref fixed-objects primitives-slot)))
-  (set! number-of-external-primitive-procedures
-	(car (get-external-counts)))
-
-  (set! external-type-code (microcode-type 'PRIMITIVE-EXTERNAL))
 
   (set! termination-vector-slot
 	(fixed-objects-vector-slot 'MICROCODE-TERMINATIONS-VECTOR))
@@ -344,7 +335,7 @@
 
   ;; Predicate to test if object is a future without touching it.
   (set! future? 
-	(let ((primitive (make-primitive-procedure 'FUTURE? true)))
+	(let ((primitive (make-primitive-procedure 'FUTURE? 1)))
 	  (if (implemented-primitive-procedure? primitive)
 	      primitive
 	      (lambda (object) false)))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.52 1987/08/01 09:17:54 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.53 1987/11/17 20:11:54 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -319,7 +319,6 @@
      (*unparse-object (primitive-procedure-name proc)))))
 
 (define-type 'PRIMITIVE unparse-primitive-procedure)
-(define-type 'PRIMITIVE-EXTERNAL unparse-primitive-procedure)
 
 (define (unparse-compiled-procedure procedure)
   (unparse-with-brackets

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.47 1987/10/09 14:41:00 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.48 1987/11/17 20:09:38 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -189,7 +189,7 @@
 	normal-check-and-clean-up-input-channel))
 
 (define under-emacs?
-  (make-primitive-procedure 'UNDER-EMACS?))
+  (make-primitive-procedure 'UNDER-EMACS? 0))
 
 (define (install!)
   ((if (under-emacs?)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.44 1987/05/27 14:58:22 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.45 1987/11/17 20:10:00 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -46,7 +46,7 @@
 
 (define timer-interrupt
   (let ((setup-timer-interrupt
-	 (make-primitive-procedure 'SETUP-TIMER-INTERRUPT true)))
+	 (make-primitive-procedure 'SETUP-TIMER-INTERRUPT 2)))
     (named-lambda (timer-interrupt)
       (setup-timer-interrupt '() '())
       (error "Unhandled Timer interrupt received"))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.48 1987/06/11 21:30:21 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.49 1987/11/17 20:09:48 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -43,7 +43,7 @@
 	 (integrate-primitive-procedures set-fixed-objects-vector!))
 
 (define error-procedure
-  (make-primitive-procedure 'ERROR-PROCEDURE))
+  (make-primitive-procedure 'ERROR-PROCEDURE 3))
 
 (define (error-from-compiled-code message . irritant-info)
   (error-procedure message
@@ -340,12 +340,12 @@ using the current read-eval-print environment."))
 (define-unbound-variable-error assignment? assignment-name)
 (define-unbound-variable-error combination-operator? combination-operator-name)
 (define-unbound-variable-error
-  (list (make-primitive-procedure 'LEXICAL-REFERENCE)
-	(make-primitive-procedure 'LEXICAL-ASSIGNMENT))
+  (list (make-primitive-procedure 'LEXICAL-REFERENCE 2)
+	(make-primitive-procedure 'LEXICAL-ASSIGNMENT 3))
   combination-second-operand)
 
 (define-unbound-variable-error
-  (list (make-primitive-procedure 'ADD-FLUID-BINDING! true))
+  (list (make-primitive-procedure 'ADD-FLUID-BINDING! 3))
   (lambda (obj)
     (let ((object (combination-second-operand obj)))
       (cond ((variable? object) (variable-name object))
@@ -361,7 +361,7 @@ using the current read-eval-print environment."))
 (define-unassigned-variable-error combination-operator?
   combination-operator-name)
 (define-unassigned-variable-error
-  (list (make-primitive-procedure 'LEXICAL-REFERENCE))
+  (list (make-primitive-procedure 'LEXICAL-REFERENCE 2))
   combination-second-operand)
 
 (define define-bad-frame-error
@@ -421,22 +421,27 @@ using the current read-eval-print environment."))
 
 ;;;; Primitive Operator Errors
 
-(define-operation-specific-error 'FASL-FILE-TOO-BIG
-  (list (make-primitive-procedure 'BINARY-FASLOAD))
-  "Not enough room to Fasload"
-  combination-first-operand)
+(let ((fasload (make-primitive-procedure 'BINARY-FASLOAD 1)))
 
-(define-operation-specific-error 'FASL-FILE-BAD-DATA
-  (list (make-primitive-procedure 'BINARY-FASLOAD))
-  "Fasload file would not relocate correctly"
-  combination-first-operand)
+  (define-operation-specific-error 'FASL-FILE-TOO-BIG
+    (list fasload)
+    "FASLOAD: Not enough room"
+    combination-first-operand)
 
-#|
-(define-operation-specific-error 'RAN-OUT-OF-HASH-NUMBERS
-  (list (make-primitive-procedure 'OBJECT-HASH))
-  "Hashed too many objects -- get a wizard"
-  combination-first-operand)
-|#
+  (define-operation-specific-error 'FASL-FILE-BAD-DATA
+    (list fasload)
+    "FASLOAD: Bad binary file"
+    combination-first-operand)
+
+  (define-operation-specific-error 'IO-ERROR
+    (list fasload)
+    "FASLOAD: I/O error"
+    combination-first-operand)
+
+  (define-operation-specific-error 'WRONG-ARITY-PRIMITIVES
+    (list fasload)
+    "FASLOAD: Primitives in binary file have the wrong arity"
+    combination-first-operand))
 
 ;;; This will trap any external-primitive errors that
 ;;; aren't caught by special handlers.
@@ -445,12 +450,12 @@ using the current read-eval-print environment."))
   "Error during External Application")
 
 (define-operation-specific-error 'EXTERNAL-RETURN
-  (list (make-primitive-procedure 'FILE-OPEN-CHANNEL))
+  (list (make-primitive-procedure 'FILE-OPEN-CHANNEL 2))
   "Unable to open file"
   combination-first-operand)
 
 (define-operation-specific-error 'OUT-OF-FILE-HANDLES
-  (list (make-primitive-procedure 'FILE-OPEN-CHANNEL))
+  (list (make-primitive-procedure 'FILE-OPEN-CHANNEL 2))
   "Too many open files"
   combination-first-operand)
 

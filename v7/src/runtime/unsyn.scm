@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.47 1987/06/02 13:24:17 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.48 1987/11/17 20:12:08 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -405,11 +405,11 @@
 
 (define unsyntax-deep-FLUID-LET
   (unsyntax-deep-or-common-FLUID-LET
-   'FLUID-LET (make-primitive-procedure 'add-fluid-binding! true)))
+   'FLUID-LET (make-primitive-procedure 'add-fluid-binding! 3)))
 
 (define unsyntax-common-lisp-FLUID-LET
   (unsyntax-deep-or-common-FLUID-LET
-   'FLUID-BIND (make-primitive-procedure 'make-fluid-binding! true)))
+   'FLUID-BIND (make-primitive-procedure 'make-fluid-binding! 3)))
 
 (define (unsyntax-MAKE-ENVIRONMENT names values body)
   `(MAKE-ENVIRONMENT ,@(except-last-pair (unsyntax-sequence body))))
