@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.35 1995/11/01 16:51:08 adams Exp $
+@comment $Id: user.texinfo,v 1.36 1995/11/20 23:24:11 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -4208,7 +4208,7 @@ the following code, the compiler knows that the result of
 @code{fix:-}.
 
 @example
-(define (last-index v) (- (vector-length v)))
+(define (last-index v) (- (vector-length v) 1))
 @end example
 
 In the following example the compiler replaces @code{+} with
