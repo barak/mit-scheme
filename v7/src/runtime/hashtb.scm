@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.31 2004/06/13 04:14:22 cph Exp $
+$Id: hashtb.scm,v 1.32 2005/01/23 17:53:05 cph Exp $
 
 Copyright 1990,1991,1993,1994,1995,2003 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -716,7 +716,9 @@ USA.
 
 (define address-hash-tables)
 (define make-eq-hash-table)
+(define make-strong-eq-hash-table)
 (define make-eqv-hash-table)
+(define make-strong-eqv-hash-table)
 (define make-equal-hash-table)
 (define make-string-hash-table)
 (define make-symbol-hash-table)
@@ -728,9 +730,15 @@ USA.
   (set! make-eq-hash-table
 	(hash-table-constructor
 	 (make-weak-rehash-type eq-hash-mod eq?)))
+  (set! make-strong-eq-hash-table
+	(hash-table-constructor
+	 (make-strong-rehash-type eq-hash-mod eq?)))
   (set! make-eqv-hash-table
 	(hash-table-constructor
 	 (make-weak-rehash-type eqv-hash-mod eqv?)))
+  (set! make-strong-eqv-hash-table
+	(hash-table-constructor
+	 (make-strong-rehash-type eqv-hash-mod eqv?)))
   (set! make-equal-hash-table
 	(hash-table-constructor
 	 (make-strong-rehash-type equal-hash-mod equal?)))

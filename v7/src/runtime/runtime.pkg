@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.528 2005/01/16 04:17:41 cph Exp $
+$Id: runtime.pkg,v 14.529 2005/01/23 17:53:16 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1793,6 +1793,8 @@ USA.
 	  make-eqv-hash-table
 	  make-object-hash-table
 	  make-string-hash-table
+	  make-strong-eq-hash-table
+	  make-strong-eqv-hash-table
 	  make-symbol-hash-table
 	  set-hash-table/rehash-size!
 	  set-hash-table/rehash-threshold!
