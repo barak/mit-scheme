@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules1.scm,v 4.2 1988/02/11 19:25:31 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules1.scm,v 4.3 1988/02/23 19:45:15 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,6 +38,31 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ;;;; Transfers to Registers
+
+(define-rule statement
+  (ASSIGN (REGISTER 14) (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
+  (QUALIFIER (pseudo-register? source))
+  (LAP (MOVA L ,(indirect-reference! source offset) (R 14))))
+
+(define-rule statement
+  (ASSIGN (REGISTER 10) (REGISTER 14))
+  (LAP (MOV L (R 14) (R 10))))
+
+(define-rule statement
+  (ASSIGN (REGISTER 10) (OFFSET-ADDRESS (REGISTER 14) (? offset)))
+  (let ((offset1 (* 4 offset)))
+    (LAP (MOVA L (@RO ,(offset-type offset1) 14 ,offset1) (R 10)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER 10) (OBJECT->ADDRESS (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? source))
+  (if (and (dead-register? source)
+	   (register-has-alias? source 'GENERAL))
+      (let ((source (register-reference (register-alias source 'GENERAL))))
+	(LAP (BIC L ,mask-reference ,source (R 10))))
+      (let ((temp (reference-temporary-register! 'GENERAL)))
+	(LAP (MOV L ,(coerce->any source) ,temp)
+	     (BIC L ,mask-reference ,temp (R 10))))))
 
 ;;; All assignments to pseudo registers are required to delete the
 ;;; dead registers BEFORE performing the assignment.  This is because
