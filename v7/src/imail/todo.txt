@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.122 2001/05/27 05:04:24 cph Exp $
+$Id: todo.txt,v 1.123 2001/05/29 20:42:17 cph Exp $
 
 Bug fixes
 ---------
@@ -27,10 +27,6 @@ Bug fixes
   to the new URL rather than the old.  The operation must close the
   folder if it is open, then discard all the state, and finally
   reinitialize it to be a closed reference to the new URL.
-
-* In "imail-imap.scm", FOLDER-LENGTH is just an alias for
-  IMAP-FOLDER-N-MESSAGES.  Eliminate the latter procedure; it's just a
-  slot accessor.
 
 * When network connection gets wedged, Edwin locks up and can't be
   interrupted with C-g.  This is fundamentally an Edwin problem, but

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.171 2001/05/29 20:41:56 cph Exp $
+;;; $Id: imail-imap.scm,v 1.172 2001/05/29 20:46:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -774,7 +774,7 @@
 		     n
 		     (loop n/2))))))))
 
-;;; SET-IMAP-FOLDER-LENGTH! needs explanation.  There are two basic
+;;; UPDATE-IMAP-FOLDER-LENGTH! needs explanation.  There are two basic
 ;;; cases.
 
 ;;; In the first case, our folder is synchronized with the server,
@@ -800,7 +800,7 @@
 ;;; while reading.  If the read finishes, we can do the match/replace
 ;;; operation atomically.
 
-(define (set-imap-folder-length! folder count)
+(define (update-imap-folder-length! folder count)
   (with-interrupt-mask interrupt-mask/gc-ok
     (lambda (interrupt-mask)
       (if (or (imap-folder-messages-synchronized? folder)
@@ -1784,8 +1784,9 @@
 	((imap:response:exists? response)
 	 (with-imap-connection-folder connection
 	   (lambda (folder)
-	     (set-imap-folder-length! folder
-				      (imap:response:exists-count response))))
+	     (update-imap-folder-length!
+	      folder
+	      (imap:response:exists-count response))))
 	 #f)
 	((imap:response:expunge? response)
 	 (with-imap-connection-folder connection
