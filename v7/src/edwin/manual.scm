@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.9 1992/04/04 13:06:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.10 1992/08/25 19:27:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -120,7 +120,7 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 			false)
       (delete-match))
   ;; Nuke "Reformatting page" message, plus trailing blank lines.
-  (if (re-match-forward "Reformatting page.*\n\\([ \t]*\n\\)*"
+  (if (re-match-forward "Reformatting \\(page\\|entry\\).*\n\\([ \t]*\n\\)*"
 			(buffer-start buffer)
 			(buffer-end buffer)
 			false)
