@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.43 1989/05/24 05:35:21 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.44 1989/06/12 16:08:28 jinx Rel $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -582,5 +582,5 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #endif
 
 #ifndef COMPILER_CONSTANT_SIZE
-#define COMPILER_CONSTANT_SIZE	750
+#define COMPILER_CONSTANT_SIZE	800
 #endif
