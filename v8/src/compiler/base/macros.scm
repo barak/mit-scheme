@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.1 1994/11/19 02:02:36 adams Exp $
+$Id: macros.scm,v 1.2 1995/04/24 22:15:33 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -95,7 +95,7 @@ MIT in each case. |#
 	       (make-definition name (make-unassigned-reference-trap)))
 	     names)
       ,(make-combination
-	(let ((block (syntax* body)))
+	(let ((block (syntax* (append body (list unspecific)))))
 	  (if (open-block? block)
 	      (open-block-components block
 		(lambda (names* declarations body)
