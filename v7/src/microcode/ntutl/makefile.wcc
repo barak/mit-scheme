@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile.wcc,v 1.4 1996/10/02 18:50:56 cph Exp $
+###     $Id: makefile.wcc,v 1.5 1997/01/05 23:36:01 cph Exp $
 ###
-###     Copyright (c) 1992-96 Massachusetts Institute of Technology
+###     Copyright (c) 1992-97 Massachusetts Institute of Technology
 ###
 ###     This material was developed by the Scheme project at the
 ###     Massachusetts Institute of Technology, Department of
@@ -469,62 +469,65 @@ option.obj : ansidecl.h option.h
 term.obj : scheme.tch
 missing.obj : config.h
 BCHGCC_H = bchgcc.h oscond.h $(GC_HEAD_FILES)
-bchdmp.obj : scheme.tch prims.h ntio.h osio.h osfile.h trap.h lookup.h &
-	$(BCHGCC_H) fasl.h dump.c
-bchdrn.obj : ansidecl.h bchdrn.h
-bchmmg.obj : scheme.tch prims.h nt.h $(BCHGCC_H) option.h bchdrn.h memmag.h
-bchgcl.obj : scheme.tch $(BCHGCC_H)
-bchpur.obj : scheme.tch prims.h $(BCHGCC_H) zones.h
-bchutl.obj : ansidecl.h
-syntax.obj : scheme.tch prims.h edwin.h syntax.h
-bitstr.obj : scheme.tch prims.h bitstr.h
-regex.obj : scheme.tch syntax.h regex.h
-rgxprim.obj : scheme.tch prims.h edwin.h syntax.h regex.h
-bintopsb.obj : psbmap.tch trap.h limits.h fasl.h load.c bltdef.h
-psbtobin.obj : psbmap.tch float.h fasl.h dump.c
-ppband.obj : ansidecl.h config.h errors.h types.h const.h object.h &
+bchdmp.obj : bchdmp.c scheme.tch prims.h ntio.h osio.h osfile.h trap.h &
+	lookup.h $(BCHGCC_H) fasl.h dump.c
+bchdrn.obj : bchdrn.c ansidecl.h bchdrn.h
+bchmmg.obj : bchmmg.c scheme.tch prims.h nt.h $(BCHGCC_H) option.h bchdrn.h &
+	memmag.h
+bchgcl.obj : bchgcl.c scheme.tch $(BCHGCC_H)
+bchpur.obj : bchpur.c scheme.tch prims.h $(BCHGCC_H) zones.h
+bchutl.obj : bchutl.c ansidecl.h
+syntax.obj : syntax.c scheme.tch prims.h edwin.h syntax.h
+bitstr.obj : bitstr.c scheme.tch prims.h bitstr.h
+regex.obj : regex.c scheme.tch syntax.h regex.h
+rgxprim.obj : rgxprim.c scheme.tch prims.h edwin.h syntax.h regex.h
+bintopsb.obj : bintopsb.c psbmap.tch trap.h limits.h fasl.h load.c bltdef.h
+psbtobin.obj : psbtobin.c psbmap.tch float.h fasl.h dump.c
+ppband.obj : ppband.c ansidecl.h config.h errors.h types.h const.h object.h &
 	       $(GC_HEAD_FILES) sdata.h load.c fasl.h
-outf.obj : scheme.tch ntscreen.h
+outf.obj : outf.c scheme.tch ntscreen.h
 
-fft.obj : scheme.tch prims.h zones.h array.h image.h
+fft.obj : fft.c scheme.tch prims.h zones.h array.h image.h
 array.obj image.obj : scheme.tch prims.h array.h
-cmpint.obj : scheme.tch prim.h $(GC_HEAD_FILES)
-osscheme.obj : scheme.tch posixtyp.h os.h osscheme.h
-ostty.obj : ansidecl.h oscond.h posixtyp.h os.h ostty.h osscheme.h
+cmpint.obj : cmpint.c scheme.tch prim.h $(GC_HEAD_FILES)
+osscheme.obj : osscheme.c scheme.tch posixtyp.h os.h osscheme.h
+ostty.obj : ostty.c ansidecl.h oscond.h posixtyp.h os.h ostty.h osscheme.h
 error.obj ptrvec.obj transact.obj : ansidecl.h dstack.h outf.h
-wind.obj : ansidecl.h dstack.h obstack.h
-obstack.obj : obstack.h
+wind.obj : wind.c ansidecl.h dstack.h obstack.h
+obstack.obj : obstack.c obstack.h
 
 OS_PRIM_DEPENDENCIES = scheme.tch prims.h posixtyp.h os.h
-prosenv.obj : osenv.h ostop.h $(OS_PRIM_DEPENDENCIES)
-prosfile.obj : osfile.h $(OS_PRIM_DEPENDENCIES)
-prosfs.obj : osfs.h $(OS_PRIM_DEPENDENCIES)
-prosio.obj : osio.h $(OS_PRIM_DEPENDENCIES)
-prosproc.obj : osproc.h $(OS_PRIM_DEPENDENCIES)
-prosterm.obj : osterm.h osio.h $(OS_PRIM_DEPENDENCIES)
-prostty.obj : ostty.h osctty.h ossig.h osfile.h osio.h $(OS_PRIM_DEPENDENCIES)
-prmcon.obj : scheme.tch prims.h prmcon.h $(OS_PRIM_DEPENDENCIES)
+prosenv.obj : prosenv.c osenv.h ostop.h $(OS_PRIM_DEPENDENCIES)
+prosfile.obj : prosfile.c osfile.h $(OS_PRIM_DEPENDENCIES)
+prosfs.obj : prosfs.c osfs.h $(OS_PRIM_DEPENDENCIES)
+prosio.obj : prosio.c osio.h $(OS_PRIM_DEPENDENCIES)
+prosproc.obj : prosproc.c osproc.h $(OS_PRIM_DEPENDENCIES)
+prosterm.obj : prosterm.c osterm.h osio.h $(OS_PRIM_DEPENDENCIES)
+prostty.obj : prostty.c ostty.h osctty.h ossig.h osfile.h osio.h &
+	$(OS_PRIM_DEPENDENCIES)
+prmcon.obj : prmcon.c scheme.tch prims.h prmcon.h $(OS_PRIM_DEPENDENCIES)
 
 NT_DEPENDENCIES = oscond.h ansidecl.h posixtyp.h intext.h &
 		   dstack.h os.h osscheme.h nt.h ntsys.h syscall.h
-ntenv.obj : scheme.tch osenv.h ntscreen.h $(NT_DEPENDENCIES)
-ntfile.obj : osfile.h osio.h ntio.h $(NT_DEPENDENCIES)
-ntfs.obj : osfs.h $(NT_DEPENDENCIES)
-ntio.obj : osio.h ntio.h ntscreen.h $(NT_DEPENDENCIES)
-nttop.obj : ostop.h nttop.h osctty.h errors.h option.h $(NT_DEPENDENCIES)
-nttty.obj : ostty.h osenv.h osio.h ntio.h osterm.h ntterm.h ntscreen.h &
+ntenv.obj : ntenv.c scheme.tch osenv.h ntscreen.h $(NT_DEPENDENCIES)
+ntfile.obj : ntfile.c osfile.h osio.h ntio.h $(NT_DEPENDENCIES)
+ntfs.obj : ntfs.c osfs.h $(NT_DEPENDENCIES)
+ntio.obj : ntio.c osio.h ntio.h ntscreen.h $(NT_DEPENDENCIES)
+nttop.obj : nttop.c ostop.h nttop.h osctty.h errors.h option.h &
 	$(NT_DEPENDENCIES)
-ntsig.obj : ossig.h osctty.h ostty.h critsec.h &
+nttty.obj : nttty.c ostty.h osenv.h osio.h ntio.h osterm.h ntterm.h &
+	ntscreen.h $(NT_DEPENDENCIES)
+ntsig.obj : ntsig.c ossig.h osctty.h ostty.h critsec.h &
 	$(NT_DEPENDENCIES) ntgui.h ntio.h ntscmlib.h ntscreen.h
-nttrap.obj: nttrap.h ntscmlib.h $(GC_HEAD_FILES) $(NT_DEPENDENCIES)
-ntsys.obj: ntsys.h
+nttrap.obj: nttrap.c nttrap.h ntscmlib.h $(GC_HEAD_FILES) $(NT_DEPENDENCIES)
+ntsys.obj: ntsys.c ntsys.h
 ntgui.obj : ntgui.c ntdialog.h ntgui.h ntscreen.h $(NT_DEPENDENCIES) scheme.tch
 ntasutl.obj : ntasutl.asm
 ntkbutl.obj : ntkbutl.asm
-prntenv.obj : $(NT_DEPENDENCIES)
-prntfs.obj : $(NT_DEPENDENCIES) scheme.tch prims.h osfs.h
-prntio.obj : $(NT_DEPENDENCIES) scheme.tch prims.h ntio.h osio.h syscall.h &
-	ntscreen.h
+prntenv.obj : prntenv.c $(NT_DEPENDENCIES)
+prntfs.obj : prntfs.c $(NT_DEPENDENCIES) scheme.tch prims.h osfs.h
+prntio.obj : prntio.c $(NT_DEPENDENCIES) scheme.tch prims.h ntio.h osio.h &
+	syscall.h ntscreen.h
 
 cmpauxmd.obj : cmpauxmd.asm
 
