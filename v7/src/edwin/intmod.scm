@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.82 1994/08/15 20:12:06 cph Exp $
+;;;	$Id: intmod.scm,v 1.83 1994/08/15 20:21:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -807,7 +807,6 @@ If this is an error, the debugger examines the error condition."
 
 (define (operation/read port parser-table)
   parser-table
-  (standard-prompt-spacing port)
   (read-expression port (nearest-cmdl/level)))
 
 (define read-expression
@@ -914,7 +913,7 @@ If this is an error, the debugger examines the error condition."
 	      (thunk)
 	      (remove-select-buffer-hook buffer hook))))
 	(add-select-buffer-hook buffer hook))))
-
+
 (define (operation/prompt-for-command-expression port prompt level)
   (parse-command-prompt port prompt)
   (read-expression port level))
