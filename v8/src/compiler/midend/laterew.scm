@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: laterew.scm,v 1.2 1995/02/14 02:39:50 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -144,10 +144,12 @@ MIT in each case. |#
 	(%test
 	 (cond ((not (number? n-bits))
 		(lambda (name constant-rand)
-		  `(CALL (QUOTE ,%small-fixnum?)
-			 (QUOTE #F)
-			 (LOOKUP ,name)
-			 (QUOTE ,(n-bits constant-rand)))))
+		  (if constant-rand
+		      `(CALL (QUOTE ,%small-fixnum?)
+			     (QUOTE #F)
+			     (LOOKUP ,name)
+			     (QUOTE ,(n-bits constant-rand)))
+		      `(QUOTE #F))))
 	       #|
 	       ;; Always open code as %small-fixnum?
 	       ;; So that generic arithmetic can be
