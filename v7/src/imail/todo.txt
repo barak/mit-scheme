@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.55 2000/06/02 02:50:18 cph Exp $
+$Id: todo.txt,v 1.56 2000/06/02 17:28:33 cph Exp $
 
 Bug fixes
 ---------
@@ -16,6 +16,12 @@ Bug fixes
 
 New features
 ------------
+
+* Command to toggle between MIME-processed message and raw message.
+
+* Command to toggle the headers of a MIME message/rfc822 entity.
+
+* Caching of MIME BODY[] sections.
 
 * Need command to move to first unseen message in folder.
 
