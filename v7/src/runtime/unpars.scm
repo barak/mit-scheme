@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.16 1990/09/11 20:45:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.17 1990/09/13 23:08:07 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -150,14 +150,11 @@ MIT in each case. |#
 			   (unparser-state/unparser-table state)))
 
 (define (unparse-object/internal object port list-depth slashify? table)
-  (fluid-let
-      ((*output-port* port)
-       (*unparse-char-operation* (output-port/operation/write-char port))
-       (*unparse-string-operation* (output-port/operation/write-string port))
-       (*list-depth* list-depth)
-       (*slashify?* slashify?)
-       (*unparser-table* table)
-       (*dispatch-vector* (unparser-table/dispatch-vector table)))
+  (fluid-let ((*output-port* port)
+	      (*list-depth* list-depth)
+	      (*slashify?* slashify?)
+	      (*unparser-table* table)
+	      (*dispatch-vector* (unparser-table/dispatch-vector table)))
     (*unparse-object object)))
 
 (define-integrable (invoke-user-method method object)
@@ -180,14 +177,12 @@ MIT in each case. |#
 ;;;; Low Level Operations
 
 (define *output-port*)
-(define *unparse-char-operation*)
-(define *unparse-string-operation*)
 
 (define-integrable (*unparse-char char)
-  (*unparse-char-operation* *output-port* char))
+  (output-port/write-char *output-port* char))
 
 (define-integrable (*unparse-string string)
-  (*unparse-string-operation* *output-port* string))
+  (output-port/write-string *output-port* string))
 
 (define-integrable (*unparse-substring string start end)
   (*unparse-string (substring string start end)))
