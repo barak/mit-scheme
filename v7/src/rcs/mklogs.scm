@@ -9,12 +9,12 @@
 		     (map (lambda (subdirectory)
 			    (string-append subdirectory "/RCS"))
 			  subdirectories))))))
-  (make-log "/scheme/microcode" "m" "s")
-  (make-log "/scheme/runtime")
-  (make-log "/scheme/sf")
-  (make-log "/scheme/cref")
-  (make-log "/scheme/edwin")
-  (make-log "/scheme/sicp")
-  (make-log "/scheme/compiler" "back" "base" "documentation" "etc" "fggen"
+  (make-log "/scheme/src/microcode" "m" "s")
+  (make-log "/scheme/src/runtime")
+  (make-log "/scheme/src/sf")
+  (make-log "/scheme/src/cref")
+  (make-log "/scheme/src/edwin")
+  (make-log "/scheme/src/sicp")
+  (make-log "/scheme/src/compiler" "back" "base" "documentation" "etc" "fggen"
 	    "fgopt" "rtlbase" "rtlgen" "rtlopt" "machines/bobcat"
 	    "machines/mips" "machines/spectrum" "machines/vax"))
