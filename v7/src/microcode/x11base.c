@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.43 1992/12/10 19:11:20 cph Exp $
+$Id: x11base.c,v 1.44 1992/12/10 20:23:57 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -293,10 +293,20 @@ DEFUN (x_decode_color, (display, color_map, color_name, color_return),
   return (0);
 }
 
+Colormap
+DEFUN (xw_color_map, (xw), struct xwindow * xw)
+{
+  XWindowAttributes a;
+  if (! (XGetWindowAttributes ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (&a))))
+    error_external_return ();
+  return (a . colormap);
+}
+
 static unsigned long
-DEFUN (arg_color, (arg, display),
+DEFUN (arg_window_color, (arg, display, xw),
        unsigned int arg AND
-       Display * display)
+       Display * display AND
+       struct xwindow * xw)
 {
   unsigned long result;
   SCHEME_OBJECT object = (ARG_REF (arg));
@@ -312,23 +322,20 @@ DEFUN (arg_color, (arg, display),
       }
     }
   else if (! (x_decode_color
-	      (display,
-	       (DefaultColormap (display, (DefaultScreen (display)))),
-	       (STRING_ARG (arg)),
-	       (&result))))
+	      (display, (xw_color_map (xw)), (STRING_ARG (arg)), (&result))))
     error_bad_range_arg (arg);
   return (result);
 }
 
 static void
 DEFUN (x_set_mouse_colors,
-       (display, mouse_cursor, mouse_pixel, background_pixel),
+       (display, color_map, mouse_cursor, mouse_pixel, background_pixel),
        Display * display AND
+       Colormap color_map AND
        Cursor mouse_cursor AND
        unsigned long mouse_pixel AND
        unsigned long background_pixel)
 {
-  Colormap color_map = (DefaultColormap (display, (DefaultScreen (display))));
   XColor mouse_color;
   XColor background_color;
   (mouse_color . pixel) = mouse_pixel;
@@ -489,7 +496,11 @@ DEFUN (x_make_window, (xd, window, x_size, y_size, attributes, methods, extra),
   MAKE_GC (reverse_gc, background_pixel, foreground_pixel);
   MAKE_GC (cursor_gc, background_pixel, (attributes -> cursor_pixel));
   x_set_mouse_colors
-    (display, mouse_cursor, (attributes -> mouse_pixel), background_pixel);
+    (display,
+     (DefaultColormap (display, (DefaultScreen (display)))),
+     mouse_cursor,
+     (attributes -> mouse_pixel),
+     background_pixel);
   XDefineCursor (display, window, mouse_cursor);
   XSelectInput (display, window, 0);
   xw =
@@ -1477,7 +1488,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-FOREGROUND-COLOR", Prim_x_window_set_foreground_
   {
     struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
-    unsigned long foreground_pixel = (arg_color (2, display));
+    unsigned long foreground_pixel = (arg_window_color (2, display, xw));
     (XW_FOREGROUND_PIXEL (xw)) = foreground_pixel;
     XSetForeground (display, (XW_NORMAL_GC (xw)), foreground_pixel);
     XSetBackground (display, (XW_REVERSE_GC (xw)), foreground_pixel);
@@ -1491,7 +1502,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-BACKGROUND-COLOR", Prim_x_window_set_background_
   {
     struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
-    unsigned long background_pixel = (arg_color (2, display));
+    unsigned long background_pixel = (arg_window_color (2, display, xw));
     (XW_BACKGROUND_PIXEL (xw)) = background_pixel;
     XSetWindowBackground (display, (XW_WINDOW (xw)), background_pixel);
     XSetBackground (display, (XW_NORMAL_GC (xw)), background_pixel);
@@ -1499,6 +1510,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-BACKGROUND-COLOR", Prim_x_window_set_background_
     XSetForeground (display, (XW_CURSOR_GC (xw)), background_pixel);
     x_set_mouse_colors
       (display,
+       (xw_color_map (xw)),
        (XW_MOUSE_CURSOR (xw)),
        (XW_MOUSE_PIXEL (xw)),
        background_pixel);
@@ -1512,7 +1524,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-BORDER-COLOR", Prim_x_window_set_border_color, 2
   {
     struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
-    unsigned long border_pixel = (arg_color (2, display));
+    unsigned long border_pixel = (arg_window_color (2, display, xw));
     (XW_BORDER_PIXEL (xw)) = border_pixel;
     XSetWindowBorder (display, (XW_WINDOW (xw)), border_pixel);
   }
@@ -1525,7 +1537,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-CURSOR-COLOR", Prim_x_window_set_cursor_color, 2
   {
     struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
-    unsigned long cursor_pixel = (arg_color (2, display));
+    unsigned long cursor_pixel = (arg_window_color (2, display, xw));
     (XW_CURSOR_PIXEL (xw)) = cursor_pixel;
     XSetBackground (display, (XW_CURSOR_GC (xw)), cursor_pixel);
   }
@@ -1538,10 +1550,11 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-MOUSE-COLOR", Prim_x_window_set_mouse_color, 2, 
   {
     struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
-    unsigned long mouse_pixel = (arg_color (2, display));
+    unsigned long mouse_pixel = (arg_window_color (2, display, xw));
     (XW_MOUSE_PIXEL (xw)) = mouse_pixel;
     x_set_mouse_colors
       (display,
+       (xw_color_map (xw)),
        (XW_MOUSE_CURSOR (xw)),
        mouse_pixel,
        (XW_BACKGROUND_PIXEL (xw)));
@@ -1563,6 +1576,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-MOUSE-SHAPE", Prim_x_window_set_mouse_shape, 2, 
 	 (display, (2 * (arg_index_integer (2, (XC_num_glyphs / 2))))));
       x_set_mouse_colors
 	(display,
+	 (xw_color_map (xw)),
 	 mouse_cursor,
 	 (XW_MOUSE_PIXEL (xw)),
 	 (XW_BACKGROUND_PIXEL (xw)));
