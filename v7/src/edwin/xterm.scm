@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.30 1992/02/18 14:12:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.31 1992/02/25 22:41:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -306,44 +306,60 @@
 			  (begin
 			    (set! start 1)
 			    (string-ref string 0)))))))))
-      (let ((read-until-result
-	     (lambda (time-limit)
+      (let ((guarantee-result
+	     (lambda ()
 	       (let loop ()
-		 (update-screens! false)
-		 (let ((event (get-next-event time-limit)))
+		 (let ((event
+			(or (get-next-event 0)
+			    (begin
+			      (update-screens! false)
+			      (get-next-event false)))))
 		   (cond ((not event)
-			  (if (not time-limit)
-			      (error "#F returned from blocking read"))
-			  false)
+			  (error "#F returned from blocking read"))
 			 ((not (vector? event))
 			  (process-change-event event)
 			  (loop))
-			 ((fix:= event-type:key-press (vector-ref event 0))
-			  (or (process-key-press-event event) (loop)))
 			 (else
-			  (or (process-special-event event) (loop)))))))))
+			  (or (if (fix:= event-type:key-press
+					 (vector-ref event 0))
+				  (process-key-press-event event)
+				  (process-special-event event))
+			      (loop)))))))))
 	(values
 	 (lambda ()			;halt-update?
 	   (or pending-result
-	       (fix:< start end)
 	       pending-event
+	       (fix:< start end)
 	       (let ((event (read-event queue display 0)))
 		 (if event (set! pending-event event))
 		 event)))
 	 (lambda ()			;peek-no-hang
 	   (or pending-result
 	       (fix:< start end)
-	       (let ((result (read-until-result 0)))
-		 (if result
-		     (set! pending-result result))
-		 result)))
+	       (let loop ()
+		 (let ((event (get-next-event 0)))
+		   (cond ((not event)
+			  false)
+			 ((not (vector? event))
+			  (process-change-event event)
+			  (loop))
+			 (else
+			  (let ((result
+				 (if (fix:= event-type:key-press
+					    (vector-ref event 0))
+				     (process-key-press-event event)
+				     (process-special-event event))))
+			    (if result
+				(begin
+				  (set! pending-result result)
+				  result)
+				(loop)))))))))
 	 (lambda ()			;peek
 	   (or pending-result
 	       (if (fix:< start end)
 		   (string-ref string start)
-		   (let ((result (read-until-result false)))
-		     (if result
-			 (set! pending-result result))
+		   (let ((result (guarantee-result)))
+		     (set! pending-result result)
 		     result))))
 	 (lambda ()			;read
 	   (cond (pending-result
@@ -355,7 +371,7 @@
 		    (set! start (fix:+ start 1))
 		    char))
 		 (else
-		  (read-until-result false)))))))))
+		  (guarantee-result)))))))))
 
 (define (read-event queue display time-limit)
   (dynamic-wind
