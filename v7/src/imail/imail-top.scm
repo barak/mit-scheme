@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.114 2000/05/30 21:01:33 cph Exp $
+;;; $Id: imail-top.scm,v 1.115 2000/05/31 02:10:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1468,6 +1468,7 @@ A prefix argument says to prompt for a URL and append all messages
 					    'HISTORY-INDEX 0))))
   (lambda (url-string)
     (if url-string
+	((ref-command imail-input-from-folder) url-string)
 	(let* ((folder (selected-folder))
 	       (count (folder-modification-count folder))
 	       ;; NAVIGATOR/LAST-MESSAGE must run _after_
@@ -1493,8 +1494,7 @@ A prefix argument says to prompt for a URL and append all messages
 				      folder)))))
 			 (else (navigator/first-unseen-message folder)))
 		   (selected-message #f)))
-	      (message "(No changes to mail folder)")))
-	((ref-command imail-input-from-folder) url-string))))
+	      (message "(No changes to mail folder)"))))))
 
 (define-command imail-save-folder
   "Save the currently selected IMAIL folder."
