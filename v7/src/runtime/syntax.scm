@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.3 1988/07/15 22:28:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.4 1988/07/16 10:14:30 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -316,7 +316,7 @@ MIT in each case. |#
 (define (syntax/cond clause . rest)
   (define (loop clause rest)
     (cond ((eq? (car clause) 'ELSE)
-	   (if (null? rest)
+	   (if (not (null? rest))
 	       (syntax-error "ELSE not last clause" rest))
 	   (syntax-sequence (cdr clause)))
 	  ((null? (cdr clause))
