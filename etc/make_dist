@@ -32,14 +32,8 @@ vms/make.vms
 
 # Copy all the auxiliary files.
 cd $source
-find Makefile documentation etc examples makefiles libs -type f -print | cpio -pdmuv $destination
+find Makefile documentation etc examples makefiles libs \( \! \( -name '.*~*' -o -name '#*' -o -name '*~*' -o -name '*.bin' -o -name '*.ext' -o -name '*.com' -o -name '*.binf' -o -name '*.elc' -o -name 'RCS' -o -name 'RCS.remote' \) \) -type f -print | cpio -pdmuv $destination
 find vms \( -name '*.com' -o -name '*.txt' -o -name '*.el' \) -type f -print | cpio -pdmuv $destination
-
-# Clean up any unwanted files that might be around.
-cd $source
-foreach i (documentation etc makefiles libs)
-  find $destination/$i \( -name '.*~*' -o -name '#*' -o -name '*~*' -o -name '*.bin' -o -name '*.ext' -o -name '*.com' -o -name '*.binf' -o -name '*.elc' -o -name 'RCS' -o -name 'RCS.remote' \) -print | xargs rm -f
-end
 
 # Copy the primary source code by checking out reference copies from RCS.
 foreach i (microcode runtime sf)
