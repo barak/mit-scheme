@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.37 1996/07/26 00:34:49 adams Exp $
+$Id: conpar.scm,v 14.38 1997/07/12 04:23:26 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -1136,26 +1136,25 @@ MIT in each case. |#
 	   (write-string " within ")
 	   (write (stack-frame/ref frame hardware-trap/pc-info1-index)))
 	  ((2)				; compiled code
-	   (write-string " at offset ")
-	   (write-hex (stack-frame/ref frame hardware-trap/pc-info2-index))
-	   (newline)
-	   (write-string "within ")
-	   (let ((block (stack-frame/ref frame hardware-trap/pc-info1-index)))
+	   (let ((block  (stack-frame/ref frame hardware-trap/pc-info1-index))
+		 (offset (stack-frame/ref frame hardware-trap/pc-info2-index)))
+	     (write-string " at offset ")
+	     (write-hex offset)
+	     (newline)
+	     (write-string "within ")
 	     (write block)
-	     (let loop ((info (compiled-code-block/debugging-info block)))
-	       (cond ((null? info)
-		      false)
-		     ((string? info)
-		      (begin
-			(write-string " (")
-			(write-string info)
-			(write-string ")")))
-		     ((not (pair? info))
-		      false)
-		     ((string? (car info))
-		      (loop (car info)))
-		     (else
-		      (loop (cdr info)))))))
+	     (let ((descriptor (compiled-code-block/dbg-descriptor block)))
+	       (if descriptor
+		   (begin
+		     (write-string " (")
+		     (display (dbg-locator/file (car descriptor)))
+		     (flush-output) ; incase following is slow...
+		     (let ((name (compiled-code-block/name block offset)))
+		       (if name
+			   (begin
+			     (write-string " ")
+			     (display name))))
+		     (write-string ")"))))))
 	  ((3)				; probably compiled-code
 	   (write-string " at an unknown compiled-code location."))
 	  ((4)				; builtin (i.e. hook)

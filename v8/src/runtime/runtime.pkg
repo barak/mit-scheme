@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.289 1997/06/25 03:28:26 cph Exp $
+$Id: runtime.pkg,v 14.290 1997/07/12 04:23:04 adams Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -276,6 +276,10 @@ MIT in each case. |#
 	  dbg-expression?)
   (export (runtime unparser)
 	  compiled-entry/filename-and-index)
+  (export (runtime continuation-parser)
+	  compiled-code-block/dbg-descriptor
+	  compiled-code-block/name
+	  dbg-locator/file)
   (export (runtime compress)
 	  uncompress-internal)
   (initialization (initialize-package!)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.61 1995/08/02 20:47:38 adams Exp $
+$Id: infutl.scm,v 1.62 1997/07/12 04:23:16 adams Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -382,6 +382,29 @@ MIT in each case. |#
 	 (let ((name (dbg-procedure/name procedure)))
 	   (or (special-form-procedure-name? name)
 	       (symbol->string name))))))
+
+(define (compiled-code-block/name block offset)
+  ;; Try to come up with a name for BLOCK.  If there is one top-level
+  ;; procedure, use its name.
+  (define (top-level-proc-name proc)
+    (and (dbg-block? (dbg-procedure/block proc))
+	 (eq? 'IC (dbg-block/parent (dbg-procedure/block proc)))
+	 (let ((name (dbg-procedure/name proc)))
+	   (or (special-form-procedure-name? name)
+	       name))))
+  offset ; ignored
+  (let ((dbg-info
+	 (compiled-code-block/dbg-info block load-debugging-info-on-demand?)))
+    (and dbg-info
+	 (not (dbg-info/expression dbg-info)) ; top level or group compiled
+	 (let ((procs (dbg-info/procedures dbg-info)))
+	   (let loop ((i 0) (name #F))
+	     (cond ((= i (vector-length procs))  name)
+		   ((top-level-proc-name (vector-ref procs i))
+		    => (lambda (name*)
+			 (and (not name)
+			      (loop (+ i 1) name*))))
+		   (else (loop (+ i 1) name))))))))
 
 (define load-debugging-info-on-demand?
   false)
