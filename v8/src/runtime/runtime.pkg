@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.141 1992/03/26 00:01:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.142 1992/04/02 07:53:22 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -315,6 +315,7 @@ MIT in each case. |#
 	  stack-frame-type/properties
 	  stack-frame-type/subproblem?
 	  stack-frame-type?
+	  stack-frame/compiled-code?
 	  stack-frame/dynamic-state
 	  stack-frame/elements
 	  stack-frame/interrupt-mask
@@ -333,8 +334,6 @@ MIT in each case. |#
 	  stack-frame/subproblem?
 	  stack-frame/type
 	  stack-frame?)
-  (export (runtime debugger)
-	  stack-frame/compiled-code?)
   (export (runtime debugging-info)
 	  stack-frame-type/interrupt-compiled-procedure
 	  stack-frame-type/interrupt-compiled-expression)
@@ -2303,8 +2302,6 @@ MIT in each case. |#
 	  unparse-list/prefix-pair?
 	  unparse-list/unparser
 	  unparse-vector/unparser)
-  (export (runtime debugger)
-	  *unparse-primitives-by-name?*)
   (initialization (initialize-package!)))
 
 (define-package (runtime unsyntaxer)
