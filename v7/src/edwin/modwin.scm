@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.33 1990/10/03 04:55:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.34 1990/10/05 13:32:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -74,4 +74,5 @@
   true)
 
 (define-method modeline-window (:event! window type)
+  type					;ignored
   (setup-redisplay-flags! redisplay-flags))
