@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/make.scm,v 1.1.1.1 1992/02/20 05:30:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/make.scm,v 1.1.1.2 1992/02/20 21:22:57 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -41,4 +41,4 @@ MIT in each case. |#
 	    ((package/reference (find-package name) 'INITIALIZE-PACKAGE!)))
 	  '((COMPILER MACROS)
 	    (COMPILER DECLARATIONS)))
-(add-system! (make-system "Intel i386" 4 87 '()))
+(add-system! (make-system "Liar (Intel i386)" 4 87 '()))
