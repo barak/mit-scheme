@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.48 1987/05/31 23:00:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.49 1987/06/01 16:10:21 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -50,6 +50,14 @@ MIT in each case. |#
   ;; For simplicity, we try to estimate the actual number of cycles
   ;; that a typical code sequence would produce.
   (case (rtl:expression-type expression)
+    ((CONS-POINTER)
+     ;; Best case = 12 cycles, worst =  44
+     ;; move.l reg,d(reg) = 16
+     ;; move.b reg,d(reg) = 12
+     ;; move.l d(reg),reg = 16
+     (+ 30
+	(rtl:expression-cost (rtl:cons-pointer-type expression))
+	(rtl:expression-cost (rtl:cons-pointer-datum expression))))
     ((CONSTANT)
      (let ((value (cadr expression)))
        (cond ((false? value) 4)		;clr.l reg
@@ -59,14 +67,11 @@ MIT in each case. |#
 		       (<= -#x80000000 value #x7FFFFFFF)))
 	      12)			;move.l #...,reg
 	     (else 16))))		;move.l d(pc),reg
-    ((CONS-POINTER)
-     ;; Best case = 12 cycles, worst =  44
-     ;; move.l reg,d(reg) = 16
-     ;; move.b reg,d(reg) = 12
-     ;; move.l d(reg),reg = 16
-     (+ 30
-	(rtl:expression-cost (rtl:cons-pointer-type expression))
-	(rtl:expression-cost (rtl:cons-pointer-datum expression))))
+    ;; lea d(pc),reg       =  8
+    ;; move.l reg,d(reg)   = 16
+    ;; move.b #type,d(reg) = 16
+    ;; move.l d(reg),reg   = 16
+    ((ENTRY:CONTINUATION ENTRY:PROCEDURE) 56)
     ((OBJECT->ADDRESS OBJECT->DATUM) 6)	;and.l d7,reg
     ;; move.l reg,d(reg) = 16
     ;; move.b d(reg),reg = 12
@@ -77,11 +82,7 @@ MIT in each case. |#
     ((PRE-INCREMENT) 14)		;move.l -(reg),reg
     ((REGISTER) 4)			;move.l reg,reg
     ((UNASSIGNED) 12)			;move.l #data,reg
-    ;; lea d(pc),reg       =  8
-    ;; move.l reg,d(reg)   = 16
-    ;; move.b #type,d(reg) = 16
-    ;; move.l d(reg),reg   = 16
-    ((ENTRY:CONTINUATION ENTRY:PROCEDURE) 56)
+    ((VARIABLE-CACHE) 16)		;move.l d(pc),reg
     (else (error "Unknown expression type" expression))))
 
 (define (rtl:machine-register? rtl-register)
