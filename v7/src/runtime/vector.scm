@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 13.42 1987/03/17 18:55:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 13.43 1987/04/25 20:19:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -51,7 +51,8 @@
 		   names)))
   (define-primitives
    vector-length vector-ref vector-set!
-   list->vector vector-cons subvector->list)))
+   list->vector vector-cons subvector->list
+   subvector-move-right! subvector-move-left! subvector-fill!)))
 
 (let-syntax ()
   (define-macro (define-type-predicate name type-name)
@@ -71,7 +72,7 @@
 
 (define (vector-fill! vector value)
   (subvector-fill! vector 0 (vector-length vector) value))
-
+#|
 ;;; Nonstandard Primitives
 
 (let-syntax ((check-type
@@ -119,7 +120,7 @@
   (check-subvector vector start end)
   (loop start))
 
-)
+)|#
 
 ;;; Nonstandard Procedures
 

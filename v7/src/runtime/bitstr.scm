@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 13.41 1987/01/23 00:09:36 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 13.42 1987/04/25 20:18:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -56,7 +56,8 @@
    bit-string-or! bit-string-and! bit-string-andc!
    bit-substring-move-right!
    bit-string->unsigned-integer unsigned-integer->bit-string
-   read-bits! write-bits!)))
+   read-bits! write-bits!
+   bit-substring-find-next-set-bit)))
 
 (define (bit-string-append x y)
   (let ((x-length (bit-string-length x))
@@ -82,5 +83,4 @@
 	(nbits (bit-string-length bit-string)))
     (if (bit-string-ref bit-string (-1+ nbits))	;Sign bit.
 	(- unsigned-result (expt 2 nbits))
-	unsigned-result)))
 	unsigned-result)))
