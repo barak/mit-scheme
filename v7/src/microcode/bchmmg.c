@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.48 1989/09/20 23:05:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.49 1989/11/02 04:01:56 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -655,8 +655,7 @@ Fix_Weak_Chain()
     Weak_Chain = (OBJECT_NEW_TYPE (TC_NULL, Weak_Chain));
 
     switch(GC_Type(Temp))
-    {
-      case GC_Non_Pointer:
+    { case GC_Non_Pointer:
         *Scan = Temp;
 	continue;
 
@@ -676,7 +675,7 @@ Fix_Weak_Chain()
       /* Normal pointer types, the broken heart is in the first word.
          Note that most special types are treated normally here.
 	 The BH code updates *Scan if the object has been relocated.
-	 Otherwise it falls through and we replace it with a full #F.
+	 Otherwise it falls through and we replace it with a full SHARP_F.
 	 Eliminating this assignment would keep old data (pl. of datum).
        */
       case GC_Cell:
@@ -707,7 +706,7 @@ Fix_Weak_Chain()
 	  *Scan = Temp;
 	  continue;
 	}
-	Compiled_BH(false, continue);
+	Compiled_BH(false, { *Scan = Temp; continue; });
 	*Scan = SHARP_F;
 	continue;
 
