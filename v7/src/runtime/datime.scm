@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.22 1999/04/27 17:23:16 cph Exp $
+$Id: datime.scm,v 14.23 2000/03/22 17:34:49 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -252,7 +252,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			   (string->number (cadr time))
 			   (string->number (car time))
 			   (string->number (list-ref tokens 0))
-			   (short-string->month (list-ref tokens 1))
+			   (string->month (list-ref tokens 1))
 			   (let ((n (string->number (list-ref tokens 2))))
 			     (and (exact-nonnegative-integer? n)
 				  (if (< n 100)
@@ -308,6 +308,56 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     ("T" -7) ("U" -8) ("V" -9) ("W" -10) ("X" -11) ("Y" -12)
     ("Z" 0)))
 
+;;;; ISO C ctime() strings
+
+(define (decoded-time->ctime-string dt)
+  (string-append
+   (day-of-week/short-string (decoded-time/day-of-week dt))
+   " "
+   (month/short-string (decoded-time/month dt))
+   " "
+   (string-pad-left (number->string (decoded-time/day dt)) 2)
+   " "
+   (string-pad-left (number->string (decoded-time/hour dt)) 2 #\0)
+   ":"
+   (string-pad-left (number->string (decoded-time/minute dt)) 2 #\0)
+   ":"
+   (string-pad-left (number->string (decoded-time/second dt)) 2 #\0)
+   " "
+   (number->string (decoded-time/year dt))))
+
+(define (ctime-string->decoded-time string)
+  (let ((lose (lambda () (error "Ill-formed ctime() string:" string))))
+    (let ((tokens (burst-string string #\space #t)))
+      (if (not (fix:= 5 (length tokens)))
+	  (lose))
+      (let ((time (burst-string (list-ref tokens 3) #\: #f)))
+	(if (not (fix:= 3 (length time)))
+	    (lose))
+	(make-decoded-time (string->number (caddr time))
+			   (string->number (cadr time))
+			   (string->number (car time))
+			   (string->number (list-ref tokens 2))
+			   (string->month (list-ref tokens 1))
+			   (let ((n (string->number (list-ref tokens 4))))
+			     (if (not (exact-nonnegative-integer? n))
+				 (lose))
+			     (if (< n 100)
+				 (+ 1900 n)
+				 n)))))))
+
+(define (universal-time->ctime-string time)
+  (decoded-time->ctime-string (universal-time->local-decoded-time time)))
+
+(define (ctime-string->universal-time time)
+  (decoded-time->universal-time (ctime-string->decoded-time string)))
+
+(define (file-time->ctime-string time)
+  (decoded-time->ctime-string (file-time->local-decoded-time time)))
+
+(define (ctime-string->file-time time)
+  (decoded-time->file-time (ctime-string->decoded-time string)))
+
 (define (month/max-days month)
   (guarantee-month month 'MONTH/MAX-DAYS)
   (vector-ref '#(31 29 31 30 31 30 31 31 30 31 30 31) (- month 1)))
@@ -326,15 +376,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (not (<= 1 month 12))
       (error:bad-range-argument month name)))
 
-(define (short-string->month string)
-  (string->month month/short-strings string))
-
-(define (long-string->month string)
-  (string->month month/long-strings string))
-
-(define (string->month month-strings string)
+(define (string->month string)
   (fix:+ 1
-	 (or (string-ci->index month-strings string)
+	 (or (string-ci->index month/short-strings string)
+	     (string-ci->index month/long-strings string)
 	     (error "Unknown month designation:" string))))
 
 (define month/short-strings
@@ -358,14 +403,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (not (<= 0 day 6))
       (error:bad-range-argument day name)))
 
-(define (short-string->day-of-week string)
-  (string->day-of-week days-of-week/short-strings string))
-
-(define (long-string->day-of-week string)
-  (string->day-of-week days-of-week/long-strings string))
-
-(define (string->day-of-week string-vector string)
-  (or (string-ci->index string-vector string)
+(define (string->day-of-week string)
+  (or (string-ci->index days-of-week/short-strings string)
+      (string-ci->index days-of-week/long-strings string)
       (error "Unknown day-of-week designation:" string)))
 
 (define days-of-week/short-strings
