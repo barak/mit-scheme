@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.2 1992/05/10 17:52:41 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -1037,13 +1037,14 @@ static int
 DOSX_install_kbd_hook (void)
 {
 #ifdef DOSX_USE_INT_INTERCEPT
+  if (!under_QEMM_386_p ())
+  {
+    int_intercept (DOS_INTVECT_SYSTEM_SERVICES, 
+		   bios_keyboard_handler, 
+		   256);
 
-  int_intercept (DOS_INTVECT_SYSTEM_SERVICES, 
-                 bios_keyboard_handler, 
-                 256);
-
-  scheme_PM_vector = ((void *) & kludge);
-
+    scheme_PM_vector = ((void *) & kludge);
+  }
 #else /* not DOSX_USE_INT_INTERCEPT */
 #ifndef DOSX_PM_HANDLER_UNTOUCHED
   if (!under_QEMM_386_p ())
