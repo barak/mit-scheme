@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.76 1993/06/24 05:52:20 gjr Exp $
+$Id: interp.c,v 9.77 1993/08/24 23:27:52 ziggy Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1631,13 +1631,15 @@ apply_dispatch:
 
 	    {
 	      fast SCHEME_OBJECT *scan;
+	      fast SCHEME_OBJECT temp;
 
 	      scan = Free;
-	      Store_Env(MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan));
+	      temp = (MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan));
 	      *scan++ = MAKE_OBJECT (TC_MANIFEST_VECTOR, nargs);
 	      while(--nargs >= 0)
 		*scan++ = (STACK_POP ());
 	      Free = scan;
+	      Store_Env(temp);
 	      Reduces_To(FAST_MEMORY_REF (Function, LAMBDA_SCODE));
 	    }
           }
@@ -1716,7 +1718,7 @@ apply_dispatch:
 
           case TC_EXTENDED_PROCEDURE:
           {
-	    SCHEME_OBJECT lambda;
+	    SCHEME_OBJECT lambda, temp;
             long nargs, nparams, formals, params, auxes,
                  rest_flag, size;
 
@@ -1766,7 +1768,7 @@ apply_dispatch:
 /* Interpret(), continued */
 
 	    scan = Free;
-            Store_Env(MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan));
+	    temp = (MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan));
 	    *scan++ = MAKE_OBJECT (TC_MANIFEST_VECTOR, size);
 
 	    if (nargs <= params)
@@ -1802,6 +1804,7 @@ apply_dispatch:
 	    }
 
 	    Free = scan;
+            Store_Env (temp);
             Reduces_To(Get_Body_Elambda(lambda));
           }
 
