@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.185 2000/06/23 19:05:38 cph Exp $
+;;; $Id: imail-top.scm,v 1.186 2000/06/24 01:12:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1464,7 +1464,7 @@ Negative argument means search in reverse."
 ;;; services.  The hooks in this section provide them.
 
 (define (imail-ui:present-user-alert procedure)
-  (call-with-output-to-temporary-buffer " *IMAP alert*"
+  (call-with-output-to-temporary-buffer " *IMAIL alert*"
 					'(READ-ONLY SHRINK-WINDOW
 						    FLUSH-ON-SPACE)
 					procedure))
@@ -1759,47 +1759,24 @@ Negative argument means search in reverse."
   (or (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)
       buffer))
 
-;;;; Mode-line updates
+;;;; Folder-event handling
 
 (define (notice-folder-event folder type parameters)
-  (case type
-    ((EXPUNGE)
-     (maybe-add-command-suffix! notice-message-expunge folder
-				(car parameters)))
-    ((INCREASE-LENGTH SET-LENGTH)
-     (maybe-add-command-suffix! notice-folder-length-change folder
-				(car parameters) (cadr parameters)))
-    (else
-     (maybe-add-command-suffix! notice-folder-modifications folder))))
-
-(define (notice-message-expunge folder index)
-  (let ((buffer (imail-folder->buffer folder #f)))
-    (if buffer
-	(let ((m (selected-message #f buffer)))
-	  (if (or (not m)
-		  (message-detached? m))
-	      (select-message folder
-			      (and index
-				   (< index (folder-length folder))
-				   index)
-			      #t)))))
-  (notice-folder-modifications folder))
-
-(define (notice-folder-length-change folder old new)
-  (let ((buffer (imail-folder->buffer folder #f)))
-    (if buffer
-	(cond ((> new old)
-	       (select-message folder old #t))
-	      ((let ((m (selected-message #f buffer)))
-		 (or (not m)
-		     (message-detached? m)))
-	       (select-message folder #f #t)))))
-  (notice-folder-modifications folder))
+  (maybe-add-command-suffix! notice-folder-modifications folder))
 
 (define (notice-folder-modifications folder)
   (let ((buffer (imail-folder->buffer folder #f)))
     (if buffer
 	(begin
+	  (let ((m (selected-message #f buffer)))
+	    (cond ((not m)
+		   (select-message folder #f #t))
+		  ((message-detached? m)
+		   (select-message folder
+				   (let ((index (message-index m)))
+				     (and (< index (folder-length folder))
+					  index))
+				   #t))))
 	  (local-set-variable! mode-line-process
 			       (imail-mode-line-summary-string buffer)
 			       buffer)
