@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/datime.scm,v 14.4 1993/01/12 19:52:14 gjr Exp $
+$Id: datime.scm,v 14.5 1995/04/15 06:09:46 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,7 +48,9 @@ MIT in each case. |#
 		   (type vector)
 		   (named decoded-time-structure-tag)
 		   (conc-name decoded-time/)
-		   (constructor make-decoded-time ()))
+		   (constructor %make-decoded-time
+				(second minute hour day month year))
+		   (constructor allocate-decoded-time ()))
   (second false read-only true)
   (minute false read-only true)
   (hour false read-only true)
@@ -57,46 +59,84 @@ MIT in each case. |#
   (year false read-only true)
   (day-of-week false read-only true))
 
-(define (decode-time time)
-  (let ((result (make-decoded-time)))
+(define (make-decoded-time second minute hour day month year)
+  (let ((limit
+	 (lambda (low number high)
+	   (cond ((< number low) low)
+		 ((> number high) high)
+		 (else number)))))
+    (let ((month (limit 1 month 12)))
+      (make-decoded-time
+       (limit 0 second 59)
+       (limit 0 minute 59)
+       (limit 0 hour 23)
+       (limit 1 day (vector-ref days-per-month (- month 1)))
+       month
+       (if (< year 0) 0 year)))))
+
+(define (month/max-days month)
+  (guarantee-month month 'MONTH/MAX-DAYS)
+  (vector-ref '#(31 29 31 30 31 30 31 31 30 31 30 31) (- month 1)))
+
+(define (month/short-string month)
+  (guarantee-month month 'MONTH/SHORT-STRING)
+  (vector-ref '#("Jan" "Feb" "Mar" "Apr" "May" "Jun"
+		       "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")
+	      (- month 1)))
+
+(define (month/long-string month)
+  (guarantee-month month 'MONTH/LONG-STRING)
+  (vector-ref '#("January" "February" "March" "April" "May" "June"
+			   "July" "August" "September" "October"
+			   "November" "December")
+	      (- month 1)))
+
+(define (guarantee-month month name)
+  (if (not (exact-integer? month))
+      (error:wrong-type-argument month "month integer" name))
+  (if (not (<= 1 month 12))
+      (error:bad-range-argument month name)))
+
+(define (decode-universal-time time)
+  (let ((result (allocate-decoded-time)))
     ((ucode-primitive decode-time 2) result time)
     result))
 
-(define (encode-time dt)
+(define (encode-universal-time dt)
   ((ucode-primitive encode-time 1) dt))
 
-(define (get-time)
+(define (get-universal-time)
   ((ucode-primitive encoded-time 0)))
 
 (define (get-decoded-time)
-  (decode-time (get-time)))
+  (decode-universal-time (get-universal-time)))
 
 (define (decoded-time/date-string time)
   (string-append
-   (vector-ref '#("Monday" "Tuesday" "Wednesday" "Thursday" "Friday"
-			   "Saturday" "Sunday")
-	       (decoded-time/day-of-week time))
+   (if (decoded-time/day-of-week time)
+       (string-append
+	(vector-ref '#("Monday" "Tuesday" "Wednesday" "Thursday" "Friday"
+				"Saturday" "Sunday")
+		    (decoded-time/day-of-week time))
+	" ")
+       "")
+   (month/long-string (decoded-time/month time))
    " "
-   (vector-ref '#("January" "February" "March" "April" "May" "June"
-			    "July" "August" "September" "October"
-			    "November" "December")
-	       (-1+ (decoded-time/month time)))
-   " "
-   (write-to-string (decoded-time/day time))
+   (number->string (decoded-time/day time))
    ", "
-   (write-to-string (decoded-time/year time))))
+   (number->string (decoded-time/year time))))
 
 (define (decoded-time/time-string time)
   (let ((second (decoded-time/second time))
 	(minute (decoded-time/minute time))
 	(hour (decoded-time/hour time)))
-    (string-append (write-to-string
+    (string-append (number->string
 		    (cond ((zero? hour) 12)
 			  ((< hour 13) hour)
 			  (else (- hour 12))))
 		   (if (< minute 10) ":0" ":")
-		   (write-to-string minute)
+		   (number->string minute)
 		   (if (< second 10) ":0" ":")
-		   (write-to-string second)
+		   (number->string second)
 		   " "
 		   (if (< hour 12) "AM" "PM"))))
