@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.10 2000/04/14 01:45:43 cph Exp $
+;;; $Id: imail-util.scm,v 1.11 2000/04/28 19:05:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -144,7 +144,7 @@
   (write-char #\: port)
   (write-string value port)
   (newline port))
-
+
 (define (read-lines port)
   (source->list (lambda () (read-line port))))
 
@@ -164,3 +164,17 @@
 
 (define (edwin-variable-value name)
   (variable-value (name->variable name 'ERROR)))
+
+(define (translate-string-line-endings string)
+  (translate-substring-line-endings string 0 (string-length string)))
+
+(define (translate-substring-line-endings string start end)
+  (let ((indexes (substring-search-all "\r\n" string start end)))
+    (let ((s (make-string (fix:- (fix:- end start) (length indexes)))))
+      (let loop ((indexes indexes) (i start) (j 0))
+	(if (pair? indexes)
+	    (let ((j (substring-move! string i (car indexes) s j)))
+	      (string-set! s j #\newline)
+	      (loop (cdr indexes) (fix:+ (car indexes) 2) (fix:+ j 1)))
+	    (substring-move! string i end s j)))
+      s)))
