@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.17 1995/05/06 18:04:45 adams Exp $
+$Id: cleanup.scm,v 1.18 1995/05/11 05:39:59 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -336,6 +336,9 @@ MIT in each case. |#
   (unary 'TAN  tan)
   (unary 'ASIN asin)
   (unary 'ACOS acos)
+
+  (unary  'ATAN atan)
+  (binary 'ATAN atan)
 
   (binary 'EXPT expt)
   (binary (make-primitive-procedure '&+) +)
