@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comhst.scm,v 1.2 1993/08/22 04:16:32 gjr Exp $
+$Id: comhst.scm,v 1.3 1994/03/08 20:17:39 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,10 +46,18 @@ license should have been included along with this file. |#
   "Size of input history ring."
   30)
 
-(define-variable comint-input-ring "" false)
+(define-variable comint-input-ring "" #f)
+(variable-permanent-local! (ref-variable-object comint-input-ring))
 
-(define comint-input-ring-tag
-  '(COMINT-INPUT-RING))
+(define-variable comint-last-input-match "" #f)
+(variable-permanent-local! (ref-variable-object comint-last-input-match))
+
+(define comint-input-ring-tag '(COMINT-INPUT-RING))
+
+(define (comint-record-input ring string)
+  (if (or (ring-empty? ring)
+	  (not (string=? string (ring-ref ring 0))))
+      (ring-push! ring string)))
 
 (define-command comint-previous-input
   "Cycle backwards through input history."
@@ -80,9 +88,7 @@ license should have been included along with this file. |#
   "*p"
   (lambda (argument)
     ((ref-command comint-previous-input) (- argument))))
-
-(define-variable comint-last-input-match "" false)
-
+
 (define-command comint-history-search-backward
   "Search backwards through the input history for a matching substring."
   (lambda ()
@@ -121,8 +127,3 @@ license should have been included along with this file. |#
 		   ((ref-command comint-previous-input) (- index start)))
 		  (else
 		   (loop index)))))))))
-
-(define (comint-record-input ring string)
-  (if (or (ring-empty? ring)
-	  (not (string=? string (ring-ref ring 0))))
-      (ring-push! ring string)))
