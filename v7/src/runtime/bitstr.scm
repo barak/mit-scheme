@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 13.44 1987/07/27 22:02:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 13.45 1987/08/06 19:29:19 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -55,7 +55,7 @@
    bit-string-zero? bit-string=?
    bit-string-fill! bit-string-move! bit-string-movec!
    bit-string-or! bit-string-and! bit-string-andc!
-   bit-substring-move-right!
+   bit-string-xor! bit-substring-move-right!
    bit-string->unsigned-integer unsigned-integer->bit-string
    read-bits! write-bits!
    bit-substring-find-next-set-bit))
