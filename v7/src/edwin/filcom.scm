@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.149 1991/04/21 00:50:21 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.150 1991/04/23 06:32:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -341,25 +341,26 @@ Delete the initial contents of the minibuffer
 if you wish to make buffer not be visiting any file."
   "FSet visited file name"
   (lambda (filename)
-    (set-visited-pathname (current-buffer)
-			  (and (not (string-null? filename))
-			       (string->pathname filename)))))
+    (set-visited-pathname
+     (current-buffer)
+     (let ((pathname (string->pathname filename)))
+       (and (not (string-null? (pathname-name-string pathname)))
+	    pathname)))))
 
 (define (set-visited-pathname buffer pathname)
   (set-buffer-pathname! buffer pathname)
   (set-buffer-truename! buffer false)
   (if pathname
-      (begin
-	(let ((name (pathname->buffer-name pathname)))
-	  (if (not (find-buffer name))
-	      (rename-buffer buffer name)))))
+      (let ((name (pathname->buffer-name pathname)))
+	(if (not (find-buffer name))
+	    (rename-buffer buffer name))))
   (set-buffer-backed-up?! buffer false)
   (clear-visited-file-modification-time! buffer)
   (cond ((buffer-auto-save-pathname buffer)
 	 (rename-auto-save-file! buffer))
-	((buffer-pathname buffer)
+	(pathname
 	 (setup-buffer-auto-save! buffer)))
-  (if (buffer-pathname buffer)
+  (if pathname
       (buffer-modified! buffer)))
 
 (define-command write-file
