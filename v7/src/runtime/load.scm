@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.53 1999/05/11 20:35:15 cph Exp $
+$Id: load.scm,v 14.54 1999/12/20 23:11:01 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -26,9 +26,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (initialize-package!)
   (set! *purification-root-marker* (intern "#[PURIFICATION-ROOT]"))
-  (set! load-noisily? false)
-  (set! load/loading? false)
-  (set! load/suppress-loading-message? false)
+  (set! load-noisily? #f)
+  (set! load/loading? #f)
+  (set! load/suppress-loading-message? #f)
   (set! load/default-types
 	`(("com" ,load/internal)
 	  ("so" ,load-object-file)
@@ -68,23 +68,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     default-object
 	     (->environment environment)))
 	(syntax-table
-	 ;; Kludge until optional defaulting fixed.
 	 (if (or (default-object? syntax-table)
 		 (eq? syntax-table default-object))
 	     default-object
 	     (guarantee-syntax-table syntax-table 'LOAD)))
 	(purify?
-	 (if (or (default-object? purify?)
-		 (eq? purify? default-object))
-	     false
+	 (if (or (default-object? purify?) (eq? purify? default-object))
+	     #f
 	     purify?)))
     (handle-load-hooks
      (lambda ()
        (let ((kernel
 	      (lambda (filename last-file?)
 		(call-with-values
-		    (lambda ()
-		      (find-pathname filename load/default-types))
+		    (lambda () (find-pathname filename load/default-types))
 		  (lambda (pathname loader)
 		    (fluid-let ((load/current-pathname pathname))
 		      (let ((load-it
@@ -95,16 +92,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				       purify?
 				       load-noisily?))))
 			(cond (last-file? (load-it))
-			      (load-noisily? (write-line (load-it)))
+			      (load-noisily?
+			       (let ((value (load-it)))
+				 (newline)
+				 (write value)))
 			      (else (load-it) unspecific)))))))))
 	 (if (pair? filename/s)
 	     (let loop ((filenames filename/s))
 	       (if (null? (cdr filenames))
-		   (kernel (car filenames) true)
+		   (kernel (car filenames) #t)
 		   (begin
-		     (kernel (car filenames) false)
+		     (kernel (car filenames) #f)
 		     (loop (cdr filenames)))))
-	     (kernel filename/s true)))))))
+	     (kernel filename/s #t)))))))
 
 (define (fasload filename #!optional suppress-loading-message?)
   (call-with-values (lambda () (find-pathname filename fasload/default-types))
@@ -126,7 +126,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (handle-load-hooks thunk)
   (call-with-values
       (lambda ()
-	(fluid-let ((load/loading? true)
+	(fluid-let ((load/loading? #t)
 		    (load/after-load-hooks '()))
 	  (let ((result (thunk)))
 	    (values result (reverse load/after-load-hooks)))))
@@ -138,7 +138,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   "default-object")
 
 (define (load-noisily filename #!optional environment syntax-table purify?)
-  (fluid-let ((load-noisily? true))
+  (fluid-let ((load-noisily? #t))
     (load filename
 	  ;; This defaulting is a kludge until we get the optional
 	  ;; defaulting fixed.  Right now it must match the defaulting
@@ -191,7 +191,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (search-types-in-order pathname default-types)
   (let loop ((types default-types))
     (if (null? types)
-	(values false false)
+	(values #f #f)
 	 (let ((pathname (pathname-new-type pathname (caar types))))
 	   (if (file-exists? pathname)
 	       (values pathname (cadar types))
@@ -199,8 +199,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (find-latest-file pathname default-types)
   (let loop ((types default-types)
-	     (latest-pathname false)
-	     (latest-loader false)
+	     (latest-pathname #f)
+	     (latest-loader #f)
 	     (latest-time 0))
     (if (not (pair? types))
 	(values latest-pathname latest-loader)
@@ -239,7 +239,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (loading-message load/suppress-loading-message? pathname
 		(lambda ()
 		  (write-stream (value-stream)
-				(lambda (exp&value) exp&value false)))))))))
+				(lambda (exp&value) exp&value #f)))))))))
 
 (define (fasload/internal pathname suppress-loading-message?)
   (let ((value
@@ -317,7 +317,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (and (eof-object? object)
 			(begin
 			  (close-input-port port)
-			  true)))))
+			  #t)))))
 
 (define (eval-stream stream environment syntax-table)
   (stream-map stream
@@ -408,7 +408,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 	(begin
 	  (set! *unused-command-line*)
-	  (fluid-let ((*load-init-file?* true))
+	  (fluid-let ((*load-init-file?* #t))
 	    (set! *unused-command-line*
 		  (process-keyword (vector->list unused-command-line) '()))
 	    (for-each (lambda (act) (act))
@@ -632,7 +632,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     'with-binary-input-file))
 
 (define (with-binary-file-channel file action open extract-channel name)
-  (let ((port false))
+  (let ((port #f))
     (dynamic-wind
      (lambda ()
        (if port
@@ -642,7 +642,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (action (channel-descriptor (extract-channel port))))
      (lambda ()
        (if (and port
-                (not (eq? port true)))
+                (not (eq? port #t)))
            (begin
              (close-port port)
-             (set! port true)))))))
+             (set! port #t)))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 4.14 1999/01/02 06:06:43 cph Exp $
+$Id: debug.scm,v 4.15 1999/12/20 23:07:24 cph Exp $
 
 Copyright (c) 1988, 1989, 1990, 1999 Massachusetts Institute of Technology
 
@@ -25,7 +25,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (po object)
   (let ((object (->tagged-vector object)))
-    (write-line object)
+    (newline)
+    (write object)
     (for-each pp ((tagged-vector/description object) object))))
 
 (define (debug/find-procedure name)
@@ -50,17 +51,23 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (debug/find-entry-node node)
   (let ((node (->tagged-vector node)))
     (if (eq? (expression-entry-node *root-expression*) node)
-	(write-line *root-expression*))
+	(begin
+	  (newline)
+	  (write *root-expression*)))
     (for-each (lambda (procedure)
 		(if (eq? (procedure-entry-node procedure) node)
-		    (write-line procedure)))
+		    (begin
+		      (newline)
+		      (write procedure))))
 	      *procedures*)))
 
 (define (debug/where object)
   (cond ((compiled-code-block? object)
-	 (write-line (compiled-code-block/debugging-info object)))
+	 (newline)
+	 (write (compiled-code-block/debugging-info object)))
 	((compiled-code-address? object)
-	 (write-line
+	 (newline)
+	 (write
 	  (compiled-code-block/debugging-info
 	   (compiled-code-address->block object)))
 	 (write-string "\nOffset: ")

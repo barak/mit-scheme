@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comcmp.scm,v 1.5 1999/01/02 06:06:43 cph Exp $
+$Id: comcmp.scm,v 1.6 1999/12/20 23:07:27 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -92,7 +92,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (lambda ()
 			(let ((result (core)))
 			  (if result
-			      (write-line `(subblocks ,b1 ,b2 ,result)))
+			      (begin
+				(newline)
+				(write `(subblocks ,b1 ,b2 ,result))))
 			  result))))))
 
     (define (memoize! b1 b2 do-it)

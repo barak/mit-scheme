@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 14.39 1999/01/02 06:11:34 cph Exp $
+$Id: debug.scm,v 14.40 1999/12/20 23:08:22 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -800,7 +800,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (write-string "Stack frame elements: " port)
      (for-each-vector-element
       (stack-frame/elements (dstate/subproblem dstate))
-      write-line))))
+      (lambda (element)
+	(newline)
+	(write element))))))
 
 ;;;; Low-level Side-effects
 
