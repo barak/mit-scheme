@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Linux
 
-$Id: linux.h,v 1.1 1995/06/29 23:20:04 cph Exp $
+$Id: linux.h,v 1.2 1995/06/29 23:50:31 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -32,8 +32,6 @@ there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
-
-#define C_SWITCH_SYSTEM -D_POSIX -D_BSD
 
 #define LIBX11_MACHINE -L/usr/X11/lib
 
