@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.6 1992/01/30 00:38:38 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.7 1992/01/30 01:10:03 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -111,20 +111,32 @@ MIT in each case. |#
   text-slant
   text-rotation)
 
-(let-syntax ((define-accessor
+(define (starbase-device/identifier device)
+  (starbase-graphics-descriptor/identifier
+   (graphics-device/descriptor device)))
+
+(let-syntax ((define-accessors-and-mutators
 	       (macro (name)
-		 `(define (,(symbol-append 'starbase-device/ name) device)
-		    (,(symbol-append 'starbase-graphics-descriptor/ name)
-		     (graphics-device/descriptor device))))))
-  (define-accessor identifier)
-  (define-accessor x-left)
-  (define-accessor y-bottom)
-  (define-accessor x-right)
-  (define-accessor y-top)
-  (define-accessor text-height)
-  (define-accessor text-aspect)
-  (define-accessor text-slant)
-  (define-accessor text-rotation))
+		 `(begin
+		    (define (,(symbol-append 'starbase-device/ name) device)
+		      (,(symbol-append 'starbase-graphics-descriptor/ name)
+		       (graphics-device/descriptor device)))
+		    (define (,(symbol-append 'set-starbase-device/ name '!)
+			     device value)
+		      (,(symbol-append
+			 'set-starbase-graphics-descriptor/ name '!)
+		       (graphics-device/descriptor device)
+		       value)))))
+	     (define-settor
+	       (macro (name))))
+  (define-accessors-and-mutators x-left)
+  (define-accessors-and-mutators y-bottom)
+  (define-accessors-and-mutators x-right)
+  (define-accessors-and-mutators y-top)
+  (define-accessors-and-mutators text-height)
+  (define-accessors-and-mutators text-aspect)
+  (define-accessors-and-mutators text-slant)
+  (define-accessors-and-mutators text-rotation))
 
 (define (operation/available?)
   (implemented-primitive-procedure? starbase-open-device))
