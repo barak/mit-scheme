@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.50 1993/11/18 01:33:22 cph Exp $
+$Id: infutl.scm,v 1.51 1993/11/21 00:41:49 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -242,7 +242,13 @@ MIT in each case. |#
 		       (set-car! (compiled-code-block/debugging-info
 				  (vector-ref blocks index))
 				 binf-filename)
-		       (loop (1+ index)))))))))))
+		       (loop (1+ index))))))))
+	  ((vector? value)
+	   (for-each-vector-element
+	    value
+	    (lambda (el)
+	      (if (compiled-code-block? el)
+		  (process-block el))))))))
 
 (define (process-binf-filename binf-filename com-pathname)
   (and binf-filename
