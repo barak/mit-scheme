@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.10 1988/12/16 13:35:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.11 1989/04/17 17:06:04 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -83,7 +83,11 @@ MIT in each case. |#
 	 (make-rvalue procedure-tag
 		      type block name required optional rest names values
 		      (node->edge (cfg-entry-node scfg))
-		      (list-copy required) (list-copy optional) rest
+		      (list-copy required)
+		      (list-copy optional)
+		      (if (eq? type continuation-type/procedure)
+			  rest
+			  '())		;initial continuation/combinations
 		      (generate-label name) false false false false false
 		      false false false false false false '() '() '() false)))
     (set! *procedures* (cons procedure *procedures*))
