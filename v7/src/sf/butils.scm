@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.2 1989/08/17 15:54:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.3 1989/08/17 15:59:21 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -95,7 +95,9 @@ MIT in each case. |#
 	 (lambda (filename)
 	   (cond ((not (file-processed? filename "scm" "bin"))
 		  (sf filename))
-		 ((or (default-object? echo-up-to-date?) echo-up-to-date?)		  (newline)
+		 ((and (not (default-object? echo-up-to-date?))
+		       echo-up-to-date?)
+		  (newline)
 		  (write-string "Syntax file: ")
 		  (write filename)
 		  (write-string " is up to date"))))))
