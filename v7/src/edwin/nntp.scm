@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.12 1996/10/28 00:13:58 cph Exp $
+;;;	$Id: nntp.scm,v 1.13 1996/12/19 04:48:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -837,46 +837,48 @@
 	    (set-news-group:%body-gdbf! group #f)
 	    (delete-file-no-errors (news-group:header-gdbf-pathname group))
 	    (delete-file-no-errors (news-group:body-gdbf-pathname group)))
-	  (let ((purge
-		 (lambda (gdbf body?)
-		   (let ((keys
-			  (let loop ((key (gdbm-firstkey gdbf)) (keys '()))
-			    (if (not key)
-				keys
-				(loop (gdbm-nextkey gdbf key)
-				      (if (predicate
-					   (or (string->number key)
-					       (string->number
-						(gdbm-fetch gdbf key)))
-					   body?)
-					  (cons key keys)
-					  keys))))))
-		     (if (not (null? keys))
-			 (begin
-			   (with-gdbf-fast gdbf
-			     (lambda ()
-			       (for-each (lambda (key) (gdbm-delete gdbf key))
-					 keys)))
-			   (gdbm-reorganize gdbf))))
-		   (gdbm-close gdbf))))
-	    (let ((gdbf (news-group:header-gdbf group #f)))
-	      (if gdbf (purge gdbf #f))
-	      (set-news-group:%header-gdbf! group #f))
-	    (let ((gdbf (news-group:body-gdbf group #f)))
-	      (if gdbf (purge gdbf #t))
-	      (set-news-group:%body-gdbf! group #f))))))
+	  (purge-pre-read-headers-1 group predicate))))
 
-(define (with-gdbf-fast gdbf thunk)
-  #|
-  (dynamic-wind (lambda ()
-		  (gdbm-setopt gdbf gdbm_fastmode 1))
-		thunk
-		(lambda ()
-		  (gdbm-sync gdbf)
-		  (gdbm-setopt gdbf gdbm_fastmode 0)))
-  |#
-  gdbf
-  (thunk))
+(define (purge-pre-read-headers-1 group predicate)
+  (let ((header-gdbf (news-group:header-gdbf group #f))
+	(body-gdbf (news-group:body-gdbf group #f)))
+    (cond (header-gdbf
+	   ;; Purge all headers satisfying PREDICATE.
+	   (gdbm-purge header-gdbf
+	     (lambda (key)
+	       (and (string->number key)
+		    (let ((header (parse-header group (get-header group key))))
+		      (or (not (news-header? header))
+			  (predicate header))))))
+	   ;; Purge all orphaned message-id entries.
+	   (gdbm-purge header-gdbf
+	     (lambda (key)
+	       (and (not (string->number key))
+		    (not (gdbm-fetch header-gdbf
+				     (gdbm-fetch header-gdbf key))))))
+	   (gdbm-reorganize header-gdbf)
+	   (if body-gdbf
+	       (begin
+		 ;; Purge all orphaned bodies.
+		 (gdbm-purge body-gdbf
+		   (lambda (key)
+		     (not (gdbm-fetch header-gdbf key))))
+		 (gdbm-reorganize body-gdbf)
+		 (gdbm-close body-gdbf)
+		 (set-news-group:%body-gdbf! group #f)))
+	   (gdbm-close header-gdbf)
+	   (set-news-group:%header-gdbf! group #f))
+	  (body-gdbf
+	   (gdbm-close body-gdbf)
+	   (set-news-group:%body-gdbf! group #f)
+	   (delete-file-no-errors (news-group:body-gdbf-pathname group))))))
+
+(define (gdbm-purge gdbf predicate)
+  (let loop ((key (gdbm-firstkey gdbf)) (keys '()))
+    (if (not key)
+	(for-each (lambda (key) (gdbm-delete gdbf key)) keys)
+	(loop (gdbm-nextkey gdbf key)
+	      (if (predicate key) (cons key keys) keys)))))
 
 ;;;; Read Headers
 
