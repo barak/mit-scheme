@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.22 1987/04/16 02:27:43 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.23 1987/04/29 13:50:24 cph Exp $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
@@ -50,27 +50,55 @@ Pointer C_Name()
  * local variables for fast access.
  */
 
-#define Primitive_0_Args()
+#ifdef ENABLE_PRIMITIVE_PROFILING
+#define primitive_entry_hook() record_primitive_entry (Fetch_Expression ())
+#else
+#define primitive_entry_hook() {}
+#endif
 
-#define Primitive_1_Args()	fast Pointer Arg1 = Stack_Ref(0)
+#define Primitive_0_Args()	primitive_entry_hook ()
 
-#define Primitive_2_Args()      Primitive_1_Args();			\
-				fast Pointer Arg2 = Stack_Ref(1)
+#define Primitive_1_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
+				primitive_entry_hook ()
 
-#define Primitive_3_Args()      Primitive_2_Args();			\
-				fast Pointer Arg3 = Stack_Ref(2)
+#define Primitive_2_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
+				fast Pointer Arg2 = Stack_Ref(1);	\
+				primitive_entry_hook ()
 
-#define Primitive_4_Args()      Primitive_3_Args();			\
-				fast Pointer Arg4 = Stack_Ref(3)
+#define Primitive_3_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
+				fast Pointer Arg2 = Stack_Ref(1);	\
+				fast Pointer Arg3 = Stack_Ref(2);	\
+				primitive_entry_hook ()
 
-#define Primitive_5_Args()      Primitive_4_Args();			\
-				fast Pointer Arg5 = Stack_Ref(4)
+#define Primitive_4_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
+				fast Pointer Arg2 = Stack_Ref(1);	\
+				fast Pointer Arg3 = Stack_Ref(2);	\
+				fast Pointer Arg4 = Stack_Ref(3);	\
+				primitive_entry_hook ()
 
-#define Primitive_6_Args()      Primitive_5_Args();			\
-				fast Pointer Arg6 = Stack_Ref(5)
+#define Primitive_5_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
+				fast Pointer Arg2 = Stack_Ref(1);	\
+				fast Pointer Arg3 = Stack_Ref(2);	\
+				fast Pointer Arg4 = Stack_Ref(3);	\
+				fast Pointer Arg5 = Stack_Ref(4);	\
+				primitive_entry_hook ()
 
-#define Primitive_7_Args()      Primitive_6_Args();			\
-				fast Pointer Arg7 = Stack_Ref(6)
+#define Primitive_6_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
+				fast Pointer Arg2 = Stack_Ref(1);	\
+				fast Pointer Arg3 = Stack_Ref(2);	\
+				fast Pointer Arg4 = Stack_Ref(3);	\
+				fast Pointer Arg5 = Stack_Ref(4);	\
+				fast Pointer Arg6 = Stack_Ref(5);	\
+				primitive_entry_hook ()
+
+#define Primitive_7_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
+				fast Pointer Arg2 = Stack_Ref(1);	\
+				fast Pointer Arg3 = Stack_Ref(2);	\
+				fast Pointer Arg4 = Stack_Ref(3);	\
+				fast Pointer Arg5 = Stack_Ref(4);	\
+				fast Pointer Arg6 = Stack_Ref(5);	\
+				fast Pointer Arg7 = Stack_Ref(6);	\
+				primitive_entry_hook ()
 
 #define Primitive_1_Arg()	Primitive_1_Args()
 
