@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.116 1991/08/16 18:46:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.117 1991/08/22 15:43:39 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -613,6 +613,7 @@ MIT in each case. |#
 	  restart/properties
 	  restart/put!
 	  restart?
+	  retry
 	  signal-condition
 	  standard-error-handler
 	  standard-error-hook
