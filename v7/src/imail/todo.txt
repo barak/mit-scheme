@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.108 2000/07/01 04:10:39 cph Exp $
+$Id: todo.txt,v 1.109 2000/07/02 05:09:07 cph Exp $
 
 Bug fixes
 ---------
@@ -15,9 +15,6 @@ MIME conformance
   needed.  When a message is already encoded but violates the spec,
   decode and re-encode it.
 
-* Don't inline anything other than text.  (Although message/rfc822
-  should also be shown, though the spec doesn't say so.)
-
 New features
 ------------
 
@@ -25,8 +22,7 @@ New features
   Use this to extend M-x imail-rename-folder to work in all cases by
   using copy/delete when rename inapplicable.
 
-* Write folder browser for IMAP servers.  Implement
-  AVAILABLE-FOLDER-NAMES.
+* Write folder browser for IMAP servers.
 
 * Examine spec for text/enriched and see if it can be incorporated
   into the reader.
