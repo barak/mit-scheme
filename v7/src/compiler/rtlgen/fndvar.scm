@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndvar.scm,v 1.5 1990/05/03 15:11:40 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndvar.scm,v 1.6 1991/03/06 00:57:47 cph Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -66,30 +66,43 @@ MIT in each case. |#
       variable				; ignored
       (rtl:make-fetch locative))
     (lambda (variable block locative)
-      block locative
+      block locative			; ignored
       (error "Closure variable in IC frame" variable))))
 
 (define (find-stack-overwrite-variable context variable)
   (find-variable-no-tricks context variable
     (lambda (variable locative)
-      variable
+      variable				; ignored
       locative)
     (lambda (variable block locative)
-      block locative
-      (error "Stack overwrite slot in IC frame" variable))))      
-
+      block locative			; ignored
+      (error "Stack overwrite slot in IC frame" variable))))
+
 (define (find-variable get-value? context variable if-compiler if-ic if-cached)
-  (let ((if-locative
-	 (if get-value?
-	     (lambda (locative)
-	       (if-compiler (rtl:make-fetch locative)))
-	     if-compiler)))
-    (if (variable/value-variable? variable)
-	(if-locative
-	 (let ((continuation (reference-context/procedure context)))
-	   (if (continuation/ever-known-operator? continuation)
-	       (continuation/register continuation)
-	       register:value)))
+  (if (variable/value-variable? variable)
+      (begin
+	(if (not get-value?)
+	    (error "Can't take locative of value variable" variable))
+	(if-compiler
+	 (if (lvalue-integrated? variable)
+	     (let ((rvalue (lvalue-known-value variable)))
+	       (cond ((rvalue/constant? rvalue)
+		      (rtl:make-constant (constant-value rvalue)))
+		     ((and (rvalue/procedure? rvalue)
+			   (procedure/trivial-or-virtual? rvalue))
+		      (make-trivial-closure-cons rvalue))
+		     (else
+		      (error "illegal integrated value variable" variable))))
+	     (rtl:make-fetch
+	      (let ((continuation (reference-context/procedure context)))
+		(if (continuation/ever-known-operator? continuation)
+		    (continuation/register continuation)
+		    register:value))))))
+      (let ((if-locative
+	     (if get-value?
+		 (lambda (locative)
+		   (if-compiler (rtl:make-fetch locative)))
+		 if-compiler)))
 	(find-variable-internal context variable
 	  (and get-value? if-compiler)
 	  (lambda (variable locative)
