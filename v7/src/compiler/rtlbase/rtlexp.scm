@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.2 1987/12/31 08:50:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.3 1988/03/14 21:04:40 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,10 +41,11 @@ MIT in each case. |#
 	'(INVOCATION:APPLY
 	  INVOCATION:JUMP
 	  INVOCATION:LEXPR
-	  INVOCATION:LOOKUP
 	  INVOCATION:PRIMITIVE
 	  INVOCATION:SPECIAL-PRIMITIVE
-	  INVOCATION:UUO-LINK)))
+	  INVOCATION:UUO-LINK
+	  INVOCATION:CACHE-REFERENCE
+	  INVOCATION:LOOKUP)))
 
 (define (rtl:trivial-expression? expression)
   (if (memq (rtl:expression-type expression)
@@ -53,7 +54,8 @@ MIT in each case. |#
 	      ENTRY:CONTINUATION
 	      ENTRY:PROCEDURE
 	      UNASSIGNED
-	      VARIABLE-CACHE))
+	      VARIABLE-CACHE
+	      ASSIGNMENT-CACHE))
       true
       (and (rtl:offset? expression)
 	   (interpreter-stack-pointer? (rtl:offset-register expression)))))
@@ -62,6 +64,17 @@ MIT in each case. |#
   (and (rtl:register? expression)
        (machine-register? (rtl:register-number expression))))
 
+(define (rtl:pseudo-register-expression? expression)
+  (and (rtl:register? expression)
+       (pseudo-register? (rtl:register-number expression))))
+
+(define (rtl:address-valued-expression? expression)
+  (if (rtl:register? expression)
+      (register-contains-address? (rtl:register-number expression))
+      (or (rtl:object->address? expression)
+	  (rtl:variable-cache? expression)
+	  (rtl:assignment-cache? expression))))
+
 (define (rtl:map-subexpressions expression procedure)
   (if (rtl:constant? expression)
       (map identity-procedure expression)

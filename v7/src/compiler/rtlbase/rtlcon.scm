@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.4 1988/01/22 21:57:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.5 1988/03/14 21:04:25 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -43,6 +43,15 @@ MIT in each case. |#
     (lambda (expression)
       (locative-dereference-for-statement locative
 	(lambda (address)
+	  (if (and (rtl:pseudo-register-expression? address)
+		   (rtl:address-valued-expression? expression))
+	      ;; We don't know for sure that this register is assigned
+	      ;; only once.  However, if it is assigned multiple
+	      ;; times, then all of those assignments should be
+	      ;; address valued expressions.  This constraint is not
+	      ;; enforced.
+	      (add-rgraph-address-register! *current-rgraph*
+					    (rtl:register-number address)))
 	  (%make-assign address expression))))))
 
 (define (rtl:make-eq-test expression-1 expression-2)
@@ -226,16 +235,11 @@ MIT in each case. |#
       (receiver (rtl:make-offset register offset*) offset))))
 
 (define (guarantee-address expression scfg-append! receiver)
-  (if (rtl:address-expression? expression)
+  (if (rtl:address-valued-expression? expression)
       (receiver expression)
       (guarantee-register expression scfg-append!
 	(lambda (register)
 	  (assign-to-address-temporary register scfg-append! receiver)))))
-
-(define (rtl:address-expression? expression)
-  (if (rtl:register? expression)
-      (register-contains-address? (rtl:register-number expression))
-      (rtl:object->address? expression)))
 
 (define (guarantee-register expression scfg-append! receiver)
   (if (rtl:register? expression)
@@ -273,7 +277,7 @@ MIT in each case. |#
 
 (define (assign-to-temporary expression scfg-append! receiver)
   (let ((pseudo (rtl:make-pseudo-register)))
-    (if (rtl:object->address? expression)
+    (if (rtl:address-valued-expression? expression)
 	(add-rgraph-address-register! *current-rgraph*
 				      (rtl:register-number pseudo)))
     (scfg-append! (%make-assign pseudo expression) (receiver pseudo))))
@@ -332,7 +336,7 @@ MIT in each case. |#
      (lambda (expression offset)
        (if (zero? offset)
 	   (receiver
-	    (if (rtl:address-expression? expression)
+	    (if (rtl:address-valued-expression? expression)
 		(rtl:make-address->environment expression)
 		expression))
 	   (generate-offset-address expression offset scfg-append!
@@ -392,6 +396,12 @@ MIT in each case. |#
 		    (lambda (element)
 		      (loop (cdr elements)
 			    (cons element simplified-elements))))))))))))
+
+;; A NOP for simplification
+
+(define-expression-method 'TYPED-CONS:PROCEDURE
+  (lambda (receiver scfg-append! type entry min max size)
+    (receiver (rtl:make-typed-cons:procedure type entry min max size))))
 
 (define (object-selector make-object-selector)
   (lambda (receiver scfg-append! expression)
