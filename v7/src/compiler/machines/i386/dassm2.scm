@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm2.scm,v 1.4 1992/08/11 02:19:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm2.scm,v 1.5 1992/08/12 09:45:11 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/dassm2.scm,v 4.18 1991/05/07 13:46:04 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -176,7 +176,7 @@ MIT in each case. |#
        ((ucode-primitive primitive-object-set-type 2)
 	(ucode-type compiled-entry)
 	((ucode-primitive make-non-pointer-object 1)
-	 (+ (read-unsigned-integer offset 32)
+	 (+ (read-signed-integer offset 32)
 	    (+ (if *block
 		   (object-datum *block)
 		   0)
@@ -184,6 +184,9 @@ MIT in each case. |#
 
 (define (read-unsigned-integer offset size)
   (bit-string->unsigned-integer (read-bits offset size)))
+
+(define (read-signed-integer offset size)
+  (bit-string->signed-integer (read-bits offset size)))
 
 (define (read-bits offset size-in-bits)
   (let ((word (bit-string-allocate size-in-bits))
