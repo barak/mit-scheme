@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.40 1995/06/20 19:32:21 adams Exp $
+$Id: sysprim.c,v 9.41 1995/06/30 22:28:11 nick Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -87,7 +87,7 @@ DEFINE_PRIMITIVE ("SET-TRAP-STATE!", Prim_set_trap_state, 1, 1, 0)
 }
 
 DEFINE_PRIMITIVE ("HEAP-AVAILABLE?", Prim_heap_available_p, 1, 1, 
-  "(N-WORDS)\n
+  "(N-WORDS)\n\
 Tests to see if there are at least N-WORDS words of heap storage available")
 {
   PRIMITIVE_HEADER (1);
@@ -96,7 +96,7 @@ Tests to see if there are at least N-WORDS words of heap storage available")
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-GET-FREE", Prim_get_free, 1, 1,
-  "(TYPE-CODE)\n
+  "(TYPE-CODE)\n\
 Return the value of the free pointer tagged with TYPE-CODE")
 {
   PRIMITIVE_HEADER (1);
@@ -105,7 +105,7 @@ Return the value of the free pointer tagged with TYPE-CODE")
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-INCREMENT-FREE", Prim_increment_free, 1, 1,
-  "(N-WORDS)\n
+  "(N-WORDS)\n\
 Advance the free pointer by N-WORDS words")
 {
   PRIMITIVE_HEADER (1);
