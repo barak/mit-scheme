@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.6 1993/10/11 23:31:44 cph Exp $
+$Id: toplev.scm,v 1.7 1995/01/05 20:21:50 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -73,7 +73,7 @@ MIT in each case. |#
      (write-globals pathname pmodel)
      (write-constructor pathname pmodel)
      (write-loader pathname pmodel))))
-
+
 (define (write-constructor pathname pmodel)
   (let ((constructor (construct-constructor pmodel)))
     (with-output-to-file (pathname-new-type pathname "con")
@@ -97,18 +97,30 @@ MIT in each case. |#
 		  loader)))))
 
 (define (write-cref pathname pmodel)
-  (with-output-to-file (pathname-new-type pathname "cref")
+  (let ((old (pathname-new-type pathname "cref")))
+    (if (file-exists? old)
+	(delete-file old)))
+  (with-output-to-file (pathname-new-type pathname "crf")
     (lambda ()
       (format-packages pmodel))))
 
 (define (write-cref-unusual pathname pmodel)
-  (with-output-to-file (pathname-new-type pathname "cref")
+  (let ((old (pathname-new-type pathname "cref")))
+    (if (file-exists? old)
+	(delete-file old)))
+  (with-output-to-file (pathname-new-type pathname "crf")
     (lambda ()
       (format-packages-unusual pmodel))))
 
 (define (write-globals pathname pmodel)
-  (fasdump (map binding/name
-		(list-transform-positive
-		    (package/sorted-bindings (pmodel/root-package pmodel))
-		  binding/source-binding))
-	   (pathname-new-type pathname "glob")))
+  (let ((old (pathname-new-type pathname "glob")))
+    (if (file-exists? old)
+	(delete-file old)))
+  (fasdump (map (lambda (package)
+		  (cons (package/name package)
+			(map binding/name
+			     (list-transform-positive
+				 (package/sorted-bindings package)
+			       binding/source-binding))))
+		(pmodel/packages pmodel))
+	   (pathname-new-type pathname "glo")))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.5 1993/10/11 23:31:43 cph Exp $
+$Id: redpkg.scm,v 1.6 1995/01/05 20:21:16 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,21 +46,34 @@ MIT in each case. |#
 		  (parse-package-expression expression))
 		(read-package-description-file model-pathname))))
       (lambda (packages globals)
-	(let ((pmodel (descriptions->pmodel packages model-pathname)))
-	  (for-each
-	   (let ((root-package (pmodel/root-package pmodel)))
-	     (lambda (pathname)
-	       (for-each (let ((expression
-				(make-expression root-package
-						 (->namestring pathname)
-						 false)))
-			   (lambda (name)
-			     (bind! root-package name expression)))
-			 (fasload
-			  (merge-pathnames (pathname-new-type pathname "glob")
-					   model-pathname)))))
-	   globals)
-	  pmodel)))))
+	(descriptions->pmodel
+	 packages
+	 (map (lambda (pathname)
+		(cons
+		 (->namestring pathname)
+		 (let ((pathname
+			(pathname-new-type (merge-pathnames pathname
+							    model-pathname)
+					   "glo")))
+		   (handle-old-pathname-type pathname "glob")
+		   (if (file-exists? pathname)
+		       (let ((contents (fasload pathname)))
+			 (cond ((check-list contents symbol?)
+				(list (cons '() contents)))
+			       ((check-list contents
+				  (lambda (element)
+				    (and (pair? element)
+					 (check-list (car element) symbol?)
+					 (check-list (cdr element) symbol?))))
+				contents)
+			       (else
+				(warn "Malformed globals file:" pathname)
+				'())))
+		       (begin
+			 (warn "Can't find globals file:" pathname)
+			 '())))))
+	      globals)
+	 model-pathname)))))
 
 (define (sort-descriptions descriptions)
   (let loop
@@ -69,15 +82,22 @@ MIT in each case. |#
        (globals '()))
     (cond ((null? descriptions)
 	   (values (reverse! packages) globals))
+	  ((not (car descriptions))
+	   (loop (cdr descriptions) packages globals))
 	  ((package-description? (car descriptions))
 	   (loop (cdr descriptions)
 		 (cons (car descriptions) packages)
 		 globals))
 	  ((and (pair? (car descriptions))
-		(eq? (car (car descriptions)) 'GLOBAL-DEFINITIONS))
+		(eq? (caar descriptions) 'GLOBAL-DEFINITIONS))
 	   (loop (cdr descriptions)
 		 packages
 		 (append globals (cdr (car descriptions)))))
+	  ((and (pair? (car descriptions))
+		(eq? (caar descriptions) 'NESTED-DESCRIPTIONS))
+	   (loop (append (cdr descriptions) (cdar descriptions))
+		 packages
+		 globals))
 	  (else
 	   (error "Illegal description" (car descriptions))))))
 
@@ -101,7 +121,8 @@ MIT in each case. |#
   (data false))
 
 (define (cache-file-analyses! pmodel)
-  (let ((pathname (pathname-new-type (pmodel/pathname pmodel) "free")))
+  (let ((pathname (pathname-new-type (pmodel/pathname pmodel) "fre")))
+    (handle-old-pathname-type pathname "free")
     (let ((result
 	   (let ((caches (if (file-exists? pathname) (fasload pathname) '())))
 	     (append-map! (lambda (package)
@@ -199,6 +220,24 @@ MIT in each case. |#
        (if (not (check-list filenames string?))
 	   (error "illegal filenames" filenames))
        (cons 'GLOBAL-DEFINITIONS (map parse-filename filenames))))
+    ((OS-TYPE-CASE)
+     (if (not (and (list? (cdr expression))
+		   (for-all? (cdr expression)
+		     (lambda (clause)
+		       (and (or (eq? 'ELSE (car clause))
+				(and (list? (car clause))
+				     (for-all? (car clause) symbol?)))
+			    (list? (cdr clause)))))))
+	 (error "Malformed expression:" expression))
+     (cons 'NESTED-DESCRIPTIONS
+	   (let loop ((clauses (cdr expression)))
+	     (cond ((null? clauses)
+		    '())
+		   ((or (eq? 'ELSE (caar clauses))
+			(memq microcode-id/operating-system (caar clauses)))
+		    (map parse-package-expression (cdar clauses)))
+		   (else
+		    (loop (cdr clauses)))))))
     (else
      (error "unrecognized expression keyword" (car expression)))))
 
@@ -291,12 +330,15 @@ MIT in each case. |#
   (cons (parse-name (car export)) (cdr export)))
 
 (define (check-list items predicate)
-  (let loop ((items items))
-    (if (pair? items)
-	(if (predicate (car items))
-	    (loop (cdr items))
-	    false)
-	(null? items))))
+  (and (list? items)
+       (for-all? items predicate)))
+
+(define (handle-old-pathname-type pathname type)
+  (let ((old (pathname-new-type pathname type)))
+    (if (file-exists? old)
+	(if (file-exists? pathname)
+	    (delete-file old)
+	    (rename-file old pathname)))))
 
 ;;;; Packages
 
@@ -311,7 +353,7 @@ MIT in each case. |#
     (lambda (package)
       (symbol-list=? name (package/name package)))))
 
-(define (descriptions->pmodel descriptions pathname)
+(define (descriptions->pmodel descriptions globals pathname)
   (let ((packages
 	 (map (lambda (description)
 		(make-package
@@ -329,9 +371,25 @@ MIT in each case. |#
 	       (if (null? name)
 		   root-package
 		   (or (name->package packages name)
+		       (name->package extra-packages name)
 		       (let ((package (make-package name '() #F 'UNKNOWN)))
 			 (set! extra-packages (cons package extra-packages))
 			 package))))))
+	;; GLOBALS is a list of the bindings supplied externally.
+	(for-each
+	 (lambda (global)
+	   (for-each
+	    (let ((namestring (->namestring (car global))))
+	      (lambda (entry)
+		(for-each
+		 (let ((package (get-package (car entry))))
+		   (lambda (name)
+		     (bind! package
+			    name
+			    (make-expression package namestring #f))))
+		 (cdr entry))))
+	    (cdr global)))
+	 globals)
 	(for-each (lambda (package description)
 		    (let ((parent
 			   (let ((parent-name

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.12 1994/06/21 19:38:49 cph Exp $
+$Id: make.scm,v 1.13 1995/01/05 20:21:58 cph Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,4 +46,4 @@ MIT in each case. |#
      (lambda ()
        (load-option 'RB-TREE)
        (package/system-loader "cref" '() false)))))
-(add-system! (make-system "CREF" 1 12 '()))
+(add-system! (make-system "CREF" 1 13 '()))
