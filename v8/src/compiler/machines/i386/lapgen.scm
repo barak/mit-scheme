@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.3 1995/01/11 21:09:46 ssmith Exp $
+$Id: lapgen.scm,v 1.4 1995/01/12 22:39:50 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -309,7 +309,7 @@ MIT in each case. |#
 
 (define (target-register target)
   (delete-dead-registers!)
-  (or (register-alias target 'GENERAL)
+  (or ;(register-alias target 'GENERAL)
       (allocate-alias-register! target 'GENERAL)))  
 
 (define-integrable (target-register-reference target)
