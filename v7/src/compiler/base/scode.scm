@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.7 1989/08/15 12:58:32 cph Rel $
+$Id: scode.scm,v 4.8 1992/12/30 16:32:12 gjr Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,7 +67,7 @@ MIT in each case. |#
     make-open-block open-block? open-block-components
     primitive-procedure?
     make-quotation quotation? quotation-expression
-    make-sequence sequence-actions sequence-components
+    make-sequence sequence? sequence-actions sequence-components
     symbol?
     make-the-environment the-environment?
     make-unassigned? unassigned?? unassigned?-name
