@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.6 1990/06/20 17:39:22 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.7 1990/09/06 19:02:46 cph Exp $
 # Modelled on the configuration script for GNU CC
 #   Copyright (C) 1988 Free Software Foundation, Inc.
 
@@ -108,7 +108,14 @@ case $# in
 	sun4 | sparc) 
 		system_file=sunos4
 		machine_file=sun4 
-		;; 
+		;;
+	NeXT | next)
+		system_file=next-mach
+		machine_file=next
+		cmpint_file=cmpint-mc68k.h
+		cmp_file=sun/cmpaux-mc68k.s
+		cmp_link=cmpaux-mc68k.s
+		;;
 	umax)				# Encore Multimax
 	    	system_file=umax
 		machine_file=umax
@@ -184,7 +191,7 @@ case $# in
 	echo "Usage: $progname machine"
 	echo "Where \`machine' is one of:"
 	echo "vax-bsd42 vax-bsd43 vax-ultrix mips-ultrix hp9k300 hp9k800"
-	echo "sun3 sun3-nfp sun4 umax"
+	echo "sun3 sun3-nfp sun4 umax next"
 	if [ -r config.status ]
 	then
 		cat config.status
