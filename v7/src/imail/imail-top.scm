@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.6 2000/01/19 21:02:53 cph Exp $
+;;; $Id: imail-top.scm,v 1.7 2000/01/19 21:22:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -168,7 +168,6 @@ DEL	Scroll to previous screen of this message.
 			 (ref-variable imail-last-output-url buffer)
 			 buffer)
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
-    (add-kill-buffer-hook buffer imail-kill-buffer)
     (set-buffer-read-only! buffer)
     (disable-group-undo! (buffer-group buffer))
     (event-distributor/invoke! (ref-variable imail-mode-hook buffer) buffer)))
@@ -221,10 +220,21 @@ DEL	Scroll to previous screen of this message.
 (define-key 'imail-edit '(#\c-c #\c-])	'imail-abort-edit)
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
-  ???)
-
-(define (imail-kill-buffer buffer)
-  ???)
+  dont-use-auto-save?
+  (let ((folder (buffer->imail-folder buffer))
+	(message (selected-message buffer)))
+    (let ((index (and message (message-index message))))
+      (maybe-revert-folder folder
+	(lambda (folder)
+	  (or dont-confirm?
+	      (prompt-for-yes-or-no?
+	       (string-append "Revert buffer from folder "
+			      (url->string (folder-url folder)))))))
+      (select-message
+       folder
+       (cond ((eq? folder (message-folder message)) message)
+	     ((and (<= 0 index) (< index (count-messages folder))) index)
+	     (else (first-unseen-message folder)))))))
 
 (define-command imail-input
   "Append messages to this folder from a specified folder."
@@ -369,7 +379,8 @@ With prefix argument N moves backward N messages with these flags."
 	       (else
 		(error:wrong-type-argument selector "message selector"
 					   'SELECT-MESSAGE)))))
-    (if (not (eq? message (buffer-get buffer 'IMAIL-MESSAGE #f)))
+    (if (eq? message (buffer-get buffer 'IMAIL-MESSAGE #f))
+	(update-mode-line! buffer)
 	(begin
 	  (buffer-reset! buffer)
 	  (buffer-put! buffer 'IMAIL-MESSAGE message)
@@ -394,8 +405,18 @@ With prefix argument N moves backward N messages with these flags."
 	    (mark-temporary! mark))
 	  (set-buffer-major-mode! buffer (ref-mode-object imail))))))
 
-(define (selected-message)
-  (or (buffer-get (selected-buffer) 'SELECTED-MESSAGE #f)
+(define (update-mode-line! buffer)
+  (local-set-variable! mode-line-process
+		       (mode-line-summary-string buffer)
+		       buffer)
+  (buffer-modeline-event! buffer 'PROCESS-STATUS))
+
+(define (selected-message #!optional buffer)
+  (or (buffer-get (if (or (default-object? buffer) (not buffer))
+		      (selected-buffer)
+		      buffer)
+		  'SELECTED-MESSAGE
+		  #f)
       (error "No selected IMAIL message.")))
 
 ;;;; Message deletion
@@ -445,16 +466,14 @@ Deleted messages stay in the file until the \\[imail-expunge] command is given."
   ()
   (lambda ()
     (let ((folder (selected-folder))
-	  (message (selected-message)))
-      (let ((message*
+	  (message
+	   (let ((message (selected-message)))
 	     (if (message-deleted? message)
 		 (or (next-undeleted-message message)
 		     (previous-undeleted-message message))
-		 message)))
-	(expunge-deleted-messages folder)
-	(if (eq? message message*)
-	    (maybe-redisplay-message message)
-	    (select-message folder message*))))))
+		 message))))
+      (expunge-deleted-messages folder)
+      (select-message folder message))))
 
 ;;;; Message flags
 
