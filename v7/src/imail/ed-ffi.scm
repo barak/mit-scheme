@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: ed-ffi.scm,v 1.6 2000/04/14 18:01:35 cph Exp $
+;;; $Id: ed-ffi.scm,v 1.7 2000/04/18 21:44:46 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -21,13 +21,15 @@
 ;;;; IMAIL mail reader: Edwin buffer packaging info
 
 (standard-scheme-find-file-initialization
- '#(("imail-core" (edwin imail) system-global-syntax-table)
-    ("imail-file" (edwin imail) system-global-syntax-table)
-    ("imail-imap-url" (edwin imail) system-global-syntax-table)
-    ("imail-rmail" (edwin imail) system-global-syntax-table)
-    ("imail-top" (edwin imail) edwin-syntax-table)
-    ("imail-umail" (edwin imail) system-global-syntax-table)
-    ("imail-util" (edwin imail) system-global-syntax-table)
-    ("rexp" (runtime rexp) system-global-syntax-table)
-    ("rfc822" (edwin imail) system-global-syntax-table)
-    ("url" (runtime url) system-global-syntax-table)))
+ '#(("imail-core"	(edwin imail)		system-global-syntax-table)
+    ("imail-file"	(edwin imail)		system-global-syntax-table)
+    ("imail-imap"	(edwin imail)		system-global-syntax-table)
+    ("imail-rmail"	(edwin imail)		system-global-syntax-table)
+    ("imail-top"	(edwin imail)		edwin-syntax-table)
+    ("imail-umail"	(edwin imail)		system-global-syntax-table)
+    ("imail-util"	(edwin imail)		system-global-syntax-table)
+    ("imap-syntax"	(edwin imail imap-syntax) system-global-syntax-table)
+    ("parser"		(edwin imail parser)	system-global-syntax-table)
+    ("rexp"		(edwin imail rexp)	system-global-syntax-table)
+    ("rfc822"		(edwin imail rfc822)	system-global-syntax-table)
+    ("url"		(edwin imail url)	system-global-syntax-table)))

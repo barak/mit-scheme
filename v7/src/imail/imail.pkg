@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.13 2000/04/14 18:01:36 cph Exp $
+;;; $Id: imail.pkg,v 1.14 2000/04/18 21:44:47 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -24,10 +24,10 @@
 (global-definitions "$bscm/sos/sos")
 (global-definitions "$bscm/edwin/edwinunx")
 
-(define-package (runtime rexp)
+(define-package (edwin imail rexp)
   (files "rexp")
-  (parent ())
-  (export ()
+  (parent (edwin imail))
+  (export (edwin imail)
 	  rexp*
 	  rexp+
 	  rexp->regexp
@@ -52,10 +52,34 @@
 	  rexp-word-start
 	  rexp?))
 
-(define-package (runtime url)
+(define-package (edwin imail parser)
+  (files "parser")
+  (parent (edwin imail))
+  (export (edwin imail)
+	  *-matcher
+	  +-matcher
+	  alternatives-matcher
+	  alternatives-parser
+	  ci-string-matcher
+	  decoding-parser
+	  match-always
+	  match-never
+	  noise-parser
+	  optional-matcher
+	  optional-parser
+	  parse-always
+	  parse-never
+	  parser-token
+	  rexp-matcher
+	  sequence-matcher
+	  sequence-parser
+	  simple-parser
+	  string-matcher))
+
+(define-package (edwin imail url)
   (files "url")
-  (parent ())
-  (export ()
+  (parent (edwin imail))
+  (export (edwin imail)
 	  url:char-set:escaped
 	  url:char-set:extra
 	  url:char-set:national
@@ -78,9 +102,49 @@
 	  url:string-encoded?
 	  url:substring-encoded?))
 
+(define-package (edwin imail rfc822)
+  (files "rfc822")
+  (parent (edwin imail))
+  (export (edwin imail)
+	  rfc822-addresses->string
+	  rfc822-first-address
+	  rfc822-strip-quoted-names
+	  string->rfc822-addresses
+	  string->rfc822-tokens))
+
+(define-package (edwin imail imap-syntax)
+  (files "imap-syntax")
+  (parent (edwin imail))
+  (export (edwin imail)
+	  imap:char-set:achar
+	  imap:char-set:atom-char
+	  imap:char-set:list-wildcards
+	  imap:char-set:quoted-specials
+	  imap:match:achar+
+	  imap:match:astring
+	  imap:match:atom
+	  imap:match:bchar+
+	  imap:match:date
+	  imap:match:literal
+	  imap:match:number
+	  imap:match:nz-number
+	  imap:match:quoted-string
+	  imap:match:search-key
+	  imap:match:search-program
+	  imap:match:section
+	  imap:match:section-text
+	  imap:match:set
+	  imap:match:string
+	  imap:parse:enc-mailbox
+	  imap:parse:mailboxlist
+	  imap:parse:messagelist
+	  imap:parse:messagepart
+	  imap:parse:server
+	  imap:parse:simple-message
+	  imap:parse:uidvalidity))
+
 (define-package (edwin imail)
   (files "imail-util"
-	 "rfc822"
 	 "imail-core"
 	 "imail-file"
 	 "imail-rmail"
