@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fasthash.scm,v 1.1 1996/03/05 00:59:58 adams Exp $
+$Id: fasthash.scm,v 1.2 1996/03/05 01:02:42 adams Exp $
 
 Copyright (c) 1995-1996 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ MIT in each case. |#
 ;;; Package: (compiler)
 
 (declare (usual-integrations))
-
+
 ;; This implementation is not thread-safe.  Do not share these
 ;; hash-tables between concurrent threads.  These tables are strong in
 ;; the sense that they prevent their keys from being garbage
@@ -48,9 +48,7 @@ MIT in each case. |#
 ;;   (monotonic-strong-eq-hash-table/get table key default)
 ;;   (monotonic-strong-eq-hash-table/for-every table procedure)
 ;;   (monotonic-strong-eq-hash-table/copy table)
-
-(declare (usual-integrations))
-
+
 (define-structure (table
 		   (conc-name table/))
   ;; either #F, #T (rehash because of GC), or the old vector (rehash
@@ -110,8 +108,7 @@ MIT in each case. |#
 		 (not (table/rehash? table*)))
 	    (set-table/rehash?! table* #T))
 	table*))))
-
-
+
 (define (monotonic-strong-eq-hash-table/put! table key datum)
 
   (define (retry)
@@ -166,8 +163,7 @@ MIT in each case. |#
 		  default))
 	     (else
 	      (search (fix:and mask (fix:+ i 2))))))))
-
-
+
 (define (monotonic-strong-eq-hash-table/for-every table procedure)
   ;; Do not touch the table in any way (put or get) during this operation.
   (let ((v  (if (vector? (table/rehash? table))
@@ -212,17 +208,15 @@ MIT in each case. |#
   (if (vector? (table/rehash? table))
       (let ((old (table/rehash? table))
 	    (new (table/vector table)))
-	;;(pp `(fasthash rehash: vector ,(vector-length old) ,(vector-length new)))
 	(set-table/rehash?! table false)
 	(rehash-copy old (vector-length old) new (vector-length new)))
       (let* ((vec  (table/vector table))
 	     (len  (vector-length vec))
 	     (new  (make-vector len empty-slot)))
-	;;(pp `(fasthash rehash: ,len))
 	(set-table/rehash?! table #F)
 	(set-table/vector! table new)
 	(rehash-copy vec len new len))))
-
+
 (define (mark-tables!)
   (let loop ((tables tables))
     (let ((wp (system-pair-cdr tables)))
