@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.63 2004/07/04 05:28:37 cph Exp $
+$Id: global.scm,v 14.64 2004/07/04 05:37:25 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -304,7 +304,7 @@ USA.
 (define (pointer-type-code? code)
   (case (type-code->gc-type code)
     ((CELL PAIR TRIPLE QUADRUPLE VECTOR COMPILED-ENTRY) #t)
-    ((GC-INTERNAL) (fix= (ucode-type broken-heart) code))
+    ((GC-INTERNAL) (fix:= (ucode-type broken-heart) code))
     (else #f)))
 
 (define (undefined-value? object)
