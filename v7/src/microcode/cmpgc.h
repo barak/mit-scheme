@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.18 1992/02/18 17:29:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.19 1992/03/10 02:54:02 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -167,6 +167,7 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 
      -12: Manifest Closure | tot. length
      - 8: Count format word (with 0 GC)  Manifest Closure | tot. length
+        : optional padding
      - 4: Format word, 1st entry         Format word, only entry
      - 2: GC offset to -12               GC offset to -8
        0: jsr instr., 1st entry		 jsr instr.
@@ -190,6 +191,10 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
    manifest closure header to the 1st instruction of the (1st) entry.
  */
 
+#ifndef MULTI_CLOSURE_PADDING
+#   define MULTI_CLOSURE_PADDING	 0 /* Bytes! */
+#endif
+
 #define CLOSURE_HEADER_TO_ENTRY						\
 ((sizeof (SCHEME_OBJECT)) + (2 * (sizeof (format_word))))
 
@@ -205,7 +210,8 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 #define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
 (((((format_word *) (scan))[1]) == CLOSURE_HEADER_TO_ENTRY_WORD) ?	\
  (((char *) (scan)) + (2 * (sizeof (format_word)))) :			\
- (((char *) (scan)) + (4 * (sizeof (format_word)))))
+ (((char *) (scan))							\
+  + (MULTI_CLOSURE_PADDING + (4 * (sizeof (format_word))))))		\
 
 #define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)				\
   (((char *) (word_ptr)) + (COMPILED_CLOSURE_ENTRY_SIZE))
@@ -229,12 +235,13 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
  */
 
 #define MANIFEST_CLOSURE_END(start, count)				\
-(((SCHEME_OBJECT *) (start)) +						\
- ((CHAR_TO_SCHEME_OBJECT (((count) * COMPILED_CLOSURE_ENTRY_SIZE) +	\
-			  (((count) == 1) ?				\
-			   0 :						\
-			   (2 * sizeof(format_word)))))			\
-  - 1))
+(((SCHEME_OBJECT *) (start))						\
+ + ((CHAR_TO_SCHEME_OBJECT (((count) * COMPILED_CLOSURE_ENTRY_SIZE)	\
+			    + (((count) == 1)				\
+			       ? 0					\
+			       : (MULTI_CLOSURE_PADDING			\
+				  + (2 * sizeof(format_word))))))	\
+    - 1))								\
 
 /* Linkage sections */
 
