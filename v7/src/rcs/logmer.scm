@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.26 2000/07/09 01:44:54 cph Exp $
+$Id: logmer.scm,v 1.27 2000/08/20 04:08:56 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -402,11 +402,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (merge-pathnames
 		    (read-one-line-file (merge-pathnames "Repository" cvs))
 		    (pathname-as-directory
-		     (read-one-line-file (merge-pathnames "Root" cvs))))))
+		     (strip-cvs-remote-prefix
+		      (read-one-line-file (merge-pathnames "Root" cvs)))))))
 	      (scan-directory #t pathname pathname))
 	    (scan-directory #f pathname pathname))))
     files))
 
+(define (strip-cvs-remote-prefix string)
+  (let ((regs
+	 (re-string-match ":\\(\\(ext\\|.?server\\):[^:]+\\|local\\):"
+			  string #t)))
+    (if regs
+	(string-tail string (re-match-end-index 0 regs))
+	string)))
+
 (define (read-one-line-file pathname)
   (call-with-input-file pathname read-line))
 
