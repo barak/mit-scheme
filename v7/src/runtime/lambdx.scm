@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lambdx.scm,v 14.6 1994/02/19 16:14:27 gjr Exp $
+$Id: lambdx.scm,v 14.7 1994/03/21 20:16:35 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -86,5 +86,5 @@ MIT in each case. |#
 	  (make-lambda* (lambda-pattern/name pattern)
 			required
 			optional
-			(if (null? rest) rest (car rest))
+			(if (null? rest) #F (car rest))
 			body))))))
