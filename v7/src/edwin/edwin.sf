@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: edwin.sf,v 1.28 2001/12/18 21:42:23 cph Exp $
+;;; $Id: edwin.sf,v 1.29 2001/12/18 21:57:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
@@ -32,8 +32,7 @@
     (begin
       (let ((sf-and-load
 	     (lambda (files package)
-	       (fluid-let ((sf/default-syntax-table
-			    syntax-table/system-internal))
+	       (fluid-let ((sf/default-syntax-table (->environment '())))
 		 (sf-conditionally files))
 	       (for-each (lambda (file)
 			   (load (string-append file ".bin") package))
