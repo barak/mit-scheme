@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: linear.scm,v 4.15 1992/10/19 19:14:03 jinx Exp $
+$Id: linear.scm,v 4.16 1993/12/08 19:30:58 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -185,7 +185,20 @@ MIT in each case. |#
 
   (linearize-bblock bblock))
 
+(define-integrable (set-current-branches! consequent alternative)
+  (set-pblock-consequent-lap-generator! *current-bblock* consequent)
+  (set-pblock-alternative-lap-generator! *current-bblock* alternative))
+
 (define *end-of-block-code*)
+
+(define-structure (extra-code-block
+		   (conc-name extra-code-block/)
+		   (constructor extra-code-block/make
+				(name constraint xtra)))
+  (name false read-only true)
+  (constraint false read-only true)
+  (code (LAP) read-only false)
+  (xtra false read-only false))
 
 (define linearize-lap
   (make-linearizer bblock-linearize-lap
@@ -193,16 +206,67 @@ MIT in each case. |#
     (lambda (x y) (LAP ,@x ,@y))
     (lambda (linearized-lap)
       (let ((end-code *end-of-block-code*))
-	(set! *end-of-block-code* (LAP))
+	(set! *end-of-block-code* '())
 	(LAP ,@linearized-lap
-	     ,@end-code)))))
+	     ,@(let process ((end-code end-code))
+		 (if (null? end-code)
+		     (LAP)
+		     (LAP ,@(extra-code-block/code (car end-code))
+			  ,@(process (cdr end-code))))))))))
+
+(define (find-extra-code-block name)
+  (let loop ((end-code *end-of-block-code*))
+    (cond ((null? end-code) false)
+	  ((eq? name (extra-code-block/name (car end-code)))
+	   (car end-code))
+	  (else
+	   (loop (cdr end-code))))))
+
+(define (declare-extra-code-block! name constraint xtra)
+  (if (find-extra-code-block name)
+      (error "declare-extra-code-block!: Multiply defined block"
+	     name)
+      (let ((new (extra-code-block/make name constraint xtra))
+	    (all *end-of-block-code*))
+
+	(define (constraint-violation new old)
+	  (error "declare-extra-code-block!: Inconsistent constraints"
+		 new old))
+
+	(case constraint
+	  ((FIRST)
+	   (if (and (not (null? all))
+		    (eq? 'FIRST
+			 (extra-code-block/constraint (car all))))
+	       (constraint-violation new (car all)))
+	   (set! *end-of-block-code* (cons new all)))
+	  ((ANYWHERE)
+	   (if (or (null? all)
+		   (not (eq? 'FIRST
+			     (extra-code-block/constraint (car all)))))
+	       (set! *end-of-block-code* (cons new all))
+	       (set-cdr! all (cons new (cdr all)))))
+	  ((LAST)
+	   (if (null? all)
+	       (set! *end-of-block-code* (list new))
+	       (let* ((lp (last-pair all))
+		      (old (car lp)))
+		 (if (eq? 'LAST (extra-code-block/constraint old))
+		     (constraint-violation new old))
+		 (set-cdr! lp (cons new '())))))
+	  (else
+	   (error "declare-extra-code-block!: Unknown constraint"
+		  constraint)))
+	new)))
+
+(define (add-extra-code! block new-code)
+  (set-extra-code-block/code!
+   block
+   (LAP ,@(extra-code-block/code block)
+	,@new-code)))
 
 (define (add-end-of-block-code! code-thunk)
-  (set! *end-of-block-code*
-	(LAP ,@*end-of-block-code*
-	     ,@(code-thunk)))
-  'done)
-
-(define-integrable (set-current-branches! consequent alternative)
-  (set-pblock-consequent-lap-generator! *current-bblock* consequent)
-  (set-pblock-alternative-lap-generator! *current-bblock* alternative))
+  (add-extra-code!
+   (or (find-extra-code-block 'END-OF-BLOCK)
+       (declare-extra-code-block! 'END-OF-BLOCK 'ANYWHERE false))
+   (code-thunk)))
