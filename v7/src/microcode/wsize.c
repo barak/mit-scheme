@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,11 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.23 1987/08/06 05:04:42 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.24 1989/02/15 03:29:34 jinx Exp $ */
 
 #include <stdio.h>
 #include <math.h>
 #include <errno.h>
+
+#define false 0
+#define true 1
 
 extern int errno;
 extern char *malloc();
@@ -60,7 +63,6 @@ range_error()
 #define setup_error()
 #endif
 
-
 #define ARR_SIZE 20000
 #define MEM_SIZE 400000
 
@@ -68,14 +70,21 @@ range_error()
 
 static long dummy[ARR_SIZE];
 
+/* Structure used to find double alignment constraints. */
+
+struct double_probe {
+  long field_1;
+  double field_2;
+} proble_double[2];
+
 /* Note: comments are printed in a weird way because some
    C compilers eliminate them even from strings.
 */
 
 main()
 {
-  double accum, delta;
-  int count, expt_size, char_size, mant_size;
+  double accum[1], new_accum[1], delta, dtemp;
+  int count, expt_size, char_size, mant_size, double_size, extra;
   unsigned long to_be_shifted;
   unsigned bogus;
   char buffer[sizeof(long)];
@@ -93,9 +102,9 @@ main()
   temp = malloc(MEM_SIZE*sizeof(long));
   if (temp == NULL)
   {
-    printf("/%c Cannot allocate %d Pointers. %c/\n",
+    printf("/%c CONFUSION: Can't allocate %d Pointers. %c/\n",
            '*', MEM_SIZE, '*');
-    printf("/%c Will not assume that the Heap is in Low Memory. %c\n",
+    printf("/%c Will not assume that the Heap is in Low Memory. %c/\n",
 	   '*', '*');
   }
   else
@@ -130,6 +139,8 @@ main()
       printf("/%c VAX_BYTE_ORDER not used. %c/\n", '*', '*');
   }
 
+  double_size = (char_size*sizeof(double));
+
   printf("#define CHAR_SIZE            %d\n",
 	 char_size);
 
@@ -140,21 +151,45 @@ main()
 	 (sizeof(unsigned long) * char_size));
 
   printf("/%c Flonum (double) size is %d bits. %c/\n",
-	 '*', (char_size*sizeof(double)), '*');
+	 '*', double_size, '*');
   
-  for(mant_size = 0, accum = 1.0, delta = 0.5;
-      ((accum + delta) != accum);
-      accum = accum + delta,
-      delta /= 2.0,
-      mant_size += 1) ;
+  if (sizeof(struct double_probe) == (sizeof(double) + sizeof(long)))
+  {
+    printf("/%c Flonums have no special alignment constraints. %c/\n",
+	   '*', '*');
+  }
+  else if ((sizeof(struct double_probe) != (2 * sizeof(double))) ||
+	   ((sizeof(double) % sizeof(long)) != 0))
+  {
+    printf("/%c CONFUSION: Can't determine float alignment constraints! %c/\n",
+	   '*', '*');
+    printf("/%c Please define FLOATING_ALIGNMENT by hand. %c/\n", '*', '*');
+  }
+  else
+  {
+    printf("#define FLOATING_ALIGNMENT   0x%lx\n", (sizeof(double)-1));
+  }
 
-  for(errno = 0, expt_size = 0, bogus = 1, accum = 0.0;
-      errno != ERANGE;
+  mant_size = 1;
+  accum[0] = 1.0;
+  delta = 0.5;
+
+  while(true)
+  {
+    new_accum[0] = (accum[0] + delta);
+    if ((new_accum[0] == accum[0]) || (mant_size == double_size))
+      break;
+    delta = (delta / ((double) 2.0));
+    mant_size += 1;
+  }
+
+  for(errno = 0, expt_size = 0, bogus = 1, dtemp = 0.0;
+      ((errno != ERANGE) && (expt_size <= double_size));
       expt_size += 1, bogus <<= 1)
   {
-    delta = accum;
-    accum = pow(2.0, ((double) bogus));
-    if (accum == delta)
+    delta = dtemp;
+    dtemp = pow(((double) 2.0), ((double) bogus));
+    if (dtemp == delta)
       break;
   }
 
@@ -163,9 +198,19 @@ main()
   printf("#define FLONUM_EXPT_SIZE     %d\n", expt_size);
   printf("#define FLONUM_MANTISSA_BITS %d\n", mant_size);
   printf("#define MAX_FLONUM_EXPONENT  %d\n", ((1 << expt_size) - 1));
-  printf("/%c Floating point representation %s hidden bit. %c/\n", '*',
-	 (((2 + expt_size + mant_size) > (char_size * sizeof(double))) ?
-	  "uses" :
-	  "does not use"), '*');
+
+  extra = ((2 + expt_size + mant_size) - double_size);
+
+  if (extra > 1)
+  {
+    printf("/%c CONFUSION: Can't determine floating parameters! %c/\n",
+	   '*', '*');
+    printf("/%c Please fix above three parameters by hand. %c/\n", '*', '*');
+  }
+  else
+  {
+    printf("/%c Floating point representation %s hidden bit. %c/\n", '*',
+	   ((extra == 1) ? "uses" : "does not use"), '*');
+  }
   return;	
 }
