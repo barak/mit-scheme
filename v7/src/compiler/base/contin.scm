@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.4 1988/08/18 01:34:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.5 1988/10/13 10:34:10 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -109,12 +109,13 @@ MIT in each case. |#
 (define (continuation/frame-size continuation)
   (let ((closing-block (continuation/closing-block continuation)))
     (+ (if (ic-block? closing-block) 1 0)
+       (if (and (stack-block? closing-block)
+		(stack-block/dynamic-link? closing-block))
+	   1
+	   0)
        (if (continuation/always-known-operator? continuation)
 	   0
-	   (if (and (stack-block? closing-block)
-		    (stack-block/dynamic-link? closing-block))
-	       2
-	       1)))))
+	   1))))
 
 (define (uni-continuation? rvalue)
   (and (rvalue/procedure? rvalue)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.5 1988/08/18 01:37:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.6 1988/10/13 10:34:23 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -141,19 +141,18 @@ MIT in each case. |#
 (define (generate/continuation-cons block continuation)
   block
   (let ((closing-block (continuation/closing-block continuation)))
-    (scfg*scfg->scfg!
+    (scfg-append!
      (if (ic-block? closing-block)
 	 (rtl:make-push (rtl:make-fetch register:environment))
+	 (make-null-cfg))
+     (if (block/dynamic-link? closing-block)
+	 (rtl:make-push-link)
 	 (make-null-cfg))
      (if (continuation/always-known-operator? continuation)
 	 (make-null-cfg)
 	 (begin
 	   (enqueue-continuation! continuation)
-	   (scfg*scfg->scfg!
-	    (if (block/dynamic-link? closing-block)
-		(rtl:make-push-link)
-		(make-null-cfg))
-	    (rtl:make-push-return (continuation/label continuation))))))))
+	   (rtl:make-push-return (continuation/label continuation)))))))
 
 (define (generate/pop pop)
   (rtl:make-pop (continuation*/register (pop-continuation pop))))
