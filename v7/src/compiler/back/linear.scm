@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.4 1988/09/15 05:05:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.5 1988/09/15 08:39:07 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -62,25 +62,23 @@ MIT in each case. |#
     (cond ((not bblock)
 	   (LAP))
 	  ((node-marked? bblock)
-	   (LAP ,(lap:make-unconditional-branch (get-bblock-label bblock))))
+	   (LAP ,(lap:make-unconditional-branch (bblock-label bblock))))
 	  (else
 	   (linearize-bblock bblock))))
 
   (define (linearize-pblock pblock cn an)
     (if (node-marked? cn)
-	(let ((clabel (get-bblock-label cn)))
-	  (if (node-marked? an)
-	      (let ((alabel (get-bblock-label an)))
-		(LAP ,@((pblock-consequent-lap-generator pblock) clabel)
-		     ,(lap:make-unconditional-branch alabel)))
-	      (LAP ,@((pblock-consequent-lap-generator pblock) clabel)
-		   ,@(linearize-bblock an))))
 	(if (node-marked? an)
-	    (let ((alabel (get-bblock-label an)))
-	      (LAP ,@((pblock-alternative-lap-generator pblock) alabel)
-		   ,@(linearize-bblock cn)))
-	    (let* ((clabel (bblock-label! cn))
-		   (alternative (linearize-bblock an)))
+	    (LAP ,@((pblock-consequent-lap-generator pblock) (bblock-label cn))
+		 ,(lap:make-unconditional-branch (bblock-label an)))
+	    (LAP ,@((pblock-consequent-lap-generator pblock) (bblock-label cn))
+		 ,@(linearize-bblock an)))
+	(if (node-marked? an)
+	    (LAP ,@((pblock-alternative-lap-generator pblock)
+		    (bblock-label an))
+		 ,@(linearize-bblock cn))
+	    (let ((clabel (bblock-label! cn))
+		  (alternative (linearize-bblock an)))
 	      (LAP ,@((pblock-consequent-lap-generator pblock) clabel)
 		   ,@alternative
 		   ,@(if (node-marked? cn)
@@ -88,10 +86,6 @@ MIT in each case. |#
 			 (linearize-bblock cn)))))))
 
   (linearize-bblock bblock))
-
-(define (get-bblock-label bblock)
-  (or (bblock-label bblock)
-      (error "GET-BBLOCK-LABEL: block not labeled" bblock)))
 
 (define linearize-bits
   (make-linearizer bblock-linearize-bits

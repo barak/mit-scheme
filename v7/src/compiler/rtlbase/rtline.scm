@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.5 1988/09/15 05:05:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.6 1988/09/15 08:41:06 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -49,17 +49,17 @@ MIT in each case. |#
        (let ((queue-continuations!
 	      (lambda (bblock)
 		(for-each (lambda (bblock)
-			    (enqueue!/unsafe input-queue bblock))
+			    (if (not (node-marked? bblock))
+				(enqueue!/unsafe input-queue bblock)))
 			  (bblock-continuations bblock)))))
 	 (let ((process-bblock!
 		(lambda (bblock)
 		  (if (not (node-marked? bblock))
-		      (begin
-			(set! output
-			      (instruction-append!
-			       output
-			       (bblock-linearize bblock
-						 queue-continuations!))))))))
+		      (set! output
+			    (instruction-append!
+			     output
+			     (bblock-linearize bblock
+					       queue-continuations!)))))))
 	   (process-bblock! (rtl-expr/entry-node expression))	   (queue-map!/unsafe input-queue process-bblock!)
 	   (for-each (lambda (procedure)
 		       (process-bblock! (rtl-procedure/entry-node procedure))
@@ -75,14 +75,27 @@ MIT in each case. |#
 	(let ((continuations '()))
 	  (bblock-walk-forward bblock
 	    (lambda (rinst)
-	      (for-each (lambda (continuation)
-			  (if (not (memq continuation continuations))
-			      (set! continuations
-				    (cons continuation continuations))))
-			(rtl:continuations-mentioned (rinst-rtl rinst)))))
-	  (set-bblock-continuations! bblock
-				     (map label->continuation-entry
-					  continuations)))
+	      (let loop ((expression (cdr (rinst-rtl rinst))))
+		(if (pair? expression)
+		    (cond ((eq? (car expression) 'ENTRY:CONTINUATION)
+			   ;; Because the average number of
+			   ;; continuations per basic block is usually
+			   ;; less than one, we optimize this case to
+			   ;; speed up the accumulation.
+			   (cond ((null? continuations)
+				  (set! continuations
+					(list (cadr expression))))
+				 ((not (memq (cadr expression) continuations))
+				  (set! continuations
+					(cons (cadr expression)
+					      continuations)))))
+			  ((not (eq? (car expression) 'CONSTANT))
+			   (for-each loop (cdr expression))))))))
+	  (set-bblock-continuations!
+	   bblock
+	   (map (lambda (label)
+		  (rtl-continuation/entry-node (label->object label)))
+		continuations)))
 	(if (sblock? bblock)
 	    (let ((rtl (rinst-rtl (rinst-last (bblock-instructions bblock)))))
 	      (if (rtl:invocation? rtl)
@@ -90,25 +103,10 @@ MIT in each case. |#
 		    (if continuation
 			(set-sblock-continuation!
 			 bblock
-			 (label->continuation-entry continuation))))))))
+			 (rtl-continuation/entry-node
+			  (label->object continuation)))))))))
       (rgraph-bblocks rgraph)))
    rgraphs))
-
-(define-integrable (label->continuation-entry label)
-  (rtl-continuation/entry-node (label->object label)))
-
-(define (rtl:continuations-mentioned rtl)
-  (define (loop expression)
-    (if (pair? expression)
-	(case (car expression)
-	  ((CONSTANT)
-	   '())
-	  ((ENTRY:CONTINUATION)
-	   (list (cadr expression)))
-	  (else
-	   (mapcan loop (cdr expression))))
-	'()))
-  (mapcan loop (cdr rtl)))
 
 ;;; The linearizer attaches labels to nodes under two conditions.  The
 ;;; first is that the node in question has more than one previous
@@ -150,38 +148,31 @@ MIT in each case. |#
     (cond ((not sblock)
 	   '())
 	  ((node-marked? sblock)
-	   `(,(rtl:make-jump-statement (get-bblock-label sblock))))
+	   `(,(rtl:make-jump-statement (bblock-label sblock))))
 	  (else
 	   (linearize-bblock sblock))))
 
   (define (linearize-pblock pblock predicate cn an)
     pblock
     (if (node-marked? cn)
-	(let ((clabel (get-bblock-label cn)))
-	  (if (node-marked? an)
-	      (let ((alabel (get-bblock-label an)))
-		`(,(rtl:make-jumpc-statement predicate clabel)
-		  ,(rtl:make-jump-statement alabel)))
-	      `(,(rtl:make-jumpc-statement predicate clabel)
-		,@(linearize-bblock an))))
 	(if (node-marked? an)
-	    (let ((alabel (get-bblock-label an)))
-	      `(,(rtl:make-jumpc-statement (rtl:negate-predicate predicate)
-					   alabel)
-		,@(linearize-bblock cn)))
-	    (let* ((label (bblock-label! cn))
+	    `(,(rtl:make-jumpc-statement predicate (bblock-label cn))
+	      ,(rtl:make-jump-statement (bblock-label an)))
+	    `(,(rtl:make-jumpc-statement predicate (bblock-label cn))
+	      ,@(linearize-bblock an)))
+	(if (node-marked? an)
+	    `(,(rtl:make-jumpc-statement (rtl:negate-predicate predicate)
+					 (bblock-label an))
+	      ,@(linearize-bblock cn))
+	    (let ((clabel (bblock-label! cn))
 		   (alternative (linearize-bblock an)))
-	      `(,(rtl:make-jumpc-statement predicate label)
+	      `(,(rtl:make-jumpc-statement predicate clabel)
 		,@alternative
 		,@(if (node-marked? cn)
 		      '()
 		      (linearize-bblock cn)))))))
 
   (linearize-bblock bblock))
-
-(define (get-bblock-label bblock)
-  (or (bblock-label bblock)
-      (error "GET-BBLOCK-LABEL: block not labeled" bblock)))
 
 (define linearize-rtl
   (make-linearizer bblock-linearize-rtl
