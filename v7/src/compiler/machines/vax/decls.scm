@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 4.11 1993/10/12 07:30:29 cph Exp $
+$Id: decls.scm,v 4.12 1993/10/12 23:52:08 cph Exp $
 
 Copyright (c) 1987-93 Massachusetts Institute of Technology
 
@@ -72,10 +72,9 @@ MIT in each case. |#
   (set! source-hash (make-string-hash-table))
   (set! source-nodes
 	(map (lambda (filename)
-	       (if (not (hash-table/get source-hash filename #f))
-		   (hash-table/put! source-hash
-				    filename
-				    (make/source-node filename))))
+	       (let ((node (make/source-node filename)))
+		 (hash-table/put! source-hash filename node)
+		 node))
 	     source-filenames))
   (initialize/syntax-dependencies!)
   (initialize/integration-dependencies!)

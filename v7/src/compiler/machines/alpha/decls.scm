@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.4 1993/10/12 07:29:16 cph Exp $
+$Id: decls.scm,v 1.5 1993/10/12 23:51:11 cph Exp $
 
 Copyright (c) 1992-93 Digital Equipment Corporation (D.E.C.)
 
@@ -74,10 +74,9 @@ case.
   (set! source-hash (make-string-hash-table))
   (set! source-nodes
 	(map (lambda (filename)
-	       (if (not (hash-table/get source-hash filename #f))
-		   (hash-table/put! source-hash
-				    filename
-				    (make/source-node filename))))
+	       (let ((node (make/source-node filename)))
+		 (hash-table/put! source-hash filename node)
+		 node))
 	     source-filenames))
   (initialize/syntax-dependencies!)
   (initialize/integration-dependencies!)
