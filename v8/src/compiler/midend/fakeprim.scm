@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.19 1995/08/06 20:00:24 adams Exp $
+$Id: fakeprim.scm,v 1.20 1995/08/10 13:48:22 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -42,6 +42,9 @@ MIT in each case. |#
 (define *operator-properties*
   (make-eq-hash-table))
 
+(define (define-operator-properties rator properties)
+  (hash-table/put! *operator-properties* rator properties))
+
 (define (known-operator? rator)
   (hash-table/get *operator-properties* rator false))
 
@@ -62,11 +65,10 @@ MIT in each case. |#
 
 (define (make-operator name . properties)
   (let ((operator (make-constant name)))
-    (hash-table/put! *operator-properties*
-		     operator
-		     (if (null? properties)
-			 (list '(KNOWN))
-			 properties))
+    (define-operator-properties operator
+      (if (null? properties)
+	  (list '(KNOWN))
+	  properties))
     operator))
 
 (define (make-operator/simple name . more)
@@ -882,38 +884,36 @@ MIT in each case. |#
 ;;; Inform the compiler about system primitives
 
 (for-each
- (lambda (simple-operator)
-   (hash-table/put! *operator-properties*
-		    simple-operator
-		    (list '(SIMPLE)
-			  '(SIDE-EFFECT-INSENSITIVE)
-			  '(SIDE-EFFECT-FREE)
-			  '(PROPER-PREDICATE))))
- (list not eq? null? false?
-       boolean? cell? pair? vector? %record? string? bit-string?
-       fixnum? index-fixnum? flo:flonum? object-type?
-       fix:= fix:> fix:< fix:<= fix:>=
-       fix:zero? fix:positive? fix:negative? 
-       flo:= flo:> flo:< #| flo:<= flo:>= |#
-       flo:zero? flo:positive? flo:negative?))
+    (lambda (simple-operator)
+      (define-operator-properties simple-operator
+	(list '(SIMPLE)
+	      '(SIDE-EFFECT-INSENSITIVE)
+	      '(SIDE-EFFECT-FREE)
+	      '(PROPER-PREDICATE))))
+  (list not eq? null? false?
+	boolean? cell? pair? vector? %record? string? bit-string?
+	fixnum? index-fixnum? flo:flonum? object-type?
+	fix:= fix:> fix:< fix:<= fix:>=
+	fix:zero? fix:positive? fix:negative? 
+	flo:= flo:> flo:< #| flo:<= flo:>= |#
+	flo:zero? flo:positive? flo:negative?))
 
 (for-each
  (lambda (simple-operator)
-   (hash-table/put! *operator-properties*
-		    simple-operator
-		    (list '(SIMPLE)
-			  '(SIDE-EFFECT-FREE)
-			  '(PROPER-PREDICATE))))
+   (define-operator-properties simple-operator
+     (list '(SIMPLE)
+	   '(SIDE-EFFECT-FREE)
+	   '(PROPER-PREDICATE))))
  (list (make-primitive-procedure 'HEAP-AVAILABLE? 1)
        ))
 
 (for-each
  (lambda (simple-operator)
-   (hash-table/put! *operator-properties*
-		    simple-operator
-		    (list '(SIMPLE)
-			  '(SIDE-EFFECT-INSENSITIVE)
-			  '(SIDE-EFFECT-FREE))))
+   (define-operator-properties
+     simple-operator
+     (list '(SIMPLE)
+	   '(SIDE-EFFECT-INSENSITIVE)
+	   '(SIDE-EFFECT-FREE))))
  (list make-cell cons vector %record string-allocate flo:vector-cons
        system-pair-cons %record-length vector-length flo:vector-length
        object-type object-datum
@@ -933,10 +933,10 @@ MIT in each case. |#
 
 (for-each
  (lambda (simple-operator)
-   (hash-table/put! *operator-properties*
-		    simple-operator
-		    (list '(SIMPLE)
-			  '(SIDE-EFFECT-FREE))))
+   (define-operator-properties
+     simple-operator
+     (list '(SIMPLE)
+	   '(SIDE-EFFECT-FREE))))
  (list cell-contents car cdr %record-ref vector-ref string-ref
        string-length vector-8b-ref flo:vector-ref
        system-pair-car system-pair-cdr
@@ -946,9 +946,9 @@ MIT in each case. |#
 
 (for-each
  (lambda (operator)
-   (hash-table/put! *operator-properties*
-		    operator
-		    (list '(SIMPLE) '(UNSPECIFIC-RESULT))))
+   (define-operator-properties
+     operator
+     (list '(SIMPLE) '(UNSPECIFIC-RESULT))))
  (list set-cell-contents! set-car! set-cdr! %record-set! vector-set!
        string-set! vector-8b-set! flo:vector-set!
        (make-primitive-procedure 'PRIMITIVE-INCREMENT-FREE)
@@ -956,24 +956,24 @@ MIT in each case. |#
 
 (for-each
  (lambda (prim-name)
-   (hash-table/put! *operator-properties*
-		    (make-primitive-procedure prim-name)
-		    (list '(SIDE-EFFECT-FREE)
-			  '(SIDE-EFFECT-INSENSITIVE)
-			  '(OUT-OF-LINE-HOOK)
-			  '(OPEN-CODED-PREDICATE)
-			  '(PROPER-PREDICATE))))
+   (define-operator-properties
+     (make-primitive-procedure prim-name)
+     (list '(SIDE-EFFECT-FREE)
+	   '(SIDE-EFFECT-INSENSITIVE)
+	   '(OUT-OF-LINE-HOOK)
+	   '(OPEN-CODED-PREDICATE)
+	   '(PROPER-PREDICATE))))
  '(&= &< &>
    zero? negative? positive?  ; translated into &= &< &>
    ))
 
 (for-each
  (lambda (prim-name)
-   (hash-table/put! *operator-properties*
-		    (make-primitive-procedure prim-name)
-		    (list '(SIDE-EFFECT-FREE)
-			  '(SIDE-EFFECT-INSENSITIVE)
-			  '(OUT-OF-LINE-HOOK))))
+   (define-operator-properties
+     (make-primitive-procedure prim-name)
+     (list '(SIDE-EFFECT-FREE)
+	   '(SIDE-EFFECT-INSENSITIVE)
+	   '(OUT-OF-LINE-HOOK))))
  '(&+ &- &* &/ quotient remainder))
 
 (for-each
@@ -981,11 +981,11 @@ MIT in each case. |#
       (let ((prim  (make-primitive-procedure prim-name)))
 	(set! compiler:primitives-with-no-open-coding
 	      (cons prim-name compiler:primitives-with-no-open-coding))
-	(hash-table/put! *operator-properties*
-			 prim
-			 (list ;;'(SIMPLE)
-			       '(SIDE-EFFECT-FREE)
-			       '(SIDE-EFFECT-INSENSITIVE)))))
+	(define-operator-properties
+	  prim
+	  (list ;;'(SIMPLE)
+	        '(SIDE-EFFECT-FREE)
+	        '(SIDE-EFFECT-INSENSITIVE)))))
   '(COERCE-TO-COMPILED-PROCEDURE))
 
 ;;;; Compatibility operators
