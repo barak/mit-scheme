@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.142 1994/01/08 21:04:48 gjr Exp $
+$Id: edwin.pkg,v 1.143 1994/03/08 20:26:09 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -396,14 +396,18 @@ MIT in each case. |#
   (files "modlin")
   (parent (edwin))
   (export (edwin)
+	  add-minor-mode-line-entry!
 	  edwin-variable$global-mode-string
+	  edwin-variable$minor-mode-alist
 	  edwin-variable$mode-line-buffer-identification
 	  edwin-variable$mode-line-format
 	  edwin-variable$mode-line-modified
 	  edwin-variable$mode-line-procedure
 	  edwin-variable$mode-line-process
+	  edwin-variable$mode-name
 	  format-modeline-string
-	  modeline-string!))
+	  modeline-string!
+	  remove-minor-mode-line-entry!))
 
 (define-package (edwin command-reader)
   (files "comred")
@@ -1117,6 +1121,7 @@ MIT in each case. |#
 	  edwin-variable$sendmail-program
 	  mail-position-on-field
 	  mail-position-on-cc-field
+	  mail-setup
 	  make-mail-buffer))
 
 (define-package (edwin mail-alias)
