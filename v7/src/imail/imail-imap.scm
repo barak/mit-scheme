@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.148 2001/05/07 18:01:05 cph Exp $
+;;; $Id: imail-imap.scm,v 1.149 2001/05/09 17:38:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -87,6 +87,14 @@
        (= (imap-url-port url1) (imap-url-port url2))))
 
 (define-method url-exists? ((url <imap-url>))
+  (and (imap-url-info url) #t))
+
+(define-method url-selectable? ((url <imap-url>))
+  (let ((response (imap-url-info url)))
+    (and response
+	 (not (memq '\NOSELECT (imap:response:list-flags response))))))
+
+(define (imap-url-info url)
   (let ((responses
 	 (with-open-imap-connection url
 	   (lambda (connection)
@@ -95,7 +103,7 @@
 				(imap-url-server-mailbox url))))))
     (and (pair? responses)
 	 (null? (cdr responses))
-	 (not (memq '\NOSELECT (imap:response:list-flags (car responses)))))))
+	 (car responses))))
 
 (define-method url-pass-phrase-key ((url <imap-url>))
   (make-url-string (url-protocol url) (make-imap-url-string url #f)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.61 2001/03/19 22:51:48 cph Exp $
+;;; $Id: imail-file.scm,v 1.62 2001/05/09 17:38:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -42,6 +42,9 @@
 
 (define-method url-exists? ((url <file-url>))
   (file-exists? (file-url-pathname url)))
+
+(define-method url-selectable? ((url <file-url>))
+  (file-regular? (file-url-pathname url)))
 
 (define (pathname->url-body pathname)
   (string-append (let ((device (pathname-device pathname)))

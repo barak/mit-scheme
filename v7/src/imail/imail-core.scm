@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.119 2001/05/07 18:02:52 cph Exp $
+;;; $Id: imail-core.scm,v 1.120 2001/05/09 17:38:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -90,6 +90,9 @@
 
 ;; Return #T if URL represents an existing folder.
 (define-generic url-exists? (url))
+
+;; Return #T if URL both exists and can be opened.
+(define-generic url-selectable? (url))
 
 ;; Return a string that uniquely identifies the server and account for
 ;; URL.  E.g. for IMAP this could be the URL string without the
