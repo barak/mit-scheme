@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.1 1995/05/03 07:50:49 cph Exp $
+;;;	$Id: snr.scm,v 1.2 1995/05/06 02:21:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995 Massachusetts Institute of Technology
 ;;;
@@ -72,6 +72,25 @@ If true, previously subscribed buffers are also shown."
   #f
   boolean?)
 
+(define-variable news-article-context-lines
+  "The number of lines to show in a News group context window."
+  5
+  (lambda (object) (and (exact-integer? object) (> object 0))))
+
+(define-variable news-full-name
+  "Your full name.
+Appears in the From: field of posted messages, following the email address.
+If set to the null string, From: field contains only the email address."
+  ""
+  string?)
+
+(define-variable news-organization
+  "The name of your organization.
+Appears in the Organization: field of posted messages.
+If set to the null string, no Organization: field is generated."
+  ""
+  string?)
+
 (define-command rnews
   "Start a News reader.
 Normally uses the server specified by the variable news-server,
@@ -81,13 +100,15 @@ is open the that server, its buffer is selected."
   "P"
   (lambda (prompt?)
     (select-buffer
-     (let ((server
-	    (let ((server (ref-variable news-server #f)))
-	      (if (or prompt? (string-null? server))
-		  (prompt-for-news-server "News server")
-		  server))))
+     (let ((server (get-news-server-name prompt?)))
        (or (find-news-server-buffer server)
 	   (make-news-server-buffer server))))))
+
+(define (get-news-server-name prompt?)
+  (let ((server (ref-variable news-server #f)))
+    (if (or prompt? (string-null? server))
+	(prompt-for-news-server "News server")
+	server)))
 
 (define (prompt-for-news-server prompt)
   (let ((default (ref-variable news-server #f)))
@@ -171,7 +192,16 @@ is open the that server, its buffer is selected."
 		       (buffer-news-groups buffer)))
 
 (define (news-server-buffer? buffer)
-  (buffer-get buffer 'NNTP-CONNECTION #f))
+  (nntp-connection? (buffer-get buffer 'NNTP-CONNECTION #f)))
+
+(define (news-server-buffer:connection buffer)
+  (let ((connection (buffer-get buffer 'NNTP-CONNECTION #f)))
+    (if (not (nntp-connection? connection))
+	(error "Buffer isn't a News server buffer:" (buffer-name buffer)))
+    connection))
+
+(define (news-server-buffer:server buffer)
+  (nntp-connection:server (news-server-buffer:connection buffer)))
 
 (define (news-server-buffer:open-connection buffer server)
   (let ((msg (string-append "Opening connection to " server "... ")))
@@ -188,10 +218,11 @@ is open the that server, its buffer is selected."
 			      "... ")))
 	  (message msg)
 	  (nntp-connection:reopen connection)
-	  (message msg "done")))))
+	  (message msg "done")))
+    connection))
 
 (define (news-server-buffer:close-connection buffer)
-  (let ((connection (buffer-get buffer 'NNTP-CONNECTION)))
+  (let ((connection (buffer-get buffer 'NNTP-CONNECTION #f)))
     (if connection
 	(let ((msg
 	       (string-append "Closing connection to "
@@ -200,15 +231,6 @@ is open the that server, its buffer is selected."
 	  (message msg)
 	  (nntp-connection:close connection)
 	  (message msg "done")))))
-
-(define (news-server-buffer:connection buffer)
-  (let ((connection (buffer-get buffer 'NNTP-CONNECTION #f)))
-    (if (not connection)
-	(error "Buffer has no NNTP connection:" (buffer-name buffer)))
-    connection))
-
-(define (news-server-buffer:server buffer)
-  (nntp-connection:server (news-server-buffer:connection buffer)))
 
 (define (initialize-buffer-news-groups buffer groups)
   (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
@@ -313,37 +335,38 @@ indicates that the group is Unsubscribed.
 
 This mode's commands include:
 
-\\[all-news-groups]	select a buffer showing all of the server's News groups
-\\[select-news-group]	browse articles in the News group indicated by point
-\\[subscribe-news-group]	subscribe to the News group indicated by point
-\\[unsubscribe-news-group]	unsubscribe from the News group indicated by point")
+\\[news-all-groups]	select a buffer showing all of the server's News groups
+\\[news-select-group]	browse articles in the News group indicated by point
+\\[news-subscribe-group]	subscribe to the News group indicated by point
+\\[news-unsubscribe-group]	unsubscribe from the News group indicated by point")
 
-(define-key 'news-server #\space 'select-news-group)
-(define-key 'news-server #\a 'all-news-groups)
-(define-key 'news-server #\g 'refresh-news-groups)
+(define-key 'news-server #\space 'news-select-group)
+(define-key 'news-server #\a 'news-compose)
+(define-key 'news-server #\g 'news-all-groups)
 (define-key 'news-server #\q 'news-kill-current-buffer)
-(define-key 'news-server #\r 'refresh-news-group)
-(define-key 'news-server #\s 'subscribe-news-group)
-(define-key 'news-server #\S 'subscribe-news-group-by-name)
-(define-key 'news-server #\u 'unsubscribe-news-group)
+(define-key 'news-server #\r 'news-refresh-group)
+(define-key 'news-server #\R 'news-refresh-groups)
+(define-key 'news-server #\s 'news-subscribe-group)
+(define-key 'news-server #\S 'news-subscribe-group-by-name)
+(define-key 'news-server #\u 'news-unsubscribe-group)
 (define-key 'news-server #\c-n 'news-next-line)
 (define-key 'news-server #\c-p 'news-previous-line)
-(define-key 'news-server '(#\c-x #\c-s) 'save-news-server-data)
+(define-key 'news-server '(#\c-x #\c-s) 'news-save-server-data)
 
-(define-command select-news-group
+(define-command news-select-group
   "Browse the News group indicated by point.
 Selects a buffer showing the subject lines of the articles in the News group."
   ()
   (lambda ()
     (let ((buffer
-	   (let ((server-buffer (current-news-server-buffer))
+	   (let ((server-buffer (current-news-server-buffer #t))
 		 (group (current-news-group)))
 	     (or (find-news-group-buffer server-buffer group)
 		 (make-news-group-buffer server-buffer group)))))
       (select-buffer buffer)
       (news-group-buffer:update-server-buffer buffer))))
 
-(define-command refresh-news-groups
+(define-command news-refresh-groups
   "Update the unread-message estimates for all of the News groups shown.
 This will take a long time if done in the all-groups buffer."
   ()
@@ -357,7 +380,7 @@ This will take a long time if done in the all-groups buffer."
 	       (update-buffer-news-group buffer group))))
        (buffer-news-groups buffer)))))
 
-(define-command refresh-news-group
+(define-command news-refresh-group
   "Update the unread-message estimate for the News group indicated by point.
 With prefix argument, updates the next several News groups."
   "P"
@@ -368,7 +391,7 @@ With prefix argument, updates the next several News groups."
 	  (news-group:update-ranges! group)
 	  (update-buffer-news-group buffer group))))))
 
-(define-command subscribe-news-group
+(define-command news-subscribe-group
   "Subscribe to the News group indicated by point.
 Normally useful only in the all-groups buffer, since the server buffer
 doesn't show unsubscribed groups.
@@ -378,7 +401,7 @@ With prefix argument, subscribes to the next several News groups."
     (news-group-command argument
 			(make-news-group-subscriber (current-buffer)))))
 
-(define-command subscribe-news-group-by-name
+(define-command news-subscribe-group-by-name
   "Subscribe to a News group by name.
 Prompts for the News-group name, with completion."
   ()
@@ -386,10 +409,10 @@ Prompts for the News-group name, with completion."
     ((make-news-group-subscriber (current-buffer))
      (prompt-for-active-news-group "Subscribe to news group"
 				   #f
-				   (current-news-server-buffer)))))
+				   (current-news-server-buffer #t)))))
 
 (define (make-news-group-subscriber buffer)
-  (let ((server-buffer (news-server-buffer buffer)))
+  (let ((server-buffer (news-server-buffer buffer #t)))
     (let ((all-groups (find-all-news-groups-buffer server-buffer)))
       (lambda (group)
 	(set-news-group:subscribed?! group #t)
@@ -400,14 +423,14 @@ Prompts for the News-group name, with completion."
 	      ((and all-groups (not (eq? buffer all-groups)))
 	       (update-buffer-news-group all-groups group)))))))
 
-(define-command unsubscribe-news-group
+(define-command news-unsubscribe-group
   "Unsubscribe from the News group indicated by point.
 With prefix argument, unsubscribes from the next several News groups."
   "P"
   (lambda (argument)
     (news-group-command argument
       (let ((buffer (current-buffer)))
-	(let ((server-buffer (news-server-buffer buffer)))
+	(let ((server-buffer (news-server-buffer buffer #t)))
 	  (let ((all-groups (find-all-news-groups-buffer server-buffer)))
 	    (lambda (group)
 	      (set-news-group:subscribed?! group #f)
@@ -417,7 +440,7 @@ With prefix argument, unsubscribes from the next several News groups."
 		    ((and all-groups (not (eq? buffer all-groups)))
 		     (update-buffer-news-group all-groups group))))))))))
 
-(define-command all-news-groups
+(define-command news-all-groups
   "Select a buffer showing all of the News groups on this server.
 This buffer shows subscribed and unsubscribed groups, and is useful
 for choosing new groups to subscribe to.
@@ -426,23 +449,30 @@ Making this buffer for the first time can be slow."
   ()
   (lambda ()
     (select-buffer
-     (let ((server-buffer (current-news-server-buffer)))
+     (let ((server-buffer (current-news-server-buffer #t)))
        (or (find-all-news-groups-buffer server-buffer)
 	   (make-all-news-groups-buffer server-buffer))))))
 
-(define-command save-news-server-data
+(define-command news-save-server-data
   "Update the \"snr.ini\" file with current data."
   ()
   (lambda ()
-    (news-server-buffer:save-groups (current-news-server-buffer))))
+    (news-server-buffer:save-groups (current-news-server-buffer #t))))
 
-(define (current-news-server-buffer)
-  (news-server-buffer (current-buffer)))
+(define (current-news-server-buffer error?)
+  (news-server-buffer (current-buffer) error?))
 
-(define (news-server-buffer buffer)
+(define (news-server-buffer buffer error?)
   (if (news-server-buffer? buffer)
       buffer
-      (buffer-tree:parent buffer #t)))
+      (let ((buffer (buffer-tree:parent buffer error?)))
+	(and buffer
+	     (news-server-buffer buffer error?)))))
+
+(define (current-news-server error?)
+  (let ((buffer (current-news-server-buffer error?)))
+    (and buffer
+	 (news-server-buffer:server buffer))))
 
 (define (current-news-group)
   (current-property-item 'NEWS-GROUP "news-group"))
@@ -537,9 +567,25 @@ Making this buffer for the first time can be slow."
 		 ":"
 		 (news-server-buffer-name (news-group:server group))))
 
+(define (news-group-buffer? buffer)
+  (news-group? (buffer-get buffer 'NEWS-GROUP #f)))
+
+(define (news-group-buffer:group buffer)
+  (let ((group (buffer-get buffer 'NEWS-GROUP #f)))
+    (if (not (news-group? group))
+	(error "Buffer isn't a News group buffer:" (buffer-name buffer)))
+    group))
+
+(define (news-group-buffer buffer error?)
+  (if (news-group-buffer? buffer)
+      buffer
+      (let ((buffer (buffer-tree:parent buffer error?)))
+	(and buffer
+	     (news-group-buffer buffer error?)))))
+
 (define (news-group-buffer:kill buffer)
   (news-group-buffer:update-server-buffer buffer)
-  (let ((group (get-buffer-property buffer 'NEWS-GROUP)))
+  (let ((group (news-group-buffer:group buffer)))
     (for-each
      (lambda (header)
        (if (not (news-header:article-unseen? header))
@@ -553,7 +599,7 @@ Making this buffer for the first time can be slow."
 (define (initialize-news-group-buffer buffer all?)
   (fill-news-group-buffer
    buffer
-   (let ((group (get-buffer-property buffer 'NEWS-GROUP)))
+   (let ((group (news-group-buffer:group buffer)))
      (news-group:headers
       group
       (ranges->list
@@ -648,7 +694,7 @@ Making this buffer for the first time can be slow."
 	  (mark-temporary! mark))))))
 
 (define (news-group-buffer:update-server-buffer buffer)
-  (let ((group (get-buffer-property buffer 'NEWS-GROUP)))
+  (let ((group (news-group-buffer:group buffer)))
     (news-group:update-ranges! group)
     (let ((server-buffer (buffer-tree:parent buffer #f)))
       (if server-buffer
@@ -715,29 +761,31 @@ bit more than the articles they follow-up to.
 
 This mode's commands include:
 
-\\[select-news-article]	select a buffer containing the article indicated by point
-\\[delete-news-article]	mark the article indicated by point as read
-\\[delete-news-thread]	mark the whole thread as read
-\\[undelete-news-article]	unmark the article indicated by point
-\\[undelete-news-thread]	unmark the whole thread
-\\[expunge-news-group]	remove from the buffer all marked lines"
+\\[news-select-article]	select a buffer containing the article indicated by point
+\\[news-compose]	post a new article to this group
+\\[news-delete-article]	mark the article indicated by point as read
+\\[news-delete-thread]	mark the whole thread as read
+\\[news-undelete-article]	unmark the article indicated by point
+\\[news-undelete-thread]	unmark the whole thread
+\\[news-expunge-group]	remove from the buffer all marked lines"
   (lambda (buffer)
     (local-set-variable! truncate-lines #t buffer)))
 
-(define-key 'news-group #\space 'select-news-article)
-(define-key 'news-group #\c 'catch-up-news-group)
-(define-key 'news-group #\d 'delete-news-article)
-(define-key 'news-group #\D 'delete-news-thread)
-(define-key 'news-group #\g 'revert-news-group)
+(define-key 'news-group #\space 'news-select-article)
+(define-key 'news-group #\a 'news-compose)
+(define-key 'news-group #\c 'news-catch-up-group)
+(define-key 'news-group #\d 'news-delete-article)
+(define-key 'news-group #\D 'news-delete-thread)
+(define-key 'news-group #\g 'news-revert-group)
 (define-key 'news-group #\q 'news-kill-current-buffer)
-(define-key 'news-group #\u 'undelete-news-article)
-(define-key 'news-group #\U 'undelete-news-thread)
-(define-key 'news-group #\x 'expunge-news-group)
+(define-key 'news-group #\u 'news-undelete-article)
+(define-key 'news-group #\U 'news-undelete-thread)
+(define-key 'news-group #\x 'news-expunge-group)
 (define-key 'news-group #\c-n 'news-next-line)
 (define-key 'news-group #\c-p 'news-previous-line)
-(define-key 'news-server '(#\c-x #\c-s) 'save-news-server-data)
+(define-key 'news-server '(#\c-x #\c-s) 'news-save-server-data)
 
-(define-command select-news-article
+(define-command news-select-article
   "Select a buffer containing the News article indicated by point."
   ()
   (lambda ()
@@ -749,14 +797,14 @@ This mode's commands include:
        (make-news-article-buffer group-buffer header)
        (editor-error "Article no longer available from server."))))
 
-(define-command delete-news-article
+(define-command news-delete-article
   "Mark as `read' the News article indicated by point.
 With prefix argument, marks the next several articles."
   "P"
   (lambda (argument)
     (news-header-command argument (header-deletion-procedure))))
 
-(define-command delete-news-thread
+(define-command news-delete-thread
   "Mark as `read' the conversation thread indicated by point.
 This marks the article indicated by point and any other articles in
 the same thread as that article."
@@ -777,14 +825,14 @@ the same thread as that article."
 	    (news-header:article-seen! header)
 	    (update-buffer-news-header-status buffer header))))))
 
-(define-command undelete-news-article
+(define-command news-undelete-article
   "Unmark the News article indicated by point.
 With prefix argument, unmarks the next several articles."
   "P"
   (lambda (argument)
     (news-header-command argument (header-undeletion-procedure))))
 
-(define-command undelete-news-thread
+(define-command news-undelete-thread
   "Unmark the conversation thread indicated by point.
 This unmarks the article indicated by point and any other articles in
 the same thread as that article."
@@ -805,7 +853,7 @@ the same thread as that article."
 	    (news-header:article-unseen! header)
 	    (update-buffer-news-header-status buffer header))))))
 
-(define-command expunge-news-group
+(define-command news-expunge-group
   "Remove all marked lines from the current buffer."
   ()
   (lambda ()
@@ -821,7 +869,7 @@ the same thread as that article."
 		      (mark-temporary! mark)
 		      (loop mark))))))))))
 
-(define-command catch-up-news-group
+(define-command news-catch-up-group
   "Mark all of the articles as read, and return to the News server buffer.
 This kills the current buffer."
   ()
@@ -833,7 +881,7 @@ This kills the current buffer."
 				     news-header:article-seen!))
 	  ((ref-command news-kill-current-buffer))))))
 
-(define-command revert-news-group
+(define-command news-revert-group
   "Refresh the article list from the News server.
 This gets any new article headers from the News server, adding their
 lines to the current buffer.  With a prefix argument, this shows all
@@ -918,6 +966,20 @@ previously marked as `read'."
 	  (update-buffer-news-header-status group-buffer header)
 	  #f))))
 
+(define (news-article-buffer-name header)
+  (string-append (number->string (news-header:number header))
+		 ":"
+		 (news-group-buffer-name (news-header:group header))))
+
+(define (news-article-buffer? buffer)
+  (news-header? (buffer-get buffer 'NEWS-HEADER #f)))
+
+(define (news-article-buffer:header buffer)
+  (let ((header (buffer-get buffer 'NEWS-HEADER #f)))
+    (if (not (news-header? header))
+	(error "Buffer isn't a News article buffer:" (buffer-name buffer)))
+    header))
+
 (define (insert-news-header header buffer truncate?)
   (with-buffer-open buffer
     (lambda ()
@@ -954,15 +1016,8 @@ previously marked as `read'."
 (define (delete-news-header buffer)
   (with-buffer-open buffer
     (lambda ()
-      (let ((mark (search-forward "\n\n" (buffer-start buffer))))
-	(if (not mark)
-	    (error "Can't find end of news article header:" buffer))
-	(delete-string (buffer-start buffer) mark)))))
-
-(define (news-article-buffer-name header)
-  (string-append (number->string (news-header:number header))
-		 ":"
-		 (news-group-buffer-name (news-header:group header))))
+      (let ((start (buffer-start buffer)))
+	(delete-string start (mark1+ (mail-header-end start)))))))
 
 ;;;; News-Article Mode
 
@@ -970,26 +1025,30 @@ previously marked as `read'."
   "Major mode for reading a News article.
 This mode's commands include:
 
-\\[next-news-article]	read the next unread article
-\\[previous-news-article]	read the previous unread article
-\\[toggle-news-article-header]	show/don't show all of the articles header lines
-\\[toggle-news-article-context]	show/don't show window of the News group buffer
-\\[reply-to-news-article]	reply by email to this article
-\\[output-news-article]	output this article to a mail file
-\\[output-news-article-to-rmail-file]	output this article to an RMAIL file")
+\\[news-next-article]	read the next unread article
+\\[news-previous-article]	read the previous unread article
+\\[news-toggle-article-header]	show/don't show all of the articles header lines
+\\[news-toggle-article-context]	show/don't show window of the News group buffer
+\\[news-compose]	post a new article to this group
+\\[news-compose-followup]	post a reply to this article
+\\[news-reply-to-article]	reply by email to this article
+\\[news-output-article]	output this article to a mail file
+\\[news-output-article-to-rmail-file]	output this article to an RMAIL file")
 
 (define-key 'news-article #\space '(news-article . #\c-v))
 (define-key 'news-article #\rubout '(news-article . #\m-v))
-(define-key 'news-article #\c 'toggle-news-article-context)
-(define-key 'news-article #\n 'next-news-article)
-(define-key 'news-article #\o 'output-news-article-to-rmail-file)
-(define-key 'news-article #\p 'previous-news-article)
+(define-key 'news-article #\a 'news-compose)
+(define-key 'news-article #\c 'news-toggle-article-context)
+(define-key 'news-article #\f 'news-compose-followup)
+(define-key 'news-article #\n 'news-next-article)
+(define-key 'news-article #\o 'news-output-article-to-rmail-file)
+(define-key 'news-article #\p 'news-previous-article)
 (define-key 'news-article #\q 'news-kill-current-buffer)
-(define-key 'news-article #\r 'reply-to-news-article)
-(define-key 'news-article #\t 'toggle-news-article-header)
-(define-key 'news-article #\c-o 'output-news-article)
+(define-key 'news-article #\r 'news-reply-to-article)
+(define-key 'news-article #\t 'news-toggle-article-header)
+(define-key 'news-article #\c-o 'news-output-article)
 
-(define-command next-news-article
+(define-command news-next-article
   "Select a buffer containing the next unread article in the News group.
 If there is no such article, returns to the News group buffer.
 Kills the current buffer in either case."
@@ -1010,7 +1069,7 @@ Kills the current buffer in either case."
 		       header
 		       (loop (fix:+ index 1))))))))))))
 
-(define-command previous-news-article
+(define-command news-previous-article
   "Select a buffer containing the previous unread article in the News group.
 If there is no such article, returns to the News group buffer.
 Kills the current buffer in either case."
@@ -1033,7 +1092,8 @@ Kills the current buffer in either case."
 (define (news-article-motion-command procedure)
   (let ((buffer (current-buffer)))
     (let ((group-buffer (buffer-tree:parent buffer #t)))
-      (let ((header (procedure group-buffer (buffer-news-header buffer))))
+      (let ((header
+	     (procedure group-buffer (news-article-buffer:header buffer))))
 	(if (news-header? header)
 	    (begin
 	      (select-news-article group-buffer header)
@@ -1045,14 +1105,14 @@ Kills the current buffer in either case."
 	      (message header)))))
     (kill-buffer buffer)))
 
-(define-command toggle-news-article-header
+(define-command news-toggle-article-header
   "Show original article header if pruned header currently shown, or vice versa.
 Normally, the header lines specified in the variable rmail-ignored-headers
 are not shown; this command shows them, or hides them if they are shown."
   ()
   (lambda ()
     (let ((buffer (current-buffer)))
-      (let ((header (buffer-news-header buffer)))
+      (let ((header (news-article-buffer:header buffer)))
 	(delete-news-header buffer)
 	(insert-news-header
 	 header
@@ -1060,7 +1120,7 @@ are not shown; this command shows them, or hides them if they are shown."
 	 (not (buffer-get buffer 'NEWS-ARTICLE-HEADER-TRUNCATED? #f))))
       (set-current-point! (buffer-start buffer)))))
 
-(define-command toggle-news-article-context
+(define-command news-toggle-article-context
   "Show context window into News group buffer, or hide it if currently shown.
 This is a small window showing a few lines around the subject line of the
 current article.  The number of lines is specified by the variable
@@ -1093,13 +1153,8 @@ news-article-context-lines, but a prefix argument overrides this."
 		    (else
 		     (window-delete! context-window article-window)
 		     (buffer-remove! group-buffer 'CONTEXT-WINDOW))))))))))
-
-(define-variable news-article-context-lines
-  "The number of lines to show in a News group context window."
-  5
-  (lambda (object) (and (exact-integer? object) (> object 0))))
 
-(define-command output-news-article-to-rmail-file
+(define-command news-output-article-to-rmail-file
   "Append the current article to an Rmail file named FILE-NAME.
 If the file does not exist, ask if it should be created.
 If file is being visited, the article is appended to the
@@ -1115,7 +1170,7 @@ buffer visiting that file."
       (rmail-output-to-rmail-file (buffer-region buffer) pathname)
       (kill-buffer buffer))))
 
-(define-command output-news-article
+(define-command news-output-article
   "Append this article to Unix mail file named FILE-NAME."
   (lambda ()
     (list (prompt-for-rmail-output-filename "Output article to Unix mail file"
@@ -1132,11 +1187,11 @@ buffer visiting that file."
 		   (buffer-absolute-end buffer)
 		   (buffer-start buffer*))
     (delete-news-header buffer*)
-    (insert-news-header (buffer-news-header buffer) buffer* #f)
+    (insert-news-header (news-article-buffer:header buffer) buffer* #f)
     buffer*))
 
-(define-command reply-to-news-article
-  "Mail a reply to the author of the current news article.
+(define-command news-reply-to-article
+  "Mail a reply to the author of the current News article.
 While composing the reply, use \\[mail-yank-original] to yank the
 original message into it."
   ()
@@ -1144,19 +1199,272 @@ original message into it."
     (let ((reply-buffer (current-buffer)))
       (make-mail-buffer
        (let ((buffer (temporary-buffer " news conversion")))
-	 (insert-news-header (buffer-news-header reply-buffer) buffer #f)
+	 (insert-news-header (news-article-buffer:header reply-buffer)
+			     buffer #f)
 	 (let ((headers
 		(rfc822-region-reply-headers (buffer-region buffer) #t)))
 	   (kill-buffer buffer)
 	   headers))
        reply-buffer
        select-buffer-other-window))))
+
+;;;; Posting
 
-(define (buffer-news-header buffer)
-  (let ((header (buffer-get buffer 'NEWS-HEADER #f)))
-    (if (not header)
-	(error "Not in a news-article buffer."))
-    header))
+(define-command news-compose
+  "Begin editing a News article to be posted.
+Argument means resume editing previous article (don't erase).
+Type \\[describe-mode] once editing the article to get a list of commands."
+  "P"
+  (lambda (no-erase?)
+    (compose-news no-erase? select-buffer)))
+
+(define-command news-compose-other-window
+  "Like \\[news-compose], but display article buffer in other window."
+  "P"
+  (lambda (no-erase?)
+    (compose-news no-erase? select-buffer-other-window)))
+
+(define (compose-news no-erase? selector)
+  (let ((server (current-news-server #f))
+	(newsgroups
+	 (let ((buffer (news-group-buffer (current-buffer) #f)))
+	   (and buffer
+		(news-group:name (news-group-buffer:group buffer))))))
+    (let ((buffer
+	   (make-mail-buffer `(("Newsgroups" ,(or newsgroups ""))
+			       ("Subject" ""))
+			     #f
+			     selector
+			     (if no-erase?
+				 'KEEP-PREVIOUS-MAIL
+				 'QUERY-DISCARD-PREVIOUS-MAIL)
+			     "*news*"
+			     (ref-mode-object compose-news))))
+      (if buffer
+	  (begin
+	    (if server (buffer-put! buffer 'NEWS-SERVER server))
+	    (if (not newsgroups)
+		(set-buffer-point! buffer
+				   (mail-position-on-field buffer
+							   "Newsgroups"))))))))
+
+(define-command news-compose-followup
+  "Begin editing a follow-up to the current News article.
+While composing the follow-up, use \\[mail-yank-original] to yank the
+original message into it."
+  ()
+  (lambda ()
+    (let ((article-buffer (current-buffer)))
+      (let ((header (news-article-buffer:header article-buffer)))
+	(let ((followup-to (news-header:field-value header "followup-to")))
+	  (if (string-ci=? followup-to "poster")
+	      ((ref-command news-reply-to-article))
+	      (let ((buffer
+		     (make-mail-buffer (news-header-followup-fields header)
+				       article-buffer
+				       select-buffer-other-window
+				       'QUERY-DISCARD-PREVIOUS-MAIL
+				       "*news*"
+				       (ref-mode-object compose-news))))
+		(if buffer
+		    (buffer-put! buffer 'NEWS-SERVER
+				 (nntp-connection:server
+				  (news-group:connection
+				   (news-header:group header))))))))))))
+
+(define (news-header-followup-fields header)
+  `(("Newsgroups" ,(news-header:field-value header "Newsgroups"))
+    ("Subject" ,(let ((subject (news-header:field-value header "Subject")))
+		  (if (and (not (string-null? subject))
+			   (not (string-prefix-ci? "re:" subject)))
+		      (string-append "Re: " subject)
+		      subject)))
+    ("References" ,(let ((refs (news-header:field-value header "References"))
+			 (id (news-header:message-id header)))
+		     (if (string-null? refs)
+			 id
+			 (string-append refs " " id)))
+		  #T)
+    ("In-reply-to"
+     ,(make-in-reply-to-field (news-header:field-value header "From")
+			      (news-header:field-value header "Date")
+			      (news-header:message-id header)))
+    ("Distribution"
+     ,(let ((distribution (news-header:field-value header "Distribution")))
+	(and (not (string-null? distribution))
+	     distribution)))))
+
+(define-major-mode compose-news mail "News"
+  "Major mode for editing news to be posted on USENET.
+Like Text mode but with these additional commands:
+
+C-c C-s  mail-send (post the message)           C-c C-c  mail-send-and-exit
+C-c C-f	 move to a header field (and create it if there isn't):
+	 C-c C-f C-n  move to Newsgroups:	C-c C-f C-s  move to Subject:
+	 C-c C-f C-f  move to Followup-To:      C-c C-f C-k  move to Keywords:
+	 C-c C-f C-d  move to Distribution:	C-c C-f C-a  move to Summary:
+C-c C-w  mail-signature (insert ~/.signature at end).
+C-c C-y  mail-yank-original (insert current message, in News reader).
+C-c C-q  mail-fill-yanked-message (fill what was yanked)."
+  (lambda (buffer)
+    (local-set-variable! send-mail-procedure
+			 (lambda () (news-post-it))
+			 buffer)))
+
+(define-key 'compose-news '(#\c-c #\c-f #\c-a) 'news-move-to-summary)
+(define-key 'compose-news '(#\c-c #\c-f #\c-d) 'news-move-to-distribution)
+(define-key 'compose-news '(#\c-c #\c-f #\c-f) 'news-move-to-followup-to)
+(define-key 'compose-news '(#\c-c #\c-f #\c-k) 'news-move-to-keywords)
+(define-key 'compose-news '(#\c-c #\c-f #\c-n) 'news-move-to-newsgroups)
+
+(define ((field-mover field))
+  (set-current-point! (mail-position-on-field (current-buffer) field)))
+
+(define-command news-move-to-newsgroups
+  "Move point to end of Newsgroups: field."
+  ()
+  (field-mover "Newsgroups"))
+
+(define-command news-move-to-followup-to
+  "Move point to end of Followup-to: field."
+  ()
+  (field-mover "Followup-to"))
+
+(define-command news-move-to-distribution
+  "Move point to end of Distribution: field."
+  ()
+  (field-mover "Distribution"))
+
+(define-command news-move-to-keywords
+  "Move point to end of Keywords: field."
+  ()
+  (field-mover "Keywords"))
+
+(define-command news-move-to-summary
+  "Move point to end of Summary: field."
+  ()
+  (field-mover "Summary"))
+
+(define (news-post-it)
+  (let ((article-buffer (current-buffer)))
+    (let ((temp-buffer
+	   (prepare-mail-buffer-for-sending article-buffer
+					    news-post-process-headers)))
+      (if (let* ((start (buffer-start temp-buffer))
+		 (end (mail-header-end start)))
+	    (or (mail-field-start start end "To")
+		(mail-field-start start end "CC")
+		(mail-field-start start end "BCC")))
+	  (let ((errors (send-mail-buffer temp-buffer article-buffer)))
+	    (if errors
+		(begin
+		  (kill-buffer temp-buffer)
+		  (editor-error errors)))))
+      (let ((errors (post-news-buffer temp-buffer article-buffer)))
+	(kill-buffer temp-buffer)
+	(if errors (editor-error errors))))))
+
+(define (post-news-buffer article-buffer lookup-buffer)
+  (let ((do-it
+	 (lambda (connection)
+	   (let ((msg "Posting..."))
+	     (message msg)
+	     (let ((error
+		    (nntp-connection:post-article
+		     connection
+		     (make-buffer-input-port (buffer-start article-buffer)
+					     (buffer-end article-buffer)))))
+	       (if error
+		   (string-append msg "failed: " error)
+		   (begin
+		     (message msg "done")
+		     #f)))))))
+    (let ((server
+	   (or (buffer-get lookup-buffer 'NEWS-SERVER #f)
+	       (get-news-server-name #f))))
+      (let ((server-buffer (find-news-server-buffer server)))
+	(if server-buffer
+	    (do-it (news-server-buffer:guarantee-connection server-buffer))
+	    (let ((connection (open-nntp-connection server)))
+	      (let ((result (do-it connection)))
+		(nntp-connection:close connection)
+		result)))))))
+
+(define (news-post-process-headers start end)
+  (let ((start (mark-left-inserting-copy start)))
+    (if (not (mail-field-end start end "From"))
+	(insert-string (news-post-default-from)
+		       (mail-insert-field start "From")))
+    (if (not (mail-field-end start end "Organization"))
+	(let ((organization (news-post-default-organization)))
+	  (if organization
+	      (insert-string organization
+			     (mail-insert-field start "Organization")))))
+    (if (not (mail-field-end start end "Date"))
+	(insert-string (news-post-default-date)
+		       (mail-insert-field start "Date")))
+    (if (not (mail-field-end start end "Subject"))
+	(mail-insert-field start "Subject"))
+    (if (not (mail-field-end start end "Lines"))
+	(insert-string (number->string
+			(count-lines (line-start end 1 'ERROR)
+				     (group-end end)))
+		       (mail-insert-field start "Lines")))
+    (let ((region (mail-field-region start end "Newsgroups")))
+      (if region
+	  (news-post-canonicalize-newsgroups region)
+	  (mail-insert-field start "Newsgroups")))
+    (if (not (mail-field-end start end "Message-id"))
+	(insert-string (news-post-default-message-id)
+		       (mail-insert-field end "Message-id")))
+    (if (not (mail-field-end start end "Path"))
+	(insert-string (news-post-default-path)
+		       (mail-insert-field end "Path")))
+    (mark-temporary! start)))
+
+(define (news-post-canonicalize-newsgroups region)
+  (let ((start (mark-right-inserting-copy (region-start region)))
+	(end (mark-left-inserting-copy (region-end region))))
+    (let ((replace-regexp
+	   (lambda (from to)
+	     (let loop ((start start))
+	       (let ((mark (re-search-forward from start end #f)))
+		 (if mark
+		     (loop (replace-match to))))))))
+      (replace-regexp "\n[ \t]+" " ")
+      (replace-regexp "[ \t]*,[ \t]*" ",")
+      (replace-regexp "[ \t]+" ","))
+    (mark-temporary! end)
+    (mark-temporary! start)))
+
+(define (news-post-default-path)
+  (string-append (get-news-server-name #f) "!" (current-user-name)))
+
+(define (news-post-default-from)
+  (string-append (current-user-name)
+		 "@"
+		 (os/hostname)
+		 (let ((full-name (ref-variable news-full-name #f)))
+		   (if (string-null? full-name)
+		       ""
+		       (string-append " (" full-name ")")))))
+
+(define (news-post-default-date)
+  (file-time->string (current-file-time)))
+
+(define (news-post-default-message-id)
+  (string-append "<"
+		 (current-user-name)
+		 "."
+		 (number->string (get-universal-time))
+		 "@"
+		 (os/hostname)
+		 ">"))
+
+(define (news-post-default-organization)
+  (let ((organization (ref-variable news-organization #f)))
+    (and (not (string-null? organization))
+	 organization)))
 
 ;;;; INI File
 
@@ -1415,12 +1723,6 @@ original message into it."
 		      (loop low index))
 		     (else
 		      (loop (fix:+ index 1) high)))))))))
-
-(define (get-buffer-property buffer key)
-  (let ((item (buffer-get buffer key #f)))
-    (if (not item)
-	(error "Missing buffer property:" key (buffer-name buffer)))
-    item))
 
 ;;;; Buffer Trees
 

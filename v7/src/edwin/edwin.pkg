@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.173 1995/05/05 22:35:09 cph Exp $
+$Id: edwin.pkg,v 1.174 1995/05/06 02:22:02 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1508,33 +1508,33 @@ MIT in each case. |#
   (files "snr")
   (parent (edwin))
   (export (edwin)
-	  edwin-command$all-news-groups
-	  edwin-command$catch-up-news-group
-	  edwin-command$delete-news-article
-	  edwin-command$delete-news-thread
-	  edwin-command$expunge-news-group
+	  edwin-command$news-all-groups
+	  edwin-command$news-catch-up-group
+	  edwin-command$news-delete-article
+	  edwin-command$news-delete-thread
+	  edwin-command$news-expunge-group
 	  edwin-command$news-kill-current-buffer
+	  edwin-command$news-next-article
 	  edwin-command$news-next-line
+	  edwin-command$news-output-article
+	  edwin-command$news-output-article-to-rmail-file
+	  edwin-command$news-previous-article
 	  edwin-command$news-previous-line
-	  edwin-command$next-news-article
-	  edwin-command$output-news-article
-	  edwin-command$output-news-article-to-rmail-file
-	  edwin-command$previous-news-article
-	  edwin-command$refresh-news-group
-	  edwin-command$refresh-news-groups
-	  edwin-command$reply-to-news-article
-	  edwin-command$revert-news-group
+	  edwin-command$news-refresh-group
+	  edwin-command$news-refresh-groups
+	  edwin-command$news-reply-to-article
+	  edwin-command$news-revert-group
+	  edwin-command$news-save-server-data
+	  edwin-command$news-select-article
+	  edwin-command$news-select-group
+	  edwin-command$news-subscribe-group
+	  edwin-command$news-subscribe-group-by-name
+	  edwin-command$news-toggle-article-context
+	  edwin-command$news-toggle-article-header
+	  edwin-command$news-undelete-article
+	  edwin-command$news-undelete-thread
+	  edwin-command$news-unsubscribe-group
 	  edwin-command$rnews
-	  edwin-command$save-news-server-data
-	  edwin-command$select-news-article
-	  edwin-command$select-news-group
-	  edwin-command$subscribe-news-group
-	  edwin-command$subscribe-news-group-by-name
-	  edwin-command$toggle-news-article-context
-	  edwin-command$toggle-news-article-header
-	  edwin-command$undelete-news-article
-	  edwin-command$undelete-news-thread
-	  edwin-command$unsubscribe-news-group
 	  edwin-mode$news-article
 	  edwin-mode$news-group
 	  edwin-mode$news-server
@@ -1602,6 +1602,7 @@ MIT in each case. |#
 	  nntp-connection:close
 	  nntp-connection:closed?
 	  nntp-connection:discard-active-groups-cache!
+	  nntp-connection:post-article
 	  nntp-connection:reader-hook
 	  nntp-connection:reopen
 	  nntp-connection:server

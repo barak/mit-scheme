@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.1 1995/05/03 07:51:01 cph Exp $
+;;;	$Id: nntp.scm,v 1.2 1995/05/06 02:21:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995 Massachusetts Institute of Technology
 ;;;
@@ -100,7 +100,7 @@
 (define (nntp-connection:close connection)
   (if (not (nntp-connection:closed? connection))
       (begin
-	(nntp-write-line connection "quit")
+	(nntp-write-command connection "quit")
 	(nntp-drain-output connection)))
   (nntp-flush-input connection)
   (subprocess-delete (nntp-connection:process connection)))
@@ -178,7 +178,7 @@
        'NO-SUCH-ARTICLE)
       (else
        (nntp-error response)))))
-
+
 (define (nntp-body-command connection key port)
   (prepare-nntp-connection connection)
   (nntp-write-command connection "body" key)
@@ -201,6 +201,26 @@
     (if (fix:= 215 (nntp-response-number response))
 	(nntp-read-text-lines connection)
 	(nntp-error response))))
+
+(define (nntp-connection:post-article connection port)
+  (prepare-nntp-connection connection)
+  (nntp-write-command connection "post")
+  (nntp-drain-output connection)
+  (let ((response (nntp-read-line connection)))
+    (if (fix:= 340 (nntp-response-number response))
+	(let loop ()
+	  (let ((line (input-port/read-line port)))
+	    (if (eof-object? line)
+		(begin
+		  (nntp-write-command connection ".")
+		  (nntp-drain-output connection)
+		  (let ((response (nntp-read-line connection)))
+		    (and (not (fix:= 240 (nntp-response-number response)))
+			 response)))
+		(begin
+		  (nntp-write-line connection line)
+		  (loop)))))
+	response)))
 
 (define (nntp-error response)
   (error "NNTP error:" response))
@@ -228,6 +248,9 @@
 
 (define (nntp-write-line connection string)
   (let ((port (nntp-connection:port connection)))
+    (if (and (not (string-null? string))
+	     (char=? (string-ref string 0) #\.))
+	(output-port/write-char port #\.))
     (output-port/write-string port string)
     (output-port/write-char port #\newline)))
 
