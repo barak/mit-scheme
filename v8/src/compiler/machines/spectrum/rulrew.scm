@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.2 1995/03/16 05:27:46 adams Exp $
+$Id: rulrew.scm,v 1.3 1995/03/16 05:52:05 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -150,9 +150,8 @@ MIT in each case. |#
        (non-pointer-object? (rtl:constant-value expression))))
 
 
-;;; These rules are losers (i.e. have no effect) because there's no
-;;; abstract way to cons a statement or a predicate without also
-;;; getting some CFG structure.
+;;; These rules are losers because there's no abstract way to cons a
+;;; statement or a predicate without also getting some CFG structure.
 
 (define-rule rewriting
   ;; Use register 0, always 0.
@@ -172,13 +171,13 @@ MIT in each case. |#
   (QUALIFIER (rtl:immediate-zero-constant? comparand))
   (list 'EQ-TEST source (rtl:make-machine-constant 0)))
 
-(define-rule add-pre-cse-rewriting-rule!
+(define-rule rewriting
   (EQ-TEST (REGISTER (? comparand register-known-fixnum-constant)) (? source))
   (QUALIFIER
    (fits-in-5-bits-signed? (known-fixnum-constant/fixnum-value comparand)))
   (list `EQ-TEST comparand source))
 
-(define-rule add-pre-cse-rewriting-rule!
+(define-rule rewriting
   (EQ-TEST (? source) (REGISTER (? comparand register-known-fixnum-constant)))
   (QUALIFIER
    (fits-in-5-bits-signed? (known-fixnum-constant/fixnum-value comparand)))
