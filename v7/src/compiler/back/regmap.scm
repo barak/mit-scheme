@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 1.87 1987/03/19 00:50:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 1.88 1987/05/19 18:06:04 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -204,9 +204,11 @@ REGISTER-RENUMBERs are equal.
 ;;; These constructors are responsible for maintaining consistency
 ;;; between the map entries and available registers.
 
-(define (register-map:add-home map home alias)
+(define (register-map:add-home map home alias saved-into-home?)
   (make-register-map (map-entries:add map
-				      (make-map-entry home true (list alias)))
+				      (make-map-entry home
+						      saved-into-home?
+						      (list alias)))
 		     (map-registers:delete map alias)))
 
 (define (register-map:add-alias map entry alias)
@@ -330,7 +332,7 @@ REGISTER-RENUMBERs are equal.
 			   alias)))
 		(allocator-values
 		 alias
-		 (register-map:add-home map home alias)
+		 (register-map:add-home map home alias true)
 		 (append! instructions
 			  (home->register-transfer home alias)))))))))
 
@@ -347,7 +349,7 @@ REGISTER-RENUMBERs are equal.
 				  ;; ENTRY because it has no aliases
 				  ;; of the appropriate TYPE.
 				  (register-map:add-alias map entry alias)
-				  (register-map:add-home map home alias))
+				  (register-map:add-home map home alias true))
 			      instructions))))))
 
 (define (use-existing-alias map entry type)
@@ -363,14 +365,14 @@ REGISTER-RENUMBERs are equal.
   (bind-allocator-values (make-free-register map type needed-registers)
     (lambda (alias map instructions)
       (allocator-values alias
-			(register-map:add-home map false alias)
+			(register-map:add-home map false alias true)
 			instructions))))
 
-(define-export (add-pseudo-register-alias map register alias)
+(define-export (add-pseudo-register-alias map register alias saved-into-home?)
   (let ((entry (map-entries:find-home map register)))
     (if entry
 	(register-map:add-alias map entry alias)
-	(register-map:add-home map register alias))))
+	(register-map:add-home map register alias saved-into-home?))))
 
 (define-export (machine-register-contents map register)
   (let ((entry (map-entries:find-alias map register)))
