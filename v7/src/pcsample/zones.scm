@@ -131,7 +131,7 @@
 		       zones)
 		  (lambda (x y) (> (car x) (car y)))))))))
 
-(define (initialize-zones-package!)
+(define (initialize-package!)
   (let* ((max-zone ((ucode-primitive %pc-sample/max-zone 0))))
     (set! zone:other (%make-pc-sample-zone 'other 0))
     (set! zones
