@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.51 1991/04/23 06:47:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.52 1991/04/26 03:11:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -47,7 +47,7 @@
 (declare (usual-integrations))
 
 (define registers (make-vector 20))
-(define match-group)
+(define match-group (object-hash false))
 (define standard-syntax-table (make-syntax-table))
 
 (define-integrable (re-match-start-index i)
@@ -58,37 +58,95 @@
 
 (define (re-match-start i)
   (guarantee-re-register i 'RE-MATCH-START)
-  (let ((group (object-unhash match-group)))
-    (if (not group)
-	(error "No match registers" i))
-    (make-mark group (re-match-start-index i))))
+  (let ((index (re-match-start-index i)))
+    (and (not (negative? index))
+	 (make-mark (re-match-group) index))))
 
 (define (re-match-end i)
   (guarantee-re-register i 'RE-MATCH-END)
-  (let ((group (object-unhash match-group)))
-    (if (not group)
-	(error "No match registers" i))
-    (make-mark group (re-match-end-index i))))
+  (let ((index (re-match-end-index i)))
+    (and (not (negative? index))
+	 (make-mark (re-match-group) index))))
 
 (define (guarantee-re-register i operator)
   (if (not (and (exact-nonnegative-integer? i) (< i 10)))
       (error:wrong-type-argument i "RE register" operator)))
 
-(define (replace-match replacement)
-  (let ((m (mark-left-inserting-copy (re-match-start 0))))
-    (delete-string m (re-match-end 0))
-    (insert-string replacement m)
-    (mark-temporary! m)
-    m))
+(define (re-match-group)
+  (let ((group (object-unhash match-group)))
+    (if (not group)
+	(error "No match group"))
+    group))
 
-(define (delete-match)
-  (let ((m (mark-left-inserting-copy (re-match-start 0))))
-    (delete-string m (re-match-end 0))
-    (mark-temporary! m)
-    m))
+(define (preserving-match-data thunk)
+  (fluid-let ((registers (vector-copy registers))
+	      (match-group match-group))
+    (thunk)))
 
 (define-integrable (syntax-table-argument syntax-table)
   (syntax-table/entries (or syntax-table standard-syntax-table)))
+
+(define (replace-match replacement #!optional preserve-case? literal?)
+  (let ((start (re-match-start 0))
+	(end (re-match-end 0)))
+    (let ((replacement
+	   (let ((replacement
+		  (if (and (not (default-object? literal?)) literal?)
+		      replacement
+		      (re-substitute-registers replacement))))
+	     (if (and (not (default-object? preserve-case?) preserve-case?))
+		 ;; Emacs uses a more complicated algorithm here,
+		 ;; which breaks the replaced string into words,
+		 ;; makes the decision based on examining all the
+		 ;; words, and then changes each word in the
+		 ;; replacement to match the pattern.
+		 (let ((replaced (extract-string start end)))
+		   (cond ((string-upper-case? replaced)
+			  (string-upcase replacement))
+			 ((string-capitalized? replaced)
+			  (string-capitalize replacement))
+			 (else replacement)))
+		 replacement))))
+      (delete-string start end)
+      (insert-string replacement start))
+    start))
+
+(define (re-substitute-registers string)
+  (let ((end (string-length string)))
+    (if (substring-find-next-char string 0 end #\\)
+	(apply
+	 string-append
+	 (let loop ((start 0))
+	   (let ((slash (substring-find-next-char string start end #\\)))
+	     (if slash
+		 (cons (substring string start slash)
+		       (let ((next (+ slash 1)))
+			 (cons (let ((char
+				      (if (< next end)
+					  (string-ref string next)
+					  #\\)))
+				 (let ((n
+					(if (char=? #\& char)
+					    0
+					    (char->digit char))))
+				   (cond ((not n)
+					  (string char))
+					 ((negative? (re-match-start-index n))
+					  (string #\\ char))
+					 (else
+					  (extract-string
+					   (re-match-start n)
+					   (re-match-end n))))))
+			       (if (< next end)
+				   (loop (+ next 1))
+				   '()))))
+		 (list (substring string start end))))))
+	string)))
+
+(define (delete-match)
+  (let ((start (re-match-start 0)))
+    (delete-string start (re-match-end 0))
+    start))
 
 (define (re-search-buffer-forward pattern case-fold-search syntax-table
 				  group start end)

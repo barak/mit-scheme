@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.32 1991/04/24 07:27:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.33 1991/04/26 03:11:56 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -494,6 +494,7 @@ MIT in each case. |#
   (parent (edwin))
   (export (edwin)
 	  delete-match
+	  preserving-match-data
 	  re-match-buffer-forward
 	  re-match-end
 	  re-match-end-index
@@ -510,6 +511,7 @@ MIT in each case. |#
 	  re-search-string-forward
 	  re-search-substring-backward
 	  re-search-substring-forward
+	  re-substitute-registers
 	  replace-match
 	  search-backward
 	  search-forward))
