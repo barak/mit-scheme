@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.13 1990/09/11 05:16:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.14 1990/09/11 19:49:54 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -830,7 +830,11 @@ DEFINE_PRIMITIVE ("X-WINDOW-READ-EVENT-FLAGS!", Prim_x_window_read_event_flags, 
   xw = (WINDOW_ARG (1));
   old = (XW_EVENT_FLAGS (xw));
   (XW_EVENT_FLAGS (xw)) = 0;
-  PRIMITIVE_RETURN (long_to_integer (old));
+  /* Mask the result so that only three bits of information are
+     returned.  This primitive is only used for maintaining the old
+     version of Edwin -- newer versions use a different interface that
+     supplies more event types. */
+  PRIMITIVE_RETURN (long_to_integer (old & 0x7));
 }
 
 DEFINE_PRIMITIVE ("X-DEQUEUE-GLOBAL-EVENT", Prim_x_dequeue_global_event, 0, 0,
