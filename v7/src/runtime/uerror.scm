@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.28 1991/10/26 16:21:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.29 1991/10/29 14:32:14 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -182,25 +182,24 @@ MIT in each case. |#
 	    (thunk)))
 	(thunk))))
 
-(define (open-file-signaller)
+(define (file-operation-signaller)
   (let ((signal
-	 (condition-signaller condition-type:open-file-error
-			      '(FILENAME NOUN EXPLANATION))))
-    (lambda (continuation operator operands index noun explanation)
-      (open-file/use-value continuation operator operands index noun
+	 (condition-signaller condition-type:file-operation-error
+			      '(FILENAME VERB NOUN REASON OPERATOR OPERANDS))))
+    (lambda (continuation operator operands index verb noun reason)
+      (file-operation/use-value continuation operator operands index verb noun
 	(lambda ()
-	  (open-file/retry continuation operator operands noun
+	  (file-operation/retry continuation operator operands verb noun
 	    (lambda ()
-	      (signal continuation
-		      (list-ref operands index)
-		      noun
-		      explanation))))))))
+	      (signal continuation (list-ref operands index)
+		      verb noun reason operator operands))))))))
 
-(define (open-file/use-value continuation operator operands index noun thunk)
+(define (file-operation/use-value continuation operator operands index
+				  verb noun thunk)
   (let ((continuation (continuation/next-continuation continuation)))
     (if continuation
 	(bind-restart 'USE-VALUE
-	    (string-append "Try opening a different " noun ".")
+	    (string-append "Try to " verb " a different " noun ".")
 	    (lambda (operand)
 	      (within-continuation continuation
 		(lambda ()
@@ -217,11 +216,11 @@ MIT in each case. |#
 	      (thunk))))
 	(thunk))))
 
-(define (open-file/retry continuation operator operands noun thunk)
+(define (file-operation/retry continuation operator operands verb noun thunk)
   (let ((continuation (continuation/next-continuation continuation)))
     (if continuation
 	(bind-restart 'RETRY
-	    (string-append "Try opening the same " noun " again.")
+	    (string-append "Try to " verb " the same " noun " again.")
 	    (lambda ()
 	      (within-continuation continuation
 		(lambda ()
@@ -328,35 +327,48 @@ MIT in each case. |#
 	 'DIVIDE-BY-ZERO)
 	(else false)))
 
-(define file-open-primitives
-  (list (ucode-primitive file-open-append-channel 1)
-	(ucode-primitive file-open-input-channel 1)
-	(ucode-primitive file-open-io-channel 1)
-	(ucode-primitive file-open-output-channel 1)))
-
-(define directory-open-primitives
-  (list (ucode-primitive directory-open 1)
-	(ucode-primitive directory-open-noread 1)))
-
-(define file-primitives
-  (list (ucode-primitive directory-make 1)
-	(ucode-primitive file-access 2)
-	(ucode-primitive file-attributes 1)
-	(ucode-primitive file-attributes-indirect 1)
-	(ucode-primitive file-copy 2)
-	(ucode-primitive file-directory? 1)
-	(ucode-primitive file-exists? 1)
-	(ucode-primitive file-link-hard 2)
-	(ucode-primitive file-link-soft 2)
-	(ucode-primitive file-mod-time-indirect 1)
-	(ucode-primitive file-modes 1)
-	(ucode-primitive file-remove 1)
-	(ucode-primitive file-remove-link 1)
-	(ucode-primitive file-rename 2)
-	(ucode-primitive file-soft-link? 1)
-	(ucode-primitive file-touch 1)
-	(ucode-primitive link-file 3)
-	(ucode-primitive set-file-modes! 2)))
+(define (file-primitive-description primitive)
+  (cond ((eq? primitive (ucode-primitive file-exists? 1))
+	 (values "determine existence of" "file"))
+	((or (eq? primitive (ucode-primitive file-directory? 1))
+	     (eq? primitive (ucode-primitive file-soft-link? 1)))
+	 (values "determine type of of" "file"))
+	((or (eq? primitive (ucode-primitive file-open-append-channel 1))
+	     (eq? primitive (ucode-primitive file-open-input-channel 1))
+	     (eq? primitive (ucode-primitive file-open-io-channel 1))
+	     (eq? primitive (ucode-primitive file-open-output-channel 1)))
+	 (values "open" "file"))
+	((or (eq? primitive (ucode-primitive directory-open 1))
+	     (eq? primitive (ucode-primitive directory-open-noread 1)))
+	 (values "open" "directory"))
+	((or (eq? primitive (ucode-primitive file-modes 1))
+	     (eq? primitive (ucode-primitive file-access 2)))
+	 (values "read permissions of" "file"))
+	((eq? primitive (ucode-primitive set-file-modes! 2))
+	 (values "set permissions of" "file"))
+	((or (eq? primitive (ucode-primitive file-mod-time 1))
+	     (eq? primitive (ucode-primitive file-mod-time-indirect 1)))
+	 (values "read modification time of" "file"))
+	((or (eq? primitive (ucode-primitive file-attributes 1))
+	     (eq? primitive (ucode-primitive file-attributes-indirect 1)))
+	 (values "read attributes of" "file"))
+	((eq? primitive (ucode-primitive directory-make 1))
+	 (values "create" "directory"))
+	((eq? primitive (ucode-primitive file-copy 2))
+	 (values "copy" "file"))
+	((or (eq? primitive (ucode-primitive file-link-hard 2))
+	     (eq? primitive (ucode-primitive file-link-soft 2))
+	     (eq? primitive (ucode-primitive link-file 3)))
+	 (values "link" "file"))
+	((or (eq? primitive (ucode-primitive file-remove 1))
+	     (eq? primitive (ucode-primitive file-remove-link 1)))
+	 (values "delete" "file"))
+	((eq? primitive (ucode-primitive file-rename 2))
+	 (values "rename" "file"))
+	((eq? primitive (ucode-primitive file-touch 1))
+	 (values "touch" "file"))
+	(else
+	 (values false false))))
 
 (define (initialize-package!)
 
@@ -674,7 +686,7 @@ MIT in each case. |#
   (let ((signal
 	 (condition-signaller condition-type:out-of-file-handles
 			      '(OPERATOR OPERANDS)))
-	(signal-open-file (open-file-signaller)))
+	(signal-file-operation (file-operation-signaller)))
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (apply-frame? frame)
@@ -685,8 +697,8 @@ MIT in each case. |#
 		      (eq? (ucode-primitive file-open-io-channel) operator)
 		      (eq? (ucode-primitive file-open-append-channel)
 			   operator))
-		  (signal-open-file continuation operator operands 0 "file"
-				    "Channel table full.")
+		  (signal-file-operation continuation operator operands 0
+					 "open" "file" "channel table full")
 		  (signal continuation operator operands))))))))
 
 (set! condition-type:system-call-error
@@ -717,7 +729,7 @@ MIT in each case. |#
   (let ((make-condition
 	 (condition-constructor condition-type:system-call-error
 				'(OPERATOR OPERANDS SYSTEM-CALL ERROR-TYPE)))
-	(signal-open-file (open-file-signaller)))
+	(signal-file-operation (file-operation-signaller)))
     (lambda (continuation error-code)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (and (apply-frame? frame)
@@ -742,22 +754,18 @@ MIT in each case. |#
 		(cond ((port-error-test operator operands)
 		       => (lambda (port)
 			    (error:derived-port port (make-condition))))
-		      ((and (not (null? operands))
+		      ((and (primitive-procedure? operator)
+			    (not (null? operands))
 			    (string? (car operands)))
-		       (let ((signal-open-file
-			      (lambda (noun)
-				(signal-open-file
-				 continuation operator operands 0 noun
-				 (error-type->string error-type)))))
-			 (cond ((memq operator file-open-primitives)
-				(signal-open-file "file"))
-			       ((memq operator directory-open-primitives)
-				(signal-open-file "directory"))
-			       ((memq operator file-primitives)
-				(error:derived-file (car operands)
-						    (make-condition)))
-			       (else
-				(error (make-condition))))))
+		       (with-values
+			   (lambda ()
+			     (file-primitive-description operator))
+			 (lambda (verb noun)
+			   (if verb
+			       (signal-file-operation
+				continuation operator operands 0 verb noun
+				(error-type->string error-type))
+			       (error (make-condition))))))
 		      (else
 		       (error (make-condition)))))))))))
 

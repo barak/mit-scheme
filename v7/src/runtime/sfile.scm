@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.6 1991/10/26 16:21:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.7 1991/10/29 14:32:11 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -37,36 +37,12 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (canonicalize-existing-filename filename)
-  (pathname->string (canonicalize-existing-pathname filename)))
-
-(define (canonicalize-existing-pathname filename)
-  (let ((pathname (->pathname filename)))
-    (or (pathname->existing-truename pathname)
-	(canonicalize-existing-pathname (error:open-file pathname)))))
-
-(define (pathname->existing-truename pathname)
-  (let ((pathname (pathname->absolute-pathname pathname))
-	(truename-exists?
-	 (lambda (pathname)
-	   ;; This primitive, a unix-specific one, is used, because it
-	   ;; is the simplest way to do an lstat on the file.  The
-	   ;; usual primitive, FILE-EXISTS?, does a stat.
-	   (and ((ucode-primitive file-mod-time 1) (pathname->string pathname))
-		pathname))))
-    (cond ((not (eq? 'NEWEST (pathname-version pathname)))
-	   (truename-exists? pathname))
-	  ((not pathname-newest)
-	   (truename-exists? (pathname-new-version pathname false)))
-	  (else
-	   (pathname-newest pathname)))))
-
 (define (rename-file from to)
-  ((ucode-primitive file-rename) (canonicalize-existing-filename from)
+  ((ucode-primitive file-rename) (canonicalize-input-filename from)
 				 (canonicalize-output-filename to)))
 
 (define (delete-file filename)
-  (let ((truename (pathname->existing-truename (->pathname filename))))
+  (let ((truename (pathname->input-truename (->pathname filename))))
     (and truename
 	 (begin
 	   ((ucode-primitive file-remove) (pathname->string truename))

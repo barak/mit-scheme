@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.123 1991/09/18 20:01:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.124 1991/10/29 14:32:03 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -558,12 +558,11 @@ MIT in each case. |#
 	  condition-type:divide-by-zero
 	  condition-type:error
 	  condition-type:file-error
-	  condition-type:file-touch-error
+	  condition-type:file-operation-error
 	  condition-type:floating-point-overflow
 	  condition-type:floating-point-underflow
 	  condition-type:illegal-datum
 	  condition-type:no-such-restart
-	  condition-type:open-file-error
 	  condition-type:port-error
 	  condition-type:serious-condition
 	  condition-type:simple-condition
@@ -595,9 +594,8 @@ MIT in each case. |#
 	  error:derived-file
 	  error:derived-port
 	  error:divide-by-zero
-	  error:file-touch
+	  error:file-operation
 	  error:no-such-restart
-	  error:open-file
 	  error:wrong-number-of-arguments
 	  error:wrong-type-argument
 	  error:wrong-type-datum

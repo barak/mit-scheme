@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.26 1991/10/26 16:20:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.27 1991/10/29 14:31:40 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -214,16 +214,16 @@ MIT in each case. |#
 (define (condition-accessor type field-name)
   (guarantee-condition-type type 'CONDITION-ACCESSOR)
   (guarantee-symbol field-name 'CONDITION-ACCESSOR)
-  (let ((type-description
-	 (string-append "condition of type " (write-to-string type)))
-	(index
+  (let ((index
 	 (%condition-type/field-index type
 				      field-name
 				      'CONDITION-ACCESSOR)))
     (lambda (condition)
       (if (not (and (condition? condition)
 		    (eq? type (%condition/type condition))))
-	  (error:wrong-type-argument condition type-description
+	  (error:wrong-type-argument condition
+				     (string-append "condition of type "
+						    (write-to-string type))
 				     'CONDITION-ACCESSOR))
       (vector-ref (%condition/field-values condition) index))))
 
@@ -565,31 +565,36 @@ MIT in each case. |#
 		(error:wrong-number-of-arguments constructor
 						 arity
 						 field-values))
-	    (let ((field-value (list-ref field-values index)))
-	      (call-with-current-continuation
-	       (lambda (continuation)
-		 (bind-restart 'USE-VALUE use-value-message
+	    (call-with-current-continuation
+	     (lambda (continuation)
+	       (let ((condition
+		      (apply make-condition
+			     continuation
+			     'BOUND-RESTARTS
+			     field-values)))
+		 (bind-restart 'USE-VALUE
+		     (if (string? use-value-message)
+			 use-value-message
+			 (use-value-message condition))
 		     continuation
 		   (lambda (restart)
 		     (restart/put! restart 'INTERACTIVE
 		       (let ((prompt
-			      (if (procedure? use-value-prompt)
-				  (use-value-prompt field-value)
-				  use-value-prompt)))
+			      (if (string? use-value-prompt)
+				  use-value-prompt
+				  (use-value-prompt condition))))
 			 (lambda ()
 			   (values (prompt-for-evaluated-expression prompt)))))
-		     (bind-restart 'RETRY retry-message
+		     (bind-restart 'RETRY
+			 (if (string? retry-message)
+			     retry-message
+			     (retry-message condition))
 			 (lambda ()
-			   (continuation field-value))
+			   (continuation (list-ref field-values index)))
 		       (lambda (restart)
 			 (restart/put! restart 'INTERACTIVE values)
-			 (let ((condition
-				(apply make-condition
-				       continuation
-				       'BOUND-RESTARTS
-				       field-values)))
-			   (signal-condition condition)
-			   (default-handler condition))))))))))))
+			 (signal-condition condition)
+			 (default-handler condition)))))))))))
       constructor)))
 
 ;;;; Basic Condition Types
@@ -604,12 +609,11 @@ MIT in each case. |#
 (define condition-type:divide-by-zero)
 (define condition-type:error)
 (define condition-type:file-error)
-(define condition-type:file-touch-error)
+(define condition-type:file-operation-error)
 (define condition-type:floating-point-overflow)
 (define condition-type:floating-point-underflow)
 (define condition-type:illegal-datum)
 (define condition-type:no-such-restart)
-(define condition-type:open-file-error)
 (define condition-type:port-error)
 (define condition-type:serious-condition)
 (define condition-type:simple-condition)
@@ -629,9 +633,8 @@ MIT in each case. |#
 (define error:bad-range-argument)
 (define error:datum-out-of-range)
 (define error:divide-by-zero)
-(define error:file-touch)
+(define error:file-operation)
 (define error:no-such-restart)
-(define error:open-file)
 (define error:derived-file)
 (define error:derived-port)
 (define error:wrong-number-of-arguments)
@@ -869,13 +872,14 @@ MIT in each case. |#
 				   filename
 				   condition)))))
 
-  (set! condition-type:open-file-error
-	(make-condition-type 'OPEN-FILE-ERROR condition-type:file-error
-	    '(NOUN EXPLANATION)
+  (set! condition-type:file-operation-error
+	(make-condition-type 'FILE-OPERATION-ERROR condition-type:file-error
+	    '(VERB NOUN REASON OPERATOR OPERANDS)
 	  (lambda (condition port)
-	    (let ((noun (access-condition condition 'NOUN))
-		  (explanation (access-condition condition 'EXPLANATION)))
-	      (write-string "Unable to open " port)
+	    (let ((noun (access-condition condition 'NOUN)))
+	      (write-string "Unable to " port)
+	      (write-string (access-condition condition 'VERB) port)
+	      (write-string " " port)
 	      (write-string noun port)
 	      (write-string " " port)
 	      (write (let ((filename (access-condition condition 'FILENAME)))
@@ -883,48 +887,41 @@ MIT in each case. |#
 			   (pathname->string filename)
 			   filename))
 		     port)
-	      (cond ((string? explanation)
-		     (write-string " because: " port)
-		     (write-string (string-capitalize explanation) port)
-		     (write-string "." port))
-		    ((condition? explanation)
-		     (write-string " because: " port)
-		     (write-condition-report explanation port))
-		    (else
-		     (write-string " because: No such " port)
-		     (write-string noun port)
-		     (write-string "." port)))))))
+	      (write-string " because: " port)
+	      (let ((reason (access-condition condition 'REASON)))
+		(if reason
+		    (write-string (string-capitalize reason) port)
+		    (begin
+		      (write-string "No such " port)
+		      (write-string noun port))))
+	      (write-string "." port)))))
 
-  (set! error:open-file
-	(let ((signaller
-	       (substitutable-value-condition-signaller
-		condition-type:open-file-error
-		'(FILENAME EXPLANATION NOUN)
-		standard-error-handler
-		0
-		"New file name (an expression to be evaluated)"
-		"Try opening a different file."
-		"Try opening the same file again.")))
-	  (lambda (filename #!optional explanation noun)
-	    (signaller filename
-		       (and (not (default-object? explanation)) explanation)
-		       (if (or (default-object? noun)
-			       (not noun))
-			   "file"
-			   noun)))))
-
-  (set! condition-type:file-touch-error
-	(make-condition-type 'FILE-TOUCH-ERROR condition-type:file-error
-	    '(MESSAGE)
-	  (lambda (condition port)
-	    (write-string "The primitive file-touch signalled an error: " port)
-	    (write (access-condition condition 'MESSAGE) port)
-	    (write-string "." port))))
-
-  (set! error:file-touch
-	(condition-signaller condition-type:file-touch-error
-			     '(FILENAME MESSAGE)
-			     standard-error-handler))
+  (set! error:file-operation
+	(let ((get-verb
+	       (condition-accessor condition-type:file-operation-error 'VERB))
+	      (get-noun
+	       (condition-accessor condition-type:file-operation-error 'NOUN)))
+	  (substitutable-value-condition-signaller
+	   condition-type:file-operation-error
+	   '(FILENAME VERB NOUN REASON OPERATOR OPERANDS)
+	   standard-error-handler
+	   0
+	   (lambda (condition)
+	     (string-append "New "
+			    (get-noun condition)
+			    " name (an expression to be evaluated)"))
+	   (lambda (condition)
+	     (string-append "Try to "
+			    (get-verb condition)
+			    " a different "
+			    (get-noun condition)
+			    "."))
+	   (lambda (condition)
+	     (string-append "Try to "
+			    (get-verb condition)
+			    " the same "
+			    (get-noun condition)
+			    " again.")))))
 
   (set! condition-type:variable-error
 	(make-condition-type 'VARIABLE-ERROR condition-type:cell-error

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.14 1991/10/26 16:21:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.15 1991/10/29 14:31:56 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -340,13 +340,19 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 (define (canonicalize-input-pathname filename)
   (let ((pathname (->pathname filename)))
     (or (pathname->input-truename pathname)
-	(canonicalize-input-pathname (error:open-file pathname)))))
+	(canonicalize-input-pathname
+	 (error:file-operation pathname
+			       "find"
+			       "file"
+			       "file does not exist"
+			       canonicalize-input-pathname
+			       (list filename))))))
 
 (define (pathname->input-truename pathname)
   (let ((pathname (pathname->absolute-pathname pathname))
 	(truename-exists?
 	 (lambda (pathname)
-	   (and ((ucode-primitive file-exists?) (pathname->string pathname))
+	   (and ((ucode-primitive file-exists? 1) (pathname->string pathname))
 		pathname))))
     (cond ((not (eq? 'NEWEST (pathname-version pathname)))
 	   (truename-exists? pathname))
@@ -392,7 +398,16 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 	   (pathname-new-version pathname 1)))))
 
 (define (file-exists? filename)
-  (pathname->input-truename (->pathname filename)))
+  (let ((pathname (pathname->absolute-pathname (->pathname filename)))
+	(pathname-exists?
+	 (lambda (pathname)
+	   ((ucode-primitive file-exists? 1) (pathname->string pathname)))))
+    (cond ((not (eq? 'NEWEST (pathname-version pathname)))
+	   (pathname-exists? pathname))
+	  ((not pathname-newest)
+	   (pathname-exists? (pathname-new-version pathname false)))
+	  (else
+	   (pathname-newest pathname)))))
 
 (define (init-file-truename)
   (let ((pathname (init-file-pathname)))
@@ -431,8 +446,12 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 	(if (null? directories)
 	    (system-library-pathname
 	     (->pathname
-	      (error:open-file pathname
-			       "no such file in system library path")))
+	      (error:file-operation pathname
+				    "find"
+				    "file"
+				    "no such file in system library path"
+				    system-library-pathname
+				    (list pathname))))
 	    (or (pathname->input-truename
 		 (merge-pathnames pathname (car directories)))
 		(loop (cdr directories)))))))
