@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ea2.scm,v 1.2 1995/03/07 05:57:24 adams Exp $
+$Id: ea2.scm,v 1.3 1995/05/14 01:17:55 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -642,6 +642,9 @@ MIT in each case. |#
       (fix:= super (fix:or sub super))
       (internal-error "SUBTYPE:" sub super)))
 
+(define (earlyrew/could-be? type what)
+  (not (fix:= (fix:and type what) 0)))
+
 (define (earlyrew/type=? t1 t2) (fix:= t1 t2))
 
 (define (earlyrew/type/not t)
@@ -1047,16 +1050,80 @@ MIT in each case. |#
 
 (define-type-rewrite (make-primitive-procedure '&*) 2
   (let ((rewrite-out-of-line (earlyrew/rewrite-operator! %*))
+	(multiply-fixnum  (make-primitive-procedure 'MULTIPLY-FIXNUM))
 	(flo:diamond (earlyrew/rewrite-diamond
 		      earlyrew/flonum-test earlyrew/type/*flonum
 		      earlyrew/flonum-test earlyrew/type/*flonum
 		      flo:* %*)))
+    (define (small-fixnum-multiply? cst multiplicand-type)
+      (and (QUOTE/? cst)
+	   (good-factor? (quote/text cst))
+	   (earlyrew/could-be? multiplicand-type earlyrew/type/*fixnum)))
     (lambda (form x y)
+      (define (small-fixnum-multiply name cst multiplicand multiplicand-type)
+	(let* ((name     (earlyrew/new-name name))
+	       (constant (quote/text cst)))
+	  (form/rewrite! form
+	    (bind name multiplicand
+		  `(IF (CALL (QUOTE ,%small-fixnum?)
+			     (QUOTE #F)
+			     (LOOKUP ,name)
+			     (QUOTE ,(good-factor->nbits constant)))
+		       (CALL (QUOTE ,multiply-fixnum)
+			     (QUOTE #F)
+			     (LOOKUP ,name)
+			     (QUOTE ,constant))
+		       (CALL (QUOTE ,%*)
+			     (QUOTE #F)
+			     (LOOKUP ,name)
+			     (QUOTE ,constant)))))))
       (let  ((tx  (earlyrew/form/type x))
 	     (ty  (earlyrew/form/type y)))
 	(cond ((or (earlyrew/subtype? tx earlyrew/type/*flonum)
 		   (earlyrew/subtype? ty earlyrew/type/*flonum))
 	       (flo:diamond form tx ty))
+	      ((small-fixnum-multiply? x ty)
+	       (small-fixnum-multiply 'X x y ty))
+	      ((small-fixnum-multiply? y tx)
+	       (small-fixnum-multiply 'Y y x tx))
 	      (else
 	       (rewrite-out-of-line form)))))))
 
+(define-type-rewrite 'EXPT 2
+  (lambda (form base exponent)
+    (let ((t-b  (earlyrew/form/type base))
+	  (t-e  (earlyrew/form/type exponent)))
+      (cond ((not (QUOTE/? base)) unspecific)
+	    ((and (or (eqv? (quote/text base) -1.0)
+		      (eqv? (quote/text base) -1))
+		  (earlyrew/subtype? t-e earlyrew/type/*fixnum))
+	     (let ((exponent-name (earlyrew/new-name 'EXPONENT))
+		   (negative-one  (quote/text base)))
+	       (form/rewrite! form
+		 (bind exponent-name exponent
+		       `(IF (CALL ',eq? '#F
+				  (CALL ',fix:and '#F
+					(LOOKUP ,exponent-name) '1)
+				  '0)
+			    ',(- negative-one)
+			    ',negative-one)))))
+	    ((and (eqv? (quote/text base) 2)
+		  (earlyrew/subtype? t-e earlyrew/type/*fixnum))
+	     (let ((exponent-name (earlyrew/new-name 'EXPONENT)))
+	       (form/rewrite! form
+		 (bind exponent-name exponent
+		       `(IF (IF (CALL ',fix:< '#F
+				      (QUOTE 0)
+				      (LOOKUP ,exponent-name))
+				(CALL ',fix:< '#F
+				      (LOOKUP ,exponent-name)
+				      '24)
+				'#F)
+			    (CALL ',fix:lsh '#F '1 (LOOKUP ,exponent-name))
+			    (CALL ,(second form) ; invoke-remote-operator-c
+				  ,(third form)	; '#F
+				  ,(fourth form) ; '(expt 2)
+				  ,(fifth form)	; (lookup cacahe-variable)
+				  ,(sixth form)	; '2
+				  (LOOKUP ,exponent-name)))))))
+	    (else unspecific)))))
