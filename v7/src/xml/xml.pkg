@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.13 2003/01/26 06:29:09 cph Exp $
+$Id: xml.pkg,v 1.14 2003/01/30 17:30:25 cph Exp $
 
-Copyright 2001,2002 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -151,6 +151,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (files "xml-chars" "xml-parser")
   (parent (runtime xml))
   (export ()
+	  char-set:xml-whitespace
 	  parse-xml-document
 	  read-xml
 	  read-xml-file))
