@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Id: makefile,v 1.24 1993/06/09 20:29:39 jawilson Exp $
+# $Id: makefile,v 1.25 1993/06/15 19:07:53 gjr Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -80,7 +80,7 @@ clean remove:
 	rm -f scheme xscheme bchscheme bchdrn
 	rm -f Findprim Bintopsb Psbtobin Breakup Wsize Ppband
 	rm -f hard-params limits.h float.h
-	rm -f usrdef.c bchdef.c
+	rm -f usrdef.c bchdef.c compinit.h
 	rm -f lint.out
 
 unconfig:
