@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.4 1992/12/23 18:14:20 cph Exp $
+$Id: rulrew.scm,v 1.5 1993/01/08 00:04:50 cph Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -146,6 +146,15 @@ MIT in each case. |#
   (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:constant-fixnum? source))
   (rtl:make-object->fixnum source))
+
+(define-rule rewriting
+  (FIXNUM-2-ARGS FIXNUM-LSH
+		 (? operand-1)
+		 (REGISTER (? operand-2 register-known-value))
+		 #F)
+  (QUALIFIER (and (rtl:register? operand-1)
+		  (rtl:constant-fixnum? operand-2)))
+  (rtl:make-fixnum-2-args 'FIXNUM-LSH operand-1 operand-2 #F))
 
 (define-rule rewriting
   (FIXNUM-2-ARGS MULTIPLY-FIXNUM

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.3 1992/11/18 03:52:32 gjr Exp $
+$Id: machin.scm,v 1.4 1993/01/08 00:03:32 cph Exp $
 
-Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
+Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
 This software was developed at the Digital Equipment Corporation
 Cambridge Research Laboratory.  Permission to copy this software, to
@@ -384,6 +384,10 @@ case.
      (interpreter-dynamic-link))
     ((VALUE)
      (interpreter-value-register))
+    ((FREE)
+     (interpreter-free-pointer))
+    ((MEMORY-TOP)
+     (rtl:make-machine-register regnum:memtop))
     ((INTERPRETER-CALL-RESULT:ACCESS)
      (interpreter-register:access))
     ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
@@ -400,8 +404,7 @@ case.
 
 (define (rtl:interpreter-register? rtl-register)
   (case rtl-register
-    ((MEMORY-TOP) 0)
-    ((STACK-GUARD) 1)
+    ((INT-MASK) 1)
     ((ENVIRONMENT) 3)
     ((TEMPORARY) 4)
     (else false)))
@@ -409,7 +412,7 @@ case.
 (define (rtl:interpreter-register->offset locative)
   (or (rtl:interpreter-register? locative)
       (error "Unknown register type" locative)))
-
+
 (define (rtl:constant-cost expression)
   ;; Magic numbers.  Cycles needed to generate value in specified
   ;; register.

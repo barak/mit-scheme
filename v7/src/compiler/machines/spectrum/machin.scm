@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 4.26 1992/11/18 00:46:45 gjr Exp $
+$Id: machin.scm,v 4.27 1993/01/08 00:05:02 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -326,6 +326,10 @@ MIT in each case. |#
      (interpreter-dynamic-link))
     ((VALUE)
      (interpreter-value-register))
+    ((FREE)
+     (interpreter-free-pointer))
+    ((MEMORY-TOP)
+     (rtl:make-machine-register regnum:memtop-pointer))
     ((INTERPRETER-CALL-RESULT:ACCESS)
      (interpreter-register:access))
     ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
@@ -342,8 +346,7 @@ MIT in each case. |#
 
 (define (rtl:interpreter-register? rtl-register)
   (case rtl-register
-    ((MEMORY-TOP) 0)
-    ((STACK-GUARD) 1)
+    ((INT-MASK) 1)
     ((ENVIRONMENT) 3)
     ((TEMPORARY) 4)
     (else false)))

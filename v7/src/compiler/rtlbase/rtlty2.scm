@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rtlty2.scm,v 4.10 1992/11/18 00:48:50 gjr Exp $
+$Id: rtlty2.scm,v 4.11 1993/01/08 00:05:27 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,6 +67,15 @@ MIT in each case. |#
 
 (define-integrable register:value
   'VALUE)
+
+(define-integrable register:int-mask
+  'INT-MASK)
+
+(define-integrable register:memory-top
+  'MEMORY-TOP)
+
+(define-integrable register:free
+  'FREE)
 
 (define-integrable (rtl:interpreter-call-result:access)
   (rtl:make-fetch 'INTERPRETER-CALL-RESULT:ACCESS))

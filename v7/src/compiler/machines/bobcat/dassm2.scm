@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dassm2.scm,v 4.20 1992/09/25 01:17:58 cph Exp $
+$Id: dassm2.scm,v 4.21 1993/01/08 00:03:51 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -291,10 +291,11 @@ MIT in each case. |#
 		(make-entries (+ index 8) (cdr names)))))
     `(;; Interpreter registers
       (0  . (REGISTER MEMORY-TOP))
-      (4  . (REGISTER STACK-GUARD))
+      (4  . (REGISTER INT-MASK))
       (8  . (REGISTER VALUE))
       (12 . (REGISTER ENVIRONMENT))
       (16 . (REGISTER TEMPORARY))
+      (44 . (REGISTER STACK-GUARD))
       ;; Interpreter entry points
       ,@(make-entries
 	 first-entry

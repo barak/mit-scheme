@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.56 1992/12/30 14:13:45 gjr Exp $
+$Id: opncod.scm,v 4.57 1993/01/08 00:05:35 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -452,7 +452,8 @@ MIT in each case. |#
 
 (define (index-locative-generator make-locative
 				  header-length-in-objects
-				  address-units-per-index)
+				  address-units-per-index
+				  scfg*scfg->scfg!)
   (let ((header-length-in-indexes
 	 (back-end:* header-length-in-objects
 		     (back-end:quotient address-units-per-object
@@ -493,19 +494,26 @@ MIT in each case. |#
 (define object-memory-reference
   (indexed-memory-reference
    (lambda (expression) expression false)
-   (index-locative-generator rtl:locative-offset 0 address-units-per-object)))
+   (index-locative-generator rtl:locative-offset
+			     0
+			     address-units-per-object
+			     scfg*scfg->scfg!)))
 
 (define vector-memory-reference
   (indexed-memory-reference
    (lambda (expression) (rtl:make-fetch (rtl:locative-offset expression 0)))
-   (index-locative-generator rtl:locative-offset 1 address-units-per-object)))
+   (index-locative-generator rtl:locative-offset
+			     1
+			     address-units-per-object
+			     scfg*scfg->scfg!)))
 
 (define string-memory-reference
   (indexed-memory-reference
    (lambda (expression) (rtl:make-fetch (rtl:locative-offset expression 1)))
    (index-locative-generator rtl:locative-byte-offset
 			     2
-			     address-units-per-packed-char)))
+			     address-units-per-packed-char
+			     scfg*scfg->scfg!)))
 
 (define (rtl:length-fetch locative)
   (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type fixnum))
@@ -582,37 +590,166 @@ MIT in each case. |#
      (finish (rtl:make-eq-test (car expressions) (cadr expressions))))
    '(0 1)
    false))
-
+
 (define-open-coder/predicate 'OBJECT-TYPE?
+  (lambda (operands)
+    (let ((operand (rvalue-known-value (car operands))))
+      (if (and operand
+	       (rvalue/constant? operand)
+	       (let ((value (constant-value operand)))
+		 (and (exact-nonnegative-integer? value)
+		      (back-end:< value scheme-type-limit))))
+	  (values (lambda (combination expressions finish)
+		    combination
+		    (let ((type (car expressions))
+			  (object (cadr expressions)))
+		      (finish
+		       (rtl:make-type-test (rtl:make-object->type object)
+					   (rtl:constant-value type)))))
+		  '(0 1)
+		  false)
+	  (values (lambda (combination expressions finish)
+		    (let ((type (car expressions))
+			  (object (cadr expressions)))
+		      (open-code:with-checks
+		       combination
+		       (list
+			(open-code:type-check type (ucode-type fixnum))
+			(open-code:range-check type
+					       (rtl:make-machine-constant
+						scheme-type-limit)))
+		       (finish
+			(rtl:make-eq-test (rtl:make-object->datum type)
+					  (rtl:make-object->type object)))
+		       (lambda (expression)
+			 (finish (rtl:make-true-test expression)))
+		       'OBJECT-TYPE?
+		       expressions)))
+		  '(0 1)
+		  internal-close-coding-for-type-or-range-checks)))))
+
+(let ((open-coder
+       (simple-open-coder
+	(lambda (combination expressions finish)
+	  combination
+	  (finish
+	   (rtl:make-cons-non-pointer
+	    (rtl:make-machine-constant (ucode-type fixnum))
+	    (rtl:make-object->type (car expressions)))))
+	'(0)
+	false)))
+  (define-open-coder/value 'OBJECT-TYPE open-coder)
+  (define-open-coder/value 'PRIMITIVE-OBJECT-TYPE open-coder))
+
+(define-open-coder/value 'PRIMITIVE-OBJECT-SET-TYPE
+  (filter/type-code
+   (lambda (type)
+     (lambda (combination expressions finish)
+       combination
+       (finish
+	(rtl:make-cons-non-pointer
+	 (rtl:make-machine-constant type)
+	 (rtl:make-object->datum (car expressions))))))
+   0
+   '(1)
+   false))
+
+(define-open-coder/value 'GET-INTERRUPT-ENABLES
   (simple-open-coder
    (lambda (combination expressions finish)
-     (let ((type (car expressions))
-	   (object (cadr expressions)))
-       (let* ((ok? (rtl:constant? type))
-	      (tag (and ok?
-			(rtl:constant-value type))))
-	 (if (and ok?
-		  (exact-nonnegative-integer? tag)
-		  (back-end:< tag scheme-type-limit))
-	     (finish
-	      (rtl:make-type-test (rtl:make-object->type object)
-				  tag))
-	     (open-code:with-checks
-	      combination
-	      (list
-	       (open-code:type-check type (ucode-type fixnum))
-	       (open-code:range-check type
-				      (rtl:make-machine-constant
-				       scheme-type-limit)))
-	      (finish
-	       (rtl:make-eq-test (rtl:make-object->datum type)
-				 (rtl:make-object->type object)))
-	      (lambda (expression)
-		(finish (rtl:make-true-test expression)))
-	      'OBJECT-TYPE?
-	      expressions)))))
-   '(0 1)
+     combination expressions
+     (finish (rtl:length-fetch register:int-mask)))
+   '()
    false))
+
+(define-open-coder/effect 'SET-INTERRUPT-ENABLES!
+  (simple-open-coder
+   (lambda (combination expressions finish)
+     (let ((mask (car expressions)))
+       (open-code:with-checks
+	combination
+	(list (open-code:type-check mask (ucode-type fixnum)))
+	(let ((assignment
+	       (rtl:make-assignment register:int-mask
+				    (rtl:make-object->datum mask))))
+	  (if finish
+	      (load-temporary-register scfg*scfg->scfg!
+				       (rtl:length-fetch register:int-mask)
+		(lambda (temporary)
+		  (scfg*scfg->scfg! assignment (finish temporary))))
+	      assignment))
+	finish
+	'SET-INTERRUPT-ENABLES!
+	expressions)
+       ))
+   '(0)
+   internal-close-coding-for-type-checks))
+
+(define-open-coder/value 'PRIMITIVE-GET-FREE
+  (filter/type-code
+   (lambda (type)
+     (lambda (combination expressions finish)
+       combination expressions
+       (finish
+	(rtl:make-cons-pointer (rtl:make-machine-constant type)
+			       (rtl:make-fetch register:free)))))
+   0
+   '()
+   false))
+
+(define-open-coder/effect 'PRIMITIVE-INCREMENT-FREE
+  (simple-open-coder
+   (lambda (combination expressions finish)
+     (let ((length (car expressions)))
+       (open-code:with-checks
+	combination
+	(list (open-code:type-check length (ucode-type fixnum))
+	      (open-code:nonnegative-check length))
+	(let ((assignment
+	       ((index-locative-generator rtl:locative-offset
+					  0
+					  address-units-per-object
+					  scfg*scfg->scfg!)
+		(rtl:make-fetch register:free)
+		length
+		(lambda (locative)
+		  (rtl:make-assignment register:free
+				       (rtl:make-address locative))))))
+	  (if finish
+	      (scfg*scfg->scfg! assignment
+				(finish (rtl:make-constant unspecific)))
+	      assignment))
+	finish
+	'PRIMITIVE-INCREMENT-FREE
+	expressions)))
+   '(0)
+   internal-close-coding-for-type-or-range-checks))
+
+(define-open-coder/predicate 'HEAP-AVAILABLE?
+  (simple-open-coder
+   (lambda (combination expressions finish)
+     (let ((length (car expressions)))
+       (open-code:with-checks
+	combination
+	(list (open-code:type-check length (ucode-type fixnum))
+	      (open-code:nonnegative-check length))
+	((index-locative-generator rtl:locative-offset
+				   0
+				   address-units-per-object
+				   scfg*pcfg->pcfg!)
+	 (rtl:make-fetch register:free)
+	 length
+	 (lambda (locative)
+	   (finish
+	    (rtl:make-fixnum-pred-2-args
+	     'LESS-THAN-FIXNUM?
+	     (rtl:make-address->fixnum (rtl:make-address locative))
+	     (rtl:make-address->fixnum (rtl:make-fetch register:memory-top))))))
+	finish
+	'PRIMITIVE-INCREMENT-FREE
+	expressions)))
+   '(0)
+   internal-close-coding-for-type-or-range-checks))
 
 (let ((open-code/pair-cons
        (lambda (type)
@@ -676,10 +813,11 @@ MIT in each case. |#
        (open-code:with-checks
 	combination
 	(list (open-code:nonnegative-check length))
-	(finish
-	 (rtl:make-typed-cons:string
-	  (rtl:make-machine-constant (ucode-type string))
-	  length))
+	(scfg*scfg->scfg!
+	 (finish
+	  (rtl:make-typed-cons:string
+	   (rtl:make-machine-constant (ucode-type string))
+	   length)))
 	finish
 	'STRING-ALLOCATE
 	expressions)))
@@ -695,9 +833,7 @@ MIT in each case. |#
 	      (let ((expression (car expressions)))
 		(open-code:with-checks
 		 combination
-		 (if type
-		     (list (open-code:type-check expression type))
-		     '())
+		 (list (open-code:type-check expression type))
 		 (finish (make-fetch (rtl:locative-offset expression index)))
 		 finish
 		 name
@@ -707,7 +843,6 @@ MIT in each case. |#
   (user-ref 'CELL-CONTENTS rtl:make-fetch (ucode-type cell) 0)
   (user-ref 'VECTOR-LENGTH rtl:length-fetch (ucode-type vector) 0)
   (user-ref '%RECORD-LENGTH rtl:vector-length-fetch (ucode-type record) 0)
-  (user-ref 'SYSTEM-VECTOR-SIZE rtl:vector-length-fetch false 0)
   (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
   (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
   (user-ref 'CAR rtl:make-fetch (ucode-type pair) 0)
@@ -727,34 +862,9 @@ MIT in each case. |#
   (system-ref 'SYSTEM-PAIR-CDR rtl:make-fetch 1)
   (system-ref 'SYSTEM-HUNK3-CXR0 rtl:make-fetch 0)
   (system-ref 'SYSTEM-HUNK3-CXR1 rtl:make-fetch 1)
-  (system-ref 'SYSTEM-HUNK3-CXR2 rtl:make-fetch 2))
+  (system-ref 'SYSTEM-HUNK3-CXR2 rtl:make-fetch 2)
+  (system-ref 'SYSTEM-VECTOR-SIZE rtl:vector-length-fetch 0))
 
-(let ((open-coder
-       (simple-open-coder
-	(lambda (combination expressions finish)
-	  combination
-	  (finish
-	   (rtl:make-cons-non-pointer
-	    (rtl:make-machine-constant (ucode-type fixnum))
-	    (rtl:make-object->type (car expressions)))))
-	'(0)
-	false)))
-  (define-open-coder/value 'OBJECT-TYPE open-coder)
-  (define-open-coder/value 'PRIMITIVE-OBJECT-TYPE open-coder))
-
-(define-open-coder/value 'PRIMITIVE-OBJECT-SET-TYPE
-  (filter/type-code
-   (lambda (type)
-     (lambda (combination expressions finish)
-       combination
-       (finish
-	(rtl:make-cons-non-pointer
-	 (rtl:make-machine-constant type)
-	 (rtl:make-object->datum (car expressions))))))
-   0
-   '(1)
-   false))
-
 (let ((make-ref
        (lambda (name type)
 	 (define-open-coder/value name
@@ -777,11 +887,7 @@ MIT in each case. |#
       (finish (rtl:make-fetch locative))))
    '(0 1)
    false))
-
-;; For now SYSTEM-XXXX side effect procedures are considered dangerous
-;; to the garbage collector's health.  Some day we will again be able
-;; to enable them.
-
+
 (let ((fixed-assignment
        (lambda (name type index)
 	 (define-open-coder/effect name
@@ -790,7 +896,7 @@ MIT in each case. |#
 	      (let ((object (car expressions)))
 		(open-code:with-checks
 		 combination
-		 (if type (list (open-code:type-check object type)) '())
+		 (list (open-code:type-check object type))
 		 (finish-vector-assignment (rtl:locative-offset object index)
 					   (cadr expressions)
 					   finish)
@@ -801,14 +907,26 @@ MIT in each case. |#
 	    internal-close-coding-for-type-checks)))))
   (fixed-assignment 'SET-CAR! (ucode-type pair) 0)
   (fixed-assignment 'SET-CDR! (ucode-type pair) 1)
-  (fixed-assignment 'SET-CELL-CONTENTS! (ucode-type cell) 0)
-  #|
-  (fixed-assignment 'SYSTEM-PAIR-SET-CAR! false 0)
-  (fixed-assignment 'SYSTEM-PAIR-SET-CDR! false 1)
-  (fixed-assignment 'SYSTEM-HUNK3-SET-CXR0! false 0)
-  (fixed-assignment 'SYSTEM-HUNK3-SET-CXR1! false 1)
-  (fixed-assignment 'SYSTEM-HUNK3-SET-CXR2! false 2)
-  |#)
+  (fixed-assignment 'SET-CELL-CONTENTS! (ucode-type cell) 0))
+
+(define-open-coder/effect 'SET-STRING-LENGTH!
+  (simple-open-coder
+   (lambda (combination expressions finish)
+     (let ((object (car expressions))
+	   (length (cadr expressions)))
+       (open-code:with-checks
+	combination
+	(list (open-code:type-check object (ucode-type string))
+	      (open-code:type-check length (ucode-type fixnum))
+	      (open-code:nonnegative-check length))
+	(finish-vector-assignment (rtl:locative-offset object 1)
+				  (rtl:make-object->datum length)
+				  finish)
+	finish
+	'SET-STRING-LENGTH!
+	expressions)))
+   '(0 1)
+   internal-close-coding-for-type-or-range-checks))
 
 (let ((make-assignment
        (lambda (name type)
@@ -822,8 +940,7 @@ MIT in each case. |#
 	    '(0 1 2)
 	    internal-close-coding-for-type-or-range-checks)))))
   (make-assignment 'VECTOR-SET! (ucode-type vector))
-  (make-assignment '%RECORD-SET! (ucode-type record))
-  #|(make-assignment 'SYSTEM-VECTOR-SET! false)|#)
+  (make-assignment '%RECORD-SET! (ucode-type record)))
 
 (define-open-coder/effect 'PRIMITIVE-OBJECT-SET!
   (simple-open-coder
@@ -1067,7 +1184,7 @@ MIT in each case. |#
 	       false)))
 	  '(ZERO-FIXNUM? POSITIVE-FIXNUM? NEGATIVE-FIXNUM?))
 
-;;; Floating Point Arithmetic
+;;;; Floating Point Arithmetic
 
 ;; On some machines, there are optional floating-point co-processors,
 ;; The decision of whether to open-code floating-point arithmetic or
@@ -1173,7 +1290,7 @@ MIT in each case. |#
       internal-close-coding-for-type-checks)))
  '(FLONUM-EQUAL? FLONUM-LESS? FLONUM-GREATER?))
 
-;;; Generic arithmetic
+;;;; Generic arithmetic
 
 (define (generic-binary-operator generic-op)
   (define-open-coder/value generic-op

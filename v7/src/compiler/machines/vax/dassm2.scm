@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.11 1992/08/11 04:43:37 jinx Exp $
-$MC68020-Header: dassm2.scm,v 4.17 90/05/03 15:17:04 GMT jinx Exp $
+$Id: dassm2.scm,v 4.12 1993/01/08 00:05:17 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -297,7 +296,7 @@ MIT in each case. |#
 		(make-entries (+ index 6) (cdr names)))))
     `(;; Interpreter registers
       (0  . (REGISTER MEMORY-TOP))
-      (4  . (REGISTER STACK-GUARD))
+      (4  . (REGISTER INT-MASK))
       (8  . (REGISTER VALUE))
       (12 . (REGISTER ENVIRONMENT))
       (16 . (REGISTER TEMPORARY))
@@ -306,6 +305,7 @@ MIT in each case. |#
       (28 . (REGISTER LEXPR-PRIMITIVE-ACTUALS))
       (32 . (REGISTER MINIMUM-LENGTH))
       (36 . (REGISTER PRIMITIVE))
+      (44 . (REGISTER STACK-GUARD))
       ;; Interface entry points
       ,@(make-entries
 	 #x0280

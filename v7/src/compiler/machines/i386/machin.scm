@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.15 1992/11/18 03:49:35 gjr Exp $
+$Id: machin.scm,v 1.16 1993/01/08 00:04:22 cph Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -171,6 +171,7 @@ MIT in each case. |#
 	 (error "illegal machine register" register))))
 
 (define-integrable register-block/memtop-offset 0)
+(define-integrable register-block/int-mask-offset 1)
 (define-integrable register-block/value-offset 2)
 (define-integrable register-block/environment-offset 3)
 (define-integrable register-block/dynamic-link-offset 4) ; compiler temp
@@ -260,6 +261,8 @@ MIT in each case. |#
     ((VALUE)
      (interpreter-value-register))
     |#
+    ((FREE)
+     (interpreter-free-pointer))
     ((INTERPRETER-CALL-RESULT:ACCESS)
      (interpreter-register:access))
     ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
@@ -279,6 +282,8 @@ MIT in each case. |#
   (case rtl-register
     ((MEMORY-TOP)
      register-block/memtop-offset)
+    ((INT-MASK)
+     register-block/int-mask-offset)
     ((STACK-GUARD)
      register-block/stack-guard-offset)
     ((VALUE)
@@ -293,7 +298,7 @@ MIT in each case. |#
 (define (rtl:interpreter-register->offset locative)
   (or (rtl:interpreter-register? locative)
       (error "Unknown register type" locative)))
-
+
 (define (rtl:constant-cost expression)
   ;; i486 clock count for instruction to construct/fetch into register.
   (let ((if-integer

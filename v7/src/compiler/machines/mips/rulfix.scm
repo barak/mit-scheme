@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.8 1992/12/28 22:01:22 cph Exp $
+$Id: rulfix.scm,v 1.9 1993/01/08 00:04:44 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -177,6 +177,77 @@ MIT in each case. |#
 (define fixnum-methods/1-arg
   (list 'FIXNUM-METHODS/1-ARG))
 
+(define-rule statement
+  ;; execute a binary fixnum operation
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS (? operation)
+			 (REGISTER (? source1))
+			 (REGISTER (? source2))
+			 (? overflow?)))
+  (standard-binary-conversion source1 source2 target
+    (lambda (source1 source2 target)
+      ((fixnum-2-args/operator operation) target source1 source2 overflow?))))
+
+(define (fixnum-2-args/operator operation)
+  (lookup-arithmetic-method operation fixnum-methods/2-args))
+
+(define fixnum-methods/2-args
+  (list 'FIXNUM-METHODS/2-ARGS))
+
+(define-rule statement
+  ;; execute binary fixnum operation with constant second arg
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS (? operation)
+			 (REGISTER (? source))
+			 (OBJECT->FIXNUM (CONSTANT (? constant)))
+			 (? overflow?)))
+  (QUALIFIER (fixnum-2-args/operator/register*constant? operation))
+  (standard-unary-conversion source target
+    (lambda (source target)
+      ((fixnum-2-args/operator/register*constant operation)
+       target source constant overflow?))))
+
+(define-rule statement
+  ;; execute binary fixnum operation with constant first arg
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS (? operation)
+			 (OBJECT->FIXNUM (CONSTANT (? constant)))
+			 (REGISTER (? source))
+			 (? overflow?)))
+  (QUALIFIER
+   (or (fixnum-2-args/operator/constant*register? operation)
+       (and (fixnum-2-args/commutative? operation)
+	    (fixnum-2-args/operator/register*constant? operation))))
+  (standard-unary-conversion source target
+    (lambda (source target)
+      (if (fixnum-2-args/commutative? operation)
+	  ((fixnum-2-args/operator/register*constant operation)
+	   target source constant overflow?)
+	  ((fixnum-2-args/operator/constant*register operation)
+	   target constant source overflow?)))))
+
+(define (fixnum-2-args/commutative? operator)
+  (memq operator
+	'(PLUS-FIXNUM MULTIPLY-FIXNUM FIXNUM-AND FIXNUM-OR FIXNUM-XOR)))
+
+(define (fixnum-2-args/operator/register*constant operation)
+  (lookup-arithmetic-method operation fixnum-methods/2-args/register*constant))
+
+(define (fixnum-2-args/operator/register*constant? operation)
+  (arithmetic-method? operation fixnum-methods/2-args/register*constant))
+
+(define fixnum-methods/2-args/register*constant
+  (list 'FIXNUM-METHODS/2-ARGS/REGISTER*CONSTANT))
+
+(define (fixnum-2-args/operator/constant*register operation)
+  (lookup-arithmetic-method operation fixnum-methods/2-args/constant*register))
+
+(define (fixnum-2-args/operator/constant*register? operation)
+  (arithmetic-method? operation fixnum-methods/2-args/constant*register))
+
+(define fixnum-methods/2-args/constant*register
+  (list 'FIXNUM-METHODS/2-ARGS/CONSTANT*REGISTER))
+
 (define-arithmetic-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (tgt src overflow?)
     (fixnum-add-constant tgt src 1 overflow?)))
@@ -229,34 +300,17 @@ MIT in each case. |#
 			   (BLTZ ,tgt (@PCR ,if-no-overflow))
 			   (NOP)))))))
 	   (LAP)))))
-
-(define-arithmetic-method 'FIXNUM-NOT fixnum-methods/1-arg
-  (lambda (tgt src overflow?)
-    overflow?
-    (LAP (NOR ,tgt 0 ,src))))
 
-(define-rule statement
-  ;; execute a binary fixnum operation
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM-2-ARGS (? operation)
-			 (REGISTER (? source1))
-			 (REGISTER (? source2))
-			 (? overflow?)))
-  (standard-binary-conversion source1 source2 target
-    (lambda (source1 source2 target)
-      ((fixnum-2-args/operator operation) target source1 source2 overflow?))))
-
-(define (fixnum-2-args/operator operation)
-  (lookup-arithmetic-method operation fixnum-methods/2-args))
-
-(define fixnum-methods/2-args
-  (list 'FIXNUM-METHODS/2-ARGS))
-
 (define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
     (if overflow?
 	(do-overflow-addition tgt src1 src2)
 	(LAP (ADDU ,tgt ,src1 ,src2)))))
+
+(define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args/register*constant
+  (lambda (tgt src constant overflow?)
+    (guarantee-signed-fixnum constant)
+    (fixnum-add-constant tgt src constant overflow?)))
 
 ;;; Use of REGNUM:ASSEMBLER-TEMP is OK here, but only because its
 ;;; value is not used after the branch instruction that tests it.
@@ -323,6 +377,21 @@ MIT in each case. |#
 	    (do-overflow-subtraction tgt src1 src2))
 	(LAP (SUB ,tgt ,src1 ,src2)))))
 
+(define-arithmetic-method 'MINUS-FIXNUM fixnum-methods/2-args/register*constant
+  (lambda (tgt src constant overflow?)
+    (guarantee-signed-fixnum constant)
+    (fixnum-add-constant tgt src (- constant) overflow?)))
+
+(define-arithmetic-method 'MINUS-FIXNUM fixnum-methods/2-args/constant*register
+  (lambda (tgt constant src overflow?)
+    (guarantee-signed-fixnum constant)
+    (with-values (lambda () (immediate->register (* constant fixnum-1)))
+      (lambda (prefix alias)
+	(LAP ,@prefix
+	     ,@(if overflow?
+		   (do-overflow-subtraction tgt alias src)
+		   (LAP (SUB ,tgt ,alias ,src))))))))
+
 (define (do-overflow-subtraction tgt src1 src2)
   (set-current-branches!
    (lambda (if-overflow)
@@ -348,115 +417,10 @@ MIT in each case. |#
 		     (BLTZ ,regnum:assembler-temp (@PCR ,if-no-overflow))))
 	  (NOP))))
   (LAP))
-
-(define (do-multiply tgt src1 src2 overflow?)
-  (if overflow?
-      (let ((temp (standard-temporary!)))
-	(set-current-branches!
-	 (lambda (if-overflow)
-	   (LAP (MFHI ,temp)
-		(SRA  ,regnum:assembler-temp ,tgt 31)
-		(BNE  ,temp ,regnum:assembler-temp
-		      (@PCR ,if-overflow))
-		(NOP)))
-	 (lambda (if-no-overflow)
-	   (LAP (MFHI ,temp)
-		(SRA  ,regnum:assembler-temp ,tgt 31)
-		(BEQ  ,temp ,regnum:assembler-temp
-		      (@PCR ,if-no-overflow))
-		(NOP))))))
-  (LAP (SRA  ,regnum:assembler-temp ,src1 ,scheme-type-width)
-       (MULT ,regnum:assembler-temp ,src2)
-       (MFLO ,tgt)))
-
-(define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args do-multiply)
-
-(define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args
-  (lambda (tgt src1 src2 overflow?)
-    overflow?
-    (LAP (AND ,tgt ,src1 ,src2))))
-
-(define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args
-  (lambda (tgt src1 src2 overflow?)
-    overflow?
-    (LAP (NOR ,regnum:assembler-temp 0 ,src2)
-	 (AND ,tgt ,src1 ,regnum:assembler-temp))))
-
-(define-arithmetic-method 'FIXNUM-OR fixnum-methods/2-args
-  (lambda (tgt src1 src2 overflow?)
-    overflow?
-    (LAP (OR ,tgt ,src1 ,src2))))
-
-(define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args
-  (lambda (tgt src1 src2 overflow?)
-    overflow?
-    (LAP (XOR ,tgt ,src1 ,src2))))
 
-(define-rule statement
-  ;; execute binary fixnum operation with constant second arg
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM-2-ARGS (? operation)
-			 (REGISTER (? source))
-			 (OBJECT->FIXNUM (CONSTANT (? constant)))
-			 (? overflow?)))
-  (QUALIFIER (fixnum-2-args/operator/register*constant? operation))
-  (standard-unary-conversion source target
-    (lambda (source target)
-      ((fixnum-2-args/operator/register*constant operation)
-       target source constant overflow?))))
-
-(define-rule statement
-  ;; execute binary fixnum operation with constant first arg
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM-2-ARGS (? operation)
-			 (OBJECT->FIXNUM (CONSTANT (? constant)))
-			 (REGISTER (? source))
-			 (? overflow?)))
-  (QUALIFIER
-   (or (fixnum-2-args/operator/constant*register? operation)
-       (and (fixnum-2-args/commutative? operation)
-	    (fixnum-2-args/operator/register*constant? operation))))
-  (standard-unary-conversion source target
-    (lambda (source target)
-      (if (fixnum-2-args/commutative? operation)
-	  ((fixnum-2-args/operator/register*constant operation)
-	   target source constant overflow?)
-	  ((fixnum-2-args/operator/constant*register operation)
-	   target constant source overflow?)))))
-
-(define (fixnum-2-args/commutative? operator)
-  (memq operator
-	'(PLUS-FIXNUM MULTIPLY-FIXNUM FIXNUM-AND FIXNUM-OR FIXNUM-XOR)))
-
-(define (fixnum-2-args/operator/register*constant operation)
-  (lookup-arithmetic-method operation fixnum-methods/2-args/register*constant))
-
-(define (fixnum-2-args/operator/register*constant? operation)
-  (arithmetic-method? operation fixnum-methods/2-args/register*constant))
-
-(define fixnum-methods/2-args/register*constant
-  (list 'FIXNUM-METHODS/2-ARGS/REGISTER*CONSTANT))
-
-(define (fixnum-2-args/operator/constant*register operation)
-  (lookup-arithmetic-method operation fixnum-methods/2-args/constant*register))
-
-(define (fixnum-2-args/operator/constant*register? operation)
-  (arithmetic-method? operation fixnum-methods/2-args/constant*register))
-
-(define fixnum-methods/2-args/constant*register
-  (list 'FIXNUM-METHODS/2-ARGS/CONSTANT*REGISTER))
-
-(define-arithmetic-method 'PLUS-FIXNUM
-  fixnum-methods/2-args/register*constant
-  (lambda (tgt src constant overflow?)
-    (guarantee-signed-fixnum constant)
-    (fixnum-add-constant tgt src constant overflow?)))
-
-(define-arithmetic-method 'MINUS-FIXNUM
-  fixnum-methods/2-args/register*constant
-  (lambda (tgt src constant overflow?)
-    (guarantee-signed-fixnum constant)
-    (fixnum-add-constant tgt src (- constant) overflow?)))
+(define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    (do-multiply tgt src1 src2 overflow?)))
 
 (define-arithmetic-method 'MULTIPLY-FIXNUM
   fixnum-methods/2-args/register*constant
@@ -486,43 +450,108 @@ MIT in each case. |#
 	       (LAP ,@prefix
 		    ,@(do-multiply tgt src alias overflow?))))))))
 
+(define (do-multiply tgt src1 src2 overflow?)
+  (if overflow?
+      (let ((temp (standard-temporary!)))
+	(set-current-branches!
+	 (lambda (if-overflow)
+	   (LAP (MFHI ,temp)
+		(SRA  ,regnum:assembler-temp ,tgt 31)
+		(BNE  ,temp ,regnum:assembler-temp
+		      (@PCR ,if-overflow))
+		(NOP)))
+	 (lambda (if-no-overflow)
+	   (LAP (MFHI ,temp)
+		(SRA  ,regnum:assembler-temp ,tgt 31)
+		(BEQ  ,temp ,regnum:assembler-temp
+		      (@PCR ,if-no-overflow))
+		(NOP))))))
+  (LAP (SRA  ,regnum:assembler-temp ,src1 ,scheme-type-width)
+       (MULT ,regnum:assembler-temp ,src2)
+       (MFLO ,tgt)))
+
 (define (do-left-shift-overflow tgt src power-of-two)
   (if (= tgt src)
       (let ((temp (standard-temporary!)))
 	(set-current-branches!
 	 (lambda (if-overflow)
-	   (LAP (SLL  ,temp ,src ,power-of-two)
-		(SRA  ,regnum:assembler-temp ,temp ,power-of-two)
-		(BNE  ,regnum:assembler-temp ,src (@PCR ,if-overflow))
-		(ADD  ,tgt 0 ,temp)))
+	   (LAP (SLL ,temp ,src ,power-of-two)
+		(SRA ,regnum:assembler-temp ,temp ,power-of-two)
+		(BNE ,regnum:assembler-temp ,src (@PCR ,if-overflow))
+		(ADD ,tgt 0 ,temp)))
 	 (lambda (if-no-overflow)
-	   (LAP (SLL  ,temp ,src ,power-of-two)
-		(SRA  ,regnum:assembler-temp ,temp ,power-of-two)
-		(BEQ  ,regnum:assembler-temp ,src (@PCR ,if-no-overflow))
-		(ADD  ,tgt 0 ,temp)))))
+	   (LAP (SLL ,temp ,src ,power-of-two)
+		(SRA ,regnum:assembler-temp ,temp ,power-of-two)
+		(BEQ ,regnum:assembler-temp ,src (@PCR ,if-no-overflow))
+		(ADD ,tgt 0 ,temp)))))
       (set-current-branches!
        (lambda (if-overflow)
-	 (LAP (SLL  ,tgt ,src ,power-of-two)
-	      (SRA  ,regnum:assembler-temp ,tgt ,power-of-two)
-	      (BNE  ,regnum:assembler-temp ,src (@PCR ,if-overflow))
+	 (LAP (SLL ,tgt ,src ,power-of-two)
+	      (SRA ,regnum:assembler-temp ,tgt ,power-of-two)
+	      (BNE ,regnum:assembler-temp ,src (@PCR ,if-overflow))
 	      (NOP)))
        (lambda (if-no-overflow)
-	 (LAP (SLL  ,tgt ,src ,power-of-two)
-	      (SRA  ,regnum:assembler-temp ,tgt ,power-of-two)
-	      (BEQ  ,regnum:assembler-temp ,src (@PCR ,if-no-overflow))
+	 (LAP (SLL ,tgt ,src ,power-of-two)
+	      (SRA ,regnum:assembler-temp ,tgt ,power-of-two)
+	      (BEQ ,regnum:assembler-temp ,src (@PCR ,if-no-overflow))
 	      (NOP)))))
   (LAP))
+
+(define-arithmetic-method 'FIXNUM-NOT fixnum-methods/1-arg
+  (lambda (tgt src overflow?)
+    overflow?
+    (LAP (NOR ,tgt 0 ,src))))
 
-(define-arithmetic-method 'MINUS-FIXNUM
-  fixnum-methods/2-args/constant*register
-  (lambda (tgt constant src overflow?)
+(define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    overflow?
+    (LAP (AND ,tgt ,src1 ,src2))))
+
+(define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    overflow?
+    (LAP (NOR ,regnum:assembler-temp 0 ,src2)
+	 (AND ,tgt ,src1 ,regnum:assembler-temp))))
+
+(define-arithmetic-method 'FIXNUM-OR fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    overflow?
+    (LAP (OR ,tgt ,src1 ,src2))))
+
+(define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    overflow?
+    (LAP (XOR ,tgt ,src1 ,src2))))
+
+(define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    overflow?
+    (let ((merge (generate-label 'LSH-MERGE))
+	  (neg (generate-label 'LSH-NEG)))
+      (LAP (BLTZ ,src2 (@PCR ,neg))
+	   (SRA ,regnum:assembler-temp ,src2 ,scheme-type-width)
+	   (BGEZ 0 (@PCR ,merge))
+	   (SLLV ,tgt ,src1 ,regnum:assembler-temp)
+	   (LABEL ,neg)
+	   (SUB ,regnum:assembler-temp 0 ,regnum:assembler-temp)
+	   (SRLV ,tgt ,src1 ,regnum:assembler-temp)
+	   (SRL ,tgt ,tgt ,scheme-type-width)
+	   (SLL ,tgt ,tgt ,scheme-type-width)
+	   (LABEL ,merge)))))
+
+(define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args/register*constant
+  (lambda (tgt src constant overflow?)
+    overflow?
     (guarantee-signed-fixnum constant)
-    (with-values (lambda () (immediate->register (* constant fixnum-1)))
-      (lambda (prefix alias)
-	(LAP ,@prefix
-	     ,@(if overflow?
-		   (do-overflow-subtraction tgt alias src)
-		   (LAP (SUB ,tgt ,alias ,src))))))))
+    (cond ((= constant 0)
+	   (LAP (ADD ,tgt 0 ,src)))
+	  ((<= 1 constant (- scheme-datum-width 1))
+	   (LAP (SLL ,tgt ,src ,constant)))
+	  ((<= 1 (- constant) (- scheme-datum-width 1))
+	   (LAP (SRL ,tgt ,src ,(+ (- constant) scheme-type-width))
+		(SLL ,tgt ,tgt ,scheme-type-width)))
+	  (else
+	   (LAP (ADDIU ,tgt 0 0))))))
 
 ;;;; Predicates
 
