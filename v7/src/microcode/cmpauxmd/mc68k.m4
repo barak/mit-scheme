@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.3 1989/11/20 23:19:36 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.4 1989/11/21 23:32:09 jinx Exp $
 ###
 ###	Copyright (c) 1989 Massachusetts Institute of Technology
 ###
@@ -367,7 +367,6 @@ define_debugging_label(comentry_lexpr_apply)
 	mov.l	%a0,%d1
 	mov.w	%d0,%d2
 	ext.l	%d2
-	mov.l	dlink,regblock_val(regs)
 	call_utility(lexpr_apply)
 
 ### comentry_primitive_apply
