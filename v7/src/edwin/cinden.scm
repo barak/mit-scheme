@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: cinden.scm,v 1.10 1995/01/16 20:08:33 cph Exp $
+;;;	$Id: cinden.scm,v 1.11 1995/02/02 21:25:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -158,40 +158,56 @@ This is in addition to c-continued-statement-offset."
 	       (mark-column (mark1+ container))))))))
 
 (define (calculate-indentation:top-level indent-point parse-start)
-  (let ((gend (group-end indent-point)))
-    ;; Discriminate between procedure definition and other cases.
-    (if (re-match-forward "[ \t]*{" indent-point gend false)
-	0
-	;; May be data definition, or may be function argument
-	;; declaration.  Indent like the previous top level line
-	;; unless that ends in a closeparen without semicolon, in
-	;; which case this line is the first argument decl.
-	(let* ((mark (backward-to-noncomment indent-point parse-start))
-	       ;; Look at previous line that's at column zero to
-	       ;; determine whether we are in top-level decls or
-	       ;; function's arg decls.  Set basic-indent accordingly.
-	       (basic-indent
-		(let ((m
-		       (and mark
-			    (re-search-backward "^[^ \t\n\f#]"
-						mark
-						(group-start indent-point)
-						false))))
-		  (if (and m
-			   (re-match-forward "\\sw\\|\\s_" m gend false)
-			   (re-match-forward ".*(" m gend false)
-			   (let ((m
-				  (forward-sexp (mark-1+ (re-match-end 0)) 1)))
-			     (and m
-				  (mark< m indent-point)
-				  (not (re-match-forward "[ \t\n]*[,;]"
-							 m gend false)))))
-		      (ref-variable c-argdecl-indent indent-point)
-		      0))))
-	  (if (or (not mark) (memv (extract-left-char mark) '(#F #\) #\; #\})))
-	      basic-indent
-	      (+ basic-indent
-		 (ref-variable c-continued-statement-offset indent-point)))))))
+  (if (or (re-match-forward "[ \t]*{" indent-point)
+	  (function-start? indent-point parse-start))
+      ;; This appears to be the start of a function or a function
+      ;; body, so indent in the left-hand column.
+      0
+      (let ((m (backward-to-noncomment indent-point parse-start)))
+	(if (or (not m) (memv (extract-left-char m) '(#F #\, #\; #\})))
+	    ;; This appears to be the beginning of a top-level data
+	    ;; definition, so indent in the left-hand column.
+	    0
+	    ;; Look at the previous left-justified line to determine
+	    ;; if we're in a data definition or a function preamble.
+	    (let ((m (re-search-backward "^[^ \t\n\f#]" m)))
+	      (if (not m)
+		  0
+		  (let ((m (function-start? m parse-start)))
+		    (cond ((not m)
+			   ;; Previous line isn't a function start,
+			   ;; meaning this is the continuation of a
+			   ;; data definition, so indent accordingly.
+			   (ref-variable c-continued-statement-offset
+					 indent-point))
+			  ((mark< m indent-point)
+			   ;; Previous line is a function start and
+			   ;; we're indenting a line that follows the
+			   ;; parameter list and precedes the body, so
+			   ;; indent it as a parameter declaration.
+			   (ref-variable c-argdecl-indent indent-point))
+			  (else
+			   ;; Dunno -- give up.
+			   0)))))))))
+
+(define (function-start? lstart parse-start)
+  ;; True iff LSTART points at the beginning of a function definition.
+  ;; If true, returns a mark pointing to the end of the function's
+  ;; parameter list.
+  (and (re-match-forward "\\sw\\|\\s_" lstart)
+       (re-match-forward "[^\"\n=(]*(" lstart)
+       (let ((open (mark-1+ (re-match-end 0))))
+	 ;; OPEN looks like the start of a parameter list.  If it
+	 ;; doesn't end in comma or semicolon, and furthermore isn't
+	 ;; in a comment, we conclude that it is a parameter list, and
+	 ;; consequently that we're looking at a function.
+	 (and (not (parse-state-in-comment?
+		    (parse-partial-sexp parse-start open)))
+	      (let ((m (forward-sexp open 1)))
+		(and m
+		     (let ((m (skip-chars-forward " \t\f" m)))
+		       (and (not (re-match-forward "[,;]" m))
+			    m))))))))
 
 (define (calculate-indentation:statement indent-point container)
   (let ((mark
