@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.2 1989/06/23 21:35:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.3 1989/06/27 10:16:02 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -93,6 +93,7 @@ MIT in each case. |#
 	   (draw-point ,x-graphics-draw-point)
 	   (draw-text ,x-graphics-draw-string)
 	   (flush ,operation/flush)
+	   (get-default ,x-window-get-default)
 	   (map-window ,x-window-map)
 	   (move-cursor ,x-graphics-move-cursor)
 	   (move-window ,x-window-set-position)
@@ -137,10 +138,16 @@ MIT in each case. |#
   (implemented-primitive-procedure? x-graphics-open-window))
 
 (define (operation/open display geometry #!optional suppress-map?)
-  (x-graphics-open-window (or display (x-open-display false))
-			  geometry
-			  (and (not (default-object? suppress-map?))
-			       suppress-map?)))
+  (x-graphics-open-window
+   (if (or (not display) (string? display))
+       (let ((d (x-open-display display)))
+	 (if (not d)
+	     (error "unable to open display" display))
+	 d)
+       display)
+   geometry
+   (and (not (default-object? suppress-map?))
+	suppress-map?)))
 
 (define (operation/flush xw)
   (x-window-flush xw)
