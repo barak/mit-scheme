@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.9 1992/05/23 01:17:50 jinx Exp $
+$Id: option.h,v 1.10 1993/02/11 02:26:13 adams Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 

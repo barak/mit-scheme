@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.36 1992/07/21 18:27:46 cph Exp $
+$Id: fixnum.c,v 9.37 1993/02/11 02:23:12 adams Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
