@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: hlpcom.scm,v 1.104 1992/09/25 01:01:02 cph Exp $
+;;;	$Id: hlpcom.scm,v 1.105 1992/11/13 22:16:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -74,6 +74,7 @@ K  describe-key.  Type a key sequence;
 L  view-lossage.  Prints the last 100 characters you typed.
 M  describe-mode.  Print documentation of current major mode,
               which describes the commands peculiar to it.
+S  describe-syntax.  Display contents of syntax table, plus explanations.
 T  help-with-tutorial.  Select the Emacs learn-by-doing tutorial.
 V  describe-variable.  Type a variable name and get its documentation.
 W  where-is.  Type a command name and get its key binding."
