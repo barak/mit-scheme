@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.87 2000/12/23 02:45:55 cph Exp $
+$Id: bchdmp.c,v 9.88 2001/02/12 22:32:32 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -845,7 +845,9 @@ DEFUN (dump_loop, (scan, free_ptr, new_address_ptr),
 		scan += 1;
 		while (count > 0)
 		  {
-		    SCHEME_OBJECT * old_start = (SCHEME_ADDR_TO_ADDR (*scan));
+		    SCHEME_OBJECT * old_start;
+		    MAYBE_DUMP_SCAN (scan);
+		    old_start = (SCHEME_ADDR_TO_ADDR (*scan));
 		    if (BROKEN_HEART_P (*old_start))
 		      (*scan++)
 			= (ADDR_TO_SCHEME_ADDR (OBJECT_ADDRESS (*old_start)));
@@ -861,7 +863,6 @@ DEFUN (dump_loop, (scan, free_ptr, new_address_ptr),
 			(*old_start) = (MAKE_BROKEN_HEART (new_address));
 			new_address += 4;
 		      }
-		    MAYBE_DUMP_SCAN (scan);
 		    count -= 1;
 		  }
 	      }
