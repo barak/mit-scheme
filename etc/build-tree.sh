@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: build-tree.sh,v 1.5 2000/08/18 19:33:24 cph Exp $
+# $Id: build-tree.sh,v 1.6 2000/08/18 20:03:08 cph Exp $
 #
 # Program to finish setting up the Scheme source tree after it is
 # checked out.  Adds required links, builds TAGS files, etc.
@@ -22,8 +22,8 @@ for directory in edwin imail runtime sos
 do
   (cd $directory; ln -s ed-ffi.scm .edwin-ffi)
 done
-(cd microcode; etags -r '/^DEF[A-Za-z_ \t(]+"\([^"]+\)"/' *.[ch])
 (cd microcode; scheme -load os2pm.scm < /dev/null)
+(cd microcode; etags -r '/^DEF[A-Za-z_ \t(]+"\([^"]+\)"/' *.[ch])
 (cd microcode/cmpauxmd; make all)
 (cd pcsample; etags *.scm *.c)
 (cd compiler/machines/vax;
