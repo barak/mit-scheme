@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.47 1994/10/20 19:00:18 adams Exp $
+@comment $Id: scheme.texinfo,v 1.48 1995/01/19 06:15:43 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -7452,7 +7452,7 @@ unspecified.
 @group
 (vector-map '#((a b) (d e) (g h)) cadr)           @result{}  #(b e h)
 (vector-map '#(1 2 3 4) (lambda (n) (expt n n)))  @result{}  #(1 4 27 256)
-(vector-map '#() +)                               @result{}  #(5 7 9)
+(vector-map '#(5 7 9) +)                          @result{}  #(5 7 9)
 @end group
 @end example
 @end deffn
