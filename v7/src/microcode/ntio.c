@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.19 1997/10/25 07:40:21 cph Exp $
+$Id: ntio.c,v 1.20 1998/01/08 06:07:54 cph Exp $
 
-Copyright (c) 1992-97 Massachusetts Institute of Technology
+Copyright (c) 1992-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,8 +40,12 @@ MIT in each case. */
 #include "outf.h"
 #include "ossig.h"
 #include "intrpt.h"
-
 #include "ntscreen.h"
+
+#undef TRACE_NTIO
+#ifdef TRACE_NTIO
+extern FILE * trace_file;
+#endif
 
 channel_class_t * NT_channel_class_generic;
 channel_class_t * NT_channel_class_file;
@@ -151,11 +155,6 @@ NT_channel_n_read (Tchannel channel)
 {
   if (CHANNEL_CLOSED_P (channel))
     return (0);
-  {
-    DWORD flags;
-    if (!GetHandleInformation ((CHANNEL_HANDLE (channel)), (&flags)))
-      return (0);
-  }
   return ((* (CHANNEL_CLASS_OP_N_READ (CHANNEL_CLASS (channel)))) (channel));
 }
 
@@ -273,9 +272,12 @@ initialize_channel_class_generic (void)
 static long
 file_channel_n_read (Tchannel channel)
 {
-  off_t position = (OS_file_position (channel));
-  off_t length = (OS_file_length (channel));
-  return ((position < length) ? (length - position) : 0);
+  DWORD length = (GetFileSize ((CHANNEL_HANDLE (channel)), 0));
+  off_t position;
+  if (length == 0xFFFFFFFF)
+    return (0);
+  position = (OS_file_position (channel));
+  return ((position < ((off_t) length)) ? (((off_t) length) - position) : 0);
 }
 
 static void
@@ -355,9 +357,19 @@ OS_make_pipe (Tchannel * readerp, Tchannel * writerp)
 static long
 pipe_channel_read (Tchannel channel, void * buffer, unsigned long n_bytes)
 {
+#ifdef TRACE_NTIO
+  fprintf (trace_file, "pipe_channel_read: channel=%d blocking=%s\n",
+	   channel,
+	   ((CHANNEL_NONBLOCKING (channel)) ? "no" : "yes"));
+  fflush (trace_file);
+#endif
   if (CHANNEL_NONBLOCKING (channel))
     {
       long n = (NT_channel_n_read (channel));
+#ifdef TRACE_NTIO
+      fprintf (trace_file, "pipe_channel_read: n=%d\n", n);
+      fflush (trace_file);
+#endif
       if (n <= 0)
 	return (n);
     }
@@ -368,15 +380,24 @@ static long
 pipe_channel_n_read (Tchannel channel)
 {
   DWORD n;
+#ifdef TRACE_NTIO
+  fprintf (trace_file, "pipe_channel_n_read: channel=%d\n", channel);
+  fflush (trace_file);
+#endif
   if (!PeekNamedPipe ((CHANNEL_HANDLE (channel)), 0, 0, 0, (&n), 0))
     {
       DWORD code = (GetLastError ());
-      if (code == ERROR_BROKEN_PIPE)
+      if ((code == ERROR_INVALID_HANDLE)
+	  || (code == ERROR_BROKEN_PIPE))
 	/* ERROR_BROKEN_PIPE means the other end of the pipe has been
 	   closed, so return zero which means "end of file".  */
 	return (0);
       NT_error_api_call (code, apicall_PeekNamedPipe);
     }
+#ifdef TRACE_NTIO
+  fprintf (trace_file, "pipe_channel_n_read: n=%d\n", n);
+  fflush (trace_file);
+#endif
   /* Zero bytes available means "read would block", so return -1.  */
   return ((n == 0) ? (-1) : n);
 }
