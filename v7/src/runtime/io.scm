@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.12 1990/11/09 21:31:56 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.13 1990/11/10 00:32:55 arthur Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -659,7 +659,7 @@ MIT in each case. |#
 		      (let ((head
 			     (substring string start-index delimiter-index)))
 			(set-input-buffer/start-index! buffer delimiter-index)
-			head)
+			(apply string-append (reverse (cons head buffers))))
 		      (let ((head (substring string start-index end-index)))
 			(set-input-buffer/start-index! buffer end-index)
 			(if (input-buffer/fill* buffer)
