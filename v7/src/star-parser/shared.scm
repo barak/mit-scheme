@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.15 2001/11/11 05:45:57 cph Exp $
+;;; $Id: shared.scm,v 1.16 2001/11/14 18:03:32 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -25,6 +25,7 @@
 
 (define *buffer-name*)
 (define debug:disable-substitution-optimizer? #f)
+(define debug:disable-pointer-optimizer? #f)
 (define debug:disable-peephole-optimizer? #f)
 (define debug:trace-substitution? #f)
 
@@ -46,10 +47,11 @@
 				       (list (cdr b) (car b)))
 				     (cdr internal-bindings))
 		  (strip-protection-wrappers
-		   (let ((expression (generator expression)))
-		     (if debug:disable-substitution-optimizer?
-			 expression
-			 (optimize-by-substitution expression))))))))))))
+		   (optimize-pointer-usage
+		    (let ((expression (generator expression)))
+		      (if debug:disable-substitution-optimizer?
+			  expression
+			  (optimize-by-substitution expression)))))))))))))
 
 ;;;; Support for preprocessing
 
@@ -320,8 +322,10 @@
 	 ;; procedure whose body is (VECTOR-APPEND (VECTOR) V), which
 	 ;; simplifies to V.  And a procedure whose body is a variable
 	 ;; reference may be freely copied.
-	 (optimize-group-expression (map optimize-by-substitution expression)
-				    '(VECTOR)))
+	 (optimize-group-expression-1
+	  (flatten-subexpressions (map optimize-by-substitution expression))
+	  'VECTOR-APPEND
+	  '(VECTOR)))
 	(else
 	 (substitute-let-expression
 	  (map optimize-by-substitution expression))))
@@ -635,6 +639,68 @@
 	 (map strip-protection-wrappers expression)))
       expression))
 
+;;;; Pointer optimizer
+
+(define (optimize-pointer-usage expression)
+  (if debug:disable-pointer-optimizer?
+      expression
+      (optimize-pointer-usage-1 expression #f)))
+
+(define (optimize-pointer-usage-1 expression pointer)
+  (cond ((not (pair? expression))
+	 expression)
+	((eq? (car expression) 'LAMBDA)
+	 (let ((parameters (cadr expression)))
+	   `(LAMBDA ,parameters
+	      ,(optimize-pointer-usage-1 (caddr expression)
+					 (if (memq pointer parameters)
+					     #f
+					     pointer)))))
+	((eq? (car expression) 'LET)
+	 (let ((name (cadr expression))
+	       (bindings
+		(map (lambda (binding)
+		       `(,(car binding)
+			 ,(optimize-pointer-usage-1 (cadr binding) pointer)))
+		     (caddr expression))))
+	   `(LET ,name ,bindings
+	      ,(optimize-pointer-usage-1 (cadddr expression)
+					 (if (or (eq? pointer name)
+						 (assq pointer bindings))
+					     #f
+					     pointer)))))
+	((eq? (car expression) 'PROTECT)
+	 expression)
+	((eq? (car expression) 'IF)
+	 `(IF ,(optimize-pointer-usage-1 (cadr expression) pointer)
+	      ,(optimize-pointer-usage-1 (caddr expression) #f)
+	      ,(optimize-pointer-usage-1 (cadddr expression) pointer)))
+	((syntax-match? '(('LAMBDA (IDENTIFIER) EXPRESSION)
+			  ('GET-PARSER-BUFFER-POINTER EXPRESSION))
+			expression)
+	 (let ((operator (car expression))
+	       (operand (cadr expression)))
+	   (let ((parameter (car (cadr operator)))
+		 (body (caddr operator)))
+	     `((LAMBDA (,parameter)
+		 ,(optimize-pointer-usage-1 body parameter))
+	       ,operand))))
+	((syntax-match?
+	  '('BEGIN
+	     ('SET-PARSER-BUFFER-POINTER! EXPRESSION IDENTIFIER)
+	     EXPRESSION)
+	  expression)
+	 (let* ((action (cadr expression))
+		(pointer* (caddr action))
+		(tail (optimize-pointer-usage-1 (caddr expression) pointer*)))
+	   (if (eq? pointer* pointer)
+	       tail
+	       `(BEGIN ,action ,tail))))
+	(else
+	 (map (lambda (expression)
+		(optimize-pointer-usage-1 expression pointer))
+	      expression))))
+
 ;;;; Peephole optimizer
 
 (define (optimize-expression expression)
@@ -880,14 +946,16 @@
     (optimize-group-expression expression 'UNSPECIFIC)))
 
 (define (optimize-group-expression expression identity)
-  (let loop
-      ((expressions
-	(delete identity
-		(map optimize-expression
-		     (flatten-subexpressions expression)))))
+  (optimize-group-expression-1 (map optimize-expression
+				    (flatten-subexpressions expression))
+			       (car expression)
+			       identity))
+
+(define (optimize-group-expression-1 expressions keyword identity)
+  (let ((expressions (delete identity expressions)))
     (if (pair? expressions)
 	(if (pair? (cdr expressions))
-	    `(,(car expression) ,@expressions)
+	    `(,keyword ,@expressions)
 	    (car expressions))
 	identity)))
 
