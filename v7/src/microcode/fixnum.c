@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fixnum.c,v 9.38 1995/01/05 22:46:01 adams Exp $
+$Id: fixnum.c,v 9.39 1996/07/20 22:26:26 adams Exp $
 
-Copyright (c) 1987-94 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -347,4 +347,15 @@ DEFINE_PRIMITIVE ("FIXNUM-LSH", Prim_fixnum_lsh, 2, 2, 0)
     z = ((y > FIXNUM_LENGTH) ? 0 : (x << y));
   }
   return (LONG_TO_FIXNUM (z));
+}
+
+
+DEFINE_PRIMITIVE ("FIXNUM->FLONUM", Prim_fixnum_to_flonum, 1, 1,
+"(FIXNUM)\n\
+Equivalent to (INTEGER->FLONUM FIXNUM 2)")
+{
+  PRIMITIVE_HEADER (2);
+  {
+    PRIMITIVE_RETURN (FIXNUM_TO_FLONUM (arg_fixnum (2)));
+  }
 }
