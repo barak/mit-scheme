@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.57 1990/10/05 18:58:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.58 1990/11/15 23:18:23 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -43,6 +43,7 @@ MIT in each case. */
 #include "osio.h"
 #include "gccode.h"
 #include "trap.h"
+#include "option.h"
 
 static Tchannel load_channel;
 
@@ -696,9 +697,11 @@ The result is a string, or #F if the system was not restored.")
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN
-    ((reload_band_name == 0)
-     ? SHARP_F
-     : (char_pointer_to_string (reload_band_name)));
+    ((reload_band_name != 0)
+     ? (char_pointer_to_string (reload_band_name))
+     : (option_band_file != 0)
+     ? (char_pointer_to_string (option_band_file))
+     : SHARP_F);
 }
 
 typedef void EXFUN ((*Tcleanup), (void));
