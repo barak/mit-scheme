@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.40 1996/05/11 08:38:11 cph Exp $
+;;;	$Id: utils.scm,v 1.41 1997/11/04 09:27:31 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -254,12 +254,6 @@
 (define (char-base char)
   (make-char (char-code char) 0))
 
-(define (read-line #!optional port)
-  (read-string char-set:return
-	       (if (default-object? port)
-		   (current-input-port)
-		   (guarantee-input-port port))))
-
 (define (y-or-n? . strings)
   (define (loop)
     (let ((char (char-upcase (read-char))))
