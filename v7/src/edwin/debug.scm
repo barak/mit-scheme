@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.25 1993/10/26 21:22:53 cph Exp $
+;;;	$Id: debug.scm,v 1.26 1993/10/26 21:51:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -1009,11 +1009,11 @@ The buffer below describes the current subproblem or reduction.
 	     (prompt-for-confirmation? "Start debugger in new screen")
 	     new-screen?))
        (let ((screen
-	      (apply make-screen buffer (make-debug-screen-args buffer))))
+	      (apply make-screen buffer (make-debug-screen-args))))
 	 (set-browser/new-screen! (buffer-browser buffer) screen)
 	 screen)))
 
-(define (make-debug-screen-args buffer)
+(define (make-debug-screen-args)
   (case (display-type/name (current-display-type))
     ((X)
      (list (or new-screen-geometry
