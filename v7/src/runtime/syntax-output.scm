@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntax-output.scm,v 14.4 2002/03/01 17:46:19 cph Exp $
+;;; $Id: syntax-output.scm,v 14.5 2002/03/02 04:31:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -117,11 +117,11 @@
 	 (lambda (expressions)
 	   (scan-defines (make-sequence expressions) make-open-block))))
     (if (pair? declarations)
-	(if (pair? expressions)
-	    (make-open-block
-	     (cons (make-block-declaration declarations)
-		   expressions))
-	    (make-block-declaration declarations))
+	(make-open-block
+	 (cons (make-block-declaration declarations)
+	       (if (pair? expressions)
+		   expressions
+		   (list (output/unspecific)))))
 	(if (pair? expressions)
 	    (if (pair? (cdr expressions))
 		(make-open-block expressions)
