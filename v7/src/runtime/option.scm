@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.7 1990/02/10 23:45:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.8 1990/11/15 23:27:15 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -39,10 +39,7 @@ MIT in each case. |#
 
 (define (load-option name)
   (let ((entry (assq name options))
-	(pathname
-	 (pathname-as-directory
-	  (merge-pathnames (string->pathname "options")
-			   (system-library-directory-pathname)))))
+	(pathname (pathname-as-directory (string->pathname "options"))))
     (if (not entry)
 	(error "Unknown option name" name))
     (for-each
@@ -50,8 +47,9 @@ MIT in each case. |#
        (let ((environment
 	      (package/environment (find-package (car descriptor)))))
 	 (for-each (lambda (filename)
-		     (load (merge-pathnames (string->pathname filename)
-					    pathname)
+		     (load (system-library-pathname
+			    (merge-pathnames (string->pathname filename)
+					     pathname))
 			   environment
 			   syntax-table/system-internal
 			   true))

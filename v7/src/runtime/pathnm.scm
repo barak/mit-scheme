@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.7 1990/06/20 20:29:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.8 1990/11/15 23:27:22 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -394,7 +394,7 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 
 (define (file-exists? filename)
   (pathname->input-truename (->pathname filename)))
-
+
 (define (init-file-truename)
   (let ((pathname (init-file-pathname)))
     (and pathname
@@ -403,6 +403,43 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 	     (pathname->input-truename
 	      (merge-pathnames pathname (home-directory-pathname)))))))
 
-(define (system-library-directory-pathname)
-  (pathname-directory-path
-   (string->pathname ((ucode-primitive microcode-tables-filename 0)))))
+(define (initialize-package!)
+  (reset-library-directory-path!)
+  (add-event-receiver! event:after-restore reset-library-directory-path!))
+
+(define (reset-library-directory-path!)
+  (set! library-directory-path
+	(if (implemented-primitive-procedure? microcode-library-path)
+	    (map (lambda (filename)
+		   (pathname-as-directory (string->pathname filename)))
+		 (vector->list (microcode-library-path)))
+	    (list 
+	     (pathname-directory-path
+	      (string->pathname (microcode-tables-filename))))))
+  unspecific)
+
+(define-primitives
+  (microcode-library-path 0)
+  (microcode-tables-filename 0))
+
+(define library-directory-path)
+
+(define (system-library-pathname pathname)
+  (let loop ((directories library-directory-path))
+    (and (not (null? directories))
+	 (or (pathname->input-truename
+	      (merge-pathnames pathname (car directories)))
+	     (loop (cdr directories))))))
+
+(define (system-library-directory-pathname pathname)
+  (if (not pathname)
+      (let ((pathname
+	     (list-search-positive library-directory-path file-directory?)))
+	(and pathname
+	     (pathname-as-directory pathname)))
+      (let loop ((directories library-directory-path))
+	(and (not (null? directories))
+	     (let ((pathname (merge-pathnames pathname (car directories))))
+	       (if (file-directory? pathname)
+		   (pathname-as-directory pathname)
+		   (loop (cdr directories))))))))

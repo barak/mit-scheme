@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.86 1990/11/15 15:42:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.87 1990/11/15 23:27:32 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1349,9 +1349,11 @@ MIT in each case. |#
 	  pathname-version
 	  pathname?
 	  string->pathname
-	  system-library-directory-pathname)
+	  system-library-directory-pathname
+	  system-library-pathname)
   (export (runtime pathname-parser)
-	  simplify-directory))
+	  simplify-directory)
+  (initialization (initialize-package!)))
 
 (define-package (runtime pathname-parser)
   (file-case os-type
