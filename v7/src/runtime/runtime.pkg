@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.54 1989/10/27 04:43:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.55 1989/11/09 03:45:00 gjs Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -1026,6 +1026,21 @@ MIT in each case. |#
   (export (runtime number-parser)
 	  bad-range)
   (initialization (initialize-package!)))
+
+(define-package (runtime number interface)
+  (file-case options
+    ((load) "numint")
+    (else))
+  (parent (runtime number))
+  (export ()
+	  complex-package
+	  integer-package
+	  make-accumulation-operator
+	  make-arithmetic-package
+	  make-inverse-accumulation-operator
+	  rational-package
+	  real-package))
+
 (define-package (runtime number-parser)
   (files "numpar")
   (parent ())

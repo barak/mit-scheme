@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.5 1989/08/03 23:06:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.6 1989/11/09 03:44:56 gjs Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -61,6 +61,7 @@ MIT in each case. |#
     name))
 
 (define options
-  '((FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))
-    (STARBASE
-     ((RUNTIME OLD-STARBASE-GRAPHICS) (INITIALIZE-PACKAGE!) "Sgraph"))))
+  '((ARITHMETIC-INTERFACE ((RUNTIME NUMBER INTERFACE) #F "numint"))
+    (FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))
+    (STARBASE ((RUNTIME OLD-STARBASE-GRAPHICS) (INITIALIZE-PACKAGE!) "Sgraph"))
+    ))
