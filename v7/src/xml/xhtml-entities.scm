@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-entities.scm,v 1.3 2004/07/24 04:21:58 cph Exp $
+$Id: xhtml-entities.scm,v 1.4 2004/07/24 04:39:49 cph Exp $
 
 Copyright 2004 Massachusetts Institute of Technology
 
@@ -279,7 +279,12 @@ USA.
     ))
 
 (define html-entities
-  (map (lambda (b) (make-xml-!entity (car b) (cdr b)))
+  (map (lambda (b)
+	 (make-xml-!entity
+	  (car b)
+	  (list (string-append "&#x"
+			       (number->string (char->integer (cadr b)) 16)
+			       ";"))))
        html-entity-alist))
 
 (define html-char->name-map
