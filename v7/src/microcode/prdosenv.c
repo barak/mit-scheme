@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prdosenv.c,v 1.5 1992/10/01 18:18:05 jinx Exp $
+$Id: prdosenv.c,v 1.6 1992/10/01 18:51:28 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -146,7 +146,7 @@ Wait until the command terminates, returning its exit status as an integer.")
 			    (arg_io_spec (4))));
   if (result < -1)
     error_external_return ();
-  PRIMITIVE_RETURN ((long) result);
+  PRIMITIVE_RETURN (long_to_integer ((long) result));
 }
 
 DEFINE_PRIMITIVE ("DOS-SET-KEYBOARD-MODIFIER-MASK!", Prim_dos_set_kbd_mod_mask,
