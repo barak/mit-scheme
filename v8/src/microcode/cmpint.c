@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.28 1990/06/20 17:38:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.29 1990/08/17 23:40:55 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -2170,6 +2170,14 @@ extract_uuo_link (block, offset)
   return (ENTRY_TO_OBJECT ((SCHEME_OBJECT *) compiled_entry_address));
 }
 
+#ifndef FLUSH_I_CACHE_REGION
+
+#define FLUSH_I_CACHE_REGION(addr, nwords)				\
+do {									\
+} while (0)
+
+#endif
+
 static void
 store_uuo_link (entry, cache_address)
      SCHEME_OBJECT entry, *cache_address;
@@ -2179,6 +2187,7 @@ store_uuo_link (entry, cache_address)
   entry_address = (OBJECT_ADDRESS (entry));
   STORE_EXECUTE_CACHE_CODE (cache_address);
   STORE_EXECUTE_CACHE_ADDRESS (cache_address, entry_address);
+  FLUSH_I_CACHE_REGION (cache_address, EXECUTE_CACHE_ENTRY_SIZE);
   return;
 }
 
