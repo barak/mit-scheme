@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.15 1993/09/04 07:06:52 gjr Exp $
+$Id: ntscreen.c,v 1.16 1993/09/07 19:07:05 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -46,13 +46,8 @@ extern BOOL win32_under_win32s_p (void);
 
 #define ATOM_TTYINFO       0x100
 
-#if 0
-#define MAXCOLS 80
-#define MAXROWS 40
-#else
-#define MAXCOLS 132
-#define MAXROWS 80
-#endif
+#define MAXCOLS 180
+#define MAXROWS 100
 
 // cursor states
 
@@ -73,7 +68,7 @@ extern BOOL win32_under_win32s_p (void);
 
 // data structures
 
-#define MAX_EVENTS 1000
+#define MAX_EVENTS 250
 
 typedef struct tagSCREEN_EVENT_LINK {
   SCREEN_EVENT event;
@@ -299,11 +294,7 @@ Screen_InitApplication (HANDLE hInstance)
    wndclass.hInstance =     hInstance ;
    wndclass.hIcon =         LoadIcon (hInstance, "SHIELD3_ICON");
    wndclass.hCursor =       LoadCursor (NULL, IDC_ARROW);
-#if 0
-   wndclass.hbrBackground = (HBRUSH) (COLOR_WINDOW + 1) ;
-#else
    wndclass.hbrBackground = NULL;
-#endif
    wndclass.lpszMenuName =  0;
    wndclass.lpszClassName = "SCREEN";
 
@@ -687,6 +678,21 @@ ClearScreen_internal (SCREEN screen)
   return;
 }
 
+static void
+screen_reset_events (SCREEN screen)
+{
+  int i;
+
+  screen->n_events = 0;
+  screen->queue_head = ((SCREEN_EVENT_LINK *) NULL);
+  screen->queue_tail = ((SCREEN_EVENT_LINK *) NULL);
+  screen->free_events = &screen->events[0];
+  for (i = 0; i < MAX_EVENTS; i++)
+    screen->events[i].next = &screen->events[i + 1];
+  screen->events[MAX_EVENTS - 1].next = ((SCREEN_EVENT_LINK *) NULL);
+  return;
+}
+
 //---------------------------------------------------------------------------
 //  LRESULT CreateScreenInfo (HWND hWnd)
 //
@@ -703,7 +709,6 @@ static LRESULT
 CreateScreenInfo (HWND hWnd)
 {
    HMENU   hMenu;
-   int     i;
    SCREEN  screen;
 
    if (NULL == (screen =
@@ -768,13 +773,8 @@ CreateScreenInfo (HWND hWnd)
    SETSCREEN (hWnd, screen);
    RegisterScreen (screen);
 
-   screen->n_events = 0;
-   screen->queue_head = screen->queue_tail = 0;
-   screen->events = xmalloc (sizeof(SCREEN_EVENT_LINK) * MAX_EVENTS);
-   screen->free_events = &screen->events[0];
-   for (i = 0; i<MAX_EVENTS; i++)
-     screen->events[i].next = &screen->events[i+1];
-   screen->events[MAX_EVENTS-1].next = 0;
+   screen->events = xmalloc ((sizeof (SCREEN_EVENT_LINK)) * MAX_EVENTS);
+   screen_reset_events (screen);
  
    screen->n_commands = 0;
    screen->n_bindings = 0;
@@ -1243,7 +1243,6 @@ SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
    new_width  = min (wHorzSize / screen->xChar, MAXCOLS);
    new_height = min (wVertSize / screen->yChar, MAXROWS);
 
-#if 0
    { // queue event
      SCREEN_EVENT  *event = alloc_event (screen, SCREEN_EVENT_TYPE_RESIZE);
 //     char buf[80];
@@ -1255,7 +1254,6 @@ SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
 //       Screen_WriteText (screen->hWnd, buf);
      }
    }
-#endif
 
    if (new_width > old_width)
    {
@@ -1601,27 +1599,29 @@ Screen_SetPosition (SCREEN screen, int row, int column)
 static UINT
 ScreenPeekOrRead (SCREEN screen, int count, SCREEN_EVENT * buffer, BOOL remove)
 {
-    UINT  processed = 0;
-    SCREEN_EVENT_LINK  *current = screen->queue_head;
-    SCREEN_EVENT* entry = buffer;
+  UINT processed = 0;
+  SCREEN_EVENT_LINK * current = screen->queue_head;
+  SCREEN_EVENT * entry = buffer;
     
-    if (count<0)
-      count = MAX_EVENTS;
+  if (count < 0)
+    count = MAX_EVENTS;
     
-    while (count>0 && current)
+  while ((count > 0) && (current != ((SCREEN_EVENT_LINK *) NULL)))
+  {
+    if (entry)
+      *entry++ = current->event;
+    current = current->next;
+    if (remove)
     {
-      if (entry)
-	*entry++ = current->event;
-      current = current->next;
-      if (remove)
-      {
-	screen->queue_head->next = screen->events;
-	screen->events     = screen->queue_head;
-	screen->queue_head = current;
-	screen->n_events--;
-      }
+      screen->queue_head->next = screen->free_events;
+      screen->free_events = screen->queue_head;
+      screen->queue_head = current;
+      if (current == ((SCREEN_EVENT_LINK *) NULL))
+	screen->queue_tail = ((SCREEN_EVENT_LINK *) NULL);
+      screen->n_events--;
     }
-    return (processed);
+  }
+  return (processed);
 }
 
 void
@@ -1679,7 +1679,7 @@ ProcessScreenCharacter (HWND hWnd, int vk_code, int bOut,
 			DWORD lKeyData)
 {
    SCREEN  screen = GETSCREEN (hWnd);
-   SCREEN_EVENT *event;
+   SCREEN_EVENT * event;
    
    if (NULL == screen)
       return  FALSE;
@@ -2322,9 +2322,6 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
 	scroll_screen_line_horizontally (screen, screen->row,
 					 screen->column, (screen->width - 1),
 					 (screen->column + 1));
-#if 0
-	Screen_WriteCharUninterpreted (screen, ' ', &state);
-#endif
 	i += 2;
 	continue;
 
@@ -2405,12 +2402,9 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
 	    case '@':
 	      /* Multi insert char */
 	      scroll_screen_line_horizontally (screen, screen->row,
-					       screen->column, (screen->width - x_value),
+					       screen->column,
+					       (screen->width - x_value),
 					       (screen->column + x_value));
-#if 0
-	      while (--x_value >= 0)
-		Screen_WriteCharUninterpreted (screen, ' ', &state);
-#endif
 	      i = j; /* 1 added in for loop */
 	      continue;
 
@@ -2542,56 +2536,58 @@ buffered_key_command (SCREEN screen,  int ch)
 static int
 ReadScreen_line_input (SCREEN screen, LPSTR buffer, int buflen)
 {
-    SCREEN_EVENT_LINK *current = screen->queue_head;
-    SCREEN_EVENT_LINK *previous = 0;
+  SCREEN_EVENT_LINK * current = screen->queue_head;
+  SCREEN_EVENT_LINK * previous = ((SCREEN_EVENT_LINK *) NULL);
 
-    while (current)
+  while (current)
+  {
+    SCREEN_EVENT_LINK * next;
+
+    if (current->event.type == SCREEN_EVENT_TYPE_KEY)
     {
-      if (current->event.type == SCREEN_EVENT_TYPE_KEY)
-      {
-	int  ch = current->event.event.key.ch;
-	if ((current->event.event.key.control_key_state
-	     & SCREEN_ANY_ALT_KEY_MASK)
-	    != 0)
-	  ch |= 0200;	    
+      int  ch = current->event.event.key.ch;
+      if ((current->event.event.key.control_key_state
+	   & SCREEN_ANY_ALT_KEY_MASK)
+	  != 0)
+	ch |= 0200;	    
 	
-	if (ch!=0)
-	  buffered_key_command (screen, ch);
+      if (ch!=0)
+	buffered_key_command (screen, ch);
 	  
-        { // dequeue
-	  SCREEN_EVENT_LINK  *next = current->next;
-	  if (current == screen->queue_tail)
-	    screen->queue_tail = previous;
-	  if (previous)
-	    previous->next = next;
-	  else
-	    screen->queue_head = next;
-	  current->next = screen->free_events;
-	  screen->free_events = current;
-	  screen->n_events -= 1;
-	  current = next;
-	}
+      /* dequeue */
+      next = current->next;
+      if (current == screen->queue_tail)
+	screen->queue_tail = previous;
+      if (previous != ((SCREEN_EVENT_LINK *) NULL))
+	previous->next = next;
+      else
+	screen->queue_head = next;
+      current->next = screen->free_events;
+      screen->free_events = current;
+      screen->n_events -= 1;
+      current = next;
 	  
-	// If end of line then copy buffer and return
-	if (ch == '\n' || ch == '\r')
-	{
-	  int  count = min (screen->n_chars, buflen);
-	  int  i;
-	  for (i = 0; i<count; i++)
-	    buffer[i] = screen->line_buffer[i];
-	  screen->n_chars = 0;
-	  return  count;
-	}
+      /* If end of line then copy buffer and return */
 
-      }
-      else /*not a key event*/
+      if ((ch == '\n') || (ch == '\r'))
       {
-	previous = current;
-	current = current->next;	
-      }	
+	int i;
+	int count = min (screen->n_chars, buflen);
+
+	for (i = 0; i < count; i++)
+	  buffer[i] = screen->line_buffer[i];
+	screen->n_chars = 0;
+	return count;
+      }
     }
-    //  We have copied all pending characters but there is no EOL yet
-    return  -1;
+    else /* not a key event */
+    {
+      previous = current;
+      current = current->next;	
+    }	
+  }
+  /* We have copied all pending characters but there is no EOL yet */
+  return (-1);
 }
 
 /* Untranslated/unbuffered input */
@@ -2599,63 +2595,56 @@ ReadScreen_line_input (SCREEN screen, LPSTR buffer, int buflen)
 static int
 ReadScreen_raw (SCREEN screen, LPSTR buffer, int buflen)
 {
-    int  position = 0;
-    SCREEN_EVENT_LINK *current = screen->queue_head;
-    SCREEN_EVENT_LINK *previous = 0;
+  int position = 0;
+  SCREEN_EVENT_LINK * current = screen->queue_head;
+  SCREEN_EVENT_LINK * previous = ((SCREEN_EVENT_LINK *) NULL);
 
-    while (current)
+  while (current)
+  {
+    if (current->event.type == SCREEN_EVENT_TYPE_KEY)
     {
-      if (current->event.type == SCREEN_EVENT_TYPE_KEY)
-      {
-	int  ch = current->event.event.key.ch;
-	if ((current->event.event.key.control_key_state
-	     & SCREEN_ANY_ALT_KEY_MASK)
-	    != 0)
-	  ch |= 0200;	    
+      SCREEN_EVENT_LINK * next;
+      int ch = current->event.event.key.ch;
+
+      if ((current->event.event.key.control_key_state
+	   & SCREEN_ANY_ALT_KEY_MASK)
+	  != 0)
+	ch |= 0200;	    
 	
-        // stash away the character
+      // stash away the character
 	if (position < buflen)
 	  buffer[position++] = ch;
-	if (screen->mode_flags & SCREEN_MODE_ECHO)
-	{
-	  char c = ((char) ch);
-	  // Screen_WriteCharUninterpreted (screen, ch, NULL);
-	  WriteScreenBlock (screen->hWnd, &c, 1);
-	}
-	
-        { // dequeue
-	  SCREEN_EVENT_LINK  *next = current->next;
-	  if (current == screen->queue_tail)
-	    screen->queue_tail = previous;
-	  if (previous)
-	    previous->next = next;
-	  else
-	    screen->queue_head = next;
-	  current->next = screen->free_events;
-	  screen->free_events = current;
-	  screen->n_events -= 1;
-	  current = next;
-	}
-	  
-#if 0
-	// If end of line or the buffer is full then  return
-	if (ch == '\n' || ch == '\r' || position==buflen)
-	  return  position;
-#else
-	// If end of line or the buffer is full then  return
-	if (position == buflen)
-	  return (position);
-#endif
-
-      }
-      else /*not a key event*/
+      if (screen->mode_flags & SCREEN_MODE_ECHO)
       {
-	previous = current;
-	current = current->next;	
-      }	
+	char c = ((char) ch);
+	/* Screen_WriteCharUninterpreted (screen, ch, NULL); */
+	WriteScreenBlock (screen->hWnd, &c, 1);
+      }
+	
+      next = current->next;
+      if (current == screen->queue_tail)
+	screen->queue_tail = previous;
+      if (previous != ((SCREEN_EVENT_LINK *) NULL))
+	previous->next = next;
+      else
+	screen->queue_head = next;
+      current->next = screen->free_events;
+      screen->free_events = current;
+      screen->n_events -= 1;
+      current = next;
+
+      /* If end of line or the buffer is full then return */
+      if (position == buflen)
+	return (position);
     }
-    //  We have copied all pending characters but there is no EOL yet
-    return ((position == 0) ? -1 : position);
+    else /* not a key event */
+    {
+      previous = current;
+      current = current->next;	
+    }	
+  }
+  /* We have copied all pending characters but there is no EOL yet */
+  return ((position == 0) ? -1 : position);
 }
 
 //---------------------------------------------------------------------------
@@ -3025,47 +3014,64 @@ GetControlKeyState(DWORD lKeyData)
 }
 
 static SCREEN_EVENT *
-alloc_event (SCREEN screen,  SCREEN_EVENT_TYPE type)
+alloc_event (SCREEN screen, SCREEN_EVENT_TYPE type)
 {
-    SCREEN_EVENT_LINK *link;
-    if ((screen->mode_flags & type) == 0)
-      return 0;
+  SCREEN_EVENT_LINK * link;
+  if ((screen->mode_flags & type) == 0)
+    return 0;
 
-    if (screen->free_events==0) {
+  if (screen->free_events == ((SCREEN_EVENT_LINK *) NULL))
+  {
+    if (screen->n_events == MAX_EVENTS)
       MessageBeep (0xFFFFFFFFUL);
-      Screen_WriteText (screen->hWnd, "[alloc_event=>0]");
-      return  0;
-    }
+    else if ((MessageBox
+	      (screen->hWnd,
+	       "Scheme has leaked some keyboard event storage.\n"
+	       "OK to reset and clear all pending events?",
+	       "MIT Scheme",
+	       (MB_ICONSTOP | MB_OKCANCEL)))
+	     == IDOK)
+      screen_reset_events (screen);
+      
+    return 0;
+  }
     
-    link = screen->free_events;
-    screen->free_events = screen->free_events->next;
-    link->event.type = type;
-    link->next = 0;
-    if (screen->queue_head==0)
-      screen->queue_head = screen->queue_tail = link;
-    else
-      screen->queue_tail = screen->queue_tail->next = link;
-    screen->n_events += 1;
+  link = screen->free_events;
+  screen->free_events = link->next;
+  link->event.type = type;
+  link->next = ((SCREEN_EVENT_LINK *) NULL);
+  if (screen->queue_head == ((SCREEN_EVENT_LINK *) NULL))
+  {
+    screen->queue_tail = link;
+    screen->queue_head = link;
+  }
+  else
+  {
+    screen->queue_tail->next = link;
+    screen->queue_tail = link;
+  }
+  screen->n_events += 1;
 
-    return  &link->event;
+  return  &link->event;
 }
 
 BOOL
-Screen_GetEvent (HANDLE hwnd, SCREEN_EVENT *event)
+Screen_GetEvent (HANDLE hwnd, SCREEN_EVENT * event)
 {
   SCREEN_EVENT_LINK *link;
   SCREEN screen = (GETSCREEN (hwnd));
 
-  if ((screen == ((SCREEN) NULL))
-      || (screen->n_events == 0))
+  if ((screen == ((SCREEN) NULL)) || (screen->n_events == 0))
     return (FALSE);
   screen->n_events -= 1;
   link = screen->queue_head;
-  (*event) = link->event;
+  (* event) = link->event;
   screen->queue_head = link->next;
+  if (link->next == ((SCREEN_EVENT_LINK *) NULL))
+    screen->queue_tail = ((SCREEN_EVENT_LINK *) NULL);
   link->next = screen->free_events;
   screen->free_events = link;
-  return TRUE;
+  return (TRUE);
 }
 
 BOOL
@@ -3252,14 +3258,7 @@ MIT_TranslateMessage (CONST MSG * lpmsg)
 	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'D'-64)));
 	  
 	case VK_SPACE:
-	  if (
-#if 0
-	      ((GetKeyState (VK_RCONTROL)) < 0)
-	      || ((GetKeyState (VK_LCONTROL)) < 0)
-#else
-	      (((DWORD) (GetKeyState (VK_CONTROL))) & 0x8000) != 0
-#endif
-	      )
+	  if ((((DWORD) (GetKeyState (VK_CONTROL))) & 0x8000) != 0)
 	    return (MIT_post_char_message (lpmsg, ((WPARAM) '\0')));
 	  break;
 
@@ -3280,12 +3279,7 @@ MIT_TranslateMessage (CONST MSG * lpmsg)
 	  WPARAM control_char;
 
 	  if (((message == WM_SYSKEYDOWN) || (lpmsg->lParam & KEYDATA_ALT_BIT))
-#if 0
-	      && (((GetKeyState (VK_RCONTROL)) < 0)
-		  || ((GetKeyState (VK_LCONTROL)) < 0))
-#else
 	      && ((((DWORD) (GetKeyState (VK_CONTROL))) & 0x8000) != 0)
-#endif
 	      && (MIT_controlify (virtual_key, &control_char)))
 	    return (MIT_post_char_message (lpmsg, control_char));
 	  break;
