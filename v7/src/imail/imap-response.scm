@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.24 2000/05/22 15:24:50 cph Exp $
+;;; $Id: imap-response.scm,v 1.25 2000/05/23 17:39:48 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -111,7 +111,7 @@
 	  (if (char=? #\= (peek-char port))
 	      (read-mime2-text port)
 	      (read-text port)))))
-
+
 (define (read-response-text-code port)
   (discard-known-char #\[ port)
   (let ((code
@@ -137,11 +137,23 @@
 		   ((PERMANENTFLAGS)
 		    (discard-known-char #\space port)
 		    (read-list port read-pflag))
+		   ((APPENDUID)
+		    (discard-known-char #\space port)
+		    (let ((uidvalidity (read-nz-number port)))
+		      (discard-known-char #\space port)
+		      (list uidvalidity (read-nz-number port))))
+		   ((COPYUID)
+		    (discard-known-char #\space port)
+		    (let ((uidvalidity (read-nz-number port)))
+		      (discard-known-char #\space port)
+		      (let ((from-uids (read-set port)))
+			(discard-known-char #\space port)
+			(list uidvalidity from-uids (read-set port)))))
 		   (else
 		    (if (char=? #\space (peek-char-no-eof port))
 			(begin
 			  (discard-char port)
-			  (read-resp-text-tail port))
+			  (list (read-resp-text-tail port)))
 			'())))))))
     (discard-known-char #\] port)
     (discard-known-char #\space port)
@@ -420,7 +432,7 @@
 
 (define (read-interned-atom port)
   (intern (read-atom port)))
-
+
 (define (read-mime2-text port)
   (discard-known-char #\= port)
   (discard-known-char #\? port)
@@ -447,6 +459,30 @@
   (let ((char-set:not-numeric (char-set-invert char-set:numeric)))
     (lambda (atom)
       (not (string-find-next-char-in-set atom char-set:not-numeric)))))
+
+(define read-set
+  (let ((read-string
+	 (non-null-string-reader
+	  (char-set-union char-set:numeric (char-set #\: #\,)))))
+    (lambda (port)
+      (let ((string (read-string port)))
+	(let ((lose
+	       (lambda () (error "Malformed message-number set:" string))))
+	  (map (lambda (token)
+		 (let ((length (string-length token))
+		       (seqnum
+			(lambda (start end)
+			  (if (substring=? token start end "*" 0 1)
+			      '*
+			      (or (substring->number token start end)
+				  (lose))))))
+		   (cond ((fix:= length 0) (lose))
+			 ((substring-find-next-char token 0 length #\:)
+			  => (lambda (index)
+			       (cons (seqnum 0 index)
+				     (seqnum (fix:+ index 1) length))))
+			 (else (seqnum 0 length)))))
+	       (burst-string string #\: #f)))))))
 
 (define char-set:space
   (char-set #\space))
@@ -582,7 +618,9 @@
     (cadr entry)))
 
 (define (imap:response-code:alert? code) (eq? (car code) 'ALERT))
+(define (imap:response-code:appenduid? code) (eq? (car code) 'APPENDUID))
 (define (imap:response-code:badcharset? code) (eq? (car code) 'BADCHARSET))
+(define (imap:response-code:copyuid? code) (eq? (car code) 'COPYUID))
 (define (imap:response-code:newname? code) (eq? (car code) 'NEWNAME))
 (define (imap:response-code:parse? code) (eq? (car code) 'PARSE))
 (define (imap:response-code:read-only? code) (eq? (car code) 'READ-ONLY))
@@ -595,9 +633,14 @@
 (define (imap:response-code:permanentflags? code)
   (eq? (car code) 'PERMANENTFLAGS))
 
+(define imap:response-code:appenduid-uidvalidity cadr)
+(define imap:response-code:appenduid-uid caddr)
+(define imap:response-code:copyuid-uidvalidity cadr)
+(define imap:response-code:copyuid-old-uids caddr)
+(define imap:response-code:copyuid-new-uids cadddr)
 (define imap:response-code:newname-old cadr)
 (define imap:response-code:newname-new caddr)
+(define imap:response-code:permanentflags cdr)
 (define imap:response-code:uidnext cadr)
 (define imap:response-code:uidvalidity cadr)
 (define imap:response-code:unseen cadr)
-(define imap:response-code:permanentflags cdr)
