@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulflo.scm,v 1.3 1991/07/12 23:14:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulflo.scm,v 1.4 1991/07/16 20:53:28 cph Exp $
 $MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -64,8 +64,6 @@ MIT in each case. |#
     (let ((target (standard-target! target)))
       (LAP
        ; (SW 0 (OFFSET 0 ,regnum:free))	; make heap parsable forwards
-       (SRL ,regnum:free ,regnum:free 3)
-       (SLL ,regnum:free ,regnum:free 3)
        (ORI ,regnum:free ,regnum:free #b100) ; Align to odd quad byte
        (ADD ,target 0 ,regnum:free)	; Result is this address
        ,@(deposit-type (ucode-type flonum) target)
