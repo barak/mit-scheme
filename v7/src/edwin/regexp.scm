@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: regexp.scm,v 1.63 1992/12/01 14:47:07 gjr Exp $
+;;;	$Id: regexp.scm,v 1.64 1993/08/13 23:40:21 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -47,7 +47,8 @@
 (declare (usual-integrations))
 
 (define registers (make-vector 20))
-(define match-group (object-hash false))
+(define hash-of-false (object-hash false))
+(define match-group hash-of-false)
 
 (define-integrable (re-match-start-index i)
   (vector-ref registers i))
@@ -100,7 +101,7 @@
        unspecific)
      thunk
      (lambda ()
-       (set! match-group (object-hash group))
+       (set! match-group (if group (group-hash-number group) hash-of-false))
        (set! registers
 	     (if group
 		 (vector-map marks
@@ -188,7 +189,7 @@
 	  (syntax-table-argument syntax-table)
 	  registers
 	  group start end)))
-    (set! match-group (object-hash (and index group)))
+    (set! match-group (compute-match-group group index))
     index))
 
 (define (re-search-buffer-backward pattern case-fold-search syntax-table
@@ -200,7 +201,7 @@
 	  (syntax-table-argument syntax-table)
 	  registers
 	  group start end)))
-    (set! match-group (object-hash (and index group)))
+    (set! match-group (compute-match-group group index))
     index))
 
 (define (re-match-buffer-forward pattern case-fold-search syntax-table
@@ -212,8 +213,13 @@
 	  (syntax-table-argument syntax-table)
 	  registers
 	  group start end)))
-    (set! match-group (object-hash (and index group)))
+    (set! match-group (compute-match-group group index))
     index))
+
+(define (compute-match-group group index)
+  (if index
+      (group-hash-number group)
+      hash-of-false))
 
 (define (re-match-string-forward pattern case-fold-search syntax-table string)
   (re-match-substring-forward pattern case-fold-search syntax-table
@@ -221,7 +227,7 @@
 
 (define (re-match-substring-forward pattern case-fold-search syntax-table
 				    string start end)
-  (set! match-group (object-hash false))
+  (set! match-group hash-of-false)
   ((ucode-primitive re-match-substring)
    pattern
    (re-translation-table case-fold-search)
@@ -235,7 +241,7 @@
 
 (define (re-search-substring-forward pattern case-fold-search syntax-table
 				     string start end)
-  (set! match-group (object-hash false))
+  (set! match-group hash-of-false)
   ((ucode-primitive re-search-substring-forward)
    pattern
    (re-translation-table case-fold-search)
@@ -250,7 +256,7 @@
 
 (define (re-search-substring-backward pattern case-fold-search syntax-table
 				      string start end)
-  (set! match-group (object-hash false))
+  (set! match-group hash-of-false)
   ((ucode-primitive re-search-substring-backward)
    pattern
    (re-translation-table case-fold-search)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: struct.scm,v 1.87 1993/08/13 23:19:57 cph Exp $
+;;;	$Id: struct.scm,v 1.88 1993/08/13 23:40:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -108,7 +108,8 @@
   point
   buffer
   shrink-length
-  text-properties)
+  text-properties
+  %hash-number)
 
 (define-integrable (set-group-marks! group marks)
   (vector-set! group group-index:marks marks))
@@ -145,6 +146,9 @@
 
 (define-integrable (set-group-text-properties! group properties)
   (vector-set! group group-index:text-properties properties))
+
+(define-integrable (set-group-%hash-number! group n)
+  (vector-set! group group-index:%hash-number n))
 
 (define (make-group buffer)
   (let ((group (%make-group)))
@@ -170,6 +174,7 @@
     (vector-set! group group-index:buffer buffer)
     (vector-set! group group-index:shrink-length 0)
     (vector-set! group group-index:text-properties false)
+    (vector-set! group group-index:%hash-number #f)
     group))
 
 (define (group-length group)
@@ -244,6 +249,12 @@
 
 (define (group-absolute-end group)
   (make-temporary-mark group (group-length group) true))
+
+(define (group-hash-number group)
+  (or (group-%hash-number group)
+      (let ((n (object-hash group)))
+	(set-group-%hash-number! group n)
+	n)))
 
 ;;;; Text Clipping
 
