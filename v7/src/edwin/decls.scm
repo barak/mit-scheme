@@ -12,6 +12,7 @@
      "grpops"
      "image"
      "macros"
+     "make"
      "motion"
      "nvector"
      "paths"
