@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpoint.scm,v 14.3 1988/12/30 06:42:23 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpoint.scm,v 14.4 1991/08/11 15:24:05 jinx Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,12 +67,29 @@ MIT in each case. |#
 (define-integrable (control-point/first-element-index control-point)
   (control-point-index control-point 6))
 
+#|
+
+;; Disabled because some procedures in conpar.scm and uenvir.scm
+;; depend on the actual length for finding compiled code variables,
+;; etc.
+
+(define (control-point/n-elements control-point)
+  (let ((real-length (- (system-vector-length control-point)
+			(control-point/first-element-index control-point))))
+    (if (control-point/next-control-point? control-point)
+	(- real-length 2)
+	real-length)))
+|#
+
 (define (control-point/n-elements control-point)
   (- (system-vector-length control-point)
      (control-point/first-element-index control-point)))
 
 (define (control-point/element-stream control-point)
-  (let ((end (system-vector-length control-point)))
+  (let ((end (let ((end (system-vector-length control-point)))
+	       (if (control-point/next-control-point? control-point)
+		   (- end 2)
+		   end))))
     (let loop ((index (control-point/first-element-index control-point)))
       (cond ((= index end) '())
 	    (((ucode-primitive primitive-object-type? 2)

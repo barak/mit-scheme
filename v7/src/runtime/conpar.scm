@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.22 1991/08/06 22:13:25 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.23 1991/08/11 15:24:22 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -203,18 +203,22 @@ MIT in each case. |#
 
 (define (make-intermediate-state state length stream)
   (let ((previous-history-control-point
-	 (parser-state/previous-history-control-point state)))
+	 (parser-state/previous-history-control-point state))
+	(new-length
+	 (- (parser-state/n-elements state) length)))	 
     (make-parser-state
      (parser-state/dynamic-state state)
      (parser-state/fluid-bindings state)
      (parser-state/interrupt-mask state)
      (parser-state/history state)
-     (if previous-history-control-point
-	 (parser-state/previous-history-offset state)
-	 (max 0 (- (parser-state/previous-history-offset state) (-1+ length))))
+     (let ((previous (parser-state/previous-history-offset state)))
+       (if (or previous-history-control-point
+	       (>= new-length previous))
+	   previous
+	   0))
      previous-history-control-point
      stream
-     (- (parser-state/n-elements state) length)
+     new-length
      (parser-state/next-control-point state)
      (parser-state/previous-type state))))
 
