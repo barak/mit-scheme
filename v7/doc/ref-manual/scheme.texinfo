@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.120 2003/02/14 19:22:43 cph Exp $
+@comment $Id: scheme.texinfo,v 1.121 2003/03/07 06:18:17 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT/GNU Scheme Reference
@@ -15317,7 +15317,7 @@ Equivalent to writing the characters of the substring, one by one, to
 Most output ports are able to tell whether or not they are at the
 beginning of a line of output.  If @var{output-port} is such a port,
 end-of-line is written to the port only if the port is not already at
-the beginning of a line.  If @var{output-port} is not such a port, and
+the beginning of a line.  If @var{output-port} is not such a port, an
 end-of-line is unconditionally written to the port.  Returns an
 unspecified value.
 @end defop
