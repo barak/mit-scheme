@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.142 2000/12/01 06:06:54 cph Exp $
+;;; $Id: curren.scm,v 1.143 2000/12/01 06:28:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -166,7 +166,7 @@ The frame is guaranteed to be deselected at that time."
 	    (let ((screen* (next-screen screen*)))
 	      (and (not (eq? screen* screen))
 		   (loop screen*
-			 (if (or invisible-ok? (screen-visible? screen))
+			 (if (or invisible-ok? (screen-visible? screen*))
 			     (- n 1)
 			     n)))))))))
 
