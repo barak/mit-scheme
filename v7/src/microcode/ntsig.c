@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.11 1993/09/07 19:03:46 gjr Exp $
+$Id: ntsig.c,v 1.12 1993/09/08 04:44:06 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -419,6 +419,7 @@ DEFUN_VOID (install_timer)
   Registers[REGBLOCK_CATATONIA_COUNTER] = 0;
   Registers[REGBLOCK_CATATONIA_LIMIT]
     = (CATATONIA_PERIOD / ASYNC_TIMER_PERIOD);
+  Registers[REGBLOCK_CATATONIA_FLAG] = 0;
   switch (win32_install_async_timer (&timer_state,
 				     &Registers[0],
 				     REGBLOCK_MEMTOP,

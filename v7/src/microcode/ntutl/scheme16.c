@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme16.c,v 1.5 1993/09/04 06:59:59 gjr Exp $
+$Id: scheme16.c,v 1.6 1993/09/08 04:46:00 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -340,10 +340,14 @@ scheme_asynctimer (void)
 	 > scm_timer->base[scm_timer->ctr_off + 1])
 	&& (scm_timer->base[scm_timer->ctr_off + 1] != 0))
     {
-      PostMessage (scm_timer->window,
-		   scm_timer->message,
-		   ((WPARAM) 0),
-		   ((LPARAM) 0));
+      if (scm_timer->base[scm_timer->ctr_off + 2] == 0)
+      {
+	PostMessage (scm_timer->window,
+		     scm_timer->message,
+		     ((WPARAM) 0),
+		     ((LPARAM) 0));
+	scm_timer->base[scm_timer->ctr_off + 2] = 1;
+      }
       scm_timer->base[scm_timer->ctr_off] = 0L;
     }
     scm_timer = scm_timer->next;

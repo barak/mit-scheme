@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.h,v 1.4 1993/09/04 07:04:23 gjr Exp $
+$Id: ntgui.h,v 1.5 1993/09/08 04:44:41 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -57,7 +57,8 @@ MIT in each case. */
 #ifndef REGBLOCK_CATATONIA_COUNTER
 /* They must be contiguous, with counter being lower. */
 # define REGBLOCK_CATATONIA_COUNTER REGBLOCK_MINIMUM_LENGTH
-# define REGBLOCK_CATATONIA_LIMIT   (REGBLOCK_MINIMUM_LENGTH + 1)
+# define REGBLOCK_CATATONIA_LIMIT   (REGBLOCK_CATATONIA_COUNTER + 1)
+# define REGBLOCK_CATATONIA_FLAG    (REGBLOCK_CATATONIA_COUNTER + 2)
 #endif
 
 #define WM_CATATONIC (WM_USER)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.5 1993/09/04 07:01:12 gjr Exp $
+$Id: scheme32.c,v 1.6 1993/09/08 04:45:26 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -111,10 +111,14 @@ win32_nt_timer_tick (UINT wID, UINT wMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
        > timer_closure->block[timer_closure->ctr_off + 1])
       && (timer_closure->block[timer_closure->ctr_off + 1] != 0))
   {
-    PostMessage (timer_closure->window,
-		 timer_closure->message,
-		 ((WPARAM) 0),
-		 ((LPARAM) 0));
+    if (timer_closure->block[timer_closure->ctr_off + 2] == 0)
+    {
+      PostMessage (timer_closure->window,
+		   timer_closure->message,
+		   ((WPARAM) 0),
+		   ((LPARAM) 0));
+      timer_closure->block[timer_closure->ctr_off + 2] = 1;
+    }
     timer_closure->block[timer_closure->ctr_off] = 0;
   }
   return;
