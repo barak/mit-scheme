@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.3 1988/08/01 23:09:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.4 1988/08/05 20:49:51 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -93,7 +93,7 @@ MIT in each case. |#
 	(begin (show-frame env depth)
 	       (if (environment-has-parent? env)
 		   (s1 (environment-parent env) (1+ depth))))))
-  *the-non-printing-object*)
+  unspecific)
 
 ;;;; Motion Commands
 

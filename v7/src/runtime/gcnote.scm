@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.2 1988/06/13 11:45:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.3 1988/08/05 20:47:17 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -43,8 +43,7 @@ MIT in each case. |#
 	  (cond ((eq? current gc-notification) default/record-statistic!)
 		((eq? current default/record-statistic!) gc-notification)
 		(else (error "Can't grab GC statistics hook")))))
-  *the-non-printing-object*)
-
+  unspecific)
 (define (gc-notification statistic)
   (with-output-to-port (cmdl/output-port (nearest-cmdl))
     (lambda ()

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.1 1988/06/13 11:51:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.2 1988/08/05 20:49:04 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -52,9 +52,9 @@ MIT in each case. |#
   (if (not ((ucode-primitive photo-open)
 	    (canonicalize-output-filename filename)))
       (error "TRANSCRIPT-ON: Transcript file already open" filename))
-  *the-non-printing-object*)
+  unspecific)
 
 (define (transcript-off)
   (if (not ((ucode-primitive photo-close)))
       (error "TRANSCRIPT-OFF: Transcript file already closed"))
-  *the-non-printing-object*)
+  unspecific)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.5 1988/08/01 23:09:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.6 1988/08/05 20:48:47 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -242,7 +242,7 @@ MIT in each case. |#
 (define (standard-value-filter continuation arguments)
   (continuation
    (if (null? arguments)
-       *the-non-printing-object*
+       unspecific
        (car arguments))))
 
 ;;;; REP Loops
@@ -469,12 +469,12 @@ MIT in each case. |#
   (guarantee-syntax-table syntax-table)
   (set! user-repl-syntax-table syntax-table)
   (set-repl-state/syntax-table! (cmdl/state (nearest-repl)) syntax-table)
-  *the-non-printing-object*)
+  unspecific)
 
 (define (vst syntax-table)
   (guarantee-syntax-table syntax-table)
   (set-repl-state/syntax-table! (cmdl/state (nearest-repl)) syntax-table)
-  *the-non-printing-object*)
+  unspecific)
 
 (define (re #!optional index)
   (let ((repl (nearest-repl)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.3 1988/06/30 22:22:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.4 1988/08/05 20:49:26 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -55,7 +55,7 @@ MIT in each case. |#
 
 (define (add-system! system)
   (set! known-systems (append! known-systems (list system)))
-  *the-non-printing-object*)
+  unspecific)
 
 (define (for-each-system! procedure)
   (for-each procedure known-systems))
@@ -106,7 +106,7 @@ MIT in each case. |#
     (newline)
     (write-string "Done"))
   (add-system! system)
-  *the-non-printing-object*)
+  unspecific)
 
 (define (split-list list n receiver)
   (if (or (not (pair? list)) (zero? n))

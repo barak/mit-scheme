@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.3 1988/07/22 22:53:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.4 1988/08/05 20:49:33 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -385,7 +385,7 @@ MIT in each case. |#
 					  (cons frame-filter handler)))))
 		(else
 		 (error "Can't overwrite error handler" entry)))))
-      *the-non-printing-object*)
+      unspecific)
 
     (define (define-standard-frame-handler error-type frame-type frame-filter
 	      irritant)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.4 1988/08/05 20:15:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.5 1988/08/05 20:47:24 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -176,7 +176,7 @@ MIT in each case. |#
 
 (define (quit)
   (with-absolutely-no-interrupts (ucode-primitive halt))
-  *the-non-printing-object*)
+  unspecific)
 
 (define syntaxer/default-environment
   (let () (the-environment)))

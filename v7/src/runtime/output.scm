@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.2 1988/07/14 07:40:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.3 1988/08/05 20:48:08 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -172,7 +172,7 @@ MIT in each case. |#
 	     (guarantee-output-port port))))
     (output-port/write-char port #\Newline)
     (output-port/flush-output port))
-  *the-non-printing-object*)
+  unspecific)
 
 (define (write-char char #!optional port)
   (let ((port
@@ -181,7 +181,7 @@ MIT in each case. |#
 	     (guarantee-output-port port))))
     (output-port/write-char port char)
     (output-port/flush-output port))
-  *the-non-printing-object*)
+  unspecific)
 
 (define (write-string string #!optional port)
   (let ((port
@@ -190,13 +190,13 @@ MIT in each case. |#
 	     (guarantee-output-port port))))
     (output-port/write-string port string)
     (output-port/flush-output port))
-  *the-non-printing-object*)
+  unspecific)
 
 (define (close-output-port port)
   (let ((operation (output-port/custom-operation port 'CLOSE)))
     (if operation
 	(operation port)))
-  *the-non-printing-object*)
+  unspecific)
 
 (define (wrap-custom-operation-0 operation-name)
   (lambda (#!optional port)
@@ -209,7 +209,7 @@ MIT in each case. |#
 	    (begin
 	      (operation port)
 	      (output-port/flush-output port)))))
-    *the-non-printing-object*))
+    unspecific))
 
 (define beep)
 (define clear)
@@ -227,7 +227,7 @@ MIT in each case. |#
 	(output-port/write-string port object)
 	(unparse-object/internal object port 0 false unparser-table))
     (output-port/flush-output port))
-  *the-non-printing-object*)
+  unspecific)
 
 (define (write object #!optional port unparser-table)
   (let ((port
@@ -240,7 +240,7 @@ MIT in each case. |#
 	     (guarantee-unparser-table unparser-table))))
     (unparse-object/internal object port 0 true unparser-table)
     (output-port/flush-output port))
-  *the-non-printing-object*)
+  unspecific)
 
 (define (write-line object #!optional port unparser-table)
   (let ((port
@@ -254,4 +254,4 @@ MIT in each case. |#
     (output-port/write-char port #\Newline)
     (unparse-object/internal object port 0 true unparser-table)
     (output-port/flush-output port))
-  *the-non-printing-object*)
+  unspecific)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.1 1988/06/13 11:38:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.2 1988/08/05 20:46:42 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -418,7 +418,7 @@ MIT in each case. |#
 
 (define ((wrap-general-advisor advisor) procedure advice . path)
   (advisor (find-internal-lambda procedure path) advice)
-  *the-non-printing-object*)
+  unspecific)
 
 (define advise-entry)
 (define advise-exit)
@@ -428,7 +428,7 @@ MIT in each case. |#
       (map-over-population unadvisor)
       (unadvisor (find-internal-lambda (car procedure&path)
 				       (cdr procedure&path))))
-  *the-non-printing-object*)
+  unspecific)
 
 (define wrap-entry-unadvisor)
 (define wrap-exit-unadvisor)
@@ -445,7 +445,7 @@ MIT in each case. |#
 
 (define ((wrap-advisor advisor) procedure . path)
   (advisor (find-internal-lambda procedure path))
-  *the-non-printing-object*)
+  unspecific)
 
 (define trace-entry)
 (define trace-exit)

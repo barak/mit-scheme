@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.2 1988/06/13 11:43:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.3 1988/08/05 20:46:52 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -94,7 +94,7 @@ MIT in each case. |#
 	      (write-string "   ")
 	      (write-string (caddr entry)))
 	    (cdr command-set))
-  *the-non-printing-object*)
+  unspecific)
 
 (define (standard-exit-command)  (proceed))
 

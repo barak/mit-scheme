@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.4 1988/07/16 10:14:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.5 1988/08/05 20:49:14 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -166,15 +166,16 @@ MIT in each case. |#
     (apply transform (cdr expression))))
 
 (define (syntax-error message . irritants)
-  (error (string-append "SYNTAX: "
-			(if *current-keyword*
-			    (string-append (symbol->string *current-keyword*)
-					   ": "
-					   message)
-			    message))
-	 (cond ((null? irritants) *the-non-printing-object*)
-	       ((null? (cdr irritants)) (car irritants))
-	       (else irritants))))
+  (error-procedure
+   (string-append "SYNTAX: "
+		  (if *current-keyword*
+		      (string-append (symbol->string *current-keyword*)
+				     ": "
+				     message)
+		      message))
+   irritants
+   ;; This is not really the right environment.  Perhaps nothing is.
+   syntaxer/default-environment))
 
 (define (syntax-expressions expressions)
   (if (null? expressions)

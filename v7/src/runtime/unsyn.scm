@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.2 1988/06/14 14:45:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.3 1988/08/05 20:49:43 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -76,13 +76,10 @@ MIT in each case. |#
 	    (unsyntax-objects (cdr objects)))))
 
 (define (unsyntax-error keyword message . irritants)
-  (error (string-append "UNSYNTAX: "
-			(symbol->string keyword)
-			": "
-			message)
-	 (cond ((null? irritants) *the-non-printing-object*)
-	       ((null? (cdr irritants)) (car irritants))
-	       (else irritants))))
+  (error-procedure
+   (string-append "UNSYNTAX: " (symbol->string keyword) ": " message)
+   irritants
+   system-global-environment))
 
 ;;;; Unsyntax Quanta
 
@@ -319,17 +316,23 @@ MIT in each case. |#
 (define (unsyntax-error-like-form operands name)
   (cons* name
 	 (unsyntax-object (first operands))
-	 (let ((operand (second operands)))
-	   (cond ((absolute-reference-to? operand '*THE-NON-PRINTING-OBJECT*)
-		  '())
-		 ((combination? operand)
-		  (combination-components operand
-		    (lambda (operator operands)
-		      (if (absolute-reference-to? operator 'LIST)
-			  (unsyntax-objects operands)
-			  `(,(unsyntax-object operand))))))
-		 (else
-		  `(,(unsyntax-object operand)))))))
+	 (unsyntax-objects
+	  (let loop ((irritants (cadr operands)))
+	    (cond ((null? irritants) '())
+		  ((and (combination? irritants)
+			(absolute-reference-to?
+			 (combination-operator irritants)
+			 'LIST))
+		   (combination-operands irritants))
+		  ((and (combination? irritants)
+			(eq? (combination-operator irritants) cons))
+		   (let ((operands (combination-operands irritants)))
+		     (cons (car operands)
+			   (loop (cadr operands)))))
+		  (else
+		   ;; Actually, this is an error.  But do something useful
+		   ;; here just in case it actually happens.
+		   (list irritants)))))))
 
 (define (unsyntax/fluid-let names values body if-malformed)
   (combination-components body

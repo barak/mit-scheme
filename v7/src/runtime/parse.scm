@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.3 1988/07/15 22:31:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.4 1988/08/05 20:48:25 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -206,8 +206,10 @@ MIT in each case. |#
   (parse-error "end of file"))
 
 (define (parse-error message #!optional irritant)
-  (error (string-append "PARSE-OBJECT: " message)
-	 (if (default-object? irritant) *the-non-printing-object* irritant)))
+  (let ((message (string-append "PARSE-OBJECT: " message)))
+    (if (default-object? irritant)
+	(error message)
+	(error message irritant))))
 
 ;;;; Dispatch Points
 

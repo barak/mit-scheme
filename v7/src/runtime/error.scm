@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.4 1988/07/14 07:40:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.5 1988/08/05 20:47:00 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -65,15 +65,7 @@ MIT in each case. |#
 (define (error-procedure-handler message irritants environment)
   (with-proceed-point proceed-value-filter
     (lambda ()
-      (simple-error
-       environment
-       message
-       ;; Kludge to support minimal upwards compatibility with `error'
-       ;; forms syntaxed by older syntaxer.  Should be flushed after
-       ;; new runtime system has been in use for a while.
-       (cond ((eq? irritants *the-non-printing-object*) '())
-	     ((or (null? irritants) (pair? irritants)) irritants)
-	     (else (list irritants)))))))
+      (simple-error environment message irritants))))
 
 (define (error-from-compiled-code message . irritants)
   (with-proceed-point proceed-value-filter
@@ -89,7 +81,7 @@ MIT in each case. |#
 	      (continuation/first-subproblem continuation))))
     (if next-subproblem
 	((stack-frame->continuation next-subproblem) (car values))
-	(continuation *the-non-printing-object*))))
+	(continuation unspecific))))
 
 (define (simple-error environment message irritants)
   (signal-error

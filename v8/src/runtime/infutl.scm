@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.2 1988/06/16 06:31:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.3 1988/08/05 20:47:32 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -370,7 +370,7 @@ MIT in each case. |#
 	  (procedure (vector-ref vector index))
 	  (if (< index high)
 	      (loop (1+ index))))))
-    (lambda () *the-non-printing-object*)))
+    (lambda () unspecific)))
 
 (define (vector-binary-search-range vector key key=? compare if-found
 				    if-not-found)

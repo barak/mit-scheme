@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.3 1988/07/14 07:40:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.4 1988/08/05 20:48:18 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -106,8 +106,7 @@ MIT in each case. |#
 	     (lambda (filename environment)
 	       (load filename environment syntax-table true)))
 	   options)))))
-  *the-non-printing-object*)
-
+  unspecific)
 (define-integrable (package/reference package name)
   (lexical-reference (package/environment package) name))
 

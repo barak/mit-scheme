@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.1 1988/06/13 11:47:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.2 1988/08/05 20:47:45 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -345,7 +345,7 @@ MIT in each case. |#
 					 (cons (cdr (car lists)) cdrs)))))
 		((not (null? (car lists)))
 		 (error "FOR-EACH: Argument not a list" (car lists)))))))
-  *the-non-printing-object*)
+  unspecific)
 
 (define (mapcan f . lists)
   ;; Compiler doesn't, but ought to, make this very fast.

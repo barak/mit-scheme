@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.2 1988/06/13 11:50:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.3 1988/08/05 20:48:56 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -65,7 +65,7 @@ MIT in each case. |#
       (save-image filename
 		  (lambda ()
 		    (set! time-world-saved time)
-		    *the-non-printing-object*)
+		    unspecific)
 		  (lambda ()
 		    (set! time-world-saved time)
 		    (event-distributor/invoke! event:after-restore)

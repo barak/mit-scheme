@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/format.scm,v 14.3 1988/07/07 15:45:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/format.scm,v 14.4 1988/08/05 20:47:10 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -68,7 +68,7 @@ MIT in each case. |#
 	 (lambda (port)
 	   (format-loop port format-string arguments)
 	   (output-port/flush-output port)
-	   *the-non-printing-object*)))
+	   unspecific)))
     (cond ((not destination)
 	   (with-output-to-string (lambda () (start (current-output-port)))))
 	  ((eq? destination true)

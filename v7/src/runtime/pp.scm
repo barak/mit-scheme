@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.2 1988/08/05 19:44:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.3 1988/08/05 20:48:37 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -83,7 +83,7 @@ MIT in each case. |#
 		     (named-structure/description object)))
 	  (else
 	   (pp-top-level port object as-code?))))
-  *the-non-printing-object*)
+  unspecific)
 
 (define (pp-top-level port expression as-code?)
   (fluid-let

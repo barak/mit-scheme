@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.3 1988/07/14 07:40:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.4 1988/08/05 20:47:59 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -80,7 +80,7 @@ MIT in each case. |#
   (let ((truename (init-file-truename)))
     (if truename
 	(load truename user-initial-environment)))
-  *the-non-printing-object*)
+  unspecific)
 
 ;;; This is careful to do the minimum number of file existence probes
 ;;; before opening the input file.
@@ -185,4 +185,4 @@ MIT in each case. |#
 	(if (stream-pair? stream)
 	    (begin (write value)
 		   (loop (stream-car stream) (stream-cdr stream)))	    value))
-      *the-non-printing-object*))
+      unspecific))
