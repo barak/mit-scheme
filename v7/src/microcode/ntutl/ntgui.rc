@@ -33,12 +33,12 @@ BEGIN
     BEGIN
 	VALUE "CompanyName", "GNU Project"
 	VALUE "FileDescription", "MIT/GNU Scheme Microcode"
-	VALUE "FileVersion", PACKAGE_VERSION
+	VALUE "FileVersion", "14.11"
 	VALUE "InternalName", "SCHEME"
 	VALUE "LegalCopyright", "Copyright Massachusetts Institute of Technology 1993-2003"
 	VALUE "OriginalFilename", "SCHEME.EXE"
-	VALUE "ProductName", PACKAGE_NAME
-	VALUE "ProductVersion", PACKAGE_VERSION
+	VALUE "ProductName", "MIT/GNU Scheme"
+	VALUE "ProductVersion", "7.8.0"
     END
   END
 
