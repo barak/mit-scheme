@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.32 1988/07/10 03:35:49 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.33 1988/08/15 20:35:29 cph Exp $ */
 
 /* ARRAY = 
    sequence of REAL(float or double numbers) with a tag on the front */
@@ -47,7 +47,7 @@ MIT in each case. */
 
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "flonum.h"
 #include "array.h"
 #include <math.h>
@@ -119,28 +119,28 @@ int Scheme_Number_To_Double(Arg, Cell) Pointer Arg; double *Cell;
 /*__________________begin__________________*/
 
 /*   I think this is not needed, can be done at s-code ...
-Define_Primitive(Prim_Array_Predicate, 1, "ARRAY?")
+DEFINE_PRIMITIVE ("ARRAY?", Prim_array_predicate, 1, 1, 0)
 { Primitive_1_Args();
-  if (Type_Code(Arg1)==TC_ARRAY) return TRUE;
-  else return NIL;
+  if (Type_Code(Arg1)==TC_ARRAY) return SHARP_F;
+  else return SHARP_F;
 }
 */
 
-Define_Primitive(Prim_Vector_To_Array, 1, "VECTOR->ARRAY")
+DEFINE_PRIMITIVE ("VECTOR->ARRAY", Prim_vector_to_array, 1, 1, 0)
 { Pointer Scheme_Vector_To_Scheme_Array();
   Primitive_1_Args();
   Arg_1_Type(TC_VECTOR);
   return Scheme_Vector_To_Scheme_Array(Arg1);
 }
 
-Define_Primitive(Prim_Array_To_Vector, 1, "ARRAY->VECTOR")
+DEFINE_PRIMITIVE ("ARRAY->VECTOR", Prim_array_to_vector, 1, 1, 0)
 { Pointer Scheme_Array_To_Scheme_Vector();
   Primitive_1_Args();
   Arg_1_Type(TC_ARRAY);
   return Scheme_Array_To_Scheme_Vector(Arg1);
 }
 
-Define_Primitive(Prim_Array_Cons, 2, "ARRAY-CONS")
+DEFINE_PRIMITIVE ("ARRAY-CONS", Prim_array_cons, 2, 2, 0)
 { long Length, i, allocated_cells;
   REAL Init_Value, *Next;
   int Error_Number;
@@ -159,7 +159,7 @@ Define_Primitive(Prim_Array_Cons, 2, "ARRAY-CONS")
   return Result; 
 }
 
-Define_Primitive(Prim_Array_Cons_Reals, 3, "ARRAY-CONS-REALS")
+DEFINE_PRIMITIVE ("ARRAY-CONS-REALS", Prim_array_cons_reals, 3, 3, 0)
 { long i, Length, allocated_cells;
   REAL *a, from, dt;
   Pointer Result;
@@ -181,13 +181,13 @@ Define_Primitive(Prim_Array_Cons_Reals, 3, "ARRAY-CONS-REALS")
   return Result; 
 }
 
-Define_Primitive(Prim_Array_Length, 1, "ARRAY-LENGTH")
+DEFINE_PRIMITIVE ("ARRAY-LENGTH", Prim_array_length, 1, 1, 0)
 { Primitive_1_Args();
   Arg_1_Type(TC_ARRAY);
   return Make_Pointer(TC_FIXNUM, Array_Length(Arg1));
 }
 
-Define_Primitive(Prim_Array_Ref, 2, "ARRAY-REF")
+DEFINE_PRIMITIVE ("ARRAY-REF", Prim_array_ref, 2, 2, 0)
 { long Index;
   REAL *Array, value;
   Primitive_2_Args();
@@ -199,7 +199,7 @@ Define_Primitive(Prim_Array_Ref, 2, "ARRAY-REF")
   Reduced_Flonum_Result((double) value);
 }
 
-Define_Primitive(Prim_Array_Set, 3, "ARRAY-SET!")
+DEFINE_PRIMITIVE ("ARRAY-SET!", Prim_array_set, 3, 3, 0)
 { long Index;
   REAL *Array, Old_Value;
   int Error_Number;
@@ -218,7 +218,7 @@ Define_Primitive(Prim_Array_Set, 3, "ARRAY-SET!")
   Reduced_Flonum_Result((double) Old_Value);
 }
 
-Define_Primitive(Prim_Array_Copy, 1, "ARRAY-COPY")
+DEFINE_PRIMITIVE ("ARRAY-COPY", Prim_array_copy, 1, 1, 0)
 { long Length, i, allocated_cells;
   REAL *To_Array, *From_Array;
   SCHEME_ARRAY Result;
@@ -236,7 +236,7 @@ Define_Primitive(Prim_Array_Copy, 1, "ARRAY-COPY")
   ascii and 2bint formats 
   ________________________________________________*/
 
-Define_Primitive(Prim_Array_Read_Ascii_File, 2, "ARRAY-READ-ASCII-FILE")
+DEFINE_PRIMITIVE ("ARRAY-READ-ASCII-FILE", Prim_array_read_ascii_file, 2, 2, 0)
 { FILE *fp;
   long Length, allocated_cells;
   REAL *a;
@@ -259,11 +259,11 @@ C_Array_Read_Ascii_File(a,N,fp)           /* 16 ascii decimal digits */
   for (i=0; i<N; i++) {
     if ( (fscanf(fp, "%lf", &(a[i]))) != 1)
     { printf("Not enough values read ---\n Last Point was %d with value % .16e \n", i, a[i-1]);
-      return NIL; }}
+      return SHARP_F; }}
   Close_File(fp);
 }
 
-Define_Primitive(Prim_Array_Write_Ascii_File, 2, "ARRAY-WRITE-ASCII-FILE")
+DEFINE_PRIMITIVE ("ARRAY-WRITE-ASCII-FILE", Prim_array_write_ascii_file, 2, 2, 0)
 { FILE *fp;
   long Length;
   REAL *a;
@@ -275,14 +275,14 @@ Define_Primitive(Prim_Array_Write_Ascii_File, 2, "ARRAY-WRITE-ASCII-FILE")
   printf("Writing ascii file ...\n"); fflush(stdout);
   a = Scheme_Array_To_C_Array(Arg1);
   C_Array_Write_Ascii_File(a,Length,fp);
-  return NIL;
+  return SHARP_F;
 }
 C_Array_Write_Ascii_File(a,N,fp)           /* 16 ascii decimal digits */
      REAL *a; long N; FILE *fp;
 { long i;
   for (i=0; i<N; i++) {
     if (feof(fp)!=0) { printf("Not enough values written ---\n Last Point was %d with value %---\n", (i-1), a[i-1]);
-		       return NIL; }
+		       return SHARP_F; }
     fprintf(fp, "% .16e \n", a[i]); }
   Close_File(fp);
 }
@@ -291,7 +291,7 @@ C_Array_Write_Ascii_File(a,N,fp)           /* 16 ascii decimal digits */
    We need to use 2bint because on many machines (bobcats included)
    "putw", and "getw" use 4 byte integers (C int) ---> waste lots of space.
    */
-Define_Primitive(Prim_Array_Read_2bint_File, 2, "ARRAY-READ-2BINT-FILE")
+DEFINE_PRIMITIVE ("ARRAY-READ-2BINT-FILE", Prim_array_read_2bint_file, 2, 2, 0)
 { FILE *fp;
   long Length, allocated_cells;
   REAL *a;
@@ -314,7 +314,7 @@ C_Array_Read_2bint_File(a,N,fp)
   int foo1,foo2;
   for (i=0;i<N;i++) {
     if (feof(fp)!=0) { printf("Not enough values read: last read i-1=%d , value=%d\n", (i-1), a[i-1]);
-		       return NIL; }
+		       return SHARP_F; }
     foo1=getc(fp); foo2=getc(fp); /* Read 2BYTE INT FORMAT */
     a[i] = ((REAL)
 	    ((foo1<<8) ^ foo2) ); /* put together the integer */
@@ -325,7 +325,7 @@ C_Array_Read_2bint_File(a,N,fp)
    is not implemented yet, don't have the time to to it now. */
 
 
-Define_Primitive(Prim_SubArray, 3, "SUBARRAY")
+DEFINE_PRIMITIVE ("SUBARRAY", Prim_subarray, 3, 3, 0)
 { long Length, i, allocated_cells, Start, End, New_Length;
   REAL *To_Here, *From_Here;
   Pointer Result;
@@ -348,7 +348,7 @@ Define_Primitive(Prim_SubArray, 3, "SUBARRAY")
   return Result; 
 }
 
-Define_Primitive(Prim_Array_Set_SubArray, 4, "ARRAY-SET-SUBARRAY!")
+DEFINE_PRIMITIVE ("ARRAY-SET-SUBARRAY!", Prim_array_set_subarray, 4, 4, 0)
 { long Length, i, Start, End, New_Length;
   REAL *To_Here, *From_Here;
   Pointer Result;
@@ -372,7 +372,7 @@ Define_Primitive(Prim_Array_Set_SubArray, 4, "ARRAY-SET-SUBARRAY!")
   return Arg1;
 }
 
-Define_Primitive(Prim_Array_Append, 2, "ARRAY-APPEND")
+DEFINE_PRIMITIVE ("ARRAY-APPEND", Prim_array_append, 2, 2, 0)
 { long Length, Length1, Length2, i, allocated_cells;
   REAL *To_Here, *From_Here;
   Pointer Result;
@@ -402,7 +402,7 @@ Define_Primitive(Prim_Array_Append, 2, "ARRAY-APPEND")
   return Result; 
 }
 
-Define_Primitive(Prim_Array_Reverse, 1, "ARRAY-REVERSE!")
+DEFINE_PRIMITIVE ("ARRAY-REVERSE!", Prim_array_reverse, 1, 1, 0)
 { long Length, i,j, Half_Length;
   REAL *Array, Temp;
   Primitive_1_Args();
@@ -419,7 +419,7 @@ Define_Primitive(Prim_Array_Reverse, 1, "ARRAY-REVERSE!")
   return Arg1;
 }
 
-Define_Primitive(Prim_Array_Scale, 2, "ARRAY-SCALE!")
+DEFINE_PRIMITIVE ("ARRAY-SCALE!", Prim_array_scale, 2, 2, 0)
 { long Length, i;
   REAL *To_Here, *From_Here, Scale;
   Pointer Result;
@@ -570,7 +570,7 @@ struct array_func_table {
 
 #define MAX_ARRAY_FUNCTC 17
 
-Define_Primitive(Prim_Array_Unary_Function, 2, "ARRAY-UNARY-FUNCTION!")
+DEFINE_PRIMITIVE ("ARRAY-UNARY-FUNCTION!", Prim_array_unary_function, 2, 2, 0)
 { long Length, i, allocated_cells;
   REAL *a,*b;
   SCHEME_ARRAY Result;
@@ -598,7 +598,7 @@ Define_Primitive(Prim_Array_Unary_Function, 2, "ARRAY-UNARY-FUNCTION!")
 /* The following is accumulate of + and * 
    code numbers are               0     1
    */
-Define_Primitive(Prim_Array_Accumulate, 2, "ARRAY-ACCUMULATE")
+DEFINE_PRIMITIVE ("ARRAY-ACCUMULATE", Prim_array_accumulate, 2, 2, 0)
 { long Length, i;
   REAL *a, result;
   long functc;
@@ -625,7 +625,7 @@ Define_Primitive(Prim_Array_Accumulate, 2, "ARRAY-ACCUMULATE")
    starting from index=from in array.
    Returns first index where match occurs.    --  (useful for finding zeros)
    */
-Define_Primitive(Prim_Array_Search_Value_Tolerance_From, 4, "ARRAY-SEARCH-VALUE-TOLERANCE-FROM")
+DEFINE_PRIMITIVE ("ARRAY-SEARCH-VALUE-TOLERANCE-FROM", Prim_array_search_value_tolerance_from, 4, 4, 0)
 { long Length, from, i;
   REAL *a, value;		/* value to search for */ 
   double tolerance;		/* tolerance allowed */
@@ -650,10 +650,10 @@ Define_Primitive(Prim_Array_Search_Value_Tolerance_From, 4, "ARRAY-SEARCH-VALUE-
   if (tolerance >= (fabs(((double) (a[i]-value)))))
     return Make_Pointer(TC_FIXNUM, i);
   else
-    return NIL;
+    return SHARP_F;
 }
 
-Define_Primitive(Prim_Array_Min_Max_Index, 1, "ARRAY-MIN-MAX-INDEX")
+DEFINE_PRIMITIVE ("ARRAY-MIN-MAX-INDEX", Prim_array_min_max_index, 1, 1, 0)
 { long Length, nmin, nmax;
   Pointer Result, *Orig_Free;
   REAL *Array;
@@ -670,7 +670,7 @@ Define_Primitive(Prim_Array_Min_Max_Index, 1, "ARRAY-MIN-MAX-INDEX")
   *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, nmin);
   *Orig_Free++ = Make_Pointer(TC_LIST, Orig_Free+1);
   *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, nmax);
-  *Orig_Free=NIL;
+  *Orig_Free=EMPTY_LIST;
   return Result; 
 }
 void C_Array_Find_Min_Max(x, n, nmin, nmax) REAL *x; long n, *nmax, *nmin;
@@ -706,7 +706,7 @@ void C_Array_Find_Min_Max(x, n, nmin, nmax) REAL *x; long n, *nmax, *nmin;
 /* The following becomes obsolete.
    Done using array-reduce + divide by array-length 
    */
-Define_Primitive(Prim_Array_Find_Average, 1, "ARRAY-AVERAGE")
+DEFINE_PRIMITIVE ("ARRAY-AVERAGE", Prim_array_find_average, 1, 1, 0)
 { long Length; REAL average;
   Primitive_1_Args();
   Arg_1_Type(TC_ARRAY);
@@ -738,7 +738,7 @@ void C_Array_Find_Average(Array, Length, pAverage)
   *pAverage = average_n;
 }
 
-Define_Primitive(Prim_Array_Make_Histogram, 2, "ARRAY-MAKE-HISTOGRAM")
+DEFINE_PRIMITIVE ("ARRAY-MAKE-HISTOGRAM", Prim_array_make_histogram, 2, 2, 0)
 { long Length, npoints, allocated_cells; 
   REAL *Array, *Histogram;
   Pointer Result;
@@ -769,7 +769,7 @@ void C_Array_Make_Histogram(Array, Length, Histogram, npoints)
     Histogram[index] += 1.0; }
 }
 
-Define_Primitive(Prim_Array_Clip_Min_Max, 3, "ARRAY-CLIP-MIN-MAX!")
+DEFINE_PRIMITIVE ("ARRAY-CLIP-MIN-MAX!", Prim_array_clip_min_max, 3, 3, 0)
 { long Length, i; /* , allocated_cells; */
   REAL *To_Here, *From_Here, xmin, xmax;
   Pointer Result;
@@ -797,7 +797,7 @@ Define_Primitive(Prim_Array_Clip_Min_Max, 3, "ARRAY-CLIP-MIN-MAX!")
   return Result; 
 }
 
-Define_Primitive(Prim_Array_Make_Polar, 2, "ARRAY-MAKE-POLAR!")
+DEFINE_PRIMITIVE ("ARRAY-MAKE-POLAR!", Prim_array_make_polar, 2, 2, 0)
 { long Length, i;
   REAL *To_Here_Mag, *To_Here_Phase;
   REAL *From_Here_Real, *From_Here_Imag;
@@ -830,11 +830,11 @@ Define_Primitive(Prim_Array_Make_Polar, 2, "ARRAY-MAKE-POLAR!")
   *Free = Make_Pointer(TC_LIST, Free+1);
   Free += 1;
   *Free++ = Result_Phase;
-  *Free++ = NIL;
+  *Free++ = EMPTY_LIST;
   return answer;
 }
 
-Define_Primitive(Prim_Array_Find_Magnitude, 2, "ARRAY-FIND-MAGNITUDE")
+DEFINE_PRIMITIVE ("ARRAY-FIND-MAGNITUDE", Prim_array_find_magnitude, 2, 2, 0)
 { long Length, i, allocated_cells;
   REAL *From_Here_Real, *From_Here_Imag, *To_Here;
   Pointer Result;
@@ -868,7 +868,7 @@ Define_Primitive(Prim_Array_Find_Magnitude, 2, "ARRAY-FIND-MAGNITUDE")
     Sum += (X[mi] * Y[N_minus_mi]);                                                         \
   (Result)=Sum;                                                                             \
 }
-Define_Primitive(Prim_Convolution_Point, 3, "CONVOLUTION-POINT")
+DEFINE_PRIMITIVE ("CONVOLUTION-POINT", Prim_convolution_point, 3, 3, 0)
 { long Length1, Length2, N;
   REAL *Array1, *Array2;
   REAL C_Result;
@@ -886,7 +886,7 @@ Define_Primitive(Prim_Convolution_Point, 3, "CONVOLUTION-POINT")
   Reduced_Flonum_Result(C_Result);
 }
 
-Define_Primitive(Prim_Array_Convolution, 2, "ARRAY-CONVOLUTION")
+DEFINE_PRIMITIVE ("ARRAY-CONVOLUTION", Prim_array_convolution, 2, 2, 0)
 { long Endpoint1, Endpoint2, allocated_cells, i;
   /* ASSUME A SIGNAL FROM INDEX 0 TO ENDPOINT=LENGTH-1 */
   long Resulting_Length;
@@ -917,7 +917,7 @@ Define_Primitive(Prim_Array_Convolution, 2, "ARRAY-CONVOLUTION")
   return Result;
 }
 
-Define_Primitive(Prim_Array_Multiplication_Into_Second_One, 2, "ARRAY-MULTIPLICATION-INTO-SECOND-ONE!")
+DEFINE_PRIMITIVE ("ARRAY-MULTIPLICATION-INTO-SECOND-ONE!", Prim_array_multiplication_into_second_one, 2, 2, 0)
 { long Length, i;
   REAL *To_Here;
   REAL *From_Here_1, *From_Here_2;
@@ -943,7 +943,7 @@ Define_Primitive(Prim_Array_Multiplication_Into_Second_One, 2, "ARRAY-MULTIPLICA
   return Result;
 }
 
-Define_Primitive(Prim_Array_Complex_Multiplication_Into_Second_One, 4, "ARRAY-COMPLEX-MULTIPLICATION-INTO-SECOND-ONE!")
+DEFINE_PRIMITIVE ("ARRAY-COMPLEX-MULTIPLICATION-INTO-SECOND-ONE!", Prim_array_complex_multiplication_into_second_one, 4, 4, 0)
 { long Length, i;
   REAL *To_Here_1, *To_Here_2;
   REAL *From_Here_1, *From_Here_2, *From_Here_3, *From_Here_4;
@@ -979,7 +979,7 @@ Define_Primitive(Prim_Array_Complex_Multiplication_Into_Second_One, 4, "ARRAY-CO
     From_Here_3++ ;
     From_Here_4++ ;
   }
-  return NIL;
+  return SHARP_F;
 }
 void C_Array_Complex_Multiply_Into_First_One(a,b,c,d, length)
      REAL *a,*b,*c,*d; long length;
@@ -993,7 +993,7 @@ void C_Array_Complex_Multiply_Into_First_One(a,b,c,d, length)
 }
 
 
-Define_Primitive(Prim_Array_Division_Into_First_One, 3, "ARRAY-DIVISION-INTO-FIRST-ONE!")
+DEFINE_PRIMITIVE ("ARRAY-DIVISION-INTO-FIRST-ONE!", Prim_array_division_into_first_one, 3, 3, 0)
 { long Length, i;
   SCHEME_ARRAY scheme_result;
   REAL *x,*y,*result;
@@ -1027,7 +1027,7 @@ Define_Primitive(Prim_Array_Division_Into_First_One, 3, "ARRAY-DIVISION-INTO-FIR
   return scheme_result;
 }
 
-Define_Primitive(Prim_Array_Division_Into_Second_One, 3, "ARRAY-DIVISION-INTO-SECOND-ONE!")
+DEFINE_PRIMITIVE ("ARRAY-DIVISION-INTO-SECOND-ONE!", Prim_array_division_into_second_one, 3, 3, 0)
 { long Length, i;
   SCHEME_ARRAY scheme_result;
   REAL *x,*y,*result;
@@ -1061,7 +1061,7 @@ Define_Primitive(Prim_Array_Division_Into_Second_One, 3, "ARRAY-DIVISION-INTO-SE
   return scheme_result;
 }
 
-Define_Primitive(Prim_Array_Complex_Multiplication_Into_First_One, 5, "ARRAY-COMPLEX-DIVISION-INTO-FIRST-ONE!")
+DEFINE_PRIMITIVE ("ARRAY-COMPLEX-DIVISION-INTO-FIRST-ONE!", Prim_array_complex_multiplication_into_first_one, 5, 5, 0)
 { long Length, i;
   SCHEME_ARRAY scheme_result_r, scheme_result_i;
   REAL *x_r,*x_i, *y_r,*y_i, *result_r,*result_i;
@@ -1106,10 +1106,10 @@ Define_Primitive(Prim_Array_Complex_Multiplication_Into_First_One, 5, "ARRAY-COM
       result_r[i] = Temp / radius;
     }
   }
-  return NIL;
+  return SHARP_F;
 }
 
-Define_Primitive(Prim_Array_Linear_Superposition_Into_Second_One, 4, "ARRAY-LINEAR-SUPERPOSITION-INTO-SECOND-ONE!")
+DEFINE_PRIMITIVE ("ARRAY-LINEAR-SUPERPOSITION-INTO-SECOND-ONE!", Prim_array_linear_superposition_into_second_one, 4, 4, 0)
 { long Length, i;
   REAL *To_Here, Coeff1, Coeff2;
   REAL *From_Here_1, *From_Here_2;
@@ -1146,7 +1146,7 @@ Define_Primitive(Prim_Array_Linear_Superposition_Into_Second_One, 4, "ARRAY-LINE
 /*  m_pi = 3.14159265358979323846264338327950288419716939937510;
  */
 
-Define_Primitive(Prim_Sample_Periodic_Function, 4, "SAMPLE-PERIODIC-FUNCTION")
+DEFINE_PRIMITIVE ("SAMPLE-PERIODIC-FUNCTION", Prim_sample_periodic_function, 4, 4, 0)
 { long N, i, allocated_cells, Function_Number;
   double Signal_Frequency, Sampling_Frequency, DT, DTi;
   double twopi = 6.28318530717958;
@@ -1225,7 +1225,7 @@ double unit_triangle_wave(t) double t;
   else                           return (-((twopi-t_bar)/pi));
 }
 
-Define_Primitive(Prim_Array_Hanning, 2, "ARRAY-HANNING")
+DEFINE_PRIMITIVE ("ARRAY-HANNING", Prim_array_hanning, 2, 2, 0)
 { long length, hanning_power, allocated_cells;
   SCHEME_ARRAY answer; 
   void C_Array_Make_Hanning();
@@ -1275,7 +1275,7 @@ double integer_power(a, n) double a; long n;
 /* The following should go away. 
    Better done using ARRAY-CONS-INTEGERS, and ARRAY-UNARY-FUNCTION
    */
-Define_Primitive(Prim_Sample_Aperiodic_Function, 3, "SAMPLE-APERIODIC-FUNCTION")
+DEFINE_PRIMITIVE ("SAMPLE-APERIODIC-FUNCTION", Prim_sample_aperiodic_function, 3, 3, 0)
 { long N, i, allocated_cells, Function_Number;
   double Sampling_Frequency, DT, DTi;
   double twopi = 6.28318530717958;
@@ -1327,7 +1327,7 @@ Define_Primitive(Prim_Sample_Aperiodic_Function, 3, "SAMPLE-APERIODIC-FUNCTION")
   return Result; 
 }
 
-Define_Primitive(Prim_Array_Periodic_Downsample, 2, "ARRAY-PERIODIC-DOWNSAMPLE")
+DEFINE_PRIMITIVE ("ARRAY-PERIODIC-DOWNSAMPLE", Prim_array_periodic_downsample, 2, 2, 0)
 { long Length, Pseudo_Length, Sampling_Ratio;
   REAL *Array, *To_Here;
   Pointer Result;
@@ -1355,7 +1355,7 @@ Define_Primitive(Prim_Array_Periodic_Downsample, 2, "ARRAY-PERIODIC-DOWNSAMPLE")
 
 /* Shift is not done in place (no side-effects).
  */
-Define_Primitive(Prim_Array_Periodic_Shift, 2, "ARRAY-PERIODIC-SHIFT")
+DEFINE_PRIMITIVE ("ARRAY-PERIODIC-SHIFT", Prim_array_periodic_shift, 2, 2, 0)
 { long Length, Shift;
   REAL *Array, *To_Here;
   Pointer Result;
@@ -1379,7 +1379,7 @@ Define_Primitive(Prim_Array_Periodic_Shift, 2, "ARRAY-PERIODIC-SHIFT")
 }
 
 /* This is done here because array-map is very slow */
-Define_Primitive(Prim_Array_Aperiodic_Downsample, 2, "ARRAY-APERIODIC-DOWNSAMPLE")
+DEFINE_PRIMITIVE ("ARRAY-APERIODIC-DOWNSAMPLE", Prim_array_aperiodic_downsample, 2, 2, 0)
 { long Length, New_Length, Sampling_Ratio;
   REAL *Array, *To_Here;
   Pointer Result;
@@ -1491,7 +1491,7 @@ void Scheme_Vector_To_C_Array(Scheme_Vector, Array)
     From the Fortran procedure in Strang.
 */
 
-Define_Primitive(Prim_Gaussian_Elimination, 2, "SOLVE-SYSTEM")
+DEFINE_PRIMITIVE ("SOLVE-SYSTEM", Prim_gaussian_elimination, 2, 2, 0)
 { REAL *A, *B, *X;
   long Length, allocated_cells;
   Pointer Result;

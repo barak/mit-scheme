@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx.c,v 1.3 1988/07/19 20:04:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx.c,v 1.4 1988/08/15 20:33:25 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -37,7 +37,7 @@ MIT in each case. */
 #include <X/Xlib.h>
 #include <X/Xhp.h>
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "flonum.h"
 #include "Sgraph.h"
 
@@ -92,16 +92,13 @@ x_error_handler (display, error_event)
   error_external_return ();
 }
 
-/* (X-GRAPHICS-OPEN-DISPLAY display-name)
+DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-DISPLAY", Prim_x_graphics_open_display, 1, 1,
+  "Opens display DISPLAY-NAME.  DISPLAY-NAME may be #F, in which case the
+default display is opened (based on the DISPLAY environment
+variable).  Returns #T if the open succeeds, #F otherwise.
 
-   Opens the named display.  The name may be #F, in which case the
-   default display is opened (based on the DISPLAY environment
-   variable).  Returns #T if the open succeeds, #F otherwise.
-
-   This primitive is additionally useful for determining whether the
-   X server is running on the named display.  */
-
-DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-DISPLAY", Prim_x_graphics_open_display, 1)
+This primitive is additionally useful for determining whether the
+X server is running on the named display.")
 {
   PRIMITIVE_HEADER (1);
 
@@ -112,19 +109,20 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-DISPLAY", Prim_x_graphics_open_display, 1)
   XErrorHandler (x_error_handler);
   XIOErrorHandler (x_io_error_handler);
 
-  display = (XOpenDisplay (((ARG_REF (1)) == NIL) ? NULL : (STRING_ARG (1))));
+  display =
+    (XOpenDisplay (((ARG_REF (1)) == SHARP_F) ? NULL : (STRING_ARG (1))));
   window = 0;
   (filename [0]) = '\0';
   raster_state = 0;
-  PRIMITIVE_RETURN ((display == NULL) ? NIL : TRUTH);
+  PRIMITIVE_RETURN ((display != NULL) ? SHARP_T : SHARP_F);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-CLOSE-DISPLAY", Prim_x_graphics_close_display, 0)
+DEFINE_PRIMITIVE ("X-GRAPHICS-CLOSE-DISPLAY", Prim_x_graphics_close_display, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
   close_display ();
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
 static void
@@ -145,7 +143,7 @@ close_display ()
    on the current display.  If another window was previously opened
    using this primitive, it is closed.  */
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-WINDOW", Prim_x_graphics_open_window, 5)
+DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-WINDOW", Prim_x_graphics_open_window, 5, 5, 0)
 {
   XhpArgItem arglist [7];
   PRIMITIVE_HEADER (5);
@@ -184,12 +182,12 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-WINDOW", Prim_x_graphics_open_window, 5)
   PRIMITIVE_RETURN (C_String_To_Scheme_String (& (filename [0])));
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-CLOSE-WINDOW", Prim_x_graphics_close_window, 0)
+DEFINE_PRIMITIVE ("X-GRAPHICS-CLOSE-WINDOW", Prim_x_graphics_close_window, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
   close_window ();
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
 static void
@@ -211,47 +209,47 @@ close_window ()
   return;
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-MAP-WINDOW", Prim_x_graphics_map_window, 0)
+DEFINE_PRIMITIVE ("X-GRAPHICS-MAP-WINDOW", Prim_x_graphics_map_window, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
   GUARANTEE_WINDOW ();
   XMapWindow (window);
   XFlush ();
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-UNMAP-WINDOW", Prim_x_graphics_unmap_window, 0)
+DEFINE_PRIMITIVE ("X-GRAPHICS-UNMAP-WINDOW", Prim_x_graphics_unmap_window, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
   GUARANTEE_WINDOW ();
   XUnmapWindow (window);
   XFlush ();
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-RAISE-WINDOW", Prim_x_graphics_raise_window, 0)
+DEFINE_PRIMITIVE ("X-GRAPHICS-RAISE-WINDOW", Prim_x_graphics_raise_window, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
   GUARANTEE_WINDOW ();
   XRaiseWindow (window);
   XFlush ();
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-LOWER-WINDOW", Prim_x_graphics_lower_window, 0)
+DEFINE_PRIMITIVE ("X-GRAPHICS-LOWER-WINDOW", Prim_x_graphics_lower_window, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
   GUARANTEE_WINDOW ();
   XLowerWindow (window);
   XFlush ();
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-CONFIGURE-WINDOW", Prim_x_graphics_configure_window, 4)
+DEFINE_PRIMITIVE ("X-GRAPHICS-CONFIGURE-WINDOW", Prim_x_graphics_configure_window, 4, 4, 0)
 {
   PRIMITIVE_HEADER (4);
 
@@ -265,12 +263,12 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-CONFIGURE-WINDOW", Prim_x_graphics_configure_windo
      (arg_nonnegative_integer (3)),
      (arg_nonnegative_integer (4)));
   XFlush ();
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
 /* Routines to control the backup raster. */
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-CREATE-RASTER", Prim_x_graphics_create_raster, 0)
+DEFINE_PRIMITIVE ("X-GRAPHICS-CREATE-RASTER", Prim_x_graphics_create_raster, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
@@ -279,16 +277,16 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-CREATE-RASTER", Prim_x_graphics_create_raster, 0)
   XhpRetainWindow (window, XhpCREATE_RASTER);
   XFlush ();
   raster_state = 1;
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-DELETE-RASTER", Prim_x_graphics_delete_raster, 0)
+DEFINE_PRIMITIVE ("X-GRAPHICS-DELETE-RASTER", Prim_x_graphics_delete_raster, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
   GUARANTEE_WINDOW ();
   delete_raster ();
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
 static void
@@ -303,7 +301,7 @@ delete_raster ()
   return;
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-START-RETAIN", Prim_x_graphics_start_retain, 0)
+DEFINE_PRIMITIVE ("X-GRAPHICS-START-RETAIN", Prim_x_graphics_start_retain, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
@@ -311,10 +309,10 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-START-RETAIN", Prim_x_graphics_start_retain, 0)
   GUARANTEE_RASTER ();
   XhpRetainWindow (window, XhpSTART_RETAIN);
   XFlush ();
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-STOP-RETAIN", Prim_x_graphics_stop_retain, 0)
+DEFINE_PRIMITIVE ("X-GRAPHICS-STOP-RETAIN", Prim_x_graphics_stop_retain, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
@@ -322,5 +320,5 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-STOP-RETAIN", Prim_x_graphics_stop_retain, 0)
   GUARANTEE_RASTER ();
   XhpRetainWindow (window, XhpSTOP_RETAIN);
   XFlush ();
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 }

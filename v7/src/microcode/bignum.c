@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,14 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.25 1987/11/17 08:06:58 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.26 1988/08/15 20:36:45 cph Rel $
 
    This file contains the procedures for handling BIGNUM Arithmetic. 
 */
 
 #include "scheme.h"
 #include <math.h>
-#include "primitive.h"
+#include "prims.h"
 #include "bignum.h"
 #include "flonum.h"
 #include "zones.h"
@@ -883,8 +883,7 @@ print_digits(name, num, how_many)
       Returns its argument if FIXNUM isn't a fixnum.  Otherwise 
       it returns the corresponding bignum.
 */
-Built_In_Primitive(Prim_Fix_To_Big, 1, "COERCE-FIXNUM-TO-BIGNUM", 0x67)
-Define_Primitive(Prim_Fix_To_Big, 1, "COERCE-FIXNUM-TO-BIGNUM")
+DEFINE_PRIMITIVE ("COERCE-FIXNUM-TO-BIGNUM", Prim_fix_to_big, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -897,8 +896,7 @@ Define_Primitive(Prim_Fix_To_Big, 1, "COERCE-FIXNUM-TO-BIGNUM")
    one. If BIGNUM is out of range, or isn't a bignum, returns
    BIGNUM. */
 
-Built_In_Primitive (Prim_Big_To_Fix, 1, "COERCE-BIGNUM-TO-FIXNUM", 0x68)
-Define_Primitive (Prim_Big_To_Fix, 1, "COERCE-BIGNUM-TO-FIXNUM")
+DEFINE_PRIMITIVE ("COERCE-BIGNUM-TO-FIXNUM", Prim_big_to_fix, 1, 1, 0)
 {
   Primitive_1_Arg ();
 
@@ -910,8 +908,7 @@ Define_Primitive (Prim_Big_To_Fix, 1, "COERCE-BIGNUM-TO-FIXNUM")
       Returns a list of numbers, in the range 0 through RADIX-1, which
       represent the BIGNUM in that radix.
 */
-Built_In_Primitive(Prim_Listify_Bignum, 2, "LISTIFY-BIGNUM", 0x50)
-Define_Primitive(Prim_Listify_Bignum, 2, "LISTIFY-BIGNUM")
+DEFINE_PRIMITIVE ("LISTIFY-BIGNUM", Prim_listify_bignum, 2, 2, 0)
 {
   fast bigdigit *TOP1, *size;
   quick Pointer *RFree;
@@ -929,7 +926,7 @@ Define_Primitive(Prim_Listify_Bignum, 2, "LISTIFY-BIGNUM")
   {
     Primitive_GC_If_Needed(2);
     *Free++ = Make_Unsigned_Fixnum(0);
-    *Free++ = NIL;
+    *Free++ = EMPTY_LIST;
     return Make_Pointer(TC_LIST, Free-2);
   }
   Sign_Extend(Arg2, pradix);
@@ -951,7 +948,7 @@ Define_Primitive(Prim_Listify_Bignum, 2, "LISTIFY-BIGNUM")
       TOP1--;
     }
   }
-  Free[CONS_CDR] = NIL;
+  Free[CONS_CDR] = EMPTY_LIST;
   Free = RFree;
   return Make_Pointer(TC_LIST, RFree-2);
 }
@@ -987,24 +984,20 @@ Define_Primitive(Prim_Listify_Bignum, 2, "LISTIFY-BIGNUM")
   return Result;							\
 }
 
-Built_In_Primitive(Prim_Plus_Bignum, 2, "PLUS-BIGNUM", 0x4C)
-Define_Primitive(Prim_Plus_Bignum, 2, "PLUS-BIGNUM")
+DEFINE_PRIMITIVE ("PLUS-BIGNUM", Prim_plus_bignum, 2, 2, 0)
 Binary_Primitive(plus_signed_bignum)
 
-Built_In_Primitive(Prim_Minus_Bignum, 2, "MINUS-BIGNUM", 0x4D)
-Define_Primitive(Prim_Minus_Bignum, 2, "MINUS-BIGNUM")
+DEFINE_PRIMITIVE ("MINUS-BIGNUM", Prim_minus_bignum, 2, 2, 0)
 Binary_Primitive(minus_signed_bignum)
 
-Built_In_Primitive(Prim_Multiply_Bignum, 2, "MULTIPLY-BIGNUM", 0x4E)
-Define_Primitive(Prim_Multiply_Bignum, 2, "MULTIPLY-BIGNUM")
+DEFINE_PRIMITIVE ("MULTIPLY-BIGNUM", Prim_multiply_bignum, 2, 2, 0)
 Binary_Primitive(multiply_signed_bignum)
 
 /* (DIVIDE-BIGNUM ONE-BIGNUM ANOTHER_BIGNUM)
  * returns a cons of the bignum quotient and remainder of both arguments.
  */
 
-Built_In_Primitive(Prim_Divide_Bignum, 2, "DIVIDE-BIGNUM", 0x4F)
-Define_Primitive(Prim_Divide_Bignum, 2, "DIVIDE-BIGNUM")
+DEFINE_PRIMITIVE ("DIVIDE-BIGNUM", Prim_divide_bignum, 2, 2, 0)
 {
   Pointer Result, *End_Of_First, *First, *Second, *Orig_Free=Free;
   Primitive_2_Args();
@@ -1068,16 +1061,13 @@ Define_Primitive(Prim_Divide_Bignum, 2, "DIVIDE-BIGNUM")
   return Make_Unsigned_Fixnum(((Test) ? 1 : 0));			\
 }
 
-Built_In_Primitive(Prim_Zero_Bignum, 1, "ZERO-BIGNUM?", 0x6F)
-Define_Primitive(Prim_Zero_Bignum, 1, "ZERO-BIGNUM?")
+DEFINE_PRIMITIVE ("ZERO-BIGNUM?", Prim_zero_bignum, 1, 1, 0)
 Unary_Predicate(LEN(ARG) == 0)
 
-Built_In_Primitive(Prim_Positive_Bignum, 1, "POSITIVE-BIGNUM?", 0x53)
-Define_Primitive(Prim_Positive_Bignum, 1, "POSITIVE-BIGNUM?")
+DEFINE_PRIMITIVE ("POSITIVE-BIGNUM?", Prim_positive_bignum, 1, 1, 0)
 Unary_Predicate((LEN(ARG) != 0) && POS_BIGNUM(ARG))
 
-Built_In_Primitive(Prim_Negative_Bignum, 1, "NEGATIVE-BIGNUM?", 0x80)
-Define_Primitive(Prim_Negative_Bignum, 1, "NEGATIVE-BIGNUM?")
+DEFINE_PRIMITIVE ("NEGATIVE-BIGNUM?", Prim_negative_bignum, 1, 1, 0)
 Unary_Predicate((LEN(ARG) != 0) && NEG_BIGNUM(ARG))
 
 /* All the binary bignum predicates take two arguments and return NIL
@@ -1101,14 +1091,11 @@ Unary_Predicate((LEN(ARG) != 0) && NEG_BIGNUM(ARG))
   return Make_Unsigned_Fixnum(result);					\
 }
 
-Built_In_Primitive(Prim_Equal_Bignum, 2, "EQUAL-BIGNUM?", 0x51)
-Define_Primitive(Prim_Equal_Bignum, 2, "EQUAL-BIGNUM?")
+DEFINE_PRIMITIVE ("EQUAL-BIGNUM?", Prim_equal_bignum, 2, 2, 0)
 Binary_Predicate(EQUAL)
 
-Built_In_Primitive(Prim_Greater_Bignum, 2, "GREATER-THAN-BIGNUM?", 0x82)
-Define_Primitive(Prim_Greater_Bignum, 2, "GREATER-THAN-BIGNUM?")
+DEFINE_PRIMITIVE ("GREATER-THAN-BIGNUM?", Prim_greater_bignum, 2, 2, 0)
 Binary_Predicate(ONE_BIGGER)
 
-Built_In_Primitive(Prim_Less_Bignum, 2, "LESS-THAN-BIGNUM?", 0x52)
-Define_Primitive(Prim_Less_Bignum, 2, "LESS-THAN-BIGNUM?")
+DEFINE_PRIMITIVE ("LESS-THAN-BIGNUM?", Prim_less_bignum, 2, 2, 0)
 Binary_Predicate(TWO_BIGGER)

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.h,v 1.4 1987/08/17 19:32:28 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.h,v 1.5 1988/08/15 20:37:27 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.42 1988/03/21 21:09:06 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.43 1988/08/15 20:35:56 cph Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -38,7 +38,7 @@ MIT in each case. */
 */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "trap.h"
 #include "lookup.h"		/* UNCOMPILED_VARIABLE */
 #define In_Fasdump
@@ -505,7 +505,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	fasdump_normal_setup();
 	*To++ = *Old;
 	*To++ = UNCOMPILED_VARIABLE;
-	*To++ = NIL;
+	*To++ = SHARP_F;
 	fasdump_transport_end(3);
 	fasdump_normal_end();
       }
@@ -558,15 +558,14 @@ end_dumploop:
    Dump an object into a file so that it can be loaded using
    BINARY-FASLOAD.  A spare heap is required for this operation.  The
    first argument is the object to be dumped.  The second is the
-   filename and the third a flag.  The flag, if #!TRUE, means that the
+   filename and the third a flag.  The flag, if #T, means that the
    object is to be dumped for reloading into constant space.  If the
-   flag is NIL, it means that it will be reloaded into the heap.  This
-   flag is currently ignored.  The primitive returns #!TRUE or NIL
+   flag is #F, it means that it will be reloaded into the heap.  This
+   flag is currently ignored.  The primitive returns #T or #F
    indicating whether it successfully dumped the object (it can fail
-   on an object that is too large).
-*/
+   on an object that is too large).  */
 
-DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
+DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 {
   Boolean success;
   long value, length, hlength, tlength, tsize;
@@ -618,7 +617,7 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
     fasdump_exit(0);
     if (value == PRIM_INTERRUPT)
     {
-      PRIMITIVE_RETURN(NIL);
+      PRIMITIVE_RETURN (SHARP_F);
     }
     else
     {
@@ -629,7 +628,7 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
   if (!success)
   {
     fasdump_exit(0);
-    PRIMITIVE_RETURN(NIL);
+    PRIMITIVE_RETURN (SHARP_F);
   }
 
   length = (Free - dumped_object);
@@ -649,7 +648,7 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
       (write(gc_file, ((char *) &table_start[0]), hlength) != hlength))
   {
     fasdump_exit(0);
-    PRIMITIVE_RETURN(NIL);
+    PRIMITIVE_RETURN (SHARP_F);
   }
 
   hlength = (sizeof(Pointer) * FASL_HEADER_LENGTH);
@@ -660,20 +659,19 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
       (write(gc_file, ((char *) &header[0]), hlength) != hlength))
   {
     fasdump_exit(0);
-    PRIMITIVE_RETURN(NIL);
+    PRIMITIVE_RETURN (SHARP_F);
   }
   PRIMITIVE_RETURN(fasdump_exit((sizeof(Pointer) *
 				 (length + tsize)) + hlength) ?
-		   TRUTH : NIL);
+		   SHARP_T : SHARP_F);
 }
 
 /* (DUMP-BAND PROCEDURE FILE-NAME)
    Saves all of the heap and pure space on FILE-NAME.  When the
    file is loaded back using BAND_LOAD, PROCEDURE is called with an
-   argument of NIL.
-*/
+   argument of #F.  */
 
-DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
+DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 {
   extern Pointer compiler_utilities;
   Pointer Combination, *table_start, *table_end, *saved_free;
@@ -699,7 +697,7 @@ DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
   saved_free = Free;
   Combination = Make_Pointer(TC_COMBINATION_1, Free);
   Free[COMB_1_FN] = Arg1;
-  Free[COMB_1_ARG_1] = NIL;
+  Free[COMB_1_ARG_1] = SHARP_F;
   Free += 2;
   *Free++ = Combination;
   *Free++ = compiler_utilities;
@@ -724,7 +722,7 @@ DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
 			Constant_Space,
 			table_start, table_length,
 			((long) (table_end - table_start)),
-			(compiler_utilities != NIL), true);
+			(compiler_utilities != SHARP_F), true);
   }
   /* The and is short-circuit, so it must be done in this order. */
   result = (Close_Dump_File() && result);
@@ -732,13 +730,13 @@ DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
   Free = saved_free;
   if (result)
   {
-    PRIMITIVE_RETURN(TRUTH);
+    PRIMITIVE_RETURN(SHARP_T);
   }
   else
   {
     extern int unlink();
 
     unlink(Scheme_String_To_C_String(Arg2));
-    PRIMITIVE_RETURN(NIL);
+    PRIMITIVE_RETURN(SHARP_F);
   }
 }

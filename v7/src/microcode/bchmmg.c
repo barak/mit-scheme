@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.41 1988/03/21 21:09:57 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.42 1988/08/15 20:36:24 cph Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -60,7 +60,7 @@ MIT in each case. */
 */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "bchgcc.h"
 
 /* Exports */
@@ -633,7 +633,7 @@ Fix_Weak_Chain()
 
   initialize_new_space_buffer();
   Low_Constant = Constant_Space;
-  while (Weak_Chain != NIL)
+  while (Weak_Chain != EMPTY_LIST)
   {
     Old_Weak_Cell = Get_Pointer(Weak_Chain);
     Scan = guarantee_in_memory(Get_Pointer(*Old_Weak_Cell++));
@@ -664,7 +664,7 @@ Fix_Weak_Chain()
       /* Normal pointer types, the broken heart is in the first word.
          Note that most special types are treated normally here.
 	 The BH code updates *Scan if the object has been relocated.
-	 Otherwise it falls through and we replace it with a full NIL.
+	 Otherwise it falls through and we replace it with a full #F.
 	 Eliminating this assignment would keep old data (pl. of datum).
        */
       case GC_Cell:
@@ -684,7 +684,7 @@ Fix_Weak_Chain()
 	  *Scan = Make_New_Pointer(OBJECT_TYPE(Temp), *Old);
 	  continue;
 	}
-	*Scan = NIL;
+	*Scan = SHARP_F;
 	continue;
 
       case GC_Compiled:
@@ -696,7 +696,7 @@ Fix_Weak_Chain()
 	  continue;
 	}
 	Compiled_BH(false, continue);
-	*Scan = NIL;
+	*Scan = SHARP_F;
 	continue;
 
       case GC_Undefined:
@@ -752,8 +752,8 @@ GC(initial_weak_chain)
   Terminate_Constant_Space(end_of_constant_area);
   Root = Free;
   The_Precious_Objects = Get_Fixed_Obj_Slot(Precious_Objects);
-  Set_Fixed_Obj_Slot(Precious_Objects, NIL);
-  Set_Fixed_Obj_Slot(Lost_Objects_Base, NIL);
+  Set_Fixed_Obj_Slot(Precious_Objects, SHARP_F);
+  Set_Fixed_Obj_Slot(Lost_Objects_Base, SHARP_F);
 
   *free_buffer++ = Fixed_Objects;
   *free_buffer++ = Make_Pointer(UNMARKED_HISTORY_TYPE, History);
@@ -761,7 +761,7 @@ GC(initial_weak_chain)
   *free_buffer++ = Undefined_Primitives_Arity;
   *free_buffer++ = Get_Current_Stacklet();
   *free_buffer++ = ((Prev_Restore_History_Stacklet == NULL) ?
-		    NIL :
+		    SHARP_F :
 		    Make_Pointer(TC_CONTROL_POINT,
 				 Prev_Restore_History_Stacklet));
   *free_buffer++ = Current_State_Point;
@@ -829,7 +829,7 @@ GC(initial_weak_chain)
 
   Set_Current_Stacklet(*Root);
   Root += 1;
-  if (*Root == NIL)
+  if (*Root == SHARP_F)
   {
     Prev_Restore_History_Stacklet = NULL;
     Root += 1;
@@ -850,7 +850,7 @@ GC(initial_weak_chain)
    the GC daemon if there is one.
 */
 
-DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_Garbage_Collect, 1)
+DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 {
   extern unsigned long gc_counter;
   Pointer GC_Daemon_Proc;
@@ -864,11 +864,11 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_Garbage_Collect, 1)
   }
   gc_counter += 1;
   GC_Reserve = Get_Integer(Arg1);
-  GC(NIL);
+  GC(EMPTY_LIST);
   CLEAR_INTERRUPT(INT_GC);
   Pop_Primitive_Frame(1);
   GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
-  if (GC_Daemon_Proc == NIL)
+  if (GC_Daemon_Proc == SHARP_F)
   {
    Will_Push(CONTINUATION_SIZE);
     Store_Return(RC_NORMAL_GC_DONE);

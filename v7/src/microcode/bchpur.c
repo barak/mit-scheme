@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.40 1988/05/06 09:09:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.41 1988/08/15 20:36:35 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,7 +43,7 @@ MIT in each case. */
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "bchgcc.h"
 
 #ifdef FLOATING_ALIGNMENT
@@ -374,7 +374,7 @@ purify(object, flag)
   long length, pure_length;
   Pointer value, *Result, *free_buffer, *block_start;
 
-  Weak_Chain = NIL;
+  Weak_Chain = EMPTY_LIST;
   free_buffer = initialize_free_buffer();
   block_start = Free_Constant;
 
@@ -387,7 +387,7 @@ purify(object, flag)
       dump_and_reset_free_buffer((free_buffer - free_buffer_top), NULL);
   }
 
-  if (flag == TRUTH)
+  if (flag == SHARP_T)
   {
     Result = purifyloop(initialize_scan_buffer(),
 			&free_buffer, &Free_Constant,
@@ -413,7 +413,7 @@ purify(object, flag)
     free_buffer = purify_header_overflow(free_buffer);
   }
 
-  if (flag == TRUTH)
+  if (flag == SHARP_T)
   {
     Result = purifyloop(initialize_scan_buffer(),
 			&free_buffer, &Free_Constant,
@@ -455,7 +455,7 @@ purify(object, flag)
   *block_start = Make_Non_Pointer(PURE_PART, (length - 1));
   GC(Weak_Chain);
   Set_Pure_Top();
-  return (TRUTH);
+  return (SHARP_T);
 }
 
 /* Stub.  Not needed by this version.  Terminates Scheme if invoked. */
@@ -484,13 +484,13 @@ Purify_Pass_2(info)
    the interpreter because some of its cached registers (eg. History)
    have changed.  */
 
-DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_Primitive_Purify, 3)
+DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
 {
   Pointer object, daemon;
   Pointer result;
   Primitive_3_Args();
 
-  if ((Arg2 != TRUTH) && (Arg2 != NIL))
+  if ((Arg2 != SHARP_T) && (Arg2 != SHARP_F))
     Primitive_Error(ERR_ARG_2_WRONG_TYPE);
   Arg_3_Type(TC_FIXNUM);
   Touch_In_Primitive(Arg1, object);
@@ -507,7 +507,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_Primitive_Purify, 3)
   }
   Pop_Primitive_Frame(3);
   daemon = Get_Fixed_Obj_Slot(GC_Daemon);
-  if (daemon == NIL)
+  if (daemon == SHARP_F)
   {
     Val = result;
     PRIMITIVE_ABORT(PRIM_POP_RETURN);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,10 +30,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.4 1988/08/10 05:45:38 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.5 1988/08/15 20:33:45 cph Exp $ */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "flonum.h"
 #include "Sgraph.h"
 #include "array.h"
@@ -48,7 +48,7 @@ MIT in each case. */
 
 float Color_Table[STARBASE_COLOR_TABLE_SIZE][3];
 
-Define_Primitive(Prim_Plot_Array_In_Box, 3, "PLOT-ARRAY-IN-BOX")
+DEFINE_PRIMITIVE ("PLOT-ARRAY-IN-BOX", Prim_plot_array_in_box, 3, 3, 0)
 {
   float Plotting_Box[4];   /* x_min, y_min, x_max, y_max */
   long Length; int fill_with_lines;
@@ -76,11 +76,11 @@ Define_Primitive(Prim_Plot_Array_In_Box, 3, "PLOT-ARRAY-IN-BOX")
   Orig_Free++;
   My_Store_Reduced_Flonum_Result(Scale, *Orig_Free);
   Orig_Free++;
-  *Orig_Free = NIL;
+  *Orig_Free = EMPTY_LIST;
   PRIMITIVE_RETURN(Answer);
 }
 
-Define_Primitive(Prim_Plot_Array_In_Box_With_Offset_Scale, 5, "PLOT-ARRAY-IN-BOX-WITH-OFFSET-SCALE")
+DEFINE_PRIMITIVE ("PLOT-ARRAY-IN-BOX-WITH-OFFSET-SCALE", Prim_plot_array_in_box_with_offset_scale, 5, 5, 0)
 {
   float Plotting_Box[4];   /* x_min, y_min, x_max, y_max */
   long Length; int fill_with_lines;
@@ -119,7 +119,7 @@ Define_Primitive(Prim_Plot_Array_In_Box_With_Offset_Scale, 5, "PLOT-ARRAY-IN-BOX
   Orig_Free++;
   My_Store_Reduced_Flonum_Result(Scale, *Orig_Free);
   Orig_Free++;
-  *Orig_Free = NIL;
+  *Orig_Free = EMPTY_LIST;
   PRIMITIVE_RETURN(Answer);
 }
 
@@ -237,7 +237,7 @@ Get_Plotting_Box(Plotting_Box, Arg2)
 		ERR_ARG_2_WRONG_TYPE);
     Touch_In_Primitive( Vector_Ref(List, CONS_CDR), List );
   }
-  if (List != NIL)
+  if (List != EMPTY_LIST)
     Primitive_Error(ERR_ARG_2_WRONG_TYPE);
 }
 
@@ -250,7 +250,7 @@ Plot_Box(Box)
   make_picture_current(screen_handle);
 }
 
-Define_Primitive(Prim_Clear_Box, 1, "CLEAR-BOX")
+DEFINE_PRIMITIVE ("CLEAR-BOX", Prim_clear_box, 1, 1, 0)
 {
   float Plotting_Box[4];   /* x_min, y_min, x_max, y_max */
   Primitive_1_Args();
@@ -258,7 +258,7 @@ Define_Primitive(Prim_Clear_Box, 1, "CLEAR-BOX")
   Arg_1_Type(TC_LIST);
   Get_Plotting_Box(Plotting_Box, Arg1);
   C_Clear_Rectangle(Plotting_Box);
-  PRIMITIVE_RETURN(NIL);
+  PRIMITIVE_RETURN(SHARP_F);
 }
 
 C_Clear_Rectangle(Box)
@@ -276,7 +276,7 @@ C_Clear_Rectangle(Box)
   clip_rectangle(screen_handle, sb_xmin, sb_xmax, sb_ymin, sb_ymax);
 }
 
-Define_Primitive(Prim_Box_Move, 2, "BOX-MOVE") 
+DEFINE_PRIMITIVE ("BOX-MOVE", Prim_box_move, 2, 2, 0) 
 {
   float From_Box[4];   /* x_min, y_min, x_max, y_max */
   float To_Box[4];
@@ -296,10 +296,10 @@ Define_Primitive(Prim_Box_Move, 2, "BOX-MOVE")
     Primitive_Error(ERR_ARG_2_BAD_RANGE);
   block_move(screen_handle, x_source, y_source, ((int) x_length), ((int) y_length), 
 	     x_dest, y_dest);
-  PRIMITIVE_RETURN(NIL);
+  PRIMITIVE_RETURN(SHARP_F);
 }
 
-Define_Primitive(Prim_Box_Rotate_Move, 2, "BOX-ROTATE-MOVE") 
+DEFINE_PRIMITIVE ("BOX-ROTATE-MOVE", Prim_box_rotate_move, 2, 2, 0) 
 {
   float From_Box[4];
   float   To_Box[4];
@@ -329,7 +329,7 @@ Define_Primitive(Prim_Box_Rotate_Move, 2, "BOX-ROTATE-MOVE")
   
   block_read(screen_handle, x_source, y_source, ((int) x_length), ((int) y_length), 
 	     x_dest, y_dest);
-  PRIMITIVE_RETURN(NIL);
+  PRIMITIVE_RETURN(SHARP_F);
 }
 
 
@@ -356,7 +356,7 @@ Define_Primitive(Prim_Box_Rotate_Move, 2, "BOX-ROTATE-MOVE")
   ;; They call C_image_psam_atxy_wmm to do the actual drawing.
   */
 
-Define_Primitive(Prim_image_psam_atxy_wmm, 5, "IMAGE-PSAM-ATXY-WMM")
+DEFINE_PRIMITIVE ("IMAGE-PSAM-ATXY-WMM", Prim_image_psam_atxy_wmm, 5, 5, 0)
 { REAL x_at, y_at;
   Pointer Pnrows, Pncols, Prest, Parray;
   Pointer *Orig_Free;
@@ -372,7 +372,8 @@ Define_Primitive(Prim_image_psam_atxy_wmm, 5, "IMAGE-PSAM-ATXY-WMM")
   Pncols = Vector_Ref(Prest, CONS_CAR);
   Prest = Vector_Ref(Prest, CONS_CDR);
   Parray = Vector_Ref(Prest, CONS_CAR);
-  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  if (Vector_Ref(Prest, CONS_CDR) != EMPTY_LIST)
+    Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   Array = Scheme_Array_To_C_Array(Parray);                                         /* ARRAY */
   Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);                         /* NROWS */
@@ -398,10 +399,10 @@ Define_Primitive(Prim_image_psam_atxy_wmm, 5, "IMAGE-PSAM-ATXY-WMM")
   C_image_psam_atxy_wmm(Array, pdata, nrows, ncols,
 			((float) x_at), ((float) y_at), 
 			Min, Max);
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-Define_Primitive(Prim_image_psam_atxy_womm, 5, "IMAGE-PSAM-ATXY-WOMM")
+DEFINE_PRIMITIVE ("IMAGE-PSAM-ATXY-WOMM", Prim_image_psam_atxy_womm, 5, 5, 0)
 { REAL x_at, y_at;
   Pointer Pnrows, Pncols, Prest, Parray;
   Pointer *Orig_Free;
@@ -417,7 +418,8 @@ Define_Primitive(Prim_image_psam_atxy_womm, 5, "IMAGE-PSAM-ATXY-WOMM")
   Pncols = Vector_Ref(Prest, CONS_CAR);
   Prest = Vector_Ref(Prest, CONS_CDR);
   Parray = Vector_Ref(Prest, CONS_CAR);
-  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  if (Vector_Ref(Prest, CONS_CDR) != EMPTY_LIST)
+    Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   Array = Scheme_Array_To_C_Array(Parray); /* ARRAY */
   Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE); /* NROWS */
@@ -442,10 +444,10 @@ Define_Primitive(Prim_image_psam_atxy_womm, 5, "IMAGE-PSAM-ATXY-WOMM")
   C_image_psam_atxy_womm(Array, pdata, nrows, ncols,
 			 ((float) x_at), ((float) y_at),
 			 Min, Max);
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-Define_Primitive(Prim_image_ht_od_atxy_wmm, 7, "IMAGE-HT-OD-ATXY-WMM")
+DEFINE_PRIMITIVE ("IMAGE-HT-OD-ATXY-WMM", Prim_image_ht_od_atxy_wmm, 7, 7, 0)
 { REAL x_at, y_at;
   Pointer Pnrows, Pncols, Prest, Parray;
   Pointer *Orig_Free;
@@ -461,7 +463,8 @@ Define_Primitive(Prim_image_ht_od_atxy_wmm, 7, "IMAGE-HT-OD-ATXY-WMM")
   Pncols = Vector_Ref(Prest, CONS_CAR);
   Prest = Vector_Ref(Prest, CONS_CDR);
   Parray = Vector_Ref(Prest, CONS_CAR);
-  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  if (Vector_Ref(Prest, CONS_CDR) != EMPTY_LIST)
+    Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   Array = Scheme_Array_To_C_Array(Parray);                                         /* ARRAY */
   Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);                         /* NROWS */
@@ -491,10 +494,10 @@ Define_Primitive(Prim_image_ht_od_atxy_wmm, 7, "IMAGE-HT-OD-ATXY-WMM")
   C_image_ht_od_atxy_wmm(Array, pdata, nrows,ncols,
 			 ((float) x_at), ((float) y_at),  Min,Max,
 			 HG,ODmethod);
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-Define_Primitive(Prim_image_ht_bn_atxy_wmm, 7, "IMAGE-HT-BN-ATXY-WMM")
+DEFINE_PRIMITIVE ("IMAGE-HT-BN-ATXY-WMM", Prim_image_ht_bn_atxy_wmm, 7, 7, 0)
 { REAL x_at, y_at;
   Pointer Pnrows, Pncols, Prest, Parray;
   Pointer *Orig_Free;
@@ -511,7 +514,8 @@ Define_Primitive(Prim_image_ht_bn_atxy_wmm, 7, "IMAGE-HT-BN-ATXY-WMM")
   Pncols = Vector_Ref(Prest, CONS_CAR);
   Prest = Vector_Ref(Prest, CONS_CDR);
   Parray = Vector_Ref(Prest, CONS_CAR);
-  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  if (Vector_Ref(Prest, CONS_CDR) != EMPTY_LIST)
+    Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   Array = Scheme_Array_To_C_Array(Parray);                                         /* ARRAY */
   Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);                         /* NROWS */
@@ -547,12 +551,12 @@ Define_Primitive(Prim_image_ht_bn_atxy_wmm, 7, "IMAGE-HT-BN-ATXY-WMM")
   C_image_ht_bn_atxy_wmm(Array, pdata, nrows,ncols,
 			 ((float) x_at), ((float) y_at),  Min,Max,
 			 HG,BNmethod, er_rows);
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
 #define MINTEGER long
 
-Define_Primitive(Prim_image_ht_ibn_atxy_wmm, 8, "IMAGE-HT-IBN-ATXY-WMM")
+DEFINE_PRIMITIVE ("IMAGE-HT-IBN-ATXY-WMM", Prim_image_ht_ibn_atxy_wmm, 8, 8, 0)
 { REAL x_at, y_at;
   Pointer Pnrows, Pncols, Prest, Parray;
   Pointer *Orig_Free;
@@ -569,7 +573,8 @@ Define_Primitive(Prim_image_ht_ibn_atxy_wmm, 8, "IMAGE-HT-IBN-ATXY-WMM")
   Pncols = Vector_Ref(Prest, CONS_CAR);
   Prest = Vector_Ref(Prest, CONS_CDR);
   Parray = Vector_Ref(Prest, CONS_CAR);
-  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  if (Vector_Ref(Prest, CONS_CDR) != EMPTY_LIST)
+    Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   Array = Scheme_Array_To_C_Array(Parray);                                         /* ARRAY */
   Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);                         /* NROWS */
@@ -608,7 +613,7 @@ Define_Primitive(Prim_image_ht_ibn_atxy_wmm, 8, "IMAGE-HT-IBN-ATXY-WMM")
   C_image_ht_ibn_atxy_wmm(Array, pdata, nrows,ncols,
 			  ((float) x_at), ((float) y_at),  Min,Max,
 			  HG,BNmethod, er_rows, PREC_SCALE);
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
 
@@ -627,7 +632,7 @@ Define_Primitive(Prim_image_ht_ibn_atxy_wmm, 8, "IMAGE-HT-IBN-ATXY-WMM")
 /* ARGS = (image x_at y_at magnification) magnification can be 1, 2, or 3 
  */
 
-Define_Primitive(Prim_Draw_Magnify_Image_At_XY, 4, "DRAW-MAGNIFY-IMAGE-AT-XY")
+DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY", Prim_draw_magnify_image_at_xy, 4, 4, 0)
 {
   REAL x_at, y_at;
   Pointer Pnrows, Pncols, Prest, Parray, Answer;
@@ -646,7 +651,8 @@ Define_Primitive(Prim_Draw_Magnify_Image_At_XY, 4, "DRAW-MAGNIFY-IMAGE-AT-XY")
   Pncols = Vector_Ref(Prest, CONS_CAR);
   Prest = Vector_Ref(Prest, CONS_CDR);
   Parray = Vector_Ref(Prest, CONS_CAR);
-  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  if (Vector_Ref(Prest, CONS_CDR) != EMPTY_LIST)
+    Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   Array = Scheme_Array_To_C_Array(Parray);                                         /* ARRAY */
   Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);                         /* NROWS */
@@ -676,11 +682,11 @@ Define_Primitive(Prim_Draw_Magnify_Image_At_XY, 4, "DRAW-MAGNIFY-IMAGE-AT-XY")
 						 ((float) x_at), ((float) y_at),
 						 Offset, Scale,
 						 Magnification);    
-    PRIMITIVE_RETURN(TRUTH);
+    PRIMITIVE_RETURN(SHARP_T);
   }
 }
 
-Define_Primitive(Prim_Draw_Magnify_Image_At_XY_With_Min_Max, 6, "DRAW-MAGNIFY-IMAGE-AT-XY-WITH-MIN-MAX")
+DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY-WITH-MIN-MAX", Prim_draw_magnify_image_at_xy_with_min_max, 6, 6, 0)
 {
   REAL x_at, y_at;
   Pointer Pnrows, Pncols, Prest, Parray, Answer;
@@ -698,7 +704,7 @@ Define_Primitive(Prim_Draw_Magnify_Image_At_XY_With_Min_Max, 6, "DRAW-MAGNIFY-IM
   Pncols = Vector_Ref(Prest, CONS_CAR);
   Prest = Vector_Ref(Prest, CONS_CDR);
   Parray = Vector_Ref(Prest, CONS_CAR);
-  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  if (Vector_Ref(Prest, CONS_CDR) != EMPTY_LIST) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   Array = Scheme_Array_To_C_Array(Parray); /* ARRAY */
   Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE); /* NROWS */
@@ -731,10 +737,10 @@ Define_Primitive(Prim_Draw_Magnify_Image_At_XY_With_Min_Max, 6, "DRAW-MAGNIFY-IM
 					       ((float) x_at), ((float) y_at), 
 					       Offset, Scale,
 					       Magnification);
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-Define_Primitive(Prim_Draw_Magnify_Image_At_XY_Only_Between_Min_Max, 6, "DRAW-MAGNIFY-IMAGE-AT-XY-ONLY-BETWEEN-MIN-MAX")
+DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY-ONLY-BETWEEN-MIN-MAX", Prim_draw_magnify_image_at_xy_only_between_min_max, 6, 6, 0)
 {
   REAL x_at, y_at;
   Pointer Pnrows, Pncols, Prest, Parray, Answer;
@@ -752,7 +758,7 @@ Define_Primitive(Prim_Draw_Magnify_Image_At_XY_Only_Between_Min_Max, 6, "DRAW-MA
   Pncols = Vector_Ref(Prest, CONS_CAR);
   Prest = Vector_Ref(Prest, CONS_CDR);
   Parray = Vector_Ref(Prest, CONS_CAR);
-  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  if (Vector_Ref(Prest, CONS_CDR) != EMPTY_LIST) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   Array = Scheme_Array_To_C_Array(Parray);                                         /* ARRAY */
   Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);                         /* NROWS */
@@ -784,7 +790,7 @@ Define_Primitive(Prim_Draw_Magnify_Image_At_XY_Only_Between_Min_Max, 6, "DRAW-MA
 						    ((float) x_at), ((float) y_at), 
 						    Offset, Scale,
 						    Magnification);
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
 
@@ -1344,7 +1350,7 @@ Image_Draw_Magnify_N_Times_With_Offset_Scale_Only(Array, pdata, nrows, ncols,
 
 /*_______________________ Grey Level Manipulations _____________________ */
 
-Define_Primitive(Prim_New_Color, 4, "NEW-COLOR")
+DEFINE_PRIMITIVE ("NEW-COLOR", Prim_new_color, 4, 4, 0)
 { int i, err;
   long index;
   float red, green, blue;
@@ -1360,20 +1366,20 @@ Define_Primitive(Prim_New_Color, 4, "NEW-COLOR")
   Color_Table[index][1] = green;
   Color_Table[index][2] = blue;
   define_color_table(screen_handle, STARBASE_COLOR_TABLE_START, STARBASE_COLOR_TABLE_SIZE, Color_Table);
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-Define_Primitive(Prim_Inquire_Colors, 0, "INQUIRE-COLORS")
+DEFINE_PRIMITIVE ("INQUIRE-COLORS", Prim_inquire_colors, 0, 0, 0)
 { int i;
   Primitive_0_Args();
 
   inquire_color_table(screen_handle, STARBASE_COLOR_TABLE_START, STARBASE_COLOR_TABLE_SIZE, Color_Table);
   for (i = 0; i < STARBASE_COLOR_TABLE_SIZE; i++) 
     printf("%d  %f %f %f\n", i, Color_Table[i][0], Color_Table[i][1], Color_Table[i][2]); /* implem. dependent */
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-Define_Primitive(Prim_Inquire_Color, 1, "INQUIRE-COLOR")
+DEFINE_PRIMITIVE ("INQUIRE-COLOR", Prim_inquire_color, 1, 1, 0)
 { int i; int index;
   Pointer Answer, *Orig_Free;
   REAL red, green, blue;
@@ -1401,11 +1407,11 @@ Define_Primitive(Prim_Inquire_Color, 1, "INQUIRE-COLOR")
   Orig_Free++;
   My_Store_Reduced_Flonum_Result(blue, *Orig_Free);
   Orig_Free++;
-  *Orig_Free = NIL;
+  *Orig_Free = EMPTY_LIST;
   PRIMITIVE_RETURN(Answer);
 }
 
-Define_Primitive(Prim_Read_Colors_From_File, 1, "READ-COLORS-FROM-FILE")
+DEFINE_PRIMITIVE ("READ-COLORS-FROM-FILE", Prim_read_colors_from_file, 1, 1, 0)
 { long i;
   FILE *fopen(), *fp;
   char *file_string;
@@ -1426,10 +1432,10 @@ Define_Primitive(Prim_Read_Colors_From_File, 1, "READ-COLORS-FROM-FILE")
   Close_File(fp);		/*    fflush(stdout); */
   define_color_table(screen_handle, STARBASE_COLOR_TABLE_START,
 		     STARBASE_COLOR_TABLE_SIZE, Color_Table);
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-Define_Primitive(Prim_Save_Colors_In_File, 1, "SAVE-COLORS-IN-FILE")
+DEFINE_PRIMITIVE ("SAVE-COLORS-IN-FILE", Prim_save_colors_in_file, 1, 1, 0)
 { long i;
   FILE *fopen(), *fp;
   char *file_string;
@@ -1444,6 +1450,6 @@ Define_Primitive(Prim_Save_Colors_In_File, 1, "SAVE-COLORS-IN-FILE")
   for (i = 0; i < STARBASE_COLOR_TABLE_SIZE; i++) 
     fprintf(fp,"%f %f %f\n", Color_Table[i][0], Color_Table[i][1], Color_Table[i][2]);
   Close_File(fp);                 
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 /* END */

@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.34 1988/08/15 20:31:50 cph Exp $
+
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,11 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.33 1987/12/23 04:48:05 cph Rel $
- *
- * Preprocessor to find and declare defined primitives.
- *
- */
+/* Preprocessor to find and declare defined primitives.  */
 
 /*
  * This program searches for a particular token which tags primitive
@@ -75,12 +73,12 @@ MIT in each case. */
 #include <stdio.h>
 
 /* For macros toupper, isalpha, etc,
-   supposedly on the standard library.
-*/
+   supposedly on the standard library.  */
 
 #include <ctype.h>
 
-extern int strcmp(), strlen();
+extern int strcmp ();
+extern int strlen ();
 
 typedef int boolean;
 #define TRUE 1
@@ -89,976 +87,1129 @@ typedef int boolean;
 #ifdef vms
 /* VMS version 3 has no void. */
 /* #define void */
-#define normal_exit() return
+#define NORMAL_EXIT() return
 #else
-#define normal_exit() exit(0)
+#define NORMAL_EXIT() exit(0)
 #endif
 
 /* The 4.2 bsd vax compiler has a bug which forces the following. */
 
-#define pseudo_void	int
+#define pseudo_void int
 
-#define error_exit(do_it)						\
-{									\
-  if (do_it)								\
-    dump(TRUE);								\
-  exit(1);								\
+char *
+xmalloc (length)
+     int length;
+{
+  char * result;
+  extern char * malloc ();
+
+  result = (malloc (length));
+  if (result == NULL)
+    {
+      fprintf (stderr, "malloc: unable to allocate %d bytes\n", length);
+      exit (1);
+    }
+  return (result);
 }
 
-void dump();
-
+char *
+xrealloc (ptr, length)
+     char * ptr;
+     int length;
+{
+  char * result;
+  extern char * realloc ();
+
+  result = (realloc (ptr, length));
+  if (result == NULL)
+    {
+      fprintf (stderr, "realloc: unable to allocate %d bytes\n", length);
+      exit (1);
+    }
+  return (result);
+}
+
+#define FIND_INDEX_LENGTH(index, size)					\
+{									\
+  char index_buffer [64];						\
+									\
+  sprintf (index_buffer, "%x", (index));				\
+  (size) = (strlen (index_buffer));					\
+}
+
 #ifdef DEBUGGING
 #define dprintf(one, two) fprintf(stderr, one, two)
 #else
 #define dprintf(one, two)
 #endif
-
+
 /* Maximum number of primitives that can be handled. */
 
-#ifndef BUFFER_SIZE
-#define BUFFER_SIZE	0x400
-#endif
+boolean built_in_p;
 
-static boolean Built_in_p;
-static long Built_in_table_size;
+char * token_array [4];
+char default_token [] = "Define_Primitive";
+char default_token_alternate [] = "DEFINE_PRIMITIVE";
+char built_in_token [] = "Built_In_Primitive";
+char external_token [] = "Define_Primitive";
 
-static char *token_array[4];
-static char Default_Token[] = "Define_Primitive";
-static char default_token_alternate[] = "DEFINE_PRIMITIVE";
-static char Built_in_Token[] = "Built_In_Primitive";
-static char External_Token[] = "Define_Primitive";
+typedef pseudo_void (* TOKEN_PROCESSOR) ();
+TOKEN_PROCESSOR token_processors [4];
 
-typedef pseudo_void (*TOKEN_PROCESSOR) ();
-static TOKEN_PROCESSOR token_processors[4];
+char * the_kind;
+char default_kind [] = "Primitive";
+char built_in_kind [] = "Primitive";
+char external_kind [] = "External";
 
-static char *The_Kind;
-static char Default_Kind[] = "Primitive";
-static char Built_in_Kind[] = "Primitive";
-static char External_Kind[] = "External";
+char * the_variable;
+char default_variable [] = "MAX_PRIMITIVE";
+char built_in_variable [] = "MAX_PRIMITIVE";
+char external_variable [] = "MAX_EXTERNAL_PRIMITIVE";
 
-static char *The_Variable;
-static char Default_Variable[] = "MAX_PRIMITIVE";
-static char Built_in_Variable[] = "MAX_PRIMITIVE";
-static char External_Variable[] = "MAX_EXTERNAL_PRIMITIVE";
+FILE * input;
+FILE * output;
+char * name;
+char * file_name;
 
-static FILE *input, *output;
-static char *name;
-static char *file_name;
+struct descriptor
+  {
+    char * c_name;		/* The C name of the function */
+    char * arity;		/* Number of arguments */
+    char * scheme_name;		/* Scheme name of the primitive */
+    char * documentation;	/* Documentation string */
+    char * file_name;		/* File where found. */
+  };
+
+int buffer_index;
+int buffer_length;
+struct descriptor (* data_buffer) [];
+struct descriptor ** result_buffer;
+
+int max_scheme_name_length;
+int max_c_name_length;
+int max_arity_length;
+int max_documentation_length;
+int max_file_name_length;
+int max_index_length;
+
+struct descriptor dummy_entry =
+  {"Dummy_Primitive", "0", "DUMMY-PRIMITIVE", "", "Findprim.c"};
+
+char dummy_error_string [] =
+  "Microcode_Termination (TERM_BAD_PRIMITIVE)";
+
+struct descriptor inexistent_entry =
+  {"Prim_inexistent", "0", "INEXISTENT-PRIMITIVE", "", "Findprim.c"};
+
+char inexistent_error_string [] =
+  "signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE)";
+
+/* forward references */
+
+TOKEN_PROCESSOR scan ();
+boolean whitespace ();
+int compare_descriptors ();
+int read_index ();
+pseudo_void create_alternate_entry ();
+pseudo_void create_builtin_entry ();
+pseudo_void create_normal_entry ();
+void dump ();
+void grow_data_buffer ();
+void grow_token_buffer ();
+void initialize_builtin ();
+void initialize_data_buffer ();
+void initialize_default ();
+void initialize_external ();
+void initialize_token_buffer ();
+void mergesort ();
+void print_procedure ();
+void print_primitives ();
+void print_spaces ();
+void print_entry ();
+void process ();
+void process_argument ();
+void scan_to_token_start ();
+void skip_token ();
+void sort ();
+void update_from_entry ();
 
-main(argc, argv)
+void
+main (argc, argv)
      int argc;
-     char *argv[];
+     char * argv [];
 {
-  void process_argument(), sort();
-  FILE *fopen();
-
   name = argv[0];
 
   /* Check for specified output file */
 
-  if ((argc >= 2) && (strcmp("-o", argv[1]) == 0))
-  {
-    if ((output = fopen(argv[2], "w")) == NULL)
+  if ((argc >= 2) && ((strcmp ("-o", argv[1])) == 0))
     {
-      fprintf(stderr, "Error: %s can't open %s\n", name, argv[2]);
-      error_exit(FALSE);
+      output = (fopen (argv[2], "w"));
+      if (output == NULL)
+	{
+	  fprintf(stderr, "Error: %s can't open %s\n", name, argv[2]);
+	  exit (1);
+	}
+      argv += 2;
+      argc -= 2;
     }
-    argv += 2;
-    argc -= 2;
-  }
   else
     output = stdout;
 
+  initialize_data_buffer ();
+  initialize_token_buffer ();
+
   /* Check whether to produce the built-in table instead.
      The argument after the option letter is the size of the
-     table to build.
-   */
+     table to build.  */
 
-  if ((argc >= 2) && (strcmp("-b", argv[1]) == 0))
-  {
-    void initialize_builtin();
-
-    initialize_builtin(argv[2]);
-    argv += 2;
-    argc -= 2;
-  }
-  else if ((argc >= 2) && (strcmp("-e", argv[1]) == 0))
-  {
-    void initialize_external();
-
-    initialize_external();
-  }
+  if ((argc >= 2) && ((strcmp ("-b", argv[1])) == 0))
+    {
+      initialize_builtin (argv[2]);
+      argv += 2;
+      argc -= 2;
+    }
+  else if ((argc >= 1) && ((strcmp ("-e", argv[1])) == 0))
+    {
+      initialize_external ();
+      argv += 1;
+      argc -= 1;
+    }
   else
-  {
-    void initialize_default();
+    initialize_default ();
 
-    initialize_default();
-  }
-
   /* Check whether there are any files left. */
-
   if (argc == 1)
-  {
-    dump(FALSE);
-    normal_exit();
-  }
-
-  if ((argc >= 2) && (strcmp("-l", argv[1]) == 0))
-  {
-    /* The list of files is stored in another file. */
-
-    char fn[100];
-    FILE *file_list_file;
-
-    if ((file_list_file = fopen(argv[2], "r")) == NULL)
     {
-      fprintf(stderr, "Error: %s can't open %s\n", name, argv[2]);
-      error_exit(TRUE);
+      dump (FALSE);
+      goto done;
     }
-    else
-    {
-      while (fgets(fn, 100, file_list_file) != NULL)
-      {
-	int i;
 
-	i = strlen(fn) - 1;
-	if (i >=0 && fn[i] == '\n')
+  if ((argc >= 2) && ((strcmp ("-l", argv[1])) == 0))
+    {
+      /* The list of files is stored in another file. */
+
+      char fn [1024];
+      FILE * file_list_file;
+
+      file_list_file = (fopen (argv[2], "r"));
+      if (file_list_file == NULL)
 	{
-	  fn[i] = '\0';
-	  i--;
+	  fprintf (stderr, "Error: %s can't open %s\n", name, argv[2]);
+	  dump (TRUE);
+	  exit (1);
 	}
-	if (i > 0 && fn[0] != ';')
-	  process_argument(fn);
-      }
-      fclose(file_list_file);
+      while ((fgets (fn, 1024, file_list_file)) != NULL)
+	{
+	  int i;
+
+	  i = (strlen (fn)) - 1;
+	  if ((i >= 0) && (fn[i] == '\n'))
+	    {
+	      fn[i] = '\0';
+	      i -= 1;
+	    }
+	  if ((i > 0) && (fn[0] != ';'))
+	    {
+	      char * arg;
+
+	      arg = (xmalloc ((strlen (fn)) + 1));
+	      strcpy (arg, fn);
+	      process_argument (arg);
+	    }
+	}
+      fclose (file_list_file);
     }
-  }
   else
-  {
     /* The list of files is in the argument list. */
+    while ((--argc) > 0)
+      process_argument (*++argv);
 
-    while (--argc > 0)
+  if (! built_in_p)
     {
-      process_argument(*++argv);
+      dprintf ("About to sort %s\n", "");
+      sort ();
     }
-  }
-  if (!Built_in_p)
-  {
-    dprintf("About to sort %s\n", "");
-    sort();
-  }
-  dprintf("About to dump %s\n", "");
-  dump(TRUE);
-  if (output != stdout)
-  {
-    fclose(output);
-  }
-  normal_exit();
-}
+  dprintf ("About to dump %s\n", "");
+  dump (TRUE);
 
-void process_argument(fn)
-    char *fn;
-{
-  void process();
-  
-  file_name = fn;
-  if (strcmp("-", file_name)==0)
-  {
-    input = stdin;
-    file_name = "stdin";
-    dprintf("About to process %s\n", "STDIN");
-    process();
-  }
-  else if ((input = fopen(file_name, "r")) == NULL)
-  {
-    fprintf(stderr, "Error: %s can't open %s\n", name, file_name);
-    error_exit(TRUE);
-  }
-  else 
-  {
-    dprintf("About to process %s\n", file_name);
-    process();
-    fclose(input);
-  }
+ done:
+  if (output != stdout)
+    fclose (output);
+  NORMAL_EXIT ();
 }
 
+void
+process_argument (fn)
+    char * fn;
+{
+  file_name = fn;
+  if ((strcmp ("-", file_name)) == 0)
+    {
+      input = stdin;
+      file_name = "stdin";
+      dprintf ("About to process %s\n", "STDIN");
+      process ();
+    }
+  else if ((input = (fopen (file_name, "r"))) == NULL)
+    {
+      fprintf (stderr, "Error: %s can't open %s\n", name, file_name);
+      dump (TRUE);
+      exit (1);
+    }
+  else 
+    {
+      dprintf ("About to process %s\n", file_name);
+      process ();
+      fclose (input);
+    }
+  return;
+}
+
 /* Search for tokens and when found, create primitive entries. */
 
 void
-process()
+process ()
 {
-  TOKEN_PROCESSOR scan();
   TOKEN_PROCESSOR processor;
 
   while (TRUE)
     {
       processor = (scan ());
-      if (processor == NULL)
-	break;
-      dprintf("Process: place found.%s\n", "");
-      (*processor)();
+      if (processor == NULL) break;
+      dprintf ("Process: place found.%s\n", "");
+      (* processor) ();
     }
   return;
 }
-
+
 /* Search for token and stop when found.  If you hit open comment
  * character, read until you hit close comment character.
  * *** FIX *** : It is not a complete C parser, thus it may be fooled,
  *      currently the token must always begin a line.
-*/
+ */
 
 TOKEN_PROCESSOR
 scan ()
 {
   register int c;
-  char compare_buffer[1024];
+  char compare_buffer [1024];
 
   c = '\n';
-  while(c != EOF)
-  {
-    switch(c)
-    { case '/':
-	if ((c = getc(input))  == '*')
+  while (c != EOF)
+    {
+      switch (c)
 	{
-	  c = getc(input);
-	  while (TRUE)
-	  { while (c != '*')
-	    { if (c == EOF)
-	      { fprintf(stderr,
-			"Error: EOF in comment in file %s, or %s confused\n",
-			file_name, name);
-		error_exit(TRUE);
-	      }
-	      c = getc(input);
+	case '/':
+	  if ((c = (getc (input)))  == '*')
+	    {
+	      c = (getc (input));
+	      while (TRUE)
+		{
+		  while (c != '*')
+		    {
+		      if (c == EOF)
+			{
+			  fprintf (stderr,
+				   "Error: EOF in comment in file %s, or %s confused\n",
+				   file_name, name);
+			  dump (TRUE);
+			  exit (1);
+			}
+		      c = (getc (input));
+		    }
+		  c = (getc (input));
+		  if (c == '/') break;
+		}
 	    }
-	    if ((c = getc(input)) == '/') break;
-	  }
-	}
-	else if (c != '\n') break;
+	  else if (c != '\n') break;
 
-      case '\n':
-	{
+	case '\n':
 	  {
-	    register char *scan_buffer;
+	    {
+	      register char * scan_buffer;
 
-	    scan_buffer = (& (compare_buffer [0]));
-	    while (TRUE)
-	      {
-		c = (getc (input));
-		if (c == EOF)
-		  return (NULL);
-		else if ((isalnum (c)) || (c == '_'))
-		  (*scan_buffer++) = c;
-		else
-		  {
-		    ungetc (c, input);
-		    (*scan_buffer++) = '\0';
-		    break;
-		  }
-	      }
-	  }
-	  {
-	    register char **scan_tokens;
+	      scan_buffer = (& (compare_buffer [0]));
+	      while (TRUE)
+		{
+		  c = (getc (input));
+		  if (c == EOF)
+		    return (NULL);
+		  else if ((isalnum (c)) || (c == '_'))
+		    (*scan_buffer++) = c;
+		  else
+		    {
+		      ungetc (c, input);
+		      (*scan_buffer++) = '\0';
+		      break;
+		    }
+		}
+	    }
+	    {
+	      register char **scan_tokens;
 
-	    for (scan_tokens = (& (token_array [0]));
-		 ((*scan_tokens) != NULL);
-		 scan_tokens += 1)
-	      if ((strcmp ((& (compare_buffer [0])), (*scan_tokens))) == 0)
-		return (token_processors [(scan_tokens - token_array)]);
+	      for (scan_tokens = (& (token_array [0]));
+		   ((* scan_tokens) != NULL);
+		   scan_tokens += 1)
+		if ((strcmp ((& (compare_buffer [0])), (* scan_tokens))) == 0)
+		  return (token_processors [scan_tokens - token_array]);
+	    }
+	    break;
 	  }
-	  break;
+
+	default: {}
 	}
-
-      default: {}
+      c = (getc (input));
     }
-    c = getc(input);
-  }
   return (NULL);
 }
 
-boolean
-whitespace(c)
-     int c;
+/* Output Routines */
+
+void
+dump (check)
+     boolean check;
 {
-  switch(c)
-  { case ' ':
+  register int max_index;
+  register int count;
+
+  FIND_INDEX_LENGTH (buffer_index, max_index_length);
+  max_index = (buffer_index - 1);
+
+  /* Print header. */
+  fprintf (output, "/%c Emacs: This is -*- C -*- code. %c/\n\n", '*', '*');
+  fprintf (output, "/%c %s primitive declarations %c/\n\n",
+	   '*', ((built_in_p) ? "Built in" : "User defined" ), '*');
+  fprintf (output, "#include \"usrdef.h\"\n\n");
+  fprintf (output,
+	   "long %s = %d; /%c = 0x%x %c/\n\n",
+	   the_variable, max_index, '*', max_index, '*');
+
+  if (built_in_p)
+    fprintf (output,
+	     "/%c The number of implemented primitives is %d. %c/\n\n",
+	     '*', buffer_index, '*');
+
+  if (buffer_index == 0)
+    {
+      if (check)
+	fprintf (stderr, "No primitives found!\n");
+
+      /* C does not understand the empty array, thus it must be faked. */
+      fprintf (output, "/%c C does not understand the empty array, ", '*');
+      fprintf (output, "thus it must be faked. %c/\n\n", '*');
+
+      /* Dummy entry */
+      (result_buffer [0]) = (& dummy_entry);
+      update_from_entry (& dummy_entry);
+      print_procedure (output, (& dummy_entry), (& (dummy_error_string [0])));
+      fprintf (output, "\n");
+    }
+  else
+    {
+      /* Print declarations. */
+      fprintf (output, "extern Pointer\n");
+      for (count = 0; (count < max_index); count += 1)
+	fprintf (output, "       %s (),\n",
+		 (((* data_buffer) [count]) . c_name));
+      fprintf (output, "       %s ();\n\n",
+	       (((* data_buffer) [max_index]) . c_name));
+    }
+
+  print_procedure
+    (output, (& inexistent_entry), (& (inexistent_error_string [0])));
+  print_primitives (output, buffer_index);
+  return;
+}
+
+void
+print_procedure (output, primitive_descriptor, error_string)
+     FILE * output;
+     struct descriptor * primitive_descriptor;
+     char * error_string;
+{
+  fprintf (output, "Pointer\n");
+  fprintf (output, "%s ()\n", (primitive_descriptor -> c_name));
+  fprintf (output, "{\n");
+  fprintf (output, "  PRIMITIVE_HEADER (%s);\n",
+	   (primitive_descriptor -> arity));
+  fprintf (output, "\n");
+  fprintf (output, "  %s;\n", error_string);
+  fprintf (output, "  /%cNOTREACHED%c/\n", '*', '*');
+  fprintf (output, "}\n");
+  return;
+}
+
+#define TABLE_NEWLINE()							\
+{									\
+  if (count != last)							\
+    fprintf (output, ",\n");						\
+  else									\
+    fprintf (output, "\n};\n");						\
+}
+
+void
+print_primitives (output, limit)
+     FILE * output;
+     register int limit;
+{
+  register int last;
+  register int count;
+  register char * table_entry;
+
+  last = (limit - 1);
+
+  /* Print the procedure table. */
+  fprintf (output, "\f\nPointer (* (%s_Procedure_Table [])) () = {\n",
+	   the_kind);
+  for (count = 0; (count < limit); count += 1)
+    {
+      print_entry (output, count, (result_buffer [count]));
+      fprintf (output, ",\n");
+    }
+  print_entry (output, (-1), (& inexistent_entry));
+  fprintf (output, "\n};\n");
+
+  /* Print the names table. */
+  fprintf (output, "\f\nchar * %s_Name_Table [] = {\n", the_kind);
+  for (count = 0; (count < limit); count += 1)
+    {
+      fprintf (output, "  \"%s\"", ((result_buffer [count]) -> scheme_name));
+      TABLE_NEWLINE ();
+    }
+
+  /* Print the documentation table. */
+  fprintf (output, "\f\nchar * %s_Documentation_Table [] = {\n", the_kind);
+  for (count = 0; (count < limit); count += 1)
+    {
+      fprintf (output, "  ");
+      table_entry = ((result_buffer [count]) -> documentation);
+      if ((table_entry [0]) == '\0')
+	fprintf (output, "((char *) 0)");
+      else
+	fprintf (output, "\"%s\"", table_entry);
+      TABLE_NEWLINE ();
+    }
+
+  /* Print the arity table. */
+  fprintf (output, "\f\nint %s_Arity_Table [] = {\n", the_kind);
+  for (count = 0; (count < limit); count += 1)
+    {
+      fprintf (output, "  %s", ((result_buffer [count]) -> arity));
+      TABLE_NEWLINE ();
+    }
+
+  /* Print the counts table. */
+  fprintf (output, "\f\nint %s_Count_Table [] = {\n", the_kind);
+  for (count = 0; (count < limit); count += 1)
+    {
+      fprintf (output,
+	       "  (%s * sizeof(Pointer))",
+	       ((result_buffer [count]) -> arity));
+      TABLE_NEWLINE ();
+    }
+
+  return;
+}
+
+void
+print_entry (output, index, primitive_descriptor)
+     FILE * output;
+     int index;
+     struct descriptor * primitive_descriptor;
+{
+  int index_length;
+
+  fprintf (output, "  %-*s ",
+	   max_c_name_length, (primitive_descriptor -> c_name));
+  fprintf (output, "/%c ", '*');
+  fprintf (output, "%*s %-*s",
+	   max_arity_length, (primitive_descriptor -> arity),
+	   max_scheme_name_length, (primitive_descriptor -> scheme_name));
+  fprintf (output, " %s ", the_kind);
+  if (index >= 0)
+    {
+      FIND_INDEX_LENGTH (index, index_length);
+      print_spaces (output, (max_index_length - index_length));
+      fprintf (output, "0x%x", index);
+    }
+  else
+    {
+      print_spaces (output, (max_index_length - 1));
+      fprintf (output, "???");
+    }
+  fprintf (output, " in %s %c/", (primitive_descriptor -> file_name), '*');
+  return;
+}
+
+void
+print_spaces (output, how_many)
+     FILE * output;
+     register int how_many;
+{
+  while ((--how_many) >= 0)
+    putc (' ', output);
+  return;
+}
+
+/* Input Parsing */
+
+char * token_buffer;
+int token_buffer_length;
+
+void
+initialize_token_buffer ()
+{
+  token_buffer_length = 80;
+  token_buffer = (xmalloc (token_buffer_length));
+  return;
+}
+
+void
+grow_token_buffer ()
+{
+  token_buffer_length *= 2;
+  token_buffer = (xrealloc (token_buffer, token_buffer_length));
+  return;
+}
+
+#define TOKEN_BUFFER_DECLS()						\
+  register char * TOKEN_BUFFER_scan;					\
+  register char * TOKEN_BUFFER_end
+
+#define TOKEN_BUFFER_START()						\
+{									\
+  TOKEN_BUFFER_scan = token_buffer;					\
+  TOKEN_BUFFER_end = (token_buffer + token_buffer_length);		\
+}
+
+#define TOKEN_BUFFER_WRITE(c)						\
+{									\
+  if (TOKEN_BUFFER_scan == TOKEN_BUFFER_end)				\
+    {									\
+      int n;								\
+									\
+      n = (TOKEN_BUFFER_scan - token_buffer);				\
+      grow_token_buffer ();						\
+      TOKEN_BUFFER_scan = (token_buffer + n);				\
+      TOKEN_BUFFER_end = (token_buffer + token_buffer_length);		\
+    }									\
+  (*TOKEN_BUFFER_scan++) = (c);						\
+}
+
+#define TOKEN_BUFFER_OVERWRITE(s)					\
+{									\
+  int TOKEN_BUFFER_n;							\
+									\
+  TOKEN_BUFFER_n = ((strlen (s)) + 1);					\
+  while (TOKEN_BUFFER_n > token_buffer_length)				\
+    {									\
+      grow_token_buffer ();						\
+      TOKEN_BUFFER_end = (token_buffer + token_buffer_length);		\
+    }									\
+  strcpy (token_buffer, s);						\
+  TOKEN_BUFFER_scan = (token_buffer + TOKEN_BUFFER_n);			\
+}
+
+#define TOKEN_BUFFER_FINISH(target, size)				\
+{									\
+  int TOKEN_BUFFER_n;							\
+  char * TOKEN_BUFFER_result;						\
+									\
+  TOKEN_BUFFER_n = (TOKEN_BUFFER_scan - token_buffer);			\
+  TOKEN_BUFFER_result = (xmalloc (TOKEN_BUFFER_n));			\
+  strcpy (TOKEN_BUFFER_result, token_buffer);				\
+  (target) = TOKEN_BUFFER_result;					\
+  TOKEN_BUFFER_n -= 1;							\
+  if ((size) < TOKEN_BUFFER_n)						\
+    (size) = TOKEN_BUFFER_n;						\
+}
+
+enum tokentype
+  {
+    tokentype_integer,
+    tokentype_identifier,
+    tokentype_string,
+    tokentype_string_upcase
+  };
+
+void
+copy_token (target, size, token_type)
+     char ** target;
+     int * size;
+     register enum tokentype token_type;
+{
+  register int c;
+  TOKEN_BUFFER_DECLS ();
+
+  TOKEN_BUFFER_START ();
+  c = (getc (input));
+  if (c == '\"')
+    {
+      while (1)
+	{
+	  c = (getc (input));
+	  if (c == '\"') break;
+	  TOKEN_BUFFER_WRITE
+	    ((c == '\\')
+	     ? (getc (input))
+	     : (((token_type == tokentype_string_upcase) &&
+		 (isalpha (c)) &&
+		 (islower (c)))
+		? (toupper (c))
+		: c));
+	} 
+      TOKEN_BUFFER_WRITE ('\0');
+    }
+  else
+    {
+      TOKEN_BUFFER_WRITE (c);
+      while (1)
+	{
+	  c = (getc (input));
+	  if (whitespace (c)) break;
+	  TOKEN_BUFFER_WRITE (c);
+	}
+      TOKEN_BUFFER_WRITE ('\0');
+      if ((strcmp (token_buffer, "LEXPR")) == 0)
+	{
+	  TOKEN_BUFFER_OVERWRITE ("-1");
+	}
+      else if ((token_type == tokentype_string) &&
+	       ((strcmp (token_buffer, "0")) == 0))
+	TOKEN_BUFFER_OVERWRITE ("");
+    }
+  TOKEN_BUFFER_FINISH ((* target), (* size));
+  return;
+}
+
+boolean
+whitespace (c)
+     register int c;
+{
+  switch (c)
+    {
+    case ' ':
     case '\t':
     case '\n':  
     case '(':
     case ')':
     case ',': return TRUE;
     default: return FALSE;
-  }
-}
-
-void
-scan_to_token_start()
-{
-  int c;
-
-  while (whitespace(c = getc(input))) {};
-  ungetc(c, input);
-  return;
-}
-
-/* *** FIX *** This should check for field overflow (n too small) */
-
-void
-copy_token(s, size)
-     char s[];
-     int *size;
-{
-  register int c, n;
-
-  n = 0;
-  while (!(whitespace(c = getc(input))))
-  {
-    s[n++] = c;
-  }
-  s[n] = '\0';
-  if (n > *size)
-  {
-    *size = n;
-  }
-  return;
-}
-
-void
-copy_symbol(s, size)
-     char s[];
-     int *size;
-{
-  register int c, n;
-
-  n = 0;
-  c = getc(input);
-  if (c != '\"')
-  {
-  }
-  while ((!(whitespace(c = getc(input)))) && (c != '\"'))
-  {
-    s[n++] = ((isalpha(c) && islower(c)) ? toupper(c) : c);
-  }
-  s[n] = '\0';
-  if (n > *size)
-  {
-    *size = n;
-  }
-  return;
-}
-
-void
-copy_string(is, s, size)
-     register char *is;
-     char s[];
-     int *size;
-{
-  register int c, n;
-
-  n = 0;
-  while ((c = *is++) != '\0')
-  {
-    s[n++] = c;
-  }
-  s[n] = '\0';
-  if (n > *size)
-  {
-    *size = n;
-  }
-  return;
-}
-
-#define STRING_SIZE  80
-#define ARITY_SIZE    6
-
-typedef struct dsc
-{
-  char C_Name[STRING_SIZE];		/* The C name of the function */
-  char Arity[ARITY_SIZE];         	/* Number of arguments */
-  char Scheme_Name[STRING_SIZE];	/* Scheme name of the primitive */
-  char File_Name[STRING_SIZE];		/* File where found. */
-} descriptor;
-
-/*
- * *** FIX ***
- * This should really be malloced incrementally, but for the time being ... 
- *
- */
-
-static int buffer_index = 0;
-descriptor Data_Buffer[BUFFER_SIZE];
-descriptor *Result_Buffer[BUFFER_SIZE];
-descriptor *Temp_Buffer[BUFFER_SIZE];
-
-static descriptor Dummy_Entry =
-{
-  "Dummy_Primitive",
-  "0",
-  "DUMMY-PRIMITIVE",
-  "Findprim.c"
-};
-
-static char Dummy_Error_String[] =
-  "Microcode_Termination(TERM_BAD_PRIMITIVE)";
-
-static descriptor Inexistent_Entry =
-{
-  "Prim_Inexistent",
-  "0",
-  "INEXISTENT-PRIMITIVE",
-  "Findprim.c"
-};
-
-static char Inexistent_Error_String[] =
-  "Primitive_Error(ERR_UNIMPLEMENTED_PRIMITIVE)";
-
-static int C_Size = 0;
-static int A_Size = 0;
-static int S_Size = 0;
-static int F_Size = 0;
-
-void
-update_from_entry(primitive_descriptor)
-     descriptor *primitive_descriptor;
-{
-  int temp;
-  temp = strlen(primitive_descriptor->C_Name);
-  if (temp > C_Size)
-  {
-    C_Size = temp;
-  }
-  temp = strlen(primitive_descriptor->Arity);
-  if (temp > A_Size)
-  {
-    A_Size = temp;
-  }
-  temp = strlen(primitive_descriptor->Scheme_Name);
-  if (temp > S_Size)
-  {
-    S_Size = temp;
-  }
-  temp = strlen(primitive_descriptor->File_Name);
-  if (temp > F_Size)
-  {
-    F_Size = temp;
-  }
-  return;
-}
-
-void
-copy_arity_token (s, size)
-     char s[];
-     int *size;
-{
-  char buffer [ARITY_SIZE];
-  int buffer_size;
-
-  buffer_size = (*size);
-  copy_token (buffer, (& buffer_size));
-  if ((strcmp (buffer, "LEXPR")) == 0)
-    {
-      strcpy (buffer, "-1");
-      buffer_size = 2;
     }
-  strcpy (s, buffer);
-  if ((*size) < buffer_size)
-    (*size) = buffer_size;
-  return;
-}
-
-pseudo_void
-create_normal_entry()
-{
-  if (buffer_index >= BUFFER_SIZE)
-  {
-    fprintf(stderr, "Error: %s cannot handle so many primitives.\n", name);
-    fprintf(stderr, "Recompile %s with BUFFER_SIZE larger than %d.\n",
-	    name, BUFFER_SIZE);
-    error_exit(FALSE);
-  }
-  scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).C_Name, &C_Size);
-  scan_to_token_start();
-  copy_arity_token((Data_Buffer[buffer_index]).Arity, &A_Size);
-  scan_to_token_start();
-  copy_symbol((Data_Buffer[buffer_index]).Scheme_Name, &S_Size);
-  copy_string(file_name, (Data_Buffer[buffer_index]).File_Name, &F_Size);
-  Result_Buffer[buffer_index] = &Data_Buffer[buffer_index];
-  buffer_index++;
-  return;
 }
 
-pseudo_void
-create_alternate_entry()
-{
-  if (buffer_index >= BUFFER_SIZE)
-  {
-    fprintf(stderr, "Error: %s cannot handle so many primitives.\n", name);
-    fprintf(stderr, "Recompile %s with BUFFER_SIZE larger than %d.\n",
-	    name, BUFFER_SIZE);
-    error_exit(FALSE);
-  }
-  scan_to_token_start();
-  copy_symbol((Data_Buffer[buffer_index]).Scheme_Name, &S_Size);
-  scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).C_Name, &C_Size);
-  scan_to_token_start();
-  copy_arity_token((Data_Buffer[buffer_index]).Arity, &A_Size);
-  copy_string(file_name, (Data_Buffer[buffer_index]).File_Name, &F_Size);
-  Result_Buffer[buffer_index] = &Data_Buffer[buffer_index];
-  buffer_index++;
-  return;
-}
-
 void
-initialize_external()
+scan_to_token_start ()
 {
-  Built_in_p = FALSE;
-  (token_array [0]) = &External_Token[0];
-  (token_array [1]) = NULL;
-  (token_processors [0]) = create_normal_entry;
-  (token_processors [1]) = NULL;
-  The_Kind = &External_Kind[0];
-  The_Variable = &External_Variable[0];
-  update_from_entry(&Inexistent_Entry);
+  register int c;
+
+  while (whitespace (c = (getc (input)))) ;
+  ungetc (c, input);
   return;
 }
 
 void
-initialize_default()
+skip_token ()
 {
-  Built_in_p = FALSE;
-  (token_array [0]) = &Default_Token[0];
+  register int c;
+
+  while (! (whitespace (c = (getc (input))))) ;
+  ungetc (c, input);
+  return;
+}
+
+void
+initialize_data_buffer ()
+{
+  buffer_length = 0x200;
+  buffer_index = 0;
+  data_buffer =
+    ((struct descriptor (*) [])
+     (xmalloc (buffer_length * (sizeof (struct descriptor)))));
+  result_buffer =
+    ((struct descriptor **)
+     (xmalloc (buffer_length * (sizeof (struct descriptor *)))));
+
+  max_c_name_length = 0;
+  max_arity_length = 0;
+  max_scheme_name_length = 0;
+  max_documentation_length = 0;
+  max_file_name_length = 0;
+  update_from_entry (& inexistent_entry);
+
+  return;
+}
+
+void
+grow_data_buffer ()
+{
+  buffer_length *= 2;
+  data_buffer =
+    ((struct descriptor (*) [])
+     (xrealloc (data_buffer, (buffer_length * (sizeof (struct descriptor))))));
+  result_buffer =
+    ((struct descriptor **)
+     (xrealloc (result_buffer,
+		(buffer_length * (sizeof (struct descriptor *))))));
+  return;
+}
+
+#define MAYBE_GROW_BUFFER()						\
+{									\
+  if (buffer_index == buffer_length)					\
+    grow_data_buffer ();						\
+}
+
+#define COPY_SCHEME_NAME(desc)						\
+{									\
+  scan_to_token_start ();						\
+  copy_token ((& ((desc) . scheme_name)),				\
+	      (& max_scheme_name_length),				\
+	      tokentype_string_upcase);					\
+}
+
+#define COPY_C_NAME(desc)						\
+{									\
+  scan_to_token_start ();						\
+  copy_token ((& ((desc) . c_name)),					\
+	      (& max_c_name_length),					\
+	      tokentype_identifier);					\
+}
+
+#define COPY_ARITY(desc)						\
+{									\
+  scan_to_token_start ();						\
+  copy_token ((& ((desc) . arity)),					\
+	      (& max_arity_length),					\
+	      tokentype_integer);					\
+}
+
+#define COPY_DOCUMENTATION(desc)					\
+{									\
+  scan_to_token_start ();						\
+  copy_token ((& ((desc) . documentation)),				\
+	      (& max_documentation_length),				\
+	      tokentype_string);					\
+}
+
+#define DEFAULT_DOCUMENTATION(desc)					\
+{									\
+  ((desc) . documentation) = "";					\
+}
+
+#define COPY_FILE_NAME(desc)						\
+{									\
+  int length;								\
+									\
+  ((desc) . file_name) = file_name;					\
+  length = (strlen (file_name));					\
+  if (max_file_name_length < length)					\
+    max_file_name_length = length;					\
+}
+
+void
+initialize_default ()
+{
+  built_in_p = FALSE;
+  (token_array [0]) = (& (default_token [0]));
   (token_array [1]) = (& (default_token_alternate [0]));
   (token_array [2]) = NULL;
   (token_processors [0]) = create_normal_entry;
   (token_processors [1]) = create_alternate_entry;
   (token_processors [2]) = NULL;
-  The_Kind = &Default_Kind[0];
-  The_Variable = &Default_Variable[0];
-  update_from_entry(&Inexistent_Entry);
-  return;
-}
-
-int
-read_index(arg)
-     char *arg;
-{
-  int result = 0;
-
-  if ((arg[0] == '0') && (arg[1] == 'x'))
-    sscanf(&arg[2], "%x", &result);
-  else
-    sscanf(&arg[0], "%d", &result);
-  return result;
-}
-
-pseudo_void
-create_builtin_entry()
-{
-  static char index_buffer[STRING_SIZE];
-  int index = 0;
-
-  scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).C_Name, &C_Size);
-  scan_to_token_start();
-  copy_arity_token((Data_Buffer[buffer_index]).Arity, &A_Size);
-  scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).Scheme_Name, &S_Size);
-  copy_string(file_name, (Data_Buffer[buffer_index]).File_Name, &F_Size);
-  scan_to_token_start();
-  copy_token(index_buffer, &index);
-  index = read_index(index_buffer);
-  if (index >= Built_in_table_size)
-  {
-    fprintf(stderr, "%s: Table size = %d; Found Primitive %d.\n",
-	    name, Built_in_table_size, index);
-    error_exit(FALSE);
-  }
-  if (Result_Buffer[index] != &Inexistent_Entry)
-  {
-    void print_entry(), initialize_index_size();
-
-    fprintf(stderr, "%s: redefinition of primitive %d.\n", name, index);
-    fprintf(stderr, "previous definition:\n");
-    initialize_index_size();
-    output = stderr,
-    print_entry(index, Result_Buffer[index]);
-    fprintf(stderr, "\n");
-    fprintf(stderr, "new definition:\n");
-    print_entry(index, &Data_Buffer[buffer_index]);
-    fprintf(stderr, "\n");
-    error_exit(FALSE);
-  }
-  Result_Buffer[index] = &Data_Buffer[buffer_index];
-  buffer_index++;
+  the_kind = (& (default_kind [0]));
+  the_variable = (& (default_variable [0]));
   return;
 }
 
 void
-initialize_builtin(arg)
-     char *arg;
+initialize_external ()
 {
+  built_in_p = FALSE;
+  (token_array [0]) = (& (external_token [0]));
+  (token_array [1]) = NULL;
+  (token_processors [0]) = create_normal_entry;
+  (token_processors [1]) = NULL;
+  the_kind = (& (external_kind [0]));
+  the_variable = (& (external_variable [0]));
+  return;
+}
+
+void
+initialize_builtin (arg)
+     char * arg;
+{
+  register int length;
   register int index;
 
-  Built_in_p = TRUE;
-  Built_in_table_size = read_index(arg);
-  if (Built_in_table_size > BUFFER_SIZE)
-  {
-    fprintf(stderr, "%s: built_in_table_size > BUFFER_SIZE.\n", name);
-    fprintf(stderr, "Recompile with a larger value of BUFFER_SIZE.\n");
-    error_exit(FALSE);
-  }
-  (token_array [0]) = &Built_in_Token[0];
+  built_in_p = TRUE;
+  length = (read_index (arg, "built_in_table_size"));
+  while (buffer_length < length)
+    grow_data_buffer ();
+  for (index = 0; (index < buffer_length); index += 1)
+    (result_buffer [index]) = NULL;
+  buffer_index = length;
+  (token_array [0]) = (& (built_in_token [0]));
   (token_array [1]) = NULL;
   (token_processors [0]) = create_builtin_entry;
   (token_processors [1]) = NULL;
-  The_Kind = &Built_in_Kind[0];
-  The_Variable = &Built_in_Variable[0];
-  for (index = Built_in_table_size; --index >= 0; )
-  {
-    Result_Buffer[index] = &Inexistent_Entry;
-  }
-  update_from_entry(&Inexistent_Entry);
+  the_kind = (& (built_in_kind [0]));
+  the_variable = (& (built_in_variable [0]));
   return;
-}
-
-int
-compare_descriptors(d1, d2)
-     descriptor *d1, *d2;
-{
-  int value;
-
-  dprintf("comparing \"%s\"", d1->Scheme_Name);
-  dprintf(" and \"%s\".\n", d2->Scheme_Name);
-  value = strcmp(d1->Scheme_Name, d2->Scheme_Name);
-  if (value > 0)
-  {
-    return 1;
-  }
-  else if (value < 0)
-  {
-    return -1;
-  }
-  else
-  {
-    return 0;
-  }
 }
 
 void
-mergesort(low, high, array, temp_array)
+update_from_entry (primitive_descriptor)
+     register struct descriptor * primitive_descriptor;
+{
+  register int temp;
+
+  temp = (strlen (primitive_descriptor -> scheme_name));
+  if (max_scheme_name_length < temp)
+    max_scheme_name_length = temp;
+
+  temp = (strlen (primitive_descriptor -> c_name));
+  if (max_c_name_length < temp)
+    max_c_name_length = temp;
+
+  temp = (strlen (primitive_descriptor -> arity));
+  if (max_arity_length < temp)
+    max_arity_length = temp;
+
+  temp = (strlen (primitive_descriptor -> documentation));
+  if (max_documentation_length < temp)
+    max_documentation_length = temp;
+
+  temp = (strlen (primitive_descriptor -> file_name));
+  if (max_file_name_length < temp)
+    max_file_name_length = temp;
+
+  return;
+}
+
+pseudo_void
+create_normal_entry ()
+{
+  MAYBE_GROW_BUFFER ();
+  COPY_C_NAME ((* data_buffer) [buffer_index]);
+  COPY_ARITY ((* data_buffer) [buffer_index]);
+  COPY_SCHEME_NAME ((* data_buffer) [buffer_index]);
+  DEFAULT_DOCUMENTATION ((* data_buffer) [buffer_index]);
+  COPY_FILE_NAME ((* data_buffer) [buffer_index]);
+  (result_buffer [buffer_index]) = (& ((* data_buffer) [buffer_index]));
+  buffer_index += 1;
+  return;
+}
+
+pseudo_void
+create_alternate_entry ()
+{
+  MAYBE_GROW_BUFFER ();
+  COPY_SCHEME_NAME ((* data_buffer) [buffer_index]);
+  COPY_C_NAME ((* data_buffer) [buffer_index]);
+  scan_to_token_start ();
+  skip_token ();		/* min_args */
+  COPY_ARITY ((* data_buffer) [buffer_index]);
+  COPY_DOCUMENTATION ((* data_buffer) [buffer_index]);
+  COPY_FILE_NAME ((* data_buffer) [buffer_index]);
+  (result_buffer [buffer_index]) = (& ((* data_buffer) [buffer_index]));
+  buffer_index += 1;
+  return;
+}
+
+pseudo_void
+create_builtin_entry ()
+{
+  struct descriptor desc;
+  register int length;
+  int index;
+  char * index_buffer;
+
+  COPY_C_NAME (desc);
+  COPY_ARITY (desc);
+  COPY_SCHEME_NAME (desc);
+  DEFAULT_DOCUMENTATION (desc);
+  COPY_FILE_NAME (desc);
+  index = 0;
+  scan_to_token_start();
+  copy_token ((& index_buffer), (& index), tokentype_integer);
+  index = (read_index (index_buffer, "index"));
+  length = (index + 1);
+  if (buffer_length < length)
+    {
+      register int i;
+
+      while (buffer_length < length)
+	grow_data_buffer ();
+      for (i = buffer_index; (i < buffer_length); i += 1)
+	(result_buffer [i]) = NULL;
+    }
+  if (buffer_index < length)
+    buffer_index = length;
+  if ((result_buffer [index]) != NULL)
+    {
+      fprintf (stderr, "%s: redefinition of primitive %d.\n", name, index);
+      fprintf (stderr, "previous definition:\n");
+      FIND_INDEX_LENGTH (buffer_index, max_index_length);
+      print_entry (stderr, index, (result_buffer [index]));
+      fprintf (stderr, "\n");
+      fprintf (stderr, "new definition:\n");
+      print_entry (stderr, index, (& ((* data_buffer) [index])));
+      fprintf (stderr, "\n");
+      exit (1);
+    }
+  ((* data_buffer) [index]) = desc;
+  (result_buffer [index]) = (& ((* data_buffer) [index]));
+  return;
+}
+
+int
+read_index (arg, identification)
+     char * arg;
+     char * identification;
+{
+  int result;
+
+  result = 0;
+  if (((arg [0]) == '0') && ((arg [1]) == 'x'))
+    sscanf ((& (arg [2])), "%x", (& result));
+  else
+    sscanf ((& (arg [0])), "%d", (& result));
+  if (result < 0)
+    {
+      fprintf (stderr, "%s: %s == %d\n", identification, result);
+      exit (1);
+    }
+  return (result);
+}
+
+/* Sorting */
+
+void
+sort ()
+{
+  register struct descriptor ** temp_buffer;
+  register int count;
+
+  if (buffer_index <= 0)
+    return;
+  temp_buffer =
+    ((struct descriptor **)
+     (xmalloc (buffer_index * (sizeof (struct descriptor *)))));
+  for (count = 0; (count < buffer_index); count += 1)
+    (temp_buffer [count]) = (result_buffer [count]);
+  mergesort (0, (buffer_index - 1), result_buffer, temp_buffer);
+  free (temp_buffer);
+  return;
+}
+
+void
+mergesort (low, high, array, temp_array)
      int low;
      register int high;
-     register descriptor **array, **temp_array;
+     register struct descriptor ** array;
+     register struct descriptor ** temp_array;
 {
-  void print_entry(), initialize_index_size();
-  register int index, low1, low2;
-  int high1, high2;
+  register int index;
+  register int low1;
+  register int low2;
+  int high1;
+  int high2;
 
-  dprintf("mergesort: low = %d", low);
-  dprintf("; high = %d", high);
+  dprintf ("mergesort: low = %d", low);
+  dprintf ("; high = %d", high);
 
   if (high <= low)
-  {
-    dprintf("; done.%s\n", "");
-    return;
-  }
+    {
+      dprintf ("; done.%s\n", "");
+      return;
+    }
 
   low1 = low;
   high1 = ((low + high) / 2);
   low2 = (high1 + 1);
   high2 = high;
 
-  dprintf("; high1 = %d\n", high1);
+  dprintf ("; high1 = %d\n", high1);
 
-  mergesort(low, high1, temp_array, array);
-  mergesort(low2, high, temp_array, array);
-
-  dprintf("mergesort: low1 = %d", low1);
-  dprintf("; high1 = %d", high1);
-  dprintf("; low2 = %d", low2);
-  dprintf("; high2 = %d\n", high2);
+  mergesort (low, high1, temp_array, array);
+  mergesort (low2, high, temp_array, array);
 
-  for (index = low; index <= high; index += 1)
-  {
-    dprintf("index = %d", index);
-    dprintf("; low1 = %d", low1);
-    dprintf("; low2 = %d\n", low2);
+  dprintf ("mergesort: low1 = %d", low1);
+  dprintf ("; high1 = %d", high1);
+  dprintf ("; low2 = %d", low2);
+  dprintf ("; high2 = %d\n", high2);
 
-    if (low1 > high1)
+  for (index = low; (index <= high); index += 1)
     {
-      array[index] = temp_array[low2];
-      low2 += 1;
-    }
-    else if (low2 > high2)
-    {
-      array[index] = temp_array[low1];
-      low1 += 1;
-    }
-    else
-    {
-      switch(compare_descriptors(temp_array[low1], temp_array[low2]))
-      {
-	case -1:
-	  array[index] = temp_array[low1];
-	  low1 += 1;
-	  break;
+      dprintf ("index = %d", index);
+      dprintf ("; low1 = %d", low1);
+      dprintf ("; low2 = %d\n", low2);
 
-	case 1:
-	  array[index] = temp_array[low2];
-	  low2 += 1;
-	  break;
-
-	default:
-	  fprintf(stderr, "Error: bad comparison.\n");
-	  goto comparison_abort;
-
-	case 0:
+      if (low1 > high1)
 	{
-	  fprintf(stderr, "Error: repeated primitive.\n");
-comparison_abort:
-	  initialize_index_size();
-	  output = stderr;
-	  fprintf(stderr, "definition 1:\n");
-	  print_entry(low1, temp_array[low1]);
-	  fprintf(stderr, "\ndefinition 2:\n");
-	  print_entry(low2, temp_array[low2]);
-	  fprintf(stderr, "\n");
-	  error_exit(FALSE);
-	  break;
+	  (array [index]) = (temp_array [low2]);
+	  low2 += 1;
 	}
-      }
+      else if (low2 > high2)
+	{
+	  (array [index]) = (temp_array [low1]);
+	  low1 += 1;
+	}
+      else
+	{
+	  switch (compare_descriptors ((temp_array [low1]),
+				       (temp_array [low2])))
+	    {
+	    case (-1):
+	      (array [index]) = (temp_array [low1]);
+	      low1 += 1;
+	      break;
+
+	    case 1:
+	      (array [index]) = (temp_array [low2]);
+	      low2 += 1;
+	      break;
+
+	    default:
+	      fprintf (stderr, "Error: bad comparison.\n");
+	      goto comparison_abort;
+
+	    case 0:
+	      {
+		fprintf (stderr, "Error: repeated primitive.\n");
+	      comparison_abort:
+		FIND_INDEX_LENGTH (buffer_index, max_index_length);
+		output = stderr;
+		fprintf (stderr, "definition 1:\n");
+		print_entry (output, low1, (temp_array [low1]));
+		fprintf (stderr, "\ndefinition 2:\n");
+		print_entry (output, low2, (temp_array [low2]));
+		fprintf (stderr, "\n");
+		exit (1);
+		break;
+	      }
+	    }
+	}
     }
-  }
   return;
 }
 
-void
-sort()
+int
+compare_descriptors (d1, d2)
+     struct descriptor * d1;
+     struct descriptor * d2;
 {
-  register int count;
-  if (buffer_index <= 0)
-    return;
-  
-  for (count = (buffer_index - 1); count >= 0; count -= 1)
-  {
-    Temp_Buffer[count] = Result_Buffer[count];
-  }
-  mergesort(0, (buffer_index - 1), Result_Buffer, Temp_Buffer);
-  return;
-}
-
-static int max, max_index_size;
-static char index_buffer[STRING_SIZE];
+  int value;
 
-#define find_index_size(index, size)					\
-{									\
-  sprintf(index_buffer, "%x", (index));					\
-  size = strlen(index_buffer);						\
-}
-
-void
-initialize_index_size()
-{
-  if (Built_in_p)
-  {
-    max = Built_in_table_size;
-  }
+  dprintf ("comparing \"%s\"", (d1 -> scheme_name));
+  dprintf(" and \"%s\".\n", (d2 -> scheme_name));
+  value = (strcmp ((d1 -> scheme_name), (d2 -> scheme_name)));
+  if (value > 0)
+    return (1);
+  else if (value < 0)
+    return (-1);
   else
-  {
-    max = buffer_index;
-  }
-  find_index_size(max, max_index_size);
-  max -= 1;
-  return;
-}
-
-void
-print_spaces(how_many)
-     register int how_many;
-{
-  for(; --how_many >= 0;)
-  {
-    putc(' ', output);
-  }
-  return;
-}
-
-void
-print_entry(index, primitive_descriptor)
-     int index;
-     descriptor *primitive_descriptor;
-{
-  int index_size;
-
-  fprintf(output, "  %s ", (primitive_descriptor->C_Name));
-  print_spaces(C_Size - (strlen(primitive_descriptor->C_Name)));
-  fprintf(output, "/%c ", '*');
-  print_spaces(A_Size - (strlen(primitive_descriptor->Arity)));
-  fprintf(output,
-	  "%s \"%s\"",
-	  (primitive_descriptor->Arity),
-	  (primitive_descriptor->Scheme_Name));
-  print_spaces(S_Size-(strlen(primitive_descriptor->Scheme_Name)));
-  fprintf(output, " %s ", The_Kind);
-  if (index >= 0)
-  {
-    find_index_size(index, index_size);
-    print_spaces(max_index_size - index_size);
-    fprintf(output, "0x%x", index);
-  }
-  else
-  {
-    print_spaces(max_index_size - 1);
-    fprintf(output, "???");
-  }
-  fprintf(output, " in %s %c/", (primitive_descriptor->File_Name), '*');
-  return;
-}
-
-void
-print_procedure(primitive_descriptor, error_string)
-     descriptor *primitive_descriptor;
-     char *error_string;
-{
-  fprintf(output, "Pointer\n");
-  fprintf(output, "%s()\n", (primitive_descriptor->C_Name));
-  fprintf(output, "{\n");
-  fprintf(output, "  Primitive_%s_Args();\n", (primitive_descriptor->Arity));
-  fprintf(output, "\n");
-  fprintf(output, "  %s;\n", error_string);
-  fprintf(output, "  /%cNOTREACHED%c/\n", '*', '*');
-  fprintf(output, "}\n");
-  return;
-}
-
-void
-print_primitives(last)
-     register int last;
-{
-
-  register int count;
-
-  /* Print the procedure table. */
-
-  fprintf(output, "Pointer (*(%s_Procedure_Table[]))() = {\n", The_Kind);
-
-  for (count = 0; count <= last; count++)
-  {
-    print_entry(count, Result_Buffer[count]);
-    fprintf(output, ",\n");
-  }
-  print_entry(-1, &Inexistent_Entry);
-  fprintf(output, "\n};\n\f\n");
-
-  /* Print the names table. */
-  
-  fprintf(output, "char *%s_Name_Table[] = {\n", The_Kind);
-
-  for (count = 0; count < last; count++)
-  {
-    fprintf(output, "  \"%s\",\n", ((Result_Buffer[count])->Scheme_Name));
-  }
-  fprintf(output, "  \"%s\"\n", ((Result_Buffer[last])->Scheme_Name));
-  fprintf(output, "};\n\f\n");
-
-  /* Print the arity table. */
-  
-  fprintf(output, "int %s_Arity_Table[] = {\n", The_Kind);
-
-  for (count = 0; count < last; count++)
-  {
-    fprintf(output, "  %s,\n", ((Result_Buffer[count])->Arity));
-  }
-  fprintf(output, "  %s\n", ((Result_Buffer[last])->Arity));
-  fprintf(output, "};\n\f\n");
-
-  /* Print the counts table. */
-  
-  fprintf(output, "int %s_Count_Table[] = {\n", The_Kind);
-
-  for (count = 0; count < last; count++)
-  {
-    fprintf(output,
-	    "  (%s * sizeof(Pointer)),\n",
-	    ((Result_Buffer[count])->Arity));
-  }
-  fprintf(output,
-	  "  (%s * sizeof(Pointer))\n",
-	  ((Result_Buffer[last])->Arity));
-  fprintf(output, "};\n\n");
-
-  return;
-}
-
-/* Produce C source. */
-
-void
-dump(check)
-     boolean check;
-{
-  register int count, end;
-
-  initialize_index_size();
-
-  /* Print header. */
-
-  fprintf(output, "/%c Emacs: This is -*- C -*- code. %c/\n\n", '*', '*');
-
-  fprintf(output, "/%c %s primitive declarations %c/\n\n",
-	  '*', ((Built_in_p) ? "Built in" : "User defined" ), '*');
-
-  fprintf(output, "#include \"usrdef.h\"\n\n");
-
-  fprintf(output,
-	  "long %s = %d; /%c = 0x%x %c/\n\n",
-	  The_Variable, max, '*', max, '*');
-
-  if (Built_in_p)
-  {
-    fprintf(output,
-	    "/%c The number of implemented primitives is %d. %c/\n\n",
-	    '*', buffer_index, '*');
-  }
-
-  if (max < 0)
-  {
-    if (check)
-    {
-      fprintf(stderr, "No primitives found!\n");
-    }
-
-    /* C does not understand the empty array, thus it must be faked. */
-
-    fprintf(output, "/%c C does not understand the empty array, ", '*');
-    fprintf(output, "thus it must be faked. %c/\n\n", '*');
-
-    /* Dummy entry */
-
-    Result_Buffer[0] = &Dummy_Entry;
-    update_from_entry(&Dummy_Entry);
-    print_procedure(&Dummy_Entry, &Dummy_Error_String[0]);
-    fprintf(output, "\n");
-  }
-
-  else
-  {
-    /* Print declarations. */
-
-    fprintf(output, "extern Pointer\n");
-
-    end = (Built_in_p ? buffer_index : max);
-    for (count = 0; count < end; count++)
-    {
-      fprintf(output, "       %s(),\n", &(Data_Buffer[count].C_Name)[0]);
-    }
-
-    fprintf(output, "       %s();\n\n", &(Data_Buffer[end].C_Name)[0]);
-  }
-
-  print_procedure(&Inexistent_Entry, &Inexistent_Error_String[0]);
-  fprintf(output, "\f\n");
-  print_primitives((max < 0) ? 0 : max);
-  return;
+    return (0);
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.27 1988/07/09 11:20:42 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.28 1988/08/15 20:35:46 cph Exp $ */
 
 
 #define REAL float
@@ -123,7 +123,7 @@ MIT in each case. */
   *Free++ = pointer2;                       \
   *Free++ = Make_Pointer(TC_LIST, Free+1);  \
   *Free++ = pointer3;                       \
-  *Free++ = NIL; }
+  *Free++ = EMPTY_LIST; }
 
 #define Float_Range_Check(variable, Scheme_Pointer, Low, High, Error_Message)       \
 { REAL value;                                                                       \
