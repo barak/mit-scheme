@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.5 1991/05/16 17:47:23 hal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.6 1991/08/27 20:14:27 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -104,6 +104,11 @@ Called with the start and end marks of the header as arguments."
 
 (define-variable rmail-delete-after-output
   "True means automatically delete a message that is copied to a file."
+  false
+  boolean?)
+
+(define-variable rmail-reply-with-re
+  "True means prepend subject with Re: in replies."
   false
   boolean?)
 
@@ -888,9 +893,13 @@ original message into it."
 			(or (and resent-reply-to
 				 (fetch-last-field "resent-subject" start end))
 			    (fetch-first-field "subject" start end))))
-		   (if (and subject (string-prefix-ci? "re: " subject))
-		       (string-tail subject 4)
-		       subject))
+		   (if (ref-variable rmail-reply-with-re)
+		       (if (and subject (string-prefix-ci? "re: " subject))
+			   subject
+			   (string-append "Re: " subject))
+		       (if (and subject (string-prefix-ci? "re: " subject))
+			   (string-tail subject 4)
+			   subject)))
 		 (if resent-reply-to
 		     (make-in-reply-to-field
 		      from
