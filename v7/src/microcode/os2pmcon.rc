@@ -1,0 +1,67 @@
+/* -*-C-*-
+
+$Id: os2pmcon.rc,v 1.1 1995/10/30 07:58:27 cph Exp $
+
+Copyright (c) 1995 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. */
+
+/* Resource IDs for OS/2 PM Console Window */
+
+#include <os2.h>
+#include "os2pmcon.h"
+
+MENU ID_PMCON_RESOURCES
+{
+  SUBMENU "~File", IDM_FILE
+  {
+    MENUITEM "~Exit", IDM_EXIT
+  }
+  SUBMENU "~Edit", IDM_EDIT
+  {
+    MENUITEM "Cu~t\tShift+Delete", IDM_CUT, 0, MIA_DISABLED
+    MENUITEM "~Copy\tCtrl+Insert", IDM_COPY, 0, MIA_DISABLED
+    MENUITEM "~Paste\tShift+Insert", IDM_PASTE
+  }
+  SUBMENU "~Options", IDM_OPTIONS
+  {
+    MENUITEM "Set ~font...", IDM_FONT
+  }
+  SUBMENU "~Help", IDM_HELP
+  {
+    MENUITEM "~Product information...", IDM_ABOUT
+  }
+}
+
+ACCELTABLE ID_PMCON_RESOURCES
+{
+  VK_DELETE, IDM_CUT, AF_VIRTUALKEY | AF_SHIFT
+  VK_INSERT, IDM_COPY, AF_VIRTUALKEY | AF_CONTROL
+  VK_INSERT, IDM_PASTE, AF_VIRTUALKEY | AF_SHIFT
+}
