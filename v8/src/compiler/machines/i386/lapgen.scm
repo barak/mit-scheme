@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.6 1995/01/20 22:45:36 ssmith Exp $
+$Id: lapgen.scm,v 1.7 1995/01/20 23:13:03 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -651,11 +651,7 @@ MIT in each case. |#
     link
     error
     primitive-error
-    short-primitive-apply
-    ;; New stuff for 8.0
-    interrupt-closure/new
-    interrupt-procedure/new
-    interrupt-continuation/new)
+    short-primitive-apply)
 
   (define-entries #x-80 0
     &+
@@ -682,7 +678,14 @@ MIT in each case. |#
     shortcircuit-apply-size-6
     shortcircuit-apply-size-7
     shortcircuit-apply-size-8
-    interrupt-continuation-2))
+    interrupt-continuation-2
+    ;; New stuff for 8.0
+    string-allocate
+    vector-cons
+    floating-vector-cons
+    interrupt-closure/new
+    interrupt-procedure/new
+    interrupt-continuation/new))
 
 ;; Operation tables
 
