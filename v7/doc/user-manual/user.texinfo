@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.99 2002/12/30 05:31:36 cph Exp $
+@comment $Id: user.texinfo,v 1.100 2002/12/30 05:34:36 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -132,9 +132,15 @@ available at our site.
 @cindex bugs, reporting
 @cindex reporting bugs
 To report bugs, use the bug-reporting tool at
-@uref{http://savannah.nongnu.org/projects/mit-scheme/}.  Please include
-the output of the @code{identify-world} procedure (@pxref{Basics of
-Starting Scheme}), so we know what version of the system you are using.
+
+@example
+@uref{http://savannah.nongnu.org/projects/mit-scheme/}
+@end example
+
+@noindent
+Please include the output of the @code{identify-world} procedure
+(@pxref{Basics of Starting Scheme}), so we know what version of the
+system you are using.
 
 @node Installation, Running Scheme, Introduction, Top
 @chapter Installation
