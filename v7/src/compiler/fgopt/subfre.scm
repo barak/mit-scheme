@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/subfre.scm,v 1.6 1990/05/04 15:15:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/subfre.scm,v 1.7 1990/05/06 00:34:56 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -79,8 +79,10 @@ MIT in each case. |#
       lvalue-integrated?))
 
   (define (closure)
-    (block-bound-variables
-     (block-shared-block (procedure-closing-block proc))))
+    (eq-set-union
+     (default)
+     (block-bound-variables
+      (block-shared-block (procedure-closing-block proc)))))
 
   (if (or (not (procedure/closure? proc))
 	  (procedure/trivial-closure? proc))
@@ -98,7 +100,7 @@ MIT in each case. |#
 	   ;; In reality, only the indirection variable or the default
 	   ;; set is needed, depending on where the reference occurs.
 	   ;; This is always safe, however.
-	   (cons (cdr how) (closure)))
+	   (eq-set-adjoin (cdr how) (closure)))
 	  (else
 	   (error "walk-procedure: Unknown closure method" proc))))))
 
