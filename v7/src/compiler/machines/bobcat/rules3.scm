@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.17 1987/12/04 06:16:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.18 1987/12/04 11:56:07 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -127,22 +127,22 @@ MIT in each case. |#
 			(? primitive))
   (disable-frame-pointer-offset!
    (LAP ,@(generate-invocation-prefix prefix '())
-	,@(let ((arity (primitive-procedure-arity primitive)))
-	    (cond ((eq? primitive compiled-error-procedure)
-		   (LAP ,(load-dnw frame-size 0)
-			(JMP ,entry:compiler-error)))
-		  ((not (negative? arity))
-		   (LAP (MOV L (@PCR ,(constant->label primitive)) (D 6))
-			(JMP ,entry:compiler-primitive-apply)))
-		  ((= arity -1)
-		   (LAP (MOV L (& ,frame-size) ,reg:lexpr-primitive-arity)
-			(MOV L (@PCR ,(constant->label primitive)) (D 6))
-			(JMP ,entry:compiler-primitive-apply)))
-		  (else
-		   ;; Unknown primitive arity.  Go through apply.
-		   (LAP ,(load-dnw frame-size 0)
-			(MOV L (@PCR ,(constant->label primitive)) (@-A 7))
-			(JMP ,entry:compiler-apply))))))))
+	,@(if (eq? primitive compiled-error-procedure)
+	      (LAP ,(load-dnw frame-size 0)
+		   (JMP ,entry:compiler-error))
+	      (let ((arity (primitive-procedure-arity primitive)))
+		(cond ((not (negative? arity))
+		       (LAP (MOV L (@PCR ,(constant->label primitive)) (D 6))
+			    (JMP ,entry:compiler-primitive-apply)))
+		      ((= arity -1)
+		       (LAP (MOV L (& ,frame-size) ,reg:lexpr-primitive-arity)
+			    (MOV L (@PCR ,(constant->label primitive)) (D 6))
+			    (JMP ,entry:compiler-primitive-apply)))
+		      (else
+		       ;; Unknown primitive arity.  Go through apply.
+		       (LAP ,(load-dnw frame-size 0)
+			    (MOV L (@PCR ,(constant->label primitive)) (@-A 7))
+			    (JMP ,entry:compiler-apply)))))))))
 
 (let-syntax
     ((define-special-primitive-invocation
