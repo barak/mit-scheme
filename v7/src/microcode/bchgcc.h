@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.30 1987/08/10 21:11:21 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.31 1988/02/20 06:16:05 jinx Exp $ */
 
 #include "gccode.h"
 #ifdef bsd
@@ -60,6 +60,9 @@ extern Pointer *GCLoop();
 extern Pointer *initialize_free_buffer(), *initialize_scan_buffer();
 extern void    end_transport(), GC();
 extern int     gc_file;
+
+extern void gc_death();
+extern char gc_death_message_buffer[];
 
 /* Some utility macros */
 

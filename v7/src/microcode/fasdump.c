@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.34 1988/02/12 16:50:37 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.35 1988/02/20 06:17:33 jinx Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -123,8 +123,11 @@ DumpLoop(Scan, Dump_Mode)
       case TC_BROKEN_HEART:
         if (OBJECT_DATUM(Temp) != 0)
 	{
-	  fprintf(stderr, "\nDump: Broken heart in scan.\n");
-	  Microcode_Termination(TERM_BROKEN_HEART);
+	  sprintf(gc_death_message_buffer,
+		  "dumploop: broken heart (0x%lx) in scan",
+		  Temp);
+	  gc_death(TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
+	  /*NOTREACHED*/
 	}
 	break;
 
@@ -195,13 +198,12 @@ DumpLoop(Scan, Dump_Mode)
 	Setup_Pointer_for_Dump(Transport_Future());
 
       default:
-	fprintf(stderr,
-		"\nDumpLoop: Bad type code = 0x%02x\n",
+	sprintf(gc_death_message_buffer,
+		"dumploop: bad type code (0x%02x)",
 		OBJECT_TYPE(Temp));
-	fprintf(stderr,
-		"Scan = 0x%lx; Free = 0x%lx; Heap_Bottom = 0x%lx\n",
-		To, Scan, Heap_Bottom);
-	Invalid_Type_Code();
+	gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,
+		 Scan, To);
+	/*NOTREACHED*/
       }
   }
   NewFree = To;

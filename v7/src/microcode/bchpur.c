@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.37 1988/02/12 16:50:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.38 1988/02/20 06:16:26 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -50,10 +50,9 @@ MIT in each case. */
 
 Pointer 
 Purify_Pass_2(info)
-Pointer info;
+     Pointer info;
 {
-  fprintf(stderr, "\nPurify_Pass_2 invoked!\n");
-  Microcode_Termination(TERM_EXIT);
+  gc_death(TERM_EXIT, "Purify_Pass_2 invoked", NULL, NULL);
   /*NOTREACHED*/
 }
 
@@ -99,8 +98,11 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
       case TC_BROKEN_HEART:
         if (Scan != (Get_Pointer(Temp)))
 	{
-	  fprintf(stderr, "\npurifyloop: Broken heart in scan.\n");
-	  Microcode_Termination(TERM_BROKEN_HEART);
+	  sprintf(gc_death_message_buffer,
+		  "purifyloop: broken heart (0x%lx) in scan",
+		  Temp);
+	  gc_death(TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
+	  /*NOTREACHED*/
 	}
 	if (Scan != scan_buffer_top)
 	  goto end_purifyloop;
@@ -211,13 +213,12 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	continue;
 
       default:
-	fprintf(stderr,
-		"\npurifyloop: Bad type code = 0x%02x\n",
+	sprintf(gc_death_message_buffer,
+		"gcloop: bad type code (0x%02x)",
 		OBJECT_TYPE(Temp));
-	fprintf(stderr,
-		"Scan = 0x%lx; Free = 0x%lx; Heap_Bottom = 0x%lx\n",
-		To, Scan, Heap_Bottom);
-	Invalid_Type_Code();
+	gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,
+		 Scan, To);
+	/*NOTREACHED*/
       }
   }
 end_purifyloop:
@@ -242,9 +243,9 @@ purify_header_overflow(free_buffer)
   scan_buffer = dump_and_reload_scan_buffer(0, NULL);
   if ((scan_buffer + delta) != free_buffer)
   {
-    fprintf(stderr,
-	    "\nPurify: Scan and Free do not meet at the end.\n");
-    Microcode_Termination(TERM_EXIT);
+    gc_death(TERM_EXIT, "purify: scan and free do not meet at the end",
+	     (scan_buffer + delta), free_buffer);
+    /*NOTREACHED*/
   }
   return (free_buffer);
 }
@@ -276,8 +277,9 @@ purify(object, flag)
 			PURE_COPY);
     if (Result != free_buffer)
     {
-      fprintf(stderr, "\nPurify: Pure copy ended too early.\n");
-      Microcode_Termination(TERM_BROKEN_HEART);
+      gc_death(TERM_BROKEN_HEART, "purify: pure copy ended too early",
+	       Result, free_buffer);
+      /*NOTREACHED*/
     }
     pure_length = (Free_Constant - block_start) + 1;
   }
@@ -306,8 +308,9 @@ purify(object, flag)
   }
   if (Result != free_buffer)
   {
-    fprintf(stderr, "\nPurify: Constant Copy ended too early.\n");
-    Microcode_Termination(TERM_BROKEN_HEART);
+    gc_death(TERM_BROKEN_HEART, "purify: constant copy ended too early",
+	     Result, free_buffer);
+    /*NOTREACHED*/
   }
 
   Free_Constant += 2;
@@ -323,8 +326,8 @@ purify(object, flag)
 
   if (!Test_Pure_Space_Top(Free_Constant))
   {
-    fprintf(stderr, "\nPurify: Object too large.\n");
-    Microcode_Termination(TERM_NO_SPACE);
+    gc_death(TERM_NO_SPACE, "purify: object too large", NULL, NULL);
+    /*NOTREACHED*/
   }
 
   load_buffer(0, block_start,

@@ -30,14 +30,17 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.33 1988/02/12 16:50:51 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.34 1988/02/20 06:17:48 jinx Exp $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
- * GC.H which contains general purpose macros and constants.
+ * gc.h which contains general purpose macros and constants.
  *
  */
 
+extern void gc_death();
+extern char gc_death_message_buffer[];
+
 /* A SWITCH on GC types, duplicates information in GC_Type_Map[], but exists
    for efficiency reasons. Macros must be used by convention: first
    Switch_by_GC_Type, then each of the case_ macros (in any order).  The
@@ -164,23 +167,32 @@ MIT in each case. */
 
 /* Check whether it has been relocated. */
 
-#define Normal_BH(In_GC, then_what)				\
-if (Type_Code(*Old) == TC_BROKEN_HEART)				\
-{ *Scan = Make_New_Pointer(Type_Code(Temp), *Old);		\
-  then_what;							\
+#define Normal_BH(In_GC, then_what)					\
+if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)				\
+{									\
+  *Scan = Make_New_Pointer(OBJECT_TYPE(Temp), *Old);			\
+  then_what;								\
 }
 
-#define Setup_Internal(In_GC, Extra_Code, BH_Code)		\
-if And2(In_GC, Consistency_Check)				\
-  if ((Old >= Highest_Allocated_Address) || (Old < Heap))	\
-  { fprintf(stderr, "Out of range pointer: %x.\n", Temp);	\
-    Microcode_Termination(TERM_EXIT);				\
-  }								\
-if (Old >= Low_Constant)					\
-  continue;							\
-BH_Code;							\
-New_Address = (Make_Broken_Heart(C_To_Scheme(To)));		\
-Extra_Code;							\
+#define Setup_Internal(In_GC, Extra_Code, BH_Code)			\
+if And2(In_GC, Consistency_Check)					\
+{									\
+  if ((Old >= Highest_Allocated_Address) || (Old < Heap))		\
+  {									\
+    sprintf(gc_death_message_buffer,					\
+	    "setup_internal: out of range pointer (0x%lx)",		\
+	    Temp);							\
+    gc_death(TERM_EXIT, gc_death_message_buffer, Scan, To);		\
+    /*NOTREACHED*/							\
+  }									\
+}									\
+if (Old >= Low_Constant)						\
+{									\
+  continue;								\
+}									\
+BH_Code;								\
+New_Address = (Make_Broken_Heart(C_To_Scheme(To)));			\
+Extra_Code;								\
 continue
 
 #define Setup_Pointer(In_GC, Extra_Code)			\
@@ -223,18 +235,26 @@ Pointer_End()
    "middle" of vectors.
  */
 
-#define Real_Transport_Vector()					\
-{ Pointer *Saved_Scan = Scan;					\
-  Scan = To + 1 + Get_Integer(*Old);				\
-  if ((Consistency_Check) &&					\
-      (Scan >= Low_Constant) &&					\
-      (To < Low_Constant))					\
-  { fprintf(stderr, "\nVector Length %d\n",			\
-		    Get_Integer(*Old));				\
-    Microcode_Termination(TERM_EXIT);				\
-  }								\
-  while (To != Scan) *To++ = *Old++;				\
-  Scan = Saved_Scan;						\
+#define Real_Transport_Vector()						\
+{									\
+  Pointer *Saved_Scan;							\
+									\
+  Saved_Scan = Scan;							\
+  Scan = To + 1 + OBJECT_DATUM(*Old);					\
+  if ((Consistency_Check) &&						\
+      (Scan >= Low_Constant) &&						\
+      (To < Low_Constant))						\
+  {									\
+    sprintf(gc_death_message_buffer,					\
+	    "real_transport_vector: vector length too large (%d)",	\
+	    OBJECT_DATUM(*Old));					\
+    gc_death(TERM_EXIT, gc_death_message_buffer, Saved_Scan, To);	\
+  }									\
+  while (To != Scan)							\
+  {									\
+    *To++ = *Old++;							\
+  }									\
+  Scan = Saved_Scan;							\
 }
 
 #else In_Fasdump
@@ -361,16 +381,17 @@ Pointer_End()
 /* Is there anything else that can be done here? */
 
 #define Relocate_Compiled(object, new_block, old_block)			\
-  (fprintf(stderr,							\
-	   "\nRelocating compiled code without compiler support!\n"),	\
-   Microcode_Termination(TERM_COMPILER_DEATH),				\
+  (gc_death(TERM_COMPILER_DEATH,					\
+	    "relocate_compiled: No compiler support!",			\
+	    Scan, To),							\
    NIL)
 
 #define Compiled_BH(flag, then_what)					\
 {									\
-  fprintf(stderr,							\
-	  "\nRelocating compiled code without compiler support!\n");	\
-  Microcode_Termination(TERM_COMPILER_DEATH);				\
+  gc_death(TERM_COMPILER_DEATH,						\
+	   "relocate_compiled: No compiler support!",			\
+	   Scan, To);							\
+  /*NOTREACHED*/							\
 }
 
 #define Transport_Compiled()

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.25 1988/02/12 16:51:04 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.26 1988/02/20 06:18:04 jinx Exp $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -78,15 +78,19 @@ Pointer **To_Pointer;
     Switch_by_GC_Type(Temp)
     { case TC_BROKEN_HEART:
         if (Scan == (Get_Pointer(Temp)))
-	{ *To_Pointer = To;
-	  return Scan;
+	{
+	  *To_Pointer = To;
+	  return (Scan);
 	}
-        fprintf(stderr, "GC: Broken heart in scan.\n");
-	Microcode_Termination(TERM_BROKEN_HEART);
+	sprintf(gc_death_message_buffer,
+		"gcloop: broken heart (0x%lx) in scan",
+		Temp);
+	gc_death(TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
+	/*NOTREACHED*/
 
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
-	Scan += Get_Integer(Temp);
+	Scan += OBJECT_DATUM(Temp);
 	break;
 
       case_Non_Pointer:
@@ -101,7 +105,7 @@ Pointer **To_Pointer;
 	Setup_Pointer_for_GC(Transport_Cell());
 
       case TC_REFERENCE_TRAP:
-	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  /* It is a non pointer. */
 	  break;
@@ -138,14 +142,12 @@ Pointer **To_Pointer;
 	Setup_Pointer_for_GC(Transport_Weak_Cons());
 
       default:
-	fprintf(stderr,
-		"\nGCLoop: Bad type code = 0x%02x\n",
+	sprintf(gc_death_message_buffer,
+		"gcloop: bad type code (0x%02x)",
 		OBJECT_TYPE(Temp));
-	fprintf(stderr,
-		"Scan = 0x%lx; Free = 0x%lx; Heap_Bottom = 0x%lx\n",
-		To, Scan, Heap_Bottom);
-	Invalid_Type_Code();
-
+	gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,
+		 Scan, To);
+	/*NOTREACHED*/
       }	/* Switch_by_GC_Type */
   } /* For loop */
   *To_Pointer = To;

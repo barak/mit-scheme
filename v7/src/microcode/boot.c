@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.44 1988/02/06 20:38:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.45 1988/02/20 06:16:41 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -646,6 +646,37 @@ Microcode_Termination(code)
   Reset_Memory();
   Exit_Hook();
   Exit_Scheme(value);
+  /*NOTREACHED*/
+}
+
+extern Pointer
+  *deadly_free,
+  *deadly_scan;
+
+extern void
+  gc_death();
+
+extern char
+  gc_death_message_buffer[];
+
+Pointer
+  *deadly_free,
+  *deadly_scan;
+
+char
+  gc_death_message_buffer[100];
+
+void
+gc_death(code, message, scan, free)
+     long code;
+     char *message;
+     Pointer *scan, *free;
+{
+  fprintf(stderr, "\n%s.\n", message);
+  fprintf(stderr, "scan = 0x%lx; free = 0x%lx\n", scan, free);
+  deadly_scan = scan;
+  deadly_free = free;
+  Microcode_Termination(code);
   /*NOTREACHED*/
 }
 

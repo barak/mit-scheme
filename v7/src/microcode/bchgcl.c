@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.31 1988/02/12 16:49:57 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.32 1988/02/20 06:16:15 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -59,8 +59,11 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
       case TC_BROKEN_HEART:
         if (Scan != (Get_Pointer(Temp)))
 	{
-	  fprintf(stderr, "\nGC: Broken heart in scan.\n");
-	  Microcode_Termination(TERM_BROKEN_HEART);
+	  sprintf(gc_death_message_buffer,
+		  "gcloop: broken heart (0x%lx) in scan",
+		  Temp);
+	  gc_death(TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
+	  /*NOTREACHED*/
 	}
 	if (Scan != scan_buffer_top)
 	  goto end_gcloop;
@@ -150,13 +153,12 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 	relocate_normal_pointer(copy_weak_pair(), 2);
 
       default:
-	fprintf(stderr,
-		"\nGCLoop: Bad type code = 0x%02x\n",
+	sprintf(gc_death_message_buffer,
+		"gcloop: bad type code (0x%02x)",
 		OBJECT_TYPE(Temp));
-	fprintf(stderr,
-		"Scan = 0x%lx; Free = 0x%lx; Heap_Bottom = 0x%lx\n",
-		To, Scan, Heap_Bottom);
-	Invalid_Type_Code();
+	gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,
+		 Scan, To);
+	/*NOTREACHED*/
       }
   }
 end_gcloop:

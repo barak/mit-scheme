@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.38 1988/02/12 16:51:27 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.39 1988/02/20 06:18:15 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -281,7 +281,7 @@ if (GC_Check(Amount))							\
     else								\
     {									\
       Save_Cont();							\
-     Will_Push(CONTINUATION_SIZE +  + (STACK_ENV_EXTRA_SLOTS + 2));	\
+     Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 2));	\
       Store_Return(RC_RESTORE_VALUE);					\
       Store_Expression(Orig_Val);					\
       Save_Cont();							\

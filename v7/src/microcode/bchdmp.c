@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.40 1988/02/12 16:49:43 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.41 1988/02/20 06:15:49 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -166,9 +166,10 @@ next_buffer:
 	(read(real_gc_file, fixup_buffer, GC_BUFFER_BYTES) !=
 	 GC_BUFFER_BYTES))
     {
-      fprintf(stderr,
-	      "\nCould not read back the fasdump fixup information.\n");
-      Microcode_Termination(TERM_EXIT);
+      gc_death(TERM_EXIT,
+	       "fasdump: Could not read back the fasdump fixup information",
+	       NULL, NULL);
+      /*NOTREACHED*/
     }
     fixup_count -= 1;
     fixes = fixup_buffer;
@@ -219,8 +220,11 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	}
         if (Scan != (Get_Pointer(Temp)))
 	{
-	  fprintf(stderr, "\ndumploop: Broken heart in scan.\n");
-	  Microcode_Termination(TERM_BROKEN_HEART);
+	  sprintf(gc_death_message_buffer,
+		  "purifyloop: broken heart (0x%lx) in scan",
+		  Temp);
+	  gc_death(TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
+	  /*NOTREACHED*/
 	}
 	if (Scan != scan_buffer_top)
 	{
@@ -374,13 +378,12 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	continue;
 
       default:
-	fprintf(stderr,
-		"\ndumploop: Bad type code = 0x%02x\n",
+	sprintf(gc_death_message_buffer,
+		"dumploop: bad type code (0x%02x)",
 		OBJECT_TYPE(Temp));
-	fprintf(stderr,
-		"Scan = 0x%lx; Free = 0x%lx; Heap_Bottom = 0x%lx\n",
-		To, Scan, Heap_Bottom);
-	Invalid_Type_Code();
+	gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,
+		 Scan, To);
+	/*NOTREACHED*/
       }
   }
 end_dumploop:

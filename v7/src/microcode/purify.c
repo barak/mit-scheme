@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.30 1988/02/12 16:52:00 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.31 1988/02/20 06:18:49 jinx Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -89,8 +89,11 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 	  *To_Pointer = To;
 	  return Scan;
 	}
-        fprintf(stderr, "Purify: Broken heart in scan.\n");
-	Microcode_Termination(TERM_BROKEN_HEART);
+	sprintf(gc_death_message_buffer,
+		"purifyloop: broken heart (0x%lx) in scan",
+		Temp);
+	gc_death(TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
+	/*NOTREACHED*/
 
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
@@ -187,13 +190,12 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 #endif
 
       default:
-	fprintf(stderr,
-		"\nPurifyLoop: Bad type code = 0x%02x\n",
+	sprintf(gc_death_message_buffer,
+		"purifyloop: bad type code (0x%02x)",
 		OBJECT_TYPE(Temp));
-	fprintf(stderr,
-		"Scan = 0x%lx; Free = 0x%lx; Heap_Bottom = 0x%lx\n",
-		To, Scan, Heap_Bottom);
-	Invalid_Type_Code();
+	gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,
+		 Scan, To);
+	/*NOTREACHED*/
       } /* Switch_by_GC_Type */
   } /* For loop */
   *To_Pointer = To;
