@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: c.c,v 1.2 1993/06/09 09:01:13 jawilson Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -72,6 +72,7 @@ extern void EXFUN (C_to_interface, (PTR));
 extern void EXFUN (interface_initialize, (void));
 extern SCHEME_OBJECT * EXFUN (initialize_C_compiled_block, (int, char *));
 extern void EXFUN (initialize_compiled_code_blocks, (void));
+extern void * scheme_hooks_low, * scheme_hooks_high;
 
 typedef SCHEME_OBJECT * EXFUN ((* compiled_block), (SCHEME_OBJECT *));
 
@@ -81,6 +82,9 @@ static compiled_block * compiled_code_blocks;
 static char ** compiled_block_names;
 static int max_compiled_code_blocks, compiled_code_blocks_size;
 static SCHEME_OBJECT dummy_entry = SHARP_F;
+void
+  * scheme_hooks_low = NULL,
+  * scheme_hooks_high = NULL;
 
 SCHEME_OBJECT *
 DEFUN (trampoline_procedure, (trampoline), SCHEME_OBJECT * trampoline)
