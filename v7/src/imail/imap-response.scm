@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.11 2000/05/08 04:29:12 cph Exp $
+;;; $Id: imap-response.scm,v 1.12 2000/05/08 13:56:33 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -50,11 +50,12 @@
 	(let ((n (string->number x)))
 	  (discard-known-char #\space port)
 	  (let ((x (read-interned-atom port)))
-	    (cons x
-		  (case x
-		    ((EXISTS RECENT EXPUNGE) (list n))
-		    ((FETCH) (read-fetch-response port))
-		    (else (error "Malformed response code:" x))))))
+	    (cons* x
+		   n
+		   (case x
+		     ((EXISTS RECENT EXPUNGE) '())
+		     ((FETCH) (read-fetch-response port))
+		     (else (error "Malformed response code:" x))))))
 	(let ((x (intern x)))
 	  (cons x
 		(case x
@@ -467,9 +468,19 @@
 (define (imap:response:search? response) (eq? (car response) 'SEARCH))
 (define (imap:response:status? response) (eq? (car response) 'STATUS))
 
+(define imap:response:capabilities cdr)
+(define imap:response:exists-count cadr)
+(define imap:response:expunge-index cadr)
+(define imap:response:fetch-index cadr)
+(define imap:response:flags cdr)
+(define imap:response:recent-count cadr)
+
 (define (imap:response:tag response)
   (and (memq (car response) '(OK NO BAD))
        (cadr response)))
+
+(define (imap:response:status-response? response)
+  (memq (car response) '(OK NO BAD PREAUTH BYE)))
 
 (define (imap:response:response-text-code response)
   (car (imap:response:response-text response)))
@@ -481,28 +492,10 @@
   (case (car response)
     ((BAD NO OK) (cddr response))
     ((PREAUTH BYE) (cdr response))
-    (else #f)))
-
-(define (imap:response:capabilities response)
-  (cdr response))
-
-(define (imap:response:status-response? response)
-  (memq (car response) '(OK NO BAD PREAUTH BYE)))
-
-(define (imap:response:expunge-index response)
-  (cadr response))
-
-(define (imap:response:exists-count response)
-  (cadr response))
-
-(define (imap:response:flags response)
-  (cdr response))
-
-(define (imap:response:recent-count response)
-  (cadr response))
+    (else (error:bad-range-argument response 'IMAP:RESPONSE:RESPONSE-TEXT))))
 
 (define (imap:response:fetch-attribute response keyword)
-  (let ((entry (assq keyword (cdr response))))
+  (let ((entry (assq keyword (cddr response))))
     (if (not entry)
 	(error "Missing FETCH attribute:" keyword))
     (cadr entry)))
@@ -521,9 +514,9 @@
 (define (imap:response-code:permanentflags? code)
   (eq? (car code) 'PERMANENTFLAGS))
 
-(define (imap:response-code:newname-old code) (cadr code))
-(define (imap:response-code:newname-new code) (caddr code))
-(define (imap:response-code:uidnext code) (cadr code))
-(define (imap:response-code:uidvalidity code) (cadr code))
-(define (imap:response-code:unseen code) (cadr code))
-(define (imap:response-code:permanentflags code) (cdr code))
+(define imap:response-code:newname-old cadr)
+(define imap:response-code:newname-new caddr)
+(define imap:response-code:uidnext cadr)
+(define imap:response-code:uidvalidity cadr)
+(define imap:response-code:unseen cadr)
+(define imap:response-code:permanentflags cdr)

@@ -1,4 +1,4 @@
-$Id: imap-response.txt,v 1.1 2000/05/08 13:49:06 cph Exp $
+$Id: imap-response.txt,v 1.2 2000/05/08 13:56:40 cph Exp $
 
 Notes on IMAP server responses
 
@@ -216,8 +216,8 @@ Notes on IMAP server responses
 	| (CAPABILITY <symbol>*)
 	| (CONTINUE <response-text>)
 	| (EXISTS <nonnegative-exact-integer>)
-	| (EXPUNGE <nonnegative-exact-integer>)
-	| (FETCH <fetch-response>+)
+	| (EXPUNGE <positive-exact-integer>)
+	| (FETCH <positive-exact-integer> <fetch-response>+)
 	| (FLAGS <symbol>*)
 	| (LIST <string-or-false> <string> <symbol>*)
 	| (LSUB <string-or-false> <string> <symbol>*)
