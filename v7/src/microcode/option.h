@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.h,v 1.10 1993/02/11 02:26:13 adams Exp $
+$Id: option.h,v 1.11 1995/07/27 00:11:31 adams Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -46,6 +46,7 @@ extern CONST char ** option_unused_argv;
 extern int option_emacs_subprocess;
 extern int option_force_interactive;
 extern int option_disable_core_dump;
+extern int option_empty_list_eq_false;
 
 /* String options */
 extern CONST char ** option_library_path;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.41 1995/04/28 07:04:52 cph Exp $
+$Id: option.c,v 1.42 1995/07/27 00:10:55 adams Exp $
 
 Copyright (c) 1990-95 Massachusetts Institute of Technology
 
@@ -120,6 +120,7 @@ int option_emacs_subprocess;
 int option_force_interactive;
 int option_disable_core_dump;
 int option_band_specified;
+int option_empty_list_eq_false;
 
 /* String options */
 CONST char ** option_library_path = 0;
@@ -664,6 +665,7 @@ DEFUN (parse_standard_options, (argc, argv), int argc AND CONST char ** argv)
   option_argument ("-stack", 1, (&option_raw_stack));
   option_argument ("-utab", 1, (&option_raw_utab));
   option_argument ("-utabmd", 1, (&option_raw_utabmd));
+  option_argument ("-empty-list-eq-false", 0, (&option_empty_list_eq_false));
 #ifdef HAS_COMPILER_SUPPORT
   option_argument ("-compiler", 0, (&option_compiler_defaults));
   option_argument ("-edwin", 0, (&option_edwin_defaults));
@@ -1305,4 +1307,5 @@ DEFUN (read_command_line_options, (argc, argv),
 
   if (option_summary)
     describe_options ();
+
 }
