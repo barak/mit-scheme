@@ -1,0 +1,508 @@
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.1 1989/03/14 08:12:18 cph Exp $
+
+Copyright (c) 1989 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; Edwin Packaging
+
+(global-definitions "../runtime/runtim")
+
+(define-package (edwin)
+  (files "utils"
+	 "nvector"
+	 "entity"
+	 "ring"
+	 "strtab"
+	 "strpad"
+	 "class"
+	 "complt"
+	 "unix"
+
+	 "paths"
+	 "struct"
+	 "regops"
+	 "motion"
+	 "search"
+	 "image"
+	 "comman"
+	 "modes"
+	 "buffer"
+	 "bufset"
+	 "winren"			; window system rename targets
+
+	 "edtstr"			; editor abstraction
+	 "editor"			; editor top level
+	 "curren"			; current state
+	 "simple"			; simple editing operations
+	 "debuge"			; edwin debugging tools
+	 "calias"			; character aliasing
+	 "things"			; generic text objects
+	 "tparse"			; text parsing
+	 "syntax"			; word and list parsing
+	 "fileio"			; file <-> buffer
+
+	 "autold"			; autoloaded definitions
+	 "autosv"			; auto save
+	 "basic"			; basic commands
+	 "bufcom"			; buffer commands
+	 "evlcom"			; evaluation commands
+	 "filcom"			; file commands
+	 "fill"				; text fill commands
+	 "hlpcom"			; help commands
+	 "intmod"			; interaction mode
+	 "kilcom"			; kill commands
+	 "kmacro"			; keyboard macros
+	 "lincom"			; line commands
+	 "lspcom"			; lisp commands
+	 "motcom"			; motion commands
+	 "replaz"			; replace commands
+	 "schmod"			; scheme mode
+	 "sercom"			; search commands
+	 "texcom"			; text commands
+	 "wincom"			; window commands
+
+	 "modefs"			; fundamental mode
+
+	 "loadef"
+	 "c-mode"
+	 "midas"
+	 "pasmod"
+	 "tximod")
+  (parent ())
+  (export (edwin class-macros)
+	  class-instance-transforms))
+
+(define-package (edwin class-macros)
+  (files "clsmac")
+  (parent ())
+  (export (edwin)
+	  class-syntax-table))
+
+(define-package (edwin class-macros transform-instance-variables)
+  (files "xform")
+  (parent ())
+  (export (edwin class-macros)
+	  transform-instance-variables))
+
+(define-package (edwin class-constructor)
+  (files "clscon")
+  (parent (edwin))
+  (export (edwin)
+	  class?
+	  make-class
+	  name->class)
+  (export (edwin class-macros)
+	  make-class
+	  name->class))
+
+(define-package (edwin macros)
+  (files "macros")
+  (parent ())
+  (export (edwin)
+	  edwin-syntax-table)
+  (export (edwin class-macros)
+	  edwin-syntax-table))
+
+(define-package (edwin group-operations)
+  (files "grpops")
+  (parent (edwin))
+  (export (edwin)
+	  %group-insert-char!
+	  %group-insert-substring!
+	  gap-allocation-extra
+	  group-delete!
+	  group-delete-left-char!
+	  group-delete-right-char!
+	  group-extract-string
+	  group-insert-char!
+	  group-insert-string!
+	  group-insert-substring!
+	  group-left-char
+	  group-right-char))
+
+(define-package (edwin comtab)
+  (files "comtab")
+  (parent (edwin))
+  (export (edwin)
+	  comtab-entry
+	  comtab-dispatch-alists
+	  comtab-key-bindings
+	  comtab?
+	  define-default-key
+	  define-key
+	  define-prefix-key
+	  make-comtab
+	  prefix-char-list?))
+
+(define-package (edwin undo)
+  (files "undo")
+  (parent (edwin))
+  (export (edwin)
+	  enable-group-undo!
+	  undo-boundary!
+	  undo-done!
+	  undo-record-deletion!
+	  undo-record-insertion!))
+
+(define-package (edwin screen)
+  (files "screen")
+  (parent (edwin))
+  (export (edwin)
+	  make-screen
+	  screen-beep
+	  screen-flush!
+	  screen-in-update?
+	  screen-inverse-video!
+	  screen-state
+	  screen-window
+	  screen-write-char!
+	  screen-write-cursor!
+	  screen-write-substring!
+	  screen-write-substrings!
+	  screen-x-size
+	  screen-y-size
+	  set-screen-window!
+	  subscreen-clear!
+	  with-screen-in-update!))
+
+(define-package (edwin x-screen)
+  (files "xterm")
+  (parent (edwin))
+  (export (edwin)
+	  make-xterm-input-port
+	  make-xterm-screen
+	  with-editor-interrupts
+	  with-editor-interrupts-disabled
+	  with-editor-interrupts-enabled
+	  xterm-close-all-displays
+	  xterm-close-display
+	  xterm-close-window
+	  xterm-map
+	  xterm-open-display
+	  xterm-open-window
+	  xterm-unmap))
+
+(define-package (edwin window)
+  (files "window"
+	 "utlwin"
+	 "linwin"
+	 "bufwin"
+	 "bufwfs"
+	 "bufwiu"
+	 "bufwmc"
+	 "modwin"
+	 "buffrm"
+	 "edtfrm"
+	 "winmis")
+  (parent (edwin))
+  (export (edwin)
+	  editor-frame-select-cursor!
+	  editor-frame-select-window!
+	  editor-frame-selected-window
+	  editor-frame-typein-window
+	  editor-frame-window0
+	  edwin-discard-state!
+	  edwin-editor
+	  edwin-input-port
+	  edwin-reset
+	  edwin-reset-windows
+	  make-editor-frame
+	  modeline-mode-string
+	  modeline-modified-string
+	  modeline-percentage-string
+	  set-window-point!
+	  set-window-start-mark!
+	  update-screen!
+	  update-screens!
+	  update-window-screen!
+	  window-buffer
+	  window-clear-override-message!
+	  window-coordinates->mark
+	  window-direct-output-backward-char!
+	  window-direct-output-forward-char!
+	  window-direct-output-insert-char!
+	  window-direct-output-insert-newline!
+	  window-direct-output-insert-substring!
+	  window-direct-update!
+	  window-end-mark
+	  window-home-cursor!
+	  window-mark->coordinates
+	  window-mark->x
+	  window-mark->y
+	  window-mark-visible?
+	  window-modeline-event!
+	  window-needs-redisplay?
+	  window-point
+	  window-point-coordinates
+	  window-point-x
+	  window-point-y
+	  window-redraw!
+	  window-redraw-preserving-point!
+	  window-scroll-y-absolute!
+	  window-scroll-y-relative!
+	  window-select-time
+	  window-set-override-message!
+	  window-start-mark
+	  window-y-center)
+  (export (edwin prompt)
+	  clear-override-message!
+	  frame-text-inferior
+	  home-cursor!
+	  set-override-message!))
+
+(define-package (edwin window combination)
+  (files "comwin")
+  (parent (edwin window))
+  (export (edwin)
+	  window+
+	  window-
+	  window-1+
+	  window-delete!
+	  window-grow-horizontally!
+	  window-grow-vertically!
+	  window-has-down-neighbor?
+	  window-has-horizontal-neighbor?
+	  window-has-left-neighbor?
+	  window-has-no-neighbors?
+	  window-has-right-neighbor?
+	  window-has-up-neighbor?
+	  window-has-vertical-neighbor?
+	  window-split-horizontally!
+	  window-split-vertically!
+	  window1+)
+  (export (edwin window)
+	  combination-leaf-window
+	  window0))
+
+(define-package (edwin command-reader)
+  (files "comred")
+  (parent (edwin))
+  (export (edwin)
+	  abort-current-command
+	  command-message-receive
+	  command-reader
+	  current-command
+	  current-command-char
+	  dispatch-on-char
+	  dispatch-on-command
+	  execute-char
+	  execute-command
+	  read-and-dispatch-on-char
+	  set-command-message!
+	  top-level-command-reader))
+
+(define-package (edwin keyboard)
+  (files "input")
+  (parent (edwin))
+  (export (edwin)
+	  append-command-prompt!
+	  append-message
+	  char-base
+	  char-control-metafy
+	  char-controlify
+	  char-metafy
+	  clear-message
+	  command-prompt
+	  editor-input-port
+	  initialize-typeout!
+	  keyboard-active?
+	  keyboard-peek-char
+	  keyboard-read-char
+	  message
+	  reset-command-prompt!
+	  set-command-prompt!
+	  set-editor-input-port!
+	  temporary-message
+	  with-editor-input-port))
+
+(define-package (edwin prompt)
+  (files "prompt")
+  (parent (edwin))
+  (export (edwin)
+	  enable-recursive-minibuffers
+	  initialize-typein!
+	  list-completions
+	  prompt-for-alist-value
+	  prompt-for-char
+	  prompt-for-char-without-interrupts
+	  prompt-for-command
+	  prompt-for-completed-string
+	  prompt-for-confirmation?
+	  prompt-for-key
+	  prompt-for-string
+	  prompt-for-string-table-value
+	  prompt-for-typein
+	  prompt-for-variable
+	  prompt-for-yes-or-no?
+	  within-typein-edit
+	  within-typein-edit?)
+  (export (edwin keyboard)
+	  clear-message!
+	  set-message!))
+
+(define-package (edwin buffer-input-port)
+  (files "bufinp")
+  (parent (edwin))
+  (export (edwin)
+	  with-input-from-mark
+	  with-input-from-region))
+
+(define-package (edwin buffer-output-port)
+  (files "bufout")
+  (parent (edwin))
+  (export (edwin)
+	  with-output-to-mark))
+
+(define-package (edwin buffer-output-port-truncating)
+  (files "bufott")
+  (parent (edwin))
+  (export (edwin)
+	  truncation-protect
+	  with-output-to-mark-truncating))
+
+(define-package (edwin window-output-port)
+  (files "winout")
+  (parent (edwin))
+  (export (edwin)
+	  with-interactive-output-port
+	  with-output-to-current-point
+	  with-output-to-window-point))
+
+(define-package (edwin regular-expression)
+  (files "regexp")
+  (parent (edwin))
+  (export (edwin)
+	  char-match-backward
+	  char-match-forward
+	  char-search-backward
+	  char-search-forward
+	  match-backward
+	  match-forward
+	  re-match-end
+	  re-match-forward
+	  re-match-start
+	  re-quote-string
+	  re-search-backward
+	  re-search-forward
+	  search-backward
+	  search-forward
+	  skip-chars-backward
+	  skip-chars-forward))
+
+(define-package (edwin regular-expression-compiler)
+  (files "rgxcmp")
+  (parent (edwin))
+  (export (edwin)
+	  re-compile-char
+	  re-compile-char-set
+	  re-compile-pattern
+	  re-compile-string
+	  re-disassemble-pattern
+	  re-translation-table))
+
+(define-package (edwin lisp-indentation)
+  (files "linden")
+  (parent (edwin))
+  (export (edwin)
+	  indent-code-rigidly
+	  lisp-body-indent
+	  lisp-comment-indentation
+	  lisp-comment-locate
+	  lisp-indent-definition
+	  lisp-indent-hook
+	  lisp-indent-line
+	  lisp-indent-methods
+	  lisp-indent-offset
+	  lisp-indent-sexp
+	  lisp-indent-special-form
+	  standard-lisp-indent-hook))
+
+(define-package (edwin command-argument)
+  (files "argred")
+  (parent (edwin))
+  (export (edwin)
+	  command-argument-beginning?
+	  command-argument-multiplier-exponent
+	  command-argument-multiplier-only?
+	  command-argument-negative-only?
+	  command-argument-negative?
+	  command-argument-prompt
+	  command-argument-self-insert?
+	  command-argument-standard-value
+	  command-argument-value
+	  reset-command-argument-reader!
+	  with-command-argument-reader))
+
+(define-package (edwin buffer-menu)
+  (files "bufmnu")
+  (parent (edwin))
+  (export (edwin)
+	  buffer-menu-kill-on-quit))
+
+(define-package (edwin register-command)
+  (files "regcom")
+  (parent (edwin)))
+
+(define-package (edwin c-indentation)
+  (files "cinden")
+  (parent (edwin))
+  (export (edwin)
+	  c-indent-expression
+	  c-indent-line:indentation
+	  c-inside-parens?))
+
+(define-package (edwin incremental-search)
+  (files "iserch")
+  (parent (edwin)))
+
+(define-package (edwin command-summary)
+  (files "keymap")
+  (parent (edwin)))
+#|
+(define-package (edwin debugger)
+  (files "debug")
+  (parent (edwin)))
+|#(define-package (edwin dired)
+  (files "dired")
+  (parent (edwin)))
+
+(define-package (edwin info)
+  (files "info")
+  (parent (edwin)))
+
+(define-package (edwin rectangle)
+  (files "reccom")
+  (parent (edwin)))
+
+(define-package (edwin tags)
+  (files "tags")
+  (parent (edwin)))

@@ -1,0 +1,205 @@
+;;; -*-Scheme-*-
+;;;
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.1 1989/03/14 08:08:56 cph Exp $
+;;;
+;;;	Copyright (c) 1989 Massachusetts Institute of Technology
+;;;
+;;;	This material was developed by the Scheme project at the
+;;;	Massachusetts Institute of Technology, Department of
+;;;	Electrical Engineering and Computer Science.  Permission to
+;;;	copy this software, to redistribute it, and to use it for any
+;;;	purpose is granted, subject to the following restrictions and
+;;;	understandings.
+;;;
+;;;	1. Any copy made of this software must include this copyright
+;;;	notice in full.
+;;;
+;;;	2. Users of this software agree to make their best efforts (a)
+;;;	to return to the MIT Scheme project any improvements or
+;;;	extensions that they make, so that these may be included in
+;;;	future releases; and (b) to inform MIT of noteworthy uses of
+;;;	this software.
+;;;
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
+;;;	research.
+;;;
+;;;	4. MIT has made no warrantee or representation that the
+;;;	operation of this software will be error-free, and MIT is
+;;;	under no obligation to provide any services, by way of
+;;;	maintenance, update, or otherwise.
+;;;
+;;;	5. In conjunction with products arising from the use of this
+;;;	material, there shall be no use of the name of the
+;;;	Massachusetts Institute of Technology nor of any adaptation
+;;;	thereof in any advertising, promotional, or sales literature
+;;;	without prior written consent from MIT in each case.
+;;;
+
+;;;; Unix Customizations for Edwin
+
+(declare (usual-integrations))
+
+(define (os/trim-pathname-string string)
+  (let ((end (string-length string)))    (let loop ((index end))
+      (let ((slash (substring-find-previous-char string 0 index #\/)))
+	(cond ((or (not slash) (= slash end))
+	       string)
+	      ((memv (string-ref string (1+ slash)) '(#\~ #\$))
+	       (string-tail string (1+ slash)))
+	      ((zero? slash)
+	       string)
+	      ((char=? #\/ (string-ref string (-1+ slash)))
+	       (string-tail string slash))
+	      (else
+	       (loop (-1+ slash))))))))
+
+(define (os/auto-save-pathname pathname buffer-name)
+  (let ((wrap
+	 (lambda (name directory)
+	   (merge-pathnames (string->pathname (string-append "#" name "#"))
+			    directory))))
+    (if (not pathname)
+	(wrap (string-append "%" buffer-name)
+	      (working-directory-pathname))
+	(wrap (pathname-name-string pathname)
+	      (pathname-directory-path pathname)))))
+
+(define-variable "Backup By Copying When Linked"
+  "*Non-false means use copying to create backups for files with multiple names.
+This causes the alternate names to refer to the latest version as edited.
+This variable is relevant only if  Backup By Copying  is false."
+ false)
+
+(define-variable "Backup By Copying When Mismatch"
+  "*Non-false means create backups by copying if this preserves owner or group.
+Renaming may still be used (subject to control of other variables)
+when it would not result in changing the owner or group of the file;
+that is, for files which are owned by you and whose group matches
+the default for a new file created there by you.
+This variable is relevant only if  Backup By Copying  is false."
+  false)
+
+(define-variable "Version Control"
+  "*Control use of version numbers for backup files.
+#T means make numeric backup versions unconditionally.
+#F means make them for files that have some already.
+'NEVER means do not make them."
+  false)
+
+(define-variable "Kept Old Versions"
+  "*Number of oldest versions to keep when a new numbered backup is made."
+  2)
+
+(define-variable "Kept New Versions"
+  "*Number of newest versions to keep when a new numbered backup is made.
+Includes the new backup.  Must be > 0"
+  2)
+
+(define (os/backup-buffer? truename)
+  (and (memv (string-ref (vector-ref (file-attributes truename) 8) 0)
+	     '(#\- #\l))
+       (not
+	(let ((directory (pathname-directory truename)))
+	  (and (pair? directory)
+	       (eq? 'ROOT (car directory))
+	       (pair? (cdr directory))
+	       (eqv? "tmp" (cadr directory)))))))
+
+(define (os/default-backup-filename)
+  "~/%backup%~")
+
+(define (os/backup-by-copying? truename)
+  (let ((attributes (file-attributes truename)))
+    (and (ref-variable "Backup By Copying When Linked")
+	 (> (file-attributes/n-links attributes) 1))
+    (and (ref-variable "Backup By Copying When Mismatch")
+	 (not (and (= (file-attributes/uid attributes) (unix/current-uid))
+		   (= (file-attributes/gid attributes) (unix/current-gid)))))))
+
+(define (os/buffer-backup-pathname truename)
+  (let ((no-versions
+	 (lambda ()
+	   (values
+	    (string->pathname (string-append (pathname->string truename) "~"))
+	    '()))))
+    (if (eq? 'NEVER (ref-variable "Version Control"))
+	(no-versions)
+	(let ((non-numeric (char-set-invert char-set:numeric))
+	      (directory (pathname-directory-path truename))
+	      (prefix (string-append (pathname-name-string truename) ".~")))
+	  (let ((prefix-length (string-length prefix)))
+	    (let ((filenames
+		   (map pathname-name-string
+			(directory-read directory false))))
+	    (let ((possibilities
+		   (list-transform-positive filenames
+		     (lambda (filename)
+		       (let ((end (string-length filename)))
+			 (let ((last (-1+ end)))
+			   (and (string-prefix? prefix filename)
+				(char=? #\~ (string-ref filename last))
+				(eqv? last
+				      (substring-find-next-char-in-set
+				       filename
+				       prefix-length
+				       end
+				       non-numeric)))))))))
+	      (let ((versions
+		     (sort (map (lambda (filename)
+				  (string->number
+				   (substring filename
+					      prefix-length
+					      (-1+ (string-length filename)))))
+				possibilities)
+			   <)))
+		(let ((high-water-mark (apply max (cons 0 versions))))
+		  (if (or (ref-variable "Version Control")
+			  (positive? high-water-mark))
+		      (let ((version->pathname
+			     (lambda (version)
+			       (merge-pathnames
+				(string->pathname
+				 (string-append prefix
+						(number->string version)
+						"~"))
+				directory))))
+			(values
+			 (version->pathname (1+ high-water-mark))
+			 (let ((start
+				(ref-variable "Kept Old Versions"))
+			       (end
+				(- (length versions)
+				   (-1+ (ref-variable "Kept New Versions")))))
+			   (if (< start end)
+			       (map version->pathname
+				    (sublist versions start end))
+			       '()))))
+		      (no-versions)))))))))))
+
+(define (os/make-dired-line pathname)
+  (let ((attributes (file-attributes pathname)))
+    (string-append "  "
+		   (file-attributes/mode-string attributes)
+		   " "
+		   (pad-on-left-to
+		    (number->string (file-attributes/n-links attributes) 10)
+		    3)
+		   " "
+		   (pad-on-right-to
+		    (unix/uid->string (file-attributes/uid attributes))
+		    8)
+		   " "
+		   (pad-on-right-to
+		    (unix/gid->string (file-attributes/gid attributes))
+		    8)
+		   " "
+		   (pad-on-right-to
+		    (number->string (file-attributes/length attributes) 10)
+		    7)
+		   " "
+		   (unix/file-time->string
+		    (file-attributes/modification-time attributes))
+		   " "
+		   (pathname-name-string pathname))))

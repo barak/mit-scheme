@@ -1,0 +1,7 @@
+;;; -*-Scheme-*-
+
+(for-each (lambda (pathname)
+	    (let ((pathname (pathname-new-type pathname false)))
+	      (if (not (file-processed? pathname "bin" "com"))
+		  (compile-bin-file pathname))))
+	  (directory-read "*.com"))

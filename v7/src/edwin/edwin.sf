@@ -1,0 +1,26 @@
+;;; -*-Scheme-*-
+
+(if (not (name->package '(EDWIN)))
+    (begin
+      (load "edwin.bcon")
+      (load "macros" '(EDWIN MACROS))
+      (load "clsmac" '(EDWIN CLASS-MACROS))
+      (load "xform" '(EDWIN CLASS-MACROS TRANSFORM-INSTANCE-VARIABLES))
+      (load "class" '(EDWIN))
+      (load "clscon" '(EDWIN CLASS-CONSTRUCTOR))))
+(load "decls")
+
+;; Guarantee that the package modeller is loaded.
+(if (not (name->package '(CROSS-REFERENCE)))
+    (with-working-directory-pathname "/scheme/cref" (lambda () (load "make"))))
+
+(in-package (->environment '(CROSS-REFERENCE))
+  ((generate/common
+    (lambda (pathname pmodel)
+      (write-cref pathname pmodel)
+      (write-globals pathname pmodel)
+      (write-constructor pathname pmodel)))
+   "edwin"))
+(sf "edwin.con" "edwin.bcon")
+(if (not (file-processed? "edwin" "ldr" "bldr"))
+    (sf "edwin.ldr" "edwin.bldr"))
