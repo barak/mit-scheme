@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: subst.scm,v 4.11 1993/09/01 00:10:26 cph Exp $
+$Id: subst.scm,v 4.12 1993/09/15 00:34:47 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1427,7 +1427,7 @@ forms are simply removed.
 		     (loop (cdr template)
 			   block
 			   (combination/optimizing-make
-			    (and expression (object/scode expression))
+			    expression
 			    block
 			    (procedure/make
 			     false
