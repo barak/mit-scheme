@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.3 1990/11/14 13:29:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.4 1990/11/14 16:41:53 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -605,7 +605,7 @@ DEFUN (free_parsed_path, (path), CONST char ** path)
 #define FILE_READABLE(filename) ((access ((filename), 4)) >= 0)
 
 static CONST char *
-DEFUN (search_path_for_file, (path, filename),
+DEFUN (search_path_for_file, (option, filename, default_p),
        CONST char * option AND
        CONST char * filename AND
        int default_p)
