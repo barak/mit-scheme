@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.78 1993/09/07 21:47:14 gjr Exp $
+$Id: interp.c,v 9.79 1993/10/14 19:15:10 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -120,16 +120,6 @@ if (GC_Check(Amount))							\
 {									\
   Prepare_Eval_Repeat();						\
   Immediate_GC(Amount);							\
-}
-
-#define RESULT_OF_PURIFY(success)					\
-{									\
-  SCHEME_OBJECT words_free;						\
-									\
-  words_free = (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));		\
-  Val = (MAKE_POINTER_OBJECT (TC_LIST, Free));				\
-  (*Free++) = (success);						\
-  (*Free++) = words_free;						\
 }
 
 #define Prepare_Eval_Repeat()						\
@@ -1988,18 +1978,18 @@ return_from_compiled_code:
       break;
 
     case RC_NORMAL_GC_DONE:
-      Val = Fetch_Expression();
+      Val = (Fetch_Expression ());
       if (GC_Space_Needed < 0)
       {
 	/* Paranoia */
 
 	GC_Space_Needed = 0;
       }
-      if (GC_Check(GC_Space_Needed))
+      if (GC_Check (GC_Space_Needed))
 	termination_gc_out_of_space ();
       GC_Space_Needed = 0;
       EXIT_CRITICAL_SECTION ({ Save_Cont(); Export_Registers(); });
-      End_GC_Hook();
+      End_GC_Hook ();
       break;
 
     case RC_PCOMB1_APPLY:
@@ -2100,50 +2090,6 @@ Primitive_Internal_Apply:
       Export_Registers ();
       Val = (continue_primitive ());
       Import_Registers ();
-      break;
-
-/* Interpret() continues on the next page */
-
-/* Interpret(), continued */
-
-    case RC_PURIFY_GC_1:
-    {
-      SCHEME_OBJECT GC_Daemon_Proc, Result;
-
-      RENAME_CRITICAL_SECTION ("purify pass 2");
-      Export_Registers();
-      Result = Purify_Pass_2(Fetch_Expression());
-      Import_Registers();
-      if (Result == SHARP_F)
-	{
-	  /* The object does not fit in Constant space.
-	     There is no need to run the daemons, and we should let
-	     the runtime system know what happened.  */
-	  RESULT_OF_PURIFY (SHARP_F);
-	  EXIT_CRITICAL_SECTION ({ Export_Registers(); });
-	  break;
-	}
-      GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
-      if (GC_Daemon_Proc == SHARP_F)
-	{
-	  RESULT_OF_PURIFY (SHARP_T);
-	  EXIT_CRITICAL_SECTION ({ Export_Registers(); });
-	  break;
-	}
-      RENAME_CRITICAL_SECTION( "purify daemon 2");
-      Store_Expression(SHARP_F);
-      Store_Return(RC_PURIFY_GC_2);
-      Save_Cont();
-     Will_Push(2);
-      STACK_PUSH (GC_Daemon_Proc);
-      STACK_PUSH (STACK_FRAME_HEADER);
-     Pushed();
-      goto Internal_Apply;
-    }
-
-    case RC_PURIFY_GC_2:
-      RESULT_OF_PURIFY (SHARP_T);
-      EXIT_CRITICAL_SECTION ({ Export_Registers(); });
       break;
 
     case RC_REPEAT_DISPATCH:

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.50 1993/06/24 04:44:10 gjr Exp $
+$Id: extern.h,v 9.51 1993/10/14 19:14:51 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -93,24 +93,24 @@ extern SCHEME_OBJECT Registers [];
 #endif
 
 extern SCHEME_OBJECT
- * Ext_History,		/* History register */
- * Free,		/* Next free word in heap */
- * MemTop,		/* Top of heap space available */
- * Ext_Stack_Pointer,	/* Next available slot in control stack */
- * Stack_Top,		/* Top of control stack */
- * Stack_Guard,		/* Guard area at end of stack */
- * Free_Stacklets,	/* Free list of stacklets */
- * Constant_Space,	/* Bottom of constant+pure space */
- * Free_Constant,	/* Next free cell in constant+pure area */
- * Constant_Top,	/* Top of constant+pure space */
- * Heap_Top,		/* Top of current heap space */
- * Heap_Bottom,		/* Bottom of current heap space */
- * Unused_Heap_Top,	/* Top of unused heap for GC */
- * Unused_Heap,		/* Bottom of unused heap for GC */
- * Local_Heap_Base,	/* Per-processor CONSing area */
- * Heap,		/* Bottom of all heap space */
-   Current_State_Point,	/* Dynamic state point */
-   Fluid_Bindings;	/* Fluid bindings AList */
+  * MemTop,		/* Top of free space available */
+  * Free,		/* Next free word in heap */
+  * Heap_Top,		/* Top of current heap */
+  * Heap_Bottom,	/* Bottom of current heap */
+  * Unused_Heap_Top,	/* Top of unused heap */
+  * Unused_Heap_Bottom,	/* Bottom of unused heap */
+  * Stack_Guard,	/* Guard area at end of stack */
+  * Ext_Stack_Pointer,	/* Next available slot in control stack */
+  * Stack_Bottom,	/* Bottom of control stack */
+  * Stack_Top,		/* Top of control stack */
+  * Free_Constant,	/* Next free word in constant space */
+  * Constant_Space,	/* Bottom of constant+pure space */
+  * Constant_Top,	/* Top of constant+pure space */
+  * Local_Heap_Base,	/* Per-processor CONSing area */
+  * Free_Stacklets,	/* Free list of stacklets */
+  * Ext_History,	/* History register */
+  Current_State_Point,	/* Dynamic state point */
+  Fluid_Bindings;	/* Fluid bindings AList */
 
 /* Address of the most recent return code in the stack.  This is
    only meaningful while in compiled code.  *** This must be changed
@@ -154,7 +154,7 @@ extern struct obstack scratch_obstack;
 extern long Heap_Size;
 extern long Constant_Size;
 extern long Stack_Size;
-extern SCHEME_OBJECT * Highest_Allocated_Address;
+extern SCHEME_OBJECT * Lowest_Allocated_Address, * Highest_Allocated_Address;
 
 /* Environment lookup utilities. */
 extern long EXFUN (Lex_Ref, (SCHEME_OBJECT, SCHEME_OBJECT));
@@ -230,7 +230,6 @@ extern void EXFUN
 
 /* Memory management utilities */
 
-extern SCHEME_OBJECT EXFUN (Purify_Pass_2, (SCHEME_OBJECT));
 extern Boolean EXFUN (Pure_Test, (SCHEME_OBJECT *));
 
 /* Interpreter utilities */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.38 1993/01/07 23:53:46 cph Exp $
+$Id: sysprim.c,v 9.39 1993/10/14 19:22:57 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -136,7 +136,7 @@ DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
   heap_limit = MemTop;
   heap_high = Heap_Top;
 #ifndef USE_STACKLETS
-  stack_low = Absolute_Stack_Base;
+  stack_low = Stack_Bottom;
   stack_free = Stack_Pointer;
   stack_limit = Stack_Guard;
   stack_high = Stack_Top;

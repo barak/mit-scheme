@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gcloop.c,v 9.42 1993/08/21 02:27:45 gjr Exp $
+$Id: gcloop.c,v 9.43 1993/10/14 19:22:37 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -129,17 +129,19 @@ DEFUN (GCLoop,
        fast SCHEME_OBJECT * Scan
        AND SCHEME_OBJECT ** To_Pointer)
 {
-  fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, New_Address;
+  fast SCHEME_OBJECT
+    * To, * Old, Temp,
+    * low_heap, New_Address;
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
   SCHEME_OBJECT object_referencing;
 #endif
 
   INITIALIZE_GC_HISTORY ();
-  To = *To_Pointer;
-  Low_Constant = Constant_Space;
+  To = * To_Pointer;
+  low_heap = Constant_Top;
   for ( ; Scan != To; Scan++)
   {
-    Temp = *Scan;
+    Temp = * Scan;
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
     object_referencing = Temp;
 #endif

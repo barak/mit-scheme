@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.55 1992/10/31 23:41:13 jinx Exp $
+$Id: bintopsb.c,v 9.56 1993/10/14 19:16:56 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -822,9 +822,7 @@ DEFUN (relocate, (object),
 
   if ((the_datum >= Heap_Base) &&
       (the_datum < Dumped_Heap_Top))
-  {
     result += Heap_Relocation;
-  }
 
 #if FALSE
 
@@ -832,16 +830,12 @@ DEFUN (relocate, (object),
 
   else if (( the_datum >= Const_Base) &&
 	   (the_datum < Dumped_Constant_Top))
-  {
     result += Constant_Relocation;
-  }
 
 #endif /* false */
 
   else
-  {
     out_of_range_pointer(object);
-  }
   return (result);
 }
 
@@ -911,7 +905,7 @@ DEFUN (upgrade_primitive, (prim),
 
 SCHEME_OBJECT *
 DEFUN (setup_primitive_upgrade, (Heap),
-       SCHEME_OBJECT *Heap)
+       SCHEME_OBJECT * Heap)
 {
   fast long count, length;
   SCHEME_OBJECT *old_prims_vector;
@@ -1350,7 +1344,10 @@ DEFUN_VOID (do_it)
   {
     /* Load the Data */
 
-    SCHEME_OBJECT *Heap, *Storage;
+    SCHEME_OBJECT
+      * Heap,
+      * Lowest_Allocated_Address, 
+      * Highest_Allocated_Address;
     long Initial_Free;
 
     switch (Read_Header ())
@@ -1467,7 +1464,9 @@ DEFUN_VOID (do_it)
 
       /* This is way larger than needed, but... what the hell? */
 
-      Size = ((3 * (Heap_Count + Const_Count)) +
+      Size = ((TRAP_MAX_IMMEDIATE + 1) +
+	      ((FLOATING_ALIGNMENT + 1) / (sizeof (SCHEME_OBJECT))) +
+	      (3 * (Heap_Count + Const_Count)) +
 	      (NROOTS + 1) +
 	      (upgrade_primitives_p ?
 	       (3 * PRIMITIVE_UPGRADE_SPACE) :
@@ -1476,9 +1475,11 @@ DEFUN_VOID (do_it)
 	       (2 * (Heap_Count + Const_Count)) :
 	       0));
 
-      ALLOCATE_HEAP_SPACE (Size + HEAP_BUFFER_SPACE);
+      ALLOCATE_HEAP_SPACE (Size,
+			   Lowest_Allocated_Address,
+			   Highest_Allocated_Address);
 
-      if (Heap == ((SCHEME_OBJECT *) 0))
+      if (Lowest_Allocated_Address == ((SCHEME_OBJECT *) NULL))
       {
 	fprintf (stderr,
 		 "%s: Memory Allocation Failed.  Size = %ld Scheme Objects\n",
@@ -1487,9 +1488,8 @@ DEFUN_VOID (do_it)
       }
     }
 
-    Storage = Heap;
-    Heap += HEAP_BUFFER_SPACE;
-    INITIAL_ALIGN_FLOAT (Heap);
+    Heap = (Lowest_Allocated_Address + (TRAP_MAX_IMMEDIATE + 1));
+    ALIGN_FLOAT (Heap);
     if ((Load_Data (Heap_Count, Heap)) != Heap_Count)
     {
       fprintf (stderr, "%s: Could not load the heap's contents.\n",
@@ -1513,15 +1513,11 @@ DEFUN_VOID (do_it)
     compiled_entry_table_end = compiled_entry_table;
 
     if (allow_compiled_p)
-    {
       compiled_entry_table_end += (2 * (Heap_Count + Const_Count));
-    }
 
     primitive_table = compiled_entry_table_end;
     if (upgrade_primitives_p)
-    {
       primitive_table_end = (setup_primitive_upgrade (primitive_table));
-    }
     else
     {
       fast SCHEME_OBJECT *table;
@@ -1744,7 +1740,7 @@ DEFUN_VOID (do_it)
       }
     }
     fflush (portable_file);
-    free ((char *) Storage);
+    free ((char *) Lowest_Allocated_Address);
   }
 }
 

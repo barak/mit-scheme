@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchgcl.c,v 9.46 1993/08/23 02:21:42 gjr Exp $
+$Id: bchgcl.c,v 9.47 1993/10/14 19:19:19 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -46,12 +46,12 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
        SCHEME_OBJECT ** To_Address_ptr)
 {
   fast SCHEME_OBJECT
-    * To, * Old, Temp, * Low_Constant,
+    * To, * Old, Temp, * low_heap,
     * To_Address, New_Address;
 
   To = (* To_ptr);
   To_Address = (* To_Address_ptr);
-  Low_Constant = Constant_Space;
+  low_heap = Constant_Top;
 
   for ( ; Scan != To; Scan++)
   {

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.84 1993/08/24 06:07:52 cph Exp $
+$Id: boot.c,v 9.85 1993/10/14 19:20:09 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -515,9 +515,10 @@ DEFUN (gc_death, (code, message, scan, free),
 void
 DEFUN (stack_death, (name), CONST char * name)
 {
-  outf_fatal ("\n%s: Constant space is no longer sealed!\n",
-	      name);
-  outf_fatal ("Perhaps a runaway recursion has overflowed the stack.\n");
+  outf_fatal
+    ("\n%s: The stack has overflowed and overwritten adjacent memory.\n",
+     name);
+  outf_fatal ("This was probably caused by a runaway recursion.\n");
   Microcode_Termination (TERM_STACK_OVERFLOW);
   /*NOTREACHED*/
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dostrap.c,v 1.4 1993/07/17 03:37:05 gjr Exp $
+$Id: dostrap.c,v 1.5 1993/10/14 19:21:13 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -117,17 +117,13 @@ DEFUN (trap_handler, (message, trapno, info, scp),
        struct FULL_SIGCONTEXT * scp)
 {
   int code = ((SIGINFO_VALID_P (info)) ? (SIGINFO_CODE (info)) : 0);
-  Boolean constant_space_broken = (!(CONSTANT_SPACE_SEALED ()));
+  Boolean stack_overflowed_p = (STACK_OVERFLOWED_P ());
   enum trap_state old_trap_state = trap_state;
 
   if (old_trap_state == trap_state_exitting_hard)
-  {
     _exit (1);
-  }
   else if (old_trap_state == trap_state_exitting_soft)
-  {
     trap_immediate_termination ();
-  }
   trap_state = trap_state_trapped;
   if (WITHIN_CRITICAL_SECTION_P ())
   {
@@ -137,17 +133,17 @@ DEFUN (trap_handler, (message, trapno, info, scp),
     fprintf (stdout, ">> [exception %d (%s), code %d = 0x%x]\n",
 	     trapno, (find_trap_name (trapno)), code, code);
   }
-  else if (constant_space_broken || (old_trap_state != trap_state_recover))
+  else if (stack_overflowed_p || (old_trap_state != trap_state_recover))
   {
     fprintf (stdout, "\n>> A %s (%d) has occurred.\n", message, trapno);
     fprintf (stdout, ">> [exception %d (%s), code %d = 0x%x]\n",
 	     trapno, (find_trap_name (trapno)), code, code);
   }
-  if (constant_space_broken)
+  if (stack_overflowed_p)
   {
-    fputs (">> Constant space has been overwritten.\n", stdout);
-    fputs (">> Probably a runaway recursion has overflowed the stack.\n",
+    fputs (">> The stack has overflowed overwriting adjacent memory.\n",
 	   stdout);
+    fputs (">> This was probably caused by a runaway recursion.\n", stdout);
   }
   fflush (stdout);
 
@@ -175,7 +171,7 @@ DEFUN (trap_handler, (message, trapno, info, scp),
     else
       trap_immediate_termination ();
   case trap_state_recover:
-    if ((WITHIN_CRITICAL_SECTION_P ()) || constant_space_broken)
+    if ((WITHIN_CRITICAL_SECTION_P ()) || stack_overflowed_p)
     {
       fputs (">> Successful recovery is unlikely.\n", stdout);
       break;
@@ -430,7 +426,7 @@ DEFUN (setup_trap_frame, (trapno, info, scp, trinfo, new_stack_pointer),
   trap_code = (find_trap_code_name (trapno, info, scp));
   if (!stack_recovered_p)
     {
-      Initialize_Stack ();
+      INITIALIZE_STACK ();
      Will_Push (CONTINUATION_SIZE);
       Store_Return (RC_END_OF_COMPUTATION);
       Store_Expression (SHARP_F);
@@ -634,7 +630,7 @@ DEFUN (continue_from_trap, (trapno, info, scp),
 	     && ((scp->sc_ss & 0xffff) == scheme_ss)))
      && ((scp->sc_ds & 0xffff) == (initial_C_ds & 0xffff))
      && ((scheme_sp < ((long) Stack_Top)) &&
-	 (scheme_sp >= ((long) Absolute_Stack_Base)) &&
+	 (scheme_sp >= ((long) Stack_Bottom)) &&
 	 ((scheme_sp & STACK_ALIGNMENT_MASK) == 0)));
 
   new_stack_pointer =
@@ -643,7 +639,7 @@ DEFUN (continue_from_trap, (trapno, info, scp),
      : ((pc_in_C
 	&& ((scp->sc_ss & 0xffff) == (initial_C_ss & 0xffff))
 	&& (Stack_Pointer < Stack_Top)
-	&& (Stack_Pointer > Absolute_Stack_Base))
+	&& (Stack_Pointer > Stack_Bottom))
         ? Stack_Pointer
         : ((SCHEME_OBJECT *) 0)));
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.8 1993/09/21 18:08:09 gjr Exp $
+$Id: nttrap.c,v 1.9 1993/10/14 19:11:56 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -472,7 +472,7 @@ DEFUN_VOID (WinntExceptionTransferHook)
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "WinntExceptionTransferHook."));
 
   if (clear_real_stack)
-    Initialize_Stack ();
+    INITIALIZE_STACK ();
   else
   {
     Stack_Pointer = real_stack_pointer;
@@ -537,7 +537,7 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
   if (win32_under_win32s_p ())
   {
     if (! stack_recovered_p)
-      Initialize_Stack ();
+      INITIALIZE_STACK ();
     clear_real_stack = FALSE;
     real_stack_pointer = Stack_Pointer;
     real_stack_guard = Stack_Guard;
@@ -730,7 +730,7 @@ pc_in_hyperspace:
   scheme_sp_valid =
     (pc_in_scheme
      && ((scheme_sp < ((long) Stack_Top)) &&
-	 (scheme_sp >= ((long) Absolute_Stack_Base)) &&
+	 (scheme_sp >= ((long) Stack_Bottom)) &&
 	 ((scheme_sp & STACK_ALIGNMENT_MASK) == 0)));
 
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 2"));
@@ -740,7 +740,7 @@ pc_in_hyperspace:
      ? ((SCHEME_OBJECT *) scheme_sp)
      : ((pc_in_C
 	&& (Stack_Pointer < Stack_Top)
-	&& (Stack_Pointer > Absolute_Stack_Base))
+	&& (Stack_Pointer > Stack_Bottom))
         ? Stack_Pointer
         : ((SCHEME_OBJECT *) 0)));
 
@@ -1053,7 +1053,7 @@ static void
 DEFUN (nt_trap_handler, (code, context),
        DWORD code AND PCONTEXT context)
 {
-  Boolean constant_space_broken = (! (CONSTANT_SPACE_SEALED ()));
+  Boolean stack_overflowed_p = (STACK_OVERFLOWED_P ());
   enum trap_state old_trap_state = trap_state;
   int flags;
 
@@ -1075,15 +1075,15 @@ DEFUN (nt_trap_handler, (code, context),
 		(CRITICAL_SECTION_NAME ()));
     describe_trap ("trap is", code);
   }
-  else if (constant_space_broken || (old_trap_state != trap_state_recover))
+  else if (stack_overflowed_p || (old_trap_state != trap_state_recover))
   {
     trap_noise (">> The system has trapped.\n");
     describe_trap ("trap is", code);
   }
-  if (constant_space_broken)
+  if (stack_overflowed_p)
   {
-    trap_noise (">> Constant space has been overwritten.\n");
-    trap_noise (">> Probably a runaway recursion has overflowed the stack.\n");
+    trap_noise (">> The stack has overflowed overwriting adjacent memory.\n");
+    trap_noise (">> This was probably caused by a runaway recursion.\n");
   }
 
   switch (old_trap_state)
@@ -1106,7 +1106,7 @@ DEFUN (nt_trap_handler, (code, context),
     }
 
   case trap_state_recover:
-    if ((WITHIN_CRITICAL_SECTION_P ()) || constant_space_broken)
+    if ((WITHIN_CRITICAL_SECTION_P ()) || stack_overflowed_p)
     {
       trap_noise (">> Successful recovery is unlikely.\n");
       break;
@@ -1259,7 +1259,7 @@ DEFUN_VOID (winnt_stack_reset)
 {
   unsigned long boundary;
 
-  /* This presumes that the distance between Absolute_Stack_Base and
+  /* This presumes that the distance between Stack_Bottom and
      Stack_Guard is at least a page.
    */
 

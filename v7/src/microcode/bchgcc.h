@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchgcc.h,v 9.54 1993/08/23 02:21:13 gjr Exp $
+$Id: bchgcc.h,v 9.55 1993/10/14 19:13:10 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -155,7 +155,7 @@ extern SCHEME_OBJECT
   * weak_pair_stack_ptr,
   * weak_pair_stack_limit,
   * virtual_scan_pointer;
-
+
 extern SCHEME_OBJECT
   * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **, SCHEME_OBJECT **)),
   * EXFUN (dump_and_reload_scan_buffer, (long, Boolean *)),
@@ -172,7 +172,13 @@ extern void
   EXFUN (extend_scan_buffer, (char *, SCHEME_OBJECT *)),
   EXFUN (gc_death, (long, char *, SCHEME_OBJECT *, SCHEME_OBJECT *)),
   EXFUN (restore_gc_file, (void)),
-  EXFUN (initialize_weak_pair_transport, (SCHEME_OBJECT *));
+  EXFUN (initialize_weak_pair_transport, (SCHEME_OBJECT *)),
+  EXFUN (fix_weak_chain_1, (void)),
+  EXFUN (fix_weak_chain_2, (void)),
+  EXFUN (GC_end_root_relocation, (SCHEME_OBJECT *, SCHEME_OBJECT *));
+
+extern long
+  EXFUN (GC_relocate_root, (SCHEME_OBJECT **));
 
 extern char
   * EXFUN (end_scan_buffer_extension, (char *));
@@ -218,7 +224,7 @@ extern int
   weak_car = (*Old++);							\
   car_type = (OBJECT_TYPE (weak_car));					\
   if ((car_type == TC_NULL)						\
-      || ((OBJECT_ADDRESS (weak_car)) >= Low_Constant))			\
+      || ((OBJECT_ADDRESS (weak_car)) < low_heap))			\
   {									\
     *To++ = weak_car;							\
     *To++ = (*Old);							\
@@ -304,7 +310,7 @@ extern int
 #define relocate_normal_setup()						\
 {									\
   Old = (OBJECT_ADDRESS (Temp));					\
-  if (Old >= Low_Constant)						\
+  if (Old < low_heap)							\
     continue;								\
   if ((OBJECT_TYPE (*Old)) == TC_BROKEN_HEART)				\
   {									\
@@ -369,7 +375,7 @@ do {									\
 #define relocate_typeless_setup()					\
 {									\
   Old = (SCHEME_ADDR_TO_ADDR (Temp));					\
-  if (Old >= Low_Constant)						\
+  if (Old < low_heap)							\
     continue;								\
   if (BROKEN_HEART_P (* Old))						\
   {									\
@@ -405,7 +411,7 @@ do {									\
 #define relocate_compiled_entry(in_gc_p) do				\
 {									\
   Old = (OBJECT_ADDRESS (Temp));					\
-  if (Old >= Low_Constant)						\
+  if (Old < low_heap)							\
     continue;								\
   Compiled_BH (in_gc_p, continue);					\
   {									\

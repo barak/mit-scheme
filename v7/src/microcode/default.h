@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: default.h,v 9.39 1992/09/26 02:54:57 cph Exp $
+$Id: default.h,v 9.40 1993/10/14 19:19:55 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -67,36 +67,48 @@ MIT in each case. */
   Fixed_Objects = Save_FO
 #endif
 
-
 /* Atomic swapping hook.  Used extensively. */
 
 #ifndef SWAP_POINTERS
-#define SWAP_POINTERS(locative, object, target)				\
+#define SWAP_POINTERS(locative, object, target) do			\
 {									\
   (target) = (* (locative));						\
   (* (locative)) = (object);						\
-}
+} while (0)
 #endif
 
-#ifndef USE_STACKLETS
-
-#define Absolute_Stack_Base Constant_Top
-
-#ifndef Initialize_Stack
-#define Initialize_Stack()						\
-do									\
+#ifndef INITIALIZE_STACK
+#define INITIALIZE_STACK() do						\
 {									\
-  Stack_Top = Highest_Allocated_Address;				\
   Stack_Pointer = Stack_Top;						\
-  SET_STACK_GUARD (Absolute_Stack_Base + STACK_GUARD_SIZE);		\
+  SET_STACK_GUARD (Stack_Bottom + STACK_GUARD_SIZE);			\
+  * Stack_Bottom							\
+    = (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Stack_Bottom));		\
 } while (0)
 #endif
 
-#endif /* USE_STACKLETS */
+#ifndef STACK_ALLOCATION_SIZE
+#define STACK_ALLOCATION_SIZE(Stack_Blocks) (Stack_Blocks)
+#endif
+
+#ifndef STACK_OVERFLOWED_P
+#define STACK_OVERFLOWED_P()						\
+  ((* Stack_Bottom) != (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Stack_Bottom)))
+#endif
+
+#ifndef STACK_SANITY_CHECK
+#define STACK_SANITY_CHECK(name) do					\
+{									\
+  extern void EXFUN (stack_death, (CONST char *));			\
+									\
+  if (STACK_OVERFLOWED_P ())						\
+    stack_death (name);							\
+    /*NOTREACHED */							\
+} while (0)
+#endif
 
 #ifndef SET_CONSTANT_TOP
-#define SET_CONSTANT_TOP()						\
-do									\
+#define SET_CONSTANT_TOP() do						\
 {									\
   ALIGN_FLOAT (Free_Constant);						\
   SEAL_CONSTANT_SPACE ();						\
@@ -107,17 +119,19 @@ do									\
 #define TEST_CONSTANT_TOP(New_Top) ((New_Top) <= Constant_Top)
 #endif
 
-#ifndef STACK_SANITY_CHECK
-#define STACK_SANITY_CHECK(name)					\
-do									\
+#ifndef CONSTANT_AREA_END
+#define CONSTANT_AREA_END()	Free_Constant
+#endif
+
+#ifndef CONSTANT_AREA_START
+#define CONSTANT_AREA_START()	Stack_Pointer
+#endif CONSTANT_AREA_START
+
+#ifndef SEAL_CONSTANT_SPACE
+#define SEAL_CONSTANT_SPACE() do					\
 {									\
-  if (!(CONSTANT_SPACE_SEALED ()))					\
-  {									\
-    extern void EXFUN (stack_death, (CONST char *));			\
-									\
-    stack_death (name);							\
-    /*NOTREACHED */							\
-  }									\
+  * Free_Constant =							\
+    (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Free_Constant));		\
 } while (0)
 #endif
 
@@ -156,9 +170,11 @@ do									\
 #endif
 
 #ifndef Fasdump_Free_Calc
-#define Fasdump_Free_Calc(NewFree, NewMemtop, ignored)	\
-  NewFree = Unused_Heap;				\
-  NewMemTop = Unused_Heap_Top
+#define Fasdump_Free_Calc(NewFree, NewMemtop, ignored) do		\
+{									\
+  NewFree = Unused_Heap_Bottom;						\
+  NewMemTop = Unused_Heap_Top;						\
+} while (0)
 #endif
 
 /* Used in interpret.c */

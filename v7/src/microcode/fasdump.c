@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasdump.c,v 9.56 1993/08/21 01:54:24 gjr Exp $
+$Id: fasdump.c,v 9.57 1993/10/14 19:18:15 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -522,47 +522,57 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   long table_length;
   Boolean result;
   PRIMITIVE_HEADER (2);
+
   Band_Dump_Permitted ();
   CHECK_ARG (1, INTERPRETER_APPLICABLE_P);
   CHECK_ARG (2, STRING_P);
-  if (Unused_Heap < Heap_Bottom)
-  {
+  if (Unused_Heap_Bottom < Heap_Bottom)
     /* Cause the image to be in the low heap, to increase
        the probability that no relocation is needed on reload. */
     Primitive_GC (0);
-  }
   Primitive_GC_If_Needed (5);
   saved_free = Free;
-  Combination = MAKE_POINTER_OBJECT (TC_COMBINATION_1, Free);
+  Combination = (MAKE_POINTER_OBJECT (TC_COMBINATION_1, Free));
   Free[COMB_1_FN] = (ARG_REF (1));
   Free[COMB_1_ARG_1] = SHARP_F;
   Free += 2;
-  *Free++ = Combination;
-  *Free++ = compiler_utilities;
-  *Free = MAKE_POINTER_OBJECT (TC_LIST, (Free - 2));
-  Free++;  /* Some compilers are TOO clever about this and increment Free
+  (* Free++) = Combination;
+  (* Free++) = compiler_utilities;
+  (* Free) = (MAKE_POINTER_OBJECT (TC_LIST, (Free - 2)));
+  Free ++;  /* Some compilers are TOO clever about this and increment Free
 	      before calculating Free-2! */
   table_start = Free;
-  table_end = cons_whole_primitive_table(Free, Heap_Top, &table_length);
+  table_end = (cons_whole_primitive_table (Free, Heap_Top, &table_length));
   if (table_end >= Heap_Top)
-  {
     result = false;
-  }
   else
   {
+    SCHEME_OBJECT * faligned_heap, * faligned_constant;
     CONST char * filename = ((CONST char *) (STRING_LOC ((ARG_REF (2)), 0)));
+
     OS_file_remove_link (filename);
     dump_channel = (OS_open_dump_file (filename));
     if (dump_channel == NO_CHANNEL)
       error_bad_range_arg (2);
-    result = Write_File((Free - 1),
-			((long) (Free - Heap_Bottom)), Heap_Bottom,
-			((long) (Free_Constant - Constant_Space)),
-			Constant_Space,
-			table_start, table_length,
-			((long) (table_end - table_start)),
-			(compiler_utilities != SHARP_F), true);
-    /* The and is short-circuit, so it must be done in this order. */
+
+    for (faligned_heap = Heap_Bottom;
+	 (! (FLOATING_ALIGNED_P (faligned_heap)));
+	 faligned_heap += 1)
+      ;
+    
+    for (faligned_constant = Constant_Space;
+	 (! (FLOATING_ALIGNED_P (faligned_constant)));
+	 faligned_constant += 1)
+      ;
+
+    result = (Write_File ((Free - 1),
+			  ((long) (Free - faligned_heap)),
+			  faligned_heap,
+			  ((long) (Free_Constant - faligned_constant)),
+			  faligned_constant,
+			  table_start, table_length,
+			  ((long) (table_end - table_start)),
+			  (compiler_utilities != SHARP_F), true));
     OS_channel_close_noerror (dump_channel);
     if (!result)
       OS_file_remove (filename);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: stack.h,v 9.35 1993/09/08 04:38:21 gjr Exp $
+$Id: stack.h,v 9.36 1993/10/14 19:20:58 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -55,12 +55,10 @@ MIT in each case. */
   Stack is made up of linked small parts, each in the heap
  */
 
-#define Initialize_Stack()						\
+#define INITIALIZE_STACK() do						\
 {									\
   if (GC_Check(Default_Stacklet_Size))					\
-  {									\
     Microcode_Termination(TERM_STACK_ALLOCATION_FAILED);		\
-  }									\
   SET_STACK_GUARD (Free + STACKLET_HEADER_SIZE);			\
   *Free =								\
     (MAKE_OBJECT (TC_MANIFEST_VECTOR, (Default_Stacklet_Size - 1)));	\
@@ -69,7 +67,11 @@ MIT in each case. */
   Free_Stacklets = NULL;						\
   Prev_Restore_History_Stacklet = NULL;					\
   Prev_Restore_History_Offset = 0;					\
-}
+} while (0)
+
+/* This is a lie, but OK in the context in which it is used. */
+
+#define STACK_OVERFLOWED_P()	FALSE
 
 #define Internal_Will_Push(N)						\
 {									\
@@ -83,7 +85,7 @@ MIT in each case. */
 
 /* No space required independent of the heap for the stacklets */
 
-#define Stack_Allocation_Size(Stack_Blocks)	0
+#define STACK_ALLOCATION_SIZE(Stack_Blocks)	0
 
 #define Current_Stacklet	(Stack_Guard - STACKLET_HEADER_SIZE)
 
@@ -97,7 +99,7 @@ MIT in each case. */
   Current_Stacklet[STACKLET_UNUSED_LENGTH] =				\
     MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (Stack_Pointer - Stack_Guard));	\
 }
-
+
 #ifdef ENABLE_DEBUGGING_TOOLS
 
 #define Terminate_Old_Stacklet()					\
@@ -111,22 +113,15 @@ MIT in each case. */
   Internal_Terminate_Old_Stacklet();					\
 }
 
-#else
+#else /* not ENABLE_DEBUGGING_TOOLS */
 
 #define Terminate_Old_Stacklet()	Internal_Terminate_Old_Stacklet()
 
-#endif
-
+#endif /* ENABLE_DEBUGGING_TOOLS */
+
 /* Used by garbage collector to detect the end of constant space */
 
-#define CONSTANT_SCAN_SEAL()  Free_Constant
-
-#define SEAL_CONSTANT_SPACE()						\
-  *Free_Constant =							\
-    (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Free_Constant));
-
-#define CONSTANT_SPACE_SEALED()						\
-((*Free_Constant) == (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Free_Constant)))
+#define CONSTANT_AREA_START()	Constant_Space
 
 #define Get_Current_Stacklet()						\
   (MAKE_POINTER_OBJECT (TC_CONTROL_POINT, Current_Stacklet))
@@ -251,9 +246,7 @@ Pushed()
 		    ((1 + VECTOR_LENGTH (Previous_Stacklet)) -		\
 		     CONTINUATION_SIZE));				\
       if (Old_Stacklet_Top == Prev_Restore_History_Stacklet)		\
-      {									\
         Prev_Restore_History_Stacklet = NULL;				\
-      }									\
       if (First_Continuation[CONTINUATION_RETURN_CODE] ==		\
 	  MAKE_OBJECT (TC_RETURN_CODE, RC_JOIN_STACKLETS))		\
       {									\
@@ -275,9 +268,7 @@ Pushed()
          Unused_Length) + 1;						\
       Old_Stacklet_Top += Unused_Length;				\
       while (--Used_Length >= 0)					\
-      {									\
 	*temp++ = *Old_Stacklet_Top++;					\
-      }									\
       Free = temp;							\
     }									\
   }									\
@@ -287,9 +278,7 @@ Pushed()
 									\
     if (OBJECT_ADDRESS (Previous_Stacklet)==				\
         Prev_Restore_History_Stacklet)					\
-    {									\
       Prev_Restore_History_Stacklet = NULL;				\
-    }									\
     Set_Current_Stacklet(Previous_Stacklet);				\
   }									\
 }
@@ -300,44 +289,19 @@ Pushed()
   Full size stack in a statically allocated area
  */
 
-#define Stack_Check(P)							\
-do									\
+#define Stack_Check(P) do						\
 {									\
   if ((P) <= Stack_Guard)						\
-    {									\
-      if ((P) <= Absolute_Stack_Base)					\
-      {									\
-	Microcode_Termination (TERM_STACK_OVERFLOW);			\
-      }									\
-      REQUEST_INTERRUPT (INT_Stack_Overflow);				\
-    }									\
+  {									\
+    if ((P) <= Stack_Bottom)						\
+      Microcode_Termination (TERM_STACK_OVERFLOW);			\
+    REQUEST_INTERRUPT (INT_Stack_Overflow);				\
+  }									\
 } while (0)
 
 #define Internal_Will_Push(N)	Stack_Check(Stack_Pointer - (N))
 
-#define Stack_Allocation_Size(Stack_Blocks) (Stack_Blocks)
-
 #define Terminate_Old_Stacklet()
-
-/* Used by garbage collector to detect the end of constant space, and to
-   skip over the gap between constant space and the stack. */
-
-#define CONSTANT_SPACE_SEAL()  Stack_Top
-
-#define SEAL_CONSTANT_SPACE()						\
-do									\
-{									\
-  *Free_Constant =							\
-    (MAKE_OBJECT							\
-     (TC_MANIFEST_NM_VECTOR, ((Stack_Pointer - Free_Constant) - 1)));	\
-  *(Free_Constant + 1) =						\
-    (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, (Free_Constant + 1)));	\
-  *Stack_Top = (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Stack_Top));	\
-} while (0)
-
-#define CONSTANT_SPACE_SEALED()						\
-((*(Free_Constant + 1)) ==						\
- (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, (Free_Constant + 1))))
 
 #define Get_Current_Stacklet() SHARP_F
 
@@ -368,20 +332,16 @@ do									\
    control point. Also disables the history collection mechanism,
    since the saved history would be incorrect on the new stack. */
 
-#define Our_Throw(From_Pop_Return, P)					\
+#define Our_Throw(From_Pop_Return, P) do				\
 {									\
   SCHEME_OBJECT Control_Point;						\
   fast SCHEME_OBJECT *To_Where, *From_Where;				\
   fast long len, valid, invalid;					\
 									\
   Control_Point = (P);							\
-  if (Consistency_Check)						\
-  {									\
-    if (OBJECT_TYPE (Control_Point) != TC_CONTROL_POINT)		\
-    {									\
-      Microcode_Termination (TERM_BAD_STACK);				\
-    }									\
-  }									\
+  if ((Consistency_Check)						\
+      && (OBJECT_TYPE (Control_Point) != TC_CONTROL_POINT))		\
+    Microcode_Termination (TERM_BAD_STACK);				\
   len = VECTOR_LENGTH (Control_Point);					\
   invalid = ((OBJECT_DATUM (MEMORY_REF (Control_Point,			\
 					STACKLET_UNUSED_LENGTH))) +	\
@@ -393,17 +353,13 @@ do									\
   Stack_Check (To_Where);						\
   Stack_Pointer = To_Where;						\
   while (--valid >= 0)							\
-  {									\
     *To_Where++ = *From_Where++;					\
-  }									\
   if (Consistency_Check)						\
   {									\
     if ((To_Where != Stack_Top) ||					\
 	(From_Where !=							\
 	 MEMORY_LOC (Control_Point, (1 + len))))			\
-    {									\
       Microcode_Termination (TERM_BAD_STACK);				\
-    }									\
   }									\
   STACK_RESET ();							\
   if (!(From_Pop_Return))						\
@@ -412,20 +368,14 @@ do									\
     Prev_Restore_History_Offset = 0;					\
     if ((!Valid_Fixed_Obj_Vector ()) ||					\
 	(Get_Fixed_Obj_Slot (Dummy_History) == SHARP_F))		\
-    {									\
       History = Make_Dummy_History ();					\
-    }									\
     else								\
-    {									\
       History = OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History));	\
-    }									\
   }									\
   else if (Prev_Restore_History_Stacklet ==				\
 	   OBJECT_ADDRESS (Control_Point))				\
-  {									\
     Prev_Restore_History_Stacklet = NULL;				\
-  }									\
-}
+} while (0)
 
 #define Our_Throw_Part_2()
 

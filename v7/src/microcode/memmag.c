@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.55 1993/09/08 04:39:01 gjr Exp $
+$Id: memmag.c,v 9.56 1993/10/14 19:14:24 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -67,56 +67,98 @@ extern void
 
 /* 	Memory Allocation, sequential processor:
 
-   ------------------------------------------
-   |         Control Stack        ||        |
-   |                              \/        |
-   ------------------------------------------
+oo
+   ------------------------------------------ <- fixed boundary (currently)
+   |           Heap 2			    |
+   |                                        |
+   ------------------------------------------ <- boundary moved by purify
+   |           Heap 1			    |
+   |                                        |
+   ------------------------------------------ <- boundary moved by purify
    |     Constant + Pure Space    /\        |
    |                              ||        |
-   ------------------------------------------
-   |                                        |
-   |           Heap Space                   |
-   ------------------------------------------
+   ------------------------------------------ <- fixed boundary (currently)
+   |         Control Stack        ||        |
+   |                              \/        |
+   ------------------------------------------ <- fixed boundary (currently)
+0
 
-   Each area has a pointer to its starting address and a pointer to the
-   next free cell.  In addition, there is a pointer to the top of the
+   Each area has a pointer to its starting address and a pointer to
+   the next free cell (for the stack, it is a pointer to the last cell
+   in use).  In addition, there is a pointer to the top of the
    useable area of the heap (the heap is subdivided into two areas for
    the purposes of GC, and this pointer indicates the top of the half
    currently in use).
 
 */
 
+#define CONSTANT_SPACE_FUDGE	128
+
 /* Initialize free pointers within areas. Stack_Pointer is
-   special: it always points to a cell which is in use. */
+   special: it always points to a cell which is in use.
+ */
+
+static long saved_heap_size, saved_constant_size, saved_stack_size;
+extern void EXFUN (reset_allocator_parameters, (void));
+extern Boolean EXFUN (update_allocator_parameters, (SCHEME_OBJECT *));
+
+Boolean
+DEFUN (update_allocator_parameters, (ctop), SCHEME_OBJECT * ctop)
+{
+  /* buffer for impurify, etc. */
+  SCHEME_OBJECT * nctop = (ctop + CONSTANT_SPACE_FUDGE);
+  unsigned long temp;
+
+  if (nctop >= (Highest_Allocated_Address + 1))
+    return (FALSE);
+
+  Constant_Top = nctop;
+  temp = ((Highest_Allocated_Address - Constant_Top) / 2);
+  Heap_Bottom = Constant_Top;
+  Heap_Top = (Heap_Bottom + temp);
+  Local_Heap_Base = Heap_Bottom;
+  Unused_Heap_Bottom = Heap_Top;
+  Unused_Heap_Top = Highest_Allocated_Address;
+  Free = Heap_Bottom;
+  return (TRUE);
+}
+
+void
+DEFUN_VOID (reset_allocator_parameters)
+{
+  GC_Reserve = 4500;
+  GC_Space_Needed = 0;
+  Stack_Bottom = Lowest_Allocated_Address;
+  Stack_Top = (Stack_Bottom + (STACK_ALLOCATION_SIZE (saved_stack_size)));
+  Constant_Space = Stack_Top;
+  Free_Constant = Constant_Space;
+  ALIGN_FLOAT (Free_Constant);
+  (void) update_allocator_parameters (Free_Constant);
+  SET_CONSTANT_TOP ();
+  ALIGN_FLOAT (Free);
+  SET_MEMTOP (Heap_Top - GC_Reserve);
+  INITIALIZE_STACK ();
+  STACK_RESET ();
+  return;
+}
 
 void
 DEFUN (Clear_Memory,
        (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size),
        int Our_Heap_Size AND int Our_Stack_Size AND int Our_Constant_Size)
 {
-  GC_Reserve = 4500;
-  GC_Space_Needed = 0;
-  Heap_Top = (Heap_Bottom + Our_Heap_Size);
-  Local_Heap_Base = Heap_Bottom;
-  Unused_Heap_Top = (Heap_Bottom + (2 * Our_Heap_Size));
-  SET_MEMTOP (Heap_Top - GC_Reserve);
-  Free = Heap_Bottom;
-  Constant_Top = (Constant_Space + Our_Constant_Size);
-  Initialize_Stack ();
-  STACK_RESET ();
-  Free_Constant = Constant_Space;
-  SET_CONSTANT_TOP ();
-  return;
+  saved_heap_size = Our_Heap_Size;
+  saved_constant_size = Our_Constant_Size;
+  saved_stack_size = Our_Stack_Size;
+  reset_allocator_parameters ();
 }
-
+
 static void 
 DEFUN_VOID (failed_consistency_check)
 {
-    outf_flush_fatal ();
-    exit (1);
+  outf_flush_fatal ();
+  exit (1);
 }
-
-static PTR Lowest_Allocated_Address;
 
 void
 DEFUN_VOID (Reset_Memory)
@@ -125,7 +167,7 @@ DEFUN_VOID (Reset_Memory)
   DEALLOCATE_REGISTERS ();
   return;
 }
-
+
 /* This procedure allocates and divides the total memory. */
 
 void
@@ -145,31 +187,24 @@ DEFUN (Setup_Memory,
   }
 
   /* Allocate */
-  Highest_Allocated_Address =
-    ALLOCATE_HEAP_SPACE (Stack_Allocation_Size(Our_Stack_Size) +
-			 (2 * Our_Heap_Size) +
-			 Our_Constant_Size +
-			 HEAP_BUFFER_SPACE);
+  
+  ALLOCATE_HEAP_SPACE (((STACK_ALLOCATION_SIZE (Our_Stack_Size))
+			+ (2 * Our_Heap_Size)
+			+ Our_Constant_Size),
+		       Lowest_Allocated_Address,
+		       Highest_Allocated_Address);
 
   /* Consistency check 2 */
-  if (Heap == NULL)
+  if (Lowest_Allocated_Address == NULL)
   {
     outf_fatal ("Not enough memory for this configuration.\n");
     failed_consistency_check ();
   }
 
-  /* Initialize the various global parameters */
-  Lowest_Allocated_Address = ((PTR) Heap);
-  Heap += HEAP_BUFFER_SPACE;
-  INITIAL_ALIGN_FLOAT (Heap);
-  Unused_Heap = (Heap + Our_Heap_Size);
-  ALIGN_FLOAT (Unused_Heap);
-  Constant_Space = (Heap + (2 * Our_Heap_Size));
-  ALIGN_FLOAT (Constant_Space);
-
   /* Consistency check 3 */
 
-  test_value = (MAKE_POINTER_OBJECT (LAST_TYPE_CODE, Highest_Allocated_Address));
+  test_value = (MAKE_POINTER_OBJECT (LAST_TYPE_CODE,
+				     Highest_Allocated_Address));
 
   if (((OBJECT_TYPE (test_value)) != LAST_TYPE_CODE) ||
       ((OBJECT_ADDRESS (test_value)) != Highest_Allocated_Address))
@@ -182,7 +217,6 @@ DEFUN (Setup_Memory,
     failed_consistency_check ();
   }
 
-  Heap_Bottom = Heap;
   Clear_Memory (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size);
   return;
 }
@@ -191,21 +225,36 @@ DEFUN (Setup_Memory,
    The main garbage collector loop is in gcloop.c
 */
 
-/* Flip into unused heap */
+/* Flip into unused heap, extending constant space if we are flipping
+   to the low heap, and the fudge area has shrunk.
+ */
 
 void
 DEFUN_VOID (GCFlip)
 {
-  SCHEME_OBJECT *Temp;
+  if (((Constant_Top - Free_Constant) < CONSTANT_SPACE_FUDGE)
+      && (Unused_Heap_Bottom < Heap_Bottom)
+      && (update_allocator_parameters (Free_Constant)))
+    SET_CONSTANT_TOP ();
+  else
+  {
+    SCHEME_OBJECT * temp_bottom, * temp_top;
 
-  Temp = Unused_Heap;
-  Unused_Heap = Heap_Bottom;
-  Heap_Bottom = Temp;
-  Temp = Unused_Heap_Top;
-  Unused_Heap_Top = Heap_Top;
-  Heap_Top = Temp;
-  Free = Heap_Bottom;
-  SET_MEMTOP(Heap_Top - GC_Reserve);
+    temp_bottom = Unused_Heap_Bottom;
+    temp_top = Unused_Heap_Top;
+
+    Unused_Heap_Bottom = Heap_Bottom;
+    Unused_Heap_Top = Heap_Top;
+
+    Heap_Bottom = temp_bottom;
+    Heap_Top = temp_top;
+
+    Free = Heap_Bottom;
+  }
+
+  ALIGN_FLOAT (Free);
+  SET_MEMTOP (Heap_Top - GC_Reserve);
+
   Weak_Chain = EMPTY_LIST;
   return;
 }
@@ -225,9 +274,11 @@ SCHEME_OBJECT Weak_Chain;
 void
 DEFUN_VOID (Fix_Weak_Chain)
 {
-  fast SCHEME_OBJECT *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
+  fast SCHEME_OBJECT
+    * Old_Weak_Cell, * Scan, Old_Car,
+    Temp, * Old, * low_heap;
 
-  Low_Constant = Constant_Space;
+  low_heap = Constant_Top;
   while (Weak_Chain != EMPTY_LIST)
   {
     Old_Weak_Cell = OBJECT_ADDRESS (Weak_Chain);
@@ -267,7 +318,7 @@ DEFUN_VOID (Fix_Weak_Chain)
       case GC_Quadruple:
       case GC_Vector:
 	Old = OBJECT_ADDRESS (Old_Car);
-	if (Old >= Low_Constant)
+	if (Old < low_heap)
 	{
 	  *Scan = Temp;
 	  continue;
@@ -278,7 +329,7 @@ DEFUN_VOID (Fix_Weak_Chain)
 
       case GC_Compiled:
 	Old = OBJECT_ADDRESS (Old_Car);
-	if (Old >= Low_Constant)
+	if (Old < low_heap)
 	{
 	  *Scan = Temp;
 	  continue;
@@ -326,14 +377,14 @@ void
 DEFUN_VOID (GC)
 {
   SCHEME_OBJECT
-    *Root, *Result, *Check_Value,
-    The_Precious_Objects, *Root2;
+    * Root, * Result, * Check_Value,
+    The_Precious_Objects, * Root2;
 
   /* Save the microcode registers so that they can be relocated */
 
   Terminate_Old_Stacklet ();
   SEAL_CONSTANT_SPACE ();
-  Check_Value = (CONSTANT_SPACE_SEAL ());
+  Check_Value = (CONSTANT_AREA_END ());
   Root = Free;
   The_Precious_Objects = (Get_Fixed_Obj_Slot (Precious_Objects));
   Set_Fixed_Obj_Slot (Precious_Objects, SHARP_F);
@@ -377,7 +428,7 @@ DEFUN_VOID (GC)
 
   /* The 4 step GC */
 
-  Result = (GCLoop (Constant_Space, &Free));
+  Result = (GCLoop ((CONSTANT_AREA_START ()), &Free));
   if (Result != Check_Value)
   {
     outf_fatal ("\nGC: Constant Scan ended too early.\n");
@@ -444,9 +495,7 @@ DEFUN_VOID (GC)
     Root += 1;
   }
   else
-  {
     Prev_Restore_History_Stacklet = (OBJECT_ADDRESS (*Root++));
-  }
   Current_State_Point = *Root++;
   Fluid_Bindings = *Root++;
   Free_Stacklets = NULL;
@@ -467,14 +516,12 @@ DEFUN_VOID (GC)
 
 DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 {
-  long new_gc_reserve;
   extern unsigned long gc_counter;
-  SCHEME_OBJECT GC_Daemon_Proc;
+  SCHEME_OBJECT daemon;
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
 
   STACK_SANITY_CHECK ("GC");
-  new_gc_reserve = (arg_nonnegative_integer (1));
   if (Free > Heap_Top)
   {
     outf_fatal ("\nGARBAGE-COLLECT: GC has been delayed too long!\n");
@@ -483,36 +530,33 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
     Microcode_Termination (TERM_NO_SPACE);
   }
 
+  GC_Reserve = (arg_nonnegative_integer (1));
+  POP_PRIMITIVE_FRAME (1);
+
   ENTER_CRITICAL_SECTION ("garbage collector");
   run_pre_gc_hooks ();
   gc_counter += 1;
-  GC_Reserve = new_gc_reserve;
   GCFlip ();
   GC ();
   run_post_gc_hooks ();
-  POP_PRIMITIVE_FRAME (1);
-  GC_Daemon_Proc = (Get_Fixed_Obj_Slot (GC_Daemon));
+  daemon = (Get_Fixed_Obj_Slot (GC_Daemon));
+
+ Will_Push (CONTINUATION_SIZE);
+  Store_Return (RC_NORMAL_GC_DONE);
+  Store_Expression (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
+  Save_Cont ();
+ Pushed ();
 
   RENAME_CRITICAL_SECTION ("garbage collector daemon");
-  if (GC_Daemon_Proc == SHARP_F)
-  {
-   Will_Push (CONTINUATION_SIZE);
-    Store_Return (RC_NORMAL_GC_DONE);
-    Store_Expression (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
-    Save_Cont ();
-   Pushed ();
+  if (daemon == SHARP_F)
     PRIMITIVE_ABORT (PRIM_POP_RETURN);
     /*NOTREACHED*/
-  }
- Will_Push (CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
-  Store_Return (RC_NORMAL_GC_DONE);
-  Store_Expression (LONG_TO_UNSIGNED_FIXNUM(MemTop - Free));
-  Save_Cont ();
-  STACK_PUSH (GC_Daemon_Proc);
+
+ Will_Push (2);
+  STACK_PUSH (daemon);
   STACK_PUSH (STACK_FRAME_HEADER);
  Pushed ();
   PRIMITIVE_ABORT (PRIM_APPLY);
-  /* The following comment is by courtesy of LINT, your friendly sponsor. */
   /*NOTREACHED*/
 }
 

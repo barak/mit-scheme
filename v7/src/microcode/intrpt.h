@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intrpt.h,v 1.15 1993/09/13 18:35:35 gjr Exp $
+$Id: intrpt.h,v 1.16 1993/10/14 19:23:18 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -88,7 +88,7 @@ MIT in each case. */
   (Registers[REGBLOCK_STACK_GUARD]) =					\
     ((INTERRUPT_ENABLED_P (INT_Stack_Overflow))				\
      ? ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (Stack_Guard)))		\
-     : ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (Absolute_Stack_Base))));	\
+     : ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (Stack_Bottom))));		\
 } while (0)
 
 #define FETCH_INTERRUPT_MASK() ((long) (Registers[REGBLOCK_INT_MASK]))

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.51 1993/08/24 00:19:49 gjr Exp $
+$Id: gccode.h,v 9.52 1993/10/14 19:21:29 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -202,7 +202,8 @@ do									\
 {									\
   if And2 (In_GC, Consistency_Check)					\
   {									\
-    if ((Old >= Highest_Allocated_Address) || (Old < Heap))		\
+    if ((Old >= Highest_Allocated_Address)				\
+	|| (Old < Lowest_Allocated_Address))				\
     {									\
       sprintf								\
 	(gc_death_message_buffer,					\
@@ -237,7 +238,7 @@ do									\
 #define Setup_Internal(In_GC, Transport_Code, Already_Relocated_Code)	\
 {									\
   GC_Consistency_Check (In_GC);						\
-  if (Old >= Low_Constant)						\
+  if (Old < low_heap)							\
     continue;								\
   Already_Relocated_Code;						\
   New_Address = (MAKE_BROKEN_HEART (To));				\
@@ -405,13 +406,14 @@ extern void EXFUN (check_transport_vector_lossage,
 
 #define Real_Transport_Vector()						\
 {									\
-  SCHEME_OBJECT *Saved_Scan;						\
+  SCHEME_OBJECT * Saved_Scan;						\
 									\
   Saved_Scan = Scan;							\
-  Scan = (To + 1 + (OBJECT_DATUM (*Old)));				\
-  if ((Consistency_Check) &&						\
-      (Scan >= Low_Constant) &&						\
-      (To < Low_Constant))						\
+  Scan = (To + 1 + (OBJECT_DATUM (* Old)));				\
+  if ((Consistency_Check)						\
+      && (Scan > Heap_Top)						\
+      && (To < Heap_Top)						\
+      && (To >= Heap_Bottom))						\
     {									\
       sprintf								\
 	(gc_death_message_buffer,					\

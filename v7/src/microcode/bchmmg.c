@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.81 1993/09/08 04:39:30 gjr Exp $
+$Id: bchmmg.c,v 9.82 1993/10/14 19:12:41 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -93,8 +93,6 @@ MIT in each case. */
    - bchutl.c: utilities common to bchmmg.c and bchdrn.c.
 
    Problems with this implementation right now:
-   - Purify kills Scheme if there is not enough space in constant space
-     for the new object.
    - It only works on Unix (or systems which support Unix I/O calls).
    - Dumpworld does not work because the file is not closed at dump time or
      reopened at restart time.
@@ -106,24 +104,25 @@ oo
    ------------------------------------------
    |        GC Buffer Space                 | (not always contiguous)
    |                                        |
-   ------------------------------------------
-   |         Control Stack        ||        |
-   |                              \/        |
-   ------------------------------------------
-   |     Constant + Pure Space    /\        |
-   |                              ||        |
-   ------------------------------------------
+   ------------------------------------------ <- fixed boundary (currently)
    |          Heap Space                    |
    |                                        |
-   ------------------------------------------
+   ------------------------------------------ <- boundary moved by purify
+   |     Constant + Pure Space    /\        |
+   |                              ||        |
+   ------------------------------------------ <- fixed boundary (currently)
+   |         Control Stack        ||        |
+   |                              \/        |
+   ------------------------------------------ <- fixed boundary (currently)
 0
+
    Each area has a pointer to its starting address and a pointer to
-   the next free cell.  The GC buffer space contains two (or more)
-   buffers used during the garbage collection process.  One is the
-   scan buffer and the other is the free buffer, and they are dumped
-   and loaded from disk as necessary.  At the beginning and at the end
-   a single buffer is used, since transporting will occur into the
-   area being scanned.
+   the next free cell (for the stack, it is a pointer to the last cell
+   in use).  The GC buffer space contains two (or more) buffers used
+   during the garbage collection process.  One is the scan buffer and
+   the other is the free buffer, and they are dumped and loaded from
+   disk as necessary.  At the beginning and at the end a single buffer
+   is used, since transporting will occur into the area being scanned.
 */
 
 /* Exports */
@@ -183,8 +182,12 @@ static long
   scan_position,
   free_position,
   pre_read_position,
-  extension_overlap_length,
-  saved_heap_size;
+  extension_overlap_length;
+
+static long
+  saved_heap_size,
+  saved_constant_size,
+  saved_stack_size;
 
 static unsigned long
   read_queue_bitmask; /* Change MAX_READ_OVERLAP if you change this. */
@@ -2010,7 +2013,9 @@ DEFUN (open_gc_file, (size, unlink_p),
 
   if (exists_p && ((file_info.st_mode & S_IFMT) == S_IFCHR))
   {
+#if defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
     int flags;
+#endif
     Boolean ignore;
     static char message[] = "This is a test message to the GC file.\n";
     char * buffer;
@@ -2052,26 +2057,64 @@ DEFUN (open_gc_file, (size, unlink_p),
   return;
 }
 
+#define CONSTANT_SPACE_FUDGE	128
+
+extern void EXFUN (reset_allocator_parameters, (void));
+extern Boolean EXFUN (update_allocator_parameters, (SCHEME_OBJECT *));
+
+Boolean
+DEFUN (update_allocator_parameters, (ctop), SCHEME_OBJECT * ctop)
+{
+  /* buffer for impurify, etc. */
+  ctop = ((SCHEME_OBJECT *)
+	  (ALIGN_UP_TO_IO_PAGE (ctop + CONSTANT_SPACE_FUDGE)));
+  if (ctop >= Highest_Allocated_Address)
+    return (FALSE);
+
+  Constant_Top = ctop;
+  Heap_Bottom = Constant_Top;
+  Heap_Top = ((SCHEME_OBJECT *)
+	      (ALIGN_DOWN_TO_IO_PAGE (Highest_Allocated_Address)));
+  aligned_heap = Heap_Bottom;
+  Local_Heap_Base = Heap_Bottom;
+  Unused_Heap_Bottom = Heap_Top;
+  Unused_Heap_Top = Highest_Allocated_Address;
+  Free = Heap_Bottom;
+  SET_MEMTOP (Heap_Top - GC_Reserve);
+  return (TRUE);
+}
+
+void
+DEFUN_VOID (reset_allocator_parameters)
+{
+  GC_Reserve = 4500;
+  GC_Space_Needed = 0;
+  Stack_Bottom = ((SCHEME_OBJECT *)
+		  (ALIGN_UP_TO_IO_PAGE (Lowest_Allocated_Address)));
+  Stack_Top = ((SCHEME_OBJECT *)
+	       (ALIGN_DOWN_TO_IO_PAGE
+		(Stack_Bottom + (STACK_ALLOCATION_SIZE (saved_stack_size)))));
+  Constant_Space = Stack_Top;
+  Free_Constant = Constant_Space;
+  (void) update_allocator_parameters (Free_Constant);
+  SET_CONSTANT_TOP ();
+  ALIGN_FLOAT (Free);
+  INITIALIZE_STACK ();
+  STACK_RESET ();
+  return;
+}
+
 void
 DEFUN (Clear_Memory, (heap_size, stack_size, constant_space_size),
        int heap_size
        AND int stack_size
        AND int constant_space_size)
 {
-  GC_Reserve = 4500;
-  GC_Space_Needed = 0;
-  Heap_Top = (Heap_Bottom + heap_size);
-  SET_MEMTOP (Heap_Top - GC_Reserve);
-  Free = Heap_Bottom;
-  Constant_Top = (Constant_Space + constant_space_size);
-  Initialize_Stack ();
-  STACK_RESET ();
-  Free_Constant = Constant_Space;
-  SET_CONSTANT_TOP ();
-  return;
+  saved_heap_size = heap_size;
+  saved_constant_size = constant_space_size;
+  saved_stack_size = stack_size;
+  reset_allocator_parameters ();
 }
-
-static PTR Lowest_Allocated_Address;
 
 void
 DEFUN_VOID (Reset_Memory)
@@ -2081,11 +2124,11 @@ DEFUN_VOID (Reset_Memory)
   DEALLOCATE_REGISTERS ();
   return;
 }
-
+
 #define BLOCK_TO_IO_SIZE(size)						\
   ((ALIGN_UP_TO_IO_PAGE ((size) * (sizeof (SCHEME_OBJECT))))		\
    / (sizeof (SCHEME_OBJECT)))
-
+
 static int
 DEFUN (set_gc_buffer_sizes, (new_buffer_shift), unsigned long new_buffer_shift)
 {
@@ -2095,7 +2138,7 @@ DEFUN (set_gc_buffer_sizes, (new_buffer_shift), unsigned long new_buffer_shift)
   
   new_buffer_size = (1L << new_buffer_shift);
   new_buffer_bytes = (new_buffer_size * (sizeof (SCHEME_OBJECT)));
-  if (!ALIGNED_TO_IO_PAGE_P (new_buffer_bytes))
+  if (! (ALIGNED_TO_IO_PAGE_P (new_buffer_bytes)))
   {
     fprintf (stderr,
 	     "%s (Setup_Memory): improper new_buffer_size.\n",
@@ -2109,11 +2152,11 @@ DEFUN (set_gc_buffer_sizes, (new_buffer_shift), unsigned long new_buffer_shift)
   }
 
   new_buffer_byte_shift = (next_exponent_of_two (new_buffer_bytes));
-  if ((1L << new_buffer_byte_shift) != new_buffer_bytes)
+  if ((((unsigned long) 1L) << new_buffer_byte_shift) != new_buffer_bytes)
   {
     fprintf
       (stderr,
-       "%s (Setup_Memory): gc_buffer_bytes (= 0x%lx) is not a power of 2.\n",
+       "%s (Setup_Memory): gc_buffer_bytes (0x%lx) is not a power of 2.\n",
        scheme_program_name, new_buffer_bytes);
     return (-1);
   }
@@ -2153,7 +2196,8 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
        AND int constant_space_size)
 {
   SCHEME_OBJECT test_value;
-  int real_stack_size, fudge_space;
+  int real_stack_size;
+  long gc_buffer_allocation;
 
   ALLOCATE_REGISTERS ();
 
@@ -2168,30 +2212,32 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
     /*NOTREACHED*/
   }
 
-  real_stack_size = (Stack_Allocation_Size (stack_size));
+  real_stack_size = (STACK_ALLOCATION_SIZE (stack_size));
 
   /* add log(1024)/log(2) to exponent */
-  if ((set_gc_buffer_sizes (10 + (next_exponent_of_two
-				   (option_gc_window_size))))
+  if ((set_gc_buffer_sizes (10
+			    + (next_exponent_of_two (option_gc_window_size))))
       != 0)
     parameterization_termination (1, 1);
 
   /* Use multiples of IO_PAGE_SIZE. */
 
-  fudge_space = ((BLOCK_TO_IO_SIZE (HEAP_BUFFER_SPACE + 1))
-		 + (IO_PAGE_SIZE / (sizeof (SCHEME_OBJECT))));
   heap_size = (BLOCK_TO_IO_SIZE (heap_size));
   constant_space_size = (BLOCK_TO_IO_SIZE (constant_space_size));
   real_stack_size = (BLOCK_TO_IO_SIZE (real_stack_size));
+  gc_buffer_allocation =  (GC_BUFFER_ALLOCATION (2 * gc_total_buffer_size));
 
   /* Allocate. */
 
-  ALLOCATE_HEAP_SPACE (fudge_space + heap_size
-		       + constant_space_size + real_stack_size
-		       + (GC_BUFFER_ALLOCATION (2 * gc_total_buffer_size)));
+  ALLOCATE_HEAP_SPACE ((heap_size
+			+ constant_space_size + real_stack_size
+			+ gc_buffer_allocation
+			+ (IO_PAGE_SIZE / (sizeof (SCHEME_OBJECT)))),
+		       Lowest_Allocated_Address,
+		       Highest_Allocated_Address);
 
   /* Consistency check 2 */
-  if (Heap == NULL)
+  if (Lowest_Allocated_Address == NULL)
   {
     fprintf (stderr,
 	     "%s (Setup_Memory): Not enough memory for this configuration.\n",
@@ -2201,19 +2247,6 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
     /*NOTREACHED*/
   }
 
-  Lowest_Allocated_Address = ((PTR) Heap);
-  Heap += HEAP_BUFFER_SPACE;
-  Heap = ((SCHEME_OBJECT *) (ALIGN_UP_TO_IO_PAGE (Heap)));
-  aligned_heap = Heap;
-  Constant_Space = (Heap + heap_size);
-
-  /*
-     The two GC buffers are not included in the valid Scheme memory.
-  */
-
-  Highest_Allocated_Address = ((Constant_Space + constant_space_size
-				+ real_stack_size) - 1);
-
   /* Consistency check 3 */
   test_value =
     (MAKE_POINTER_OBJECT (LAST_TYPE_CODE, Highest_Allocated_Address));
@@ -2234,24 +2267,9 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
     /*NOTREACHED*/
   }
 
-  /* This does not use INITIAL_ALIGN_HEAP because it would
-     make Heap point to the previous GC_BUFFER frame.
-     INITIAL_ALIGN_HEAP should have its phase changed so that it would
-     be a NOP below, and constant space should use it too.
-   */     
-
-  ALIGN_FLOAT (Heap);
-  ALIGN_FLOAT (Constant_Space);
-  heap_size = (Constant_Space - Heap);
-  constant_space_size = ((Highest_Allocated_Address - Constant_Space)
-			 - real_stack_size);
-  saved_heap_size = ((long) heap_size);
-
-  Heap_Bottom = Heap;
   Clear_Memory (heap_size, stack_size, constant_space_size);
-
   INITIALIZE_GC_BUFFERS (1,
-			 (Highest_Allocated_Address + 1),
+			 (Highest_Allocated_Address - gc_buffer_allocation),
 			 (heap_size * (sizeof (SCHEME_OBJECT))),
 			 option_gc_read_overlap,
 			 option_gc_write_overlap,
@@ -2349,7 +2367,7 @@ DEFUN (dump_and_reload_scan_buffer, (number_to_skip, success),
        long number_to_skip AND Boolean * success)
 {
   DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
-		success, "the scan buffer");
+	       success, "the scan buffer");
   reload_scan_buffer (1 + number_to_skip);
   return (scan_buffer_bottom);
 }
@@ -2624,7 +2642,7 @@ DEFUN_VOID (initialize_free_buffer)
   scan_position = -1L;
   scan_buffer = NULL;
   scan_buffer_bottom = NULL;
-  scan_buffer_top = (Highest_Allocated_Address + 2);
+  scan_buffer_top = Highest_Allocated_Address;
   /* Force first write to do an lseek. */
   gc_file_current_position = -1;
   next_scan_buffer = NULL;
@@ -2712,7 +2730,7 @@ DEFUN_VOID (pre_read_weak_pair_buffers)
   {
     pair_addr = (OBJECT_ADDRESS (next));
     obj_addr = (OBJECT_ADDRESS (*pair_addr++));
-    if (! (obj_addr >= Constant_Space))
+    if (! (obj_addr < Constant_Top))
     {
       position = (obj_addr - aligned_heap);
       position = (position >> gc_buffer_shift);
@@ -2746,7 +2764,8 @@ DEFUN_VOID (pre_read_weak_pair_buffers)
 SCHEME_OBJECT
 DEFUN (read_newspace_address, (addr), SCHEME_OBJECT * addr)
 {
-  unsigned long position, offset;
+  long position;
+  unsigned long offset;
   SCHEME_OBJECT result;
 
   if ((addr >= Constant_Space) && (addr < Free_Constant))
@@ -2775,7 +2794,7 @@ DEFUN (read_newspace_address, (addr), SCHEME_OBJECT * addr)
     result = (* (scan_buffer_bottom + offset));
   else if (position == free_position)
     result = (* (free_buffer_bottom + offset));
-  else if ((position == (scan_position + gc_buffer_bytes))
+  else if ((position == ((long) (scan_position + gc_buffer_bytes)))
 	   && scan_buffer_extended_p
 	   && ((read_overlap != 0) || (offset < gc_extra_buffer_size)))
   {
@@ -2858,7 +2877,7 @@ DEFUN (guarantee_in_memory, (addr), SCHEME_OBJECT * addr)
 {
   long position, offset;
 
-  if (addr >= Constant_Space)
+  if (addr < Constant_Top)
     return (addr);
 
   position = (addr - aligned_heap);
@@ -2918,7 +2937,7 @@ DEFUN (update_weak_pointer, (Temp), SCHEME_OBJECT Temp)
     case GC_Quadruple:
     case GC_Vector:
       Old = (OBJECT_ADDRESS (Temp));
-      if (Old >= Constant_Space)
+      if (Old < Constant_Top)
 	return (Temp);
 
       if ((OBJECT_TYPE (*Old)) == TC_BROKEN_HEART)
@@ -2928,7 +2947,7 @@ DEFUN (update_weak_pointer, (Temp), SCHEME_OBJECT Temp)
 
     case GC_Compiled:
       Old = (OBJECT_ADDRESS (Temp));
-      if (Old >= Constant_Space)
+      if (Old < Constant_Top)
 	return (Temp);
       Compiled_BH (false, { return Temp; });
       return (SHARP_F);
@@ -3001,6 +3020,69 @@ DEFUN_VOID (fix_weak_chain_2)
   return;
 }
 
+long
+DEFUN (GC_relocate_root, (free_buffer_ptr), SCHEME_OBJECT ** free_buffer_ptr)
+{
+  long skip;
+  SCHEME_OBJECT * initial_free_buffer, * free_buffer;
+
+  free_buffer = * free_buffer_ptr;
+  initial_free_buffer = free_buffer;
+  SET_MEMTOP (Heap_Top - GC_Reserve);
+
+  /* Save the microcode registers so that they can be relocated */
+
+  Set_Fixed_Obj_Slot (Precious_Objects, SHARP_F);
+  Set_Fixed_Obj_Slot (Lost_Objects_Base, SHARP_F);
+
+  *free_buffer++ = Fixed_Objects;
+  *free_buffer++ = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History));
+  *free_buffer++ = (Get_Current_Stacklet ());
+  *free_buffer++ = ((Prev_Restore_History_Stacklet == NULL) ?
+		    SHARP_F :
+		    (MAKE_POINTER_OBJECT (TC_CONTROL_POINT,
+					  Prev_Restore_History_Stacklet)));
+
+  *free_buffer++ = Current_State_Point;
+  *free_buffer++ = Fluid_Bindings;
+  skip = (free_buffer - initial_free_buffer);
+  if (free_buffer >= free_buffer_top)
+    free_buffer =
+      (dump_and_reset_free_buffer ((free_buffer - free_buffer_top),
+				   NULL));
+  * free_buffer_ptr = free_buffer;
+  return (skip);
+}
+
+void
+DEFUN (GC_end_root_relocation, (root, root2),
+       SCHEME_OBJECT * root AND SCHEME_OBJECT * root2)
+{
+  /* Make the microcode registers point to the copies in new-space. */
+
+  Fixed_Objects = *root++;
+  Set_Fixed_Obj_Slot (Precious_Objects, *root2);
+  Set_Fixed_Obj_Slot
+    (Lost_Objects_Base, (LONG_TO_UNSIGNED_FIXNUM (ADDRESS_TO_DATUM (root2))));
+
+  History = (OBJECT_ADDRESS (*root++));
+  Set_Current_Stacklet (* root);
+  root += 1;
+  if ((* root) != SHARP_F)
+    Prev_Restore_History_Stacklet = (OBJECT_ADDRESS (*root++));
+  else
+  {
+    Prev_Restore_History_Stacklet = NULL;
+    root += 1;
+  }
+  Current_State_Point = *root++;
+  Fluid_Bindings = *root++;
+  Free_Stacklets = NULL;
+  COMPILER_TRANSPORT_END ();
+  CLEAR_INTERRUPT (INT_GC);
+  return;
+}
+
 /* Here is the set up for the full garbage collection:
 
    - First it makes the constant space and stack into one large area
@@ -3028,49 +3110,35 @@ DEFUN (GC, (weak_pair_transport_initialized_p),
   SCHEME_OBJECT
     * root, * result, * end_of_constant_area,
     the_precious_objects, * root2,
-    * free_buffer, * block_start, * initial_free_buffer;
+    * free_buffer, * block_start, * saved_ctop;
+  long skip_length;
 
-  if (!weak_pair_transport_initialized_p)
-    initialize_weak_pair_transport (Free_Constant + 2);
+  saved_ctop = Constant_Top;
+  if (((Constant_Top - Free_Constant) < CONSTANT_SPACE_FUDGE)
+      && (update_allocator_parameters (Free_Constant)))
+    Constant_Top = saved_ctop;
+
+  if (! weak_pair_transport_initialized_p)
+    initialize_weak_pair_transport (Stack_Bottom);
 
   free_buffer = (initialize_free_buffer ());
   Free = Heap_Bottom;
+  ALIGN_FLOAT (Free);
   block_start = aligned_heap;
-  if (block_start != Free)
-    free_buffer += (Free - block_start);
-  initial_free_buffer = free_buffer;
-
-  SET_MEMTOP (Heap_Top - GC_Reserve);
-
-  /* Save the microcode registers so that they can be relocated */
+  skip_length = (Free - block_start);
+  free_buffer += skip_length;
 
   Terminate_Old_Stacklet ();
   SEAL_CONSTANT_SPACE ();
-  end_of_constant_area = (CONSTANT_SPACE_SEAL ());
-  root = Free;
+  end_of_constant_area = (CONSTANT_AREA_END ());
   the_precious_objects = (Get_Fixed_Obj_Slot (Precious_Objects));
-  Set_Fixed_Obj_Slot (Precious_Objects, SHARP_F);
-  Set_Fixed_Obj_Slot (Lost_Objects_Base, SHARP_F);
-
-  *free_buffer++ = Fixed_Objects;
-  *free_buffer++ = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History));
-  *free_buffer++ = Get_Current_Stacklet ();
-  *free_buffer++ = ((Prev_Restore_History_Stacklet == NULL) ?
-		    SHARP_F :
-		    (MAKE_POINTER_OBJECT (TC_CONTROL_POINT,
-					  Prev_Restore_History_Stacklet)));
-
-  *free_buffer++ = Current_State_Point;
-  *free_buffer++ = Fluid_Bindings;
-  Free += (free_buffer - initial_free_buffer);
+  root = Free;
 
-  if (free_buffer >= free_buffer_top)
-    free_buffer =
-      (dump_and_reset_free_buffer ((free_buffer - free_buffer_top),
-				   NULL));
   /* The 4 step GC */
 
-  result = (GCLoop (Constant_Space, &free_buffer, &Free));
+  Free += (GC_relocate_root (&free_buffer));
+
+  result = (GCLoop ((CONSTANT_AREA_START ()), &free_buffer, &Free));
   if (result != end_of_constant_area)
   {
     fprintf (stderr,
@@ -3081,8 +3149,7 @@ DEFUN (GC, (weak_pair_transport_initialized_p),
     /*NOTREACHED*/
   }
 
-  result = (GCLoop (((initialize_scan_buffer (block_start))
-		     + (Heap_Bottom - block_start)),
+  result = (GCLoop (((initialize_scan_buffer (block_start)) + skip_length),
 		    &free_buffer, &Free));
   if (free_buffer != result)
   {
@@ -3119,80 +3186,55 @@ DEFUN (GC, (weak_pair_transport_initialized_p),
   final_reload (block_start, (Free - block_start), "new space");
   fix_weak_chain_2 ();
 
-  /* Make the microcode registers point to the copies in new-space. */
-
-  Fixed_Objects = *root++;
-  Set_Fixed_Obj_Slot (Precious_Objects, *root2);
-  Set_Fixed_Obj_Slot
-    (Lost_Objects_Base, (LONG_TO_UNSIGNED_FIXNUM (ADDRESS_TO_DATUM (root2))));
-
-  History = (OBJECT_ADDRESS (*root++));
-
-  Set_Current_Stacklet (*root);
-  root += 1;
-  if (*root == SHARP_F)
-  {
-    Prev_Restore_History_Stacklet = NULL;
-    root += 1;
-  }
-  else
-    Prev_Restore_History_Stacklet = (OBJECT_ADDRESS (*root++));
-  Current_State_Point = *root++;
-  Fluid_Bindings = *root++;
-  Free_Stacklets = NULL;
-  COMPILER_TRANSPORT_END ();
-  CLEAR_INTERRUPT (INT_GC);
+  GC_end_root_relocation (root, root2);
+  Constant_Top = saved_ctop;
+  SET_CONSTANT_TOP ();
   return;
 }
-
+
 /* (GARBAGE-COLLECT SLACK)
    Requests a garbage collection leaving the specified amount of slack
-   for the top of heap check on the next GC.  The primitive ends by invoking
-   the GC daemon if there is one.
+   for the top of heap check on the next GC.  The primitive ends by
+   invoking the GC daemon if there is one.
 */
 
 DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 {
-  long new_gc_reserve;
   extern unsigned long gc_counter;
-  SCHEME_OBJECT GC_Daemon_Proc;
+  SCHEME_OBJECT daemon;
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
 
   STACK_SANITY_CHECK ("GC");
-  new_gc_reserve = (arg_nonnegative_integer (1));
   if (Free > Heap_Top)
     termination_gc_out_of_space ();
+
+  GC_Reserve = (arg_nonnegative_integer (1));
+  POP_PRIMITIVE_FRAME (1);
 
   ENTER_CRITICAL_SECTION ("garbage collector");
   run_pre_gc_hooks ();
   gc_counter += 1;
-  GC_Reserve = new_gc_reserve;
   GC (0);
   run_post_gc_hooks ();
-  POP_PRIMITIVE_FRAME (1);
-  GC_Daemon_Proc = (Get_Fixed_Obj_Slot (GC_Daemon));
+  daemon = (Get_Fixed_Obj_Slot (GC_Daemon));
 
-  RENAME_CRITICAL_SECTION ("garbage collector daemon");
-  if (GC_Daemon_Proc == SHARP_F)
-  {
-   Will_Push (CONTINUATION_SIZE);
-    Store_Return (RC_NORMAL_GC_DONE);
-    Store_Expression (LONG_TO_UNSIGNED_FIXNUM(MemTop - Free));
-    Save_Cont ();
-   Pushed ();
-    PRIMITIVE_ABORT (PRIM_POP_RETURN);
-    /*NOTREACHED*/
-  }
- Will_Push (CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
+ Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_NORMAL_GC_DONE);
   Store_Expression (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
   Save_Cont ();
-  STACK_PUSH (GC_Daemon_Proc);
+ Pushed ();
+
+  RENAME_CRITICAL_SECTION ("garbage collector daemon");
+  if (daemon == SHARP_F)
+    PRIMITIVE_ABORT (PRIM_POP_RETURN);
+    /*NOTREACHED*/
+
+ Will_Push (2);
+  STACK_PUSH (daemon);
   STACK_PUSH (STACK_FRAME_HEADER);
  Pushed ();
   PRIMITIVE_ABORT (PRIM_APPLY);
-  /* The following comment is by courtesy of LINT, your friendly sponsor. */
   /*NOTREACHED*/
 }
 
@@ -3283,7 +3325,7 @@ DEFUN_VOID (statistics_read)
     signal_error_from_primitive (ERR_UNDEFINED_PRIMITIVE);
 
   vector = (VECTOR_ARG (1));
-  if (len != (VECTOR_LENGTH (vector)))
+  if (len != ((int) (VECTOR_LENGTH (vector))))
     error_bad_range_arg (1);
   
   for (cntr = 0, ptr = &all_gc_statistics[0], scan = (VECTOR_LOC (vector, 0));

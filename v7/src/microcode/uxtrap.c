@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.23 1993/08/28 22:46:05 gjr Exp $
+$Id: uxtrap.c,v 1.24 1993/10/14 19:20:41 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -90,14 +90,14 @@ DEFUN_VOID (trap_immediate_termination)
 static void
 DEFUN_VOID (trap_dump_core)
 {
-  if (option_disable_core_dump)
+  if (! (option_disable_core_dump))
+    UX_dump_core ();
+  else
     {
       fputs (">> Core dumps are disabled - Terminating normally.\n", stdout);
       fflush (stdout);
       termination_trap ();
     }
-  else
-    UX_dump_core ();
 }
 
 static void
@@ -120,17 +120,13 @@ DEFUN (trap_handler, (message, signo, info, scp),
        struct FULL_SIGCONTEXT * scp)
 {
   int code = ((SIGINFO_VALID_P (info)) ? (SIGINFO_CODE (info)) : 0);
-  Boolean constant_space_broken = (!(CONSTANT_SPACE_SEALED ()));
+  Boolean stack_overflowed_p = (STACK_OVERFLOWED_P ());
   enum trap_state old_trap_state = trap_state;
 
   if (old_trap_state == trap_state_exitting_hard)
-  {
     _exit (1);
-  }
   else if (old_trap_state == trap_state_exitting_soft)
-  {
     trap_immediate_termination ();
-  }
   trap_state = trap_state_trapped;
   if (WITHIN_CRITICAL_SECTION_P ())
   {
@@ -140,17 +136,17 @@ DEFUN (trap_handler, (message, signo, info, scp),
     fprintf (stdout, ">> [signal %d (%s), code %d]\n",
 	     signo, (find_signal_name (signo)), code);
   }
-  else if (constant_space_broken || (old_trap_state != trap_state_recover))
+  else if (stack_overflowed_p || (old_trap_state != trap_state_recover))
   {
     fprintf (stdout, "\n>> A %s has occurred.\n", message);
     fprintf (stdout, ">> [signal %d (%s), code %d]\n",
 	     signo, (find_signal_name (signo)), code);
   }
-  if (constant_space_broken)
+  if (stack_overflowed_p)
   {
-    fputs (">> Constant space has been overwritten.\n", stdout);
-    fputs (">> Probably a runaway recursion has overflowed the stack.\n",
+    fputs (">> The stack has overflowed overwriting adjacent memory.\n",
 	   stdout);
+    fputs (">> This was probably caused by a runaway recursion.\n", stdout);
   }
   fflush (stdout);
 
@@ -178,7 +174,7 @@ DEFUN (trap_handler, (message, signo, info, scp),
     else
       trap_immediate_termination ();
   case trap_state_recover:
-    if ((WITHIN_CRITICAL_SECTION_P ()) || constant_space_broken)
+    if ((WITHIN_CRITICAL_SECTION_P ()) || stack_overflowed_p)
     {
       fputs (">> Successful recovery is unlikely.\n", stdout);
       break;
@@ -332,7 +328,7 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
   signal_code = (find_signal_code_name (signo, info, scp));
   if (!stack_recovered_p)
     {
-      Initialize_Stack ();
+      INITIALIZE_STACK ();
      Will_Push (CONTINUATION_SIZE);
       Store_Return (RC_END_OF_COMPUTATION);
       Store_Expression (SHARP_F);
@@ -498,14 +494,14 @@ DEFUN (continue_from_trap, (signo, info, scp),
   scheme_sp_valid =
     (pc_in_scheme
      && ((scheme_sp < ((long) Stack_Top)) &&
-	 (scheme_sp >= ((long) Absolute_Stack_Base)) &&
+	 (scheme_sp >= ((long) Stack_Bottom)) &&
 	 ((scheme_sp & STACK_ALIGNMENT_MASK) == 0)));
 
   new_stack_pointer =
     (scheme_sp_valid
      ? ((SCHEME_OBJECT *) scheme_sp)
      : (pc_in_C && (Stack_Pointer < Stack_Top)
-	&& (Stack_Pointer > Absolute_Stack_Base))
+	&& (Stack_Pointer > Stack_Bottom))
      ? Stack_Pointer
      : ((SCHEME_OBJECT *) 0));
 

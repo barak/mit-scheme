@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: storage.c,v 9.52 1992/09/26 02:55:04 cph Exp $
+$Id: storage.c,v 9.53 1993/10/14 19:21:51 gjr Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -45,24 +45,24 @@ SCHEME_OBJECT
 #ifndef DOS386
  * MemTop,		/* Top of free space available */
 #endif /* DOS386 */
- * Ext_History,		/* History register */
- * Free,		/* Next free word in storage */
- * Ext_Stack_Pointer,	/* Next available slot in control stack */
- * Stack_Top,		/* Top of control stack */
- * Stack_Guard,		/* Guard area at end of stack */
- * Free_Stacklets,	/* Free list of stacklets */
- * Constant_Space,	/* Bottom of constant+pure space */
- * Free_Constant,	/* Next free cell in constant+pure area */
- * Constant_Top,	/* Top of constant+pure space */
- * Heap_Top,		/* Top of current heap */
- * Heap_Bottom,		/* Bottom of current heap */
- * Unused_Heap_Top,	/* Top of other heap */
- * Unused_Heap,		/* Bottom of other heap */
- * Local_Heap_Base,	/* Per-processor CONSing area */
- * Heap,		/* Bottom of entire heap */
-   Current_State_Point,	/* Used by dynamic winder */
-   Fluid_Bindings,	/* Fluid bindings AList */
- * last_return_code;	/* Address of the most recent return code in the stack.
+  * Free,		/* Next free word in heap */
+  * Heap_Top,		/* Top of current heap */
+  * Heap_Bottom,	/* Bottom of current heap */
+  * Unused_Heap_Top,	/* Top of unused heap */
+  * Unused_Heap_Bottom,	/* Bottom of unused heap */
+  * Stack_Guard,	/* Guard area at end of stack */
+  * Ext_Stack_Pointer,	/* Next available slot in control stack */
+  * Stack_Bottom,	/* Bottom of control stack */
+  * Stack_Top,		/* Top of control stack */
+  * Free_Constant,	/* Next free word in constant space */
+  * Constant_Space,	/* Bottom of constant+pure space */
+  * Constant_Top,	/* Top of constant+pure space */
+  * Local_Heap_Base,	/* Per-processor CONSing area */
+  * Free_Stacklets,	/* Free list of stacklets */
+  * Ext_History,	/* History register */
+  Current_State_Point,	/* Dynamic state point */
+  Fluid_Bindings,	/* Fluid bindings AList */
+  * last_return_code;	/* Address of the most recent return code in the stack.
 			   This is only meaningful while in compiled code.
 			   *** This must be changed when stacklets are used. */
 
@@ -84,7 +84,7 @@ long Prev_Restore_History_Offset;
 long Heap_Size;
 long Constant_Size;
 long Stack_Size;
-SCHEME_OBJECT * Highest_Allocated_Address;
+SCHEME_OBJECT * Lowest_Allocated_Address, * Highest_Allocated_Address;
 #ifndef HEAP_IN_LOW_MEMORY
 SCHEME_OBJECT * memory_base;
 #endif

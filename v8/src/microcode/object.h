@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.42 1993/08/21 03:58:18 gjr Exp $
+$Id: object.h,v 9.43 1993/10/14 19:19:02 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -141,13 +141,16 @@ MIT in each case. */
 
 typedef long relocation_type;	/* Used to relocate pointers on fasload */
 
-/* The "-1" in the value returned is a guarantee that there is one
-   word reserved exclusively for use by the garbage collector. */
-#define ALLOCATE_HEAP_SPACE(space)					\
-  (Heap =								\
-    ((SCHEME_OBJECT *)							\
-     (HEAP_MALLOC ((sizeof (SCHEME_OBJECT)) * (space)))),		\
-   ((Heap + (space)) - 1))
+#define ALLOCATE_HEAP_SPACE(space,low,high) do				\
+{									\
+  unsigned long _space = (space);					\
+  SCHEME_OBJECT * _low							\
+    = ((SCHEME_OBJECT *)						\
+       (HEAP_MALLOC ((sizeof (SCHEME_OBJECT)) * _space)));		\
+									\
+  (low) = _low;								\
+  (high) = (_low + _space);						\
+} while (0)
 
 #ifndef DATUM_TO_ADDRESS
 #define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) (datum))
@@ -165,14 +168,14 @@ typedef SCHEME_OBJECT * relocation_type;
 
 extern SCHEME_OBJECT * memory_base;
 
-/* The "-1" in the value returned is a guarantee that there is one
-   word reserved exclusively for use by the garbage collector. */
-#define ALLOCATE_HEAP_SPACE(space)					\
-  (memory_base =							\
-    ((SCHEME_OBJECT *)							\
-     (HEAP_MALLOC ((sizeof (SCHEME_OBJECT)) * (space)))),		\
-   Heap = memory_base,							\
-   ((memory_base + (space)) - 1))
+#define ALLOCATE_HEAP_SPACE(space,low,high) do				\
+{									\
+  unsigned long _space = (space);					\
+  memory_base = ((SCHEME_OBJECT *)					\
+		 (HEAP_MALLOC ((sizeof (SCHEME_OBJECT)) * _space)));	\
+  (low) = memory_base;							\
+  (high) = (memory_base + _space);					\
+} while (0)
 
 #ifndef DATUM_TO_ADDRESS
 #define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) ((datum) + memory_base))
@@ -490,35 +493,17 @@ if ((ADDRESS_CONSTANT_P (OBJECT_ADDRESS (Old_Pointer))) &&		\
     (Pure_Test (OBJECT_ADDRESS (Old_Pointer))))				\
   signal_error_from_primitive (ERR_WRITE_INTO_PURE_SPACE);		\
 
-#ifdef FLOATING_ALIGNMENT
-
-#define FLOATING_BUFFER_SPACE						\
-  ((FLOATING_ALIGNMENT + 1) / (sizeof (SCHEME_OBJECT)))
-
-#define HEAP_BUFFER_SPACE						\
-  (TRAP_MAX_IMMEDIATE + 1 + FLOATING_BUFFER_SPACE)
-
-/* The space is there, find the correct position. */
-
-#define INITIAL_ALIGN_FLOAT(Where)					\
-{									\
-  while ((((long) ((Where) + 1)) & FLOATING_ALIGNMENT) != 0)		\
-    Where -= 1;								\
-}
-
-#define ALIGN_FLOAT(Where)						\
-{									\
-  while ((((long) ((Where) + 1)) & FLOATING_ALIGNMENT) != 0)		\
-    *Where++ = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0));		\
-}
-
-#else /* not FLOATING_ALIGNMENT */
-
-#define HEAP_BUFFER_SPACE		 (TRAP_MAX_IMMEDIATE + 1)
-
-#define INITIAL_ALIGN_FLOAT(Where)
-#define ALIGN_FLOAT(Where)
-
+#ifndef FLOATING_ALIGNMENT
+#define FLOATING_ALIGNMENT	0
 #endif /* not FLOATING_ALIGNMENT */
+
+#define FLOATING_ALIGNED_P(ptr)						\
+  ((((unsigned long) ((ptr) + 1)) & FLOATING_ALIGNMENT) == 0)
+
+#define ALIGN_FLOAT(Where) do						\
+{									\
+  while (! (FLOATING_ALIGNED_P (Where)))				\
+    *Where++ = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0));		\
+} while (0)
 
 #endif /* SCM_OBJECT_H */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.72 1993/09/09 18:12:44 gjr Exp $
+$Id: bchdmp.c,v 9.73 1993/10/14 19:18:42 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -839,14 +839,16 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   }
 }
 
+extern SCHEME_OBJECT compiler_utilities;
+
 /* (DUMP-BAND PROCEDURE FILE-NAME)
    Saves all of the heap and pure space on FILE-NAME.  When the
    file is loaded back using BAND_LOAD, PROCEDURE is called with an
-   argument of #F.  */
+   argument of #F.
+*/
 
 DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 {
-  extern SCHEME_OBJECT compiler_utilities;
   SCHEME_OBJECT Combination, *table_start, *table_end, *saved_free;
   long table_length;
   Boolean result;
@@ -855,6 +857,10 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   Band_Dump_Permitted ();
   CHECK_ARG (1, INTERPRETER_APPLICABLE_P);
   CHECK_ARG (2, STRING_P);
+  if (Unused_Heap_Bottom < Heap_Bottom)
+    /* Cause the image to be in the low heap, to increase
+       the probability that no relocation is needed on reload. */
+    Primitive_GC (0);
   Primitive_GC_If_Needed (5);
   saved_free = Free;
   Combination = (MAKE_POINTER_OBJECT (TC_COMBINATION_1, Free));
@@ -872,14 +878,29 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
     result = false;
   else
   {
+    SCHEME_OBJECT * faligned_heap, * faligned_constant;
     CONST char * filename = ((CONST char *) (STRING_LOC ((ARG_REF (2)), 0)));
+
+    OS_file_remove_link (filename);
     dump_channel = (OS_open_dump_file (filename));
     if (dump_channel == NO_CHANNEL)
       error_bad_range_arg (2);
+
+    for (faligned_heap = Heap_Bottom;
+	 (! (FLOATING_ALIGNED_P (faligned_heap)));
+	 faligned_heap += 1)
+      ;
+    
+    for (faligned_constant = Constant_Space;
+	 (! (FLOATING_ALIGNED_P (faligned_constant)));
+	 faligned_constant += 1)
+      ;
+
     result = (Write_File ((Free - 1),
-			  ((long) (Free - Heap_Bottom)), Heap_Bottom,
-			  ((long) (Free_Constant - Constant_Space)),
-			  Constant_Space,
+			  ((long) (Free - faligned_heap)),
+			  faligned_heap,
+			  ((long) (Free_Constant - faligned_constant)),
+			  faligned_constant,
 			  table_start, table_length,
 			  ((long) (table_end - table_start)),
 			  (compiler_utilities != SHARP_F), true));

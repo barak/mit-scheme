@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purutl.c,v 9.45 1993/08/22 22:39:05 gjr Exp $
+$Id: purutl.c,v 9.46 1993/10/14 19:16:10 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -40,23 +40,22 @@ MIT in each case. */
 #include "zones.h"
 
 static void
-DEFUN (Update,
-       (From, To, Was, Will_Be),
-       fast SCHEME_OBJECT *From AND
-       fast SCHEME_OBJECT *To AND
-       fast SCHEME_OBJECT *Was AND
-       fast SCHEME_OBJECT *Will_Be)
+DEFUN (update, (From, To, Was, Will_Be),
+       fast SCHEME_OBJECT * From
+       AND fast SCHEME_OBJECT * To
+       AND fast SCHEME_OBJECT * Was
+       AND fast SCHEME_OBJECT * Will_Be)
 {
   fast long count;
 
   for (; From < To; From++)
   {
-    if (GC_Type_Special (*From))
+    if (GC_Type_Special (* From))
     {
-      switch (OBJECT_TYPE (*From))
+      switch (OBJECT_TYPE (* From))
       {
 	case TC_MANIFEST_NM_VECTOR:
-	  From += (OBJECT_DATUM (*From));
+	  From += (OBJECT_DATUM (* From));
 	  continue;
 
 	  /* The following two type codes assume that none of the protected
@@ -64,33 +63,37 @@ DEFUN (Update,
 	     This may be seriously wrong!
 	   */
 	case TC_LINKAGE_SECTION:
-	  switch (READ_LINKAGE_KIND (*From))
+	  switch (READ_LINKAGE_KIND (* From))
 	  {
 	    case REFERENCE_LINKAGE_KIND:
 	    case ASSIGNMENT_LINKAGE_KIND:
 	    {
-	      From += (READ_CACHE_LINKAGE_COUNT (*From));
+	      From += (READ_CACHE_LINKAGE_COUNT (* From));
 	      continue;
 	    }
 
 	    case OPERATOR_LINKAGE_KIND:
 	    case GLOBAL_OPERATOR_LINKAGE_KIND:
 	    {
-	      count = (READ_OPERATOR_LINKAGE_COUNT (*From));
+	      count = (READ_OPERATOR_LINKAGE_COUNT (* From));
 	      From = (END_OPERATOR_LINKAGE_AREA (From, count));
 	      continue;
 	    }
-
+
 	    default:
+#ifdef BAD_TYPES_LETHAL
 	    {
 	      gc_death (TERM_EXIT,
 			"Impurify: Unknown compiler linkage kind.",
 			From, NULL);
 	      /*NOTREACHED*/
 	    }
+#else /* not BAD_TYPES_LETHAL */
+	    outf_error ("\nupdate (impurify): Bad type code = 0x %02x.\n",
+			(OBJECT_TYPE (* From)));
+#endif /* BAD_TYPES_LETHAL */
 	  }
 
-
 	case TC_MANIFEST_CLOSURE:
 	{
 	  fast long count;
@@ -105,22 +108,22 @@ DEFUN (Update,
 	  continue;
       }
     }
-    if (GC_Type_Non_Pointer(*From))
+    if (GC_Type_Non_Pointer(* From))
       continue;
-    if (OBJECT_ADDRESS (*From) == Was)
-      *From = MAKE_POINTER_OBJECT (OBJECT_TYPE (*From), Will_Be);
+    if ((OBJECT_ADDRESS (* From)) == Was)
+      * From = (MAKE_POINTER_OBJECT (OBJECT_TYPE (* From), Will_Be));
   }
   return;
 }
 
+extern SCHEME_OBJECT * EXFUN (find_constant_space_block, (SCHEME_OBJECT *));
+
 long
-DEFUN (Make_Impure,
-       (Object, New_Object),
-       SCHEME_OBJECT Object AND
-       SCHEME_OBJECT *New_Object)
+DEFUN (make_impure, (Object, New_Object),
+       SCHEME_OBJECT Object AND SCHEME_OBJECT * New_Object)
 {
-  SCHEME_OBJECT *New_Address, *End_Of_Area;
-  fast SCHEME_OBJECT *Obj_Address, *Constant_Address;
+  fast SCHEME_OBJECT * Obj_Address, * Constant_Address;
+  SCHEME_OBJECT * New_Address, * End_Of_Area;
   long Length, Block_Length;
   fast long i;
 
@@ -129,7 +132,7 @@ DEFUN (Make_Impure,
      be pure.
    */
 
-  Switch_by_GC_Type(Object)
+  Switch_by_GC_Type (Object)
   {
     case TC_BROKEN_HEART:
     case TC_MANIFEST_NM_VECTOR:
@@ -145,7 +148,7 @@ DEFUN (Make_Impure,
 
     case TC_FUTURE:
     case_Vector:
-      Length = VECTOR_LENGTH (Object) + 1;
+      Length = ((VECTOR_LENGTH (Object)) + 1);
       break;
 
     case_Quadruple:
@@ -182,25 +185,38 @@ DEFUN (Make_Impure,
 #endif /* BAD_TYPES_LETHAL */
   }
 
+  Constant_Address = Free_Constant;
+
 #ifdef FLOATING_ALIGNMENT
 
   /* Undo ALIGN_FLOAT(Free_Constant) in SET_CONSTANT_TOP (). */
 
-  while ((*(Free_Constant - 1)) == (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0)))
-    Free_Constant -= 1;
+  while ((* (Constant_Address - 1))
+	 == (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0)))
+    Constant_Address -= 1;
 
-#endif
-
-  /* Add a copy of the object to the last constant block in memory.
-   */
-
-  Constant_Address = Free_Constant;
+#endif /* FLOATING_ALIGNMENT */
 
   Obj_Address = (OBJECT_ADDRESS (Object));
-  if (!(TEST_CONSTANT_TOP (Constant_Address + Length)))
+
+  if (! (TEST_CONSTANT_TOP (Constant_Address + Length)))
   {
-    return (ERR_IMPURIFY_OUT_OF_SPACE);
+    /* Make the whole block impure! */
+
+    SCHEME_OBJECT * block = (find_constant_space_block (Obj_Address));
+
+    if (block == ((SCHEME_OBJECT *) NULL))
+      return (ERR_IMPURIFY_OUT_OF_SPACE);
+
+    * block = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
+    * New_Object = Object;
+    return (PRIM_DONE);
   }
+
+  /*
+    Add a copy of the object to the last constant block in memory.
+   */
+
   Block_Length = (OBJECT_DATUM (* (Constant_Address - 1)));
   Constant_Address -= 2;
   New_Address = Constant_Address;
@@ -225,22 +241,25 @@ DEFUN (Make_Impure,
 
   Terminate_Old_Stacklet ();
   SEAL_CONSTANT_SPACE ();
-  End_Of_Area = (CONSTANT_SPACE_SEAL ());
+  End_Of_Area = (CONSTANT_AREA_END ());
 
   ENTER_CRITICAL_SECTION ("impurify");
 
-  Update (Heap_Bottom, Free, Obj_Address, New_Address);
-  Update (Constant_Space, End_Of_Area, Obj_Address, New_Address);
+  update (Heap_Bottom, Free, Obj_Address, New_Address);
+  update ((CONSTANT_AREA_START ()), End_Of_Area, Obj_Address, New_Address);
 
   EXIT_CRITICAL_SECTION ({});
 
-  *New_Object = (MAKE_POINTER_OBJECT (OBJECT_TYPE (Object), New_Address));
+  * New_Object = (MAKE_POINTER_OBJECT (OBJECT_TYPE (Object), New_Address));
   return (PRIM_DONE);
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-IMPURIFY", Prim_impurify, 1, 1,
-  "Remove OBJECT from pure space so it can be side effected.\n\
-The object is placed in constant space instead.")
+  "(object)\n\
+Remove OBJECT from pure space so it can be side effected.\n\
+The object is placed in constant space instead if it fits,\n\
+otherwise the whole block where it lives in pure space is marked\n\
+as being in constant space.")
 {
   PRIMITIVE_HEADER (1);
   {
@@ -248,7 +267,7 @@ The object is placed in constant space instead.")
     SCHEME_OBJECT new_object;
     TOUCH_IN_PRIMITIVE ((ARG_REF (1)), old_object);
     {
-      fast long result = (Make_Impure (old_object, (&new_object)));
+      long result = (make_impure (old_object, (&new_object)));
       if (result != PRIM_DONE)
 	signal_error_from_primitive (result);
     }
@@ -256,14 +275,11 @@ The object is placed in constant space instead.")
   }
 }
 
-extern SCHEME_OBJECT * EXFUN (find_constant_space_block, (SCHEME_OBJECT *));
-
 SCHEME_OBJECT *
-DEFUN (find_constant_space_block,
-       (obj_address),
-       fast SCHEME_OBJECT *obj_address)
+DEFUN (find_constant_space_block, (obj_address),
+       fast SCHEME_OBJECT * obj_address)
 {
-  fast SCHEME_OBJECT *where, *low_constant;
+  fast SCHEME_OBJECT * where, * low_constant;
 
   low_constant = Constant_Space;
   where = (Free_Constant - 1);
@@ -278,13 +294,13 @@ DEFUN (find_constant_space_block,
        datum of 0 and are correctly skipped over.
      */
 
-    if (*where = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0)))
+    if (* where = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0)))
     {
       where -= 1;
       continue;
     }
 #endif
-    where -= (1 + OBJECT_DATUM (*where));
+    where -= (1 + (OBJECT_DATUM (* where)));
     if (where < obj_address)
       return (where + 1);
   }
@@ -292,17 +308,15 @@ DEFUN (find_constant_space_block,
 }
 
 Boolean
-DEFUN (Pure_Test,
-       (obj_address),
-       SCHEME_OBJECT *obj_address)
+DEFUN (Pure_Test, (obj_address), SCHEME_OBJECT * obj_address)
 {
-  SCHEME_OBJECT *block;
+  SCHEME_OBJECT * block;
 
   block = (find_constant_space_block (obj_address));
   if (block == ((SCHEME_OBJECT *) NULL))
     return (false);
   return
-    ((Boolean) (obj_address <= (block + (OBJECT_DATUM (*block)))));
+    ((Boolean) (obj_address <= (block + (OBJECT_DATUM (* block)))));
 }
 
 DEFINE_PRIMITIVE ("PURE?", Prim_pure_p, 1, 1,
@@ -363,9 +377,9 @@ DEFUN (copy_to_constant_space,
        fast SCHEME_OBJECT *source AND
        long nobjects)
 {
-  fast SCHEME_OBJECT *dest;
   fast long i;
-  SCHEME_OBJECT *result;
+  fast SCHEME_OBJECT * dest;
+  SCHEME_OBJECT * result;
 
   dest = Free_Constant;
   if (!(TEST_CONSTANT_TOP (dest + nobjects + 6)))

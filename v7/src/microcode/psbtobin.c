@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.49 1993/06/24 07:09:36 gjr Exp $
+$Id: psbtobin.c,v 9.50 1993/10/14 19:17:26 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -939,7 +939,7 @@ DEFUN_VOID (short_header_read)
   quit (1);
 }
 
-static SCHEME_OBJECT *Storage;
+static SCHEME_OBJECT * Lowest_Allocated_Address, * Highest_Allocated_Address;
 
 long
 DEFUN_VOID (Read_Header_and_Allocate)
@@ -1043,7 +1043,7 @@ DEFUN_VOID (Read_Header_and_Allocate)
 #endif
 
   Size = (6 +						/* SNMV */
-	  HEAP_BUFFER_SPACE +
+	  (TRAP_MAX_IMMEDIATE + 1) +
 	  Heap_Count + Heap_Objects +
 	  Constant_Count + Constant_Objects +
 	  Pure_Count + Pure_Objects +
@@ -1057,16 +1057,17 @@ DEFUN_VOID (Read_Header_and_Allocate)
 	  ((Primitive_Table_Length * (2 + STRING_CHARS)) +
 	   (char_to_pointer (NPChars))));
 
-  ALLOCATE_HEAP_SPACE (Size);
-  if (Heap == NULL)
+  ALLOCATE_HEAP_SPACE (Size,
+		       Lowest_Allocated_Address,
+		       Highest_Allocated_Address);
+  if (Lowest_Allocated_Address == NULL)
   {
     fprintf (stderr,
 	     "%s: Memory Allocation Failed.  Size = %ld Scheme Objects\n",
 	     program_name, Size);
     quit (1);
   }
-  Storage = Heap;
-  Heap += (TRAP_MAX_IMMEDIATE + 1);
+  Heap = (Lowest_Allocated_Address + (TRAP_MAX_IMMEDIATE + 1));
   return (Size - (TRAP_MAX_IMMEDIATE + 1));
 }
 
@@ -1237,7 +1238,7 @@ DEFUN_VOID (do_it)
       fprintf (stderr, "%s: Error writing the output file.\n", program_name);
       quit (1);
     }
-    free ((char *) Storage);
+    free ((char *) Lowest_Allocated_Address);
   }
 }
 

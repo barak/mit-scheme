@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.51 1993/08/22 22:39:04 gjr Exp $
+$Id: purify.c,v 9.52 1993/10/14 19:14:00 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -42,7 +42,6 @@ MIT in each case. */
 
 /* Imports */
 
-extern void EXFUN (GCFlip, (void));
 extern void EXFUN (GC, (void));
 extern SCHEME_OBJECT * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
 
@@ -60,7 +59,7 @@ extern SCHEME_OBJECT * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
 {									\
   Old = (OBJECT_ADDRESS (Temp));					\
   if ((GC_Mode == CONSTANT_COPY) &&					\
-      (Old > Low_Constant))						\
+      (Old < low_heap))							\
     continue;								\
   Code;									\
 }
@@ -69,7 +68,7 @@ extern SCHEME_OBJECT * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
 {									\
   Old = (SCHEME_ADDR_TO_ADDR (Temp));					\
   if ((GC_Mode == CONSTANT_COPY) &&					\
-      (Old > Low_Constant))						\
+      (Old < low_heap))							\
     continue;								\
   Code;									\
 }
@@ -92,22 +91,23 @@ extern SCHEME_OBJECT * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
 }
 
 SCHEME_OBJECT *
-DEFUN (PurifyLoop,
-       (Scan, To_Pointer, GC_Mode),
+DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
        fast SCHEME_OBJECT *Scan AND
        SCHEME_OBJECT **To_Pointer AND
        int GC_Mode)
 {
-  fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, New_Address;
+  fast SCHEME_OBJECT
+    * To, * Old, Temp,
+    * low_heap, New_Address;
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
   SCHEME_OBJECT object_referencing;
 #endif
 
-  To = *To_Pointer;
-  Low_Constant = Constant_Space;
+  To = * To_Pointer;
+  low_heap = Constant_Top;
   for ( ; Scan != To; Scan++)
   {
-    Temp = *Scan;
+    Temp = * Scan;
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
     object_referencing = Temp;
 #endif
@@ -312,7 +312,7 @@ DEFUN (PurifyLoop,
 	  break;
 	});
 
-	/* No need to handle futures specially here, since PurifyLoop
+	/* No need to handle futures specially here, since purifyloop
 	   is always invoked after running GCLoop, which will have
 	   spliced all spliceable futures unless the GC itself of the
 	   GC dameons spliced them, but this should not occur.
@@ -347,32 +347,26 @@ DEFUN (PurifyLoop,
   *To_Pointer = To;
   return (To);
 
-} /* PurifyLoop */
+} /* purifyloop */
 
 /* Description of the algorithm for PURIFY:
 
-   The algorithm is trickier than would first appear necessary.  This
-   is because the size of the object being purified must be
-   calculated.  The idea is that the entire object is copied into the
-   new heap, and then a normal GC is done (the broken hearts created
-   by the copy will, of course, now be used to relocate references to
-   parts of the object).  If there is not enough room in constant
-   space for the object, processing stops with a #!false return and
-   the world flipped into the new heap.  Otherwise, the
-   process is repeated, moving the object into constant space on the
-   first pass and then doing a GC back into the original heap.
+   Purify increases the size of constant space at the expense of both
+   heaps.  A GC-like relocation is performed with the object being
+   purified as the root.  The object is copied and relocated from the
+   high heap to the area adjacent to constant space.  Then the GC is
+   finished after changing the end of constant-space marker.
 
-   Notice that in order to make a pure object, the copy process
-   proceeds in two halves.  During the first half (which collects the
-   pure part) Compiled Code, Environments, Symbols, and Variables
-   (i.e.  things whose contents change) are NOT copied.  Then a header
-   is put down indicating constant (not pure) area, and then they ARE
-   copied.
+   In order to make a pure object, the copy process proceeds in two
+   halves.  During the first half (which collects the pure part)
+   Compiled Code, Environments, Symbols, and Variables (i.e.  things
+   whose contents change) are NOT copied.  Then a header is put down
+   indicating constant (not pure) area, and then they ARE copied.
 
    The constant area contains a contiguous set of blocks of the
    following format:
 
-  >>Top of Memory (Stack above here)<<
+  >>Heap above here<<
 
                    . (direction of growth)
                    .  ^
@@ -405,128 +399,73 @@ N <     |                      |    |
         | SNMH  | Pure Size N  |
         |----------------------|
 
-  >>Base of Memory (Heap below here)<<
+  >>Top of Stack (Stack below here)<<
+
 */
 
-/* The result returned by Purify is a vector containing this data */
-
-#define Purify_Vector_Header	0
-#define Purify_Length		1
-#define Purify_Really_Pure	2
-#define Purify_N_Slots		2
-
-SCHEME_OBJECT
-DEFUN (Purify,
-       (Object, Purify_Object),
-       SCHEME_OBJECT Object AND
-       SCHEME_OBJECT Purify_Object)
+static void
+DEFUN (purify, (object, purify_mode),
+       SCHEME_OBJECT object AND Boolean purify_mode)
 {
-  long Length;
-  SCHEME_OBJECT *Heap_Start, *Result, Answer;
-
-/* Pass 1 -- Copy object to new heap, then GC into that heap */
-
-  run_pre_gc_hooks ();
-  GCFlip ();
-  Heap_Start = Free;
-  *Free++ = Object;
-  Result = GCLoop (Heap_Start, &Free);
-  if (Free != Result)
-  {
-    outf_fatal ("\nPurify: Pure Scan ended too early.\n");
-    Microcode_Termination (TERM_BROKEN_HEART);
-  }
-  Length = ((Free - Heap_Start) - 1);		/* Length of object */
-  GC ();
-  Free[Purify_Vector_Header] =
-    MAKE_OBJECT (TC_MANIFEST_VECTOR, Purify_N_Slots);
-  Free[Purify_Length] = LONG_TO_UNSIGNED_FIXNUM(Length);
-  Free[Purify_Really_Pure] = Purify_Object;
-  Answer =  MAKE_POINTER_OBJECT (TC_VECTOR, Free);
-  Free += (Purify_N_Slots + 1);
-  run_post_gc_hooks ();
-  return (Answer);
-}
-
-SCHEME_OBJECT
-DEFUN (Purify_Pass_2,
-       (Info),
-       SCHEME_OBJECT Info)
-{
-  long Length;
-  Boolean Purify_Object;
-  SCHEME_OBJECT *New_Object, Relocated_Object, *Result;
-  long Pure_Length, Recomputed_Length;
+  long length, pure_length;
+  SCHEME_OBJECT * new_object, * result;
+  extern Boolean EXFUN (update_allocator_parameters, (SCHEME_OBJECT *));
 
   run_pre_gc_hooks ();
   STACK_SANITY_CHECK ("PURIFY");
-  Length = (OBJECT_DATUM (FAST_MEMORY_REF (Info, Purify_Length)));
-  if (FAST_MEMORY_REF (Info, Purify_Really_Pure) == SHARP_F)
-    Purify_Object =  false;
-  else
-    Purify_Object = true;
-  Relocated_Object = *Heap_Bottom;
-  if (!(TEST_CONSTANT_TOP (Free_Constant + Length + 6)))
-    return (SHARP_F);
-  New_Object = Free_Constant;
-  GCFlip ();
+  Weak_Chain = EMPTY_LIST;
+  Constant_Top = Free_Constant; 
+  new_object = Free_Constant;
   *Free_Constant++ = SHARP_F;	/* Will hold pure space header */
-  *Free_Constant++ = Relocated_Object;
-  if (Purify_Object)
+  *Free_Constant++ = object;
+  if (! (purify_mode))
+    pure_length = 3;
+  else
   {
-    Result = PurifyLoop ((New_Object + 1), &Free_Constant, PURE_COPY);
+    result = (purifyloop ((new_object + 1), &Free_Constant, PURE_COPY));
 
-    if (Free_Constant != Result)
+    if (result != Free_Constant)
+    {
+purification_failure:
+      outf_fatal ("\nPurify: Pure Copy ended too early.\n");
+      Microcode_Termination (TERM_BROKEN_HEART);
+    }
+    pure_length = ((Free_Constant - new_object) + 1);
+  }
+  *Free_Constant++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
+  *Free_Constant++ = (MAKE_OBJECT (CONSTANT_PART, pure_length));
+  Constant_Top = Free_Constant;
+  if (purify_mode)
+  {
+    result = (purifyloop ((new_object + 1), &Free_Constant, CONSTANT_COPY));
+    if (result != Free_Constant)
     {
       outf_fatal ("\nPurify: Pure Copy ended too early.\n");
       Microcode_Termination (TERM_BROKEN_HEART);
     }
-    Pure_Length = ((Free_Constant - New_Object) + 1);
   }
   else
-    Pure_Length = 3;
-  *Free_Constant++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
-  *Free_Constant++ = (MAKE_OBJECT (CONSTANT_PART, Pure_Length));
-  if (Purify_Object)
   {
-    Result = PurifyLoop ((New_Object + 1), &Free_Constant, CONSTANT_COPY);
-    if (Result != Free_Constant)
-    {
-      outf_fatal ("\nPurify: Pure Copy ended too early.\n");
-      Microcode_Termination (TERM_BROKEN_HEART);
-    }
+    result = (GCLoop ((new_object + 1), &Free_Constant));
+    if (result != Free_Constant)
+      goto purification_failure;
   }
 
-/* Purify_Pass_2 continues on the next page */
-
-/* Purify_Pass_2, continued */
-
-  else
-  {
-    Result = GCLoop ((New_Object + 1), &Free_Constant);
-    if (Result != Free_Constant)
-    {
-      outf_fatal ("\nPurify: Constant Copy ended too early.\n");
-      Microcode_Termination (TERM_BROKEN_HEART);
-    }
-  }
-  Recomputed_Length = ((Free_Constant - New_Object) - 4);
+  length = ((Free_Constant - new_object) - 4);
   *Free_Constant++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
-  *Free_Constant++ = (MAKE_OBJECT (END_OF_BLOCK, (Recomputed_Length + 5)));
-  if (!(TEST_CONSTANT_TOP (Free_Constant)))
-  {
-    outf_fatal (
-	     "\nPurify overrun: Constant_Top = 0x%lx, Free_Constant = 0x%lx\n",
-	     Constant_Top, Free_Constant);
-    Microcode_Termination (TERM_EXIT);
-  }
-  *New_Object++ =
-    (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, Pure_Length));
-  *New_Object = (MAKE_OBJECT (PURE_PART, (Recomputed_Length + 5)));
+  *Free_Constant++ = (MAKE_OBJECT (END_OF_BLOCK, (length + 5)));
+  *new_object++ =
+    (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, pure_length));
+  *new_object = (MAKE_OBJECT (PURE_PART, (length + 5)));
+  if (! (update_allocator_parameters (Free_Constant)))
+    gc_death (TERM_NO_SPACE, "purify: object too large", NULL, NULL);
+    /*NOTREACHED*/
+
   SET_CONSTANT_TOP ();
+  ALIGN_FLOAT (Free);
+  SET_MEMTOP (Heap_Top - GC_Reserve);
   GC ();
   run_post_gc_hooks ();
-  return (SHARP_T);
 }
 
 /* (PRIMITIVE-PURIFY OBJECT PURE? SAFETY-MARGIN)
@@ -536,7 +475,7 @@ DEFUN (Purify_Pass_2,
 
    To purify an object we just copy it into Pure Space in two
    parts with the appropriate headers and footers.  The actual
-   copying is done by PurifyLoop above.
+   copying is done by purifyloop above.
 
    Once the copy is complete we run a full GC which handles the
    broken hearts which now point into pure space.  On a
@@ -544,53 +483,54 @@ DEFUN (Purify_Pass_2,
    should only be used as one would use master-gc-loop i.e. with
    everyone else halted.
 
-   This primitive does not return normally.  It always escapes into
-   the interpreter because some of its cached registers (eg. History)
-   have changed.
+   This primitive always "returns" by escaping to the interpreter
+   because some of its cached registers (eg. History) have changed.
 */
 
 DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
 {
-  long new_gc_reserve;
-  SCHEME_OBJECT Object, Purify_Result, Daemon;
+  Boolean purify_mode;
+  SCHEME_OBJECT object, result, daemon;
   PRIMITIVE_HEADER (3);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
 
   STACK_SANITY_CHECK ("PURIFY");
   Save_Time_Zone (Zone_Purify);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), Object);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
   CHECK_ARG (2, BOOLEAN_P);
-  new_gc_reserve = (arg_nonnegative_integer (3));
+  purify_mode = (BOOLEAN_ARG (2));
+  GC_Reserve = (arg_nonnegative_integer (3));
 
-  /* Pass 1 (Purify, above) does a first copy.  Then any GC daemons
-     run, and then Purify_Pass_2 is called to copy back.
-  */
+  /* Purify only works from the high heap.
+     If in the low heap, tell the runtime system.
+   */
 
-  GC_Reserve = new_gc_reserve;
-  ENTER_CRITICAL_SECTION ("purify pass 1");
-  Purify_Result = (Purify (Object, (ARG_REF (2))));
+  if (Heap_Bottom < Unused_Heap_Bottom)
+    PRIMITIVE_RETURN (SHARP_F);
+
   POP_PRIMITIVE_FRAME (3);
-  Daemon = (Get_Fixed_Obj_Slot (GC_Daemon));
-  if (Daemon == SHARP_F)
-  {
-    SCHEME_OBJECT words_free;
 
-    RENAME_CRITICAL_SECTION ("purify pass 2");
-    Purify_Result = (Purify_Pass_2 (Purify_Result));
-    words_free = (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
-    Val = (MAKE_POINTER_OBJECT (TC_LIST, Free));
-    (*Free++) = Purify_Result;
-    (*Free++) = words_free;
+  ENTER_CRITICAL_SECTION ("purify");
+  purify (object, purify_mode);
+  result = (MAKE_POINTER_OBJECT (TC_LIST, Free));
+  Free += 2;
+  Free[-2] = SHARP_T;
+  Free[-1] = (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
+
+ Will_Push (CONTINUATION_SIZE);
+  Store_Return (RC_NORMAL_GC_DONE);
+  Store_Expression (result);
+  Save_Cont ();
+ Pushed ();
+
+  RENAME_CRITICAL_SECTION ("purify daemon");
+  daemon = (Get_Fixed_Obj_Slot (GC_Daemon));
+  if (daemon == SHARP_F)
     PRIMITIVE_ABORT (PRIM_POP_RETURN);
     /*NOTREACHED*/
-  }
 
-  RENAME_CRITICAL_SECTION ("purify daemon 1");
-  Store_Expression (Purify_Result);
-  Store_Return (RC_PURIFY_GC_1);
- Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
-  Save_Cont ();
-  STACK_PUSH (Daemon);
+ Will_Push (2);
+  STACK_PUSH (daemon);
   STACK_PUSH (STACK_FRAME_HEADER);
  Pushed ();
   PRIMITIVE_ABORT (PRIM_APPLY);

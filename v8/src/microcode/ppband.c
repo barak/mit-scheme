@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.45 1993/06/24 07:09:15 gjr Exp $
+$Id: ppband.c,v 9.46 1993/10/14 19:16:32 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -144,13 +144,9 @@ DEFUN (print_long_as_string, (string), char *string)
   {
     c = *temp++;
     if (isgraph ((int) c))
-    {
       putchar (c);
-    }
     else
-    {
       putchar (' ');
-    }
   }
   printf ("\" = ");
 
@@ -230,25 +226,17 @@ DEFUN (scheme_string, (From, Quoted), long From AND Boolean Quoted)
     if (&Chars[Count] < ((char *) end_of_memory))
     {
       if (Quoted)
-      {
 	putchar ('\"');
-      }
       for (i = 0; i < Count; i++)
-      {
 	printf ("%c", *Chars++);
-      }
       if (Quoted)
-      {
 	putchar ('\"');
-      }
       putchar ('\n');
       return (true);
     }
   }
   if (Quoted)
-  {
     printf ("String not in memory; datum = %lx\n", From);
-  }
   return (false);
 }
 
@@ -262,31 +250,29 @@ DEFUN (scheme_symbol, (From), long From)
   symbol = &Data[From+SYMBOL_NAME];
   if ((symbol >= end_of_memory) ||
       (!(scheme_string (via (From + SYMBOL_NAME), false))))
-  {
     printf ("symbol not in memory; datum = %lx\n", From);
-  }
   return;
 }
 
 static char string_buffer[10];
 
-#define PRINT_OBJECT(type, datum)					\
+#define PRINT_OBJECT(type, datum) do					\
 {									\
   printf ("[%s %lx]", type, datum);					\
-}
+} while (0)
 
-#define NON_POINTER(string)						\
+#define NON_POINTER(string) do						\
 {									\
   the_string = string;							\
   Points_To = The_Datum;						\
   break;								\
-}
+} while (0)
 
-#define POINTER(string)							\
+#define POINTER(string) do						\
 {									\
   the_string = string;							\
   break;								\
-}
+} while (0)
 
 char *Type_Names[] = TYPE_NAME_TABLE;
 
@@ -357,24 +343,16 @@ DEFUN (Display, (Location, Type, The_Datum),
 
     case TC_REFERENCE_TRAP:
       if (The_Datum <= TRAP_MAX_IMMEDIATE)
-      {
 	NON_POINTER ("REFERENCE-TRAP");
-      }
       else
-      {
 	POINTER ("REFERENCE-TRAP");
-      }
 
     case TC_BROKEN_HEART:
       if (The_Datum == 0)
-      {
 	Points_To = 0;
-      }
     default:
       if (Type <= LAST_TYPE_CODE)
-      {
 	POINTER (Type_Names[Type]);
-      }
       else
       {
 	sprintf (&string_buf[0], "0x%02lx ", Type);
@@ -420,9 +398,7 @@ DEFUN (show_area, (area, start, end, name),
       area -= 1;
     }
     else
-    {
       Display (i, (OBJECT_TYPE (*area)), (OBJECT_DATUM (*area)));
-    }
   }
   return (area);
 }
@@ -445,9 +421,7 @@ DEFUN (main, (argc, argv),
       {
 	case FASL_FILE_FINE :
 	  if (counter != 0)
-	  {
 	    printf ("\f\n\t*** New object ***\n\n");
-	  }
           break;
 
 	  /* There should really be a difference between no header
@@ -482,7 +456,8 @@ DEFUN (main, (argc, argv),
     }
 
     load_length = (Heap_Count + Const_Count + Primitive_Table_Size);
-    Data = ((SCHEME_OBJECT *) malloc (sizeof (SCHEME_OBJECT) * (load_length + 4)));
+    Data = ((SCHEME_OBJECT *)
+	    (malloc (sizeof (SCHEME_OBJECT) * (load_length + 4))));
     if (Data == NULL)
     {
       fprintf (stderr, "Allocation of %ld words failed.\n", (load_length + 4));
@@ -496,29 +471,19 @@ DEFUN (main, (argc, argv),
       printf ("Expected %ld objects.  Obtained %ld objects.\n\n",
 	      ((long) load_length), ((long) total_length));
       if (total_length < Heap_Count)
-      {
 	Heap_Count = total_length;
-      }
       total_length -= Heap_Count;
       if (total_length < Const_Count)
-      {
 	Const_Count = total_length;
-      }
       total_length -= Const_Count;
       if (total_length < Primitive_Table_Size)
-      {
 	Primitive_Table_Size = total_length;
-      }
     }
 
     if (Heap_Count > 0)
-    {
       Next = show_area (Data, 0, Heap_Count, "Heap");
-    }
     if (Const_Count > 0)
-    {
       Next = show_area (Next, Heap_Count, Const_Count, "Constant Space");
-    }
     if ((Primitive_Table_Size > 0) && (Next < end_of_memory))
     {
       long arity, size;
@@ -547,9 +512,7 @@ DEFUN (main, (argc, argv),
       printf ("\n");
     }
     if (argc != 1)
-    {
       exit (0);
-    }
     free ((char *) Data);
     counter = 1;
   }

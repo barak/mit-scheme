@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.71 1993/08/22 20:25:13 gjr Exp $
+$Id: fasload.c,v 9.72 1993/10/14 19:17:45 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -118,21 +118,37 @@ DEFUN (read_channel_continue, (header, mode, repeat_p),
   if (Or2 (Reloc_Debug, File_Load_Debug))
     print_fasl_information();
 
-  if (!(TEST_CONSTANT_TOP (Free_Constant + Const_Count)))
+  if (! (TEST_CONSTANT_TOP (Free_Constant + Const_Count)))
   {
-    if (mode != MODE_CHANNEL)
-      OS_channel_close_noerror (load_channel);
-    signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
-    /*NOTREACHED*/
+    extern Boolean EXFUN (update_allocator_parameters, (SCHEME_OBJECT *));
+
+    switch (mode)
+    {
+      case MODE_CHANNEL:
+        break;
+
+      case MODE_BAND:
+        if (update_allocator_parameters (Free_Constant + Const_Count))
+	{
+	  SET_CONSTANT_TOP ();
+	  ALIGN_FLOAT (Free);
+	  break;
+	}
+
+      default:
+        OS_channel_close_noerror (load_channel);
+        signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
+        /*NOTREACHED*/
+    }
   }
 
   heap_length = (Heap_Count + Primitive_Table_Size + Primitive_Table_Length);
 
   if (GC_Check (heap_length))
   {
-    if (repeat_p ||
-	(heap_length == failed_heap_length) ||
-	(mode == MODE_BAND))
+    if (repeat_p
+	|| (heap_length == failed_heap_length)
+	|| (mode == MODE_BAND))
     {
       if (mode != MODE_CHANNEL)
 	OS_channel_close_noerror (load_channel);
@@ -161,8 +177,8 @@ DEFUN (read_channel_continue, (header, mode, repeat_p),
       reentry_record[0] = (MAKE_POINTER_OBJECT (TC_NON_MARKED_VECTOR, header));
       
       suspend_primitive (CONT_FASLOAD,
-			 ((sizeof (reentry_record)) /
-			  (sizeof (SCHEME_OBJECT))),
+			 ((sizeof (reentry_record))
+			  / (sizeof (SCHEME_OBJECT))),
 			 &reentry_record[0]);
       immediate_interrupt ();
       /*NOTREACHED*/
@@ -201,7 +217,7 @@ DEFUN (read_channel_start, (channel, mode), Tchannel channel AND int mode)
     /* NOTREACHED */
   }
 
-  if ((Load_Data (FASL_HEADER_LENGTH, ((char *) (Free + 1))))
+  if ((Load_Data (FASL_HEADER_LENGTH, ((char *) (Stack_Bottom + 1))))
       != FASL_HEADER_LENGTH)
   {
     if (mode != MODE_CHANNEL)
@@ -209,7 +225,7 @@ DEFUN (read_channel_start, (channel, mode), Tchannel channel AND int mode)
     signal_error_from_primitive (ERR_FASL_FILE_BAD_DATA);
   }
 
-  read_channel_continue ((Free + 1), mode, false);
+  read_channel_continue ((Stack_Bottom + 1), mode, false);
   return;
 }
 
@@ -225,8 +241,7 @@ DEFUN (read_file_start, (file_name, from_band_load),
     debug_edit_flags ();
   if (channel == NO_CHANNEL)
     error_bad_range_arg (1);
-  read_channel_start (channel,
-		      (from_band_load ? MODE_BAND : MODE_FNAME));
+  read_channel_start (channel, (from_band_load ? MODE_BAND : MODE_FNAME));
   return;
 }
 
@@ -310,9 +325,9 @@ relocation_type
 static Boolean Warned = false;
 
 static SCHEME_OBJECT *
-DEFUN (Relocate, (P), long P)
+DEFUN (relocate, (P), long P)
 {
-  SCHEME_OBJECT *Result;
+  SCHEME_OBJECT * Result;
 
   if ((P >= Heap_Base) && (P < Dumped_Heap_Top))
     Result = ((SCHEME_OBJECT *) (P + heap_relocation));
@@ -338,35 +353,38 @@ DEFUN (Relocate, (P), long P)
   return (Result);
 }
 
-#define Relocate_Into(Loc, P) (Loc) = Relocate(P)
+#define RELOCATE relocate
+#define RELOCATE_INTO(Loc, P) (Loc) = relocate(P)
 
 #else /* not ENABLE_DEBUGGING_TOOLS */
 
-#define Relocate_Into(Loc, P)						\
+#define RELOCATE_INTO(Loc, P) do					\
 {									\
-  if ((P) < Dumped_Heap_Top)						\
-    (Loc) = ((SCHEME_OBJECT *) ((P) + heap_relocation));		\
-  else if ((P) < Dumped_Constant_Top)					\
-    (Loc) = ((SCHEME_OBJECT *) ((P) + const_relocation));		\
+  long _P = (P);							\
+									\
+  if ((P >= Heap_Base) && (_P < Dumped_Heap_Top))			\
+    (Loc) = ((SCHEME_OBJECT *) (_P + heap_relocation));			\
+  else if ((P >= Const_Base) && (_P < Dumped_Constant_Top))		\
+    (Loc) = ((SCHEME_OBJECT *) (_P + const_relocation));		\
   else									\
-    (Loc) = ((SCHEME_OBJECT *) ((P) + stack_relocation));		\
-}
+    (Loc) = ((SCHEME_OBJECT *) (_P + stack_relocation));		\
+} while (0)
 
 #ifndef Conditional_Bug
 
-#define Relocate(P)							\
-((P < Const_Base) ?							\
- ((SCHEME_OBJECT *) (P + heap_relocation)) :				\
- ((P < Dumped_Constant_Top) ?						\
-  ((SCHEME_OBJECT *) (P + const_relocation)) :				\
-  ((SCHEME_OBJECT *) (P + stack_relocation))))
+#define RELOCATE(P)							\
+((((P) >= Heap_Base) && ((P) < Dumped_Heap_Top))			\
+ ? ((SCHEME_OBJECT *) ((P) + heap_relocation))				\
+ : ((((P) >= Const_Base) && ((P) < Dumped_Constant_Top))		\
+    ? ((SCHEME_OBJECT *) ((P) + const_relocation))			\
+    : ((SCHEME_OBJECT *) ((P) + stack_relocation))))
 
 #else /* Conditional_Bug */
 
-static SCHEME_OBJECT *Relocate_Temp;
+static SCHEME_OBJECT * relocate_temp;
 
-#define Relocate(P)							\
-  (Relocate_Into(Relocate_Temp, P), Relocate_Temp)
+#define RELOCATE(P)							\
+  (RELOCATE_INTO (Relocate_Temp, P), relocate_temp)
 
 #endif /* Conditional_Bug */
 #endif /* ENABLE_DEBUGGING_TOOLS */
@@ -383,7 +401,8 @@ DEFUN (primitive_dumped_number, (datum), unsigned long datum)
   return ((high_bits != 0) ? high_bits : datum);
 }
 
-#define PRIMITIVE_DUMPED_NUMBER(prim) (primitive_dumped_number (OBJECT_DATUM (prim)))
+#define PRIMITIVE_DUMPED_NUMBER(prim)					\
+  (primitive_dumped_number (OBJECT_DATUM (prim)))
 
 static void
 DEFUN (Relocate_Block, (Scan, Stop_At),
@@ -417,7 +436,8 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
       case TC_PCOMB0:
 	*Scan++ =
 	  OBJECT_NEW_TYPE
-	    (TC_PCOMB0, (load_renumber_table [PRIMITIVE_DUMPED_NUMBER (Temp)]));
+	    (TC_PCOMB0,
+	     (load_renumber_table [PRIMITIVE_DUMPED_NUMBER (Temp)]));
         break;
 
       case TC_MANIFEST_NM_VECTOR:
@@ -451,7 +471,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	    {
 	      address = (ADDRESS_TO_DATUM
 			 (SCHEME_ADDR_TO_ADDR ((SCHEME_OBJECT *) (* Scan))));
-	      *Scan++ = (ADDR_TO_SCHEME_ADDR (Relocate (address)));
+	      *Scan++ = (ADDR_TO_SCHEME_ADDR (RELOCATE (address)));
 	    }
 	    break;
 	  }
@@ -474,7 +494,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (address, Scan);
 	      address = (ADDRESS_TO_DATUM (SCHEME_ADDR_TO_ADDR (address)));
-	      address = ((long) (Relocate (address)));
+	      address = ((long) (RELOCATE (address)));
 	      STORE_OPERATOR_LINKAGE_ADDRESS ((ADDR_TO_SCHEME_ADDR (address)),
 					      Scan);
 	    }
@@ -514,7 +534,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
 	  EXTRACT_CLOSURE_ENTRY_ADDRESS (address, Scan);
 	  address = (ADDRESS_TO_DATUM (SCHEME_ADDR_TO_ADDR (address)));
-	  address = ((long) (Relocate (address)));
+	  address = ((long) (RELOCATE (address)));
 	  STORE_CLOSURE_ENTRY_ADDRESS ((ADDR_TO_SCHEME_ADDR (address)), Scan);
 	}
 	Scan = area_end;
@@ -524,7 +544,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 
 #ifdef BYTE_INVERSION
       case TC_CHARACTER_STRING:
-	String_Inversion (Relocate (OBJECT_DATUM (Temp)));
+	String_Inversion (RELOCATE (OBJECT_DATUM (Temp)));
 	goto normal_pointer;
 #endif
 
@@ -545,7 +565,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 #endif
 	address = (OBJECT_DATUM (Temp));
 	*Scan++ = (MAKE_POINTER_OBJECT ((OBJECT_TYPE (Temp)),
-					(Relocate (address))));
+					(RELOCATE (address))));
 	break;
       }
   }
@@ -742,8 +762,8 @@ DEFUN (load_file, (mode), int mode)
 
   FASLOAD_RELOCATE_HOOK (Orig_Heap, primitive_table,
 			 Orig_Constant, Constant_End);
-  Relocate_Into (temp, Dumped_Object);
-  return (*temp);
+  RELOCATE_INTO (temp, Dumped_Object);
+  return (* temp);
 }
 
 /* (BINARY-FASLOAD FILE-NAME-OR-CHANNEL)
@@ -866,10 +886,19 @@ DEFUN_VOID (compiler_reset_error)
 
 struct memmag_state
 {
-  SCHEME_OBJECT *free;
-  SCHEME_OBJECT *memtop;
-  SCHEME_OBJECT *free_constant;
-  SCHEME_OBJECT *stack_pointer;
+  SCHEME_OBJECT * heap_bottom;
+  SCHEME_OBJECT * heap_top;
+  SCHEME_OBJECT * unused_heap_bottom;
+  SCHEME_OBJECT * unused_heap_top;
+  SCHEME_OBJECT * free;
+  SCHEME_OBJECT * memtop;
+  SCHEME_OBJECT * constant_space;
+  SCHEME_OBJECT * constant_top;
+  SCHEME_OBJECT * free_constant;
+  SCHEME_OBJECT * stack_pointer;
+  SCHEME_OBJECT * stack_bottom;
+  SCHEME_OBJECT * stack_top;
+  SCHEME_OBJECT * stack_guard;
 };
 
 static void
@@ -877,10 +906,19 @@ DEFUN (abort_band_load, (ap), PTR ap)
 {
   struct memmag_state * mp = ((struct memmag_state *) ap);
 
-  Free = (mp->free);
+  Heap_Bottom = mp->heap_bottom;
+  Heap_Top = mp->heap_top;
+  Unused_Heap_Bottom = mp->unused_heap_bottom;
+  Unused_Heap_Top = mp->unused_heap_top;
+  Free = mp->free;
+  Free_Constant = mp->free_constant;
+  Constant_Space = mp->constant_space;
+  Constant_Top = mp->constant_top;
+  Stack_Pointer = mp->stack_pointer;
+  Stack_Bottom = mp->stack_bottom;
+  Stack_Top = mp->stack_top;
+  Stack_Guard = mp->stack_guard;
   SET_MEMTOP (mp->memtop);
-  Free_Constant = (mp->free_constant);
-  Stack_Pointer = (mp->stack_pointer);
 
   END_BAND_LOAD (false, false);
   return;
@@ -923,25 +961,36 @@ DEFUN (terminate_band_load, (ap), PTR ap)
 
 DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
 {
+  extern void EXFUN (reset_allocator_parameters, (void));
   SCHEME_OBJECT result;
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
+
   {
     CONST char * file_name = (STRING_ARG (1));
     transaction_begin ();
     {
-      struct memmag_state * ap = (dstack_alloc (sizeof (struct memmag_state)));
-      ap->free = Free;
-      ap->memtop = MemTop;
-      ap->free_constant = Free_Constant;
-      ap->stack_pointer = Stack_Pointer;
-      transaction_record_action (tat_abort, abort_band_load, ap);
+      struct memmag_state * mp = (dstack_alloc (sizeof (struct memmag_state)));
+
+      mp->heap_bottom = Heap_Bottom;
+      mp->heap_top = Heap_Top;
+      mp->unused_heap_bottom = Unused_Heap_Bottom;
+      mp->unused_heap_top = Unused_Heap_Top;
+      mp->free = Free;
+      mp->memtop = MemTop;
+      mp->free_constant = Free_Constant;
+      mp->constant_space = Constant_Space;
+      mp->constant_top = Constant_Top;
+      mp->stack_pointer = Stack_Pointer;
+      mp->stack_bottom = Stack_Bottom;
+      mp->stack_top = Stack_Top;
+      mp->stack_guard = Stack_Guard;
+      transaction_record_action (tat_abort, abort_band_load, mp);
     }  
-    Free = Heap_Bottom;
+
+    reset_allocator_parameters ();
     SET_MEMTOP (Heap_Top);
     START_BAND_LOAD ();
-    Free_Constant = Constant_Space;
-    Stack_Pointer = Highest_Allocated_Address;
     read_file_start (file_name, true);
     transaction_commit ();
 
@@ -950,9 +999,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
       long length = ((strlen (file_name)) + 1);
       char * band_name = (malloc (length));
       if (band_name != 0)
-      {
 	strcpy (band_name, file_name);
-      }
       transaction_begin ();
       {
 	char ** ap = (dstack_alloc (sizeof (char *)));
@@ -968,7 +1015,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   }
   /* Reset implementation state paramenters */
   INITIALIZE_INTERRUPTS ();
-  Initialize_Stack ();
+  INITIALIZE_STACK ();
   SET_MEMTOP (Heap_Top - GC_Reserve);
   {
     SCHEME_OBJECT cutl = (MEMORY_REF (result, 1));
