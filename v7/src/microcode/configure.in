@@ -14,9 +14,10 @@ dnl General Public License for more details.
 dnl
 dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
-dnl Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+dnl 02111-1307, USA.
 
-AC_REVISION([$Id: configure.in,v 11.10 2001/03/09 16:08:27 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.11 2001/04/10 20:49:08 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -341,17 +342,26 @@ dnl Checks for structures.
 AC_STRUCT_TM
 AC_STRUCT_TIMEZONE
 
-AC_MSG_CHECKING([for tm_gmtoff in struct tm])
-AC_TRY_LINK(
-    [#include <time.h>],
-    [struct tm t; t.tm_gmtoff],
-    [scheme_cv_struct_tm_gmtoff=yes],
-    [scheme_cv_struct_tm_gmtoff=no])
-AC_MSG_RESULT(${scheme_cv_struct_tm_gmtoff})
-if test "${scheme_cv_struct_tm_gmtoff}" = "yes"; then
-    AC_DEFINE(HAVE_TM_GMTOFF)
-    AC_DEFINE(TM_GMTOFF, tm_gmtoff)
-else
+
+dnl Timezone stuff is hairy; there's no standard.
+have_timezone_info=no
+
+if test "${have_timezone_info}" = "no"; then
+    AC_MSG_CHECKING([for tm_gmtoff in struct tm])
+    AC_TRY_LINK(
+	[#include <time.h>],
+	[struct tm t; t.tm_gmtoff],
+	[scheme_cv_struct_tm_gmtoff=yes],
+	[scheme_cv_struct_tm_gmtoff=no])
+    AC_MSG_RESULT(${scheme_cv_struct_tm_gmtoff})
+    if test "${scheme_cv_struct_tm_gmtoff}" = "yes"; then
+	AC_DEFINE(HAVE_TM_GMTOFF)
+	AC_DEFINE(TM_GMTOFF, tm_gmtoff)
+	have_timezone_info=yes
+    fi
+fi
+
+if test "${have_timezone_info}" = "no"; then
     AC_MSG_CHECKING([for __tm_gmtoff in struct tm])
     AC_TRY_LINK(
 	[#include <time.h>],
@@ -362,9 +372,13 @@ else
     if test "${scheme_cv_struct___tm_gmtoff}" = "yes"; then
 	AC_DEFINE(HAVE_TM_GMTOFF)
 	AC_DEFINE(TM_GMTOFF, __tm_gmtoff)
-    else
-	AC_MSG_CHECKING([for timezone])
-	AC_TRY_LINK([
+	have_timezone_info=yes
+    fi
+fi
+
+if test "${have_timezone_info}" = "no"; then
+    AC_MSG_CHECKING([for __timezone])
+    AC_TRY_LINK([
 #ifdef TIME_WITH_SYS_TIME
 #  include <sys/time.h>
 #  include <time.h>
@@ -375,16 +389,20 @@ else
 #    include <time.h>
 #  endif
 #endif],
-	    [timezone;],
-	    [scheme_cv_var_timezone=yes],
-	    [scheme_cv_var_timezone=no])
-	AC_MSG_RESULT(${scheme_cv_var_timezone})
-	if test "${scheme_cv_var_timezone}" = "yes"; then
-	    AC_DEFINE(HAVE_TIMEZONE)
-	    AC_DEFINE(TIMEZONE, timezone)
-	else
-	    AC_MSG_CHECKING([for __timezone])
-	    AC_TRY_LINK([
+	[__timezone;],
+	[scheme_cv_var___timezone=yes],
+	[scheme_cv_var___timezone=no])
+    AC_MSG_RESULT(${scheme_cv_var___timezone})
+    if test "${scheme_cv_var___timezone}" = "yes"; then
+	AC_DEFINE(HAVE_TIMEZONE)
+	AC_DEFINE(TIMEZONE, __timezone)
+	have_timezone_info=yes
+    fi
+fi
+
+if test "${have_timezone_info}" = "no"; then
+    AC_MSG_CHECKING([for _timezone])
+    AC_TRY_LINK([
 #ifdef TIME_WITH_SYS_TIME
 #  include <sys/time.h>
 #  include <time.h>
@@ -395,15 +413,38 @@ else
 #    include <time.h>
 #  endif
 #endif],
-		[__timezone;],
-		[scheme_cv_var___timezone=yes],
-		[scheme_cv_var___timezone=no])
-	    AC_MSG_RESULT(${scheme_cv_var___timezone})
-	    if test "${scheme_cv_var___timezone}" = "yes"; then
-		AC_DEFINE(HAVE_TIMEZONE)
-		AC_DEFINE(TIMEZONE, __timezone)
-	    fi
-	fi
+	[_timezone;],
+	[scheme_cv_var__timezone=yes],
+	[scheme_cv_var__timezone=no])
+    AC_MSG_RESULT(${scheme_cv_var__timezone})
+    if test "${scheme_cv_var__timezone}" = "yes"; then
+	AC_DEFINE(HAVE_TIMEZONE)
+	AC_DEFINE(TIMEZONE, _timezone)
+	have_timezone_info=yes
+    fi
+fi
+
+if test "${have_timezone_info}" = "no"; then
+    AC_MSG_CHECKING([for timezone])
+    AC_TRY_LINK([
+#ifdef TIME_WITH_SYS_TIME
+#  include <sys/time.h>
+#  include <time.h>
+#else
+#  ifdef HAVE_SYS_TIME_H
+#    include <sys/time.h>
+#  else
+#    include <time.h>
+#  endif
+#endif],
+	[timezone;],
+	[scheme_cv_var_timezone=yes],
+	[scheme_cv_var_timezone=no])
+    AC_MSG_RESULT(${scheme_cv_var_timezone})
+    if test "${scheme_cv_var_timezone}" = "yes"; then
+	AC_DEFINE(HAVE_TIMEZONE)
+	AC_DEFINE(TIMEZONE, timezone)
+	have_timezone_info=yes
     fi
 fi
 
