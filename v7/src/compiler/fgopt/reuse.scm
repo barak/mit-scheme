@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/reuse.scm,v 1.2 1989/04/21 17:09:50 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/reuse.scm,v 1.3 1989/05/21 03:57:49 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -304,7 +304,11 @@ MIT in each case. |#
 	   (cond ((rvalue/reference? rvalue)
 		  (let ((variable (reference-lvalue rvalue)))
 		    (and (eq? target variable)
-			 (not (variable-in-cell? variable)))))
+			 ;; This is no good because this field
+			 ;; is not yet set up at this stage
+			 ;; of the compilation.
+			 ;; (not (variable-in-cell? variable))
+			 (not (variable-assigned? variable)))))
 		 ((rvalue/block? rvalue)
 		  (and (block? target)
 		       (eq? (block-parent target) rvalue)))
