@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.10 2000/01/15 05:24:53 cph Exp $
+;;; $Id: imail-core.scm,v 1.11 2000/01/18 22:21:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -207,11 +207,22 @@
 
 ;;;; Folder type
 
-(define-class <folder> ())
+(define-class <folder> ()
+  (properties define standard
+	      initializer make-1d-table))
 
 (define (guarantee-folder folder procedure)
   (if (not (folder? folder))
       (error:wrong-type-argument folder "IMAIL folder" procedure)))
+
+(define (folder-get folder key default)
+  (1d-table/get (folder-properties folder) key default))
+
+(define (folder-put! folder key datum)
+  (1d-table/put! (folder-properties folder) key datum))
+
+(define (folder-remove! folder key)
+  (1d-table/remove! (folder-properties folder) key))
 
 ;; Return the URL of FOLDER.
 (define-generic folder-url (folder))
