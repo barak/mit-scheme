@@ -1,0 +1,26 @@
+#include <winver.h>
+
+1 VERSIONINFO
+	FILEOS		VOS__WINDOWS32
+	FILETYPE	VFT_DLL
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+	VALUE "CompanyName", "Artifical Intelligence Lab, MIT"
+	VALUE "FileDescription", "DIB utilities for Scheme Graphics"
+	VALUE "FileVersion", "1.0"
+	VALUE "InternalName", "dibutils"
+	VALUE "LegalCopyright", "Copyright Massachusetts Institute of Technology 1993"
+	VALUE "OriginalFilename", "DIBUTILS.DLL"
+	VALUE "ProductName", "MIT Scheme"
+	VALUE "ProductVersion", "7.2.0 (alpha)"
+    END
+  END
+
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1251
+  END
+END

@@ -1,0 +1,23 @@
+
+!include <ntwin32.mak>
+
+DIBUTILSOBJS =  dibutils.obj dibutils.rbj
+
+all: dibutils.dll
+
+dibutils.lib dibutils.exp: dibutils.def
+    $(implib) /out:dibutils.lib /machine:i386 /def:dibutils.def
+
+dibutils.dll: $(DIBUTILSOBJS) dibutils.exp
+    $(link) /out:dibutils.dll /dll /machine:i386 /subsystem:windows $(DIBUTILSOBJS) dibutils.exp $(guilibsdll)
+
+dibutils.res: dibutils.rc
+    rc -r $*.rc
+
+dibutils.rbj: dibutils.res
+    cvtres -$(CPU) $*.res -o $*.rbj
+
+dibutils.obj: dibutils.c dibutils.h
+#$(cc) $(cflags) $(cvars) $(cdebug) $*.c
+    $(cc) $(cflags) $(cvars) /Zd /Ox $*.c
+

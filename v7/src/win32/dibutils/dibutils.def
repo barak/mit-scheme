@@ -1,0 +1,13 @@
+LIBRARY		dibapi
+EXPORTS		OpenDIB
+		WriteDIB
+		BitmapFromDib
+		DibFromBitmap
+		CreateDIB
+		DeleteDIB
+		DibBlt
+		DibWidth
+		DibHeight
+		CopyBitmap
+		CropBitmap
+		DIBSetPixelsUnaligned
