@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.79 2000/12/28 05:45:07 cph Exp $
+;;; $Id: imail.pkg,v 1.80 2001/01/06 05:49:02 cph Exp $
 ;;;
-;;; Copyright (c) 2000 Massachusetts Institute of Technology
+;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -338,8 +338,13 @@
 	  edwin-command$imail-summary-by-recipients
 	  edwin-command$imail-summary-by-regexp
 	  edwin-command$imail-summary-by-topic
+	  edwin-command$imail-summary-first-message
+	  edwin-command$imail-summary-last-message
+	  edwin-command$imail-summary-next-message
+	  edwin-command$imail-summary-previous-message
 	  edwin-command$imail-summary-select-message
 	  edwin-mode$imail-summary
+	  edwin-variable$imail-summary-auto-select
 	  edwin-variable$imail-summary-fixed-layout
 	  edwin-variable$imail-summary-height
 	  edwin-variable$imail-summary-highlight-message
