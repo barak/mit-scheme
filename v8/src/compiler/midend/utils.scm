@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.15 1995/02/21 21:19:28 adams Exp $
+$Id: utils.scm,v 1.16 1995/02/22 05:50:15 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -523,6 +523,14 @@ Example use of FORM/COPY-TRANSFORMING:
 |#
 			  
 
+(define (begin-sans-declarations form)
+  ;; If the begin form is a sequence of declarations followed by a single
+  ;; form then return that form, else return #F
+  (let loop ((exprs (begin/actions form)))
+    (cond ((null? exprs) (internal-error "No non-declare subform" form))
+	  ((DECLARE/? (car exprs)) (loop (cdr exprs)))
+	  (else (if (null? (cdr exprs) (car exprs) #F))))))
+
 (define (form/satisfies? form operator-properties)
   (let walk ((expr form))
     (and (pair? expr)
@@ -537,6 +545,9 @@ Example use of FORM/COPY-TRANSFORMING:
 	      (and (QUOTE/? rator)
 		   (operator/satisfies? (quote/text rator) operator-properties)
 		   (for-all? (call/cont-and-operands expr) walk))))
+	   ((BEGIN)
+	    (cond ((begin-sans-declarations form) => walk)
+		  (else false)))
 	   (else false)))))
 
 (define (form/simple&side-effect-free? operand)
@@ -561,6 +572,9 @@ Example use of FORM/COPY-TRANSFORMING:
 		   (predicate (quote/text rator))
 		   (for-all? (call/cont-and-operands form)
 		     form/simple&side-effect-free?))))
+	   ((BEGIN)
+	    (cond ((begin-sans-declarations form) => walk)
+		  (else false)))
 	   (else false)))))
 
 (define (simple-operator? rator)
