@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.70 1993/09/11 19:41:26 gjr Exp $
+$Id: cmpint.c,v 1.71 1993/09/12 04:40:42 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -2819,9 +2819,10 @@ DEFUN (bkpt_proceed, (ep, handle, state),
 }
 
 C_UTILITY PTR
-DEFUN_VOID (do_bkpt_proceed)
+DEFUN (do_bkpt_proceed, (value), unsigned long * value)
 {
-  error_external_return ();
+  * value = ((unsigned long) ERR_EXTERNAL_RETURN);
+  return (FALSE);
 }
 
 #else /* HAVE_BKPT_SUPPORT */
