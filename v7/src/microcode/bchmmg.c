@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.66 1991/11/04 16:52:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.67 1992/01/27 17:04:16 jinx Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -862,7 +862,7 @@ DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
     {
       drone_file_name = temp;
       if (drfnam != option_gc_drone)
-	free (drfnam);
+	free ((PTR) drfnam);
     }
   }
 
@@ -3205,7 +3205,7 @@ DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-SET!", Prim_bchscheme_set_params, 1, 1, 
     SET_SLEEP_DELTA (new_sleep_period);
     if ((drone_file_name != ((char *) NULL))
 	&& (drone_file_name != option_gc_drone))
-      free (drone_file_name);
+      free ((PTR) drone_file_name);
 
     if ((RE_INITIALIZE_GC_BUFFERS (0,
 				   (Highest_Allocated_Address + 1),
