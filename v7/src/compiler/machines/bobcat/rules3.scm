@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.35 1992/09/28 16:38:50 cph Exp $
+$Id: rules3.scm,v 4.36 1992/09/30 21:06:02 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -400,10 +400,13 @@ MIT in each case. |#
     (LAP (LABEL ,gc-label)
 	 (JSR ,entry)
 	 ,@(make-external-label code-word label)
-	 ,@(interrupt-check gc-label -12))))
+	 ,@(interrupt-check label gc-label -12))))
 
-(define (interrupt-check gc-label gc-label-offset)
-  (case compiler:generate-stack-checks?
+(define (interrupt-check label gc-label gc-label-offset)
+  (case (let ((object (label->object label)))
+	  (and (rtl-procedure? object)
+	       (not (rtl-procedure/stack-leaf? object))
+	       compiler:generate-stack-checks?))
     ((#F)
      (LAP (CMP L ,reg:compiled-memtop (A 5))
 	  (B GE B (@PCR ,gc-label))))
@@ -444,7 +447,7 @@ MIT in each case. |#
 	   (LABEL ,gc-label)
 	   ,@(invoke-interface-jsr code:compiler-interrupt-ic-procedure)
 	   ,@(make-external-label expression-code-word internal-label)
-	   ,@(interrupt-check gc-label -14)))))
+	   ,@(interrupt-check internal-label gc-label -14)))))
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
@@ -533,7 +536,8 @@ long-word aligned and there is no need for shuffling.
 		   (ADD UL (& ,(MC68020/make-magic-closure-constant entry))
 			(@A 7))
 		   (LABEL ,internal-label)
-		   ,@(interrupt-check gc-label
+		   ,@(interrupt-check internal-label
+				      gc-label
 				      (- -18 adjustment-size)))))))))
 
 (define (MC68020/cons-closure target procedure-label min max size)
@@ -615,7 +619,7 @@ long-word aligned and there is no need for shuffling.
 				      external-label)
 	       (ADD UL (& ,(MC68040/make-magic-closure-constant entry)) (@A 7))
 	       (LABEL ,internal-label)
-	       ,@(interrupt-check gc-label -18))))))
+	       ,@(interrupt-check internal-label gc-label -18))))))
 
 (define (MC68040/cons-closure target procedure-label min max size)
   (MC68040/with-allocated-closure target 1 size

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.19 1992/07/29 19:56:52 cph Exp $
+$Id: switch.scm,v 4.20 1992/09/30 21:03:19 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -60,7 +60,7 @@ MIT in each case. |#
 (define compiler:intersperse-rtl-in-lap? true)
 (define compiler:generate-range-checks? false)
 (define compiler:generate-type-checks? false)
-(define compiler:generate-stack-checks? false)
+(define compiler:generate-stack-checks? true)
 (define compiler:open-code-flonum-checks? false)
 (define compiler:use-multiclosures? true)
 (define compiler:coalescing-constant-warnings? true)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.13 1992/09/26 15:49:20 cph Exp $
+$Id: rules3.scm,v 1.14 1992/09/30 21:05:57 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -416,7 +416,7 @@ MIT in each case. |#
     (LAP (LABEL ,gc-label)
 	 ,@(link-to-interface code)
 	 ,@(make-external-label code-word label)
-	 ,@(interrupt-check gc-label))))
+	 ,@(interrupt-check label gc-label))))
 
 (define (dlink-procedure-header code-word label)
   (let ((gc-label (generate-label)))    
@@ -424,10 +424,13 @@ MIT in each case. |#
 	 (ADD ,regnum:third-arg 0 ,regnum:dynamic-link)
 	 ,@(link-to-interface code:compiler-interrupt-dlink)
 	 ,@(make-external-label code-word label)
-	 ,@(interrupt-check gc-label))))
+	 ,@(interrupt-check label gc-label))))
 
-(define (interrupt-check gc-label)
-  (if (not compiler:generate-stack-checks?)
+(define (interrupt-check label gc-label)
+  (if (not (let ((object (label->object label)))
+	     (and (rtl-procedure? object)
+		  (not (rtl-procedure/stack-leaf? object))
+		  compiler:generate-stack-checks?)))
       (LAP (SLT ,regnum:assembler-temp ,regnum:memtop ,regnum:free)
 	   (BNE ,regnum:assembler-temp 0 (@PCR ,gc-label))
 	   (LW ,regnum:memtop ,reg:memtop))
@@ -508,7 +511,7 @@ MIT in each case. |#
 	   (ADDI ,regnum:stack-pointer ,regnum:stack-pointer -4)
 	   (SW ,regnum:linkage (OFFSET 0 ,regnum:stack-pointer))
 	   (LABEL ,internal-label)
-	   ,@(interrupt-check gc-label)))))
+	   ,@(interrupt-check internal-label gc-label)))))
 
 (define (build-gc-offset-word offset code-word)
   (let ((encoded-offset (quotient offset 2)))
