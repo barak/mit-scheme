@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.34 1992/07/30 14:59:58 jinx Exp $
+$Id: ux.h,v 1.35 1992/08/29 13:08:29 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -176,7 +176,7 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 
 #ifdef _POSIX
 
-#ifdef _OSF
+#ifdef _osf
 #  include <sys/time.h>
 #  include <sys/ioctl.h>
 #endif
@@ -715,15 +715,17 @@ extern char * EXFUN (getlogin, (void));
 #define UX_dup dup
 #define UX_free free
 #define UX_fstat fstat
-#define UX_getenv getenv
 #define UX_getegid getegid
+#define UX_getenv getenv
 #define UX_geteuid geteuid
+#define UX_getgid getgid
 #define UX_getgrgid getgrgid
 #define UX_gethostname gethostname
 #define UX_getlogin getlogin
 #define UX_getpid getpid
 #define UX_getpwnam getpwnam
 #define UX_getpwuid getpwuid
+#define UX_getuid getuid
 #define UX_ioctl ioctl
 #define UX_link link
 #define UX_localtime localtime
@@ -746,7 +748,7 @@ extern char * EXFUN (getlogin, (void));
 
 extern PTR EXFUN (malloc, (unsigned int size));
 extern PTR EXFUN (realloc, (PTR ptr, unsigned int size));
-extern CONST char * EXFUN (getenv, (CONST char * name));
+extern char * EXFUN (getenv, (CONST char * name));
 extern int EXFUN (gethostname, (char * name, unsigned int size));
 
 #ifdef HAVE_FCNTL
