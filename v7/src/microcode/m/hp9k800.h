@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for HP9000 series 600, 700, 800.
 
-$Id: hp9k800.h,v 1.11 1993/02/06 05:36:04 gjr Exp $
+$Id: hp9k800.h,v 1.12 1993/04/01 18:38:16 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -48,9 +48,14 @@ MIT in each case. */
 
 #ifndef ALTERNATE_CC
    /* Assume HPC */
-   /* Instead of "-Aa -D_HPUX_SOURCE" you can use "-Wp,-H512000" to
-      get the traditional C compiler. */
-#  define C_SWITCH_MACHINE -Aa -D_HPUX_SOURCE
+/* C_SWITCH_MACHINE can take on several values:
+   1. "-Ae" is for use on HP-UX 9.0 and later; it specifies ANSI C
+      with HP-UX extensions.
+   2. "-Aa -D_HPUX_SOURCE" is similar but for earlier HP-UX releases.
+   3. "-Wp,-H512000" can be used in pre-9.0 releases to get
+      traditional C (it might work in 9.0 also but hasn't been
+      tested).  */
+#  define C_SWITCH_MACHINE -Ae
 #  define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6 -DHPC
 #else
    /* Assume GCC */
