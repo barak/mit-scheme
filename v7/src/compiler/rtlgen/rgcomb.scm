@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.17 1987/05/09 06:24:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.18 1987/05/16 19:48:05 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,25 +40,32 @@ MIT in each case. |#
   (lambda (combination subproblem?)
     (if (combination-constant? combination)
 	(combination/constant combination subproblem?)
-	(let ((callee (combination-known-operator combination))
-	      (operator
-	       (generate/subproblem-cfg (combination-operator combination)))
-	      (operands
-	       (map generate/operand (combination-operands combination))))
-	  (or (and callee
-		   (normal-primitive-constant? callee)
-		   (let ((open-coder
-			  (assq (constant-value callee)
-				primitive-open-coders)))
-		     (and open-coder
-			  ((cdr open-coder) combination
-					    subproblem?
-					    operator
-					    operands))))
-	      (combination/normal combination
-				  subproblem?
-				  operator
-				  operands))))))
+	(let ((callee (combination-known-operator combination)))
+	  (let ((operator
+		 (generate/subproblem-cfg (combination-operator combination)))
+		(operands
+		 (if (and callee
+			  (procedure? callee)
+			  (not (procedure-externally-visible? callee)))
+		     (generate-operands (procedure-required callee)
+					(procedure-optional callee)
+					(procedure-rest callee)
+					(combination-operands combination))
+		     (map generate/operand (combination-operands combination)))))
+	    (or (and callee
+		     (normal-primitive-constant? callee)
+		     (let ((open-coder
+			    (assq (constant-value callee)
+				  primitive-open-coders)))
+		       (and open-coder
+			    ((cdr open-coder) combination
+					      subproblem?
+					      operator
+					      operands))))
+		(combination/normal combination
+				    subproblem?
+				    operator
+				    operands)))))))
 
 (define (combination/constant combination subproblem?)
   (generate/normal-statement combination subproblem?
@@ -77,6 +84,35 @@ MIT in each case. |#
 	       (make-null-cfg))
 	      (else
 	       (error "Unknown combination value" value)))))))
+
+(define (generate-operands required optional rest operands)
+  (define (required-loop required operands)
+    (if (null? required)
+	(optional-loop optional operands)
+	(cons ((if (integrated-vnode? (car required))
+		   generate/operand-no-value
+		   generate/operand)
+	       (car operands))
+	      (required-loop (cdr required) (cdr operands)))))
+
+  (define (optional-loop optional operands)
+    (if (null? optional)
+	(if (not rest)
+	    '()
+	    (map (if (integrated-vnode? rest)
+		     generate/operand-no-value
+		     generate/operand)
+		 operands))
+	(cons ((if (integrated-vnode? (car optional))
+		   generate/operand-no-value
+		   generate/operand)
+	       (car operands))
+	      (optional-loop (cdr optional) (cdr operands)))))
+
+  (required-loop required operands))
+
+(define (generate/operand-no-value operand)
+  (return-3 (generate/subproblem-cfg operand) (make-null-cfg) false))
 
 (define (combination/normal combination subproblem? operator operands)
   ;; For the time being, all close-coded combinations will return
@@ -313,9 +349,11 @@ MIT in each case. |#
 	     (map (lambda (operand)
 		    (transmit-values operand
 		      (lambda (cfg prefix expression)
-			(scfg-append! cfg
-				      prefix
-				      (rtl:make-push expression)))))
+			(if expression
+			    (scfg-append! cfg
+					  prefix
+					  (rtl:make-push expression))
+			    cfg))))
 		  (reverse operands)))
 	    operator
 	    (if push-operator?
