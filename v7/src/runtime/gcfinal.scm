@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gcfinal.scm,v 14.8 2003/11/10 21:45:59 cph Exp $
+$Id: gcfinal.scm,v 14.9 2003/11/11 01:31:28 cph Exp $
 
 Copyright 2000,2002,2003 Massachusetts Institute of Technology
 
@@ -65,9 +65,11 @@ USA.
       (error:wrong-type-argument object
 				 "Finalized object"
 				 'ADD-TO-GC-FINALIZER!))
-  (let ((context ((gc-finalizer-object-context finalizer) object)))
-    (without-interrupts
-     (lambda ()
+  (without-interrupts
+   (lambda ()
+     (let ((context ((gc-finalizer-object-context finalizer) object)))
+       (if (not context)
+	   (error:bad-range-argument object 'ADD-TO-GC-FINALIZER!))
        (set-gc-finalizer-items! finalizer
 				(cons (weak-cons object context)
 				      (gc-finalizer-items finalizer))))))
@@ -75,28 +77,30 @@ USA.
 
 (define (remove-from-gc-finalizer! finalizer object)
   (guarantee-gc-finalizer finalizer 'REMOVE-FROM-GC-FINALIZER!)
-  (if (not ((gc-finalizer-object? finalizer) object))
-      (error:wrong-type-argument object
-				 "Finalized object"
-				 'REMOVE-FROM-GC-FINALIZER!))
   (let ((procedure (gc-finalizer-procedure finalizer))
+	(object? (gc-finalizer-object? finalizer))
 	(object-context (gc-finalizer-object-context finalizer))
 	(set-object-context! (gc-finalizer-set-object-context! finalizer)))
+    (if (not (object? object))
+	(error:wrong-type-argument object
+				   "Finalized object"
+				   'REMOVE-FROM-GC-FINALIZER!))
     (without-interrupts
      (lambda ()
-       (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
-	 (and (pair? items)
-	      (if (eq? object (weak-car (car items)))
-		  (let ((next (cdr items)))
-		    (if prev
-			(set-cdr! prev next)
-			(set-gc-finalizer-items! finalizer next))
-		    (let ((context (object-context object)))
-		      (if context
-			  (begin
-			    (set-object-context! object #f)
-			    (procedure context)))))
-		  (loop (cdr items) items))))))))
+       (let ((context (object-context object)))
+	 (if (not context)
+	     (error:bad-range-argument object 'REMOVE-FROM-GC-FINALIZER!))
+	 (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
+	   (if (not (pair? items))
+	       (error:bad-range-argument object 'REMOVE-FROM-GC-FINALIZER!))
+	   (if (eq? object (weak-car (car items)))
+	       (let ((next (cdr items)))
+		 (if prev
+		     (set-cdr! prev next)
+		     (set-gc-finalizer-items! finalizer next))
+		 (set-object-context! object #f)
+		 (procedure context))
+	       (loop (cdr items) items))))))))
 
 (define (remove-all-from-gc-finalizer! finalizer)
   (guarantee-gc-finalizer finalizer 'REMOVE-ALL-FROM-GC-FINALIZER!)
@@ -111,12 +115,12 @@ USA.
 	       (let ((item (car items)))
 		 (set-gc-finalizer-items! finalizer (cdr items))
 		 (let ((object (weak-car item)))
-		   (if object
-		       (let ((context (object-context object)))
-			 (if context
-			     (begin
-			       (set-object-context! object #f)
-			       (procedure context))))))
+		   (let ((context (object-context object)))
+		     (if context
+			 (begin
+			   (if object
+			       (set-object-context! object #f))
+			   (procedure context)))))
 		 (loop)))))))))
 
 (define (search-gc-finalizer finalizer predicate)
