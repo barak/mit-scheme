@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.28 1987/07/03 18:57:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.29 1987/07/07 22:30:18 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -271,10 +271,10 @@ MIT in each case. |#
 
 (define (make-call/primitive combination operator operands prefix continuation)
   (make-call false combination operator operands
-    (lambda (frame-size)
+    (lambda (number-pushed)
       (rtl:make-invocation:primitive
-       frame-size
-       (prefix combination frame-size)
+       (1+ number-pushed)
+       (prefix combination number-pushed)
        continuation
        (constant-value (combination-known-operator combination))))))
 
