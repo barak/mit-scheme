@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.3 1990/04/23 02:43:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.4 1990/07/30 16:20:26 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -160,6 +160,12 @@ procedures and continuations differ from closures) */
 
 #define ENTRY_SKIPPED_CHECK_OFFSET 	8
 #define CLOSURE_SKIPPED_CHECK_OFFSET 	32
+
+/* The length of the GC recovery code that precedes an entry.
+   On the MIPS a "addi, jalr, addi" instruction sequence.
+ */
+
+#define ENTRY_PREFIX_LENGTH		12
 
 /*
   The instructions for a normal entry should be something like

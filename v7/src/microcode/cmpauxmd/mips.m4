@@ -1,6 +1,6 @@
  ### -*-Midas-*-
  ###
- ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.1 1990/04/01 20:19:57 jinx Exp $
+ ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.2 1990/07/30 16:21:14 jinx Exp $
  ###
  ###	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
  ###
@@ -75,20 +75,17 @@
  ####	29.
  ####
  ####	5) C procedures return long values in a super temporary
- ####   register.  Two word structures are returned in super temporary
- ####   registers as well.  On MIPS: 2 is used for long returns, 2/3
- ####	are used for two word structure returns.
+ ####   register.  MIPS only: two word structures are returned in a
+ ####   location specified by the contents of the first argument
+ ####   register, and all other arguments are shifted over one
+ ####   location (i.e.  apparent argument 1 is passed in the register
+ ####   usually used for argument 2, etc.)
  ####
- ####	6) Floating point registers are not preserved by this
- ####	interface.  The interface is only called from the Scheme
- ####	interpreter, which does not use floating point data.  Thus
- ####	although the calling convention would require us to preserve
- ####	them, they contain garbage.  On MIPS: fr20-fr30 are
- ####	callee-saves registers, fr12-fr14 are parameter registers, and
- ####	fr4-fr10 and fr16-fr18 are caller-saves registers.  fr0 and
- ####	fr2 are return result registers.  Only the even numbered
- ####	registers exist (odd registers contain second 32 bits of 64
- ####	bit values).
+ ####	6) On MIPS the floating point registers fr20-fr31 are
+ ####	callee-saves registers, fr12-fr15 are parameter registers, and
+ ####	fr4-fr11 and fr16-fr19 are caller-saves registers.  fr0-3 are
+ ####	return result registers.  Only the even numbered registers are
+ ####	used (odd registers contain second 32 bits of 64 bit values).
  ####
  #### Compiled Scheme code uses the following register convention.
  #### Note that scheme_to_interface and the register block are
@@ -153,25 +150,36 @@ define(tramp_index, 25)
 	.globl	C_to_interface
 	.ent	C_to_interface
 C_to_interface:
-	addi	$sp,$sp,-64
-	.frame	$sp,64,$0
+	addi	$sp,$sp,-112
+	.frame	$sp,112,$0
 	.mask	0x80ff0000,0
-	sw	$31,60($sp)		# Save return address
-	sw	$23,56($sp)
-	sw	$22,52($sp)
-	sw	$21,48($sp)
-	sw	$20,44($sp)
-	sw	$19,40($sp)
-	sw	$18,36($sp)
-	sw	$17,32($sp)
-	sw	$16,28($sp)
+	sw	$31,108($sp)		# Save return address
+	sw	$23,104($sp)
+	sw	$22,100($sp)
+	sw	$21,96($sp)
+	sw	$20,92($sp)
+	sw	$19,88($sp)
+	sw	$18,84($sp)
+	sw	$17,80($sp)
+	sw	$16,76($sp)
+	.fmask	0x00000fff,0
+	s.d	$f30,68($sp)
+	s.d	$f28,60($sp)
+	s.d	$f26,52($sp)
+	s.d	$f24,44($sp)
+	s.d	$f22,36($sp)
+	s.d	$f20,28($sp)
 	# 20 and 24($sp) hold return data structure from C hooks
         # 16 is reserved for 4th argument to hooks, if used.
         # 4, 8, and 12($sp) are space for 1st - 3rd argument.
         # 0($sp) is space for holding return pointer
+#ifdef DEBUG_INTERFACE
+	la	$registers,Debug_Buffer
 	.set	at
-	la	$registers,Registers
+	sw	$registers,Debug_Buffer_Pointer
 	.set	noat
+#endif
+	la	$registers,Registers
 	lw	$heap_bits,Free
 	lui	$addr_mask,0xfc00
 	and	$heap_bits,$heap_bits,$addr_mask
@@ -186,7 +194,13 @@ interface_to_scheme:
 	lw	$memtop,0($registers)
 	lw	$stack,Ext_Stack_Pointer
 	lw	$free,Free
-	add	$dynlink,$0,$31
+	and	$dynlink,$addr_mask,$value
+	or	$dynlink,$heap_bits,$dynlink
+#ifdef DEBUG_INTERFACE
+	andi	$at,$free,3
+	bne	$at,0,Bad_Free_Pointer
+Continue_Past_Free_Problem:
+#endif
 	jal	$31,$C_arg1		# Off to compiled code ...
         addi	$s_to_i,$31,100		# Set up scheme_to_interface
 
@@ -210,8 +224,9 @@ trampoline_to_interface:	# ...scheme_to_interface-96
 	j	generate_closure # ...-88
 	sw	$25,4($free)	# ...-84
 
-	nop	# ...-80
-	nop	# ...-76
+	j	push_closure_entry	# ...-80
+	sw	$1,0($free)	# ...-76
+
 	nop	# ...-72
 	nop	# ...-68
 	nop	# ...-64
@@ -241,15 +256,36 @@ trampoline_to_interface:	# ...scheme_to_interface-96
 	.globl 	scheme_to_interface
 scheme_to_interface:
 	sw	$value,8($registers)
+#ifdef DEBUG_INTERFACE
+	lw	$value,Free_Constant
+	addi	$0,$0,0			# Load delay
+	sltu	$at,$stack,$value
+	bne	$at,$0,Stack_Overflow_Detected
+	addi	$0,$0,0
+	lw	$value,Debug_Buffer_Pointer
+	addi	$0,$0,0
+	sw	$stack,0($value)        # Stack pointer
+        sw	$25,4($value)           # Index
+        sw	$C_arg2,8($value)       # 1st arg.
+        sw	$C_arg3,12($value)      # 2nd arg.
+        sw	$C_arg4,16($value)      # 3rd arg.
+	addi	$value,$value,20
+	la	$12,Debug_Buffer_End
+	bne	$12,$value,Store_Pointer_Back
+	la	$12,Debug_Buffer
+	add	$value,$0,$12
+Store_Pointer_Back:
 	.set	at
-	la	$24,utility_table	# Find table
+	sw	$value,Debug_Buffer_Pointer
 	.set	noat
+#endif
+after_overflow:
+	la	$24,utility_table	# Find table
 	add	$25,$24,$25		# Address of entry
 	lw	$25,0($25)		# gr25 <- Entry
 	la	$24,Ext_Stack_Pointer
 	sw	$stack,0($24)		# Save Scheme stack pointer
 	la	$24,Free
-	.set	noat
 	sw	$free,0($24)		# Save Free
 	jal	$31,$25			# Off to interface code
 	addi	$C_arg1,$sp,20		# Return value on C stack
@@ -261,19 +297,37 @@ scheme_to_interface:
  # Argument 1 (in $C_arg1) is the returned value
 	.globl interface_to_C
 interface_to_C:
-	lw	$16,28($sp)
-	lw	$17,32($sp)
-	lw	$18,36($sp)
-	lw	$19,40($sp)
-	lw	$20,44($sp)
-	lw	$21,48($sp)
-	lw	$22,52($sp)
-	lw	$23,56($sp)
-	lw	$31,60($sp)
-	addi	$sp,$sp,64		# Pop stack back
+	l.d	$f20,28($sp)
+	l.d	$f22,36($sp)
+	l.d	$f24,44($sp)
+	l.d	$f26,52($sp)
+	l.d	$f28,60($sp)
+	l.d	$f30,68($sp)
+	lw	$16,76($sp)
+	lw	$17,80($sp)
+	lw	$18,84($sp)
+	lw	$19,88($sp)
+	lw	$20,92($sp)
+	lw	$21,96($sp)
+	lw	$22,100($sp)
+	lw	$23,104($sp)
+	lw	$31,108($sp)
+	addi	$sp,$sp,112		# Pop stack back
 	j	$31			# Return
 	add	$2,$0,$C_arg1		# Return value to C
 	.end	C_to_interface
+
+#ifdef DEBUG_INTERFACE
+	.globl	Stack_Overflow_Detected
+Stack_Overflow_Detected:
+	j	after_overflow
+	addi	$0,$0,0
+
+	.globl	Bad_Free_Pointer
+Bad_Free_Pointer:
+	j	Continue_Past_Free_Problem
+	addi	$0,$0,0
+#endif
 
 	.globl	generate_closure
 	.ent	generate_closure
@@ -304,3 +358,41 @@ generate_closure:
 	add	$free,$free,$1	# Increment Free pointer by size
 
 	.end	generate_closure
+
+	.globl	push_closure_entry
+	.ent	push_closure_entry
+push_closure_entry:
+	.frame	$sp,0,$0
+	# On arrival:
+	#   31 is the return address
+	#    1 has the GC offset and format words
+	#    4 has the offset from return address to destination
+	# Push a closure entry on the heap, updating free pointer.
+	# The header for the group of closure entries has already been
+	# generated. 
+ #	sw	$1,0($free)	# Store GC and format words on heap
+	add	$1,$31,$4	# 1 <- destination address
+	and	$1,$1,$addr_mask
+	srl	$1,$1,2		# JAL will unshift at runtime
+	lui	$4,0x0C00
+	or	$1,$1,$4	# JAL instruction
+	sw	$1,4($free)	# Store in closure
+	lui	$1,0x23FF
+	ori	$1,0xFFF8
+	sw	$1,8($free)	# Store ADDI 31,31,-8
+	j	$31		# Done!
+	addi	$free,$free,12	# Increment Free pointer
+
+	.end	push_closure_entry
+
+#ifdef DEBUG_INTERFACE
+	.data
+	.globl	Debug_Buffer_Pointer
+Debug_Buffer_Pointer:
+	.word	0
+	.globl	Debug_Buffer
+Debug_Buffer:
+	.word	0:30
+Debug_Buffer_End:
+	.word	0
+#endif
