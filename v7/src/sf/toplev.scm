@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.17 2000/01/10 03:48:20 cph Exp $
+$Id: toplev.scm,v 4.18 2001/12/19 05:26:28 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SCode Optimizer: Top Level
@@ -33,9 +34,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (lambda (*lambda environment)
       (scode-eval (integrate/scode *lambda declarations false) environment))))
 
-(define (integrate/sexp s-expression syntax-table declarations receiver)
+(define (integrate/sexp s-expression environment declarations receiver)
   (integrate/simple (lambda (s-expressions)
-		      (phase:syntax s-expressions syntax-table))
+		      (phase:syntax s-expressions environment))
 		    (list s-expression) declarations receiver))
 
 (define (integrate/scode scode declarations receiver)
@@ -46,19 +47,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (and (not (default-object? bin-string)) bin-string)
 	       (and (not (default-object? spec-string)) spec-string)))
 
-(define (syntax&integrate s-expression declarations #!optional syntax-table)
+(define (syntax&integrate s-expression declarations #!optional environment)
   (fluid-let ((sf:noisy? false))
     (integrate/sexp s-expression
-		    (if (default-object? syntax-table)
-			(nearest-repl/syntax-table)
-			syntax-table)
+		    (if (default-object? environment)
+			(nearest-repl/environment)
+			environment)
 		    declarations
 		    false)))
 
 (define sf:noisy? true)
-
-(define (sf/set-default-syntax-table! syntax-table)
-  (set! sf/default-syntax-table syntax-table))
 
 (define (sf/set-file-syntax-table! pathname syntax-table)
   (pathname-map/insert! file-info/syntax-table

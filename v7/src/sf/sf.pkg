@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sf.pkg,v 4.13 2001/12/19 04:10:28 cph Exp $
+$Id: sf.pkg,v 4.14 2001/12/19 05:26:35 cph Exp $
 
 Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
@@ -52,7 +52,6 @@ USA.
 	  sf/default-declarations
 	  sf/default-syntax-table
 	  sf/pathname-defaulting
-	  sf/set-default-syntax-table!
 	  sf/set-file-syntax-table!
 	  sf/set-usual-integrations-default-deletions!
 	  sf/top-level-definitions
