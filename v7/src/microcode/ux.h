@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.6 1990/07/30 17:31:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.7 1990/07/30 23:16:25 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -202,7 +202,6 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 
 #ifdef _BSD
 
-#define SYSTEM_VARIANT "BSD"
 #define HAVE_FIONREAD
 #define HAVE_GETTIMEOFDAY
 #define HAVE_ITIMER
@@ -215,7 +214,13 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #define HAVE_UNIX_SOCKETS
 #define HAVE_VFORK
 
+#ifdef _ULTRIX
+#define SYSTEM_VARIANT "Ultrix"
+#endif
+
 #ifdef _SUNOS
+
+#define SYSTEM_VARIANT "SunOS"
 
 #include <sys/vadvise.h>
 #ifdef _SUNOS3
@@ -229,6 +234,10 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #endif
 
 #endif /* _SUNOS */
+
+#ifndef SYSTEM_VARIANT
+#define SYSTEM_VARIANT "BSD"
+#endif
 
 #else /* not _BSD */
 #ifdef _HPUX
