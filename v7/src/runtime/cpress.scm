@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: cpress.scm,v 1.6 1994/07/16 21:12:36 cph Exp $
+$Id: cpress.scm,v 1.7 1995/09/29 19:57:46 cph Exp $
 
-Copyright (c) 1992-94 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,6 +35,14 @@ MIT in each case. |#
 ;;;; Data Compressor
 
 (declare (usual-integrations))
+
+;; This declaration is worth up to 30% speedup
+(declare
+ (ignore-reference-traps
+  (set root-nodes oldest-node newest-node window-filled? byte-buffer)))
+
+;; This does not seem to make much difference:
+(declare (ignore-reference-traps (set current-pointer current-bp command-bp)))
 
 ;;; This compression program is based on the algorithm described in
 ;;; "Data Compression with Finite Windows", by Edward R. Fiala and
