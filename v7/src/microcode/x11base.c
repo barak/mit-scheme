@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.37 1992/03/14 00:09:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.38 1992/03/16 19:39:48 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -595,7 +595,8 @@ DEFUN (xw_set_wm_icon_name, (xw, name),
 }
 
 void
-DEFUN (x_decode_window_map_arg, (map_arg, resource_name, resource_class, map_p),
+DEFUN (x_decode_window_map_arg,
+       (map_arg, resource_name, resource_class, map_p),
        SCHEME_OBJECT map_arg AND
        CONST char ** resource_name AND
        CONST char ** resource_class AND
@@ -608,8 +609,10 @@ DEFUN (x_decode_window_map_arg, (map_arg, resource_name, resource_class, map_p),
 	   && (STRING_P (PAIR_CAR (map_arg)))
 	   && (STRING_P (PAIR_CDR (map_arg))))
     {
-      (*resource_name) = ((CONST char *) (STRING_LOC ((PAIR_CAR (map_arg)), 0)));
-      (*resource_class) = ((CONST char *) (STRING_LOC ((PAIR_CDR (map_arg)), 0)));
+      (*resource_name) =
+	((CONST char *) (STRING_LOC ((PAIR_CAR (map_arg)), 0)));
+      (*resource_class) =
+	((CONST char *) (STRING_LOC ((PAIR_CDR (map_arg)), 0)));
       (*map_p) = 1;
     }
 }
@@ -1061,19 +1064,22 @@ DEFUN (update_input_mask, (xw), struct xwindow * xw)
    cooperate with this strategy.  */
 
 static SCHEME_OBJECT
-DEFUN (xd_process_events, (xd, non_block_p),
+DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
        struct xdisplay * xd AND
-       int non_block_p)
+       int non_block_p AND
+       int use_select_p)
 {
   Display * display = (XD_DISPLAY (xd));
   unsigned int events_queued;
+  if (!UX_have_select_p)
+    use_select_p = 0;
   if (XD_CACHED_EVENT_P (xd))
     {
       events_queued = (XEventsQueued (display, QueuedAlready));
       goto restart;
     }
   events_queued =
-    (UX_have_select_p ? (XEventsQueued (display, QueuedAlready))
+    (use_select_p ? (XEventsQueued (display, QueuedAlready))
      : non_block_p ? (XEventsQueued (display, QueuedAfterReading))
      : 0);
   while (1)
@@ -1081,7 +1087,7 @@ DEFUN (xd_process_events, (xd, non_block_p),
       XEvent event;
       if (events_queued > 0)
 	events_queued -= 1;
-      else if (UX_have_select_p)
+      else if (use_select_p)
 	switch (UX_select_input ((ConnectionNumber (display)),
 				 (!non_block_p)))
 	  {
@@ -1199,8 +1205,18 @@ DEFINE_PRIMITIVE ("X-CLOSE-WINDOW", Prim_x_close_window, 1, 1, 0)
 DEFINE_PRIMITIVE ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN
-    (xd_process_events ((x_display_arg (1)), (BOOLEAN_ARG (2))));
+  {
+    struct xdisplay * xd = (x_display_arg (1));
+    SCHEME_OBJECT how = (ARG_REF (2));
+    if (how == SHARP_F)
+      PRIMITIVE_RETURN (xd_process_events (xd, 0, 1));
+    else if (how == (LONG_TO_UNSIGNED_FIXNUM (0)))
+      PRIMITIVE_RETURN (xd_process_events (xd, 1, 1));
+    else if (how == (LONG_TO_UNSIGNED_FIXNUM (1)))
+      PRIMITIVE_RETURN (xd_process_events (xd, 0, 0));
+    else
+      PRIMITIVE_RETURN (xd_process_events (xd, 1, 0));
+  }
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-EVENT-MASK", Prim_x_window_event_mask, 1, 1, 0)
