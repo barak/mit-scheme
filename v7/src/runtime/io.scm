@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 13.43 1987/02/15 15:44:21 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 13.44 1987/03/18 20:05:36 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -50,11 +50,13 @@
 
 	(make-physical-channel (make-primitive-procedure 'HUNK3-CONS))
 	(channel-descriptor system-hunk3-cxr0)
+	(set-channel-descriptor! system-hunk3-set-cxr0!)
 	(channel-name system-hunk3-cxr1)
 	(channel-direction system-hunk3-cxr2)
 	(set-channel-direction! system-hunk3-set-cxr2!)
 
-	(closed-direction 0))
+	(closed-direction 0)
+	(closed-descriptor #F))
 
     (make-environment
     
@@ -119,7 +121,7 @@
 		    (set-channel-direction! channel closed-direction))
 	       #T			;Already closed!
 	       (begin
-		 (primitive (channel-descriptor channel))
+		 (primitive (set-channel-descriptor! channel closed-descriptor))
 		 (let loop ((l1 open-files-list)
 			    (l2 (cdr open-files-list)))
 		   (cond ((null? l2)
@@ -133,22 +135,34 @@
 
 ;;;; Finalization and daemon.
 
+(define (close-files action)
+  (lambda ()
+    (fluid-let ((traversing? #T))
+      (without-interrupts
+       (lambda ()
+	 (let loop ((l (cdr open-files-list)))
+	   (cond ((null? l) #T)
+		 (else
+		  (let ((channel (system-pair-car (car l))))
+		    (if (not (eq? channel #F))
+			(begin
+			  (set-channel-descriptor! channel
+						   closed-descriptor)
+			  (set-channel-direction! channel
+						  closed-direction)))
+		    (action (system-pair-cdr (car l)))
+		    (set-cdr! open-files-list (cdr l)))
+		  (loop (cdr open-files-list))))))))))
+
+;; This is invoked before disk-restoring.  It "cleans" the microcode.
+
 (set! close-all-open-files
-      (let ((primitive (make-primitive-procedure 'FILE-CLOSE-CHANNEL)))
-	(named-lambda (close-all-open-files)
-	  (fluid-let ((traversing? #T))
-	    (without-interrupts
-	     (lambda ()
-	       (let loop ((l (cdr open-files-list)))
-		 (cond ((null? l) #T)
-		       (else
-			(let ((channel (system-pair-car (car l))))
-			  (primitive (system-pair-cdr (car l)))
-			  (if (not (eq? channel #F))
-			      (set-channel-direction! channel
-						      closed-direction))
-			  (set-cdr! open-files-list (cdr l)))
-			(loop (cdr open-files-list)))))))))))
+  (close-files (make-primitive-procedure 'FILE-CLOSE-CHANNEL)))
+
+;; This is invoked after disk-restoring.  It "cleans" the new runtime system.
+
+(define reset!
+  (close-files (lambda (ignore) #T)))
 
 ;; This is the daemon which closes files which no one points to.
 ;; Runs with GC, and lower priority interrupts, disabled.
@@ -183,4 +197,5 @@
 ))) ;; End of PRIMITIVE-IO package.
 
 ((access initialize primitive-io))
+(add-gc-daemon! (access close-lost-open-files-daemon primitive-io))
 (add-gc-daemon! (access close-lost-open-files-daemon primitive-io))
