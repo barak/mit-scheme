@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.20 1992/09/05 03:07:07 cph Exp $
+$Id: unxprm.scm,v 1.21 1992/09/18 16:30:34 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,22 +38,25 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (file-directory? filename)
-  ((ucode-primitive file-directory?)
+  ((ucode-primitive file-directory? 1)
    (->namestring (merge-pathnames filename))))
 
 (define (file-symbolic-link? filename)
-  ((ucode-primitive file-symlink?) (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-symlink? 1)
+   (->namestring (merge-pathnames filename))))
 
 (define (file-modes filename)
-  ((ucode-primitive file-modes) (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-modes 1) (->namestring (merge-pathnames filename))))
 
 (define-integrable (set-file-modes! filename modes)
-  ((ucode-primitive set-file-modes!) (->namestring (merge-pathnames filename))
-				     modes))
+  ((ucode-primitive set-file-modes! 2)
+   (->namestring (merge-pathnames filename))
+   modes))
 
 (define (file-access filename amode)
-  ((ucode-primitive file-access) (->namestring (merge-pathnames filename))
-				 amode))
+  ((ucode-primitive file-access 2)
+   (->namestring (merge-pathnames filename))
+   amode))
 
 ;; upwards compatability
 (define unix/file-access file-access)
@@ -64,10 +67,11 @@ MIT in each case. |#
 (define (file-writable? filename)
   (let ((pathname (merge-pathnames filename)))
     (let ((filename (->namestring pathname)))
-      (or ((ucode-primitive file-access) filename 2)
-	  (and (not ((ucode-primitive file-exists?) filename))
-	       ((ucode-primitive file-access) (directory-namestring pathname)
-					      2))))))
+      (or ((ucode-primitive file-access 2) filename 2)
+	  (and (not ((ucode-primitive file-exists? 1) filename))
+	       ((ucode-primitive file-access 2)
+		(directory-namestring pathname)
+		2))))))
 
 (define (call-with-temporary-filename receiver)
   (let find-eligible-directory
@@ -100,11 +104,11 @@ MIT in each case. |#
 	      (find-eligible-directory (cdr eligible-directories)))))))
 
 (define (file-attributes-direct filename)
-  ((ucode-primitive file-attributes)
+  ((ucode-primitive file-attributes 1)
    (->namestring (merge-pathnames filename))))
 
 (define (file-attributes-indirect filename)
-  ((ucode-primitive file-attributes-indirect)
+  ((ucode-primitive file-attributes-indirect 1)
    (->namestring (merge-pathnames filename))))
 
 (define file-attributes
@@ -149,7 +153,7 @@ MIT in each case. |#
 
 (define (set-file-times! filename access-time modification-time)
   (let ((filename (->namestring (merge-pathnames filename))))
-    ((ucode-primitive set-file-times!)
+    ((ucode-primitive set-file-times! 3)
      filename
      (or access-time (file-access-time-direct filename))
      (or modification-time (file-modification-time-direct filename)))))
@@ -172,7 +176,7 @@ MIT in each case. |#
 		((assoc variable environment-variables)
 		 =>
 		 cdr)
-		(else ((ucode-primitive get-environment-variable)
+		(else ((ucode-primitive get-environment-variable 1)
 		       variable)))))
 
   (set! set-environment-variable!
@@ -199,7 +203,7 @@ MIT in each case. |#
 ) ; End LET
 
 (define (unix/user-home-directory user-name)
-  (let ((directory ((ucode-primitive get-user-home-directory) user-name)))
+  (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))
     (if (not directory)
 	(error "Can't find user's home directory:" user-name))
     directory))
@@ -209,33 +213,33 @@ MIT in each case. |#
       (unix/user-home-directory (unix/current-user-name))))
 
 (define-integrable unix/current-user-name
-  (ucode-primitive current-user-name))
+  (ucode-primitive current-user-name 0))
 
 (define-integrable unix/current-uid
-  (ucode-primitive current-uid))
+  (ucode-primitive current-uid 0))
 
 (define-integrable unix/current-gid
-  (ucode-primitive current-gid))
+  (ucode-primitive current-gid 0))
 
 (define-integrable unix/current-file-time
-  (ucode-primitive current-file-time))
+  (ucode-primitive current-file-time 0))
 
 (define-integrable unix/file-time->string
-  (ucode-primitive file-time->string))
+  (ucode-primitive file-time->string 1))
 
 (define (unix/uid->string uid)
-  (or ((ucode-primitive uid->string) uid)
+  (or ((ucode-primitive uid->string 0) uid)
       (number->string uid 10)))
 
 (define (unix/gid->string gid)
-  (or ((ucode-primitive gid->string) gid)
+  (or ((ucode-primitive gid->string 0) gid)
       (number->string gid 10)))
 
 (define-integrable unix/system
-  (ucode-primitive system))
+  (ucode-primitive system 1))
 
 (define (file-touch filename)
-  ((ucode-primitive file-touch) (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-touch 1) (->namestring (merge-pathnames filename))))
 
 (define (make-directory name)
   ((ucode-primitive directory-make 1)
