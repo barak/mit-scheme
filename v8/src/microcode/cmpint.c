@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.39 1992/01/14 19:24:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.40 1992/01/14 19:32:40 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -2861,7 +2861,7 @@ extern long
   EXFUN (compiled_entry_closure_p, (SCHEME_OBJECT entry)),
   EXFUN (compiled_entry_to_block_offset, (SCHEME_OBJECT entry)),
   EXFUN (coerce_to_compiled,
-	 (SCHEME_OBJECT object, SCHEME_OBJECT *location, long arity));
+	 (SCHEME_OBJECT object, long arity, SCHEME_OBJECT *location));
 
 extern SCHEME_OBJECT
   EXFUN (extract_uuo_link, (SCHEME_OBJECT block, long offset)),
@@ -2875,7 +2875,7 @@ extern SCHEME_OBJECT
 
 extern void
   EXFUN (compiler_reset, (SCHEME_OBJECT new_block)),
-  EXFUN (compiler_initialize, (long fasl_p))
+  EXFUN (compiler_initialize, (long fasl_p)),
   EXFUN (store_variable_cache,
 	 (SCHEME_OBJECT extension, SCHEME_OBJECT block, long offset)),
   EXFUN (compiled_entry_type,
@@ -3004,7 +3004,7 @@ DEFUN (compiled_entry_to_block_offset,
   /*NOTREACHED*/
 }
 
-C_UTILITY SCHEME_OBJECT
+SCHEME_OBJECT
 DEFUN (compiled_entry_to_block,
        (entry),
        SCHEME_OBJECT entry)
