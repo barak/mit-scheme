@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.37 1992/11/25 05:54:53 gjr Exp $
+$Id: hppa.h,v 1.38 1993/02/06 05:31:18 gjr Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -367,14 +367,30 @@ DEFUN (push_d_cache_region, (start_address, block_size),
 static void
 DEFUN_VOID (flush_i_cache_initialize)
 {
-  struct utsname sysinfo;
   CONST char * models_filename =
     (search_path_for_file (0, MODELS_FILENAME, 1, 1));
+  char * model;
+#ifdef _HPUX
+  struct utsname sysinfo;
   if ((uname (&sysinfo)) < 0)
     {
-      fprintf (stderr, "\nflush_i_cache: uname failed.\n");
+      fprintf (stderr, "\nflush_i_cache_initialize: uname failed.\n");
       goto loser;
     }
+  model = &sysinfo->machine[0];
+#else /* not _HPUX */
+  /* Presumably BSD */
+  extern char * EXFUN (getenv, (char *));
+  
+  model = (getenv ("HPPAmodel"));
+  if (model == ((char *) NULL))
+  {
+    fprintf
+      (stderr,
+       "\nflush_i_cache_initialize: HPPAmodel not set in environment.\n");
+    goto loser;
+  }
+#endif /* _HPUX */
   {
     int fd = (open (models_filename, O_RDONLY));
     if (fd < 0)
@@ -401,7 +417,7 @@ DEFUN_VOID (flush_i_cache_initialize)
 		     models_filename);
 	    goto loser;
 	  }
-	if ((strcmp ((sysinfo . machine), (cache_info . hardware))) == 0)
+	if ((strcmp (model, (cache_info . hardware))) == 0)
 	  {
 	    close (fd);
 	    return;
@@ -410,7 +426,7 @@ DEFUN_VOID (flush_i_cache_initialize)
   }
   fprintf (stderr,
 	   "The cache parameters database has no entry for the %s model.\n",
-	   (sysinfo . machine));
+	   model);
   fprintf (stderr, "Please make an entry in the database;\n");
   fprintf (stderr, "the installation notes contain instructions for doing so.\n");
  loser:
@@ -666,7 +682,7 @@ DEFUN_VOID (flush_i_cache_initialize)
 {									\
   STORE_ABSOLUTE_ADDRESS(entry, address, true);				\
 }
-
+
 /* This stores the fixed part of the instructions leaving the
    destination address and the number of arguments intact.  These are
    split apart so the GC can call EXTRACT/STORE...ADDRESS but it does
@@ -724,7 +740,7 @@ DEFUN_VOID (flush_i_cache_initialize)
   push_d_cache_region (((PTR) (address)),				\
 		       ((unsigned long) (nwords)));			\
 } while (0)
-
+
 /* This is not completely true.  Some models (eg. 850) have combined caches,
    but we have to assume the worst.
  */
@@ -784,11 +800,44 @@ DEFUN (transform_procedure_table, (table_length, old_table),
   }
   return (new_table);
 }
+
+#ifdef _BSD4_3
+#  include <sys/mman.h>
+#  define VM_PROT_SCHEME (PROT_READ | PROT_WRITE | PROT_EXEC)
+#endif
 
+void
+DEFUN_VOID (change_vm_protection)
+{
+#if 0
+  /* Thought I needed this under _BSD4_3 */
+
+  unsigned long pagesize = (getpagesize ());
+  unsigned long heap_start_page;
+  unsigned long size;
+
+  heap_start_page = (((unsigned long) Heap) & (pagesize - 1));
+  size = (((((unsigned long) Highest_Allocated_Address) + (pagesize - 1))
+	   & (pagesize - 1))
+	  - heap_start_page);
+  if ((mprotect (((caddr_t) heap_start_page), size, VM_PROT_SCHEME))
+      == -1)
+  {
+    perror ("\nchange_vm_protection");
+    fprintf (stderr, "mprotect (0x%lx, 0x%lx, 0x%lx)\n",
+	     heap_start_page, size, VM_PROT_SCHEME);
+    fprintf (stderr,
+	     "ASM_RESET_HOOK: Unable to change VM protection of Heap.\n");
+    termination_init_error ();
+  }
+#endif
+  return;
+}
 
 /* This loads the cache information structure for use by flush_i_cache,
    sets the floating point flags correctly, and accommodates the c
    function pointer closure format problems for utilities for HP-UX >= 8.0 .
+   It also changes the VM protection of the heap, if necessary.
  */
 
 extern PTR * hppa_utility_table;
@@ -803,6 +852,7 @@ DEFUN (hppa_reset_hook, (table_length, utility_table),
 
   flush_i_cache_initialize ();
   interface_initialize ();
+  change_vm_protection ();
   /* This can be done with the primitive table as well if we add
      assembly-language primitive invocation code.
    */
