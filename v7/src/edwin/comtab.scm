@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.57 1989/08/14 09:22:19 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.58 1991/05/06 01:00:24 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -51,40 +51,43 @@
   (button-alist '()))
 
 (define (set-comtab-entry! alists char command)
-  (let ((char (remap-alias-char char)))
-    (let ((entry (assq char (cdr alists))))
-      (if entry
-	  (set-cdr! entry command)
-	  (set-cdr! alists (cons (cons char command) (cdr alists))))))
-  unspecific)
+  (let ((entry (assq char (cdr alists))))
+    (if entry
+	(set-cdr! entry command)
+	(set-cdr! alists (cons (cons char command) (cdr alists))))))
 
 (define (make-prefix-char! alists char alists*)
-  (let ((char (remap-alias-char char)))
-    (let ((entry (assq char (car alists))))
-      (if entry
-	  (set-cdr! entry alists*)
-	  (set-car! alists (cons (cons char alists*) (car alists))))))
-  unspecific)
+  (let ((entry (assq char (car alists))))
+    (if entry
+	(set-cdr! entry alists*)
+	(set-car! alists
+		  (cons (cons char alists*)
+			(car alists))))))
 
 (define (comtab-lookup-prefix comtabs key if-undefined if-defined)
-  (cond ((char? key)
-	 (if-defined (comtab-dispatch-alists (car comtabs)) key))
-	((pair? key)
-	 (if (null? (cdr key))
-	     (if-defined (comtab-dispatch-alists (car comtabs)) (car key))
-	     (let loop
-		 ((char->alist (car (comtab-dispatch-alists (car comtabs))))
-		  (chars key))
-	       (let ((entry (assq (remap-alias-char (car chars)) char->alist)))
-		 (if entry
-		     (if (null? (cddr chars))
-			 (if-defined (cdr entry) (cadr chars))
-			 (loop (cadr entry) (cdr chars)))
-		     (if if-undefined
-			 (if-undefined)
-			 (error "Not a prefix character" (car chars))))))))
-	(else
-	 (error "Illegal comtab key" key))))
+  (let ((alists (comtab-dispatch-alists (car comtabs))))
+    (cond ((char? key)
+	   (if-defined alists (remap-alias-char key)))
+	  ((pair? key)
+	   (let ((chars (map remap-alias-char key)))
+	     (let loop ((alists alists) (chars chars))
+	       (let ((char (car chars))
+		     (chars (cdr chars)))
+		 (cond ((null? chars)
+			(if-defined alists char))
+		       ((assq char (car alists))
+			=> (lambda (entry) (loop (cdr entry) chars)))
+		       ((not if-undefined)
+			(set-comtab-entry! alists
+					   char
+					   (ref-command-object prefix-char))
+			(let ((alists* (cons '() '())))
+			  (make-prefix-char! alists char alists*)
+			  (loop alists* chars)))
+		       (else
+			(if-undefined)))))))
+	  (else
+	   (error "Illegal comtab key" key)))))
 
 (define (comtab-entry comtabs key)
   (let ((continue
@@ -95,7 +98,7 @@
 		    (comtab-entry (cdr comtabs) key)))
 	     (lambda ()
 	       (cond ((null? (cdr comtabs))
-		      bad-command)
+		      (ref-command-object undefined))
 		     ((comtab? (cadr comtabs))
 		      (comtab-entry (cdr comtabs) key))
 		     (else
@@ -109,14 +112,11 @@
       (cond ((or (char? key) (pair? key))
 	     (comtab-lookup-prefix comtabs key continue
 	       (lambda (alists char)
-		 (try (remap-alias-char char) (cdr alists)))))
+		 (try char (cdr alists)))))
 	    ((button? key)
 	     (try key (comtab-button-alist (car comtabs))))
 	    (else
 	     (error "Illegal comtab key" key))))))
-
-(define bad-command
-  (name->command '^r-bad-command))
 
 (define (prefix-char-list? comtabs chars)
   (let loop
@@ -156,12 +156,12 @@
 (define (define-prefix-key mode key command)
   (let ((comtabs (mode-comtabs (->mode mode)))
 	(command (->command command)))
-    (if (or (char? key) (pair? key))
-	(comtab-lookup-prefix comtabs key false
-	  (lambda (alists char)
-	    (set-comtab-entry! alists char command)
-	    (make-prefix-char! alists char (cons '() '()))))
-	(error "Illegal comtab key" key)))
+    (if (not (or (char? key) (pair? key)))
+	(error "Illegal comtab key" key))
+    (comtab-lookup-prefix comtabs key false
+      (lambda (alists char)
+	(set-comtab-entry! alists char command)
+	(make-prefix-char! alists char (cons '() '())))))
   key)
 
 (define (define-default-key mode command)
