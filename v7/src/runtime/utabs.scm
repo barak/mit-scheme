@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.4 1989/09/24 14:51:41 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.5 1991/01/26 03:23:56 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,6 +57,8 @@ MIT in each case. |#
 	(fixed-object/name->code 'MICROCODE-TERMINATIONS-VECTOR))
   (set! types-slot (fixed-object/name->code 'MICROCODE-TYPES-VECTOR))
   (set! non-object-slot (fixed-object/name->code 'NON-OBJECT))
+  (set! system-call-names-slot (fixed-object/name->code 'SYSTEM-CALL-NAMES))
+  (set! system-call-errors-slot (fixed-object/name->code 'SYSTEM-CALL-ERRORS))
   (set! microcode-id/version
 	(microcode-identification-item 'MICROCODE-VERSION))
   (set! microcode-id/modification
@@ -79,7 +81,8 @@ MIT in each case. |#
 	(let ((string (microcode-identification-item 'STACK-TYPE-STRING)))
 	  (cond ((string? string) (intern string))
 		((not string) 'STANDARD)
-		(else (error "illegal stack type" string))))))
+		(else (error "illegal stack type" string)))))
+  unspecific)
 
 (define microcode-tables-identification)
 (define microcode-id/version)
@@ -191,3 +194,19 @@ MIT in each case. |#
 (define (microcode-identification-item name)
   (vector-ref identification-vector
 	      (microcode-identification-vector-slot name)))
+
+(define system-call-names-slot)
+
+(define (microcode-system-call/name->code name)
+  (microcode-table-search system-call-names-slot name))
+
+(define (microcode-system-call/code->name code)
+  (microcode-table-ref system-call-names-slot code))
+
+(define system-call-errors-slot)
+
+(define (microcode-system-call-error/name->code name)
+  (microcode-table-search system-call-errors-slot name))
+
+(define (microcode-system-call-error/code->name code)
+  (microcode-table-ref system-call-errors-slot code))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.87 1990/11/15 23:27:32 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.88 1991/01/26 03:23:44 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1105,6 +1105,10 @@ MIT in each case. |#
 	  microcode-return/code->name
 	  microcode-return/code-limit
 	  microcode-return/name->code
+	  microcode-system-call-error/code->name
+	  microcode-system-call-error/name->code
+	  microcode-system-call/code->name
+	  microcode-system-call/name->code
 	  microcode-termination/code->name
 	  microcode-termination/code-limit
 	  microcode-termination/name->code

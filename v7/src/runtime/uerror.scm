@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.16 1990/10/03 21:53:53 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.17 1991/01/26 03:23:51 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,7 +70,6 @@ MIT in each case. |#
 
 (define (make-error-translator alist error-type)
   (lambda (error-code interrupt-enables)
-    error-code
     (set-interrupt-enables! interrupt-enables)
     (with-proceed-point proceed-value-filter
       (lambda ()
@@ -90,7 +89,7 @@ MIT in each case. |#
 					   (cdar translators)
 					   (loop (cdr translators)))))))))))
 	     (if translator
-		 (translator error-type frame)
+		 (translator error-type frame error-code)
 		 (make-error-condition error-type
 				       '()
 				       repl-environment)))))))))
@@ -102,7 +101,9 @@ MIT in each case. |#
       (signal-error
        (make-error-condition
 	error-type:anomalous
-	(list (or (microcode-error/code->name error-code) error-code))
+	(list (or (and (exact-nonnegative-integer? error-code)
+		       (microcode-error/code->name error-code))
+		  error-code))
 	repl-environment)))))
 
 ;;;; Frame Decomposition
@@ -147,7 +148,8 @@ MIT in each case. |#
 
 ;;;; Special Handlers
 
-(define (wrong-number-of-arguments-error condition-type frame)
+(define (wrong-number-of-arguments-error condition-type frame error-code)
+  error-code
   (make-error-condition
    condition-type
    (let ((operator (internal-apply-frame/operator frame)))
@@ -162,17 +164,18 @@ MIT in each case. |#
 	     (cdr arity))))
    repl-environment))
 
-(define (file-error condition-type frame)
-  condition-type frame
+(define (file-error condition-type frame error-code)
+  condition-type frame error-code
   (make-error-condition error-type:file '() repl-environment))
 
-(define (open-file-error condition-type frame)
-  condition-type
+(define (open-file-error condition-type frame error-code)
+  condition-type error-code
   (make-error-condition error-type:open-file
 			(list (internal-apply-frame/operand frame 0))
 			repl-environment))
 
-(define (out-of-file-handles-error condition-type frame)
+(define (out-of-file-handles-error condition-type frame error-code)
+  error-code
   (make-error-condition condition-type
 			(list (internal-apply-frame/operand frame 0))
 			repl-environment))
@@ -240,7 +243,8 @@ MIT in each case. |#
 	(make-condition-type (list error-type:file)
 			     "Channel write terminated prematurely"))
   (set! error-type:anomalous
-	(make-internal-type "Anomalous microcode error")))
+	(make-internal-type "Anomalous microcode error"))
+  unspecific)
 
 (define (make-base-type message)
   (make-condition-type (list condition-type:error) message))
@@ -329,6 +333,7 @@ MIT in each case. |#
        (INAPPLICABLE-CONTINUATION
 	,(make-internal-type "Inapplicable continuation"))
        (IO-ERROR ,(make-condition-type (list error-type:file) "I/O error"))
+       (SYSTEM-CALL ,(make-internal-type "Error in system call"))
        (OUT-OF-FILE-HANDLES
 	,(make-condition-type (list error-type:open-file)
 			      "Too many open files"))
@@ -402,7 +407,8 @@ MIT in each case. |#
     (define (define-standard-frame-handler error-type frame-type frame-filter
 	      irritant)
       (define-error-handler error-type frame-type frame-filter
-	(lambda (condition-type frame)
+	(lambda (condition-type frame error-code)
+	  error-code
 	  (make-error-condition
 	   condition-type
 	   (list (irritant (standard-frame/expression frame)))
@@ -411,7 +417,8 @@ MIT in each case. |#
     (define (define-expression-frame-handler error-type frame-type frame-filter
 	      irritant)
       (define-error-handler error-type frame-type frame-filter
-	(lambda (condition-type frame)
+	(lambda (condition-type frame error-code)
+	  error-code
 	  (make-error-condition
 	   condition-type
 	   (list (irritant (expression-only-frame/expression frame)))
@@ -426,7 +433,8 @@ MIT in each case. |#
        (lambda (return-address)
 	 (define-error-handler error-type return-address
 	   (apply internal-apply-frame/operator-filter operators)
-	   (lambda (condition-type frame)
+	   (lambda (condition-type frame error-code)
+	     error-code
 	     (make-error-condition
 	      condition-type
 	      (list (internal-apply-frame/select frame irritant))
@@ -438,17 +446,20 @@ MIT in each case. |#
       (define-apply-handler
 	(lambda (return-address)
 	  (define-error-handler error-type return-address true
-	    (lambda (condition-type frame)
-	      (make-error-condition condition-type
-				    (list (internal-apply-frame/operator frame))
-				    repl-environment))))))
+	    (lambda (condition-type frame error-code)
+	      error-code
+	      (make-error-condition
+	       condition-type
+	       (list (internal-apply-frame/operator frame))
+	       repl-environment))))))
 
     (define (define-operand-handler error-type irritant #!optional filter)
       (define-apply-handler
 	(lambda (return-address)
 	  (define-error-handler error-type return-address
 	    (if (default-object? filter) true filter)
-	    (lambda (condition-type frame)
+	    (lambda (condition-type frame error-code)
+	      error-code
 	      (make-error-condition
 	       condition-type
 	       (list (internal-apply-frame/select frame irritant)
@@ -459,7 +470,8 @@ MIT in each case. |#
 
     (define (define-reference-trap-handler error-type frame-type)
       (define-error-handler error-type frame-type true
-	(lambda (condition-type frame)
+	(lambda (condition-type frame error-code)
+	  error-code
 	  (make-error-condition
 	   condition-type
 	   (list (stack-frame/ref frame 2))
@@ -609,9 +621,6 @@ MIT in each case. |#
 	(define-error-handler 'EXTERNAL-RETURN return-address
 	  (internal-apply-frame/operator-filter
 	   (ucode-primitive file-length)
-	   ;; (ucode-primitive file-read-char) ; -gone.
-	   (ucode-primitive file-write-char)
-	   (ucode-primitive file-write-string)
 	   (ucode-primitive file-copy)
 	   (ucode-primitive file-rename)
 	   (ucode-primitive file-remove)
@@ -623,7 +632,8 @@ MIT in each case. |#
       'COMPILER-ERROR-RESTART
       (lambda (frame)
 	(primitive-procedure? (stack-frame/ref frame 2)))
-      (lambda (condition-type frame)
+      (lambda (condition-type frame error-code)
+	error-code
 	(make-error-condition
 	 condition-type
 	 (list (error-irritant/noise ": inappropriate arguments to open-coded")
