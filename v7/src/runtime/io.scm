@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.28 1991/11/04 20:29:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.29 1992/02/08 15:08:29 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,11 +39,14 @@ MIT in each case. |#
 
 (define open-channels-list)
 (define traversing?)
+(define open-directories-list)
 
 (define (initialize-package!)
   (set! open-channels-list (list 'OPEN-CHANNELS-LIST))
   (set! traversing? false)
   (add-gc-daemon! close-lost-open-files-daemon)
+  (set! open-directories-list (make-protection-list))
+  (add-gc-daemon! close-lost-open-directories-daemon)
   (add-event-receiver! event:after-restore primitive-io/reset!))
 
 (define-structure (channel (constructor %make-channel))
@@ -432,6 +435,84 @@ MIT in each case. |#
 
 (define (pty-master-hangup channel)
   ((ucode-primitive pty-master-hangup 1) (channel-descriptor channel)))
+
+;;;; Directory Primitives
+
+(define-structure (directory-channel (conc-name directory-channel/))
+  descriptor)
+
+(define (directory-channel-open name)
+  (without-interrupts
+   (lambda ()
+     (let ((descriptor ((ucode-primitive new-directory-open 1) name)))
+       (let ((channel (make-directory-channel descriptor)))
+	 (add-to-protection-list! open-directories-list channel descriptor)
+	 channel)))))
+
+(define (directory-channel-close channel)
+  (without-interrupts
+   (lambda ()
+     (let ((descriptor (directory-channel/descriptor channel)))
+       (if descriptor
+	   (begin
+	     ((ucode-primitive new-directory-close 1) descriptor)
+	     (set-directory-channel/descriptor! channel false)
+	     (remove-from-protection-list! open-directories-list channel)))))))
+
+(define (close-lost-open-directories-daemon)
+  (clean-lost-protected-objects open-directories-list
+				(ucode-primitive new-directory-close 1)))
+
+(define (directory-channel-read channel)
+  ((ucode-primitive new-directory-read 1)
+   (directory-channel/descriptor channel)))
+
+(define (directory-channel-read-matching channel prefix)
+  ((ucode-primitive new-directory-read-matching 2)
+   (directory-channel/descriptor channel)
+   prefix))
+
+;;;; Protection lists
+
+;;; These will cause problems on interpreted systems, due to the
+;;; consing of the interpreter.  For now we'll only run this compiled.
+
+(define (make-protection-list)
+  (list 'PROTECTION-LIST))
+
+(define (add-to-protection-list! list scheme-object microcode-object)
+  (with-absolutely-no-interrupts
+   (lambda ()
+     (set-cdr! list
+	       (cons (weak-cons scheme-object microcode-object)
+		     (cdr list))))))
+
+(define (remove-from-protection-list! list scheme-object)
+  (with-absolutely-no-interrupts
+   (lambda ()
+     (let loop ((associations (cdr list)) (previous list))
+       (if (not (null? associations))
+	   (if (eq? scheme-object (weak-pair/car? (car associations)))
+	       (set-cdr! previous (cdr associations))
+	       (loop (cdr associations) associations)))))))
+
+(define (clean-lost-protected-objects list cleaner)
+  (let loop ((associations (cdr list)) (previous list))
+    (if (not (null? associations))
+	(if (weak-pair/car? (car associations))
+	    (loop (cdr associations) associations)
+	    (begin
+	      (cleaner (weak-cdr (car associations)))
+	      (let ((next (cdr associations)))
+		(set-cdr! previous next)
+		(loop next previous)))))))
+
+(define (search-protection-list list microcode-object)
+  (let loop ((associations (cdr list)))
+    (and (not (null? associations))
+	 (if (eq? microcode-object (system-pair-cdr (car associations)))
+	     (system-pair-car (car associations))
+	     (loop (cdr associations))))))
 
 ;;;; Buffered Output
 

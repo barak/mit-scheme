@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/framex.scm,v 14.15 1991/06/14 03:02:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/framex.scm,v 14.16 1992/02/08 15:08:24 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -324,7 +324,6 @@ MIT in each case. |#
   (let ((method (method/application-frame 3)))
     (record-method 'INTERNAL-APPLY method)
     (record-method 'INTERNAL-APPLY-VAL method))
-  (record-method 'REPEAT-PRIMITIVE (method/application-frame 1))
   (let ((method (method/compiler-reference identity-procedure)))
     (record-method 'COMPILER-REFERENCE-RESTART method)
     (record-method 'COMPILER-SAFE-REFERENCE-RESTART method))

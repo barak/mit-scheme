@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wrkdir.scm,v 14.5 1991/11/26 07:07:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wrkdir.scm,v 14.6 1992/02/08 15:08:47 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,31 +55,29 @@ MIT in each case. |#
 (define (working-directory-pathname)
   *working-directory-pathname*)
 
-(define (%set-working-directory-pathname! name)
+(define (set-working-directory-pathname! name)
   (let ((pathname
 	 (pathname-as-directory
 	  (merge-pathnames name *working-directory-pathname*))))
     (if (not (file-directory? pathname))
 	(error "Not a valid directory:" pathname))
     (let ((pathname (pathname-simplify pathname)))
-      (if (eq? *default-pathname-defaults* *working-directory-pathname*)
-	  (set! *default-pathname-defaults* pathname))
       (set! *working-directory-pathname* pathname)
+      (set! *default-pathname-defaults*
+	    (merge-pathnames pathname *default-pathname-defaults*))
       ((ucode-primitive set-working-directory-pathname! 1)
        (->namestring pathname))
+      (port/set-default-directory (nearest-cmdl/port) pathname)
       pathname)))
 
-(define (set-working-directory-pathname! name)
-  (let ((pathname (%set-working-directory-pathname! name)))
-    (port/set-default-directory (nearest-cmdl/port) pathname)
-    pathname))
-
 (define (with-working-directory-pathname name thunk)
-  (let ((old-pathname))
-    (dynamic-wind (lambda ()
-		    (set! old-pathname (working-directory-pathname))
-		    (%set-working-directory-pathname! name))
-		  thunk
-		  (lambda ()
-		    (set! name (working-directory-pathname))
-		    (%set-working-directory-pathname! old-pathname)))))
+  (let ((pathname
+	 (pathname-as-directory
+	  (merge-pathnames name *working-directory-pathname*))))
+    (if (not (file-directory? pathname))
+	(error "Not a valid directory:" pathname))
+    (let ((pathname (pathname-simplify pathname)))
+      (fluid-let ((*working-directory-pathname* pathname)
+		  (*default-pathname-defaults*
+		   (merge-pathnames pathname *default-pathname-defaults*)))
+	(thunk)))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.22 1991/11/26 07:06:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.23 1992/02/08 15:08:33 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -135,6 +135,7 @@ MIT in each case. |#
 		       (with-interrupt-mask interrupt-mask/all
 			 (lambda (interrupt-mask)
 			   interrupt-mask
+			   (unblock-thread-events)
 			   (message cmdl)
 			   ((cmdl/driver cmdl) cmdl)))))))))))))
     (if operation

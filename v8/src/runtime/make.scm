@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.32 1992/02/07 19:47:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.33 1992/02/08 15:08:31 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -348,6 +348,7 @@ MIT in each case. |#
    (RUNTIME INTERRUPT-HANDLER)
    (RUNTIME GC-STATISTICS)
    (RUNTIME REP)
+   (RUNTIME THREAD)
    ;; Debugging
    (RUNTIME COMPILER-INFO)
    (RUNTIME ADVICE)
@@ -362,6 +363,8 @@ MIT in each case. |#
    ;; Emacs -- last because it grabs the kitchen sink.
    (RUNTIME EMACS-INTERFACE)))
 
+(package-initialize '(RUNTIME CONTINUATION-PARSER) 'INITIALIZE-SPECIAL-FRAMES!)
+
 (let ((filename (map-filename "site")))
   (if (file-exists? filename)
       (eval (fasload filename #t) system-global-environment)))
@@ -397,4 +400,6 @@ MIT in each case. |#
 )
 
 (package/add-child! system-global-package 'USER user-initial-environment)
+(set-keyboard-interrupt-thread! (current-thread))
+(start-thread-timer)
 (initial-top-level-repl)

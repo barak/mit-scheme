@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.23 1991/11/26 07:07:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.24 1992/02/08 15:08:37 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,7 +51,8 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! disk-save (setup-image disk-save/kernel))
-  (set! dump-world (setup-image dump-world/kernel)))
+  (set! dump-world (setup-image dump-world/kernel))
+  unspecific)
 
 (define disk-save)
 (define dump-world)
@@ -70,6 +71,7 @@ MIT in each case. |#
        (lambda ()
 	 (set! time-world-saved time)
 	 (event-distributor/invoke! event:after-restore)
+	 (start-thread-timer)
 	 (cond ((string? identify)
 		(set! world-identification identify)
 		(clear console-output-port)
@@ -89,21 +91,18 @@ MIT in each case. |#
       (call-with-current-continuation
        (lambda (continuation)
 	 (let ((fixed-objects (get-fixed-objects-vector))
-	       (dynamic-state (current-dynamic-state))
 	       (filename (->namestring (merge-pathnames filename))))
-	   (fluid-let ()
-	     ((ucode-primitive call-with-current-continuation)
-	      (lambda (restart)
-		(gc-flip)
-		(do () (((ucode-primitive dump-band) restart filename))
-		  (with-simple-restart 'RETRY "Try again."
-		    (lambda ()
-		      (error "Disk save failed:" filename))))
-		(continuation after-suspend)))
-	     ((ucode-primitive set-fixed-objects-vector!) fixed-objects)
-	     (set-current-dynamic-state! dynamic-state)
-	     (read-microcode-tables!)
-	     after-restore))))))))
+	   ((ucode-primitive call-with-current-continuation)
+	    (lambda (restart)
+	      (gc-flip)
+	      (do () (((ucode-primitive dump-band) restart filename))
+		(with-simple-restart 'RETRY "Try again."
+		  (lambda ()
+		    (error "Disk save failed:" filename))))
+	      (continuation after-suspend)))
+	   ((ucode-primitive set-fixed-objects-vector!) fixed-objects)
+	   (read-microcode-tables!)
+	   after-restore)))))))
 
 (define (dump-world/kernel filename after-suspend after-restore)
   ((with-absolutely-no-interrupts

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/contin.scm,v 14.5 1991/02/15 18:04:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/contin.scm,v 14.6 1992/02/08 15:08:20 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,30 +51,23 @@ MIT in each case. |#
   (primitive
    (lambda (control-point)
      (let ((continuation
-	    (make-continuation type
-			       control-point
-			       (current-dynamic-state)
-			       (get-fluid-bindings))))
+	    (make-continuation type control-point (get-dynamic-state))))
        (continuation (receiver continuation))))))
 
-(define (%within-continuation continuation thunk)
+(define (%within-continuation continuation thread-switch? thunk)
   ((ucode-primitive within-control-point 2)
    (continuation/control-point continuation)
-   (let ((dynamic-state (continuation/dynamic-state continuation))
-	 (fluid-bindings (continuation/fluid-bindings continuation)))
+   (let ((dynamic-state (continuation/dynamic-state continuation)))
      (lambda ()
-       (set-fluid-bindings! fluid-bindings)
-       (translate-to-state-point dynamic-state)
+       (set-dynamic-state! dynamic-state thread-switch?)
        (thunk)))))
 
 (define (invocation-method/reentrant continuation value)
   ((ucode-primitive within-control-point 2)
    (continuation/control-point continuation)
-   (let ((dynamic-state (continuation/dynamic-state continuation))
-	 (fluid-bindings (continuation/fluid-bindings continuation)))
+   (let ((dynamic-state (continuation/dynamic-state continuation)))
      (lambda ()
-       (set-fluid-bindings! fluid-bindings)
-       (translate-to-state-point dynamic-state)
+       (set-dynamic-state! dynamic-state false)
        value))))
 
 ;; These two are correctly locked for multiprocessing, but not for
@@ -95,7 +88,7 @@ MIT in each case. |#
 		       continuation
 		       invocation-method/used)
 		      true))))))
-      (%within-continuation continuation thunk)
+      (%within-continuation continuation false thunk)
       (error "Reentering used continuation" continuation)))
 
 (define (invocation-method/unused continuation value)
@@ -113,14 +106,14 @@ MIT in each case. |#
   value
   (error "Reentering used continuation" continuation))
 
-(define (make-continuation type control-point dynamic-state fluid-bindings)
+(define (make-continuation type control-point dynamic-state)
   (make-entity
    (case type
      ((REENTRANT) invocation-method/reentrant)
      ((UNUSED) invocation-method/unused)
      ((USED) invocation-method/used)
      (else (error "Illegal continuation type" type)))
-   (make-%continuation control-point dynamic-state fluid-bindings)))
+   (make-%continuation control-point dynamic-state)))
 
 (define (continuation/type continuation)
   (let ((invocation-method (continuation/invocation-method continuation)))
@@ -152,11 +145,7 @@ MIT in each case. |#
 (define-integrable (continuation/dynamic-state continuation)
   (%continuation/dynamic-state (entity-extra continuation)))
 
-(define-integrable (continuation/fluid-bindings continuation)
-  (%continuation/fluid-bindings (entity-extra continuation)))
-
 (define-structure (%continuation (constructor make-%continuation)
 				 (conc-name %continuation/))
   (control-point false read-only true)
-  (dynamic-state false read-only true)
-  (fluid-bindings false read-only true))
+  (dynamic-state false read-only true))

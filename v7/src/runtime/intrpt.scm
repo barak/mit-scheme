@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.8 1991/11/26 07:06:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.9 1992/02/08 15:08:27 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,24 +42,23 @@ MIT in each case. |#
 	(fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))
   (set! index:termination-vector
 	(fixed-objects-vector-slot 'MICROCODE-TERMINATIONS-PROCEDURES))
+  (set! keyboard-thread false)
   (set! hook/clean-input/flush-typeahead false)
   (set! hook/clean-input/keep-typeahead false)
   (set! hook/^B-interrupt false)
   (set! hook/^G-interrupt false)
   (set! hook/^U-interrupt false)
   (set! hook/^X-interrupt false)
-  (set! timer-interrupt default/timer-interrupt)
-  (set! external-interrupt default/external-interrupt)
-  (set! keyboard-interrupts
-	(let ((table (make-vector 256 losing-keyboard-interrupt)))
+  (set! keyboard-interrupt-vector
+	(let ((table (make-vector 256 false)))
 	  (for-each (lambda (entry)
 		      (vector-set! table
 				   (char->ascii (car entry))
 				   (cadr entry)))
-		    `((#\B ,(keep-typeahead ^B-interrupt-handler))
-		      (#\G ,(flush-typeahead ^G-interrupt-handler))
-		      (#\U ,(flush-typeahead ^U-interrupt-handler))
-		      (#\X ,(flush-typeahead ^X-interrupt-handler))))
+		    `((#\B ,^B-interrupt-handler)
+		      (#\G ,^G-interrupt-handler)
+		      (#\U ,^U-interrupt-handler)
+		      (#\X ,^X-interrupt-handler)))
 	  table))
   (install))
 
@@ -85,13 +84,7 @@ MIT in each case. |#
 (define (timer-interrupt-handler interrupt-code interrupt-enables)
   interrupt-code interrupt-enables
   (clear-interrupts! interrupt-bit/timer)
-  (timer-interrupt))
-
-(define timer-interrupt)
-(define (default/timer-interrupt)
-  (process-timer-clear)
-  (real-timer-clear)
-  (error "Unhandled Timer interrupt received"))
+  (thread-timer-interrupt-handler))
 
 (define (suspend-interrupt-handler interrupt-code interrupt-enables)
   interrupt-code interrupt-enables
@@ -123,25 +116,8 @@ MIT in each case. |#
 
 ;;;; Keyboard Interrupts
 
-(define (external-interrupt-handler interrupt-code interrupt-enables)
-  interrupt-code
-  (clear-interrupts! interrupt-bit/kbd)
-  (external-interrupt (tty-next-interrupt-char) interrupt-enables))
-
-(define (with-external-interrupts-handler handler thunk)
-  (fluid-let ((external-interrupt (flush-typeahead handler)))
-    (thunk)))
-
-(define external-interrupt)
-(define (default/external-interrupt character interrupt-enables)
-  ((vector-ref keyboard-interrupts character) character interrupt-enables))
-
-(define (losing-keyboard-interrupt character interrupt-enables)
-  interrupt-enables
-  (error "Bad interrupt character" character))
-
-(define keyboard-interrupts)
-
+(define keyboard-interrupt-vector)
+(define keyboard-thread)
 (define hook/clean-input/flush-typeahead)
 (define hook/clean-input/keep-typeahead)
 (define hook/^B-interrupt)
@@ -149,39 +125,57 @@ MIT in each case. |#
 (define hook/^U-interrupt)
 (define hook/^X-interrupt)
 
-(define ((flush-typeahead kernel) char interrupt-enables)
-  (if (or (not hook/clean-input/flush-typeahead)
-	  (hook/clean-input/flush-typeahead char))
-      (kernel char interrupt-enables)))
+(define (keyboard-interrupt-thread)
+  keyboard-thread)
 
-(define ((keep-typeahead kernel) char interrupt-enables)
-  (if (or (not hook/clean-input/keep-typeahead)
-	  (hook/clean-input/keep-typeahead char))
-      (kernel char interrupt-enables)))
+(define (set-keyboard-interrupt-thread! thread)
+  (if (not (or (not thread) (thread? thread)))
+      (error:wrong-type-argument thread
+				 "thread or #f"
+				 set-keyboard-interrupt-thread!))
+  (set! keyboard-thread thread)
+  unspecific)
 
-(define (^B-interrupt-handler char interrupt-mask)
-  char
+(define (external-interrupt-handler interrupt-code interrupt-mask)
+  interrupt-code interrupt-mask
+  (clear-interrupts! interrupt-bit/kbd)
+  (let ((char (tty-next-interrupt-char)))
+    (let ((handler (vector-ref keyboard-interrupt-vector char)))
+      (if (not handler)
+	  (error "Bad interrupt character:" char))
+      (handler char))))
+
+(define (^B-interrupt-handler char)
   (if hook/^B-interrupt
-      (hook/^B-interrupt interrupt-mask))
-  (cmdl-interrupt/breakpoint))
+      (hook/^B-interrupt))
+  (if (and (or (not hook/clean-input/keep-typeahead)
+	       (hook/clean-input/keep-typeahead char))
+	   keyboard-thread)
+      (signal-thread-event keyboard-thread cmdl-interrupt/breakpoint)))
 
-(define (^G-interrupt-handler char interrupt-mask)
-  char
+(define (^G-interrupt-handler char)
   (if hook/^G-interrupt
-      (hook/^G-interrupt interrupt-mask))
-  (cmdl-interrupt/abort-top-level))
+      (hook/^G-interrupt))
+  (if (and (or (not hook/clean-input/flush-typeahead)
+	       (hook/clean-input/flush-typeahead char))
+	   keyboard-thread)
+      (signal-thread-event keyboard-thread cmdl-interrupt/abort-top-level)))
 
-(define (^U-interrupt-handler char interrupt-mask)
-  char
+(define (^U-interrupt-handler char)
   (if hook/^U-interrupt
-      (hook/^U-interrupt interrupt-mask))
-  (cmdl-interrupt/abort-previous))
+      (hook/^U-interrupt))
+  (if (and (or (not hook/clean-input/flush-typeahead)
+	       (hook/clean-input/flush-typeahead char))
+	   keyboard-thread)
+      (signal-thread-event keyboard-thread cmdl-interrupt/abort-previous)))
 
-(define (^X-interrupt-handler char interrupt-mask)
-  char
+(define (^X-interrupt-handler char)
   (if hook/^X-interrupt
-      (hook/^X-interrupt interrupt-mask))
-  (cmdl-interrupt/abort-nearest))
+      (hook/^X-interrupt))
+  (if (and (or (not hook/clean-input/flush-typeahead)
+	       (hook/clean-input/flush-typeahead char))
+	   keyboard-thread)
+      (signal-thread-event keyboard-thread cmdl-interrupt/abort-nearest)))
 
 (define (install)
   (without-interrupts

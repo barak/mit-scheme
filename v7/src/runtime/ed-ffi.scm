@@ -176,6 +176,8 @@
 		syntax-table/system-internal)
     ("system"	(runtime system)
 		syntax-table/system-internal)
+    ("thread"	(runtime thread)
+		syntax-table/system-internal)
     ("tscript"	(runtime transcript)
 		syntax-table/system-internal)
     ("ttyio"	(runtime console-i/o-port)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.11 1991/02/15 18:07:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.12 1992/02/08 15:08:42 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -442,9 +442,9 @@ MIT in each case. |#
       ;; substitutions.
       (cond ((not (null? substitutions))
 	     (if-malformed))
-	    ((and (or (absolute-reference-to? operator 'DYNAMIC-WIND)
+	    ((and (or (absolute-reference-to? operator 'SHALLOW-FLUID-BIND)
 		      (and (variable? operator)
-			   (eq? (variable-name operator) 'DYNAMIC-WIND)))
+			   (eq? (variable-name operator) 'SHALLOW-FLUID-BIND)))
 		  (pair? operands)
 		  (lambda? (car operands))
 		  (pair? (cdr operands))

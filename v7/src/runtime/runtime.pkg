@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.132 1992/02/04 23:59:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.133 1992/02/08 15:08:35 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -287,13 +287,14 @@ MIT in each case. |#
 	  call-with-current-continuation
 	  continuation/control-point
 	  continuation/dynamic-state
-	  continuation/fluid-bindings
 	  continuation/type
 	  continuation?
 	  guarantee-continuation
 	  make-continuation
 	  non-reentrant-call-with-current-continuation
-	  within-continuation))
+	  within-continuation)
+  (export (runtime thread)
+	  %within-continuation))
 
 (define-package (runtime continuation-parser)
   (files "conpar")
@@ -316,7 +317,6 @@ MIT in each case. |#
 	  stack-frame-type?
 	  stack-frame/dynamic-state
 	  stack-frame/elements
-	  stack-frame/fluid-bindings
 	  stack-frame/interrupt-mask
 	  stack-frame/length
 	  stack-frame/next
@@ -987,8 +987,8 @@ MIT in each case. |#
   (files "intrpt")
   (parent ())
   (export ()
-	  timer-interrupt
-	  with-external-interrupts-handler)
+	  keyboard-interrupt-thread
+	  set-keyboard-interrupt-thread!)
   (export (runtime emacs-interface)
 	  hook/^G-interrupt
 	  hook/clean-input/flush-typeahead)
@@ -1511,6 +1511,11 @@ MIT in each case. |#
 	  channel-write-string-block
 	  channel?
 	  close-all-open-files
+	  directory-channel-close
+	  directory-channel-open
+	  directory-channel-read
+	  directory-channel-read-matching
+	  directory-channel?
 	  file-length
 	  file-open-append-channel
 	  file-open-input-channel
@@ -2078,18 +2083,17 @@ MIT in each case. |#
   (files "wind")
   (parent ())
   (export ()
-	  current-dynamic-state
 	  dynamic-wind
-	  execute-at-new-state-point
-	  get-fluid-bindings
-	  make-state-space
-	  object-component-binder
-	  set-current-dynamic-state!
-	  set-fluid-bindings!
-	  translate-to-state-point)
+	  shallow-fluid-bind)
+  (export (runtime continuation)
+	  get-dynamic-state
+	  set-dynamic-state!)
   (export (runtime continuation-parser)
-	  state-point/space
-	  system-state-space)
+	  %translate-to-state-point
+	  merge-dynamic-state)
+  (export (runtime thread)
+	  make-state-space
+	  state-space:local)
   (initialization (initialize-package!)))
 
 (define-package (runtime stream)
@@ -2293,3 +2297,38 @@ MIT in each case. |#
   (export (runtime emacs-interface)
 	  port/read-finish
 	  port/read-start))
+
+(define-package (runtime thread)
+  (files "thread")
+  (parent ())
+  (export ()
+	  block-thread-events
+	  condition-type:thread-deadlock
+	  condition-type:thread-detached
+	  condition-type:thread-error
+	  create-thread
+	  current-thread
+	  detach-thread
+	  exit-current-thread
+	  join-thread
+	  lock-thread-mutex
+	  make-thread-mutex
+	  other-running-threads?
+	  set-thread-timer-interval!
+	  signal-thread-event
+	  sleep-current-thread
+	  start-thread-timer
+	  stop-thread-timer
+	  suspend-current-thread
+	  thread-continuation
+	  thread-dead?
+	  thread-mutex?
+	  thread-timer-interval
+	  thread?
+	  try-lock-thread-mutex
+	  unblock-thread-events
+	  unlock-thread-mutex
+	  yield-current-thread)
+  (export (runtime interrupt-handler)
+	  thread-timer-interrupt-handler)
+  (initialization (initialize-package!)))

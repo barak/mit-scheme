@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.10 1991/11/26 07:05:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.11 1992/02/08 15:08:23 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -140,8 +140,7 @@ MIT in each case. |#
 	(loop)))
   true)
 
-(define (emacs/^G-interrupt interrupt-mask)
-  interrupt-mask
+(define (emacs/^G-interrupt)
   (transmit-signal the-console-port #\g))
 
 ;;;; Miscellaneous Hooks

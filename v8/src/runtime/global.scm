@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.34 1991/11/26 07:06:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.35 1992/02/08 15:08:26 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -110,17 +110,36 @@ MIT in each case. |#
 (define-integrable (system-hunk3-cons type cxr0 cxr1 cxr2)
   (object-new-type type (hunk3-cons cxr0 cxr1 cxr2)))
 
+(define (object-component-binder get-component set-component!)
+  (lambda (object new-value thunk)
+    (let ((old-value))
+      (shallow-fluid-bind
+       (lambda ()
+	 (set! old-value (get-component object))
+	 (set-component! object new-value)
+	 (set! new-value false)
+	 unspecific)
+       thunk
+       (lambda ()
+	 (set! new-value (get-component object))
+	 (set-component! object old-value)
+	 (set! old-value false)
+	 unspecific)))))
+
 (define (bind-cell-contents! cell new-value thunk)
   (let ((old-value))
-    (dynamic-wind (lambda ()
-		    (set! old-value (cell-contents cell))
-		    (set-cell-contents! cell new-value)
-		    (set! new-value))
-		  thunk
-		  (lambda ()
-		    (set! new-value (cell-contents cell))
-		    (set-cell-contents! cell old-value)
-		    (set! old-value)))))
+    (shallow-fluid-bind
+     (lambda ()
+       (set! old-value (cell-contents cell))
+       (set-cell-contents! cell new-value)
+       (set! new-value)
+       unspecific)
+     thunk
+     (lambda ()
+       (set! new-value (cell-contents cell))
+       (set-cell-contents! cell old-value)
+       (set! old-value)
+       unspecific))))
 
 (define (values . objects)
   (lambda (receiver)
@@ -138,7 +157,7 @@ MIT in each case. |#
       (with-output-to-truncated-string max
 	(lambda ()
 	  (write object)))))
-
+
 (define (pa procedure)
   (if (not (procedure? procedure))
       (error "Must be a procedure" procedure))
@@ -153,7 +172,7 @@ MIT in each case. |#
 ;; Compatibility.
 (define %pwd pwd)
 (define %cd cd)
-
+
 (define (show-time thunk)
   (let ((process-start (process-time-clock))
 	(real-start (real-time-clock)))
@@ -210,7 +229,7 @@ MIT in each case. |#
 
 (define-integrable (object-pointer? object)
   (not (object-non-pointer? object)))
-
+
 (define (impurify object)
   (if (and (object-pointer? object) (object-pure? object))
       ((ucode-primitive primitive-impurify) object))
@@ -225,7 +244,7 @@ MIT in each case. |#
     (if (not ((ucode-primitive primitive-fasdump) object filename false))
 	(error "FASDUMP: Object is too large to be dumped:" object))
     (write-string " -- done" port)))
-
+
 (define (undefined-value? object)
   ;; Note: the unparser takes advantage of the fact that objects
   ;; satisfying this predicate also satisfy:

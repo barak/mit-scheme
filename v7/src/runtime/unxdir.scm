@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxdir.scm,v 14.8 1991/11/04 20:30:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxdir.scm,v 14.9 1992/02/08 15:08:44 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -72,16 +72,14 @@ MIT in each case. |#
 					   (pathname-type instance)))))))))))
 
 (define (generate-directory-pathnames pathname)
-  (dynamic-wind
-   (lambda () unspecific)
-   (lambda ()
-     ((ucode-primitive directory-open-noread 1) (->namestring pathname))
-     (let loop ((result '()))
-       (let ((name ((ucode-primitive directory-read 0))))
-	 (if name
-	     (loop (cons name result))
-	     result))))
-   (ucode-primitive directory-close 0)))
+  (let ((channel (directory-channel-open (->namestring pathname))))
+    (let loop ((result '()))
+      (let ((name (directory-channel-read channel)))
+	(if name
+	    (loop (cons name result))
+	    (begin
+	      (directory-channel-close channel)
+	      result))))))
 
 (define (match-component pattern instance)
   (or (eq? pattern 'WILD)
