@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2com.scm,v 1.3 1996/04/23 23:08:01 cph Exp $
+;;;	$Id: os2com.scm,v 1.4 1996/05/03 06:55:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -85,7 +85,7 @@ but changes the meaning of COLOR-NAME when it is used in the future."
 
 (define-command set-frame-position
   "Set position of editor frame to (X,Y)."
-  "nX position (pels)\nnY position (pels)"
+  "nFrame X position (pels)\nnFrame Y position (pels)"
   (lambda (x y)
     (os2-screen/set-position! (selected-screen) x y)))
 
@@ -131,11 +131,12 @@ Useful only if `frame-name-format' is false."
   (let ((window
 	 (if (and (selected-screen? screen) (within-typein-edit?))
 	     (typein-edit-other-window)
-	     (screen-selected-window screen)))
-	(format (ref-variable frame-name-format buffer))
-	(length (ref-variable frame-name-length buffer)))
-    (if format
-	(os2-screen/set-title!
-	 screen
-	 (string-trim-right
-	  (format-modeline-string window format length))))))
+	     (screen-selected-window screen))))
+    (let ((buffer (window-buffer window)))
+      (let ((format (ref-variable frame-name-format buffer))
+	    (length (ref-variable frame-name-length buffer)))
+	(if format
+	    (os2-screen/set-title!
+	     screen
+	     (string-trim-right
+	      (format-modeline-string window format length))))))))
