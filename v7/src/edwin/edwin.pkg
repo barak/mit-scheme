@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.65 1991/10/21 23:40:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.66 1991/10/26 21:54:48 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -872,7 +872,6 @@ MIT in each case. |#
 	  set-process-kill-without-query!
 	  set-process-sentinel!
 	  shell-command
-	  shell-command-region
 	  start-process
 	  stop-process
 	  run-synchronous-process))
