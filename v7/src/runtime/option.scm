@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.13 1992/02/28 23:06:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.14 1992/04/06 19:52:47 bal Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -73,7 +73,9 @@ MIT in each case. |#
   '((ARITHMETIC-INTERFACE ((RUNTIME NUMBER INTERFACE) #F "numint"))
     (FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))
     (HASH-TABLE ((RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb"))
+    (KRYPT ((RUNTIME KRYPT) #F "krypt"))
     (SUBPROCESS ((RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process"))))
 
 (define loaded-options
   '())
+
