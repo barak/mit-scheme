@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsig.h,v 1.1 1993/08/28 23:08:30 gjr Exp $
+$Id: uxsig.h,v 1.2 1993/08/28 23:08:57 gjr Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
