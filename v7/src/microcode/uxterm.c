@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.7 1990/11/08 11:12:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.8 1990/11/15 09:03:12 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -180,14 +180,14 @@ void
 DEFUN (terminal_state_cooked_output, (s, channel),
        Ttty_state * s AND Tchannel channel)
 {
+  Ttty_state * os = (& (TERMINAL_ORIGINAL_STATE (channel)));
 #if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
-  ((TIO (s)) -> c_oflag) |= OPOST;
+  ((TIO (s)) -> c_oflag) |= (((TIO (os)) -> c_oflag) & OPOST);
 #else /* not HAVE_TERMIOS nor HAVE_TERMIO */
 #ifdef HAVE_BSD_TTY_DRIVER
-  Ttty_state * os = (& (TERMINAL_ORIGINAL_STATE (channel)));
   (s -> sg . sg_flags) =
     (((s -> sg . sg_flags) &~ ALLDELAY) | ((os -> sg . sg_flags) & ALLDELAY));
-  (s -> lmode) &=~ LLITOUT;
+  (s -> lmode) &=~ ((os -> lmode) & LLITOUT);
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
@@ -251,9 +251,10 @@ DEFUN (terminal_state_buffered, (s, channel),
        Ttty_state * s AND
        Tchannel channel)
 {
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
   Ttty_state * os = (& (TERMINAL_ORIGINAL_STATE (channel)));
-  ((TIO (s)) -> c_lflag) |= (ICANON | ECHO | ISIG);
+#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+  ((TIO (s)) -> c_lflag) |= (ICANON | ISIG);
+  ((TIO (s)) -> c_lflag) |= (((TIO (os)) -> c_lflag) & ECHO);
   ((TIO (s)) -> c_iflag) = ((TIO (os)) -> c_iflag);
   ((TIO (s)) -> c_cflag) |= CS8;
   ((TIO (s)) -> c_cflag) &=~ PARENB;
@@ -262,7 +263,8 @@ DEFUN (terminal_state_buffered, (s, channel),
 #else /* not HAVE_TERMIOS nor HAVE_TERMIO */
 #ifdef HAVE_BSD_TTY_DRIVER
   (s -> sg . sg_flags) &=~ (CBREAK | RAW);
-  (s -> sg . sg_flags) |= (ECHO | CRMOD | ANYP);
+  (s -> sg . sg_flags) |= ANYP;
+  (s -> sg . sg_flags) |= ((os -> sg . sg_flags) & (ECHO | CRMOD));
   (s -> lmode) &=~ LNOFLSH;
   (s -> lmode) |= LPASS8;
 #endif /* HAVE_BSD_TTY_DRIVER */
