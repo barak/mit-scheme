@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.5 1996/07/22 04:45:41 adams Exp $
+$Id: rulflo.scm,v 1.6 1996/07/22 17:46:16 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -526,16 +526,6 @@ MIT in each case. |#
 |#
 
 ;;;; Two arg operations
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (FLONUM-2-ARGS FLONUM-SUBTRACT
-			 (OBJECT->FLOAT (CONSTANT 0.))
-			 (REGISTER (? source))
-			 (? overflow?)))
-  overflow?				; ignore
-  (let ((source (flonum-source! source)))
-    (LAP (FSUB (DBL) 0 ,source ,(flonum-target! target)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
