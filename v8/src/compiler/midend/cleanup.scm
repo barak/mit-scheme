@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.25 1995/09/05 19:14:35 adams Exp $
+$Id: cleanup.scm,v 1.26 1995/09/05 19:45:32 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -409,7 +409,7 @@ MIT in each case. |#
   (lambda (expr)
     (let  ((value (form/number? expr)))
       (and (QUOTE/? expr)
-	   (string? (quote/test expr))
+	   (string? (quote/text expr))
 	   `(QUOTE ,(string->symbol (quote/text expr)))))))
 
 ;;
