@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.32 1993/12/15 00:04:45 cph Exp $
+$Id: conpar.scm,v 14.33 1994/12/19 21:12:45 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -867,7 +867,9 @@ MIT in each case. |#
 (define (hardware-trap-frame/code frame)
   (guarantee-hardware-trap-frame frame)
   (let ((code (stack-frame/ref frame hardware-trap/code-index)))
-    (and (pair? code) (cdr code))))	
+    (cond ((pair? code) (cdr code))
+	  ((string? code) code)
+	  (else #f))))	
 
 (define (guarantee-hardware-trap-frame frame)
   (if (not (hardware-trap-frame? frame))
