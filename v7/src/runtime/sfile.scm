@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.11 1994/03/04 21:39:59 cph Exp $
+$Id: sfile.scm,v 14.12 1994/03/11 05:17:51 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -94,7 +94,8 @@ MIT in each case. |#
 			 (if (= n-read buffer-length)
 			     (+ (loop (- source-length buffer-length))
 				buffer-length)
-			     n-read))))))))
+			     n-read)))))))
+	 (set-file-modes! to (file-modes from)))
        (lambda ()
 	 (if output-channel (channel-close output-channel))
 	 (if input-channel (channel-close input-channel)))))))
