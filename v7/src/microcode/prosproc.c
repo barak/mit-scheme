@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.1 1990/06/20 19:38:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.2 1990/11/08 11:04:37 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. */
 
 static int EXFUN (string_vector_p, (SCHEME_OBJECT vector));
 static char ** EXFUN (convert_string_vector, (SCHEME_OBJECT vector));
-
+
 static Tprocess
 DEFUN (arg_process, (argument_number), int argument_number)
 {
@@ -59,7 +59,7 @@ DEFUN (arg_process, (argument_number), int argument_number)
     }
   return (process);
 }
-
+
 DEFINE_PRIMITIVE ("MAKE-SUBPROCESS", Prim_make_subprocess, 4, 4,
   "Create a subprocess.\n\
 First arg FILENAME is the program to run.\n\
@@ -70,13 +70,15 @@ Fourth arg CTTY-TYPE specifies the program's controlling terminal type:\n\
 {
   PRIMITIVE_HEADER (4);
   CHECK_ARG (2, string_vector_p);
-  CHECK_ARG (3, string_vector_p);
+  if ((ARG_REF (3)) != SHARP_F)
+    CHECK_ARG (3, string_vector_p);
   {
     PTR position = dstack_position;
     CONST char * filename = (STRING_ARG (1));
     CONST char ** argv =
       ((CONST char **) (convert_string_vector (ARG_REF (2))));
-    char ** env = (convert_string_vector (ARG_REF (3)));
+    char ** env =
+      (((ARG_REF (3)) == SHARP_F) ? 0 : (convert_string_vector (ARG_REF (3))));
     enum process_ctty_type ctty_type;
     Tprocess process;
     switch (arg_index_integer (4, 4))
@@ -112,15 +114,38 @@ static char **
 DEFUN (convert_string_vector, (vector), SCHEME_OBJECT vector)
 {
   unsigned long length = (VECTOR_LENGTH (vector));
-  char ** result = (dstack_alloc (length * (sizeof (char *))));
+  char ** result = (dstack_alloc ((length + 1) * (sizeof (char *))));
   SCHEME_OBJECT * scan = (VECTOR_LOC (vector, 0));
   SCHEME_OBJECT * end = (scan + length);
   char ** scan_result = result;
   while (scan < end)
     (*scan_result++) = ((char *) (STRING_LOC ((*scan++), 0)));
+  (*scan_result) = 0;
   return (result);
 }
 
+DEFINE_PRIMITIVE ("SCHEME-ENVIRONMENT", Prim_scheme_environment, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  {
+    extern char ** environ;
+    {
+      char ** scan_environ = environ;
+      char ** end_environ = scan_environ;
+      while ((*end_environ++) != 0) ;
+      end_environ -= 1;
+      {
+	SCHEME_OBJECT result =
+	  (allocate_marked_vector (TC_VECTOR, (end_environ - environ), 1));
+	SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
+	while (scan_environ < end_environ)
+	  (*scan_result++) = (char_pointer_to_string (*scan_environ++));
+	PRIMITIVE_RETURN (result);
+      }
+    }
+  }
+}
+
 DEFINE_PRIMITIVE ("PROCESS-DELETE", Prim_process_delete, 1, 1,
   "Delete process PROCESS-NUMBER from the process table.\n\
 The process may be deleted only if it is exited or stopped.")
