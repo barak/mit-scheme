@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.27 1999/01/02 06:06:43 cph Exp $
+$Id: edextra.scm,v 1.28 1999/01/28 04:01:02 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -398,7 +398,7 @@ option the file from the problem set will not be installed.
 	 (let ((reply-to
 		(prompt-for-string "Please enter an email address for replies"
 				   default-reply-to
-				   'INSERTED-DEFAULT)))
+				   'DEFAULT-TYPE 'INSERTED-DEFAULT)))
 	   (if (not (string-null? reply-to))
 	       (begin
 		 (set! default-reply-to reply-to)

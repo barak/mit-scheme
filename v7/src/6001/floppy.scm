@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.24 1999/01/02 06:06:43 cph Exp $
+$Id: floppy.scm,v 1.25 1999/01/28 04:01:08 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -1011,9 +1011,8 @@ The following filenames are reserved and may not be used:
 
 (set! prompt-for-pathname*
       (let ((usual prompt-for-pathname*))
-	(lambda (prompt directory verify-final-value? require-match?)
-	  (let ((pathname
-		 (usual prompt directory verify-final-value? require-match?)))
+	(lambda args
+	  (let ((pathname (apply usual args)))
 	    (if (or (not (student-directory? pathname))
 		    (valid-dos-filename? (file-namestring pathname))
 		    (file-exists? pathname)
@@ -1038,8 +1037,7 @@ below.  Otherwise, answer \"no\" to use a different name.
 		       (append-string dos-filename-description)
 		       (prompt-for-yes-or-no? "Use this non-DOS name"))))
 		pathname
-		(prompt-for-pathname* prompt directory
-				      verify-final-value? require-match?))))))
+		(apply prompt-for-pathname* args))))))
 
 (define (student-directory? pathname)
   (let ((pathname (->pathname pathname))
