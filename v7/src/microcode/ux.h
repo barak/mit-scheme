@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.43 1993/02/20 07:00:36 gjr Exp $
+$Id: ux.h,v 1.44 1993/02/21 01:09:48 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1093,7 +1093,9 @@ extern int EXFUN (UX_sigsuspend, (CONST sigset_t * set));
 
 extern long EXFUN (fpathconf, (int, int));
 
+#ifndef _PC_VDISABLE
 # define _PC_VDISABLE		8
+#endif
 
 #endif /* EMULATE_FPATHCONF */
 
@@ -1103,12 +1105,18 @@ extern long EXFUN (sysconf, (int));
 
 /* These values match HP-UX, and the index in the table in the 
    OSF/1 Programmer's reference.
+
+   Note: The code assumes that if one is present, the rest
+   are too.  Otherwise there is no simple way to guarantee
+   that non-conflicting values have been chosen.
  */
 
+#ifndef _SC_CHILD_MAX
 # define _SC_CHILD_MAX		1
 # define _SC_CLK_TCK		2
 # define _SC_OPEN_MAX		4
 # define _SC_JOB_CONTROL	5
+#endif
 
 #endif /* EMULATE_SYSCONF */
 
