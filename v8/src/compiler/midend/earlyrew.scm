@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.4 1995/02/14 02:38:45 adams Exp $
+$Id: earlyrew.scm,v 1.5 1995/02/17 23:41:57 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -590,3 +590,85 @@ MIT in each case. |#
 					      ,text))))
 		      (default))))
 	    (else (default))))))
+
+
+(define (define-rewrite/early/global name arity handler)
+  (let ((slot (hash-table/get *early-rewritten-operators* name '())))
+    (hash-table/put! *early-rewritten-operators*
+		     name
+		     (cons (cons arity handler) slot))))
+
+(define-rewrite/early %invoke-remote-cache 
+  (lambda (descriptor operator-cache . values)
+    (define (default values)
+      `(CALL (QUOTE ,%invoke-remote-cache)
+	     (QUOTE #f)
+	     ,descriptor
+	     ,operator-cache
+	     ,@values))
+    (let* ((descriptor* (quote/text descriptor))
+	   (name  (first descriptor*))
+	   (arity (second descriptor*)))
+      (cond ((rewrite-operator/early? name)
+	     => (lambda (alist)
+		  (cond ((assq arity alist)
+			 => (lambda (arity.handler)
+			      (apply (cdr arity.handler) default values)))
+			(else (default values)))))
+	    (else
+	     (default values))))))
+
+
+(define-rewrite/early/global 'SQRT 1
+  (lambda (default arg)
+    (cond ((earlyrew/number? arg)
+	   => (lambda (number)
+		`(QUOTE ,(sqrt number))))
+	  (else
+	   (default (list arg))))))
+
+
+(define-rewrite/early/global 'EXPT 2
+  (let ((&* (make-primitive-procedure '&*))
+	(max-multiplies 3))
+    (lambda (default* base exponent)
+      (define (default)
+	(default* (list base exponent)))
+      (define (make-product x y)
+	`(CALL (QUOTE ,&*)
+	       (QUOTE #F)
+	       ,x ,y))
+      (define (count-multiplies n)
+	(cond ((= n 1) 0)
+	      ((= n 2) 1)
+	      ((even? n) (+ (count-multiplies (/ n 2)) 1))
+	      ((odd? n)  (+ (count-multiplies (- n 1)) 1))))
+      (define (power variable n)
+	(cond ((= n 1) variable)
+	      ((= n 2) (make-product variable variable))
+	      ((even? n)
+	       (let ((square (earlyrew/new-name 'X)))
+		 (bind square (make-product variable variable)
+		       (power `(LOOKUP ,square) (/ n 2)))))
+	      ((odd? n)
+	       (make-product variable (power variable (- n 1))))))	       
+		       
+      (cond ((earlyrew/number? exponent)
+	     => (lambda (exponent)
+		  (cond ((earlyrew/number? base)
+			 => (lambda (base)
+			      `(QUOTE ,(expt base exponent))))
+			((eqv? exponent 0)
+			 `(QUOTE 1))
+			((eqv? exponent 1)
+			 base)
+			((and (exact-integer? exponent)
+			      (>= exponent 2)
+			      (<= (count-multiplies exponent) max-multiplies))
+			 (let* ((base-name  (earlyrew/new-name 'X))
+				(expression (power `(LOOKUP ,base-name) exponent)))
+			   (bind base-name base
+				 (earlyrew/expr expression))))
+			(else (default)))))
+	    (else
+	     (default))))))
