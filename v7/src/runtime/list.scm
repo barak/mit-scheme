@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.43 2004/11/17 06:09:07 cph Exp $
+$Id: list.scm,v 14.44 2004/11/22 06:31:03 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -917,20 +917,20 @@ USA.
 	 (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
 	     (let ((name (cadr form))
 		   (predicate (close-syntax (caddr form) environment)))
-	       `(SET! ,name
-		      (NAMED-LAMBDA (,name KEY ALIST)
-			(LET LOOP ((ALIST* ALIST))
-			  (IF (PAIR? ALIST*)
-			      (BEGIN
-				(IF (NOT (PAIR? (CAR ALIST*)))
-				    (ERROR:NOT-ALIST ALIST ',name))
-				(IF (,predicate (CAR (CAR ALIST*)) KEY)
-				    (CAR ALIST*)
-				    (LOOP (CDR ALIST*))))
-			      (BEGIN
-				(IF (NOT (NULL? ALIST*))
-				    (ERROR:NOT-ALIST ALIST ',name))
-				#F))))))
+	       `(SET!
+		 ,name
+		 (NAMED-LAMBDA (,name KEY ALIST)
+		   (LET ((LOSE (LAMBDA () (ERROR:NOT-ALIST ALIST ',name))))
+		     (LET LOOP ((ALIST* ALIST))
+		       (IF (PAIR? ALIST*)
+			   (BEGIN
+			     (IF (NOT (PAIR? (CAR ALIST*))) (LOSE))
+			     (IF (,predicate (CAAR ALIST*) KEY)
+				 (CAR ALIST*)
+				 (LOOP (CDR ALIST*))))
+			   (BEGIN
+			     (IF (NOT (NULL? ALIST*)) (LOSE))
+			     #F)))))))
 	     (ill-formed-syntax form))))))
   (fast-assoc assq eq?)
   (fast-assoc assv eqv?)
@@ -950,18 +950,20 @@ USA.
 	       `(SET!
 		 ,name
 		 (NAMED-LAMBDA (,name ITEM ITEMS)
-		   (LET ((LOSE (LAMBDA () (ERROR:NOT-LIST ITEMS ',name))))
+		   (LET ((LOSE (LAMBDA () (ERROR:NOT-ALIST ITEMS ',name))))
 		     (COND ((PAIR? ITEMS)
+			    (IF (NOT (PAIR? (CAR ITEMS))) (LOSE))
 			    (LET ((HEAD (CONS (CAR ITEMS) '())))
 			      (LET LOOP ((ITEMS* (CDR ITEMS)) (PREVIOUS HEAD))
 				(COND ((PAIR? ITEMS*)
-				       (IF (,predicate (CAR ITEMS*) ITEM)
+				       (IF (NOT (PAIR? (CAR ITEMS*))) (LOSE))
+				       (IF (,predicate (CAAR ITEMS*) ITEM)
 					   (LOOP (CDR ITEMS*) PREVIOUS)
 					   (LET ((NEW (CONS (CAR ITEMS*) '())))
 					     (SET-CDR! PREVIOUS NEW)
 					     (LOOP (CDR ITEMS*) NEW))))
 				      ((NOT (NULL? ITEMS*)) (LOSE))))
-			      (IF (,predicate (CAR ITEMS) ITEM)
+			      (IF (,predicate (CAAR ITEMS) ITEM)
 				  (CDR HEAD)
 				  HEAD)))
 			   ((NULL? ITEMS) ITEMS)
@@ -989,28 +991,31 @@ USA.
 		       ((TRIM-INITIAL-SEGMENT
 			 (LAMBDA (ITEMS*)
 			   (IF (PAIR? ITEMS*)
-			       (IF (,predicate (CAR ITEMS*) ITEM)
-				   (TRIM-INITIAL-SEGMENT (CDR ITEMS*))
-				   (BEGIN
-				     (LOCATE-INITIAL-SEGMENT ITEMS*
-							     (CDR ITEMS*))
-				     ITEMS*))
 			       (BEGIN
-				 (IF (NOT (NULL? ITEMS*))
-				     (LOSE))
+				 (IF (NOT (PAIR? (CAR ITEMS*))) (LOSE))
+				 (IF (,predicate (CAAR ITEMS*) ITEM)
+				     (TRIM-INITIAL-SEGMENT (CDR ITEMS*))
+				     (BEGIN
+				       (LOCATE-INITIAL-SEGMENT ITEMS*
+							       (CDR ITEMS*))
+				       ITEMS*)))
+			       (BEGIN
+				 (IF (NOT (NULL? ITEMS*)) (LOSE))
 				 '()))))
 			(LOCATE-INITIAL-SEGMENT
 			 (LAMBDA (LAST THIS)
-			   (IF (PAIR? THIS)
-			       (IF (,predicate (CAR THIS) ITEM)
-				   (SET-CDR! LAST
-					     (TRIM-INITIAL-SEGMENT (CDR THIS)))
-				   (LOCATE-INITIAL-SEGMENT THIS (CDR THIS)))
-			       (IF (NOT (NULL? THIS))
-				   (LOSE)))))
+			   (COND ((PAIR? THIS)
+				  (IF (NOT (PAIR? (CAR THIS))) (LOSE))
+				  (IF (,predicate (CAAR THIS) ITEM)
+				      (SET-CDR!
+				       LAST
+				       (TRIM-INITIAL-SEGMENT (CDR THIS)))
+				      (LOCATE-INITIAL-SEGMENT THIS
+							      (CDR THIS))))
+				 ((NOT (NULL? THIS)) (LOSE)))))
 			(LOSE
 			 (LAMBDA ()
-			   (ERROR:NOT-LIST ITEMS ',name))))
+			   (ERROR:NOT-ALIST ITEMS ',name))))
 		     (TRIM-INITIAL-SEGMENT ITEMS)))))
 	     (ill-formed-syntax form))))))
   (fast-del-assoc! del-assq! eq?)
