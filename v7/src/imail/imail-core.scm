@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.98 2000/06/05 20:56:46 cph Exp $
+;;; $Id: imail-core.scm,v 1.99 2000/06/08 18:49:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -688,6 +688,7 @@
 (define (->header-fields object)
   (cond ((or (pair? object) (null? object)) object)
 	((message? object) (message-header-fields object))
+	((string? object) (string->header-fields object))
 	(else (error:wrong-type-argument object "header fields" #f))))
 
 (define (get-first-header-field headers name error?)
