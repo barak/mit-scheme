@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pack-compiler.scm,v 1.4 1992/11/22 23:33:20 gjr Exp $
+$Id: pack-compiler.scm,v 1.5 1993/02/25 08:22:43 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -188,7 +188,4 @@ MIT in each case. |#
 		    "machines\\i386\\assmd.com"
 		    "back\\symtab.com"
 		    "back\\bitutl.com"
-		    "back\\bittop.com"
-		    "machines\\i386\\dassm1.com"
-		    "machines\\i386\\dassm2.com"
-		    "machines\\i386\\dassm3.com"))))
+		    "back\\bittop.com"))))
