@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.49 1990/11/21 07:04:12 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.50 1991/05/05 00:37:20 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -95,34 +95,41 @@ static CONST char * dump_file_name = ((char *) 0);
 */
 
 #define Setup_Pointer_for_Dump(Extra_Code)				\
-Dump_Pointer (Fasdump_Setup_Pointer (Extra_Code, Normal_BH (false, continue)))
+  Dump_Pointer (Fasdump_Setup_Pointer (Extra_Code, Normal_BH (false, continue)))
 
 #define Dump_Pointer(Code)						\
   Old = (OBJECT_ADDRESS (Temp));					\
   Code
 
-#define Dump_Compiled_Entry(label)					\
+/* This depends on the fact that the last word in a compiled code block
+   contains the environment, and that To will be pointing to the word
+   immediately after that!
+ */
+
+#define Fasdump_Transport_Compiled()					\
 {									\
-  Dump_Pointer (Fasdump_Setup_Pointer (Transport_Compiled (),		\
-				       Compiled_BH (false, goto label))); \
+  Transport_Compiled();							\
+  if ((mode == 2) && ((OBJECT_TYPE (*(To - 1))) == TC_ENVIRONMENT))	\
+  {									\
+    *(To - 1) = SHARP_F;						\
+  }									\
 }
 
-/* Dump_Mode is currently a fossil.  It should be resurrected. */
+#define Dump_Compiled_Entry(label)						\
+{										\
+  Dump_Pointer (Fasdump_Setup_Pointer (Fasdump_Transport_Compiled (),		\
+				       Compiled_BH (false, goto label)));	\
+}
 
 /* Should be big enough for the largest fixed size object (a Quad)
    and 2 for the Fixup.
  */
 
-#define	NORMAL_GC	0
-#define PURE_COPY	1
-#define CONSTANT_COPY	2
-
 #define FASDUMP_FIX_BUFFER 10
 
 long
-DEFUN (DumpLoop, (Scan, Dump_Mode),
-       fast SCHEME_OBJECT *Scan AND
-       int Dump_Mode)
+DEFUN (DumpLoop, (Scan, mode),
+       fast SCHEME_OBJECT *Scan AND int mode)
 {
   fast SCHEME_OBJECT *To, *Old, Temp, New_Address, *Fixes;
   long result;
@@ -194,47 +201,62 @@ DEFUN (DumpLoop, (Scan, Dump_Mode),
       case TC_LINKAGE_SECTION:
       {
 	compiled_code_present_p = true;
-	if ((READ_LINKAGE_KIND (Temp)) != OPERATOR_LINKAGE_KIND)
+	switch (READ_LINKAGE_KIND (Temp))
 	{
-	  /* Assumes that all others are objects of type TC_QUAD without
-	     their type codes.
-	   */
-
-	  fast long count;
-
-	  Scan++;
-	  for (count = (READ_CACHE_LINKAGE_COUNT (Temp));
-	       --count >= 0;
-	       Scan += 1)
+	  case REFERENCE_LINKAGE_KIND:
+	  case ASSIGNMENT_LINKAGE_KIND:
 	  {
-	    Temp = *Scan;
-	    Setup_Pointer_for_Dump (Transport_Quadruple ());
+	    /* Assumes that all others are objects of type TC_QUAD without
+	       their type codes.
+	     */
+
+	    fast long count;
+
+	    Scan++;
+	    for (count = (READ_CACHE_LINKAGE_COUNT (Temp));
+		 --count >= 0;
+		 Scan += 1)
+	    {
+	      Temp = *Scan;
+	      Setup_Pointer_for_Dump (Transport_Quadruple ());
+	    }
+	    Scan -= 1;
+	    break;
 	  }
-	  Scan -= 1;
-	  break;
-	}
-	else
-	{
-	  fast long count;
-	  fast char *word_ptr;
-	  SCHEME_OBJECT *end_scan;
 
-	  count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
-	  word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
-	  end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
-
-	  while(--count >= 0)
+	  case OPERATOR_LINKAGE_KIND:
+	  case GLOBAL_OPERATOR_LINKAGE_KIND:
 	  {
-	    Scan = ((SCHEME_OBJECT *) (word_ptr));
-	    word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
-	    EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
-	    Dump_Compiled_Entry (after_operator);
-	  after_operator:
-	    STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
+	    fast long count;
+	    fast char *word_ptr;
+	    SCHEME_OBJECT *end_scan;
+
+	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
+	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
+	    end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
+
+	    while(--count >= 0)
+	    {
+	      Scan = ((SCHEME_OBJECT *) (word_ptr));
+	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
+	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
+	      Dump_Compiled_Entry (after_operator);
+	      after_operator:
+	      STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
+	    }
+	    Scan = end_scan;
+	    break;
 	  }
-	  Scan = end_scan;
-	  break;
+
+	  default:
+	  {
+	    gc_death (TERM_EXIT,
+		      "fasdump: Unknown compiler linkage kind.",
+		      Scan, Free);
+	    /*NOTREACHED*/
+	  }
 	}
+	break;
       }
 
       case_Cell:
@@ -282,10 +304,13 @@ DEFUN (DumpLoop, (Scan, Dump_Mode),
 
       case TC_COMPILED_CODE_BLOCK:
       case_Purify_Vector:
+      process_vector:
 	Setup_Pointer_for_Dump (Transport_Vector ());
 	break;
 
       case TC_ENVIRONMENT:
+	if (mode == 1)
+	  goto process_vector;
 	/* Make fasdump fail */
 	result = ERR_FASDUMP_ENVIRONMENT;
 	goto exit_dumploop;
@@ -311,11 +336,11 @@ exit_dumploop:
   return (result);
 }
 
-#define DUMPLOOP(obj, code)						\
+#define DUMPLOOP(obj, mode)						\
 {									\
   long value;								\
 									\
-  value = (DumpLoop (obj, code));					\
+  value = (DumpLoop (obj, mode));					\
   if (value != PRIM_DONE)						\
   {									\
     PRIMITIVE_RETURN (Fasdump_Exit (value, false));			\
@@ -380,19 +405,27 @@ DEFUN (Fasdump_Exit, (code, close_p),
    Dump an object into a file so that it can be loaded using
    BINARY-FASLOAD.  A spare heap is required for this operation.  The
    first argument is the object to be dumped.  The second is the
-   filename or channel.  The third argument, FLAG, is currently
-   ignored.  The primitive returns #T or #F indicating whether it
-   successfully dumped the object (it can fail on an object that is
-   too large).  It should signal an error rather than return false,
-   but ... some other time.
+   filename or channel.  The primitive returns #T or #F indicating
+   whether it successfully dumped the object (it can fail on an object
+   that is too large).  It should signal an error rather than return
+   false, but ... some other time.
 
+   The third argument, FLAG, specifies how to handle the dumping of
+   environment objects:
+   - SHARP_F means that it is an error to dump an object containing
+   environment objects.
+   - SHARP_T means that they should be dumped as if they were ordinary
+   objects.
+   - anything else means that the environment objects pointed at by
+   compiled code blocks should be eliminated on the dumped copy,
+   but other environments are not allowed.
 */
 
 DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 {
   Tchannel channel;
   Boolean arg_string_p;
-  SCHEME_OBJECT Object, *New_Object, arg2;
+  SCHEME_OBJECT Object, *New_Object, arg2, flag;
   SCHEME_OBJECT *table_start, *table_end;
   long Length, table_length;
   Boolean result;
@@ -405,6 +438,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   {
     channel = (arg_channel (2));
   }
+  flag = (ARG_REF (3));
 
   compiled_code_present_p = false;
 
@@ -431,7 +465,8 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     dump_file_name = ((CONST char *) (STRING_LOC (arg2, 0)));
   }
 
-  DUMPLOOP (New_Object, NORMAL_GC);
+  DUMPLOOP (New_Object,
+	    ((flag == SHARP_F) ? 0 : ((flag == SHARP_T) ? 1 : 2)));
   Length = (NewFree - New_Object);
   table_start = NewFree;
   table_end = (cons_primitive_table (NewFree, Fixup, &table_length));
