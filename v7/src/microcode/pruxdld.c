@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.7 1993/11/04 04:00:48 gjr Exp $
+$Id: pruxdld.c,v 1.8 1993/11/10 20:24:01 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -42,6 +42,41 @@ MIT in each case. */
 #include "syscall.h"
 #include "os.h"
 
+#if defined(_AIX)
+
+#include <sys/ldr.h>
+
+typedef int * dyn_load_handle_t;
+
+#define TYPE_PROCEDURE	0
+#define TYPE_DATA	1
+#define TYPE_UNDEFINED	2
+
+#define PROG_HANDLE ((dyn_load_handle_t) NULL)
+
+static dyn_load_handle_t
+DEFUN (dyn_load, (path), char * path)
+{
+  extern int EXFUN (main, (int, char *, char **));
+  dyn_load_handle_t result = (load (path, L_NOAUTODEFER, ((char *) NULL)));
+  if (result != ((dyn_load_handle_t) NULL))
+    loadbind (0, main, result);
+  return (result);
+}
+
+static int
+DEFUN (dyn_lookup, (handle, symbol, type, result),
+       dyn_load_handle_t * handle
+       AND char * symbol
+       AND int type
+       AND PTR * result)
+{
+  /* This is bogus */
+  * result = ((PTR) (* handle));
+  return (0);
+}
+
+#else /* not _AIX */
 #if defined(_HPUX)
 
 #include <dl.h>
@@ -109,6 +144,7 @@ DEFUN (dyn_lookup, (handle, symbol, type, result),
 }
 
 #endif /* _HPUX */
+#endif /* _AIX */
 
 DEFINE_PRIMITIVE ("LOAD-OBJECT-FILE", Prim_load_object_file, 1, 1,
 		  "(load-object-file lib-file)")
