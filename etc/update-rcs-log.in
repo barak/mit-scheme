@@ -1,6 +1,12 @@
 ;; -*- Scheme -*-
+;; $Id: update-rcs-log.in,v 1.7 1995/11/28 16:44:45 adams Exp $
 
 (begin
   (cd "/scheme/8.0/700/rcs")
   (load-latest "make")
-  (load-latest "mklogs"))
+  (load-latest "mklogs")
+  (for-each rcs-directory-log
+    '("/scheme/etc"
+      "/scheme/documentation/ref-manual"
+      "/scheme/documentation/user-manual"
+      )))
