@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.16 1991/11/04 20:29:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.17 1991/11/05 02:43:09 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -323,7 +323,10 @@ these rules:
 	"")))
 
 (define (enough-namestring pathname #!optional defaults)
-  (let ((defaults (and (not (default-object? defaults)) defaults)))
+  (let ((defaults
+	  (if (and (not (default-object? defaults)) defaults)
+	      (->pathname defaults)
+	      *default-pathname-defaults*)))
     (let ((pathname (enough-pathname pathname defaults)))
       (let ((namestring (pathname->namestring pathname)))
 	(if (eq? (%pathname-host pathname) (%pathname-host defaults))
