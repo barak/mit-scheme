@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.2 1994/11/20 20:40:04 adams Exp $
+$Id: midend.scm,v 1.3 1994/11/23 03:18:03 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -194,11 +194,11 @@ MIT in each case. |#
 	     simplify/top-level/3	; as above
 	     cleanup/top-level/4	; as above
 
-	     closan/top-level/split
+	     split/top-level
 	     simplify/top-level/4	; as above
 	     cleanup/top-level/5	; as above
 
-	     closan/top-level/widen
+	     widen/top-level
 	     simplify/top-level/5	; as above
 	     cleanup/top-level/6	; as above
 
@@ -241,7 +241,7 @@ MIT in each case. |#
 	      (*code-rewrite-table*
 	       (if (not recursive?)
 		   (code/rewrite-table/make)
-		   (code/rewrite-table/copy *code-rewrite-table*))))
+		   (code/rewrite-table/copy *previous-code-rewrite-table*))))
     (if (not recursive?)
 	(begin
 	  ;; Initialize the uninterned symbol generator
@@ -264,6 +264,7 @@ MIT in each case. |#
   (compile-0 program))
 
 (define (optimize-kmp recursive? program)
+  recursive?				; ignored
   (compile-1* program))
 
 (define (kmp->rtl program)
@@ -288,10 +289,10 @@ MIT in each case. |#
 (define (lamlift/top-level/2 program)
   (lamlift/top-level program))
 
-(define (closan/top-level/split program)
+(define (split/top-level program)
   (split-and-drift program))
 
-(define (closan/top-level/widen program)
+(define (widen/top-level program)
   (widen-parameter-lists program))
 
 (define (closconv/top-level/1 program)
