@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.9 1989/09/20 23:11:02 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.10 1992/01/15 04:08:53 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -166,15 +166,18 @@ extern void free ();
 }
 
 void
-re_buffer_initialize (buffer, translation, syntax_table, text,
-		      text_start_index, text_end_index,
-		      gap_start_index, gap_end_index)
-     struct re_buffer *buffer;
-     unsigned char *translation;
-     SYNTAX_TABLE_TYPE syntax_table;
-     unsigned char *text;
-     unsigned long text_start_index, text_end_index,
-       gap_start_index, gap_end_index;
+DEFUN (re_buffer_initialize,
+       (buffer, translation, syntax_table, text,
+	text_start_index, text_end_index,
+	gap_start_index, gap_end_index),
+       struct re_buffer * buffer
+       AND unsigned char * translation
+       AND SYNTAX_TABLE_TYPE syntax_table
+       AND unsigned char * text
+       AND unsigned long text_start_index
+       AND unsigned long text_end_index
+       AND unsigned long gap_start_index
+       AND unsigned long gap_end_index)
 {
   unsigned char *text_start, *text_end, *gap_start, *gap_end;
 
@@ -220,13 +223,13 @@ re_buffer_initialize (buffer, translation, syntax_table, text,
 #define FASTMAP_TRUE '\1'
 
 int
-re_compile_fastmap (pattern_start, pattern_end, translation, syntax_table,
-		    fastmap)
-     unsigned char *pattern_start;
-     fast unsigned char *pattern_end;
-     unsigned char *translation;
-     SYNTAX_TABLE_TYPE syntax_table;
-     fast unsigned char *fastmap;
+DEFUN (re_compile_fastmap,
+       (pattern_start, pattern_end, translation, syntax_table, fastmap),
+       unsigned char * pattern_start
+       AND fast unsigned char * pattern_end
+       AND unsigned char * translation
+       AND SYNTAX_TABLE_TYPE syntax_table
+       AND fast unsigned char * fastmap)
 {
   fast unsigned char *pattern_pc;
   unsigned char *stack_start[RE_NFAILURES];
@@ -495,12 +498,14 @@ beq_translate (scan1, scan2, length, translation)
 int re_max_failures = 1000;
 
 int
-re_match (pattern_start, pattern_end, buffer, registers,
-	  match_start, match_end)
-     unsigned char *pattern_start, *pattern_end;
-     struct re_buffer *buffer;
-     struct re_registers *registers;
-     unsigned char *match_start, *match_end;
+DEFUN (re_match,
+       (pattern_start, pattern_end, buffer, registers, match_start, match_end),
+       unsigned char * pattern_start
+       AND unsigned char * pattern_end
+       AND struct re_buffer * buffer
+       AND struct re_registers * registers
+       AND unsigned char * match_start
+       AND unsigned char * match_end)
 {
   fast unsigned char *pattern_pc, *match_pc;
   unsigned char *gap_start, *gap_end;
@@ -1001,13 +1006,16 @@ re_match (pattern_start, pattern_end, buffer, registers,
 }
 
 #define DEFINE_RE_SEARCH(name)						\
-int name (pattern_start, pattern_end, buffer, registers,		\
-	  match_start, match_end)					\
-     unsigned char *pattern_start, *pattern_end;			\
-     struct re_buffer *buffer;						\
-     struct re_registers *registers;					\
-     unsigned char *match_start;					\
-     unsigned char *match_end;
+int									\
+DEFUN (name,								\
+       (pattern_start, pattern_end, buffer, registers,			\
+	match_start, match_end),					\
+       unsigned char * pattern_start					\
+       AND unsigned char * pattern_end					\
+       AND struct re_buffer * buffer					\
+       AND struct re_registers * registers				\
+       AND unsigned char * match_start					\
+       AND unsigned char * match_end)
 
 #define INITIALIZE_RE_SEARCH(pc, limit, gap_limit)			\
   int can_be_null;							\

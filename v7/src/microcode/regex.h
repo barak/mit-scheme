@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.h,v 1.4 1989/09/20 23:11:06 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.h,v 1.5 1992/01/15 04:13:06 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -197,8 +197,28 @@ enum regexpcode
     regexpcode_not_syntax_spec
   };
 
-extern void re_buffer_initialize ();
-extern int re_compile_fastmap ();
-extern int re_match ();
-extern int re_search_forward ();
-extern int re_search_backward ();
+extern void
+  EXFUN (re_buffer_initialize,
+	 (struct re_buffer *, unsigned char *, SYNTAX_TABLE_TYPE,
+	  unsigned char *, unsigned long, unsigned long,
+	  unsigned long, unsigned long));
+
+extern int
+  EXFUN (re_compile_fastmap,
+	 (unsigned char *, unsigned char *, unsigned char *,
+	  SYNTAX_TABLE_TYPE, unsigned char *));
+
+extern int
+  EXFUN (re_match,
+	 (unsigned char *, unsigned char *, struct re_buffer *,
+	  struct re_registers *, unsigned char *, unsigned char *));
+
+extern int
+  EXFUN (re_search_forward,
+	 (unsigned char *, unsigned char *, struct re_buffer *,
+	  struct re_registers *, unsigned char *, unsigned char *));
+
+extern int
+  EXFUN (re_search_backward,
+	 (unsigned char *, unsigned char *, struct re_buffer *,
+	  struct re_registers *, unsigned char *, unsigned char *));
