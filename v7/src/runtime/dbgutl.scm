@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.11 1990/09/11 21:17:02 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.12 1991/06/26 18:28:20 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,10 +43,10 @@ MIT in each case. |#
 	(let ((rename (special-form-procedure-name? name)))
 	  (if rename
 	      (begin (write-string "a ")
-		     (write-string rename)
+		     (write-string (string-upcase rename))
 		     (write-string " special form"))
 	      (begin (write-string "the procedure: ")
-		     (write-dbg-name name))))
+		     (write-dbg-upcase-name name))))
 	(write-string "an unknown procedure"))))
 
 (define (show-environment-procedure environment)
@@ -57,6 +57,13 @@ MIT in each case. |#
 
 (define (write-dbg-name name)
   (if (string? name) (write-string name) (write name)))
+
+(define (write-dbg-upcase-name name)
+  (let ((string
+	 (if (string? name)
+	     name
+	     (with-output-to-string (lambda () (write name))))))
+    (write-string (string-upcase string))))
 
 (define (debug/read-eval-print-1 environment)
   (let ((value
