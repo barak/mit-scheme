@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.62 1993/08/03 17:39:38 gjr Exp $
+$Id: primutl.c,v 9.63 1993/08/03 22:26:15 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -125,6 +125,11 @@ DEFUN (strcmp_ci, (s1, s2), fast char * s1 AND fast char * s2)
   diff = (*s1 - *s2);
   return ((diff == 0) ? 0 : ((diff > 0) ? 1 : -1));
 }
+
+extern PTR EXFUN (malloc, (size_t));
+extern PTR EXFUN (realloc, (PTR, size_t));
+extern PTR EXFUN (memcpy, (PTR, CONST PTR, size_t));
+extern char * EXFUN (strcpy, (char *, CONST char *));
 
 SCHEME_OBJECT
 DEFUN_VOID (Prim_unimplemented)
@@ -310,7 +315,7 @@ DEFUN (tree_lookup, (tree, name), node tree AND char * name)
 }
 
 static node
-DEFUN (tree_build, (high, names, values),
+DEFUN (tree_build, (high, names, value),
        int high AND char ** names AND int value)
 {
   static int bias = 0;
@@ -423,28 +428,35 @@ DEFUN_VOID (initialize_primitives)
 
   for (counter = 0; counter < N_PRIMITIVE_ALIASES; counter++)
   {
+    int index;
+    node new;
     node orig = (tree_lookup (prim_procedure_tree,
 			      primitive_aliases[counter].name));
 
     if (orig == ((node) NULL))
     {
-      outf_fatal ("Aliasing unknown primitive %s.\n",
-		  primitive_aliases[counter].name,
-		  primitive_aliases[counter].alias);
-      initialization_error ("aliasing", primitive_aliases[counter].alias);
-    }
-    else
-    {
-      node new = (tree_insert (prim_procedure_tree,
-			       primitive_aliases[counter].alias,
-			       orig->value));
-      if (tree_error_message != ((char *) NULL))
+      SCHEME_OBJECT old = (make_primitive (primitive_aliases[counter].name));
+      
+      if (old == SHARP_F)
       {
-	outf_fatal (tree_error_message, tree_error_noise);
+	outf_fatal ("Error declaring unknown primitive %s.\n",
+		    primitive_aliases[counter].name);
 	initialization_error ("aliasing", primitive_aliases[counter].alias);
       }
-      prim_procedure_tree = new;
+      index = (PRIMITIVE_NUMBER (old));
     }
+    else
+      index = orig->value;
+
+    new = (tree_insert (prim_procedure_tree,
+			primitive_aliases[counter].alias,
+			index));
+    if (tree_error_message != ((char *) NULL))
+    {
+      outf_fatal (tree_error_message, tree_error_noise);
+      initialization_error ("aliasing", primitive_aliases[counter].alias);
+    }
+    prim_procedure_tree = new;
   }
   return;
 }
