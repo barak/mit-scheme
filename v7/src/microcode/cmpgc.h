@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.12 1990/04/09 15:10:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.13 1990/06/28 18:16:32 jinx Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -271,15 +271,27 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
   STORE_EXECUTE_CACHE_ADDRESS (target, source);				\
 }
 
-/* Heuristic recovery aid.  See unix.c for details. */
-
-#define CC_BLOCK_FIRST_GC_OFFSET					\
-  (CC_BLOCK_FIRST_ENTRY_OFFSET - (sizeof (format_word)))
+/* Heuristic recovery aid. See uxtrap.c for its use.
+   block is the address of a vector header followed by a non-marked
+   header (the way that compiled blocks start).
+   PLAUSIBLE_CC_BLOCK_P returns true if it is likely that compiled
+   code is contained in the header.  This is done by checking whether
+   an entry is the first thing in the compiled code section.
+   There are two kinds of "possible entries": expressions (first thing
+   in the block) and procedures/continuations, which follow an interrupt
+   check.
+ */
 
 #define PLAUSIBLE_CC_BLOCK_P(block)					\
+((PLAUSIBLE_BLOCK_START_P((block), CC_BLOCK_FIRST_ENTRY_OFFSET)) ||	\
+ (PLAUSIBLE_BLOCK_START_P((block),					\
+			  (CC_BLOCK_FIRST_ENTRY_OFFSET +		\
+			   ENTRY_PREFIX_LENGTH))))
+
+#define PLAUSIBLE_BLOCK_START_P(addr, offset)				\
 ((*((format_word *)							\
-    (((char *) block) + CC_BLOCK_FIRST_GC_OFFSET))) ==			\
-   ((BYTE_OFFSET_TO_OFFSET_WORD(CC_BLOCK_FIRST_ENTRY_OFFSET))))
+    (((char *) (addr)) + ((offset) - (sizeof (format_word)))))) ==	\
+   ((BYTE_OFFSET_TO_OFFSET_WORD(offset))))
 
 #else /* not HAS_COMPILER_SUPPORT */
 
