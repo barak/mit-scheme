@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11graph.c,v 1.35 1996/07/12 17:52:28 adams Exp $
+$Id: x11graph.c,v 1.36 1996/07/12 20:12:15 adams Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -482,15 +482,33 @@ If FILL? is true, the arc is filled.")
     float  angle_start = arg_real_number (6);
     float  angle_sweep = arg_real_number (7);
 
+    /* we assume a virtual coordinate system with X increasing left to
+     * right and Y increasing top to bottom.  If we are wrong then we
+     * have to flip the axes and adjust the angles */
+ 
     int x1 = X_COORDINATE (virtual_device_x - radius_x,  xw);
     int x2 = X_COORDINATE (virtual_device_x + radius_x,  xw);
-    int y1 = Y_COORDINATE (virtual_device_y - radius_y,  xw);
-    int y2 = Y_COORDINATE (virtual_device_y + radius_y,  xw);
+    int y1 = Y_COORDINATE (virtual_device_y + radius_y,  xw);
+    int y2 = Y_COORDINATE (virtual_device_y - radius_y,  xw);
     int width, height;
-    int angle1 = ((int)(angle_start * 64));
+    int angle1 = ((int)(angle_start * 64)) % (64*360);
     int angle2 = ((int)(angle_sweep * 64));
-    if (x2<x1) { int t=x1; x1=x2; x2=t; }
-    if (y2<y1) { int t=y1; y1=y2; y2=t; }
+    if (angle1 < 0)
+      angle1 = (64*360) + angle1;
+    /* angle1 is now 0..359 */
+    if (x2<x1) { /* x-axis flip */
+      int t=x1; x1=x2; x2=t;
+      if (angle1 < 64*180)
+	angle1 = 64*180 - angle1;
+      else
+	angle1 = 64*540 - angle1;
+      angle2 = -angle2;
+    }
+    if (y2<y1) { /* y-axis flip */
+      int t=y1; y1=y2; y2=t;
+      angle1 = 64*360 - angle1;
+      angle2 = -angle2;
+    }
     width  = x2 - x1;
     height = y2 - y1;
     if (ARG_REF(8) == SHARP_F)
@@ -512,7 +530,61 @@ If FILL? is true, the arc is filled.")
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
+
+/**************   TEST PROGRAM FOR X-GRAPHICS-DRAW-ARC  *****************
+(define g (make-graphics-device))
 
+(define (test dx dy a1 a2)
+  (let ((x .3)
+	(y .4)
+	(r .2))
+    (define (fx a) (+ x (* r (cos (* a (asin 1) 1/90)))))
+    (define (fy a) (+ y (* r (sin (* a (asin 1) 1/90)))))
+    (graphics-set-coordinate-limits g (- dx) (- dy) dx dy)
+    (graphics-operation g 'set-foreground-color "black")
+    (graphics-clear g)
+
+    (graphics-draw-text g   0   0 ".")
+
+    (graphics-draw-line g  -1   0 1 0)
+    (graphics-draw-line g   0  -1 0 1)
+    (graphics-draw-line g   0   0 1 1)
+    (graphics-draw-text g  .5   0 "+X")
+    (graphics-draw-text g -.5   0 "-X")
+    (graphics-draw-text g   0  .5 "+Y")
+    (graphics-draw-text g   0 -.5 "-Y")
+
+    ;; The grey wedge is that that 10 degrees of the arc.
+    (graphics-operation g 'set-foreground-color "grey")
+    (graphics-operation g 'draw-arc x y r r a1 a2 #T)
+    (graphics-operation g 'set-foreground-color "black")
+    (graphics-operation g 'draw-arc x y r r a1 (+ a2 (if (< a2 0) 10 -10)) #T)
+  
+    (graphics-operation g 'set-foreground-color "red")
+    (graphics-draw-text g x y ".O")
+  
+    (let ((b1 (min a1 (+ a1 a2)))
+	  (b2 (max a1 (+ a1 a2))))
+      (do ((a b1 (+ a 5)))
+	  ((> a b2))
+	(graphics-draw-text g (fx a) (fy a) ".")))
+
+    (graphics-draw-text g (fx a1) (fy a1) ".Start")
+    (graphics-draw-text g (fx (+ a1 a2)) (fy (+ a1 a2)) ".End")))
+
+;; Test axes
+(test  1  1  30 90)
+(test -1  1  30 90)
+(test  1 -1  30 90)
+(test -1 -1  30 90)
+
+;; Test angles
+(test  1  1  30 90)
+(test  1  1  30 -90)
+(test  1  1  -30 90)
+(test  1  1  -30 -90)
+ ***********************************************************************/
+
 DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-STRING", Prim_x_graphics_draw_string, 4, 4,
   "(X-GRAPHICS-DRAW-STRING WINDOW X Y STRING)\n\
 Draw characters in the current font at the given coordinates.")
