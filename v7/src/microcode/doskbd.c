@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.2 1992/05/10 17:52:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.3 1992/05/12 04:16:56 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -32,6 +32,17 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+
+
+/* These flags determine how the code will behave. */
+
+#define DOSX_USE_INT_INTERCEPT
+#define DOSX_RM_HANDLER_UNTOUCHED
+#define DOSX_PM_HANDLER_UNTOUCHED
+/* #define DOSX_RM_HANDLER_REAL */
+#define DPMI_RM_HANDLER_REAL
+#define DPMI_PM_HANDLER_UNTOUCHED
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -55,6 +66,10 @@ MIT in each case. */
 #ifndef EFAULT
 #  define EFAULT 2001
 #endif
+
+#define Dprintf(thing)		\
+  if (0) printf(thing)
+    
 
 /* Tables mapping scan codes to ASCII characters.
    Entries with NULL (\0) should not be mapped by the
@@ -241,7 +256,21 @@ normalize_RM_address (union RM_address * addr)
   return;
 }
 
-/*
+static dos_boolean
+DOSX_install_kbd_hook_p()
+{
+  char *envvar = DOS_getenv("SCM_DOSX_KBD_HOOK_P");
+
+  if ( (envvar != NULL) &&
+       ((strcmp(envvar, "false") == 0) ||
+        (strcmp(envvar, "FALSE") == 0) ||
+        (strcmp(envvar, "False") == 0)) )
+    return dos_false;	  
+  else
+    return dos_true;  
+}
+
+/*
    We would like to use Zortech's int_intercept with the following
    routine under DOSX (or Phar Lap).
 
@@ -265,13 +294,6 @@ normalize_RM_address (union RM_address * addr)
    a real-mode handler no matter what, although using different
    mechanisms under DPMI and not DPMI.
  */
-
-#define DOSX_USE_INT_INTERCEPT
-#define DOSX_RM_HANDLER_UNTOUCHED
-#define DOSX_PM_HANDLER_UNTOUCHED
-/* #define DOSX_RM_HANDLER_REAL */
-#define DPMI_RM_HANDLER_REAL
-#define DPMI_PM_HANDLER_UNTOUCHED
 
 #ifdef DOSX_USE_INT_INTERCEPT
 
@@ -467,6 +489,7 @@ DPMI_free_DOS_block (unsigned short selector)
 
 #endif /* DPMI_RM_HANDLER_REAL */
 
+
 #ifdef DOSX_RM_HANDLER_REAL
 
 static int
@@ -1036,8 +1059,9 @@ DPMI_install_kbd_hook (void)
 static int
 DOSX_install_kbd_hook (void)
 {
+  if (!DOSX_install_kbd_hook_p()) return DOS_FAILURE;
+  
 #ifdef DOSX_USE_INT_INTERCEPT
-  if (!under_QEMM_386_p ())
   {
     int_intercept (DOS_INTVECT_SYSTEM_SERVICES, 
 		   bios_keyboard_handler, 
@@ -1047,7 +1071,6 @@ DOSX_install_kbd_hook (void)
   }
 #else /* not DOSX_USE_INT_INTERCEPT */
 #ifndef DOSX_PM_HANDLER_UNTOUCHED
-  if (!under_QEMM_386_p ())
   {
     extern void DOSX_scheme_system_isr (void);
     void * trampoline;
@@ -1119,26 +1142,23 @@ DOSX_install_kbd_hook (void)
 
 #else /* not 0 */
     
-#if 0
-    printf ("Allocating DOS block.\n");
-#endif
+
+    Dprintf ("Allocating DOS block.\n");
     if ((DOSX_allocate_DOS_block (RM_ISR_TOTAL_SIZE, &new_handler.x.seg))
 	!= DOS_SUCCESS)
     {
       int saved_errno = errno;
 
-#if 0
-      printf ("Failed allocating DOS block.\n");
-#endif
+
+      Dprintf ("Failed allocating DOS block.\n");
+
       free (RM_handler);
       errno = saved_errno;
       return (DOS_FAILURE);
     }
     new_handler.x.off = 0;
 
-#if 0
-    printf ("Allocated DOS memory.\n");
-#endif
+    Dprintf ("Allocated DOS memory.\n");
 
     /* This assumes that the bottom 1 Mb of memory is mapped to the DOS
        memory, so it can be accessed directly.
@@ -1148,16 +1168,13 @@ DOSX_install_kbd_hook (void)
 	    RM_handler,
 	    RM_ISR_TOTAL_SIZE);
 
-#if 0
-    printf ("memcpy'd.\n");
-#endif
+    Dprintf ("memcpy'd.\n");
 
     if ((DOSX_RM_setvector (DOS_INTVECT_SYSTEM_SERVICES, new_handler.fp))
 	!= DOS_SUCCESS)
     {
-#if 0
-      printf ("Failed to install real mode handler.\n");
-#endif
+
+      Dprintf ("Failed to install real mode handler.\n");
 
       DOSX_free_DOS_block (new_handler.x.seg);
       fflush (stdout);
@@ -1167,9 +1184,8 @@ DOSX_install_kbd_hook (void)
     }
     DOSX_RM_segment = new_handler.x.seg;
 
-#if 0
-    printf ("Installed real mode handler.\n");
-#endif
+
+    Dprintf ("Installed real mode handler.\n");
 
 #endif /* 0 */
 
@@ -1184,6 +1200,8 @@ DOSX_install_kbd_hook (void)
 static int
 DOSX_restore_kbd_hook (void)
 {
+  if (!DOSX_install_kbd_hook_p()) return DOS_FAILURE;
+  
 #ifdef DOSX_USE_INT_INTERCEPT
 
   (void) int_restore (DOS_INTVECT_SYSTEM_SERVICES);
