@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.8 1990/01/10 14:19:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.9 1990/02/09 19:10:58 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -130,6 +130,9 @@ MIT in each case. |#
 
 (define-integrable (symbol-hash symbol)
   (string-hash (symbol-name symbol)))
+
+(define-integrable (symbol-hash-mod symbol modulus)
+  (string-hash-mod (symbol-name symbol) modulus))
 
 ;;;; Variable
 
