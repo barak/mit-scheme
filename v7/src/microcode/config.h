@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.69 1992/02/27 18:17:09 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.70 1992/03/26 03:35:47 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -251,14 +251,18 @@ typedef unsigned long SCHEME_OBJECT;
 #endif /* not vms */
 #endif /* vax */
 
-#ifdef hpux
+#if defined(hpux) || defined(__hpux)
 
 #define HAS_FLOOR
 #define HAS_FREXP
 #define HAS_MODF
 
-#ifdef hp9000s300
+#if defined(hp9000s300) || defined(__hp9000s300)
+#if defined(hp9000s400) || defined(__hp9000s400)
+#define MACHINE_TYPE		"hp9000s400"
+#else
 #define MACHINE_TYPE		"hp9000s300"
+#endif
 #ifdef MC68010
 #define FASL_INTERNAL_FORMAT	FASL_68000
 #else
@@ -268,8 +272,12 @@ typedef unsigned long SCHEME_OBJECT;
 #define HEAP_IN_LOW_MEMORY
 #endif /* hp9000s300 */
 
-#ifdef hp9000s800
+#if defined(hp9000s800) || defined(__hp9000s800)
+#if defined(hp9000s700) || defined(__hp9000s700)
+#define MACHINE_TYPE		"hp9000s700"
+#else
 #define MACHINE_TYPE		"hp9000s800"
+#endif
 #define FASL_INTERNAL_FORMAT	FASL_HP_SPECTRUM
 #define FLOATING_ALIGNMENT	0x7
 #define b32
