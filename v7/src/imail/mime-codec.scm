@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 1.2 2000/05/27 00:11:06 cph Exp $
+;;; $Id: mime-codec.scm,v 1.3 2000/05/30 18:32:56 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -76,7 +76,7 @@
        (let ((d1 (char->digit (string-ref string (fix:+ start 1)) 16))
 	     (d2 (char->digit (string-ref string (fix:+ start 2)) 16)))
 	 (and d1 d2
-	      (integer->char (fix:+ (fix:* 4 d1) d2))))))
+	      (integer->char (fix:+ (fix:* 16 d1) d2))))))
 
 (define char-set:qp-encoded
   (char-set-invert
