@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.77 1992/04/09 18:13:05 cph Exp $
+;;;	$Id: replaz.scm,v 1.78 1993/10/11 11:41:33 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -140,7 +140,7 @@ and \\<n> means insert what matched <n>th \\(...\\) in REGEXP."
 	(cond ((not (find-next-occurrence point))
 	       (done))
 	      ((mark< point (re-match-end 0))
-	       (replacement-loop (perform-replacement)))
+	       (replacement-loop (perform-replacement #f)))
 	      ((not (group-end? point))
 	       (replacement-loop (mark1+ point)))
 	      (else
@@ -153,7 +153,7 @@ and \\<n> means insert what matched <n>th \\(...\\) in REGEXP."
 	    ((mark< point (re-match-end 0))
 	     (set-current-mark! point)
 	     (set-current-point! (re-match-end 0))
-	     (perform-query false))
+	     (perform-query false (re-match-data)))
 	    ((not (group-end? point))
 	     (query-loop (mark1+ point)))
 	    (else
@@ -164,14 +164,15 @@ and \\<n> means insert what matched <n>th \\(...\\) in REGEXP."
 	  (re-search-forward source* start (group-end start))
 	  (search-forward source* start (group-end start))))
 
-    (define (perform-replacement)
+    (define (perform-replacement match-data)
+      (if match-data (set-re-match-data! match-data))
       (replace-match target preserve-case? (not regexp?)))
 
     (define (done value)
       (pop-current-mark!)
       value)
 
-    (define (perform-query replaced?)
+    (define (perform-query replaced? match-data)
       (message message-string ":")
       (let ((key (with-editor-interrupts-disabled keyboard-peek)))
 	(let ((test-for
@@ -193,45 +194,45 @@ Comma to replace but not move point immediately,
 C-R to enter recursive edit, C-W to delete match and recursive edit,
 ! to replace all remaining matches with no more questions,
 ^ to move point back to previous match.")))
-		 (perform-query replaced?))
+		 (perform-query replaced? match-data))
 		((or (test-for #\altmode)
 		     (test-for #\q))
 		 (done true))
 		((test-for #\^)
 		 (set-current-point! (current-mark))
-		 (perform-query true))
+		 (perform-query true match-data))
 		((or (test-for #\space)
 		     (test-for #\y))
-		 (if (not replaced?) (perform-replacement))
+		 (if (not replaced?) (perform-replacement match-data))
 		 (query-loop (current-point)))
 		((test-for #\.)
-		 (if (not replaced?) (perform-replacement))
+		 (if (not replaced?) (perform-replacement match-data))
 		 (done true))
 		((test-for #\,)
-		 (if (not replaced?) (perform-replacement))
-		 (perform-query true))
+		 (if (not replaced?) (perform-replacement match-data))
+		 (perform-query true match-data))
 		((test-for #\!)
-		 (if (not replaced?) (perform-replacement))
+		 (if (not replaced?) (perform-replacement match-data))
 		 (replacement-loop (current-point)))
 		((or (test-for #\rubout)
 		     (test-for #\n))
 		 (query-loop (current-point)))
 		((test-for #\C-l)
 		 ((ref-command recenter) false)
-		 (perform-query replaced?))
+		 (perform-query replaced? match-data))
 		((test-for #\C-r)
 		 (edit)
-		 (perform-query replaced?))
+		 (perform-query replaced? match-data))
 		((test-for #\C-w)
 		 (if (not replaced?) (delete-match))
 		 (edit)
-		 (perform-query true))
+		 (perform-query true match-data))
 		(else
 		 (done true))))))
 
     (define (edit)
       (clear-message)
-      (preserving-match-data enter-recursive-edit))
+      (save-excursion enter-recursive-edit))
 
     (let ((point (current-point)))
       (push-current-mark! point)
