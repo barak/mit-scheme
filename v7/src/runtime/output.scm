@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 13.44 1987/06/17 20:11:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 13.45 1987/06/17 21:01:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -315,12 +315,11 @@
        (lambda (handler)
 	 (lambda (object #!optional port)
 	   (if (not (non-printing-object? object))
-	       (begin (if (unassigned? port)
-			  (handler object *current-output-port*)
-			  (with-output-to-port port
-			    (lambda ()
-			      (handler object port))))
-		      ((access :flush-output port))))
+	       (if (unassigned? port)
+		   (handler object *current-output-port*)
+		   (with-output-to-port port
+		     (lambda ()
+		       (handler object port)))))
 	   *the-non-printing-object*))))
   (set! display
     (make-unparser
@@ -328,13 +327,16 @@
        (if (and (not (future? object))
 		(string? object))
 	   ((access :write-string port) object)
-	   ((access unparse-object unparser-package) object port false)))))
+	   ((access unparse-object unparser-package) object port false)
+	   ((access :flush-output port))))))
   (set! write
     (make-unparser
      (lambda (object port)
-       ((access unparse-object unparser-package) object port true))))
+       ((access unparse-object unparser-package) object port true)
+       ((access :flush-output port)))))
   (set! write-line
     (make-unparser
      (lambda (object port)
 	((access :write-char port) char:newline)
+	((access unparse-object unparser-package) object port true)
 	((access :flush-output port))))))
