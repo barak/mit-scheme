@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.16 2004/01/19 04:30:41 cph Exp $
+$Id: ttyio.scm,v 1.17 2004/02/16 05:39:09 cph Exp $
 
 Copyright 1991,1993,1996,1999,2003,2004 Massachusetts Institute of Technology
 
@@ -28,72 +28,57 @@ USA.
 
 (declare (usual-integrations))
 
-(define hook/read-char)
-(define hook/peek-char)
-
 (define (initialize-package!)
   (let ((input-channel (tty-input-channel))
 	(output-channel (tty-output-channel)))
-    (set! hook/read-char operation/read-char)
-    (set! hook/peek-char operation/peek-char)
-    (set! the-console-port-type
-	  (make-port-type
-	   `((BEEP ,operation/beep)
-	     (CLEAR ,operation/clear)
-	     (DISCRETIONARY-FLUSH-OUTPUT ,operation/flush-output)
-	     (PEEK-CHAR ,(lambda (port) (hook/peek-char port)))
-	     (READ-CHAR ,(lambda (port) (hook/read-char port)))
-	     (READ-FINISH ,operation/read-finish)
-	     (WRITE-SELF ,operation/write-self)
-	     (X-SIZE ,operation/x-size)
-	     (Y-SIZE ,operation/y-size))
-	   generic-i/o-type))
-    (set! the-console-port
-	  (make-port the-console-port-type
-		     (make-console-port-state
-		      (make-input-buffer input-channel input-buffer-size)
-		      (make-output-buffer output-channel output-buffer-size)
-		      (channel-type=file? input-channel))))
-    (set-channel-port! input-channel the-console-port)
-    (set-channel-port! output-channel the-console-port))
+    (let ((type
+	   (make-port-type
+	    `((BEEP ,operation/beep)
+	      (CHAR-READY? ,generic-io/char-ready?)
+	      (CLEAR ,operation/clear)
+	      (DISCRETIONARY-FLUSH-OUTPUT ,generic-io/flush-output)
+	      (READ-CHAR ,operation/read-char)
+	      (READ-FINISH ,operation/read-finish)
+	      (WRITE-SELF ,operation/write-self)
+	      (X-SIZE ,operation/x-size)
+	      (Y-SIZE ,operation/y-size))
+	    generic-i/o-type)))
+      (let ((port (make-port type (make-cstate input-channel output-channel))))
+	(set-channel-port! input-channel port)
+	(set-channel-port! output-channel port)
+	(set! the-console-port port)
+	(set-console-i/o-port! port)
+	(set-current-input-port! port)
+	(set-current-output-port! port))))
   (add-event-receiver! event:before-exit save-console-input)
-  (add-event-receiver! event:after-restore reset-console)
-  (set-console-i/o-port! the-console-port)
-  (set-current-input-port! the-console-port)
-  (set-current-output-port! the-console-port))
+  (add-event-receiver! event:after-restore reset-console))
 
-(define the-console-port-type)
-(define the-console-port)
-(define input-buffer-size 512)
-(define output-buffer-size 512)
-
+(define-structure (cstate (type vector)
+			  (initial-offset 4) ;must match "genio.scm"
+			  (constructor #f))
+  (echo-input? #f read-only #t))
+
 (define (save-console-input)
   ((ucode-primitive reload-save-string 1)
-   (input-buffer/buffer-contents (port/input-buffer console-input-port))))
+   (input-buffer-contents (port-input-buffer console-input-port))))
 
 (define (reset-console)
   (let ((input-channel (tty-input-channel))
-	(output-channel (tty-output-channel))
-	(state (port/state the-console-port)))
+	(output-channel (tty-output-channel)))
+    (set-port/state! the-console-port
+		     (make-cstate input-channel output-channel))
+    (let ((s ((ucode-primitive reload-retrieve-string 0))))
+      (if s
+	  (set-input-buffer-contents! (port-input-buffer the-console-port)
+				      s)))
     (set-channel-port! input-channel the-console-port)
-    (set-channel-port! output-channel the-console-port)
-    (set-console-port-state/input-buffer!
-     state
-     (let ((buffer
-	    (make-input-buffer
-	     input-channel
-	     (input-buffer/size (console-port-state/input-buffer state)))))
-       (let ((contents ((ucode-primitive reload-retrieve-string 0))))
-	 (if contents
-	     (input-buffer/set-buffer-contents buffer contents)))
-       buffer))
-    (set-console-port-state/output-buffer!
-     state
-     (make-output-buffer
-      output-channel
-      (output-buffer/size (console-port-state/output-buffer state))))
-    (set-console-port-state/echo-input?! state
-					 (channel-type=file? input-channel))))
+    (set-channel-port! output-channel the-console-port)))
+
+(define (make-cstate input-channel output-channel)
+  (make-gstate input-channel
+	       output-channel
+	       'TEXT
+	       (channel-type=file? input-channel)))
 
 (define (set-console-i/o-port! port)
   (if (not (i/o-port? port))
@@ -103,57 +88,37 @@ USA.
   (set! console-output-port port)
   unspecific)
 
+(define (console-i/o-port? port)
+  (port=? port console-i/o-port))
+
+(define the-console-port)
 (define console-i/o-port)
 (define console-input-port)
 (define console-output-port)
-
-(define-structure (console-port-state (type vector)
-				      (conc-name console-port-state/))
-  ;; First two elements of this vector are required by the generic
-  ;; I/O port operations.
-  input-buffer
-  output-buffer
-  echo-input?)
-
-(define-integrable (port/input-buffer port)
-  (console-port-state/input-buffer (port/state port)))
-
-(define-integrable (port/output-buffer port)
-  (console-port-state/output-buffer (port/state port)))
 
-(define (operation/peek-char port)
-  (let ((char (input-buffer/peek-char (port/input-buffer port))))
-    (if (eof-object? char)
-	(signal-end-of-input port))
-    char))
-
 (define (operation/read-char port)
-  (let ((char (input-buffer/read-char (port/input-buffer port))))
+  (let ((char (generic-io/read-char port)))
     (if (eof-object? char)
-	(signal-end-of-input port))
+	(begin
+	  (if (not (nearest-cmdl/batch-mode?))
+	      (begin
+		(fresh-line port)
+		(write-string "End of input stream reached" port)))
+	  (%exit)))
     (if (and char
-	     (not (nearest-cmdl/batch-mode?))
-	     (console-port-state/echo-input? (port/state port)))
+	     (cstate-echo-input? (port/state port))
+	     (not (nearest-cmdl/batch-mode?)))
 	(output-port/write-char port char))
     char))
 
-(define (signal-end-of-input port)
-  (if (not (nearest-cmdl/batch-mode?))
-      (begin
-	(fresh-line port)
-	(write-string "End of input stream reached" port)))
-  (%exit))
-
 (define (operation/read-finish port)
-  (let ((buffer (port/input-buffer port)))
-    (let loop ()
-      (if (input-buffer/char-ready? buffer 0)
-	  (let ((char (input-buffer/peek-char buffer)))
-	    (if (and (not (eof-object? char))
-		     (char-whitespace? char))
-		(begin
-		  (operation/read-char port)
-		  (loop)))))))
+  (let loop ()
+    (if (input-port/char-ready? port)
+	(let ((char (input-port/read-char port)))
+	  (if (not (eof-object? char))
+	      (if (char-whitespace? char)
+		  (loop)
+		  (input-port/unread-char port char))))))
   (output-port/discretionary-flush port))
 
 (define (operation/clear port)

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.30 2003/03/08 02:03:47 cph Exp $
+$Id: port.scm,v 1.31 2004/02/16 05:37:53 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,24 +29,33 @@ USA.
 
 (declare (usual-integrations))
 
+;;;; Port type
+
 (define-structure (port-type (type-descriptor <port-type>)
 			     (conc-name port-type/)
-			     (constructor %make-port-type (custom-operations)))
+			     (constructor %make-port-type))
+  standard-operations
   custom-operations
   ;; input operations:
   (char-ready? #f read-only #t)
-  (peek-char #f read-only #t)
   (read-char #f read-only #t)
+  (unread-char #f read-only #t)
+  (peek-char #f read-only #t)
   (discard-char #f read-only #t)
-  (read-string #f read-only #t)
-  (discard-chars #f read-only #t)
   (read-substring #f read-only #t)
+  (read-wide-substring #f read-only #t)
+  (read-external-substring #f read-only #t)
   ;; output operations:
   (write-char #f read-only #t)
   (write-substring #f read-only #t)
+  (write-wide-substring #f read-only #t)
+  (write-external-substring #f read-only #t)
   (fresh-line #f read-only #t)
   (flush-output #f read-only #t)
-  (discretionary-flush-output #f read-only #t))
+  (discretionary-flush-output #f read-only #t)
+  ;; transcript operations:
+  (get-transcript-port #f read-only #t)
+  (set-transcript-port #f read-only #t))
 
 (set-record-type-unparser-method! <port-type>
   (lambda (state type)
@@ -66,7 +75,7 @@ USA.
   (if (not (port-type? object))
       (error:wrong-type-argument object "port type" procedure))
   object)
-
+
 (define-integrable (port-type/supports-input? type)
   (port-type/read-char type))
 
@@ -88,132 +97,489 @@ USA.
        (port-type/supports-input? object)
        (port-type/supports-output? object)
        #t))
-
-(define input-operation-names
-  '(CHAR-READY?
-    DISCARD-CHAR
-    DISCARD-CHARS
-    PEEK-CHAR
-    READ-CHAR
-    READ-STRING
-    READ-SUBSTRING))
-
-(define input-operation-accessors
-  (map (lambda (name) (record-accessor <port-type> name))
-       input-operation-names))
-
-(define input-operation-modifiers
-  (map (lambda (name) (record-modifier <port-type> name))
-       input-operation-names))
-
-(define output-operation-names
-  '(DISCRETIONARY-FLUSH-OUTPUT
-    FLUSH-OUTPUT
-    FRESH-LINE
-    WRITE-CHAR
-    WRITE-SUBSTRING))
-
-(define output-operation-accessors
-  (map (lambda (name) (record-accessor <port-type> name))
-       output-operation-names))
-
-(define output-operation-modifiers
-  (map (lambda (name) (record-modifier <port-type> name))
-       output-operation-names))
 
 (define (port-type/operation-names type)
   (guarantee-port-type type 'PORT-TYPE/OPERATION-NAMES)
-  (append (if (port-type/supports-input? type) input-operation-names '())
-	  (if (port-type/supports-output? type) output-operation-names '())
+  (append (map car (port-type/standard-operations type))
 	  (map car (port-type/custom-operations type))))
 
 (define (port-type/operations type)
   (guarantee-port-type type 'PORT-TYPE/OPERATIONS)
-  (append (if (port-type/supports-input? type)
-	      (map (lambda (name accessor)
-		     (list name (accessor type)))
-		   input-operation-names
-		   input-operation-accessors)
-	      '())
-	  (if (port-type/supports-output? type)
-	      (map (lambda (name accessor)
-		     (list name (accessor type)))
-		   output-operation-names
-		   output-operation-accessors)
-	      '())
-	  (map (lambda (entry)
-		 (list (car entry) (cdr entry)))
-	       (port-type/custom-operations type))))
+  (append! (map (lambda (entry)
+		  (list (car entry) (cdr entry)))
+		(port-type/standard-operations type))
+	   (map (lambda (entry)
+		  (list (car entry) (cdr entry)))
+		(port-type/custom-operations type))))
 
 (define (port-type/operation type name)
   (guarantee-port-type type 'PORT-TYPE/OPERATION)
-  ;; Optimized for custom operations, since standard operations will
-  ;; usually be accessed directly.
-  (let ((entry (assq name (port-type/custom-operations type))))
-    (if entry
-	(cdr entry)
-	(let ((accessor
-	       (letrec ((loop
-			 (lambda (names accessors)
-			   (and (pair? names)
-				(if (eq? name (car names))
-				    (car accessors)
-				    (loop (cdr names) (cdr accessors)))))))
-		 (or (and (port-type/supports-input? type)
-			  (loop input-operation-names
-				input-operation-accessors))
-		     (and (port-type/supports-output? type)
-			  (loop output-operation-names
-				output-operation-accessors))))))
-	  (and accessor
-	       (accessor type))))))
+  (let ((entry
+	 (or (assq name (port-type/custom-operations type))
+	     (assq name (port-type/standard-operations type)))))
+    (and entry
+	 (cdr entry))))
 
-(define-record-type <port>
-    (%make-port type state thread-mutex)
-    port?
-  (type port/type)
-  (state %port/state %set-port/state!)
-  (thread-mutex port/thread-mutex set-port/thread-mutex!))
+;;;; Constructors
+
+(define (make-port-type operations type)
+  (if (not (list-of-type? operations
+	     (lambda (elt)
+	       (and (pair? elt)
+		    (symbol? (car elt))
+		    (pair? (cdr elt))
+		    (procedure? (cadr elt))
+		    (null? (cddr elt))))))
+      (error:wrong-type-argument operations "operations list" 'MAKE-PORT-TYPE))
+  (receive (standard-operations custom-operations)
+      (parse-operations-list operations type)
+    (let ((op
+	   (let ((input? (assq 'READ-CHAR standard-operations))
+		 (output? (assq 'WRITE-CHAR standard-operations))
+		 (cond-op
+		  (lambda (flag mapper)
+		    (if flag
+			mapper
+			(lambda (op) op)))))
+	     ((cond-op output? provide-output-features)
+	      ((cond-op input? provide-input-features)
+	       ((cond-op output? provide-default-output-operations)
+		((cond-op input? provide-default-input-operations)
+		 (lambda (name)
+		   (let ((p (assq name standard-operations)))
+		     (and p
+			  (cdr p)))))))))))
+      (%make-port-type standard-operations
+		       custom-operations
+		       (op 'CHAR-READY?)
+		       (op 'READ-CHAR)
+		       (op 'UNREAD-CHAR)
+		       (op 'PEEK-CHAR)
+		       (op 'DISCARD-CHAR)
+		       (op 'READ-SUBSTRING)
+		       (op 'READ-WIDE-SUBSTRING)
+		       (op 'READ-EXTERNAL-SUBSTRING)
+		       (op 'WRITE-CHAR)
+		       (op 'WRITE-SUBSTRING)
+		       (op 'WRITE-WIDE-SUBSTRING)
+		       (op 'WRITE-EXTERNAL-SUBSTRING)
+		       (op 'FRESH-LINE)
+		       (op 'FLUSH-OUTPUT)
+		       (op 'DISCRETIONARY-FLUSH-OUTPUT)
+		       port/transcript
+		       set-port/transcript!))))
+
+(define (parse-operations-list operations type)
+  (parse-operations-list-1
+   (if type
+       (append operations
+	       (delete-matching-items (port-type/operations type)
+		 (let ((excluded
+			(append
+			 (if (assq 'READ-CHAR operations)
+			     standard-input-operation-names
+			     '())
+			 (if (assq 'WRITE-CHAR operations)
+			     standard-output-operation-names
+			     '()))))
+		   (lambda (p)
+		     (or (assq (car p) operations)
+			 (memq (car p) excluded))))))
+       operations)))
+
+(define (parse-operations-list-1 operations)
+  (let loop ((operations operations) (standard '()) (custom '()))
+    (if (pair? operations)
+	(let ((p (cons (caar operations) (cadar operations))))
+	  (if (or (memq (caar operations) standard-input-operation-names)
+		  (memq (caar operations) standard-output-operation-names))
+	      (loop (cdr operations) (cons p standard) custom)
+	      (loop (cdr operations) standard (cons p custom))))
+	(values (reverse! standard) (reverse! custom)))))
+
+(define standard-input-operation-names
+  '(CHAR-READY?
+    READ-CHAR
+    READ-SUBSTRING
+    READ-WIDE-SUBSTRING
+    READ-EXTERNAL-SUBSTRING))
+
+(define standard-output-operation-names
+  '(WRITE-CHAR
+    WRITE-SUBSTRING
+    WRITE-WIDE-SUBSTRING
+    WRITE-EXTERNAL-SUBSTRING
+    FLUSH-OUTPUT
+    DISCRETIONARY-FLUSH-OUTPUT))
+
+;;;; Default input operations
+
+(define (provide-default-input-operations op)
+  (let ((char-ready? (or (op 'CHAR-READY?) (lambda (port) port #t)))
+	(read-char (op 'READ-CHAR)))
+    (let ((read-substring
+	   (or (op 'READ-SUBSTRING)
+	       (lambda (port string start end)
+		 (let ((char (read-char port)))
+		   (cond ((not char) #f)
+			 ((eof-object? char) 0)
+			 (else
+			  (guarantee-8-bit-char char)
+			  (string-set! string start char)
+			  (let loop ((index (fix:+ start 1)))
+			    (if (and (fix:< index end)
+				     (char-ready? port))
+				(let ((char (read-char port)))
+				  (cond ((or (not char)
+					     (eof-object? char))
+					 (fix:- index start))
+					(else
+					 (guarantee-8-bit-char char)
+					 (string-set! string index char)
+					 (loop (fix:+ index 1)))))
+				(fix:- index start)))))))))
+	  (read-wide-substring
+	   (or (op 'READ-WIDE-SUBSTRING)
+	       (lambda (port string start end)
+		 (let ((char (read-char port)))
+		   (cond ((not char) #f)
+			 ((eof-object? char) 0)
+			 (else
+			  (wide-string-set! string start char)
+			  (let loop ((index (fix:+ start 1)))
+			    (if (and (fix:< index end)
+				     (char-ready? port))
+				(let ((char (read-char port)))
+				  (if (or (not char) (eof-object? char))
+				      (fix:- index start)
+				      (begin
+					(wide-string-set! string
+							  index
+							  char)
+					(loop (fix:+ index 1)))))
+				(fix:- index start))))))))))
+      (let ((read-external-substring
+	     (or (op 'READ-EXTERNAL-SUBSTRING)
+		 (lambda (port string start end)
+		   (let ((l (min (- end start) #x1000)))
+		     (let ((bounce (make-string l)))
+		       (let ((n (read-substring port bounce 0 l)))
+			 (if (and n (fix:> n 0))
+			     (xsubstring-move! bounce 0 n string start))
+			 n)))))))
+	(lambda (name)
+	  (case name
+	    ((CHAR-READY?) char-ready?)
+	    ((READ-CHAR) read-char)
+	    ((READ-SUBSTRING) read-substring)
+	    ((READ-WIDE-SUBSTRING) read-wide-substring)
+	    ((READ-EXTERNAL-SUBSTRING) read-external-substring)
+	    (else (op name))))))))
+
+;;;; Default output operations
+
+(define (provide-default-output-operations op)
+  (let ((write-char (op 'WRITE-CHAR))
+	(no-flush (lambda (port) port unspecific)))
+    (let ((write-substring
+	   (or (op 'WRITE-SUBSTRING)
+	       (lambda (port string start end)
+		 (let loop ((i start))
+		   (if (fix:< i end)
+		       (let ((n (write-char port (string-ref string i))))
+			 (cond ((not n)
+				(and (fix:> i start)
+				     (fix:- i start)))
+			       ((fix:> n 0) (loop (fix:+ i 1)))
+			       (else (fix:- i start))))
+		       (fix:- i start))))))
+	  (write-wide-substring
+	   (or (op 'WRITE-WIDE-SUBSTRING)
+	       (lambda (port string start end)
+		 (let loop ((i start))
+		   (if (fix:< i end)
+		       (let ((n
+			      (write-char port
+					  (wide-string-ref string i))))
+			 (cond ((not n)
+				(and (fix:> i start)
+				     (fix:- i start)))
+			       ((fix:> n 0) (loop (fix:+ i 1)))
+			       (else (fix:- i start))))
+		       (fix:- i start))))))
+	  (flush-output (or (op 'FLUSH-OUTPUT) no-flush))
+	  (discretionary-flush-output
+	   (or (op 'DISCRETIONARY-FLUSH-OUTPUT) no-flush)))
+      (let ((write-external-substring
+	     (or (op 'WRITE-EXTERNAL-SUBSTRING)
+		 (lambda (port string start end)
+		   (let ((bounce (make-string #x1000)))
+		     (let loop ((i start))
+		       (if (< i end)
+			   (let ((m (min (- end i) #x1000)))
+			     (xsubstring-move! string i (+ i m) bounce 0)
+			     (let ((n (write-substring port bounce 0 m)))
+			       (cond ((not n) (and (> i start) (- i start)))
+				     ((fix:> n 0) (loop (+ i n)))
+				     (else (- i start)))))
+			   (- end start))))))))
+	(lambda (name)
+	  (case name
+	    ((WRITE-CHAR) write-char)
+	    ((WRITE-SUBSTRING) write-substring)
+	    ((WRITE-WIDE-SUBSTRING) write-wide-substring)
+	    ((WRITE-EXTERNAL-SUBSTRING) write-external-substring)
+	    ((FLUSH-OUTPUT) flush-output)
+	    ((DISCRETIONARY-FLUSH-OUTPUT) discretionary-flush-output)
+	    (else (op name))))))))
+
+;;;; Input features
+
+(define (provide-input-features op)
+  (let ((char-ready?
+	 (let ((defer (op 'CHAR-READY?)))
+	   (lambda (port)
+	     (if (port/unread port)
+		 #t
+		 (defer port)))))
+	(read-char
+	 (let ((defer (op 'READ-CHAR)))
+	   (lambda (port)
+	     (let ((char (port/unread port)))
+	       (if char
+		   (begin
+		     (set-port/unread! port #f)
+		     char)
+		   (let ((char (defer port)))
+		     (if (and (port/transcript port) (char? char))
+			 (write-char char (port/transcript port)))
+		     char))))))
+	(unread-char
+	 (lambda (port char)
+	   (if (port/unread port)
+	       (error "Can't unread second character:" char port))
+	   (set-port/unread! port char)
+	   unspecific))
+	(peek-char
+	 (let ((defer (op 'READ-CHAR)))
+	   (lambda (port)
+	     (or (port/unread port)
+		 (let ((char (defer port)))
+		   (if (char? char)
+		       (set-port/unread! port char))
+		   char)))))
+	(discard-char
+	 (lambda (port)
+	   (if (not (port/unread port))
+	       (error "No character to discard:" port))
+	   (set-port/unread! port #f)
+	   unspecific))
+	(read-substring
+	 (let ((defer (op 'READ-SUBSTRING)))
+	   (lambda (port string start end)
+	     (if (port/unread port)
+		 (begin
+		   (guarantee-8-bit-char (port/unread port))
+		   (string-set! string start (port/unread port))
+		   (set-port/unread! port #f)
+		   1)
+		 (let ((n (defer port string start end)))
+		   (if (and n (fix:> n 0) (port/transcript port))
+		       (write-substring string start (fix:+ start n)
+					(port/transcript port)))
+		   n)))))
+	(read-wide-substring
+	 (let ((defer (op 'READ-WIDE-SUBSTRING)))
+	   (lambda (port string start end)
+	     (if (port/unread port)
+		 (begin
+		   (wide-string-set! string start (port/unread port))
+		   (set-port/unread! port #f)
+		   1)
+		 (let ((n (defer port string start end)))
+		   (if (and n (fix:> n 0) (port/transcript port))
+		       (write-substring string start (fix:+ start n)
+					(port/transcript port)))
+		   n)))))
+	(read-external-substring
+	 (let ((defer (op 'READ-EXTERNAL-SUBSTRING)))
+	   (lambda (port string start end)
+	     (if (port/unread port)
+		 (begin
+		   (guarantee-8-bit-char (port/unread port))
+		   (xsubstring-move! (make-string 1 (port/unread port)) 0 1
+				     string start)
+		   (set-port/unread! port #f)
+		   1)
+		 (let ((n (defer port string start end)))
+		   (if (and n (> n 0) (port/transcript port))
+		       (write-substring string start (+ start n)
+					(port/transcript port)))
+		   n))))))
+    (lambda (name)
+      (case name
+	((CHAR-READY?) char-ready?)
+	((READ-CHAR) read-char)
+	((UNREAD-CHAR) unread-char)
+	((PEEK-CHAR) peek-char)
+	((DISCARD-CHAR) discard-char)
+	((READ-SUBSTRING) read-substring)
+	((READ-WIDE-SUBSTRING) read-wide-substring)
+	((READ-EXTERNAL-SUBSTRING) read-external-substring)
+	(else (op name))))))
+
+;;;; Output features
+
+(define (provide-output-features op)
+  (let ((write-char
+	 (let ((defer (op 'WRITE-CHAR)))
+	   (lambda (port char)
+	     (let ((n (defer port char)))
+	       (if (and n (fix:> n 0))
+		   (begin
+		     (set-port/previous! port char)
+		     (if (port/transcript port)
+			 (write-char char (port/transcript port)))))
+	       n))))
+	(write-substring
+	 (let ((defer (op 'WRITE-SUBSTRING)))
+	   (lambda (port string start end)
+	     (let ((n (defer port string start end)))
+	       (if (and n (fix:> n 0))
+		   (begin
+		     (set-port/previous!
+		      port
+		      (string-ref string (fix:+ start (fix:- n 1))))
+		     (if (and (port/transcript port))
+			 (write-substring string start (fix:+ start n)
+					  (port/transcript port)))))
+	       n))))
+	(write-wide-substring
+	 (let ((defer (op 'WRITE-WIDE-SUBSTRING)))
+	   (lambda (port string start end)
+	     (let ((n (defer port string start end)))
+	       (if (and n (fix:> n 0))
+		   (begin
+		     (set-port/previous!
+		      port
+		      (string-ref string (fix:+ start (fix:- n 1))))
+		     (if (and (port/transcript port))
+			 (write-substring string start (fix:+ start n)
+					  (port/transcript port)))))
+	       n))))
+	(write-external-substring
+	 (let ((defer (op 'WRITE-EXTERNAL-SUBSTRING)))
+	   (lambda (port string start end)
+	     (let ((n (defer port string start end)))
+	       (if (and n (> n 0))
+		   (let ((i (+ start n))
+			 (bounce (make-string 1)))
+		     (xsubstring-move! string (- i 1) i bounce 0)
+		     (set-port/previous! port (string-ref bounce 0))
+		     (if (port/transcript port)
+			 (write-substring string start i
+					  (port/transcript port)))))
+	       n))))
+	(flush-output
+	 (let ((defer (op 'FLUSH-OUTPUT)))
+	   (lambda (port)
+	     (defer port)
+	     (if (port/transcript port)
+		 (flush-output (port/transcript port))))))
+	(discretionary-flush-output
+	 (let ((defer (op 'DISCRETIONARY-FLUSH-OUTPUT)))
+	   (lambda (port)
+	     (defer port)
+	     (if (port/transcript port)
+		 (output-port/discretionary-flush (port/transcript port)))))))
+    (lambda (name)
+      (case name
+	((WRITE-CHAR) write-char)
+	((WRITE-SUBSTRING) write-substring)
+	((WRITE-WIDE-SUBSTRING) write-wide-substring)
+	((WRITE-EXTERNAL-SUBSTRING) write-external-substring)
+	((FRESH-LINE)
+	 (lambda (port)
+	   (if (and (port/previous port)
+		    (not (char=? (port/previous port) #\newline)))
+	       (write-char port #\newline)
+	       0)))
+	((FLUSH-OUTPUT) flush-output)
+	((DISCRETIONARY-FLUSH-OUTPUT) discretionary-flush-output)
+	(else (op name))))))
+
+;;;; Port object
+
+(define-structure (port (type-descriptor <port>)
+			(conc-name port/)
+			(constructor %make-port (%type %state)))
+  (%type #f read-only #t)
+  %state
+  (%thread-mutex (make-thread-mutex))
+  (unread #f)
+  (previous #f)
+  (transcript #f))
+
+(define (make-port type state)
+  (guarantee-port-type type 'MAKE-PORT)
+  (%make-port type state))
+
+(define (port/type port)
+  (guarantee-port port 'PORT/TYPE)
+  (port/%type port))
 
 (define (port/state port)
-  (%port/state (base-port port)))
+  (guarantee-port port 'PORT/STATE)
+  (port/%state port))
 
 (define (set-port/state! port state)
-  (%set-port/state! (base-port port) state))
+  (guarantee-port port 'SET-PORT/STATE!)
+  (set-port/%state! port state))
 
-(define (base-port port)
-  (let ((state (%port/state port)))
-    (if (encapsulated-port-state? state)
-	(base-port (encapsulated-port-state/port state))
-	port)))
+(define (port/thread-mutex port)
+  (guarantee-port port 'PORT/THREAD-MUTEX)
+  (port/%thread-mutex port))
+
+(define (set-port/thread-mutex! port mutex)
+  (set-port/%thread-mutex! port mutex))
+
+(define (port=? p1 p2)
+  (guarantee-port p1 'PORT=?)
+  (guarantee-port p2 'PORT=?)
+  (eq? p1 p2))
 
 (define (port/operation-names port)
   (port-type/operation-names (port/type port)))
+
+(define (port/operation port name)
+  (port-type/operation (port/type port) name))
 
 (let-syntax
     ((define-port-operation
        (sc-macro-transformer
 	(lambda (form environment)
-	  (let ((dir (cadr form))
-		(name (caddr form)))
-	    `(DEFINE (,(symbol-append dir '-PORT/OPERATION/ name) PORT)
+	  (let ((name (cadr form)))
+	    `(DEFINE (,(symbol-append 'PORT/OPERATION/ name) PORT)
 	       (,(close-syntax (symbol-append 'PORT-TYPE/ name) environment)
 		(PORT/TYPE PORT))))))))
-  (define-port-operation input char-ready?)
-  (define-port-operation input peek-char)
-  (define-port-operation input read-char)
-  (define-port-operation input discard-char)
-  (define-port-operation input read-string)
-  (define-port-operation input discard-chars)
-  (define-port-operation input read-substring)
-  (define-port-operation output write-char)
-  (define-port-operation output write-substring)
-  (define-port-operation output fresh-line)
-  (define-port-operation output flush-output))
-
-(define (output-port/operation/discretionary-flush port)
-  (port-type/discretionary-flush-output (port/type port)))
-
+  (define-port-operation char-ready?)
+  (define-port-operation read-char)
+  (define-port-operation unread-char)
+  (define-port-operation peek-char)
+  (define-port-operation discard-char)
+  (define-port-operation read-substring)
+  (define-port-operation read-wide-substring)
+  (define-port-operation read-external-substring)
+  (define-port-operation write-char)
+  (define-port-operation write-substring)
+  (define-port-operation write-wide-substring)
+  (define-port-operation write-external-substring)
+  (define-port-operation fresh-line)
+  (define-port-operation flush-output)
+  (define-port-operation discretionary-flush-output)
+  (define-port-operation get-transcript-port)
+  (define-port-operation set-transcript-port))
+
 (set-record-type-unparser-method! <port>
   (lambda (state port)
     ((let ((name
@@ -237,7 +603,7 @@ USA.
     (set-port/state! port state)
     (set-port/thread-mutex! port (make-thread-mutex))
     port))
-
+
 (define (close-port port)
   (let ((close (port/operation port 'CLOSE)))
     (if close
@@ -265,27 +631,6 @@ USA.
   (let ((operation (port/operation port 'OUTPUT-CHANNEL)))
     (and operation
 	 (operation port))))
-
-(define (port/operation port name)
-  (port-type/operation (port/type port) name))
-
-(define (input-port/operation port name)
-  (port/operation port
-		  (case name
-		    ((BUFFER-SIZE) 'INPUT-BUFFER-SIZE)
-		    ((SET-BUFFER-SIZE) 'SET-INPUT-BUFFER-SIZE)
-		    ((BUFFERED-CHARS) 'BUFFERED-INPUT-CHARS)
-		    ((CHANNEL) 'INPUT-CHANNEL)
-		    (else name))))
-
-(define (output-port/operation port name)
-  (port/operation port
-		  (case name
-		    ((BUFFER-SIZE) 'OUTPUT-BUFFER-SIZE)
-		    ((SET-BUFFER-SIZE) 'SET-OUTPUT-BUFFER-SIZE)
-		    ((BUFFERED-CHARS) 'BUFFERED-OUTPUT-CHARS)
-		    ((CHANNEL) 'OUTPUT-CHANNEL)
-		    (else name))))
 
 (define (input-port? object)
   (and (port? object)
@@ -301,260 +646,63 @@ USA.
 	 (and (port-type/supports-input? type)
 	      (port-type/supports-output? type)))))
 
-(define (guarantee-port port procedure)
+(define-integrable (guarantee-port port caller)
   (if (not (port? port))
-      (error:wrong-type-argument port "port" procedure))
+      (error:not-port port caller))
   port)
 
-(define (guarantee-input-port port procedure)
+(define (error:not-port port caller)
+  (error:wrong-type-argument port "port" caller))
+
+(define-integrable (guarantee-input-port port caller)
   (if (not (input-port? port))
-      (error:wrong-type-argument port "input port" procedure))
+      (error:not-input-port port caller))
   port)
 
-(define (guarantee-output-port port procedure)
+(define (error:not-input-port port caller)
+  (error:wrong-type-argument port "input port" caller))
+
+(define-integrable (guarantee-output-port port caller)
   (if (not (output-port? port))
-      (error:wrong-type-argument port "output port" procedure))
+      (error:not-output-port port caller))
   port)
 
-(define (guarantee-i/o-port port procedure)
+(define (error:not-output-port port caller)
+  (error:wrong-type-argument port "output port" caller))
+
+(define-integrable (guarantee-i/o-port port caller)
   (if (not (i/o-port? port))
-      (error:wrong-type-argument port "I/O port" procedure))
+      (error:not-i/o-port port caller))
   port)
-
-;;;; Encapsulation
 
-(define-structure (encapsulated-port-state
-		   (conc-name encapsulated-port-state/))
-  (port #f read-only #t)
-  state)
+(define (error:not-i/o-port port caller)
+  (error:wrong-type-argument port "I/O port" caller))
 
-(define (encapsulated-port? object)
-  (and (port? object)
-       (encapsulated-port-state? (%port/state object))))
+(define (port/coding port)
+  (let ((operation (port/operation port 'CODING)))
+    (if operation
+	(operation port)
+	#f)))
 
-(define (guarantee-encapsulated-port object procedure)
-  (guarantee-port object procedure)
-  (if (not (encapsulated-port-state? (%port/state object)))
-      (error:wrong-type-argument object "encapsulated port" procedure)))
+(define (port/set-coding port name)
+  (let ((operation (port/operation port 'SET-CODING)))
+    (if operation
+	(operation port name))))
 
-(define (encapsulated-port/port port)
-  (guarantee-encapsulated-port port 'ENCAPSULATED-PORT/PORT)
-  (encapsulated-port-state/port (%port/state port)))
+(define (port/line-ending port)
+  (let ((operation (port/operation port 'LINE-ENDING)))
+    (if operation
+	(operation port)
+	#f)))
 
-(define (encapsulated-port/state port)
-  (guarantee-encapsulated-port port 'ENCAPSULATED-PORT/STATE)
-  (encapsulated-port-state/state (%port/state port)))
+(define (port/set-line-ending port name)
+  (let ((operation (port/operation port 'SET-LINE-ENDING)))
+    (if operation
+	(operation port name))))
 
-(define (set-encapsulated-port/state! port state)
-  (guarantee-encapsulated-port port 'SET-ENCAPSULATED-PORT/STATE!)
-  (set-encapsulated-port-state/state! (%port/state port) state))
-
-(define (make-encapsulated-port port state rewrite-operation)
-  (guarantee-port port 'MAKE-ENCAPSULATED-PORT)
-  (%make-port (let ((type (port/type port)))
-		(make-port-type
-		 (append-map
-		  (lambda (entry)
-		    (let ((operation
-			   (rewrite-operation (car entry) (cadr entry))))
-		      (if operation
-			  (list (list (car entry) operation))
-			  '())))
-		  (port-type/operations type))
-		 #f))
-	      (make-encapsulated-port-state port state)
-	      (port/thread-mutex port)))
-
-;;;; Constructors
-
-(define (make-port type state)
-  (guarantee-port-type type 'MAKE-PORT)
-  (%make-port type state (make-thread-mutex)))
-
-(define (make-port-type operations type)
-  (let ((type
-	 (parse-operations-list
-	  (append operations
-		  (if type
-		      (list-transform-negative (port-type/operations type)
-			(let ((ignored
-			       (append
-				(if (assq 'READ-CHAR operations)
-				    '(DISCARD-CHAR
-				      DISCARD-CHARS
-				      PEEK-CHAR
-				      READ-CHAR
-				      READ-STRING
-				      READ-SUBSTRING)
-				    '())
-				(if (or (assq 'WRITE-CHAR operations)
-					(assq 'WRITE-SUBSTRING operations))
-				    '(WRITE-CHAR
-				      WRITE-SUBSTRING)
-				    '()))))
-			  (lambda (entry)
-			    (or (assq (car entry) operations)
-				(memq (car entry) ignored)))))
-		      '()))
-	  'MAKE-PORT-TYPE)))
-    (let ((operations (port-type/operations type)))
-      (let ((input? (assq 'READ-CHAR operations))
-	    (output?
-	     (or (assq 'WRITE-CHAR operations)
-		 (assq 'WRITE-SUBSTRING operations))))
-	(if (not (or input? output?))
-	    (error "Port type must implement one of the following operations:"
-		   '(READ-CHAR WRITE-CHAR WRITE-SUBSTRING)))
-	(install-operations! type input?
-			     input-operation-names
-			     input-operation-modifiers
-			     input-operation-defaults)
-	(install-operations! type output?
-			     output-operation-names
-			     output-operation-modifiers
-			     output-operation-defaults)))
-    type))
-
-(define (parse-operations-list operations procedure)
-  (if (not (list? operations))
-      (error:wrong-type-argument operations "list" procedure))
-  (%make-port-type
-   (map (lambda (operation)
-	  (if (not (and (pair? operation)
-			(symbol? (car operation))
-			(pair? (cdr operation))
-			(procedure? (cadr operation))
-			(null? (cddr operation))))
-	      (error:wrong-type-argument operation "port operation" procedure))
-	  (cons (car operation) (cadr operation)))
-	operations)))
-
-(define (install-operations! type install? names modifiers defaults)
-  (if install?
-      (let* ((operations
-	      (map (lambda (name)
-		     (extract-operation! type name))
-		   names))
-	     (defaults (defaults names operations)))
-	(for-each (lambda (modifier operation name)
-		    (modifier
-		     type
-		     (or operation
-			 (let ((entry (assq name defaults)))
-			   (if (not entry)
-			       (error "Must specify operation:" name))
-			   (cadr entry)))))
-		  modifiers
-		  operations
-		  names))
-      (begin
-	(for-each (lambda (name)
-		    (if (extract-operation! type name)
-			(error "Illegal operation name:" name)))
-		  names)
-	(for-each (lambda (modifier)
-		    (modifier type #f))
-		  modifiers))))
-
-(define extract-operation!
-  (let ((set-port-type/custom-operations!
-	 (record-modifier <port-type> 'CUSTOM-OPERATIONS)))
-    (lambda (type name)
-      (let ((operation (assq name (port-type/custom-operations type))))
-	(and operation
-	     (begin
-	       (set-port-type/custom-operations!
-		type
-		(delq! operation (port-type/custom-operations type)))
-	       (cdr operation)))))))
-
-(define (search-paired-lists key keys datums error?)
-  (if (pair? keys)
-      (if (eq? key (car keys))
-	  (car datums)
-	  (search-paired-lists key (cdr keys) (cdr datums) error?))
-      (and error?
-	   (error "Unable to find key:" key))))
-
-;;;; Default Operations
-
-(define (input-operation-defaults names operations)
-  `((CHAR-READY? ,default-operation/char-ready?)
-    (DISCARD-CHAR ,(search-paired-lists 'READ-CHAR names operations #t))
-    (DISCARD-CHARS ,default-operation/discard-chars)
-    (READ-STRING ,default-operation/read-string)
-    (READ-SUBSTRING ,default-operation/read-substring)))
-
-(define (default-operation/char-ready? port interval)
-  port interval
-  #t)
-
-(define (default-operation/read-string port delimiters)
-  (let ((peek-char
-	 (lambda () (let loop () (or (input-port/peek-char port) (loop))))))
-    (let ((char (peek-char)))
-      (if (eof-object? char)
-	  char
-	  (list->string
-	   (let loop ((char char))
-	     (if (or (eof-object? char)
-		     (char-set-member? delimiters char))
-		 '()
-		 (begin
-		   (input-port/discard-char port)
-		   (cons char (loop (peek-char)))))))))))
-
-(define (default-operation/discard-chars port delimiters)
-  (let loop ()
-    (let ((char (let loop () (or (input-port/peek-char port) (loop)))))
-      (if (not (or (eof-object? char)
-		   (char-set-member? delimiters char)))
-	  (begin
-	    (input-port/discard-char port)
-	    (loop))))))
-
-(define (default-operation/read-substring port string start end)
-  (let loop ((index start))
-    (if (fix:< index end)
-	(let ((char (input-port/read-char port)))
-	  (cond ((not char)
-		 (if (fix:= index start)
-		     #f
-		     (fix:- index start)))
-		((eof-object? char)
-		 (fix:- index start))
-		(else
-		 (string-set! string index char)
-		 (loop (fix:+ index 1)))))
-	(fix:- index start))))
-
-(define (output-operation-defaults names operations)
-  (if (not (or (search-paired-lists 'WRITE-CHAR names operations #f)
-	       (search-paired-lists 'WRITE-SUBSTRING names operations #f)))
-      (error "Must specify at least one of the following:"
-	     '(WRITE-CHAR WRITE-SUBSTRING)))
-  `((DISCRETIONARY-FLUSH-OUTPUT ,default-operation/flush-output)
-    (FLUSH-OUTPUT ,default-operation/flush-output)
-    (FRESH-LINE ,default-operation/fresh-line)
-    (WRITE-CHAR ,default-operation/write-char)
-    (WRITE-SUBSTRING ,default-operation/write-substring)))
-
-(define (default-operation/write-char port char)
-  (output-port/write-substring port (string char) 0 1))
-
-(define (default-operation/write-substring port string start end)
-  (let loop ((index start))
-    (if (< index end)
-	(begin
-	  (output-port/write-char port (string-ref string index))
-	  (loop (+ index 1))))))
-
-(define (default-operation/fresh-line port)
-  (output-port/write-char port #\newline))
-
-(define (default-operation/flush-output port)
-  port
-  unspecific)
+(define-integrable (guarantee-8-bit-char char)
+  (if (fix:>= (char->integer char) #x100)
+      (error:not-8-bit-char char)))
 
 ;;;; Special Operations
 
@@ -707,24 +855,3 @@ USA.
 	(cons notification-output-port set-notification-output-port!)
 	(cons trace-output-port set-trace-output-port!)
 	(cons interaction-i/o-port set-interaction-i/o-port!)))
-
-;;;; Upwards Compatibility
-
-(define input-port/channel port/input-channel)
-(define input-port/copy port/copy)
-(define input-port/custom-operation input-port/operation)
-(define input-port/operation-names port/operation-names)
-(define input-port/state port/state)
-(define output-port/channel port/output-channel)
-(define output-port/copy port/copy)
-(define output-port/custom-operation output-port/operation)
-(define output-port/operation-names port/operation-names)
-(define output-port/state port/state)
-(define set-input-port/state! set-port/state!)
-(define set-output-port/state! set-port/state!)
-
-(define (make-input-port type state)
-  (make-port (if (port-type? type) type (make-port-type type #f)) state))
-
-(define make-output-port make-input-port)
-(define make-i/o-port make-input-port)

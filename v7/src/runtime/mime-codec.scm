@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: mime-codec.scm,v 14.14 2003/02/14 18:28:33 cph Exp $
+$Id: mime-codec.scm,v 14.15 2004/02/16 05:36:56 cph Exp $
 
-Copyright 2000, 2001 Massachusetts Institute of Technology
+Copyright 2000,2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -174,9 +174,15 @@ USA.
 
 (define decode-quoted-printable-port-type
   (make-port-type
-   `((WRITE-SUBSTRING
+   `((WRITE-CHAR
+      ,(lambda (port char)
+	 (guarantee-8-bit-char char)
+	 (decode-quoted-printable:update (port/state port) (string char) 0 1)
+	 1))
+     (WRITE-SUBSTRING
       ,(lambda (port string start end)
-	 (decode-quoted-printable:update (port/state port) string start end)))
+	 (decode-quoted-printable:update (port/state port) string start end)
+	 (fix:- end start)))
      (CLOSE-OUTPUT
       ,(lambda (port)
 	 (decode-quoted-printable:finalize (port/state port)))))
@@ -458,9 +464,15 @@ USA.
 
 (define decode-base64-port-type
   (make-port-type
-   `((WRITE-SUBSTRING
+   `((WRITE-CHAR
+      ,(lambda (port char)
+	 (guarantee-8-bit-char char)
+	 (decode-base64:update (port/state port) (string char) 0 1)
+	 1))
+     (WRITE-SUBSTRING
       ,(lambda (port string start end)
-	 (decode-base64:update (port/state port) string start end)))
+	 (decode-base64:update (port/state port) string start end)
+	 (fix:- end start)))
      (CLOSE-OUTPUT
       ,(lambda (port)
 	 (decode-base64:finalize (port/state port)))))
@@ -480,7 +492,7 @@ USA.
   (input-state 'LINE-START)
   (output-buffer (make-string 3) read-only #t)
   (pending-return? #f))
-
+
 (define (decode-base64:finalize context)
   (if (fix:> (base64-decoding-context/input-index context) 0)
       (error "BASE64 input length is not a multiple of 4."))
@@ -615,9 +627,15 @@ USA.
 
 (define decode-binhex40-port-type
   (make-port-type
-   `((WRITE-SUBSTRING
+   `((WRITE-CHAR
+      ,(lambda (port char)
+	 (guarantee-8-bit-char char)
+	 (decode-binhex40:update (port/state port) (string char) 0 1)
+	 1))
+     (WRITE-SUBSTRING
       ,(lambda (port string start end)
-	 (decode-binhex40:update (port/state port) string start end)))
+	 (decode-binhex40:update (port/state port) string start end)
+	 (fix:- end start)))
      (CLOSE-OUTPUT
       ,(lambda (port)
 	 (decode-binhex40:finalize (port/state port)))))
@@ -770,6 +788,7 @@ USA.
   (make-port-type
    `((WRITE-CHAR
       ,(lambda (port char)
+	 (guarantee-8-bit-char char)
 	 (let ((state (port/state port)))
 	   (let ((port (binhex40-rld-state/port state))
 		 (char* (binhex40-rld-state/char state)))
@@ -789,7 +808,8 @@ USA.
 		    (set-binhex40-rld-state/marker-seen?! state #t))
 		   (else
 		    (if char* (write-char char* port))
-		    (set-binhex40-rld-state/char! state char)))))))
+		    (set-binhex40-rld-state/char! state char)))))
+	 1))
      (CLOSE-OUTPUT
       ,(lambda (port)
 	 (let ((state (port/state port)))
@@ -826,12 +846,14 @@ USA.
   (make-port-type
    `((WRITE-CHAR
       ,(lambda (port char)
+	 (guarantee-8-bit-char char)
 	 (case (binhex40-decon/state (port/state port))
 	   ((READING-HEADER) (binhex40-decon-reading-header port char))
 	   ((COPYING-DATA) (binhex40-decon-copying-data port char))
 	   ((SKIPPING-TAIL) (binhex40-decon-skipping-tail port))
 	   ((FINISHED) unspecific)
-	   (else (error "Illegal state in BinHex 4.0 deconstructor.")))))
+	   (else (error "Illegal state in BinHex 4.0 deconstructor.")))
+	 1))
      (CLOSE-OUTPUT
       ,(lambda (port)
 	 (if (not (eq? (binhex40-decon/state (port/state port)) 'FINISHED))

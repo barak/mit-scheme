@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.44 2003/09/23 03:37:16 cph Exp $
+$Id: ntprm.scm,v 1.45 2004/02/16 05:37:03 cph Exp $
 
 Copyright 1995,1996,1998,1999,2000,2001 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -316,16 +316,16 @@ USA.
 	  (error "Unable to find Windows system root."))
       (pathname-new-directory (pathname-as-directory sysroot) '(ABSOLUTE)))))
 
-(define (os/file-end-of-line-translation pathname)
+(define (file-line-ending pathname)
   (if (let ((type (dos/fs-drive-type pathname)))
 	(or (string=? "NFS" (car type))
 	    (string=? "NtNfs" (car type))
 	    (string=? "Samba" (car type))))
-      #f
-      "\r\n"))
+      'LF
+      'CRLF))
 
-(define (os/default-end-of-line-translation)
-  "\r\n")
+(define (default-line-ending)
+  'CRLF)
 
 (define (dos/fs-drive-type pathname)
   ;; (system-name . [nfs-]mount-point)

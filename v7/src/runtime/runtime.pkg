@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.476 2004/01/19 05:06:22 cph Exp $
+$Id: runtime.pkg,v 14.477 2004/02/16 05:38:12 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -587,6 +587,7 @@ USA.
 	  current-user-name
 	  decode-file-time
 	  decoded-time->file-time
+	  default-line-ending
 	  encode-file-time
 	  file-access-time
 	  file-access-time-direct
@@ -602,6 +603,7 @@ USA.
 	  file-attributes/n-links
 	  file-attributes/type
 	  file-length
+	  file-line-ending
 	  file-modes
 	  file-modification-time
 	  file-modification-time-direct
@@ -611,10 +613,8 @@ USA.
 	  file-time->universal-time
 	  get-environment-variable
 	  init-file-specifier->pathname
-	  os/default-end-of-line-translation
 	  os/exec-path
 	  os/executable-pathname-types
-	  os/file-end-of-line-translation
 	  os/find-program
 	  os/form-shell-command
 	  os/make-subprocess
@@ -834,6 +834,8 @@ USA.
 	  xsubstring-move!)
   (export (runtime primitive-io)
 	  external-string-descriptor)
+  (export (runtime generic-i/o-port)
+	  %substring-move!)
   (initialization (initialize-package!)))
 
 (define-package (runtime 1d-property)
@@ -1063,12 +1065,12 @@ USA.
   (parent (runtime))
   (export ()
 	  console-i/o-port
+	  console-i/o-port?
 	  console-input-port
 	  console-output-port
 	  set-console-i/o-port!)
   (export (runtime emacs-interface)
-	  the-console-port
-	  the-console-port-type)
+	  the-console-port)
   (initialization (initialize-package!)))
 
 (define-package (runtime continuation)
@@ -1419,6 +1421,7 @@ USA.
 	  condition-type:illegal-pathname-component
 	  condition-type:macro-binding
 	  condition-type:no-such-restart
+	  condition-type:not-8-bit-char
 	  condition-type:port-error
 	  condition-type:serious-condition
 	  condition-type:simple-condition
@@ -1457,6 +1460,7 @@ USA.
 	  error:file-operation
 	  error:illegal-pathname-component
 	  error:no-such-restart
+	  error:not-8-bit-char
 	  error:wrong-number-of-arguments
 	  error:wrong-type-argument
 	  error:wrong-type-datum
@@ -1542,7 +1546,6 @@ USA.
 	  open-i/o-file
 	  open-input-file
 	  open-output-file
-	  pathname-newline-translation
 	  with-input-from-binary-file
 	  with-input-from-file
 	  with-output-to-binary-file
@@ -1555,11 +1558,6 @@ USA.
   (export ()
 	  transcript-off
 	  transcript-on)
-  (export (runtime rep)
-	  make-transcriptable-port)
-  (export (runtime emacs-interface)
-	  make-transcriptable-port
-	  transcriptable-port?)
   (initialization (initialize-package!)))
 
 (define-package (runtime format)
@@ -1657,16 +1655,21 @@ USA.
   (files "genio")
   (parent (runtime))
   (export ()
-	  make-generic-i/o-port
-	  make-generic-input-port
-	  make-generic-output-port)
+	  make-generic-i/o-port)
   (export (runtime console-i/o-port)
 	  generic-i/o-type
-	  operation/flush-output)
+	  generic-io/char-ready?
+	  generic-io/flush-output
+	  generic-io/read-char
+	  input-buffer-contents
+	  make-gstate
+	  port-input-buffer
+	  set-input-buffer-contents!)
   (export (runtime file-i/o-port)
 	  generic-i/o-type
 	  generic-input-type
-	  generic-output-type)
+	  generic-output-type
+	  make-gstate)
   (initialization (initialize-package!)))
 
 (define-package (runtime gensym)
@@ -1796,10 +1799,7 @@ USA.
 	  close-port
 	  current-input-port
 	  current-output-port
-	  encapsulated-port/port
-	  encapsulated-port/state
-	  encapsulated-port?
-	  guarantee-encapsulated-port
+	  guarantee-8-bit-char
 	  guarantee-i/o-port
 	  guarantee-input-port
 	  guarantee-output-port
@@ -1808,44 +1808,32 @@ USA.
 	  i/o-port-type?
 	  i/o-port?
 	  input-port-type?
-	  input-port/channel
-	  input-port/copy
-	  input-port/custom-operation
-	  input-port/operation
-	  input-port/operation-names
-	  input-port/state
 	  input-port?
 	  interaction-i/o-port
-	  make-encapsulated-port
-	  make-i/o-port
-	  make-input-port
-	  make-output-port
 	  make-port
 	  make-port-type
 	  notification-output-port
 	  output-port-type?
-	  output-port/channel
-	  output-port/copy
-	  output-port/custom-operation
-	  output-port/operation
-	  output-port/operation-names
-	  output-port/state
 	  output-port?
 	  port-type/operation
 	  port-type/operation-names
 	  port-type/operations
 	  port-type?
+	  port/coding
 	  port/copy
 	  port/input-blocking-mode
 	  port/input-channel
 	  port/input-terminal-mode
+	  port/line-ending
 	  port/operation
 	  port/operation-names
 	  port/output-blocking-mode
 	  port/output-channel
 	  port/output-terminal-mode
+	  port/set-coding
 	  port/set-input-blocking-mode
 	  port/set-input-terminal-mode
+	  port/set-line-ending
 	  port/set-output-blocking-mode
 	  port/set-output-terminal-mode
 	  port/state
@@ -1855,14 +1843,12 @@ USA.
 	  port/with-input-terminal-mode
 	  port/with-output-blocking-mode
 	  port/with-output-terminal-mode
+	  port=?
 	  port?
 	  set-current-input-port!
 	  set-current-output-port!
-	  set-encapsulated-port/state!
-	  set-input-port/state!
 	  set-interaction-i/o-port!
 	  set-notification-output-port!
-	  set-output-port/state!
 	  set-port/state!
 	  set-trace-output-port!
 	  trace-output-port
@@ -1872,19 +1858,25 @@ USA.
 	  with-output-to-port
 	  with-trace-output-port)
   (export (runtime input-port)
-	  input-port/operation/char-ready?
-	  input-port/operation/discard-char
-	  input-port/operation/discard-chars
-	  input-port/operation/peek-char
-	  input-port/operation/read-char
-	  input-port/operation/read-string
-	  input-port/operation/read-substring)
+	  port/operation/char-ready?
+	  port/operation/discard-char
+	  port/operation/peek-char
+	  port/operation/read-char
+	  port/operation/read-external-substring
+	  port/operation/read-substring
+	  port/operation/read-wide-substring
+	  port/operation/unread-char)
   (export (runtime output-port)
-	  output-port/operation/discretionary-flush
-	  output-port/operation/flush-output
-	  output-port/operation/fresh-line
-	  output-port/operation/write-char
-	  output-port/operation/write-substring)
+	  port/operation/discretionary-flush-output
+	  port/operation/flush-output
+	  port/operation/fresh-line
+	  port/operation/write-char
+	  port/operation/write-external-substring
+	  port/operation/write-substring
+	  port/operation/write-wide-substring)
+  (export (runtime transcript)
+	  port/operation/get-transcript-port
+	  port/operation/set-transcript-port)
   (export (runtime rep)
 	  *current-input-port*
 	  *current-output-port*
@@ -1893,15 +1885,14 @@ USA.
 	  *trace-output-port*)
   (export (runtime emacs-interface)
 	  set-port/thread-mutex!
-	  standard-port-accessors)
-  (export (runtime parser)
-	  base-port))
+	  standard-port-accessors))
 
 (define-package (runtime input-port)
   (files "input")
   (parent (runtime))
   (export ()
 	  char-ready?
+	  eof-object-port
 	  eof-object?
 	  input-port/char-ready?
 	  input-port/discard-char
@@ -1910,8 +1901,13 @@ USA.
 	  input-port/read-char
 	  input-port/read-line
 	  input-port/read-string
+	  input-port/read-external-string!
+	  input-port/read-external-substring!
 	  input-port/read-string!
 	  input-port/read-substring!
+	  input-port/read-wide-string!
+	  input-port/read-wide-substring!
+	  input-port/unread-char
 	  make-eof-object
 	  peek-char
 	  read
@@ -1920,9 +1916,7 @@ USA.
 	  read-line
 	  read-string
 	  read-string!
-	  read-substring!)
-  (export (runtime primitive-io)
-	  eof-object))
+	  read-substring!))
 
 (define-package (runtime output-port)
   (files "output")
@@ -1940,8 +1934,12 @@ USA.
 	  output-port/fresh-line
 	  output-port/write-char
 	  output-port/write-object
+	  output-port/write-external-string
+	  output-port/write-external-substring
 	  output-port/write-string
 	  output-port/write-substring
+	  output-port/write-wide-string
+	  output-port/write-wide-substring
 	  output-port/x-size
 	  output-port/y-size
 	  write
@@ -2444,7 +2442,6 @@ USA.
 	  pathname-default-version
 	  pathname-device
 	  pathname-directory
-	  pathname-end-of-line-string
 	  pathname-host
 	  pathname-name
 	  pathname-new-device
@@ -2521,6 +2518,7 @@ USA.
 	  channel-file-length
 	  channel-file-position
 	  channel-file-set-position
+	  channel-has-input?
 	  channel-nonblocking
 	  channel-open?
 	  channel-port
@@ -2534,8 +2532,6 @@ USA.
 	  channel-type=unknown?
 	  channel-write
 	  channel-write-block
-	  channel-write-char-block
-	  channel-write-string-block
 	  channel?
 	  close-all-open-channels
 	  close-all-open-files
@@ -2557,6 +2553,7 @@ USA.
 	  pty-master-quit
 	  pty-master-send-signal
 	  pty-master-stop
+	  set-channel-port!
 	  set-terminal-input-baud-rate!
 	  set-terminal-output-baud-rate!
 	  terminal-cooked-input
@@ -2586,60 +2583,6 @@ USA.
 	  open-channel)
   (export (runtime subprocess)
 	  channel-descriptor)
-  (export (runtime generic-i/o-port)
-	  input-buffer/buffered-chars
-	  input-buffer/channel
-	  input-buffer/char-ready?
-	  input-buffer/chars-remaining
-	  input-buffer/close
-	  input-buffer/eof?
-	  input-buffer/open?
-	  input-buffer/peek-char
-	  input-buffer/read-char
-	  input-buffer/read-substring
-	  input-buffer/set-size
-	  input-buffer/size
-	  make-input-buffer
-	  make-output-buffer
-	  output-buffer/buffered-chars
-	  output-buffer/channel
-	  output-buffer/close
-	  output-buffer/column
-	  output-buffer/drain-block
-	  output-buffer/open?
-	  output-buffer/set-size
-	  output-buffer/size
-	  output-buffer/write-char-block
-	  output-buffer/write-substring
-	  output-buffer/write-substring-block
-	  set-channel-port!)
-  (export (runtime file-i/o-port)
-	  input-buffer/chars-remaining
-	  input-buffer/read-substring
-	  make-input-buffer
-	  make-output-buffer
-	  set-channel-port!)
-  (export (runtime console-i/o-port)
-	  input-buffer/buffer-contents
-	  input-buffer/buffered-chars
-	  input-buffer/channel
-	  input-buffer/char-ready?
-	  input-buffer/eof?
-	  input-buffer/peek-char
-	  input-buffer/read-char
-	  input-buffer/set-buffer-contents
-	  input-buffer/set-size
-	  input-buffer/size
-	  make-input-buffer
-	  make-output-buffer
-	  output-buffer/buffered-chars
-	  output-buffer/channel
-	  output-buffer/drain-block
-	  output-buffer/set-size
-	  output-buffer/size
-	  output-buffer/write-char-block
-	  output-buffer/write-substring-block
-	  set-channel-port!)
   (export (runtime microcode-errors)
 	  port-error-test)
   (export (runtime x-graphics)
@@ -4505,9 +4448,15 @@ USA.
 	  match-parser-buffer-char
 	  match-parser-buffer-char-ci
 	  match-parser-buffer-char-ci-no-advance
+	  match-parser-buffer-char-in-alphabet
+	  match-parser-buffer-char-in-alphabet-no-advance
 	  match-parser-buffer-char-in-set
 	  match-parser-buffer-char-in-set-no-advance
 	  match-parser-buffer-char-no-advance
+	  match-parser-buffer-char-not-in-alphabet
+	  match-parser-buffer-char-not-in-alphabet-no-advance
+	  match-parser-buffer-char-not-in-set
+	  match-parser-buffer-char-not-in-set-no-advance
 	  match-parser-buffer-not-char
 	  match-parser-buffer-not-char-ci
 	  match-parser-buffer-not-char-ci-no-advance
@@ -4520,7 +4469,6 @@ USA.
 	  match-parser-buffer-substring-ci
 	  match-parser-buffer-substring-ci-no-advance
 	  match-parser-buffer-substring-no-advance
-	  match-utf8-char-in-alphabet
 	  parser-buffer-line
 	  parser-buffer-pointer-index
 	  parser-buffer-pointer-line
@@ -4533,7 +4481,9 @@ USA.
 	  set-parser-buffer-pointer!
 	  source->parser-buffer
 	  string->parser-buffer
-	  substring->parser-buffer))
+	  substring->parser-buffer
+	  wide-string->parser-buffer
+	  wide-substring->parser-buffer))
 
 (define-package (runtime unicode)
   (files "unicode")
@@ -4560,6 +4510,7 @@ USA.
 	  guarantee-wide-char
 	  guarantee-wide-string
 	  guarantee-wide-string-index
+	  guarantee-wide-substring
 	  make-wide-string
 	  open-wide-input-string
 	  open-wide-output-string
@@ -4610,6 +4561,7 @@ USA.
 	  wide-string-ref
 	  wide-string-set!
 	  wide-string?
+	  wide-substring
 	  write-utf16-be-char
 	  write-utf16-char
 	  write-utf16-le-char
@@ -4618,7 +4570,14 @@ USA.
 	  write-utf32-le-char
 	  write-utf8-char)
   (export (runtime parser-buffer)
-	  read-utf8-char-from-source))
+	  %wide-string-length
+	  %wide-string-ref
+	  %wide-substring
+	  wide-string-contents)
+  (export (runtime generic-i/o-port)
+	  wide-string-contents)
+  (export (runtime input-port)
+	  wide-string-contents))
 
 (define-package (runtime url)
   (files "url")

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.43 2003/02/14 18:28:32 cph Exp $
+$Id: dospth.scm,v 1.44 2004/02/16 05:36:00 cph Exp $
 
-Copyright (c) 1992-2001 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
+Copyright 1998,1999,2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,8 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define hook/dos/end-of-line-string)
-
 (define sub-directory-delimiters
   ;; Allow forward slashes as well as backward slashes so that
   ;; - improperly-written scripts (e.g. compiler/comp.sf) will work
@@ -57,11 +56,9 @@ USA.
 		  dos/pathname->truename
 		  dos/user-homedir-pathname
 		  dos/init-file-pathname
-		  dos/pathname-simplify
-		  dos/end-of-line-string))
+		  dos/pathname-simplify))
 
 (define (initialize-package!)
-  (set! hook/dos/end-of-line-string default/dos/end-of-line-string)
   (add-pathname-host-type! 'DOS make-dos-host-type))
 
 ;;;; Pathname Parser
@@ -406,9 +403,3 @@ USA.
 				(->namestring pathname*))
 			       pathname*))))))
 	pathname)))
-
-(define (dos/end-of-line-string pathname)
-  (hook/dos/end-of-line-string pathname))
-
-(define (default/dos/end-of-line-string pathname)
-  (or (os/file-end-of-line-translation pathname) "\n"))

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.32 2003/10/15 17:06:55 cph Exp $
+$Id: emacs.scm,v 14.33 2004/02/16 05:36:06 cph Exp $
 
 Copyright 1986,1987,1991,1993,1994,1999 Massachusetts Institute of Technology
-Copyright 2001,2003 Massachusetts Institute of Technology
+Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -239,7 +239,7 @@ USA.
 		      (READ-FINISH ,emacs/read-finish)
 		      (GC-START ,emacs/gc-start)
 		      (GC-FINISH ,emacs/gc-finish))
-		    the-console-port-type)
+		    (port/type the-console-port))
 		   (port/state the-console-port)))
   ;; YUCCH!  Kludge to copy mutex of console port into emacs port.
   (set-port/thread-mutex! emacs-console-port
@@ -257,11 +257,8 @@ USA.
 		 (not (eq? port new-port)))))
 	 (replacement-port
 	  (lambda (port)
-	    (cond ((old-port? port) new-port)
-		  ((and (transcriptable-port? port)
-			(old-port? (encapsulated-port/port port)))
-		   (make-transcriptable-port new-port))
-		  (else #f)))))
+	    (and (old-port? port)
+		 new-port))))
     (if (let ((port console-i/o-port))
 	  (or (eq? port the-console-port)
 	      (eq? port emacs-console-port)))

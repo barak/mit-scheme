@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.13 2003/08/03 05:54:34 cph Exp $
+$Id: unicode.scm,v 1.14 2004/02/16 05:39:15 cph Exp $
 
-Copyright 2001,2003 Massachusetts Institute of Technology
+Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -131,8 +131,8 @@ USA.
   (write-char (integer->char byte) port))
 
 (define (initialize-package!)
-  (set! ws-output-port-type (make-port-type ws-output-operations #f))
-  (set! ws-input-port-type (make-port-type ws-input-operations #f))
+  (initialize-output-port!)
+  (initialize-input-port!)
   unspecific)
 
 ;;;; Unicode characters
@@ -538,13 +538,6 @@ USA.
 			       (constructor %make-wide-string))
   (contents #f read-only #t))
 
-(define-integrable (guarantee-wide-string object caller)
-  (if (not (wide-string? object))
-      (error:not-wide-string object caller)))
-
-(define (error:not-wide-string object caller)
-  (error:wrong-type-argument object "a Unicode string" caller))
-
 (define (make-wide-string length #!optional char)
   (%make-wide-string
    (make-vector length
@@ -581,6 +574,27 @@ USA.
 
 (define-integrable (%wide-string-set! string index char)
   (vector-set! (wide-string-contents string) index char))
+
+(define (wide-substring string start end)
+  (guarantee-wide-substring string start end 'WIDE-SUBSTRING)
+  (%wide-substring string start end))
+
+(define (%wide-substring string start end)
+  (let ((string* (make-wide-string (fix:- end start))))
+    (let ((v1 (wide-string-contents string))
+	  (v2 (wide-string-contents string*)))
+      (do ((i start (fix:+ i 1))
+	   (j 0 (fix:+ j 1)))
+	  ((not (fix:< i end)))
+	(vector-set! v2 j (vector-ref v1 i))))
+    string*))
+
+(define-integrable (guarantee-wide-string object caller)
+  (if (not (wide-string? object))
+      (error:not-wide-string object caller)))
+
+(define (error:not-wide-string object caller)
+  (error:wrong-type-argument object "a Unicode string" caller))
 
 (define (wide-string-index? index string)
   (and (index-fixnum? index)
@@ -592,48 +606,68 @@ USA.
 
 (define (error:not-wide-string-index index caller)
   (error:wrong-type-argument index "a Unicode string index" caller))
-
-(define (open-wide-output-string)
-  (make-port ws-output-port-type (make-ws-output-state)))
 
+(define-integrable (guarantee-wide-substring string start end caller)
+  (if (not (and (wide-string? string)
+		(index-fixnum? start)
+		(index-fixnum? end)
+		(fix:<= start end)
+		(fix:<= end (%wide-string-length string))))
+      (guarantee-wide-substring/fail string start end caller)))
+
+(define (guarantee-wide-substring/fail string start end caller)
+  (guarantee-wide-string string caller)
+  (guarantee-substring-end-index end (%wide-string-length string) caller)
+  (guarantee-substring-start-index start end caller))
+
 (define (call-with-wide-output-string generator)
   (let ((port (open-wide-output-string)))
     (generator port)
     (get-output-string port)))
 
+(define (open-wide-output-string)
+  (make-port ws-output-port-type
+	     (let ((v (make-vector 17)))
+	       (vector-set! v 0 0)
+	       v)))
+
 (define ws-output-port-type)
-
-(define (make-ws-output-state)
-  (let ((v (make-vector 17)))
-    (vector-set! v 0 0)
-    v))
-
-(define ws-output-operations
-  `((WRITE-CHAR
-     ,(lambda (port char)
-	(guarantee-wide-char char 'WRITE-CHAR)
-	(without-interrupts
-	 (lambda ()
-	   (let* ((v (port/state port))
-		  (n (vector-ref v 0))
-		  (n* (fix:+ n 1))
-		  (v
-		   (if (fix:= (vector-length v) n*)
-		       (vector-grow v (fix:+ n* n))
-		       v)))
-	     (vector-set! v n* char)
-	     (vector-set! v 0 n*))))))
-    (EXTRACT-OUTPUT!
-     ,(lambda (port)
-	(%make-wide-string
-	 (without-interrupts
-	  (lambda ()
-	    (let ((v (port/state port)))
-	      (subvector v 1 (fix:+ (vector-ref v 0) 1))))))))
-    (WRITE-SELF
-     ,(lambda (port port*)
-	port
-	(write-string " to wide string" port*)))))
+(define (initialize-output-port!)
+  (set! ws-output-port-type
+	(make-port-type
+	 `((WRITE-CHAR
+	    ,(lambda (port char)
+	       (guarantee-wide-char char 'WRITE-CHAR)
+	       (without-interrupts
+		(lambda ()
+		  (let* ((v (port/state port))
+			 (n (fix:+ (vector-ref v 0) 1)))
+		    (if (fix:< n (vector-length v))
+			(begin
+			  (vector-set! v n char)
+			  (vector-set! v 0 n))
+			(let ((v
+			       (vector-grow v
+					    (fix:- (fix:* (vector-length v) 2)
+						   1))))
+			  (vector-set! v n char)
+			  (vector-set! v 0 n)
+			  (set-port/state! port v)
+			  v)))))
+	       1))
+	   (EXTRACT-OUTPUT!
+	    ,(lambda (port)
+	       (%make-wide-string
+		(without-interrupts
+		 (lambda ()
+		   (let ((v (port/state port)))
+		     (subvector v 1 (fix:+ (vector-ref v 0) 1))))))))
+	   (WRITE-SELF
+	    ,(lambda (port port*)
+	       port
+	       (write-string " to wide string" port*))))
+	 #f))
+  unspecific)
 
 (define (string->wide-string string #!optional start end)
   (let ((input
@@ -654,62 +688,45 @@ USA.
   (let* ((end
 	  (if (or (default-object? end) (not end))
 	      (wide-string-length string)
-	      (guarantee-substring-end-index end (wide-string-length string)
+	      (guarantee-substring-end-index end (%wide-string-length string)
 					     'OPEN-WIDE-INPUT-STRING)))
 	 (start
 	  (if (or (default-object? start) (not start))
 	      0
 	      (guarantee-substring-start-index start end
 					       'OPEN-WIDE-INPUT-STRING))))
-    (make-port ws-input-port-type (make-ws-input-state string start end))))
+    (make-port ws-input-port-type (make-istate string start end))))
 
 (define ws-input-port-type)
+(define (initialize-input-port!)
+  (set! ws-input-port-type
+	(make-port-type
+	 `((CHAR-READY?
+	    ,(lambda (port)
+	       (let ((s (port/state port)))
+		 (fix:< (istate-start s) (istate-end s)))))
+	   (READ-CHAR
+	    ,(lambda (port)
+	       (let ((s (port/state port)))
+		 (without-interrupts
+		  (lambda ()
+		    (let ((start (istate-start s)))
+		      (if (fix:< start (istate-end s))
+			  (begin
+			    (set-istate-start! s (fix:+ start 1))
+			    (%wide-string-ref (istate-string s) start))
+			  (make-eof-object port))))))))
+	   (WRITE-SELF
+	    ,(lambda (port output-port)
+	       port
+	       (write-string " from wide string" output-port))))
+	 #f))
+  unspecific)
 
-(define-structure (ws-input-state (type vector)
-				  (conc-name ws-input-state/))
+(define-structure (istate (type vector))
   (string #f read-only #t)
   start
   (end #f read-only #t))
-
-(define-integrable (ws-input-port/string port)
-  (ws-input-state/string (port/state port)))
-
-(define-integrable (ws-input-port/start port)
-  (ws-input-state/start (port/state port)))
-
-(define-integrable (set-ws-input-port/start! port index)
-  (set-ws-input-state/start! (port/state port) index))
-
-(define-integrable (ws-input-port/end port)
-  (ws-input-state/end (port/state port)))
-
-(define ws-input-operations
-  `((CHAR-READY?
-     ,(lambda (port interval)
-	interval
-	(fix:< (ws-input-port/start port) (ws-input-port/end port))))
-    (DISCARD-CHAR
-     ,(lambda (port)
-	(set-ws-input-port/start! port (fix:+ (ws-input-port/start port) 1))))
-    (PEEK-CHAR
-     ,(lambda (port)
-	(let ((start (ws-input-port/start port)))
-	  (if (fix:< start (ws-input-port/end port))
-	      (%wide-string-ref (ws-input-port/string port)
-				start)
-	      (make-eof-object port)))))
-    (READ-CHAR
-     ,(lambda (port)
-	(let ((start (ws-input-port/start port)))
-	  (if (fix:< start (ws-input-port/end port))
-	      (begin
-		(set-ws-input-port/start! port (fix:+ start 1))
-		(%wide-string-ref (ws-input-port/string port) start))
-	      (make-eof-object port)))))
-    (WRITE-SELF
-     ,(lambda (port output-port)
-	port
-	(write-string " from wide string" output-port)))))
 
 (define (wide-string->string string #!optional start end)
   (let ((input

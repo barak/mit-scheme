@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: parser-buffer.scm,v 1.10 2003/10/11 04:00:17 cph Exp $
+$Id: parser-buffer.scm,v 1.11 2004/02/16 05:37:34 cph Exp $
 
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -56,26 +56,48 @@ USA.
 ;;; buffer is one that reads from an unbuffered source of unbounded
 ;;; length.
 
-(define (substring->parser-buffer string start end)
+(define (wide-string->parser-buffer string)
+  (guarantee-wide-string string 'WIDE-STRING->PARSER-BUFFER)
+  (make-parser-buffer string 0 (%wide-string-length string) 0 0 #f #t 0))
+
+(define (wide-substring->parser-buffer string start end)
+  (guarantee-wide-substring string start end 'WIDE-SUBSTRING->PARSER-BUFFER)
   (make-parser-buffer string start end 0 start #f #t 0))
 
-(define (source->parser-buffer source)
-  (make-parser-buffer (make-string min-length) 0 0 0 0 source #f 0))
-
-(define-integrable min-length 256)
-
 (define (string->parser-buffer string)
-  (substring->parser-buffer string 0 (string-length string)))
+  (guarantee-string string 'STRING->PARSER-BUFFER)
+  (%substring->parser-buffer string 0 (string-length string)))
+
+(define (substring->parser-buffer string start end)
+  (guarantee-substring string start end 'SUBSTRING->PARSER-BUFFER)
+  (%substring->parser-buffer string start end))
+
+(define (%substring->parser-buffer string start end)
+  (let ((n (fix:- end start)))
+    (let ((s (make-wide-string n)))
+      (let ((v (wide-string-contents s)))
+	(do ((i start (fix:+ i 1))
+	     (j 0 (fix:+ j 1)))
+	    ((not (fix:< i end)))
+	  (vector-set! v j (string-ref string i))))
+      (wide-substring->parser-buffer s 0 n))))
 
 (define (input-port->parser-buffer port)
   (source->parser-buffer
    (lambda (string start end)
-     (read-substring! string start end port))))
+     (port/with-input-blocking-mode port 'BLOCKING
+       (lambda ()
+	 (input-port/read-substring! port string start end))))))
 
+(define (source->parser-buffer source)
+  (make-parser-buffer (make-wide-string min-length) 0 0 0 0 source #f 0))
+
+(define-integrable min-length 256)
+
 (define-structure parser-buffer-pointer
   (index #f read-only #t)
   (line #f read-only #t))
-
+
 (define (get-parser-buffer-pointer buffer)
   ;; Get an object that represents the current position.
   (make-parser-buffer-pointer (+ (parser-buffer-base-offset buffer)
@@ -90,7 +112,7 @@ USA.
   (set-parser-buffer-line! buffer (parser-buffer-pointer-line p)))
 
 (define (get-parser-buffer-tail buffer p)
-  (call-with-parser-buffer-tail buffer p substring))
+  (call-with-parser-buffer-tail buffer p wide-substring))
 
 (define (call-with-parser-buffer-tail buffer p procedure)
   ;; P must be a buffer pointer previously returned by
@@ -128,8 +150,8 @@ USA.
   ;; characters available, return #F and leave the position unchanged.
   (and (guarantee-buffer-chars buffer 1)
        (let ((char
-	      (string-ref (parser-buffer-string buffer)
-			  (parser-buffer-index buffer))))
+	      (%wide-string-ref (parser-buffer-string buffer)
+				(parser-buffer-index buffer))))
 	 (increment-buffer-index! buffer char)
 	 char)))
 
@@ -138,126 +160,168 @@ USA.
   ;; current position.  If there is a character available, return it,
   ;; otherwise return #F.  The position is unaffected in either case.
   (and (guarantee-buffer-chars buffer 1)
-       (string-ref (parser-buffer-string buffer)
-		   (parser-buffer-index buffer))))
+       (%wide-string-ref (parser-buffer-string buffer)
+			 (parser-buffer-index buffer))))
 
 (define (parser-buffer-ref buffer index)
   (if (not (index-fixnum? index))
       (error:wrong-type-argument index "index" 'PARSER-BUFFER-REF))
   (and (guarantee-buffer-chars buffer (fix:+ index 1))
-       (string-ref (parser-buffer-string buffer)
-		   (fix:+ (parser-buffer-index buffer) index))))
+       (%wide-string-ref (parser-buffer-string buffer)
+			 (fix:+ (parser-buffer-index buffer) index))))
 
-(define-syntax char-matcher
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((name (cadr form))
-	   (test
-	    (make-syntactic-closure environment '(REFERENCE CHAR)
-	      (caddr form))))
-       `(BEGIN
-	  (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name '-NO-ADVANCE)
-		   BUFFER REFERENCE)
-	    (AND (GUARANTEE-BUFFER-CHARS BUFFER 1)
-		 (LET ((CHAR
-			(STRING-REF (PARSER-BUFFER-STRING BUFFER)
-				    (PARSER-BUFFER-INDEX BUFFER))))
-		   (DECLARE (INTEGRATE CHAR))
-		   ,test)))
-	  (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name)
-		   BUFFER REFERENCE)
-	    (AND (GUARANTEE-BUFFER-CHARS BUFFER 1)
-		 (LET ((CHAR
-			(STRING-REF (PARSER-BUFFER-STRING BUFFER)
-				    (PARSER-BUFFER-INDEX BUFFER))))
-		   (AND ,test
-			(BEGIN
-			  (INCREMENT-BUFFER-INDEX! BUFFER CHAR)
-			  #T))))))))))
+(define (match-parser-buffer-char buffer char)
+  (match-char buffer char char=?))
 
-(char-matcher char (char=? char reference))
-(char-matcher char-ci (char-ci=? char reference))
-(char-matcher not-char (not (char=? char reference)))
-(char-matcher not-char-ci (not (char-ci=? char reference)))
-(char-matcher char-in-set (char-set-member? reference char))
+(define (match-parser-buffer-not-char buffer char)
+  (match-char-not buffer char char=?))
 
-(define (match-utf8-char-in-alphabet buffer alphabet)
-  (let ((p (get-parser-buffer-pointer buffer)))
-    (if (let ((char
-	       (read-utf8-char-from-source
-		(lambda ()
-		  (let ((char (read-parser-buffer-char buffer)))
-		    (and char
-			 (char->integer char)))))))
-	  (and (not (eof-object? char))
-	       (char-in-alphabet? char alphabet)))
-	#t
-	(begin
-	  (set-parser-buffer-pointer! buffer p)
-	  #f))))
+(define (match-parser-buffer-char-no-advance buffer char)
+  (match-char-no-advance buffer char char=?))
+
+(define (match-parser-buffer-not-char-no-advance buffer char)
+  (match-char-not-no-advance buffer char char=?))
+
+(define (match-parser-buffer-char-ci buffer char)
+  (match-char buffer char char-ci=?))
+
+(define (match-parser-buffer-not-char-ci buffer char)
+  (match-char-not buffer char char-ci=?))
+
+(define (match-parser-buffer-char-ci-no-advance buffer char)
+  (match-char-no-advance buffer char char-ci=?))
+
+(define (match-parser-buffer-not-char-ci-no-advance buffer char)
+  (match-char-not-no-advance buffer char char-ci=?))
+
+(define (match-parser-buffer-char-in-set buffer set)
+  (match-char buffer set char-in-set?))
+
+(define (match-parser-buffer-char-not-in-set buffer set)
+  (match-char-not buffer set char-in-set?))
+
+(define (match-parser-buffer-char-in-set-no-advance buffer set)
+  (match-char-no-advance buffer set char-in-set?))
+
+(define (match-parser-buffer-char-not-in-set-no-advance buffer set)
+  (match-char-not-no-advance buffer set char-in-set?))
+
+(define-integrable (char-in-set? char set)
+  (char-set-member? set char))
+
+(define (match-parser-buffer-char-in-alphabet buffer alphabet)
+  (match-char buffer alphabet char-in-alphabet?))
+
+(define (match-parser-buffer-char-not-in-alphabet buffer alphabet)
+  (match-char-not buffer alphabet char-in-alphabet?))
+
+(define (match-parser-buffer-char-in-alphabet-no-advance buffer alphabet)
+  (match-char-no-advance buffer alphabet char-in-alphabet?))
+
+(define (match-parser-buffer-char-not-in-alphabet-no-advance buffer alphabet)
+  (match-char-not-no-advance buffer alphabet char-in-alphabet?))
+
+(define-integrable (match-char buffer reference compare)
+  (and (guarantee-buffer-chars buffer 1)
+       (let ((char
+	      (%wide-string-ref (parser-buffer-string buffer)
+				(parser-buffer-index buffer))))
+	 (and (compare char reference)
+	      (begin
+		(increment-buffer-index! buffer char)
+		#t)))))
+
+(define-integrable (match-char-no-advance buffer reference compare)
+  (and (guarantee-buffer-chars buffer 1)
+       (compare (%wide-string-ref (parser-buffer-string buffer)
+				  (parser-buffer-index buffer))
+		reference)))
+
+(define-integrable (match-char-not buffer reference compare)
+  (match-char buffer reference
+	      (lambda (c1 c2)
+		(declare (integrate c1 c2))
+		(not (compare c1 c2)))))
+
+(define-integrable (match-char-not-no-advance buffer reference compare)
+  (match-char-no-advance buffer reference
+			 (lambda (c1 c2)
+			   (declare (integrate c1 c2))
+			   (not (compare c1 c2)))))
 
-(define-syntax string-matcher
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((suffix (cadr form)))
-       `(DEFINE (,(intern
-		   (string-append "match-parser-buffer-string" suffix))
-		 BUFFER STRING)
-	  (,(close-syntax
-	     (intern
-	      (string-append "match-parser-buffer-substring" suffix))
-	     environment)
-	   BUFFER STRING 0 (STRING-LENGTH STRING)))))))
+(define (match-parser-buffer-string buffer string)
+  (match-string buffer string match-substring-loop char=?))
 
-(string-matcher "")
-(string-matcher "-ci")
-(string-matcher "-no-advance")
-(string-matcher "-ci-no-advance")
+(define (match-parser-buffer-string-ci buffer string)
+  (match-string buffer string match-substring-loop char-ci=?))
 
-(define-syntax substring-matcher
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((suffix (cadr form)))
-       `(DEFINE (,(intern
-		   (string-append "match-parser-buffer-substring" suffix))
-		 BUFFER STRING START END)
-	  (LET ((N (FIX:- END START)))
-	    (AND (GUARANTEE-BUFFER-CHARS BUFFER N)
-		 (,(close-syntax
-		    (intern (string-append "substring" suffix "=?"))
-		    environment)
-		  STRING START END
-		  (PARSER-BUFFER-STRING BUFFER)
-		  (PARSER-BUFFER-INDEX BUFFER)
-		  (FIX:+ (PARSER-BUFFER-INDEX BUFFER) N))
-		 (BEGIN
-		   (BUFFER-INDEX+N! BUFFER N)
-		   #T))))))))
+(define (match-parser-buffer-string-no-advance buffer string)
+  (match-string buffer string match-substring-loop-na char=?))
 
-(substring-matcher "")
-(substring-matcher "-ci")
+(define (match-parser-buffer-string-ci-no-advance buffer string)
+  (match-string buffer string match-substring-loop-na char-ci=?))
 
-(define-syntax substring-matcher-no-advance
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((suffix (cadr form)))
-       `(DEFINE (,(intern
-		   (string-append "match-parser-buffer-substring"
-				  suffix
-				  "-no-advance"))
-		 BUFFER STRING START END)
-	  (LET ((N (FIX:- END START)))
-	    (AND (GUARANTEE-BUFFER-CHARS BUFFER N)
-		 (,(close-syntax
-		    (intern (string-append "substring" suffix "=?"))
-		    environment)
-		  STRING START END
-		  (PARSER-BUFFER-STRING BUFFER)
-		  (PARSER-BUFFER-INDEX BUFFER)
-		  (FIX:+ (PARSER-BUFFER-INDEX BUFFER) N)))))))))
+(define-integrable (match-string buffer string loop compare)
+  (cond ((wide-string? string)
+	 (let ((v (wide-string-contents string)))
+	   (let ((n (vector-length v)))
+	     (loop buffer v 0 n compare vector-ref))))
+	((string? string)
+	 (let ((n (string-length string)))
+	   (loop buffer string 0 n compare string-ref)))
+	(else
+	 (error:wrong-type-argument string "string" #f))))
 
-(substring-matcher-no-advance "")
-(substring-matcher-no-advance "-ci")
+(define (match-parser-buffer-substring buffer string start end)
+  (match-substring buffer string start end match-substring-loop char=?))
+
+(define (match-parser-buffer-substring-ci buffer string start end)
+  (match-substring buffer string start end match-substring-loop char-ci=?))
+
+(define (match-parser-buffer-substring-no-advance buffer string start end)
+  (match-substring buffer string start end match-substring-loop-na char=?))
+
+(define (match-parser-buffer-substring-ci-no-advance buffer string start end)
+  (match-substring buffer string start end match-substring-loop-na char-ci=?))
+
+(define-integrable (match-substring buffer string start end loop compare)
+  (cond ((wide-string? string)
+	 (let ((v (wide-string-contents string)))
+	   (loop buffer v start end compare vector-ref)))
+	((string? string)
+	 (loop buffer string start end compare string-ref))
+	(else
+	 (error:wrong-type-argument string "string" #f))))
+
+(define-integrable (match-substring-loop buffer string start end
+					 compare extract)
+  (and (guarantee-buffer-chars buffer (fix:- end start))
+       (let ((bv (wide-string-contents (parser-buffer-string buffer))))
+	 (let loop
+	     ((i start)
+	      (bi (parser-buffer-index buffer))
+	      (bl (parser-buffer-line buffer)))
+	   (if (fix:< i end)
+	       (and (compare (extract string i) (vector-ref bv bi))
+		    (loop (fix:+ i 1)
+			  (fix:+ bi 1)
+			  (if (char=? (vector-ref bv bi) #\newline)
+			      (fix:+ bl 1)
+			      bl)))
+	       (begin
+		 (set-parser-buffer-index! buffer bi)
+		 (set-parser-buffer-line! buffer bl)
+		 #t))))))
+
+(define-integrable (match-substring-loop-na buffer string start end
+					    compare extract)
+  (and (guarantee-buffer-chars buffer (fix:- end start))
+       (let ((bv (wide-string-contents (parser-buffer-string buffer))))
+	 (let loop ((i start) (bi (parser-buffer-index buffer)))
+	   (if (fix:< i end)
+	       (and (compare (extract string i) (vector-ref bv bi))
+		    (loop (fix:+ i 1) (fix:+ bi 1)))
+	       #t)))))
 
 (define-integrable (increment-buffer-index! buffer char)
   (set-parser-buffer-index! buffer (fix:+ (parser-buffer-index buffer) 1))
@@ -266,13 +330,13 @@ USA.
 
 (define (buffer-index+n! buffer n)
   (let ((i (parser-buffer-index buffer))
-	(s (parser-buffer-string buffer)))
+	(v (wide-string-contents (parser-buffer-string buffer))))
     (let ((j (fix:+ i n)))
-      (do ((i i (fix:+ i 1)))
-	  ((fix:= i j))
-	(if (char=? (string-ref s i) #\newline)
-	    (set-parser-buffer-line! buffer
-				     (fix:+ (parser-buffer-line buffer) 1))))
+      (let loop ((i i) (n (parser-buffer-line buffer)))
+	(if (fix:< i j)
+	    (loop (fix:+ i 1)
+		  (if (char=? (vector-ref v i) #\newline) (fix:+ n 1) n))
+	    (set-parser-buffer-line! buffer n)))
       (set-parser-buffer-index! buffer j))))
 
 (define-integrable (guarantee-buffer-chars buffer n)
@@ -286,20 +350,24 @@ USA.
     (and (not (parser-buffer-at-end? buffer))
 	 (begin
 	   (let* ((string (parser-buffer-string buffer))
-		  (max-end (string-length string))
+		  (v1 (wide-string-contents string))
+		  (max-end (vector-length v1))
 		  (max-end*
 		   (let loop ((max-end* max-end))
 		     (if (fix:<= min-end max-end*)
 			 max-end*
 			 (loop (fix:* max-end* 2))))))
 	     (if (fix:> max-end* max-end)
-		 (let ((string* (make-string max-end*)))
-		   (string-move! string string* 0)
+		 (let ((string* (make-wide-string max-end*)))
+		   (let ((v2 (wide-string-contents string*)))
+		     (do ((i 0 (fix:+ i 1)))
+			 ((not (fix:< i end)))
+		       (vector-set! v2 i (vector-ref v1 i))))
 		   (set-parser-buffer-string! buffer string*))))
 	   (let ((n-read
 		  (let ((string (parser-buffer-string buffer)))
 		    ((parser-buffer-source buffer)
-		     string end (string-length string)))))
+		     string end (%wide-string-length string)))))
 	     (if (fix:> n-read 0)
 		 (let ((end (fix:+ end n-read)))
 		   (set-parser-buffer-end! buffer end)
@@ -318,14 +386,15 @@ USA.
 	(if (fix:< 0 index)
 	    (let* ((end* (fix:- end index))
 		   (string*
-		    (let ((n (string-length string)))
+		    (let ((n (%wide-string-length string)))
 		      (if (and (fix:> n min-length)
 			       (fix:<= end* (fix:quotient n 4)))
-			  (make-string (fix:quotient n 2))
+			  (make-wide-string (fix:quotient n 2))
 			  string))))
 	      (without-interrupts
 	       (lambda ()
-		 (substring-move! string index end string* 0)
+		 (subvector-move-left! (wide-string-contents string) index end
+				       (wide-string-contents string*) 0)
 		 (set-parser-buffer-string! buffer string*)
 		 (set-parser-buffer-index! buffer 0)
 		 (set-parser-buffer-end! buffer end*)

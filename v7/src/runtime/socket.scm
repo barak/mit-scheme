@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.24 2003/07/09 22:28:18 cph Exp $
+$Id: socket.scm,v 1.25 2004/02/16 05:38:23 cph Exp $
 
 Copyright 1996,1997,1998,1999,2001,2002 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,24 +29,13 @@ USA.
 
 (declare (usual-integrations))
 
-(define (open-tcp-stream-socket host-name service
-				#!optional buffer-size line-translation)
-  (socket-port (open-tcp-stream-socket-channel host-name service)
-	       (if (default-object? buffer-size) #f buffer-size)
-	       (if (default-object? line-translation) #f line-translation)))
+(define (open-tcp-stream-socket host-name service)
+  (let ((channel (open-tcp-stream-socket-channel host-name service)))
+    (make-generic-i/o-port channel channel)))
 
-(define (open-unix-stream-socket filename
-				#!optional buffer-size line-translation)
-  (socket-port (open-unix-stream-socket-channel filename)
-	       (if (default-object? buffer-size) #f buffer-size)
-	       (if (default-object? line-translation) #f line-translation)))
-
-(define (socket-port channel buffer-size line-translation)
-  (let ((buffer-size (or buffer-size 4096))
-	(line-translation (or line-translation 'DEFAULT)))
-    (make-generic-i/o-port channel channel
-			   buffer-size buffer-size
-			   line-translation line-translation)))
+(define (open-unix-stream-socket filename)
+  (let ((channel (open-unix-stream-socket-channel filename)))
+    (make-generic-i/o-port channel channel)))
 
 (define (open-tcp-stream-socket-channel host-name service)
   (let ((host (vector-ref (get-host-by-name host-name) 0))
@@ -98,8 +87,7 @@ USA.
 (define (close-tcp-server-socket server-socket)
   (channel-close server-socket))
 
-(define (tcp-server-connection-accept server-socket block? peer-address
-				      #!optional line-translation)
+(define (tcp-server-connection-accept server-socket block? peer-address)
   (let ((channel
 	 (with-thread-events-blocked
 	   (lambda ()
@@ -128,13 +116,7 @@ USA.
 		   (let loop () (do-test loop))
 		   (do-test (lambda () #f))))))))
     (and channel
-	 (let ((line-translation
-		(if (or (default-object? line-translation)
-			(not line-translation))
-		    'DEFAULT
-		    line-translation)))
-	   (make-generic-i/o-port channel channel 4096 4096
-				  line-translation line-translation)))))
+	 (make-generic-i/o-port channel channel))))
 
 (define (get-host-by-name host-name)
   (with-thread-timer-stopped

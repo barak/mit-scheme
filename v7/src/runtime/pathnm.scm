@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.36 2003/02/14 18:28:33 cph Exp $
+$Id: pathnm.scm,v 14.37 2004/02/16 05:37:40 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -144,12 +146,6 @@ these rules:
 
 (define (pathname-version pathname)
   (%pathname-version (->pathname pathname)))
-
-(define (pathname-end-of-line-string pathname)
-  (let ((pathname (->pathname pathname)))
-    ((host-type/operation/end-of-line-string
-      (host/type (%pathname-host pathname)))
-     pathname)))
 
 (define (pathname=? x y)
   (let ((x (->pathname x))
@@ -458,8 +454,7 @@ these rules:
   (operation/pathname->truename #f read-only #t)
   (operation/user-homedir-pathname #f read-only #t)
   (operation/init-file-pathname #f read-only #t)
-  (operation/pathname-simplify #f read-only #t)
-  (operation/end-of-line-string #f read-only #t))
+  (operation/pathname-simplify #f read-only #t))
 
 (define-structure (host (type vector)
 			(named ((ucode-primitive string->symbol)
@@ -596,7 +591,7 @@ these rules:
 	   (lambda arguments
 	     (error "Unimplemented host type:" name arguments))))
       (make-host-type index name fail fail fail fail fail fail fail fail fail
-		      fail fail fail fail fail))))
+		      fail fail fail fail))))
 
 (define (reset-package!)
   (let ((host-type (host-name->type microcode-id/operating-system))

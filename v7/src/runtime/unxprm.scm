@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.65 2003/02/14 18:28:34 cph Exp $
+$Id: unxprm.scm,v 1.66 2004/02/16 05:39:29 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2003 Massachusetts Institute of Technology
+Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -258,7 +258,7 @@ USA.
        (set! ti-outside)
        unspecific))))
 
-(define (os/file-end-of-line-translation pathname)
+(define (file-line-ending pathname)
   ;; This works because the line translation is harmless when not
   ;; needed.  We can't tell when it is needed, because FAT and HPFS
   ;; filesystems can be mounted with automatic translation (in the
@@ -276,11 +276,11 @@ USA.
 	    (string-ci=? "iso9660" type)
 	    (string-ci=? "ntfs" type)
 	    (string-ci=? "smb" type))
-	"\r\n"
-	#f)))
+	'CRLF
+	'LF)))
 
-(define (os/default-end-of-line-translation)
-  #f)
+(define (default-line-ending)
+  'LF)
 
 (define (copy-file from to)
   (let ((input-filename (->namestring (merge-pathnames from)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.61 2003/03/21 17:51:03 cph Exp $
+$Id: rep.scm,v 14.62 2004/02/16 05:38:05 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1998,1999,2001 Massachusetts Institute of Technology
@@ -82,12 +82,7 @@ USA.
       (error:bad-range-argument port 'MAKE-CMDL))
   (%make-cmdl (if parent (+ (cmdl/level parent) 1) 1)
 	      parent
-	      (let ((port* (and parent (cmdl/child-port parent))))
-		(if port
-		    (if (eq? port port*)
-			port
-			(make-transcriptable-port port))
-		    port*))
+	      (or port (and parent (cmdl/child-port parent)))
 	      driver
 	      state
 	      (parse-operations-list operations 'MAKE-CMDL)

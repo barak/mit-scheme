@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: unxpth.scm,v 14.28 2003/02/14 18:28:34 cph Exp $
+$Id: unxpth.scm,v 14.29 2004/02/16 05:39:37 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1991,1994,1995 Massachusetts Institute of Technology
+Copyright 1996,1997,2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,8 +44,7 @@ USA.
 		  unix/pathname->truename
 		  unix/user-homedir-pathname
 		  unix/init-file-pathname
-		  unix/pathname-simplify
-		  unix/end-of-line-string))
+		  unix/pathname-simplify))
 
 (define (initialize-package!)
   (add-pathname-host-type! 'UNIX make-unix-host-type))
@@ -343,6 +343,3 @@ USA.
 				 (->namestring pathname*))
 				pathname*)))))))
       pathname))
-
-(define (unix/end-of-line-string pathname)
-  (or (os/file-end-of-line-translation pathname) "\n"))

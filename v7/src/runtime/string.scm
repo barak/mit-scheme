@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.54 2003/11/10 21:46:27 cph Exp $
+$Id: string.scm,v 14.55 2004/02/16 05:38:29 cph Exp $
 
 Copyright 1986,1987,1988,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -152,6 +152,8 @@ USA.
 	  (begin
 	    (if (not (char? (car chars)))
 		(error:wrong-type-datum (car chars) "character"))
+	    (if (not (fix:< (char->integer (car chars)) #x100))
+		(error:not-8-bit-char (car chars)))
 	    (string-set! result index (car chars))
 	    (loop (cdr chars) (fix:+ index 1)))
 	  result))))

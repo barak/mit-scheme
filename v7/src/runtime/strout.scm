@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.18 2003/02/14 18:28:34 cph Exp $
+$Id: strout.scm,v 14.19 2004/02/16 05:38:49 cph Exp $
 
 Copyright 1988,1990,1993,1999,2000,2001 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,74 +30,74 @@ USA.
 (declare (usual-integrations))
 
 (define (open-output-string)
-  (make-port accumulator-output-port-type
-	     (make-accumulator-state (make-string 16) 0)))
+  (make-port accumulator-output-port-type (make-astate (make-string 128) 0)))
 
 (define (get-output-string port)
   ((port/operation port 'EXTRACT-OUTPUT!) port))
-
-(define (with-output-to-string thunk)
-  (call-with-output-string (lambda (port) (with-output-to-port port thunk))))
 
 (define (call-with-output-string generator)
   (let ((port (open-output-string)))
     (generator port)
     (get-output-string port)))
 
+(define (with-output-to-string thunk)
+  (call-with-output-string
+    (lambda (port)
+      (with-output-to-port port thunk))))
+
 (define accumulator-output-port-type)
 (define (initialize-package!)
   (set! accumulator-output-port-type
-	(make-port-type `((WRITE-SELF ,operation/write-self)
-			  (WRITE-CHAR ,operation/write-char)
-			  (WRITE-SUBSTRING ,operation/write-substring)
-			  (EXTRACT-OUTPUT! ,operation/extract-output!))
-			#f))
+	(make-port-type
+	 `((EXTRACT-OUTPUT!
+	    ,(lambda (port)
+	       (let ((state (port/state port)))
+		 (without-interrupts
+		  (lambda ()
+		    (let ((s (astate-chars state))
+			  (n (astate-index state)))
+		      (set-astate-chars! state (make-string 128))
+		      (set-astate-index! state 0)
+		      (set-string-maximum-length! s n)
+		      s))))))
+	   (WRITE-CHAR
+	    ,(lambda (port char)
+	       (guarantee-8-bit-char char)
+	       (let ((state (port/state port)))
+		 (without-interrupts
+		  (lambda ()
+		    (let* ((n (astate-index state))
+			   (n* (fix:+ n 1)))
+		      (if (fix:> n* (string-length (astate-chars state)))
+			  (grow-accumulator! state n*))
+		      (string-set! (astate-chars state) n char)
+		      (set-astate-index! state n*)))))
+	       1))
+	   (WRITE-SELF
+	    ,(lambda (port output-port)
+	       port
+	       (write-string " to string" output-port)))
+	   (WRITE-SUBSTRING
+	    ,(lambda (port string start end)
+	       (let ((state (port/state port)))
+		 (without-interrupts
+		  (lambda ()
+		    (let* ((n (astate-index state))
+			   (n* (fix:+ n (fix:- end start))))
+		      (if (fix:> n* (string-length (astate-chars state)))
+			  (grow-accumulator! state n*))
+		      (substring-move! string start end (astate-chars state) n)
+		      (set-astate-index! state n*)))))
+	       (fix:- end start))))
+	 #f))
   unspecific)
 
-(define (operation/write-self port output-port)
-  port
-  (write-string " to string" output-port))
-
-(define (operation/write-char port char)
-  (without-interrupts
-   (lambda ()
-     (let* ((state (port/state port))
-	    (n (accumulator-state-counter state))
-	    (n* (fix:+ n 1)))
-       (if (fix:= n (string-length (accumulator-state-accumulator state)))
-	   (grow-accumulator! state n*))
-       (string-set! (accumulator-state-accumulator state) n char)
-       (set-accumulator-state-counter! state n*)))))
-
-(define (operation/write-substring port string start end)
-  (without-interrupts
-   (lambda ()
-     (let* ((state (port/state port))
-	    (n (accumulator-state-counter state))
-	    (n* (fix:+ n (fix:- end start))))
-       (if (fix:> n* (string-length (accumulator-state-accumulator state)))
-	   (grow-accumulator! state n*))
-       (substring-move! string start end
-			(accumulator-state-accumulator state) n)
-       (set-accumulator-state-counter! state n*)))))
-
-(define (operation/extract-output! port)
-  (without-interrupts
-   (lambda ()
-     (let ((state (port/state port)))
-       (let ((s (accumulator-state-accumulator state))
-	     (n (accumulator-state-counter state)))
-	 (set-accumulator-state-accumulator! state (make-string 16))
-	 (set-accumulator-state-counter! state 0)
-	 (set-string-maximum-length! s n)
-	 s)))))
-
-(define-structure (accumulator-state (type vector))
-  accumulator
-  counter)
+(define-structure (astate (type vector))
+  chars
+  index)
 
 (define (grow-accumulator! state min-size)
-  (let* ((old (accumulator-state-accumulator state))
+  (let* ((old (astate-chars state))
 	 (n (string-length old))
 	 (new
 	  (make-string
@@ -106,4 +106,4 @@ USA.
 		 n
 		 (loop (fix:+ n n)))))))
     (substring-move! old 0 n new 0)
-    (set-accumulator-state-accumulator! state new)))
+    (set-astate-chars! state new)))

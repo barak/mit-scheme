@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.64 2003/10/10 17:35:42 cph Exp $
+$Id: error.scm,v 14.65 2004/02/16 05:36:11 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -684,6 +684,7 @@ USA.
 (define condition-type:illegal-pathname-component)
 (define condition-type:macro-binding)
 (define condition-type:no-such-restart)
+(define condition-type:not-8-bit-char)
 (define condition-type:port-error)
 (define condition-type:serious-condition)
 (define condition-type:simple-condition)
@@ -711,6 +712,7 @@ USA.
 (define error:derived-thread)
 (define error:illegal-pathname-component)
 (define error:macro-binding)
+(define error:not-8-bit-char)
 (define error:unassigned-variable)
 (define error:unbound-variable)
 (define error:wrong-number-of-arguments)
@@ -1102,6 +1104,13 @@ USA.
 	      condition-type:arithmetic-error
 	      '()
 	    (arithmetic-error-report "Floating-point underflow"))))
+
+  (set! condition-type:not-8-bit-char
+	(make-condition-type 'NOT-8-BIT-CHAR condition-type:error '(CHAR)
+	  (lambda (condition port)
+	    (write-string "Character too large for 8-bit string: " port)
+	    (write (access-condition condition 'CHAR) port)
+	    (newline port))))
 
   (set! make-simple-error
 	(condition-constructor condition-type:simple-error
@@ -1154,7 +1163,10 @@ USA.
 	(condition-signaller condition-type:macro-binding
 			     '(ENVIRONMENT LOCATION)
 			     standard-error-handler))
-
+  (set! error:not-8-bit-char
+	(condition-signaller condition-type:not-8-bit-char
+			     '(CHAR)
+			     standard-error-handler))
   unspecific)
 
 ;;;; Utilities

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.49 2004/01/19 05:06:17 cph Exp $
+$Id: parse.scm,v 14.50 2004/02/16 05:37:27 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -36,13 +36,9 @@ USA.
 (define ignore-extra-list-closes #t)
 
 (define (parse-object port table)
-  (guarantee-input-port port 'PARSE-OBJECT)
-  (guarantee-parser-table table 'PARSE-OBJECT)
   ((top-level-parser port) port table))
 
 (define (parse-objects port table last-object?)
-  (guarantee-input-port port 'PARSE-OBJECTS)
-  (guarantee-parser-table table 'PARSE-OBJECTS)
   (let ((parser (top-level-parser port)))
     (let loop ()
       (let ((object (parser port table)))
@@ -348,7 +344,7 @@ USA.
   (cond ((eq? ctx 'CLOSE-PAREN-OK)
 	 close-parenthesis)
 	((and (eq? ctx 'TOP-LEVEL)
-	      (eq? (base-port port) (base-port console-input-port))
+	      (console-i/o-port? port)
 	      ignore-extra-list-closes)
 	 continue-parsing)
 	(else
@@ -580,14 +576,8 @@ USA.
 (define (position-operation port)
   (let ((default (lambda (port) port #f)))
     (if *parser-associate-positions?*
-	(or (input-port/operation port 'POSITION)
-	    (let ((remaining (input-port/operation port 'CHARS-REMAINING))
-		  (length (input-port/operation port 'LENGTH)))
-	      (if (and remaining length)
-		  (let ((n-chars (length port)))
-		    (lambda (port)
-		      (- n-chars (remaining port))))
-		  default)))
+	(or (port/operation port 'POSITION)
+	    default)
 	default)))
 
 (define-integrable (current-position port db)

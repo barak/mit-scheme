@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.46 2003/02/14 18:28:32 cph Exp $
+$Id: dosprm.scm,v 1.47 2004/02/16 05:35:53 cph Exp $
 
 Copyright 1992,1993,1994,1995,1996,1998 Massachusetts Institute of Technology
-Copyright 1999,2000,2003 Massachusetts Institute of Technology
+Copyright 1999,2000,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -281,12 +281,12 @@ USA.
   ((ucode-primitive directory-delete 1)
    (->namestring (directory-pathname-as-file (merge-pathnames name)))))
 
-(define (os/file-end-of-line-translation pathname)
+(define (file-line-ending pathname)
   pathname
-  "\r\n")
+  'CRLF)
 
-(define (os/default-end-of-line-translation)
-  "\r\n")
+(define (default-line-ending)
+  'CRLF)
 
 (define (initialize-system-primitives!)
   (let ((reset!
