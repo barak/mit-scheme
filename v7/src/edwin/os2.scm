@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.14 1995/05/02 21:18:40 cph Exp $
+;;;	$Id: os2.scm,v 1.15 1995/05/04 07:06:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -357,15 +357,72 @@ Includes the new backup.  Must be > 0."
 
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname (fix:andc (file-modes pathname) #x0001)))
+
+;;;; OS/2 Clipboard Interface
 
 (define (os/interprogram-cut string push?)
   push?
   (os2-clipboard-write-text
-   ;; Some programs can't handle strings over 64k.
-   (if (fix:< (string-length string) #x10000) string "")))
+   (let ((string (convert-newline-to-crlf string)))
+     ;; Some programs can't handle strings over 64k.
+     (if (fix:< (string-length string) #x10000) string ""))))
 
-(define os/interprogram-paste
-  os2-clipboard-read-text)
+(define (os/interprogram-paste)
+  (convert-crlf-to-newline (os2-clipboard-read-text)))
+
+(define (convert-newline-to-crlf string)
+  (let ((end (string-length string)))
+    (let ((n-newlines
+	   (let loop ((start 0) (n-newlines 0))
+	     (let ((newline
+		    (substring-find-next-char string start end #\newline)))
+	       (if newline
+		   (loop (fix:+ newline 1) (fix:+ n-newlines 1))
+		   n-newlines)))))
+      (if (fix:= n-newlines 0)
+	  string
+	  (let ((copy (make-string (fix:+ end n-newlines))))
+	    (let loop ((start 0) (cindex 0))
+	      (let ((newline
+		     (substring-find-next-char string start end #\newline)))
+		(if newline
+		    (begin
+		      (%substring-move! string start newline copy cindex)
+		      (let ((cindex (fix:+ cindex (fix:- newline start))))
+			(string-set! copy cindex #\return)
+			(string-set! copy (fix:+ cindex 1) #\newline)
+			(loop (fix:+ newline 1) (fix:+ cindex 2))))
+		    (%substring-move! string start end copy cindex))))
+	    copy)))))
+
+(define (convert-crlf-to-newline string)
+  (let ((end (string-length string)))
+    (let ((n-crlfs
+	   (let loop ((start 0) (n-crlfs 0))
+	     (let ((cr
+		    (substring-find-next-char string start end #\return)))
+	       (if (and cr
+			(not (fix:= (fix:+ cr 1) end))
+			(char=? (string-ref string (fix:+ cr 1)) #\linefeed))
+		   (loop (fix:+ cr 2) (fix:+ n-crlfs 1))
+		   n-crlfs)))))
+      (if (fix:= n-crlfs 0)
+	  string
+	  (let ((copy (make-string (fix:- end n-crlfs))))
+	    (let loop ((start 0) (cindex 0))
+	      (let ((cr
+		     (substring-find-next-char string start end #\return)))
+		(if (not cr)
+		    (%substring-move! string start end copy cindex)
+		    (let ((cr
+			   (if (and (not (fix:= (fix:+ cr 1) end))
+				    (char=? (string-ref string (fix:+ cr 1))
+					    #\linefeed))
+			       cr
+			       (fix:+ cr 1))))
+		      (%substring-move! string start cr copy cindex)
+		      (loop (fix:+ cr 1) (fix:+ cindex (fix:- cr start)))))))
+	    copy)))))
 
 ;;;; Dired customization
 
