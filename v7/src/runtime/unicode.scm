@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.7 2003/03/01 05:38:22 cph Exp $
+$Id: unicode.scm,v 1.8 2003/03/07 21:24:45 cph Exp $
 
 Copyright 2001,2003 Massachusetts Institute of Technology
 
@@ -154,7 +154,7 @@ USA.
 
 ;;;; Alphabets
 
-(define-structure (alphabet (type-descriptor alphabet-rtd))
+(define-structure (alphabet (type-descriptor <alphabet>))
   (low #f read-only #t)
   (high1 #f read-only #t)
   (high2 #f read-only #t))
@@ -515,7 +515,7 @@ USA.
 
 ;;;; Unicode strings
 
-(define-structure (wide-string (type-descriptor wide-string-rtd)
+(define-structure (wide-string (type-descriptor <wide-string>)
 			       (constructor %make-wide-string))
   (contents #f read-only #t))
 

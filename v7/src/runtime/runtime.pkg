@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.433 2003/03/07 21:19:39 cph Exp $
+$Id: runtime.pkg,v 14.434 2003/03/07 21:23:46 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -4489,6 +4489,8 @@ USA.
   (files "unicode")
   (parent (runtime))
   (export ()
+	  <alphabet>
+	  <wide-string>
 	  8-bit-alphabet?
 	  alphabet
 	  alphabet+
@@ -4496,7 +4498,6 @@ USA.
 	  alphabet->char-set
 	  alphabet->code-points
 	  alphabet->string
-	  alphabet-rtd
 	  alphabet?
 	  call-with-wide-output-string
 	  char-in-alphabet?
@@ -4538,7 +4539,6 @@ USA.
 	  wide-string-index?
 	  wide-string-length
 	  wide-string-ref
-	  wide-string-rtd
 	  wide-string-set!
 	  wide-string?
 	  write-utf16-be-char
