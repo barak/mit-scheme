@@ -37,6 +37,8 @@
 
 ;;;; RTL Rules for 68020
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.139 1986/12/15 05:48:37 cph Exp $
+
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
 
@@ -114,10 +116,10 @@
 	(else
 	 `(MOVE L (& ,datum) ,target))))
 
-(define (test-type type expression)
-  (if (and (zero? type) (TSTable-expression? expression))
+(define (test-byte n expression)
+  (if (and (zero? n) (TSTable-expression? expression))
       `(TST B ,expression)
-      `(CMP B (& ,type) ,expression)))
+      `(CMP B (& ,n) ,expression)))
 
 (define (test-non-pointer type datum expression)
   (if (and (zero? type) (zero? datum) (TSTable-expression? expression))
@@ -170,26 +172,14 @@
   (memq (car expression) '(A D)))
 
 (define (indirect-reference! register offset)
-  (offset-reference (coerce->indirect-register! register) offset))
-
-(define (coerce->indirect-register! register)
-  (cond ((memv register '(13 14 15)) register)
-	((and (pseudo-register? register)
-	      (dead-register? register)
-	      (let ((alias (register-alias register 'DATA)))
-		(and alias
-		     (begin (prefix-instructions!
-			     `((AND L ,mask-reference
-				    ,(register-reference alias))))
-			    alias)))))
-	(else
-	 (with-temporary-register! 'DATA
-	   (lambda (temp)
-	     (prefix-instructions!
-	      (let ((temp-ref (register-reference temp)))
-		`((MOVE L ,(coerce->any register) ,temp-ref)
-		  (AND L ,mask-reference ,temp-ref))))
-	     temp)))))
+  (offset-reference
+   (if (machine-register? register)
+       register
+       (or (register-alias register false)
+	   ;; This means that someone has written an address out
+	   ;; to memory, something that should never happen.
+	   (error "Needed to load indirect register!" register)))
+   offset))
 
 (define (coerce->any register)
   (if (machine-register? register)
@@ -216,6 +206,13 @@
 	     (LABEL ,loop)
 	     ,instruction
 	     (DB F (D ,counter) (@PCR ,loop))))))))
+
+(define-integrable (data-register? register)
+  (< register 8))
+
+(define (address-register? register)
+  (and (< register 16)
+       (>= register 8)))
 
 ;;;; Registers/Entries
 
@@ -256,26 +253,32 @@
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
   (QUALIFIER (pseudo-register? target))
-  (let ((source (coerce->any source)))
-    (delete-dead-registers!)
-    (allocate-register-for-assignment! target false
-      (lambda (target)
-	`((MOVE L ,source ,(register-reference target)))))))
+  (move-to-alias-register! source 'DATA target)
+  '())
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((target (move-to-alias-register! source 'DATA target)))
+    `((AND L ,mask-reference ,target))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((target (move-to-alias-register! source 'DATA target)))
+    `((LS R (& 24) ,target))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
   (QUALIFIER (pseudo-register? target))
-  (let ((address (coerce->indirect-register! address)))
+  (let ((source (indirect-reference! address offset)))
     (delete-dead-registers!)
     ;; The fact that the target register here is a data register is a
     ;; heuristic that works reasonably well since if the value is a
     ;; pointer, we will probably want to dereference it, which
     ;; requires that we first mask it.
-    (allocate-register-for-assignment! target 'DATA
-      (lambda (target)
-	`((MOVE L
-		,(offset-reference address offset)
-		,(register-reference target)))))))
+    `((MOVE L ,source
+	    ,(register-reference (allocate-alias-register! target 'DATA))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -295,13 +298,6 @@
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
-	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
-  (let ((target (indirect-reference! a n)))
-    `((MOVE L ,(coerce->any r) ,target)
-      (MOVE B (& ,type) ,target))))
-
-(define-rule statement
-  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (CONSTANT (? object)))
   `(,(load-constant object (indirect-reference! a n))))
 
@@ -311,12 +307,17 @@
   `((MOVE L ,(coerce->any r) ,(indirect-reference! a n))))
 
 (define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
+	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
+  (let ((target (indirect-reference! a n)))
+    `((MOVE L ,(coerce->any r) ,target)
+      (MOVE B (& ,type) ,target))))
+
+(define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a0)) (? n0))
 	  (OFFSET (REGISTER (? a1)) (? n1)))
-  (let ((a1 (coerce->indirect-register! a1)))
-    `((MOVE L
-	    ,(offset-reference a1 n1)
-	    ,(offset-reference (coerce->indirect-register! a0) n0)))))
+  (let ((source (indirect-reference! a1 n1)))
+    `((MOVE L ,source ,(indirect-reference! a0 n0)))))
 
 ;;;; Consing
 
@@ -334,12 +335,11 @@
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (ENTRY:PROCEDURE (? procedure)))
-  (with-temporary-register! 'ADDRESS
-    (lambda (a)
-      (let ((a (register-reference a)))
-	`((LEA (@PCR ,(procedure-external-label procedure)) ,a)
-	  (MOVE L ,a (@A+ 5))
-	  (MOVE B (& ,type-code:return-address) (@AO 5 -4)))))))
+  (let ((temporary
+	 (register-reference (allocate-temporary-register! 'ADDRESS))))
+    `((LEA (@PCR ,(procedure-external-label procedure)) ,temporary)
+      (MOVE L ,temporary (@A+ 5))
+      (MOVE B (& ,type-code:return-address) (@AO 5 -4)))))
 
 ;;;; Pushes
 
@@ -356,6 +356,12 @@
   `((MOVE L ,(coerce->any r) (@-A 7))))
 
 (define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
+	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
+  `((MOVE L ,(coerce->any r) (@-A 7))
+    (MOVE B (& ,type) (@A 7))))
+
+(define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (OFFSET (REGISTER (? r)) (? n)))
   `((MOVE L ,(indirect-reference! r n) (@-A 7))))
 
@@ -370,12 +376,6 @@
 	  (ENTRY:CONTINUATION (? continuation)))
   `((PEA (@PCR ,(continuation-label continuation)))
     (MOVE B (& ,type-code:return-address) (@A 7))))
-
-(define-rule statement
-  (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
-	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
-  `((MOVE L ,(coerce->any r) (@-A 7))
-    (MOVE B (& ,type) (@A 7))))
 
 ;;;; Predicates
 
@@ -391,26 +391,27 @@
 		       (indirect-reference! register offset))))
 
 (define-rule predicate
-  (TRUE-TEST (TYPE-TEST (REGISTER (? register)) (? type)))
+  (TYPE-TEST (REGISTER (? register)) (? type))
+  (QUALIFIER (pseudo-register? register))
   (set-standard-branches! 'EQ)
-  (let ((register (coerce->any register)))
-    (if (memq (car register) '(A D))
-	`((MOVE L ,register ,reg:temp)
-	  ,(test-type type reg:temp))
-	`(,(test-type type register)))))
+  `(,(test-byte type
+		(register-reference (load-alias-register! register 'DATA)))))
 
 (define-rule predicate
-  (TRUE-TEST (TYPE-TEST (OFFSET (REGISTER (? register)) (? offset)) (? type)))
+  (TYPE-TEST (OBJECT->TYPE (REGISTER (? register))) (? type))
+  (QUALIFIER (pseudo-register? register))
   (set-standard-branches! 'EQ)
-  `(,(test-type type (indirect-reference! register offset))))
+  (let ((reference (move-to-temporary-register! register 'DATA)))
+    `((LS R (& 24) ,reference)
+      ,(test-byte type reference))))
 
 (define-rule predicate
-  (TRUE-TEST (UNASSIGNED-TEST (REGISTER (? register))))
+  (UNASSIGNED-TEST (REGISTER (? register)))
   (set-standard-branches! 'EQ)
   `(,(test-non-pointer (ucode-type unassigned) 0 (coerce->any register))))
 
 (define-rule predicate
-  (TRUE-TEST (UNASSIGNED-TEST (OFFSET (REGISTER (? register)) (? offset))))
+  (UNASSIGNED-TEST (OFFSET (REGISTER (? register)) (? offset)))
   (set-standard-branches! 'EQ)
   `(,(test-non-pointer (ucode-type unassigned) 0
 		       (indirect-reference! register offset))))
@@ -503,24 +504,19 @@
 	     (let ((i `(MOVE L (@A+ 7) ,(offset-reference a7 (-1+ how-far)))))
 	       `(,i ,i ,@(increment-anl 7 (- how-far 2))))))
 	(else
-	 (with-temporary-register! 'ADDRESS
-	   (lambda (a0)
-	     ;; If we can guarantee that interrupts will not use the user
-	     ;; stack, we can use A7 here rather than allocating this
-	     ;; second temporary register.
-	     (with-temporary-register! 'ADDRESS
-	       (lambda (a1)
-		 `((LEA ,(offset-reference a7 frame-size)
-			,(register-reference a0))
-		   (LEA ,(offset-reference a7 (+ frame-size how-far))
-			,(register-reference a1))
-		   ,@(generate-n-times frame-size 5
-				       `(MOVE L
-					      (@-A ,(- a0 8))
-					      (@-A ,(- a1 8)))
-		       (lambda (generator)
-			 (with-temporary-register! 'DATA generator)))
-		   (MOVE L ,(register-reference a1) (A 7))))))))))
+	 (let ((temp-0 (allocate-temporary-register! 'ADDRESS))
+	       (temp-1 (allocate-temporary-register! 'ADDRESS)))
+	   `((LEA ,(offset-reference a7 frame-size)
+		  ,(register-reference temp-0))
+	     (LEA ,(offset-reference a7 (+ frame-size how-far))
+		  ,(register-reference temp-1))
+	     ,@(generate-n-times frame-size 5
+				 `(MOVE L
+					(@-A ,(- temp-0 8))
+					(@-A ,(- temp-1 8)))
+		 (lambda (generator)
+		   (generator (allocate-temporary-register! 'DATA))))
+	     (MOVE L ,(register-reference temp-1) (A 7)))))))
 
 (define (generate-invocation-prefix:apply-closure frame-size receiver-offset)
   (let ((label (generate-label)))

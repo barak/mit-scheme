@@ -37,6 +37,8 @@
 
 ;;;; Machine Model for 68020
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.41 1986/12/15 05:48:50 cph Exp $
+
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 (define (rtl:message-receiver-size:closure) 2)
@@ -68,18 +70,21 @@
      (+ 30
 	(rtl:expression-cost (rtl:cons-pointer-type expression))
 	(rtl:expression-cost (rtl:cons-pointer-datum expression))))
-    ;; move.l d(reg),reg = 16
-    ;; and.l d7,reg = 6
-    ((OBJECT->ADDRESS) 22)
+    ((OBJECT->ADDRESS OBJECT->DATUM) 6)	;and.l d7,reg
+    ;; move.l reg,d(reg) = 16
+    ;; move.b d(reg),reg = 12
+    ((OBJECT->TYPE) 28)
     ((OFFSET) 16)			;move.l d(reg),reg
     ((OFFSET-ADDRESS) 8)		;lea d(an),reg
     ((POST-INCREMENT) 12)		;move.l (reg)+,reg
     ((PRE-INCREMENT) 14)		;move.l -(reg),reg
     ((REGISTER) 4)			;move.l reg,reg
-    ((ENTRY:CONTINUATION ENTRY:PROCEDURE UNASSIGNED) 16) ;move.l d(pc),reg
-    ;; **** Random.  Fix this later.
-    ((TYPE-TEST UNASSIGNED-TEST)
-     (+ 40 (rtl:expression-cost (rtl:test-expression expression))))
+    ((UNASSIGNED) 12)			;move.l #data,reg
+    ;; lea d(pc),reg       =  8
+    ;; move.l reg,d(reg)   = 16
+    ;; move.b #type,d(reg) = 16
+    ;; move.l d(reg),reg   = 16
+    ((ENTRY:CONTINUATION ENTRY:PROCEDURE) 56)
     (else (error "Unknown expression type" expression))))
 
 (define (rtl:machine-register? rtl-register)
