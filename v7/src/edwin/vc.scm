@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.45 2000/03/27 20:55:36 cph Exp $
+;;; $Id: vc.scm,v 1.46 2000/03/27 20:58:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -218,44 +218,45 @@ Otherwise, the mod time of the file is the checkout time."
  (append!
   (ref-variable find-file-hooks)
   (list
-   (cond ((buffer-vc-master buffer #f)
-	  => (lambda (master)
-	       (vc-mode-line master buffer)
-	       (if (not (ref-variable vc-make-backup-files buffer))
-		   (local-set-variable! make-backup-files #f buffer))))
-	 ((let ((pathname (buffer-pathname buffer)))
-	    (and (file-symbolic-link? pathname)
-		 (file-vc-master (file-chase-links pathname) #f)))
-	  => (lambda (master)
-	       (let ((workfile (vc-master-workfile master))
-		     (type (vc-type-display-name (vc-master-type master))))
-		 (let ((follow
-			(lambda ()
-			  (let ((buffer*
-				 (or (pathname->buffer workfile)
-				     (find-file-noselect workfile #f))))
-			    (message "Followed link to " workfile)
-			    (kill-buffer buffer)
-			    buffer*))))
-		   (case (ref-variable vc-follow-symlinks buffer)
-		     ((#F)
-		      (message "Warning: symbolic link to "
-			       type
-			       "-controlled source file"))
-		     ((ASK)
-		      (if (or (pathname->buffer workfile)
-			      (prompt-for-yes-or-no?
-			       (string-append
-				"Symbolic link to "
-				type
-				"-controlled source file; follow link")))
-			  (follow)
-			  (begin
-			    (message
-			     "Warning: editing through the link bypasses version control.")
-			    buffer)))
-		     (else (follow)))))))
-	 (else buffer)))))
+   (lambda (buffer)
+     (cond ((buffer-vc-master buffer #f)
+	    => (lambda (master)
+		 (vc-mode-line master buffer)
+		 (if (not (ref-variable vc-make-backup-files buffer))
+		     (local-set-variable! make-backup-files #f buffer))))
+	   ((let ((pathname (buffer-pathname buffer)))
+	      (and (file-symbolic-link? pathname)
+		   (file-vc-master (file-chase-links pathname) #f)))
+	    => (lambda (master)
+		 (let ((workfile (vc-master-workfile master))
+		       (type (vc-type-display-name (vc-master-type master))))
+		   (let ((follow
+			  (lambda ()
+			    (let ((buffer*
+				   (or (pathname->buffer workfile)
+				       (find-file-noselect workfile #f))))
+			      (message "Followed link to " workfile)
+			      (kill-buffer buffer)
+			      buffer*))))
+		     (case (ref-variable vc-follow-symlinks buffer)
+		       ((#F)
+			(message "Warning: symbolic link to "
+				 type
+				 "-controlled source file"))
+		       ((ASK)
+			(if (or (pathname->buffer workfile)
+				(prompt-for-yes-or-no?
+				 (string-append
+				  "Symbolic link to "
+				  type
+				  "-controlled source file; follow link")))
+			    (follow)
+			    (begin
+			      (message
+			       "Warning: editing through the link bypasses version control.")
+			      buffer)))
+		       (else (follow)))))))
+	   (else buffer))))))
 
 (set-variable!
  find-file-not-found-hooks
