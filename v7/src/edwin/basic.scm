@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.119 1992/02/08 15:23:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.120 1992/02/10 12:03:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -324,14 +324,14 @@ With argument, saves visited file first."
 With prefix arg, silently save all file-visiting buffers, then kill."
   "P"
   (lambda (no-confirmation?)
-    (save-buffers-and-exit no-confirmation? "Scheme" %exit)))
+    (save-buffers-and-exit no-confirmation? "Scheme" exit-scheme)))
 
 (define (save-buffers-kill-edwin #!optional no-confirmation?)
   (let ((no-confirmation?
 	 (and (not (default-object? no-confirmation?)) no-confirmation?)))
     (if editor-can-exit?
 	(save-buffers-and-exit no-confirmation? "Edwin" exit-editor)
-	(save-buffers-and-exit no-confirmation? "Scheme" %exit))))
+	(save-buffers-and-exit no-confirmation? "Scheme" exit-scheme))))
 
 (define-command save-buffers-kill-edwin
   "Offer to save each buffer, then kill Edwin, returning to Scheme.
