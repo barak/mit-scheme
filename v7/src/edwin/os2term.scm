@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.19 1996/09/28 03:51:26 cph Exp $
+;;;	$Id: os2term.scm,v 1.20 1997/03/30 06:58:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -245,8 +245,7 @@
   (os2win-close (screen-wid screen)))
 
 (define (os2-screen/enter! screen)
-  screen
-  unspecific)
+  (os2win-activate (screen-wid screen)))
 
 (define (os2-screen/exit! screen)
   screen
