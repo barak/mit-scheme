@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.126 2000/06/05 17:32:29 cph Exp $
+;;; $Id: imail-top.scm,v 1.127 2000/06/05 17:50:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1038,7 +1038,8 @@ With prefix argument N moves backward N messages with these flags."
 		      (and (eq? (mime-body-type enclosure) 'MESSAGE)
 			   (eq? (mime-body-subtype enclosure) 'RFC822)))
 		  `(,@selector TEXT)
-		  selector))))
+		  selector)
+	      #t)))
 	(case (let ((encoding
 		     (and enclosure
 			  (eq? (mime-body-type enclosure) 'MESSAGE)
@@ -1070,7 +1071,7 @@ With prefix argument N moves backward N messages with these flags."
    (header-fields->string
     (maybe-reformat-headers
      (string->header-fields
-      (message-mime-body-part message `(,@selector HEADER)))
+      (message-mime-body-part message `(,@selector HEADER) #t))
      mark))
    mark)
   (insert-newline mark)
@@ -1589,7 +1590,7 @@ With prefix argument, prompt even when point is on an attachment."
 	(begin
 	  (call-with-binary-output-file filename
 	    (lambda (port)
-	      (let ((string (message-mime-body-part message selector)))
+	      (let ((string (message-mime-body-part message selector #f)))
 		(case (mime-body-one-part-encoding body)
 		  ((QUOTED-PRINTABLE)
 		   (decode-quoted-printable-string string port))

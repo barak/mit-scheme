@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.96 2000/06/02 20:35:17 cph Exp $
+;;; $Id: imail-core.scm,v 1.97 2000/06/05 17:50:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -808,7 +808,12 @@
 ;;;; MIME structure
 
 (define-generic message-mime-body-structure (message))
-(define-generic message-mime-body-part (message selector))
+
+;; Cache is either a boolean or an exact nonnegative integer.
+;; #F means don't cache.
+;; #T means cache unconditionally.
+;; integer means cache if less than this length.
+(define-generic message-mime-body-part (message selector cache?))
 
 (define-class <mime-body> (<imail-object>)
   (parameters define accessor)

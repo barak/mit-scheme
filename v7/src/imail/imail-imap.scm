@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.107 2000/06/05 17:35:04 cph Exp $
+;;; $Id: imail-imap.scm,v 1.108 2000/06/05 17:50:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -798,7 +798,8 @@
 (define-method message-mime-body-structure ((message <imap-message>))
   (imap-message-bodystructure message))
 
-(define-method message-mime-body-part ((message <imap-message>) selector)
+(define-method message-mime-body-part
+    ((message <imap-message>) selector cache?)
   (let ((section
 	 (map (lambda (x)
 		(if (exact-nonnegative-integer? x)
@@ -836,10 +837,13 @@
 				 "]"))))))))
 		  section
 		  #f)))
-	    (set-imap-message-body-parts!
-	     message
-	     (cons (cons section part)
-		   (imap-message-body-parts message)))
+	    (if (and cache?
+		     (or (eq? cache? #t)
+			 (< (string-length part) cache?)))
+		(set-imap-message-body-parts!
+		 message
+		 (cons (cons section part)
+		       (imap-message-body-parts message))))
 	    part)))))
 
 (define (parse-mime-body body)
