@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.78 1993/11/04 23:51:07 gjr Exp $
+$Id: cmpint.c,v 1.79 1993/11/11 20:19:55 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -75,7 +75,9 @@ MIT in each case. */
 /* Macro imports */
 
 #include <stdio.h>
+#ifndef _NEXTOS
 #include <stdlib.h>
+#endif
 #include "oscond.h"	/* Identify the operating system */
 #include "ansidecl.h"	/* Macros to support ANSI declarations */
 #include "dstack.h"	/* Dynamic-stack support */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: psbmap.h,v 9.40 1993/11/07 01:39:01 gjr Exp $
+$Id: psbmap.h,v 9.41 1993/11/11 20:20:03 cph Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -47,7 +47,9 @@ MIT in each case. */
 #define fast register
 
 #include <stdio.h>
+#ifndef _NEXTOS
 #include <stdlib.h>
+#endif
 #include "ansidecl.h"
 #include "config.h"
 #include "types.h"

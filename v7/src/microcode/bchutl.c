@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchutl.c,v 1.3 1993/06/24 03:53:29 gjr Exp $
+$Id: bchutl.c,v 1.4 1993/11/11 20:18:41 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -39,7 +39,9 @@ MIT in each case. */
 
 #ifndef DOS386
 #ifndef WINNT
+#ifndef _NEXTOS
 #include <unistd.h>
+#endif
 #endif
 #endif
 

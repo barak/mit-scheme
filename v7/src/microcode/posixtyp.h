@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: posixtyp.h,v 1.8 1993/06/24 06:13:23 gjr Exp $
+$Id: posixtyp.h,v 1.9 1993/11/11 20:18:48 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -60,10 +60,12 @@ MIT in each case. */
 #endif
 
 #ifdef _BSD4_3
+#ifndef _NEXTOS
 #define _MODE_T
 #define _NLINK_T
 #define _PID_T
 #define _CLOCK_T
+#endif
 #define _TIME_T
 #endif
 
