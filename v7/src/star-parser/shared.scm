@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: shared.scm,v 1.26 2003/02/14 18:28:35 cph Exp $
+$Id: shared.scm,v 1.27 2003/03/07 20:53:22 cph Exp $
 
-Copyright 2001, 2002 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -152,38 +152,25 @@ USA.
 
 ;;;; Parser macros
 
-(define parser-macros-rtd
-  (make-record-type "parser-macros" '(PARENT MATCHER-TABLE PARSER-TABLE)))
+(define-record-type <parser-macros>
+    (%make-parser-macros parent matcher-table parser-table)
+    parser-macros?
+  (parent parent-macros)
+  (matcher-table matcher-macros-table)
+  (parser-table parser-macros-table))
 
-(define make-parser-macros
-  (let ((constructor (record-constructor parser-macros-rtd)))
-    (lambda (parent)
-      (if parent (guarantee-parser-macros parent 'MAKE-PARSER-MACROS))
-      (constructor (or parent *global-parser-macros*)
-		   (make-eq-hash-table)
-		   (make-eq-hash-table)))))
+(define (make-parser-macros parent)
+  (if parent (guarantee-parser-macros parent 'MAKE-PARSER-MACROS))
+  (%make-parser-macros (or parent *global-parser-macros*)
+		       (make-eq-hash-table)
+		       (make-eq-hash-table)))
 
 (define *global-parser-macros*
-  ((record-constructor parser-macros-rtd)
-   #f
-   (make-eq-hash-table)
-   (make-eq-hash-table)))
+  (%make-parser-macros #f (make-eq-hash-table) (make-eq-hash-table)))
 
 (define (guarantee-parser-macros object procedure)
   (if (not (parser-macros? object))
       (error:wrong-type-argument object "parser macros" procedure)))
-
-(define parser-macros?
-  (record-predicate parser-macros-rtd))
-
-(define parent-macros
-  (record-accessor parser-macros-rtd 'PARENT))
-
-(define matcher-macros-table
-  (record-accessor parser-macros-rtd 'MATCHER-TABLE))
-
-(define parser-macros-table
-  (record-accessor parser-macros-rtd 'PARSER-TABLE))
 
 (define (define-matcher-macro name expander)
   (hash-table/put! (matcher-macros-table *parser-macros*) name expander))
