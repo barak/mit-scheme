@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.225 1998/08/31 04:14:38 cph Exp $
+$Id: edwin.pkg,v 1.226 1998/10/23 05:42:33 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -1171,7 +1171,10 @@ MIT in each case. |#
 	   "comint"			; command interpreter process stuff
 	   "compile"			; compilation subprocess
 	   "shell"			; shell subprocess commands
-	   ))
+	   )
+    (import (win32)
+	    get-module-file-name
+	    get-module-handle))
 
   (extend-package (edwin dired)
     (files "dirw32")

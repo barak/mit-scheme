@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.19 1998/10/20 05:56:37 cph Exp $
+;;;	$Id: dosfile.scm,v 1.20 1998/10/23 05:44:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-98 Massachusetts Institute of Technology
 ;;;
@@ -515,37 +515,52 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
       (error "Can't find program:" (->namestring program))))
 
 (define (dos/find-program program exec-path default-directory)
-  (let ((try
-	 (lambda (pathname)
-	   (let ((type (pathname-type pathname)))
-	     (if type
-		 (and (member type dos/executable-pathname-types)
-		      (file-exists? pathname)
-		      (->namestring pathname))
-		 (let loop ((types dos/executable-pathname-types))
-		   (and (not (null? types))
-			(let ((p
-			       (pathname-new-type pathname (car types))))
-			  (if (file-exists? p)
-			      (->namestring p)
-			      (loop (cdr types)))))))))))
-    (cond ((pathname-absolute? program)
-	   (try program))
-	  ((not default-directory)
-	   (let loop ((path exec-path))
-	     (and (not (null? path))
-		  (or (and (pathname-absolute? (car path))
-			   (try (merge-pathnames program (car path))))
-		      (loop (cdr path))))))
-	  (else
-	   (let ((default-directory (merge-pathnames default-directory)))
-	     (let loop ((path exec-path))
-	       (and (not (null? path))
-		    (or (try (merge-pathnames
-			      program
-			      (merge-pathnames (car path)
-					       default-directory)))
-			(loop (cdr path))))))))))
+  (let* ((try
+	  (let ((types (os/executable-pathname-types)))
+	    (lambda (pathname)
+	      (let ((type (pathname-type pathname)))
+		(if type
+		    (and (member type types)
+			 (file-exists? pathname)
+			 (->namestring pathname))
+		    (let loop ((types types))
+		      (and (not (null? types))
+			   (let ((p
+				  (pathname-new-type pathname (car types))))
+			     (if (file-exists? p)
+				 (->namestring p)
+				 (loop (cdr types)))))))))))
+	 (try-dir
+	  (lambda (directory)
+	    (try (merge-pathnames program directory)))))
+    (if (pathname-absolute? program)
+	(try program)
+	(or (and (eq? 'NT microcode-id/operating-system)
+		 (let ((ns (nt/scheme-executable-pathname)))
+		   (and ns
+			(try-dir (directory-pathname ns)))))
+	    (if (not default-directory)
+		(let loop ((path exec-path))
+		  (and (not (null? path))
+		       (or (and (pathname-absolute? (car path))
+				(try-dir (car path)))
+			   (loop (cdr path)))))
+		(let ((default-directory (merge-pathnames default-directory)))
+		  (let loop ((path exec-path))
+		    (and (not (null? path))
+			 (or (try-dir (merge-pathnames (car path)
+						       default-directory))
+			     (loop (cdr path)))))))))))
+
+(define (nt/scheme-executable-pathname)
+  (let ((handle
+	 (get-module-handle
+	  (file-namestring
+	   (pathname-default-type
+	    ((make-primitive-procedure 'SCHEME-PROGRAM-NAME))
+	    "exe"))))
+	(buf (make-string 256)))
+    (substring buf 0 (get-module-file-name handle buf 256))))
 
 (define (os/shell-file-name)
   (or (get-environment-variable "SHELL")
@@ -553,15 +568,15 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
       (dos/default-shell-file-name)))
 
 (define (os/shell-name pathname)
-  (if (member (pathname-type pathname) dos/executable-pathname-types)
+  (if (member (pathname-type pathname) (os/executable-pathname-types))
       (pathname-name pathname)
       (file-namestring pathname)))
 
 (define (os/form-shell-command command)
   (list "/c" command))
 
-(define dos/executable-pathname-types
-  '("exe" "com" "bat"))
+(define (os/executable-pathname-types)
+  '("exe" "com" "bat" "btm"))
 
 (define (os/default-shell-args)
   '())

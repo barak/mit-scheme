@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.84 1998/08/30 02:07:05 cph Exp $
+;;;	$Id: unix.scm,v 1.85 1998/10/23 05:42:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -673,6 +673,9 @@ CANNOT contain the 'F' option."
 
 (define (os/form-shell-command command)
   (list "-c" command))
+
+(define (os/executable-pathname-types)
+  '())
 
 (define (os/shell-name pathname)
   (file-namestring pathname))
