@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.3 1995/03/12 16:04:31 adams Exp $
+$Id: rules1.scm,v 1.4 1996/07/22 17:47:18 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -419,6 +419,13 @@ MIT in each case. |#
   ;; register + byte offset <- contents of register (clear top bits)
   (ASSIGN (BYTE-OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
 	  (CHAR->ASCII (REGISTER (? source))))
+  (store-byte (standard-source! source) offset (standard-source! base)))
+
+(define-rule statement
+  ;; convert char object to ASCII byte and store it in memory
+  ;; register + byte offset <- contents of register (clear top bits)
+  (ASSIGN (BYTE-OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
+	  (OBJECT->DATUM (REGISTER (? source))))
   (store-byte (standard-source! source) offset (standard-source! base)))
 
 ;; store null byte in memory
