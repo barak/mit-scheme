@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.4 1991/05/09 03:25:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.5 1991/08/28 14:52:00 jinx Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -95,6 +95,7 @@ to match their respective commands."
 
 (define-command shell
   "Run an inferior shell, with I/O through buffer *shell*.
+With prefix argument, unconditionally create a new buffer and process.
 If buffer exists but shell process is not running, make new shell.
 If buffer exists and shell process is running, just switch to buffer *shell*.
 
@@ -109,8 +110,8 @@ The shell file name (sans directories) is used to make a symbol name
 such as `explicit-csh-arguments'.  If that symbol is a variable,
 its value is used as a list of arguments when invoking the shell.
 Otherwise, one argument `-i' is passed to the shell."
-  ()
-  (lambda ()
+  "P"
+  (lambda (#!optional arg)
     (select-buffer
      (let ((program
 	    (or (ref-variable explicit-shell-file-name)
@@ -119,7 +120,10 @@ Otherwise, one argument `-i' is passed to the shell."
 		"/bin/sh")))
        (apply make-comint
 	      (ref-mode-object shell)
-	      "shell"
+	      (if (or (default-object? arg)
+		      (not arg))
+		  "shell"
+		  '("shell"))
 	      program
 	      (let ((variable
 		     (string-table-get editor-variables
