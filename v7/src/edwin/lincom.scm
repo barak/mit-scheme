@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.110 1991/05/02 01:13:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.111 1991/05/10 05:10:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -52,9 +52,28 @@
   "Type number of lines from point to mark."
   "r"
   (lambda (region)
-    (message "Region has "
-	     (write-to-string (region-count-lines region))
-	     " lines")))
+    (message "Region has " (region-count-lines region) " lines")))
+
+(define-command what-line
+  "Print the current line number (in the buffer) of point."
+  ()
+  (lambda ()
+    (let ((buffer (current-buffer)))
+      (without-group-clipped! (buffer-group buffer)
+	(lambda ()
+	  (message "Line "
+		   (+ (count-lines (buffer-start buffer) (current-point))
+		      1)))))))
+
+(define (count-lines start end)
+  (region-count-lines (make-region start end)))
+
+(define-command goto-line
+  "Goto line ARG, counting from line 1 at beginning of buffer."
+  "NGoto line"
+  (lambda (n)
+    (set-current-point!
+     (line-start (buffer-start (current-buffer)) (- n 1) 'ERROR))))
 
 (define-command transpose-lines
   "Transpose the lines before and after the cursor.
@@ -122,53 +141,57 @@ A page boundary is any string in Page Delimiters, at a line's beginning."
 		  point))
       (make-region point point)
       (let ((end (forward-page point 1 'LIMIT)))
-	(make-region (backward-page end 1 'LIMIT)
-		     (let ((end* (line-end end -1 'LIMIT)))
+	(make-region (let ((start (backward-page end 1 'LIMIT)))
+		       (if (and (line-end? start)
+				(not (group-start? start))
+				(not (group-end? start)))
+			   (mark1+ start)
+			   start))
+		     (let ((end* (line-start end 0)))
 		       (if (mark< end* point)
 			   end
 			   end*))))))
-
+
 (define-command count-lines-page
   "Report number of lines on current page."
   "d"
   (lambda (point)
     (let ((end
 	   (let ((end (forward-page point 1 'LIMIT)))
-	     (if (group-end? end) end (line-start end 0)))))
+	     (if (group-end? end)
+		 end
+		 (line-start end 0)))))
       (let ((start (backward-page end 1 'LIMIT)))
-	(message "Page has " (count-lines-string start end)
-		 " lines (" (count-lines-string start point)
-		 " + " (count-lines-string point end) ")")))))
+	(message "Page has " (count-lines start end)
+		 " lines (" (count-lines start point)
+		 " + " (count-lines point end) ")")))))
 
-(define (count-lines-string start end)
-  (write-to-string (region-count-lines (make-region start end))))
-
 (define-command what-page
   "Report page and line number of point."
   ()
   (lambda ()
-    (without-group-clipped! (buffer-group (current-buffer))
-      (lambda ()
-	(message "Page " (write-to-string (current-page))
-		 ", Line " (write-to-string (current-line)))))))
+    (let ((buffer (current-buffer)))
+      (without-group-clipped! (buffer-group buffer)
+	(lambda ()
+	  (let ((point (current-point)))
+	    (message "Page "
+		     (let loop ((count 0) (start (buffer-start buffer)))
+		       (if (or (not start)
+			       (mark> start point))
+			   count
+			   (loop (+ count 1) (forward-page start 1))))
+		     ", Line "
+		     (+ (count-lines
+			 (backward-page (forward-page point 1 'LIMIT) 1 'LIMIT)
+			 point)
+			1))))))))
 
-(define (current-page)
-  (region-count-pages (make-region (buffer-start (current-buffer))
-				   (current-point))))
-
-(define (current-line)
-  (region-count-lines
-   (make-region (backward-page (forward-page (current-point) 1 'LIMIT)
-			       1 'LIMIT)
-		(current-point))))
-
-(define (region-count-pages region)
-  (let ((end (region-end region)))
-    (define (loop count start)
-      (if (or (not start) (mark> start end))
-	  count
-	  (loop (1+ count) (forward-page start 1))))
-    (loop 0 (region-start region))))
+(define-command goto-page
+  "Goto page ARG, counting from page 1 at beginning of buffer."
+  "NGoto page"
+  (lambda (n)
+    (set-current-point!
+     (forward-page (buffer-start (current-buffer)) (- n 1) 'ERROR))))
 
 ;;;; Indentation
 
@@ -228,7 +251,7 @@ and indent the new line indent according to mode."
     ((ref-command newline) false)
     ((ref-command indent-according-to-mode))))
 
-(define-variable indent-tabs-mode
+(define-variable-per-buffer indent-tabs-mode
   "If false, do not use tabs for indentation or horizontal spacing."
   true
   boolean?)
@@ -403,28 +426,39 @@ With argument, makes extra blank lines in between."
     (insert-chars #\Space 1)))
 
 (define-command delete-blank-lines
-  "Kill all blank lines around this line's end.
-If done on a non-blank line, kills all spaces and tabs at the end of
-it, and all following blank lines (Lines are blank if they contain
-only spaces and tabs).
-If done on a blank line, deletes all preceding blank lines as well."
-  ()
+  "On blank line, delete all surrounding blank lines, leaving just one.
+On isolated blank line, delete that one.
+On nonblank line, delete all blank lines that follow it."
+  "*"
   (lambda ()
-    (region-delete!
-     (let ((point (current-point)))
-       (make-region (if (line-blank? point)
-			(let loop ((m1 (line-start point 0)))
-			  (let ((m2 (line-start m1 -1)))
-			    (if (and m2 (line-blank? m2))
-				(loop m2)
-				m1)))
-			(horizontal-space-start (line-end point 0)))
-		    (line-end (let loop ((m1 point))
-				(let ((m2 (line-start m1 1)))
-				  (if (and m2 (line-blank? m2))
-				      (loop m2)
-				      m1)))
-			      0))))))
+    (let ((point (current-point)))
+      (let ((end
+	     (let loop ((m point))
+	       (let ((m (line-end m 0)))
+		 (if (group-end? m)
+		     m
+		     (let ((m* (mark1+ m)))
+		       (if (line-blank? m*)
+			   (loop m*)
+			   m)))))))
+	(if (line-blank? point)
+	    (let ((start
+		   (let loop ((m (line-start point 0)))
+		     (let ((m* (line-start m -1)))
+		       (if (and m* (line-blank? m*))
+			   (loop m*)
+			   m)))))
+	      (delete-string start
+			     (if (or (mark< (line-end start 0) end)
+				     (group-end? end))
+				 end
+				 (mark1+ end))))
+	    (let ((start (line-end point 0)))
+	      (if (mark< start end)
+		  (delete-string (mark1+ start)
+				 (if (group-end? end)
+				     end
+				     (mark1+ end))))))))))
 
 (define-command delete-indentation
   "Kill newline and indentation at front of line.
