@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.13 2003/07/12 04:34:43 cph Exp $
+$Id: xml-struct.scm,v 1.14 2003/07/13 03:41:29 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -156,43 +156,50 @@ USA.
 (define char-set:xml-encoding
   (char-set-union char-set:alphanumeric
 		  (string->char-set "_.-")))
-
+
 (define-xml-type element
   (name xml-name?)
-  (attributes
-   (lambda (object)
-     (list-of-type? object
-       (lambda (object)
-	 (and (pair? object)
-	      (xml-name? (car object))
-	      (attribute-value? (cdr object)))))))
-  (contents
-   (lambda (object)
-     (list-of-type? object
-       (lambda (object)
-	 (or (string? object)
-	     (wide-string? object)
-	     (xml-comment? object)
-	     (xml-element? object)
-	     (xml-processing-instructions? object)
-	     (xml-entity-ref? object)))))))
+  (attributes xml-attribute-list?)
+  (contents xml-content?))
 
-(define (attribute-value? object)
+(define (xml-attribute-list? object)
+  (list-of-type? object xml-attribute?))
+
+(define (xml-attribute? object)
+  (and (pair? object)
+       (xml-name? (car object))
+       (xml-attribute-value? (cdr object))))
+
+(define (xml-attribute-value? object)
   (and (pair? object)
        (list-of-type? object
 	 (lambda (object)
-	   (or (string? object)
+	   (or (xml-char-data? object)
 	       (xml-entity-ref? object))))))
 
+(define (xml-content? object)
+  (list-of-type? object xml-content-item?))
+
+(define (xml-content-item? object)
+  (or (xml-char-data? object)
+      (xml-comment? object)
+      (xml-element? object)
+      (xml-processing-instructions? object)
+      (xml-entity-ref? object)))
+
+(define (xml-char-data? object)
+  (or (string? object)
+      (wide-string? object)))
+
 (define-xml-type comment
-  (text string?))
+  (text xml-char-data?))
 
 (define-xml-type processing-instructions
   (name
    (lambda (object)
      (and (xml-name? object)
 	  (not (string-ci=? "xml" (symbol-name object))))))
-  (text string?))
+  (text xml-char-data?))
 
 (define-xml-type dtd
   (root xml-name?)
@@ -221,7 +228,7 @@ USA.
   (uri
    (lambda (object)
      (or (not object)
-	 (string? object)))))
+	 (xml-char-data? object)))))
 
 (define (public-id? object)
   (string-composed-of? object char-set:xml-public-id))
@@ -299,10 +306,10 @@ USA.
       (eq? object 'IMPLIED)
       (and (pair? object)
 	   (eq? 'FIXED (car object))
-	   (attribute-value? (cdr object)))
+	   (xml-attribute-value? (cdr object)))
       (and (pair? object)
 	   (eq? 'DEFAULT (car object))
-	   (attribute-value? (cdr object)))))
+	   (xml-attribute-value? (cdr object)))))
 
 (define-xml-type !entity
   (name xml-name?)
@@ -321,7 +328,7 @@ USA.
   (or (and (pair? object)
 	   (list-of-type? object
 	     (lambda (object)
-	       (or (string? object)
+	       (or (xml-char-data? object)
 		   (xml-entity-ref? object)
 		   (xml-parameter-entity-ref? object)))))
       (xml-external-id? object)))
