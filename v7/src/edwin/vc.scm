@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.49 2000/03/31 17:03:42 cph Exp $
+;;; $Id: vc.scm,v 1.50 2000/03/31 18:26:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -496,7 +496,7 @@ merge in the changes into your working copy."
 			 ;; user!
 			 ((prompt-for-yes-or-no? "Revert to master version")
 			  (vc-backend-revert master)
-			  (vc-revert-buffer buffer #f))))))
+			  (vc-revert-buffer buffer #t))))))
 	      (do-checkout
 	       (lambda ()
 		 (vc-save-workfile-buffer workfile)
@@ -505,9 +505,14 @@ merge in the changes into your working copy."
 	      (case (cvs-status master)
 		((UP-TO-DATE)
 		 (let ((buffer (vc-workfile-buffer master)))
-		   (cond ((and buffer (buffer-modified? buffer))
+		   (cond ((or (and buffer (buffer-modified? buffer))
+			      (cvs-file-edited? master))
 			  (do-checkin))
-			 (revision?
+			 ((or revision?
+			      (string-prefix?
+			       "-r-"
+			       (file-attributes/mode-string
+				(file-attributes workfile))))
 			  (do-checkout))
 			 ((not from-dired?)
 			  (message (buffer-name buffer) " is up to date.")))))
@@ -793,13 +798,15 @@ to that version."
   (lambda ()
     (let* ((buffer (selected-buffer))
 	   (master (buffer-vc-master buffer #t)))
-      (if (and (vc-workfile-modified? master)
-	       (or (ref-variable vc-suppress-confirm)
-		   (cleanup-pop-up-buffers
-		    (lambda ()
-		      (run-diff master #f #f)
-		      (pop-up-vc-diff-buffer #f)
-		      (prompt-for-yes-or-no? "Discard changes")))))
+      (if (or (and (vc-workfile-modified? master)
+		   (or (ref-variable vc-suppress-confirm)
+		       (cleanup-pop-up-buffers
+			(lambda ()
+			  (run-diff master #f #f)
+			  (pop-up-vc-diff-buffer #f)
+			  (prompt-for-yes-or-no? "Discard changes")))))
+	      (and (eq? vc-type:cvs (vc-master-type master))
+		   (cvs-file-edited? master)))
 	  (begin
 	    (vc-backend-revert master)
 	    (vc-revert-buffer buffer #t))
@@ -1449,18 +1456,37 @@ the value of vc-log-mode-hook."
 	(%find-cvs-entry pathname (vc-master-workfile master))))))
 
 (define (%find-cvs-entry pathname workfile)
+  (let ((line
+	 (find-cvs-line pathname
+			(string-append "/" (file-namestring workfile) "/"))))
+    (and line
+	 (let ((tokens (cdr (burst-string line #\/ #f))))
+	   (and (fix:= 5 (length tokens))
+		tokens)))))
+
+(define (cvs-file-edited? master)
+  (let ((pathname
+	 (merge-pathnames "Baserev"
+			  (directory-pathname (vc-master-pathname master)))))
+    (read-cached-value-1 master 'CVS-FILE-EDITED? pathname
+      (lambda (time)
+	time
+	(find-cvs-line pathname
+		       (string-append
+			"B"
+			(file-namestring (vc-master-workfile master))
+			"/"))))))
+
+(define (find-cvs-line pathname prefix)
   (and (file-readable? pathname)
        (call-with-input-file pathname
 	 (lambda (port)
-	   (let ((prefix (string-append "/" (file-namestring workfile) "/")))
-	     (let loop ()
-	       (let ((line (read-line port)))
-		 (and (not (eof-object? line))
-		      (if (string-prefix? prefix line)
-			  (let ((tokens (cdr (burst-string line #\/ #f))))
-			    (and (fix:= 5 (length tokens))
-				 tokens))
-			  (loop))))))))))
+	   (let loop ()
+	     (let ((line (read-line port)))
+	       (and (not (eof-object? line))
+		    (if (string-prefix? prefix line)
+			line
+			(loop)))))))))
 
 (define (cvs-status master)
   (get-cvs-status master
@@ -1543,7 +1569,8 @@ the value of vc-log-mode-hook."
     ;; We consider the workfile's owner to be the locker.
     (and (or (not revision)
 	     (equal? revision (vc-backend-workfile-revision master)))
-	 (vc-workfile-modified? master)
+	 (or (vc-workfile-modified? master)
+	     (cvs-file-edited? master))
 	 (unix/uid->string
 	  (file-attributes/uid
 	   (file-attributes (vc-master-workfile master)))))))
@@ -1563,10 +1590,9 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'CHECKOUT vc-type:cvs
   (lambda (master revision lock? workfile)
-    lock?				;locking not used with CVS
-    (cond (workfile
-	   (with-vc-command-message master "Checking out"
-	     (lambda ()
+    (with-vc-command-message master "Checking out"
+      (lambda ()
+	(cond (workfile
 	       ;; CVS makes it difficult to check a file out into
 	       ;; anything but the working file.
 	       (delete-file-no-errors workfile)
@@ -1574,13 +1600,13 @@ the value of vc-log-mode-hook."
 				     (cvs-rev-switch revision)
 				     (vc-master-workfile master)
 				     ">"
-				     workfile))))
-	  (revision
-	   ;; Checkout only necessary for given revision.
-	   (with-vc-command-message master "Checking out"
-	     (lambda ()
-	       (vc-run-command master '() "cvs" "update"
+				     workfile))
+	      (revision
+	       (vc-run-command master '() "cvs" (and lock? "-w") "update"
 			       (cvs-rev-switch revision)
+			       (vc-master-workfile master)))
+	      (else
+	       (vc-run-command master '() "cvs" "edit"
 			       (vc-master-workfile master))))))))
 
 (define-vc-type-operation 'CHECKIN vc-type:cvs
@@ -1619,8 +1645,11 @@ the value of vc-log-mode-hook."
     (with-vc-command-message master "Reverting"
       (lambda ()
 	(let ((workfile (vc-master-workfile master)))
-	  (delete-file-no-errors workfile)
-	  (vc-run-command master '() "cvs" "update" workfile))))))
+	  (if (cvs-file-edited? master)
+	      (vc-run-command master '() "cvs" "unedit" workfile)
+	      (begin
+		(delete-file-no-errors workfile)
+		(vc-run-command master '() "cvs" "update" workfile))))))))
 
 (define-vc-type-operation 'STEAL vc-type:cvs
   (lambda (master revision)
