@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.20 1999/01/02 06:19:10 cph Exp $
+$Id: sfile.scm,v 14.21 1999/11/19 14:10:49 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -50,6 +50,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ((ucode-primitive file-eq?) (->namestring (merge-pathnames x))
 			      (->namestring (merge-pathnames y))))
 
+(define (current-file-time)
+  (call-with-temporary-file-pathname file-modification-time))
+
+(define (directory-file-names directory)
+  (let ((channel
+	 (directory-channel-open
+	  (->namestring (pathname-as-directory directory)))))
+    (let loop ((result '()))
+      (let ((name (directory-channel-read channel)))
+	(if name
+	    (loop
+	     (if (or (string=? "." name)
+		     (string=? ".." name))
+		 result
+		 (cons name result)))
+	    (begin
+	      (directory-channel-close channel)
+	      result))))))
+
 (define (call-with-temporary-filename receiver)
   (call-with-temporary-file-pathname
    (lambda (pathname)
@@ -86,9 +105,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (vector-set! objects slot
 		    (delete! filename (vector-ref objects slot)))
        ((ucode-primitive set-fixed-objects-vector! 1) objects)))))
-
-(define (current-file-time)
-  (call-with-temporary-file-pathname file-modification-time))
 
 (define (guarantee-init-file-specifier object procedure)
   (if (not (init-file-specifier? object))
