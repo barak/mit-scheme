@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.32 1996/05/12 07:14:12 cph Exp $
+;;;	$Id: os2.scm,v 1.33 1996/10/02 17:00:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -218,7 +218,7 @@
    (file-time->ls-string (file-attributes/modification-time attr) now)
    " "
    name))
-
+
 (define (os2/read-dired-files file all-files?)
   (let loop
       ((pathnames
@@ -238,6 +238,9 @@
 		(if attr
 		    (cons (cons (file-namestring (car pathnames)) attr) result)
 		    result))))))
+
+(define dired-pathname-wild?
+  pathname-wild?)
 
 ;;;; Compressed Files
 

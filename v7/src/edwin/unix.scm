@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.71 1996/05/12 07:14:21 cph Exp $
+;;;	$Id: unix.scm,v 1.72 1996/10/02 17:00:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -610,6 +610,12 @@ CANNOT contain the 'F' option."
 		      (loop (fix:+ space 1)))
 		(list (substring switches start end))))
 	  '()))))
+
+(define (dired-pathname-wild? pathname)
+  (let ((namestring (file-namestring pathname)))
+    (or (string-find-next-char namestring #\*)
+	(string-find-next-char namestring #\?)
+	(string-find-next-char namestring #\[))))
 
 ;;;; Subprocess/Shell Support
 

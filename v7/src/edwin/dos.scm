@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.36 1996/05/04 17:38:40 cph Exp $
+;;;	$Id: dos.scm,v 1.37 1996/10/02 17:00:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
@@ -257,3 +257,6 @@
    (file-time->ls-string (file-attributes/modification-time attr) now)
    " "
    name))
+
+(define dired-pathname-wild?
+  pathname-wild?)
