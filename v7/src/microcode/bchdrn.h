@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.h,v 1.3 1992/02/29 19:35:23 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.h,v 1.4 1992/06/03 21:54:00 jinx Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -61,7 +61,7 @@ MIT in each case. */
 /* #define AVOID_SYSV_SHARED_MEMORY */
 
 #ifndef AVOID_SYSV_SHARED_MEMORY
-#  if defined(_SYSV) || defined(_SUNOS4) || defined(_ULTRIX)
+#  if defined(_SYSV4) || defined(_SUNOS4) || defined(_ULTRIX)
 #    define HAVE_SYSV_SHARED_MEMORY
 #  endif
 #endif
