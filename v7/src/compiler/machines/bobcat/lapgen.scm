@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.163 1987/05/16 09:00:05 allen Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.164 1987/05/17 19:19:03 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -805,8 +805,8 @@ MIT in each case. |#
    (let ((procedure (label->procedure label)))
      `(,@(procedure-header procedure false)
        (MOVE W
-	     (& ,(+ (length (procedure-required procedure))
-		    (length (procedure-optional procedure))
+	     (& ,(+ (procedure-required procedure)
+		    (procedure-optional procedure)
 		    (if (procedure/closure? procedure) 1 0)))
 	     (D 1))
        (MOVEQ (& ,(if (procedure-rest procedure) 1 0)) (D 2))
@@ -826,8 +826,8 @@ MIT in each case. |#
 (define (procedure-header procedure gc-label)
   (let ((internal-label (procedure-label procedure)))
     (append! (if (procedure/closure? procedure)
-		 (let ((required (1+ (length (procedure-required procedure))))
-		       (optional (length (procedure-optional procedure)))
+		 (let ((required (1+ (procedure-required procedure)))
+		       (optional (procedure-optional procedure))
 		       (label (procedure-external-label procedure)))
 		   (if (and (procedure-rest procedure)
 			    (zero? required))
