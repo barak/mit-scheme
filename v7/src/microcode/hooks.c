@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.45 1992/09/18 05:53:31 jinx Exp $
+$Id: hooks.c,v 9.46 1992/10/27 22:00:13 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -40,17 +40,18 @@ MIT in each case. */
 #include "winder.h"
 #include "history.h"
 
+#define APPLY_AVOID_CANONICALIZATION
+
 DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
 {
   SCHEME_OBJECT procedure;
   SCHEME_OBJECT argument_list;
   fast long number_of_args;
-#ifdef LOSING_PARALLEL_PROCESSOR
-  SCHEME_OBJECT * saved_stack_pointer;
-#endif
   PRIMITIVE_HEADER (2);
+
   procedure = (ARG_REF (1));
   argument_list = (ARG_REF (2));
+#ifndef APPLY_AVOID_CANONICALIZATION
   /* Since this primitive must pop its own frame off and push a new
      frame on the stack, it has to be careful.  Its own stack frame is
      needed if an error or GC is required.  So these checks are done
@@ -62,37 +63,58 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
      list into a linear (vector-like) form, so as to avoid the
      overhead of traversing the list twice.  Unfortunately, the
      overhead of maintaining this other form (e.g. PRIMITIVE_GC_If_Needed)
-     is sufficiently high that it probably makes up for the time saved. */
+     is sufficiently high that it probably makes up for the time saved.
+   */
   PRIMITIVE_CANONICALIZE_CONTEXT ();
+#endif /* APPLY_AVOID_CANONICALIZATION */
   {
-    fast SCHEME_OBJECT scan_list;
+    fast SCHEME_OBJECT scan_list, scan_list_trail;
     TOUCH_IN_PRIMITIVE (argument_list, scan_list);
-    number_of_args = 0;
-    while (PAIR_P (scan_list))
+    if (! (PAIR_P (scan_list)))
+      number_of_args = 0;
+    else
+    {
+      number_of_args = 1;
+      scan_list_trail = scan_list;
+      TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
+      while (true)
       {
-	number_of_args += 1;
+	if (scan_list == scan_list_trail)
+	  error_bad_range_arg (2);
+	if (! (PAIR_P (scan_list)))
+	  break;
 	TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
+	if (scan_list == scan_list_trail)
+	  error_bad_range_arg (2);
+	if (! (PAIR_P (scan_list)))
+	{
+	  number_of_args += 1;
+	  break;
+	}
+	TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
+	scan_list_trail = (PAIR_CDR (scan_list_trail));
+	number_of_args += 2;
       }
+    }
     if (scan_list != EMPTY_LIST)
       error_wrong_type_arg (2);
   }
+
 #ifdef USE_STACKLETS
   /* This is conservative: if the number of arguments is large enough
      the Will_Push below may try to allocate space on the heap for the
      stack frame. */
   Primitive_GC_If_Needed
     (New_Stacklet_Size (number_of_args + STACK_ENV_EXTRA_SLOTS + 1));
-#endif
+#endif /* USE_STACKLETS */
+
   POP_PRIMITIVE_FRAME (2);
+
  Will_Push (number_of_args + STACK_ENV_EXTRA_SLOTS + 1);
-#ifdef LOSING_PARALLEL_PROCESSOR
-  saved_stack_pointer = Stack_Pointer;
-#endif
   {
     fast long i;
     fast SCHEME_OBJECT * scan_stack = (STACK_LOC (- number_of_args));
     fast SCHEME_OBJECT scan_list;
-    Stack_Pointer = scan_stack;
     TOUCH_IN_PRIMITIVE (argument_list, scan_list);
     for (i = number_of_args; (i > 0); i -= 1)
       {
@@ -102,7 +124,9 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
 	/* Check for abominable case of someone bashing the arg list. */
 	if (! (PAIR_P (scan_list)))
 	  {
-	    Stack_Pointer = saved_stack_pointer;
+	    /* Re-push the primitive's frame. */
+	    STACK_PUSH (argument_list);
+	    STACK_PUSH (procedure);
 	    error_bad_range_arg (2);
 	  }
 #endif
@@ -110,9 +134,19 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
 	TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
       }
   }
+  Stack_Pointer = (STACK_LOC (- number_of_args));
   STACK_PUSH (procedure);
   STACK_PUSH (STACK_FRAME_HEADER + number_of_args);
  Pushed ();
+
+#ifdef APPLY_AVOID_CANONICALIZATION
+  if (COMPILED_CODE_ADDRESS_P (STACK_REF (number_of_args + 2)))
+  {
+    extern SCHEME_OBJECT EXFUN (apply_compiled_from_primitive, (int));
+    return (apply_compiled_from_primitive (2));
+  }
+#endif /* APPLY_AVOID_CANONICALIZATION */
+
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
 }

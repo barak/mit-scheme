@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.52 1992/10/27 01:25:22 jinx Exp $
+$Id: cmpint.c,v 1.53 1992/10/27 22:00:04 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -236,7 +236,8 @@ extern C_UTILITY SCHEME_OBJECT
   EXFUN (compiled_block_environment, (SCHEME_OBJECT block)),
   EXFUN (compiled_closure_to_entry, (SCHEME_OBJECT entry)),
   * EXFUN (compiled_entry_to_block_address, (SCHEME_OBJECT entry)),
-  EXFUN (compiled_entry_to_block, (SCHEME_OBJECT entry));
+  EXFUN (compiled_entry_to_block, (SCHEME_OBJECT entry)),
+  EXFUN (apply_compiled_from_primitive, (int));
 
 extern C_UTILITY void
   EXFUN (compiler_initialize, (long fasl_p)),
@@ -269,6 +270,8 @@ extern C_TO_SCHEME long
   EXFUN (comp_error_restart, (void));
 
 extern utility_table_entry utility_table[];
+
+static SCHEME_OBJECT apply_in_interpreter;
 
 /* These definitions reflect the indices into the table above. */
 
@@ -290,6 +293,7 @@ extern utility_table_entry utility_table[];
 #define TRAMPOLINE_K_4_2			0xf
 #define TRAMPOLINE_K_4_1			0x10
 #define TRAMPOLINE_K_4_0			0x11
+#define TRAMPOLINE_K_APPLY_IN_INTERPRETER	0x3a
 
 #define TRAMPOLINE_K_OTHER			TRAMPOLINE_K_INTERPRETED
 
@@ -544,12 +548,12 @@ DEFUN_VOID (enter_compiled_expression)
 
   return (C_to_interface (compiled_entry_address));
 }
-
+
 C_TO_SCHEME long
 DEFUN_VOID (apply_compiled_procedure)
 {
   SCHEME_OBJECT nactuals, procedure;
-  instruction *procedure_entry;
+  instruction * procedure_entry;
   long result;
 
   nactuals = (STACK_POP ());
@@ -582,6 +586,70 @@ DEFUN_VOID (return_to_compiled_code)
   return (C_to_interface (compiled_entry_address));
 }
 
+C_UTILITY SCHEME_OBJECT
+DEFUN (apply_compiled_from_primitive, (arity), int arity)
+{
+  SCHEME_OBJECT frame_size, procedure;
+  long result;
+  
+  frame_size = (STACK_POP ());
+  procedure = (STACK_POP ());
+
+  switch (OBJECT_TYPE (procedure))
+  {
+    case TC_ENTITY:
+    {
+      SCHEME_OBJECT data, operator;
+      long nactuals = (OBJECT_DATUM (frame_size));
+
+      data = (MEMORY_REF (procedure, ENTITY_DATA));
+      if ((VECTOR_P (data))
+	  && (nactuals < (VECTOR_LENGTH (data)))
+	  && (COMPILED_CODE_ADDRESS_P (VECTOR_REF (data, nactuals)))
+	  && ((VECTOR_REF (data, 0))
+	      == (Get_Fixed_Obj_Slot (ARITY_DISPATCHER_TAG))))
+	procedure = (VECTOR_REF (data, nactuals));
+      else
+      {
+	operator = (MEMORY_REF (procedure, ENTITY_OPERATOR));
+	if (!COMPILED_CODE_ADDRESS_P (operator))
+	  break;
+	STACK_PUSH (procedure);
+	frame_size += 1;
+	procedure = operator;
+      }
+      /* fall through */
+    }
+
+    case TC_COMPILED_ENTRY:
+    {
+      result = setup_compiled_invocation ((OBJECT_DATUM (frame_size)),
+					  ((instruction *)
+					   (OBJECT_ADDRESS (procedure))));
+      if (result == PRIM_DONE)
+      {
+	STACK_PUSH (procedure);
+	Stack_Pointer = (STACK_LOC (- arity));
+	return (SHARP_F);
+      }
+      else
+	break;
+    }
+
+    case TC_PRIMITIVE:
+    /* For now, fall through */
+
+    default:
+      break;
+  }
+
+  STACK_PUSH (procedure);
+  STACK_PUSH (frame_size);
+  STACK_PUSH (apply_in_interpreter);
+  Stack_Pointer = (STACK_LOC (- arity));
+  return (SHARP_F);
+}
+
 /*
   SCHEME_UTILITYs
 
@@ -603,6 +671,22 @@ DEFUN (comutil_return_to_interpreter,
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
 {
   RETURN_TO_C (PRIM_DONE);
+}
+
+/*
+  This is an alternate way for code to return to the
+  Scheme interpreter.
+  It is invoked by a trampoline, which passes the address of the
+  trampoline storage block (empty) to it.
+ */
+
+SCHEME_UTILITY struct utility_result
+DEFUN (comutil_apply_in_interpreter,
+       (tramp_data, ignore_2, ignore_3, ignore_4),
+       SCHEME_OBJECT * tramp_data
+       AND long ignore_2 AND long ignore_3 AND long ignore_4)
+{
+  RETURN_TO_C (PRIM_APPLY);
 }
 
 /*
@@ -2262,6 +2346,21 @@ DEFUN (store_uuo_link,
 #  define TC_TRAMPOLINE_HEADER	TC_MANIFEST_VECTOR
 #endif
 
+static void
+DEFUN (fill_trampoline,
+       (block, entry_point, fmt_word, kind),
+       SCHEME_OBJECT * block
+       AND instruction * entry_point
+       AND format_word fmt_word
+       AND long kind)
+{
+  (COMPILED_ENTRY_FORMAT_WORD (entry_point)) = fmt_word;
+  (COMPILED_ENTRY_OFFSET_WORD (entry_point)) =
+    (MAKE_OFFSET_WORD (entry_point, block, false));
+  STORE_TRAMPOLINE_ENTRY (entry_point, kind);
+  return;
+}
+
 static long
 DEFUN (make_trampoline,
        (slot, fmt_word, kind, size, value1, value2, value3),
@@ -2271,8 +2370,8 @@ DEFUN (make_trampoline,
        AND SCHEME_OBJECT value1 AND SCHEME_OBJECT value2
        AND SCHEME_OBJECT value3)
 {
-  SCHEME_OBJECT * block, * local_free;
   instruction * entry_point;
+  SCHEME_OBJECT * ptr;
 
   if (GC_Check (TRAMPOLINE_SIZE + size))
   {
@@ -2280,27 +2379,22 @@ DEFUN (make_trampoline,
     return (PRIM_INTERRUPT);
   }
 
-  local_free = Free;
+  ptr = Free;
   Free += (TRAMPOLINE_SIZE + size);
-  block = local_free;
-  local_free[0] = (MAKE_OBJECT (TC_TRAMPOLINE_HEADER,
+  ptr[0] = (MAKE_OBJECT (TC_TRAMPOLINE_HEADER,
 				((TRAMPOLINE_SIZE - 1) + size)));
-  local_free[1] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
-				TRAMPOLINE_ENTRY_SIZE));
-  entry_point = ((instruction *) (TRAMPOLINE_ENTRY_POINT (local_free)));
-  local_free = (TRAMPOLINE_STORAGE (entry_point));
-  (COMPILED_ENTRY_FORMAT_WORD (entry_point)) = fmt_word;
-  (COMPILED_ENTRY_OFFSET_WORD (entry_point)) =
-    (MAKE_OFFSET_WORD (entry_point, block, false));
-  STORE_TRAMPOLINE_ENTRY (entry_point, kind);
-
-  if ((--size) >= 0)
-    *local_free++ = value1;
-  if ((--size) >= 0)
-    *local_free++ = value2;
-  if ((--size) >= 0)
-    *local_free++ = value3;
+  ptr[1] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
+			   TRAMPOLINE_ENTRY_SIZE));
+  entry_point = ((instruction *) (TRAMPOLINE_ENTRY_POINT (ptr)));
+  fill_trampoline (ptr, entry_point, fmt_word, kind);
   *slot = (ENTRY_TO_OBJECT (entry_point));
+  ptr = (TRAMPOLINE_STORAGE (entry_point));
+  if ((--size) >= 0)
+    *ptr++ = value1;
+  if ((--size) >= 0)
+    *ptr++ = value2;
+  if ((--size) >= 0)
+    *ptr++ = value3;
   return (PRIM_DONE);
 }
 
@@ -2630,7 +2724,8 @@ utility_table_entry utility_table[] =
   UTE(comutil_primitive_error),			/* 0x36 */
   UTE(comutil_quotient),			/* 0x37 */
   UTE(comutil_remainder),			/* 0x38 */
-  UTE(comutil_modulo)				/* 0x39 */
+  UTE(comutil_modulo),				/* 0x39 */
+  UTE(comutil_apply_in_interpreter)		/* 0x3a */
   };
 
 /* Initialization */
@@ -2686,6 +2781,8 @@ SCHEME_OBJECT
 static void
 DEFUN_VOID (compiler_reset_internal)
 {
+  long len;
+  SCHEME_OBJECT * block;
   /* Other stuff can be placed here. */
 
   Registers[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) NULL);
@@ -2693,10 +2790,14 @@ DEFUN_VOID (compiler_reset_internal)
 
   ASM_RESET_HOOK();
 
+  block = (OBJECT_ADDRESS (compiler_utilities));
+  len = (OBJECT_DATUM (block[0]));
   return_to_interpreter =
-    (ENTRY_TO_OBJECT (TRAMPOLINE_ENTRY_POINT
-		      (OBJECT_ADDRESS (compiler_utilities))));
-
+    (ENTRY_TO_OBJECT (((char *) block)
+		      + ((unsigned long) (block [len - 1]))));
+  apply_in_interpreter = 
+    (ENTRY_TO_OBJECT (((char *) block)
+		      + ((unsigned long) (block [len]))));
   return;
 }
 
@@ -2707,7 +2808,8 @@ DEFUN (compiler_reset,
 {
   /* Called after a disk restore */
 
-  if ((OBJECT_TYPE (new_block)) != TC_COMPILED_CODE_BLOCK)
+  if (((OBJECT_TYPE (new_block)) != TC_COMPILED_CODE_BLOCK)
+      || ((OBJECT_TYPE (MEMORY_REF (new_block, 0))) != TC_MANIFEST_NM_VECTOR))
   {
     extern void EXFUN (compiler_reset_error, (void));
 
@@ -2726,28 +2828,40 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
 {
   /* Start-up of whole interpreter */
 
-  long code;
-  SCHEME_OBJECT trampoline, *block;
-
   compiler_processor_type = COMPILER_PROCESSOR_TYPE;
   compiler_interface_version = COMPILER_INTERFACE_VERSION;
   if (fasl_p)
   {
+    long len;
+    instruction * tramp1, * tramp2;
+    SCHEME_OBJECT * block;
     extern SCHEME_OBJECT * EXFUN (copy_to_constant_space,
 				  (SCHEME_OBJECT *, long));
 
-    code = (make_trampoline (&trampoline,
-			     ((format_word) FORMAT_WORD_RETURN),
-			     TRAMPOLINE_K_RETURN,
-			     0, SHARP_F, SHARP_F, SHARP_F));
-    if (code != PRIM_DONE)
+    len = ((2 * TRAMPOLINE_ENTRY_SIZE) + 3);
+    if (GC_Check (len))
     {
       fprintf (stderr,
 	       "compiler_initialize: Not enough space!\n");
       Microcode_Termination (TERM_NO_SPACE);
     }
-    block = (compiled_entry_to_block_address (trampoline));
-    block = (copy_to_constant_space (block, (1 + (OBJECT_DATUM (block[0])))));
+
+    block = Free;
+    Free += len;
+    block[0] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (len - 1)));
+    tramp1 = ((instruction *) (TRAMPOLINE_ENTRY_POINT (block - 1)));
+    tramp2 = ((instruction *)
+	      (((char *) tramp1)
+	       + (TRAMPOLINE_ENTRY_SIZE * (sizeof (SCHEME_OBJECT)))));
+    fill_trampoline (block, tramp1,
+		     ((format_word) FORMAT_WORD_RETURN),
+		     TRAMPOLINE_K_RETURN);
+    fill_trampoline (block, tramp2,
+		     ((format_word) FORMAT_WORD_RETURN),
+		     TRAMPOLINE_K_APPLY_IN_INTERPRETER);
+    block[len - 2] = (((char *) tramp1) - ((char *) block));
+    block[len - 1] = (((char *) tramp2) - ((char *) block));
+    block = (copy_to_constant_space (block, len));
     compiler_utilities = (MAKE_CC_BLOCK (block));
     compiler_reset_internal ();
   }
@@ -2810,7 +2924,8 @@ extern SCHEME_OBJECT
   EXFUN (compiled_block_environment, (SCHEME_OBJECT block)),
   EXFUN (compiled_closure_to_entry, (SCHEME_OBJECT entry)),
   * EXFUN (compiled_entry_to_block_address, (SCHEME_OBJECT entry)),
-  EXFUN (compiled_entry_to_block, (SCHEME_OBJECT entry));
+  EXFUN (compiled_entry_to_block, (SCHEME_OBJECT entry)),
+  EXFUN (apply_compiled_from_primitive, (int));
 
 extern void
   EXFUN (compiler_reset, (SCHEME_OBJECT new_block)),
@@ -2845,6 +2960,13 @@ long
 DEFUN_VOID (return_to_compiled_code)
 {
   return (ERR_INAPPLICABLE_CONTINUATION);
+}
+
+SCHEME_OBJECT
+DEFUN (apply_compiled_from_primitive, (arity), int arity)
+{
+  signal_error_from_primitive (ERR_INAPPLICABLE_CONTINUATION);
+  /*NOTREACHED*/
 }
 
 /* Bad entry points. */
