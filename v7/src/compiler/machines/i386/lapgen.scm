@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.19 1992/02/28 20:22:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.20 1992/05/14 03:06:55 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -101,7 +101,7 @@ MIT in each case. |#
 ;;;; Linearizer interface
 
 (define (lap:make-label-statement label)
-  (INST (LABEL ,label)))
+  (LAP (LABEL ,label)))
 
 (define (lap:make-unconditional-branch label)
   (LAP (JMP (@PCR ,label))))

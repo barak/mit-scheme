@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.37 1992/02/07 05:58:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.38 1992/05/14 03:02:44 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.41 1991/05/06 23:05:51 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
@@ -500,7 +500,7 @@ MIT in each case. |#
   (INST-EA (OFFSET #x001C 0 ,regnum:regs-pointer)))
 
 (define (lap:make-label-statement label)
-  (INST (LABEL ,label)))
+  (LAP (LABEL ,label)))
 
 (define (lap:make-unconditional-branch label)
   (LAP (B (N) (@PCR ,label))))

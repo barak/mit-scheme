@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.43 1992/05/14 03:06:23 jinx Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1077,7 +1077,7 @@ MIT in each case. |#
   (caddr expression))
 
 (define (lap:make-label-statement label)
-  (INST (LABEL ,label)))
+  (LAP (LABEL ,label)))
 
 (define (lap:make-unconditional-branch label)
   (LAP (BRA (@PCR ,label))))
