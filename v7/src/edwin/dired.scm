@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.110 1991/05/10 04:53:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.111 1991/05/18 03:01:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -469,12 +469,12 @@ CANNOT contain the 'F' option."
   (let ((filenames (dired-killable-filenames)))
     (if (not (null? filenames))
 	(let ((buffer (temporary-buffer " *Deletions*")))
-	  (with-output-to-mark (buffer-point buffer)
-	    (lambda ()
-	      (write-strings-densely
-	       (map (lambda (filename)
-		      (pathname-name-string (car filename)))
-		    filenames))))
+	  (write-strings-densely
+	   (map (lambda (filename)
+		  (pathname-name-string (car filename)))
+		filenames)
+	   (mark->output-port (buffer-point buffer))
+	   (window-x-size (current-window)))
 	  (set-buffer-point! buffer (buffer-start buffer))
 	  (buffer-not-modified! buffer)
 	  (set-buffer-read-only! buffer)
