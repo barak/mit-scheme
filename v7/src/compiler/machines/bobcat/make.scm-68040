@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.88 1991/10/25 06:49:46 cph Exp $
+$Id: make.scm-68040,v 4.89 1993/07/06 00:56:26 gjr Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,6 +37,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ((load "base/make") "Motorola MC68040")
+(set! (access compiler:compress-top-level? (->environment '(compiler)))
+      true)
 ((environment-lookup (->environment '(COMPILER LAP-SYNTAXER))
 		     'MC68K/TOGGLE-CLOSURE-FORMAT)
  'MC68040)

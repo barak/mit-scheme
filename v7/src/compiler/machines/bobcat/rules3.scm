@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.38 1993/02/19 17:48:51 cph Exp $
+$Id: rules3.scm,v 4.39 1993/07/06 00:56:29 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -233,8 +233,10 @@ MIT in each case. |#
 	 ,@(generate/move-frame-up* frame-size temp))))
 
 (define-rule statement
-  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
-				   (OFFSET-ADDRESS (REGISTER 15) (? offset)))
+  (INVOCATION-PREFIX:MOVE-FRAME-UP
+   (? frame-size)
+   (OFFSET-ADDRESS (REGISTER 15)
+		   (MACHINE-CONSTANT (? offset))))
   (let ((how-far (- offset frame-size)))
     (cond ((zero? how-far)
 	   (LAP))
@@ -257,9 +259,10 @@ MIT in each case. |#
 	   (generate/move-frame-up frame-size (offset-reference a7 offset))))))
 
 (define-rule statement
-  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
-				   (OFFSET-ADDRESS (REGISTER (? base))
-						   (? offset)))
+  (INVOCATION-PREFIX:MOVE-FRAME-UP
+   (? frame-size)
+   (OFFSET-ADDRESS (REGISTER (? base))
+		   (MACHINE-CONSTANT (? offset))))
   (generate/move-frame-up frame-size (indirect-reference! base offset)))
 
 (define-rule statement
@@ -267,10 +270,11 @@ MIT in each case. |#
   (LAP))
 
 (define-rule statement
-  (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
-				  (OFFSET-ADDRESS (REGISTER (? base))
-						  (? offset))
-				  (REGISTER 12))
+  (INVOCATION-PREFIX:DYNAMIC-LINK
+   (? frame-size)
+   (OFFSET-ADDRESS (REGISTER (? base))
+		   (MACHINE-CONSTANT (? offset)))
+   (REGISTER 12))
   (let ((label (generate-label))
 	(temp (allocate-temporary-register! 'ADDRESS)))
     (let ((temp-ref (register-reference temp)))
@@ -815,6 +819,67 @@ long-word aligned and there is no need for shuffling.
 	 (JSR ,entry:compiler-link)
 	 ,@(make-external-label (continuation-code-word false)
 				(generate-label)))))
+
+(define (generate/remote-links n-code-blocks code-blocks-label n-sections)
+  (if (= n-code-blocks 0)
+      (LAP)
+      (let ((loop (generate-label))
+	    (bytes (generate-label)))
+	(LAP (CLR L (D 0))
+	     ;; Set up counter
+	     (MOV L (D 0) (@-A 7))
+	     (BRA (@PCR ,loop))
+	     (LABEL ,bytes)
+	     ,@(sections->bytes n-code-blocks n-sections)
+	     (LABEL ,loop)
+	     ;; Increment counter for next iteration
+	     (ADDQ L (& 1) (@A 7))
+	     ;; Get subblock
+	     (MOV L (@PCR ,code-blocks-label) (D 2))
+	     (AND L (D 7) (D 2))
+	     (MOV L (D 2) (A 0))
+	     (MOV L (@AOXS 0 4 ((D 0) L 4)) (D 2))
+	     ;; Get number of linkage sections
+	     (CLR L (D 4))
+	     (MOV B (@PCRXS ,bytes ((D 0) L 1)) (D 4))
+	     ;; block -> address
+	     (AND L (D 7) (D 2))
+	     (MOV L (D 2) (A 0))
+	     ;; Get length and non-marked length
+	     (MOV L (@A 0) (D 3))
+	     (MOV L (@AO 0 4) (D 5))
+	     ;; Strip type tags
+	     (AND L (D 7) (D 3))
+	     (AND L (D 7) (D 5))
+	     ;; Store environment
+	     (MOV L ,reg:environment (@AOXS 0 0 ((D 3) L 4)))
+	     ;; Address of first constant (linkage area)
+	     (LEA (@AOXS 0 8 ((D 5) L 4)) (A 1))
+	     (MOV L (A 1) (D 3))
+	     (JSR ,entry:compiler-link)
+	     ,@(make-external-label (continuation-code-word false)
+				    (generate-label))
+	     ;; Counter value
+	     (MOV L (@A 7) (D 0))
+	     ;; Exit loop if we've done all
+	     (CMP L (& ,n-code-blocks) (D 0))
+	     (B NE (@PCR ,loop))
+	     ;; Pop counter off the stack
+	     (ADDQ L (& 4) (A 7))))))
+
+(define (sections->bytes n-code-blocks n-sections)
+  (let walk ((bytes
+	      (append (vector->list n-sections)
+		      (let ((left (remainder n-code-blocks 2)))
+			(if (zero? left)
+			    '()
+			    (make-list (- 2 left) 0))))))
+    (if (null? bytes)
+	(LAP)
+	(let ((hi (car bytes))
+	      (lo (cadr bytes)))
+	  (LAP (DC UW ,(+ lo (* 256 hi)))
+	       ,@(walk (cddr bytes)))))))
 
 (define (generate/constants-block constants references assignments
 				  uuo-links global-links static-vars)

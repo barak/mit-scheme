@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.47 1993/01/13 00:18:46 cph Exp $
+$Id: lapgen.scm,v 4.48 1993/07/06 00:56:23 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -350,9 +350,134 @@ MIT in each case. |#
       (register-alias register 'DATA)
       (load-alias-register! register 'ADDRESS)))
 
-(define (offset->indirect-reference! offset)
-  (indirect-reference! (rtl:register-number (rtl:offset-base offset))
-		       (rtl:offset-number offset)))
+(define (rtl:simple-byte-offset? expression)
+  (and (rtl:byte-offset? expression)
+       (let ((base (rtl:byte-offset-base expression))
+	     (offset (rtl:byte-offset-offset expression)))
+	 (if (rtl:register? base)
+	     (or (rtl:machine-constant? offset)
+		 (rtl:register? offset))
+	     (and (rtl:byte-offset-address? base)
+		  (rtl:machine-constant? offset)
+		  (rtl:register? (rtl:byte-offset-address-base base))
+		  (rtl:register? (rtl:byte-offset-address-offset base)))))
+       expression))
+
+(define (byte-offset->reference! offset)
+  ;; OFFSET must be a simple byte offset
+  (let ((base (rtl:byte-offset-base offset))
+	(offset (rtl:byte-offset-offset offset)))
+    (cond ((not (rtl:register? base))
+	   (indexed-ea (rtl:register-number
+			(rtl:byte-offset-address-base base))
+		       (rtl:register-number
+			(rtl:byte-offset-address-offset base))
+		       1
+		       (rtl:machine-constant-value offset)))
+	  ((rtl:machine-constant? offset)
+	   (indirect-byte-reference! (rtl:register-number base)
+				     (rtl:machine-constant-value offset)))
+	  (else
+	   (indexed-ea (rtl:register-number base)
+		       (rtl:register-number offset)
+		       1
+		       0)))))
+
+(define (rtl:simple-offset? expression)
+  (and (rtl:offset? expression)
+       (let ((base (rtl:offset-base expression))
+	     (offset (rtl:offset-offset expression)))
+	 (if (rtl:register? base)
+	     (or (rtl:machine-constant? offset)
+		 (rtl:register? offset))
+	     (and (rtl:offset-address? base)
+		  (rtl:machine-constant? offset)
+		  (rtl:register? (rtl:offset-address-base base))
+		  (rtl:register? (rtl:offset-address-offset base)))))
+       expression))
+
+(define (offset->reference! offset)
+  ;; OFFSET must be a simple offset
+  (let ((base (rtl:offset-base offset))
+	(offset (rtl:offset-offset offset)))
+    (cond ((not (rtl:register? base))
+	   (indexed-ea (rtl:register-number (rtl:offset-address-base base))
+		       (rtl:register-number (rtl:offset-address-offset base))
+		       4
+		       (* 4 (rtl:machine-constant-value offset))))
+	  ((rtl:machine-constant? offset)
+	   (indirect-reference! (rtl:register-number base)
+				(rtl:machine-constant-value offset)))
+	  (else
+	   (indexed-ea (rtl:register-number base)
+		       (rtl:register-number offset)
+		       4
+		       0)))))
+
+(define (offset->reference!/char offset)
+  ;; OFFSET must be a simple offset
+  (let ((base (rtl:offset-base offset))
+	(offset (rtl:offset-offset offset)))
+    (cond ((not (rtl:register? base))
+	   (indexed-ea (rtl:register-number (rtl:offset-address-base base))
+		       (rtl:register-number (rtl:offset-address-offset base))
+		       4
+		       (+ 3 (* 4 (rtl:machine-constant-value offset)))))
+	  ((rtl:machine-constant? offset)
+	   (indirect-byte-reference!
+	    (rtl:register-number base)
+	    (+ 3 (* 4 (rtl:machine-constant-value offset)))))
+	  (else
+	   (indexed-ea (rtl:register-number base)
+		       (rtl:register-number offset)
+		       4
+		       3)))))
+
+(define (rtl:simple-float-offset? expression)
+  (and (rtl:float-offset? expression)
+       (let ((base (rtl:float-offset-base expression))
+	     (offset (rtl:float-offset-offset expression)))
+	 (and (or (rtl:machine-constant? offset)
+		  (rtl:register? offset))
+	      (or (rtl:register? base)
+		  (and (rtl:offset-address? base)
+		       (rtl:register? (rtl:offset-address-base base))
+		       (rtl:machine-constant?
+			(rtl:offset-address-offset base))))))
+       expression))
+
+(define (float-offset->reference! offset)
+  ;; OFFSET must be a simple float offset
+  (let ((base (rtl:float-offset-base offset))
+	(offset (rtl:float-offset-offset offset)))
+    (cond ((not (rtl:register? base))
+	   (let ((base*
+		  (rtl:register-number (rtl:offset-address-base base)))
+		 (w-offset
+		  (rtl:machine-constant-value
+		   (rtl:offset-address-offset base))))
+	     (if (rtl:machine-constant? offset)
+		 (indirect-reference!
+		  base*
+		  (+ (* 2 (rtl:machine-constant-value offset))
+		     w-offset))
+		 (indexed-ea base*
+			     (rtl:register-number offset)
+			     8
+			     (* 4 w-offset)))))
+	  ((rtl:machine-constant? offset)
+	   (indirect-reference! (rtl:register-number base)
+				(* 2 (rtl:machine-constant-value offset))))
+	  (else
+	   (indexed-ea (rtl:register-number base)
+		       (rtl:register-number offset)
+		       8
+		       0)))))
+
+(define (indexed-ea base index scale offset)
+  (let ((base (allocate-indirection-register! base))
+	(index (preferred-data-register-reference index)))
+    (INST-EA (@AOXS ,(->areg base) ,offset (,index L ,scale)))))
 
 (define (indirect-reference! register offset)
   (offset-reference (allocate-indirection-register! register) offset))
@@ -362,19 +487,7 @@ MIT in each case. |#
 
 (define-integrable (allocate-indirection-register! register)
   (load-alias-register! register 'ADDRESS))
-
-#|
-
-;; *** This is believed to be a fossil. ***
-;; Left here until the first compilation to make sure that it really is.
-;; Can be removed the next time it is seen.
-
-(define (code-object-label-initialize code-object)
-  code-object
-  false)
-
-|#
-
+
 (define (generate-n-times n limit instruction-gen with-counter)
   (if (> n limit)
       (let ((loop (generate-label 'LOOP)))
@@ -390,17 +503,21 @@ MIT in each case. |#
 	    (LAP ,@(instruction-gen)
 		 ,@(loop (-1+ n)))))))
 
+#|
+
+;;; These seem to be fossils --- GJR 7/1/1993
+
 (define (standard-target-expression? target)
-  (or (and (rtl:offset? target)
-	   (rtl:register? (rtl:offset-base target)))
+  (or (rtl:simple-offset? target)
       (rtl:free-push? target)
       (rtl:stack-push? target)))
 
 (define (standard-target-expression->ea target)
-  (cond ((rtl:offset? target) (offset->indirect-reference! target))
+  (cond ((rtl:offset? target) (offset->reference! target))
 	((rtl:free-push? target) (INST-EA (@A+ 5)))
 	((rtl:stack-push? target) (INST-EA (@-A 7)))
 	(else (error "STANDARD-TARGET->EA: Not a standard target" target))))
+|#
 
 (define (rtl:free-push? expression)
   (and (rtl:post-increment? expression)
@@ -451,7 +568,7 @@ MIT in each case. |#
 		   (operate-on-machine-target target)
 		   (use-temporary target))))))
        ((OFFSET)
-	(use-temporary (offset->indirect-reference! target)))
+	(use-temporary (offset->reference! target)))
        (else
 	(error "Illegal machine target" target)))))
 
@@ -466,10 +583,9 @@ MIT in each case. |#
       (operate-on-target (reference-target-alias! target type)))
     operate-on-target))
 
-(define (machine-operation-target? target)
-  (or (rtl:register? target)
-      (and (rtl:offset? target)
-	   (rtl:register? (rtl:offset-base target)))))
+(define (machine-operation-target? expression)
+  (or (rtl:register? expression)
+      (rtl:simple-offset? expression)))
 
 (define (two-arg-register-operation
 	 operate commutative?

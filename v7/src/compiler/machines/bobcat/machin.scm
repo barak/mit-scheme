@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 4.30 1993/06/29 22:23:16 gjr Exp $
+$Id: machin.scm,v 4.31 1993/07/06 00:56:25 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -288,12 +288,15 @@ MIT in each case. |#
        (= (rtl:register-number expression) regnum:return-value)))
 
 (define (interpreter-environment-register)
-  (rtl:make-offset (interpreter-regs-pointer) 3))
+  (rtl:make-offset (interpreter-regs-pointer)
+		   (rtl:make-machine-constant 3)))
 
 (define (interpreter-environment-register? expression)
   (and (rtl:offset? expression)
        (interpreter-regs-pointer? (rtl:offset-base expression))
-       (= 3 (rtl:offset-number expression))))
+       (let ((offset (rtl:offset-offset expression)))
+	 (and (rtl:machine-constant? offset)
+	      (= 3 (rtl:machine-constant-value offset))))))
 
 (define (interpreter-free-pointer)
   (rtl:make-machine-register regnum:free-pointer))
@@ -381,7 +384,8 @@ MIT in each case. |#
 	  ASSIGNMENT-CACHE
 	  VARIABLE-CACHE
 	  OFFSET-ADDRESS
-	  BYTE-OFFSET-ADDRESS)
+	  BYTE-OFFSET-ADDRESS
+	  FLOAT-OFFSET-ADDRESS)
 	 3)
 	((CONS-POINTER)
 	 (and (rtl:machine-constant? (rtl:cons-pointer-type expression))
@@ -398,4 +402,4 @@ MIT in each case. |#
 (define compiler:primitives-with-no-open-coding
   '(DIVIDE-FIXNUM GCD-FIXNUM &/
     VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
-    FLOATING-VECTOR-REF FLOATING-VECTOR-SET!))
+    FLONUM-CEILING FLONUM-FLOOR FLONUM-ATAN2))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.13 1992/07/05 14:20:58 jinx Exp $
+$Id: rules2.scm,v 4.14 1993/07/06 00:56:28 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,17 +38,18 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (predicate/memory-operand? expression)
-  (or (and (rtl:offset? expression)
-	   (rtl:register? (rtl:offset-base expression)))
+  (or (rtl:simple-offset? expression)
       (and (rtl:post-increment? expression)
 	   (interpreter-stack-pointer?
 	    (rtl:post-increment-register expression)))))
 
 (define (predicate/memory-operand-reference expression)
   (case (rtl:expression-type expression)
-    ((OFFSET) (offset->indirect-reference! expression))
+    ((OFFSET)
+     (offset->reference! expression))
     ((POST-INCREMENT) (INST-EA (@A+ 7)))
-    (else (error "Illegal memory operand" expression))))
+    (else
+     (error "Illegal memory operand" expression))))
 
 (define (compare/register*register register-1 register-2 cc)
   (let ((finish
@@ -125,10 +126,10 @@ MIT in each case. |#
 			      type))))))
 
 (define-rule predicate
-  (TYPE-TEST (OBJECT->TYPE (OFFSET (REGISTER (? address)) (? offset)))
+  (TYPE-TEST (OBJECT->TYPE (? expression rtl:simple-offset?))
 	     (? type))
   (set-standard-branches! 'EQ)
-  (let ((source (indirect-reference! address offset)))
+  (let ((source (offset->reference! expression)))
     (cond ((= scheme-type-width 8)
 	   (test-byte type source))
 	  ((and (zero? type) use-68020-instructions?)

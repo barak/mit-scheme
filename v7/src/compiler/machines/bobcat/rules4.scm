@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules4.scm,v 4.13 1992/11/09 18:46:07 jinx Exp $
+$Id: rules4.scm,v 4.14 1993/07/06 00:56:31 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -89,8 +89,7 @@ MIT in each case. |#
       (and (rtl:cons-pointer? expression)
 	   (rtl:machine-constant? (rtl:cons-pointer-type expression))
 	   (rtl:machine-constant? (rtl:cons-pointer-datum expression)))
-      (and (rtl:offset? expression)
-	   (rtl:register? (rtl:offset-base expression)))))
+      (rtl:simple-offset? expression)))
 
 (define (interpreter-call-argument->machine-register! expression register)
   (let ((target (register-reference register)))
@@ -108,7 +107,7 @@ MIT in each case. |#
 				 (rtl:cons-pointer-datum expression))
 				target)))
       ((OFFSET)
-       (let ((source-reference (offset->indirect-reference! expression)))
+       (let ((source-reference (offset->reference! expression)))
 	 (LAP ,@(clear-registers! register)
 	      (MOV L ,source-reference ,target))))
       (else
