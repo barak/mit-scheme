@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.6 1995/04/28 07:01:32 cph Exp $
+$Id: pros2pm.c,v 1.7 1995/05/02 20:54:09 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -654,6 +654,30 @@ DEFINE_PRIMITIVE ("OS2PS-SET-BITMAP-BITS", Prim_OS2_ps_set_bitmap_bits, 5, 5, 0)
 			      (arg_nonnegative_integer (3)),
 			      (STRING_ARG (4)),
 			      (STRING_ARG (5)))));
+}
+
+DEFINE_PRIMITIVE ("OS2-CLIPBOARD-WRITE-TEXT", Prim_OS2_clipboard_write_text, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS2_clipboard_write_text (pm_qid, (STRING_ARG (1)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2-CLIPBOARD-READ-TEXT", Prim_OS2_clipboard_read_text, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  {
+    const char * text = (OS2_clipboard_read_text (pm_qid));
+    SCHEME_OBJECT result;
+    if (text == 0)
+      result = SHARP_F;
+    else
+      {
+	result = (char_pointer_to_string ((unsigned char *) text));
+	OS_free ((void *) text);
+      }
+    PRIMITIVE_RETURN (result);
+  }
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-OPEN-EVENT-QID", Prim_OS2_window_open_event_qid, 0, 0, 0)

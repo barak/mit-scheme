@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.5 1995/02/21 22:55:42 cph Exp $
+$Id: os2pmcon.c,v 1.6 1995/05/02 20:54:02 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -68,6 +68,8 @@ static int console_visiblep;
 static int console_closedp;
 static unsigned short readahead_repeat;
 static char readahead_char;
+static const char * readahead_insert;
+static const char * readahead_insert_scan;
 static msg_list_t * pending_events_head;
 static msg_list_t * pending_events_tail;
 static tqueue_t * console_tqueue;
@@ -103,6 +105,7 @@ OS2_initialize_pm_console (void)
   console_visiblep = 0;
   console_closedp = 0;
   readahead_repeat = 0;
+  readahead_insert = 0;
   pending_events_head = 0;
   console_tqueue = (OS2_make_std_tqueue ());
   {
@@ -342,7 +345,7 @@ console_clear_all (void)
 int
 OS2_pm_console_getch (void)
 {
-  if (readahead_repeat == 0)
+  if ((readahead_repeat == 0) && (readahead_insert == 0))
     while (1)
       {
 	process_events (pending_events_head == 0);
@@ -364,6 +367,18 @@ OS2_pm_console_getch (void)
 		    readahead_repeat = repeat;
 		    goto do_read;
 		  }
+		else if (translation == (-2))
+		  {
+		    readahead_insert
+		      = (OS2_clipboard_read_text (console_pm_qid));
+		    if ((*readahead_insert) != '\0')
+		      {
+			readahead_insert_scan = readahead_insert;
+			goto do_read;
+		      }
+		    else
+		      OS_free ((void *) readahead_insert);
+		  }
 		break;
 	      }
 	    case mt_close_event:
@@ -383,10 +398,22 @@ OS2_pm_console_getch (void)
 	}
       }
  do_read:
-  if ((readahead_repeat == 0) && console_closedp)
-    return (-1);
-  readahead_repeat -= 1;
-  return (readahead_char);
+  if (readahead_insert != 0)
+    {
+      char c = (*readahead_insert_scan++);
+      if ((*readahead_insert_scan) == '\0')
+	{
+	  OS_free ((void *) readahead_insert);
+	  readahead_insert = 0;
+	}
+      return (c);
+    }
+  if (readahead_repeat != 0)
+    {
+      readahead_repeat -= 1;
+      return (readahead_char);
+    }
+  return (-1);
 }
 
 static int
@@ -413,6 +440,8 @@ translate_key_event (msg_t * message)
       case VK_ENTER:
 	code = '\r';
 	break;
+      case VK_INSERT:
+	return (((flags & KC_SHIFT) != 0) ? (-2) : (-1));
       default:
 	return (-1);
       }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.8 1995/04/28 07:05:01 cph Exp $
+$Id: os2pm.c,v 1.9 1995/05/02 20:53:53 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -689,6 +689,24 @@ typedef struct
 } sm_ps_set_bitmap_bits_reply_t;
 #define SM_PS_SET_BITMAP_BITS_REPLY_LENGTH(m)				\
   (((sm_ps_set_bitmap_bits_reply_t *) (m)) -> length)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  const char * text;
+} sm_clipboard_write_text_t;
+#define SM_CLIPBOARD_WRITE_TEXT_TEXT(m)					\
+  (((sm_clipboard_write_text_t *) (m)) -> text)
+
+typedef msg_t sm_clipboard_read_text_request_t;
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  const char * text;
+} sm_clipboard_read_text_reply_t;
+#define SM_CLIPBOARD_READ_TEXT_REPLY_TEXT(m)				\
+  (((sm_clipboard_read_text_reply_t *) (m)) -> text)
 
 static void sync_transaction (qid_t, msg_t *);
 static void sync_reply (qid_t);
@@ -764,6 +782,9 @@ static unsigned long ps_get_bitmap_bits
 static unsigned long ps_set_bitmap_bits
   (ps_t *, unsigned long, unsigned long, PBYTE, PBITMAPINFO2);
 static font_metrics_t * ps_set_font (ps_t *, unsigned short, const char *);
+
+static void clipboard_write_text (const char *);
+static const char * clipboard_read_text (void);
 
 static msg_t * make_button_event
   (wid_t, unsigned char, unsigned char, unsigned short, unsigned short,
@@ -897,6 +918,12 @@ OS2_initialize_pm_thread (void)
 		       sm_ps_set_bitmap_bits_request_t);
   SET_MSG_TYPE_LENGTH (mt_ps_set_bitmap_bits_reply,
 		       sm_ps_set_bitmap_bits_reply_t);
+
+  SET_MSG_TYPE_LENGTH (mt_clipboard_write_text, sm_clipboard_write_text_t);
+  SET_MSG_TYPE_LENGTH (mt_clipboard_read_text_request,
+		       sm_clipboard_read_text_request_t);
+  SET_MSG_TYPE_LENGTH (mt_clipboard_read_text_reply,
+		       sm_clipboard_read_text_reply_t);
 
   SET_MSG_TYPE_LENGTH (mt_button_event, sm_button_event_t);
   SET_MSG_TYPE_LENGTH (mt_close_event, sm_close_event_t);
@@ -1198,6 +1225,9 @@ static void handle_get_bitmap_parameters_request (msg_t *);
 static void handle_ps_get_bitmap_bits_request (msg_t *);
 static void handle_ps_set_bitmap_bits_request (msg_t *);
 
+static void handle_clipboard_write_text_request (msg_t *);
+static void handle_clipboard_read_text_request (msg_t *);
+
 static MRESULT EXPENTRY
 object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 {
@@ -1332,6 +1362,12 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	  break;
 	case mt_ps_set_bitmap_bits_request:
 	  handle_ps_set_bitmap_bits_request (message);
+	  break;
+	case mt_clipboard_write_text:
+	  handle_clipboard_write_text_request (message);
+	  break;
+	case mt_clipboard_read_text_request:
+	  handle_clipboard_read_text_request (message);
 	  break;
 
 	default:
@@ -2392,6 +2428,46 @@ handle_ps_set_bitmap_bits_request (msg_t * request)
   OS2_destroy_message (request);
   OS2_send_message (sender, reply);
 }
+
+void
+OS2_clipboard_write_text (qid_t qid, const char * text)
+{
+  msg_t * message = (OS2_create_message (mt_clipboard_write_text));
+  (SM_CLIPBOARD_WRITE_TEXT_TEXT (message)) = text;
+  sync_transaction (qid, message);
+}
+
+static void
+handle_clipboard_write_text_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  clipboard_write_text (SM_CLIPBOARD_WRITE_TEXT_TEXT (message));
+  OS2_destroy_message (message);
+  sync_reply (sender);
+}
+
+const char *
+OS2_clipboard_read_text (qid_t qid)
+{
+  msg_t * message
+    = (OS2_message_transaction
+       (qid,
+	(OS2_create_message (mt_clipboard_read_text_request)),
+	mt_clipboard_read_text_reply));
+  const char * text = (SM_CLIPBOARD_READ_TEXT_REPLY_TEXT (message));
+  OS2_destroy_message (message);
+  return (text);
+}
+
+static void
+handle_clipboard_read_text_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_clipboard_read_text_reply));
+  (SM_CLIPBOARD_READ_TEXT_REPLY_TEXT (reply)) = (clipboard_read_text ());
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
 
 static window_t * make_window (qid_t, qid_t);
 
@@ -3023,6 +3099,50 @@ ps_set_bitmap_bits (ps_t * ps, unsigned long start, unsigned long length,
   if (r < 0)
     window_error (GpiSetBitmapBits);
   return (r);
+}
+
+static void
+clipboard_write_text (const char * text)
+{
+  unsigned int len = ((strlen (text)) + 1);
+  PVOID shared_copy;
+  int copy_used = 0;
+
+  STD_API_CALL
+    (dos_alloc_shared_mem,
+     ((&shared_copy), 0, len,
+      (PAG_COMMIT | PAG_READ | PAG_WRITE | OBJ_GIVEABLE)));
+  FASTCOPY (text, ((char *) shared_copy), len);
+
+  if (WinOpenClipbrd (pm_hab))
+    {
+      if (WinEmptyClipbrd (pm_hab))
+	copy_used
+	  = (WinSetClipbrdData
+	     (pm_hab, ((ULONG) shared_copy), CF_TEXT, CFI_POINTER));
+      (void) WinCloseClipbrd (pm_hab);
+    }
+  if (!copy_used)
+    STD_API_CALL (dos_free_mem, (shared_copy));
+}
+
+static const char *
+clipboard_read_text (void)
+{
+  char * result = 0;
+  if (WinOpenClipbrd (pm_hab))
+    {
+      const char * shared_copy
+	= ((const char *) (WinQueryClipbrdData (pm_hab, CF_TEXT)));
+      if (shared_copy != 0)
+	{
+	  unsigned int len = ((strlen (shared_copy)) + 1);
+	  result = (OS_malloc (len));
+	  FASTCOPY (shared_copy, result, len);
+	}
+      (void) WinCloseClipbrd (pm_hab);
+    }
+  return (result);
 }
 
 static int parse_font_spec (const char *, PSZ *, LONG *, USHORT *);

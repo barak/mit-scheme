@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.h,v 1.6 1995/02/21 22:54:23 cph Exp $
+$Id: os2pm.h,v 1.7 1995/05/02 20:53:43 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -215,5 +215,8 @@ extern unsigned long OS2_ps_get_bitmap_bits
   (psid_t, unsigned long, unsigned long, void *, void *);
 extern unsigned long OS2_ps_set_bitmap_bits
   (psid_t, unsigned long, unsigned long, void *, void *);
+
+extern void OS2_clipboard_write_text (qid_t, const char *);
+extern const char * OS2_clipboard_read_text (qid_t);
 
 #endif /* SCM_OS2PM_H */
