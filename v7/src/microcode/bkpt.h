@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.h,v 9.22 1987/04/03 00:08:07 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.h,v 9.23 1987/04/16 02:08:44 jinx Rel $
  *
  * This file contains breakpoint utilities.
  * Disabled when not debugging the interpreter.
@@ -47,7 +47,7 @@ struct sp_record
 typedef struct sp_record *sp_record_list;
 
 #define sp_nil ((sp_record_list) NULL)
-#define debug_maxslots 64
+#define debug_maxslots 100
 
 #define Eval_Ucode_Hook()						\
 {									\
@@ -83,8 +83,9 @@ struct
 
 void Clear_Perfinfo_Data()
 { int i;
-  perfinfo_data.nprims = MAX_PRIMITIVE_NUMBER+1;
-  for (i=0; i <= MAX_PRIMITIVE_NUMBER; i++) perfinfo_data.primtime[i]=0;
+  perfinfo_data.nprims = MAX_PRIMITIVE + 1;
+  for (i = 0; i <= MAX_PRIMITIVE; i++)
+    perfinfo_data.primtime[i] = 0;
 }
 
 #define Metering_Apply_Primitive(Loc, N)				\

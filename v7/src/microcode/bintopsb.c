@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.23 1987/04/03 00:05:18 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.24 1987/04/16 02:05:24 jinx Exp $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -92,10 +92,12 @@ fast char c;
 fprintf(Portable_File, s);	\
 break
 
+void
 print_a_char(c, name)
-fast char c;
-char *name;
-{ switch(c)
+     fast char c;
+     char *name;
+{
+  switch(c)
   { case '\n': OUT("\\n");
     case '\t': OUT("\\t");
     case '\b': OUT("\\b");
@@ -118,30 +120,37 @@ char *name;
 }
 
 #define Do_String(Code, Rel, Fre, Scn, Obj, FObj)			\
-{ Old_Address += (Rel);							\
+{									\
+  Old_Address += (Rel);							\
   Old_Contents = *Old_Address;						\
   if (Type_Code(Old_Contents) == TC_BROKEN_HEART)			\
     Mem_Base[(Scn)] =							\
       Make_New_Pointer((Code), Old_Contents);				\
   else									\
-  { fast long i;							\
+  {									\
+    fast long i;							\
+									\
     Mem_Base[(Scn)] = Make_Non_Pointer((Code), (Obj));			\
     *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Obj));		\
     (Obj) += 1;								\
-    *(FObj)++ = STRING_0;						\
+    *(FObj)++ = Make_Non_Pointer(TC_STRING, 0);				\
     *(FObj)++ = Old_Contents;						\
     i = Get_Integer(Old_Contents);					\
     NStrings += 1;							\
     NChars += pointer_to_char(i-1);					\
-    while(--i >= 0) *(FObj)++ = *Old_Address++;				\
+    while(--i >= 0)							\
+      *(FObj)++ = *Old_Address++;					\
   }									\
 }
 
+void
 print_a_string(from)
-Pointer *from;
+     Pointer *from;
 { fast long len;
   fast char *string;
-  long maxlen = pointer_to_char((Get_Integer(*from++))-1);
+  long maxlen;
+
+  maxlen = pointer_to_char((Get_Integer(*from++))-1);
   len = Get_Integer(*from++);
   fprintf(Portable_File, "%02x %ld %ld ",
 	  TC_CHARACTER_STRING,
@@ -150,10 +159,14 @@ Pointer *from;
   string = ((char *) from);
   if (Shuffle_Bytes)
   { while(len > 0)
-    { print_a_char(string[3], "print_a_string");
-      if (len > 1) print_a_char(string[2], "print_a_string");
-      if (len > 2) print_a_char(string[1], "print_a_string");
-      if (len > 3) print_a_char(string[0], "print_a_string");
+    {
+      print_a_char(string[3], "print_a_string");
+      if (len > 1)
+	print_a_char(string[2], "print_a_string");
+      if (len > 2)
+	print_a_char(string[1], "print_a_string");
+      if (len > 3)
+	print_a_char(string[0], "print_a_string");
       len -= 4;
       string += 4;
     }
@@ -163,18 +176,24 @@ Pointer *from;
   return;
 }
 
+void
 print_a_fixnum(val)
-long val;
-{ fast long size_in_bits;
-  fast unsigned long temp = ((val < 0) ? -val : val);
+     long val;
+{
+  fast long size_in_bits;
+  fast unsigned long temp;
+
+  temp = ((val < 0) ? -val : val);
   for (size_in_bits = 0; temp != 0; size_in_bits += 1)
     temp = temp >> 1;
   fprintf(Portable_File, "%02x %c ",
 	  TC_FIXNUM,
 	  (val < 0 ? '-' : '+'));
-  if (val == 0) fprintf(Portable_File, "0\n");
+  if (val == 0)
+    fprintf(Portable_File, "0\n");
   else
-  { fprintf(Portable_File, "%ld ", size_in_bits);
+  {
+    fprintf(Portable_File, "%ld ", size_in_bits);
     temp = ((val < 0) ? -val : val);
     while (temp != 0)
     { fprintf(Portable_File, "%01lx", (temp % 16));
@@ -206,9 +225,11 @@ long val;
   }									\
 }
 
+void
 print_a_bignum(from)
-Pointer *from;
-{ fast bigdigit *the_number, *the_top;
+     Pointer *from;
+{
+  fast bigdigit *the_number, *the_top;
   fast long size_in_bits;
   fast unsigned long temp;	/* Potential signed problems */
 

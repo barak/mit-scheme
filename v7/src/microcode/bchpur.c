@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.26 1987/02/12 01:18:37 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.27 1987/04/16 02:07:10 jinx Exp $
  *
  * This file contains the code for primitives dealing with pure
  * and constant space.  Garbage collection to disk version.
@@ -48,15 +48,17 @@ MIT in each case. */
 Pointer 
 Purify_Pass_2(info)
 Pointer info;
-{ fprintf(stderr, "\nPurify_Pass_2 invoked!\n");
+{
+  fprintf(stderr, "\nPurify_Pass_2 invoked!\n");
   Microcode_Termination(TERM_EXIT);
   /*NOTREACHED*/
 }
 
 /* Stub. Make it look as if it had succeeded. */
 
-Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY")
+Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY", 0xB4)
 {
   Primitive_2_Args();
+
   return TRUTH;
 }

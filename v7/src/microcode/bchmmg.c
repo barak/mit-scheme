@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.27 1987/04/03 00:07:44 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.28 1987/04/16 02:06:52 jinx Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -110,7 +110,8 @@ static char gc_default_file_name[FILE_NAME_LENGTH] = GC_DEFAULT_FILE_NAME;
 
 void
 open_gc_file()
-{ int position;
+{
+  int position;
   int flags;
 
   (void) mktemp(gc_default_file_name);
@@ -119,18 +120,23 @@ open_gc_file()
   position = Parse_Option("-gcfile", Saved_argc, Saved_argv, true);
   if ((position != NOT_THERE) &&
       (position != (Saved_argc - 1)))
-  { gc_file_name = Saved_argv[position + 1];
+  {
+    gc_file_name = Saved_argv[position + 1];
   }
   else
-  { gc_file_name = gc_default_file_name;
+  {
+    gc_file_name = gc_default_file_name;
     flags |= O_EXCL;
   }
 
   while(true)
-  { gc_file = open(gc_file_name, flags, GC_FILE_MASK);
-    if (gc_file != -1) break;
+  {
+    gc_file = open(gc_file_name, flags, GC_FILE_MASK);
+    if (gc_file != -1)
+      break;
     if (gc_file_name != gc_default_file_name)
-    { fprintf(stderr,
+    {
+      fprintf(stderr,
 	      "%s: GC file \"%s\" cannot be opened; ",
 	      Saved_argv[0]), gc_file_name;
       gc_file_name = gc_default_file_name;
@@ -151,7 +157,8 @@ open_gc_file()
 
 void
 close_gc_file()
-{ if (close(gc_file) == -1)
+{
+  if (close(gc_file) == -1)
     fprintf(stderr,
 	    "%s: Problems closing GC file \"%s\".\n",
 	    Saved_argv[0], gc_file_name);
@@ -162,8 +169,9 @@ close_gc_file()
 
 void 
 Clear_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
-int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
-{ Heap_Top = Heap_Bottom + Our_Heap_Size;
+     int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
+{
+  Heap_Top = Heap_Bottom + Our_Heap_Size;
   Set_Mem_Top(Heap_Top - GC_Reserve);
   Free = Heap_Bottom;
   Free_Constant = Constant_Space;
@@ -174,12 +182,16 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 
 void
 Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
-int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
-{ int Real_Stack_Size = Stack_Allocation_Size(Our_Stack_Size);
+     int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
+{
+  int Real_Stack_Size;
+
+  Real_Stack_Size = Stack_Allocation_Size(Our_Stack_Size);
 
   /* Consistency check 1 */
   if (Our_Heap_Size == 0)
-  { printf("Configuration won't hold initial data.\n");
+  {
+    fprintf(stderr, "Configuration won't hold initial data.\n");
     exit(1);
   }
 
@@ -193,7 +205,8 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 
   /* Consistency check 2 */
   if (Heap == NULL)
-  { fprintf(stderr, "Not enough memory for this configuration.\n");
+  {
+    fprintf(stderr, "Not enough memory for this configuration.\n");
     exit(1);
   }
 
@@ -209,7 +222,8 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 
   /* Consistency check 3 */
   if (((C_To_Scheme(Highest_Allocated_Address)) & TYPE_CODE_MASK) != 0)
-  { fprintf(stderr,
+  {
+    fprintf(stderr,
 	    "Largest address does not fit in datum field of Pointer.\n");
     fprintf(stderr,
 	    "Allocate less space or re-compile without Heap_In_Low_Memory.\n");
@@ -225,19 +239,22 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 
 void
 Reset_Memory()
-{ close_gc_file();
+{
+  close_gc_file();
   return;
 }
 
 void
 dump_buffer(from, position, nbuffers, name)
-Pointer *from;
-long *position, nbuffers;
-char *name;
-{ long bytes_written;
+     Pointer *from;
+     long *position, nbuffers;
+     char *name;
+{
+  long bytes_written;
 
   if (lseek(gc_file, *position, 0) == -1)
-  { fprintf(stderr,
+  {
+    fprintf(stderr,
 	    "\nCould not position GC file to write the %s buffer.\n",
 	    name);
     Microcode_Termination(TERM_EXIT);
@@ -245,7 +262,8 @@ char *name;
   }
   if ((bytes_written = write(gc_file, from, (nbuffers * GC_BUFFER_BYTES))) ==
       -1)
-  { fprintf(stderr, "\nCould not write out the %s buffer.\n", name);
+  {
+    fprintf(stderr, "\nCould not write out the %s buffer.\n", name);
     Microcode_Termination(TERM_EXIT);
     /*NOTREACHED*/
   }
@@ -256,18 +274,22 @@ char *name;
 
 void
 load_buffer(position, to, nbytes, name)
-long position;
-Pointer *to;
-long nbytes;
-char *name;
-{ long bytes_read;
+     long position;
+     Pointer *to;
+     long nbytes;
+     char *name;
+{
+  long bytes_read;
+
   if (lseek(gc_file, position, 0) == -1)
-  { fprintf(stderr, "\nCould not position GC file to read %s.\n", name);
+  {
+    fprintf(stderr, "\nCould not position GC file to read %s.\n", name);
     Microcode_Termination(TERM_EXIT);
     /*NOTREACHED*/
   }
   if ((bytes_read = read(gc_file, to, nbytes)) != nbytes)
-  { fprintf(stderr, "\nCould not read into %s.\n", name);
+  {
+    fprintf(stderr, "\nCould not read into %s.\n", name);
     Microcode_Termination(TERM_EXIT);
     /*NOTREACHED*/
   }
@@ -276,8 +298,10 @@ char *name;
 
 void
 reload_scan_buffer()
-{ if (scan_position == free_position)
-  { scan_buffer_bottom = free_buffer_bottom;
+{
+  if (scan_position == free_position)
+  {
+    scan_buffer_bottom = free_buffer_bottom;
     scan_buffer_top = free_buffer_top;
     scan_buffer = scan_buffer_bottom;
     return;
@@ -294,7 +318,8 @@ reload_scan_buffer()
 
 void
 initialize_scan_buffer()
-{ scan_position = 0;
+{
+  scan_position = 0;
   reload_scan_buffer();
   scan_buffer = scan_buffer_bottom;
   return;
@@ -305,7 +330,8 @@ initialize_scan_buffer()
 */
 void
 initialize_free_buffer()
-{ free_position = 0;
+{
+  free_position = 0;
   free_buffer_bottom = gc_disk_buffer_1;
   free_buffer_top = free_buffer_bottom + GC_DISK_BUFFER_SIZE;
   free_buffer = free_buffer_bottom;
@@ -315,24 +341,27 @@ initialize_free_buffer()
   return;
 }
 
-Pointer
-*dump_and_reload_scan_buffer(number_to_skip)
-long number_to_skip;
-{ dump_buffer(scan_buffer_bottom, &scan_position, 1, "scan");
+Pointer *
+dump_and_reload_scan_buffer(number_to_skip)
+     long number_to_skip;
+{
+  dump_buffer(scan_buffer_bottom, &scan_position, 1, "scan");
   if (number_to_skip != 0)
     scan_position += (number_to_skip * GC_BUFFER_BYTES);
   reload_scan_buffer();
   return scan_buffer_bottom;
 }
 
-Pointer
-*dump_and_reset_free_buffer(overflow)
-fast long overflow;
-{ fast Pointer *into, *from;
+Pointer *
+dump_and_reset_free_buffer(overflow)
+     fast long overflow;
+{
+  fast Pointer *into, *from;
 
   from = free_buffer_top;
   if (free_buffer_bottom == scan_buffer_bottom)
-  { /* No need to dump now, it will be dumped when scan is dumped.
+  {
+    /* No need to dump now, it will be dumped when scan is dumped.
        Does this work?
        We may need to dump the buffer anyway so we can dump the next one.
        It may not be possible to lseek past the end of file.
@@ -359,9 +388,10 @@ fast long overflow;
 
 void
 dump_free_directly(from, nbuffers)
-Pointer *from;
-long nbuffers;
-{ dump_buffer(from, &free_position, nbuffers, "free");
+     Pointer *from;
+     long nbuffers;
+{
+  dump_buffer(from, &free_position, nbuffers, "free");
   return;
 }
 
@@ -369,13 +399,15 @@ static long current_buffer_position;
 
 void
 initialize_new_space_buffer()
-{ current_buffer_position = -1;
+{
+  current_buffer_position = -1;
   return;
 }
 
 void
 flush_new_space_buffer()
-{ if (current_buffer_position == -1)
+{
+  if (current_buffer_position == -1)
     return;
   dump_buffer(gc_disk_buffer_1, &current_buffer_position,
 	      1, "weak pair buffer");
@@ -383,16 +415,19 @@ flush_new_space_buffer()
   return;
 }
 
-Pointer 
-*guarantee_in_memory(addr)
-Pointer *addr;
-{ long position, offset;
+Pointer *
+guarantee_in_memory(addr)
+     Pointer *addr;
+{
+  long position, offset;
+
   position = (addr - Heap_Bottom);
   offset = (position % GC_DISK_BUFFER_SIZE);
   position = (position / GC_DISK_BUFFER_SIZE);
   position *= GC_BUFFER_BYTES;
   if (position != current_buffer_position)
-  { flush_new_space_buffer();
+  {
+    flush_new_space_buffer();
     load_buffer(position, gc_disk_buffer_1,
 		GC_BUFFER_BYTES, "the weak pair buffer");
     current_buffer_position = position;
@@ -405,14 +440,18 @@ Pointer *addr;
    is on disk.  Old space is in memory.
 */
 
+Pointer Weak_Chain;
+
 void
 Fix_Weak_Chain()
-{ fast Pointer *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
+{
+  fast Pointer *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
 
   initialize_new_space_buffer();
   Low_Constant = Constant_Space;
   while (Weak_Chain != NIL)
-  { Old_Weak_Cell = Get_Pointer(Weak_Chain);
+  {
+    Old_Weak_Cell = Get_Pointer(Weak_Chain);
     Scan = guarantee_in_memory(Get_Pointer(*Old_Weak_Cell++));
     Weak_Chain = *Old_Weak_Cell;
     Old_Car = *Scan;
@@ -451,11 +490,13 @@ Fix_Weak_Chain()
 	/* Old is still a pointer to old space */
 	Old = Get_Pointer(Old_Car);
 	if (Old >= Low_Constant)
-	{ *Scan = Temp;
+	{
+	  *Scan = Temp;
 	  continue;
 	}
 	if (Type_Code(*Old) == TC_BROKEN_HEART)
-	{ *Scan = Make_New_Pointer(Type_Code(Temp), *Old);
+	{
+	  *Scan = Make_New_Pointer(Type_Code(Temp), *Old);
 	  continue;
 	}
 	*Scan = NIL;
@@ -465,13 +506,15 @@ Fix_Weak_Chain()
 	/* Old is still a pointer to old space */
 	Old = Get_Pointer(Old_Car);
 	if (Old >= Low_Constant)
-	{ *Scan = Temp;
+	{
+	  *Scan = Temp;
 	  continue;
 	}
 	/* Ditto */
 	Old = Get_Compiled_Block(Old);
 	if (Type_Code(*Old) == TC_BROKEN_HEART)
-	{ *Scan = Relocate_Compiled(Temp, Get_Pointer(*Old), Old);
+	{
+	  *Scan = Relocate_Compiled(Temp, Get_Pointer(*Old), Old);
 	  continue;
 	}
 	*Scan = NIL;
@@ -493,7 +536,8 @@ Fix_Weak_Chain()
 
 void
 GC()
-{ Pointer *Root, *Result, *end_of_constant_area,
+{
+  Pointer *Root, *Result, *end_of_constant_area,
   	  The_Precious_Objects, *Root2;
 
   initialize_free_buffer();
@@ -514,10 +558,10 @@ GC()
   *free_buffer++ = Make_Pointer(TC_HUNK3, History);
   *free_buffer++ = Undefined_Externals;
   *free_buffer++ = Get_Current_Stacklet();
-  *free_buffer++ = ((Previous_Restore_History_Stacklet == NULL) ?
+  *free_buffer++ = ((Prev_Restore_History_Stacklet == NULL) ?
 		    NIL :
 		    Make_Pointer(TC_CONTROL_POINT,
-				 Previous_Restore_History_Stacklet));
+				 Prev_Restore_History_Stacklet));
   *free_buffer++ = Current_State_Point;
   *free_buffer++ = Fluid_Bindings;
   Free += (free_buffer - free_buffer_bottom);
@@ -527,14 +571,16 @@ GC()
   /* The 4 step GC */
   Result = GCLoop(Constant_Space, &free_buffer, &Free);
   if (Result != end_of_constant_area)
-  { fprintf(stderr, "\nGC: Constant Scan ended too early.\n");
+  {
+    fprintf(stderr, "\nGC: Constant Scan ended too early.\n");
     Microcode_Termination(TERM_EXIT);
     /*NOTREACHED*/
   }
   initialize_scan_buffer();
   Result = GCLoop(scan_buffer, &free_buffer, &Free);
   if (free_buffer != Result)
-  { fprintf(stderr, "\nGC-1: Heap Scan ended too early.\n");
+  {
+    fprintf(stderr, "\nGC-1: Heap Scan ended too early.\n");
     Microcode_Termination(TERM_EXIT);
     /*NOTREACHED*/
   }
@@ -545,7 +591,8 @@ GC()
     free_buffer = dump_and_reset_free_buffer(free_buffer - free_buffer_top);
   Result = GCLoop(Result, &free_buffer, &Free);
   if (free_buffer != Result)
-  { fprintf(stderr, "\nGC-2: Heap Scan ended too early.\n");
+  {
+    fprintf(stderr, "\nGC-2: Heap Scan ended too early.\n");
     Microcode_Termination(TERM_EXIT);
     /*NOTREACHED*/
   }
@@ -567,10 +614,12 @@ GC()
   Set_Current_Stacklet(*Root);
   Root += 1;			/* Set_Current_Stacklet is sometimes a No-Op! */
   if (*Root == NIL)
-  { Previous_Restore_History_Stacklet = NULL;
+  {
+    Prev_Restore_History_Stacklet = NULL;
     Root += 1;
   }
-  else Previous_Restore_History_Stacklet = Get_Pointer(*Root++);
+  else
+    Prev_Restore_History_Stacklet = Get_Pointer(*Root++);
   Current_State_Point = *Root++;
   Fluid_Bindings = *Root++;
   Free_Stacklets = NULL;
@@ -578,20 +627,24 @@ GC()
 }
 
 /* (GARBAGE-COLLECT SLACK)
-      [Primitive number 0x3A]
-      Requests a garbage collection leaving the specified amount of slack
-      for the top of heap check on the next GC.  The primitive ends by invoking
-      the GC daemon if there is one.
+   Requests a garbage collection leaving the specified amount of slack
+   for the top of heap check on the next GC.  The primitive ends by invoking
+   the GC daemon if there is one.
 */
 
-Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
-{ Pointer GC_Daemon_Proc;
+Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT", 0x3A)
+{
+  Pointer GC_Daemon_Proc;
   Primitive_1_Arg();
 
   Arg_1_Type(TC_FIXNUM);
   if (Free > Heap_Top)
-  { fprintf(stderr, "\nGC has been delayed too long, and you are truly out of room!\n");
-    fprintf(stderr, "Free=0x%x, MemTop=0x%x, Heap_Top=0x%x\n", Free, MemTop, Heap_Top);
+  {
+    fprintf(stderr,
+	    "\nGC has been delayed too long; You are truly out of room!\n");
+    fprintf(stderr,
+	    "Free = 0x%x, MemTop = 0x%x, Heap_Top = 0x%x\n",
+	    Free, MemTop, Heap_Top);
     Microcode_Termination(TERM_NO_SPACE);
     /*NOTREACHED*/
   }
@@ -599,22 +652,21 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
   GC();
   IntCode &= ~INT_GC;
   if (GC_Check(GC_Space_Needed))
-  { fprintf(stderr,
-	    "\nGC just ended.  The free pointer is at 0x%x, the top of this heap\n",
-	   Free);
+  {
+    fprintf(stderr, "\nGC just ended.\n");
     fprintf(stderr,
-	    "is at 0x%x, and we are trying to cons 0x%x objects.  Dead!\n",
-	   MemTop, GC_Space_Needed);
+	    "Free = 0x%x; MemTop = 0x%x; GC_Space_Needed = 0x%x.\n",
+	    Free, MemTop, GC_Space_Needed);
     Microcode_Termination(TERM_NO_SPACE);
     /*NOTREACHED*/
   }
   GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
   if (GC_Daemon_Proc == NIL)
-    return FIXNUM_0 + (MemTop - Free);
+    return Make_Unsigned_Fixnum(MemTop - Free);
   Pop_Primitive_Frame(1);
- Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+1));
+ Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
   Store_Return(RC_NORMAL_GC_DONE);
-  Store_Expression(FIXNUM_0 + (MemTop - Free));
+  Store_Expression(Make_Unsigned_Fixnum(MemTop - Free));
   Save_Cont();
   Push(GC_Daemon_Proc);
   Push(STACK_FRAME_HEADER);

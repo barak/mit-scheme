@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.27 1987/04/03 00:07:27 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.28 1987/04/16 02:06:42 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -105,13 +105,14 @@ MIT in each case. */
 }
 
 #define relocate_normal_setup()						\
-{ Old = Get_Pointer(Temp);						\
+{									\
+  Old = Get_Pointer(Temp);						\
   if (Old >= Low_Constant) continue;					\
   if (Type_Code(*Old) == TC_BROKEN_HEART)				\
   { *Scan = Make_New_Pointer(Type_Code(Temp), *Old);			\
     continue;								\
   }									\
-  New_Address = (BROKEN_HEART_0 + C_To_Scheme(To_Address));		\
+  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));		\
 }
 
 #define relocate_normal_transport(copy_code, length)			\
@@ -185,7 +186,7 @@ Pointer **To_ptr, **To_Address_ptr;
 	}
 	else
 	{ Pointer *Saved_Old = Old;
-	  New_Address = (BROKEN_HEART_0 + C_To_Scheme(To_Address));
+	  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));
 	  copy_vector();
 	  *Saved_Old = New_Address;
 	  *Scan = Relocate_Compiled(Temp, Get_Pointer(New_Address), Saved_Old);

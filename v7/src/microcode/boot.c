@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.29 1987/04/03 00:08:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.30 1987/04/16 02:08:53 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -79,7 +79,6 @@ for details.  They are created by defining a macro Command_Line_Args.
 
 #include "scheme.h"
 #include "primitive.h"
-#include "prims.h"
 #include "version.h"
 #include "character.h"
 #ifndef islower
@@ -215,7 +214,7 @@ main(argc, argv)
 		   blocks(Constant_Size));
       /* We are reloading from scratch anyway. */
       Was_Scheme_Dumped = false;
-      Start_Scheme(FASL_It ? PC_FASLOAD : PC_BAND_LOAD, File_Name);
+      Start_Scheme((FASL_It ? BOOT_FASLOAD : BOOT_LOAD_BAND), File_Name);
     }
   }
   if (File_Name == NULL) File_Name = DEFAULT_BAND_NAME;
@@ -228,7 +227,7 @@ main(argc, argv)
   Setup_Memory(blocks(Heap_Size), blocks(Stack_Size),
 	       blocks(Constant_Size));
   compiler_initialize((long) FASL_It);
-  Start_Scheme(FASL_It ? PC_FASLOAD : PC_BAND_LOAD, File_Name);
+  Start_Scheme((FASL_It ? BOOT_FASLOAD : BOOT_LOAD_BAND), File_Name);
 }
 
 #define Default_Init_Fixed_Objects(Fixed_Objects)			\
@@ -252,7 +251,7 @@ main(argc, argv)
         /* Non Object */						\
   Bad_Object = Make_Pointer(TC_LIST, Free);				\
   *Free++ = NIL;							\
-  *Free++ = NIL;		    					\
+  *Free++ = NIL;							\
         /* Initial empty work queue */					\
   The_Queue = Make_Pointer(TC_LIST, Free);				\
   *Free++ = NIL;							\
@@ -272,7 +271,8 @@ main(argc, argv)
   User_Vector_Set(Fixed_Objects, Dummy_History,				\
                   Make_Pointer(TC_HUNK3, Dummy_Hist));			\
   User_Vector_Set(Fixed_Objects, State_Space_Tag, TRUTH);		\
-  User_Vector_Set(Fixed_Objects, Bignum_One, Fix_To_Big(FIXNUM_0+1));	\
+  User_Vector_Set(Fixed_Objects, Bignum_One,				\
+		  Fix_To_Big(Make_Unsigned_Fixnum(1)));			\
   User_Vector_Set(Fixed_Objects, Me_Myself, Fixed_Objects);		\
   User_Vector_Set(Fixed_Objects, The_Work_Queue, The_Queue);		\
   User_Vector_Set(Fixed_Objects, Utilities_Vector, The_Utilities);	\
@@ -282,49 +282,65 @@ main(argc, argv)
 
 void
 Start_Scheme(Start_Prim, File_Name)
-int Start_Prim;
-char *File_Name;
-{ Pointer FName, Init_Prog, *Fasload_Call;
+     int Start_Prim;
+     char *File_Name;
+{
+  extern Pointer make_primitive();
+  Pointer FName, Init_Prog, *Fasload_Call, prim;
   fast long i;
-  Boolean I_Am_Master = (Start_Prim != PC_GET_WORK);	/* Butterfly test */
+  Boolean I_Am_Master;			/* Butterfly test */
 
+  I_Am_Master = (Start_Prim != BOOT_GET_WORK);
   if (I_Am_Master)
     printf("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
   OS_Init(I_Am_Master);
   if (I_Am_Master)
-  { for (i=0; i < FILE_CHANNELS; i++) Channels[i] = NULL;
+  {
+    for (i = 0; i < FILE_CHANNELS; i++)
+    {
+      Channels[i] = NULL;
+    }
     Init_Fixed_Objects();
   }
-
-/* The initial program to execute is
-        (SCODE-EVAL (FASLOAD <file-name>) SYSTEM-GLOBAL-ENVIRONMENT)
-   if Start_Prim is FASLOAD.  Otherwise it is
-	(BAND-LOAD <file-name>)     
+
+/* The initial program to execute is one of
+        (SCODE-EVAL (BINARY-FASLOAD <file-name>) SYSTEM-GLOBAL-ENVIRONMENT),
+	(LOAD-BAND <file-name>), or
+	((GET-WORK))
+	depending on the value of Start_Prim.
 */
 
   FName = C_String_To_Scheme_String(File_Name);
   Fasload_Call = Free;
   switch (Start_Prim)
-  { case PC_FASLOAD:	/* (SCODE-EVAL (FASLOAD <file>) GLOBAL-ENV) */
-      *Free++ = Make_Non_Pointer(TC_PRIMITIVE, PC_FASLOAD);
+  {
+    case BOOT_FASLOAD:	/* (SCODE-EVAL (BINARY-FASLOAD <file>) GLOBAL-ENV) */
+      *Free++ = make_primitive("BINARY-FASLOAD");
       *Free++ = FName;
       Init_Prog = Make_Pointer(TC_PCOMB2, Free);
-      *Free++ = Make_Non_Pointer(TC_PRIMITIVE, PC_SCODE_EVAL);
+      *Free++ = make_primitive("SCODE-EVAL");
       *Free++ = Make_Pointer(TC_PCOMB1, Fasload_Call);
       *Free++ = Make_Non_Pointer(GLOBAL_ENV, GO_TO_GLOBAL);
       break;
-    case PC_BAND_LOAD:	/* (BAND-LOAD <file>) */
-      *Free++ = Make_Non_Pointer(TC_PRIMITIVE, PC_BAND_LOAD);
+
+    case BOOT_LOAD_BAND:	/* (LOAD-BAND <file>) */
+      *Free++ = make_primitive("LOAD-BAND");
       *Free++ = FName;
       Init_Prog = Make_Pointer(TC_PCOMB1, Fasload_Call);
       break;
-    case PC_GET_WORK:		/* ((GET-WORK)) */
-      *Free++ = Make_Non_Pointer(TC_PRIMITIVE, PC_GET_WORK);
+
+    case BOOT_GET_WORK:		/* ((GET-WORK)) */
+      *Free++ = make_primitive("GET-WORK");
       *Free++ = NIL;
       Init_Prog = Make_Pointer(TC_COMBINATION, Free);
       *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, 1);
       *Free++ = Make_Non_Pointer(TC_PCOMB1, Fasload_Call);
       break;
+
+    default:
+      fprintf(stderr, "Unknown boot time option: %d\n", Start_Prim);
+      Microcode_Termination(TERM_BAD_PRIMITIVE);
+      /*NOTREACHED*/
   }
 
 /* Start_Scheme continues on the next page */
@@ -346,25 +362,30 @@ char *File_Name;
   Store_Expression(NIL);
   Save_Cont();
  Pushed();
+
   Store_Expression(Init_Prog);
 
 	/* Go to it! */
 
   if ((Stack_Pointer <= Stack_Guard) || (Free > MemTop))
-  { fprintf(stderr, "Configuration won't hold initial data.\n");
+  {
+    fprintf(stderr, "Configuration won't hold initial data.\n");
     Microcode_Termination(TERM_EXIT);
   }
   Entry_Hook();
   Enter_Interpreter();
+  /*NOTREACHED*/
 }
 
 Enter_Interpreter()
-{ jmp_buf Orig_Eval_Point;
+{
+  jmp_buf Orig_Eval_Point;
   Back_To_Eval = (jmp_buf *) Orig_Eval_Point;
 
   Interpret(Was_Scheme_Dumped);
   fprintf(stderr, "\nThe interpreter returned to top level!\n");
   Microcode_Termination(TERM_EXIT);
+  /*NOTREACHED*/
 }
 
 #define IDENTITY_LENGTH 	20		/* Plenty of room */
@@ -379,7 +400,7 @@ Enter_Interpreter()
 #define ID_OS_NAME		8		/* OS name (string) */
 #define ID_OS_VARIANT		9		/* OS variant (string) */
 
-Built_In_Primitive (Prim_Microcode_Identify, 0, "MICROCODE-IDENTIFY")
+Built_In_Primitive (Prim_Microcode_Identify, 0, "MICROCODE-IDENTIFY", 0xE5)
 {
   Pointer *Result;
   long i;
@@ -414,7 +435,7 @@ Built_In_Primitive (Prim_Microcode_Identify, 0, "MICROCODE-IDENTIFY")
 }
 
 Built_In_Primitive(Prim_Microcode_Tables_Filename,
-		   0, "MICROCODE-TABLES-FILENAME")
+		   0, "MICROCODE-TABLES-FILENAME", 0x180)
 { fast char *From, *To;
   char *Prefix, *Suffix;
   fast long Count;
@@ -458,9 +479,10 @@ Built_In_Primitive(Prim_Microcode_Tables_Filename,
   }
   *To = '\0';
   Free += STRING_CHARS + ((Count + sizeof(Pointer)) / sizeof(Pointer));
-  Vector_Set(Result, STRING_LENGTH, FIXNUM_0 + Count);
+  Vector_Set(Result, STRING_LENGTH, Make_Unsigned_Fixnum(Count));
   Vector_Set(Result, STRING_HEADER,
-    Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, (Free-Get_Pointer(Result))-1));
+    Make_Non_Pointer(TC_MANIFEST_NM_VECTOR,
+		     ((Free - Get_Pointer(Result)) - 1)));
   return Result;
 }
 
@@ -480,11 +502,12 @@ long Err, Micro_Error;
     if (Handler != NIL)
     {
      Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS +
- 	       ((Err==TERM_NO_ERROR_HANDLER) ? 5 : 4));
+ 	       ((Err == TERM_NO_ERROR_HANDLER) ? 5 : 4));
       Store_Return(RC_HALT);
-      Store_Expression(FIXNUM_0 + Err);
+      Store_Expression(Make_Unsigned_Fixnum(Err));
       Save_Cont();
-      if (Err == TERM_NO_ERROR_HANDLER) Push(FIXNUM_0 + Micro_Error);
+      if (Err == TERM_NO_ERROR_HANDLER)
+	Push(Make_Unsigned_Fixnum(Micro_Error));
       Push(Val);			/* Arg 3 */
       Push(Fetch_Env());		/* Arg 2 */
       Push(Fetch_Expression());		/* Arg 1 */

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.22 1987/04/03 00:06:48 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.23 1987/04/16 02:06:10 jinx Exp $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -218,7 +218,7 @@ double read_a_flonum()
     long digit;
     if (size_in_bits > FLONUM_MANTISSA_BITS)
       fprintf(stderr,
-	      "%s: Some precission may be lost.",
+	      "%s: Some precision may be lost.",
 	      Program_Name);
     getc(Portable_File);			/* Space */
     for (ndigits = hex_digits(size_in_bits),
@@ -226,7 +226,8 @@ double read_a_flonum()
 	 Normalization = (1.0 / 16.0);
 	 --ndigits >= 0;
 	 Normalization /= 16.0)
-    { fscanf(Portable_File, "%1lx", &digit);
+    {
+      fscanf(Portable_File, "%1lx", &digit);
       Result += (((double ) digit) * Normalization);
     }
     Result = ldexp(Result, ((int) exponent));

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.21 1987/01/22 14:14:45 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.22 1987/04/16 02:06:23 jinx Rel $ */
 
 /* The following two macros determine what kind of arrays we deal with.
    Use float to save space for image-processing 
@@ -155,44 +155,33 @@ extern void   Find_Offset_Scale_For_Linear_Map();   /* REAL Min,Max, New_Min,New
 
 #define My_Store_Flonum_Result(Ans, Value_Cell) 		        \
   (Value_Cell) = (Allocate_Float( ((double) Ans)));
-/*
-#define Allocate_Float(Ans)                                             \
-  Primitive_GC_If_Needed(FLONUM_SIZE + 1);			        \
-  *Free = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, FLONUM_SIZE);		\
-  Get_Float(C_To_Scheme(Free)) = (Ans);					\
-  Free += FLONUM_SIZE+1;						\
-  (Value_Cell) = Make_Pointer(TC_BIG_FLONUM, Free-(1+FLONUM_SIZE));
-*/
-
-#define My_Store_Reduced_Flonum_Result(Ans, Value_Cell)                 \
-  { double Number = ((double) Ans);					\
-    double floor();							\
-    Pointer result;							\
-    if (floor(Number) != Number)					\
-    { My_Store_Flonum_Result(Number, Value_Cell);		        \
-    }									\
-    else if (Number == 0) (Value_Cell) = FIXNUM_0;      		\
-    if ((floor(Number) == Number) && (Number != 0))                     \
-    { int exponent;							\
-      double frexp();							\
-      frexp(Number, &exponent);						\
-      if (exponent <= FIXNUM_LENGTH)					\
-      { double_into_fixnum(Number, result);				\
-	(Value_Cell) = result;                                          \
-      }									\
-      /* Since the float has no fraction, we will not gain		\
-	 precision if its mantissa has enough bits to support		\
-	 the exponent. */						\
-      else if (exponent <= FLONUM_MANTISSA_BITS)		 	\
-      {	result = Float_To_Big(Number);					\
-	(Value_Cell) = result;                                          \
-      }									\
-      else if (Number != 0)                                             \
-      { My_Store_Flonum_Result( (Ans), (Value_Cell));	                \
-      }                                                                 \
-    }									\
-  }
 
-
-
-/* the end */
+#define My_Store_Reduced_Flonum_Result(Ans, Value_Cell)			\
+{ double Number = ((double) Ans);					\
+  double floor();							\
+  Pointer result;							\
+  if (floor(Number) != Number)						\
+  { My_Store_Flonum_Result(Number, Value_Cell);				\
+  }									\
+  else if (Number == 0)							\
+    (Value_Cell) = Make_Unsigned_Fixnum(0);				\
+  if ((floor(Number) == Number) && (Number != 0))			\
+  { int exponent;							\
+    double frexp();							\
+    frexp(Number, &exponent);						\
+    if (exponent <= FIXNUM_LENGTH)					\
+    { double_into_fixnum(Number, result);				\
+      (Value_Cell) = result;						\
+    }									\
+    /* Since the float has no fraction, we will not gain		\
+       precision if its mantissa has enough bits to support		\
+       the exponent. */							\
+    else if (exponent <= FLONUM_MANTISSA_BITS)				\
+    {	result = Float_To_Big(Number);					\
+      (Value_Cell) = result;						\
+    }									\
+    else if (Number != 0)						\
+    { My_Store_Flonum_Result( (Ans), (Value_Cell));			\
+    }									\
+  }									\
+}

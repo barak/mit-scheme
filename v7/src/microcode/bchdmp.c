@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.26 1987/02/12 01:19:11 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.27 1987/04/16 02:06:33 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -47,16 +47,22 @@ MIT in each case. */
    Not implemented yet.
 */
 
-NIY(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
+Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
+{
+  Primitive_3_Args();
+
+  Primitive_Error(ERR_UNIMPLEMENTED_PRIMITIVE);
+  /*NOTREACHED*/
+}
 
 /* (DUMP-BAND PROCEDURE FILE-NAME)
-      [Primitive number 0xB7]
       Saves all of the heap and pure space on FILE-NAME.  When the
       file is loaded back using BAND_LOAD, PROCEDURE is called with an
       argument of NIL.
 */
-Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND")
-{ Pointer Combination, Ext_Prims;
+Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
+{
+  Pointer Combination, Ext_Prims;
   long Arg1Type;
   Primitive_2_Args();
 
