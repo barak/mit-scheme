@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.4 1988/08/05 20:49:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.5 1988/09/15 03:00:25 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -61,13 +61,31 @@ MIT in each case. |#
   (for-each procedure known-systems))
 
 (define (system/identification-string system)
-  (string-append (system/name system)
-		 " "
-		 (number->string (system/version system))
-		 (let ((modification (system/modification system)))
-		   (if modification
-		       (string-append "." (number->string modification))
-		       ""))))
+  (string-append
+   (system/name system)
+   (let ((version
+	  (string-append
+	   (version->string (system/version system))
+	   (let ((modification (version->string (system/modification system))))
+	     (if (string-null? modification)
+		 ""
+		 (string-append "." modification))))))
+     (if (string-null? version)
+	 ""
+	 (string-append " " version)))))
+
+(define (version->string version)
+  (cond ((string? version) version)
+	((integer? version) (number->string version))	((null? version) "")
+	((list? version)
+	 (let loop ((version version))
+	   (if (null? (cdr version))
+	       (version->string (car version))
+	       (string-append (version->string (car version))
+			      "."
+			      (loop (cdr version))))))
+	(else
+	 (error "Illegal system version" version))))
 
 ;;; Load the given system.
 
