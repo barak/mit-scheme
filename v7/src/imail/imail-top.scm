@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.73 2000/05/19 20:57:29 cph Exp $
+;;; $Id: imail-top.scm,v 1.74 2000/05/19 20:57:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -278,7 +278,7 @@ DEL	Scroll to previous screen of this message.
 (define-key 'imail #\s		'imail-save-folder)
 
 (define-key 'imail #\c-m-h	'imail-summary)
-(define-key 'imail #\c-m-l	'imail-summary-by-flags)
+(define-key 'imail #\c-m-f	'imail-summary-by-flags)
 (define-key 'imail #\c-m-r	'imail-summary-by-recipients)
 
 (define-key 'imail #\m		'imail-mail)
