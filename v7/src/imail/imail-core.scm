@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.80 2000/05/22 03:01:13 cph Exp $
+;;; $Id: imail-core.scm,v 1.81 2000/05/22 03:32:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -68,6 +68,15 @@
 ;; Return a string that concisely identifies URL, for use in the
 ;; presentation layer.
 (define-generic url-presentation-name (url))
+
+;; Return a string that represents the object containing URL's folder.
+;; E.g. the container of "imap://localhost/inbox" is
+;; "imap://localhost/".
+(define (url-container-string url)
+  (make-url-string (url-protocol url)
+		   (url-body-container-string url)))
+
+(define-generic url-body-container-string (url))
 
 ;; Convert STRING to a URL.  GET-DEFAULT-URL is a procedure of one
 ;; argument that returns a URL that is used to fill in defaults if

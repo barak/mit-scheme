@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.64 2000/05/22 03:01:18 cph Exp $
+;;; $Id: imail-imap.scm,v 1.65 2000/05/22 03:32:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -61,13 +61,19 @@
 (define-method url-presentation-name ((url <imap-url>))
   (imap-url-mailbox url))
 
+(define-method url-body-container-string ((url <imap-url>))
+  (make-imap-url-string (imap-url-user-id url)
+			(imap-url-host url)
+			(imap-url-port url)
+			""))
+
 (define (compatible-imap-urls? url1 url2)
   ;; Can URL1 and URL2 both be accessed from the same IMAP session?
   ;; E.g. can the IMAP COPY command work between them?
   (and (string=? (imap-url-user-id url1) (imap-url-user-id url2))
        (string-ci=? (imap-url-host url1) (imap-url-host url2))
        (= (imap-url-port url1) (imap-url-port url2))))
-
+
 (define-method parse-url-body (string default-url)
   (call-with-values (lambda () (parse-imap-url-body string default-url))
     (lambda (user-id host port mailbox)
