@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: editor.scm,v 1.246 2000/01/10 03:24:54 cph Exp $
+;;; $Id: editor.scm,v 1.247 2000/03/01 23:46:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -182,7 +182,6 @@
 	       (cmdl-message/active
 		(lambda (port)
 		  (identify-world port)
-		  (newline port)
 		  (newline port)))
 	       (cmdl-message/strings
 		"You are in an interaction window of the Edwin editor."
