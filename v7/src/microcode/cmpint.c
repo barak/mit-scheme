@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.19 1989/11/27 20:20:26 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.20 1989/11/27 20:25:42 jinx Exp $
  *
  * Compiled code interface.  Portable version.
  * This file requires a bit of assembly language from cmpaux-md.m4
@@ -983,7 +983,7 @@ comp_link_caches_restart ()
   instruction *ret_add;
 
   original_count = (OBJECT_DATUM (STACK_POP()));
-  STACK_POP ();						/* Loop count, for debugger */
+  STACK_POP ();					/* Loop count, for debugger */
   block = (STACK_POP ());
   environment = (compiled_block_environment (block));
   Store_Env (environment);
