@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.48 2000/05/17 15:46:57 cph Exp $
+;;; $Id: imail-top.scm,v 1.49 2000/05/17 17:00:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -116,9 +116,12 @@ May be called with an IMAIL folder URL as argument;
 		      (let ((buffer
 			     (new-buffer
 			      (url-presentation-name (folder-url folder)))))
-			(associate-imail-folder-with-buffer folder buffer)
+			(associate-imail-with-buffer buffer folder #f)
 			buffer))))
-	     (select-message folder (first-unseen-message folder) #t)
+	     (select-message folder
+			     (or (first-unseen-message folder)
+				 (selected-message #f buffer))
+			     #t)
 	     buffer)))))))
 
 (define (imail-authenticator host user-id receiver)
@@ -126,13 +129,14 @@ May be called with an IMAIL folder URL as argument;
 					" on host " host)
 			 receiver))
 
-(define (associate-imail-folder-with-buffer folder buffer)
-  (buffer-put! buffer 'IMAIL-FOLDER folder)
-  (folder-put! folder 'BUFFER buffer)
-  (add-event-receiver! (folder-modification-event folder)
-		       (lambda (folder)
-			 (maybe-add-command-suffix! notice-folder-modifications
-						    folder))))
+(define (associate-imail-with-buffer buffer folder message)
+  (without-interrupts
+   (lambda ()
+     (buffer-put! buffer 'IMAIL-FOLDER folder)
+     (folder-put! folder 'BUFFER buffer)
+     (add-event-receiver! (folder-modification-event folder)
+       (lambda (folder)
+	 (maybe-add-command-suffix! notice-folder-modifications folder))))))
 
 (define (imail-folder->buffer folder error?)
   (or (let ((buffer (folder-get folder 'BUFFER #f)))
@@ -300,8 +304,7 @@ DEL	Scroll to previous screen of this message.
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?
-  (let ((folder (selected-folder #t buffer))
-	(message (selected-message #f buffer)))
+  (let ((folder (selected-folder #t buffer)))
     (if (let ((status (folder-sync-status folder)))
 	  (case status
 	    ((UNSYNCHRONIZED)
@@ -322,13 +325,8 @@ DEL	Scroll to previous screen of this message.
 	  (discard-folder-cache folder)
 	  (select-message
 	   folder
-	   (cond ((not message) (first-unseen-message folder))
-		 ((message-attached? message folder) message)
-		 ((let ((index (message-index message)))
-		    (and index
-			 (< index (folder-length folder))
-			 index)))
-		 (else (first-unseen-message folder)))
+	   (or (selected-message #f buffer)
+	       (first-unseen-message folder))
 	   #t)))))
 
 (define (imail-kill-buffer buffer)
@@ -462,7 +460,7 @@ With prefix argument N moves backward N messages with these flags."
 		       selector
 		       (loop (message-index selector))))
 		 ((not selector)
-		  selector)
+		  (last-message selector))
 		 ((and (exact-integer? selector)
 		       (<= 0 selector)
 		       (< selector (folder-length folder)))
@@ -475,8 +473,7 @@ With prefix argument N moves backward N messages with these flags."
 	    (not (eq? message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN))))
 	(begin
 	  (buffer-reset! buffer)
-	  (associate-imail-folder-with-buffer folder buffer)
-	  (buffer-put! buffer 'IMAIL-MESSAGE message)
+	  (associate-imail-with-buffer buffer folder message)
 	  (buffer-put! buffer 'IMAIL-FULL-HEADERS? full-headers?)
 	  (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
 	    (if message
@@ -620,7 +617,9 @@ Deleted messages stay in the file until the \\[imail-expunge] command is given."
 	   (let ((message (selected-message)))
 	     (if (message-deleted? message)
 		 (or (next-message message message-undeleted?)
-		     (previous-message message message-undeleted?))
+		     (previous-message message message-undeleted?)
+		     (next-message message)
+		     (previous-message message))
 		 message))))
       (expunge-deleted-messages folder)
       (select-message folder message))))
@@ -661,15 +660,17 @@ Completion is performed over known flags when reading."
   "Append messages to this folder from a specified folder."
   "sInput from folder"
   (lambda (url-string)
-    (let ((message (selected-message))
-	  (folder (open-folder url-string))
-	  (url (folder-url (selected-folder))))
-      (let ((n (folder-length folder)))
-	(do ((index 0 (+ index 1)))
-	    ((= index n))
-	  (append-message (get-message folder index) url)))
-      (if (not message)
-	  (select-message folder (first-unseen-message folder))))))
+    (let ((folder (selected-folder)))
+      (let ((folder* (open-folder url-string))
+	    (url (folder-url folder)))
+	(let ((n (folder-length folder*)))
+	  (do ((index 0 (+ index 1)))
+	      ((= index n))
+	    (append-message (get-message folder* index) url)))
+	(close-folder folder*))
+      (select-message folder
+		      (or (selected-message #f)
+			  (first-unseen-message folder))))))
 
 (define-command imail-output
   "Append this message to a specified folder."

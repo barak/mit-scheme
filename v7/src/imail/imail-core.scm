@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.63 2000/05/17 15:46:45 cph Exp $
+;;; $Id: imail-core.scm,v 1.64 2000/05/17 17:00:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -382,12 +382,12 @@
 
 (define (first-unseen-message folder)
   (let ((end (folder-length folder)))
-    (and (> end 0)
-	 (let loop ((start (first-unseen-message-index folder)))
-	   (let ((message (get-message folder start)))
-	     (if (and (message-seen? message) (< (+ start 1) end))
-		 (loop (+ start 1))
-		 message))))))
+    (let loop ((start (first-unseen-message-index folder)))
+      (if (< start end)
+	  (let ((message (get-message folder start)))
+	    (if (message-seen? message)
+		(loop (+ start 1))
+		message))))))
 
 (define-generic first-unseen-message-index (folder))
 (define-method first-unseen-message-index ((folder <folder>))
