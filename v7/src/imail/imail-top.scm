@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.140 2000/06/08 17:16:26 cph Exp $
+;;; $Id: imail-top.scm,v 1.141 2000/06/08 18:15:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1039,7 +1039,8 @@ With prefix argument N moves backward N messages with these flags."
 
 (define-method insert-mime-message-part
     (message (body <mime-body>) enclosure selector mark)
-  (insert-mime-message-binary message body enclosure selector mark))
+  message enclosure
+  (insert-mime-message-attachment 'ATTACHMENT body selector mark))
 
 (define-method insert-mime-message-part
     (message (body <mime-body-multipart>) enclosure selector mark)
@@ -1119,12 +1120,8 @@ With prefix argument N moves backward N messages with these flags."
 		(else
 		 (write-string text port)))))
 	  (guarantee-newline mark))
-	(insert-mime-message-binary message body enclosure selector mark))))
+	(insert-mime-message-attachment 'ATTACHMENT body selector mark))))
 
-(define (insert-mime-message-binary message body enclosure selector mark)
-  message enclosure
-  (insert-mime-message-attachment 'ATTACHMENT class body selector mark))
-
 (define (insert-mime-message-attachment class body selector mark)
   (let ((start (mark-right-inserting-copy mark)))
     (insert-string "<IMAIL-" mark)
