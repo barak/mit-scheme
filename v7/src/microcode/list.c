@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.28 1989/09/20 23:09:49 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.29 1992/01/15 02:33:17 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,9 +46,9 @@ DEFINE_PRIMITIVE ("PAIR?", Prim_pair, 1, 1, 0)
 }
 
 SCHEME_OBJECT
-cons (car, cdr)
-     SCHEME_OBJECT car;
-     SCHEME_OBJECT cdr;
+DEFUN (cons, (car, cdr),
+       SCHEME_OBJECT car
+       AND SCHEME_OBJECT cdr)
 {
   Primitive_GC_If_Needed (2);
   (*Free++) = car;
@@ -202,10 +202,10 @@ DEFINE_PRIMITIVE ("SYSTEM-PAIR?", Prim_sys_pair, 1, 1, 0)
 }
 
 SCHEME_OBJECT
-system_pair_cons (type, car, cdr)
-     long type;
-     SCHEME_OBJECT car;
-     SCHEME_OBJECT cdr;
+DEFUN (system_pair_cons, (type, car, cdr),
+       long type
+       AND SCHEME_OBJECT car
+       AND SCHEME_OBJECT cdr)
 {
   Primitive_GC_If_Needed (2);
   (*Free++) = car;

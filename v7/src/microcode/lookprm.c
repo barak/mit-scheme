@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.4 1989/09/20 23:09:59 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.5 1992/01/15 02:37:02 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -161,7 +161,7 @@ DEFINE_PRIMITIVE ("LOCAL-ASSIGNMENT", Prim_local_assignment, 3, 3, 0)
 
 DEFINE_PRIMITIVE ("LEXICAL-UNASSIGNED?", Prim_unassigned_test, 2, 2, 0)
 {
-  extern long Symbol_Lex_unassigned_p ();
+  extern long EXFUN (Symbol_Lex_unassigned_p, (SCHEME_OBJECT, SCHEME_OBJECT));
   PRIMITIVE_HEADER (2);
   standard_lookup_primitive
     (Symbol_Lex_unassigned_p ((ARG_REF (1)), (ARG_REF (2))));
@@ -175,7 +175,7 @@ DEFINE_PRIMITIVE ("LEXICAL-UNASSIGNED?", Prim_unassigned_test, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("LEXICAL-UNBOUND?", Prim_unbound_test, 2, 2, 0)
 {
-  extern long Symbol_Lex_unbound_p ();
+  extern long EXFUN (Symbol_Lex_unbound_p, (SCHEME_OBJECT, SCHEME_OBJECT));
   PRIMITIVE_HEADER (2);
   standard_lookup_primitive
     (Symbol_Lex_unbound_p ((ARG_REF (1)), (ARG_REF (2))));
@@ -217,7 +217,9 @@ extract_or_create_cache(frame, sym)
      SCHEME_OBJECT frame, sym;
 {
   extern SCHEME_OBJECT compiler_cache_variable[];
-  extern long compiler_cache();
+  extern long EXFUN (compiler_cache,
+		     (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT,
+		      SCHEME_OBJECT, long, long, Boolean));
   SCHEME_OBJECT *cell, value;
   long trap_kind, result;
 
@@ -294,8 +296,9 @@ error_bad_environment(arg)
 
 DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
 {
-  extern SCHEME_OBJECT *scan_frame();
-
+  extern SCHEME_OBJECT * EXFUN (scan_frame,
+				(SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *,
+				 long, Boolean));
   SCHEME_OBJECT target, source, sym;
   SCHEME_OBJECT cache, *cell, *value_cell;
   PRIMITIVE_HEADER (3);

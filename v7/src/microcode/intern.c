@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.51 1989/09/20 23:09:28 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.52 1992/01/15 02:31:10 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,8 +43,7 @@ MIT in each case. */
 #define STRING_HASH_BITS 16
 
 static unsigned int
-string_hash (string)
-     SCHEME_OBJECT string;
+DEFUN (string_hash, (string), SCHEME_OBJECT string)
 {
   fast unsigned char * scan = (STRING_LOC (string, 0));
   fast unsigned char * end = (scan + (STRING_LENGTH (string)));
@@ -60,8 +59,9 @@ string_hash (string)
 }
 
 static Boolean
-string_equal (string1, string2)
-     SCHEME_OBJECT string1, string2;
+DEFUN (string_equal, (string1, string2),
+       SCHEME_OBJECT string1
+       AND SCHEME_OBJECT string2)
 {
   fast unsigned char * scan1 = (STRING_LOC (string1, 0));
   fast unsigned char * scan2 = (STRING_LOC (string2, 0));
@@ -78,8 +78,7 @@ string_equal (string1, string2)
 }
 
 static SCHEME_OBJECT *
-find_symbol_internal (string)
-     SCHEME_OBJECT string;
+DEFUN (find_symbol_internal, (string), SCHEME_OBJECT string)
 {
   fast SCHEME_OBJECT * bucket;
   {
@@ -103,9 +102,9 @@ find_symbol_internal (string)
 void (*intern_symbol_hook) () = ((void (*) ()) 0);
 
 static SCHEME_OBJECT
-link_new_symbol (symbol, cell)
-     SCHEME_OBJECT symbol;
-     SCHEME_OBJECT * cell;
+DEFUN (link_new_symbol, (symbol, cell),
+       SCHEME_OBJECT symbol
+       AND SCHEME_OBJECT * cell)
 {
   /* `symbol' does not exist yet in obarray.  `cell' points to the
      cell containing the final '() in the list.  Replace this
@@ -120,16 +119,14 @@ link_new_symbol (symbol, cell)
 }
 
 SCHEME_OBJECT
-find_symbol (string)
-     SCHEME_OBJECT string;
+DEFUN (find_symbol, (string), SCHEME_OBJECT string)
 {
   fast SCHEME_OBJECT result = (* (find_symbol_internal (string)));
   return ((result == EMPTY_LIST) ? SHARP_F : result);
 }
 
 SCHEME_OBJECT
-string_to_symbol (string)
-     SCHEME_OBJECT string;
+DEFUN (string_to_symbol, (string), SCHEME_OBJECT string)
 {
   fast SCHEME_OBJECT * cell = (find_symbol_internal (string));
   if ((*cell) != EMPTY_LIST)
@@ -146,8 +143,7 @@ string_to_symbol (string)
 }
 
 SCHEME_OBJECT
-intern_symbol (symbol)
-     SCHEME_OBJECT symbol;
+DEFUN (intern_symbol, (symbol), SCHEME_OBJECT symbol)
 {
   fast SCHEME_OBJECT * cell =
     (find_symbol_internal (FAST_MEMORY_REF (symbol, SYMBOL_NAME)));

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.37 1991/06/21 01:41:43 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.38 1992/01/15 02:25:57 jinx Exp $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -42,7 +42,7 @@ MIT in each case. */
 
 /* Exports */
 
-extern SCHEME_OBJECT *GCLoop();
+extern SCHEME_OBJECT * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
 
 #define GC_Pointer(Code)						\
 {									\
@@ -110,9 +110,10 @@ static int gc_scan_history_index;
 #endif
 
 SCHEME_OBJECT *
-GCLoop(Scan, To_Pointer)
-     fast SCHEME_OBJECT *Scan;
-     SCHEME_OBJECT **To_Pointer;
+DEFUN (GCLoop,
+       (Scan, To_Pointer),
+       fast SCHEME_OBJECT * Scan
+       AND SCHEME_OBJECT ** To_Pointer)
 {
   fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, New_Address;
 

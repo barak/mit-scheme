@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hunk.c,v 9.26 1989/09/20 23:09:10 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hunk.c,v 9.27 1992/01/15 02:27:57 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,10 +38,11 @@ MIT in each case. */
 #include "prims.h"
 
 SCHEME_OBJECT
-hunk3_cons (cxr0, cxr1, cxr2)
-     SCHEME_OBJECT cxr0;
-     SCHEME_OBJECT cxr1;
-     SCHEME_OBJECT cxr2;
+DEFUN (hunk3_cons,
+       (cxr0, cxr1, cxr2),
+       SCHEME_OBJECT cxr0
+       AND SCHEME_OBJECT cxr1
+       AND SCHEME_OBJECT cxr2)
 {
   Primitive_GC_If_Needed (3);
   (*Free++) = cxr0;
