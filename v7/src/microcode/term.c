@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.7 1993/08/11 19:07:12 cph Exp $
+$Id: term.c,v 1.8 1993/08/24 06:10:01 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -34,11 +34,15 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "ostop.h"
+#include "edwin.h"
 
 extern long death_blow;
 extern char * Term_Messages [];
 extern void EXFUN (get_band_parameters, (long * heap_size, long * const_size));
 extern void EXFUN (Reset_Memory, (void));
+
+static void EXFUN (edwin_auto_save, (void));
+static SCHEME_OBJECT edwin_auto_save_position;
 
 #define BYTES_TO_BLOCKS(n) (((n) + 1023) / 1024)
 #define MIN_HEAP_DELTA	50
@@ -57,6 +61,7 @@ DEFUN_VOID (init_exit_scheme)
 #ifdef INIT_EXIT_SCHEME
   INIT_EXIT_SCHEME ();
 #endif
+  edwin_auto_save_position = SHARP_T;
 }
 
 static void
@@ -129,6 +134,7 @@ DEFUN (termination_suffix, (code, value, abnormal_p),
 #ifdef EXIT_HOOK
   EXIT_HOOK (code, value, abnormal_p);
 #endif
+  edwin_auto_save ();
 #if WINNT
   if (code != TERM_HALT)  outf_flush_fatal(); /*dont salute*/
   winnt_deallocate_registers();
@@ -238,4 +244,45 @@ DEFUN (termination_signal, (signal_name), CONST char * signal_name)
   else
     attempt_termination_backout (TERM_SIGNAL);
   termination_suffix_trace (TERM_SIGNAL);
+}
+
+static void
+DEFUN_VOID (edwin_auto_save)
+{
+  /* edwin_auto_save_position remembers what is left to be done after
+     this save.  That way, if the save aborts due to an error and we
+     end up back here, we continue saving, skipping the entries
+     already saved as well as the entry that caused the error.  */
+  if (edwin_auto_save_position == SHARP_T)
+    edwin_auto_save_position = (Get_Fixed_Obj_Slot (FIXOBJ_EDWIN_AUTO_SAVE));
+  while (PAIR_P (edwin_auto_save_position))
+    {
+      SCHEME_OBJECT entry = (PAIR_CAR (edwin_auto_save_position));
+      edwin_auto_save_position = (PAIR_CDR (edwin_auto_save_position));
+      if ((PAIR_P (entry))
+	  && (GROUP_P (PAIR_CAR (entry)))
+	  && (STRING_P (PAIR_CDR (entry)))
+	  && ((GROUP_MODIFIED_P (PAIR_CAR (entry))) == SHARP_T))
+	{
+	  SCHEME_OBJECT group = (PAIR_CAR (entry));
+	  char * namestring = ((char *) (STRING_LOC ((PAIR_CDR (entry)), 0)));
+	  SCHEME_OBJECT text = (GROUP_TEXT (group));
+	  unsigned char * start = (STRING_LOC (text, 0));
+	  unsigned char * end = (start + (STRING_LENGTH (text)));
+	  unsigned char * gap_start = (start + (GROUP_GAP_START (group)));
+	  unsigned char * gap_end = (start + (GROUP_GAP_END (group)));
+	  Tchannel channel;
+	  if ((start < gap_start) || (gap_end < end))
+	    {
+	      outf_error ("Auto-saving file \"%s\"\n", namestring);
+	      outf_flush_error ();
+	      channel = (OS_open_output_file (namestring));
+	      if (start < gap_start)
+		OS_channel_write (channel, start, (gap_start - start));
+	      if (gap_end < end)
+		OS_channel_write (channel, gap_end, (end - gap_end));
+	      OS_channel_close (channel);
+	    }
+	}
+    }
 }
