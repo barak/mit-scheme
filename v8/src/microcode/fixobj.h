@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fixobj.h,v 9.35 1993/09/11 02:45:53 gjr Exp $
+$Id: fixobj.h,v 9.36 1993/11/08 20:38:05 cph Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -55,8 +55,7 @@ MIT in each case. */
 #define FIXOBJ_EDWIN_AUTO_SAVE	0x0D	/* Files to save if fatal error. */
 #define Stepper_State		0x0E	/* UNUSED in CScheme. */
 #define Fixed_Objects_Slots	0x0F	/* Names of these slots. */
-/* UNUSED slot			0x10 used to be
-   External_Primitives			   Names of external prims. */
+#define FIXOBJ_FILES_TO_DELETE	0x10	/* Temporary files to delete. */
 #define State_Space_Tag		0x11	/* Tag for state spaces. */
 #define State_Point_Tag		0x12	/* Tag for state points. */
 #define Dummy_History		0x13	/* Empty history structure. */

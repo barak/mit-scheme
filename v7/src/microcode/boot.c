@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.86 1993/10/26 03:04:06 jawilson Exp $
+$Id: boot.c,v 9.87 1993/11/08 20:38:25 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -221,6 +221,7 @@ DEFUN_VOID (make_fixed_objects_vector)
   FAST_VECTOR_SET (fixed_objects_vector, State_Space_Tag, SHARP_T);
   FAST_VECTOR_SET (fixed_objects_vector, Bignum_One, (long_to_bignum (1)));
   FAST_VECTOR_SET (fixed_objects_vector, FIXOBJ_EDWIN_AUTO_SAVE, EMPTY_LIST);
+  FAST_VECTOR_SET (fixed_objects_vector, FIXOBJ_FILES_TO_DELETE, EMPTY_LIST);
 
   (*Free++) = EMPTY_LIST;
   (*Free++) = EMPTY_LIST;

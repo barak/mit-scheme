@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.71 1993/09/11 02:45:59 gjr Exp $
+;;; $Id: utabmd.scm,v 9.72 1993/11/08 20:38:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987-1993 Massachusetts Institute of Technology
 ;;;
@@ -73,7 +73,7 @@
 	       EDWIN-AUTO-SAVE				;0D
 	       STEPPER-STATE				;0E
 	       MICROCODE-FIXED-OBJECTS-SLOTS		;0F
-	       #F					;10
+	       FILES-TO-DELETE				;10
 	       STATE-SPACE-TAG				;11
 	       STATE-POINT-TAG				;12
 	       DUMMY-HISTORY				;13
@@ -715,4 +715,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.71 1993/09/11 02:45:59 gjr Exp $"
+"$Id: utabmd.scm,v 9.72 1993/11/08 20:38:11 cph Exp $"
