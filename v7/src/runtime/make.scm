@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.91 2003/04/14 19:56:18 cph Exp $
+$Id: make.scm,v 14.92 2004/01/15 20:58:36 cph Exp $
 
-Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
-Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
-Copyright (c) 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -355,13 +355,13 @@ USA.
 (let ((files1
        '(("gcdemn" . (RUNTIME GC-DAEMONS))
 	 ("gc" . (RUNTIME GARBAGE-COLLECTOR))
-	 ("boot" . ())
-	 ("queue" . ())
-	 ("equals" . ())
+	 ("boot" . (RUNTIME BOOT-DEFINITIONS))
+	 ("queue" . (RUNTIME SIMPLE-QUEUE))
+	 ("equals" . (RUNTIME EQUALITY))
 	 ("list" . (RUNTIME LIST))
-	 ("symbol" . ())
+	 ("symbol" . (RUNTIME SYMBOL))
 	 ("uproc" . (RUNTIME PROCEDURE))
-	 ("fixart" . ())
+	 ("fixart" . (RUNTIME FIXNUM-ARITHMETIC))
 	 ("random" . (RUNTIME RANDOM-NUMBER))
 	 ("gentag" . (RUNTIME GENERIC-PROCEDURE))
 	 ("poplat" . (RUNTIME POPULATION))
