@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.2 1987/12/30 07:13:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.3 1987/12/31 07:01:04 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -107,11 +107,10 @@ MIT in each case. |#
        (expression-address-varies? (element-expression element))))
 
 (define (expression-address-varies? expression)
-  (if (memq (rtl:expression-type expression)
-	    '(OFFSET PRE-INCREMENT POST-INCREMENT))
-      (not (= regnum:regs-pointer
-	      (rtl:register-number (rtl:address-register expression))))
-      (rtl:any-subexpression? expression expression-address-varies?)))
+  (and (not (interpreter-register-reference? expression))
+       (or (memq (rtl:expression-type expression)
+		 '(OFFSET PRE-INCREMENT POST-INCREMENT)))
+       (rtl:any-subexpression? expression expression-address-varies?)))
 
 (define (expression-invalidate! expression)
   ;; Delete any expression which refers to this expression from the

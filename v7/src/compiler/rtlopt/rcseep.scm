@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 4.1 1987/12/08 13:56:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 4.2 1987/12/31 07:00:47 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -74,3 +74,7 @@ MIT in each case. |#
 	    (expression-equivalent? x y false)
 	    (rtl:any-subexpression? x loop))))
   (loop x))
+
+(define-integrable (interpreter-register-reference? expression)
+  (and (rtl:offset? expression)
+       (interpreter-regs-pointer? (rtl:offset-register expression))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.3 1987/12/31 05:49:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.4 1987/12/31 07:01:21 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -166,8 +166,21 @@ MIT in each case. |#
 	       (stack-reference-invalidate! address)
 	       (if (not volatile?)
 		   (insert-stack-destination! address (insert-source!))))
-	      (else
+	      ((interpreter-register-reference? address)
+	       (let ((hash (expression-hash address)))
+		 (let ((memory-invalidate!
+			(lambda ()
+			  (hash-table-delete! hash
+					      (hash-table-lookup hash
+								 address)))))
+		   (if volatile?
+		       (memory-invalidate!)
+		       (assignment-memory-insertion address
+						    hash
+						    insert-source!
+						    memory-invalidate!)))))
 
+	      (else
 	       (let ((address (expression-canonicalize address)))
 		 (rtl:set-assign-address! statement address)
 		 (full-expression-hash address
@@ -195,21 +208,25 @@ MIT in each case. |#
 				      element-address-varies?))))))
 		       (if (or volatile? volatile?*)
 			   (memory-invalidate!)
-			   (let ((address
-				  (find-cheapest-expression address hash
-							    false)))
-			     (let ((element (insert-source!)))
-			       (memory-invalidate!)
-			       (insert-memory-destination!
-				address
-				element
-				(modulo (+ (symbol-hash 'ASSIGN) hash)
-					(hash-table-size)))))))))
+			   (assignment-memory-insertion address
+							hash
+							insert-source!
+							memory-invalidate!)))))
 		 ;; **** Kludge.  Works only because stack-pointer
 		 ;; gets used in very fixed way by code generator.
 		 (if (stack-push/pop? address)
 		     (stack-pointer-adjust!
 		      (rtl:address-number address))))))))))
+
+(define (assignment-memory-insertion address hash insert-source!
+				     memory-invalidate!)
+  (let ((address (find-cheapest-expression address hash false)))
+    (let ((element (insert-source!)))
+      (memory-invalidate!)
+      (insert-memory-destination!
+       address
+       element
+       (modulo (+ (symbol-hash 'ASSIGN) hash) (hash-table-size))))))
 
 (define (trivial-action volatile? insert-source!)
   (if (not volatile?)
