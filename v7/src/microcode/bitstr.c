@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.27 1987/05/09 04:50:56 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.28 1987/05/09 05:25:54 cph Exp $
 
    Bit string primitives. */
 
@@ -627,31 +627,30 @@ zero_to_bit_string( length)
 {
   Pointer result;
 
-  result = allocate_bit_string( length);
-  clear_bit_string( result);
-  return result;
+  result = (allocate_bit_string (length));
+  clear_bit_string (result);
+  return (result);
 }
 
 Pointer
-long_to_bit_string( length, number)
+long_to_bit_string (length, number)
      long length, number;
 {
   if (number < 0)
-    Primitive_Error( ERR_ARG_2_BAD_RANGE)
+    Primitive_Error (ERR_ARG_2_BAD_RANGE)
   else if (number == 0)
-    zero_to_bit_string( length);
+    zero_to_bit_string (length);
   else
     {
-      if (length < long_significant_bits( number))
-	Primitive_Error( ERR_ARG_2_BAD_RANGE)
+      if (length < (long_significant_bits (number)))
+	Primitive_Error (ERR_ARG_2_BAD_RANGE)
       else
 	{
 	  Pointer result;
 
-	  result = allocate_bit_string( length);
-	  clear_bit_string( result);
-	  Fast_Vector_Set( result, Vector_Length( result), number);
-	  return result;
+	  result = (zero_to_bit_string (length));
+	  Fast_Vector_Set (result, (Vector_Length (result)), number);
+	  return (result);
 	}
     }
 }
@@ -680,16 +679,12 @@ bignum_to_bit_string (length, bignum)
 	{
 	  Pointer result;
 	  bigdigit *scan1, *scan2;
-	  long extra;
 
-	  result = (allocate_bit_string (length));
+	  result = (zero_to_bit_string (length));
 	  scan1 = (Bignum_Bottom (bigptr));
 	  scan2 = ((bigdigit *) (bit_string_end_ptr (result)));
-	  extra = (((length + (SHIFT - 1)) / SHIFT) - ndigits);
 	  for (; (ndigits > 0); ndigits -= 1)
 	    *--scan2 = *scan1++;
-	  for (; (extra > 0); extra -= 1)
-	    *--scan2 = 0;
 	  return (result);
 	}
     }
