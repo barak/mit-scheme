@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.8 1991/08/25 22:02:35 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.9 1991/08/26 00:20:07 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -364,22 +364,18 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 (define-key 'rmail-summary #\t		'rmail-summary-toggle-header)
 (define-key 'rmail-summary #\c-o	'rmail-summary-output)
 (define-key 'rmail-summary #\o		'rmail-summary-output-to-rmail-file)
+(define-key 'rmail-summary #\g		'rmail-summary-get-new-mail)
+(define-key 'rmail-summary #\i		'rmail-summary-input)
+(define-key 'rmail-summary #\?		'describe-mode)
+(define-key 'rmail-summary #\m		'rmail-summary-mail)
+(define-key 'rmail-summary #\r		'rmail-summary-reply)
 
 ;;; (define-key 'rmail #\a		'rmail-add-label)
 ;;; (define-key 'rmail #\k		'rmail-kill-label)
-;;; (define-key 'rmail #\g		'rmail-get-new-mail)
 ;;; (define-key 'rmail #\l		'rmail-summary-by-labels)
-;;; (define-key 'rmail #\c-m-l	'rmail-summary-by-labels)
-;;; (define-key 'rmail #\c-m-r	'rmail-summary-by-recipients)
-;;; (define-key 'rmail #\m		'rmail-mail)
-;;; (define-key 'rmail #\r		'rmail-reply)
 ;;; (define-key 'rmail #\c		'rmail-continue)
-;;; (define-key 'rmail #\f		'rmail-forward)
 ;;; (define-key 'rmail #\m-s	'rmail-search)
-;;; (define-key 'rmail #\i		'rmail-input)
-;;; (define-key 'rmail #\q		'rmail-quit)
 ;;; (define-key 'rmail #\>		'rmail-last-message)
-;;; (define-key 'rmail #\?		'describe-mode)
 ;;; (define-key 'rmail #\w		'rmail-edit-current-message)
 
 (define (make-rmail-summary-handler-prefix-arg key)
@@ -644,3 +640,44 @@ Calls whatever function is bound to #\o in RMAIL mode."
 	   (comtab-entry (mode-comtabs (current-major-mode)) #\o)))
       (execute-command the-command))
     ((ref-command rmail-summary))))
+
+(define-command rmail-summary-get-new-mail
+  "Get new mail.
+Calls whatever function is bound to #\g in RMAIL mode."
+  '()
+  (lambda ()
+    (select-buffer-other-window rmail-buffer)
+    (let ((the-command
+	   (comtab-entry (mode-comtabs (current-major-mode)) #\g)))
+      (execute-command the-command))
+    ((ref-command rmail-summary))))
+
+(define-command rmail-summary-input
+  "Run RMAIL on file FILENAME.
+Calls whatever function is bound to #\i in RMAIL mode."
+  '()
+  (lambda ()
+    (select-buffer-other-window rmail-buffer)
+    (let ((the-command
+	   (comtab-entry (mode-comtabs (current-major-mode)) #\i)))
+      (execute-command the-command))
+    ((ref-command rmail-summary))))
+  
+(define-command rmail-summary-mail
+  "Send mail in another window.
+Calls whatever function is bound to #\m in RMAIL mode."
+  '()
+  (lambda ()
+    (select-buffer-other-window rmail-buffer)
+    ((command-procedure
+      (comtab-entry (mode-comtabs (current-major-mode)) #\m)))))
+
+(define-command rmail-summary-reply
+  "Reply to the current message.
+Calls whatever function is bound to #\r in RMAIL mode."
+  "P"
+  (lambda (arg)
+    (select-buffer-other-window rmail-buffer)
+    ((command-procedure
+      (comtab-entry (mode-comtabs (current-major-mode)) #\r))
+     arg)))
