@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.8 1992/02/11 14:48:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.9 1992/02/13 03:18:38 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -108,13 +108,13 @@ MIT in each case. |#
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
   continuation
   (LAP ,@(clear-map!)
-       (JMP (@PCRO ,(free-uuo-link-label name frame-size) 2))))
+       (JMP (@PCRO ,(free-uuo-link-label name frame-size) 3))))
 
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
   continuation
   (LAP ,@(clear-map!)
-       (JMP (@PCRO ,(global-uuo-link-label name frame-size) 2))))
+       (JMP (@PCRO ,(global-uuo-link-label name frame-size) 3))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))

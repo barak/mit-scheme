@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr1.scm,v 1.5 1992/02/13 02:43:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr1.scm,v 1.6 1992/02/13 03:22:20 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -199,11 +199,15 @@ MIT in each case. |#
   (define-bit-test-instruction BTS #xab 5))
   
 (define-instruction CALL
-  (((@PCR ,dest))
+  (((@PCR (? dest)))
    (BYTE (8 #xe8))
    (IMMEDIATE `(- ,dest (+ *PC* ,*ADDRESS-SIZE*)) ADDRESS))
 
-  (((@PCO ,displ))
+  (((@PCRO (? dest) (? offset)))
+   (BYTE (8 #xe8))
+   (IMMEDIATE `(- (+ ,dest ,offset) (+ *PC* ,*ADDRESS-SIZE*)) ADDRESS))
+
+  (((@PCO (? displ)))
    (BYTE (8 #xe8))
    (IMMEDIATE displ ADDRESS))
 
@@ -455,6 +459,16 @@ MIT in each case. |#
   (((@PCR (? dest)))
    (VARIABLE-WIDTH
     (disp `(- ,dest (+ *PC* 2)))
+    ((-128 127)
+     (BYTE (8 #xeb)
+	   (8 disp SIGNED)))
+    ((() ())
+     (BYTE (8 #xe9)
+	   (32 (- disp 3) SIGNED)))))
+
+  (((@PCRO (? dest) (? offset)))
+   (VARIABLE-WIDTH
+    (disp `(- (+ ,dest ,offset) (+ *PC* 2)))
     ((-128 127)
      (BYTE (8 #xeb)
 	   (8 disp SIGNED)))
