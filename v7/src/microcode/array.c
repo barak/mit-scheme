@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.40 1989/12/20 18:03:32 pas Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.41 1989/12/29 20:41:06 pas Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -1223,7 +1223,7 @@ complex_array_sqrt (a,b,n)
       y = (double) b[i];
       r = sqrt( x*x + y*y);
       a[i] = sqrt((r+x)/2.0);
-      if (y>0.0)
+      if (y>=0.0)
 	b[i] =  sqrt((r-x)/2.0); /* choose principal root */
       else			/* see Abramowitz (p.17 3.7.27) */
 	b[i] = -sqrt((r-x)/2.0);
@@ -1292,7 +1292,7 @@ complex_array_asin (a,b,n)
     
     r = sqrt(x*x + y*y);	/* sqrt(1-z*z)  */
     real = sqrt((r+x)/2.0);
-    if (y>0.0)
+    if (y>=0.0)
       imag =  sqrt((r-x)/2.0);	/* choose principal root */
     else			/* see Abramowitz (p.17 3.7.27) */
       imag = -sqrt((r-x)/2.0);
