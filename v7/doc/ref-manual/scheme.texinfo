@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.18 1993/09/16 02:33:20 adams Exp $
+@comment $Id: scheme.texinfo,v 1.19 1993/09/24 20:06:54 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -12283,9 +12283,9 @@ operations, such as control of colors.
 * Characteristics of Graphics Output::  Characteristics of Graphics Output
 * Buffering of Graphics Output::  Buffering of Graphics Output
 * Clipping of Graphics Output::  Clipping of Graphics Output
-* Images::                      Images
 * Custom Graphics Operations::  Custom Graphics Operations
-* Win32 Graphics::              Graphics on Mircosoft Windows and Windows NT
+* Images::                      Images
+* Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
 * X Graphics::                  X Graphics
 * Starbase Graphics::           Starbase Graphics
 * Pictures::                    Pictures (MIT 6.001 implementation only)
@@ -12324,11 +12324,11 @@ control is required then the program should use one of the two
 procedures above to dispatch on the available types.
 
 This procedure opens and initializes the device, which remains valid
-until explicitly closed by the procedure @code{graphics-close}.  In the
-current implementation of MIT Scheme, if this object is
-garbage-collected, the graphics device remains open, and any resources
-it is using are not released.  In the future the garbage collector may
-be changed to automatically close such devices.
+until explicitly closed by the procedure @code{graphics-close}.
+Depending on the implementation of the graphics device, if this object
+is garbage-collected, the graphics device may remain open or it may be
+closed.  While a window remains open the resources associated with it
+are not released.
 @end deffn
 
 @deffn {procedure+} graphics-close graphics-device
@@ -12606,12 +12606,12 @@ necessary.
 @end deffn
 
 @deffn {procedure+} graphics-flush graphics-device
-Flushes the graphics output buffer for @var{graphics-device}.  It has no
-effect for devices that do not support buffering, or if buffering is
-disabled for the device.
+Flushes the graphics output buffer for @var{graphics-device}.  This
+operation has no effect for devices that do not support buffering, or if
+buffering is disabled for the device.
 @end deffn
 
-@node Clipping of Graphics Output, Images, Buffering of Graphics Output, Graphics
+@node Clipping of Graphics Output, Custom Graphics Operations, Buffering of Graphics Output, Graphics
 @section Clipping of Graphics Output
 @cindex graphics, clipping
 @cindex clipping, of graphics
@@ -12643,7 +12643,7 @@ graphics output is clipped to the virtual coordinate limits of the
 device.
 @end deffn
 
-@node Images, Custom Graphics Operations, Clipping of Graphics Output, Graphics
+@node Images, Win32 Graphics, Custom Graphics Operations, Graphics
 @section Images
 @cindex graphics, images
 @cindex images, graphics
@@ -12659,18 +12659,23 @@ images support the following operations.
 
 @defop {operation+} graphics-device create-image width height
 Images are created using the @var{create-image} graphics operation,
-specifying the width and height of the image in device dependent units
+specifying the width and height of the image in device dependent units,
+usually pixels.
+
 @example
 (graphics-operation device 'create-image 200 100)
 @end example
 
 @noindent
-@var{Create-image} is a graphics operation because the kind of image
-returned depends on the kind of graphics device used and the options
-specified in it's creation.  The image may be used freely with other
-graphics devices created with the same attributes, but the effects of
-using an image with a graphics device with different attributes (for
-example, different colors) is undefined.
+The initial contents of an image are unspecified.
+
+@var{Create-image} is a graphics operation rather than a procedure
+because the kind of image returned depends on the kind of graphics
+device used and the options specified in its creation.  The image may be
+used freely with other graphics devices created with the same
+attributes, but the effects of using an image with a graphics device
+with different attributes (for example, different colors) is undefined.
+Under X, the image is display dependent.
 @end defop
 
 @defop {operation+} graphics-device draw-image x y image
@@ -12692,24 +12697,19 @@ Predicate to test image-ness.
 @deffn {procedure+} image/destroy image
 This procedure destroys the image, returning storage to the system.
 Programs should destroy images after they have been used because even
-modest images may use large amount of memory.  Images are garbage
+modest images may use large amounts of memory.  Images are garbage
 collected, but they may be implemented using memory outside of Scheme's
 heap.  This means that the @var{create-image} operation may fail due to
 there being too many unreachable images awaiting a garbage collection.
 @end deffn
 
-@deffn {procedure+} image/descriptor image
-The procedure returns the implementation dependent image.  Its use is
-discouraged as it is non-portable.
-@end deffn
+@c @deffn {procedure+} image/descriptor image
+@c The procedure returns the implementation dependent image.  Its use is
+@c discouraged as it is non-portable.
+@c @end deffn
 
 @deffn {procedure+} image/height image
 Returns the height of the image in device dependent units, usually screen
-pixels.
-@end deffn
-
-@deffn {procedure+} image/width image
-Returns the width of the image in device dependent units, usually screen
 pixels.
 @end deffn
 
@@ -12726,7 +12726,7 @@ filled from left to right.  There must be at least
 width(image)*height(image) bytes in @var{bytes}.
 @end deffn
 
-@node Custom Graphics Operations, Win32 Graphics, Images, Graphics
+@node Custom Graphics Operations, Images, Clipping of Graphics Output, Graphics
 @section Custom Graphics Operations
 @cindex custom operations, on graphics device
 @cindex graphics, custom operations
@@ -12754,15 +12754,24 @@ For information on the custom operations for a particular device, see
 the documentation for its type.
 @end deffn
 
-@node Win32 Graphics, X Graphics, Custom Graphics Operations, Graphics
+@node Win32 Graphics, X Graphics, Images, Graphics
 @section Win32 Graphics
 @cindex Win32 graphics
 
 Scheme supports graphics on Microsoft Windows 3.1 and NT 3.1.  In
 addition to the usual operations, there are operations to control the
 size, position and colors of a graphics window.  There are also
-operations to load and save the image as a device independent bitmap
+operations to load and save an image as a device independent bitmap
 (DIB).
+
+The Win32 graphics device type is implemented as a top level window.
+@code{graphics-enable-buffering} is implemented and gives a 2x to 4x
+speedup on many graphics operations.  As a convenience, when buffering
+is enabled clicking on the graphics window's title bar effects a
+@code{graphics-flush} operation.  The user has the benefit of the
+increased performance and the ability to view the progress in drawing at
+the click of a mouse button.
+
 
 @menu
 * Win32 Graphics Type::        Win32 Graphics Type
@@ -12773,10 +12782,10 @@ operations to load and save the image as a device independent bitmap
 @subsection Win32 Graphics Type
 
 Win32 graphics devices are supported under Microsoft Windows 3.1 and
-Microsoft Window NT 3.1.  Win32 graphics devices are created by
+Microsoft Windows NT 3.1.  Win32 graphics devices are created by
 specifying @code{'WIN32} as the graphics device type name.  The Win32
 graphics device type is implemented as a top-level window and supports
-color drawing in addition to the sandard Scheme graphics operation.
+color drawing in addition to the standard Scheme graphics operations.
 
 Graphics devices are opened as follows:
 
@@ -12835,7 +12844,7 @@ Custom operations are invoked using the procedure
 @findex set-foreground-color
 @cindex color
 These operations change the colors associated with a window.
-@var{Color-name} must of one of the valid color specification forms
+@var{Color-name} must be of one of the valid color specification forms
 listed below.  @code{set-background-color} and
 @code{set-foreground-color} change the colors to be used when drawing,
 but have no effect on anything drawn prior to their invocation.  Because
@@ -12847,7 +12856,7 @@ The foreground color affects the drawing of text, points, lines, ellispes and fi
 Colors are specified in one of three ways:
 @table @asis
 @item An integer
-This is the windows internal RGB value.
+This is the Win32 internal RGB value.
 
 @item By name
 A limited number of names are understood by the system.
@@ -12856,8 +12865,8 @@ More names can be registered with the @code{define-color} operation.
 
 
 @item RGB (Red-Green-Blue) triples
-A tripple is either a vector or list of three integers in the range
-0..255 inclusive which specify the intensity of the red, green and blue
+A triple is either a vector or list of three integers in the range
+0--255 inclusive which specify the intensity of the red, green and blue
 components of the color.  Thus @code{#(0 0 0)} is black, @code{(0 0
 128)} is dark blue and @code{#(255 255 255)} is white.
 @end table
@@ -12889,9 +12898,9 @@ the color in its most efficient form for operations
 @cindex graphics, circle
 Draw an ellipse.  @var{Left}, @var{top}, @var{right} and @var{bottom}
 indicate the coordinates of the bounding rectangle of the ellipse.
-Circles are merely ellipses with equal width and height.  Note that
+Circles are merely ellipses with equal width and height.  Note that the
 bounding rectangle has horizontal and vertical sides.  Ellipses with
-rotated axes cannot be drawn.  The rectange applies to the center of the
+rotated axes cannot be drawn.  The rectangle applies to the center of the
 line used to draw the ellipse; if the line width has been set to greater
 than 1 then the ellipse will spill outside the bounding rectange by half
 of the line width.
@@ -12902,7 +12911,7 @@ of the line width.
 @findex fill-polygon
 Draws a filled polygon using the current foreground color.
 @var{Points} is a vector of numbers.
-The numbers in the order x1 y2 x2 y2 ... xn yn.
+The numbers are in the order x1 y1 x2 y2 ... xn yn.
 For example,
 @example
 (graphics-operation device 'fill-polygon
@@ -12917,8 +12926,8 @@ draws a solid triangular region between the points (0,0), (0,1) and
 @defop {operation+} win32-graphics-device load-bitmap pathname
 @cindex bitmaps
 The graphics device contents and size are initialized from the windows
-bitmap file at @var{pathname}.  If no file type is supplied then a .BMP
-extension is added.  If a clip rectangle is in effect when this
+bitmap file at @var{pathname}.  If no file type is supplied then a
+``.BMP'' extension is added.  If a clip rectangle is in effect when this
 procedure is called, it is necessary to redefine the clip rectangle
 afterwards.
 @end defop
@@ -12926,8 +12935,9 @@ afterwards.
 @defop {operation+} win32-graphics-device save-bitmap pathname
 @cindex printing graphics output
 The graphics device contents are saved as a bitmap in the file specified
-by @var{pathname}.  If no file type is supplied then a .BMP extension is
-added.  The saved bitmap may be incorporated into documents or printed.
+by @var{pathname}.  If no file type is supplied then a ``.BMP''
+extension is added.  The saved bitmap may be incorporated into documents
+or printed.
 @end defop
 
 @defop {operation+} win32-graphics-device move-window x y
@@ -12943,10 +12953,10 @@ afterwards.
 @end defop
 
 @defop {operation+} win32-graphics-device set-line-width width
-This operation sets the line width future drawing lines, points and
-ellipses.  It does not affect existing lines and filled polygons.  The
-line width is specified in device units.  The default and initial value
-of this parameter is 1 pixel.
+This operation sets the line width for future drawing of lines, points
+and ellipses.  It does not affect existing lines and has no effect on
+filled polygons.  The line width is specified in device units.  The
+default and initial value of this parameter is 1 pixel.
 @end defop
 
 @defop {operation+} win32-graphics-device set-window-name name
@@ -12955,7 +12965,7 @@ given the name "Scheme Graphics" at creation.
 @end defop
 
 @defop {operation+} win32-graphics-device set-font handle
-Set the font for draw text.
+Set the font for drawing text.
 Currently not well supported.
 If you can get a Win32 font handle it can be used here.
 @end defop
@@ -12999,13 +13009,13 @@ size, position, colors, and mapping.
 
 
 A graphics device for X windows is created by passing the symbol @code{X}
-as the graphics device type name to @code{make-graphics-device-type}:
+as the graphics device type name to @code{make-graphics-device}:
 
 @example
-(make-graphics-device 'X
-                      @var{display}
-                      @var{geometry}
-                      #!optional @var{suppress-map?})
+(make-graphics-device 'X #!optional
+                         @var{display}
+                         @var{geometry}
+                         @var{suppress-map?})
 @end example
 
 @noindent
@@ -13027,14 +13037,14 @@ created.
 @cindex resources, X graphics
 @cindex X resources, graphics
 The window is initialized using the resource name
-@code{"scheme-graphics"}, and is sensitive to the following resource
-properties:
+@code{"schemeGraphics"}, class @code{SchemeGraphics}, and is sensitive
+to the following resource properties:
 
 @example
 @group
 Property        Class           Default
 --------        -----           -------
-geometry        Geometry        @r{[none]}
+geometry        Geometry        512x384+0+0
 font            Font            9x15
 borderWidth     BorderWidth     2
 internalBorder  BorderWidth     @r{[border width]}
@@ -13125,6 +13135,8 @@ colors to be used when drawing, but have no effect on anything drawn
 prior to their invocation.  Because changing the background color
 affects the entire window, we recommend calling @code{graphics-clear} on
 the window's device afterwards.
+Color names include both mnemonic names, like @code{"red"}, and
+intensity names specified in the ``#rrggbb'' notation.
 @end defop
 
 @defop {operation+} x-graphics-device set-border-width width
@@ -13151,7 +13163,7 @@ when multiplied by 2 this number corresponds to an index in the file
 @end defop
 
 @defop {operation+} x-graphics-device map-window
-@defopx {operation+} x-graphics-device unmap-window
+@defopx {operation+} x-graphics-device withdraw-window
 These operations control the mapping of windows.  They correspond
 directly to the Xlib procedures @code{XMapWindow} and
 @code{XUnmapWindow}.
@@ -13181,15 +13193,6 @@ This operation corresponds directly to the Xlib procedure
 The operation returns the character string corresponding to the
 association of @var{resource} and @var{property}; if no such association
 exists, @code{#f} is returned.
-@end defop
-
-@defop {operation+} x-graphics-device starbase-filename
-On Hewlett-Packard computers that support Starbase graphics, this
-operation returns a character string that can be used to open the
-device's window as a Starbase graphics device using the ``sox11''
-driver.  Note that the default distribution of Scheme for HP computers
-does not include support for Starbase --- you must rebuild the microcode
-to get this support.
 @end defop
 
 @defop {operation+} x-graphics-device copy-area source-x-left source-y-top width height destination-x-left destination-y-top
@@ -13237,6 +13240,15 @@ These procedures extract components of objects of type
 @code{x-character-bounds}.  A more complete description of them appears
 in documentation of the @code{XLoadQueryFont} Xlib call.
 @end deffn
+
+@defop {operation+} x-graphics-device starbase-filename
+On Hewlett-Packard computers that support Starbase graphics, this
+operation returns a character string that can be used to open the
+device's window as a Starbase graphics device using the ``sox11''
+driver.  Note that the default distribution of Scheme for HP computers
+does not include support for Starbase --- you must rebuild the microcode
+to get this support.
+@end defop
 
 @node Starbase Graphics, Pictures, X Graphics, Graphics
 @section Starbase Graphics
