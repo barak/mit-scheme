@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.2 1987/05/15 19:46:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.3 1987/05/21 15:00:00 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -55,7 +55,7 @@ MIT in each case. |#
   (lambda (node subproblem?)
     (let ((lvalue (assignment-lvalue node)))
       (if (and (integrated-vnode? lvalue)
-	       (not (value-temporary? lvalue)))
+	       (not (value-register? lvalue)))
 	  (make-null-cfg)
 	  (transmit-values (generate/rvalue (definition-rvalue node))
 	    (lambda (prefix expression)
@@ -85,30 +85,22 @@ MIT in each case. |#
 
 (define-assignment temporary-tag
   (lambda (block lvalue expression subproblem?)
-    (case (temporary-type lvalue)
-      ((#F)
-       (rtl:make-assignment lvalue expression))
-      ((VALUE)
-       (assignment/value-register block expression subproblem?))
-      (else
-       (error "Unknown temporary type" lvalue)))))
+    (rtl:make-assignment lvalue expression)))
 
-(define (assignment/value-register block expression subproblem?)
-;  (if subproblem? (error "Return node has next"))
-  (let ((assignment (rtl:make-assignment register:value expression)))
-    (if subproblem?
-	assignment
-	(scfg*scfg->scfg!
-	 assignment
-	 (if (stack-block? block)
-	     (if (stack-parent? block)
-		 (rtl:make-message-sender:value (block-frame-size block))
-		 (scfg*scfg->scfg!
-		  (rtl:make-pop-frame (block-frame-size block))
-		  (rtl:make-return)))
-	     (rtl:make-return))))))
+(define-assignment value-register-tag
+  (lambda (block lvalue expression subproblem?)
+    (if subproblem? (error "Return node has next"))
+    (scfg*scfg->scfg!
+     (rtl:make-assignment register:value expression)
+     (if (stack-block? block)
+	 (if (stack-parent? block)
+	     (rtl:make-message-sender:value (block-frame-size block))
+	     (scfg*scfg->scfg!
+	      (rtl:make-pop-frame (block-frame-size block))
+	      (rtl:make-return)))
+	 (rtl:make-return)))))
 
 (define-assignment value-ignore-tag
-  (lambda (block lvalue rvalue subproblem? wrap-expression)
+  (lambda (block lvalue rvalue subproblem?)
     (if subproblem? (error "Return node has next"))
 					       (scfg-next-hooks n6)))))))))
