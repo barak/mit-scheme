@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.50 1987/06/30 20:39:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.51 1987/06/30 21:14:12 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -172,34 +172,43 @@
   (let ((nmv-type (microcode-type 'manifest-nm-vector))
 	(snmv-type  (microcode-type 'manifest-special-nm-vector)))
     (lambda (vector)
-      (let ((length (vector-length vector))
-	    (element
-	     (lambda (index)
-	       (if (with-interrupt-mask interrupt-mask-none
-		     (lambda (ie)
-		       (or (primitive-type? nmv-type (vector-ref vector index))
-			   (primitive-type? snmv-type (vector-ref vector index)))))
-		   (error "Attempt to unparse partially marked vector" 0)
-		   (vector-ref vector index)))))
-	(let ((normal
-	       (lambda ()
-		 (*unparse-string "#(")
-		 (*unparse-object-or-future (element 0))
-		 (let loop ((index 1))
-		   (cond ((= index length) (*unparse-char #\)))
-			 (else
-			  (*unparse-char #\Space)
-			  (*unparse-object-or-future (element index))
-			  (loop (1+ index))))))))
-	  (cond ((zero? length)
-		 (*unparse-string "#()"))
-		((future? vector)
-		 (normal))
-		(else
-		 (let ((entry (assq (element 0) *unparser-special-objects*)))
-		   (if entry
-		       ((cdr entry) vector)
-		       (normal))))))))))
+      (limit-unparse-depth
+       (lambda ()
+	 (let ((length (vector-length vector))
+	       (element
+		(lambda (index)
+		  (if (with-interrupt-mask interrupt-mask-none
+			(lambda (ie)
+			  (or (primitive-type? nmv-type
+					       (vector-ref vector index))
+			      (primitive-type? snmv-type
+					       (vector-ref vector index)))))
+		      (error "Attempt to unparse partially marked vector" 0)
+		      (vector-ref vector index)))))
+	   (let ((normal
+		  (lambda ()
+		    (*unparse-string "#(")
+		    (*unparse-object-or-future (element 0))
+		    (let loop ((index 1))
+		      (cond ((= index length)
+			     (*unparse-char #\)))
+			    ((and *unparser-list-breadth-limit*
+				  (>= index *unparser-list-breadth-limit*))
+			     (*unparse-string " ...)"))
+			    (else
+			     (*unparse-char #\Space)
+			     (*unparse-object-or-future (element index))
+			     (loop (1+ index))))))))
+	     (cond ((zero? length)
+		    (*unparse-string "#()"))
+		   ((future? vector)
+		    (normal))
+		   (else
+		    (let ((entry
+			   (assq (element 0) *unparser-special-objects*)))
+		      (if entry
+			  ((cdr entry) vector)
+			  (normal))))))))))))
 
 (define *unparser-special-objects* '())
 
@@ -214,18 +223,20 @@
     ((or (unparse-list/unparser object) unparse-list) object)))
 
 (define (unparse-list list)
-  (let ((kernel
-	 (lambda ()
-	   (*unparse-char #\()
-	   (*unparse-object-or-future (car list))
-	   (unparse-tail (cdr list) 2)
-	   (*unparse-char #\)))))
-    (if *unparser-list-depth-limit*
-	(fluid-let ((*unparser-list-depth* (1+ *unparser-list-depth*)))
-	  (if (> *unparser-list-depth* *unparser-list-depth-limit*)
-	      (*unparse-string "...")
-	      (kernel)))
-	(kernel))))
+  (limit-unparse-depth
+   (lambda ()
+     (*unparse-char #\()
+     (*unparse-object-or-future (car list))
+     (unparse-tail (cdr list) 2)
+     (*unparse-char #\)))))
+
+(define (limit-unparse-depth kernel)
+  (if *unparser-list-depth-limit*
+      (fluid-let ((*unparser-list-depth* (1+ *unparser-list-depth*)))
+	(if (> *unparser-list-depth* *unparser-list-depth-limit*)
+	    (*unparse-string "...")
+	    (kernel)))
+      (kernel)))
 
 (define (unparse-tail l n)
   (cond ((pair? l)
