@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.22 1995/07/24 17:38:03 adams Exp $
+$Id: cleanup.scm,v 1.23 1995/08/06 22:26:35 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -615,8 +615,8 @@ MIT in each case. |#
 	(else
 	 (internal-error "Unrecognized easy form" form))))
 
-(define cleanup/trivial/ops
-  (list %vector-index))
+(define cleanup/trivial/ops '())
+;  (list %vector-index)
 
 (define cleanup/easy/ops
   (append cleanup/trivial/ops

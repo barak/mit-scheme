@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.15 1995/07/06 21:27:14 adams Exp $
+$Id: simplify.scm,v 1.16 1995/08/06 22:26:53 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -512,7 +512,7 @@ MIT in each case. |#
   (define (cost operator value)
     (hash-table/put! *simplify/operator-open-coding-costs* operator value))
   (cost not 0)
-  (cost %vector-index -2)
+  ;;(cost %vector-index -2)
   (cost %heap-closure-ref -2)
   (cost %stack-closure-ref -2))
 
