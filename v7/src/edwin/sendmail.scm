@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.56 2000/06/12 03:37:52 cph Exp $
+;;; $Id: sendmail.scm,v 1.57 2000/06/14 02:35:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -164,9 +164,9 @@ The headers are delimited by a string found in mail-header-separator."
 (variable-permanent-local! (ref-variable-object mail-reply-buffer))
 
 (define-variable mail-abbreviate-mime
-  "If true, sent mail doesn't contain unnecessary MIME headers.
-For example, Content-Type and Content-Transfer-Encoding headers
-  that specify the default are unnecessary.
+  "If true, sent mail doesn't contain some unnecessary MIME headers.
+Specifically, Content-Type and Content-Transfer-Encoding headers
+  in subparts of a multipart message are omitted if they specify the default.
 If false, sent mail contains full MIME headers."
   #t
   boolean?)
@@ -800,7 +800,7 @@ the user from the mailer."
       (if (pair? attachments)
 	  (copy-mime-message-body-with-attachments body-start end attachments
 						   h-end output-mark)
-	  (copy-mime-message-body body-start end h-end output-mark))
+	  (copy-mime-message-body body-start end #f h-end output-mark))
       h-end)))
 
 (define (guarantee-mime-compliant-headers header-start header-end)
@@ -811,8 +811,8 @@ the user from the mailer."
   (if (any-lines-too-long? header-start header-end 998)
       (editor-error "Message contains over-long line in header.")))
 
-(define (copy-mime-message-body start end h-end output-mark)
-  (if (not (ref-variable mail-abbreviate-mime start))
+(define (copy-mime-message-body start end subpart? h-end output-mark)
+  (if (not (and subpart? (ref-variable mail-abbreviate-mime start)))
       (mail-insert-field-value h-end
 			       "Content-Type" "text/plain; charset=us-ascii"))
   (let ((b-start (mark-right-inserting-copy output-mark)))
@@ -831,7 +831,7 @@ the user from the mailer."
 				   "quoted-printable"))
 	(begin
 	  (insert-region start end b-start)
-	  (if (not (ref-variable mail-abbreviate-mime start))
+	  (if (not (and subpart? (ref-variable mail-abbreviate-mime start)))
 	      (mail-insert-field-value h-end
 				       "Content-Transfer-Encoding"
 				       "7bit"))))))
@@ -867,13 +867,12 @@ the user from the mailer."
      h-end
      "Content-Type"
      (string-append "multipart/mixed; boundary=\"" boundary "\""))
-    (if (not (ref-variable mail-abbreviate-mime start))
-	(mail-insert-field-value h-end "Content-Transfer-Encoding" "7bit"))
+    (mail-insert-field-value h-end "Content-Transfer-Encoding" "7bit")
     (insert-string "This is a multi-part message in MIME format." output-mark)
     (insert-mime-boundary boundary #f output-mark)
     (insert-newline output-mark)
     (let ((h-end (mark-left-inserting-copy (mark-1+ output-mark))))
-      (copy-mime-message-body start end h-end output-mark)
+      (copy-mime-message-body start end #t h-end output-mark)
       (mark-temporary! h-end))
     (for-each (lambda (attachment)
 		(insert-mime-boundary boundary #f output-mark)
