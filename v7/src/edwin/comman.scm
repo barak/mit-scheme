@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comman.scm,v 1.82 2000/02/23 19:20:42 cph Exp $
+$Id: comman.scm,v 1.83 2000/02/25 20:24:15 cph Exp $
 
 Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 
@@ -69,23 +69,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define editor-commands
   (make-string-table 500))
 
-(define (name->command name #!optional error?)
+(define (name->command name #!optional if-undefined)
   (let ((name (canonicalize-name name)))
     (or (string-table-get editor-commands (symbol->string name))
-	(case (if (default-object? error?) 'INTERN error?)
+	(case (if (default-object? if-undefined) 'INTERN if-undefined)
 	  ((#F) #f)
+	  ((ERROR) (error "Undefined command:" name))
 	  ((INTERN)
 	   (letrec ((command
 		     (make-command
 		      name
 		      "undefined command"
 		      '()
-		      (lambda ()
-			(editor-error "Undefined command: "
-				      (command-name-string command))))))
+		      (lambda () (editor-error "Undefined command:" name)))))
 	     command))
 	  (else
-	   (error "Undefined command:" (command-name-string command)))))))
+	   (error:bad-range-argument if-undefined 'NAME->COMMAND))))))
 
 (define (->command object)
   (if (command? object)
@@ -176,10 +175,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define editor-variables
   (make-string-table 50))
 
-(define (name->variable name)
+(define (name->variable name #!optional if-undefined)
   (let ((name (canonicalize-name name)))
     (or (string-table-get editor-variables (symbol->string name))
-	(make-variable name "" #f #f))))
+	(case (if (default-object? if-undefined) 'INTERN if-undefined)
+	  ((#F) #f)
+	  ((ERROR) (error "Undefined variable:" name))
+	  ((INTERN) (make-variable name "" #f #f))
+	  (else (error:bad-range-argument if-undefined 'NAME->VARIABLE))))))
 
 (define (->variable object)
   (if (variable? object)
