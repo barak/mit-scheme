@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.22 1991/04/03 04:21:15 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.23 1991/05/10 05:06:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -62,11 +62,13 @@ If #F, use the default (REP loop) syntax-table."
 (define-variable debug-on-evaluation-error
   "True means enter debugger if error is signalled while evaluating.
 This does not affect editor errors."
-  true)
+  true
+  boolean?)
 
 (define-variable enable-transcript-buffer
   "If true, output from evaluation commands is recorded in transcript buffer."
-  false)
+  false
+  boolean?)
 
 (define-variable transcript-buffer-name
   "Name of evaluation transcript buffer.
@@ -89,16 +91,22 @@ It is passed a thunk as its only argument.
 If #F, normal transcript output is done."
   false)
 
-(define-variable transcript-value-truncate
-  "True means evaluation results are printed with depth and breadth limits."
-  true)
+(define-variable transcript-list-depth-limit
+  "List depth to which evaluation results are printed.  #F means no limit."
+  false
+  (lambda (object) (or (not object) (exact-nonnegative-integer? object))))
+
+(define-variable transcript-list-breadth-limit
+  "List breadth to which evaluation results are printed.  #F means no limit."
+  false
+  (lambda (object) (or (not object) (exact-nonnegative-integer? object))))
 
 ;;;; Commands
 
-(define-command eval-definition
-  "Evaluate the definition at point.
-Prints the result in the typein window.
-With an argument, prompts for the evaluation environment."
+(define-command eval-defun
+  "Evaluate defun that point is in or before.
+Print value in minibuffer.
+With argument, prompts for the evaluation environment."
   "P"
   (lambda (argument)
     (evaluate-from-mark (current-definition-start) argument)))
@@ -111,7 +119,7 @@ With an argument, prompts for the evaluation environment."
   (lambda (argument)
     (evaluate-from-mark (current-point) argument)))
 
-(define-command eval-previous-sexp
+(define-command eval-last-sexp
   "Evaluate the expression preceding point.
 Prints the result in the typein window.
 With an argument, prompts for the evaluation environment."
@@ -126,8 +134,8 @@ With an argument, prompts for the evaluation environment."
   (lambda (region argument)
     (evaluate-region region argument)))
 
-(define-command eval-buffer
-  "Evaluate the buffer.
+(define-command eval-current-buffer
+  "Evaluate the current buffer.
 The values are printed in the typein window.
 With an argument, prompts for the evaluation environment."
   "P"
@@ -321,12 +329,15 @@ may be available.  The following commands are special to this mode:
       (let ((output-wrapper (ref-variable transcript-output-wrapper)))
 	(if output-wrapper
 	    (output-wrapper thunk)
-	    (with-output-to-port
-	     (let ((buffer (transcript-buffer)))
-	       (mark->output-port (buffer-end buffer) buffer))
-	     (lambda ()
-	       (fresh-lines 1)
-	       (thunk)))))
+	    (let ((output-port
+		   (let ((buffer (transcript-buffer)))
+		     (mark->output-port (buffer-end buffer) buffer))))
+	      (with-output-to-port output-port
+		(lambda ()
+		  (with-cmdl/output-port (nearest-cmdl)
+		    (lambda ()
+		      (fresh-lines 1)
+		      (thunk))))))))
       (let ((value))
 	(let ((output
 	       (with-output-to-string
@@ -339,9 +350,15 @@ may be available.  The following commands are special to this mode:
 
 (define (transcript-write value)
   (let ((value-string
-	 (with-output-to-string
-	   (lambda ()
-	     (write-value value (ref-variable transcript-value-truncate))))))
+	 (if (undefined-value? value)
+	     "No value"
+	     (string-append
+	      "Value: "
+	      (fluid-let ((*unparser-list-depth-limit*
+			   (ref-variable transcript-list-depth-limit))
+			  (*unparser-list-breadth-limit*
+			   (ref-variable transcript-list-breadth-limit)))
+		(write-to-string value))))))
     (let ((value-message (lambda () (message value-string))))
       (if (ref-variable enable-transcript-buffer)
 	  (begin
