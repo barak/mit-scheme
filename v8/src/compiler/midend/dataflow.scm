@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.5 1995/01/17 22:49:36 adams Exp $
+$Id: dataflow.scm,v 1.6 1995/02/01 20:52:17 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -95,6 +95,8 @@ MIT in each case. |#
 
 	    (graph/substitite-simple-constants
 	     graph graph/read-eqv?-preserving-constant?)
+	    (if compiler:guru?
+		(graph/look-for-interesting-nodes graph))
 	    (if (graph/interesting? graph)
 		(graph/display-statistics! graph))
 
@@ -2221,20 +2223,24 @@ MIT in each case. |#
 (define (graph/substitite-simple-constants graph simple-constant?)
   ;; Rewrite any node with a unique constant value K satisfying
   ;; SIMPLE-CONSTANT? as (QUOTE K)
-  (for-each (lambda (node)
-	      (if (expression-node? node)
-		  (let ((value (node/unique-value node)))
-		    (cond ((QUOTE/? (node/text node))
-			   unspecific)
-			  ((and (value/constant? value)
-				(simple-constant? (value/constant/value value)))
-			   ;;(display "\n; Constant propagation:")
-			   ;;(kmp/ppp
-			   ;; `(,node ,(node/text node) =>
-				;;    (QUOTE ,(value/constant/value value))))
-			   (form/rewrite! (node/text node)
-			     `(QUOTE ,(value/constant/value value))))
-			  (else unspecific)))))
+  (for-each 
+      (lambda (node)
+	(if (expression-node? node)
+	    (let ((value (node/unique-value node)))
+	      (cond ((QUOTE/? (node/text node))
+		     unspecific)
+		    ((and (value/constant? value)
+			  (simple-constant? (value/constant/value value))
+			  (form/simple&side-effect-free? (node/text node)))
+		     (if compiler:guru?
+			 (begin
+			   (display "\n; Constant propagation:")
+			   (kmp/ppp
+			    `(,node ,(node/text node) =>
+				    (QUOTE ,(value/constant/value value))))))
+		     (form/rewrite! (node/text node)
+		       `(QUOTE ,(value/constant/value value))))
+		    (else unspecific)))))
     (graph/nodes graph)))
 
 (define (graph/read-eq?-preserving-constant? value)
@@ -2246,6 +2252,48 @@ MIT in each case. |#
 (define (graph/read-eqv?-preserving-constant? value)
   (or (graph/read-eq?-preserving-constant? value)
       (number? value)))
+
+(define (graph/look-for-interesting-nodes graph)
+  (define (parse lambda-expr remove-closure?)
+    (call-with-values
+	(lambda () (lambda-list/parse (lambda/formals lambda-expr)))
+      (lambda (required optional rest aux)
+	aux
+	(let ((req  (if remove-closure? (cdr required) required)))
+	  (cons (length req)
+		(if rest #F (+ (length req) (length optional))))))))
+  (define (value/arity value)
+    (cond ((value/procedure? value)
+	   (parse (value/text value) #F))
+	  ((value/closure? value)
+	   (parse (value/text (value/closure/procedure value))
+		  (eq? (value/closure/kind value) 'HEAP)))
+	  (else (internal-warning "graph/look-for-interesting-nodes unexpected"
+				  value)
+		#F)))
+  (for-each 
+      (lambda (node)
+	(if (expression-node? node)
+	    (let ((values (node/values node)))
+	      (cond ((value-set/unknown? values))
+		    ((null? (node/uses/operator node)))
+		    ((value-set/unique-value values))
+		    ((for-all? (value-set/singletons values)
+		       (lambda (value)
+			 (or (value/procedure? value)
+			     (value/closure? value))))
+		     (display "\n;; Multiple procedures ") (display node)
+		     (display " ")
+		     (for-each (lambda (p)
+				 (display (value/arity p)))
+		       (value-set/singletons values))
+		     (display (map (lambda (p) (or (value/procedure? p)
+						   (value/closure/kind p)))
+				   (value-set/singletons values)))
+		     (bkpt 1))
+		    (else unspecific)))))
+    (graph/nodes graph)))
+
 
 (define (graph/cleanup! graph)
   ;; After dataflow has comuted the values at each node, we no longer need
