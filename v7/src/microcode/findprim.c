@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.37 1989/04/15 19:04:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.38 1989/04/15 19:49:52 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -1208,17 +1208,17 @@ compare_descriptors (d1, d2)
 
 int
 strcmp_ci (s1, s2)
-     fast char * s1;
-     fast char * s2;
+     register char * s1;
+     register char * s2;
 {
   int length1 = (strlen (s1));
   int length2 = (strlen (s2));
-  fast int length = ((length1 < length2) ? length1 : length2);
+  register int length = ((length1 < length2) ? length1 : length2);
 
   while ((length--) > 0)
     {
-      fast int c1 = (*s1++);
-      fast int c2 = (*s2++);
+      register int c1 = (*s1++);
+      register int c2 = (*s2++);
       if (islower (c1)) c1 = (_toupper (c1));
       if (islower (c2)) c2 = (_toupper (c2));
       if (c1 < c2) return (-1);
