@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.6 1989/02/19 17:51:11 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.7 1989/08/09 02:13:48 pas Exp $ */
 
 #include "scheme.h"
 #include "prims.h"
@@ -47,39 +47,8 @@ MIT in each case. */
 #endif
 
 float Color_Table[STARBASE_COLOR_TABLE_SIZE][3];
-
-DEFINE_PRIMITIVE ("PLOT-ARRAY-IN-BOX", Prim_plot_array_in_box, 3, 3, 0)
-{
-  float Plotting_Box[4];   /* x_min, y_min, x_max, y_max */
-  long Length; int fill_with_lines;
-  REAL *Array, Scale, Offset;
-  Pointer Answer, *Orig_Free;
-  Primitive_3_Args();
 
-  Arg_1_Type(TC_ARRAY);
-  Length = Array_Length(Arg1);
-  Array = Scheme_Array_To_C_Array(Arg1);
-  Arg_2_Type(TC_LIST);
-  Get_Plotting_Box(Plotting_Box, Arg2);
-  Arg_3_Type(TC_FIXNUM);
-  Range_Check(fill_with_lines, Arg3, 0, 1, ERR_ARG_1_BAD_RANGE);  /* plot only points or fill with lines */
 
-  Plot_C_Array(Array, Length, Plotting_Box, fill_with_lines, &Offset, &Scale);
-  
-  Primitive_GC_If_Needed(4);
-  Answer = Make_Pointer(TC_LIST, Free);
-  Orig_Free = Free;
-  Free += 4;
-  Store_Reduced_Flonum_Result(Offset, *Orig_Free);
-  Orig_Free++;
-  *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
-  Orig_Free++;
-  Store_Reduced_Flonum_Result(Scale, *Orig_Free);
-  Orig_Free++;
-  *Orig_Free = EMPTY_LIST;
-  PRIMITIVE_RETURN(Answer);
-}
-
 DEFINE_PRIMITIVE ("PLOT-ARRAY-IN-BOX-WITH-OFFSET-SCALE", Prim_plot_array_in_box_with_offset_scale, 5, 5, 0)
 {
   float Plotting_Box[4];   /* x_min, y_min, x_max, y_max */
@@ -122,65 +91,9 @@ DEFINE_PRIMITIVE ("PLOT-ARRAY-IN-BOX-WITH-OFFSET-SCALE", Prim_plot_array_in_box_
   *Orig_Free = EMPTY_LIST;
   PRIMITIVE_RETURN(Answer);
 }
-
+
 #define max(x,y)	(((x)<(y)) ? (y) : (x))
 #define min(x,y)	(((x)<(y)) ? (x) : (y))
-
-Plot_C_Array(Array, Length, Plotting_Box, fill_with_lines, pOffset, pScale)
-     /* the pOffset,pScale are for RETURNING VALUES */
-     float *Plotting_Box; long Length; 
-     int fill_with_lines;             /* plots filled with lines from 0 to y(t) */
-     REAL *Array, *pScale, *pOffset;
-{
-  float box_x_min = Plotting_Box[0],
-        box_y_min = Plotting_Box[1];
-  float box_x_max = Plotting_Box[2],
-        box_y_max = Plotting_Box[3];
-  float Box_Length = box_x_max - box_x_min,
-        Box_Height = box_y_max - box_y_min;
-  register float x_position,y_position, clipped_offset, index_inc;
-  /* index_inc is for skipping values if there are two many to plot */
-  REAL y_offset, scale, Array_Min, Array_Max;
-  long i, nmin, nmax;
-  
-  C_Array_Find_Min_Max(Array, Length, &nmin, &nmax);
-  Array_Min = Array[nmin];  Array_Max = Array[nmax];
-
-  Find_Offset_Scale_For_Linear_Map(Array_Min,Array_Max, ((REAL) box_y_min), ((REAL) box_y_max),
-				   &y_offset, &scale);
-  index_inc = ((float) Box_Length/Length);
-  
-  x_position = box_x_min;
-  if (fill_with_lines == 0)
-  {
-    for (i = 0; i < Length; i++)
-    {
-      y_position = ((float) (y_offset + (scale * Array[i])));
-      move2d(screen_handle, x_position, y_position);
-      draw2d(screen_handle, x_position, y_position);
-      x_position = x_position + index_inc;
-    }
-  }
-  else
-  {
-    clipped_offset = min( max(box_y_min, ((float) y_offset)), box_y_max);
-    /* fill from zero-line but do not go outside box, (don't bother with starbase clipping) */
-    for (i = 0; i < Length; i++)
-    {
-      y_position = ((float) (y_offset + (scale * Array[i])));
-      move2d(screen_handle, x_position, clipped_offset);
-      draw2d(screen_handle, x_position, y_position);
-      x_position = x_position + index_inc;
-    }
-  }
-  make_picture_current(screen_handle);
-  
-  *pOffset = y_offset;          /* returning values */
-  *pScale  = scale;
-}
-
-/* The following is useful for comparison purposes 
- */
 
 Plot_C_Array_With_Offset_Scale(Array, Length, Plotting_Box, fill_with_lines, Offset, Scale) 
      float *Plotting_Box; long Length;
