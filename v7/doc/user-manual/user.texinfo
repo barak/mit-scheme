@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.24 1995/02/23 13:58:12 adams Exp $
+@comment $Id: user.texinfo,v 1.25 1995/04/28 13:47:22 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -118,6 +118,7 @@ Scheme with Edwin and GNU Emacs.
 * Debugging::                   
 * Loading Files::               
 * World Images::                
+* Garbage Collection::          
 * Compiling Files::             
 * GNU Emacs Interface::         
 * Edwin::                       
@@ -229,7 +230,7 @@ Comparison of Edwin 3.82 to Emacs 18.57
 * PC Operating Systems::        
 @end menu
 
-@node Unix, PC Operating Systems,  , Installation
+@node Unix, PC Operating Systems, Installation, Installation
 @section Unix
 
 We will use as an example the installation for HP 9000 series 400
@@ -351,7 +352,7 @@ at the command line (if you use the C shell, you may have to type
 * HP-PA Installation::          
 @end menu
 
-@node HP-PA Installation,  ,  , Unix
+@node HP-PA Installation,  , Unix, Unix
 @subsection HP-PA Installation
 
 
@@ -457,7 +458,7 @@ Note that we have only tested the DOS version on Microsoft DOS 5.0.
 * PC Installation::             Installation
 @end menu
 
-@node System Requirements, Manifest,  , PC Operating Systems
+@node System Requirements, Manifest, PC Operating Systems, PC Operating Systems
 @subsection System Requirements
 
 MIT Scheme requires at least a 386SX with 8Mb RAM.
@@ -876,7 +877,7 @@ release.
 * PC Release Notes::            
 @end menu
 
-@node News, C Back-End Release Notes,  , Release Notes
+@node News, C Back-End Release Notes, Release Notes, Release Notes
 @section News
 
 The last full release of the MIT Scheme system was version 7.1.3 in
@@ -891,7 +892,7 @@ changes are divided into two parts: those that were incorporated in the
 * 7.2 News::                    Changes from Release 7.1 to 7.2
 @end menu
 
-@node 7.3 News, 7.2 News,  , News
+@node 7.3 News, 7.2 News, News, News
 @subsection Changes from Release 7.2 to 7.3
 
 This is an abbreviated list of the changes that have been incorporated
@@ -1211,7 +1212,7 @@ description of the features and known problems for such systems.
 * Problems with the C Back-End::  
 @end menu
 
-@node Notes on C Back-End, Problems with the C Back-End,  , C Back-End Release Notes
+@node Notes on C Back-End, Problems with the C Back-End, C Back-End Release Notes, C Back-End Release Notes
 @subsection General Notes
 
 This section describes the general design of C back-end systems.
@@ -1391,7 +1392,7 @@ libraries is currently ad-hoc.
 * Known Problems::              
 @end menu
 
-@node Known Problems,  ,  , PC Release Notes
+@node Known Problems,  , PC Release Notes, PC Release Notes
 @subsection Known Problems in this Beta Release
 
 @itemize @bullet
@@ -1507,7 +1508,7 @@ using command-line options and environment variables.
 * Leaving Scheme::              
 @end menu
 
-@node Basics of Starting Scheme, Customizing Scheme,  , Running Scheme
+@node Basics of Starting Scheme, Customizing Scheme, Running Scheme, Running Scheme
 @section Basics of Starting Scheme
 
 Usually, MIT Scheme is invoked by typing
@@ -2048,7 +2049,7 @@ according to the parts of MIT Scheme that they affect.
 * Edwin Environment Variables::  
 @end menu
 
-@node Microcode Environment Variables, Bchscheme Environment Variables,  , Environment Variables
+@node Microcode Environment Variables, Bchscheme Environment Variables, Environment Variables, Environment Variables
 @subsection Environment Variables Affecting the Microcode
 
 These environment variables are referred to by the microcode (the
@@ -2427,7 +2428,7 @@ expression, prints the result, and gives you another prompt.
 * The Current REPL Environment::  
 @end menu
 
-@node The Prompt and Level Number, Interrupting,  , REPL
+@node The Prompt and Level Number, Interrupting, REPL, REPL
 @section The Prompt and Level Number
 
 @cindex prompt, REPL
@@ -2813,7 +2814,7 @@ appear, be prepared to attack them with all the tools available.
 * Advising Procedures::         
 @end menu
 
-@node Subproblems and Reductions, Debugger,  , Debugging
+@node Subproblems and Reductions, Debugger, Debugging, Debugging
 @section Subproblems and Reductions
 
 @cindex subproblem
@@ -3200,7 +3201,7 @@ obtained from the procedure @code{pwd} or modified by the procedure
 when Scheme first starts; see the @code{-load} command line option for
 details.
 
-@node World Images, Compiling Files, Loading Files, Top
+@node World Images, Garbage Collection, Loading Files, Top
 @chapter World Images
 
 @cindex world image
@@ -3283,7 +3284,55 @@ executable file from the source code.
 Note that @code{dump-world} is unlikely to work with this release as MIT
 Scheme now uses shared libraries.
 
-@node Compiling Files, GNU Emacs Interface, World Images, Top
+@node Garbage Collection, Compiling Files, World Images, Top
+@chapter Garbage Collection
+
+This section describes procedures that control garbage collection.  See
+@pxref{Customizing Scheme} for a discussion of how MIT Scheme uses
+memory.
+
+@deffn {procedure+} gc-flip [safety-margin]
+Forces a garbage collection to occur.  Returns the number of words of
+available storage after collection.
+
+@var{Safety-margin} determines the number of words of storage available
+for system tasks in-between detecting the need for a garbage collection
+and entering the garbage collector proper.  An example of such a system
+task is changing the run-light to show `gc' when scheme is running under
+Emacs.
+@end deffn
+
+@deffn {procedure+} set-gc-notification! on?
+Controls whether the user is notified of garbage collections.  If
+@var{on?} is @code{#F}, the user is not notified, otherwise the user is
+notified.  The default is no notification.
+
+The notification appears as a single line like the following, showing
+how many garbage collections have occured, the time taken to perform the
+garbage collection and the free storage remaining (in words) after
+collection.
+
+@example
+GC 5: took:   0.50   (8%) CPU time,   0.70   (2%) real time; free: 364346
+@end example
+
+To operate comfortably, the amount of free storage after garbage
+collection should be a substantial proportion of the heap size.  If the
+percentage CPU time is consistently high (over 20%), you should consider
+running with a larger heap.  A rough rule of thumb to halve the GC
+overhead is to take the amount of free storage, divide by 1000, and add
+this figure to the current value used for the @samp{-heap} command line
+option.  Unfortunately there is no way to adjust the heap size without
+restarting Scheme.
+@end deffn
+
+@deffn purify item [pure-space? [queue?]]
+@deffnx flush-purification-queue!
+** We should say something about these **
+@end deffn
+
+
+@node Compiling Files, GNU Emacs Interface, Garbage Collection, Top
 @chapter Compiling Files
 
 Note: the procedures described in this section are only available in the
@@ -3295,7 +3344,7 @@ available on machines that support native-code compilation.
 * Declarations::                
 @end menu
 
-@node Compilation Procedures, Declarations,  , Compiling Files
+@node Compilation Procedures, Declarations, Compiling Files, Compiling Files
 @section Compilation Procedures
 
 @deffn {procedure+} cf filename [destination]
@@ -3453,7 +3502,7 @@ Several declarations can be added to your programs to help @code{cf} and
 * Reduction of Operators::      
 @end menu
 
-@node Standard Names, In-line Coding,  , Declarations
+@node Standard Names, In-line Coding, Declarations, Declarations
 @subsection Standard Names
 
 Normally, all files have a line
@@ -4074,7 +4123,7 @@ customization of Edwin.
 * Comparison of Edwin 3.82 to Emacs 18.57::  
 @end menu
 
-@node Starting Edwin, Leaving Edwin,  , Edwin
+@node Starting Edwin, Leaving Edwin, Edwin, Edwin
 @section Starting Edwin
 
 To use Edwin, start Scheme with a world image containing Edwin (for
@@ -4253,7 +4302,7 @@ that the feature is documented in the GNU Emacs version 18 manual.
 * Edwin Bugs::                  
 @end menu
 
-@node Incompatibilities of Edwin, Deficiencies of Edwin,  , Comparison of Edwin 3.82 to Emacs 18.57
+@node Incompatibilities of Edwin, Deficiencies of Edwin, Comparison of Edwin 3.82 to Emacs 18.57, Comparison of Edwin 3.82 to Emacs 18.57
 @subsection Incompatibilities
 
 These are differences in design, unlikely to be `fixed'.
