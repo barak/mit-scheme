@@ -7,15 +7,18 @@ umask 002
 
 exec > /scheme/etc/update-rcs-log.out 2>&1
 
+GOPTS="-d :pserver:anoncvs@subversions.gnu.org:/cvsroot/mit-scheme"
+MAP="/scheme/v7/src/etc/usermap"
+
 generate_log ()
 {
     cd "${1}"
-    /usr/local/bin/cvs2cl -r -U /scheme/v7/src/etc/usermap
+    /usr/local/bin/cvs2cl -g "${GOPTS}" -r -U "${MAP}"
     /bin/rm -f ChangeLog.bak
 }
 
 generate_log /scheme/v7/doc
 generate_log /scheme/v7/src
-generate_log /scheme/etc
-generate_log /gunk/hlsim/doc
-generate_log /gunk/hlsim/src
+#generate_log /scheme/etc
+#generate_log /gunk/hlsim/doc
+#generate_log /gunk/hlsim/src
