@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.28 1999/01/28 04:01:02 cph Exp $
+$Id: edextra.scm,v 1.29 1999/09/11 03:26:06 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -390,6 +390,8 @@ option the file from the problem set will not be installed.
 (set-variable! version-control true)
 (set-variable! trim-versions-without-asking true)
 
+#|
+;; No longer needed.
 (if (eq? 'UNIX microcode-id/operating-system)
     (set-variable!
      mail-header-function
@@ -408,6 +410,7 @@ option the file from the problem set will not be installed.
 		 (insert-string "Reply-to: " point)
 		 (insert-string reply-to point)
 		 (insert-newline point))))))))
+|#
 
 (set-variable! select-buffer-not-found-hooks
 	       (cons (lambda (name)
