@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rbtree.scm,v 1.3 1993/10/07 06:03:46 cph Exp $
+$Id: rbtree.scm,v 1.4 1993/10/08 09:03:43 cph Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -319,24 +319,41 @@ MIT in each case. |#
 
 (define (rb-tree->alist tree)
   (guarantee-rb-tree tree 'RB-TREE->ALIST)
-  (let loop ((node (first-node tree)))
+  (let ((node (first-node tree)))
     (if node
-	(cons (cons (node-key node) (node-datum node))
-	      (loop (next-node node)))
+	(let ((result (list (cons (node-key node) (node-datum node)))))
+	  (let loop ((node (next-node node)) (prev result))
+	    (if node
+		(let ((pair (list (cons (node-key node) (node-datum node)))))
+		  (set-cdr! prev pair)
+		  (loop (next-node node) pair))))
+	  result)
 	'())))
 
 (define (rb-tree/key-list tree)
   (guarantee-rb-tree tree 'RB-TREE/KEY-LIST)
-  (let loop ((node (first-node tree)))
+  (let ((node (first-node tree)))
     (if node
-	(cons (node-key node) (loop (next-node node)))
+	(let ((result (list (node-key node))))
+	  (let loop ((node (next-node node)) (prev result))
+	    (if node
+		(let ((pair (list (node-key node))))
+		  (set-cdr! prev pair)
+		  (loop (next-node node) pair))))
+	  result)
 	'())))
 
 (define (rb-tree/datum-list tree)
   (guarantee-rb-tree tree 'RB-TREE/DATUM-LIST)
-  (let loop ((node (first-node tree)))
+  (let ((node (first-node tree)))
     (if node
-	(cons (node-datum node) (loop (next-node node)))
+	(let ((result (list (node-datum node))))
+	  (let loop ((node (next-node node)) (prev result))
+	    (if node
+		(let ((pair (list (node-datum node))))
+		  (set-cdr! prev pair)
+		  (loop (next-node node) pair))))
+	  result)
 	'())))
 
 (define (first-node tree)
