@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: dataflow.scm,v 1.2 1994/11/25 23:03:05 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -34,34 +34,71 @@ MIT in each case. |#
 
 ;;;; ??
 ;;; package: (compiler midend)
+;;
+;;  Dataflow Interface
+;;
+;;  Client programs may access some of fields of a NODE:
+;;    NODE/UNIQUE-VALUE
+;;    NODE/USES/OPERATOR
+;;    NODE/USES/OPERAND
+;;    NODE/FORMAL-PARAMETER?
+;;    NODE/THE-PROCEDURE-VALUE
+;;  Temporarily, until we build better abstractions for the various kinds
+;;  of node:
+;;    NODE/TEXT
+;;    NODE/NAME
+;;
+;;  Interface for graphs:
+;;
+;;    GRAPH/PROGRAM
+;;    GRAPH/CLOSURES
+;;    GRAPH/TEXT->NODE
+;;
 
 (declare (usual-integrations))
 
 (define *dataflow-report-applied-non-procedures?* #T)
 (define *node-count*)
 
+;; If set to a number, dataflow/top-level declines to do the dataflow on
+;; a graph containing more than *maximum-node-count*, and returns #F
+;; instead of the graph.
+(define *maximum-node-count* #F)
+
 (define (dataflow/top-level program)
   (let* ((env          (dataflow/make-env))
          (graph        (make-graph program))
          (result-node  (dataflow/expr env graph program)))
     (fluid-let ((*node-count* (graph/node-count graph)))
-      (if result-node
-	  (initial-link-nodes! result-node (graph/escape-node graph)))
-      (dataflow/make-globals-escape! env graph)
-      (if (> (graph/node-count graph) 5000)
-	  (pp `(big graph: ,(graph/node-count graph) nodes)))
-      ((if (graph/interesting? graph)
-	   show-time
-	   (lambda (thunk) (thunk)))
-       (lambda ()
-	 (graph/initialize-links! graph)
-	 (graph/dataflow! graph)))
-      (graph/substitite-simple-constants graph graph/read-eqv?-preserving-constant?)
-      (if (graph/interesting? graph)
-	  (graph/display-statistics! graph))
-      graph)))
+      (if (and *maximum-node-count*
+	       (> *node-count* *maximum-node-count*))
+	  (begin
+	    (internal-warning "Graph too big" graph 'has *node-count* 'nodes
+			      `(*maximum-node-count* is ,*maximum-node-count*))
+	    #F)
+	  (begin
+	    (if result-node
+		(initial-link-nodes! result-node (graph/escape-node graph)))
+	    (dataflow/make-globals-escape! env graph)
+	    (if (> (graph/node-count graph) 5000)
+		(pp `(big graph: ,(graph/node-count graph) nodes ,graph
+			  *maximum-node-count* is ,*maximum-node-count*)))
+	    ((if (graph/interesting? graph)
+		 show-time
+		 (lambda (thunk) (thunk)))
+	     (lambda ()
+	       (graph/initialize-links! graph)
+	       (graph/dataflow! graph)
+	       (graph/cleanup! graph)))
+       
+	    (graph/substitite-simple-constants
+	     graph graph/read-eqv?-preserving-constant?)
+	    (if (graph/interesting? graph)
+		(graph/display-statistics! graph))
+	    graph)))))
 
 (define (graph/interesting? g)
+  g
   #F
   ;(> (graph/node-count g) 10000)
 )
@@ -326,6 +363,8 @@ MIT in each case. |#
                (use dataflow/handler/%heap-closure-ref))
               ((eq? operator %stack-closure-ref)
                (use dataflow/handler/%stack-closure-ref))
+	      ((eq? operator %heap-closure-set!)
+	       (use dataflow/handler/%heap-closure-set!))
               ((eq? operator %internal-apply)
                (use dataflow/handler/%internal-apply))
 	      ((eq? operator %fetch-stack-closure)
@@ -512,6 +551,28 @@ MIT in each case. |#
     (graph/add-special-application!  graph form
 				     %heap-closure-ref
 				     (list closure-node)
+				     (list closure-node)
+				     result-node)
+    result-node))
+
+
+(define (dataflow/handler/%heap-closure-set! env graph form rator cont rands)
+  ;; (CALL ',%heap-closure-set! '#F <closure> <offset> <value> 'NAME)
+  ;;       -------rator------- cont ---------------rands---------------
+  ;; <closure> is always (LOOKUP closure-name)
+  rator cont rands			; ignore
+  (let* ((closure-node
+	  (dataflow/expr env graph (call/%heap-closure-set!/closure form)))
+	 (value-node
+	  (dataflow/expr env graph (call/%heap-closure-set!/value form)))
+         (result-node
+	  (graph/add-expression-node! graph form
+				      (quote/text
+				       (call/%heap-closure-set!/name form)))))
+
+    (graph/add-special-application!  graph form
+				     %heap-closure-set!
+				     (list closure-node value-node)
 				     (list closure-node)
 				     result-node)
     result-node))
@@ -719,7 +780,7 @@ MIT in each case. |#
 ;;  EXPRESSION, for nodes that correspond directly to the source.)  It
 ;;  might be possible to store this value implicitly in terms of the
 ;;  text an name fields.
-
+;;
 (define-structure
   (node
    (conc-name node/)
@@ -1529,18 +1590,35 @@ MIT in each case. |#
 		  (closure      (value-set/age-value!
 				 (node/values closure-node))))
 	     (if closure
-		 (if (not (node-set/empty? (node/links-in result-node)))
-		     (internal-error "Multiple linkings at " application)
-		     (begin
-		       ;;(pp `(,ref-kind ,closure ,name))
-		       (connect! (value/closure/lookup-location-node closure name)
-				 result-node)
-		       (let ((bad  (value-set/age-value!
-				    (node/values closure-node))))
-			 (if bad
-			     (internal-error
-			      "Multiple closures at" ref-kind
-			      application))))))))
+		 (let ((location-node
+			(value/closure/lookup-location-node closure name)))
+		   (if (not (node-set/empty? (node/links-in result-node)))
+		       (internal-error "Multiple linkings at " application))
+		   ;;(pp `(,ref-kind ,closure ,name))
+		   (connect! location-node result-node)
+		   (let ((bad  (value-set/age-value!
+				(node/values closure-node))))
+		     (if bad
+			 (internal-error "Multiple closures at" ref-kind
+					 application)))))))
+
+	  ((eq? operator %heap-closure-set!)
+	   (let* ((text         (special-application/text application))
+		  (name         (quote/text
+				 (call/%heap-closure-set!/name text)))
+		  (closure-node (first operand-nodes))
+		  (value-node   (second operand-nodes))
+		  (closure      (value-set/age-value!
+				 (node/values closure-node))))
+	     (if closure
+		 (let ((location-node
+			(value/closure/lookup-location-node closure name)))
+		   (connect! value-node location-node)
+		   (let ((bad  (value-set/age-value!
+				(node/values closure-node))))
+		     (if bad
+			 (internal-error "Multiple closures at"
+					 application)))))))
 
 	  (else 
 	   (internal-error
@@ -2165,6 +2243,16 @@ MIT in each case. |#
 (define (graph/read-eqv?-preserving-constant? value)
   (or (graph/read-eq?-preserving-constant? value)
       (number? value)))
+
+(define (graph/cleanup! graph)
+  ;; After dataflow has comuted the values at each node, we no longer need
+  ;; the interconnections.
+  
+  (define (node/cleanup! node)
+    (set-node/links-in! node #F)
+    (set-node/links-out! node #F))
+
+  (for-each node/cleanup!  (graph/nodes graph)))
 
 (define (graph/display-statistics! graph)
   (define (say . things) (for-each display things))
