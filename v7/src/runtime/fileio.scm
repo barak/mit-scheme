@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/fileio.scm,v 1.2 1991/11/26 07:05:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/fileio.scm,v 1.3 1992/02/10 15:57:00 cph Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -109,7 +109,7 @@ MIT in each case. |#
     port))
 
 (define (open-output-file filename #!optional append?)
-  (let* ((pathname (->pathname filename))
+  (let* ((pathname (merge-pathnames filename))
 	 (channel
 	  (let ((filename (->namestring pathname)))
 	    (if (and (not (default-object? append?)) append?)
