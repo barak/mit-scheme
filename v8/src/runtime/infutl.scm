@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.59 1995/07/27 21:01:09 adams Exp $
+$Id: infutl.scm,v 1.60 1995/07/28 17:44:48 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -66,6 +66,9 @@ MIT in each case. |#
 (define inf-load-types)
 (define bsm-load-types)
 
+
+(define (compiled-module-eval module environment)
+  (scode-eval (compiled-module/expression module) environment))
 
 (define (compiled-code-block/dbg-descriptor block)
   (let ((info (compiled-code-block/debugging-info block)))

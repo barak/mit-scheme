@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.49 1995/07/27 20:31:23 adams Exp $
+$Id: global.scm,v 14.50 1995/07/28 17:45:09 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -95,7 +95,9 @@ MIT in each case. |#
 		       environment))
 
 (define (scode-eval scode environment)
-  (hook/scode-eval scode environment))
+  (if (compiled-module? scode)
+      (compiled-module-eval scode environment)
+      (hook/scode-eval scode environment)))
 
 (define hook/scode-eval
   (ucode-primitive scode-eval))
