@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosenv.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Id: dosenv.c,v 1.2 1992/10/21 00:02:44 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -196,22 +196,4 @@ DEFUN (OS_set_working_dir_pathname, (name), char * name)
       current_dir_path = new_current_dir_path;
     }
   }
-}
-
-CONST char *
-DEFUN (OS_get_environment_variable, (name), CONST char * name)
-{
-  return (DOS_getenv (name));
-}
-
-CONST char *
-DEFUN_VOID (OS_current_user_name)
-{
-  return ("dos");
-}
-
-CONST char *
-DEFUN_VOID (OS_current_user_home_directory)
-{
-  return ("c:\\");
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prdosenv.c,v 1.7 1992/10/02 01:48:18 jinx Exp $
+$Id: prdosenv.c,v 1.8 1992/10/21 00:00:37 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -139,4 +139,22 @@ Wait until the command terminates, returning its exit status as an integer.")
   if (result < -1)
     error_external_return ();
   PRIMITIVE_RETURN (long_to_integer ((long) result));
+}
+
+DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1, 1,
+  "Look up the value of a variable in the user's shell environment.\n\
+The argument, a variable name, must be a string.\n\
+The result is either a string (the variable's value),\n\
+ or #F indicating that the variable does not exist.")
+{
+  extern CONST char * EXFUN (OS_get_environment_variable, (CONST char * name));
+  PRIMITIVE_HEADER (1);
+  {
+    CONST char * variable_value =
+      (OS_get_environment_variable (STRING_ARG (1)));
+    PRIMITIVE_RETURN
+      ((variable_value == 0)
+       ? SHARP_F
+       : (char_pointer_to_string ((unsigned char *) variable_value)));
+  }
 }

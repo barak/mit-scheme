@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxenv.c,v 1.11 1992/08/29 13:13:12 jinx Exp $
+$Id: pruxenv.c,v 1.12 1992/10/20 23:59:27 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -107,7 +107,7 @@ If the argument is not a known group ID, #F is returned.")
        : (char_pointer_to_string ((unsigned char *) (entry -> gr_name))));
   }
 }
-
+
 DEFINE_PRIMITIVE ("CURRENT-UID", Prim_current_uid, 0, 0,
   "Return Scheme's effective UID.")
 {
@@ -134,6 +134,25 @@ DEFINE_PRIMITIVE ("REAL-GID", Prim_real_gid, 0, 0,
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (long_to_integer (UX_getgid ()));
+}
+
+DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_current_user_name, 0, 0,
+  "Return (as a string) the user name of the user running Scheme.")
+{
+  extern CONST char * EXFUN (OS_current_user_name, (void));
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (char_pointer_to_string
+		    ((unsigned char *) OS_current_user_name ()));
+}
+
+DEFINE_PRIMITIVE ("CURRENT-USER-HOME-DIRECTORY", Prim_current_user_home_directory, 0, 0,
+  "Return the name of the current user's home directory.")
+{
+  extern CONST char * EXFUN (OS_current_user_home_directory, (void));
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN
+    (char_pointer_to_string ((unsigned char *)
+			     OS_current_user_home_directory ()));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM", Prim_system, 1, 1,
@@ -165,6 +184,24 @@ DEFINE_PRIMITIVE ("UNIX-ENVIRONMENT", Prim_unix_environment_alist, 0, 0,
   }
 }
 
+DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1, 1,
+  "Look up the value of a variable in the user's shell environment.\n\
+The argument, a variable name, must be a string.\n\
+The result is either a string (the variable's value),\n\
+ or #F indicating that the variable does not exist.")
+{
+  extern CONST char * EXFUN (OS_get_environment_variable, (CONST char * name));
+  PRIMITIVE_HEADER (1);
+  {
+    CONST char * variable_value =
+      (OS_get_environment_variable (STRING_ARG (1)));
+    PRIMITIVE_RETURN
+      ((variable_value == 0)
+       ? SHARP_F
+       : (char_pointer_to_string ((unsigned char *) variable_value)));
+  }
+}
+
 #define HOSTNAMESIZE 1024
 
 DEFINE_PRIMITIVE ("FULL-HOSTNAME", Prim_full_hostname, 0, 0,

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosenv.c,v 1.6 1992/09/18 16:55:10 jinx Exp $
+$Id: prosenv.c,v 1.7 1992/10/20 23:59:33 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -183,40 +183,6 @@ DEFINE_PRIMITIVE ("SET-WORKING-DIRECTORY-PATHNAME!", Prim_set_working_dir_pathna
   PRIMITIVE_HEADER (1);
   OS_set_working_dir_pathname (STRING_ARG (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1, 1,
-  "Look up the value of a variable in the user's shell environment.\n\
-The argument, a variable name, must be a string.\n\
-The result is either a string (the variable's value),\n\
- or #F indicating that the variable does not exist.")
-{
-  PRIMITIVE_HEADER (1);
-  {
-    CONST char * variable_value =
-      (OS_get_environment_variable (STRING_ARG (1)));
-    PRIMITIVE_RETURN
-      ((variable_value == 0)
-       ? SHARP_F
-       : (char_pointer_to_string ((unsigned char *) variable_value)));
-  }
-}
-
-DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_current_user_name, 0, 0,
-  "Return (as a string) the user name of the user running Scheme.")
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (char_pointer_to_string
-		    ((unsigned char *) OS_current_user_name ()));
-}
-
-DEFINE_PRIMITIVE ("CURRENT-USER-HOME-DIRECTORY", Prim_current_user_home_directory, 0, 0,
-  "Return the name of the current user's home directory.")
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN
-    (char_pointer_to_string ((unsigned char *)
-			     OS_current_user_home_directory ()));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-CALL-ERROR-MESSAGE", Prim_system_call_error_message, 1, 1, 0)

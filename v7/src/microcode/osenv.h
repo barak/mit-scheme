@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osenv.h,v 1.1 1990/06/20 19:36:16 cph Rel $
+$Id: osenv.h,v 1.2 1992/10/20 23:57:09 jinx Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,8 +57,5 @@ extern void EXFUN (OS_real_timer_set, (clock_t first, clock_t interval));
 extern void EXFUN (OS_real_timer_clear, (void));
 extern CONST char * EXFUN (OS_working_dir_pathname, (void));
 extern void EXFUN (OS_set_working_dir_pathname, (CONST char * name));
-extern CONST char * EXFUN (OS_get_environment_variable, (CONST char * name));
-extern CONST char * EXFUN (OS_current_user_name, (void));
-extern CONST char * EXFUN (OS_current_user_home_directory, (void));
 
 #endif /* SCM_OSENV_H */
