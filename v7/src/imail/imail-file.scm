@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.62 2001/05/09 17:38:22 cph Exp $
+;;; $Id: imail-file.scm,v 1.63 2001/05/10 18:19:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -77,7 +77,7 @@
 		       (re-string-match "/[a-z]:" s #t))
 		  (string-tail s 1)
 		  s))
-	    default-pathname))))
+	    (directory-pathname default-pathname)))))
     (cond ((string-prefix? "//localhost/" string)
 	   (finish (string-tail string (string-length "//localhost"))))
 	  ((string-prefix? "///" string)
