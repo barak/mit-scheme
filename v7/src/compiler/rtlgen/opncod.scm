@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.25 1988/12/30 07:10:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.26 1989/01/07 01:25:15 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -239,9 +239,9 @@ MIT in each case. |#
 	       (with-values (lambda () (generate-continuation-entry context))
 		 (lambda (label setup cleanup)
 		   (scfg-append!
-		    setup
 		    (generate-primitive (car prim-invocation)
 					(cdr prim-invocation)
+					setup
 					label)
 		    cleanup
 		    (if error-finish
@@ -283,11 +283,13 @@ MIT in each case. |#
 			  identity-procedure)
       (make-null-cfg)))
 
-(define (generate-primitive name arg-list continuation-label)
+(define (generate-primitive name argument-expressions
+			    continuation-setup continuation-label)
   (scfg*scfg->scfg!
-   (let loop ((args arg-list))
+   (let loop ((args argument-expressions))
      (if (null? args)
-	 (rtl:make-push-return continuation-label)
+	 (scfg*scfg->scfg! continuation-setup
+			   (rtl:make-push-return continuation-label))
 	 (load-temporary-register scfg*scfg->scfg! (car args)
 	   (lambda (temporary)
 	     (scfg*scfg->scfg! (loop (cdr args))
@@ -295,7 +297,7 @@ MIT in each case. |#
    (let ((primitive (make-primitive-procedure name true)))
      ((or (special-primitive-handler primitive)
 	  rtl:make-invocation:primitive)
-      (1+ (length arg-list))
+      (1+ (length argument-expressions))
       continuation-label
       primitive))))
 
@@ -670,8 +672,7 @@ MIT in each case. |#
 	     (with-values (lambda () (generate-continuation-entry context))
 	       (lambda (label setup cleanup)
 		 (scfg-append!
-		  setup
-		  (generate-primitive generic-op (cddr expression) label)
+		  (generate-primitive generic-op (list op1 op2) setup label)
 		  cleanup
 		  (if is-pred?
 		      (finish
@@ -737,8 +738,7 @@ MIT in each case. |#
 	     (with-values (lambda () (generate-continuation-entry context))
 	       (lambda (label setup cleanup)
 		 (scfg-append!
-		  setup
-		  (generate-primitive generic-op (cddr expression) label)
+		  (generate-primitive generic-op (cddr expression) setup label)
 		  cleanup
 		  (if is-pred?
 		      (finish
