@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.19 2003/03/08 02:06:31 cph Exp $
+$Id: chrset.scm,v 14.20 2003/09/09 03:45:52 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1988,1995,1997,1998,2000,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -84,6 +85,11 @@ USA.
 	((fix:= code char-set-table-length))
       (vector-8b-set! table code (if (predicate (integer->char code)) 1 0)))
     (make-char-set table)))
+
+(define (char-set=? c1 c2)
+  (guarantee-char-set c1 'CHAR-SET=?)
+  (guarantee-char-set c2 'CHAR-SET=?)
+  (string=? (char-set-table c1) (char-set-table c2)))
 
 (define (char-set-members char-set)
   (guarantee-char-set char-set 'CHAR-SET-MEMBERS)

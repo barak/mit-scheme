@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: equals.scm,v 14.11 2003/02/14 18:28:32 cph Exp $
+$Id: equals.scm,v 14.12 2003/09/09 03:46:00 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1987,1991,1993,1994,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -72,6 +72,9 @@ USA.
 		((pathname? x)
 		 (and (pathname? y)
 		      (pathname=? x y)))
+		((char-set? x)
+		 (and (char-set? y)
+		      (char-set=? x y)))
 		(else #f))
 	  (and (number? x)
 	       (number? y)
