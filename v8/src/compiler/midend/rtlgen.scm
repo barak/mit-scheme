@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.7 1994/12/14 20:20:16 adams Exp $
+$Id: rtlgen.scm,v 1.8 1995/01/26 23:15:39 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -2016,6 +2016,7 @@ MIT in each case. |#
 				(MACHINE-CONSTANT ,(+ (length true-rands) 1))))))))
 
 (define (rtlgen/continuation-setup/jump! state cont)
+  ;; returns continuation label or #F
   (define (bad-cont)
     (internal-error "Unexpected CALL continuation [jump!]"
 		    cont))
@@ -2032,22 +2033,51 @@ MIT in each case. |#
 	 (bad-cont))))
 
 (define (rtlgen/pop state)
-  (cond ((and state
-	      (rtlgen/state/stmt/size state))
-	 => rtlgen/%pop))
+  (if state
+      (rtlgen/%pop state))
   false)
 
-(define (rtlgen/%pop size)
+(define (rtlgen/%pop state)
   ;; Pop off the current stack frame, but be sure to leave the current
-  ;; continuation (which may be at the top of the stack) in the usual
-  ;; place.
-  (cond ((zero? size) false)		; No work to do
-	((rtlgen/cont-in-stack?)
-	 (let ((tempreg (rtlgen/stack-pop!)))
-	   (rtlgen/bop-stack-pointer! (- size 1))
-	   (rtlgen/emit!/1 (rtlgen/write-stack-loc tempreg 0))))
-	(else
-	 (rtlgen/bop-stack-pointer! size))))
+  ;; continuation (which may be near the top of the stack) in the
+  ;; usual place.
+
+  (let ((size (rtlgen/state/stmt/size state)))
+
+    (cond ((not size)   false)
+
+	  ((and (rtlgen/cont-in-stack?) (rtlgen/closure-in-stack?))
+	   ;; ... xxx xxx cont closure -> ... cont
+	   ;; size includes CONT and CLOSURE
+	   (let ((cont    (rtlgen/state/continuation state))
+		 (closure (rtlgen/state/closure state)))
+	     (cond (;; ... cont closure -> ... cont
+		    (and cont closure (= size 2)) 
+		    (rtlgen/bop-stack-pointer! 1))
+		   (;; ... xxx cont closure -> ... cont
+		    (and cont closure)	
+		    (let ((tempreg (rtlgen/new-reg)))
+		      (rtlgen/emit!/1
+		       `(ASSIGN ,tempreg
+				,(rtlgen/state/reference-to-cont state)))
+		      (rtlgen/bop-stack-pointer! (- size 1))
+		      (rtlgen/emit!/1 (rtlgen/write-stack-loc tempreg 0))))
+		   ((and cont (= size 1)) false) ; all fine
+		   (;; ... xxx xxx cont -> cont
+		    cont
+		    (let ((tempreg (rtlgen/stack-pop!)))
+		      (rtlgen/bop-stack-pointer! (- size 2))
+		      (rtlgen/emit!/1 (rtlgen/write-stack-loc tempreg 0))))
+		   (else
+		    (rtlgen/bop-stack-pointer! size)))))
+	  
+	  ((or (rtlgen/cont-in-stack?) (rtlgen/closure-in-stack?))
+	   (internal-error
+	    "Not implemented for only one of CONT or CLOSURE in stack"))
+
+	  (else
+	   (rtlgen/bop-stack-pointer! size)))))
+
 
 (define (rtlgen/reload-continuation&pop state)
   (rtlgen/%reload-continuation&pop (rtlgen/state/stmt/guaranteed-size state)))
