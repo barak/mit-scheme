@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.11 1990/11/09 08:43:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.12 1990/11/09 21:31:56 arthur Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -647,7 +647,7 @@ MIT in each case. |#
     (lambda ()
       (if (char-ready? buffer input-buffer/fill*)
 	  (let ((string (input-buffer/string buffer)))
-	    (let loop ()
+	    (let loop ((buffers '()))
 	      (let ((start-index (input-buffer/start-index buffer))
 		    (end-index (input-buffer/end-index buffer)))
 		(let ((delimiter-index
@@ -663,8 +663,8 @@ MIT in each case. |#
 		      (let ((head (substring string start-index end-index)))
 			(set-input-buffer/start-index! buffer end-index)
 			(if (input-buffer/fill* buffer)
-			    (string-append head (loop))
-			    head)))))))
+			    (loop (cons head buffers))
+			    (apply string-append (reverse (cons head buffers))))))))))
 	  eof-object))))
 
 (define (input-buffer/discard-until-delimiter buffer delimiters)
