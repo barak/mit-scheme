@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.6 1991/10/25 00:15:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.7 1992/12/16 09:18:30 gjr Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -183,9 +183,10 @@ MIT in each case. |#
 			 (OBJECT->FLOAT ,rtl:object->float-expression))
     (,value-class=address? (OBJECT->ADDRESS ,rtl:object->address-expression)
 			   (CONS-POINTER ,rtl:cons-pointer-datum))
-    (,value-class=datum? (OBJECT->DATUM ,rtl:object->datum-expression)
-			 (CONS-NON-POINTER ,rtl:cons-non-pointer-datum))
-    ;; Perhaps this should be value-class=type
+    ;; The following are not value-class=datum? and value-class=type?
+    ;; because they are slightly more general.
+    (,value-class=immediate? (OBJECT->DATUM ,rtl:object->datum-expression)
+			     (CONS-NON-POINTER ,rtl:cons-non-pointer-datum))
     (,value-class=immediate? (OBJECT->TYPE ,rtl:object->type-expression)
 			     (CONS-POINTER ,rtl:cons-pointer-type))
     (,value-class=immediate? (OBJECT->TYPE ,rtl:object->type-expression)
