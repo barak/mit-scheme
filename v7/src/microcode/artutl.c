@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.8 1992/01/20 16:09:23 jinx Exp $
+$Id: artutl.c,v 1.9 1992/09/18 16:54:06 jinx Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -77,6 +77,29 @@ DEFUN (long_to_integer, (number), long number)
     ((LONG_TO_FIXNUM_P (number))
      ? (LONG_TO_FIXNUM (number))
      : (long_to_bignum (number)));
+}
+
+unsigned long
+DEFUN (integer_to_ulong,
+       (n),
+       fast SCHEME_OBJECT n)
+{
+  return ((FIXNUM_P (n))
+	  ? ((unsigned long) (FIXNUM_TO_LONG (n)))
+	  : (bignum_to_ulong (n)));
+}
+
+SCHEME_OBJECT
+DEFUN (ulong_to_integer, (number), unsigned long number)
+{
+  long signed = ((long) number);
+  if (signed >= 0)
+    return
+      ((LONG_TO_FIXNUM_P (number))
+       ? (LONG_TO_FIXNUM (number))
+       : (long_to_bignum (number)));
+  else
+    return (ulong_to_bignum (number));
 }
 
 Boolean

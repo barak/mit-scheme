@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.47 1992/09/11 21:59:11 cph Exp $
+$Id: extern.h,v 9.48 1992/09/18 16:54:40 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -165,6 +165,8 @@ extern SCHEME_OBJECT EXFUN (double_to_flonum, (double));
 extern Boolean EXFUN (integer_to_long_p, (SCHEME_OBJECT));
 extern long EXFUN (integer_to_long, (SCHEME_OBJECT));
 extern SCHEME_OBJECT EXFUN (long_to_integer, (long));
+extern unsigned long EXFUN (integer_to_ulong, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (ulong_to_integer, (unsigned long));
 extern Boolean EXFUN (integer_to_double_p, (SCHEME_OBJECT));
 extern double EXFUN (integer_to_double, (SCHEME_OBJECT));
 extern SCHEME_OBJECT EXFUN (double_to_integer, (double));
