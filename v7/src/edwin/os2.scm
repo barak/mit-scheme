@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.19 1995/07/11 23:10:34 cph Exp $
+;;;	$Id: os2.scm,v 1.20 1995/07/24 22:08:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -464,7 +464,10 @@ Includes the new backup.  Must be > 0."
 (define (insert-directory! file switches mark type)
   ;; Insert directory listing for FILE at MARK.
   ;; SWITCHES are examined for the presence of "t".
-  type
+  ;; TYPE can have one of three values:
+  ;;   'WILDCARD means treat FILE as shell wildcard.
+  ;;   'DIRECTORY means FILE is a directory and a full listing is expected.
+  ;;   'FILE means FILE itself should be listed, and not its contents.
   (let ((mark (mark-left-inserting-copy mark)))
     (call-with-current-continuation
      (lambda (k)
@@ -498,7 +501,9 @@ Includes the new backup.  Must be > 0."
 		      (map (lambda (pathname)
 			     (cons (file-namestring pathname)
 				   (file-attributes pathname)))
-			   (directory-read file #f))
+			   (if (eq? 'FILE type)
+			       (list file)
+			       (directory-read file #f)))
 		    cdr)
 		  (if (string-find-next-char switches #\t)
 		      (lambda (x y)
