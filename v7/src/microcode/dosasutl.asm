@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosasutl.asm,v 1.1 1992/05/05 06:55:13 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosasutl.asm,v 1.2 1992/07/28 18:03:24 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -38,7 +38,7 @@
 ;;;
 
 .386
-.model small
+.model tiny
 	.code
 
 	public	_getCS
