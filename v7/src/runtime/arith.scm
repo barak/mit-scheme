@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.17 1991/02/15 18:04:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.18 1991/03/06 05:04:37 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -945,7 +945,7 @@ MIT in each case. |#
 		 ((flo:zero? x)
 		  (if (flo:positive? y)
 		      x
-		      (error:bad-range-argument y 'EXPT)))
+		      (error:divide-by-zero 'EXPT (list x y))))
 		 ((and (flo:negative? x)
 		       (not (flo:integer? y)))
 		  (error:bad-range-argument x 'EXPT))
