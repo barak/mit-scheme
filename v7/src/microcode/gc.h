@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.24 1987/11/17 08:11:37 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.25 1987/12/04 22:16:46 jinx Rel $
  *
  * Garbage collection related macros of sufficient utility to be
  * included in all compilations.
@@ -75,12 +75,13 @@ MIT in each case. */
 
 #define GC_ENABLED_P()		(INTERRUPT_ENABLED_P(INT_GC))
 
-#define GC_Check(Amount)	(((Amount + Free) >= MemTop) &&	\
-				 (GC_ENABLED_P()))
+#define GC_Check(Amount)						\
+(((Amount + Free) >= MemTop) && (GC_ENABLED_P()))
 
-#define Space_Before_GC()	((GC_ENABLED_P()) ?		\
-				 (MemTop - Free) :		\
-				 (Heap_Top - Free))
+#define Space_Before_GC()						\
+((GC_ENABLED_P()) ?							\
+ ((Free <= MemTop) ? (MemTop - Free) : 0) :				\
+ (Heap_Top - Free))
 
 #define Request_GC(Amount)						\
 {									\

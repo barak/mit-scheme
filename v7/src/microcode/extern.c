@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.24 1987/11/18 00:09:22 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.25 1987/12/04 22:15:47 jinx Rel $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -39,44 +39,53 @@ MIT in each case. */
    primitives and return addresses.
  */
 
-/* (MAP-CODE-TO-MACHINE-ADDRESS TYPE-CODE VALUE-CODE)
-   For return codes and primitives, this returns the internal
-   representation of the return address or primitive address given
-   the external representation.  Currently in CScheme these two are
-   the same.  In the 68000 assembly version the internal
-   representation is an actual address in memory.
+/* (MAP-CODE-TO-MACHINE-ADDRESS TYPE-CODE VALUE-CODE) For return codes
+   and primitives, this returns the internal representation of the
+   return address or primitive address given the external
+   representation.  Currently in CScheme these two are the same for
+   return codes, but for primitives there are two parts to the code.
+   In the 68000 assembly version the internal representation is an
+   actual address in memory.
 */
-Built_In_Primitive(Prim_Map_Code_To_Address, 2,
-		   "MAP-CODE-TO-MACHINE-ADDRESS", 0x93)
-Define_Primitive(Prim_Map_Code_To_Address, 2,
-		   "MAP-CODE-TO-MACHINE-ADDRESS")
+
+DEFINE_PRIMITIVE("MAP-CODE-TO-MACHINE-ADDRESS", Prim_Map_Code_To_Address, 2)
 {
-  long Code, Offset;
+  Pointer result;
+  long tc, number;
   Primitive_2_Args();
 
   Arg_1_Type(TC_FIXNUM);
   Arg_2_Type(TC_FIXNUM);
-  Code = Get_Integer(Arg1);
-  Offset = Get_Integer(Arg2);
-  switch (Code)
+  tc = Get_Integer(Arg1);
+  number = Get_Integer(Arg2);
+  switch (tc)
   {
     case TC_RETURN_CODE:
-      if (Offset > MAX_RETURN_CODE)
+      if (number > MAX_RETURN_CODE)
       {
 	Primitive_Error(ERR_ARG_2_BAD_RANGE);
       }
+      result = (Make_Non_Pointer(tc, number));
       break;
 
     case TC_PRIMITIVE:
-      if (Offset >= NUMBER_OF_PRIMITIVES())
+      if (number >= NUMBER_OF_PRIMITIVES())
       {
 	Primitive_Error(ERR_ARG_2_BAD_RANGE);
+      }
+      if (number > MAX_PRIMITIVE)
+      {
+	result = MAKE_PRIMITIVE_OBJECT(number, (MAX_PRIMITIVE + 1));
+      }
+      else
+      {
+	result = MAKE_PRIMITIVE_OBJECT(0, number);
       }
       break;
 
     default: Primitive_Error(ERR_ARG_1_BAD_RANGE);
   }
-  return (Make_Non_Pointer(Code, Offset));
+  PRIMITIVE_RETURN(result);
 }
 
 /* (MAP-MACHINE-ADDRESS-TO-CODE TYPE-CODE ADDRESS)
@@ -85,62 +94,54 @@ Define_Primitive(Prim_Map_Code_To_Address, 2,
    primitive) it finds the number for the external representation
    for the internal address.
 */
-Built_In_Primitive(Prim_Map_Address_To_Code, 2,
-		   "MAP-MACHINE-ADDRESS-TO-CODE", 0x90)
-Define_Primitive(Prim_Map_Address_To_Code, 2,
-		   "MAP-MACHINE-ADDRESS-TO-CODE")
+
+DEFINE_PRIMITIVE("MAP-MACHINE-ADDRESS-TO-CODE", Prim_Map_Address_To_Code, 2)
 {
-  long Code, Offset;
+  long tc, number;
   Primitive_2_Args();
 
   Arg_1_Type(TC_FIXNUM);
-  Code = Get_Integer(Arg1);
-  Arg_2_Type(Code);
-  Offset = Get_Integer(Arg2);
-  switch (Code)
+  tc = Get_Integer(Arg1);
+  Arg_2_Type(tc);
+  switch (tc)
   { case TC_RETURN_CODE:
-      if (Offset > MAX_RETURN_CODE)
+      number = Get_Integer(Arg2);
+      if (number > MAX_RETURN_CODE)
       {
         Primitive_Error(ERR_ARG_2_BAD_RANGE);
       }
       break;
 
     case TC_PRIMITIVE:
-      if (Offset > NUMBER_OF_PRIMITIVES())
-      {
-        Primitive_Error(ERR_ARG_2_BAD_RANGE);
-      }
+      number = PRIMITIVE_NUMBER(Arg2);
       break;
 
     default: 
       Primitive_Error(ERR_ARG_1_BAD_RANGE);
   }
-  return (MAKE_UNSIGNED_FIXNUM(Offset));
+  PRIMITIVE_RETURN(MAKE_UNSIGNED_FIXNUM(number));
 }
 
-/* (PRIMITIVE-PROCEDURE-ARITY INTERNAL-PRIMITIVE)
+/* (PRIMITIVE-PROCEDURE-ARITY PRIMITIVE)
    Given the internal representation of a primitive (in CScheme the
    internal and external representations are the same), return the
    number of arguments it requires.
 */
-Built_In_Primitive(Prim_Map_Prim_Address_To_Arity, 1,
-		 "PRIMITIVE-PROCEDURE-ARITY", 0x96)
-Define_Primitive(Prim_Map_Prim_Address_To_Arity, 1,
-		 "PRIMITIVE-PROCEDURE-ARITY")
+
+DEFINE_PRIMITIVE("PRIMITIVE-PROCEDURE-ARITY", Prim_Map_Prim_Address_To_Arity, 1)
 {
   extern long primitive_to_arity();
-  long Prim_Num, answer;
+  long answer;
   Primitive_1_Arg();
 
   Arg_1_Type(TC_PRIMITIVE);
-  Prim_Num = Get_Integer(Arg1);
 
-  if (Prim_Num >= NUMBER_OF_PRIMITIVES())
+  if (PRIMITIVE_NUMBER(Arg1) >= NUMBER_OF_PRIMITIVES())
   {
     Primitive_Error(ERR_ARG_1_BAD_RANGE);
   }
-  answer = primitive_to_arity(Prim_Num);
-  return (MAKE_SIGNED_FIXNUM(answer));
+  answer = primitive_to_arity(Arg1);
+  PRIMITIVE_RETURN(MAKE_SIGNED_FIXNUM(answer));
 }
 
 /* (GET-PRIMITIVE-COUNTS)
@@ -149,8 +150,7 @@ Define_Primitive(Prim_Map_Prim_Address_To_Arity, 1,
    defined.
 */
 
-Built_In_Primitive(Prim_Get_Primitive_Counts, 0, "GET-PRIMITIVE-COUNTS", 0x101)
-Define_Primitive(Prim_Get_Primitive_Counts, 0, "GET-PRIMITIVE-COUNTS")
+DEFINE_PRIMITIVE("GET-PRIMITIVE-COUNTS", Prim_Get_Primitive_Counts, 0)
 {
   Primitive_0_Args();
 
@@ -164,20 +164,22 @@ Define_Primitive(Prim_Get_Primitive_Counts, 0, "GET-PRIMITIVE-COUNTS")
    primitive procedure.  It causes an error if the number is out of range.
 */
 
-Built_In_Primitive(Prim_Get_Primitive_Name, 1, "GET-PRIMITIVE-NAME", 0x102)
-Define_Primitive(Prim_Get_Primitive_Name, 1, "GET-PRIMITIVE-NAME")
+DEFINE_PRIMITIVE("GET-PRIMITIVE-NAME", Prim_Get_Primitive_Name, 1)
 {
   extern Pointer primitive_name();
   long Number, TC;
   Primitive_1_Arg();
 
-  TC = Type_Code(Arg1);
+  TC = OBJECT_TYPE(Arg1);
   if ((TC != TC_FIXNUM) && (TC != TC_PRIMITIVE))
   {
     Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   }
-  Range_Check(Number, Arg1, 0, (NUMBER_OF_PRIMITIVES() - 1),
-              ERR_ARG_1_BAD_RANGE);
+  Number = PRIMITIVE_NUMBER(Arg1);
+  if ((Number < 0) || (Number >= NUMBER_OF_PRIMITIVES()))
+  {
+    Primitive_Error(ERR_ARG_1_BAD_RANGE);
+  }
   PRIMITIVE_RETURN(primitive_name(Number));
 }
 
@@ -191,8 +193,7 @@ Define_Primitive(Prim_Get_Primitive_Name, 1, "GET-PRIMITIVE-NAME")
    whether the corresponding primitive is implemented or not.
 */
 
-Built_In_Primitive(Prim_Get_Primitive_Address, 2, "GET-PRIMITIVE-ADDRESS", 0x103)
-Define_Primitive(Prim_Get_Primitive_Address, 2, "GET-PRIMITIVE-ADDRESS")
+DEFINE_PRIMITIVE("GET-PRIMITIVE-ADDRESS", Prim_Get_Primitive_Address, 2)
 {
   extern Pointer find_primitive();
   Boolean intern_p, allow_p;

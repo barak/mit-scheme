@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.30 1987/11/23 04:55:17 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.31 1987/12/04 22:18:44 jinx Exp $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
@@ -157,7 +157,6 @@ Pointer C_Name()
 
 #define Primitive_Error signal_error_from_primitive
 #define Primitive_Interrupt signal_interrupt_from_primitive
-#define Special_Primitive_Interrupt specl_interrupt_from_primitive
 
 #define Primitive_GC(Amount)						\
 {									\

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.31 1987/11/17 08:10:13 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.32 1987/12/04 22:16:13 jinx Rel $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -276,13 +276,13 @@ Relocate_Block(Next_Pointer, Stop_At)
 	break;
 	
       case TC_PRIMITIVE:
-	*Next_Pointer++ = load_renumber_table[Get_Integer(Temp)];
+	*Next_Pointer++ = load_renumber_table[PRIMITIVE_NUMBER(Temp)];
 	break;
 	
       case TC_PCOMB0:
 	*Next_Pointer++ =
 	  Make_Non_Pointer(TC_PCOMB0,
-			   load_renumber_table[Get_Integer(Temp)]);
+			   load_renumber_table[PRIMITIVE_NUMBER(Temp)]);
         break;
 
       case TC_MANIFEST_NM_VECTOR:
@@ -462,8 +462,8 @@ load_file(from_band_load)
    will be a piece of SCode which is then evaluated to perform
    definitions in some environment.
 */
-Built_In_Primitive(Prim_Binary_Fasload, 1, "BINARY-FASLOAD", 0x57)
-Define_Primitive(Prim_Binary_Fasload, 1, "BINARY-FASLOAD")
+
+DEFINE_PRIMITIVE("BINARY-FASLOAD", Prim_Binary_Fasload, 1)
 {
   long result;
   Primitive_1_Arg();
@@ -492,17 +492,17 @@ static char *reload_band_name = ((char *) NULL);
    Returns the filename (as a Scheme string) from which the runtime system
    was band loaded (load-band'ed ?), or NIL if the system was fasl'ed.
 */
-Built_In_Primitive(Prim_reload_band_name, 0, "RELOAD-BAND-NAME", 0x1A3)
-Define_Primitive(Prim_reload_band_name, 0, "RELOAD-BAND-NAME")
+
+DEFINE_PRIMITIVE("RELOAD-BAND-NAME", Prim_reload_band_name, 0)
 {
   Primitive_0_Args();
 
   if (reload_band_name == NULL)
   {
-    return NIL;
+    PRIMITIVE_RETURN(NIL);
   }
 
-  return (C_String_To_Scheme_String(reload_band_name));
+  PRIMITIVE_RETURN(C_String_To_Scheme_String(reload_band_name));
 }
 
 /* Utility for load band below. */
@@ -524,8 +524,8 @@ compiler_reset_error()
    which is typically a file created by DUMP-BAND.  The file can,
    however, be any file which can be loaded with BINARY-FASLOAD.
 */
-Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND", 0xB9)
-Define_Primitive(Prim_Band_Load, 1, "LOAD-BAND")
+
+DEFINE_PRIMITIVE("LOAD-BAND", Prim_Band_Load, 1)
 {
   extern char *malloc();
   extern strcpy(), free();
@@ -633,7 +633,6 @@ Setup_For_String_Inversion()
 
 Finish_String_Inversion()
 {
-
   if (Byte_Invert_Fasl_Files)
   {
     while (String_Chain != NIL)

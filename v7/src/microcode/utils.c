@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.35 1987/11/17 08:20:10 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.36 1987/12/04 22:20:24 jinx Rel $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -52,7 +52,6 @@ Setup_Interrupt (Masked_Interrupts)
 {
   Pointer Int_Vector, Handler;
   long i, Int_Number, The_Int_Code, New_Int_Enb;
-  long Save_Space;
 
   The_Int_Code = FETCH_INTERRUPT_CODE();
   Int_Vector = (Get_Fixed_Obj_Slot (System_Interrupt_Vector));
@@ -83,10 +82,10 @@ Setup_Interrupt (Masked_Interrupts)
   if (Int_Number >= (Vector_Length (Int_Vector)))
     {
       fprintf (stderr,
-	       "\nInterrupt out of range: 0x%x (vector length = 0x%x)\n",
+	       "\nInterrupt out of range: %ld (vector length = %ld)\n",
 	       Int_Number, (Vector_Length (Int_Vector)));
       fprintf (stderr,
-	       "Interrupts = 0x%x, Mask= 0x%x, Masked = 0x%x\n",
+	       "Interrupts = 0x%08lx, Mask = 0x%08lx, Masked = 0x%08lx\n",
 	       FETCH_INTERRUPT_CODE(),
 	       FETCH_INTERRUPT_MASK(),
 	       Masked_Interrupts);
@@ -102,22 +101,15 @@ Setup_Interrupt (Masked_Interrupts)
 
 Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
   Stop_History();
-  Save_Space = CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS+3;
-  if ((New_Int_Enb + 1) == INT_GC)
-  {
-    Save_Space += CONTINUATION_SIZE;
-  }
- Will_Push(Save_Space);
+ Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 3);
   /* Return from interrupt handler will re-enable interrupts */
   Store_Return(RC_RESTORE_INT_MASK);
   Store_Expression(MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK()));
   Save_Cont();
-  if ((New_Int_Enb + 1) == INT_GC)
-  {
-    Store_Return(RC_GC_CHECK);
-    Store_Expression(Make_Unsigned_Fixnum(GC_Space_Needed));
-    Save_Cont();
-  }
+/*
+  There used to be some code here for gc checks, but that is done
+  uniformly now by RC_NORMAL_GC_DONE.
+ */
 
 /* Now make an environment frame for use in calling the
  * user supplied interrupt routine.  It will be given
@@ -128,7 +120,7 @@ Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
   Push(MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK()));
   Push(MAKE_SIGNED_FIXNUM(The_Int_Code));
   Push(Handler);
-  Push(STACK_FRAME_HEADER+2);
+  Push(STACK_FRAME_HEADER + 2);
  Pushed();
   /* Turn off interrupts */
   SET_INTERRUPT_MASK(New_Int_Enb);
@@ -190,7 +182,7 @@ Stack_Death()
 void
 Back_Out_Of_Primitive ()
 {
-  long nargs, code;
+  long nargs;
   Pointer primitive;
 
   /* Setup a continuation to return to compiled code if the primitive is
@@ -198,8 +190,7 @@ Back_Out_Of_Primitive ()
    */
 
   primitive = Fetch_Expression();
-  code = OBJECT_DATUM(primitive);
-  nargs = PRIMITIVE_N_ARGUMENTS(code);
+  nargs = PRIMITIVE_N_ARGUMENTS(primitive);
   if (OBJECT_TYPE(Stack_Ref(nargs)) == TC_RETURN_ADDRESS)
   { 
     compiler_apply_procedure(nargs);
@@ -216,10 +207,16 @@ Back_Out_Of_Primitive ()
 
 /* Useful error procedures */
 
+/* Note that backing out of the primitives happens after aborting,
+   not before.
+   This guarantees that the interpreter state is consistent, since the
+   longjmp restores the relevant registers even if the primitive was
+   invoked from compiled code.
+ */
+
 extern void
   signal_error_from_primitive(),
   signal_interrupt_from_primitive(),
-  specl_interrupt_from_primitive(),
   error_wrong_type_arg(),
   error_bad_range_arg(),
   error_external_return();
@@ -228,7 +225,7 @@ void
 signal_error_from_primitive (error_code)
      long error_code;
 {
-  Back_Out_Of_Primitive ();
+
   PRIMITIVE_ABORT(error_code);
   /*NOTREACHED*/
 }
@@ -236,20 +233,6 @@ signal_error_from_primitive (error_code)
 void
 signal_interrupt_from_primitive ()
 {
-  Back_Out_Of_Primitive ();
-  PRIMITIVE_ABORT(PRIM_INTERRUPT);
-  /*NOTREACHED*/
-}
-
-void
-specl_interrupt_from_primitive(local_mask)
-     int local_mask;
-{
-  Back_Out_Of_Primitive();
-  Save_Cont();
-  Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK()));
-  SET_INTERRUPT_MASK(local_mask);
   PRIMITIVE_ABORT(PRIM_INTERRUPT);
   /*NOTREACHED*/
 }
@@ -759,27 +742,24 @@ Restore_History (Hist_Obj)
 #ifdef ENABLE_DEBUGGING_TOOLS
 
 Pointer
-Apply_Primitive (Primitive_Number)
-     long Primitive_Number;
+Apply_Primitive (primitive)
+     Pointer primitive;
 {
   Pointer Result, *Saved_Stack;
-  int NArgs;
 
-  if (Primitive_Number > MAX_PRIMITIVE)
-  {
-    Primitive_Error(ERR_UNDEFINED_PRIMITIVE);
-  }
   if (Primitive_Debug)
   {
-    Print_Primitive(Primitive_Number);
+    Print_Primitive(primitive);
   }
-  NArgs = PRIMITIVE_N_ARGUMENTS(Primitive_Number);
   Saved_Stack = Stack_Pointer;
-  Result = Internal_Apply_Primitive(Primitive_Number);
+  Result = Internal_Apply_Primitive(primitive);
   if (Saved_Stack != Stack_Pointer)
   {
-    Print_Expression(Make_Non_Pointer(TC_PRIMITIVE, Primitive_Number),
-		     "Stack bad after ");
+
+    int NArgs;
+
+    NArgs = PRIMITIVE_N_ARGUMENTS(primitive);
+    Print_Expression(primitive, "Stack bad after ");
     fprintf(stderr,
 	    "\nStack was 0x%x, now 0x%x, #args=%d.\n",
             Saved_Stack, Stack_Pointer, NArgs);

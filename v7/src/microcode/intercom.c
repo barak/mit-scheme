@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/intercom.c,v 9.23 1987/07/07 21:02:14 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/intercom.c,v 9.24 1987/12/04 22:16:56 jinx Rel $
  *
  * Single-processor simulation of locking, propagating, and
  * communicating stuff.
@@ -62,7 +62,7 @@ MIT in each case. */
    processors have begun execution of WORK (or TEST returns false).
 */
 
-Define_Primitive(Prim_Send_Global_Interrupt, 3, "GLOBAL-INTERRUPT")
+DEFINE_PRIMITIVE("GLOBAL-INTERRUPT", Prim_Send_Global_Interrupt, 3)
 {
   long Saved_Zone, Which_Level;
   
@@ -79,7 +79,7 @@ Define_Primitive(Prim_Send_Global_Interrupt, 3, "GLOBAL-INTERRUPT")
   Push(STACK_FRAME_HEADER);
  Pushed();
   Restore_Time_Zone();
-  longjmp(*Back_To_Eval, PRIM_APPLY);
+  PRIMITIVE_ABORT(PRIM_APPLY);
   /*NOTREACHED*/
 }
 
@@ -90,7 +90,7 @@ Global_Int_Part_2(Which_Level, Do_It)
   return Do_It;
 }
 
-Define_Primitive(Prim_Put_Work, 1, "PUT-WORK")
+DEFINE_PRIMITIVE("PUT-WORK", Prim_Put_Work, 1)
 {
   Pointer The_Queue, Queue_Tail, New_Entry;
   Primitive_1_Arg();
@@ -105,54 +105,70 @@ Define_Primitive(Prim_Put_Work, 1, "PUT-WORK")
     *Free++ = NIL;
   }
   else
+  {
     Primitive_GC_If_Needed(2);
+  }
   Queue_Tail = Vector_Ref(The_Queue, CONS_CDR);
   New_Entry = Make_Pointer(TC_WEAK_CONS, Free);
   *Free++ = Arg1;
   *Free++ = NIL;
   Vector_Set(The_Queue, CONS_CDR, New_Entry);
   if (Queue_Tail == NIL)
+  {
     Vector_Set(The_Queue, CONS_CAR, New_Entry);
-  else Vector_Set(Queue_Tail, CONS_CDR, New_Entry);
-  return TRUTH;
+  }
+  else
+  {
+    Vector_Set(Queue_Tail, CONS_CDR, New_Entry);
+  }
+  PRIMITIVE_RETURN(TRUTH);
 }
-
-Define_Primitive(Prim_Put_Work_In_Front, 1, "PUT-WORK-IN-FRONT")
-{ Pointer The_Queue, Queue_Head, New_Entry;
+
+DEFINE_PRIMITIVE("PUT-WORK-IN-FRONT", Prim_Put_Work_In_Front, 1)
+{
+  Pointer The_Queue, Queue_Head, New_Entry;
   Primitive_1_Arg();
 
   The_Queue = Get_Fixed_Obj_Slot(The_Work_Queue);
-  if (The_Queue==NIL)
+  if (The_Queue == NIL)
   { Primitive_GC_If_Needed(4);
     The_Queue = Make_Pointer(TC_LIST, Free);
     Set_Fixed_Obj_Slot(The_Work_Queue, The_Queue);
     *Free++ = NIL;
     *Free++ = NIL;
   }
-  else Primitive_GC_If_Needed(2);
+  else
+  {
+    Primitive_GC_If_Needed(2);
+  }
 
   Queue_Head = Vector_Ref(The_Queue, CONS_CDR);
   New_Entry = Make_Pointer(TC_WEAK_CONS, Free);
   *Free++ = Arg1;
   *Free++ = Queue_Head;
   Vector_Set(The_Queue, CONS_CAR, New_Entry);
-  if (Queue_Head==NIL) Vector_Set(The_Queue, CONS_CDR, New_Entry);
+  if (Queue_Head == NIL)
+  {
+    Vector_Set(The_Queue, CONS_CDR, New_Entry);
+  }
+  PRIMITIVE_RETURN(TRUTH);
 }
-
-Define_Primitive(Prim_Drain_Queue, 0, "DRAIN-WORK-QUEUE!")
+
+DEFINE_PRIMITIVE("DRAIN-WORK-QUEUE!", Prim_Drain_Queue, 0)
 {
   Pointer The_Queue;
   Primitive_0_Args();
 
   The_Queue = Get_Fixed_Obj_Slot(The_Work_Queue);
   Set_Fixed_Obj_Slot(The_Work_Queue, NIL);
-  return ((The_Queue != NIL) ?
-	  Vector_Ref(The_Queue, CONS_CAR) :
-	  NIL);
+  PRIMITIVE_RETURN((The_Queue != NIL) ?
+		   Vector_Ref(The_Queue, CONS_CAR) :
+		   NIL);
 }
 
-Define_Primitive(Prim_Peek_Queue, 0, "PEEK-AT-WORK-QUEUE")
-{ Pointer The_Queue, This_Cons, Last_Cons;
+DEFINE_PRIMITIVE("PEEK-AT-WORK-QUEUE", Prim_Peek_Queue, 0)
+{
+  Pointer The_Queue, This_Cons, Last_Cons;
   Primitive_0_Args();
 
   The_Queue = Get_Fixed_Obj_Slot(The_Work_Queue);
@@ -161,98 +177,161 @@ Define_Primitive(Prim_Peek_Queue, 0, "PEEK-AT-WORK-QUEUE")
   Last_Cons = NIL;
   for (The_Queue = Vector_Ref(The_Queue, CONS_CAR);
        The_Queue != NIL;
-       The_Queue = Vector_Ref(The_Queue, CONS_CDR)) {
+       The_Queue = Vector_Ref(The_Queue, CONS_CDR))
+  {
     Primitive_GC_If_Needed(2);
     This_Cons = Make_Pointer(TC_LIST, Free);
     *Free++ = Vector_Ref(The_Queue, CONS_CAR);
     *Free++ = Last_Cons;
-    Last_Cons = This_Cons; }
+    Last_Cons = This_Cons;
+  }
 
-  return This_Cons;
+  PRIMITIVE_RETURN(This_Cons);
 }
 
-Define_Primitive(Prim_Await_Sync, 1, "AWAIT-SYNCHRONY")
+DEFINE_PRIMITIVE("GET-WORK", Prim_Get_Work, 1)
+{
+  Pointer Get_Work();
+  Primitive_1_Arg();
+
+  PRIMITIVE_RETURN(Get_Work(Arg1));
+}
+
+Pointer Get_Work(Arg1)
+     Pointer Arg1;
+{
+  Pointer The_Queue, Queue_Head, Result, The_Prim;
+
+  /* This gets this primitive's code which is in the expression register. */
+  The_Prim = Fetch_Expression();
+  The_Queue = Get_Fixed_Obj_Slot(The_Work_Queue);
+  if (The_Queue != NIL)
+  {
+    Queue_Head = Vector_Ref(The_Queue, CONS_CAR);
+  }
+  if ((The_Queue == NIL) || (Queue_Head == NIL))
+    if (Arg1 == NIL)
+    {
+      printf("\nNo work available, but some has been requested!\n");
+      Microcode_Termination(TERM_EXIT);
+    }
+    else
+    {
+      Pop_Primitive_Frame(1);
+     Will_Push(2 * (STACK_ENV_EXTRA_SLOTS + 1) + 1 + CONTINUATION_SIZE);
+      Push(NIL);	/* Upon return, no hope if there is no work */
+      Push(The_Prim);
+      Push(STACK_FRAME_HEADER+1);
+      Store_Expression(NIL);
+      Store_Return(RC_INTERNAL_APPLY);
+      Save_Cont();
+      Push(Arg1);
+      Push(STACK_FRAME_HEADER);
+     Pushed();
+      PRIMITIVE_ABORT(PRIM_APPLY);
+  }
+  Result = Vector_Ref(Queue_Head, CONS_CAR);
+  Queue_Head = Vector_Ref(Queue_Head, CONS_CDR);
+  Vector_Set(The_Queue, CONS_CAR, Queue_Head);
+  if (Queue_Head == NIL)
+  {
+    Vector_Set(The_Queue, CONS_CDR, NIL);
+  }
+  return (Result);
+}
+
+DEFINE_PRIMITIVE("AWAIT-SYNCHRONY", Prim_Await_Sync, 1)
 {
   Primitive_1_Arg();
 
   Arg_1_Type(TC_LIST);
   if (Type_Code(Vector_Ref(Arg1, CONS_CDR)) != TC_FIXNUM)
+  {
     Primitive_Error(ERR_ARG_1_BAD_RANGE);
-  return TRUTH;
+  }
+  PRIMITIVE_RETURN(TRUTH);
 }
 
-Define_Primitive(Prim_N_Interps, 0, "N-INTERPRETERS")
+DEFINE_PRIMITIVE("N-INTERPRETERS", Prim_N_Interps, 0)
 {
   Primitive_0_Args();
 
-  return Make_Unsigned_Fixnum(1);
+  PRIMITIVE_RETURN(MAKE_UNSIGNED_FIXNUM(1));
 }
 
-Define_Primitive(Prim_My_Proc, 0, "MY-PROCESSOR-NUMBER")
+DEFINE_PRIMITIVE("MY-PROCESSOR-NUMBER", Prim_My_Proc, 0)
 {
   Primitive_0_Args();
 
-  return Make_Unsigned_Fixnum(0);
+  PRIMITIVE_RETURN(MAKE_UNSIGNED_FIXNUM(0));
 }
 
-Define_Primitive(Prim_My_Interp_Number, 0, "MY-INTERPRETER-NUMBER")
+DEFINE_PRIMITIVE("MY-INTERPRETER-NUMBER", Prim_My_Interp_Number, 0)
 {
   Primitive_0_Args();
 
-  return Make_Unsigned_Fixnum(0);
+  PRIMITIVE_RETURN(MAKE_UNSIGNED_FIXNUM(0));
 }
 
-Define_Primitive(Prim_Zero_Zones, 0, "ZERO-ZONES")
+DEFINE_PRIMITIVE("ZERO-ZONES", Prim_Zero_Zones, 0)
 {
   long i;
   Primitive_0_Args();
 
 #ifdef METERING
   for (i=0; i < Max_Meters; i++)
-    Time_Meters[i]=0;
+  {
+    Time_Meters[i] = 0;
+  }
 
   Old_Time=Sys_Clock();
 #endif
-  return TRUTH;
+  PRIMITIVE_RETURN(TRUTH);
 }
 
 /* These are really used by GC on a true parallel machine */
 
-Define_Primitive(Prim_GC_Needed, 0, "GC-NEEDED?")
+DEFINE_PRIMITIVE("GC-NEEDED?", Prim_GC_Needed, 0)
 {
   Primitive_0_Args();
 
-  if ((Free+GC_Space_Needed) >= MemTop) return TRUTH;
-  else return NIL;
+  if ((Free + GC_Space_Needed) >= MemTop)
+  {
+    PRIMITIVE_RETURN(TRUTH);
+  }
+  else
+  {
+    PRIMITIVE_RETURN(NIL);
+  }
 }
 
-Define_Primitive(Prim_Slave_Before, 0, "SLAVE-GC-BEFORE-SYNC")
+DEFINE_PRIMITIVE("SLAVE-GC-BEFORE-SYNC", Prim_Slave_Before, 0)
 {
   Primitive_0_Args();
 
-  return TRUTH;
+  PRIMITIVE_RETURN(TRUTH);
 }
 
-Define_Primitive(Prim_Slave_After, 0, "SLAVE-GC-AFTER-SYNC")
+DEFINE_PRIMITIVE("SLAVE-GC-AFTER-SYNC", Prim_Slave_After, 0)
 {
   Primitive_0_Args();
 
-  return TRUTH;
+  PRIMITIVE_RETURN(TRUTH);
 }
 
-Define_Primitive(Prim_Master_Before, 0, "MASTER-GC-BEFORE-SYNC")
+DEFINE_PRIMITIVE("MASTER-GC-BEFORE-SYNC", Prim_Master_Before, 0)
 {
   Primitive_0_Args();
 
-  return TRUTH;
+  PRIMITIVE_RETURN(TRUTH);
 }
 
 /* This primitive caches the Scheme object for the garbage collector
-   primitive so that it does not have to perform an expensive search
-   each time.
+   primitive so that it does not have to perform a potentially
+   expensive search each time.
 */
 
-Define_Primitive(Prim_Master_GC, 1, "MASTER-GC-LOOP")
+DEFINE_PRIMITIVE("MASTER-GC-LOOP", Prim_Master_GC, 1)
 {
   static Pointer gc_prim = NIL;
   extern Pointer make_primitive();
@@ -268,5 +347,5 @@ Define_Primitive(Prim_Master_GC, 1, "MASTER-GC-LOOP")
   Push(gc_prim);
   Push(STACK_FRAME_HEADER + 1);
  Pushed();
-  longjmp(*Back_To_Eval, PRIM_APPLY);
+  PRIMITIVE_ABORT(PRIM_APPLY);
 }

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/futures.h,v 9.22 1987/07/07 19:59:21 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/futures.h,v 9.23 1987/12/04 22:16:33 jinx Rel $
  *
  * This file contains macros useful for dealing with futures
  */
@@ -75,29 +75,43 @@ MIT in each case. */
  (Vector_Ref((P), FUTURE_IS_DETERMINED) != TRUTH))
 
 #ifdef COMPILE_FUTURES
+
 /* Touch_In_Primitive is used by primitives which are not
- * strict in an    argument but which touch it none the less.
+ * strict in an argument but which touch it none the less.
  */
 
-#define Touch_In_Primitive(P, To_Where)				\
-{ Pointer Value = (P);						\
-  while (Type_Code(Value) == TC_FUTURE)				\
-  { if (Future_Has_Value(Value))				\
-    { if (Future_Is_Keep_Slot(Value)) Log_Touch_Of_Future(Value);\
-      Value = Future_Value(Value);     				\
-    }								\
-    else                                                        \
-    { Back_Out_Of_Primitive();			       		\
-     Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+2));	\
-      Save_Cont();						\
-      Push(Value);						\
-      Push(Get_Fixed_Obj_Slot(System_Scheduler));		\
-      Push(STACK_FRAME_HEADER+1);				\
-     Pushed();							\
-      longjmp(*Back_To_Eval, PRIM_APPLY);			\
-    }								\
-  }								\
-  To_Where = Value;				        	\
+#define Touch_In_Primitive(P, To_Where)					\
+{									\
+  Pointer Value;							\
+									\
+  Value = (P);								\
+  while (OBJECT_TYPE(Value) == TC_FUTURE)				\
+  {									\
+    if (Future_Has_Value(Value))					\
+    {									\
+      if (Future_Is_Keep_Slot(Value))					\
+      {									\
+	Log_Touch_Of_Future(Value);					\
+      }									\
+      Value = Future_Value(Value);					\
+    }									\
+    else								\
+    {									\
+      Val = Value;							\
+      PRIMITIVE_ABORT(PRIM_TOUCH);					\
+    }									\
+  }									\
+  To_Where = Value;							\
+}
+
+#define TOUCH_SETUP(object)						\
+{									\
+   Save_Cont();								\
+  Will_Push(STACK_ENV_EXTRA_SLOTS + 2);					\
+   Push(object);							\
+   Push(Get_Fixed_Obj_Slot(System_Scheduler));				\
+   Push(STACK_FRAME_HEADER + 1);					\
+  Pushed();								\
 }
 
 /* NOTES ON FUTURES, derived from the rest of the interpreter code */
@@ -109,9 +123,6 @@ MIT in each case. */
 
    ASSUMPTION: The SYMBOL slot of a VARIABLE does NOT contain a future, nor
    do the cached lexical address slots.
-
-   ASSUMPTION: Compiled code calls to the interpreter require the results
-   be touched before returning to the compiled code.  This may be very wrong.
 
    ASSUMPTION: History objects are never created using futures.
 
@@ -140,7 +151,7 @@ MIT in each case. */
 */
 
 /* KNOWN PROBLEMS:
-   (1) Garbage collector should be modified to splice out futures.
+   (1) Garbage collector should be modified to splice out futures.  DONE.
 
    (2) Purify should be looked at and we should decide what to do about
        purifying an object with a reference to a future (it should probably
@@ -161,28 +172,34 @@ MIT in each case. */
    of touched futures about which the scheme portion of the system has
    not yet been informed
 */
-#define Log_Touch_Of_Future(F)                                  	\
+#define Log_Touch_Of_Future(F)						\
 if (Logging_On())							\
-{ Pointer TFV = Touched_Futures_Vector();				\
-  long Count = Get_Integer(User_Vector_Ref(TFV, 0))+1;     		\
-  User_Vector_Ref(TFV, 0) = FIXNUM_0 + Count; 				\
+{									\
+  Pointer TFV;								\
+  long Count;								\
+									\
+  TFV = Touched_Futures_Vector();					\
+  Count = Get_Integer(User_Vector_Ref(TFV, 0)) + 1;			\
+  User_Vector_Ref(TFV, 0) = MAKE_UNSIGNED_FIXNUM(Count);		\
   if (Count < Vector_Length(TFV))					\
-    User_Vector_Ref(TFV, Count) = Make_New_Pointer(TC_VECTOR, F); 	\
+  {									\
+    User_Vector_Ref(TFV, Count) = Make_New_Pointer(TC_VECTOR, F);	\
+  }									\
 }
 
 /* Call_Future_Logging calls a user defined scheme routine if the vector
    of touched futures has a nonzero length.  
 */
 #define Must_Report_References()					\
-( Logging_On() &&							\
+( (Logging_On()) &&							\
    (Get_Integer(User_Vector_Ref(Touched_Futures_Vector(), 0)) > 0))
 
 #define Call_Future_Logging()                                   	\
 {									\
- Will_Push(STACK_ENV_EXTRA_SLOTS+2);			        	\
+ Will_Push(STACK_ENV_EXTRA_SLOTS + 2);			        	\
   Push(Touched_Futures_Vector());                      	        	\
   Push(Get_Fixed_Obj_Slot(Future_Logger));      			\
-  Push(STACK_FRAME_HEADER+1);			 	        	\
+  Push(STACK_FRAME_HEADER + 1);			 	        	\
  Pushed();								\
   Touched_Futures_Vector() = NIL;                                 	\
   goto Apply_Non_Trapping;						\
@@ -197,14 +214,18 @@ if (Logging_On())							\
 #endif /* FUTURE_LOGGING */
 
 #define FUTURE_VARIABLE_SPLICE(P, Offset, Value)			\
-while (Type_Code(Value) == TC_FUTURE && Future_Spliceable(Value))	\
-{ Value = Future_Value(Value);						\
-  Vector_Set(P, Offset, Value);						\
+{									\
+  while ((OBJECT_TYPE(Value) == TC_FUTURE) && Future_Spliceable(Value))	\
+  {									\
+    Value = Future_Value(Value);					\
+    Vector_Set(P, Offset, Value);					\
+  }									\
 }
 
 #else /* not COMPILE_FUTURES */
 
 #define Touch_In_Primitive(P, To_Where)		To_Where = (P)
+#define TOUCH_SETUP(object)			Microcode_Termination(TERM_TOUCH)
 #define Log_Touch_Of_Future(F) { }
 #define Call_Future_Logging()
 #define Must_Report_References() (false)

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.25 1987/06/18 22:15:11 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.26 1987/12/04 22:15:25 jinx Rel $
  *
  * This file contains a primitive to dump an executable version of Scheme.
  * It uses unexec.c from GNU Emacs.
@@ -181,7 +181,7 @@ Restore_Input_Buffer(Buflen)
 extern Boolean Was_Scheme_Dumped;
 extern unix_find_pathname();
 
-Define_Primitive(Prim_Dump_World, 1, "DUMP-WORLD")
+DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_Dump_World, 1)
 {
   char *fname, path_buffer[FILE_NAME_LENGTH];
   Boolean Saved_Dumped_Value, Saved_Photo_Open;
@@ -192,7 +192,9 @@ Define_Primitive(Prim_Dump_World, 1, "DUMP-WORLD")
   Arg_1_Type(TC_CHARACTER_STRING);
 
   if (there_are_open_files())
-     Primitive_Error(ERR_OUT_OF_FILE_HANDLES);
+  {
+    Primitive_Error(ERR_OUT_OF_FILE_HANDLES);
+  }
 
   fname = Scheme_String_To_C_String(Arg1);
 
@@ -246,7 +248,7 @@ Define_Primitive(Prim_Dump_World, 1, "DUMP-WORLD")
     Primitive_Error(ERR_EXTERNAL_RETURN);
   }
 
-  longjmp(*Back_To_Eval, PRIM_POP_RETURN);
+  PRIMITIVE_ABORT(PRIM_POP_RETURN);
   /*NOTREACHED*/
 }
 

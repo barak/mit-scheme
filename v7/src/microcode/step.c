@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.23 1987/11/17 08:16:54 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.24 1987/12/04 22:19:24 jinx Rel $
  *
  * Support for the stepper
  */
@@ -42,22 +42,27 @@ MIT in each case. */
                  /* Support of stepping primitives */
                  /**********************************/
 
-long Install_Traps(Hunk3, Return_Hook_Too)
 /* UGLY ... this knows (a) that it is called with the primitive frame
    already popped off the stack; and (b) the order in which Save_Cont
    stores things on the stack.
 */
-Pointer Hunk3;
-Boolean Return_Hook_Too;
-{ Pointer Eval_Hook, Apply_Hook, Return_Hook;
+
+void
+Install_Traps(Hunk3, Return_Hook_Too)
+     Pointer Hunk3;
+     Boolean Return_Hook_Too;
+{
+  Pointer Eval_Hook, Apply_Hook, Return_Hook;
+
   Stop_Trapping();
   Eval_Hook = Vector_Ref(Hunk3, HUNK_CXR0);
   Apply_Hook = Vector_Ref(Hunk3, HUNK_CXR1);
   Return_Hook = Vector_Ref(Hunk3, HUNK_CXR2);
   Set_Fixed_Obj_Slot(Stepper_State, Hunk3);
-  Trapping = (Eval_Hook != NIL) | (Apply_Hook != NIL);
+  Trapping = ((Eval_Hook != NIL) | (Apply_Hook != NIL));
   if (Microcode_Does_Stepping && Return_Hook_Too && (Return_Hook != NIL))
-  { /* Here it is ... gross and ugly.  We know that the top of stack
+  {
+    /* Here it is ... gross and ugly.  We know that the top of stack
        has the existing return code to be clobbered, since it was put
        there by Save_Cont.
     */
@@ -66,6 +71,7 @@ Boolean Return_Hook_Too;
     *Return_Hook_Address = Make_Non_Pointer(TC_RETURN_CODE,
                                             RC_RETURN_TRAP_POINT);
   }
+  return;
 }
 
 /* (PRIMITIVE-EVAL-STEP EXPRESSION ENV HUNK3)
@@ -75,8 +81,7 @@ Boolean Return_Hook_Too;
    APPLY or return.
 */
 
-Built_In_Primitive(Prim_Eval_Step, 3, "PRIMITIVE-EVAL-STEP", 0xCA)
-Define_Primitive(Prim_Eval_Step, 3, "PRIMITIVE-EVAL-STEP")
+DEFINE_PRIMITIVE("PRIMITIVE-EVAL-STEP", Prim_Eval_Step, 3)
 {
   Primitive_3_Args();
 
@@ -84,7 +89,7 @@ Define_Primitive(Prim_Eval_Step, 3, "PRIMITIVE-EVAL-STEP")
   Pop_Primitive_Frame(3);
   Store_Expression(Arg1);
   Store_Env(Arg2);
-  longjmp(*Back_To_Eval, PRIM_NO_TRAP_EVAL);
+  PRIMITIVE_ABORT(PRIM_NO_TRAP_EVAL);
   /*NOTREACHED*/
 }
 
@@ -98,8 +103,7 @@ Define_Primitive(Prim_Eval_Step, 3, "PRIMITIVE-EVAL-STEP")
    required before actually building a frame
 */
 
-Built_In_Primitive(Prim_Apply_Step, 3, "PRIMITIVE-APPLY-STEP", 0xCB)
-Define_Primitive(Prim_Apply_Step, 3, "PRIMITIVE-APPLY-STEP")
+DEFINE_PRIMITIVE("PRIMITIVE-APPLY-STEP", Prim_Apply_Step, 3)
 {
   Pointer Next_From_Slot, *Next_To_Slot;
   long Number_Of_Args, i;
@@ -114,7 +118,9 @@ Define_Primitive(Prim_Apply_Step, 3, "PRIMITIVE-APPLY-STEP")
     Next_From_Slot = Vector_Ref(Next_From_Slot, CONS_CDR);
   }
   if (Next_From_Slot != NIL)
+  {
     Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+  }
   Install_Traps(Arg3, true);
   Pop_Primitive_Frame(3);
   Next_From_Slot = Arg2;
@@ -130,7 +136,7 @@ Define_Primitive(Prim_Apply_Step, 3, "PRIMITIVE-APPLY-STEP")
   Push(Arg1);		/* The function */
   Push(STACK_FRAME_HEADER + Number_Of_Args);
  Pushed();
-  longjmp(*Back_To_Eval, PRIM_NO_TRAP_APPLY);
+  PRIMITIVE_ABORT(PRIM_NO_TRAP_APPLY);
   /*NOTREACHED*/
 }
 
@@ -144,15 +150,16 @@ Define_Primitive(Prim_Apply_Step, 3, "PRIMITIVE-APPLY-STEP")
    this is ever changed, be sure to check for COMPILE_STEPPER flag!
 */
 
-Built_In_Primitive(Prim_Return_Step, 2, "PRIMITIVE-RETURN-STEP", 0xCC)
-Define_Primitive(Prim_Return_Step, 2, "PRIMITIVE-RETURN-STEP")
+DEFINE_PRIMITIVE("PRIMITIVE-RETURN-STEP", Prim_Return_Step, 2)
 {
   Pointer Return_Hook;
   Primitive_2_Args();
 
   Return_Hook = Vector_Ref(Arg2, HUNK_CXR2);
   if (Return_Hook != NIL)
+  {
     Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  }
   Install_Traps(Arg2, false);
-  return Arg1;
+  PRIMITIVE_RETURN(Arg1);
 }

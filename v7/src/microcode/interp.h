@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.27 1987/11/20 08:17:10 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.28 1987/12/04 22:17:56 jinx Exp $
  *
  * Macros used by the interpreter and some utilities.
  *
@@ -211,25 +211,62 @@ MIT in each case. */
 
 /* Primitive utility macros */
 
-/* The first two are only valid for implemented primitives. */
+/* A primitive object has two components (besides the type code), a
+   table index in the low 12 bits (assuming datum fields are 24 bits
+   wide), and a virtual index in the upper 12 bits.  The table index
+   is always guaranteed to be a valid entry into
+   Primitive_Procedure_Table.  For unimplemented primitives it is the
+   index of the last entry in the table, which causes an error when
+   invoked.  For implemented primitives it is the real index.  The
+   virtual index is 0 for implemented primitives (for histerical
+   reasons), and the actual virtual index (higher than any real table
+   index) for unimplemented primitives.
+ */
 
-#define Internal_Apply_Primitive(primitive_code)			\
-  ((*(Primitive_Procedure_Table[primitive_code]))())
+#define PRIMITIVE_TABLE_INDEX(primitive)				\
+((primitive) & HALF_ADDRESS_MASK)
 
-#define PRIMITIVE_ARITY(primitive_code)					\
-  (Primitive_Arity_Table[primitive_code])
+#define PRIMITIVE_VIRTUAL_INDEX(primitive)				\
+(((primitive) >> HALF_ADDRESS_LENGTH) & HALF_ADDRESS_MASK)
+
+#define MAKE_PRIMITIVE_OBJECT(virtual, real)				\
+(Make_Non_Pointer(TC_PRIMITIVE, (((virtual) << HALF_ADDRESS_LENGTH) | (real))))
+
+/* Does this fail for the first unimplemented primitive if there are no
+   implemented primitives?
+ */
+
+#define IMPLEMENTED_PRIMITIVE_P(primitive)				\
+(PRIMITIVE_VIRTUAL_INDEX(primitive) == 0)
+
+#define PRIMITIVE_NUMBER(primitive)					\
+((IMPLEMENTED_PRIMITIVE_P(primitive))	?				\
+ (PRIMITIVE_TABLE_INDEX(primitive))	:				\
+ (PRIMITIVE_VIRTUAL_INDEX(primitive)))
+
+/* This will automagically cause an error if the primitive is
+   not implemented.
+ */
+
+#define Internal_Apply_Primitive(primitive)				\
+((*(Primitive_Procedure_Table[PRIMITIVE_TABLE_INDEX(primitive)]))())
+
+/* This is only valid for implemented primitives. */
+
+#define PRIMITIVE_ARITY(primitive)					\
+(Primitive_Arity_Table[PRIMITIVE_TABLE_INDEX(primitive)])
 
 extern long primitive_to_arity();
 
-#define PRIMITIVE_N_PARAMETERS(primitive_code)				\
-  (primitive_to_arity(primitive_code))
+#define PRIMITIVE_N_PARAMETERS(primitive)				\
+  (primitive_to_arity(primitive))
 
 /* This is only valid during a primitive call. */
 
 extern long primitive_to_arguments();
 
-#define PRIMITIVE_N_ARGUMENTS(primitive_code)				\
-  (primitive_to_arguments(primitive_code))
+#define PRIMITIVE_N_ARGUMENTS(primitive)				\
+  (primitive_to_arguments(primitive))
 
 #define Pop_Primitive_Frame(NArgs)					\
   Stack_Pointer = Simulate_Popping(NArgs)

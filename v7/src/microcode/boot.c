@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.42 1987/11/23 05:16:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.43 1987/12/04 22:14:06 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -489,7 +489,7 @@ Start_Scheme(Start_Prim, File_Name)
 Enter_Interpreter()
 {
   jmp_buf Orig_Eval_Point;
-  Back_To_Eval = (jmp_buf *) Orig_Eval_Point;
+  Back_To_Eval = ((jmp_buf *) Orig_Eval_Point);
 
   Interpret(Was_Scheme_Dumped);
   fprintf(stderr, "\nThe interpreter returned to top level!\n");
@@ -538,7 +538,7 @@ Microcode_Termination(code)
   }
 
   putchar('\n');
-  if ((code < 0) ||  (code > MAX_ERROR))
+  if ((code < 0) || (code > MAX_TERMINATION))
   {
     printf("Unknown termination code 0x%x\n", code);
   }
@@ -563,21 +563,24 @@ Microcode_Termination(code)
       value = 0;
       break;
 
-    case TERM_NON_EXISTENT_CONTINUATION:
-      printf("Return code = 0x%x\n", Fetch_Return());
-      goto normal_termination;
-
-    case TERM_GC_OUT_OF_SPACE:
-      printf("Memory: required = %d; available = %d\n",
-	     Get_Integer(Fetch_Expression()), Space_Before_GC());
-      goto normal_termination;
-
     case TERM_NO_ERROR_HANDLER:
       /* This does not print a back trace because it was printed before
 	 getting here irrelevant of the state of Trace_On_Error.
        */
       value = 1;
       break;
+
+    case TERM_NON_EXISTENT_CONTINUATION:
+      printf("Return code = 0x%lx\n", Fetch_Return());
+      goto normal_termination;
+
+    case TERM_GC_OUT_OF_SPACE:
+      printf("You are out of space at the end of a Garbage Collection!\n");
+      printf("Free = 0x%lx; MemTop = 0x%lx; Heap_Top = 0x%lx\n",
+	     Free, MemTop, Heap_Top);
+      printf("Words required = %ld; Words available = %ld\n",
+	     (MemTop - Free), GC_Space_Needed);
+      goto normal_termination;
 
     default:
     normal_termination:

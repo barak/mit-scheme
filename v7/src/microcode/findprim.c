@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.31 1987/12/03 19:30:52 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.32 1987/12/04 22:13:04 jinx Exp $
  *
  * Preprocessor to find and declare defined primitives.
  *
@@ -511,11 +511,39 @@ static descriptor Inexistent_Entry =
 
 static char Inexistent_Error_String[] =
   "Primitive_Error(ERR_UNIMPLEMENTED_PRIMITIVE)";
-
+
 static int C_Size = 0;
 static int A_Size = 0;
 static int S_Size = 0;
 static int F_Size = 0;
+
+void
+update_from_entry(primitive_descriptor)
+     descriptor *primitive_descriptor;
+{
+  int temp;
+  temp = strlen(primitive_descriptor->C_Name);
+  if (temp > C_Size)
+  {
+    C_Size = temp;
+  }
+  temp = strlen(primitive_descriptor->Arity);
+  if (temp > A_Size)
+  {
+    A_Size = temp;
+  }
+  temp = strlen(primitive_descriptor->Scheme_Name);
+  if (temp > S_Size)
+  {
+    S_Size = temp;
+  }
+  temp = strlen(primitive_descriptor->File_Name);
+  if (temp > F_Size)
+  {
+    F_Size = temp;
+  }
+  return;
+}
 
 pseudo_void
 create_normal_entry()
@@ -571,6 +599,7 @@ initialize_external()
   (token_processors [1]) = NULL;
   The_Kind = &External_Kind[0];
   The_Variable = &External_Variable[0];
+  update_from_entry(&Inexistent_Entry);
   return;
 }
 
@@ -586,17 +615,7 @@ initialize_default()
   (token_processors [2]) = NULL;
   The_Kind = &Default_Kind[0];
   The_Variable = &Default_Variable[0];
-  return;
-}
-
-void
-initialize_from_entry(primitive_descriptor)
-     descriptor *primitive_descriptor;
-{
-  C_Size = strlen(primitive_descriptor->C_Name);
-  A_Size = strlen(primitive_descriptor->Arity);
-  S_Size = strlen(primitive_descriptor->Scheme_Name);
-  F_Size = strlen(primitive_descriptor->File_Name);
+  update_from_entry(&Inexistent_Entry);
   return;
 }
 
@@ -679,7 +698,7 @@ initialize_builtin(arg)
   {
     Result_Buffer[index] = &Inexistent_Entry;
   }
-  initialize_from_entry(&Inexistent_Entry);
+  update_from_entry(&Inexistent_Entry);
   return;
 }
 
@@ -822,9 +841,13 @@ void
 initialize_index_size()
 {
   if (Built_in_p)
+  {
     max = Built_in_table_size;
+  }
   else
+  {
     max = buffer_index;
+  }
   find_index_size(max, max_index_size);
   max -= 1;
   return;
@@ -835,7 +858,9 @@ print_spaces(how_many)
      register int how_many;
 {
   for(; --how_many >= 0;)
+  {
     putc(' ', output);
+  }
   return;
 }
 
@@ -856,9 +881,18 @@ print_entry(index, primitive_descriptor)
 	  (primitive_descriptor->Scheme_Name));
   print_spaces(S_Size-(strlen(primitive_descriptor->Scheme_Name)));
   fprintf(output, " %s ", The_Kind);
-  find_index_size(index, index_size);
-  print_spaces(max_index_size - index_size);
-  fprintf(output, "0x%x in %s %c/", index, (primitive_descriptor->File_Name), '*');
+  if (index >= 0)
+  {
+    find_index_size(index, index_size);
+    print_spaces(max_index_size - index_size);
+    fprintf(output, "0x%x", index);
+  }
+  else
+  {
+    print_spaces(max_index_size - 1);
+    fprintf(output, "???");
+  }
+  fprintf(output, " in %s %c/", (primitive_descriptor->File_Name), '*');
   return;
 }
 
@@ -873,6 +907,7 @@ print_procedure(primitive_descriptor, error_string)
   fprintf(output, "  Primitive_%s_Args();\n", (primitive_descriptor->Arity));
   fprintf(output, "\n");
   fprintf(output, "  %s;\n", error_string);
+  fprintf(output, "  /%cNOTREACHED%c/\n", '*', '*');
   fprintf(output, "}\n");
   return;
 }
@@ -888,14 +923,25 @@ print_primitives(last)
 
   fprintf(output, "Pointer (*(%s_Procedure_Table[]))() = {\n", The_Kind);
 
-  for (count = 0; count < last; count++)
+  for (count = 0; count <= last; count++)
   {
     print_entry(count, Result_Buffer[count]);
     fprintf(output, ",\n");
   }
-  print_entry(last, Result_Buffer[last]);
+  print_entry(-1, &Inexistent_Entry);
   fprintf(output, "\n};\n\f\n");
 
+  /* Print the names table. */
+  
+  fprintf(output, "char *%s_Name_Table[] = {\n", The_Kind);
+
+  for (count = 0; count < last; count++)
+  {
+    fprintf(output, "  \"%s\",\n", ((Result_Buffer[count])->Scheme_Name));
+  }
+  fprintf(output, "  \"%s\"\n", ((Result_Buffer[last])->Scheme_Name));
+  fprintf(output, "};\n\f\n");
+
   /* Print the arity table. */
   
   fprintf(output, "int %s_Arity_Table[] = {\n", The_Kind);
@@ -907,15 +953,19 @@ print_primitives(last)
   fprintf(output, "  %s\n", ((Result_Buffer[last])->Arity));
   fprintf(output, "};\n\f\n");
 
-  /* Print the names table. */
+  /* Print the counts table. */
   
-  fprintf(output, "char *%s_Name_Table[] = {\n", The_Kind);
+  fprintf(output, "int %s_Count_Table[] = {\n", The_Kind);
 
   for (count = 0; count < last; count++)
   {
-    fprintf(output, "  \"%s\",\n", ((Result_Buffer[count])->Scheme_Name));
+    fprintf(output,
+	    "  (%s * sizeof(Pointer)),\n",
+	    ((Result_Buffer[count])->Arity));
   }
-  fprintf(output, "  \"%s\"\n", ((Result_Buffer[last])->Scheme_Name));
+  fprintf(output,
+	  "  (%s * sizeof(Pointer))\n",
+	  ((Result_Buffer[last])->Arity));
   fprintf(output, "};\n\n");
 
   return;
@@ -940,16 +990,23 @@ dump(check)
 
   fprintf(output, "#include \"usrdef.h\"\n\n");
 
-  fprintf(output, "long %s = %d;\n\n", The_Variable, max);
+  fprintf(output,
+	  "long %s = %d; /%c = 0x%x %c/\n\n",
+	  The_Variable, max, '*', max, '*');
+
   if (Built_in_p)
+  {
     fprintf(output,
 	    "/%c The number of implemented primitives is %d. %c/\n\n",
 	    '*', buffer_index, '*');
+  }
 
   if (max < 0)
   {
     if (check)
+    {
       fprintf(stderr, "No primitives found!\n");
+    }
 
     /* C does not understand the empty array, thus it must be faked. */
 
@@ -959,9 +1016,9 @@ dump(check)
     /* Dummy entry */
 
     Result_Buffer[0] = &Dummy_Entry;
-    initialize_from_entry(&Dummy_Entry);
+    update_from_entry(&Dummy_Entry);
     print_procedure(&Dummy_Entry, &Dummy_Error_String[0]);
-
+    fprintf(output, "\n");
   }
 
   else
@@ -976,17 +1033,10 @@ dump(check)
       fprintf(output, "       %s(),\n", &(Data_Buffer[count].C_Name)[0]);
     }
 
-    if (Built_in_p)
-    {
-      fprintf(output, "       %s();\n\n", &(Inexistent_Entry.C_Name)[0]);
-      print_procedure(&Inexistent_Entry, &Inexistent_Error_String[0]);
-    }
-    else
-    {
-      fprintf(output, "       %s();\n", &(Data_Buffer[end].C_Name)[0]);
-    }
+    fprintf(output, "       %s();\n\n", &(Data_Buffer[end].C_Name)[0]);
   }
 
+  print_procedure(&Inexistent_Entry, &Inexistent_Error_String[0]);
   fprintf(output, "\f\n");
   print_primitives((max < 0) ? 0 : max);
   return;

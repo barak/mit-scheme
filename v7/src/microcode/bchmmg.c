@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.38 1987/11/17 08:06:33 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.39 1987/12/04 22:13:39 jinx Rel $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -704,8 +704,7 @@ GC(initial_weak_chain)
    the GC daemon if there is one.
 */
 
-Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT", 0x3A)
-Define_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
+DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_Garbage_Collect, 1)
 {
   Pointer GC_Daemon_Proc;
   Primitive_1_Arg();
@@ -713,12 +712,7 @@ Define_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
   Arg_1_Type(TC_FIXNUM);
   if (Free > Heap_Top)
   {
-    fprintf(stderr,
-	    "\nGC has been delayed too long; You are truly out of room!\n");
-    fprintf(stderr,
-	    "Free = 0x%x, MemTop = 0x%x, Heap_Top = 0x%x\n",
-	    Free, MemTop, Heap_Top);
-    Microcode_Termination(TERM_NO_SPACE);
+    Microcode_Termination(TERM_GC_OUT_OF_SPACE);
     /*NOTREACHED*/
   }
   GC_Reserve = Get_Integer(Arg1);
@@ -733,7 +727,7 @@ Define_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
     Store_Expression(Make_Unsigned_Fixnum(MemTop - Free));
     Save_Cont();
    Pushed();
-    longjmp( *Back_To_Eval, PRIM_POP_RETURN);
+    PRIMITIVE_ABORT(PRIM_POP_RETURN);
     /*NOTREACHED*/
   }
  Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
@@ -743,7 +737,7 @@ Define_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
   Push(GC_Daemon_Proc);
   Push(STACK_FRAME_HEADER);
  Pushed();
-  longjmp(*Back_To_Eval, PRIM_APPLY);
+  PRIMITIVE_ABORT(PRIM_APPLY);
   /* The following comment is by courtesy of LINT, your friendly sponsor. */
   /*NOTREACHED*/
 }

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.37 1987/11/24 07:58:33 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.38 1987/12/04 22:13:25 jinx Rel $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -388,8 +388,7 @@ end_dumploop:
    on an object that is too large).
 */
 
-Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
-Define_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
+DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
 {
   Boolean success;
   long length, hlength, tlength, tsize;
@@ -419,7 +418,7 @@ Define_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
   if (table_start >= table_top)
   {
     fasdump_exit(0);
-    Primitive_GC(table_top - saved_free);
+    Primitive_GC(table_start - saved_free);
   }
 
 #if (GC_DISK_BUFFER_SIZE <= FASL_HEADER_LENGTH)
@@ -452,7 +451,7 @@ Define_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
   if (table_end >= table_top)
   {
     fasdump_exit(0);
-    Primitive_GC(table_top - saved_free);
+    Primitive_GC(table_end - saved_free);
   }
 
   tsize = (table_end - table_start);
@@ -485,8 +484,8 @@ Define_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
    file is loaded back using BAND_LOAD, PROCEDURE is called with an
    argument of NIL.
 */
-Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
-Define_Primitive(Prim_Band_Dump, 2, "DUMP-BAND")
+
+DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
 {
   extern Pointer compiler_utilities;
   Pointer Combination, *table_start, *table_end, *saved_free;

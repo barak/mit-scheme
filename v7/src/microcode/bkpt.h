@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.h,v 9.23 1987/04/16 02:08:44 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.h,v 9.24 1987/12/04 22:13:56 jinx Rel $
  *
  * This file contains breakpoint utilities.
  * Disabled when not debugging the interpreter.
@@ -77,7 +77,8 @@ typedef struct sp_record *sp_record_list;
 #if false
 /* This code disabled by SAS 6/24/86 */
 struct
-{ int nprims;
+{
+  int nprims;
   int primtime[1];
 } perfinfo_data;
 
@@ -85,16 +86,20 @@ void Clear_Perfinfo_Data()
 { int i;
   perfinfo_data.nprims = MAX_PRIMITIVE + 1;
   for (i = 0; i <= MAX_PRIMITIVE; i++)
+  {
     perfinfo_data.primtime[i] = 0;
+  }
 }
 
-#define Metering_Apply_Primitive(Loc, N)				\
-{									\
-  long Start_Time = Sys_Clock();					\
-									\
-  Loc = Apply_Primitive(N)						\
-  perfinfo_data.primtime[N] += Sys_Clock() - Start_Time;		\
-  Set_Time_Zone(Zone_Working);						\
+#define Metering_Apply_Primitive(Loc, prim)
+{
+  long Start_Time;
+
+  Start_Time = Sys_Clock();
+  Loc = Apply_Primitive(prim);
+  perfinfo_data.primtime[PRIMITIVE_NUMBER(prim)] +=
+    (Sys_Clock() - Start_Time);
+  Set_Time_Zone(Zone_Working);
 }
 #endif
 #endif /* ifdef ENABLE_DEBUGGING_TOOLS */

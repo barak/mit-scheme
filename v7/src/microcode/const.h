@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.25 1987/11/17 08:08:36 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.26 1987/12/04 22:14:55 jinx Rel $
  *
  * Named constants used throughout the interpreter
  *
@@ -115,6 +115,7 @@ MIT in each case. */
 #define PRIM_NO_TRAP_EVAL		-5
 #define PRIM_NO_TRAP_APPLY		-6
 #define PRIM_POP_RETURN			-7
+#define PRIM_TOUCH			-8
 
 /* Some numbers of parameters which mean something special */
 

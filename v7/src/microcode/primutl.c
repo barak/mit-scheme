@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.43 1987/11/18 19:30:52 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.44 1987/12/04 22:18:58 jinx Rel $
  *
  * This file contains the support routines for mapping primitive names
  * to numbers within the microcode.  Primitives are written in C
@@ -49,8 +49,8 @@ Pointer Undefined_Primitives_Arity = NIL;
 /* Common utilities. */
 
 /*
-  In primitive_name_to_code and primitive_code_to_name, size is really
-  1 less than size.  It is really the index of the last valid entry.
+  In primitive_name_to_code, size is really 1 less than size.
+  It is really the index of the last valid entry.
  */
 
 #if false
@@ -83,7 +83,7 @@ primitive_name_to_code(name, table, size)
   return ((long) (-1));
 }
 
-#else /* false */
+#else /* not false */
 
 /* This version performs a log (base 2) search.
    The table is assumed to be ordered alphabetically.
@@ -132,35 +132,30 @@ primitive_name_to_code(name, table, size)
 
 #endif /* false */
 
-char *
-primitive_code_to_name(code, table, size)
-     int code;
-     char *table[];
-     int size;
-{
-  if ((code > size) || (code < 0))
-  {
-    return ((char *) NULL);
-  }
-  else
-  {
-    return table[code];
-  }
-}
-
 long
-primitive_code_to_arity(code, table, size)
-     int code;
-     int table[];
-     int size;
+primitive_code_to_arity(number)
+     long number;
 {
-  if ((code > size) || (code < 0))
+  if (number <= MAX_PRIMITIVE)
   {
-    return ((long) -1);
+    return ((long) Primitive_Arity_Table[number]);
   }
   else
   {
-    return ((long) table[code]);
+    Pointer entry;
+    long arity;
+
+    entry = User_Vector_Ref(Undefined_Primitives_Arity,
+			    (number - MAX_PRIMITIVE));
+    if (entry == NIL)
+    {
+      return ((long) UNKNOWN_PRIMITIVE_ARITY);
+    }
+    else
+    {
+      Sign_Extend(entry, arity);
+    }
+    return (arity);
   }
 }
 
@@ -195,34 +190,10 @@ find_primitive(name, intern_p, allow_p, arity)
 extern long primitive_to_arity();
 
 long
-primitive_to_arity(code)
-     int code;
+primitive_to_arity(primitive)
+     Pointer primitive;
 {
-  if (code <= MAX_PRIMITIVE)
-  {
-    return
-      ((long)
-       (primitive_code_to_arity(code,
-				&Primitive_Arity_Table[0],
-				MAX_PRIMITIVE)));
-  }
-  else
-  {
-    Pointer entry;
-    long arity;
-
-    entry = User_Vector_Ref(Undefined_Primitives_Arity,
-			    (code - MAX_PRIMITIVE));
-    if (entry == NIL)
-    {
-      return ((long) UNKNOWN_PRIMITIVE_ARITY);
-    }
-    else
-    {
-      Sign_Extend(entry, arity);
-    }
-    return (arity);
-  }
+  return (primitive_code_to_arity(PRIMITIVE_NUMBER(primitive)));
 }
 
 extern long primitive_to_arguments();
@@ -233,12 +204,12 @@ extern long primitive_to_arguments();
  */
 
 long
-primitive_to_arguments(code)
-     long code;
+primitive_to_arguments(primitive)
+     Pointer primitive;
 {
   long arity;
 
-  arity = primitive_to_arity(code);
+  arity = primitive_code_to_arity(PRIMITIVE_NUMBER(primitive));
 
   if (arity == ((long) LEXPR_PRIMITIVE_ARITY))
   {
@@ -247,11 +218,9 @@ primitive_to_arguments(code)
   return (arity);
 }
 
-extern char *primitive_to_name();
-
 char *
-primitive_to_name(code)
-     int code;
+primitive_code_to_name(code)
+  int code;
 {
   char *string;
 
@@ -275,6 +244,15 @@ primitive_to_name(code)
     string = Scheme_String_To_C_String(scheme_string);
   }
   return (string);
+}
+
+extern char *primitive_to_name();
+
+char *
+primitive_to_name(primitive)
+     Pointer primitive;
+{
+  return (primitive_code_to_name(PRIMITIVE_NUMBER(primitive)));
 }
 
 /* this avoids some consing. */
@@ -322,7 +300,7 @@ search_for_primitive(scheme_name, c_name, intern_p, allow_p, arity)
     old_arity = Primitive_Arity_Table[i];
     if ((arity == UNKNOWN_PRIMITIVE_ARITY) || (arity == old_arity))
     {
-      return (Make_Non_Pointer(TC_PRIMITIVE, i));
+      return (MAKE_PRIMITIVE_OBJECT(0, i));
     }
     else
     {
@@ -368,7 +346,7 @@ search_for_primitive(scheme_name, c_name, intern_p, allow_p, arity)
 	    }
 	  }
 	}
-	return (Make_Non_Pointer(TC_PRIMITIVE, (MAX_PRIMITIVE + i)));
+	return (MAKE_PRIMITIVE_OBJECT((MAX_PRIMITIVE + i), (MAX_PRIMITIVE + 1)));
       }
     }
   }
@@ -439,7 +417,7 @@ search_for_primitive(scheme_name, c_name, intern_p, allow_p, arity)
     }
     User_Vector_Set(Undefined_Primitives, 0, (MAKE_UNSIGNED_FIXNUM(Max)));
   }
-  return (Make_Non_Pointer(TC_PRIMITIVE, (MAX_PRIMITIVE + Max)));
+  return (MAKE_PRIMITIVE_OBJECT((MAX_PRIMITIVE + Max), (MAX_PRIMITIVE + 1)));
 }
 
 /* Dumping and loading primitive object references. */
@@ -486,14 +464,16 @@ Pointer
 dump_renumber_primitive(primitive)
      fast Pointer primitive;
 {
+  fast long number;
   fast Pointer result;
 
-  result = internal_renumber_table[OBJECT_DATUM(primitive)];
+  number = PRIMITIVE_NUMBER(primitive);
+  result = internal_renumber_table[number];
   if (result == NIL)
   {
     result = Make_Non_Pointer(OBJECT_TYPE(primitive),
 			      next_primitive_renumber);
-    internal_renumber_table[OBJECT_DATUM(primitive)] = result;
+    internal_renumber_table[number] = result;
     external_renumber_table[next_primitive_renumber] = primitive;
     next_primitive_renumber += 1;
     return (result);
@@ -513,10 +493,10 @@ copy_primitive_information(code, start, end)
 
   if (start < end)
   {
-    *start++ = MAKE_SIGNED_FIXNUM(primitive_to_arity(((int) code)));
+    *start++ = MAKE_SIGNED_FIXNUM(primitive_code_to_arity(((int) code)));
   }
   return
-    copy_c_string_to_scheme_string(primitive_to_name(((int) code)),
+    copy_c_string_to_scheme_string(primitive_code_to_name(((int) code)),
 				   start,
 				   end);
 }
@@ -536,7 +516,7 @@ cons_primitive_table(start, end, length)
        ((count < next_primitive_renumber) && (start < end));
        count += 1)
   {
-    code = (OBJECT_DATUM(external_renumber_table[count]));
+    code = (PRIMITIVE_NUMBER(external_renumber_table[count]));
     start = copy_primitive_information(code, start, end);
   }
   return (start);

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.32 1987/11/17 08:14:38 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.33 1987/12/04 22:18:09 jinx Rel $ */
 
 /* Memory management top level.
 
@@ -377,8 +377,7 @@ void GC()
    have changed.
 */
 
-Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT", 0x3A)
-Define_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
+DEFINE_PRIMITIVE("GARBAGE-COLLECT", Prim_Garbage_Collect, 1)
 {
   Pointer GC_Daemon_Proc;
   Primitive_1_Arg();
@@ -406,17 +405,17 @@ Define_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
     Store_Expression(Make_Unsigned_Fixnum(MemTop - Free));
     Save_Cont();
    Pushed();
-    longjmp( *Back_To_Eval, PRIM_POP_RETURN);
+    PRIMITIVE_ABORT(PRIM_POP_RETURN);
     /*NOTREACHED*/
   }
- Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+1));
+ Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
   Store_Return(RC_NORMAL_GC_DONE);
   Store_Expression(Make_Unsigned_Fixnum(MemTop - Free));
   Save_Cont();
   Push(GC_Daemon_Proc);
   Push(STACK_FRAME_HEADER);
  Pushed();
-  longjmp(*Back_To_Eval, PRIM_APPLY);
+  PRIMITIVE_ABORT(PRIM_APPLY);
   /* The following comment is by courtesy of LINT, your friendly sponsor. */
   /*NOTREACHED*/
 }

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.36 1987/11/20 08:18:21 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.37 1987/12/04 22:17:11 jinx Rel $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -84,6 +84,15 @@ MIT in each case. */
  * ordered alphabetically by return code name.
  */
 
+#define Prepare_Pop_Return_Interrupt(Return_Code, Contents_of_Val)	\
+{									\
+  Store_Return(Return_Code);						\
+  Save_Cont();								\
+  Store_Return(RC_RESTORE_VALUE);					\
+  Store_Expression(Contents_of_Val);					\
+  Save_Cont();								\
+}
+
 #define Interrupt(Masked_Code)						\
 {									\
   Export_Registers();							\
@@ -98,6 +107,13 @@ MIT in each case. */
   Interrupt(PENDING_INTERRUPTS());					\
 }
 
+#define Eval_GC_Check(Amount)						\
+if (GC_Check(Amount))							\
+{									\
+  Prepare_Eval_Repeat();						\
+  Immediate_GC(Amount);							\
+}
+
 #define Prepare_Eval_Repeat()						\
 {									\
  Will_Push(CONTINUATION_SIZE+1);					\
@@ -105,13 +121,6 @@ MIT in each case. */
   Store_Return(RC_EVAL_ERROR);						\
   Save_Cont();								\
  Pushed();								\
-}
-
-#define Eval_GC_Check(Amount)						\
-if (GC_Check(Amount))							\
-{									\
-  Prepare_Eval_Repeat();						\
-  Immediate_GC(Amount);							\
 }
 
 #define Eval_Error(Err)							\
@@ -130,13 +139,11 @@ if (GC_Check(Amount))							\
   goto Internal_Apply;							\
 }
 
-#define Prepare_Pop_Return_Interrupt(Return_Code, Contents_of_Val)	\
+#define BACK_OUT_AFTER_PRIMITIVE()					\
 {									\
-  Store_Return(Return_Code);						\
-  Save_Cont();								\
-  Store_Return(RC_RESTORE_VALUE);					\
-  Store_Expression(Contents_of_Val);					\
-  Save_Cont();								\
+  Export_Registers();							\
+  Back_Out_Of_Primitive();						\
+  Import_Registers();							\
 }
 
 #define Reduces_To(Expr)						\
@@ -182,22 +189,23 @@ if (GC_Check(Amount))							\
 
 #ifdef COMPILE_FUTURES
 
-/* Arg_Type_Error handles the error returns from primitives which type check
-   their arguments and restarts them or suspends if the argument is a future. */
+/* ARG_TYPE_ERROR handles the error returns from primitives which type check
+   their arguments and restarts them or suspends if the argument is a future.
+ */
 
-#define Arg_Type_Error(Arg_No, Err_No)					\
+#define ARG_TYPE_ERROR(Arg_No, Err_No)					\
 {									\
   fast Pointer *Arg, Orig_Arg;						\
 									\
-  Arg = &(Stack_Ref(Arg_No-1));						\
+  Arg = &(Stack_Ref((Arg_No - 1) + STACK_ENV_FIRST_ARG));		\
   Orig_Arg = *Arg;							\
 									\
-  if (Type_Code(*Arg) != TC_FUTURE)					\
+  if (OBJECT_TYPE(*Arg) != TC_FUTURE)					\
   {									\
     Pop_Return_Error(Err_No);						\
   }									\
 									\
-  while ((Type_Code(*Arg) == TC_FUTURE) && (Future_Has_Value(*Arg)))	\
+  while ((OBJECT_TYPE(*Arg) == TC_FUTURE) && (Future_Has_Value(*Arg)))	\
   {									\
     if (Future_Is_Keep_Slot(*Arg))					\
     {									\
@@ -205,17 +213,12 @@ if (GC_Check(Amount))							\
     }									\
     *Arg = Future_Value(*Arg);						\
   }									\
-  if (Type_Code(*Arg) != TC_FUTURE)					\
+  if (OBJECT_TYPE(*Arg) != TC_FUTURE)					\
   {									\
     goto Apply_Non_Trapping;						\
   }									\
 									\
-  Save_Cont();								\
- Will_Push(STACK_ENV_EXTRA_SLOTS+2);					\
-  Push(*Arg);			/* Arg 1: The future itself */		\
-  Push(Get_Fixed_Obj_Slot(System_Scheduler));				\
-  Push(STACK_FRAME_HEADER+1);						\
- Pushed();								\
+  TOUCH_SETUP(*Arg);							\
   *Arg = Orig_Arg;							\
   goto Apply_Non_Trapping;						\
 }
@@ -237,19 +240,16 @@ if (GC_Check(Amount))							\
     if (Future_Has_Value(*Arg))						\
     {									\
       if (Future_Is_Keep_Slot(*Arg))					\
+      {									\
 	Log_Touch_Of_Future(*Arg);					\
+      }									\
       *Arg = Future_Value(*Arg);					\
     }									\
     else								\
     {									\
-     Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+2));		\
       Store_Return(RC_INTERNAL_APPLY);					\
       Val = NIL;							\
-      Save_Cont();							\
-      Push(*Arg);							\
-      Push(Get_Fixed_Obj_Slot(System_Scheduler));			\
-      Push(STACK_FRAME_HEADER+1);					\
-     Pushed();								\
+      TOUCH_SETUP(*Arg);						\
       *Arg = Orig_Answer;						\
       goto Internal_Apply;						\
     }									\
@@ -268,39 +268,109 @@ if (GC_Check(Amount))							\
 {									\
   fast Pointer Orig_Val = Val;						\
 									\
-  while (Type_Code(Val) == TC_FUTURE)					\
+  while (OBJECT_TYPE(Val) == TC_FUTURE)					\
   {									\
     if (Future_Has_Value(Val))						\
     {									\
       if (Future_Is_Keep_Slot(Val))					\
+      {									\
 	Log_Touch_Of_Future(Val);					\
+      }									\
       Val = Future_Value(Val);						\
     }									\
     else								\
     {									\
       Save_Cont();							\
-     Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+2));		\
+     Will_Push(CONTINUATION_SIZE +  + (STACK_ENV_EXTRA_SLOTS + 2));	\
       Store_Return(RC_RESTORE_VALUE);					\
       Store_Expression(Orig_Val);					\
       Save_Cont();							\
       Push(Val);							\
       Push(Get_Fixed_Obj_Slot(System_Scheduler));			\
-      Push(STACK_FRAME_HEADER+1);					\
+      Push(STACK_FRAME_HEADER + 1);					\
      Pushed();								\
       goto Internal_Apply;						\
     }									\
   }									\
 }
+
+/* This saves stuff unnecessarily in most cases.
+   For example, when Which_Way is PRIM_APPLY, Val, Env, Expr,
+   and Return_Code are undefined.
+ */
 
-#else			/* Not compiling FUTURES code */
+#define LOG_FUTURES()							\
+{									\
+  if (Must_Report_References())						\
+  {									\
+    Save_Cont();							\
+   Will_Push(CONTINUATION_SIZE + 2);					\
+    Push(Val);								\
+    Save_Env();								\
+    Store_Return(RC_REPEAT_DISPATCH);					\
+    Store_Expression(MAKE_SIGNED_FIXNUM(CODE_MAP(Which_Way)));		\
+    Save_Cont();							\
+   Pushed();								\
+    Call_Future_Logging();						\
+ }									\
+}
+
+#else /* not COMPILE_FUTURES */
 
 #define Pop_Return_Val_Check()		
-#define Apply_Future_Check(Name, Object)	Name = (Object)
-#define Arg_Type_Error(Arg_No, Err_No)		Pop_Return_Error(Err_No)
 
-#endif
+#define Apply_Future_Check(Name, Object)	Name = (Object)
+
+#define ARG_TYPE_ERROR(Arg_No, Err_No)					\
+{									\
+  Pop_Return_Error(Err_No)						\
+}
+
+#define LOG_FUTURES()
+
+#endif /* COMPILE_FUTURES */
 
-/* The EVAL/APPLY ying/yang */
+/* Notes on Repeat_Dispatch:
+
+   The codes used (values of Which_Way) are divided into two groups:
+   Those for which the primitive has already backed out, and those for
+   which the back out code has not yet been executed, and is therefore
+   executed below.
+
+   Under most circumstances the distinction is moot, but if there are
+   futures in the system, and future touches must be logged, the code
+   must be set up to "interrupt" the dispatch, and proceed it later.
+   The primitive back out code must be done before the furure is
+   logged, so all of these codes are split into two versions: one set
+   before doing the back out, and another afterwards.
+ */
+
+/* This is assumed to be larger (in absolute value) than any PRIM_<mumble>
+   and ERR_<mumble>.
+ */
+#define PRIM_BIAS_AMOUNT 1000
+
+#if (MAX_ERROR >= PRIM_BIAS_AMOUNT)
+#include "Inconsistency: errors.h and interp.c"
+#endif
+
+#define CODE_MAP(code)							\
+((code < 0) ?								\
+ (code - PRIM_BIAS_AMOUNT) :						\
+ (code + PRIM_BIAS_AMOUNT))
+
+#define CODE_UNMAP(code)						\
+((code < 0) ?								\
+ (code + PRIM_BIAS_AMOUNT) :						\
+ (code - PRIM_BIAS_AMOUNT))
+
+#define CODE_MAPPED_P(code)						\
+((code < (- PRIM_BIAS_AMOUNT)) ||					\
+ (code >= PRIM_BIAS_AMOUNT))
+
+/*
+  The EVAL/APPLY ying/yang
+ */
 
 void
 Interpret(dumped_p)
@@ -315,72 +385,103 @@ Interpret(dumped_p)
 
   Reg_Block = &Registers[0];
 
-  /* Primitives jump back here for errors, requests to
-   * evaluate an expression, apply a function, or handle an
-   * interrupt request. On errors or interrupts they leave
-   * their arguments on the stack, the primitive itself in
-   * Expression, and a RESTART_PRIMITIVE continuation in the
-   * return register.  In the other cases, they have removed
-   * their stack frames entirely.
+  /* Primitives jump back here for errors, requests to evaluate an
+   * expression, apply a function, or handle an interrupt request.  On
+   * errors or interrupts they leave their arguments on the stack, the
+   * primitive itself in Expression.  The code should do a primitive
+   * backout in these cases, but not in others (apply, eval, etc.), since
+   * the primitive itself will have left the state of the interpreter ready
+   * for operation.
    */
 
   Which_Way = setjmp(*Back_To_Eval);
   Set_Time_Zone(Zone_Working);
   Import_Registers();
-  if (Must_Report_References())
-  { Save_Cont();
-   Will_Push(CONTINUATION_SIZE + 2);
-    Push(Val);
-    Save_Env();
-    Store_Return(RC_REPEAT_DISPATCH);
-    Store_Expression(Make_Non_Pointer(TC_FIXNUM, Which_Way));
-    Save_Cont();
-   Pushed();
-    Call_Future_Logging();
-  }
 
 Repeat_Dispatch:
   switch (Which_Way)
-  { case PRIM_APPLY:
+  {
+    case PRIM_APPLY:
+      LOG_FUTURES();
       goto Internal_Apply;
 
     case PRIM_NO_TRAP_APPLY:
+      LOG_FUTURES();
       goto Apply_Non_Trapping;
 
     case PRIM_DO_EXPRESSION:
+      LOG_FUTURES();
       Reduces_To(Fetch_Expression());
 
     case PRIM_NO_TRAP_EVAL:
-      New_Reduction(Fetch_Expression(),Fetch_Env());
+      LOG_FUTURES();
+      New_Reduction(Fetch_Expression(), Fetch_Env());
       goto Eval_Non_Trapping;
 
-    case 0:
-      if (!dumped_p)
+    case 0:			/* first time */
+      if (dumped_p)
       {
-	break;
+	goto Pop_Return;
       }
-      /* Else fall through */
+      else
+      {
+	break;			/* fall into eval */
+      }
 
     case PRIM_POP_RETURN:
+      LOG_FUTURES();
       goto Pop_Return;
-
-    default:
-      Pop_Return_Error(Which_Way);
+
+    case PRIM_TOUCH:
+      BACK_OUT_AFTER_PRIMITIVE();
+      LOG_FUTURES();
+      /* fall through */
+    case CODE_MAP(PRIM_TOUCH):
+      TOUCH_SETUP(Val);
+      goto Internal_Apply;
 
     case PRIM_INTERRUPT:
-    {
+      BACK_OUT_AFTER_PRIMITIVE();
+      LOG_FUTURES();
+      /* fall through */
+    case CODE_MAP(PRIM_INTERRUPT):
       Save_Cont();
       Interrupt(PENDING_INTERRUPTS());
-    }
 
     case ERR_ARG_1_WRONG_TYPE:
-      Arg_Type_Error(1, ERR_ARG_1_WRONG_TYPE);
+      BACK_OUT_AFTER_PRIMITIVE();
+      LOG_FUTURES();
+      /* fall through */
+    case CODE_MAP(ERR_ARG_1_WRONG_TYPE):
+      ARG_TYPE_ERROR(1, ERR_ARG_1_WRONG_TYPE);
 
     case ERR_ARG_2_WRONG_TYPE:
-      Arg_Type_Error(2, ERR_ARG_2_WRONG_TYPE);
+      BACK_OUT_AFTER_PRIMITIVE();
+      LOG_FUTURES();
+      /* fall through */
+    case CODE_MAP(ERR_ARG_2_WRONG_TYPE):
+      ARG_TYPE_ERROR(2, ERR_ARG_2_WRONG_TYPE);
 
     case ERR_ARG_3_WRONG_TYPE:
-      Arg_Type_Error(3, ERR_ARG_3_WRONG_TYPE);
+      BACK_OUT_AFTER_PRIMITIVE();
+      LOG_FUTURES();
+      /* fall through */
+    case CODE_MAP(ERR_ARG_3_WRONG_TYPE):
+      ARG_TYPE_ERROR(3, ERR_ARG_3_WRONG_TYPE);
+  
+    default:
+    {
+      if (!CODE_MAPPED_P(Which_Way))
+      {
+	BACK_OUT_AFTER_PRIMITIVE();
+	LOG_FUTURES();
+      }
+      else
+      {
+	Which_Way = CODE_UNMAP(Which_Way);
+      }
+      Pop_Return_Error(Which_Way);
+    }
   }
 
 Do_Expression:
@@ -1169,7 +1270,7 @@ external_assignment_return:
         Reduces_To_Nth(IN_PACKAGE_EXPRESSION);
       }
       Pop_Return_Error(ERR_BAD_FRAME);
-
+
 #ifdef COMPILE_FUTURES
     case RC_FINISH_GLOBAL_INT:
       Export_Registers();
@@ -1178,23 +1279,13 @@ external_assignment_return:
       break;
 #endif
 
-    case RC_GC_CHECK:
-      if (Get_Integer(Fetch_Expression()) > Space_Before_GC())
-	{
-	  Export_Registers();
-	  Microcode_Termination(TERM_GC_OUT_OF_SPACE);
-	}
-      break;
-
     case RC_HALT:
       Export_Registers();
       Microcode_Termination(TERM_TERM_HANDLER);
 
-    case RC_INTERNAL_APPLY:
 
-Internal_Apply:
-
-/* Branch here to perform a function application.  
+/* Internal_Apply, the core of the application mechanism.
+   Branch here to perform a function application.  
 
    At this point the top of the stack contains an application frame
    which consists of the following elements (see sdata.h):
@@ -1226,6 +1317,9 @@ Internal_Apply:
 
 /* Interpret(), continued */
 
+    case RC_INTERNAL_APPLY:
+Internal_Apply:
+
       if (Microcode_Does_Stepping && Trapping &&
 	  (Fetch_Apply_Trapper() != NIL))
       {
@@ -1233,7 +1327,7 @@ Internal_Apply:
 
 	Count = Get_Integer(Stack_Ref(STACK_ENV_HEADER));
         Top_Of_Stack() = Fetch_Apply_Trapper();
-        Push(STACK_FRAME_HEADER+Count);
+        Push(STACK_FRAME_HEADER + Count);
         Stop_Trapping();
       }      
 
@@ -1346,32 +1440,31 @@ Perform_Application:
 
           case TC_PRIMITIVE:
           { 
-	    long nargs;
-	    fast long primitive_code;
+	    fast long nargs;
 
-	    primitive_code = OBJECT_DATUM(Function);
-	    if (primitive_code > MAX_PRIMITIVE)
+	    if (!IMPLEMENTED_PRIMITIVE_P(Function))
 	    {
 	      Apply_Error(ERR_UNIMPLEMENTED_PRIMITIVE);
 	    }
 
-	    /* Note that the test below will fail for lexpr primitives. */
+	    /* Note that the first test below will fail for lexpr primitives. */
  
-	    nargs = (OBJECT_DATUM(Stack_Ref(STACK_ENV_HEADER)) -
-		     (STACK_ENV_FIRST_ARG - 1));     
-            if (nargs != PRIMITIVE_ARITY(primitive_code))
+	    nargs = ((OBJECT_DATUM(Stack_Ref(STACK_ENV_HEADER))) -
+		     (STACK_ENV_FIRST_ARG - 1));
+            if (nargs != PRIMITIVE_ARITY(Function))
 	    {
-	      if (PRIMITIVE_ARITY(primitive_code) != LEXPR_PRIMITIVE_ARITY)
+	      if (PRIMITIVE_ARITY(Function) != LEXPR_PRIMITIVE_ARITY)
 	      {
 		Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
 	      }
 	      Regs[REGBLOCK_LEXPR_ACTUALS] = ((Pointer) nargs);
 	    }
+
             Stack_Pointer = Simulate_Popping(STACK_ENV_FIRST_ARG);
             Store_Expression(Function);
 
 	    Export_Regs_Before_Primitive();
-	    Metering_Apply_Primitive(Val, primitive_code);
+	    Metering_Apply_Primitive(Val, Function);
 	    Import_Regs_After_Primitive();
 
 	    Pop_Primitive_Frame(nargs);
@@ -1531,12 +1624,9 @@ return_from_compiled_code:
 	      /* This error code means that compiled code
 		 attempted to call an unimplemented primitive.
 	       */
-	      extern void Back_Out_Of_Primitive();
 
-	      Export_Registers();
-	      Back_Out_Of_Primitive();
-	      Import_Registers();
-	      goto Repeat_Dispatch;
+	      BACK_OUT_AFTER_PRIMITIVE();
+	      Pop_Return_Error( ERR_UNIMPLEMENTED_PRIMITIVE);
 	    }
 
 	    case ERR_EXECUTE_MANIFEST_VECTOR:
@@ -1639,14 +1729,15 @@ return_from_compiled_code:
 
     case RC_NORMAL_GC_DONE:
       End_GC_Hook();
+      if (GC_Space_Needed < 0)
+      {
+	/* Paranoia */
+
+	GC_Space_Needed = 0;
+      }
       if (GC_Check(GC_Space_Needed))
-      { fprintf(stderr,
-		"\nGC just ended.  The free pointer is at 0x%x, the top of this heap\n",
-		Free);
-	fprintf(stderr,
-		"is at 0x%x, and we are trying to cons 0x%x objects.  Dead!\n",
-		MemTop, GC_Space_Needed);
-	Microcode_Termination(TERM_NO_SPACE);
+      {
+	Microcode_Termination(TERM_GC_OUT_OF_SPACE);
       }
       GC_Space_Needed = 0;
       Val = Fetch_Expression();
@@ -1669,32 +1760,30 @@ Primitive_Internal_Apply:
         Push(Fetch_Expression());
         Push(Fetch_Apply_Trapper());
         Push(STACK_FRAME_HEADER + 1 +
-	     PRIMITIVE_N_PARAMETERS(OBJECT_DATUM(Fetch_Expression())));
+	     PRIMITIVE_N_PARAMETERS(Fetch_Expression()));
        Pushed();
         Stop_Trapping();
 	goto Apply_Non_Trapping;
       }
+
       /* NOTE: This code must match the code in the TC_PRIMITIVE
 	 case of Internal_Apply.
-	 This code is simpler because it need not deal with lexpr
-	 primitives.
+	 This code is simpler because:
+	 1) The arity was checked at syntax time.
+	 2) We don't have to deal with "lexpr" primitives.
+	 3) We don't need to worry about unimplemented primitives because
+	    unimplemented primitives will cause an error at invocation.
        */
+
       {
-	fast long primitive_code;
+	fast Pointer primitive;
 
-	primitive_code = OBJECT_DATUM(Fetch_Expression());
-	if (primitive_code > MAX_PRIMITIVE)
-	{
-	  Push(Fetch_Expression());
-	  Push(STACK_FRAME_HEADER + PRIMITIVE_N_PARAMETERS(primitive_code));
-	  Apply_Error(ERR_UNIMPLEMENTED_PRIMITIVE);
-	}
-
+	primitive = Fetch_Expression();
 	Export_Regs_Before_Primitive();
-	Metering_Apply_Primitive(Val, primitive_code);
+	Metering_Apply_Primitive(Val, primitive);
 	Import_Regs_After_Primitive();
 
-	Pop_Primitive_Frame(PRIMITIVE_ARITY(primitive_code));
+	Pop_Primitive_Frame(PRIMITIVE_ARITY(primitive));
 	if (Must_Report_References())
 	{
 	  Store_Expression(Val);
@@ -1729,7 +1818,9 @@ Primitive_Internal_Apply:
 /* Interpret(), continued */
 
     case RC_PCOMB3_DO_1:
-    { Pointer Temp;
+    {
+      Pointer Temp;
+
       Temp = Pop();		/* Value of arg. 3 */
       Restore_Env();
       Push(Temp);		/* Save arg. 3 again */
@@ -1752,12 +1843,15 @@ Primitive_Internal_Apply:
 /* Interpret(), continued */
 
     case RC_PURIFY_GC_1:
-    { Pointer GC_Daemon_Proc, Result;
+    {
+      Pointer GC_Daemon_Proc, Result;
+
       Export_Registers();
       Result = Purify_Pass_2(Fetch_Expression());
       Import_Registers();
       if (Result == NIL)
-      { /* The object does not fit in Constant space.
+      {
+	/* The object does not fit in Constant space.
 	   There is no need to run the daemons, and we should let the runtime
 	   system know what happened.
 	 */
@@ -1765,8 +1859,9 @@ Primitive_Internal_Apply:
         break;
       }
       GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
-      if (GC_Daemon_Proc==NIL)
-      { Val = TRUTH;
+      if (GC_Daemon_Proc == NIL)
+      {
+	Val = TRUTH;
         break;
       }
       Store_Expression(NIL);
@@ -1831,10 +1926,13 @@ Primitive_Internal_Apply:
 /* Interpret(), continued */
 
     case RC_RESTORE_HISTORY:
-    { Pointer Stacklet;
+    {
+      Pointer Stacklet;
+
       Export_Registers();
       if (! Restore_History(Fetch_Expression()))
-      { Import_Registers();
+      {
+	Import_Registers();
         Save_Cont();
        Will_Push(CONTINUATION_SIZE);
         Store_Expression(Val);

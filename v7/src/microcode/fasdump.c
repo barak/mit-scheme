@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.31 1987/11/17 08:09:49 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.32 1987/12/04 22:16:00 jinx Rel $
 
    This file contains code for fasdump and dump-band.
 */
@@ -233,8 +233,8 @@ Fasdump_Exit()
 
    The code for dumping pure is severely broken and conditionalized out.
 */
-Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
-Define_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
+
+DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
 {
   Pointer Object, File_Name, Flag, *New_Object;
   Pointer *table_start, *table_end;
@@ -265,7 +265,7 @@ Define_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
   table_start = initialize_primitive_table(Free, table_end);
   if (table_start >= table_end)
   {
-    Primitive_GC(table_end - table_start);
+    Primitive_GC(table_start - Free);
   }
 
   Fasdump_Free_Calc(NewFree, NewMemTop, Orig_New_Free);
@@ -365,8 +365,8 @@ Define_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
    file is loaded back using BAND_LOAD, PROCEDURE is called with an
    argument of NIL.
 */
-Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
-Define_Primitive(Prim_Band_Dump, 2, "DUMP-BAND")
+
+DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
 {
   extern Pointer compiler_utilities;
   Pointer Combination, *table_start, *table_end, *saved_free;

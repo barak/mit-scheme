@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.26 1987/11/17 08:08:55 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.27 1987/12/04 22:15:07 jinx Rel $
  *
  * Utilities to help with debugging
  */
@@ -201,27 +201,36 @@ Pointer Ptr;
     printf("[0x%x]", index);
 }
 
-void Print_Return(String)
-char *String;
-{ printf("%s: ", String);
+void
+Print_Return(String)
+     char *String;
+{
+  printf("%s: ", String);
   Print_Return_Name(Fetch_Return());
   CRLF();
 }
 
 extern Boolean Prt_PName();
 
-void Print_Expression(Expr, String)
-char *String;
-Pointer Expr;
-{ if (String[0] != 0) printf("%s: ", String);
+void
+Print_Expression(Expr, String)
+     char *String;
+     Pointer Expr;
+{
+  if (String[0] != 0)
+  {
+    printf("%s: ", String);
+  }
   Do_Printing(Expr, true);
 }
 
 Do_Printing(Expr, Detailed)
-Pointer Expr;
-Boolean Detailed;
-{ long Temp_Address;
+     Pointer Expr;
+     Boolean Detailed;
+{
+  long Temp_Address;
   Boolean Return_After_Print;
+
   Temp_Address = Get_Integer(Expr);
   Return_After_Print = false;
   switch(Type_Code(Expr))
@@ -244,8 +253,9 @@ Boolean Detailed;
       printf("\"");
       Length = ((long) (Vector_Ref(Expr, STRING_LENGTH)));
       Next = (char *) Nth_Vector_Loc(Expr, STRING_CHARS);
-      for (i=0; i < Length; i++)
-      { This = *Next++;
+      for (i = 0; i < Length; i++)
+      {
+	This = *Next++;
         printf((This < ' ') || (This > '|') ? "\\%03o" : "%c",
                 This);
       }
@@ -275,7 +285,7 @@ Boolean Detailed;
     case TC_LIST: List_Print(Expr); return;
 
     case TC_NULL:
-      if (Temp_Address==0)
+      if (Temp_Address == 0)
       { printf("()");
         return;
       }
@@ -378,17 +388,19 @@ SPrint:
       return;
     }
     case TC_EXTENDED_LAMBDA:
-      if (Detailed) printf("[EXTENDED_LAMBDA (");
-      Do_Printing(
-        Vector_Ref(
-          Vector_Ref(Expr, ELAMBDA_NAMES),
-	  1), false);
-      if (Detailed) printf(") 0x%x", Temp_Address);
+      if (Detailed)
+	printf("[EXTENDED_LAMBDA (");
+      Do_Printing(Vector_Ref(Vector_Ref(Expr, ELAMBDA_NAMES), 1), false);
+      if (Detailed)
+	printf(") 0x%x", Temp_Address);
       return;
+
     case TC_EXTENDED_PROCEDURE:
-      if (Detailed) printf("[EXTENDED_PROCEDURE (");
+      if (Detailed)
+	printf("[EXTENDED_PROCEDURE (");
       Do_Printing(Vector_Ref(Expr, PROCEDURE_LAMBDA_EXPR), false);
-      if (Detailed) printf(") 0x%x]", Temp_Address);
+      if (Detailed)
+	printf(") 0x%x]", Temp_Address);
       break;
 
 /* Do_Printing continues on the next page */
@@ -423,7 +435,7 @@ SPrint:
     case TC_PCOMB2: printf("[PCOMB2"); break;
     case TC_PCOMB3: printf("[PCOMB3"); break;
     case TC_PRIMITIVE:
-      printf("[PRIMITIVE "); Prt_PName(Temp_Address);
+      printf("[PRIMITIVE "); Prt_PName(Expr);
       printf("]"); return;
     case TC_PROCEDURE:
       if (Detailed)
@@ -463,7 +475,8 @@ SPrint:
     case TC_THE_ENVIRONMENT: printf("[THE_ENVIRONMENT"); break;
     case TC_TRUE:
       if (Temp_Address == 0)
-      { printf("#!true");
+      {
+	printf("#T");
         return;
       }
       printf("[TRUE");
@@ -567,16 +580,16 @@ Print_Stack(SP)
 }
 
 Boolean 
-Prt_PName(Number)
-     long Number;
+Prt_PName(primitive)
+     Pointer primitive;
 {
   extern char *primitive_to_name();
   char *name;
 
-  name = primitive_to_name(Number);
+  name = primitive_to_name(primitive);
   if (name == ((char *) NULL))
   {
-    printf("Unknown primitive 0x%08x", Number);
+    printf("Unknown primitive 0x%08x", PRIMITIVE_NUMBER(primitive));
     return false;
   }
   else
@@ -586,8 +599,8 @@ Prt_PName(Number)
   }
 }
 
-void Print_Primitive(Number)
-     long Number;
+void Print_Primitive(primitive)
+     Pointer primitive;
 {
 
   extern long primitive_to_arity();
@@ -595,10 +608,14 @@ void Print_Primitive(Number)
   int NArgs, i;
 
   printf("Primitive: ");
-  if (Prt_PName(Number))
-    NArgs = primitive_to_arity(Number);
+  if (Prt_PName(primitive))
+  {
+    NArgs = primitive_to_arity(primitive);
+  }
   else
+  {
     NArgs = 3;	        /* Unknown primitive */
+  }
   printf("\n");
 
   for (i = 0; i < NArgs; i++)
@@ -611,8 +628,9 @@ void Print_Primitive(Number)
 }
 
 Debug_Printer(Expr)
-Pointer Expr;
-{ Print_Expression(Expr, "");
+     Pointer Expr;
+{
+  Print_Expression(Expr, "");
   putchar('\n');
 }
 

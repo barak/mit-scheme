@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.38 1987/11/17 08:14:59 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.39 1987/12/04 22:18:35 jinx Rel $ */
 
 /*
    Primitive declarations.
@@ -41,6 +41,7 @@ MIT in each case. */
 
 extern Pointer (*(Primitive_Procedure_Table[]))();
 extern int Primitive_Arity_Table[];
+extern int Primitive_Count_Table[];
 extern char *Primitive_Name_Table[];
 extern long MAX_PRIMITIVE;
 
