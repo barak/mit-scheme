@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prdosenv.c,v 1.6 1992/10/01 18:51:28 jinx Exp $
+$Id: prdosenv.c,v 1.7 1992/10/02 01:48:18 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -61,43 +61,35 @@ DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
   }
 }
 
-DEFINE_PRIMITIVE ("GET-USER-HOME-DIRECTORY", Prim_get_user_home_directory, 1, 1,
-  "Return the file name of a given user's home directory.\n\
-The user name argument must be a string.\n\
-If no such user is known, #F is returned.")
+DEFINE_PRIMITIVE ("DOS-SET-KEYBOARD-MODIFIER-MASK!", Prim_dos_set_kbd_mod_mask,
+		  1, 1,
+		  "Set the keyboard modifier mask")
 {
+  extern unsigned char EXFUN (dos_set_kbd_modifier_mask, (unsigned char));
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) "c:\\"));
+  
+  PRIMITIVE_RETURN (long_to_integer
+		    ((long)
+		     (dos_set_kbd_modifier_mask ((unsigned char)
+						 (arg_integer (1))))));
 }
 
-DEFINE_PRIMITIVE ("UID->STRING", Prim_uid_to_string, 1, 1,
-  "Return the user name corresponding to UID.\n\
-If the argument is not a known user ID, #F is returned.")
+DEFINE_PRIMITIVE ("DOS-SET-KEYBOARD-TRANSLATION!",
+		  Prim_dos_set_keyboard_translation,
+		  3, 3, 0)
 {
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (SHARP_F);
-}
+  int result;
+  extern int EXFUN (dos_set_kbd_translation,
+		    (unsigned, unsigned, unsigned char));
+  PRIMITIVE_HEADER (3);
+  
+  result = (dos_set_kbd_translation (((unsigned) (arg_integer (1))),
+				     ((unsigned) (arg_integer (2))),
+				     ((unsigned char) (arg_integer (3)))));
+  if (result < 0)
+    error_bad_range_arg (2);
 
-DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1, 1,
-  "Return the group name corresponding to GID.\n\
-If the argument is not a known group ID, #F is returned.")
-{
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (SHARP_F);
-}
-
-DEFINE_PRIMITIVE ("CURRENT-UID", Prim_current_uid, 0, 0,
-  "Return Scheme's effective UID.")
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer (0));
-}
-
-DEFINE_PRIMITIVE ("CURRENT-GID", Prim_current_gid, 0, 0,
-  "Return Scheme's effective GID.")
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer (0));
+  PRIMITIVE_RETURN (long_to_integer ((long) result));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM", Prim_system, 1, 1,
@@ -146,36 +138,5 @@ Wait until the command terminates, returning its exit status as an integer.")
 			    (arg_io_spec (4))));
   if (result < -1)
     error_external_return ();
-  PRIMITIVE_RETURN (long_to_integer ((long) result));
-}
-
-DEFINE_PRIMITIVE ("DOS-SET-KEYBOARD-MODIFIER-MASK!", Prim_dos_set_kbd_mod_mask,
-		  1, 1,
-		  "Set the keyboard modifier mask")
-{
-  extern unsigned char EXFUN (dos_set_kbd_modifier_mask, (unsigned char));
-  PRIMITIVE_HEADER (1);
-  
-  PRIMITIVE_RETURN (long_to_integer
-		    ((long)
-		     (dos_set_kbd_modifier_mask ((unsigned char)
-						 (arg_integer (1))))));
-}
-
-DEFINE_PRIMITIVE ("DOS-SET-KEYBOARD-TRANSLATION!",
-		  Prim_dos_set_keyboard_translation,
-		  3, 3, 0)
-{
-  int result;
-  extern int EXFUN (dos_set_kbd_translation,
-		    (unsigned, unsigned, unsigned char));
-  PRIMITIVE_HEADER (3);
-  
-  result = (dos_set_kbd_translation (((unsigned) (arg_integer (1))),
-				     ((unsigned) (arg_integer (2))),
-				     ((unsigned char) (arg_integer (3)))));
-  if (result < 0)
-    error_bad_range_arg (2);
-
   PRIMITIVE_RETURN (long_to_integer ((long) result));
 }
