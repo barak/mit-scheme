@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cf-dist.h,v 1.18 1993/10/26 23:08:20 gjr Exp $
+$Id: cf-dist.h,v 1.19 1993/11/09 16:11:44 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ MIT in each case. */
    a native back end (if one exists). 
 */
 
-#define C_BACK_END 0
+#define BACK_END_TYPE 2
 
 #define PROC_TYPE_UNKNOWN	0
 #define PROC_TYPE_68000		1
@@ -53,7 +53,11 @@ MIT in each case. */
 #define PROC_TYPE_POWER		12	/* IBM RS6000 and PowerPC */
 #define PROC_TYPE_LIARC		13	/* Scheme compiled to C */
 
-#if (C_BACK_END)
+#if (BACK_END_TYPE == 0)
+#define PROC_TYPE PROC_TYPE_UNKNOWN
+#endif
+
+#if (BACK_END_TYPE == 1)
 #define PROC_TYPE PROC_TYPE_LIARC
 #endif
 

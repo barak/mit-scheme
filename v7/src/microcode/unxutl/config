@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Id: config,v 1.27 1993/11/08 06:12:49 gjr Exp $
+# $Id: config,v 1.28 1993/11/09 16:11:39 gjr Exp $
 # Modelled on the configuration script for GNU CC
 # The section between lines is the copyright prefix from the GNU CC config.
 #----------------------------------------------------------------------
@@ -28,7 +28,7 @@
 # Shell script to create proper links to machine-dependent files in
 # preparation for compiling gcc.
 #
-# Usage: config [-C-back-end | -native-back-end] machine
+# Usage: config [-C-back-end | -native-back-end | -no-back-end] machine
 #
 # If config succeeds, it leaves its status in config.out.
 # If config fails after disturbing the status quo, 
@@ -37,7 +37,7 @@
 
 usage()
 {
-	echo "Usage: $progname [-C-back-end | -native-back-end] machine"
+	echo "Usage: $progname [-C-back-end | -native-back-end | -no-back-end] machine"
 	echo "Where \`machine' is one of:"
 	echo "alpha-osf alpha"
 	echo "mips-ultrix nws3250 sgi4d"
@@ -334,7 +334,7 @@ case $# in
 		cmpaux_target=cmpauxmd.c
 		perform $*
 		$move cf.h cf-orig.h
-		$edit 's/C_BACK_END 0/C_BACK_END 1/' <cf-orig.h >cf.h
+		$edit 's/BACK_END_TYPE 2/BACK_END_TYPE 1/' <cf-orig.h >cf.h
 		$remove -f cf-orig.h
 		exit 0
 		;;
@@ -343,6 +343,22 @@ case $# in
 		shift
 		discriminate $*
 		perform $*
+		$move cf.h cf-orig.h
+		$edit 's/BACK_END_TYPE 2/BACK_END_TYPE 2/' <cf-orig.h >cf.h
+		$remove -f cf-orig.h
+		exit 0
+		;;
+
+	-no-back-end)
+		shift
+		discriminate $*
+		cmpint_file=nothing_special
+		cmpaux_file=nothing_special
+		cmpaux_target=cmpauxmd.c
+		perform $*
+		$move cf.h cf-orig.h
+		$edit 's/BACK_END_TYPE 2/BACK_END_TYPE 0/' <cf-orig.h >cf.h
+		$remove -f cf-orig.h
 		exit 0
 		;;
 
