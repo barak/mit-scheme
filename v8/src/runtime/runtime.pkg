@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.248 1995/03/01 21:58:07 adams Exp $
+$Id: runtime.pkg,v 14.249 1995/03/03 23:40:44 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -1212,6 +1212,7 @@ MIT in each case. |#
 	  list?
 	  make-list
 	  make-circular-list
+	  make-initialized-list
 	  map
 	  map*
 	  mapcan

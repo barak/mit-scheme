@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.19 1994/02/16 07:57:01 gjr Exp $
+$Id: list.scm,v 14.20 1995/03/03 23:40:17 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -79,6 +79,14 @@ MIT in each case. |#
 		  result)
 		(loop (- n 1) (cons value result))))))
       '()))
+
+(define (make-initialized-list length initialization)
+  (guarantee-index length 'MAKE-INITIALIZED-LIST)
+  (let loop ((index (- length 1)) (result '()))
+    (if (negative? index)
+	result
+	(loop (- index 1)
+	      (cons (initialization index) result)))))
 
 (define (list-ref list index)
   (let ((tail (list-tail list index)))
