@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.35 2003/03/06 15:28:48 cph Exp $
+$Id: list.scm,v 14.36 2003/03/07 05:42:38 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -109,25 +109,83 @@ USA.
 	result
 	(loop (- index 1)
 	      (cons (initialization index) result)))))
+
+(define (list? object)
+  (let loop ((l1 object) (l2 object))
+    (if (pair? l1)
+	(let ((l1 (cdr l1)))
+	  (and (not (eq? l1 l2))
+	       (if (pair? l1)
+		   (loop (cdr l1) (cdr l2))
+		   (null? l1))))
+	(null? l1))))
 
-(define (length items)
-  (let ((lose
-	 (lambda () (error:wrong-type-argument items "proper list" 'LENGTH))))
-    (let loop ((l1 items) (l2 items) (length 0))
-      (if (pair? l1)
-	  (begin
-	    (if (eq? (cdr l1) l2)
-		(lose))
-	    (if (pair? (cdr l1))
-		(loop (cddr l1) (cdr l2) (fix:+ length 2))
-		(begin
-		  (if (not (null? (cdr l1)))
-		      (lose))
-		  (fix:+ length 1))))
-	  (begin
-	    (if (not (null? l1))
-		(lose))
-	    length)))))
+(define (list-of-type? object predicate)
+  (let loop ((l1 object) (l2 object))
+    (if (pair? l1)
+	(and (predicate (car l1))
+	     (let ((l1 (cdr l1)))
+	       (and (not (eq? l1 l2))
+		    (if (pair? l1)
+			(and (predicate (car l1))
+			     (loop (cdr l1) (cdr l2)))
+			(null? l1)))))
+	(null? l1))))
+
+(define (guarantee-list object caller)
+  (if (not (list? object))
+      (error:wrong-type-argument object "list" caller)))
+
+(define (guarantee-list-of-type object predicate description caller)
+  (if (not (list-of-type? object predicate))
+      (error:wrong-type-argument object description caller)))
+
+(define (alist? object)
+  (list-of-type? object pair?))
+
+(define (guarantee-alist object caller)
+  (guarantee-list-of-type object pair? "association list" caller))
+
+(define (list?->length object)
+  (let loop ((l1 object) (l2 object) (length 0))
+    (if (pair? l1)
+	(let ((l1 (cdr l1)))
+	  (and (not (eq? l1 l2))
+	       (if (pair? l1)
+		   (loop (cdr l1) (cdr l2) (fix:+ length 2))
+		   (and (null? l1)
+			(fix:+ length 1)))))
+	(and (null? l1)
+	     length))))
+
+(define (list-of-type?->length object predicate)
+  (let loop ((l1 object) (l2 object) (length 0))
+    (if (pair? l1)
+	(and (predicate (car l1))
+	     (let ((l1 (cdr l1)))
+	       (and (not (eq? l1 l2))
+		    (if (pair? l1)
+			(and (predicate (car l1))
+			     (loop (cdr l1) (cdr l2) (fix:+ length 2)))
+			(and (null? l1)
+			     (fix:+ length 1))))))
+	(and (null? l1)
+	     length))))
+
+(define (guarantee-list->length object caller)
+  (let ((n (list?->length object)))
+    (if (not n)
+	(error:wrong-type-argument object "list" caller))
+    n))
+
+(define (guarantee-list-of-type->length object predicate description caller)
+  (let ((n (list-of-type? object predicate)))
+    (if (not n)
+	(error:wrong-type-argument object description caller))
+    n))
+
+(define (length list)
+  (guarantee-list->length list 'LENGTH))
 
 (define (list-ref list index)
   (let ((tail (list-tail list index)))
@@ -158,50 +216,6 @@ USA.
 (define (sublist list start end)
   (list-head (list-tail list start) (- end start)))
 
-(define (list? object)
-  (let loop ((l1 object) (l2 object) (length 0))
-    (if (pair? l1)
-	(let ((l1 (cdr l1)))
-	  (and (not (eq? l1 l2))
-	       (if (pair? l1)
-		   (loop (cdr l1) (cdr l2) (fix:+ length 2))
-		   (and (null? l1)
-			(fix:+ length 1)))))
-	(and (null? l1)
-	     length))))
-
-(define (list-of-type? object predicate)
-  (let loop ((l1 object) (l2 object) (length 0))
-    (if (pair? l1)
-	(and (predicate (car l1))
-	     (let ((l1 (cdr l1)))
-	       (and (not (eq? l1 l2))
-		    (if (pair? l1)
-			(and (predicate (car l1))
-			     (loop (cdr l1) (cdr l2) (fix:+ length 2)))
-			(and (null? l1)
-			     (fix:+ length 1))))))
-	(and (null? l1)
-	     length))))
-
-(define (guarantee-list object caller)
-  (let ((n (list? object)))
-    (if (not n)
-	(error:wrong-type-argument object "list" caller))
-    n))
-
-(define (guarantee-list-of-type object predicate description caller)
-  (let ((n (list-of-type? object predicate)))
-    (if (not n)
-	(error:wrong-type-argument object description caller))
-    n))
-
-(define (alist? object)
-  (list-of-type? object pair?))
-
-(define (guarantee-alist object caller)
-  (guarantee-list-of-type object pair? "association list" caller))
-
 (define (list-copy items)
   (let ((lose (lambda () (error:wrong-type-argument items "list" 'LIST-COPY))))
     (cond ((pair? items)
