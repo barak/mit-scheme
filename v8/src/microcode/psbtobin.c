@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.37 1989/09/21 22:53:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.38 1989/09/24 15:12:41 cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -400,7 +400,7 @@ compute_max()
   fast int expt;
 
   Result = 0.0;
-  for (expt = MAX_FLONUM_EXPONENT;
+  for (expt = DBL_MAX_EXP;
        expt != 0;
        expt >>= 1)
   {
@@ -469,8 +469,7 @@ read_a_flonum ()
   size_in_bits = (read_signed_decimal (portable_file));
   if (size_in_bits == 0)
     return (0);
-  if ((exponent > MAX_FLONUM_EXPONENT) ||
-      (exponent < -MAX_FLONUM_EXPONENT))
+  if ((exponent > DBL_MAX_EXP) || (exponent < DBL_MIN_EXP))
   {
     /* Skip over mantissa */
 
@@ -488,7 +487,7 @@ read_a_flonum ()
     fast double Normalization;
     long digit;
 
-    if (size_in_bits > FLONUM_MANTISSA_BITS)
+    if (size_in_bits > DBL_MAN_DIG)
     {
       fprintf(stderr,
 	      "%s: Some precision may be lost.",

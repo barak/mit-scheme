@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.12 1989/09/24 13:50:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.13 1989/09/24 15:13:11 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -428,7 +428,7 @@ scheme.touch os.touch psbmap.touch usrdef.touch :
 /* scheme.touch depends also on butterfly.h rename.c */
 scheme.touch : scheme.h config.h bkpt.h object.h scode.h sdata.h \
 	gc.h interp.h stack.h futures.h types.h errors.h returns.h \
-	const.h fixobj.h default.h extern.h prim.h intrpt.h
+	const.h fixobj.h default.h extern.h prim.h intrpt.h float.h
 os.touch : os.c mul.c unix.c vms.c unknown.c scheme.touch zones.h
 psbmap.touch : config.h object.h bignum.h bignumint.h bitstr.h types.h \
 	sdata.h const.h psbmap.h $(GC_HEAD_FILES) comlin.h comlin.c
@@ -468,8 +468,7 @@ memmag.o gcloop.o purify.o purutl.o comutl.o : scheme.touch prims.h \
 
 artutl.o : scheme.touch
 bignum.o : scheme.touch bignumint.h
-bigprm.o intprm.o generic.o : scheme.touch prims.h zones.h
-flonum.o : scheme.touch prims.h zones.h float.h
+bigprm.o flonum.o intprm.o generic.o : scheme.touch prims.h zones.h
 
 storage.o : scheme.touch gctype.c
 

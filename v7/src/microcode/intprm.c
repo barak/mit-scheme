@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intprm.c,v 1.1 1989/09/20 23:23:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intprm.c,v 1.2 1989/09/24 15:13:01 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -151,7 +151,7 @@ DEFINE_PRIMITIVE ("INTEGER->FLONUM", Prim_integer_to_flonum, 2, 2, 0)
       PRIMITIVE_RETURN (FIXNUM_TO_FLONUM (integer));
     if (bignum_fits_in_word_p
 	(integer,
-	 (((control & 1) != 0) ? FLONUM_MANTISSA_BITS : MAX_FLONUM_EXPONENT),
+	 (((control & 1) != 0) ? DBL_MANT_DIG : DBL_MAX_EXP),
 	 0))
       PRIMITIVE_RETURN (BIGNUM_TO_FLONUM (integer));
     if ((control & 2) != 0)

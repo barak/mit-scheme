@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.32 1989/09/20 23:10:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.33 1989/09/24 15:13:04 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -433,9 +433,9 @@ extern SCHEME_OBJECT * memory_base;
   (bignum_fits_in_word_p ((bignum), ((sizeof (long)) * CHAR_BIT), 1))
 
 /* If precision should not be lost,
-   compare to FLONUM_MANTISSA_BITS instead. */
+   compare to DBL_MANT_DIG instead. */
 #define BIGNUM_TO_DOUBLE_P(bignum)					\
-  (bignum_fits_in_word_p ((bignum), MAX_FLONUM_EXPONENT, 0))
+  (bignum_fits_in_word_p ((bignum), DBL_MAX_EXP, 0))
 
 /* Flonum Operations */
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.57 1989/09/20 23:06:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.58 1989/09/24 15:12:48 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -703,7 +703,7 @@ gc_death(code, message, scan, free)
 #define ID_PRINTER_LENGTH	4	/* TTY height (# chars) */
 #define ID_NEW_LINE_CHARACTER	5	/* #\Newline */
 #define ID_FLONUM_PRECISION	6	/* Flonum mantissa (# bits) */
-#define ID_FLONUM_EXPONENT	7	/* Flonum exponent (# bits) */
+#define ID_FLONUM_EPSILON	7	/* Flonum epsilon (flonum) */
 #define ID_OS_NAME		8	/* OS name (string) */
 #define ID_OS_VARIANT		9	/* OS variant (string) */
 #define ID_STACK_TYPE		10	/* Scheme stack type (string) */
@@ -732,10 +732,9 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
   FAST_VECTOR_SET
     (Result, ID_NEW_LINE_CHARACTER, (ASCII_TO_CHAR ('\n')));
   FAST_VECTOR_SET
-    (Result, ID_FLONUM_PRECISION,
-     (LONG_TO_UNSIGNED_FIXNUM (FLONUM_MANTISSA_BITS)));
+    (Result, ID_FLONUM_PRECISION, (LONG_TO_UNSIGNED_FIXNUM (DBL_MANT_DIG)));
   FAST_VECTOR_SET
-    (Result, ID_FLONUM_EXPONENT, (LONG_TO_UNSIGNED_FIXNUM (FLONUM_EXPT_SIZE)));
+    (Result, ID_FLONUM_EPSILON, (double_to_flonum ((double) DBL_EPSILON)));
   FAST_VECTOR_SET
     (Result, ID_OS_NAME, (char_pointer_to_string (OS_Name)));
   FAST_VECTOR_SET

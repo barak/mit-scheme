@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.48 1989/09/22 08:44:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.49 1989/09/24 15:12:53 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -121,6 +121,9 @@ typedef unsigned long SCHEME_OBJECT;
 
    ULONG_SIZE is the size of an unsigned long in bits.
 
+   ******** The following flonum constants have been superseded by the
+   use of "float.h". ********
+
    FLONUM_EXPT_SIZE is the number of bits in the largest positive
    exponent of a (double) floating point number.
    Note that if excess exponents are used in the representation,
@@ -237,9 +240,9 @@ typedef unsigned long SCHEME_OBJECT;
 #define ULONG_SIZE		32
 #define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_68000
-#define FLONUM_EXPT_SIZE	7
-#define FLONUM_MANTISSA_BITS	56
-#define MAX_FLONUM_EXPONENT	127
+/* #define FLONUM_EXPT_SIZE	7 */
+/* #define FLONUM_MANTISSA_BITS	56 */
+/* #define MAX_FLONUM_EXPONENT	127 */
 #define HAS_FREXP
 #ifdef quick
 /* Bignum code fails for certain variables in registers because of a
@@ -263,9 +266,9 @@ typedef unsigned long SCHEME_OBJECT;
 #define ULONG_SIZE		32
 #define BELL			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_VAX
-#define FLONUM_EXPT_SIZE	7
-#define FLONUM_MANTISSA_BITS	56   /* D format */
-#define MAX_FLONUM_EXPONENT	127
+/* #define FLONUM_EXPT_SIZE	7 */
+/* #define FLONUM_MANTISSA_BITS	56    D format */
+/* #define MAX_FLONUM_EXPONENT	127 */
 #define HAS_FLOOR
 #define HAS_FREXP
 #define HAS_MODF
@@ -331,9 +334,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #else /* not MC68020 */
 #define FASL_INTERNAL_FORMAT	FASL_68000
 #endif /* MC68020 */
-#define FLONUM_EXPT_SIZE	10
-#define FLONUM_MANTISSA_BITS	53
-#define MAX_FLONUM_EXPONENT	1023
+/* #define FLONUM_EXPT_SIZE	10 */
+/* #define FLONUM_MANTISSA_BITS	53 */
+/* #define MAX_FLONUM_EXPONENT	1023 */
 #define HAS_FLOOR
 #define HAS_FREXP
 #define HAS_MODF
@@ -353,9 +356,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define ULONG_SIZE		32
 #define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT 	FASL_HP_9000_500
-#define FLONUM_EXPT_SIZE	10
-#define FLONUM_MANTISSA_BITS	53
-#define MAX_FLONUM_EXPONENT	1023
+/* #define FLONUM_EXPT_SIZE	10 */
+/* #define FLONUM_MANTISSA_BITS	53 */
+/* #define MAX_FLONUM_EXPONENT	1023 */
 #define HAS_FLOOR
 #define HAS_FREXP
 #define HAS_MODF
@@ -375,9 +378,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define ULONG_SIZE		32
 #define BELL 			'\007'
 
-#define FLONUM_EXPT_SIZE	10
-#define FLONUM_MANTISSA_BITS	53
-#define MAX_FLONUM_EXPONENT	1023
+/* #define FLONUM_EXPT_SIZE	10 */
+/* #define FLONUM_MANTISSA_BITS	53 */
+/* #define MAX_FLONUM_EXPONENT	1023 */
 
 #ifdef sun4
 #define MACHINE_TYPE		"sun4"
@@ -410,9 +413,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define ULONG_SIZE		32
 #define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_BFLY
-#define FLONUM_EXPT_SIZE	7
-#define FLONUM_MANTISSA_BITS	56
-#define MAX_FLONUM_EXPONENT	127
+/* #define FLONUM_EXPT_SIZE	7 */
+/* #define FLONUM_MANTISSA_BITS	56 */
+/* #define MAX_FLONUM_EXPONENT	127 */
 #include <public.h>
 #define HAS_FREXP
 #define HAS_MODF
@@ -428,10 +431,10 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define ULONG_SIZE		???
 #define BELL			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_CYBER
-#define FLONUM_EXPT_SIZE	14
-#define FLONUM_MANTISSA_BITS	48
+/* #define FLONUM_EXPT_SIZE	14 */
+/* #define FLONUM_MANTISSA_BITS	48 */
 /* Not the full range, or so the manual says. */
-#define MAX_FLONUM_EXPONENT	4095
+/* #define MAX_FLONUM_EXPONENT	4095 */
 /* The Cyber180 C compiler manifests a bug in hairy conditional
    expressions */
 #define Conditional_Bug
@@ -446,9 +449,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define ULONG_SIZE		32
 #define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_CELERITY
-#define FLONUM_EXPT_SIZE	11
-#define FLONUM_MANTISSA_BITS 	53
-#define MAX_FLONUM_EXPONENT	2047
+/* #define FLONUM_EXPT_SIZE	11 */
+/* #define FLONUM_MANTISSA_BITS 	53 */
+/* #define MAX_FLONUM_EXPONENT	2047 */
 #endif
 
 #ifdef hp9000s800
@@ -459,9 +462,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define ULONG_SIZE		32
 #define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_HP_SPECTRUM
-#define FLONUM_EXPT_SIZE	10
-#define FLONUM_MANTISSA_BITS	53
-#define MAX_FLONUM_EXPONENT	1023
+/* #define FLONUM_EXPT_SIZE	10 */
+/* #define FLONUM_MANTISSA_BITS	53 */
+/* #define MAX_FLONUM_EXPONENT	1023 */
 #define FLOATING_ALIGNMENT	0x7	/* Low 3 MBZ for float storage */
 #define HAS_FLOOR
 #define HAS_FREXP
@@ -500,9 +503,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define DBFLT_SIZE		64
 #define BELL			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_UMAX
-#define FLONUM_EXPT_SIZE	10
-#define FLONUM_MANTISSA_BITS	53
-#define MAX_FLONUM_EXPONENT	1023
+/* #define FLONUM_EXPT_SIZE	10 */
+/* #define FLONUM_MANTISSA_BITS	53 */
+/* #define MAX_FLONUM_EXPONENT	1023 */
 #define HAS_FLOOR
 #define HAS_FREXP
 #define HAS_MODF
@@ -517,9 +520,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define ULONG_SIZE		32
 #define BELL			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_PYR
-#define FLONUM_EXPT_SIZE	10
-#define FLONUM_MANTISSA_BITS	53
-#define MAX_FLONUM_EXPONENT	1023
+/* #define FLONUM_EXPT_SIZE	10 */
+/* #define FLONUM_MANTISSA_BITS	53 */
+/* #define MAX_FLONUM_EXPONENT	1023 */
 #endif
 
 #ifdef alliant
@@ -531,9 +534,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define ULONG_SIZE		32
 #define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT	FASL_ALLIANT
-#define FLONUM_EXPT_SIZE	10
-#define FLONUM_MANTISSA_BITS 	53
-#define MAX_FLONUM_EXPONENT	1023
+/* #define FLONUM_EXPT_SIZE	10 */
+/* #define FLONUM_MANTISSA_BITS 	53 */
+/* #define MAX_FLONUM_EXPONENT	1023 */
 #define HAS_FLOOR
 #define HAS_FREXP
 #define HAS_MODF
@@ -549,9 +552,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define ULONG_SIZE           	32
 /* Flonum (double) size is 64 bits. */
 #define FLOATING_ALIGNMENT   	0x7
-#define FLONUM_MANTISSA_BITS 	53
-#define FLONUM_EXPT_SIZE     	10
-#define MAX_FLONUM_EXPONENT  	1023
+/* #define FLONUM_MANTISSA_BITS 	53 */
+/* #define FLONUM_EXPT_SIZE     	10 */
+/* #define MAX_FLONUM_EXPONENT  	1023 */
 /* Floating point representation uses hidden bit. */
 #define FASL_INTERNAL_FORMAT	FASL_MIPS
 #define BELL 			'\007'

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.30 1989/09/20 23:11:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.31 1989/09/24 15:13:08 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -96,3 +96,8 @@ MIT in each case. */
 #include "extern.h"	/* External declarations */
 #include "bignum.h"	/* Bignum declarations */
 #include "prim.h"	/* Declarations for primitives. */
+#include "float.h"	/* Floating-point parameters */
+#if (FLT_RADIX != 2)
+#include "error: floating point radix not 2!  Arithmetic won't work."
+#endif
+
