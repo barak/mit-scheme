@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.59 1996/04/07 16:25:32 cph Exp $
+@comment $Id: scheme.texinfo,v 1.60 1996/04/07 18:32:21 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -108,9 +108,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.59
+@subtitle Edition 1.60
 @subtitle for Scheme Release 7.4
-@subtitle 6 April 1996
+@subtitle 7 April 1996
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -1111,8 +1111,8 @@ programs.
 @node Disjointness of Types, Storage Model, External Representations, Scheme Concepts
 @subsection Disjointness of Types
 
-Every object satisfies at most one of the following predicates (but
-@pxref{True and False}, for an exception):
+Every object satisfies at most one of the following predicates (but see
+@ref{True and False}, for an exception):
 
 @example
 @group
@@ -1364,7 +1364,7 @@ Such comments are useful for commenting out code fragments.
 @cindex characters, special, in programs
 @cindex special characters, in programs
 The following list describes additional notations used in Scheme.
-@xref{Numbers} for a description of the notations used for numbers.
+@xref{Numbers}, for a description of the notations used for numbers.
 
 @table @code
 @item + - .
@@ -3784,7 +3784,7 @@ set by the user.
 @section Numerical operations
 @cindex numerical operations
 
-@xref{Entry Format} for a summary of the naming conventions used to
+@xref{Entry Format}, for a summary of the naming conventions used to
 specify restrictions on the types of arguments to numerical routines.
 The examples used in this section assume that any numerical constant
 written using an exact notation is indeed represented as an exact
@@ -17200,7 +17200,7 @@ This operation creates and returns an image that contains part of the
 client area of the graphics-device window.  The portion of the client
 area that is selected is specified by the four coordinate arguments,
 which are given in the current virtual coordinates for the device.
-@xref{Images} for more information about manipulating images.
+@xref{Images}, for more information about manipulating images.
 @end defop
 
 @defop {operation+} os2-graphics-device draw-lines xv yv
