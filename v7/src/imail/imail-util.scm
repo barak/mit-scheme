@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.34 2001/03/19 20:01:21 cph Exp $
+;;; $Id: imail-util.scm,v 1.35 2001/03/19 22:17:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -195,9 +195,8 @@
     line))
 
 (define (skip-to-line-start port)
-  (let loop ()
-    (if (not (char=? (read-required-char port) #\newline))
-	(loop))))
+  (input-port/discard-chars port char-set:newline)
+  (input-port/discard-char port))
 
 (define (skip-past-blank-line port)
   (let loop ()
@@ -450,24 +449,75 @@
     (xsubstring-move! xstring start end buffer 0)
     buffer))
 
+(define (xstring-input-port/discard-chars port delimiters)
+  (let ((state (port/state port)))
+    (if (or (< (xstring-input-state/position state)
+	       (xstring-input-state/buffer-end state))
+	    (read-xstring-buffer state))
+	(let loop ()
+	  (let* ((start (xstring-input-state/buffer-start state))
+		 (index
+		  (substring-find-next-char-in-set
+		   (xstring-input-state/buffer state)
+		   (- (xstring-input-state/position state) start)
+		   (- (xstring-input-state/buffer-end state) start)
+		   delimiters)))
+	    (if index
+		(set-xstring-input-state/position! state (+ start index))
+		(begin
+		  (set-xstring-input-state/position!
+		   state
+		   (xstring-input-state/buffer-end state))
+		  (if (read-xstring-buffer state)
+		      (loop)))))))))
+
+(define (xstring-input-port/read-string port delimiters)
+  (let ((state (port/state port)))
+    (if (or (< (xstring-input-state/position state)
+	       (xstring-input-state/buffer-end state))
+	    (read-xstring-buffer state))
+	(let loop ((prefix #f))
+	  (let* ((start (xstring-input-state/buffer-start state))
+		 (b (xstring-input-state/buffer state))
+		 (si (- (xstring-input-state/position state) start))
+		 (ei (- (xstring-input-state/buffer-end state) start))
+		 (index (substring-find-next-char-in-set b si ei delimiters)))
+	    (if index
+		(begin
+		  (set-xstring-input-state/position! state (+ start index))
+		  (let ((s (make-string (fix:- index si))))
+		    (substring-move! b si index s 0)
+		    (if prefix (string-append prefix s) s)))
+		(begin
+		  (set-xstring-input-state/position!
+		   state
+		   (xstring-input-state/buffer-end state))
+		  (let ((s (make-string (fix:- ei si))))
+		    (substring-move! b si ei s 0)
+		    (let ((p (if prefix (string-append prefix s) s)))
+		      (if (read-xstring-buffer state)
+			  (loop p)
+			  p)))))))
+	(make-eof-object port))))
+
 (define xstring-input-type
   (make-port-type
    (let ((read
 	  (lambda (port discard?)
 	    (let ((state (port/state port)))
 	      (let ((position (xstring-input-state/position state)))
-		(and (or (< position (xstring-input-state/buffer-end state))
-			 (read-xstring-buffer state))
-		     (let ((char
-			    (string-ref
-			     (xstring-input-state/buffer state)
-			     (- position
-				(xstring-input-state/buffer-start state)))))
-		       (if discard?
-			   (set-xstring-input-state/position!
-			    state (+ position 1)))
-		       char)
-		     (make-eof-object port))))))
+		(if (or (< position (xstring-input-state/buffer-end state))
+			(read-xstring-buffer state))
+		    (let ((char
+			   (string-ref
+			    (xstring-input-state/buffer state)
+			    (- position
+			       (xstring-input-state/buffer-start state)))))
+		      (if discard?
+			  (set-xstring-input-state/position!
+			   state (+ position 1)))
+		      char)
+		    (make-eof-object port))))))
 	 (xlength
 	  (lambda (state)
 	    (external-string-length (xstring-input-state/xstring state)))))
@@ -479,6 +529,8 @@
 		  (position (xstring-input-state/position state)))
 	     (if (< position (xlength state))
 		 (set-xstring-input-state/position! state (+ position 1))))))
+       (DISCARD-CHARS ,xstring-input-port/discard-chars)
+       (READ-STRING ,xstring-input-port/read-string)
        (LENGTH ,(lambda (port) (xlength (port/state port))))
        (EOF?
 	,(lambda (port)
