@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.2 1996/07/26 14:38:01 adams Exp $
+$Id: coerce.scm,v 1.3 1996/07/26 14:58:45 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -206,7 +206,7 @@ MIT in each case. |#
 	  (max (system-hunk3-cxr2 info)))
       (cons min max))))
 
-(define coerce-to-compiled-procedure)
+;;(define coerce-to-compiled-procedure)
 
 (define (initialize-package!)
   (set! coerce-to-compiled-procedure
