@@ -76,7 +76,6 @@ ntscreen.obj
 nttterm.obj
 nttty.obj
 ntutil.obj
-ntcmp386.obj
 
 bchdmp.obj
 bchgcl.obj

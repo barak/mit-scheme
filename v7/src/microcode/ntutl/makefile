@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.4 1993/07/21 00:42:36 gjr Exp $
+###	$Id: makefile,v 1.5 1993/07/27 21:08:25 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -51,10 +51,10 @@ GRAPHICS_LIBS =
 MACHINE_SWITCHES = -DNO_CONST -Di386
 MACHINE_SOURCES = cmpint.c cmpauxmd.asm
 MACHINE_OBJECTS = cmpint.obj cmpauxmd.obj
-GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
+GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h ntscmlib.h
 USER_PRIM_SOURCES =
 USER_PRIM_OBJECTS =
-USER_LIBS = 
+USER_LIBS =
 BINDIR = \scheme\nt\microcode
 AS = mlx
 LDFLAGS =
@@ -69,7 +69,7 @@ sysflags = $(guiflags)
 syslibs = $(guilibs)
 cvobj = cvtomf
 
-all: bintopsb.exe psbtobin.exe scheme.exe bchscheme.exe # mswload.exe
+all: ntscmlib.dll bintopsb.exe psbtobin.exe scheme.exe bchscheme.exe
 
 .c.obj:
 	$(cc) $(cflags) $(cdebug) -c $*.c
@@ -166,7 +166,6 @@ ntscreen.c \
 #ntexcp.c \
 #ntkbutl.asm \
 #ntxcutl.asm \
-ntcmp386.c \
 ntasutl.asm
 
 NT_OBJECTS = \
@@ -190,7 +189,6 @@ ntscreen.obj \
 #ntexcp.obj \
 #ntkbutl.obj \
 #ntxcutl.obj \
-ntcmp386.obj \
 ntasutl.obj
 
 OS_PRIM_SOURCES = \
@@ -298,9 +296,9 @@ ntgui.rbj: ntgui.rc ntgui.h
 
 scheme: scheme.exe
 scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scm-cl3.lst
-	$(link) $(linkdebug) $(sysflags) -out:scheme.exe @scm-cl3.lst $(syslibs) winmm.lib
+	$(link) $(linkdebug) $(sysflags) -out:scheme.exe @scm-cl3.lst $(syslibs) ntscmlib.lib crtdll.lib
 bchscheme.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bch-cl3.lst
-	$(link) $(linkdebug) $(sysflags) -out:bchschem.exe @bch-cl3.lst $(syslibs) winmm.lib
+	$(link) $(linkdebug) $(sysflags) -out:bchschem.exe @bch-cl3.lst $(syslibs) ntscmlib.lib crtdll.lib
 findprim.exe : findprim.obj
 	$(link) $(linkdebug) $(conflags) -out:findprim.exe findprim.obj $(conlibs)
 bintopsb.exe : bintopsb.obj missing.obj
@@ -314,7 +312,7 @@ wsize.exe : wsize.obj
 ppband.exe : ppband.obj
 	$(link) $(linkdebug) $(conflags) -out:ppband.exe ppband.obj $(conlibs)
 
-usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) ntconio.c ntgui.c ntcmp386.c usrdef.tch findprim.exe scm-p-nt.lst
+usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) ntconio.c ntgui.c usrdef.tch findprim.exe scm-p-nt.lst
 	rm -f usrdef.c
 	.\findprim -o usrdef.c -l .\scm-p-nt.lst
 
@@ -375,7 +373,7 @@ fasload.obj : scheme.tch prims.h osscheme.h osfile.h osio.h $(GC_HEAD_FILES) \
 	trap.h option.h prmcon.h load.c fasl.h
 fasdump.obj : scheme.tch prims.h osio.h osfile.h osfs.h $(GC_HEAD_FILES) \
 	trap.h lookup.h fasl.h dump.c
-memmag.obj : scheme.tch prims.h $(GC_HEAD_FILES)
+memmag.obj : scheme.tch prims.h $(GC_HEAD_FILES) memmag.h
 gcloop.obj : scheme.tch $(GC_HEAD_FILES)
 purify.obj : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
 purutl.obj : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
@@ -396,7 +394,7 @@ BCHGCC_H = bchgcc.h oscond.h $(GC_HEAD_FILES)
 bchdmp.obj : scheme.tch prims.h ntio.h osio.h osfile.h trap.h lookup.h \
 	$(BCHGCC_H) fasl.h dump.c
 bchdrn.obj : ansidecl.h bchdrn.h
-bchmmg.obj : scheme.tch prims.h nt.h $(BCHGCC_H) option.h bchdrn.h
+bchmmg.obj : scheme.tch prims.h nt.h $(BCHGCC_H) option.h bchdrn.h memmag.h
 bchgcl.obj : scheme.tch $(BCHGCC_H)
 bchpur.obj : scheme.tch prims.h $(BCHGCC_H) zones.h
 bchutl.obj : ansidecl.h
@@ -438,7 +436,7 @@ ntconio.obj : scheme.tch prims.h ntscan.h osio.h ntio.h $(NT_DEPENDENCIES)
 nttop.obj : ostop.h nttop.h osctty.h ntutil.h errors.h option.h $(NT_DEPENDENCIES)
 nttty.obj : ostty.h osenv.h osio.h ntio.h osterm.h ntterm.h $(NT_DEPENDENCIES)
 ntutil.obj : ntutil.h $(NT_DEPENDENCIES)
-ntsig.obj : ossig.h osctty.h ostty.h critsec.h ntexcp.h ntkbd.h $(NT_DEPENDENCIES)
+ntsig.obj : ossig.h osctty.h ostty.h critsec.h ntexcp.h ntkbd.h $(NT_DEPENDENCIES) ntscmlib.h
 nttrap.obj: nttrap.h ntexcp.h $(NT_DEPENDENCIES)
 ntsys.obj: ntsys.h
 prntenv.obj : $(NT_DEPENDENCIES)
@@ -449,31 +447,35 @@ ntgui.obj : ntgui.c $(NT_DEPENDENCIES) scheme.tch ntscreen.h
 ntkbd.obj : ntkbd.h ntsys.h ntinsn.h
 ntasutl.obj : ntasutl.asm
 ntkbutl.obj : ntkbutl.asm
-ntcmp386.obj : ntcmp386.c $(NT_DEPENDENCIES) scheme.tch
 ntscreen.obj : ntscreen.c ntscreen.h
 
-# mswload.exe: mswload.obj mswload.def mswload.res
-#   link /codeview /linenumbers /map mswload.obj,mswload.exe,mswload.map,,mswload.def
-#   rc mswload
-# 
-#   blinkx /CO /MO /LI /MAP mswload.obj,mswload.exe,mswload.map,,mswload.def,mswload.res
-# 
-# mswload.res: mswload.rc
-#   rc -r mswload.rc
-#
-# mswload.obj: mswload.c mswload.h
-#   cl /GA /AS /Od /G2 /Zi /Zp1 /c /f /W2 mswload.c
-# 
-# mswload.res: mswload.rc
-#   zrc -V mswload.rc
-# 
-# mswload.obj: mswload.c mswload.h
-#   ztc -2 -ml -W1 -v2 -c -C -g -a1 -o-all mswload.c
+ntscmlib.obj : ntscmlib.c ntscmlib.h makefile
+
+ntscmlib.exp: ntscmlib.obj ntscmlib.def
+	$(implib) -machine:$(CPU) -def:$*.def $*.obj -out:$*.lib
+	
+ntscmlib.dll: ntscmlib.obj ntscmlib.exp
+	$(link) $(linkdebug) -dll -out:$*.dll \
+		-entry:_CRT_INIT$(DLLENTRY) \
+		$** $(syslibs) winmm.lib crtdll.lib
+
+ntw32lib.obj : ntw32lib.c ntscmlib.h ntw32lib.h makefile
+
+ntw32lib.exp: ntw32lib.obj ntscmlib.def
+	$(implib) -machine:$(CPU) -def:ntscmlib.def ntw32lib.obj -out:ntw32lib.lib
+	
+ntw32lib.dll: ntw32lib.obj ntw32lib.exp
+	$(link) $(linkdebug) -dll -out:$*.dll \
+		-entry:ntw32lib_dllinit$(DLLENTRY) \
+		$** $(syslibs) w32sut32.lib
 
 clean:
   del *.tch
   del *.obj
   del *.exe
+  del *.lib
+  del *.dll
+  del *.exp
 
 unconfig:
   del cmpintmd.h
