@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.44 1993/12/17 02:47:39 cph Exp $
+$Id: error.scm,v 14.45 1993/12/23 08:03:22 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -368,14 +368,38 @@ MIT in each case. |#
   (guarantee-restart restart 'INVOKE-RESTART)
   (hook/invoke-restart (%restart/effector restart) arguments))
 
-(define (invoke-restart-interactively restart)
+(define (invoke-restart-interactively restart #!optional condition)
   (guarantee-restart restart 'INVOKE-RESTART-INTERACTIVELY)
-  (hook/invoke-restart
-   (%restart/effector restart)
-   (let ((interactor (%restart/interactor restart)))
-     (if interactor
-	 (call-with-values interactor list)
-	 '()))))
+  (let ((effector (%restart/effector restart))
+	(arguments
+	 (let ((interactor (%restart/interactor restart)))
+	   (if interactor
+	       (call-with-values interactor list)
+	       '())))
+	(condition (if (default-object? condition) #f condition)))
+    (let ((thread (and condition (condition/other-thread condition))))
+      (if thread
+	  (begin
+	    (restart-thread thread 'ASK
+	      (lambda ()
+		(hook/invoke-restart effector arguments)))
+	    (continue-from-derived-thread-error condition))
+	  (hook/invoke-restart effector arguments)))))
+
+(define (condition/other-thread condition)
+  (and (condition/derived-thread? condition)
+       (let ((thread (access-condition condition 'THREAD)))
+	 (and (not (eq? thread (current-thread)))
+	      thread))))
+
+(define (continue-from-derived-thread-error condition)
+  (let loop ((restarts (bound-restarts)))
+    (if (not (null? restarts))
+	(if (and (eq? 'CONTINUE (restart/name (car restarts)))
+		 (eq? condition
+		      (restart/get (car restarts) 'ASSOCIATED-CONDITION)))
+	    (invoke-restart (car restarts))
+	    (loop (cdr restarts))))))
 
 (define hook/invoke-restart)
 
@@ -949,10 +973,17 @@ MIT in each case. |#
 				      '(THREAD CONDITION))))
 	  (lambda (thread condition)
 	    (guarantee-condition condition 'ERROR:DERIVED-THREAD)
-	    (error (make-condition (%condition/continuation condition)
+	    (let ((condition
+		   (make-condition (%condition/continuation condition)
 				   (%condition/restarts condition)
 				   thread
-				   condition)))))
+				   condition)))
+	      (with-simple-restart 'CONTINUE "Continue from error."
+		(lambda ()
+		  (restart/put! (first-bound-restart)
+				'ASSOCIATED-CONDITION
+				condition)
+		  (error condition)))))))
   (set! condition/derived-thread?
 	(condition-predicate condition-type:derived-thread-error))
 

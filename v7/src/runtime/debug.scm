@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 14.37 1993/12/22 01:26:13 jmiller Exp $
+$Id: debug.scm,v 14.38 1993/12/23 08:03:35 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -694,38 +694,40 @@ MIT in each case. |#
 	(debugger-failure port "No condition to report."))))
 
 (define-command (command/condition-restart dstate port)
-  (let ((restarts
-	 (let ((condition (dstate/condition dstate)))
+  (let ((condition (dstate/condition dstate)))
+    (let ((restarts
 	   (if condition
 	       (condition/restarts condition)
-	       (bound-restarts)))))
-    (if (null? restarts)
-	(debugger-failure port "No options to choose from.")
-	(let ((n-restarts (length restarts))
-	      (write-index
-	       (lambda (index port)
-		 (write-string (string-pad-left (number->string index) 3) port)
-		 (write-string ":" port))))
-	  (let ((invoke-option
-		 (lambda (n)
-		   (invoke-restart-interactively
-		    (list-ref restarts (- n-restarts n))))))
-	    (debugger-presentation port
-	      (lambda ()
-		(if (= n-restarts 1)
-		    (begin
-		      (write-string "There is only one option:" port)
-		      (write-restarts restarts port write-index)
-		      (if (prompt-for-confirmation "Use this option" port)
-			  (invoke-option 1)))
-		    (begin
-		      (write-string "Choose an option by number:" port)
-		      (write-restarts restarts port write-index)
-		      (invoke-option
-		       (prompt-for-integer "Option number"
-					   1
-					   (+ n-restarts 1)
-					   port)))))))))))
+	       (bound-restarts))))
+      (if (null? restarts)
+	  (debugger-failure port "No options to choose from.")
+	  (let ((n-restarts (length restarts))
+		(write-index
+		 (lambda (index port)
+		   (write-string (string-pad-left (number->string index) 3)
+				 port)
+		   (write-string ":" port))))
+	    (let ((invoke-option
+		   (lambda (n)
+		     (invoke-restart-interactively
+		      (list-ref restarts (- n-restarts n))
+		      condition))))
+	      (debugger-presentation port
+		(lambda ()
+		  (if (= n-restarts 1)
+		      (begin
+			(write-string "There is only one option:" port)
+			(write-restarts restarts port write-index)
+			(if (prompt-for-confirmation "Use this option" port)
+			    (invoke-option 1)))
+		      (begin
+			(write-string "Choose an option by number:" port)
+			(write-restarts restarts port write-index)
+			(invoke-option
+			 (prompt-for-integer "Option number"
+					     1
+					     (+ n-restarts 1)
+					     port))))))))))))
 
 ;;;; Advanced hacking commands
 
@@ -769,33 +771,16 @@ MIT in each case. |#
 	      (if (not thread)
 		  ((stack-frame->continuation subproblem) value)
 		  (begin
-		    (restart-thread
-		     thread
-		     (prompt-for-confirmation
-		      "Restarting other thread; discard events in its queue"
-		      port)
-		     (lambda ()
-		       ((stack-frame->continuation subproblem) value)))
-		    (if (prompt-for-confirmation
-			 "Thread restarted; exit debugger"
-			 port)
-			(standard-exit-command dstate port))))))))))
-
-(define (dstate/thread dstate)
-  (let ((condition (dstate/condition dstate)))
-    (and condition
-	 (condition/derived-thread? condition)
-	 (access-condition condition 'THREAD))))
+		    (restart-thread thread 'ASK
+		      (lambda ()
+			((stack-frame->continuation subproblem) value)))
+		    (continue-from-derived-thread-error
+		     (dstate/condition dstate))))))))))
 
 (define (dstate/other-thread dstate)
-  (let ((thread
-	 (let ((condition (dstate/condition dstate)))
-	   (and condition
-		(condition/derived-thread? condition)
-		(access-condition condition 'THREAD)))))
-    (and thread
-	 (not (eq? thread (current-thread)))
-	 thread)))
+  (let ((condition (dstate/condition dstate)))
+    (and condition
+	 (condition/other-thread condition))))
 
 (define hook/debugger-before-return)
 (define (default/debugger-before-return)

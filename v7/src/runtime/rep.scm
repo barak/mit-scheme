@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.46 1993/12/17 00:09:03 cph Exp $
+$Id: rep.scm,v 14.47 1993/12/23 08:03:10 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -174,10 +174,8 @@ MIT in each case. |#
 			      (error "Non-owner thread can't start CMDL:"
 				     thread)))))
 		   (lambda ()
-		     (with-simple-restart 'CONTINUE "Continue from error."
-		       (lambda ()
-			 (unblock-thread-events)
-			 (signaller cmdl thread))))))
+		     (unblock-thread-events)
+		     (signaller cmdl thread))))
 	       (stop-current-thread))
 	      ((let ((parent (cmdl/parent cmdl)))
 		 (and parent
@@ -530,65 +528,55 @@ MIT in each case. |#
 		(write-string ";Package: " port)
 		(write (package/name package) port))))))))
 
-(define (condition-restarts-message condition)
-  (cmdl-message/active
-   (lambda (port)
-     (fresh-line port)
-     (write-string ";To continue, call RESTART with an option number:" port)
-     (write-restarts (filter-restarts (condition/restarts condition)) port
-       (lambda (index port)
-	 (write-string "; (RESTART " port)
-	 (write index port)
-	 (write-string ") =>" port))))))
-
 (define (restart #!optional n)
-  (let ((restarts
-	 (filter-restarts
-	  (let ((condition (nearest-repl/condition)))
+  (let ((condition (nearest-repl/condition)))
+    (let ((restarts
+	   (filter-restarts
 	    (if condition
 		(condition/restarts condition)
-		(bound-restarts))))))
-    (let ((n-restarts (length restarts)))
-      (if (zero? n-restarts)
-	  (error "Can't RESTART: no options available."))
-      (invoke-restart-interactively
-       (list-ref
-	restarts
-	(- n-restarts
-	   (if (default-object? n)
-	       (let ((port (interaction-i/o-port)))
-		 (fresh-line port)
-		 (write-string ";Choose an option by number:" port)
-		 (write-restarts restarts port
-		   (lambda (index port)
-		     (write-string ";" port)
-		     (write-string (string-pad-left (number->string index) 3)
-				   port)
-		     (write-string ":" port)))
-		 (let loop ()
-		   (let ((n
-			  (prompt-for-evaluated-expression
-			   "Option number"
-			   (nearest-repl/environment)
-			   port)))
-		     (if (and (exact-integer? n) (<= 1 n n-restarts))
-			 n
-			 (begin
-			   (beep port)
-			   (fresh-line port)
-			   (write-string
-			    ";Option must be an integer between 1 and "
-			    port)
-			   (write n-restarts port)
-			   (write-string ", inclusive.")
-			   (loop))))))
-	       (begin
-		 (if (not (exact-integer? n))
-		     (error:wrong-type-argument n "exact integer" 'RESTART))
-		 (if (not (<= 1 n n-restarts))
-		     (error:bad-range-argument n 'RESTART))
-		 n))))))))
-
+		(bound-restarts)))))
+      (let ((n-restarts (length restarts)))
+	(if (zero? n-restarts)
+	    (error "Can't RESTART: no options available."))
+	(invoke-restart-interactively
+	 (list-ref
+	  restarts
+	  (- n-restarts
+	     (if (default-object? n)
+		 (let ((port (interaction-i/o-port)))
+		   (fresh-line port)
+		   (write-string ";Choose an option by number:" port)
+		   (write-restarts restarts port
+		     (lambda (index port)
+		       (write-string ";" port)
+		       (write-string (string-pad-left (number->string index) 3)
+				     port)
+		       (write-string ":" port)))
+		   (let loop ()
+		     (let ((n
+			    (prompt-for-evaluated-expression
+			     "Option number"
+			     (nearest-repl/environment)
+			     port)))
+		       (if (and (exact-integer? n) (<= 1 n n-restarts))
+			   n
+			   (begin
+			     (beep port)
+			     (fresh-line port)
+			     (write-string
+			      ";Option must be an integer between 1 and "
+			      port)
+			     (write n-restarts port)
+			     (write-string ", inclusive.")
+			     (loop))))))
+		 (begin
+		   (if (not (exact-integer? n))
+		       (error:wrong-type-argument n "exact integer" 'RESTART))
+		   (if (not (<= 1 n n-restarts))
+		       (error:bad-range-argument n 'RESTART))
+		   n))))
+	 condition)))))
+
 (define (write-restarts restarts port write-index)
   (newline port)
   (do ((restarts restarts (cdr restarts))
@@ -610,6 +598,17 @@ MIT in each case. |#
 	  (if (restart/interactor (car restarts))
 	      (cons (car restarts) rest)
 	      rest)))))
+
+(define (condition-restarts-message condition)
+  (cmdl-message/active
+   (lambda (port)
+     (fresh-line port)
+     (write-string ";To continue, call RESTART with an option number:" port)
+     (write-restarts (filter-restarts (condition/restarts condition)) port
+       (lambda (index port)
+	 (write-string "; (RESTART " port)
+	 (write index port)
+	 (write-string ") =>" port))))))
 
 (define-structure (repl-state
 		   (conc-name repl-state/)

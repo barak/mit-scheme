@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.221 1993/12/17 00:05:06 cph Exp $
+$Id: runtime.pkg,v 14.222 1993/12/23 08:03:45 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -587,6 +587,7 @@ MIT in each case. |#
 	  condition/derived-thread?
 	  condition/error?
 	  condition/get
+	  condition/other-thread
 	  condition/properties
 	  condition/put!
 	  condition/report-string
@@ -643,6 +644,8 @@ MIT in each case. |#
   (export (runtime rep)
 	  *bound-restarts*
 	  dynamic-handler-frames)
+  (export (runtime debugger)
+	  continue-from-derived-thread-error)
   (initialization (initialize-package!)))
 
 (define-package (runtime event-distributor)
