@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.6 1988/03/22 17:40:50 jrm Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.7 1988/03/25 20:48:02 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -150,7 +150,7 @@ MIT in each case. |#
 
       (transmit-values (loop variables (sequence-actions body))
 	(lambda (values actions)
-	  (open-block/make block variables values actions))))))
+	  (open-block/make block variables values actions #f))))))
 
 (define (transform/variable block environment expression)
   (reference/make block
@@ -159,10 +159,11 @@ MIT in each case. |#
 (define (transform/assignment block environment expression)
   (assignment-components expression
     (lambda (name value)
-      (variable/side-effect! variable)
-      (assignment/make block
-		       (environment/lookup block environment name)
-		       (transform/expression block environment value)))))
+      (let ((variable (environment/lookup block environment name)))
+	(variable/side-effect! variable)
+	(assignment/make block
+			 variable
+			 (transform/expression block environment value))))))
 
 (define (transform/lambda block environment expression)
   (lambda-components* expression
@@ -200,6 +201,7 @@ MIT in each case. |#
   block environment ; ignored
   (definition-components expression
     (lambda (name value)
+      value ; ignored
       (error "Unscanned definition encountered.  Unable to proceed." name))))
 
 (define (transform/access block environment expression)
@@ -215,7 +217,7 @@ MIT in each case. |#
 			(transform/expressions block environment operands)))))
 
 (define (transform/comment block environment expression)
-  (transform/expression block (comment-expression environment expression)))
+  (transform/expression block environment (comment-expression expression)))
 
 (define (transform/conditional block environment expression)
   (conditional-components expression
