@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 1.9 2000/06/08 01:46:37 cph Exp $
+;;; $Id: mime-codec.scm,v 1.10 2000/06/08 02:05:05 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -61,27 +61,25 @@
 
 (define (encode-qp context string start end type)
   (encode-qp-pending-lwsp context (fix:< start end) type)
-  (let ((port (qp-encoding-context/port context))
-	(text? (qp-encoding-context/text? context)))
-    (let loop ((start start))
-      (cond ((fix:< start end)
-	     (let ((char (string-ref string start))
-		   (start (fix:+ start 1)))
-	       (cond ((not (char-lwsp? char))
-		      (if (char-qp-unencoded? char)
-			  (write-qp-clear context char)
-			  (write-qp-encoded context char))
-		      (loop start))
-		     ((and (eq? type 'PARTIAL)
-			   (not (fix:< start end)))
-		      (set-qp-encoding-context/pending-lwsp! context char))
-		     (else
-		      (if (fix:< start end)
-			  (write-qp-clear context char)
-			  (write-qp-encoded context char))
-		      (loop start)))))
-	    ((eq? type 'LINE-END)
-	     (write-qp-hard-break context))))))
+  (let loop ((start start))
+    (cond ((fix:< start end)
+	   (let ((char (string-ref string start))
+		 (start (fix:+ start 1)))
+	     (cond ((not (char-lwsp? char))
+		    (if (char-qp-unencoded? char)
+			(write-qp-clear context char)
+			(write-qp-encoded context char))
+		    (loop start))
+		   ((and (eq? type 'PARTIAL)
+			 (not (fix:< start end)))
+		    (set-qp-encoding-context/pending-lwsp! context char))
+		   (else
+		    (if (fix:< start end)
+			(write-qp-clear context char)
+			(write-qp-encoded context char))
+		    (loop start)))))
+	  ((eq? type 'LINE-END)
+	   (write-qp-hard-break context)))))
 
 (define (encode-qp-pending-lwsp context packet-not-empty? type)
   (let ((pending (qp-encoding-context/pending-lwsp context)))
