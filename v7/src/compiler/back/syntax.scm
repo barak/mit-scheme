@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.21 1988/06/14 08:11:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.22 1988/08/31 06:43:22 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,6 +36,10 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define-integrable cons-syntax cons)
+(define-integrable append-syntax! append!)
+
+#|
 (define (cons-syntax directive directives)
   (if (and (bit-string? directive)
 	   (not (null? directives))
@@ -58,16 +62,21 @@ MIT in each case. |#
 		 (set-cdr! tail (cdr directives2)))
 	       (set-cdr! tail directives2))
 	   directives1))))
+|#
 
 (define (lap:syntax-instruction instruction)
   (if (memq (car instruction)
 	    '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL BLOCK-OFFSET))
       (directive->instruction-sequence instruction)
       (let ((match-result (instruction-lookup instruction)))
-	(or (and match-result
-		 (instruction->instruction-sequence (match-result)))
-	    (error "LAP:SYNTAX-INSTRUCTION: Badly formed instruction"
-		   instruction)))))
+	(if (not match-result)
+	    (error "LAP:SYNTAX-INSTRUCTION: illegal instruction syntax"
+		   instruction))
+	(let ((directives (match-result)))
+	  (if (null? directives)
+	      (error "LAP:SYNTAX-INSTRUCTION: instruction generation error"
+		     instruction))
+	  (instruction->instruction-sequence directives)))))
 
 (define (instruction-lookup instruction)
   (pattern-lookup
@@ -86,27 +95,25 @@ MIT in each case. |#
   '())
 
 (define (integer-syntaxer expression coercion-type size)
-  (let ((coercion (make-coercion-name coercion-type size)))
+  (let ((name (make-coercion-name coercion-type size)))
     (if (integer? expression)
-	`',((lexical-reference coercion-environment coercion) expression)
-	`(SYNTAX-EVALUATION ,expression ,coercion))))
+	`',((lookup-coercion name) expression)
+	`(SYNTAX-EVALUATION ,expression ,name))))
 
 (define (syntax-evaluation expression coercion)
-  (cond ((integer? expression)
-	 (coercion expression))
-	(else
-	 (list 'EVALUATION expression (coercion-size coercion) coercion))))
+  (if (integer? expression)
+      (coercion expression)
+      `(EVALUATION ,expression ,(coercion-size coercion) ,coercion)))
 
 (define (optimize-group . components)
   (optimize-group-internal components
-   (lambda (result make-group?)
-     (if make-group?
-	 `(GROUP ,@result)
-	 result))))
+    (lambda (result make-group?)
+      (if make-group?
+	  `(GROUP ,@result)
+	  result))))
 
-;; For completeness
-
-(define optimize-group-early optimize-group)
+(define-integrable optimize-group-early
+  optimize-group)
 
 (define optimize-group-internal
   (let ()
@@ -131,26 +138,25 @@ MIT in each case. |#
 
     (lambda (components receiver)
       (let ((components (loop1 components)))
-	(cond ((null? components)
-	       (error "OPTIMIZE-GROUP: No components"))
-	      ((null? (cdr components))
-	       (receiver (car components) false))
-	      (else (receiver components true)))))))
+	(if (null? components)
+	    (error "OPTIMIZE-GROUP: No components"))
+	(if (null? (cdr components))
+	    (receiver (car components) false)
+	    (receiver components true))))))
 
 ;;;; Variable width expression processing
 
 (define (choose-clause value clauses)
-  (define (in-range? value low high)
-    (and (or (null? low)
-	     (<= low value))
-	 (or (null? high)
-	     (<= value high))))
-
-  (cond ((null? clauses)
-	 (error "choose-clause: value out of range" value))
-	((in-range? value (caddr (car clauses)) (cadddr (car clauses)))
-	 (car clauses))
-	(else (choose-clause value (cdr clauses)))))
+  (if (null? clauses)
+      (error "CHOOSE-CLAUSE: value out of range" value))
+  (if (let ((low (caddr (car clauses)))
+	    (high (cadddr (car clauses))))
+	(and (or (null? low)
+		 (<= low value))
+	     (or (null? high)
+		 (<= value high))))
+      (car clauses)
+      (choose-clause value (cdr clauses))))
 
 (define (variable-width-expression-syntaxer name expression clauses)
   (if (integer? expression)
@@ -209,14 +215,9 @@ MIT in each case. |#
 (define coercion-environment
   (the-environment))
 
-(define (define-coercion coercion-type size)
-  (local-assignment coercion-environment
-		    (make-coercion-name coercion-type size)
-		    (make-coercion coercion-type size)))
-
-(define (lookup-coercion name)
+(define-integrable (lookup-coercion name)
   (lexical-reference coercion-environment name))
-
+
 (define ((coerce-unsigned-integer nbits) n)
   (unsigned-integer->bit-string nbits n))
 
