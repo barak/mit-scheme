@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.14 1988/11/02 21:55:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.15 1988/11/03 07:16:11 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -191,9 +191,22 @@ MIT in each case. |#
 	   (error "INVERT-CC: Not a known CC" cc))))
 
 (define (invert-cc-noncommutative cc)
-  (if (cc-commutative? cc)
-      cc
-      (invert-cc cc)))
+  ;; Despite the fact that the name of this procedure is similar to
+  ;; that of `invert-cc', it is quite different.  `invert-cc' is used
+  ;; when the branches of a conditional are being exchanged, while
+  ;; this is used when the arguments are being exchanged.
+  (cdr (or (assq cc
+		 '((HI . LO) (LO . HI)
+		   (HS . LS) (LS . HS)
+		   (CC . LS) (CS . HI)
+		   (PL . MI) (MI . PL)
+		   (GE . LE) (LE . GE)
+		   (GT . LT) (LT . GT)
+		   (T . T) (F . F)
+		   (NE . NE) (EQ . EQ)
+		   (VC . VC) (VS . VS)
+		   ))
+	   (error "INVERT-CC-NONCOMMUTATIVE: Not a known CC" cc))))
 
 (define-integrable (cc-commutative? cc)
   (memq cc '(T F NE EQ)))
