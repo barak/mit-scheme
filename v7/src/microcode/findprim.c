@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: findprim.c,v 9.57 2003/02/14 18:28:19 cph Exp $
+$Id: findprim.c,v 9.58 2004/12/15 02:24:11 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 1993,1996,1997,2000,2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -809,6 +810,7 @@ DEFUN (whitespace, (c),
     case ' ':
     case '\t':
     case '\n':
+    case '\r':
     case '(':
     case ')':
     case ',': return TRUE;
