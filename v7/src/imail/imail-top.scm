@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.175 2000/06/20 19:13:14 cph Exp $
+;;; $Id: imail-top.scm,v 1.176 2000/06/20 19:15:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -405,7 +405,7 @@ Instead, these commands are available:
 (define-key 'imail #\s		'imail-save-folder)
 (define-key 'imail #\m-s	'imail-search)
 (define-key 'imail #\t		'imail-toggle-header)
-(define-key 'imail #\T		'imail-toggle-message)
+(define-key 'imail #\c-t	'imail-toggle-message)
 (define-key 'imail #\u		'imail-undelete-previous-message)
 (define-key 'imail #\m-u	'imail-first-unseen-message)
 (define-key 'imail #\x		'imail-expunge)
