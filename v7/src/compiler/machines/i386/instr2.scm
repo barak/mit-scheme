@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr2.scm,v 1.3 1992/02/28 20:22:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr2.scm,v 1.4 1992/08/10 21:07:21 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -74,6 +74,38 @@ MIT in each case. |#
 	 (8 #x03))
    (ModR/M reg source)))
 
+(let-syntax
+    ((define-data-extension
+       (macro (mnemonic opcode)
+	 `(define-instruction ,mnemonic
+	    ((B (R (? target)) (? source r/mB))
+	     (BYTE (8 #x0f)
+		   (8 ,opcode))
+	     (ModR/M target source))
+
+	    ((H (R (? target)) (? source r/mW))
+	     (BYTE (8 #x0f)
+		   (8 ,(1+ opcode)))
+	     (ModR/M target source))))))
+
+  (define-data-extension MOVSX #xbe)
+  (define-data-extension MOVZX #xb6))
+
+(let-syntax
+    ((define-unary
+       (macro (mnemonic digit)
+	 `(define-instruction ,mnemonic
+	    ((W (? operand r/mW))
+	     (BYTE (8 #xf7))
+	     (ModR/M ,digit operand))
+
+	    ((B (? operand r/mB))
+	     (BYTE (8 #xf6))
+	     (ModR/M ,digit operand))))))
+
+  (define-unary NEG 3)
+  (define-unary NOT 2))
+
 (define-instruction MOV
   ((W (R (? target)) (? source r/mW))
    (BYTE (8 #x8b))
@@ -117,7 +149,7 @@ MIT in each case. |#
    (BYTE (8 #xc6))
    (ModR/M 0 target)
    (BYTE (8 value SIGNED)))
-
+
   ((B (R (? reg)) (&U (? value)))
    (BYTE (8 (+ #xb0 reg))
 	 (8 value UNSIGNED)))
@@ -142,46 +174,44 @@ MIT in each case. |#
   ((B (@ (? offset)) (R 0))
    (BYTE (8 #xa2)
 	 (8 offset SIGNED)))
-
-  (((? target r/mW) (S (? source)))
+
+  (((? target r/mW) (SR (? source)))
    (BYTE (8 #x8c))
    (ModR/M source target))
 
-  (((S (? target)) (? source r/mW))
+  (((SR (? target)) (? source r/mW))
    (BYTE (8 #x8e))
-   (ModR/M target source)))
+   (ModR/M target source))
 
-(let-syntax
-    ((define-data-extension
-       (macro (mnemonic opcode)
-	 `(define-instruction ,mnemonic
-	    ((B (R (? target)) (? source r/mB))
-	     (BYTE (8 #x0f)
-		   (8 ,opcode))
-	     (ModR/M target source))
+  (((CR (? creg)) (R (? reg)))
+   (BYTE (8 #x0f)
+	 (8 #x22))
+   (ModR/M creg `(R ,reg)))
 
-	    ((H (R (? target)) (? source r/mW))
-	     (BYTE (8 #x0f)
-		   (8 ,(1+ opcode)))
-	     (ModR/M target source))))))
+  (((R (? reg)) (CR (? creg)))
+   (BYTE (8 #x0f)
+	 (8 #x20))
+   (ModR/M creg `(R ,reg)))
 
-  (define-data-extension MOVSX #xbe)
-  (define-data-extension MOVZX #xb6))
+  (((DR (? dreg)) (R (? reg)))
+   (BYTE (8 #x0f)
+	 (8 #x23))
+   (ModR/M dreg `(R ,reg)))
 
-(let-syntax
-    ((define-unary
-       (macro (mnemonic digit)
-	 `(define-instruction ,mnemonic
-	    ((W (? operand r/mW))
-	     (BYTE (8 #xf7))
-	     (ModR/M ,digit operand))
+  (((R (? reg)) (DR (? dreg)))
+   (BYTE (8 #x0f)
+	 (8 #x21))
+   (ModR/M dreg `(R ,reg)))
 
-	    ((B (? operand r/mB))
-	     (BYTE (8 #xf6))
-	     (ModR/M ,digit operand))))))
+  (((TR (? dreg)) (R (? reg)))
+   (BYTE (8 #x0f)
+	 (8 #x26))
+   (ModR/M treg `(R ,reg)))
 
-  (define-unary NEG 3)
-  (define-unary NOT 2))
+  (((R (? reg)) (TR (? treg)))
+   (BYTE (8 #x0f)
+	 (8 #x24))
+   (ModR/M treg `(R ,reg))))
 
 (define-trivial-instruction NOP #x90)
 
@@ -208,20 +238,37 @@ MIT in each case. |#
    (BYTE (8 #x8f))
    (ModR/M 0 target))
 
-  (((DS))
-   (BYTE (8 #x1f)))
-
-  (((ES))
+  ((ES)
    (BYTE (8 #x07)))
 
-  (((SS))
+  ((SS)
    (BYTE (8 #x17)))
 
-  (((FS))
+  ((DS)
+   (BYTE (8 #x1f)))
+
+  ((FS)
    (BYTE (8 #x0f)
 	 (8 #xa1)))
 
-  (((GS))
+  ((GS)
+   (BYTE (8 #x0f)
+	 (8 #xa9)))
+
+  (((SR 0))
+   (BYTE (8 #x07)))
+
+  (((SR 2))
+   (BYTE (8 #x17)))
+
+  (((SR 3))
+   (BYTE (8 #x1f)))
+
+  (((SR 4))
+   (BYTE (8 #x0f)
+	 (8 #xa1)))
+
+  (((SR 5))
    (BYTE (8 #x0f)
 	 (8 #xa9))))
 
@@ -229,7 +276,7 @@ MIT in each case. |#
 (define-trivial-instruction POPAD #x61)
 (define-trivial-instruction POPF #x9d)
 (define-trivial-instruction POPFD #x9d)
-
+
 (define-instruction PUSH
   (((R (? source)))
    (BYTE (8 (+ #x50 source))))
@@ -249,28 +296,48 @@ MIT in each case. |#
   ((B (& (? value)))
    (BYTE (8 #x6a)
 	 (8 value)))
-
+
   ((B (&U (? value)))
    (BYTE (8 #x6a)
 	 (8 value UNSIGNED)))
 
-  (((CS))
-   (BYTE (8 #x0e)))
-
-  (((SS))
-   (BYTE (8 #x16)))
-
-  (((DS))
-   (BYTE (8 #x1e)))
-
-  (((ES))
+  ((ES)
    (BYTE (8 #x06)))
 
-  (((FS))
+  ((CS)
+   (BYTE (8 #x0e)))
+
+  ((SS)
+   (BYTE (8 #x16)))
+
+  ((DS)
+   (BYTE (8 #x1e)))
+
+  ((FS)
    (BYTE (8 #x0f)
 	 (8 #xa0)))
 
-  (((GS))
+  ((GS)
+   (BYTE (8 #x0f)
+	 (8 #xa8)))
+
+  (((SR 0))
+   (BYTE (8 #x06)))
+
+  (((SR 1))
+   (BYTE (8 #x0e)))
+
+  (((SR 2))
+   (BYTE (8 #x16)))
+
+  (((SR 3))
+   (BYTE (8 #x1e)))
+
+  (((SR 4))
+   (BYTE (8 #x0f)
+	 (8 #xa0)))
+
+  (((SR 5))
    (BYTE (8 #x0f)
 	 (8 #xa8))))
 
@@ -278,7 +345,7 @@ MIT in each case. |#
 (define-trivial-instruction PUSHAD #x60)
 (define-trivial-instruction PUSHF  #x9c)
 (define-trivial-instruction PUSHFD #x9c)
-
+
 (let-syntax
     ((define-rotate/shift
        (macro (mnemonic digit)
@@ -308,7 +375,7 @@ MIT in each case. |#
 	   ((B (? operand r/mB) (R 1))
 	    (BYTE (8 #xd2))
 	    (ModR/M ,digit operand))))))
-
+
   (define-rotate/shift RCL 2)
   (define-rotate/shift RCR 3)
   (define-rotate/shift ROL 0)
@@ -318,6 +385,24 @@ MIT in each case. |#
   (define-rotate/shift SHL 4)
   (define-rotate/shift SHR 5))
 
+(let-syntax
+    ((define-double-shift
+       (macro (mnemonic opcode)
+	 `(define-instruction ,mnemonic
+	    ((W (? target r/mW) (R (? source)) (& (? count)))
+	     (BYTE (8 #x0f)
+		   (8 ,opcode))
+	     (ModR/M target source)
+	     (BYTE (8 count)))
+
+	    ((W (? target r/mW) (R (? source)) (R 1))
+	     (BYTE (8 #x0f)
+		   (8 ,(1+ opcode)))
+	     (ModR/M target source))))))
+
+  (define-double-shift SHLD #xa4)
+  (define-double-shift SHRD #xac))
+
 (define-instruction RET
   (()
    (BYTE (8 #xc3)))
@@ -375,24 +460,6 @@ MIT in each case. |#
   (define-setcc-instruction SETS   #x98)
   (define-setcc-instruction SETZ   #x94))
 
-(let-syntax
-    ((define-double-shift
-       (macro (mnemonic opcode)
-	 `(define-instruction ,mnemonic
-	    ((W (? target r/mW) (R (? source)) (& (? count)))
-	     (BYTE (8 #x0f)
-		   (8 ,opcode))
-	     (ModR/M target source)
-	     (BYTE (8 count)))
-
-	    ((W (? target r/mW) (R (? source)) (R 1))
-	     (BYTE (8 #x0f)
-		   (8 ,(1+ opcode)))
-	     (ModR/M target source))))))
-
-  (define-double-shift SHLD #xa4)
-  (define-double-shift SHRD #xac))
-
 (define-trivial-instruction STC #xf9)
 (define-trivial-instruction STD #xfd)
 (define-trivial-instruction STI #xfb)
