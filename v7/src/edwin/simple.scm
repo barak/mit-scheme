@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: simple.scm,v 1.53 2001/01/24 04:28:21 cph Exp $
+;;; $Id: simple.scm,v 1.54 2001/01/24 22:42:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -306,24 +306,41 @@
 					    key)))
     (and index
 	 (make-mark (mark-group start) index))))
-
-(define (specific-property-region mark key)
-  (let ((default (list 'DEFAULT)))
+
+(define (specific-property-region mark key #!optional predicate)
+  (let ((default (list 'DEFAULT))
+	(predicate
+	 (if (or (default-object? predicate) (not predicate))
+	     (lambda (x y) (eq? x y))
+	     predicate)))
     (let ((datum (region-get mark key default)))
       (and (not (eq? datum default))
 	   (make-region
 	    (let ((start (group-start mark)))
-	      (if (mark< start mark)
-		  (if (eq? (region-get (mark-1+ mark) key default) datum)
-		      (or (find-previous-specific-property-change start mark
-								  key)
-			  start)
-		      mark)
-		  start))
+	      (let loop ((mark mark))
+		(if (mark< start mark)
+		    (if (let ((datum* (region-get (mark-1+ mark) key default)))
+			  (and (not (eq? datum* default))
+			       (predicate datum* datum)))
+			(let ((m
+			       (find-previous-specific-property-change
+				start mark key)))
+			  (if m
+			      (loop m)
+			      start))
+			mark)
+		    start)))
 	    (let ((end (group-end mark)))
-	      (if (mark< mark end)
-		  (if (eq? (region-get (mark1+ mark) key default) datum)
-		      (or (find-next-specific-property-change mark end key)
-			  end)
-		      mark)
-		  end)))))))
+	      (let loop ((mark mark))
+		(if (mark< mark end)
+		    (if (let ((datum* (region-get (mark1+ mark) key default)))
+			  (and (not (eq? datum* default))
+			       (predicate datum* datum)))
+			(let ((m
+			       (find-next-specific-property-change
+				mark end key)))
+			  (if m
+			      (loop m)
+			      end))
+			mark)
+		    end))))))))
