@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.124 1992/04/22 20:26:56 mhwu Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.125 1992/04/22 20:59:19 mhwu Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -99,9 +99,7 @@ Also:
 (define-key 'dired #\h 'describe-mode)
 (define-key 'dired #\space 'dired-next-line)
 (define-key 'dired #\c-n 'dired-next-line)
-(define-key 'dired down 'dired-next-line)
 (define-key 'dired #\c-p 'dired-previous-line)
-(define-key 'dired up 'dired-previous-line)
 (define-key 'dired #\n 'dired-next-line)
 (define-key 'dired #\p 'dired-previous-line)
 (define-key 'dired #\g 'dired-revert)
@@ -112,6 +110,16 @@ Also:
 (define-key 'dired #\O 'dired-chown)
 (define-key 'dired #\q 'dired-quit)
 (define-key 'dired #\c-\] 'dired-abort)
+
+(let-syntax ((define-function-key
+               (macro (mode key command)
+                 (let ((token (if (pair? key) (car key) key)))
+                   `(if (not (lexical-unreferenceable? (the-environment)
+                                                       ',token))
+                        (define-key ,mode ,key ,command))))))
+  (define-function-key 'dired down 'dired-next-line)
+  (define-function-key 'dired up 'dired-previous-line))
+
 
 (define-command dired
   "\"Edit\" directory DIRNAME--delete, rename, print, etc. some files in it.
@@ -210,32 +218,73 @@ CANNOT contain the 'F' option."
 (define (read-directory pathname switches mark)
   (let ((directory (directory-pathname pathname)))
     (if (file-directory? pathname)
-	(run-synchronous-process false mark directory false
-				 (find-program "ls" false)
-				 switches
-				 (->namestring pathname))
-	(shell-command false mark directory false
-		       (string-append "ls "
-				      switches
-				      " "
-				      (file-namestring pathname))))))
+	(or (run-synchronous-process false mark directory false
+				     (find-program "ls" false)
+				     switches
+				     (->namestring pathname))
+	    (let ((dir (->namestring (pathname-as-directory pathname))))
+	      (generate-dired-listing! (string-append dir "*.*") mark)))
+	(or (shell-command false mark directory false
+			   (string-append "ls "
+					  switches
+					  " "
+					  (file-namestring pathname)))
+	    (generate-dired-listing! pathname mark)))))
+
 
 (define (add-dired-entry pathname)
   (let ((lstart (line-start (current-point) 0))
 	(directory (directory-pathname pathname)))
     (if (pathname=? (buffer-default-directory (mark-buffer lstart)) directory)
 	(let ((start (mark-right-inserting lstart)))
-	  (run-synchronous-process false lstart directory false
-				   (find-program "ls" directory)
-				   "-d"
-				   (ref-variable dired-listing-switches)
-				   (->namestring pathname))
-	  (insert-string "  " start)
-	  (let ((start (mark-right-inserting (dired-filename-start start))))
-	    (insert-string
-	     (file-namestring
-	      (extract-and-delete-string start (line-end start 0)))
-	     start))))))
+	  (if (run-synchronous-process false lstart directory false
+				       (find-program "ls" directory)
+				       "-d"
+				       (ref-variable dired-listing-switches)
+				       (->namestring pathname))
+	      (begin
+		(insert-string "  " start)
+		(let ((start (mark-right-inserting (dired-filename-start start))))
+		  (insert-string
+		   (file-namestring
+		    (extract-and-delete-string start (line-end start 0)))
+		   start)))
+	      (let ((start (mark-left-inserting lstart)))
+		(insert-string "  " start)
+		(generate-dired-entry! pathname start)))))))
+
+;;; Scheme version of ls
+
+(define (generate-dired-listing! pathname point)
+  (let ((files (directory-read (->namestring (merge-pathnames pathname)))))
+    (for-each (lambda (file) (generate-dired-entry! file point))
+	      files)))
+
+(define (generate-dired-entry! file point)
+  (define (file-attributes/ls-time-string attr)
+    ;; Swap year around to the start
+    (let ((time-string ((ucode-primitive file-time->string 1)
+			(file-attributes/modification-time attr))))
+      (if (string? time-string)
+	  (or (let ((len (string-length time-string)))
+		(and (fix:> len 5) ;; Grap the space char as well
+		     (string-append (substring time-string (fix:- len 5) len)
+				    " "
+				    (substring time-string 0 (fix:- len 5)))))
+	      ""))))
+
+  (let ((name (file-namestring file)) (attr (file-attributes file)))
+    (let ((entry (string-append
+		  (string-pad-right	; Mode string
+		   (file-attributes/mode-string attr) 12 #\Space)
+		  (string-pad-left    ; Length
+		   (number->string (file-attributes/length attr)) 10 #\Space)
+		  (string-pad-right   ; Mod time
+		   (file-attributes/ls-time-string attr) 26 #\Space)
+		  name)))
+      (insert-string entry point)
+      (insert-newline point))))
+
 
 (define-command dired-find-file
   "Read the current file into a buffer."
@@ -373,6 +422,7 @@ CANNOT contain the 'F' option."
   "Change owner of this file."
   "sChange to Owner"
   (lambda (owner) (dired-change-line "chown" owner)))
+
 
 (define-command dired-compress
   "Compress a file."
