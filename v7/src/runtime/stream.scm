@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stream.scm,v 14.16 2003/09/30 03:39:03 cph Exp $
+$Id: stream.scm,v 14.17 2003/09/30 04:16:45 cph Exp $
 
 Copyright 1986,1987,1988,1989,1992,1995 Massachusetts Institute of Technology
 Copyright 1998,2003 Massachusetts Institute of Technology
@@ -54,18 +54,14 @@ USA.
 (define (stream . list)
   (list->stream list))
 
-(define stream-length
-  (letrec
-      ((loop
-	(lambda (stream length)
-	  (if (stream-pair? stream)
-	      (loop (force (cdr stream)) (+ length 1))
-	      (begin
-		(if (not (null? stream))
-		    (error:illegal-stream-element stream 'STREAM-LENGTH 0))
-		length)))))
-    (lambda (stream)
-      (loop stream 0))))
+(define (stream-length stream)
+  (let loop ((stream stream) (n 0))
+    (if (stream-pair? stream)
+	(loop (force (cdr stream)) (+ n 1))
+	(begin
+	  (if (not (null? stream))
+	      (error:illegal-stream-element stream 'STREAM-LENGTH 0))
+	  n))))
 
 (define (stream-ref stream index)
   (let ((tail (stream-tail stream index)))
@@ -73,87 +69,66 @@ USA.
 	(error:bad-range-argument index 'STREAM-REF))
     (car tail)))
 
-(define stream-head
-  (letrec
-      ((loop
-	(lambda (stream index)
-	  (if (= 0 index)
-	      '()
-	      (begin
-		(if (not (stream-pair? stream))
-		    (error:bad-range-argument index 'STREAM-HEAD))
-		(cons (car stream)
-		      (loop (force (cdr stream)) (- index 1))))))))
-    (lambda (stream index)
-      (if (not (exact-nonnegative-integer? index))
-	  (error:wrong-type-argument index
-				     "exact nonnegative integer"
-				     'STREAM-HEAD))
-      (loop stream index))))
+(define (stream-head stream index)
+  (guarantee-exact-nonnegative-integer index 'STREAM-HEAD)
+  (let loop ((stream stream) (index index))
+    (if (> index 0)
+	(begin
+	  (if (not (stream-pair? stream))
+	      (error:bad-range-argument index 'STREAM-HEAD))
+	  (cons (car stream)
+		(loop (force (cdr stream)) (- index 1))))
+	'())))
 
-(define stream-tail
-  (letrec
-      ((loop
-	(lambda (stream index)
-	  (if (= 0 index)
-	      stream
-	      (begin
-		(if (not (stream-pair? stream))
-		    (error:bad-range-argument index 'STREAM-TAIL))
-		(loop (force (cdr stream)) (- index 1)))))))
-    (lambda (stream index)
-      (if (not (exact-nonnegative-integer? index))
-	  (error:wrong-type-argument index
-				     "exact nonnegative integer"
-				     'STREAM-TAIL))
-      (loop stream index))))
+(define (stream-tail stream index)
+  (guarantee-exact-nonnegative-integer index 'STREAM-TAIL)
+  (let loop ((stream stream) (index index))
+    (if (> index 0)
+	(begin
+	  (if (not (stream-pair? stream))
+	      (error:bad-range-argument index 'STREAM-TAIL))
+	  (loop (force (cdr stream)) (- index 1)))
+	stream)))
 
-(define stream-map
-  (letrec
-      ((do-1
-	(lambda (procedure stream)
-	  (if (stream-pair? stream)
-	      (cons-stream (procedure (car stream))
-			   (do-1 procedure (force (cdr stream))))
-	      (begin
-		(if (not (null? stream))
-		    (error:illegal-stream-element stream 'STREAM-MAP 1))
-		'()))))
-       (do-n
-	(lambda (procedure streams)
-	  (receive (cars cdrs) (split-streams streams 'STREAM-MAP)
-	    (if (pair? cars)
-		(cons-stream (apply procedure cars)
-			     (do-n procedure (map force cdrs)))
-		'())))))
-    (lambda (procedure stream . streams)
-      (if (null? streams)
-	  ;; Kludge: accept arguments in old order.
-	  (if (or (null? procedure) (stream-pair? procedure))
-	      (do-1 stream procedure)
-	      (do-1 procedure stream))
-	  (do-n procedure (cons stream streams))))))
+(define (stream-map procedure stream . streams)
+  (cond ((pair? streams)
+	 (let loop ((streams (cons stream streams)))
+	   (receive (cars cdrs) (split-streams streams 'STREAM-MAP)
+	     (if (pair? cars)
+		 (cons-stream (apply procedure cars)
+			      (loop (map force cdrs)))
+		 '()))))
+	((and (procedure? procedure)
+	      (or (null? stream) (stream-pair? stream)))
+	 (let loop ((stream stream))
+	   (if (stream-pair? stream)
+	       (cons-stream (procedure (car stream))
+			    (loop (force (cdr stream))))
+	       (begin
+		 (if (not (null? stream))
+		     (error:illegal-stream-element stream 'STREAM-MAP 1))
+		 '()))))
+	((and (procedure? stream)
+	      (or (null? procedure) (stream-pair? procedure)))
+	 ;; Kludge: accept arguments in old order.
+	 (stream-map stream procedure))
+	(else
+	 (error "Unknown arguments to STREAM-MAP."))))
 
-(define stream-for-each
-  (letrec
-      ((do-1
-	(lambda (procedure stream)
-	  (cond ((stream-pair? stream)
-		 (procedure (car stream))
-		 (do-1 procedure (force (cdr stream))))
-		((not (null? stream))
-		 (error:illegal-stream-element stream 'STREAM-FOR-EACH 1)))))
-       (do-n
-	(lambda (procedure streams)
-	  (receive (cars cdrs) (split-streams streams 'STREAM-FOR-EACH)
-	    (if (pair? cars)
-		(begin
-		  (apply procedure cars)
-		  (do-n procedure (map force cdrs))))))))
-    (lambda (procedure stream . streams)
-      (if (null? streams)
-	  (do-1 procedure stream)
-	  (do-n procedure (cons stream streams))))))
+(define (stream-for-each procedure stream . streams)
+  (if (pair? streams)
+      (let loop ((streams (cons stream streams)))
+	(receive (cars cdrs) (split-streams streams 'STREAM-FOR-EACH)
+	  (if (pair? cars)
+	      (begin
+		(apply procedure cars)
+		(loop (map force cdrs))))))
+      (let loop ((stream stream))
+	(cond ((stream-pair? stream)
+	       (procedure (car stream))
+	       (loop (force (cdr stream))))
+	      ((not (null? stream))
+	       (error:illegal-stream-element stream 'STREAM-FOR-EACH 1))))))
 
 (define (split-streams streams operator)
   (let ((cars (list 'CARS))
@@ -173,37 +148,31 @@ USA.
 		  (values '() '()))))
 	  (values (cdr cars) (cdr cdrs))))))
 
-(define stream-append-map
-  (letrec
-      ((do-1
-	(lambda (procedure stream)
+(define (stream-append-map procedure stream . streams)
+  (let ((sappend
+	 (lambda (s1 s2)
+	   (let loop ((s s1))
+	     (if (stream-pair? s)
+		 (cons-stream (car s) (loop (force (cdr s))))
+		 (begin
+		   (if (not (null? s))
+		       (error:illegal-stream-element s1 'STREAM-APPEND 0))
+		   (force s2)))))))
+    (if (pair? streams)
+	(let loop ((streams (cons stream streams)))
+	  (receive (cars cdrs) (split-streams streams 'STREAM-APPEND-MAP)
+	    (if (pair? cars)
+		(sappend (apply procedure cars)
+			 (delay (loop (map force cdrs))))
+		'())))
+	(let loop ((stream stream))
 	  (if (stream-pair? stream)
-	      (append (procedure (car stream))
-		      (delay (do-1 procedure (force (cdr stream)))))
+	      (sappend (procedure (car stream))
+		       (delay (loop (force (cdr stream)))))
 	      (begin
 		(if (not (null? stream))
 		    (error:illegal-stream-element stream 'STREAM-APPEND-MAP 1))
-		'()))))
-       (do-n
-	(lambda (procedure streams)
-	  (receive (cars cdrs) (split-streams streams 'STREAM-APPEND-MAP)
-	    (if (pair? cars)
-		(append (apply procedure cars)
-			(delay (do-n procedure (map force cdrs))))
-		'()))))
-       (append
-	(lambda (s1 s2)
-	  (let loop ((s s1))
-	    (if (stream-pair? s)
-		(cons-stream (car s) (loop (force (cdr s))))
-		(begin
-		  (if (not (null? s))
-		      (error:illegal-stream-element s1 'STREAM-APPEND 0))
-		  (force s2)))))))
-    (lambda (procedure stream . streams)
-      (if (null? streams)
-	  (do-1 procedure stream)
-	  (do-n procedure (cons stream streams))))))
+		'()))))))
 
 (define (stream-append . streams)
   (if (pair? streams)
@@ -240,25 +209,24 @@ USA.
 	    (error:illegal-stream-element stream 'STREAM-FILTER 1))
 	'())))
 
-(define stream-write
-  (letrec
-      ((loop
-	(lambda (stream leader port)
-	  (if (stream-pair? stream)
-	      (begin
-		(write-char leader port)
-		(write (car stream) port)
-		(loop (force (cdr stream)) #\space port))
-	      (begin
-		(if (not (null? stream))
-		    (error:illegal-stream-element stream 'STREAM-WRITE 0))
-		(write-char #\} port))))))
-    (lambda (stream #!optional port)
-      (loop stream
-	    #\{
-	    (if (default-object? port)
-		(current-output-port)
-		(guarantee-output-port port 'STREAM-WRITE))))))
+(define (stream-write stream #!optional port)
+  (let ((port
+	 (if (default-object? port)
+	     (current-output-port)
+	     (guarantee-output-port port 'STREAM-WRITE))))
+    (if (stream-pair? stream)
+	(begin
+	  (write-char #\{ port)
+	  (write (car stream) port)
+	  (stream-for-each (lambda (object)
+			     (write-char #\space port)
+			     (write object port))
+			   (force (cdr stream)))
+	  (write-char #\} port))
+	(begin
+	  (if (not (null? stream))
+	      (error:illegal-stream-element stream 'STREAM-WRITE 0))
+	  (write-string "{}" port)))))
 
 (define (list->stream list)
   (if (pair? list)
@@ -290,7 +258,7 @@ USA.
 	    (let loop ((primes primes))
 	      (let ((prime (car primes)))
 		(cond ((< integer (cdr prime))
-		       (cons-stream (cons integer (* integer integer))
+		       (cons-stream (cons integer (square integer))
 				    (filter (+ integer 2))))
 		      ((= 0 (remainder integer (car prime)))
 		       (filter (+ integer 2)))
