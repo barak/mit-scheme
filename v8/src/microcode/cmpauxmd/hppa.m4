@@ -1,8 +1,8 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.39 1995/08/15 00:16:00 adams Exp $
+;;;	$Id: hppa.m4,v 1.40 1996/07/19 02:22:05 adams Exp $
 ;;;
-;;;	Copyright (c) 1989-1995 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-1996 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -78,8 +78,13 @@ changecom(`;');;; -*-Midas-*-
 ;;;;    register.  Two word structures are returned in super temporary
 ;;;;    registers as well.  On HPPA: gr28 is used for long returns,
 ;;;;	gr28/gr29 are used for two word structure returns.
+
 ;;;;	GCC returns two word structures differently: It passes
 ;;;;	the address of the structure in gr28!
+
+;;;;	I have just discoveded that GCC 2.6.3+ returns two work structures in
+;;;;	gr28/gr29 like the HP compiler.
+
 ;;;;
 ;;;;	6) Floating point registers are not preserved by this
 ;;;;	interface.  The interface is only called from the Scheme
@@ -269,11 +274,17 @@ define(ENTRY_TO_ADDRESS, "")
 ;;				 "DEP	rs_quad,TC_START,TC_LENGTH,$1"))
 
 
-define(C_FRAME_SIZE,
-       ifdef("HPC", 112,
-	     ifdef("GCC", 120,
-	           `Unknown C compiler: bad frame size')))
+;;define(C_FRAME_SIZE,
+;;       ifdef("HPC", 112,
+;;	     ifdef("GCC", 120,
+;;	           `Unknown C compiler: bad frame size')))
+;; define(C_FRAME_SIZE,
+;;       ifdef("HPC", 112,
+;;	     ifdef("GCC", 120,
+;;	           `Unknown C compiler: bad frame size')))
+define(C_FRAME_SIZE, 112)
 define(INT_BIT_STACK_OVERFLOW, 31)
+define(INT_BIT_GC, 30)
 
 	.SPACE  $TEXT$
 	.SUBSPA $CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
@@ -309,10 +320,10 @@ C_to_interface
 	LDIL	L'SHARP_F,rs_false
 	;; ADDI avoids assember bug with:  LDO  R'SHARP_F(rs_false),rs_false
 	ADDI	R'SHARP_F,rs_false,rs_false
-	LDW	REGBLOCK_EMPTY_LIST(0,rs_regblock),rs_empty_list
+	LDW	REGBLOCK_EMPTY_LIST,rs_empty_list
 
 ep_interface_to_scheme
-	;;	LDW	REGBLOCK_VAL(0,rs_regblock),rs_arg1
+	;;	LDW	REGBLOCK_VAL,rs_arg1
 	ADDIL	L'Ext_Stack_Pointer-$global$,rc_static_area
 	LDW	R'Ext_Stack_Pointer-$global$(1),rs_stack
 
@@ -385,7 +396,7 @@ all_args_loaded
 
 ep_interface_to_scheme_2
 	;; A (modified) copy of this code is part of invoke_primitive
-	LDW	REGBLOCK_MEMTOP(0,rs_regblock),rs_memtop
+	LDW	REGBLOCK_MEMTOP,rs_memtop
 	ADDIL	L'Free-$global$,rc_static_area
 	LDW	R'Free-$global$(1),rs_free
 	.CALL	RTNVAL=GR		; out=28
@@ -418,7 +429,7 @@ scheme_to_interface_ble
 	DEP	0,31,2,rc_arg1			; clear privilege bits
 
 scheme_to_interface
-	;;STW	rs_val,REGBLOCK_VAL(0,rs_regblock)
+	;;STW	rs_val,REGBLOCK_VAL
 	ADDIL	L'hppa_utility_table-$global$,rc_static_area
 	LDW	R'hppa_utility_table-$global$(1),29
 	ADDIL	L'Ext_Stack_Pointer-$global$,rc_static_area
@@ -435,13 +446,15 @@ scheme_to_interface
 	LDW	R'interface_limit-$global$(1),22
 	COMB,=,N	21,22,interface_break
 interface_proceed")
-	ifdef("GCC", "LDO	-116(rc_stack),28")
+;; not 2.6.3
+;;	ifdef("GCC", "LDO	-116(rc_stack),28")
 
 	.CALL	ARGW0=GR,ARGW1=GR,ARGW2=GR,ARGW3=GR,RTNVAL=GR
 	BLE	0(4,29)				; Call handler
 	COPY	31,2				; Setup return address
-	ifdef("GCC", "LDW	-116(rc_stack),28
-		      LDW	-112(rc_stack),29")
+;; not 2.6.3
+;;	ifdef("GCC", "LDW	-116(rc_stack),28
+;;		      LDW	-112(rc_stack),29")
 	BV	0(28)				; Call receiver
 	COPY	29,rc_arg1			; Setup entry point
 
@@ -458,9 +471,9 @@ interface_proceed")
 	NOP
 	NOP
 	NOP")
-	ifdef("GCC","","NOP
 	NOP
-	NOP")
+	NOP
+	NOP
 	NOP
 
 ;; This label is used by the trap handler
@@ -581,7 +594,7 @@ shortcircuit_apply_8_hook
 
 stack_and_interrupt_check_hook
 	B	stack_and_interrupt_check+4
-	LDW	REGBLOCK_STACK_GUARD(0,rs_regblock),25
+	LDW	REGBLOCK_STACK_GUARD,25
 
 invoke_primitive_hook
 	B	invoke_primitive+4
@@ -693,23 +706,20 @@ interpreter_call_hook
 	NOP
 
 profile_count_hook
-	LDW     -7(0,31),1
+	LDW     -7(0,31),1			; hook 55
 	ADDI    1,1,1
-	BE      0(5,31)
+	BE      0(5,31)				; hook 56
 	STW     1,-7(0,31)
-	
+
+set_interrupt_enables_hook
+	B	set_interrupt_enables		; hook 57
+	LDW	REGBLOCK_INT_MASK,gt1		; previous value
 ;;
 ;; Provide dummy trapping hooks in case a newer version of compiled
 ;; code that expects more hooks is run.
 ;;
 
 no_hook
-	BREAK	0,55
-	NOP
-	BREAK	0,56
-	NOP
-	BREAK	0,57
-	NOP
 	BREAK	0,58
 	NOP
 	BREAK	0,59
@@ -892,7 +902,7 @@ store_closure_code
 	;	LDO	R'SHARP_F(5),5	; Assembler bug!
 	ADDI	R'SHARP_F,5,5
 	BE	0(5,31)				; Return
-	LDW	REGBLOCK_MEMTOP(0,rs_regblock),rs_memtop  ;restore
+	LDW	REGBLOCK_MEMTOP,rs_memtop  	;restore
 
 
 
@@ -1451,12 +1461,74 @@ shortcircuit_apply_lose
 	B	scheme_to_interface
 	LDI	0x14,28
 
+;;;
+;; On arrival, rs_continuation has a return address and rs_arg1 has the mask.
+;; Free to use: g31 g2 g26 g25 g28 g29 fp4 fp5
+;;
+;; This code uses the same calling convention as vector_cons etc, but
+;; never uses the preservation info.
+;;
+;; C Code:
+;;
+;;  #define INTERRUPT_ENABLED_P(mask) (((FETCH_INTERRUPT_MASK()) & (mask)) != 0)
+;;  #define PENDING_INTERRUPTS() \
+;;              ((FETCH_INTERRUPT_MASK ()) & (FETCH_INTERRUPT_CODE ()))
+;;  #define INTERRUPT_PENDING_P(mask) (((PENDING_INTERRUPTS ()) & (mask)) != 0)
+;;  (Registers[REGBLOCK_INT_MASK]) = ((SCHEME_OBJECT) (mask));
+;;  (Registers[REGBLOCK_MEMTOP]) =
+;;    (((PENDING_INTERRUPTS ()) != 0)
+;;     ? ((SCHEME_OBJECT) -1)
+;;     : (INTERRUPT_ENABLED_P (INT_GC))
+;;     ? ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (MemTop)))
+;;     : ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (Heap_Top))));
+;;  (Registers[REGBLOCK_STACK_GUARD]) =
+;;    ((INTERRUPT_ENABLED_P (INT_Stack_Overflow))
+;;     ? ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (Stack_Guard)))
+;;     : ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (Stack_Bottom))));
+;;
+
+set_interrupt_enables
+	LDW	REGBLOCK_INT_MASK,gt1			; previous value
+	LDW	REGBLOCK_INT_CODE,gt2
+	EXTRU	rs_arg1,31,16,rs_arg1			; AND with INT_Mask
+	STW	rs_arg1,REGBLOCK_INT_MASK
+
+;; Now, set up the memtop and stack_guard registers. Memtop is -1 if there
+;; are any pending interrupts, else "MemTop" if GC interrupt is enabled,
+;; else "Heap_Top".
+
+	LDI	-1,rs_memtop
+	AND,=	rs_arg1,gt2,0
+	B	set_interrupt_enables_1
+	ADDIL	L'MemTop-$global$,rc_static_area
+	BB,<	rs_arg1,INT_BIT_GC,set_interrupt_enables_1
+	LDW	R'MemTop-$global$(1),rs_memtop
+	ADDIL	L'Heap_Top-$global$,rc_static_area
+	LDW	R'Heap_Top-$global$(1),rs_memtop
+
+set_interrupt_enables_1
+
+;; Set Stack_guard's value, depends on whether the stack-overflow
+;; interrupt is enabled.
+
+	ADDIL	L'Stack_Guard-$global$,rc_static_area
+	STW	rs_memtop,REGBLOCK_MEMTOP
+	BB,<	rs_arg1,INT_BIT_STACK_OVERFLOW,set_interrupt_enables_2
+	LDW	R'Stack_Guard-$global$(1),gt2
+	ADDIL	L'Stack_Bottom-$global$,rc_static_area
+	LDW	R'Stack_Bottom-$global$(1),gt2
+
+set_interrupt_enables_2
+	COPY	gt1,rs_arg1
+	BLE	0(5,rs_continuation)		; return!
+	STW	gt2,REGBLOCK_STACK_GUARD	
+
 ;;; Return address in r31.  r26 contains the offset from the return
 ;;; address to the interrupt invocation label.
 
 stack_and_interrupt_check
-	LDW	REGBLOCK_STACK_GUARD(0,rs_regblock),25
-	LDW	REGBLOCK_MEMTOP(0,rs_regblock),rs_memtop
+	LDW	REGBLOCK_STACK_GUARD,25
+	LDW	REGBLOCK_MEMTOP,rs_memtop
 ;;;
 ;;; If the Scheme stack pointer is <= Stack_Guard, then the stack has
 ;;; overflowed -- in which case we must signal a stack-overflow interrupt.
@@ -1472,8 +1544,8 @@ stack_and_interrupt_check
 	NOP
 
 stack_and_interrupt_check_stack_overflow
-	LDW	REGBLOCK_INT_CODE(0,rs_regblock),25	; IntCode -> r25
-	LDW	REGBLOCK_INT_MASK(0,rs_regblock),29	; IntEnb -> r29
+	LDW	REGBLOCK_INT_CODE,25			; IntCode -> r25
+	LDW	REGBLOCK_INT_MASK,29			; IntEnb -> r29
 ;;;
 ;;; Set the stack-overflow interrupt bit and write the interrupt word
 ;;; back out to memory.  If the stack-overflow interrupt is disabled,
@@ -1482,9 +1554,9 @@ stack_and_interrupt_check_stack_overflow
 
 	DEPI	1,INT_BIT_STACK_OVERFLOW,1,25
 	BB,>=	29,INT_BIT_STACK_OVERFLOW,stack_and_interrupt_check_no_overflow
-	STW	25,REGBLOCK_INT_CODE(0,rs_regblock)	; r25 -> IntCode
+	STW	25,REGBLOCK_INT_CODE			; r25 -> IntCode
 	ADDI	-1,0,rs_memtop				; -1 -> r20
-	STW	rs_memtop,REGBLOCK_MEMTOP(0,rs_regblock)
+	STW	rs_memtop,REGBLOCK_MEMTOP
 ;;;
 ;;; If (Free >= MemTop), signal an interrupt.
 stack_and_interrupt_check_no_overflow
@@ -1623,12 +1695,13 @@ interface_to_scheme_new_allregs
 	B	ep_interface_to_scheme_2
 	NOP
 
-;;; invoke_primitive and *cons all have the same interface:
-;;; The "return address" in r31 points to a word containing
-;;; the distance between itself and the word in memory containing
-;;; the primitive object.
+;;; invoke_primitive, vector_cons, floating_vector_cons and string_allocate
+;;; all have the same interface: The "return address" in r31 points to
+;;; a word containing the distance between itself and the word in
+;;; memory containing the primitive object.
+;;;
 ;;; All arguments are passed on the stack, ready for the primitive.
-
+;;;
 ;;; The line marked *MAGIC* below is useful only when primitives do
 ;;; something other than a normal value-generating return (e.g. APPLY
 ;;; ends by tailing into a compiled procedure or WITH-INTERRUPT-MASK
@@ -1648,7 +1721,7 @@ original_invoke_primitive
 	LDWX	26(0,31),26			; get primitive
 	LDW	R'hppa_primitive_table-$global$(1),25
 	EXTRU	26,31,DATUM_LENGTH,24		; get primitive index
-	STW	26,REGBLOCK_PRIMITIVE(0,rs_regblock)
+	STW	26,REGBLOCK_PRIMITIVE
 	ADDIL	L'Primitive_Arity_Table-$global$,rc_static_area
 	LDW	R'Primitive_Arity_Table-$global$(1),17
 	LDWX,S	24(0,25),25			; find primitive entry point
@@ -1669,7 +1742,7 @@ original_invoke_primitive
 	B	ep_interface_to_scheme_2
 	;;DEP	rs_quad,TC_START,TC_LENGTH,rc_arg2
 						; return address as address
-	STW	0,REGBLOCK_PRIMITIVE(0,rs_regblock)
+	STW	0,REGBLOCK_PRIMITIVE
 
 ;;; The BLE in invoke_primitive can jump here.
 ;;; The primitive index is in gr24
@@ -1712,7 +1785,7 @@ new_pushing_args_invoke_primitive
 	LDWX	26(0,31),26				; get primitive
 	LDW	R'hppa_primitive_table-$global$(1),25
 	EXTRU	26,31,DATUM_LENGTH,24			; get primitive index
-	STW	26,REGBLOCK_PRIMITIVE(0,rs_regblock)	; store primitive
+	STW	26,REGBLOCK_PRIMITIVE			; store primitive
 	ADDIL	L'Primitive_Arity_Table-$global$,rc_static_area
 	LDW	R'Primitive_Arity_Table-$global$(1),26
 	LDWX,S	24(0,25),25			; find primitive entry point
@@ -1736,7 +1809,7 @@ new_pushing_args_invoke_primitive
 	COPY	28,2				; Move result to val
 	SH2ADD	17,rs_stack,rs_stack		; pop frame
 	LDWM	4(0,rs_stack),26		; return address as object
-	STW	0,REGBLOCK_PRIMITIVE(0,rs_regblock)	; clear primitive
+	STW	0,REGBLOCK_PRIMITIVE		; clear primitive
 	B	ep_interface_to_scheme_2
 	DEP	rs_quad,TC_START,TC_LENGTH,26	; return address as address
 
@@ -1811,7 +1884,7 @@ floating_vector_cons
 define(define_floating_point_util,
 "flonum_$1
 	COPY	22,17				; preserve regs
-	STW	2,REGBLOCK_VAL(0,rs_regblock)	; preserve val
+	STW	2,REGBLOCK_VAL			; preserve val
 	COPY	22,17				; preserve regs
 	COPY	21,16
 	COPY	19,15
@@ -1820,10 +1893,10 @@ define(define_floating_point_util,
 	COPY	31,14
 	COPY	15,19
 	COPY	16,21
-	LDW	REGBLOCK_VAL(0,rs_regblock),rs_val	; restore val
+	LDW	REGBLOCK_VAL,rs_val		; restore val
 	COPY	17,22
 	BE	0(5,14)
-	LDW	REGBLOCK_MEMTOP(0,rs_regblock),rs_memtop")
+	LDW	REGBLOCK_MEMTOP,rs_memtop")
 
 define_floating_point_util(sin,sin)
 define_floating_point_util(cos,cos)
@@ -1839,7 +1912,7 @@ define_floating_point_util(floor,floor)
 
 flonum_atan2
 	COPY	22,17				; preserve regs
-	STW	2,REGBLOCK_VAL(0,rs_regblock)	; preserve val
+	STW	2,REGBLOCK_VAL			; preserve val
 	COPY	21,16
 	COPY	19,15
         .CALL   ARGW0=FR,ARGW1=FU,ARGW2=FR,ARGW3=FU,RTNVAL=FU   ;fpin=105,107;fpout=104;
@@ -1847,10 +1920,10 @@ flonum_atan2
 	COPY	31,14
 	COPY	15,19
 	COPY	16,21
-	LDW	REGBLOCK_VAL(0,rs_regblock),rs_val	; restore val
+	LDW	REGBLOCK_VAL,rs_val		; restore val
 	COPY	17,22
 	BE	0(5,14)
-	LDW	REGBLOCK_MEMTOP(0,rs_regblock),rs_memtop
+	LDW	REGBLOCK_MEMTOP,rs_memtop
 
 compiled_code_bkpt
 	LDO	-8(31),31			; bump back to entry point
@@ -1960,7 +2033,7 @@ do_preserve_2
 	LDWM	4(0,rs_stack),1			; pop arg 1
 	COMICLR,=	0,gt2,0
 	LDWM	4(0,rs_stack),2			; pop arg 2
-	STW	rs_stack,REGBLOCK_COMPILER_TEMP(0,rs_regblock)
+	STW	rs_stack,REGBLOCK_COMPILER_TEMP
 	;; CHANGE?:
 	LDW	0(0,rs_stack),gt3		; real return address
 	LDW	-4(0,31),gt4			; integer register mask
@@ -2135,7 +2208,7 @@ preserve_skip_float_homes
 	SHD	0,11,2,11			; non-marked words pushed
 	DEPI	TC_NMV,TC_START,TC_LENGTH,11	; -> non-marked vector header
 	STWM	11,-4(0,rs_stack)			; push header or nothing
-	LDW	REGBLOCK_COMPILER_TEMP(0,rs_regblock),6	; original stack pointer
+	LDW	REGBLOCK_COMPILER_TEMP,6	; original stack pointer
 	STWM	gt3,-4(0,rs_stack)			; re-push return address
 
 	DEP	rs_quad,TC_START,TC_LENGTH,gt3	; object->address
@@ -2148,7 +2221,7 @@ preserve_skip_float_homes
 	LDI	TC_POSITIVE_FIXNUM,6
 	DEP	6,TC_START,TC_LENGTH,gt3
 	STWM	gt3,-4(0,rs_stack)		; push into stack
-	LDW	REGBLOCK_REFLECT_TO_INTERFACE(0,rs_regblock),gt3
+	LDW	REGBLOCK_REFLECT_TO_INTERFACE,gt3
 	STWM	gt3,-4(0,rs_stack)		; push into stack
 	COMICLR,=	0,gt2,0			; extra words = 0?
 	STWM	2,-4(0,rs_stack)		; push arg 2
@@ -2348,7 +2421,7 @@ rskip3	BB,>=,N	gt4,2,rskip2
 
 rskip2
 	LDWM	4(0,rs_stack),26			; return address
-	LDW	REGBLOCK_VAL(0,rs_regblock),2		; interpreter val -> val reg
+	LDW	REGBLOCK_VAL,2			; interpreter val -> val reg
 	B	ep_interface_to_scheme_2
 	DEP	rs_quad,TC_START,TC_LENGTH,26		; object->address	
 
@@ -2481,6 +2554,7 @@ $1_string
 	builtin(shortcircuit_apply_6)
 	builtin(shortcircuit_apply_7)
 	builtin(shortcircuit_apply_8)
+	builtin(set_interrupt_enables)
 	builtin(stack_and_interrupt_check)
 	builtin(new_continuation_interrupt)
 	builtin(new_closure_interrupt)
@@ -2821,6 +2895,10 @@ undivert(1)
 	.IMPORT	Registers,DATA
 	.IMPORT	Ext_Stack_Pointer,DATA
 	.IMPORT	Free,DATA
+	.IMPORT	Heap_Top,DATA
+	.IMPORT	MemTop,DATA
+	.IMPORT	Stack_Bottom,DATA
+	.IMPORT	Stack_Guard,DATA
 	.IMPORT	hppa_utility_table,DATA
 	.IMPORT	hppa_primitive_table,DATA
 	.IMPORT	Primitive_Arity_Table,DATA
