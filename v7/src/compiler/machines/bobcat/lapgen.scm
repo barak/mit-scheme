@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.176 1987/06/02 18:49:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.177 1987/06/04 15:56:01 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -245,11 +245,13 @@ MIT in each case. |#
     return-to-interpreter safe-lookup cache-variable reference-trap
     assignment-trap)
   (define-entries #x0228 uuo-link uuo-link-trap cache-reference-apply
-    safe-reference-trap unassigned?-trap))
+    safe-reference-trap unassigned?-trap cache-variable-multiple
+    uuo-link-multiple))
 
+(define reg:compiled-memtop '(@A 6))
+(define reg:environment '(@AO 6 #x000C))
 (define reg:temp '(@AO 6 #x0010))
 (define reg:enclose-result '(@AO 6 #x0014))
-(define reg:compiled-memtop '(@A 6))
 
 (define popper:apply-closure '(@AO 6 #x0168))
 (define popper:apply-stack '(@AO 6 #x01A8))
@@ -865,31 +867,38 @@ MIT in each case. |#
 
 ;;; This is invoked by the top level of the LAP generator.
 
-(define (generate/quotation-header block-label constants references uuo-links)
-  (if (or (not (null? references))
-	  (not (null? uuo-links)))
-      (let ((environment-label (allocate-constant-label)))
-	`(,@(map declare-constant references)
-	  ,@(map declare-constant uuo-links)
-	  ,@(map declare-constant constants)
-	  (SCHEME-OBJECT ,environment-label ,false)
-	  (LEA (@PCR ,environment-label) (A 0))
-	  (MOVE L (@AO 6 12) (@A 0))
-	  (LEA (@PCR ,block-label) (A 0))
-	  ,@(mapcan (lambda (reference)
-		      `((LEA (@PCR ,(cdr reference)) (A 1))
-			(JSR ,entry:compiler-cache-variable)
+(define generate/quotation-header
+  (let ((declare-constant
+	 (lambda (entry)
+	   `(SCHEME-OBJECT ,(cdr entry) ,(car entry)))))
+    (lambda (block-label constants references uuo-links)
+      `(,@(map declare-constant references)
+	,@(map declare-constant uuo-links)
+	,@(map declare-constant constants)
+	,@(if (or (not (null? references))
+		  (not (null? uuo-links)))
+	      `(,@(let ((environment-label (allocate-constant-label)))
+		    `((SCHEME-OBJECT ,environment-label ENVIRONMENT)
+		      (LEA (@PCR ,environment-label) (A 0))))
+		(MOVE L ,reg:environment (@A 0))
+		(LEA (@PCR ,block-label) (A 0))
+		,@(if (null? references)
+		      '()
+		      `((LEA (@PCR ,(cdar references)) (A 1))
+			,@(if (null? (cdr references))
+			      `((JSR ,entry:compiler-cache-variable))
+			      `(,@(load-dnw (length references) 1)
+				(JSR ,entry:compiler-cache-variable-multiple)))
 			,@(make-external-label (generate-label))))
-		    references)
-	  ,@(mapcan (lambda (uuo-link)
-		      `((LEA (@PCR ,(cdr uuo-link)) (A 1))
-			(JSR ,entry:compiler-uuo-link)
-			,@(make-external-label (generate-label))))
-		    uuo-links)))
-      (map declare-constant constants)))
-
-(define (declare-constant entry)
-  `(SCHEME-OBJECT ,(cdr entry) ,(car entry)))
+		,@(if (null? uuo-links)
+		      '()
+		      `((LEA (@PCR ,(cdar uuo-links)) (A 1))
+			,@(if (null? (cdr uuo-links))
+			      `((JSR ,entry:compiler-uuo-link))
+			      `(,@(load-dnw (length uuo-links) 1)
+				(JSR ,entry:compiler-uuo-link-multiple)))
+			,@(make-external-label (generate-label)))))
+	      '())))))
 
 ;;;; Procedure/Continuation Entries
 
