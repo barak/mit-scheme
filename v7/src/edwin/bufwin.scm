@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwin.scm,v 1.300 1993/01/16 05:15:30 cph Exp $
+;;;	$Id: bufwin.scm,v 1.301 1993/08/18 23:57:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -966,7 +966,8 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 	     (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
 	       (%set-window-point-index!
 		window
-		(or (predict-index window start y-start 0 point-y)
+		(or (predict-index window start y-start
+				   (vector-ref cws 4) point-y)
 		    (%window-group-end-index window)))
 	       (set-window-start! window cws)
 	       (set-interrupt-enables! mask)
@@ -1198,9 +1199,23 @@ If this is zero, point is always centered after it moves off screen."
 
 (define (update-cursor! window)
   (let ((xy (buffer-window/point-coordinates window)))
-    (if (not (and (fix:<= 0 (car xy))
-		  (fix:< (car xy) (window-x-size window))
-		  (fix:<= 0 (cdr xy))
-		  (fix:< (cdr xy) (window-y-size window))))
-	(error "point not visible at end of redisplay"))
-    (set-inferior-position! (%window-cursor-inferior window) xy)))
+    (if (and (fix:<= 0 (car xy))
+	     (fix:< (car xy) (window-x-size window))
+	     (fix:<= 0 (cdr xy))
+	     (fix:< (cdr xy) (window-y-size window)))
+	(set-inferior-position! (%window-cursor-inferior window) xy)
+	(begin
+	  (if point-not-visible-error?
+	      (error "point not visible at end of redisplay"))
+	  (%set-window-point-index!
+	   window
+	   (or (predict-index window
+			      (%window-start-line-index window)
+			      (%window-start-line-y window)
+			      (%window-start-partial window)
+			      0)
+	       (%window-group-end-index window)))
+	  (update-cursor! window)))))
+
+(define point-not-visible-error?
+  #f)
