@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.21 1995/01/06 00:58:04 cph Exp $
+$Id: comint.scm,v 1.22 1996/04/23 22:12:11 cph Exp $
 
-Copyright (c) 1991-95 Massachusetts Institute of Technology
+Copyright (c) 1991-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -138,7 +138,6 @@ Entry to this mode runs the hooks on comint-mode-hook."
   "An event distributor that is invoked when entering Comint mode."
   (make-event-distributor))
 
-(define-key 'comint #\C-a 'comint-bol)
 (define-key 'comint #\C-d 'comint-delchar-or-maybe-eof)
 (define-key 'comint #\C-m 'comint-send-input)
 
@@ -146,6 +145,7 @@ Entry to this mode runs the hooks on comint-mode-hook."
 (define-key 'comint #\M-n 'comint-next-input)
 (define-key 'comint #\M-s 'comint-previous-similar-input)
 
+(define-key 'comint '(#\C-c #\C-a) 'comint-bol)
 (define-key 'comint '(#\C-c #\C-c) 'comint-interrupt-subjob)
 (define-key 'comint '(#\C-c #\C-f) 'comint-continue-subjob)
 (define-key 'comint '(#\C-c #\C-l) 'comint-show-output)
