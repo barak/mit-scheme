@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchgcc.h,v 9.60 2000/01/18 02:59:13 cph Exp $
+$Id: bchgcc.h,v 9.61 2000/11/28 05:18:59 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -98,6 +98,20 @@ extern int EXFUN (retrying_file_operation,
 
 extern int EXFUN (io_error_retry_p, (char *, char *));
 extern int EXFUN (io_error_always_abort, (char *, char *));
+
+struct saved_scan_state
+{
+  SCHEME_OBJECT * virtual_scan_pointer;
+  unsigned long scan_position;
+  unsigned long scan_offset;
+};
+
+extern void EXFUN
+  (save_scan_state, (struct saved_scan_state * state, SCHEME_OBJECT * scan));
+extern SCHEME_OBJECT * EXFUN
+  (restore_scan_state, (struct saved_scan_state * state));
+extern void EXFUN
+  (set_fixed_scan_area, (SCHEME_OBJECT * bottom, SCHEME_OBJECT * top));
 
 #ifndef O_BINARY
 # define O_BINARY 0

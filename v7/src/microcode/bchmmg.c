@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.95 2000/01/18 05:06:34 cph Exp $
+$Id: bchmmg.c,v 9.96 2000/11/28 05:19:02 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -2711,6 +2711,73 @@ DEFUN (dump_free_directly, (from, nbuffers, success),
   return (free_buffer_bottom);
 }
 
+/* This code is needed by purify.  After the purified object is
+   copied, the next step is to scan constant space.  In order to do
+   this, it's necessary to save the current scan position, reset the
+   scan limit pointers to scan constant space, then restore the saved
+   scan position and finish scanning the heap.  These procedures
+   provide the necessary functionality to do this.  */
+
+static void
+DEFUN_VOID (reset_scan_buffer)
+{
+  virtual_scan_pointer = 0;
+  scan_position = (-1L);
+  scan_buffer = 0;
+  scan_buffer_bottom = 0;
+  scan_buffer_top = Highest_Allocated_Address;
+  next_scan_buffer = 0;
+  scan_buffer_extended_p = false;
+  extension_overlap_p = false;
+  extension_overlap_length = 0;
+}
+
+void
+DEFUN (save_scan_state, (state, scan),
+       struct saved_scan_state * state AND
+       SCHEME_OBJECT * scan)
+{
+  (state -> virtual_scan_pointer) = virtual_scan_pointer;
+  (state -> scan_position) = scan_position;
+  (state -> scan_offset) = (scan - scan_buffer_bottom);
+  if (scan_position != free_position)
+    DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
+		 0, "the scan buffer");
+  reset_scan_buffer ();
+}
+
+SCHEME_OBJECT *
+DEFUN (restore_scan_state, (state), struct saved_scan_state * state)
+{
+  virtual_scan_pointer = (state -> virtual_scan_pointer);
+  scan_position = (state -> scan_position);
+  if (scan_position == free_position)
+    {
+      scan_buffer = free_buffer;
+      scan_buffer_bottom = free_buffer_bottom;
+      scan_buffer_top = free_buffer_top;
+    }
+  else
+    {
+      scan_buffer = (OTHER_BUFFER (free_buffer));
+      scan_buffer_bottom = (GC_BUFFER_BOTTOM (scan_buffer));
+      scan_buffer_top = (GC_BUFFER_TOP (scan_buffer));
+      LOAD_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
+		   "the scan buffer");
+    }
+  return (scan_buffer_bottom + (state -> scan_offset));
+}
+
+void
+DEFUN (set_fixed_scan_area, (bottom, top),
+       SCHEME_OBJECT * bottom AND
+       SCHEME_OBJECT * top)
+{
+  virtual_scan_pointer = bottom;
+  scan_buffer_bottom = bottom;
+  scan_buffer_top = top;
+}
+
 #ifndef START_TRANSPORT_HOOK
 #define START_TRANSPORT_HOOK()		do { } while (0)
 #endif
@@ -2749,17 +2816,9 @@ DEFUN_VOID (initialize_free_buffer)
   free_buffer = (INITIAL_FREE_BUFFER ());
   free_buffer_bottom = (GC_BUFFER_BOTTOM (free_buffer));
   free_buffer_top = (GC_BUFFER_TOP (free_buffer));
-  virtual_scan_pointer = NULL;
-  scan_position = -1L;
-  scan_buffer = NULL;
-  scan_buffer_bottom = NULL;
-  scan_buffer_top = Highest_Allocated_Address;
+  reset_scan_buffer ();
   /* Force first write to do an lseek. */
   gc_file_current_position = -1;
-  next_scan_buffer = NULL;
-  scan_buffer_extended_p = false;
-  extension_overlap_p = false;
-  extension_overlap_length = 0;
   return (free_buffer_bottom);
 }
 
