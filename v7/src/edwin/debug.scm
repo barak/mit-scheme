@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.53 2000/10/30 15:43:28 cph Exp $
+;;; $Id: debug.scm,v 1.54 2000/12/01 06:07:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
@@ -378,7 +378,7 @@
 	;; screen is the current screen, delete it too.
 	(let ((new-screen (browser/new-screen browser)))
 	  (if (and (eq? new-screen screen)
-		   (other-screen? screen))
+		   (other-screen screen 1 #t))
 	      (delete-screen! screen))))
       ;; Kill the buffer, then maybe select another browser.
       (let ((browser (get-buffer-browser buffer 'ASSOCIATED-WITH-BROWSER)))

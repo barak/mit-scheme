@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: screen.scm,v 1.117 1999/05/08 19:22:54 cph Exp $
+;;; $Id: screen.scm,v 1.118 2000/12/01 06:07:35 cph Exp $
 ;;;
-;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -63,6 +63,8 @@
   (operation/write-substring! false read-only true)
   (preemption-modulus false read-only true)
   (root-window false)
+  ;; Visibility is one of the following:
+  ;; VISIBLE PARTIALLY-OBSCURED OBSCURED UNMAPPED DELETED
   (visibility 'VISIBLE)
   (needs-update? false)
   (in-update? false)
@@ -108,7 +110,7 @@
 			  'DESELECT-SCREEN))
 
 (define (screen-discard! screen)
-  (if (not (eq? (screen-visibility screen) 'DELETED))
+  (if (not (screen-deleted? screen))
       (begin
 	(set-screen-visibility! screen 'DELETED)
 	(for-each (lambda (window) (send window ':kill!))
@@ -141,8 +143,8 @@
   (editor-frame-screen (window-root-window window)))
 
 (define (screen-visible? screen)
-  (or (eq? 'VISIBLE (screen-visibility screen))
-      (eq? 'PARTIALLY-OBSCURED (screen-visibility screen))))
+  (not (or (screen-deleted? screen)
+	   (eq? 'UNMAPPED (screen-visibility screen)))))
 
 (define-integrable (screen-deleted? screen)
   (eq? 'DELETED (screen-visibility screen)))
@@ -655,7 +657,8 @@
 	       screen
 	       (lambda ()
 		 (and (thunk)
-		      (if (screen-visible? screen)
+		      (if (memq (screen-visibility screen)
+				'(VISIBLE PARTIALLY-OBSCURED))
 			  (and (or (not (screen-needs-update? screen))
 				   (and (not (display-style/no-screen-output?
 					      display-style))

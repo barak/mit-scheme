@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.141 2000/10/30 19:53:23 cph Exp $
+;;; $Id: curren.scm,v 1.142 2000/12/01 06:06:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -75,7 +75,7 @@ The frame is guaranteed to be deselected at that time."
 	   (if other
 	       (begin
 		 (if (selected-screen? screen)
-		     (select-screen (or (other-screen screen 1 #f) other)))
+		     (select-screen (or (other-screen screen) other)))
 		 (screen-discard! screen)
 		 (set-editor-screens! current-editor
 				      (delq! screen
@@ -156,20 +156,19 @@ The frame is guaranteed to be deselected at that time."
 	(else
 	 screen)))
 
-(define (other-screen screen n invisible-ok?)
-  (let ((next-screen (if (> n 0) screen1+ screen-1+)))
-    (let loop ((screen* screen) (n (abs n)))
-      (if (= n 0)
-	  screen*
-	  (let ((screen* (next-screen screen*)))
-	    (and (not (eq? screen* screen))
-		 (loop screen*
-		       (if (or invisible-ok? (screen-visible? screen*))
-			   (- n 1)
-			   n))))))))
-
-(define (other-screen? screen)
-  (other-screen screen 1 #t))
+(define (other-screen screen #!optional n invisible-ok?)
+  (let ((n (if (default-object? n) 1 n))
+	(invisible-ok? (if (default-object? invisible-ok?) #f invisible-ok?)))
+    (let ((next-screen (if (> n 0) screen1+ screen-1+)))
+      (let loop ((screen* screen) (n (abs n)))
+	(if (= n 0)
+	    screen*
+	    (let ((screen* (next-screen screen*)))
+	      (and (not (eq? screen* screen))
+		   (loop screen*
+			 (if (or invisible-ok? (screen-visible? screen))
+			     (- n 1)
+			     n)))))))))
 
 ;;;; Windows
 
@@ -193,7 +192,9 @@ The frame is guaranteed to be deselected at that time."
    (lambda ()
      (let* ((screen (window-screen window))
 	    (window* (screen-selected-window screen)))
-       (if (not (eq? window window*))
+       (if (eq? window window*)
+	   (if (not (selected-screen? screen))
+	       (select-screen screen))
 	   (begin
 	     (undo-leave-window! window*)
 	     (if (selected-screen? screen)

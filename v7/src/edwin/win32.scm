@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: win32.scm,v 1.13 2000/05/01 03:01:39 cph Exp $
+;;; $Id: win32.scm,v 1.14 2000/12/01 06:07:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -666,7 +666,7 @@
 	       (screen-force-update screen)
 	       (make-input-event 'UPDATE update-screen! screen #f))
 	     (and (selected-screen? screen)
-		  (let ((screen (other-screen screen 1 #f)))
+		  (let ((screen (other-screen screen)))
 		    (and screen
 			 (make-input-event 'SELECT-SCREEN
 					   select-screen

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: wincom.scm,v 1.130 2000/10/27 04:01:16 cph Exp $
+;;; $Id: wincom.scm,v 1.131 2000/12/01 06:07:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1987, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -321,7 +321,7 @@ or if the window is the only window of its frame."
     (let ((window (selected-window)))
       (if (and (window-has-no-neighbors? window)
 	       (use-multiple-screens?)
-	       (other-screen? (selected-screen)))
+	       (other-screen (selected-screen) 1 #t))
 	  (delete-screen! (selected-screen))
 	  (window-delete! window)))))
 
@@ -340,7 +340,7 @@ or if the window is the only window of its frame."
 	 (let ((window (other-window n)))
 	   (if (selected-window? window)
 	       (and (use-multiple-screens?)
-		    (let ((screen (other-screen (selected-screen) 1 #f)))
+		    (let ((screen (other-screen (selected-screen))))
 		      (and screen
 			   (screen-selected-window screen))))
 	       window))))
@@ -382,10 +382,11 @@ or if the window is the only window of its frame."
       (let ((screen
 	     (other-screen (if (or (default-object? screen) (not screen))
 			       (selected-screen)
-			       screen)
-			   1 #t)))
+			       screen))))
 	(if screen
-	    (select-buffer buffer (screen-selected-window screen))
+	    (let ((window (screen-selected-window screen)))
+	      (select-window window)
+	      (select-buffer buffer window))
 	    (make-screen buffer)))
       (editor-error "Display doesn't support multiple screens")))
 
@@ -545,7 +546,7 @@ Also kills any pop up window it may have created."
 		(set-variable! split-height-threshold limit))
 	    (maybe-deselect-buffer-layout screen)
 	    (cond ((and (use-multiple-screens?)
-			(other-screen screen 1 #t))
+			(other-screen screen))
 		   => (lambda (screen)
 			(pop-into-window (screen-selected-window screen))))
 		  ((ref-variable preserve-window-arrangement)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: os2term.scm,v 1.21 1999/01/02 06:11:34 cph Exp $
+;;; $Id: os2term.scm,v 1.22 2000/12/01 06:07:26 cph Exp $
 ;;;
-;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -950,7 +950,7 @@
 	     (begin
 	       (set-screen-visibility! screen 'UNMAPPED)
 	       (and (selected-screen? screen)
-		    (let ((screen (other-screen screen 1 #f)))
+		    (let ((screen (other-screen screen)))
 		      (and screen
 			   (make-input-event 'SELECT-SCREEN
 					     select-screen

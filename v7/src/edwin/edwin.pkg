@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.264 2000/10/26 02:28:10 cph Exp $
+$Id: edwin.pkg,v 1.265 2000/12/01 06:07:21 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -995,7 +995,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    os/interprogram-cut
 	    os/interprogram-paste
 	    x-root-window-size
-	    x-screen-auto-raise
 	    x-screen-ignore-focus-button?
 	    x-selection-timeout
 	    xterm-screen/flush!
@@ -1016,7 +1015,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (files "xcom")
     (parent (edwin))
     (export (edwin)
-	    edwin-command$auto-raise-mode
 	    edwin-command$lower-frame
 	    edwin-command$raise-frame
 	    edwin-command$set-background-color
@@ -1034,7 +1032,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    edwin-command$set-mouse-shape
 	    edwin-command$show-frame-position
 	    edwin-command$show-frame-size
-	    edwin-command$x-auto-raise-mode
 	    edwin-command$x-lower-screen
 	    edwin-command$x-mouse-ignore
 	    edwin-command$x-mouse-keep-one-window

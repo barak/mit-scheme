@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: scrcom.scm,v 1.7 2000/12/01 05:24:42 cph Exp $
+;;; $Id: scrcom.scm,v 1.8 2000/12/01 06:07:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1990-2000 Massachusetts Institute of Technology
 ;;;
@@ -42,7 +42,7 @@ This command selects the frame ARG steps away in that order.
 A negative ARG moves in the opposite order."
   "p"
   (lambda (arg)
-    (let ((screen (other-screen (selected-screen) arg #f)))
+    (let ((screen (other-screen (selected-screen) arg)))
       (if (not screen)
 	  (editor-error "No other visible frame."))
       (select-screen screen))))
