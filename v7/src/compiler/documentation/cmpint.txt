@@ -1,6 +1,6 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.3 1989/11/28 15:56:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.4 1990/08/17 23:45:53 jinx Exp $
 
 	Remarks:
 
@@ -448,6 +448,9 @@ after_entry in a normal entry.
 => CLOSURE_SKIPPED_CHECK_OFFSET is the number of bytes between entry
 and after_entry in a closure entry.
 
+=> ENTRY_PREFIX_LENGTH is the number of bytes between gc_or_int and
+entry in a normal entry.
+
 	Important considerations:
 
 The Scheme compiled code register set includes the current copy of the
@@ -711,7 +714,72 @@ trampoline_to_interface), passing the index and the address of the
 trampoline storage area as parameters.  In the example above this
 macro would store the LOADI (load immediate) and JSR instructions.
 
-Missing:
+*** Missing: ***
 	
-- Description of cmpaux-md.m4, register conventions, etc.,
-ASM_RESET_HOOK, ASM_REGISTER_BLOCK, A6_OFFSET.
+=> ADJUST_CLOSURE_AT_CALL
+/* 68k magic.
+   On the 68k, when closures are invoked, the closure corresponding
+   to the first entry point is what's needed on the top of the stack.
+   Note that it is needed for environment only, not for code.
+   The closure code does an
+   ADDI.L	&magic-constant,(SP)
+   on entry, to bump the current entry point (after the JSR instruction)
+   to the correct place.
+   This code emulates that operation by extracting the magic constant
+   from the closure code, and adjusting the address by 6 as if the
+   JSR instruction had just been executed.
+   It is used when interrupts are disabled, in order not to get into a loop.
+   Note that if closure entry points were always longword-aligned, there
+   would be no need for this nonsense.
+ */
+
+=> FLUSH_I_CACHE
+/* This is supposed to flush the portion of the I-cache that Scheme
+   code addresses may be in.
+   It may flush the entire I-cache instead, if it is easier.
+   It is used after a GC or disk-restore.
+   It's needed because the GC has moved code around, and closures
+   and execute cache cells have absolute addresses that the
+   processor might have old copies of.
+   If not provided, it is assumed that there is no need to flush the
+   I-cache, and a NOP version is used instead.
+ */
+
+=> FLUSH_I_CACHE_REGION
+/* This flushes a region of the I-cache.
+   It takes as arguments the base address and length in longwords of
+   the region to flush from the I-cache.
+   It is used after updating an execute cache while running.
+   Not needed during GC because FLUSH_I_CACHE will be used then.
+   If not provided, it is assumed that there is no need to flush the
+   I-cache, and a NOP version is used instead.
+ */
+
+=> COMPILER_PROCESSOR_TYPE, 
+/* Processor type.  Choose a number from the above list, or allocate your own. */
+   
+=> COMPILER_TEMP_SIZE
+/* Size (in long words) of the contents of a floating point register if
+   different from a double.  For example, an MC68881 saves registers
+   in 96 bit (3 longword) blocks.
+   Default is fine for PA.
+   define COMPILER_TEMP_SIZE			3
+*/
+
+=> IN_CMPINT_C
+/* Only defined when cmpint-md.h is included in cmpint.c
+   Procedures that this port needs should appear between
+#ifdef IN_CMPINT_C
+#endif
+*/
+
+=> COMPILER_REGBLOCK_N_FIXED, 
+   COMPILER_REGBLOCK_N_HOOKS, 
+   COMPILER_HOOK_SIZE,
+   COMPILER_REGBLOCK_EXTRA_SIZE,
+   ASM_RESET_HOOK,
+   ASM_REGISTER_BLOCK,
+
+=> Description of cmpaux-md.m4, register conventions, etc. .
+
+=> Description of trap information in uxtrap.h .
