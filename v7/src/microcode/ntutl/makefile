@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile,v 1.16 1994/11/02 20:42:24 adams Exp $
+###     $Id: makefile,v 1.17 1995/10/24 05:32:20 cph Exp $
 ###
-###     Copyright (c) 1992-1993 Massachusetts Institute of Technology
+###     Copyright (c) 1992-95 Massachusetts Institute of Technology
 ###
 ###     This material was developed by the Scheme project at the
 ###     Massachusetts Institute of Technology, Department of
@@ -282,9 +282,9 @@ ntgui.rbj: ntgui.rc ntgui.h ntdialog.dlg ntdialog.h
 !ENDIF
 
 scheme: scheme.exe
-scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scm-cl3.lst
+scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scm-cl3.lst ntscmlib.dll
 	$(link) $(linkdebug) $(sysflags) -out:scheme.exe @scm-cl3.lst $(syslibs) ntscmlib.lib crtdll.lib
-bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bch-cl3.lst
+bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bch-cl3.lst ntscmlib.dll
 	$(link) $(linkdebug) $(sysflags) -out:bchschem.exe @bch-cl3.lst $(syslibs) ntscmlib.lib crtdll.lib
 findprim.exe : findprim.obj
 	$(link) $(linkdebug) $(conflags) -out:findprim.exe findprim.obj $(conlibs)
