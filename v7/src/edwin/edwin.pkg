@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.182 1995/11/03 12:39:11 cph Exp $
+$Id: edwin.pkg,v 1.183 1995/11/04 02:29:00 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1220,12 +1220,15 @@ MIT in each case. |#
 	    font-metrics/descender
 	    font-metrics/height
 	    font-metrics/width
+	    hwnd_desktop
+	    idi_edwin
 	    kc_alt
 	    kc_ctrl
 	    kc_virtualkey
 	    key-event/code
 	    key-event/flags
 	    key-event/repeat
+	    nullhandle
 	    number-of-event-types
 	    os2ps-clear
 	    os2ps-set-colors
@@ -1238,6 +1241,7 @@ MIT in each case. |#
 	    os2win-console-wid
 	    os2win-desktop-height
 	    os2win-desktop-width
+	    os2win-destroy-pointer
 	    os2win-event-ready?
 	    os2win-focus?
 	    os2win-get-event
@@ -1245,12 +1249,14 @@ MIT in each case. |#
 	    os2win-get-pos
 	    os2win-get-size
 	    os2win-invalidate
+	    os2win-load-pointer
 	    os2win-move-cursor
 	    os2win-open
 	    os2win-open-event-qid
 	    os2win-ps
 	    os2win-scroll
 	    os2win-set-grid
+	    os2win-set-icon
 	    os2win-set-pos
 	    os2win-set-size
 	    os2win-set-state

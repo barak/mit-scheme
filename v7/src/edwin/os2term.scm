@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.9 1995/11/03 12:39:01 cph Exp $
+;;;	$Id: os2term.scm,v 1.10 1995/11/04 02:29:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -58,6 +58,7 @@
 (define desktop-width)
 (define desktop-height)
 (define hide-console?)
+(define edwin-screen-icon)
 
 (define (initialize-package!)
   (set! os2-display-type
@@ -82,11 +83,15 @@
 	(set! desktop-width (os2win-desktop-width))
 	(set! desktop-height (os2win-desktop-height))
 	(set! hide-console? #t)
+	(set! edwin-screen-icon
+	      (os2win-load-pointer HWND_DESKTOP NULLHANDLE IDI_EDWIN))
 	unspecific)))
 
 (define (finalize-pm-state)
   (if event-descriptor
       (begin
+	(os2win-destroy-pointer edwin-screen-icon)
+	(set! edwin-screen-icon)
 	(do () ((null? screen-list)) (os2-screen/discard! (car screen-list)))
 	(set! event-queue)
 	(os2win-close-event-qid event-descriptor)
@@ -156,6 +161,7 @@
 
 (define (open-window)
   (let ((wid (os2win-open event-descriptor "Edwin")))
+    (os2win-set-icon wid edwin-screen-icon)
     (let ((metrics (set-normal-font! wid current-font)))
       (os2ps-set-colors (os2win-ps wid)
 			(face-foreground-color normal-face)
