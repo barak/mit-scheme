@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.12 1987/12/07 10:23:15 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.13 1987/12/07 10:38:16 cph Exp $
 
 (require 'scheme)
 
@@ -162,11 +162,16 @@ Some possible command interpreter types and their meanings are:
 [Debugger]	single character commands for debugging errors
 [Where]		single character commands for examining environments
 
-The latter two types of command interpreters will change the major
-mode of the Scheme process buffer to scheme-debugger-mode , in which
-the evaluation commands are disabled, and the keys which normally self
-insert instead send themselves to the Scheme process.  Typing ?  will
-list the available commands.
+Starting with release 6.2 of Scheme, the latter two types of command
+interpreters will change the major mode of the Scheme process buffer
+to scheme-debugger-mode , in which the evaluation commands are
+disabled, and the keys which normally self insert instead send
+themselves to the Scheme process.  The command character ? will list
+the available commands.
+
+For older releases of Scheme, the major mode will be be
+scheme-interaction-mode , and the command characters must be sent as
+if they were expressions.
 
 Commands:
 Delete converts tabs to spaces as it moves back.
