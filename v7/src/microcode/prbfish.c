@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prbfish.c,v 1.7 1999/08/13 18:31:52 cph Exp $
+$Id: prbfish.c,v 1.8 1999/08/13 18:42:26 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -88,7 +88,6 @@ ENCRYPT? says whether to encrypt (#T) or decrypt (#F).")
     error_bad_range_arg (2);
   BF_ecb_encrypt ((STRING_LOC (input_text, 0)),
 		  (STRING_LOC (output_text, 0)),
-		  (STRING_LENGTH (input_text)),
 		  (key_arg (3)),
 		  ((BOOLEAN_ARG (4)) ? BF_ENCRYPT : BF_DECRYPT));
   PRIMITIVE_RETURN (UNSPECIFIC);
