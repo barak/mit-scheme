@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closan.scm,v 4.22 2001/11/01 21:29:00 cph Exp $
+$Id: closan.scm,v 4.23 2001/11/02 03:57:56 cph Exp $
 
 Copyright (c) 1987-1991, 1998, 1999, 2001 Massachusetts Institute of Technology
 
@@ -298,9 +298,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   ;; (due to a call to ANALYZE-PROCEDURE, for example), we may be closing
   ;; too eagerly.
   (let ((procedure (block-procedure block)))
-    (if (or (not procedure)
-	    (not (rvalue/procedure? procedure))
-	    (not (procedure/trivial-closure? procedure)))
+    (if (not (and procedure
+		  (rvalue/procedure? procedure)
+		  (procedure/trivial-closure? procedure)))
 	(begin
 	  ;; 1: Undrift disowned children and close transitively.
 	  (undrift-disowned-children! block block* procedure** reason1 reason2)
@@ -322,7 +322,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define debug-constraints? #f)
 (define (debug-constraints key block block* condition)
   (if debug-constraints?
-      (write-line (list key block block* condition))))
+      (write-line (cons* key block block* condition))))
 
 (define (undrifting-constraint! block block* procedure reason1 reason2)
   ;; Undrift `block' so it is a descendant of `block*' in order not
@@ -374,30 +374,41 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		       unspecific))))))))
 
 (define (cancel-dependent-undrifting-constraints! procedure)
-  (for-each
-   (let ((block (procedure-block procedure)))
-     (lambda (entry)
-       (for-each
-	(lambda (entry*)
-	  (set-cdr! entry*
-		    (list-transform-negative! (cdr entry*)
-		      (lambda (condition)
-			(and condition
-			     (eq? procedure (car condition))
-			     (begin
-			       (debug-constraints 'REMOVE
-						  (car entry)
-						  (car entry*)
-						  condition)
-			       #t))))))
-	(cdr entry))
-       (if (there-exists? (cdr entry)
-	     (lambda (entry*)
-	       (and (pair? (cdr entry*))
-		    (block-ancestor-or-self? (car entry*) block))))
-	   (close-non-descendant-callees! (car entry) block
-					  'CONTAGION procedure))))
-   *undrifting-constraints*))
+  (for-each (lambda (entry)
+	      (for-each
+	       (lambda (entry*)
+		 (set-cdr! entry*
+			   (list-transform-negative! (cdr entry*)
+			     (lambda (condition)
+			       (and condition
+				    (eq? procedure (car condition))
+				    (begin
+				      (debug-constraints 'REMOVE
+							 (car entry)
+							 (car entry*)
+							 condition)
+				      #t))))))
+	       (cdr entry))
+	      (set-cdr! entry
+			(list-transform-negative! (cdr entry)
+			  (lambda (entry*)
+			    (null? (cdr entry*))))))
+	    *undrifting-constraints*)
+  (set! *undrifting-constraints*
+	(list-transform-negative! *undrifting-constraints*
+	  (lambda (entry)
+	    (null? (cdr entry)))))
+  (for-each (let ((block (procedure-block procedure)))
+	      (lambda (entry)
+		(if (there-exists? (cdr entry)
+		      (lambda (entry*)
+			(block-ancestor-or-self? (car entry*) block)))
+		    (close-non-descendant-callees! (car entry)
+						   block
+						   'CONTAGION
+						   procedure))))
+	    *undrifting-constraints*)
+  unspecific)
 
 (define (pending-undrifting? procedure)
   (assq (procedure-block procedure) *undrifting-constraints*))
