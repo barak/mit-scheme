@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.3 1990/11/01 04:33:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.4 1990/11/01 06:16:39 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -120,7 +120,7 @@ DEFINE_PRIMITIVE ("TERMINAL-SET-STATE", Prim_terminal_set_state, 2, 2, 0)
     SCHEME_OBJECT state = (ARG_REF (2));
     if ((STRING_LENGTH (state)) != (OS_terminal_state_size ()))
       error_bad_range_arg (2);
-    OS_terminal_get_state ((arg_terminal (1)), (STRING_LOC (state, 0)));
+    OS_terminal_set_state ((arg_terminal (1)), (STRING_LOC (state, 0)));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
