@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.222 2000/12/16 05:45:34 cph Exp $
+;;; $Id: imail-top.scm,v 1.223 2000/12/16 06:12:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1344,17 +1344,17 @@ If it doesn't exist, it is created first."
 
 (define-command imail-quit
   "Quit out of IMAIL.
-Closes selected folder and buries its buffer.
-With prefix argument, closes and buries all IMAIL folders."
+Closes all IMAIL folders and buries their buffers.
+With prefix argument, closes and buries only selected IMAIL folder."
   "P"
-  (lambda (quit-all?)
+  (lambda (selected-only?)
     (let ((quit
 	   (lambda (folder)
 	     (close-folder folder)
 	     (imail-bury folder))))
-      (if quit-all?
-	  (for-each quit (folder-list))
-	  (quit (selected-folder))))))
+      (if selected-only?
+	  (quit (selected-folder))
+	  (for-each quit (folder-list))))))
 
 (define (folder-list)
   (let loop ((buffers (buffer-list)) (folders '()))
