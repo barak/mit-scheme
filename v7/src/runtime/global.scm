@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.55 2001/12/18 18:39:33 cph Exp $
+$Id: global.scm,v 14.56 2001/12/19 04:11:15 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -214,10 +214,6 @@ USA.
 
 (define default/quit %quit)
 (define hook/quit default/quit)
-
-(define syntaxer/default-environment
-  (*make-environment system-global-environment
-		     (vector lambda-tag:unnamed)))
 
 (define user-initial-environment
   (*make-environment system-global-environment

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.37 2001/12/19 04:10:18 cph Exp $
+$Id: syntax.scm,v 14.38 2001/12/19 04:12:03 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -480,9 +480,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-integrable (syntax-eval scode)
   (extended-scode-eval scode syntaxer/default-environment))
 
-(define syntaxer/default-environment
-  (*make-environment system-global-environment
-		     (vector lambda-tag:unnamed)))
+(define syntaxer/default-environment)
 
 ;;;; FLUID-LET
 
