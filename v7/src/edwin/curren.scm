@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.107 1993/08/01 05:27:38 cph Exp $
+;;;	$Id: curren.scm,v 1.108 1993/08/01 06:10:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -93,19 +93,20 @@
 (define (select-screen screen)
   (without-interrupts
    (lambda ()
-     (let ((screen* (selected-screen)))
-       (if (not (eq? screen screen*))
-	   (let ((message (current-message)))
-	     (clear-current-message!)
-	     (screen-exit! screen*)
-	     (let ((window (screen-selected-window screen)))
-	       (undo-leave-window! window)
-	       (change-selected-buffer window (window-buffer window) true
-		 (lambda ()
-		   (set-editor-selected-screen! current-editor screen))))
-	     (set-current-message! message)
-	     (screen-enter! screen)
-	     (update-screen! screen false)))))))
+     (if (not (screen-deleted? screen))
+	 (let ((screen* (selected-screen)))
+	   (if (not (eq? screen screen*))
+	       (let ((message (current-message)))
+		 (clear-current-message!)
+		 (screen-exit! screen*)
+		 (let ((window (screen-selected-window screen)))
+		   (undo-leave-window! window)
+		   (change-selected-buffer window (window-buffer window) true
+		     (lambda ()
+		       (set-editor-selected-screen! current-editor screen))))
+		 (set-current-message! message)
+		 (screen-enter! screen)
+		 (update-screen! screen false))))))))
 
 (define (update-screens! display-style)
   (let loop ((screens (screen-list)))
