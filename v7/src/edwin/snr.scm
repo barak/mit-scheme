@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.45 1998/12/25 05:50:00 cph Exp $
+;;;	$Id: snr.scm,v 1.46 1998/12/29 02:35:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
@@ -182,31 +182,10 @@ This is primarily used to enhance the context window."
   #t
   boolean?)
 
-(define-variable news-group-truncate-subject
-  "Maximum number of columns for the subject in a News-article header line.
-If zero, no truncation is performed.
-May also be a real number between 0 and 1 exclusive, in which case it
- specifies the number of columns as a fraction of the buffer width.
-See also news-group-author-column."
-  0.7
-  (lambda (object)
-    (or (exact-nonnegative-integer? object)
-	(and (real? object) (< 0 object 1)))))
-
-(define-variable news-group-minimum-truncated-subject
-  "Minimum number of columns that a subject can be truncated to.
-This prevents subject truncatation from eliminating a subject entirely.
-If zero, there is no limit on subject truncation.
-See also news-group-truncate-subject."
-  10
-  exact-nonnegative-integer?)
-
-(define-variable news-group-author-column
-  "Minimum column for the author's name in a News-article header line.
-This is added to the value of news-group-truncate-subject, then the
- resulting value is counted relative to the start of the subject.
+(define-variable news-group-author-columns
+  "Number of columns used to display the author in a News-article header line.
 This applies only to header lines that contain subjects."
-  5
+  15
   exact-nonnegative-integer?)
 
 (define-variable news-group-show-author-name
@@ -1339,26 +1318,25 @@ This shows News groups that have been created since the last time that
     (insert-char #\space mark)
     (insert-chars #\space indentation mark)
     (if subject
-	(let ((ngts
-	       (let ((ngts (ref-variable news-group-truncate-subject mark)))
-		 (if (exact-nonnegative-integer? ngts)
-		     ngts
-		     (let ((x-size (mark-x-size mark)))
-		       (min x-size
-			    (round->exact (* ngts x-size))))))))
+	(let ((subject-column (mark-column mark))
+	      (subject/author-spacing 5)
+	      (author-columns (ref-variable news-group-author-columns mark))
+	      (x-size (mark-x-size mark)))
 	  (let ((subject-length
-		 (max (ref-variable news-group-minimum-truncated-subject mark)
-		      (- ngts indentation)))
-		(author-column (ref-variable news-group-author-column mark))
-		(subject-column (mark-column mark)))
-	    (insert-string (if (and (> ngts 0)
-				    (> (string-length subject) subject-length))
+		 (max (- (- x-size 1)
+			 (+ subject-column
+			    subject/author-spacing
+			    author-columns))
+		      10)))
+	    (insert-string (if (> (string-length subject) subject-length)
 			       (string-head subject subject-length)
 			       subject)
 			   mark)
 	    (if from
 		(let ((delta
-		       (- (+ subject-column subject-length author-column)
+		       (- (+ subject-column
+			     subject-length
+			     subject/author-spacing)
 			  (mark-column mark))))
 		  (if (> delta 0)
 		      (insert-chars #\space delta mark)))))))
@@ -1616,8 +1594,8 @@ thread contains both read and unread articles.  Similarly, an `I'
 indicates that all of the thread's articles have been ignored, and an
 `i' that only some of them have been ignored.
 
-The variables news-group-truncate-subject and news-group-author-column
-can be used to control the appearance of header lines.
+The variable news-group-author-columns can be used to control the
+appearance of header lines.
 
 When a News-group buffer is created, the hooks news-group-mode-hook
 and news-common-mode-hook are invoked.
