@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 1.92 2003/02/14 18:28:13 cph Exp $
+$Id: syntax.scm,v 1.93 2004/11/19 16:59:27 cph Exp $
 
-Copyright 1986, 1989-2002 Massachusetts Institute of Technology
+Copyright 1987,1989,1991,1992,1996,1997 Massachusetts Institute of Technology
+Copyright 1998,1999,2000,2001,2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -195,33 +196,9 @@ a comment ending."
 
 ;;;; Lisp Parsing
 
-(define-syntax default-end/forward
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((start (close-syntax (cadr form) environment))
-	   (end (close-syntax (caddr form) environment)))
-       `(IF (DEFAULT-OBJECT? ,end)
-	    (GROUP-END ,start)
-	    (BEGIN
-	      (IF (NOT (MARK<= ,start ,end))
-		  (ERROR "Marks incorrectly related:" ,start ,end))
-	      ,end))))))
-
-(define-syntax default-end/backward
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((start (close-syntax (cadr form) environment))
-	   (end (close-syntax (caddr form) environment)))
-       `(IF (DEFAULT-OBJECT? ,end)
-	    (GROUP-START ,start)
-	    (BEGIN
-	      (IF (NOT (MARK>= ,start ,end))
-		  (ERROR "Marks incorrectly related:" ,start ,end))
-	      ,end))))))
-
 (define (forward-prefix-chars start #!optional end)
   (let ((group (mark-group start))
-	(end (default-end/forward start end)))
+	(end (default-end-mark start end)))
     (make-mark group
 	       ((ucode-primitive scan-forward-prefix-chars 4)
 		(group-syntax-table-entries group)
@@ -231,7 +208,7 @@ a comment ending."
 
 (define (backward-prefix-chars start #!optional end)
   (let ((group (mark-group start))
-	(end (default-end/backward start end)))
+	(end (default-start-mark end start)))
     (make-mark group
 	       ((ucode-primitive scan-backward-prefix-chars 4)
 		(group-syntax-table-entries group)
@@ -359,37 +336,37 @@ a comment ending."
 
 (set! forward-one-sexp
 (named-lambda (forward-one-sexp start #!optional end)
-  (%forward-list start (default-end/forward start end) 0 #t)))
+  (%forward-list start (default-end-mark start end) 0 #t)))
 
 (set! backward-one-sexp
 (named-lambda (backward-one-sexp start #!optional end)
-  (let ((end (default-end/backward start end)))
+  (let ((end (default-start-mark end start)))
     (let ((mark (%backward-list start end 0 #t)))
       (and mark (backward-prefix-chars mark end))))))
 
 (set! forward-one-list
 (named-lambda (forward-one-list start #!optional end)
-  (%forward-list start (default-end/forward start end) 0 #f)))
+  (%forward-list start (default-end-mark start end) 0 #f)))
 
 (set! backward-one-list
 (named-lambda (backward-one-list start #!optional end)
-  (%backward-list start (default-end/backward start end) 0 #f)))
+  (%backward-list start (default-start-mark end start) 0 #f)))
 
 (set! forward-up-one-list
 (named-lambda (forward-up-one-list start #!optional end)
-  (%forward-list start (default-end/forward start end) 1 #f)))
+  (%forward-list start (default-end-mark start end) 1 #f)))
 
 (set! backward-up-one-list
 (named-lambda (backward-up-one-list start #!optional end)
-  (%backward-list start (default-end/backward start end) 1 #f)))
+  (%backward-list start (default-start-mark end start) 1 #f)))
 
 (set! forward-down-one-list
 (named-lambda (forward-down-one-list start #!optional end)
-  (%forward-list start (default-end/forward start end) -1 #f)))
+  (%forward-list start (default-end-mark start end) -1 #f)))
 
 (set! backward-down-one-list
 (named-lambda (backward-down-one-list start #!optional end)
-  (%backward-list start (default-end/backward start end) -1 #f)))
+  (%backward-list start (default-start-mark end start) -1 #f)))
 
 )
 
