@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2fs.c,v 1.12 1995/10/30 07:55:05 cph Exp $
+$Id: pros2fs.c,v 1.13 1995/10/31 08:04:27 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -88,7 +88,7 @@ DEFINE_PRIMITIVE ("FILE-LENGTH", Prim_file_length, 1, 1,
     PRIMITIVE_RETURN
       ((info == 0)
        ? SHARP_F
-       : (LONG_TO_UNSIGNED_FIXNUM (info -> cbFile)));
+       : (ulong_to_integer (info -> cbFile)));
   }
 }
 
@@ -157,6 +157,19 @@ DEFINE_PRIMITIVE ("FILE-ACCESS-TIME", Prim_file_acc_time, 1, 1, 0)
   }
 }
 
+static SCHEME_OBJECT
+time_to_integer (FDATE * date, FTIME * time)
+{
+  unsigned long accum;
+  accum = (date -> year);
+  accum = ((accum << 4) | (date -> month));
+  accum = ((accum << 5) | (date -> day));
+  accum = ((accum << 5) | (time -> hours));
+  accum = ((accum << 6) | (time -> minutes));
+  accum = ((accum << 5) | (time -> twosecs));
+  return (ulong_to_integer (accum));
+}
+
 DEFINE_PRIMITIVE ("SET-FILE-TIMES!", Prim_set_file_times, 3, 3,
   "Change the access and modification times of FILE.\n\
 The second and third arguments are the respective times.\n\
@@ -194,6 +207,23 @@ The file must exist and you must be the owner (or superuser).")
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+static void
+integer_to_time (SCHEME_OBJECT encoding, FDATE * date, FTIME * time)
+{
+  unsigned long accum = (integer_to_ulong (encoding));
+  (time -> twosecs) = (accum & 0x1f);
+  accum >>= 5;
+  (time -> minutes) = (accum & 0x3f);
+  accum >>= 6;
+  (time -> hours) = (accum & 0x1f);
+  accum >>= 5;
+  (date -> day) = (accum & 0x1f);
+  accum >>= 5;
+  (date -> month) = (accum & 0x0f);
+  accum >>= 4;
+  (date -> year) = accum;
+}
+
 DEFINE_PRIMITIVE ("FILE-TOUCH", Prim_file_touch, 1, 1,
   "Given a file name, change the times of the file to the current time.\n\
 If the file does not exist, create it.\n\
@@ -204,52 +234,7 @@ Otherwise the file did not exist and it was created.")
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN (file_touch ((CONST char *) (STRING_ARG (1))));
 }
-
-static SCHEME_OBJECT
-time_to_integer (FDATE * date, FTIME * time)
-{
-  unsigned long id;
-  unsigned long it;
-  id = (date -> year);
-  id = ((id << 4) | (date -> month));
-  id = ((id << 5) | (date -> day));
-  it = (time -> hours);
-  it = ((it << 6) | (time -> minutes));
-  it = ((it << 5) | (time -> twosecs));
-  return
-    (integer_add ((integer_multiply ((LONG_TO_UNSIGNED_FIXNUM (id)),
-				     (LONG_TO_UNSIGNED_FIXNUM (0x10000)))),
-		  (LONG_TO_UNSIGNED_FIXNUM (it))));
-}
 
-static void
-integer_to_time (SCHEME_OBJECT encoding, FDATE * date, FTIME * time)
-{
-  unsigned long id;
-  unsigned long it;
-  {
-    SCHEME_OBJECT q;
-    SCHEME_OBJECT r;
-    (void) integer_divide
-      (encoding, (LONG_TO_UNSIGNED_FIXNUM (0x10000)), (&q), (&r));
-    it = (UNSIGNED_FIXNUM_TO_LONG (r));
-    /* If encoding is larger than 32 bits, ignore MS bits.  */
-    (void) integer_divide
-      (q, (LONG_TO_UNSIGNED_FIXNUM (0x10000)), (&q), (&r));
-    id = (UNSIGNED_FIXNUM_TO_LONG (r));
-  }
-  (date -> day) = (id & 0x1f);
-  id >>= 5;
-  (date -> month) = (id & 0x0f);
-  id >>= 4;
-  (date -> year) = id;
-  (time -> twosecs) = (it & 0x1f);
-  it >>= 5;
-  (time -> minutes) = (it & 0x3f);
-  it >>= 6;
-  (time -> hours) = it;
-}
-
 static SCHEME_OBJECT
 file_touch (const char * filename)
 {
@@ -335,14 +320,12 @@ Otherwise the result is #F.")
 {
   FILESTATUS3 * info;
   SCHEME_OBJECT result;
-  SCHEME_OBJECT modes;
   PRIMITIVE_HEADER (1);
 
   info = (OS2_read_file_status (STRING_ARG (1)));
   if (info == 0)
     PRIMITIVE_RETURN (SHARP_F);
-  result = (allocate_marked_vector (TC_VECTOR, 6, true));
-  modes = (allocate_string (5));
+  result = (allocate_marked_vector (TC_VECTOR, 8, true));
   VECTOR_SET (result, 0,
 	      ((((info -> attrFile) & FILE_DIRECTORY) != 0)
 	       ? SHARP_T
@@ -356,20 +339,23 @@ Otherwise the result is #F.")
   VECTOR_SET (result, 3,
 	      (time_to_integer ((& (info -> fdateCreation)),
 				(& (info -> ftimeCreation)))));
-  VECTOR_SET (result, 4, (long_to_integer (info -> cbFile)));
+  VECTOR_SET (result, 4, (ulong_to_integer (info -> cbFile)));
   {
     unsigned int attr = (info -> attrFile);
+    SCHEME_OBJECT modes = (allocate_string (5));
     char * s = ((char *) (STRING_LOC (modes, 0)));
     (s[0]) = (((attr & FILE_DIRECTORY) != 0) ? 'd' : '-');
     (s[1]) = (((attr & FILE_READONLY)  != 0) ? 'r' : '-');
     (s[2]) = (((attr & FILE_HIDDEN)    != 0) ? 'h' : '-');
     (s[3]) = (((attr & FILE_SYSTEM)    != 0) ? 's' : '-');
     (s[4]) = (((attr & FILE_ARCHIVED)  != 0) ? 'a' : '-');
+    VECTOR_SET (result, 5, modes);
+    VECTOR_SET (result, 6, (ulong_to_integer (attr)));
   }
-  VECTOR_SET (result, 5, modes);
+  VECTOR_SET (result, 7, (ulong_to_integer (info -> cbFileAlloc)));
   PRIMITIVE_RETURN (result);
 }
-
+
 DEFINE_PRIMITIVE ("DRIVE-TYPE", Prim_drive_type, 1, 1, 0)
 {
   SCHEME_OBJECT arg;
@@ -388,15 +374,15 @@ DEFINE_PRIMITIVE ("CURRENT-PID", Prim_current_pid, 0, 0,
   "Return Scheme's PID.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer (OS2_scheme_pid));
+  PRIMITIVE_RETURN (ulong_to_integer (OS2_scheme_pid));
 }
 
 DEFINE_PRIMITIVE ("DOS-QUERY-MEMORY", Prim_dos_query_memory, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   {
-    ULONG start = (arg_nonnegative_integer (1));
-    ULONG length = (arg_nonnegative_integer (2));
+    ULONG start = (arg_ulong_integer (1));
+    ULONG length = (arg_ulong_integer (2));
     ULONG flags;
     XTD_API_CALL
       (dos_query_mem, (((PVOID) start), (&length), (&flags)),

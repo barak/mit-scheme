@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.23 1995/10/28 01:15:54 cph Exp $
+$Id: os2prm.scm,v 1.24 1995/10/31 08:05:02 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -173,20 +173,19 @@ MIT in each case. |#
 (define file-attributes-direct file-attributes)
 (define file-attributes-indirect file-attributes)
 
-(define-structure (file-attributes
-		   (type vector)
-		   (constructor #f)
-		   (conc-name file-attributes/))
-  (type false read-only true)
-  (access-time false read-only true)
-  (modification-time false read-only true)
-  (change-time false read-only true)
-  (length false read-only true)
-  (mode-string false read-only true))
+(define-structure (file-attributes (type vector)
+				   (constructor #f)
+				   (conc-name file-attributes/))
+  (type #f read-only #t)
+  (access-time #f read-only #t)
+  (modification-time #f read-only #t)
+  (change-time #f read-only #t)
+  (length #f read-only #t)
+  (mode-string #f read-only #t)
+  (modes #f read-only #t)
+  (allocated-length #f read-only #t))
 
-(define (file-attributes/n-links attributes)
-  attributes
-  1)
+(define (file-attributes/n-links attributes) attributes 1)
 
 (define (file-touch filename)
   ((ucode-primitive file-touch 1) (->namestring (merge-pathnames filename))))
