@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -284,6 +284,7 @@
 (define-type 'FIXNUM unparse-number)
 (define-type 'BIGNUM unparse-number)
 (define-type 'FLONUM unparse-number)
+(define-type 'COMPLEX unparse-number)
 
 ;;; end UNPARSER-PACKAGE.
 ))

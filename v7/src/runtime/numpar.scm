@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -36,6 +36,8 @@
 ;;;
 
 ;;;; Number Parser
+
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 1.4 1987/01/07 17:52:08 cph Exp $
 
 (declare (usual-integrations))
 
@@ -79,8 +81,9 @@
 	     (parse-real chars
 	       (lambda (chars real*)
 		 (and (not (null? chars))
-		      (char-ci=? (car chars) #\i)
 		      (null? (cdr chars))
+		      (or (char-ci=? (car chars) #\i)
+			  (char-ci=? (car chars) #\j))
 		      (make-rectangular real
 					(if (char=? (car chars) #\+)
 					    real*
