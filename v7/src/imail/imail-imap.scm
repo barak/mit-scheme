@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.81 2000/05/23 04:23:05 cph Exp $
+;;; $Id: imail-imap.scm,v 1.82 2000/05/23 04:35:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -444,6 +444,28 @@
      (set-imap-folder-n-messages! folder 0)
      (set-imap-folder-messages! folder (initial-messages)))))
 
+(define (guarantee-imap-folder-open folder)
+  (let ((connection (imap-folder-connection folder)))
+    (if (or (guarantee-imap-connection-open connection)
+	    (not (eq? folder (imap-connection-folder connection))))
+	(begin
+	  (set-imap-folder-messages-synchronized?! folder #f)
+	  (set-imap-connection-folder! connection folder)
+	  (let ((selected? #f))
+	    (dynamic-wind
+	     (lambda () unspecific)
+	     (lambda ()
+	       (set! selected?
+		     (imap:command:select
+		      connection
+		      (imap-url-mailbox (folder-url folder))))
+	       unspecific)
+	     (lambda ()
+	       (if (not selected?)
+		   (set-imap-connection-folder! connection #f)))))
+	  (folder-modified! folder 'STATUS)
+	  #t))))
+
 (define (new-imap-folder-uidvalidity! folder uidvalidity)
   (without-interrupts
    (lambda ()
@@ -811,19 +833,6 @@
     (reset-imap-folder! folder)
     (guarantee-imap-folder-open folder)
     folder))
-
-(define (guarantee-imap-folder-open folder)
-  (let ((connection (imap-folder-connection folder)))
-    (if (or (guarantee-imap-connection-open connection)
-	    (not (eq? folder (imap-connection-folder connection))))
-	(begin
-	  (set-imap-folder-messages-synchronized?! folder #f)
-	  (set-imap-connection-folder! connection folder)
-	  (if (not
-	       (imap:command:select connection
-				    (imap-url-mailbox (folder-url folder))))
-	      (set-imap-connection-folder! connection #f))
-	  #t))))
 
 (define-method %close-folder ((folder <imap-folder>))
   (let ((connection (imap-folder-connection folder)))
