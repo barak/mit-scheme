@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.156 1991/05/15 18:46:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.157 1991/05/21 21:46:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -247,8 +247,8 @@ invocation."
   (make-event-distributor))
 
 (define (load-find-file-initialization buffer pathname)
-  (let ((filename (os/find-file-initialization-filename pathname)))
-    (if (and filename (file-exists? filename))
+  (let ((pathname (os/find-file-initialization-filename pathname)))
+    (if pathname
 	(let ((database
 	       (with-output-to-transcript-buffer
 		(lambda ()
@@ -258,7 +258,7 @@ invocation."
 		      (catch-file-errors (lambda () false)
 			(lambda ()
 			  (fluid-let ((load/suppress-loading-message? true))
-			    (load filename
+			    (load pathname
 				  '(EDWIN)
 				  edwin-syntax-table))))))))))
 	  (if (and (procedure? database)
@@ -266,7 +266,7 @@ invocation."
 	      (add-buffer-initialization! buffer database)
 	      (message
 	       "Ill-formed find-file initialization file: "
-	       (os/filename->display-string filename)))))))
+	       (os/pathname->display-string pathname)))))))
 
 (define (standard-scheme-find-file-initialization database)
   ;; DATABASE -must- be a vector whose elements are all three element
