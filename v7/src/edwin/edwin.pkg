@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.130 1993/09/09 20:59:33 cph Exp $
+$Id: edwin.pkg,v 1.131 1993/09/09 21:33:54 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -839,7 +839,6 @@ MIT in each case. |#
   (export (edwin)
 	  add-text-properties
 	  add-text-property
-	  get-property
 	  get-property-at
 	  group-extract-properties
 	  group-reinsert-properties!
