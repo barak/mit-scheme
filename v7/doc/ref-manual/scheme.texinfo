@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.87 2000/01/05 02:43:21 cph Exp $
+@comment $Id: scheme.texinfo,v 1.88 2000/01/05 03:00:46 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -95,7 +95,7 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.87
+@subtitle Edition 1.88
 @subtitle for Scheme Release 7.5
 @subtitle 4 January 2000
 @author by Chris Hanson
@@ -14764,10 +14764,11 @@ the filename strings.
 @deffn {procedure+} file-modes filename
 If @var{filename} names an existing file, @code{file-modes} returns an
 exact non-negative integer encoding the file's permissions.  The
-encoding of this integer is operating-system dependent, but typically it
-contains bits that indicate what users and processes are allowed to
-read, write, or execute the file.  If @var{filename} does not name an
-existing file, @code{#f} is returned.
+encoding of this integer is operating-system dependent.  Under unix, it
+is the least-significant 12 bits of the @code{st_mode} element of the
+@code{struct stat} structure.  Under OS/2 and Windows, it is the file
+attribute bits, which are described below.  If @var{filename} does not
+name an existing file, @code{#f} is returned.
 @end deffn
 
 @deffn {procedure+} set-file-modes! filename modes
@@ -14868,7 +14869,8 @@ a synchronization mechanism.
 @end deffn
 
 @deffn {procedure+} file-length filename
-Returns the length, in bytes, of the file named @var{filename}.
+Returns the length, in bytes, of the file named @var{filename} as an
+exact non-negative integer.
 @end deffn
 
 @deffn {procedure+} file-attributes filename
@@ -15067,16 +15069,16 @@ represented in the local time zone.
 @example
 @group
 (pp (local-decoded-time))
-#[decoded-time 76]
-(second 2)
-(minute 12)
-(hour 11)
-(day 27)
-(month 4)
-(year 1999)
-(day-of-week 1)
-(daylight-savings-time 1)
-(zone 5)
+@print{} #[decoded-time 76]
+@print{} (second 2)
+@print{} (minute 12)
+@print{} (hour 11)
+@print{} (day 27)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 1)
+@print{} (daylight-savings-time 1)
+@print{} (zone 5)
 @end group
 @end example
 @end deffn
@@ -15088,16 +15090,16 @@ represented in UTC.
 @example
 @group
 (pp (global-decoded-time))
-#[decoded-time 77]
-(second 8)
-(minute 12)
-(hour 15)
-(day 27)
-(month 4)
-(year 1999)
-(day-of-week 1)
-(daylight-savings-time 0)
-(zone 0)
+@print{} #[decoded-time 77]
+@print{} (second 8)
+@print{} (minute 12)
+@print{} (hour 15)
+@print{} (day 27)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 1)
+@print{} (daylight-savings-time 0)
+@print{} (zone 0)
 @end group
 @end example
 @end deffn
@@ -15121,30 +15123,30 @@ this will signal an error.
 @example
 @group
 (pp (make-decoded-time 0 9 11 26 3 1999))
-#[decoded-time 19]
-(second 0)
-(minute 9)
-(hour 11)
-(day 26)
-(month 3)
-(year 1999)
-(day-of-week 4)
-(daylight-savings-time 0)
-(zone 5)
+@print{} #[decoded-time 19]
+@print{} (second 0)
+@print{} (minute 9)
+@print{} (hour 11)
+@print{} (day 26)
+@print{} (month 3)
+@print{} (year 1999)
+@print{} (day-of-week 4)
+@print{} (daylight-savings-time 0)
+@print{} (zone 5)
 @end group
 
 @group
 (pp (make-decoded-time 0 9 11 26 3 1999 3))
-#[decoded-time 80]
-(second 0)
-(minute 9)
-(hour 11)
-(day 26)
-(month 3)
-(year 1999)
-(day-of-week 4)
-(daylight-savings-time 0)
-(zone 3)
+@print{} #[decoded-time 80]
+@print{} (second 0)
+@print{} (minute 9)
+@print{} (hour 11)
+@print{} (day 26)
+@print{} (month 3)
+@print{} (year 1999)
+@print{} (day-of-week 4)
+@print{} (daylight-savings-time 0)
+@print{} (zone 3)
 @end group
 @end example
 @end deffn
@@ -15293,37 +15295,37 @@ The result is in the local time zone or UTC, respectively.
 @example
 @group
 (pp (universal-time->local-decoded-time (get-universal-time)))
-#[decoded-time 21]
-(second 23)
-(minute 57)
-(hour 17)
-(day 29)
-(month 4)
-(year 1999)
-(day-of-week 3)
-(daylight-savings-time 1)
-(zone 5)
+@print{} #[decoded-time 21]
+@print{} (second 23)
+@print{} (minute 57)
+@print{} (hour 17)
+@print{} (day 29)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 3)
+@print{} (daylight-savings-time 1)
+@print{} (zone 5)
 @end group
 
 @group
 (pp (universal-time->global-decoded-time
      (get-universal-time)))
-#[decoded-time 22]
-(second 27)
-(minute 57)
-(hour 21)
-(day 29)
-(month 4)
-(year 1999)
-(day-of-week 3)
-(daylight-savings-time 0)
-(zone 0)
+@print{} #[decoded-time 22]
+@print{} (second 27)
+@print{} (minute 57)
+@print{} (hour 21)
+@print{} (day 29)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 3)
+@print{} (daylight-savings-time 0)
+@print{} (zone 0)
 @end group
 @end example
 @end deffn
 
 @deffn {procedure+} universal-time->file-time universal-time
-Converts an argument in file-time format to universal-time format.
+Converts an argument in universal-time format to file-time format.
 
 @example
 @group
@@ -15407,31 +15409,31 @@ result is in the local time zone or UTC, respectively.
 @group
 (pp (file-time->local-decoded-time
      (file-modification-time "/")))
-#[decoded-time 26]
-(second 47)
-(minute 31)
-(hour 17)
-(day 23)
-(month 4)
-(year 1999)
-(day-of-week 4)
-(daylight-savings-time 1)
-(zone 5)
+@print{} #[decoded-time 26]
+@print{} (second 47)
+@print{} (minute 31)
+@print{} (hour 17)
+@print{} (day 23)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 4)
+@print{} (daylight-savings-time 1)
+@print{} (zone 5)
 @end group
 
 @group
 (pp (file-time->global-decoded-time
      (file-modification-time "/")))
-#[decoded-time 27]
-(second 47)
-(minute 31)
-(hour 21)
-(day 23)
-(month 4)
-(year 1999)
-(day-of-week 4)
-(daylight-savings-time 0)
-(zone 0)
+@print{} #[decoded-time 27]
+@print{} (second 47)
+@print{} (minute 31)
+@print{} (hour 21)
+@print{} (day 23)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 4)
+@print{} (daylight-savings-time 0)
+@print{} (zone 0)
 @end group
 @end example
 @end deffn
@@ -15470,16 +15472,16 @@ Converts a time-string argument to decoded-time format.
 @example
 @group
 (pp (string->decoded-time "Fri, 23 Apr 1999 17:31:47 -0400"))
-#[decoded-time 30]
-(second 47)
-(minute 31)
-(hour 17)
-(day 23)
-(month 4)
-(year 1999)
-(day-of-week 4)
-(daylight-savings-time 0)
-(zone 4)
+@print{} #[decoded-time 30]
+@print{} (second 47)
+@print{} (minute 31)
+@print{} (hour 17)
+@print{} (day 23)
+@print{} (month 4)
+@print{} (year 1999)
+@print{} (day-of-week 4)
+@print{} (daylight-savings-time 0)
+@print{} (zone 4)
 @end group
 @end example
 @end deffn
@@ -15712,11 +15714,11 @@ overhead.
 @cindex synchronous subprocess
 MIT Scheme provides the ability to run and control subprocesses.  This
 support is divided into two parts: a low-level set of primitives that
-maps directly to the underlying operating system's process-control
-primitives, and a high-level set of procedures for starting a subprocess
-and running it to completion in a single call.  Subprocesses that are
-run in the latter fashion are referred to as @dfn{synchronous}, because
-they are started and stopped in synchrony with a Scheme procedure call.
+maps onto the underlying operating system's process-control primitives,
+and a high-level set of procedures for starting a subprocess and running
+it to completion in a single call.  Subprocesses that are run in the
+latter fashion are referred to as @dfn{synchronous}, because they are
+started and stopped in synchrony with a Scheme procedure call.
 
 This chapter documents Scheme's high-level synchronous-subprocess
 support.  The low-level support is not documented but is available for
@@ -15834,8 +15836,8 @@ options are passed as alternating keyword/value pairs, for example:
 @end example
 
 @noindent
-The example shows a shell command being run with two options,
-@code{output} and @code{output-buffer-size}, being specified.
+The example shows a shell command being run with two options specified:
+@code{output} and @code{output-buffer-size}.
 
 @deffn {subprocess option+} input port
 Specifies the standard input of the subprocess.  @var{Port} may be an
