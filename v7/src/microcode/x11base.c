@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.67 1996/12/10 22:48:18 cph Exp $
+$Id: x11base.c,v 1.68 1996/12/11 00:43:08 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -2041,9 +2041,42 @@ DEFINE_PRIMITIVE ("X-WINDOW-LOWER", Prim_x_window_lower, 1, 1, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-/* Considerable hair to detect whether the window has been
-   reparented by the window manager, and to translate the position to
-   the parent's coordinates if so.  */
+static Window
+DEFUN (get_window_frame, (display, w), Display * display AND Window w)
+{
+  Window root;
+  Window parent;
+  Window * children;
+  unsigned int n_children;
+
+  while (1)
+    {
+      if (! (XQueryTree (display, w,
+			 (&root), (&parent), (&children), (&n_children))))
+	error_external_return ();
+      XFree ((caddr_t) children);
+      if (parent == root)
+	return (w);
+      w = parent;
+    }
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-GET-SIZE", Prim_x_window_get_size, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    Window w = (get_window_frame (display, (XW_WINDOW (xw))));
+    XWindowAttributes a;
+    int extra;
+    if (! (XGetWindowAttributes (display, w, (&a))))
+      error_external_return ();
+    extra = (2 * (a . border_width));
+    PRIMITIVE_RETURN (cons ((long_to_integer ((a . width) + extra)),
+			    (long_to_integer ((a . height) + extra))));
+  }
+}
 
 DEFINE_PRIMITIVE ("X-WINDOW-GET-POSITION", Prim_x_window_get_position, 1, 1, 0)
 {
@@ -2051,28 +2084,12 @@ DEFINE_PRIMITIVE ("X-WINDOW-GET-POSITION", Prim_x_window_get_position, 1, 1, 0)
   {
     struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
-    Window w = (XW_WINDOW (xw));
-    Window root;
-    Window parent;
-    Window child;
-    Window * children;
-    unsigned int n_children;
-    int rx, ry;
-
-    while (1)
-      {
-	if (! (XQueryTree (display, w,
-			   (&root), (&parent), (&children), (&n_children))))
-	  error_external_return ();
-	XFree ((caddr_t) children);
-	if (parent == root)
-	  break;
-	w = parent;
-      }
-    if (! (XTranslateCoordinates
-	   (display, w, root, 0, 0, (&rx), (&ry), (&child))))
-      error_bad_range_arg (1);
-    PRIMITIVE_RETURN (cons ((long_to_integer (rx)), (long_to_integer (ry))));
+    Window w = (get_window_frame (display, (XW_WINDOW (xw))));
+    XWindowAttributes a;
+    if (! (XGetWindowAttributes (display, w, (&a))))
+      error_external_return ();
+    PRIMITIVE_RETURN (cons ((long_to_integer (a . x)),
+			    (long_to_integer (a . y))));
   }
 }
 
