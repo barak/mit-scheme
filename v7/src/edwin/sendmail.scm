@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.66 2000/07/05 22:57:14 cph Exp $
+;;; $Id: sendmail.scm,v 1.67 2000/07/20 02:30:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -264,23 +264,39 @@ is inserted."
 				     "\t" (ref-variable fill-column buffer)
 				     #f))))
     (let ((start (mark-right-inserting-copy point)))
-      (for-each (lambda (header)
-		  (let ((key (car header))
-			(value (cadr header)))
-		    (if value
-			(begin
-			  (move-mark-to! start point)
-			  (insert-string key point)
-			  (insert-string ": " point)
-			  (insert-string value point)
-			  (if (and (not (string-null? value))
-				   (if (null? (cddr header))
-				       (or (string-ci=? key "to")
-					   (string-ci=? key "cc"))
-				       (caddr header)))
-			      (fill start point))
-			  (insert-newline point)))))
-		headers)
+      (for-each
+       (lambda (header)
+	 (let ((key (car header))
+	       (value (cadr header)))
+	   (if value
+	       (begin
+		 (move-mark-to! start point)
+		 (insert-string key point)
+		 (insert-string ": " point)
+		 (let ((end (string-length value)))
+		   (let loop ((start 0))
+		     (let ((index
+			    (substring-find-next-char value start end
+						      #\newline)))
+		       (if index
+			   (let ((index (fix:+ index 1)))
+			     (insert-substring value start index point)
+			     (if (and (fix:< index end)
+				      (not
+				       (let ((char (string-ref value index)))
+					 (or (char=? char #\space)
+					     (char=? char #\tab)))))
+				 (insert-char #\tab point))
+			     (loop index))
+			   (insert-substring value start end point)))))
+		 (if (and (not (string-null? value))
+			  (if (null? (cddr header))
+			      (or (string-ci=? key "to")
+				  (string-ci=? key "cc"))
+			      (caddr header)))
+		     (fill start point))
+		 (insert-newline point)))))
+       headers)
       (mark-temporary! start))
     (let ((mail-header-function (ref-variable mail-header-function buffer)))
       (if mail-header-function
