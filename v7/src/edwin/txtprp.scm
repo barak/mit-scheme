@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: txtprp.scm,v 1.22 2001/01/25 04:44:41 cph Exp $
+;;; $Id: txtprp.scm,v 1.23 2001/01/26 03:18:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1993-2001 Massachusetts Institute of Technology
 ;;;
@@ -217,7 +217,7 @@
 
 (define (validate-key-argument key procedure)
   (if (not (or (interned-symbol? key) (variable? key)))
-      (error:wrong-type-argument key "symbol" procedure)))
+      (error:wrong-type-argument key "key" procedure)))
 
 (define no-datum
   (list 'NO-DATUM))
@@ -453,8 +453,22 @@
   (rb-tree/equal? x y datum=?))
 
 (define-integrable key=? eq?)
-(define-integrable key<? symbol<?)
 (define-integrable datum=? eqv?)
+
+(define (key<? k1 k2)
+  (let ((lose
+	 (lambda (k)
+	   (error:wrong-type-argument k "key" 'KEY<?))))
+    (cond ((symbol? k1)
+	   (cond ((symbol? k2) (symbol<? k1 k2))
+		 ((variable? k2) #t)
+		 (else (lose k2))))
+	  ((variable? k1)
+	   (cond ((symbol? k2) #f)
+		 ((variable? k2)
+		  (symbol<? (variable-name k1) (variable-name k2)))
+		 (else (lose k2))))
+	  (else (lose k1)))))
 
 ;;;; Intervals
 
