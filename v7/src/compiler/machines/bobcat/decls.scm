@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.9 1988/11/01 04:57:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.10 1988/11/03 03:09:00 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -37,18 +37,35 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! source-filenames
-	(mapcan (lambda (subdirectory)
-		  (map (lambda (pathname)
+  (add-event-receiver! event:after-restore reset-source-nodes!)
+  (reset-source-nodes!))
+
+(define (reset-source-nodes!)
+  (set! source-filenames '())
+  (set! source-hash)
+  (set! source-nodes)
+  (set! source-nodes/by-rank))
+
+(define (maybe-setup-source-nodes!)
+  (if (null? source-filenames)
+      (setup-source-nodes!)))
+
+(define (setup-source-nodes!)
+  (let ((filenames
+	 (mapcan (lambda (subdirectory)
+		   (map (lambda (pathname)
+			  (string-append subdirectory
+					 "/"
+					 (pathname-name pathname)))
+			(directory-read
 			 (string-append subdirectory
 					"/"
-					(pathname-name pathname)))
-		       (directory-read
-			(string-append subdirectory
-				       "/"
-				       source-file-expression))))
-		'("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
-			 "machines/bobcat")))
+					source-file-expression))))
+		 '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
+			  "machines/bobcat"))))
+    (if (null? filenames)
+	(error "Can't find source files of compiler"))
+    (set! source-filenames filenames))
   (set! source-hash
 	(make/hash-table
 	 101
@@ -68,12 +85,11 @@ MIT in each case. |#
   (initialize/expansion-dependencies!)
   (source-nodes/rank!))
 
-(define source-file-expression "*.bin")
+(define source-file-expression "*.scm")
 (define source-filenames)
 (define source-hash)
 (define source-nodes)
 (define source-nodes/by-rank)
-(define source-nodes/circular-dependencies)
 
 (define (filename/append directory . names)
   (map (lambda (name) (string-append directory "/" name)) names))
@@ -99,6 +115,9 @@ MIT in each case. |#
 		     filename
 		     identity-procedure
 		     (lambda () (error "Unknown source file" filename))))
+
+(define (source-node/circular? node)
+  (memq node (source-node/backward-closure node)))
 
 (define (source-node/link! node dependency)
   (if (not (memq dependency (source-node/backward-links node)))
@@ -132,11 +151,7 @@ MIT in each case. |#
 (define (source-nodes/rank!)
   (compute-dependencies! source-nodes)
   (compute-ranks! source-nodes)
-  (set! source-nodes/by-rank (source-nodes/sort-by-rank source-nodes))
-  (set! source-nodes/circular-dependencies
-	(list-transform-positive source-nodes/by-rank
-	  (lambda (node)
-	    (memq node (source-node/backward-closure node))))))
+  (set! source-nodes/by-rank (source-nodes/sort-by-rank source-nodes)))
 
 (define (compute-dependencies! nodes)
   (for-each (lambda (node)
@@ -180,6 +195,7 @@ MIT in each case. |#
 ;;;; File Syntaxer
 
 (define (syntax-files!)
+  (maybe-setup-source-nodes!)
   (for-each
    (lambda (node)
      (let ((modification-time
@@ -239,14 +255,19 @@ MIT in each case. |#
 		    (if (file-exists? pathname)
 			(delete-file pathname)))))
 	    source-nodes/by-rank)
-  (for-each source-node/maybe-syntax! source-nodes/by-rank)
-  (for-each source-node/maybe-syntax! source-nodes/circular-dependencies))
+  (for-each (lambda (node)
+	      (if (not (source-node/modification-time node))
+		  (source-node/syntax! node)))
+	    source-nodes/by-rank)
+  (for-each (lambda (node)
+	      (if (not (source-node/modification-time node))
+		  (if (source-node/circular? node)
+		      (source-node/syntax! node)
+		      (file-touch (source-node/pathname node)))))
+	    source-nodes/by-rank))
 
-(define (source-node/maybe-syntax! node)
-  (if (not (source-node/modification-time node))
-      (source-node/syntax! node)))
-
 (define (sc filename)
+  (maybe-setup-source-nodes!)
   (source-node/syntax! (filename->source-node filename)))
 
 (define (source-node/syntax! node)
