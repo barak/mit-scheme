@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.267 1996/04/24 03:21:08 cph Exp $
+$Id: runtime.pkg,v 14.268 1996/04/24 03:48:50 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -1641,6 +1641,7 @@ MIT in each case. |#
   (files "io") 
   (parent ())
   (export ()
+	  add-to-protection-list!
 	  channel-blocking
 	  channel-blocking?
 	  channel-close
@@ -1665,18 +1666,22 @@ MIT in each case. |#
 	  channel-write-char-block
 	  channel-write-string-block
 	  channel?
+	  clean-lost-protected-objects
 	  close-all-open-files
 	  directory-channel-close
 	  directory-channel-open
 	  directory-channel-read
 	  directory-channel-read-matching
 	  directory-channel?
+	  drop-all-protected-objects
 	  file-open-append-channel
 	  file-open-input-channel
 	  file-open-io-channel
 	  file-open-output-channel
 	  make-pipe
+	  make-protection-list
 	  open-pty-master
+	  protection-list-elements
 	  pty-master-continue
 	  pty-master-hangup
 	  pty-master-interrupt
@@ -1684,6 +1689,8 @@ MIT in each case. |#
 	  pty-master-quit
 	  pty-master-send-signal
 	  pty-master-stop
+	  remove-from-protection-list!
+	  search-protection-list
 	  set-terminal-input-baud-rate!
 	  set-terminal-output-baud-rate!
 	  terminal-cooked-input

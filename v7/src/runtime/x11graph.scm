@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.42 1995/02/21 23:20:11 cph Exp $
+$Id: x11graph.scm,v 1.43 1996/04/24 03:48:01 cph Exp $
 
-Copyright (c) 1989-95 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -144,65 +144,6 @@ MIT in each case. |#
 
 ;; This mask contains button-down.
 (define-integrable user-event-mask:default #x0001)
-
-;;;; Protection lists
-
-(define (make-protection-list)
-  (list 'PROTECTION-LIST))
-
-;; This is used after a disk-restore, to remove invalid information.
-
-(define (drop-all-protected-objects list)
-  (with-absolutely-no-interrupts
-    (lambda ()
-      (set-cdr! list '()))))
-
-(define (add-to-protection-list! list scheme-object microcode-object)
-  (with-absolutely-no-interrupts
-   (lambda ()
-     (set-cdr! list
-	       (cons (weak-cons scheme-object microcode-object)
-		     (cdr list))))))
-
-(define (remove-from-protection-list! list scheme-object)
-  (with-absolutely-no-interrupts
-   (lambda ()
-     (let loop ((associations (cdr list)) (previous list))
-       (if (not (null? associations))
-	   (if (eq? scheme-object (weak-pair/car? (car associations)))
-	       (set-cdr! previous (cdr associations))
-	       (loop (cdr associations) associations)))))))
-
-(define (clean-lost-protected-objects list cleaner)
-  (let loop ((associations (cdr list)) (previous list))
-    (if (not (null? associations))
-	(if (weak-pair/car? (car associations))
-	    (loop (cdr associations) associations)
-	    (begin
-	      (cleaner (weak-cdr (car associations)))
-	      (let ((next (cdr associations)))
-		(set-cdr! previous next)
-		(loop next previous)))))))
-
-(define (search-protection-list list predicate)
-  (let loop ((associations (cdr list)))
-    (and (not (null? associations))
-	 (let ((scheme-object (weak-car (car associations))))
-	   (if (and scheme-object (predicate scheme-object))
-	       scheme-object
-	       (loop (cdr associations)))))))
-
-(define (protection-list-elements list)
-  (with-absolutely-no-interrupts
-   (lambda ()
-     (let loop ((associations (cdr list)))
-       (cond ((null? associations)
-	      '())
-	     ((weak-pair/car? (car associations))
-	      (cons (weak-car (car associations))
-		    (loop (cdr associations))))
-	     (else
-	      (loop (cdr associations))))))))
 
 ;;;; X graphics device
 

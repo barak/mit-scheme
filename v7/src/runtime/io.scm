@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.45 1996/02/22 19:02:25 cph Exp $
+$Id: io.scm,v 14.46 1996/04/24 03:48:36 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -149,6 +149,7 @@ MIT in each case. |#
 (define (primitive-io/reset!)
   ;; This is invoked after disk-restoring.  It "cleans" the new runtime system.
   (close-all-open-files-internal (lambda (ignore) ignore))
+  (drop-all-protected-objects open-directories-list)
   (set! have-select? ((ucode-primitive have-select? 0)))
   unspecific)
 
@@ -507,7 +508,7 @@ MIT in each case. |#
   ((ucode-primitive new-directory-read-matching 2)
    (directory-channel/descriptor channel)
    prefix))
-
+
 ;;;; Protection lists
 
 ;;; These will cause problems on interpreted systems, due to the
@@ -516,15 +517,20 @@ MIT in each case. |#
 (define (make-protection-list)
   (list 'PROTECTION-LIST))
 
+;; This is used after a disk-restore, to remove invalid information.
+
+(define (drop-all-protected-objects list)
+  (set-cdr! list '()))
+
 (define (add-to-protection-list! list scheme-object microcode-object)
-  (with-absolutely-no-interrupts
+  (without-interrupts
    (lambda ()
      (set-cdr! list
 	       (cons (weak-cons scheme-object microcode-object)
 		     (cdr list))))))
 
 (define (remove-from-protection-list! list scheme-object)
-  (with-absolutely-no-interrupts
+  (without-interrupts
    (lambda ()
      (let loop ((associations (cdr list)) (previous list))
        (if (not (null? associations))
@@ -533,6 +539,8 @@ MIT in each case. |#
 	       (loop (cdr associations) associations)))))))
 
 (define (clean-lost-protected-objects list cleaner)
+  ;; This assumes that interrupts are disabled.  This will normally be
+  ;; true because this should be called from a GC daemon.
   (let loop ((associations (cdr list)) (previous list))
     (if (not (null? associations))
 	(if (weak-pair/car? (car associations))
@@ -543,12 +551,28 @@ MIT in each case. |#
 		(set-cdr! previous next)
 		(loop next previous)))))))
 
-(define (search-protection-list list microcode-object)
-  (let loop ((associations (cdr list)))
-    (and (not (null? associations))
-	 (if (eq? microcode-object (system-pair-cdr (car associations)))
-	     (system-pair-car (car associations))
-	     (loop (cdr associations))))))
+(define (search-protection-list list predicate)
+  (without-interrupts
+   (lambda ()
+     (let loop ((associations (cdr list)))
+       (and (not (null? associations))
+	    (let ((scheme-object (weak-car (car associations))))
+	      (if (and scheme-object (predicate scheme-object))
+		  scheme-object
+		  (loop (cdr associations)))))))))
+
+(define (protection-list-elements list)
+  (without-interrupts
+   (lambda ()
+     (let loop ((associations (cdr list)))
+       (cond ((null? associations)
+	      '())
+	     ((weak-car (car associations))
+	      => (lambda (scheme-object)
+		   (cons scheme-object
+			 (loop (cdr associations)))))
+	     (else
+	      (loop (cdr associations))))))))
 
 ;;;; Buffered Output
 
