@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.2 1987/03/13 04:14:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.3 1987/03/20 23:49:46 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -151,13 +151,11 @@ MIT in each case. |#
       (let ((block (block/make block true)))
 	(transmit-values
 	    (let ((name->variable (lambda (name) (variable/make block name))))
-	      (return-4 (name->variable name)
-			(map name->variable required)
+	      (return-3 (map name->variable required)
 			(map name->variable optional)
 			(and rest (name->variable rest))))
-	  (lambda (name required optional rest)
-	    (let ((bound
-		   `(,name ,@required ,@optional ,@(if rest `(,rest) '()))))
+	  (lambda (required optional rest)
+	    (let ((bound `(,@required ,@optional ,@(if rest `(,rest) '()))))
 	      (block/set-bound-variables! block bound)
 	      (procedure/make
 	       block name required optional rest

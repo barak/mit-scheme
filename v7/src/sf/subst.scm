@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.2 1987/03/13 04:13:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.3 1987/03/20 23:49:33 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -424,35 +424,26 @@ MIT in each case. |#
 
 (set! combination/optimizing-make
   (lambda (operator operands)
-    (let ((dont-optimize
-	   (lambda ()
-	     (combination/make operator operands))))
-      (if (and (procedure? operator)
-	       (null? (procedure/optional operator))
-	       (not (procedure/rest operator))
-	       (block/safe? (procedure/block operator))
-	       (not (open-block? (procedure/body operator))))
-	  (let ((body (procedure/body operator)))
-	    (let ((referenced (free/expression body)))
-	      (if (not (memq (procedure/name operator)
-			     referenced)) ;i.e. not a loop
-		  ;; Simple LET-like combination.  Delete any
-		  ;; unreferenced parameters.  If no parameters
-		  ;; remain, delete the combination and lambda.
-		  (transmit-values
-		      ((delete-unused-parameters referenced)
-		       (procedure/required operator)
-		       operands)
-		    (lambda (required operands)
-		      (if (null? required)
-			  body
-			  (combination/make
-			   (procedure/make (procedure/block operator)
-					   (procedure/name operator)
-					   required '() false body)
-			   operands))))
-		  (dont-optimize))))
-	  (dont-optimize)))))
+    (if (and (procedure? operator)
+	     (null? (procedure/optional operator))
+	     (not (procedure/rest operator))
+	     (block/safe? (procedure/block operator))
+	     (not (open-block? (procedure/body operator))))
+	;; Simple LET-like combination.  Delete any unreferenced
+	;; parameters.  If no parameters remain, delete the
+	;; combination and lambda.
+	(let ((body (procedure/body operator)))
+	  (transmit-values ((delete-unused-parameters (free/expression body))
+			    (procedure/required operator)
+			    operands)
+	    (lambda (required operands)
+	      (if (null? required)
+		  body
+		  (combination/make (procedure/make (procedure/block operator)
+						    (procedure/name operator)
+						    required '() false body)
+				    operands)))))
+	(combination/make operator operands))))
 
 (define (delete-unused-parameters referenced)
   (define (loop parameters operands)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/copy.scm,v 3.2 1987/03/13 04:12:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/copy.scm,v 3.3 1987/03/20 23:49:22 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -234,7 +234,7 @@ MIT in each case. |#
       (lambda (block environment)
 	(let ((rename (make-renamer environment)))
 	  (procedure/make block
-			  (rename (procedure/name procedure))
+			  (procedure/name procedure)
 			  (map rename (procedure/required procedure))
 			  (map rename (procedure/optional procedure))
 			  (let ((rest (procedure/rest procedure)))

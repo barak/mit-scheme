@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/cgen.scm,v 3.2 1987/03/13 04:11:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/cgen.scm,v 3.3 1987/03/20 23:49:11 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -143,7 +143,7 @@ MIT in each case. |#
 
 (define-method/cgen 'PROCEDURE
   (lambda (interns procedure)
-    (make-lambda* (variable/name (procedure/name procedure))
+    (make-lambda* (procedure/name procedure)
 		  (map variable/name (procedure/required procedure))
 		  (map variable/name (procedure/optional procedure))
 		  (let ((rest (procedure/rest procedure)))
