@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.12 1989/12/04 15:34:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.13 1989/12/05 20:38:22 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -302,18 +302,19 @@ MIT in each case. |#
 		      (else (no-reuse-possible))))
 	      (no-preference))))))
 
-(define (machine-register-reference register type)
-  ;; Returns a reference to a machine register which contains the same
-  ;; contents as `register', and which has the given `type'.
-  (register-reference
-   (if (machine-register? register)
-       (if (register-type? register type)
-	   register
-	   (let ((temp (allocate-temporary-register! type)))
-	     (prefix-instructions!
-	      (register->register-transfer register temp))
-	     temp))
-       (load-alias-register! register type))))
+(define-integrable (machine-register-reference register type)
+  (register-reference (guarantee-alias-register! register type)))
+
+(define (guarantee-alias-register! register type)
+  ;; Returns a a machine register which contains the same contents as
+  ;; `register', and which has the given `type'.
+  (if (machine-register? register)
+      (if (register-type? register type)
+	  register
+	  (let ((temp (allocate-temporary-register! type)))
+	    (prefix-instructions! (register->register-transfer register temp))
+	    temp))
+      (load-alias-register! register type)))
 
 (define (load-machine-register! source-register machine-register)
   (if (machine-register? source-register)
