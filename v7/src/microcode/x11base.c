@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.34 1992/02/10 21:09:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.35 1992/02/10 21:29:27 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -532,7 +532,7 @@ DEFUN (xw_set_wm_icon_name, (xw, name),
 }
 
 void
-DEFUN (x_decode_window_map_arg, (map_arg, resource_name, resource_class),
+DEFUN (x_decode_window_map_arg, (map_arg, resource_name, resource_class, map_p),
        SCHEME_OBJECT map_arg AND
        CONST char ** resource_name AND
        CONST char ** resource_class AND
