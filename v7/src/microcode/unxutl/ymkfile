@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.50 1991/11/04 16:56:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.51 1992/02/03 23:54:38 jinx Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,6 +36,10 @@ MIT in each case. */
 
 #undef unix
 #undef vax
+
+#ifndef RUN
+#define RUN(program) -./program
+#endif
 
 #ifndef SOURCES_SYSTEM
 #define SOURCES_SYSTEM
@@ -542,12 +546,12 @@ vmsusrdef.c :
 usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
 	@ECHO "#** Re-making" $@ because of $?
 	rm -f usrdef.c
-	./Findprim $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrdef.c
+	RUN(Findprim) $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrdef.c
 
 bchdef.c : $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
 	@ECHO "#** Re-making" $@ because of $?
 	rm -f bchdef.c
-	./Findprim $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) > bchdef.c
+	RUN(Findprim) $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) > bchdef.c
 
 primitive_tables :
 	rm -f usrdef.c usrdef.o bchdef.c bchdef.o
@@ -572,9 +576,9 @@ psbmap.touch : config.h object.h bignum.h bignumint.h bitstr.h types.h \
 usrdef.touch : usrdef.h config.h object.h prim.h
 
 limits.h : hard-params
-	-./hard-params -l > limits.h
+	RUN(hard-params) -l > limits.h
 float.h : hard-params
-	-./hard-params -f > float.h
+	RUN(hard-params) -f > float.h
 hard-params : hard-params.c
 	$(CC) -DNO_SC $(LDFLAGS) -o hard-params hard-params.c
 
@@ -682,7 +686,7 @@ uxfs.o : osfs.h
 uxio.o : osio.h uxio.h uxselect.h
 uxproc.o : osproc.h uxproc.h osio.h uxio.h osterm.h
 uxsig.o : ossig.h osctty.h ostty.h uxtrap.h uxutil.h critsec.h
-uxsock.o : uxsock.h osio.h uxio.h
+uxsock.o : uxsock.h osio.h uxio.h prims.h
 uxterm.o : osterm.h uxterm.h osio.h uxio.h
 uxtop.o : ostop.h uxtop.h osctty.h uxutil.h errors.h option.h
 uxtrap.o : scheme.touch uxtrap.h uxutil.h option.h $(GC_HEAD_FILES)
