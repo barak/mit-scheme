@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.94 2000/06/02 02:41:26 cph Exp $
+;;; $Id: imail-core.scm,v 1.95 2000/06/02 17:24:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -817,6 +817,12 @@
 
 (define-generic mime-body-type (body))
 (define-generic mime-body-subtype (body))
+
+(define (mime-body-parameter body key default)
+  (let ((entry (assq key (mime-body-parameters body))))
+    (if entry
+	(cdr entry)
+	default)))
 
 (define-method write-instance ((body <mime-body>) port)
   (write-instance-helper 'MIME-BODY body port 
