@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.1 1994/12/19 19:44:12 cph Exp $
+;;;	$Id: os2.scm,v 1.2 1995/01/06 01:08:29 cph Exp $
 ;;;
-;;;	Copyright (c) 1994 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -383,6 +383,82 @@ Includes the new backup.  Must be > 0."
 		 (> (file-attributes/modification-time (cdr x))
 		    (file-attributes/modification-time (cdr y)))))
 	 (read pathname #t)))))
+
+;;;; Subprocess/Shell Support
+
+(define (os/parse-path-string string)
+  (let ((end (string-length string))
+	(substring
+	 (lambda (string start end)
+	   (pathname-as-directory (substring string start end)))))
+    (let loop ((start 0))
+      (if (< start end)
+	  (let ((index (substring-find-next-char string start end #\;)))
+	    (if index
+		(if (= index start)
+		    (loop (+ index 1))
+		    (cons (substring string start index)
+			  (loop (+ index 1))))
+		(list (substring string start end))))
+	  '()))))
+
+(define (os/find-program program default-directory)
+  (or (let* ((types '("exe" "cmd"))
+	     (try
+	      (lambda (pathname)
+		(let ((type (pathname-type pathname)))
+		  (if type
+		      (and (member type types)
+			   (file-exists? pathname)
+			   (->namestring pathname))
+		      (let loop ((types types))
+			(and (not (null? types))
+			     (let ((p
+				    (pathname-new-type pathname (car types))))
+			       (if (file-exists? p)
+				   (->namestring p)
+				   (loop (cdr types)))))))))))
+	(cond ((pathname-absolute? program)
+	       (try program))
+	      ((not default-directory)
+	       (let loop ((path (ref-variable exec-path)))
+		 (and (not (null? path))
+		      (or (and (pathname-absolute? (car path))
+			       (try (merge-pathnames program (car path))))
+			  (loop (cdr path))))))
+	      (else
+	       (let ((default-directory (merge-pathnames default-directory)))
+		 (let loop ((path (ref-variable exec-path)))
+		   (and (not (null? path))
+			(or (try (merge-pathnames
+				  program
+				  (merge-pathnames (car path)
+						   default-directory)))
+			    (loop (cdr path)))))))))
+      (error "Can't find program:" (->namestring program))))
+
+(define (os/shell-file-name)
+  (or (get-environment-variable "SHELL")
+      "cmd.exe"))
+
+(define (os/form-shell-command command)
+  (list "/c" command))
+
+(define (os/shell-name pathname)
+  (if (member (pathname-type pathname) '("exe" "cmd"))
+      (pathname-name pathname)
+      (file-namestring pathname)))
+
+(define (os/default-shell-prompt-pattern)
+  "^\\[[^]]*] *")
+
+(define (os/default-shell-args)
+  '())
+
+(define (os/comint-filename-region start point end)
+  (let ((chars "]\\\\A-Za-z0-9!#$%&'()+,.:;=@[^_`{}~---"))
+    (let ((start (skip-chars-backward chars point start)))
+      (make-region start (skip-chars-forward chars start end)))))
 
 ;;;; Generic Stuff
 ;;; These definitions are OS-independent and references to them should

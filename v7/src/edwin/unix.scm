@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.43 1994/12/19 19:42:26 cph Exp $
+;;;	$Id: unix.scm,v 1.44 1995/01/06 01:08:47 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -603,7 +603,7 @@ CANNOT contain the 'F' option."
 				      (file-namestring file)))
 	(apply run-synchronous-process
 	       #f mark directory #f
-	       (find-program program #f)
+	       (os/find-program program #f)
 	       (append
 		(split-unix-switch-string switches)
 		(list
@@ -626,7 +626,86 @@ CANNOT contain the 'F' option."
 		      (loop (fix:+ space 1)))
 		(list (substring switches start end))))
 	  '()))))
+
+;;;; Subprocess/Shell Support
 
+(define (os/parse-path-string string)
+  (let ((end (string-length string))
+	(substring
+	 (lambda (string start end)
+	   (pathname-as-directory (substring string start end)))))
+    (let loop ((start 0))
+      (if (< start end)
+	  (let ((index (substring-find-next-char string start end #\:)))
+	    (if index
+		(cons (if (= index start)
+			  false
+			  (substring string start index))
+		      (loop (+ index 1)))
+		(list (substring string start end))))
+	  '()))))
+
+(define (os/find-program program default-directory)
+  (->namestring
+   (let ((lose
+	  (lambda () (error "Can't find program:" (->namestring program)))))
+     (cond ((pathname-absolute? program)
+	    (if (not (file-access program 1)) (lose))
+	    program)
+	   ((not default-directory)
+	    (let loop ((path (ref-variable exec-path)))
+	      (if (null? path) (lose))
+	      (or (and (car path)
+		       (pathname-absolute? (car path))
+		       (let ((pathname (merge-pathnames program (car path))))
+			 (and (file-access pathname 1)
+			      pathname)))
+		  (loop (cdr path)))))
+	   (else
+	    (let ((default-directory (merge-pathnames default-directory)))
+	      (let loop ((path (ref-variable exec-path)))
+		(if (null? path) (lose))
+		(let ((pathname
+		       (merge-pathnames
+			program
+			(cond ((not (car path)) default-directory)
+			      ((pathname-absolute? (car path)) (car path))
+			      (else (merge-pathnames (car path)
+						     default-directory))))))
+		  (if (file-access pathname 1)
+		      pathname
+		      (loop (cdr path)))))))))))
+
+(define (os/shell-file-name)
+  (or (get-environment-variable "SHELL")
+      "/bin/sh"))
+
+(define (os/form-shell-command command)
+  (list "-c" command))
+
+(define (os/shell-name pathname)
+  (file-namestring pathname))
+
+(define (os/default-shell-prompt-pattern)
+  "^[^#$>]*[#$>] *")
+
+(define (os/default-shell-args)
+  '("-i"))
+
+(define-variable explicit-csh-args
+  "Args passed to inferior shell by M-x shell, if the shell is csh.
+Value is a list of strings."
+  (if (string=? microcode-id/operating-system-variant "HP-UX")
+      ;; -T persuades HP's csh not to think it is smarter
+      ;; than us about what terminal modes to use.
+      '("-i" "-T")
+      '("-i")))
+
+(define (os/comint-filename-region start point end)
+  (let ((chars "~/A-Za-z0-9---_.$#,"))
+    (let ((start (skip-chars-backward chars point start)))
+      (make-region start (skip-chars-forward chars start end)))))
+
 (define (os/scheme-can-quit?)
   (subprocess-job-control-available?))
 
