@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: eystep.scm,v 1.1 1994/10/12 07:54:09 cph Exp $
+;;;	$Id: eystep.scm,v 1.2 1994/10/13 04:26:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -247,9 +247,14 @@ c	contract the step under the cursor")
 		    (move-mark-to! start point)
 		    (output-and-mung-region point
 		      (lambda ()
-			(debugger-pp (ynode-exp node)
-				     (* 2 level)
-				     (current-output-port)))
+			(let ((special (ynode-exp-special node)))
+			  (if special
+			      (begin
+				(write-string ";")
+				(write special))
+			      (debugger-pp (ynode-exp node)
+					   (* 2 level)
+					   (current-output-port)))))
 		      (and last-event
 			   (eq? (car last-event) 'CALL)
 			   (eq? (cadr last-event) node)
@@ -263,11 +268,16 @@ c	contract the step under the cursor")
 		    (let ((value-node (ynode-value-node node)))
 		      (output-and-mung-region point
 			(lambda ()
-			  (write
-			   (ynode-result
-			    (if (eq? (ynode-type node) 'STEP-OVER)
-				value-node
-				node))))
+			  (let ((node
+				 (if (eq? (ynode-type node) 'STEP-OVER)
+				     value-node
+				     node)))
+			    (let ((special (ynode-result-special node)))
+			      (if special
+				  (begin
+				    (write-string ";")
+				    (write special))
+				  (write (ynode-result node))))))
 			(and last-event
 			     (eq? (car last-event) 'RETURN)
 			     (eq? (cadr last-event) value-node)
