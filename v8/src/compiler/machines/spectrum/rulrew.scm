@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.7 1996/07/22 17:45:29 adams Exp $
+$Id: rulrew.scm,v 1.8 1996/07/24 03:45:18 adams Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -155,49 +155,35 @@ MIT in each case. |#
 ;;; statement or a predicate without also getting some CFG structure.
 
 (define-rule rewriting
-  ;; Use register 0, always 0.
-  (ASSIGN (? target) (REGISTER (? comparand register-known-value)))
-  (QUALIFIER (rtl:immediate-zero-constant? comparand))
-  (list 'ASSIGN target (rtl:make-machine-constant 0)))
+  ;; Use registers that cache common constants: 0, #F '()
+  (ASSIGN (? target) (REGISTER (? value register-known-value)))
+  (QUALIFIER (constant-register-expression value))
+  ;; Use `(REGISTER ...) to prevent CSE (it will be a machine register)
+  (list 'ASSIGN target `(REGISTER ,(register-expression value))))
 
-(define-rule rewriting
-  ;; Compare to register 0, always 0.
+(define-rule add-pre-cse-rewriting-rule!
+  ;; Compare to registers that cache common constants: 0, #F '()
   (EQ-TEST (? source) (REGISTER (? comparand register-known-value)))
-  (QUALIFIER (rtl:immediate-zero-constant? comparand))
-  (list 'EQ-TEST source (rtl:make-machine-constant 0)))
+  (QUALIFIER (constant-register-expression comparand))
+  (list 'EQ-TEST source comparand))
 
 (define-rule rewriting
-  ;; Compare to register 0, always 0.
+  ;; Compare to registers that cache common constants: 0, #F '()
   (EQ-TEST (REGISTER (? comparand register-known-value)) (? source))
-  (QUALIFIER (rtl:immediate-zero-constant? comparand))
-  (list 'EQ-TEST source (rtl:make-machine-constant 0)))
+  (QUALIFIER (constant-register-expression comparand))
+  (list 'EQ-TEST source comparand))
 
-(define-rule rewriting
+(define-rule add-pre-cse-rewriting-rule!
   (EQ-TEST (REGISTER (? comparand register-known-fixnum-constant)) (? source))
   (QUALIFIER
-   (fits-in-5-bits-signed? (known-fixnum-constant/fixnum-value comparand)))
+   (fits-in-5-bits-signed? (known-fixnum-constant/value comparand)))
   (list `EQ-TEST comparand source))
 
-(define-rule rewriting			;add-pre-cse-rewriting-rule!
+(define-rule add-pre-cse-rewriting-rule!
   (EQ-TEST (? source) (REGISTER (? comparand register-known-fixnum-constant)))
   (QUALIFIER
-   (fits-in-5-bits-signed? (known-fixnum-constant/fixnum-value comparand)))
+   (fits-in-5-bits-signed? (known-fixnum-constant/value comparand)))
   (list `EQ-TEST source comparand))
-
-(define (rtl:immediate-zero-constant? expression)
-  (cond ((rtl:constant? expression)
-	 (let ((value (rtl:constant-value expression)))
-	   (and (non-pointer-object? value)
-		(zero? (target-object-type value))
-		(zero? (careful-object-datum value)))))
-	((rtl:cons-pointer? expression)
-	 (and (let ((expression (rtl:cons-pointer-type expression)))
-		(and (rtl:machine-constant? expression)
-		     (zero? (rtl:machine-constant-value expression))))
-	      (let ((expression (rtl:cons-pointer-datum expression)))
-		(and (rtl:machine-constant? expression)
-		     (zero? (rtl:machine-constant-value expression))))))
-	(else false)))
 
 ;;;; Fixnums
 ;;;
@@ -206,7 +192,7 @@ MIT in each case. |#
 ;; or they are open coded specially in a way that does not put the value in
 ;; a register.  We detect these cases by inspecting the arithconst predicates
 ;; in fulfix.scm.
-;; This is done pre-cse so that cse doesnt decide to hide the constant in a
+;; This is done pre-cse so that cse doesn't decide to hide the constant in a
 ;; register in expressions like (cons (fix:quotient x 8) (fix:remainder x 8)))
 
 (define-rule add-pre-cse-rewriting-rule!
@@ -218,7 +204,7 @@ MIT in each case. |#
    (and (rtl:register? operand-2)
 	(fixnum-2-args/operator/constant*register?
 	 operation
-	 (known-fixnum-constant/fixnum-value operand-1)
+	 (known-fixnum-constant/value operand-1)
 	 overflow?)))
   (rtl:make-fixnum-2-args operation operand-1 operand-2 overflow?))
 
@@ -231,33 +217,22 @@ MIT in each case. |#
    (and (rtl:register? operand-1)
 	(fixnum-2-args/operator/register*constant?
 	 operation
-	 (known-fixnum-constant/fixnum-value operand-2)
+	 (known-fixnum-constant/value operand-2)
 	 overflow?)))
   (rtl:make-fixnum-2-args operation operand-1 operand-2 overflow?))
 
 		
 (define (register-known-fixnum-constant regnum)
-  ;; returns the rtl of a constant that is a fixnum, i.e (CONSTANT 1000)
-  ;; recognizes (CONSTANT x)
-  ;;            (OBJECT->FIXNUM (CONSTANT x))
-  ;;            (OBJECT->FIXNUM (REGISTER y)) where y also satisfies this pred
+  ;; Returns the RTL of a constant that is a fixnum, i.e (CONSTANT 1000)
+  ;;  recognizes: (CONSTANT x)
   (let ((expr (register-known-value regnum)))
     (and expr
-	 (cond ((and (rtl:constant? expr)
-		     (fix:fixnum? (rtl:constant-value expr)))
-		expr)
-	       ((and (rtl:object->fixnum? expr)
-		     (rtl:constant? (rtl:object->fixnum-expression expr))
-		     (fix:fixnum?  (rtl:constant-value
-				    (rtl:object->fixnum-expression expr))))
-		(rtl:object->fixnum-expression expr))
-	       ((and (rtl:object->fixnum? expr)
-		     (rtl:register? (rtl:object->fixnum-expression expr)))
-		(register-known-fixnum-constant 
-		 (rtl:register-number (rtl:object->fixnum-expression expr))))
-	       (else #F)))))
+	 (rtl:constant? expr)
+	 (fixnum? (rtl:constant-value expr))
+	 expr)))
+		  
 
-(define (known-fixnum-constant/fixnum-value constant)
+(define (known-fixnum-constant/value constant)
   (rtl:constant-value constant))
 
 (define-rule add-pre-cse-rewriting-rule!
@@ -266,7 +241,42 @@ MIT in each case. |#
   ;; This is a predicate so we can't use rtl:make-type-test
 
   (list 'TYPE-TEST (rtl:make-object->type source) (ucode-type positive-fixnum)))
+
+;; The fixnum comparisons do not appear use the same mechanisom ast the
+;; operators, so we code the bit field size dependencies here:
   
+(define-rule add-pre-cse-rewriting-rule!
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (REGISTER (? comparand register-known-fixnum-constant))
+		      (? source))
+  (QUALIFIER
+   (fits-in-5-bits-signed? (known-fixnum-constant/value comparand)))
+  (list `FIXNUM-PRED-2-ARGS predicate comparand source))
+
+(define-rule add-pre-cse-rewriting-rule!
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (? source)
+		      (REGISTER (? comparand register-known-fixnum-constant)))
+  (QUALIFIER
+   (fits-in-5-bits-signed? (known-fixnum-constant/value comparand)))
+  (list `FIXNUM-PRED-2-ARGS predicate source comparand))
+
+
+(define-rule add-pre-cse-rewriting-rule!
+  (PRED-2-ARGS WORD-LESS-THAN-UNSIGNED?
+	       (REGISTER (? comparand register-known-fixnum-constant))
+	       (? source))
+  (QUALIFIER
+   (fits-in-5-bits-signed? (known-fixnum-constant/value comparand)))
+  (list `PRED-2-ARGS 'WORD-LESS-THAN-UNSIGNED? comparand source))
+
+(define-rule add-pre-cse-rewriting-rule!
+  (PRED-2-ARGS WORD-LESS-THAN-UNSIGNED?
+	       (? source)
+	       (REGISTER (? comparand register-known-fixnum-constant)))
+  (QUALIFIER
+   (fits-in-5-bits-signed? (known-fixnum-constant/value comparand)))
+  (list `PRED-2-ARGS 'WORD-LESS-THAN-UNSIGNED? source comparand))
 
 ;;;; Closures and other optimizations.  
 
@@ -323,10 +333,11 @@ MIT in each case. |#
   ;; Prevent CSE of machine floating point constants with object flonums
   (OBJECT->FLOAT (REGISTER (? value register-known-value)))
   (QUALIFIER (and (rtl:constant? value)
-		  (flo:flonum? value)))
+		  (flo:flonum? (rtl:constant-value value))))
   `(OBJECT->FLOAT ,value))
 
-;;
+
+;;;
 ;; (CONS-NON-POINTER (MACHINE-CONSTANT 0)
 ;;                   (? thing-with-known-type-already=0)) => thing
 ;;
@@ -351,20 +362,6 @@ MIT in each case. |#
       #F))
 
 
-;; Remove all object->fixnum and fixnum->object and object->unsigned-fixnum
-
-(define-rule add-pre-cse-rewriting-rule!
-  (OBJECT->FIXNUM (? frob))
-  frob)
-
-(define-rule add-pre-cse-rewriting-rule!
-  (OBJECT->UNSIGNED-FIXNUM (? frob))
-  frob)
-
-(define-rule add-pre-cse-rewriting-rule!
-  (FIXNUM->OBJECT (? frob))
-  frob)
-
 (define-rule add-pre-cse-rewriting-rule!
   (COERCE-VALUE-CLASS (? frob) (? class))
   class					; ignored
@@ -376,6 +373,8 @@ MIT in each case. |#
   class					; ignored
   frob)
 
+;;; Canonicalize flonum comparisons against 0.0 to use unary operators.
+
 (define-rule add-pre-cse-rewriting-rule!
   (FLONUM-2-ARGS FLONUM-SUBTRACT
 		 (REGISTER (? operand-1 register-known-flonum-zero?))
