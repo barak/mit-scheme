@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.25 1997/11/20 05:51:30 cph Exp $
+$Id: comint.scm,v 1.26 1998/06/07 08:18:13 cph Exp $
 
-Copyright (c) 1991-97 Massachusetts Institute of Technology
+Copyright (c) 1991-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -255,7 +255,7 @@ Security bug: your string can still be temporarily recovered with
 (define (send-invisible string)
   (process-send-string (current-process) string)
   (process-send-string (current-process) "\n"))
-
+
 (define-command comint-send-char
   "Send single character to process."
   "p"
@@ -264,7 +264,7 @@ Security bug: your string can still be temporarily recovered with
       (do ((i 0 (+ i 1)))
 	  ((= i prefix))
 	(process-send-string (current-process) string)))))
-
+
 (define-command comint-previous-similar-input
   "Reenter the last input that matches the string typed so far.
 If repeated successively, older inputs are reentered.
@@ -272,7 +272,7 @@ With negative arg, newer inputs are reentered."
   "p"
   (lambda (argument)
     (let ((tag '(COMINT-PREVIOUS-SIMILAR-INPUT))
-	  (mark (process-mark (current-process)))
+	  (mark (comint-process-mark))
 	  (point (current-point))
 	  (ring (ref-variable comint-input-ring)))
       (if (mark< point mark)
@@ -303,7 +303,7 @@ With negative arg, newer inputs are reentered."
   "Kill all text from last stuff output by interpreter to point."
   ()
   (lambda ()
-    (let ((mark (process-mark (current-process)))
+    (let ((mark (comint-process-mark))
 	  (point (current-point)))
       (if (mark>= point mark)
 	  (kill-string mark point)
@@ -313,10 +313,22 @@ With negative arg, newer inputs are reentered."
   "Kill all output from interpreter since last input."
   ()
   (lambda ()
-    (let ((mark
-	   (mark-permanent! (line-start (process-mark (current-process)) 0))))
-      (delete-string (mark1+ (ref-variable comint-last-input-end) 'LIMIT) mark)
-      (insert-string "*** output flushed ***\n" mark))))
+    (let ((start (mark1+ (ref-variable comint-last-input-end) 'LIMIT))
+	  (end (line-start (comint-process-mark) 0)))
+      (if (< (mark-index start) (mark-index end))
+	  (begin
+	    (delete-string start end)
+	    (insert-string "*** output flushed ***\n" start))))))
+
+(define (comint-process-mark)
+  (let ((buffer (selected-buffer)))
+    ((or (buffer-get buffer 'COMINT-PROCESS-MARK #f)
+	 (lambda (buffer)
+	   (let ((process (get-buffer-process buffer)))
+	     (if (not process)
+		 (editor-error "Buffer has no process:" buffer))
+	     (process-mark process))))
+     buffer)))
 
 (define-command comint-show-output
   "Start display of the current window at line preceding start of last output.
