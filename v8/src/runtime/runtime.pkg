@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.17 1988/08/01 23:09:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.18 1988/08/11 03:14:32 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -303,6 +303,7 @@ MIT in each case. |#
 	  stack-frame/properties
 	  stack-frame/reductions
 	  stack-frame/ref
+	  stack-frame/return-address
 	  stack-frame/return-code
 	  stack-frame/skip-non-subproblems
 	  stack-frame/subproblem?
