@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/thread.scm,v 1.2 1992/02/25 22:56:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/thread.scm,v 1.3 1992/03/11 12:17:00 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -153,7 +153,9 @@ MIT in each case. |#
       (%within-continuation continuation true
 	(lambda ()
 	  (if event
-	      (handle-thread-event thread event)))))))
+	      (begin
+		(handle-thread-event thread event)
+		(set-thread/block-events?! thread false))))))))
 
 (define (thread-not-running thread state)
   (set-thread/execution-state! thread state)
