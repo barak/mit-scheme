@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.35 1992/02/11 21:14:07 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.36 1992/04/18 00:24:36 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -55,6 +55,7 @@ MIT in each case. */
 #include "sdata.h"
 #include "const.h"
 #include "gccode.h"
+#include "comlin.h"
 
 extern double
   EXFUN (frexp, (double, int *)),
@@ -206,7 +207,7 @@ DEFUN (setup_io, (input_mode, output_mode),
     if (input_file == ((FILE *) NULL))
     {
       fprintf (stderr, "%s: failed to open %s for input.\n",
-	       input_file_name);
+	       program_name, input_file_name);
       exit (1);
     }
   }
@@ -221,7 +222,7 @@ DEFUN (setup_io, (input_mode, output_mode),
     if (output_file == ((FILE *) NULL))
     {
       fprintf (stderr, "%s: failed to open %s for output.\n",
-	       output_file_name);
+	       program_name, output_file_name);
       fclose (input_file);
       exit (1);
     }
