@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.4 1988/11/01 04:46:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.5 1988/12/12 21:51:16 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -84,7 +84,9 @@ from the continuation, and then "glued" into place afterwards.
   interned-variables	;alist of interned SCode variable objects
   closure-offsets	;for closure block, alist of bound variable offsets
   frame			;debugging information (???)
-  stack-link		;for internal block, adjacent block on stack
+  stack-link		;for stack block, adjacent block on stack
+  popping-limits	;for stack block (see continuation analysis)
+  popping-limit		;for stack block (see continuation analysis)
   )
 
 (define *blocks*)
@@ -93,7 +95,7 @@ from the continuation, and then "glued" into place afterwards.
   (let ((block
 	 (make-rvalue block-tag (enumeration/name->index block-types type)
 		      parent '() '() false false '() '() '() '() '() '() false
-		      false 'UNKNOWN)))
+		      false 'UNKNOWN 'UNKNOWN 'UNKNOWN)))
     (if parent
 	(set-block-children! parent (cons block (block-children parent))))
     (set! *blocks* (cons block *blocks*))
@@ -111,7 +113,7 @@ from the continuation, and then "glued" into place afterwards.
 
 (define-integrable (rvalue/block? rvalue)
   (eq? (tagged-vector/tag rvalue) block-tag))
-
+
 (define (add-block-application! block application)
   (set-block-applications! block
 			   (cons application (block-applications block))))
@@ -140,7 +142,7 @@ from the continuation, and then "glued" into place afterwards.
    stack	;invocation frame for procedure, stack-allocated
    ))
 
-(define-integrable (ic-block? block)
+(define (ic-block? block)
   (let ((type (block-type block)))
     (or (eq? type block-type/ic)
 	(eq? type block-type/expression))))
@@ -166,7 +168,7 @@ from the continuation, and then "glued" into place afterwards.
   (and (block-parent block)
        (stack-block? (block-parent block))))
 
-(define-integrable (ic-block/use-lookup? block)
+(define (ic-block/use-lookup? block)
   (or (rvalue/procedure? (block-procedure block))
       (not compiler:cache-free-variables?)))
 
@@ -193,8 +195,8 @@ from the continuation, and then "glued" into place afterwards.
 (define (block-nearest-common-ancestor block block*)
   (let loop
       ((join false)
-       (ancestry (block-ancestry block '()))
-       (ancestry* (block-ancestry block* '())))
+       (ancestry (block-ancestry block))
+       (ancestry* (block-ancestry block*)))
     (if (and (not (null? ancestry))
 	     (not (null? ancestry*))
 	     (eq? (car ancestry) (car ancestry*)))
@@ -203,18 +205,26 @@ from the continuation, and then "glued" into place afterwards.
 
 (define (block-farthest-uncommon-ancestor block block*)
   (let loop
-      ((ancestry (block-ancestry block '()))
-       (ancestry* (block-ancestry block* '())))
+      ((ancestry (block-ancestry block))
+       (ancestry* (block-ancestry block*)))
     (and (not (null? ancestry))
 	 (if (and (not (null? ancestry*))
 		  (eq? (car ancestry) (car ancestry*)))
 	     (loop (cdr ancestry) (cdr ancestry*))
 	     (car ancestry)))))
 
-(define (block-ancestry block path)
-  (if (block-parent block)
-      (block-ancestry (block-parent block) (cons block path))
-      (cons block path)))
+(define (block-ancestry block)
+  (let loop ((block (block-parent block)) (path (list block)))
+    (if block
+	(loop (block-parent block) (cons block path))
+	path)))
+
+(define (block-partial-ancestry block ancestor)
+  ;; (assert (or (not ancestor) (block-ancestor? block ancestor)))
+  (let loop ((block (block-parent block)) (path (list block)))
+    (if (eq? block ancestor)
+	path
+	(loop (block-parent block) (cons block path)))))
 
 (define (find-outermost-block block)
   ;; Should this check whether it is an expression/ic block or not?
@@ -249,10 +259,14 @@ from the continuation, and then "glued" into place afterwards.
   (block-stack-link block))
 
 (define (stack-block/static-link? block)
-  (and (block-parent block)
-       (or (not (stack-block? (block-parent block)))
-	   (not (internal-block/parent-known? block)))))
-
+  (and (not (null? (block-free-variables block)))
+       (let ((parent (block-parent block)))
+	 (and parent
+	      (cond ((stack-block? parent)
+		     (not (internal-block/parent-known? block)))
+		    ((ic-block? parent)
+		     (ic-block/use-lookup? parent))
+		    (else true))))))
 (define-integrable (stack-block/continuation-lvalue block)
   (procedure-continuation-lvalue (block-procedure block)))
 
@@ -265,4 +279,22 @@ from the continuation, and then "glued" into place afterwards.
        (internal-block/dynamic-link? block)))
 
 (define-integrable (internal-block/dynamic-link? block)
-  (not (variable-popping-limit (stack-block/continuation-lvalue block))))
+  (not (block-popping-limit block)))
+
+(define-integrable (block-original-parent block)
+  ;; This only works for the invocation blocks of procedures (not
+  ;; continuations), and it assumes that all procedures' target-block
+  ;; fields have been initialized (i.e. the environment optimizer has
+  ;; been run).
+  (procedure-target-block (block-procedure block)))
+
+(define (disown-block-child! block child)
+  (set-block-children! block (delq! child (block-children block)))
+  (set-block-disowned-children! block
+				(cons child (block-disowned-children block)))
+  unspecific)
+
+(define (own-block-child! block child)
+  (set-block-parent! child block)
+  (set-block-children! block (cons child (block-children block)))
+  unspecific)
