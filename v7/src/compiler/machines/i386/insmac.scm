@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.1 1992/02/08 02:45:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.2 1992/02/09 00:36:45 jinx Exp $
 $Vax-Header: insmac.scm,v 1.12 89/05/17 20:29:15 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -46,11 +46,14 @@ MIT in each case. |#
   (macro rules
     `(DEFINE ,ea-database-name
        ,(compile-database rules
-			  (lambda (pattern value)
-			    (let ((keyword (car pattern)))
+			  (lambda (pattern actions)
+			    (let ((keyword (car pattern))
+				  (categories (car actions))
+				  (value (cdr actions)))
 			      (declare (integrate keyword value))
 			      `(MAKE-EFFECTIVE-ADDRESS
 				',keyword
+				',categories
 				,(process-fields value false))))))))
 
 (syntax-table-define assembler-syntax-table 'DEFINE-SYMBOL-TRANSFORMER
@@ -64,7 +67,7 @@ MIT in each case. |#
 	       #F
 	       (cdr place)))))))
 
-;; **** Are these useful/necessary? ****
+;; This one is necessary to distinguish between r/mW mW, etc.
 
 (syntax-table-define assembler-syntax-table 'DEFINE-EA-TRANSFORMER
   (macro (name category type)
@@ -73,6 +76,8 @@ MIT in each case. |#
 	 (and ea
 	      (memq ',category (ea-categories ea))
 	      ea)))))
+
+;; **** Are these useful/necessary? ****
 
 (syntax-table-define assembler-syntax-table 'DEFINE-TRANSFORMER
   (macro (name value)
@@ -135,41 +140,52 @@ MIT in each case. |#
 	 (case (caar fields)
 	   ;; For opcodes and fixed fields of the instruction
 	   ((BYTE)
+	    ;; (BYTE (8 #xff))
+	    ;; (BYTE (16 (+ foo #x23) SIGNED))
 	    (collect-byte (cdar fields)
 			  tail
 			  (lambda (code size)
 			    (receiver code (+ size tail-size)))))
-	   ;; For addressing modes
-	   ;; **** On the 386 this should become r/m, /digit, etc. ****
-	   ((OPERAND)
+	   ((ModR/M)
+	    ;; (ModR/M 2 source)	= /2 r/m(source)
+	    ;; (ModR/M r target)	= /r r/m(target)
 	    (receiver
 	     `(APPEND-SYNTAX!
-	       ,(if early?
-		    `(EA-VALUE-EARLY ',(cadar fields) ,(caddar fields))
-		    `(EA-VALUE ,(caddar fields)))
+	       ,(let ((field (car fields)))
+		  (let ((digit-or-reg (cadr field))
+			(r/m (caddr field))
+			(size (if (null? (cdddr field))
+				      `*ADDRESS-SIZE*
+				      (cadddr field))))
+		    (if early?
+		      `(EA-VALUE-EARLY ,digit-or-reg ,r/m ,size)
+		      `(EA-VALUE ,digit-or-reg ,r/m ,size))))
 	       ,tail)
 	     tail-size))
-	   ;; For jmp/call displacements
-	   ;; Displacements are like signed bytes.  They are a different
-	   ;; keyword to allow the disassembler to do its thing correctly.
-	   ((DISPLACEMENT)
-	    (let* ((desc (cadar fields))
-		   (size (car desc)))
-	      (receiver
-	       `(CONS-SYNTAX ,(integer-syntaxer (cadr desc) 'SIGNED size)
-			     ,tail)
-	       (+ size tail-size))))
 	   ;; For immediate operands whose size depends on the operand
-	   ;; size for the instruction (byte vs. halfword vs. longword)
+	   ;; size for the instruction (halfword vs. longword)
 	   ((IMMEDIATE)
 	    (receiver
-	     `(CONS-SYNTAX
-	       (COERCE-TO-TYPE ,(cadar fields)
-			       *IMMEDIATE-TYPE*
-			       ,(and (cddar fields)
-				     (eq? (caddar fields)
-					 'UNSIGNED)))
-	       ,tail)
+	     (let ((field (car fields)))
+	       (let ((value (cadr field))
+		     (mode (if (null? (cddr field))
+			       'OPERAND
+			       (caddr field)))
+		     (domain (if (or (null? (cddr field))
+				     (null? (cdddr field)))
+				 'SIGNED
+				 (cadddr field))))
+		 `(CONS-SYNTAX
+		   (COERCE-TO-TYPE ,value
+				   ,(case mode
+				      ((OPERAND)
+				       `*OPERAND-SIZE*)
+				      ((ADDRESS)
+				       `*ADDRESS-SIZE*)
+				      (else
+				       (error "Unknown IMMEDIATE mode" mode)))
+				   ,domain)
+		   ,tail)))
 	     tail-size))
 	   (else
 	    (error "expand-fields: Unknown field kind" (caar fields))))))))
