@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 13.42 1987/03/17 18:50:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 13.43 1987/04/13 18:43:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -54,7 +54,7 @@
 (define (gc-finish-hook state) 'DONE)
 
 (define ((make-flip-hook old-flip) . More)
-  (with-interrupts-reduced INTERRUPT-MASK-NONE
+  (with-interrupts-reduced interrupt-mask-none
     (lambda (Old-Interrupt-Mask)
      (measure-interval
       false			;i.e. do not count the interval in RUNTIME.

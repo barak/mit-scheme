@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.45 1987/04/03 00:51:34 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.46 1987/04/13 18:42:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -85,7 +85,7 @@
        (*error-hook* environment message irritant false)))))
 
 (define ((error-handler-wrapper handler) error-code interrupt-enables)
-  (with-interrupts-reduced INTERRUPT-MASK-GC-OK
+  (with-interrupts-reduced interrupt-mask-gc-ok
    (lambda (old-mask)
      (fluid-let ((*error-code* error-code))
        (with-proceed-point
@@ -97,6 +97,15 @@
 (define (wrapped-error-handler wrapper)
   (access handler (procedure-environment wrapper)))
 
+;;; (PROCEED) means retry error expression, (PROCEED value) means
+;;; return VALUE as the value of the error subproblem.
+
+(define (proceed-value-filter value)
+  (let ((continuation (rep-continuation)))
+    (if (or (null? value) (null-continuation? continuation))
+	(continuation '())
+	((continuation-next-continuation continuation) (car value)))))
+
 (define (start-error-rep message irritant)
   (fluid-let ((error-message message)
 	      (error-irritant irritant))
@@ -127,15 +136,6 @@ using the current read-eval-print environment."))
 	(write-string (cdr out))
 	(if (car out) (write-string "..."))))
   (if *error-decision-hook* (*error-decision-hook*)))
-
-;;; (PROCEED) means retry error expression, (PROCEED value) means
-;;; return VALUE as the value of the error subproblem.
-
-(define (proceed-value-filter value)
-  (let ((continuation (rep-continuation)))
-    (if (or (null? value) (null-continuation? continuation))
-	(continuation '())
-	((continuation-next-continuation continuation) (car value)))))
 
 ;;;; Error Handlers
 
@@ -286,8 +286,7 @@ using the current read-eval-print environment."))
 
 (define ((combination-error-rep message selector) combination)
   (start-error-rep
-   (string-append message
-		  " "
+   (string-append message " "
 		  (let ((out (write-to-string (selector combination) 40)))
 		    (if (car out)
 			(string-append (cdr out) "...")
@@ -510,5 +509,4 @@ using the current read-eval-print environment."))
   identity-procedure)
 
 ;;; end ERROR-SYSTEM package.
-))
 ))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 13.44 1987/03/18 20:05:36 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 13.45 1987/04/13 18:43:17 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -56,7 +56,7 @@
 	(set-channel-direction! system-hunk3-set-cxr2!)
 
 	(closed-direction 0)
-	(closed-descriptor #F))
+	(closed-descriptor false))
 
     (make-environment
     
@@ -73,8 +73,8 @@
     
 (define (initialize)
   (set! open-files-list (list open-file-list-tag))
-  (set! traversing? #F)
-  #T)
+  (set! traversing? false)
+  true)
 
 ;;;; Open/Close Files
 
@@ -92,20 +92,18 @@
 		(make-physical-channel (open-channel filename direction)
 				       filename
 				       direction)))
-	   
-	   (with-interrupt-mask INTERRUPT-MASK-NONE ; Disallow gc
+	   (with-interrupt-mask interrupt-mask-none ; Disallow gc
 	    (lambda (ie)
 	      (set-cdr! open-files-list
-			(cons (system-pair-cons
-			       weak-cons-type
-			       channel
-			       (channel-descriptor channel))
+			(cons (system-pair-cons weak-cons-type
+						channel
+						(channel-descriptor channel))
 			      (cdr open-files-list)))))
 	   channel))))))
 
-(define open-input-channel (open-channel-wrapper #F))
-(define open-output-channel (open-channel-wrapper #T))
-
+(define open-input-channel (open-channel-wrapper false))
+(define open-output-channel (open-channel-wrapper true))
+
 ;; This is locked from interrupts, but GC can occur since the
 ;; procedure itself hangs on to the channel until the last moment,
 ;; when it returns the channel's name.  The list will not be spliced
@@ -114,37 +112,40 @@
 (define close-physical-channel
   (let ((primitive (make-primitive-procedure 'FILE-CLOSE-CHANNEL)))
     (named-lambda (close-physical-channel channel)
-      (fluid-let ((traversing? #T))
+      (fluid-let ((traversing? true))
 	(without-interrupts
 	 (lambda ()
 	   (if (eq? closed-direction
 		    (set-channel-direction! channel closed-direction))
-	       #T			;Already closed!
+	       true			;Already closed!
 	       (begin
-		 (primitive (set-channel-descriptor! channel closed-descriptor))
-		 (let loop ((l1 open-files-list)
-			    (l2 (cdr open-files-list)))
+		 (primitive (set-channel-descriptor! channel
+						     closed-descriptor))
+		 (let loop
+		     ((l1 open-files-list)
+		      (l2 (cdr open-files-list)))
 		   (cond ((null? l2)
-			  (set! traversing? #F)
-			  (error "close-physical-channel: lost channel"
+			  (set! traversing? false)
+			  (error "CLOSE-PHYSICAL-CHANNEL: lost channel"
 				 channel))
 			 ((eq? channel (system-pair-car (car l2)))
 			  (set-cdr! l1 (cdr l2))
 			  (channel-name channel))
-			 (else (loop l2 (cdr l2)))))))))))))
+			 (else
+			  (loop l2 (cdr l2)))))))))))))
 
 ;;;; Finalization and daemon.
 
 (define (close-files action)
   (lambda ()
-    (fluid-let ((traversing? #T))
+    (fluid-let ((traversing? true))
       (without-interrupts
        (lambda ()
 	 (let loop ((l (cdr open-files-list)))
-	   (cond ((null? l) #T)
+	   (cond ((null? l) true)
 		 (else
 		  (let ((channel (system-pair-car (car l))))
-		    (if (not (eq? channel #F))
+		    (if (not (eq? channel false))
 			(begin
 			  (set-channel-descriptor! channel
 						   closed-descriptor)
@@ -154,16 +155,16 @@
 		    (set-cdr! open-files-list (cdr l)))
 		  (loop (cdr open-files-list))))))))))
 
-;; This is invoked before disk-restoring.  It "cleans" the microcode.
+;;; This is invoked before disk-restoring.  It "cleans" the microcode.
 
 (set! close-all-open-files
   (close-files (make-primitive-procedure 'FILE-CLOSE-CHANNEL)))
 
-;; This is invoked after disk-restoring.  It "cleans" the new runtime system.
+;;; This is invoked after disk-restoring.  It "cleans" the new runtime system.
 
 (define reset!
-  (close-files (lambda (ignore) #T)))
-
+  (close-files (lambda (ignore) true)))
+
 ;; This is the daemon which closes files which no one points to.
 ;; Runs with GC, and lower priority interrupts, disabled.
 ;; It is unsafe because of the (unnecessary) consing by the
@@ -177,14 +178,17 @@
   (let ((primitive (make-primitive-procedure 'FILE-CLOSE-CHANNEL)))
     (named-lambda (close-lost-open-files-daemon)
       (if (not traversing?)
-	  (let loop ((l1 open-files-list)
-		     (l2 (cdr open-files-list)))
-	    (cond ((null? l2) #T)
+	  (let loop
+	      ((l1 open-files-list)
+	       (l2 (cdr open-files-list)))
+	    (cond ((null? l2)
+		   true)
 		  ((null? (system-pair-car (car l2)))
 		   (primitive (system-pair-cdr (car l2)))
 		   (set-cdr! l1 (cdr l2))
 		   (loop l1 (cdr l1)))
-		  (else (loop l2 (cdr l2)))))))))
+		  (else
+		   (loop l2 (cdr l2)))))))))
 
 |#
 
@@ -194,8 +198,8 @@
       (if (not traversing?)
 	  (primitive open-files-list)))))
 
-))) ;; End of PRIMITIVE-IO package.
+;;; End of PRIMITIVE-IO package.
+)))
 
 ((access initialize primitive-io))
-(add-gc-daemon! (access close-lost-open-files-daemon primitive-io))
 (add-gc-daemon! (access close-lost-open-files-daemon primitive-io))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.44 1987/04/03 00:53:06 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.45 1987/04/13 18:44:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -105,14 +105,14 @@
 
 (set! dump-world
       (setup-image
-       (let ((primitive (make-primitive-procedure 'DUMP-WORLD #T)))
+       (let ((primitive (make-primitive-procedure 'DUMP-WORLD true)))
 	 (lambda (filename after-dumping after-restoring)
-	   (let ((ie (set-interrupt-enables! INTERRUPT-MASK-NONE)))
+	   (let ((ie (set-interrupt-enables! interrupt-mask-none)))
 	     ((if (primitive filename)
 		  after-restoring
 		  after-dumping)
 	      ie))))))
-
+
 (set! event:after-restore (make-event-distributor))
 (set! event:after-restart (make-event-distributor))
 
@@ -277,5 +277,4 @@
 	   false)
 	  (else (beep) (query prompt)))))
 
-)
 )

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 13.41 1987/01/23 00:18:26 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 13.42 1987/04/13 18:44:00 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -30,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -78,7 +78,7 @@
 	      (set! top-level-driver-hook quit)
 	      (set! nearest-driver-hook quit)
 	      (driver message)))))
-	(set-interrupt-enables! INTERRUPT-MASK-GC-OK)
+	(set-interrupt-enables! interrupt-mask-gc-ok)
 	(fluid-let ((top-level-driver-hook)
 		    (nearest-driver-hook))
 	  (driver-loop message))))
@@ -90,11 +90,11 @@
 	   (call-with-current-continuation
 	    (lambda (again)
 	      (set! nearest-driver-hook again)
-	      (set-interrupt-enables! INTERRUPT-MASK-ALL)
+	      (set-interrupt-enables! interrupt-mask-all)
 	      (each-time)
 	      (entry-hook)
 	      (loop)))))
-      (set-interrupt-enables! INTERRUPT-MASK-GC-OK)
+      (set-interrupt-enables! interrupt-mask-gc-ok)
       (restart reentry-hook each-time)))
 
   (define (loop)
@@ -198,7 +198,7 @@
 (define (set-rep-base-syntax-table! syntax-table)
   (set! *rep-base-syntax-table* syntax-table)
   (set! *rep-current-syntax-table* syntax-table))
-
+
 (define (rep-prompt)
   *rep-current-prompt*)
 
@@ -217,7 +217,7 @@
 
 (define (rep-output-port)
   *rep-current-output-port*)
-
+
 (define environment-warning-hook
   identity-procedure)
 
@@ -229,7 +229,7 @@
 (define reader-history)
 (define printer-history)
 (let ()
-
+
 (set! make-rep
 (named-lambda (make-rep environment syntax-table prompt input-port output-port
 			message)
@@ -326,7 +326,5 @@
 
 (set! printer-history
       (history-reader rep-state-printer-history 'PRINTER-HISTORY))
-
-)
 
 )
