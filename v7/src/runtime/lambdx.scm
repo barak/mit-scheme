@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambdx.scm,v 14.4 1994/01/29 21:53:03 adams Exp $
+$Id: lambdx.scm,v 14.5 1994/02/19 15:39:30 gjr Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,9 +38,17 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (make-lambda* name required optional rest body)
-  (scan-defines body
-    (lambda (auxiliary declarations body*)
-      (make-lambda name required optional rest auxiliary declarations body*))))
+  (scan-defines
+   body
+   (lambda (auxiliary declarations body*)
+     (let ((ordinary (append required optional (if rest (list rest) '()))))
+       (make-lambda name required optional rest
+		    (list-transform-negative auxiliary
+		      (lambda (aux)
+			(memq aux ordinary)))
+		    auxiliary
+		    declarations
+		    body*)))))
 
 (define (lambda-components* *lambda receiver)
   (lambda-components *lambda
