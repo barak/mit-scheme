@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.7 1988/11/01 04:54:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.8 1988/11/04 10:28:27 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -201,36 +201,33 @@ MIT in each case. |#
 						  name)))
 
 (define (invocation/cache-reference offset frame-size continuation prefix name)
-  (let* ((temp (rtl:make-pseudo-register))
-	 (cell (rtl:make-fetch temp))
-	 (contents (rtl:make-fetch cell))
-	 (n1 (rtl:make-assignment temp (rtl:make-variable-cache name))))
-    ;; n1 MUST be bound before the rest.  It flags temp as a
-    ;; register that contains an address.
-    (let ((n2
-	   (rtl:make-type-test (rtl:make-object->type contents)
-			       (ucode-type reference-trap)))
-	  (n3
-	   (scfg*scfg->scfg!
-	    (rtl:make-push contents)
-	    (invocation/apply* (1+ offset)
-			       (1+ frame-size)
-			       continuation
-			       prefix)))
-	  (n4
-	   (scfg*scfg->scfg!
-	    (prefix offset frame-size)
-	    (expression-simplify-for-statement cell
-	      (lambda (cell)
-		(rtl:make-invocation:cache-reference (1+ frame-size)
-						     continuation
-						     cell))))))
-      (scfg-next-connect! n1 n2)
-      (pcfg-consequent-connect! n2 n4)
-      (pcfg-alternative-connect! n2 n3)
-      (make-scfg (cfg-entry-node n1)
-		 (hooks-union (scfg-next-hooks n3)
-			      (scfg-next-hooks n4))))))
+  (load-temporary-register scfg*scfg->scfg!
+			   (rtl:make-variable-cache name)
+    (lambda (cell)
+      (let ((contents (rtl:make-fetch cell)))
+	(let ((n2
+	       (rtl:make-type-test (rtl:make-object->type contents)
+				   (ucode-type reference-trap)))
+	      (n3
+	       (scfg*scfg->scfg!
+		(rtl:make-push contents)
+		(invocation/apply* (1+ offset)
+				   (1+ frame-size)
+				   continuation
+				   prefix)))
+	      (n4
+	       (scfg*scfg->scfg!
+		(prefix offset frame-size)
+		(expression-simplify-for-statement cell
+		  (lambda (cell)
+		    (rtl:make-invocation:cache-reference (1+ frame-size)
+							 continuation
+							 cell))))))
+	  (pcfg-consequent-connect! n2 n4)
+	  (pcfg-alternative-connect! n2 n3)
+	  (make-scfg (cfg-entry-node n2)
+		     (hooks-union (scfg-next-hooks n3)
+				  (scfg-next-hooks n4))))))))
 
 ;;; end INVOCATION/REFERENCE
 )

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.7 1988/08/29 23:14:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.8 1988/11/04 10:28:34 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -154,13 +154,15 @@ MIT in each case. |#
 
 (define (use-temporary-register operand offset prefix finish)
   (let ((register (rtl:make-pseudo-register)))
-    (scfg-append!
-     ((return-operand/value-generator operand)
-      offset
-      (lambda (expression)
-	(rtl:make-assignment register expression)))
-     prefix
-     (finish (rtl:make-fetch register)))))
+    (let ((setup-register
+	   ((return-operand/value-generator operand)
+	    offset
+	    (lambda (expression)
+	      (rtl:make-assignment register expression)))))
+      (scfg-append!
+       setup-register
+       prefix
+       (finish (rtl:make-fetch register))))))
 
 (define (return-operator/pop-frames block operator offset extra)
   (let ((pop-extra

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.16 1988/11/01 04:53:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.17 1988/11/04 10:28:18 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -144,12 +144,14 @@ MIT in each case. |#
   (generator expressions
     (lambda (pcfg)
       (let ((temporary (rtl:make-pseudo-register)))
-	(scfg*scfg->scfg!
-	 (pcfg*scfg->scfg!
-	  pcfg
-	  (rtl:make-assignment temporary (rtl:make-constant true))
-	  (rtl:make-assignment temporary (rtl:make-constant false)))
-	 (finish (rtl:make-fetch temporary)))))))
+	;; Force assignment to be made first.
+	(let ((consequent 
+	       (rtl:make-assignment temporary (rtl:make-constant true)))
+	      (alternative
+	       (rtl:make-assignment temporary (rtl:make-constant false))))
+	  (scfg*scfg->scfg!
+	   (pcfg*scfg->scfg! pcfg consequent alternative)
+	   (finish (rtl:make-fetch temporary))))))))
 
 (define (invoke/value->effect generator expressions)
   generator expressions
@@ -291,30 +293,20 @@ MIT in each case. |#
     rtl))
 
 (define (generate-primitive name arg-list continuation-label)
-  (let ((primitive (make-primitive-procedure name true)))
-    (let loop ((args arg-list)
-	       (temps '() )
-	       (pushes '() ))
-      (if (null? args)
-	  (scfg-append!
-	   temps
-	   (rtl:make-push-return continuation-label)
-	   pushes
-	   ((or (special-primitive-handler primitive)
-		rtl:make-invocation:primitive)
-	    (1+ (length arg-list))
-	    continuation-label
-	    primitive))
-	  (let ((temp (rtl:make-pseudo-register)))
-	    (loop (cdr args)
-		  (scfg*scfg->scfg!
-		   (rtl:make-assignment
-		    temp
-		    (car args))
-		   temps)
-		  (scfg*scfg->scfg!
-		   (rtl:make-push (rtl:make-fetch temp))
-		   pushes)))))))
+  (scfg*scfg->scfg!
+   (let loop ((args arg-list))
+     (if (null? args)
+	 (rtl:make-push-return continuation-label)
+	 (load-temporary-register scfg*scfg->scfg! (car args)
+	   (lambda (temporary)
+	     (scfg*scfg->scfg! (loop (cdr args))
+			       (rtl:make-push temporary))))))
+   (let ((primitive (make-primitive-procedure name true)))
+     ((or (special-primitive-handler primitive)
+	  rtl:make-invocation:primitive)
+      (1+ (length arg-list))
+      continuation-label
+      primitive))))
 		  
 (define (generate-type-test type expression)
   (let ((mu-type (microcode-type type)))
@@ -421,22 +413,20 @@ MIT in each case. |#
     (define/length '(STRING-LENGTH BIT-STRING-LENGTH) 1)))
 
 (define (generate-index-locative vector index finish)
-  (let ((temporary (rtl:make-pseudo-register)))
-    (scfg*scfg->scfg!
-     (rtl:make-assignment
-      temporary
-      (rtl:make-fixnum->address
-       (rtl:make-fixnum-2-args
-	'PLUS-FIXNUM
-	(rtl:make-address->fixnum (rtl:make-object->address vector))
-	(rtl:make-fixnum-2-args
-	 'MULTIPLY-FIXNUM
-	 (rtl:make-object->fixnum
-	  (rtl:make-constant
-	   (quotient scheme-object-width
-		     addressing-granularity)))
-	 (rtl:make-object->fixnum index)))))
-     (finish (rtl:make-fetch temporary)))))
+  (load-temporary-register
+   scfg*scfg->scfg!
+   (rtl:make-fixnum->address
+    (rtl:make-fixnum-2-args
+     'PLUS-FIXNUM
+     (rtl:make-address->fixnum (rtl:make-object->address vector))
+     (rtl:make-fixnum-2-args
+      'MULTIPLY-FIXNUM
+      (rtl:make-object->fixnum
+       (rtl:make-constant
+	(quotient scheme-object-width
+		  addressing-granularity)))
+      (rtl:make-object->fixnum index))))
+   finish))
 
 (let* ((open-code/memory-ref
 	(lambda (index)
@@ -534,11 +524,10 @@ MIT in each case. |#
 		    (rtl:make-assignment locative
 					 (car (last-pair expressions)))))
 	      (if finish
-		  (let ((temporary (rtl:make-pseudo-register)))
-		    (scfg-append!
-		     (rtl:make-assignment temporary (rtl:make-fetch locative))
-		     assignment
-		     (finish (rtl:make-fetch temporary))))
+		  (load-temporary-register scfg*scfg->scfg!
+					   (rtl:make-fetch locative)
+		    (lambda (temporary)
+		      (scfg*scfg->scfg! assignment (finish temporary))))
 		  assignment)))))
        (open-code/vector-set
 	(lambda (name)
@@ -692,8 +681,7 @@ MIT in each case. |#
 	  (flo-op (generic->floatnum-op
 		   (rtl:generic-binary-operator expression)))
 	  (op1 (rtl:generic-binary-operand-1 expression))
-	  (op2 (rtl:generic-binary-operand-2 expression))
-	  (fix-temp (rtl:make-pseudo-register)))
+	  (op2 (rtl:generic-binary-operand-2 expression)))
       (let* ((give-it-up
 	      (scfg-append!
 	       (generate-primitive
@@ -757,18 +745,16 @@ MIT in each case. |#
 	     (generate-type-test 'fixnum op1)
 	     (pcfg*scfg->scfg!
 	      (generate-type-test 'fixnum op2)
-	      (scfg*scfg->scfg!
-	       (rtl:make-assignment
-		fix-temp
-		(rtl:make-fixnum-2-args
-		 fix-op
-		 (rtl:make-object->fixnum op1)
-		 (rtl:make-object->fixnum op2)))
-	       (pcfg*scfg->scfg!
-		(rtl:make-overflow-test)
-		give-it-up
-		(finish (rtl:make-fixnum->object
-			 fix-temp))))
+	      (load-temporary-register scfg*scfg->scfg!
+				       (rtl:make-fixnum-2-args
+					fix-op
+					(rtl:make-object->fixnum op1)
+					(rtl:make-object->fixnum op2))
+		(lambda (fix-temp)
+		  (pcfg*scfg->scfg!
+		   (rtl:make-overflow-test)
+		   give-it-up
+		   (finish (rtl:make-fixnum->object fix-temp)))))
 	      generic-2)
 	     generic-1)
 	    (pcfg*scfg->scfg!
@@ -791,8 +777,7 @@ MIT in each case. |#
 		   (rtl:generic-unary-operator expression)))
 	  (flo-op (generic->floatnum-op
 		   (rtl:generic-unary-operator expression)))
-	  (op (rtl:generic-unary-operand expression))
-	  (fix-temp (rtl:make-pseudo-register)))
+	  (op (rtl:generic-unary-operand expression)))
       (let* ((give-it-up
 	      (scfg-append!
 	       (generate-primitive
@@ -820,17 +805,15 @@ MIT in each case. |#
 		(not is-pred?))
 	    (pcfg*scfg->scfg!
 	     (generate-type-test 'fixnum op)
-	     (scfg*scfg->scfg!
-	      (rtl:make-assignment
-	       fix-temp
-	       (rtl:make-fixnum-1-arg
-		fix-op
-		(rtl:make-object->fixnum op)))
-	      (pcfg*scfg->scfg!
-	       (rtl:make-overflow-test)
-	       give-it-up
-	       (finish (rtl:make-fixnum->object
-			fix-temp))))
+	     (load-temporary-register scfg*scfg->scfg!
+				      (rtl:make-fixnum-1-arg
+				       fix-op
+				       (rtl:make-object->fixnum op))
+	       (lambda (fix-temp)
+		 (pcfg*scfg->scfg!
+		  (rtl:make-overflow-test)
+		  give-it-up
+		  (finish (rtl:make-fixnum->object fix-temp)))))
 	     (if compiler:open-code-flonum-checks?
 		 (pcfg*scfg->scfg!
 		  (generate-type-test 'flonum op)
@@ -994,20 +977,20 @@ MIT in each case. |#
 		   (rtl:locative-byte-offset (car expressions)
 					     (+ string-header-size index)))
 		  (assignment
-		   (rtl:make-assignment locative (rtl:make-char->ascii
-						  (cadr expressions)))))
+		   (rtl:make-assignment
+		    locative
+		    (rtl:make-char->ascii (cadr expressions)))))
 	     (if finish
-		 (let ((temporary (rtl:make-pseudo-register)))
-		   (scfg-append!
-		    (rtl:make-assignment
-		     temporary
-		     (rtl:make-cons-pointer
-		      (rtl:make-constant (ucode-type character))
-		      (rtl:make-fetch locative)))
-		    assignment
-		    (finish (rtl:make-fetch temporary))))
+		 (load-temporary-register
+		  scfg*scfg->scfg!
+		  (rtl:make-cons-pointer
+		   (rtl:make-constant (ucode-type character))
+		   (rtl:make-fetch locative))
+		  (lambda (temporary)
+		    (scfg*scfg->scfg! assignment (finish temporary))))
 		 assignment)))
 	 '(0 2))))))
+
 ;;; End STRING operations, LET
 )
 

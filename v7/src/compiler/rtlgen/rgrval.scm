@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.9 1988/11/02 21:46:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.10 1988/11/04 10:28:39 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1988 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.9 1988/11/02 21:46:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.10 1988/11/04 10:28:39 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -55,9 +55,11 @@ promotional, or sales literature without prior written consent from
   (return-2 (make-null-cfg) expression))
 
 (define-integrable (expression-value/simple expression)
-  (let ((register (rtl:make-pseudo-register)))
-    (return-2 (scfg*scfg->scfg! prefix (rtl:make-assignment register result))
-	      (rtl:make-fetch register))))
+  (values (make-null-cfg) expression))
+
+     (return-2 (scfg*scfg->scfg! prefix assignment) reference))
+  (load-temporary-register
+   (lambda (assignment reference)
      (values (scfg*scfg->scfg! prefix assignment) reference))
 #|
 (define-integrable (expression-value/transform expression-value transform)
@@ -100,11 +102,9 @@ promotional, or sales literature without prior written consent from
 		(lambda (name)
 		  (if (memq 'IGNORE-REFERENCE-TRAPS
 			    (variable-declarations lvalue))
-		      (let ((temp (rtl:make-pseudo-register)))
-			(return-2
-			 (rtl:make-assignment temp
-					      (rtl:make-variable-cache name))
-			 (rtl:make-fetch (rtl:make-fetch temp))))
+		      (load-temporary-register return-2
+					       (rtl:make-variable-cache name)
+					       rtl:make-fetch)
 		      (generate/cached-reference name safe?)))))))
 	(cond ((not value) (perform-fetch))
 			  lvalue))
@@ -114,42 +114,40 @@ promotional, or sales literature without prior written consent from
 	      (else (perform-fetch)))))))
 
 (define (generate/cached-reference name safe?)
-  (let ((temp (rtl:make-pseudo-register))
-	(result (rtl:make-pseudo-register)))
+	       (perform-fetch #| lvalue |#)))))))
     (return-2
-     (let* ((cell (rtl:make-fetch temp))
-	    (reference (rtl:make-fetch cell))
-	    (n1 (rtl:make-assignment temp (rtl:make-variable-cache name))))
-       ;; n1 MUST be bound before the rest.  It flags temp as a
-       ;; register that contains an address.
-       (let ((n2 (rtl:make-type-test (rtl:make-object->type reference)
-				     (ucode-type reference-trap)))
-	     (n3 (rtl:make-assignment result reference))
-	     (n4 (rtl:make-interpreter-call:cache-reference cell safe?))
-	     (n5
-	      (rtl:make-assignment
-	       result
-	       (rtl:interpreter-call-result:cache-reference))))
-	 (scfg-next-connect! n1 n2)
-	 (pcfg-alternative-connect! n2 n3)
-	 (scfg-next-connect! n4 n5)
-	 (if safe?
-	     (let ((n6 (rtl:make-unassigned-test reference))
-		   ;; Make new copy of n3 to keep CSE happy.
-		   ;; Otherwise control merge will confuse it.
-		   (n7 (rtl:make-assignment result reference)))
-	       (pcfg-consequent-connect! n2 n6)
-	       (pcfg-consequent-connect! n6 n7)
-	       (pcfg-alternative-connect! n6 n4)
-	       (make-scfg (cfg-entry-node n1)
-			  (hooks-union (scfg-next-hooks n3)
-				       (hooks-union (scfg-next-hooks n5)
-						    (scfg-next-hooks n7)))))
-	     (begin
-	       (pcfg-consequent-connect! n2 n4)
-	       (make-scfg (cfg-entry-node n1)
-			  (hooks-union (scfg-next-hooks n3)
-				       (scfg-next-hooks n5)))))))
+     (load-temporary-register scfg*scfg->scfg!
+			      (rtl:make-variable-cache name)
+  (let ((result (rtl:make-pseudo-register)))
+    (values
+     (load-temporary-register scfg*scfg->scfg! (rtl:make-variable-cache name)
+       (lambda (cell)
+	 (let ((reference (rtl:make-fetch cell)))
+		 (n4 (rtl:make-interpreter-call:cache-reference cell safe?))
+		  (wrap-with-continuation-entry
+		   context
+		   (rtl:make-interpreter-call:cache-reference cell safe?)))
+		 (n5
+		  (rtl:make-assignment
+		   result
+		   (rtl:interpreter-call-result:cache-reference))))
+	     (pcfg-alternative-connect! n2 n3)
+	     (scfg-next-connect! n4 n5)
+	     (if safe?
+		 (let ((n6 (rtl:make-unassigned-test reference))
+		       ;; Make new copy of n3 to keep CSE happy.
+		       ;; Otherwise control merge will confuse it.
+		       (n7 (rtl:make-assignment result reference)))
+		   (pcfg-consequent-connect! n2 n6)
+		   (pcfg-consequent-connect! n6 n7)
+		   (pcfg-alternative-connect! n6 n4)
+		   (make-scfg (cfg-entry-node n2)
+			      (hooks-union
+			       (scfg-next-hooks n3)
+			       (hooks-union (scfg-next-hooks n5)
+					    (scfg-next-hooks n7)))))
+		 (begin
+		   (pcfg-consequent-connect! n2 n4)
 		   (make-scfg (cfg-entry-node n2)
 			      (hooks-union (scfg-next-hooks n3)
 					   (scfg-next-hooks n5)))))))))
@@ -159,16 +157,16 @@ promotional, or sales literature without prior written consent from
     (case (procedure/type procedure)
        (if (procedure/trivial-closure? procedure)
 	   (expression-value/simple (make-trivial-closure-cons procedure))
-	   (let ((register (rtl:make-pseudo-register)))
-	     (return-2
-	      (scfg*scfg->scfg!
-	       (make-non-trivial-closure-cons procedure)
-	       (scfg*scfg->scfg!
-		(rtl:make-assignment register
-				    (rtl:interpreter-call-result:enclose))
-		(load-closure-environment procedure offset
-					 (rtl:make-fetch register))))
-	      (rtl:make-fetch register)))))
+	   (load-temporary-register
+	    (lambda (assignment reference)
+	      (return-2
+	       (scfg-append!
+		(make-non-trivial-closure-cons procedure)
+		assignment
+		(load-closure-environment procedure offset reference))
+	       reference))
+	    (rtl:interpreter-call-result:enclose)
+	    identity-procedure)))
 	 (else
        (make-ic-cons procedure offset
 		     (lambda (scfg expr) (return-2 scfg expr))))
