@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.40 1991/03/24 23:53:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.41 1991/05/06 23:05:51 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -1099,7 +1099,8 @@ MIT in each case. |#
     reference-trap safe-reference-trap unassigned?-trap
     -1+ &/ &= &> 1+ &< &- &* negative? &+ positive? zero?
     access lookup safe-lookup unassigned? unbound?
-    set! define lookup-apply))
+    set! define lookup-apply primitive-error
+    quotient remainder modulo))
 
 (let-syntax ((define-entries
 	       (macro (start . names)
@@ -1151,6 +1152,9 @@ MIT in each case. |#
     primitive-error
     allocate-closure		; This doesn't have a code: counterpart.
     closure-hook		; This doesn't have a code: counterpart.
+    quotient
+    remainder
+    ;; modulo			; We are out of hook space!
     ))
 
 (define-integrable (invoke-interface code)
