@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comred.scm,v 1.119 2000/05/08 17:53:11 cph Exp $
+;;; $Id: comred.scm,v 1.120 2000/05/08 20:07:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -242,12 +242,13 @@
 	    (lambda ()
 	      (let ((next (car *command-suffixes*)))
 		(and (pair? next)
-		     (if (pair? (cdr next))
-			 (set-car! *command-suffixes* (cdr next))
-			 (begin
-			   (set-car! *command-suffixes* '())
-			   (set-cdr! *command-suffixes* '()))))
-		(car next))))))
+		     (begin
+		       (if (pair? (cdr next))
+			   (set-car! *command-suffixes* (cdr next))
+			   (begin
+			     (set-car! *command-suffixes* '())
+			     (set-cdr! *command-suffixes* '())))
+		       (car next))))))))
       (if item
 	  (begin
 	    (apply (car item) (cdr item))
