@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.22 1993/12/22 07:28:07 adams Exp $
+$Id: usiexp.scm,v 4.23 1993/12/22 07:55:42 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -469,23 +469,23 @@ MIT in each case. |#
 ;; DO NOT make the following integrable! they are required to be procedures
 ;; for re-tagging
 
-(define (ucode-type/character) (ucode-type character))
-(define (ucode-type/cell) (ucode-type cell))
-(define (ucode-type/vector) (ucode-type vector))
-(define (ucode-type/record) (ucode-type record))
-(define (ucode-type/weak-cons) (ucode-type weak-cons))
-(define (ucode-type/big-flonum) (ucode-type big-flonum))
-(define (ucode-type/fixnum) (ucode-type fixnum))
-(define (ucode-type/positive-fixnum) (ucode-type positive-fixnum))
-(define (ucode-type/negative-fixnum) (ucode-type negative-fixnum))
+(define ucode-type/character (ucode-type character))
+(define ucode-type/cell (ucode-type cell))
+(define ucode-type/vector (ucode-type vector))
+(define ucode-type/record (ucode-type record))
+(define ucode-type/weak-cons (ucode-type weak-cons))
+(define ucode-type/big-flonum (ucode-type big-flonum))
+(define ucode-type/fixnum (ucode-type fixnum))
+(define ucode-type/positive-fixnum (ucode-type positive-fixnum))
+(define ucode-type/negative-fixnum (ucode-type negative-fixnum))
 
-(define char?-expansion (type-test-expansion ucode-type/character))
-(define cell?-expansion (type-test-expansion ucode-type/cell))
-(define vector?-expansion (type-test-expansion ucode-type/vector))
-(define %record?-expansion (type-test-expansion ucode-type/record))
-(define weak-pair?-expansion (type-test-expansion ucode-type/weak-cons))
-(define flo:flonum?-expansion (type-test-expansion ucode-type/big-flonum))
-(define fix:fixnum?-expansion (type-test-expansion ucode-type/fixnum))
+(define char?-expansion (type-test-expansion (lambda()ucode-type/character)))
+(define cell?-expansion (type-test-expansion (lambda()ucode-type/cell)))
+(define vector?-expansion (type-test-expansion (lambda()ucode-type/vector)))
+(define %record?-expansion (type-test-expansion (lambda()ucode-type/record)))
+(define weak-pair?-expansion (type-test-expansion (lambda()ucode-type/weak-cons)))
+(define flo:flonum?-expansion (type-test-expansion (lambda()ucode-type/big-flonum)))
+(define fix:fixnum?-expansion (type-test-expansion (lambda()ucode-type/fixnum)))
 
 ;; for +ve & -ve fixnums?
 ;(define (fix:fixnum?-expansion expr operands if-expanded if-not-expanded block)
