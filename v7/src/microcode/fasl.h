@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasl.h,v 9.26 1988/02/06 20:40:26 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasl.h,v 9.27 1988/02/10 04:21:32 jinx Rel $
 
    Contains information relating to the format of FASL files.
    The machine/opsys information is contained in config.h
@@ -121,8 +121,13 @@ extern Boolean Open_Dump_File(), Close_Dump_File();
   system can be built which reads the old format, but dumps the new one.
  */
 
+#ifndef FASL_READ_VERSION
 #define FASL_READ_VERSION	FASL_FORMAT_VERSION
+#endif
+
+#ifndef FASL_READ_SUBVERSION
 #define FASL_READ_SUBVERSION	FASL_SUBVERSION
+#endif
 
 /* These are for Bintopsb.
    They are the values of the oldest supported formats.
