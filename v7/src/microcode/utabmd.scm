@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.57 1991/05/05 00:30:52 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.58 1991/08/24 01:51:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987-91 Massachusetts Institute of Technology
 ;;;
@@ -591,6 +591,7 @@
 	       FSTAT
 	       FTRUNCATE
 	       GETCWD
+	       GETHOSTNAME
 	       GETTIMEOFDAY
 	       IOCTL-TIOCGPGRP
 	       IOCTL-TIOCSIGSEND
@@ -694,4 +695,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.57 1991/05/05 00:30:52 jinx Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.58 1991/08/24 01:51:14 cph Exp $"
