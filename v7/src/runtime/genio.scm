@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.24 2004/02/23 20:49:32 cph Exp $
+$Id: genio.scm,v 1.25 2004/02/24 01:45:53 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -301,20 +301,20 @@ USA.
   (let ((state (port/state port)))
     (let ((ib (gstate-input-buffer state))
 	  (ob (gstate-output-buffer state)))
-      (let ((name
-	     (line-ending (if ib
-			      (input-buffer-channel ib)
-			      (output-buffer-channel ob))
-			  name)))
-	(if ib
-	    (set-input-buffer-line-ending! ib name))
-	(if ob
-	    (set-output-buffer-line-ending! ob name))
-	(set-gstate-line-ending! state name)))))
+      (if ib
+	  (set-input-buffer-line-ending!
+	   ib
+	   (line-ending (input-buffer-channel ib) name #f)))
+      (if ob
+	  (set-output-buffer-line-ending!
+	   ob
+	   (line-ending (output-buffer-channel ob) name #t))))
+    (set-gstate-line-ending! state name)))
 
-(define (line-ending channel name)
+(define (line-ending channel name for-output?)
   (guarantee-symbol name #f)
-  (if (eq? name 'TEXT)
+  (if (or (eq? name 'TEXT)
+	  (and for-output? (input-line-ending? name)))
       (if (eq? 'TCP-STREAM-SOCKET (channel-type channel))
 	  'CRLF
 	  (default-line-ending))
@@ -431,7 +431,7 @@ USA.
 		      byte-buffer-length
 		      byte-buffer-length
 		      (name->decoder type)
-		      (name->normalizer (line-ending channel type))))
+		      (name->normalizer (line-ending channel type #f))))
 
 (define-integrable (input-buffer-open? ib)
   (channel-open? (input-buffer-channel ib)))
@@ -630,7 +630,7 @@ USA.
 		       (make-string byte-buffer-length)
 		       0
 		       (name->encoder type)
-		       (name->denormalizer (line-ending channel type))))
+		       (name->denormalizer (line-ending channel type #t))))
 
 (define-integrable (output-buffer-open? ob)
   (channel-open? (output-buffer-channel ob)))
@@ -1373,6 +1373,10 @@ USA.
 	  (encode-char ob #\U+000A))
 	(encode-char ob char))))
 
+(define-integrable (input-line-ending? name)
+  (or (eq? name 'XML-1.0)
+      (eq? name 'XML-1.1)))
+
 (define-normalizer 'XML-1.0
   (lambda (ib)
     (let* ((bs0 (input-buffer-start ib))
