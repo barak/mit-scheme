@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.51 1995/01/06 01:05:56 cph Exp $
+;;;	$Id: evlcom.scm,v 1.52 1997/05/18 07:51:53 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -523,7 +523,8 @@ Set by Scheme evaluation code to update the mode line."
 	 (typein-report))
 	((FIT)
 	 (if (and (not (string-find-next-char report-string #\newline))
-		  (< (string-columns report-string 18 #f)
+		  (< (string-columns report-string 8
+				     default-char-image-strings)
 		     (window-x-size (typein-window))))
 	     (typein-report)
 	     (error-buffer-report)))))))
