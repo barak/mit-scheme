@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.54 2000/12/01 06:07:13 cph Exp $
+;;; $Id: debug.scm,v 1.55 2000/12/01 06:18:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
@@ -1009,7 +1009,7 @@ The buffer below describes the current subproblem or reduction.
 		   (let loop ((default default-screen-geometry))
 		     (let ((geometry
 			    (prompt-for-string "Please enter a geometry"
-					       default-screen-geometry)))
+					       default)))
 		       (if (geometry? geometry)
 			   geometry
 			   (loop geometry))))))
