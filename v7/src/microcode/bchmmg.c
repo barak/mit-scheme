@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.50 1989/11/30 03:03:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.51 1990/01/23 03:00:23 gjs Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -391,6 +391,8 @@ initialize_free_buffer()
   scan_position = -1;
   scan_buffer_bottom = gc_disk_buffer_2;
   scan_buffer_top = scan_buffer_bottom + GC_DISK_BUFFER_SIZE;
+  /* Force first write to do an lseek. */
+  current_disk_position = -1;
   return (free_buffer_bottom);
 }
 
