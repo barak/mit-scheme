@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.2 1994/11/29 02:33:42 adams Exp $
+$Id: compiler.pkg,v 1.3 1994/12/06 16:30:54 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -51,15 +51,14 @@ MIT in each case. |#
 	 "base/cfg2"
 	 "base/cfg3"
 
-	 "base/ctypes"			;CFG datatypes
-
-	 "base/rvalue"			;Right hand values
-	 "base/lvalue"			;Left hand values
-	 "base/blocks"			;rvalue: blocks
-	 "base/proced"			;rvalue: procedures
-	 "base/contin"			;rvalue: continuations
-
-	 "base/subprb"			;subproblem datatype
+	 ;; Old CFG stuff
+	 ;;"base/ctypes"			;CFG datatypes
+	 ;;"base/rvalue"			;Right hand values
+	 ;;"base/lvalue"			;Left hand values
+	 ;;"base/blocks"			;rvalue: blocks
+	 ;;"base/proced"			;rvalue: procedures
+	 ;;"base/contin"			;rvalue: continuations
+	 ;;"base/subprb"			;subproblem datatype
 
 	 "rtlbase/rgraph"		;program graph abstraction
 	 "rtlbase/rtlty1"		;RTL: type definitions
@@ -110,20 +109,20 @@ MIT in each case. |#
 	  compiler:show-time-reports?
 	  compiler:use-multiclosures?))
 
-(define-package (compiler reference-contexts)
-  (files "base/refctx")
-  (parent (compiler))
-  (export (compiler)
-	  add-reference-context/adjacent-parents!
-	  initialize-reference-contexts!
-	  make-reference-context
-	  modify-reference-contexts!
-	  reference-context/adjacent-parent?
-	  reference-context/block
-	  reference-context/offset
-	  reference-context/procedure
-	  reference-context?
-	  set-reference-context/offset!))
+;;(define-package (compiler reference-contexts)
+;;  (files "base/refctx")
+;;  (parent (compiler))
+;;  (export (compiler)
+;;	  add-reference-context/adjacent-parents!
+;;	  initialize-reference-contexts!
+;;	  make-reference-context
+;;	  modify-reference-contexts!
+;;	  reference-context/adjacent-parent?
+;;	  reference-context/block
+;;	  reference-context/offset
+;;	  reference-context/procedure
+;;	  reference-context?
+;;	  set-reference-context/offset!))
 
 (define-package (compiler macros)
   (files "base/macros")
@@ -178,8 +177,6 @@ MIT in each case. |#
 	  *kmp-output-abbreviated?*
 	  with-kmp-output-port
 	  compile-recursively/new)
-;  (export (compiler fg-generator)
-;	  compile-recursively)
   (export (compiler rtl-generator)
 	  *ic-procedure-headers*
 	  *rtl-continuations*
@@ -334,139 +331,6 @@ MIT in each case. |#
 	   constraint-mark!
 	   transitively-close-dag!
 	   reverse-postorder))
-
-#|  Old flow-graph not used in new compiler
-    (define-package (compiler fg-generator)
-      (files "fggen/canon"		;SCode canonicalizer
-	     "fggen/fggen"		;SCode->flow-graph converter
-	     "fggen/declar"		;Declaration handling
-	     )
-      (parent (compiler))
-      (export (compiler top-level)
-	      canonicalize/top-level
-	      construct-graph)
-      (import (runtime scode-data)
-	      &pair-car
-	      &pair-cdr
-	      &triple-first
-	      &triple-second
-	      &triple-third))
-
-    (define-package (compiler fg-optimizer)
-      (files "fgopt/outer"		;outer analysis
-	     "fgopt/sideff"		;side effect analysis
-	     )
-      (parent (compiler))
-      (export (compiler top-level)
-	      clear-call-graph!
-	      compute-call-graph!
-	      outer-analysis
-	      side-effect-analysis))
-
-    (define-package (compiler fg-optimizer fold-constants)
-      (files "fgopt/folcon")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) fold-constants))
-
-    (define-package (compiler fg-optimizer operator-analysis)
-      (files "fgopt/operan")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) operator-analysis))
-
-    (define-package (compiler fg-optimizer variable-indirection)
-      (files "fgopt/varind")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) initialize-variable-indirections!))
-
-    (define-package (compiler fg-optimizer environment-optimization)
-      (files "fgopt/envopt")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) optimize-environments!))
-
-    (define-package (compiler fg-optimizer closure-analysis)
-      (files "fgopt/closan")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) identify-closure-limits!))
-
-    (define-package (compiler fg-optimizer continuation-analysis)
-      (files "fgopt/contan")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level)
-	      continuation-analysis
-	      setup-block-static-links!))
-
-    (define-package (compiler fg-optimizer compute-node-offsets)
-      (files "fgopt/offset")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) compute-node-offsets))
-    
-    (define-package (compiler fg-optimizer connectivity-analysis)
-      (files "fgopt/conect")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) connectivity-analysis))
-
-    (define-package (compiler fg-optimizer delete-integrated-parameters)
-      (files "fgopt/delint")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) delete-integrated-parameters))
-
-    (define-package (compiler fg-optimizer design-environment-frames)
-      (files "fgopt/desenv")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) design-environment-frames!))
-
-    (define-package (compiler fg-optimizer setup-block-types)
-      (files "fgopt/blktyp")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level)
-	      setup-block-types!
-	      setup-closure-contexts!)
-      (export (compiler)
-	      indirection-block-procedure))
-
-    (define-package (compiler fg-optimizer simplicity-analysis)
-      (files "fgopt/simple")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) simplicity-analysis)
-      (export (compiler fg-optimizer subproblem-ordering)
-	      new-subproblem/compute-simplicity!))
-
-    (define-package (compiler fg-optimizer simulate-application)
-      (files "fgopt/simapp")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) simulate-application))
-
-    (define-package (compiler fg-optimizer subproblem-free-variables)
-      (files "fgopt/subfre")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) compute-subproblem-free-variables)
-      (export (compiler fg-optimizer) map-union)
-      (export (compiler fg-optimizer subproblem-ordering)
-	      new-subproblem/compute-free-variables!))
-
-    (define-package (compiler fg-optimizer subproblem-ordering)
-      (files "fgopt/order")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) subproblem-ordering))
-
-    (define-package (compiler fg-optimizer subproblem-ordering reuse-frames)
-      (files "fgopt/reord" "fgopt/reuse")
-      (parent (compiler fg-optimizer subproblem-ordering))
-      (export (compiler top-level) setup-frame-adjustments)
-      (export (compiler fg-optimizer subproblem-ordering)
-	      order-subproblems/maybe-overwrite-block))
-
-    (define-package (compiler fg-optimizer subproblem-ordering parameter-analysis)
-      (files "fgopt/param")
-      (parent (compiler fg-optimizer subproblem-ordering))
-      (export (compiler fg-optimizer subproblem-ordering)
-	      parameter-analysis))
-
-    (define-package (compiler fg-optimizer return-equivalencing)
-      (files "fgopt/reteqv")
-      (parent (compiler fg-optimizer))
-      (export (compiler top-level) find-equivalent-returns!))
-|#
 
 (define-package (compiler rtl-generator)
   (files
@@ -717,7 +581,9 @@ MIT in each case. |#
 	  within-midend)
   (export (compiler)
 	  internal-error
-	  internal-warning))
+	  internal-warning)
+  (export ()
+	  compiler:debug))
 
 (define-package (compiler rtl-parser)
   (files "rtlbase/rtlpars")
