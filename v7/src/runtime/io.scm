@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.61 2000/04/10 18:32:34 cph Exp $
+$Id: io.scm,v 14.62 2001/01/06 19:08:00 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -230,8 +230,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (channel-read channel buffer start end)
   (let ((do-read
 	 (lambda ()
-	   ((ucode-primitive channel-read 4) (channel-descriptor channel)
-					     buffer start end))))
+	   ((ucode-primitive channel-read 4)
+	    (channel-descriptor channel)
+	    (if (external-string? buffer)
+		(external-string-descriptor buffer)
+		buffer)
+	    start
+	    end))))
     (declare (integrate-operator do-read))
     (if (and have-select? (not (channel-type=file? channel)))
 	(with-thread-events-blocked
@@ -272,7 +277,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (channel-write channel buffer start end)
   ((ucode-primitive channel-write 4) (channel-descriptor channel)
-				     buffer start end))
+				     (if (external-string? buffer)
+					 (external-string-descriptor buffer)
+					 buffer)
+				     start
+				     end))
 
 (define (channel-write-block channel buffer start end)
   (let loop ((start start) (n-left (- end start)))
