@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosfile.scm,v 1.33 1999/10/07 17:08:14 cph Exp $
+;;; $Id: dosfile.scm,v 1.34 2000/02/03 22:23:06 cph Exp $
 ;;;
-;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -502,14 +502,14 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
   `((,read/write-compressed-file?
      . ,(lambda (pathname mark visit?)
 	  visit?
-	  (read-compressed-file "gzip -d" pathname mark)))
+	  (read-compressed-file "gzip" '("-d") pathname mark)))
     ,@(os-independent/read-file-methods)))
 
 (define (os/write-file-methods)
   `((,read/write-compressed-file?
      . ,(lambda (region pathname visit?)
 	  visit?
-	  (write-compressed-file "gzip" region pathname)))
+	  (write-compressed-file "gzip" '() region pathname)))
     ,@(os-independent/write-file-methods)))
 
 (define (os/alternate-pathnames group pathname)
@@ -534,7 +534,7 @@ filename suffix \".gz\"."
   (and (ref-variable enable-compressed-files group)
        (equal? "gz" (pathname-type pathname))))
 
-(define (read-compressed-file program pathname mark)
+(define (read-compressed-file program arguments pathname mark)
   (message "Uncompressing file " (->namestring pathname) "...")
   (let ((value
 	 (call-with-temporary-file-pathname
@@ -544,7 +544,7 @@ filename suffix \".gz\"."
 					    (directory-pathname pathname)
 					    #f
 					    (string-append
-					     program
+					     (quote-program program arguments)
 					     " < "
 					     (file-namestring pathname)
 					     " > "
@@ -562,14 +562,15 @@ filename suffix \".gz\"."
     (append-message "done")
     value))
 
-(define (write-compressed-file program region pathname)
+(define (write-compressed-file program arguments region pathname)
   (message "Compressing file " (->namestring pathname) "...")
   (if (not (equal? '(EXITED . 0)
 		   (shell-command region
 				  #f
 				  (directory-pathname pathname)
 				  #f
-				  (string-append program
+				  (string-append (quote-program program
+								arguments)
 						 " > "
 						 (file-namestring pathname)))))
       (error:file-operation pathname
@@ -579,3 +580,13 @@ filename suffix \".gz\"."
 			    write-compressed-file
 			    (list region pathname)))
   (append-message "done"))
+
+(define (quote-program program arguments)
+  (let ((arguments
+	 (apply string-append
+		(map (lambda (argument)
+		       (string-append " " arg))
+		     arguments))))
+    (if (eq? 'NT microcode-id/operating-system)
+	(string-append "\"" (os/find-program program #f) "\"" arguments)
+	(string-append program arguments))))
