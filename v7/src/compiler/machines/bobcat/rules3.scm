@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.5 1987/07/03 21:57:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.6 1987/07/07 22:31:24 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -102,21 +102,21 @@ MIT in each case. |#
        (JMP ,entry:compiler-lookup-apply)))))
 
 (define-rule statement
-  (INVOCATION:PRIMITIVE (? number-pushed) (? prefix) (? continuation)
+  (INVOCATION:PRIMITIVE (? frame-size) (? prefix) (? continuation)
 			(? primitive))
   (disable-frame-pointer-offset!
    `(,@(generate-invocation-prefix prefix '())
      ,@(if (eq? primitive compiled-error-procedure)
-	   `(,(load-dnw (1+ number-pushed) 0)
+	   `(,(load-dnw frame-size 0)
 	     (JMP ,entry:compiler-error))
 	   `(,(load-dnw (primitive-datum primitive) 6)
 	     (JMP ,entry:compiler-primitive-apply))))))
 
 (define-rule statement
-  (INVOCATION:UUO-LINK (? number-pushed) (? prefix) (? continuation) (? name))
+  (INVOCATION:UUO-LINK (? frame-size) (? prefix) (? continuation) (? name))
   (disable-frame-pointer-offset!
    `(,@(generate-invocation-prefix prefix '())
-     ,(load-dnw (1+ number-pushed) 0)
+     ,(load-dnw frame-size 0)
      (MOVE L (@PCR ,(free-uuo-link-label name)) (D 1))
      (MOVE L (D 1) (@-A 7))
      (AND L (D 7) (D 1))
