@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.33 1987/05/31 16:37:51 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.34 1987/06/05 04:15:27 jinx Exp $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -78,7 +78,7 @@ long IntCode,		/* Interrupts requesting */
 
 Declare_Fixed_Objects();
 
-FILE *(Channels[FILE_CHANNELS]), *File_Handle, *Photo_File_Handle;
+FILE *(Channels[FILE_CHANNELS]), *Photo_File_Handle;
 
 int Saved_argc;
 char **Saved_argv;

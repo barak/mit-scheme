@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.22 1987/04/16 02:25:31 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.23 1987/06/05 04:15:09 jinx Rel $
  *
  * This file contains common code for reading internal
  * format binary files.
@@ -54,7 +54,9 @@ Read_Header()
   Pointer Buffer[FASL_HEADER_LENGTH];
   Pointer Pointer_Heap_Base, Pointer_Const_Base;
 
-  Load_Data(FASL_OLD_LENGTH, (char *) Buffer);
+  if (Load_Data(FASL_OLD_LENGTH, ((char *) Buffer)) !=
+      FASL_OLD_LENGTH)
+    return false;
   if (Buffer[FASL_Offset_Marker] != FASL_FILE_MARKER)
     return false;
 #ifdef BYTE_INVERSION
@@ -78,8 +80,10 @@ Read_Header()
     C_To_Scheme(Nth_Vector_Loc(Pointer_Heap_Base, Heap_Count));
   Dumped_Constant_Top =
     C_To_Scheme(Nth_Vector_Loc(Pointer_Const_Base, Const_Count));
-  Load_Data((FASL_HEADER_LENGTH - FASL_OLD_LENGTH),
-	    ((char *) &(Buffer[FASL_OLD_LENGTH])));
+  if (Load_Data((FASL_HEADER_LENGTH - FASL_OLD_LENGTH),
+		((char *) &(Buffer[FASL_OLD_LENGTH]))) !=
+      (FASL_HEADER_LENGTH - FASL_OLD_LENGTH))
+    return false;
 #ifdef BYTE_INVERSION
   Byte_Invert_Region(((char *) &(Buffer[FASL_OLD_LENGTH])),
 		     (FASL_HEADER_LENGTH - FASL_OLD_LENGTH));

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.25 1987/04/16 15:30:25 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.26 1987/06/05 04:10:41 jinx Rel $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -56,10 +56,14 @@ static long NFlonums, NIntegers, NStrings;
 static long NBits, NChars;
 static Pointer *Free_Objects, *Free_Cobjects;
 
+long
 Load_Data(Count, To_Where)
-long Count;
-char *To_Where;
-{ fread(To_Where, sizeof(Pointer), Count, Internal_File);
+     long Count;
+     char *To_Where;
+{
+  extern int fread();
+
+  return (fread(To_Where, sizeof(Pointer), Count, Internal_File));
 }
 
 #define Reloc_or_Load_Debug false

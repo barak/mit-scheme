@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.35 1987/05/31 16:32:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.36 1987/06/05 04:12:40 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -535,7 +535,8 @@ long Err, Micro_Error;
       printf("Mismatch between compiled code and compiled code support.\n");
       break;
     case TERM_DISK_RESTORE:
-      printf("DISK restore.\n"); break;
+      printf("Unrecoverable error while loading a band.\n");
+      break;
     case TERM_EOF:
       printf("\nEnd of input stream reached.\n"); break;
     case TERM_END_OF_COMPUTATION:

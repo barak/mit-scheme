@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.25 1987/05/29 02:22:08 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.26 1987/06/05 04:13:51 jinx Exp $
  *
  * External declarations.
  *
@@ -132,7 +132,6 @@ extern long Prev_Restore_History_Offset;
 /* And file "channels" */
 
 extern FILE *(Channels[FILE_CHANNELS]);
-extern FILE *File_Handle;	/* Used by Fasload/Fasdump */
 extern FILE *Photo_File_Handle;	/* Used by Photo */
 
 extern int Saved_argc;
@@ -163,10 +162,9 @@ extern Pointer C_Integer_To_Scheme_Integer(), Allocate_Float(),
 /* Random and OS utilities */
 
 extern int Parse_Option();
-extern Boolean Open_File(), Restore_History(), Open_Dump_File();
+extern Boolean Restore_History();
 extern long NColumns(), NLines(), System_Clock();
-extern void OS_Flush_Output_Buffer();
-extern void Load_Data(), Write_Data(), OS_Re_Init();
+extern void OS_Flush_Output_Buffer(), OS_Re_Init();
 
 /* Memory management utilities */
 

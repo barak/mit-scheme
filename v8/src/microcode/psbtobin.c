@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.24 1987/04/17 15:56:08 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.25 1987/06/05 04:11:31 jinx Rel $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -55,11 +55,14 @@ static Pointer *Constant_Base, *Constant_Table,
 static Pointer *Pure_Base, *Pure_Table, *Pure_Object_Base, *Free_Pure;
 static Pointer *Stack_Top;
 
+long
 Write_Data(Count, From_Where)
      long Count;
      Pointer *From_Where;
 {
-  fwrite(((char *) From_Where), sizeof(Pointer), Count, Internal_File);
+  extern int fwrite();
+
+  return (fwrite(((char *) From_Where), sizeof(Pointer), Count, Internal_File));
 }
 
 #include "dump.c"
@@ -657,6 +660,7 @@ Read_Header_and_Allocate()
 
 do_it()
 {
+  Boolean result;
   long Size;
 
   Size = Read_Header_and_Allocate();
@@ -722,8 +726,8 @@ do_it()
 
     if ((Constant_Objects == 0) && (Constant_Count == 0) &&
 	(Pure_Objects == 0) && (Pure_Count == 0))
-      Write_File((Free - Heap_Base), Heap_Base, Dumped_Object,
-		 0, &Heap[Size], Dumped_Ext_Prim);
+      result = Write_File((Free - Heap_Base), Heap_Base, Dumped_Object,
+			  0, &Heap[Size], Dumped_Ext_Prim);
     else
     {
       long Pure_Length, Total_Length;
@@ -743,9 +747,14 @@ do_it()
       Free_Constant[1] =
 	Make_Non_Pointer(END_OF_BLOCK, Total_Length);
 
-      Write_File((Free - Heap_Base), Heap_Base, Dumped_Object,
-		 Total_Length, (Pure_Base - 2), Dumped_Ext_Prim);
+      result = Write_File((Free - Heap_Base), Heap_Base, Dumped_Object,
+			  Total_Length, (Pure_Base - 2), Dumped_Ext_Prim);
     }
+  }
+  if (!result)
+  {
+    fprintf(stderr, "Error writing the output file.\n");
+    exit(1);
   }
   return;
 }

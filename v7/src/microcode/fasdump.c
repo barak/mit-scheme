@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.27 1987/06/02 00:17:22 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.28 1987/06/05 04:14:05 jinx Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -185,13 +185,14 @@ int Dump_Mode;
   return true;
 } /* DumpLoop */
 
-void
+Boolean
 Fasdump_Exit()
 {
+  Boolean result;
   fast Pointer *Fixes;
 
   Fixes = Fixup;
-  fclose(File_Handle);
+  result = Close_Dump_File();
   while (Fixes != NewMemTop)
   {
     fast Pointer *Fix_Address;
@@ -201,6 +202,7 @@ Fasdump_Exit()
   }
   Fixup = Fixes;
   Fasdump_Exit_Hook();
+  return result;
 }
 
 /* (PRIMITIVE-FASDUMP object-to-dump file-name flag)
@@ -221,6 +223,7 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
   Pointer Object, File_Name, Flag, *New_Object,
           *Addr_Of_New_Object, Prim_Exts;
   long Pure_Length, Length;
+  Boolean result;
   Primitive_3_Args();
 
   Object = Arg1;
@@ -246,7 +249,8 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
 
 #if false
   if (Flag == TRUTH)
-  { if (!DumpLoop(New_Object, PURE_COPY))
+  {
+    if (!DumpLoop(New_Object, PURE_COPY))
     {
       Fasdump_Exit();
       PRIMITIVE_RETURN(NIL);
@@ -262,20 +266,21 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
       Fasdump_Exit();
       PRIMITIVE_RETURN(NIL);
     }
-    Length =  NewFree-New_Object+2;
+    Length =  ((NewFree - New_Object) + 2);
     *NewFree++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-    *NewFree++ = Make_Non_Pointer(END_OF_BLOCK, Length-1);
+    *NewFree++ = Make_Non_Pointer(END_OF_BLOCK, (Length - 1));
     Addr_Of_New_Object = Get_Pointer(New_Object[0]);
     Prim_Exts = New_Object[1];
     New_Object[0] = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR,
                                      Pure_Length);
-    New_Object[1] = Make_Non_Pointer(PURE_PART, Length-1);
-    Write_File(0, 0x000000, Addr_Of_New_Object,
-               Length, New_Object, Prim_Exts);
+    New_Object[1] = Make_Non_Pointer(PURE_PART, (Length - 1));
+    result = Write_File(0, 0x000000, Addr_Of_New_Object,
+			Length, New_Object, Prim_Exts);
   }
   else		/* Dumping for reload into heap */
 #endif
-  { if (!DumpLoop(New_Object, NORMAL_GC))
+  {
+    if (!DumpLoop(New_Object, NORMAL_GC))
     {
       Fasdump_Exit();
       PRIMITIVE_RETURN(NIL);
@@ -283,12 +288,12 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
     /* Aligning might screw up some of the counters.
        Align_Float(NewFree);
      */
-    Length = NewFree-New_Object;
-    Write_File(Length, New_Object, New_Object,
-               0, Constant_Space, New_Object+1);
+    Length = (NewFree - New_Object);
+    result = Write_File(Length, New_Object, New_Object,
+			0, Constant_Space, (New_Object + 1));
   }
-  Fasdump_Exit();
-  PRIMITIVE_RETURN(TRUTH);
+  result = (result && Fasdump_Exit());
+  PRIMITIVE_RETURN(result ? TRUTH : NIL);
 }
 
 /* (DUMP-BAND PROCEDURE FILE-NAME)
@@ -301,6 +306,7 @@ Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
   extern Pointer compiler_utilities;
   Pointer Combination, Ext_Prims;
   long Arg1Type;
+  Boolean result;
   Primitive_2_Args();
 
   Band_Dump_Permitted();
@@ -329,9 +335,9 @@ Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
   /* Aligning here confuses some of the counts computed.
      Align_Float(Free);
    */
-  Write_File(((long) (Free-Heap_Bottom)), Heap_Bottom, Free-2,
-             ((long) (Free_Constant-Constant_Space)),
-	     Constant_Space, Free-1);
-  fclose(File_Handle);
-  PRIMITIVE_RETURN(TRUTH);
+  result = Write_File(((long) (Free - Heap_Bottom)), Heap_Bottom, (Free - 2),
+		      ((long) (Free_Constant - Constant_Space)),
+		      Constant_Space, (Free - 1));
+  result = (result && Close_Dump_File());
+  PRIMITIVE_RETURN(result ? TRUTH : NIL);
 }

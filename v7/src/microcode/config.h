@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.25 1987/05/30 23:04:34 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.26 1987/06/05 04:13:17 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -443,13 +443,13 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #ifndef STACK_SIZE
 #ifndef USE_STACKLETS
-#define	STACK_SIZE		30	/* Default Kcells for stack */
+#define	STACK_SIZE		100	/* Default Kcells for stack */
 #else
 #define STACK_SIZE		256	/* Default stacklet size */
 #endif
 #endif
 #ifndef CONSTANT_SIZE
-#define CONSTANT_SIZE		180	/* Default Kcells for constant */
+#define CONSTANT_SIZE		300	/* Default Kcells for constant */
 #endif
 #ifndef HEAP_SIZE
 #define HEAP_SIZE		250	/* Default Kcells for each heap */

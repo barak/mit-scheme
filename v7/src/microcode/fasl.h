@@ -30,11 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasl.h,v 9.23 1987/04/03 00:12:15 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasl.h,v 9.24 1987/06/05 04:14:25 jinx Rel $
 
    Contains information relating to the format of FASL files.
    Some information is contained in CONFIG.H.
 */
+
+extern long Load_Data(), Write_Data();
+extern Boolean Open_Dump_File(), Close_Dump_File();
 
 /* FASL Version */
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.24 1987/04/03 00:06:29 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.25 1987/06/05 04:11:11 jinx Exp $
  *
  * Dumps Scheme FASL in user-readable form .
  */
@@ -40,6 +40,8 @@ MIT in each case. */
 /* These are needed by load.c */
 
 static Pointer *Memory_Base;
+
+extern int fread();
 
 #define Load_Data(Count,To_Where) \
   fread(To_Where, sizeof(Pointer), Count, stdin)
@@ -81,8 +83,10 @@ Boolean
 scheme_string(From, Quoted)
 long From;
 Boolean Quoted;
-{ fast long i, Count;
+{
+  fast long i, Count;
   fast char *Chars;
+
   Chars = (char *) &Data[From+STRING_CHARS];
   if (Chars < ((char *) end_of_memory))
   { Count = Get_Integer(Data[From+STRING_LENGTH]);
@@ -104,7 +108,9 @@ Boolean Quoted;
 void
 scheme_symbol(From)
 long From;
-{ Pointer *symbol;
+{
+  Pointer *symbol;
+
   symbol = &Data[From+SYMBOL_NAME];
   if ((symbol >= end_of_memory) ||
       !scheme_string(via(From+SYMBOL_NAME), false))
@@ -114,7 +120,9 @@ long From;
 
 Display(Location, Type, The_Datum)
 long Location, Type, The_Datum;
-{ long Points_To;
+{
+  long Points_To;
+
   printf("%5x: %2x|%6x     ", Location, Type, The_Datum);
   if (GC_Type_Map[Type & MAX_SAFE_TYPE] != GC_Non_Pointer)
     Points_To = Relocate((Pointer *) The_Datum);
@@ -217,10 +225,12 @@ long Location, Type, The_Datum;
 main(argc, argv)
 int argc;
 char **argv;
-{ Pointer *Next;
-  long i;
+{
+  Pointer *Next;
+  long i, total_length;
   if (argc == 1)
-  { if (!Read_Header())
+  {
+    if (!Read_Header())
     { fprintf(stderr, "Input does not appear to be in FASL format.\n");
       exit(1);
     }
@@ -229,40 +239,66 @@ char **argv;
       printf("External primitives at 0x%x\n\n", Relocate(Ext_Prim_Vector));
   }
   else
-  { Const_Count = 0;
+  {
+    Const_Count = 0;
     sscanf(argv[1], "%x", &Heap_Base);
     sscanf(argv[2], "%x", &Const_Base);
     sscanf(argv[3], "%d", &Heap_Count);
     printf("Heap Base = 0x%08x; Constant Base = 0x%08x; Heap Count = %d\n",
 	   Heap_Base, Const_Base, Heap_Count);
   }    
-  Data = (Pointer *) malloc(sizeof(Pointer) * (Heap_Count + Const_Count));
+  Data = ((Pointer *) malloc(sizeof(Pointer) * (Heap_Count + Const_Count)));
   end_of_memory = &Data[Heap_Count + Const_Count];
-  Load_Data(Heap_Count + Const_Count, Data);
-  printf("Heap contents\n\n");
-  for (Next=Data, i=0; i < Heap_Count;  Next++, i++)
-    if (Safe_Type_Code(*Next)==TC_MANIFEST_NM_VECTOR)
-    { long j, count = Get_Integer(*Next);
+  total_length = Load_Data(Heap_Count + Const_Count, Data);
+  if (total_length != (Heap_Count + Const_Count))
+  {
+    printf("The FASL file does not have the right length.\n");
+    printf("Expected %d objects.  Obtained %d objects.\n\n",
+	   (Heap_Count + Const_Count), total_length);
+    if (total_length < Heap_Count)
+    {
+      Heap_Count = total_length;
+    }
+    total_length -= Heap_Count;
+    if (total_length < Const_Count)
+      Const_Count = total_length;
+  }
+  printf("Heap contents:\n\n");
+  for (Next = Data, i = 0; i < Heap_Count;  Next++, i++)
+  {
+    if (Safe_Type_Code(*Next) == TC_MANIFEST_NM_VECTOR)
+    {
+      long j, count;
+
+      count = Get_Integer(*Next);
       Display(i, Type_Code(*Next), Address(*Next));
       Next += 1;
-      for (j=0; j < count ; j++, Next++)
+      for (j = 0; j < count ; j++, Next++)
         printf("          %02x%06x\n",
                Type_Code(*Next), Address(*Next));
       i += count;
       Next -= 1;
     }
-    else Display(i, Type_Code(*Next),  Address(*Next));
-  printf("\n\nConstant space\n\n");
-  for (; i < Heap_Count+Const_Count;  Next++, i++)
-    if (Safe_Type_Code(*Next)==TC_MANIFEST_NM_VECTOR)
-    { long j, count = Get_Integer(*Next);
+    else
+      Display(i, Type_Code(*Next),  Address(*Next));
+  }
+  printf("\n\nConstant space:\n\n");
+  for (; i < Heap_Count + Const_Count;  Next++, i++)
+  {
+    if (Safe_Type_Code(*Next) == TC_MANIFEST_NM_VECTOR)
+    {
+      long j, count;
+
+      count = Get_Integer(*Next);
       Display(i, Type_Code(*Next), Address(*Next));
       Next += 1;
-      for (j=0; j < count ; j++, Next++)
+      for (j = 0; j < count ; j++, Next++)
         printf("          %02x%06x\n",
                Type_Code(*Next), Address(*Next));
       i += count;
       Next -= 1;
     }
-    else Display(i, Type_Code(*Next),  Address(*Next));
+    else
+      Display(i, Type_Code(*Next),  Address(*Next));
+  }
 }

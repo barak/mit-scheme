@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.30 1987/06/02 00:16:04 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.31 1987/06/05 04:12:14 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -103,17 +103,18 @@ static fixup_count = 0;
   *--fixup = ((Pointer) location);					\
 }
 
-void
+Boolean
 fasdump_exit(length)
      long length;
 {
   extern int ftruncate(), unlink();
   fast Pointer *fixes, *fix_address;
+  Boolean result;
 
   Free = saved_free;
   gc_file = real_gc_file;
   ftruncate(dump_file, length);
-  close(dump_file);
+  result = (close(dump_file) == 0);
   if (length == 0)
     unlink(dump_file_name);
   dump_file_name = ((char *) NULL);
@@ -130,8 +131,14 @@ next_buffer:
   
   if (fixup_count >= 0)
   {
-    lseek(real_gc_file, (fixup_count * GC_BUFFER_BYTES), 0);
-    read(real_gc_file, fixup_buffer, GC_BUFFER_BYTES);
+    if ((lseek(real_gc_file, (fixup_count * GC_BUFFER_BYTES), 0) == -1) ||
+	(read(real_gc_file, fixup_buffer, GC_BUFFER_BYTES) !=
+	 GC_BUFFER_BYTES))
+    {
+      fprintf(stderr,
+	      "\nCould not read back the fasdump fixup information.\n");
+      Microcode_Termination(TERM_EXIT);
+    }
     fixup_count -= 1;
     fixes = fixup_buffer;
     goto next_buffer;
@@ -139,7 +146,7 @@ next_buffer:
   
   fixup = fixes;
   Fasdump_Exit_Hook();
-  return;
+  return result;
 }
 
 Boolean
@@ -368,8 +375,8 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
     fasdump_exit(0);
     PRIMITIVE_RETURN(NIL);
   }
-  fasdump_exit((sizeof(Pointer) * length) + hlength);
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(fasdump_exit((sizeof(Pointer) * length) + hlength) ?
+		   TRUTH : NIL);
 }
 
 /* (DUMP-BAND PROCEDURE FILE-NAME)
@@ -382,6 +389,7 @@ Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
   extern Pointer compiler_utilities;
   Pointer Combination, Ext_Prims;
   long Arg1Type;
+  Boolean result;
   Primitive_2_Args();
 
   Band_Dump_Permitted();
@@ -410,9 +418,17 @@ Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
   /* Aligning here confuses some of the counts computed.
      Align_Float(Free);
    */
-  Write_File(((long) (Free-Heap_Bottom)), Heap_Bottom, Free-2,
-             ((long) (Free_Constant-Constant_Space)),
-	     Constant_Space, Free-1);
-  fclose(File_Handle);
-  PRIMITIVE_RETURN(TRUTH);
+  result = Write_File(((long) (Free - Heap_Bottom)), Heap_Bottom, (Free - 2),
+		      ((long) (Free_Constant - Constant_Space)),
+		      Constant_Space, (Free - 1));
+  result = (result && Close_Dump_File());
+  if (result)
+    PRIMITIVE_RETURN(TRUTH);
+  else
+  {
+    extern int unlink();
+
+    unlink(Scheme_String_To_C_String(Arg2));
+    PRIMITIVE_RETURN(NIL);
+  }
 }

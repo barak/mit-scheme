@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.23 1987/06/02 00:17:13 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.24 1987/06/05 04:13:39 jinx Rel $
  *
  * This file contains common code for dumping internal format binary files.
  */
@@ -82,6 +82,7 @@ prepare_dump_header(Buffer, Heap_Count, Heap_Relocation, Dumped_Object,
   return;
 }
 
+Boolean
 Write_File(Heap_Count, Heap_Relocation, Dumped_Object,
            Constant_Count, Constant_Relocation, Prim_Exts)
      Pointer *Heap_Relocation, *Dumped_Object,
@@ -92,9 +93,20 @@ Write_File(Heap_Count, Heap_Relocation, Dumped_Object,
 
   prepare_dump_header(Buffer,Heap_Count, Heap_Relocation, Dumped_Object,
 		      Constant_Count, Constant_Relocation, Prim_Exts);
-  Write_Data(FASL_HEADER_LENGTH, ((char *) Buffer));
+  if (Write_Data(FASL_HEADER_LENGTH, ((char *) Buffer)) !=
+      FASL_HEADER_LENGTH)
+    return false;
   if (Heap_Count != 0)
-    Write_Data(Heap_Count, ((char *) Heap_Relocation));
+  {
+    if (Write_Data(Heap_Count, ((char *) Heap_Relocation)) !=
+	Heap_Count)
+      return false;
+  }
   if (Constant_Count != 0)
-    Write_Data(Constant_Count, ((char *) Constant_Relocation));
+  {
+    if (Write_Data(Constant_Count, ((char *) Constant_Relocation)) !=
+	Constant_Count)
+      return false;
+  }
+  return true;
 }

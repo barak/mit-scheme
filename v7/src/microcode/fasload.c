@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.26 1987/05/29 02:22:32 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.27 1987/06/05 04:14:38 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -48,25 +48,26 @@ MIT in each case. */
 
 #include "load.c"
 
-void
-Load_File(Name)
-     Pointer Name;
+long
+read_file_start(name)
+     Pointer name;
 {
-  char *Char;
-  long N, i;
-  Boolean File_Opened;
+  Boolean file_opened;
 
-  File_Opened = Open_Dump_File(Name, OPEN_FLAG);
+  if (Type_Code(name) != TC_CHARACTER_STRING)
+    return ERR_ARG_1_WRONG_TYPE;
+
+  file_opened = Open_Dump_File(name, OPEN_FLAG);
+
   if (Per_File)
     Handle_Debug_Flags();
-  if (!File_Opened)
-    Primitive_Error(ERR_ARG_1_BAD_RANGE);
+
+  if (!file_opened)
+    return ERR_ARG_1_BAD_RANGE;
 
   if (!Read_Header())
-  { fprintf(stderr,
-	    "\nLoad_File: The file does not appear to be in FASL format.\n");
-    goto CANNOT_LOAD;
-  }
+    goto cannot_load;
+  
   if (File_Load_Debug)
     printf("\nMachine type %d, Version %d, Subversion %d\n",
            Machine_Type, Version, Sub_Version);
@@ -80,44 +81,70 @@ Load_File(Name)
 
   {
     fprintf(stderr,
-	    "\nLoad_File: FASL File Version %4d Subversion %4d Machine Type %4d.\n",
+	    "\nread_file: FASL File Version %4d Subversion %4d Machine Type %4d.\n",
 	    Version, Sub_Version , Machine_Type);
     fprintf(stderr,
 	    "           Expected: Version %4d Subversion %4d Machine Type %4d.\n",
 	   FASL_FORMAT_VERSION, FASL_SUBVERSION, FASL_INTERNAL_FORMAT);
-CANNOT_LOAD:
-    fclose(File_Handle);
-    Primitive_Error(ERR_FASL_FILE_BAD_DATA);
+
+cannot_load:
+
+    Close_Dump_File();
+    return ERR_FASL_FILE_BAD_DATA;
   }
-  if (!Test_Pure_Space_Top(Free_Constant+Const_Count))
+
+  if (!Test_Pure_Space_Top(Free_Constant + Const_Count))
   {
-    fclose(File_Handle);
-    Primitive_Error(ERR_FASL_FILE_TOO_BIG);
+    Close_Dump_File();
+    return ERR_FASL_FILE_TOO_BIG;
   }
+
   if (GC_Check(Heap_Count))
   {
-    fclose(File_Handle);
+    Close_Dump_File();
     Request_GC(Heap_Count);
-    Primitive_Interrupt();
+    return PRIM_INTERRUPT;
   }
+  return PRIM_DONE;
+}
+
+void
+read_file_end()
+{
   /* Aligning Free here confuses the counters
      Align_Float(Free);
    */
-  Load_Data(Heap_Count, (char *) Free);
+  if (Load_Data(Heap_Count, ((char *) Free)) != Heap_Count)
+  {
+    Close_Dump_File();
+    Primitive_Error(ERR_EXTERNAL_RETURN);
+  }
+
 #ifdef BYTE_INVERSION
   Byte_Invert_Region((char *) Free, Heap_Count);
 #endif
+
   Free += Heap_Count;
-  Load_Data(Const_Count, (char *) Free_Constant);
+  if (Load_Data(Const_Count, ((char *) Free_Constant)) != Const_Count)
+  {
+    Close_Dump_File();
+    Primitive_Error(ERR_EXTERNAL_RETURN);
+  }
+
 #ifdef BYTE_INVERSION
   Byte_Invert_Region((char *) Free_Constant, Const_Count);
 #endif
+
   Free_Constant += Const_Count;
+
   /* Same 
      Align_Float(Free);
    */
-  fclose(File_Handle);
-  return;
+
+  if (Close_Dump_File())
+    return;
+  else
+    Primitive_Error(ERR_EXTERNAL_RETURN);
 }
 
 /* Statics used by Relocate, below */
@@ -131,7 +158,9 @@ relocation_type Heap_Relocation, Const_Reloc, Stack_Relocation;
 */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
+
 static Boolean Warned = false;
+
 Pointer *
 Relocate(P)
      long P;
@@ -310,8 +339,8 @@ Intern_Block(Next_Pointer, Stop_At)
 */
 
 void
-Install_Ext_Prims(Normal_FASLoad)
-     Boolean Normal_FASLoad;
+Install_Ext_Prims(normal_fasload)
+     Boolean normal_fasload;
 {
   long i;
   Pointer *Next;
@@ -319,9 +348,13 @@ Install_Ext_Prims(Normal_FASLoad)
   Vector_Set(Ext_Prim_Vector, 0, 
 	     Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, Ext_Prim_Count));
   Next = Nth_Vector_Loc(Ext_Prim_Vector, 1);
-  if (Normal_FASLoad)
-    for (i = 0; i < Ext_Prim_Count; i++) Intern(Next++);
-  else Undefined_Externals = NIL;
+  if (normal_fasload)
+  {
+    for (i = 0; i < Ext_Prim_Count; i++)
+      Intern(Next++);
+  }
+  else
+    Undefined_Externals = NIL;
   return;
 }
 
@@ -366,24 +399,20 @@ Update_Ext_Prims(Next_Pointer, Stop_At)
 }
 
 Pointer
-Fasload(FileName, Not_From_Band_Load)
-     Pointer FileName;
-     Boolean Not_From_Band_Load;
+load_file(from_band_load)
+     Boolean from_band_load;
 {
   Pointer *Heap_End, *Constant_End, *Orig_Heap, *Orig_Constant, *Xtemp;
+
+  /* Read File */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
   Warned = false;
 #endif
 
-  if (Type_Code(FileName) != TC_CHARACTER_STRING)
-    Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-
-	/* Read File */
-
   Orig_Heap = Free;
   Orig_Constant = Free_Constant;
-  Load_File(FileName);
+  read_file_end();
   Heap_End = Free;
   Constant_End = Free_Constant;
   Heap_Relocation = ((relocation_type) Orig_Heap) - Heap_Base;
@@ -404,25 +433,25 @@ Fasload(FileName, Not_From_Band_Load)
   Found_Ext_Prims = false;
   Relocate_Block(Orig_Heap, Free);
   Relocate_Block(Orig_Constant, Free_Constant);
-
+
 #ifdef BYTE_INVERSION
   Finish_String_Inversion();
 #endif
-
-  if (Not_From_Band_Load)
+
+  if (!from_band_load)
   {
     Intern_Block(Orig_Constant, Constant_End);
     Intern_Block(Orig_Heap, Heap_End);
   }
 
-	/* Update External Primitives */
+  /* Update External Primitives */
 
   if ((Ext_Prim_Vector != NIL) && Found_Ext_Prims)
   {
     Relocate_Into(Xtemp, Address(Ext_Prim_Vector));
     Ext_Prim_Vector = *Xtemp;
     Ext_Prim_Count = Vector_Length(Ext_Prim_Vector);
-    Install_Ext_Prims(Not_From_Band_Load);
+    Install_Ext_Prims(!from_band_load);
     Update_Ext_Prims(Orig_Heap, Free);
     Update_Ext_Prims(Orig_Constant, Free_Constant);
   }
@@ -433,22 +462,37 @@ Fasload(FileName, Not_From_Band_Load)
 }
 
 /* (BINARY-FASLOAD FILE-NAME)
-      Load the contents of FILE-NAME into memory.  The file was
-      presumably made by a call to PRIMITIVE-FASDUMP, and may contain
-      data for the heap and/or the pure area.  The value returned is
-      the object which was dumped.  Typically (but not always) this
-      will be a piece of SCode which is then evaluated to perform
-      definitions in some environment.
+   Load the contents of FILE-NAME into memory.  The file was
+   presumably made by a call to PRIMITIVE-FASDUMP, and may contain
+   data for the heap and/or the pure area.  The value returned is
+   the object which was dumped.  Typically (but not always) this
+   will be a piece of SCode which is then evaluated to perform
+   definitions in some environment.
 */
 Built_In_Primitive(Prim_Binary_Fasload, 1, "BINARY-FASLOAD", 0x57)
 {
+  long result;
   Primitive_1_Arg();
-  return Fasload(Arg1, true);
+
+  result = read_file_start(Arg1);
+  if (result != PRIM_DONE)
+  {
+    if (result == PRIM_INTERRUPT)
+    {
+      Primitive_Interrupt();
+    }
+    else
+    {
+      Primitive_Error(result);
+    }
+  }
+  PRIMITIVE_RETURN(load_file(false));
 }
-
+
 /* Band loading. */
 
 static char *reload_band_name = ((char *) NULL);
+
 
 /* (RELOAD-BAND-NAME)
    Returns the filename (as a Scheme string) from which the runtime system
@@ -464,6 +508,8 @@ Built_In_Primitive(Prim_reload_band_name, 0, "RELOAD-BAND-NAME", 0x1A3)
   return C_String_To_Scheme_String(reload_band_name);
 }
 
+/* Utility for load band below. */
+
 extern void compiler_reset_error();
 
 void 
@@ -475,7 +521,7 @@ compiler_reset_error()
 	  "the compiled code interface in this microcode are inconsistent.\n");
   Microcode_Termination(TERM_COMPILER_DEATH);
 }
-
+
 /* (LOAD-BAND FILE-NAME)
    Restores the heap and pure space from the contents of FILE-NAME,
    which is typically a file created by DUMP-BAND.  The file can,
@@ -483,91 +529,94 @@ compiler_reset_error()
 */
 Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND", 0xB9)
 {
+  extern char *malloc();
+  extern strcpy(), free();
+  extern void compiler_reset();
   extern Pointer compiler_utilities;
-  Pointer Save_FO, *Save_Free, *Save_Free_Constant,
-          Save_Undefined, *Save_Stack_Pointer,
-  	  *Save_Stack_Guard, saved_utilities, Result;
 
-  long Jump_Value;
-  jmp_buf  Swapped_Buf, *Saved_Buf;
-  Pointer scheme_band_name;
+  jmp_buf swapped_buf, *saved_buf;
+  Pointer *saved_free, *saved_free_constant, *saved_stack_pointer;
+  long temp, length;
+  Pointer result;
   char *band_name;
-  int length;
   Primitive_1_Arg();
 
-  band_name = ((char *) NULL);
-  Save_Fixed_Obj(Save_FO);
-  Save_Undefined = Undefined_Externals;
-  Undefined_Externals = NIL;
-  Save_Free = Free;
+  saved_free = Free;
   Free = Heap_Bottom;
-  Save_Free_Constant = Free_Constant;
+  saved_free_constant = Free_Constant;
   Free_Constant = Constant_Space;
-  Save_Stack_Pointer = Stack_Pointer;
-  Save_Stack_Guard = Stack_Guard;
-  saved_utilities = compiler_utilities;
+  saved_stack_pointer = Stack_Pointer;
+  Stack_Pointer = Highest_Allocated_Address;
 
-/* Prim_Band_Load continues on next page */
+  result = read_file_start(Arg1);
+  if (result != PRIM_DONE)
+  {
+    Free = saved_free;
+    Free_Constant = saved_free_constant;
+    Stack_Pointer = saved_stack_pointer;
+
+    if (result == PRIM_INTERRUPT)
+    {
+      Primitive_Interrupt();
+    }
+    else
+    {
+      Primitive_Error(result);
+    }
+  }
 
-/* Prim_Band_Load, continued */
+  /* Point of no return. */
+
+  length = Get_Integer(Fast_Vector_Ref(Arg1, STRING_LENGTH));
+  band_name = malloc(length);
+  if (band_name != ((char *) NULL))
+    strcpy(band_name, Scheme_String_To_C_String(Arg1));
 
   /* There is some jiggery-pokery going on here to make sure
      that all returns from Fasload (including error exits) return to
      the clean-up code before returning on up the C call stack.
   */
-  Saved_Buf = Back_To_Eval;
-  Jump_Value = setjmp(Swapped_Buf);
-  if (Jump_Value == 0)
+
+  saved_buf = Back_To_Eval;
+  temp = setjmp(swapped_buf);
+  if (temp != 0)
   {
-    extern char *malloc();
-    extern strcpy(), free();
-    extern void compiler_reset();
-
-    length = Get_Integer(Fast_Vector_Ref(Arg1, STRING_LENGTH));
-    band_name = malloc(length);
+    fprintf(stderr,
+	    "\nload-band: Error %d past the point of no return.\n",
+	    temp);
     if (band_name != ((char *) NULL))
-      strcpy(band_name, Scheme_String_To_C_String(Arg1));
-
-    Back_To_Eval = ((jmp_buf *) Swapped_Buf);
-    Result = Fasload(Arg1, false);
-    Back_To_Eval = Saved_Buf;
-
-    if (reload_band_name != ((char *) NULL))
-      free(reload_band_name);
-    reload_band_name = band_name;
-    History = Make_Dummy_History();
-    Initialize_Stack();
-    Store_Return(RC_END_OF_COMPUTATION);
-    Store_Expression(NIL);
-    Save_Cont();
-    Store_Expression(Vector_Ref(Result,0));
-    /* Primitive externals handled by Fasload */
-    compiler_utilities = Vector_Ref(Result, 1);
-    compiler_reset(compiler_utilities);
-    Store_Env(Make_Non_Pointer(GLOBAL_ENV, GO_TO_GLOBAL));
-    Set_Pure_Top();
-    Band_Load_Hook();
-    PRIMITIVE_ABORT(PRIM_DO_EXPRESSION);
-  }
-  else
-  {
-    if (band_name != ((char *) NULL))
-      free(band_name);
-    compiler_utilities = saved_utilities;
-    Back_To_Eval = Saved_Buf;
-    Free = Save_Free;
-    Free_Constant = Save_Free_Constant;
-    Stack_Pointer = Save_Stack_Pointer;
-    Set_Stack_Guard(Save_Stack_Guard);
-    Undefined_Externals = Save_Undefined;
-    Restore_Fixed_Obj(Save_FO);
-    if (Jump_Value == PRIM_INTERRUPT)
     {
-      fprintf(stderr, "\nFile too large for memory.\n");
-      Jump_Value = ERR_FASL_FILE_BAD_DATA;
+      fprintf(stderr, "band-name = \"%s\".\n", band_name);
+      free(band_name);
     }
-    Primitive_Error(Jump_Value);
+    Microcode_Termination(TERM_DISK_RESTORE);
+    /*NOTREACHED*/
   }
+
+  Back_To_Eval = ((jmp_buf *) swapped_buf);
+  result = load_file(true);
+  Back_To_Eval = saved_buf;
+
+  if (reload_band_name != ((char *) NULL))
+    free(reload_band_name);
+  reload_band_name = band_name;
+
+  History = Make_Dummy_History();
+  Initialize_Stack();
+  Store_Return(RC_END_OF_COMPUTATION);
+  Store_Expression(NIL);
+  Save_Cont();
+  Store_Expression(Vector_Ref(result, 0));
+
+  /* Primitive externals handled by load_file */
+
+  compiler_utilities = Vector_Ref(result, 1);
+  compiler_reset(compiler_utilities);
+  Store_Env(Make_Non_Pointer(GLOBAL_ENV, GO_TO_GLOBAL));
+  Set_Pure_Top();
+  Band_Load_Hook();
+  PRIMITIVE_ABORT(PRIM_DO_EXPRESSION);
+  /*NOTREACHED*/
 }
 
 #ifdef BYTE_INVERSION
