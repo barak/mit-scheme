@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.12 1995/08/04 19:48:50 adams Exp $
+$Id: dbgred.scm,v 1.13 1995/08/18 21:52:42 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -406,14 +406,14 @@ reachable.
     edge))
 
 (define (dbg-rewrites->graph infos)
-  (let* ((table  (make-eq-hash-table))
+  (let* ((table  (make-monotonic-strong-eq-hash-table))
 	 (expressions '())
 	 (static-edges '()))
 
     (define (find-node key)
-      (or (hash-table/get table key #F)
+      (or (monotonic-strong-eq-hash-table/get table key #F)
 	  (let ((node (dbg-red/node/make key)))
-	    (hash-table/put! table key node)
+	    (monotonic-strong-eq-hash-table/put! table key node)
 	    node)))
 
     (define (add-references! expr edge)
@@ -450,7 +450,7 @@ reachable.
 		  (set! expressions (cons node expressions))))))
       (cdr infos))
     (for-each dbg-red/edge/statically-available! static-edges)
-    (if compiler:enable-statistics?
+    #|(if compiler:enable-statistics?
 	(hash-table/for-each table
 	  (lambda (key entry)
 	    key
@@ -459,7 +459,7 @@ reachable.
 	    (sample/1 '(DBG-RED/IN-DEGREE HISTOGRAM)
 		      (vector-ref (dbg-red/node/references entry) 0))
 	    (sample/1 '(DBG-RED/STATIC-OUT-DEGREE HISTOGRAM)
-		      (length (dbg-red/node/static-definitions entry))))))
+		      (length (dbg-red/node/static-definitions entry))))))|#
     (dbg-red/graph/make table expressions)))
 
 (define (dbg-red/edge/statically-available! edge)
@@ -511,7 +511,8 @@ reachable.
 
 
 (define (dbg-red/find-node name)
-  (hash-table/get (dbg-red/graph/table *dbg-graph*) name #F))
+  (monotonic-strong-eq-hash-table/get
+   (dbg-red/graph/table *dbg-graph*) name #F))
 
 (define (dbg-red/env/mark-available-subgraph! env)
   (define (available! name)
@@ -539,7 +540,8 @@ reachable.
 			(else
 			 (internal-error "CC-entries done statically")
 			 `((CC-ENTRY . ,offset-or-name))))))
-	    ((hash-table/get (dbg-red/graph/table graph) item #F)
+	    ((monotonic-strong-eq-hash-table/get (dbg-red/graph/table graph)
+						 item #F)
 	     => reconstruct-node)
 	    (else #F)))
 
@@ -678,10 +680,11 @@ reachable.
 (define dbgred/CLOSURE         (dbg-reduce/indexed-path 'CLOSURE))
 (define dbgred/CELL            (dbg-reduce/indexed-path 'CELL))
 
-(define dbg-reduce/equivalent-operators (make-eq-hash-table))
+(define dbg-reduce/equivalent-operators (make-monotonic-strong-eq-hash-table))
 
 (define (dbg-reduce/equivalent-primitive operator)
-  (hash-table/get dbg-reduce/equivalent-operators operator #F))
+  (monotonic-strong-eq-hash-table/get
+   dbg-reduce/equivalent-operators operator #F))
 
 (let ()
   (define (->prim op)
@@ -689,10 +692,12 @@ reachable.
   (define (allow . ops)
     (for-each (lambda (op)
 		(let ((op (->prim op)))
-		  (hash-table/put! dbg-reduce/equivalent-operators op op)))
+		  (monotonic-strong-eq-hash-table/put!
+		   dbg-reduce/equivalent-operators op op)))
       ops))
   (define (replace op op2)
-    (hash-table/put! dbg-reduce/equivalent-operators op (->prim op2)))
+    (monotonic-strong-eq-hash-table/put!
+     dbg-reduce/equivalent-operators op (->prim op2)))
   (replace %vector-length vector-length)
 
   (allow '%record-length 'ascii->char 'bit-string->unsigned-integer
@@ -765,7 +770,7 @@ reachable.
 	   (cond ((or (eq? op %stack-closure-ref)
 		      (eq? op %heap-closure-ref))
 		  (compress-closure-ref op))
-		 ((hash-table/get *dbg-forbidden-operators* op #F) #F)
+		 ((monotonic-strong-eq-hash-table/get *dbg-forbidden-operators* op #F) #F)
 		 (else
 		  (compress-ordinary-call form)))))
 	(else #F)))
@@ -792,7 +797,7 @@ reachable.
 		 (else (good to)))))))
 
 
-(define *dbg-forbidden-operators* (make-eq-hash-table))
+(define *dbg-forbidden-operators* (make-monotonic-strong-eq-hash-table))
 
 (define (dbg-info/for-all-dbg-expressions! procedure)
   (for-each (lambda (from+to)
@@ -801,7 +806,8 @@ reachable.
 
 (let ((forbid
        (lambda (operator)
-	 (hash-table/put! *dbg-forbidden-operators* operator #T))))
+	 (monotonic-strong-eq-hash-table/put! *dbg-forbidden-operators*
+					      operator #T))))
   (forbid %make-heap-closure)
   (forbid CONS)
   (forbid %cons)
