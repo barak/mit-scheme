@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.67 2001/12/21 04:36:07 cph Exp $
+$Id: lookup.c,v 9.68 2001/12/21 18:18:21 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -238,7 +238,7 @@ lookup_variable_cache (SCHEME_OBJECT cache, SCHEME_OBJECT * value_ret)
       return (ERR_UNBOUND_VARIABLE);
 
     case TRAP_MACRO:
-      (*value_ret) = (GET_TRAP_EXTRA (value));
+      (*value_ret) = value;
       return (ERR_MACRO_BINDING);
 
     default:
