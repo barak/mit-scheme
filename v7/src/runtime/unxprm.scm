@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.13 1991/05/09 03:48:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.14 1991/05/09 17:25:05 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -98,7 +98,7 @@ MIT in each case. |#
   (ucode-primitive get-environment-variable))
 
 (define (unix/user-home-directory user-name)
-  (let ((directory (ucode-primitive get-user-home-directory)))
+  (let ((directory ((ucode-primitive get-user-home-directory) user-name)))
     (if (not directory)
 	(error "Can't find user's home directory:" user-name))
     directory))
