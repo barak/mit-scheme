@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.8 2000/02/07 22:31:49 cph Exp $
+;;; $Id: imail-file.scm,v 1.9 2000/02/07 22:37:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -95,7 +95,8 @@
 	       (do ((messages messages (cdr messages))
 		    (index 1 (fix:+ index 1)))
 		   ((not (pair? messages)))
-		 (set-message-index! (car messages) index))
+		 (set-message-index! (car messages) index)
+		 (message-modified! (car messages)))
 	       (set-file-folder-messages! folder (cons message messages)))
 	     (let loop ((index* 1) (prev messages) (this (cdr messages)))
 	       (if (not (pair? this))
@@ -105,10 +106,12 @@
 		     (do ((messages this (cdr messages))
 			  (index (fix:+ index 1) (fix:+ index 1)))
 			 ((not (pair? messages)))
-		       (set-message-index! (car messages) index))
+		       (set-message-index! (car messages) index)
+		       (message-modified! (car messages)))
 		     (set-cdr! prev (cons message this)))
-		   (loop (fix:+ index* 1) this (cdr this))))))))))
-
+		   (loop (fix:+ index* 1) this (cdr this))))))
+       (message-modified! message)))))
+
 (define-method %append-message ((folder <file-folder>) message)
   (let ((message (attach-message message folder)))
     (without-interrupts
@@ -127,7 +130,8 @@
 		messages)
 	      (begin
 		(set-message-index! message 0)
-		(list message)))))))))
+		(list message)))))
+       (message-modified! message)))))
 
 (define-method expunge-deleted-messages ((folder <file-folder>))
   (without-interrupts

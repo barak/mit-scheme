@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.22 2000/02/07 22:31:44 cph Exp $
+;;; $Id: imail-core.scm,v 1.23 2000/02/07 22:37:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -270,8 +270,7 @@
   (if (not (<= index (folder-length folder)))
       (error:bad-range-argument index 'INSERT-MESSAGE))
   (guarantee-message message 'INSERT-MESSAGE)
-  (%insert-message folder index message)
-  (folder-modified! folder))
+  (%insert-message folder index message))
 
 (define-generic %insert-message (folder index message))
 
@@ -279,8 +278,7 @@
 ;;; messages.  Unspecified result.
 (define (append-message folder message)
   (guarantee-message message 'APPEND-MESSAGE)
-  (%append-message folder message)
-  (folder-modified! folder))
+  (%append-message folder message))
 
 (define-generic %append-message (folder message))
 
@@ -379,7 +377,7 @@
 		 (cons (car headers) headers*)
 		 flags
 		 properties)))))
-
+
 (define (attach-message message folder)
   (guarantee-folder folder 'ATTACH-MESSAGE)
   (let ((message
@@ -389,8 +387,6 @@
 		       (alist-copy (message-properties message))
 		       folder)))
     (set-message-folder! message folder)
-    (if (message-modified? message)
-	(folder-modified! folder))
     message))
 
 (define (detach-message message)
