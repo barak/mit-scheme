@@ -1,4 +1,4 @@
-$Id: imap-response.txt,v 1.3 2000/05/16 03:58:40 cph Exp $
+$Id: imap-response.txt,v 1.4 2000/05/27 14:42:09 cph Exp $
 
 Notes on IMAP server responses
 
@@ -77,8 +77,8 @@ Notes on IMAP server responses
 	= RFC822.SIZE <number>
 	= BODY <body>
 	= BODYSTRUCTURE <body>
-	= BODY <section> <nstring>
-	= BODY <section> <number> <nstring>
+	= BODY[<section>] <nstring>
+	= BODY[<section>]<<number>> <nstring>
 	= UID <nz-number>
 
 <envelope>
