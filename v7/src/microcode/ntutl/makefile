@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.12 1993/09/04 06:59:05 gjr Exp $
+###	$Id: makefile,v 1.13 1993/09/20 17:07:55 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -480,5 +480,6 @@ unconfig:
   del *.dlg
   del *.ico
   del *.rc
+  del *.cur
 
 
