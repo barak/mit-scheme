@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.2 1993/06/24 15:55:22 gjr Exp $
+###	$Id: makefile,v 1.3 1993/07/18 21:24:52 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -482,6 +482,7 @@ unconfig:
   del limits.h
   del makefile
   del *.lst
+  del setenv.bat
 
 
 
