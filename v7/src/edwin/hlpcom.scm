@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.101 1991/11/04 20:51:09 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.102 1991/11/26 07:50:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -328,56 +328,57 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	  (substring string 0 index)
 	  string)))
 
-(define (substitute-command-keys string #!optional start end)
-  (let ((start (if (default-object? start) 0 start))
-	(end (if (default-object? end) (string-length string) end)))
-    
-      (define (find-escape start*)
-	(define (loop start)
-	  (let ((index (substring-find-next-char string start end #\\)))
-	    (if (not index)
-		(list (substring string start* end))
-		(let ((next (1+ index)))
-		  (if (= next end)
-		      (list (substring string start* end))
-		      (cond ((char=? #\[ (string-ref string next))
+(define (substitute-command-keys string #!optional buffer)
+  (let ((buffer (if (default-object? buffer) (current-buffer) buffer))
+	(end (string-length string)))
+    (letrec
+	((find-escape
+	  (lambda (start*)
+	    (let loop ((start start*))
+	      (let ((index (substring-find-next-char string start end #\\)))
+		(if (not index)
+		    (list (substring string start* end))
+		    (let ((next (+ index 1)))
+		      (cond ((= next end)
+			     (list (substring string start* end)))
+			    ((char=? #\[ (string-ref string next))
 			     (cons (substring string start* index)
-				   (subst-key (1+ next))))
+				   (subst-key (+ next 1))))
 			    ((char=? #\= (string-ref string next))
 			     (cons (substring string start* index)
-				   (quote-next (1+ next))))
-			    (else (loop next))))))))
-	(loop start*))
+				   (quote-next (+ next 1))))
+			    (else
+			     (loop next)))))))))
+	 (subst-key
+	  (lambda (start)
+	    (let ((index (substring-find-next-char string start end #\])))
+	      (if (not index)
+		  (error "SUBSTITUTE-COMMAND-KEYS: Missing ]")
+		  (cons (command->key-name
+			 (name->command (substring string start index))
+			 buffer)
+			(find-escape (+ index 1)))))))
+	 (quote-next
+	  (lambda (start)
+	    (if (= start end)
+		(finish start)
+		(let ((next (+ start 1)))
+		  (if (char=? #\\ (string-ref string start))
+		      (if (= next end)
+			  (finish start)
+			  (continue start (+ next 1)))
+		      (continue start next))))))
+	 (continue
+	  (lambda (start end)
+	    (cons (substring string start end)
+		  (find-escape end))))
+	 (finish
+	  (lambda (start)
+	    (list (substring string start end)))))
+      (apply string-append (find-escape 0)))))
 
-      (define (subst-key start)
-	(let ((index (substring-find-next-char string start end #\])))
-	  (if (not index)
-	      (error "SUBSTITUTE-COMMAND-KEYS: Missing ]")
-	      (cons (command->key-name
-		     (name->command (substring string start index)))
-		    (find-escape (1+ index))))))
-
-      (define (quote-next start)
-	(if (= start end)
-	    (finish start)
-	    (let ((next (1+ start)))
-	      (if (char=? #\\ (string-ref string start))
-		  (if (= next end)
-		      (finish start)
-		      (continue start (1+ next)))
-		  (continue start next)))))
-
-      (define (continue start end)
-	(cons (substring string start end)
-	      (find-escape end)))
-
-      (define (finish start)
-	(list (substring string start end)))
-
-      (apply string-append (find-escape start))))
-
-(define (command->key-name command)
-  (let ((bindings (comtab-key-bindings (current-comtabs) command)))
+(define (command->key-name command buffer)
+  (let ((bindings (comtab-key-bindings (buffer-comtabs buffer) command)))
     (if (null? bindings)
 	(string-append "M-x " (command-name-string command))
 	(xkey->name (car bindings)))))
