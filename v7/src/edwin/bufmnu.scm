@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufmnu.scm,v 1.128 2000/03/27 20:44:09 cph Exp $
+;;; $Id: bufmnu.scm,v 1.129 2000/05/23 20:06:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -24,7 +24,8 @@
 
 (define-variable buffer-menu-kill-on-quit
   "If not false, kill the *Buffer-List* buffer when leaving it."
-  false)
+  #f
+  boolean?)
 
 (define-command list-buffers
   "Display a list of names of existing buffers.
@@ -36,7 +37,7 @@ The M column contains a * for buffers that are modified.
 The R column contains a % for buffers that are read-only."
   "P"
   (lambda (files-only?)
-    (pop-up-buffer (update-buffer-list files-only?) false)))
+    (pop-up-buffer (update-buffer-list files-only?) #f)))
 
 (define-command buffer-menu
   "Make a menu of buffers so you can save, delete or select them.
@@ -45,7 +46,7 @@ Type ? after invocation to get help on commands available.
 Type q immediately to make the buffer menu go away."
   "P"
   (lambda (files-only?)
-    (pop-up-buffer (update-buffer-list files-only?) true)
+    (pop-up-buffer (update-buffer-list files-only?) #t)
     (message "Commands: d, s, x; 1, 2, m, u, q; rubout; ? for help.")))
 
 (define (update-buffer-list files-only?)
@@ -62,31 +63,70 @@ Type q immediately to make the buffer menu go away."
   (region-delete! (buffer-region buffer))
   (fill-buffer-menu! buffer (buffer-get buffer 'REVERT-BUFFER-FILES-ONLY?))
   buffer)
-
+
 (define (fill-buffer-menu! buffer files-only?)
-  (call-with-output-mark (buffer-point buffer)
-    (lambda (port)
-      (write-string list-buffers-header port)
-      (let ((current (current-buffer)))
-	(for-each (lambda (buffer)
-		    (if (not (or (minibuffer? buffer)
-				 (and files-only?
-				      (not (buffer-pathname buffer)))))
-			(begin
-			 (write-string
-			  (list-buffers-format
-			   (if (eq? buffer current) "." " ")
-			   (if (buffer-modified? buffer) "*" " ")
-			   (if (buffer-writeable? buffer) " " "%")
-			   (buffer-name buffer)
-			   (write-to-string
-			    (group-length (buffer-group buffer)))
-			   (mode-display-name (buffer-major-mode buffer))
-			   (let ((truename (buffer-truename buffer)))
-			     (if truename (->namestring truename) "")))
-			  port)
-			 (newline port))))
-		  (buffer-list)))))
+  (let ((buffers (buffer-list))
+	(hide-buffer?
+	 (lambda (buffer)
+	   (or (minibuffer? buffer)
+	       (and files-only?
+		    (not (buffer-pathname buffer)))))))
+    (let ((wn 8)
+	  (ws 5)
+	  (wm 8))
+      (for-each
+       (lambda (buffer)
+	 (if (not (hide-buffer? buffer))
+	     (begin
+	       (let ((w (string-length (buffer-name buffer))))
+		 (if (> w wn)
+		     (set! wn w)))
+	       (let ((w
+		      (string-length
+		       (number->string
+			(group-length (buffer-group buffer))))))
+		 (if (> w ws)
+		     (set! ws w)))
+	       (let ((w
+		      (string-length
+		       (mode-display-name (buffer-major-mode buffer)))))
+		 (if (> w wm)
+		     (set! wm w))))))
+       buffers)
+      (call-with-output-mark (buffer-point buffer)
+	(lambda (port)
+	  (let ((write-line
+		 (lambda (k m r buffer size mode file)
+		   (write-string k port)
+		   (write-string m port)
+		   (write-string r port)
+		   (write-string " " port)
+		   (write-string (string-pad-right buffer wn) port)
+		   (write-string "  " port)
+		   (write-string (string-pad-left size ws) port)
+		   (write-string " " port)
+		   (write-string (string-pad-right mode wm) port)
+		   (write-string "  " port)
+		   (write-string file port)
+		   (newline port))))
+	    (write-line " " "M" "R" "Buffer" "Size" "Mode" "File")
+	    (write-line " " "-" "-" "------" "----" "----" "----")
+	    (let ((current (current-buffer)))
+	      (for-each
+	       (lambda (buffer)
+		 (if (not (hide-buffer? buffer))
+		     (write-line
+		      (if (eq? buffer current) "." " ")
+		      (if (buffer-modified? buffer) "*" " ")
+		      (if (buffer-writeable? buffer) " " "%")
+		      (buffer-name buffer)
+		      (number->string (group-length (buffer-group buffer)))
+		      (mode-display-name (buffer-major-mode buffer))
+		      (let ((truename (buffer-truename buffer)))
+			(if truename
+			    (->namestring truename)
+			    "")))))
+	       buffers)))))))
   (set-buffer-point! buffer (line-start (buffer-start buffer) 2))
   (set-buffer-read-only! buffer))
 
@@ -111,8 +151,7 @@ x -- delete or save marked buffers.
 u -- remove all kinds of marks from current line.
 Delete -- back up a line and remove marks."
   (lambda (buffer)
-    (define-variable-local-value! buffer (ref-variable-object truncate-lines)
-      true)
+    (local-set-variable! truncate-lines #t buffer)
     (event-distributor/invoke! (ref-variable buffer-menu-mode-hook buffer)
 			       buffer)))
 
@@ -157,7 +196,7 @@ You can mark buffers with the \\[buffer-menu-mark] command."
 	    (others (map buffer-menu-buffer (find-buffers-marked 0 #\>))))
 	(if (and (ref-variable preserve-window-arrangement)
 		 (null? others))
-	    (buffer-menu-select menu buffer false)
+	    (buffer-menu-select menu buffer #f)
 	    (begin
 	      (delete-other-windows window)
 	      (buffer-menu-select menu buffer (memq menu others))
@@ -168,7 +207,7 @@ You can mark buffers with the \\[buffer-menu-mark] command."
 		  (let ((new (window-split-vertically! window height)))
 		    (if new
 			(begin
-			  (select-buffer-in-window (car buffers) new true)
+			  (select-buffer-in-window (car buffers) new #t)
 			  (loop new (cdr buffers))))))
 		(loop window others))))))
     (clear-message)))
@@ -181,7 +220,7 @@ You can mark buffers with the \\[buffer-menu-mark] command."
       (delete-other-windows window)
       (buffer-menu-select (window-buffer window)
 			  (buffer-menu-buffer (current-lstart))
-			  false))
+			  #f))
     (clear-message)))
 
 (define-command buffer-menu-2-window
@@ -190,8 +229,8 @@ You can mark buffers with the \\[buffer-menu-mark] command."
   (lambda ()
     (buffer-menu-select (window-buffer (current-window))
 			(buffer-menu-buffer (current-lstart))
-			false)
-    (with-variable-value! (ref-variable-object pop-up-windows) true
+			#f)
+    (with-variable-value! (ref-variable-object pop-up-windows) #t
       (lambda ()
 	(pop-up-buffer (previous-buffer))))
     (clear-message)))
@@ -295,7 +334,7 @@ and then move up one line."
   (for-each buffer-menu-kill! (find-buffers-marked 0 #\D)))
 
 (define (buffer-menu-save! lstart)
-  (save-buffer (buffer-menu-buffer lstart) false)
+  (save-buffer (buffer-menu-buffer lstart) #f)
   (set-buffer-menu-mark! lstart 1 #\space))
 
 (define (buffer-menu-kill! lstart)
