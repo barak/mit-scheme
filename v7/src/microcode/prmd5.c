@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prmd5.c,v 1.6 2001/03/08 06:28:28 cph Exp $
+$Id: prmd5.c,v 1.7 2001/03/09 16:12:58 cph Exp $
 
 Copyright (c) 1997-2001 Massachusetts Institute of Technology
 
@@ -145,7 +145,7 @@ Finalize CONTEXT and return the digest as a 16-byte string.")
   }
 }
 
-#ifdef CRYPTO_MODULES
+#ifdef COMPILE_AS_MODULE
 
 char *
 DEFUN_VOID (dload_initialize_file)
@@ -173,4 +173,4 @@ Finalize CONTEXT and return the digest as a 16-byte string.");
   return "#prmd5";
 }
 
-#endif
+#endif /* COMPILE_AS_MODULE */

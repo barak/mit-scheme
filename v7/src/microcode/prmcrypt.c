@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prmcrypt.c,v 1.2 2001/03/08 06:28:24 cph Exp $
+$Id: prmcrypt.c,v 1.3 2001/03/09 16:12:56 cph Exp $
 
 Copyright (c) 2001 Massachusetts Institute of Technology
 
@@ -330,7 +330,7 @@ DEFINE_PRIMITIVE ("MCRYPT_MODULE_GET_ALGO_SUPPORTED_KEY_SIZES", Prim_mcrypt_modu
   }
 }
 
-#ifdef CRYPTO_MODULES
+#ifdef COMPILE_AS_MODULE
 
 char *
 DEFUN_VOID (dload_initialize_file)
@@ -384,4 +384,4 @@ DEFUN_VOID (dload_initialize_file)
   return "#prmcrypt";
 }
 
-#endif
+#endif /* COMPILE_AS_MODULE */

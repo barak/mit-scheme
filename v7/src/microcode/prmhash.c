@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prmhash.c,v 11.2 2001/03/08 06:28:31 cph Exp $
+$Id: prmhash.c,v 11.3 2001/03/09 16:13:02 cph Exp $
 
 Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
@@ -370,7 +370,7 @@ DEFINE_PRIMITIVE ("MHASH_KEYGEN", Prim_mhash_keygen, 4, 4, 0)
   }
 }
 
-#ifdef CRYPTO_MODULES
+#ifdef COMPILE_AS_MODULE
 
 char *
 DEFUN_VOID (dload_initialize_file)
@@ -412,4 +412,4 @@ DEFUN_VOID (dload_initialize_file)
   return "#prmd5";
 }
 
-#endif
+#endif /* COMPILE_AS_MODULE */

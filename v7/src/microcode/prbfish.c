@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prbfish.c,v 1.11 2001/03/08 06:28:22 cph Exp $
+$Id: prbfish.c,v 1.12 2001/03/09 16:12:53 cph Exp $
 
 Copyright (c) 1997-2001 Massachusetts Institute of Technology
 
@@ -230,7 +230,7 @@ Returned value is the new value of NUM.")
   PRIMITIVE_RETURN (long_to_integer (num));
 }
 
-#ifdef CRYPTO_MODULES
+#ifdef COMPILE_AS_MODULE
 
 char *
 DEFUN_VOID (dload_initialize_file)
@@ -291,4 +291,4 @@ Returned value is the new value of NUM.");
   return "#prbfish";
 }
 
-#endif
+#endif /* COMPILE_AS_MODULE */

@@ -16,7 +16,7 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-AC_REVISION([$Id: configure.in,v 11.9 2001/03/09 15:49:03 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.10 2001/03/09 16:08:27 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -49,7 +49,7 @@ PRMD5_LIBS=
 SCHEME_DEFS=
 DLD_LDFLAGS=
 MODULE_BASES=
-MODULE_CFLAGS=
+MODULE_CFLAGS="-DCOMPILE_AS_MODULE"
 MODULE_LDFLAGS=
 
 dnl Checks for programs.
@@ -65,39 +65,6 @@ fi
 dnl Checks for libraries.
 AC_CHECK_LIB(dl, dlopen)
 AC_CHECK_LIB(m, exp)
-AC_CHECK_LIB(crypto, BF_set_key,
-    [scheme_cv_lib_crypto=yes],
-    [scheme_cv_lib_crypto=no])
-AC_CHECK_LIB(mhash, mhash_count,
-    [scheme_cv_lib_mhash=yes],
-    [scheme_cv_lib_mhash=no])
-AC_CHECK_LIB(mcrypt, mcrypt_generic_init,
-    [scheme_cv_lib_mcrypt=yes],
-    [scheme_cv_lib_mcrypt=no],
-    [-lltdl])
-AC_CHECK_LIB(md5, MD5Init,
-    [scheme_cv_lib_md5=yes],
-    [scheme_cv_lib_md5=no])
-AC_CHECK_LIB(blowfish, BF_set_key,
-    [scheme_cv_lib_blowfish=yes],
-    [scheme_cv_lib_blowfish=no])
-AC_CHECK_LIB(gdbm, gdbm_open,
-    [scheme_cv_lib_gdbm=yes],
-    [scheme_cv_lib_gdbm=no])
-AC_CHECK_LIB(ncurses, tparm,
-    [scheme_cv_lib_ncurses=yes],
-    [scheme_cv_lib_ncurses=no])
-if test "${scheme_cv_lib_ncurses}" = "yes"; then
-    AC_CHECK_LIB(ncurses, tparam,
-	[scheme_cv_lib_ncurses_defines_tparam=yes],
-	[scheme_cv_lib_ncurses_defines_tparam=no])
-fi
-AC_CHECK_LIB(curses, tparm,
-    [scheme_cv_lib_curses=yes],
-    [scheme_cv_lib_curses=no])
-AC_CHECK_LIB(termcap, tparam,
-    [scheme_cv_lib_termcap=yes],
-    [scheme_cv_lib_termcap=no])
 
 if test "${ac_cv_lib_dl_dlopen}" = "yes"; then
     OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
@@ -108,14 +75,21 @@ fi
 
 dnl OK, now some complex logic to handle the crypto stuff.
 
-dnl First, handle options to enable/disable use of some libraries.
+AC_CHECK_LIB(crypto, BF_set_key,
+    [scheme_cv_lib_crypto=yes],
+    [scheme_cv_lib_crypto=no])
+AC_CHECK_LIB(mhash, mhash_count,
+    [scheme_cv_lib_mhash=yes],
+    [scheme_cv_lib_mhash=no])
+AC_CHECK_LIB(mcrypt, mcrypt_generic_init,
+    [scheme_cv_lib_mcrypt=yes],
+    [scheme_cv_lib_mcrypt=no],
+    [-lltdl])
+
+dnl Handle options to enable/disable use of some libraries.
 test "${with_openssl:-yes}" = "no" && scheme_cv_lib_crypto=no
 test "${with_mhash:-yes}" = "no" && scheme_cv_lib_mhash=no
 test "${with_mcrypt:-yes}" = "no" && scheme_cv_lib_mcrypt=no
-
-if test "${enable_dynamic_crypto}" = "yes"; then
-    SCHEME_DEFS="${SCHEME_DEFS} -DCRYPTO_MODULES"
-fi
 
 dnl Next, we decide which libraries to use.  We mostly want support
 dnl for Blowfish and MD5, each of which can come from multiple libraries.
@@ -167,6 +141,9 @@ dnl This is a stripped-down library that provides just Blowfish.  It
 dnl seems to be code that was extracted from OpenSSL long ago.  We
 dnl used this for a long time but no longer do.
 if test "${HAVE_BLOWFISH}" = "no"; then
+    AC_CHECK_LIB(blowfish, BF_set_key,
+	[scheme_cv_lib_blowfish=yes],
+	[scheme_cv_lib_blowfish=no])
     if test "${scheme_cv_lib_blowfish}" = "yes"; then
 	AC_DEFINE(HAVE_LIBBLOWFISH)
 	if test "${enable_dynamic_crypto}" = "yes"; then
@@ -182,6 +159,9 @@ fi
 dnl This is Phil Karn's MD5 implementation, which seems to have nearly
 dnl the same interface as that of OpenSSL.
 if test "${HAVE_MD5}" = "no"; then
+    AC_CHECK_LIB(md5, MD5Init,
+	[scheme_cv_lib_md5=yes],
+	[scheme_cv_lib_md5=no])
     if test "${scheme_cv_lib_md5}" = "yes"; then
 	AC_DEFINE(HAVE_LIBMD5)
 	if test "${enable_dynamic_crypto}" = "yes"; then
@@ -195,6 +175,10 @@ if test "${HAVE_MD5}" = "no"; then
 fi
 
 
+dnl gdbm support.
+AC_CHECK_LIB(gdbm, gdbm_open,
+    [scheme_cv_lib_gdbm=yes],
+    [scheme_cv_lib_gdbm=no])
 if test "${scheme_cv_lib_gdbm}" = "yes"; then
     AC_DEFINE(HAVE_LIBGDBM)
     QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lgdbm"
@@ -202,26 +186,44 @@ if test "${scheme_cv_lib_gdbm}" = "yes"; then
 fi
 
 
+dnl curses/termcap/terminfo support.
+AC_CHECK_LIB(ncurses, tparm,
+    [scheme_cv_lib_ncurses=yes],
+    [scheme_cv_lib_ncurses=no])
 if test "${scheme_cv_lib_ncurses}" = "yes"; then
     AC_DEFINE(HAVE_LIBNCURSES)
     QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lncurses"
+    AC_CHECK_LIB(ncurses, tparam,
+	[scheme_cv_lib_ncurses_defines_tparam=yes],
+	[scheme_cv_lib_ncurses_defines_tparam=no])
     if test "${scheme_cv_lib_ncurses_defines_tparam}" = "yes"; then
 	AC_DEFINE(LIBNCURSES_DEFINES_TPARAM)
     else
 	OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
     fi
-elif test "${scheme_cv_lib_curses}" = "yes"; then
-    AC_DEFINE(HAVE_LIBCURSES)
-    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lcurses"
-    OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
-elif test "${scheme_cv_lib_termcap}" = "yes"; then
-    AC_DEFINE(HAVE_LIBTERMCAP)
-    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -ltermcap"
-    OPTIONAL_BASES="${OPTIONAL_BASES} tparam"
 else
-    OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam"
+    AC_CHECK_LIB(curses, tparm,
+	[scheme_cv_lib_curses=yes],
+	[scheme_cv_lib_curses=no])
+    if test "${scheme_cv_lib_curses}" = "yes"; then
+	AC_DEFINE(HAVE_LIBCURSES)
+	QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lcurses"
+	OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
+    else
+	AC_CHECK_LIB(termcap, tparam,
+	    [scheme_cv_lib_termcap=yes],
+	    [scheme_cv_lib_termcap=no])
+	if test "${scheme_cv_lib_termcap}" = "yes"; then
+	    AC_DEFINE(HAVE_LIBTERMCAP)
+	    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -ltermcap"
+	    OPTIONAL_BASES="${OPTIONAL_BASES} tparam"
+	else
+	    OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam"
+	fi
+    fi
 fi
 
+dnl Decide whether we're using static or dynamic libraries.
 if test "${enable_static_libs:-no}" = "no"; then
     LIBS="${LIBS}${QUASI_STATIC_LIBS}"
 else
