@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.5 1988/06/14 08:32:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.6 1988/08/22 20:20:59 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -210,27 +210,29 @@ MIT in each case. |#
 (define transform/define-rtl-predicate)
 (let ((rtl-common
        (lambda (type prefix components wrap-constructor)
-	 `(BEGIN
-	    (DEFINE-INTEGRABLE
-	      (,(symbol-append prefix 'MAKE- type) ,@components)
-	      ,(wrap-constructor `(LIST ',type ,@components)))
-	    (DEFINE-INTEGRABLE (,(symbol-append 'RTL: type '?) EXPRESSION)
-	      (EQ? (CAR EXPRESSION) ',type))
-	    ,@(let loop ((components components)
-			 (ref-index 6)
-			 (set-index 2))
-		(if (null? components)
-		    '()
-		    (let* ((slot (car components))
-			   (name (symbol-append type '- slot)))
-		      `((DEFINE-INTEGRABLE (,(symbol-append 'RTL: name) ,type)
-			  (GENERAL-CAR-CDR ,type ,ref-index))
-			(DEFINE-INTEGRABLE (,(symbol-append 'RTL:SET- name '!)
-					    ,type ,slot)
-			  (SET-CAR! (GENERAL-CAR-CDR ,type ,set-index) ,slot))
-			,@(loop (cdr components)
-				(* ref-index 2)
-				(* set-index 2))))))))))
+	 (let ((constructor-name (symbol-append prefix 'MAKE- type)))
+	   `(BEGIN
+	      (DEFINE-INTEGRABLE
+		(,constructor-name ,@components)
+		,(wrap-constructor `(LIST ',type ,@components)))
+	      (DEFINE-RTL-CONSTRUCTOR ',type ,constructor-name)
+	      (DEFINE-INTEGRABLE (,(symbol-append 'RTL: type '?) EXPRESSION)
+		(EQ? (CAR EXPRESSION) ',type))
+	      ,@(let loop ((components components)
+			   (ref-index 6)
+			   (set-index 2))
+		  (if (null? components)
+		      '()
+		      (let* ((slot (car components))
+			     (name (symbol-append type '- slot)))
+			`((DEFINE-INTEGRABLE (,(symbol-append 'RTL: name) ,type)
+			    (GENERAL-CAR-CDR ,type ,ref-index))
+			  (DEFINE-INTEGRABLE (,(symbol-append 'RTL:SET- name '!)
+					      ,type ,slot)
+			    (SET-CAR! (GENERAL-CAR-CDR ,type ,set-index) ,slot))
+			  ,@(loop (cdr components)
+				  (* ref-index 2)
+				  (* set-index 2)))))))))))
   (set! transform/define-rtl-expression
 	(macro (type prefix . components)
 	  (rtl-common type prefix components identity-procedure)))
