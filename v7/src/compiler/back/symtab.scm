@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.43 1987/07/15 02:59:21 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.44 1990/05/03 14:59:34 jinx Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,11 +33,12 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Symbol Tables
+;;; package: (compiler assembler)
 
 (declare (usual-integrations))
 
-(define-integrable (make-symbol-table)
-  (symbol-hash-table/make 271))
+(define (make-symbol-table)
+  (symbol-hash-table/make 1009))
 
 (define (symbol-table-define! table key value)
   (symbol-hash-table/modify! table key
