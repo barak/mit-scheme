@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.45 1991/11/25 21:51:20 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.46 1992/01/25 23:11:21 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -97,16 +97,11 @@ See documentation of variable tags-file-name."
 
 ;;;; Find Tag
 
-(define previous-find-tag-string
-  false)
-
 (define (find-tag-arguments prompt)
   (let ((previous-tag? (command-argument)))
-    (if previous-tag?
-	(list false true)
-	(let ((string (prompt-for-string prompt (find-tag-default))))
-	  (set! previous-find-tag-string string)
-	  (list string false)))))
+    (list (and (not previous-tag?)
+	       (prompt-for-string prompt (find-tag-default)))
+	  previous-tag?)))
 
 (define (&find-tag-command string previous-tag? find-file)
   (let ((buffer (tags-table-buffer)))
@@ -115,10 +110,16 @@ See documentation of variable tags-file-name."
 		  buffer
 		  (buffer-point buffer)
 		  find-file)
-	(find-tag string buffer (buffer-start buffer) find-file)))
+	(begin
+	  (set! previous-find-tag-string string)
+	  (find-tag string buffer (buffer-start buffer) find-file))))
   (set! tags-loop-continuation
-	(lambda () ((ref-command find-tag) false true)))
+	(lambda ()
+	  (&find-tag-command false true find-file)))
   unspecific)
+
+(define previous-find-tag-string
+  false)
 
 (define (find-tag-default)
   (let ((end
