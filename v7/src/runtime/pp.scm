@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.4 1988/08/15 21:57:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.5 1989/02/09 03:45:36 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -348,9 +348,11 @@ MIT in each case. |#
 	     (object-type? (ucode-type interned-symbol) x))
 	 identity-procedure)
 	((primitive-procedure? x) walk-primitive)
-	((and (pair? x)
-	      (not (unparse-list/unparser x)))
-	 walk-pair)
+	((pair? x)
+	 (if (and (unparse-list/unparser x)
+		  (not (unparse-list/prefix-pair? x)))
+	     walk-general
+	     walk-pair))
 	((and (vector? x)
 	      (not (zero? (vector-length x)))
 	      (not (unparse-vector/unparser x)))
@@ -368,13 +370,16 @@ MIT in each case. |#
 (define (walk-pair pair)
   (if (null? (cdr pair))
       (make-singleton-list-node (numerical-walk (car pair)))
-      (make-list-node
-       (numerical-walk (car pair))
-       (if (and (pair? (cdr pair))
-		(not (unparse-list/unparser (cdr pair))))
-	   (walk-pair (cdr pair))
-	   (make-singleton-list-node
-	    (make-prefix-node ". " (numerical-walk (cdr pair))))))))
+      (let ((prefix (unparse-list/prefix-pair? pair)))
+	(if prefix
+	    (make-prefix-node prefix (numerical-walk (cadr pair)))
+	    (make-list-node
+	     (numerical-walk (car pair))
+	     (if (and (pair? (cdr pair))
+		      (not (unparse-list/unparser (cdr pair))))
+		 (walk-pair (cdr pair))
+		 (make-singleton-list-node
+		  (make-prefix-node ". " (numerical-walk (cdr pair))))))))))
 
 (define (walk-vector vector)
   (make-prefix-node "#" (walk-pair (vector->list vector))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.11 1989/01/06 21:00:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.12 1989/02/09 03:45:14 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -420,18 +420,25 @@ MIT in each case. |#
 
 (define (unparse-list/unparser object)
   (and (not (future? (car object)))
-       (if (eq? (car object) 'QUOTE)
-	   (and (pair? (cdr object))
-		(null? (cddr object))
-		unparse-quote-form)
-	   (let ((method (unparser/tagged-pair-method (car object))))
-	     (and method
-		  (lambda (object)
-		    (invoke-user-method method object)))))))
+       (let ((prefix (unparse-list/prefix-pair? object)))
+	 (if prefix
+	     (lambda (pair)
+	       (*unparse-string prefix)
+	       (*unparse-object (cadr pair)))
+	     (let ((method (unparser/tagged-pair-method (car object))))
+	       (and method
+		    (lambda (object)
+		      (invoke-user-method method object))))))))
 
-(define (unparse-quote-form pair)
-  (*unparse-char #\')
-  (*unparse-object (cadr pair)))
+(define (unparse-list/prefix-pair? object)
+  (and (pair? (cdr object))
+       (null? (cddr object))
+       (case (car object)
+	 ((QUOTE) "'")
+	 ((QUASIQUOTE) "`")
+	 ((UNQUOTE) ",")
+	 ((UNQUOTE-SPLICING) ",@")
+	 (else false))))
 
 ;;;; Procedures and Environments
 
