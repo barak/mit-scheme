@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.6 1988/07/20 07:35:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.7 1988/08/24 14:33:41 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -281,7 +281,8 @@ MIT in each case. |#
 			      "rgrval" "rgstmt" "rtlgen")
 	     (filename/append "rtlopt"
 			      "ralloc" "rcse1" "rcse2" "rcseep" "rcseht"
-			      "rcserq" "rcsesr" "rdeath" "rdebug" "rlife"))
+			      "rcserq" "rcsesr" "rdeath" "rdebug" "rlife"
+			      "expand"))
      compiler-syntax-table)
     (file-dependency/syntax/join
      (filename/append "machines/bobcat"
@@ -416,7 +417,7 @@ MIT in each case. |#
 
     (file-dependency/integration/join
      (append cse-base
-	     (filename/append "rtlopt" "ralloc" "rdeath" "rdebug" "rlife"))
+	     (filename/append "rtlopt" "ralloc" "rdeath" "rdebug" "rlife" "expand"))
      (append bobcat-base rtl-base))
 
     (file-dependency/integration/join cse-base cse-base)
