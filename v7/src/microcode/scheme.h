@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.33 1990/09/08 00:10:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.34 1990/11/27 19:15:21 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -69,11 +69,6 @@ MIT in each case. */
 #include "dstack.h"	/* Dynamic stack support package */
 #include "obstack.h"	/* Obstack package */
 #include "config.h"	/* Machine and OS configuration info */
-
-#ifdef SITE_INCLUDE_FILE
-#include SITE_INCLUDE_FILE
-#endif
-
 #include "types.h"	/* Type code numbers */
 #include "const.h"	/* Various named constants */
 #include "object.h"	/* Scheme object representation */
