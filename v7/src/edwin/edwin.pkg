@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.215 1997/11/20 05:27:37 cph Exp $
+$Id: edwin.pkg,v 1.216 1997/11/20 05:51:58 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -1156,7 +1156,12 @@ MIT in each case. |#
   (global-definitions "../win32/win32")
 
   (extend-package (edwin)
-    (files "dos" "dosfile"))
+    (files "dos"
+	   "dosfile"
+	   "comint"			; command interpreter process stuff
+	   "compile"			; compilation subprocess
+	   "shell"			; shell subprocess commands
+	   ))
 
   (extend-package (edwin dired)
     (files "dirw32")
