@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: foreign.h,v 1.2 1999/01/02 06:11:34 cph Exp $
+$Id: foreign.h,v 1.3 2000/12/05 21:23:44 cph Exp $
 
-Copyright (c) 1992, 1999 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ struct foreign_object {
 
 typedef struct foreign_object FOREIGN_OBJECT;
 
-#ifdef _HPUX
+#ifdef __HPUX__
 typedef shl_t LOAD_DESCRIPTOR;
 typedef unsigned long LOAD_ADDRESS;
 #endif

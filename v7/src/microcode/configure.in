@@ -1,0 +1,455 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_REVISION($Id: configure.in,v 11.1 2000/12/05 21:23:43 cph Exp $)dnl
+AC_INIT(boot.c)
+AC_CONFIG_HEADER(config.h)
+
+dnl Substitution variables to be filled in below.
+AS_FLAGS=
+GC_HEAD_FILES=
+LIB_X11=
+M4_FLAGS=
+OPTIONAL_BASES=
+OPTIONAL_OBJECTS=
+OPTIONAL_SOURCES=
+STATIC_LIBS=
+STATIC_PREFIX=
+STATIC_SUFFIX=
+
+dnl Checks for programs.
+AC_PROG_CC
+AC_PROG_GCC_TRADITIONAL
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+if test "${GCC}" = "yes"; then
+    CFLAGS="${CFLAGS} -Wall"
+fi
+
+dnl Checks for libraries.
+AC_CHECK_LIB(dl, dlopen)
+AC_CHECK_LIB(m, exp)
+AC_CHECK_LIB(mhash, mhash_count,
+    [scheme_cv_lib_mhash=yes],
+    [scheme_cv_lib_mhash=no])
+if test "${scheme_cv_lib_mhash}" = "no"; then
+    AC_CHECK_LIB(md5, MD5Init,
+	[scheme_cv_lib_md5=yes],
+	[scheme_cv_lib_md5=no])
+fi
+AC_CHECK_LIB(blowfish, BF_set_key,
+    [scheme_cv_lib_blowfish=yes],
+    [scheme_cv_lib_blowfish=no])
+AC_CHECK_LIB(gdbm, gdbm_open,
+    [scheme_cv_lib_gdbm=yes],
+    [scheme_cv_lib_gdbm=no])
+AC_CHECK_LIB(ncurses, tparm,
+    [scheme_cv_lib_ncurses=yes],
+    [scheme_cv_lib_ncurses=no])
+if test "${scheme_cv_lib_ncurses}" = "yes"; then
+    AC_CHECK_LIB(ncurses, tparam,
+	[scheme_cv_lib_ncurses_has_tparam=yes],
+	[scheme_cv_lib_ncurses_has_tparam=no])
+fi
+AC_CHECK_LIB(curses, tparm,
+    [scheme_cv_lib_curses=yes],
+    [scheme_cv_lib_curses=no])
+AC_CHECK_LIB(termcap, tparam,
+    [scheme_cv_lib_termcap=yes],
+    [scheme_cv_lib_termcap=no])
+
+if test "${scheme_cv_lib_mhash}" = "yes"; then
+    AC_DEFINE(HAVE_LIBMHASH)
+    STATIC_LIBS="${STATIC_LIBS} -lmhash"
+fi
+if test "${scheme_cv_lib_md5}" = "yes"; then
+    AC_DEFINE(HAVE_LIBMD5)
+    STATIC_LIBS="${STATIC_LIBS} -lmd5"
+fi
+if test "${scheme_cv_lib_blowfish}" = "yes"; then
+    AC_DEFINE(HAVE_LIBBLOWFISH)
+    STATIC_LIBS="${STATIC_LIBS} -lblowfish"
+fi
+if test "${scheme_cv_lib_gdbm}" = "yes"; then
+    AC_DEFINE(HAVE_LIBGDBM)
+    STATIC_LIBS="${STATIC_LIBS} -lgdbm"
+fi
+if test "${scheme_cv_lib_ncurses}" = "yes"; then
+    AC_DEFINE(HAVE_LIBNCURSES)
+    STATIC_LIBS="${STATIC_LIBS} -lncurses"
+elif test "${scheme_cv_lib_curses}" = "yes"; then
+    AC_DEFINE(HAVE_LIBCURSES)
+    STATIC_LIBS="${STATIC_LIBS} -lcurses"
+elif test "${scheme_cv_lib_termcap}" = "yes"; then
+    AC_DEFINE(HAVE_LIBTERMCAP)
+    STATIC_LIBS="${STATIC_LIBS} -ltermcap"
+fi
+
+if test "${scheme_cv_lib_mhash}" = "yes"; then
+    OPTIONAL_BASES="${OPTIONAL_BASES} prmhash"
+fi
+if test "${scheme_cv_lib_md5}" = "yes"; then
+    OPTIONAL_BASES="${OPTIONAL_BASES} prmd5"
+fi
+if test "${scheme_cv_lib_blowfish}" = "yes"; then
+    OPTIONAL_BASES="${OPTIONAL_BASES} prbfish"
+fi
+if test "${scheme_cv_lib_gdbm}" = "yes"; then
+    OPTIONAL_BASES="${OPTIONAL_BASES} prgdbm"
+fi
+if test "${ac_cv_lib_dl_dlopen}" = "yes"; then
+    OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
+fi
+if test "${scheme_cv_lib_ncurses}" = "yes"; then
+    if test "${scheme_cv_lib_ncurses_has_tparam}" = "no"; then
+	OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
+    fi
+elif test "${scheme_cv_lib_curses}" = "yes"; then
+    OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
+elif test "${scheme_cv_lib_termcap}" = "yes"; then
+    OPTIONAL_BASES="${OPTIONAL_BASES} tparam"
+else
+    OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam"
+fi
+
+dnl Checks for header files.
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_HEADER_TIME
+AC_CHECK_HEADERS(bsdtty.h fcntl.h limits.h malloc.h sgtty.h stropts.h time.h)
+AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/poll.h)
+AC_CHECK_HEADERS(sys/ptyio.h sys/socket.h sys/time.h sys/un.h sys/vfs.h)
+AC_CHECK_HEADERS(termio.h termios.h unistd.h utime.h)
+
+dnl Checks for typedefs
+AC_TYPE_MODE_T
+AC_TYPE_OFF_T
+AC_TYPE_PID_T
+AC_TYPE_SIGNAL
+AC_TYPE_SIZE_T
+AC_TYPE_UID_T
+AC_CHECK_TYPE(nlink_t, short)
+
+AC_MSG_CHECKING([for clock_t])
+AC_TRY_COMPILE([
+#ifdef TIME_WITH_SYS_TIME
+#  include <sys/time.h>
+#  include <time.h>
+#else
+#  ifdef HAVE_SYS_TIME_H
+#    include <sys/time.h>
+#  else
+#    include <time.h>
+#  endif
+#endif],
+    [clock_t x;],
+    [scheme_cv_type_clock_t=yes],
+    [scheme_cv_type_clock_t=no])
+AC_MSG_RESULT(${scheme_cv_type_clock_t})
+if test "${scheme_cv_type_clock_t}" = "no"; then
+    AC_DEFINE(clock_t, unsigned long)
+fi
+
+AC_MSG_CHECKING([for time_t])
+AC_TRY_COMPILE([
+#ifdef TIME_WITH_SYS_TIME
+#  include <sys/time.h>
+#  include <time.h>
+#else
+#  ifdef HAVE_SYS_TIME_H
+#    include <sys/time.h>
+#  else
+#    include <time.h>
+#  endif
+#endif],
+    [time_t x;],
+    [scheme_cv_type_time_t=yes],
+    [scheme_cv_type_time_t=no])
+AC_MSG_RESULT(${scheme_cv_type_time_t})
+if test "${scheme_cv_type_time_t}" = "no"; then
+    AC_DEFINE(time_t, long)
+fi
+
+if test "${ac_cv_header_sys_socket_h}" = "yes"; then
+    AC_MSG_CHECKING([for socklen_t])
+    AC_TRY_COMPILE(
+	[#include <sys/socket.h>],
+	[socklen_t x;],
+	[scheme_cv_type_socklen_t=yes],
+	[scheme_cv_type_socklen_t=no])
+    AC_MSG_RESULT(${scheme_cv_type_socklen_t})
+    if test "${scheme_cv_type_socklen_t}" = "no"; then
+	AC_DEFINE(socklen_t, int)
+    fi
+fi
+
+AC_MSG_CHECKING([for cc_t])
+AC_TRY_COMPILE([
+#ifdef HAVE_TERMIOS_H
+#  include <termios.h>
+#else
+#  ifdef HAVE_TERMIO_H
+#    include <termio.h>
+#  endif
+#endif],
+	[cc_t x;],
+	[scheme_cv_type_cc_t=yes],
+	[scheme_cv_type_cc_t=no])
+AC_MSG_RESULT(${scheme_cv_type_cc_t})
+if test "${scheme_cv_type_cc_t}" = "no"; then
+    AC_DEFINE(cc_t, unsigned char)
+fi
+
+dnl Checks for structures.
+AC_STRUCT_TM
+AC_STRUCT_TIMEZONE
+
+AC_MSG_CHECKING([for tm_gmtoff in struct tm])
+AC_TRY_LINK(
+    [#include <time.h>],
+    [struct tm t; t.tm_gmtoff],
+    [scheme_cv_struct_tm_gmtoff=yes],
+    [scheme_cv_struct_tm_gmtoff=no])
+AC_MSG_RESULT(${scheme_cv_struct_tm_gmtoff})
+if test "${scheme_cv_struct_tm_gmtoff}" = "yes"; then
+    AC_DEFINE(HAVE_TM_GMTOFF)
+    AC_DEFINE(TM_GMTOFF, tm_gmtoff)
+else
+    AC_MSG_CHECKING([for __tm_gmtoff in struct tm])
+    AC_TRY_LINK(
+	[#include <time.h>],
+	[struct tm t; t.__tm_gmtoff],
+	[scheme_cv_struct___tm_gmtoff=yes],
+	[scheme_cv_struct___tm_gmtoff=no])
+    AC_MSG_RESULT(${scheme_cv_struct___tm_gmtoff})
+    if test "${scheme_cv_struct___tm_gmtoff}" = "yes"; then
+	AC_DEFINE(HAVE_TM_GMTOFF)
+	AC_DEFINE(TM_GMTOFF, __tm_gmtoff)
+    else
+	AC_MSG_CHECKING([for timezone])
+	AC_TRY_LINK([
+#ifdef TIME_WITH_SYS_TIME
+#  include <sys/time.h>
+#  include <time.h>
+#else
+#  ifdef HAVE_SYS_TIME_H
+#    include <sys/time.h>
+#  else
+#    include <time.h>
+#  endif
+#endif],
+	    [timezone;],
+	    [scheme_cv_var_timezone=yes],
+	    [scheme_cv_var_timezone=no])
+	AC_MSG_RESULT(${scheme_cv_var_timezone})
+	if test "${scheme_cv_var_timezone}" = "yes"; then
+	    AC_DEFINE(HAVE_TIMEZONE)
+	    AC_DEFINE(TIMEZONE, timezone)
+	else
+	    AC_MSG_CHECKING([for __timezone])
+	    AC_TRY_LINK([
+#ifdef TIME_WITH_SYS_TIME
+#  include <sys/time.h>
+#  include <time.h>
+#else
+#  ifdef HAVE_SYS_TIME_H
+#    include <sys/time.h>
+#  else
+#    include <time.h>
+#  endif
+#endif],
+		[__timezone;],
+		[scheme_cv_var___timezone=yes],
+		[scheme_cv_var___timezone=no])
+	    AC_MSG_RESULT(${scheme_cv_var___timezone})
+	    if test "${scheme_cv_var___timezone}" = "yes"; then
+		AC_DEFINE(HAVE_TIMEZONE)
+		AC_DEFINE(TIMEZONE, __timezone)
+	    fi
+	fi
+    fi
+fi
+
+if test "${ac_cv_header_bsdtty_h}" = "yes"; then
+    AC_MSG_CHECKING([for struct ltchars])
+    AC_TRY_COMPILE(
+	[#include <bsdtty.h>],
+	[struct ltchars x;],
+	[scheme_cv_struct_ltchars=yes],
+	[scheme_cv_struct_ltchars=no])
+    AC_MSG_RESULT(${scheme_cv_struct_ltchars})
+    if test "${scheme_cv_struct_ltchars}" = "yes"; then
+	AC_DEFINE(HAVE_STRUCT_LTCHARS)
+    fi
+fi
+
+AC_MSG_CHECKING([for hostent h_addr_list])
+AC_TRY_COMPILE(
+    [#include <netdb.h>],
+    [struct hostent x; x.h_addr_list;],
+    [scheme_cv_struct_hostent_h_addr_list=yes],
+    [scheme_cv_struct_hostent_h_addr_list=no])
+AC_MSG_RESULT(${scheme_cv_struct_hostent_h_addr_list})
+if test "${scheme_cv_struct_hostent_h_addr_list}" = "yes"; then
+    AC_DEFINE(HAVE_HOSTENT_H_ADDR_LIST)
+fi
+
+AC_MSG_CHECKING([for struct sigcontext])
+AC_TRY_COMPILE(
+    [#include <signal.h>],
+    [struct sigcontext x;],
+    [scheme_cv_struct_sigcontext=yes],
+    [scheme_cv_struct_sigcontext=no])
+AC_MSG_RESULT(${scheme_cv_struct_sigcontext})
+if test "${scheme_cv_struct_sigcontext}" = "yes"; then
+    AC_DEFINE(HAVE_STRUCT_SIGCONTEXT)
+fi
+
+dnl Checks for compiler characteristics.
+AC_C_BIGENDIAN
+AC_C_CHAR_UNSIGNED
+AC_C_CONST
+AC_CHECK_SIZEOF(unsigned long)
+
+dnl Checks for C library functions.
+AC_FUNC_GETPGRP
+AC_FUNC_MEMCMP
+AC_FUNC_MMAP
+AC_FUNC_SETPGRP
+AC_FUNC_SETVBUF_REVERSED
+AC_FUNC_UTIME_NULL
+AC_FUNC_VFORK
+AC_FUNC_VPRINTF
+AC_FUNC_WAIT3
+AC_CHECK_FUNCS(ctermid)
+AC_CHECK_FUNCS(dup2)
+AC_CHECK_FUNCS(fcntl floor fpathconf frexp ftruncate)
+AC_CHECK_FUNCS(getcwd gethostbyname gethostname getlogin getpgrp)
+AC_CHECK_FUNCS(gettimeofday getwd grantpt)
+AC_CHECK_FUNCS(kill)
+AC_CHECK_FUNCS(lockf)
+AC_CHECK_FUNCS(memcpy mkdir mktime modf)
+AC_CHECK_FUNCS(nice)
+AC_CHECK_FUNCS(poll prealloc)
+AC_CHECK_FUNCS(rename rmdir)
+AC_CHECK_FUNCS(select setitimer setpgrp setpgrp2 shmat sigaction)
+AC_CHECK_FUNCS(sighold socket statfs strchr strstr strtol strtoul)
+AC_CHECK_FUNCS(symlink sysconf)
+AC_CHECK_FUNCS(times truncate)
+AC_CHECK_FUNCS(uname utime)
+AC_CHECK_FUNCS(waitpid)
+
+if test "${ac_cv_type_signal}" = "void"; then
+    AC_DEFINE(VOID_SIGNAL_HANDLERS)
+fi
+
+dnl Checks for system characteristics.
+AC_CANONICAL_HOST
+AC_PATH_XTRA
+AC_SYS_LONG_FILE_NAMES
+AC_SYS_RESTARTABLE_SYSCALLS
+
+dnl Add support for X if present.
+if test "${no_x}" = "yes"; then
+    LIB_X11=
+else
+    LIB_X11=-lX11
+    OPTIONAL_BASES="${OPTIONAL_BASES} x11base x11term x11graph x11color"
+fi
+
+dnl Add OS-dependent customizations.
+case "$host_os" in
+linux-gnu)
+    STATIC_PREFIX="-Xlinker -Bstatic"
+    STATIC_SUFFIX="-Xlinker -Bdynamic"
+    AC_MSG_CHECKING([for ELF binaries])
+    AC_TRY_RUN(
+[int
+main ()
+{
+#ifdef __ELF__
+return 0;
+#endif
+return 1;
+}],
+	[scheme_cv_linux_elf=yes],
+	[scheme_cv_linux_elf=no])
+    AC_MSG_RESULT(${scheme_cv_linux_elf})
+    if test "${scheme_cv_linux_elf}" = "yes"; then
+	M4_FLAGS="${M4_FLAGS} -P LINUX_ELF,1"
+    fi
+    if test "${GCC}" = "yes"; then
+	AC_MSG_CHECKING([for GCC version >= 2.95])
+	AC_TRY_RUN(
+[int
+main ()
+{
+#if ((__GNUC__ > 2) || ((__GNUC__ == 2) && (__GNUC_MINOR__ >= 95)))
+return 0;
+#endif
+return 1;
+}],
+	[scheme_cv_gcc3=yes],
+	[scheme_cv_gcc3=no])
+	AC_MSG_RESULT(${scheme_cv_gcc3})
+	if test "${scheme_cv_gcc3}" = "yes"; then
+	    M4_FLAGS="${M4_FLAGS} -P CALLEE_POPS_STRUCT_RETURN,1"
+	fi
+    fi
+    ;;
+freebsdelf*)
+    M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
+    ;;
+esac
+
+dnl Add architecture-dependent customizations.
+dnl This is mostly support for native-code compilation.
+scheme_compiler_key=
+OPTIONAL_BASES="${OPTIONAL_BASES} cmpint"
+GC_HEAD_FILES="gccode.h cmpgc.h"
+case "$host_cpu" in
+alpha*)
+    scheme_compiler_key=alpha
+    ;;
+hppa*)
+    scheme_compiler_key=hppa
+    GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
+    ;;
+i?86)
+    scheme_compiler_key=i386
+    ;;
+m68k|m680?0)
+    scheme_compiler_key=mc68k
+    ;;
+mips*)
+    scheme_compiler_key=mips
+    ;;
+vax)
+    scheme_compiler_key=vax
+    ;;
+esac
+if test "${scheme_compiler_key}" != ""; then
+    AC_DEFINE(HAS_COMPILER_SUPPORT)
+    ${ac_cv_prog_LN_S} cmpauxmd/${scheme_compiler_key}.m4 cmpauxmd.m4
+    ${ac_cv_prog_LN_S} cmpintmd/${scheme_compiler_key}.h cmpintmd.h
+    OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
+    OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
+    GC_HEAD_FILES="${GC_HEAD_FILES} cmpintmd.h"
+fi
+
+for base in ${OPTIONAL_BASES}; do
+    OPTIONAL_SOURCES="${OPTIONAL_SOURCES} ${base}.c"
+    OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} ${base}.o"
+done
+
+AC_SUBST(AS_FLAGS)
+AC_SUBST(GC_HEAD_FILES)
+AC_SUBST(LIB_X11)
+AC_SUBST(M4_FLAGS)
+AC_SUBST(OPTIONAL_OBJECTS)
+AC_SUBST(OPTIONAL_SOURCES)
+AC_SUBST(STATIC_LIBS)
+AC_SUBST(STATIC_PREFIX)
+AC_SUBST(STATIC_SUFFIX)
+
+AC_OUTPUT(Makefile)

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osscheme.h,v 1.10 1999/01/02 06:11:34 cph Exp $
+$Id: osscheme.h,v 1.11 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -47,10 +47,10 @@ extern void EXFUN (termination_init_error, (void));
 extern void EXFUN (termination_signal, (CONST char * signal_name));
 extern void EXFUN (termination_trap, (void));
 
-#ifdef _OS2
+#ifdef __OS2__
 extern void EXFUN (request_attention_interrupt, (void));
 extern int  EXFUN (test_and_clear_attention_interrupt, (void));
-#endif /* _OS2 */
+#endif /* __OS2__ */
 
 extern void EXFUN (request_character_interrupt, (void));
 extern void EXFUN (request_timer_interrupt, (void));

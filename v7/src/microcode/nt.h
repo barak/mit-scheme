@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nt.h,v 1.8 1999/01/02 06:11:34 cph Exp $
+$Id: nt.h,v 1.9 2000/12/05 21:23:45 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,9 +24,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifndef SCM_NT_H
 #define SCM_NT_H
 
-#define SYSTEM_NAME "NT"
-#define SYSTEM_VARIANT "Windows-NT"
-
 #include <windows.h>
 #include <sys/types.h>
 
@@ -51,9 +48,7 @@ extern enum windows_type NT_windows_type;
 #define EINTR		1999
 #endif
 
-#include "oscond.h"
-#include "ansidecl.h"
-#include "posixtyp.h"
+#include "config.h"
 
 #include "intext.h"
 #include "dstack.h"
@@ -81,13 +76,8 @@ extern enum windows_type NT_windows_type;
 #define MAXPATHLEN 128
 #endif
 
-#ifdef __STDC__
 #define ALERT_CHAR '\a'
 #define ALERT_STRING "\a"
-#else
-#define ALERT_CHAR '\007'
-#define ALERT_STRING "\007"
-#endif
 
 #ifndef GUI
   extern HANDLE  STDIN_HANDLE,  STDOUT_HANDLE,  STDERR_HANDLE;
@@ -131,12 +121,6 @@ extern enum windows_type NT_windows_type;
 
 #ifndef DECL_GETLOGIN
 extern char * EXFUN (getlogin, (void));
-#endif
-
-#ifndef WINNT
-extern PTR EXFUN (malloc, (unsigned int size));
-extern PTR EXFUN (realloc, (PTR ptr, unsigned int size));
-extern int EXFUN (gethostname, (char * name, unsigned int size));
 #endif
 
 #ifdef _NFILE

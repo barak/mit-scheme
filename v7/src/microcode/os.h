@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os.h,v 1.6 1999/01/02 06:11:34 cph Exp $
+$Id: os.h,v 1.7 2000/12/05 21:23:46 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifndef SCM_OS_H
 #define SCM_OS_H
 
-#include "ansidecl.h"
-#include "oscond.h"
-#include "posixtyp.h"
+#include "config.h"
 
 typedef unsigned int Tchannel;
 

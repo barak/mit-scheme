@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intrpt.h,v 1.20 1999/01/02 06:11:34 cph Exp $
+$Id: intrpt.h,v 1.21 2000/12/05 21:23:45 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -122,17 +122,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   RELEASE_INTERRUPT_REGISTERS ();					\
 }
 
-#if defined(_OS2) || defined(WINNT)
-
-#define GRAB_INTERRUPT_REGISTERS() OS_grab_interrupt_registers ()
-#define RELEASE_INTERRUPT_REGISTERS() OS_release_interrupt_registers ()
-
-extern void OS_grab_interrupt_registers (void);
-extern void OS_release_interrupt_registers (void);
-
-#else /* not (_OS2 or WINNT) */
-
-#define GRAB_INTERRUPT_REGISTERS()
-#define RELEASE_INTERRUPT_REGISTERS()
-
-#endif /* not (_OS2 or WINNT) */
+#if defined(__OS2__) || defined(__WIN32__)
+   extern void OS_grab_interrupt_registers (void);
+   extern void OS_release_interrupt_registers (void);
+#  define GRAB_INTERRUPT_REGISTERS() OS_grab_interrupt_registers ()
+#  define RELEASE_INTERRUPT_REGISTERS() OS_release_interrupt_registers ()
+#else
+#  define GRAB_INTERRUPT_REGISTERS()
+#  define RELEASE_INTERRUPT_REGISTERS()
+#endif

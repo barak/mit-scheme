@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.62 2000/01/18 05:08:00 cph Exp $
+$Id: bitstr.c,v 9.63 2000/12/05 21:23:43 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -28,10 +28,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "scheme.h"
 #include "prims.h"
 #include "bitstr.h"
-
-extern SCHEME_OBJECT EXFUN (allocate_bit_string, (long));
 
-SCHEME_OBJECT
+static void EXFUN
+  (copy_bits, (SCHEME_OBJECT *, long, SCHEME_OBJECT *, long, long));
+
+static SCHEME_OBJECT
 DEFUN (allocate_bit_string, (length), long length)
 {
   long total_pointers;
@@ -313,7 +314,6 @@ are the same).")
   fast SCHEME_OBJECT bit_string_1, bit_string_2;
   long start1, end1, start2, end2, nbits;
   long end1_mod, end2_mod;
-  void copy_bits();
   PRIMITIVE_HEADER (5);
   CHECK_ARG (1, BIT_STRING_P);
   bit_string_1 = (ARG_REF (1));
@@ -362,7 +362,7 @@ are the same).")
    each of the arguments SOURCE and DESTINATION.  It copies the bits
    starting with the MSB of a bit string and moving down. */
 
-void
+static void
 DEFUN (copy_bits,
        (source, source_offset, destination, destination_offset, nbits),
        SCHEME_OBJECT * source AND

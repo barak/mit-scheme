@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: regex.c,v 1.19 1999/01/02 06:11:34 cph Exp $
+$Id: regex.c,v 1.20 2000/12/05 21:23:48 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -32,11 +32,15 @@ should have been included along with this file. */
 #include "syntax.h"
 #include "regex.h"
 
-extern char * malloc ();
-extern char * realloc ();
-extern void free ();
+#ifdef STDC_HEADERS
+#  include <stdlib.h>
+#else
+   extern char * malloc ();
+   extern char * realloc ();
+   extern void free ();
+#endif
 
-#if defined(_IRIX) || defined(_AIX)
+#if defined(__IRIX__) || defined(_AIX)
 #define SIGN_EXTEND_CHAR(x) ((((int) (x)) >= 0x80)			\
 			     ? (((int) (x)) - 0x100)			\
 			     : ((int) (x)))
@@ -491,10 +495,11 @@ DEFUN (re_compile_fastmap,
 } while (0)
 
 static Boolean
-beq_translate (scan1, scan2, length, translation)
-     fast unsigned char *scan1, *scan2;
-     fast long length;
-     fast unsigned char *translation;
+DEFUN (beq_translate, (scan1, scan2, length, translation),
+       unsigned char * scan1 AND
+       unsigned char * scan2 AND
+       long length AND
+       unsigned char * translation)
 {
   while ((length--) > 0)
     if ((TRANSLATE_CHAR (*scan1++)) != (TRANSLATE_CHAR (*scan2++)))

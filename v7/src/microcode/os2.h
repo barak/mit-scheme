@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2.h,v 1.6 1999/01/02 06:11:34 cph Exp $
+$Id: os2.h,v 1.7 2000/12/05 21:23:46 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright (c) 1994-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,13 +24,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifndef SCM_OS2_H
 #define SCM_OS2_H
 
+#include "config.h"
 #include "dstack.h"
 #include "osscheme.h"
 #include "syscall.h"
 
 /* Defined by "scheme.h" and conflicts with definition in <os2.h>.
    Scheme's definition not needed in OS/2 files.  */
-#undef END_OF_CHAIN
+#ifdef END_OF_CHAIN
+#  undef END_OF_CHAIN
+#endif
 
 #define INCL_BASE
 #define INCL_PM
@@ -39,6 +42,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+#include <ctype.h>
 #include <setjmp.h>
 #include <limits.h>
 

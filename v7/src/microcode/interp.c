@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.89 1999/01/02 06:06:43 cph Exp $
+$Id: interp.c,v 9.90 2000/12/05 21:23:44 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -459,7 +459,7 @@ DEFUN (Interpret, (pop_return_p), Boolean pop_return_p)
   preserve_signal_mask ();
   Set_Time_Zone (Zone_Working);
   Import_Registers ();
-  
+
 Repeat_Dispatch:
   switch (Which_Way)
     {
@@ -507,7 +507,7 @@ Repeat_Dispatch:
       LOG_FUTURES();
     case CODE_MAP(PRIM_REENTER):
       goto Perform_Application;
-      
+
     case PRIM_TOUCH:
       {
 	SCHEME_OBJECT temp;
@@ -565,7 +565,7 @@ Repeat_Dispatch:
 	Pop_Return_Error(Which_Way);
       }
     }
-  
+
 Do_Expression:
 
   if (0 && Eval_Debug)
@@ -624,7 +624,7 @@ Do_Expression:
       Pushed ();
       goto Apply_Non_Trapping;
     }
-  
+
 Eval_Non_Trapping:
   Eval_Ucode_Hook();
   switch (OBJECT_TYPE (Fetch_Expression()))
@@ -681,10 +681,6 @@ Eval_Non_Trapping:
       Export_Registers();
       Microcode_Termination (TERM_BROKEN_HEART);
 
-      /* Interpret() continues on the next page */
-      
-      /* Interpret(), continued */
-
     case TC_COMBINATION:
       {
 	long Array_Length;
@@ -739,10 +735,6 @@ Eval_Non_Trapping:
 	goto return_from_compiled_code;
       }
 
-    /* Interpret() continues on the next page */
-    
-    /* Interpret(), continued */
-
     case TC_DEFINITION:
       Will_Push(CONTINUATION_SIZE + 1);
       Save_Env();
@@ -769,10 +761,6 @@ Eval_Non_Trapping:
       Free[PROCEDURE_ENVIRONMENT] = Fetch_Env();
       Free += 2;
       break;
-
-      /* Interpret() continues on the next page */
-      
-      /* Interpret(), continued */
 
 #ifdef COMPILE_FUTURES
     case TC_FUTURE:
@@ -808,10 +796,6 @@ Eval_Non_Trapping:
     case TC_MANIFEST_NM_VECTOR:
     case TC_MANIFEST_SPECIAL_NM_VECTOR:
       Eval_Error(ERR_EXECUTE_MANIFEST_VECTOR);
-
-      /* Interpret() continues on the next page */
-      
-      /* Interpret(), continued */
 
       /*
 	The argument to Will_Eventually_Push is determined by how much
@@ -854,10 +838,6 @@ Eval_Non_Trapping:
 
     case TC_THE_ENVIRONMENT:
       Val = Fetch_Env(); break;
-
-      /* Interpret() continues on the next page */
-      
-      /* Interpret(), continued */
 
     case TC_VARIABLE:
       {
@@ -909,10 +889,6 @@ Eval_Non_Trapping:
 	    cell = lookup_fluid(Val);
 	    goto lookup_end_restart;
 
-	    /* Interpret() continues on the next page */
-	    
-	    /* Interpret(), continued */
-
 	  case TRAP_UNBOUND:
 	    temp = ERR_UNBOUND_VARIABLE;
 	    break;
@@ -951,10 +927,6 @@ Eval_Non_Trapping:
 
     SITE_EXPRESSION_DISPATCH_HOOK()
       };
-
-  /* Interpret() continues on the next page */
-  
-  /* Interpret(), continued */
 
   /* Now restore the continuation saved during an earlier part
    * of the EVAL cycle and continue as directed.
@@ -1013,10 +985,6 @@ Pop_Return_Non_Trapping:
       Save_Env();
       Do_Another_Then(RC_COMB_2_PROCEDURE, COMB_2_ARG_1);
 
-      /* Interpret() continues on the next page */
-      
-      /* Interpret(), continued */
-
     case RC_COMB_2_PROCEDURE:
       Restore_Env();
       STACK_PUSH (Val);                /* Arg 1, just calculated */
@@ -1049,22 +1017,18 @@ Pop_Return_Non_Trapping:
       Do_Another_Then(RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT);
       }
 
-    /* Interpret() continues on the next page */
-    
-    /* Interpret(), continued */
-
 #define define_compiler_restart(return_code, entry)			\
     case return_code:							\
       {									\
-									  extern long entry();						\
-																	  compiled_code_restart();					\
-																									  Export_Registers();						\
-																																	  Which_Way = entry();						\
-																																									  goto return_from_compiled_code;					\
-																																																		  }
+	extern long entry();						\
+	compiled_code_restart();					\
+	Export_Registers();						\
+	Which_Way = entry();						\
+	goto return_from_compiled_code;					\
+      }
 
-    define_compiler_restart (RC_COMP_INTERRUPT_RESTART,
-			     comp_interrupt_restart)
+      define_compiler_restart (RC_COMP_INTERRUPT_RESTART,
+			       comp_interrupt_restart)
 
       define_compiler_restart (RC_COMP_LOOKUP_APPLY_RESTART,
 			       comp_lookup_apply_restart)
@@ -1080,7 +1044,7 @@ Pop_Return_Non_Trapping:
 
       define_compiler_restart (RC_COMP_UNBOUND_P_RESTART,
 			       comp_unbound_p_restart)
-      
+
       define_compiler_restart (RC_COMP_ASSIGNMENT_RESTART,
 			       comp_assignment_restart)
 
@@ -1113,12 +1077,12 @@ Pop_Return_Non_Trapping:
 
       define_compiler_restart (RC_COMP_ERROR_RESTART,
 			       comp_error_restart)
-
-      case RC_REENTER_COMPILED_CODE:
-	compiled_code_restart();
-    Export_Registers();
-    Which_Way = return_to_compiled_code();
-    goto return_from_compiled_code;
+
+    case RC_REENTER_COMPILED_CODE:
+      compiled_code_restart();
+      Export_Registers();
+      Which_Way = return_to_compiled_code();
+      goto return_from_compiled_code;
 
     case RC_CONDITIONAL_DECIDE:
       Pop_Return_Val_Check();
@@ -1159,7 +1123,7 @@ Pop_Return_Non_Trapping:
       /* Should be called RC_REDO_EVALUATION. */
       Store_Env(STACK_POP ());
       Reduces_To(Fetch_Expression());
-      
+
     case RC_EXECUTE_ACCESS_FINISH:
       {
 	long Result;
@@ -1191,15 +1155,13 @@ Pop_Return_Non_Trapping:
 	Pop_Return_Error(ERR_BAD_FRAME);
       }
 
-    /* Interpret() continues on the next page */
-    
-    /* Interpret(), continued */
-
     case RC_EXECUTE_ASSIGNMENT_FINISH:
       {
 	long temp;
 	SCHEME_OBJECT value;
-	Lock_Handle set_serializer;
+#ifdef DECLARE_LOCK
+	DECLARE_LOCK (set_serializer);
+#endif
 
 #ifndef No_In_Line_Lookup
 
@@ -1234,10 +1196,6 @@ Pop_Return_Non_Trapping:
 	    goto Pop_Return;
 	  }
 
-	/* Interpret() continues on the next page */
-	
-	/* Interpret(), continued */
-
 	get_trap_kind(temp, *cell);
 	switch(temp)
 	  {
@@ -1247,14 +1205,15 @@ Pop_Return_Non_Trapping:
 	  case TRAP_FLUID_DANGEROUS:
 	  case TRAP_COMPILER_CACHED_DANGEROUS:
 	    remove_lock(set_serializer);
-	    cell = OBJECT_ADDRESS (MEMORY_REF (Fetch_Expression(), ASSIGN_NAME));
-	    temp =
-	      deep_assignment_end(deep_lookup(Fetch_Env(),
-					      cell[VARIABLE_SYMBOL],
-					      cell),
-				  cell,
-				  value,
-				  false);
+	    cell
+	      = OBJECT_ADDRESS (MEMORY_REF (Fetch_Expression(), ASSIGN_NAME));
+	    temp
+	      = deep_assignment_end(deep_lookup(Fetch_Env(),
+						cell[VARIABLE_SYMBOL],
+						cell),
+				    cell,
+				    value,
+				    false);
 	  external_assignment_return:
 	    Import_Val();
 	    if (temp != PRIM_DONE)
@@ -1268,7 +1227,8 @@ Pop_Return_Non_Trapping:
 	      SCHEME_OBJECT extension, references;
 
 	      extension = FAST_MEMORY_REF (Val, TRAP_EXTRA);
-	      references = FAST_MEMORY_REF (extension, TRAP_EXTENSION_REFERENCES);
+	      references
+		= FAST_MEMORY_REF (extension, TRAP_EXTENSION_REFERENCES);
 
 	      if ((FAST_MEMORY_REF (references, TRAP_REFERENCES_OPERATOR))
 		  != SHARP_F)
@@ -1289,10 +1249,6 @@ Pop_Return_Non_Trapping:
 	      update_lock(set_serializer, cell);
 	      goto assignment_end_after_lock;
 	    }
-
-	  /* Interpret() continues on the next page */
-	  
-	  /* Interpret(), continued */
 
 	  case TRAP_FLUID:
 	    remove_lock(set_serializer);
@@ -1316,10 +1272,6 @@ Pop_Return_Non_Trapping:
 
 	if (value == UNASSIGNED_OBJECT)
 	  value = bogus_unassigned;
-
-	/* Interpret() continues on the next page */
-	
-	/* Interpret(), continued */
 
 #else /* No_In_Line_Lookup */
 
@@ -1351,10 +1303,6 @@ Pop_Return_Non_Trapping:
 				     value);
 	Interrupt(PENDING_INTERRUPTS());
       }
-
-    /* Interpret() continues on the next page */
-    
-    /* Interpret(), continued */
 
     case RC_EXECUTE_DEFINITION_FINISH:
       {
@@ -1401,7 +1349,7 @@ Pop_Return_Non_Trapping:
       Import_Registers_Except_Val();
       break;
 #endif
-      
+
     case RC_HALT:
       Export_Registers();
       Microcode_Termination (TERM_TERM_HANDLER);
@@ -1409,26 +1357,25 @@ Pop_Return_Non_Trapping:
     case RC_HARDWARE_TRAP:
       {
 	/* This just reinvokes the handler */
-
-	SCHEME_OBJECT info, handler;
-	info = (STACK_REF (0));
-
-	Save_Cont();
-	if ((! (Valid_Fixed_Obj_Vector())) ||
-	    ((handler = (Get_Fixed_Obj_Slot(Trap_Handler))) == SHARP_F))
+	SCHEME_OBJECT info = (STACK_REF (0));
+	SCHEME_OBJECT handler = SHARP_F;
+	Save_Cont ();
+	if (Valid_Fixed_Obj_Vector ())
+	  handler = (Get_Fixed_Obj_Slot (Trap_Handler));
+	if (handler == SHARP_F)
 	  {
 	    outf_fatal ("There is no trap handler for recovery!\n");
 	    termination_trap ();
 	    /*NOTREACHED*/
 	  }
-	Will_Push(STACK_ENV_EXTRA_SLOTS + 2);
+	Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
 	STACK_PUSH (info);
 	STACK_PUSH (handler);
 	STACK_PUSH (STACK_FRAME_HEADER + 1);
-	Pushed();
-	goto Internal_Apply;
+	Pushed ();
       }
-    
+      goto Internal_Apply;
+
     /* Internal_Apply, the core of the application mechanism.
 
        Branch here to perform a function application.
@@ -1445,23 +1392,19 @@ Pop_Return_Non_Trapping:
        */
 
 #define Prepare_Apply_Interrupt()					\
-    {									\
-									  Store_Expression (SHARP_F);						\
-																		  Prepare_Pop_Return_Interrupt (RC_INTERNAL_APPLY_VAL,			\
-																						(STACK_REF (STACK_ENV_FUNCTION)));	\
-																											  }
+      {									\
+	Store_Expression (SHARP_F);					\
+	Prepare_Pop_Return_Interrupt					\
+	  (RC_INTERNAL_APPLY_VAL, (STACK_REF (STACK_ENV_FUNCTION)));	\
+      }
 
 #define Apply_Error(N)							\
       {									\
-									  Store_Expression (SHARP_F);						\
-																		  Store_Return (RC_INTERNAL_APPLY_VAL);					\
-																											  Val = (STACK_REF (STACK_ENV_FUNCTION));				\
-																																				  Pop_Return_Error (N);							\
-																																													  }
-
-    /* Interpret() continues on the next page */
-    
-    /* Interpret(), continued */
+	Store_Expression (SHARP_F);					\
+	Store_Return (RC_INTERNAL_APPLY_VAL);				\
+	Val = (STACK_REF (STACK_ENV_FUNCTION));				\
+	Pop_Return_Error (N);						\
+      }
 
     case RC_INTERNAL_APPLY_VAL:
     Internal_Apply_Val:
@@ -1557,10 +1500,6 @@ Pop_Return_Non_Trapping:
 	    goto Internal_Apply;
 	  }
 
-	/* Interpret() continues on the next page */
-	
-	/* Interpret(), continued */
-
 	case TC_RECORD:
 	  {
 	    SCHEME_OBJECT record_type = (VECTOR_REF (Function, 0));
@@ -1633,10 +1572,6 @@ Pop_Return_Non_Trapping:
 	    }
           }
 
-	/* Interpret() continues on the next page */
-	
-	/* Interpret(), continued */
-
 	case TC_CONTROL_POINT:
 	  {
             if (OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER)) !=
@@ -1650,10 +1585,6 @@ Pop_Return_Non_Trapping:
 	    Our_Throw_Part_2();
             goto Pop_Return;
 	  }
-
-	/* Interpret() continues on the next page */
-	
-	/* Interpret(), continued */
 
 	/*
 	  After checking the number of arguments, remove the
@@ -1701,10 +1632,6 @@ Pop_Return_Non_Trapping:
 	      }
 	    goto Pop_Return;
 	  }
-
-	/* Interpret() continues on the next page */
-	
-	/* Interpret(), continued */
 
 	case TC_EXTENDED_PROCEDURE:
           {
@@ -1754,10 +1681,6 @@ Pop_Return_Non_Trapping:
 					 0));
 	      }
 
-	    /* Interpret() continues on the next page */
-	    
-	    /* Interpret(), continued */
-
 	    scan = Free;
 	    temp = (MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan));
 	    *scan++ = MAKE_OBJECT (TC_MANIFEST_VECTOR, size);
@@ -1799,10 +1722,6 @@ Pop_Return_Non_Trapping:
             Reduces_To(Get_Body_Elambda(lambda));
           }
 
-	/* Interpret() continues on the next page */
-	
-	/* Interpret(), continued */
-
 	case TC_COMPILED_ENTRY:
 	  {
 	    apply_compiled_setup
@@ -1842,7 +1761,7 @@ Pop_Return_Non_Trapping:
 		  Prepare_Apply_Interrupt ();
 		  Interrupt (PENDING_INTERRUPTS ());
 		}
-	      
+
 	      case ERR_INAPPLICABLE_OBJECT:
 		/* This error code means that apply_compiled_procedure
 		   was called on an object which is not a compiled procedure,
@@ -1865,8 +1784,9 @@ Pop_Return_Non_Trapping:
 		     */
 
 		  execute_compiled_backout ();
-		  Val =
-		    (OBJECT_NEW_TYPE (TC_COMPILED_ENTRY, (Fetch_Expression ())));
+		  Val
+		    = (OBJECT_NEW_TYPE
+		       (TC_COMPILED_ENTRY, (Fetch_Expression ())));
 		  Pop_Return_Error (Which_Way);
 		}
 
@@ -1894,10 +1814,6 @@ Pop_Return_Non_Trapping:
         }       /* End of switch in RC_INTERNAL_APPLY */
     }         /* End of RC_INTERNAL_APPLY case */
 
-    /* Interpret() continues on the next page */
-    
-    /* Interpret(), continued */
-
     case RC_MOVE_TO_ADJACENT_POINT:
       /* Expression contains the space in which we are moving */
       {
@@ -1914,8 +1830,9 @@ Pop_Return_Non_Trapping:
 	    Thunk = FAST_MEMORY_REF (Current, STATE_POINT_AFTER_THUNK);
 	    New_Location = FAST_MEMORY_REF (Current, STATE_POINT_NEARER_POINT);
 	    STACK_REF(TRANSLATE_FROM_POINT) = New_Location;
-	    if ((From_Count == 1) &&
-		(STACK_REF(TRANSLATE_TO_DISTANCE) == LONG_TO_UNSIGNED_FIXNUM(0)))
+	    if ((From_Count == 1)
+		&& ((STACK_REF (TRANSLATE_TO_DISTANCE))
+		    == (LONG_TO_UNSIGNED_FIXNUM (0))))
 	      Stack_Pointer = (STACK_LOC (4));
 	    else Save_Cont();
 	  }
@@ -1925,8 +1842,9 @@ Pop_Return_Non_Trapping:
 	    fast SCHEME_OBJECT To_Location;
 	    fast long i;
 
-	    To_Count =
-	      (UNSIGNED_FIXNUM_TO_LONG (STACK_REF (TRANSLATE_TO_DISTANCE)) -  1);
+	    To_Count
+	      = ((UNSIGNED_FIXNUM_TO_LONG (STACK_REF (TRANSLATE_TO_DISTANCE)))
+		 -  1);
 	    To_Location = STACK_REF(TRANSLATE_TO_POINT);
 	    for (i = 0; i < To_Count; i++)
 	      {
@@ -1935,14 +1853,15 @@ Pop_Return_Non_Trapping:
 	      }
 	    Thunk = FAST_MEMORY_REF (To_Location, STATE_POINT_BEFORE_THUNK);
 	    New_Location = To_Location;
-	    STACK_REF(TRANSLATE_TO_DISTANCE) = LONG_TO_UNSIGNED_FIXNUM(To_Count);
+	    (STACK_REF (TRANSLATE_TO_DISTANCE))
+	      = (LONG_TO_UNSIGNED_FIXNUM (To_Count));
 	    if (To_Count == 0)
 	      {
 		Stack_Pointer = (STACK_LOC (4));
 	      }
 	    else
 	      {
-		Save_Cont();
+		Save_Cont ();
 	      }
 	  }
 	if ((Fetch_Expression ()) != SHARP_F)
@@ -1960,10 +1879,6 @@ Pop_Return_Non_Trapping:
 	Pushed();
 	goto Internal_Apply;
       }
-
-    /* Interpret() continues on the next page */
-    
-    /* Interpret(), continued */
 
     case RC_INVOKE_STACK_THREAD:
       /* Used for WITH_THREADED_STACK primitive */
@@ -1994,7 +1909,7 @@ Pop_Return_Non_Trapping:
       EXIT_CRITICAL_SECTION ({ Save_Cont(); Export_Registers(); });
       End_GC_Hook ();
       break;
-      
+
     case RC_PCOMB1_APPLY:
       End_Subproblem();
       STACK_PUSH (Val);		/* Argument value */
@@ -2044,7 +1959,7 @@ Pop_Return_Non_Trapping:
 	  }
 	break;
       }
-      
+
     case RC_PCOMB2_APPLY:
       End_Subproblem();
       STACK_PUSH (Val);		/* Value of arg. 1 */
@@ -2063,10 +1978,6 @@ Pop_Return_Non_Trapping:
       Finished_Eventual_Pushing(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
       Store_Expression(FAST_MEMORY_REF (Fetch_Expression(), PCOMB3_FN_SLOT));
       goto Primitive_Internal_Apply;
-
-      /* Interpret() continues on the next page */
-      
-      /* Interpret(), continued */
 
     case RC_PCOMB3_DO_1:
       {
@@ -2102,10 +2013,6 @@ Pop_Return_Non_Trapping:
       Restore_Cont();
       goto Repeat_Dispatch;
 
-      /* Interpret() continues on the next page */
-      
-      /* Interpret(), continued */
-
       /* The following two return codes are both used to restore
 	 a saved history object.  The difference is that the first
 	 does not copy the history object while the second does.
@@ -2137,10 +2044,6 @@ Pop_Return_Non_Trapping:
 	  }
 	break;
       }
-
-    /* Interpret() continues on the next page */
-    
-    /* Interpret(), continued */
 
     case RC_RESTORE_HISTORY:
       {
@@ -2205,10 +2108,6 @@ Pop_Return_Non_Trapping:
       Stack_Pointer = (STACK_LOCATIVE_OFFSET (Stack_Pointer, 1));
       break;
 
-      /* Interpret() continues on the next page */
-      
-      /* Interpret(), continued */
-
     case RC_RESTORE_TO_STATE_POINT:
       {
 	SCHEME_OBJECT Where_To_Go = Fetch_Expression();
@@ -2236,10 +2135,6 @@ Pop_Return_Non_Trapping:
       End_Subproblem();
       Restore_Env();
       Reduces_To_Nth(SEQUENCE_3);
-
-      /* Interpret() continues on the next page */
-      
-      /* Interpret(), continued */
 
     case RC_SNAP_NEED_THUNK:
       /* Don't snap thunk twice; evaluation of the thunk's body might

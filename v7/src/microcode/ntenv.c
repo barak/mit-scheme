@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.18 1999/04/07 04:01:44 cph Exp $
+$Id: ntenv.c,v 1.19 2000/12/05 21:23:45 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -37,6 +37,7 @@ system_time_to_unix_time (SYSTEMTIME * st)
   return (file_time_to_unix_time (&ft));
 }
 
+#if 0
 static void
 unix_time_to_system_time (unsigned long ut, SYSTEMTIME * st)
 {
@@ -44,6 +45,7 @@ unix_time_to_system_time (unsigned long ut, SYSTEMTIME * st)
   unix_time_to_file_time (ut, (&ft));
   (void) FileTimeToSystemTime ((&ft), st);
 }
+#endif
 
 time_t
 DEFUN_VOID (OS_encoded_time)

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: outf.c,v 1.11 1999/01/02 06:11:34 cph Exp $
+$Id: outf.c,v 1.12 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -41,22 +41,23 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   information to stay visible `after' the termination of Scheme.
 */
 
-#if defined(__STDC__) || defined(WINNT) || defined(__IBMC__) || defined(_MSC_VER)
-#include <stdarg.h>
-#define VA_START(args, lastarg) va_start(args, lastarg)
-#define VA_DCL
-#else
-#include <varargs.h>
-#define VA_START(args, lastarg) va_start(args)
-#define VA_DCL va_dcl
-#endif
-
 #include <stdio.h>
 #include "scheme.h"
 
-#ifdef WINNT
-#include <windows.h>
-#include "ntscreen.h"
+#ifdef STDC_HEADERS
+#  include <string.h>
+#  include <stdarg.h>
+#  define VA_START(args, lastarg) va_start(args, lastarg)
+#  define VA_DCL
+#else
+#  include <varargs.h>
+#  define VA_START(args, lastarg) va_start(args)
+#  define VA_DCL va_dcl
+#endif
+
+#ifdef __WIN32__
+#  include <windows.h>
+#  include "ntscreen.h"
 #endif
 
 /* forward reference */
@@ -102,27 +103,27 @@ DEFUN (outf_channel_to_FILE, (chan), outf_channel chan)
     return  (FILE*)chan;
 }
 
-#ifdef WINNT
+#ifdef __WIN32__
 
 #define USE_WINDOWED_OUTPUT
-static int max_fatal_buf = 1000;
-static char fatal_buf[1000+1] = {0};
+#define MAX_FATAL_BUF 1000
+static char fatal_buf[MAX_FATAL_BUF + 1] = {0};
 
 #ifdef CL386
-#define VSNPRINTF(buffer,length,format,args)				\
-  _vsnprintf ((buffer), (length), (format), (args))
+#  define VSNPRINTF(buffer,length,format,args)				\
+     _vsnprintf ((buffer), (length), (format), (args))
 #else
-#ifdef __WATCOMC__
-#define VSNPRINTF(buffer,length,format,args)				\
-  vsprintf ((buffer), (format), (args))
-#endif
+#  ifdef __WATCOMC__
+#    define VSNPRINTF(buffer,length,format,args)			\
+       vsprintf ((buffer), (format), (args))
+#  endif
 #endif
 
 void
 DEFUN (voutf_fatal, (format, args), CONST char *format AND va_list args)
 {
     int end = strlen(fatal_buf);
-    VSNPRINTF (&fatal_buf[end], max_fatal_buf - end, format, args);
+    VSNPRINTF (&fatal_buf[end], MAX_FATAL_BUF - end, format, args);
 }
 
 void
@@ -148,8 +149,8 @@ DEFUN (voutf_master_tty, (chan, format, args),
     }
 }
 
-#else /* not WINNT */
-#ifdef _OS2
+#else /* not __WIN32__ */
+#ifdef __OS2__
 
 extern char * OS2_thread_fatal_error_buffer (void);
 extern void OS2_message_box (const char *, const char *, int);
@@ -181,8 +182,8 @@ voutf_master_tty (const outf_channel chan, const char * format, va_list args)
   OS2_console_write (buffer, (strlen (buffer)));
 }
 
-#endif /* _OS2 */
-#endif /* not WINNT */
+#endif /* __OS2__ */
+#endif /* not __WIN32__ */
 
 void
 DEFUN (voutf, (chan, format, ap),

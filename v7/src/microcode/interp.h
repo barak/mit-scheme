@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.41 1999/01/02 06:11:34 cph Exp $
+$Id: interp.h,v 9.42 2000/12/05 21:23:45 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -168,31 +168,12 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
 {									\
   STACK_PUSH (Expression);						\
   STACK_PUSH (Return);							\
-  Cont_Print ();							\
 }
 
 #define Restore_Cont()							\
 {									\
   Return = (STACK_POP ());						\
   Expression = (STACK_POP ());						\
-  if (Cont_Debug)							\
-  {									\
-    Print_Return(RESTORE_CONT_RETURN_MESSAGE);				\
-    Print_Expression(Fetch_Expression(),				\
-		     RESTORE_CONT_EXPR_MESSAGE);			\
-    printf ("\n");							\
-  }									\
-}
-
-#define Cont_Print()							\
-{									\
-  if (Cont_Debug)							\
-  {									\
-    Print_Return(CONT_PRINT_RETURN_MESSAGE);				\
-    Print_Expression(Fetch_Expression(),				\
-		     CONT_PRINT_EXPR_MESSAGE);				\
-    printf ("\n");							\
-  }									\
 }
 
 #define Stop_Trapping()							\

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.14 1999/01/02 06:11:34 cph Exp $
+$Id: term.c,v 1.15 2000/12/05 21:23:48 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,9 +31,13 @@ extern char * Term_Messages [];
 extern void EXFUN (get_band_parameters, (long * heap_size, long * const_size));
 extern void EXFUN (Reset_Memory, (void));
 
-#if defined(WINNT) || defined(_OS2)
-#define USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
-extern void winnt_deallocate_registers (void);
+#ifdef __WIN32__
+#  define USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
+   extern void win32_deallocate_registers (void);
+#endif
+
+#ifdef __OS2__
+#  define USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
 #endif
 
 static void EXFUN (edwin_auto_save, (void));
@@ -43,7 +47,7 @@ static void EXFUN (delete_temp_files, (void));
 #define MIN_HEAP_DELTA	50
 
 #ifndef EXIT_SCHEME
-#define EXIT_SCHEME exit
+#  define EXIT_SCHEME exit
 #endif
 
 #ifdef EXIT_SCHEME_DECLARATIONS
@@ -141,8 +145,8 @@ DEFUN (termination_suffix, (code, value, abnormal_p),
   if (code != TERM_HALT)
 #endif
     outf_flush_fatal();
-#ifdef WINNT
-  winnt_deallocate_registers();
+#ifdef __WIN32__
+  win32_deallocate_registers();
 #endif
   Reset_Memory ();
   EXIT_SCHEME (value);

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosproc.c,v 1.18 1999/01/02 06:11:34 cph Exp $
+$Id: prosproc.c,v 1.19 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,6 +24,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "scheme.h"
 #include "prims.h"
 #include "osproc.h"
+#include "osio.h"
+
+#ifdef __unix__
+   extern char ** environ;
+#endif
 
 extern Tchannel EXFUN (arg_channel, (int));
 
@@ -37,29 +42,22 @@ DEFUN (arg_process, (argument_number), int argument_number)
   return (process);
 }
 
-#if defined(_OS2) && defined(__IBMC__)
-#define environ _environ
-#endif
-
 DEFINE_PRIMITIVE ("SCHEME-ENVIRONMENT", Prim_scheme_environment, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
   {
-    extern char ** environ;
+    char ** scan_environ = environ;
+    char ** end_environ = scan_environ;
+    while ((*end_environ++) != 0) ;
+    end_environ -= 1;
     {
-      char ** scan_environ = environ;
-      char ** end_environ = scan_environ;
-      while ((*end_environ++) != 0) ;
-      end_environ -= 1;
-      {
-	SCHEME_OBJECT result =
-	  (allocate_marked_vector (TC_VECTOR, (end_environ - environ), 1));
-	SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
-	while (scan_environ < end_environ)
-	  (*scan_result++) =
-	    (char_pointer_to_string ((unsigned char *) (*scan_environ++)));
-	PRIMITIVE_RETURN (result);
-      }
+      SCHEME_OBJECT result =
+	(allocate_marked_vector (TC_VECTOR, (end_environ - environ), 1));
+      SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
+      while (scan_environ < end_environ)
+	(*scan_result++) =
+	  (char_pointer_to_string ((unsigned char *) (*scan_environ++)));
+      PRIMITIVE_RETURN (result);
     }
   }
 }
@@ -310,11 +308,11 @@ Seventh arg STDERR is the error channel for the subprocess.\n\
     enum process_ctty_type ctty_type;
     char * ctty_name = 0;
     enum process_channel_type channel_in_type;
-    Tchannel channel_in;
+    Tchannel channel_in = NO_CHANNEL;
     enum process_channel_type channel_out_type;
-    Tchannel channel_out;
+    Tchannel channel_out = NO_CHANNEL;
     enum process_channel_type channel_err_type;
-    Tchannel channel_err;
+    Tchannel channel_err = NO_CHANNEL;
 
     if ((PAIR_P (env_object)) && (STRING_P (PAIR_CDR (env_object))))
       {

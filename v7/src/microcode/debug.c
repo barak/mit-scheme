@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.50 1999/01/02 06:11:34 cph Exp $
+$Id: debug.c,v 9.51 2000/12/05 21:23:44 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -392,12 +392,11 @@ DEFUN (print_objects, (objects, n),
    represent named structures, and most named structures don't want to
    be printed out explicitly.  */
 
-static void
-DEFUN (print_vector, (vector), SCHEME_OBJECT vector)
+void
+DEFUN (Print_Vector, (vector), SCHEME_OBJECT vector)
 {
   print_objects
     ((MEMORY_LOC (vector, 1)), (OBJECT_DATUM (VECTOR_LENGTH (vector))));
-  return;
 }
 
 static void

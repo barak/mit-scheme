@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-### $Id: makefile,v 1.14 1999/01/02 06:11:34 cph Exp $
+### $Id: makefile,v 1.15 2000/12/05 21:23:51 cph Exp $
 ###
-### Copyright (c) 1994-1999 Massachusetts Institute of Technology
+### Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ###
 ### This program is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
@@ -21,11 +21,11 @@
 
 #### Makefile for Scheme under OS/2
 
-all: scheme.exe bchschem.exe bintopsb.exe psbtobin.exe
+all: scheme.exe bchschem.exe
 
 # Uncomment exactly one of the following two lines:
-debug_mode = debug
-#debug_mode = optimize
+#debug_mode = debug
+debug_mode = optimize
 
 # Uncomment exactly one of the following include statements to
 # customize this makefile for your compiler.  All of the

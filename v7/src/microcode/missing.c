@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: missing.c,v 9.32 1999/01/02 06:11:34 cph Exp $
+$Id: missing.c,v 9.33 2000/12/05 21:23:45 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,11 +21,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* This file contains utilities potentially missing from the math library. */
 
-#include "oscond.h"
-#include "ansidecl.h"
 #include "config.h"
 
-#ifndef HAS_FREXP
+#ifndef HAVE_FREXP
 
 double
 DEFUN (frexp, (value, eptr),
@@ -146,9 +144,9 @@ DEFUN (ldexp, (value, exponent),
     return (x);
 }
 
-#endif /* not HAS_FREXP */
+#endif /* not HAVE_FREXP */
 
-#ifndef HAS_MODF
+#ifndef HAVE_MODF
 
 double
 DEFUN (modf, (value, iptr),
@@ -213,9 +211,9 @@ DEFUN (modf, (value, iptr),
   }
 }
 
-#endif /* not HAS_MODF */
+#endif /* not HAVE_MODF */
 
-#ifndef HAS_FLOOR
+#ifndef HAVE_FLOOR
 
 double
 DEFUN (floor, (x), double x)
@@ -233,7 +231,7 @@ DEFUN (ceil, (x), double x)
   return ((fraction > 0) ? (iptr + 1) : iptr);
 }
 
-#endif /* not HAS_FLOOR */
+#endif /* not HAVE_FLOOR */
 
 #ifdef DEBUG_MISSING
 

@@ -103,7 +103,11 @@ Summary:
 #ifndef __OBSTACKS__
 #define __OBSTACKS__
 
-#include "ansidecl.h"
+#include "config.h"
+
+#ifdef STDC_HEADERS
+#  include <string.h>
+#endif
 
 /* We use subtraction of (char *)0 instead of casting to int
    because on word-addressable machines a simple cast to int
@@ -142,11 +146,10 @@ struct obstack		/* control current object in current chunk */
 /* Declare the external functions we use; they are in obstack.c.  */
 
 #ifndef _SUNOS4
-extern void
-  EXFUN (abort, (void));
+extern void EXFUN (abort, (void));
 #endif
 
-#ifdef __STDC__
+#ifdef HAVE_STDC
   extern void _obstack_newchunk (struct obstack *, int);
   extern void _obstack_free (struct obstack *, void *);
   extern void _obstack_begin (struct obstack *, int, long,
@@ -157,7 +160,7 @@ extern void
   extern void _obstack_begin ();
 #endif
 
-#ifdef __STDC__
+#ifdef HAVE_STDC
 
 /* Do the function-declarations after the structs
    but before defining the macros.  */
@@ -195,7 +198,7 @@ void * obstack_next_free (struct obstack *obstack);
 int obstack_alignment_mask (struct obstack *obstack);
 int obstack_chunk_size (struct obstack *obstack);
 
-#endif /* __STDC__ */
+#endif /* HAVE_STDC */
 
 /* Non-ANSI C cannot really support alternative functions for these macros,
    so we do not declare them.  */
@@ -399,7 +402,7 @@ int obstack_chunk_size (struct obstack *obstack);
   (h)->object_base = (h)->next_free,					\
   __INT_TO_PTR ((h)->temp))
 
-#ifdef __STDC__
+#ifdef HAVE_STDC
 #define obstack_free(h,obj)						\
 ( (h)->temp = (char *)(obj) - (char *) (h)->chunk,			\
   (((h)->temp >= 0 && (h)->temp < (h)->chunk_limit - (char *) (h)->chunk)\

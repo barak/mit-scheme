@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: scheme.h,v 9.38 1999/01/02 06:11:34 cph Exp $
+$Id: scheme.h,v 9.39 2000/12/05 21:23:48 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -46,13 +46,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define forward		extern	/* For forward references */
 
-#include <stdio.h>
+#include "config.h"
 
-#include "oscond.h"	/* Identify the operating system */
-#include "ansidecl.h"	/* Macros to support ANSI declarations */
+#include <stdio.h>
+#ifdef STDC_HEADERS
+#  include <stdlib.h>
+#endif
+
 #include "dstack.h"	/* Dynamic stack support package */
 #include "obstack.h"	/* Obstack package */
-#include "config.h"	/* Machine and OS configuration info */
 #include "types.h"	/* Type code numbers */
 #include "const.h"	/* Various named constants */
 #include "object.h"	/* Scheme object representation */

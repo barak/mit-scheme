@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.21 1999/01/02 06:11:34 cph Exp $
+$Id: ntsig.c,v 1.22 2000/12/05 21:23:45 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -69,21 +69,6 @@ DEFUN_VOID (unblock_signals)
 #define INTERACTIVE_INTERRUPT_CHAR	'!'
 #define TERMINATE_INTERRUPT_CHAR	'@'
 #define NO_INTERRUPT_CHAR		'0'
-
-static void
-DEFUN (echo_keyboard_interrupt, (c, dc), cc_t c AND cc_t dc)
-{
-  c &= 0177;
-  if (c == ALERT_CHAR)
-    outf_console ("%c", c);
-  else if (c < '\040')
-    outf_console ("^%c", (c+'@'));
-  else if (c == '\177')
-    outf_console ("^?");
-  else
-    outf_console ("%c", c);
-  outf_flush_console ();
-}
 
 /* Keyboard interrupt */
 
@@ -399,7 +384,7 @@ DEFUN_VOID (OS_restartable_exit)
 #define ASYNC_TIMER_PERIOD	50	/* msec */
 
 static void * timer_state = ((void *) NULL);
-extern unsigned long * winnt_catatonia_block;
+extern unsigned long * win32_catatonia_block;
 
 static char *
 DEFUN_VOID (install_timer)
@@ -409,12 +394,12 @@ DEFUN_VOID (install_timer)
    */
 
   long catatonia_offset
-    = (((SCHEME_OBJECT *) &winnt_catatonia_block[0]) - (&Registers[0]));
+    = (((SCHEME_OBJECT *) &win32_catatonia_block[0]) - (&Registers[0]));
 
-  winnt_catatonia_block[CATATONIA_BLOCK_COUNTER] = 0;
-  winnt_catatonia_block[CATATONIA_BLOCK_LIMIT]
+  win32_catatonia_block[CATATONIA_BLOCK_COUNTER] = 0;
+  win32_catatonia_block[CATATONIA_BLOCK_LIMIT]
     = (CATATONIA_PERIOD / ASYNC_TIMER_PERIOD);
-  winnt_catatonia_block[CATATONIA_BLOCK_FLAG] = 0;
+  win32_catatonia_block[CATATONIA_BLOCK_FLAG] = 0;
   switch (win32_system_utilities.install_async_timer
 	  (&timer_state,
 	   &Registers[0],

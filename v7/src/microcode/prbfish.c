@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prbfish.c,v 1.8 1999/08/13 18:42:26 cph Exp $
+$Id: prbfish.c,v 1.9 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1997, 1999 Massachusetts Institute of Technology
+Copyright (c) 1997, 1999, 2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -141,7 +141,6 @@ ENCRYPT? says whether to encrypt (#T) or decrypt (#F).\n\
 Returned value is the new value of NUM.")
 {
   SCHEME_OBJECT input_text;
-  unsigned long l;
   unsigned long istart;
   unsigned long iend;
   unsigned long ilen;
@@ -191,7 +190,6 @@ NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the\n\
 Returned value is the new value of NUM.")
 {
   SCHEME_OBJECT input_text;
-  unsigned long l;
   unsigned long istart;
   unsigned long iend;
   unsigned long ilen;

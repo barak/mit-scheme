@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.20 2000/05/20 18:59:13 cph Exp $
+$Id: os2top.c,v 1.21 2000/12/05 21:23:46 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright (c) 1994-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,14 +20,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
 #define SCM_OS2TOP_C
-#include "scheme.h"
 #define INCL_WIN
+
+#include "scheme.h"
 #include "os2.h"
 #include "ostop.h"
 #include "option.h"
+
 #ifndef DISABLE_SOCKET_SUPPORT
-#include <nerrno.h>
+#  include <nerrno.h>
 #endif
+
+extern void execute_reload_cleanups (void);
 
 extern void OS2_initialize_channels (void);
 extern void OS2_initialize_channel_thread_messages (void);

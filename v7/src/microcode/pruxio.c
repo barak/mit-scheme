@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxio.c,v 1.7 1999/01/02 06:11:34 cph Exp $
+$Id: pruxio.c,v 1.8 2000/12/05 21:23:48 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -115,7 +115,7 @@ DEFINE_PRIMITIVE ("SELECT-REGISTRY-TEST", Prim_selreg_test, 3, 3, 0)
     unsigned int lub = (UX_select_registry_lub ());
     unsigned int * fds = (dstack_alloc ((sizeof (unsigned int)) * lub));
     unsigned int nfds;
-    SCHEME_OBJECT result;
+    SCHEME_OBJECT result = SHARP_F;
 
     if ((VECTOR_LENGTH (ARG_REF (3))) != lub)
       error_bad_range_arg (3);
@@ -204,11 +204,11 @@ STDERR is the error channel for the subprocess.\n\
     enum process_ctty_type ctty_type;
     char * ctty_name = 0;
     enum process_channel_type channel_in_type;
-    Tchannel channel_in;
+    Tchannel channel_in = NO_CHANNEL;
     enum process_channel_type channel_out_type;
-    Tchannel channel_out;
+    Tchannel channel_out = NO_CHANNEL;
     enum process_channel_type channel_err_type;
-    Tchannel channel_err;
+    Tchannel channel_err = NO_CHANNEL;
 
     if ((ARG_REF (5)) == SHARP_F)
       ctty_type = process_ctty_type_none;

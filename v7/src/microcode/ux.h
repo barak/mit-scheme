@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.73 2000/01/18 05:09:49 cph Exp $
+$Id: ux.h,v 1.74 2000/12/05 21:23:48 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -23,684 +23,388 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #ifndef SCM_UX_H
 #define SCM_UX_H
-
+
 #define SYSTEM_NAME "unix"
 
-#include "oscond.h"
-#include "ansidecl.h"
-#include "posixtyp.h"
+#ifdef __386BSD__
+#  define SYSTEM_VARIANT "386BSD"
+#endif
 
-#ifndef _POSIX			/* Prevent multiple inclusion */
-# include <sys/times.h>
-#endif /* _POSIX */
-#include <sys/file.h>
+#ifdef _AIX
+#  define SYSTEM_VARIANT "AIX"
+#endif
+
+#ifdef apollo
+#  define SYSTEM_VARIANT "Domain"
+#endif
+
+#ifdef __bsdi__			/* works on bsdi 3.0 */
+#  define SYSTEM_VARIANT "BSDI BSD/OS"
+#endif
+
+#ifdef __FreeBSD__
+#  define SYSTEM_VARIANT "FreeBSD"
+#endif
+
+#if defined(__hpux) || defined(hpux)
+#  define SYSTEM_VARIANT "HP/UX"
+#endif
+
+#if defined(_IRIX) || defined(_IRIX4) || defined(_IRIX6)
+#  define SYSTEM_VARIANT "Irix"
+#endif
+
+#ifdef __linux__
+#  define SYSTEM_VARIANT "GNU/Linux"
+#endif
+
+#ifdef _NEXTOS
+#  define SYSTEM_VARIANT "NeXT"
+#endif
+
+#ifdef __osf__
+#  define SYSTEM_VARIANT "OSF"
+#endif
+
+#ifdef _PIXEL
+#  define SYSTEM_VARIANT "Pixel"
+#endif
+
+#if defined(_SUNOS) || defined(_SUNOS3) || defined(_SUNOS4)
+#  define SYSTEM_VARIANT "SunOS"
+#endif
+
+#ifdef _ULTRIX
+#  define SYSTEM_VARIANT "Ultrix"
+#endif
+
+#ifndef SYSTEM_VARIANT
+#  define SYSTEM_VARIANT "unknown"
+#endif
+
+#include "config.h"
+
+#include <errno.h>
+#include <grp.h>
+#include <pwd.h>
+#include <signal.h>
+#include <stdio.h>
 #include <sys/param.h>
 #include <sys/stat.h>
-#include <stdio.h>
-#include <signal.h>
-#include <errno.h>
-#include <pwd.h>
-#include <grp.h>
+#include <sys/times.h>
+#include <sys/types.h>
 
-#ifdef __STDC__
-#include <stdlib.h>
-#include <string.h>
+#ifdef HAVE_UNISTD_H
+#  include <unistd.h>
 #endif
 
-extern int errno;
-
-/* These seem to be missing from versions of unistd.h */
-
-#if !(defined(_HPUX) || defined(sonyrisc) || defined(_SUNOS4) || defined(_IRIX6))
-/* As specified by OSF/1 Programmer's reference: */
-extern int EXFUN (ioctl, (int, unsigned long, ...));
+/* GNU C library defines environ if __USE_GNU is defined.  */
+#ifndef __USE_GNU
+  extern char ** environ;
 #endif
-#if !(defined(_SUNOS4) || defined(_AIX))
-extern int EXFUN (open, (const char *, int, ...));
+
+#ifdef STDC_HEADERS
+#  include <stdlib.h>
+#  include <string.h>
+#else
+#  ifndef HAVE_STRCHR
+#    define strchr index
+#    define strrchr rindex
+#  endif
+   extern char * strchr ();
+   extern char * strrchr ();
+#  ifndef HAVE_MEMCPY
+#    define memcpy(d, s, n) bcopy ((s), (d), (n))
+#    define memmove(d, s, n) bcopy ((s), (d), (n))
+#  endif
 #endif
-extern int EXFUN (kill, (pid_t, int));
+
+#ifdef HAVE_SYS_FILE_H
+#  include <sys/file.h>
+#endif
+
+#ifdef HAVE_SYS_IOCTL_H
+#  include <sys/ioctl.h>
+#else
+   extern int EXFUN (ioctl, (int, unsigned long, ...));
+#endif
+
+#ifdef HAVE_FCNTL_H
+#  include <fcntl.h>
+#else
+   extern int EXFUN (open, (CONST char *, int, ...));
+#endif
+
+#ifdef HAVE_LIMITS_H
+#  include <limits.h>
+#endif
+
+#ifdef HAVE_SYS_WAIT_H
+#  include <sys/wait.h>
+#else
+#  ifndef WIFEXITED
+#    define WIFEXITED(_X) (((_X) & 0x00FF) == 0)
+#  endif
+#  ifndef WIFSTOPPED
+#    define WIFSTOPPED(_X) (((_X) & 0x00FF) == 0x007F)
+#  endif
+#  ifndef WIFSIGNALED
+#    define WIFSIGNALED(_X)						\
+       ((((_X) & 0x00FF) != 0) && (((_X) & 0x00FF) != 0x007F))
+#  endif
+#  ifndef WEXITSTATUS
+#    define WEXITSTATUS(_X) (((_X) & 0xFF00) >> 8)
+#  endif
+#  ifndef WTERMSIG
+#    define WTERMSIG(_X) ((_X) & 0x007F)
+#  endif
+#  ifndef WSTOPSIG
+#    define WSTOPSIG(_X) (((_X) & 0xFF00) >> 8)
+#  endif
+   extern pid_t EXFUN (wait, (int *));
+#  ifdef HAVE_WAITPID
+     extern pid_t EXFUN (waitpid, (pid_t, int *, int));
+#  endif
+#  ifdef HAVE_WAIT3
+     extern pid_t EXFUN (wait3, (int *, int, struct rusage *));
+#  endif
+#endif
+
+#ifndef WUNTRACED
+#  define WUNTRACED 0
+#endif
+
+#ifdef HAVE_DIRENT_H
+#  include <dirent.h>
+#  define NAMLEN(_D) (strlen ((_D) -> d_name))
+#else
+#  define dirent direct
+#  define NAMLEN(_D) (strlen ((_D) -> d_namlen))
+#  ifdef HAVE_SYS_NDIR_H
+#    include <sys/ndir.h>
+#  endif
+#  ifdef HAVE_SYS_DIR_H
+#    include <sys/dir.h>
+#  endif
+#  ifdef HAVE_NDIR_H
+#    include <ndir.h>
+#  endif
+#endif
+
+#ifdef TIME_WITH_SYS_TIME
+#  include <sys/time.h>
+#  include <time.h>
+#else
+#  ifdef HAVE_SYS_TIME_H
+#    include <sys/time.h>
+#  else
+#    include <time.h>
+#  endif
+#endif
+
+#ifdef HAVE_UTIME_H
+#  include <utime.h>
+#else
+   /* It's really there. */
+   struct utimbuf
+   {
+     time_t actime;
+     time_t modtime;
+   };
+   extern int EXFUN (utime, (CONST char *, struct utimbuf *)); 
+#endif
+
+#ifdef HAVE_TERMIOS_H
+#  include <termios.h>
+#else
+#  ifdef HAVE_TERMIO_H
+#    include <termio.h>
+#  else
+#    ifdef HAVE_SGTTY_H
+#      include <sgtty.h>
+#    endif
+#  endif
+#endif
+
+#ifdef HAVE_SYS_POLL_H
+#  include <sys/poll.h>
+#endif
+
+#if defined(HAVE_SOCKET) && defined(HAVE_GETHOSTBYNAME) && defined(HAVE_GETHOSTNAME)
+#  define HAVE_SOCKETS
+#  include <sys/socket.h>
+#  include <netinet/in.h>
+#  include <netdb.h>
+#  ifdef HAVE_SYS_UN_H
+#    include <sys/un.h>
+#    ifdef AF_UNIX
+#      define HAVE_UNIX_SOCKETS
+#    endif
+#  endif
+#endif
+
+#ifdef HAVE_SYS_PTYIO_H
+#include <sys/ptyio.h>
+#endif
+
+#ifdef HAVE_BSDTTY_H
+#include <bsdtty.h>
+#endif
+
+#ifdef HAVE_STROPTS_H
+#include <stropts.h>
+#endif
 
 #include "intext.h"
 #include "dstack.h"
 #include "osscheme.h"
 #include "syscall.h"
 
-/* Conditionalizations that are overridden by _POSIX. */
+typedef RETSIGTYPE Tsignal_handler_result;
+typedef RETSIGTYPE (*Tsignal_handler) ();
 
-#ifdef _POSIX
-
-#ifdef __osf__
-#  include <sys/time.h>
-#  include <sys/ioctl.h>
-#  define NO_BAUD_CONVERSION
-#  define SYSTEM_VARIANT "OSF"
-#endif
-
-#ifdef __386BSD__
-#  include <sys/ioctl.h>
-#  define EMULATE_FPATHCONF
-#  define EMULATE_SYSCONF
-#  define NO_BAUD_CONVERSION
-#  define SYSTEM_VARIANT "386BSD"
-#endif
-
-#ifdef __FreeBSD__
-#  include <sys/ioctl.h>
-#  define EMULATE_FPATHCONF
-#  define EMULATE_SYSCONF
-#  define NO_BAUD_CONVERSION
-#  define SYSTEM_VARIANT "FreeBSD"
-#endif
-
-#ifdef __bsdi__			/* works on bsdi 3.0 */
-#  define SELECT_DECLARED
-#  include <sys/ioctl.h>
-#  define EMULATE_FPATHCONF
-#  define EMULATE_SYSCONF
-#  define NO_BAUD_CONVERSION
-#  define SYSTEM_VARIANT "BSDI BSD/OS"
-#endif
-
-#ifdef _IRIX6
-#define NO_BAUD_CONVERSION
-#endif
-
-/* no longer needed */
-#if 0
-#ifdef sonyrisc
-/* <limits.h> will redefine these. */
-#undef DBL_MAX
-#undef DBL_MIN
-#undef FLT_MAX
-#undef FLT_MIN
-#endif
-#endif
-
-#include <limits.h>
-#include <unistd.h>
-#include <time.h>
-#include <termios.h>
-#include <fcntl.h>
-#include <sys/wait.h>
-#include <dirent.h>
-#include <utime.h>
-
-#define DECL_GETLOGIN
-#define HAVE_APPEND
-#define HAVE_DIRENT
-#define HAVE_DUP2
-#define HAVE_FCNTL
-#define HAVE_GETCWD
-#define HAVE_MKDIR
-/* MKTIME is really ANSI C, but POSIX has it too ? */
-#define HAVE_MKTIME
-#define HAVE_POSIX_SIGNALS
-#define HAVE_RENAME
-#define HAVE_RMDIR
-#define HAVE_TERMIOS
-#define HAVE_TIMES
-#define HAVE_UTIME
-#define HAVE_WAITPID
-#define VOID_SIGNAL_HANDLERS
-
-#define ERRNO_NONBLOCK EAGAIN
-#define FCNTL_NONBLOCK O_NONBLOCK
-
-#ifdef _IRIX
-
-#define HAVE_DIR
-#define HAVE_SELECT
-#define HAVE_SIGCONTEXT
-#define HAVE_SOCKETS
-#define HAVE_SYMBOLIC_LINKS
-#define HAVE_UNIX_SOCKETS
-
-#endif /* _IRIX */
-
-#ifdef _AIX
-#define UNION_WAIT_STATUS
-#define SYSTEM_VARIANT "AIX"
-#endif /* _AIX */
-
-#else /* not _POSIX */
-#ifdef _BSD
-
-#include <fcntl.h>
-#include <sys/dir.h>
-#include <sgtty.h>
-#include <sys/time.h>
-#include <sys/wait.h>
-
-#define HAVE_APPEND
-#define HAVE_BSD_SIGNALS
-#define HAVE_BSD_TTY_DRIVER
-#define HAVE_DIR
-#define HAVE_DUP2
-#define HAVE_FCNTL
-#define HAVE_GETWD
-#define HAVE_MKDIR
-#define HAVE_RENAME
-#define HAVE_RMDIR
-#define HAVE_TIMES
-#define HAVE_WAIT3
-/* MORE/BSD has this -- do all 4.3 implementations? */
-/* #define HAVE_WAIT4 */
-#define UNION_WAIT_STATUS
-
-#if defined(_SUNOS4) || defined(sun4) || defined(_NEXTOS)
-#define VOID_SIGNAL_HANDLERS
-#endif
-
-#if defined(_SUNOS4) && defined(SIG_BLOCK)
-#define HAVE_POSIX_SIGNALS
-#endif
-
-#define ERRNO_NONBLOCK EWOULDBLOCK
-#define FCNTL_NONBLOCK FNDELAY
-
-#else /* not _BSD */
-#ifdef _SYSV
-
-#include <time.h>
-#include <termio.h>
-#include <fcntl.h>
-
-#define HAVE_APPEND
-#define HAVE_FCNTL
-#define HAVE_GETCWD
-#define HAVE_TERMIO
-#define HAVE_TIMES
-#define HAVE_TIMEZONE
-
-#define AMBIGUOUS_NONBLOCK
-#define ERRNO_NONBLOCK EAGAIN
-#define FCNTL_NONBLOCK O_NDELAY
-
-#ifdef _SYSV3
-
-#include <dirent.h>
-
-#define HAVE_DIRENT
-#define HAVE_DUP2
-#define HAVE_MKDIR
-#define HAVE_RMDIR
-#define HAVE_SYSV3_SIGNALS
-#define VOID_SIGNAL_HANDLERS
-
-#else /* not _SYSV3 */
-#ifdef _HPUX
-
-#include <sys/wait.h>
-
-#define HAVE_BSD_SIGNALS
-#define HAVE_DUP2
-#define HAVE_FTRUNCATE
-#define HAVE_MKDIR
-#define HAVE_RENAME
-#define HAVE_RMDIR
-#define HAVE_WAIT3
-
-#if (_HPUX_VERSION < 65)
-
-#include <ndir.h>
-#define HAVE_DIR
-
-#else /* (_HPUX_VERSION >= 65) */
-
-#include <dirent.h>
-#define HAVE_DIRENT
-#define HAVE_POSIX_SIGNALS
-#define HAVE_WAITPID
-#define VOID_SIGNAL_HANDLERS
-#define HAVE_STATFS
-
-#endif /* _HPUX_VERSION */
-
-#endif /* _HPUX */
-#endif /* _SYSV3 */
-#else /* not _SYSV */
-#ifdef _PIXEL
-
-#include <time.h>
-#include <sgtty.h>
-
-#define HAVE_BSD_TTY_DRIVER
-#define HAVE_DUMB_OPEN
-#define HAVE_DUP2
-#define HAVE_TIMES
-
-#endif /* _PIXEL */
-#endif /* _SYSV */
-#endif /* _BSD */
-#endif /* _POSIX */
-
-/* Conditionalizations that are independent of _POSIX. */
-
-#ifdef _BSD
-
-#define HAVE_BSD_JOB_CONTROL
-#define HAVE_FIONREAD
-#define HAVE_GETTIMEOFDAY
-#define HAVE_ITIMER
-#define HAVE_PTYS
-#define FIRST_PTY_LETTER 'p'
-#define HAVE_SELECT
-#define HAVE_SIGCONTEXT
-#define HAVE_SOCKETS
-#define HAVE_SYMBOLIC_LINKS
-#define HAVE_TRUNCATE
-#define HAVE_UNIX_SOCKETS
-#define HAVE_VFORK
-
-#ifdef __linux
-#define SYSTEM_VARIANT "GNU/Linux"
-#include <sys/time.h>
-#define HAVE_FTRUNCATE
-#define HAVE_STATFS
-#define HAVE_TIMEZONE
-#endif
-
-#ifdef _ULTRIX
-#define SYSTEM_VARIANT "Ultrix"
-#define HAVE_FTRUNCATE
-/* For now, they don't work */
-#undef HAVE_PTYS
-#endif
-
-#ifdef _NEXTOS
-#define SYSTEM_VARIANT "NeXT"
-#define HAVE_FTRUNCATE
-#define TIOCSIGSEND TIOCSIG
-#endif
-
-#ifdef __osf__
-#define HAVE_FTRUNCATE
-#define TIOCSIGSEND TIOCSIG
-#endif
-
-#ifdef _SUNOS4
-#define HAVE_FTRUNCATE
-#ifdef sun4
-#define TIOCSIGSEND TIOCSIGNAL
-#endif
-#endif
-
-#ifdef apollo
-#define SYSTEM_VARIANT "Domain"
-#undef S_IFIFO
-#endif
-
-#ifdef _SUNOS
-
-#define SYSTEM_VARIANT "SunOS"
-
-#include <sys/vadvise.h>
-#ifdef _SUNOS3
-#define USE_HOSTENT_ADDR
-#endif
-
-#else /* not _SUNOS */
-
-#ifdef _BSD4_2
-#define USE_HOSTENT_ADDR
-#endif
-
-#endif /* _SUNOS */
-
-#ifndef SYSTEM_VARIANT
-#define SYSTEM_VARIANT "BSD"
-#endif
-
-#else /* not _BSD */
-#ifdef _HPUX
-
-#include <sys/ptyio.h>
-
-#define SYSTEM_VARIANT "HP-UX"
-#define HAVE_GETTIMEOFDAY
-#define HAVE_ITIMER
-#define HAVE_NICE
-#define HAVE_PTYS
-#define FIRST_PTY_LETTER 'p'
-#define HAVE_SELECT
-#define HAVE_SIGCONTEXT
-#define HAVE_SOCKETS
-#define HAVE_SYMBOLIC_LINKS
-#define HAVE_TRUNCATE
-#define HAVE_VFORK
- 
-#if (_HPUX_VERSION >= 90)
-#define HAVE_POLL
-#endif
-
-#if (_HPUX_VERSION >= 65)
-/* Is this right for 800-series machines? */
-#define HAVE_UNIX_SOCKETS
-#endif
-
-#if (_HPUX_VERSION >= 65) || defined(hp9000s800)
-#include <bsdtty.h>
-#define HAVE_BSD_JOB_CONTROL
-#endif
-
-#if (_HPUX_VERSION >= 70) || defined(hp9000s800)
-#define HAVE_FIONREAD
-#endif
-
-#if (_HPUX_VERSION <= 65)
-#define USE_HOSTENT_ADDR
-#endif
-
-#else /* not _HPUX */
-#ifdef _AIX
-
-#define SYSTEM_VARIANT "AIX"
-#define HAVE_SOCKETS
-#define HAVE_VFORK
-
-#else /* not _AIX */
-#ifdef _SYSV4
-
-#define SYSTEM_VARIANT "ATT (Vr4)"
-
-#define HAVE_FIONREAD
-#define HAVE_FTRUNCATE
-#define HAVE_GETTIMEOFDAY
-#define HAVE_ITIMER
-#define HAVE_NICE
-#define HAVE_PTYS
-#define HAVE_SELECT
-#define HAVE_SIGCONTEXT
-#define HAVE_SOCKETS
-#define HAVE_SYMBOLIC_LINKS
-#define HAVE_TRUNCATE
-#define HAVE_UNIX_SOCKETS
-#define HAVE_VFORK
-
-#include <stropts.h>
-
-#undef PTY_ITERATION
-
-#define PTY_MASTER_NAME_SPRINTF(master_name)				\
-  sprintf ((master_name), "/dev/ptmx")
-
-#ifdef sonyrisc
-
-#define PTY_DECLARATIONS						\
-  extern int EXFUN (grantpt, (int));					\
-  extern int EXFUN (unlockpt, (int));					\
-  extern char * EXFUN (ptsname, (int));					\
-  extern void EXFUN (sony_block_sigchld, (void));			\
-  extern void EXFUN (sony_unblock_sigchld, (void))
-
-#define PTY_SLAVE_NAME_SPRINTF(slave_name, fd)				\
-{									\
-  sony_block_sigchld ();						\
-  grantpt (fd);								\
-  unlockpt (fd);							\
-  sprintf ((slave_name), "%s", (ptsname (fd)));				\
-  sony_unblock_sigchld ();						\
-}
-
-#else /* not sonyrisc */
-
-#define PTY_DECLARATIONS						\
-  extern int EXFUN (grantpt, (int));					\
-  extern int EXFUN (unlockpt, (int));					\
-  extern char * EXFUN (ptsname, (int))
-
-#define PTY_SLAVE_NAME_SPRINTF(slave_name, fd)				\
-{									\
-  grantpt (fd);								\
-  unlockpt (fd);							\
-  sprintf ((slave_name), "%s", (ptsname (fd)));				\
-}
-
-#endif /* not sonyrisc */
-
-/* Would be nice if HPUX and SYSV4 agreed on the name of this. */
-#define TIOCSIGSEND TIOCSIGNAL
-
-/* Must push various STREAMS modules onto the slave side of a PTY when
-   it is opened. */
-
-#define SLAVE_PTY_P(filename) ((strncmp ((filename), "/dev/pts/", 9)) == 0)
-
-#define SETUP_SLAVE_PTY(fd)						\
-  (((ioctl ((fd), I_PUSH, "ptem")) >= 0)				\
-   && ((ioctl ((fd), I_PUSH, "ldterm")) >= 0)				\
-   && ((ioctl ((fd), I_PUSH, "ttcompat")) >= 0))
-
-#else /* not _SYSV4 */
-#ifdef _SYSV3
-
-#define SYSTEM_VARIANT "ATT (Vr3)"
-
-#else /* not _SYSV3 */
-#ifdef _SYSV
-
-#define SYSTEM_VARIANT "ATT (V)"
-
-#else /* not _SYSV */
-#ifdef _PIXEL
-
-#define SYSTEM_VARIANT "Pixel"
-
-#define HAVE_FIONREAD
-#define HAVE_NICE
-
-#else /* not _PIXEL */
-
-#define SYSTEM_VARIANT "unknown"
-
-#endif /* not _PIXEL */
-#endif /* not _SYSV */
-#endif /* not _SYSV3 */
-#endif /* not _SYSV4 */
-#endif /* not _AIX */
-#endif /* not _HPUX */
-#endif /* not _BSD */
-
 #ifdef VOID_SIGNAL_HANDLERS
-typedef void Tsignal_handler_result;
-#define SIGNAL_HANDLER_RETURN() return
+#  define SIGNAL_HANDLER_RETURN() return
 #else
-typedef int Tsignal_handler_result;
-#define SIGNAL_HANDLER_RETURN() return (0)
-#endif
-
-typedef Tsignal_handler_result (*Tsignal_handler) ();
-
-#ifndef SIG_ERR
-#define SIG_ERR ((Tsignal_handler) (-1))
-#endif
-
-#if !defined(SIGCHLD) && defined(SIGCLD)
-#define SIGCHLD SIGCLD
-#endif
-#if !defined(SIGABRT) && defined(SIGIOT)
-#define SIGABRT SIGIOT
-#endif
-
-#ifndef HAVE_SIGCONTEXT
-struct sigcontext { long sc_sp, sc_pc; };
-#define HAVE_SIGCONTEXT
+#  define SIGNAL_HANDLER_RETURN() return (0)
 #endif
 
 /* Crufty, but it will work here. */
 #ifndef ENOSYS
-#define ENOSYS 0
+#  define ENOSYS 0
 #endif
-
-#ifndef HAVE_UTIME
-/* It's really there, but there may not be an include file. */
-
-struct utimbuf
-{
-  time_t actime;
-  time_t modtime;
-};
-
-extern int EXFUN (utime, (CONST char *, struct utimbuf *)); 
-#endif /* HAVE_UTIME */
-
-#ifdef UNION_WAIT_STATUS
-
-typedef union wait wait_status_t;
-
-#ifndef WEXITSTATUS
-#define WEXITSTATUS(_X) ((_X) . w_retcode)
-#endif
-
-#ifndef WTERMSIG
-#define WTERMSIG(_X) ((_X) . w_termsig)
-#endif
-
-#ifndef WSTOPSIG
-#define WSTOPSIG(_X) ((_X) . w_stopsig)
-#endif
-
-#else /* not UNION_WAIT_STATUS */
-
-typedef int wait_status_t;
-
-#ifndef WIFEXITED
-#define WIFEXITED(_X) (((_X) & 0377) == 0)
-#endif
-
-#ifndef WIFSTOPPED
-#define WIFSTOPPED(_X) (((_X) & 0377) == 0177)
-#endif
-
-#ifndef WIFSIGNALED
-#define WIFSIGNALED(_X) ((((_X) & 0377) != 0) && (((_X) & 0377) != 0177))
-#endif
-
-#ifndef WEXITSTATUS
-#define WEXITSTATUS(_X) (((_X) >> 8) & 0377)
-#endif
-
-#ifndef WTERMSIG
-#define WTERMSIG(_X) ((_X) & 0177)
-#endif
-
-#ifndef WSTOPSIG
-#define WSTOPSIG(_X) (((_X) >> 8) & 0377)
-#endif
-
-#endif /* UNION_WAIT_STATUS */
 
+#ifndef SIG_ERR
+#  define SIG_ERR ((Tsignal_handler) (-1))
+#endif
+
+#if !defined(SIGCHLD) && defined(SIGCLD)
+#  define SIGCHLD SIGCLD
+#endif
+#if !defined(SIGABRT) && defined(SIGIOT)
+#  define SIGABRT SIGIOT
+#endif
+
 /* Provide null defaults for all the signals we're likely to use so we
    aren't continually testing to see if they're defined. */
 
 #ifndef SIGLOST
-#define SIGLOST 0
+#  define SIGLOST 0
 #endif
 #ifndef SIGWINCH
-#define SIGWINCH 0
+#  define SIGWINCH 0
+#endif
+#ifndef SIGWINDOW
+#  define SIGWINDOW 0
+#endif
+#ifndef SIGXCPU
+#  define SIGXCPU 0
+#endif
+#ifndef SIGXFSZ
+#  define SIGXFSZ 0
 #endif
 #ifndef SIGURG
-#define SIGURG 0
+#  define SIGURG 0
 #endif
 #ifndef SIGIO
-#define SIGIO 0
+#  define SIGIO 0
 #endif
 #ifndef SIGUSR1
-#define SIGUSR1 0
+#  define SIGUSR1 0
 #endif
 #ifndef SIGUSR2
-#define SIGUSR2 0
+#  define SIGUSR2 0
 #endif
 #ifndef SIGVTALRM
-#define SIGVTALRM 0
+#  define SIGVTALRM 0
 #endif
 #ifndef SIGABRT
-#define SIGABRT 0
+#  define SIGABRT 0
 #endif
 #ifndef SIGPWR
-#define SIGPWR 0
+#  define SIGPWR 0
 #endif
 #ifndef SIGPROF
-#define SIGPROF 0
+#  define SIGPROF 0
 #endif
 #ifndef SIGSTOP
-#define SIGSTOP 0
+#  define SIGSTOP 0
 #endif
 #ifndef SIGTSTP
-#define SIGTSTP 0
+#  define SIGTSTP 0
 #endif
 #ifndef SIGCONT
-#define SIGCONT 0
+#  define SIGCONT 0
 #endif
 #ifndef SIGCHLD
-#define SIGCHLD 0
+#  define SIGCHLD 0
 #endif
 #ifndef SIGTTIN
-#define SIGTTIN 0
+#  define SIGTTIN 0
 #endif
 #ifndef SIGTTOU
-#define SIGTTOU 0
+#  define SIGTTOU 0
 #endif
 #ifndef SIGBUS
-#define SIGBUS 0
+#  define SIGBUS 0
 #endif
 #ifndef SIGEMT
-#define SIGEMT 0
+#  define SIGEMT 0
 #endif
 #ifndef SIGSYS
-#define SIGSYS 0
+#  define SIGSYS 0
 #endif
 
 /* constants for access() */
 #ifndef R_OK
-#define R_OK 4
-#define W_OK 2
-#define X_OK 1
-#define F_OK 0
+#  define R_OK 4
+#  define W_OK 2
+#  define X_OK 1
+#  define F_OK 0
 #endif
 
 #ifndef MAXPATHLEN
-#define MAXPATHLEN 1024
+#  define MAXPATHLEN 1024
 #endif
 
-#ifdef __STDC__
-#define ALERT_CHAR '\a'
-#define ALERT_STRING "\a"
+#ifdef HAVE_STDC
+#  define ALERT_CHAR '\a'
+#  define ALERT_STRING "\a"
 #else
-#define ALERT_CHAR '\007'
-#define ALERT_STRING "\007"
+#  define ALERT_CHAR '\007'
+#  define ALERT_STRING "\007"
 #endif
 
 #ifndef STDIN_FILENO
-#define STDIN_FILENO 0
-#define STDOUT_FILENO 1
-#define STDERR_FILENO 2
+#  define STDIN_FILENO 0
+#  define STDOUT_FILENO 1
+#  define STDERR_FILENO 2
 #endif
 
 /* constants for open() and fcntl() */
 #ifndef O_RDONLY
-#define O_RDONLY 0
-#define O_WRONLY 1
-#define O_RDWR 2
+#  define O_RDONLY 0
+#  define O_WRONLY 1
+#  define O_RDWR 2
 #endif
 
 /* mode bit definitions for open(), creat(), and chmod() */
 #ifndef S_IRWXU
-#define S_IRWXU 0700
-#define S_IRWXG 0070
-#define S_IRWXO 0007
+#  define S_IRWXU 0700
+#  define S_IRWXG 0070
+#  define S_IRWXO 0007
 #endif
 
 #ifndef S_IRUSR
-#define S_IRUSR 0400
-#define S_IWUSR 0200
-#define S_IXUSR 0100
-#define S_IRGRP 0040
-#define S_IWGRP 0020
-#define S_IXGRP 0010
-#define S_IROTH 0004
-#define S_IWOTH 0002
-#define S_IXOTH 0001
+#  define S_IRUSR 0400
+#  define S_IWUSR 0200
+#  define S_IXUSR 0100
+#  define S_IRGRP 0040
+#  define S_IWGRP 0020
+#  define S_IXGRP 0010
+#  define S_IROTH 0004
+#  define S_IWOTH 0002
+#  define S_IXOTH 0001
 #endif
 
 #define MODE_REG (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
@@ -708,98 +412,416 @@ typedef int wait_status_t;
 
 /* constants for lseek() */
 #ifndef SEEK_SET
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
+#  define SEEK_SET 0
+#  define SEEK_CUR 1
+#  define SEEK_END 2
 #endif
 
-#ifndef DECL_GETLOGIN
-extern char * EXFUN (getlogin, (void));
+#ifdef HAVE_GETLOGIN
+#  ifndef HAVE_UNISTD_H
+     extern char * EXFUN (getlogin, (void));
+#  endif
+#endif
+
+#ifndef STDC_HEADERS
+#  ifndef HAVE_MALLOC_H
+     extern PTR EXFUN (malloc, (size_t));
+     extern PTR EXFUN (realloc, (PTR, size_t));
+#  endif
+   extern char * EXFUN (getenv, (CONST char *));
 #endif
 
 #define UX_abort abort
+#define UX_accept accept
 #define UX_access access
 #define UX_alarm alarm
+#define UX_bind bind
 #define UX_chdir chdir
 #define UX_chmod chmod
 #define UX_close close
+#define UX_connect connect
 #define UX_ctime ctime
 #define UX_dup dup
+#define UX_fcntl fcntl
 #define UX_free free
 #define UX_fstat fstat
 #define UX_fstatfs fstatfs
+#define UX_ftruncate ftruncate
 #define UX_getegid getegid
 #define UX_getenv getenv
 #define UX_geteuid geteuid
 #define UX_getgid getgid
 #define UX_getgrgid getgrgid
+#define UX_gethostbyname gethostbyname
 #define UX_gethostname gethostname
 #define UX_getlogin getlogin
 #define UX_getpid getpid
 #define UX_getpwnam getpwnam
 #define UX_getpwuid getpwuid
+#define UX_getservbyname getservbyname
+#define UX_gettimeofday gettimeofday
 #define UX_getuid getuid
 #define UX_gmtime gmtime
 #define UX_ioctl ioctl
 #define UX_link link
+#define UX_listen listen
 #define UX_localtime localtime
 #define UX_lseek lseek
 #define UX_malloc malloc
 #define UX_mknod mknod
 #define UX_mktime mktime
+#define UX_open open
 #define UX_pause pause
 #define UX_pipe pipe
 #define UX_read read
+#define UX_readlink readlink
 #define UX_realloc realloc
+#define UX_rmdir rmdir
+#define UX_select select
+#define UX_setitimer setitimer
 #define UX_signal signal
 #define UX_sleep sleep
+#define UX_socket socket
 #define UX_stat stat
 #define UX_statfs statfs
+#define UX_symlink symlink
 #define UX_system system
 #define UX_time time
+#define UX_times times
+#define UX_truncate truncate
 #define UX_unlink unlink
 #define UX_utime utime
-#define UX_write write
-#define UX_wait wait
-
-extern PTR EXFUN (malloc, (unsigned int size));
-extern PTR EXFUN (realloc, (PTR ptr, unsigned int size));
-extern char * EXFUN (getenv, (CONST char * name));
-
-#ifndef __linux
-/* <unistd.h> in linux libc 2.3.3 has
-   extern int gethostname (char *__name, size_t __len); */
-# ifndef _HPUX
-/* <unistd.h> in HP-UX has mis-matching prototype 
-   The following is as specified by OSF/1 Programmer's reference.
- */
-extern int EXFUN (gethostname, (char * name, int size));
-# endif /* _HPUX */
-#endif /* linux */
-
-#ifdef HAVE_FCNTL
-#define UX_fcntl fcntl
-#endif
-
-#ifdef HAVE_TRUNCATE
-#define UX_ftruncate ftruncate
-#define UX_truncate truncate
-#endif
-
-#ifdef HAVE_VFORK
 #define UX_vfork vfork
-#else
-#define UX_vfork fork
-#endif
+#define UX_wait wait
+#define UX_write write
 
-#ifdef HAVE_SYMBOLIC_LINKS
+#ifdef HAVE_SYMLINK
 #define UX_lstat lstat
-#define UX_readlink readlink
-#define UX_symlink symlink
 #else
 #define UX_lstat stat
 #endif
+
+#ifdef HAVE_DUP2
+#  define UX_dup2 dup2
+#else
+#  ifdef HAVE_FCNTL
+   extern int EXFUN (UX_dup2, (int, int));
+#  define EMULATE_DUP2
+#  define HAVE_DUP2
+#  endif
+#endif
 
+#ifdef HAVE_GETCWD
+#  define UX_getcwd getcwd
+#else
+   extern char * EXFUN (UX_getcwd, (char *, size_t));
+#  define EMULATE_GETCWD
+#  define HAVE_GETCWD
+#endif
+
+#ifdef HAVE_MKDIR
+#  define UX_mkdir mkdir
+#else
+   extern int EXFUN (UX_mkdir, (CONST char *, mode_t));
+#  define EMULATE_MKDIR
+#  define HAVE_MKDIR
+#endif
+
+#ifdef HAVE_RENAME
+#  define UX_rename rename
+#else
+   extern int EXFUN (UX_rename, (CONST char *, CONST char *));
+#  define EMULATE_RENAME
+#  define HAVE_RENAME
+#endif
+
+#ifdef HAVE_WAITPID
+#  define UX_waitpid waitpid
+#else
+#  ifdef HAVE_WAIT3
+   extern int EXFUN (UX_waitpid, (pid_t, int *, int));
+#  define EMULATE_WAITPID
+#  define HAVE_WAITPID
+#  endif
+#endif
+
+#ifdef HAVE_CTERMID
+#  define UX_ctermid ctermid
+#else
+   extern char * EXFUN (UX_ctermid, (char * s));
+#  define EMULATE_CTERMID
+#endif
+
+#ifdef HAVE_KILL
+#  define UX_kill kill
+#else
+   extern int EXFUN (UX_kill, (pid_t pid, int sig));
+#  define EMULATE_KILL
+#endif
+
+#ifdef HAVE_POLL
+#  ifndef INFTIM
+#    define INFTIM (-1)
+#  endif
+#else
+#  ifdef FD_SET
+#    define SELECT_TYPE fd_set
+#  else
+#    define SELECT_TYPE int
+#    define FD_SETSIZE ((sizeof (int)) * CHAR_BIT)
+#    define FD_SET(n, p) ((*(p)) |= (1 << (n)))
+#    define FD_CLR(n, p) ((*(p)) &= ~(1 << (n)))
+#    define FD_ISSET(n, p) (((*(p)) & (1 << (n))) != 0)
+#    define FD_ZERO(p) ((*(p)) = 0)
+#  endif
+#endif
+
+#ifdef _POSIX_VERSION
+#  define ERRNO_NONBLOCK EAGAIN
+#  define FCNTL_NONBLOCK O_NONBLOCK
+#else
+#  ifdef EWOULDBLOCK
+#    define ERRNO_NONBLOCK EWOULDBLOCK
+#    define FCNTL_NONBLOCK FNDELAY
+#  else
+#    define AMBIGUOUS_NONBLOCK
+#    ifdef EAGAIN
+#      define ERRNO_NONBLOCK EAGAIN
+#    endif
+#    define FCNTL_NONBLOCK O_NDELAY
+#  endif
+#endif
+
+#if defined(HAVE_GRANTPT) && defined(HAVE_STROPTS_H) && !defined(__osf__) && !defined(__linux__)
+   /* Must push various STREAMS modules onto the slave side of a PTY
+      when it is opened.  */
+#  define SLAVE_PTY_P(filename) ((strncmp ((filename), "/dev/pts/", 9)) == 0)
+   extern int EXFUN (UX_setup_slave_pty, (int));
+#  define SETUP_SLAVE_PTY UX_setup_slave_pty
+#endif
+
+#ifndef TIOCSIGSEND
+#  ifdef TIOCSIGNAL
+#    define TIOCSIGSEND TIOCSIGNAL
+#  else
+#    ifdef TIOCSIG
+#      define TIOCSIGSEND TIOCSIG
+#    endif
+#  endif
+#endif
+
+#ifdef HAVE_TERMIOS_H
+
+typedef struct
+{
+  struct termios tio;
+#ifdef HAVE_STRUCT_LTCHARS
+  struct ltchars ltc;
+#endif
+} Ttty_state;
+
+#define UX_tcflush tcflush
+#define UX_tcdrain tcdrain
+#define UX_tcgetattr tcgetattr
+#define UX_tcsetattr tcsetattr
+
+#else /* not HAVE_TERMIOS_H */
+
+extern int EXFUN (UX_tcdrain, (int));
+extern int EXFUN (UX_tcflush, (int, int));
+/* These values chosen to match the ioctl TCFLSH argument for termio. */
+#define TCIFLUSH 0
+#define TCOFLUSH 1
+#define TCIOFLUSH 2
+
+#ifdef HAVE_TERMIO_H
+
+typedef struct
+{
+  struct termio tio;
+#ifdef HAVE_STRUCT_LTCHARS
+  struct ltchars ltc;
+#endif
+} Ttty_state;
+
+#else /* not HAVE_TERMIO_H */
+#ifdef HAVE_SGTTY_H
+
+typedef struct
+{
+  struct sgttyb sg;
+  struct tchars tc;
+#ifdef HAVE_STRUCT_LTCHARS
+  struct ltchars ltc;
+#endif
+  int lmode;
+} Ttty_state;
+
+#endif /* not HAVE_SGTTY_H */
+#endif /* not HAVE_TERMIO_H */
+#endif /* not HAVE_TERMIOS_H */
+
+extern int EXFUN (UX_terminal_get_state, (int, Ttty_state *));
+extern int EXFUN (UX_terminal_set_state, (int, Ttty_state *));
+
+#ifdef _POSIX_VERSION
+#  define UX_getpgrp getpgrp
+#  define UX_setsid setsid
+#  define UX_setpgid setpgid
+#  define UX_tcgetpgrp tcgetpgrp
+#  define UX_tcsetpgrp tcsetpgrp
+#else
+#  if defined(HAVE_GETPGRP) && defined(HAVE_SETPGRP)
+#    ifdef GETPGRP_VOID
+#      define UX_getpgrp getpgrp
+#    else
+       extern pid_t EXFUN (UX_getpgrp, (void));
+#      define EMULATE_GETPGRP
+#    endif
+#    ifdef SETPGRP_VOID
+#      define UX_setsid setpgrp
+#    else
+         extern pid_t EXFUN (UX_setsid, (void));
+#        define EMULATE_SETSID
+#    endif
+#    ifdef HAVE_SETPGRP2
+#      define UX_setpgid setpgrp2
+#    else
+#      ifdef SETPGRP_VOID
+         extern int UX_setpgid (pid_t, pid_t);
+#        define EMULATE_SETPGID
+#      else
+#        define UX_setpgid setpgrp
+#      endif
+#    endif
+#  endif
+   extern pid_t EXFUN (UX_tcgetpgrp, (int));
+#  define EMULATE_TCGETPGRP
+   extern int EXFUN (UX_tcsetpgrp, (int, pid_t));
+#  define EMULATE_TCSETPGRP
+#endif
+
+#ifdef HAVE_SIGACTION
+
+#define UX_sigemptyset sigemptyset
+#define UX_sigfillset sigfillset
+#define UX_sigaddset sigaddset
+#define UX_sigdelset sigdelset
+#define UX_sigismember sigismember
+#define UX_sigaction sigaction
+#define UX_sigsuspend sigsuspend
+#define UX_sigprocmask sigprocmask
+#define HAVE_POSIX_SIGNALS
+
+#else /* not HAVE_SIGACTION */
+
+typedef long sigset_t;
+extern int EXFUN (UX_sigemptyset, (sigset_t *));
+extern int EXFUN (UX_sigfillset, (sigset_t *));
+extern int EXFUN (UX_sigaddset, (sigset_t *, int));
+extern int EXFUN (UX_sigdelset, (sigset_t *, int));
+extern int EXFUN (UX_sigismember, (CONST sigset_t *, int));
+
+#ifdef HAVE_SIGVEC
+#  define UX_sigvec sigvec
+#else
+#  ifdef HAVE_SIGVECTOR
+#    define UX_sigvec sigvector
+#    define HAVE_SIGVEC
+#  endif
+#endif
+
+#ifdef HAVE_SIGVEC
+
+struct sigaction
+{
+  Tsignal_handler sa_handler;
+  sigset_t sa_mask;
+  int sa_flags;
+};
+
+extern int EXFUN
+  (UX_sigaction, (int, CONST struct sigaction *, struct sigaction *));
+extern int EXFUN (UX_sigprocmask, (int, CONST sigset_t *, sigset_t *));
+extern int EXFUN (UX_sigsuspend, (CONST sigset_t *));
+#define SIG_BLOCK 0
+#define SIG_UNBLOCK 1
+#define SIG_SETMASK 2
+
+#define HAVE_POSIX_SIGNALS
+
+#else /* not HAVE_SIGVEC */
+#ifdef HAVE_SIGHOLD
+
+#define UX_sigset sigset
+#define UX_sighold sighold
+#define UX_sigrelse sigrelse
+
+#endif /* HAVE_SIGHOLD */
+#endif /* HAVE_SIGVEC */
+#endif /* HAVE_SIGACTION */
+
+#ifdef _POSIX_VERSION
+
+#  ifndef HAVE_FPATHCONF
+     extern long EXFUN (fpathconf, (int, int));
+#    define EMULATE_FPATHCONF
+#  endif
+
+#  ifndef HAVE_SYSCONF
+     extern long EXFUN (sysconf, (int));
+#    define EMULATE_SYSCONF
+#  endif
+
+   extern cc_t EXFUN (UX_PC_VDISABLE, (int fildes));
+   extern clock_t EXFUN (UX_SC_CLK_TCK, (void));
+#  define UX_SC_OPEN_MAX() ((size_t) (sysconf (_SC_OPEN_MAX)))
+#  define UX_SC_CHILD_MAX() ((size_t) (sysconf (_SC_CHILD_MAX)))
+
+#  ifdef _POSIX_JOB_CONTROL
+#    define UX_SC_JOB_CONTROL() 1
+#  else
+#    define UX_SC_JOB_CONTROL() ((sysconf (_SC_JOB_CONTROL)) >= 0)
+#  endif
+
+#else /* not _POSIX_VERSION */
+
+#  define UX_PC_VDISABLE(fildes) '\377'
+
+#  ifdef OPEN_MAX
+#    define UX_SC_OPEN_MAX() OPEN_MAX
+#  else
+#    ifdef _NFILE
+#      define UX_SC_OPEN_MAX() _NFILE
+#    else
+#      define UX_SC_OPEN_MAX() 16
+#    endif
+#  endif
+
+#  ifdef CHILD_MAX
+#    define UX_SC_CHILD_MAX() CHILD_MAX
+#  else
+#    define UX_SC_CHILD_MAX() 6
+#  endif
+
+#  ifdef CLK_TCK
+#    define UX_SC_CLK_TCK() CLK_TCK
+#  else
+#    ifdef HZ
+#      define UX_SC_CLK_TCK() HZ
+#    else
+#      define UX_SC_CLK_TCK() 60
+#    endif
+#  endif
+
+#  ifdef TIOCGPGRP
+#    define UX_SC_JOB_CONTROL() 1
+#  else
+#    define UX_SC_JOB_CONTROL() 0
+#  endif
+
+#endif /* not _POSIX_VERSION */
+
 extern void EXFUN (UX_prim_check_errno, (enum syscall_names name));
 
 #define STD_VOID_SYSTEM_CALL(name, expression)				\
@@ -822,332 +844,5 @@ extern void EXFUN (UX_prim_check_errno, (enum syscall_names name));
     if (errno != EINTR)							\
       error_system_call (errno, (name));				\
 }
-
-#ifdef HAVE_TERMIOS
-
-typedef struct
-{
-  struct termios tio;
-#ifdef _HPUX
-  struct ltchars ltc;
-#endif
-} Ttty_state;
-
-#define UX_tcflush tcflush
-#define UX_tcdrain tcdrain
-#define UX_tcgetattr tcgetattr
-#define UX_tcsetattr tcsetattr
-
-#else /* not HAVE_TERMIOS */
-
-extern int EXFUN (UX_tcdrain, (int fd));
-extern int EXFUN (UX_tcflush, (int fd, int queue_selector));
-/* These values chosen to match the ioctl TCFLSH argument for termio. */
-#define TCIFLUSH 0
-#define TCOFLUSH 1
-#define TCIOFLUSH 2
-
-#ifdef HAVE_TERMIO
-
-typedef struct
-{
-  struct termio tio;
-#ifdef HAVE_BSD_JOB_CONTROL
-  struct ltchars ltc;
-#endif
-} Ttty_state;
-
-#else /* not HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
-
-typedef struct
-{
-  struct sgttyb sg;
-  struct tchars tc;
-#ifdef HAVE_BSD_JOB_CONTROL
-  struct ltchars ltc;
-#endif
-  int lmode;
-} Ttty_state;
-
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIO */
-#endif /* HAVE_TERMIOS */
-
-extern int EXFUN (UX_terminal_get_state, (int fd, Ttty_state * s));
-extern int EXFUN (UX_terminal_set_state, (int fd, Ttty_state * s));
-
-#ifdef _POSIX
-#define UX_getpgrp getpgrp
-#define UX_setsid setsid
-#else
-#ifdef _SYSV
-#define UX_getpgrp getpgrp
-#define UX_setsid setpgrp
-#else /* not _SYSV */
-extern pid_t EXFUN (UX_getpgrp, (void));
-extern pid_t EXFUN (UX_setsid, (void));
-#endif /* _SYSV */
-#endif /* _POSIX */
-
-#ifdef _POSIX
-
-#define UX_setpgid setpgid
-#define UX_tcgetpgrp tcgetpgrp
-#define UX_tcsetpgrp tcsetpgrp
-
-#else /* not _POSIX */
-
-extern pid_t EXFUN (UX_tcgetpgrp, (int fd));
-extern int EXFUN (UX_tcsetpgrp, (int fd, pid_t pgrp_id));
-
-#ifdef HAVE_BSD_JOB_CONTROL
-
-#ifdef _SYSV
-#define UX_setpgid setpgrp2
-#else
-#define UX_setpgid setpgrp
-#endif
-
-#endif /* HAVE_BSD_JOB_CONTROL */
-#endif /* _POSIX */
-
-#ifdef HAVE_GETTIMEOFDAY
-#define UX_gettimeofday gettimeofday
-#endif
-#ifdef HAVE_ITIMER
-#define UX_setitimer setitimer
-#endif
-#ifdef HAVE_RMDIR
-#define UX_rmdir rmdir
-#endif
-#ifdef HAVE_TIMES
-#define UX_times times
-#endif
-#ifdef HAVE_SOCKETS
-#define UX_connect connect
-#define UX_gethostbyname gethostbyname
-#define UX_getservbyname getservbyname
-#define UX_socket socket
-#define UX_bind bind
-#define UX_listen listen
-#define UX_accept accept
-#endif
-
-#ifdef HAVE_DUMB_OPEN
-extern int EXFUN (UX_open, (CONST char * name, int oflag, mode_t mode));
-#else
-#define UX_open open
-#endif
-
-#ifdef HAVE_DUP2
-#define UX_dup2 dup2
-#else
-#ifdef HAVE_FCNTL
-#define EMULATE_DUP2
-#define HAVE_DUP2
-extern int EXFUN (UX_dup2, (int fd, int fd2));
-#endif
-#endif
-
-#ifdef HAVE_GETCWD
-#define UX_getcwd getcwd
-#else
-#define EMULATE_GETCWD
-#define HAVE_GETCWD
-extern char * EXFUN (UX_getcwd, (char * buffer, size_t length));
-#endif
-
-#ifdef HAVE_MKDIR
-#define UX_mkdir mkdir
-#else
-#define EMULATE_MKDIR
-#define HAVE_MKDIR
-extern int EXFUN (UX_mkdir, (CONST char * name, mode_t mode));
-#endif
-
-#ifdef HAVE_RENAME
-#define UX_rename rename
-#else
-#define EMULATE_RENAME
-#define HAVE_RENAME
-extern int EXFUN (UX_rename, (CONST char * from_name, CONST char * to_name));
-#endif
-
-#ifdef HAVE_WAITPID
-#define UX_waitpid waitpid
-#else /* not HAVE_WAITPID */
-#ifdef HAVE_WAIT3
-#define EMULATE_WAITPID
-#define HAVE_WAITPID
-extern int EXFUN
-  (UX_waitpid, (pid_t pid, wait_status_t * stat_loc, int options));
-#endif /* HAVE_WAIT3 */
-#endif /* HAVE_WAITPID */
-
-#ifndef WUNTRACED
-#define WUNTRACED 0
-#endif
-
-#ifdef HAVE_SELECT
-#define UX_select select
-#endif /* HAVE_SELECT */
-
-#ifdef _BSD
-#define BSD_DEV_TTY "/dev/tty"
-#endif
-
-#if !defined(_POSIX) && defined(_BSD) && !defined(_SUNOS)
-#define L_ctermid ((strlen (BSD_DEV_TTY)) + 1);
-extern char * EXFUN (UX_ctermid, (char * s));
-extern int EXFUN (UX_kill, (pid_t pid, int sig));
-#else
-#define UX_ctermid ctermid
-#define UX_kill kill
-#endif
-
-#ifdef HAVE_POSIX_SIGNALS
-
-#define UX_sigemptyset sigemptyset
-#define UX_sigfillset sigfillset
-#define UX_sigaddset sigaddset
-#define UX_sigdelset sigdelset
-#define UX_sigismember sigismember
-#define UX_sigaction sigaction
-#define UX_sigsuspend sigsuspend
-#define UX_sigprocmask sigprocmask
-
-#else /* not HAVE_POSIX_SIGNALS */
-
-typedef long sigset_t;
-extern int EXFUN (UX_sigemptyset, (sigset_t * set));
-extern int EXFUN (UX_sigfillset, (sigset_t * set));
-extern int EXFUN (UX_sigaddset, (sigset_t * set, int signo));
-extern int EXFUN (UX_sigdelset, (sigset_t * set, int signo));
-extern int EXFUN (UX_sigismember, (CONST sigset_t * set, int signo));
-
-#ifdef HAVE_BSD_SIGNALS
-
-struct sigaction
-{
-  Tsignal_handler sa_handler;
-  sigset_t sa_mask;
-  int sa_flags;
-};
-
-extern int EXFUN
-  (UX_sigaction,
-   (int signo, CONST struct sigaction * act, struct sigaction * oact));
-extern int EXFUN
-  (UX_sigprocmask, (int how, CONST sigset_t * set, sigset_t * oset));
-extern int EXFUN (UX_sigsuspend, (CONST sigset_t * set));
-#define SIG_BLOCK 0
-#define SIG_UNBLOCK 1
-#define SIG_SETMASK 2
-
-#define HAVE_POSIX_SIGNALS
-
-#else /* not HAVE_BSD_SIGNALS */
-#ifdef HAVE_SYSV3_SIGNALS
-
-#define UX_sigset sigset
-#define UX_sighold sighold
-#define UX_sigrelse sigrelse
-
-#endif /* HAVE_SYSV3_SIGNALS */
-#endif /* HAVE_BSD_SIGNALS */
-#endif /* HAVE_POSIX_SIGNALS */
-
-#ifdef _POSIX
-
-#define HAVE_SIGSET_OPS
-
-#ifdef EMULATE_FPATHCONF
-
-/* These values match HP-UX, and the index in the table in the 
-   OSF/1 Programmer's reference.
- */
-
-extern long EXFUN (fpathconf, (int, int));
-
-#ifndef _PC_VDISABLE
-# define _PC_VDISABLE		8
-#endif
-
-#endif /* EMULATE_FPATHCONF */
-
-#ifdef EMULATE_SYSCONF
-
-extern long EXFUN (sysconf, (int));
-
-/* These values match HP-UX, and the index in the table in the 
-   OSF/1 Programmer's reference.
-
-   Note: The code assumes that if one is present, the rest
-   are too.  Otherwise there is no simple way to guarantee
-   that non-conflicting values have been chosen.
- */
-
-#ifndef _SC_CHILD_MAX
-# define _SC_CHILD_MAX		1
-# define _SC_CLK_TCK		2
-# define _SC_OPEN_MAX		4
-# define _SC_JOB_CONTROL	5
-#endif
-
-#endif /* EMULATE_SYSCONF */
-
-extern cc_t EXFUN (UX_PC_VDISABLE, (int fildes));
-extern clock_t EXFUN (UX_SC_CLK_TCK, (void));
-#define UX_SC_OPEN_MAX() ((size_t) (sysconf (_SC_OPEN_MAX)))
-#define UX_SC_CHILD_MAX() ((size_t) (sysconf (_SC_CHILD_MAX)))
-
-#ifdef _POSIX_JOB_CONTROL
-#define UX_SC_JOB_CONTROL() 1
-#else
-#define UX_SC_JOB_CONTROL() ((sysconf (_SC_JOB_CONTROL)) >= 0)
-#endif
-
-#else /* not _POSIX */
-
-#ifdef _SUNOS4
-#define HAVE_SIGSET_OPS
-#endif
-
-#define UX_PC_VDISABLE(fildes) '\377'
-
-#ifdef OPEN_MAX
-#define UX_SC_OPEN_MAX() OPEN_MAX
-#else
-#ifdef _NFILE
-#define UX_SC_OPEN_MAX() _NFILE
-#else
-#define UX_SC_OPEN_MAX() 16
-#endif
-#endif
-
-#ifdef CHILD_MAX
-#define UX_SC_CHILD_MAX() CHILD_MAX
-#else
-#define UX_SC_CHILD_MAX() 6
-#endif
-
-#ifdef CLK_TCK
-#define UX_SC_CLK_TCK() CLK_TCK
-#else
-#ifdef HZ
-#define UX_SC_CLK_TCK() HZ
-#else
-#define UX_SC_CLK_TCK() 60
-#endif
-#endif
-
-#ifdef HAVE_BSD_JOB_CONTROL
-#define UX_SC_JOB_CONTROL() 1
-#else
-#define UX_SC_JOB_CONTROL() 0
-#endif
-
-#endif /* _POSIX */
 
 #endif /* SCM_UX_H */

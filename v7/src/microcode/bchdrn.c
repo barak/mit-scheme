@@ -1,6 +1,6 @@
 /* -*- C -*-
 
-$Id: bchdrn.c,v 1.9 2000/01/18 03:04:40 cph Exp $
+$Id: bchdrn.c,v 1.10 2000/12/05 21:23:42 cph Exp $
 
 Copyright (c) 1991-2000 Massachusetts Institute of Technology
 
@@ -34,12 +34,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 extern char * EXFUN (error_name, (int));
 extern int EXFUN (retrying_file_operation,
-		  (/* no prototype because (CONST char *) != (char *) */
-		   int EXFUN((*), ()),
+		  (ssize_t EXFUN ((*), (int, char *, int)),
 		   int, char *, long, long, char *, char *, long *,
-		   int EXFUN((*), (char *, char *))));
+		   int EXFUN ((*), (char *, char *))));
 
-#ifdef HAVE_SYSV_SHARED_MEMORY
+#ifdef USE_SYSV_SHARED_MEMORY
 
 static struct
 {
@@ -91,7 +90,7 @@ static unsigned long * drone_version, * wait_mask;
 static jmp_buf abort_point;
 static pid_t boss_pid;
 
-static void EXFUN (shutdown, (int sig));
+static void EXFUN (kill_program, (int sig));
 
 static void 
 DEFUN (posix_signal, (signum, handler),
@@ -110,14 +109,14 @@ DEFUN (posix_signal, (signum, handler),
     fprintf (stderr, "%s (%d, posix_signal): sigaction failed. errno = %s.\n",
 	     arguments.program_name, myself->index, (error_name (errno)));
     fflush (stderr);
-    shutdown (0);
+    kill_program (0);
     /*NOTREACHED*/
   }
   return;
 }
 
 static void
-DEFUN (shutdown, (sig), int sig)
+DEFUN (kill_program, (sig), int sig)
 {
   myself->state = drone_dead;
   if (gc_fid != -1)
@@ -160,9 +159,6 @@ DEFUN (always_one, (operation_name, noise),
 static void
 DEFUN (process_requests, (drone), struct drone_info * drone)
 {
-#if !(defined(_HPUX) && (_HPUX_VERSION >= 80))
-  extern int EXFUN (select, (int, int *, int *, int *, struct timeval *));
-#endif
   sigset_t non_blocking_signal_mask, blocking_signal_mask;
   int result, count, buffer_index, flags;
   long current_position = -1;
@@ -182,7 +178,7 @@ DEFUN (process_requests, (drone), struct drone_info * drone)
     fflush (stderr);
     if (drone->DRONE_PPID == boss_pid)
       (void) (kill (boss_pid, SIGCONT));
-    shutdown (0);
+    kill_program (0);
     /*NOTREACHED*/
   }
 #ifdef DEBUG_1
@@ -269,7 +265,7 @@ redo_dispatch:
 		   "\n%s (%d, process_requests): Unknown/bad operation %d.\n",
 		   arguments.program_name, drone->index, drone->state);
 	  fflush (stderr);
-	  shutdown (0);
+	  kill_program (0);
 	  /*NOTREACHED*/
 
 	case drone_idle:
@@ -319,9 +315,7 @@ redo_dispatch:
 
 	  UX_sigprocmask (SIG_SETMASK, (&non_blocking_signal_mask), 0);
 	  result = (retrying_file_operation
-		    (((operation == drone_reading)
-		      ? ((int (*) ()) read)
-		      : ((int (*) ()) write)),
+		    (((operation == drone_reading) ? read : write),
 		     gc_fid, buffer_address,
 		     buffer->position, buffer->size, operation_name, NULL,
 		     &current_position, always_one));
@@ -380,7 +374,7 @@ redo_dispatch:
       {
 	count = 0;
 	if ((kill (boss_pid, 0)) == -1)
-	  shutdown (-1);
+	  kill_program (-1);
       }
       read_mask = (* wait_mask);
       if ((read_mask & my_mask) == my_mask)
@@ -425,8 +419,8 @@ DEFUN_VOID (start_drones)
 #endif
   posix_signal (SIGINT, SIG_IGN);
   posix_signal (SIGQUIT, SIG_IGN);
-  posix_signal (SIGHUP, shutdown);
-  posix_signal (SIGTERM, shutdown);
+  posix_signal (SIGHUP, kill_program);
+  posix_signal (SIGTERM, kill_program);
 
   gc_buffers = ((struct buffer_info *)
 		(shared_memory + (arguments.nbuf * arguments.bufsiz)));
@@ -535,7 +529,7 @@ DEFUN (main, (argc, argv), int argc AND char ** argv)
 
 #define MAIN main
 
-#endif /* HAVE_SYSV_SHARED_MEMORY */
+#endif /* USE_SYSV_SHARED_MEMORY */
 
 #ifndef MAIN
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.46 1999/01/02 06:11:34 cph Exp $
+$Id: sysprim.c,v 9.47 2000/12/05 21:23:48 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "prims.h"
 #include "ostty.h"
 #include "ostop.h"
+
+extern long EXFUN (OS_set_trap_state, (long));
 
 /* Pretty random primitives */
 
@@ -64,7 +66,6 @@ DEFINE_PRIMITIVE ("UNDER-EMACS?", Prim_under_emacs_p, 0, 0, 0)
 DEFINE_PRIMITIVE ("SET-TRAP-STATE!", Prim_set_trap_state, 1, 1, 0)
 {
   long result;
-  extern long OS_set_trap_state();
   PRIMITIVE_HEADER (1);
 
   result = (OS_set_trap_state (arg_nonnegative_integer (1)));

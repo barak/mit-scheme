@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: error.c,v 1.6 1999/01/03 05:34:02 cph Exp $
+$Id: error.c,v 1.7 2000/12/05 21:23:44 cph Exp $
 
-Copyright (C) 1990-1999 Massachusetts Institute of Technology
+Copyright (C) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -266,7 +266,7 @@ DEFUN (condition_restarts, (condition), Tcondition condition)
 {
   struct restart_record * record = current_restart_record;
   Tptrvec_length length = 0;
-  Tptrvec generalizations;
+  Tptrvec generalizations = 0;
   Tptrvec result;
   PTR * scan_result;
   if (condition == 0)

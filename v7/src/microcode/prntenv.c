@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prntenv.c,v 1.9 1999/03/09 05:38:59 cph Exp $
+$Id: prntenv.c,v 1.10 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
 /* Unix-specific process-environment primitives. */
-/* DOS imitation */
+/* Win32 imitation */
 
 #include "scheme.h"
 #include "prims.h"

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.34 2000/01/18 05:10:22 cph Exp $
+$Id: uxsig.c,v 1.35 2000/12/05 21:23:49 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -66,7 +66,7 @@ DEFUN (INSTALL_HANDLER, (signo, handler),
 }
 
 #else /* not HAVE_POSIX_SIGNALS */
-#ifdef HAVE_SYSV3_SIGNALS
+#ifdef HAVE_SIGHOLD
 
 static Tsignal_handler
 DEFUN (current_handler, (signo), int signo)
@@ -77,7 +77,7 @@ DEFUN (current_handler, (signo), int signo)
   return (result);
 }
 
-#else /* not HAVE_SYSV3_SIGNALS */
+#else /* not HAVE_SIGHOLD */
 
 static Tsignal_handler
 DEFUN (current_handler, (signo), int signo)
@@ -88,7 +88,7 @@ DEFUN (current_handler, (signo), int signo)
   return (result);
 }
 
-#endif /* HAVE_SYSV3_SIGNALS */
+#endif /* HAVE_SIGHOLD */
 #endif /* HAVE_POSIX_SIGNALS */
 
 #ifdef NEED_HANDLER_TRANSACTION
@@ -282,31 +282,9 @@ DEFUN (find_signal_name, (signo), int signo)
   return ((CONST char *) buffer);
 }
 
-#ifdef _HPUX
-
-#define OS_SPECIFIC_SIGNALS()						\
-{									\
-  defsignal (SIGPWR, "SIGPWR",		dfl_ignore,	0);		\
-  defsignal (SIGWINDOW, "SIGWINDOW",	dfl_ignore,	0);		\
-  defsignal (SIGLOST, "SIGLOST",	dfl_terminate,	0);		\
-}
-
-#else /* not _HPUX */
-#ifdef _BSD
-
-#define OS_SPECIFIC_SIGNALS()						\
-{									\
-  defsignal (SIGXCPU, "SIGXCPU",	dfl_terminate,	0);		\
-  defsignal (SIGXFSZ, "SIGXFSZ",	dfl_terminate,	0);		\
-  defsignal (SIGWINCH, "SIGWINCH",	dfl_ignore,	0);		\
-}
-
-#endif /* _BSD */
-#endif /* _HPUX */
-
 #if (SIGABRT == SIGIOT)
-#undef SIGABRT
-#define SIGABRT 0
+#  undef SIGABRT
+#  define SIGABRT 0
 #endif
 
 static void
@@ -351,9 +329,12 @@ DEFUN_VOID (initialize_signal_descriptors)
   defsignal (SIGCHLD, "SIGCHLD",	dfl_ignore,	0);
   defsignal (SIGTTIN, "SIGTTIN",	dfl_stop,	0);
   defsignal (SIGTTOU, "SIGTTOU",	dfl_stop,	0);
-#ifdef OS_SPECIFIC_SIGNALS
-  OS_SPECIFIC_SIGNALS ();
-#endif
+  defsignal (SIGLOST, "SIGLOST",	dfl_terminate,	0);
+  defsignal (SIGXCPU, "SIGXCPU",	dfl_terminate,	0);
+  defsignal (SIGXFSZ, "SIGXFSZ",	dfl_terminate,	0);
+  defsignal (SIGPWR, "SIGPWR",		dfl_ignore,	0);
+  defsignal (SIGWINDOW, "SIGWINDOW",	dfl_ignore,	0);
+  defsignal (SIGWINCH, "SIGWINCH",	dfl_ignore,	0);
 }
 
 #define CONTROL_B_INTERRUPT_CHAR 'B'
@@ -499,7 +480,7 @@ DEFUN_VOID (OS_restartable_exit)
    by conditionalizing the code inside the handler, but the Sun
    compiler won't accept this conditionalization.  */
 
-#ifdef HAVE_ITIMER
+#ifdef HAVE_SETITIMER
 
 static
 DEFUN_STD_HANDLER (sighnd_timer,
@@ -507,7 +488,7 @@ DEFUN_STD_HANDLER (sighnd_timer,
   request_timer_interrupt ();
 })
 
-#else /* not HAVE_ITIMER */
+#else /* not HAVE_SETITIMER */
 
 static
 DEFUN_STD_HANDLER (sighnd_timer,
@@ -517,7 +498,7 @@ DEFUN_STD_HANDLER (sighnd_timer,
   request_timer_interrupt ();
 })
 
-#endif /* not HAVE_ITIMER */
+#endif /* not HAVE_SETITIMER */
 
 static
 DEFUN_STD_HANDLER (sighnd_save_then_terminate,
@@ -571,14 +552,14 @@ DEFUN_STD_HANDLER (sighnd_renice,
 /* On systems with waitpid() (i.e. those that support WNOHANG) we must
    loop until there are no more processes, because some of those
    systems may deliver only one SIGCHLD when more than one child
-   terminates.  Systems without waitpid() (e.g. _SYSV) typically
+   terminates.  Systems without waitpid() (e.g. System V) typically
    provide queuing of SIGCHLD such that one SIGCHLD is delivered for
    every child that terminates.  Systems that provide neither
    waitpid() nor queuing are so losing that we can't win, in which
    case we just hope that child terminations don't happen too close to
    one another to cause problems. */
 
-void EXFUN ((*subprocess_death_hook), (pid_t pid, wait_status_t * status));
+void EXFUN ((*subprocess_death_hook), (pid_t pid, int * status));
 
 #ifdef HAVE_WAITPID
 #define WAITPID(status) (UX_waitpid ((-1), (status), (WNOHANG | WUNTRACED)))
@@ -593,7 +574,7 @@ DEFUN_STD_HANDLER (sighnd_dead_subprocess,
 {
   while (1)
     {
-      wait_status_t status;
+      int status;
       pid_t pid = (WAITPID (&status));
       if (pid <= 0)
 	break;
@@ -701,7 +682,7 @@ DEFUN_VOID (UX_initialize_child_signals)
     UX_sigprocmask (SIG_SETMASK, (&empty_mask), 0);
   }
 #else
-#ifdef HAVE_SYSV3_SIGNALS
+#ifdef HAVE_SIGHOLD
   /* We could do something more here, but it is hard to enumerate all
      the possible signals.  Instead, just release SIGCHLD, which we
      know was held before the child was spawned. */
@@ -1284,7 +1265,7 @@ DEFUN (vax_save_finish, (fp, pscp, scp),
 
 #endif /* vax */
 
-#if defined(sonyrisc) && defined(_SYSV4)
+#if defined(sonyrisc) && defined(HAVE_GRANTPT)
 /* Sony NEWS-OS 5.0.2 has a nasty bug because `sigaction' maintains a
    table which contains the signal handlers, and passes
    `sigaction_handler' to the kernel in place of any handler's
@@ -1340,4 +1321,4 @@ DEFUN_VOID (sony_unblock_sigchld)
   sigrelse (SIGCHLD);
 }
 
-#endif /* sonyrisc && _SYSV4 */
+#endif /* sonyrisc and HAVE_GRANTPT */

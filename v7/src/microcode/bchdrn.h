@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchdrn.h,v 1.9 1999/01/02 06:11:34 cph Exp $
+$Id: bchdrn.h,v 1.10 2000/12/05 21:23:42 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright (c) 1991-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,42 +24,34 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifndef _BCHDRN_H_INCLUDED
 #define _BCHDRN_H_INCLUDED
 
-#include "ansidecl.h"
-#include "oscond.h"
+#include "config.h"
 #include <errno.h>
 #include <signal.h>
 
-#if defined(_POSIX) || defined(_SUNOS4)
+#ifdef HAVE_UNISTD_H
 #  include <unistd.h>
 #else
-#ifndef DOS386
-#ifndef _OS2
-#ifndef WINNT
-  extern int EXFUN (read, (int, PTR, unsigned int));
-  extern int EXFUN (write, (int, PTR, unsigned int));
-#endif
-#endif
-#endif
+#  ifdef __unix__
+     extern ssize_t EXFUN (read, (int, PTR, size_t));
+     extern ssize_t EXFUN (write, (int, PTR, size_t));
+#  endif
 #endif
 
-#if defined(HAVE_POSIX_SIGNALS) && defined(HAVE_BSD_SIGNALS)
+#ifdef HAVE_POSIX_SIGNALS
 #  define RE_INSTALL_HANDLER(signum,handler)	do { } while (0)
 #else
 #  define RE_INSTALL_HANDLER(signum,handler)	signal (signum, handler)
 #endif
 
-/* #define AVOID_SYSV_SHARED_MEMORY */
+/* Doesn't work on GNU/Linux or on FreeBSD.  Disable until we can
+   figure out what is going on.  */
+#define AVOID_SYSV_SHARED_MEMORY
 
-#ifndef AVOID_SYSV_SHARED_MEMORY
-#  if defined(_SYSV4) || defined(_SUNOS4) || defined(_ULTRIX)
-#    define HAVE_SYSV_SHARED_MEMORY
-#  endif
-#  if defined(_HPUX) || defined(__osf__) || defined(_AIX)
-#    define HAVE_SYSV_SHARED_MEMORY
-#  endif
+#if !defined(AVOID_SYSV_SHARED_MEMORY) && defined(HAVE_SHMAT)
+#  define USE_SYSV_SHARED_MEMORY
 #endif
 
-#if defined(_HPUX)
+#if defined(__HPUX__)
 
 #  define HAVE_PREALLOC
 
@@ -70,7 +62,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* Page tables can have no gaps in HP-UX < 8.0, leave a gap for malloc. */
 
-#  ifdef hp9000s300
+#  if defined(hp9000s300) || defined(__hp9000s300)
 #    ifdef hpux8
 #      define ATTACH_POINT	0x60000000
 #    else /* not hpux8 */
@@ -78,9 +70,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #    endif /* hpux8 */
 #  endif /* hp9000s300 */
 
-#endif /* _HPUX */
+#endif /* __HPUX__ */
 
-#ifdef HAVE_SYSV_SHARED_MEMORY
+#ifdef USE_SYSV_SHARED_MEMORY
 
 #define DRONE_VERSION_NUMBER		((1 << 8) | 2)
 
@@ -112,7 +104,7 @@ typedef struct drone_extra_s drone_extra_t;
 #define DRONE_PID	drone_extra.my_pid
 #define DRONE_PPID	drone_extra.my_ppid
 
-#endif /* HAVE_SYSV_SHARED_MEMORY */
+#endif /* USE_SYSV_SHARED_MEMORY */
 
 /* Shared definitions for all versions */
 

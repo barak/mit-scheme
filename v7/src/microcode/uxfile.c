@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxfile.c,v 1.9 1999/01/02 06:11:34 cph Exp $
+$Id: uxfile.c,v 1.10 2000/12/05 21:23:49 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@ DEFUN (open_file, (filename, oflag), CONST char * filename AND int oflag)
   STD_UINT_SYSTEM_CALL
     (syscall_open, fd, (UX_open (filename, oflag, MODE_REG)));
 #ifdef SLAVE_PTY_P
-  if ((SLAVE_PTY_P (filename)) && (! (SETUP_SLAVE_PTY (fd))))
+  if ((SLAVE_PTY_P (filename)) && (!UX_setup_slave_pty (fd)))
     {
       int xerrno = errno;
       UX_close (fd);
@@ -89,7 +89,7 @@ DEFUN_OPEN_FILE (OS_open_input_file, O_RDONLY)
 DEFUN_OPEN_FILE (OS_open_output_file, (O_WRONLY | O_CREAT | O_TRUNC))
 DEFUN_OPEN_FILE (OS_open_io_file, (O_RDWR | O_CREAT))
 
-#ifdef HAVE_APPEND
+#ifdef O_APPEND
 
 DEFUN_OPEN_FILE (OS_open_append_file, (O_WRONLY | O_CREAT | O_APPEND))
 

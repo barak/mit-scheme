@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.48 2000/01/18 05:07:03 cph Exp $
+$Id: bignum.c,v 9.49 2000/12/05 21:23:43 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1072,7 +1072,7 @@ static bignum_type
 DEFUN (bignum_subtract_unsigned, (x, y),
        bignum_type x AND bignum_type y)
 {
-  int negative_p;
+  int negative_p = 0;
   switch (bignum_compare_unsigned (x, y))
     {
     case bignum_comparison_equal:
@@ -1351,7 +1351,7 @@ DEFUN (bignum_divide_unsigned_normalized, (u, v, q),
   bignum_digit_type * u_scan_start = (u_scan - v_length);
   bignum_digit_type * v_start = (BIGNUM_START_PTR (v));
   bignum_digit_type * v_end = (v_start + v_length);
-  bignum_digit_type * q_scan;
+  bignum_digit_type * q_scan = 0;
   bignum_digit_type v1 = (v_end[-1]);
   bignum_digit_type v2 = (v_end[-2]);
   fast bignum_digit_type ph;	/* high half of double-digit product */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prmcon.h,v 1.3 1999/01/02 06:11:34 cph Exp $
+$Id: prmcon.h,v 1.4 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1990, 1999 Massachusetts Institute of Technology
+Copyright (c) 1990, 1999, 2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -50,10 +50,10 @@ void EXFUN (immediate_error, (long error_code));
 
 #ifdef SCM_PRMCON_C
 
-SCHEME_OBJECT EXFUN (continue_fasload, (SCHEME_OBJECT *reentry_record));
+SCHEME_OBJECT EXFUN (continue_fasload, (SCHEME_OBJECT *));
 
-static
-SCHEME_OBJECT (* (continuation_procedures []))() = {
+static SCHEME_OBJECT EXFUN
+  ((* (continuation_procedures [])), (SCHEME_OBJECT *)) = {
   continue_fasload
 };
 

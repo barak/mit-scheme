@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.29 2000/01/18 05:11:09 cph Exp $
+$Id: uxtrap.c,v 1.30 2000/12/05 21:23:49 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -177,6 +177,9 @@ DEFUN (trap_handler, (message, signo, info, scp),
     }
   case trap_state_exit:
     termination_trap ();
+
+  default:
+    break;
   }
 
   fflush (stdout);
@@ -216,14 +219,6 @@ DEFUN (trap_handler, (message, signo, info, scp),
   }
 }
 
-static struct trap_recovery_info dummy_recovery_info =
-{
-  STATE_UNKNOWN,
-  SHARP_F,
-  SHARP_F,
-  SHARP_F
-};
-
 struct ux_sig_code_desc
 {
   int signo;
@@ -292,7 +287,7 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
        struct trap_recovery_info * trinfo AND
        SCHEME_OBJECT * new_stack_pointer)
 {
-  SCHEME_OBJECT handler;
+  SCHEME_OBJECT handler = SHARP_F;
   SCHEME_OBJECT signal_name, signal_code;
   int stack_recovered_p = (new_stack_pointer != 0);
   long saved_mask = (FETCH_INTERRUPT_MASK ());
@@ -392,7 +387,15 @@ DEFUN_VOID (soft_reset)
   setup_trap_frame (0, 0, 0, (&trinfo), new_stack_pointer);
 }
 
-#if !defined(HAVE_SIGCONTEXT) || !defined(HAS_COMPILER_SUPPORT) || defined(USE_STACKLETS)
+#if !defined(HAVE_STRUCT_SIGCONTEXT) || !defined(HAS_COMPILER_SUPPORT) || defined(USE_STACKLETS)
+
+static struct trap_recovery_info dummy_recovery_info =
+{
+  STATE_UNKNOWN,
+  SHARP_F,
+  SHARP_F,
+  SHARP_F
+};
 
 static void
 DEFUN (continue_from_trap, (signo, info, scp),
@@ -407,7 +410,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
   setup_trap_frame (signo, info, scp, (&dummy_recovery_info), 0);
 }
 
-#else /* HAVE_SIGCONTEXT and HAS_COMPILER_SUPPORT and not USE_STACKLETS */
+#else /* HAS_COMPILER_SUPPORT and not USE_STACKLETS */
 
 /* Heuristic recovery from Unix signals (traps).
 
@@ -506,7 +509,9 @@ DEFUN (continue_from_trap, (signo, info, scp),
   {
     /* In compiled code. */
     SCHEME_OBJECT * block_addr;
+#ifdef HAVE_FULL_SIGCONTEXT
     SCHEME_OBJECT * maybe_free;
+#endif
     block_addr =
       (pc_in_builtin
        ? ((SCHEME_OBJECT *) NULL)
@@ -756,7 +761,7 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
   return (0);
 }
 
-#endif /* HAVE_SIGCONTEXT and HAS_COMPILER_SUPPORT and not USE_STACKLETS */
+#endif /* HAS_COMPILER_SUPPORT and not USE_STACKLETS */
 
 
 

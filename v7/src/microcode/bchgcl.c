@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchgcl.c,v 9.50 1999/01/02 06:11:34 cph Exp $
+$Id: bchgcl.c,v 9.51 2000/12/05 21:23:42 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,274 +19,718 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-/* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
-   purify, and fasdump, respectively, to provide garbage collection
-   and related utilities to disk. */
+/* This is the main GC loop for bchscheme.  */
 
 #include "scheme.h"
 #include "bchgcc.h"
 
-SCHEME_OBJECT *
-DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
-       fast SCHEME_OBJECT * Scan AND
-       SCHEME_OBJECT ** To_ptr AND
-       SCHEME_OBJECT ** To_Address_ptr)
+#define MAYBE_DUMP_FREE(free)						\
+{									\
+  if (free >= free_buffer_top)						\
+    DUMP_FREE (free);							\
+}
+
+#define DUMP_FREE(free)							\
+  free = (dump_and_reset_free_buffer (free, 0))
+
+#define MAYBE_DUMP_SCAN(scan)						\
+{									\
+  if (scan >= scan_buffer_top)						\
+    DUMP_SCAN (scan);							\
+}
+
+#define DUMP_SCAN(scan)							\
+  scan = (dump_and_reload_scan_buffer (scan, 0))
+
+#define TRANSPORT_VECTOR(new_address, free, old_start, n_words)		\
+{									\
+  SCHEME_OBJECT * old_ptr = old_start;					\
+  SCHEME_OBJECT * free_end = (free + n_words);				\
+  if (free_end < free_buffer_top)					\
+    while (free < free_end)						\
+      (*free++) = (*old_ptr++);						\
+  else									\
+    {									\
+      while (free < free_buffer_top)					\
+	(*free++) = (*old_ptr++);					\
+      free = (transport_vector_tail (free, free_end, old_ptr));		\
+    }									\
+}
+
+static SCHEME_OBJECT *
+DEFUN (transport_vector_tail, (free, free_end, tail),
+       SCHEME_OBJECT * free AND
+       SCHEME_OBJECT * free_end AND
+       SCHEME_OBJECT * tail)
 {
-  fast SCHEME_OBJECT
-    * To, * Old, Temp, * low_heap,
-    * To_Address, New_Address;
-
-  To = (* To_ptr);
-  To_Address = (* To_Address_ptr);
-  low_heap = Constant_Top;
-
-  for ( ; Scan != To; Scan++)
+  unsigned long n_words = (free_end - free);
+  DUMP_FREE (free);
   {
-    Temp = (* Scan);
-    Switch_by_GC_Type (Temp)
-    {
-      case TC_BROKEN_HEART:
-        if (Temp != (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Scan)))
-	{
-	  sprintf (gc_death_message_buffer,
-		   "gcloop: broken heart (0x%lx) in scan",
-		   Temp);
-	  gc_death (TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
-	  /*NOTREACHED*/
-	}
-	if (Scan != scan_buffer_top)
-	  goto end_gcloop;
-	/* The -1 is here because of the Scan++ in the for header. */
-	Scan = ((dump_and_reload_scan_buffer (0, NULL)) - 1);
-	continue;
-
-      case TC_MANIFEST_NM_VECTOR:
-      case TC_MANIFEST_SPECIAL_NM_VECTOR:
-	/* Check whether this bumps over current buffer,
-	   and if so we need a new bufferfull. */
-	Scan += (OBJECT_DATUM (Temp));
-area_skipped:
-	if (Scan < scan_buffer_top)
-	  break;
-	else
-	{
-	  unsigned long overflow;
-
-	  /* The + & -1 are here because of the Scan++ in the for header. */
-	  overflow = ((Scan - scan_buffer_top) + 1);
-	  Scan = ((dump_and_reload_scan_buffer
-		   ((overflow >> gc_buffer_shift), NULL)
-		   + (overflow & gc_buffer_mask)) - 1);
-	  break;
-	}
-
-      case_compiled_entry_point:
-	relocate_compiled_entry (true);
-	(* Scan) = Temp;
-	break;
-
-      case TC_LINKAGE_SECTION:
+    unsigned long n_blocks = (n_words >> gc_buffer_shift);
+    if (n_blocks > 0)
       {
-	switch (READ_LINKAGE_KIND (Temp))
-	{
-	  case REFERENCE_LINKAGE_KIND:
-	  case ASSIGNMENT_LINKAGE_KIND:
-	  {
-	    /* count typeless pointers to quads follow. */
-
-	    fast long count;
-	    long max_count, max_here;
-
-	    Scan++;
-	    max_here = (scan_buffer_top - Scan);
-	    max_count = (READ_CACHE_LINKAGE_COUNT (Temp));
-	    while (max_count != 0)
-	    {
-	      count = ((max_count > max_here) ? max_here : max_count);
-	      max_count -= count;
-	      for ( ; --count >= 0; Scan += 1)
-	      {
-		Temp = (* Scan);
-		relocate_typeless_pointer (copy_quadruple (), 4);
-	      }
-	      if (max_count != 0)
-	      {
-		/* We stopped because we needed to relocate too many. */
-		Scan = (dump_and_reload_scan_buffer (0, NULL));
-		max_here = gc_buffer_size;
-	      }
-	    }
-	    /* The + & -1 are here because of the Scan++ in the for header. */
-	    Scan -= 1;
-	    break;
-	  }
-
-	  case OPERATOR_LINKAGE_KIND:
-	  case GLOBAL_OPERATOR_LINKAGE_KIND:
-	  {
-	    /* Operator linkage */
-
-	    fast long count;
-	    fast char * word_ptr, * next_ptr;
-	    long overflow;
-
-	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
-	    if (! (word_ptr > ((char *) scan_buffer_top)))
-	      BCH_START_OPERATOR_RELOCATION (Scan);
-	    else
-	    {
-	      overflow = (word_ptr - ((char *) Scan));
-	      extend_scan_buffer (word_ptr, To);
-	      BCH_START_OPERATOR_RELOCATION (Scan);
-	      word_ptr = (end_scan_buffer_extension (word_ptr));
-	      Scan = ((SCHEME_OBJECT *) (word_ptr - overflow));
-	    }
-	    
-	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
-	    overflow = ((END_OPERATOR_LINKAGE_AREA (Scan, count)) -
-			scan_buffer_top);
-
-	    for (next_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
-		 (--count >= 0);
-		 word_ptr = next_ptr,
-		 next_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr)))
-	    {
-	      if (! (next_ptr > ((char *) scan_buffer_top)))
-		relocate_linked_operator (true);
-	      else
-	      {
-		extend_scan_buffer (next_ptr, To);
-		relocate_linked_operator (true);
-		next_ptr = (end_scan_buffer_extension (next_ptr));
-		overflow -= gc_buffer_size;
-	      }
-	    }
-	    Scan = (scan_buffer_top + overflow);
-	    BCH_END_OPERATOR_RELOCATION (Scan);
-	    break;
-	  }
-
-	  case CLOSURE_PATTERN_LINKAGE_KIND:
-	    Scan += (READ_CACHE_LINKAGE_COUNT (Temp));
-	    goto area_skipped;
-
-	  default:
-	    gc_death (TERM_EXIT,
-		      "GC: Unknown compiler linkage kind.",
-		      Scan, Free);
-	    /*NOTREACHED*/
-	}
-	break;
-      }
-
-      case TC_MANIFEST_CLOSURE:
-      {
-	fast long count;
-	fast char * word_ptr;
-	char * end_ptr;
-
-	Scan += 1;
-
-	/* Is there enough space to read the count? */
-
-	end_ptr = (((char *) Scan) + (2 * (sizeof (format_word))));
-	if (end_ptr > ((char *) scan_buffer_top))
-	{
-	  long dw;
-
-	  extend_scan_buffer (end_ptr, To);
-	  BCH_START_CLOSURE_RELOCATION (Scan - 1);
-	  count = (MANIFEST_CLOSURE_COUNT (Scan));
-	  word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
-	  dw = (word_ptr - end_ptr);
-	  end_ptr = (end_scan_buffer_extension (end_ptr));
-	  word_ptr = (end_ptr + dw);
-	  Scan = ((SCHEME_OBJECT *) (end_ptr - (2 * (sizeof (format_word)))));
-	}
-	else
-	{
-	  BCH_START_CLOSURE_RELOCATION (Scan - 1);
-	  count = (MANIFEST_CLOSURE_COUNT (Scan));
-	  word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
-	}
-	end_ptr = ((char *) (MANIFEST_CLOSURE_END (Scan, count)));
-
-	for ( ; ((--count) >= 0);
-	     (word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr))))
-	{
-	  if (! ((CLOSURE_ENTRY_END (word_ptr)) > ((char *) scan_buffer_top)))
-	    relocate_manifest_closure (true);
-	  else
-	  {
-	    char * entry_end;
-	    long de, dw;
-
-	    entry_end = (CLOSURE_ENTRY_END (word_ptr));
-	    de = (end_ptr - entry_end);
-	    dw = (entry_end - word_ptr);
-	    extend_scan_buffer (entry_end, To);
-	    relocate_manifest_closure (true);
-	    entry_end = (end_scan_buffer_extension (entry_end));
-	    word_ptr = (entry_end - dw);
-	    end_ptr = (entry_end + de);
-	  }
-	}
-	Scan = ((SCHEME_OBJECT *) (end_ptr));
-	BCH_END_CLOSURE_RELOCATION (Scan);
-	break;
-      }
-
-      case_Cell:
-	relocate_normal_pointer (copy_cell(), 1);
-
-      case TC_REFERENCE_TRAP:
-	if ((OBJECT_DATUM (Temp)) <= TRAP_MAX_IMMEDIATE)
-	  /* It is a non pointer. */
-	  break;
-	/* It is a pair, fall through. */
-      case_Pair:
-	relocate_normal_pointer (copy_pair (), 2);
-
-      case TC_VARIABLE:
-      case_Triple:
-	relocate_normal_pointer (copy_triple (), 3);
-
-      case_Quadruple:
-	relocate_normal_pointer (copy_quadruple (), 4);
-
-      case_Aligned_Vector:
-	relocate_flonum_setup ();
-	goto Move_Vector;
-
-      case_Vector:
-	relocate_normal_setup ();
-      Move_Vector:
-	copy_vector (NULL);
-	relocate_normal_end ();
-
-      case TC_FUTURE:
-	relocate_normal_setup ();
-	if (!(Future_Spliceable (Temp)))
-	{
-	  goto Move_Vector;
-	}
-	*Scan = (Future_Value (Temp));
-	Scan -= 1;
-	continue;
-
-      case TC_WEAK_CONS:
-	relocate_normal_pointer (copy_weak_pair (), 2);
-
-      default:
-	GC_BAD_TYPE ("gcloop");
-	/* Fall Through */
-
-      case_Non_Pointer:
-	break;
+	free = (dump_free_directly (tail, n_blocks, 0));
+	tail += (n_blocks << gc_buffer_shift);
       }
   }
-end_gcloop:
-  (* To_ptr) = To;
-  (* To_Address_ptr) = To_Address;
-  return (Scan);
+  {
+    SCHEME_OBJECT * free_end = (free + (n_words & gc_buffer_mask));
+    while (free < free_end)
+      (*free++) = (*tail++);
+  }
+  return (free);
+}
+
+SCHEME_OBJECT *
+DEFUN (gc_loop,
+       (scan, free_ptr, new_address_ptr, low_heap, gc_mode,
+	require_normal_end),
+       SCHEME_OBJECT * scan AND
+       SCHEME_OBJECT ** free_ptr AND
+       SCHEME_OBJECT ** new_address_ptr AND
+       SCHEME_OBJECT * low_heap AND
+       gc_mode_t gc_mode AND
+       int require_normal_end)
+{
+  SCHEME_OBJECT * free = (*free_ptr);
+  SCHEME_OBJECT * new_address = (*new_address_ptr);
+  while (scan != free)
+    {
+      SCHEME_OBJECT object;
+      if (scan >= scan_buffer_top)
+	{
+	  if (scan == scan_buffer_top)
+	    DUMP_SCAN (scan);
+	  else
+	    {
+	      sprintf
+		(gc_death_message_buffer,
+		 "gc_loop: scan (0x%lx) > scan_buffer_top (0x%lx)",
+		 ((unsigned long) scan),
+		 ((unsigned long) scan_buffer_top));
+	      gc_death (TERM_EXIT, gc_death_message_buffer, scan, free);
+	      /*NOTREACHED*/
+	    }
+	}
+      object = (*scan);
+      switch (OBJECT_TYPE (object))
+	{
+	case TC_BROKEN_HEART:
+	  if (gc_mode != NORMAL_GC)
+	    goto end_gc_loop;
+	  if (object == (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan)))
+	    /* Does this ever happen?  */
+	    goto end_gc_loop;
+	  sprintf (gc_death_message_buffer,
+		   "gc_loop: broken heart (0x%lx) in scan",
+		   object);
+	  gc_death (TERM_BROKEN_HEART, gc_death_message_buffer, scan, free);
+	  /*NOTREACHED*/
+	  break;
+
+	case TC_CHARACTER:
+	case TC_CONSTANT:
+	case TC_FIXNUM:
+	case TC_NULL:
+	case TC_PCOMB0:
+	case TC_PRIMITIVE:
+	case TC_RETURN_CODE:
+	case TC_STACK_ENVIRONMENT:
+	case TC_THE_ENVIRONMENT:
+	  scan += 1;
+	  break;
+
+	case TC_CELL:
+	  if (gc_mode == CONSTANT_COPY)
+	    {
+	      scan += 1;
+	      break;
+	    }
+	  {
+	    SCHEME_OBJECT * old_start = (OBJECT_ADDRESS (object));
+	    if (old_start < low_heap)
+	      scan += 1;
+	    else if (BROKEN_HEART_P (*old_start))
+	      (*scan++) = (MAKE_OBJECT_FROM_OBJECTS (object, (*old_start)));
+	    else
+	      {
+		(*free++) = (old_start[0]);
+		MAYBE_DUMP_FREE (free);
+		(*scan++) = (OBJECT_NEW_ADDRESS (object, new_address));
+		(*old_start) = (MAKE_BROKEN_HEART (new_address));
+		new_address += 1;
+	      }
+	  }
+	  break;
+
+	case TC_ACCESS:
+	case TC_ASSIGNMENT:
+	case TC_COMBINATION_1:
+	case TC_COMMENT:
+	case TC_COMPLEX:
+	case TC_DEFINITION:
+	case TC_DELAY:
+	case TC_DELAYED:
+	case TC_DISJUNCTION:
+	case TC_ENTITY:
+	case TC_EXTENDED_PROCEDURE:
+	case TC_IN_PACKAGE:
+	case TC_LAMBDA:
+	case TC_LEXPR:
+	case TC_LIST:
+	case TC_PCOMB1:
+	case TC_PROCEDURE:
+	case TC_RATNUM:
+	case TC_SCODE_QUOTE:
+	case TC_SEQUENCE_2:
+	transport_pair:
+	  if (gc_mode == CONSTANT_COPY)
+	    {
+	      scan += 1;
+	      break;
+	    }
+	  goto really_transport_pair;
+
+	case TC_INTERNED_SYMBOL:
+	case TC_UNINTERNED_SYMBOL:
+	  if (gc_mode == PURE_COPY)
+	    {
+	      SCHEME_OBJECT name = (MEMORY_REF (object, SYMBOL_NAME));
+	      SCHEME_OBJECT * old_start = (OBJECT_ADDRESS (name));
+	      if ((old_start < low_heap)
+		  || (BROKEN_HEART_P (*old_start)))
+		scan += 1;
+	      else
+		{
+		  unsigned long n_words = (1 + (OBJECT_DATUM (*old_start)));
+		  TRANSPORT_VECTOR (new_address, free, old_start, n_words);
+		  (*scan++) = (OBJECT_NEW_ADDRESS (name, new_address));
+		  (*old_start) = (MAKE_BROKEN_HEART (new_address));
+		  new_address += n_words;
+		}
+	      break;
+	    }
+	really_transport_pair:
+	  {
+	    SCHEME_OBJECT * old_start = (OBJECT_ADDRESS (object));
+	    if (old_start < low_heap)
+	      scan += 1;
+	    else if (BROKEN_HEART_P (*old_start))
+	      (*scan++) = (MAKE_OBJECT_FROM_OBJECTS (object, (*old_start)));
+	    else
+	      {
+		(*free++) = (old_start[0]);
+		(*free++) = (old_start[1]);
+		MAYBE_DUMP_FREE (free);
+		(*scan++) = (OBJECT_NEW_ADDRESS (object, new_address));
+		(*old_start) = (MAKE_BROKEN_HEART (new_address));
+		new_address += 2;
+	      }
+	  }
+	  break;
+
+	case TC_COMBINATION_2:
+	case TC_CONDITIONAL:
+	case TC_EXTENDED_LAMBDA:
+	case TC_HUNK3_A:
+	case TC_HUNK3_B:
+	case TC_PCOMB2:
+	case TC_SEQUENCE_3:
+	case TC_VARIABLE:
+	  if (gc_mode == CONSTANT_COPY)
+	    {
+	      scan += 1;
+	      break;
+	    }
+	  {
+	    SCHEME_OBJECT * old_start = (OBJECT_ADDRESS (object));
+	    if (old_start < low_heap)
+	      scan += 1;
+	    else if (BROKEN_HEART_P (*old_start))
+	      (*scan++) = (MAKE_OBJECT_FROM_OBJECTS (object, (*old_start)));
+	    else
+	      {
+		(*free++) = (old_start[0]);
+		(*free++) = (old_start[1]);
+		(*free++) = (old_start[2]);
+		MAYBE_DUMP_FREE (free);
+		(*scan++) = (OBJECT_NEW_ADDRESS (object, new_address));
+		(*old_start) = (MAKE_BROKEN_HEART (new_address));
+		new_address += 3;
+	      }
+	  }
+	  break;
+
+	case TC_QUAD:
+	  if (gc_mode == CONSTANT_COPY)
+	    {
+	      scan += 1;
+	      break;
+	    }
+	  {
+	    SCHEME_OBJECT * old_start = (OBJECT_ADDRESS (object));
+	    if (old_start < low_heap)
+	      scan += 1;
+	    else if (BROKEN_HEART_P (*old_start))
+	      (*scan++) = (MAKE_OBJECT_FROM_OBJECTS (object, (*old_start)));
+	    else
+	      {
+		(*free++) = (old_start[0]);
+		(*free++) = (old_start[1]);
+		(*free++) = (old_start[2]);
+		(*free++) = (old_start[3]);
+		MAYBE_DUMP_FREE (free);
+		(*scan++) = (OBJECT_NEW_ADDRESS (object, new_address));
+		(*old_start) = (MAKE_BROKEN_HEART (new_address));
+		new_address += 4;
+	      }
+	  }
+	  break;
+
+	case TC_BIG_FIXNUM:
+	case TC_CHARACTER_STRING:
+	case TC_COMBINATION:
+	case TC_CONTROL_POINT:
+	case TC_NON_MARKED_VECTOR:
+	case TC_PCOMB3:
+	case TC_RECORD:
+	case TC_VECTOR:
+	case TC_VECTOR_16B:
+	case TC_VECTOR_1B:
+	  if (gc_mode == CONSTANT_COPY)
+	    {
+	      scan += 1;
+	      break;
+	    }
+	  goto transport_vector;
+
+	case TC_ENVIRONMENT:
+	  if (gc_mode == PURE_COPY)
+	    {
+	      scan += 1;
+	      break;
+	    }
+	transport_vector:
+	  {
+	    SCHEME_OBJECT * old_start = (OBJECT_ADDRESS (object));
+	    if (old_start < low_heap)
+	      scan += 1;
+	    else if (BROKEN_HEART_P (*old_start))
+	      (*scan++) = (MAKE_OBJECT_FROM_OBJECTS (object, (*old_start)));
+	    else
+	      {
+		unsigned long n_words = (1 + (OBJECT_DATUM (*old_start)));
+		TRANSPORT_VECTOR (new_address, free, old_start, n_words);
+		(*scan++) = (OBJECT_NEW_ADDRESS (object, new_address));
+		(*old_start) = (MAKE_BROKEN_HEART (new_address));
+		new_address += n_words;
+	      }
+	  }
+	  break;
+
+	case TC_BIG_FLONUM:
+	  if (gc_mode == CONSTANT_COPY)
+	    {
+	      scan += 1;
+	      break;
+	    }
+	  goto transport_aligned_vector;
+
+	case TC_COMPILED_CODE_BLOCK:
+	  if (gc_mode == PURE_COPY)
+	    {
+	      scan += 1;
+	      break;
+	    }
+	transport_aligned_vector:
+	  {
+	    SCHEME_OBJECT * old_start = (OBJECT_ADDRESS (object));
+	    if (old_start < low_heap)
+	      scan += 1;
+	    else if (BROKEN_HEART_P (*old_start))
+	      (*scan++) = (MAKE_OBJECT_FROM_OBJECTS (object, (*old_start)));
+	    else
+	      {
+		unsigned long n_words = (1 + (OBJECT_DATUM (*old_start)));
+		BCH_ALIGN_FLOAT (new_address, free);
+		TRANSPORT_VECTOR (new_address, free, old_start, n_words);
+		(*scan++) = (OBJECT_NEW_ADDRESS (object, new_address));
+		(*old_start) = (MAKE_BROKEN_HEART (new_address));
+		new_address += n_words;
+	      }
+	  }
+	  break;
+
+	case TC_WEAK_CONS:
+	  if (gc_mode == PURE_COPY)
+	    {
+	      scan += 1;
+	      break;
+	    }
+	  {
+	    SCHEME_OBJECT * old_start = (OBJECT_ADDRESS (object));
+	    if (old_start < low_heap)
+	      scan += 1;
+	    else if (BROKEN_HEART_P (*old_start))
+	      (*scan++) = (MAKE_OBJECT_FROM_OBJECTS (object, (*old_start)));
+	    else
+	      {
+		SCHEME_OBJECT weak_car = (old_start[0]);
+		if (((OBJECT_TYPE (weak_car)) == TC_NULL)
+		    || ((OBJECT_ADDRESS (weak_car)) < low_heap))
+		  {
+		    (*free++) = weak_car;
+		    (*free++) = (old_start[1]);
+		  }
+		else if (weak_pair_stack_ptr > weak_pair_stack_limit)
+		  {
+		    (*--weak_pair_stack_ptr) = ((SCHEME_OBJECT) new_address);
+		    (*--weak_pair_stack_ptr) = weak_car;
+		    (*free++) = SHARP_F;
+		    (*free++) = (old_start[1]);
+		  }
+		else
+		  {
+		    (*free++) = (OBJECT_NEW_TYPE (TC_NULL, weak_car));
+		    (*free++) = (old_start[1]);
+		    (old_start[1])
+		      = (MAKE_OBJECT_FROM_OBJECTS (weak_car, Weak_Chain));
+		    Weak_Chain = object;
+		  }
+		MAYBE_DUMP_FREE (free);
+		(*scan++) = (OBJECT_NEW_ADDRESS (object, new_address));
+		(*old_start) = (MAKE_BROKEN_HEART (new_address));
+		new_address += 2;
+	      }
+	  }
+	  break;
+
+	case TC_MANIFEST_NM_VECTOR:
+	case TC_MANIFEST_SPECIAL_NM_VECTOR:
+	  scan += (1 + (OBJECT_DATUM (object)));
+	  MAYBE_DUMP_SCAN (scan);
+	  break;
+
+	case TC_REFERENCE_TRAP:
+	  if ((OBJECT_DATUM (object)) > TRAP_MAX_IMMEDIATE)
+	    goto transport_pair;
+	  /* Otherwise it's a non-pointer.  */
+	  scan += 1;
+	  break;
+
+	case TC_COMPILED_ENTRY:
+	  if (gc_mode == PURE_COPY)
+	    {
+	      scan += 1;
+	      break;
+	    }
+	  {
+	    SCHEME_OBJECT * old_start;
+	    Get_Compiled_Block (old_start, (OBJECT_ADDRESS (object)));
+	    if (old_start < low_heap)
+	      scan += 1;
+	    else if (BROKEN_HEART_P (*old_start))
+	      (*scan++)
+		= (RELOCATE_COMPILED (object,
+				      (OBJECT_ADDRESS (*old_start)),
+				      old_start));
+	    else
+	      {
+		unsigned long n_words = (1 + (OBJECT_DATUM (*old_start)));
+		BCH_ALIGN_FLOAT (new_address, free);
+		TRANSPORT_VECTOR (new_address, free, old_start, n_words);
+		(*scan++)
+		  = (RELOCATE_COMPILED (object, new_address, old_start));
+		(*old_start) = (MAKE_BROKEN_HEART (new_address));
+		new_address += n_words;
+	      }
+	  }
+	  break;
+
+	case TC_LINKAGE_SECTION:
+	  if (gc_mode == PURE_COPY)
+	    {
+	      gc_death (TERM_COMPILER_DEATH,
+			"gc_loop: linkage section in pure area",
+			scan, free);
+	      /*NOTREACHED*/
+	    }
+	  switch (READ_LINKAGE_KIND (object))
+	    {
+	    case REFERENCE_LINKAGE_KIND:
+	    case ASSIGNMENT_LINKAGE_KIND:
+	      {
+		/* `count' typeless pointers to quads follow. */
+		unsigned long count = (READ_CACHE_LINKAGE_COUNT (object));
+		scan += 1;
+		while (count > 0)
+		  {
+		    SCHEME_OBJECT * old_start = (SCHEME_ADDR_TO_ADDR (*scan));
+		    if (old_start < low_heap)
+		      scan += 1;
+		    else if (BROKEN_HEART_P (*old_start))
+		      (*scan++)
+			= (ADDR_TO_SCHEME_ADDR (OBJECT_ADDRESS (*old_start)));
+		    else
+		      {
+			(*free++) = (old_start[0]);
+			(*free++) = (old_start[1]);
+			(*free++) = (old_start[2]);
+			(*free++) = (old_start[3]);
+			MAYBE_DUMP_FREE (free);
+			(*scan++) = (ADDR_TO_SCHEME_ADDR (new_address));
+			(*old_start) = (MAKE_BROKEN_HEART (new_address));
+			new_address += 4;
+		      }
+		    MAYBE_DUMP_SCAN (scan);
+		    count -= 1;
+		  }
+	      }
+	      break;
+
+	    case OPERATOR_LINKAGE_KIND:
+	    case GLOBAL_OPERATOR_LINKAGE_KIND:
+	      {
+		unsigned long count = (READ_OPERATOR_LINKAGE_COUNT (object));
+		char * entry = (FIRST_OPERATOR_LINKAGE_ENTRY (scan));
+		long delta;
+
+		{
+		  int extend_p = (entry >= ((char *) scan_buffer_top));
+		  long delta1 = (((char *) scan) - entry);
+		  if (extend_p)
+		    extend_scan_buffer (entry, free);
+		  BCH_START_OPERATOR_RELOCATION (scan);
+		  if (extend_p)
+		    {
+		      entry = (end_scan_buffer_extension (entry));
+		      scan = ((SCHEME_OBJECT *) (entry + delta1));
+		    }
+		}
+
+		/* END_OPERATOR_LINKAGE_AREA assumes that we will add
+		   one to the result, so do that now.  */
+		delta
+		  = (((END_OPERATOR_LINKAGE_AREA (scan, count)) + 1)
+		     - scan_buffer_top);
+
+		/* The operator entries are copied sequentially, but
+		   extra hair is required because the entry addresses
+		   are encoded.  */
+		while (count > 0)
+		  {
+		    char * next_entry = (NEXT_LINKAGE_OPERATOR_ENTRY (entry));
+		    int extend_p = (next_entry >= ((char *) scan_buffer_top));
+		    SCHEME_OBJECT esaddr;
+		    SCHEME_OBJECT * old_start;
+
+		    /* Guarantee that the scan buffer is large enough
+		       to hold the entry.  */
+		    if (extend_p)
+		      extend_scan_buffer (next_entry, free);
+
+		    /* Get the entry address.  */
+		    BCH_EXTRACT_OPERATOR_LINKAGE_ADDRESS (esaddr, entry);
+
+		    /* Get the code-block pointer for this entry.  */
+		    Get_Compiled_Block
+		      (old_start, (SCHEME_ADDR_TO_ADDR (esaddr)));
+
+		    /* Copy the block.  */
+		    if (old_start < low_heap)
+		      ;
+		    else if (BROKEN_HEART_P (*old_start))
+		      {
+			BCH_STORE_OPERATOR_LINKAGE_ADDRESS
+			  ((RELOCATE_COMPILED_RAW_ADDRESS
+			    (esaddr,
+			     (OBJECT_ADDRESS (*old_start)),
+			     old_start)),
+			   entry);
+		      }
+		    else
+		      {
+			unsigned long n_words
+			  = (1 + (OBJECT_DATUM (*old_start)));
+			BCH_ALIGN_FLOAT (new_address, free);
+			TRANSPORT_VECTOR
+			  (new_address, free, old_start, n_words);
+			BCH_STORE_OPERATOR_LINKAGE_ADDRESS
+			  ((RELOCATE_COMPILED_RAW_ADDRESS
+			    (esaddr, new_address, old_start)),
+			   entry);
+			(*old_start) = (MAKE_BROKEN_HEART (new_address));
+			new_address += n_words;
+		      }
+
+		    if (extend_p)
+		      {
+			entry = (end_scan_buffer_extension (next_entry));
+			delta -= gc_buffer_size;
+		      }
+		    else
+		      entry = next_entry;
+
+		    count -= 1;
+		  }
+		scan = (scan_buffer_top + delta);
+		MAYBE_DUMP_SCAN (scan);
+		BCH_END_OPERATOR_RELOCATION (scan);
+	      }
+	      break;
+
+	    case CLOSURE_PATTERN_LINKAGE_KIND:
+	      scan += (1 + (READ_CACHE_LINKAGE_COUNT (object)));
+	      MAYBE_DUMP_SCAN (scan);
+	      break;
+
+	    default:
+	      gc_death (TERM_EXIT, "gc_loop: Unknown compiler linkage kind.",
+			scan, free);
+	      /*NOTREACHED*/
+	      break;
+	    }
+	  break;
+
+	case TC_MANIFEST_CLOSURE:
+	  if (gc_mode == PURE_COPY)
+	    {
+	      gc_death (TERM_COMPILER_DEATH,
+			"gc_loop: manifest closure in pure area",
+			scan, free);
+	      /*NOTREACHED*/
+	    }
+	  {
+	    unsigned long count;
+	    char * entry;
+	    char * closure_end;
+
+	    {
+	      unsigned long delta = (2 * (sizeof (format_word)));
+	      char * count_end = (((char *) (scan + 1)) + delta);
+	      int extend_p = (count_end >= ((char *) scan_buffer_top));
+
+	      /* Guarantee that the scan buffer is large enough to
+		 hold the count field.  */
+	      if (extend_p)
+		extend_scan_buffer (count_end, free);
+
+	      BCH_START_CLOSURE_RELOCATION (scan);
+	      count = (MANIFEST_CLOSURE_COUNT (scan + 1));
+	      entry = (FIRST_MANIFEST_CLOSURE_ENTRY (scan + 1));
+
+	      if (extend_p)
+		{
+		  long dw = (entry - count_end);
+		  count_end = (end_scan_buffer_extension (count_end));
+		  entry = (count_end + dw);
+		}
+	      scan = ((SCHEME_OBJECT *) (count_end - delta));
+	    }
+
+	    /* MANIFEST_CLOSURE_END assumes that one will be added to
+	       result, so do that now.  */
+	    closure_end
+	      = ((char *) ((MANIFEST_CLOSURE_END (scan, count)) + 1));
+
+	    /* The closures are copied sequentially, but extra hair is
+	       required because the code-entry pointers are encoded as
+	       machine instructions.  */
+	    while (count > 0)
+	      {
+		char * entry_end = (CLOSURE_ENTRY_END (entry));
+		int extend_p = (entry_end >= ((char *) scan_buffer_top));
+		SCHEME_OBJECT esaddr;
+		SCHEME_OBJECT * old_start;
+		long delta1 = (entry - entry_end);
+		long delta2 = (closure_end - entry_end);
+
+		/* If the closure overflows the scan buffer, extend
+		   the buffer to the end of the closure.  */
+		if (extend_p)
+		  extend_scan_buffer (entry_end, free);
+
+		/* Extract the code-entry pointer and convert it to a
+		   C pointer.  */
+		BCH_EXTRACT_CLOSURE_ENTRY_ADDRESS (esaddr, entry);
+		Get_Compiled_Block (old_start, (SCHEME_ADDR_TO_ADDR (esaddr)));
+
+		/* Copy the code entry.  Use machine-specific macro to
+		   update the pointer. */
+		if (old_start < low_heap)
+		  ;
+		else if (BROKEN_HEART_P (*old_start))
+		  BCH_STORE_CLOSURE_ENTRY_ADDRESS
+		    ((RELOCATE_COMPILED_RAW_ADDRESS
+		      (esaddr, (OBJECT_ADDRESS (*old_start)), old_start)),
+		     entry);
+		else
+		  {
+		    unsigned long n_words = (1 + (OBJECT_DATUM (*old_start)));
+		    BCH_ALIGN_FLOAT (new_address, free);
+		    TRANSPORT_VECTOR (new_address, free, old_start, n_words);
+		    BCH_STORE_CLOSURE_ENTRY_ADDRESS
+		      ((RELOCATE_COMPILED_RAW_ADDRESS
+			(esaddr, new_address, old_start)),
+		       entry);
+		    (*old_start) = (MAKE_BROKEN_HEART (new_address));
+		    new_address += n_words;
+		  }
+
+		if (extend_p)
+		  {
+		    entry_end = (end_scan_buffer_extension (entry_end));
+		    entry = (entry_end + delta1);
+		    closure_end = (entry_end + delta2);
+		  }
+
+		entry = (NEXT_MANIFEST_CLOSURE_ENTRY (entry));
+		count -= 1;
+	      }
+	    scan = ((SCHEME_OBJECT *) closure_end);
+	    MAYBE_DUMP_SCAN (scan);
+	    BCH_END_CLOSURE_RELOCATION (scan);
+	  }
+	  break;
+
+	case TC_FUTURE:
+	  if (gc_mode == CONSTANT_COPY)
+	    {
+	      scan += 1;
+	      break;
+	    }
+	  {
+	    SCHEME_OBJECT * old_start = (OBJECT_ADDRESS (object));
+	    if (old_start < low_heap)
+	      scan += 1;
+	    else if (BROKEN_HEART_P (*old_start))
+	      (*scan++) = (MAKE_OBJECT_FROM_OBJECTS (object, (*old_start)));
+	    else if (Future_Spliceable (object))
+	      (*scan) = (Future_Value (object));
+	    else
+	      {
+		unsigned long n_words = (1 + (OBJECT_DATUM (*old_start)));
+		TRANSPORT_VECTOR (new_address, free, old_start, n_words);
+		(*scan++) = (OBJECT_NEW_ADDRESS (object, new_address));
+		(*old_start) = (MAKE_BROKEN_HEART (new_address));
+		new_address += n_words;
+	      }
+	  }
+	  break;
+
+	default:
+	  GC_BAD_TYPE ("gc_loop", object);
+	  scan += 1;
+	  break;
+	}
+    }
+ end_gc_loop:
+  (*free_ptr) = free;
+  (*new_address_ptr) = new_address;
+  if (require_normal_end && (scan != free))
+    {
+      gc_death (TERM_BROKEN_HEART, "gc_loop ended too early", scan, free);
+      /*NOTREACHED*/
+    }
+  return (scan);
 }

@@ -1,0 +1,249 @@
+# $Id: Makefile.in.in,v 1.2 2000/12/05 21:23:50 cph Exp $
+#
+# Copyright (c) 2000 Massachusetts Institute of Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# **** BEGIN BOILERPLATE ****
+
+SHELL = @SHELL@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+top_builddir = .
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@ $(AM_INSTALL_PROGRAM_FLAGS)
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+transform = @program_transform_name@
+
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+CONFIG_HEADER = config.h
+CONFIG_CLEAN_FILES = 
+
+# **** END BOILERPLATE ****
+
+# **** Tool configuration ****
+
+CC = @CC@
+M4 = $(srcdir)/makegen/m4.sh
+AS = as
+TAR = tar
+GZIP_ENV = --best
+
+DEFS = -DMIT_SCHEME @DEFS@ -I. -I$(srcdir) -I.
+CFLAGS = @CFLAGS@
+X_CFLAGS = @X_CFLAGS@
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
+M4_FLAGS = @M4_FLAGS@
+AS_FLAGS = @AS_FLAGS@
+
+COMPILE = $(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) $(X_CFLAGS)
+CCLD = $(CC)
+LINK = $(CCLD) $(CFLAGS) $(LDFLAGS) -o $@
+EXPAND = $(M4) $(M4_FLAGS)
+ASSEMBLE = $(AS) $(AS_FLAGS)
+
+# **** Configured files ****
+
+GC_HEAD_FILES = @GC_HEAD_FILES@
+OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
+OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@
+STATIC_LIBS = @STATIC_PREFIX@ @STATIC_LIBS@ @STATIC_SUFFIX@
+STATIC_PREFIX = @STATIC_PREFIX@
+STATIC_SUFFIX = @STATIC_SUFFIX@
+X_LIBS = @X_PRE_LIBS@ @LIB_X11@ @X_EXTRA_LIBS@
+
+# **** Non-configured files ****
+
+CORE_SOURCES = @(write-sources "files-core")@
+OS_PRIM_SOURCES = @(write-sources "files-os-prim")@
+UNIX_SOURCES =  @(write-sources "files-unix")@
+STD_GC_SOURCES = @(write-sources "files-gc-std")@
+BCH_GC_SOURCES = @(write-sources "files-gc-bch")@
+
+CORE_OBJECTS = @(write-objects "files-core")@
+OS_PRIM_OBJECTS = @(write-objects "files-os-prim")@
+UNIX_OBJECTS =  @(write-objects "files-unix")@
+STD_GC_OBJECTS = @(write-objects "files-gc-std")@
+BCH_GC_OBJECTS = @(write-objects "files-gc-bch")@
+
+SHARED_SOURCES = $(CORE_SOURCES) $(OS_PRIM_SOURCES) $(UNIX_SOURCES) \
+	$(OPTIONAL_SOURCES)
+
+SHARED_OBJECTS = $(CORE_OBJECTS) $(OS_PRIM_OBJECTS) $(UNIX_OBJECTS) \
+	$(OPTIONAL_OBJECTS)
+
+# **** Program definitions ****
+
+bin_PROGRAMS = scheme bchscheme
+lib_PROGRAMS = bchdrn
+EXTRA_PROGRAMS = findprim bintopsb psbtobin
+
+scheme_SOURCES = $(SHARED_SOURCES) $(STD_GC_SOURCES) usrdef.c
+scheme_OBJECTS = $(SHARED_OBJECTS) $(STD_GC_OBJECTS) usrdef.o
+scheme_DEPENDENCIES = 
+scheme_LDFLAGS = @X_LIBS@
+scheme_LIBS = $(STATIC_LIBS) $(X_LIBS) $(LIBS)
+
+bchscheme_SOURCES = $(SHARED_SOURCES) $(BCH_GC_SOURCES) bchdef.c
+bchscheme_OBJECTS = $(SHARED_OBJECTS) $(BCH_GC_OBJECTS) bchdef.o
+bchscheme_DEPENDENCIES = 
+bchscheme_LDFLAGS = @X_LIBS@
+bchscheme_LIBS = $(STATIC_LIBS) $(X_LIBS) $(LIBS)
+
+bchdrn_SOURCES = bchdrn.c bchutl.c
+bchdrn_OBJECTS = bchdrn.o bchutl.o
+bchdrn_DEPENDENCIES = 
+bchdrn_LDFLAGS = 
+bchdrn_LIBS = $(LIBS)
+
+findprim_SOURCES = findprim.c
+findprim_OBJECTS = findprim.o
+findprim_DEPENDENCIES = 
+findprim_LDFLAGS = 
+findprim_LIBS = $(LIBS)
+
+bintopsb_SOURCES = bintopsb.c missing.c
+bintopsb_OBJECTS = bintopsb.o missing.o
+bintopsb_DEPENDENCIES = 
+bintopsb_LDFLAGS = 
+bintopsb_LIBS = $(LIBS)
+
+psbtobin_SOURCES = psbtobin.c missing.c
+psbtobin_OBJECTS = psbtobin.o missing.o
+psbtobin_DEPENDENCIES = 
+psbtobin_LDFLAGS = 
+psbtobin_LIBS = $(LIBS)
+
+ALL_PROGRAMS = $(bin_PROGRAMS) $(lib_PROGRAMS)
+
+MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c bchdef.c
+
+CLEAN_FILES = $(ALL_PROGRAMS) $(EXTRA_PROGRAMS)
+
+DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
+	cmpauxmd.m4 cmpintmd.h TAGS
+
+MAINTAINER_CLEAN_FILES = Makefile.in makegen/Makefile.deps \
+	config.h.in configure
+
+SUBDIRS = cmpauxmd
+
+# **** Implicit rules ****
+
+.SUFFIXES:
+.SUFFIXES: .c .o .s .m4
+
+.c.o:
+	$(COMPILE) -c $*.c
+
+.m4.s:
+	$(EXPAND) $*.m4 > $*.s
+
+.s.o:
+	$(ASSEMBLE) -o $*.o $*.s
+
+# **** Main rules ****
+
+all: $(ALL_PROGRAMS)
+	@for subdir in $(SUBDIRS); do \
+	  echo "making $@ in $$subdir"; \
+	  ( cd $$subdir && $(MAKE) $@ ) || exit 1; \
+	done
+
+scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
+	-rm -f scheme
+	$(LINK) $(scheme_LDFLAGS) $(scheme_OBJECTS) $(scheme_LIBS)
+
+usrdef.c: $(SHARED_SOURCES) $(STD_GC_SOURCES) findprim
+	-rm -f usrdef.c
+	./findprim $(SHARED_SOURCES) $(STD_GC_SOURCES) > usrdef.c
+
+bchscheme: $(bchscheme_OBJECTS) $(bchscheme_DEPENDENCIES)
+	-rm -f bchscheme
+	$(LINK) $(bchscheme_LDFLAGS) $(bchscheme_OBJECTS) $(bchscheme_LIBS)
+
+bchdef.c: $(SHARED_SOURCES) $(BCH_GC_SOURCES) findprim
+	-rm -f bchdef.c
+	./findprim $(SHARED_SOURCES) $(BCH_GC_SOURCES) > bchdef.c
+
+bchdrn: $(bchdrn_OBJECTS) $(bchdrn_DEPENDENCIES)
+	-rm -f bchdrn
+	$(LINK) $(bchdrn_LDFLAGS) $(bchdrn_OBJECTS) $(bchdrn_LIBS)
+
+findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
+	-rm -f findprim
+	$(LINK) $(findprim_LDFLAGS) $(findprim_OBJECTS) $(findprim_LIBS)
+
+bintopsb: $(bintopsb_OBJECTS) $(bintopsb_DEPENDENCIES)
+	-rm -f bintopsb
+	$(LINK) $(bintopsb_LDFLAGS) $(bintopsb_OBJECTS) $(bintopsb_LIBS)
+
+psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
+	-rm -f psbtobin
+	$(LINK) $(psbtobin_LDFLAGS) $(psbtobin_OBJECTS) $(psbtobin_LIBS)
+
+tags: TAGS
+TAGS:
+	etags -r '/^DEF[A-Za-z_ \t(]+"\([^"]+\)"/' *.[ch]
+
+mostlyclean:
+	-rm -f $(MOSTLYCLEAN_FILES)
+
+clean: mostlyclean
+	-rm -f $(CLEAN_FILES)
+
+distclean: clean
+	-rm -f $(DISTCLEAN_FILES)
+
+maintainer-clean: distclean
+	-rm -f $(MAINTAINER_CLEAN_FILES)
+	@for subdir in $(SUBDIRS); do \
+	  echo "making $@ in $$subdir"; \
+	  ( cd $$subdir && $(MAKE) $@ ) || exit 1; \
+	done
+
+.PHONY: all tags TAGS mostlyclean clean distclean maintainer-clean
+
+# **** File dependencies ****
+
+@(write-dependencies)@
+
+# Tell versions [3.59,3.63) of GNU make to not export all variables.
+# Otherwise a system limit (for SysV at least) may be exceeded.
+.NOEXPORT:

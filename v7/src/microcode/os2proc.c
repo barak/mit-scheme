@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2proc.c,v 1.6 1999/01/02 06:11:34 cph Exp $
+$Id: os2proc.c,v 1.7 2000/12/05 21:23:46 cph Exp $
 
-Copyright (c) 1995-1999 Massachusetts Institute of Technology
+Copyright (c) 1995-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include "os2.h"
 #include "osproc.h"
+#include "osenv.h"
 
 extern const char * OS_working_dir_pathname (void);
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.103 2000/01/18 04:26:30 cph Exp $
+$Id: boot.c,v 9.104 2000/12/05 21:23:43 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -95,7 +95,7 @@ DEFUN (main_name, (argc, argv),
   scheme_program_name = (argv[0]);
   initial_C_stack_pointer = ((PTR) (&argc));
 
-#ifdef WINNT
+#ifdef __WIN32__
   {
     extern void NT_initialize_win32_system_utilities();
     NT_initialize_win32_system_utilities ();
@@ -104,7 +104,7 @@ DEFUN (main_name, (argc, argv),
 #ifdef PREALLOCATE_HEAP_MEMORY
   PREALLOCATE_HEAP_MEMORY ();
 #endif
-#ifdef _OS2
+#ifdef __OS2__
   {
     extern void OS2_initialize_early (void);
     OS2_initialize_early ();
@@ -135,7 +135,7 @@ DEFUN (main_name, (argc, argv),
       if (!option_band_specified)
 	{
 	  outf_console ("Scheme Microcode Version %d.%d\n",
-	                VERSION, SUBVERSION);
+	                SCHEME_VERSION, SCHEME_SUBVERSION);
 	  OS_initialize ();
 	  Enter_Interpreter ();
 	}
@@ -352,21 +352,12 @@ DEFUN_VOID (initialize_fixed_objects_vector)
      ARITY_DISPATCHER_TAG,
      char_pointer_to_symbol("#[(microcode)arity-dispatcher-tag]"));
 
-#ifdef DOS386
-  {
-    extern void EXFUN (DOS_initialize_fov, (SCHEME_OBJECT));
-
-    DOS_initialize_fov (fixed_objects_vector);
-  }
-#endif /* DOS386 */
-
-#ifdef WINNT
+#ifdef __WIN32__
   {
     extern void EXFUN (NT_initialize_fov, (SCHEME_OBJECT));
-    
     NT_initialize_fov (fixed_objects_vector);
   }
-#endif /* WINNT */
+#endif
 }
 
 /* Boot Scheme */
@@ -379,14 +370,18 @@ static void
 DEFUN (Start_Scheme, (Start_Prim, File_Name),
        int Start_Prim AND CONST char * File_Name)
 {
-  SCHEME_OBJECT FName, expr, * inner_arg, prim;
+  SCHEME_OBJECT FName;
+  SCHEME_OBJECT expr = SHARP_F;
+  SCHEME_OBJECT * inner_arg;
+  SCHEME_OBJECT prim;
   /* fast long i; */
   /* Parallel processor test */
   Boolean I_Am_Master = (Start_Prim != BOOT_GET_WORK);
   OS_initialize ();
   if (I_Am_Master)
     {
-      outf_console ("Scheme Microcode Version %d.%d\n",  VERSION, SUBVERSION);
+      outf_console ("Scheme Microcode Version %d.%d\n",
+		    SCHEME_VERSION, SCHEME_SUBVERSION);
       outf_console ("MIT Scheme running under %s\n", OS_Variant);
       OS_announcement ();
       outf_flush_console ();
@@ -485,23 +480,17 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   Enter_Interpreter ();
 }
 
-#ifdef WINNT
-
-extern void EXFUN (WinntEnterHook, (void (*) (void)));
-#define HOOK_ENTER_INTERPRETER WinntEnterHook
-
-#else /* not WINNT */
-#ifdef _OS2
-
-extern void EXFUN (OS2_enter_interpreter, (void (*) (void)));
-#define HOOK_ENTER_INTERPRETER OS2_enter_interpreter
-
-#else /* not _OS2 */
-
-#define HOOK_ENTER_INTERPRETER(func) func ()
-
-#endif /* not _OS2 */
-#endif /* not WINNT */
+#ifdef __WIN32__
+   extern void EXFUN (win32_enter_interpreter, (void (*) (void)));
+#  define HOOK_ENTER_INTERPRETER win32_enter_interpreter
+#else
+#  ifdef __OS2__
+     extern void EXFUN (OS2_enter_interpreter, (void (*) (void)));
+#    define HOOK_ENTER_INTERPRETER OS2_enter_interpreter
+#  else
+#    define HOOK_ENTER_INTERPRETER(func) func ()
+#  endif
+#endif
 
 static void
 DEFUN_VOID (Do_Enter_Interpreter)
@@ -604,12 +593,13 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
   fast SCHEME_OBJECT Result;
   PRIMITIVE_HEADER (0);
   Result = (make_vector (IDENTITY_LENGTH, SHARP_F, true));
-  FAST_VECTOR_SET (Result, ID_RELEASE,
-		   (char_pointer_to_string ((unsigned char *) RELEASE)));
   FAST_VECTOR_SET
-    (Result, ID_MICRO_VERSION, (LONG_TO_UNSIGNED_FIXNUM (VERSION)));
+    (Result, ID_RELEASE,
+     (char_pointer_to_string ((unsigned char *) SCHEME_RELEASE)));
   FAST_VECTOR_SET
-    (Result, ID_MICRO_MOD, (LONG_TO_UNSIGNED_FIXNUM (SUBVERSION)));
+    (Result, ID_MICRO_VERSION, (LONG_TO_UNSIGNED_FIXNUM (SCHEME_VERSION)));
+  FAST_VECTOR_SET
+    (Result, ID_MICRO_MOD, (LONG_TO_UNSIGNED_FIXNUM (SCHEME_SUBVERSION)));
   FAST_VECTOR_SET
     (Result, ID_PRINTER_WIDTH, (LONG_TO_UNSIGNED_FIXNUM (OS_tty_x_size ())));
   FAST_VECTOR_SET

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.25 1999/12/21 18:48:25 cph Exp $
+$Id: ntfs.c,v 1.26 2000/12/05 21:23:45 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,6 +23,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "ntfs.h"
 #include <string.h>
 #include "outf.h"
+
+#ifndef FILE_TOUCH_OPEN_TRIES
+#  define FILE_TOUCH_OPEN_TRIES 5
+#endif
 
 static enum get_file_info_result get_file_info_from_dir
   (const char *, BY_HANDLE_FILE_INFORMATION *);
@@ -293,6 +297,88 @@ void
 DEFUN (OS_directory_delete, (name), CONST char * name)
 {
   STD_BOOL_API_CALL (RemoveDirectory, (name));
+}
+
+static void EXFUN (protect_fd, (int fd));
+
+int
+OS_file_touch (const char * filename)
+{
+  int fd;
+  transaction_begin ();
+  {
+    unsigned int count = 0;
+    while (1)
+      {
+	count += 1;
+	/* Use O_EXCL to prevent overwriting existing file. */
+	fd = (open (filename, (O_RDWR | O_CREAT | O_EXCL), MODE_REG));
+	if (fd >= 0)
+	  {
+	    protect_fd (fd);
+	    transaction_commit ();
+	    return (1);
+	  }
+	if (errno == EEXIST)
+	  {
+	    fd = (open (filename, O_RDWR, MODE_REG));
+	    if (fd >= 0)
+	      {
+		protect_fd (fd);
+		break;
+	      }
+	    else if (errno == ENOENT)
+	      continue;
+	  }
+	if (count >= FILE_TOUCH_OPEN_TRIES)
+	  NT_error_unix_call (errno, syscall_open);
+      }
+  }
+  {
+    struct stat file_status;
+    STD_VOID_UNIX_CALL (fstat, (fd, (&file_status)));
+    if (((file_status . st_mode) & S_IFMT) != S_IFREG)
+      error_bad_range_arg (1);
+    /* CASE 3: file length of 0 needs special treatment. */
+    if ((file_status . st_size) == 0)
+     {
+	char buf [1];
+	(buf[0]) = '\0';
+	STD_VOID_UNIX_CALL (write, (fd, buf, 1));
+	transaction_commit ();
+	fd = (open (filename, (O_WRONLY | O_TRUNC), MODE_REG));
+	if (fd >= 0)
+	  STD_VOID_UNIX_CALL (close, (fd));
+	return (0);
+      }
+  }
+  /* CASE 4: read, then write back the first byte in the file. */
+  {
+    char buf [1];
+    int scr;
+    STD_UINT_UNIX_CALL (scr, read, (fd, buf, 1));
+    if (scr > 0)
+      {
+	STD_VOID_UNIX_CALL (lseek, (fd, 0, SEEK_SET));
+	STD_VOID_UNIX_CALL (write, (fd, buf, 1));
+      }
+  }
+  transaction_commit ();
+  return (0);
+}
+
+static void
+DEFUN (protect_fd_close, (ap), PTR ap)
+{
+  close (* ((int *) ap));
+}
+
+static void
+DEFUN (protect_fd, (fd), int fd)
+{
+  int * p = (dstack_alloc (sizeof (int)));
+  (*p) = fd;
+  transaction_record_action (tat_always, protect_fd_close, p);
 }
 
 typedef struct nt_dir_struct

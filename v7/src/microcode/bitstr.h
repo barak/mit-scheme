@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bitstr.h,v 1.9 1999/01/02 06:11:34 cph Exp $
+$Id: bitstr.h,v 1.10 2000/12/05 21:23:43 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* Byte order dependencies. */
 
-#ifdef VAX_BYTE_ORDER
+#ifndef WORDS_BIGENDIAN
 
 /*
 
@@ -101,7 +101,7 @@ The "size in bits" is a C "long" integer.
     offset = (OBJECT_LENGTH - offset);					\
 }
 
-#else /* not VAX_BYTE_ORDER */
+#else /* WORDS_BIGENDIAN */
 
 /*
 
@@ -155,4 +155,4 @@ The "size in bits" is a C "long" integer.
 #define COMPUTE_READ_BITS_OFFSET(offset, end)				\
   (offset) = ((offset) % OBJECT_LENGTH);
 
-#endif /* VAX_BYTE_ORDER */
+#endif /* WORDS_BIGENDIAN */

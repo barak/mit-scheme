@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osscheme.c,v 1.10 1999/01/02 06:11:34 cph Exp $
+$Id: osscheme.c,v 1.11 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
 #include "scheme.h"
-#include "osscheme.h"
 #include "prims.h"
+#include "osscheme.h"
 
 extern void
   EXFUN (signal_error_from_primitive, (long error_code));
@@ -56,7 +56,7 @@ DEFUN_VOID (executing_scheme_primitive_p)
   return (PRIMITIVE_P (Regs [REGBLOCK_PRIMITIVE]));
 }
 
-#ifdef _OS2
+#ifdef __OS2__
 
 void
 DEFUN_VOID (request_attention_interrupt)
@@ -75,7 +75,7 @@ DEFUN_VOID (test_and_clear_attention_interrupt)
   return ((code & INT_Global_1) != 0);
 }
 
-#endif /* _OS2 */
+#endif /* __OS2__ */
 
 void
 DEFUN_VOID (request_character_interrupt)

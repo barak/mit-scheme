@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pros2io.c,v 1.8 1999/01/02 06:11:34 cph Exp $
+$Id: pros2io.c,v 1.9 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright (c) 1994-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "scheme.h"
 #include "prims.h"
 #include "os2.h"
-#include "osproc.h"
+#include "os2proc.h"
 
 extern qid_t OS2_channel_thread_descriptor (Tchannel);
 

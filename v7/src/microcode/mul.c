@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: mul.c,v 9.34 1999/01/02 06:06:43 cph Exp $
+$Id: mul.c,v 9.35 2000/12/05 21:23:45 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#include "config.h"
+
 /* This file contains the fixnum multiplication procedure.  Returns
    SHARP_F if the result does not fit in a fixnum.  Note: The portable
    version has only been tried on machines with long = 32 bits.  This
@@ -29,7 +31,7 @@ extern SCHEME_OBJECT
 
 #if (TYPE_CODE_LENGTH == 8)
 
-#if defined(vax) && defined(_BSD)
+#if defined(vax) && defined(__unix__)
 
 #define MUL_HANDLED
 
@@ -87,11 +89,11 @@ DEFUN (Mul, (Arg1, Arg2),
      : SHARP_F);
 }
 
-#endif /* vax and _BSD */
+#endif /* vax and __unix__ */
 
 /* 68k family code.  Uses hp9000s300 conventions for the new compiler. */
 
-#if defined(hp9000s300) && !defined(old_cc) && !defined(__GNUC__)
+#if (defined(hp9000s300) || defined(__hp9000s300)) && !defined(old_cc) && !defined(__GNUC__)
 #define MUL_HANDLED
 
 /* The following constants are hard coded in the assembly language

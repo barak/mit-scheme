@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.25 1999/04/28 03:50:38 cph Exp $
+$Id: os2pmcon.c,v 1.26 2000/12/05 21:23:46 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright (c) 1994-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -424,7 +424,7 @@ process_events (int blockp)
 		    (void) WinMessageBox
 		      (HWND_DESKTOP, NULLHANDLE,
 		       "This is MIT Scheme Release "
-		       RELEASE
+		       SCHEME_RELEASE
 		       ", brought to you by the MIT Scheme Team.\n",
 		       "The Uncommon Lisp", 0, MB_OK);
 		    break;

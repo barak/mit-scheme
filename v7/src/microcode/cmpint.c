@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.91 1999/01/02 06:06:43 cph Exp $
+$Id: cmpint.c,v 1.92 2000/12/05 21:23:43 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -61,14 +61,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* Macro imports */
 
+#include "config.h"
 #include <stdio.h>
-#ifndef _NEXTOS
-#include <stdlib.h>
+#ifdef STDC_HEADERS
+#  include <stdlib.h>
 #endif
-#include "oscond.h"	/* Identify the operating system */
-#include "ansidecl.h"	/* Macros to support ANSI declarations */
 #include "dstack.h"	/* Dynamic-stack support */
-#include "config.h"     /* SCHEME_OBJECT type and machine dependencies */
 #include "outf.h"	/* error reporting */
 #include "types.h"      /* Needed by const.h */
 #include "const.h"      /* REGBLOCK_MINIMUM_LENGTH and PRIM_... codes */
@@ -95,14 +93,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #ifdef HAS_COMPILER_SUPPORT
 
-#ifndef FLUSH_I_CACHE_REGION
-#  define FLUSH_I_CACHE_REGION(addr, nwords) NOP()
-#endif
-
-#ifndef PUSH_D_CACHE_REGION
-#  define PUSH_D_CACHE_REGION(addr, nwords) FLUSH_I_CACHE_REGION(addr, nwords)
-#endif
-
 /* ASM_ENTRY_POINT, EXFNX, and DEFNX are for OS/2.  The IBM C Set++/2
    compiler has several different external calling conventions.  The
    default calling convention is called _Optlink, uses a combination
@@ -123,10 +113,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    C_to_interface, interface_to_C, and interface_to_scheme.  */
 
 #ifndef ASM_ENTRY_POINT
-#define ASM_ENTRY_POINT(name) name
+#  define ASM_ENTRY_POINT(name) name
 #endif
 
-#if defined(__STDC__) || defined(__IBMC__) || defined(CL386)
+#ifdef STDC_HEADERS
 #define EXFNX(name, proto) ASM_ENTRY_POINT (name) proto
 #define DEFNX(name, arglist, args) ASM_ENTRY_POINT (name) (args)
 #define DEFNX_VOID(name) ASM_ENTRY_POINT (name) (void)
@@ -293,7 +283,6 @@ extern C_UTILITY SCHEME_OBJECT
   EXFUN (compiled_block_debugging_info, (SCHEME_OBJECT block)),
   EXFUN (compiled_block_environment, (SCHEME_OBJECT block)),
   EXFUN (compiled_closure_to_entry, (SCHEME_OBJECT entry)),
-  * EXFUN (compiled_entry_to_block_address, (SCHEME_OBJECT entry)),
   EXFUN (compiled_entry_to_block, (SCHEME_OBJECT entry)),
   EXFUN (apply_compiled_from_primitive, (int)),
   EXFUN (compiled_with_interrupt_mask, (unsigned long,
@@ -310,30 +299,7 @@ extern C_UTILITY void
   EXFUN (compiler_reset, (SCHEME_OBJECT new_block)),
   EXFUN (store_variable_cache,
 	 (SCHEME_OBJECT extension, SCHEME_OBJECT block, long offset)),
-  EXFUN (compiled_entry_type, (SCHEME_OBJECT entry, long *buffer)),
   EXFUN (declare_compiled_code_block, (SCHEME_OBJECT block));  
-
-extern C_TO_SCHEME long
-  EXFUN (enter_compiled_expression, (void)),
-  EXFUN (apply_compiled_procedure, (void)),
-  EXFUN (return_to_compiled_code, (void)),
-  EXFUN (comp_link_caches_restart, (void)),
-  EXFUN (comp_op_lookup_trap_restart, (void)),
-  EXFUN (comp_interrupt_restart, (void)),
-  EXFUN (comp_assignment_trap_restart, (void)),
-  EXFUN (comp_cache_lookup_apply_restart, (void)),
-  EXFUN (comp_lookup_trap_restart, (void)),
-  EXFUN (comp_safe_lookup_trap_restart, (void)),
-  EXFUN (comp_unassigned_p_trap_restart, (void)),
-  EXFUN (comp_access_restart, (void)),
-  EXFUN (comp_reference_restart, (void)),
-  EXFUN (comp_safe_reference_restart, (void)),
-  EXFUN (comp_unassigned_p_restart, (void)),
-  EXFUN (comp_unbound_p_restart, (void)),
-  EXFUN (comp_assignment_restart, (void)),
-  EXFUN (comp_definition_restart, (void)),
-  EXFUN (comp_lookup_apply_restart, (void)),
-  EXFUN (comp_error_restart, (void));
 
 extern utility_table_entry utility_table[];
 
@@ -820,12 +786,12 @@ DEFNX (comutil_return_to_interpreter,
   RETURN_TO_C (PRIM_DONE);
 }
 
-#if (COMPILER_PROCESSOR_TYPE != COMPILER_I386_TYPE)
+#if (COMPILER_PROCESSOR_TYPE != COMPILER_IA32_TYPE)
 
 #define INVOKE_RETURN_ADDRESS()					\
   RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()))
 
-#else /* i386 */
+#else /* COMPILER_IA32_TYPE */
 
 static utility_result
   EXFUN (compiler_interrupt_common, (SCHEME_ADDR, SCHEME_OBJECT));
@@ -839,7 +805,7 @@ static utility_result
     RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
 } while (0)
 
-#endif /* i386 */
+#endif /* COMPILER_IA32_TYPE */
 
 /*
   comutil_primitive_apply is used to invoked a C primitive.
@@ -1088,7 +1054,7 @@ DEFUN (link_cc_block,
        long original_count AND
        instruction * ret_add)
 {
-  Boolean execute_p;
+  Boolean execute_p = false;
   register long entry_size, count;
   SCHEME_OBJECT block;
   SCHEME_OBJECT header;
@@ -1224,16 +1190,26 @@ DEFUN (link_cc_block,
 exit_proc:
   /* Rather than commit, since we want to undo */
   transaction_abort ();
+#if defined(FLUSH_I_CACHE_REGION) || defined(PUSH_D_CACHE_REGION)
   {
     SCHEME_OBJECT * ret_add_block;
     unsigned long block_len = (((unsigned long) (* block_address)) + 1);
     
     Get_Compiled_Block (ret_add_block, ((SCHEME_OBJECT *) ret_add));
     if (ret_add_block == block_address)
-      FLUSH_I_CACHE_REGION (block_address, block_len);
+      {
+#ifdef FLUSH_I_CACHE_REGION
+	FLUSH_I_CACHE_REGION (block_address, block_len);
+#endif
+      }
     else
-      PUSH_D_CACHE_REGION (block_address, block_len);
+      {
+#ifdef PUSH_D_CACHE_REGION
+	PUSH_D_CACHE_REGION (block_address, block_len);
+#endif
+      }
   }
+#endif
   return (result);
 }
 
@@ -1294,7 +1270,7 @@ DEFUN_VOID (comp_link_caches_restart)
   instruction * ret_add;
 
   original_count = (OBJECT_DATUM (STACK_POP()));
-  STACK_POP ();					/* Loop count, for debugger */
+  (void) STACK_POP ();		/* Loop count, for debugger */
   block = (STACK_POP ());
   environment = (compiled_block_environment (block));
   Store_Env (environment);
@@ -2294,7 +2270,7 @@ DEFUN_VOID (comp_error_restart)
 {
   instruction * ret_add;
 
-  STACK_POP ();			/* primitive */
+  (void) STACK_POP ();		/* primitive */
   ret_add = ((instruction *) (OBJECT_ADDRESS (STACK_POP ())));
   ENTER_SCHEME (ret_add);
 }
@@ -2534,16 +2510,15 @@ DEFUN (compiled_entry_type,
   buffer[0] = kind;
   buffer[1] = field1;
   buffer[2] = field2;
-  return;
 }
 
 void
 DEFUN (declare_compiled_code_block, (block), SCHEME_OBJECT block)
 {
+#ifdef PUSH_D_CACHE_REGION
   SCHEME_OBJECT * block_addr = (OBJECT_ADDRESS (block));
-
   PUSH_D_CACHE_REGION (block_addr, (1+ (OBJECT_DATUM (* block_addr))));
-  return;
+#endif
 }
 
 /* Destructuring free variable caches. */
@@ -2557,7 +2532,6 @@ DEFUN (store_variable_cache,
   FAST_MEMORY_SET (block, offset,
                    ((SCHEME_OBJECT)
 		    (ADDR_TO_SCHEME_ADDR (OBJECT_ADDRESS (extension)))));
-  return;
 }
 
 C_UTILITY SCHEME_OBJECT
@@ -2596,13 +2570,13 @@ DEFUN (store_uuo_link,
   STORE_EXECUTE_CACHE_CODE (cache_address);
   STORE_EXECUTE_CACHE_ADDRESS (cache_address,
 			       (ADDR_TO_SCHEME_ADDR (entry_address)));
+#ifdef FLUSH_I_CACHE_REGION
   if (!linking_cc_block_p)
-  {
-    /* The linker will flush the whole region afterwards. */
-
-    FLUSH_I_CACHE_REGION (cache_address, EXECUTE_CACHE_ENTRY_SIZE);
-  }
-  return;
+    {
+      /* The linker will flush the whole region afterwards. */
+      FLUSH_I_CACHE_REGION (cache_address, EXECUTE_CACHE_ENTRY_SIZE);
+    }
+#endif
 }
 
 /* This makes a fake compiled procedure which traps to kind handler when
@@ -3067,8 +3041,8 @@ DEFNX (comutil_reflect_to_interface,
 
     case REFLECT_CODE_STACK_MARKER:
     {
-      STACK_POP ();		/* marker1 */
-      STACK_POP ();		/* marker2 */
+      (void) STACK_POP ();	/* marker1 */
+      (void) STACK_POP ();	/* marker2 */
       INVOKE_RETURN_ADDRESS ();
     }
 
@@ -3195,7 +3169,7 @@ struct util_descriptor_s
   char * name;
 };
 
-#ifdef __STDC__
+#ifdef STDC_HEADERS
 #  define UTLD(name)  { ((PTR) name), #name }
 #else
 /* Hope that this works. */
@@ -3548,7 +3522,7 @@ SCHEME_OBJECT
   compiler_utilities,
   return_to_interpreter;
 
-#if !defined(REGBLOCK_ALLOCATED_BY_INTERFACE) && !defined(WINNT)
+#if !defined(REGBLOCK_ALLOCATED_BY_INTERFACE) && !defined(__WIN32__)
 SCHEME_OBJECT
   Registers[REGBLOCK_LENGTH];
 #endif
@@ -3647,7 +3621,7 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
        the register before `setjmp' is called.  */
     interface_initialize ();
 #endif
-#ifdef _OS2
+#ifdef __OS2__
     /* Same as for Sony.  */
     i386_interface_initialize ();
 #endif
@@ -3781,7 +3755,7 @@ extern SCHEME_OBJECT EXFUN (bkpt_proceed, (PTR, SCHEME_OBJECT, SCHEME_OBJECT));
 extern void EXFUN (bkpt_remove, (PTR, SCHEME_OBJECT));
 
 SCHEME_OBJECT
-#ifndef WINNT
+#ifndef __WIN32__
   Registers[REGBLOCK_MINIMUM_LENGTH],
 #endif
   compiler_utilities,
@@ -4118,12 +4092,12 @@ DEFUN (bkpt_proceed, (ep, handle, state),
 
 #endif	/* HAS_COMPILER_SUPPORT */
 
-#ifdef WINNT
+#ifdef __WIN32__
 #include "ntscmlib.h"
 
-extern unsigned long * winnt_catatonia_block;
-extern void EXFUN (winnt_allocate_registers, (void));
-extern void EXFUN (winnt_allocate_registers, (void));
+extern unsigned long * win32_catatonia_block;
+extern void EXFUN (win32_allocate_registers, (void));
+extern void EXFUN (win32_allocate_registers, (void));
 
 #ifndef REGBLOCK_LENGTH
 #  define REGBLOCK_LENGTH REGBLOCK_MINIMUM_LENGTH
@@ -4133,22 +4107,22 @@ typedef struct register_storage
 {
   /* The following must be allocated consecutively */
   unsigned long catatonia_block[3];
-#if (COMPILER_PROCESSOR_TYPE == COMPILER_I386_TYPE)
+#if (COMPILER_PROCESSOR_TYPE == COMPILER_IA32_TYPE)
   void * Regstart[32];	/* Negative byte offsets from &Registers[0] */
 #endif
   SCHEME_OBJECT Registers [REGBLOCK_LENGTH];
 } REGMEM;
 
 SCHEME_OBJECT * RegistersPtr = ((SCHEME_OBJECT *) NULL);
-unsigned long * winnt_catatonia_block = ((unsigned long *) NULL);
+unsigned long * win32_catatonia_block = ((unsigned long *) NULL);
 static REGMEM regmem;
 
 void
-DEFUN_VOID (winnt_allocate_registers)
+DEFUN_VOID (win32_allocate_registers)
 {
   REGMEM * mem = & regmem;
 
-  winnt_catatonia_block = ((unsigned long *) &mem->catatonia_block[0]);
+  win32_catatonia_block = ((unsigned long *) &mem->catatonia_block[0]);
   RegistersPtr = mem->Registers;
   if (! (win32_system_utilities.lock_memory_area (mem, (sizeof (REGMEM)))))
   {
@@ -4159,10 +4133,10 @@ DEFUN_VOID (winnt_allocate_registers)
 }
 
 void
-DEFUN_VOID (winnt_deallocate_registers)
+DEFUN_VOID (win32_deallocate_registers)
 {
   win32_system_utilities.unlock_memory_area (&regmem, (sizeof (REGMEM)));
   return;
 }
 
-#endif /* WINNT */
+#endif /* __WIN32__ */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.12 1999/01/02 06:11:34 cph Exp $
+$Id: pruxdld.c,v 1.13 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ DEFUN (dyn_lookup, (handle, symbol, type, result),
 }
 
 #else /* not _AIX */
-#if defined(_HPUX)
+#if defined(__HPUX__)
 
 #include <dl.h>
 
@@ -92,7 +92,7 @@ DEFUN (dyn_lookup, (handle, symbol, type, result),
        AND int type
        AND PTR * result)
 {
-#ifndef hp9000s300
+#if !(defined(hp9000s300) || defined(__hp9000s300))
   return (shl_findsym (handle, symbol, type, result));
 #else
   /* External symbols on the 300s often have underscores.
@@ -114,7 +114,7 @@ DEFUN (dyn_lookup, (handle, symbol, type, result),
 #endif
 }
 
-#else /* not _HPUX */
+#else /* not __HPUX__ */
 
 #include <dlfcn.h>
 
@@ -152,7 +152,7 @@ DEFUN (dyn_lookup, (handle, symbol, type, result),
 	  : 0);
 }
 
-#endif /* _HPUX */
+#endif /* __HPUX__ */
 #endif /* _AIX */
 
 DEFINE_PRIMITIVE ("LOAD-OBJECT-FILE", Prim_load_object_file, 1, 1,

@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-### $Id: vax.m4,v 1.3 1999/01/02 06:11:34 cph Exp $
+### $Id: vax.m4,v 1.4 2000/12/05 21:23:50 cph Exp $
 ###
-### Copyright (c) 1991-1999 Massachusetts Institute of Technology
+### Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ###
 ### This program is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
@@ -135,7 +135,7 @@ define_c_label($1)
 
 # This must match the compiler (machines/vax/machin.scm)
 
-define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
+define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 6))
 define(ADDRESS_MASK, eval((0 - (2 ** (32 - TC_LENGTH))), 10))
 
 define(rval,r9)

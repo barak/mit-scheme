@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: syscall.h,v 1.12 1999/04/07 04:01:47 cph Exp $
+$Id: syscall.h,v 1.13 2000/12/05 21:23:48 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,22 +26,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifndef SCM_SYSCALL_H
 #define  SCM_SYSCALL_H
 
-#include "oscond.h"
+#include "config.h"
 
-#ifdef _OS2
+#ifdef __OS2__
 
 #define DEFINE_OS2_SYSCALLS
 #include "os2api.h"
 #undef DEFINE_OS2_SYSCALLS
 
-#else /* not _OS2 */
-#ifdef WINNT
+#else /* not __OS2__ */
+#ifdef __WIN32__
 
 #define DEFINE_WIN32_SYSCALLS
 #include "ntapi.h"
 #undef DEFINE_WIN32_SYSCALLS
 
-#else /* not WINNT */
+#else /* not __WIN32__ */
 
 enum syscall_names
 {
@@ -149,8 +149,8 @@ enum syserr_names
   syserr_too_many_open_files_in_system
 };
 
-#endif /* not WINNT */
-#endif /* not _OS2 */
+#endif /* not __WIN32__ */
+#endif /* not __OS2__ */
 
 extern void EXFUN (error_in_system_call,
 		   (enum syserr_names, enum syscall_names));

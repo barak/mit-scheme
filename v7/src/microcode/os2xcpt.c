@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.7 1999/01/02 06:11:34 cph Exp $
+$Id: os2xcpt.c,v 1.8 2000/12/05 21:23:46 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright (c) 1994-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@ extern int pc_to_utility_index (unsigned long);
 extern int pc_to_builtin_index (unsigned long);
 extern SCHEME_OBJECT * find_constant_space_block (SCHEME_OBJECT *);
 extern int OS2_disable_stack_guard (void *);
+extern int OS2_essential_thread_p (TID);
+extern void OS2_message_box (const char *, const char *, int);
 
 extern ULONG C_Stack_Pointer;
 extern ULONG C_Frame_Pointer;

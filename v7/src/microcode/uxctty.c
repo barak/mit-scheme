@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxctty.c,v 1.13 1999/01/02 06:11:34 cph Exp $
+$Id: uxctty.c,v 1.14 2000/12/05 21:23:48 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -312,7 +312,7 @@ DEFUN (ctty_get_interrupt_chars, (ic), Tinterrupt_chars * ic)
   Ttty_state s;
   if ((get_terminal_state (ctty_fildes, (&s))) == 0)
     {
-#ifdef HAVE_TERMIOS
+#ifdef HAVE_TERMIOS_H
       (ic -> quit) = ((s . tio . c_cc) [VQUIT]);
       (ic -> intrpt) = ((s . tio . c_cc) [VINTR]);
       (ic -> tstp) = ((s . tio . c_cc) [VSUSP]);
@@ -320,46 +320,46 @@ DEFUN (ctty_get_interrupt_chars, (ic), Tinterrupt_chars * ic)
 #ifdef VDSUSP
       (ic -> dtstp) = ((s . tio . c_cc) [VDSUSP]);
 #else /* not VDSUSP */
-#ifdef _HPUX
+#ifdef __HPUX__
       (ic -> dtstp) = (s . ltc . t_dsuspc);
-#endif /* _HPUX */
+#endif /* __HPUX__ */
 #endif /* not VDSUSP */
 
-#else /* not HAVE_TERMIOS */
-#ifdef HAVE_TERMIO
+#else /* not HAVE_TERMIOS_H */
+#ifdef HAVE_TERMIO_H
 
       (ic -> quit) = ((s . tio . c_cc) [VQUIT]);
       (ic -> intrpt) = ((s . tio . c_cc) [VINTR]);
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef HAVE_STRUCT_LTCHARS
       (ic -> tstp) = (s . ltc . t_suspc);
       (ic -> dtstp) = (s . ltc . t_dsuspc);
-#else /* not HAVE_BSD_JOB_CONTROL */
+#else /* not HAVE_STRUCT_LTCHARS */
       {
 	cc_t disabled_char = (UX_PC_VDISABLE (ctty_fildes));
 	(ic -> tstp) = disabled_char;
 	(ic -> dtstp) = disabled_char;
       }
-#endif /* not HAVE_BSD_JOB_CONTROL */
+#endif /* not HAVE_STRUCT_LTCHARS */
 
-#else /* not HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
+#else /* not HAVE_TERMIO_H */
+#ifdef HAVE_SGTTY_H
 
       (ic -> quit) = (s . tc . t_quitc);
       (ic -> intrpt) = (s . tc . t_intrc);
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef HAVE_STRUCT_LTCHARS
       (ic -> tstp) = (s . ltc . t_suspc);
       (ic -> dtstp) = (s . ltc . t_dsuspc);
-#else /* not HAVE_BSD_JOB_CONTROL */
+#else /* not HAVE_STRUCT_LTCHARS */
       {
 	cc_t disabled_char = (UX_PC_VDISABLE (ctty_fildes));
 	(ic -> tstp) = disabled_char;
 	(ic -> dtstp) = disabled_char;
       }
-#endif /* not HAVE_BSD_JOB_CONTROL */
+#endif /* not HAVE_STRUCT_LTCHARS */
 
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIO */
-#endif /* HAVE_TERMIOS */
+#endif /* HAVE_SGTTY_H */
+#endif /* HAVE_TERMIO_H */
+#endif /* HAVE_TERMIOS_H */
     }
   else
     {
@@ -378,42 +378,42 @@ DEFUN (ctty_set_interrupt_chars, (ic), Tinterrupt_chars * ic)
   Ttty_state s;
   if ((get_terminal_state (ctty_fildes, (&s))) == 0)
     {
-#ifdef HAVE_TERMIOS
+#ifdef HAVE_TERMIOS_H
       ((s . tio . c_cc) [VQUIT]) = (ic -> quit);
       ((s . tio . c_cc) [VINTR]) = (ic -> intrpt);
       ((s . tio . c_cc) [VSUSP]) = (ic -> tstp);
 #ifdef VDSUSP
       ((s . tio . c_cc) [VDSUSP]) = (ic -> dtstp);
 #else /* not VDSUSP */
-#ifdef _HPUX
+#ifdef __HPUX__
       (s . ltc . t_suspc) = (ic -> tstp);
       (s . ltc . t_dsuspc) = (ic -> dtstp);
-#endif /* _HPUX */
+#endif /* __HPUX__ */
 #endif /* not VDSUSP */
 
-#else /* not HAVE_TERMIOS */
-#ifdef HAVE_TERMIO
+#else /* not HAVE_TERMIOS_H */
+#ifdef HAVE_TERMIO_H
 
       ((s . tio . c_cc) [VQUIT]) = (ic -> quit);
       ((s . tio . c_cc) [VINTR]) = (ic -> intrpt);
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef HAVE_STRUCT_LTCHARS
       (s . ltc . t_suspc) = (ic -> tstp);
       (s . ltc . t_dsuspc) = (ic -> dtstp);
 #endif
 
-#else /* not HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
+#else /* not HAVE_TERMIO_H */
+#ifdef HAVE_SGTTY_H
 
       (s . tc . t_quitc) = (ic -> quit);
       (s . tc . t_intrc) = (ic -> intrpt);
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef HAVE_STRUCT_LTCHARS
       (s . ltc . t_suspc) = (ic -> tstp);
       (s . ltc . t_dsuspc) = (ic -> dtstp);
 #endif
 
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIO */
-#endif /* HAVE_TERMIOS */
+#endif /* HAVE_SGTTY_H */
+#endif /* HAVE_TERMIO_H */
+#endif /* HAVE_TERMIOS_H */
       set_terminal_state (ctty_fildes, (&s));
     }
 }

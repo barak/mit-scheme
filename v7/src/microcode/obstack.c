@@ -17,7 +17,7 @@ Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "obstack.h"
 
-#ifdef __STDC__
+#ifdef HAVE_STDC
 #define POINTER void *
 #else
 #define POINTER char *
@@ -179,7 +179,7 @@ _obstack_allocated_p (h, obj)
    more recently than OBJ.  If OBJ is zero, free everything in H.  */
 
 void
-#ifdef __STDC__
+#ifdef HAVE_STDC
 #undef obstack_free
 obstack_free (struct obstack *h, POINTER obj)
 #else
@@ -214,7 +214,7 @@ _obstack_free (h, obj)
 
 /* Let same .o link with output of gcc and other compilers.  */
 
-#ifdef __STDC__
+#ifdef HAVE_STDC
 void
 _obstack_free (h, obj)
      struct obstack *h;
@@ -231,7 +231,7 @@ _obstack_free (h, obj)
 /* Now define the functional versions of the obstack macros.
    Define them to simply use the corresponding macros to do the job.  */
 
-#ifdef __STDC__
+#ifdef HAVE_STDC
 /* These function definitions do not work with non-ANSI preprocessors;
    they won't pass through the macro names in parentheses.  */
 
@@ -335,6 +335,6 @@ POINTER (obstack_copy0) (obstack, pointer, length)
   return obstack_copy0 (obstack, pointer, length);
 }
 
-#endif /* __STDC__ */
+#endif /* HAVE_STDC */
 
 #endif /* 0 */

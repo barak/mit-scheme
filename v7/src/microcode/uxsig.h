@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsig.h,v 1.5 1999/01/02 06:11:34 cph Exp $
+$Id: uxsig.h,v 1.6 2000/12/05 21:23:49 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,25 +25,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define SCM_UXSIG_H
 
 #ifdef HAVE_POSIX_SIGNALS
- extern void EXFUN (INSTALL_HANDLER, (int, Tsignal_handler));
-
-#else /* not HAVE_POSIX_SIGNALS */
-#ifdef HAVE_SYSV3_SIGNALS
-# define INSTALL_HANDLER UX_sigset
-# define NEED_HANDLER_TRANSACTION
-# define ENTER_HANDLER(signo)
-# define ABORT_HANDLER(signo, handler) UX_sigrelse (signo)
-# define EXIT_HANDLER(signo, handler)
-
-#else /* not HAVE_SYSV3_SIGNALS */
-# define INSTALL_HANDLER UX_signal
-# define NEED_HANDLER_TRANSACTION
-# define ENTER_HANDLER(signo) UX_signal ((signo), SIG_IGN)
-# define ABORT_HANDLER UX_signal
-# define EXIT_HANDLER UX_signal
-
-#endif /* HAVE_SYSV3_SIGNALS */
-#endif /* HAVE_POSIX_SIGNALS */
+   extern void EXFUN (INSTALL_HANDLER, (int, Tsignal_handler));
+#else
+#  ifdef HAVE_SIGHOLD
+#    define INSTALL_HANDLER UX_sigset
+#    define NEED_HANDLER_TRANSACTION
+#    define ENTER_HANDLER(signo)
+#    define ABORT_HANDLER(signo, handler) UX_sigrelse (signo)
+#    define EXIT_HANDLER(signo, handler)
+#  else
+#    define INSTALL_HANDLER UX_signal
+#    define NEED_HANDLER_TRANSACTION
+#    define ENTER_HANDLER(signo) UX_signal ((signo), SIG_IGN)
+#    define ABORT_HANDLER UX_signal
+#    define EXIT_HANDLER UX_signal
+#  endif
+#endif
 
 #ifndef NEED_HANDLER_TRANSACTION
 

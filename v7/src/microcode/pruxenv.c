@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxenv.c,v 1.18 1999/01/02 06:11:34 cph Exp $
+$Id: pruxenv.c,v 1.19 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,13 +26,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "ux.h"
 
 #ifdef HAVE_SOCKETS
-#include "uxsock.h"
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
+#  include "uxsock.h"
 #endif
-
-extern char ** environ;
 
 DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
   "Convert a file system time stamp into a date/time string.")
@@ -140,34 +135,13 @@ DEFINE_PRIMITIVE ("CURRENT-USER-HOME-DIRECTORY", Prim_current_user_home_director
     (char_pointer_to_string ((unsigned char *)
 			     OS_current_user_home_directory ()));
 }
-
+
 DEFINE_PRIMITIVE ("SYSTEM", Prim_system, 1, 1,
   "Invoke sh (the Bourne shell) on the string argument.\n\
 Wait until the shell terminates, returning its exit status as an integer.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN (long_to_integer (UX_system (STRING_ARG (1))));
-}
-
-DEFINE_PRIMITIVE ("UNIX-ENVIRONMENT", Prim_unix_environment_alist, 0, 0,
-  "Copy the unix environment and return it as a vector of strings.")
-{
-  PRIMITIVE_HEADER (0);
-  {
-    char ** scan = environ;
-    char ** end = scan;
-    while ((*end++) != 0);
-    end -= 1;
-    {
-      SCHEME_OBJECT result =
-	(allocate_marked_vector (TC_VECTOR, (end - scan), 1));
-      SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
-      while (scan < end)
-	(*scan_result++) =
-	  (char_pointer_to_string ((unsigned char *) (*scan++)));
-      PRIMITIVE_RETURN (result);
-    }
-  }
 }
 
 DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1, 1,

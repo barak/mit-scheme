@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosfs.c,v 1.14 1999/12/21 18:48:29 cph Exp $
+$Id: prosfs.c,v 1.15 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,9 +26,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "osfile.h"
 #include "osfs.h"
 #include "osio.h"
-#ifdef DOS386
-#  include <sys\stat.h>
-#endif
 
 extern int EXFUN (OS_channel_copy,
 		  (off_t source_length,
@@ -230,6 +227,18 @@ DEFINE_PRIMITIVE ("DIRECTORY-DELETE", Prim_directory_delete, 1, 1,
   PRIMITIVE_HEADER (1);
   OS_directory_delete (STRING_ARG (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("FILE-TOUCH", Prim_file_touch, 1, 1,
+  "Given a file name, change the times of the file to the current time.\n\
+If the file does not exist, create it.\n\
+Both the access time and modification time are changed.\n\
+Return #F if the file existed and its time was modified.\n\
+Otherwise the file did not exist and it was created.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (OS_file_touch ((CONST char *) (STRING_ARG (1)))));
 }
 
 DEFINE_PRIMITIVE ("NEW-DIRECTORY-OPEN", Prim_new_directory_open, 1, 1,

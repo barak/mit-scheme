@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dmpwrld.c,v 9.39 1999/01/02 06:11:34 cph Exp $
+$Id: dmpwrld.c,v 9.40 2000/12/05 21:23:44 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "scheme.h"
 #include "prims.h"
 
-#ifndef _UNIX
+#ifndef __unix__
 #include "Error: dumpworld.c does not work on non-unix machines."
 #endif
 
@@ -44,14 +44,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #undef CANNOT_UNEXEC
 #endif
 
-#if defined (hp9000s300)
+#if defined (hp9000s300) || defined (__hp9000s300)
 #undef CANNOT_UNEXEC
 #define ADJUST_EXEC_HEADER   						\
   hdr.a_magic = ((ohdr.a_magic.file_type == OLDMAGIC.file_type) ?	\
 		 NEWMAGIC : ohdr.a_magic);
 #endif
 
-#if defined (hp9000s800)
+#if defined (hp9000s800) || defined (__hp9000s800)
 #undef CANNOT_UNEXEC
 #endif
 
@@ -103,7 +103,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (((((unsigned) &etext) - 1) & ~SEGMENT_MASK) + (SEGMENT_MASK + 1))
 #endif
 
-#if defined (_HPUX)
+#if defined (__HPUX__)
 #define USG
 #define HPUX
 #endif
@@ -136,7 +136,7 @@ extern void bzero();
 
 #define static
 
-#if defined (hp9000s800)
+#if defined (hp9000s800) || defined (__hp9000s800)
 #include "unexhp9k800.c"
 #else
 #include "unexec.c"

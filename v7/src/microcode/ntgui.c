@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.27 2000/01/10 04:44:17 cph Exp $
+$Id: ntgui.c,v 1.28 2000/12/05 21:23:45 cph Exp $
 
 Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
@@ -36,9 +36,6 @@ BOOL InitApplication(HANDLE);
 BOOL InitInstance(HANDLE, int);
 
 static SCHEME_OBJECT parse_event (SCREEN_EVENT *);
-
-void *xmalloc(int);
-void xfree(void*);
 
 int WINAPI
 WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
@@ -154,16 +151,16 @@ DEFUN_VOID (nt_gui_default_poll)
 
 extern HANDLE master_tty_window;
 extern void catatonia_trigger (void);
-extern unsigned long * winnt_catatonia_block;
+extern unsigned long * win32_catatonia_block;
 
 void
 catatonia_trigger (void)
 {
   int mes_result;
   static BOOL already_exitting = FALSE;
-  SCHEME_OBJECT saved = winnt_catatonia_block[CATATONIA_BLOCK_LIMIT];
+  SCHEME_OBJECT saved = win32_catatonia_block[CATATONIA_BLOCK_LIMIT];
 
-  winnt_catatonia_block[CATATONIA_BLOCK_LIMIT] = 0;
+  win32_catatonia_block[CATATONIA_BLOCK_LIMIT] = 0;
 
   mes_result = (MessageBox (master_tty_window,
 			    "Scheme appears to have become catatonic.\n"
@@ -171,8 +168,8 @@ catatonia_trigger (void)
 			    "MIT Scheme",
 			    (MB_ICONSTOP | MB_OKCANCEL)));
 
-  winnt_catatonia_block[CATATONIA_BLOCK_COUNTER] = 0;
-  winnt_catatonia_block[CATATONIA_BLOCK_LIMIT] = saved;
+  win32_catatonia_block[CATATONIA_BLOCK_COUNTER] = 0;
+  win32_catatonia_block[CATATONIA_BLOCK_LIMIT] = saved;
 
   if (mes_result != IDOK)
     return;
@@ -211,7 +208,7 @@ DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER", Prim_microcode_poll_interr
   }
   else
   {
-    winnt_catatonia_block[CATATONIA_BLOCK_COUNTER] = 0;
+    win32_catatonia_block[CATATONIA_BLOCK_COUNTER] = 0;
     nt_gui_default_poll ();
 #ifndef USE_WM_TIMER
     low_level_timer_tick ();
@@ -620,8 +617,7 @@ call_ff_really (void)
   long function_address;
   SCHEME_OBJECT * argument_scan;
   SCHEME_OBJECT * argument_limit;
-  long result;
-
+  long result = UNSPECIFIC;
   long nargs = (LEXPR_N_ARGUMENTS ());
   if (nargs < 1)
     signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
@@ -739,24 +735,6 @@ DEFINE_PRIMITIVE ("UINT32-OFFSET-SET!", Prim_uint32_offset_set, 3, 3,
       * (unsigned long*) (((char*)base)+offset)  =  value;
     }
     PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-static void *
-xmalloc (int size)
-{
-    void *result = malloc(size);
-    if (!result) {
-      outf_fatal ("ntgui: xmalloc failed");
-      outf_flush_fatal ();
-      abort ();
-    }
-    return  result;
-}
-
-static void
-xfree (void *p)
-{
-  free (p);
 }
 
 /* GUI utilities for debuggging .*/

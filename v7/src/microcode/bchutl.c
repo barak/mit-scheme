@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchutl.c,v 1.10 2000/01/18 05:06:42 cph Exp $
+$Id: bchutl.c,v 1.11 2000/12/05 21:23:43 cph Exp $
 
 Copyright (c) 1991-2000 Massachusetts Institute of Technology
 
@@ -19,32 +19,19 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#include "oscond.h"
-#include "ansidecl.h"
+#include "config.h"
 #include <stdio.h>
 
 #include <errno.h>
 #ifndef EINTR
-#define EINTR 1999
+#  define EINTR 1999
 #endif
 
-#ifndef DOS386
-#ifndef WINNT
-#ifndef _OS2
-#ifndef _NEXTOS
-#include <unistd.h>
+#ifdef HAVE_UNISTD_H
+#  include <unistd.h>
 #endif
-#endif
-#endif
-#endif
-
-extern char * EXFUN (error_name, (int));
-extern int EXFUN (retrying_file_operation,
-		  (int (*)(int, char *, unsigned int),
-		   int, char *, long, long, char *, char *, long *,
-		   int (*)(char *, char *)));
 
-#ifdef WINNT
+#ifdef __WIN32__
 
 #define lseek _lseek
 
@@ -57,8 +44,8 @@ DEFUN (error_name, (code), int code)
   return (&buf[0]);
 }
 
-#else /* not WINNT */
-#ifdef _OS2
+#else /* not __WIN32__ */
+#ifdef __OS2__
 
 #if defined(__IBMC__) || defined(__WATCOMC__) || defined(__EMX__)
 #include <io.h>
@@ -72,7 +59,7 @@ DEFUN (error_name, (code), int code)
   return (&buf[0]);
 }
 
-#else /* not _OS2 */
+#else /* not __OS2__ */
 
 char *
 DEFUN (error_name, (code), int code)
@@ -86,8 +73,8 @@ DEFUN (error_name, (code), int code)
   return (&buf[0]);
 }
 
-#endif /* not _OS2 */
-#endif /* not WINNT */
+#endif /* not __OS2__ */
+#endif /* not __WIN32__ */
 
 #ifndef SEEK_SET
 #define SEEK_SET 0

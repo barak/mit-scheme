@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-### $Id: makefile.cmn,v 1.12 1999/05/11 03:50:57 cph Exp $
+### $Id: makefile.cmn,v 1.13 2000/12/05 21:23:51 cph Exp $
 ###
-### Copyright (c) 1994-1999 Massachusetts Institute of Technology
+### Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ###
 ### This program is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
@@ -21,20 +21,9 @@
 
 #### Makefile for Scheme under OS/2 -- Common Part
 
-MACHINE_SOURCES = cmpint.c # cmpauxmd.m4
-MACHINE_OBJECTS = cmpint.$(OBJ) cmpauxmd.$(OBJ)
-GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
-USER_PRIM_SOURCES =
-USER_PRIM_OBJECTS =
-USER_LIBS =
-
-SCHEME_SOURCES = $(USER_PRIM_SOURCES) missing.c
-SCHEME_OBJECTS = $(USER_PRIM_OBJECTS) missing.$(OBJ)
-SCHEME_LIB = $(USER_LIBS) so32dll.lib tcp32dll.lib \
-	gdbm.lib md5.lib blowfish.lib
+SCHEME_LIB = so32dll.lib tcp32dll.lib gdbm.lib md5.lib blowfish.lib
 
 CORE_SOURCES = \
-$(MACHINE_SOURCES) \
 artutl.c \
 avltree.c \
 bignum.c \
@@ -42,6 +31,8 @@ bigprm.c \
 bitstr.c \
 boot.c \
 char.c \
+cmpauxmd.m4 \
+cmpint.c \
 comutl.c \
 daemon.c \
 debug.c \
@@ -60,6 +51,7 @@ intprm.c \
 list.c \
 lookprm.c \
 lookup.c \
+missing.c \
 obstack.c \
 option.c \
 osscheme.c \
@@ -84,7 +76,6 @@ vector.c \
 wind.c
 
 CORE_OBJECTS = \
-$(MACHINE_OBJECTS) \
 artutl.$(OBJ) \
 avltree.$(OBJ) \
 bignum.$(OBJ) \
@@ -92,6 +83,8 @@ bigprm.$(OBJ) \
 bitstr.$(OBJ) \
 boot.$(OBJ) \
 char.$(OBJ) \
+cmpauxmd.$(OBJ) \
+cmpint.$(OBJ) \
 comutl.$(OBJ) \
 daemon.$(OBJ) \
 debug.$(OBJ) \
@@ -110,6 +103,7 @@ intprm.$(OBJ) \
 list.$(OBJ) \
 lookprm.$(OBJ) \
 lookup.$(OBJ) \
+missing.$(OBJ) \
 obstack.$(OBJ) \
 option.$(OBJ) \
 osscheme.$(OBJ) \
@@ -176,7 +170,6 @@ prostty.c \
 pros2fs.c \
 pros2io.c \
 pros2pm.c
-# prospty.c
 
 OS_PRIM_OBJECTS = \
 prbfish.$(OBJ) \
@@ -193,7 +186,6 @@ prostty.$(OBJ) \
 pros2fs.$(OBJ) \
 pros2io.$(OBJ) \
 pros2pm.$(OBJ)
-#prospty.$(OBJ)
 
 OS2_SOURCES = \
 os2.c \
@@ -237,21 +229,41 @@ os2top.$(OBJ) \
 os2tty.$(OBJ) \
 os2xcpt.$(OBJ)
 
-HEAD_FILES = scheme.tch prims.h zones.h locks.h bignum.h \
-	$(GC_HEAD_FILES) trap.h lookup.h history.h cmpint.h
+SHARED_SOURCES = $(CORE_SOURCES) $(OS_PRIM_SOURCES) $(OS2_SOURCES)
+SHARED_OBJECTS = $(CORE_OBJECTS) $(OS_PRIM_OBJECTS) $(OS2_OBJECTS)
 
-SOURCES = $(CORE_SOURCES) $(STD_GC_SOURCES)
-OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(OS2_OBJECTS) \
-	$(OS_PRIM_OBJECTS) usrdef.$(OBJ)
+SOURCES = $(SHARED_SOURCES) $(STD_GC_SOURCES)
+OBJECTS = $(SHARED_OBJECTS) $(STD_GC_OBJECTS) usrdef.$(OBJ)
 
-BCHSOURCES = $(CORE_SOURCES) $(BCH_GC_SOURCES)
-BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(OS2_OBJECTS) \
-	$(OS_PRIM_OBJECTS) bchdef.$(OBJ)
+BCHSOURCES = $(SHARED_SOURCES) $(BCH_GC_SOURCES)
+BCHOBJECTS = $(SHARED_OBJECTS) $(BCH_GC_OBJECTS) bchdef.$(OBJ)
 
-clean :
+usrdef.c: $(SOURCES) findprim.exe
+	.\findprim $(SOURCES) > usrdef.c
+
+bchdef.c: $(BCHSOURCES) findprim.exe
+	.\findprim $(BCHSOURCES) > bchdef.c
+
+scheme.res: os2pmcon.rc os2pmcon.h
+	rc -r -DSCHEME os2pmcon.rc scheme.res
+
+bchschem.res: os2pmcon.rc os2pmcon.h
+	rc -r -DBCHSCHEM os2pmcon.rc bchschem.res
+
+findprim.exe: findprim.$(OBJ)
+asmcvt.exe: asmcvt.$(OBJ)
+bintopsb.exe: bintopsb.$(OBJ) missing.$(OBJ)
+psbtobin.exe: psbtobin.$(OBJ) missing.$(OBJ)
+breakup.exe: breakup.$(OBJ)
+wsize.exe: wsize.$(OBJ)
+ppband.exe: ppband.$(OBJ)
+
+os2pm-dc.h os2pm-ed.h os2pm-id.h os2pm-mi.h os2pm-mt.h os2pm-rp.h: os2pm.scm
+	scheme -large < os2utl/mkos2pm.scm
+
+clean:
 	-del *.$(OBJ)
 	-del *.exe
-	-del *.tch
 	-del *.res
 	-del *.err
 	-del *.sym
@@ -259,136 +271,232 @@ clean :
 	-del usrdef.c
 	-del bchdef.c
 
-findprim.exe : findprim.$(OBJ)
-asmcvt.exe : asmcvt.$(OBJ)
-bintopsb.exe : bintopsb.$(OBJ) missing.$(OBJ)
-psbtobin.exe : psbtobin.$(OBJ) missing.$(OBJ)
-breakup.exe : breakup.$(OBJ)
-wsize.exe : wsize.$(OBJ)
-ppband.exe : ppband.$(OBJ)
+#
+# Dependencies.  (This was a lot of work!)
+#
+# This first section defines the dependencies of the include files.
+#
+AVLTREE_H = avltree.h $(CONFIG_H)
+BCHDRN_H = bchdrn.h $(CONFIG_H)
+BCHGCC_H = bchgcc.h $(CONFIG_H) $(GCCODE_H)
+BIGNMINT_H = bignmint.h $(PRIMS_H)
+BIGNUM_H = bignum.h ansidecl.h
+BITSTR_H = bitstr.h
+BKPT_H = bkpt.h
+CMPGC_H = cmpgc.h $(CMPINTMD_H)
+CMPINTMD_H = cmpintmd.h $(CMPTYPE_H)
+CMPINT_H = cmpint.h
+CMPTYPE_H = cmptype.h
+COMLIN_H = comlin.h ansidecl.h
+CONFIG_H = config.h confshared.h ansidecl.h
+CONST_H = const.h
+CRITSEC_H = critsec.h
+DEFAULT_H = default.h
+DSTACK_H = dstack.h ansidecl.h
+DUMP_C = dump.c
+EDWIN_H = edwin.h
+ERRORS_H = errors.h
+EXTERN_H = extern.h
+FASL_H = fasl.h
+FIXOBJ_H = fixobj.h
+FLOAT_H =
+FUTURES_H = futures.h
+GCCODE_H = gccode.h $(CMPGC_H)
+GCTYPE_C = gctype.c $(CONFIG_H)
+GC_H = gc.h
+HISTORY_H = history.h
+INTERP_H = interp.h
+INTEXT_H = intext.h ansidecl.h $(DSTACK_H)
+INTRPT_H = intrpt.h
+LIMITS_H =
+LOAD_C = load.c $(FASL_H)
+LOCKS_H = locks.h
+LOOKUP_H = lookup.h
+MEMMAG_H = memmag.h
+MUL_C = mul.c $(CONFIG_H)
+OBJECT_H = object.h
+OBSTACK_H = obstack.h $(CONFIG_H)
+OPTION_H = option.h ansidecl.h
+OS2API_H = os2api.h
+OS2CTHRD_H = os2cthrd.h
+OS2CTTY_H = os2ctty.h
+OS2IO_H = os2io.h $(OSIO_H)
+OS2MSG_H = os2msg.h os2pm-mt.h
+OS2PM_H = os2pm.h os2pm-ed.h
+OS2PMCON_H = os2pmcon.h
+OS2PROC_H = os2proc.h $(OSPROC_H)
+OS2THRD_H = os2thrd.h
+OSCTTY_H = osctty.h $(OS_H)
+OSENV_H = osenv.h $(OS_H)
+OSFILE_H = osfile.h $(OS_H)
+OSFS_H = osfs.h $(OS_H)
+OSIO_H = osio.h $(OS_H)
+OSSCHEME_H = osscheme.h $(OUTF_H) $(OS_H)
+OSSIG_H = ossig.h $(OS_H)
+OSTERM_H = osterm.h $(OS_H)
+OSTOP_H = ostop.h $(OS_H)
+OSTTY_H = ostty.h $(OS_H)
+OS_H = os.h $(CONFIG_H)
+OUTF_H = outf.h $(CONFIG_H)
+PRENAME_H = prename.h
+PRIMS_H = prims.h ansidecl.h
+PRIM_H = prim.h
+PRMCON_H = prmcon.h
+REGEX_H = regex.h
+RETURNS_H = returns.h
+SCODE_H = scode.h
+SDATA_H = sdata.h
+STACK_H = stack.h
+SYNTAX_H = syntax.h
+SYSCALL_H = syscall.h $(CONFIG_H) $(OS2API_H)
+TRAP_H = trap.h
+TYPES_H = types.h
+USRDEF_H = usrdef.h $(SCHEME_H) $(PRIMS_H)
+UXSOCK_H = uxsock.h $(OSIO_H)
+VERSION_H = version.h
+WINDER_H = winder.h
+ZONES_H = zones.h
 
-usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.tch \
-	findprim.exe
-	.\findprim $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrdef.c
+PSBMAP_H = psbmap.h $(CONFIG_H) $(TYPES_H) $(OBJECT_H) $(BIGNUM_H) \
+	$(BIGNMINT_H) $(SDATA_H) $(CONST_H) $(GCCODE_H) $(CMPTYPE_H) \
+	$(COMLIN_H)
 
-bchdef.c : $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) usrdef.tch \
-	findprim.exe
-	.\findprim $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) > bchdef.c
+OS2_H = os2.h $(CONFIG_H) $(DSTACK_H) $(OSSCHEME_H) $(SYSCALL_H) $(OS2API_H) \
+	$(OS2MSG_H) $(OS2IO_H) $(OS2THRD_H) $(OS2CTTY_H) $(OS2CTHRD_H) \
+	$(OS2PM_H)
 
-cmpauxmd.$(ASM) : cmpauxmd.m4
+SCHEME_H = scheme.h $(CONFIG_H) $(DSTACK_H) $(OBSTACK_H) $(TYPES_H) \
+	$(CONST_H) $(OBJECT_H) $(INTRPT_H) $(CRITSEC_H) $(GC_H) $(SCODE_H) \
+	$(SDATA_H) $(FUTURES_H) $(ERRORS_H) $(RETURNS_H) $(FIXOBJ_H) \
+	$(STACK_H) $(INTERP_H) $(OUTF_H) $(BKPT_H) $(DEFAULT_H) $(EXTERN_H) \
+	$(BIGNUM_H) $(PRIM_H) $(FLOAT_H)
 
-cmpauxmd.$(OBJ) : cmpauxmd.$(ASM)
+#
+# This second section is the dependencies of the object files.
+#
+artutl.$(OBJ): artutl.c $(SCHEME_H) $(LIMITS_H)
+avltree.$(OBJ): avltree.c $(AVLTREE_H)
+bignum.$(OBJ): bignum.c $(SCHEME_H) $(BIGNMINT_H) $(LIMITS_H)
+bigprm.$(OBJ): bigprm.c $(SCHEME_H) $(PRIMS_H) $(ZONES_H)
+bitstr.$(OBJ): bitstr.c $(SCHEME_H) $(PRIMS_H) $(BITSTR_H)
+boot.$(OBJ): boot.c $(SCHEME_H) $(PRIMS_H) $(VERSION_H) $(OPTION_H) \
+	$(OSTOP_H) $(OSTTY_H)
+char.$(OBJ): char.c $(SCHEME_H) $(PRIMS_H)
+cmpauxmd.$(OBJ): cmpauxmd.$(ASM)
+cmpauxmd.$(ASM): cmpauxmd.m4
+cmpint.$(OBJ): cmpint.c $(CONFIG_H) $(DSTACK_H) $(OUTF_H) $(TYPES_H) \
+	$(CONST_H) $(OBJECT_H) $(INTRPT_H) $(GC_H) $(SDATA_H) $(ERRORS_H) \
+	$(RETURNS_H) $(FIXOBJ_H) $(STACK_H) $(INTERP_H) $(DEFAULT_H) \
+	$(EXTERN_H) $(TRAP_H) $(PRIMS_H) $(PRIM_H) $(CMPGC_H)
+comutl.$(OBJ): comutl.c $(SCHEME_H) $(PRIMS_H)
+daemon.$(OBJ): daemon.c $(SCHEME_H) $(PRIMS_H) $(OSIO_H)
+debug.$(OBJ): debug.c $(SCHEME_H) $(PRIMS_H) $(TRAP_H) $(LOOKUP_H)
+dfloat.$(OBJ): dfloat.c $(SCHEME_H) $(PRIMS_H)
+error.$(OBJ): error.c $(OUTF_H) $(DSTACK_H)
+extern.$(OBJ): extern.c $(SCHEME_H) $(PRIMS_H)
+fasload.$(OBJ): fasload.c $(SCHEME_H) $(PRIMS_H) $(OSSCHEME_H) $(OSFILE_H) \
+	$(OSIO_H) $(GCCODE_H) $(TRAP_H) $(OPTION_H) $(PRMCON_H)
+fixnum.$(OBJ): fixnum.c $(SCHEME_H) $(PRIMS_H) $(MUL_C)
+flonum.$(OBJ): flonum.c $(SCHEME_H) $(PRIMS_H) $(ZONES_H)
+generic.$(OBJ): generic.c $(SCHEME_H) $(PRIMS_H)
+hooks.$(OBJ): hooks.c $(SCHEME_H) $(PRIMS_H) $(WINDER_H) $(HISTORY_H)
+hunk.$(OBJ): hunk.c $(SCHEME_H) $(PRIMS_H)
+intern.$(OBJ): intern.c $(SCHEME_H) $(PRIMS_H) $(TRAP_H)
+interp.$(OBJ): interp.c $(SCHEME_H) $(LOCKS_H) $(TRAP_H) $(LOOKUP_H) \
+	$(WINDER_H) $(HISTORY_H) $(CMPINT_H) $(ZONES_H) $(PRMCON_H)
+intprm.$(OBJ): intprm.c $(SCHEME_H) $(PRIMS_H) $(ZONES_H)
+list.$(OBJ): list.c $(SCHEME_H) $(PRIMS_H)
+lookprm.$(OBJ): lookprm.c $(SCHEME_H) $(PRIMS_H) $(LOCKS_H) $(TRAP_H) \
+	$(LOOKUP_H)
+lookup.$(OBJ): lookup.c $(SCHEME_H) $(LOCKS_H) $(TRAP_H) $(LOOKUP_H)
+obstack.$(OBJ): obstack.c $(OBSTACK_H)
+option.$(OBJ): option.c $(SCHEME_H) $(FASL_H) $(OSENV_H) $(OSFS_H)
+osscheme.$(OBJ): osscheme.c $(SCHEME_H) $(PRIMS_H) $(OSSCHEME_H)
+ostty.$(OBJ): ostty.c $(OSTTY_H) $(OSSCHEME_H)
+outf.$(OBJ): outf.c $(SCHEME_H)
+prim.$(OBJ): prim.c $(SCHEME_H) $(PRIMS_H)
+primutl.$(OBJ): primutl.c $(SCHEME_H) $(PRIMS_H) $(OS_H) $(USRDEF_H) \
+	$(PRENAME_H) $(SYSCALL_H) $(AVLTREE_H) $(CMPGC_H)
+prmcon.$(OBJ): prmcon.c $(SCHEME_H) $(PRIMS_H) $(PRMCON_H)
+ptrvec.$(OBJ): ptrvec.c $(OUTF_H) $(DSTACK_H)
+purutl.$(OBJ): purutl.c $(SCHEME_H) $(PRIMS_H) $(GCCODE_H) $(ZONES_H) \
+	$(CMPINT_H)
+regex.$(OBJ): regex.c $(SCHEME_H) $(SYNTAX_H) $(REGEX_H)
+rgxprim.$(OBJ): rgxprim.c $(SCHEME_H) $(PRIMS_H) $(EDWIN_H) $(SYNTAX_H) \
+	$(REGEX_H)
+step.$(OBJ): step.c $(SCHEME_H) $(PRIMS_H)
+storage.$(OBJ): storage.c $(SCHEME_H) $(GCTYPE_H)
+string.$(OBJ): string.c $(SCHEME_H) $(PRIMS_H)
+syntax.$(OBJ): syntax.c $(SCHEME_H) $(PRIMS_H) $(EDWIN_H) $(SYNTAX_H)
+sysprim.$(OBJ): sysprim.c $(SCHEME_H) $(PRIMS_H) $(OSTTY_H) $(OSTOP_H)
+term.$(OBJ): term.c $(SCHEME_H) $(OSTOP_H) $(OSIO_H) $(OSFS_H) $(OSFILE_H) \
+	$(EDWIN_H)
+tparam.$(OBJ): tparam.c ansidecl.h
+transact.$(OBJ): transact.c $(CONFIG_H) $(OUTF_H) $(DSTACK_H)
+utils.$(OBJ): utils.c $(SCHEME_H) $(PRIMS_H) $(WINDER_H) $(HISTORY_H) \
+	$(CMPINT_H) $(SYSCALL_H)
+vector.$(OBJ): vector.c $(SCHEME_H) $(PRIMS_H)
+wind.$(OBJ): wind.c $(OBSTACK_H) $(DSTACK_H) $(OUTF_H)
 
-scheme.tch : scheme.h oscond.h ansidecl.h dstack.h obstack.h config.h \
-	bkpt.h object.h scode.h sdata.h gc.h interp.h stack.h futures.h \
-	types.h errors.h returns.h const.h fixobj.h default.h extern.h \
-	prim.h intrpt.h critsec.h outf.h
-	echo touch > $@
+prbfish.$(OBJ): prbfish.c $(SCHEME_H) $(PRIMS_H)
+prgdbm.$(OBJ): prgdbm.c $(SCHEME_H) $(PRIMS_H) $(OS_H)
+prmd5.$(OBJ): prmd5.c $(SCHEME_H) $(PRIMS_H)
+prosenv.$(OBJ): prosenv.c $(SCHEME_H) $(PRIMS_H) $(OSENV_H) $(OSTOP_H) \
+	$(LIMITS_H)
+prosfile.$(OBJ): prosfile.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H)
+prosfs.$(OBJ): prosfs.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H) $(OSFS_H) $(OSIO_H)
+prosio.$(OBJ): prosio.c $(SCHEME_H) $(PRIMS_H) $(OSIO_H)
+prosproc.$(OBJ): prosproc.c $(SCHEME_H) $(PRIMS_H) $(OSPROC_H) $(OSIO_H)
+prosterm.$(OBJ): prosterm.c $(SCHEME_H) $(PRIMS_H) $(OSTERM_H) $(OSIO_H)
+prostty.$(OBJ): prostty.c $(SCHEME_H) $(PRIMS_H) $(OSTTY_H) $(OSCTTY_H) \
+	$(OSFILE_H) $(OSIO_H)
+pruxsock.$(OBJ): pruxsock.c $(SCHEME_H) $(PRIMS_H) $(UXSOCK_H)
+pros2fs.$(OBJ): pros2fs.c $(SCHEME_H) $(PRIMS_H) $(OS2_H) $(OSFS_H)
+pros2io.$(OBJ): pros2io.c $(SCHEME_H) $(PRIMS_H) $(OS2_H) $(OS2PROC_H)
+pros2pm.$(OBJ): pros2pm.c $(SCHEME_H) $(PRIMS_H) $(OS2_H)
 
-psbmap.tch : config.h object.h bignum.h bignmint.h bitstr.h types.h \
-	sdata.h const.h psbmap.h $(GC_HEAD_FILES) comlin.h comlin.c
-	echo touch > $@
+fasdump.$(OBJ): fasdump.c $(SCHEME_H) $(PRIMS_H) $(OSSCHEME_H) $(OSIO_H) \
+	$(OSFILE_H) $(OSFS_H) $(GCCODE_H) $(TRAP_H) $(LOOKUP_H) $(FASL_H) \
+	$(DUMP_C)
+gcloop.$(OBJ): gcloop.c $(SCHEME_H) $(GCCODE_H)
+memmag.$(OBJ): memmag.c $(SCHEME_H) $(PRIMS_H) $(MEMMAG_H) $(GCCODE_H)
+purify.$(OBJ): purify.c $(SCHEME_H) $(PRIMS_H) $(GCCODE_H) $(ZONES_H)
+wabbit.$(OBJ): wabbit.c $(SCHEME_H) $(GCCODE_H)
 
-usrdef.tch : usrdef.h config.h object.h prim.h
-	echo touch > $@
+bchdmp.$(OBJ): bchdmp.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H) $(OSFS_H) \
+	$(TRAP_H) $(LOOKUP_H) $(FASL_H) $(OS2_H) $(BCHGCC_H) $(DUMP_C)
+bchgcl.$(OBJ): bchgcl.c $(SCHEME_H) $(BCHGCC_H)
+bchmmg.$(OBJ): bchmmg.c $(SCHEME_H) $(PRIMS_H) $(MEMMAG_H) $(OPTION_H) \
+	$(OSENV_H) $(OSFS_H) $(OS2_H) $(BCHGCC_H) $(BCHDRN_H)
+bchpur.$(OBJ): bchpur.c $(SCHEME_H) $(PRIMS_H) $(BCHGCC_H) $(ZONES_H)
+bchutl.$(OBJ): bchutl.c $(CONFIG_H)
 
-foo $(USER_PRIM_OBJECTS) : $(HEAD_FILES)
+os2.$(OBJ): os2.c $(OS2_H)
+os2conio.$(OBJ): os2conio.c $(OS2_H)
+os2cthrd.$(OBJ): os2cthrd.c $(OS2_H)
+os2ctty.$(OBJ): os2ctty.c $(OS2_H) $(OSCTTY_H) $(OSSIG_H)
+os2env.$(OBJ): os2env.c $(SCHEME_H) $(OS2_H) $(OSENV_H)
+os2file.$(OBJ): os2file.c $(OS2_H) $(OSFILE_H)
+os2fs.$(OBJ): os2fs.c $(OS2_H) $(OSFS_H)
+os2io.$(OBJ): os2io.c $(OS2_H)
+os2msg.$(OBJ): os2msg.c $(OS2_H)
+os2pipe.$(OBJ): os2pipe.c $(OS2_H)
+os2pm.$(OBJ): os2pm.c $(OS2_H) os2pm-id.h os2pm-mi.h os2pm-dc.h os2pm-rp.h
+os2pmcon.$(OBJ): os2pmcon.c $(OS2_H) $(OS2PMCON_H) $(VERSION_H)
+os2proc.$(OBJ): os2proc.c $(OS2_H) $(OSPROC_H) $(OSENV_H)
+os2sock.$(OBJ): os2sock.c $(SCHEME_H) $(PRIMS_H) $(OSSCHEME_H) $(OS2_H) \
+	$(UXSOCK_H)
+os2term.$(OBJ): os2term.c $(OS2_H) $(PRIMS_H)
+os2thrd.$(OBJ): os2thrd.c $(OS2_H) $(PRIMS_H) $(ERRORS_H)
+os2top.$(OBJ): os2top.c $(SCHEME_H) $(OS2_H) $(OSTOP_H) $(OPTION_H)
+os2tty.$(OBJ): os2tty.c $(OS2_H) $(OSTTY_H)
+os2xcpt.$(OBJ): os2xcpt.c $(SCHEME_H) $(GCCODE_H) $(OS2_H)
 
-interp.$(OBJ) : scheme.tch locks.h trap.h lookup.h history.h cmpint.h zones.h \
-	prmcon.h
+missing.$(OBJ): missing.c $(CONFIG_H)
 
-hooks.$(OBJ) : scheme.tch prims.h winder.h history.h
+findprim.$(OBJ): findprim.c $(CONFIG_H)
 
-utils.$(OBJ) : scheme.tch prims.h winder.h history.h cmpint.h syscall.h
-
-primutl.$(OBJ) : scheme.tch os.h prims.h usrdef.h prename.h syscall.h \
-	avltree.h $(GC_HEAD_FILES)
-
-hunk.$(OBJ) list.$(OBJ) step.$(OBJ) vector.$(OBJ) : scheme.tch prims.h
-sysprim.$(OBJ) daemon.$(OBJ) prim.$(OBJ) extern.$(OBJ) : scheme.tch prims.h
-
-lookup.$(OBJ) lookprm.$(OBJ) debug.$(OBJ) intern.$(OBJ) : scheme.tch prims.h \
-	lookup.h trap.h locks.h
-fasload.$(OBJ) : scheme.tch prims.h osscheme.h osfile.h osio.h \
-	$(GC_HEAD_FILES) trap.h option.h prmcon.h load.c fasl.h
-fasdump.$(OBJ) : scheme.tch prims.h osio.h osfile.h osfs.h $(GC_HEAD_FILES) \
-	trap.h lookup.h fasl.h dump.c
-memmag.$(OBJ) : scheme.tch prims.h memmag.h $(GC_HEAD_FILES) memmag.h
-gcloop.$(OBJ) : scheme.tch $(GC_HEAD_FILES)
-purify.$(OBJ) : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
-wabbit.$(OBJ) : scheme.tch $(GC_HEAD_FILES)
-purutl.$(OBJ) : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
-comutl.$(OBJ) : scheme.tch prims.h
-gctype.$(OBJ) : config.h
-artutl.$(OBJ) : scheme.tch
-avltree.$(OBJ) : ansidecl.h avltree.h
-bignum.$(OBJ) : scheme.tch bignmint.h
-bigprm.$(OBJ) flonum.$(OBJ) intprm.$(OBJ) : scheme.tch prims.h zones.h
-generic.$(OBJ) : scheme.tch prims.h
-fixnum.$(OBJ) : scheme.tch prims.h mul.c
-storage.$(OBJ) : scheme.tch gctype.c
-char.$(OBJ) string.$(OBJ) dfloat.$(OBJ) : scheme.tch prims.h
-tterm.$(OBJ) : scheme.tch prims.h osterm.h
-boot.$(OBJ) : scheme.tch prims.h version.h option.h ostop.h os.h
-option.$(OBJ) : scheme.tch fasl.h osenv.h osfs.h
-term.$(OBJ) : scheme.tch
-missing.$(OBJ) : config.h
-BCHGCC_H = bchgcc.h oscond.h $(GC_HEAD_FILES)
-bchdmp.$(OBJ) : scheme.tch prims.h os2.h osio.h osfile.h trap.h lookup.h \
-	$(BCHGCC_H) fasl.h dump.c
-bchdrn.$(OBJ) : ansidecl.h bchdrn.h
-bchmmg.$(OBJ) : scheme.tch prims.h os2.h $(BCHGCC_H) option.h bchdrn.h memmag.h
-bchgcl.$(OBJ) : scheme.tch $(BCHGCC_H)
-bchpur.$(OBJ) : scheme.tch prims.h $(BCHGCC_H) zones.h
-bchutl.$(OBJ) : ansidecl.h
-syntax.$(OBJ) : scheme.tch prims.h edwin.h syntax.h
-bitstr.$(OBJ) : scheme.tch prims.h bitstr.h
-regex.$(OBJ) : scheme.tch syntax.h regex.h
-rgxprim.$(OBJ) : scheme.tch prims.h edwin.h syntax.h regex.h
-bintopsb.$(OBJ) : psbmap.tch trap.h fasl.h load.c bltdef.h
-psbtobin.$(OBJ) : psbmap.tch fasl.h dump.c
-ppband.$(OBJ) : ansidecl.h config.h errors.h types.h const.h object.h \
-	$(GC_HEAD_FILES) sdata.h load.c fasl.h
-wsize.$(OBJ) : config.h
-cmpint.$(OBJ) : scheme.tch prim.h $(GC_HEAD_FILES)
-osscheme.$(OBJ) : scheme.tch posixtyp.h os.h osscheme.h
-ostty.$(OBJ) : ansidecl.h oscond.h posixtyp.h os.h ostty.h osscheme.h
-error.$(OBJ) ptrvec.$(OBJ) transact.$(OBJ) : ansidecl.h dstack.h outf.h
-wind.$(OBJ) : ansidecl.h dstack.h obstack.h
-obstack.$(OBJ) : obstack.h
-$(OS_PRIM_OBJECTS) : scheme.tch prims.h posixtyp.h os.h
-prosenv.$(OBJ) : osenv.h ostop.h
-prosfile.$(OBJ) : osfile.h
-prosfs.$(OBJ) : osfs.h
-prosio.$(OBJ) : osio.h
-prosproc.$(OBJ) : osproc.h
-#prospty.$(OBJ) : osterm.h osio.h ospty.h
-pruxsock.$(OBJ) : uxsock.h osio.h
-prosterm.$(OBJ) : osterm.h osio.h
-prostty.$(OBJ) : ostty.h osctty.h osfile.h osio.h
-prmcon.$(OBJ) : scheme.tch prims.h prmcon.h
-
-$(OS2_OBJECTS) pros2fs.$(OBJ) pros2io.$(OBJ) pros2pm.$(OBJ) : \
-	dstack.h osscheme.h outf.h os.h ansidecl.h oscond.h posixtyp.h \
-	syscall.h osio.h os2.h os2api.h os2cthrd.h os2ctty.h os2io.h \
-	os2msg.h os2pm-mt.h os2pm.h os2pm-ed.h os2thrd.h
-os2ctty.$(OBJ) : osctty.h ossig.h
-os2env.$(OBJ) : scheme.tch osenv.h
-os2file.$(OBJ) : osfile.h
-os2fs.$(OBJ) : osfs.h
-os2pm.$(OBJ) : os2pm-id.h os2pm-mi.h os2pm-dc.h os2pm-rp.h
-os2pmcon.$(OBJ) : os2pmcon.h version.h
-os2proc.$(OBJ) : osproc.h
-os2sock.$(OBJ) : uxsock.h
-os2top.$(OBJ) : scheme.tch ostop.h option.h
-os2tty.$(OBJ) : ostty.h
-os2xcpt.$(OBJ) : scheme.tch $(GC_HEAD_FILES)
-pros2fs.$(OBJ) : scheme.tch prims.h osfs.h
-pros2io.$(OBJ) : scheme.tch prims.h
-pros2pm.$(OBJ) : scheme.tch prims.h
-
-scheme.res : os2pmcon.rc os2pmcon.h
-	rc -r -DSCHEME os2pmcon.rc scheme.res
-
-bchschem.res : os2pmcon.rc os2pmcon.h
-	rc -r -DBCHSCHEM os2pmcon.rc bchschem.res
+bintopsb.$(OBJ): bintopsb.c $(PSBMAP_H) $(LIMITS_H) $(LOAD_C) $(BLTDEF_H) \
+	$(TRAP_H)
+psbtobin.$(OBJ): psbtobin.c $(PSBMAP_H) $(FLOAT_H) $(LIMITS_H) $(FASL_H) \
+	$(DUMP_C)

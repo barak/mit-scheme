@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.31 1999/01/02 06:11:34 cph Exp $
+$Id: i386.h,v 1.32 2000/12/05 21:23:50 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,8 +28,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  * Specialized for the Intel 386 (and successors) architecture.
  */
 
-#ifndef CMPINTMD_H_INCLUDED
-#define CMPINTMD_H_INCLUDED
+#ifndef SCM_CMPINTMD_H
+#define SCM_CMPINTMD_H
 
 #include "cmptype.h"
 
@@ -38,14 +38,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* Hack for OS/2 calling-convention type: */
 
-#if defined(_OS2) && (defined(__IBMC__) || defined(__WATCOMC__))
-#define ASM_ENTRY_POINT(name) (_System name)
+#if defined(__OS2__) && (defined(__IBMC__) || defined(__WATCOMC__))
+#  define ASM_ENTRY_POINT(name) (_System name)
 #else
-#if defined(WINNT) && defined(__WATCOMC__)
-#define ASM_ENTRY_POINT(name) (__cdecl name)
-#else
-#define ASM_ENTRY_POINT(name) name
-#endif
+#  if defined(__WIN32__) && defined(__WATCOMC__)
+#    define ASM_ENTRY_POINT(name) (__cdecl name)
+#  else
+#    define ASM_ENTRY_POINT(name) name
+#  endif
 #endif
 
 /*
@@ -196,7 +196,7 @@ magic = ([TC_COMPILED_ENTRY | 0] - (offset + length_of_CALL_instruction))
 
 */
 
-#define COMPILER_PROCESSOR_TYPE			COMPILER_I386_TYPE
+#define COMPILER_PROCESSOR_TYPE			COMPILER_IA32_TYPE
 
 /* The i387 coprocessor and i486 use 80-bit extended format internally. */
 
@@ -482,20 +482,20 @@ extern long i386_pc_displacement_relocation;
 #ifdef _MACH_UNIX
 #  include <mach.h>
 #  define VM_PROT_SCHEME (VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE)
-#endif /* _MACH_UNIX */
+#endif
 
 long i386_pc_displacement_relocation = 0;
 
 #define ASM_RESET_HOOK i386_reset_hook
 
 #ifndef HOOK_TO_SCHEME_OFFSET
-#define HOOK_TO_SCHEME_OFFSET(hook) ((unsigned long) (hook))
+#  define HOOK_TO_SCHEME_OFFSET(hook) ((unsigned long) (hook))
 #endif
 
-#ifdef __STDC__
-#define STRINGIFY(x) #x
+#ifdef HAVE_STDC
+#  define STRINGIFY(x) #x
 #else
-#define STRINGIFY(x) "x"
+#  define STRINGIFY(x) "x"
 #endif
 
 #define SETUP_REGISTER(hook) do						\
@@ -653,8 +653,6 @@ DEFUN_VOID (i386_reset_hook)
     }
   }
 #endif /* _MACH_UNIX */
-
-  return;
 }
 
 #endif /* IN_CMPINT_C */
@@ -773,4 +771,4 @@ DEFUN_VOID (i386_reset_hook)
 #define COMPILED_ENTRY_MAXIMUM_ARITY    COMPILED_ENTRY_FORMAT_LOW
 #define COMPILED_ENTRY_MINIMUM_ARITY    COMPILED_ENTRY_FORMAT_HIGH
 
-#endif /* CMPINTMD_H_INCLUDED */
+#endif /* not SCM_CMPINTMD_H */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: transact.c,v 1.4 2000/01/18 05:09:40 cph Exp $
+$Id: transact.c,v 1.5 2000/12/05 21:23:48 cph Exp $
 
 Copyright (C) 1990-2000 Massachusetts Institute of Technology
 
@@ -20,7 +20,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
 #include <stdio.h>
-#include "ansidecl.h"
+#include "config.h"
 #include "outf.h"
 #include "dstack.h"
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.71 2000/01/18 05:07:46 cph Exp $
+$Id: bintopsb.c,v 9.72 2000/12/05 21:23:43 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -50,7 +50,7 @@ DEFUN (Load_Data, (Count, To_Where), long Count AND SCHEME_OBJECT *To_Where)
 
 /* Character macros and procedures */
 
-#ifndef _IRIX
+#ifndef __IRIX__
 extern int strlen ();
 #endif
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.25 2000/02/01 01:47:25 cph Exp $
+$Id: uxproc.c,v 1.26 2000/12/05 21:23:49 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -29,15 +29,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "error: can't hack subprocess I/O without dup2() or equivalent"
 #endif
 
-extern char ** environ;
-extern void EXFUN
-  ((*subprocess_death_hook), (pid_t pid, wait_status_t * status));
+extern void EXFUN ((*subprocess_death_hook), (pid_t pid, int * status));
 extern void EXFUN ((*stop_signal_hook), (int signo));
 extern void EXFUN (stop_signal_default, (int signo));
 extern int EXFUN (OS_ctty_fd, (void));
 extern void EXFUN (UX_initialize_child_signals, (void));
 
-static void EXFUN (subprocess_death, (pid_t pid, wait_status_t * status));
+static void EXFUN (subprocess_death, (pid_t pid, int * status));
 static void EXFUN (stop_signal_handler, (int signo));
 static void EXFUN (give_terminal_to, (Tprocess process));
 static void EXFUN (get_terminal_back, (void));
@@ -117,7 +115,7 @@ DEFUN_VOID (grab_signal_mask)
 
 #else /* not HAVE_POSIX_SIGNALS */
 
-#ifdef HAVE_SYSV3_SIGNALS
+#ifdef HAVE_SIGHOLD
 
 static void
 DEFUN (release_sigchld, (environment), PTR environment)
@@ -132,11 +130,11 @@ DEFUN_VOID (block_sigchld)
   transaction_record_action (tat_always, release_sigchld, 0);
 }
 
-#else /* not HAVE_SYSV3_SIGNALS */
+#else /* not HAVE_SIGHOLD */
 
 #define block_sigchld()
 
-#endif /* not HAVE_SYSV3_SIGNALS */
+#endif /* not HAVE_SIGHOLD */
 
 #define block_jc_signals block_sigchld
 #define grab_signal_mask()
@@ -192,6 +190,8 @@ DEFUN (process_allocate_abort, (environment), PTR environment)
     case process_status_running:
       UX_kill ((PROCESS_ID (process)), SIGKILL);
       break;
+    default:
+      break;
     }
   OS_process_deallocate (process);
 }
@@ -229,7 +229,7 @@ DEFUN (OS_make_subprocess,
 	channel_err_type, channel_err),
        CONST char * filename AND
        CONST char ** argv AND
-       CONST char ** envp AND
+       CONST char ** VOLATILE envp AND
        CONST char * working_directory AND
        enum process_ctty_type ctty_type AND
        char * ctty_name AND
@@ -242,7 +242,7 @@ DEFUN (OS_make_subprocess,
 {
   pid_t child_pid;
   Tprocess child;
-  enum process_jc_status child_jc_status;
+  VOLATILE enum process_jc_status child_jc_status = process_jc_status_no_ctty;
 
   if (envp == 0)
     envp = ((CONST char **) environ);
@@ -340,9 +340,9 @@ DEFUN (OS_make_subprocess,
 	    int fd = (UX_open (ctty_name, O_RDWR, 0));
 	    if ((fd < 0)
 #ifdef SLAVE_PTY_P
-		|| ((SLAVE_PTY_P (ctty_name)) && (! (SETUP_SLAVE_PTY (fd))))
+		|| ((SLAVE_PTY_P (ctty_name)) && (!UX_setup_slave_pty (fd)))
 #endif
-		|| (! (isatty (fd)))
+		|| (!isatty (fd))
 #ifdef TIOCSCTTY
 		|| ((UX_ioctl (fd, TIOCSCTTY, 0)) < 0)
 #endif
@@ -645,7 +645,7 @@ DEFUN (find_process, (pid), pid_t pid)
 }
 
 static void
-DEFUN (subprocess_death, (pid, status), pid_t pid AND wait_status_t * status)
+DEFUN (subprocess_death, (pid, status), pid_t pid AND int * status)
 {
   Tprocess process = (find_process (pid));
   if (process != NO_PROCESS)
@@ -682,7 +682,7 @@ DEFUN (stop_signal_handler, (signo), int signo)
 /* Set up the terminal at the other end of a pseudo-terminal that we
    will be controlling an inferior through. */
 
-#ifdef HAVE_TERMIOS
+#ifdef HAVE_TERMIOS_H
 
 #ifndef IUCLC
 /* POSIX.1 doesn't require (or even mention) these symbols, but we
@@ -722,9 +722,9 @@ DEFUN (child_setup_tty, (fd), int fd)
   return (UX_tcsetattr (fd, TCSADRAIN, (&s)));
 }
 
-#else /* not HAVE_TERMIOS */
+#else /* not HAVE_TERMIOS_H */
 
-#ifdef HAVE_TERMIO
+#ifdef HAVE_TERMIO_H
 
 static int
 DEFUN (child_setup_tty, (fd), int fd)
@@ -760,8 +760,8 @@ DEFUN (child_setup_tty, (fd), int fd)
   return (ioctl (fd, TCSETAW, (&s)));
 }
 
-#else /* not HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
+#else /* not HAVE_TERMIO_H */
+#ifdef HAVE_SGTTY_H
 
 static int
 DEFUN (child_setup_tty, (fd), int fd)
@@ -774,6 +774,6 @@ DEFUN (child_setup_tty, (fd), int fd)
   return (ioctl (fd, TIOCSETN, (&s)));
 }
 
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIO */
-#endif /* HAVE_TERMIOS */
+#endif /* HAVE_SGTTY_H */
+#endif /* HAVE_TERMIO_H */
+#endif /* HAVE_TERMIOS_H */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.24 2000/05/20 18:59:14 cph Exp $
+$Id: uxtop.c,v 1.25 2000/12/05 21:23:49 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -26,6 +26,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "errors.h"
 #include "option.h"
 #include "config.h"
+#include "default.h"
 #include "extern.h"
 
 extern void EXFUN (UX_initialize_channels, (void));
@@ -96,7 +97,7 @@ DEFUN_VOID (OS_initialize)
   UX_initialize_directory_reader ();
   OS_Name = SYSTEM_NAME;
   OS_Variant = SYSTEM_VARIANT;
-#ifdef _SUNOS
+#if defined(_SUNOS) || defined(_SUNOS3) || defined(_SUNOS4)
   vadvise (VA_ANOM);		/* Anomolous paging, don't try to guess. */
 #endif
 }
@@ -285,7 +286,7 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
     }
 }
 
-#ifdef _HPUX
+#ifdef __HPUX__
 #define NEED_ERRLIST_DEFINITIONS
 #endif
 

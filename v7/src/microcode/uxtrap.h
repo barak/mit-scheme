@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.28 1999/01/02 06:11:34 cph Exp $
+$Id: uxtrap.h,v 1.29 2000/12/05 21:23:49 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* Machine/OS-dependent section (long) */
 
-#ifdef hp9000s300
+#if defined(hp9000s300) || defined(__hp9000s300)
 
 #include <sys/sysmacros.h>
 #include <machine/sendsig.h>
@@ -77,7 +77,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #endif /* hp9000s300 */
 
-#ifdef hp9000s800
+#if defined(hp9000s800) || defined(__hp9000s800)
 
 /* The bottom 2 bits of the PC are protection bits.
    They should be masked away before looking at the PC.
@@ -94,7 +94,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    debugging and if there is ever a hope to restart the code.
  */
 
-#ifdef _HPUX
+#ifdef __HPUX__
 
 /* HPUX 09.x does not have siginfo, but HPUX 10.x does.  This can be
 tested by the definition of SA_SIGINFO.  Since we want to support
@@ -179,13 +179,13 @@ both, we use the no-siginfo way */
       }									\
 }
 
-#else /* not _HPUX, BSD ? */
+#else /* not __HPUX__, BSD ? */
 
 # ifndef sc_pc
 #  define sc_pc				sc_pcoqh
 # endif /* sc_pc */
 
-#endif /* _HPUX */
+#endif /* __HPUX__ */
 
 #endif /* hp9000s800 */
 
@@ -261,7 +261,7 @@ struct full_sigcontext
 #endif /* vax */
 
 #ifdef mips
-#ifdef _IRIX
+#ifdef __IRIX__
 
 /* Information on sigcontext structure in signal.h */
 
@@ -297,7 +297,7 @@ struct full_sigcontext
     (SIGSEGV, (~ 0L),       ENXIO,   "Read beyond mapped object");	\
 }
 
-#else /* not _IRIX */
+#else /* not __IRIX__ */
 #ifndef _SYSV4
 
 /* Information on sigcontext structure in signal.h */
@@ -410,35 +410,19 @@ struct full_sigcontext
 }
 
 #endif /* _SYSV4 */
-#endif /* _IRIX */
+#endif /* __IRIX__ */
 #endif /* mips */
 
-#if defined(i386) && defined(_MACH_UNIX)
-/* The following are true for Mach (BSD 4.3 compatible).
-   I don't know about SCO or other versions.
- */
+#ifdef __IA32__
 
-#define HAVE_FULL_SIGCONTEXT
-#define PROCESSOR_NREGS			8
-#define FULL_SIGCONTEXT_NREGS		8
-
-#define SIGCONTEXT			sigcontext
-#define SIGCONTEXT_SP(scp)		((scp)->sc_esp)
-#define SIGCONTEXT_PC(scp)		((scp)->sc_eip)
-#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_edi)
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_edi))
-
-/* INITIALIZE_UX_SIGNAL_CODES should be defined. */
-
-#endif /* i386 */
-
-#ifdef __linux
+#ifdef __linux__
 /* Linux signal handlers are called with one argument -- the `signo'.
    There's an alleged "iBCS signal stack" register dump just above it.
    Thus, the fictitious `info' argument to the handler is actually the
-   first member of this register dump (described by struct sigcontext,
-   below).  Unfortunately, kludging SIGINFO_CODE to access the sc_trapno
-   will fail later on when looking at the saved_info. */
+   first member of this register dump (described by struct
+   linux_sigcontext, below).  Unfortunately, kludging SIGINFO_CODE to
+   access the sc_trapno will fail later on when looking at the
+   saved_info. */
 #define SIGINFO_T long
 #define SIGINFO_VALID_P(info) (0)
 #define SIGINFO_CODE(info) (0)
@@ -477,7 +461,27 @@ struct linux_sigcontext {
 #define FULL_SIGCONTEXT_PC SIGCONTEXT_PC
 #define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_edi)
 
-#endif /* __linux */
+#endif /* __linux__ */
+
+#ifdef _MACH_UNIX
+/* The following are true for Mach (BSD 4.3 compatible).
+   I don't know about SCO or other versions.  */
+
+#define HAVE_FULL_SIGCONTEXT
+#define PROCESSOR_NREGS			8
+#define FULL_SIGCONTEXT_NREGS		8
+
+#define SIGCONTEXT			sigcontext
+#define SIGCONTEXT_SP(scp)		((scp)->sc_esp)
+#define SIGCONTEXT_PC(scp)		((scp)->sc_eip)
+#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_edi)
+#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_edi))
+
+/* INITIALIZE_UX_SIGNAL_CODES should be defined. */
+
+#endif /* _MACH_UNIX */
+
+#endif /* __IA32__ */
 
 #ifdef __alpha
 
@@ -524,52 +528,51 @@ struct linux_sigcontext {
 
 #ifdef _AIX
 /* For now */
-#define SIGCONTEXT		sigcontext
-#define SIGCONTEXT_SP(scp)	0
-#define SIGCONTEXT_PC(scp)	0
+#  define SIGCONTEXT		sigcontext
+#  define SIGCONTEXT_SP(scp)	0
+#  define SIGCONTEXT_PC(scp)	0
 #endif /* _AIX */
 
 #ifndef SIGINFO_T
-#define SIGINFO_T int
-#define SIGINFO_VALID_P(info) (1)
-#define SIGINFO_CODE(info) (info)
+#  define SIGINFO_T int
+#  define SIGINFO_VALID_P(info) (1)
+#  define SIGINFO_CODE(info) (info)
+#endif
+
+#ifndef HAVE_STRUCT_SIGCONTEXT
+   struct sigcontext { long sc_sp; long sc_pc; };
 #endif
 
 #ifndef SIGCONTEXT
-#define SIGCONTEXT		sigcontext
-#define SIGCONTEXT_SP(scp)	((scp)->sc_sp)
-#define SIGCONTEXT_PC(scp)	((scp)->sc_pc)
-#endif /* SIGCONTEXT */
+#  define SIGCONTEXT		sigcontext
+#  define SIGCONTEXT_SP(scp)	((scp) -> sc_sp)
+#  define SIGCONTEXT_PC(scp)	((scp) -> sc_pc)
+#endif
 
 #ifndef FULL_SIGCONTEXT
-
-#define FULL_SIGCONTEXT SIGCONTEXT
-#define FULL_SIGCONTEXT_SP SIGCONTEXT_SP
-#define FULL_SIGCONTEXT_PC SIGCONTEXT_PC
-
-#define DECLARE_FULL_SIGCONTEXT(name)					\
-  struct FULL_SIGCONTEXT * name
-
-#define INITIALIZE_FULL_SIGCONTEXT(partial, full)			\
-  ((full) = ((struct FULL_SIGCONTEXT *) (partial)))
-
-#endif /* not FULL_SIGCONTEXT */
+#  define FULL_SIGCONTEXT SIGCONTEXT
+#  define FULL_SIGCONTEXT_SP SIGCONTEXT_SP
+#  define FULL_SIGCONTEXT_PC SIGCONTEXT_PC
+#  define DECLARE_FULL_SIGCONTEXT(name) struct FULL_SIGCONTEXT * name
+#  define INITIALIZE_FULL_SIGCONTEXT(partial, full)			\
+     ((full) = ((struct FULL_SIGCONTEXT *) (partial)))
+#endif
 
 #ifndef FULL_SIGCONTEXT_NREGS
-#define FULL_SIGCONTEXT_NREGS 0
-#define FULL_SIGCONTEXT_FIRST_REG(scp) ((int *) 0)
+#  define FULL_SIGCONTEXT_NREGS 0
+#  define FULL_SIGCONTEXT_FIRST_REG(scp) ((int *) 0)
 #endif
 
 #ifndef PROCESSOR_NREGS
-#define PROCESSOR_NREGS 0
+#  define PROCESSOR_NREGS 0
 #endif
 
 #ifndef FULL_SIGCONTEXT_SCHSP
-#define FULL_SIGCONTEXT_SCHSP FULL_SIGCONTEXT_SP
+#  define FULL_SIGCONTEXT_SCHSP FULL_SIGCONTEXT_SP
 #endif
 
 #ifndef INITIALIZE_UX_SIGNAL_CODES
-#define INITIALIZE_UX_SIGNAL_CODES()
+#  define INITIALIZE_UX_SIGNAL_CODES()
 #endif
 
 /* PCs must be aligned according to this. */
@@ -589,20 +592,16 @@ struct linux_sigcontext {
 # define PLAUSIBLE_CC_BLOCK_P(block) 0
 #endif
 
-#if !(defined (_NEXTOS) && (_NEXTOS_VERSION >= 20))
+#ifndef _NEXTOS
 #ifdef _AIX
 extern int _etext;
 #define get_etext() (&_etext)
 #else /* not _AIX */
-#ifdef __linux
+#ifdef __linux__
 extern unsigned int etext;
-#else /* not __linux */
-#if !(defined (_HPUX) && (_HPUX_VERSION >= 80) && defined (hp9000s300))
-extern long etext;
 #else
 extern int etext;
-#endif /* _HPUX ... */
-#endif /* __linux */
+#endif
 #endif /* _AIX */
 #ifndef get_etext
 #  define get_etext() (&etext)

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osfs.h,v 1.8 1999/12/21 18:48:47 cph Exp $
+$Id: osfs.h,v 1.9 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -42,6 +42,7 @@ extern void EXFUN
   (OS_file_link_soft, (CONST char * from_name, CONST char * to_name));
 extern void EXFUN (OS_directory_make, (CONST char * name));
 extern void EXFUN (OS_directory_delete, (CONST char * name));
+extern int EXFUN (OS_file_touch, (CONST char *));
 extern unsigned int EXFUN (OS_directory_open, (CONST char * name));
 extern int EXFUN (OS_directory_valid_p, (long index));
 extern void EXFUN (OS_directory_close, (unsigned int index));

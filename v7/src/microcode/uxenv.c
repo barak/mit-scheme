@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxenv.c,v 1.19 1999/12/21 19:21:31 cph Exp $
+$Id: uxenv.c,v 1.20 2000/12/05 21:23:49 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -43,10 +43,17 @@ DEFUN (OS_decode_time, (t, buffer), time_t t AND struct time_structure * buffer)
   (buffer -> minute) = (ts -> tm_min);
   (buffer -> second) = (ts -> tm_sec);
   (buffer -> daylight_savings_time) = (ts -> tm_isdst);
+#ifdef HAVE_TM_GMTOFF
+  /* tm_gmtoff is in minutes east of UTC; we need minutes west.  */
+  (buffer -> time_zone) = (- (ts -> TM_GMTOFF));
+  if ((ts -> tm_isdst) > 0)
+    (buffer -> time_zone) += 3600;
+#else
 #ifdef HAVE_TIMEZONE
-  (buffer -> time_zone) = timezone;
+  (buffer -> time_zone) = TIMEZONE;
 #else
   (buffer -> time_zone) = INT_MAX;
+#endif
 #endif
   {
     /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
@@ -66,7 +73,7 @@ DEFUN (OS_decode_utc, (t, buffer), time_t t AND struct time_structure * buffer)
   (buffer -> hour) = (ts -> tm_hour);
   (buffer -> minute) = (ts -> tm_min);
   (buffer -> second) = (ts -> tm_sec);
-  (buffer -> daylight_savings_time) = (ts -> tm_isdst);
+  (buffer -> daylight_savings_time) = 0;
   (buffer -> time_zone) = 0;
   {
     /* In gmtime() encoding, 0 is Sunday; in ours, it's Monday. */
@@ -76,38 +83,54 @@ DEFUN (OS_decode_utc, (t, buffer), time_t t AND struct time_structure * buffer)
 }
 
 time_t
-DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
+DEFUN (OS_encode_time, (buffer), struct time_structure * buffer)
 {
-  time_t t;
-  struct tm ts_s, * ts;
-  ts = &ts_s;
-  (ts -> tm_year) = ((buffer -> year) - 1900);
-  (ts -> tm_mon) = ((buffer -> month) - 1);
-  (ts -> tm_mday) = (buffer -> day);
-  (ts -> tm_hour) = (buffer -> hour);
-  (ts -> tm_min) = (buffer -> minute);
-  (ts -> tm_sec) = (buffer -> second);
-  (ts -> tm_isdst) = (buffer -> daylight_savings_time);
 #ifdef HAVE_MKTIME
-  STD_UINT_SYSTEM_CALL (syscall_mktime, t, (UX_mktime (ts)));
-#else
-  error_system_call (ENOSYS, syscall_mktime);
-#endif
-#ifdef HAVE_TIMEZONE
+  time_t t = 0;
+  struct tm ts;
+  (ts . tm_year) = ((buffer -> year) - 1900);
+  (ts . tm_mon) = ((buffer -> month) - 1);
+  (ts . tm_mday) = (buffer -> day);
+  (ts . tm_hour) = (buffer -> hour);
+  (ts . tm_min) = (buffer -> minute);
+  (ts . tm_sec) = (buffer -> second);
+  (ts . tm_isdst) = (buffer -> daylight_savings_time);
+  STD_UINT_SYSTEM_CALL (syscall_mktime, t, (UX_mktime (&ts)));
+
   /* mktime assumes its argument is local time, and converts it to
      UTC; if the specified time zone is different, adjust the result.  */
+#ifdef HAVE_TM_GMTOFF
+  {
+    if ((buffer -> time_zone) != INT_MAX)
+      {
+	long assumed_zone = (- (ts . TM_GMTOFF));
+	if ((ts . tm_isdst) > 0)
+	  assumed_zone += 3600;
+	if ((buffer -> time_zone) != assumed_zone)
+	  t = ((t - assumed_zone) + (buffer -> time_zone));
+      }
+  }
+#else /* not HAVE_TM_GMTOFF */
+#ifdef HAVE_TIMEZONE
   if (((buffer -> time_zone) != INT_MAX)
-      && ((buffer -> time_zone) != timezone))
-    t = ((t - timezone) + (buffer -> time_zone));
-#endif
+      && ((buffer -> time_zone) != TIMEZONE))
+    t = ((t - TIMEZONE) + (buffer -> time_zone));
+#endif /* HAVE_TIMEZONE */
+#endif /* not HAVE_TM_GMTOFF */
+
   return (t);
+
+#else /* not HAVE_MKTIME */
+  error_system_call (ENOSYS, syscall_mktime);
+  return (0);
+#endif /* not HAVE_MKTIME */
 }
 
 #ifdef HAVE_TIMES
 
 static clock_t initial_process_clock;
 
-#ifdef __linux
+#ifdef __linux__
 /* Linux seems to record the time in an unusual way.
    Time that Scheme programs spend computing do not seem to be recorded
    as "user" time, but as "system" time.  So return the sum of both times.  */
@@ -227,7 +250,7 @@ DEFUN_VOID (OS_real_time_clock)
 #endif /* HAVE_TIMES */
 #endif /* HAVE_GETTIMEOFDAY */
 
-#ifdef HAVE_ITIMER
+#ifdef HAVE_SETITIMER
 
 static void
 DEFUN (set_timer, (which, first, interval),
@@ -287,7 +310,7 @@ DEFUN_VOID (OS_real_timer_clear)
   set_timer (ITIMER_REAL, 0, 0);
 }
 
-#else /* not HAVE_ITIMER */
+#else /* not HAVE_SETITIMER */
 
 static unsigned int alarm_interval;
 
@@ -341,14 +364,14 @@ DEFUN_VOID (OS_real_timer_clear)
   UX_alarm (0);
 }
 
-#endif /* HAVE_ITIMER */
+#endif /* HAVE_SETITIMER */
 
 void
 DEFUN_VOID (UX_initialize_environment)
 {
   initialize_process_clock ();
   initialize_real_time_clock ();
-#ifndef HAVE_ITIMER
+#ifndef HAVE_SETITIMER
   alarm_interval = 0;
 #endif
 }

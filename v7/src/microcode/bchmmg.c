@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.96 2000/11/28 05:19:02 cph Exp $
+$Id: bchmmg.c,v 9.97 2000/12/05 21:23:42 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -22,35 +22,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 /* Memory management top level.  Garbage collection to disk. */
 
 #include "scheme.h"
-#include "memmag.h"
 #include "prims.h"
+#include "memmag.h"
 #include "option.h"
-#include "oscond.h"
-#include "posixtyp.h"
+#include "osenv.h"
+#include "osfs.h"
 
-#ifdef _POSIX
-#include <unistd.h>
+#ifdef __unix__
+#  include "ux.h"
+#  define SUB_DIRECTORY_DELIMITER '/'
+/* This makes for surprising behavior: */
+/* #  define UNLINK_BEFORE_CLOSE */
 #endif
 
-#ifdef DOS386
-#  include <string.h>
-#  include "msdos.h"
-#  define SUB_DIRECTORY_DELIMITER '\\'
-#endif
-
-#ifdef WINNT
+#ifdef __WIN32__
 #  include "nt.h"
 #  define SUB_DIRECTORY_DELIMITER '\\'
-#  define ASSUME_NORMAL_GC_FILE
-#endif
-
-#ifdef _OS2
-#include "os2.h"
-#define SUB_DIRECTORY_DELIMITER '\\'
-#define ASSUME_NORMAL_GC_FILE
-#if defined(__IBMC__) || defined(__WATCOMC__) || defined(__EMX__)
-#include <io.h>
-#include <sys\stat.h>
 #endif
 #ifndef F_OK
 #define F_OK 0
@@ -60,11 +47,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #endif
 #endif
 
-#ifndef SUB_DIRECTORY_DELIMITER
-#  include "ux.h"
-#  define SUB_DIRECTORY_DELIMITER '/'
-#  define UNLINK_BEFORE_CLOSE
-   extern int EXFUN (unlink, (CONST char *));
+#ifdef __OS2__
+#  include "os2.h"
+#  define SUB_DIRECTORY_DELIMITER '\\'
+#  if defined(__IBMC__) || defined(__WATCOMC__) || defined(__EMX__)
+#    include <io.h>
+#    include <sys\stat.h>
+#  endif
+#  ifndef F_OK
+#    define F_OK 0
+#    define X_OK 1
+#    define W_OK 2
+#    define R_OK 4
+#  endif
 #endif
 
 #include "bchgcc.h"
@@ -74,7 +69,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #  define SEEK_SET 0
 #endif
 
-#ifdef HAVE_SYSV_SHARED_MEMORY
+#ifdef USE_SYSV_SHARED_MEMORY
 #  define RECORD_GC_STATISTICS
 #endif
 #define MILLISEC * 1000
@@ -170,11 +165,10 @@ static SCHEME_OBJECT
   * virtual_scan_base;
 
 static char
-  * gc_file_name = ((char *) NULL),
-  gc_file_name_buffer[FILE_NAME_LENGTH];
+  * gc_file_name = 0;
 
 CONST char
-  * drone_file_name = ((char *) NULL);
+  * drone_file_name = 0;
 
 static int
   keep_gc_file_p = 0,
@@ -216,7 +210,7 @@ DEFUN (io_error_always_abort, (operation_name, noise),
   return (1);
 }
 
-#ifdef WINNT
+#ifdef __WIN32__
 #include <windows.h>
 
 int 
@@ -248,11 +242,8 @@ DEFUN (io_error_retry_p, (operation_name, noise),
   return (0);
 }
 
-#else /* not WINNT */
-#ifdef _OS2
-
-#define INCL_WIN
-#include <os2.h>
+#else /* not __WIN32__ */
+#ifdef __OS2__
 
 int
 io_error_retry_p (char * operation_name, char * noise)
@@ -275,7 +266,7 @@ io_error_retry_p (char * operation_name, char * noise)
     }
 }
 
-#else /* not _OS2 */
+#else /* not __OS2__ */
 
 extern char EXFUN (userio_choose_option,
 		   (CONST char *, CONST char *, CONST char **));
@@ -334,8 +325,8 @@ DEFUN (io_error_retry_p, (operation_name, noise),
   }
 }
 
-#endif /* not _OS2 */
-#endif /* not WINNT */
+#endif /* not __OS2__ */
+#endif /* not __WIN32__ */
 
 static int
 DEFUN (verify_write, (position, size, success),
@@ -367,7 +358,7 @@ DEFUN (write_data, (from, position, nbytes, noise, success),
        AND char * noise AND Boolean * success)
 {
   if (((verify_write (position, nbytes, success)) != -1)
-      && ((retrying_file_operation (write,
+      && ((retrying_file_operation (((file_operation_t *) write),
 				    gc_file,
 				    from,
 				    position,
@@ -389,7 +380,7 @@ DEFUN (load_data, (position, to, nbytes, noise, success),
        long position AND char * to AND long nbytes
        AND char * noise AND Boolean * success)
 {
-  (void) (retrying_file_operation (read,
+  (void) (retrying_file_operation (((file_operation_t *) read),
 				   gc_file,
 				   to,
 				   position,
@@ -400,7 +391,6 @@ DEFUN (load_data, (position, to, nbytes, noise, success),
 				   ((success == ((Boolean *) NULL))
 				    ? io_error_retry_p
 				    : io_error_always_abort)));
-  return;
 }
 
 static int
@@ -414,15 +404,6 @@ DEFUN (parameterization_termination, (kill_p, init_p),
     Microcode_Termination (TERM_EXIT);		/*NOTREACHED*/
   return (-1);
 }
-
-#ifdef SIGCONT
-static void
-DEFUN (continue_running, (sig), int sig)
-{
-  RE_INSTALL_HANDLER (SIGCONT, continue_running);
-  return;
-}
-#endif
 
 struct bch_GC_statistic
 {
@@ -450,7 +431,7 @@ static struct bch_GC_statistic all_gc_statistics[] =
 
 #endif
 
-#ifdef HAVE_SYSV_SHARED_MEMORY
+#ifdef USE_SYSV_SHARED_MEMORY
 
 #ifdef RECORD_GC_STATISTICS
 
@@ -584,43 +565,35 @@ static long default_sleep_period = 20 MILLISEC;
 #define GET_SLEEP_DELTA()	default_sleep_period
 #define SET_SLEEP_DELTA(value)	default_sleep_period = (value)
 
-#ifdef FD_SET
-#define SELECT_TYPE fd_set
-#else
-#define SELECT_TYPE int
-#define FD_SETSIZE ((sizeof (int)) * CHAR_BIT)
-#define FD_SET(n, p) ((*(p)) |= (1 << (n)))
-#define FD_CLR(n, p) ((*(p)) &= ~(1 << (n)))
-#define FD_ISSET(n, p) (((*(p)) & (1 << (n))) != 0)
-#define FD_ZERO(p) ((*(p)) = 0)
-extern int EXFUN (select,
-		  (int, SELECT_TYPE *, SELECT_TYPE *, SELECT_TYPE *,
-		   struct timeval *));
-#endif
-
 static void
 DEFUN (sleep_awaiting_drones, (microsec, mask),
        unsigned int microsec AND unsigned long mask)
 {
-  int dummy, saved_errno;
-  struct timeval timeout;
-
-  dummy = 0;
-  timeout.tv_sec = 0;
-  timeout.tv_usec = microsec;
+  int saved_errno;
+  int retval;
 
   *wait_mask = mask;
-  dummy = (select (0,
-		   ((SELECT_TYPE *) &dummy),
-		   ((SELECT_TYPE *) &dummy),
-		   ((SELECT_TYPE *) &dummy),
-		   &timeout));
+#ifdef HAVE_POLL
+  retval = (poll (0, 0, (microsec / 1000)));
+#else
+  {
+    int dummy = 0;
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = microsec;
+    retval
+      = (select (0,
+		 ((SELECT_TYPE *) &dummy),
+		 ((SELECT_TYPE *) &dummy),
+		 ((SELECT_TYPE *) &dummy),
+		 &timeout));
+  }
+#endif
   *wait_mask = ((unsigned long) 0);
   saved_errno = errno;
 
-  if ((dummy == -1) && (saved_errno == EINTR))
+  if ((retval == -1) && (saved_errno == EINTR))
     STATISTICS_INCR (sleeps_interrupted);
-  return;
 }
 
 #ifndef _SUNOS4
@@ -639,13 +612,20 @@ DEFUN (sysV_sprintf, (string, format, value),
 }
 
 #endif /* _SUNOS4 */
+
+#ifdef SIGCONT
+static void
+DEFUN (continue_running, (sig), int sig)
+{
+  RE_INSTALL_HANDLER (SIGCONT, continue_running);
+}
+#endif
 
 static void
 DEFUN (start_gc_drones, (first_drone, how_many, restarting),
        int first_drone AND int how_many AND int restarting)
 {
   pid_t pid;
-  long signal_mask;
   char arguments[512];
   struct drone_info *drone;
   char
@@ -698,7 +678,6 @@ DEFUN (start_gc_drones, (first_drone, how_many, restarting),
   }
   else
   {
-
     sigset_t old_mask, new_mask;
 
     UX_sigemptyset (&new_mask);
@@ -888,7 +867,7 @@ DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
   malloc_size = ((n_gc_drones == 0)
 		 ? shared_size
 		 : (first_time_p ? MALLOC_SPACE : 0));
-
+
   if (malloc_size > 0)
   {
     malloc_memory = ((char *) (malloc (malloc_size)));
@@ -944,7 +923,7 @@ DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
     free (malloc_memory);
     malloc_memory = ((char *) NULL);
   }
-
+
   gc_buffers = ((struct buffer_info *) (shared_memory + buffer_space));
   gc_drones = ((struct drone_info *) (gc_buffers + n_gc_buffers));
   drone_version = ((unsigned long *) (gc_drones + n_gc_drones));
@@ -999,7 +978,7 @@ DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
       UX_sigaddset ((&mask), SIGCONT);
       UX_sigprocmask (SIG_UNBLOCK, (&mask), 0);
     }
-
+
     for (cntr = 0, entry = gc_read_queue;
 	 cntr < read_overlap;
 	 cntr++, entry++)
@@ -1198,7 +1177,6 @@ DEFUN (allocate_queue_entry, (queue, queue_size, position, request, mask),
   drone_mask = ((unsigned long) 0);
   for (cntr = 0, entry = queue; cntr < queue_size; cntr++, entry++)
   {
-
     if (entry->state == entry_idle)
       queue_index = cntr;
     else if ((entry->buffer)->position == position)
@@ -1289,6 +1267,7 @@ DEFUN_VOID (find_idle_buffer)
 	      scheme_program_name);
   Microcode_Termination (TERM_GC_OUT_OF_SPACE);
   /*NOTREACHED*/
+  return (0);
 }
 
 static struct buffer_info * 
@@ -1386,7 +1365,7 @@ buffer_failed:
 	STATISTICS_INCR (reads_pending);
 	goto buffer_available;
       }
-
+
       case buffer_queued:
 	STATISTICS_INCR (reads_queued);
 	goto buffer_available;
@@ -1725,12 +1704,8 @@ DEFUN (await_io_completion, (start_p), int start_p)
 
 #define LOAD_BUFFER(buffer, position, size, noise)			\
   buffer = (read_buffer (position, size, noise))
-
-#endif /* HAVE_SYSV_SHARED_MEMORY */
-
-
-
-#ifndef GC_BUFFER_ALLOCATION
+
+#else /* not USE_SYSV_SHARED_MEMORY */
 
 static struct buffer_info
   * gc_disk_buffer_1,
@@ -1754,14 +1729,13 @@ do {									\
 
 #define INITIALIZE_IO()		do { } while (0)
 #define AWAIT_IO_COMPLETION()	do { } while (0)
-
+
 #define INITIAL_FREE_BUFFER()	gc_disk_buffer_1
 #define INITIAL_SCAN_BUFFER()	OTHER_BUFFER(free_buffer)
 
 /* (gc_disk_buffer_1 - (gc_disk_buffer_2 - (buffer))) does not work
    because scan_buffer is not initialized until after scanning
-   constant space.
-*/
+   constant space.  */
 
 #define OTHER_BUFFER(buffer)	(((buffer) == gc_disk_buffer_1)		\
 				 ? gc_disk_buffer_2			\
@@ -1795,7 +1769,23 @@ DEFUN (catastrophic_failure, (name), char * name)
 #define DUMP_BUFFER(buffer, position, size, successp, noise)		\
   write_data (((char *) buffer), position, size, noise, successp)
 
-#endif /* GC_BUFFER_ALLOCATION */
+#endif /* not USE_SYSV_SHARED_MEMORY */
+
+#define DUMP_SCAN_BUFFER(success)					\
+  DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,		\
+	       success, "the scan buffer")
+
+#define DUMP_FREE_BUFFER(success)					\
+  DUMP_BUFFER (free_buffer, free_position, gc_buffer_bytes,		\
+	       success, "the free buffer")
+
+#define LOAD_SCAN_BUFFER()						\
+  LOAD_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,		\
+	       "the scan buffer")
+
+#define LOAD_FREE_BUFFER()						\
+  LOAD_BUFFER (free_buffer, free_position, gc_buffer_bytes,		\
+	       "the free buffer")
 
 static int
 DEFUN (next_exponent_of_two, (value), int value)
@@ -1812,14 +1802,14 @@ DEFUN (next_exponent_of_two, (value), int value)
     ;
   return (exponent);
 }
-
+
 /* Hacking the gc file */
 
 static int
   saved_gc_file = -1,
   saved_read_overlap,
   saved_write_overlap;
-
+
 static long
   saved_start_position,
   saved_end_position;
@@ -1859,13 +1849,16 @@ DEFUN_VOID (restore_gc_file)
 static void
 DEFUN (close_gc_file, (unlink_p), int unlink_p)
 {
-#ifdef F_ULOCK
+#ifdef HAVE_LOCKF
   if (gc_file != -1)
-  {
-    (void) (lseek (gc_file, gc_file_start_position, SEEK_SET));
-    (void) (lockf (gc_file, F_ULOCK,
-		   (gc_file_end_position - gc_file_start_position)));
-  }
+    {
+      if ((lseek (gc_file, gc_file_start_position, SEEK_SET)) < 0)
+	perror ("lseek");
+      if ((lockf (gc_file, F_ULOCK,
+		  (gc_file_end_position - gc_file_start_position)))
+	  < 0)
+	perror ("lockf");
+    }
 #endif
   if ((gc_file != -1) && ((close (gc_file)) == -1))
     outf_error ("\n%s (close_gc_file): error: GC file = \"%s\"; errno = %s.\n",
@@ -1873,9 +1866,9 @@ DEFUN (close_gc_file, (unlink_p), int unlink_p)
   gc_file = -1;
   if (!keep_gc_file_p && unlink_p)
     unlink (gc_file_name);
-  gc_file_name = ((char *) NULL);
+  OS_free (gc_file_name);
+  gc_file_name = 0;
   keep_gc_file_p = 0;
-  return;
 }
 
 #define EMPTY_STRING_P(string)						\
@@ -1900,56 +1893,104 @@ DEFUN (termination_open_gc_file, (operation, extra),
   /*NOTREACHED*/
 }
 
-extern char * EXFUN (mktemp, (char *));
-#ifndef _POSIX
+char *
+DEFUN (make_gc_file_name, (suffix), CONST char * suffix)
+{
+  unsigned int s = (strlen (suffix));
+  if ((option_gc_file[0]) == SUB_DIRECTORY_DELIMITER)
+    {
+      unsigned int n
+	= (((strrchr (option_gc_file, SUB_DIRECTORY_DELIMITER))
+	    - option_gc_file)
+	   + 1);
+      char * result = (OS_malloc (n + s + 1));
+      strncpy (result, option_gc_file, n);
+      (result[n]) = '\0';
+      strcat (result, suffix);
+      return (result);
+    }
+  {
+    unsigned int l = (strlen (option_gc_directory));
+    if ((option_gc_directory [l - 1]) == SUB_DIRECTORY_DELIMITER)
+      {
+	unsigned int n = l;
+	char * result = (OS_malloc (n + s + 1));
+	sprintf (result, "%s%s", option_gc_directory, suffix);
+	return (result);
+      }
+    else
+      {
+	unsigned int n = (l + 1);
+	char * result = (OS_malloc (n + s + 1));
+	sprintf (result, "%s%c%s",
+		 option_gc_directory, SUB_DIRECTORY_DELIMITER, suffix);
+	return (result);
+      }
+  }
+}
+
+int
+DEFUN (allocate_gc_file, (name), char * name)
+{
+  /* `name' must end in 6 `X' characters.  */
+  char * exxes = (name + ((strlen (name)) - 6));
+  unsigned int n = 0;
+
+  while (n < 1000000)
+    {
+      sprintf (exxes, "%06d", n);
+      if (OS_file_touch (name))
+	return (1);
+      n += 1;
+    }
+  return (0);
+}
+
+void
+DEFUN (protect_gc_file_name, (name), CONST char * name)
+{
+  CONST char ** p = (dstack_alloc (sizeof (char *)));
+  (*p) = name;
+  transaction_record_action (tat_always, OS_free, p);
+}
+
+#ifndef _POSIX_VERSION
 extern off_t EXFUN (lseek, (int, off_t, int));
 #endif
 
 static void
 DEFUN (open_gc_file, (size, unlink_p),
-       long size AND int unlink_p)
+       long size AND
+       int unlink_p)
 {
   struct stat file_info;
-  int position, flags;
+  int flags;
   Boolean temp_p, exists_p;
 
-  gc_file_name = &gc_file_name_buffer[0];
-  if (option_gc_file[0] == SUB_DIRECTORY_DELIMITER)
-    strcpy (gc_file_name, option_gc_file);
-  else
+  gc_file_name
+    = (make_gc_file_name
+       (((option_gc_file[0]) == SUB_DIRECTORY_DELIMITER)
+	? ((strrchr (option_gc_file, SUB_DIRECTORY_DELIMITER)) + 1)
+	: option_gc_file));
+
   {
-    position = (strlen (option_gc_directory));
-    if ((position == 0) || 
-	(option_gc_directory[position - 1] != SUB_DIRECTORY_DELIMITER))
-      sprintf (gc_file_name, "%s%c%s", 
-	       option_gc_directory, SUB_DIRECTORY_DELIMITER, option_gc_file);
+    unsigned int n = (strlen (option_gc_file));
+    if ((n >= 6) && ((strcmp ((option_gc_file + (n - 6)), "XXXXXX")) == 0))
+      {
+	if (!allocate_gc_file (gc_file_name))
+	  {
+	    outf_fatal
+	      ("%s: Unable to allocate a temporary file for the spare heap.\n",
+	       scheme_program_name);
+	    termination_open_gc_file (0, 0);
+	    /*NOTREACHED*/
+	  }
+	temp_p = true;
+      }
     else
-      sprintf (gc_file_name, "%s%s", option_gc_directory, option_gc_file);
+      temp_p = false;
   }
 
-  /* mktemp supposedly only clobbers Xs from the end.
-     If the string does not end in Xs, it should be untouched. 
-     This presents a quoting problem, but...
-     Unfortunately, it seems to clobber the string when there are no Xs.
-   */
-
-  temp_p = false;
-  position = (strlen (option_gc_file));
-  if ((position >= 6)
-      && ((strncmp ((option_gc_file + (position - 6)), "XXXXXX", 6)) == 0))
-  {
-    char * gc_temp = (mktemp (gc_file_name));
-    if (EMPTY_STRING_P (gc_temp))
-    {
-      outf_fatal
-	("%s (open_gc_file): \
-	  Unable to allocate a temporary file for the spare heap.\n",
-	 scheme_program_name);
-      termination_open_gc_file (((char *) NULL), ((char *) NULL));
-    }
-    temp_p = true;
-  }
-
   flags = GC_FILE_FLAGS;
   gc_file_start_position = (ALIGN_UP_TO_IO_PAGE (option_gc_start_position));
   gc_file_end_position = option_gc_end_position;
@@ -1965,7 +2006,7 @@ DEFUN (open_gc_file, (size, unlink_p),
        scheme_program_name,
        option_gc_start_position, gc_file_start_position,
        option_gc_end_position, gc_file_end_position);
-    termination_open_gc_file (((char *) NULL), ((char *) NULL));
+    termination_open_gc_file (0, 0);
   }
 
   absolute_gc_file_end_position = gc_file_end_position;
@@ -1978,11 +2019,7 @@ DEFUN (open_gc_file, (size, unlink_p),
   }
   else
   {
-#ifdef ASSUME_NORMAL_GC_FILE
-    /* Assume that it will be a normal file.  */
-    exists_p = true;
-    can_dump_directly_p = true;
-#else
+#ifdef __unix__
     /* If it is S_IFCHR, it should determine the IO block
        size and make sure that it will work.
        I don't know how to do that.
@@ -2009,13 +2046,17 @@ DEFUN (open_gc_file, (size, unlink_p),
     }
     else
       can_dump_directly_p = true;
-#endif /* not ASSUME_NORMAL_GC_FILE */
+#else
+    /* Assume that it will be a normal file.  */
+    exists_p = true;
+    can_dump_directly_p = true;
+#endif
   }
-
+
   gc_file = (open (gc_file_name, flags, GC_FILE_MASK));
   if (gc_file == -1)
   {
-#if defined(DOS386) || defined(WINNT) || defined(_OS2)
+#ifndef __unix__
     /* errno does not give sufficient information except under unix. */
 
     int saved_errno = errno;
@@ -2044,49 +2085,43 @@ DEFUN (open_gc_file, (size, unlink_p),
     }      
     else
       errno = saved_errno;
-#endif /* defined(DOS386) || defined(WINNT) || defined(_OS2) */
+#endif /* not __unix__ */
     termination_open_gc_file ("open", ((char *) NULL));
   }
 
-  keep_gc_file_p = (option_gc_keep || (exists_p && (! temp_p)));
+  keep_gc_file_p = (option_gc_keep || (exists_p && (!temp_p)));
 
 #ifdef UNLINK_BEFORE_CLOSE
   if (!keep_gc_file_p && unlink_p)
-    (void) (unlink (gc_file_name));
+    unlink (gc_file_name);
 #endif  
 
 #ifdef HAVE_PREALLOC
   if (!exists_p)
-  {
-    extern int EXFUN (prealloc, (int, off_t));
+    prealloc (gc_file, ((unsigned int) gc_file_end_position));
+#endif
 
-    (void) (prealloc (gc_file, ((unsigned int) gc_file_end_position)));
-  }
-#endif /* HAVE_PREALLOC */
-
-#ifdef F_TLOCK
+#ifdef HAVE_LOCKF
   if (exists_p)
-  {
-    extern int EXFUN (locfk, (int, int, long));
+    {
+      if ((lseek (gc_file, gc_file_start_position, SEEK_SET)) < 0)
+	termination_open_gc_file ("lseek", ((char *) NULL));
 
-    if ((lseek (gc_file, gc_file_start_position, SEEK_SET)) == -1)
-      termination_open_gc_file ("lseek", ((char *) NULL));
-
-    if ((lockf (gc_file, F_TLOCK, size)) == -1)
-      termination_open_gc_file
-	("lockf",
-	 "The GC file is probably being used by another process");
-  }
-#endif /* F_TLOCK */
+      if ((lockf (gc_file, F_TLOCK, size)) < 0)
+	termination_open_gc_file
+	  ("lockf",
+	   "The GC file is probably being used by another process");
+    }
+#endif
 
   gc_file_current_position = -1;	/* Unknown position */
 
-#ifndef ASSUME_NORMAL_GC_FILE
+#ifdef __unix__
   /* Determine whether it is a seekable file. */
   if (exists_p && ((file_info.st_mode & S_IFMT) == S_IFCHR))
   {
-#if defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
-    int flags;
+#ifdef HAVE_FCNTL
+    int fcntl_flags;
 #endif
     Boolean ignore;
     static char message[] = "This is a test message to the GC file.\n";
@@ -2099,9 +2134,10 @@ DEFUN (open_gc_file, (size, unlink_p),
 	     (IO_PAGE_SIZE - (sizeof (message))));
     (* (buffer + (IO_PAGE_SIZE - 1))) = '\n';
 
-#if defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
-    if ((flags = (fcntl (gc_file, F_GETFL, 0))) != -1)
-      (void) (fcntl (gc_file, F_SETFL, (flags | O_NONBLOCK)));
+#ifdef HAVE_FCNTL
+    fcntl_flags = (fcntl (gc_file, F_GETFL, 0));
+    if (fcntl_flags != (-1))
+      fcntl (gc_file, F_SETFL, (fcntl_flags | O_NONBLOCK));
 #endif
 
     write_data (buffer,
@@ -2120,19 +2156,15 @@ DEFUN (open_gc_file, (size, unlink_p),
 		  scheme_program_name, gc_file_name);
       termination_open_gc_file (((char *) NULL), ((char *) NULL));
     }
-#if defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
-    if (flags != -1)
-      (void) (fcntl (gc_file, F_SETFL, (flags | O_NONBLOCK)));
+#ifdef HAVE_FCNTL
+    if (fcntl_flags != (-1))
+      fcntl (gc_file, F_SETFL, fcntl_flags);
 #endif
   }
-#endif /* not ASSUME_NORMAL_GC_FILE */
-  return;
+#endif /* __unix__ */
 }
 
 #define CONSTANT_SPACE_FUDGE	128
-
-extern void EXFUN (reset_allocator_parameters, (void));
-extern Boolean EXFUN (update_allocator_parameters, (SCHEME_OBJECT *));
 
 Boolean
 DEFUN (update_allocator_parameters, (ctop), SCHEME_OBJECT * ctop)
@@ -2397,8 +2429,7 @@ DEFUN (enqueue_free_buffer, (success), Boolean * success)
 
   diff = ((free_position - pre_read_position) >> gc_buffer_byte_shift);
   if (diff >= read_overlap)
-    DUMP_BUFFER (free_buffer, free_position, gc_buffer_bytes,
-		 success, "the free buffer");
+    DUMP_FREE_BUFFER (success);
   else
   {
     ENQUEUE_READY_BUFFER (free_buffer, free_position, gc_buffer_bytes);
@@ -2444,9 +2475,8 @@ DEFUN_VOID (abort_pre_reads)
 }
 
 static void
-DEFUN (reload_scan_buffer, (skip), int skip)
+DEFUN (reload_scan_buffer, (skip), unsigned long skip)
 {
-
   scan_position += (skip << gc_buffer_byte_shift);
   virtual_scan_pointer += (skip << gc_buffer_shift);
 
@@ -2462,70 +2492,67 @@ DEFUN (reload_scan_buffer, (skip), int skip)
     scan_buffer_top = free_buffer_top;
     return;
   }
-  LOAD_BUFFER (scan_buffer, scan_position,
-	       gc_buffer_bytes, "the scan buffer");
+  LOAD_SCAN_BUFFER ();
   scan_buffer_bottom = (GC_BUFFER_BOTTOM (scan_buffer));
   scan_buffer_top = (GC_BUFFER_TOP (scan_buffer));
   *scan_buffer_top = (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top));
   
   if (read_overlap > 0)
     schedule_pre_reads ();
-  return;
 }
 
 SCHEME_OBJECT *
-DEFUN (dump_and_reload_scan_buffer, (number_to_skip, success),
-       long number_to_skip AND Boolean * success)
+DEFUN (dump_and_reload_scan_buffer, (end, success),
+       SCHEME_OBJECT * end AND
+       Boolean * success)
 {
-  DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
-	       success, "the scan buffer");
-  reload_scan_buffer (1 + number_to_skip);
-  return (scan_buffer_bottom);
+  unsigned long number_to_skip = (end - scan_buffer_top);
+  DUMP_SCAN_BUFFER (success);
+  reload_scan_buffer (1 + (number_to_skip >> gc_buffer_shift));
+  return (scan_buffer_bottom + (number_to_skip & gc_buffer_mask));
 }
 
 SCHEME_OBJECT *
-DEFUN (dump_and_reset_free_buffer, (overflow, success),
-       fast long overflow AND Boolean * success)
+DEFUN (dump_and_reset_free_buffer, (current_free, success),
+       SCHEME_OBJECT * current_free AND
+       Boolean * success)
 {
-  Boolean buffer_overlap_p, same_buffer_p;
-  fast SCHEME_OBJECT *into, *from;
-
-  from = free_buffer_top;
-  buffer_overlap_p = extension_overlap_p;
-  same_buffer_p = (scan_buffer == free_buffer);
+  unsigned long overflow = (current_free - free_buffer_top);
+  SCHEME_OBJECT * from = free_buffer_top;
+  Boolean buffer_overlap_p = extension_overlap_p;
+  Boolean same_buffer_p = (scan_buffer == free_buffer);
 
   if (read_overlap > 0)
-  {
-    if (buffer_overlap_p)
     {
-      extension_overlap_p = false;
-      next_scan_buffer = free_buffer;
+      if (buffer_overlap_p)
+	{
+	  extension_overlap_p = false;
+	  next_scan_buffer = free_buffer;
+	}
+      else if (!same_buffer_p)
+	enqueue_free_buffer (success);
     }
-    else if (!same_buffer_p)
-      enqueue_free_buffer (success);
-  }
   else if (!same_buffer_p)
-    DUMP_BUFFER (free_buffer, free_position, gc_buffer_bytes,
-		 success, "the free buffer");
+    DUMP_FREE_BUFFER (success);
 
   /* Otherwise there is no need to dump now, it will be dumped
      when scan is dumped.  Note that the next buffer may be dumped
      before this one, but there should be no problem lseeking past the
-     end of file.
-   */
-
+     end of file.  */
   free_position += gc_buffer_bytes;
   free_buffer = (OTHER_BUFFER (scan_buffer));
   free_buffer_bottom = (GC_BUFFER_BOTTOM (free_buffer));
   free_buffer_top = (GC_BUFFER_TOP (free_buffer));
-
-  for (into = free_buffer_bottom; --overflow >= 0; )
-    *into++ = *from++;
-
-  if (same_buffer_p && !buffer_overlap_p)
-    *scan_buffer_top =
-      (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top));
-  return (into);
+  {
+    SCHEME_OBJECT * into = free_buffer_bottom;
+    SCHEME_OBJECT * end = (into + overflow);
+    while (into < end)
+      (*into++) = (*from++);
+    if (same_buffer_p && (!buffer_overlap_p))
+      (*scan_buffer_top)
+	= (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top));
+    return (into);
+  }
 }
 
 /* These utilities are needed when pointers fall accross window boundaries.
@@ -2536,7 +2563,8 @@ DEFUN (dump_and_reset_free_buffer, (overflow, success),
 
 void
 DEFUN (extend_scan_buffer, (to_where, current_free),
-       fast char * to_where AND SCHEME_OBJECT * current_free)
+       char * to_where AND
+       SCHEME_OBJECT * current_free)
 {
   fast char * source, * dest;
   long new_scan_position = (scan_position + gc_buffer_bytes);
@@ -2594,12 +2622,12 @@ DEFUN (end_scan_buffer_extension, (to_relocate), char * to_relocate)
      */
     SCHEME_OBJECT old, new;
     fast char * source, * dest, * limit;
-
+
     extension_overlap_p = false;
     source = ((char *) scan_buffer_top);
     old = (* ((SCHEME_OBJECT *) source));
     limit = (source + extension_overlap_length);
-    dest = ((char *) (dump_and_reload_scan_buffer (0, ((Boolean *) NULL))));
+    dest = ((char *) (dump_and_reload_scan_buffer (scan_buffer_top, 0)));
     /* The following is only necesary if we are reusing the scan buffer. */
     new = (* scan_buffer_top);
     (* ((SCHEME_OBJECT *) source)) = old;
@@ -2617,8 +2645,7 @@ DEFUN (end_scan_buffer_extension, (to_relocate), char * to_relocate)
     source = scan_buffer_top;
     limit = (source + gc_extra_buffer_size);
 
-    DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
-		 ((Boolean *) NULL), "the scan buffer");
+    DUMP_SCAN_BUFFER (0);
     scan_position += gc_buffer_bytes;
     virtual_scan_pointer += gc_buffer_size;
 
@@ -2650,12 +2677,11 @@ DEFUN (end_scan_buffer_extension, (to_relocate), char * to_relocate)
     limit = (source + extension_overlap_length);
     dest = ((char *) (GC_BUFFER_BOTTOM (next_scan_buffer)));
     result = (dest + (to_relocate - source));
-
+
     while (source < limit)
       *dest++ = *source++;
     
-    DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
-		 ((Boolean *) NULL), "the scan buffer");
+    DUMP_SCAN_BUFFER (0);
     scan_position += gc_buffer_bytes;
     virtual_scan_pointer += gc_buffer_size;
 
@@ -2705,7 +2731,7 @@ DEFUN (dump_free_directly, (from, nbuffers, success),
       for (to = free_buffer_bottom, bufend = free_buffer_top; to != bufend; )
 	*to++ = *from++;
 
-      (void) (dump_and_reset_free_buffer (0, success));
+      (void) (dump_and_reset_free_buffer (to, success));
     }
   }
   return (free_buffer_bottom);
@@ -2741,8 +2767,7 @@ DEFUN (save_scan_state, (state, scan),
   (state -> scan_position) = scan_position;
   (state -> scan_offset) = (scan - scan_buffer_bottom);
   if (scan_position != free_position)
-    DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
-		 0, "the scan buffer");
+    DUMP_SCAN_BUFFER (0);
   reset_scan_buffer ();
 }
 
@@ -2762,8 +2787,7 @@ DEFUN (restore_scan_state, (state), struct saved_scan_state * state)
       scan_buffer = (OTHER_BUFFER (free_buffer));
       scan_buffer_bottom = (GC_BUFFER_BOTTOM (scan_buffer));
       scan_buffer_top = (GC_BUFFER_TOP (scan_buffer));
-      LOAD_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
-		   "the scan buffer");
+      LOAD_SCAN_BUFFER ();
     }
   return (scan_buffer_bottom + (state -> scan_offset));
 }
@@ -2838,8 +2862,7 @@ DEFUN (initialize_scan_buffer, (block_start), SCHEME_OBJECT * block_start)
 void
 DEFUN (end_transport, (success), Boolean * success)
 {
-  DUMP_BUFFER (scan_buffer, scan_position, gc_buffer_bytes,
-	       success, "the final scan buffer");
+  DUMP_SCAN_BUFFER (success);
   scan_position += gc_buffer_bytes;
   virtual_scan_pointer += gc_buffer_size;
   free_position = scan_position;
@@ -2889,7 +2912,7 @@ static SCHEME_OBJECT
  */   
 
 static void
-DEFUN_VOID (pre_read_weak_pair_buffers)
+DEFUN (pre_read_weak_pair_buffers, (low_heap), SCHEME_OBJECT * low_heap)
 {
   SCHEME_OBJECT next, * pair_addr, * obj_addr;
   long position, last_position;
@@ -2900,7 +2923,7 @@ DEFUN_VOID (pre_read_weak_pair_buffers)
   {
     pair_addr = (OBJECT_ADDRESS (next));
     obj_addr = (OBJECT_ADDRESS (*pair_addr++));
-    if (! (obj_addr < Constant_Top))
+    if (! (obj_addr < low_heap))
     {
       position = (obj_addr - aligned_heap);
       position = (position >> gc_buffer_shift);
@@ -3010,7 +3033,9 @@ DEFUN (read_newspace_address, (addr), SCHEME_OBJECT * addr)
 }
 
 static void
-DEFUN (initialize_new_space_buffer, (chain), SCHEME_OBJECT chain)
+DEFUN (initialize_new_space_buffer, (chain, low_heap),
+       SCHEME_OBJECT chain AND
+       SCHEME_OBJECT * low_heap)
 {
   if (read_overlap == 0)
   {
@@ -3024,9 +3049,8 @@ DEFUN (initialize_new_space_buffer, (chain), SCHEME_OBJECT chain)
     weak_pair_buffer = ((struct buffer_info *) NULL);
     weak_pair_buffer_position = -1;
     weak_buffer_pre_read_count = 0;
-    pre_read_weak_pair_buffers ();
+    pre_read_weak_pair_buffers (low_heap);
   }
-  return;
 }
 
 static void
@@ -3042,11 +3066,13 @@ DEFUN_VOID (flush_new_space_buffer)
 }
 
 static SCHEME_OBJECT *
-DEFUN (guarantee_in_memory, (addr), SCHEME_OBJECT * addr)
+DEFUN (guarantee_in_memory, (addr, low_heap),
+       SCHEME_OBJECT * addr AND
+       SCHEME_OBJECT * low_heap)
 {
   long position, offset;
 
-  if (addr < Constant_Top)
+  if (addr < low_heap)
     return (addr);
 
   position = (addr - aligned_heap);
@@ -3064,7 +3090,7 @@ DEFUN (guarantee_in_memory, (addr), SCHEME_OBJECT * addr)
     if (weak_pair_break != EMPTY_WEAK_CHAIN)
     {
       weak_buffer_pre_read_count -= 1;
-      pre_read_weak_pair_buffers ();
+      pre_read_weak_pair_buffers (low_heap);
     }
   }
   return ((GC_BUFFER_BOTTOM (weak_pair_buffer)) + offset);
@@ -3077,7 +3103,9 @@ DEFUN (guarantee_in_memory, (addr), SCHEME_OBJECT * addr)
 */
 
 static SCHEME_OBJECT
-DEFUN (update_weak_pointer, (Temp), SCHEME_OBJECT Temp)
+DEFUN (update_weak_pointer, (Temp, low_heap),
+       SCHEME_OBJECT Temp AND
+       SCHEME_OBJECT * low_heap)
 {
   SCHEME_OBJECT * Old;
 
@@ -3106,7 +3134,7 @@ DEFUN (update_weak_pointer, (Temp), SCHEME_OBJECT Temp)
     case GC_Quadruple:
     case GC_Vector:
       Old = (OBJECT_ADDRESS (Temp));
-      if (Old < Constant_Top)
+      if (Old < low_heap)
 	return (Temp);
 
       if ((OBJECT_TYPE (*Old)) == TC_BROKEN_HEART)
@@ -3116,7 +3144,7 @@ DEFUN (update_weak_pointer, (Temp), SCHEME_OBJECT Temp)
 
     case GC_Compiled:
       Old = (OBJECT_ADDRESS (Temp));
-      if (Old < Constant_Top)
+      if (Old < low_heap)
 	return (Temp);
       Compiled_BH (false, { return Temp; });
       return (SHARP_F);
@@ -3145,24 +3173,26 @@ DEFUN (initialize_weak_pair_transport, (limit), SCHEME_OBJECT * limit)
 }
 
 void
-DEFUN_VOID (fix_weak_chain_1)
+DEFUN (fix_weak_chain_1, (low_heap), SCHEME_OBJECT * low_heap)
 {
   fast SCHEME_OBJECT chain, * old_weak_cell, * scan, * ptr, * limit;
 
   chain = Weak_Chain;
-  initialize_new_space_buffer (chain);
+  initialize_new_space_buffer (chain, low_heap);
 
   limit = Stack_Pointer;
   for (ptr = weak_pair_stack_ptr; ptr < limit ; ptr += 2)
-    *ptr = (update_weak_pointer (*ptr));
+    *ptr = (update_weak_pointer (*ptr, low_heap));
 
   while (chain != EMPTY_WEAK_CHAIN)
   {
     old_weak_cell = (OBJECT_ADDRESS (Weak_Chain));
-    scan = (guarantee_in_memory (OBJECT_ADDRESS (*old_weak_cell++)));
+    scan
+      = (guarantee_in_memory ((OBJECT_ADDRESS (*old_weak_cell++)), low_heap));
     Weak_Chain = (* old_weak_cell);
-    *scan = (update_weak_pointer
-	     (MAKE_OBJECT_FROM_OBJECTS (Weak_Chain, (* scan))));
+    *scan
+      = (update_weak_pointer
+	 ((MAKE_OBJECT_FROM_OBJECTS (Weak_Chain, (* scan))), low_heap));
     Weak_Chain = (OBJECT_NEW_TYPE (TC_NULL, Weak_Chain));
   }
   flush_new_space_buffer ();
@@ -3214,9 +3244,7 @@ DEFUN (GC_relocate_root, (free_buffer_ptr), SCHEME_OBJECT ** free_buffer_ptr)
   *free_buffer++ = Fluid_Bindings;
   skip = (free_buffer - initial_free_buffer);
   if (free_buffer >= free_buffer_top)
-    free_buffer =
-      (dump_and_reset_free_buffer ((free_buffer - free_buffer_top),
-				   NULL));
+    free_buffer = (dump_and_reset_free_buffer (free_buffer, 0));
   * free_buffer_ptr = free_buffer;
   return (skip);
 }
@@ -3274,10 +3302,13 @@ void
 DEFUN (GC, (weak_pair_transport_initialized_p),
        int weak_pair_transport_initialized_p)
 {
-  SCHEME_OBJECT
-    * root, * result, * end_of_constant_area,
-    the_precious_objects, * root2,
-    * free_buffer, * block_start, * saved_ctop;
+  SCHEME_OBJECT * root;
+  SCHEME_OBJECT * end_of_constant_area;
+  SCHEME_OBJECT the_precious_objects;
+  SCHEME_OBJECT * root2;
+  SCHEME_OBJECT * free_buffer;
+  SCHEME_OBJECT * block_start;
+  SCHEME_OBJECT * saved_ctop;
   long skip_length;
 
   saved_ctop = Constant_Top;
@@ -3285,7 +3316,7 @@ DEFUN (GC, (weak_pair_transport_initialized_p),
       && (update_allocator_parameters (Free_Constant)))
     Constant_Top = saved_ctop;
 
-  if (! weak_pair_transport_initialized_p)
+  if (!weak_pair_transport_initialized_p)
     initialize_weak_pair_transport (Stack_Bottom);
 
   free_buffer = (initialize_free_buffer ());
@@ -3300,57 +3331,46 @@ DEFUN (GC, (weak_pair_transport_initialized_p),
   end_of_constant_area = (CONSTANT_AREA_END ());
   the_precious_objects = (Get_Fixed_Obj_Slot (Precious_Objects));
   root = Free;
-
+
   /* The 4 step GC */
 
   Free += (GC_relocate_root (&free_buffer));
 
-  result = (GCLoop ((CONSTANT_AREA_START ()), &free_buffer, &Free));
-  if (result != end_of_constant_area)
   {
-    outf_fatal ("\n%s (GC): The Constant Space scan ended too early.\n",
-		scheme_program_name);
-    Microcode_Termination (TERM_EXIT);
-    /*NOTREACHED*/
+    SCHEME_OBJECT * new_scan
+      = (gc_loop ((CONSTANT_AREA_START ()), (&free_buffer), (&Free),
+		  Constant_Top, NORMAL_GC, 0));
+    if (new_scan != end_of_constant_area)
+      {
+	gc_death (TERM_EXIT, "gc_loop ended too early", new_scan, free_buffer);
+	/*NOTREACHED*/
+      }
   }
 
-  result = (GCLoop (((initialize_scan_buffer (block_start)) + skip_length),
-		    &free_buffer, &Free));
-  if (free_buffer != result)
   {
-    outf_fatal ("\n%s (GC): The Heap scan ended too early.\n",
-		scheme_program_name);
-    Microcode_Termination (TERM_EXIT);
-    /*NOTREACHED*/
+    SCHEME_OBJECT * scan
+      = (gc_loop (((initialize_scan_buffer (block_start)) + skip_length),
+		  (&free_buffer), (&Free), Constant_Top, NORMAL_GC, 1));
+
+    root2 = Free;
+    (*free_buffer++) = the_precious_objects;
+    Free += 1;
+    if (free_buffer >= free_buffer_top)
+      free_buffer = (dump_and_reset_free_buffer (free_buffer, 0));
+
+    gc_loop (scan, (&free_buffer), (&Free), Constant_Top, NORMAL_GC, 1);
   }
 
-  root2 = Free;
-  *free_buffer++ = the_precious_objects;
-  Free += (free_buffer - result);
-  if (free_buffer >= free_buffer_top)
-    free_buffer =
-      (dump_and_reset_free_buffer ((free_buffer - free_buffer_top), NULL));
-
-  result = (GCLoop (result, &free_buffer, &Free));
-  if (free_buffer != result)
-  {
-    outf_fatal ("\n%s (GC): The Precious Object scan ended too early.\n",
-		scheme_program_name);
-    Microcode_Termination (TERM_EXIT);
-    /*NOTREACHED*/
-  }
-  end_transport (NULL);
-  fix_weak_chain_1 ();
+  end_transport (0);
+  fix_weak_chain_1 (Constant_Top);
 
   /* Load new space into memory. */
-
   final_reload (block_start, (Free - block_start), "new space");
-  fix_weak_chain_2 ();
 
+  fix_weak_chain_2 ();
   GC_end_root_relocation (root, root2);
   Constant_Top = saved_ctop;
   SET_CONSTANT_TOP ();
-  return;
 }
 
 /* (GARBAGE-COLLECT SLACK)
@@ -3400,6 +3420,8 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   return (0);
 }
 
+#ifdef RECORD_GC_STATISTICS
+
 static void
 DEFUN_VOID (statistics_clear)
 {
@@ -3451,6 +3473,7 @@ DEFUN (statistics_print, (level, noise), int level AND char * noise)
   }
   return;
 }
+#endif /* RECORD_GC_STATISTICS */
 
 static SCHEME_OBJECT
 DEFUN_VOID (statistics_names)
@@ -3544,6 +3567,7 @@ DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-GET", Prim_bchscheme_get_params, 0, 0, 0
   PRIMITIVE_RETURN (vector);
 }
 
+#if CAN_RECONFIGURE_GC_BUFFERS
 static long
 DEFUN (bchscheme_long_parameter, (vector, index),
        SCHEME_OBJECT vector AND int index)
@@ -3559,12 +3583,13 @@ DEFUN (bchscheme_long_parameter, (vector, index),
     error_bad_range_arg (1);
   return (value);
 }
+#endif /* CAN_RECONFIGURE_GC_BUFFERS */
 
 DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-SET!", Prim_bchscheme_set_params, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
-#if (CAN_RECONFIGURE_GC_BUFFERS == 0)
+#if !CAN_RECONFIGURE_GC_BUFFERS
   signal_error_from_primitive (ERR_UNDEFINED_PRIMITIVE);
   /*NOTREACHED*/
   return (0);
@@ -3599,7 +3624,7 @@ DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-SET!", Prim_bchscheme_set_params, 1, 1, 
       if (new_drone_ptr != ((char *) NULL))
 	strcpy (new_drone_ptr, ((char *) (STRING_LOC (new_drone, 0))));
     }
-
+
     if (new_buffer_size != old_buffer_size)
     {
       int power = (next_exponent_of_two (new_buffer_size));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: syntax.c,v 1.24 1999/01/02 06:11:34 cph Exp $
+$Id: syntax.c,v 1.25 2000/12/05 21:23:48 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -129,6 +129,7 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
 	  {
 	  case syntaxcode_comment: MERGE_COMMENT (COMSTART_FIRST_B); break;
 	  case syntaxcode_endcomment: MERGE_COMMENT (COMEND_FIRST_B); break;
+	  default: break;
 	  }
 	break;
       case 'p': MERGE_PREFIX_BIT (1 << 20); break;
@@ -163,7 +164,6 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
   fast SCHEME_OBJECT group;						\
   fast unsigned char * start;						\
   unsigned char * first_char, * end;					\
-  long sentry;								\
   long gap_length;							\
   PRIMITIVE_HEADER (arity);						\
   CHECK_ARG (1, SYNTAX_TABLE_P);					\
@@ -189,7 +189,6 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 #define NORMAL_INITIALIZATION_BACKWARD(arity)				\
   fast unsigned char * gap_start;					\
   unsigned char * gap_end;						\
-  Boolean quoted;							\
   NORMAL_INITIALIZATION_COMMON (arity);					\
   if (start > gap_start)						\
     start += gap_length;						\
@@ -269,11 +268,10 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 
 #define RIGHT_QUOTED_P_INTERNAL(scan, quoted) do			\
 {									\
-  long sentry;								\
-									\
   quoted = false;							\
   while (true)								\
     {									\
+      long sentry;							\
       if (LEFT_END_P (scan))						\
 	break;								\
       READ_LEFT (scan, sentry);						\
@@ -300,6 +298,7 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("QUOTED-CHAR?", Prim_quoted_char_p, 4, 4, 0)
 {
+  Boolean quoted;
   NORMAL_INITIALIZATION_BACKWARD (4);
 
   RIGHT_QUOTED_P (start, quoted);
@@ -311,6 +310,7 @@ DEFINE_PRIMITIVE ("QUOTED-CHAR?", Prim_quoted_char_p, 4, 4, 0)
 
 DEFINE_PRIMITIVE ("SCAN-BACKWARD-PREFIX-CHARS", Prim_scan_backward_prefix_chars, 4, 4, 0)
 {
+  Boolean quoted;
   NORMAL_INITIALIZATION_BACKWARD (4);
 
   while (true)
@@ -366,6 +366,7 @@ DEFINE_PRIMITIVE ("SCAN-WORD-FORWARD", Prim_scan_word_forward, 4, 4, 0)
 
   while (true)
     {
+      long sentry;
       LOSE_IF_RIGHT_END (start);
       READ_RIGHT (start, sentry);
       if ((SYNTAX_ENTRY_CODE (sentry)) == syntaxcode_word)
@@ -385,6 +386,7 @@ DEFINE_PRIMITIVE ("SCAN-WORD-BACKWARD", Prim_scan_word_backward, 4, 4, 0)
 
   while (true)
     {
+      long sentry;
       LOSE_IF_LEFT_END (start);
       READ_LEFT (start, sentry);
       if ((SYNTAX_ENTRY_CODE (sentry)) == syntaxcode_word)
@@ -406,6 +408,7 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 
   while (true)
     {
+      long sentry;
       LOSE_IF_RIGHT_END (start);
       c = (*start);
       READ_RIGHT (start, sentry);
@@ -526,16 +529,21 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 	  MOVE_RIGHT (start);
 	  WIN_IF ((depth == 0) && sexp_flag);
 	  break;
+
+	default:
+	  break;
 	}
     }
 }
 
 DEFINE_PRIMITIVE ("SCAN-LIST-BACKWARD", Prim_scan_list_backward, 7, 7, 0)
 {
+  Boolean quoted;
   SCAN_LIST_INITIALIZATION (NORMAL_INITIALIZATION_BACKWARD);
 
   while (true)
     {
+      long sentry;
       LOSE_IF_LEFT_END (start);
       LEFT_QUOTED_P (start, quoted);
       if (quoted)
@@ -656,6 +664,9 @@ DEFINE_PRIMITIVE ("SCAN-LIST-BACKWARD", Prim_scan_list_backward, 7, 7, 0)
 	  MOVE_LEFT (start);
 	  WIN_IF ((depth == 0) && sexp_flag);
 	  break;
+
+	default:
+	  break;
 	}
     }
 }
@@ -684,21 +695,22 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
   long target_depth;
   Boolean stop_before;
   SCHEME_OBJECT state_argument;
-  long depth;
-  long in_string;		/* -1 or delimiter character */
+  long depth = 0;
+  long in_string = -1;		/* -1 or delimiter character */
   /* Values of in_comment:
      0 = not in comment
      1 = in comment
      2 = found first start of comment
      3 = found first end of comment */
-  unsigned int in_comment;
-  unsigned int comment_style;
-  unsigned char * comment_start;
-  Boolean quoted;
+  unsigned int in_comment = 0;
+  unsigned int comment_style = COMMENT_STYLE_A;
+  unsigned char * comment_start = 0;
+  Boolean quoted = false;
   struct levelstruct level_start[LEVEL_ARRAY_LENGTH];
   struct levelstruct *level;
   struct levelstruct *level_end;
-  int c;
+  int c = 0;
+  long sentry = 0;
   SCHEME_OBJECT result;
   NORMAL_INITIALIZATION_FORWARD (7);
 
@@ -960,6 +972,9 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 	  in_string = -1;
 	  (level -> previous) = (level -> last);
 	  MOVE_RIGHT (start);
+	  break;
+
+	default:
 	  break;
 	}
     }

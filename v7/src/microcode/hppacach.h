@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: hppacach.h,v 1.5 1999/01/02 06:11:34 cph Exp $
+$Id: hppacach.h,v 1.6 2000/12/05 21:23:44 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,13 +27,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include <fcntl.h>
 
-#ifdef _HPUX
+#ifdef __HPUX__
 #include <sys/utsname.h>
 #include <sys/types.h>
 #include <sys/param.h>
 #include <machine/cpu.h>
 #include <machine/pdc_rqsts.h>
-#endif /* _HPUX */
+#endif /* __HPUX__ */
 
 /* PDC_CACHE (processor dependent code cache information call)
    return data destructuring.
@@ -107,11 +107,11 @@ struct pdc_cache_result
   struct tlb_info DT_info;
 };
 
-#ifdef _HPUX
+#ifdef __HPUX__
 
 #  define HARDWARE_SIZE sizeof (utsname.machine)
 
-#else /* not _HPUX */
+#else /* not __HPUX__ */
 /* Presumably BSD */
 
 #  define HARDWARE_SIZE 9
@@ -122,7 +122,7 @@ struct pdc_cache_rtn_block
   int filler[2];
 };
 
-#endif /* _HPUX */
+#endif /* __HPUX__ */
 
 struct pdc_cache_dump
 {

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osenv.h,v 1.9 2000/01/18 05:08:46 cph Exp $
+$Id: osenv.h,v 1.10 2000/12/05 21:23:47 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -37,7 +37,7 @@ struct time_structure
   int time_zone;
 };
 
-extern time_t EXFUN (OS_encoded_time, ());
+extern time_t EXFUN (OS_encoded_time, (void));
 extern void EXFUN (OS_decode_time, (time_t, struct time_structure *));
 extern void EXFUN (OS_decode_utc, (time_t, struct time_structure *));
 extern time_t EXFUN (OS_encode_time, (struct time_structure *));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.17 1999/01/02 06:11:34 cph Exp $
+$Id: nttrap.c,v 1.18 2000/12/05 21:23:46 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -34,19 +34,9 @@ extern int EXFUN (TellUser, (char *, ...));
 extern int EXFUN (TellUserEx, (int, char *, ...));
 #endif /* W32_TRAP_DEBUG */
 
+extern void EXFUN (callWinntExceptionTransferHook, (void));
 extern void EXFUN (NT_initialize_traps, (void));
 extern void EXFUN (NT_restore_traps, (void));
-
-#ifndef WINNT_RAW_ADDRESSES
-extern unsigned short
-  Scheme_Code_Segment_Selector,
-  Scheme_Data_Segment_Selector,
-  Scheme_Stack_Segment_Selector,
-  C_Code_Segment_Selector,
-  C_Data_Segment_Selector,
-  C_Extra_Segment_Selector,
-  C_Stack_Segment_Selector;
-#endif
 
 extern DWORD
   C_Stack_Pointer,
@@ -383,32 +373,8 @@ DEFUN (display_exception_information, (info, context, flags),
     bufptr += (sprintf (bufptr, "\ncontext->Eip        = 0x%lx.", context->Eip));
     bufptr += (sprintf (bufptr, "\ncontext->Esp        = 0x%lx.", context->Esp));
     bufptr += (sprintf (bufptr, "\nStack_Pointer       = 0x%lx.", Stack_Pointer));
-#ifndef WINNT_RAW_ADDRESSES
-    bufptr += (sprintf (bufptr, "\nwinnt_address_delta = 0x%lx.", winnt_address_delta));
-#endif
     bufptr += (sprintf (bufptr, "\nadj (Stack_Pointer) = 0x%lx.",
 			(ADDR_TO_SCHEME_ADDR (Stack_Pointer))));
-#ifndef WINNT_RAW_ADDRESSES
-    bufptr += (sprintf (bufptr, "\nCS = 0x%04x;\tC CS = 0x%04x;\tS CS = 0x%04x.",
-			context->SegCs,
-			C_Code_Segment_Selector,
-			Scheme_Code_Segment_Selector));
-
-    bufptr += (sprintf (bufptr, "\nDS = 0x%04x;\tC DS = 0x%04x;\tS DS = 0x%04x.",
-			context->SegDs,
-			C_Data_Segment_Selector,
-			Scheme_Data_Segment_Selector));
-
-    bufptr += (sprintf (bufptr, "\nES = 0x%04x;\tC ES = 0x%04x;\tS ES = 0x%04x.",
-			context->SegEs,
-			C_Extra_Segment_Selector,
-			C_Data_Segment_Selector));
-
-    bufptr += (sprintf (bufptr, "\nSS = 0x%04x;\tC SS = 0x%04x;\tS SS = 0x%04x.",
-			context->SegSs,
-			C_Stack_Segment_Selector,
-			Scheme_Stack_Segment_Selector));
-#endif
   }
 #endif /* W32_TRAP_DEBUG */
 
@@ -447,11 +413,8 @@ static SCHEME_OBJECT
   * real_stack_guard,
   * real_stack_pointer;
 
-extern int EXFUN (WinntExceptionTransferHook, (void));
-extern void EXFUN (callWinntExceptionTransferHook, (void));
-
 int
-DEFUN_VOID (WinntExceptionTransferHook)
+WinntExceptionTransferHook (void)
 {
   /* These must be static because the memcpy below may
      be overwriting this procedure's locals!
@@ -613,7 +576,7 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
 static SCHEME_OBJECT * EXFUN
   (find_block_address, (char * pc_value, SCHEME_OBJECT * area_start));
 
-#define I386_NREGS 12
+#define IA32_NREGS 12
 
 /* For now */
 #define GET_ETEXT() (Heap_Bottom)
@@ -661,14 +624,6 @@ DEFUN (continue_from_trap, (code, context),
 	Stack_Pointer, context->Esp));
     scheme_sp = (context->Esp);
   }
-#ifndef WINNT_RAW_ADDRESSES
-  else if (context->SegSs == Scheme_Stack_Segment_Selector)
-  {
-    IFVERBOSE (TellUserEx (MB_OKCANCEL,
-			   "continue_from_trap: SS = Scheme SS."));
-    scheme_sp = ((long) (SCHEME_ADDR_TO_ADDR (context->Esp)));
-  }
-#endif
   else
   {
     IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap: SS unknown!"));
@@ -680,14 +635,6 @@ DEFUN (continue_from_trap, (code, context),
     IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap: CS = C CS."));
     the_pc = (context->Eip & PC_VALUE_MASK);
   }
-#ifndef WINNT_RAW_ADDRESSES
-  else if (context->SegCs == Scheme_Code_Segment_Selector)
-  {
-    IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap: CS = Scheme CS"));
-    /* Assume in Scheme.  Of course, it could be in a builtin. */
-    the_pc = ((long) (SCHEME_ADDR_TO_ADDR (context->Eip & PC_VALUE_MASK)));
-  }
-#endif
   else
   {
     IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap: CS unknown"));
@@ -827,8 +774,6 @@ pc_in_hyperspace:
     }
     else
     {
-      long primitive_address =
-	((long) (Primitive_Procedure_Table[OBJECT_DATUM (primitive)]));
       (trinfo . state) = STATE_PRIMITIVE;
       (trinfo . pc_info_1) = primitive;
       (trinfo . pc_info_2) =
@@ -850,14 +795,14 @@ pc_in_hyperspace:
   else
   {
     xtra_info = Free;
-    Free += (1 + (I386_NREGS + 2));
+    Free += (1 + (IA32_NREGS + 2));
     (trinfo . extra_trap_info) =
       (MAKE_POINTER_OBJECT (TC_NON_MARKED_VECTOR, xtra_info));
-    (*xtra_info++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (I386_NREGS + 2)));
+    (*xtra_info++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (IA32_NREGS + 2)));
     (*xtra_info++) = ((SCHEME_OBJECT) the_pc);
     (*xtra_info++) = ((SCHEME_OBJECT) scheme_sp);
     {
-      int counter = I386_NREGS;
+      int counter = IA32_NREGS;
       int * regs = ((int *) context->Edi);
       while ((counter--) > 0)
 	(*xtra_info++) = ((SCHEME_OBJECT) (*regs++));
@@ -876,12 +821,6 @@ pc_in_hyperspace:
 
   if (pc_in_scheme && (! (win32_under_win32s_p ())))
   {
-#ifndef WINNT_RAW_ADDRESSES
-    context->SegCs = C_Code_Segment_Selector;
-    context->SegDs = C_Data_Segment_Selector;
-    context->SegEs = C_Extra_Segment_Selector;
-    context->SegSs = C_Stack_Segment_Selector;
-#endif
     context->Esp = C_Stack_Pointer;
     context->Ebp = C_Frame_Pointer;
     if (pc_in_scheme)
@@ -1217,16 +1156,12 @@ DEFUN (tinyexcpdebug, (code, info),
 # define PAGE_SIZE 0x1000
 #endif
 
-extern void EXFUN (winnt_stack_reset, (void));
-extern void EXFUN (winnt_protect_stack, (void));
-extern void EXFUN (winnt_unprotect_stack, (void));
-
 static Boolean stack_protected = FALSE;
 unsigned long protected_stack_base;
 unsigned long protected_stack_end;
 
 void
-DEFUN_VOID (winnt_unprotect_stack)
+DEFUN_VOID (win32_unprotect_stack)
 {
   DWORD old_protection;
 
@@ -1240,7 +1175,7 @@ DEFUN_VOID (winnt_unprotect_stack)
 }
 
 void
-DEFUN_VOID (winnt_protect_stack)
+DEFUN_VOID (win32_protect_stack)
 {
   DWORD old_protection;
 
@@ -1254,7 +1189,7 @@ DEFUN_VOID (winnt_protect_stack)
 }
 
 void
-DEFUN_VOID (winnt_stack_reset)
+DEFUN_VOID (win32_stack_reset)
 {
   unsigned long boundary;
 
@@ -1267,10 +1202,10 @@ DEFUN_VOID (winnt_stack_reset)
 	      - (2 * PAGE_SIZE));
   if (stack_protected && (protected_stack_base == boundary))
     return;
-  winnt_unprotect_stack ();
+  win32_unprotect_stack ();
   protected_stack_base = boundary;
   protected_stack_end  = (boundary + PAGE_SIZE);
-  winnt_protect_stack ();
+  win32_protect_stack ();
   return;
 }
 
@@ -1336,11 +1271,8 @@ scheme_unhandled_exception_filter (LPEXCEPTION_POINTERS info)
 }
 #endif /* USE_SET_UNHANDLED_EXCEPTION_FILTER */
 
-extern void EXFUN (WinntEnterHook, (void (*) (void)));
-
 void
-DEFUN (WinntEnterHook, (enter_interpreter),
-       void EXFUN ((* enter_interpreter), (void)))
+win32_enter_interpreter (void (*enter_interpreter) (void))
 {
 #ifdef USE_SET_UNHANDLED_EXCEPTION_FILTER
   (void) SetUnhandledExceptionFilter (scheme_unhandled_exception_filter);

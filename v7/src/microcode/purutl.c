@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purutl.c,v 9.50 2000/01/18 05:09:17 cph Exp $
+$Id: purutl.c,v 9.51 2000/12/05 21:23:48 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -25,9 +25,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "prims.h"
 #include "gccode.h"
 #include "zones.h"
+#include "cmpint.h"
 
-#ifdef __STDC__
-#include <stdlib.h>
+#ifdef STDC_HEADERS
+#  include <stdlib.h>
 #endif
 
 static void
@@ -323,7 +324,6 @@ or it is in a pure section of the constant space).")
       PRIMITIVE_RETURN (SHARP_T);
     TOUCH_IN_PRIMITIVE (object, object);
     {
-      extern SCHEME_OBJECT * compiled_entry_to_block_address ();
       SCHEME_OBJECT * address =
 	((GC_Type_Compiled (object))
 	 ? (compiled_entry_to_block_address (object))

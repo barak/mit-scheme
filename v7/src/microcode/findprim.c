@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: findprim.c,v 9.53 2000/01/18 02:53:44 cph Exp $
+$Id: findprim.c,v 9.54 2000/12/05 21:23:44 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -57,7 +57,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* Some utility imports and definitions. */
 
-#include "ansidecl.h"
+#include "config.h"
 #include <stdio.h>
 
 #define ASSUME_ANSIDECL
@@ -67,16 +67,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include <ctype.h>
 
-#ifdef WINNT
-#include <string.h>
+#ifdef STDC_HEADERS
+#  include <stdlib.h>
+#  include <string.h>
 #else
-extern int EXFUN (strcmp, (CONST char *, CONST char *));
-extern int EXFUN (strlen, (CONST char *));
+   extern void EXFUN (exit, (int));
+   extern PTR EXFUN (malloc, (int));
+   extern PTR EXFUN (realloc, (PTR, int));
+   extern void EXFUN (free, (PTR));
+   extern int EXFUN (strcmp, (CONST char *, CONST char *));
+   extern int EXFUN (strlen, (CONST char *));
 #endif
 
 typedef int boolean;
-#define TRUE 1
-#define FALSE 0
 
 #ifdef vms
 /* VMS version 3 has no void. */
@@ -91,42 +94,29 @@ typedef int boolean;
 #define pseudo_void int
 #define pseudo_return return (0)
 
-extern void EXFUN (exit, (int));
-
-char *
-DEFUN (xmalloc, (length),
-       int length)
+PTR
+DEFUN (xmalloc, (length), unsigned long length)
 {
-  char * result;
-  extern PTR EXFUN (malloc, (int));
-
-  result = ((char *) (malloc (length)));
-  if (result == ((char *) 0))
+  PTR result = (malloc (length));
+  if (result == 0)
     {
-      fprintf (stderr, "malloc: unable to allocate %d bytes\n", length);
+      fprintf (stderr, "malloc: unable to allocate %ld bytes\n", length);
       exit (1);
     }
   return (result);
 }
 
-char *
-DEFUN (xrealloc, (ptr, length),
-       char * ptr AND
-       int length)
+PTR
+DEFUN (xrealloc, (ptr, length), PTR ptr AND unsigned long length)
 {
-  char * result;
-  extern PTR EXFUN (realloc, (void *, int));
-
-  result = ((char *) (realloc (ptr, length)));
-  if (result == ((char *) 0))
+  PTR result = (realloc (ptr, length));
+  if (result == 0)
     {
-      fprintf (stderr, "realloc: unable to allocate %d bytes\n", length);
+      fprintf (stderr, "realloc: unable to allocate %ld bytes\n", length);
       exit (1);
     }
   return (result);
 }
-
-extern void EXFUN (free, (void *));
 
 #define FIND_INDEX_LENGTH(index, size)					\
 {									\
@@ -152,7 +142,7 @@ char default_token_alternate [] = "DEFINE_PRIMITIVE";
 char built_in_token [] = "Built_In_Primitive";
 char external_token [] = "Define_Primitive";
 
-typedef pseudo_void (* TOKEN_PROCESSOR) ();
+typedef pseudo_void EXFUN ((* TOKEN_PROCESSOR), (void));
 TOKEN_PROCESSOR token_processors [4];
 
 char * the_kind;
@@ -223,9 +213,8 @@ void EXFUN (initialize_data_buffer, (void));
 void EXFUN (initialize_default, (void));
 void EXFUN (initialize_external, (void));
 void EXFUN (initialize_token_buffer, (void));
-void EXFUN (mergesort, (int low, int high,
-			struct descriptor ** array,
-			struct descriptor ** temp_array));
+static void EXFUN
+  (fp_mergesort, (int, int, struct descriptor **, struct descriptor **));
 void EXFUN (print_procedure, (FILE * output,
 			      struct descriptor * primitive_descriptor,
 			      char * error_string));
@@ -1105,16 +1094,14 @@ DEFUN (read_index, (arg, identification),
        char * arg AND
        char * identification)
 {
-  int result;
-
-  result = 0;
+  int result = 0;
   if (((arg [0]) == '0') && ((arg [1]) == 'x'))
     sscanf ((& (arg [2])), "%x", (& result));
   else
     sscanf ((& (arg [0])), "%d", (& result));
   if (result < 0)
     {
-      fprintf (stderr, "%s: %s == %d\n", identification, result);
+      fprintf (stderr, "%s == %d\n", identification, result);
       exit (1);
     }
   return (result);
@@ -1135,13 +1122,12 @@ DEFUN_VOID (sort)
      (xmalloc (buffer_index * (sizeof (struct descriptor *)))));
   for (count = 0; (count < buffer_index); count += 1)
     (temp_buffer [count]) = (result_buffer [count]);
-  mergesort (0, (buffer_index - 1), result_buffer, temp_buffer);
+  fp_mergesort (0, (buffer_index - 1), result_buffer, temp_buffer);
   free (temp_buffer);
-  return;
 }
 
-void
-DEFUN (mergesort, (low, high, array, temp_array),
+static void
+DEFUN (fp_mergesort, (low, high, array, temp_array),
        int low AND
        register int high AND
        register struct descriptor ** array AND
@@ -1153,7 +1139,7 @@ DEFUN (mergesort, (low, high, array, temp_array),
   int high1;
   int high2;
 
-  dprintf ("mergesort: low = %d", low);
+  dprintf ("fp_mergesort: low = %d", low);
   dprintf ("; high = %d", high);
 
   if (high <= low)
@@ -1169,10 +1155,10 @@ DEFUN (mergesort, (low, high, array, temp_array),
 
   dprintf ("; high1 = %d\n", high1);
 
-  mergesort (low, high1, temp_array, array);
-  mergesort (low2, high, temp_array, array);
+  fp_mergesort (low, high1, temp_array, array);
+  fp_mergesort (low2, high, temp_array, array);
 
-  dprintf ("mergesort: low1 = %d", low1);
+  dprintf ("fp_mergesort: low1 = %d", low1);
   dprintf ("; high1 = %d", high1);
   dprintf ("; low2 = %d", low2);
   dprintf ("; high2 = %d\n", high2);
@@ -1229,7 +1215,6 @@ DEFUN (mergesort, (low, high, array, temp_array),
 	    }
 	}
     }
-  return;
 }
 
 int

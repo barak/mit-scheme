@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.65 1999/01/02 06:11:34 cph Exp $
+$Id: memmag.c,v 9.66 2000/12/05 21:23:45 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -33,8 +33,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 #include "scheme.h"
-#include "memmag.h"
 #include "prims.h"
+#include "memmag.h"
 #include "gccode.h"
 
 /* Imports */
@@ -348,7 +348,7 @@ DEFUN_VOID (Fix_Weak_Chain)
   return;
 }
 
-#ifdef WINNT
+#ifdef __WIN32__
 
 static void
 win32_flush_old_halfspace ()
@@ -384,13 +384,13 @@ win32_advise_end_GC ()
   if (win32_flush_old_halfspace_p)
     win32_flush_old_halfspace ();
 }
-#endif /* WINNT */
+#endif /* __WIN32__ */
 
 DEFINE_PRIMITIVE ("WIN32-FLUSH-OLD-HALFSPACE-AFTER-GC?!", Prim_win32_flush_old_halfspace_after_gc, 1, 1,
 		  "(boolean)")
 {
   PRIMITIVE_HEADER (1);
-#ifdef WINNT
+#ifdef __WIN32__
   {
     BOOL old = win32_flush_old_halfspace_p;
     win32_flush_old_halfspace_p = (OBJECT_TO_BOOLEAN (ARG_REF (1)));
@@ -406,7 +406,7 @@ DEFINE_PRIMITIVE ("WIN32-FLUSH-OLD-HALFSPACE!", Prim_win32_flush_old_halfspace, 
 		  "()")
 {
   PRIMITIVE_HEADER (0);
-#ifdef WINNT
+#ifdef __WIN32__
   win32_flush_old_halfspace ();
 #else
   error_unimplemented_primitive ();
@@ -595,7 +595,7 @@ DEFUN_VOID (GC)
 
   COMPILER_TRANSPORT_END ();
 
-#ifdef WINNT
+#ifdef __WIN32__
   {
     extern void win32_advise_end_GC ();
     win32_advise_end_GC ();

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: wabbit.c,v 1.7 1999/01/02 06:11:34 cph Exp $
+$Id: wabbit.c,v 1.8 2000/12/05 21:23:49 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright (c) 1994-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -284,12 +284,15 @@ DEFUN (wabbit_hunting_gcloop, (scan, new_space_free_loc),
     last_object, * last_object_end, * last_nmv, * last_hare, last_hare_head,
     magic_cookie, saved_cookie, * saved_addr;
 
-  magic_cookie = SHARP_F;
   last_object = SHARP_F;
+  last_object_end = 0;
   last_nmv = (scan - 2);	/* Make comparison fail until */
   last_nmv_length = 0;		/* an NMV is found. */
   last_hare = (scan - 2);	/* Same here */
   last_hare_head = SHARP_F;
+  magic_cookie = SHARP_F;
+  saved_cookie = SHARP_F;
+  saved_addr = 0;
   new_space_free = * new_space_free_loc;
   low_heap = Constant_Top;
   for ( ; scan != new_space_free; scan++)
@@ -578,7 +581,7 @@ repeat_dispatch:
       default:
 	sprintf (gc_death_message_buffer,
 		 "wabbit_hunting_gcloop: bad type code (0x%02x)",
-		 (OBJECT_TYPE (this_object)));
+		 ((unsigned int) (OBJECT_TYPE (this_object))));
 	gc_death (TERM_INVALID_TYPE_CODE,
 		  gc_death_message_buffer,
 		  scan, new_space_free);

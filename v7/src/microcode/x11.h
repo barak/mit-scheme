@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11.h,v 1.16 1999/01/02 06:11:34 cph Exp $
+$Id: x11.h,v 1.17 2000/12/05 21:23:49 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ struct drawing_attributes
   unsigned long mouse_pixel;
 };
 
-#ifdef __STDC__
+#ifdef HAVE_STDC
 /* This incomplete type definition is needed because the scope of the
    implicit definition in the following typedefs is incorrect.  */
 struct xwindow;

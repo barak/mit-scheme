@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intern.c,v 9.56 1999/01/02 06:11:34 cph Exp $
+$Id: intern.c,v 9.57 2000/12/05 21:23:44 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,7 +25,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "prims.h"
 #include "trap.h"
 
-extern int EXFUN (strlen, (const char *));
+#ifdef STDC_HEADERS
+#  include <string.h>
+#else
+   extern int EXFUN (strlen, (const char *));
+#endif
 
 /* These are exported to other parts of the system. */
 
@@ -100,7 +104,7 @@ DEFUN (find_symbol_internal, (length, string),
 }
 
 /* Set this to be informed of symbols as they are interned. */
-void (*intern_symbol_hook) () = ((void (*) ()) 0);
+void EXFUN ((*intern_symbol_hook), (SCHEME_OBJECT)) = 0;
 
 static SCHEME_OBJECT
 DEFUN (link_new_symbol, (symbol, cell),

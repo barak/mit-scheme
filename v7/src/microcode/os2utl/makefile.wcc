@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-### $Id: makefile.wcc,v 1.7 1999/01/02 06:11:34 cph Exp $
+### $Id: makefile.wcc,v 1.8 2000/12/05 21:23:51 cph Exp $
 ###
-### Copyright (c) 1994-1999 Massachusetts Institute of Technology
+### Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ###
 ### This program is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
@@ -108,12 +108,12 @@ include os2utl\makefile.cmn
 cmpauxmd.asm : cmpauxmd.m4 asmcvt.exe
 	.\asmcvt pre < $< | $(M4) $(M4FLAGS) | .\asmcvt post > $@
 
-scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scheme.res
+scheme.exe : $(OBJECTS) scheme.res
 	wlink system os2v2_pm name $@ $(LDFLAGS) \
-	file { $(OBJECTS) $(SCHEME_OBJECTS) } $(SCHEME_LIB)
+	file { $(OBJECTS) } $(SCHEME_LIB)
 	rc scheme.res $@
 
-bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bchschem.res
+bchschem.exe : $(BCHOBJECTS) bchschem.res
 	wlink system os2v2_pm name $@ $(LDFLAGS) \
-	file { $(OBJECTS) $(SCHEME_OBJECTS) } $(SCHEME_LIB)
+	file { $(BCHOBJECTS) } $(SCHEME_LIB)
 	rc bchschem.res $@

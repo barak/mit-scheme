@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.25 2000/10/17 17:16:17 cph Exp $
+$Id: uxsock.c,v 1.26 2000/12/05 21:23:49 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -24,39 +24,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #ifdef HAVE_SOCKETS
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#ifdef HAVE_UNIX_SOCKETS
-#include <sys/un.h>
-#endif
-
-#ifdef HAVE_SELECT
-#include <sys/time.h>
-#include <sys/types.h>
-#else
-#ifdef HAVE_POLL
-#include <sys/poll.h>
-#endif
-#endif
-
 #include "uxsock.h"
 #include "uxio.h"
 #include "prims.h"
 #include "limits.h"
-
-#if 0
-extern struct servent * EXFUN (getservbyname, (CONST char *, CONST char *));
-extern struct hostent * EXFUN (gethostbyname, (CONST char *));
-extern char * EXFUN (strncpy, (char *, CONST char *, size_t));
-#endif
-
-#ifdef __linux
-#define HAVE_SOCKLEN_T
-#endif
-#ifndef HAVE_SOCKLEN_T
-typedef int socklen_t;
-#endif
 
 static void do_connect (int, struct sockaddr *, socklen_t);
 
@@ -100,6 +71,20 @@ do_connect (int s, struct sockaddr * address, socklen_t addr_len)
 	  /* Yuk; lots of hair because connect can't be restarted.
 	     Instead, we must wait for the connection to finish, then
 	     examine the SO_ERROR socket option.  */
+#ifdef HAVE_POLL
+	  {
+	    struct pollfd fds;
+	    int nfds;
+
+	    (fds . fd) = s;
+	    (fds . events) = (POLLIN | POLLOUT);
+	    nfds = (poll ((&fds), 1, 0));
+	    if ((nfds > 0) && (((fds . revents) & (POLLIN | POLLOUT)) != 0))
+	      break;
+	    if ((nfds < 0) && (errno != EINTR))
+	      error_system_call (errno, syscall_select);
+	  }
+#else /* not HAVE_POLL */
 #ifdef HAVE_SELECT
 	  {
 	    fd_set readers;
@@ -117,24 +102,10 @@ do_connect (int s, struct sockaddr * address, socklen_t addr_len)
 	      error_system_call (errno, syscall_select);
 	  }
 #else /* not HAVE_SELECT */
-#ifdef HAVE_POLL
-	  {
-	    struct pollfd fds;
-	    int nfds;
-
-	    (fds . fd) = s;
-	    (fds . events) = (POLLIN | POLLOUT);
-	    nfds = (poll (fds, 1, 0));
-	    if ((nfds > 0) && (((fds . revents) & (POLLIN | POLLOUT)) != 0))
-	      break;
-	    if ((nfds < 0) && (errno != EINTR))
-	      error_system_call (errno, syscall_select);
-	  }
-#else /* not HAVE_POLL */
 	  error_system_call (errno, syscall_connect);
 	  break;
-#endif /* not HAVE_POLL */
 #endif /* not HAVE_SELECT */
+#endif /* not HAVE_POLL */
 	}
       {
 	int error;
@@ -174,7 +145,7 @@ DEFUN (OS_get_host_by_name, (host_name), CONST char * host_name)
   struct hostent * entry = (UX_gethostbyname (host_name));
   if (entry == 0)
     return (0);
-#ifndef USE_HOSTENT_ADDR
+#ifdef HAVE_HOSTENT_H_ADDR_LIST
   return (entry -> h_addr_list);
 #else
   {

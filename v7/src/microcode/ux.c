@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.19 2000/01/31 03:42:03 cph Exp $
+$Id: ux.c,v 1.20 2000/12/05 21:23:48 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -29,14 +29,14 @@ DEFUN (UX_prim_check_errno, (name), enum syscall_names name)
   deliver_pending_interrupts ();
 }
 
-#ifdef HAVE_TERMIOS
+#ifdef HAVE_TERMIOS_H
 
 int
 DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
 {
   return
     ((((tcgetattr (fd, (& (s -> tio)))) < 0)
-#ifdef _HPUX
+#ifdef __HPUX__
       || ((UX_ioctl (fd, TIOCGLTC, (& (s -> ltc)))) < 0)
 #endif
       ) ? (-1) : 0);
@@ -47,21 +47,21 @@ DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
 {
   return
     ((((tcsetattr (fd, TCSANOW, (& (s -> tio)))) < 0)
-#ifdef _HPUX
+#ifdef __HPUX__
       || ((UX_ioctl (fd, TIOCSLTC, (& (s -> ltc)))) < 0)
 #endif
       ) ? (-1) : 0);
 }
 
-#else /* not HAVE_TERMIOS */
-#ifdef HAVE_TERMIO
+#else /* not HAVE_TERMIOS_H */
+#ifdef HAVE_TERMIO_H
 
 int
 DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
 {
   return
     ((((UX_ioctl (fd, TCGETA, (& (s -> tio)))) < 0)
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef HAVE_STRUCT_LTCHARS
       || ((UX_ioctl (fd, TIOCGLTC, (& (s -> ltc)))) < 0)
 #endif
       ) ? (-1) : 0);
@@ -72,7 +72,7 @@ DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
 {
   return
     ((((UX_ioctl (fd, TCSETA, (& (s -> tio)))) < 0)
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef HAVE_STRUCT_LTCHARS
       || ((UX_ioctl (fd, TIOCSLTC, (& (s -> ltc)))) < 0)
 #endif
       ) ? (-1) : 0);
@@ -90,9 +90,9 @@ DEFUN (UX_tcflush, (fd, queue_selector), int fd AND int queue_selector)
   return (UX_ioctl (fd, TCFLSH, queue_selector));
 }
 
-#else /* not HAVE_TERMIO */
+#else /* not HAVE_TERMIO_H */
 
-#ifdef HAVE_BSD_TTY_DRIVER
+#ifdef HAVE_SGTTY_H
 
 int
 DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
@@ -100,7 +100,7 @@ DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
   return
     ((((UX_ioctl (fd, TIOCGETP, (& (s -> sg)))) < 0)
       || ((UX_ioctl (fd, TIOCGETC, (& (s -> tc)))) < 0)
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef HAVE_STRUCT_LTCHARS
       || ((UX_ioctl (fd, TIOCGLTC, (& (s -> ltc)))) < 0)
 #endif
       || ((UX_ioctl (fd, TIOCLGET, (& (s -> lmode)))) < 0))
@@ -113,7 +113,7 @@ DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
   return
     ((((UX_ioctl (fd, TIOCSETN, (& (s -> sg)))) < 0)
       || ((UX_ioctl (fd, TIOCSETC, (& (s -> tc)))) < 0)
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef HAVE_STRUCT_LTCHARS
       || ((UX_ioctl (fd, TIOCSLTC, (& (s -> ltc)))) < 0)
 #endif
       || ((UX_ioctl (fd, TIOCLSET, (& (s -> lmode)))) < 0))
@@ -135,23 +135,39 @@ DEFUN (UX_tcflush, (fd, queue_selector), int fd AND int queue_selector)
   return (UX_ioctl (fd, TIOCFLUSH, (&zero)));
 }
 
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIO */
-#endif /* HAVE_TERMIOS */
+#endif /* HAVE_SGTTY_H */
+#endif /* HAVE_TERMIO_H */
+#endif /* HAVE_TERMIOS_H */
 
-#if !defined(_POSIX) && defined(_BSD)
-
+#ifdef SLAVE_PTY_P
+int
+DEFUN (UX_setup_slave_pty, (fd), int fd)
+{
+  return
+    (((ioctl (fd, I_PUSH, "ptem")) == 0)
+     && ((ioctl (fd, I_PUSH, "ldterm")) == 0)
+#if !defined(sgi) && !defined(__sgi)
+     && (((ioctl (fd, I_FIND, "ttcompat")) != 0)
+	 || ((ioctl (fd, I_PUSH, "ttcompat")) == 0))
+#endif
+     );
+}
+#endif
+
+#ifdef EMULATE_GETPGRP
 pid_t
 DEFUN_VOID (UX_getpgrp)
 {
   return (getpgrp (getpid ()));
 }
+#endif
 
+#ifdef EMULATE_SETSID
 pid_t
 DEFUN_VOID (UX_setsid)
 {
 #ifdef TIOCNOTTY
-  int fd = (UX_open (BSD_DEV_TTY, O_RDWR, 0));
+  int fd = (UX_open ("/dev/tty", O_RDWR, 0));
   if (fd >= 0)
     {
       UX_ioctl (fd, TIOCNOTTY, 0);
@@ -160,66 +176,65 @@ DEFUN_VOID (UX_setsid)
 #endif
   return (setpgrp (0, 0));
 }
+#endif
 
-#ifndef _SUNOS
+#ifdef EMULATE_SETPGID
+int
+DEFUN (UX_setpgid, (pid, pgid), pid_t pid AND pid_t pgid)
+{
+  errno = ENOSYS;
+  return (-1);
+}
+#endif
 
+#ifdef EMULATE_CTERMID
 char *
 DEFUN (UX_ctermid, (s), char * s)
 {
-  static char result [] = BSD_DEV_TTY;
+  static char result [] = "/dev/tty";
   if (s == 0)
     return (result);
-  strcpy (s, BSD_DEV_TTY);
+  strcpy (s, result);
   return (s);
 }
+#endif
 
+#ifdef EMULATE_KILL
 int
 DEFUN (UX_kill, (pid, sig), pid_t pid AND int sig)
 {
   return ((pid >= 0) ? (kill (pid, sig)) : (killpg ((-pid), sig)));
 }
+#endif
 
-#endif /* not _SUNOS */
-#endif /* not _POSIX and _BSD */
-
-#ifndef _POSIX
-#ifdef HAVE_BSD_JOB_CONTROL
-
+#ifdef EMULATE_TCGETPGRP
 pid_t
 DEFUN (UX_tcgetpgrp, (fd), int fd)
 {
+#ifdef TIOCGPGRP
   pid_t pgrp_id;
   return (((UX_ioctl (fd, TIOCGPGRP, (&pgrp_id))) < 0) ? (-1) : pgrp_id);
+#else
+  errno = ENOSYS;
+  return (-1);
+#endif
 }
+#endif
 
+#ifdef EMULATE_TCSETPGRP
 int
 DEFUN (UX_tcsetpgrp, (fd, pgrp_id),
        int fd AND
        pid_t pgrp_id)
 {
+#ifdef TIOCSPGRP
   return (UX_ioctl (fd, TIOCSPGRP, (&pgrp_id)));
-}
-
-#else /* not HAVE_BSD_JOB_CONTROL */
-
-pid_t
-DEFUN (UX_tcgetpgrp, (fd), int fd)
-{
+#else
   errno = ENOSYS;
   return (-1);
+#endif
 }
-
-int
-DEFUN (UX_tcsetpgrp, (fd, pgrp_id),
-       int fd AND
-       pid_t pgrp_id)
-{
-  errno = ENOSYS;
-  return (-1);
-}
-
-#endif /* HAVE_BSD_JOB_CONTROL */
-#endif /* not _POSIX */
+#endif
 
 #ifdef EMULATE_GETCWD
 char *
@@ -285,7 +300,7 @@ DEFUN (UX_getcwd, (buffer, length),
 	  }
       }
   }
-#endif /* HAVE_GETWD */
+#endif /* not HAVE_GETWD */
   if (collection_buffer == internal_buffer)
     {
       if (length <= (strlen (internal_buffer)))
@@ -297,13 +312,13 @@ DEFUN (UX_getcwd, (buffer, length),
     }
   return (buffer);
 }
-#endif /* not EMULATE_GETCWD */
+#endif /* EMULATE_GETCWD */
 
 #ifdef EMULATE_WAITPID
 int
 DEFUN (UX_waitpid, (pid, stat_loc, options),
        pid_t pid AND
-       wait_status_t * stat_loc AND
+       int * stat_loc AND
        int options)
 {
   if (pid == (-1))
@@ -315,7 +330,7 @@ DEFUN (UX_waitpid, (pid, stat_loc, options),
   errno = EINVAL;
   return (-1);
 }
-#endif /* EMULATE_WAITPID */
+#endif
 
 #ifdef EMULATE_DUP2
 int
@@ -330,7 +345,7 @@ DEFUN (UX_dup2, (fd, fd2), int fd AND int fd2)
     return (result);
   }
 }
-#endif /* EMULATE_DUP2 */
+#endif
 
 #ifdef EMULATE_RENAME
 int
@@ -358,7 +373,7 @@ DEFUN (UX_rename, (from_name, to_name),
      ? result
      : (UX_unlink (from_name)));
 }
-#endif /* EMULATE_RENAME */
+#endif
 
 #ifdef EMULATE_MKDIR
 int
@@ -368,23 +383,19 @@ DEFUN (UX_mkdir, (name, mode),
 {
   return (UX_mknod (name, ((mode & MODE_DIR) | S_IFDIR), ((dev_t) 0)));
 }
-#endif /* EMULATE_MKDIR */
+#endif
 
-#ifdef _POSIX
+#ifdef _POSIX_VERSION
 
 cc_t
 DEFUN (UX_PC_VDISABLE, (fildes), int fildes)
 {
-  extern long EXFUN (fpathconf, (int, int));
-  long result = (fpathconf (fildes, _PC_VDISABLE));
-  return
-    ((cc_t) ((result < 0) ?
 #ifdef _POSIX_VDISABLE
-     _POSIX_VDISABLE
+  return ((cc_t) _POSIX_VDISABLE);
 #else
-     '\377'
+  long result = (fpathconf (fildes, _PC_VDISABLE));
+  return ((cc_t) ((result < 0) ? '\377' : result));
 #endif
-     : result));
 }
 
 static clock_t memoized_clk_tck = 0;
@@ -397,9 +408,9 @@ DEFUN_VOID (UX_SC_CLK_TCK)
   return (memoized_clk_tck);
 }
 
-#endif /* _POSIX */
+#endif /* _POSIX_VERSION */
 
-#ifndef HAVE_SIGSET_OPS
+#ifndef HAVE_SIGACTION
 
 int
 DEFUN (UX_sigemptyset, (set), sigset_t * set)
@@ -456,16 +467,10 @@ DEFUN (UX_sigismember, (set, signo), CONST sigset_t * set AND int signo)
   }
 }
 
-#ifdef HAVE_BSD_SIGNALS
-
-#ifdef _HPUX
-#define UX_sigvec sigvector
-#else
-#define UX_sigvec sigvec
-#endif
+#ifdef HAVE_SIGVEC
 
 #ifndef SV_INTERRUPT
-#define SV_INTERRUPT 0
+#  define SV_INTERRUPT 0
 #endif
 
 int
@@ -533,11 +538,10 @@ DEFUN (UX_sigsuspend, (set), CONST sigset_t * set)
   return (sigpause (*set));
 }
 
-#endif /* HAVE_BSD_SIGNALS */
-#endif /* not _POSIX */
+#endif /* HAVE_SIGVEC */
+#endif /* not _POSIX_VERSION */
 
 #ifdef EMULATE_SYSCONF
-
 long
 DEFUN (sysconf, (parameter), int parameter)
 {
@@ -573,7 +577,7 @@ DEFUN (sysconf, (parameter), int parameter)
 #endif /* CHILD_MAX */
 
     case _SC_JOB_CONTROL:
-#if defined(_POSIX_JOB_CONTROL) || defined(HAVE_BSD_JOB_CONTROL)
+#ifdef TIOCGPGRP
       return ((long) 1);
 #else
       return ((long) 0);
@@ -584,11 +588,9 @@ DEFUN (sysconf, (parameter), int parameter)
       return ((long) (-1));
   }
 }
-
 #endif /* EMULATE_SYSCONF */
 
 #ifdef EMULATE_FPATHCONF
-
 long
 DEFUN (fpathconf, (filedes, parameter), int filedes AND int parameter)
 {
@@ -602,7 +604,6 @@ DEFUN (fpathconf, (filedes, parameter), int filedes AND int parameter)
       return ((long) (-1));
   }
 }
-
 #endif /* EMULATE_FPATHCONF */
 
 void *
@@ -629,7 +630,7 @@ DEFUN (OS_free, (ptr), void * ptr)
   UX_free (ptr);
 }
 
-#ifdef __linux
+#ifdef __linux__
 
 #include <sys/mman.h>
 
@@ -646,7 +647,7 @@ linux_heap_malloc (unsigned long requested_length)
   return ((addr == ((void *) (-1))) ? 0 : addr);
 }
 
-#endif /* __linux */
+#endif /* __linux__ */
 
 #ifdef __FreeBSD__
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttterm.c,v 1.3 1999/01/02 06:11:34 cph Exp $
+$Id: nttterm.c,v 1.4 2000/12/05 21:23:46 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-/* termcap(3) interface for Scheme -- Only a subset needed for DOS. */
+/* termcap(3) interface for Scheme -- Only a subset needed for Win32. */
 
 #include "scheme.h"
 #include "prims.h"

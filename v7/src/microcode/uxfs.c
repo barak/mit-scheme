@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.19 2000/01/18 05:09:59 cph Exp $
+$Id: uxfs.c,v 1.20 2000/12/05 21:23:49 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -25,98 +25,88 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "osio.h"
 
 #ifdef HAVE_STATFS
-#include <sys/vfs.h>
-
-#ifdef __linux
+#  ifdef HAVE_SYS_VFS_H
+     /* GNU/Linux */
+#    include <sys/vfs.h>
+#  else
+#    ifdef HAVE_SYS_MOUNT_H
+       /* FreeBSD */
+#      include <sys/param.h>
+#      include <sys/mount.h>
+#    endif
+#  endif
+#  ifdef __linux__
 /* The following superblock magic constants are taken from the kernel
    headers for Linux 2.0.33.  We use these rather than reading the
    header files, because the Linux kernel header files have
    definitions that conflict with those of glibc2.  These constants
    are unlikely to be changed, so this ought to be safe.  */
-
-#ifndef AFFS_SUPER_MAGIC
-#define AFFS_SUPER_MAGIC 0xadff
+#    ifndef AFFS_SUPER_MAGIC
+#      define AFFS_SUPER_MAGIC 0xadff
+#    endif
+#    ifndef COH_SUPER_MAGIC
+#      define COH_SUPER_MAGIC 0x012FF7B7
+#    endif
+#    ifndef EXT_SUPER_MAGIC
+#      define EXT_SUPER_MAGIC 0x137D
+#    endif
+#    ifndef EXT2_SUPER_MAGIC
+#      define EXT2_SUPER_MAGIC 0xEF53
+#    endif
+#    ifndef HPFS_SUPER_MAGIC
+#      define HPFS_SUPER_MAGIC 0xf995e849
+#    endif
+#    ifndef ISOFS_SUPER_MAGIC
+#      define ISOFS_SUPER_MAGIC 0x9660
+#    endif
+#    ifndef MINIX_SUPER_MAGIC
+#      define MINIX_SUPER_MAGIC 0x137F
+#    endif
+#    ifndef MINIX_SUPER_MAGIC2
+#      define MINIX_SUPER_MAGIC2 0x138F
+#    endif
+#    ifndef MINIX2_SUPER_MAGIC
+#      define MINIX2_SUPER_MAGIC 0x2468
+#    endif
+#    ifndef MINIX2_SUPER_MAGIC2
+#      define MINIX2_SUPER_MAGIC2 0x2478
+#    endif
+#    ifndef MSDOS_SUPER_MAGIC
+#      define MSDOS_SUPER_MAGIC 0x4d44
+#    endif
+#    ifndef NCP_SUPER_MAGIC
+#      define NCP_SUPER_MAGIC 0x564c
+#    endif
+#    ifndef NFS_SUPER_MAGIC
+#      define NFS_SUPER_MAGIC 0x6969
+#    endif
+#    ifndef NTFS_SUPER_MAGIC
+#      define NTFS_SUPER_MAGIC 0x5346544E
+#    endif
+#    ifndef PROC_SUPER_MAGIC
+#      define PROC_SUPER_MAGIC 0x9fa0
+#    endif
+#    ifndef SMB_SUPER_MAGIC
+#      define SMB_SUPER_MAGIC 0x517B
+#    endif
+#    ifndef SYSV2_SUPER_MAGIC
+#      define SYSV2_SUPER_MAGIC 0x012FF7B6
+#    endif
+#    ifndef SYSV4_SUPER_MAGIC
+#      define SYSV4_SUPER_MAGIC 0x012FF7B5
+#    endif
+#    ifndef XENIX_SUPER_MAGIC
+#      define XENIX_SUPER_MAGIC 0x012FF7B4
+#    endif
+#    ifndef _XIAFS_SUPER_MAGIC
+#      define _XIAFS_SUPER_MAGIC 0x012FD16D
+#    endif
+#  endif
 #endif
 
-#ifndef COH_SUPER_MAGIC
-#define COH_SUPER_MAGIC 0x012FF7B7
+#ifndef FILE_TOUCH_OPEN_TRIES
+#  define FILE_TOUCH_OPEN_TRIES 5
 #endif
-
-#ifndef EXT_SUPER_MAGIC
-#define EXT_SUPER_MAGIC 0x137D
-#endif
-
-#ifndef EXT2_SUPER_MAGIC
-#define EXT2_SUPER_MAGIC 0xEF53
-#endif
-
-#ifndef HPFS_SUPER_MAGIC
-#define HPFS_SUPER_MAGIC 0xf995e849
-#endif
-
-#ifndef ISOFS_SUPER_MAGIC
-#define ISOFS_SUPER_MAGIC 0x9660
-#endif
-
-#ifndef MINIX_SUPER_MAGIC
-#define MINIX_SUPER_MAGIC 0x137F
-#endif
-
-#ifndef MINIX_SUPER_MAGIC2
-#define MINIX_SUPER_MAGIC2 0x138F
-#endif
-
-#ifndef MINIX2_SUPER_MAGIC
-#define MINIX2_SUPER_MAGIC 0x2468
-#endif
-
-#ifndef MINIX2_SUPER_MAGIC2
-#define MINIX2_SUPER_MAGIC2 0x2478
-#endif
-
-#ifndef MSDOS_SUPER_MAGIC
-#define MSDOS_SUPER_MAGIC 0x4d44
-#endif
-
-#ifndef NCP_SUPER_MAGIC
-#define NCP_SUPER_MAGIC 0x564c
-#endif
-
-#ifndef NFS_SUPER_MAGIC
-#define NFS_SUPER_MAGIC 0x6969
-#endif
-
-#ifndef NTFS_SUPER_MAGIC
-#define NTFS_SUPER_MAGIC 0x5346544E
-#endif
-
-#ifndef PROC_SUPER_MAGIC
-#define PROC_SUPER_MAGIC 0x9fa0
-#endif
-
-#ifndef SMB_SUPER_MAGIC
-#define SMB_SUPER_MAGIC 0x517B
-#endif
-
-#ifndef SYSV2_SUPER_MAGIC
-#define SYSV2_SUPER_MAGIC 0x012FF7B6
-#endif
-
-#ifndef SYSV4_SUPER_MAGIC
-#define SYSV4_SUPER_MAGIC 0x012FF7B5
-#endif
-
-#ifndef XENIX_SUPER_MAGIC
-#define XENIX_SUPER_MAGIC 0x012FF7B4
-#endif
-
-#ifndef _XIAFS_SUPER_MAGIC
-#define _XIAFS_SUPER_MAGIC 0x012FD16D
-#endif
-
-#endif /* __linux */
-
-#endif /* HAVE_STATFS */
 
 int
 DEFUN (UX_read_file_status, (filename, s),
@@ -156,7 +146,7 @@ DEFUN (OS_file_existence_test, (name), CONST char * name)
   struct stat s;
   if (!UX_read_file_status (name, (&s)))
     return (file_doesnt_exist);
-#ifdef HAVE_SYMBOLIC_LINKS
+#ifdef HAVE_SYMLINK
   if (((s . st_mode) & S_IFMT) == S_IFLNK)
     {
       if (UX_read_file_status_indirect (name, (&s)))
@@ -174,7 +164,7 @@ DEFUN (OS_file_existence_test_direct, (name), CONST char * name)
   struct stat s;
   if (!UX_read_file_status (name, (&s)))
     return (file_doesnt_exist);
-#ifdef HAVE_SYMBOLIC_LINKS
+#ifdef HAVE_SYMLINK
   if (((s . st_mode) & S_IFMT) == S_IFLNK)
     return (file_is_link);
 #endif
@@ -194,7 +184,7 @@ DEFUN (UX_file_system_type, (name), CONST char * name)
 	error_system_call (errno, syscall_statfs);
     }
 
-#ifdef __linux
+#ifdef __linux__
   switch (s . f_type)
     {
     case COH_SUPER_MAGIC:	return ("coherent");
@@ -217,16 +207,16 @@ DEFUN (UX_file_system_type, (name), CONST char * name)
     case XENIX_SUPER_MAGIC:	return ("xenix");
     case _XIAFS_SUPER_MAGIC:	return ("xiafs");
     }
-#endif /* __linux */
+#endif /* __linux__ */
 
-#ifdef _HPUX
+#ifdef __HPUX__
   switch ((s . f_fsid) [1])
     {
     case MOUNT_UFS:		return ("ufs");
     case MOUNT_NFS:		return ("nfs");
     case MOUNT_CDFS:		return ("iso9660");
     }
-#endif /* _HPUX */
+#endif /* __HPUX__ */
 #endif /* HAVE_STATFS */
 
   return (0);
@@ -244,7 +234,7 @@ DEFUN (OS_file_directory_p, (name), CONST char * name)
 CONST char *
 DEFUN (OS_file_soft_link_p, (name), CONST char * name)
 {
-#ifdef HAVE_SYMBOLIC_LINKS
+#ifdef HAVE_SYMLINK
   struct stat s;
   if (! ((UX_read_file_status (name, (&s)))
 	 && (((s . st_mode) & S_IFMT) == S_IFLNK)))
@@ -292,7 +282,7 @@ DEFUN (OS_file_remove_link, (name), CONST char * name)
   struct stat s;
   if ((UX_read_file_status (name, (&s)))
       && ((((s . st_mode) & S_IFMT) == S_IFREG)
-#ifdef HAVE_SYMBOLIC_LINKS
+#ifdef HAVE_SYMLINK
 	  || (((s . st_mode) & S_IFMT) == S_IFLNK)
 #endif
 	  ))
@@ -312,7 +302,7 @@ DEFUN (OS_file_link_soft, (from_name, to_name),
        CONST char * from_name AND
        CONST char * to_name)
 {
-#ifdef HAVE_SYMBOLIC_LINKS
+#ifdef HAVE_SYMLINK
   STD_VOID_SYSTEM_CALL (syscall_symlink, (UX_symlink (from_name, to_name)));
 #else
   error_unimplemented_primitive ();
@@ -379,8 +369,97 @@ DEFUN (OS_directory_delete, (name), CONST char * name)
   STD_VOID_SYSTEM_CALL (syscall_rmdir, (UX_rmdir (name)));
 }
 
-#if defined(HAVE_DIRENT) || defined(HAVE_DIR)
+static void EXFUN (protect_fd, (int fd));
 
+int
+DEFUN (OS_file_touch, (filename), CONST char * filename)
+{
+  int fd;
+  transaction_begin ();
+  {
+    unsigned int count = 0;
+    while (1)
+      {
+	count += 1;
+	/* Use O_EXCL to prevent overwriting existing file. */
+	fd = (UX_open (filename, (O_RDWR | O_CREAT | O_EXCL), MODE_REG));
+	if (fd >= 0)
+	  {
+	    protect_fd (fd);
+	    transaction_commit ();
+	    return (1);
+	  }
+	if (errno == EEXIST)
+	  {
+	    fd = (UX_open (filename, O_RDWR, MODE_REG));
+	    if (fd >= 0)
+	      {
+		protect_fd (fd);
+		break;
+	      }
+	    else if ((errno == ENOENT)
+#ifdef ESTALE
+		     || (errno == ESTALE)
+#endif
+		     )
+	      continue;
+	  }
+	if (count >= FILE_TOUCH_OPEN_TRIES)
+	  error_system_call (errno, syscall_open);
+      }
+  }
+  {
+    struct stat file_status;
+    STD_VOID_SYSTEM_CALL (syscall_fstat, (UX_fstat (fd, (&file_status))));
+    if (((file_status . st_mode) & S_IFMT) != S_IFREG)
+      error_system_call (errno, syscall_open);
+    /* CASE 3: file length of 0 needs special treatment. */
+    if ((file_status . st_size) == 0)
+      {
+	char buf [1];
+	(buf[0]) = '\0';
+	STD_VOID_SYSTEM_CALL (syscall_write, (UX_write (fd, buf, 1)));
+#ifdef HAVE_FTRUNCATE
+	STD_VOID_SYSTEM_CALL (syscall_ftruncate, (UX_ftruncate (fd, 0)));
+	transaction_commit ();
+#else
+	transaction_commit ();
+	fd = (UX_open (filename, (O_WRONLY | O_TRUNC), MODE_REG));
+	if (fd >= 0)
+	  STD_VOID_SYSTEM_CALL (syscall_close, (UX_close (fd)));
+#endif
+	return (0);
+      }
+  }
+  /* CASE 4: read, then write back the first byte in the file. */
+  {
+    char buf [1];
+    int scr;
+    STD_UINT_SYSTEM_CALL (syscall_read, scr, (UX_read (fd, buf, 1)));
+    if (scr > 0)
+      {
+	STD_VOID_SYSTEM_CALL (syscall_lseek, (UX_lseek (fd, 0, SEEK_SET)));
+	STD_VOID_SYSTEM_CALL (syscall_write, (UX_write (fd, buf, 1)));
+      }
+  }
+  transaction_commit ();
+  return (0);
+}
+
+static void
+DEFUN (protect_fd_close, (ap), PTR ap)
+{
+  UX_close (* ((int *) ap));
+}
+
+static void
+DEFUN (protect_fd, (fd), int fd)
+{
+  int * p = (dstack_alloc (sizeof (int)));
+  (*p) = fd;
+  transaction_record_action (tat_always, protect_fd_close, p);
+}
+
 static DIR ** directory_pointers;
 static unsigned int n_directory_pointers;
 
@@ -465,10 +544,6 @@ DEFUN (OS_directory_open, (name), CONST char * name)
   return (allocate_directory_pointer (pointer));
 }
 
-#ifndef HAVE_DIRENT
-#define dirent direct
-#endif
-
 CONST char *
 DEFUN (OS_directory_read, (index), unsigned int index)
 {
@@ -499,53 +574,3 @@ DEFUN (OS_directory_close, (index), unsigned int index)
   closedir (REFERENCE_DIRECTORY (index));
   DEALLOCATE_DIRECTORY (index);
 }
-
-#else /* not HAVE_DIRENT nor HAVE_DIR */
-
-void
-DEFUN_VOID (UX_initialize_directory_reader)
-{
-  return;
-}
-
-int
-DEFUN (OS_directory_valid_p, (index), long index)
-{
-  return (0);
-}
-
-unsigned int
-DEFUN (OS_directory_open, (name), CONST char * name)
-{
-  error_unimplemented_primitive ();
-  /*NOTREACHED*/
-}
-
-#ifndef HAVE_DIRENT
-#define dirent direct
-#endif
-
-CONST char *
-DEFUN (OS_directory_read, (index), unsigned int index)
-{
-  error_unimplemented_primitive ();
-  /*NOTREACHED*/
-}
-
-CONST char *
-DEFUN (OS_directory_read_matching, (index, prefix), 
-       unsigned int index AND
-       CONST char * prefix)
-{
-  error_unimplemented_primitive ();
-  /*NOTREACHED*/
-}
-
-void
-DEFUN (OS_directory_close, (index), unsigned int index)
-{
-  error_unimplemented_primitive ();
-  /*NOTREACHED*/
-}
-
-#endif /* HAVE_DIRENT */

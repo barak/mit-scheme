@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: const.h,v 9.45 1999/01/02 06:06:43 cph Exp $
+$Id: const.h,v 9.46 2000/12/05 21:23:43 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,32 +31,29 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define STACK_FRAME_HEADER	1
 
 /* Precomputed typed pointers */
-#ifdef b32			/* 32 bit word */
-
-#if (TYPE_CODE_LENGTH == 8)
-#define SHARP_F			0x00000000
-#define SHARP_T			0x08000000
-#define UNSPECIFIC		0x08000001
-#define FIXNUM_ZERO		0x1A000000
-#define BROKEN_HEART_ZERO	0x22000000
-#endif /* (TYPE_CODE_LENGTH == 8) */
-
-#if (TYPE_CODE_LENGTH == 6)
-#define SHARP_F			0x00000000
-#define SHARP_T			0x20000000
-#define UNSPECIFIC		0x20000001
-#define FIXNUM_ZERO		0x68000000
-#define BROKEN_HEART_ZERO	0x88000000
-#endif /* (TYPE_CODE_LENGTH == 6) */
-
-#endif /* b32 */
+#if (SIZEOF_UNSIGNED_LONG == 4)	/* 32 bit word */
+#  if (TYPE_CODE_LENGTH == 8)
+#    define SHARP_F		0x00000000
+#    define SHARP_T		0x08000000
+#    define UNSPECIFIC		0x08000001
+#    define FIXNUM_ZERO		0x1A000000
+#    define BROKEN_HEART_ZERO	0x22000000
+#  endif
+#  if (TYPE_CODE_LENGTH == 6)
+#    define SHARP_F		0x00000000
+#    define SHARP_T		0x20000000
+#    define UNSPECIFIC		0x20000001
+#    define FIXNUM_ZERO		0x68000000
+#    define BROKEN_HEART_ZERO	0x88000000
+#  endif
+#endif
 
 #ifndef SHARP_F			/* Safe version */
-#define SHARP_F			MAKE_OBJECT (TC_NULL, 0)
-#define SHARP_T			MAKE_OBJECT (TC_CONSTANT, 0)
-#define UNSPECIFIC		MAKE_OBJECT (TC_CONSTANT, 1)
-#define FIXNUM_ZERO		MAKE_OBJECT (TC_FIXNUM, 0)
-#define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)
+#  define SHARP_F		MAKE_OBJECT (TC_NULL, 0)
+#  define SHARP_T		MAKE_OBJECT (TC_CONSTANT, 0)
+#  define UNSPECIFIC		MAKE_OBJECT (TC_CONSTANT, 1)
+#  define FIXNUM_ZERO		MAKE_OBJECT (TC_FIXNUM, 0)
+#  define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)
 #endif /* SHARP_F */
 
 #define EMPTY_LIST SHARP_F

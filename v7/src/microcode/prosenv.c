@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosenv.c,v 1.16 1999/04/07 04:01:46 cph Exp $
+$Id: prosenv.c,v 1.17 2000/12/05 21:23:47 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -51,12 +51,15 @@ DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
     FAST_VECTOR_SET (vec, 6, (ulong_to_integer (ts . year)));		\
     FAST_VECTOR_SET (vec, 7, (ulong_to_integer (ts . day_of_week)));	\
     FAST_VECTOR_SET							\
-      (vec, 8, (ulong_to_integer (ts . daylight_savings_time)));	\
+      (vec, 8,								\
+       (((ts . daylight_savings_time) < 0)				\
+	? SHARP_F							\
+	: (long_to_integer (ts . daylight_savings_time))));		\
     FAST_VECTOR_SET							\
       (vec, 9,								\
        (((ts . time_zone) == INT_MAX)					\
 	? SHARP_F							\
-	: (ulong_to_integer (ts . time_zone))));			\
+	: (long_to_integer (ts . time_zone))));				\
   }									\
   PRIMITIVE_RETURN (UNSPECIFIC);					\
 }
@@ -93,8 +96,8 @@ DEFINE_PRIMITIVE ("ENCODE-TIME", Prim_encode_time, 1, 1,
   (ts . year) = (integer_to_ulong (FAST_VECTOR_REF (vec, 6)));
   (ts . day_of_week) = (integer_to_ulong (FAST_VECTOR_REF (vec, 7)));
   (ts . daylight_savings_time)
-    = ((len > 8)
-       ? (integer_to_ulong (FAST_VECTOR_REF (vec, 8)))
+    = (((len > 8) && (INTEGER_P (FAST_VECTOR_REF (vec, 8))))
+       ? (integer_to_long (FAST_VECTOR_REF (vec, 8)))
        : (-1));
   (ts . time_zone)
     = (((len > 9)

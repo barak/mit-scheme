@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: default.h,v 9.43 1999/01/02 06:11:34 cph Exp $
+$Id: default.h,v 9.44 2000/12/05 21:23:44 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -157,7 +157,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #endif
 
 #ifndef Fasdump_Free_Calc
-#define Fasdump_Free_Calc(NewFree, NewMemtop, ignored) do		\
+#define Fasdump_Free_Calc(NewFree, NewMemtop) do			\
 {									\
   NewFree = Unused_Heap_Bottom;						\
   NewMemTop = Unused_Heap_Top;						\

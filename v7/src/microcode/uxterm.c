@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxterm.c,v 1.27 2000/01/18 05:10:50 cph Exp $
+$Id: uxterm.c,v 1.28 2000/12/05 21:23:49 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -23,32 +23,30 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "uxterm.h"
 #include "uxio.h"
 #include "ospty.h"
+#include "prims.h"
 
 extern long EXFUN (arg_nonnegative_integer, (int));
 extern long EXFUN (arg_index_integer, (int, long));
 
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
-
-#ifndef ISTRIP
-#define ISTRIP 0
-#endif
-#ifndef CS8
-#define CS8 0
-#endif
-#ifndef PARENB
-#define PARENB 0
-#endif
-
+#if defined(HAVE_TERMIOS_H) || defined(HAVE_TERMIO_H)
+#  ifndef ISTRIP
+#    define ISTRIP 0
+#  endif
+#  ifndef CS8
+#    define CS8 0
+#  endif
+#  ifndef PARENB
+#    define PARENB 0
+#  endif
+#  define TIO(s) (& ((s) -> tio))
 #else
-#ifdef HAVE_BSD_TTY_DRIVER
-
+#  ifdef HAVE_SGTTY_H
 /* LPASS8 is new in 4.3, and makes cbreak mode provide all 8 bits.  */
-#ifndef LPASS8
-#define LPASS8 0
-#endif
-
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* not HAVE_TERMIOS nor HAVE_TERMIO */
+#    ifndef LPASS8
+#      define LPASS8 0
+#    endif
+#  endif /* HAVE_SGTTY_H */
+#endif /* not HAVE_TERMIOS_H nor HAVE_TERMIO_H */
 
 struct terminal_state
 {
@@ -59,10 +57,6 @@ struct terminal_state
 static struct terminal_state * terminal_table;
 #define TERMINAL_BUFFER(channel) ((terminal_table[(channel)]) . buffer)
 #define TERMINAL_ORIGINAL_STATE(channel) ((terminal_table[(channel)]) . state)
-
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
-#define TIO(s) (& ((s) -> tio))
-#endif
 
 void
 DEFUN_VOID (UX_initialize_terminals)
@@ -113,33 +107,33 @@ DEFUN (set_terminal_state, (channel, s), Tchannel channel AND Ttty_state * s)
 unsigned int
 DEFUN (terminal_state_get_ospeed, (s), Ttty_state * s)
 {
-#ifdef HAVE_TERMIOS
+#ifdef HAVE_TERMIOS_H
   return (cfgetospeed (TIO (s)));
 #else
-#ifdef HAVE_TERMIO
+#ifdef HAVE_TERMIO_H
   return (((TIO (s)) -> c_cflag) & CBAUD);
 #else
-#ifdef HAVE_BSD_TTY_DRIVER
+#ifdef HAVE_SGTTY_H
   return (s -> sg . sg_ospeed);
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* not HAVE_TERMIO */
-#endif /* not HAVE_TERMIOS */
+#endif /* HAVE_SGTTY_H */
+#endif /* not HAVE_TERMIO_H */
+#endif /* not HAVE_TERMIOS_H */
 }
 
 unsigned int
 DEFUN (terminal_state_get_ispeed, (s), Ttty_state * s)
 {
-#ifdef HAVE_TERMIOS
+#ifdef HAVE_TERMIOS_H
   return (cfgetispeed (TIO (s)));
 #else
-#ifdef HAVE_TERMIO
+#ifdef HAVE_TERMIO_H
   return (((TIO (s)) -> c_cflag) & CBAUD);
 #else
-#ifdef HAVE_BSD_TTY_DRIVER
+#ifdef HAVE_SGTTY_H
   return (s -> sg . sg_ispeed);
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* not HAVE_TERMIO */
-#endif /* not HAVE_TERMIOS */
+#endif /* HAVE_SGTTY_H */
+#endif /* not HAVE_TERMIO_H */
+#endif /* not HAVE_TERMIOS_H */
 }
 
 void
@@ -147,17 +141,17 @@ DEFUN (terminal_state_set_ospeed, (s, b),
        Ttty_state * s AND
        unsigned int b)
 {
-#ifdef HAVE_TERMIOS
+#ifdef HAVE_TERMIOS_H
   cfsetospeed ((TIO (s)), b);
 #else
-#ifdef HAVE_TERMIO
+#ifdef HAVE_TERMIO_H
   ((TIO (s)) -> c_cflag) = ((((TIO (s)) -> c_cflag) &~ CBAUD) | b);
 #else
-#ifdef HAVE_BSD_TTY_DRIVER
+#ifdef HAVE_SGTTY_H
   (s -> sg . sg_ospeed) = b;
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* not HAVE_TERMIO */
-#endif /* not HAVE_TERMIOS */
+#endif /* HAVE_SGTTY_H */
+#endif /* not HAVE_TERMIO_H */
+#endif /* not HAVE_TERMIOS_H */
 }
 
 void
@@ -165,43 +159,43 @@ DEFUN (terminal_state_set_ispeed, (s, b),
        Ttty_state * s AND
        unsigned int b)
 {
-#ifdef HAVE_TERMIOS
+#ifdef HAVE_TERMIOS_H
   cfsetispeed ((TIO (s)), b);
 #else
-#ifdef HAVE_TERMIO
+#ifdef HAVE_TERMIO_H
   ((TIO (s)) -> c_cflag) =
     ((((TIO (s)) -> c_cflag) &~ CIBAUD) | (b << IBSHIFT));
 #else
-#ifdef HAVE_BSD_TTY_DRIVER
+#ifdef HAVE_SGTTY_H
   (s -> sg . sg_ispeed) = b;
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* not HAVE_TERMIO */
-#endif /* not HAVE_TERMIOS */
+#endif /* HAVE_SGTTY_H */
+#endif /* not HAVE_TERMIO_H */
+#endif /* not HAVE_TERMIOS_H */
 }
 
 int
 DEFUN (terminal_state_cooked_output_p, (s), Ttty_state * s)
 {
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+#if defined(HAVE_TERMIOS_H) || defined(HAVE_TERMIO_H)
   return ((((TIO (s)) -> c_oflag) & OPOST) != 0);
-#else /* not HAVE_TERMIOS nor HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
+#else /* not HAVE_TERMIOS_H nor HAVE_TERMIO_H */
+#ifdef HAVE_SGTTY_H
   return (((s -> sg . sg_flags) & LLITOUT) == 0);
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIOS or HAVE_TERMIO */
+#endif /* HAVE_SGTTY_H */
+#endif /* HAVE_TERMIOS_H or HAVE_TERMIO_H */
 }
 
 void
 DEFUN (terminal_state_raw_output, (s), Ttty_state * s)
 {
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+#if defined(HAVE_TERMIOS_H) || defined(HAVE_TERMIO_H)
   ((TIO (s)) -> c_oflag) &=~ OPOST;
-#else /* not HAVE_TERMIOS nor HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
+#else /* not HAVE_TERMIOS_H nor HAVE_TERMIO_H */
+#ifdef HAVE_SGTTY_H
   (s -> sg . sg_flags) &=~ ALLDELAY;
   (s -> lmode) |= LLITOUT;
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIOS or HAVE_TERMIO */
+#endif /* HAVE_SGTTY_H */
+#endif /* HAVE_TERMIOS_H or HAVE_TERMIO_H */
 }
 
 void
@@ -209,27 +203,27 @@ DEFUN (terminal_state_cooked_output, (s, channel),
        Ttty_state * s AND Tchannel channel)
 {
   Ttty_state * os = (& (TERMINAL_ORIGINAL_STATE (channel)));
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+#if defined(HAVE_TERMIOS_H) || defined(HAVE_TERMIO_H)
   ((TIO (s)) -> c_oflag) |= (((TIO (os)) -> c_oflag) & OPOST);
-#else /* not HAVE_TERMIOS nor HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
+#else /* not HAVE_TERMIOS_H nor HAVE_TERMIO_H */
+#ifdef HAVE_SGTTY_H
   (s -> sg . sg_flags) =
     (((s -> sg . sg_flags) &~ ALLDELAY) | ((os -> sg . sg_flags) & ALLDELAY));
   (s -> lmode) &=~ ((os -> lmode) & LLITOUT);
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIOS or HAVE_TERMIO */
+#endif /* HAVE_SGTTY_H */
+#endif /* HAVE_TERMIOS_H or HAVE_TERMIO_H */
 }
 
 int
 DEFUN (terminal_state_buffered_p, (s), Ttty_state * s)
 {
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+#if defined(HAVE_TERMIOS_H) || defined(HAVE_TERMIO_H)
   return ((((TIO (s)) -> c_lflag) & ICANON) != 0);
-#else /* not HAVE_TERMIOS nor HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
+#else /* not HAVE_TERMIOS_H nor HAVE_TERMIO_H */
+#ifdef HAVE_SGTTY_H
   return (((s -> sg . sg_flags) & (CBREAK | RAW)) == 0);
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIOS or HAVE_TERMIO */
+#endif /* HAVE_SGTTY_H */
+#endif /* HAVE_TERMIOS_H or HAVE_TERMIO_H */
 }
 
 void
@@ -238,7 +232,7 @@ DEFUN (terminal_state_nonbuffered, (s, fd, polling),
        int fd AND
        int polling)
 {
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+#if defined(HAVE_TERMIOS_H) || defined(HAVE_TERMIO_H)
 
   ((TIO (s)) -> c_lflag) &=~ (ICANON | ECHO);
 #ifdef IEXTEN
@@ -251,7 +245,7 @@ DEFUN (terminal_state_nonbuffered, (s, fd, polling),
   ((TIO (s)) -> c_cflag) &=~ PARENB;
   (((TIO (s)) -> c_cc) [VMIN]) = (polling ? 0 : 1);
   (((TIO (s)) -> c_cc) [VTIME]) = 0;
-#ifdef HAVE_TERMIOS
+#ifdef HAVE_TERMIOS_H
   {
     cc_t disable = (UX_PC_VDISABLE (fd));
     (((TIO (s)) -> c_cc) [VSTOP]) = disable;
@@ -259,8 +253,8 @@ DEFUN (terminal_state_nonbuffered, (s, fd, polling),
   }
 #endif
 
-#else /* not HAVE_TERMIOS nor HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
+#else /* not HAVE_TERMIOS_H nor HAVE_TERMIO_H */
+#ifdef HAVE_SGTTY_H
 
   (s -> sg . sg_flags) &=~ (ECHO | CRMOD);
   (s -> sg . sg_flags) |= (ANYP | CBREAK);
@@ -269,15 +263,15 @@ DEFUN (terminal_state_nonbuffered, (s, fd, polling),
   (s -> tc . t_stopc) = (-1);
   (s -> tc . t_eofc) = (-1);
   (s -> tc . t_brkc) = (-1);
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef HAVE_STRUCT_LTCHARS
   (s -> ltc . t_rprntc) = (-1);
   (s -> ltc . t_flushc) = (-1);
   (s -> ltc . t_werasc) = (-1);
   (s -> ltc . t_lnextc) = (-1);
-#endif /* HAVE_BSD_JOB_CONTROL */
+#endif /* HAVE_STRUCT_LTCHARS */
 
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIOS or HAVE_TERMIO */
+#endif /* HAVE_SGTTY_H */
+#endif /* HAVE_TERMIOS_H or HAVE_TERMIO_H */
 }
 
 void
@@ -285,24 +279,24 @@ DEFUN (terminal_state_raw, (s, fd), Ttty_state * s AND int fd)
 {
   terminal_state_nonbuffered (s, fd, 0);
 
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+#if defined(HAVE_TERMIOS_H) || defined(HAVE_TERMIO_H)
 
   ((TIO (s)) -> c_lflag) &=~ ISIG;
 
-#else /* not HAVE_TERMIOS nor HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
+#else /* not HAVE_TERMIOS_H nor HAVE_TERMIO_H */
+#ifdef HAVE_SGTTY_H
 
   (s -> sg . sg_flags) &=~ CBREAK;
   (s -> sg . sg_flags) |= RAW;
   (s -> tc . t_intrc) = (-1);
   (s -> tc . t_quitc) = (-1);
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef HAVE_STRUCT_LTCHARS
   (s -> ltc . t_suspc) = (-1);
   (s -> ltc . t_dsuspc) = (-1);
-#endif /* HAVE_BSD_JOB_CONTROL */
+#endif /* HAVE_STRUCT_LTCHARS */
 
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIOS or HAVE_TERMIO */
+#endif /* HAVE_SGTTY_H */
+#endif /* HAVE_TERMIOS_H or HAVE_TERMIO_H */
 }
 
 void
@@ -312,7 +306,7 @@ DEFUN (terminal_state_buffered, (s, channel),
 {
   Ttty_state * os = (& (TERMINAL_ORIGINAL_STATE (channel)));
 
-#if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+#if defined(HAVE_TERMIOS_H) || defined(HAVE_TERMIO_H)
 
   ((TIO (s)) -> c_lflag) |= (ICANON | ISIG);
   ((TIO (s)) -> c_lflag) |= (((TIO (os)) -> c_lflag) & ECHO);
@@ -324,13 +318,13 @@ DEFUN (terminal_state_buffered, (s, channel),
   ((TIO (s)) -> c_cflag) &=~ PARENB;
   (((TIO (s)) -> c_cc) [VMIN]) = (((TIO (os)) -> c_cc) [VMIN]);
   (((TIO (s)) -> c_cc) [VTIME]) = (((TIO (os)) -> c_cc) [VTIME]);
-#ifdef HAVE_TERMIOS
+#ifdef HAVE_TERMIOS_H
   (((TIO (s)) -> c_cc) [VSTOP]) = (((TIO (os)) -> c_cc) [VSTOP]);
   (((TIO (s)) -> c_cc) [VSTART]) = (((TIO (os)) -> c_cc) [VSTART]);
 #endif
 
-#else /* not HAVE_TERMIOS nor HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
+#else /* not HAVE_TERMIOS_H nor HAVE_TERMIO_H */
+#ifdef HAVE_SGTTY_H
 
   (s -> sg . sg_flags) &=~ (CBREAK | RAW);
   (s -> sg . sg_flags) |= ANYP;
@@ -343,17 +337,17 @@ DEFUN (terminal_state_buffered, (s, channel),
   (s -> tc . t_stopc) = (os -> tc . t_stopc);
   (s -> tc . t_eofc) = (os -> tc . t_eofc);
   (s -> tc . t_brkc) = (os -> tc . t_brkc);
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef HAVE_STRUCT_LTCHARS
   (s -> ltc . t_suspc) = (os -> ltc . t_suspc);
   (s -> ltc . t_dsuspc) = (os -> ltc . t_dsuspc);
   (s -> ltc . t_rprntc) = (os -> ltc . t_rprntc);
   (s -> ltc . t_flushc) = (os -> ltc . t_flushc);
   (s -> ltc . t_werasc) = (os -> ltc . t_werasc);
   (s -> ltc . t_lnextc) = (os -> ltc . t_lnextc);
-#endif /* HAVE_BSD_JOB_CONTROL */
+#endif /* HAVE_STRUCT_LTCHARS */
 
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIOS or HAVE_TERMIO */
+#endif /* HAVE_SGTTY_H */
+#endif /* HAVE_TERMIOS_H or HAVE_TERMIO_H */
 }
 
 unsigned int
@@ -394,57 +388,218 @@ DEFUN (OS_terminal_set_ospeed, (channel, baud),
   set_terminal_state (channel, (&s));
 }
 
-#ifndef NO_BAUD_CONVERSION
-static unsigned int baud_convert [] =
-#ifdef _HPUX
-  {
-    0, 50, 75, 110, 135, 150, 200, 300, 600, 900, 1200,
-    1800, 2400, 3600, 4800, 7200, 9600, 19200, 38400
-  };
-#else
-  {
-    0, 50, 75, 110, 135, 150, 200, 300, 600, 1200,
-    1800, 2400, 4800, 9600, 19200, 38400
-  };
-#endif
-
-#define BAUD_CONVERT_LENGTH						\
-  ((sizeof (baud_convert)) / (sizeof (baud_convert[0])))
-#endif /* NO_BAUD_CONVERSION */
-
 unsigned int
 DEFUN (arg_baud_index, (argument), unsigned int argument)
 {
-#ifdef NO_BAUD_CONVERSION
-  return (arg_nonnegative_integer (argument));
-#else
-  return (arg_index_integer (argument, BAUD_CONVERT_LENGTH));
+  unsigned long index = (arg_nonnegative_integer (argument));
+  switch (index)
+    {
+    case B0:
+    case B50:
+    case B75:
+    case B110:
+    case B134:
+    case B150:
+    case B200:
+    case B300:
+    case B600:
+    case B1200:
+    case B1800:
+    case B2400:
+    case B4800:
+    case B9600:
+    case B19200:
+    case B38400:
+#ifdef B57600
+    case B57600:
 #endif
+#ifdef B115200
+    case B115200:
+#endif
+#ifdef B230400
+    case B230400:
+#endif
+#ifdef B460800
+    case B460800:
+#endif
+#ifdef B500000
+    case B500000:
+#endif
+#ifdef B576000
+    case B576000:
+#endif
+#ifdef B921600
+    case B921600:
+#endif
+#ifdef B1000000
+    case B1000000:
+#endif
+#ifdef B1152000
+    case B1152000:
+#endif
+#ifdef B1500000
+    case B1500000:
+#endif
+#ifdef B2000000
+    case B2000000:
+#endif
+#ifdef B2500000
+    case B2500000:
+#endif
+#ifdef B3000000
+    case B3000000:
+#endif
+#ifdef B3500000
+    case B3500000:
+#endif
+#ifdef B4000000
+    case B4000000:
+#endif
+      break;
+    default:
+      error_bad_range_arg (argument);
+    }
+  return (index);
 }
 
 unsigned int
 DEFUN (OS_baud_index_to_rate, (index), unsigned int index)
 {
-#ifdef NO_BAUD_CONVERSION
-  return (index);
-#else
-  return (baud_convert [index]);
+  switch (index)
+    {
+    case B0:		return (0);
+    case B50:		return (50);
+    case B75:		return (75);
+    case B110:		return (110);
+    case B134:		return (134);
+    case B150:		return (150);
+    case B200:		return (200);
+    case B300:		return (300);
+    case B600:		return (600);
+    case B1200:		return (1200);
+    case B1800:		return (1800);
+    case B2400:		return (2400);
+    case B4800:		return (4800);
+    case B9600:		return (9600);
+    case B19200:	return (19200);
+    case B38400:	return (38400);
+#ifdef B57600
+    case B57600:	return (57600);
 #endif
+#ifdef B115200
+    case B115200:	return (115200);
+#endif
+#ifdef B230400
+    case B230400:	return (230400);
+#endif
+#ifdef B460800
+    case B460800:	return (460800);
+#endif
+#ifdef B500000
+    case B500000:	return (500000);
+#endif
+#ifdef B576000
+    case B576000:	return (576000);
+#endif
+#ifdef B921600
+    case B921600:	return (921600);
+#endif
+#ifdef B1000000
+    case B1000000:	return (1000000);
+#endif
+#ifdef B1152000
+    case B1152000:	return (1152000);
+#endif
+#ifdef B1500000
+    case B1500000:	return (1500000);
+#endif
+#ifdef B2000000
+    case B2000000:	return (2000000);
+#endif
+#ifdef B2500000
+    case B2500000:	return (2500000);
+#endif
+#ifdef B3000000
+    case B3000000:	return (3000000);
+#endif
+#ifdef B3500000
+    case B3500000:	return (3500000);
+#endif
+#ifdef B4000000
+    case B4000000:	return (4000000);
+#endif
+    default:		abort (); return (0);
+    }
 }
 
 int
 DEFUN (OS_baud_rate_to_index, (rate), unsigned int rate)
 {
-#ifdef NO_BAUD_CONVERSION
-  return (rate);
-#else
-  unsigned int * scan = baud_convert;
-  unsigned int * end = (scan + BAUD_CONVERT_LENGTH);
-  while (scan < end)
-    if ((*scan++) == rate)
-      return ((scan - 1) - baud_convert);
-  return (-1);
+  switch (rate)
+    {
+    case 0:		return (B0);
+    case 50:		return (B50);
+    case 75:		return (B75);
+    case 110:		return (B110);
+    case 134:		return (B134);
+    case 150:		return (B150);
+    case 200:		return (B200);
+    case 300:		return (B300);
+    case 600:		return (B600);
+    case 1200:		return (B1200);
+    case 1800:		return (B1800);
+    case 2400:		return (B2400);
+    case 4800:		return (B4800);
+    case 9600:		return (B9600);
+    case 19200:		return (B19200);
+    case 38400:		return (B38400);
+#ifdef B57600
+    case 57600:		return (B57600);
 #endif
+#ifdef B115200
+    case 115200:	return (B115200);
+#endif
+#ifdef B230400
+    case 230400:	return (B230400);
+#endif
+#ifdef B460800
+    case 460800:	return (B460800);
+#endif
+#ifdef B500000
+    case 500000:	return (B500000);
+#endif
+#ifdef B576000
+    case 576000:	return (B576000);
+#endif
+#ifdef B921600
+    case 921600:	return (B921600);
+#endif
+#ifdef B1000000
+    case 1000000:	return (B1000000);
+#endif
+#ifdef B1152000
+    case 1152000:	return (B1152000);
+#endif
+#ifdef B1500000
+    case 1500000:	return (B1500000);
+#endif
+#ifdef B2000000
+    case 2000000:	return (B2000000);
+#endif
+#ifdef B2500000
+    case 2500000:	return (B2500000);
+#endif
+#ifdef B3000000
+    case 3000000:	return (B3000000);
+#endif
+#ifdef B3500000
+    case 3500000:	return (B3500000);
+#endif
+#ifdef B4000000
+    case 4000000:	return (B4000000);
+#endif
+    default:		return (-1);
+    }
 }
 
 unsigned int
@@ -548,38 +703,77 @@ DEFUN_VOID (OS_job_control_p)
   return (UX_SC_JOB_CONTROL ());
 }
 
-#ifdef HAVE_PTYS
-
 int
 DEFUN_VOID (OS_have_ptys_p)
 {
+#ifdef HAVE_GRANTPT
   return (1);
+#else
+  static int result = 0;
+  static int result_valid = 0;
+  const char * p1;
+  if (result_valid)
+    return (result);
+  for (p1 = "pqrstuvwxyzPQRST"; ((*p1) != 0); p1 += 1)
+    {
+      char master_name [24];
+      struct stat s;
+      sprintf (master_name, "/dev/pty%c0", (*p1));
+    retry_stat:
+      if ((UX_stat (master_name, (&s))) < 0)
+	{
+	  if (errno == EINTR)
+	    goto retry_stat;
+	  continue;
+	}
+      result = 1;
+      result_valid = 1;
+      return (result);
+    }
+  result = 0;
+  result_valid = 1;
+  return (result);
+#endif
 }
 
-#ifdef FIRST_PTY_LETTER
+static CONST char *
+DEFUN (open_pty_master_bsd, (master_fd, master_fname),
+       Tchannel * master_fd AND
+       CONST char ** master_fname)
+{
+  static char master_name [24];
+  static char slave_name [24];
+  const char * p1;
+  const char * p2;
+  int fd;
 
-#define PTY_DECLARATIONS						\
-  int c;								\
-  int i
-
-#define PTY_ITERATION							\
-  for (c = FIRST_PTY_LETTER; (c <= 'z'); c += 1)			\
-    for (i = 0; (i < 16); i += 1)
-
-#define PTY_MASTER_NAME_SPRINTF(master_name)				\
-  sprintf ((master_name), "/dev/pty%c%x", c, i)
-
-#define PTY_SLAVE_NAME_SPRINTF(slave_name, fd)				\
-{									\
-  sprintf ((slave_name), "/dev/tty%c%x", c, i);				\
-  if ((UX_access ((slave_name), (R_OK | W_OK))) < 0)			\
-    {									\
-      UX_close (fd);							\
-      continue;								\
-    }									\
+  for (p1 = "pqrstuvwxyzPQRST"; ((*p1) != 0); p1 += 1)
+    for (p2 = "0123456789abcdef"; ((*p2) != 0); p2 += 1)
+      {
+	sprintf (master_name, "/dev/pty%c%c", (*p1), (*p2));
+	sprintf (slave_name, "/dev/tty%c%c", (*p1), (*p2));
+      retry_open:
+	fd = (UX_open (master_name, O_RDWR, 0));
+	if (fd < 0)
+	  {
+	    if (errno == ENOENT)
+	      return (0);
+	    if (errno != EINTR)
+	      continue;
+	    deliver_pending_interrupts ();
+	    goto retry_open;
+	  }
+	if ((UX_access (slave_name, (R_OK | W_OK))) < 0)
+	  {
+	    UX_close (fd);
+	    continue;
+	  }
+	MAKE_CHANNEL (fd, channel_type_unix_pty_master, (*master_fd) =);
+	(*master_fname) = master_name;
+	return (slave_name);
+      }
+  return (0);
 }
-
-#endif /* FIRST_PTY_LETTER */
 
 /* Open an available pty, putting channel in (*ptyv),
    and return the file name of the pty.
@@ -590,40 +784,45 @@ DEFUN (OS_open_pty_master, (master_fd, master_fname),
        Tchannel * master_fd AND
        CONST char ** master_fname)
 {
-  static char master_name [24];
-  static char slave_name [24];
-  int fd;
-  PTY_DECLARATIONS;
-
-#ifdef PTY_ITERATION
-  PTY_ITERATION
-#endif
+#ifdef HAVE_GRANTPT
+  while (1)
     {
-      PTY_MASTER_NAME_SPRINTF (master_name);
-    retry_open:
-      fd = (UX_open (master_name, O_RDWR, 0));
+      static char slave_name [24];
+      int fd = (UX_open ("/dev/ptmx", O_RDWR, 0));
       if (fd < 0)
 	{
-	  if (errno != EINTR)
+	  if (errno == EINTR)
 	    {
-#ifdef PTY_ITERATION
+	      deliver_pending_interrupts ();
 	      continue;
-#else
-	      error_system_call (errno, syscall_open);
-#endif
 	    }
-	  deliver_pending_interrupts ();
-	  goto retry_open;
+	  /* Try BSD open.  This is needed for Linux which might have
+	     Unix98 support in the library but not the kernel.  */
+	  return (open_pty_master_bsd (master_fd, master_fname));
 	}
-      PTY_SLAVE_NAME_SPRINTF (slave_name, fd);
+#ifdef sonyrisc
+      sony_block_sigchld ();
+#endif
+      grantpt (fd);
+      unlockpt (fd);
+      strcpy (slave_name, (ptsname (fd)));
+#ifdef sonyrisc
+      sony_unblock_sigchld ();
+#endif
       MAKE_CHANNEL (fd, channel_type_unix_pty_master, (*master_fd) =);
-      (*master_fname) = master_name;
+      (*master_fname) = "/dev/ptmx";
       return (slave_name);
     }
-  error_external_return ();
-  return (0);
+
+#else /* not HAVE_GRANTPT */
+
+  if (!OS_have_ptys_p ())
+    error_unimplemented_primitive ();
+  return (open_pty_master_bsd (master_fd, master_fname));
+
+#endif /* not HAVE_GRANTPT */
 }
-
+
 void
 DEFUN (OS_pty_master_send_signal, (channel, sig), Tchannel channel AND int sig)
 {
@@ -632,40 +831,17 @@ DEFUN (OS_pty_master_send_signal, (channel, sig), Tchannel channel AND int sig)
     (syscall_ioctl_TIOCSIGSEND,
      (UX_ioctl ((CHANNEL_DESCRIPTOR (channel)), TIOCSIGSEND, sig)));
 #else
-#if defined(HAVE_POSIX_SIGNALS) || defined(HAVE_BSD_JOB_CONTROL)
-  int gid;
-  STD_UINT_SYSTEM_CALL
-    (syscall_tcgetpgrp, gid, (UX_tcgetpgrp (CHANNEL_DESCRIPTOR (channel))));
+  int gid = (UX_tcgetpgrp (CHANNEL_DESCRIPTOR (channel)));
+  if (gid < 0)
+    {
+      if (errno == ENOSYS)
+	error_unimplemented_primitive ();
+      else
+	error_system_call (errno, syscall_tcgetpgrp);
+    }
   STD_VOID_SYSTEM_CALL (syscall_kill, (UX_kill ((-gid), sig)));
-#else
-  error_unimplemented_primitive ();
-#endif /* not (HAVE_POSIX_SIGNALS or HAVE_BSD_JOB_CONTROL) */
-#endif /* not TIOCSIGSEND */
+#endif
 }
-
-#else /* not HAVE_PTYS */
-
-int
-DEFUN_VOID (OS_have_ptys_p)
-{
-  return (0);
-}
-
-CONST char *
-DEFUN (OS_open_pty_master, (master_fd, master_fname),
-       Tchannel * master_fd AND
-       CONST char ** master_fname)
-{
-  error_unimplemented_primitive ();
-}
-
-void
-DEFUN (OS_pty_master_send_signal, (channel, sig), Tchannel channel AND int sig)
-{
-  error_unimplemented_primitive ();
-}
-
-#endif /* not HAVE_PTYS */
 
 void
 DEFUN (OS_pty_master_kill, (channel), Tchannel channel)

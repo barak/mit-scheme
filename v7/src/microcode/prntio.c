@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntio.c,v 1.12 2000/04/19 03:21:09 cph Exp $
+$Id: prntio.c,v 1.13 2000/12/05 21:23:47 cph Exp $
 
 Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
@@ -50,7 +50,6 @@ DEFINE_PRIMITIVE ("WIN32-GUI-TRACE", Prim_win32_gui_trace, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   {
-    unsigned long old_level = win32_trace_level;
     win32_trace_level = (arg_ulong_integer (1));
     if (win32_trace_file != 0)
       {

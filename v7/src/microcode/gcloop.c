@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gcloop.c,v 9.46 1999/01/02 06:11:34 cph Exp $
+$Id: gcloop.c,v 9.47 2000/12/05 21:23:44 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -310,7 +310,7 @@ DEFUN (GCLoop,
 	break;
 
       default:
-	GC_BAD_TYPE ("gcloop");
+	GC_BAD_TYPE ("gcloop", Temp);
 	/* Fall Through */
 
       case_Non_Pointer:

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.58 1999/01/02 06:11:34 cph Exp $
+$Id: hooks.c,v 9.59 2000/12/05 21:23:44 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -772,14 +772,14 @@ and MARKER2 is data identifying the marker instance.")
   {
     extern SCHEME_OBJECT EXFUN (compiled_with_stack_marker, (SCHEME_OBJECT));
 
-    STACK_POP ();
+    (void) STACK_POP ();
     return (compiled_with_stack_marker (thunk));
   }
   else
   {
     PRIMITIVE_CANONICALIZE_CONTEXT ();
 
-    STACK_POP ();
+    (void) STACK_POP ();
     STACK_PUSH (MAKE_OBJECT (TC_RETURN_CODE, RC_STACK_MARKER));
    Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
     STACK_PUSH (thunk);

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: lookup.h,v 9.51 1999/01/02 06:06:43 cph Exp $
+$Id: lookup.h,v 9.52 2000/12/05 21:23:45 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,6 +31,8 @@ extern long
   EXFUN (deep_assignment_end,
 	 (SCHEME_OBJECT *, SCHEME_OBJECT *, SCHEME_OBJECT, Boolean));
 
+extern long EXFUN (recache_uuo_links, (SCHEME_OBJECT, SCHEME_OBJECT));
+
 extern SCHEME_OBJECT
   unbound_trap_object[],
   uncompiled_trap_object[],
@@ -56,21 +58,17 @@ extern SCHEME_OBJECT
 
 /* Common constants. */
 
-#ifdef b32				/* 32 bit objects */
-
-#if (TYPE_CODE_LENGTH == 8)
-#define UNCOMPILED_VARIABLE		0x08000000
+#if (SIZEOF_UNSIGNED_LONG == 4)	/* 32 bit objects */
+#  if (TYPE_CODE_LENGTH == 8)
+#    define UNCOMPILED_VARIABLE		0x08000000
+#  endif
+#  if (TYPE_CODE_LENGTH == 6)
+#    define UNCOMPILED_VARIABLE		0x20000000
+#  endif
+#  if (TC_CONSTANT != 0x08)
+#    include "error:lookup.h and types.h are inconsistent"
+#  endif
 #endif
-
-#if (TYPE_CODE_LENGTH == 6)
-#define UNCOMPILED_VARIABLE		0x20000000
-#endif
-
-#if (TC_CONSTANT != 0x08)
-#include "error:lookup.h and types.h are inconsistent"
-#endif
-
-#endif /* b32 */
 
 #ifndef UNCOMPILED_VARIABLE		/* Safe version */
 #define UNCOMPILED_VARIABLE		MAKE_OBJECT (UNCOMPILED_REF, 0)
@@ -120,6 +118,7 @@ extern SCHEME_OBJECT
    not matter, but might on a machine with address mapping.
  */
 
+#define DECLARE_LOCK(name) Lock_Handle name
 #define setup_lock(handle, cell)		handle = Lock_Cell(cell)
 #define remove_lock(handle)			Unlock_Cell(handle)
 
@@ -151,6 +150,7 @@ extern SCHEME_OBJECT
 
 #define verify(type_code, variable, code, label)
 #define verified_offset(variable, code)		code
+/* #undef DECLARE_LOCK */
 #define setup_lock(handle, cell)
 #define remove_lock(ignore)
 #define setup_locks(hand1, cel1, hand2, cel2)

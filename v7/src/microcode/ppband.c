@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.49 1999/01/02 06:06:43 cph Exp $
+$Id: ppband.c,v 9.50 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include <stdio.h>
 #include <ctype.h>
-#include "ansidecl.h"
 #include "config.h"
 #include "errors.h"
 #include "types.h"
@@ -90,7 +89,7 @@ DEFUN (Load_Data, (Count, To_Where), long Count AND SCHEME_OBJECT *To_Where)
 #include "load.c"
 
 #ifdef HEAP_IN_LOW_MEMORY
-#ifdef hp9000s800
+#if defined(hp9000s800) || defined(__hp9000s800)
 #  define File_To_Pointer(P)						\
     ((((long) (P)) & DATUM_MASK) / (sizeof (SCHEME_OBJECT)))
 #else

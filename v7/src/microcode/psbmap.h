@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: psbmap.h,v 9.43 1999/01/02 06:06:43 cph Exp $
+$Id: psbmap.h,v 9.44 2000/12/05 21:23:48 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,16 +30,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    from the included files.
 */
 
-#define WINNT_RAW_ADDRESSES
 #define fast register
 
-#include <stdio.h>
-#ifndef _NEXTOS
-#include <stdlib.h>
-#endif
-#include "oscond.h"
-#include "ansidecl.h"
 #include "config.h"
+#include <stdio.h>
+#ifdef STDC_HEADERS
+#  include <stdlib.h>
+#endif
 #include "types.h"
 #include "object.h"
 #include "bignum.h"

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: xdebug.c,v 9.33 1999/01/02 06:11:34 cph Exp $
+$Id: xdebug.c,v 9.34 2000/12/05 21:23:49 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -117,11 +117,11 @@ DEFUN (Find_In_Area, (Name, From, To, Obj, Mode, print_p, store_p),
   {
     occurrences += 1;
     if (print_p)
-#ifndef b32
-      outf_console("Location = 0x%lx; Contents = 0x%lx\n",
+#if (SIZEOF_UNSIGNED_LONG == 4)
+      outf_console("Location = 0x%08lx; Contents = 0x%08lx\n",
 	     ((long) Where), ((long) (*Where)));
 #else
-      outf_console("Location = 0x%08lx; Contents = 0x%08lx\n",
+      outf_console("Location = 0x%lx; Contents = 0x%lx\n",
 	     ((long) Where), ((long) (*Where)));
 #endif
     if (store_p)
@@ -149,11 +149,11 @@ DEFUN (Find_Who_Points, (Obj, Find_Mode, Collect_Mode),
   if (print_p)
   {
     putchar('\n');
-#ifndef b32
-    outf_console("*** Looking for Obj = 0x%lx; Find_Mode = %2ld ***\n",
+#if (SIZEOF_UNSIGNED_LONG == 4)
+    outf_console("*** Looking for Obj = 0x%08lx; Find_Mode = %2ld ***\n",
 	   ((long) Obj), ((long) Find_Mode));
 #else
-    outf_console("*** Looking for Obj = 0x%08lx; Find_Mode = %2ld ***\n",
+    outf_console("*** Looking for Obj = 0x%lx; Find_Mode = %2ld ***\n",
 	   ((long) Obj), ((long) Find_Mode));
 #endif
   }
@@ -190,19 +190,19 @@ DEFUN (Print_Memory, (Where, How_Many),
 {
   fast SCHEME_OBJECT *End   = &Where[How_Many];
 
-#ifndef b32
-  outf_console ("\n*** Memory from 0x%lx to 0x%lx (excluded) ***\n",
-	  ((long) Where), ((long) End));
-  while (Where < End)
-  {
-    outf_console ("0x%lx\n", ((long) (*Where++)));
-  }
-#else
+#if (SIZEOF_UNSIGNED_LONG == 4)
   outf_console ("\n*** Memory from 0x%08lx to 0x%08lx (excluded) ***\n",
 	  ((long) Where), ((long) End));
   while (Where < End)
   {
     outf_console ("0x%0l8x\n", ((long) (*Where++)));
+  }
+#else
+  outf_console ("\n*** Memory from 0x%lx to 0x%lx (excluded) ***\n",
+	  ((long) Where), ((long) End));
+  while (Where < End)
+  {
+    outf_console ("0x%lx\n", ((long) (*Where++)));
   }
 #endif
   outf_console ("Done.\n");

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osio.h,v 1.14 1999/01/02 06:11:34 cph Exp $
+$Id: osio.h,v 1.15 2000/12/05 21:23:47 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ extern int EXFUN (OS_channel_nonblocking_p, (Tchannel channel));
 extern void EXFUN (OS_channel_nonblocking, (Tchannel channel));
 extern void EXFUN (OS_channel_blocking, (Tchannel channel));
 
-#ifdef WINNT
+#ifdef __WIN32__
 extern int OS_have_select_p;
 #else
 extern CONST int OS_have_select_p;

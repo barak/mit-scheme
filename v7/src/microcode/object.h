@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.49 1999/01/02 06:06:43 cph Exp $
+$Id: object.h,v 9.50 2000/12/05 21:23:46 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,63 +27,56 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* The value in "Wsize.c" for `TYPE_CODE_LENGTH' must match this!! */
 #ifndef TYPE_CODE_LENGTH
-#define TYPE_CODE_LENGTH 8
+#  define TYPE_CODE_LENGTH 8
 #endif
 
-#ifdef MIN_TYPE_CODE_LENGTH
-#if (TYPE_CODE_LENGTH < MIN_TYPE_CODE_LENGTH)
-#include ";; inconsistency between object.h and types.h: MIN_TYPE_CODE_LENGTH"
-#endif
+#if defined(MIN_TYPE_CODE_LENGTH) && (TYPE_CODE_LENGTH < MIN_TYPE_CODE_LENGTH)
+#  include "Inconsistency between object.h and types.h: MIN_TYPE_CODE_LENGTH"
 #endif
 
-#ifdef b32			/* 32 bit word versions */
-#if (TYPE_CODE_LENGTH == 8)
+#if (SIZEOF_UNSIGNED_LONG == 4)	/* 32 bit word versions */
+#  if (TYPE_CODE_LENGTH == 8)
+#    define MAX_TYPE_CODE	0xFF
+#    define DATUM_LENGTH	24
+#    define FIXNUM_LENGTH	23
+#    define FIXNUM_SIGN_BIT	0x00800000
+#    define SIGN_MASK		0xFF800000
+#    define SMALLEST_FIXNUM	((long) 0xFF800000)
+#    define BIGGEST_FIXNUM	((long) 0x007FFFFF)
+#    define HALF_DATUM_LENGTH	12
+#    define HALF_DATUM_MASK	0x00000FFF
+#    define DATUM_MASK		0x00FFFFFF
+#    define TYPE_CODE_MASK	0xFF000000
+#  endif
+#  if (TYPE_CODE_LENGTH == 6)
+#    define MAX_TYPE_CODE	0x3F
+#    define DATUM_LENGTH	26
+#    define FIXNUM_LENGTH	25
+#    define FIXNUM_SIGN_BIT	0x02000000
+#    define SIGN_MASK		0xFE000000
+#    define SMALLEST_FIXNUM	((long) 0xFE000000)
+#    define BIGGEST_FIXNUM	((long) 0x01FFFFFF)
+#    define HALF_DATUM_LENGTH	13
+#    define HALF_DATUM_MASK	0x00001FFF
+#    define DATUM_MASK		0x03FFFFFF
+#    define TYPE_CODE_MASK	0XFC000000
+#  endif
+#endif
 
-#define MAX_TYPE_CODE		0xFF
-#define DATUM_LENGTH		24
-#define FIXNUM_LENGTH		23
-#define FIXNUM_SIGN_BIT		0x00800000
-#define SIGN_MASK		0xFF800000
-#define SMALLEST_FIXNUM		((long) 0xFF800000)
-#define BIGGEST_FIXNUM		((long) 0x007FFFFF)
-#define HALF_DATUM_LENGTH	12
-#define HALF_DATUM_MASK		0x00000FFF
-#define DATUM_MASK		0x00FFFFFF
-#define TYPE_CODE_MASK		0xFF000000
-
-#endif /* (TYPE_CODE_LENGTH == 8) */
-#if (TYPE_CODE_LENGTH == 6)
-
-#define MAX_TYPE_CODE		0x3F
-#define DATUM_LENGTH		26
-#define FIXNUM_LENGTH		25
-#define FIXNUM_SIGN_BIT		0x02000000
-#define SIGN_MASK		0xFE000000
-#define SMALLEST_FIXNUM		((long) 0xFE000000)
-#define BIGGEST_FIXNUM		((long) 0x01FFFFFF)
-#define HALF_DATUM_LENGTH	13
-#define HALF_DATUM_MASK		0x00001FFF
-#define DATUM_MASK		0x03FFFFFF
-#define TYPE_CODE_MASK		0XFC000000
-
-#endif /* (TYPE_CODE_LENGTH == 6) */
-#endif /* b32 */
 #ifndef DATUM_LENGTH		/* Safe versions */
-
-#define MAX_TYPE_CODE		((1 << TYPE_CODE_LENGTH) - 1)
-#define DATUM_LENGTH		(OBJECT_LENGTH - TYPE_CODE_LENGTH)
-/* FIXNUM_LENGTH does NOT include the sign bit! */
-#define FIXNUM_LENGTH		(DATUM_LENGTH - 1)
-#define FIXNUM_SIGN_BIT		(1L << FIXNUM_LENGTH)
-#define SIGN_MASK		((long) (-1L << FIXNUM_LENGTH))
-#define SMALLEST_FIXNUM		((long) (-1L << FIXNUM_LENGTH))
-#define BIGGEST_FIXNUM		((1L << FIXNUM_LENGTH) - 1)
-#define HALF_DATUM_LENGTH	(DATUM_LENGTH / 2)
-#define HALF_DATUM_MASK		((1L << HALF_DATUM_LENGTH) - 1)
-#define DATUM_MASK		((1L << DATUM_LENGTH) - 1)
-#define TYPE_CODE_MASK		(~ DATUM_MASK)
-
-#endif /* DATUM_LENGTH */
+#  define MAX_TYPE_CODE		((1 << TYPE_CODE_LENGTH) - 1)
+#  define DATUM_LENGTH		(OBJECT_LENGTH - TYPE_CODE_LENGTH)
+   /* FIXNUM_LENGTH does NOT include the sign bit! */
+#  define FIXNUM_LENGTH		(DATUM_LENGTH - 1)
+#  define FIXNUM_SIGN_BIT	(1L << FIXNUM_LENGTH)
+#  define SIGN_MASK		((long) (-1L << FIXNUM_LENGTH))
+#  define SMALLEST_FIXNUM	((long) (-1L << FIXNUM_LENGTH))
+#  define BIGGEST_FIXNUM	((1L << FIXNUM_LENGTH) - 1)
+#  define HALF_DATUM_LENGTH	(DATUM_LENGTH / 2)
+#  define HALF_DATUM_MASK	((1L << HALF_DATUM_LENGTH) - 1)
+#  define DATUM_MASK		((1L << DATUM_LENGTH) - 1)
+#  define TYPE_CODE_MASK	(~ DATUM_MASK)
+#endif
 
 /* Basic object structure */
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmptype.h,v 1.2 1999/01/02 06:11:34 cph Exp $
+$Id: cmptype.h,v 1.3 2000/12/05 21:23:43 cph Exp $
 
-Copyright (c) 1993, 1999 Massachusetts Institute of Technology
+Copyright (c) 1993, 1999, 2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ ______	___________
 8	Motorola 88000 architecture (88100 and 88110).
 	Examples: ?
 
-9	Intel i386/i486/Pentium architecture.
+9	Intel IA-32 architecture.
 	Examples: IBM PC AT clones with 386+ processors.
 
 10	DEC Alpha architecture
@@ -102,7 +102,7 @@ ______	___________
 #define COMPILER_SPARC_TYPE			6
 #define COMPILER_RS6000_TYPE			7
 #define COMPILER_MC88K_TYPE			8
-#define COMPILER_I386_TYPE			9
+#define COMPILER_IA32_TYPE			9
 #define COMPILER_ALPHA_TYPE			10
 #define COMPILER_MIPS_TYPE			11
 #define COMPILER_LOSING_C_TYPE			12

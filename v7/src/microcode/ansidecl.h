@@ -1,7 +1,7 @@
 /* Copyright (C) 1990 Free Software Foundation, Inc.
 This file is part of the GNU C Library.
 
-$Id: ansidecl.h,v 1.6 1998/04/14 05:10:54 cph Exp $
+$Id: ansidecl.h,v 1.7 2000/12/05 21:23:42 cph Exp $
 
 The GNU C Library is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 /* ANSI and traditional C compatibility macros
 
-   ANSI C is assumed if __STDC__ is #defined.
+   ANSI C is assumed if STDC_HEADERS is #defined.
 
 	Macros
 		PTR		- Generic pointer type
@@ -46,7 +46,6 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 */
 
 #ifndef	_ANSIDECL_H
-
 #define	_ANSIDECL_H	1
 
 
@@ -54,29 +53,8 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
    so they will all get the switch for lint.  */
 /* LINTLIBRARY */
 
-/* Some other compilers, specifically the Windows and OS/2 compilers,
-   define __STDC__ only when the compiler is put into "strict ANSI"
-   mode, in which numerous useful features are disabled.  So we have
-   reconditionalized these macros so that the stdc bindings can be
-   used for those compilers.  */
-
-#ifdef __STDC__
-#define USE_STDC_BINDINGS
-#endif
-
-#ifdef __IBMC__
-#define USE_STDC_BINDINGS
-#endif
-
-#ifdef CL386
-#define USE_STDC_BINDINGS
-#endif
-
-#ifdef _MSC_VER
-#define USE_STDC_BINDINGS
-#endif
-
-#ifdef USE_STDC_BINDINGS
+#if defined(__STDC__) || defined(STDC_HEADERS)
+#define HAVE_STDC
 
 #define	PTR		void *
 #define	PTRCONST	void *CONST
@@ -104,7 +82,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #define	DEFUN(name, arglist, args)	name(args)
 #define	DEFUN_VOID(name)		name(NOARGS)
 
-#else /* not USE_STDC_BINDINGS */
+#else /* not (__STDC__ || STDC_HEADERS) */
 
 #define	PTR		char *
 #define	PTRCONST	PTR
@@ -121,6 +99,6 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #define	DEFUN(name, arglist, args)	name arglist args;
 #define	DEFUN_VOID(name)		name()
 
-#endif /* not USE_STDC_BINDINGS  */
+#endif /* not (__STDC__ || STDC_HEADERS)  */
 
-#endif	/* ansidecl.h	*/
+#endif	/* _ANSIDECL_H */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.54 2000/10/16 17:22:12 cph Exp $
+$Id: option.c,v 1.55 2000/12/05 21:23:46 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -33,37 +33,31 @@ extern void free ();
 #define xfree(p) free ((PTR) (p))
 extern int atoi ();
 
-#ifdef WINNT
-
-#include <io.h>
-#include <string.h>
-#include <stdlib.h>
-#include "nt.h"
-#include "ntio.h"
-
-#else /* not WINNT */
-
-#ifdef _POSIX
-#include <unistd.h>
-#else
-extern int strlen ();
+#ifdef HAVE_UNISTD_H
+#  include <unistd.h>
 #endif
 
-#ifdef __STDC__
-#include <stdlib.h>
-#include <string.h>
-#else
-extern char * EXFUN (malloc, (int));
+#ifdef STDC_HEADERS
+#  include <stdlib.h>
+#  include <string.h>
 #endif
 
-#endif /* not WINNT */
+#ifdef HAVE_MALLOC_H
+#  include <malloc.h>
+#endif
+
+#ifdef __WIN32__
+#  include <io.h>
+#  include "nt.h"
+#  include "ntio.h"
+#endif
 
 #ifndef NULL
 # define NULL 0
 #endif
 
-#if defined(DOS386) || defined(WINNT) || defined(_OS2)
-#define DOS_LIKE_FILENAMES
+#if defined(__WIN32__) || defined(__OS2__)
+#  define DOS_LIKE_FILENAMES
 #endif
 
 extern struct obstack scratch_obstack;
@@ -339,7 +333,7 @@ The following options are only meaningful to bchscheme:
 
 #ifdef HAS_COMPILER_SUPPORT
 
-#ifdef hp9000s800
+#if defined(hp9000s800) || defined(__hp9000s800)
 /* HPPA compiled binaries are large! */
 
 #ifndef DEFAULT_SMALL_CONSTANT
@@ -365,7 +359,7 @@ The following options are only meaningful to bchscheme:
 
 #endif /* mips */
 
-#ifdef i386
+#ifdef __IA32__
 /* 386 code is large too! */
 
 #ifndef DEFAULT_SMALL_CONSTANT
@@ -376,7 +370,7 @@ The following options are only meaningful to bchscheme:
 #define DEFAULT_LARGE_CONSTANT 1200
 #endif
 
-#endif /* i386 */
+#endif /* __IA32__ */
 
 #endif /* HAS_COMPILER_SUPPORT */
 
@@ -1021,7 +1015,7 @@ DEFUN (read_band_header, (filename, header),
        CONST char * filename AND
        SCHEME_OBJECT * header)
 {
-#ifdef WINNT
+#ifdef __WIN32__
 
   HANDLE handle
     = (CreateFile (filename,
@@ -1044,7 +1038,7 @@ DEFUN (read_band_header, (filename, header),
   CloseHandle (handle);
   return (1);
 
-#else /* not WINNT */
+#else /* not __WIN32__ */
 
   FILE * stream = (fopen (filename, "r"));
   if (stream == 0)
@@ -1058,7 +1052,7 @@ DEFUN (read_band_header, (filename, header),
   fclose (stream);
   return (1);
 
-#endif /* not WINNT */
+#endif /* not __WIN32__ */
 }
 
 static int
@@ -1361,7 +1355,7 @@ DEFUN (read_command_line_options, (argc, argv),
       dir = (environment_default ("TMP", 0));
     if ((dir == 0) || (!OS_file_directory_p (dir)))
       dir = (environment_default ("TMP", 0));
-#ifdef _UNIX
+#ifdef __unix__
     if ((dir == 0) || (!OS_file_directory_p (dir)))
       {
 	if (OS_file_directory_p ("/var/tmp"))
@@ -1371,7 +1365,7 @@ DEFUN (read_command_line_options, (argc, argv),
 	if (OS_file_directory_p ("/tmp"))
 	  dir = "/tmp";
       }
-#endif /* _UNIX */
+#endif /* __unix__ */
     if ((dir == 0) || (!OS_file_directory_p (dir)))
       dir = DEFAULT_GC_DIRECTORY;
     option_gc_directory = (string_option (option_gc_directory, dir));

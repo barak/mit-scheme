@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.75 2000/10/01 02:15:58 cph Exp $
+$Id: x11base.c,v 1.76 2000/12/05 21:23:49 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -270,7 +270,7 @@ DEFUN (x_error_handler, (display, error_event),
   fprintf (stderr, "\nX Error: %s\n", buffer);
   fprintf (stderr, "         Request code: %d\n",
 	   (error_event -> request_code));
-  fprintf (stderr, "         Error serial: %x\n", (error_event -> serial));
+  fprintf (stderr, "         Error serial: %lx\n", (error_event -> serial));
   fflush (stderr);
 #if 0
   error_external_return ();
@@ -784,7 +784,7 @@ DEFUN (xw_process_event, (xw, event),
 	      {
 		fprintf (stderr,
 			 "ClientMessage; message_type = 0x%x, format = %d",
-			 ((event -> xclient) . message_type),
+			 ((unsigned int) ((event -> xclient) . message_type)),
 			 ((event -> xclient) . format));
 		goto debug_done;
 	      }
@@ -792,23 +792,25 @@ DEFUN (xw_process_event, (xw, event),
 	  break;
 	case PropertyNotify:
 	  {
-	    fprintf (stderr,
-		     "PropertyNotify; window=%d, atom=%d, time=%d, state=%d",
-		     ((event -> xproperty) . window),
-		     ((event -> xproperty) . atom),
-		     ((event -> xproperty) . time),
-		     ((event -> xproperty) . state));
+	    fprintf
+	      (stderr,
+	       "PropertyNotify; window=%ld, atom=%ld, time=%ld, state=%d",
+	       ((event -> xproperty) . window),
+	       ((event -> xproperty) . atom),
+	       ((event -> xproperty) . time),
+	       ((event -> xproperty) . state));
 	    goto debug_done;
 	  }
 	case SelectionNotify:
 	  {
-	    fprintf (stderr,
-		     "SelectionNotify; req=%d, sel=%d, targ=%d, prop=%d, t=%d",
-		     ((event -> xselection) . requestor),
-		     ((event -> xselection) . selection),
-		     ((event -> xselection) . target),
-		     ((event -> xselection) . property),
-		     ((event -> xselection) . time));
+	    fprintf
+	      (stderr,
+	       "SelectionNotify; req=%ld, sel=%ld, targ=%ld, prop=%ld, t=%ld",
+	       ((event -> xselection) . requestor),
+	       ((event -> xselection) . selection),
+	       ((event -> xselection) . target),
+	       ((event -> xselection) . property),
+	       ((event -> xselection) . time));
 	    goto debug_done;
 	  }
 	default:		type_name = 0; break;
@@ -1364,7 +1366,7 @@ DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
       if (result == SHARP_F)
 	fprintf (stderr, "#f");
       else if (FIXNUM_P (result))
-	fprintf (stderr, "%d", (FIXNUM_TO_LONG (result)));
+	fprintf (stderr, "%ld", (FIXNUM_TO_LONG (result)));
       else
 	fprintf (stderr, "[vector]");
       fprintf (stderr, "\n");
@@ -2468,7 +2470,7 @@ DEFINE_PRIMITIVE ("X-CHANGE-PROPERTY", Prim_x_change_property, 7, 7, 0)
     Atom type = (arg_ulong_integer (4));
     int format = (arg_nonnegative_integer (5));
     int mode = (arg_index_integer (6, 3));
-    CONST char * data;
+    CONST char * VOLATILE data = 0;
     unsigned long dlen;
     unsigned char status;
 

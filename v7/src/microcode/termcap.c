@@ -116,8 +116,8 @@ what you give them.   Help stamp out software-hoarding!  */
 #endif
 
 #ifdef MIT_SCHEME
-# include "oscond.h"
-# ifdef _UNIX
+# include "config.h"
+# ifdef __unix__
 #  include "ux.h"
 # endif
 #endif
@@ -139,11 +139,11 @@ int bufsize = 128;
 #  define PTR void *
 # else
 #  define PTR char *
-# endif /* __STDC__ */
-#endif /* PTR */
+# endif
+#endif
 
 #ifndef NULL
-#define NULL 0
+#  define NULL 0
 #endif
 
 static
@@ -177,40 +177,18 @@ xrealloc (ptr, size)
 
 short ospeed;
 
-#ifdef NO_BAUD_CONVERSION
-
-/* This is a kludge. */
-
 static
 short convert_ospeed (os)
      unsigned short os;
 {
-  if (os >= 300)
-    return (0 - ((short) (os / 100)));
+  unsigned int rate = (OS_baud_index_to_rate (os));
+  if (rate >= 300)
+    return (0 - ((short) (rate / 100)));
   else
-    return ((short) (os));
+    return ((short) (rate));
 }
 
-#define OSPEED()	convert_ospeed ((unsigned short) ospeed)
-
-#else
-
-/* Actual baud rate if positive;
-   - baud rate / 100 if negative.  */
-
-static short speeds[] =
-  {
-#ifdef VMS
-    0, 50, 75, 110, 134, 150, -3, -6, -12, -18,
-    -20, -24, -36, -48, -72, -96, -192
-#else /* not VMS */
-    0, 50, 75, 110, 135, 150, -2, -3, -6, -12,
-    -18, -24, -48, -96, -192, -384
-#endif /* not VMS */
-  };
-
-#define OSPEED()	speeds[ospeed]
-#endif
+#define OSPEED() (convert_ospeed ((unsigned short) ospeed))
 
 /* Looking up capabilities in the entry already found */
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: foreign.c,v 1.2 1999/01/02 06:11:34 cph Exp $
+$Id: foreign.c,v 1.3 2000/12/05 21:23:44 cph Exp $
 
-Copyright (c) 1992, 1999 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -359,7 +359,7 @@ DEFUN_VOID (OS_create_temporary_file_name)
 }
 
 #ifdef HAVE_DYNAMIC_LOADING
-#ifdef _HPUX
+#ifdef __HPUX__
 #include <dl.h>
 
 LOAD_INFO *
@@ -411,7 +411,7 @@ DEFUN (OS_find_function, (load_info, func_name),
 	  NULL);
 }
 
-#endif /* _HPUX */
+#endif /* __HPUX__ */
 #endif /* HAVE_DYNAMIC_LOADING */
 
 /* Definitions of primitives */

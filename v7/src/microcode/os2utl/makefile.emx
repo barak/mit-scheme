@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-### $Id: makefile.emx,v 1.8 1999/01/02 06:11:34 cph Exp $
+### $Id: makefile.emx,v 1.9 2000/12/05 21:23:51 cph Exp $
 ###
-### Copyright (c) 1994-1999 Massachusetts Institute of Technology
+### Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ###
 ### This program is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
@@ -57,14 +57,12 @@ ASFLAGS =
 
 include os2utl\makefile.cmn
 
-scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scheme.res
-	$(CC) $(LDFLAGS) -o $(basename $@) \
-	$(OBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
+scheme.exe : $(OBJECTS) scheme.res
+	$(CC) $(LDFLAGS) -o $(basename $@) $(OBJECTS) $(SCHEME_LIB)
 	emxbind -b -p -q -r$(basename $@).res $(basename $@)
 	del $(basename $@)
 
-bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bchschem.res
-	$(CC) $(LDFLAGS) -o $(basename $@) \
-	$(OBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
+bchschem.exe : $(BCHOBJECTS) bchschem.res
+	$(CC) $(LDFLAGS) -o $(basename $@) $(BCHOBJECTS) $(SCHEME_LIB)
 	emxbind -b -p -q -r$(basename $@).res $(basename $@)
 	del $(basename $@)

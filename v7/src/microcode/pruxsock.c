@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.17 1999/08/13 18:29:06 cph Exp $
+$Id: pruxsock.c,v 1.18 2000/12/05 21:23:48 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,25 +24,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "scheme.h"
 #include "prims.h"
 
-#ifdef _UNIX
 /* This obtains the HAVE_SOCKETS definition.  */
-#include "ux.h"
+#ifdef __unix__
+#  include "ux.h"
 #endif
 
-#ifdef __OS2__
 /* Under OS/2, socket support is the default but can be disabled.  */
-#ifndef DISABLE_SOCKET_SUPPORT
-#define HAVE_SOCKETS 1
-#define HAVE_UNIX_SOCKETS 1
-#endif
+#ifdef __OS2__
+#  ifndef DISABLE_SOCKET_SUPPORT
+#    define HAVE_SOCKETS 1
+#    define HAVE_UNIX_SOCKETS 1
+#  endif
 #endif
 
-#ifdef __NT__
-/* Under NT, socket support is the default but can be disabled.  */
-#ifndef DISABLE_SOCKET_SUPPORT
-#define HAVE_SOCKETS 1
-#undef HAVE_UNIX_SOCKETS
-#endif
+/* Under Win32, socket support is the default but can be disabled.  */
+#ifdef __WIN32__
+#  ifndef DISABLE_SOCKET_SUPPORT
+#    define HAVE_SOCKETS 1
+#    undef HAVE_UNIX_SOCKETS
+#  endif
 #endif
 
 #ifdef HAVE_SOCKETS

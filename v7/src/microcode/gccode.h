@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.56 1999/01/02 06:11:34 cph Exp $
+$Id: gccode.h,v 9.57 2000/12/05 21:23:44 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -155,14 +155,13 @@ extern void
 
 #ifndef BAD_TYPES_INNOCUOUS
 
-#define GC_BAD_TYPE(name)						\
-do									\
+#define GC_BAD_TYPE(name, object) do					\
 {									\
   sprintf								\
     (gc_death_message_buffer,						\
-     "%s: bad type code (0x%02x)",					\
+     "%s: bad type code (0x%02lx)",					\
      (name),								\
-     (OBJECT_TYPE (Temp)));						\
+     (OBJECT_TYPE (object)));						\
   gc_death								\
     (TERM_INVALID_TYPE_CODE,						\
      gc_death_message_buffer,						\
@@ -173,13 +172,12 @@ do									\
 
 #else /* BAD_TYPES_INNOCUOUS */
 
-#define GC_BAD_TYPE(name)						\
-do									\
+#define GC_BAD_TYPE(name, object) do					\
 {									\
-  outf_error ("\n%s: bad type code (0x%02x) 0x%lx",			\
+  outf_error ("\n%s: bad type code (0x%02lx) 0x%lx",			\
      (name),								\
-     (OBJECT_TYPE (Temp)),						\
-     Temp);								\
+     (OBJECT_TYPE (object)),						\
+     (object));								\
   outf_error (" -- Treating as non-pointer.\n");			\
   /* Fall through */							\
 } while (0)
@@ -264,7 +262,7 @@ do									\
    first line when "optimizing".
  */
 
-#ifdef hp9000s800
+#if defined(hp9000s800) || defined(__hp9000s800)
 SCHEME_OBJECT gccode_HPUX_lossage_bug_fix_fnord; /* ``I'm not dead yet!'' */
 
 #define RAW_POINTER_END()						\
@@ -395,7 +393,7 @@ extern void EXFUN (check_transport_vector_lossage,
     check_transport_vector_lossage (Scan, Saved_Scan, To);		\
   if ((OBJECT_DATUM (*Old)) > 65536)					\
     {									\
-      outf_error ("\nWarning: copying large vector: %d\n",		\
+      outf_error ("\nWarning: copying large vector: %ld\n",		\
 	          (OBJECT_DATUM (*Old)));				\
       outf_flush_error ();						\
     }									\
@@ -420,7 +418,7 @@ extern void EXFUN (check_transport_vector_lossage,
     {									\
       sprintf								\
 	(gc_death_message_buffer,					\
-	 "real_transport_vector: vector length too large (%d)",		\
+	 "real_transport_vector: vector length too large (%ld)",	\
 	 (OBJECT_DATUM (*Old)));					\
       gc_death (TERM_EXIT, gc_death_message_buffer, Saved_Scan, To);	\
     }									\

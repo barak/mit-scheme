@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasdump.c,v 9.63 1999/01/02 06:11:34 cph Exp $
+$Id: fasdump.c,v 9.64 2000/12/05 21:23:44 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ extern SCHEME_OBJECT
 
 /* Some statics used freely in this file */
 
-static SCHEME_OBJECT *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
+static SCHEME_OBJECT *NewFree, *NewMemTop, *Fixup;
 static Boolean compiled_code_present_p;
 static CONST char * dump_file_name = ((char *) 0);
 
@@ -343,7 +343,7 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 	break;
 
       default:
-	GC_BAD_TYPE ("dumploop");
+	GC_BAD_TYPE ("dumploop", Temp);
 	/* Fall Through */
 
       case TC_STACK_ENVIRONMENT:
@@ -440,7 +440,7 @@ DEFUN (Fasdump_Exit, (code, close_p), long code AND Boolean close_p)
 
 DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 {
-  Tchannel channel;
+  Tchannel channel = NO_CHANNEL;
   Boolean arg_string_p;
   SCHEME_OBJECT Object, *New_Object, arg2, flag;
   SCHEME_OBJECT * prim_table_start, * prim_table_end;
@@ -462,7 +462,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   if (prim_table_start >= prim_table_end)
     Primitive_GC (prim_table_start - Free);
 
-  Fasdump_Free_Calc (NewFree, NewMemTop, Orig_New_Free);
+  Fasdump_Free_Calc (NewFree, NewMemTop);
   Fixup = NewMemTop;
   ALIGN_FLOAT (NewFree);
   New_Object = NewFree;

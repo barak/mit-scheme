@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.14 1999/01/02 06:06:43 cph Exp $
+$Id: liarc.h,v 1.15 2000/12/05 21:23:45 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -37,7 +37,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #endif
 
 #include <stdio.h>
-#include "ansidecl.h"
 #include "config.h"
 #include "dstack.h"
 #include "default.h"
@@ -455,7 +454,7 @@ extern double
 #define DOUBLE_ATAN2 atan2
 
 #ifdef __GNUC__
-# ifdef hp9000s800
+# if defined(hp9000s800) || defined(__hp9000s800)
 #  define BUG_GCC_LONG_CALLS
 # endif
 #endif

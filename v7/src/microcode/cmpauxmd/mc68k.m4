@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-### $Id: mc68k.m4,v 1.26 1999/01/02 06:11:34 cph Exp $
+### $Id: mc68k.m4,v 1.27 2000/12/05 21:23:50 cph Exp $
 ###
-### Copyright (c) 1989-1999 Massachusetts Institute of Technology
+### Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ###
 ### This program is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
@@ -125,7 +125,7 @@ define(utility_call,
 # Scheme object representation.  Must match object.h
 
 define(HEX, `0x$1')
-define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
+define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 6))
 define(ADDRESS_MASK, eval(((2 ** (32 - TC_LENGTH)) - 1), 16))
 define(TYPE_CODE_FACTOR, eval(2 ** (8 - TC_LENGTH)))
 define(TYPE_CODE_MASK, eval((256 - TYPE_CODE_FACTOR), 16))

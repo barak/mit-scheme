@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.h,v 10.6 1999/01/02 06:11:34 cph Exp $
+$Id: cmpint.h,v 10.7 2000/12/05 21:23:43 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990, 1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1990, 1999, 2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -245,3 +245,29 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   /* Save_Cont (); */							\
   Compiler_New_Subproblem ();						\
 }
+
+extern long EXFUN (apply_compiled_procedure, (void));
+extern long EXFUN (comp_access_restart, (void));
+extern long EXFUN (comp_assignment_restart, (void));
+extern long EXFUN (comp_assignment_trap_restart, (void));
+extern long EXFUN (comp_cache_lookup_apply_restart, (void));
+extern long EXFUN (comp_definition_restart, (void));
+extern long EXFUN (comp_error_restart, (void));
+extern long EXFUN (comp_interrupt_restart, (void));
+extern long EXFUN (comp_link_caches_restart, (void));
+extern long EXFUN (comp_lookup_apply_restart, (void));
+extern long EXFUN (comp_lookup_trap_restart, (void));
+extern long EXFUN (comp_op_lookup_trap_restart, (void));
+extern long EXFUN (comp_reference_restart, (void));
+extern long EXFUN (comp_safe_lookup_trap_restart, (void));
+extern long EXFUN (comp_safe_reference_restart, (void));
+extern long EXFUN (comp_unassigned_p_restart, (void));
+extern long EXFUN (comp_unassigned_p_trap_restart, (void));
+extern long EXFUN (comp_unbound_p_restart, (void));
+extern long EXFUN (enter_compiled_expression, (void));
+extern long EXFUN (return_to_compiled_code, (void));
+
+extern SCHEME_OBJECT * EXFUN
+  (compiled_entry_to_block_address, (SCHEME_OBJECT));
+
+extern void EXFUN (compiled_entry_type, (SCHEME_OBJECT, long *));

@@ -1,8 +1,8 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;; $Id: hppa.m4,v 1.38 1999/01/02 06:06:43 cph Exp $
+;;; $Id: hppa.m4,v 1.39 2000/12/05 21:23:50 cph Exp $
 ;;;
-;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -99,7 +99,7 @@ changecom(`;');;; -*-Midas-*-
 changequote(",")
 define(HEX, "0x$1")
 define(ASM_DEBUG, 0)
-define(TC_LENGTH, ifdef("TYPE_CODE_LENGTH", TYPE_CODE_LENGTH, 8))
+define(TC_LENGTH, ifdef("TYPE_CODE_LENGTH", TYPE_CODE_LENGTH, 6))
 define(QUAD_MASK, eval(2 ** (TC_LENGTH - 2)))
 define(LOW_TC_BIT, eval(TC_LENGTH - 1))
 define(DATUM_LENGTH, eval(32 - TC_LENGTH))

@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-### $Id: makefile.vac,v 1.6 1999/01/02 06:11:34 cph Exp $
+### $Id: makefile.vac,v 1.7 2000/12/05 21:23:51 cph Exp $
 ###
-### Copyright (c) 1994-1999 Massachusetts Institute of Technology
+### Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ###
 ### This program is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
@@ -26,7 +26,7 @@
 # included with the EMX/GCC package, and the RC program included with
 # the IBM OS/2 Toolkit.
 
-ICCFLAGS := /Gm+ /Q+ /Wall-
+ICCFLAGS := /Gm+ /Q+ /W2 /Wall+
 ifeq ($(debug_mode),debug)
 ICCFLAGS := $(ICCFLAGS) /Ti+
 else
@@ -59,12 +59,10 @@ ASFLAGS = -Zomf
 
 include os2utl\makefile.cmn
 
-scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scheme.res
-	$(CC) $(LDFLAGS) /B"/PMTYPE:PM" /Fe$@ \
-	$(OBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
+scheme.exe : $(OBJECTS) scheme.res
+	$(CC) $(LDFLAGS) /B"/PMTYPE:PM" /Fe$@ $(OBJECTS) $(SCHEME_LIB)
 	rc scheme.res $@
 
-bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bchschem.res
-	$(CC) $(LDFLAGS) /B"/PMTYPE:PM" /Fe$@ \
-	$(OBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
+bchschem.exe : $(BCHOBJECTS) bchschem.res
+	$(CC) $(LDFLAGS) /B"/PMTYPE:PM" /Fe$@ $(BCHOBJECTS) $(SCHEME_LIB)
 	rc bchschem.res $@

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.58 1999/01/02 06:11:34 cph Exp $
+$Id: purify.c,v 9.59 2000/12/05 21:23:48 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -332,7 +332,7 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
 	break;
 
       default:
-	GC_BAD_TYPE ("purifyloop");
+	GC_BAD_TYPE ("purifyloop", Temp);
 	/* Fall Through */
 
       case_Non_Pointer:
