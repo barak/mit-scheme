@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.44 1987/04/21 14:29:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.45 1987/05/07 00:05:52 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -82,13 +82,15 @@ MIT in each case. |#
 			     (cons combination (vnode-combinations value)))
     (snode->scfg combination)))
 
-(define-snode continuation rtl-edge delta label)
+(define-snode continuation rtl-edge label frame-pointer-offset)
 (define *continuations*)
 
-(define-integrable (make-continuation delta)
+(define-integrable (make-continuation)
   (let ((continuation
-	 (make-snode continuation-tag false delta
-		     (generate-label 'CONTINUATION))))
+	 (make-snode continuation-tag
+		     false
+		     (generate-label 'CONTINUATION)
+		     false)))
     (set! *continuations* (cons continuation *continuations*))
     continuation))
 
