@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.4 1992/09/02 02:56:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.5 1992/09/02 03:17:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -41,20 +41,30 @@ MIT in each case. |#
 (define-command print-graphics
   "Print out the last displayed picture."
   '()
-  (let ((call-with-last-picture-file
-	 (environment-lookup (->environment '(student pictures))
-			     'call-with-last-picture-file)))
-    (lambda ()
-      (call-with-last-picture-file
-       (lambda (filename)
-	 (if filename
-	     (begin
-	       (message "Spooling...")
-	       (shell-command
-		false false false false
-		(string-append "/users/u6001/bin/print-pgm.sh "
-			       filename
-			       " "
-			       (print/assemble-switches "Scheme Picture" '())))
-	       (append-message "done"))
-	     (editor-error "No picture to print!")))))))
+  (lambda ()
+    (call-with-last-picture-file
+     (lambda (filename)
+       (if filename
+	   (begin
+	     (message "Spooling...")
+	     (shell-command
+	      false false false false
+	      (string-append "/users/u6001/bin/print-pgm.sh "
+			     filename
+			     " "
+			     (print/assemble-switches "Scheme Picture" '())))
+	     (append-message "done"))
+	   (editor-error "No picture to print!"))))))
+
+(environment-link-name '(edwin)
+		       '(student pictures)
+		       'call-with-last-picture-file)
+
+(define (restore-focus-to-editor)
+  (let ((screen (selected-screen)))
+    (if (xterm-screen/grab-focus! screen)
+	(xterm-screen/flush! screen))))
+
+(environment-link-name '(student pictures)
+		       '(edwin)
+		       'restore-focus-to-editor)

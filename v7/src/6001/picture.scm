@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.16 1992/09/01 22:41:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.17 1992/09/02 03:18:45 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -90,6 +90,7 @@ MIT in each case. |#
     (x-graphics/flush window)
     (if (not (n-gray-map window))
 	(allocate-grays window))
+    (restore-focus-to-editor)
     window))
 
 (define (n-gray-map window)
