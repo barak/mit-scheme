@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: order.scm,v 4.16 1999/01/02 06:06:43 cph Exp $
+$Id: order.scm,v 4.17 2000/05/03 19:18:28 cph Exp $
 
-Copyright (c) 1988, 1989, 1990, 1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1990, 1999, 2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (subproblem-ordering parallels)
   (for-each (lambda (parallel)
-	      (order-parallel! parallel false))
+	      (order-parallel! parallel #f))
 	    parallels))
 
 (define (order-parallel! parallel constraints)
@@ -134,7 +134,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(values
 		 (linearize-subproblem! continuation-type/effect
 					operator
-					false
+					#f
 					(linearize-subproblems simple
 							       '()
 							       rest))
@@ -151,7 +151,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (linearize-subproblem!
 		  continuation-type/effect
 		  operator
-		  false
+		  #f
 		  (linearize-subproblems
 		   push-set
 		   '()
@@ -251,11 +251,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 (combination/context combination)
 			 n-unassigned
 			 '()))))
-	  (map (lambda (variable subproblem)
-		 (cons subproblem variable))
-	       (append (cdr (procedure-original-required model))
-		       (procedure-original-optional model))
-	       (cdr (parallel-subproblems parallel))))
+	  (let ((parameters
+		 (append (cdr (procedure-original-required model))
+			 (procedure-original-optional model)))
+		(arguments (cdr (parallel-subproblems parallel))))
+	    (map (lambda (variable subproblem)
+		   (cons subproblem variable))
+		 parameters
+		 (let ((n-parameters (length parameters)))
+		   (if (> (length arguments) n-parameters)
+		       (list-head arguments n-parameters)
+		       arguments)))))
 	'())))
 
 (define (combination-ordering context operator operands model)
@@ -407,12 +413,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (not (primitive-procedure? (constant-value callee))))
 	  ((rvalue/procedure? callee)
 	   (case (procedure/type callee)
-	     ((OPEN-EXTERNAL OPEN-INTERNAL) false)
+	     ((OPEN-EXTERNAL OPEN-INTERNAL) #f)
 	     ((TRIVIAL-CLOSURE) (procedure-rest callee))
-	     ((CLOSURE IC) true)
+	     ((CLOSURE IC) #t)
 	     (else (error "Unknown procedure type" callee))))
-	  (else
-	   true))))
+	  (else #t))))
 
 (define (update-subproblem-contexts! context subproblem)
   (if (not (subproblem-canonical? subproblem))
