@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: basic.scm,v 1.126 1993/01/10 10:54:41 cph Exp $
+;;;	$Id: basic.scm,v 1.127 1993/02/02 04:34:53 gjr Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -300,7 +300,11 @@ For a normal exit, you should use \\[exit-recursive-edit], NOT this command."
 ;; Set this to #F to indicate that calling QUIT has the same effect
 ;; as calling %EXIT.
 (define scheme-can-quit?
-  (not (string=? microcode-id/operating-system-name "dos")))
+  #|
+  (not (string=? microcode-id/operating-system-name "dos"))
+  |#
+  ;; DOS now has a pseudo-suspend
+  true)
 
 ;; Set this to #T to force the exit commands to always prompt for
 ;; confirmation before killing Edwin.
