@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr2.scm,v 1.1 1992/02/09 14:55:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr2.scm,v 1.2 1992/02/18 01:52:23 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Intel i386 Instruction Set, part II
+;;; package: (compiler lap-syntaxer)
 
 ;; Some of the instructions have their operands ill-specified in the
 ;; i486 book.  Check against the appendices or the i386 book.
@@ -242,7 +243,7 @@ MIT in each case. |#
    (IMMEDIATE value))
 
   ((W (&U (? value)))
-   (BYTE (8 #x6a))
+   (BYTE (8 #x68))
    (IMMEDIATE value OPERAND UNSIGNED))
 
   ((B (& (? value)))
