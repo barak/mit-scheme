@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.31 1988/07/09 11:18:24 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.32 1988/07/10 03:35:49 pas Exp $ */
 
 /* ARRAY = 
    sequence of REAL(float or double numbers) with a tag on the front */
@@ -625,7 +625,7 @@ Define_Primitive(Prim_Array_Accumulate, 2, "ARRAY-ACCUMULATE")
    starting from index=from in array.
    Returns first index where match occurs.    --  (useful for finding zeros)
    */
-Define_Primitive(Prim_Array_Search_Value_Tolerance_From, 3, "ARRAY-SEARCH-VALUE-TOLERANCE-FROM")
+Define_Primitive(Prim_Array_Search_Value_Tolerance_From, 4, "ARRAY-SEARCH-VALUE-TOLERANCE-FROM")
 { long Length, from, i;
   REAL *a, value;		/* value to search for */ 
   double tolerance;		/* tolerance allowed */
@@ -637,11 +637,11 @@ Define_Primitive(Prim_Array_Search_Value_Tolerance_From, 3, "ARRAY-SEARCH-VALUE-
   Error_Number = Scheme_Number_To_REAL(Arg2, &value);
   if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
   if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  Error_Number = Scheme_Number_To_Double(Arg2, &tolerance);
+  Error_Number = Scheme_Number_To_Double(Arg3, &tolerance);
   if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
   if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
   Arg_4_Type(TC_FIXNUM);
-  Range_Check(from, Arg2, 0, Length-1, ERR_ARG_4_BAD_RANGE);
+  Range_Check(from, Arg4, 0, Length-1, ERR_ARG_4_BAD_RANGE);
   
   i = from;
   while ((tolerance < (fabs(((double) (a[i]-value)))))
