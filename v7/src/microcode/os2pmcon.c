@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.20 1995/11/06 11:54:57 cph Exp $
+$Id: os2pmcon.c,v 1.21 1996/03/20 23:51:49 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -114,6 +114,10 @@ static short console_mark_y;
 static short console_point_x;
 static short console_point_y;
 
+static const char * console_font_specs [] =
+  { "4.System VIO", "8.Courier", "10.Courier", "12.Courier",
+    "10.System Monospaced" };
+
 #define CHAR_WIDTH (FONT_METRICS_WIDTH (console_metrics))
 #define CHAR_HEIGHT (FONT_METRICS_HEIGHT (console_metrics))
 #define CHAR_DESCENDER (FONT_METRICS_DESCENDER (console_metrics))
@@ -169,11 +173,22 @@ OS2_initialize_pm_console (void)
   OS2_window_permanent (console_wid);
   {
     psid_t psid = (OS2_window_client_ps (console_wid));
-    /* This prevents the font-change hook from being invoked.  */
-    console_psid = 0;
-    console_metrics = (OS2_ps_set_font (psid, 1, "4.System VIO"));
+    const char ** scan_specs = console_font_specs;
+    const char ** end_specs
+      = (scan_specs
+	 + ((sizeof (console_font_specs)) / (sizeof (const char *))));
+    console_metrics = 0;
+    while (scan_specs < end_specs)
+      {
+	const char * spec = (*scan_specs++);
+	/* This prevents the font-change hook from being invoked.  */
+	console_psid = 0;
+	console_metrics = (OS2_ps_set_font (psid, 1, spec));
+	if (console_metrics != 0)
+	  break;
+      }
     if (console_metrics == 0)
-      OS2_logic_error ("Unable to find 4 point System VIO font.");
+      OS2_logic_error ("Unable to find usable console font.");
     console_psid = psid;
   }
   OS2_window_set_grid (console_wid, CHAR_WIDTH, CHAR_HEIGHT);
