@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.107 1993/09/23 07:09:12 cph Exp $
+;;;	$Id: comred.scm,v 1.108 1993/10/26 00:37:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -69,7 +69,7 @@
   (with-keyboard-macro-disabled
    (lambda ()
      (bind-condition-handler (list condition-type:abort-current-command)
-	 handle-abort-condition
+	 return-to-command-loop
        (lambda ()
 	 (command-reader init))))))
 
@@ -88,7 +88,7 @@
 	(bind-condition-handler (list condition-type:abort-current-command)
 	    (lambda (condition)
 	      (if (not (condition/^G? condition))
-		  (handle-abort-condition condition)))
+		  (return-to-command-loop condition)))
 	  (lambda ()
 	    (if (and (not (default-object? initialization)) initialization)
 		(bind-abort-editor-command
@@ -139,14 +139,13 @@
 		     (apply-input-event input))))))
        (lambda (restart) restart (thunk))))))
 
-(define (handle-abort-condition condition)
-  (return-to-command-loop (abort-current-command/input condition)))
-
-(define (return-to-command-loop input)
-  (let ((restart (find-restart 'ABORT-EDITOR-COMMAND)))
+(define (return-to-command-loop condition)
+  (let ((restart (find-restart 'ABORT-EDITOR-COMMAND condition)))
     (if (not restart) (error "Missing ABORT-EDITOR-COMMAND restart."))
     (keyboard-macro-disable)
-    (invoke-restart restart input)))
+    (invoke-restart restart
+		    (and (condition/abort-current-command? condition)
+			 (abort-current-command/input condition)))))
 
 (define (get-next-keyboard-char)
   (if *executing-keyboard-macro?*

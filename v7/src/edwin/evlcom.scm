@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.46 1993/10/21 04:59:00 cph Exp $
+;;;	$Id: evlcom.scm,v 1.47 1993/10/26 00:37:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -474,7 +474,7 @@ Set by Scheme evaluation code to update the mode line."
       (debug-scheme-error condition "evaluation")
       (begin
 	(editor-beep)
-	(return-to-command-loop #f))))
+	(return-to-command-loop condition))))
 
 (define (default-report-error condition error-type-name)
   (let ((report-string (condition/report-string condition)))

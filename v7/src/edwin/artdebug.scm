@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: artdebug.scm,v 1.23 1993/10/16 07:41:27 cph Exp $
+;;;	$Id: artdebug.scm,v 1.24 1993/10/26 00:37:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -206,7 +206,7 @@ or #F meaning no limit."
 		     select-buffer)
 		 (continuation-browser-buffer condition)))
 	      (message error-type-name " error")))
-	(return-to-command-loop #f))))
+	(return-to-command-loop condition))))
 
 (define-command browse-continuation
   "Invoke the continuation-browser on CONTINUATION."
