@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for AT&T System V Release 3
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/sysv3.h,v 1.1 1990/11/27 19:15:45 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/sysv3.h,v 1.2 1992/08/27 09:04:45 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -37,6 +37,10 @@ MIT in each case. */
 
 #ifndef INSTALL_PROGRAM
 #define INSTALL_PROGRAM cp
+#endif
+
+#ifndef _SYSV
+#define _SYSV
 #endif
 
 #define C_SWITCH_SYSTEM -D_SYSV3
