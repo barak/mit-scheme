@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.34 2004/09/14 20:00:05 cph Exp $
+$Id: port.scm,v 1.35 2004/11/04 03:00:25 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
@@ -52,10 +52,7 @@ USA.
   (write-external-substring #f read-only #t)
   (fresh-line #f read-only #t)
   (flush-output #f read-only #t)
-  (discretionary-flush-output #f read-only #t)
-  ;; transcript operations:
-  (get-transcript-port #f read-only #t)
-  (set-transcript-port #f read-only #t))
+  (discretionary-flush-output #f read-only #t))
 
 (set-record-type-unparser-method! <port-type>
   (lambda (state type)
@@ -165,9 +162,7 @@ USA.
 		       (op 'WRITE-EXTERNAL-SUBSTRING)
 		       (op 'FRESH-LINE)
 		       (op 'FLUSH-OUTPUT)
-		       (op 'DISCRETIONARY-FLUSH-OUTPUT)
-		       port/transcript
-		       set-port/transcript!))))
+		       (op 'DISCRETIONARY-FLUSH-OUTPUT)))))
 
 (define (parse-operations-list operations type)
   (parse-operations-list-1
@@ -351,8 +346,7 @@ USA.
 		     (set-port/unread! port #f)
 		     char)
 		   (let ((char (defer port)))
-		     (if (and (port/transcript port) (char? char))
-			 (write-char char (port/transcript port)))
+		     (transcribe-char char port)
 		     char))))))
 	(unread-char
 	 (lambda (port char)
@@ -384,9 +378,7 @@ USA.
 		   (set-port/unread! port #f)
 		   1)
 		 (let ((n (defer port string start end)))
-		   (if (and n (fix:> n 0) (port/transcript port))
-		       (write-substring string start (fix:+ start n)
-					(port/transcript port)))
+		   (transcribe-substring string start (fix:+ start n) port)
 		   n)))))
 	(read-wide-substring
 	 (let ((defer (op 'READ-WIDE-SUBSTRING)))
@@ -397,9 +389,9 @@ USA.
 		   (set-port/unread! port #f)
 		   1)
 		 (let ((n (defer port string start end)))
-		   (if (and n (fix:> n 0) (port/transcript port))
-		       (write-substring string start (fix:+ start n)
-					(port/transcript port)))
+		   (if (and n (fix:> n 0))
+		       (transcribe-substring string start (fix:+ start n)
+					     port))
 		   n)))))
 	(read-external-substring
 	 (let ((defer (op 'READ-EXTERNAL-SUBSTRING)))
@@ -412,9 +404,7 @@ USA.
 		   (set-port/unread! port #f)
 		   1)
 		 (let ((n (defer port string start end)))
-		   (if (and n (> n 0) (port/transcript port))
-		       (write-substring string start (+ start n)
-					(port/transcript port)))
+		   (transcribe-substring string start (+ start n) port)
 		   n))))))
     (lambda (name)
       (case name
@@ -438,8 +428,7 @@ USA.
 	       (if (and n (fix:> n 0))
 		   (begin
 		     (set-port/previous! port char)
-		     (if (port/transcript port)
-			 (write-char char (port/transcript port)))))
+		     (transcribe-char char port)))
 	       n))))
 	(write-substring
 	 (let ((defer (op 'WRITE-SUBSTRING)))
@@ -450,9 +439,7 @@ USA.
 		     (set-port/previous!
 		      port
 		      (string-ref string (fix:+ start (fix:- n 1))))
-		     (if (and (port/transcript port))
-			 (write-substring string start (fix:+ start n)
-					  (port/transcript port)))))
+		     (transcribe-substring string start (fix:+ start n) port)))
 	       n))))
 	(write-wide-substring
 	 (let ((defer (op 'WRITE-WIDE-SUBSTRING)))
@@ -463,9 +450,7 @@ USA.
 		     (set-port/previous!
 		      port
 		      (string-ref string (fix:+ start (fix:- n 1))))
-		     (if (and (port/transcript port))
-			 (write-substring string start (fix:+ start n)
-					  (port/transcript port)))))
+		     (transcribe-substring string start (fix:+ start n) port)))
 	       n))))
 	(write-external-substring
 	 (let ((defer (op 'WRITE-EXTERNAL-SUBSTRING)))
@@ -476,22 +461,18 @@ USA.
 			 (bounce (make-string 1)))
 		     (xsubstring-move! string (- i 1) i bounce 0)
 		     (set-port/previous! port (string-ref bounce 0))
-		     (if (port/transcript port)
-			 (write-substring string start i
-					  (port/transcript port)))))
+		     (transcribe-substring string start i port)))
 	       n))))
 	(flush-output
 	 (let ((defer (op 'FLUSH-OUTPUT)))
 	   (lambda (port)
 	     (defer port)
-	     (if (port/transcript port)
-		 (flush-output (port/transcript port))))))
+	     (flush-transcript port))))
 	(discretionary-flush-output
 	 (let ((defer (op 'DISCRETIONARY-FLUSH-OUTPUT)))
 	   (lambda (port)
 	     (defer port)
-	     (if (port/transcript port)
-		 (output-port/discretionary-flush (port/transcript port)))))))
+	     (discretionary-flush-transcript port)))))
     (lambda (name)
       (case name
 	((WRITE-CHAR) write-char)
@@ -518,7 +499,7 @@ USA.
   (%thread-mutex (make-thread-mutex))
   (unread #f)
   (previous #f)
-  (transcript #f))
+  (properties '()))
 
 (define (make-port type state)
   (guarantee-port-type type 'MAKE-PORT)
@@ -580,9 +561,7 @@ USA.
   (define-port-operation write-external-substring)
   (define-port-operation fresh-line)
   (define-port-operation flush-output)
-  (define-port-operation discretionary-flush-output)
-  (define-port-operation get-transcript-port)
-  (define-port-operation set-transcript-port))
+  (define-port-operation discretionary-flush-output))
 
 (set-record-type-unparser-method! <port>
   (lambda (state port)
@@ -635,6 +614,51 @@ USA.
   (let ((operation (port/operation port 'OUTPUT-CHANNEL)))
     (and operation
 	 (operation port))))
+
+(define (port/get-property port name default)
+  (let ((p (assq name (port/properties port))))
+    (if p
+	(cdr p)
+	default)))
+
+(define (port/set-property! port name value)
+  (let ((alist (port/properties port)))
+    (let ((p (assq name alist)))
+      (if p
+	  (set-cdr! p value)
+	  (set-port/properties! port (cons (cons name value) alist))))))
+
+(define (port/transcript port)
+  (port/get-property port 'TRANSCRIPT #f))
+
+(define (set-port/transcript! port tport)
+  (port/set-property! port 'TRANSCRIPT tport))
+
+(define (transcribe-char char port)
+  (let ((tport (port/transcript port)))
+    (if tport
+	(write-char char tport))))
+
+(define (transcribe-substring string start end port)
+  (let ((tport (port/transcript port)))
+    (if tport
+	(write-substring string start end tport))))
+
+(define (flush-transcript port)
+  (let ((tport (port/transcript port)))
+    (if tport
+	(flush-output tport))))
+
+(define (discretionary-flush-transcript port)
+  (let ((tport (port/transcript port)))
+    (if tport
+	(output-port/discretionary-flush tport))))
+
+(define (port/eof-object port)
+  (port/get-property port 'EOF-OBJECT #f))
+
+(define (set-port/eof-object! port eof)
+  (port/set-property! port 'EOF-OBJECT eof))
 
 (define (input-port? object)
   (and (port? object)

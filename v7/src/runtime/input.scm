@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.27 2004/02/26 19:05:06 cph Exp $
+$Id: input.scm,v 14.28 2004/11/04 03:00:15 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1997,1999,2002,2003 Massachusetts Institute of Technology
@@ -134,9 +134,24 @@ USA.
   (cdr a))
 
 (define-record-type <eof-object>
-    (make-eof-object port)
+    (%make-eof-object port)
     eof-object?
   (port eof-object-port))
+
+(define (make-eof-object port)
+  (if port
+      (begin
+	(guarantee-input-port port 'MAKE-EOF-OBJECT)
+	(or (port/eof-object port)
+	    (let ((eof (%make-eof-object port)))
+	      (set-port/eof-object! port eof)
+	      eof)))
+      (or saved-eof-object
+	  (let ((eof (%make-eof-object port)))
+	    (set! saved-eof-object eof)
+	    eof))))
+
+(define saved-eof-object #f)
 
 ;;;; High level
 

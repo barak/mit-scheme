@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tscript.scm,v 1.7 2004/02/16 05:39:03 cph Exp $
+$Id: tscript.scm,v 1.8 2004/11/04 03:00:47 cph Exp $
 
 Copyright 1990,1999,2004 Massachusetts Institute of Technology
 
@@ -30,20 +30,14 @@ USA.
 
 (define (transcript-on filename)
   (let ((port (nearest-cmdl/port)))
-    (if (get-transcript-port port)
+    (if (port/transcript port)
 	(error "Transcript already turned on."))
-    (set-transcript-port port (open-output-file filename))))
+    (set-port/transcript! port (open-output-file filename))))
 
 (define (transcript-off)
   (let ((port (nearest-cmdl/port)))
-    (let ((transcript-port (get-transcript-port port)))
+    (let ((transcript-port (port/transcript port)))
       (if transcript-port
 	  (begin
-	    (set-transcript-port port #f)
+	    (set-port/transcript! port #f)
 	    (close-port transcript-port))))))
-
-(define (get-transcript-port port)
-  ((port/operation/get-transcript-port port) port))
-
-(define (set-transcript-port port transcript-port)
-  ((port/operation/set-transcript-port port) port transcript-port))

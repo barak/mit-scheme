@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.506 2004/10/30 03:59:06 cph Exp $
+$Id: runtime.pkg,v 14.507 2004/11/04 03:00:38 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1848,7 +1848,6 @@ USA.
 	  port-type/discretionary-flush-output
 	  port-type/flush-output
 	  port-type/fresh-line
-	  port-type/get-transcript-port
 	  port-type/operation
 	  port-type/operation-names
 	  port-type/operations
@@ -1857,7 +1856,6 @@ USA.
 	  port-type/read-external-substring
 	  port-type/read-substring
 	  port-type/read-wide-substring
-	  port-type/set-transcript-port
 	  port-type/unread-char
 	  port-type/write-char
 	  port-type/write-external-substring
@@ -1908,6 +1906,7 @@ USA.
 	  with-output-to-port
 	  with-trace-output-port)
   (export (runtime input-port)
+	  port/eof-object
 	  port/operation/char-ready?
 	  port/operation/discard-char
 	  port/operation/peek-char
@@ -1915,7 +1914,8 @@ USA.
 	  port/operation/read-external-substring
 	  port/operation/read-substring
 	  port/operation/read-wide-substring
-	  port/operation/unread-char)
+	  port/operation/unread-char
+	  set-port/eof-object!)
   (export (runtime output-port)
 	  port/operation/discretionary-flush-output
 	  port/operation/flush-output
@@ -1925,8 +1925,8 @@ USA.
 	  port/operation/write-substring
 	  port/operation/write-wide-substring)
   (export (runtime transcript)
-	  port/operation/get-transcript-port
-	  port/operation/set-transcript-port)
+	  port/transcript
+	  set-port/transcript!)
   (export (runtime rep)
 	  *current-input-port*
 	  *current-output-port*
