@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.4 2004/11/01 19:09:24 cph Exp $
+$Id: load.scm,v 1.5 2004/11/24 20:20:41 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -31,4 +31,4 @@ USA.
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (package/system-loader "ssp" '() 'query)))
-(add-subsystem-identification! "SSP" '(0 3))
+(add-subsystem-identification! "SSP" '(0 4))

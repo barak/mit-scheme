@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.19 2004/11/23 18:19:24 cph Exp $
+$Id: mod-lisp.scm,v 1.20 2004/11/24 20:20:44 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -98,50 +98,6 @@ USA.
 	  (else
 	   (error "Illegal HTTP entity:" entity)))))
 
-(define (condition->html condition)
-  (call-with-output-string
-    (lambda (port)
-      (write-string "<p>" port)
-      (newline port)
-      (escape-output port
-	(lambda (port)
-	  (write-condition-report condition port)))
-      (newline port)
-      (write-string "</p>" port)
-      (newline port)
-      (newline port)
-      (write-string "<pre>" port)
-      (let ((dstate (make-initial-dstate condition)))
-	(command/print-subproblem dstate port)
-	(let loop ()
-	  (if (let ((next
-		     (stack-frame/next-subproblem (dstate/subproblem dstate))))
-		(and next (not (stack-frame/repl-eval-boundary? next))))
-	      (begin
-		(newline port)
-		(newline port)
-		(escape-output port
-		  (lambda (port)
-		    (command/earlier-subproblem dstate port)))
-		(loop)))))
-      (write-string "</pre>" port)
-      (newline port))))
-
-(define (escape-output port generator)
-  (write-escaped-string (call-with-output-string generator) port))
-
-(define (write-escaped-string string port)
-  (let ((end (string-length string)))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i end))
-      (write-escaped-char (string-ref string i) port))))
-
-(define (write-escaped-char char port)
-  (case char
-    ((#\<) (write-string "&lt;" port))
-    ((#\&) (write-string "&amp;" port))
-    (else (write-char char port))))
-
 ;;;; Request handler
 
 (define (handle-request request server-root)
@@ -159,17 +115,15 @@ USA.
 	(let ((response (make-http-message)))
 	  (let ((expand
 		 (lambda (pathname default-type handler)
-		   (add-status-header response 200)
-		   (add-content-type-header response default-type)
-		   (set-entity response
-			       (if handler
-				   (mod-lisp-expander
-				    request
-				    response
-				    pathname
-				    handler
-				    (get-subtree-authenticator relative))
-				   (->pathname pathname))))))
+		   (set-status-header response 200)
+		   (set-content-type-header response default-type)
+		   (if handler
+		       (mod-lisp-expander request
+					  response
+					  pathname
+					  handler
+					  (get-subtree-authenticator relative))
+		       (set-entity response (->pathname pathname))))))
 	    (receive (default-type handler) (get-subtree-handler relative)
 	      (let ((pathname (merge-pathnames relative root-dir)))
 		(if handler
@@ -181,6 +135,75 @@ USA.
 					      pathname
 					      expand))))))
 	  response)))))
+
+(define *root-dir*)
+(define trace-requests? #f)
+
+(define (handle-request:default request response pathname expand)
+  (let ((pathname
+	 (case (file-type-indirect pathname)
+	   ((REGULAR) pathname)
+	   ((DIRECTORY) (find-index-page pathname))
+	   (else #f))))
+    (if pathname
+	(let ((type (file-content-type pathname)))
+	  (expand pathname
+		  type
+		  (get-mime-handler type)))
+	(status-response! response 404 (http-message-url request)))))
+
+(define (find-index-page directory)
+  (let ((directory (pathname-as-directory directory)))
+    (let ((filename
+	   (find-matching-item default-index-pages
+	     (lambda (filename)
+	       (file-exists? (merge-pathnames filename directory))))))
+      (and filename
+	   (merge-pathnames filename directory)))))
+
+(define default-index-pages
+  '("index.html" "index.xhtml" "index.ssp" "index.xml"))
+
+(define (mod-lisp-expander request response pathname expander authenticator)
+  (fluid-let ((*in-mod-lisp?* #t)
+	      (*current-request* request)
+	      (*current-response* response)
+	      (*current-pathname* pathname)
+	      (*current-user-name* #f)
+	      (expander-eval
+	       (lambda (expression environment)
+		 (with-repl-eval-boundary (nearest-repl)
+		   (lambda ()
+		     (eval expression environment))))))
+    (run-hooks-in-list mod-lisp-before-expander-hooks request)
+    (let ((value
+	   (let ((user-name (and authenticator (authenticator))))
+	     (cond ((or (string? user-name) (not user-name))
+		    (set! *current-user-name* user-name)
+		    (set-entity response
+				(call-with-output-string
+				  (lambda (port)
+				    (expander pathname port)))))
+		   ((and (procedure? user-name)
+			 (procedure-arity-valid? user-name 0))
+		    (user-name))
+		   ((eq? user-name 'UNAUTHENTICATED)
+		    (http-response-unauthorized))
+		   (else
+		    (error "Illegal value from authenticator:" user-name))))))
+      (run-hooks-in-list mod-lisp-after-expander-hooks request response)
+      value)))
+
+(define mod-lisp-before-expander-hooks (make-hook-list))
+(define mod-lisp-after-expander-hooks (make-hook-list))
+
+(define (in-mod-lisp?) *in-mod-lisp?*)
+
+(define *in-mod-lisp?* #f)
+(define *current-request*)
+(define *current-response*)
+(define *current-pathname*)
+(define *current-user-name*)
 
 (define (url->relative url server-root)
   (cond ((rewrite-homedir url)
@@ -216,28 +239,6 @@ USA.
 			"public_html/"
 			path))))
 
-(define *root-dir*)
-(define trace-requests? #f)
-
-(define (handle-request:default request response pathname expand)
-  (let ((page-found
-	 (lambda (pathname)
-	   (let ((type (file-content-type pathname)))
-	     (expand pathname type (get-mime-handler type)))))
-	(page-not-found
-	 (lambda ()
-	   (status-response! response 404 (http-message-url request)))))
-    (case (file-type-indirect pathname)
-      ((REGULAR)
-       (page-found pathname))
-      ((DIRECTORY)
-       (let ((pathname (find-index-page pathname)))
-	 (if pathname
-	     (page-found pathname)
-	     (page-not-found))))
-      (else
-       (page-not-found)))))
-
 (define (get-subtree-handler relative)
   (let ((v
 	 (search-for-nearest-directory relative
@@ -248,62 +249,33 @@ USA.
 	(values #f #f))))
 
 (define (define-subtree-handler pathname default-type handler)
-  (let ((pathname (pathname-as-directory pathname)))
-    (let ((entry
-	   (find-matching-item subtree-handlers
-	     (lambda (entry)
-	       (pathname=? (vector-ref entry 0) pathname)))))
-      (if entry
-	  (begin
-	    (vector-set! entry 1 default-type)
-	    (vector-set! entry 2 handler))
-	  (begin
-	    (set! subtree-handlers
-		  (cons (vector pathname default-type handler)
-			subtree-handlers))
-	    unspecific)))))
+  (set! subtree-handlers
+	(add-directory-item (vector (pathname-as-directory pathname)
+				    default-type
+				    handler)
+			    (lambda (v) (vector-ref v 0))
+			    subtree-handlers))
+  unspecific)
 
 (define subtree-handlers '())
 
-(define (find-index-page directory)
-  (let ((directory (pathname-as-directory directory)))
-    (let ((filename
-	   (find-matching-item default-index-pages
-	     (lambda (filename)
-	       (file-exists? (merge-pathnames filename directory))))))
-      (and filename
-	   (merge-pathnames filename directory)))))
+(define (get-subtree-authenticator relative)
+  (let ((p
+	 (search-for-nearest-directory relative
+				       (lambda (p) (car p))
+				       subtree-authenticators)))
+    (and p
+	 (cdr p))))
 
-(define default-index-pages
-  '("index.html" "index.xhtml" "index.ssp" "index.xml"))
+(define (define-subtree-authenticator pathname authenticator)
+  (set! subtree-authenticators
+	(add-directory-item (cons (pathname-as-directory pathname)
+				  authenticator)
+			    car
+			    subtree-authenticators))
+  unspecific)
 
-(define (mod-lisp-expander request response pathname expander authenticator)
-  (call-with-output-string
-    (lambda (port)
-      (fluid-let ((*in-mod-lisp?* #t)
-		  (*current-request* request)
-		  (*current-response* response)
-		  (*current-pathname* pathname)
-		  (*current-authenticator* authenticator)
-		  (expander-eval
-		   (lambda (expression environment)
-		     (with-repl-eval-boundary (nearest-repl)
-		       (lambda ()
-			 (eval expression environment))))))
-	(run-hooks-in-list mod-lisp-before-expander-hooks request)
-	(expander pathname port)
-	(run-hooks-in-list mod-lisp-after-expander-hooks request response)))))
-
-(define mod-lisp-before-expander-hooks (make-hook-list))
-(define mod-lisp-after-expander-hooks (make-hook-list))
-
-(define (in-mod-lisp?) *in-mod-lisp?*)
-
-(define *in-mod-lisp?* #f)
-(define *current-request*)
-(define *current-response*)
-(define *current-pathname*)
-(define *current-authenticator*)
+(define subtree-authenticators '())
 
 ;;;; MIME stuff
 
@@ -402,6 +374,8 @@ USA.
 		(parse-parameters (string-tail url (fix:+ q 1))))
 	(values url '()))))
 
+;;;; POST variables
+
 (define (maybe-parse-post-variables request)
   (let ((entity (http-message-entity request)))
     (if (and entity (eq? 'POST (http-message-method request)))
@@ -464,6 +438,178 @@ USA.
 	       (else
 		(values #f start))))
       (values #f #f)))
+
+;;;; Cookie support
+
+(define (parse-cookie message string)
+  (set-http-message-cookies!
+   message
+   (append! (http-message-cookies message)
+	    (map (lambda (binding)
+		   (let ((nv (burst-string binding #\= #f)))
+		     (if (not (and (pair? nv)
+				   (pair? (cdr nv))
+				   (null? (cddr nv))))
+			 (error "Malformed cookie value:" string))
+		     (cons (intern (car nv)) (cdr nv))))
+		 (map string-trim (burst-string string #\; #f))))))
+
+(define (set-cookie message name value attrs)
+  ;; Version 0 ("netscape") cookies.
+  (add-header message
+	      'SET-COOKIE
+	      (let* ((%attr
+		      (lambda (key name map-value)
+			(let ((value (get-keyword-value attrs key #f)))
+			  (if value
+			      (string-append "; "
+					     (symbol-name name)
+					     "="
+					     (if map-value
+						 (map-value value)
+						 value))
+			      ""))))
+		     (attr
+		      (lambda (name map-value)
+			(%attr name name map-value))))
+		(string-append (symbol-name name) "=" value
+			       (%attr 'max-age 'expires max-age->expires)
+			       (attr 'domain #f)
+			       (attr 'path #f)
+			       (attr 'secure (lambda (v) v "secure"))))))
+
+(define (max-age->expires n)
+  (let ((dt (universal-time->global-decoded-time (+ (get-universal-time) n)))
+	(d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
+    (string-append (let ((day (decoded-time/day-of-week dt)))
+		     (if day
+			 (string-append (day-of-week/short-string day) ", ")
+			 ""))
+		   (number->string (decoded-time/day dt))
+		   "-"
+		   (month/short-string (decoded-time/month dt))
+		   "-"
+		   (number->string (decoded-time/year dt))
+		   " "
+		   (d2 (decoded-time/hour dt))
+		   ":"
+		   (d2 (decoded-time/minute dt))
+		   ":"
+		   (d2 (decoded-time/second dt))
+		   " GMT")))
+
+;;;; Status messages
+
+(define (condition->html condition)
+  (list (html:p #f
+		"\n"
+		(call-with-output-string
+		  (lambda (port)
+		    (write-condition-report condition port)
+		    (fresh-line port))))
+	"\n"
+	"\n"
+	(html:pre #f
+		  "\n"
+		  (call-with-output-string
+		    (lambda (port)
+		      (stack-trace condition port)
+		      (fresh-line port))))))
+
+(define (status-response code extra)
+  (let ((response (make-http-message)))
+    (status-response! response code extra)
+    response))
+
+(define (status-response! response code extra)
+  (set-status-header response code)
+  (set-content-type-header response 'text/html)
+  (set-entity response
+	      (call-with-output-string
+		(lambda (port)
+		  (write-xml
+		   (let ((message (status-message code)))
+		     (html:html #f
+				"\n"
+				(html:head #f
+					   "\n"
+					   (html:title #f code " " message)
+					   "\n")
+				"\n"
+				(html:body #f
+					   "\n"
+					   (html:h1 #f message)
+					   "\n"
+					   extra
+					   "\n")
+				"\n"))
+		   port)
+		  (newline port)))))
+
+(define (set-status-header message code)
+  (set-header message
+	      'STATUS
+	      (call-with-output-string
+		(lambda (port)
+		  (write code port)
+		  (write-char #\space port)
+		  (write-string (status-message code) port)))))
+
+(define (set-content-type-header message type)
+  (set-header message 'CONTENT-TYPE (symbol-name type)))
+
+(define (status-message code)
+  (let loop ((low 0) (high (vector-length known-status-codes)))
+    (if (not (fix:< low high))
+	(error "Unknown status code:" code))
+    (let ((index (fix:quotient (fix:+ low high) 2)))
+      (let ((p (vector-ref known-status-codes index)))
+	(cond ((< code (car p)) (loop low index))
+	      ((> code (car p)) (loop (fix:+ index 1) high))
+	      (else (cdr p)))))))
+
+(define known-status-codes
+  '#((100 . "Continue")
+     (101 . "Switching Protocols")
+     (200 . "OK")
+     (201 . "Created")
+     (202 . "Accepted")
+     (203 . "Non-Authoritative Information")
+     (204 . "No Content")
+     (205 . "Reset Content")
+     (206 . "Partial Content")
+     (300 . "Multiple Choices")
+     (301 . "Moved Permanently")
+     (302 . "Found")
+     (303 . "See Other")
+     (304 . "Not Modified")
+     (305 . "Use Proxy")
+     (306 . "(Unused)")
+     (307 . "Temporary Redirect")
+     (400 . "Bad Request")
+     (401 . "Unauthorized")
+     (402 . "Payment Required")
+     (403 . "Forbidden")
+     (404 . "Not Found")
+     (405 . "Method Not Allowed")
+     (406 . "Not Acceptable")
+     (407 . "Proxy Authentication Required")
+     (408 . "Request Timeout")
+     (409 . "Conflict")
+     (410 . "Gone")
+     (411 . "Length Required")
+     (412 . "Precondition Failed")
+     (413 . "Request Entity Too Large")
+     (414 . "Request-URI Too Long")
+     (415 . "Unsupported Media Type")
+     (416 . "Requested Range Not Satisfiable")
+     (417 . "Expectation Failed")
+     (500 . "Internal Server Error")
+     (501 . "Not Implemented")
+     (502 . "Bad Gateway")
+     (503 . "Service Unavailable")
+     (504 . "Gateway Timeout")
+     (505 . "HTTP Version Not Supported")))
 
 ;;;; HTTP message datatype
 
@@ -530,130 +676,6 @@ USA.
 (define http-message-cookie
   (message-keyword-proc http-message-cookies
 			'HTTP-MESSAGE-COOKIE))
-
-;;;; Status messages
-
-(define (status-response code extra)
-  (let ((response (make-http-message)))
-    (status-response! response code extra)
-    response))
-
-(define (status-response! response code extra)
-  (add-status-header response code)
-  (add-content-type-header response 'text/html)
-  (set-entity response
-	      (call-with-output-string
-		(lambda (port)
-		  (let ((message (status-message code))
-			(start
-			 (lambda (name)
-			   (write-char #\< port)
-			   (write-string name port)
-			   (write-char #\> port)
-			   (newline port)))
-			(end
-			 (lambda (name)
-			   (write-char #\< port)
-			   (write-char #\/ port)
-			   (write-string name port)
-			   (write-char #\> port)
-			   (newline port))))
-		    (start "html")
-		    (start "head")
-		    (write-string "<title>" port)
-		    (write-string message port)
-		    (write-string "</title>" port)
-		    (newline port)
-		    (end "head")
-		    (start "body")
-		    (write-string "<h1>" port)
-		    (write-string message port)
-		    (write-string "</h1>" port)
-		    (newline port)
-		    (if extra
-			(begin
-			  (display extra port)
-			  (newline port)))
-		    (end "body")
-		    (end "html"))))))
-
-(define (status-message code)
-  (case code
-    ((200) "OK")
-    ((404) "Not Found")
-    ((500) "Internal Server Error")
-    (else (error "Unknown status code:" code))))
-
-(define (add-status-header message code)
-  (set-header message
-	      'STATUS
-	      (call-with-output-string
-		(lambda (port)
-		  (write code port)
-		  (write-char #\space port)
-		  (write-string (status-message code) port)))))
-
-(define (add-content-type-header message type)
-  (set-header message 'CONTENT-TYPE (symbol-name type)))
-
-;;;; Cookie support
-
-(define (parse-cookie message string)
-  (set-http-message-cookies!
-   message
-   (append! (http-message-cookies message)
-	    (map (lambda (binding)
-		   (let ((nv (burst-string binding #\= #f)))
-		     (if (not (and (pair? nv)
-				   (pair? (cdr nv))
-				   (null? (cddr nv))))
-			 (error "Malformed cookie value:" string))
-		     (cons (intern (car nv)) (cdr nv))))
-		 (map string-trim (burst-string string #\; #f))))))
-
-(define (set-cookie message name value attrs)
-  ;; Version 0 ("netscape") cookies.
-  (add-header message
-	      'SET-COOKIE
-	      (let* ((%attr
-		      (lambda (key name map-value)
-			(let ((value (get-keyword-value attrs key #f)))
-			  (if value
-			      (string-append "; "
-					     (symbol-name name)
-					     "="
-					     (if map-value
-						 (map-value value)
-						 value))
-			      ""))))
-		     (attr
-		      (lambda (name map-value)
-			(%attr name name map-value))))
-		(string-append (symbol-name name) "=" value
-			       (%attr 'max-age 'expires max-age->expires)
-			       (attr 'domain #f)
-			       (attr 'path #f)
-			       (attr 'secure (lambda (v) v "secure"))))))
-
-(define (max-age->expires n)
-  (let ((dt (universal-time->global-decoded-time (+ (get-universal-time) n)))
-	(d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
-    (string-append (let ((day (decoded-time/day-of-week dt)))
-		     (if day
-			 (string-append (day-of-week/short-string day) ", ")
-			 ""))
-		   (number->string (decoded-time/day dt))
-		   "-"
-		   (month/short-string (decoded-time/month dt))
-		   "-"
-		   (number->string (decoded-time/year dt))
-		   " "
-		   (d2 (decoded-time/hour dt))
-		   ":"
-		   (d2 (decoded-time/minute dt))
-		   ":"
-		   (d2 (decoded-time/second dt))
-		   " GMT")))
 
 ;;;; Request/response accessors
 
@@ -723,9 +745,11 @@ USA.
 (define (http-response-cookie name value . attrs)
   (set-cookie *current-response* name value attrs))
 
-(define (http-status-response code extra)
+(define (http-response-entity entity)
+  (set-entity *current-response* entity))
+
+(define (http-status-response code . extra)
   (guarantee-exact-nonnegative-integer code 'HTTP-STATUS-RESPONSE)
-  (guarantee-string extra 'HTTP-STATUS-RESPONSE)
   (status-response! *current-response* code extra))
 
 (define (server-root-dir)
@@ -764,49 +788,8 @@ USA.
 
 ;;;; Authentication
 
-(define (get-subtree-authenticator relative)
-  (let ((p (search-for-nearest-directory relative car subtree-authenticators)))
-    (and p
-	 (cdr p))))
-
-(define (search-for-nearest-directory relative selector items)
-  (let loop ((items items) (win #f))
-    (if (pair? items)
-	(loop (cdr items)
-	      (let ((d1 (pathname-directory (selector (car items))))
-		    (d2 (pathname-directory relative)))
-		(if (and (let loop ((d1 d1) (d2 d2))
-			   (or (not (pair? d1))
-			       (and (pair? d2)
-				    (equal? (car d1) (car d2))
-				    (loop (cdr d1) (cdr d2)))))
-			 (or (not win)
-			     (> (length d1)
-				(length (pathname-directory (selector win))))))
-		    (car items)
-		    win)))
-	win)))
-
-(define (define-subtree-authenticator pathname authenticator)
-  (let ((pathname (pathname-as-directory pathname)))
-    (let ((entry
-	   (find-matching-item subtree-authenticators
-	     (lambda (entry)
-	       (pathname=? (car entry) pathname)))))
-      (if entry
-	  (set-cdr! entry authenticator)
-	  (begin
-	    (set! subtree-authenticators
-		  (cons (cons pathname authenticator)
-			subtree-authenticators))
-	    unspecific)))))
-
-(define subtree-authenticators '())
-
 (define (http-request-user-name)
-  (if *current-authenticator*
-      (*current-authenticator*)
-      (http-authenticator:basic)))
+  *current-user-name*)
 
 (define (http-authenticator:basic)
   (let ((auth (http-request-header 'authorization)))
@@ -827,6 +810,17 @@ USA.
       (if (not colon)
 	  (error "Malformed authorization string."))
       (string-head auth colon))))
+
+(define (http-response-unauthorized)
+  (http-status-response 401
+			"You don't have authorization to view this document."))
+
+(define (http-response-redirect url)
+  (http-status-response 302
+			"The document has moved "
+			(html:href url "here")
+			".")
+  (http-response-header 'location url))
 
 ;;;; Utilities
 
@@ -856,6 +850,57 @@ USA.
 	    (procedure line)
 	    (loop))))))
 
+(define (stack-trace condition port)
+  (let ((dstate (make-initial-dstate condition)))
+    (command/print-subproblem dstate port)
+    (let loop ()
+      (if (let ((next
+		 (stack-frame/next-subproblem
+		  (dstate/subproblem dstate))))
+	    (and next (not (stack-frame/repl-eval-boundary? next))))
+	  (begin
+	    (newline port)
+	    (newline port)
+	    (command/earlier-subproblem dstate port)
+	    (loop))))))
+
+(define (search-for-nearest-directory key item-key items)
+  (let ((key (pathname-directory key))
+	(dlen (lambda (item) (length (pathname-directory (item-key item))))))
+    (let loop ((items items) (win #f))
+      (if (pair? items)
+	  (loop (cdr items)
+		(if (and (directory-prefix?
+			  (pathname-directory (item-key (car items)))
+			  key)
+			 (or (not win)
+			     (> (dlen (car items)) (dlen win))))
+		    (car items)
+		    win))
+	  win))))
+
+(define (directory-prefix? d1 d2)
+  (and (eq? (car d1) (car d2))
+       (let loop ((d1 (cdr d1)) (d2 (cdr d2)))
+	 (or (not (pair? d1))
+	     (and (pair? d2)
+		  (equal? (car d1) (car d2))
+		  (loop (cdr d1) (cdr d2)))))))
+
+(define (add-directory-item item item-key items)
+  (let ((pathname (item-key item)))
+    (if (pathname-absolute? pathname)
+	(error:wrong-type-argument pathname "relative pathname"
+				   'add-directory-item))
+    (let loop ((items* items))
+      (if (pair? items*)
+	  (if (pathname=? (item-key (car items*)) pathname)
+	      (begin
+		(set-car! items* item)
+		items)
+	      (loop (cdr items*)))
+	  (cons item items)))))
+
 ;;;; Logging
 
 (define (start-logging-requests pathname)

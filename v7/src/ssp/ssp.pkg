@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ssp.pkg,v 1.15 2004/11/23 17:20:38 cph Exp $
+$Id: ssp.pkg,v 1.16 2004/11/24 20:20:48 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -68,7 +68,10 @@ USA.
 	  http-request-url-parameter
 	  http-request-url-parameter-bindings
 	  http-request-user-name
+	  http-response-entity
 	  http-response-header
+	  http-response-redirect
+	  http-response-unauthorized
 	  http-status-response
 	  in-mod-lisp?
 	  mod-lisp-expander
