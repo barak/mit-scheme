@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.28 1989/03/29 04:14:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.29 1989/04/18 05:06:06 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -542,7 +542,7 @@ MIT in each case. |#
 	 (lambda (name make-fetch type index)
 	   (standard-def name (make-fixed-ref name make-fetch type index)))))
     (user-ref 'CELL-CONTENTS rtl:make-fetch (ucode-type cell) 0)
-    (user-ref 'VECTOR-LENGTH rtl:vector-length-fetch (ucode-type vector) 0)
+    (user-ref 'VECTOR-LENGTH rtl:length-fetch (ucode-type vector) 0)
     (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
     (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
     (user-ref 'SYSTEM-PAIR-CAR rtl:make-fetch false 0)
