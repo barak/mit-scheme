@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.35 1995/01/23 20:05:52 cph Exp $
+;;;	$Id: process.scm,v 1.36 1995/01/30 20:04:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -670,15 +670,10 @@ after the listing is made.)"
 			(let ((index (min (+ start-index 512) end-index)))
 			  (group-copy-substring! group start-index index
 						 buffer 0)
-			  (let* ((end (- index start-index))
-				 (n
-				  (output-port/write-substring port
-							       buffer 0 end)))
-			    (if n
-				(begin
-				  (set! start-index (+ start-index n))
-				  (if (= n end)
-				      (loop))))))
+			  (let ((end (- index start-index)))
+			    (output-port/write-substring port buffer 0 end)
+			    (set! start-index (+ start-index end)))
+			  (loop))
 			(channel-close channel)))))
 	      loop))))))))
 
