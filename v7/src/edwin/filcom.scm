@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.220 2001/10/30 19:26:40 cph Exp $
+;;; $Id: filcom.scm,v 1.221 2001/12/17 04:41:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -243,7 +243,7 @@ procedures are called."
 	  (begin
 	    (local-set-variable! scheme-environment (cadr entry) buffer)
 	    (if (and (eq? 'DEFAULT (ref-variable scheme-environment buffer))
-		     (not (eq? 'default (cadr entry))))
+		     (not (eq? 'DEFAULT (cadr entry))))
 		(begin
 		  (message "Ignoring bad evaluation environment: "
 			   (cadr entry))
@@ -251,7 +251,9 @@ procedures are called."
 				       'DEFAULT
 				       buffer))
 		(local-set-variable! scheme-syntax-table
-				     (caddr entry)
+				     (if (pair? (cddr entry))
+					 (caddr entry)
+					 'DEFAULT)
 				     buffer)))))))
 
 (define (find-file-revert buffer)
