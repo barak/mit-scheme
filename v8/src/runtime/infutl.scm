@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.31 1992/05/26 20:32:35 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.32 1992/05/26 21:31:03 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -427,8 +427,7 @@ MIT in each case. |#
 			(and bsmname (cons bsmname pos)))
 		       (loop (fix:1+ pos))))))))
 	  (else 
-	   (error "Unknown inf file format" infpath)))))
-
+	   (error "Unknown inf format" binf)))))
 
 ;;; UNCOMPRESS: A simple extractor for compressed binary info files.
 
