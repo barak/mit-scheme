@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.260 2001/06/02 05:43:12 cph Exp $
+;;; $Id: imail-top.scm,v 1.261 2001/06/02 05:50:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1353,13 +1353,17 @@ The folder's type may not be changed."
 				    'HISTORY 'IMAIL-RENAME-FOLDER-SOURCE
 				    'REQUIRE-MATCH? #t)))
       (list from
-	    (prompt-for-folder
+	    (prompt-for-url
 	     "Rename folder to"
 	     (container-url-for-prompt (imail-parse-partial-url from))
 	     'HISTORY 'IMAIL-RENAME-FOLDER-TARGET))))
   (lambda (from to)
-    (let ((from (imail-parse-partial-url from))
-	  (to (imail-parse-partial-url to)))
+    (let* ((from (imail-parse-partial-url from))
+	   (to
+	    (let ((to (imail-parse-partial-url to)))
+	      (if (container-url? to)
+		  (make-content-url to (url-content-name from))
+		  to))))
       (rename-resource from to)
       (message "Folder renamed to " (url->string to)))))
 
@@ -1374,7 +1378,7 @@ If it doesn't exist, it is created first."
 	    'HISTORY 'IMAIL-COPY-FOLDER-SOURCE
 	    'REQUIRE-MATCH? #t)))
       (list from
-	    (prompt-for-folder
+	    (prompt-for-url
 	     "Copy messages to folder"
 	     (make-content-url
 	      (or (let ((history
@@ -1390,14 +1394,19 @@ If it doesn't exist, it is created first."
 	      (url-base-name (imail-parse-partial-url from)))
 	     'HISTORY 'IMAIL-COPY-FOLDER-TARGET))))
   (lambda (from to)
-    (let ((folder (open-resource (imail-parse-partial-url from)))
-	  (to (imail-parse-partial-url to)))
-      (if (eq? (resource-locator folder) to)
-	  (editor-error "Can't copy folder to itself:" to))
-      (with-open-connection to
-	(lambda ()
-	  (copy-folder folder to #f
-		       (string-append "to " (url->string to))))))))
+    (let ((from (imail-parse-partial-url from)))
+      (let ((folder (open-resource from))
+	    (to
+	     (let ((to (imail-parse-partial-url to)))
+	       (if (container-url? to)
+		   (make-content-url to (url-content-name from))
+		   to))))
+	(if (eq? (resource-locator folder) to)
+	    (editor-error "Can't copy folder to itself:" to))
+	(with-open-connection to
+	  (lambda ()
+	    (copy-folder folder to #f
+			 (string-append "to " (url->string to)))))))))
 
 (define (copy-folder folder to refresh reference-string)
   (let ((n (folder-length folder)))
