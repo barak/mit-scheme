@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.45 1989/06/08 00:23:58 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.46 1989/08/15 07:15:47 cph Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -155,9 +155,8 @@ open_gc_file(size)
       continue;
     }
     fprintf(stderr,
-	    "%s: GC file \"%s\" cannot be opened; ",
-	    Saved_argv[0]), gc_file_name;
-    fprintf(stderr, "Aborting.\n");
+	    "%s: GC file \"%s\" cannot be opened; Aborting.\n",
+	    Saved_argv[0], gc_file_name);
     exit(1);
   }
 #ifdef hpux
@@ -165,6 +164,14 @@ open_gc_file(size)
   {
     extern prealloc();
     prealloc(gc_file, size);
+    /* Prealloc may change (it does under 6.5) the file pointer! */
+    if ((lseek(gc_file, 0, 0)) == -1)
+    {
+      fprintf(stderr,
+	      "%s: cannot position at start of GC file \"%s\"; Aborting.\n",
+	      Saved_argv[0], gc_file_name);
+      exit(1);
+    }
   }
 #endif
   current_disk_position = 0;
