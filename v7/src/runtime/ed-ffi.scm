@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.14 1995/10/28 02:57:38 cph Exp $
+$Id: ed-ffi.scm,v 1.15 1996/04/24 03:52:10 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -111,6 +111,8 @@ MIT in each case. |#
     ("gcstat"	(runtime gc-statistics)
 		syntax-table/system-internal)
     ("gdatab"	(runtime global-database)
+		syntax-table/system-internal)
+    ("gdbm"	(runtime gdbm)
 		syntax-table/system-internal)
     ("genio"	(runtime generic-i/o-port)
 		syntax-table/system-internal)

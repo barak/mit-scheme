@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.3 1995/05/03 07:34:40 cph Exp $
+$Id: optiondb.scm,v 1.4 1996/04/24 03:51:54 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -71,14 +71,15 @@ MIT in each case. |#
 (for-each
  (lambda (spec)
    (define-load-option (car spec) (apply standard-option-loader (cdr spec))))
- '((FORMAT      (RUNTIME FORMAT)     (INITIALIZE-PACKAGE!) "format")
-   (COMPRESS    (RUNTIME COMPRESS)   #F                    "cpress")
-   (HASH-TABLE  (RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb")
-   (RB-TREE     (RUNTIME RB-TREE)    #F                    "rbtree")
-   (WT-TREE     (RUNTIME WT-TREE)    #F                    "wttree")
-   (SUBPROCESS  (RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process")
-   (STEPPER     (RUNTIME STEPPER)    #F                    "ystep")
-   (ORDERED-VECTOR (RUNTIME ORDERED-VECTOR) #F "ordvec")
+ '((COMPRESS	(RUNTIME COMPRESS)	#F			"cpress")
+   (FORMAT	(RUNTIME FORMAT)	(INITIALIZE-PACKAGE!)	"format")
+   (GDBM	(RUNTIME GDBM)		(INITIALIZE-PACKAGE!)	"gdbm")
+   (HASH-TABLE	(RUNTIME HASH-TABLE)	(INITIALIZE-PACKAGE!)	"hashtb")
+   (ORDERED-VECTOR (RUNTIME ORDERED-VECTOR) #F			"ordvec")
+   (RB-TREE	(RUNTIME RB-TREE)	#F			"rbtree")
+   (STEPPER	(RUNTIME STEPPER)	#F			"ystep")
+   (SUBPROCESS	(RUNTIME SUBPROCESS)	(INITIALIZE-PACKAGE!)	"process")
+   (WT-TREE	(RUNTIME WT-TREE)	#F			"wttree")
    ))
 
 (define-load-option 'DOSPROCESS
