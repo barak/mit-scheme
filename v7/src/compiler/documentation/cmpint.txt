@@ -1,11 +1,17 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.5 1990/09/12 02:09:07 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.6 1991/01/16 16:11:05 jinx Exp $
 
 	Remarks:
 
+In the following, whenever Scheme is used, unless otherwise specified,
+we refer to the MIT Scheme dialect and its CScheme implementation.
+
 This file describes the compiled-code data structures and macros
 defined in cmpint-md.h and required by cmpint.c and cmpgc.h .
+
+cmpaux.txt describes the assembly language code that must be written
+to get all of this to work.
 
 cmpint-md.h is the machine dependent header file that defines many of
 these parameters.  A new version must be written for each
@@ -258,13 +264,13 @@ offset_field_2 = (((entry_address_2 - entry_address_1) << 1) | 1)
 The length of the "constants" section is (tl - il).
 There are (tl + 1) total words in the object.
 
-=> In cmpint-md.h PC_ZERO_BITS should be defined to be the number of
-bits in instruction addresses that are always 0 (0 if no alignment
+=> Macro PC_ZERO_BITS should be defined to be the number of bits in
+instruction addresses that are always 0 (0 if no alignment
 constraints, 1 if halfword, etc.).
 
-=> In cmpint-md.h format_word should be 'typedefd' to be the size of the
-descriptor fields.  It is assumed that the offset field and the format
-field are the same size.  This definition is unlikely to need modification.
+=> format_word should be 'typedefd' to be the size of the descriptor
+fields.  It is assumed that the offset field and the format field are
+the same size.  This definition is unlikely to need modification.
 
 	Compiled closures:
 
@@ -306,7 +312,7 @@ a standard place (stack or link register).  This "return address" is
 the address of the free variables of the procedure, so the code can
 reference them by using indirect loads through the "return address".
 
-Conceptually the code above would be compiled as (in pseudo-assembly
+Conceptually the code above could be compiled as (in pseudo-assembly
 language):
 
 foo:	
@@ -350,30 +356,98 @@ retadd	|   value of x                         |
 and retlnk would get the address of retadd at run time.  Thus x_offset
 would be 0.
 
-=> The macro COMPILED_CLOSURE_ENTRY_SIZE in cmpint-md.h specifies the
-size of a compiled closure entry (there may be many in a single
-compiled closure block) in bytes.  In the example above this would be
-12 bytes (4 format and gc, 4 for JSR opcode, and 4 for the
-address of the real entry point).
+The following macros are used to manipulate closure objects:
 
-=> The macro EXTRACT_CLOSURE_ENTRY_ADDRESS in cmpint-md.h is used to
-extract the real address of the entry point from a closure object when
-given the address of the closure entry.  Note that the real entry
-point may be smeared out over multiple instructions.  In the example
-above, given the address of a closure for lambda-1, it would extract
-the address of lambda-1.
+=> COMPILED_CLOSURE_ENTRY_SIZE specifies the size of a compiled
+closure entry (there may be many in a single compiled closure block)
+in bytes.  In the example above this would be 12 bytes (4 format and
+gc, 4 for JSR opcode, and 4 for the address of the real entry point).
 
-=> The macro STORE_CLOSURE_ENTRY_ADDRESS in cmpint-md.h is the inverse
-of EXTRACT_CLOSURE_ENTRY_ADDRESS.  That is, given the address of a
+=> EXTRACT_CLOSURE_ENTRY_ADDRESS is used to extract the real
+address of the entry point from a closure object when given the
+address of the closure entry.  Note that the real entry point may be
+smeared out over multiple instructions.  In the example above, given
+the address of a closure for lambda-1, it would extract the address of
+lambda-1.
+
+=> STORE_CLOSURE_ENTRY_ADDRESS is the inverse of
+EXTRACT_CLOSURE_ENTRY_ADDRESS.  That is, given the address of a
 closure entry point, and a real entry point, it stores the real entry
 point in the closure object.  In the example above, given the closure
 for lambda-1, and a different entry point, say for lambda-2, it would
 make the closure jump to lambda-2 instead.
 
-	Interrupts
+	Some caveats:
 
-MIT Scheme polls for interrupts.  That is, interrupt processing is
-divided into two stages:
+- The code for lambda-1 described above does not match what the compiler
+would currently generate.
+
+The current parameter-passing convention specifies that all the state
+needed to continue the computation at a procedure's entry point must
+be on the stack and all the information on the stack must be valid
+objects (for GC correctness in case of interrupt, more on this below).
+Thus the contents of retlnk must be pushed on the stack as a valid
+object, and this is done by reconstructing the closure object whose
+datum field encodes the address of entry and whose type tag is
+TC_COMPILED_ENTRY, and then pushing it onto the stack.  Note that on
+some machines, the return address for the subroutine-call instruction
+is pushed on the stack by the hardware, and thus this value might have
+to be popped, adjusted, and re-pushed if it cannot be adjusted in
+place.
+
+The code for lambda-1 would then be closer to:
+
+lambda-1:
+	subl	&(retadd-entry),retlnk
+	orl	&[TC_COMPILED_ENTRY | 0],tc_field,retlnk ; set type code
+	pushl	retlnk
+	<interrupt check>				; more on this below
+	movl	arg1,reg0
+	movl	top_of_stack,reg1
+	bfclr	tc_field,reg1				; remove type code
+	movl	x_offset+retadd-entry(reg1),reg1
+	addl	reg1,reg0,retval
+	pop						; the closure object
+	ret
+
+Note that (retadd-entry) is a constant known at compile time, and is the
+same for the first entry point of all closures.  On many machines, the
+combination subl/orl can be obtained with a single add instruction:
+
+	addl	&([TC_COMPILED_ENTRY | 0]-(retadd-entry)),retlnk
+
+This value is called the "magic constant", encoded in the first few
+instructions of a closure's code.
+
+- Multiple closures sharing free variables can share storage by having
+multiple entry points (multiple JSR instructions) in the closure
+object.  The compiler occasionally merges multiple related closures
+into single objects.
+
+A complication arises when closure entry points are not necessarily
+long-word aligned, since the compiler expects all variable offsets
+(like x_offset above) to be long-word offsets.
+
+This problem only occurs on machines where instructions are not all
+long-word aligned and for closures with multiple entry points, since
+the first entry point is guaranteed to be aligned on a long-word
+boundary on all machines.
+
+The current solution to this problem, on those machines on which it is
+a problem, is to choose a canonical entry point (the first one)
+guaranteed to be aligned properly, and push that on the stack on entry
+to a closure's code.  The compiler keeps track of what actual entry
+point the code belongs to even though the value on the stack may
+correspond to a different entry point.
+
+The "magic constant" becomes an entry-point dependent value, since each
+return address may have to be bumped back to the first entry point in
+the closure object rather than to the immediately preceding entry point.
+
+	Interrupts:
+
+Scheme polls for interrupts.  That is, interrupt processing is divided
+into two stages:
 
 - When an asynchronous interrupt arrives, the handler (written in C)
 invoked by the operating system sets a bit in a pending-interrupts
@@ -431,24 +505,24 @@ gc_or_int	LOADI	#interrupt-handler-index,rindex
 		LOADA	entry,rentry
 		JMP	scheme-to-interface
 		format word and gc word for the entry
-entry		ADDI	offset,retadd,rclosure	; bump ret. add. to entry point
-		ORI	#[TC_CLOSURE | 0],rclosure
-		PUSH	rclosure		; arguments on the stack
+entry		ADDI	offset,retadd,ret_add	; bump ret. add. to entry point
+		ORI	#[TC_CLOSURE | 0],ret_add
+		PUSH	ret_add			; arguments on the stack
 		CMP	Free,MemTop
 		BGE	gc_or_int
 after_entry	<actual code for the entry>
 
-The following macros from cmpint-md.h are used by the C utility and
-handler to determine how much code to skip:
+The following macros are used by the C utility and handler to
+determine how much code to skip:
 
-=> ENTRY_SKIPPED_CHECK_OFFSET is the number of bytes between entry and
-after_entry in a normal entry.
+=> ENTRY_SKIPPED_CHECK_OFFSET is the number of bytes between
+entry and after_entry in a normal entry.
 
-=> CLOSURE_SKIPPED_CHECK_OFFSET is the number of bytes between entry
-and after_entry in a closure entry.
+=> CLOSURE_SKIPPED_CHECK_OFFSET is the number of bytes
+between entry and after_entry in a closure entry.
 
-=> ENTRY_PREFIX_LENGTH is the number of bytes between gc_or_int and
-entry in a normal entry.
+=> ENTRY_PREFIX_LENGTH is the number of bytes between
+gc_or_int and entry in a normal entry.
 
 	Important considerations:
 
@@ -466,19 +540,19 @@ example), this is not feasible.  Furthermore, most RISCs have a few
 cycles of delay for memory loads, and adjacent instructions may not be
 interlocked by the hardware.  Thus a sequence like
 
-	LOAD	MemTop(Regblock),Rtemp
+	LOAD	Memory_MemTop,Rtemp
 	CMP	Rfree,Rtemp
 	BGE	gc_or_int
 
 may be very slow and NOPs may have to be inserted explicitly between
 the LOAD and CMP instructions to make the code work.
 
-Since MIT Scheme's interrupt response is not immediate, and polling is
+Since Scheme's interrupt response is not immediate, and polling is
 frequent, the following sequence can be used instead:
 
 	CMP	Rfree,Rmemtop
 	BGE	gc_or_int
-	LOAD	MemTop(Regblock),Rmemtop
+	LOAD	Memory_MemTop,Rmemtop
 
 Where Rmemtop is a register that holds a recent value of MemTop and is
 reloaded at every interrupt check.  Thus interrupt processing will
@@ -506,6 +580,34 @@ modify Rmemtop directly.  Rmemtop should be chosen from the
 caller-saves convention (super-temporary) registers if possible, since
 these registers must be explicitly saved by the signal handler, rather
 than implicitly by the calling convention.
+
+	Interrupts and closures that share storage:
+
+If an interrupt arrives on entry to the closure, the correct closure
+object must be reconstructed so that the computation will continue
+correctly on return from the interrupt.  The code to reconstruct the
+correct closure is also issued by the compiler, which at compile time
+maintains the identity of each closure and the distance to the
+canonical closure used for environment purposes.
+
+If the interrupt is dismissed, instead of processed, we need to
+continue the computation bypassing the interrupt checking code in
+order to avoid an infinite loop.  This is what the macro
+CLOSURE_SKIPPED_CHECK_OFFSET is used for.  We must skip the preamble
+of the closure code and emulate part of it, that is, adjust the object
+on top of the stack to be the closure object that the code expects to
+have there.  This can be done by extracting the magic constant from
+the entry point, and bumping the corresponding return address by this
+value.  The macro ADJUST_CLOSURE_AT_CALL accomplishes this feat on
+those machines where it is needed.
+
+=> ADJUST_CLOSURE_AT_CALL, when given an entry point and a location,
+adjusts the closure object stored at location so that it is the
+closure object that the entry point expects on top of the stack.  On
+machines where all instructions are long-word aligned, it is a NOP, on
+other machines (eg. 68k, VAX), it extracts the magic constant from the
+closure's code, and uses it to construct the appropriate closure
+object.
 
 	External calls from compiled code:
 
@@ -610,29 +712,31 @@ count.  Note that the order of the instructions and the count are
 machine dependent, although typically the instructions precede the
 count.
 
-=> In cmpint-md.h the macro EXECUTE_CACHE_ENTRY_SIZE specifies the
-length (in longwords) of an execute-cache entry.  This includes the
-size of the instructions and the argument count.  For the example
-above it would be 3, assuming that the jump instruction and the
-absolute address take two words together (the third is for the
-argument count).  Note that on RISC machines, this size may have to
-include the size of the branch delay slot instruction.
+The following macros are used to manipulate execute caches:
 
-=> In cmpint-md.h the macro EXTRACT_EXECUTE_CACHE_ARITY specifies how
-to read the argument count from an execute-cache entry when given the
-address of the entry.  In the above example, it would extract 3 from
-the address labelled sort-uuo-link.
+=> EXECUTE_CACHE_ENTRY_SIZE specifies the length (in longwords) of an
+execute-cache entry.  This includes the size of the instructions and
+the argument count.  For the example above it would be 3, assuming
+that the jump instruction and the absolute address take two words
+together (the third is for the argument count).  Note that on RISC
+machines, this size may have to include the size of the branch delay
+slot instruction.
 
-=> In cmpint-md.h the macro EXTRACT_EXECUTE_CACHE_SYMBOL specifies how
-to read the symbol from an execute-cache entry (before it is actually
-linked) when given the address of an entry.  In the above example, it
-would extract the symbol SORT from sort-uuo-link.
+=> EXTRACT_EXECUTE_CACHE_ARITY specifies how to read the argument
+count from an execute-cache entry when given the address of the entry.
+In the above example, it would extract 3 from the address labelled
+sort-uuo-link.
 
-=> The macro EXTRACT_EXECUTE_CACHE_ADDRESS in cmpint-md.h fetches the
-real entry point stored in an execute-cache entry when given the
-address of the entry.  In the above example, it would extract the
-entry point of the sort procedure when given the address of the jump
-instruction (labelled as sort-uuo-link).
+=> EXTRACT_EXECUTE_CACHE_SYMBOL specifies how to read the symbol from
+an execute-cache entry (before it is actually linked) when given the
+address of an entry.  In the above example, it would extract the
+symbol SORT from sort-uuo-link.
+
+=> EXTRACT_EXECUTE_CACHE_ADDRESS fetches the real entry point stored
+in an execute-cache entry when given the address of the entry.  In the
+above example, it would extract the entry point of the sort procedure
+when given the address of the jump instruction (labelled as
+sort-uuo-link).
 
 => STORE_EXECUTE_CACHE_CODE is the inverse of this, ie. when given a
 target entry point and the address of an execute cache entry, it
@@ -685,12 +789,12 @@ retadd	|   first word of storage              | (variable)
 	|   second word of storage             | (variable)
 	----------------------------------------
 
-=> TRAMPOLINE_ENTRY_SIZE, defined in cmpint-md.h, is the size in
-longwords of the compiled-code portion of a trampoline.  This is
-similar to COMPILED_CLOSURE_ENTRY_SIZE but in longwords, and will
-typically represent less storage since an absolute address is not needed
-(or desirable).  It must include the format word and the GC offset for
-the entry.  In the example above it would be 2.
+=> TRAMPOLINE_ENTRY_SIZE is the size in longwords of the compiled-code
+portion of a trampoline.  It is similar to COMPILED_CLOSURE_ENTRY_SIZE
+but in longwords, and will typically represent less storage since an
+absolute address is not needed (or desirable).  It must include the
+format word and the GC offset for the entry.  In the example above it
+would be 2.
 
 => TRAMPOLINE_BLOCK_TO_ENTRY is the number of longwords from the start
 of a trampoline's block (the manifest vector header in the picture
@@ -713,73 +817,203 @@ trampoline_to_interface), passing the index and the address of the
 trampoline storage area as parameters.  In the example above this
 macro would store the LOADI (load immediate) and JSR instructions.
 
-*** Need to document better: ***
+	Compiled code and processor caches:
 	
-=> ADJUST_CLOSURE_AT_CALL
-/* 68k magic.
-   On the 68k, when closures are invoked, the closure corresponding to
-   the first entry point (in a closure with more than one) is what's
-   needed on the top of the stack.
-   Note that it is needed for environment only, not for code.
-   The closure code does an
-   ADDI.L	&magic-constant,(SP)
-   on entry, to bump the current entry point (after the JSR instruction)
-   to the correct place.
-   This code emulates that operation by extracting the magic constant
-   from the closure code, and adjusting the address by 6 as if the
-   JSR instruction had just been executed.
-   It is used when interrupts are disabled, in order not to get into a loop.
-   Note that if closure entry points were always longword-aligned, there
-   would be no need for this nonsense.
- */
+Many modern computers have processor caches that speed up the average
+memory reference if the code exhibits sufficient locality in its
+reference patterns.  In order to obtain increased performance at a
+lower cost, many processors have split caches for instructions and
+data that are not guaranteed to be consistent, ie. they are not
+necessarily invisible to the programmer.
 
-=> FLUSH_I_CACHE
-/* This is supposed to flush the portion of the I-cache that Scheme
-   code addresses may be in.
-   It may flush the entire I-cache instead, if it is easier.
-   It is used after a GC or disk-restore.
-   It's needed because the GC has moved code around, and closures
-   and execute cache cells have absolute addresses that the
-   processor might have old copies of.
-   If not provided, it is assumed that there is no need to flush the
-   I-cache, and a NOP version is used instead.
- */
+This presents problems for self-modifying code and for dynamic loaders
+and linkers, since instructions are stored using data references (and
+therefore the data cache), but the instruction cache may not reflect
+the updates.  Modern hardware with split caches often provides some
+way to synchronize both caches so that the operating system can
+guarantee correct operation of newly-loaded programs.
 
-=> FLUSH_I_CACHE_REGION
-/* This flushes a region of the I-cache.
-   It takes as arguments the base address and length in longwords of
-   the region to flush from the I-cache.
-   It is used after updating an execute cache while running.
-   Not needed during GC because FLUSH_I_CACHE will be used then.
-   If not provided, it is assumed that there is no need to flush the
-   I-cache, and a NOP version is used instead.
- */
+The Scheme compiled code support performs some of the same tasks that
+operating systems do, and therefore runs into these problems.
 
-=> COMPILER_PROCESSOR_TYPE, 
-/* Processor type.  Choose a number from the above list, or allocate your own. */
-   
-=> COMPILER_TEMP_SIZE
-/* Size (in long words) of the contents of a floating point register if
-   different from a double.  For example, an MC68881 saves registers
-   in 96 bit (3 longword) blocks.
-   Default is fine for most machines.
-   define COMPILER_TEMP_SIZE			3
-*/
+The ways in which the consistency problem arises in the Scheme system
+are:
 
-=> IN_CMPINT_C
-/* Only defined when cmpint-md.h is included in cmpint.c
-   Procedures that this port needs should appear between
-#ifdef IN_CMPINT_C
-#endif
-*/
+- Newly allocated instructions.  The compiler can be invoked
+dynamically, compiled code can be loaded dynamically into freshly
+allocated storage, and compiled closures are created dynamically.  The
+instruction cache must reflect the changes made to memory through the
+data cache.  The operating system's program loader must solve
+precisely this problem.
 
-=> COMPILER_REGBLOCK_N_FIXED, 
-   COMPILER_REGBLOCK_N_HOOKS, 
-   COMPILER_HOOK_SIZE,
-   COMPILER_REGBLOCK_EXTRA_SIZE,
-   ASM_RESET_HOOK,
-   ASM_REGISTER_BLOCK,
+- Execute caches may change their contents.  Execute caches contain
+jump instructions to the appropriate code, but these instructions may
+change when the corresponding variables are assigned.  If the
+instruction cache is not updated, the wrong code may be entered on
+subsequent calls.  Operating systems with dynamic linking must solve
+this problem as well.
 
-=> Description of cmpaux-md.m4, register conventions, etc. .
+- Code is moved by the garbage collector, since code space is not
+separate from data space and static.  If the caches are not
+synchronized after a garbage collection, subsequent instruction
+fetches may result in the execution of incorrect instructions.
+The operating system must solve this problem when it re-allocates
+virtual memory pages.
 
-=> Description of trap information in uxtrap.h .
+The problem can be solved by synchronizing the caches in the
+appropriate places.  The relevant places in the Scheme system have
+been identified, and use two machine-dependent macros to
+synchronize both caches or flush the instruction cache.
+
+=> FLUSH_I_CACHE is used to flush the portion of the I-cache that
+Scheme code addresses may be in, or alternatively, to guarantee that
+the I-cache contains only valid data.  It may flush/synchronize the
+entire I-cache instead, if it is easier.  It is used after garbage
+collections and image loads.
+
+=> FLUSH_I_CACHE_REGION is used to flush or synchronize a region of
+the address space from the I-cache.  It is given the base address and
+the number of long-words of the region of memory that has just been
+modified and whose new contents must be copied into the I-cache for
+correct execution.
+
+It is used after updating an execute cache while running between
+garbage collections.  It is not used during garbage collection since
+FLUSH_I_CACHE will be used afterwards.
+
+These macros need not be defined if it is not needed to flush the
+cache.  A NOP version is provided by the code when they are not
+defined in cmpint-md.h
+
+Note that on some machine/OS combinations, all system calls cause a
+cache flush, thus an innocuous system call (eg., a time reading call)
+may be used to achieve this purpose.
+
+Many modern machines only make their cache flushing instructions
+available to the operating system (they are priviledged instructions),
+and some operating systems provide no system calls to perform this
+task.  In the absence of information on the structure and
+characteristics of the cache (the information could be used to write
+flushing routines), the Scheme compiler and system may have to be
+changed in order to run on such machines.  Here is a set of changes
+that will bypass the problem, at the expense of some functionality and
+perhaps performance:
+
+- Change the entry code for closures and execute caches.
+
+The code in execute caches can be changed from
+
+	jump	target
+
+to
+
+	jsr	fixed-utility-routine
+	target address
+
+where fixed-utility-routine extracts target address from the return
+address and invokes it.  The same change can be made to the closure
+entry code.
+
+This solves the problem of assignment to variables with execute
+caches.
+
+This change can be done quite easily since the format of closures and
+execute caches is already machine dependent, and all the accessors,
+constructors, and mutators have been abstracted into macros or can
+be easily rewritten in the compiler.
+
+- Change the storage management scheme to accomodate a code area that
+is never garbage collected so that code, once placed there, never
+moves.
+
+This would constitue a major change to the system.  The main problem
+that this change would present is the following:
+
+Closures are data structures created and dropped on the fly, thus they
+cannot be allocated from a region of memory that is never reclaimed.
+Thus closures would have to be allocated from data space, and could no
+longer contain instructions.  This implies that the format of entry
+points would have to change, since the relevant information would no
+longer consist of a single address, but two, ie.  the address of the
+code in code space and the address of the data in data space.  This
+would imply many changes to the compiler for there are implicit
+assumptions throughout that compiled entry points take no space
+besides the space taken by the code.  In particular, simple closures
+would disappear, and multi-closures would have to be redesigned.
+
+	Implementation registers and utilities
+
+The C runtime support maintains some state variables that Scheme code
+may need to access.  In order to make these variables easily
+accessible to both languages, all these variables are collected into a
+contiguous vector (the register block) accesible by both.  The C
+variable "Registers" holds the address of this vector, and while
+compiled Scheme code is being executed, a processor register also
+holds the address of the vector.  Among other data, the register block
+contains the memory version of MemTop, the interpreter's expression
+and environment registers, the interrupt mask and pending interrupt
+words.
+
+In addition, the compiler occasionally needs static memory locations
+into which it can spill the values contained in processor registers.
+Rather than using another register to hold the address of the spill
+locations, these are allocated on the same vector as the register
+block, and the register that holds the address of the register block
+can be used to access the spill locations as well.
+
+Compiled code also needs to invoke assembly language and C utilities
+to perform certain tasks that would take too much space to code
+in-line.  Rather than choosing fixed addresses for these routines, or
+having to update them every time a piece of code is loaded or dumped,
+a register is reserved to hold the address of one of them, and the
+distance between them is pre-determined, so that compiled code can
+invoke any of them by adding an offset to the value in the register
+and jumping there.
+
+On processors with few registers (eg. 68k), it would be wasteful to
+reserve two registers in this fashion.  Both registers are therefore
+merged.  Yet another section of the register block array is reserved
+for utility procedures, and appropriate jump instructions are placed
+there so that compiled code can invoke the utilities by jumping into
+the register block array.
+
+The following macros define the sizes of the various areas of the
+array.  None of them need to be defined except to override the
+default.  The default assumes that there are enough processor
+registers that another one can be reserved to point to the utility
+handles.
+
+=> COMPILER_REGBLOCK_N_FIXED is the size of the register block
+section of the array.  It must accomodate at least as many locations
+as the interpreter expects to have.
+
+=> COMPILER_REGBLOCK_N_TEMPS is the number of spill locations.
+
+=> COMPILER_TEMP_SIZE is the size (in long words) of the contents of a
+floating point register if different from a double.  For example, an
+MC68881 saves registers in 96 bit (3 longword) blocks.  The default is
+fine for most machines.
+
+=> COMPILER_REGBLOCK_EXTRA_SIZE is the additional size (in longwords)
+to be reserved for utility handles.  It is typically defined the
+following way:
+
+#define COMPILER_REGBLOCK_EXTRA_SIZE					\
+(COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)
+
+=> COMPILER_REGBLOCK_N_HOOKS is the maximum number of utility handles.
+
+=> COMPILER_HOOK_SIZE is the size in longwords of a utility handle (an
+absolute jump instruction).
+
+=> Macro ASM_RESET_HOOK can be used to initialize the register block
+array.  It is invoked at boot time.
+
+	Miscellany:
+
+Macro IN_CMPINT_C, defined in cmpint.c, can be used to conditionally
+include code (extern procedures) needed by the port.  It is only
+defined when cmpint-md.h is included by cmpint.c .
+
+=> Macro COMPILER_PROCESSOR_TYPE identifies the processor type.  It
+should be unique for each kind of processor.
