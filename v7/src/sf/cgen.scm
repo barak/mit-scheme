@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cgen.scm,v 4.2 1993/08/03 03:09:44 gjr Exp $
+$Id: cgen.scm,v 4.3 1995/06/23 12:18:32 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -85,9 +85,18 @@ MIT in each case. |#
 		    ((declarations/known? (car declarations))
 		     (loop (cdr declarations)))
 		    (else
-		     (warn "Unused declaration" (car declarations))
+		     (if (not (known-compiler-declaration? (car declarations)))
+			 (warn "Unused declaration" (car declarations)))
 		     (cons (car declarations) (loop (cdr declarations))))))
 	    declarations))))
+
+(define *known-compiler-declarations*
+  ;; Declarations which are not handled by SF but are known to be handled
+  ;; by the compiler so SF ignores then silently.
+  '(IGNORE-REFERENCE-TRAPS IGNORE-ASSIGNMENT-TRAPS))
+
+(define (known-compiler-declaration? declaration)
+  (memq (car declaration) *known-compiler-declarations*))
 
 (define (cgen/expressions interns expressions)
   (map (lambda (expression)
