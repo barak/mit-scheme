@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.29 1999/01/02 06:06:43 cph Exp $
+$Id: make.scm,v 15.30 1999/01/03 05:21:06 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -37,7 +37,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (string-ci=? "HP-UX" microcode-id/operating-system-variant))
 	     (load "floppy" edwin)))))))
 ((access initialize-package! (->environment '(student scode-rewriting))))
-(add-identification! "6.001" 15 28)
+(add-identification! "6.001" 15 30)
 
 ;;; Customize the runtime system:
 (set! repl:allow-restart-notifications? false)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.109 1999/01/02 06:06:43 cph Exp $
+$Id: make.scm,v 4.110 1999/01/03 05:23:02 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -39,4 +39,4 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				'INITIALIZE-PACKAGE!)))))
     (initialize-package! '(COMPILER MACROS))
     (initialize-package! '(COMPILER DECLARATIONS)))
-  (add-identification! (string-append "Liar (" architecture-name ")") 4 108))
+  (add-identification! (string-append "Liar (" architecture-name ")") 4 110))

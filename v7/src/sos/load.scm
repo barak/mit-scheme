@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.5 1999/01/02 06:19:10 cph Exp $
+;;; $Id: load.scm,v 1.6 1999/01/03 05:24:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-1999 Massachusetts Institute of Technology
 ;;;
@@ -35,4 +35,4 @@
   (install 'DEFINE-COMPUTED-EMP 'TRANSFORM:DEFINE-COMPUTED-EMP)
   ;;(install 'METHOD 'TRANSFORM:METHOD)
   )
-(add-identification! "SOS" 1 4)
+(add-identification! "SOS" 1 6)

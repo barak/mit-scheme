@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.17 1999/01/02 06:11:34 cph Exp $
+$Id: make.scm,v 1.18 1999/01/03 05:22:10 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -33,4 +33,4 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (lambda ()
        (load-option 'RB-TREE)
        (package/system-loader "cref" '() false)))))
-(add-identification! "CREF" 1 16)
+(add-identification! "CREF" 1 18)
