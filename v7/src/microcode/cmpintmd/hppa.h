@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.47 1993/11/11 06:01:54 gjr Exp $
+$Id: hppa.h,v 1.48 1993/12/07 20:31:16 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -45,6 +45,7 @@ MIT in each case. */
 #define CMPINTMD_H_INCLUDED
 
 #include "cmptype.h"
+#include "hppacach.h"
 
 /* Machine parameters to be set by the user. */
 
@@ -113,292 +114,6 @@ extern void
 			       ((unsigned long) (nullify_p)));		\
 }
 
-#ifdef IN_CMPINT_C
-
-/* Definitions of the utility procedures.
-   Procedure calls of leaf procedures on the HPPA are pretty fast,
-   so there is no reason not to do this out of line.
-   In this way compiled code can use them too.
- */
-
-union ldil_inst
-{
-  unsigned long inst;
-  struct
-  {
-    unsigned opcode	: 6;
-    unsigned base	: 5;
-    unsigned D		: 5;
-    unsigned C		: 2;
-    unsigned E		: 2;
-    unsigned B		: 11;
-    unsigned A		: 1;
-  } fields;
-};
-
-union branch_inst
-{
-  unsigned long inst;
-  struct
-  {
-    unsigned opcode	: 6;
-    unsigned t_or_b	: 5;
-    unsigned x_or_w1	: 5;
-    unsigned s		: 3;
-    unsigned w2b	: 10;
-    unsigned w2a	: 1;
-    unsigned n		: 1;
-    unsigned w0		: 1;
-  } fields;
-};
-
-union short_pointer
-{
-  unsigned long address;
-  struct
-  {
-    unsigned A		: 1;
-    unsigned B		: 11;
-    unsigned C		: 2;
-    unsigned D		: 5;
-    unsigned w2a	: 1;
-    unsigned w2b	: 10;
-    unsigned pad	: 2;
-  } fields;
-};
-
-/*
-   Note: The following does not do a full decoding of the BLE instruction.
-   It assumes that the bits have been set by STORE_ABSOLUTE_ADDRESS below,
-   which decomposes an absolute address according to the `short_pointer'
-   structure above, and thus certain fields are 0.
-
-   The sequence inserted by STORE_ABSOLUTE_ADDRESS is approximately
-   (the actual address decomposition is given above).
-   LDIL		L'ep,26
-   BLE		R'ep(5,26)
- */
-
-unsigned long
-DEFUN (hppa_extract_absolute_address, (addr), unsigned long * addr)
-{
-  union short_pointer result;
-  union branch_inst ble;
-  union ldil_inst ldil;
-
-  ldil.inst = *addr++;
-  ble.inst = *addr;
-
-  /* Fill the padding */
-  result.address = 0;
-
-  result.fields.A = ldil.fields.A;
-  result.fields.B = ldil.fields.B;
-  result.fields.C = ldil.fields.C;
-  result.fields.D = ldil.fields.D;
-  result.fields.w2a = ble.fields.w2a;
-  result.fields.w2b = ble.fields.w2b;
-
-  return (result.address);
-}
-
-void
-DEFUN (hppa_store_absolute_address, (addr, sourcev, nullify_p),
-       unsigned long * addr AND unsigned long sourcev
-       AND unsigned long nullify_p)
-{
-  union short_pointer source;
-  union ldil_inst ldil;
-  union branch_inst ble;
-
-  source.address = sourcev;
-
-#if 0
-  ldil.fields.opcode = 0x08;
-  ldil.fields.base = 26;
-  ldil.fields.E = 0;
-#else
-  ldil.inst = ((0x08 << 26) | (26 << 21));
-#endif
-
-  ldil.fields.A = source.fields.A;
-  ldil.fields.B = source.fields.B;
-  ldil.fields.C = source.fields.C;
-  ldil.fields.D = source.fields.D;
-
-#if 0
-  ble.fields.opcode = 0x39;
-  ble.fields.t_or_b = 26;
-  ble.fields.x_or_w1 = 0;
-  ble.fields.s = 3;
-  ble.fields.w0 = 0;
-#else
-  ble.inst = ((0x39 << 26) | (26 << 21) | (3 << 13));
-#endif
-
-  ble.fields.w2a = source.fields.w2a;
-  ble.fields.w2b = source.fields.w2b;
-  ble.fields.n = (nullify_p & 1);
-
-  *addr++ = ldil.inst;
-  *addr = ble.inst;
-  return;
-}
-
-/* Cache flushing/pushing code.
-   Uses routines from cmpaux-hppa.m4.
- */
-
-#include "hppacach.h"
-#include "option.h"
-
-static struct pdc_cache_dump cache_info;
-
-extern void
-  EXFUN (flush_i_cache, (void)),
-  EXFUN (push_d_cache_region, (PTR, unsigned long));
-
-void
-DEFUN_VOID (flush_i_cache)
-{
-  extern void
-    EXFUN (cache_flush_all, (unsigned int, struct pdc_cache_result *));
-
-  struct pdc_cache_result * cache_desc;
-  
-  cache_desc = ((struct pdc_cache_result *) &(cache_info.cache_format));
-
-  /* The call can be interrupted in the middle of a set, so do it twice.
-     Probability of two interrupts in the same cache line is
-     exceedingly small, so this is likely to win.
-     On the other hand, if the caches are directly mapped, a single
-     call can't lose.
-     In addition, if the cache is shared, there is no need to flush at all.
-   */
-
-  if (((cache_desc->I_info.conf.bits.fsel & 1) == 0)
-      || ((cache_desc->D_info.conf.bits.fsel & 1) == 0))
-  {
-    unsigned int flag = 0;
-
-    if (cache_desc->I_info.loop != 1)
-      flag |= I_CACHE;
-    if (cache_desc->D_info.loop != 1)
-      flag |= D_CACHE;
-
-    if (flag != 0)
-      cache_flush_all (flag, cache_desc);
-    cache_flush_all ((D_CACHE | I_CACHE), cache_desc);
-  }
-}
-
-void
-DEFUN (push_d_cache_region, (start_address, block_size),
-       PTR start_address AND unsigned long block_size)
-{
-  extern void
-    EXFUN (cache_flush_region, (PTR, long, unsigned int));
-
-  struct pdc_cache_result * cache_desc;
-  
-  cache_desc = ((struct pdc_cache_result *) &(cache_info.cache_format));
-
-  /* Note that the first and last words are also flushed from the I-cache
-     in case this object is adjacent to another that has already caused
-     the cache line to be copied into the I-cache.
-   */
-
-  if (((cache_desc->I_info.conf.bits.fsel & 1) == 0)
-      || ((cache_desc->D_info.conf.bits.fsel & 1) == 0))
-  {
-    cache_flush_region (start_address, block_size, D_CACHE);
-    cache_flush_region (start_address, 1, I_CACHE);
-    cache_flush_region (((PTR)
-			 (((unsigned long *) start_address)
-			  + (block_size - 1))),
-			1,
-			I_CACHE);
-  }
-  return;
-}
-
-#ifndef MODELS_FILENAME
-#define MODELS_FILENAME "hppacach.mod"
-#endif
-
-static void
-DEFUN_VOID (flush_i_cache_initialize)
-{
-  extern char * EXFUN (getenv, (const char *));
-  CONST char * models_filename =
-    (search_path_for_file (0, MODELS_FILENAME, 1, 1));
-  char * model;
-
-  model = (getenv ("MITSCHEME_HPPA_MODEL"));
-
-#ifdef _HPUX
-  if (model == ((char *) NULL))
-  {
-    struct utsname sysinfo;
-    if ((uname (&sysinfo)) < 0)
-    {
-      outf_fatal ("\nflush_i_cache: uname failed.\n");
-      goto loser;
-    }
-    model = &sysinfo.machine[0];
-  }
-#endif /* _HPUX */
-  if (model == ((char *) NULL))
-  {
-    outf_fatal
-      ("\nflush_i_cache: MITSCHEME_HPPA_MODEL not set in environment.\n");
-    goto loser;
-  }
-  {
-    int fd = (open (models_filename, O_RDONLY));
-    if (fd < 0)
-      {
-	outf_fatal ("\nflush_i_cache: open (%s) failed.\n",
-		    models_filename);
-	goto loser;
-      }
-    while (1)
-      {
-	int read_result =
-	  (read (fd,
-		 ((char *) (&cache_info)),
-		 (sizeof (struct pdc_cache_dump))));
-	if (read_result == 0)
-	  {
-	    close (fd);
-	    break;
-	  }
-	if (read_result != (sizeof (struct pdc_cache_dump)))
-	  {
-	    close (fd);
-	    outf_fatal ("\nflush_i_cache: read (%s) failed.\n",
-			models_filename);
-	    goto loser;
-	  }
-	if ((strcmp (model, (cache_info . hardware))) == 0)
-	  {
-	    close (fd);
-	    return;
-	  }
-      }
-  }
-  outf_fatal (
-	      "The cache parameters database has no entry for the %s model.\n",
-	      model);
-  outf_fatal ("Please make an entry in the database;\n");
-  outf_fatal ("the installation notes contain instructions for doing so.\n");
- loser:
-  outf_fatal ("\nASM_RESET_HOOK: Unable to read cache parameters.\n");
-  termination_init_error ();
-}
-
-#endif /* IN_CMPINT_C */
-
 /* Interrupt/GC polling. */
 
 /* The length of the GC recovery code that precedes an entry.
@@ -415,9 +130,8 @@ DEFUN_VOID (flush_i_cache_initialize)
 
   For a closure
 
-  DEP		0,31,2,31			; clear privilege bits
-  DEPI		tc_closure>>1,4,5,31		; set type code
-  STWM		31,-4(0,Rstack)			; push on stack
+  DEPI		tc_closure>>1,4,5,25		; set type code
+  STWM		25,-4(0,Rstack)			; push on stack
   COMB,>=	Rfree,Rmemtop,interrupt		; GC/interrupt check
   LDW		0(0,Regs),Rmemtop		; Recache memtop
 
@@ -427,10 +141,6 @@ DEFUN_VOID (flush_i_cache_initialize)
   update Rmemtop directly.  At that point, the instruction following the
   COMB instruction will have to be nullified whenever the interrupt
   branch is processed.
-
-  The DEP can be eliminated if we assume that the privilege bits will always
-  be the same (3).  The clearing can be combined with the ADDI instruction in
-  the closure object itself.
 
  */
 
@@ -445,7 +155,7 @@ DEFUN_VOID (flush_i_cache_initialize)
 
    LDIL		L'target,26
    BLE		R'target(5,26)
-   ADDI		-12,31,31
+   ADDI		-15,31,25		; handle privilege bits
  */
 
 #define COMPILED_CLOSURE_ENTRY_SIZE     16
@@ -461,7 +171,7 @@ DEFUN_VOID (flush_i_cache_initialize)
 
 #define EXTRACT_CLOSURE_ENTRY_ADDRESS(real_entry_point, entry_point)	\
 {									\
-  EXTRACT_ABSOLUTE_ADDRESS(real_entry_point, entry_point);		\
+  EXTRACT_ABSOLUTE_ADDRESS (real_entry_point, entry_point);		\
 }
 
 /* This is the inverse of EXTRACT_CLOSURE_ENTRY_ADDRESS.
@@ -471,7 +181,7 @@ DEFUN_VOID (flush_i_cache_initialize)
 
 #define STORE_CLOSURE_ENTRY_ADDRESS(real_entry_point, entry_point)	\
 {									\
-  STORE_ABSOLUTE_ADDRESS(real_entry_point, entry_point, false);		\
+  STORE_ABSOLUTE_ADDRESS (real_entry_point, entry_point, false);	\
 }
 
 /* Trampolines
@@ -709,8 +419,169 @@ extern Boolean EXFUN (hppa_grow_primitive_table, (int));
  */
 
 #define SPLIT_CACHES
+
+/* Derived parameters and macros.
 
+   These macros expect the above definitions to be meaningful.
+   If they are not, the macros below may have to be changed as well.
+ */
+
+#define COMPILED_ENTRY_OFFSET_WORD(entry)                               \
+  (((format_word *) (entry))[-1])
+#define COMPILED_ENTRY_FORMAT_WORD(entry)                               \
+  (((format_word *) (entry))[-2])
+
+/* The next one assumes 2's complement integers....*/
+#define CLEAR_LOW_BIT(word)                     ((word) & ((unsigned long) -2))
+#define OFFSET_WORD_CONTINUATION_P(word)        (((word) & 1) != 0)
+
+#if (PC_ZERO_BITS == 0)
+/* Instructions aligned on byte boundaries */
+#define BYTE_OFFSET_TO_OFFSET_WORD(offset)      ((offset) << 1)
+#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)                         \
+  ((CLEAR_LOW_BIT(offset_word)) >> 1)
+#endif
+
+#if (PC_ZERO_BITS == 1)
+/* Instructions aligned on word (16 bit) boundaries */
+#define BYTE_OFFSET_TO_OFFSET_WORD(offset)      (offset)
+#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)                         \
+  (CLEAR_LOW_BIT(offset_word))
+#endif
+
+#if (PC_ZERO_BITS >= 2)
+/* Should be OK for =2, but bets are off for >2 because of problems
+   mentioned earlier!
+*/
+#define SHIFT_AMOUNT                            (PC_ZERO_BITS - 1)
+#define BYTE_OFFSET_TO_OFFSET_WORD(offset)      ((offset) >> (SHIFT_AMOUNT))
+#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)                         \
+  ((CLEAR_LOW_BIT(offset_word)) << (SHIFT_AMOUNT))
+#endif
+
+#define MAKE_OFFSET_WORD(entry, block, continue)                        \
+  ((BYTE_OFFSET_TO_OFFSET_WORD(((char *) (entry)) -                     \
+                               ((char *) (block)))) |                   \
+   ((continue) ? 1 : 0))
+
+#if (EXECUTE_CACHE_ENTRY_SIZE == 2)
+#define EXECUTE_CACHE_COUNT_TO_ENTRIES(count)                           \
+  ((count) >> 1)
+#define EXECUTE_CACHE_ENTRIES_TO_COUNT(entries)				\
+  ((entries) << 1)
+#endif
+
+#if (EXECUTE_CACHE_ENTRY_SIZE == 4)
+#define EXECUTE_CACHE_COUNT_TO_ENTRIES(count)                           \
+  ((count) >> 2)
+#define EXECUTE_CACHE_ENTRIES_TO_COUNT(entries)				\
+  ((entries) << 2)
+#endif
+
+#if (!defined(EXECUTE_CACHE_COUNT_TO_ENTRIES))
+#define EXECUTE_CACHE_COUNT_TO_ENTRIES(count)                           \
+  ((count) / EXECUTE_CACHE_ENTRY_SIZE)
+#define EXECUTE_CACHE_ENTRIES_TO_COUNT(entries)				\
+  ((entries) * EXECUTE_CACHE_ENTRY_SIZE)
+#endif
+
+/* The first entry in a cc block is preceeded by 2 headers (block and nmv),
+   a format word and a gc offset word.   See the early part of the
+   TRAMPOLINE picture, above.
+ */
+
+#define CC_BLOCK_FIRST_ENTRY_OFFSET                                     \
+  (2 * ((sizeof(SCHEME_OBJECT)) + (sizeof(format_word))))
+
+#ifndef FORMAT_BYTE_CLOSURE
+#define FORMAT_BYTE_CLOSURE			0xFA
+#endif
+
+#ifndef FORMAT_WORD_CLOSURE
+#define FORMAT_WORD_CLOSURE	(MAKE_FORMAT_WORD (0xFF, FORMAT_BYTE_CLOSURE))
+#endif
+
+/* This assumes that a format word is at least 16 bits,
+   and the low order field is always 8 bits.
+ */
+
+#define MAKE_FORMAT_WORD(field1, field2)                                \
+  (((field1) << 8) | ((field2) & 0xff))
+
+#define SIGN_EXTEND_FIELD(field, size)                                  \
+  (((field) & ((1 << (size)) - 1)) |                                    \
+   ((((field) & (1 << ((size) - 1))) == 0) ? 0 :                        \
+    ((-1) << (size))))
+
+#define FORMAT_WORD_LOW_BYTE(word)                                      \
+  (SIGN_EXTEND_FIELD((((unsigned long) (word)) & 0xff), 8))
+
+#define FORMAT_WORD_HIGH_BYTE(word)					\
+  (SIGN_EXTEND_FIELD((((unsigned long) (word)) >> 8),			\
+		     (((sizeof (format_word)) * CHAR_BIT) - 8)))
+
+#define COMPILED_ENTRY_FORMAT_HIGH(addr)                                \
+  (FORMAT_WORD_HIGH_BYTE(COMPILED_ENTRY_FORMAT_WORD(addr)))
+
+#define COMPILED_ENTRY_FORMAT_LOW(addr)                                 \
+  (FORMAT_WORD_LOW_BYTE(COMPILED_ENTRY_FORMAT_WORD(addr)))
+
+#define COMPILED_ENTRY_MAXIMUM_ARITY    COMPILED_ENTRY_FORMAT_LOW
+#define COMPILED_ENTRY_MINIMUM_ARITY    COMPILED_ENTRY_FORMAT_HIGH
+
 #ifdef IN_CMPINT_C
+
+/* Definitions of the utility procedures.
+   Procedure calls of leaf procedures on the HPPA are pretty fast,
+   so there is no reason not to do this out of line.
+   In this way compiled code can use them too.
+ */
+
+union ldil_inst
+{
+  unsigned long inst;
+  struct
+  {
+    unsigned opcode	: 6;
+    unsigned base	: 5;
+    unsigned D		: 5;
+    unsigned C		: 2;
+    unsigned E		: 2;
+    unsigned B		: 11;
+    unsigned A		: 1;
+  } fields;
+};
+
+union branch_inst
+{
+  unsigned long inst;
+  struct
+  {
+    unsigned opcode	: 6;
+    unsigned t_or_b	: 5;
+    unsigned x_or_w1	: 5;
+    unsigned s		: 3;
+    unsigned w2b	: 10;
+    unsigned w2a	: 1;
+    unsigned n		: 1;
+    unsigned w0		: 1;
+  } fields;
+};
+
+union short_pointer
+{
+  unsigned long address;
+  struct
+  {
+    unsigned A		: 1;
+    unsigned B		: 11;
+    unsigned C		: 2;
+    unsigned D		: 5;
+    unsigned w2a	: 1;
+    unsigned w2b	: 10;
+    unsigned pad	: 2;
+  } fields;
+};
 
 union assemble_17_u
 {
@@ -803,6 +674,7 @@ static Boolean
 static unsigned long
   bkpt_instruction,
   closure_bkpt_instruction,
+  closure_entry_bkpt_instruction,
   * bkpt_normal_proceed_thunk,
   * bkpt_plus_proceed_thunk,
   * bkpt_minus_proceed_thunk_start,
@@ -813,7 +685,7 @@ static unsigned long
 #define FAHRENHEIT 451
 
 static void
-DEFUN_VOID(bkpt_init)
+DEFUN_VOID (bkpt_init)
 {
   int i;
   union branch_inst instr;
@@ -845,9 +717,11 @@ DEFUN_VOID(bkpt_init)
 
   bkpt_instruction = instr.inst;
 
+  instr.fields.w2b	= ((FAHRENHEIT + 33) >> 2);
+  closure_entry_bkpt_instruction = instr.inst;
+
   instr.fields.opcode	= 0x38;	/* BE opcode */
   instr.fields.w2b	= ((FAHRENHEIT + 9) >> 2);
-
   closure_bkpt_instruction = instr.inst;
 
   bkpt_normal_proceed_thunk
@@ -876,6 +750,7 @@ DEFUN_VOID(bkpt_init)
 #define BKPT_KIND_PC_REL_BRANCH		2
 #define BKPT_KIND_BL_INST		3
 #define BKPT_KIND_BLE_INST		4
+#define BKPT_KIND_CLOSURE_ENTRY		5
 
 extern void EXFUN (cache_flush_region, (PTR, long, unsigned int));
 
@@ -904,8 +779,15 @@ DEFUN (bkpt_install, (entry_point), PTR entry_point)
   SCHEME_OBJECT handle;
   unsigned long first_instr = (* ((unsigned long *) entry_point));
   unsigned short opcode = ((first_instr >> 26) & 0x3f);
+  unsigned long new_instr = bkpt_instruction;
 
-  if ((! (branch_opcode_table[opcode])) || (opcode == 0x38))
+  if ((COMPILED_ENTRY_FORMAT_WORD (entry_point)) == FORMAT_WORD_CLOSURE)
+  {
+    /* This assumes that the first instruction is normal */ 
+    kind = BKPT_KIND_CLOSURE_ENTRY;
+    new_instr = closure_entry_bkpt_instruction;
+  }
+  else if ((! (branch_opcode_table[opcode])) || (opcode == 0x38))
     kind = BKPT_KIND_NORMAL;	/* BE instr included */
   else if (opcode == 0x39)
 #if 0
@@ -956,7 +838,7 @@ DEFUN (bkpt_install, (entry_point), PTR entry_point)
 
   handle = (alloc_bkpt_handle (kind, first_instr, entry_point));
 
-  (* ((unsigned long *) entry_point)) = bkpt_instruction;
+  (* ((unsigned long *) entry_point)) = new_instr;
   cache_flush_region (((PTR) entry_point), 1, (D_CACHE | I_CACHE));
 
   return (handle);
@@ -981,7 +863,8 @@ DEFUN (bkpt_remove, (entry_point, handle),
   int offset;
   unsigned long * instrs = ((unsigned long *) entry_point);
 
-  if (instrs[0] == bkpt_instruction)
+  if ((instrs[0] == bkpt_instruction)
+      || (instrs[0] == closure_entry_bkpt_instruction))
     offset = 0;
   else if (instrs[2] == closure_bkpt_instruction)
     offset = 2;
@@ -999,6 +882,7 @@ DEFUN (bkpt_p, (entry_point), PTR entry_point)
   unsigned long * instrs = ((unsigned long *) entry_point);
 
   return ((instrs[0] == bkpt_instruction)
+	  || (instrs[0] == closure_entry_bkpt_instruction)
 	  || (instrs[2] == closure_bkpt_instruction));
 }
 
@@ -1034,7 +918,7 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
       * value = ((unsigned long) buffer);
       return (TRUE);
     }
-
+
     case BKPT_KIND_NORMAL:
     {
       int i, len;
@@ -1050,6 +934,13 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
 
       Val = state;
       * value = ((unsigned long) buffer);
+      return (TRUE);
+    }
+
+    case BKPT_KIND_CLOSURE_ENTRY:
+    {
+      STACK_PUSH (state);	/* closure object */
+      * value = ((unsigned long) ((OBJECT_ADDRESS (ep)) + 2));
       return (TRUE);
     }
 
@@ -1171,6 +1062,85 @@ DEFUN_VOID (change_vm_protection)
   return;
 }
 
+#include "option.h"
+
+#ifndef MODELS_FILENAME
+#define MODELS_FILENAME "hppacach.mod"
+#endif
+
+static struct pdc_cache_dump cache_info;
+
+static void
+DEFUN_VOID (flush_i_cache_initialize)
+{
+  extern char * EXFUN (getenv, (const char *));
+  CONST char * models_filename =
+    (search_path_for_file (0, MODELS_FILENAME, 1, 1));
+  char * model;
+
+  model = (getenv ("MITSCHEME_HPPA_MODEL"));
+
+#ifdef _HPUX
+  if (model == ((char *) NULL))
+  {
+    struct utsname sysinfo;
+    if ((uname (&sysinfo)) < 0)
+    {
+      outf_fatal ("\nflush_i_cache: uname failed.\n");
+      goto loser;
+    }
+    model = &sysinfo.machine[0];
+  }
+#endif /* _HPUX */
+  if (model == ((char *) NULL))
+  {
+    outf_fatal
+      ("\nflush_i_cache: MITSCHEME_HPPA_MODEL not set in environment.\n");
+    goto loser;
+  }
+  {
+    int fd = (open (models_filename, O_RDONLY));
+    if (fd < 0)
+      {
+	outf_fatal ("\nflush_i_cache: open (%s) failed.\n",
+		    models_filename);
+	goto loser;
+      }
+    while (1)
+      {
+	int read_result =
+	  (read (fd,
+		 ((char *) (&cache_info)),
+		 (sizeof (struct pdc_cache_dump))));
+	if (read_result == 0)
+	  {
+	    close (fd);
+	    break;
+	  }
+	if (read_result != (sizeof (struct pdc_cache_dump)))
+	  {
+	    close (fd);
+	    outf_fatal ("\nflush_i_cache: read (%s) failed.\n",
+			models_filename);
+	    goto loser;
+	  }
+	if ((strcmp (model, (cache_info . hardware))) == 0)
+	  {
+	    close (fd);
+	    return;
+	  }
+      }
+  }
+  outf_fatal (
+	      "The cache parameters database has no entry for the %s model.\n",
+	      model);
+  outf_fatal ("Please make an entry in the database;\n");
+  outf_fatal ("the installation notes contain instructions for doing so.\n");
+ loser:
+  outf_fatal ("\nASM_RESET_HOOK: Unable to read cache parameters.\n");
+  termination_init_error ();
+}
+
 /* This loads the cache information structure for use by flush_i_cache,
    sets the floating point flags correctly, and accommodates the c
    function pointer closure format problems for utilities for HP-UX >= 8.0 .
@@ -1192,7 +1162,8 @@ DEFUN (hppa_reset_hook, (utility_length, utility_table),
   flush_i_cache_initialize ();
   interface_initialize ();
   change_vm_protection ();
-  hppa_closure_hook = (C_closure_entry_point ((unsigned long) cross_segment_call));
+  hppa_closure_hook
+    = (C_closure_entry_point ((unsigned long) cross_segment_call));
   hppa_utility_table
     = (transform_procedure_table (utility_length, utility_table));
   return;
@@ -1225,145 +1196,180 @@ DEFUN (hppa_grow_primitive_table, (new_size), int new_size)
     hppa_primitive_table = new_table;
   return (new_table != ((PTR *) NULL));
 }
+
+/*
+   Note: The following does not do a full decoding of the BLE instruction.
+   It assumes that the bits have been set by STORE_ABSOLUTE_ADDRESS below,
+   which decomposes an absolute address according to the `short_pointer'
+   structure above, and thus certain fields are 0.
 
+   The sequence inserted by STORE_ABSOLUTE_ADDRESS is approximately
+   (the actual address decomposition is given above).
+   LDIL		L'ep,26
+   BLE		R'ep(5,26)
+ */
+
+unsigned long
+DEFUN (hppa_extract_absolute_address, (addr), unsigned long * addr)
+{
+  union short_pointer result;
+  union branch_inst ble;
+  union ldil_inst ldil;
+
+  ldil.inst = *addr++;
+  ble.inst = *addr;
+
+  /* Fill the padding */
+  result.address = 0;
+
+  result.fields.A = ldil.fields.A;
+  result.fields.B = ldil.fields.B;
+  result.fields.C = ldil.fields.C;
+  result.fields.D = ldil.fields.D;
+  result.fields.w2a = ble.fields.w2a;
+  result.fields.w2b = ble.fields.w2b;
+
+  return (result.address);
+}
+
+void
+DEFUN (hppa_store_absolute_address, (addr, sourcev, nullify_p),
+       unsigned long * addr AND unsigned long sourcev
+       AND unsigned long nullify_p)
+{
+  union short_pointer source;
+  union ldil_inst ldil;
+  union branch_inst ble;
+
+  source.address = sourcev;
+
+#if 0
+  ldil.fields.opcode = 0x08;
+  ldil.fields.base = 26;
+  ldil.fields.E = 0;
+#else
+  ldil.inst = ((0x08 << 26) | (26 << 21));
+#endif
+
+  ldil.fields.A = source.fields.A;
+  ldil.fields.B = source.fields.B;
+  ldil.fields.C = source.fields.C;
+  ldil.fields.D = source.fields.D;
+
+#if 0
+  ble.fields.opcode = 0x39;
+  ble.fields.t_or_b = 26;
+  ble.fields.x_or_w1 = 0;
+  ble.fields.s = 3;
+  ble.fields.w0 = 0;
+#else
+  ble.inst = ((0x39 << 26) | (26 << 21) | (3 << 13));
+#endif
+
+  ble.fields.w2a = source.fields.w2a;
+  ble.fields.w2b = source.fields.w2b;
+  ble.fields.n = (nullify_p & 1);
+
+  *addr++ = ldil.inst;
+  *addr = ble.inst;
+  return;
+}
+
+/* Cache flushing/pushing code.
+   Uses routines from cmpaux-hppa.m4.
+ */
+
+extern void
+  EXFUN (flush_i_cache, (void)),
+  EXFUN (push_d_cache_region, (PTR, unsigned long));
+
+void
+DEFUN_VOID (flush_i_cache)
+{
+  extern void
+    EXFUN (cache_flush_all, (unsigned int, struct pdc_cache_result *));
+
+  struct pdc_cache_result * cache_desc;
+  
+  cache_desc = ((struct pdc_cache_result *) &(cache_info.cache_format));
+
+  /* The call can be interrupted in the middle of a set, so do it twice.
+     Probability of two interrupts in the same cache line is
+     exceedingly small, so this is likely to win.
+     On the other hand, if the caches are directly mapped, a single
+     call can't lose.
+     In addition, if the cache is shared, there is no need to flush at all.
+   */
+
+  if (((cache_desc->I_info.conf.bits.fsel & 1) == 0)
+      || ((cache_desc->D_info.conf.bits.fsel & 1) == 0))
+  {
+    unsigned int flag = 0;
+
+    if (cache_desc->I_info.loop != 1)
+      flag |= I_CACHE;
+    if (cache_desc->D_info.loop != 1)
+      flag |= D_CACHE;
+
+    if (flag != 0)
+      cache_flush_all (flag, cache_desc);
+    cache_flush_all ((D_CACHE | I_CACHE), cache_desc);
+  }
+}
+
+void
+DEFUN (push_d_cache_region, (start_address, block_size),
+       PTR start_address AND unsigned long block_size)
+{
+  extern void
+    EXFUN (cache_flush_region, (PTR, long, unsigned int));
+
+  struct pdc_cache_result * cache_desc;
+  
+  cache_desc = ((struct pdc_cache_result *) &(cache_info.cache_format));
+
+  /* Note that the first and last words are also flushed from the I-cache
+     in case this object is adjacent to another that has already caused
+     the cache line to be copied into the I-cache.
+   */
+
+  if (((cache_desc->I_info.conf.bits.fsel & 1) == 0)
+      || ((cache_desc->D_info.conf.bits.fsel & 1) == 0))
+  {
+    cache_flush_region (start_address, block_size, D_CACHE);
+    cache_flush_region (start_address, 1, I_CACHE);
+    cache_flush_region (((PTR)
+			 (((unsigned long *) start_address)
+			  + (block_size - 1))),
+			1,
+			I_CACHE);
+  }
+  return;
+}
+
 #define DECLARE_CMPINTMD_UTILITIES()					\
-  UTLD(hppa_extract_absolute_address),					\
-  UTLD(hppa_store_absolute_address),					\
-  UTLD(flush_i_cache),							\
-  UTLD(push_d_cache_region),						\
-  UTLD(flush_i_cache_initialize),					\
-  UTLD(assemble_17),							\
-  UTLD(assemble_12),							\
-  UTLD(C_closure_entry_point),						\
-  UTLD(bkpt_init),							\
-  UTLD(alloc_bkpt_handle),						\
-  UTLD(bkpt_install),							\
-  UTLD(bkpt_closure_install),						\
-  UTLD(bkpt_remove),							\
-  UTLD(bkpt_p),								\
-  UTLD(do_bkpt_proceed),						\
-  UTLD(transform_procedure_entries),					\
-  UTLD(transform_procedure_table),					\
-  UTLD(change_vm_protection),						\
-  UTLD(hppa_reset_hook),						\
-  UTLD(hppa_update_primitive_table),					\
-  UTLD(hppa_grow_primitive_table)
+  UTLD (assemble_17),							\
+  UTLD (assemble_12),							\
+  UTLD (C_closure_entry_point),						\
+  UTLD (bkpt_init),							\
+  UTLD (alloc_bkpt_handle),						\
+  UTLD (bkpt_install),							\
+  UTLD (bkpt_closure_install),						\
+  UTLD (bkpt_remove),							\
+  UTLD (bkpt_p),							\
+  UTLD (do_bkpt_proceed),						\
+  UTLD (transform_procedure_entries),					\
+  UTLD (transform_procedure_table),					\
+  UTLD (change_vm_protection),						\
+  UTLD (hppa_reset_hook),						\
+  UTLD (hppa_update_primitive_table),					\
+  UTLD (hppa_grow_primitive_table),					\
+  UTLD (hppa_extract_absolute_address),					\
+  UTLD (hppa_store_absolute_address),					\
+  UTLD (flush_i_cache),							\
+  UTLD (push_d_cache_region),						\
+  UTLD (flush_i_cache_initialize)
 
 #endif /* IN_CMPINT_C */
-
-/* Derived parameters and macros.
-
-   These macros expect the above definitions to be meaningful.
-   If they are not, the macros below may have to be changed as well.
- */
-
-#define COMPILED_ENTRY_OFFSET_WORD(entry)                               \
-  (((format_word *) (entry))[-1])
-#define COMPILED_ENTRY_FORMAT_WORD(entry)                               \
-  (((format_word *) (entry))[-2])
-
-/* The next one assumes 2's complement integers....*/
-#define CLEAR_LOW_BIT(word)                     ((word) & ((unsigned long) -2))
-#define OFFSET_WORD_CONTINUATION_P(word)        (((word) & 1) != 0)
-
-#if (PC_ZERO_BITS == 0)
-/* Instructions aligned on byte boundaries */
-#define BYTE_OFFSET_TO_OFFSET_WORD(offset)      ((offset) << 1)
-#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)                         \
-  ((CLEAR_LOW_BIT(offset_word)) >> 1)
-#endif
-
-#if (PC_ZERO_BITS == 1)
-/* Instructions aligned on word (16 bit) boundaries */
-#define BYTE_OFFSET_TO_OFFSET_WORD(offset)      (offset)
-#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)                         \
-  (CLEAR_LOW_BIT(offset_word))
-#endif
-
-#if (PC_ZERO_BITS >= 2)
-/* Should be OK for =2, but bets are off for >2 because of problems
-   mentioned earlier!
-*/
-#define SHIFT_AMOUNT                            (PC_ZERO_BITS - 1)
-#define BYTE_OFFSET_TO_OFFSET_WORD(offset)      ((offset) >> (SHIFT_AMOUNT))
-#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)                         \
-  ((CLEAR_LOW_BIT(offset_word)) << (SHIFT_AMOUNT))
-#endif
-
-#define MAKE_OFFSET_WORD(entry, block, continue)                        \
-  ((BYTE_OFFSET_TO_OFFSET_WORD(((char *) (entry)) -                     \
-                               ((char *) (block)))) |                   \
-   ((continue) ? 1 : 0))
-
-#if (EXECUTE_CACHE_ENTRY_SIZE == 2)
-#define EXECUTE_CACHE_COUNT_TO_ENTRIES(count)                           \
-  ((count) >> 1)
-#define EXECUTE_CACHE_ENTRIES_TO_COUNT(entries)				\
-  ((entries) << 1)
-#endif
-
-#if (EXECUTE_CACHE_ENTRY_SIZE == 4)
-#define EXECUTE_CACHE_COUNT_TO_ENTRIES(count)                           \
-  ((count) >> 2)
-#define EXECUTE_CACHE_ENTRIES_TO_COUNT(entries)				\
-  ((entries) << 2)
-#endif
-
-#if (!defined(EXECUTE_CACHE_COUNT_TO_ENTRIES))
-#define EXECUTE_CACHE_COUNT_TO_ENTRIES(count)                           \
-  ((count) / EXECUTE_CACHE_ENTRY_SIZE)
-#define EXECUTE_CACHE_ENTRIES_TO_COUNT(entries)				\
-  ((entries) * EXECUTE_CACHE_ENTRY_SIZE)
-#endif
-
-/* The first entry in a cc block is preceeded by 2 headers (block and nmv),
-   a format word and a gc offset word.   See the early part of the
-   TRAMPOLINE picture, above.
- */
-
-#define CC_BLOCK_FIRST_ENTRY_OFFSET                                     \
-  (2 * ((sizeof(SCHEME_OBJECT)) + (sizeof(format_word))))
-
-/* Format words */
-
-#define FORMAT_BYTE_EXPR                0xFF
-#define FORMAT_BYTE_COMPLR              0xFE
-#define FORMAT_BYTE_CMPINT              0xFD
-#define FORMAT_BYTE_DLINK               0xFC
-#define FORMAT_BYTE_RETURN              0xFB
-
-#define FORMAT_WORD_EXPR        (MAKE_FORMAT_WORD(0xFF, FORMAT_BYTE_EXPR))
-#define FORMAT_WORD_CMPINT      (MAKE_FORMAT_WORD(0xFF, FORMAT_BYTE_CMPINT))
-#define FORMAT_WORD_RETURN      (MAKE_FORMAT_WORD(0xFF, FORMAT_BYTE_RETURN))
-
-/* This assumes that a format word is at least 16 bits,
-   and the low order field is always 8 bits.
- */
-
-#define MAKE_FORMAT_WORD(field1, field2)                                \
-  (((field1) << 8) | ((field2) & 0xff))
-
-#define SIGN_EXTEND_FIELD(field, size)                                  \
-  (((field) & ((1 << (size)) - 1)) |                                    \
-   ((((field) & (1 << ((size) - 1))) == 0) ? 0 :                        \
-    ((-1) << (size))))
-
-#define FORMAT_WORD_LOW_BYTE(word)                                      \
-  (SIGN_EXTEND_FIELD((((unsigned long) (word)) & 0xff), 8))
-
-#define FORMAT_WORD_HIGH_BYTE(word)					\
-  (SIGN_EXTEND_FIELD((((unsigned long) (word)) >> 8),			\
-		     (((sizeof (format_word)) * CHAR_BIT) - 8)))
-
-#define COMPILED_ENTRY_FORMAT_HIGH(addr)                                \
-  (FORMAT_WORD_HIGH_BYTE(COMPILED_ENTRY_FORMAT_WORD(addr)))
-
-#define COMPILED_ENTRY_FORMAT_LOW(addr)                                 \
-  (FORMAT_WORD_LOW_BYTE(COMPILED_ENTRY_FORMAT_WORD(addr)))
-
-#define FORMAT_BYTE_FRAMEMAX            0x7f
-
-#define COMPILED_ENTRY_MAXIMUM_ARITY    COMPILED_ENTRY_FORMAT_LOW
-#define COMPILED_ENTRY_MINIMUM_ARITY    COMPILED_ENTRY_FORMAT_HIGH
 
 #endif /* CMPINTMD_H_INCLUDED */
