@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.6 1994/11/06 18:13:23 adams Exp $
+$Id: graphics.scm,v 1.7 1995/02/21 23:26:40 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Scheme Graphics Operations
 ;;; package: (win32 scheme-graphics)
 
@@ -194,7 +194,8 @@ MIT in each case. |#
      ((and (= msg WM_QUERYNEWPALETTE) (win32-device/palette window))
       (update-palette))
 
-     ((and (= msg WM_ACTIVATE) (not (= wparam 0)) (win32-device/palette window))
+     ((and (= msg WM_ACTIVATE)
+	   (not (= wparam 0)) (win32-device/palette window))
       (update-palette)
       0)
 
@@ -266,8 +267,8 @@ MIT in each case. |#
   (define cv #(0 88 128 170 212 255))
   (alloc 0 0 0 0)		; Black is matched
   (alloc 255 255 255 0)		; White is matched
-  ; Grays are not matched: this ensures order of colors in palette is always the same
-  ; when the graphcis window has the focus
+  ; Grays are not matched: this ensures order of colors in palette is
+  ; always the same when the graphics window has the focus
   (do ((grey 48 (+ grey 8)))
       ((>= grey 255))
     (alloc grey grey grey PC_NOCOLLAPSE))
@@ -749,7 +750,8 @@ MIT in each case. |#
 (define (win32-graphics/move-window device x y)
   (let* ((window (graphics-device/descriptor device))
          (hwnd   (win32-device/hwnd window)))
-    (set-window-pos hwnd 0 x y 0 0 (+ SWP_NOZORDER SWP_NOSIZE SWP_NOACTIVATE))))
+    (set-window-pos hwnd 0 x y 0 0
+		    (+ SWP_NOZORDER SWP_NOSIZE SWP_NOACTIVATE))))
       
 (define (win32-graphics/resize-window device w h)
   (let* ((window (graphics-device/descriptor device))
@@ -770,7 +772,7 @@ MIT in each case. |#
          (hwnd   (win32-device/hwnd window)))
     (set-window-text hwnd name)
     unspecific))
-;;------------------------------------------------------------------------------
+;;-----------------------------------------------------------------------------
 ;;
 
 (define dib-image-type)
@@ -795,7 +797,8 @@ MIT in each case. |#
 	  (w      (dib-width dib))
 	  (h      (dib-height dib)))
     (if (and (= x 0) (= y 0)
-	     (= w (win32-device/width window)) (= h (win32-device/height window)))
+	     (= w (win32-device/width window))
+	     (= h (win32-device/height window)))
 	(let ((bm (bitmap-from-dib dib (win32-device/palette window))))
 	  ;(display ";Special full window image/draw\n")
 	  (set-win32-device/bitmap! window bm)
@@ -817,7 +820,7 @@ MIT in each case. |#
   (dib-set-pixels-unaligned (image/descriptor image) byte-vector))
 
 (define (win32-graphics/create-image device width height)
-  (image/create dib-image-type device width height))
+  (image/create device width height))
 
 ;; Should the following be in the runtime?
 ;; (or we can just pass image/draw to make-graphics-device-type
@@ -827,7 +830,7 @@ MIT in each case. |#
 ;(define (win32-graphics/draw-subimage device x y image im-x im-y w h)
 ;  (image/draw-subimage device x y image im-x im-y w h))
 
-;;------------------------------------------------------------------------------
+;;-----------------------------------------------------------------------------
 ;;
 (define (bitmap-namestring filename)
   (->namestring (merge-pathnames filename (pathname-new-type filename "bmp"))))
@@ -873,6 +876,7 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! win32-graphics-device-type
 	(make-graphics-device-type
+	 'WIN32
 	 `((available? ,win32-graphics/available?)
 	   (open  ,win32-graphics/open)
 	   (clear ,win32-graphics/clear)
@@ -918,24 +922,24 @@ MIT in each case. |#
 	   (draw    ,dib-image/draw)
 	   (draw-subimage   ,dib-image/draw-subimage)
 	   (fill-from-byte-vector ,dib-image/fill-from-byte-vector))))
-
+  (1d-table/put! (graphics-type-properties win32-graphics-device-type)
+		 'IMAGE-TYPE
+		 dib-image-type)
   (set! color-table '())
   (for-each
     (lambda (pair) (win32-graphics/define-color #f (car pair) (cdr pair)))
     initial-color-definitions)
   (register-graphics-window-class)
   (add-event-receiver! event:after-restore
-		       (when-microcode-supports-win32 register-graphics-window-class))
-  (register-graphics-device-type 'win32 win32-graphics-device-type)
+    (when-microcode-supports-win32 register-graphics-window-class))
   (set! device-protection-list (make-protection-list close-descriptor))
   (add-event-receiver! event:after-restore
-		       (lambda ()
-			 (set! device-protection-list
-			       (make-protection-list close-descriptor))))
+    (lambda ()
+      (set! device-protection-list (make-protection-list close-descriptor))
+      unspecific))
   (add-event-receiver! event:before-exit
-		       (lambda ()
-			 (protection-list/for-each-info close-descriptor
-							device-protection-list)))
+    (lambda ()
+      (protection-list/for-each-info close-descriptor device-protection-list)))
   unspecific)
 
 (define win32-graphics-device-type)
