@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.14 1995/05/25 18:53:06 ziggy Exp $
+$Id: usrint.scm,v 1.15 1995/09/05 21:27:35 adams Exp $
 
 Copyright (c) 1991-94 Massachusetts Institute of Technology
 
@@ -54,7 +54,7 @@ MIT in each case. |#
 	      (string? (cdr prompt)))
 	 (cons (car prompt) (canonicalize-prompt (cdr prompt) " ")))
 	(else
-	 (error:wrong-type-datum prompt))))
+	 (error:wrong-type-datum prompt "a string or standard prompt"))))
 
 (define (write-command-prompt port prompt level)
   (port/with-output-terminal-mode port 'COOKED
