@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.19 1992/03/10 02:54:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.20 1992/07/06 13:17:37 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -167,7 +167,6 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 
      -12: Manifest Closure | tot. length
      - 8: Count format word (with 0 GC)  Manifest Closure | tot. length
-        : optional padding
      - 4: Format word, 1st entry         Format word, only entry
      - 2: GC offset to -12               GC offset to -8
        0: jsr instr., 1st entry		 jsr instr.
@@ -177,23 +176,34 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
      ...: etc.
      ...: closed over variable values
 
+   The following five macros are the only ones used outside of this
+   file to deal with closures.  They can be overridden for specific
+   machines that use different formats.
+
+   MANIFEST_CLOSURE_COUNT receives the address of the word past the
+   manifest closure header and extracts the count of entry points
+   in the closure block.
+
    FIRST_MANIFEST_CLOSURE_ENTRY receives the address of the word past
    the manifest closure header (-4 for single entry point closures in
    the above picture).  It bumps it to the first entry point (i.e. to
    0 above), past the format word and the gc offset and the count
    formart word if present.
 
-   MANIFEST_CLOSURE_COUNT receives the address of the word past the
-   manifest closure header and extracts the count of entry points
-   in the closure block.
+   NEXT_MANIFEST_CLOSURE_ENTRY given an entry point in a multiclosure,
+   bump to the immediately following entry point
+
+   CLOSURE_ENTRY_END given an entry point, return the address of the
+   first byte past the code in this entry point.
+
+   MANIFEST_CLOSURE_END receives the address of the word past
+   the manifest closure header (-4 for single entry point closures in
+   the above picture).  Returns the address of the word that precedes
+   the first free variable in the closure.
 
    CLOSURE_HEADER_TO_ENTRY is the distance (in bytes) from the
    manifest closure header to the 1st instruction of the (1st) entry.
  */
-
-#ifndef MULTI_CLOSURE_PADDING
-#   define MULTI_CLOSURE_PADDING	 0 /* Bytes! */
-#endif
 
 #define CLOSURE_HEADER_TO_ENTRY						\
 ((sizeof (SCHEME_OBJECT)) + (2 * (sizeof (format_word))))
@@ -201,29 +211,36 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 #define CLOSURE_HEADER_TO_ENTRY_WORD					\
 ((format_word) (BYTE_OFFSET_TO_OFFSET_WORD (CLOSURE_HEADER_TO_ENTRY)))
 
+#ifndef MANIFEST_CLOSURE_COUNT
 #define MANIFEST_CLOSURE_COUNT(scan)					\
 (((((format_word *) (scan))[1]) ==					\
   CLOSURE_HEADER_TO_ENTRY_WORD) ?					\
  1 :									\
  ((long) (((format_word *) (scan))[0])))
+#endif
 
+#ifndef FIRST_MANIFEST_CLOSURE_ENTRY
 #define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
-(((((format_word *) (scan))[1]) == CLOSURE_HEADER_TO_ENTRY_WORD) ?	\
- (((char *) (scan)) + (2 * (sizeof (format_word)))) :			\
- (((char *) (scan))							\
-  + (MULTI_CLOSURE_PADDING + (4 * (sizeof (format_word))))))		\
+(((((format_word *) (scan))[1]) == CLOSURE_HEADER_TO_ENTRY_WORD)	\
+ ? (((char *) (scan)) + (2 * (sizeof (format_word))))			\
+ : (((char *) (scan)) + (4 * (sizeof (format_word)))))
+#endif
 
+#ifndef NEXT_MANIFEST_CLOSURE_ENTRY
 #define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)				\
   (((char *) (word_ptr)) + (COMPILED_CLOSURE_ENTRY_SIZE))
+#endif
 
 /* Where this closure entry ends with respect to the entry point.
    Since an entry point is preceded by a format word and a gc offset,
    it is the address of the next entry minus these two words.
  */
 
+#ifndef CLOSURE_ENTRY_END
 #define CLOSURE_ENTRY_END(word_ptr)					\
   (((char *) (word_ptr)) +						\
    ((COMPILED_CLOSURE_ENTRY_SIZE) - (2 * (sizeof (format_word)))))
+#endif
 
 #define CHAR_TO_SCHEME_OBJECT(chars)					\
 (((chars) + ((sizeof (SCHEME_OBJECT)) - 1)) / (sizeof (SCHEME_OBJECT)))
@@ -234,14 +251,15 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
    are always represented in short format.
  */
 
+#ifndef MANIFEST_CLOSURE_END
 #define MANIFEST_CLOSURE_END(start, count)				\
 (((SCHEME_OBJECT *) (start))						\
  + ((CHAR_TO_SCHEME_OBJECT (((count) * COMPILED_CLOSURE_ENTRY_SIZE)	\
 			    + (((count) == 1)				\
 			       ? 0					\
-			       : (MULTI_CLOSURE_PADDING			\
-				  + (2 * sizeof(format_word))))))	\
-    - 1))								\
+			       : (2 * sizeof(format_word)))))		\
+    - 1))
+#endif
 
 /* Linkage sections */
 
