@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.190 1997/07/21 04:38:48 cph Exp $
+;;;	$Id: filcom.scm,v 1.191 1997/07/25 07:07:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -610,44 +610,67 @@ If a file with the new name already exists, confirmation is requested first."
 
 (define-command encrypt-file
   "Encrypt a file with the blowfish encryption algorithm.
-Prompts for a filename; the encrypted file is written with a \".bf\" suffix.
+Prompts for the plaintext and ciphertext filenames.
+Prefix arg means treat the plaintext file as binary data.
 Deletes the plaintext file after encryption."
-  "fEncrypt File"
-  (lambda (filename)
+  (lambda ()
     (if (not (blowfish-available?))
 	(editor-error "Blowfish encryption not supported on this system"))
-    (if (equal? "bf" (pathname-type filename))
-	(editor-error (->namestring filename) " is already encrypted"))
-    (if (copy-file-through-buffer filename
-				  (string-append (->namestring filename)
-						 ".bf"))
-	(delete-file filename))))
+    (let ((from (prompt-for-existing-file "Encrypt file (plaintext)" #f)))
+      (let ((to
+	     (prompt-for-file
+	      "Encrypt file to (ciphertext)"
+	      (list (string-append (->namestring from) ".bf")))))
+	(list from to (command-argument)))))
+  (lambda (from to binary?)
+    (if (or (not (file-exists? to))
+	    (prompt-for-yes-or-no?
+	     (string-append "File "
+			    (->namestring to)
+			    " already exists; overwrite")))
+	(begin
+	  (let ((password (prompt-for-confirmed-password)))
+	    ((if binary?
+		 call-with-binary-input-file
+		 call-with-input-file)
+	     from
+	     (lambda (input)
+	       (call-with-binary-output-file to
+		 (lambda (output)
+		   (write-blowfish-file-header output)
+		   (blowfish-encrypt-port input output password #t))))))
+	  (delete-file from)))))
 
 (define-command decrypt-file
   "Decrypt a file with the blowfish encryption algorithm.
-Prompts for a filename, which must end with a \".bf\" suffix."
-  "fDecrypt File"
-  (lambda (filename)
+Prompts for the ciphertext and plaintext filenames.
+Prefix arg means treat the plaintext file as binary data."
+  (lambda ()
     (if (not (blowfish-available?))
 	(editor-error "Blowfish encryption not supported on this system"))
-    (if (not (equal? "bf" (pathname-type filename)))
-	(editor-error (->namestring filename) " does not have \".bf\" suffix"))
-    (copy-file-through-buffer filename (pathname-new-type filename #f))))
-
-(define (copy-file-through-buffer input output)
-  (if (or (not (file-exists? output))
-	  (prompt-for-yes-or-no?
-	   (string-append "File "
-			  (->namestring output)
-			  " already exists; overwrite")))
-      (begin
-	(call-with-temporary-buffer " *copy-file*"
-	  (lambda (buffer)
-	    (local-set-variable! translate-file-data-on-input #f buffer)
-	    (insert-file (buffer-start buffer) input)
-	    (write-region (buffer-region buffer) output #t #f)))
-	#t)
-      #f))
+    (let ((from (prompt-for-existing-file "Decrypt file (ciphertext)" #f)))
+      (let ((to
+	     (prompt-for-file
+	      "Decrypt file to (plaintext)"
+	      (and (pathname-type from)
+		   (list (pathname-new-type from #f))))))
+	(list from to (command-argument)))))
+  (lambda (from to binary?)
+    (if (or (not (file-exists? to))
+	    (prompt-for-yes-or-no?
+	     (string-append "File "
+			    (->namestring to)
+			    " already exists; overwrite")))
+	(let ((password (prompt-for-password "Password")))
+	  (call-with-binary-input-file from
+	    (lambda (input)
+	      (read-blowfish-file-header input)
+	      ((if binary?
+		   call-with-binary-output-file
+		   call-with-output-file)
+	       to
+	       (lambda (output)
+		 (blowfish-encrypt-port input output password #f)))))))))
 
 ;;;; Prompting
 
@@ -679,13 +702,20 @@ Prompts for a filename, which must end with a \".bf\" suffix."
 (define-integrable (prompt-for-pathname prompt default require-match?)
   (prompt-for-pathname* prompt default file-exists? require-match?))
 
-(define (prompt-for-pathname* prompt directory
+(define (prompt-for-pathname* prompt default
 			      verify-final-value? require-match?)
   (let* ((directory
-	  (if directory
-	      (directory-pathname directory)
+	  (if default
+	      (directory-pathname
+	       (if (pair? default)
+		   (car default)
+		   default))
 	      (buffer-default-directory (current-buffer))))
-	 (insertion (os/pathname->display-string directory)))
+	 (insertion
+	  (os/pathname->display-string
+	   (if (pair? default)
+	       (car default)
+	       directory))))
     (prompt-string->pathname
      (prompt-for-completed-string
       prompt
