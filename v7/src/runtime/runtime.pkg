@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.363 2001/03/15 21:14:17 cph Exp $
+$Id: runtime.pkg,v 14.364 2001/03/16 20:17:51 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -410,6 +410,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  compiled-entry/filename-and-index)
   (export (runtime compress)
 	  uncompress-internal)
+  (export (runtime options)
+	  with-directory-rewriting-rule)
   (initialization (initialize-package!)))
 
 (define-package (runtime console-i/o-port)

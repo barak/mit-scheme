@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.36 1999/01/02 06:11:34 cph Exp $
+$Id: option.scm,v 14.37 2001/03/16 20:17:48 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Option Loader
@@ -24,7 +25,45 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations))
 
-(define *initial-options-file* #F)
+(define (load-option name #!optional no-error?)
+  (let ((no-error? (and (not (default-object? no-error?)) no-error?)))
+
+    (define (find-option)
+      (cond ((assq name *options*) => load-entry)
+	    ((force* *parent*) => search-parent)
+	    ((not no-error?) (error "Unknown option name:" name))
+	    (else #f)))
+
+    (define (load-entry entry)
+      (for-each (lambda (thunk) (thunk)) (cdr entry))
+      (set! loaded-options (cons name loaded-options))
+      name)
+
+    (define (search-parent file)
+      (fluid-let ((*options* '())
+		  (*parent* #f))
+	(fluid-let ((load/suppress-loading-message? #t))
+	  (load-latest (merge-pathnames file (library-directory-pathname ""))
+		       (make-load-environment)
+		       system-global-syntax-table
+		       #f))
+	(find-option)))
+
+    (define (make-load-environment)
+      (eval '(LET () (THE-ENVIRONMENT)) system-global-environment))
+
+    (fluid-let ((*parser-canonicalize-symbols?* #t))
+      (if (memq name loaded-options)
+	  name
+	  (find-option)))))
+
+(define (define-load-option name . loaders)
+  (set! *options* (cons (cons name loaders) *options*))
+  unspecific)
+
+(define (further-load-options place)
+  (set! *parent* place)
+  unspecific)
 
 (define (initial-load-options)
   (or *initial-options-file*
@@ -40,93 +79,68 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (error "Cannot locate a load-option database")
       "optiondb"))
 
-(define (define-load-option name . loaders)
-  (set! *options* (cons (cons name loaders) *options*))
-  unspecific)
-
-(define (further-load-options place)
-  (set! *parent* place)
-  unspecific)
-
-(define (load-option name #!optional no-error?)
-  (let ((no-error? (and (not (default-object? no-error?)) no-error?)))
-
-    (define (find-option)
-      (cond ((assq name *options*) => load-entry)
-	    ((force* *parent*)     => search-parent)
-	    ((not no-error?)
-	     (error "Unknown option name:" name)
-	     #F)
-	    (else  #F)))
-
-    (define (load-entry entry)
-      (for-each (lambda (thunk) (thunk)) (cdr entry))
-      (set! loaded-options (cons name loaded-options))
-      name)
-
-    (define (search-parent file)
-      (fluid-let ((*options* '())
-		  (*parent*  #F))
-	(fluid-let ((load/suppress-loading-message? #T))
-	  (load-latest (merge-pathnames file (library-directory-pathname ""))
-		       (make-load-environment)
-		       system-global-syntax-table
-		       #F))
-	(find-option)))
-
-    (define (make-load-environment)
-      (eval '(LET () (THE-ENVIRONMENT)) system-global-environment))
-
-    (fluid-let ((*parser-canonicalize-symbols?* #t))
-      (if (not (memq name loaded-options))
-	  (find-option)
-	  name))))
-
-(define loaded-options  '())
-(define *options* '())			; Current options.
-(define *parent*  initial-load-options)	; A thunk or a pathname/string or #F.
-
 (define (library-file? library-internal-path)
-  (let* ((library    (library-directory-pathname ""))
-	 (pathname   (merge-pathnames library-internal-path library)))
+  (let* ((library (library-directory-pathname ""))
+	 (pathname (merge-pathnames library-internal-path library)))
     (let loop ((file-types load/default-types))
-      (if (null? file-types)
-	  #F
-	  (let ((full-pathname (pathname-new-type pathname (caar file-types))))
-	    (if (file-exists? full-pathname)
-		pathname;; not full-pathname to allow load-latest
-		(loop (cdr file-types))))))))
+      (and (not (null? file-types))
+	   (let ((full-pathname
+		  (pathname-new-type pathname (caar file-types))))
+	     (if (file-exists? full-pathname)
+		 ;; not full-pathname to allow load-latest
+		 pathname		
+		 (loop (cdr file-types))))))))
 
-(define (force* value)
-  (cond	((procedure? value)  (force* (value)))
-	((promise? value)    (force* (force value)))
-	(else value)))
-
+(define loaded-options '())
+(define *options* '())			; Current options.
+(define *parent* initial-load-options)	; A thunk or a pathname/string or #f.
+(define *initial-options-file* #f)
+
 (define (standard-option-loader package-name init-expression . files)
   (lambda ()
-    (let ((environment     (package/environment (find-package package-name)))
-	  (library-options (delay (library-directory-pathname "options"))))
-      (for-each
-	  (lambda (file)
-	    (let ((file  (force* file)))
-	      (cond 
-	       (((ucode-primitive initialize-c-compiled-block 1)
-		 (string-append "runtime_" file))
-		=> (lambda (obj)
-		     (purify obj)
-		     (scode-eval obj environment)))
-	       (else
-		(let ((path  (merge-pathnames file (force library-options))))
-		  (with-working-directory-pathname
-		   (directory-pathname path)
-		   (lambda ()
-		     (load path
-			   environment
-			   syntax-table/system-internal
-			   true))))))))
-	files)
+    (let ((environment (package/environment (find-package package-name)))
+	  (runtime (pathname-as-directory "runtime")))
+      (for-each (lambda (file)
+		  (let ((file (force* file)))
+		    (cond 
+		     (((ucode-primitive initialize-c-compiled-block 1)
+		       (string-append "runtime_" file))
+		      => (lambda (obj)
+			   (purify obj)
+			   (scode-eval obj environment)))
+		     (else
+		      (let* ((options (library-directory-pathname "options"))
+			     (pathname (merge-pathnames file options)))
+			(with-directory-rewriting-rule options runtime
+			  (lambda ()
+			    (with-working-directory-pathname
+				(directory-pathname pathname)
+			      (lambda ()
+				(load pathname
+				      environment
+				      syntax-table/system-internal
+				      #t))))))))))
+		files)
       (flush-purification-queue!)
       (eval init-expression environment))))
+
+(define (declare-shared-library shared-library thunk)
+  (let ((thunk-valid?
+	 (lambda (thunk)
+	   (not (condition? (ignore-errors thunk))))))
+    (add-event-receiver!
+     event:after-restore
+     (lambda ()
+       (if (not (thunk-valid? thunk))
+	   (fluid-let ((load/suppress-loading-message? #t))
+	     (load
+	      (merge-pathnames shared-library
+			       (library-directory-pathname "shared")))))))))
+
+(define (force* value)
+  (cond	((procedure? value) (force* (value)))
+	((promise? value) (force* (force value)))
+	(else value)))
 
 (define (library-directory-pathname name)
   (or (system-library-directory-pathname name)
@@ -137,16 +151,3 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			     "no such directory in system library path"
 			     library-directory-pathname
 			     (list name)))))
-
-(define (declare-shared-library shared-library thunk)
-  (let ((thunk-valid?
-	 (lambda (thunk)
-	   (not (condition? (ignore-errors thunk))))))
-    (add-event-receiver!
-     event:after-restore
-     (lambda ()
-       (if (not (thunk-valid? thunk))
-	   (fluid-let ((load/suppress-loading-message? true))
-	     (load (merge-pathnames
-		    (library-directory-pathname "shared")
-		    shared-library))))))))
