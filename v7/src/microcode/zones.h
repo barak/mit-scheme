@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/zones.h,v 9.21 1987/01/22 14:37:35 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/zones.h,v 9.22 1987/07/07 19:57:38 cph Rel $
  *
  * Metering stuff.
  * We break all times into time zones suitable for external analysis.
@@ -71,17 +71,6 @@ extern long New_Time, Old_Time, Time_Meters[], Current_Zone;
 #define Zone_Math 8
 #define Zone_GCIdle 9
 #define Zone_Lookup 10
-
-/* For finding out about lock contention - 1/19/87 - sas */
-
-#define Zone_Count_Locks 11
-#define Zone_Count_Lock_0 12
-#define Zone_Count_Lock_1 13
-#define Zone_Count_Lock_2 14
-#define Zone_Count_Lock_3 15
-#define Zone_Count_Lock_4 16
-#define Zone_Count_Lock_5 17
-#define Zone_Count_Lock_6 18
-#define Zone_Count_Lock_N 19
+#define Zone_Scheduler 11
 
 #define Max_Meters 20
