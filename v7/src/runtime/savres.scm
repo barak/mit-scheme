@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.18 1991/05/03 17:54:09 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.19 1991/05/14 02:58:16 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -92,18 +92,17 @@ MIT in each case. |#
       (call-with-current-continuation
        (lambda (continuation)
 	 (let ((fixed-objects (get-fixed-objects-vector))
-	       (dynamic-state (current-dynamic-state)))
+	       (dynamic-state (current-dynamic-state))
+	       (filename (canonicalize-output-filename filename)))
 	   (fluid-let ()
 	     ((ucode-primitive call-with-current-continuation)
 	      (lambda (restart)
 		(gc-flip)
-		(let loop ()
-		  (if (not ((ucode-primitive dump-band)
-			    restart
-			    (canonicalize-output-filename filename)))
-		      (begin
-			(error "Disk save failed: (PROCEED 0) to retry")
-			(loop))))
+		(do ()
+		    (((ucode-primitive dump-band) restart filename))
+		  (with-simple-restart 'RETRY "Try again."
+		    (lambda ()
+		      (error "Disk save failed:" filename))))
 		(continuation after-suspend)))
 	     ((ucode-primitive set-fixed-objects-vector!) fixed-objects)
 	     (set-current-dynamic-state! dynamic-state)
