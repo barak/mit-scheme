@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.43 1999/04/26 16:35:21 cph Exp $
+$Id: os2prm.scm,v 1.44 1999/12/27 20:44:21 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -608,4 +608,4 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (list "/c" command))
 
 (define (os/executable-pathname-types)
-  '("exe" "com" "bat" "btm"))
+  '("exe" "com" "bat" "cmd" "btm"))
