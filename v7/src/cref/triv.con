@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/Attic/triv.con,v 1.1 1989/05/26 16:28:55 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/Attic/triv.con,v 1.2 1990/10/05 12:58:18 cph Rel $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -74,13 +74,11 @@ MIT in each case. |#
  (find-package '(cross-reference))
  'analyze-file
  (in-package (package/environment (find-package '(cross-reference)))
-   (let ((analyze/directory)
-	 (read-analyzed-file))
+   (let ((analyze-file))
      (the-environment))))
 (let ((source (package/environment (find-package '(cross-reference analyze-file))))
       (destination (package/environment (find-package '(cross-reference)))))
-  (environment-link-name destination source 'analyze/directory)
-  (environment-link-name destination source 'read-analyzed-file))
+  (environment-link-name destination source 'analyze-file))
 
 (package/add-child!
  (find-package '(cross-reference))
