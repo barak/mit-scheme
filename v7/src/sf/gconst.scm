@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.1 1987/04/25 20:06:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.2 1987/05/09 20:02:49 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -64,6 +64,10 @@ MIT in each case. |#
     INTEGER-DIVIDE INTEGER-DIVIDE-QUOTIENT INTEGER-DIVIDE-REMAINDER
     TRUNCATE ROUND FLOOR CEILING
     SQRT EXP LOG SIN COS 
+
+    ;; Fixnum Arithmetic
+    FIX:ZERO? FIX:NEGATIVE? FIX:POSITIVE? FIX:= FIX:< FIX:>
+    FIX:1+ FIX:-1+ FIX:+ FIX:- FIX:* FIX:DIVIDE FIX:GCD
 
     ;; Basic Compound Datatypes
     CONS PAIR? CAR CDR SET-CAR! SET-CDR! GENERAL-CAR-CDR

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.1 1987/05/04 23:50:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.2 1987/05/09 20:04:56 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -151,17 +151,23 @@ MIT in each case. |#
 
 ;;;; Miscellaneous Arithmetic
 
-(define (divide-component-expansion selector)
+(define (divide-component-expansion divide selector)
   (lambda (operands if-expanded if-not-expanded)
     (if-expanded
      (make-combination selector
-		       (list (make-combination integer-divide operands))))))
+		       (list (make-combination divide operands))))))
 
 (define quotient-expansion
-  (divide-component-expansion car))
+  (divide-component-expansion integer-divide car))
 
 (define remainder-expansion
-  (divide-component-expansion cdr))
+  (divide-component-expansion integer-divide cdr))
+
+(define fix:quotient-expansion
+  (divide-component-expansion fixnum-divide car))
+
+(define fix:remainder-expansion
+  (divide-component-expansion fixnum-divide cdr))
 
 ;;;; N-ary List Operations
 
@@ -279,7 +285,7 @@ MIT in each case. |#
 ;;;; Tables
 
 (define usual-integrations/expansion-names
-  '(= < > <= >= + - * / quotient remainder
+  '(= < > <= >= + - * / quotient remainder fix:quotient fix:remainder
       apply cons* list vector
       caar cadr cdar cddr
       caaar caadr cadar caddr cdaar cdadr cddar cdddr
@@ -293,6 +299,7 @@ MIT in each case. |#
   (list =-expansion <-expansion >-expansion <=-expansion >=-expansion
 	+-expansion --expansion *-expansion /-expansion
 	quotient-expansion remainder-expansion
+	fix:quotient-expansion fix:remainder-expansion
 	apply*-expansion cons*-expansion list-expansion vector-expansion
 	caar-expansion cadr-expansion cdar-expansion cddr-expansion
 	caaar-expansion caadr-expansion cadar-expansion caddr-expansion
