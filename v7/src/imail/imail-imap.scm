@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.65 2000/05/22 03:32:12 cph Exp $
+;;; $Id: imail-imap.scm,v 1.66 2000/05/22 03:37:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -66,6 +66,10 @@
 			(imap-url-host url)
 			(imap-url-port url)
 			""))
+
+(define-method url-exists? ((url <imap-url>))
+  url
+  #t)
 
 (define (compatible-imap-urls? url1 url2)
   ;; Can URL1 and URL2 both be accessed from the same IMAP session?
@@ -756,10 +760,6 @@
 
 (define-method close-folder ((folder <imap-folder>))
   (maybe-close-imap-connection (imap-folder-connection folder)))
-
-(define-method %folder-valid? ((folder <imap-folder>))
-  folder
-  #t)
 
 (define-method folder-length ((folder <imap-folder>))
   (guarantee-imap-folder-open folder)

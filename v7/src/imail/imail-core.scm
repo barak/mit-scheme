@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.81 2000/05/22 03:32:04 cph Exp $
+;;; $Id: imail-core.scm,v 1.82 2000/05/22 03:36:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -78,6 +78,9 @@
 
 (define-generic url-body-container-string (url))
 
+;; Return #T if URL represents an existing folder.
+(define-generic url-exists? (url))
+
 ;; Convert STRING to a URL.  GET-DEFAULT-URL is a procedure of one
 ;; argument that returns a URL that is used to fill in defaults if
 ;; STRING is a specification for a partial URL.  GET-DEFAULT-URL is
@@ -267,7 +270,7 @@
   (let ((folder (hash-table/get memoized-folders url #f)))
     (and folder
 	 (let ((folder (weak-car folder)))
-	   (if (and folder (%folder-valid? folder))
+	   (if (and folder (url-exists? url))
 	       folder
 	       (begin
 		 (unmemoize-folder url)
@@ -300,15 +303,6 @@
 ;; penalty.
 
 (define-generic close-folder (folder))
-
-;; -------------------------------------------------------------------
-;; Return #T if FOLDER represents a real folder, i.e. has a
-;; corresponding file or server entry.
-
-(define (folder-valid? folder)
-  (eq? folder (get-memoized-folder (folder-url folder))))
-
-(define-generic %folder-valid? (folder))
 
 ;; -------------------------------------------------------------------
 ;; Return the number of messages in FOLDER.
