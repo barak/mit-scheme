@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.30 1992/02/04 23:09:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.31 1992/02/05 01:45:48 jinx Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -93,6 +93,11 @@ typedef unsigned short format_word;
 #  ifdef SHL_MAGIC
 #    define C_FUNC_PTR_IS_CLOSURE
 #  endif
+#endif
+
+#ifndef C_FUNC_PTR_IS_CLOSURE
+#  define interface_to_C ep_interface_to_C
+#  define interface_to_scheme ep_interface_to_scheme
 #endif
 
 /* Utilities for manipulating absolute subroutine calls.
