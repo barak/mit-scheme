@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.28 1988/01/10 10:38:52 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.29 1988/02/14 00:41:37 pas Rel $ */
 
 /* CONTAINS:                                                         */
 /* Scheme_Array constructors, and selectors                          */
@@ -1247,55 +1247,44 @@ Define_Primitive(Prim_Array_Periodic_Shift, 2, "ARRAY-PERIODIC-SHIFT")
   Arg_2_Type(TC_FIXNUM);
   Length = Array_Length(Arg1);
   Sign_Extend(Arg2, Shift);
-  Shift = Shift % Length;                                  /* periodic waveform, same sign as dividend */
+  Shift = Shift % Length;	/* periodic waveform, same sign as dividend */
   Array = Scheme_Array_To_C_Array(Arg1);
   Allocate_Array(Result, Length, allocated_cells);
   To_Here = Scheme_Array_To_C_Array(Result);
   
-  for (i=0; i<Length; i++) {                       /* new Array has the same Length by assuming periodicity */
+  for (i=0; i<Length; i++) {	/* new Array has the same Length by assuming periodicity */
     array_index = (i+Shift) % Length;
-    if (array_index<0) array_index = Length + array_index;                /* wrap around */
-    *To_Here++ = Array[array_index];
-  }
-  
+    if (array_index<0) array_index = Length + array_index; /* wrap around */
+    *To_Here++ = Array[array_index]; }
   return Result;
 }
 
-/* this should really be done in SCHEME using ARRAY-MAP !
- */
+/* This is done here because array-map is very slow */
 Define_Primitive(Prim_Array_Aperiodic_Downsample, 2, "ARRAY-APERIODIC-DOWNSAMPLE")
 { long Length, New_Length, Sampling_Ratio;
   REAL *Array, *To_Here;
   Pointer Result;
   long allocated_cells, i, array_index;
-
+  
   Primitive_2_Args();
   Arg_1_Type(TC_ARRAY);
   Arg_2_Type(TC_FIXNUM);
+  Array = Scheme_Array_To_C_Array(Arg1);
   Length = Array_Length(Arg1);
   Range_Check(Sampling_Ratio, Arg2, 1, Length, ERR_ARG_2_BAD_RANGE);
-  
-  Array = Scheme_Array_To_C_Array(Arg1);
-  New_Length = Length / Sampling_Ratio;          /* greater than zero */
+  if (Length < 1) Primitive_Error(ERR_ARG_1_BAD_RANGE);
+  New_Length = 1 + ((Length-1)/Sampling_Ratio);	/* 1 for first one and then the rest --- integer division chops */
   Allocate_Array(Result, New_Length, allocated_cells);
   To_Here = Scheme_Array_To_C_Array(Result);
   
-  for (i=0; i<Length; i += Sampling_Ratio) {
+  for (i=0; i<Length; i += Sampling_Ratio)
     *To_Here++ = Array[i];
-  }
-  
   return Result;
 }
-/* ARRAY-APERIODIC-SHIFT can be done in scheme using subarray, and array-append
- */
+/* ARRAY-APERIODIC-SHIFT can be done in scheme using subarray, and array-append */
+/* UPSAMPLING should be done in scheme */
 
-/* for UPSAMPLING
-   if ((Length % Sampling_Ratio) != 0) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-   UNIMPLEMENTED YET !!! 
-   */
-
-/* END ARRAY PROCESSING
- */
+/* END ARRAY PROCESSING */
 
 /*********** CONVERSION BETWEEN ARRAYS,VECTORS ********************/
 
