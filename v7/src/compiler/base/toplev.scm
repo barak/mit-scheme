@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.25 1990/01/18 22:42:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.26 1990/03/26 23:45:38 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -91,11 +91,13 @@ MIT in each case. |#
 			   (merge-pathnames (->pathname output-string)
 					    output-pathname)
 			   output-pathname))))
-		(newline)
-		(write-string "Compile File: ")
-		(write (pathname->string input-pathname))
-		(write-string " => ")
-		(write (pathname->string output-pathname))
+		(if compiler:noisy?
+		    (begin
+		      (newline)
+		      (write-string "Compile File: ")
+		      (write (pathname->string input-pathname))
+		      (write-string " => ")
+		      (write (pathname->string output-pathname))))
 		(fasdump (transform input-pathname output-pathname)
 			 output-pathname)))))
 	 (kernel
@@ -127,7 +129,8 @@ MIT in each case. |#
 ;;;; Alternate Entry Points
 
 (define (compile-procedure procedure)
-  (scode-eval (compile-scode (procedure-lambda procedure))
+  (scode-eval (fluid-let ((compiler:noisy? false))
+		(compile-scode (procedure-lambda procedure)))
 	      (procedure-environment procedure)))
 
 (define (compiler:batch-compile input #!optional output)
@@ -366,9 +369,10 @@ MIT in each case. |#
 					   (list->vector others))
 				     all-blocks)))
 			      expression)))))))
-	     (compiler-time-report "Total compilation time"
-				   *process-time*
-				   *real-time*)
+	     (if compiler:show-time-reports?
+		 (compiler-time-report "Total compilation time"
+				       *process-time*
+				       *real-time*))
 	     value))))
     (if compiler:preserve-data-structures?
 	(begin
@@ -501,7 +505,15 @@ MIT in each case. |#
 		     (pathname->string info-output-pathname)
 		     *info-output-filename*))
 		(*rtl-output-port* rtl-output-port)
-		(*lap-output-port* lap-output-port))
+		(*lap-output-port* lap-output-port)
+		(compiler:show-phases?
+		 (and compiler:noisy? compiler:show-phases?))
+		(compiler:show-subphases?
+		 (and compiler:noisy? compiler:show-subphases?))
+		(compiler:show-time-reports?
+		 (and compiler:noisy? compiler:show-time-reports?))
+		(compiler:show-procedures?
+		 (and compiler:noisy? compiler:show-procedures?)))
       (wrapper
        (lambda ()
 	 (set! *input-scode* scode)

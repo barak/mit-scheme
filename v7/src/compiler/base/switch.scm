@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.13 1990/01/18 22:42:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.14 1990/03/26 23:45:19 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -41,6 +41,7 @@ MIT in each case. |#
 (define compiler:enable-integration-declarations? true)
 (define compiler:enable-expansion-declarations? false)
 (define compiler:compile-by-procedures? true)
+(define compiler:noisy? true)
 (define compiler:show-time-reports? false)
 (define compiler:show-procedures? true)
 (define compiler:show-phases? false)
