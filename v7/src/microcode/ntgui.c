@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.12 1994/10/05 17:57:47 adams Exp $
+$Id: ntgui.c,v 1.13 1994/10/25 14:41:34 adams Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,6 +47,9 @@ extern /*static*/ HANDLE  ghInstance = 0;
 BOOL InitApplication(HANDLE);
 BOOL InitInstance(HANDLE, int);
 
+void *xmalloc(int);
+void xfree(void*);
+
 #ifdef GUI
 int PASCAL
 WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
@@ -56,7 +59,7 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
     extern int main (int, char **);
 
     ghInstance = hInst;
-    
+
     {
       int cmdlen = strlen(lpCmdLine);
       int maxargs = cmdlen/2+2;
@@ -64,18 +67,18 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
       char *s;
 
       argv = malloc(sizeof(char*) * maxargs);
-      
+
       if (cmdline==0 || argv==0) {
 	outf_fatal ("WinMain cant malloc");
 	outf_flush_fatal ();
 	return  FALSE;
-      }	
+      }
 
       argc = 1;
       argv[0] = "scheme";
-      
+
       s = strcpy (cmdline, lpCmdLine);
-      
+
       while (*s) {
 	if (*s==' ')
 	  *s++ = 0;
@@ -86,14 +89,14 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
       }
       argv[argc] = 0;
     }
-    
+
     if (!hPrevInst)
       if (!InitApplication(ghInstance))
 	return  FALSE;
-    
+
     if (!InitInstance(ghInstance, nCmdShow))
       return  FALSE;
-      
+
     return (main (argc, argv));
 }
 #endif
@@ -104,10 +107,10 @@ DEFUN (InitApplication, (hInstance), HANDLE hInstance)
 {
     // WNDCLASS wc;
     static BOOL done = FALSE;
-    
+
     if (done) return  TRUE;
     done = TRUE;
-    
+
     //wc.style         = CS_HREDRAW | CS_VREDRAW;
     //wc.lpfnWndProc   = TranscriptWndProc;
     //wc.cbClsExtra    = 0;
@@ -121,7 +124,7 @@ DEFUN (InitApplication, (hInstance), HANDLE hInstance)
 
     //if (!RegisterClass(&wc))
     //  return  FALSE;
-  
+
     return  Screen_InitApplication (hInstance);
     //return  TRUE;
 }
@@ -166,7 +169,7 @@ DEFUN (InitInstance, (hInstance, nCmdShow), HANDLE hInstance AND int nCmdShow)
 //}
 
 
-extern BOOL MIT_TranslateMessage (CONST MSG *);
+//extern BOOL MIT_TranslateMessage (CONST MSG *);
 
 void
 DEFUN_VOID (nt_gui_default_poll)
@@ -178,7 +181,8 @@ DEFUN_VOID (nt_gui_default_poll)
    while (//events_processed < 5 &&
           PeekMessage (&msg, 0, 0, 0, PM_REMOVE))
    {
-     MIT_TranslateMessage(&msg);
+     //MIT_TranslateMessage(&msg);
+     TranslateMessage(&msg);
      DispatchMessage(&msg);
      events_processed ++;
    }
@@ -228,7 +232,8 @@ nt_gui_high_priority_poll (void)
 		   WM_CATATONIC, (WM_CATATONIC + 1),
 		   PM_REMOVE))
   {
-    MIT_TranslateMessage (&close_msg);
+    //MIT_TranslateMessage (&close_msg);
+    TranslateMessage (&close_msg);
     DispatchMessage (&close_msg);
   }
   return;
@@ -283,7 +288,7 @@ DEFUN_VOID (NT_gui_init)
    }
 }
 
-static long  
+static long
 scheme_object_to_windows_object (SCHEME_OBJECT thing)
 {
     if (INTEGER_P (thing))
@@ -322,18 +327,18 @@ C_to_Scheme_WndProc (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     SCHEME_OBJECT  thunk;
     SCHEME_OBJECT  result;
-    
+
     if (message==WM_CREATE || message==WM_NCCREATE) {
       /*install thunk*/
       LPCREATESTRUCT lpcs = (LPCREATESTRUCT) lParam;
       SetWindowLong(hwnd, 0, (LONG)lpcs->lpCreateParams);
     }
-    
+
     thunk = GetWindowLong (hwnd, 0);
-    
+
     if (thunk==0)
       return  DefWindowProc (hwnd, message, wParam, lParam);
-    
+
     result = apply4(thunk,
                 ulong_to_integer(hwnd), ulong_to_integer(message),
 		ulong_to_integer(wParam), ulong_to_integer(lParam));
@@ -349,7 +354,7 @@ DEFINE_PRIMITIVE ("GET-SCHEME-WINDOW-PROCEDURE", Prim_get_scheme_window_procedur
   {
     HWND hWnd = (HWND)arg_integer (1);
     SCHEME_OBJECT  result;
-    
+
     if (GetWindowLong(hWnd, GWL_WNDPROC) != (LONG) C_to_Scheme_WndProc)
       result = SHARP_F;
     else
@@ -397,12 +402,12 @@ LRESULT CALLBACK
 C_to_Scheme_WndProc_2 (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     SCHEME_OBJECT  result;
-    
+
     if (general_scheme_wndproc == SHARP_F)
       return  DefWindowProc (hwnd, message, wParam, lParam);
-    
+
     result = apply4(general_scheme_wndproc,
-                    ulong_to_integer(hwnd),   ulong_to_integer(message),
+                    ulong_to_integer(hwnd), ulong_to_integer(message),
 		    ulong_to_integer(wParam), ulong_to_integer(lParam));
 
     return  scheme_object_to_windows_object (result);
@@ -481,7 +486,7 @@ DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
     //HANDLE hInst;
     LPVOID lpvParam;
     HWND   result;
-    
+
     CHECK_ARG (1, STRING_P);
     CHECK_ARG (2, STRING_P);
     class_name = STRING_LOC (ARG_REF (1), 0);
@@ -494,10 +499,10 @@ DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
     hWndParent = (HWND) arg_ulong_default (8, 0);
     hMenu      =  (HMENU) arg_ulong_default (9, 0);
     lpvParam   = (LPVOID)  ARG_REF (10);
-    
+
     result = CreateWindowEx (0, class_name, window_name, style, x, y, w, h,
 			     hWndParent, hMenu, ghInstance, lpvParam);
-		 
+
     return  ulong_to_integer (result);
 }
 
@@ -549,12 +554,12 @@ DEFINE_PRIMITIVE ("APPLY_1", Prim_apply_1_xyz, 2, 2, "")
 {
     SCHEME_OBJECT  proc, arg, result;
     PRIMITIVE_HEADER (2);
-    
+
     proc = ARG_REF (1);
     arg  = ARG_REF (2);
-    
+
     result = C_call_scheme (proc, 1, &arg);
-    
+
     PRIMITIVE_RETURN (result);
 }
 
@@ -569,7 +574,7 @@ DEFINE_PRIMITIVE ("NT:GET-MODULE-HANDLE", Prim_get_module_handle, 1, 1,
     HANDLE it;
 
     PRIMITIVE_HEADER (1);
-    
+
     CHECK_ARG (1, STRING_P);
     it = GetModuleHandle (STRING_LOC (ARG_REF (1), 0));
     PRIMITIVE_RETURN (long_to_integer (it));
@@ -581,7 +586,7 @@ DEFINE_PRIMITIVE ("NT:LOAD-LIBRARY", Prim_nt_load_library, 1, 1,
     HANDLE it;
 
     PRIMITIVE_HEADER (1);
-    Primitive_GC_If_Needed (5); /* >= size of the handle if a bignum. */
+
     CHECK_ARG (1, STRING_P);
     it = LoadLibrary ((LPSTR)STRING_LOC (ARG_REF (1), 0));
     PRIMITIVE_RETURN (long_to_integer (it));
@@ -592,9 +597,9 @@ DEFINE_PRIMITIVE ("NT:FREE-LIBRARY", Prim_nt_free_library, 1, 1,
 {
     HANDLE handle;
     BOOL   result;
-    
+
     PRIMITIVE_HEADER (1);
-    
+
     handle = ((HANDLE) (arg_integer (1)));
     result = FreeLibrary (handle);
     PRIMITIVE_RETURN (result ? SHARP_T : SHARP_F);
@@ -607,9 +612,9 @@ DEFINE_PRIMITIVE ("NT:GET-PROC-ADDRESS", Prim_nt_get_proc_address, 2, 2,
     LPSTR    function_name;
     FARPROC  it;
     SCHEME_OBJECT  function;
-    
+
     PRIMITIVE_HEADER (2);
-    
+
     module   = (HMODULE) arg_integer (1);
     function = ARG_REF (2);
     if (STRING_P (function))
@@ -631,7 +636,7 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
     LPARAM  lParam;
     SCHEME_OBJECT  thing;
     PRIMITIVE_HEADER (4);
-    
+
     hwnd    = (HWND) arg_integer (1);
     message = arg_integer (2);
     wParam  = arg_integer (3);
@@ -640,7 +645,7 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
       lParam = (LPARAM) STRING_LOC (thing, 0);
     else
       lParam = arg_integer (4);
-    
+
     PRIMITIVE_RETURN (
       long_to_integer (SendMessage (hwnd, message, wParam, lParam)));
 }
@@ -661,10 +666,10 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
 //    long  result;
 //    long (* WINAPI f)(long);
 //    PRIMITIVE_HEADER (2);
-//    
+//
 //    f =  arg_integer (1);
 //    result = fudge_call_1 (f, call_ff_arg (ARG_REF (2)));
-//    
+//
 //    PRIMITIVE_RETURN (long_to_integer (result));
 //}
 //
@@ -677,13 +682,31 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
 //"")
 //{
 //    long (* WINAPI f)(long,long);
-//    
+//
 //    PRIMITIVE_HEADER (3);
-//    
+//
 //    f =  arg_integer (1);
 //    PRIMITIVE_RETURN (long_to_integer (fudge_call_2 (f, call_ff_arg (ARG_REF(2)), call_ff_arg (ARG_REF(3)))));
 //}
 //
+//static long fudge_call_3 (long (* WINAPI f)(long,long,long),
+//                          long a1, long a2, long a3)
+//{
+//    return  f(a1,a2,a3);
+//}
+//
+//DEFINE_PRIMITIVE ("CALL-FF-3", Prim_call_ff_3, 4, 4,
+//"")
+//{
+//    long (*f)(long,long,long);
+//    long result;
+//
+//    PRIMITIVE_HEADER (4);
+//
+//    f =  arg_integer (1);
+//    result = fudge_call_3 (f, call_ff_arg(ARG_REF(2)), call_ff_arg(ARG_REF(3)), call_ff_arg(ARG_REF(4)));
+//    PRIMITIVE_RETURN (long_to_integer (result));
+//}
 
 static  SCHEME_OBJECT call_ff_really()
 {
@@ -696,7 +719,7 @@ static  SCHEME_OBJECT call_ff_really()
       long c_args[50];
       long old_esp;
     } local;
-    
+
     long result;
 
     /*  We save the stack pointer and restore it because the called function
@@ -704,15 +727,15 @@ static  SCHEME_OBJECT call_ff_really()
 
     /*  The stack pointer is saved in a static variable so that we can find
         it if the compiler does SP-relative addressing with a broken SP */
-    
+
     /*  The implication is that things will break if this gets overwritten.
-        This will happen if the foreign function directly or indirectly 
+        This will happen if the foreign function directly or indirectly
 	allows a Scheme interrupt to be processed (eg by calling as scheme
 	function with interrupts enabled and that function gets rescheduled
 	in the threads package. */
-    
+
     static long saved_esp;
-    
+
     long nargs = (LEXPR_N_ARGUMENTS ());
     if (nargs < 1)
       signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
@@ -726,15 +749,15 @@ static  SCHEME_OBJECT call_ff_really()
       long  function_address = arg_integer(1);
 
       while (argument_scan != argument_limit)
-	*arg_sp++ = 
+	*arg_sp++ =
 	  scheme_object_to_windows_object (STACK_LOCATIVE_POP(argument_scan));
-      
+
       arg_sp = &local.c_args[10];
       local.old_esp = saved_esp;
       __asm
       {
-	// Important: The order of these instructions keeps stack pointer
-        // relative addressing correct.
+	// Important: The order of these instructions guards against
+	// stack pointer relative addressing.
 	mov	eax, dword ptr [function_address]
 	mov	dword ptr [saved_esp], esp
 	mov	esp, dword ptr [arg_sp]
@@ -754,7 +777,6 @@ DEFINE_PRIMITIVE ("CALL-FF", Prim_call_ff, 0, LEXPR, 0)
        rather than in a bad position in relation to the bogus C argument
        stack */
     PRIMITIVE_HEADER (LEXPR);
-    Primitive_GC_If_Needed(5); /* for possible bignum result */
     PRIMITIVE_RETURN (call_ff_really());
 }
 
@@ -834,6 +856,24 @@ DEFINE_PRIMITIVE ("UINT32-OFFSET-SET!", Prim_uint32_offset_set, 3, 3,
     PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+static void *
+xmalloc (int size)
+{
+    void *result = malloc(size);
+    if (!result) {
+      outf_fatal ("ntgui: xmalloc failed");
+      outf_flush_fatal ();
+      abort ();
+    }
+    return  result;
+}
+
+static void
+xfree (void *p)
+{
+    free (p);
+}
+
 /* GUI utilities for debuggging .*/
 
 #ifdef W32_TRAP_DEBUG
@@ -848,7 +888,7 @@ TellUser (char * format, ...)
 {
   va_list arg_ptr;
   char buffer[1024];
-  
+
   va_start (arg_ptr, format);
   wvsprintf (&buffer[0], format, arg_ptr);
   va_end (arg_ptr);
@@ -864,7 +904,7 @@ TellUserEx (int flags, char * format, ...)
 {
   va_list arg_ptr;
   char buffer[1024];
-  
+
   va_start (arg_ptr, format);
   wvsprintf (&buffer[0], format, arg_ptr);
   va_end (arg_ptr);
@@ -898,7 +938,7 @@ DEFUN (askuserdlgproc, (hwnddlg, message, wparam, lparam),
       {
         case IDOK:
 	  goto done;
-	  
+
         case IDCANCEL:
 	  EndDialog (hwnddlg, -1);
 	  return (TRUE);
@@ -935,3 +975,344 @@ DEFUN (AskUser, (buf, len), char * buf AND int len)
 }
 
 #endif /* W32_TRAP_DEBUG */
+
+//Events
+
+// worst case consing for longs.  This should really be available elsewhere
+#define LONG_TO_INTEGER_WORDS   (4)
+#define MAX_EVENT_STORAGE  (8 * LONG_TO_INTEGER_WORDS  + (8 + 1))
+
+
+static SCHEME_OBJECT
+parse_event (SCREEN_EVENT *event)
+{
+  SCHEME_OBJECT result;
+
+  switch (event->type)
+  {
+    case SCREEN_EVENT_TYPE_RESIZE:
+      result = allocate_marked_vector (TC_VECTOR, 3, 1);
+      VECTOR_SET (result, 0, long_to_integer (SCREEN_EVENT_TYPE_RESIZE));
+      VECTOR_SET (result, 1, long_to_integer (event->event.resize.rows));
+      VECTOR_SET (result, 2, long_to_integer (event->event.resize.columns));
+      return  result;
+
+    case SCREEN_EVENT_TYPE_KEY:
+      result = allocate_marked_vector (TC_VECTOR, 7, 1);
+      VECTOR_SET (result, 0, long_to_integer (SCREEN_EVENT_TYPE_KEY));
+      VECTOR_SET (result, 1, long_to_integer (event->event.key.repeat_count));
+      VECTOR_SET (result, 2, long_to_integer (event->event.key.virtual_keycode));
+      VECTOR_SET (result, 3, long_to_integer (event->event.key.virtual_scancode));
+      VECTOR_SET (result, 4, long_to_integer (event->event.key.control_key_state));
+      VECTOR_SET (result, 5, long_to_integer ((int) event->event.key.ch));
+      VECTOR_SET (result, 6, long_to_integer (event->event.key.key_down));
+      return  result;
+
+    case SCREEN_EVENT_TYPE_MOUSE:
+      result = allocate_marked_vector (TC_VECTOR, 8, 1);
+      VECTOR_SET (result, 0, long_to_integer (SCREEN_EVENT_TYPE_MOUSE));
+      VECTOR_SET (result, 1, long_to_integer (event->event.mouse.row));
+      VECTOR_SET (result, 2, long_to_integer (event->event.mouse.column));
+      VECTOR_SET (result, 3, long_to_integer (event->event.mouse.control_key_state));
+      VECTOR_SET (result, 4, long_to_integer (event->event.mouse.button_state));
+      VECTOR_SET (result, 5, long_to_integer ((int) event->event.mouse.up));
+      VECTOR_SET (result, 6, long_to_integer ((int) event->event.mouse.mouse_moved));
+      VECTOR_SET (result, 7, long_to_integer (event->event.mouse.double_click));
+      return  result;
+
+    case SCREEN_EVENT_TYPE_CLOSE:
+      result = allocate_marked_vector (TC_VECTOR, 1, 1);
+      VECTOR_SET (result, 0, long_to_integer (SCREEN_EVENT_TYPE_CLOSE));
+      return  result;
+
+    default:
+      return  SHARP_F;
+    }
+}
+
+
+DEFINE_PRIMITIVE ("NT-GET-EVENT", Prim_NT_get_event, 1, 1,
+		  "(nt-get-event handle)")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    SCREEN_EVENT  event;
+
+    // ensure that the primitive is not restarted due to GC:
+    Primitive_GC_If_Needed (MAX_EVENT_STORAGE);
+
+    if(!(Screen_GetEvent ((HWND) arg_integer (1), &event)))
+      PRIMITIVE_RETURN (SHARP_F);
+
+    PRIMITIVE_RETURN (parse_event (&event));
+  }
+}
+
+DEFINE_PRIMITIVE ("NT-PEEK-EVENT", Prim_NT_peek_event, 1, 1,
+		  "(nt-peek-event handle)")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    SCREEN_EVENT event;
+
+    Primitive_GC_If_Needed (MAX_EVENT_STORAGE);
+
+    if (!(Screen_PeekEvent ((HWND) arg_integer (1), &event)))
+      PRIMITIVE_RETURN (SHARP_F);
+    
+    PRIMITIVE_RETURN (parse_event (&event));
+  }
+}
+
+
+//Primitives for Edwin Screens
+#define GETSCREEN( x ) ((SCREEN) GetWindowLong( x, 0 ))
+
+//DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/BEEP", Prim_Win32_Screen_Beep, 0, 0,
+//		  "(prim-win32-screen/beep)")
+//{
+//  PRIMITIVE_HEADER (0);
+//  {
+//    MessageBeep (0);
+//    PRIMITIVE_RETURN (UNSPECIFIC);
+//  }
+//}
+
+DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/CLEAR-RECTANGLE",
+		  Prim_Win32_Screen_ClearRectangle, 6, 6, 
+ "hwnd xl xh yl yh attribute")
+{
+  PRIMITIVE_HEADER (6);
+  {
+    HWND  hwnd = (HWND) arg_integer (1);
+    SCREEN  screen = GETSCREEN ((HWND) hwnd);
+
+    Screen_SetAttributeDirect (screen, (SCREEN_ATTRIBUTE) arg_integer (6));
+    clear_screen_rectangle (screen,
+			    arg_integer(4), arg_integer(2),
+			    arg_integer(5), arg_integer(3));
+    PRIMITIVE_RETURN (UNSPECIFIC);
+  }
+}
+
+
+//DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/DISCARD", Prim_Win32_Screen_Discard,
+//		  1, 1, 0)
+//{
+//
+//  PRIMITIVE_HEADER (1);
+//  {
+//    DestroyWindow ((HWND) arg_integer (1));
+//    
+//    PRIMITIVE_RETURN(UNSPECIFIC);
+//  }
+//}
+
+DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/INVALIDATE-RECT",
+		  Prim_Win32_Screen_Invalidate_Rect, 5, 5, 0)
+{
+  PRIMITIVE_HEADER (5);
+  {
+    RECT rect;
+    HWND  handle = (HWND) arg_integer (1);
+    SCREEN screen = GETSCREEN (handle);
+
+    Screen_CR_to_RECT (&rect, screen, arg_integer (4), arg_integer (2),
+		       arg_integer (5), arg_integer (3));
+
+    InvalidateRect (handle, &rect, FALSE);
+    PRIMITIVE_RETURN(UNSPECIFIC);
+  }
+}
+
+DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/VERTICAL-SCROLL",
+		  Prim_Win32_Screen_Vertical_Scroll, 6, 6,
+		  "(prim-win32-screen/vertical-scroll handle xl xu yl yu amount)")
+{
+  PRIMITIVE_HEADER (6);
+  {
+    SCREEN screen = GETSCREEN ((HWND) arg_integer (1));
+    int position = arg_integer (6);
+
+    scroll_screen_vertically (screen, arg_integer (4), arg_integer (2),
+			      arg_integer (5), arg_integer (3), position);
+
+    PRIMITIVE_RETURN(UNSPECIFIC);
+  }
+}
+
+
+DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SCREEN-WRITECHAR",
+		  Prim_Win32_Screen_Screen_WriteChar, 5, 5,
+  "(prim-win32-screen/screen-write handle x y char attribute)")
+{
+  PRIMITIVE_HEADER (5);
+  {
+    SCREEN screen = GETSCREEN ((HWND) arg_integer (1));
+
+    if (!screen)
+      error_bad_range_arg (1);
+
+    Screen_SetAttributeDirect (screen, (SCREEN_ATTRIBUTE) arg_integer (5));
+    Screen_SetPosition (screen, arg_integer (3), arg_integer (2));
+    Screen_WriteCharUninterpreted (screen, (char) arg_integer (4), 0);
+    PRIMITIVE_RETURN (UNSPECIFIC);
+  }
+}
+
+
+
+DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/WRITE-SUBSTRING",
+		  Prim_Win32_Screen_Write_String, 7, 7,
+ "(prim-win32-screen/write-string handle x y string start end attribute)")
+{
+  PRIMITIVE_HEADER (7);
+  {
+    SCREEN screen = GETSCREEN ((HWND) arg_integer (1));
+    int  start = arg_integer (5);
+    int  end   = arg_integer (6);
+
+    if (!screen)
+      error_bad_range_arg (1);
+
+    Screen_SetAttributeDirect (screen, (SCREEN_ATTRIBUTE) arg_integer (7));
+    WriteScreenBlock_NoInvalidRect (screen,
+				    arg_integer (3), arg_integer (2),
+				    ((LPSTR) STRING_ARG (4))+start,
+				    end-start);
+    PRIMITIVE_RETURN (UNSPECIFIC);
+  }
+}
+
+
+DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SCREEN-MOVE-CURSOR",
+		  Prim_Win32_Screen_Screen_Move_Cursor, 3, 3,
+		  "(prim-win32-screen/screen-move-cursor handle x y)")
+{
+  PRIMITIVE_HEADER (3);
+  {
+    SCREEN screen = GETSCREEN ((HWND) arg_integer (1));
+
+    Screen_SetPosition (screen, arg_integer (3), arg_integer (2));
+
+    PRIMITIVE_RETURN (UNSPECIFIC);
+  }
+}
+
+
+DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SCREEN-X-SIZE",
+		  Prim_Win32_Screen_Screen_X_Size, 1, 1,
+		  "(prim-win32-screen/screen-x-size handle)")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    SCREEN screen = GETSCREEN ((HWND) arg_integer (1));
+
+    PRIMITIVE_RETURN (long_to_integer (Screen_Width (screen)));
+  }
+}
+
+DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SCREEN-Y-SIZE",
+		  Prim_Win32_Screen_Screen_Y_Size, 1, 1,
+		  "(prim-win32-screen/screen-y-size handle)")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    SCREEN screen = GETSCREEN ((HWND) arg_integer (1));
+
+    PRIMITIVE_RETURN (long_to_integer (Screen_Height (screen)));
+  }
+}
+
+
+DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/CREATE-SCREEN",
+		  Prim_Win32_Screen_Create, 3, 3,
+  "(prim-win32-screen/create-screen parent-handle modes minimize)")
+{
+  PRIMITIVE_HEADER (3);
+  {
+    HWND hwnd = Screen_Create ((HANDLE) arg_integer (1),
+			       "Scheme Screen",
+			       (int) SW_SHOW);
+
+    HWND hwndmin = (HANDLE) arg_integer (3);
+
+    if (hwnd == 0)
+      SendMessage ((HWND) NULL, SCREEN_SETMODES,
+		   (WPARAM) arg_integer (2), (LPARAM) 0);
+    else
+      SendMessage (hwnd, SCREEN_SETMODES,
+		   (WPARAM) arg_integer (2), (LPARAM) 0);
+
+    if (hwndmin != 0)
+      {
+	WINDOWPLACEMENT plwndpl;
+	GetWindowPlacement (hwndmin, &plwndpl);
+	plwndpl.showCmd = SW_MINIMIZE;
+	SetWindowPlacement (hwndmin, &plwndpl);
+      }
+
+    PRIMITIVE_RETURN (long_to_integer (hwnd));
+  }
+}
+
+
+//DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SET-WRITE-ATTRIBUTE",
+//		  Prim_Win32_Screen_Set_Write_Attribute, 2, 2,
+//		  "(prim-win32-screen/set-write-attribute handle attrib)")
+//{
+//  PRIMITIVE_HEADER (2);
+//  {
+//    Screen_SetAttribute_NoMessage ((HANDLE) arg_integer (1),
+//				   (SCREEN_ATTRIBUTE) arg_integer (2));
+//    PRIMITIVE_RETURN (UNSPECIFIC);
+//  }
+//}
+
+
+DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SHOW-CURSOR",
+		  Prim_Win32_Screen_Show_Cursor, 2, 2,
+		  "(prim-win32-screen/show-cursor handle show?)")
+{
+  PRIMITIVE_HEADER (2);
+  {
+    SCREEN screen = GETSCREEN ((HWND) arg_integer (1));
+    Enable_Cursor (screen, (ARG_REF (2) == SHARP_F) ? FALSE : TRUE);
+    PRIMITIVE_RETURN (UNSPECIFIC);
+  }
+}
+
+
+//DEFINE_PRINITIVE ("WIN32-SET-FONT-ADVICE", Prim_win32_set_font_advice, 1, 1,
+//
+//		  "\
+//(WIN32-SET-FONT-ADVICE variable-width-fonts-allowed?)\n\
+//\n\
+//The argument is #F then only fixed-pitch fonts are available for the\n\
+//Edwin screen.  Otherwise the argument must be a float, which\n\
+//determines the size box allocated for characters of teh variable with\n\
+//font. 0.0 is the average width, 1.0 is the maximum width, and any\n\
+//other number is interpolated linearly."  Takes effect when the next\n\
+//font is selected."
+//{
+//  PRIMITIVE_HEADER (1);
+//  {
+//    SCHEME_OBJECT  arg = ARG_REF (1);
+//    SCHEME_OBJECT  probe =
+//      (allow_variable_width_fonts
+//       ? FLOAT_TO_FLONUM (variable_width_font_width_factor)
+//       : SHARP_F);
+//    
+//    if (arg == SHARP_F)
+//      allow_variable_width_fonts = FALSE;
+//    else if (arg == SHARP_T)
+//      allow_variable_width_fonts = TRUE;
+//    else if (FLONUM_P(arg)) {
+//      allow_variable_width_fonts = TRUE;
+//      variable_width_font_width_factor = FLONUM_TO_DOUBLE (arg);
+//    }
+//    else error_wrong_type_arg (1);
+//
+//    PRIMITIVE_RETURN (probe);
+//  }
+//}
