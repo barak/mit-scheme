@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.pkg,v 1.7 1991/07/25 02:38:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.pkg,v 1.8 1991/10/18 08:59:29 cph Exp $
 $MC68020-Header: comp.pkg,v 1.30 90/05/03 15:16:59 GMT jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
@@ -90,6 +90,7 @@ MIT in each case. |#
 	  compiler:generate-rtl-files?
 	  compiler:generate-type-checks?
 	  compiler:implicit-self-static?
+	  compiler:intersperse-rtl-in-lap?
 	  compiler:noisy?
 	  compiler:open-code-flonum-checks?
 	  compiler:open-code-primitives?
@@ -157,6 +158,7 @@ MIT in each case. |#
 	  cf
 	  compile-bin-file
 	  compile-procedure
+	  compile-scode
 	  compiler:reset!
 	  cross-compile-bin-file
 	  cross-compile-bin-file-end)
@@ -598,6 +600,8 @@ MIT in each case. |#
   (export (compiler top-level)
 	  *interned-assignments*
 	  *interned-constants*
+	  *interned-global-links*
+	  *interned-static-variables*
 	  *interned-uuo-links*
 	  *interned-variables*
 	  *next-constant*
@@ -619,7 +623,7 @@ MIT in each case. |#
 	  bblock-linearize-lap)
   (export (compiler top-level)
 	  linearize-lap))
-
+
 (define-package (compiler lap-optimizer)
   (files "machines/vax/lapopt")
   (parent (compiler))
