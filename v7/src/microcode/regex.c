@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.10 1992/01/15 04:08:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.11 1992/04/02 11:23:05 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -58,7 +58,9 @@ extern void free ();
   switch ((enum enum_type) (expression))
 #endif /* not SWITCH_ENUM */
 
-#define RE_NFAILURES 80
+#ifndef RE_NFAILURES
+#define RE_NFAILURES 512
+#endif
 
 #define FOR_INDEX_RANGE(index, start, end)				\
   for (index = (start); (index < (end)); index += 1)
