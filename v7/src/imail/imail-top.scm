@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.207 2000/07/05 01:04:40 cph Exp $
+;;; $Id: imail-top.scm,v 1.208 2000/07/05 18:07:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1422,10 +1422,10 @@ A prefix argument says to prompt for a URL and append all messages
 	(let* ((folder (selected-folder))
 	       (count (folder-modification-count folder)))
 	  (probe-folder folder)
-	  (cond ((<= (folder-modification-count folder) count)
-		 (message "No changes to mail folder"))
-		((navigator/first-unseen-message folder)
+	  (cond ((navigator/first-unseen-message folder)
 		 => (lambda (unseen) (select-message folder unseen)))
+		((<= (folder-modification-count folder) count)
+		 (message "No changes to mail folder"))
 		((selected-message #f)
 		 (message "No unseen messages"))
 		((navigator/last-message folder)
