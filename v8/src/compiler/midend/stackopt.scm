@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.6 1995/04/06 19:00:44 adams Exp $
+$Id: stackopt.scm,v 1.7 1995/04/08 04:38:22 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -115,6 +115,7 @@ PARENT and CHILD.  We consider two cases:
      that the name and slot are free, hence will be wired.
 
 End of Big Note A |#
+
 
 (define (stackopt/top-level program)
   (stackopt/expr false program))
@@ -147,7 +148,7 @@ End of Big Note A |#
 (define-stack-optimizer LET (state bindings body)
   `(LET ,(map (lambda (binding)
 		(list (car binding)
-		      (stackopt/expr false (cadr binding))))
+		      (stackopt/expr state (cadr binding))))
 	      bindings)
      ,(stackopt/expr state body)))
 
@@ -169,7 +170,7 @@ End of Big Note A |#
   `(DECLARE ,@anything))
 
 (define-stack-optimizer IF (state pred conseq alt)
-  `(IF ,(stackopt/expr false pred)
+  `(IF ,(stackopt/expr state pred)
        ,(stackopt/expr state conseq)
        ,(stackopt/expr state alt)))
 
@@ -177,27 +178,94 @@ End of Big Note A |#
   (if (null? actions)
       `(BEGIN)
       (let ((actions* (reverse actions)))
-	`(BEGIN ,@(stackopt/expr* false (reverse (cdr actions*)))
+	`(BEGIN ,@(stackopt/expr* state (reverse (cdr actions*)))
 		,(stackopt/expr state (car actions*))))))
 
-(define-stack-optimizer CALL (state rator cont #!rest rands)
-  (with-letfied-nested-stack-closures rator cont rands
-    (lambda (rator cont rands)				      
-      (define (wrap cont*)
-	`(CALL ,(stackopt/expr false rator)
-	       ,cont*
-	       ,@(stackopt/expr* false rands)))
-      (cond ((form/match stackopt/cont-pattern cont)
-	     => (lambda (result)
-		  (wrap (stackopt/call/can-see-both-frames
-			 state
-			 (call/%make-stack-closure/lambda-expression cont)
-			 result))))
-	    ((call/%make-stack-closure? cont)
-	     (wrap (stackopt/call/terminal state cont)))
-	    (else
-	     (wrap (stackopt/expr false cont)))))))
+;;  HAIR.
+;;
+;;  When copying the program we make a copy of the frame vector at its
+;;  definition site and use that.  Then we make sure that all
+;;  references to that frame variable have frame vector elements are
+;;  then EQ? to the copy.  This ensures that if a big chunk of code
+;;  has been replicated then the frame vectors and hence stack models
+;;  for the two now separate chunks are distinct and do not interfere
+;;  but we still have the nice EQ? property between all vectors for
+;;  any particular frame.
 
+(define *stackopt/lexical-stack-frame-name* #F)
+(define *stackopt/lexical-stack-frame-vector* #F)
+
+;; MORE HAIR
+;;
+;; These fluid bound variables are used solely for propogating the frame
+;; information in <expr> below (this occurs when calling primitives):
+;;
+;;   (CALL (LAMBDA (cont) <expr>)
+;;         (CALL %make-stack-closure ...)
+;;
+;; The problem is that <expr> may have free variables, including the
+;; surrounding frame vector, but should have no model (because we do
+;; not model what is on the other side of the continuation [usually we
+;; dont know], Trying to model this would make things even trickier as
+;; the machine continuation may be naturally kept in the stack (an
+;; invisible offset) or in a register.
+
+;; A better solution would be to separate the model tree from the
+;; environment function of matching up the frame vectors for a
+;; particular frame variable.
+
+(define-stack-optimizer CALL (state rator cont #!rest rands)
+  (if (and (QUOTE/? rator)
+	   (eq? (quote/text rator) %stack-closure-ref))
+      (let ((var  (lookup/name (first rands))) ;rands = (closure offset 'name)
+	    (name (quote/text (third rands))))
+	(define (bad)
+	  (internal-error "Inconsistent %stack-closure-ref"
+			  (error-irritant/noise "\n; state: ") state
+			  (error-irritant/noise "\n; form:  ")
+			  `(CALL ,rator ,cont ,@rands)))
+	(define (good frame-vector)
+	  `(CALL ',%stack-closure-ref
+		 '#F
+		 (LOOKUP ,var)
+		 (CALL ',%vector-index '#F ',frame-vector ',name)
+		 ',name))
+	(cond ((and (not state) (eq? var *stackopt/lexical-stack-frame-name*))
+	       (good *stackopt/lexical-stack-frame-vector*))
+	      ((and state (eq? var (stackopt/model/name state)))
+	       (good (stackopt/model/frame state)))
+	      (else
+	       (bad))))
+
+      (with-letfied-nested-stack-closures
+       rator cont rands
+       (lambda (rator cont rands)
+	 (define (wrap lambda-special? cont*)
+	   `(CALL ,(if (and lambda-special?
+			    (LAMBDA/? rator)
+			    (null? rands)
+			    state)
+		       (fluid-let ((*stackopt/lexical-stack-frame-name*
+				    (stackopt/model/name state))
+				   (*stackopt/lexical-stack-frame-vector*
+				    (stackopt/model/frame state)))
+			 (stackopt/expr state rator))
+		       (stackopt/expr state rator))
+		  ,cont*
+		  ,@(stackopt/expr* state rands)))
+	 (cond ((form/match stackopt/cont-pattern cont)
+		=> (lambda (result)
+		     (wrap #T
+			   (stackopt/call/can-see-both-frames
+			    state
+			    (call/%make-stack-closure/lambda-expression cont)
+			    result))))
+	       ((call/%make-stack-closure? cont)
+		(wrap #T (stackopt/call/terminal state cont)))
+	       (else
+		(wrap #F (stackopt/expr state cont))))))))
+
+
 (define (with-letfied-nested-stack-closures rator cont rands
 					    receiver-of-rator+cont+rands)
   ;; The loop does the `letifying' transformation until there are no
@@ -221,6 +289,8 @@ End of Big Note A |#
   ;;                        ...)
   ;;                  ...))
   ;;          (CALL 'make-stack-closure #F ...))
+  ;; This kind of code occurs because we want to generate a continutaion
+  ;; and then push it on the stack when callingprimitives.
   (let loop ((rator rator) (cont cont) (rands rands))
     (if (and (call/%make-stack-closure? cont)
 	     (pair? (call/%make-stack-closure/values cont))
@@ -272,7 +342,6 @@ End of Big Note A |#
 (define stackopt/?continuation-side-frame-vector (->pattern-variable 'CONT-FRAME))
 (define stackopt/?body (->pattern-variable 'BODY))
 (define stackopt/?closure-elts (->pattern-variable 'CLOSURE-ELTS))
-(define stackopt/?non-lambda-expression (->pattern-variable 'NON-LAMBDA))
 
 (define stackopt/cont-pattern
   `(CALL (QUOTE ,%make-stack-closure)
@@ -298,8 +367,10 @@ End of Big Note A |#
 (define (stackopt/fat-procedure state lambda-body match-result)
   (if state
       (internal-error "Model exists at non-continuation lambda!" state))
-  (let* ((frame  (cadr (assq stackopt/?frame-vector match-result)))
-	 (model  (stackopt/model/make #F frame #T #T))
+  (let* ((frame-vector  (cadr (assq stackopt/?frame-vector match-result)))
+	 (frame-name    (cadr (assq stackopt/?frame-name match-result)))
+	 (model  (stackopt/model/make #F (vector-copy frame-vector) frame-name
+				      #T #T))
 	 (form*  (stackopt/expr model lambda-body)))
     (set-stackopt/model/form! model #F)
     (stackopt/reorder! model)
@@ -328,17 +399,21 @@ End of Big Note A |#
   (let ((lambda-list (cadr (assq stackopt/?lambda-list match-result)))
 	(frame-name (cadr (assq stackopt/?frame-name match-result)))
 	(call-frame-vector
-	 (cadr (assq stackopt/?call-side-frame-vector match-result)))
+	 (vector-copy
+	  (cadr (assq stackopt/?call-side-frame-vector match-result))))
 	(cont-frame-vector
-	 (cadr (assq stackopt/?continuation-side-frame-vector
-		     match-result)))
+	 (vector-copy
+	  (cadr (assq stackopt/?continuation-side-frame-vector
+		      match-result))))
 	(body (cadr (assq stackopt/?body match-result)))
 	(real-rands (cadr (assq stackopt/?closure-elts match-result))))
-    (let* ((call-model (stackopt/model/make state call-frame-vector #F #F))
+    (let* ((call-model (stackopt/model/make state call-frame-vector 
+					    frame-name #F #F))
 	   (cont-model
 	    (if (eq? call-frame-vector cont-frame-vector)
 		call-model
-		(stackopt/model/make call-model cont-frame-vector #F #F)))
+		(stackopt/model/make call-model cont-frame-vector frame-name
+				     #F #F)))
 	   ;; See Big Note A at the top of this file.
 	   (handler*
 	    `(LAMBDA ,lambda-list
@@ -351,7 +426,7 @@ End of Big Note A |#
 		   (QUOTE #F)
 		   ,(stackopt/remember handler* handler)
 		   (QUOTE ,call-frame-vector)
-		   ,@(stackopt/expr* false real-rands))))
+		   ,@(stackopt/expr* state real-rands))))
       (if (not (eq? call-model cont-model))
 	  (let ((mismatch (first-mismatch call-frame-vector
 					  cont-frame-vector)))
@@ -363,15 +438,16 @@ End of Big Note A |#
 (define (stackopt/call/terminal state cont)
   ;; Handler for CONT being the "push" %make-stack-closure (i.e. with
   ;; anything other than a LAMBDA expression)
-  (let ((frame-vector (quote/text (call/%make-stack-closure/vector cont)))
+  (let ((frame-vector (vector-copy
+		       (quote/text (call/%make-stack-closure/vector cont))))
 	(real-rands   (call/%make-stack-closure/values cont))
 	(non-lambda   (call/%make-stack-closure/lambda-expression cont)))
-    (let* ((model (stackopt/model/make state frame-vector #T #F))
+    (let* ((model (stackopt/model/make state frame-vector #F #T #F))
 	   (form* `(CALL (QUOTE ,%make-stack-closure)
 			 (QUOTE #F)
-			 ,(stackopt/expr false non-lambda)
+			 ,(stackopt/expr state non-lambda)
 			 (QUOTE ,frame-vector)
-			 ,@(stackopt/expr* false real-rands))))
+			 ,@(stackopt/expr* state real-rands))))
       (stackopt/%call state model form*))))
 
 (define (stackopt/%call state model form*)
@@ -613,11 +689,11 @@ End of Big Note A |#
   ;; Calculate offsets for all elements in this model's frame by first
   ;; using the wired offsets and then filling in order from the
   ;; unwired list.
-  (let* ((frame (stackopt/model/frame model))
-	 (len (vector-length frame))
+  (let* ((frame  (stackopt/model/frame model))
+	 (len    (vector-length frame))
 	 (frame* (make-vector len false)))
     (for-each (lambda (wired)
-		(let ((name (car wired))
+		(let ((name  (car wired))
 		      (index (cdr wired)))
 		  (if (vector-ref frame* index)
 		      (stackopt/inconsistency model)
@@ -685,9 +761,10 @@ End of Big Note A |#
 
 (define-structure (stackopt/model
 		   (conc-name stackopt/model/)
-		   (constructor stackopt/model/%make (parent frame)))
+		   (constructor stackopt/model/%make (parent frame name)))
   (parent false read-only true)
   (frame false read-only true)		; Vector of variable names
+  (name  false read-only true)		; Frame variable name
   (wired '() read-only false)		; List mapping names to offsets
   (unwired '() read-only false)		; List of names, currently
 					; without offsets
@@ -696,13 +773,13 @@ End of Big Note A |#
   (n-unwired false read-only false)
   (extended? false read-only false))
 
-(define (stackopt/model/make parent frame wire-all? dont-reorder?)
+(define (stackopt/model/make parent frame name wire-all? dont-reorder?)
   ;; DONT-REORDER? is used to prevent moving continuations to the
   ;; front; it really implies more than just suppression of
   ;; reordering.  This is basically a patch to avoid fixing a harder
   ;; problem: ignored-continuations are being closed over and passed
   ;; as procedure arguments.
-  (let ((new (stackopt/model/%make parent frame)))
+  (let ((new (stackopt/model/%make parent frame name)))
     (if parent
 	(set-stackopt/model/children! parent
 				      (cons new
