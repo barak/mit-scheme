@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.13 2001/03/08 19:27:35 cph Exp $
+$Id: crypto.scm,v 14.14 2002/06/28 18:21:28 cph Exp $
 
-Copyright (c) 2000-2001 Massachusetts Institute of Technology
+Copyright (c) 2000-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Interface to cryptography libraries
@@ -279,40 +280,54 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (md5-available?)
   (or (mhash-available?)
-      (begin
-	(load-library-object-file "prmd5" #f)
-	(implemented-primitive-procedure? (ucode-primitive md5-init 0)))))
+      (%md5-available?)))
+
+(define (%md5-available?)
+  (load-library-object-file "prmd5" #f)
+  (implemented-primitive-procedure? (ucode-primitive md5-init 0)))
 
 (define (md5-file filename)
-  (if (mhash-available?)
-      (mhash-file 'MD5 filename)
-      (call-with-binary-input-file filename
-	(lambda (port)
-	  (let ((buffer (make-string 4096))
-		(context ((ucode-primitive md5-init 0))))
-	    (dynamic-wind (lambda ()
-			    unspecific)
-			  (lambda ()
-			    (let loop ()
-			      (let ((n (read-substring! buffer 0 4096 port)))
-				(if (fix:= 0 n)
-				    ((ucode-primitive md5-final 1) context)
-				    (begin
-				      ((ucode-primitive md5-update 4)
-				       context buffer 0 n)
-				      (loop))))))
-			  (lambda ()
-			    (string-fill! buffer #\NUL))))))))
+  (cond ((mhash-available?)
+	 (mhash-file 'MD5 filename))
+	((%md5-available?)
+	 (%md5-file filename))
+	(else
+	 (error "No MD5 support available."))))
+
+(define (%md5-file filename)
+  (call-with-binary-input-file filename
+    (lambda (port)
+      (let ((buffer (make-string 4096))
+	    (context ((ucode-primitive md5-init 0))))
+	(dynamic-wind (lambda ()
+			unspecific)
+		      (lambda ()
+			(let loop ()
+			  (let ((n (read-substring! buffer 0 4096 port)))
+			    (if (fix:= 0 n)
+				((ucode-primitive md5-final 1) context)
+				(begin
+				  ((ucode-primitive md5-update 4)
+				   context buffer 0 n)
+				  (loop))))))
+		      (lambda ()
+			(string-fill! buffer #\NUL)))))))
 
 (define (md5-string string)
   (md5-substring string 0 (string-length string)))
 
 (define (md5-substring string start end)
-  (if (mhash-available?)
-      (mhash-substring 'MD5 string start end)
-      (let ((context ((ucode-primitive md5-init 0))))
-	((ucode-primitive md5-update 4) context string start end)
-	((ucode-primitive md5-final 1) context))))
+  (cond ((mhash-available?)
+	 (mhash-substring 'MD5 string start end))
+	((%md5-available?)
+	 (%md5-substring string start end))
+	(else
+	 (error "No MD5 support available."))))
+
+(define (%md5-substring string start end)
+  (let ((context ((ucode-primitive md5-init 0))))
+    ((ucode-primitive md5-update 4) context string start end)
+    ((ucode-primitive md5-final 1) context)))
 
 (define md5-sum->number mhash-sum->number)
 (define md5-sum->hexadecimal mhash-sum->hexadecimal)
