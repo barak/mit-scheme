@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: occur.scm,v 1.10 2004/10/23 04:01:09 cph Exp $
+$Id: occur.scm,v 1.11 2005/01/17 20:03:55 cph Exp $
 
 Copyright 1992,1995,1997,2000,2003,2004 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -228,23 +229,25 @@ It serves as a menu to find any of the occurrences in this buffer.
 	    (reverse! occurrences))))))
 
 (define (format-occurrences occurrences nlines output)
-  (let loop
-      ((occurrences occurrences)
-       (prev-ls #f)
-       (line 1))
-    (let ((r (car occurrences))
-	  (m (mark-right-inserting-copy output)))
-      (let ((ls (line-start (region-start r) 0)))
-	(let ((line (+ line (count-lines (or prev-ls (group-start ls)) ls))))
-	  (format-occurrence ls (line-start (region-end r) 0)
-			     line nlines
-			     output)
-	  (region-put! m output 'OCCURRENCE r)
-	  (if (pair? (cdr occurrences))
-	      (begin
-		(if (not (= nlines 0))
-		    (insert-string "--------\n" output))
-		(loop (cdr occurrences) ls line))))))))
+  (if (pair? occurrences)
+      (let loop
+	  ((occurrences occurrences)
+	   (prev-ls #f)
+	   (line 1))
+	(let ((r (car occurrences))
+	      (m (mark-right-inserting-copy output)))
+	  (let ((ls (line-start (region-start r) 0)))
+	    (let ((line
+		   (+ line (count-lines (or prev-ls (group-start ls)) ls))))
+	      (format-occurrence ls (line-start (region-end r) 0)
+				 line nlines
+				 output)
+	      (region-put! m output 'OCCURRENCE r)
+	      (if (pair? (cdr occurrences))
+		  (begin
+		    (if (not (= nlines 0))
+			(insert-string "--------\n" output))
+		    (loop (cdr occurrences) ls line)))))))))
 
 (define (format-occurrence rs re line nlines output)
   (let ((empty "       "))
