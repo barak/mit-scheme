@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.190 1993/08/13 00:07:04 cph Exp $
+$Id: runtime.pkg,v 14.191 1993/08/31 00:32:09 ziggy Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -221,6 +221,7 @@ MIT in each case. |#
   (files "infstr" "infutl")
   (parent ())
   (export ()
+	  compiled-code-block/filename
 	  compiled-entry/block
 	  compiled-entry/dbg-object
 	  compiled-entry/filename
