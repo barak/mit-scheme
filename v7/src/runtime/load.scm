@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.45 1993/10/21 11:49:46 cph Exp $
+$Id: load.scm,v 14.46 1993/11/11 20:29:35 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -42,9 +42,16 @@ MIT in each case. |#
   (set! load-noisily? false)
   (set! load/loading? false)
   (set! load/suppress-loading-message? false)
-  (set! load/default-types '("com" "bin" "scm"))
+  (set! load/default-types
+	`(("com" ,load/internal)
+	  ("so" ,load-object-file)
+	  ("sl" ,load-object-file)
+	  ("bin" ,load/internal)
+	  ("scm" ,load/internal)))
+  (set! fasload/default-types
+	`(("com" ,fasload/internal)
+	  ("bin" ,fasload/internal)))
   (set! load/default-find-pathname-with-type search-types-in-order)
-  (set! fasload/default-types '("com" "bin"))
   (set! load/current-pathname)
   (set! condition-type:not-loading
 	(make-condition-type 'NOT-LOADING condition-type:error '()
@@ -62,52 +69,6 @@ MIT in each case. |#
 (define condition-type:not-loading)
 (define load/default-find-pathname-with-type)
 (define fasload/default-types)
-
-(define (read-file filename)
-  (call-with-input-file (pathname-default-version filename 'NEWEST)
-    (lambda (port)
-      (stream->list (read-stream port)))))
-
-(define (fasload filename #!optional suppress-loading-message?)
-  (fasload/internal (find-pathname filename fasload/default-types)
-		    (if (default-object? suppress-loading-message?)
-			load/suppress-loading-message?
-			suppress-loading-message?)))
-
-(define (fasload/internal pathname suppress-loading-message?)
-  (let ((value
-	 (loading-message suppress-loading-message? pathname
-	   (lambda ()
-	     ((ucode-primitive binary-fasload) (->namestring pathname))))))
-    (fasload/update-debugging-info! value pathname)
-    value))
-
-(define (load-noisily filename #!optional environment syntax-table purify?)
-  (fluid-let ((load-noisily? true))
-    (load filename
-	  ;; This defaulting is a kludge until we get the optional
-	  ;; defaulting fixed.  Right now it must match the defaulting
-	  ;; of `load'.
-	  (if (default-object? environment) default-object environment)
-	  (if (default-object? syntax-table) default-object syntax-table)
-	  (if (default-object? purify?) default-object purify?))))
-
-(define (load-init-file)
-  (let ((pathname (init-file-pathname)))
-    (if pathname
-	(load pathname user-initial-environment)))
-  unspecific)
-
-(define (loading-message suppress-loading-message? pathname do-it)
-  (if suppress-loading-message?
-      (do-it)
-      (let ((port (notification-output-port)))
-	(fresh-line port)
-	(write-string ";Loading " port)
-	(write (enough-namestring pathname) port)
-	(let ((value (do-it)))
-	  (write-string " -- done" port)
-	  value))))
 
 ;;; This is careful to do the minimum number of file existence probes
 ;;; before opening the input file.
@@ -130,23 +91,25 @@ MIT in each case. |#
 		 (eq? purify? default-object))
 	     false
 	     purify?)))
-    (with-values
+    (call-with-values
 	(lambda ()
 	  (fluid-let ((load/loading? true)
 		      (load/after-load-hooks '()))
 	    (let ((kernel
 		   (lambda (filename last-file?)
-		     (let ((pathname
-			    (find-pathname filename load/default-types)))
-		       (fluid-let ((load/current-pathname pathname))
-			 (let ((value
-				(load/internal pathname
-					       environment
-					       syntax-table
-					       purify?
-					       load-noisily?)))
-			   (cond (last-file? value)
-				 (load-noisily? (write-line value)))))))))
+		     (call-with-values
+			 (lambda ()
+			   (find-pathname filename load/default-types))
+		       (lambda (pathname loader)
+			 (fluid-let ((load/current-pathname pathname))
+			   (let ((value
+				  (loader pathname
+					  environment
+					  syntax-table
+					  purify?
+					  load-noisily?)))
+			     (cond (last-file? value)
+				   (load-noisily? (write-line value))))))))))
 	      (let ((value
 		     (if (pair? filename/s)
 			 (let loop ((filenames filename/s))
@@ -162,6 +125,14 @@ MIT in each case. |#
 	    (for-each (lambda (hook) (hook)) (reverse hooks)))
 	result))))
 
+(define (fasload filename #!optional suppress-loading-message?)
+  (call-with-values (lambda () (find-pathname filename fasload/default-types))
+    (lambda (pathname loader)
+      (loader pathname
+	      (if (default-object? suppress-loading-message?)
+		  load/suppress-loading-message?
+		  suppress-loading-message?)))))
+
 (define (current-load-pathname)
   (if (not load/loading?) (error condition-type:not-loading))
   load/current-pathname)
@@ -174,6 +145,16 @@ MIT in each case. |#
 (define default-object
   "default-object")
 
+(define (load-noisily filename #!optional environment syntax-table purify?)
+  (fluid-let ((load-noisily? true))
+    (load filename
+	  ;; This defaulting is a kludge until we get the optional
+	  ;; defaulting fixed.  Right now it must match the defaulting
+	  ;; of `load'.
+	  (if (default-object? environment) default-object environment)
+	  (if (default-object? syntax-table) default-object syntax-table)
+	  (if (default-object? purify?) default-object purify?))))
+
 (define (load-latest . args)
   (fluid-let ((load/default-find-pathname-with-type find-latest-file))
     (apply load args)))
@@ -183,42 +164,64 @@ MIT in each case. |#
     (apply fasload args)))
 
 (define (find-pathname filename default-types)
-  (let ((pathname (merge-pathnames filename)))
-    (if (file-exists? pathname)
-	pathname
-	(or (and (not (pathname-type pathname))
+  (let ((pathname (merge-pathnames filename))
+	(fail
+	 (lambda ()
+	   (find-pathname (error:file-operation filename
+						"find"
+						"file"
+						"file does not exist"
+						find-pathname
+						(list filename default-types))
+			  default-types))))
+    (cond ((file-exists? pathname)
+	   (values pathname
+		   (let ((find-loader
+			  (lambda (extension)
+			    (let ((place (assoc extension default-types)))
+			      (and place
+				   (cadr place))))))
+		     (or (and (pathname-type pathname)
+			      (find-loader (pathname-type pathname)))
+			 (find-loader "scm")
+			 (find-loader "bin")))))
+	  ((pathname-type pathname)
+	   (fail))
+	  (else
+	   (call-with-values
+	       (lambda ()
 		 (load/default-find-pathname-with-type pathname default-types))
-	    (find-pathname
-	     (error:file-operation filename
-				   "find"
-				   "file"
-				   "file does not exist"
-				   find-pathname
-				   (list filename default-types))
-	     default-types)))))
+	     (lambda (pathname loader)
+	       (if (not pathname)
+		   (fail)
+		   (values pathname loader))))))))
 
 (define (search-types-in-order pathname default-types)
   (let loop ((types default-types))
-    (and (not (null? types))
-	 (let ((pathname (pathname-new-type pathname (car types))))
+    (if (null? types)
+	(values false false)
+	 (let ((pathname (pathname-new-type pathname (caar types))))
 	   (if (file-exists? pathname)
-	       pathname
+	       (values pathname (cadar types))
 	       (loop (cdr types)))))))
 
 (define (find-latest-file pathname default-types)
-  (let loop
-      ((types default-types)
-       (latest-pathname false)
-       (latest-time 0))
+  (let loop ((types default-types)
+	     (latest-pathname false)
+	     (latest-loader false)
+	     (latest-time 0))
     (if (not (pair? types))
-	latest-pathname
-	(let ((pathname (pathname-new-type pathname (car types)))
+	(values latest-pathname latest-loader)
+	(let ((pathname (pathname-new-type pathname (caar types)))
 	      (skip
 	       (lambda ()
-		 (loop (cdr types) latest-pathname latest-time))))
+		 (loop (cdr types)
+		       latest-pathname
+		       latest-loader
+		       latest-time))))
 	  (let ((time (file-modification-time-indirect pathname)))
 	    (if (and time (> time latest-time))
-		(loop (cdr types) pathname time)
+		(loop (cdr types) pathname (cadar types) time)
 		(skip)))))))
 
 (define (load/internal pathname environment syntax-table purify? load-noisily?)
@@ -228,14 +231,10 @@ MIT in each case. |#
 	     (= 250 (char->ascii fasl-marker)))
 	(begin
 	  (close-input-port port)
-	  (extended-scode-eval
-	   (let ((scode
-		  (fasload/internal pathname load/suppress-loading-message?)))
-	     (if purify? (purify (load/purification-root scode)))
-	     scode)
-	   (if (eq? environment default-object)
-	       (nearest-repl/environment)
-	       environment)))
+	  (load-scode-end (fasload/internal pathname
+					    load/suppress-loading-message?)
+			  environment
+			  purify?))
 	(let ((value-stream
 	       (lambda ()
 		 (eval-stream (read-stream port) environment syntax-table))))
@@ -249,6 +248,52 @@ MIT in each case. |#
 		(lambda ()
 		  (write-stream (value-stream)
 				(lambda (exp&value) exp&value false)))))))))
+
+(define (fasload/internal pathname suppress-loading-message?)
+  (let ((value
+	 (loading-message suppress-loading-message? pathname
+	   (lambda ()
+	     ((ucode-primitive binary-fasload) (->namestring pathname))))))
+    (fasload/update-debugging-info! value pathname)
+    value))
+
+(define (load-object-file pathname environment
+			  syntax-table purify? load-noisily?)
+  syntax-table load-noisily?		; ignored
+  (loading-message
+   load/suppress-loading-message? pathname
+   (lambda ()
+     (let* ((handle
+	     ((ucode-primitive load-object-file 1) (->namestring pathname)))
+	    (cth
+	     ((ucode-primitive object-lookup-symbol 3)
+	      handle "dload_initialize_file" 0)))
+       (if (not cth)
+	   (error "load-object-file: Cannot find init procedure" pathname))
+       (let ((scode ((ucode-primitive initialize-c-compiled-block 1)
+		     ((ucode-primitive address-to-string 1)
+		      ((ucode-primitive invoke-c-thunk 1)
+		       cth)))))
+	 (fasload/update-debugging-info! scode pathname)
+	 (load-scode-end scode environment purify?))))))
+
+(define (load-scode-end scode environment purify?)
+  (if purify? (purify (load/purification-root scode)))
+  (extended-scode-eval scode
+		       (if (eq? environment default-object)
+			   (nearest-repl/environment)
+			   environment)))
+
+(define (loading-message suppress-loading-message? pathname do-it)
+  (if suppress-loading-message?
+      (do-it)
+      (let ((port (notification-output-port)))
+	(fresh-line port)
+	(write-string ";Loading " port)
+	(write (enough-namestring pathname) port)
+	(let ((value (do-it)))
+	  (write-string " -- done" port)
+	  value))))
 
 (define *purification-root-marker*)
 
@@ -267,7 +312,12 @@ MIT in each case. |#
 			 (eq? (car frob) *purification-root-marker*)
 			 (cdr frob))))))
       object))
-
+
+(define (read-file filename)
+  (call-with-input-file (pathname-default-version filename 'NEWEST)
+    (lambda (port)
+      (stream->list (read-stream port)))))
+
 (define (read-stream port)
   (parse-objects port
 		 (current-parser-table)
@@ -306,6 +356,8 @@ MIT in each case. |#
 	    (cdr exp&value)))
       unspecific))
 
+;;;; Command Line Parser
+
 (define (process-command-line)
   (set! generate-suspend-file? true)
   (hook/process-command-line ((ucode-primitive get-unused-command-line 0))))
@@ -328,7 +380,7 @@ MIT in each case. |#
 	  (let* ((keyword (car command-line))
 		 (place (assoc keyword *command-line-parsers*)))
 	    (cond (place
-		   (with-values
+		   (call-with-values
 		       (lambda () ((cdr place) command-line))
 		     (lambda (next tail-action)
 		       (if tail-action
@@ -372,6 +424,12 @@ MIT in each case. |#
 		  (process-keyword (vector->list unused-command-line) '()))
 	    (for-each (lambda (act) (act))
 		      (reverse after-parsing-actions)))))))
+
+(define (load-init-file)
+  (let ((pathname (init-file-pathname)))
+    (if pathname
+	(load pathname user-initial-environment)))
+  unspecific)
 
 ;;   KEYWORD must be a string with at least two characters and the first
 ;; being a dash (#\-).
@@ -489,7 +547,6 @@ MIT in each case. |#
 	  (real-fasload fasload)
 	  (real-file-exists? file-exists?)
 	  (real-file-directory? file-directory?))
-
       (fluid-let
 	  ((load
 	    (lambda (fname #!optional env syntax-table purify?)
@@ -537,7 +594,7 @@ MIT in each case. |#
 	   (flush-purification-queue! (lambda () 'done)))
         (load (caar alist))))
     (flush-purification-queue!))
-
+
   (with-binary-input-file (->truename pathname)
     (lambda (channel)
       ((ucode-primitive binary-fasload) channel) ; Dismiss header.
@@ -556,7 +613,11 @@ MIT in each case. |#
 	     (process-next-bunch))
 	  (process-next-bunch))))))
 
-;;; Utilities for the binary unpacker
+(define (with-binary-input-file file action)
+  (with-binary-file-channel file action
+    open-binary-input-file
+    input-port/channel
+    'with-binary-input-file))
 
 (define (with-binary-file-channel file action open extract-channel name)
   (let ((port false))
@@ -573,9 +634,3 @@ MIT in each case. |#
            (begin
              (close-port port)
              (set! port true)))))))
-
-(define (with-binary-input-file file action)
-  (with-binary-file-channel file action
-    open-binary-input-file
-    input-port/channel
-    'with-binary-input-file))
