@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile,v 1.23 1999/01/02 06:11:34 cph Exp $
+###     $Id: makefile,v 1.24 1999/05/11 03:52:25 cph Exp $
 ###
 ###     Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ###
@@ -362,7 +362,7 @@ storage.obj : scheme.tch gctype.c
 char.obj string.obj dfloat.obj : scheme.tch prims.h
 nttterm.obj : scheme.tch prims.h osterm.h
 boot.obj : scheme.tch prims.h version.h option.h ostop.h
-option.obj : ansidecl.h option.h
+option.obj : scheme.tch fasl.h osenv.h osfs.h
 term.obj : scheme.tch
 missing.obj : config.h
 BCHGCC_H = bchgcc.h oscond.h $(GC_HEAD_FILES)
