@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.26 1995/05/05 07:20:41 cph Exp $
+;;;	$Id: sendmail.scm,v 1.27 1995/05/05 22:35:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -226,7 +226,7 @@ is inserted."
   (set-buffer-major-mode! buffer
 			  (or (and (not (default-object? mode)) mode)
 			      (ref-mode-object mail)))
-  (local-set-variable! mail-reply-buffer reply-buffer)
+  (local-set-variable! mail-reply-buffer reply-buffer buffer)
   (let ((point (mark-left-inserting-copy (buffer-start buffer)))
 	(fill
 	 (lambda (start end)
@@ -343,104 +343,103 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 (define-key 'mail '(#\C-c #\C-q) 'mail-fill-yanked-message)
 (define-key 'mail '(#\C-c #\C-c) 'mail-send-and-exit)
 (define-key 'mail '(#\C-c #\C-s) 'mail-send)
-
-(define-command mail-send-and-exit
-  "Send message like mail-send, then, if no errors, exit from mail buffer.
-Prefix arg means don't delete this window."
-  "P"
-  (lambda (argument)
-    ((ref-command mail-send))
-    (bury-buffer (current-buffer))
-    (if (and (not argument)
-	     (not (window-has-no-neighbors? (current-window)))
-	     (eq? (ref-mode-object rmail)
-		  (buffer-major-mode (window-buffer (other-window)))))
-	(window-delete! (current-window))
-	(select-buffer (previous-buffer)))))
-
-(define-command mail-send
-  "Send the message in the current buffer.
-If  mail-interactive  is non-false, wait for success indication
-or error messages, and inform user.
-Otherwise any failure is reported in a message back to
-the user from the mailer."
-  ()
-  (lambda ()
-    (message "Sending...")
-    ((ref-variable send-mail-procedure))
-    (buffer-not-modified! (current-buffer))
-    (delete-auto-save-file! (current-buffer))
-    (message "Sending...done")))
 
+(define ((field-mover field))
+  (set-current-point! (mail-position-on-field (current-buffer) field)))
+
 (define-command mail-to
   "Move point to end of To field."
   ()
-  (lambda ()
-    (set-current-point! (mail-position-on-field (current-buffer) "To"))))
+  (field-mover "To"))
 
 (define-command mail-subject
   "Move point to end of Subject field."
   ()
-  (lambda ()
-    (set-current-point! (mail-position-on-field (current-buffer) "Subject"))))
+  (field-mover "Subject"))
 
 (define-command mail-cc
   "Move point to end of CC field."
   ()
-  (lambda ()
-    (set-current-point! (mail-position-on-cc-field (current-buffer) "CC"))))
+  (field-mover "CC"))
 
 (define-command mail-bcc
   "Move point to end of BCC field."
   ()
-  (lambda ()
-    (set-current-point! (mail-position-on-cc-field (current-buffer) "BCC"))))
+  (field-mover "BCC"))
 
 (define (mail-position-on-field buffer field)
   (let ((start (buffer-start buffer)))
-    (mail-field-end! start (mail-header-end start (buffer-end buffer)) field)))
+    (mail-field-end! start
+		     (mail-match-header-separator start (buffer-end buffer))
+		     field)))
 
 (define (mail-position-on-cc-field buffer field)
   (let ((start (buffer-start buffer)))
-    (let ((end (mail-header-end start (buffer-end buffer))))
+    (let ((end (mail-match-header-separator start (buffer-end buffer))))
       (or (mail-field-end start end field)
 	  (mail-insert-field (mail-field-end! start end "To") field)))))
-
-(define (mail-header-end start end)
-  (mail-match-header-separator start end)
-  (skip-chars-backward "\n" (re-match-start 0) start))
 
 (define (mail-match-header-separator start end)
   (if (not (re-search-forward
 	    (string-append
-	     "^" (re-quote-string (ref-variable mail-header-separator)) "$")
-	    start end false))
-      (editor-error "Can't find mail-header-separator")))
+	     "^"
+	     (re-quote-string (ref-variable mail-header-separator start))
+	     "$")
+	    start end #f))
+      (editor-error "Can't find mail-header-separator."))
+  (re-match-start 0))
+
+(define (mail-header-end start #!optional end error?)
+  (let ((mark
+	 (search-forward "\n\n"
+			 start
+			 (if (or (default-object? end) (not end))
+			     (group-end start)
+			     end)
+			 #f)))
+    (if (and (not mark) (or (default-object? error?) error?))
+	(error "Unable to locate mail header end:" start))
+    (and mark
+	 (mark-1+ mark))))
 
-(define (mail-field-end! start end field)
-  (or (mail-field-end start end field)
-      (mail-insert-field end field)))
+(define (mail-field-start header-start header-end field)
+  (re-search-forward (string-append "^" field ":[ \t]*")
+		     header-start
+		     header-end
+		     #t))
 
-(define (mail-field-end start end field)
-  (and (re-search-forward (string-append "^" field ":[ \t]*") start end true)
-       (let ((field-start (re-match-end 0)))
-	 (if (re-search-forward "^[^ \t]" field-start end false)
-	     (skip-chars-backward "\n" (re-match-start 0) field-start)
-	     end))))
+(define (mail-field-end header-start header-end field)
+  (let ((field-start (mail-field-start header-start header-end field)))
+    (and field-start
+	 (%mail-field-end field-start header-end))))
 
-(define (mail-insert-field end field)
-  (let ((end (mark-left-inserting-copy end)))
-    (guarantee-newline end)
-    (insert-string field end)
-    (insert-string ": " end)
-    (if (line-end? end)
+(define (mail-field-region header-start header-end field)
+  (let ((field-start (mail-field-start header-start header-end field)))
+    (and field-start
+	 (make-region field-start (%mail-field-end field-start header-end)))))
+
+(define (%mail-field-end field-start header-end)
+  (if (re-search-forward "^[^ \t]" field-start header-end #f)
+      (mark-1+ (re-match-start 0))
+      header-end))
+
+(define (mail-insert-field mark field)
+  (let ((mark (mark-left-inserting-copy mark)))
+    (guarantee-newline mark)
+    (insert-string field mark)
+    (insert-string ": " mark)
+    (if (line-end? mark)
 	(begin
-	  (mark-temporary! end)
-	  end)
+	  (mark-temporary! mark)
+	  mark)
 	(begin
-	  (insert-newline end)
-	  (mark-temporary! end)
-	  (mark-1+ end)))))
+	  (insert-newline mark)
+	  (mark-temporary! mark)
+	  (mark-1+ mark)))))
+
+(define (mail-field-end! header-start header-end field)
+  (or (mail-field-end header-start header-end field)
+      (mail-insert-field header-end field)))
 
 (define-command mail-signature
   "Sign letter with contents of ~/.signature file."
@@ -516,78 +515,115 @@ Numeric argument means justify as well."
 				  justify?
 				  true))))
 
+(define-command mail-send-and-exit
+  "Send message like mail-send, then, if no errors, exit from mail buffer.
+Prefix arg means don't delete this window."
+  "P"
+  (lambda (argument)
+    ((ref-command mail-send))
+    (bury-buffer (current-buffer))
+    (if (and (not argument)
+	     (not (window-has-no-neighbors? (current-window)))
+	     (eq? (ref-mode-object rmail)
+		  (buffer-major-mode (window-buffer (other-window)))))
+	(window-delete! (current-window))
+	(select-buffer (previous-buffer)))))
+
+(define-command mail-send
+  "Send the message in the current buffer.
+If  mail-interactive  is non-false, wait for success indication
+or error messages, and inform user.
+Otherwise any failure is reported in a message back to
+the user from the mailer."
+  ()
+  (lambda ()
+    ((ref-variable send-mail-procedure))
+    (buffer-not-modified! (current-buffer))
+    (delete-auto-save-file! (current-buffer))))
+
 (define (sendmail-send-it)
-  (let ((error-buffer
-	 (and (ref-variable mail-interactive)
-	      (temporary-buffer " sendmail errors")))
-	(temp-buffer (temporary-buffer " sendmail temp"))
-	(mail-buffer (current-buffer))
-	(user-name (current-user-name)))
-    (let ((start (buffer-start temp-buffer))
-	  (end (buffer-end temp-buffer)))
+  (let ((mail-buffer (current-buffer)))
+    (let ((temp-buffer
+	   (prepare-mail-buffer-for-sending mail-buffer
+	     (lambda (start end)
+	       ;; Don't send out a blank subject line.
+	       (if (re-search-forward "^Subject:[ \t]*\n" start end #t)
+		   (delete-match))))))
+      (let ((errors (send-mail-buffer temp-buffer mail-buffer)))
+	(kill-buffer temp-buffer)
+	(if errors (editor-error errors))))))
+
+(define (prepare-mail-buffer-for-sending mail-buffer process-header)
+  (let ((temp-buffer (temporary-buffer " sendmail temp")))
+    (let ((start (mark-right-inserting-copy (buffer-start temp-buffer)))
+	  (end (mark-left-inserting-copy (buffer-end temp-buffer))))
       (insert-region (buffer-start mail-buffer)
 		     (buffer-end mail-buffer)
 		     start)
-      (if (not (line-start? end))
-	  (insert-char #\newline end))
+      (guarantee-newline end)
       (mail-match-header-separator start end)
       (let ((header-end (mark-left-inserting-copy (delete-match))))
 	;; Delete any blank lines in the header.
 	(do ((start start (replace-match "\n")))
-	    ((not (re-search-forward "\n\n+" start header-end false))))
+	    ((not (re-search-forward "\n\n+" start header-end #f))))
 	(expand-mail-aliases start header-end)
-	(if (re-search-forward "^FCC:" start header-end true)
+	(if (re-search-forward "^FCC:" start header-end #t)
 	    (mail-do-fcc temp-buffer header-end))
 	;; If there is a From and no Sender, put in a Sender.
-	(if (and (re-search-forward "^From:" start header-end true)
-		 (not
-		  (re-search-forward "^Sender:" start header-end true)))
+	(if (and (re-search-forward "^From:" start header-end #t)
+		 (not (re-search-forward "^Sender:" start header-end #t)))
 	    (begin
 	      (insert-string "\nSender: " header-end)
-	      (insert-string user-name header-end)))
-	;; Don't send out a blank subject line.
-	(if (re-search-forward "^Subject:[ \t]*\n" start header-end true)
-	    (delete-match)))
-      (let ((program (ref-variable sendmail-program)))
-	(if error-buffer
-	    (begin
-	      (run-synchronous-process (make-region start end)
-				       (buffer-end error-buffer)
-				       false
-				       false
-				       program
-				       "-oi" "-t"
-				       ;; Always specify who from,
-				       ;; since some systems have
-				       ;; broken sendmails.
-				       "-f" user-name)
-	      (let ((end (buffer-end error-buffer)))
-		(do ((start (buffer-start error-buffer) (replace-match "; ")))
-		    ((not (re-search-forward "\n+ *" start end false))))))
-	    ;; If we aren't going to look at the errors, run the
-	    ;; program in the background so control returns to the
-	    ;; user as soon as possible.
-	    (let ((process
-		   (start-pipe-subprocess
-		    (os/find-program program #f)
-		    (vector (file-namestring program)
-			    "-oi" "-t"
-			    (string-append "-f" user-name)
-			    ;; These mean "report errors by mail" and
-			    ;; "deliver in background".
-			    "-oem" "-odb")
-		    false)))
-	      (channel-write-string-block (subprocess-output-channel process)
-					  (extract-string start end))
-	      (subprocess-delete process)))))
-    (kill-buffer temp-buffer)
-    (if error-buffer
-	(let ((errors
-	       (extract-string (buffer-start error-buffer)
-			       (buffer-end error-buffer))))
-	  (kill-buffer error-buffer)
-	  (if (not (string-null? errors))
-	      (editor-error "Sending...failed to " errors))))))
+	      (insert-string (current-user-name) header-end)))
+	(process-header start header-end)
+	(mark-temporary! header-end))
+      (mark-temporary! end)
+      (mark-temporary! start))
+    temp-buffer))
+
+(define (send-mail-buffer mail-buffer lookup-buffer)
+  (let ((error-buffer
+	 (and (ref-variable mail-interactive lookup-buffer)
+	      (temporary-buffer " sendmail errors")))
+	(msg "Sending..."))
+    (message msg)
+    (let ((program (ref-variable sendmail-program lookup-buffer)))
+      (if error-buffer
+	  (begin
+	    (run-synchronous-process (buffer-region mail-buffer)
+				     (buffer-end error-buffer)
+				     #f #f program "-oi" "-t"
+				     ;; Always specify who from,
+				     ;; since some systems have
+				     ;; broken sendmails.
+				     "-f" (current-user-name))
+	    (let ((end (buffer-end error-buffer)))
+	      (do ((start (buffer-start error-buffer) (replace-match "; ")))
+		  ((not (re-search-forward "\n+ *" start end #f))))))
+	  ;; If we aren't going to look at the errors, run the
+	  ;; program in the background so control returns to the
+	  ;; user as soon as possible.
+	  (let ((process
+		 (start-pipe-subprocess
+		  (os/find-program program #f)
+		  (vector (file-namestring program) "-oi" "-t"
+			  (string-append "-f" (current-user-name))
+			  ;; These mean "report errors by mail" and
+			  ;; "deliver in background".
+			  "-oem" "-odb")
+		  #f)))
+	    (channel-write-string-block (subprocess-output-channel process)
+					(buffer-string mail-buffer))
+	    (subprocess-delete process))))
+    (let ((errors
+	   (and error-buffer
+		(let ((errors (buffer-string error-buffer)))
+		  (kill-buffer error-buffer)
+		  (and (not (string-null? errors))
+		       (string-append  "Sending...failed to " errors))))))
+      (if (not errors)
+	  (message msg "done"))
+      errors)))
 
 (define (mail-do-fcc mail-buffer header-end)
   (let ((pathnames (digest-fcc-headers (buffer-start mail-buffer) header-end))

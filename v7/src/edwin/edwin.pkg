@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.172 1995/05/03 07:50:39 cph Exp $
+$Id: edwin.pkg,v 1.173 1995/05/05 22:35:09 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1360,10 +1360,19 @@ MIT in each case. |#
 	  edwin-variable$mail-yank-ignored-headers
 	  edwin-variable$send-mail-procedure
 	  edwin-variable$sendmail-program
+	  mail-field-end
+	  mail-field-end!
+	  mail-field-region
+	  mail-field-start
+	  mail-header-end
+	  mail-insert-field
+	  mail-match-header-separator
 	  mail-position-on-field
 	  mail-position-on-cc-field
 	  mail-setup
-	  make-mail-buffer))
+	  make-mail-buffer
+	  prepare-mail-buffer-for-sending
+	  send-mail-buffer))
 
 (define-package (edwin mail-alias)
   (files "malias")
@@ -1442,6 +1451,10 @@ MIT in each case. |#
 	  edwin-variable$rmail-primary-inbox-list
 	  edwin-variable$rmail-primary-pop-server
 	  edwin-variable$rmail-reply-with-re
+	  fetch-all-fields
+	  fetch-first-field
+	  fetch-last-field
+	  make-in-reply-to-field
 	  prompt-for-rmail-output-filename
 	  rfc822-addresses->string
 	  rfc822-first-address
@@ -1592,6 +1605,7 @@ MIT in each case. |#
 	  nntp-connection:reader-hook
 	  nntp-connection:reopen
 	  nntp-connection:server
+	  nntp-connection?
 	  open-nntp-connection
 	  organize-headers-into-threads
 	  set-news-group:reader-hook!
