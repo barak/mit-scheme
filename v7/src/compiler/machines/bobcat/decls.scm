@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.3 1987/04/21 23:51:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.4 1987/04/22 09:45:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -74,7 +74,7 @@ MIT in each case. |#
   (filename/append "front-end" "rcseht" "rcserq" "rcsesr" "rcseep" "rcse"))
 
 (define filenames/dependency-group/base
-  (append (filename/append "base" "linear")
+  (append (filename/append "base" "linear" "rtlcon" "rtlexp")
 	  (filename/append "alpha" "dflow" "graphc")
 	  (filename/append "front-end"
 			   "ralloc" "rcsesa" "rdeath" "rdebug" "rgcomb" "rlife"
