@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.148 1989/06/21 10:37:45 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.149 1989/08/10 05:07:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -378,9 +378,10 @@
 		      (let ((x (- x x-start))
 			    (y (- y y-start)))
 			(if (and (not (negative? x))
-				 (<= x (inferior-x-size inferior))
+				 (< x (inferior-x-size inferior))
 				 (not (negative? y))
-				 (<= y (inferior-y-size inferior)))			    (search (inferior-window inferior) x y)
+				 (< y (inferior-y-size inferior)))
+			    (search (inferior-window inferior) x y)
 			    (loop (cdr inferiors))))
 		      (loop (cdr inferiors))))))))))
 
