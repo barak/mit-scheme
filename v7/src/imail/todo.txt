@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.132 2001/09/14 17:23:27 cph Exp $
+$Id: todo.txt,v 1.133 2001/09/29 01:04:53 cph Exp $
 
 Bug fixes
 ---------
@@ -74,10 +74,6 @@ New features
 * Implement cache that saves information about messages on disk.  This
   should use UIDs for IMAP folders; for other folders perhaps the
   message ID can be used.
-
-* Set the IMAIL buffer's modification bit to indicate whether the
-  folder is locally modified.  Meaningful only for file folders.  Hook
-  up the save-folder code into M-x save-some-buffers.
 
 * Implement file backup when writing file folders.
 
