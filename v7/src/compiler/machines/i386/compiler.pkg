@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.4 1992/02/13 07:54:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.5 1992/02/17 22:35:20 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/comp.pkg,v 1.32 1991/05/06 23:09:24 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -549,7 +549,9 @@ MIT in each case. |#
   (export (compiler top-level)
 	  rtl-rewriting:post-cse
 	  rtl-rewriting:pre-cse)
-  (export (compiler lap-syntaxer) add-rewriting-rule!))
+  (export (compiler lap-syntaxer)
+	  add-rewriting-rule!
+	  add-pre-cse-rewriting-rule!))
 
 (define-package (compiler rtl-optimizer lifetime-analysis)
   (files "rtlopt/rlife")
