@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.114 2000/06/05 21:30:40 cph Exp $
+;;; $Id: imail-imap.scm,v 1.115 2000/06/10 20:17:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -67,7 +67,7 @@
 	   (substring-downcase! mailbox 0 6)
 	   mailbox))
 	(else mailbox)))
-
+
 (define-method url-body ((url <imap-url>))
   (make-imap-url-string (imap-url-user-id url)
 			(imap-url-host url)
@@ -212,6 +212,7 @@
   (port            define standard initial-value #f)
   (greeting        define standard initial-value #f)
   (capabilities    define standard initial-value '())
+  (namespace       define standard initial-value #f)
   (sequence-number define standard initial-value 0)
   (response-queue  define accessor initializer (lambda () (cons '() '())))
   (folder          define standard initial-value #f)
@@ -228,6 +229,7 @@
    (lambda ()
      (set-imap-connection-greeting! connection #f)
      (set-imap-connection-capabilities! connection '())
+     (set-imap-connection-namespace! connection #f)
      (set-imap-connection-sequence-number! connection 0)
      (let ((queue (imap-connection-response-queue connection)))
        (set-car! queue '())
@@ -356,6 +358,8 @@
 		  (imail-ui:delete-stored-pass-phrase url)
 		  (error "Unable to log in:"
 			 (imap:response:response-text-string response))))))
+	(if (memq 'NAMESPACE (imap-connection-capabilities connection))
+	    (imap:command:namespace connection))
 	#t)))
 
 (define (test-imap-connection-open connection)
@@ -708,11 +712,9 @@
 	  (receiver (imap-folder-connection folder))))))
 
 ;;; These reflectors are needed to guarantee that we read the
-;;; appropriate information from the server.  Normally most message
-;;; slots are filled in by READ-MESSAGE-HEADERS!, but it's possible
-;;; for READ-MESSAGE-HEADERS! to be interrupted, leaving unfilled
-;;; slots.  Also, we don't want to fill the BODY slot until it is
-;;; requested, as the body might be very large.
+;;; appropriate information from the server.  Some message slots are
+;;; filled in by READ-MESSAGE-HEADERS!, but it's possible for
+;;; READ-MESSAGE-HEADERS! to be interrupted, leaving unfilled slots.
 
 (let ((accessor (slot-accessor <imap-message> 'UID))
       (initpred (slot-initpred <imap-message> 'UID)))
@@ -786,7 +788,7 @@
 					   '(ENVELOPE))))
   (reflector imap-message-bodystructure 'BODYSTRUCTURE
 	     (lambda (message initpred)
-	       (guarantee-slot-initialized message initpred "bodystructure"
+	       (guarantee-slot-initialized message initpred "body structure"
 					   '(BODYSTRUCTURE)))))
 
 ;;;; MIME support
@@ -1152,6 +1154,9 @@
 (define (imap:command:capability connection)
   (imap:command:no-response connection 'CAPABILITY))
 
+(define (imap:command:namespace connection)
+  (imap:command:no-response connection 'NAMESPACE))
+
 (define (imap:command:login connection user-id pass-phrase)
   ((imail-ui:message-wrapper "Logging in as " user-id)
    (lambda ()
@@ -1462,6 +1467,9 @@
 	 (set-imap-connection-capabilities!
 	  connection
 	  (imap:response:capabilities response))
+	 #f)
+	((imap:response:namespace? response)
+	 (set-imap-connection-namespace! connection response)
 	 #f)
 	((imap:response:list? response)
 	 (eq? command 'LIST))

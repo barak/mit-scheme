@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.53 2000/06/09 04:17:52 cph Exp $
+;;; $Id: imail.pkg,v 1.54 2000/06/10 20:17:55 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -171,6 +171,10 @@
 	  imap:response:list-mailbox
 	  imap:response:list?
 	  imap:response:lsub?
+	  imap:response:namespace-other
+	  imap:response:namespace-personal
+	  imap:response:namespace-shared
+	  imap:response:namespace?
 	  imap:response:no?
 	  imap:response:ok?
 	  imap:response:preauth?

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.33 2000/06/01 20:07:07 cph Exp $
+;;; $Id: imap-response.scm,v 1.34 2000/06/10 20:18:06 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -66,6 +66,7 @@
 		  ((SEARCH) (read-search-response port))
 		  ((STATUS) (read-status-response port))
 		  ((CAPABILITY) (read-capability-response port))
+		  ((NAMESPACE) (read-namespace-response port))
 		  (else (error "Malformed response code:" x))))))))
 
 (define (read-tagged-response tag port)
@@ -101,6 +102,14 @@
 
 (define (read-capability-response port)
   (read-open-list read-interned-atom port))
+
+(define (read-namespace-response port)
+  (discard-known-char #\space port)
+  (let ((ns1 (read-generic port)))
+    (discard-known-char #\space port)
+    (let ((ns2 (read-generic port)))
+      (discard-known-char #\space port)
+      (list ns1 ns2 (read-generic port)))))
 
 (define (read-response-text port)
   (discard-known-char #\space port)
@@ -597,6 +606,7 @@
 (define (imap:response:flags? response) (eq? (car response) 'FLAGS))
 (define (imap:response:list? response) (eq? (car response) 'LIST))
 (define (imap:response:lsub? response) (eq? (car response) 'LSUB))
+(define (imap:response:namespace? response) (eq? (car response) 'NAMESPACE))
 (define (imap:response:no? response) (eq? (car response) 'NO))
 (define (imap:response:ok? response) (eq? (car response) 'OK))
 (define (imap:response:preauth? response) (eq? (car response) 'PREAUTH))
@@ -612,6 +622,9 @@
 (define imap:response:list-delimiter cadr)
 (define imap:response:list-mailbox caddr)
 (define imap:response:list-flags cdddr)
+(define imap:response:namespace-personal cadr)
+(define imap:response:namespace-other caddr)
+(define imap:response:namespace-shared cadddr)
 (define imap:response:recent-count cadr)
 (define imap:response:search-indices cdr)
 
