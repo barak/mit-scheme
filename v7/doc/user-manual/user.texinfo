@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.97 2002/12/30 05:23:41 cph Exp $
+@comment $Id: user.texinfo,v 1.98 2002/12/30 05:28:45 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -27,12 +27,12 @@
 @end direntry
 
 @ifinfo
-This file documents the use of @acronym{MIT} Scheme.
+This file documents the use of MIT Scheme.
 
 Copyright @copyright{} 1991-2002 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
-under the terms of the @acronym{GNU} Free Documentation License, Version
+under the terms of the GNU Free Documentation License, Version
 1.2 or any later version published by the Free Software Foundation; with
 no Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
 Texts.  A copy of the license is included in the section entitled "GNU
@@ -54,7 +54,7 @@ Free Documentation License".
 Copyright @copyright{} 1991-2002 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
-under the terms of the @acronym{GNU} Free Documentation License, Version
+under the terms of the GNU Free Documentation License, Version
 1.2 or any later version published by the Free Software Foundation; with
 no Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
 Texts.  A copy of the license is included in the section entitled "GNU
@@ -66,9 +66,9 @@ Free Documentation License".
 
 @ifinfo
 Scheme is the UnCommon Lisp.  This Info file is the user's guide for the
-@acronym{MIT} implementation of Scheme.  It describes how to install and
-run @acronym{MIT} Scheme, how to execute and compile Scheme programs,
-and how to use Scheme with Edwin and @acronym{GNU} Emacs.
+MIT implementation of Scheme.  It describes how to install and
+run MIT Scheme, how to execute and compile Scheme programs,
+and how to use Scheme with Edwin and GNU Emacs.
 @end ifinfo
 
 @menu
@@ -91,7 +91,7 @@ and how to use Scheme with Edwin and @acronym{GNU} Emacs.
 @node Introduction, Installation, Top, Top
 @unnumbered Introduction
 
-This document describes how to install and use @acronym{MIT} Scheme, the
+This document describes how to install and use MIT Scheme, the
 UnCommon Lisp.  It gives installation instructions for all of the
 platforms that we support; complete documentation of the command-line
 options and environment variables that control how Scheme works; and
@@ -104,18 +104,17 @@ as an appendix.
 @cindex Windows
 @cindex PC
 This document discusses many operating-system specific features of the
-@acronym{MIT} Scheme implementation.  In order to simplify the
-discussion, we use abbreviations to refer to some operating systems.
-When the text uses the term @dfn{unix}, this means any of the unix
-systems that we support, including @acronym{GNU}/Linux, *@acronym{BSD},
-HP-UX, Ultrix, NeXT, and SunOS.  The term @dfn{OS/2} means the IBM OS/2
-operating system, version 2.1 or later.  We use the term @dfn{Windows}
-to collectively refer to the Microsoft Windows 32-bit operating systems:
-Windows 95, Windows 98, Windows ME, Windows NT, Windows 2000, and
-Windows XP.  We use the term @dfn{PC} to refer to any computer running
-OS/2 or Windows.  Thus we consider a PC to be a system with a
-@acronym{DOS}-like file system, using backslashes for directory
-separators, drive letters, @sc{cr-lf} line termination, and
+MIT Scheme implementation.  In order to simplify the discussion, we use
+abbreviations to refer to some operating systems.  When the text uses
+the term @dfn{unix}, this means any of the unix systems that we support,
+including GNU/Linux, *BSD, HP-UX, Ultrix, NeXT, and SunOS.  The term
+@dfn{OS/2} means the IBM OS/2 operating system, version 2.1 or later.
+We use the term @dfn{Windows} to collectively refer to the Microsoft
+Windows 32-bit operating systems: Windows 95, Windows 98, Windows ME,
+Windows NT, Windows 2000, and Windows XP.  We use the term @dfn{PC} to
+refer to any computer running OS/2 or Windows.  Thus we consider a PC to
+be a system with a @acronym{DOS}-like file system, using backslashes for
+directory separators, drive letters, @sc{cr-lf} line termination, and
 (potentially) the hideous 8.3 short filenames.
 
 @cindex Web site
@@ -140,7 +139,7 @@ system you are using.
 @node Installation, Running Scheme, Introduction, Top
 @chapter Installation
 
-This chapter describes how to install @acronym{MIT} Scheme release 7.7.
+This chapter describes how to install MIT Scheme release 7.7.
 The release is supported under several different operating systems:
 unix, OS/2, and Windows.  Read the section detailing the installation
 for the operating system that you are using.
@@ -155,10 +154,10 @@ for the operating system that you are using.
 @node Unix Installation, Windows Installation, Installation, Installation
 @section Unix Installation
 
-We will use as an example the installation for @acronym{GNU}/Linux.  The
+We will use as an example the installation for GNU/Linux.  The
 installation for other unix systems is similar.
 
-@acronym{MIT} Scheme is distributed as a compressed `tar' file.  The tar
+MIT Scheme is distributed as a compressed `tar' file.  The tar
 file contains two directories, called @file{bin} and @file{lib}.  The
 @file{bin} directory contains two executable files, @command{scheme} and
 @command{bchscheme}.  The @file{lib} directory contains one
@@ -245,22 +244,22 @@ scheme --library ~/mit-scheme
 @end example
 
 @item
-You should now be able to run @acronym{MIT} Scheme.  @xref{Running
+You should now be able to run MIT Scheme.  @xref{Running
 Scheme}, for more information.
 @end itemize
 
 @node Windows Installation, OS/2 Installation, Unix Installation, Installation
 @section Windows Installation
 
-This section describes how to install @acronym{MIT} Scheme on Windows
+This section describes how to install MIT Scheme on Windows
 95, Windows 98, Windows Me, Windows NT 4.0, Windows 2000, or Windows XP.
 The software should also work on older versions of Windows NT, but we
 haven't tested it there.
 
-@acronym{MIT} Scheme is distributed as a self-installing executable.
+MIT Scheme is distributed as a self-installing executable.
 Installation of the software is straightforward.  Simply execute the
 downloaded file and answer the installer's questions.  The installer
-will allow you to choose the directory in which @acronym{MIT} Scheme is
+will allow you to choose the directory in which MIT Scheme is
 to be installed, and the name of the folder in which the shortcuts are
 to be placed.
 
@@ -270,8 +269,8 @@ To uninstall the software, open up the @samp{Control Panel}, run
 @node OS/2 Installation, Optional Configuration, Windows Installation, Installation
 @section OS/2 Installation
 
-This section describes how to install @acronym{MIT} Scheme on a machine
-running OS/2 2.1 or later.  This release of @acronym{MIT} Scheme has
+This section describes how to install MIT Scheme on a machine
+running OS/2 2.1 or later.  This release of MIT Scheme has
 been tested only on OS/2 Warp 4.0.  It was compiled using IBM Visual Age
 C++ version 3.0 and the OS/2 Toolkit version 4.0.
 
@@ -327,7 +326,7 @@ either add @file{dll} to your @env{LIBPATH}, or move the files in
 
 @item
 You may move the @file{lib} directory anywhere you like.  You may rename
-it to anything you like.  (Here at @acronym{MIT}, we use
+it to anything you like.  (Here at MIT, we use
 @file{c:\scheme\lib}.)  After you have chosen where it will be located,
 set the @env{MITSCHEME_LIBRARY_PATH} environment variable in
 @file{config.sys} to be that location.
@@ -503,8 +502,8 @@ to install more @acronym{RAM}.
 @node Running Scheme, Using Scheme, Installation, Top
 @chapter Running Scheme
 
-This chapter describes how to run @acronym{MIT} Scheme.  It also
-describes how you can customize the behavior of @acronym{MIT} Scheme
+This chapter describes how to run MIT Scheme.  It also
+describes how you can customize the behavior of MIT Scheme
 using command-line options and environment variables.
 
 @menu
@@ -521,7 +520,7 @@ using command-line options and environment variables.
 @node Basics of Starting Scheme, Customizing Scheme, Running Scheme, Running Scheme
 @section Basics of Starting Scheme
 
-Under unix and OS/2, @acronym{MIT} Scheme is invoked by typing
+Under unix and OS/2, MIT Scheme is invoked by typing
 
 @example
 scheme
@@ -529,7 +528,7 @@ scheme
 
 @noindent
 at your operating system's command interpreter.  Under Windows,
-@acronym{MIT} Scheme is invoked by double-clicking on a shortcut.  In
+MIT Scheme is invoked by double-clicking on a shortcut.  In
 either case, Scheme will load itself and print something like this:
 
 @example
@@ -684,7 +683,7 @@ command-line options or by environment variables.
 
 @pindex scheme
 @pindex bchscheme
-@acronym{MIT} Scheme uses a two-space copying garbage collector for
+MIT Scheme uses a two-space copying garbage collector for
 reclaiming storage in the heap.  There are two versions of Scheme which
 handle garbage collection differently.  The standard Scheme, called
 @command{scheme} under unix and @command{scheme.exe} on the PC, has two
@@ -712,7 +711,7 @@ has only one heap in memory, the equation is
 Once the storage is allocated for the constant space and the heap,
 Scheme will dynamically adjust the proportion of the total that is used
 for constant space; the stack and extra microcode storage is not
-included in this adjustment.  Previous versions of @acronym{MIT} Scheme
+included in this adjustment.  Previous versions of MIT Scheme
 needed to be told the amount of constant space that was required when
 loading bands with the @option{--band} option.  Dynamic adjustment of
 the heap and constant space avoids this problem.
@@ -738,10 +737,10 @@ command line.  Any arguments other than these options will generate a
 warning message when Scheme starts.  If you want to define your own
 command-line options, see @ref{Custom Command-line Options}.
 
-Note that @acronym{MIT} Scheme supports only @dfn{long} options, that
+Note that MIT Scheme supports only @dfn{long} options, that
 is, options specified by verbose names, as opposed to @dfn{short}
 options, which are specified by single characters.  As of release 7.7.2,
-all options start with two hyphens, for compatibility with @acronym{GNU}
+all options start with two hyphens, for compatibility with GNU
 coding standards (and most modern programs).  Prior to this release,
 options started with a single hyphen.  While the single-hyphen style
 continues to work, it is deprecated and will someday stop working.
@@ -867,8 +866,8 @@ the values of all of the settable microcode option variables.
 
 @item --emacs
 @opindex --emacs
-Specifies that Scheme is running as a subprocess of @acronym{GNU} Emacs.
-This option is automatically supplied by @acronym{GNU} Emacs, and should
+Specifies that Scheme is running as a subprocess of GNU Emacs.
+This option is automatically supplied by GNU Emacs, and should
 not be given under other circumstances.
 
 @item --interactive
@@ -937,7 +936,7 @@ Specifies that a @dfn{cold load} should be performed, using
 given, a normal load is performed instead.  This option may not be used
 together with the @option{--compiler}, @option{--edwin}, or
 @option{--band} options.  This option is useful only for maintenance and
-development of the @acronym{MIT} Scheme runtime system.
+development of the MIT Scheme runtime system.
 @end table
 
 @noindent
@@ -1092,7 +1091,7 @@ This option causes Edwin to start immediately when Scheme is started.
 @node Custom Command-line Options, Environment Variables, Command-Line Options, Running Scheme
 @section Custom Command-line Options
 
-@acronym{MIT} Scheme provides a mechanism for you to define your own
+MIT Scheme provides a mechanism for you to define your own
 command-line options.  This is done by registering handlers to identify
 particular named options and to process them when Scheme starts.
 Unfortunately, because of the way this mechanism is implemented, you
@@ -1141,7 +1140,7 @@ implement the behavior of the option.
 
 Scheme refers to many environment variables.  This section lists these
 variables and describes how each is used.  The environment variables are
-organized according to the parts of @acronym{MIT} Scheme that they
+organized according to the parts of MIT Scheme that they
 affect.
 
 Environment variables that affect the microcode must be defined before
@@ -1428,7 +1427,7 @@ Once in Edwin, the font can be changed with the @code{set-font} and
 @nvindex MITSCHEME_GEOMETRY
 @cindex window position
 Four integers separated by commas or spaces that specify the placement
-and size of the @acronym{MIT} Scheme window as a
+and size of the MIT Scheme window as a
 @var{left},@var{top},@var{width},@var{height} quadruple.  The units are
 screen pixels, and @samp{-1} means allow the system to choose this
 parameter.  E.g.@: @samp{-1,-1,500,300} places a 500 by 300 pixel window
@@ -1509,7 +1508,7 @@ this to determine the user's shell if the environment variable
 @node Starting Scheme from Microsoft Windows, Leaving Scheme, Environment Variables, Running Scheme
 @section Starting Scheme from Microsoft Windows
 
-The Microsoft Windows version of @acronym{MIT} Scheme runs as a
+The Microsoft Windows version of MIT Scheme runs as a
 graphics-based application.  Scheme is normally started using shortcuts;
 the installer automatically generates several different predefined
 shortcuts for your convenience.
@@ -2120,7 +2119,7 @@ defaults to the filename from which the current world was last restored.
 @section Garbage Collection
 
 This section describes procedures that control garbage collection.
-@xref{Memory Usage}, for a discussion of how @acronym{MIT} Scheme uses
+@xref{Memory Usage}, for a discussion of how MIT Scheme uses
 memory.
 
 @deffn {procedure+} gc-flip [safety-margin]
@@ -3187,7 +3186,7 @@ For example, to ignore reference traps on all the variables except
 @c
 @c Note: The scoping of @code{ignore-reference-traps} and
 @c @code{ignore-assignment-traps} differs between version of the
-@c compiler.  @acronym{MIT} Scheme version 8.0 (Liar version 5.0) has
+@c compiler.  MIT Scheme version 8.0 (Liar version 5.0) has
 @c true block scoping, thus the declaration takes effect only within the
 @c procedure or @code{let} in which the declaration occurs.  This makes
 @c it possible to control individual variable references, for example:
@@ -3213,7 +3212,7 @@ kinds of number.
 
 @cindex fixnum (defn)
 A @dfn{fixnum} is an exact integer that is small enough to fit in a
-machine word.  In @acronym{MIT} Scheme, fixnums are 26 bits on 32-bit
+machine word.  In MIT Scheme, fixnums are 26 bits on 32-bit
 machines, and 56 bits on 64-bit machines; it is reasonable to assume
 that fixnums are at least 24 bits.  Fixnums are signed; they are encoded
 using 2's complement.
@@ -3249,7 +3248,7 @@ than getting efficient fixnum arithmetic.
 One of the main disadvantages of generic arithmetic is that not all
 kinds of number fit in a machine register.  Flonums have to be
 @dfn{boxed} because a 64-bit @acronym{IEEE} floating-point number (the
-representation that @acronym{MIT} Scheme uses) does not fit in a regular
+representation that MIT Scheme uses) does not fit in a regular
 machine word.  This is true even on 64-bit architectures because some
 extra bits are needed to distinguish floating-point numbers from other
 objects like pairs and strings.  Values are boxed by storing them in a
@@ -3315,7 +3314,7 @@ or calls to procedures then the values tend to get boxed anyway.
 @c @end group
 @c @end example
 @c 
-@c This approach is effective only for @acronym{MIT} Scheme version 8.0
+@c This approach is effective only for MIT Scheme version 8.0
 @c and later.  Earlier versions do not do this kind of type analysis.
 
 @subsubheading Flonum vectors
@@ -3566,7 +3565,7 @@ debugging tools, especially @code{debug}.
 @cindex continuation Browser
 @cindex browser, Continuation
 @findex debug
-There are two debuggers available with @acronym{MIT} Scheme.  One of
+There are two debuggers available with MIT Scheme.  One of
 them runs under Edwin, and is described in that section of this document
 (@pxref{Edwin Debugger}).  The other is command-line oriented, does not
 require Edwin, and is described here.
@@ -3761,7 +3760,7 @@ command followed by the @kbd{j} command.
 @cindex Debugger command x
 @cindex Debugger command y
 The @kbd{m}, @kbd{x}, and @kbd{y} commands are for Scheme wizards.  They
-are used to debug the @acronym{MIT} Scheme implementation.  If you want
+are used to debug the MIT Scheme implementation.  If you want
 to find out what they do, read the source code.
 
 @item Miscellaneous commands
@@ -4151,10 +4150,10 @@ combination of @code{unadvise-entry} and @code{unadvise-exit}.  If
 @chapter GNU Emacs Interface
 
 There is an interface library, called @file{xscheme}, distributed with
-@acronym{MIT} Scheme and @acronym{GNU} Emacs, which facilitates running
+MIT Scheme and GNU Emacs, which facilitates running
 Scheme as a subprocess of Emacs.  If you wish to use this interface,
 please install the version of @file{xscheme.el} that comes with
-@acronym{MIT} Scheme, as it is guaranteed to be correct for your version
+MIT Scheme, as it is guaranteed to be correct for your version
 of Scheme.
 
 This interface works under unix only, because it requires unix signals
@@ -4292,11 +4291,11 @@ Like evaluating @samp{(continue)}.  (@code{xscheme-send-proceed})
 @node Edwin, Release Notes, GNU Emacs Interface, Top
 @chapter Edwin
 
-This chapter describes how to start Edwin, the @acronym{MIT} Scheme text
-editor.  Edwin is very similar to @acronym{GNU} Emacs---you should refer
-to the @acronym{GNU} Emacs manual for information about Edwin's commands
+This chapter describes how to start Edwin, the MIT Scheme text
+editor.  Edwin is very similar to GNU Emacs---you should refer
+to the GNU Emacs manual for information about Edwin's commands
 and key bindings---except that Edwin's extension language is
-@acronym{MIT} Scheme, while @acronym{GNU} Emacs extensions are written
+MIT Scheme, while GNU Emacs extensions are written
 in Emacs Lisp.  This manual does not discuss customization of Edwin.
 
 @menu
@@ -4432,7 +4431,7 @@ Stop Edwin and suspend Scheme, returning control to the operating
 system's command interpreter (@code{suspend-scheme}).  When Scheme is
 resumed (using the command interpreter's job-control commands), Edwin is
 automatically restarted where it was stopped.  This command is identical
-to the @kbd{C-x C-z} command of @acronym{GNU} Emacs.
+to the @kbd{C-x C-z} command of GNU Emacs.
 
 @item C-x C-c
 @kindex C-x C-c
@@ -4440,7 +4439,7 @@ to the @kbd{C-x C-z} command of @acronym{GNU} Emacs.
 Offer to save any modified buffers, then kill both Edwin and Scheme
 (@code{save-buffers-kill-scheme}).  Control is returned to the operating
 system's command interpreter, and the Scheme process is terminated.
-This command is identical to the @kbd{C-x C-c} command of @acronym{GNU}
+This command is identical to the @kbd{C-x C-c} command of GNU
 Emacs.
 @end table
 
@@ -4449,7 +4448,7 @@ Emacs.
 
 As you might expect, Edwin has special support for editing and
 evaluating Scheme code.  This section describes @dfn{Scheme Mode}, the
-appropriate mode for editing @acronym{MIT} Scheme programs.
+appropriate mode for editing MIT Scheme programs.
 
 Scheme mode is normally entered automatically by visiting a file whose
 file name ends in @samp{.scm}.  You can also mark a file as Scheme code
@@ -4680,12 +4679,12 @@ state that prevents Edwin from running.
 @node Release Notes, GNU Free Documentation License, Edwin, Top
 @appendix Release Notes
 
-The previous full release of @acronym{MIT} Scheme was version 7.5.17.
+The previous full release of MIT Scheme was version 7.5.17.
 This section describes changes that have occurred since that time.  For
 more detailed information, see the @file{ChangeLog} files in the source
 code.
 
-Note that @acronym{MIT} Scheme still conforms to the @cite{Revised^4
+Note that MIT Scheme still conforms to the @cite{Revised^4
 Report on the Algorithmic Language Scheme}, but not to the
 @cite{Revised^5 Report on The Algorithmic Language Scheme}.
 
@@ -4759,10 +4758,11 @@ permitted but does nothing.
 Release 7.6.1 provides a workaround for a bug on some @acronym{AMD}
 Athlon processors (specifically, models 1, 3, and 4).  This bug causes
 those processors to incorrectly execute certain kinds of self-modifying
-code, including that used by @acronym{MIT} Scheme.
+code, including that used by MIT Scheme.
 
-Release 7.6.1 also fixes a problem that caused the *PARSER and XML
-subsystems not to load correctly on Windows and OS/2 systems.
+Release 7.6.1 also fixes a problem that caused the *PARSER and
+@acronym{XML} subsystems not to load correctly on Windows and OS/2
+systems.
 @end itemize
 
 @node Older Changes,  , Recent Changes, Release Notes
@@ -4804,7 +4804,7 @@ against a corresponding key in the debugging-info file.  The debugging
 info is used only when the keys match.
 
 @item
-@acronym{MIT} Scheme now has a non-validating @acronym{XML} parser that
+MIT Scheme now has a non-validating @acronym{XML} parser that
 is mostly conformant (except that it doesn't support @acronym{UTF-16}).
 
 @item
@@ -4841,7 +4841,7 @@ A new procedure @code{flo:finite?} returns @samp{#f} for infinite or
 @samp{NaN} flonums and @samp{#t} for all others.
 
 @item
-The signal-handling code for @acronym{GNU}/Linux systems has been
+The signal-handling code for GNU/Linux systems has been
 changed to take advantage of additional information identifying the
 types of arithmetic exceptions.  This allows more accurate error
 messages to be generated.
