@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.22 1995/11/13 07:21:35 cph Exp $
+$Id: thread.scm,v 1.23 1998/02/16 23:00:10 cph Exp $
 
-Copyright (c) 1991-95 Massachusetts Institute of Technology
+Copyright (c) 1991-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -133,7 +133,7 @@ MIT in each case. |#
 (define (thread-execution-state thread)
   (guarantee-thread thread thread-execution-state)
   (thread/execution-state thread))
-
+
 (define (create-thread root-continuation thunk)
   (if (not (or (not root-continuation) (continuation? root-continuation)))
       (error:wrong-type-argument root-continuation
@@ -164,9 +164,30 @@ MIT in each case. |#
 				 with-create-thread-continuation))
   (fluid-let ((root-continuation-default continuation))
     (thunk)))
+
+(define (current-thread)
+  (or first-running-thread
+      (let ((thread (console-thread)))
+	(if thread
+	    (call-with-current-continuation
+	     (lambda (continuation)
+	       (let ((condition
+		      (make-condition condition-type:no-current-thread
+				      continuation
+				      'BOUND-RESTARTS
+				      '())))
+		 (signal-thread-event thread
+		   (lambda ()
+		     (error condition)))))))
+	(run-first-thread))))
 
-(define-integrable (current-thread)
-  (or first-running-thread (error "No current thread!")))
+(define (call-with-current-thread return? procedure)
+  (let ((thread first-running-thread))
+    (cond (thread (procedure thread))
+	  ((not return?) (run-first-thread)))))
+
+(define (console-thread)
+  (thread-mutex-owner (port/thread-mutex console-i/o-port)))
 
 (define (other-running-threads?)
   (thread/next (current-thread)))
@@ -195,13 +216,16 @@ MIT in each case. |#
   (set-thread/execution-state! thread state)
   (let ((thread* (thread/next thread)))
     (set-thread/next! thread false)
-    (set! first-running-thread thread*)
-    (if (not thread*)
-	(begin
-	  (set! last-running-thread thread*)
-	  (%maybe-toggle-thread-timer)
-	  (wait-for-input))
-	(run-thread thread*))))
+    (set! first-running-thread thread*))
+  (run-first-thread))
+
+(define (run-first-thread)
+  (if first-running-thread
+      (run-thread first-running-thread)
+      (begin
+	(set! last-running-thread #f)
+	(%maybe-toggle-thread-timer)
+	(wait-for-input))))
 
 (define (run-thread thread)
   (let ((continuation (thread/continuation thread)))
@@ -222,42 +246,33 @@ MIT in each case. |#
   (without-interrupts %suspend-current-thread))
 
 (define (%suspend-current-thread)
-  (let ((thread (current-thread)))
-    (let ((block-events? (thread/block-events? thread)))
-      (set-thread/block-events?! thread #f)
-      (maybe-signal-input-thread-events)
-      (let ((event
-	     (let ((event (handle-thread-events thread)))
-	       (if (eq? #t event)
-		   (begin
-		     (set-thread/block-events?! thread #f)
-		     (call-with-current-continuation
-		      (lambda (continuation)
-			(set-thread/continuation! thread continuation)
-			(thread-not-running thread 'WAITING))))
-		   event))))
-	(set-thread/block-events?! thread block-events?)
-	event))))
-
-(define (allow-thread-event-delivery)
-  (without-interrupts
-   (lambda ()
-     (let ((thread (current-thread)))
-       (let ((block-events? (thread/block-events? thread)))
-	 (set-thread/block-events?! thread #f)
-	 (deliver-timer-events)
-	 (maybe-signal-input-thread-events)
-	 (handle-thread-events thread)
-	 (set-thread/block-events?! thread block-events?))))))
+  (call-with-current-thread #f
+    (lambda (thread)
+      (let ((block-events? (thread/block-events? thread)))
+	(set-thread/block-events?! thread #f)
+	(maybe-signal-input-thread-events)
+	(let ((event
+	       (let ((event (handle-thread-events thread)))
+		 (if (eq? #t event)
+		     (begin
+		       (set-thread/block-events?! thread #f)
+		       (call-with-current-continuation
+			(lambda (continuation)
+			  (set-thread/continuation! thread continuation)
+			  (thread-not-running thread 'WAITING))))
+		     event))))
+	  (set-thread/block-events?! thread block-events?)
+	  event)))))
 
 (define (stop-current-thread)
   (without-interrupts
    (lambda ()
-     (let ((thread (current-thread)))
-       (call-with-current-continuation
-	(lambda (continuation)
-	  (set-thread/continuation! thread continuation)
-	  (thread-not-running thread 'STOPPED)))))))
+     (call-with-current-thread #f
+       (lambda (thread)
+	 (call-with-current-continuation
+	  (lambda (continuation)
+	    (set-thread/continuation! thread continuation)
+	    (thread-not-running thread 'STOPPED))))))))
 
 (define (restart-thread thread discard-events? event)
   (guarantee-thread thread restart-thread)
@@ -296,13 +311,14 @@ MIT in each case. |#
 	   (%resume-current-thread thread)))))
 
 (define (yield-current-thread)
-  (let ((thread (current-thread)))
-    (without-interrupts
-     (lambda ()
-       ;; Allow preemption now, since the current thread has
-       ;; volunteered to yield control.
-       (set-thread/execution-state! thread 'RUNNING)
-       (yield-thread thread)))))
+  (without-interrupts
+   (lambda ()
+     (call-with-current-thread #t
+       (lambda (thread)
+	 ;; Allow preemption now, since the current thread has
+	 ;; volunteered to yield control.
+	 (set-thread/execution-state! thread 'RUNNING)
+	 (yield-thread thread))))))
 
 (define (yield-thread thread)
   (let ((next (thread/next thread)))
@@ -412,16 +428,35 @@ MIT in each case. |#
       (signal-select-result (select-registry-test input-registry #f))))
 
 (define (wait-for-input)
-  (if (not input-registrations)
-      (begin
-	;; Busy-waiting here is a bad idea -- should implement a
-	;; primitive to block the Scheme process while waiting for a
-	;; signal.
-	(set-interrupt-enables! interrupt-mask/all)
-	(do () (false)))
-      (begin
-	(set-interrupt-enables! interrupt-mask/all)
-	(let ((result (select-registry-test input-registry #t)))
+  (let ((catch-errors
+	 (lambda (thunk)
+	   (let ((thread (console-thread)))
+	     (if thread
+		 (bind-condition-handler '()
+		     (lambda (condition)
+		       (error:derived-thread thread condition))
+		   thunk)
+		 (call-with-current-continuation
+		  (lambda (k)
+		    (bind-condition-handler '()
+			(lambda (condition)
+			  condition
+			  (within-continuation k thunk))
+		      thunk))))))))
+    (if (not input-registrations)
+	(begin
+	  ;; Busy-waiting here is a bad idea -- should implement a
+	  ;; primitive to block the Scheme process while waiting for a
+	  ;; signal.
+	  (catch-errors
+	   (lambda ()
+	     (set-interrupt-enables! interrupt-mask/all)
+	     (do () (#f)))))
+	(let ((result
+	       (catch-errors
+		(lambda ()
+		  (set-interrupt-enables! interrupt-mask/all)
+		  (select-registry-test input-registry #t)))))
 	  (set-interrupt-enables! interrupt-mask/gc-ok)
 	  (signal-select-result result)
 	  (let ((thread first-running-thread))
@@ -611,17 +646,20 @@ MIT in each case. |#
 (define (block-thread-events)
   (without-interrupts
    (lambda ()
-     (let ((thread (current-thread)))
-       (let ((result (thread/block-events? thread)))
-	 (set-thread/block-events?! thread true)
-	 result)))))
+     (let ((thread first-running-thread))
+       (if thread
+	   (let ((result (thread/block-events? thread)))
+	     (set-thread/block-events?! thread true)
+	     result)
+	   #f)))))
 
 (define (unblock-thread-events)
   (without-interrupts
    (lambda ()
-     (let ((thread (current-thread)))
-       (handle-thread-events thread)
-       (set-thread/block-events?! thread #f)))))
+     (call-with-current-thread #t
+       (lambda (thread)
+	 (handle-thread-events thread)
+	 (set-thread/block-events?! thread #f))))))
 
 (define (signal-thread-event thread event)
   (guarantee-thread thread signal-thread-event)
@@ -661,6 +699,21 @@ MIT in each case. |#
 	    (loop (if (or (eq? #f result) (eq? #t result))
 		      event
 		      result)))))))
+
+(define (allow-thread-event-delivery)
+  (without-interrupts
+   (lambda ()
+     (let ((thread first-running-thread))
+       (if thread
+	   (let ((block-events? (thread/block-events? thread)))
+	     (set-thread/block-events?! thread #f)
+	     (deliver-timer-events)
+	     (maybe-signal-input-thread-events)
+	     (handle-thread-events thread)
+	     (set-thread/block-events?! thread block-events?))
+	   (begin
+	     (deliver-timer-events)
+	     (maybe-signal-input-thread-events)))))))
 
 ;;;; Timer Events
 
@@ -967,6 +1020,7 @@ MIT in each case. |#
 (define condition-type:thread-dead)
 (define signal-thread-dead)
 (define thread-dead/verb)
+(define condition-type:no-current-thread)
 
 (define (initialize-error-conditions!)
   (set! condition-type:thread-control-error
@@ -1031,4 +1085,11 @@ MIT in each case. |#
 	    (signaller thread verb operator operands))))
   (set! thread-dead/verb
 	(condition-accessor condition-type:thread-dead 'VERB))
+
+  (set! condition-type:no-current-thread
+	(make-condition-type 'NO-CURRENT-THREAD condition-type:control-error
+	    '()
+	  (lambda (condition port)
+	    condition
+	    (write-string "No current thread!" port))))
   unspecific)
