@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.21 2003/07/31 02:38:45 cph Exp $
+$Id: char.scm,v 14.22 2003/07/31 02:49:33 cph Exp $
 
 Copyright 1986,1987,1988,1991,1995,1997 Massachusetts Institute of Technology
 Copyright 1998,2001,2003 Massachusetts Institute of Technology
@@ -316,44 +316,43 @@ USA.
 	 (cadr entry))))
 
 (define named-codes
-  '((#x00 "NUL" "null")			; ^@
-    (#x01 #f "soh")			; ^A
-    (#x02 #f "stx")			; ^B
-    (#x03 #f "etx")			; ^C
-    (#x04 #f "eot")			; ^D
-    (#x05 #f "enq")			; ^E
-    (#x06 #f "ack")			; ^F
-    (#x07 #f "bel")			; ^G
-    (#x08 "BS" "backspace")		; ^H <Backspace>
-    (#x09 "TAB" "ht")			; ^I <Tab>
-    (#x0A "newline" "linefeed" "lfd" "lf") ; ^J <Linefeed> <Newline>
-    (#x0B #f "vt")			; ^K
-    (#x0C "page" "ff" "np")		; ^L <Page>
-    (#x0D "RET" "return" "cr")		; ^M <Return>
-    (#x0E #f "so")			; ^N
-    (#x0F #f "si")			; ^O
-    (#x10 #f "dle")			; ^P
-    (#x11 #f "dc1")			; ^Q
-    (#x12 #f "dc2")			; ^R
-    (#x13 #f "dc3")			; ^S
-    (#x14 #f "dc4")			; ^T
-    (#x15 #f "nak")			; ^U
-    (#x16 #f "syn")			; ^V
-    (#x17 #f "etb")			; ^W
-    (#x18 #f "can")			; ^X
-    (#x19 #f "em")			; ^Y
-    (#x1A #f "sub" "call")		; ^Z <Call>
-    (#x1B "ESC" "escape" "altmode")	; ^[ <Altmode> <Escape>
-    (#x1C #f "fs")			; ^\
-    (#x1D #f "gs")			; ^]
-    (#x1E #f "rs")			; ^^
-    (#x1F #f "us" "backnext")		; ^_ <Backnext>
-    (#x20 "SPC" "sp" "space")		; <Space>
-    (#x7F "DEL" "rubout")		; ^? <Rubout>
-    ))
+  '((#x00 #f "null" "nul")
+    (#x01 #f "soh")
+    (#x02 #f "stx")
+    (#x03 #f "etx")
+    (#x04 #f "eot")
+    (#x05 #f "enq")
+    (#x06 #f "ack")
+    (#x07 #f "bel")
+    (#x08 "backspace" "bs")
+    (#x09 "tab" "ht")
+    (#x0A "newline" "linefeed" "lfd" "lf")
+    (#x0B #f "vt")
+    (#x0C "page" "ff" "np")
+    (#x0D "return" "ret" "cr")
+    (#x0E #f "so")
+    (#x0F #f "si")
+    (#x10 #f "dle")
+    (#x11 #f "dc1")
+    (#x12 #f "dc2")
+    (#x13 #f "dc3")
+    (#x14 #f "dc4")
+    (#x15 #f "nak")
+    (#x16 #f "syn")
+    (#x17 #f "etb")
+    (#x18 #f "can")
+    (#x19 #f "em")
+    (#x1A #f "sub" "call")
+    (#x1B "escape" "esc" "altmode")
+    (#x1C #f "fs")
+    (#x1D #f "gs")
+    (#x1E #f "rs")
+    (#x1F #f "us" "backnext")
+    (#x20 "space" "spc" "sp")
+    (#x7F "delete" "del" "rubout")))
 
 (define named-bits
-  '((#x01 "M" "meta")
-    (#x02 "C" "ctrl" "control")
-    (#x04 "S" "super")
-    (#x08 "H" "hyper")))
+  '((#x01 "m" "meta")
+    (#x02 "c" "control" "ctrl")
+    (#x04 "s" "super")
+    (#x08 "h" "hyper")))
