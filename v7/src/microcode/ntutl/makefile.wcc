@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile.wcc,v 1.16 2000/12/05 21:23:51 cph Exp $
+###     $Id: makefile.wcc,v 1.17 2001/07/19 00:03:01 cph Exp $
 ###
-###     Copyright (c) 1992-2000 Massachusetts Institute of Technology
+###     Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ###
 ###     This program is free software; you can redistribute it and/or
 ###     modify it under the terms of the GNU General Public License as
@@ -16,16 +16,15 @@
 ###
 ###     You should have received a copy of the GNU General Public
 ###     License along with this program; if not, write to the Free
-###     Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139,
-###     USA.
-###
+###     Software Foundation, Inc., 59 Temple Place - Suite 330,
+###     Boston, MA 02111-1307, USA.
 
 #### Makefile for Scheme under Win32 compiled by Watcom C/C++
 ###  This makefile is meant to be used with Watcom make.
 
-USER_PRIM_SOURCES =
-USER_PRIM_OBJECTS =
-USER_LIBS =
+#USER_PRIM_SOURCES = prbfish.c prgdbm.c prmd5.c
+#USER_PRIM_OBJECTS = prbfish.obj prgdbm.obj prmd5.obj
+#USER_LIBS = library blowfish.lib,gdbm.lib,md5.lib
 
 CC = wcc386
 M4 = m4
@@ -168,9 +167,6 @@ vector.c &
 wind.c
 
 OS_PRIM_SOURCES = &
-prbfish.c &
-prgdbm.c &
-prmd5.c &
 prosfile.c &
 prosfs.c &
 prosio.c &
@@ -268,9 +264,6 @@ vector.obj &
 wind.obj
 
 OS_PRIM_OBJECTS = &
-prbfish.obj &
-prgdbm.obj &
-prmd5.obj &
 prosfile.obj &
 prosfs.obj &
 prosio.obj &
@@ -325,7 +318,7 @@ BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(NT_OBJECTS) &
 
 SCHEME_SOURCES = $(USER_PRIM_SOURCES) missing.c
 SCHEME_OBJECTS = $(USER_PRIM_OBJECTS) missing.obj
-SCHEME_LIB = $(USER_LIBS) library md5.lib,blowfish.lib,gdbm.lib
+SCHEME_LIB = $(USER_LIBS)
 
 scheme : scheme.exe .SYMBOLIC
 

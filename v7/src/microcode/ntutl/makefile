@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile,v 1.26 2001/07/18 05:27:33 cph Exp $
+###     $Id: makefile,v 1.27 2001/07/19 00:02:54 cph Exp $
 ###
 ###     Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ###
@@ -22,9 +22,9 @@
 #### Makefile for Scheme under Win32 compiled by Microsoft Visual C++.
 !include <win32.mak>
 
-USER_PRIM_SOURCES =
-USER_PRIM_OBJECTS =
-USER_LIBS =
+#USER_PRIM_SOURCES = prbfish.c prgdbm.c prmd5.c
+#USER_PRIM_OBJECTS = prbfish.obj prgdbm.obj prmd5.obj
+#USER_LIBS = blowfish.lib gdbm.lib md5.lib
 
 # **** Microsoft supplies their assembler as a separate product, and
 # **** we don't currently have a copy, so use the Watcom assembler.
@@ -114,9 +114,6 @@ vector.c \
 wind.c
 
 OS_PRIM_SOURCES = \
-prbfish.c \
-prgdbm.c \
-prmd5.c \
 prosfile.c \
 prosfs.c \
 prosio.c \
@@ -214,9 +211,6 @@ vector.obj \
 wind.obj
 
 OS_PRIM_OBJECTS = \
-prbfish.obj \
-prgdbm.obj \
-prmd5.obj \
 prosfile.obj \
 prosfs.obj \
 prosio.obj \
@@ -271,7 +265,7 @@ BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(NT_OBJECTS) \
 
 SCHEME_SOURCES = $(USER_PRIM_SOURCES) missing.c
 SCHEME_OBJECTS = $(USER_PRIM_OBJECTS) missing.obj
-SCHEME_LIB = $(USER_LIBS) md5.lib blowfish.lib gdbm.lib
+SCHEME_LIB = $(USER_LIBS)
 
 scheme: scheme.exe
 
