@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.7 1992/03/02 23:38:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.8 1992/04/07 03:50:29 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,7 +59,8 @@ MIT in each case. |#
 
 (define (warning-assoc obj pairs)
   (let ((pair (assoc obj pairs)))
-    (if (and (pair? pair)
+    (if (and compiler:coalescing-constant-warnings?
+	     (pair? pair)
 	     (not (eqv? obj (car pair))))
 	(warn "Coalescing constant objects" obj (car pair)))
     pair))
