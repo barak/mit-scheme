@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.6 1988/11/07 13:54:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.7 1988/11/07 14:33:30 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -584,8 +584,7 @@ for REGISTER.  If no such register exists, returns #F."
     (lambda (input-entries shared-entries output-entries)
       (input-loop input-entries
 		  (shared-loop shared-entries
-			       (output-loop (empty-register-map)
-					    output-entries))))))
+			       (output-loop output-entries))))))
 
 (define-export (clear-map-instructions input-map)
   input-map
@@ -616,21 +615,20 @@ for REGISTER.  If no such register exists, returns #F."
 						    (car output-aliases))
 		     ,@(aliases-loop (cdr output-aliases)))))))))
 
-(define (output-loop map entries)
-  (let entries-loop ((entries entries))
-    (if (null? entries)
-	'()
-	(let ((home (map-entry-home (car entries))))
-	  (if home
-	      (let ((aliases (map-entry-aliases (car entries))))
-		(LAP ,@(home->register-transfer home (car aliases))
-		     ,@(let registers-loop ((registers (cdr aliases)))
-			 (if (null? registers)
-			     (entries-loop (cdr entries))
-			     (LAP ,@(register->register-transfer
-				     (car aliases)
-				     (car registers))
-				  ,@(loop (cdr registers)))))))
-	      (entries-loop (cdr entries)))))))
+(define (output-loop entries)
+  (if (null? entries)
+      '()
+      (let ((home (map-entry-home (car entries))))
+	(if home
+	    (let ((aliases (map-entry-aliases (car entries))))
+	      (LAP ,@(home->register-transfer home (car aliases))
+		   ,@(let registers-loop ((registers (cdr aliases)))
+		       (if (null? registers)
+			   (output-loop (cdr entries))
+			   (LAP ,@(register->register-transfer
+				   (car aliases)
+				   (car registers))
+				,@(registers-loop (cdr registers)))))))
+	    (output-loop (cdr entries))))))
 
 )
