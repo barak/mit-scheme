@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.5 1993/08/21 03:48:49 gjr Exp $
+$Id: nttrap.c,v 1.6 1993/09/08 04:41:06 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -1214,6 +1214,68 @@ DEFUN (tinyexcpdebug, (code, info),
 }
 #endif /* W32_TRAP_DEBUG */
 
+#ifndef PAGE_SIZE
+# define PAGE_SIZE 0x1000
+#endif
+
+extern void EXFUN (winnt_stack_reset, (void));
+extern void EXFUN (winnt_protect_stack, (void));
+extern void EXFUN (winnt_unprotect_stack, (void));
+
+static Boolean stack_protected = FALSE;
+unsigned long protected_stack_base;
+unsigned long protected_stack_end;
+
+void
+DEFUN_VOID (winnt_unprotect_stack)
+{
+  DWORD old_protection;
+
+  if ((stack_protected)
+      && (VirtualProtect (((LPVOID) protected_stack_base),
+			  PAGE_SIZE,
+			  PAGE_READWRITE,
+			  &old_protection)))
+    stack_protected = FALSE;
+  return;
+}
+
+void
+DEFUN_VOID (winnt_protect_stack)
+{
+  DWORD old_protection;
+
+  if ((! stack_protected)
+      && (VirtualProtect (((LPVOID) protected_stack_base),
+			  PAGE_SIZE,
+			  (PAGE_GUARD | PAGE_READWRITE),
+			  &old_protection)))
+    stack_protected = TRUE;
+ return; 
+}
+
+void
+DEFUN_VOID (winnt_stack_reset)
+{
+  unsigned long boundary;
+
+  /* This presumes that the distance between Absolute_Stack_Base and
+     Stack_Guard is at least a page.
+   */
+
+  boundary = (((unsigned long) Stack_Guard)
+	      & (~ ((unsigned long) (PAGE_SIZE - 1))));
+  if (stack_protected && (protected_stack_base == boundary))
+    return;
+  winnt_unprotect_stack ();
+  protected_stack_base = boundary;
+  protected_stack_end  = (boundary + PAGE_SIZE);
+  winnt_protect_stack ();
+  return;
+}
+
+#define EXCEPTION_CODE_GUARDED_PAGE_ACCESS	0x80000001L
+
 static int
 DEFUN (WinntException, (code, info),
        DWORD code AND LPEXCEPTION_POINTERS info)
@@ -1232,6 +1294,15 @@ DEFUN (WinntException, (code, info),
 				     info->ContextRecord,
 				     MB_OK);
     trap_immediate_termination ();
+  }
+  else if ((code == EXCEPTION_CODE_GUARDED_PAGE_ACCESS)
+	   && stack_protected
+	   && (context->Esp >= protected_stack_base)
+	   && (context->Esp <= protected_stack_end))
+  {
+    stack_protected = FALSE;
+    REQUEST_INTERRUPT (INT_Stack_Overflow);
+    return (EXCEPTION_CONTINUE_EXECUTION);
   }
   else
   {

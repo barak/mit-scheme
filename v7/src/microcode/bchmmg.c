@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.80 1993/09/03 18:35:46 gjr Exp $
+$Id: bchmmg.c,v 9.81 1993/09/08 04:39:30 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -2065,6 +2065,7 @@ DEFUN (Clear_Memory, (heap_size, stack_size, constant_space_size),
   Free = Heap_Bottom;
   Constant_Top = (Constant_Space + constant_space_size);
   Initialize_Stack ();
+  STACK_RESET ();
   Free_Constant = Constant_Space;
   SET_CONSTANT_TOP ();
   return;

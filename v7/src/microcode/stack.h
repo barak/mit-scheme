@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: stack.h,v 9.34 1993/06/24 06:22:52 gjr Exp $
+$Id: stack.h,v 9.35 1993/09/08 04:38:21 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -35,17 +35,19 @@ MIT in each case. */
 /* This file contains macros for manipulating stacks and stacklets. */
 
 #ifdef DOS386
+  extern void EXFUN (dos386_stack_reset, (void));
+# define STACK_RESET() dos386_stack_reset()
+#endif /* DOS386 */
 
-extern void EXFUN (dos386_stack_reset, (void));
-#define STACK_RESET() dos386_stack_reset()
+#ifdef WINNT
+  extern void EXFUN (winnt_stack_reset, (void));
+# define STACK_RESET() winnt_stack_reset()
+#endif /* WINNT */
 
-#else
+#ifndef STACK_RESET
+# define STACK_RESET() do {} while (0)
+#endif /* STACK_RESET */
 
-#define STACK_RESET() do						\
-{									\
-} while (0)
-
-#endif
 
 #ifdef USE_STACKLETS
 

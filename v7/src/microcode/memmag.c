@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.54 1993/08/22 22:39:03 gjr Exp $
+$Id: memmag.c,v 9.55 1993/09/08 04:39:01 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -103,6 +103,7 @@ DEFUN (Clear_Memory,
   Free = Heap_Bottom;
   Constant_Top = (Constant_Space + Our_Constant_Size);
   Initialize_Stack ();
+  STACK_RESET ();
   Free_Constant = Constant_Space;
   SET_CONSTANT_TOP ();
   return;
