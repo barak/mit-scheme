@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.272 1996/05/18 06:15:59 cph Exp $
+$Id: runtime.pkg,v 14.273 1996/07/12 18:03:45 adams Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -2298,19 +2298,22 @@ MIT in each case. |#
 	  x-graphics/copy-area
 	  x-graphics/device-coordinate-limits
 	  x-graphics/disable-keyboard-focus
+	  x-graphics/discard-events
 	  x-graphics/display
 	  x-graphics/drag-cursor
+	  x-graphics/draw-arc
+	  x-graphics/draw-circle
 	  x-graphics/draw-line
 	  x-graphics/draw-lines
 	  x-graphics/draw-point
 	  x-graphics/draw-points
 	  x-graphics/draw-text
-	  x-graphics/discard-events
 	  x-graphics/enable-keyboard-focus
+	  x-graphics/fill-circle
+	  x-graphics/flush
 	  x-graphics/font-structure
 	  x-graphics/get-colormap
 	  x-graphics/get-default
-	  x-graphics/flush
 	  x-graphics/iconify-window
 	  x-graphics/lower-window
 	  x-graphics/map-window
