@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.262 2000/06/15 20:30:45 cph Exp $
+$Id: edwin.pkg,v 1.263 2000/07/05 22:38:02 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1498,6 +1498,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-variable$smtp-trace
 	  edwin-variable$user-mail-address
 	  enable-buffer-mime-processing!
+	  global-mailer-version-string
 	  mail-field-end
 	  mail-field-end!
 	  mail-field-region

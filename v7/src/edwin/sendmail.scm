@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.64 2000/06/30 19:07:55 cph Exp $
+;;; $Id: sendmail.scm,v 1.65 2000/07/05 22:37:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -704,10 +704,14 @@ the user from the mailer."
 			     (get-subsystem-version-string "edwin")
 			     "; MIT-Scheme/"
 			     (get-subsystem-version-string "release")))
-	     (method (buffer-get buffer 'MAILER-VERSION-STRING #f)))
+	     (method
+	      (or (buffer-get buffer 'MAILER-VERSION-STRING #f)
+		  global-mailer-version-string)))
 	 (if method
 	     (method generic)
 	     generic))))
+
+(define global-mailer-version-string #f)
 
 (define (send-mail-buffer mail-buffer lookup-buffer)
   (let ((error-buffer
