@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.3 2000/04/13 15:35:58 cph Exp $
+;;; $Id: compile.scm,v 1.4 2000/04/14 18:01:34 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -27,7 +27,7 @@
     (for-each compile-file
 	      '("imail-core"
 		"imail-file"
-		"imail-imap"
+		"imail-imap-url"
 		"imail-rmail"
 		"imail-umail"
 		"imail-util"

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: ed-ffi.scm,v 1.5 2000/04/13 20:16:05 cph Exp $
+;;; $Id: ed-ffi.scm,v 1.6 2000/04/14 18:01:35 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -23,7 +23,7 @@
 (standard-scheme-find-file-initialization
  '#(("imail-core" (edwin imail) system-global-syntax-table)
     ("imail-file" (edwin imail) system-global-syntax-table)
-    ("imail-imap" (edwin imail) system-global-syntax-table)
+    ("imail-imap-url" (edwin imail) system-global-syntax-table)
     ("imail-rmail" (edwin imail) system-global-syntax-table)
     ("imail-top" (edwin imail) edwin-syntax-table)
     ("imail-umail" (edwin imail) system-global-syntax-table)
