@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.92 1992/02/17 22:09:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.93 1992/02/18 20:47:26 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -185,9 +185,13 @@ B 3BAB8C
   (if *executing-keyboard-macro?*
       (keyboard-macro-read-key)
       (let ((key (keyboard-read-1 (editor-read current-editor))))
-	(set! auto-save-keystroke-count (fix:+ auto-save-keystroke-count 1))
-	(ring-push! (current-char-history) key)
-	(if *defining-keyboard-macro?* (keyboard-macro-write-key key))
+	(cond ((key? key)
+	       (set! auto-save-keystroke-count
+		     (fix:+ auto-save-keystroke-count 1))
+	       (ring-push! (current-char-history) key)
+	       (if *defining-keyboard-macro?* (keyboard-macro-write-key key)))
+	      (*defining-keyboard-macro?*
+	       ((ref-command end-kbd-macro) 1)))
 	key)))
 
 (define (keyboard-peek-no-hang)
