@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.119 1996/04/23 23:08:38 cph Exp $
+;;;	$Id: curren.scm,v 1.120 1996/04/24 01:11:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -229,15 +229,21 @@ The frame is guaranteed to be deselected at that time."
 		(and (not (eq? window* window0))
 		     (loop (window1+ window*)))))))))
 
-(define (global-window-modeline-event!)
-  (for-each
-   (lambda (screen)
-     (let ((window0 (screen-window0 screen)))
-       (let loop ((window (window1+ window0)))
-	 (window-modeline-event! window 'GLOBAL-MODELINE)
-	 (if (not (eq? window window0))
-	     (loop (window1+ window))))))
-   (screen-list)))
+(define (global-window-modeline-event! #!optional predicate)
+  (let ((predicate
+	 (if (or (default-object? predicate) (not predicate))
+	     (lambda (window) window 'GLOBAL-MODELINE)
+	     predicate)))
+    (for-each
+     (lambda (screen)
+       (let ((window0 (screen-window0 screen)))
+	 (let loop ((window (window1+ window0)))
+	   (let ((type (predicate window)))
+	     (if type
+		 (window-modeline-event! window type)))
+	   (if (not (eq? window window0))
+	       (loop (window1+ window))))))
+     (screen-list))))
 
 (define (other-window #!optional n other-screens?)
   (let ((n (if (or (default-object? n) (not n)) 1 n))
