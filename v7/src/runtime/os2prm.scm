@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.19 1995/10/23 06:38:35 cph Exp $
+$Id: os2prm.scm,v 1.20 1995/10/23 06:52:09 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -252,7 +252,9 @@ MIT in each case. |#
       "\\"))
 
 (define (os2/fs-drive-type pathname)
-  (let ((type ((ucode-primitive drive-type 1) (pathname-device pathname))))
+  (let ((type
+	 ((ucode-primitive drive-type 1)
+	  (pathname-device (merge-pathnames pathname)))))
     (let ((colon (string-find-next-char type #\:)))
       (if colon
 	  (cons (string-head type colon) (string-tail type (fix:+ colon 1)))
