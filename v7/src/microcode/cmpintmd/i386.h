@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.4 1992/01/31 04:19:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.5 1992/02/05 16:55:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -348,7 +348,7 @@ DEFUN_VOID (i386_reset_hook)
   /* These must match machines/i386/lapgen.scm */
 
   SETUP_REGISTER (asm_scheme_to_interface); 		/* 0 */
-  SETUP_REGISTER (asm_scheme_to_interface_jsr);		/* 1 */
+  SETUP_REGISTER (asm_scheme_to_interface_call);	/* 1 */
 
   if (offset != ESI_TRAMPOLINE_TO_INTERFACE_OFFSET)
   {
