@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.141 2000/08/02 13:13:26 cph Exp $
+;;; $Id: imail-imap.scm,v 1.142 2000/08/02 13:15:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -652,7 +652,7 @@
       ((imail-ui:message-wrapper "Reading message UIDs")
        (lambda ()
 	 (imap:command:fetch-range (imap-folder-connection folder)
-				   start #f '(UID))))))
+				   start #f '(UID FLAGS))))))
 
 (define (remove-imap-folder-message folder index)
   (without-interrupts
