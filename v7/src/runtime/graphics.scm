@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/graphics.scm,v 1.3 1990/01/22 23:39:37 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/graphics.scm,v 1.4 1991/07/23 08:20:26 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -180,7 +180,8 @@ MIT in each case. |#
   descriptor
   (drawing-mode drawing-mode:dominant)
   (line-style line-style:solid)
-  (buffer? false))
+  (buffer? false)
+  (properties (make-1d-table) read-only true))
 
 (define (make-graphics-device type . arguments)
   (let ((descriptor
