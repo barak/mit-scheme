@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.8 1990/11/15 23:27:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.9 1990/11/15 23:37:20 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -435,8 +435,9 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
   (if (not pathname)
       (let ((pathname
 	     (list-search-positive library-directory-path file-directory?)))
-	(and pathname
-	     (pathname-as-directory pathname)))
+	(if (not pathname)
+	    (error "can't find system library directory"))
+	(pathname-as-directory pathname))
       (let loop ((directories library-directory-path))
 	(and (not (null? directories))
 	     (let ((pathname (merge-pathnames pathname (car directories))))
