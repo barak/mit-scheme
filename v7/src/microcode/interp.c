@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.23 1987/04/16 02:24:28 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.24 1987/04/21 15:02:02 cph Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -1527,11 +1527,13 @@ return_from_compiled_code:
     case RC_NORMAL_GC_DONE:
       End_GC_Hook();
       if (GC_Check(GC_Space_Needed))
-      { printf("\nGC just ended.  The free pointer is at 0x%x, the top of this heap\n",
-	       Free);
-	printf("is at 0x%x, and we are trying to cons 0x%x objects.  Dead!\n",
-	       MemTop, GC_Space_Needed);
-	Microcode_Termination(TERM_EXIT);
+      { fprintf(stderr,
+		"\nGC just ended.  The free pointer is at 0x%x, the top of this heap\n",
+		Free);
+	fprintf(stderr,
+		"is at 0x%x, and we are trying to cons 0x%x objects.  Dead!\n",
+		MemTop, GC_Space_Needed);
+	Microcode_Termination(TERM_NO_SPACE);
       }
       GC_Space_Needed = 0;
       Val = Fetch_Expression();
