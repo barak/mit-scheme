@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.87 1991/10/18 11:17:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.88 1991/10/25 12:57:30 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -36,10 +36,6 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package/system-loader "comp" '() 'QUERY)
-(for-each (lambda (name)
-	    ((package/reference (find-package name) 'INITIALIZE-PACKAGE!)))
-	  '((COMPILER MACROS)
-	    (COMPILER DECLARATIONS)
-	    (COMPILER DISASSEMBLER MACROS)))
-(add-system! (make-system "Liar (DEC VAX)" 4 87 '()))
+((load "base/make") "DEC VAX")
+((environment-lookup (->environment '(COMPILER DISASSEMBLER MACROS))
+		     'INITIALIZE-PACKAGE!))

@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rulrew.scm,v 1.1 1991/02/15 00:40:13 jinx Exp $
-$MC68020-Header: rulrew.scm,v 1.3 90/05/03 15:17:42 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rulrew.scm,v 1.2 1991/10/25 12:57:32 cph Exp $
 
-Copyright (c) 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +38,13 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ;;;; Synthesized Data
+
+(define-rule rewriting
+  (CONS-NON-POINTER (? type) (? datum))
+  ;; On the VAX, there's no difference between an address and a datum,
+  ;; so the rules for constructing non-pointer objects are the same as
+  ;; those for pointer objects.
+  (rtl:make-cons-pointer type datum))
 
 (define-rule rewriting
   (CONS-POINTER (REGISTER (? type register-known-value)) (? datum))

@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.7 1991/02/15 00:42:01 jinx Exp $
-$MC68020-Header: machin.scm,v 4.23 1991/02/05 03:50:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.8 1991/10/25 12:57:26 cph Exp $
 
-Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,6 +39,7 @@ MIT in each case. |#
 
 ;;;; Architecture Parameters
 
+(define use-pre/post-increment? true)
 (define-integrable endianness 'LITTLE)
 (define-integrable addressing-granularity 8)
 (define-integrable scheme-object-width 32)
@@ -81,7 +81,7 @@ MIT in each case. |#
 
 (define-integrable (stack->memory-offset offset) offset)
 (define-integrable ic-block-first-parameter-offset 2)
-
+
 ;; This must return a word based offset.
 ;; On the VAX, to save space, entries can be at 2 mod 4 addresses,
 ;; which makes it impossible if the closure object used for
