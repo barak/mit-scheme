@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.14 1995/02/28 01:44:55 adams Exp $
+$Id: rtlgen.scm,v 1.15 1995/03/12 15:34:01 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -69,7 +69,7 @@ MIT in each case. |#
 
 (define (rtlgen/expression form)
   (let ((label (rtlgen/new-name 'EXPRESSION)))
-    (values (rtlgen/%%procedure label form form rtlgen/wrap-expression)
+    (values (rtlgen/%%procedure label form form #F rtlgen/wrap-expression)
 	    label)))
 
 (define (rtlgen/top-level-procedure form)
@@ -102,6 +102,7 @@ MIT in each case. |#
 				 label
 				 form
 				 lam-expr
+				 #F
 				 rtlgen/wrap-trivial-closure)))
 		     (values code label))))))
        ((form/match rtlgen/top-level-heap-closure-pattern body)
@@ -118,15 +119,24 @@ MIT in each case. |#
 			    form
 			    `(LAMBDA (,cont-name ,env-name)
 			       ,body)
+			    'SELF-ARG
 			    rtlgen/wrap-trivial-closure)))
 		     (set! *procedure-result?* 'CALL-ME)
 		     (values code label))))))
        (else (fail))))))
 
+(define-structure
+    (rtlgen/descriptor
+     (conc-name rtlgen/descriptor/)
+     (constructor rtlgen/descriptor/make))
+  kind
+  label
+  object)
+
 (define (rtlgen/dispatch desc)
-  (let ((kind   (vector-ref desc 0))
-	(label  (vector-ref desc 1))
-	(object (vector-ref desc 2)))
+  (let ((kind   (rtlgen/descriptor/kind  desc))
+	(label  (rtlgen/descriptor/label desc))
+	(object (rtlgen/descriptor/object desc)))
     (sample/1 '(rtlgen/procedures-by-kind histogram) kind)
     (case kind
       ((CONTINUATION) 
@@ -144,32 +154,32 @@ MIT in each case. |#
   (queue/enqueue! *rtlgen/object-queue* desc))
 
 (define (rtlgen/trivial-closure label lam-expr)
-  (rtlgen/%procedure label lam-expr rtlgen/wrap-trivial-closure))
+  (rtlgen/%procedure label lam-expr #F rtlgen/wrap-trivial-closure))
 
 (define (rtlgen/closure label lam-expr)
-  (rtlgen/%procedure label lam-expr rtlgen/wrap-closure))
+  (rtlgen/%procedure label lam-expr #T rtlgen/wrap-closure))
 
 (define (rtlgen/procedure label lam-expr)
-  (rtlgen/%procedure label lam-expr rtlgen/wrap-procedure))
+  (rtlgen/%procedure label lam-expr #F rtlgen/wrap-procedure))
 
-(define (rtlgen/%procedure label lam-expr wrap)
+(define (rtlgen/%procedure label lam-expr self-arg? wrap)
   (set! *rtlgen/procedures*
-	(cons (rtlgen/%%procedure label lam-expr lam-expr wrap)
+	(cons (rtlgen/%%procedure label lam-expr lam-expr self-arg? wrap)
 	      *rtlgen/procedures*))
   unspecific)
 
-(define (rtlgen/%%procedure label orig-form lam-expr wrap)
+(define (rtlgen/%%procedure label orig-form lam-expr self-arg? wrap)
   ;; This is called directly for top-level expressions and procedures.
   ;; All other calls are from rtlgen/%procedure which adds the result
   ;; to the list of all procedures (*rtlgen/procedures*)
-  (rtlgen/%body-with-stack-references label orig-form lam-expr wrap
+  (rtlgen/%body-with-stack-references label orig-form lam-expr self-arg? wrap
    (lambda ()
      (let ((lambda-list (lambda/formals lam-expr))
 	   (body        (lambda/body lam-expr)))
        (rtlgen/body
 	body
 	(lambda (body*) (wrap label orig-form body* lambda-list 0))
-	(lambda () (rtlgen/initial-state lambda-list false body)))))))
+	(lambda () (rtlgen/initial-state lambda-list self-arg? false body)))))))
 
 (define (rtlgen/wrap-expression label form body lambda-list saved-size)
   lambda-list				; Not used
@@ -277,13 +287,13 @@ MIT in each case. |#
 
 (define (rtlgen/%%continuation label orig-form lam-expr wrap)
   (rtlgen/%body-with-stack-references
-   label orig-form lam-expr wrap
+   label orig-form lam-expr #F wrap
    (lambda ()
      (internal-error "continuation without stack frame"
 		     lam-expr))))
 
 (define (rtlgen/%body-with-stack-references
-	 label orig-form lam-expr wrap no-stack-refs)
+	 label orig-form lam-expr self-arg? wrap no-stack-refs)
   (sample/1 '(rtlgen/formals-per-lambda histogram vector)
 	    (lambda-list/count-names (lambda/formals lam-expr)))
   (cond ((form/match rtlgen/continuation-pattern lam-expr)
@@ -303,12 +313,16 @@ MIT in each case. |#
 				  lambda-list frame-vector))))
 			 (wrap label orig-form body* lambda-list saved-size)))
 		     (lambda ()
-		       (rtlgen/initial-state lambda-list
+		       (rtlgen/initial-state lambda-list self-arg?
 					     frame-vector body))))))))
 	(else (no-stack-refs))))
 
-(define (rtlgen/initial-state params frame-vector body)
-
+(define (rtlgen/initial-state params self-arg? frame-vector body)
+  ;; . PARAMS is a lambda list
+  ;; . SELF-ARG? is true if the entry is a closure body (i.e. closure passed
+  ;;   in standard unboxed place)
+  ;; . FRAME-VECTOR is a description of parameters on the stack or #F
+  ;; . BODY is the procedure/continuation/closure body  
   (define env '())
   (define (add-binding! name reg home)
     (let ((binding  (rtlgen/binding/make name reg home)))
@@ -391,7 +405,8 @@ MIT in each case. |#
 				 (car params)
 				 #F))
 	 (sans-cont          (if continuation-name (cdr params) params))
-	 (closure-name       (if (and (pair? sans-cont)
+	 (closure-name       (if (and self-arg?
+				      (pair? sans-cont)
 				      (closure-variable? (car sans-cont)))
 				 (car sans-cont)
 				 #F))
@@ -1516,12 +1531,14 @@ MIT in each case. |#
 (define (rtlgen/letrec/bindings bindings)
   (sample/1 '(rtlgen/bindings-per-letrec histogram) (length bindings))
   (set! *rtlgen/delayed-objects*
-	(fold-right (lambda (binding rest)
-		      (cons (cons (car binding)
-				  (vector 'PROCEDURE false (cadr binding)))
-			    rest))
-		    *rtlgen/delayed-objects*
-		    bindings))
+	(map*
+ 	  *rtlgen/delayed-objects*
+	  (lambda (binding)
+	   (cons (car binding)
+		 (rtlgen/descriptor/make 'TRIVIAL-CLOSURE #F (cadr binding))
+		 ;;(rtlgen/descriptor/make 'PROCEDURE #F (cadr binding))
+		 ))
+	  bindings))
   unspecific)
 
 (define-rtl-generator/stmt IF (state pred conseq alt)
@@ -1564,9 +1581,6 @@ MIT in each case. |#
      (rtlgen/letrec/stmt state expr))
     ((QUOTE LOOKUP LAMBDA DECLARE)
      (internal-error "Illegal statement" expr))
-    ((SET! UNASSIGNED? OR DELAY
-      ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
     (else
      (illegal expr))))
 
@@ -2002,9 +2016,11 @@ MIT in each case. |#
 
 (define (rtlgen/jump state var-name cont rands)
   (let* ((cont-label (rtlgen/continuation-setup/jump! state cont))
-	 (label      (rtlgen/enqueue-delayed-object! var-name 'PROCEDURE)))
+	 (label      (rtlgen/enqueue-delayed-object! var-name 'TRIVIAL-CLOSURE))
+	 ;;(label      (rtlgen/enqueue-delayed-object! var-name 'PROCEDURE))
+	 )
     (let* ((proc-info    (rtlgen/find-delayed-object var-name))
-	   (lambda-expr  (vector-ref proc-info 2))
+	   (lambda-expr  (rtlgen/descriptor/object proc-info))
 	   (params       (and (LAMBDA/? lambda-expr)
 			      (lambda/formals lambda-expr))))
       (if (not params)
@@ -2013,9 +2029,10 @@ MIT in each case. |#
       (let* ((needs-self? (and (pair? (cdr params))
 			       (closure-variable? (cadr params))))
 	     (true-rands (if needs-self? (cdr rands) rands)))
-	(if needs-self?
-	    (rtlgen/exprs->call-registers state (car rands) (cdr rands))
-	    (rtlgen/exprs->call-registers state #F rands))
+	;;(if needs-self?
+	;;    (rtlgen/exprs->call-registers state (car rands) (cdr rands))
+	;;    (rtlgen/exprs->call-registers state #F rands))
+	(rtlgen/exprs->call-registers state #F rands)
 	(rtlgen/emit!/1
 	 `(INVOCATION:PROCEDURE 0 ,cont-label ,label
 				(MACHINE-CONSTANT ,(+ (length true-rands) 1))))))))
@@ -2023,8 +2040,7 @@ MIT in each case. |#
 (define (rtlgen/continuation-setup/jump! state cont)
   ;; returns continuation label or #F
   (define (bad-cont)
-    (internal-error "Unexpected CALL continuation [jump!]"
-		    cont))
+    (internal-error "Unexpected CALL continuation [jump!]" cont))
   (cond ((LOOKUP/? cont)
 	 ;; Continuation already in the right place!
 	 (rtlgen/pop state))
@@ -2321,9 +2337,10 @@ MIT in each case. |#
     (call-with-values
 	(lambda () (%matchup (cdr bindings) '(handler state) '(cdr form)))
       (lambda (names code)
-	`(define ,proc-name
-	   (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
-	     (named-lambda (,proc-name state form)
+	`(DEFINE ,proc-name
+	   (NAMED-LAMBDA (,proc-name STATE FORM)
+	     ;; FORM is in scope in BODY
+	     (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
 	       ,code)))))))
 
 (define-rtl-generator/expr LOOKUP (state name)
@@ -2406,7 +2423,7 @@ MIT in each case. |#
 
 (define-rtl-generator/expr CALL (state rator cont #!rest rands)
   (define (illegal message)
-    (internal-error message `(CALL ,rator ,cont ,@rands)))
+    (internal-error message form))
   (cond ((not (equal? cont '(QUOTE #F)))
 	 (illegal "CALL expression with non-false continuation"))
 	((not (and (QUOTE/? rator)
@@ -2427,10 +2444,10 @@ MIT in each case. |#
 		 ((eq? rator %variable-write-cache)
 		  (rtlgen/variable-cache state (cadr rands) 'ASSIGNMENT-CACHE))
 		 ((eq? rator %make-stack-closure)
-		  (internal-error "CALL to make-stack-closure" cont rands))
+		  (illegal "expression call to %make-stack-closure"))
 		 (else
-		  (let* ((rands* (rtlgen/expr* state rands))
-			 (target (rtlgen/state/expr/target state)))
+		  (let* ((rands*  (rtlgen/expr* state rands))
+			 (target  (rtlgen/state/expr/target state)))
 		    (case (car target)
 		      ((ANY REGISTER)
 		       (rtlgen/open-code/value state rands* rator))
@@ -2441,8 +2458,7 @@ MIT in each case. |#
 		      (else
 		       (internal-error "Unknown value destination"
 				       target
-				       `(CALL ,rator ,cont
-					      ,@rands)))))))))))
+				       form))))))))))
 
 (define (rtlgen/variable-cache state name keyword)
   (if (not (QUOTE/? name))
@@ -2469,35 +2485,34 @@ MIT in each case. |#
 
 (define (rtlgen/enqueue-object! object kind)
   (let ((label* (rtlgen/new-name kind)))
-    (rtlgen/enqueue! (vector kind label* object))
+    (rtlgen/enqueue! (rtlgen/descriptor/make kind label* object))
     label*))
 
 (define (rtlgen/enqueue-delayed-object! name kind)
   (let ((place (assq name *rtlgen/delayed-objects*)))
     (if (not place)
 	(internal-error "Unknown binding for operand" name kind))
-    (let* ((vec   (cdr place))
-	   (label (vector-ref vec 1)))
+    (let* ((desc   (cdr place))
+	   (label  (rtlgen/descriptor/label desc)))
       (cond ((not label)
 	     (let ((label* (car place)))
-	       (vector-set! vec 0 kind)
-	       (vector-set! vec 1 label*)
-	       (rtlgen/enqueue! vec)
+	       (set-rtlgen/descriptor/kind! desc kind)
+	       (set-rtlgen/descriptor/label! desc label*)
+	       (rtlgen/enqueue! desc)
 	       label*))
-	    ((not (eq? (vector-ref vec 0) kind))
+	    ((not (eq? (rtlgen/descriptor/kind desc) kind))
 	     (internal-error "Inconsistent usage"
-			     (vector-ref vec 2)
-			     (vector-ref vec 0)
+			     (rtlgen/descriptor/object desc)
+			     (rtlgen/descriptor/kind desc)
 			     kind))
 	    (else
 	     label)))))
 
 (define (rtlgen/find-delayed-object name)
-  ;; Lookup by name, result is #(kind label object)
+  ;; Lookup by name, result is an rtlgen/descriptor
   (let ((result (assq name *rtlgen/delayed-objects*)))
     (if (not result)
-	(internal-error
-	 "rtlgen/find-delayed-object: not found" name)
+	(internal-error "rtlgen/find-delayed-object: not found" name)
 	(cdr result))))
 
 (define (rtlgen/expr/make-closure state rands)
@@ -2546,9 +2561,6 @@ MIT in each case. |#
      (rtlgen/let/expr state expr))
     ((LAMBDA BEGIN LETREC DECLARE)
      (internal-error "Illegal expression" expr))
-    ((SET! UNASSIGNED? OR DELAY
-      ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
     (else
      (illegal expr))))
 
@@ -2760,7 +2772,8 @@ MIT in each case. |#
 (define (rtlgen/no-predicate-open-coder state rands open-coder)
   state rands				; ignored
   (internal-error "Statement operation used as predicate"
-		  (rtlgen/open-coder/rator open-coder)))
+		  (rtlgen/open-coder/rator open-coder))
+  #F)
 
 (define (rtlgen/no-stmt-open-coder state rands open-coder)
   state rands				; ignored
@@ -3377,7 +3390,8 @@ MIT in each case. |#
 	  (internal-error "stack binding not found" name*)
 	  (rtlgen/expr/simple-value state (rtlgen/binding/place place))))))
 
-(define (rtlgen/fixed-selection state rand offset)
+(define (rtlgen/fixed-selection state tag rand offset)
+  tag					; ignored
   (let* ((rand    (rtlgen/->register rand))
 	 (address (rtlgen/new-reg)))
     (rtlgen/assign! address `(OBJECT->ADDRESS ,rand))
@@ -3386,11 +3400,10 @@ MIT in each case. |#
 
 (let ((define-fixed-selector
 	(lambda (name tag offset arity)
-	  tag				; unused
 	  (define-open-coder/value name arity
 	    (lambda (state rands open-coder)
 	      open-coder		; ignored
-	      (rtlgen/fixed-selection state (first rands) offset))))))
+	      (rtlgen/fixed-selection state tag (first rands) offset))))))
   (define-fixed-selector 'CELL-CONTENTS     (machine-tag 'CELL) 0 1)
   (define-fixed-selector %cell-ref          (machine-tag 'CELL) 0 2)
   (define-fixed-selector 'CAR               (machine-tag 'PAIR) 0 1)
@@ -3403,7 +3416,6 @@ MIT in each case. |#
 
 (let ((define-indexed-selector
 	(lambda (name tag offset arity)
-	  tag				; unused
 	  (define-open-coder/value name arity
 	    (lambda (state rands open-coder)
 	      open-coder		; ignored
@@ -3411,6 +3423,7 @@ MIT in each case. |#
 		(cond ((rtlgen/integer-constant? index)
 		       (rtlgen/fixed-selection
 			state
+			tag
 			(first rands)
 			(+ offset (rtlgen/constant-value index))))
 		      ((rtlgen/indexed-loads? 'WORD)
@@ -3445,7 +3458,8 @@ MIT in each case. |#
   (define-indexed-selector 'PRIMITIVE-OBJECT-REF false 0 2))
 
 (define-open-coder/value %heap-closure-ref 3
-  (let ((offset (rtlgen/closure-first-offset)))
+  (let ((offset (rtlgen/closure-first-offset))
+	(closure-tag  (machine-tag 'COMPILED-ENTRY)))
     (lambda (state rands open-coder)
       open-coder			; ignored
       (let ((index (second rands)))
@@ -3454,6 +3468,7 @@ MIT in each case. |#
 			       rands))
 	      ((rtlgen/tagged-closures?)
 	       (rtlgen/fixed-selection state
+				       closure-tag
 				       (first rands)
 				       (+ offset
 					  (rtlgen/constant-value index))))
@@ -3503,11 +3518,11 @@ MIT in each case. |#
 		  state
 		  `(CONS-NON-POINTER (MACHINE-CONSTANT ,fixnum-tag)
 				     ,field))))))))
-  (define-fixnumized-selector/tagged 'VECTOR-LENGTH (machine-tag 'VECTOR) 0)
+  (define-fixnumized-selector/tagged 'VECTOR-LENGTH  (machine-tag 'VECTOR) 0)
   (define-fixnumized-selector/tagged '%RECORD-LENGTH (machine-tag 'RECORD) 0)
   (define-fixnumized-selector/tagged 'SYSTEM-VECTOR-SIZE false 1)
-  (define-fixnumized-selector 'STRING-LENGTH (machine-tag 'STRING) 1)
-  (define-fixnumized-selector 'BIT-STRING-LENGTH (machine-tag 'STRING) 1))
+  (define-fixnumized-selector 'STRING-LENGTH     (machine-tag 'STRING)    1)
+  (define-fixnumized-selector 'BIT-STRING-LENGTH (machine-tag 'VECTOR-1B) 1))
 
 (define-open-coder/value 'FLOATING-VECTOR-LENGTH 1
   (let ((factor (rtlgen/fp->words 1))
