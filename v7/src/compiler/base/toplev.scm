@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.17 1989/05/08 23:12:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.18 1989/06/10 23:54:04 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -168,7 +168,8 @@ MIT in each case. |#
       value)))
 
 (define (recursive-compilation-results)
-  (sort *recursive-compilation-results* (lambda (x y) (< (car x) (car y)))))
+  (sort *recursive-compilation-results*
+	(lambda (x y) (< (vector-ref x 0) (vector-ref y 0)))))
 
 ;;;; The file compiler, its usual mode.
 
