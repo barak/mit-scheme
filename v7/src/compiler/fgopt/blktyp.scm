@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.7 1988/12/06 18:55:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.8 1988/12/13 13:03:39 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,9 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (setup-block-types!)
-
-(define-export (setup-block-types! root-block)
+(define (setup-block-types! root-block)
   (define (loop block)
     (enumeration-case block-type (block-type block)
       ((PROCEDURE)
@@ -76,7 +74,8 @@ MIT in each case. |#
       ;; in fggen/fggen and fggen/canon, and it is replaced by the line below,
       ;; the presumpt first-class environment is not really used as one, so
       ;; the procedure is being "demoted" from first-class to closure.
-      (set-procedure-closure-block! procedure parent)
+      (set-procedure-closure-context! procedure
+				      (make-reference-context parent))
       (((find-closure-bindings
 	 (lambda (closure-frame-block size)
 	   (set-block-parent! block closure-frame-block)
@@ -86,11 +85,11 @@ MIT in each case. |#
 	 (lambda (lvalue)
 	   (or (lvalue-integrated? lvalue)
 	       ;; Some of this is redundant
-	       (let ((val (lvalue-known-value lvalue)))
-		 (and val
-		      (or (eq? val procedure)
-			  (and (rvalue/procedure? val)
-			       (procedure/trivial-or-virtual? val)))))
+	       (let ((value (lvalue-known-value lvalue)))
+		 (and value
+		      (or (eq? value procedure)
+			  (and (rvalue/procedure? value)
+			       (procedure/trivial-or-virtual? value)))))
 	       (begin
 		 (set-variable-closed-over?! lvalue true)
 		 false))))
@@ -99,12 +98,8 @@ MIT in each case. |#
 	(if (or (and previously-trivial? (not new))
 		(and (not previously-trivial?) new))
 	    (error "close-procedure! trivial becoming non-trivial or viceversa"
-		   procedure)))
-      (set-block-children! current-parent
-			   (delq! block (block-children current-parent)))
-      (set-block-disowned-children!
-       current-parent
-       (cons block (block-disowned-children current-parent))))))
+		   procedure))))
+    (disown-block-child! current-parent block)))
 
 (define (find-closure-bindings receiver)
   (define (find-internal block)
@@ -118,25 +113,17 @@ MIT in each case. |#
 				    free-variables
 				    bound-variables
 				    (and block (block-procedure block)))))
-	  (transmit-values
-	   (filter-bound-variables (block-bound-variables block)
-				   free-variables
-				   bound-variables)
-	   (find-internal (original-block-parent block))))))
+	  (with-values
+	      (lambda ()
+		(filter-bound-variables (block-bound-variables block)
+					free-variables
+					bound-variables))
+	    (find-internal (original-block-parent block))))))
   find-internal)
-
-;; This only works for procedures (not continuations) and it assumes
-;; that all procedures' target-block field have been initialized.
-
-(define-integrable (original-block-parent block)
-  (let ((procedure (block-procedure block)))
-    (and procedure
-	 (rvalue/procedure? procedure)
-	 (procedure-target-block procedure))))
 
 (define (filter-bound-variables bindings free-variables bound-variables)
   (cond ((null? bindings)
-	 (return-2 free-variables bound-variables))
+	 (values free-variables bound-variables))
 	((memq (car bindings) free-variables)
 	 (filter-bound-variables (cdr bindings)
 				 (delq! (car bindings) free-variables)
@@ -177,5 +164,77 @@ MIT in each case. |#
 		   (cons (cons (car variables) offset)
 			 table)
 		   (1+ size)))))))
+
+(define (setup-closure-contexts! expression procedures)
+  (with-new-node-marks
+   (lambda ()
+     (setup-closure-contexts/node (expression-entry-node expression))
+     (for-each
+      (lambda (procedure)
+	(setup-closure-contexts/next (procedure-entry-node procedure)))
+      procedures))))
 
-)
+(define (setup-closure-contexts/next node)
+  (if (and node (not (node-marked? node)))
+      (setup-closure-contexts/node node)))
+
+(define (setup-closure-contexts/node node)
+  (node-mark! node)
+  (cfg-node-case (tagged-vector/tag node)
+    ((PARALLEL)
+     (for-each
+      (lambda (subproblem)
+	(let ((prefix (subproblem-prefix subproblem)))
+	  (if (not (cfg-null? prefix))
+	      (setup-closure-contexts/next (cfg-entry-node prefix))))
+	(if (not (subproblem-canonical? subproblem))
+	    (setup-closure-contexts/rvalue
+	     (virtual-continuation/context
+	      (subproblem-continuation subproblem))
+	     (subproblem-rvalue subproblem))))
+      (parallel-subproblems node))
+     (setup-closure-contexts/next (snode-next node)))
+    ((APPLICATION)
+     (if (application/return? node)
+	 (let ((context (application-context node)))
+	   (setup-closure-contexts/rvalue context (application-operator node))
+	   (for-each (lambda (operand)
+		       (setup-closure-contexts/rvalue context operand))
+		     (application-operands node))))
+     (setup-closure-contexts/next (snode-next node)))
+    ((VIRTUAL-RETURN)
+     (let ((context (virtual-return-context node)))
+       (setup-closure-contexts/rvalue context (virtual-return-operand node))
+       (let ((continuation (virtual-return-operator node)))
+	 (if (virtual-continuation/reified? continuation)
+	     (setup-closure-contexts/rvalue
+	      context
+	      (virtual-continuation/reification continuation)))))
+     (setup-closure-contexts/next (snode-next node)))
+    ((ASSIGNMENT)
+     (setup-closure-contexts/rvalue (assignment-context node)
+				    (assignment-rvalue node))
+     (setup-closure-contexts/next (snode-next node)))
+    ((DEFINITION)
+     (setup-closure-contexts/rvalue (definition-context node)
+				    (definition-rvalue node))
+     (setup-closure-contexts/next (snode-next node)))
+    ((TRUE-TEST)
+     (setup-closure-contexts/rvalue (true-test-context node)
+				    (true-test-rvalue node))
+     (setup-closure-contexts/next (pnode-consequent node))
+     (setup-closure-contexts/next (pnode-alternative node)))
+    ((STACK-OVERWRITE POP FG-NOOP)
+     (setup-closure-contexts/next (snode-next node)))))
+
+(define (setup-closure-contexts/rvalue context rvalue)
+  (if (and (rvalue/procedure? rvalue)
+	   (let ((context* (procedure-closure-context rvalue)))
+	     (and (reference-context? context*)
+		  (begin
+		    (if (not (eq? (reference-context/block context)
+				  (reference-context/block context*)))
+			(error "mismatched reference contexts"
+			       context context*))
+		    (not (eq? context context*))))))
+      (set-procedure-closure-context! rvalue context)))
