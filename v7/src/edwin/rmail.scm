@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.23 1992/11/16 22:41:10 cph Exp $
+;;;	$Id: rmail.scm,v 1.24 1992/11/17 17:42:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -177,18 +177,18 @@ w	Edit the current message.  C-c C-c to return to Rmail."
 	(ref-variable-object require-final-newline)
       false)
     (define-variable-local-value! buffer (ref-variable-object rmail-last-file)
-      (ref-variable rmail-last-file))
+      (ref-variable rmail-last-file buffer))
     (define-variable-local-value! buffer (ref-variable-object rmail-inbox-list)
       (let ((inboxes (parse-file-inboxes buffer)))
 	(if (and (null? inboxes)
 		 (pathname=? (buffer-pathname buffer)
-			     (ref-variable rmail-file-name)))
-	    (ref-variable rmail-primary-inbox-list)
+			     (ref-variable rmail-file-name buffer)))
+	    (ref-variable rmail-primary-inbox-list buffer)
 	    inboxes)))
     (buffer-put! buffer 'REVERT-BUFFER-METHOD rmail-revert-buffer)
     (memoize-buffer buffer)
     (set-buffer-read-only! buffer)
-    (event-distributor/invoke! (ref-variable rmail-mode-hook) buffer)))
+    (event-distributor/invoke! (ref-variable rmail-mode-hook buffer) buffer)))
 
 (define-major-mode rmail-edit text "RMAIL Edit"
   "Major mode for editing the contents of an RMAIL message.

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.52 1992/11/16 22:41:05 cph Exp $
+;;;	$Id: intmod.scm,v 1.53 1992/11/17 17:39:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -288,7 +288,8 @@ The REPL may be controlled by the following commands:
 \\[inferior-cmdl-abort-top-level] returns to top level.
 \\[inferior-cmdl-abort-previous] goes up one level."
   (lambda (buffer)
-    (event-distributor/invoke! (ref-variable inferior-repl-mode-hook) buffer)))
+    (event-distributor/invoke! (ref-variable inferior-repl-mode-hook buffer)
+			       buffer)))
 
 (define-variable inferior-repl-mode-hook
   "An event distributor that is invoked when entering Inferior REPL mode."
@@ -322,7 +323,8 @@ Additionally, these commands abort the command loop:
 \\[inferior-cmdl-abort-top-level] returns to the top-level REPL.
 \\[inferior-cmdl-abort-previous] returns to the previous level REPL."
   (lambda (buffer)
-    (event-distributor/invoke! (ref-variable inferior-cmdl-mode-hook) buffer)))
+    (event-distributor/invoke! (ref-variable inferior-cmdl-mode-hook buffer)
+			       buffer)))
 
 (define-variable inferior-cmdl-mode-hook
   "An event distributor that is invoked when entering Inferior CMDL mode."

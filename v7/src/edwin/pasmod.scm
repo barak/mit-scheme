@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: pasmod.scm,v 1.45 1992/11/16 22:41:09 cph Exp $
+;;;	$Id: pasmod.scm,v 1.46 1992/11/17 17:40:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -75,12 +75,14 @@
       "(* ")
     (define-variable-local-value! buffer (ref-variable-object comment-end)
       " *)")
-    (define-variable-local-value! buffer (ref-variable-object paragraph-start)
-      "^$")
-    (define-variable-local-value! buffer
-	(ref-variable-object paragraph-separate)
-      (ref-variable paragraph-start))
-    (event-distributor/invoke! (ref-variable pascal-mode-hook) buffer)))
+    (let ((paragraph-start "^$"))
+      (define-variable-local-value! buffer
+	  (ref-variable-object paragraph-start)
+	paragraph-start)
+      (define-variable-local-value! buffer
+	  (ref-variable-object paragraph-separate)
+	paragraph-start))
+    (event-distributor/invoke! (ref-variable pascal-mode-hook buffer) buffer)))
 
 (define pascal-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! pascal-mode:syntax-table #\( "()1 ")

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.114 1992/11/17 17:38:12 cph Exp $
+;;;	$Id: info.scm,v 1.115 1992/11/17 17:38:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -301,7 +301,7 @@ The editing commands are the same as in Text mode,
 except for \\[info-cease-edit] to return to Info."
   (lambda (buffer)
     (define-variable-local-value! buffer (ref-variable-object page-delimiter)
-      (string-append "^\f\\|" (ref-variable page-delimiter)))))
+      (string-append "^\f\\|" (ref-variable page-delimiter buffer)))))
 
 (define-key 'info-edit '(#\c-c #\c-c) 'info-cease-edit)
 

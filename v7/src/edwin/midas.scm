@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: midas.scm,v 1.16 1992/11/16 22:41:08 cph Exp $
+;;;	$Id: midas.scm,v 1.17 1992/11/17 17:40:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -69,15 +69,17 @@
       ";")
     (define-variable-local-value! buffer (ref-variable-object comment-end)
       "")
-    (define-variable-local-value! buffer (ref-variable-object paragraph-start)
-      "^$")
-    (define-variable-local-value! buffer
-	(ref-variable-object paragraph-separate)
-      (ref-variable paragraph-start))
+    (let ((paragraph-start "^$"))
+      (define-variable-local-value! buffer
+	  (ref-variable-object paragraph-start)
+	paragraph-start)
+      (define-variable-local-value! buffer
+	  (ref-variable-object paragraph-separate)
+	paragraph-start))
     (define-variable-local-value! buffer
 	(ref-variable-object indent-line-procedure)
       (ref-command insert-tab))
-    (event-distributor/invoke! (ref-variable midas-mode-hook))))
+    (event-distributor/invoke! (ref-variable midas-mode-hook buffer) buffer)))
 
 (define midas-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! midas-mode:syntax-table #\; "<   ")
