@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.20 1987/05/21 14:58:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.21 1987/05/31 22:57:55 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -260,14 +260,20 @@ MIT in each case. |#
   (make-call false combination operator operands
     (lambda (frame-size)
       (let ((operator (subproblem-value (combination-operator combination))))
-	(let ((block (reference-block operator))
-	      (name (variable-name (reference-variable operator))))
-	  (rtl:make-invocation:lookup
-	   frame-size
-	   (prefix combination frame-size)
-	   continuation
-	   (nearest-ic-block-expression block)
-	   (intern-scode-variable! block name)))))))
+	(let ((name (variable-name (reference-variable operator))))
+	  (if compiler:cache-free-variables?
+	      (rtl:make-invocation:cache-reference
+	       frame-size
+	       (prefix combination frame-size)
+	       continuation
+	       name)
+	      (let ((block (reference-block operator)))
+		(rtl:make-invocation:lookup
+		 frame-size
+		 (prefix combination frame-size)
+		 continuation
+		 (nearest-ic-block-expression block)
+		 (intern-scode-variable! block name)))))))))
 
 (define (make-call/unknown combination operator operands prefix
 			   continuation)
@@ -275,7 +281,7 @@ MIT in each case. |#
     ((cond ((or (not (reference? callee))
 		(reference-to-known-location? callee))
 	    make-call/apply)
-	   ;; **** Need to add code for links here.
+	   ;; **** Need to add code for uuo links here.
 	   (else make-call/lookup))
      combination operator operands prefix continuation)))
 
