@@ -1,6 +1,16 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.8 1991/01/23 18:57:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.9 1991/09/09 18:43:40 jinx Exp $
+
+
+Copyright (c) 1991 Massachusetts Institute of Technology
+
+
+		Documentation of the C interface to
+		    MIT Scheme compiled code
+			     *DRAFT*
+
+
 
 	Remarks:
 
@@ -23,7 +33,7 @@ marked with "=>".
 In the following, word and longword are the size of an item that fills
 a processor register, typically 32 bits.  Halfword is half this size,
 and byte is typically 8 bits.
-
+
 	Description of compiled-code objects and relevant types:
 
 The Scheme compiler compiles scode expressions (often procedure
@@ -80,7 +90,7 @@ first word.  Note that this word contains the length of the whole
 block, so this need not be specified again.
 
 The address of the first word of the block can be found from the
-address of the instruction, and a few bytes (currently a halfword)
+address of the instruction, and a few bytes, currently a halfword
 preceding the instruction.  These bytes are called the offset field of
 a compiled entry object, and typically encode the distance (in bytes)
 between the beginning of the block and the compiled entry.
@@ -90,10 +100,16 @@ encode the type of compiled entry (procedure vs. expression, etc.) and
 some type-specific information (number of arguments, offset to next
 return address on the stack, etc.).
 
+The gc-offset field and the format field must be the same size, and
+their size is determined by the C typedef of format_word at the
+beginning of cmpint-md.h.  Note that, to date, the compiler has only
+been ported to systems where this size is 2 bytes (for each), but it
+should be possible to port it to systems where these fields are
+larger.
+
 	Encoding of the offset field:
 
-Typically the offset field is two bytes long (one halfword) and is
-decoded as follows:
+The offset field is decoded as follows:
 
 If the low order bit is 0 the offset is a simple offset, ie.
 subtracting the offset from the address of the compiled entry
@@ -131,43 +147,57 @@ left by 2 is the real offset.
 
 	Encoding of the format field:
 
-The preceding bytes (typically 2) encode the kind of object in the
-following way:
+The preceding bytes encode the kind of compiled entry in the following
+way:
 
-- For compiled expressions it is always 0xffff (-1).
+The format field is further subdivided into two equal sized halves,
+used, roughly, for the minimum (high order half) and maximum (low
+order half) number of arguments that a compiled procedure will accept.
+Inappropriate values for these numbers of arguments imply that the
+entry is not a procedure, and then the two halves may be combined to
+generate information appropriate to the entry type.  The examples
+below assume that the format field is 2 bytes long.
 
-- For compiled entries it is always 0xfff[d-e] (-3 or -2).
-It is 0xfffe for compiler generated entries, 0xfffd for
-compiler-interface generated entries.
+- For compiled expressions it is always -1 (0xffff)
+
+- For compiled entries it is always -3 or -2 (0xfff[d-e]).  It is -2
+for compiler generated entries, -3 for compiler-interface generated
+entries.
 
 - For compiled return addresses with saved dynamic links it is always
-0xfffc (-4).  The next item on the stack is then a dynamic link.
+-4 (0xfffc).  The next item on the stack is then a dynamic link.
 
 - For the special return address `return_to_interpreter' it is
-always 0xfffb (-5).
+always -5 (0xfffb).
 
-- For all other compiled return addresses the low order byte is
-between 0x80 and 0xdf inclusive, and the high order byte is between
-0x80 and 0xff inclusive.  In this case, the least significant 7 bits
-of the high order byte and the least significant 6 bits of the low
-order byte are combined to form the offset in the stack to the
-previous (earlier) return address.  The combination is actually
-reversed with the bits from the high order byte being the low order
-bits in the result.  This information is used by the debugger to
-"parse" the stack into frames.
+- For all other compiled return addresses, both halves (bytes) must
+have their sign bit set, that is, they must appear negative when
+sign-extended.  The remaining bits of the high-order half of the field
+(all but the sign bit) and all but the two most significant bits of
+the low-order half of the field (sign bit and adjacent bit), when
+concatenated, form the offset in the stack to the previous (earlier)
+return address.  This information is used by the debugger to "parse"
+the stack into frames.  The sub-fields are actually concatenated
+backwards, with the bits from the high order half being the low order
+bits in the result.  If the format field is two bytes long, each half
+is a single byte, and the valid range for the high-order half is
+0x80-0xff, while the valid range for the low-order half is 0x80-0xdf
 
 - For compiled procedures, the format field describes the arity
 (number of parameters) and the format of the frame on the stack:
 
-The high order byte is (1+ REQ) where REQ is the number of
-required arguments.  Note that REQ must be less than 127!
+The high order half of the field is (1+ REQ) where REQ is the number
+of required arguments.  Note that REQ must such that the resulting
+half of the format field does not appear negative!  If the format
+field is two bytes long, REQ must be less than 127.
 
-The low order byte is given by the expression
+The low order half of the field is given by the expression
 (* (EXPT -1 REST?) FRAME-SIZE)
 where FRAME-SIZE is (+ 1 REQ OPT REST?), REQ is as above, OPT
 is the number of named optional arguments, and REST? is 1 if
 the procedure has a rest parameter (ie. it is a "lexpr"), or 0
-otherwise.  Note that FRAME-SIZE must be less than 127!
+otherwise.  FRAME-SIZE must not appear negative, thus if the format
+field is two bytes long, FRAME-SIZE must be less than 127.
 
 	Picture of typical compiled-code block and entry:
 						   
@@ -224,6 +254,13 @@ otherwise.  Note that FRAME-SIZE must be less than 127!
 	   |	  |					 |	      |
 	    \	  |					 |	      /
 	     \--->----------------------------------------<----------/
+
+Note: The picture above assumes that each machine instruction takes the same
+space as a scheme object, and that this is also the combined length of
+the gc-offset and format fields.  The type tags are always at the most
+significant end of the word, which depending on endianness may be at
+the lowest or highest addressed part of the word in memory.  The
+picture above depicts them on the left.
 		   
 	Description of picture:
 
@@ -278,31 +315,30 @@ Most compiled procedures are represented as a simple compiled entry
 pointing to the compiled-code block generated by the compiler.
 
 Some procedures, called closures, have free variables whose locations
-cannot be allocated statically at compiled time.  The compiler will
-generate code to construct a tiny compiled-code block on the fly and
-make the compiled procedure be an entry point pointing to this
-dynamically allocated compiled-code block.
+cannot be determined statically by the compiler or the linker.  The
+compiler will generate code to construct a tiny compiled-code block on
+the fly and make the compiled procedure be an entry point pointing to
+this dynamically allocated compiled-code block.
 
-For example, consider the following code,
+For example, consider the following code, appearing at top level,
 
-(define foo
-  (lambda (x)
-    (lambda (y) (+ x y))))
+    (define foo
+      (lambda (x)
+	(lambda (y) (+ x y))))		;lambda-1
 
 The outer LAMBDA will be represented as a compiled entry pointing to
-the appropriate block.  The inner LAMBDA cannot be since there can be
-more than one copy, each with its independent value for X:
+the appropriate block.  The inner LAMBDA cannot be since there may be
+more than one instance, each with its independent value for X:
 
-(define foo1 (foo 1))
-(define foo2 (foo 2))
+    (define foo1 (foo 1))
+    (define foo2 (foo 2))
 
 Compiled closures are implemented in the following way: The entry
 corresponding to the procedure points to a jump-to-subroutine (or
 branch-and-link) instruction.  The target of this jump is the code
 corresponding to the body of the procedure.  This code resides in the
 compiled-code block that the compiler generated.  The free variables
-follow the jump-to-subroutine instruction (after aligning to
-longword).
+follow the jump-to-subroutine instruction (after aligning to longword).
 
 Using this representation, the caller need not know whether it is
 invoking a "normal" compiled procedure or a compiled closure.  When
@@ -311,71 +347,99 @@ procedure, after leaving a "return address" into the closure object in
 a standard place (stack or link register).  This "return address" is
 the address of the free variables of the procedure, so the code can
 reference them by using indirect loads through the "return address".
+
+Here is a stylized picture of the situation, where the procedure
+object (closure entry point) is a pointer to <1>.
+
+closure object:
+	+-------------------------------+
+	|				|
+	|    <header>			|
+	|				|
+	+-------------------------------+
+<1>	|    jsr instruction to <2>	|
+	+-------------------------------+
+	|    <value of X>		|
+	+-------------------------------+
+
+compiled code blok produced by the compiler:
+
+	+-------------------------------+
+	|				|
+	|    ...			|
+	|				|
+	+-------------------------------+
+<2>	|    <code for inner lambda>	|
+	|		|		|
+	|    		V		|
+	|				|
+	+-------------------------------+
 
-Conceptually the code above could be compiled as (in pseudo-assembly
-language):
+The code above could be compiled as (in pseudo-assembly language, in
+which & denotes an immediate value):
 
+	const	format-word:0x0202;gc-offset:??
 foo:	
-	movl	rfree,reg0
-	movl	&[TC_MANIFEST_CLOSURE | 4],reg1	; gc header
-	movl	reg1,0(reg0)
-	movl	&[format_field | offset_field],reg1	; entry descriptor
-	movl	reg1,NEXT_WORD(reg0)
-	movl	&[JSR absolute opcode],reg1	; jsr absolute opcode/prefix
-	movl	reg1,2*NEXT_WORD(reg0)
+	mov	rfree,reg0
+	mov	&[TC_MANIFEST_CLOSURE | 4],reg1	; gc header
+	mov	reg1,0(reg0)
+	mov	&[format_field | offset_field],reg1	; entry descriptor
+	mov	reg1,NEXT_WORD(reg0)
+	mov	&[JSR absolute opcode],reg1	; jsr absolute opcode/prefix
+	mov	reg1,2*NEXT_WORD(reg0)
 	mova	lambda-1,reg1			; entry point
-	movl	reg1,3*NEXT_WORD(reg0)
-	movl	arg1,4*NEXT_WORD(reg0)		; x
-	movl	5*NEXT_WORD,reg1
-	addl	reg0,reg1,rfree
-	movl	&[TC_COMPILED_ENTRY | 2*NEXT_WORD],reg1
-	addl	reg0,reg1,retval
+	mov	reg1,3*NEXT_WORD(reg0)
+	mov	arg1,4*NEXT_WORD(reg0)		; x
+	mov	&5*NEXT_WORD,reg1
+	add	reg0,reg1,rfree
+	mov	&[TC_COMPILED_ENTRY | 2*NEXT_WORD],reg1
+	add	reg0,reg1,retval
 	ret
 
+	const	format-word:0xfffe;gc-offset:??
 lambda-1:
-	movl	arg1,reg0			; y
-	movl	x_offset(retlnk),reg1		; x
-	addl	reg1,reg0,reg0
-	movl	reg0,retval
+	mov	arg1,reg0			; y
+	mov	x_offset(retlnk),reg1		; x	x_offset = 0
+	add	reg1,reg0,reg0
+	mov	reg0,retval
 	ret
 
-Thus the closure would look like
+A more detailed picture of the closure object would be:
 
 	----------------------------------------
 	| MANIFEST-CLOSURE |                 4 |
 	----------------------------------------
-	|   format_field   |    offset_field   |
-	----------------------------------------
+	|   format_field   |  gc_offset_field  |	;format = 0x0202
+	----------------------------------------	;offset = encode(8)
 entry	|   JSR absolute opcode                |
 	----------------------------------------
 	|   address of lambda-1                |
-	----------------------------------------
-retadd	|   value of x                         |
-	----------------------------------------
-
-and retlnk would get the address of retadd at run time.  Thus x_offset
-would be 0.
+	----------------------------------------	;address of retadd
+retadd	|   value of x                         |	; -> retlnk before
+	----------------------------------------	; entering lambda-1
 
 The following macros are used to manipulate closure objects:
 
 => COMPILED_CLOSURE_ENTRY_SIZE specifies the size of a compiled
 closure entry (there may be many in a single compiled closure block)
-in bytes.  In the example above this would be 12 bytes (4 format and
-gc, 4 for JSR opcode, and 4 for the address of the real entry point).
+in bytes.  In the example above this would be 12 bytes (4 total for
+the format and gc offset fields, 4 for JSR opcode, and 4 for the
+address of the real entry point).
 
-=> EXTRACT_CLOSURE_ENTRY_ADDRESS is used to extract the real
-address of the entry point from a closure object when given the
-address of the closure entry.  Note that the real entry point may be
-smeared out over multiple instructions.  In the example above, given
-the address of a closure for lambda-1, it would extract the address of
-lambda-1.
+=> EXTRACT_CLOSURE_ENTRY_ADDRESS is used to extract the real address
+of the entry point from a closure object when given the address of the
+closure entry.  Note that the real entry point may be smeared out over
+multiple instructions.  In the example above, given the address the
+word labelled ENTRY, it would extract the address of LAMBDA-1.
 
 => STORE_CLOSURE_ENTRY_ADDRESS is the inverse of
 EXTRACT_CLOSURE_ENTRY_ADDRESS.  That is, given the address of a
 closure entry point, and a real entry point, it stores the real entry
-point in the closure object.  In the example above, given the closure
-for lambda-1, and a different entry point, say for lambda-2, it would
-make the closure jump to lambda-2 instead.
+point in the closure object.  In the example above, given the address
+of the word labelled ENTRY, and a different entry point, say for
+LAMBDA-2, it would make the closure jump to LAMBDA-2 instead. This is
+used to relocate closures after garbage collection and similar
+processes.
 
 	Some caveats:
 
@@ -398,23 +462,22 @@ place.
 The code for lambda-1 would then be closer to:
 
 lambda-1:
-	subl	&(retadd-entry),retlnk
-	orl	&[TC_COMPILED_ENTRY | 0],tc_field,retlnk ; set type code
-	pushl	retlnk
+	sub	retlnk,&retadd-entry,retlnk
+	or	&[TC_COMPILED_ENTRY | 0],retlnk,retlnk ; set type code
+	push	retlnk
 	<interrupt check>				; more on this below
-	movl	arg1,reg0
-	movl	top_of_stack,reg1
-	bfclr	tc_field,reg1				; remove type code
-	movl	x_offset+retadd-entry(reg1),reg1
-	addl	reg1,reg0,retval
+	mov	arg1,reg0
+	mov	top_of_stack,reg1
+	and	&[0 | -1],reg1,reg1			; remove type code
+	mov	x_offset+retadd-entry(reg1),reg1
+	add	reg1,reg0,retval
 	pop						; the closure object
 	ret
 
 Note that (retadd-entry) is a constant known at compile time, and is the
 same for the first entry point of all closures.  On many machines, the
-combination subl/orl can be obtained with a single add instruction:
-
-	addl	&([TC_COMPILED_ENTRY | 0]-(retadd-entry)),retlnk
+combination sub/or can be obtained with a single add instruction:
+	add	&([TC_COMPILED_ENTRY | 0]-(retadd-entry)),retlnk,retlnk
 
 This value is called the "magic constant", encoded in the first few
 instructions of a closure's code.
@@ -487,7 +550,7 @@ setting up the closure object.  Closure code assumes that the closure
 object is in the first parameter location (the closure itself is
 argument 0) so that free variables can be fetched.  Thus a closure
 label must first set this up correctly, and then check for interrupts.
-
+
 In pseudo-assembly language, a "normal" entry might look like
 
 gc_or_int	LOADI	#interrupt-handler-index,rindex
@@ -511,7 +574,7 @@ entry		ADDI	offset,retadd,ret_add	; bump ret. add. to entry point
 		CMP	Free,MemTop
 		BGE	gc_or_int
 after_entry	<actual code for the entry>
-
+
 The following macros are used by the C utility and handler to
 determine how much code to skip:
 
@@ -523,7 +586,7 @@ between entry and after_entry in a closure entry.
 
 => ENTRY_PREFIX_LENGTH is the number of bytes between
 gc_or_int and entry in a normal entry.
-
+
 	Important considerations:
 
 The Scheme compiled code register set includes the current copy of the
@@ -659,16 +722,15 @@ and the number of arguments passed in the call.  This number of
 arguments is not used in the call sequence, but is used by the linker
 when initially linking and when relinking.
 
-All execute caches are typically contiguous in the "constants"
-section, and the whole lot is preceded by a GC header of type
-TC_LINKAGE_SECTION which contains two fields:
-
-The least-significant halfword of the header contains the size in
-longwords of the execute-cache section (note that each cache entry may
-take up more than one longword).  The remaining bits (ignoring the
-type code) MUST be 0.  If a file makes enough external calls that this
-halfword field cannot hold the size, the links caches be separated
-into multiple blocks each with its own header.
+Execute caches are contiguous in the "constants" section, and the
+whole lot is preceded by a GC header of type TC_LINKAGE_SECTION which
+contains two fields.  The least-significant halfword of the header
+contains the size in longwords of the execute-cache section (note that
+each cache entry may take up more than one longword).  The remaining
+bits (ignoring the type code) MUST be 0.  If a file makes enough
+external calls that this halfword field cannot hold the size, the
+links caches must be separated into multiple blocks each with its own
+header.
 
 Occasionally a procedure is called with more than one number of
 arguments within the same file.  For example, the LIST procedure may
@@ -711,7 +773,7 @@ padding bits for the instruction can be used to contain the argument
 count.  Note that the order of the instructions and the count are
 machine dependent, although typically the instructions precede the
 count.
-
+
 The following macros are used to manipulate execute caches:
 
 => EXECUTE_CACHE_ENTRY_SIZE specifies the length (in longwords) of an
@@ -794,7 +856,7 @@ portion of a trampoline.  It is similar to COMPILED_CLOSURE_ENTRY_SIZE
 but in longwords, and will typically represent less storage since an
 absolute address is not needed (or desirable).  It must include the
 format word and the GC offset for the entry.  In the example above it
-would be 2.
+would be 3.
 
 => TRAMPOLINE_BLOCK_TO_ENTRY is the number of longwords from the start
 of a trampoline's block (the manifest vector header in the picture
@@ -880,7 +942,7 @@ correct execution.
 It is used after updating an execute cache while running between
 garbage collections.  It is not used during garbage collection since
 FLUSH_I_CACHE will be used afterwards.
-
+
 These macros need not be defined if it is not needed to flush the
 cache.  A NOP version is provided by the code when they are not
 defined in cmpint-md.h
@@ -888,7 +950,7 @@ defined in cmpint-md.h
 Note that on some machine/OS combinations, all system calls cause a
 cache flush, thus an innocuous system call (eg., a time reading call)
 may be used to achieve this purpose.
-
+
 Many modern machines only make their cache flushing instructions
 available to the operating system (they are priviledged instructions),
 and some operating systems provide no system calls to perform this
@@ -996,10 +1058,7 @@ fine for most machines.
 
 => COMPILER_REGBLOCK_EXTRA_SIZE is the additional size (in longwords)
 to be reserved for utility handles.  It is typically defined the
-following way:
-
-#define COMPILER_REGBLOCK_EXTRA_SIZE					\
-(COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)
+following way as (COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE).
 
 => COMPILER_REGBLOCK_N_HOOKS is the maximum number of utility handles.
 
