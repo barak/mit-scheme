@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.55 1993/11/08 21:45:53 gjr Exp $
+$Id: ux.h,v 1.56 1993/11/22 22:45:43 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -174,11 +174,7 @@ extern int EXFUN (kill, (pid_t, int));
 /* #define HAVE_WAIT4 */
 #define UNION_WAIT_STATUS
 
-#if defined(_SUNOS4) || defined(_ULTRIX) || defined(__osf__)
-#define HAVE_FTRUNCATE
-#endif
-
-#if defined(_ULTRIX) || defined(_SUNOS4) || defined(sun4) || defined(_NEXTOS)
+#if defined(_SUNOS4) || defined(sun4) || defined(_NEXTOS)
 #define VOID_SIGNAL_HANDLERS
 #endif
 
@@ -288,10 +284,23 @@ extern int EXFUN (kill, (pid_t, int));
 
 #ifdef _ULTRIX
 #define SYSTEM_VARIANT "Ultrix"
+#define HAVE_FTRUNCATE
 #endif
 
 #ifdef _NEXTOS
 #define SYSTEM_VARIANT "NeXT"
+#define HAVE_FTRUNCATE
+#define TIOCSIGSEND TIOCSIG
+#endif
+
+#ifdef __osf__
+#define HAVE_FTRUNCATE
+#define TIOCSIGSEND TIOCSIG
+#endif
+
+#ifdef _SUNOS4
+#define HAVE_FTRUNCATE
+#define TIOCSIGSEND TIOCSIG
 #endif
 
 #ifdef apollo
