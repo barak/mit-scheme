@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.392 2001/12/20 06:49:06 cph Exp $
+$Id: runtime.pkg,v 14.393 2001/12/20 06:52:30 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -3739,8 +3739,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  guarantee-syntax-table
 	  make-syntax-table
 	  set-environment-syntax-table!
-	  syntax-table-define
-	  syntax-table-ref
 	  syntax-table/copy
 	  syntax-table/define
 	  syntax-table/defined-names

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.40 2001/12/20 06:49:28 cph Exp $
+$Id: syntax.scm,v 14.41 2001/12/20 06:52:03 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -144,7 +144,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
    ((pair? expression)
     (if (not (list? expression))
 	(error "syntax-expression: not a valid expression" expression))
-    (let ((transform (syntax-table-ref syntax-table (car expression))))
+    (let ((transform (syntax-table/ref syntax-table (car expression))))
       (if transform
 	  (if (primitive-syntaxer? transform)
 	      (transform-apply (primitive-syntaxer/transform transform)
@@ -307,7 +307,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   top-level?
   (let ((make-definition
 	 (lambda (name value)
-	   (if (syntax-table-ref *syntax-table* name)
+	   (if (syntax-table/ref *syntax-table* name)
 	       (syntax-error "redefinition of syntactic keyword" name))
 	   (make-definition name value))))
     (cond ((symbol? pattern)
@@ -461,14 +461,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   top-level?
   (if (not (symbol? name))
       (syntax-error "illegal name" name))
-  (syntax-table-define *syntax-table* name
+  (syntax-table/define *syntax-table* name
     (syntax-eval (syntax-subexpression value)))
   name)
 
 (define (syntax/define-macro top-level? pattern . body)
   top-level?
   (let ((keyword (car pattern)))
-    (syntax-table-define *syntax-table* keyword
+    (syntax-table/define *syntax-table* keyword
       (syntax-eval (apply syntax/named-lambda #f pattern body)))
     keyword))
 

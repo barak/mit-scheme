@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntab.scm,v 14.7 2001/12/19 01:39:41 cph Exp $
+$Id: syntab.scm,v 14.8 2001/12/20 06:52:49 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -57,9 +57,6 @@ USA.
 	       (cdr entry)
 	       (loop (syntax-table/%parent table)))))))
 
-(define syntax-table-ref
-  syntax-table/ref)
-
 (define (syntax-table/define table name transform)
   (let ((table (guarantee-syntax-table table 'SYNTAX-TABLE/DEFINE)))
     (let ((entry (assq name (syntax-table/alist table))))
@@ -68,9 +65,6 @@ USA.
 	  (set-syntax-table/alist! table
 				   (cons (cons name transform)
 					 (syntax-table/alist table)))))))
-
-(define syntax-table-define
-  syntax-table/define)
 
 (define (syntax-table/defined-names table)
   (map car

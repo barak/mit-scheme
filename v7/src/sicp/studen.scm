@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: studen.scm,v 1.10 1999/01/02 06:19:10 cph Exp $
+$Id: studen.scm,v 1.11 2001/12/20 06:51:21 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -122,8 +122,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ;; Now, hack the syntax (special form) table.
   (let ((move
 	 (lambda (from to)
-	   (syntax-table-define sicp-syntax-table to
-	     (or (syntax-table-ref system-global-syntax-table from)
+	   (syntax-table/define sicp-syntax-table to
+	     (or (syntax-table/ref system-global-syntax-table from)
 		 (error "Missing syntactic keyword" from))))))
     (for-each (lambda (name) (move name name))
 	      '(
