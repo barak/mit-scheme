@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.8 2002/11/21 03:39:27 cph Exp $
+# $Id: Clean.sh,v 1.9 2002/11/21 03:51:18 cph Exp $
 #
 # Copyright (c) 2000, 2001, 2002 Massachusetts Institute of Technology
 #
@@ -68,11 +68,10 @@ if [ "${DIST}" = "yes" ]; then
 fi
 
 if [ "${MAINTAINER}" = "yes" ]; then
-    for FN in .edwin-ffi Clean.sh Makefile Setup.sh Stage.sh Tags.sh; do
-	if [ -L ${FN} ]; then
-	    echo "rm ${FN}"
-	    rm ${FN}
-	fi
+    maybe_unlink Makefile ../Makefile.std
+    maybe_unlink .edwin-ffi ed-ffi.scm
+    for FN in Clean.sh Setup.sh Stage.sh Tags.sh; do
+	maybe_unlink "${FN}" "../etc/${FN}"
     done
 fi
 
