@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.13 1995/01/05 20:21:58 cph Exp $
+$Id: make.scm,v 1.14 1995/01/10 20:38:15 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -46,4 +46,4 @@ MIT in each case. |#
      (lambda ()
        (load-option 'RB-TREE)
        (package/system-loader "cref" '() false)))))
-(add-system! (make-system "CREF" 1 13 '()))
+(add-system! (make-system "CREF" 1 14 '()))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 1.7 1993/10/12 00:00:56 cph Exp $
+$Id: object.scm,v 1.8 1995/01/10 20:38:07 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,14 +40,14 @@ MIT in each case. |#
 		   (type vector)
 		   (named
 		    (string->symbol "#[(cross-reference)package-description]"))
-		   (constructor make-package-description)
+		   (constructor make-package-description (name parent))
 		   (conc-name package-description/))
-  (name false read-only true)
-  (file-cases false read-only true)
-  (parent false read-only true)
-  (initialization false read-only true)
-  (exports false read-only true)
-  (imports false read-only true))
+  (name #f read-only #t)
+  (file-cases '())
+  (parent #f read-only #t)
+  (initialization #f)
+  (exports '())
+  (imports '()))
 
 (define-structure (pmodel
 		   (type vector)
@@ -62,28 +62,16 @@ MIT in each case. |#
 (define-structure (package
 		   (type vector)
 		   (named (string->symbol "#[(cross-reference)package]"))
-		   (constructor %make-package
-				(name file-cases files initialization parent))
+		   (constructor make-package (name parent))
 		   (conc-name package/))
-  (name false read-only true)
-  (file-cases false read-only true)
-  (files false read-only true)
-  (initialization false read-only true)
+  (name #f read-only #t)
+  (file-cases '())
+  (files '())
+  (initialization #f)
   parent
   (children '())
-  (bindings (make-rb-tree eq? symbol<?) read-only true)
-  (references (make-rb-tree eq? symbol<?) read-only true))
-
-(define (make-package name file-cases initialization parent)
-  (let ((files
-	 (append-map! (lambda (file-case)
-			(append-map cdr (cdr file-case)))
-		      file-cases)))
-    (%make-package name
-		   file-cases
-		   files
-		   initialization
-		   parent)))
+  (bindings (make-rb-tree eq? symbol<?) read-only #t)
+  (references (make-rb-tree eq? symbol<?) read-only #t))
 
 (define-integrable (package/n-files package)
   (length (package/files package)))
