@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.61 1990/02/10 23:45:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.62 1990/02/27 19:53:29 markf Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1268,6 +1268,12 @@ MIT in each case. |#
 	  channel-name
 	  close-physical-channel
 	  open-output-channel)
+  (export (runtime subprocesses input)
+	  close-physical-channel
+	  open-input-channel)
+  (export (runtime subprocesses output)
+	  close-physical-channel
+	  open-output-channel)
   (initialization (initialize-package!)))
 
 (define-package (runtime random-number)
@@ -1866,4 +1872,37 @@ MIT in each case. |#
 	  working-directory-pathname)
   (export (runtime emacs-interface)
 	  hook/set-working-directory-pathname!)
+  (initialization (initialize-package!)))
+
+(define-package (runtime subprocesses)
+  (files "process")
+  (parent ())
+  (export ()
+	  create-process
+	  delete-process
+	  kill-process
+	  process?
+	  process/command-string
+	  process/microcode-process
+	  process/to-port
+	  process/from-port
+	  process-get-pid
+	  process-get-input-channel
+	  process-get-output-channel
+	  process-get-status-flags
+	  prim-process-char-ready?)
+  (initialization (initialize-package!)))
+
+(define-package (runtime subprocesses input)
+  (files "procin")
+  (parent ())
+  (export ()
+	  open-process-input)
+  (initialization (initialize-package!)))
+
+(define-package (runtime subprocesses output)
+  (files "procout")
+  (parent ())
+  (export ()
+	  open-process-output)
   (initialization (initialize-package!)))
