@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/posixtyp.h,v 1.2 1990/07/30 16:37:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/posixtyp.h,v 1.3 1990/12/11 04:16:23 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -55,6 +55,15 @@ MIT in each case. */
 #ifdef _BSD
 #define _UID_T
 #define _SIZE_T
+#endif
+
+#if defined(_SUNOS4) && defined(__sys_stdtypes_h)
+#define _MODE_T
+#define _NLINK_T
+#define _PID_T
+#define _CLOCK_T
+#define _SIZE_T
+#define _CC_T
 #endif
 
 #endif
