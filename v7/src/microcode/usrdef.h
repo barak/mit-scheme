@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: usrdef.h,v 9.43 1999/01/02 06:11:34 cph Exp $
+$Id: usrdef.h,v 9.44 2001/03/08 18:00:31 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,15 +30,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 extern SCHEME_OBJECT EXFUN ((* (Static_Primitive_Procedure_Table[])), (void));
 extern int Static_Primitive_Arity_Table[];
 extern int Static_Primitive_Count_Table[];
-extern char * Static_Primitive_Name_Table[];
-extern char * Static_Primitive_Documentation_Table[];
+extern CONST char * Static_Primitive_Name_Table[];
+extern CONST char * Static_Primitive_Documentation_Table[];
 extern long MAX_STATIC_PRIMITIVE;
-
-extern SCHEME_OBJECT
-  EXFUN (declare_primitive, (char *, primitive_procedure_t, int, int, char *));
-
-extern SCHEME_OBJECT
-  EXFUN (install_primitive, (char *, primitive_procedure_t, int, int, char *));
 
 extern void
   EXFUN (Microcode_Termination, (int)),

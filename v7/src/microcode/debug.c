@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.51 2000/12/05 21:23:44 cph Exp $
+$Id: debug.c,v 9.52 2001/03/08 18:00:18 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -801,10 +801,8 @@ static Boolean
 DEFUN (print_primitive_name, (stream, primitive),
        outf_channel stream AND SCHEME_OBJECT primitive)
 {
-  char * name;
-
-  name = (PRIMITIVE_NAME (primitive));
-  if (name == ((char *) NULL))
+  CONST char * name = (PRIMITIVE_NAME (primitive));
+  if (name == 0)
   {
     outf (stream, "Unknown primitive 0x%08x", PRIMITIVE_NUMBER(primitive));
     return false;

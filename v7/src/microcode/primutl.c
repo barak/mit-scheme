@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.73 2000/12/05 21:23:47 cph Exp $
+$Id: primutl.c,v 9.74 2001/03/08 18:00:28 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -64,18 +64,17 @@ extern SCHEME_OBJECT * load_renumber_table;
 
 long MAX_PRIMITIVE = 0;
 
-primitive_procedure_t * Primitive_Procedure_Table
-  = ((primitive_procedure_t *) NULL);
+primitive_procedure_t * Primitive_Procedure_Table = 0;
 
-int * Primitive_Arity_Table = ((int *) NULL);
+int * Primitive_Arity_Table = 0;
 
-int * Primitive_Count_Table = ((int *) NULL);
+int * Primitive_Count_Table = 0;
 
-char ** Primitive_Name_Table = ((char **) NULL);
+CONST char ** Primitive_Name_Table = 0;
 
-char ** Primitive_Documentation_Table = ((char **) NULL);
+CONST char ** Primitive_Documentation_Table = 0;
 
-SCHEME_OBJECT * load_renumber_table = ((SCHEME_OBJECT *) NULL);
+SCHEME_OBJECT * load_renumber_table = 0;
 
 /*
   Exported utilities:
@@ -88,8 +87,6 @@ extern void
 extern SCHEME_OBJECT
   EXFUN (make_primitive, (char *, int)),
   EXFUN (find_primitive, (SCHEME_OBJECT, Boolean, Boolean, int)),
-  EXFUN (declare_primitive, (char *, primitive_procedure_t, int, int, char *)),
-  EXFUN (install_primitive, (char *, primitive_procedure_t, int, int, char *)),
   EXFUN (dump_renumber_primitive, (SCHEME_OBJECT)),
   * EXFUN (initialize_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *)),
   * EXFUN (cons_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *)),
@@ -138,8 +135,7 @@ DEFUN_VOID (Prim_unimplemented)
 static void
 DEFUN (initialization_error, (reason, item), char * reason AND char * item)
 {
-  outf_fatal ("initialize_primitives: Error %s %s.\n",
-	      reason, item);
+  outf_fatal ("initialize_primitives: Error %s %s.\n", reason, item);
   termination_init_error ();
 }
 
@@ -256,16 +252,16 @@ static SCHEME_OBJECT
 DEFUN (declare_primitive_internal,
        (override_p, name, code, nargs_lo, nargs_hi, docstr),
        Boolean override_p
-       AND char * name
+       AND CONST char * name
        AND primitive_procedure_t code
        AND int nargs_lo
        AND int nargs_hi
-       AND char * docstr)
+       AND CONST char * docstr)
 /* nargs_lo ignored, for now */
 {
   unsigned long index;
   SCHEME_OBJECT primitive;
-  char * ndocstr = docstr;
+  CONST char * ndocstr = docstr;
   tree_node prim = (tree_lookup (prim_procedure_tree, name));
 
   if (prim != ((tree_node) NULL))
@@ -276,8 +272,8 @@ DEFUN (declare_primitive_internal,
 	 && ((PRIMITIVE_ARITY (primitive)) != UNKNOWN_PRIMITIVE_ARITY))
 	|| ((IMPLEMENTED_PRIMITIVE_P (primitive)) && (! override_p)))
       return (LONG_TO_UNSIGNED_FIXNUM (PRIMITIVE_NUMBER (primitive)));
-    if (docstr == ((char *) NULL))
-      ndocstr = Primitive_Documentation_Table[index];
+    if (docstr == 0)
+      ndocstr = (Primitive_Documentation_Table[index]);
   }
   else
   {
@@ -323,11 +319,11 @@ DEFUN (declare_primitive_internal,
 
 SCHEME_OBJECT
 DEFUN (declare_primitive, (name, code, nargs_lo, nargs_hi, docstr),
-       char * name
+       CONST char * name
        AND primitive_procedure_t code
        AND int nargs_lo
        AND int nargs_hi
-       AND char * docstr)
+       AND CONST char * docstr)
 {
   return (declare_primitive_internal (false, name, code,
 				      nargs_lo, nargs_hi, docstr));
@@ -341,11 +337,11 @@ DEFUN (declare_primitive, (name, code, nargs_lo, nargs_hi, docstr),
 
 SCHEME_OBJECT
 DEFUN (install_primitive, (name, code, nargs_lo, nargs_hi, docstr),
-       char * name
+       CONST char * name
        AND primitive_procedure_t code
        AND int nargs_lo
        AND int nargs_hi
-       AND char * docstr)
+       AND CONST char * docstr)
 {
   return (declare_primitive_internal (true, name, code,
 				      nargs_lo, nargs_hi, docstr));
@@ -491,7 +487,9 @@ DEFUN (copy_primitive_information, (code, start, end),
        long code AND fast SCHEME_OBJECT * start AND fast SCHEME_OBJECT * end)
 {
   static char null_string [] = "\0";
-  fast char * source, * dest, * limit;
+  CONST char * source;
+  char * dest;
+  char * limit;
   long char_count, word_count;
   SCHEME_OBJECT * saved;
 

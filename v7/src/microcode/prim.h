@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prim.h,v 9.45 1999/01/02 06:11:34 cph Exp $
+$Id: prim.h,v 9.46 2001/03/08 18:00:26 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,14 +27,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifndef SCM_PRIM_H
 #define SCM_PRIM_H
 
-typedef SCHEME_OBJECT EXFUN ((* primitive_procedure_t), (void));
+typedef SCHEME_OBJECT EXFUN ((*primitive_procedure_t), (void));
 
 extern primitive_procedure_t * Primitive_Procedure_Table;
 extern int * Primitive_Arity_Table;
 extern int * Primitive_Count_Table;
-extern char ** Primitive_Name_Table;
-extern char ** Primitive_Documentation_Table;
+extern CONST char ** Primitive_Name_Table;
+extern CONST char ** Primitive_Documentation_Table;
 extern long MAX_PRIMITIVE;
+
+extern SCHEME_OBJECT EXFUN
+  (declare_primitive,
+   (CONST char *, primitive_procedure_t, int, int, CONST char *));
+
+extern SCHEME_OBJECT EXFUN
+  (install_primitive,
+   (CONST char *, primitive_procedure_t, int, int, CONST char *));
 
 extern SCHEME_OBJECT EXFUN (Prim_unimplemented, (void));
 

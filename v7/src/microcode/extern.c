@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.c,v 9.37 1999/01/02 06:11:34 cph Exp $
+$Id: extern.c,v 9.38 2001/03/08 18:00:21 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -112,14 +112,14 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-DOCUMENTATION",
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, PRIMITIVE_P);
   {
-    fast SCHEME_OBJECT primitive = (ARG_REF (1));
+    SCHEME_OBJECT primitive = (ARG_REF (1));
     if ((PRIMITIVE_NUMBER (primitive))
 	> ((unsigned long) (NUMBER_OF_PRIMITIVES ())))
       error_bad_range_arg (1);
     {
-      fast char * answer = (PRIMITIVE_DOCUMENTATION (primitive));
+      CONST char * answer = (PRIMITIVE_DOCUMENTATION (primitive));
       PRIMITIVE_RETURN
-	((answer == ((char *) 0))
+	((answer == 0)
 	 ? SHARP_F
 	 : (char_pointer_to_string ((unsigned char *) answer)));
     }

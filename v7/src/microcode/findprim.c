@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: findprim.c,v 9.54 2000/12/05 21:23:44 cph Exp $
+$Id: findprim.c,v 9.55 2001/03/08 18:00:23 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -578,7 +578,7 @@ DEFUN (print_primitives, (output, limit),
   fprintf (output, "\n};\n");
 
   /* Print the names table. */
-  fprintf (output, "\f\nchar * %s_Name_Table [] = {\n", the_kind);
+  fprintf (output, "\f\nCONST char * %s_Name_Table [] = {\n", the_kind);
   for (count = 0; (count < limit); count += 1)
     {
       fprintf (output, "  \"%s\",\n", ((result_buffer [count]) -> scheme_name));
@@ -586,13 +586,13 @@ DEFUN (print_primitives, (output, limit),
   fprintf (output, "  \"%s\"\n};\n", inexistent_entry.scheme_name);
 
   /* Print the documentation table. */
-  fprintf (output, "\f\nchar * %s_Documentation_Table [] = {\n", the_kind);
+  fprintf (output, "\f\nCONST char * %s_Documentation_Table [] = {\n", the_kind);
   for (count = 0; (count < limit); count += 1)
     {
       fprintf (output, "  ");
       table_entry = ((result_buffer [count]) -> documentation);
       if ((table_entry [0]) == '\0')
-	fprintf (output, "((char *) 0),\n");
+	fprintf (output, "0,\n");
       else
 	fprintf (output, "\"%s\",\n", table_entry);
     }
