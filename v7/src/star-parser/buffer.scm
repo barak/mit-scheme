@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.2 2001/06/29 05:17:21 cph Exp $
+;;; $Id: buffer.scm,v 1.3 2001/06/29 05:18:19 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -118,7 +118,7 @@
     ((char-matcher
       (lambda (name test)
 	`(BEGIN
-	   (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name -NO-ADVANCE)
+	   (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name '-NO-ADVANCE)
 		    BUFFER REFERENCE)
 	     (LET ((CHAR (PEEK-PARSER-BUFFER-CHAR BUFFER)))
 	       (AND CHAR

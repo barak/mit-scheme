@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.pkg,v 1.2 2001/06/26 18:51:33 cph Exp $
+;;; $Id: parser.pkg,v 1.3 2001/06/29 05:17:24 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -23,20 +23,24 @@
 
 (global-definitions "$brun/runtime")
 
-(define-package (runtime *parser)
-  (files "buffer" "synchk" "shared" "matcher" "parser")
+(define-package (runtime *parser buffer)
+  (files "buffer")
   (parent ())
   (export ()
-	  decrement-parser-buffer-pointer
 	  discard-parser-buffer-head!
 	  get-parser-buffer-pointer
 	  get-parser-buffer-tail
 	  input-port->parser-buffer
 	  match-parser-buffer-char
 	  match-parser-buffer-char-ci
+	  match-parser-buffer-char-ci-no-advance
 	  match-parser-buffer-char-in-set
+	  match-parser-buffer-char-in-set-no-advance
+	  match-parser-buffer-char-no-advance
 	  match-parser-buffer-not-char
 	  match-parser-buffer-not-char-ci
+	  match-parser-buffer-not-char-ci-no-advance
+	  match-parser-buffer-not-char-no-advance
 	  match-parser-buffer-string
 	  match-parser-buffer-string-ci
 	  match-parser-buffer-string-ci-no-advance
@@ -45,6 +49,11 @@
 	  match-parser-buffer-substring-ci
 	  match-parser-buffer-substring-ci-no-advance
 	  match-parser-buffer-substring-no-advance
+	  parser-buffer-line
+	  parser-buffer-pointer-index
+	  parser-buffer-pointer-line
+	  parser-buffer-pointer?
+	  parser-buffer-position-string
 	  parser-buffer?
 	  peek-parser-buffer-char
 	  read-parser-buffer-char
@@ -52,3 +61,8 @@
 	  source->parser-buffer
 	  string->parser-buffer
 	  substring->parser-buffer))
+
+(define-package (runtime *parser)
+  (files "synchk" "shared" "matcher" "parser")
+  (parent ())
+  (export ()))
