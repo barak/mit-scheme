@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.23 1993/07/16 19:27:48 gjr Exp $
+$Id: lapgen.scm,v 1.24 1993/08/26 05:43:47 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -605,18 +605,22 @@ MIT in each case. |#
        ,@(invoke-hook/call entry:compiler-scheme-to-interface/call)))
 
 (let-syntax ((define-entries
-	       (macro (start . names)
-		 (define (loop names index)
-		   (if (null? names)
-		       '()
-		       (cons `(DEFINE-INTEGRABLE
-				,(symbol-append 'ENTRY:COMPILER-
-						(car names))
-				(byte-offset-reference regnum:regs-pointer
-						       ,index))
-			     (loop (cdr names) (+ index 4)))))
-		 `(BEGIN ,@(loop names start)))))
-  (define-entries #x40			; (* 16 4)
+	       (macro (start high . names)
+		 (define (loop names index high)
+		   (cond ((null? names)
+			  '())
+			 ((>= index high)
+			  (warn "define-entries: Too many for byte offsets.")
+			  (loop names index (+ high 32000)))
+			 (else
+			  (cons `(DEFINE-INTEGRABLE
+				   ,(symbol-append 'ENTRY:COMPILER-
+						   (car names))
+				   (byte-offset-reference regnum:regs-pointer
+							  ,index))
+				(loop (cdr names) (+ index 4) high)))))
+		 `(BEGIN ,@(loop names start high)))))
+  (define-entries #x40 #x80		; (* 16 4)
     scheme-to-interface			; Main entry point (only one necessary)
     scheme-to-interface/call		; Used by rules3&4, for convenience.
     trampoline-to-interface		; Used by trampolines, for convenience.
@@ -634,7 +638,7 @@ MIT in each case. |#
     primitive-error
     short-primitive-apply)
 
-  (define-entries #x-80
+  (define-entries #x-80 0
     &+
     &-
     &*
@@ -658,7 +662,8 @@ MIT in each case. |#
     shortcircuit-apply-size-5
     shortcircuit-apply-size-6
     shortcircuit-apply-size-7
-    shortcircuit-apply-size-8))
+    shortcircuit-apply-size-8
+    interrupt-continuation-2))
 
 ;; Operation tables
 
