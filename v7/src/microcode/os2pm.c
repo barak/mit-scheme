@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.5 1995/02/08 01:19:32 cph Exp $
+$Id: os2pm.c,v 1.6 1995/02/14 00:25:24 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -36,13 +36,31 @@ MIT in each case. */
 #define INCL_GPI
 #include "os2.h"
 
-struct _ps_t;
+typedef enum { pst_window, pst_memory } pst_t;
 
-typedef struct
+typedef struct _ps_t
+{
+  psid_t id;			/* psid for this ps */
+  qid_t qid;			/* qid to send commands to */
+  HPS handle;
+  COLOR foreground_color;
+  COLOR background_color;
+  pst_t visual_type;		/* window or bitmap */
+  void * visual;		/* the associated window or bitmap */
+} ps_t;
+#define PS_ID(ps) ((ps) -> id)
+#define PS_QID(ps) ((ps) -> qid)
+#define PS_HANDLE(ps) ((ps) -> handle)
+#define PS_FOREGROUND_COLOR(ps) ((ps) -> foreground_color)
+#define PS_BACKGROUND_COLOR(ps) ((ps) -> background_color)
+#define PS_VISUAL_TYPE(ps) ((ps) -> visual_type)
+#define PS_VISUAL(ps) ((ps) -> visual)
+
+typedef struct _window_t
 {
   HWND frame;			/* frame window handle */
   HWND client;			/* client window handle */
-  struct _ps_t * client_ps;	/* presentation space for client window */
+  ps_t * client_ps;		/* presentation space for client window */
   unsigned short grid_x;	/* x dimension of resizing grid */
   unsigned short grid_y;	/* y dimension of resizing grid */
   short cursor_x;		/* x coordinate of the cursor */
@@ -76,23 +94,15 @@ typedef struct
 #define WINDOW_MINIMIZEDP(window) ((window) -> minimizedp)
 #define WINDOW_PERMANENTP(window) ((window) -> permanentp)
 
-typedef struct _ps_t
+typedef struct _bitmap_t
 {
-  psid_t id;			/* psid for this ps */
+  bid_t id;			/* bid for this bitmap */
   qid_t qid;			/* qid to send commands to */
-  HPS handle;
-  COLOR foreground_color;
-  COLOR background_color;
-  window_t * window;		/* if this is window PS, the window */
-  HBITMAP bitmap;		/* if this is bitmap PS, the bitmap */
-} ps_t;
-#define PS_ID(ps) ((ps) -> id)
-#define PS_QID(ps) ((ps) -> qid)
-#define PS_HANDLE(ps) ((ps) -> handle)
-#define PS_FOREGROUND_COLOR(ps) ((ps) -> foreground_color)
-#define PS_BACKGROUND_COLOR(ps) ((ps) -> background_color)
-#define PS_WINDOW(ps) ((ps) -> window)
-#define PS_BITMAP(ps) ((ps) -> bitmap)
+  HBITMAP handle;
+} bitmap_t;
+#define BITMAP_ID(bitmap) ((bitmap) -> id)
+#define BITMAP_QID(bitmap) ((bitmap) -> qid)
+#define BITMAP_HANDLE(bitmap) ((bitmap) -> handle)
 
 typedef struct
 {
@@ -339,30 +349,72 @@ typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   qid_t qid;
-  USHORT width;
-  USHORT height;
-} sm_bitmap_ps_open_request_t;
-#define SM_BITMAP_PS_OPEN_REQUEST_QID(m)				\
-  (((sm_bitmap_ps_open_request_t *) (m)) -> qid)
-#define SM_BITMAP_PS_OPEN_REQUEST_WIDTH(m)				\
-  (((sm_bitmap_ps_open_request_t *) (m)) -> width)
-#define SM_BITMAP_PS_OPEN_REQUEST_HEIGHT(m)				\
-  (((sm_bitmap_ps_open_request_t *) (m)) -> height)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  psid_t psid;
-} sm_bitmap_ps_open_reply_t;
-#define SM_BITMAP_PS_OPEN_REPLY_PSID(m)					\
-  (((sm_bitmap_ps_open_reply_t *) (m)) -> psid)
+} sm_create_memory_ps_request_t;
+#define SM_CREATE_MEMORY_PS_REQUEST_QID(m)				\
+  (((sm_create_memory_ps_request_t *) (m)) -> qid)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   ps_t * ps;
-} sm_bitmap_ps_close_t;
-#define SM_BITMAP_PS_CLOSE_PS(m) (((sm_bitmap_ps_close_t *) (m)) -> ps)
+} sm_create_memory_ps_reply_t;
+#define SM_CREATE_MEMORY_PS_REPLY_PS(m)					\
+  (((sm_create_memory_ps_reply_t *) (m)) -> ps)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+} sm_destroy_memory_ps_t;
+#define SM_DESTROY_MEMORY_PS_PS(m) (((sm_destroy_memory_ps_t *) (m)) -> ps)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+  USHORT width;
+  USHORT height;
+} sm_create_bitmap_request_t;
+#define SM_CREATE_BITMAP_REQUEST_PS(m)					\
+  (((sm_create_bitmap_request_t *) (m)) -> ps)
+#define SM_CREATE_BITMAP_REQUEST_WIDTH(m)				\
+  (((sm_create_bitmap_request_t *) (m)) -> width)
+#define SM_CREATE_BITMAP_REQUEST_HEIGHT(m)				\
+  (((sm_create_bitmap_request_t *) (m)) -> height)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  bitmap_t * bitmap;
+} sm_create_bitmap_reply_t;
+#define SM_CREATE_BITMAP_REPLY_BITMAP(m)				\
+  (((sm_create_bitmap_reply_t *) (m)) -> bitmap)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  bitmap_t * bitmap;
+} sm_destroy_bitmap_t;
+#define SM_DESTROY_BITMAP_BITMAP(m) (((sm_destroy_bitmap_t *) (m)) -> bitmap)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+  bitmap_t * bitmap;
+} sm_ps_set_bitmap_request_t;
+#define SM_PS_SET_BITMAP_REQUEST_PS(m)					\
+  (((sm_ps_set_bitmap_request_t *) (m)) -> ps)
+#define SM_PS_SET_BITMAP_REQUEST_BITMAP(m)				\
+  (((sm_ps_set_bitmap_request_t *) (m)) -> bitmap)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  bitmap_t * bitmap;
+} sm_ps_set_bitmap_reply_t;
+#define SM_PS_SET_BITMAP_REPLY_BITMAP(m)				\
+  (((sm_ps_set_bitmap_reply_t *) (m)) -> bitmap)
 
 typedef struct
 {
@@ -389,12 +441,34 @@ typedef struct
   short y;
   unsigned short size;
   const char data [1];
-} sm_write_t;
-#define SM_WRITE_PS(m) (((sm_write_t *) (m)) -> ps)
-#define SM_WRITE_X(m) (((sm_write_t *) (m)) -> x)
-#define SM_WRITE_Y(m) (((sm_write_t *) (m)) -> y)
-#define SM_WRITE_SIZE(m) (((sm_write_t *) (m)) -> size)
-#define SM_WRITE_DATA(m) (((sm_write_t *) (m)) -> data)
+} sm_ps_draw_text_t;
+#define SM_PS_DRAW_TEXT_PS(m) (((sm_ps_draw_text_t *) (m)) -> ps)
+#define SM_PS_DRAW_TEXT_X(m) (((sm_ps_draw_text_t *) (m)) -> x)
+#define SM_PS_DRAW_TEXT_Y(m) (((sm_ps_draw_text_t *) (m)) -> y)
+#define SM_PS_DRAW_TEXT_SIZE(m) (((sm_ps_draw_text_t *) (m)) -> size)
+#define SM_PS_DRAW_TEXT_DATA(m) (((sm_ps_draw_text_t *) (m)) -> data)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+  unsigned short size;
+  const char data [1];
+} sm_ps_text_width_request_t;
+#define SM_PS_TEXT_WIDTH_REQUEST_PS(m)					\
+  (((sm_ps_text_width_request_t *) (m)) -> ps)
+#define SM_PS_TEXT_WIDTH_REQUEST_SIZE(m)				\
+  (((sm_ps_text_width_request_t *) (m)) -> size)
+#define SM_PS_TEXT_WIDTH_REQUEST_DATA(m)				\
+  (((sm_ps_text_width_request_t *) (m)) -> data)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  unsigned short size;
+} sm_ps_text_width_reply_t;
+#define SM_PS_TEXT_WIDTH_REPLY_SIZE(m)					\
+  (((sm_ps_text_width_reply_t *) (m)) -> size)
 
 typedef struct
 {
@@ -404,12 +478,12 @@ typedef struct
   short xh;
   short yl;
   short yh;
-} sm_clear_t;
-#define SM_CLEAR_PS(m) (((sm_clear_t *) (m)) -> ps)
-#define SM_CLEAR_XL(m) (((sm_clear_t *) (m)) -> xl)
-#define SM_CLEAR_XH(m) (((sm_clear_t *) (m)) -> xh)
-#define SM_CLEAR_YL(m) (((sm_clear_t *) (m)) -> yl)
-#define SM_CLEAR_YH(m) (((sm_clear_t *) (m)) -> yh)
+} sm_ps_clear_t;
+#define SM_PS_CLEAR_PS(m) (((sm_ps_clear_t *) (m)) -> ps)
+#define SM_PS_CLEAR_XL(m) (((sm_ps_clear_t *) (m)) -> xl)
+#define SM_PS_CLEAR_XH(m) (((sm_ps_clear_t *) (m)) -> xh)
+#define SM_PS_CLEAR_YL(m) (((sm_ps_clear_t *) (m)) -> yl)
+#define SM_PS_CLEAR_YH(m) (((sm_ps_clear_t *) (m)) -> yh)
 
 typedef struct
 {
@@ -417,17 +491,21 @@ typedef struct
   ps_t * ps;
   unsigned short id;
   char spec [1];
-} sm_set_font_request_t;
-#define SM_SET_FONT_REQUEST_PS(m) (((sm_set_font_request_t *) (m)) -> ps)
-#define SM_SET_FONT_REQUEST_ID(m) (((sm_set_font_request_t *) (m)) -> id)
-#define SM_SET_FONT_REQUEST_SPEC(m) (((sm_set_font_request_t *) (m)) -> spec)
+} sm_ps_set_font_request_t;
+#define SM_PS_SET_FONT_REQUEST_PS(m)					\
+  (((sm_ps_set_font_request_t *) (m)) -> ps)
+#define SM_PS_SET_FONT_REQUEST_ID(m)					\
+  (((sm_ps_set_font_request_t *) (m)) -> id)
+#define SM_PS_SET_FONT_REQUEST_SPEC(m)					\
+  (((sm_ps_set_font_request_t *) (m)) -> spec)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   font_metrics_t * metrics;
-} sm_set_font_reply_t;
-#define SM_SET_FONT_REPLY_METRICS(m) (((sm_set_font_reply_t *) (m)) -> metrics)
+} sm_ps_set_font_reply_t;
+#define SM_PS_SET_FONT_REPLY_METRICS(m)					\
+  (((sm_ps_set_font_reply_t *) (m)) -> metrics)
 
 typedef struct
 {
@@ -435,10 +513,13 @@ typedef struct
   ps_t * ps;
   COLOR foreground;
   COLOR background;
-} sm_set_colors_t;
-#define SM_SET_COLORS_PS(m) (((sm_set_colors_t *) (m)) -> ps)
-#define SM_SET_COLORS_FOREGROUND(m) (((sm_set_colors_t *) (m)) -> foreground)
-#define SM_SET_COLORS_BACKGROUND(m) (((sm_set_colors_t *) (m)) -> background)
+} sm_ps_set_colors_t;
+#define SM_PS_SET_COLORS_PS(m)						\
+  (((sm_ps_set_colors_t *) (m)) -> ps)
+#define SM_PS_SET_COLORS_FOREGROUND(m)					\
+  (((sm_ps_set_colors_t *) (m)) -> foreground)
+#define SM_PS_SET_COLORS_BACKGROUND(m)					\
+  (((sm_ps_set_colors_t *) (m)) -> background)
 
 typedef struct
 {
@@ -446,10 +527,10 @@ typedef struct
   ps_t * ps;
   short x;
   short y;
-} sm_move_gcursor_t;
-#define SM_MOVE_GCURSOR_PS(m) (((sm_move_gcursor_t *) (m)) -> ps)
-#define SM_MOVE_GCURSOR_X(m) (((sm_move_gcursor_t *) (m)) -> x)
-#define SM_MOVE_GCURSOR_Y(m) (((sm_move_gcursor_t *) (m)) -> y)
+} sm_ps_move_gcursor_t;
+#define SM_PS_MOVE_GCURSOR_PS(m) (((sm_ps_move_gcursor_t *) (m)) -> ps)
+#define SM_PS_MOVE_GCURSOR_X(m) (((sm_ps_move_gcursor_t *) (m)) -> x)
+#define SM_PS_MOVE_GCURSOR_Y(m) (((sm_ps_move_gcursor_t *) (m)) -> y)
 
 typedef struct
 {
@@ -457,10 +538,21 @@ typedef struct
   ps_t * ps;
   short x;
   short y;
-} sm_line_t;
-#define SM_LINE_PS(m) (((sm_line_t *) (m)) -> ps)
-#define SM_LINE_X(m) (((sm_line_t *) (m)) -> x)
-#define SM_LINE_Y(m) (((sm_line_t *) (m)) -> y)
+} sm_ps_draw_line_t;
+#define SM_PS_DRAW_LINE_PS(m) (((sm_ps_draw_line_t *) (m)) -> ps)
+#define SM_PS_DRAW_LINE_X(m) (((sm_ps_draw_line_t *) (m)) -> x)
+#define SM_PS_DRAW_LINE_Y(m) (((sm_ps_draw_line_t *) (m)) -> y)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+  short x;
+  short y;
+} sm_ps_draw_point_t;
+#define SM_PS_DRAW_POINT_PS(m) (((sm_ps_draw_point_t *) (m)) -> ps)
+#define SM_PS_DRAW_POINT_X(m) (((sm_ps_draw_point_t *) (m)) -> x)
+#define SM_PS_DRAW_POINT_Y(m) (((sm_ps_draw_point_t *) (m)) -> y)
 
 typedef struct
 {
@@ -468,10 +560,10 @@ typedef struct
   ps_t * ps;
   unsigned long npoints;
   PPOINTL points;
-} sm_poly_line_t;
-#define SM_POLY_LINE_PS(m) (((sm_poly_line_t *) (m)) -> ps)
-#define SM_POLY_LINE_NPOINTS(m) (((sm_poly_line_t *) (m)) -> npoints)
-#define SM_POLY_LINE_POINTS(m) (((sm_poly_line_t *) (m)) -> points)
+} sm_ps_poly_line_t;
+#define SM_PS_POLY_LINE_PS(m) (((sm_ps_poly_line_t *) (m)) -> ps)
+#define SM_PS_POLY_LINE_NPOINTS(m) (((sm_ps_poly_line_t *) (m)) -> npoints)
+#define SM_PS_POLY_LINE_POINTS(m) (((sm_ps_poly_line_t *) (m)) -> points)
 
 typedef struct
 {
@@ -479,22 +571,31 @@ typedef struct
   ps_t * ps;
   unsigned long npoints;
   PPOINTL points;
-} sm_poly_line_disjoint_t;
-#define SM_POLY_LINE_DISJOINT_PS(m)					\
-  (((sm_poly_line_disjoint_t *) (m)) -> ps)
-#define SM_POLY_LINE_DISJOINT_NPOINTS(m)				\
-  (((sm_poly_line_disjoint_t *) (m)) -> npoints)
-#define SM_POLY_LINE_DISJOINT_POINTS(m)					\
-  (((sm_poly_line_disjoint_t *) (m)) -> points)
+} sm_ps_poly_line_disjoint_t;
+#define SM_PS_POLY_LINE_DISJOINT_PS(m)					\
+  (((sm_ps_poly_line_disjoint_t *) (m)) -> ps)
+#define SM_PS_POLY_LINE_DISJOINT_NPOINTS(m)				\
+  (((sm_ps_poly_line_disjoint_t *) (m)) -> npoints)
+#define SM_PS_POLY_LINE_DISJOINT_POINTS(m)				\
+  (((sm_ps_poly_line_disjoint_t *) (m)) -> points)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   ps_t * ps;
   LONG ltype;
-} sm_set_line_type_t;
-#define SM_SET_LINE_TYPE_PS(m) (((sm_set_line_type_t *) (m)) -> ps)
-#define SM_SET_LINE_TYPE_TYPE(m) (((sm_set_line_type_t *) (m)) -> ltype)
+} sm_ps_set_line_type_t;
+#define SM_PS_SET_LINE_TYPE_PS(m) (((sm_ps_set_line_type_t *) (m)) -> ps)
+#define SM_PS_SET_LINE_TYPE_TYPE(m) (((sm_ps_set_line_type_t *) (m)) -> ltype)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+  LONG mix;
+} sm_ps_set_mix_t;
+#define SM_PS_SET_MIX_PS(m) (((sm_ps_set_mix_t *) (m)) -> ps)
+#define SM_PS_SET_MIX_MIX(m) (((sm_ps_set_mix_t *) (m)) -> mix)
 
 typedef struct
 {
@@ -503,11 +604,94 @@ typedef struct
   LONG start;
   LONG count;
   PLONG values;
-} sm_query_caps_t;
-#define SM_QUERY_CAPS_PS(m) (((sm_query_caps_t *) (m)) -> ps)
-#define SM_QUERY_CAPS_START(m) (((sm_query_caps_t *) (m)) -> start)
-#define SM_QUERY_CAPS_COUNT(m) (((sm_query_caps_t *) (m)) -> count)
-#define SM_QUERY_CAPS_VALUES(m) (((sm_query_caps_t *) (m)) -> values)
+} sm_ps_query_caps_t;
+#define SM_PS_QUERY_CAPS_PS(m) (((sm_ps_query_caps_t *) (m)) -> ps)
+#define SM_PS_QUERY_CAPS_START(m) (((sm_ps_query_caps_t *) (m)) -> start)
+#define SM_PS_QUERY_CAPS_COUNT(m) (((sm_ps_query_caps_t *) (m)) -> count)
+#define SM_PS_QUERY_CAPS_VALUES(m) (((sm_ps_query_caps_t *) (m)) -> values)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+  RECTL rectl;
+} sm_ps_set_clip_rectangle_t;
+#define SM_PS_SET_CLIP_RECTANGLE_PS(m)					\
+  (((sm_ps_set_clip_rectangle_t *) (m)) -> ps)
+#define SM_PS_SET_CLIP_RECTANGLE_RECTL(m)				\
+  (((sm_ps_set_clip_rectangle_t *) (m)) -> rectl)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  bitmap_t * bitmap;
+} sm_get_bitmap_parameters_request_t;
+#define SM_GET_BITMAP_PARAMETERS_REQUEST_BITMAP(m)			\
+  (((sm_get_bitmap_parameters_request_t *) (m)) -> bitmap)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  BITMAPINFOHEADER2 params;
+} sm_get_bitmap_parameters_reply_t;
+#define SM_GET_BITMAP_PARAMETERS_REPLY_PARAMS(m)			\
+  (((sm_get_bitmap_parameters_reply_t *) (m)) -> params)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+  unsigned long start;
+  unsigned long length;
+  PBYTE data;
+  PBITMAPINFO2 info;
+} sm_ps_get_bitmap_bits_request_t;
+#define SM_PS_GET_BITMAP_BITS_REQUEST_PS(m)				\
+  (((sm_ps_get_bitmap_bits_request_t *) (m)) -> ps)
+#define SM_PS_GET_BITMAP_BITS_REQUEST_START(m)				\
+  (((sm_ps_get_bitmap_bits_request_t *) (m)) -> start)
+#define SM_PS_GET_BITMAP_BITS_REQUEST_LENGTH(m)				\
+  (((sm_ps_get_bitmap_bits_request_t *) (m)) -> length)
+#define SM_PS_GET_BITMAP_BITS_REQUEST_DATA(m)				\
+  (((sm_ps_get_bitmap_bits_request_t *) (m)) -> data)
+#define SM_PS_GET_BITMAP_BITS_REQUEST_INFO(m)				\
+  (((sm_ps_get_bitmap_bits_request_t *) (m)) -> info)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  unsigned long length;
+} sm_ps_get_bitmap_bits_reply_t;
+#define SM_PS_GET_BITMAP_BITS_REPLY_LENGTH(m)				\
+  (((sm_ps_get_bitmap_bits_reply_t *) (m)) -> length)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+  unsigned long start;
+  unsigned long length;
+  PBYTE data;
+  PBITMAPINFO2 info;
+} sm_ps_set_bitmap_bits_request_t;
+#define SM_PS_SET_BITMAP_BITS_REQUEST_PS(m)				\
+  (((sm_ps_set_bitmap_bits_request_t *) (m)) -> ps)
+#define SM_PS_SET_BITMAP_BITS_REQUEST_START(m)				\
+  (((sm_ps_set_bitmap_bits_request_t *) (m)) -> start)
+#define SM_PS_SET_BITMAP_BITS_REQUEST_LENGTH(m)				\
+  (((sm_ps_set_bitmap_bits_request_t *) (m)) -> length)
+#define SM_PS_SET_BITMAP_BITS_REQUEST_DATA(m)				\
+  (((sm_ps_set_bitmap_bits_request_t *) (m)) -> data)
+#define SM_PS_SET_BITMAP_BITS_REQUEST_INFO(m)				\
+  (((sm_ps_set_bitmap_bits_request_t *) (m)) -> info)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  unsigned long length;
+} sm_ps_set_bitmap_bits_reply_t;
+#define SM_PS_SET_BITMAP_BITS_REPLY_LENGTH(m)				\
+  (((sm_ps_set_bitmap_bits_reply_t *) (m)) -> length)
 
 static void sync_transaction (qid_t, msg_t *);
 static void sync_reply (qid_t);
@@ -520,8 +704,9 @@ static unsigned int allocate_id (id_table_t *, void *);
 static void deallocate_id (id_table_t *, unsigned int);
 static void * id_to_pointer (id_table_t *, unsigned int);
 
-static window_t * wid_to_window (wid_t);
 static ps_t * psid_to_ps (psid_t);
+static window_t * wid_to_window (wid_t);
+static bitmap_t * bid_to_bitmap (bid_t);
 static void close_all_windows (void);
 
 static MRESULT EXPENTRY object_window_procedure (HWND, ULONG, MPARAM, MPARAM);
@@ -551,24 +736,37 @@ static int window_focusp (window_t *);
 static void set_window_state (window_t *, window_state_t);
 static void set_window_title (window_t *, PSZ);
 
-static psid_t open_bitmap_ps (qid_t, USHORT, USHORT);
+static ps_t * create_memory_ps (qid_t);
+static void destroy_memory_ps (ps_t *);
+static bitmap_t * create_bitmap (ps_t *, USHORT, USHORT);
+static void destroy_bitmap (bitmap_t *);
+static bitmap_t * ps_set_bitmap (ps_t *, bitmap_t *);
 static HDC get_ps_device (HPS);
 static LONG get_device_capability (HDC, LONG);
-static ps_t * make_ps (HDC, qid_t);
-static void close_ps (ps_t *);
-static void bitblt_ps (ps_t *, ps_t *, LONG, PPOINTL, LONG, ULONG);
-static void write_ps (ps_t *, short, short, const char *, unsigned short);
+static ps_t * create_ps (pst_t, HDC, qid_t);
+static void destroy_ps (ps_t *);
+static void ps_bitblt (ps_t *, ps_t *, LONG, PPOINTL, LONG, ULONG);
+static void ps_draw_text (ps_t *, short, short, const char *, unsigned short);
+static unsigned short ps_text_width (ps_t *, const char *, unsigned short);
 static void maybe_activate_cursor (ps_t *);
 static void maybe_deactivate_cursor (ps_t *);
 static void clear_rectangle (ps_t *, PRECTL);
-static void set_ps_colors (ps_t *, COLOR, COLOR);
-static void move_gcursor (ps_t *, short, short);
-static void draw_line (ps_t *, short, short);
-static void poly_line (ps_t *, unsigned long, PPOINTL);
-static void poly_line_disjoint (ps_t *, unsigned long, PPOINTL);
-static void set_line_type (ps_t *, LONG);
-static void query_caps (ps_t *, LONG, LONG, PLONG);
-static font_metrics_t * set_font (ps_t *, unsigned short, const char *);
+static void ps_set_colors (ps_t *, COLOR, COLOR);
+static void ps_move_gcursor (ps_t *, short, short);
+static void ps_draw_line (ps_t *, short, short);
+static void ps_draw_point (ps_t *, short, short);
+static void ps_poly_line (ps_t *, unsigned long, PPOINTL);
+static void ps_poly_line_disjoint (ps_t *, unsigned long, PPOINTL);
+static void ps_set_line_type (ps_t *, LONG);
+static void ps_set_mix (ps_t *, LONG);
+static void ps_query_caps (ps_t *, LONG, LONG, PLONG);
+static void ps_set_clip_rectangle (ps_t *, PRECTL);
+static void get_bitmap_parameters (bitmap_t *, PBITMAPINFOHEADER2);
+static unsigned long ps_get_bitmap_bits
+  (ps_t *, unsigned long, unsigned long, PBYTE, PBITMAPINFO2);
+static unsigned long ps_set_bitmap_bits
+  (ps_t *, unsigned long, unsigned long, PBYTE, PBITMAPINFO2);
+static font_metrics_t * ps_set_font (ps_t *, unsigned short, const char *);
 
 static msg_t * make_button_event
   (wid_t, unsigned char, unsigned char, unsigned short, unsigned short,
@@ -594,8 +792,9 @@ static msg_t * make_visibility_event (wid_t, int);
 #define MRTRUE MRFROMLONG (TRUE)
 #define MRFALSE MRFROMLONG (FALSE)
 
-static id_table_t wid_table;
 static id_table_t psid_table;
+static id_table_t wid_table;
+static id_table_t bid_table;
 static qid_t pm_init_qid;
 static TID pm_tid;
 static HAB pm_hab;
@@ -665,21 +864,44 @@ OS2_initialize_pm_thread (void)
   SET_MSG_TYPE_LENGTH (mt_window_set_state, sm_set_state_t);
   SET_MSG_TYPE_LENGTH (mt_window_set_title, sm_set_title_t);
 
-  SET_MSG_TYPE_LENGTH (mt_bitmap_ps_open_request, sm_bitmap_ps_open_request_t);
-  SET_MSG_TYPE_LENGTH (mt_bitmap_ps_open_reply, sm_bitmap_ps_open_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_bitmap_ps_close, sm_bitmap_ps_close_t);
+  SET_MSG_TYPE_LENGTH (mt_create_memory_ps_request,
+		       sm_create_memory_ps_request_t);
+  SET_MSG_TYPE_LENGTH (mt_create_memory_ps_reply, sm_create_memory_ps_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_destroy_memory_ps, sm_destroy_memory_ps_t);
+  SET_MSG_TYPE_LENGTH (mt_create_bitmap_request, sm_create_bitmap_request_t);
+  SET_MSG_TYPE_LENGTH (mt_create_bitmap_reply, sm_create_bitmap_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_destroy_bitmap, sm_destroy_bitmap_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_bitmap_request, sm_ps_set_bitmap_request_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_bitmap_reply, sm_ps_set_bitmap_reply_t);
   SET_MSG_TYPE_LENGTH (mt_ps_bitblt, sm_ps_bitblt_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_write, sm_write_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_clear, sm_clear_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_font_request, sm_set_font_request_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_font_reply, sm_set_font_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_colors, sm_set_colors_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_move_gcursor, sm_move_gcursor_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_line, sm_line_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_poly_line, sm_poly_line_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_poly_line_disjoint, sm_poly_line_disjoint_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_line_type, sm_set_line_type_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_query_caps, sm_query_caps_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_draw_text, sm_ps_draw_text_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_text_width_request, sm_ps_text_width_request_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_text_width_reply, sm_ps_text_width_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_clear, sm_ps_clear_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_font_request, sm_ps_set_font_request_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_font_reply, sm_ps_set_font_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_colors, sm_ps_set_colors_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_move_gcursor, sm_ps_move_gcursor_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_draw_line, sm_ps_draw_line_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_draw_point, sm_ps_draw_point_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_poly_line, sm_ps_poly_line_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_poly_line_disjoint, sm_ps_poly_line_disjoint_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_line_type, sm_ps_set_line_type_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_mix, sm_ps_set_mix_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_query_caps, sm_ps_query_caps_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_clip_rectangle, sm_ps_set_clip_rectangle_t);
+  SET_MSG_TYPE_LENGTH (mt_get_bitmap_parameters_request,
+		       sm_get_bitmap_parameters_request_t);
+  SET_MSG_TYPE_LENGTH (mt_get_bitmap_parameters_reply,
+		       sm_get_bitmap_parameters_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_get_bitmap_bits_request,
+		       sm_ps_get_bitmap_bits_request_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_get_bitmap_bits_reply,
+		       sm_ps_get_bitmap_bits_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_bitmap_bits_request,
+		       sm_ps_set_bitmap_bits_request_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_bitmap_bits_reply,
+		       sm_ps_set_bitmap_bits_reply_t);
 
   SET_MSG_TYPE_LENGTH (mt_button_event, sm_button_event_t);
   SET_MSG_TYPE_LENGTH (mt_close_event, sm_close_event_t);
@@ -689,8 +911,9 @@ OS2_initialize_pm_thread (void)
   SET_MSG_TYPE_LENGTH (mt_resize_event, sm_resize_event_t);
   SET_MSG_TYPE_LENGTH (mt_visibility_event, sm_visibility_event_t);
 
-  initialize_id_table (& wid_table);
   initialize_id_table (& psid_table);
+  initialize_id_table (& wid_table);
+  initialize_id_table (& bid_table);
   original_frame_window_procedure = 0;
   {
     qid_t qid;
@@ -830,7 +1053,7 @@ allocate_id (id_table_t * table, void * pointer)
 {
   unsigned int length = (ID_TABLE_LENGTH (table));
   void ** pointers = (ID_TABLE_POINTERS (table));
-  void ** scan = pointers;
+  void ** scan = (pointers + 1); /* don't allocate ID zero */
   void ** end = (pointers + length);
   while (scan < end)
     if ((*scan++) == 0)
@@ -871,20 +1094,27 @@ id_to_pointer (id_table_t * table, unsigned int id)
 static int
 id_validp (id_table_t * table, unsigned int id)
 {
-  return ((id < (ID_TABLE_LENGTH (table)))
+  return ((id > 0)
+	  && (id < (ID_TABLE_LENGTH (table)))
 	  && (((ID_TABLE_POINTERS (table)) [id]) != 0));
 }
 
-static window_t *
-wid_to_window (wid_t wid)
-{
-  return (id_to_pointer ((& wid_table), wid));
-}
-
 static ps_t *
 psid_to_ps (psid_t psid)
 {
   return (id_to_pointer ((& psid_table), psid));
+}
+
+int
+OS2_psid_validp (psid_t psid)
+{
+  return (id_validp ((& psid_table), psid));
+}
+
+static window_t *
+wid_to_window (wid_t wid)
+{
+  return (id_to_pointer ((& wid_table), wid));
 }
 
 int
@@ -893,10 +1123,16 @@ OS2_wid_validp (wid_t wid)
   return (id_validp ((& wid_table), wid));
 }
 
-int
-OS2_psid_validp (psid_t psid)
+static bitmap_t *
+bid_to_bitmap (bid_t bid)
 {
-  return (id_validp ((& psid_table), psid));
+  return (id_to_pointer ((& bid_table), bid));
+}
+
+int
+OS2_bid_validp (bid_t bid)
+{
+  return (id_validp ((& bid_table), bid));
 }
 
 psid_t
@@ -941,19 +1177,29 @@ static void handle_window_focusp_request (msg_t *);
 static void handle_window_set_state_request (msg_t *);
 static void handle_window_set_title_request (msg_t *);
 
-static void handle_bitmap_ps_open_request (msg_t *);
-static void handle_bitmap_ps_close_request (msg_t *);
+static void handle_create_memory_ps_request (msg_t *);
+static void handle_destroy_memory_ps_request (msg_t *);
+static void handle_create_bitmap_request (msg_t *);
+static void handle_destroy_bitmap_request (msg_t *);
+static void handle_ps_set_bitmap_request (msg_t *);
 static void handle_ps_bitblt_request (msg_t *);
-static void handle_ps_write_request (msg_t *);
+static void handle_ps_draw_text_request (msg_t *);
+static void handle_ps_text_width_request (msg_t *);
 static void handle_ps_set_font_request (msg_t *);
 static void handle_ps_clear_request (msg_t *);
 static void handle_ps_set_colors_request (msg_t *);
 static void handle_ps_move_gcursor_request (msg_t *);
-static void handle_ps_line_request (msg_t *);
+static void handle_ps_draw_line_request (msg_t *);
+static void handle_ps_draw_point_request (msg_t *);
 static void handle_ps_poly_line_request (msg_t *);
 static void handle_ps_poly_line_disjoint_request (msg_t *);
 static void handle_ps_set_line_type_request (msg_t *);
+static void handle_ps_set_mix_request (msg_t *);
 static void handle_ps_query_caps_request (msg_t *);
+static void handle_ps_set_clip_rectangle_request (msg_t *);
+static void handle_get_bitmap_parameters_request (msg_t *);
+static void handle_ps_get_bitmap_bits_request (msg_t *);
+static void handle_ps_set_bitmap_bits_request (msg_t *);
 
 static MRESULT EXPENTRY
 object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
@@ -1018,17 +1264,29 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	  handle_window_set_title_request (message);
 	  break;
 
-	case mt_bitmap_ps_open_request:
-	  handle_bitmap_ps_open_request (message);
+	case mt_create_memory_ps_request:
+	  handle_create_memory_ps_request (message);
 	  break;
-	case mt_bitmap_ps_close:
-	  handle_bitmap_ps_close_request (message);
+	case mt_destroy_memory_ps:
+	  handle_destroy_memory_ps_request (message);
+	  break;
+	case mt_create_bitmap_request:
+	  handle_create_bitmap_request (message);
+	  break;
+	case mt_destroy_bitmap:
+	  handle_destroy_bitmap_request (message);
+	  break;
+	case mt_ps_set_bitmap_request:
+	  handle_ps_set_bitmap_request (message);
 	  break;
 	case mt_ps_bitblt:
 	  handle_ps_bitblt_request (message);
 	  break;
-	case mt_ps_write:
-	  handle_ps_write_request (message);
+	case mt_ps_draw_text:
+	  handle_ps_draw_text_request (message);
+	  break;
+	case mt_ps_text_width_request:
+	  handle_ps_text_width_request (message);
 	  break;
 	case mt_ps_set_font_request:
 	  handle_ps_set_font_request (message);
@@ -1042,8 +1300,11 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	case mt_ps_move_gcursor:
 	  handle_ps_move_gcursor_request (message);
 	  break;
-	case mt_ps_line:
-	  handle_ps_line_request (message);
+	case mt_ps_draw_line:
+	  handle_ps_draw_line_request (message);
+	  break;
+	case mt_ps_draw_point:
+	  handle_ps_draw_point_request (message);
 	  break;
 	case mt_ps_poly_line:
 	  handle_ps_poly_line_request (message);
@@ -1054,8 +1315,23 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	case mt_ps_set_line_type:
 	  handle_ps_set_line_type_request (message);
 	  break;
+	case mt_ps_set_mix:
+	  handle_ps_set_mix_request (message);
+	  break;
 	case mt_ps_query_caps:
 	  handle_ps_query_caps_request (message);
+	  break;
+	case mt_ps_set_clip_rectangle:
+	  handle_ps_set_clip_rectangle_request (message);
+	  break;
+	case mt_get_bitmap_parameters_request:
+	  handle_get_bitmap_parameters_request (message);
+	  break;
+	case mt_ps_get_bitmap_bits_request:
+	  handle_ps_get_bitmap_bits_request (message);
+	  break;
+	case mt_ps_set_bitmap_bits_request:
+	  handle_ps_set_bitmap_bits_request (message);
 	  break;
 
 	default:
@@ -1518,56 +1794,131 @@ handle_window_set_title_request (msg_t * message)
 }
 
 psid_t
-OS2_open_bitmap_ps (qid_t qid, USHORT width, USHORT height)
+OS2_create_memory_ps (qid_t qid)
 {
-  msg_t * message = (OS2_create_message (mt_bitmap_ps_open_request));
-  psid_t psid;
-  (SM_BITMAP_PS_OPEN_REQUEST_QID (message)) = qid;
-  (SM_BITMAP_PS_OPEN_REQUEST_WIDTH (message)) = width;
-  (SM_BITMAP_PS_OPEN_REQUEST_HEIGHT (message)) = height;
-  message  = (OS2_message_transaction (qid, message, mt_bitmap_ps_open_reply));
-  psid = (SM_BITMAP_PS_OPEN_REPLY_PSID (message));
+  msg_t * message = (OS2_create_message (mt_create_memory_ps_request));
+  ps_t * ps;
+  (SM_CREATE_MEMORY_PS_REQUEST_QID (message)) = qid;
+  message
+    = (OS2_message_transaction (qid, message, mt_create_memory_ps_reply));
+  ps = (SM_CREATE_MEMORY_PS_REPLY_PS (message));
   OS2_destroy_message (message);
-  return (psid);
+  return (PS_ID (ps));
 }
 
 static void
-handle_bitmap_ps_open_request (msg_t * request)
+handle_create_memory_ps_request (msg_t * request)
 {
   qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_bitmap_ps_open_reply));
-  (SM_BITMAP_PS_OPEN_REPLY_PSID (reply))
-    = (open_bitmap_ps ((SM_BITMAP_PS_OPEN_REQUEST_QID (request)),
-		       (SM_BITMAP_PS_OPEN_REQUEST_WIDTH (request)),
-		       (SM_BITMAP_PS_OPEN_REQUEST_HEIGHT (request))));
+  msg_t * reply = (OS2_create_message (mt_create_memory_ps_reply));
+  (SM_CREATE_MEMORY_PS_REPLY_PS (reply))
+    = (create_memory_ps (SM_CREATE_MEMORY_PS_REQUEST_QID (request)));
   OS2_destroy_message (request);
   OS2_send_message (sender, reply);
 }
 
-int
-OS2_bitmap_ps_p (psid_t psid)
-{
-  return ((PS_BITMAP (psid_to_ps (psid))) != NULLHANDLE);
-}
-
 void
-OS2_close_bitmap_ps (psid_t psid)
+OS2_destroy_memory_ps (psid_t psid)
 {
   ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_bitmap_ps_close));
-  (SM_BITMAP_PS_CLOSE_PS (message)) = ps;
+  msg_t * message = (OS2_create_message (mt_destroy_memory_ps));
+  (SM_DESTROY_MEMORY_PS_PS (message)) = ps;
   simple_transaction ((PS_QID (ps)), message);
 }
 
 static void
-handle_bitmap_ps_close_request (msg_t * message)
+handle_destroy_memory_ps_request (msg_t * request)
 {
-  qid_t sender = (MSG_SENDER (message));
-  close_ps (SM_BITMAP_PS_CLOSE_PS (message));
-  OS2_destroy_message (message);
+  qid_t sender = (MSG_SENDER (request));
+  destroy_memory_ps (SM_DESTROY_MEMORY_PS_PS (request));
+  OS2_destroy_message (request);
   simple_reply (sender);
 }
 
+int
+OS2_memory_ps_p (psid_t psid)
+{
+  return ((PS_VISUAL_TYPE (psid_to_ps (psid))) == pst_memory);
+}
+
+bid_t
+OS2_create_bitmap (psid_t psid, USHORT width, USHORT height)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_create_bitmap_request));
+  bitmap_t * bitmap;
+  (SM_CREATE_BITMAP_REQUEST_PS (message)) = ps;
+  (SM_CREATE_BITMAP_REQUEST_WIDTH (message)) = width;
+  (SM_CREATE_BITMAP_REQUEST_HEIGHT (message)) = height;
+  message
+    = (OS2_message_transaction ((PS_QID (ps)),
+				message,
+				mt_create_bitmap_reply));
+  bitmap = (SM_CREATE_BITMAP_REPLY_BITMAP (message));
+  OS2_destroy_message (message);
+  return (BITMAP_ID (bitmap));
+}
+
+static void
+handle_create_bitmap_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_create_bitmap_reply));
+  (SM_CREATE_BITMAP_REPLY_BITMAP (reply))
+    = (create_bitmap ((SM_CREATE_BITMAP_REQUEST_PS (request)),
+		      (SM_CREATE_BITMAP_REQUEST_WIDTH (request)),
+		      (SM_CREATE_BITMAP_REQUEST_HEIGHT (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+void
+OS2_destroy_bitmap (bid_t bid)
+{
+  bitmap_t * bitmap = (bid_to_bitmap (bid));
+  msg_t * message = (OS2_create_message (mt_destroy_bitmap));
+  (SM_DESTROY_BITMAP_BITMAP (message)) = bitmap;
+  simple_transaction ((BITMAP_QID (bitmap)), message);
+}
+
+static void
+handle_destroy_bitmap_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  destroy_bitmap (SM_DESTROY_BITMAP_BITMAP (request));
+  OS2_destroy_message (request);
+  simple_reply (sender);
+}
+
+bid_t
+OS2_ps_set_bitmap (psid_t psid, bid_t bid)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  bitmap_t * bitmap = ((bid == BID_NONE) ? 0 : (bid_to_bitmap (bid)));
+  msg_t * message = (OS2_create_message (mt_ps_set_bitmap_request));
+  (SM_PS_SET_BITMAP_REQUEST_PS (message)) = ps;
+  (SM_PS_SET_BITMAP_REQUEST_BITMAP (message)) = bitmap;
+  message
+    = (OS2_message_transaction ((PS_QID (ps)),
+				message,
+				mt_ps_set_bitmap_reply));
+  bitmap = (SM_PS_SET_BITMAP_REPLY_BITMAP (message));
+  OS2_destroy_message (message);
+  return ((bitmap == 0) ? BID_NONE : (BITMAP_ID (bitmap)));
+}
+
+static void
+handle_ps_set_bitmap_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_ps_set_bitmap_reply));
+  (SM_PS_SET_BITMAP_REPLY_BITMAP (reply))
+    = (ps_set_bitmap ((SM_PS_SET_BITMAP_REQUEST_PS (request)),
+		      (SM_PS_SET_BITMAP_REQUEST_BITMAP (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
 void
 OS2_ps_bitblt (psid_t target, psid_t source, LONG npoints, PPOINTL points,
 	       LONG rop, ULONG options)
@@ -1589,7 +1940,7 @@ static void
 handle_ps_bitblt_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  bitblt_ps ((SM_PS_BITBLT_TARGET_PS (message)),
+  ps_bitblt ((SM_PS_BITBLT_TARGET_PS (message)),
 	     (SM_PS_BITBLT_SOURCE_PS (message)),
 	     (SM_PS_BITBLT_NPOINTS (message)),
 	     (& ((SM_PS_BITBLT_POINTS (message)) [0])),
@@ -1600,30 +1951,61 @@ handle_ps_bitblt_request (msg_t * message)
 }
 
 void
-OS2_ps_write (psid_t psid, short x, short y,
-	      const char * data, unsigned short size)
+OS2_ps_draw_text (psid_t psid, short x, short y,
+		  const char * data, unsigned short size)
 {
   ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message_1 (mt_ps_write, (size - 1)));
-  (SM_WRITE_PS (message)) = ps;
-  (SM_WRITE_X (message)) = x;
-  (SM_WRITE_Y (message)) = y;
-  (SM_WRITE_SIZE (message)) = size;
-  FASTCOPY (data, ((char *) (SM_WRITE_DATA (message))), size);
+  msg_t * message = (OS2_create_message_1 (mt_ps_draw_text, (size - 1)));
+  (SM_PS_DRAW_TEXT_PS (message)) = ps;
+  (SM_PS_DRAW_TEXT_X (message)) = x;
+  (SM_PS_DRAW_TEXT_Y (message)) = y;
+  (SM_PS_DRAW_TEXT_SIZE (message)) = size;
+  FASTCOPY (data, ((char *) (SM_PS_DRAW_TEXT_DATA (message))), size);
   simple_transaction ((PS_QID (ps)), message);
 }
 
 static void
-handle_ps_write_request (msg_t * message)
+handle_ps_draw_text_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  write_ps ((SM_WRITE_PS (message)),
-	    (SM_WRITE_X (message)),
-	    (SM_WRITE_Y (message)),
-	    (SM_WRITE_DATA (message)),
-	    (SM_WRITE_SIZE (message)));
+  ps_draw_text ((SM_PS_DRAW_TEXT_PS (message)),
+		(SM_PS_DRAW_TEXT_X (message)),
+		(SM_PS_DRAW_TEXT_Y (message)),
+		(SM_PS_DRAW_TEXT_DATA (message)),
+		(SM_PS_DRAW_TEXT_SIZE (message)));
   OS2_destroy_message (message);
   simple_reply (sender);
+}
+
+unsigned short
+OS2_ps_text_width (psid_t psid, const char * data, unsigned short size)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message
+    = (OS2_create_message_1 (mt_ps_text_width_request, (size - 1)));
+  (SM_PS_TEXT_WIDTH_REQUEST_PS (message)) = ps;
+  FASTCOPY (data, ((char *) (SM_PS_TEXT_WIDTH_REQUEST_DATA (message))), size);
+  (SM_PS_TEXT_WIDTH_REQUEST_SIZE (message)) = size;
+  message
+    = (OS2_message_transaction ((PS_QID (ps)),
+				message,
+				mt_ps_text_width_reply));
+  size = (SM_PS_TEXT_WIDTH_REPLY_SIZE (message));
+  OS2_destroy_message (message);
+  return (size);
+}
+
+static void
+handle_ps_text_width_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_ps_text_width_reply));
+  (SM_PS_TEXT_WIDTH_REPLY_SIZE (reply))
+    = (ps_text_width ((SM_PS_TEXT_WIDTH_REQUEST_PS (request)),
+		      (SM_PS_TEXT_WIDTH_REQUEST_DATA (request)),
+		      (SM_PS_TEXT_WIDTH_REQUEST_SIZE (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
 }
 
 font_metrics_t *
@@ -1633,12 +2015,12 @@ OS2_ps_set_font (psid_t psid, unsigned short id, const char * name)
   msg_t * message
     = (OS2_create_message_1 (mt_ps_set_font_request, (strlen (name))));
   font_metrics_t * metrics;
-  (SM_SET_FONT_REQUEST_PS (message)) = ps;
-  (SM_SET_FONT_REQUEST_ID (message)) = id;
-  strcpy ((SM_SET_FONT_REQUEST_SPEC (message)), name);
+  (SM_PS_SET_FONT_REQUEST_PS (message)) = ps;
+  (SM_PS_SET_FONT_REQUEST_ID (message)) = id;
+  strcpy ((SM_PS_SET_FONT_REQUEST_SPEC (message)), name);
   message
     = (OS2_message_transaction ((PS_QID (ps)), message, mt_ps_set_font_reply));
-  metrics = (SM_SET_FONT_REPLY_METRICS (message));
+  metrics = (SM_PS_SET_FONT_REPLY_METRICS (message));
   OS2_destroy_message (message);
   return (metrics);
 }
@@ -1648,10 +2030,10 @@ handle_ps_set_font_request (msg_t * request)
 {
   qid_t sender = (MSG_SENDER (request));
   msg_t * reply = (OS2_create_message (mt_ps_set_font_reply));
-  (SM_SET_FONT_REPLY_METRICS (reply))
-    = (set_font ((SM_SET_FONT_REQUEST_PS (request)),
-		 (SM_SET_FONT_REQUEST_ID (request)),
-		 (SM_SET_FONT_REQUEST_SPEC (request))));
+  (SM_PS_SET_FONT_REPLY_METRICS (reply))
+    = (ps_set_font ((SM_PS_SET_FONT_REQUEST_PS (request)),
+		    (SM_PS_SET_FONT_REQUEST_ID (request)),
+		    (SM_PS_SET_FONT_REQUEST_SPEC (request))));
   OS2_destroy_message (request);
   OS2_send_message (sender, reply);
 }
@@ -1661,11 +2043,11 @@ OS2_ps_clear (psid_t psid, short xl, short xh, short yl, short yh)
 {
   ps_t * ps = (psid_to_ps (psid));
   msg_t * message = (OS2_create_message (mt_ps_clear));
-  (SM_CLEAR_PS (message)) = ps;
-  (SM_CLEAR_XL (message)) = xl;
-  (SM_CLEAR_XH (message)) = xh;
-  (SM_CLEAR_YL (message)) = yl;
-  (SM_CLEAR_YH (message)) = yh;
+  (SM_PS_CLEAR_PS (message)) = ps;
+  (SM_PS_CLEAR_XL (message)) = xl;
+  (SM_PS_CLEAR_XH (message)) = xh;
+  (SM_PS_CLEAR_YL (message)) = yl;
+  (SM_PS_CLEAR_YH (message)) = yh;
   simple_transaction ((PS_QID (ps)), message);
 }
 
@@ -1674,11 +2056,11 @@ handle_ps_clear_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
   RECTL rectl;
-  (rectl . xLeft)   = (SM_CLEAR_XL (message));
-  (rectl . xRight)  = (SM_CLEAR_XH (message));
-  (rectl . yBottom) = (SM_CLEAR_YL (message));
-  (rectl . yTop)    = (SM_CLEAR_YH (message));
-  clear_rectangle ((SM_CLEAR_PS (message)), (& rectl));
+  (rectl . xLeft)   = (SM_PS_CLEAR_XL (message));
+  (rectl . xRight)  = (SM_PS_CLEAR_XH (message));
+  (rectl . yBottom) = (SM_PS_CLEAR_YL (message));
+  (rectl . yTop)    = (SM_PS_CLEAR_YH (message));
+  clear_rectangle ((SM_PS_CLEAR_PS (message)), (& rectl));
   OS2_destroy_message (message);
   simple_reply (sender);
 }
@@ -1688,9 +2070,9 @@ OS2_ps_set_colors (psid_t psid, COLOR foreground, COLOR background)
 {
   ps_t * ps = (psid_to_ps (psid));
   msg_t * message = (OS2_create_message (mt_ps_set_colors));
-  (SM_SET_COLORS_PS (message)) = ps;
-  (SM_SET_COLORS_FOREGROUND (message)) = foreground;
-  (SM_SET_COLORS_BACKGROUND (message)) = background;
+  (SM_PS_SET_COLORS_PS (message)) = ps;
+  (SM_PS_SET_COLORS_FOREGROUND (message)) = foreground;
+  (SM_PS_SET_COLORS_BACKGROUND (message)) = background;
   simple_transaction ((PS_QID (ps)), message);
 }
 
@@ -1698,9 +2080,9 @@ static void
 handle_ps_set_colors_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  set_ps_colors ((SM_SET_COLORS_PS (message)),
-		 (SM_SET_COLORS_FOREGROUND (message)),
-		 (SM_SET_COLORS_BACKGROUND (message)));
+  ps_set_colors ((SM_PS_SET_COLORS_PS (message)),
+		 (SM_PS_SET_COLORS_FOREGROUND (message)),
+		 (SM_PS_SET_COLORS_BACKGROUND (message)));
   OS2_destroy_message (message);
   simple_reply (sender);
 }
@@ -1710,9 +2092,9 @@ OS2_ps_move_gcursor (psid_t psid, short x, short y)
 {
   ps_t * ps = (psid_to_ps (psid));
   msg_t * message = (OS2_create_message (mt_ps_move_gcursor));
-  (SM_MOVE_GCURSOR_PS (message)) = ps;
-  (SM_MOVE_GCURSOR_X (message)) = x;
-  (SM_MOVE_GCURSOR_Y (message)) = y;
+  (SM_PS_MOVE_GCURSOR_PS (message)) = ps;
+  (SM_PS_MOVE_GCURSOR_X (message)) = x;
+  (SM_PS_MOVE_GCURSOR_Y (message)) = y;
   simple_transaction ((PS_QID (ps)), message);
 }
 
@@ -1720,31 +2102,53 @@ static void
 handle_ps_move_gcursor_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  move_gcursor ((SM_MOVE_GCURSOR_PS (message)),
-		(SM_MOVE_GCURSOR_X (message)),
-		(SM_MOVE_GCURSOR_Y (message)));
+  ps_move_gcursor ((SM_PS_MOVE_GCURSOR_PS (message)),
+		   (SM_PS_MOVE_GCURSOR_X (message)),
+		   (SM_PS_MOVE_GCURSOR_Y (message)));
   OS2_destroy_message (message);
   simple_reply (sender);
 }
 
 void
-OS2_ps_line (psid_t psid, short x, short y)
+OS2_ps_draw_line (psid_t psid, short x, short y)
 {
   ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_line));
-  (SM_LINE_PS (message)) = ps;
-  (SM_LINE_X (message)) = x;
-  (SM_LINE_Y (message)) = y;
+  msg_t * message = (OS2_create_message (mt_ps_draw_line));
+  (SM_PS_DRAW_LINE_PS (message)) = ps;
+  (SM_PS_DRAW_LINE_X (message)) = x;
+  (SM_PS_DRAW_LINE_Y (message)) = y;
   simple_transaction ((PS_QID (ps)), message);
 }
 
 static void
-handle_ps_line_request (msg_t * message)
+handle_ps_draw_line_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  draw_line ((SM_LINE_PS (message)),
-	     (SM_LINE_X (message)),
-	     (SM_LINE_Y (message)));
+  ps_draw_line ((SM_PS_DRAW_LINE_PS (message)),
+		(SM_PS_DRAW_LINE_X (message)),
+		(SM_PS_DRAW_LINE_Y (message)));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_ps_draw_point (psid_t psid, short x, short y)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_draw_point));
+  (SM_PS_DRAW_POINT_PS (message)) = ps;
+  (SM_PS_DRAW_POINT_X (message)) = x;
+  (SM_PS_DRAW_POINT_Y (message)) = y;
+  simple_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_ps_draw_point_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  ps_draw_point ((SM_PS_DRAW_POINT_PS (message)),
+		 (SM_PS_DRAW_POINT_X (message)),
+		 (SM_PS_DRAW_POINT_Y (message)));
   OS2_destroy_message (message);
   simple_reply (sender);
 }
@@ -1754,9 +2158,9 @@ OS2_ps_poly_line (psid_t psid, unsigned long npoints, PPOINTL points)
 {
   ps_t * ps = (psid_to_ps (psid));
   msg_t * message = (OS2_create_message (mt_ps_poly_line));
-  (SM_POLY_LINE_PS (message)) = ps;
-  (SM_POLY_LINE_NPOINTS (message)) = npoints;
-  (SM_POLY_LINE_POINTS (message)) = points;
+  (SM_PS_POLY_LINE_PS (message)) = ps;
+  (SM_PS_POLY_LINE_NPOINTS (message)) = npoints;
+  (SM_PS_POLY_LINE_POINTS (message)) = points;
   sync_transaction ((PS_QID (ps)), message);
 }
 
@@ -1764,9 +2168,9 @@ static void
 handle_ps_poly_line_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  poly_line ((SM_POLY_LINE_PS (message)),
-	     (SM_POLY_LINE_NPOINTS (message)),
-	     (SM_POLY_LINE_POINTS (message)));
+  ps_poly_line ((SM_PS_POLY_LINE_PS (message)),
+		(SM_PS_POLY_LINE_NPOINTS (message)),
+		(SM_PS_POLY_LINE_POINTS (message)));
   OS2_destroy_message (message);
   sync_reply (sender);
 }
@@ -1776,9 +2180,9 @@ OS2_ps_poly_line_disjoint (psid_t psid, unsigned long npoints, PPOINTL points)
 {
   ps_t * ps = (psid_to_ps (psid));
   msg_t * message = (OS2_create_message (mt_ps_poly_line_disjoint));
-  (SM_POLY_LINE_DISJOINT_PS (message)) = ps;
-  (SM_POLY_LINE_DISJOINT_NPOINTS (message)) = npoints;
-  (SM_POLY_LINE_DISJOINT_POINTS (message)) = points;
+  (SM_PS_POLY_LINE_DISJOINT_PS (message)) = ps;
+  (SM_PS_POLY_LINE_DISJOINT_NPOINTS (message)) = npoints;
+  (SM_PS_POLY_LINE_DISJOINT_POINTS (message)) = points;
   sync_transaction ((PS_QID (ps)), message);
 }
 
@@ -1786,9 +2190,9 @@ static void
 handle_ps_poly_line_disjoint_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  poly_line_disjoint ((SM_POLY_LINE_DISJOINT_PS (message)),
-		      (SM_POLY_LINE_DISJOINT_NPOINTS (message)),
-		      (SM_POLY_LINE_DISJOINT_POINTS (message)));
+  ps_poly_line_disjoint ((SM_PS_POLY_LINE_DISJOINT_PS (message)),
+			 (SM_PS_POLY_LINE_DISJOINT_NPOINTS (message)),
+			 (SM_PS_POLY_LINE_DISJOINT_POINTS (message)));
   OS2_destroy_message (message);
   sync_reply (sender);
 }
@@ -1798,8 +2202,8 @@ OS2_ps_set_line_type (psid_t psid, LONG type)
 {
   ps_t * ps = (psid_to_ps (psid));
   msg_t * message = (OS2_create_message (mt_ps_set_line_type));
-  (SM_SET_LINE_TYPE_PS (message)) = ps;
-  (SM_SET_LINE_TYPE_TYPE (message)) = type;
+  (SM_PS_SET_LINE_TYPE_PS (message)) = ps;
+  (SM_PS_SET_LINE_TYPE_TYPE (message)) = type;
   simple_transaction ((PS_QID (ps)), message);
 }
 
@@ -1807,8 +2211,27 @@ static void
 handle_ps_set_line_type_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  set_line_type ((SM_SET_LINE_TYPE_PS (message)),
-		 (SM_SET_LINE_TYPE_TYPE (message)));
+  ps_set_line_type ((SM_PS_SET_LINE_TYPE_PS (message)),
+		    (SM_PS_SET_LINE_TYPE_TYPE (message)));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_ps_set_mix (psid_t psid, LONG mix)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_set_mix));
+  (SM_PS_SET_MIX_PS (message)) = ps;
+  (SM_PS_SET_MIX_MIX (message)) = mix;
+  simple_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_ps_set_mix_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  ps_set_mix ((SM_PS_SET_MIX_PS (message)), (SM_PS_SET_MIX_MIX (message)));
   OS2_destroy_message (message);
   simple_reply (sender);
 }
@@ -1818,10 +2241,10 @@ OS2_ps_query_caps (psid_t psid, LONG start, LONG count, PLONG values)
 {
   ps_t * ps = (psid_to_ps (psid));
   msg_t * message = (OS2_create_message (mt_ps_query_caps));
-  (SM_QUERY_CAPS_PS (message)) = ps;
-  (SM_QUERY_CAPS_START (message)) = start;
-  (SM_QUERY_CAPS_COUNT (message)) = count;
-  (SM_QUERY_CAPS_VALUES (message)) = values;
+  (SM_PS_QUERY_CAPS_PS (message)) = ps;
+  (SM_PS_QUERY_CAPS_START (message)) = start;
+  (SM_PS_QUERY_CAPS_COUNT (message)) = count;
+  (SM_PS_QUERY_CAPS_VALUES (message)) = values;
   sync_transaction ((PS_QID (ps)), message);
 }
 
@@ -1829,31 +2252,130 @@ static void
 handle_ps_query_caps_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  query_caps ((SM_QUERY_CAPS_PS (message)),
-	      (SM_QUERY_CAPS_START (message)),
-	      (SM_QUERY_CAPS_COUNT (message)),
-	      (SM_QUERY_CAPS_VALUES (message)));
+  ps_query_caps ((SM_PS_QUERY_CAPS_PS (message)),
+		 (SM_PS_QUERY_CAPS_START (message)),
+		 (SM_PS_QUERY_CAPS_COUNT (message)),
+		 (SM_PS_QUERY_CAPS_VALUES (message)));
   OS2_destroy_message (message);
   sync_reply (sender);
 }
-
-void
-OS2_window_write (wid_t wid, short x, short y,
-		  const char * data, unsigned short size)
-{
-  OS2_ps_write ((OS2_window_client_ps (wid)), x, y, data, size);
-}
-
-font_metrics_t *
-OS2_window_set_font (wid_t wid, unsigned short id, const char * name)
-{
-  return (OS2_ps_set_font ((OS2_window_client_ps (wid)), id, name));
-}
 
 void
-OS2_window_clear (wid_t wid, short xl, short xh, short yl, short yh)
+OS2_ps_set_clip_rectangle (psid_t psid, PRECTL rectl)
 {
-  OS2_ps_clear ((OS2_window_client_ps (wid)), xl, xh, yl, yh);
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_set_clip_rectangle));
+  (SM_PS_SET_CLIP_RECTANGLE_PS (message)) = ps;
+  (SM_PS_SET_CLIP_RECTANGLE_RECTL (message)) = (* rectl);
+  simple_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_ps_set_clip_rectangle_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  ps_set_clip_rectangle ((SM_PS_SET_CLIP_RECTANGLE_PS (message)),
+			 (& (SM_PS_SET_CLIP_RECTANGLE_RECTL (message))));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_get_bitmap_parameters (bid_t bid, void * params)
+{
+  bitmap_t * bitmap = (bid_to_bitmap (bid));
+  msg_t * message = (OS2_create_message (mt_get_bitmap_parameters_request));
+  (SM_GET_BITMAP_PARAMETERS_REQUEST_BITMAP (message)) = bitmap;
+  message
+    = (OS2_message_transaction ((BITMAP_QID (bitmap)),
+				message,
+				mt_get_bitmap_parameters_reply));
+  (* ((PBITMAPINFOHEADER2) params))
+    = (SM_GET_BITMAP_PARAMETERS_REPLY_PARAMS (message));
+  OS2_destroy_message (message);
+}
+
+static void
+handle_get_bitmap_parameters_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_get_bitmap_parameters_reply));
+  get_bitmap_parameters ((SM_GET_BITMAP_PARAMETERS_REQUEST_BITMAP (request)),
+			 (& (SM_GET_BITMAP_PARAMETERS_REPLY_PARAMS (reply))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+unsigned long
+OS2_ps_get_bitmap_bits (psid_t psid, unsigned long start, unsigned long length,
+			void * data, void * info)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_get_bitmap_bits_request));
+  unsigned long n;
+  (SM_PS_GET_BITMAP_BITS_REQUEST_PS (message)) = ps;
+  (SM_PS_GET_BITMAP_BITS_REQUEST_START (message)) = start;
+  (SM_PS_GET_BITMAP_BITS_REQUEST_LENGTH (message)) = length;
+  (SM_PS_GET_BITMAP_BITS_REQUEST_DATA (message)) = data;
+  (SM_PS_GET_BITMAP_BITS_REQUEST_INFO (message)) = info;
+  message
+    = (OS2_message_transaction ((PS_QID (ps)),
+				message,
+				mt_ps_get_bitmap_bits_reply));
+  n = (SM_PS_GET_BITMAP_BITS_REPLY_LENGTH (message));
+  OS2_destroy_message (message);
+  return (n);
+}
+
+static void
+handle_ps_get_bitmap_bits_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_ps_get_bitmap_bits_reply));
+  (SM_PS_GET_BITMAP_BITS_REPLY_LENGTH (reply))
+    = (ps_get_bitmap_bits ((SM_PS_GET_BITMAP_BITS_REQUEST_PS (request)),
+			   (SM_PS_GET_BITMAP_BITS_REQUEST_START (request)),
+			   (SM_PS_GET_BITMAP_BITS_REQUEST_LENGTH (request)),
+			   (SM_PS_GET_BITMAP_BITS_REQUEST_DATA (request)),
+			   (SM_PS_GET_BITMAP_BITS_REQUEST_INFO (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+unsigned long
+OS2_ps_set_bitmap_bits (psid_t psid, unsigned long start, unsigned long length,
+			void * data, void * info)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_set_bitmap_bits_request));
+  unsigned long n;
+  (SM_PS_SET_BITMAP_BITS_REQUEST_PS (message)) = ps;
+  (SM_PS_SET_BITMAP_BITS_REQUEST_START (message)) = start;
+  (SM_PS_SET_BITMAP_BITS_REQUEST_LENGTH (message)) = length;
+  (SM_PS_SET_BITMAP_BITS_REQUEST_DATA (message)) = data;
+  (SM_PS_SET_BITMAP_BITS_REQUEST_INFO (message)) = info;
+  message
+    = (OS2_message_transaction ((PS_QID (ps)),
+				message,
+				mt_ps_set_bitmap_bits_reply));
+  n = (SM_PS_SET_BITMAP_BITS_REPLY_LENGTH (message));
+  OS2_destroy_message (message);
+  return (n);
+}
+
+static void
+handle_ps_set_bitmap_bits_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_ps_set_bitmap_bits_reply));
+  (SM_PS_SET_BITMAP_BITS_REPLY_LENGTH (reply))
+    = (ps_set_bitmap_bits ((SM_PS_SET_BITMAP_BITS_REQUEST_PS (request)),
+			   (SM_PS_SET_BITMAP_BITS_REQUEST_START (request)),
+			   (SM_PS_SET_BITMAP_BITS_REQUEST_LENGTH (request)),
+			   (SM_PS_SET_BITMAP_BITS_REQUEST_DATA (request)),
+			   (SM_PS_SET_BITMAP_BITS_REQUEST_INFO (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
 }
 
 static window_t * make_window (qid_t, qid_t);
@@ -1915,17 +2437,19 @@ make_window (qid_t qid, qid_t event_qid)
 {
   window_t * window = (OS_malloc (sizeof (window_t)));
   (WINDOW_FRAME (window)) = NULLHANDLE;
-  (WINDOW_ID (window)) = (allocate_id ((& wid_table), window));
   (WINDOW_CLIENT (window)) = NULLHANDLE;
   (WINDOW_CLIENT_PS (window)) = 0;
+  (WINDOW_GRID_X (window)) = 1;
+  (WINDOW_GRID_Y (window)) = 1;
   (WINDOW_CURSOR_X (window)) = 0;
   (WINDOW_CURSOR_Y (window)) = 0;
   (WINDOW_CURSOR_WIDTH (window)) = 0;
   (WINDOW_CURSOR_HEIGHT (window)) = 0;
   (WINDOW_CURSOR_STYLE (window)) = (CURSOR_SOLID | CURSOR_FLASH);
-  (WINDOW_CURSOR_SHOWNP (window)) = 0;
   (WINDOW_QID (window)) = qid;
   (WINDOW_EVENT_QID (window)) = event_qid;
+  (WINDOW_ID (window)) = (allocate_id ((& wid_table), window));
+  (WINDOW_CURSOR_SHOWNP (window)) = 0;
   (WINDOW_MINIMIZINGP (window)) = 0;
   (WINDOW_MINIMIZEDP (window)) = 0;
   (WINDOW_PERMANENTP (window)) = 0;
@@ -2151,46 +2675,71 @@ set_window_title (window_t * window, PSZ title)
     window_warning (WinSetWindowText);
 }
 
-static HDC create_memory_device (void);
-static HBITMAP create_bitmap (HPS, ULONG, ULONG);
-
-static psid_t
-open_bitmap_ps (qid_t qid, USHORT width, USHORT height)
-{
-  ps_t * ps = (make_ps ((create_memory_device ()), qid));
-  HBITMAP hbm = (create_bitmap ((PS_HANDLE (ps)), width, height));
-  if ((GpiSetBitmap ((PS_HANDLE (ps)), hbm)) == HBM_ERROR)
-    window_error (GpiSetBitmap);
-  (PS_BITMAP (ps)) = hbm;
-  return (PS_ID (ps));
-}
-
-static HDC
-create_memory_device (void)
+static ps_t *
+create_memory_ps (qid_t qid)
 {
   HDC hdc = (DevOpenDC (pm_hab, OD_MEMORY, "*", 0, 0, NULLHANDLE));
   if (hdc == DEV_ERROR)
     window_error (DevOpenDC);
-  return (hdc);
+  return (create_ps (pst_memory, hdc, qid));
 }
 
-static HBITMAP
-create_bitmap (HPS hps, ULONG width, ULONG height)
+static void
+destroy_memory_ps (ps_t * ps)
 {
+  HDC hdc = (get_ps_device (PS_HANDLE (ps)));
+  bitmap_t * bitmap = (PS_VISUAL (ps));
+  destroy_ps (ps);
+  if ((hdc != NULLHANDLE) && ((DevCloseDC (hdc)) == DEV_ERROR))
+    window_warning (DevCloseDC);
+  if (bitmap != 0)
+    destroy_bitmap (bitmap);
+}
+
+static bitmap_t *
+create_bitmap (ps_t * ps, USHORT width, USHORT height)
+{
+  HPS hps = (PS_HANDLE (ps));
   HDC hdc = (get_ps_device (hps));
   BITMAPINFOHEADER2 header;
+  HBITMAP hbm;
+  bitmap_t * bitmap;
+
   memset ((& header), 0, (sizeof (header)));
   (header . cbFix) = (sizeof (header));
   (header . cx) = width;
   (header . cy) = height;
   (header . cPlanes) = (get_device_capability (hdc, CAPS_COLOR_PLANES));
   (header . cBitCount) = (get_device_capability (hdc, CAPS_COLOR_BITCOUNT));
-  {
-    HBITMAP hbm = (GpiCreateBitmap (hps, (& header), 0, 0, 0));
-    if (hbm == GPI_ERROR)
-      window_error (GpiCreateBitmap);
-    return (hbm);
-  }
+  hbm = (GpiCreateBitmap (hps, (& header), 0, 0, 0));
+  if (hbm == GPI_ERROR)
+    window_error (GpiCreateBitmap);
+  bitmap = (OS_malloc (sizeof (bitmap_t)));
+  (BITMAP_ID (bitmap)) = (allocate_id ((& bid_table), bitmap));
+  (BITMAP_QID (bitmap)) = (PS_QID (ps));
+  (BITMAP_HANDLE (bitmap)) = hbm;
+  return (bitmap);
+}
+
+static void
+destroy_bitmap (bitmap_t * bitmap)
+{
+  if (!GpiDeleteBitmap (BITMAP_HANDLE (bitmap)))
+    window_warning (GpiDeleteBitmap);
+  deallocate_id ((& bid_table), (BITMAP_ID (bitmap)));
+  OS_free (bitmap);
+}
+
+static bitmap_t *
+ps_set_bitmap (ps_t * ps, bitmap_t * bitmap)
+{
+  bitmap_t * previous_bitmap = (PS_VISUAL (ps));
+  if ((GpiSetBitmap ((PS_HANDLE (ps)),
+		     ((bitmap == 0) ? 0 : (BITMAP_HANDLE (bitmap)))))
+      == HBM_ERROR)
+    window_error (GpiSetBitmap);
+  (PS_VISUAL (ps)) = bitmap;
+  return (previous_bitmap);
 }
 
 static HDC
@@ -2212,7 +2761,7 @@ get_device_capability (HDC hdc, LONG index)
 }
 
 static ps_t *
-make_ps (HDC hdc, qid_t qid)
+create_ps (pst_t type, HDC hdc, qid_t qid)
 {
   ps_t * ps = (OS_malloc (sizeof (ps_t)));
   SIZEL sizel;
@@ -2234,42 +2783,35 @@ make_ps (HDC hdc, qid_t qid)
   (PS_QID (ps)) = qid;
   (PS_FOREGROUND_COLOR (ps)) = (GpiQueryColor (hps));
   (PS_BACKGROUND_COLOR (ps)) = (GpiQueryBackColor (hps));
-  (PS_WINDOW (ps)) = 0;
-  (PS_BITMAP (ps)) = NULLHANDLE;
+  (PS_VISUAL_TYPE (ps)) = type;
+  (PS_VISUAL (ps)) = 0;
   return (ps);
 }
 
 static void
-close_ps (ps_t * ps)
+destroy_ps (ps_t * ps)
 {
-  HPS hps = (PS_HANDLE (ps));
-  HDC hdc = (get_ps_device (hps));
-  HBITMAP hbm = (PS_BITMAP (ps));
-  if (!GpiDestroyPS (hps))
+  if (!GpiDestroyPS (PS_HANDLE (ps)))
     window_warning (GpiDestroyPS);
-  if (hbm != 0)
-    {
-      if ((hdc != NULLHANDLE) && ((DevCloseDC (hdc)) == DEV_ERROR))
-	window_warning (DevCloseDC);
-      if (!GpiDeleteBitmap (hbm))
-	window_warning (GpiDeleteBitmap);
-    }
   deallocate_id ((& psid_table), (PS_ID (ps)));
   OS_free (ps);
 }
 
 static void
-bitblt_ps (ps_t * target, ps_t * source, LONG npoints, PPOINTL points,
+ps_bitblt (ps_t * target, ps_t * source, LONG npoints, PPOINTL points,
 	   LONG rop, ULONG options)
 {
+  maybe_deactivate_cursor (target);
   if ((GpiBitBlt ((PS_HANDLE (target)), (PS_HANDLE (source)), npoints, points,
 		  rop, options))
       == GPI_ERROR)
     window_warning (GpiBitBlt);
+  maybe_activate_cursor (target);
 }
 
 static void
-write_ps (ps_t * ps, short x, short y, const char * data, unsigned short size)
+ps_draw_text (ps_t * ps, short x, short y,
+	      const char * data, unsigned short size)
 {
   POINTL ptl;
   (ptl . x) = x;
@@ -2292,20 +2834,28 @@ write_ps (ps_t * ps, short x, short y, const char * data, unsigned short size)
   maybe_activate_cursor (ps);
 }
 
+static unsigned short
+ps_text_width (ps_t * ps, const char * data, unsigned short size)
+{
+  POINTL points [TXTBOX_COUNT];
+  if (!GpiQueryTextBox ((PS_HANDLE (ps)), size, ((char *) data),
+			TXTBOX_COUNT, points))
+    window_error (GpiQueryTextBox);
+  return ((points [TXTBOX_CONCAT]) . x);
+}
+
 static void
 maybe_activate_cursor (ps_t * ps)
 {
-  window_t * window = (PS_WINDOW (ps));
-  if (window != 0)
-    activate_cursor (window);
+  if ((PS_VISUAL_TYPE (ps)) == pst_window)
+    activate_cursor (PS_VISUAL (ps));
 }
 
 static void
 maybe_deactivate_cursor (ps_t * ps)
 {
-  window_t * window = (PS_WINDOW (ps));
-  if (window != 0)
-    deactivate_cursor (window);
+  if ((PS_VISUAL_TYPE (ps)) == pst_window)
+    deactivate_cursor (PS_VISUAL (ps));
 }
 
 static void
@@ -2318,7 +2868,7 @@ clear_rectangle (ps_t * ps, PRECTL rectl)
 }
 
 static void
-set_ps_colors (ps_t * ps, COLOR foreground, COLOR background)
+ps_set_colors (ps_t * ps, COLOR foreground, COLOR background)
 {
   if (!GpiSetColor ((PS_HANDLE (ps)), foreground))
     window_warning (GpiSetColor);
@@ -2333,7 +2883,7 @@ set_ps_colors (ps_t * ps, COLOR foreground, COLOR background)
 }
 
 static void
-move_gcursor (ps_t * ps, short x, short y)
+ps_move_gcursor (ps_t * ps, short x, short y)
 {
   POINTL ptl;
   (ptl . x) = x;
@@ -2343,7 +2893,7 @@ move_gcursor (ps_t * ps, short x, short y)
 }
 
 static void
-draw_line (ps_t * ps, short x, short y)
+ps_draw_line (ps_t * ps, short x, short y)
 {
   POINTL ptl;
   (ptl . x) = x;
@@ -2353,14 +2903,24 @@ draw_line (ps_t * ps, short x, short y)
 }
 
 static void
-poly_line (ps_t * ps, unsigned long npoints, PPOINTL points)
+ps_draw_point (ps_t * ps, short x, short y)
+{
+  POINTL ptl;
+  (ptl . x) = x;
+  (ptl . y) = y;
+  if ((GpiSetPel ((PS_HANDLE (ps)), (& ptl))) == GPI_ERROR)
+    window_warning (GpiSetPel);
+}
+
+static void
+ps_poly_line (ps_t * ps, unsigned long npoints, PPOINTL points)
 {
   if ((GpiPolyLine ((PS_HANDLE (ps)), npoints, points)) == GPI_ERROR)
     window_warning (GpiPolyLine);
 }
 
 static void
-poly_line_disjoint (ps_t * ps, unsigned long npoints, PPOINTL points)
+ps_poly_line_disjoint (ps_t * ps, unsigned long npoints, PPOINTL points)
 {
   if ((GpiPolyLineDisjoint ((PS_HANDLE (ps)), npoints, points))
       == GPI_ERROR)
@@ -2368,14 +2928,21 @@ poly_line_disjoint (ps_t * ps, unsigned long npoints, PPOINTL points)
 }
 
 static void
-set_line_type (ps_t * ps, LONG type)
+ps_set_line_type (ps_t * ps, LONG type)
 {
   if (!GpiSetLineType ((PS_HANDLE (ps)), type))
     window_warning (GpiSetLineType);
 }
 
 static void
-query_caps (ps_t * ps, LONG start, LONG count, PLONG values)
+ps_set_mix (ps_t * ps, LONG mix)
+{
+  if (!GpiSetMix ((PS_HANDLE (ps)), mix))
+    window_warning (GpiSetMix);
+}
+
+static void
+ps_query_caps (ps_t * ps, LONG start, LONG count, PLONG values)
 {
   HDC hdc = (get_ps_device (PS_HANDLE (ps)));
   if (hdc == NULLHANDLE)
@@ -2383,19 +2950,79 @@ query_caps (ps_t * ps, LONG start, LONG count, PLONG values)
   if (!DevQueryCaps (hdc, start, count, values))
     window_error (DevQueryCaps);
 }
+
+static void
+ps_set_clip_rectangle (ps_t * ps, PRECTL rectl)
+{
+  HPS hps = (PS_HANDLE (ps));
+  if (!GpiSetClipPath (hps, 0, SCP_RESET))
+    window_error (GpiSetClipPath);
+  if (rectl != 0)
+    {
+      if (!GpiBeginPath (hps, 1))
+	window_error (GpiBeginPath);
+      {
+	POINTL points [4];
+	((points[0]) . x) = (rectl -> xLeft);
+	((points[0]) . y) = (rectl -> yBottom);
+	((points[1]) . x) = (rectl -> xLeft);
+	((points[1]) . y) = (rectl -> yTop);
+	((points[2]) . x) = (rectl -> xRight);
+	((points[2]) . y) = (rectl -> yTop);
+	((points[3]) . x) = (rectl -> xRight);
+	((points[3]) . y) = (rectl -> yBottom);
+	if (!GpiMove (hps, (&points[3])))
+	  window_warning (GpiMove);
+	if ((GpiPolyLine (hps, 4, points)) == GPI_ERROR)
+	  window_warning (GpiPolyLine);
+      }
+      if (!GpiEndPath (hps))
+	window_error (GpiEndPath);
+      if (!GpiSetClipPath (hps, 1, (SCP_AND | SCP_INCL)))
+	window_error (GpiSetClipPath);
+    }
+}
+
+static void
+get_bitmap_parameters (bitmap_t * bitmap, PBITMAPINFOHEADER2 params)
+{
+  if (!GpiQueryBitmapParameters ((BITMAP_HANDLE (bitmap)),
+				 ((PBITMAPINFOHEADER) params)))
+    window_error (GpiQueryBitmapParameters);
+}
+
+static unsigned long
+ps_get_bitmap_bits (ps_t * ps, unsigned long start, unsigned long length,
+		    PBYTE data, PBITMAPINFO2 info)
+{
+  LONG r = (GpiQueryBitmapBits ((PS_HANDLE (ps)), start, length, data, info));
+  if (r < 0)
+    window_error (GpiQueryBitmapBits);
+  return (r);
+}
+
+static unsigned long
+ps_set_bitmap_bits (ps_t * ps, unsigned long start, unsigned long length,
+		    PBYTE data, PBITMAPINFO2 info)
+{
+  LONG r = (GpiSetBitmapBits ((PS_HANDLE (ps)), start, length, data, info));
+  if (r < 0)
+    window_error (GpiSetBitmapBits);
+  return (r);
+}
 
 static int parse_font_spec (const char *, PSZ *, LONG *, USHORT *);
-static int set_font_1 (HPS, PSZ, LONG, USHORT, LONG);
+static int ps_set_font_1 (HPS, PSZ, LONG, USHORT, LONG);
 
 static font_metrics_t *
-set_font (ps_t * ps, unsigned short id, const char * spec)
+ps_set_font (ps_t * ps, unsigned short id, const char * spec)
 {
   PSZ name = 0;
   LONG size;
   USHORT selection;
   if (!parse_font_spec (spec, (& name), (& size), (& selection)))
     return (0);
-  if (!set_font_1 ((PS_HANDLE (ps)), name, size, selection, id))
+  if (!ps_set_font_1 ((PS_HANDLE (ps)), name, size, selection, id))
     {
       OS_free (name);
       return (0);
@@ -2450,7 +3077,7 @@ parse_font_spec (const char * spec,
 static int create_font (HPS, LONG, PFONTMETRICS, USHORT);
 
 static int
-set_font_1 (HPS hps, PSZ name, LONG size, USHORT selection, LONG id)
+ps_set_font_1 (HPS hps, PSZ name, LONG size, USHORT selection, LONG id)
 {
   LONG nfonts;
   ULONG index;
@@ -2575,8 +3202,10 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
 	  window_error (WinSetWindowPtr);
 	(WINDOW_CLIENT (window)) = hwnd;
 	(WINDOW_CLIENT_PS (window))
-	  = (make_ps ((WinOpenWindowDC (hwnd)), (WINDOW_QID (window))));
-	(PS_WINDOW (WINDOW_CLIENT_PS (window))) = window;
+	  = (create_ps (pst_window,
+			(WinOpenWindowDC (hwnd)),
+			(WINDOW_QID (window))));
+	(PS_VISUAL (WINDOW_CLIENT_PS (window))) = window;
 	return (MRFALSE);
       }
     case WM_PAINT:
@@ -2676,7 +3305,7 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
     case WM_DESTROY:
       {
 	window_t * window = (hwnd_to_window (hwnd));
-	close_ps (WINDOW_CLIENT_PS (window));
+	destroy_ps (WINDOW_CLIENT_PS (window));
 	(WINDOW_CLIENT_PS (window)) = 0;
 	return (MRVOID);
       }

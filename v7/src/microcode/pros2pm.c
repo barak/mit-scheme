@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.3 1995/02/08 01:19:57 cph Exp $
+$Id: pros2pm.c,v 1.4 1995/02/14 00:25:34 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -35,6 +35,7 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #define INCL_WIN
+#define INCL_GPI
 #include "os2.h"
 
 static PPOINTL coordinate_vector_point_args
@@ -51,6 +52,24 @@ qid_argument (unsigned int arg_number)
   return (qid);
 }
 
+static psid_t
+psid_argument (unsigned int arg_number)
+{
+  unsigned long result = (arg_nonnegative_integer (arg_number));
+  if (!OS2_psid_validp (result))
+    error_bad_range_arg (arg_number);
+  return (result);
+}
+
+static psid_t
+memory_psid_argument (unsigned int arg_number)
+{
+  psid_t psid = (psid_argument (arg_number));
+  if (!OS2_memory_ps_p (psid))
+    error_bad_range_arg (arg_number);
+  return (psid);
+}
+
 static wid_t
 wid_argument (unsigned int arg_number)
 {
@@ -60,11 +79,11 @@ wid_argument (unsigned int arg_number)
   return (result);
 }
 
-static psid_t
-psid_argument (unsigned int arg_number)
+static bid_t
+bid_argument (unsigned int arg_number)
 {
   unsigned long result = (arg_nonnegative_integer (arg_number));
-  if (!OS2_psid_validp (result))
+  if (!OS2_bid_validp (result))
     error_bad_range_arg (arg_number);
   return (result);
 }
@@ -114,16 +133,6 @@ DEFINE_PRIMITIVE ("OS2WIN-OPEN", Prim_OS2_window_open, 2, 2, 0)
 				       (OS2_qid_twin (qid_argument (1))),
 				       0,
 				       (STRING_ARG (2)))));
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-OPEN-1", Prim_OS2_window_open_1, 3, 3, 0)
-{
-  PRIMITIVE_HEADER (3);
-  PRIMITIVE_RETURN
-    (long_to_integer (OS2_window_open (pm_qid,
-				       (OS2_qid_twin (qid_argument (1))),
-				       (arg_nonnegative_integer (2)),
-				       (STRING_ARG (3)))));
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-CLOSE", Prim_OS2_window_close, 1, 1, 0)
@@ -284,186 +293,51 @@ DEFINE_PRIMITIVE ("OS2WIN-SET-TITLE", Prim_OS2_window_set_title, 2, 2, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("OS2WIN-WRITE", Prim_OS2_window_write, 6, 6, 0)
-{
-  PRIMITIVE_HEADER (6);
-  CHECK_ARG (4, STRING_P);
-  {
-    SCHEME_OBJECT string = (ARG_REF (4));
-    unsigned long start = (arg_nonnegative_integer (5));
-    unsigned long end = (arg_nonnegative_integer (6));
-    if (end > (STRING_LENGTH (string)))
-      error_bad_range_arg (6);
-    if (start > end)
-      error_bad_range_arg (5);
-    OS2_ps_write ((OS2_window_client_ps (wid_argument (1))),
-		  (COORDINATE_ARG (2)),
-		  (COORDINATE_ARG (3)),
-		  (STRING_LOC (string, start)),
-		  (end - start));
-  }
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-SET-FONT", Prim_OS2_window_set_font, 3, 3, 0)
-{
-  PRIMITIVE_HEADER (3);
-  {
-    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 3, 1));
-    font_metrics_t * m
-      = (OS2_ps_set_font ((OS2_window_client_ps (wid_argument (1))),
-			  (USHORT_ARG (2)),
-			  (STRING_ARG (3))));
-    if (m == 0)
-      PRIMITIVE_RETURN (SHARP_F);
-    VECTOR_SET (result, 0, (long_to_integer (FONT_METRICS_WIDTH (m))));
-    VECTOR_SET (result, 1, (long_to_integer (FONT_METRICS_HEIGHT (m))));
-    VECTOR_SET (result, 2, (long_to_integer (FONT_METRICS_DESCENDER (m))));
-    OS_free (m);
-    PRIMITIVE_RETURN (result);
-  }
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-CLEAR", Prim_OS2_window_clear, 5, 5, 0)
-{
-  PRIMITIVE_HEADER (5);
-  OS2_ps_clear ((OS2_window_client_ps (wid_argument (1))),
-		(COORDINATE_ARG (2)),
-		(COORDINATE_ARG (3)),
-		(COORDINATE_ARG (4)),
-		(COORDINATE_ARG (5)));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-SET-COLORS", Prim_OS2_window_set_colors, 3, 3, 0)
-{
-  PRIMITIVE_HEADER (3);
-  OS2_ps_set_colors ((OS2_window_client_ps (wid_argument (1))),
-		     (arg_index_integer (2, 0x1000000)),
-		     (arg_index_integer (3, 0x1000000)));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-MOVE-GRAPHICS-CURSOR", Prim_OS2_window_move_gcursor, 3, 3, 0)
-{
-  PRIMITIVE_HEADER (3);
-  OS2_ps_move_gcursor ((OS2_window_client_ps (wid_argument (1))),
-		       (COORDINATE_ARG (2)),
-		       (COORDINATE_ARG (3)));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-LINE", Prim_OS2_window_line, 3, 3, 0)
-{
-  PRIMITIVE_HEADER (3);
-  OS2_ps_line ((OS2_window_client_ps (wid_argument (1))),
-	       (COORDINATE_ARG (2)),
-	       (COORDINATE_ARG (3)));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-POLY-LINE", Prim_OS2_window_poly_line, 3, 3, 0)
-{
-  PRIMITIVE_HEADER (3);
-  {
-    void * position = dstack_position;
-    unsigned long npoints;
-    PPOINTL points = (coordinate_vector_point_args (2, 3, (& npoints)));
-    OS2_ps_poly_line ((OS2_window_client_ps (wid_argument (1))),
-		      npoints,
-		      points);
-    dstack_set_position (position);
-  }
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-POLY-LINE-DISJOINT", Prim_OS2_window_poly_line_disjoint, 3, 3, 0)
-{
-  PRIMITIVE_HEADER (3);
-  {
-    void * position = dstack_position;
-    unsigned long npoints;
-    PPOINTL points = (coordinate_vector_point_args (2, 3, (& npoints)));
-    OS2_ps_poly_line_disjoint ((OS2_window_client_ps (wid_argument (1))),
-			       npoints,
-			       points);
-    dstack_set_position (position);
-  }
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-SET-LINE-TYPE", Prim_OS2_window_set_line_type, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    long type = (arg_integer (2));
-    if (! (((-1) <= type) && (type <= 9)))
-      error_bad_range_arg (2);
-    OS2_ps_set_line_type ((OS2_window_client_ps (wid_argument (1))), type);
-  }
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-QUERY-CAPABILITIES", Prim_OS2_window_query_caps, 3, 3, 0)
-{
-  PRIMITIVE_HEADER (3);
-  {
-    LONG count = (arg_nonnegative_integer (3));
-    PLONG values = (OS_malloc (count * (sizeof (LONG))));
-    OS2_ps_query_caps ((OS2_window_client_ps (wid_argument (1))),
-		       (arg_nonnegative_integer (2)),
-		       count,
-		       values);
-    {
-      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, count, 1));
-      LONG index = 0;
-      while (index < count)
-	{
-	  VECTOR_SET (v, index, (long_to_integer (values [index])));
-	  index += 1;
-	}
-      OS_free (values);
-      PRIMITIVE_RETURN (v);
-    }
-  }
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-QUERY-CAPABILITY", Prim_OS2_window_query_cap, 2, 2, 0)
-{
-  LONG values [1];
-  PRIMITIVE_HEADER (2);
-  OS2_ps_query_caps ((OS2_window_client_ps (wid_argument (1))),
-		     (arg_nonnegative_integer (2)),
-		     1,
-		     values);
-  PRIMITIVE_RETURN (long_to_integer (values [0]));
-}
-
 DEFINE_PRIMITIVE ("OS2WIN-PS", Prim_OS2_window_ps, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN (long_to_integer (OS2_window_client_ps (wid_argument (1))));
 }
 
-DEFINE_PRIMITIVE ("OS2PS-OPEN-BITMAP", Prim_OS2_ps_open_bitmap, 2, 2, 0)
+DEFINE_PRIMITIVE ("OS2PS-CREATE-MEMORY-PS", Prim_OS2_create_memory_ps, 0, 0, 0)
 {
-  PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN
-    (long_to_integer (OS2_open_bitmap_ps (pm_qid,
-					  (USHORT_ARG (1)),
-					  (USHORT_ARG (2)))));
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (long_to_integer (OS2_create_memory_ps (pm_qid)));
 }
 
-DEFINE_PRIMITIVE ("OS2PS-CLOSE-BITMAP", Prim_OS2_ps_close_bitmap, 1, 1, 0)
+DEFINE_PRIMITIVE ("OS2PS-DESTROY-MEMORY-PS", Prim_OS2_destroy_memory_ps, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  {
-    psid_t psid = (psid_argument (1));
-    if (!OS2_bitmap_ps_p (psid))
-      error_bad_range_arg (1);
-    OS2_close_bitmap_ps (psid);
-  }
+  OS2_destroy_memory_ps (memory_psid_argument (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-CREATE-BITMAP", Prim_OS2_create_bitmap, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS2_create_bitmap ((psid_argument (1)),
+					 (USHORT_ARG (2)),
+					 (USHORT_ARG (3)))));
+}
+
+DEFINE_PRIMITIVE ("OS2PS-DESTROY-BITMAP", Prim_OS2_destroy_bitmap, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS2_destroy_bitmap (bid_argument (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-SET-BITMAP", Prim_OS2_ps_set_bitmap, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    bid_t bid
+      = (OS2_ps_set_bitmap
+	 ((memory_psid_argument (1)),
+	  (((ARG_REF (2)) == SHARP_F) ? BID_NONE : (bid_argument (2)))));
+    PRIMITIVE_RETURN ((bid == BID_NONE) ? SHARP_F : (long_to_integer (bid)));
+  }
 }
 
 DEFINE_PRIMITIVE ("OS2PS-BITBLT", Prim_OS2_ps_bitblt, 6, 6, 0)
@@ -497,13 +371,33 @@ DEFINE_PRIMITIVE ("OS2PS-WRITE", Prim_OS2_ps_write, 6, 6, 0)
       error_bad_range_arg (6);
     if (start > end)
       error_bad_range_arg (5);
-    OS2_ps_write ((psid_argument (1)),
-		  (COORDINATE_ARG (2)),
-		  (COORDINATE_ARG (3)),
-		  (STRING_LOC (string, start)),
-		  (end - start));
+    OS2_ps_draw_text ((psid_argument (1)),
+		      (COORDINATE_ARG (2)),
+		      (COORDINATE_ARG (3)),
+		      (STRING_LOC (string, start)),
+		      (end - start));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-TEXT-WIDTH", Prim_OS2_ps_text_width, 4, 4, 0)
+{
+  PRIMITIVE_HEADER (4);
+  CHECK_ARG (2, STRING_P);
+  {
+    SCHEME_OBJECT string = (ARG_REF (2));
+    unsigned long start = (arg_nonnegative_integer (3));
+    unsigned long end = (arg_nonnegative_integer (4));
+    if (end > (STRING_LENGTH (string)))
+      error_bad_range_arg (4);
+    if (start > end)
+      error_bad_range_arg (3);
+    PRIMITIVE_RETURN
+      (long_to_integer
+       (OS2_ps_text_width ((psid_argument (1)),
+			   (STRING_LOC (string, start)),
+			   (end - start))));
+  }
 }
 
 DEFINE_PRIMITIVE ("OS2PS-SET-FONT", Prim_OS2_ps_set_font, 3, 3, 0)
@@ -557,9 +451,18 @@ DEFINE_PRIMITIVE ("OS2PS-MOVE-GRAPHICS-CURSOR", Prim_OS2_ps_move_gcursor, 3, 3, 
 DEFINE_PRIMITIVE ("OS2PS-LINE", Prim_OS2_ps_line, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-  OS2_ps_line ((psid_argument (1)),
-	       (COORDINATE_ARG (2)),
-	       (COORDINATE_ARG (3)));
+  OS2_ps_draw_line ((psid_argument (1)),
+		    (COORDINATE_ARG (2)),
+		    (COORDINATE_ARG (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-DRAW-POINT", Prim_OS2_ps_draw_point, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  OS2_ps_draw_point ((psid_argument (1)),
+		     (COORDINATE_ARG (2)),
+		     (COORDINATE_ARG (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -634,12 +537,14 @@ coordinate_vector_point_args (unsigned int x_no, unsigned int y_no,
 DEFINE_PRIMITIVE ("OS2PS-SET-LINE-TYPE", Prim_OS2_ps_set_line_type, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  {
-    long type = (arg_integer (2));
-    if (! (((-1) <= type) && (type <= 9)))
-      error_bad_range_arg (2);
-    OS2_ps_set_line_type ((psid_argument (1)), type);
-  }
+  OS2_ps_set_line_type ((psid_argument (1)), (arg_index_integer (2, 10)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-SET-MIX", Prim_OS2_ps_set_mix, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  OS2_ps_set_mix ((psid_argument (1)), (arg_index_integer (2, 18)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -676,6 +581,63 @@ DEFINE_PRIMITIVE ("OS2PS-QUERY-CAPABILITY", Prim_OS2_ps_query_cap, 2, 2, 0)
 		     1,
 		     values);
   PRIMITIVE_RETURN (long_to_integer (values [0]));
+}
+
+DEFINE_PRIMITIVE ("OS2PS-RESET-CLIP-RECTANGLE", Prim_OS2_ps_reset_clip_rectangle, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS2_ps_set_clip_rectangle ((psid_argument (1)), 0);
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-SET-CLIP-RECTANGLE", Prim_OS2_ps_set_clip_rectangle, 5, 5, 0)
+{
+  PRIMITIVE_HEADER (5);
+  {
+    RECTL rectl;
+    (rectl . xLeft) = (COORDINATE_ARG (2));
+    (rectl . xRight) = (COORDINATE_ARG (3));
+    (rectl . yBottom) = (COORDINATE_ARG (4));
+    (rectl . yTop) = (COORDINATE_ARG (5));
+    OS2_ps_set_clip_rectangle ((psid_argument (1)), (& rectl));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-GET-BITMAP-PARAMETERS", Prim_OS2_ps_get_bitmap_parameters, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    SCHEME_OBJECT s = (allocate_string (sizeof (BITMAPINFOHEADER2)));
+    PBITMAPINFOHEADER2 params = ((PBITMAPINFOHEADER2) (STRING_LOC (s, 0)));
+    (params -> cbFix) = (sizeof (BITMAPINFOHEADER2));
+    OS2_get_bitmap_parameters ((bid_argument (1)), params);
+    PRIMITIVE_RETURN (s);
+  }
+}
+
+DEFINE_PRIMITIVE ("OS2PS-GET-BITMAP-BITS", Prim_OS2_ps_get_bitmap_bits, 5, 5, 0)
+{
+  PRIMITIVE_HEADER (5);
+  PRIMITIVE_RETURN
+    (long_to_integer
+     (OS2_ps_get_bitmap_bits ((memory_psid_argument (1)),
+			      (arg_nonnegative_integer (2)),
+			      (arg_nonnegative_integer (3)),
+			      (STRING_ARG (4)),
+			      (STRING_ARG (5)))));
+}
+
+DEFINE_PRIMITIVE ("OS2PS-SET-BITMAP-BITS", Prim_OS2_ps_set_bitmap_bits, 5, 5, 0)
+{
+  PRIMITIVE_HEADER (5);
+  PRIMITIVE_RETURN
+    (long_to_integer
+     (OS2_ps_set_bitmap_bits ((memory_psid_argument (1)),
+			      (arg_nonnegative_integer (2)),
+			      (arg_nonnegative_integer (3)),
+			      (STRING_ARG (4)),
+			      (STRING_ARG (5)))));
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-OPEN-EVENT-QID", Prim_OS2_window_open_event_qid, 0, 0, 0)

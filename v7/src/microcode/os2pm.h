@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.h,v 1.4 1995/02/08 01:19:42 cph Exp $
+$Id: os2pm.h,v 1.5 1995/02/14 00:25:15 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -35,8 +35,14 @@ MIT in each case. */
 #ifndef SCM_OS2PM_H
 #define SCM_OS2PM_H
 
-typedef unsigned short wid_t;
 typedef unsigned short psid_t;
+#define PSID_NONE 0
+
+typedef unsigned short wid_t;
+#define WID_NONE 0
+
+typedef unsigned short bid_t;
+#define BID_NONE 0
 
 typedef struct
 {
@@ -153,7 +159,10 @@ typedef enum
 extern msg_t * OS2_read_pm_tqueue (tqueue_t *, int);
 extern void OS2_write_pm_tqueue (tqueue_t *, msg_t *);
 
+extern int OS2_psid_validp (psid_t);
 extern int OS2_wid_validp (wid_t);
+extern int OS2_bid_validp (bid_t);
+
 extern psid_t OS2_window_client_ps (wid_t);
 extern qid_t OS2_create_pm_qid (tqueue_t *);
 extern wid_t OS2_window_open (qid_t, qid_t, unsigned long, const char *);
@@ -178,27 +187,31 @@ extern int OS2_window_focusp (wid_t);
 extern void OS2_window_set_state (wid_t, window_state_t);
 extern void OS2_window_set_title (wid_t, const char *);
 
-extern int OS2_psid_validp (psid_t);
-extern psid_t OS2_window_client_ps (wid_t);
-extern psid_t OS2_open_bitmap_ps (qid_t, USHORT, USHORT);
-extern int OS2_bitmap_ps_p (psid_t);
-extern void OS2_close_bitmap_ps (psid_t);
+extern psid_t OS2_create_memory_ps (qid_t);
+extern void OS2_destroy_memory_ps (psid_t);
+extern int OS2_memory_ps_p (psid_t);
+extern bid_t OS2_create_bitmap (psid_t, USHORT, USHORT);
+extern void OS2_destroy_bitmap (bid_t);
+extern bid_t OS2_ps_set_bitmap (psid_t, bid_t);
 extern void OS2_ps_bitblt (psid_t, psid_t, LONG, PPOINTL, LONG, ULONG);
-extern void OS2_ps_write (psid_t, short, short, const char *, unsigned short);
+extern void OS2_ps_draw_text
+  (psid_t, short, short, const char *, unsigned short);
 extern font_metrics_t * OS2_ps_set_font (psid_t, unsigned short, const char *);
 extern void OS2_ps_clear (psid_t, short, short, short, short);
 extern void OS2_ps_set_colors (psid_t, COLOR, COLOR);
 extern void OS2_ps_move_gcursor (psid_t, short, short);
-extern void OS2_ps_line (psid_t, short, short);
+extern void OS2_ps_draw_line (psid_t, short, short);
+extern void OS2_ps_draw_point (psid_t, short, short);
 extern void OS2_ps_poly_line (psid_t, unsigned long, PPOINTL);
 extern void OS2_ps_poly_line_disjoint (psid_t, unsigned long, PPOINTL);
 extern void OS2_ps_set_line_type (psid_t, LONG);
+extern void OS2_ps_set_mix (psid_t, LONG);
 extern void OS2_ps_query_caps (psid_t, LONG, LONG, PLONG);
-
-extern void OS2_window_write
-  (wid_t, short, short, const char *, unsigned short);
-extern font_metrics_t * OS2_window_set_font
-  (wid_t, unsigned short, const char *);
-extern void OS2_window_clear (wid_t, short, short, short, short);
+extern void OS2_ps_set_clip_rectangle (psid_t, PRECTL);
+extern void OS2_get_bitmap_parameters (bid_t, void *);
+extern unsigned long OS2_ps_get_bitmap_bits
+  (psid_t, unsigned long, unsigned long, void *, void *);
+extern unsigned long OS2_ps_set_bitmap_bits
+  (psid_t, unsigned long, unsigned long, void *, void *);
 
 #endif /* SCM_OS2PM_H */
