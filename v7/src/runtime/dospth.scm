@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.34 1996/02/28 23:30:20 cph Exp $
+$Id: dospth.scm,v 1.35 1996/02/29 22:11:54 cph Exp $
 
 Copyright (c) 1992-96 Massachusetts Institute of Technology
 
@@ -124,8 +124,8 @@ MIT in each case. |#
 	  ((#\$)
 	   (let ((value (get-environment-variable (string-tail string 1))))
 	     (if (not value)
-		 components
-		 (replace-head value))))
+		 (error "Unbound environment variable:" name))
+	     (replace-head value)))
 	  ((#\~)
 	   (replace-head
 	    (->namestring
@@ -150,8 +150,9 @@ MIT in each case. |#
 	(else directory)))
 
 (define (parse-directory-components components)
-  (map parse-directory-component
-       (list-transform-negative components string-null?)))
+  (if (there-exists? components string-null?)
+      (error "Directory contains null component:" components))
+  (map parse-directory-component components))
 
 (define (parse-directory-component component)
   (if (string=? ".." component)
