@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.6 1993/08/30 19:50:01 ziggy Exp $
+$Id: ed-ffi.scm,v 1.7 1993/08/30 23:01:05 ziggy Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -53,8 +53,6 @@ MIT in each case. |#
     ("char"	(runtime character)
 		syntax-table/system-internal)
     ("chrset"	(runtime character-set)
-		syntax-table/system-internal)
-    ("coblprof" (runtime pc-sample  code-block-profiling)
 		syntax-table/system-internal)
     ("codwlk"	(runtime scode-walker)
 		syntax-table/system-internal)
@@ -127,8 +125,6 @@ MIT in each case. |#
 		syntax-table/system-internal)
     ("io"	(runtime primitive-io)
 		syntax-table/system-internal)
-    ("iproprof" (runtime pc-sample interp-proc-profiling)
-		syntax-table/system-internal)
     ("krypt"	(runtime krypt)
 		syntax-table/system-internal)
     ("lambda"	(runtime lambda-abstraction)
@@ -161,7 +157,11 @@ MIT in each case. |#
 		syntax-table/system-internal)
     ("pcsample" (runtime pc-sample)
 		syntax-table/system-internal)
+    ("pcscobl"  (runtime pc-sample  code-blocks)
+		syntax-table/system-internal)
     ("pcsdisp"  (runtime pc-sample display)
+		syntax-table/system-internal)
+    ("pcsiproc" (runtime pc-sample interp-procs)
 		syntax-table/system-internal)
     ("poplat"	(runtime population)
 		syntax-table/system-internal)
