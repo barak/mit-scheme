@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/stream.scm,v 14.2 1988/12/30 06:43:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/stream.scm,v 14.3 1989/05/10 08:51:11 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -115,11 +115,15 @@ MIT in each case. |#
 (define-integrable (empty-stream? stream)
   (stream-null? stream))
 
-(define-integrable (head stream)
-  (stream-car stream))
+(define (head stream)
+  (if (stream-pair? stream)
+      (stream-car stream)
+      (error "head: not a proper stream" stream)))
 
-(define-integrable (tail stream)
-  (stream-cdr stream))
+(define (tail stream)
+  (if (stream-pair? stream)
+      (stream-cdr stream)
+      (error "tail: not a proper stream" stream)))
 
 (define prime-numbers-stream)
 
