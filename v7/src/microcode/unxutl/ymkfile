@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.26 1990/07/28 18:57:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.27 1990/08/08 20:22:41 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -175,7 +175,8 @@ GC_HEAD_FILES = gccode.h cmpgc.h cmpint-vax.h
 MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
 MACHINE_SOURCES = cmpint.c cmpaux-hppa.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-hppa.o
-GC_HEAD_FILES = gccode.h cmpgc.h cmpint-hppa.h
+GC_HEAD_FILES = gccode.h cmpgc.h cmpint-hppa.h hppacache.h
+XTRA_TARGETS = HPPACACHE
 #endif /* PROC_TYPE_HPPA */
 
 #if (PROC_TYPE == PROC_TYPE_MIPS)
@@ -445,7 +446,7 @@ BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS
 
 /* Construction rules. */
 
-all: Psbtobin scheme
+all: Psbtobin scheme $(XTRA_TARGETS)
 
 scheme xscheme : $(OBJECTS) $(SCHEME_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
@@ -533,6 +534,14 @@ float.h : hard-params
 	-./hard-params -f > float.h
 hard-params : hard-params.c
 	$(CC) -DNO_SC $(LDFLAGS) -o hard-params hard-params.c
+
+HPPACACHE : hppacache
+	chgrp sys hppacache
+	chmod g+s hppacache
+	./hppacache -dump
+
+hppacache : hppacache.c hppacache.h
+	$(CC) -DC_SCHEME -o hppacache hppacache.c
 
 lint.out : $(SOURCES) $(SCHEME_SOURCES) $(CSRC) usrdef.c $(HEAD_FILES)
 	rm -f lint.out
