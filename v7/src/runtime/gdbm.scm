@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: gdbm.scm,v 1.5 2003/02/14 18:28:32 cph Exp $
+$Id: gdbm.scm,v 1.6 2003/07/21 03:19:25 cph Exp $
 
-Copyright (c) 1996, 1999, 2000 Massachusetts Institute of Technology
+Copyright 1996,1999,2000,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,8 +28,19 @@ USA.
 
 (declare (usual-integrations))
 
+(define gdbm-initialized? #f)
+(define gdbf-finalizer)
+
 (define (gdbm-available?)
-  (implemented-primitive-procedure? (ucode-primitive gdbm-open 4)))
+  (load-library-object-file "prgdbm" #f)
+  (and (implemented-primitive-procedure? (ucode-primitive gdbm-open 4))
+       (begin
+	 (if (not gdbm-initialized?)
+	     (begin
+	       (set! gdbf-finalizer
+		     (make-gc-finalizer (ucode-primitive gdbm-close 1)))
+	       (set! gdbm-initialized? #t)))
+	 #t)))
 
 ;; Parameters to gdbm_open for READERS, WRITERS, and WRITERS who can
 ;; create the database.
@@ -40,6 +51,8 @@ USA.
 (define GDBM_FAST    16)	;Write fast! => No fsyncs.
 
 (define (gdbm-open filename block-size flags mode)
+  (if (not (gdbm-available?))
+      (error "No gdbm support in this sytem."))
   (let ((filename (->namestring (merge-pathnames filename))))
     (without-interrupts
      (lambda ()
@@ -122,8 +135,3 @@ USA.
 (define (gdbm-error object)
   (if (string? object) (error "gdbm error:" object))
   object)
-
-(define gdbf-finalizer)
-(define (initialize-package!)
-  (set! gdbf-finalizer (make-gc-finalizer (ucode-primitive gdbm-close 1)))
-  unspecific)
