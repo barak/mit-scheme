@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.5 1990/08/09 04:24:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.6 1990/08/17 23:28:46 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -368,9 +368,6 @@ do {									\
 #define STORE_EXECUTE_CACHE_ADDRESS(address, entry)			\
 {									\
   STORE_ABSOLUTE_ADDRESS (entry, address);				\
-  cacheflush (address,							\
-	      ((sizeof (long)) * (EXECUTE_CACHE_ENTRY_SIZE - 1)),	\
-	      ICACHE);							\
 }
 
 /* This stores the fixed part of the instructions leaving the
@@ -390,7 +387,8 @@ do {									\
   *opcode_addr = (ADDI_OPCODE << 2);					\
 }
 
-/* This flushed the I-cache after a GC or disk-restore.
+/* This flushes the Scheme portion of the I-cache.
+   It is used after a GC or disk-restore.
    It's needed because the GC has moved code around, and closures
    and execute cache cells have absolute addresses that the
    processor might have old copies of.
@@ -410,6 +408,19 @@ do									\
   cacheflush (Stack_Pointer,						\
 	      ((sizeof(SCHEME_OBJECT)) *				\
 	       (Stack_Top - Stack_Pointer)),				\
+	      ICACHE);							\
+} while (0)
+
+
+/* This flushes a region of the I-cache.
+   It is used after updating an execute cache while running.
+   Not needed during GC because FLUSH_I_CACHE will be used.
+ */   
+
+#define FLUSH_I_CACHE_REGION(address, nwords)				\
+do {									\
+  cacheflush ((address),						\
+	      ((sizeof (long)) * (nwords)),				\
 	      ICACHE);							\
 } while (0)
 
