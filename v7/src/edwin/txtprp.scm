@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: txtprp.scm,v 1.20 2000/03/23 03:19:23 cph Exp $
+;;; $Id: txtprp.scm,v 1.21 2001/01/24 04:24:23 cph Exp $
 ;;;
-;;; Copyright (c) 1993-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1993-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -23,12 +23,15 @@
 
 (declare (usual-integrations))
 
-(define (add-text-property group start end key datum)
+(define (add-text-property group start end key datum #!optional no-overwrite?)
   (validate-region-arguments group start end 'ADD-TEXT-PROPERTY)
   (validate-symbol-argument key 'ADD-TEXT-PROPERTY)
   (modify-text-properties group start end
-    (lambda (properties)
-      (eq? (properties/lookup properties key no-datum) datum))
+    (if (not (if (default-object? no-overwrite?) #f no-overwrite?))
+	(lambda (properties)
+	  (not (eq? (properties/lookup properties key no-datum) datum)))
+	(lambda (properties)
+	  (eq? (properties/lookup properties key no-datum) no-datum)))
     (lambda (interval)
       (properties/insert! (interval-properties interval) key datum))))
 
@@ -37,7 +40,7 @@
   (validate-symbol-argument key 'REMOVE-TEXT-PROPERTY)
   (modify-text-properties group start end
     (lambda (properties)
-      (eq? (properties/lookup properties key no-datum) no-datum))
+      (not (eq? (properties/lookup properties key no-datum) no-datum)))
     (lambda (interval)
       (properties/delete! (interval-properties interval) key))))
 
@@ -100,9 +103,9 @@
 			  (loop prev)
 			  start*)))))))))
 
-(define (modify-text-properties group start end dont-modify? modify!)
+(define (modify-text-properties group start end modify? modify!)
   (call-with-values
-      (lambda () (intervals-to-modify group start end dont-modify?))
+      (lambda () (intervals-to-modify group start end modify?))
     (lambda (start-interval end-interval)
       (if start-interval
 	  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -132,33 +135,33 @@
 		      (loop next)))))
 	    (set-interrupt-enables! interrupt-mask))))))
 
-(define (intervals-to-modify group start end dont-modify?)
+(define (intervals-to-modify group start end modify?)
   (letrec
       ((find-start
 	(lambda (interval)
 	  (if (fix:<= end (interval-end interval))
 	      (values #f #f)
 	      (let ((interval (next-interval interval)))
-		(if (dont-modify? (interval-properties interval))
-		    (find-start interval)
-		    (find-end interval))))))
+		(if (modify? (interval-properties interval))
+		    (find-end interval)
+		    (find-start interval))))))
        (find-end
 	(lambda (start-interval)
 	  (let loop ((prev start-interval) (interval start-interval))
 	    (let ((end* (interval-end interval)))
 	      (if (fix:< end end*)
-		  (if (dont-modify? (interval-properties interval))
-		      (values start-interval prev)
+		  (if (modify? (interval-properties interval))
 		      (let ((end-interval
 			     (split-interval-left interval end group)))
 			(values (if (eq? interval start-interval)
 				    end-interval
 				    start-interval)
-				end-interval)))
+				end-interval))
+		      (values start-interval prev))
 		  (let ((prev
-			 (if (dont-modify? (interval-properties interval))
-			     prev
-			     interval)))
+			 (if (modify? (interval-properties interval))
+			     interval
+			     prev)))
 		    (if (fix:= end end*)
 			(values start-interval prev)
 			(loop prev (next-interval interval))))))))))
@@ -167,12 +170,12 @@
 	       (if (group-text-properties group)
 		   (find-interval group start)
 		   (make-initial-interval group))))
-	  (if (dont-modify? (interval-properties interval))
-	      (find-start interval)
+	  (if (modify? (interval-properties interval))
 	      (find-end
 	       (if (fix:= start (interval-start interval))
 		   interval
-		   (split-interval-right interval start group)))))
+		   (split-interval-right interval start group)))
+	      (find-start interval)))
 	(values #f #f))))
 
 (define (prepare-to-modify-intervals group start-interval end-interval)
@@ -419,7 +422,7 @@
 			      (vector-ref (car plist) 0)
 			      (vector-ref (car plist) 1)
 	(lambda (properties)
-	  (properties=? properties properties*))
+	  (not (properties=? properties properties*)))
 	(lambda (interval)
 	  (set-interval-properties! interval properties*))))))
 
