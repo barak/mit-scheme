@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.14 1989/10/26 07:36:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.15 1990/06/27 14:06:08 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -235,6 +235,8 @@ MIT in each case. |#
      REAL-PART IMAG-PART MAGNITUDE ANGLE EXACT->INEXACT INEXACT->EXACT
      FIX:1+ FIX:-1+ FIX:+ FIX:- FIX:*
      FIX:DIVIDE FIX:GCD FIX:QUOTIENT FIX:REMAINDER
+     FIX:AND FIX:ANDC FIX:NOT FIX:OR FIX:XOR
+
      INT:+ INT:- INT:* INT:DIVIDE INT:QUOTIENT INT:REMAINDER INT:ABS
      INT:1+ INT:-1+ INT:NEGATE
      FLO:+ FLO:- FLO:* FLO:/ FLO:NEGATE FLO:ABS FLO:EXP FLO:LOG FLO:SIN FLO:COS
