@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.19 1994/05/30 06:57:54 cph Exp $
+$Id: hashtb.scm,v 1.20 1994/10/28 05:58:22 jawilson Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -208,6 +208,30 @@ MIT in each case. |#
 		   default)
 		  ((key=? (entry-key (car entries)) key)
 		   ((table-entry-datum table) (car entries)))
+		  (else
+		   (loop (cdr entries)))))))))
+
+;; This is useful when interning objects using a hash-table.
+(define (hash-table/get-key table key default)
+  (guarantee-hash-table table 'HASH-TABLE/GET)
+  (let ((entries
+	 (vector-ref (table-buckets table) (compute-key-hash table key))))
+    (if (and key (table-standard-accessors? table))
+	;; Optimize standard case: compiler makes this fast.
+	(let loop ((entries entries))
+	  (cond ((null? entries)
+		 default)
+		((eq? (system-pair-car (car entries)) key)
+		 (system-pair-car (car entries)))
+		(else
+		 (loop (cdr entries)))))
+	(let ((key=? (table-key=? table))
+	      (entry-key (table-entry-key table)))
+	  (let loop ((entries entries))
+	    (cond ((null? entries)
+		   default)
+		  ((key=? (entry-key (car entries)) key)
+		   (entry-key (car entries)))
 		  (else
 		   (loop (cdr entries)))))))))
 
