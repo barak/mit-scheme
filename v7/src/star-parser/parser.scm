@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.14 2001/07/02 18:20:17 cph Exp $
+;;; $Id: parser.scm,v 1.15 2001/07/02 19:21:57 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -124,7 +124,7 @@
 				      external-bindings
 				      internal-bindings))))
 
-(define-parser-preprocessor '(DEFAULT TRANSFORM ELEMENT-TRANSFORM ENCAPSULATE)
+(define-parser-preprocessor '(TRANSFORM ELEMENT-TRANSFORM ENCAPSULATE)
   (lambda (expression external-bindings internal-bindings)
     (check-2-args expression)
     `(,(car expression) ,(cadr expression)
@@ -142,8 +142,14 @@
 
 (define-parser-preprocessor 'SEXP
   (lambda (expression external-bindings internal-bindings)
-    external-bindings
-    (handle-complex-expression (check-1-arg expression) internal-bindings)))
+    external-bindings internal-bindings
+    (check-1-arg expression)
+    expression))
+
+(define-parser-preprocessor 'VALUES
+  (lambda (expression external-bindings internal-bindings)
+    external-bindings internal-bindings
+    expression))
 
 ;;;; Compiler
 
@@ -184,10 +190,13 @@
 		       (if arity
 			   (cdr expression)
 			   (list (cdr expression)))))))
-	((symbol? expression)
+	((or (symbol? expression)
+	     (and (pair? expression) (eq? (car expression) 'SEXP)))
 	 (handle-pending-backtracking pointer
 	   (lambda (pointer)
-	     (with-variable-binding `(,expression ,*buffer-name*)
+	     (with-variable-binding
+		 `(,(if (pair? expression) (cadr expression) expression)
+		   ,*buffer-name*)
 	       (lambda (result)
 		 `(IF ,result
 		      ,(call-with-unknown-pointer
@@ -241,11 +250,9 @@
     (lambda (pointer) (if-succeed pointer `(VECTOR)))
     if-fail))
 
-(define-parser (default value expression)
+(define-parser (values . expressions)
   if-fail
-  (compile-parser-expression expression pointer if-succeed
-    (lambda (pointer)
-      (if-succeed pointer `(VECTOR ,value)))))
+  (if-succeed pointer `(VECTOR ,@expressions)))
 
 (define-parser (transform transform expression)
   (compile-parser-expression expression pointer

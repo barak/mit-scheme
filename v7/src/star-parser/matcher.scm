@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.10 2001/07/02 18:20:08 cph Exp $
+;;; $Id: matcher.scm,v 1.11 2001/07/02 19:21:54 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -119,39 +119,38 @@
 
 (define-matcher-preprocessor '(CHAR CHAR-CI NOT-CHAR NOT-CHAR-CI)
   (lambda (expression external-bindings internal-bindings)
-    external-bindings
-    `(,(car expression)
-      ,(handle-complex-expression (check-1-arg expression)
-				  internal-bindings))))
+    external-bindings internal-bindings
+    (check-1-arg expression)
+    expression))
 
 (define-matcher-preprocessor 'STRING
   (lambda (expression external-bindings internal-bindings)
-    external-bindings
+    external-bindings internal-bindings
     (let ((string (check-1-arg expression)))
       (if (and (string? string) (fix:= (string-length string) 1))
 	  `(CHAR ,(string-ref string 0))
-	  `(STRING ,(handle-complex-expression string internal-bindings))))))
+	  expression))))
 
 (define-matcher-preprocessor 'STRING-CI
   (lambda (expression external-bindings internal-bindings)
-    external-bindings
+    external-bindings internal-bindings
     (let ((string (check-1-arg expression)))
       (if (and (string? string) (fix:= (string-length string) 1))
 	  `(CHAR-CI ,(string-ref string 0))
-	  `(STRING-CI
-	    ,(handle-complex-expression string internal-bindings))))))
+	  expression))))
 
 (define-matcher-preprocessor 'ALPHABET
   (lambda (expression external-bindings internal-bindings)
-    `(,(car expression)
-      ,(let ((arg (check-1-arg expression)))
-	 (if (string? arg)
-	     (handle-complex-expression
+    internal-bindings
+    (let ((arg (check-1-arg expression)))
+      (if (string? arg)
+	  `(,(car expression)
+	    ,(handle-complex-expression
 	      (if (string-prefix? "^" arg)
 		  `(RE-COMPILE-CHAR-SET ,(string-tail arg 1) #T)
 		  `(RE-COMPILE-CHAR-SET ,arg #F))
-	      external-bindings)
-	     (handle-complex-expression arg internal-bindings))))))
+	      external-bindings))
+	  expression))))
 
 (define-matcher-preprocessor 'WITH-POINTER
   (lambda (expression external-bindings internal-bindings)
@@ -163,8 +162,9 @@
 
 (define-matcher-preprocessor 'SEXP
   (lambda (expression external-bindings internal-bindings)
-    external-bindings
-    (handle-complex-expression (check-1-arg expression) internal-bindings)))
+    external-bindings internal-bindings
+    (check-1-arg expression)
+    expression))
 
 ;;;; Compiler
 
@@ -209,10 +209,12 @@
 		       (if arity
 			   (cdr expression)
 			   (list (cdr expression)))))))
-	((symbol? expression)
+	((or (symbol? expression)
+	     (and (pair? expression) (eq? (car expression) 'SEXP)))
 	 (handle-pending-backtracking pointer
 	   (lambda (pointer)
-	     `(IF (,expression ,*buffer-name*)
+	     `(IF (,(if (pair? expression) (cadr expression) expression)
+		   ,*buffer-name*)
 		  ,(call-with-unknown-pointer if-succeed)
 		  ,(if-fail pointer)))))
 	(else
