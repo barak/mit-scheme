@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.18 1993/10/21 14:52:37 cph Exp $
+$Id: packag.scm,v 14.19 1994/03/13 05:09:42 jawilson Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -155,7 +155,8 @@ MIT in each case. |#
 			     (and system-loader/enable-query?
 				  (prompt-for-confirmation "Load interpreted"))
 			     load-interpreted?)
-			 '("bin" "scm")
+			 (list (assoc "bin" load/default-types)
+			       (assoc "scm" load/default-types))
 			 load/default-types)))
 	  (let ((syntax-table (nearest-repl/syntax-table)))
 	    (load (pathname-new-type pathname "bcon")
