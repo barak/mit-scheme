@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.3 1992/02/13 05:22:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.4 1992/02/13 07:54:05 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/comp.pkg,v 1.32 1991/05/06 23:09:24 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -593,7 +593,6 @@ MIT in each case. |#
 	 )
   (parent (compiler))
   (export (compiler)
-	  fits-in-5-bits-signed?
 	  lap-generator/match-rtl-instruction
 	  lap:make-entry-point
 	  lap:make-label-statement
