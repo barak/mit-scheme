@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.4 2004/11/01 19:09:24 cph Exp $
+$Id: compile.scm,v 1.5 2004/11/01 19:14:15 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -29,11 +29,8 @@ USA.
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (for-each compile-file
-	      '("db"
-		"expenv"
+	      '("expenv"
 		"mod-lisp"
-		"xdoc"
 		"xhtml-expander"
 		"xmlrpc"))
-    (cref/generate-constructors "ssp")
-    (cref/generate-constructors "xdoc")))
+    (cref/generate-constructors "ssp")))
