@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.25 1991/08/26 20:28:01 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.26 1991/08/27 01:22:21 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -258,25 +258,27 @@ MIT in each case. |#
 		 (cdr bucket)
 		 (cons (car bucket) accumulator))))))))
 
-;;; without-stepping restores the stepper hooks to the state
-;;; encountered on each entry to the thunk. It might be better to
-;;; restore the hooks to the initial state. I flipped a coin.
-(define without-stepping
-  (let ((microcode-vector-stepper-slot
-	 (fixed-objects-vector-slot 'stepper-state)))
+;; WITHOUT-STEPPING restores the stepper hooks to the state
+;; encountered on each entry to the thunk. It might be better to
+;; restore the hooks to the initial state. I flipped a coin.
 
+(let-syntax ((ufixed-objects-slot
+	      (macro (name)
+		(fixed-objects-vector-slot name))))
+
+  (define (without-stepping thunk)
     (define (get-stepper-hooks)
-      (vector-ref (get-fixed-objects-vector) microcode-vector-stepper-slot))
+      (vector-ref (get-fixed-objects-vector)
+		  (ufixed-objects-slot stepper-state)))
 
-    (lambda (thunk)
-      (let ((old-stepper-hooks)
-	    (null-hooks (hunk3-cons #f #f #f)))
-	(dynamic-wind
-	 (lambda ()
-	   (set! old-stepper-hooks (get-stepper-hooks))
-	   ((ucode-primitive primitive-return-step 2) unspecific null-hooks))
-	 thunk
-	 (lambda ()
-	   ((ucode-primitive primitive-return-step 2)
-	    unspecific
-	    old-stepper-hooks)))))))
+    (let ((old-stepper-hooks)
+	  (null-hooks (hunk3-cons #f #f #f)))
+      (dynamic-wind
+       (lambda ()
+	 (set! old-stepper-hooks (get-stepper-hooks))
+	 ((ucode-primitive primitive-return-step 2) unspecific null-hooks))
+       thunk
+       (lambda ()
+	 ((ucode-primitive primitive-return-step 2)
+	  unspecific
+	  old-stepper-hooks))))))
