@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.37 1997/04/28 07:10:20 cph Exp $
+$Id: arith.scm,v 1.38 1997/05/02 05:32:17 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -809,7 +809,7 @@ MIT in each case. |#
 
 (define (ratio->flonum n d)
   (let ((n>0
-	 (lambda (n)
+	 (lambda (n d)
 	   (let ((k (int:- (integer-length-in-bits n)
 			   (integer-length-in-bits d)))
 		 (p flo:significand-digits-base-2))
@@ -859,8 +859,8 @@ MIT in each case. |#
 		   (else
 		    (finish (integer-shift-left n (int:negate e)) e)))))))
     (cond ((fix:zero? n) flo:0)
-	  ((int:positive? n) (n>0 n d))
-	  (else (flo:negate (n>0 (int:negate n) d))))))
+	  ((int:positive? n) (n>0 n))
+	  (else (flo:negate (n>0 (int:negate n)))))))
 
 (define (flo:significand-digits radix)
   (cond ((int:= radix 10)
