@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.6 1993/06/29 22:58:14 cph Exp $
+$Id: boot.scm,v 14.7 1993/08/30 19:41:46 ziggy Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,27 +62,33 @@ MIT in each case. |#
   (and (procedure? object)
        (procedure-arity-valid? object 2)))
 
-(define-integrable interrupt-bit/stack     #x0001)
-(define-integrable interrupt-bit/global-gc #x0002)
-(define-integrable interrupt-bit/gc        #x0004)
-(define-integrable interrupt-bit/global-1  #x0008)
-(define-integrable interrupt-bit/kbd       #x0010)
-(define-integrable interrupt-bit/after-gc  #x0020)
-(define-integrable interrupt-bit/timer     #x0040)
-(define-integrable interrupt-bit/global-3  #x0080)
-(define-integrable interrupt-bit/suspend   #x0100)
+(define-integrable interrupt-bit/stack      	#x0001)
+(define-integrable interrupt-bit/global-gc  	#x0002)
+(define-integrable interrupt-bit/gc         	#x0004)
+(define-integrable interrupt-bit/global-1   	#x0008)
+(define-integrable interrupt-bit/kbd        	#x0010)
+(define-integrable interrupt-bit/after-gc   	#x0020)
+(define-integrable interrupt-bit/timer      	#x0040)
+(define-integrable interrupt-bit/global-3   	#x0080)
+(define-integrable interrupt-bit/suspend    	#x0100)
+(define-integrable interrupt-bit/IPPB-flush	#x0200) ; pc-sample
+(define-integrable interrupt-bit/IPPB-extend 	#x0400) ; pc-sample
+(define-integrable interrupt-bit/PCBPB-flush	#x0800) ; pc-sample
+(define-integrable interrupt-bit/PCBPB-extend 	#x1000) ; pc-sample
+(define-integrable interrupt-bit/HCBPB-flush	#x2000) ; pc-sample
+(define-integrable interrupt-bit/HCBPB-extend 	#x4000) ; pc-sample
 
 ;; GC & stack overflow only
-(define-integrable interrupt-mask/gc-ok    #x0007)
+(define-integrable interrupt-mask/gc-ok     	#x0007)
 
 ;; GC, stack overflow, and timer only
-(define-integrable interrupt-mask/timer-ok #x0047)
+(define-integrable interrupt-mask/timer-ok	#x0047)
 
 ;; Absolutely everything off
-(define-integrable interrupt-mask/none     #x0000)
+(define-integrable interrupt-mask/none      	#x0000)
 
 ;; Normal: all enabled
-(define-integrable interrupt-mask/all      #xFFFF)
+(define-integrable interrupt-mask/all       	#xFFFF)
 
 (define (with-absolutely-no-interrupts thunk)
   (with-interrupt-mask interrupt-mask/none
