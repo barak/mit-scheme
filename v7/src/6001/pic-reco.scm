@@ -84,7 +84,7 @@
 	   (bad-range-signal y 'PICTURE-REF))
 	  (else
 	   (floating-vector-ref
-	    (floating-vector-ref (picture-data picture) y) x)))))
+	    (vector-ref (picture-data picture) y) x)))))
 
 (define (make-picture-setter bad-type-predicate bad-range-signal)
   (lambda (picture x y value)
@@ -99,7 +99,7 @@
 		     (fix:< y (picture-height picture))))
 	   (bad-range-signal y 'PICTURE-SET!))
 	  (else
-	   (floating-vector-set! (floating-vector-ref (picture-data picture) y)
+	   (floating-vector-set! (vector-ref (picture-data picture) y)
 			x (exact->inexact value))
 	   (invalidate-cached-values picture)))))
 
