@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.5 1991/03/01 20:19:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.6 1991/05/07 02:02:05 jinx Exp $
 
-Copyright (c) 1988, 1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -186,15 +186,16 @@ MIT in each case. |#
    port indentation width package bindings
    "Bindings"
    (lambda (binding)
-     (let ((name (binding/name-string binding)))
-       (if (< (package/n-files package) 2)
+     (let* ((name (binding/name-string binding))
+	    (expressions (binding/expressions binding)))
+       (if (or (< (package/n-files package) 2)
+	       (null? expressions))
 	   name
 	   (apply string-append
 		  name
 		  " "
-		  (let loop
-		      ((expressions (binding/expressions binding))
-		       (p "("))
+		  (let loop ((expressions expressions)
+			     (p "("))
 		    (cons p
 			  (cons (expression/file (car expressions))
 				(if (null? (cdr expressions))
