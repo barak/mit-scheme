@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookprm.c,v 1.15 2001/08/07 01:26:22 cph Exp $
+$Id: lookprm.c,v 1.16 2001/08/22 05:01:25 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -42,9 +42,9 @@ USA.
 }
 
 DEFINE_PRIMITIVE ("LEXICAL-REFERENCE", Prim_lexical_reference, 2, 2,
-		  "(ENVIRONMENT SYMBOL)\n
-Returns the value of the variable in ENVIRONMENT named SYMBOL.\n
-\n
+		  "(ENVIRONMENT SYMBOL)\n\
+Returns the value of the variable in ENVIRONMENT named SYMBOL.\n\
+\n\
 Indistinguishable from evaluating SYMBOL in ENVIRONMENT.")
 {
   PRIMITIVE_HEADER (2);
@@ -58,7 +58,7 @@ Indistinguishable from evaluating SYMBOL in ENVIRONMENT.")
 }
 
 DEFINE_PRIMITIVE ("LOCAL-REFERENCE", Prim_local_reference, 2, 2,
-		  "(REFERENCE ENVIRONMENT SYMBOL)\n
+		  "(REFERENCE ENVIRONMENT SYMBOL)\n\
 Identical to LEXICAL_REFERENCE, here for hysterical reasons.")
 {
   PRIMITIVE_HEADER (2);
@@ -72,10 +72,10 @@ Identical to LEXICAL_REFERENCE, here for hysterical reasons.")
 }
 
 DEFINE_PRIMITIVE ("LEXICAL-ASSIGNMENT", Prim_lexical_assignment, 3, 3,
-		  "(ASSIGNMENT ENVIRONMENT SYMBOL VALUE)\n
-Sets the value of the variable in ENVIRONMENT named SYMBOL to VALUE.\n
-Returns the previous value.\n
-\n
+		  "(ASSIGNMENT ENVIRONMENT SYMBOL VALUE)\n\
+Sets the value of the variable in ENVIRONMENT named SYMBOL to VALUE.\n\
+Returns the previous value.\n\
+\n\
 Indistinguishable from evaluating (set! SYMBOL VALUE) in ENVIRONMENT.")
 {
   PRIMITIVE_HEADER (3);
@@ -91,14 +91,14 @@ Indistinguishable from evaluating (set! SYMBOL VALUE) in ENVIRONMENT.")
 }
 
 DEFINE_PRIMITIVE ("LOCAL-ASSIGNMENT", Prim_local_assignment, 3, 3,
-		  "(ENVIRONMENT SYMBOL VALUE)\n
-    [Should be called LEXICAL-DEFINE.]\n
-\n
-If the variable specified by SYMBOL already exists in the\n
-lexical ENVIRONMENT, then its value there is changed to VALUE.\n
-Otherwise a new binding is created in that environment linking\n
-the specified variable to the value.  Returns SYMBOL.\n
-\n
+		  "(ENVIRONMENT SYMBOL VALUE)\n\
+    [Should be called LEXICAL-DEFINE.]\n\
+\n\
+If the variable specified by SYMBOL already exists in the\n\
+lexical ENVIRONMENT, then its value there is changed to VALUE.\n\
+Otherwise a new binding is created in that environment linking\n\
+the specified variable to the value.  Returns SYMBOL.\n\
+\n\
 Indistinguishable from evaluating (define SYMBOL VALUE) in ENVIRONMENT.")
 {
   PRIMITIVE_HEADER (3);
@@ -109,11 +109,11 @@ Indistinguishable from evaluating (define SYMBOL VALUE) in ENVIRONMENT.")
 }
 
 DEFINE_PRIMITIVE ("LEXICAL-UNASSIGNED?", Prim_unassigned_test, 2, 2,
-		  "(ENVIRONMENT SYMBOL)\n
-Returns #T if the variable corresponding to SYMBOL is bound\n
-but has the special UNASSIGNED value in ENVIRONMENT.  Returns\n
-#F otherwise.  Does a complete lexical search for SYMBOL\n
-starting in ENVIRONMENT.\n
+		  "(ENVIRONMENT SYMBOL)\n\
+Returns #T if the variable corresponding to SYMBOL is bound\n\
+but has the special UNASSIGNED value in ENVIRONMENT.  Returns\n\
+#F otherwise.  Does a complete lexical search for SYMBOL\n\
+starting in ENVIRONMENT.\n\
 The special form (unassigned? <symbol>) is built on top of this.")
 {
   PRIMITIVE_HEADER (2);
@@ -128,10 +128,10 @@ The special form (unassigned? <symbol>) is built on top of this.")
 }
 
 DEFINE_PRIMITIVE ("LEXICAL-UNBOUND?", Prim_unbound_test, 2, 2,
-		  "(ENVIRONMENT SYMBOL)\n
-Returns #T if the variable corresponding to SYMBOL has no binding in\n
-ENVIRONMENT.  Returns #F otherwise.  Does a complete lexical search\n
-for SYMBOL starting in ENVIRONMENT.  The special form (unbound?\n
+		  "(ENVIRONMENT SYMBOL)\n\
+Returns #T if the variable corresponding to SYMBOL has no binding in\n\
+ENVIRONMENT.  Returns #F otherwise.  Does a complete lexical search\n\
+for SYMBOL starting in ENVIRONMENT.  The special form (unbound?\n\
 <symbol>) is built on top of this.")
 {
   PRIMITIVE_HEADER (2);
@@ -145,8 +145,8 @@ for SYMBOL starting in ENVIRONMENT.  The special form (unbound?\n
 }
 
 DEFINE_PRIMITIVE ("LEXICAL-UNREFERENCEABLE?", Prim_unreferenceable_test, 2, 2,
-		  "(ENVIRONMENT SYMBOL)\n
-Returns #T if evaluating SYMBOL in ENVIRONMENT would cause a\n
+		  "(ENVIRONMENT SYMBOL)\n\
+Returns #T if evaluating SYMBOL in ENVIRONMENT would cause a\n\
 variable lookup error (unbound or unassigned).")
 {
   PRIMITIVE_HEADER (2);
@@ -159,9 +159,9 @@ variable lookup error (unbound or unassigned).")
 }
 
 DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3,
-		  "(ENV1 ENV2 SYMBOL)\n
-SYMBOL must be bound in ENV2.  Creates a new binding for SYMBOL in ENV1,\n
-such that the bindings in ENV1 and ENV2 share the same value cell.\n
+		  "(ENV1 ENV2 SYMBOL)\n\
+SYMBOL must be bound in ENV2.  Creates a new binding for SYMBOL in ENV1,\n\
+such that the bindings in ENV1 and ENV2 share the same value cell.\n\
 If SYMBOL is already bound in ENV1, the existing binding is modified.")
 {
   PRIMITIVE_HEADER (3);
@@ -175,9 +175,9 @@ If SYMBOL is already bound in ENV1, the existing binding is modified.")
 }
 
 DEFINE_PRIMITIVE ("LINK-VARIABLES", Prim_link_variables, 4, 4,
-		  "(TARGET-ENV TARGET-NAME SOURCE-ENV SOURCE-NAME)\n
-Define a new binding for TARGET-NAME in TARGET-ENV, which shares its\n
-value cell with the binding for SOURCE-NAME in SOURCE-ENV.\n
+		  "(TARGET-ENV TARGET-NAME SOURCE-ENV SOURCE-NAME)\n\
+Define a new binding for TARGET-NAME in TARGET-ENV, which shares its\n\
+value cell with the binding for SOURCE-NAME in SOURCE-ENV.\n\
 SOURCE-NAME must be bound in SOURCE-ENV.")
 {
   PRIMITIVE_HEADER (4);
@@ -192,8 +192,8 @@ SOURCE-NAME must be bound in SOURCE-ENV.")
 }
 
 DEFINE_PRIMITIVE ("UNBIND-VARIABLE", Prim_unbind_variable, 2, 2,
-		  "(ENVIRONMENT SYMBOL)\n
-Unbind the variable SYMBOL in ENVIRONMENT.\n
+		  "(ENVIRONMENT SYMBOL)\n\
+Unbind the variable SYMBOL in ENVIRONMENT.\n\
 Returns #F if the variable was not previously bound, otherwise #T.")
 {
   PRIMITIVE_HEADER (2);
