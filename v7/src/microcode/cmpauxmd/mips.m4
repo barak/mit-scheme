@@ -1,6 +1,7 @@
+/* #define DEBUG_INTERFACE */
  ### -*-Midas-*-
  ###
- ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.2 1990/07/30 16:21:14 jinx Exp $
+ ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.3 1990/08/14 18:22:54 cph Rel $
  ###
  ###	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
  ###
@@ -277,6 +278,11 @@ scheme_to_interface:
 Store_Pointer_Back:
 	.set	at
 	sw	$value,Debug_Buffer_Pointer
+	lw	$value,Debug_Call_Count
+	lw	$12,Debug_Call_Max
+	addi	$value,$value,1
+	sw	$value,Debug_Call_Count
+	beq	$value,$12,Debug_Tight_Loop
 	.set	noat
 #endif
 after_overflow:
@@ -385,6 +391,14 @@ push_closure_entry:
 
 	.end	push_closure_entry
 
+	.globl	Debug_Tight_Loop
+	.ent	Debug_Tight_Loop
+Debug_Tight_Loop:
+	beq	$12,$value,Debug_Tight_Loop
+	nop
+	j	after_overflow
+	.end	Debug_Tight_Loop
+
 #ifdef DEBUG_INTERFACE
 	.data
 	.globl	Debug_Buffer_Pointer
@@ -394,5 +408,11 @@ Debug_Buffer_Pointer:
 Debug_Buffer:
 	.word	0:30
 Debug_Buffer_End:
+	.word	0
+	.globl	Debug_Call_Count
+Debug_Call_Count:
+	.word	0
+	.globl	Debug_Call_Max
+Debug_Call_Max:
 	.word	0
 #endif
