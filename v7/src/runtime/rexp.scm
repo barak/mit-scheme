@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rexp.scm,v 1.5 2000/04/13 16:19:17 cph Exp $
+;;; $Id: rexp.scm,v 1.6 2000/04/13 16:23:50 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -48,6 +48,21 @@
 		     (assq (cadr rexp) syntax-type-alist)))
 	       (else #f))))))
 
+(define syntax-type-alist
+  '((WHITESPACE . " ")
+    (PUNCTUATION . ".")
+    (WORD . "w")
+    (SYMBOL . "_")
+    (OPEN . "(")
+    (CLOSE . ")")
+    (QUOTE . "\'")
+    (STRING-DELIMITER . "\"")
+    (MATH-DELIMITER . "$")
+    (ESCAPE . "\\")
+    (CHAR-QUOTE . "/")
+    (COMMENT-START . "<")
+    (COMMENT-END . ">")))
+
 (define (rexp-alternatives . rexps)
   `(ALTERNATIVES ,@rexps))
 
@@ -77,6 +92,35 @@
 (define (rexp-not-word-char) `(NOT-WORD-CHAR))
 (define (rexp-syntax-char type) `(SYNTAX-CHAR ,type))
 (define (rexp-not-syntax-char type) `(NOT-SYNTAX-CHAR ,type))
+
+(define (rexp-groupify rexp)
+  (let ((lose (lambda () (error "Malformed rexp:" rexp))))
+    (cond ((string? rexp)
+	   (if (fix:= 1 (string-length rexp))
+	       rexp
+	       (rexp-group rexp)))
+	  ((or (char? rexp) (char-set? rexp))
+	   rexp)
+	  ((pair? rexp)
+	   (cond ((memq (car rexp) grouped-rexp-types)
+		  rexp)
+		 ((memq (car rexp) groupable-rexp-types)
+		  (rexp-group rexp))
+		 ((memq (car rexp) nongroupable-rexp-types)
+		  (error "Expression can't be grouped:" rexp))
+		 (else
+		  (lose))))
+	  (else (lose)))))
+
+(define grouped-rexp-types
+  '(GROUP ANY-CHAR WORD-CHAR NOT-WORD-CHAR SYNTAX-CHAR NOT-SYNTAX-CHAR))
+
+(define groupable-rexp-types
+  '(ALTERNATIVES SEQUENCE OPTIONAL * +))
+
+(define nongroupable-rexp-types
+  '(LINE-START LINE-END STRING-START STRING-END WORD-EDGE NOT-WORD-EDGE
+	       WORD-START WORD-END))
 
 (define (rexp-compile rexp case-fold?)
   (re-compile-pattern (rexp->regexp rexp) case-fold?))
@@ -125,50 +169,6 @@
 		 ((NOT-SYNTAX-CHAR) (string-append "\\S" (syntax-type)))
 		 (else (lose))))))
 	  (else (lose)))))
-
-(define syntax-type-alist
-  '((WHITESPACE . " ")
-    (PUNCTUATION . ".")
-    (WORD . "w")
-    (SYMBOL . "_")
-    (OPEN . "(")
-    (CLOSE . ")")
-    (QUOTE . "\'")
-    (STRING-DELIMITER . "\"")
-    (MATH-DELIMITER . "$")
-    (ESCAPE . "\\")
-    (CHAR-QUOTE . "/")
-    (COMMENT-START . "<")
-    (COMMENT-END . ">")))
-
-(define (rexp-groupify rexp)
-  (let ((lose (lambda () (error "Malformed rexp:" rexp))))
-    (cond ((string? rexp)
-	   (if (fix:= 1 (string-length rexp))
-	       rexp
-	       (rexp-group rexp)))
-	  ((or (char? rexp) (char-set? rexp))
-	   rexp)
-	  ((pair? rexp)
-	   (cond ((memq (car rexp) grouped-rexp-types)
-		  rexp)
-		 ((memq (car rexp) groupable-rexp-types)
-		  (rexp-group rexp))
-		 ((memq (car rexp) nongroupable-rexp-types)
-		  (error "Expression can't be grouped:" rexp))
-		 (else
-		  (lose))))
-	  (else (lose)))))
-
-(define grouped-rexp-types
-  '(GROUP ANY-CHAR WORD-CHAR NOT-WORD-CHAR SYNTAX-CHAR NOT-SYNTAX-CHAR))
-
-(define groupable-rexp-types
-  '(ALTERNATIVES SEQUENCE OPTIONAL * +))
-
-(define nongroupable-rexp-types
-  '(LINE-START LINE-END STRING-START STRING-END WORD-EDGE NOT-WORD-EDGE
-	       WORD-START WORD-END))
 
 (define (separated-append tokens separator)
   (cond ((not (pair? tokens)) "")
