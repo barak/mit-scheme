@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.5 1994/12/05 21:34:20 adams Exp $
+$Id: midend.scm,v 1.6 1995/01/05 22:29:51 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -81,6 +81,20 @@ MIT in each case. |#
 	    program
 	    (proc program)))
       
+      (define gather-phase-statistics
+	(let ((kind1  (list (symbol-append 
+			     'GROWTH/
+			     (string->symbol (write-to-string this-phase)))
+			    'AVERAGE)))
+	  (lambda (program result)
+	    (and (pair? program)
+		 (pair? result)
+		 (begin
+		   (sample/1 kind1
+			     (lambda ()
+			       (/ (exact->inexact (kmp-program-size result))
+				  (kmp-program-size program)))))))))
+
       (lambda (program)
 	(set! *current-phase* this-phase)
 	(set! *current-phase-input* (and *debugging?* program))
@@ -91,22 +105,25 @@ MIT in each case. |#
 	      (write this-phase)
 	      (if (memq this-phase *phases-to-omit*)
 		  (write-string " omitted (see *phases-to-omit*)"))))
-	(if (not (show? this-phase))
-	    (run-phase program)
-	    (begin
-	      (with-kmp-output-port
-	       (lambda ()
-		 (show-program "Input to phase " program)))
-	      (let ((result (run-phase program)))
-		(if (show? next-phase)
-		    (set! pending-message
-			  (with-output-to-string
+	(let ((result 
+	       (if (not (show? this-phase))
+		   (run-phase program)
+		   (begin
+		     (with-kmp-output-port
+		      (lambda ()
+			(show-program "Input to phase " program)))
+		     (let ((result (run-phase program)))
+		       (if (show? next-phase)
+			   (set! pending-message
+				 (with-output-to-string
+				   (lambda ()
+				     (show-message "Output from phase "))))
+			   (with-kmp-output-port
 			    (lambda ()
-			      (show-message "Output from phase "))))
-		    (with-kmp-output-port
-		     (lambda ()
-		       (show-program "Output from phase " result))))
-		result)))))))
+			      (show-program "Output from phase " result))))
+		       result)))))
+	  (gather-phase-statistics program result)
+	  result)))))
 
 (define (phase-wrapper rewrite)
   (lambda (program)
@@ -189,7 +206,7 @@ MIT in each case. |#
 	     simplify/top-level/2	; as above
 	     cleanup/top-level/3	; as above
 	     lamlift/top-level/2	; as above
-
+
 	     closconv/top-level/2	; as above, but using
 					;  %make-stack-closure and
 					;  %stack-closure-ref
