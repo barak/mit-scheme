@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.17 1991/05/20 22:05:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.18 1991/05/20 22:09:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -195,7 +195,9 @@ normally they record the associated output in a transcript buffer:
   "Perform completion on Scheme symbol preceding point.
 That symbol is compared against the symbols that exist
 and any additional characters determined by what is there
-are inserted."
+are inserted.
+With prefix arg, only symbols that are bound in the buffer's
+environment are considered."
   "P"
   (lambda (bound-only?)
     (let ((end
