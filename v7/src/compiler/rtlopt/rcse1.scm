@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.114 1987/09/03 05:12:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.1 1987/12/08 13:55:03 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,41 +41,54 @@ MIT in each case. |#
 (define *branch-queue*)
 
 (define (common-subexpression-elimination rgraphs)
-  (with-new-node-marks
-   (lambda ()
-     (for-each cse-rgraph rgraphs))))
+  (with-new-node-marks (lambda () (for-each cse-rgraph rgraphs))))
 
 (define (cse-rgraph rgraph)
   (fluid-let ((*current-rgraph* rgraph)
 	      (*next-quantity-number* 0)
 	      (*initial-queue* (make-queue))
 	      (*branch-queue* '()))
-    (for-each (lambda (edge)
-		(enqueue! *initial-queue* (edge-right-node edge)))
+    (for-each (lambda (edge) (enqueue! *initial-queue* (edge-right-node edge)))
 	      (rgraph-initial-edges rgraph))
     (fluid-let ((*register-tables*
 		 (register-tables/make (rgraph-n-registers rgraph)))
-		(*hash-table*))
+		(*hash-table*)
+		(*stack-offset*)
+		(*stack-reference-quantities*))
       (continue-walk))))
 
 (define (continue-walk)
   (cond ((not (null? *branch-queue*))
 	 (let ((entry (car *branch-queue*)))
 	   (set! *branch-queue* (cdr *branch-queue*))
-	   (set! *register-tables* (caar entry))
-	   (set! *hash-table* (cdar entry))
+	   (let ((state (car entry)))
+	     (set! *register-tables* (state/register-tables state))
+	     (set! *hash-table* (state/hash-table state))
+	     (set! *stack-offset* (state/stack-offset state))
+	     (set! *stack-reference-quantities*
+		   (state/stack-reference-quantities state)))
 	   (walk-bblock (cdr entry))))
 	((not (queue-empty? *initial-queue*))
-	 (state:reset!)
+	 (state/reset!)
 	 (walk-bblock (dequeue! *initial-queue*)))))
 
-(define (state:reset!)
-  (register-tables/reset! *register-tables*)
-  (set! *hash-table* (make-hash-table)))
+(define-structure (state (type vector) (conc-name state/))
+  (register-tables false read-only true)
+  (hash-table false read-only true)
+  (stack-offset false read-only true)
+  (stack-reference-quantities false read-only true))
 
-(define (state:get)
-  (cons (register-tables/copy *register-tables*)
-	(hash-table-copy *hash-table*)))
+(define (state/reset!)
+  (register-tables/reset! *register-tables*)
+  (set! *hash-table* (make-hash-table))
+  (set! *stack-offset* 0)
+  (set! *stack-reference-quantities* '()))
+
+(define (state/get)
+  (make-state (register-tables/copy *register-tables*)
+	      (hash-table-copy *hash-table*)
+	      *stack-offset*
+	      (list-copy *stack-reference-quantities*)))
 
 (define (walk-bblock bblock)
   (define (loop rinst)
@@ -104,7 +117,7 @@ MIT in each case. |#
 		    (begin (if (node-previous>1? alternative)
 			       (enqueue! *initial-queue* alternative)
 			       (set! *branch-queue*
-				     (cons (cons (state:get) alternative)
+				     (cons (cons (state/get) alternative)
 					   *branch-queue*)))
 			   (walk-bblock consequent)))
 		(walk-next consequent))
@@ -116,7 +129,7 @@ MIT in each case. |#
   (and bblock (not (node-marked? bblock))))
 
 (define (walk-next bblock)
-  (if (node-previous>1? bblock) (state:reset!))
+  (if (node-previous>1? bblock) (state/reset!))
   (walk-bblock bblock))
 
 (define (define-cse-method type method)
@@ -134,59 +147,60 @@ MIT in each case. |#
 		       statement
     (lambda (volatile? insert-source!)
       (let ((address (rtl:assign-address statement)))
-	(if (rtl:register? address)
-	    (begin 
-	      (register-expression-invalidate! address)
-	      (if (and (not volatile?)
-		       (not (rtl:machine-register-expression?
-			     (rtl:assign-expression statement)))
-		       ;; This is a kludge.  If the address is the
-		       ;; frame pointer, then the source is the stack
-		       ;; pointer.  If this is not done then some of
-		       ;; the references to stack locations use the
-		       ;; stack pointer instead of the frame pointer.
-		       ;; This is not a bug but I want the stack
-		       ;; addressing to be uniform for now.  -- cph
-		       (not (interpreter-frame-pointer? address)))
-		  (insert-register-destination! address (insert-source!))))
+	(cond ((rtl:register? address)
+	       (register-expression-invalidate! address)
+	       (if (and (not volatile?)
+			(not (rtl:machine-register-expression?
+			      (rtl:assign-expression statement))))
+		   (insert-register-destination! address (insert-source!))))
+	      ((stack-reference? address)
+	       (stack-reference-invalidate! address)
+	       (if (not volatile?)
+		   (insert-stack-destination! address (insert-source!))))
+	      (else
 
-	    (let ((address (expression-canonicalize address)))
-	      (rtl:set-assign-address! statement address)
-	      (full-expression-hash address
-		(lambda (hash volatile?* in-memory?*)
-		  (let ((memory-invalidate!
-			 (cond ((and (memq (rtl:expression-type address)
-					   '(PRE-INCREMENT POST-INCREMENT))
-				     (or (interpreter-stack-pointer?
-					  (rtl:address-register address))
-					 (interpreter-free-pointer?
-					  (rtl:address-register address))))
-				(lambda ()
-				  (register-expression-invalidate!
-				   (rtl:address-register address))))
-			       ((expression-address-varies? address)
-				(lambda ()
-				  (hash-table-delete-class!
-				   element-in-memory?)))
-			       (else
-				(lambda ()
-				  (hash-table-delete!
-				   hash
-				   (hash-table-lookup hash address))
-				  (hash-table-delete-class!
-				   element-address-varies?))))))
-		    (cond (volatile?* (memory-invalidate!))
-			  ((not volatile?)
-			   (let ((address
-				  (find-cheapest-expression address hash
-							    false)))
-			     (let ((element (insert-source!)))
-			       (memory-invalidate!)
-			       (insert-memory-destination!
-				address
-				element
-				(modulo (+ (symbol-hash 'ASSIGN) hash)
-					n-buckets)))))))))))))))
+	       (let ((address (expression-canonicalize address)))
+		 (rtl:set-assign-address! statement address)
+		 (full-expression-hash address
+		   (lambda (hash volatile?* in-memory?*)
+		     (let ((memory-invalidate!
+			    (cond ((stack-push/pop? address)
+				   (lambda () 'DONE))
+				  ((and (memq (rtl:expression-type address)
+					      '(PRE-INCREMENT POST-INCREMENT))
+					(interpreter-free-pointer?
+					 (rtl:address-register address)))
+				   (lambda ()
+				     (register-expression-invalidate!
+				      (rtl:address-register address))))
+				  ((expression-address-varies? address)
+				   (lambda ()
+				     (hash-table-delete-class!
+				      element-in-memory?)))
+				  (else
+				   (lambda ()
+				     (hash-table-delete!
+				      hash
+				      (hash-table-lookup hash address))
+				     (hash-table-delete-class!
+				      element-address-varies?))))))
+		       (cond (volatile?* (memory-invalidate!))
+			     ((not volatile?)
+			      (let ((address
+				     (find-cheapest-expression address hash
+							       false)))
+				(let ((element (insert-source!)))
+				  (memory-invalidate!)
+				  (insert-memory-destination!
+				   address
+				   element
+				   (modulo (+ (symbol-hash 'ASSIGN) hash)
+					   (hash-table-size))))))))))
+		 ;; **** Kludge.  Works only because stack-pointer
+		 ;; gets used in very fixed way by code generator.
+		 (if (stack-push/pop? address)
+		     (stack-pointer-adjust!
+		      (rtl:address-number address))))))))))
 
 (define (trivial-action volatile? insert-source!)
   (if (not volatile?)
@@ -219,7 +233,7 @@ MIT in each case. |#
 (define (method/noop statement)
   'DONE)
 
-(define-cse-method 'RETURN method/noop)
+(define-cse-method 'POP-RETURN method/noop)
 (define-cse-method 'PROCEDURE-HEAP-CHECK method/noop)
 (define-cse-method 'CONTINUATION-HEAP-CHECK method/noop)
 (define-cse-method 'INVOCATION:APPLY method/noop)
@@ -229,18 +243,19 @@ MIT in each case. |#
 (define-cse-method 'INVOCATION:SPECIAL-PRIMITIVE method/noop)
 (define-cse-method 'INVOCATION:UUO-LINK method/noop)
 
-(define (method/invalidate-stack statement)
+(define (method/trash-stack statement)
+  (stack-invalidate!)
   (stack-pointer-invalidate!))
 
-(define-cse-method 'SETUP-LEXPR method/invalidate-stack)
-(define-cse-method 'MESSAGE-SENDER:VALUE method/invalidate-stack)
-(define-cse-method 'MESSAGE-RECEIVER:CLOSURE method/invalidate-stack)
-(define-cse-method 'MESSAGE-RECEIVER:STACK method/invalidate-stack)
-(define-cse-method 'MESSAGE-RECEIVER:SUBPROBLEM method/invalidate-stack)
+(define-cse-method 'SETUP-LEXPR method/trash-stack)
+(define-cse-method 'INVOCATION-PREFIX:MOVE-FRAME-UP method/trash-stack)
+(define-cse-method 'INVOCATION-PREFIX:DYNAMIC-LINK method/trash-stack)
 
 (define-cse-method 'INTERPRETER-CALL:ENCLOSE
   (lambda (statement)
-    (stack-pointer-invalidate!)
+    (let ((n (rtl:interpreter-call:enclose-size statement)))
+      (stack-region-invalidate! 0 n)
+      (stack-pointer-adjust! n))
     (expression-invalidate! (interpreter-register:enclose))))
 
 (define-cse-method 'INVOCATION:CACHE-REFERENCE

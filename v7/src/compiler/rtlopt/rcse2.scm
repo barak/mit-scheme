@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 1.1 1987/06/09 19:56:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.1 1987/12/08 13:55:35 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -75,12 +75,19 @@ MIT in each case. |#
 	       (element-first-value element*)))))
 
 (define (expression-canonicalize expression)
-  (if (rtl:register? expression)
-      (or (register-expression
-	   (quantity-first-register
-	    (get-register-quantity (rtl:register-number expression))))
-	  expression)
-      (rtl:map-subexpressions expression expression-canonicalize)))
+  (cond ((rtl:register? expression)
+	 (or (register-expression
+	      (quantity-first-register
+	       (get-register-quantity (rtl:register-number expression))))
+	     expression))
+	((stack-reference? expression)
+	 (let ((register
+		(quantity-first-register
+		 (stack-reference-quantity expression))))
+	   (or (and register (register-expression register))
+	       expression)))
+	(else
+	 (rtl:map-subexpressions expression expression-canonicalize))))
 
 ;;;; Invalidation
 
@@ -97,9 +104,8 @@ MIT in each case. |#
 (define (expression-address-varies? expression)
   (if (memq (rtl:expression-type expression)
 	    '(OFFSET PRE-INCREMENT POST-INCREMENT))
-      (let ((expression (rtl:address-register expression)))
-	(not (or (= regnum:regs-pointer (rtl:register-number expression))
-		 (= regnum:frame-pointer (rtl:register-number expression)))))
+      (not (= regnum:regs-pointer
+	      (rtl:register-number (rtl:address-register expression))))
       (rtl:any-subexpression? expression expression-address-varies?)))
 
 (define (expression-invalidate! expression)
@@ -110,9 +116,6 @@ MIT in each case. |#
       (hash-table-delete-class!
        (lambda (element)
 	 (expression-refers-to? (element-expression element) expression)))))
-
-(define-integrable (stack-pointer-invalidate!)
-  (register-expression-invalidate! (interpreter-stack-pointer)))
 
 (define (register-expression-invalidate! expression)
   ;; Invalidate a register expression.  These expressions are handled
@@ -162,10 +165,19 @@ MIT in each case. |#
 	(let ((expression (element-expression class)))
 	  (cond ((rtl:register? expression)
 		 (register-equivalence!
-		  (get-register-quantity (rtl:register-number expression)))))))
+		  (get-register-quantity (rtl:register-number expression))))
+		((stack-reference? expression)
+		 (register-equivalence!
+		  (stack-reference-quantity expression))))))
     (set-element-in-memory?!
      (hash-table-insert! (expression-hash expression) expression class)
      false)))
+
+(define (insert-stack-destination! expression element)
+  (set-element-in-memory?! (hash-table-insert! (expression-hash expression)
+					       expression
+					       (element->class element))
+			   false))
 
 (define (insert-memory-destination! expression element hash)
   (let ((class (element->class element)))
@@ -255,8 +267,14 @@ MIT in each case. |#
 	      (quantity-number
 	       (get-register-quantity (rtl:register-number expression))))
 	     ((OFFSET)
-	      (set! hash-arg-in-memory? true)
-	      (continue expression))
+	      ;; Note that stack-references do not get treated as
+	      ;; memory for purposes of invalidation.  This is because
+	      ;; (supposedly) no one ever accesses the stack directly
+	      ;; except the compiler's output, which is explicit.
+	      (if (interpreter-stack-pointer? (rtl:offset-register expression))
+		  (quantity-number (stack-reference-quantity expression))
+		  (begin (set! hash-arg-in-memory? true)
+			 (continue expression))))
 	     ((PRE-INCREMENT POST-INCREMENT)
 	      (set! hash-arg-in-memory? true)
 	      (set! do-not-record? true)
@@ -272,4 +290,6 @@ MIT in each case. |#
 		(else (hash object))))))
 
     (let ((hash (loop expression)))
-      (receiver (modulo hash n-buckets) do-not-record? hash-arg-in-memory?))))
+      (receiver (modulo hash (hash-table-size))
+		do-not-record?
+		hash-arg-in-memory?))))

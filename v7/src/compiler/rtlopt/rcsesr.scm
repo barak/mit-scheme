@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcsesr.scm,v 1.1 1987/03/19 00:49:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcsesr.scm,v 4.1 1987/12/08 13:56:09 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -33,12 +33,15 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Common Subexpression Elimination: Stack References
-;;;  Based on the GNU C Compiler
 
 (declare (usual-integrations))
 
 (define *stack-offset*)
 (define *stack-reference-quantities*)
+
+(define (stack-push/pop? expression)
+  (and (memq (rtl:expression-type expression) '(PRE-INCREMENT POST-INCREMENT))
+       (interpreter-stack-pointer? (rtl:address-register expression))))
 
 (define (stack-reference? expression)
   (and (eq? (rtl:expression-type expression) 'OFFSET)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 1.3 1987/05/07 00:18:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.1 1987/12/08 13:55:52 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,12 +37,13 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define n-buckets 31)
-
 (define (make-hash-table)
-  (make-vector n-buckets false))
+  (make-vector 31 false))
 
 (define *hash-table*)
+
+(define-integrable (hash-table-size)
+  (vector-length *hash-table*))
 
 (define-integrable (hash-table-ref hash)
   (vector-ref *hash-table* hash))
@@ -50,18 +51,32 @@ MIT in each case. |#
 (define-integrable (hash-table-set! hash element)
   (vector-set! *hash-table* hash element))
 
-(define element-tag (make-vector-tag false 'ELEMENT))
-(define element? (tagged-vector-predicate element-tag))
+(define-structure (element
+		   (constructor %make-element)
+		   (constructor make-element (expression))
+		   (print-procedure (standard-unparser 'ELEMENT false)))
+  (expression false read-only true)
+  (cost false)
+  (in-memory? false)
+  (next-hash false)
+  (previous-hash false)
+  (next-value false)
+  (previous-value false)
+  (first-value false)
+  (copy-cache false))
 
-(define-vector-slots element 1
-  expression cost in-memory?
-  next-hash previous-hash
-  next-value previous-value first-value
-  copy-cache)
-
-(define (make-element expression)
-  (vector element-tag expression false false false false false false false
-	  false))
+(set-type-object-description!
+ element
+ (lambda (element)
+   `((ELEMENT-EXPRESSION ,(element-expression element))
+     (ELEMENT-COST ,(element-cost element))
+     (ELEMENT-IN-MEMORY? ,(element-in-memory? element))
+     (ELEMENT-NEXT-HASH ,(element-next-hash element))
+     (ELEMENT-PREVIOUS-HASH ,(element-previous-hash element))
+     (ELEMENT-NEXT-VALUE ,(element-next-value element))
+     (ELEMENT-PREVIOUS-VALUE ,(element-previous-value element))
+     (ELEMENT-FIRST-VALUE ,(element-first-value element))
+     (ELEMENT-COPY-CACHE ,(element-copy-cache element)))))
 
 (define (hash-table-lookup hash expression)
   (define (loop element)
@@ -144,16 +159,16 @@ MIT in each case. |#
       (define (per-element element previous)
 	(and element
 	     (let ((element*
-		    (vector element-tag
-			    (element-expression element)
-			    (element-cost element)
-			    (element-in-memory? element)
-			    (per-element (element-next-hash element) element)
-			    previous
-			    (element-next-value element)
-			    (element-previous-value element)
-			    (element-first-value element)
-			    element)))
+		    (%make-element (element-expression element)
+				   (element-cost element)
+				   (element-in-memory? element)
+				   (per-element (element-next-hash element)
+						element)
+				   previous
+				   (element-next-value element)
+				   (element-previous-value element)
+				   (element-first-value element)
+				   element)))
 	       (set-element-copy-cache! element element*)
 	       element*)))
       (if (null? elements)

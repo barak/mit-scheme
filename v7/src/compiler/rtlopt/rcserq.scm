@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 1.4 1987/08/07 17:07:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 4.1 1987/12/08 13:55:45 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,33 +37,35 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define quantity-tag (make-vector-tag false 'QUANTITY))
-(define quantity? (tagged-vector-predicate quantity-tag))
-(define-vector-slots quantity 1 number first-register last-register)
+(define-structure (quantity
+		   (copier quantity-copy)
+		   (print-procedure (standard-unparser 'QUANTITY false)))
+  (number false read-only true)
+  (first-register false)
+  (last-register false))
 
-(define *next-quantity-number*)
-
-(define (generate-quantity-number)
-  (let ((n *next-quantity-number*))
-    (set! *next-quantity-number* (1+ *next-quantity-number*))
-    n))
-
-(define (make-quantity number first-register last-register)
-  (vector quantity-tag number first-register last-register))
-
-(define (new-quantity register)
-  (make-quantity (generate-quantity-number) register register))
-
-(define (quantity-copy quantity)
-  (make-quantity (quantity-number quantity)
-		 (quantity-first-register quantity)
-		 (quantity-last-register quantity)))
+(set-type-object-description!
+ quantity
+ (lambda (quantity)
+   `((QUANTITY-NUMBER ,(quantity-number quantity))
+     (QUANTITY-FIRST-REGISTER ,(quantity-first-register quantity))
+     (QUANTITY-LAST-REGISTER ,(quantity-last-register quantity)))))
 
 (define (get-register-quantity register)
   (or (register-quantity register)
       (let ((quantity (new-quantity register)))
 	(set-register-quantity! register quantity)
 	quantity)))
+
+(define (new-quantity register)
+  (make-quantity (generate-quantity-number) register register))
+
+(define (generate-quantity-number)
+  (let ((n *next-quantity-number*))
+    (set! *next-quantity-number* (1+ *next-quantity-number*))
+    n))
+
+(define *next-quantity-number*)
 
 (define (register-tables/make n-registers)
   (vector (make-vector n-registers)

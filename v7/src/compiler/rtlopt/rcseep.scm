@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 1.5 1987/05/18 23:26:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 4.1 1987/12/08 13:56:02 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -47,10 +47,13 @@ MIT in each case. |#
 	     ((REGISTER)
 	      (register-equivalent? x y))
 	     ((OFFSET)
-	      (and (register-equivalent? (rtl:offset-register x)
-					 (rtl:offset-register y))
-		   (= (rtl:offset-number x)
-		      (rtl:offset-number y))))
+	      (let ((rx (rtl:offset-register x)))
+		(and (register-equivalent? rx (rtl:offset-register y))
+		     (if (interpreter-stack-pointer? rx)
+			 (eq? (stack-reference-quantity x)
+			      (stack-reference-quantity y))
+			 (= (rtl:offset-number x)
+			    (rtl:offset-number y))))))
 	     (else
 	      (rtl:match-subexpressions x y loop))))))
 
