@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.5 1988/12/13 13:02:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.6 1988/12/16 13:24:22 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -74,7 +74,7 @@ MIT in each case. |#
 	(if parent
 	    (vector-tag-unparser parent)
 	    (error "Missing unparser" tag)))))
-
+
 (define (vector-tag-put! tag key value)
   (let ((entry (assq key (vector-tag-method-alist tag))))
     (if entry
@@ -145,12 +145,6 @@ MIT in each case. |#
 	(else
 	 (error "Not a tagged vector" object))))
 
-(define (type-object-description type-object)
-  (2d-get type-object type-object-description))
-
-(define (set-type-object-description! type-object description)
-  (2d-put! type-object type-object-description description))
-
 (define (standard-unparser name unparser)
   (let ((name (string-append "LIAR " name)))    (if unparser
 	(unparser/standard-method name unparser)
