@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.11 1995/04/27 23:23:18 adams Exp $
+$Id: midend.scm,v 1.12 1995/06/26 14:07:19 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -264,6 +264,7 @@ Example:
 					;  common formats (prefixes)
 	     ;; stackopt/optional-debugging-paranoia
 	     indexify/top-level		; rewrite %vector-index
+	     dbg-reduce/top-level	; final environment mappings
 	     ))
 
   (define %optimized-kmp->rtl
@@ -353,7 +354,8 @@ Example:
   (closconv/top-level program *after-cps-conversion?*))
 
 (define (simplify/top-level/1 program)
-  (simplify/top-level program))
+  (fluid-let ((*simplify/open-code-expression-limit* 2))
+    (simplify/top-level program)))
 
 (define (simplify/top-level/2 program)
   (simplify/top-level program))
