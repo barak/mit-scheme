@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.24 1987/04/28 16:29:33 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.25 1987/07/07 19:58:16 cph Rel $
  *
  * General declarations for the SCode interpreter.  This
  * file is INCLUDED by others and contains declarations only.
@@ -70,6 +70,11 @@ MIT in each case. */
 #include <stdio.h>
 
 #include "config.h"	/* Machine and OS configuration info */
+
+#ifdef SITE_INCLUDE_FILE
+#include SITE_INCLUDE_FILE
+#endif
+
 #include "types.h"	/* Type code numbers */
 #include "const.h"	/* Various named constants */
 #include "object.h"	/* Scheme object representation */
