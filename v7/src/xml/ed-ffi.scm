@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: ed-ffi.scm,v 1.2 2001/07/12 03:24:32 cph Exp $
+;;; $Id: ed-ffi.scm,v 1.3 2001/07/16 20:40:23 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -24,4 +24,5 @@
 (standard-scheme-find-file-initialization
  '#(("xml-chars" (runtime xml parser) system-global-syntax-table)
     ("xml-struct" (runtime xml structure) system-global-syntax-table)
+    ("xml-output" (runtime xml output) system-global-syntax-table)
     ("xml-parser" (runtime xml parser) system-global-syntax-table)))

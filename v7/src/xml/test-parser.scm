@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: test-parser.scm,v 1.4 2001/07/12 05:08:16 cph Exp $
+;;; $Id: test-parser.scm,v 1.5 2001/07/16 20:40:25 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -55,3 +55,30 @@
 	      '("valid/sa" "valid/ext-sa" "valid/not-sa"
 			   "invalid"
 			   "not-wf/sa" "not-wf/ext-sa" "not-wf/not-sa"))))
+
+(define (run-output-tests root output)
+  (let ((root
+	 (merge-pathnames "xmlconf/xmltest/"
+			  (pathname-as-directory root)))
+	(output (pathname-as-directory output)))
+    (for-each (lambda (pathname)
+		(write-string ";")
+		(write-string (file-namestring pathname))
+		(write-string ":\t")
+		(let ((v (ignore-errors (lambda () (test-parser pathname)))))
+		  (cond ((not v)
+			 (write-string "No match.")
+			 (newline))
+			((condition? v)
+			 (write-condition-report v (current-output-port))
+			 (newline))
+			(else
+			 (write-string "Parsed: ")
+			 (write v)
+			 (newline)
+			 (call-with-output-file
+			     (merge-pathnames (file-pathname pathname) output)
+			   (lambda (port)
+			     (write-xml v port)))))
+		  v))
+	      (directory-read (merge-pathnames "valid/sa/*.xml" root)))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml.pkg,v 1.5 2001/07/16 18:54:48 cph Exp $
+;;; $Id: xml.pkg,v 1.6 2001/07/16 20:40:28 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -144,3 +144,9 @@
   (parent ())
   (export ()
 	  parse-xml-document))
+
+(define-package (runtime xml output)
+  (files "xml-output")
+  (parent ())
+  (export ()
+	  write-xml))
