@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 14.32 1992/11/29 14:14:40 gjr Exp $
+$Id: debug.scm,v 14.33 1993/03/16 22:13:00 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -173,6 +173,8 @@ MIT in each case. |#
 	   "continue the program using a standard restart option")
       (#\L ,command/print-expression
 	   "(List expression) pretty print the current expression")
+      (#\M ,command/print-frame-elements
+	   "(Frame elements) show the contents of the stack frame, in raw form")
       (#\O ,command/print-environment-procedure
 	   "pretty print the procedure that created the current environment")
       (#\P ,command/move-to-parent-environment
@@ -771,6 +773,15 @@ MIT in each case. |#
 		  (newline port)
 		  (debugger-pp element 0 port))
 		(named-structure/description (dstate/subproblem dstate))))))
+
+(define-command (command/print-frame-elements dstate port)
+  (debugger-presentation
+   port
+   (lambda ()
+     (write-string "Stack frame elements: " port)
+     (for-each-vector-element
+      (stack-frame/elements (dstate/subproblem dstate))
+      write-line))))
 
 ;;;; Low-level Side-effects
 
