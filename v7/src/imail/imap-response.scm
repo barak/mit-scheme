@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.14 2000/05/16 03:33:49 cph Exp $
+;;; $Id: imap-response.scm,v 1.15 2000/05/16 03:58:31 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -164,7 +164,7 @@
 		 (read-flags-response port))
 		((INTERNALDATE)
 		 (discard-known-char #\space port)
-		 (read-quoted port))
+		 (parse-date-time (read-quoted port)))
 		((RFC822 RFC822.HEADER RFC822.TEXT)
 		 (discard-known-char #\space port)
 		 (read-nstring port))
@@ -201,6 +201,17 @@
   (let ((pv (parse-string imap:parse:section string)))
     (and pv
 	 (parser-token pv 'SECTION))))
+
+(define (parse-date-time string)
+  (decoded-time->universal-time
+   (make-decoded-time
+    (string->number (substring string 18 20))
+    (string->number (substring string 15 17))
+    (string->number (substring string 12 14))
+    (string->number (string-trim-left (substring string 0 2)))
+    (string->month (substring string 3 6))
+    (string->number (substring string 7 11))
+    (string->time-zone (string-tail string 21)))))
 
 (define (read-generic port)
   (let ((char (peek-char-no-eof port)))
