@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.5 1996/07/26 23:39:26 adams Exp $
+$Id: coerce.scm,v 1.6 1996/07/30 00:12:55 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -191,8 +191,21 @@ MIT in each case. |#
 
 (declare (ignore-reference-traps (set arity-dispatcher-tag)))
 
+
+;;; Other procedures which the 8.0 compiler expects to be defined
+;;
 
-;; This is done in make.scm: (define coerce-to-compiled-procedure)
+(define (compiled-code-support:nonrestartable-continuation result)
+  (error
+   "You attempted to return to a subproblem with a non-restartable error in"
+   (error-irritant/noise "compiled code, using the value: \n;  ")
+   result))
+
+
+;; This is done in make.scm:
+;;
+;;   (define coerce-to-compiled-procedure)
+;;
 
 (define (initialize-package!)
   ;; The above code only works if compiled, so just use the primitive if
