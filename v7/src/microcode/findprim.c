@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.32 1987/12/04 22:13:04 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.33 1987/12/23 04:48:05 cph Rel $
  *
  * Preprocessor to find and declare defined primitives.
  *
@@ -544,6 +544,27 @@ update_from_entry(primitive_descriptor)
   }
   return;
 }
+
+void
+copy_arity_token (s, size)
+     char s[];
+     int *size;
+{
+  char buffer [ARITY_SIZE];
+  int buffer_size;
+
+  buffer_size = (*size);
+  copy_token (buffer, (& buffer_size));
+  if ((strcmp (buffer, "LEXPR")) == 0)
+    {
+      strcpy (buffer, "-1");
+      buffer_size = 2;
+    }
+  strcpy (s, buffer);
+  if ((*size) < buffer_size)
+    (*size) = buffer_size;
+  return;
+}
 
 pseudo_void
 create_normal_entry()
@@ -558,7 +579,7 @@ create_normal_entry()
   scan_to_token_start();
   copy_token((Data_Buffer[buffer_index]).C_Name, &C_Size);
   scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).Arity, &A_Size);
+  copy_arity_token((Data_Buffer[buffer_index]).Arity, &A_Size);
   scan_to_token_start();
   copy_symbol((Data_Buffer[buffer_index]).Scheme_Name, &S_Size);
   copy_string(file_name, (Data_Buffer[buffer_index]).File_Name, &F_Size);
@@ -582,7 +603,7 @@ create_alternate_entry()
   scan_to_token_start();
   copy_token((Data_Buffer[buffer_index]).C_Name, &C_Size);
   scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).Arity, &A_Size);
+  copy_arity_token((Data_Buffer[buffer_index]).Arity, &A_Size);
   copy_string(file_name, (Data_Buffer[buffer_index]).File_Name, &F_Size);
   Result_Buffer[buffer_index] = &Data_Buffer[buffer_index];
   buffer_index++;
@@ -641,7 +662,7 @@ create_builtin_entry()
   scan_to_token_start();
   copy_token((Data_Buffer[buffer_index]).C_Name, &C_Size);
   scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).Arity, &A_Size);
+  copy_arity_token((Data_Buffer[buffer_index]).Arity, &A_Size);
   scan_to_token_start();
   copy_token((Data_Buffer[buffer_index]).Scheme_Name, &S_Size);
   copy_string(file_name, (Data_Buffer[buffer_index]).File_Name, &F_Size);
