@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.4 1988/08/01 23:07:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.5 1988/11/08 06:55:53 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -77,14 +77,11 @@ MIT in each case. |#
 				     if-return-address
 				     if-expression
 				     if-other)
-  (if (not (compiled-code-address? object))
-      (error "DISCRIMINATE-COMPILED-ENTRY: bad compiled entry" object))
-  (let ((type (system-hunk3-cxr0
-	       ((ucode-primitive compiled-entry-kind 1) object))))
-    (cond ((= type 0) (if-procedure))
-	  ((= type 1) (if-return-address))
-	  ((= type 2) (if-expression))
-	  (else       (if-other)))))
+  (case (system-hunk3-cxr0 ((ucode-primitive compiled-entry-kind 1) object))
+    ((0) (if-procedure))
+    ((1) (if-return-address))
+    ((2) (if-expression))
+    (else (if-other))))
 
 (define (compiled-entry-type object)
   (discriminate-compiled-entry object
@@ -104,18 +101,19 @@ MIT in each case. |#
        (eq? (compiled-entry-type object) 'COMPILED-PROCEDURE)))
 
 (define (compiled-procedure-arity object)
-  (if (not (compiled-procedure? object))
-      (error "COMPILED-PROCEDURE-ARITY: bad compiled procedure" object))
   (let ((info ((ucode-primitive compiled-entry-kind 1) object)))
+    (if (not (= (system-hunk3-cxr0 info) 0))
+	(error "COMPILED-PROCEDURE-ARITY: bad compiled procedure" object))
     (cons (-1+ (system-hunk3-cxr1 info))
 	  (let ((max (system-hunk3-cxr2 info)))
 	    (and (not (negative? max))
 		 (-1+ max))))))
-(define-integrable (compiled-code-block? object)
-  (object-type? (ucode-type compiled-code-block) object))
+(define (compiled-closure? object)
+  (and (compiled-procedure? object)
+       (compiled-code-block/manifest-closure?
+	(compiled-code-address->block object))))
 
-(define-integrable (compiled-code-block/read-file filename)
-  (compiled-code-address->block (fasload filename)))
+(define-primitives (compiled-closure->entry 1))
 
 ;;; These are now pretty useless.
 
@@ -149,6 +147,12 @@ that you cannot just vector-ref into.
 |#
 
 (define compiled-code-block/bytes-per-object)
+
+(define-integrable (compiled-code-block? object)
+  (object-type? (ucode-type compiled-code-block) object))
+
+(define-integrable (compiled-code-block/read-file filename)
+  (compiled-code-address->block (fasload filename)))
 
 (define (compiled-code-block/manifest-closure? block)
   (object-type? 

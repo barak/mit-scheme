@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.8 1988/11/02 21:43:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.9 1988/11/08 06:55:59 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -186,7 +186,10 @@ MIT in each case. |#
   (*unparse-string (substring string start end)))
 
 (define-integrable (*unparse-datum object)
-  (*unparse-string (number->string (object-datum object) 16)))
+  (*unparse-hex (object-datum object)))
+
+(define-integrable (*unparse-hex number)
+  (*unparse-string (number->string number 16)))
 
 (define-integrable (*unparse-hash object)
   (*unparse-string (number->string (hash object))))
@@ -443,48 +446,33 @@ MIT in each case. |#
 ;;;; Compiled entries
 
 (define (unparse/compiled-entry entry)
-  (discriminate-compiled-entry entry
-    (lambda () (unparse-compiled-procedure entry))
-    (lambda () (unparse-compiled-entry entry))
-    (lambda () (unparse-compiled-entry entry))
-    (lambda () (unparse-compiled-entry entry))))
+  (let* ((type (compiled-entry-type entry))
+	 (closure?
+	  (and (eq? type 'COMPILED-PROCEDURE)
+	       (compiled-code-block/manifest-closure?
+		(compiled-code-address->block entry)))))
+    (*unparse-with-brackets
+     (if closure? 'COMPILED-CLOSURE type)
+     entry
+     (lambda ()
+       (let ((entry* (if closure? (compiled-closure->entry entry) entry)))
+	 (*unparse-object
+	  (or (and (eq? type 'COMPILED-PROCEDURE)
+		   (compiled-procedure/name entry*))
+	      (compiled-entry/filename entry*)
+	      '()))
+	 (*unparse-char #\Space)
+	 (*unparse-hex (compiled-code-address->offset entry*))
+	 (*unparse-char #\Space)
+	 (*unparse-datum entry*)
+	 (if closure?
+	     (begin (*unparse-char #\Space)
+		    (*unparse-datum entry))))))))
 
-(define (unparse-compiled-procedure entry)
-  ;; Gross-out to make the "FASLoading" message not print out in the
-  ;; middle of the other stuff.
-  (let ((unparse-it
-	 (lambda (thunk)
-	   (*unparse-with-brackets 'COMPILED-PROCEDURE entry thunk))))
-    (compiled-entry->name entry
-      (lambda (string)
-	(unparse-it
-	 (lambda ()
-	   (*unparse-string (detach-suffix-number string)))))
-      (lambda ()
-	(compiled-entry->pathname entry
-	  (lambda (pathname)
-	    (unparse-it 
-	     (lambda () 
-	       (*unparse-string "from file ")
-	       (*unparse-object (pathname-name pathname)))))
-	  (lambda ()
-	    (unparse-it
-	     (lambda () 
-	       (*unparse-datum entry)))))))))
-
-(define (unparse-compiled-entry entry)
-  (let ((unparse-it
-	 (lambda (thunk)
-	   (*unparse-with-brackets (compiled-entry-type entry) entry thunk))))
-    (compiled-entry->pathname entry
-      (lambda (pathname)
-	(unparse-it 
-	 (lambda ()
-	   (*unparse-string "from file ")
-	   (*unparse-object (pathname-name pathname)))))
-      (lambda () 
-	(unparse-it 
-	 (lambda () (*unparse-datum entry)))))))
+(define (compiled-procedure/name entry)
+  (compiled-entry->name entry
+    (lambda (string) (string->symbol (detach-suffix-number string)))
+    (lambda () false)))
 
 ;;; Names in the symbol table are of the form "FOOBAR-127".  The 127
 ;;; is added by the compiler.  This procedure detaches the suffix
@@ -502,6 +490,11 @@ MIT in each case. |#
 	  ((char-numeric? (string-ref string index))
 	   (loop (-1+ index)))
 	  (else string))))
+
+(define (compiled-entry/filename entry)
+  (compiled-entry->pathname entry
+    (lambda (pathname) (list 'FILE (pathname-name pathname)))
+    (lambda () false)))
 
 ;;;; Miscellaneous
 
@@ -519,9 +512,7 @@ MIT in each case. |#
 (define (unparse/future future)
   (*unparse-with-brackets 'FUTURE false
     (lambda ()
-      (*unparse-string
-       (number->string ((ucode-primitive primitive-object-datum 1) future)
-		       16)))))
+      (*unparse-hex ((ucode-primitive primitive-object-datum 1) future)))))
 
 (define (unparse/entity entity)
   (*unparse-with-brackets (if (continuation? entity) 'CONTINUATION 'ENTITY)
