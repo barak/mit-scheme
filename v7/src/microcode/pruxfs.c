@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.49 1992/06/05 19:41:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.50 1992/09/05 03:03:25 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,6 +93,40 @@ DEFINE_PRIMITIVE ("FILE-MOD-TIME-INDIRECT", Prim_file_mod_time_indirect, 1, 1, 0
     ((UX_read_file_status_indirect ((STRING_ARG (1)), (&s)))
      ? (long_to_integer (s . st_mtime))
      : SHARP_F);
+}
+
+DEFINE_PRIMITIVE ("FILE-ACCESS-TIME", Prim_file_acc_time, 1, 1, 0)
+{
+  struct stat s;
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    ((UX_read_file_status ((STRING_ARG (1)), (&s)))
+     ? (long_to_integer (s . st_atime))
+     : SHARP_F);
+}
+
+DEFINE_PRIMITIVE ("FILE-ACCESS-TIME-INDIRECT", Prim_file_acc_time_indirect, 1, 1, 0)
+{
+  struct stat s;
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    ((UX_read_file_status_indirect ((STRING_ARG (1)), (&s)))
+     ? (long_to_integer (s . st_atime))
+     : SHARP_F);
+}
+
+DEFINE_PRIMITIVE ("SET-FILE-TIMES!", Prim_set_file_times, 3, 3,
+  "Change the access and modification times of FILE.\n\
+The second and third arguments are the respective times.\n\
+The file must exist and you must be the owner (or superuser).")
+{
+  struct utimbuf times;
+  PRIMITIVE_HEADER (3);
+  times.actime = (arg_nonnegative_integer (2));
+  times.modtime = (arg_nonnegative_integer (3));
+  STD_VOID_SYSTEM_CALL
+    (syscall_utime, (UX_utime ((STRING_ARG (1)), (&times))));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 /* Returns a vector of 10 items:
@@ -367,23 +401,6 @@ DEFUN (protect_fd, (fd), int fd)
   transaction_record_action (tat_always, protect_fd_close, p);
 }
 
-DEFINE_PRIMITIVE ("SET-FILE-TIMES!", Prim_set_file_times, 3, 3,
-  "Change the access and modification times of FILE.\n\
-The second and third arguments are the respective times;\n\
-they are integers are the times in seconds since 00:00:00 GMT, Jan. 1, 1970\n\
-The file must exist and you must be the owner (or superuser).")
-{
-  PRIMITIVE_HEADER (3);
-  {
-    struct utimbuf times;
-    
-    times.actime = arg_integer (2);
-    times.modtime = arg_integer (3);
-    STD_VOID_SYSTEM_CALL(syscall_utime, (UX_utime ((STRING_ARG (1)), &times)));
-  }
-  PRIMITIVE_RETURN (SHARP_F);
-}
-
 DEFINE_PRIMITIVE ("FILE-EQ?", Prim_file_eq_p, 2, 2,
   "True iff the two file arguments are the same file.")
 {
