@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.51 1996/04/16 20:17:45 cph Exp $
+@comment $Id: user.texinfo,v 1.52 1996/04/16 20:35:13 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -54,7 +54,7 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.51
+@subtitle Edition 1.52
 @subtitle for Scheme Release 7.4
 @subtitle 16 April 1996
 @author by Stephen Adams
@@ -142,7 +142,7 @@ OS/2 Installation
 
 Windows Installation
 
-* Prerequisites::               
+* Prerequisites for Windows Installation::  
 * Windows Installation Procedure::  
 
 Running Scheme
@@ -827,7 +827,7 @@ NT 3.10, Windows 3.1 and Windows 95.  It should run under Windows NT
 with Windows NT 3.10.
 
 @menu
-* Prerequisites::               
+* Prerequisites for Windows Installation::  
 * Windows Installation Procedure::  
 @end menu
 
@@ -856,7 +856,7 @@ installed it.  Win32s is provided in the self-extracting @sc{zip} file
 @samp{pw1118}.  This will create three files.  Follow the instructions
 in @file{readme.txt}.
 
-@node Windows Installation Procedure,  , Prerequisites, Windows Installation
+@node Windows Installation Procedure,  , Prerequisites for Windows Installation, Windows Installation
 @subsection Windows Installation Procedure
 
 Create a directory where you would like Scheme to be installed.  We
