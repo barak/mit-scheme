@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: rulrew.scm,v 1.2 1993/06/10 04:59:46 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -120,7 +120,7 @@ MIT in each case. |#
 (define-rule rewriting
   (EQ-TEST (REGISTER (? comparand register-known-value)) (? source))
   (QUALIFIER (rtl:immediate-zero-constant? comparand))
-  (list 'EQ-TEST source (rtl:make-machine-register 0)))
+  (list 'EQ-TEST source (rtl:make-machine-constant 0)))
 
 (define (rtl:immediate-zero-constant? expression)
   (cond ((rtl:constant? expression)
