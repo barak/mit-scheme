@@ -1,5 +1,5 @@
 ##
-## $Id: Makefile,v 1.3 1997/10/07 19:33:49 adams Exp $
+## $Id: Makefile,v 1.4 1997/10/07 19:35:48 adams Exp $
 ##
 ## 
 ##
@@ -36,7 +36,7 @@ install: scheme/compiled
 	rm -rf $(INSTALL_DIR) $(TCL_LIBRARY) $(TK_LIBRARY)
 	mkdir  $(INSTALL_DIR) $(INSTALL_DIR)/dynload \
                $(TCL_LIBRARY) $(TK_LIBRARY)
-	cp $(C_LIBRARIES) $(INSTALL_DIR)/dynload
+	cp -p $(C_LIBRARIES) $(INSTALL_DIR)/dynload
 	(cd c/tk3.2/library;     cp -p *.tcl tclIndex prolog.ps  $(TK_LIBRARY))
 	(cd c/tk3.2/tcl/library; cp -p *.tcl tclIndex  $(TCL_LIBRARY))
 	(cd scheme; cp -p load.scm *.com *.bci demo-*.scm $(INSTALL_DIR))
