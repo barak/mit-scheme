@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.30 2001/08/16 20:02:35 cph Exp $
+$Id: packag.scm,v 14.31 2001/08/17 12:50:15 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -161,7 +161,7 @@ USA.
 (define system-loader/enable-query?
   #f)
 
-(define (package/system-loader filename #!optional options load-interpreted?)
+(define (load-package-set filename #!optional options load-interpreted?)
   (let* ((options (if (default-object? options) '() options))
 	 (pathname
 	  (let ((rewrite (lookup-option 'REWRITE-PACKAGE-FILE-NAME options))
@@ -204,6 +204,9 @@ USA.
   ;; program runs before it gets purified, some of its run-time state
   ;; can end up being purified also.
   (flush-purification-queue!))
+
+(define package/system-loader
+  load-package-set)
 
 (define (filename->compiled-object system component)
   (let ((prim (ucode-primitive initialize-c-compiled-block 1)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.373 2001/08/15 02:56:21 cph Exp $
+$Id: runtime.pkg,v 14.374 2001/08/17 12:50:52 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -54,6 +54,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  construct-packages-from-file
 	  environment->package
 	  find-package
+	  load-package-set
 	  load-packages-from-file
 	  name->package
 	  package/add-child!

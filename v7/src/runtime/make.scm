@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.71 2001/08/15 02:55:59 cph Exp $
+$Id: make.scm,v 14.72 2001/08/17 12:51:00 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -295,6 +295,7 @@ USA.
   (export 'CONSTRUCT-PACKAGES-FROM-FILE)
   (export 'ENVIRONMENT->PACKAGE)
   (export 'FIND-PACKAGE)
+  (export 'LOAD-PACKAGE-SET)
   (export 'LOAD-PACKAGES-FROM-FILE)
   (export 'NAME->PACKAGE)
   (export 'PACKAGE/ADD-CHILD!)
