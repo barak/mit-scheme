@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.33 1995/08/06 19:58:11 adams Exp $
+$Id: rtlgen.scm,v 1.34 1995/08/07 16:12:35 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -4233,7 +4233,8 @@ MIT in each case. |#
        unexpected unexpected unexpected unexpected unexpected))
    ;; These are rewritten by earlier stages or handled specially.
    ;; They should never be found.
-   (list %vector-index %variable-cache-ref %variable-cache-set!
+   (list #|%vector-index|#
+         %variable-cache-ref %variable-cache-set!
 	 %safe-variable-cache-ref %stack-closure-ref
 	 %internal-apply %internal-apply-unchecked
 	 %primitive-apply %invoke-continuation
