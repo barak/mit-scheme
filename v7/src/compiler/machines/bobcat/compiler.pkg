@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.13 1988/12/13 13:01:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.14 1988/12/15 17:03:19 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -281,6 +281,7 @@ MIT in each case. |#
   (files "fgopt/subfre")
   (parent (compiler fg-optimizer))
   (export (compiler top-level) compute-subproblem-free-variables)
+  (export (compiler fg-optimizer) map-union)
   (export (compiler fg-optimizer subproblem-ordering)
 	  new-subproblem/compute-free-variables!))
 
@@ -364,24 +365,27 @@ MIT in each case. |#
 	 "rtlopt/rcsesr"		;CSE stack references
 	 )
   (parent (compiler))
-  (export (compiler top-level)
-	  common-subexpression-elimination))
+  (export (compiler top-level) common-subexpression-elimination))
 
 (define-package (compiler rtl-optimizer)
-  (files "rtlopt/rlife"			;RTL register lifetime analyzer
-	 "rtlopt/rdebug"		;RTL optimizer debugging output
-	 "rtlopt/ralloc"		;RTL register allocation
-	 )
-  (parent (compiler))
-  (export (compiler top-level)
-	  lifetime-analysis
-	  register-allocation))
+  (files "rtlopt/rdebug")
+  (parent (compiler)))
+
+(define-package (compiler rtl-optimizer register-allocation)
+  (files "rtlopt/ralloc")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) register-allocation))
+
+(define-package (compiler rtl-optimizer lifetime-analysis)
+  (files "rtlopt/rlife")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) lifetime-analysis)
+  (export (compiler rtl-optimizer code-compression) mark-set-registers!))
 
 (define-package (compiler rtl-optimizer code-compression)
   (files "rtlopt/rdeath")
   (parent (compiler rtl-optimizer))
-  (export (compiler top-level)
-	  code-compression))
+  (export (compiler top-level) code-compression))
 
 (define-package (compiler debugging-information)
   (files "base/infnew")
