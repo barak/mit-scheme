@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dsyn.scm,v 1.4 1987/08/21 02:21:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dsyn.scm,v 1.5 1987/08/21 02:49:28 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -85,7 +85,7 @@ MIT in each case. |#
 (define (make-instruction-parser prefix operands)
   `(lambda ()
      (append ',prefix
-	     (process-operands operands))))
+	     ,(process-operands operands))))
 
 ;; A let* is used below to force the order of evaluation.
 
