@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.50 1995/07/28 17:45:09 adams Exp $
+$Id: global.scm,v 14.51 1995/08/08 15:32:15 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -183,26 +183,17 @@ MIT in each case. |#
 |#
 
 (define (show-time thunk)
-  (let ((process-start (process-time-clock))
-	(process-start/nogc (runtime))
-	(real-start (real-time-clock)))
-    (let ((value (thunk)))
-      (let* ((process-end (process-time-clock))
-	     (process-end/nogc (runtime))
-	     (real-end (real-time-clock))
-	     (process-time (- process-end process-start))
-	     (process-time/nogc
-	      (round->exact (* 1000 (- process-end/nogc process-start/nogc)))))
-	(newline)
-	(write-string "process time: ")
-	(write process-time)
-	(write-string " (")
-	(write process-time/nogc)
-	(write-string " RUN + ")
-	(write (- process-time process-time/nogc))
-	(write-string " GC); real time: ")
-	(write (- real-end real-start)))
-      value)))
+  (with-timings thunk
+   (lambda (process-non-gc process-gc real)		
+     (newline)
+     (write-string "process time: ")
+     (write (+ process-non-gc process-gc))
+     (write-string " (")
+     (write process-non-gc)
+     (write-string " RUN + ")
+     (write process-gc)
+     (write-string " GC); real time: ")
+     (write real))))
 
 (define (wait-interval ticks)
   (let ((end (+ (real-time-clock) ticks)))
