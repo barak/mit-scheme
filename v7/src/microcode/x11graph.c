@@ -1,7 +1,7 @@
 
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.20 1992/02/10 21:10:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.21 1992/02/11 18:57:58 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -313,6 +313,7 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
     (methods . event_processor) = process_event;
     (methods . x_coordinate_map) = x_coordinate_map;
     (methods . y_coordinate_map) = y_coordinate_map;
+    (methods . update_normal_hints) = 0;
     {
       unsigned int extra = (2 * (attributes . internal_border_width));
       int x_pos = (-1);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.17 1992/02/10 21:09:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.18 1992/02/11 18:58:03 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -184,6 +184,12 @@ DEFUN (xterm_set_wm_normal_hints, (xw, geometry_mask, x, y),
   (size_hints -> base_height) = extra;
   XSetWMNormalHints ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), size_hints);
   XFree ((caddr_t) size_hints);
+}
+
+static void
+DEFUN (xterm_update_normal_hints, (xw), struct xwindow * xw)
+{
+  xterm_set_wm_normal_hints (xw, 0, 0, 0);
 }
 
 static void
@@ -388,7 +394,7 @@ DEFUN (xterm_reconfigure, (xw, width, height),
       (XW_CHARACTER_MAP (xw))= new_char_map;
       (XW_HIGHLIGHT_MAP (xw))= new_hl_map;
       xterm_dump_contents (xw, 0, 0, x_csize, y_csize);
-      xterm_set_wm_normal_hints (xw, 0, 0, 0);
+      xterm_update_normal_hints (xw);
       XFlush (XW_DISPLAY (xw));
     }
 }
@@ -491,6 +497,7 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
     (methods . event_processor) = xterm_process_event;
     (methods . x_coordinate_map) = xterm_x_coordinate_map;
     (methods . y_coordinate_map) = xterm_y_coordinate_map;
+    (methods . update_normal_hints) = xterm_update_normal_hints;
     {
       unsigned int extra = (2 * (attributes . internal_border_width));
       int x_pos = (-1);
@@ -577,9 +584,6 @@ DEFINE_PRIMITIVE ("XTERM-SET-SIZE", Prim_xterm_set_size, 3, 3, 0)
   xw = (x_window_arg (1));
   extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
   font = (XW_FONT (xw));
-  /* Update the WM normal hints so they have the latest values for
-     font dimensions and internal border width. */
-  xterm_set_wm_normal_hints (xw, 0, 0, 0);
   XResizeWindow
     ((XW_DISPLAY (xw)),
      (XW_WINDOW (xw)),

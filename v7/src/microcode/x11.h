@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.12 1992/02/10 21:09:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.13 1992/02/11 18:57:46 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -88,6 +88,7 @@ typedef void EXFUN ((*x_deallocator_t), (struct xwindow *));
 typedef void EXFUN ((*x_event_processor_t), (struct xwindow *, XEvent *));
 typedef SCHEME_OBJECT EXFUN
   ((*x_coordinate_map_t), (struct xwindow *, unsigned int));
+typedef void EXFUN ((*x_update_normal_hints_t), (struct xwindow *));
 
 struct xwindow_methods
 {
@@ -100,6 +101,10 @@ struct xwindow_methods
   /* Procedures to map coordinates to Scheme objects. */
   x_coordinate_map_t x_coordinate_map;
   x_coordinate_map_t y_coordinate_map;
+
+  /* Procedure that is called to inform the window manager of
+     adjustments to the window's internal border or font. */
+  x_update_normal_hints_t update_normal_hints;
 };
 
 struct xwindow
@@ -165,6 +170,7 @@ struct xwindow
 #define XW_EVENT_PROCESSOR(xw) (((xw) -> methods) . event_processor)
 #define XW_X_COORDINATE_MAP(xw) (((xw) -> methods) . x_coordinate_map)
 #define XW_Y_COORDINATE_MAP(xw) (((xw) -> methods) . y_coordinate_map)
+#define XW_UPDATE_NORMAL_HINTS(xw) (((xw) -> methods) . update_normal_hints)
 #define XW_EVENT_MASK(xw) ((xw) -> event_mask)
 
 #define XW_TO_OBJECT(xw) (LONG_TO_UNSIGNED_FIXNUM (XW_ALLOCATION_INDEX (xw)))

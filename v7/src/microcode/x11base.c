@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.35 1992/02/10 21:29:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.36 1992/02/11 18:57:51 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -1360,6 +1360,8 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-FONT", Prim_x_window_set_font, 2, 2, 0)
       XSetFont (display, (XW_REVERSE_GC (xw)), fid);
       XSetFont (display, (XW_CURSOR_GC (xw)), fid);
     }
+    if ((XW_UPDATE_NORMAL_HINTS (xw)) != 0)
+      (* (XW_UPDATE_NORMAL_HINTS (xw))) (xw);
   }
   PRIMITIVE_RETURN (SHARP_T);
 }
@@ -1468,11 +1470,12 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-INTERNAL-BORDER-WIDTH", Prim_x_window_set_intern
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    Display * display = (XW_DISPLAY (xw));
     unsigned int internal_border_width = (arg_nonnegative_integer (2));
     (XW_INTERNAL_BORDER_WIDTH (xw)) = internal_border_width;
+    if ((XW_UPDATE_NORMAL_HINTS (xw)) != 0)
+      (* (XW_UPDATE_NORMAL_HINTS (xw))) (xw);
     XResizeWindow
-      (display,
+      ((XW_DISPLAY (xw)),
        (XW_WINDOW (xw)),
        ((XW_X_SIZE (xw)) + (2 * internal_border_width)),
        ((XW_Y_SIZE (xw)) + (2 * internal_border_width)));
