@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.37 1987/06/13 21:17:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.38 1987/06/29 20:31:38 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -63,6 +63,11 @@ MIT in each case. |#
        (queue-map! *continuation-queue*
 	 (lambda (continuation)
 	   (cgen-entry continuation continuation-rtl-entry)))
+       (for-each (lambda (continuation)
+		   (if (not (continuation-frame-pointer-offset continuation))
+		       (error "GENERATE-LAP: Continuation not processed"
+			      continuation)))
+		 *continuations*)
        (receiver *block-start-label*
 		 (generate/quotation-header *block-start-label*
 					    *interned-constants*
