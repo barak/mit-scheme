@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.22 1997/12/23 05:16:06 cph Exp $
+$Id: edextra.scm,v 1.23 1997/12/23 05:16:15 cph Exp $
 
-Copyright (c) 1992-95 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
