@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.1 1987/05/28 00:53:01 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.2 1987/05/29 17:40:27 jinx Rel $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -315,7 +315,12 @@ Define_Primitive(Prim_Box_Rotate_Move, 2, "BOX-ROTATE-MOVE")
   block_read(screen_handle, x_source, y_source, ((int) x_length), ((int) y_length), 
 	     x_dest, y_dest);
 
+#if false
   Char_Array_90clw();
+#else
+  fprintf(stderr, "\nPrim_Box_Rotate_Move: Char_Array_90clw undefined.\n");
+  Primitive_Error(ERR_EXTERNAL_RETURN);
+#endif
 
   block_read(screen_handle, x_source, y_source, ((int) x_length), ((int) y_length), 
 	     x_dest, y_dest);
