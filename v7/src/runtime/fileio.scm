@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.7 1993/10/21 14:52:36 cph Exp $
+$Id: fileio.scm,v 1.8 1994/11/20 05:04:35 cph Exp $
 
-Copyright (c) 1991-1993 Massachusetts Institute of Technology
+Copyright (c) 1991-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -258,7 +258,7 @@ MIT in each case. |#
   (pathname false read-only true))
 
 (define (operation/length port)
-  (file-length (operation/input-channel port)))
+  (channel-file-length (operation/input-channel port)))
 
 (define (operation/pathname port)
   (file-state/pathname (port/state port)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.38 1994/11/14 00:13:38 cph Exp $
+$Id: io.scm,v 14.39 1994/11/20 05:03:33 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -357,13 +357,13 @@ MIT in each case. |#
 (define (file-open-append-channel filename)
   (file-open (ucode-primitive file-open-append-channel 1) filename))
 
-(define (file-length channel)
+(define (channel-file-length channel)
   ((ucode-primitive file-length-new 1) (channel-descriptor channel)))
 
-(define (file-position channel)
+(define (channel-file-position channel)
   ((ucode-primitive file-position 1) (channel-descriptor channel)))
 
-(define (file-set-position channel position)
+(define (channel-file-set-position channel position)
   ((ucode-primitive file-set-position 2) (channel-descriptor channel)
 					 position))
 
@@ -846,8 +846,9 @@ MIT in each case. |#
 			       => (lambda (marker)
 				    (if (and (fix:> n-read 0)
 					     (channel-type=file? channel)
-					     (fix:= (file-position channel)
-						    (file-length channel))
+					     (fix:=
+					      (channel-file-position channel)
+					      (channel-file-length channel))
 					     (char=?
 					      (string-ref string
 							  (+ delta
@@ -881,7 +882,9 @@ MIT in each case. |#
 	 (channel-type=file? channel)
 	 (not (input-buffer/line-translation buffer)) ; Can't tell otherwise
 	 (not (input-buffer/end-marker buffer))	      ; Can't tell otherwise
-	 (let ((n (fix:- (file-length channel) (file-position channel))))
+	 (let ((n
+		(fix:- (channel-file-length channel)
+		       (channel-file-position channel))))
 	   (and (fix:>= n 0)
 		(fix:+ (input-buffer/buffered-chars buffer) n))))))
 

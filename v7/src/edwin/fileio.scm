@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.120 1994/05/04 22:56:34 cph Exp $
+;;;	$Id: fileio.scm,v 1.121 1994/11/20 05:06:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -145,7 +145,7 @@ Each procedure is called with three arguments:
 (define (group-insert-file! group index truename)
   (let ((filename (->namestring truename)))
     (let ((channel (file-open-input-channel filename)))
-      (let ((length (file-length channel)))
+      (let ((length (channel-file-length channel)))
 	(bind-condition-handler (list condition-type:allocation-failure)
 	    (lambda (condition)
 	      condition

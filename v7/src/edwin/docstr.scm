@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: docstr.scm,v 1.1 1993/09/03 04:41:53 cph Exp $
+$Id: docstr.scm,v 1.2 1994/11/20 05:06:04 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -125,12 +125,12 @@ of that license should have been included along with this file.
 	 (guarantee-doc-string-state)
 	 (let* ((channel *doc-string-channel*)
 		(buffer *doc-string-buffer*)
-		(flen (file-length channel))
+		(flen (channel-file-length channel))
 		(nlen (string-length name))
 		(delta (fix:- flen (fix:+ posn 2))))
 	   (if (fix:< delta 0)
 	       (out-of-range))
-	   (file-set-position channel posn)
+	   (channel-file-set-position channel posn)
 	   (let ((blen (min doc-string-buffer-length delta)))
 	     (fill-buffer channel buffer 0 blen)
 	     (let* ((dslen (fix:+ (vector-8b-ref buffer 0)

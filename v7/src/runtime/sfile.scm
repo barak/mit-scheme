@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.13 1994/05/04 22:47:10 cph Exp $
+$Id: sfile.scm,v 14.14 1994/11/20 05:06:56 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -73,7 +73,7 @@ MIT in each case. |#
 		 (file-open-output-channel output-filename)))
 	 unspecific)
        (lambda ()
-	 (let ((source-length (file-length input-channel))
+	 (let ((source-length (channel-file-length input-channel))
 	       (buffer-length 8192))
 	   (if (zero? source-length)
 	       0
