@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.60 1991/03/21 23:25:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.61 1991/03/24 01:10:22 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -513,7 +513,7 @@ DEFUN (end_scan_buffer_extension, (to_relocate), char *to_relocate)
       /* There was overlap, but there no longer is. */
 
       load_buffer ((scan_position + extension_overlap_length),
-		   dest,
+		   ((SCHEME_OBJECT *) dest),
 		   (GC_BUFFER_BYTES - extension_overlap_length),
 		   "the scan buffer");
       *scan_buffer_top =
