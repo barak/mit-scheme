@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.46 1988/07/15 20:26:31 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.47 1989/03/27 23:17:15 jinx Rel $
 
 (declare (usual-integrations))
 
@@ -84,8 +84,8 @@
 	       TOUCHED-FUTURES-VECTOR			;1B
 	       PRECIOUS-OBJECTS				;1C
 	       ERROR-PROCEDURE				;1D
-	       UNSNAPPED-LINK		                ;1E
-	       MICROCODE-UTILITIES-VECTOR		;1F
+	       #F #| UNSNAPPED-LINK |#	                ;1E
+	       #F #| MICROCODE-UTILITIES-VECTOR |#	;1F
 	       COMPILER-ERROR-PROCEDURE			;20
 	       LOST-OBJECT-BASE				;21
 	       STATE-SPACE-ROOT				;22
@@ -450,6 +450,7 @@
 	       COMPILER-UNASSIGNED?-TRAP-RESTART	;59
 	       #F					;5A
 	       COMPILER-LINK-CACHES-RESTART 		;5B
+	       HARDWARE-TRAP				;5C
 	       ))
 
 ;;; [] Errors
@@ -546,6 +547,8 @@
 	       SIGNAL				;16
 	       TOUCH				;17
 	       SAVE-AND-EXIT			;18
+	       TRAP				;19
+	       BAD-BACK-OUT			;20
 	       ))
 
 (vector-set! (get-fixed-objects-vector)
@@ -571,4 +574,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.46 1988/07/15 20:26:31 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.47 1989/03/27 23:17:15 jinx Rel $"

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.47 1988/11/10 06:14:18 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.48 1989/03/27 23:15:19 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -1296,13 +1296,36 @@ external_assignment_return:
       Import_Registers_Except_Val();
       break;
 #endif
-
+
     case RC_HALT:
       Export_Registers();
       Microcode_Termination(TERM_TERM_HANDLER);
-
 
+    case RC_HARDWARE_TRAP:
+    {
+      /* This just reinvokes the handler */
+
+      Pointer info, handler;
+      info = (STACK_REF (0));
+
+      Save_Cont();
+      if ((! (Valid_Fixed_Obj_Vector())) ||
+	  ((handler = (Get_Fixed_Obj_Slot(Trap_Handler))) == SHARP_F))
+      {
+	fprintf(stderr, "There is no trap handler for recovery!\n");
+	Microcode_Termination(TERM_TRAP);
+	/*NOTREACHED*/
+      }
+     Will_Push(STACK_ENV_EXTRA_SLOTS + 2);
+      Push(info);
+      Push(handler);
+      Push(STACK_FRAME_HEADER + 1);
+     Pushed();
+      goto Internal_Apply;
+    }
+
 /* Internal_Apply, the core of the application mechanism.
+
    Branch here to perform a function application.  
 
    At this point the top of the stack contains an application frame
@@ -1808,6 +1831,7 @@ return_from_compiled_code:
 	Microcode_Termination(TERM_GC_OUT_OF_SPACE);
       }
       GC_Space_Needed = 0;
+      EXIT_CRITICAL_SECTION ({ Save_Cont(); Export_Registers(); });
       End_GC_Hook();
       break;
 
@@ -1914,6 +1938,7 @@ Primitive_Internal_Apply:
     {
       Pointer GC_Daemon_Proc, Result;
 
+      RENAME_CRITICAL_SECTION ("purify pass 2");
       Export_Registers();
       Result = Purify_Pass_2(Fetch_Expression());
       Import_Registers();
@@ -1923,14 +1948,17 @@ Primitive_Internal_Apply:
 	     There is no need to run the daemons, and we should let
 	     the runtime system know what happened.  */
 	  RESULT_OF_PURIFY (NIL);
+	  EXIT_CRITICAL_SECTION ({ Export_Registers(); });
 	  break;
 	}
       GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
       if (GC_Daemon_Proc == NIL)
 	{
 	  RESULT_OF_PURIFY (SHARP_T);
+	  EXIT_CRITICAL_SECTION ({ Export_Registers(); });
 	  break;
 	}
+      RENAME_CRITICAL_SECTION( "purify daemon 2");
       Store_Expression(NIL);
       Store_Return(RC_PURIFY_GC_2);
       Save_Cont();
@@ -1943,6 +1971,7 @@ Primitive_Internal_Apply:
 
     case RC_PURIFY_GC_2:
       RESULT_OF_PURIFY (SHARP_T);
+      EXIT_CRITICAL_SECTION ({ Export_Registers(); });
       break;
 
     case RC_REPEAT_DISPATCH:

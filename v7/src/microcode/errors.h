@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.31 1988/08/15 20:45:29 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.32 1989/03/27 23:14:52 jinx Exp $
  *
  * Error and termination code declarations.
  *
@@ -173,7 +173,7 @@ MIT in each case. */
 /* 0x37 */		"IO-ERROR",					\
 /* 0x38 */		"FASDUMP-ENVIRONMENT",				\
 /* 0x39 */		"FASLOAD-BAND",					\
-/* 0x40 */		"FASLOAD-COMPILED-MISMATCH"			\
+/* 0x3A */		"FASLOAD-COMPILED-MISMATCH"			\
 }
 
 /* Termination codes: the interpreter halts on these */
@@ -204,13 +204,14 @@ MIT in each case. */
 #define TERM_TOUCH				0x17
 #define TERM_SAVE_AND_EXIT			0x18
 #define TERM_TRAP				0x19
+#define TERM_BAD_BACK_OUT			0x20
 
 /*
   If you add any termination codes here, add them to
   the tables below as well!
  */
 
-#define MAX_TERMINATION				0x19
+#define MAX_TERMINATION				0x20
 
 #define TERM_NAME_TABLE							\
 {									\
@@ -239,7 +240,8 @@ MIT in each case. */
 /* 0x16 */		"SIGNAL",					\
 /* 0x17 */		"TOUCH",					\
 /* 0x18 */		"SAVE-AND-EXIT",				\
-/* 0x19 */		"TERM_TRAP"					\
+/* 0x19 */		"TERM_TRAP",					\
+/* 0x20 */		"BAD_BACK_OUT"					\
 }
 
 #define TERM_MESSAGE_TABLE						\
@@ -269,5 +271,6 @@ MIT in each case. */
 /* 0x16 */		"Unhandled signal received",			\
 /* 0x17 */		"Touch without futures support",		\
 /* 0x18 */		"Halt requested by external source",		\
-/* 0x19 */		"User requested termination after trap"		\
+/* 0x19 */		"User requested termination after trap",	\
+/* 0x20 */		"Backing out of non-primitive"			\
 }

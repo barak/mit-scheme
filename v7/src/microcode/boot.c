@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.53 1988/10/21 18:20:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.54 1989/03/27 23:14:13 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -51,7 +51,6 @@ MIT in each case. */
 	  {-stack stack-size}
 	  {-constant constant-size}
 	  {-utabmd utab-filename} or {-utab utab-filename}
-	  {-recover}
           {other arguments ignored by the core microcode}
 
    with filespec either {-band band-name} or {-fasl file-name} or
@@ -172,8 +171,6 @@ Def_Number(key, nargs, args, def)
 
 extern Boolean Was_Scheme_Dumped;
 Boolean Was_Scheme_Dumped = false;
-extern Boolean Recover_Automatically;
-Boolean Recover_Automatically = false;
 Boolean inhibit_termination_messages;
 int Saved_Heap_Size;
 int Saved_Stack_Size;
@@ -199,9 +196,6 @@ find_image_parameters(file_name, cold_load_p, supplied_p)
   *supplied_p = false;
   *cold_load_p = false;
   *file_name = DEFAULT_BAND_NAME;
-
-  Recover_Automatically =
-    (Parse_Option("-recover", Saved_argc, Saved_argv, true) != NOT_THERE);
 
   if (!Was_Scheme_Dumped)
   {

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.39 1988/09/29 05:03:12 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.40 1989/03/27 23:17:22 jinx Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -189,7 +189,13 @@ Back_Out_Of_Primitive ()
    * restarted and completes successfully.
    */
 
-  primitive = Fetch_Expression();
+  primitive = Regs[REGBLOCK_PRIMITIVE];
+  if (OBJECT_TYPE(primitive) != TC_PRIMITIVE)
+  {
+    fprintf(stderr,
+	    "\nBack_Out_Of_Primitive backing out when not in primitive!\n");
+    Microcode_Termination(TERM_BAD_BACK_OUT);
+  }
   nargs = PRIMITIVE_N_ARGUMENTS(primitive);
   if (OBJECT_TYPE(Stack_Ref(nargs)) == TC_COMPILED_ENTRY)
   { 
@@ -202,6 +208,7 @@ Back_Out_Of_Primitive ()
   Val = NIL;
   Store_Return(RC_INTERNAL_APPLY);
   Store_Expression(NIL);
+  Regs[REGBLOCK_PRIMITIVE] = NIL;
   return;
 }
 
@@ -751,7 +758,7 @@ Apply_Primitive (primitive)
     Print_Primitive(primitive);
   }
   Saved_Stack = Stack_Pointer;
-  Result = Internal_Apply_Primitive(primitive);
+  Result = INTERNAL_APPLY_PRIMITIVE(primitive);
   if (Saved_Stack != Stack_Pointer)
   {
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.31 1988/10/21 00:12:44 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.32 1989/03/27 23:16:05 jinx Rel $
  *
  * Random system primitives.  Most are implemented in terms of
  * utilities in os.c
@@ -237,4 +237,19 @@ DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
   User_Vector_Set (result, 11, (CONVERT_ADDRESS (stack_high)));
 #endif /* USE_STACKLETS */
   PRIMITIVE_RETURN (result);
+}
+
+DEFINE_PRIMITIVE ("SET-TRAP-STATE!", Prim_set_trap_state, 1, 1, 0)
+{
+  long result;
+  extern long OS_set_trap_state();
+  PRIMITIVE_HEADER (1);
+
+  result = (OS_set_trap_state (arg_nonnegative_integer (1)));
+  if (result < 0)
+  {
+    error_bad_range_arg (1);
+    /*NOTREACHED*/
+  }
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (result));
 }

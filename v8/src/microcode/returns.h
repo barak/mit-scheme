@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.34 1988/10/26 20:01:08 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.35 1989/03/27 23:16:00 jinx Rel $
  *
  * Return codes.  These are placed in Return when an
  * interpreter operation needs to operate in several
@@ -124,10 +124,11 @@ MIT in each case. */
 #define RC_COMP_UNASSIGNED_TRAP_RESTART 0x59
 /* formerly RC_COMP_CACHE_ASSIGN_RESTART	0x5A */
 #define RC_COMP_LINK_CACHES_RESTART	0x5B
+#define RC_HARDWARE_TRAP		0x5C
 
 /* When adding return codes, add them to the table below as well! */
 
-#define MAX_RETURN_CODE			0x5B
+#define MAX_RETURN_CODE			0x5C
 
 #define RETURN_NAME_TABLE						\
 {									\
@@ -223,5 +224,6 @@ MIT in each case. */
 /* 0x58 */		"COMPILER_SAFE_REFERENCE_TRAP_RESTART",		\
 /* 0x59 */		"COMPILER_UNASSIGNED_P_TRAP_RESTART",		\
 /* 0x5A */		"",						\
-/* 0x5B */		"COMPILER_LINK_CACHES_RESTART"			\
+/* 0x5B */		"COMPILER_LINK_CACHES_RESTART",			\
+/* 0x5C */		"HARDWARE_TRAP"					\
 }

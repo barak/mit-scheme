@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.34 1988/08/15 20:53:42 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.35 1989/03/27 23:15:52 jinx Exp $ */
 
 /* Pure/Constant space utilities. */
 
@@ -39,7 +39,7 @@ MIT in each case. */
 #include "gccode.h"
 #include "zones.h"
 
-void
+static void
 Update(From, To, Was, Will_Be)
      fast Pointer *From, *To, *Was, *Will_Be;
 {
@@ -71,11 +71,24 @@ Update(From, To, Was, Will_Be)
 	    From = END_OPERATOR_LINKAGE_AREA(From, count);
 	    continue;	    
 	  }
-
+
 	case TC_MANIFEST_CLOSURE:
-	  count = READ_OPERATOR_LINKAGE_COUNT(*From);
-	  From = END_OPERATOR_LINKAGE_AREA(From, count);
-	  continue;	  
+	{
+	  machine_word *start_ptr;
+	  fast machine_word *word_ptr;
+
+	  From += 1;
+	  word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(From);
+	  start_ptr = word_ptr;
+
+	  while (VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	  {
+	    word_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
+	  }
+	  From = MANIFEST_CLOSURE_END(word_ptr, start_ptr);
+
+	  continue;
+	}
 
 	default:
 	  continue;
@@ -135,7 +148,7 @@ Make_Impure(Object)
     case_Cell:
       Length = 1;
       break;
-
+
     case TC_LINKAGE_SECTION:
     case TC_MANIFEST_CLOSURE:
     case_compiled_entry_point:
@@ -144,7 +157,7 @@ Make_Impure(Object)
 	      OBJECT_TYPE(Object));
       Invalid_Type_Code();
   }
-
+
   /* Add a copy of the object to the last constant block in memory.
    */
 
@@ -152,12 +165,15 @@ Make_Impure(Object)
 
   Obj_Address = Get_Pointer(Object);
   if (!Test_Pure_Space_Top(Constant_Address + Length))
-    return NIL;
+  {
+    return (NIL);
+  }
   Block_Length = Get_Integer(*(Constant_Address-1));
   Constant_Address -= 2;
   New_Address = Constant_Address;
 
 #ifdef FLOATING_ALIGNMENT
+
   /* This should be done more cleanly, always align before doing a
      block, or something like it. -- JINX
    */
@@ -173,12 +189,16 @@ Make_Impure(Object)
     Length = Constant_Address - Start;
   }
   else
+
 #endif
+
+  {
     for (i = Length; --i >= 0; )
     {
       *Constant_Address++ = *Obj_Address;
       *Obj_Address++ = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, i);
     }
+  }
   *Constant_Address++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
   *Constant_Address++ = Make_Non_Pointer(END_OF_BLOCK, Block_Length + Length);
   *(New_Address + 2 - Block_Length) =
@@ -193,9 +213,15 @@ Make_Impure(Object)
   Set_Pure_Top();
   Terminate_Old_Stacklet();
   Terminate_Constant_Space(End_Of_Area);
+
+  ENTER_CRITICAL_SECTION ("impurify");
+
   Update(Heap_Bottom, Free, Obj_Address, New_Address);
   Update(Constant_Space, End_Of_Area, Obj_Address, New_Address);
-  return Make_Pointer(OBJECT_TYPE(Object), New_Address);
+
+  EXIT_CRITICAL_SECTION ({});
+
+  return (Make_Pointer(OBJECT_TYPE(Object), New_Address));
 }
 
 /* (PRIMITIVE-IMPURIFY OBJECT)
@@ -210,35 +236,58 @@ DEFINE_PRIMITIVE ("PRIMITIVE-IMPURIFY", Prim_impurify, 1, 1, 0)
   Touch_In_Primitive(Arg1, Arg1);
   Result = Make_Impure(Arg1);
   if (Result != NIL)
-    return Result;
+  {
+    return (Result);
+  }
   Primitive_Error(ERR_IMPURIFY_OUT_OF_SPACE);
   /*NOTREACHED*/
 }
 
-Boolean
-Pure_Test(Obj_Address)
-     fast Pointer *Obj_Address;
+extern Pointer * find_constant_space_block();
+
+Pointer *
+find_constant_space_block(obj_address)
+     fast Pointer *obj_address;
 {
-  fast Pointer *Where;
-#ifdef FLOATING_ALIGNMENT
-  fast Pointer Float_Align_Value;
+  fast Pointer *where, *low_constant;
 
-  Float_Align_Value = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, 0);
+#ifdef FLOATING_ALIGNMENT
+  fast Pointer float_align_value;
+
+  float_align_value = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, 0);
 #endif
 
-  Where = Free_Constant-1;
-  while (Where >= Constant_Space)
+  low_constant = Constant_Space;
+  where = (Free_Constant - 1);
+
+  while (where >= low_constant)
   {
+
 #ifdef FLOATING_ALIGNMENT
-    while (*Where == Float_Align_Value)
-      Where -= 1;
+    while (*where == float_align_value)
+      where -= 1;
 #endif
-    Where -= 1 + Get_Integer(*Where);
-    if (Where <= Obj_Address)
-      return
-	((Boolean) (Obj_Address <= (Where + 1 + Get_Integer(*(Where + 1)))));
+
+    where -= (1 + Get_Integer(*where));
+    if (where <= obj_address)
+      return (where);
   }
-  return ((Boolean) false);
+  return ((Pointer *) NULL);
+}
+
+Boolean
+Pure_Test(obj_address)
+     Pointer *obj_address;
+{
+  Pointer *block;
+
+  block = find_constant_space_block (obj_address);
+  if (block == ((Pointer *) NULL))
+  {
+    return (false);
+  }
+  return
+    ((Boolean) (obj_address <= (block + 1 + (Get_Integer(*(block + 1))))));
 }
 
 /* (PURE? OBJECT)
@@ -289,7 +338,7 @@ DEFINE_PRIMITIVE ("GET-NEXT-CONSTANT", Prim_get_next_constant, 0, 0, 0)
 {
   Pointer *Next_Address;
 
-  Next_Address = Free_Constant + 1;
+  Next_Address = (Free_Constant + 1);
   Primitive_0_Args();
   return Make_Pointer(TC_ADDRESS, Next_Address);
 }

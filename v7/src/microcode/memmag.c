@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.35 1988/08/15 20:51:50 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.36 1989/03/27 23:15:41 jinx Exp $ */
 
 /* Memory management top level.
 
@@ -393,6 +393,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 	    Free, MemTop, Heap_Top);
     Microcode_Termination(TERM_NO_SPACE);
   }
+  ENTER_CRITICAL_SECTION ("garbage collector");
   gc_counter += 1;
   GC_Reserve = Get_Integer(Arg1);
   GCFlip();
@@ -400,7 +401,8 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   CLEAR_INTERRUPT(INT_GC);
   Pop_Primitive_Frame(1);
   GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
-  if (GC_Daemon_Proc == NIL)
+  RENAME_CRITICAL_SECTION ("garbage collector daemon");
+  if (GC_Daemon_Proc == SHARP_F)
   {
    Will_Push(CONTINUATION_SIZE);
     Store_Return(RC_NORMAL_GC_DONE);

@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.35 1989/03/27 23:15:12 jinx Exp $
+
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,8 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.34 1988/12/08 10:48:14 cph Exp $
- *
+/*
  * This file contains various hooks and handles which connect the
  * primitives with the main interpreter.
  */
@@ -265,19 +266,34 @@ DEFINE_PRIMITIVE ("NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION", Prim_non_reent
   /*NOTREACHED*/
 }
 
+/* (DISABLE-INTERRUPTS! INTERRUPTS)
+   Disables the interrupts specified by INTERRUPTS.  These interrupts
+   will trigger when the corresponding bits are enabled by ENABLE-INTERRUPTS!,
+   SET-INTERRUPT-ENABLES!, WITH-INTERRUPT-MASK, or a throw.
+   See intrpt.h for more information on interrupts.
+*/
+DEFINE_PRIMITIVE ("DISABLE-INTERRUPTS!", Prim_disable_interrupts, 1, 1, 0)
+{
+  long previous;
+  PRIMITIVE_HEADER (1);
+
+  previous = (FETCH_INTERRUPT_MASK ());
+  SET_INTERRUPT_MASK (previous & (~((arg_fixnum (1)) & INT_Mask)));
+  PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM (previous));
+}
+
 /* (ENABLE-INTERRUPTS! INTERRUPTS)
-   Changes the enabled interrupt bits to bitwise-or of INTERRUPTS
-   and previous value of interrupts.  Returns the previous value.
-   See MASK_INTERRUPT_ENABLES for more information on interrupts.
+   Enables the interrupts specified by INTERRUPTS.  At the next interrupt
+   point, any pending interrupts which were previously disabled will trigger.
+   See intrpt.h for more information on interrupts.
 */
 DEFINE_PRIMITIVE ("ENABLE-INTERRUPTS!", Prim_enable_interrupts, 1, 1, 0)
 {
   long previous;
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
-  Arg_1_Type (TC_FIXNUM);
   previous = (FETCH_INTERRUPT_MASK ());
-  SET_INTERRUPT_MASK (((Get_Integer (Arg1)) & INT_Mask) | previous);
+  SET_INTERRUPT_MASK (previous | ((arg_fixnum (1)) & INT_Mask));
   PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM (previous));
 }
 

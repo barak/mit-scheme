@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.41 1988/08/15 20:36:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.42 1989/03/27 23:14:03 jinx Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -495,6 +495,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
   Arg_3_Type(TC_FIXNUM);
   Touch_In_Primitive(Arg1, object);
   GC_Reserve = (Get_Integer (Arg3));
+  ENTER_CRITICAL_SECTION ("purify");
   {
     Pointer purify_result;
     Pointer words_free;
@@ -510,12 +511,14 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
   if (daemon == SHARP_F)
   {
     Val = result;
+    EXIT_CRITICAL_SECTION ({});
     PRIMITIVE_ABORT(PRIM_POP_RETURN);
     /*NOTREACHED*/
   }
+  RENAME_CRITICAL_SECTION ("purify daemon");
  Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
   Store_Expression(result);
-  Store_Return(RC_RESTORE_VALUE);
+  Store_Return(RC_NORMAL_GC_DONE);
   Save_Cont();
   Push(daemon);
   Push(STACK_FRAME_HEADER);

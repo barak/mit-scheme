@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.30 1988/08/09 19:27:45 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.31 1989/03/27 23:14:47 jinx Rel $
  *
  * This file contains default definitions for some hooks which 
  * various machines require.  These machines define these hooks
@@ -236,14 +236,17 @@ do									\
 /* Primitive calling code. */
 
 #ifndef ENABLE_DEBUGGING_TOOLS
-#define Apply_Primitive(N)	Internal_Apply_Primitive(N)
+#define APPLY_PRIMITIVE		INTERNAL_APPLY_PRIMITIVE
 #else
 extern Pointer Apply_Primitive();
+#define APPLY_PRIMITIVE(Loc, N)						\
+{									\
+  Loc = Apply_Primitive(N);						\
+}
 #endif
 
 #ifndef Metering_Apply_Primitive
-#define Metering_Apply_Primitive(Loc, N)				\
-Loc = Apply_Primitive(N)
+#define Metering_Apply_Primitive APPLY_PRIMITIVE
 #endif
 
 #ifndef Eval_Ucode_Hook

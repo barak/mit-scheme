@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intrpt.h,v 1.4 1988/08/15 20:50:33 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intrpt.h,v 1.5 1989/03/27 23:15:34 jinx Exp $
  *
  * Interrupt manipulation utilities.
  */
@@ -107,3 +107,66 @@ MIT in each case. */
 /* Compatibility */
 
 #define COMPILER_SET_MEMTOP()	COMPILER_SETUP_INTERRUPT()
+
+/* Critical sections.
+
+   There should be a stack of critical sections, each with a
+   queue of hooks.
+ */
+
+extern char * critical_section_name;
+extern Boolean critical_section_hook_p;
+extern void (*critical_section_hook)();
+
+#define DECLARE_CRITICAL_SECTION()					\
+  char * critical_section_name = ((char *) NULL);			\
+  Boolean critical_section_hook_p;					\
+  void (*critical_section_hook)()
+
+#define ENTER_CRITICAL_SECTION(name)					\
+{									\
+  critical_section_name = (name);					\
+}
+
+#define RENAME_CRITICAL_SECTION(name)					\
+{									\
+  critical_section_name = (name);					\
+}
+
+#define EXIT_CRITICAL_SECTION(code_if_hook)				\
+{									\
+  if (critical_section_hook_p)						\
+  {									\
+    code_if_hook;							\
+    {									\
+      char * name;							\
+									\
+      name = critical_section_name;					\
+      critical_section_hook_p = false;					\
+      critical_section_name = ((char *) NULL);				\
+      critical_section_hook (name);					\
+      /*NOTREACHED*/							\
+    }									\
+  }									\
+  else									\
+  {									\
+    critical_section_name = ((char *) NULL);				\
+  }									\
+}
+
+#define SET_CRITICAL_SECTION_HOOK(hook)					\
+{									\
+  critical_section_hook = (hook);					\
+  critical_section_hook_p = true;					\
+}
+
+#define CLEAR_CRITICAL_SECTION_HOOK()					\
+{									\
+  critical_section_hook_p = false;					\
+}
+
+#define WITHIN_CRITICAL_SECTION_P()					\
+  (critical_section_name != ((char *) NULL))
+  
+#define CRITICAL_SECTION_NAME()						\
+  (critical_section_name)

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.36 1988/08/15 20:53:30 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.37 1989/03/27 23:15:46 jinx Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -515,6 +515,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
 
   Touch_In_Primitive(Arg1, Object);
   GC_Reserve = (Get_Integer (Arg3));
+  ENTER_CRITICAL_SECTION ("purify pass 1");
   Purify_Result = Purify(Object, Arg2);
   Pop_Primitive_Frame(3);
   Daemon = Get_Fixed_Obj_Slot(GC_Daemon);
@@ -522,6 +523,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
   {
     Pointer words_free;
 
+    RENAME_CRITICAL_SECTION ("purify pass 2");
     Purify_Result = Purify_Pass_2(Purify_Result);
     words_free = (Make_Unsigned_Fixnum (MemTop - Free));
     Val = (Make_Pointer (TC_LIST, Free));
@@ -530,6 +532,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
     PRIMITIVE_ABORT(PRIM_POP_RETURN);
     /*NOTREACHED*/
   }
+  RENAME_CRITICAL_SECTION ("purify daemon 1");
   Store_Expression(Purify_Result);
   Store_Return(RC_PURIFY_GC_1);
  Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);

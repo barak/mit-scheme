@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.38 1988/09/29 04:57:52 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.39 1989/03/27 23:14:58 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -688,7 +688,10 @@ compiler_reset_error()
 */
 
 #ifndef start_band_load
-#define start_band_load()
+#define start_band_load()						\
+{									\
+  ENTER_CRITICAL_SECTION ("band load");					\
+}
 #endif
 
 #ifndef end_band_load
@@ -708,15 +711,17 @@ compiler_reset_error()
       }									\
     }									\
   }									\
+  EXIT_CRITICAL_SECTION ({});						\
 }
 #endif
-
+
 DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
 {
   extern char *malloc();
   extern strcpy(), free();
   extern void compiler_reset();
   extern Pointer compiler_utilities;
+  static void terminate_band_load();
 
   jmp_buf
     swapped_buf,
@@ -729,8 +734,9 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   long temp, length;
   Pointer result, cutl;
   char *band_name;
+  Boolean load_file_failed;
   Primitive_1_Arg();
-
+
   saved_free = Free;
   Free = Heap_Bottom;
   saved_memtop = MemTop;
@@ -771,47 +777,21 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
     strcpy(band_name, Scheme_String_To_C_String(Arg1));
   }
 
-  /* There is some jiggery-pokery going on here to make sure
-     that all returns from Fasload (including error exits) return to
-     the clean-up code before returning on up the C call stack.
-  */
+  load_file_failed = true;
 
-  saved_buf = Back_To_Eval;
-  temp = setjmp(swapped_buf);
-  if (temp != 0)
-  {
-    extern char
-      *Error_Names[],
-      *Abort_Names[];
+  UNWIND_PROTECT({
+    		   result = load_file(true);
+		   load_file_failed = false;
+		 },
+	         {
+		   if (load_file_failed)
+		   {
+		     terminate_band_load(UNWIND_PROTECT_value,
+					 band_name);
+		     /*NOTREACHED*/
+		   }
+		 });
 
-    if (temp > 0)
-    {
-      fprintf(stderr,
-	      "\nload-band: Error %d (%s) past the point of no return.\n",
-	      temp, Error_Names[temp]);
-    }
-    else
-    {
-      fprintf(stderr,
-	      "\nload-band: Abort %d (%s) past the point of no return.\n",
-	      temp, Abort_Names[(-temp)-1]);
-    }
-
-    if (band_name != ((char *) NULL))
-    {
-      fprintf(stderr, "band-name = \"%s\".\n", band_name);
-      free(band_name);
-    }
-    end_band_load(false, true);
-    Back_To_Eval = saved_buf;
-    Microcode_Termination(TERM_DISK_RESTORE);
-    /*NOTREACHED*/
-  }
-
-  Back_To_Eval = ((jmp_buf *) swapped_buf);
-  result = load_file(true);
-  Back_To_Eval = saved_buf;
-
   if (reload_band_name != ((char *) NULL))
   {
     free(reload_band_name);
@@ -842,7 +822,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   Store_Return(RC_END_OF_COMPUTATION);
   Store_Expression(NIL);
   Save_Cont();
-
+
   Store_Expression(Vector_Ref(result, 0));
   Store_Env(Make_Non_Pointer(GLOBAL_ENV, GO_TO_GLOBAL));
 
@@ -860,6 +840,38 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   /* Return in a non-standard way. */
 
   PRIMITIVE_ABORT(PRIM_DO_EXPRESSION);
+  /*NOTREACHED*/
+}
+
+static void
+terminate_band_load(abort_value, band_name)
+     int abort_value;
+     char *band_name;
+{
+  extern char
+    * Error_Names[],
+    * Abort_Names[];
+
+  if (abort_value > 0)
+  {
+    fprintf(stderr,
+	    "\nload-band: Error %d (%s) past the point of no return.\n",
+	    abort_value, Error_Names[abort_value]);
+  }
+  else
+  {
+    fprintf(stderr,
+	    "\nload-band: Abort %d (%s) past the point of no return.\n",
+	    abort_value, Abort_Names[(-abort_value)-1]);
+  }
+
+  if (band_name != ((char *) NULL))
+  {
+    fprintf(stderr, "band-name = \"%s\".\n", band_name);
+    free(band_name);
+  }
+  end_band_load(false, true);
+  Microcode_Termination(TERM_DISK_RESTORE);
   /*NOTREACHED*/
 }
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.30 1988/08/15 20:50:22 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.31 1989/03/27 23:15:28 jinx Rel $
  *
  * Macros used by the interpreter and some utilities.
  *
@@ -260,8 +260,12 @@ MIT in each case. */
    not implemented.
  */
 
-#define Internal_Apply_Primitive(primitive)				\
-((*(Primitive_Procedure_Table[PRIMITIVE_TABLE_INDEX(primitive)]))())
+#define INTERNAL_APPLY_PRIMITIVE(loc, primitive)			\
+{									\
+  Regs[REGBLOCK_PRIMITIVE] = primitive;					\
+  loc = ((*(Primitive_Procedure_Table[PRIMITIVE_TABLE_INDEX(primitive)]))()); \
+  Regs[REGBLOCK_PRIMITIVE] = NIL;					\
+}
 
 /* This is only valid for implemented primitives. */
 

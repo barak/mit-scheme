@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.41 1989/02/19 17:51:33 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.42 1989/03/27 23:14:36 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -217,6 +217,7 @@ typedef unsigned long Pointer;
  */
 
 #ifdef pdp10
+#define MACHINE_TYPE		"pdp10"
 #define Heap_In_Low_Memory
 #define CHAR_SIZE 36		/ * Ugh! Supposedly fixed in newer Cs * /
 #define BELL 			'\007'
@@ -224,6 +225,7 @@ typedef unsigned long Pointer;
 #endif
 
 #ifdef nu
+#define MACHINE_TYPE		"nu"
 #define Heap_In_Low_Memory
 #define CHAR_SIZE		8
 #define USHORT_SIZE		16
@@ -247,6 +249,7 @@ typedef unsigned long Pointer;
 
 /* Amazingly unix and vms agree on all these */
 
+#define MACHINE_TYPE		"vax"
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
 #define VAX_BYTE_ORDER
@@ -278,7 +281,7 @@ typedef unsigned long Pointer;
 #if (VMS_VERSION < 4)
 /* Pre version 4 VMS has no void type. */
 #define void
-#endif
+#endif /* VMS_VERSION */
 
 /* This eliminates a spurious warning from the C compiler. */
 #define main_type
@@ -301,7 +304,7 @@ if (value != 0)								\
   exit(value);								\
 longjmp(Exit_Point, NORMAL_EXIT)
 
-#else /* not a vms, therefore unix */
+#else /* not VMS ie. unix */
 
 /* Vax Unix C compiler bug */
 
@@ -312,10 +315,11 @@ longjmp(Exit_Point, NORMAL_EXIT)
   target = Make_Non_Pointer(TC_FIXNUM, For_Vaxes_Sake);			\
 }
 
-#endif /* not vms */
+#endif /* VMS */
 #endif /* vax */
 
 #ifdef hp9000s200	/* and s300, pretty indistinguishable */
+#define MACHINE_TYPE		"hp9000s200"
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
 #define CHAR_SIZE		8
@@ -337,6 +341,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #endif
 
 #ifdef hp9000s500
+#define MACHINE_TYPE		"hp9000s500"
 /* An unfortunate fact of life on this machine:
    the C heap is in high memory thus Heap_In_Low_Memory is not 
    defined and the whole thing runs slowly.  *Sigh*
@@ -373,15 +378,18 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MAX_FLONUM_EXPONENT	1023
 
 #ifdef sun4
+#define MACHINE_TYPE		"sun4"
 #define FASL_INTERNAL_FORMAT	FASL_SUN4
 #define FLOATING_ALIGNMENT	0x7	/* Low 3 MBZ for float storage */
 #endif
 
 #ifdef sun3
+#define MACHINE_TYPE		"sun3"
 #define FASL_INTERNAL_FORMAT	FASL_68020
 #endif
 
 #ifndef FASL_INTERNAL_FORMAT
+#define MACHINE_TYPE		"sun2"
 #define FASL_INTERNAL_FORMAT	FASL_68000
 #endif
 
@@ -397,6 +405,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #endif
 
 #ifdef butterfly
+#define MACHINE_TYPE		"butterfly"
 #define Heap_In_Low_Memory
 #define CHAR_SIZE		8
 #define USHORT_SIZE		16
@@ -412,6 +421,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #endif
 
 #ifdef cyber180
+#define MACHINE_TYPE		"cyber180"
 /* Word size is 64 bits. */
 #define Heap_In_Low_Memory
 #define CHAR_SIZE		8
@@ -429,6 +439,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #endif
 
 #ifdef celerity
+#define MACHINE_TYPE		"celerity"
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
 #define CHAR_SIZE		8
@@ -446,6 +457,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
    in the second MSBit. This is taken care of in object.h, and is
    still considered Heap_In_Low_Memory.
 */
+#define MACHINE_TYPE		"hp9000s800"
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
 #define CHAR_SIZE		8
@@ -462,6 +474,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #endif
 
 #ifdef umax
+#define MACHINE_TYPE		"umax"
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
 #define CHAR_SIZE		8
@@ -477,19 +490,21 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #endif
 
 #ifdef pyr
+#define MACHINE_TYPE		"pyramid"
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
-#define CHAR_SIZE            8
-#define USHORT_SIZE          16
-#define ULONG_SIZE           32
-#define BELL                 '\007'
-#define FASL_INTERNAL_FORMAT FASL_PYR
-#define FLONUM_EXPT_SIZE     10
-#define FLONUM_MANTISSA_BITS 53
-#define MAX_FLONUM_EXPONENT  1023
+#define CHAR_SIZE		8
+#define USHORT_SIZE		16
+#define ULONG_SIZE		32
+#define BELL			'\007'
+#define FASL_INTERNAL_FORMAT	FASL_PYR
+#define FLONUM_EXPT_SIZE	10
+#define FLONUM_MANTISSA_BITS	53
+#define MAX_FLONUM_EXPONENT	1023
 #endif
 
 #ifdef alliant
+#define MACHINE_TYPE		"alliant"
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
 #define CHAR_SIZE		8
@@ -515,6 +530,10 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #if (ULONG_SIZE == 32)
 #define b32
+#endif
+
+#ifndef MACHINE_TYPE
+#define MACHINE_TYPE		"unknown"
 #endif
 
 /* Default "segment" sizes */

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.h,v 9.25 1988/08/15 20:37:43 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.h,v 9.26 1989/03/27 23:14:08 jinx Rel $
  *
  * This file contains breakpoint utilities.
  * Disabled when not debugging the interpreter.
@@ -96,7 +96,7 @@ void Clear_Perfinfo_Data()
   long Start_Time;
 
   Start_Time = Sys_Clock();
-  Loc = Apply_Primitive(prim);
+  APPLY_PRIMITIVE(Loc, prim);
   perfinfo_data.primtime[PRIMITIVE_NUMBER(prim)] +=
     (Sys_Clock() - Start_Time);
   Set_Time_Zone(Zone_Working);
