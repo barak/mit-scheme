@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.57 1995/07/25 16:45:29 adams Exp $
+$Id: x11base.c,v 1.58 1995/09/18 22:49:07 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -40,6 +40,7 @@ MIT in each case. */
 #include "uxselect.h"
 #include "osio.h"
 #include "x11.h"
+#include <X11/Xmd.h>
 
 extern void EXFUN (block_signals, (void));
 extern void EXFUN (unblock_signals, (void));
@@ -275,6 +276,39 @@ DEFUN (x_error_handler, (display, error_event),
   fflush (stderr);
   error_external_return ();
 }
+
+typedef int EXFUN ((* x_error_handler_t), (Display *, XErrorEvent *));
+
+static void
+DEFUN (unbind_x_error_handler, (storage), PTR storage)
+{
+  (void) (XSetErrorHandler (* ((x_error_handler_t *) storage)));
+}
+
+static void
+DEFUN (bind_x_error_handler, (handler), x_error_handler_t handler)
+{
+  x_error_handler_t * storage = (dstack_alloc (sizeof (x_error_handler_t)));
+  (*storage) = (XSetErrorHandler (handler));
+  dstack_protect (unbind_x_error_handler, storage);
+}
+
+static jmp_buf x_prim_checkpoint;
+
+static int
+DEFUN (catch_x_errors_handler, (display, event),
+       Display * display AND
+       XErrorEvent * event)
+{
+  longjmp (x_prim_checkpoint, (event -> error_code));
+}
+
+static unsigned char
+DEFUN_VOID (catch_x_errors)
+{
+  bind_x_error_handler (catch_x_errors_handler);
+  return (setjmp (x_prim_checkpoint));
+}
 
 /* Defaults and Attributes */
 
@@ -314,14 +348,9 @@ DEFUN (arg_window_color, (arg, display, xw),
   SCHEME_OBJECT object = (ARG_REF (arg));
   if (INTEGER_P (object))
     {
-      if (! (integer_to_long_p (object)))
+      if (! (integer_to_ulong_p (object)))
 	error_bad_range_arg (arg);
-      {
-	long pixel = (integer_to_long (object));
-	if (pixel < 0)
-	  error_bad_range_arg (arg);
-	result = pixel;
-      }
+      result = (integer_to_ulong (object));
     }
   else if (! (x_decode_color
 	      (display, (xw_color_map (xw)), (STRING_ARG (arg)), (&result))))
@@ -722,7 +751,11 @@ DEFUN (xw_process_event, (xw, event),
 	case MappingNotify:	type_name = "MappingNotify"; break;
 	case MotionNotify:	type_name = "MotionNotify"; break;
 	case NoExpose:		type_name = "NoExpose"; break;
+	case PropertyNotify:	type_name = "PropertyNotify"; break;
 	case ReparentNotify:	type_name = "ReparentNotify"; break;
+	case SelectionClear:	type_name = "SelectionClear"; break;
+	case SelectionNotify:	type_name = "SelectionNotify"; break;
+	case SelectionRequest:	type_name = "SelectionRequest"; break;
 	case UnmapNotify:	type_name = "UnmapNotify"; break;
 	case VisibilityNotify:	type_name = "VisibilityNotify"; break;
 	case ConfigureNotify:
@@ -799,11 +832,16 @@ enum event_type
   event_type_unmap,
   event_type_take_focus,
   event_type_visibility,
+  event_type_selection_clear,
+  event_type_selection_notify,
+  event_type_selection_request,
+  event_type_property_notify,
   event_type_supremum
 };
 
 #define EVENT_MASK_ARG(arg)						\
-  (arg_index_integer ((arg), (1 << ((unsigned int) event_type_supremum))))
+  (arg_ulong_index_integer						\
+   ((arg), (1 << ((unsigned int) event_type_supremum))))
 
 #define EVENT_ENABLED(xw, type)						\
   (((XW_EVENT_MASK (xw)) & (1 << ((unsigned int) (type)))) != 0)
@@ -816,6 +854,9 @@ enum event_type
 
 #define EVENT_INTEGER(event, slot, number)				\
   VECTOR_SET ((event), (slot), (long_to_integer (number)))
+
+#define EVENT_ULONG_INTEGER(event, slot, number)			\
+  VECTOR_SET ((event), (slot), (ulong_to_integer (number)))
 
 static SCHEME_OBJECT
 DEFUN (make_event_object, (xw, type, extra),
@@ -867,7 +908,7 @@ DEFUN (button_event, (xw, event, type),
     }
     VECTOR_SET (result, EVENT_2, conversion);
   }
-  EVENT_INTEGER (result, EVENT_3, (event -> time));
+  EVENT_ULONG_INTEGER (result, EVENT_3, (event -> time));
   return (result);
 }
 
@@ -940,7 +981,7 @@ DEFUN (key_event, (xw, event, type),
 	 EVENT_2,
 	 (LONG_TO_UNSIGNED_FIXNUM ((keysym & 0xffffff)
 				   | (0x800000 & (keysym >> 5)))));
-      EVENT_INTEGER (result, EVENT_3, (event -> time));
+      EVENT_ULONG_INTEGER (result, EVENT_3, (event -> time));
       return (result);
     }
 }
@@ -985,8 +1026,10 @@ DEFUN (x_event_to_object, (event), XEvent * event)
       if (EVENT_ENABLED (xw, event_type_configure))
 	{
 	  result = (make_event_object (xw, event_type_configure, 2));
-	  EVENT_INTEGER (result, EVENT_0, ((event -> xconfigure) . width));
-	  EVENT_INTEGER (result, EVENT_1, ((event -> xconfigure) . height));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_0, ((event -> xconfigure) . width));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_1, ((event -> xconfigure) . height));
 	}
       break;
     case Expose:
@@ -995,8 +1038,8 @@ DEFUN (x_event_to_object, (event), XEvent * event)
 	  result = (make_event_object (xw, event_type_expose, 5));
 	  EVENT_INTEGER (result, EVENT_0, ((event -> xexpose) . x));
 	  EVENT_INTEGER (result, EVENT_1, ((event -> xexpose) . y));
-	  EVENT_INTEGER (result, EVENT_2, ((event -> xexpose) . width));
-	  EVENT_INTEGER (result, EVENT_3, ((event -> xexpose) . height));
+	  EVENT_ULONG_INTEGER (result, EVENT_2, ((event -> xexpose) . width));
+	  EVENT_ULONG_INTEGER (result, EVENT_3, ((event -> xexpose) . height));
 	  VECTOR_SET (result, EVENT_4, (LONG_TO_UNSIGNED_FIXNUM (0)));
 	}
       break;
@@ -1006,10 +1049,10 @@ DEFUN (x_event_to_object, (event), XEvent * event)
 	  result = (make_event_object (xw, event_type_expose, 5));
 	  EVENT_INTEGER (result, EVENT_0, ((event -> xgraphicsexpose) . x));
 	  EVENT_INTEGER (result, EVENT_1, ((event -> xgraphicsexpose) . y));
-	  EVENT_INTEGER (result, EVENT_2,
-			 ((event -> xgraphicsexpose) . width));
-	  EVENT_INTEGER (result, EVENT_3,
-			 ((event -> xgraphicsexpose) . height));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_2, ((event -> xgraphicsexpose) . width));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_3, ((event -> xgraphicsexpose) . height));
 	  VECTOR_SET (result, EVENT_4, (LONG_TO_UNSIGNED_FIXNUM (1)));
 	}
       break;
@@ -1060,7 +1103,70 @@ DEFUN (x_event_to_object, (event), XEvent * event)
 	      break;
 	    }
 	  result = (make_event_object (xw, event_type_visibility, 1));
-	  EVENT_INTEGER (result, EVENT_0, state);
+	  EVENT_ULONG_INTEGER (result, EVENT_0, state);
+	}
+      break;
+    case SelectionClear:
+      if (EVENT_ENABLED (xw, event_type_selection_clear))
+	{
+	  result = (make_event_object (xw, event_type_selection_clear, 2));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_0,
+	     (ulong_to_integer ((event -> xselectionclear) . selection)));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_1,
+	     (ulong_to_integer ((event -> xselectionclear) . time)));
+	}
+      break;
+    case SelectionNotify:
+      if (EVENT_ENABLED (xw, event_type_selection_notify))
+	{
+	  result = (make_event_object (xw, event_type_selection_notify, 3));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_0,
+	     (ulong_to_integer ((event -> xselection) . target)));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_1,
+	     (ulong_to_integer ((event -> xselection) . property)));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_2,
+	     (ulong_to_integer ((event -> xselection) . time)));
+	}
+      break;
+    case SelectionRequest:
+      if (EVENT_ENABLED (xw, event_type_selection_request))
+	{
+	  result = (make_event_object (xw, event_type_selection_request, 5));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_0,
+	     (ulong_to_integer ((event -> xselectionrequest) . requestor)));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_1,
+	     (ulong_to_integer ((event -> xselectionrequest) . selection)));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_2,
+	     (ulong_to_integer ((event -> xselectionrequest) . target)));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_3,
+	     (ulong_to_integer ((event -> xselectionrequest) . property)));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_4,
+	     (ulong_to_integer ((event -> xselectionrequest) . time)));
+	}
+      break;
+    case PropertyNotify:
+      if (EVENT_ENABLED (xw, event_type_property_notify))
+	{
+	  result = (make_event_object (xw, event_type_property_notify, 3));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_0,
+	     (ulong_to_integer ((event -> xproperty) . atom)));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_1,
+	     (ulong_to_integer ((event -> xproperty) . time)));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_2,
+	     (long_to_integer ((event -> xproperty) . state)));
 	}
       break;
     case EnterNotify: CONVERT_TRIVIAL_EVENT (event_type_enter);
@@ -1077,7 +1183,7 @@ static void
 DEFUN (update_input_mask, (xw), struct xwindow * xw)
 {
   {
-    long event_mask = 0;
+    unsigned long event_mask = 0;
     if (EVENT_ENABLED (xw, event_type_expose))
       event_mask |= ExposureMask;
     if ((EVENT_ENABLED (xw, event_type_configure))
@@ -1101,6 +1207,8 @@ DEFUN (update_input_mask, (xw), struct xwindow * xw)
       event_mask |= (PointerMotionMask | PointerMotionHintMask);
     if (EVENT_ENABLED (xw, event_type_visibility))
       event_mask |= VisibilityChangeMask;
+    if (EVENT_ENABLED (xw, event_type_property_notify))
+      event_mask |= PropertyChangeMask;
     XSelectInput ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), event_mask);
   }
   {
@@ -1271,7 +1379,8 @@ DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
   INITIALIZE_ONCE ();
   {
     struct xdisplay * xd = (x_malloc (sizeof (struct xdisplay)));    
-    /* Added 7/95 by Nick in an attempt to fix problem Hal was having with SWAT over PPP (i.e. slow connections) */
+    /* Added 7/95 by Nick in an attempt to fix problem Hal was having
+       with SWAT over PPP (i.e. slow connections).  */
     block_signals ();
     (XD_DISPLAY (xd)) =
       (XOpenDisplay (((ARG_REF (1)) == SHARP_F) ? 0 : (STRING_ARG (1))));
@@ -1351,7 +1460,7 @@ DEFINE_PRIMITIVE ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 
 DEFINE_PRIMITIVE ("X-WINDOW-EVENT-MASK", Prim_x_window_event_mask, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (XW_EVENT_MASK (x_window_arg (1))));
+  PRIMITIVE_RETURN (ulong_to_integer (XW_EVENT_MASK (x_window_arg (1))));
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-SET-EVENT-MASK", Prim_x_window_set_event_mask, 2, 2, 0)
@@ -1398,13 +1507,13 @@ DEFINE_PRIMITIVE ("X-WINDOW-DISPLAY", Prim_x_window_display, 1, 1, 0)
 DEFINE_PRIMITIVE ("X-WINDOW-X-SIZE", Prim_x_window_x_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (XW_X_SIZE (x_window_arg (1))));
+  PRIMITIVE_RETURN (ulong_to_integer (XW_X_SIZE (x_window_arg (1))));
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-Y-SIZE", Prim_x_window_y_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (XW_Y_SIZE (x_window_arg (1))));
+  PRIMITIVE_RETURN (ulong_to_integer (XW_Y_SIZE (x_window_arg (1))));
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-BEEP", Prim_x_window_beep, 1, 1, 0)
@@ -1545,7 +1654,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-QUERY-POINTER", Prim_x_window_query_pointer, 1, 1, 0
 DEFINE_PRIMITIVE ("X-WINDOW-ID", Prim_x_window_id, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (XW_WINDOW (x_window_arg (1))));
+  PRIMITIVE_RETURN (ulong_to_integer (XW_WINDOW (x_window_arg (1))));
 }
 
 /* Appearance Control Primitives */
@@ -1753,7 +1862,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-INPUT-FOCUS", Prim_x_window_set_input_focus, 2, 
       ((XW_DISPLAY (xw)),
        (XW_WINDOW (xw)),
        RevertToParent,
-       ((Time) (arg_integer (2))));
+       ((Time) (arg_ulong_integer (2))));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -1830,8 +1939,8 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-SIZE", Prim_x_window_set_size, 3, 3, 0)
     XResizeWindow
       ((XW_DISPLAY (xw)),
        (XW_WINDOW (xw)),
-       ((arg_nonnegative_integer (2)) + extra),
-       ((arg_nonnegative_integer (3)) + extra));
+       ((arg_ulong_integer (2)) + extra),
+       ((arg_ulong_integer (3)) + extra));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -1908,7 +2017,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-LOWER", Prim_x_window_lower, 1, 1, 0)
 /* Font Structure Primitive */
 
 #define FONT_STRUCTURE_MAX_CONVERTED_SIZE (10+1 + 256+1 + ((5+1) * (256+2)))
-  /* font-structure-words  + 
+  /* font-structure-words  +
      char-struct-vector +
      char-struct-words * maximum-number-possible */
 
@@ -1958,14 +2067,14 @@ DEFUN (convert_font_struct, (font_name, font),
 	VECTOR_SET (character_vector,
 		    index,
 		    (convert_char_struct ((font -> per_char) + index)));
-      VECTOR_SET (result, 6, (long_to_integer (start_index)));
+      VECTOR_SET (result, 6, (ulong_to_integer (start_index)));
       VECTOR_SET (result, 7, character_vector);
     }
   VECTOR_SET (result, 0, font_name);
-  VECTOR_SET (result, 1, (long_to_integer (font -> direction)));
+  VECTOR_SET (result, 1, (ulong_to_integer (font -> direction)));
   VECTOR_SET (result, 2,
 	      (BOOLEAN_TO_OBJECT ((font -> all_chars_exist) == True)));
-  VECTOR_SET (result, 3, (long_to_integer (font -> default_char)));
+  VECTOR_SET (result, 3, (ulong_to_integer (font -> default_char)));
   VECTOR_SET (result, 4, convert_char_struct (& (font -> min_bounds)));
   VECTOR_SET (result, 5, convert_char_struct (& (font -> max_bounds)));
   VECTOR_SET (result, 8, (long_to_integer (font -> ascent)));
@@ -1990,7 +2099,7 @@ DEFINE_PRIMITIVE ("X-FONT-STRUCTURE", Prim_x_font_structure, 2, 2,
     if (by_name)
       font = XLoadQueryFont (display, ((char *) (STRING_LOC (font_name, 0))));
     else
-      font = XQueryFont (display, ((XID) integer_to_ulong (ARG_REF (2))));
+      font = XQueryFont (display, ((XID) (integer_to_ulong (ARG_REF (2)))));
 
     if (font == 0)
       PRIMITIVE_RETURN (SHARP_F);
@@ -2055,4 +2164,219 @@ DEFINE_PRIMITIVE ("X-LIST-FONTS", Prim_x_list_fonts, 3, 3,
       PRIMITIVE_RETURN (result);
     }
   }
+}
+
+/* Selections */
+
+DEFINE_PRIMITIVE ("X-INTERN-ATOM", Prim_x_intern_atom, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (XInternAtom ((XD_DISPLAY (x_display_arg (1))),
+				    (STRING_ARG (2)),
+				    (BOOLEAN_ARG (3)))));
+}
+
+DEFINE_PRIMITIVE ("X-GET-ATOM-NAME", Prim_x_get_atom_name, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    PTR position = dstack_position;
+    unsigned char status = (catch_x_errors ());
+    SCHEME_OBJECT result;
+    if (status == 0)
+      {
+	char * name
+	  = (XGetAtomName ((XD_DISPLAY (x_display_arg (1))),
+			   (arg_ulong_integer (2))));
+	result = (char_pointer_to_string ((unsigned char *) name));
+	XFree (name);
+      }
+    else
+      result = (ulong_to_integer (status));
+    dstack_set_position (position);
+    PRIMITIVE_RETURN (result);
+  }
+}
+
+static SCHEME_OBJECT EXFUN
+  (convert_32_bit_property_data, (CONST unsigned char *, unsigned long));
+static SCHEME_OBJECT EXFUN
+  (convert_16_bit_property_data, (CONST unsigned char *, unsigned long));
+
+DEFINE_PRIMITIVE ("X-GET-WINDOW-PROPERTY", Prim_x_get_window_property, 7, 7, 0)
+{
+  PRIMITIVE_HEADER (7);
+  {
+    Display * display = (XD_DISPLAY (x_display_arg (1)));
+    Window window = (arg_ulong_integer (2));
+    Atom property = (arg_ulong_integer (3));
+    long long_offset = (arg_nonnegative_integer (4));
+    long long_length = (arg_nonnegative_integer (5));
+    Bool delete = (BOOLEAN_ARG (6));
+    Atom req_type = (arg_ulong_integer (7));
+
+    Atom actual_type;
+    int actual_format;
+    unsigned long nitems;
+    unsigned long bytes_after;
+    unsigned char * data;
+
+    if ((XGetWindowProperty (display, window, property, long_offset,
+			     long_length, delete, req_type, (&actual_type),
+			     (&actual_format), (&nitems), (&bytes_after),
+			     (&data)))
+	!= Success)
+      error_external_return ();
+    if (actual_format == 0)
+      {
+	XFree (data);
+	PRIMITIVE_RETURN (SHARP_F);
+      }
+    if (! ((actual_format == 8)
+	   || (actual_format == 16)
+	   || (actual_format == 32)))
+      error_external_return ();
+    {
+      SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 4, 1));
+      VECTOR_SET (result, 0, (ulong_to_integer (actual_type)));
+      VECTOR_SET (result, 1, (long_to_integer (actual_format)));
+      VECTOR_SET (result, 2, (ulong_to_integer (bytes_after)));
+      VECTOR_SET (result, 3,
+		  (((req_type != AnyPropertyType)
+		    && (req_type != actual_type))
+		   ? SHARP_F
+		   : (format == 32)
+		   ? (convert_32_bit_property_data (data, nitems))
+		   : (format == 16)
+		   ? (convert_16_bit_property_data (data, nitems))
+		   : (memory_to_string (nitems, data))));
+      XFree (data);
+      PRIMITIVE_RETURN (result);
+    }
+  }
+}
+
+static SCHEME_OBJECT
+DEFUN (convert_32_bit_property_data, (data, nitems),
+       CONST unsigned char * data AND
+       unsigned long nitems)
+{
+  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, nitems, 1));
+  unsigned long index;
+  for (index = 0; (index < nitems); index += 1)
+    VECTOR_SET (result, index, (ulong_to_integer (((CARD32 *) data) [index])));
+  return (result);
+}
+
+static SCHEME_OBJECT
+DEFUN (convert_16_bit_property_data, (data, nitems),
+       CONST unsigned char * data AND
+       unsigned long nitems)
+{
+  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, nitems, 1));
+  unsigned long index;
+  for (index = 0; (index < nitems); index += 1)
+    VECTOR_SET (result, index, (ulong_to_integer (((CARD16 *) data) [index])));
+  return (result);
+}
+
+DEFINE_PRIMITIVE ("X-CHANGE-PROPERTY", Prim_x_change_property, 7, 7, 0)
+{
+  PRIMITIVE_HEADER (7);
+  CHECK_ARG (7, STRING_P);
+  {
+    Display * display = (XD_DISPLAY (x_display_arg (1)));
+    Window window = (arg_ulong_integer (2));
+    Atom property = (arg_ulong_integer (3));
+    Atom type = (arg_ulong_integer (4));
+    int format = (arg_nonnegative_integer (5));
+    int mode = (arg_index_integer (6, 3));
+    SCHEME_OBJECT data = (ARG_REF (7));
+
+    if (! ((format == 8) || (format == 16) || (format == 32)))
+      error_bad_range_arg (5);
+    if ((format != 8) && (((STRING_LENGTH (data)) % (format / 8)) != 0))
+      error_bad_range_arg (7);
+    {
+      PTR position = dstack_position;
+      unsigned char status = (catch_x_errors ());
+      if (status == 0)
+	{
+	  XChangeProperty (display,
+			   window,
+			   property,
+			   type,
+			   format,
+			   mode,
+			   (STRING_LOC (data, 0)),
+			   ((STRING_LENGTH (data)) / (format / 8)));
+	  dstack_set_position (position);
+	}
+      dstack_set_position (position);
+      PRIMITIVE_RETURN (ulong_to_integer (status));
+    }
+  }
+}
+
+DEFINE_PRIMITIVE ("X-DELETE-PROPERTY", Prim_x_delete_property, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  XDeleteProperty ((XD_DISPLAY (x_display_arg (1))),
+		   (arg_ulong_integer (2)),
+		   (arg_ulong_integer (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-SET-SELECTION-OWNER", Prim_x_set_selection_owner, 4, 4, 0)
+{
+  PRIMITIVE_HEADER (4);
+  XSetSelectionOwner ((XD_DISPLAY (x_display_arg (1))),
+		      (arg_ulong_integer (2)),
+		      (arg_ulong_integer (3)),
+		      (arg_ulong_integer (4)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-GET-SELECTION-OWNER", Prim_x_get_selection_owner, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (XGetSelectionOwner ((XD_DISPLAY (x_display_arg (1))),
+					   (arg_ulong_integer (2)))));
+}
+
+DEFINE_PRIMITIVE ("X-CONVERT-SELECTION", Prim_x_convert_selection, 6, 6, 0)
+{
+  PRIMITIVE_HEADER (6);
+  XSetSelectionOwner ((XD_DISPLAY (x_display_arg (1))),
+		      (arg_ulong_integer (2)),
+		      (arg_ulong_integer (3)),
+		      (arg_ulong_integer (4)),
+		      (arg_ulong_integer (5)),
+		      (arg_ulong_integer (6)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-SEND-SELECTION-NOTIFY", Prim_x_send_selection_notify, 5, 5, 0)
+{
+  PRIMITIVE_HEADER (5);
+  {
+    struct xdisplay * xd = (x_display_arg (1));
+    Window requestor = (arg_ulong_integer (2));
+    XSelectionEvent event;
+    (event . type) = SelectionNotify;
+    (event . requestor) = requestor;
+    (event . property) = (arg_ulong_integer (3));
+    (event . target) = (arg_ulong_integer (4));
+    (event . time) = (arg_ulong_integer (5));
+    XSendEvent ((XD_DISPLAY (xd)), requestor, True, 0, ((XEvent *) (&event)));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-MAX-REQUEST-SIZE", Prim_x_max_request_size, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (long_to_integer (XMaxRequestSize (x_display_arg (1))));
 }
