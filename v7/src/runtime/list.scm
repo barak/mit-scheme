@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.4 1988/10/07 08:52:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.5 1989/03/07 01:21:30 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -174,62 +174,92 @@ MIT in each case. |#
 (define-integrable (weak-set-cdr! weak-pair object)
   (system-pair-set-cdr! weak-pair object))
 
+(define (weak-memq object weak-list)
+  (let ((object (if object object weak-pair/false)))
+    (let loop ((weak-list weak-list))
+      (and (not (null? weak-list))
+	   (if (eq? object (system-pair-car weak-list))
+	       weak-list
+	       (loop (system-pair-cdr weak-list)))))))
+
 (define weak-pair/false
   "weak-pair/false")
 
 ;;;; Standard Selectors
 
-(define-integrable (caar x) (car (car x)))
-(define-integrable (cadr x) (car (cdr x)))
-(define-integrable (cdar x) (cdr (car x)))
-(define-integrable (cddr x) (cdr (cdr x)))
+(declare (integrate-operator safe-car safe-cdr))
 
-(define-integrable (caaar x) (car (car (car x))))
-(define-integrable (caadr x) (car (car (cdr x))))
-(define-integrable (cadar x) (car (cdr (car x))))
-(define-integrable (caddr x) (car (cdr (cdr x))))
+(define (safe-car x)
+  (if (pair? x) (car x) (error "not a pair" x)))
 
-(define-integrable (cdaar x) (cdr (car (car x))))
-(define-integrable (cdadr x) (cdr (car (cdr x))))
-(define-integrable (cddar x) (cdr (cdr (car x))))
-(define-integrable (cdddr x) (cdr (cdr (cdr x))))
+(define (safe-cdr x)
+  (if (pair? x) (cdr x) (error "not a pair" x)))
 
-(define-integrable (caaaar x) (car (car (car (car x)))))
-(define-integrable (caaadr x) (car (car (car (cdr x)))))
-(define-integrable (caadar x) (car (car (cdr (car x)))))
-(define-integrable (caaddr x) (car (car (cdr (cdr x)))))
+(define (caar x) (safe-car (safe-car x)))
+(define (cadr x) (safe-car (safe-cdr x)))
+(define (cdar x) (safe-cdr (safe-car x)))
+(define (cddr x) (safe-cdr (safe-cdr x)))
 
-(define-integrable (cadaar x) (car (cdr (car (car x)))))
-(define-integrable (cadadr x) (car (cdr (car (cdr x)))))
-(define-integrable (caddar x) (car (cdr (cdr (car x)))))
-(define-integrable (cadddr x) (car (cdr (cdr (cdr x)))))
+(define (caaar x) (safe-car (safe-car (safe-car x))))
+(define (caadr x) (safe-car (safe-car (safe-cdr x))))
+(define (cadar x) (safe-car (safe-cdr (safe-car x))))
+(define (caddr x) (safe-car (safe-cdr (safe-cdr x))))
 
-(define-integrable (cdaaar x) (cdr (car (car (car x)))))
-(define-integrable (cdaadr x) (cdr (car (car (cdr x)))))
-(define-integrable (cdadar x) (cdr (car (cdr (car x)))))
-(define-integrable (cdaddr x) (cdr (car (cdr (cdr x)))))
+(define (cdaar x) (safe-cdr (safe-car (safe-car x))))
+(define (cdadr x) (safe-cdr (safe-car (safe-cdr x))))
+(define (cddar x) (safe-cdr (safe-cdr (safe-car x))))
+(define (cdddr x) (safe-cdr (safe-cdr (safe-cdr x))))
 
-(define-integrable (cddaar x) (cdr (cdr (car (car x)))))
-(define-integrable (cddadr x) (cdr (cdr (car (cdr x)))))
-(define-integrable (cdddar x) (cdr (cdr (cdr (car x)))))
-(define-integrable (cddddr x) (cdr (cdr (cdr (cdr x)))))
+(define (caaaar x) (safe-car (safe-car (safe-car (safe-car x)))))
+(define (caaadr x) (safe-car (safe-car (safe-car (safe-cdr x)))))
+(define (caadar x) (safe-car (safe-car (safe-cdr (safe-car x)))))
+(define (caaddr x) (safe-car (safe-car (safe-cdr (safe-cdr x)))))
 
-(define-integrable (first x) (car x))
-(define-integrable (second x) (car (cdr x)))
-(define-integrable (third x) (car (cdr (cdr x))))
-(define-integrable (fourth x) (car (cdr (cdr (cdr x)))))
-(define-integrable (fifth x) (car (cdr (cdr (cdr (cdr x))))))
-(define-integrable (sixth x) (car (cdr (cdr (cdr (cdr (cdr x)))))))
-(define-integrable (seventh x) (car (cdr (cdr (cdr (cdr (cdr (cdr x))))))))
+(define (cadaar x) (safe-car (safe-cdr (safe-car (safe-car x)))))
+(define (cadadr x) (safe-car (safe-cdr (safe-car (safe-cdr x)))))
+(define (caddar x) (safe-car (safe-cdr (safe-cdr (safe-car x)))))
+(define (cadddr x) (safe-car (safe-cdr (safe-cdr (safe-cdr x)))))
 
-(define-integrable (eighth x)
-  (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr x)))))))))
+(define (cdaaar x) (safe-cdr (safe-car (safe-car (safe-car x)))))
+(define (cdaadr x) (safe-cdr (safe-car (safe-car (safe-cdr x)))))
+(define (cdadar x) (safe-cdr (safe-car (safe-cdr (safe-car x)))))
+(define (cdaddr x) (safe-cdr (safe-car (safe-cdr (safe-cdr x)))))
 
-(define-integrable (ninth x)
-  (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr x))))))))))
+(define (cddaar x) (safe-cdr (safe-cdr (safe-car (safe-car x)))))
+(define (cddadr x) (safe-cdr (safe-cdr (safe-car (safe-cdr x)))))
+(define (cdddar x) (safe-cdr (safe-cdr (safe-cdr (safe-car x)))))
+(define (cddddr x) (safe-cdr (safe-cdr (safe-cdr (safe-cdr x)))))
 
-(define-integrable (tenth x)
-  (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr x)))))))))))
+(define (first x) (safe-car x))
+(define (second x) (safe-car (safe-cdr x)))
+(define (third x) (safe-car (safe-cdr (safe-cdr x))))
+(define (fourth x) (safe-car (safe-cdr (safe-cdr (safe-cdr x)))))
+(define (fifth x) (safe-car (safe-cdr (safe-cdr (safe-cdr (safe-cdr x))))))
+
+(define (sixth x)
+  (safe-car (safe-cdr (safe-cdr (safe-cdr (safe-cdr (safe-cdr x)))))))
+
+(define (seventh x)
+  (safe-car
+   (safe-cdr (safe-cdr (safe-cdr (safe-cdr (safe-cdr (safe-cdr x))))))))
+
+(define (eighth x)
+  (safe-car
+   (safe-cdr
+    (safe-cdr (safe-cdr (safe-cdr (safe-cdr (safe-cdr (safe-cdr x)))))))))
+
+(define (ninth x)
+  (safe-car
+   (safe-cdr
+    (safe-cdr
+     (safe-cdr (safe-cdr (safe-cdr (safe-cdr (safe-cdr (safe-cdr x))))))))))
+
+(define (tenth x)
+  (safe-car
+   (safe-cdr
+    (safe-cdr
+     (safe-cdr
+      (safe-cdr (safe-cdr (safe-cdr (safe-cdr (safe-cdr (safe-cdr x)))))))))))
 
 ;;;; Sequence Operations
 
