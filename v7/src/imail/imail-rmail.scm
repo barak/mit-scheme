@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.19 2000/04/27 02:16:41 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.20 2000/05/02 22:02:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -38,10 +38,15 @@
 ;;;; Server operations
 
 (define-method %open-folder ((url <rmail-url>))
-  (read-rmail-file (file-url-pathname url)))
+  (if (not (file-readable? (file-url-pathname url)))
+      (error:bad-range-argument url 'OPEN-FOLDER))
+  (make-rmail-folder url))
 
 (define-method %new-folder ((url <rmail-url>))
+  (if (file-exists? (file-url-pathname url))
+      (error:bad-range-argument url 'NEW-FOLDER))
   (let ((folder (make-rmail-folder url)))
+    (set-file-folder-messages! folder '())
     (set-rmail-folder-header-fields!
      folder
      (compute-rmail-folder-header-fields folder))
@@ -76,11 +81,6 @@
 			   "    it means the file has no messages in it.")))
 
 ;;;; Read RMAIL file
-
-(define (read-rmail-file pathname)
-  (let ((folder (make-rmail-folder (make-rmail-url pathname))))
-    (%revert-folder folder)
-    folder))
 
 (define-method %revert-folder ((folder <rmail-folder>))
   (call-with-binary-input-file (file-folder-pathname folder)

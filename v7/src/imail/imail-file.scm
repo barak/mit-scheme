@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.12 2000/05/02 21:42:07 cph Exp $
+;;; $Id: imail-file.scm,v 1.13 2000/05/02 22:02:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -58,8 +58,15 @@
 ;;;; Folder
 
 (define-class <file-folder> (<folder>)
-  (messages define standard initial-value '())
+  (messages define standard
+	    accessor %file-folder-messages
+	    initial-value 'UNKNOWN)
   (modification-time define standard initial-value #f))
+
+(define (file-folder-messages folder)
+  (if (eq? 'UNKNOWN (%file-folder-messages folder))
+      (%revert-folder folder))
+  (%file-folder-messages folder))
 
 (define (file-folder-pathname folder)
   (file-url-pathname (folder-url folder)))
@@ -71,8 +78,13 @@
   (folder-not-modified! folder))
 
 (define-method %close-folder ((folder <file-folder>))
-  folder
-  unspecific)
+  (without-interrupts
+   (lambda ()
+     (let ((messages (%file-folder-messages folder)))
+       (if (not (eq? 'UNKNOWN messages))
+	   (begin
+	     (set-file-folder-messages! folder 'UNKNOWN)
+	     (for-each detach-message messages)))))))
 
 (define-method %folder-valid? ((folder <file-folder>))
   (file-exists? (file-folder-pathname folder)))
@@ -103,7 +115,7 @@
 		(set-message-index! message 0)
 		(list message)))))
        (message-modified! message)))))
-
+
 (define-method expunge-deleted-messages ((folder <file-folder>))
   (without-interrupts
    (lambda ()
@@ -125,7 +137,7 @@
 	      (loop (cdr messages)
 		    (fix:+ index 1)
 		    (cons (car messages) messages*))))))))
-
+
 (define-method search-folder ((folder <file-folder>) criteria)
   (cond ((string? criteria)
 	 (let ((n (folder-length folder)))

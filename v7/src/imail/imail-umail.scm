@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.13 2000/05/02 21:09:08 cph Exp $
+;;; $Id: imail-umail.scm,v 1.14 2000/05/02 22:02:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -38,12 +38,20 @@
 ;;;; Server operations
 
 (define-method %open-folder ((url <umail-url>))
-  (read-umail-file (file-url-pathname url)))
+  (if (not (file-readable? (file-url-pathname url)))
+      (error:bad-range-argument url 'OPEN-FOLDER))
+  (make-umail-folder url))
 
 (define-method %new-folder ((url <umail-url>))
+  (if (file-exists? (file-url-pathname url))
+      (error:bad-range-argument url 'NEW-FOLDER))
   (let ((folder (make-umail-folder url)))
+    (set-file-folder-messages! folder '())
     (save-folder folder)
     folder))
+
+(define (read-umail-file pathname)
+  (make-umail-folder (make-umail-url pathname)))
 
 ;;;; Folder
 
@@ -59,11 +67,6 @@
   #f)
 
 ;;;; Read unix mail file
-
-(define (read-umail-file pathname)
-  (let ((folder (make-umail-folder (make-umail-url pathname))))
-    (%revert-folder folder)
-    folder))
 
 (define-method %revert-folder ((folder <umail-folder>))
   (set-file-folder-messages!
