@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.4 1988/08/29 22:30:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.5 1988/11/07 14:08:14 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -37,8 +37,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define *block-start-label*)
-(define *entry-bblock*)
 (define *current-bblock*)
+(define *pending-bblocks*)
 
 (define (generate-bits rgraphs receiver)
   (with-new-node-marks
@@ -58,54 +58,59 @@ MIT in each case. |#
 					    *interned-uuo-links*))))))
 
 (define (cgen-rgraph rgraph)
-  (fluid-let ((*current-rgraph* rgraph))
+  (fluid-let ((*current-rgraph* rgraph)
+	      (*pending-bblocks* '()))
     (for-each (lambda (edge)
 		(if (not (node-marked? (edge-right-node edge)))
 		    (cgen-entry edge)))
-	      (rgraph-entry-edges rgraph))))
+	      (rgraph-entry-edges rgraph))
+    (if (not (null? *pending-bblocks*))
+	(error "CGEN-RGRAPH: pending blocks left at end of pass"))))
 
 (define (cgen-entry edge)
-  (let ((bblock (edge-right-node edge)))
-    (fluid-let ((*entry-bblock* bblock))
-      (let loop ((bblock bblock))
-	(cgen-bblock bblock)
-	(let ((cgen-right
-	       (lambda (edge)
-		 (let ((next (edge-next-node edge)))
-		   (if next
-		       (begin
-			 (if (node-previous>1? next)
-			     (clear-map-between bblock edge next))
-			 (if (not (node-marked? next))
-			     (loop next))))))))
-	  (if (sblock? bblock)
-	      (cgen-right (snode-next-edge bblock))
-	      (begin (cgen-right (pnode-consequent-edge bblock))
-		     (cgen-right (pnode-alternative-edge bblock)))))))))
+  (define (loop bblock map)
+    (cgen-bblock bblock map)
+    (if (sblock? bblock)
+	(cgen-right (snode-next-edge bblock))
+	(begin (cgen-right (pnode-consequent-edge bblock))
+	       (cgen-right (pnode-alternative-edge bblock)))))
+  (define (cgen-right edge)
+    (let ((next (edge-next-node edge)))
+      (if (and next (not (node-marked? next)))
+	  (let ((previous (node-previous-edges next)))
+	    (cond ((not (for-all? previous edge-left-node))
+		   ;; Assumption: no action needed to clear existing
+		   ;; register map at this point.
+		   (loop next (empty-register-map)))
+		  ((null? (cdr previous))
+		   (loop next (bblock-register-map (edge-left-node edge))))
+		  (else
+		   (let ((entry
+			  (or (assq next *pending-bblocks*)
+			      (let ((entry
+				     (cons next
+					   (list-transform-positive
+					       previous
+					     edge-left-node))))
+				(set! *pending-bblocks*
+				      (cons entry
+					    *pending-bblocks*))
+				entry))))
+		     (let ((dependencies (delq! edge (cdr entry))))
+		       (if (not (null? dependencies))
+			   (set-cdr! entry dependencies)
+			   (begin
+			     (set! *pending-bblocks*
+				   (delq! entry *pending-bblocks*))
+			     (loop next (adjust-maps-at-merge! next))))))))))))
 
-(define (clear-map-between bblock edge bblock*)
-  (let ((map
-	 (let ((map (bblock-register-map bblock))
-	       (live-at-entry (bblock-live-at-entry bblock*)))
-	   (let ((deletions
-		  (list-transform-negative (register-map-live-homes map)
-		    (lambda (pseudo-register)
-		      (regset-member? live-at-entry pseudo-register)))))
-	     (if (not (null? deletions))
-		 (delete-pseudo-registers map
-					  deletions
-					  (lambda (map aliases) aliases map))
-		 map)))))
-    (if (not (register-map-clear? map))
-	(let ((sblock (make-sblock (clear-map-instructions map))))
-	  (node-mark! sblock)
-	  (edge-insert-snode! edge sblock)))))
+  (loop (edge-right-node edge) (empty-register-map)))
 
-(define (cgen-bblock bblock)
+(define (cgen-bblock bblock map)
   ;; This procedure is coded out of line to facilitate debugging.
   (node-mark! bblock)
   (fluid-let ((*current-bblock* bblock)
-	      (*register-map* (bblock-input-register-map bblock)))
+	      (*register-map* map))
     (set-bblock-instructions! bblock
 			      (let loop ((rinst (bblock-instructions bblock)))
 				(if (rinst-next rinst)
@@ -127,23 +132,48 @@ MIT in each case. |#
 	      (let ((instructions (match-result)))
 		(delete-dead-registers!)
 		(LAP ,@*prefix-instructions* ,@instructions)))
-	    (begin (error "CGEN-BBLOCK: No matching rules" rtl)
+	    (begin (error "CGEN-RINST: No matching rules" rtl)
 		   (loop)))))))
 
-(define (bblock-input-register-map bblock)
-  (if (or (eq? bblock *entry-bblock*)
-	  (not (node-previous=1? bblock)))
-      (empty-register-map)
-      (let ((previous (node-previous-first bblock)))
-	(let ((map (bblock-register-map previous)))
-	  (if (sblock? previous)
-	      map
-	      (delete-pseudo-registers
-	       map
-	       (regset->list
-		(regset-difference (bblock-live-at-exit previous)
-				   (bblock-live-at-entry bblock)))
-	       (lambda (map aliases) aliases map)))))))
+(define (adjust-maps-at-merge! bblock)
+  (let ((edges (node-previous-edges bblock)))    (let ((maps
+	   (map
+	    (let ((live-registers (bblock-live-at-entry bblock)))
+	      (lambda (edge)
+		(register-map:keep-live-entries
+		 (bblock-register-map (edge-left-node edge))
+		 live-registers)))
+	    edges)))
+      (let ((target-map (merge-register-maps maps false)))
+	(for-each
+	 (lambda (class)
+	   (let ((instructions
+		  (coerce-map-instructions (cdar class) target-map)))
+	     (if (not (null? instructions))
+		 (let ((sblock (make-sblock instructions)))
+		   (node-mark! sblock)
+		   (edge-insert-snode! (caar class) sblock)
+		   (for-each (lambda (x)
+			       (let ((edge (car x)))
+				 (edge-disconnect-right! edge)
+				 (edge-connect-right! edge sblock)))
+			     (cdr class))))))
+	 (equivalence-classes (map cons edges maps)
+			      (lambda (x y) (map-equal? (cdr x) (cdr y)))))
+	target-map))))
+
+(define (equivalence-classes objects predicate)
+  (let ((find-class (association-procedure predicate car)))
+    (let loop ((objects objects) (classes '()))
+      (if (null? objects)
+	  classes
+	  (let ((class (find-class (car objects) classes)))
+	    (if (not class)
+		(loop (cdr objects)
+		      (cons (list (car objects)) classes))
+		(begin
+		  (set-cdr! class (cons (car objects) (cdr class)))
+		  (loop (cdr objects) classes))))))))
 
 (define *cgen-rules* '())
 (define *assign-rules* '())
