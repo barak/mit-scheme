@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.61 1999/02/16 18:48:42 cph Exp $
+$Id: infutl.scm,v 1.62 1999/03/04 05:50:01 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -61,7 +61,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      unspecific)))
 
 (define (read-debugging-info descriptor)
-  (cond ((string? descriptor)
+  (cond ((debug-info-pathname? descriptor)
 	 (let ((binf (read-binf-file descriptor)))
 	   (and binf
 		(if (dbg-info? binf)
@@ -70,7 +70,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 (not (zero? (vector-length binf)))
 			 (vector-ref binf 0))))))
 	((and (pair? descriptor)
-	      (string? (car descriptor))
+	      (debug-info-pathname? (car descriptor))
 	      (exact-nonnegative-integer? (cdr descriptor)))
 	 (let ((binf (read-binf-file (car descriptor))))
 	   (and binf
@@ -168,16 +168,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (compiled-closure? entry)
       (compiled-entry/offset (compiled-closure->entry entry))
       (compiled-code-address->offset entry)))
-
+
 (define (compiled-entry/filename-and-index entry)
   (compiled-code-block/filename-and-index (compiled-entry/block entry)))
 
 (define (compiled-code-block/filename-and-index block)
   (let loop ((info (compiled-code-block/debugging-info block)))
-    (cond ((string? info) (values (canonicalize-debug-info-filename info) #f))
+    (cond ((debug-info-pathname? info)
+	   (values (canonicalize-debug-info-filename info) #f))
 	  ((not (pair? info)) (values #f #f))
 	  ((dbg-info? (car info)) (loop (cdr info)))
-	  ((string? (car info))
+	  ((debug-info-pathname? (car info))
 	   (values (canonicalize-debug-info-filename (car info))
 		   (and (exact-nonnegative-integer? (cdr info))
 			(cdr info))))
@@ -251,6 +252,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			   (pathname-version com-pathname)))
 	      (pathname-new-type com-pathname (pathname-type binf-pathname))
 	      binf-pathname)))))
+
+(define (debug-info-pathname? object)
+  (or (pathname? object)
+      (string? object)))
 
 (define directory-rewriting-rules
   '())
@@ -392,7 +397,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;; Support of BSM files
 
 (define (read-labels descriptor)
-  (cond ((string? descriptor)
+  (cond ((debug-info-pathname? descriptor)
 	 (let ((bsm (read-bsm-file descriptor)))
 	   (and bsm ;; bsm are either vectors of pairs or vectors of vectors
 		(if (vector? bsm)
@@ -402,7 +407,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			    ((vector? first) first)
 			    (else #f)))))))
 	((and (pair? descriptor)
-	      (string? (car descriptor))
+	      (debug-info-pathname? (car descriptor))
 	      (exact-nonnegative-integer? (cdr descriptor)))
 	 (let ((bsm (read-bsm-file (car descriptor))))
 	   (and bsm
