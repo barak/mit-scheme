@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.16 1992/09/10 05:21:53 cph Exp $
+$Id: make.scm,v 15.17 1992/09/10 07:32:50 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -39,8 +39,9 @@ MIT in each case. |#
 (package/system-loader "6001" '() 'QUERY)
 (load '("edextra" "floppy") (->environment '(edwin)))
 ((access initialize-package! (->environment '(student scode-rewriting))))
-(add-system! (make-system "6.001" 15 16 '()))
+(add-system! (make-system "6.001" 15 17 '()))
 
+;;; Customize the runtime system:
 (set! repl:allow-restart-notifications? false)
 (set! repl:write-result-hash-numbers? false)
 (set! *unparse-disambiguate-null-as-itself?* false)
@@ -51,36 +52,5 @@ MIT in each case. |#
 (set! (access write-result:undefined-value-is-special?
 	      (->environment '(runtime user-interface)))
       false)
-
-(in-package (->environment '(edwin))
-  (set! editor-can-exit? false)
-  (set! scheme-can-quit? false)
-  (set! paranoid-exit? true)
-  (set! x-screen-auto-raise true)
-  (set! standard-editor-initialization
-	(let ((usual standard-editor-initialization))
-	  (lambda ()
-	    (usual)
-	    (standard-login-initialization))))
-  (set-variable-value! edwin-variable$enable-transcript-buffer true)
-  (set-variable-value! edwin-variable$evaluate-in-inferior-repl true)
-  (set-variable-value! edwin-variable$repl-error-decision true)
-  (set-variable-value! edwin-variable$version-control true)
-  (set-variable-value! edwin-variable$trim-versions-without-asking true)
-  (set-variable-value! edwin-variable$enable-compressed-files false)
-  (set-variable-value! edwin-variable$enable-encrypted-files false)
-  (set-variable-value!
-   edwin-variable$mail-default-reply-to
-   (let ((default-reply-to false))
-     (lambda ()
-       (let ((reply-to
-	      (prompt-for-string "Please enter an email address for replies"
-				 default-reply-to
-				 'INSERTED-DEFAULT)))
-	 (if (string-null? reply-to)
-	     false
-	     (begin
-	       (set! default-reply-to reply-to)
-	       reply-to)))))))
 
 (ge '(student))

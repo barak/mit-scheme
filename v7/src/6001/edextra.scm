@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.10 1992/09/10 05:20:01 cph Exp $
+$Id: edextra.scm,v 1.11 1992/09/10 07:32:09 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -129,7 +129,6 @@ MIT in each case. |#
 	       (groups/files-to-load groups)
 	       (groups/files-to-reference groups)
 	       (groups/files-to-load&reference groups)))
-
 
 ;;; Procedure to get the "files" object corresponding to a particular
 ;;; problem set.  Runs error-handler (which should never return) if
@@ -158,13 +157,11 @@ MIT in each case. |#
 		(loop rest accumulated)
 		(loop rest (cons first accumulated))))))))
 
-;;; Returns #t iff files all exist in directory.
+;;; Returns #t iff FILES all exist in DIRECTORY.
 (define (files-all-exist? files directory)
-  (let loop ((files files))
-    (or (null? files)
-	(and (file-exists?
-	      (merge-pathnames directory (->pathname (car files))))
-	     (loop (cdr files))))))
+  (for-all? files
+    (lambda (file)
+      (file-exists? (merge-pathnames directory file)))))
 
 (define (->string object)
   (if (string? object)
@@ -284,30 +281,119 @@ The following filenames are reserved and may not be used:
 	aux	clock$	com1	com2	com3	com4
 	con	lpt1	lpt2	lpt3	nul	prn")
 
-(define (os/auto-save-pathname pathname buffer)
-  (if (not pathname)
-      (merge-pathnames
-       (let ((name
-	      (string-append
-	       (let ((name (buffer-name buffer)))
-		 (let ((index (string-find-next-char name #\.)))
-		   (if (not index)
-		       (if (> (string-length name) 8)
-			   (substring name 0 8)
-			   name)
-		       (substring name 0 (min 8 index)))))
-	       ".asv")))
-	 (if (valid-dos-filename? name)
-	     name
-	     "default.asv"))
-       (buffer-default-directory buffer))
-      (pathname-new-type pathname "asv")))
+;;;; Overrides of Editor Procedures
 
-(define (os/precious-backup-pathname pathname)
-  (pathname-new-type pathname "bak"))
+(set! os/auto-save-pathname
+      (let ((usual os/auto-save-pathname))
+	(lambda (pathname buffer)
+	  (if pathname
+	      (if (student-directory? pathname)
+		  (pathname-new-type pathname "asv")
+		  (usual pathname buffer))
+	      (let ((directory (buffer-default-directory buffer)))
+		(if (student-directory? directory)
+		    (merge-pathnames
+		     (let ((name
+			    (string-append
+			     (let ((name (buffer-name buffer)))
+			       (let ((index (string-find-next-char name #\.)))
+				 (if (not index)
+				     (if (> (string-length name) 8)
+					 (substring name 0 8)
+					 name)
+				     (substring name 0 (min 8 index)))))
+			     ".asv")))
+		       (if (valid-dos-filename? name)
+			   name
+			   "default.asv"))
+		     directory)
+		    (usual pathname buffer)))))))
 
-(define (os/default-backup-filename)
-  "~/work/default.bak")
+(set! os/precious-backup-pathname
+      (let ((usual os/precious-backup-pathname))
+	(lambda (pathname)
+	  (if (student-directory? pathname)
+	      (pathname-new-type pathname "bak")
+	      (usual pathname)))))
 
-(define (os/buffer-backup-pathname truename)
-  (values (pathname-new-type truename "bak") '()))
+(set! os/default-backup-filename
+      (lambda () (string-append working-directory "default.bak")))
+
+(set! os/buffer-backup-pathname
+      (let ((usual os/buffer-backup-pathname))
+	(lambda (truename)
+	  (if (student-directory? truename)
+	      (values (pathname-new-type truename "bak") '())
+	      (usual truename)))))
+
+;;; These next two depend on the fact that they are only invoked when
+;;; the current buffer is the Dired buffer that is being tested.
+
+(set! os/backup-filename?
+      (let ((usual os/backup-filename?))
+	(lambda (filename)
+	  (if (student-directory? (dired-buffer-directory (current-buffer)))
+	      (equal? "bak" (pathname-type filename))
+	      (usual filename)))))
+
+(set! os/auto-save-filename?
+      (let ((usual os/auto-save-filename?))
+	(lambda (filename)
+	  (if (student-directory? (dired-buffer-directory (current-buffer)))
+	      (equal? "asv" (pathname-type filename))
+	      (usual filename)))))
+
+(define (dired-buffer-directory buffer)
+  ;; Similar to the definition in "dired.scm".  That definition should
+  ;; be exported in order to eliminate this redundant definition.
+  (or (buffer-get buffer 'DIRED-DIRECTORY)
+      (buffer-default-directory buffer)))
+
+(define (student-directory? pathname)
+  (string-prefix? working-directory (->namestring pathname)))
+
+(set! standard-editor-initialization
+      (let ((usual standard-editor-initialization))
+	(lambda ()
+	  (usual)
+	  (standard-login-initialization))))
+
+;;;; Customization
+
+(set! editor-can-exit? false)
+(set! scheme-can-quit? false)
+(set! paranoid-exit? true)
+(set! x-screen-auto-raise true)
+
+(set-variable! enable-transcript-buffer true)
+(set-variable! evaluate-in-inferior-repl true)
+(set-variable! repl-error-decision true)
+(set-variable! version-control true)
+(set-variable! trim-versions-without-asking true)
+(set-variable! enable-compressed-files false)
+(set-variable! enable-encrypted-files false)
+
+(set-variable! completion-ignored-extensions
+	       (append '(".bci" ".bif" ".bin" ".com" ".ext")
+		       (ref-variable completion-ignored-extensions)))
+
+(set-variable!
+ mail-default-reply-to
+ (let ((default-reply-to false))
+   (lambda ()
+     (let ((reply-to
+	    (prompt-for-string "Please enter an email address for replies"
+			       default-reply-to
+			       'INSERTED-DEFAULT)))
+       (if (string-null? reply-to)
+	   false
+	   (begin
+	     (set! default-reply-to reply-to)
+	     reply-to))))))
+
+;; Disable key bindings that exit the editor.
+;; M-x logout is all the students should need.
+(define-key 'fundamental '(#\c-x #\c-c) false)
+(define-key 'fundamental '(#\c-x #\c-z) false)
+(define-key 'fundamental '(#\c-x #\c) false)
+(define-key 'fundamental '(#\c-x #\z) false)
