@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.61 1999/07/16 18:08:54 cph Exp $
+@comment $Id: user.texinfo,v 1.62 1999/08/04 01:12:42 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -41,9 +41,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.60
+@subtitle Edition 1.62
 @subtitle for Scheme Release 7.5
-@subtitle 16 July 1999
+@subtitle 22 July 1999
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -98,8 +98,8 @@ Lisp.  It gives installation instructions for all of the platforms that
 we support; complete documentation of the command-line options and
 environment variables that control how Scheme works; and rudimentary
 descriptions of how to interact with the evaluator, compile and debug
-programs, and use the editor.  Some additional material, including the
-release notes, is included as appendices.
+programs, and use the editor.  The release notes are included as an
+appendix.
 
 @cindex Unix
 @cindex OS/2
@@ -149,12 +149,12 @@ operating system that you are using.
 
 @menu
 * Unix Installation::           
-* OS/2 Installation::           
 * Windows Installation::        
+* OS/2 Installation::           
 * Optional Configuration::      
 @end menu
 
-@node Unix Installation, OS/2 Installation, Installation, Installation
+@node Unix Installation, Windows Installation, Installation, Installation
 @section Unix Installation
 
 We will use as an example the installation for GNU/Linux.  The
@@ -186,9 +186,8 @@ gzip -cd @var{path-to-distribution}/linux.tar.gz | tar xf -
 
 @noindent
 After executing these commands, the executable files will be in
-@file{/usr/local/bin} (and consequently on your execution path), and the
-library files will be in @file{/usr/local/lib/mit-scheme}.  No further
-configuration is required.
+@file{/usr/local/bin}, and the library files will be in
+@file{/usr/local/lib/mit-scheme}.  No further configuration is required.
 
 To install the files in directories of your choice:
 
@@ -203,12 +202,12 @@ gzip -cd linux.tar.gz | tar xvf -
 @end example
 
 @item
-Next, copy the contents of the @file{bin} directory to somewhere
+Next, move the contents of the @file{bin} directory to somewhere
 convenient that is on your execution path.  For example, if you had a
 directory @file{~/bin} on your path, you would do this:
 
 @example
-cp -p bin/* ~/bin/.
+mv bin/* ~/bin/.
 @end example
 
 @item
@@ -224,18 +223,17 @@ than the one you plan to store the @file{mit-scheme} directory on, you
 must use the command @samp{cp -pr} rather than @samp{mv}.
 
 @item
-Next, if you stored the @file{mit-scheme} directory somewhere other than
-@file{/usr/local/lib/mit-scheme}, you must tell Scheme where to find it.
-This can be done in one of two ways.  The first way is to bind the
-environment variable @code{MITSCHEME_LIBRARY_PATH} to the full path to
-the directory, e.g.@: in @file{bash} you would do this
+Next, you must tell Scheme where to find the @file{mit-scheme}
+directory.  This can be done in one of two ways.  The first way is to
+bind the environment variable @code{MITSCHEME_LIBRARY_PATH} to the full
+path to the directory, e.g.@: in @code{bash} you would do
 
 @example
 export MITSCHEME_LIBRARY_PATH=~/mit-scheme
 @end example
 
 You should put this environment-variable binding in one of your shell
-init files, e.g.@ for @file{bash} it might go in the @file{.bashrc} file.
+init files, e.g.@ for @code{bash} it might go in the @file{.bashrc} file.
 
 The second way is to use a command-line argument when invoking Scheme,
 e.g.@:
@@ -249,35 +247,36 @@ You should now be able to run MIT Scheme.  @xref{Running Scheme} for
 more information.
 @end itemize
 
-@node OS/2 Installation, Windows Installation, Unix Installation, Installation
+@node Windows Installation, OS/2 Installation, Unix Installation, Installation
+@section Windows Installation
+
+This section describes how to install MIT Scheme on Windows 95, Windows
+98, or Windows NT 4.0.  The software should also work on older versions
+of Windows NT, but we haven't tested it there.
+
+MIT Scheme is distributed as a self-installing executable.  Installation
+of the software is straightforward.  Simply execute the downloaded file
+and answer the installer's questions.  The installer will allow you to
+choose the directory in which MIT Scheme is to be installed, and the
+name of the folder in which the shortcuts are to be placed.
+
+To uninstall the software, open up the @samp{Control Panel}, run
+@samp{Add/Remove Programs}, and double-click on @samp{MIT Scheme 7.5}.
+
+@node OS/2 Installation, Optional Configuration, Windows Installation, Installation
 @section OS/2 Installation
 
 This section describes how to install MIT Scheme on a machine running
-OS/2 2.1 or later.
+OS/2 2.1 or later.  This release of MIT Scheme has been tested only on
+OS/2 Warp 4.0.  It was compiled using IBM Visual Age C++ version 3.0 and
+the OS/2 Toolkit version 4.0.
 
 @menu
-* Prerequisites for OS/2 Installation::  
 * OS/2 Installation Procedure::  
 * Environment Variables for OS/2 Installation::  
 @end menu
 
-@node Prerequisites for OS/2 Installation, OS/2 Installation Procedure, OS/2 Installation, OS/2 Installation
-@subsection Prerequisites
-
-The Scheme files use about 20 megabytes of disk space when installed.
-After installation, you can reduce the amount of disk space required by
-deleting some files (@pxref{Optional Configuration}).
-
-MIT Scheme requires a fair amount of RAM to run well.  We haven't
-tried running this on any machine with less than 36 megabytes, so we
-don't have any hard data on what the smallest practical amount of RAM
-is.
-
-This release of MIT Scheme has been tested only on OS/2 Warp 4.0, but it
-should also run under OS/2 versions 2.1 and later.  It was compiled using
-IBM Visual Age C++ version 3.0 and the OS/2 Toolkit version 4.0.
-
-@node OS/2 Installation Procedure, Environment Variables for OS/2 Installation, Prerequisites for OS/2 Installation, OS/2 Installation
+@node OS/2 Installation Procedure, Environment Variables for OS/2 Installation, OS/2 Installation, OS/2 Installation
 @subsection OS/2 Installation Procedure
 
 After unpacking the @sc{zip} file, @file{os2.zip}, you will have these
@@ -288,14 +287,10 @@ directories containing the following files:
 The executable programs @file{scheme.exe} and @file{bchschem.exe}.
 
 @item doc
-Documentation files in HTML.
-
-@item etc
-Installation command files.  These are scripts that will be used during
-the installation procedure.
+Documentation files in @sc{html}.
 
 @item icons
-A directory containing some useful icons.
+A directory containing some icons.
 
 @item lib
 A directory containing the data files needed by Scheme when it is
@@ -307,7 +302,7 @@ Perform the following steps to install Scheme:
 @enumerate
 @item
 Move the executable files @file{scheme.exe} and @file{bchschem.exe} from
-@file{bin\} to any directory that appears in your @samp{PATH}
+@file{bin} to any directory that appears in your @code{PATH}
 environment variable.  Depending on your needs, you may want to keep
 only one of these files; chances are you'll only be using one of them.
 Of course, you can also keep both programs around if you think you might
@@ -315,7 +310,7 @@ use them both.  @xref{Memory Usage}, for more information about the
 tradeoffs between these two programs.
 
 @item
-You may move the @file{lib\} directory anywhere you like.  You may
+You may move the @file{lib} directory anywhere you like.  You may
 rename it to anything you like.  (Here at MIT, we use
 @file{c:\scheme\lib}.)  After you have chosen where it will be located,
 set the @code{MITSCHEME_LIBRARY_PATH} environment variable in
@@ -346,15 +341,15 @@ environment variable defined.  For example, instead of editing
 and pass it the @code{-library} option automatically.
 
 @item
-@emph{Optional:} Move the @file{doc\} directory anywhere you like, or
+@emph{Optional:} Move the @file{doc} directory anywhere you like, or
 delete it if you do not want to keep the documentation.
 
 @item
-@emph{Optional:} The @file{icons\} directory contains some Scheme-ish icon
+@emph{Optional:} The @file{icons} directory contains some Scheme-ish icon
 files.  Again, move this directory wherever you like, or delete it.
 
 @item
-@emph{Optional:} Consider setting some of other environment variables
+@emph{Optional:} Consider setting some of the environment variables
 described below.
 @end enumerate
 
@@ -386,7 +381,7 @@ SET MITSCHEME_LIBRARY_PATH=C:\SCHEME\LIB
 @findex MITSCHEME_INF_DIRECTORY
 tells Scheme where to find debugging information for the runtime system.
 The default value for this environment variable is a subdirectory
-@file{src\} located in the directory specified by
+@file{src} located in the directory specified by
 @code{MITSCHEME_LIBRARY_PATH}.
 
 @example
@@ -432,23 +427,7 @@ SET SHELL=C:\4OS2251\4OS2.EXE
 @end example
 @end table
 
-@node Windows Installation, Optional Configuration, OS/2 Installation, Installation
-@section Windows Installation
-
-This section describes how to install MIT Scheme on Windows 95, Windows
-98, or Windows NT 4.0.  The software should also work on older versions
-of Windows NT, but we haven't tested it there.
-
-MIT Scheme is distributed as a self-installing executable.  Installation
-of the software is straightforward.  Simply execute the downloaded file
-and answer the installer's questions.  The installer will allow you to
-choose the directory in which MIT Scheme is to be installed, and the
-name of the folder in which the shortcuts are to be placed.
-
-To uninstall the software, open up the @samp{Control Panel}, run
-@samp{Add/Remove Programs}, and double-click on @samp{MIT Scheme 7.5}.
-
-@node Optional Configuration,  , Windows Installation, Installation
+@node Optional Configuration,  , OS/2 Installation, Installation
 @section Optional Configuration
 
 As distributed, Scheme contains several large files.  You might not need
@@ -513,10 +492,10 @@ One way to tell that you don't have enough memory is to run
 garbage collection.
 
 You might consider trying to use @file{scheme} and letting the operating
-system's paging handle the lack of RAM.  But usually you will find that
-using @file{bchscheme} without paging is much faster than using
+system's paging handle the lack of @sc{ram}.  But usually you will find
+that using @file{bchscheme} without paging is much faster than using
 @file{scheme} with paging.  Of course, if you are using @file{bchscheme}
-and you're still paging, there's nothing you can do to win.
+and you're still paging, the best solution is to install more @sc{ram}.
 
 @node Running Scheme, Using Scheme, Installation, Top
 @chapter Running Scheme
@@ -532,7 +511,7 @@ environment variables.
 * Command-Line Options::        
 * Custom Command-line Options::  
 * Environment Variables::       
-* Starting Scheme from Windows::  
+* Starting Scheme from Microsoft Windows::  
 * Leaving Scheme::              
 @end menu
 
@@ -630,7 +609,7 @@ Scheme supports @dfn{init files}: an init file is a file containing
 Scheme code that is loaded when Scheme is started, immediately after the
 identification banner, and before the input prompt is printed.  This
 file is stored in your home directory, which is normally specified by
-the @samp{HOME} environment variable.  Under unix, the file is called
+the @code{HOME} environment variable.  Under unix, the file is called
 @file{.scheme.init}; on the PC it is called @file{scheme.ini}.
 
 In addition, when Edwin starts up, it loads a separate init file from
@@ -675,10 +654,10 @@ A @dfn{stack} that is used for recursive procedure calls.
 
 @item
 @cindex heap space
-A @dfn{heap} that is used for dynamically allocated objects, like @samp{cons}
-cells and strings.
-Storage used for objects in the heap that become unreferenced is
-eventually reclaimed by @dfn{garbage collection}.
+A @dfn{heap} that is used for dynamically allocated objects, like
+@samp{cons} cells and strings.  Storage used for objects in the heap
+that become unreferenced is eventually reclaimed by @dfn{garbage
+collection}.
 
 @item
 @cindex constant space
@@ -707,7 +686,7 @@ garbage collection differently.  The standard Scheme, called
 one for each ``space''.  An alternative, called @file{bchscheme} under
 unix and @file{bchschem.exe} on the PC, has one heap and uses a disk
 file for the other ``space'', thus trading memory usage against garbage
-collection speed.
+collection speed (@pxref{Optional Configuration}).
 
 The total storage required by @file{scheme} is:
 
@@ -717,7 +696,7 @@ The total storage required by @file{scheme} is:
 
 @noindent
 where @var{stack}, @var{constant} and @var{heap} are parameters that are
-selected when @samp{scheme} starts.  For @file{bchscheme}, which has
+selected when @file{scheme} starts.  For @file{bchscheme}, which has
 only one heap in memory, the equation is
 
 @example
@@ -795,7 +774,7 @@ Specifies the initial world image file (@dfn{band}) to be loaded.
 Searches for @var{filename} in the working directory and the library
 directories, using the full pathname of the first readable file of that
 name.  If @var{filename} is an absolute pathname (on unix, this means it
-starts with @samp{/}), then no search occurs --- @var{filename} is
+starts with @file{/}), then no search occurs --- @var{filename} is
 tested for readability and then used directly.  If this option isn't
 given, the filename is the value of the environment variable
 @code{MITSCHEME_BAND}, or if that isn't defined, @file{runtime.com}; in
@@ -887,7 +866,7 @@ terminal.  If this option is specified, Scheme will not detach itself
 from the controlling terminal.
 
 This detaching behavior is useful for running Scheme as a background
-job.  For example, using @file{bash}, the following will run Scheme as a
+job.  For example, using @code{bash}, the following will run Scheme as a
 background job, redirecting its input and output to files, and
 preventing it from being killed by keyboard interrupts or by logging
 out:
@@ -917,9 +896,9 @@ variable @code{MITSCHEME_LIBRARY_PATH} is used; if that isn't defined,
 the default is used.
 
 On unix, the elements of the list are separated by colons, and the
-default value is @samp{/usr/local/lib/mit-scheme}.  On PCs, the elements
+default value is @file{/usr/local/lib/mit-scheme}.  On PCs, the elements
 of the list are separated by semicolons, and the default value is
-@samp{c:\scheme\lib}.
+@file{c:\scheme\lib}.
 
 @item -utabmd @var{filename}
 @findex -utabmd
@@ -1070,31 +1049,30 @@ computation that Scheme was performing at the time the file was written.
 Normally this file is never written, but the @code{-suspend-file} option
 enables writing of this file.
 
-@item -eval
+@item -eval @var{expression} @dots{}
 @findex -eval
-This option causes Scheme to evaluate the expressions following it on
-the command line, up to (but not including) the next option that starts
-with a hyphen.  The expressions are evaluated in the
-@code{user-initial-environment}.
-Unless explicitly handled, errors during evaluation are silently ignored.
+This option causes Scheme to evaluate the @var{expression}s following it
+on the command line, up to (but not including) the next option that
+starts with a hyphen.  The expressions are evaluated in the
+@code{user-initial-environment}.  Unless explicitly handled, errors
+during evaluation are silently ignored.
 
-@item -load
+@item -load @var{file} @dots{}
 @findex -load
-This option causes Scheme to load the files (or lists of files)
+This option causes Scheme to load the @var{file}s (or lists of files)
 following it on the command line, up to (but not including) the next
 option that starts with a hyphen.  The files are loaded in the
-@code{user-initial-environment} using the default syntax table.
-Unless explicitly handled, errors during loading are silently ignored.
+@code{user-initial-environment} using the default syntax table.  Unless
+explicitly handled, errors during loading are silently ignored.
 @end table
 
 @noindent
-The following option is supported only when the editor is loaded.
+The following option is supported only when Edwin is loaded.
 
 @table @code
 @item -edit
 @findex -edit
-This option causes the editor to start immediately when Scheme is
-started.
+This option causes Edwin to start immediately when Scheme is started.
 @end table
 
 @node Custom Command-line Options, Environment Variables, Command-Line Options, Running Scheme
@@ -1144,7 +1122,7 @@ command-line arguments (as a list), and a thunk that is executed to
 implement the behavior of the option.
 @end deffn
 
-@node Environment Variables, Starting Scheme from Windows, Custom Command-line Options, Running Scheme
+@node Environment Variables, Starting Scheme from Microsoft Windows, Custom Command-line Options, Running Scheme
 @section Environment Variables
 
 Scheme refers to many environment variables.  This section lists these
@@ -1220,9 +1198,9 @@ The size of the stack, in 1024-word blocks, if the @code{-large},
 @findex MITSCHEME_LIBRARY_PATH
 A list of directories.  These directories are searched,
 left to right, to find bands and various other files.
-On unix systems the list is colon separated, with the default
+On unix systems the list is colon-separated, with the default
 @file{/usr/local/lib/mit-scheme}.
-On PC systems the list is semi-colon separated with the default
+On PC systems the list is semicolon-separated with the default
 @file{c:\scheme\lib}.
 
 @item @code{MITSCHEME_SMALL_CONSTANT} (default: as needed)
@@ -1247,8 +1225,7 @@ given.  Overridden by @code{-stack}, @code{-large}, @code{-compiler}, or
 @item @code{MITSCHEME_UTABMD_FILE} (default: @file{utabmd.bin} in the library path)
 @findex MITSCHEME_UTABMD_FILE
 The file containing the microcode tables.  Overridden by @code{-utabmd}
-and @code{-utab}.  It is only necessary when re-building
-@file{runtime.com}.
+and @code{-utab}.
 @end table
 
 @node Bchscheme Environment Variables, Runtime Environment Variables, Microcode Environment Variables, Environment Variables
@@ -1267,9 +1244,10 @@ Variables}).
 
 @item @code{MITSCHEME_GC_FILE} (default: @file{GCXXXXXX})
 @findex MITSCHEME_GC_FILE
-The name of the file to use for garbage collection.  If it ends in 6 Xs,
-the Xs are replaced by a letter and process id of the scheme process,
-thus generating a unique name.  Overridden by @code{-gc-file}.
+The name of the file to use for garbage collection.  If it ends in 6
+@code{X}s, the @code{X}s are replaced by a letter and process id of the
+scheme process, thus generating a unique name.  Overridden by
+@code{-gc-file}.
 
 @item @code{MITSCHEME_GC_START_POSITION} (default: @samp{0})
 @findex MITSCHEME_GC_START_POSITION
@@ -1317,8 +1295,8 @@ These environment variables are referred to by the runtime system.
 @table @asis
 @item @code{HOME}
 @findex HOME
-Directory in which to look for init files.  E.g.@: @samp{c:\users\joe}
-or @samp{/home/joe}.  This variable needs to be set on OS/2 and Windows
+Directory in which to look for init files.  E.g.@: @file{c:\users\joe}
+or @file{/home/joe}.  This variable needs to be set on OS/2 and Windows
 9x.  Under Windows NT, the environment variables @code{HOMEDRIVE} and
 @code{HOMEPATH}, set by the operating system, are used instead.  Under
 unix, @code{HOME} is set by the login shell.
@@ -1331,11 +1309,11 @@ unix, @code{HOME} is set by the login shell.
 @findex TMP
 Directory for various temporary files.  The variables are tried in the
 given order.  If none of them is suitable, built-in defaults are used:
-under unix, @file{/var/tmp}, @file{/usr/tmp}, @code{/tmp}; under OS/2
+under unix, @file{/var/tmp}, @file{/usr/tmp}, @file{/tmp}; under OS/2
 and Windows, @file{\temp}, @file{\tmp}, and @file{\} (all on the system
 drive).
 
-@item @code{MITSCHEME_INF_DIRECTORY} (default: @samp{SRC} on the library path)
+@item @code{MITSCHEME_INF_DIRECTORY} (default: @file{SRC} on the library path)
 @findex MITSCHEME_INF_DIRECTORY
 Directory containing the debugging information files for the Scheme
 system.  Should contain subdirectories corresponding to the
@@ -1374,7 +1352,7 @@ strings.
 @item @code{ESHELL}
 @findex ESHELL
 Filename of the shell program to use in shell buffers.  If not defined,
-@samp{SHELL} is used instead.
+the @code{SHELL} environment variable is used instead.
 
 @item @code{SHELL} (default: @file{/bin/sh} (unix), @file{cmd.exe} (PC))
 @findex SHELL
@@ -1389,45 +1367,46 @@ subsequently used for finding programs to be run as subprocesses.
 
 @item @code{DISPLAY}
 @findex DISPLAY
-Unix running X11 only.
+Used when Edwin runs under unix and uses X11.
 Specifies the display on which Edwin will create windows.
 
 @item @code{TERM}
 @findex TERM
-Unix terminals only.
+Used when Edwin runs under unix on a terminal.
 Terminal type.
 
 @item @code{LINES} (default: auto-sense)
 @findex LINES
-Unix terminals only.
+Used when Edwin runs under unix on a terminal.
 Number of text lines on the screen, for systems that don't support
 @samp{TIOCGWINSZ}.
 
 @item @code{COLUMNS} (default: auto-sense)
 @findex COLUMNS
-Unix terminals only.
+Used when Edwin runs under unix on a terminal.
 Number of text columns on the screen, for systems that don't support
 @samp{TIOCGWINSZ}.
 @end table
 
 @node Windows Environment Variables, OS/2 Environment Variables, Edwin Environment Variables, Environment Variables
-@subsection Environment Variables for Windows
+@subsection Environment Variables for Microsoft Windows
 
-These environment variables are specific to the Windows implementation.
+These environment variables are specific to the Microsoft Windows
+implementation.
 
 @table @asis
 @item @code{MITSCHEME_FONT} (default: determined by operating system)
 @findex MITSCHEME_FONT
 @cindex fonts
-A string specifying a font name and characteristics, for example,
+A string specifying a font name and characteristics, for example
 @samp{Courier New 16 bold}.  Allowed characteristics are @var{integer},
-specifiying the font size in points, and the following style modifiers:
+specifying the font size in points, and the following style modifiers:
 @samp{bold}, @samp{italic}, @samp{regular}, @samp{underline} and
-@samp{strikeout}.  You should specifiy only fixed-width fonts as
-variable width fonts are not drawn correctly.
+@samp{strikeout}.  You should specify only fixed-width fonts as
+variable-width fonts are not drawn correctly.
 
-Once in Edwin, the font can be changed with the @samp{set-font} and@*
-@samp{set-default-font} commands.
+Once in Edwin, the font can be changed with the @code{set-font} and
+@code{set-default-font} commands.
 
 @item @code{MITSCHEME_GEOMETRY} (default: @samp{-1,-1,-1,-1})
 @findex MITSCHEME_GEOMETRY
@@ -1464,8 +1443,8 @@ directory.  This is the preferred way to specify the home directory.
 @findex USERNAME
 @findex USER
 Specifies the login name of the user running Scheme.  This is used for
-several different purposes.  @samp{USERNAME} is preferred; @samp{USER}
-is used if @samp{USERNAME} is not defined.  If neither of these
+several different purposes.  @code{USERNAME} is preferred; @code{USER}
+is used if @code{USERNAME} is not defined.  If neither of these
 variables is defined, an error is signalled when the username is
 required.
 
@@ -1511,12 +1490,12 @@ this to determine the user's shell if the environment variable
 @code{SHELL} is not defined.
 @end table
 
-@node Starting Scheme from Windows, Leaving Scheme, Environment Variables, Running Scheme
-@section Starting Scheme from Windows
+@node Starting Scheme from Microsoft Windows, Leaving Scheme, Environment Variables, Running Scheme
+@section Starting Scheme from Microsoft Windows
 
-The Windows version of MIT Scheme runs as a graphics-based application.
-Scheme can be started from the command line as described at the
-beginning of this chapter.
+The Microsoft Windows version of MIT Scheme runs as a graphics-based
+application.  Scheme can be started from the command line as described
+at the beginning of this chapter.
 
 Shortcuts are a convenient way to start Scheme.  The rest of this
 section gives some tips on how to set up shortcuts that run Scheme.  If
@@ -1555,11 +1534,11 @@ one that best represents the options given on the command line.
 
 @item
 Specifying a band that contains Edwin is not sufficient to invoke the
-editor.  You also have to put @samp{-edit} at the end of the command
+editor.  You also have to put @code{-edit} at the end of the command
 line.
 @end itemize
 
-@node Leaving Scheme,  , Starting Scheme from Windows, Running Scheme
+@node Leaving Scheme,  , Starting Scheme from Microsoft Windows, Running Scheme
 @section Leaving Scheme
 
 There are several ways that you can leave Scheme: there are two Scheme
@@ -1595,18 +1574,17 @@ Scheme).  To suspend Scheme, evaluate
 
 @noindent
 If your system supports suspension, this will cause Scheme to stop, and
-you will be returned to the operating system's command interpreter.
-Scheme remains stopped, and can be continued using the job-control
-commands of your command interpreter.  If your system doesn't support
-suspension, this procedure does nothing.  (Calling the @code{quit}
-procedure is analogous to typing @kbd{C-z}, but it allows Scheme
-to respond by typing a prompt when it is unsuspended.)
+you will be returned to the shell.  Scheme remains stopped, and can be
+continued using the job-control commands of your shell.  If your system
+doesn't support suspension, this procedure does nothing.  (Calling the
+@code{quit} procedure is analogous to typing @kbd{C-z}, but it allows
+Scheme to respond by typing a prompt when it is unsuspended.)
 
 @item
-@emph{Several Edwin commands that you can execute.}  These commands
-include @code{save-buffers-kill-scheme}, normally bound to @kbd{C-x
-C-c}, and @code{suspend-scheme}, normally bound to @kbd{C-x C-z}.  These
-two commands correspond to the procedures @code{exit} and @code{quit},
+@emph{Several Edwin commands that you can execute,} including
+@code{save-buffers-kill-scheme}, normally bound to @kbd{C-x C-c}, and
+@code{suspend-scheme}, normally bound to @kbd{C-x C-z}.  These two
+commands correspond to the procedures @code{exit} and @code{quit},
 respectively.
 
 @item
@@ -1644,12 +1622,12 @@ describe how to use the compiler, and how to debug your programs.
 @section The Read-Eval-Print Loop
 
 @cindex REPL
-When you first start up Scheme from the command line (i.e.@: not under
-Edwin), you will be typing at a program called the @dfn{Read-Eval-Print
-Loop} (abbreviated @dfn{REPL}).  It displays a prompt at the left hand
-side of the screen whenever it is waiting for input.  You then type an
-expression (terminating it with @key{RET}).  Scheme evaluates the
-expression, prints the result, and gives you another prompt.
+When you first start up Scheme from the command line, you will be typing
+at a program called the @dfn{Read-Eval-Print Loop} (abbreviated
+@dfn{REPL}).  It displays a prompt at the left hand side of the screen
+whenever it is waiting for input.  You then type an expression
+(terminating it with @key{RET}).  Scheme evaluates the expression,
+prints the result, and gives you another prompt.
 
 @menu
 * The Prompt and Level Number::  
@@ -1721,17 +1699,16 @@ destroyed, and you may not be able to find out what happened.
 @kindex C-c
 Scheme has several interrupt keys, which vary depending on the
 underlying operating system: under unix, @kbd{C-g} and @kbd{C-c}; under
-OS/2 and Windows, @kbd{C-b}, @kbd{C-x}, @kbd{C-u} and @kbd{C-g}.  The
+OS/2 and Windows, @kbd{C-g}, @kbd{C-b}, @kbd{C-x} and @kbd{C-u}.  The
 @kbd{C-g} key stops any Scheme evaluation that is running and returns
 you to the top level @sc{repl}.  @kbd{C-c} prompts you for another
 character and performs some action based on that character.  It is not
 necessary to type @key{RET} after @kbd{C-g} or @kbd{C-c}, nor is it
 needed after the character that @kbd{C-c} will ask you for.
 
-Here are the definitions of the more common interrupt keys; on systems
-that support @kbd{C-c}, type @kbd{C-c ?} for more possibilities.  Note
-that in any given implementation, only a subset of the following keys is
-available.
+Here are the definitions of the more common interrupt keys; on unix,
+type @kbd{C-c ?} for more possibilities.  Note that in any given
+implementation, only a subset of the following keys is available.
 
 @table @asis
 @item @kbd{C-c C-c}
@@ -1968,7 +1945,8 @@ code, and performs the appropriate action.  By convention, files of
 source code have a pathname type of @code{"scm"}, and files of binary
 SCode have pathname type @code{"bin"}.  Native-code binaries have
 pathname type @code{"com"}.  (See the description of
-@code{pathname-type} in the reference manual.)
+@code{pathname-type} in @ref{Components of Pathnames, Pathname Type,
+Components of Pathnames, scheme, MIT Scheme Reference Manual}.)
 @end deffn
 
 @defvr {variable+} load-noisily?
@@ -2002,9 +1980,9 @@ failing to find the other pathname types.
 All pathnames are interpreted relative to a working directory, which is
 initialized when Scheme is started.  The working directory can be
 obtained by calling the procedure @code{pwd} or modified by calling the
-procedure @code{cd}; see the reference manual for details.  Files may be
-loaded when Scheme first starts; see the @code{-load} command-line
-option for details.
+procedure @code{cd}; @pxref{Working Directory, , , scheme, MIT
+Scheme Reference Manual}.  Files may be loaded when Scheme first starts;
+see the @code{-load} command-line option for details.
 
 @deffn {procedure+} load-option symbol [no-error?]
 Loads the option specified by @var{symbol}; if already loaded, does
@@ -2021,25 +1999,28 @@ file @file{runtime/cpress.scm}.  Used by the runtime system for
 compression of compiled-code debugging information.
 
 @item format
-The @code{format} procedure.  Documented in the Reference Manual.
+The @code{format} procedure.  @xref{Format, , , scheme, MIT Scheme
+Reference Manual}.
 
 @item gdbm
 Support to access @code{gdbm} databases.  Undocumented; see the source
-file @file{runtime/gdbm.scm}.
+files @file{runtime/gdbm.scm} and @file{microcode/prgdbm.c}.
 
 @item hash-table
-The hash-table data type.  Documented in the Reference Manual.
+The hash-table data type.  @xref{Hash Tables, , , scheme, MIT Scheme
+Reference Manual}.
 
 @item ordered-vector
 Support to search and do completion on vectors of ordered elements.
 Undocumented; see the source file @file{runtime/ordvec.scm}.
 
 @item rb-tree
-The red-black tree data type.  Documented in the Reference Manual.
+The red-black tree data type.  @xref{Red-Black Trees, , , scheme, MIT
+Scheme Reference Manual}.
 
 @item regular-expression
-Support to search and match strings for regular expressions.  Documented
-in the Reference Manual.
+Support to search and match strings for regular expressions.
+@xref{Regular Expressions, , , scheme, MIT Scheme Reference Manual}.
 
 @item stepper
 Support to step through the evaluation of Scheme expressions.
@@ -2052,11 +2033,12 @@ Undocumented; see the source file @file{runtime/process.scm}.  Used
 extensively by Edwin.
 
 @item synchronous-subprocess
-Support to run synchronous subprocesses.  Documented in the reference
-manual.
+Support to run synchronous subprocesses.  @xref{Subprocesses, , ,
+scheme, MIT Scheme Reference Manual}.
 
 @item wt-tree
-The weight-balanced tree data type.  Documented in the Reference Manual.
+The weight-balanced tree data type.  @xref{Weight-Balanced Trees, , ,
+scheme, MIT Scheme Reference Manual}.
 @end table
 @end deffn
 
@@ -2135,11 +2117,11 @@ storage available after collection, an exact non-negative integer.
 
 @var{Safety-margin} determines the number of words of storage available
 to system tasks after the need for a garbage collection is detected and
-before garbage collector is started.  (An example of such a system task
-is changing the run-light to show ``gc'' when scheme is running under
-Emacs.)  @strong{Note well}: you should not specify @var{safety-margin}
-unless you know what you are doing.  If you specify a value that is too
-small, you can put Scheme in an unusable state.
+before the garbage collector is started.  (An example of such a system
+task is changing the run-light to show ``gc'' when scheme is running
+under Emacs.)  @strong{Note well}: you should not specify
+@var{safety-margin} unless you know what you are doing.  If you specify
+a value that is too small, you can put Scheme in an unusable state.
 @end deffn
 
 @deffn {procedure+} purify object [pure-space? [queue?]]
@@ -2311,27 +2293,26 @@ compiled code from that file, it attempts to find the @file{.bci} file
 in the same directory from which the @file{.com} file was loaded.  Thus
 it is a good idea to leave these files together.
 
-@file{.bci} files are stored in a compressed format.
-The debugger has to uncompress the files when it looks at them,
-and on a slow machine this can take a noticeable time.
-The system takes steps to reduce the impact of this behaviour:
-debugging information is cached in memory,
-and uncompressed versions of @file{.bci} files are kept around.
-The default behavior is that a temporary file is created and the
-@file{.bci} file is uncompressed into it.  The temporary file is kept
-around for a while afterwards, and during that time if the uncompressed
-@file{.bci} file is needed the temporary file is used.  Each such
-reference updates an `access time' that is associated with the temporary
-file.  The garbage collector checks the access times of all such
-temporary files, and deletes any that have not been accessed in five
-minutes or more.  All of the temporaries are deleted automatically when
-the Scheme process is killed.
+@file{.bci} files are stored in a compressed format.  The debugger has
+to uncompress the files when it looks at them, and on a slow machine
+this can take a noticeable time.  The system takes steps to reduce the
+impact of this behavior: debugging information is cached in memory, and
+uncompressed versions of @file{.bci} files are kept around.  The default
+behavior is that a temporary file is created and the @file{.bci} file is
+uncompressed into it.  The temporary file is kept around for a while
+afterwards, and during that time if the uncompressed @file{.bci} file is
+needed the temporary file is used.  Each such reference updates an
+`access time' that is associated with the temporary file.  The garbage
+collector checks the access times of all such temporary files, and
+deletes any that have not been accessed in five minutes or more.  All of
+the temporaries are deleted automatically when the Scheme process is
+killed.
 
-Two other behaviors are available.  One of them uncompresses the @file{.bci}
-file each time it is referenced, and the other uncompresses the @file{.bci}
-file and writes it back out as a @file{.bif} file.
-The @file{.bif} file remains after Scheme exits.
-The time interval and the behavior are controlled by variables.
+Two other behaviors are available.  One of them uncompresses the
+@file{.bci} file each time it is referenced, and the other uncompresses
+the @file{.bci} file and writes it back out as a @file{.bif} file.  The
+@file{.bif} file remains after Scheme exits.  The time interval and the
+behavior are controlled by the following variables.
 
 @defvr {variable+} *save-uncompressed-files?*
 This variable affects what happens when @file{.bci} files are
@@ -2347,7 +2328,7 @@ slowest.
 
 @item automatic
 Uncompressed versions of @file{.bci} files are kept as temporary files.
-The temporary files are deleted when Scheme exits, and if they have not
+The temporary files are deleted when Scheme exits, or if they have not
 been used for a while.  This is the default.
 
 @item #t
@@ -2957,6 +2938,13 @@ explanations useful.
 @node Coding style, Global variables, Efficiency Tips, Efficiency Tips
 @subsection Coding style
 
+Scheme is a rich language, in which there are usually several ways to
+say the same thing.  A @dfn{coding style} is a set of rules that a
+programmer uses for choosing an expressive form to use in a given
+situation.  Usually these rules are aesthetic, but sometimes there are
+efficiency issues involved; this section describes a few choices that
+have non-obvious efficiency consequences.
+
 @subsubheading Better predicates
 
 Consider the following implementation of @code{map} as might be found in
@@ -2987,7 +2975,7 @@ in the code:
         ((null? lst)
          '())
         (else
-         ...) ; You decide - '() or an error?
+         (error "Not a proper list:"  lst))))
 @end group
 @end example
 
@@ -2995,7 +2983,6 @@ Note also that the @code{pair?} case comes first because we expect that
 @code{map} will be called on lists which have, on average, length
 greater that one.
 
-@page
 @subsubheading Internal procedures
 
 Calls to internal procedures are faster than calls to global procedures.
@@ -3081,11 +3068,12 @@ definitions of the following forms come first:
 @end group
 @end example
 
-Note: The IEEE Scheme standard permits @emph{only} lambda expressions
-and constants as the value of internal defines.  Furthermore, all
-internal definitions must appear before any other expressions in the
-body.  Following the standard simultaneously assures portability and
-avoids the implementation inefficiencies described in this section.
+Note: The @sc{ieee} Scheme standard permits @emph{only} lambda
+expressions and constants as the value of internal defines.
+Furthermore, all internal definitions must appear before any other
+expressions in the body.  Following the standard simultaneously assures
+portability and avoids the implementation inefficiencies described in
+this section.
 
 @node Global variables, Fixnum arithmetic, Coding style, Efficiency Tips
 @subsection Global variables
@@ -3119,7 +3107,7 @@ To behave correctly in all situations, each variable reference or
 assignment must check for the reference traps.
 
 Sometimes you can prove that the variable (a) will always be bound, (b)
-will never be unassigned and (c) there will never be any compiled calls
+will never be unassigned, and (c) there will never be any compiled calls
 to that variable.  The compiler can't prove this because it assumes that
 other independently compiled files might be loaded that invalidate these
 assumptions.  If you know that these conditions hold, the following
@@ -3230,7 +3218,7 @@ the equivalent fixnum operation for the generic operation.  However,
 care should be exercised: if used improperly, these operations can
 return incorrect answers, or even malformed objects that confuse the
 garbage collector.  For a listing of all fixnum operations, see
-@ref{Top, , Fixnum Operations, scheme, The MIT Scheme Reference Manual}.
+@ref{Fixnum Operations, , , scheme, MIT Scheme Reference Manual}.
 
 A fruitful area for inserting fixnum operations is in the index
 operations in tight loops.
@@ -3340,10 +3328,9 @@ disadvantages in another.
 The flonum vector operations are:
 
 @deffn {procedure+} flo:vector-cons n
-Create a flonum vector of length @var{N}.
-The contents of the vector are arbitrary and might not be valid
-floating-point numbers.
-The contents should not be used until initialized.
+Create a flonum vector of length @var{n}.  The contents of the vector
+are arbitrary and might not be valid floating-point numbers.  The
+contents should not be used until initialized.
 @end deffn
 
 @deffn {procedure+} flo:vector-ref flonum-vector index
@@ -3434,7 +3421,7 @@ Guide to the Chipmunk System}, by Arthur A. Gleckler.
 
 @cindex bugs
 @cindex debugging
-Even computer software that has been planned carefully and written well
+Even computer software that has been carefully planned and well written
 may not always work correctly.  Mysterious creatures called @dfn{bugs}
 may creep in and wreak havoc, leaving the programmer to clean up the
 mess.  Some have theorized that a program fails only because its author
@@ -3688,13 +3675,13 @@ command will show you a brief summary of all of the subproblems.
 @cindex Debugger command: r
 @cindex Debugger command: b
 @cindex Debugger command: f
-If the subproblem description says that ``The execution history for this
-subproblem contains @var{N} reduction(s)'', then there is a ``rib'' of
+If the subproblem description says that @samp{The execution history for
+this subproblem contains @var{N} reductions}, then there is a ``rib'' of
 reductions for this subproblem.  You can see a summary of the reductions
-for this subproblem using the @kbd{r} command.  You can move to the
-next reduction using the @kbd{b} command; this moves you to the next
-older reduction.  The @kbd{f} command moves in the opposite direction,
-to newer reductions.  If you are at the oldest reduction for a given
+for this subproblem using the @kbd{r} command.  You can move to the next
+reduction using the @kbd{b} command; this moves you to the next older
+reduction.  The @kbd{f} command moves in the opposite direction, to
+newer reductions.  If you are at the oldest reduction for a given
 subproblem and use the @kbd{b} command, you will move to the next older
 subproblem.  Likewise, if you are at the newest reduction and use
 @kbd{f}, you'll move to the next newer subproblem.
@@ -3843,9 +3830,10 @@ bar
 @end deffn
 
 @deffn {procedure+} pp object [output-port [as-code?]]
-The @code{pp} procedure is described in the MIT Scheme Reference Manual.
-However, since this is a very useful debugging tool, we also mention it
-here.  @code{pp} provides two very useful functions:
+The @code{pp} procedure is described in @ref{Output Procedures, , ,
+scheme, MIT Scheme Reference Manual}.  However, since this is a very
+useful debugging tool, we also mention it here.  @code{pp} provides two
+very useful functions:
 
 @enumerate
 @item
@@ -4182,10 +4170,10 @@ subprocess of Emacs.  If you wish to use this interface, please install
 the version of @file{xscheme.el} that comes with MIT Scheme, as it is
 guaranteed to be correct for your version of Scheme.
 
-This interface is supported under unix only, mostly because it requires
-unix signals for its operation.  Porting it to either OS/2 or Windows
-would require reimplementing the interface to eliminate the use of
-signals.  We have no plans to do this.
+This interface works under unix only, because it requires unix signals
+for its operation.  Porting it to either OS/2 or Windows would require
+reimplementing the interface to eliminate the use of signals.  We have
+no plans to do this.
 
 @findex run-scheme
 @findex -emacs
@@ -4345,7 +4333,7 @@ scheme -edwin -edit
 
 @noindent
 Alternatively, you can load Edwin by giving the @code{-edwin}
-command-line option and then calling procedure @code{edit}:
+command-line option and then calling the procedure @code{edit}:
 
 @deffn {procedure+} edit
 @deffnx {procedure+} edwin
@@ -4401,12 +4389,12 @@ values are defined:
 @item (#f)
 This is the default.  Creates a window of some default size, and uses
 that window as Edwin's main window.  Under unix, if X11 is not available
-or if the @samp{DISPLAY} environment variable is undefined, Edwin will
+or if the @code{DISPLAY} environment variable is undefined, Edwin will
 run on Scheme's console.
 
 @item (x)
 Unix only.  Creates an X window and uses it as Edwin's main window.
-This requires the @samp{DISPLAY} environment variable to have been set
+This requires the @code{DISPLAY} environment variable to have been set
 to the appropriate value before Scheme was started.
 
 @item (x @var{geometry})
@@ -4554,9 +4542,9 @@ with the Scheme interpreter.
 
 When Edwin starts, it has one buffer: a @sc{repl} buffer called
 @samp{*scheme*}.  The command @kbd{M-x repl} selects this buffer, if it
-exists; otherwise it creates a new @sc{repl} buffer.  Thus, if you want
-two @sc{repl} buffers, just rename the @samp{*scheme*} buffer to
-something else and run @kbd{M-x repl} again.
+exists; otherwise it creates a new @sc{repl} buffer.  If you want two
+@sc{repl} buffers, just rename the @samp{*scheme*} buffer to something
+else and run @kbd{M-x repl} again.
 
 @sc{repl} buffers support all the same evaluation commands that Scheme
 mode does; in fact, @sc{repl} buffers use a special mode called
@@ -4628,7 +4616,7 @@ evaluating expressions in the environment of the selected subproblem or
 reduction.  This is the only portion of the buffer where editing is
 possible.  This region can be used to find the values of variables in
 different environments, or even to modify variable values or data
-structures (note that variables in compiled code usually cannot be
+structures (note that variables in compiled code cannot usually be
 modified).
 
 Typing @kbd{e} creates a new buffer in which you may browse through the
@@ -4657,7 +4645,7 @@ names beginning with spaces so that they do not appear in the buffer
 list; these buffers are automatically deleted when you quit the
 debugger.  If you wish to keep one of these buffers, simply rename it
 using @kbd{M-x rename-buffer}: once it has been renamed, it will not be
-deleted automatically.
+automatically deleted.
 
 @node Last Resorts,  , Edwin Debugger, Edwin
 @section Last Resorts
@@ -4708,6 +4696,10 @@ section describes major changes that have occurred since that time.  For
 more detailed information, see the @file{RCS.log} files in the source
 code.
 
+Note that MIT Scheme still conforms to the @cite{Revised^4 Report on the
+Algorithmic Language Scheme}, but not to the @cite{Revised^5 Report on
+the Algorithmic Language Scheme}.
+
 @menu
 * Overall Changes::             
 * Base System Changes::         
@@ -4741,6 +4733,13 @@ that from the previous release.
 @sc{sos} object-oriented programming extensions are now included in the
 base release.  They are not loaded by default; evaluate
 @code{(load-option 'sos)} to load them.
+
+@item
+The documentation has been overhauled.  The Reference Manual has
+sections describing both new facilities and also some older facilities
+that were never properly documented.  The User's Manual has new material
+in the Installation, Debugging, and Edwin chapters, and has been revised
+throughout.
 
 @end itemize
 
@@ -4792,11 +4791,12 @@ on underlying support of the C library, which is sometimes of low
 quality.
 
 @item
-New (and undocumented) generic-procedure dispatch mechanism provides
-high-performance substrate for building @sc{clos}-like object-oriented
-programming systems.  This mechanism has been fully integrated into the
-existing record and @code{defstruct} code.  The @sc{sos} system has been
-added as a load option to allow writing object-oriented code.
+New undocumented generic-procedure dispatch mechanism and its associated
+tagged data structures provides a high-performance substrate for
+building @sc{clos}-like object-oriented programming systems.  This
+mechanism has been fully integrated into the existing record and
+@code{defstruct} code.  The @sc{sos} system has been added as a load
+option to allow writing object-oriented code.
 
 @item
 Transcripts (i.e.@: @code{transcript-on}) are now local to a particular
@@ -4850,9 +4850,9 @@ More sophisticated heuristics are used to discover the user's home
 directory on OS/2 systems.
 
 @item
-Undocumented interfaces now provide support for gdbm, MD5 checksums, and
-blowfish encryption.  The blowfish encryption is disabled by default,
-but we may later distribute a key to enable it.
+Undocumented interfaces now provide support for @code{gdbm}, @sc{md5}
+checksums, and blowfish encryption.  The blowfish encryption is disabled
+by default, but we may later distribute a key to enable it.
 
 @item
 The parser now treats @code{*parser-radix*} differently: if it is set to
@@ -4894,8 +4894,8 @@ to translate them to network order by hand.
 @item
 @code{open-tcp-stream-socket} and @code{open-unix-stream-socket} now
 return one I/O port rather than an input port and an output port.  TCP
-sockets now use CR/LF end-of-line marker regardless of the operating
-system.
+sockets now use @sc{cr-lf} end-of-line marker regardless of the
+operating system.
 
 @end itemize
 
@@ -4993,7 +4993,7 @@ New commands @code{show-frame-size}, @code{show-frame-position},
 @item
 Under X11, Edwin now distinguishes between its primary frame and all
 other frames when finding resources.  New X resource name for these
-secondary frames is @samp{edwinSecondary}.
+secondary frames is @code{edwinSecondary}.
 
 @end itemize
 
