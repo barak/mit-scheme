@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lamlift.scm,v 1.3 1995/02/09 04:15:32 adams Exp $
+$Id: lamlift.scm,v 1.4 1995/02/09 04:29:15 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -686,15 +686,17 @@ MIT in each case. |#
 	    ;; continuation variable always leftmost
 	    (call-with-values
 		(lambda ()
-		  (list-split lambda-list** referenced-continuation-variable?))
+		  (list-split lambda-list** continuation-variable?))
 	      (lambda (cont-vars other-vars)
-		(if (or (null? cont-vars)
-			(not (null? (cdr cont-vars))))
-		    (internal-error "Creating LAMBDA with non-unique continuation"
-				    env))
-		(append cont-vars
-			(list-transform-negative other-vars
-			  ignored-continuation-variable?))))))
+		(let ((cont-vars 
+		       ;; Discard ignored continuation variables
+		       (list-transform-positive cont-vars
+			 referenced-continuation-variable?)))
+		  (if (or (null? cont-vars)
+			  (not (null? (cdr cont-vars))))
+		      (internal-error "Creating LAMBDA with non-unique continuation"
+				      env))
+		  (append cont-vars other-vars))))))
       ;; If this LAMBDA expression has a name, find all call sites and
       ;; rewrite to pass additional arguments
       (cond ((lamlift/env/binding env)
