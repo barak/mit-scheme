@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: triv.pkg,v 1.1 2001/08/15 03:00:01 cph Exp $
+$Id: triv.pkg,v 1.2 2001/08/16 20:58:15 cph Exp $
 
 Copyright (c) 2001 Massachusetts Institute of Technology
 
@@ -26,7 +26,7 @@ USA.
        (let ((package
 	      (lambda (package-name parent-name files exported-names)
 		(vector package-name
-			parent-name
+			(list parent-name)
 			(list (cons #f files))
 			#f
 			#f
