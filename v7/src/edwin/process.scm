@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.7 1991/05/09 03:24:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.8 1991/10/02 09:25:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -189,7 +189,7 @@ False means don't delete them until \\[list-processes] is run."
 	     (subprocess-kill subprocess)
 	     (perform-status-notification process 'SIGNALLED false)))
        (let ((channel (subprocess-input-channel subprocess)))
-	 (if channel
+	 (if (and channel (channel-open? channel))
 	     (channel-unregister channel)))
        (subprocess-delete subprocess)))))
 
