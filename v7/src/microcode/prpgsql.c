@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prpgsql.c,v 1.6 2003/11/06 04:17:39 cph Exp $
+$Id: prpgsql.c,v 1.7 2005/01/16 03:03:20 cph Exp $
 
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -172,7 +172,7 @@ DEFINE_PRIMITIVE ("PQ-FIELD-NAME", Prim_pq_fname, 2, 2, 0)
     (char_pointer_to_string (PQfname ((ARG_RESULT (1)),
 				      (arg_integer (2)))));
 }
-
+
 DEFINE_PRIMITIVE ("PQ-GET-VALUE", Prim_pq_get_value, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
@@ -190,12 +190,35 @@ DEFINE_PRIMITIVE ("PQ-GET-IS-NULL?", Prim_pq_get_is_null, 3, 3, 0)
 				     (arg_integer (2)),
 				     (arg_integer (3)))));
 }
-
+
 DEFINE_PRIMITIVE ("PQ-CMD-STATUS", Prim_pq_cmd_status, 1, 1, 0)
   RESULT_TO_STRING (PQcmdStatus)
 
 DEFINE_PRIMITIVE ("PQ-CMD-TUPLES", Prim_pq_cmd_tuples, 1, 1, 0)
   RESULT_TO_STRING (PQcmdTuples)
+
+DEFINE_PRIMITIVE ("PQ-GET-LINE", Prim_pq_get_line, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (2, STRING_P);
+  PRIMITIVE_RETURN
+    (long_to_integer (PQgetline ((ARG_CONN (1)),
+				 (STRING_LOC ((ARG_REF (2)), 0)),
+				 (STRING_LENGTH (ARG_REF (2))))));
+}
+
+DEFINE_PRIMITIVE ("PQ-PUT-LINE", Prim_pq_put_line, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (2, STRING_P);
+  PRIMITIVE_RETURN
+    (long_to_integer (PQputnbytes ((ARG_CONN (1)),
+				   (STRING_LOC ((ARG_REF (2)), 0)),
+				   (STRING_LENGTH (ARG_REF (2))))));
+}
+
+DEFINE_PRIMITIVE ("PQ-END-COPY", Prim_pq_end_copy, 1, 1, 0)
+  CONN_TO_INT (PQendcopy)
 
 #ifdef COMPILE_AS_MODULE
 
@@ -234,6 +257,9 @@ DEFUN_VOID (dload_initialize_file)
   declare_primitive ("PQ-GET-IS-NULL?", Prim_pq_get_is_null, 3, 3, 0);
   declare_primitive ("PQ-CMD-STATUS", Prim_pq_cmd_status, 1, 1, 0);
   declare_primitive ("PQ-CMD-TUPLES", Prim_pq_cmd_tuples, 1, 1, 0);
+  declare_primitive ("PQ-GET-LINE", Prim_pq_get_line, 2, 2, 0);
+  declare_primitive ("PQ-PUT-LINE", Prim_pq_put_line, 2, 2, 0);
+  declare_primitive ("PQ-END-COPY", Prim_pq_end_copy, 1, 1, 0);
   return ("#prpgsql");
 }
 
