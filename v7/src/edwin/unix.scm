@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.35 1993/04/15 09:47:26 cph Exp $
+;;;	$Id: unix.scm,v 1.36 1993/07/22 19:12:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -302,7 +302,7 @@ Includes the new backup.  Must be > 0."
 	  filename))))
 
 (define unix/encoding-pathname-types
-  '("Z" "z"))
+  '("Z" "gz"))
 
 (define unix/backup-suffixes
   (cons "~"
@@ -391,7 +391,7 @@ Includes the new backup.  Must be > 0."
 (define-variable enable-compressed-files
   "If true, compressed files are automatically uncompressed when read,
 and recompressed when written.  A compressed file is identified by one
-of the filename suffixes \".z\" or \".Z\"."
+of the filename suffixes \".gz\" or \".Z\"."
   true
   boolean?)
 
@@ -399,7 +399,7 @@ of the filename suffixes \".z\" or \".Z\"."
   visit?
   (and (ref-variable enable-compressed-files mark)
        (let ((type (pathname-type pathname)))
-	 (cond ((equal? "z" type)
+	 (cond ((equal? "gz" type)
 		(read-compressed-file "gunzip" pathname mark)
 		#t)
 	       ((equal? "Z" type)
@@ -428,7 +428,7 @@ of the filename suffixes \".z\" or \".Z\"."
   visit?
   (and (ref-variable enable-compressed-files (region-start region))
        (let ((type (pathname-type pathname)))
-	 (cond ((equal? "z" type)
+	 (cond ((equal? "gz" type)
 		(write-compressed-file "gzip" region pathname)
 		#t)
 	       ((equal? "Z" type)
