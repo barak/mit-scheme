@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.55 1995/09/28 06:08:16 cph Exp $
+;;;	$Id: unix.scm,v 1.56 1995/10/03 19:15:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -430,33 +430,32 @@ of the filename suffixes \".gz\" or \".Z\"."
   '("gz" "Z"))
 
 (define (read-compressed-file program pathname mark)
-  (let ((do-it
-	 (lambda ()
-	   (if (not (equal? '(EXITED . 0)
-			    (shell-command #f
-					   mark
-					   (directory-pathname pathname)
-					   #f
-					   (string-append
-					    program
-					    " < "
-					    (file-namestring pathname)))))
-	       (error:file-operation pathname
-				     program
-				     "file"
-				     "[unknown]"
-				     read-compressed-file
-				     (list pathname mark))))))
-    (if (ref-variable read-file-message mark)
-	(do-it)
-	(begin
-	  (temporary-message "Uncompressing file "
-			     (->namestring pathname)
-			     "...")
-	  (do-it)
-	  (append-message "done")))))
+  (temporary-message "Uncompressing file " (->namestring pathname) "...")
+  (call-with-temporary-file-pathname
+   (lambda (temporary)
+     (if (not (equal? '(EXITED . 0)
+		      (shell-command #f #f
+				     (directory-pathname pathname)
+				     #f
+				     (string-append
+				      program
+				      " < "
+				      (file-namestring pathname)
+				      " > "
+				      (->namestring temporary)))))
+	 (error:file-operation pathname
+			       program
+			       "file"
+			       "[unknown]"
+			       read-compressed-file
+			       (list pathname mark)))
+     (group-insert-file! (mark-group mark)
+			 (mark-index mark)
+			 temporary)))
+  (append-message "done"))
 
 (define (write-compressed-file program region pathname)
+  (temporary-message "Compressing file " (->namestring pathname) "...")
   (if (not (equal? '(EXITED . 0)
 		   (shell-command region
 				  #f
@@ -470,7 +469,8 @@ of the filename suffixes \".gz\" or \".Z\"."
 			    "file"
 			    "[unknown]"
 			    write-compressed-file
-			    (list region pathname))))
+			    (list region pathname)))
+  (append-message "done"))
 
 ;;;; Encrypted files
 
@@ -489,40 +489,39 @@ filename suffix \".KY\"."
   '("KY"))
 
 (define (read-encrypted-file pathname mark)
-  (let ((the-encrypted-file
-	 (with-input-from-file pathname
-	   (lambda ()
-	     (read-string (char-set)))))
-	(password 
-	 (prompt-for-password "Password: ")))
-    (insert-string
-     (decrypt the-encrypted-file password
-	      (lambda () 
-		(kill-buffer (mark-buffer mark))
-		(editor-error "krypt: Password error!"))
-	      (lambda (x) 
-		(editor-beep)
-		(message "krypt: Checksum error!")
-		x))
-     mark)
+  (let ((password (prompt-for-password "Password: ")))
+    (temporary-message "Decrypting file " (->namestring pathname) "...")
+    (insert-string (let ((the-encrypted-file
+			  (call-with-input-file pathname
+			    (lambda (port)
+			      (read-string (char-set) port)))))
+		     (decrypt the-encrypted-file password
+			      (lambda () 
+				(kill-buffer (mark-buffer mark))
+				(editor-error "krypt: Password error!"))
+			      (lambda (x) 
+				(editor-beep)
+				(message "krypt: Checksum error!")
+				x)))
+		   mark)
     ;; Disable auto-save here since we don't want to
     ;; auto-save the unencrypted contents of the 
     ;; encrypted file.
     (define-variable-local-value! (mark-buffer mark)
 	(ref-variable-object auto-save-default)
-      #f)))
+      #f)
+    (append-message "done")))
 
 (define (write-encrypted-file region pathname)
-  (let* ((password 
-	  (prompt-for-confirmed-password))
-	 (the-encrypted-file
-	  (encrypt (extract-string (region-start region) (region-end region))
-		   password)))
-    (with-output-to-file pathname
-      (lambda ()
-	(write-string the-encrypted-file)))))
-
-;;; End of encrypted files
+  (let ((password (prompt-for-confirmed-password)))
+    (temporary-message "Encrypting file " (->namestring pathname) "...")
+    (let ((the-encrypted-file
+	   (encrypt (extract-string (region-start region) (region-end region))
+		    password)))
+      (call-with-output-file pathname
+	(lambda (port)
+	  (write-string the-encrypted-file port))))
+    (append-message "done")))
 
 ;;;; Dired customization
 
