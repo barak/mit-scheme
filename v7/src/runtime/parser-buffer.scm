@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parser-buffer.scm,v 1.13 2004/02/23 20:51:40 cph Exp $
+$Id: parser-buffer.scm,v 1.14 2004/02/24 20:34:50 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -358,6 +358,8 @@ USA.
       (guarantee-buffer-chars-1 buffer n)))
 
 (define (guarantee-buffer-chars-1 buffer n)
+  ;; Don't read more characters than are needed.  The XML parser
+  ;; depends on this when doing its character-code detection.
   (and (not (parser-buffer-at-end? buffer))
        (let ((min-end (fix:+ (parser-buffer-index buffer) n))
 	     (end (parser-buffer-end buffer)))
@@ -376,19 +378,20 @@ USA.
 		       ((not (fix:< i end)))
 		     (vector-set! v2 i (vector-ref v1 i))))
 		 (set-parser-buffer-string! buffer string*))))
-	 (let ((n-read
-		(let ((port (parser-buffer-port buffer))
-		      (string (parser-buffer-string buffer)))
-		  (let ((l (%wide-string-length string)))
-		    (or (input-port/read-wide-substring! port string end l)
-			(port/with-input-blocking-mode port 'BLOCKING
-			  (lambda ()
+	 (let ((port (parser-buffer-port buffer))
+	       (string (parser-buffer-string buffer)))
+	   (port/with-input-blocking-mode port 'BLOCKING
+	     (lambda ()
+	       (let loop ((end end))
+		 (if (fix:< end min-end)
+		     (let ((n-read
 			    (input-port/read-wide-substring!
-			     port string end l))))))))
-	   (if (fix:> n-read 0)
-	       (let ((end (fix:+ end n-read)))
-		 (set-parser-buffer-end! buffer end)
-		 (fix:<= min-end end))
-	       (begin
-		 (set-parser-buffer-at-end?! buffer #t)
-		 #f))))))
+			     port string end min-end)))
+		       (if (fix:> n-read 0)
+			   (let ((end (fix:+ end n-read)))
+			     (set-parser-buffer-end! buffer end)
+			     (loop end))
+			   (begin
+			     (set-parser-buffer-at-end?! buffer #t)
+			     #f)))
+		     #t))))))))
