@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.1 1989/03/14 08:08:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.2 1989/03/15 19:15:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -195,11 +195,17 @@ Includes the new backup.  Must be > 0"
 		    (unix/gid->string (file-attributes/gid attributes))
 		    8)
 		   " "
-		   (pad-on-right-to
+		   (pad-on-left-to
 		    (number->string (file-attributes/length attributes) 10)
 		    7)
 		   " "
-		   (unix/file-time->string
-		    (file-attributes/modification-time attributes))
+		   (substring (unix/file-time->string
+			       (file-attributes/modification-time attributes))
+			      4
+			      16)
 		   " "
 		   (pathname-name-string pathname))))
+
+(define (os/dired-filename-region lstart)
+  (let ((lend (line-end lstart 0)))
+    (char-search-backward #\Space lend lstart 'LIMIT)    (make-region (re-match-end 0) lend)))
