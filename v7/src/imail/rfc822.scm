@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rfc822.scm,v 1.8 2000/05/22 14:50:50 cph Exp $
+;;; $Id: rfc822.scm,v 1.9 2000/05/23 21:39:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -154,7 +154,11 @@
 	       (set! id (car pv))
 	       (loop (cdr pv))))
 	    ((string-ci=? "for" (car tokens))
-	     (let ((pv (rfc822:parse-addr-spec (cdr tokens))))
+	     (let ((pv
+		    (or (rfc822:parse-addr-spec (cdr tokens))
+			;; Kludge: some losing mailers do this, even
+			;; though it's illegal.
+			(rfc822:parse-msg-id (cdr tokens)))))
 	       (if (not pv)
 		   (lose))
 	       (set! for (car pv))
