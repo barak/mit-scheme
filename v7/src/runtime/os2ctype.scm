@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2ctype.scm,v 1.1 1995/02/21 23:00:42 cph Exp $
+$Id: os2ctype.scm,v 1.2 1995/02/24 00:34:46 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -89,7 +89,12 @@ MIT in each case. |#
 (define c-type-names)
 
 (define (canonicalize-c-type type)
-  (cond ((string? type)
+  (cond ((or (c-number-type? type)
+	     (c-pointer-type? type)
+	     (c-array-type? type)
+	     (c-struct-type? type))
+	 type)
+	((string? type)
 	 (lookup-c-type type))
 	((and (pair? type)
 	      (eq? 'ARRAY (car type))
