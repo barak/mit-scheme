@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.8 1989/04/15 00:52:46 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.9 1989/04/20 08:16:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -182,4 +182,6 @@ the buffer *Transcript*:
 	    (LIST-SEARCH-POSITIVE . 1)
 	    (LIST-SEARCH-NEGATIVE . 1)
 	    (SYNTAX-TABLE-DEFINE . 2)
+	    (FOR-ALL? . 1)
+	    (THERE-EXISTS? . 1)
 	    ))
