@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.19 1997/03/04 06:45:17 cph Exp $
+$Id: floppy.scm,v 1.20 1998/01/22 23:07:38 cph Exp $
 
-Copyright (c) 1992-97 Massachusetts Institute of Technology
+Copyright (c) 1992-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -712,7 +712,7 @@ M-x rename-file, or use the `r' command in Dired.")
 
 (define (time-zone-offset)
   (let ((decoded-time (get-decoded-time)))
-    (- (* (quotient (get-universal-time) 60) 60)
+    (- (* (quotient (universal-time->file-time (get-universal-time)) 60) 60)
        (make-dos-time (decoded-time/year decoded-time)
 		      (decoded-time/month decoded-time)
 		      (decoded-time/day decoded-time)
