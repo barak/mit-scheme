@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fixart.scm,v 1.12 2003/02/25 20:37:28 cph Exp $
+$Id: fixart.scm,v 1.13 2003/03/03 12:42:13 cph Exp $
 
 Copyright 1994,1996,1999,2000,2001,2003 Massachusetts Institute of Technology
 
@@ -108,13 +108,14 @@ USA.
   (flo:vector-ref floating-vector-ref 2)
   (flo:vector-set! floating-vector-set! 3))
 
-(define (guarantee-index-fixnum object caller)
+(define-integrable (guarantee-index-fixnum object caller)
   (if (not (index-fixnum? object))
       (error:wrong-type-argument object "index integer" caller)))
 
 (define (guarantee-limited-index-fixnum object limit caller)
-  (if (not (and (index-fixnum? object) (fix:< object limit)))
-      (error:wrong-type-argument object "limitied index integer" caller)))
+  (guarantee-index-fixnum object caller)
+  (if (not (fix:< object limit))
+      (error:bad-range-argument object caller)))
 
 (define-integrable (fix:<= x y)
   (not (fix:> x y)))
