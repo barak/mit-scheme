@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.61 2001/08/02 04:30:08 cph Exp $
+$Id: lookup.c,v 9.62 2001/08/02 04:32:14 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -140,8 +140,6 @@ static void update_assignment_references
 static long guarantee_cache
   (SCHEME_OBJECT *, SCHEME_OBJECT);
 static long update_clone
-  (SCHEME_OBJECT);
-static void flush_clone
   (SCHEME_OBJECT);
 static long make_cache
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT,
@@ -1174,21 +1172,16 @@ update_clone (SCHEME_OBJECT cache)
 	  SET_CACHE_CLONE (cache, clone);
 	  update_assignment_references (cache);
 	}
-      return (PRIM_DONE);
     }
   else
-    flush_clone (cache);
-  return (PRIM_DONE);
-}
-
-static void
-flush_clone (SCHEME_OBJECT cache)
-{
-  if ((GET_CACHE_CLONE (cache)) != SHARP_F)
     {
-      SET_CACHE_CLONE (cache, SHARP_F);
-      update_assignment_references (cache);
+      if ((GET_CACHE_CLONE (cache)) != SHARP_F)
+	{
+	  SET_CACHE_CLONE (cache, SHARP_F);
+	  update_assignment_references (cache);
+	}
     }
+  return (PRIM_DONE);
 }
 
 static long
