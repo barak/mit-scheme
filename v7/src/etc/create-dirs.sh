@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: create-dirs.sh,v 1.3 2000/12/07 22:19:28 cph Exp $
+# $Id: create-dirs.sh,v 1.4 2000/12/07 22:26:58 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -38,6 +38,7 @@ maybe_link ()
 
 # runtime-check
 maybe_mkdir runtime-check
+maybe_link runtime-check/runtime.cbf etc/runtime-check.cbf
 (
     cd runtime
     for FN in *.scm; do
