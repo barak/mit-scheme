@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 14.6 2000/06/27 15:19:58 cph Exp $
+;;; $Id: mime-codec.scm,v 14.7 2000/06/27 15:31:11 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -620,8 +620,6 @@
     (case (binhex40-decoding-context/state context)
       ((SEEKING-COMMENT)
        (error "Missing BinHex 4.0 initial comment line."))
-      ((SEEKING-COLON)
-       (error "Missing BinHex 4.0 starting character."))
       ((DECODING)
        (error "Missing BinHex 4.0 terminating character."))
       ((IGNORING)
@@ -634,8 +632,6 @@
     (case (binhex40-decoding-context/state context)
       ((SEEKING-COMMENT)
        (decode-binhex40-seeking-comment context string start end))
-      ((SEEKING-COLON)
-       (decode-binhex40-seeking-colon context string start end))
       ((DECODING)
        (decode-binhex40-decoding context string start end))
       ((IGNORING)
@@ -648,25 +644,18 @@
       ((s
 	(string-append (binhex40-decoding-context/line-buffer context)
 		       (substring string start end))))
-    (let ((index (string-find-next-char s #\newline)))
-      (cond ((not index)
-	     (set-binhex40-decoding-context/line-buffer! context s))
-	    ((re-substring-match binhex40-initial-comment s 0 index)
-	     (set-binhex40-decoding-context/state! context
-						   'SEEKING-COLON)
-	     (set-binhex40-decoding-context/line-buffer! context #f)
-	     (decode-binhex40:update context s
-				     (fix:+ index 1)
-				     (string-length s)))
-	    (else
-	     (loop (string-tail s (fix:+ index 1))))))))
+    (let ((regs (re-string-match binhex40-header-regexp s)))
+      (if regs
+	  (begin
+	    (set-binhex40-decoding-context/state! context 'DECODING)
+	    (set-binhex40-decoding-context/line-buffer! context #f)
+	    (decode-binhex40:update context s
+				    (re-match-end-index 0 regs)
+				    (string-length s)))
+	  (set-binhex40-decoding-context/line-buffer! context s)))))
 
-(define (decode-binhex40-seeking-colon context string start end)
-  (let ((index (substring-find-next-char string start end #\:)))
-    (if index
-	(begin
-	  (set-binhex40-decoding-context/state! context 'DECODING)
-	  (decode-binhex40:update context string (fix:+ index 1) end)))))
+(define binhex40-header-regexp
+  "[\r\n\t ]*(This file must be converted with BinHex.*[\r\n][\r\n\t ]*:")
 
 (define (decode-binhex40-decoding context string start end)   
   (let ((buffer (binhex40-decoding-context/input-buffer context)))
@@ -731,11 +720,9 @@
   (let ((digit
 	 (vector-8b-ref binhex40-char-table (vector-8b-ref input index))))
     (if (fix:> digit #x40)
-	(error "Misplaced #\: in BinHex 4.0 input."))
+	(error "Illegal character in BinHex 4.0 input stream:"
+	       (string-ref input index)))
     digit))
-
-(define binhex40-initial-comment
-  "^(This file must be converted with BinHex 4\\.0)[ \t]*$")
 
 (define binhex40-digit-table
   "!\"#$%&\'()*+,-012345689@ABCDEFGHIJKLMNPQRSTUVXYZ[`abcdefhijklmpqr")
