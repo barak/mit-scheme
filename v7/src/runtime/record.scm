@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.42 2003/03/13 21:50:15 cph Exp $
+$Id: record.scm,v 1.43 2003/03/14 01:09:07 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -514,9 +514,13 @@ USA.
   (set! structure-type/length
 	(record-accessor rtd:structure-type 'LENGTH))
   unspecific)
-
-(define (structure-type/field-index type field-name)
+
+(define-integrable (structure-type/field-index type field-name)
   (vector-ref (structure-type/field-indexes type)
+	      (structure-type/field-name-index type field-name)))
+
+(define-integrable (structure-type/default-init type field-name)
+  (vector-ref (structure-type/default-inits type)
 	      (structure-type/field-name-index type field-name)))
 
 (define (structure-type/field-name-index type field-name)
@@ -528,11 +532,11 @@ USA.
 	(if (eq? (vector-ref names i) field-name)
 	    i
 	    (loop (fix:+ i 1)))))))
-
-(define (structure-tag/unparser-method tag type)
-  (let ((structure-type (tag->structure-type tag type)))
-    (and structure-type
-	 (structure-type/unparser-method structure-type))))
+
+(define (structure-tag/unparser-method tag physical-type)
+  (let ((type (tag->structure-type tag physical-type)))
+    (and type
+	 (structure-type/unparser-method type))))
 
 (define (named-structure? object)
   (cond ((record? object) #t)
@@ -541,6 +545,15 @@ USA.
 	      (tag->structure-type (vector-ref object 0) 'VECTOR)))
 	((pair? object) (tag->structure-type (car object) 'LIST))
 	(else #f)))
+
+(define (tag->structure-type tag physical-type)
+  (if (structure-type? tag)
+      (and (eq? (structure-type/physical-type tag) physical-type)
+	   tag)
+      (let ((type (named-structure/get-tag-description tag)))
+	(and (structure-type? type)
+	     (eq? (structure-type/physical-type type) physical-type)
+	     type))))
 
 (define (named-structure/description structure)
   (cond ((record? structure)
@@ -556,105 +569,8 @@ USA.
 	 (error:wrong-type-argument structure "named structure"
 				    'NAMED-STRUCTURE/DESCRIPTION))))
 
-(define (tag->structure-type tag type)
-  (if (structure-type? tag)
-      (and (eq? (structure-type/physical-type tag) type)
-	   tag)
-      (let ((structure-type (named-structure/get-tag-description tag)))
-	(and (structure-type? structure-type)
-	     (eq? (structure-type/physical-type structure-type) type)
-	     structure-type))))
-
 (define (define-structure/default-value type field-name)
-  ((vector-ref (structure-type/default-inits type)
-	       (structure-type/field-name-index type field-name))))
-
-;;;; Support for safe accessors
-
-(define (define-structure/vector-accessor tag field-name)
-  (receive (tag index type-name accessor-name)
-      (accessor-parameters tag field-name 'VECTOR 'ACCESSOR)
-    (if tag
-	(lambda (structure)
-	  (check-vector structure tag index type-name accessor-name)
-	  (vector-ref structure index))
-	(lambda (structure)
-	  (check-vector-untagged structure index type-name accessor-name)
-	  (vector-ref structure index)))))
-
-(define (define-structure/vector-modifier tag field-name)
-  (receive (tag index type-name accessor-name)
-      (accessor-parameters tag field-name 'VECTOR 'MODIFIER)
-    (if tag
-	(lambda (structure value)
-	  (check-vector structure tag index type-name accessor-name)
-	  (vector-set! structure index value))
-	(lambda (structure value)
-	  (check-vector-untagged structure index type-name accessor-name)
-	  (vector-set! structure index value)))))
-
-(define (define-structure/list-accessor tag field-name)
-  (receive (tag index type-name accessor-name)
-      (accessor-parameters tag field-name 'LIST 'ACCESSOR)
-    (if tag
-	(lambda (structure)
-	  (check-list structure tag index type-name accessor-name)
-	  (list-ref structure index))
-	(lambda (structure)
-	  (check-list-untagged structure index type-name accessor-name)
-	  (list-ref structure index)))))
-
-(define (define-structure/list-modifier tag field-name)
-  (receive (tag index type-name accessor-name)
-      (accessor-parameters tag field-name 'LIST 'MODIFIER)
-    (if tag
-	(lambda (structure value)
-	  (check-list structure tag index type-name accessor-name)
-	  (set-car! (list-tail structure index) value))
-	(lambda (structure value)
-	  (check-list-untagged structure index type-name accessor-name)
-	  (set-car! (list-tail structure index) value)))))
-
-(define-integrable (check-vector structure tag index type accessor-name)
-  (if (not (and (vector? structure)
-		(fix:> (vector-length structure) index)
-		(eq? tag (vector-ref structure 0))))
-      (error:wrong-type-argument structure type accessor-name)))
-
-(define-integrable (check-vector-untagged structure index type accessor-name)
-  (if (not (and (vector? structure)
-		(fix:> (vector-length structure) index)))
-      (error:wrong-type-argument structure type accessor-name)))
-
-(define-integrable (check-list structure tag index type accessor-name)
-  (if (not (and (list-to-index? structure index)
-		(eq? tag (car structure))))
-      (error:wrong-type-argument structure type accessor-name)))
-
-(define-integrable (check-list-untagged structure index type accessor-name)
-  (if (not (list-to-index? structure index))
-      (error:wrong-type-argument structure type accessor-name)))
-
-(define (list-to-index? object index)
-  (and (pair? object)
-       (or (fix:= 0 index)
-	   (list-to-index? (cdr object) (fix:- index 1)))))
-
-(define (accessor-parameters tag field-name structure-type accessor-type)
-  (if (exact-nonnegative-integer? tag)
-      (values #f
-	      tag
-	      (string-append (symbol->string structure-type)
-			     " of length >= "
-			     (number->string (+ tag 1)))
-	      `(,accessor-type ,tag ',field-name))
-      (let ((type (tag->structure-type tag structure-type)))
-	(if (not type)
-	    (error:wrong-type-argument tag "structure tag" accessor-type))
-	(values tag
-		(structure-type/field-index type field-name)
-		(structure-type/name type)
-		`(,accessor-type ,type ',field-name)))))
+  ((structure-type/default-init type field-name)))
 
 (define (define-structure/keyword-constructor type)
   (let ((names (structure-type/field-names type))
@@ -695,3 +611,67 @@ USA.
 		   (list '() (cons (vector-ref v i) list)))
 		  ((not (fix:>= i 0)) list))
 	      v))))))
+
+;;;; Support for safe accessors
+
+(define (define-structure/vector-accessor type field-name)
+  (let ((index (structure-type/field-index type field-name)))
+    (if (structure-type/tag type)
+	(lambda (structure)
+	  (check-vector-tagged structure type)
+	  (vector-ref structure index))
+	(lambda (structure)
+	  (check-vector-untagged structure type)
+	  (vector-ref structure index)))))
+
+(define (define-structure/vector-modifier type field-name)
+  (let ((index (structure-type/field-index type field-name)))
+    (if (structure-type/tag type)
+	(lambda (structure value)
+	  (check-vector-tagged structure type)
+	  (vector-set! structure index value))
+	(lambda (structure value)
+	  (check-vector-untagged structure type)
+	  (vector-set! structure index value)))))
+
+(define (define-structure/list-accessor type field-name)
+  (let ((index (structure-type/field-index type field-name)))
+    (if (structure-type/tag type)
+	(lambda (structure)
+	  (check-list-tagged structure type)
+	  (list-ref structure index))
+	(lambda (structure)
+	  (check-list-untagged structure type)
+	  (list-ref structure index)))))
+
+(define (define-structure/list-modifier type field-name)
+  (let ((index (structure-type/field-index type field-name)))
+    (if (structure-type/tag type)
+	(lambda (structure value)
+	  (check-list-tagged structure type)
+	  (set-car! (list-tail structure index) value))
+	(lambda (structure value)
+	  (check-list-untagged structure type)
+	  (set-car! (list-tail structure index) value)))))
+
+(define-integrable (check-vector-tagged structure type)
+  (if (not (and (vector? structure)
+		(fix:= (vector-length structure)
+		       (structure-type/length type))
+		(eq? (vector-ref structure 0) (structure-type/tag type))))
+      (error:wrong-type-argument structure type #f)))
+
+(define-integrable (check-vector-untagged structure type)
+  (if (not (and (vector? structure)
+		(fix:= (vector-length structure)
+		       (structure-type/length type))))
+      (error:wrong-type-argument structure type #f)))
+
+(define-integrable (check-list-tagged structure type)
+  (if (not (and (eq? (list?->length structure) (structure-type/length type))
+		(eq? (car structure) (structure-type/tag type))))
+      (error:wrong-type-argument structure type #f)))
+
+(define-integrable (check-list-untagged structure type)
+  (if (not (eq? (list?->length structure) (structure-type/length type)))
+      (error:wrong-type-argument structure type #f)))
