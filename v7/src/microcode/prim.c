@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.33 1989/09/20 23:10:35 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.34 1992/06/10 21:48:30 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -76,7 +76,7 @@ Assert: (= (OBJECT-DATUM (MAKE-NON-POINTER-OBJECT X)) X).")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (LONG_TO_UNSIGNED_FIXNUM (arg_index_integer (1, (1 << DATUM_LENGTH))));
+    (LONG_TO_UNSIGNED_FIXNUM (arg_index_integer (1, (1UL << DATUM_LENGTH))));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET-TYPE", Prim_prim_obj_set_type, 2, 2,
