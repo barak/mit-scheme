@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/6001.pkg,v 1.3 1992/04/13 19:19:54 hal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/6001.pkg,v 1.4 1992/07/18 02:26:55 hal Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -125,21 +125,23 @@ MIT in each case. |#
 	  make-picture
 	  make-window
 	  pgm-file->picture
-	  picture-cut
+	  picture->pgm-file
 	  picture-display
-	  picture-h-reflect
 	  picture-height
 	  picture-map
 	  picture-max
 	  picture-min
-	  picture-overlap
-	  picture-paste!
 	  picture-ref
-	  picture-rotate
-	  picture-scale
-	  picture-set!
-	  picture-v-reflect
 	  picture-width
 	  picture?
 	  procedure->picture
-	  show-window-size))
+	  show-window-size
+	  ;picture-cut
+	  ;picture-h-reflect
+	  ;picture-overlap
+	  ;picture-paste!
+	  ;picture-rotate
+	  ;picture-scale
+	  ;picture-set!
+	  ;picture-v-reflect
+	  ))
