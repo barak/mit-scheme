@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.51 1995/05/21 08:52:21 cph Exp $
+@comment $Id: scheme.texinfo,v 1.52 1995/05/30 13:46:58 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -108,9 +108,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.51 beta
+@subtitle Edition 1.52 beta
 @subtitle for Scheme Release 7.4
-@subtitle 21 May 1995
+@subtitle 30 May 1995
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -16427,7 +16427,7 @@ This operation returns @code{#t} if the display supports color.
 @findex set-foreground-color
 @cindex color
 These operations change the colors associated with a window.
-@var{Color-name} must be of one of the valid color specification forms
+@var{Color-name} must be one of the valid color specification forms
 listed below.  @code{set-background-color} and
 @code{set-foreground-color} change the colors to be used when drawing,
 but have no effect on anything drawn prior to their invocation.  Because
@@ -16449,8 +16449,8 @@ can be registered with the @code{define-color} operation.
 @item RGB (Red-Green-Blue) triples
 A triple is a list of three integers between @code{0} and @code{#xff}
 inclusive which specify the intensity of the red, green and blue
-components of the color.  Thus @code{#(0 0 0)} is black, @code{(0 0
-128)} is dark blue and @code{#(255 255 255)} is white.
+components of the color.  Thus @code{(0 0 0)} is black, @code{(0 0 128)}
+is dark blue and @code{(255 255 255)} is white.
 @end table
 
 @noindent
@@ -16662,7 +16662,7 @@ alt key was pressed.
 
 @item #(1 @var{device})
 A close event.  The user has selected the close button from the system
-menu, or typed Alt-f4.
+menu, or typed @key{Alt-f4}.
 
 @item #(2 @var{device} @var{gained?})
 A focus event.  If @var{gained?} is @code{#t}, the keyboard focus is
