@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.32 2000/10/27 03:18:44 cph Exp $
+;;; $Id: imail-summary.scm,v 1.33 2000/10/28 03:33:36 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -250,7 +250,7 @@ SUBJECT is a string of regexps separated by commas."
 	     (if (< i end)
 		 (loop (+ i 1) (cons (get-message folder i) messages))
 		 (reverse! messages))))
-	  (index-digits (exact-nonnegative-integer-digits (- end 1)))
+	  (index-digits (exact-nonnegative-integer-digits end))
 	  (show-date? (ref-variable imail-summary-show-date buffer))
 	  (subject-width (imail-summary-subject-width buffer)))
       (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
