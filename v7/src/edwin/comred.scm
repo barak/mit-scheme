@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.87 1991/08/06 15:40:25 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.88 1991/10/21 23:40:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -49,6 +49,7 @@
 (define *command-continuation*)	;Continuation of current command
 (define *command-key*)		;Key read to find current command
 (define *command*)		;The current command
+(define *last-command*)		;The previous command, excluding arg commands
 (define *command-argument*)	;Argument from last command
 (define *next-argument*)	;Argument to next command
 (define *command-message*)	;Message from last command
@@ -103,7 +104,7 @@
      (lambda (continuation)
        (fluid-let ((*command-continuation* continuation)
 		   (*command-key* false)
-		   (*command*)
+		   (*command* false)
 		   (*next-argument* false)
 		   (*next-message* false))
 	 (bind-condition-handler (list condition-type:editor-error)
@@ -116,7 +117,7 @@
       (set! *command-key* key)
       (clear-message)
       (set-command-prompt!
-       (if (not *command-argument*)
+       (if (not (command-argument))
 	   (key-name key)
 	   (string-append-separated (command-argument-prompt)
 				    (key-name key))))
@@ -128,7 +129,8 @@
 			      false)))
     (start-next-command))
 
-  (fluid-let ((*command-argument*)
+  (fluid-let ((*last-command* false)
+	      (*command-argument*)
 	      (*command-message*)
 	      (*non-undo-count* 0))
     (if (and (not (default-object? initialization)) initialization)
@@ -139,14 +141,74 @@
     (command-reader-loop)))
 
 (define (reset-command-state!)
+  (set! *last-command* *command*)
+  (set! *command* false)
   (set! *command-argument* *next-argument*)
   (set! *next-argument* false)
   (set! *command-message* *next-message*)
   (set! *next-message* false)
-  (if *command-argument*
+  (if (command-argument)
       (set-command-prompt! (command-argument-prompt))
       (reset-command-prompt!))
-  (if *defining-keyboard-macro?* (keyboard-macro-finalize-keys)))
+  (if *defining-keyboard-macro?*
+      (keyboard-macro-finalize-keys)))
+
+(define (abort-current-command #!optional value)
+  (keyboard-macro-disable)
+  (*command-continuation* (if (default-object? value) 'ABORT value)))
+
+(define-integrable (current-command-key)
+  *command-key*)
+
+(define (last-command-key)
+  (if (key? *command-key*)
+      *command-key*
+      (car (last-pair *command-key*))))
+
+(define (set-current-command! command)
+  (set! *command* command)
+  unspecific)
+
+(define-integrable (current-command)
+  *command*)
+
+(define-integrable (last-command)
+  *last-command*)
+
+(define (set-command-argument! argument mode)
+  (set! *next-argument* (cons argument mode))
+  ;; Preserve message and last command.
+  (set! *next-message* *command-message*)
+  (set! *command* *last-command*)
+  unspecific)
+
+(define-integrable (command-argument)
+  (and *command-argument* (car *command-argument*)))
+
+(define (auto-argument-mode?)
+  (and *command-argument* (cdr *command-argument*)))
+
+(define (set-command-message! tag . arguments)
+  (set! *next-message* (cons tag arguments))
+  unspecific)
+
+(define (command-message-receive tag if-received if-not-received)
+  (if (and *command-message*
+	   (eq? (car *command-message*) tag))
+      (apply if-received (cdr *command-message*))
+      (if-not-received)))
+
+(define (command-history-list)
+  (let loop ((history command-history))
+    (if (car history)
+	(let loop ((history (cdr history)) (result (list (car history))))
+	  (if (eq? history command-history)
+	      result
+	      (loop (cdr history) (cons (car history) result))))
+	(let ((history (cdr history)))
+	  (if (eq? history command-history)
+	      '()
+	      (loop history))))))
 
 ;;; The procedures for executing commands come in two flavors.  The
 ;;; difference is that the EXECUTE-foo procedures reset the command
@@ -177,50 +239,6 @@
 			command
 			(if (default-object? record?) false record?)))
 
-(define (abort-current-command #!optional value)
-  (keyboard-macro-disable)
-  (*command-continuation* (if (default-object? value) 'ABORT value)))
-
-(define-integrable (current-command-key)
-  *command-key*)
-
-(define (last-command-key)
-  (if (key? *command-key*)
-      *command-key*
-      (car (last-pair *command-key*))))
-
-(define-integrable (current-command)
-  *command*)
-
-(define (set-command-argument! argument)
-  (set! *next-argument* argument)
-  unspecific)
-
-(define-integrable (command-argument)
-  *command-argument*)
-
-(define (set-command-message! tag . arguments)
-  (set! *next-message* (cons tag arguments))
-  unspecific)
-
-(define (command-message-receive tag if-received if-not-received)
-  (if (and *command-message*
-	   (eq? (car *command-message*) tag))
-      (apply if-received (cdr *command-message*))
-      (if-not-received)))
-
-(define (command-history-list)
-  (let loop ((history command-history))
-    (if (car history)
-	(let loop ((history (cdr history)) (result (list (car history))))
-	  (if (eq? history command-history)
-	      result
-	      (loop (cdr history) (cons (car history) result))))
-	(let ((history (cdr history)))
-	  (if (eq? history command-history)
-	      '()
-	      (loop history))))))
-
 (define (%dispatch-on-command window command record?)
   (set! *command* command)
   (guarantee-command-loaded command)
@@ -232,11 +250,31 @@
 	     (set! *non-undo-count* 0)
 	     (undo-boundary! point)
 	     (apply procedure (interactive-arguments command record?)))))
-      (cond ((or *executing-keyboard-macro?* (command-argument))
+      (cond ((or *executing-keyboard-macro?* *command-argument*)
 	     (set! *non-undo-count* 0)
 	     (apply procedure (interactive-arguments command record?)))
 	    ((window-needs-redisplay? window)
 	     (normal))
+	    ((and (char? *command-key*)
+		  (or (eq? command (ref-command-object self-insert-command))
+		      (and (eq? command (ref-command-object auto-fill-space))
+			   (not (auto-fill-break? point)))
+		      (command-argument-self-insert? command)))
+	     (if (or (= *non-undo-count* 0)
+		     (>= *non-undo-count* 20))
+		 (begin
+		   (set! *non-undo-count* 0)
+		   (undo-boundary! point)))
+	     (set! *non-undo-count* (+ *non-undo-count* 1))
+	     (let ((key *command-key*))
+	       (if (let ((buffer (window-buffer window)))
+		     (and (buffer-auto-save-modified? buffer)
+			  (null? (cdr (buffer-windows buffer)))
+			  (line-end? point)
+			  (char-graphic? key)
+			  (< point-x (- (window-x-size window) 1))))
+		   (window-direct-output-insert-char! window key)
+		   (region-insert-char! point key))))
 	    ((eq? command (ref-command-object forward-char))
 	     (if (and (not (group-end? point))
 		      (char-graphic? (mark-right-char point))
@@ -246,31 +284,9 @@
 	    ((eq? command (ref-command-object backward-char))
 	     (if (and (not (group-start? point))
 		      (char-graphic? (mark-left-char point))
-		      (positive? point-x)
-		      (< point-x (-1+ (window-x-size window))))
+		      (< 0 point-x (- (window-x-size window) 1)))
 		 (window-direct-output-backward-char! window)
 		 (normal)))
-	    ((and (not (special-key? *command-key*))
-		  (or (eq? command (ref-command-object self-insert-command))
-		      (and (eq? command (ref-command-object auto-fill-space))
-			   (not (auto-fill-break? point)))
-		      (command-argument-self-insert? command)))
-	     (let ((key *command-key*))
-	       (if (let ((buffer (window-buffer window)))
-		     (and (buffer-auto-save-modified? buffer)
-			  (null? (cdr (buffer-windows buffer)))
-			  (line-end? point)
-			  (char-graphic? key)
-			  (< point-x (-1+ (window-x-size window)))))
-		   (begin
-		     (if (or (zero? *non-undo-count*)
-			     (>= *non-undo-count* 20))
-			 (begin
-			   (set! *non-undo-count* 0)
-			   (undo-boundary! point)))
-		     (set! *non-undo-count* (1+ *non-undo-count*))
-		     (window-direct-output-insert-char! window key))
-		   (region-insert-char! point key))))
 	    (else
 	     (normal))))))
 
@@ -305,13 +321,13 @@
 				 (interactive-argument
 				  (string-ref specification index)
 				  (substring specification
-					     (1+ index)
+					     (+ index 1)
 					     (or newline end))))
 			     (lambda (argument expression from-tty?)
 			       (with-values
 				   (lambda ()
 				     (if newline
-					 (loop (1+ newline))
+					 (loop (+ newline 1))
 					 (values '() '() false)))
 				 (lambda (arguments expressions any-from-tty?)
 				   (values (cons argument arguments)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/argred.scm,v 1.31 1991/08/06 15:39:54 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/argred.scm,v 1.32 1991/10/21 23:40:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -53,35 +53,51 @@ If no digits or minus sign follow, this command by itself provides 4 as argument
 Used more than once, this command multiplies the argument by 4 each time."
   "P"
   (lambda (argument)
-    (set-command-argument! (list (* (if (pair? argument) (car argument) 1) 4)))
-    (set-command-message! 'AUTO-ARGUMENT (key-name (last-command-key)))))
+    (set-command-argument! (list (* (if (pair? argument) (car argument) 1) 4))
+			   (key-name (last-command-key)))))
 
 (define-command digit-argument
   "Part of the numeric argument for the next command."
   "P"
   (lambda (argument)
-    (let ((key (last-command-key)))
-      (if (char? key)
-	  (let ((digit (char->digit (char-base key))))
-	    (if digit
-		(begin
-		  (set-command-argument!
-		   (cond ((eq? '- argument) (- digit))
-			 ((not (number? argument)) digit)
-			 ((negative? argument) (- (* 10 argument) digit))
-			 (else (+ (* 10 argument) digit))))
-		  (set-command-message! 'AUTO-ARGUMENT
-					(auto-argument-mode?)))))))))
+    (digit-argument argument (auto-argument-mode?))))
+
+(define (digit-argument argument mode)
+  (let ((key (last-command-key)))
+    (if (char? key)
+	(let ((digit (char->digit (char-base key))))
+	  (if digit
+	      (set-command-argument!
+	       (cond ((eq? '- argument) (- digit))
+		     ((not (number? argument)) digit)
+		     ((negative? argument) (- (* 10 argument) digit))
+		     (else (+ (* 10 argument) digit)))
+	       mode))))))
 
 (define-command negative-argument
   "Begin a negative numeric argument for the next command."
   "P"
   (lambda (argument)
-    (set-command-argument!
-     (cond ((eq? '- argument) false)
-	   ((number? argument) (- argument))
-	   (else '-)))
-    (set-command-message! 'AUTO-ARGUMENT (auto-argument-mode?))))
+    (negative-argument argument (auto-argument-mode?))))
+
+(define (negative-argument argument mode)
+  (set-command-argument! (cond ((eq? '- argument) false)
+			       ((number? argument) (- argument))
+			       (else '-))
+			 mode))
+
+(define-command auto-argument
+  "Start a command argument.
+Digits following this command become part of the argument."
+  "P"
+  (lambda (argument)
+    (let ((mode (if argument (auto-argument-mode?) true)))
+      (if (let ((key (last-command-key)))
+	    (and (char? key)
+		 (char=? #\- (char-base key))))
+	  (if (not (number? argument))
+	      (negative-argument argument mode))
+	  (digit-argument argument mode)))))
 
 (define-command auto-digit-argument
   "When reading a command argument, part of the numeric argument.
@@ -101,29 +117,12 @@ Otherwise, the character inserts itself."
 	     (not (number? argument)))
 	((ref-command negative-argument) argument)
 	((ref-command self-insert-command) argument))))
-
-(define-command auto-argument
-  "Start a command argument.
-Digits following this command become part of the argument."
-  "P"
-  (lambda (argument)
-    (if (let ((key (last-command-key)))
-	  (and (char? key)
-	       (char=? #\- (char-base key))))
-	(if (not (number? argument))
-	    ((ref-command negative-argument) argument))
-	((ref-command digit-argument) argument))
-    (if (not argument)
-	(set-command-message! 'AUTO-ARGUMENT true))))
 
 (define (command-argument-self-insert? command)
   (and (or (eq? command (ref-command-object auto-digit-argument))
 	   (and (eq? command (ref-command-object auto-negative-argument))
 		(not (number? (command-argument)))))
        (not (auto-argument-mode?))))
-
-(define (auto-argument-mode?)
-  (command-message-receive 'AUTO-ARGUMENT (lambda (x) x) (lambda () false)))
 
 (define (command-argument-prompt)
   (let ((arg (command-argument)))

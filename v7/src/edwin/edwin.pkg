@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.64 1991/10/11 18:33:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.65 1991/10/21 23:40:56 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -452,6 +452,7 @@ MIT in each case. |#
   (parent (edwin))
   (export (edwin)
 	  abort-current-command
+	  auto-argument-mode?
 	  command-argument
 	  command-history-list
 	  command-message-receive
@@ -466,10 +467,12 @@ MIT in each case. |#
 	  execute-command-history-entry
 	  initialize-command-reader!
 	  keyboard-keys-read
+	  last-command
 	  last-command-key
 	  read-and-dispatch-on-key
 	  set-command-argument!
 	  set-command-message!
+	  set-current-command!
 	  top-level-command-reader))
 
 (define-package (edwin keyboard)
