@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/insmac.scm,v 1.1 1990/01/25 16:35:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/insmac.scm,v 1.2 1990/04/02 15:30:54 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -93,18 +93,30 @@ MIT in each case. |#
 		   `(LIST ,(optimize-group-syntax code early?)))))
 
 (define (expand-fields fields early? receiver)
-  (define (expand fields receiver)
+  (define (expand first-word word-size fields receiver)
     (if (null? fields)
 	(receiver '() 0)
 	(expand-field
 	 (car fields) early?
 	 (lambda (car-field car-size)
-	   (expand
-	    (cdr fields)
-	    (lambda (tail tail-size)
-	      (receiver (cons car-field tail)
-			(+ car-size tail-size))))))))
-  (expand fields receiver))
+	   (if (and (eq? endianness 'LITTLE)
+		    (= 32 (+ word-size car-size)))
+	       (expand '() 0 (cdr fields)
+		       (lambda (tail tail-size)
+			 (receiver
+			  (append (cons car-field first-word) tail)
+			  (+ car-size tail-size))))
+	       (expand (cons car-field first-word)
+		       (+ car-size word-size)
+		       (cdr fields)
+		       (lambda (tail tail-size)
+			 (receiver
+			  (if (or (zero? car-size)
+				  (not (eq? endianness 'LITTLE)))
+			      (cons car-field tail)
+			      tail)
+			  (+ car-size tail-size)))))))))
+  (expand '() 0 fields receiver))
 
 (define (expand-field field early? receiver)
   early?				; ignored for now
