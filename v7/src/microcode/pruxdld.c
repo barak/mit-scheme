@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.9 1993/11/22 19:45:13 gjr Exp $
+$Id: pruxdld.c,v 1.10 1997/05/05 07:24:13 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -139,7 +139,7 @@ typedef void * dyn_load_handle_t;
 static dyn_load_handle_t
 DEFUN (dyn_load, (path), char * path)
 {
-  dyn_load_handle_t result = (dlopen (path, RTLD_LAZY));
+  dyn_load_handle_t result = (dlopen (path, RTLD_LAZY | RTLD_GLOBAL));
 
 #if 0
   if (result == ((dyn_load_handle_t) NULL))
