@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.42 2004/06/28 03:26:20 cph Exp $
+$Id: xml-struct.scm,v 1.43 2004/07/19 04:45:20 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -453,3 +453,16 @@ USA.
 	     (if (xml-name=? name 'xmlns)
 		 (null-xml-name-prefix)
 		 (xml-name-local name)))))))
+
+;; Convenience procedure
+(define (xml-comment . strings)
+  (make-xml-comment
+   (let* ((s (apply string-append (map canonicalize-char-data strings)))
+	  (ws (utf8-string->wide-string s))
+	  (n (wide-string-length ws)))
+     (if (fix:> n 0)
+	 (string-append
+	  (if (char-whitespace? (wide-string-ref ws 0)) "" " ")
+	  s
+	  (if (char-whitespace? (wide-string-ref ws (fix:- n 1))) "" " "))
+	 " "))))

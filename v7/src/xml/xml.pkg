@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.44 2004/07/18 04:34:06 cph Exp $
+$Id: xml.pkg,v 1.45 2004/07/19 04:45:15 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -206,6 +206,7 @@ USA.
 	  xml-attribute-value
 	  xml-attribute?
 	  xml-char-data?
+	  xml-comment
 	  xml-comment-text
 	  xml-comment?
 	  xml-content-item?
@@ -266,9 +267,7 @@ USA.
 	  %make-xml-parameter-!entity
 	  %make-xml-parameter-entity-ref
 	  %make-xml-processing-instructions
-	  %make-xml-unparsed-!entity)
-  (export (runtime xml html)
-	  canonicalize-char-data))
+	  %make-xml-unparsed-!entity))
 
 (define-package (runtime xml parser)
   (files "xml-chars" "xml-parser")
@@ -299,9 +298,14 @@ USA.
   (files "xhtml")
   (parent (runtime xml))
   (export ()
-	  html-attrs
+	  guarantee-html-element
+	  guarantee-html-element-name
 	  html-dtd
 	  html-element?
+	  html-element-context
+	  html-element-name?
+	  html-element-name-context
+	  html-element-names
 	  html-external-dtd
 	  html-iri
 	  html:a
@@ -312,8 +316,14 @@ USA.
 	  html:acronym?
 	  html:address
 	  html:address?
+	  html:area
+	  html:area?
 	  html:b
 	  html:b?
+	  html:base
+	  html:base?
+	  html:bdo
+	  html:bdo?
 	  html:big
 	  html:big?
 	  html:blockquote
@@ -334,15 +344,12 @@ USA.
 	  html:col?
 	  html:colgroup
 	  html:colgroup?
-	  html:comment
 	  html:dd
 	  html:dd?
-	  html:defn
-	  html:defn?
 	  html:del
 	  html:del?
-	  html:dir
-	  html:dir?
+	  html:dfn
+	  html:dfn?
 	  html:div
 	  html:div?
 	  html:dl
@@ -351,6 +358,8 @@ USA.
 	  html:dt?
 	  html:em
 	  html:em?
+	  html:fieldset
+	  html:fieldset?
 	  html:form
 	  html:form?
 	  html:h1
@@ -363,6 +372,8 @@ USA.
 	  html:h4?
 	  html:h5
 	  html:h5?
+	  html:h6
+	  html:h6?
 	  html:head
 	  html:head?
 	  html:hr
@@ -383,16 +394,22 @@ USA.
 	  html:ins?
 	  html:kbd
 	  html:kbd?
+	  html:label
+	  html:label?
+	  html:legend
+	  html:legend?
 	  html:li
 	  html:li?
 	  html:link
 	  html:link?
-	  html:listing
-	  html:listing?
-	  html:menu
-	  html:menu?
+	  html:map
+	  html:map?
 	  html:meta
 	  html:meta?
+	  html:noscript
+	  html:noscript?
+	  html:object
+	  html:object?
 	  html:ol
 	  html:ol?
 	  html:optgroup
@@ -401,13 +418,13 @@ USA.
 	  html:option?
 	  html:p
 	  html:p?
+	  html:param
+	  html:param?
 	  html:pre
 	  html:pre?
 	  html:q
 	  html:q?
 	  html:rel-link
-	  html:s
-	  html:s?
 	  html:samp
 	  html:samp?
 	  html:script
@@ -418,12 +435,12 @@ USA.
 	  html:small?
 	  html:span
 	  html:span?
-	  html:strike
-	  html:strike?
 	  html:strong
 	  html:strong?
 	  html:style
+	  html:style-attr
 	  html:style-link
+	  html:style?
 	  html:sub
 	  html:sub?
 	  html:sup
@@ -448,9 +465,8 @@ USA.
 	  html:tr?
 	  html:tt
 	  html:tt?
-	  html:u
-	  html:u?
 	  html:ul
 	  html:ul?
 	  html:var
-	  html:var?))
+	  html:var?
+	  xml-attrs))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.5 2004/07/18 04:34:00 cph Exp $
+$Id: xhtml.scm,v 1.6 2004/07/19 04:45:11 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -41,144 +41,66 @@ USA.
   (and (xml-element? object)
        (xml-name-iri=? (xml-element-name object) html-iri)))
 
-(define-syntax define-standard-element
+(define (guarantee-html-element object caller)
+  (if (not (html-element? object))
+      (error:wrong-type-argument object "XHTML element" caller)))
+
+(define (html-element-name? object)
+  (and (xml-name? object)
+       (xml-name-iri=? object html-iri)))
+
+(define (guarantee-html-element-name object caller)
+  (if (not (html-element-name? object))
+      (error:wrong-type-argument object "XHTML element name" caller)))
+
+(define-syntax define-html-element
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(IDENTIFIER) (cdr form))
-	 (let ((name (cadr form)))
+     (if (syntax-match? '(SYMBOL SYMBOL ? 'EMPTY) (cdr form))
+	 (let ((name (cadr form))
+	       (context (caddr form))
+	       (empty? (pair? (cdddr form))))
 	   `(BEGIN
 	      (DEFINE ,(symbol-append 'HTML: name)
-		(STANDARD-ELEMENT-CONSTRUCTOR ',name HTML-IRI))
+		(STANDARD-HTML-CONSTRUCTOR ',name ',context ,empty?))
 	      (DEFINE ,(symbol-append 'HTML: name '?)
-		(STANDARD-ELEMENT-PREDICATE ',name HTML-IRI))))
+		(STANDARD-HTML-PREDICATE ',name))
+	      ',name))
 	 (ill-formed-syntax form)))))
 
-(define (standard-element-constructor simple iri)
-  (let ((name (make-xml-name simple iri)))
-    (lambda (attrs . items)
-      (make-xml-element name
-			(if (not attrs)
-			    '()
-			    attrs)
-			(flatten-xml-element-contents items)))))
+(define (standard-html-constructor simple context empty?)
+  (let ((name (make-xml-name simple html-iri)))
+    (hash-table/put! element-context-map name context)
+    (if empty?
+	(lambda items
+	  (make-xml-element name (apply xml-attrs items) '()))
+	(lambda (attrs . items)
+	  (make-xml-element name
+			    (if (not attrs) '() attrs)
+			    (flatten-xml-element-contents items))))))
 
-(define (standard-element-predicate simple iri)
-  (let ((name (make-xml-name simple iri)))
+(define (standard-html-predicate simple)
+  (let ((name (make-xml-name simple html-iri)))
     (lambda (object)
       (and (xml-element? object)
 	   (xml-name=? (xml-element-name object) name)))))
 
-(define (flatten-xml-element-contents item)
-  (letrec
-      ((scan-item
-	(lambda (item tail)
-	  (cond ((pair? item) (scan-list item tail))
-		((or (not item) (null? item)) tail)
-		(else (cons (convert-html-string-value item) tail)))))
-       (scan-list
-	(lambda (items tail)
-	  (if (pair? items)
-	      (scan-item (car items)
-			 (scan-list (cdr items) tail))
-	      (begin
-		(if (not (null? items))
-		    (error:wrong-type-datum items "list"))
-		tail)))))
-    (scan-item item '())))
+(define (html-element-context elt)
+  (guarantee-html-element elt 'HTML-ELEMENT-CONTEXT)
+  (hash-table/get element-context-map (xml-element-name elt) #f))
+
+(define (html-element-name-context name)
+  (guarantee-html-element-name name 'HTML-ELEMENT-NAME-CONTEXT)
+  (hash-table/get element-context-map name #f))
+
+(define (html-element-names)
+  (hash-table/key-list element-context-map))
+
+(define element-context-map
+  (make-eq-hash-table))
 
-(define-standard-element a)
-(define-standard-element abbr)
-(define-standard-element acronym)
-(define-standard-element address)
-(define-standard-element b)
-(define-standard-element big)
-(define-standard-element blockquote)
-(define-standard-element body)
-(define-standard-element button)
-(define-standard-element caption)
-(define-standard-element cite)
-(define-standard-element code)
-(define-standard-element col)
-(define-standard-element colgroup)
-(define-standard-element dd)
-(define-standard-element defn)
-(define-standard-element del)
-(define-standard-element dir)
-(define-standard-element div)
-(define-standard-element dl)
-(define-standard-element dt)
-(define-standard-element em)
-(define-standard-element form)
-(define-standard-element h1)
-(define-standard-element h2)
-(define-standard-element h3)
-(define-standard-element h4)
-(define-standard-element h5)
-(define-standard-element head)
-(define-standard-element html)
-(define-standard-element i)
-(define-standard-element ins)
-(define-standard-element kbd)
-(define-standard-element li)
-(define-standard-element listing)
-(define-standard-element menu)
-(define-standard-element ol)
-(define-standard-element optgroup)
-(define-standard-element option)
-(define-standard-element p)
-(define-standard-element pre)
-(define-standard-element q)
-(define-standard-element s)
-(define-standard-element samp)
-(define-standard-element script)
-(define-standard-element select)
-(define-standard-element small)
-(define-standard-element span)
-(define-standard-element strike)
-(define-standard-element strong)
-(define-standard-element sub)
-(define-standard-element sup)
-(define-standard-element table)
-(define-standard-element tbody)
-(define-standard-element td)
-(define-standard-element textarea)
-(define-standard-element tfoot)
-(define-standard-element th)
-(define-standard-element thead)
-(define-standard-element title)
-(define-standard-element tr)
-(define-standard-element tt)
-(define-standard-element u)
-(define-standard-element ul)
-(define-standard-element var)
-
-(define-syntax define-empty-element
-  (sc-macro-transformer
-   (lambda (form environment)
-     environment
-     (if (syntax-match? '(IDENTIFIER) (cdr form))
-	 (let ((name (cadr form)))
-	   `(BEGIN
-	      (DEFINE ,(symbol-append 'HTML: name)
-		(EMPTY-ELEMENT-CONSTRUCTOR ',name HTML-IRI))
-	      (DEFINE ,(symbol-append 'HTML: name '?)
-		(STANDARD-ELEMENT-PREDICATE ',name HTML-IRI))))
-	 (ill-formed-syntax form)))))
-
-(define (empty-element-constructor simple iri)
-  (let ((name (make-xml-name simple iri)))
-    (lambda items
-      (make-xml-element name (apply html-attrs items) '()))))
-
-(define-empty-element br)
-(define-empty-element hr)
-(define-empty-element img)
-(define-empty-element input)
-(define-empty-element link)
-(define-empty-element meta)
-
-(define (html-attrs . items)
+(define (xml-attrs . items)
   (let loop ((items items))
     (if (pair? items)
 	(let ((item (car items))
@@ -192,7 +114,7 @@ USA.
 			      item
 			      (if (eq? value #t)
 				  (symbol-name item)
-				  (convert-html-string-value value)))
+				  (convert-xml-string-value value)))
 			     attrs)
 		       attrs)))
 		((xml-attribute? item)
@@ -200,10 +122,28 @@ USA.
 		((list-of-type? item xml-attribute?)
 		 (append item (loop items)))
 		(else
-		 (error "Unknown item passed to html-attrs:" item))))
+		 (error "Unknown item passed to xml-attrs:" item))))
 	'())))
 
-(define (convert-html-string-value value)
+(define (flatten-xml-element-contents item)
+  (letrec
+      ((scan-item
+	(lambda (item tail)
+	  (cond ((pair? item) (scan-list item tail))
+		((or (not item) (null? item)) tail)
+		(else (cons (convert-xml-string-value item) tail)))))
+       (scan-list
+	(lambda (items tail)
+	  (if (pair? items)
+	      (scan-item (car items)
+			 (scan-list (cdr items) tail))
+	      (begin
+		(if (not (null? items))
+		    (error:wrong-type-datum items "list"))
+		tail)))))
+    (scan-item item '())))
+
+(define (convert-xml-string-value value)
   (cond ((xml-content-item? value) value)
 	((symbol? value) (symbol-name value))
 	((number? value) (number->string value))
@@ -232,15 +172,93 @@ USA.
 	  s))
       (make-string 0)))
 
+(define-html-element a		inline)
+(define-html-element abbr	inline)
+(define-html-element acronym	inline)
+(define-html-element address	block)
+(define-html-element area	map empty)
+(define-html-element b		inline)
+(define-html-element base	head empty)
+(define-html-element bdo	inline)
+(define-html-element big	inline)
+(define-html-element blockquote	block)
+(define-html-element body	html)
+(define-html-element br		inline empty)
+(define-html-element button	inline)
+(define-html-element caption	table)
+(define-html-element cite	inline)
+(define-html-element code	inline)
+(define-html-element col	table empty)
+(define-html-element colgroup	table)
+(define-html-element dd		dl)
+(define-html-element del	hybrid)
+(define-html-element dfn	inline)
+(define-html-element div	block)
+(define-html-element dl		block)
+(define-html-element dt		dl)
+(define-html-element em		inline)
+(define-html-element fieldset	block)
+(define-html-element form	block)
+(define-html-element h1		block)
+(define-html-element h2		block)
+(define-html-element h3		block)
+(define-html-element h4		block)
+(define-html-element h5		block)
+(define-html-element h6		block)
+(define-html-element head	html)
+(define-html-element hr		block empty)
+(define-html-element html	root)
+(define-html-element i		inline)
+(define-html-element img	inline empty)
+(define-html-element input	inline empty)
+(define-html-element ins	hybrid)
+(define-html-element kbd	inline)
+(define-html-element label	inline)
+(define-html-element legend	fieldset)
+(define-html-element li		list)
+(define-html-element link	head empty)
+(define-html-element map	inline)
+(define-html-element meta	head empty)
+(define-html-element noscript	block)
+(define-html-element object	inline)
+(define-html-element ol		block)
+(define-html-element optgroup	select)
+(define-html-element option	select)
+(define-html-element p		block)
+(define-html-element param	object empty)
+(define-html-element pre	block)
+(define-html-element q		inline)
+(define-html-element samp	inline)
+(define-html-element script	hybrid)
+(define-html-element select	inline)
+(define-html-element small	inline)
+(define-html-element span	inline)
+(define-html-element strong	inline)
+(define-html-element style	head)
+(define-html-element sub	inline)
+(define-html-element sup	inline)
+(define-html-element table	block)
+(define-html-element tbody	table)
+(define-html-element td		table)
+(define-html-element textarea	inline)
+(define-html-element tfoot	table)
+(define-html-element th		table)
+(define-html-element thead	table)
+(define-html-element title	head)
+(define-html-element tr		table)
+(define-html-element tt		inline)
+(define-html-element ul		block)
+(define-html-element var	inline)
+
 (define (html:href iri . contents)
   (apply html:a
-	 (html-attrs 'href iri)
+	 (xml-attrs 'href iri)
 	 contents))
 
 (define (html:id-def tag . contents)
   (apply html:a
-	 (html-attrs 'id tag
-		     'name tag)
+	 (xml-attrs 'id tag
+		    'name tag)
 	 contents))
 
 (define (html:id-ref tag . contents)
@@ -259,7 +277,7 @@ USA.
   (html:meta 'http-equiv name
 	     'content value))
 
-(define (html:style . keyword-list)
+(define (html:style-attr . keyword-list)
   (let loop ((bindings keyword-list))
     (if (and (pair? bindings)
 	     (symbol? (car bindings))
@@ -275,15 +293,3 @@ USA.
 	  (if (not (null? bindings))
 	      (error:wrong-type-argument keyword-list "keyword list" 'STYLE))
 	  ""))))
-
-(define (html:comment . strings)
-  (make-xml-comment
-   (let* ((s (apply string-append (map canonicalize-char-data strings)))
-	  (ws (utf8-string->wide-string s))
-	  (n (wide-string-length ws)))
-     (if (fix:> n 0)
-	 (string-append
-	  (if (char-whitespace? (wide-string-ref ws 0)) "" " ")
-	  s
-	  (if (char-whitespace? (wide-string-ref ws (fix:- n 1))) "" " "))
-	 " "))))
