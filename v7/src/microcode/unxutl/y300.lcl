@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Id: y300.lcl,v 1.22 1992/12/04 01:25:35 nick Exp $
+   $Id: y300.lcl,v 1.23 1992/12/07 22:14:10 cph Exp $
  */
 
 COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
@@ -65,7 +65,7 @@ SIG_LIB =  $(USER_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
 	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
 
-world: all scm6003 kitscheme
+world: all scmsig scm6003 kitscheme
 
 everything: world Ppband
 

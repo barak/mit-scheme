@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y700.lcl,v 1.2 1992/12/03 22:06:46 nick Exp $
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y700.lcl,v 1.3 1992/12/07 22:14:03 cph Exp $
  */
 
 COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
@@ -26,7 +26,7 @@ SIG_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS)\
 SIG_LIB =  $(USER_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
 	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
-world: all scm6003
+world: all scmsig scm6003
 
 everything: world Ppband
 
