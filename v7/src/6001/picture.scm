@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.19 1993/11/09 21:20:02 adams Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.20 1993/11/09 23:47:28 adams Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -35,11 +35,22 @@ MIT in each case. |#
 ;;;; 6.001 Images
 
 (declare (usual-integrations))
-
+
 (define-primitives floating-vector-ref)
 (define-primitives floating-vector-set!)
 (define-primitives floating-vector-cons)
 (define-primitives floating-vector-length)
+
+(define %win32-prim   (make-primitive-procedure 'get-handle 1))
+(define %X11-prim     (make-primitive-procedure 'x-get-visual-info 10))
+(define-integrable (for-win32?) (implemented-primitive-procedure? %win32-prim))
+(define-integrable (for-X11?)   (implemented-primitive-procedure? %X11-prim))
+
+(define (dispatch-on-window-system win32-item x11-item)
+  (cond ((for-win32?)  win32-item)
+	((for-X11?)    x11-item)
+	(else          (error "Neither X11 nor Win32 supported"))))
+
 
 (define (make-floating-vector length init)
   (let ((result (floating-vector-cons length)))
@@ -60,8 +71,8 @@ MIT in each case. |#
     result))
 
 (define (get-visual-info window)
-  ((ucode-primitive x-get-visual-info) (x-graphics-device/xw window)
-				       #f #f #f #f #f #f #f #f #f))
+  ((ucode-primitive x-get-visual-info 10) (x-graphics-device/xw window)
+				          #f #f #f #f #f #f #f #f #f))
 
 (define (show-window-size window)
   (with-values 
@@ -73,9 +84,9 @@ MIT in each case. |#
 (define (resize-window window width height)
   (graphics-operation window 'resize-window width height))
 
-(define (make-window width height x y)
+(define (make-window/X11 width height x y)
   (let ((window
-	 (make-graphics-device x-graphics-device-type
+	 (make-graphics-device 'X
 			       false
 			       (x-geometry-string x y width height)
 			       true)))
@@ -93,10 +104,43 @@ MIT in each case. |#
     (restore-focus-to-editor)
     window))
 
-(define (n-gray-map window)
+(define (make-window/win32 width height x y)
+  (let ((window
+	 (make-graphics-device 'win32
+			       width height
+			       'grayscale-128)))
+    (graphics-operation window 'move-window x y)
+    (graphics-set-coordinate-limits window 0 (- (- height 1)) (- width 1) 0)
+    (restore-focus-to-editor)
+    window))
+
+(define (make-window width height x y)
+  ((dispatch-on-window-system  make-window/win32 make-window/X11)
+   width height x y))
+
+(define (n-gray-map/X11 window)
   (1d-table/get (x-display/properties (x-graphics/display window))
 		'6001-GRAY-MAP
 		false))
+
+(define 128->128-gray-map #f)
+
+(define (n-gray-map/win32 window)
+  window
+  (if (not 128->128-gray-map)
+      (set! 128->128-gray-map
+	    (let ((s (make-string 128)))
+	      (let loop ((i 0))
+		(if (< i 128)
+		    (begin
+		      (vector-8b-set! s i i)
+		      (loop (1+ i)))))
+	      s)
+	    ))
+  128->128-gray-map)
+
+(define (n-gray-map window)
+  ((dispatch-on-window-system n-gray-map/win32 n-gray-map/X11) window))
 
 (define-integrable visual-class:static-gray 0)
 (define-integrable visual-class:gray-scale 1)
@@ -278,7 +322,7 @@ MIT in each case. |#
 					 brick-wid brick-hgt
 					 pic-min pic-max))))
 	      (graphics-clear window)
-	      (graphics-operation window 'draw-image
+	      (graphics-operation window 'draw-image 
 			    (quotient h-margin 2)
 			    (quotient v-margin 2)
 			    image)
