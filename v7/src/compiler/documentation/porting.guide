@@ -1,9 +1,9 @@
 	   Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.25 1993/03/25 22:20:23 jawilson Exp $
+$Id: porting.guide,v 1.26 1993/11/10 22:47:25 gjr Exp $
 
 
-Copyright (c) 1991-1992 Massachusetts Institute of Technology
+Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
 
 			LIAR PORTING GUIDE
@@ -2927,10 +2927,17 @@ option, and typing
     (begin
 	(cd "<sparc compiler directory>")
 	(load "comp.cbf")
-	(in-package (->environment '(compiler))
-	  (set! compiler:cross-compiling? true)))
+	(disk-restore "runtime+sf.com"))
 
-to load the compiler.
+    ;; After the disk-restore
+	
+    (begin
+	(load "make")
+	(in-package (->environment '(compiler))
+	  (set! compiler:cross-compiling? true))
+	(disk-save "sparccom.com"))
+
+to produce a cross-compiler band called "sparccom.com".
 
 Once you have the cross-compiler, you can use CROSS-COMPILE-BIN-FILE
 to generate .moc files.  The .moc files can be translated to .psb
