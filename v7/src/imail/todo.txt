@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.63 2000/06/05 21:25:37 cph Exp $
+$Id: todo.txt,v 1.64 2000/06/05 21:27:26 cph Exp $
 
 Bug fixes
 ---------
@@ -48,8 +48,6 @@ New features
   AVAILABLE-FOLDER-NAMES.
 
 * Generate file I/O messages when reading and writing file folders.
-  Generate message "No changes to save." from SAVE-FOLDER on an IMAP
-  folder.
 
 * IMAIL must support I/O to compressed files (for my sake if no one
   else).  A clean solution to this requires moving compressed-file

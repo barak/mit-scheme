@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.133 2000/06/05 21:25:36 cph Exp $
+;;; $Id: imail-top.scm,v 1.134 2000/06/05 21:27:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -303,8 +303,8 @@ regardless of the folder type."
 
 (define *imail-message-wrapper-prefix* #f)
 
-(define imail-ui:prompt-for-yes-or-no?
-  prompt-for-yes-or-no?)
+(define imail-ui:message message)
+(define imail-ui:prompt-for-yes-or-no? prompt-for-yes-or-no?)
 
 (define (imail-ui:body-cache-limit message)
   (ref-variable imail-body-cache-limit
