@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/graphics.scm,v 1.6 1993/09/15 04:08:44 adams Exp $
+$Id: graphics.scm,v 1.7 1993/10/25 19:06:50 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -32,7 +32,6 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Graphics Operations
 ;;; package: (runtime graphics)
 
@@ -184,13 +183,28 @@ MIT in each case. |#
 (define (enumerate-graphics-device-types)
   (define (search items)
     (if (pair? items)
-	(let* ((name.type  (car items)))
+	(let* ((name.type (car items)))
 	  (if ((graphics-device-type/operation/available? (cdr name.type)))
 	      (cons (car name.type) (search (cdr items)))
 	      (search (cdr items))))
 	'()))
   (search graphics-types))
 
+(define (get-default-graphics-device-type)
+  (let ((types (enumerate-graphics-device-types)))
+    (if (null? types)
+	(error "No graphics device types supported."
+	       'GET-DEFAULT-GRAPHICS-DEVICE-TYPE))
+    (car types)))
+
+(define (lookup-graphics-device-type type-name)
+  (let ((entry (assq type-name graphics-types)))
+    (if (not (and entry
+		  ((graphics-device-type/operation/available? (cdr entry)))))
+	(error "Graphics type not supported:"
+	       type-name
+	       'LOOKUP-GRAPHICS-DEVICE-TYPE))
+    (cdr entry)))
 
 (define-structure (graphics-device
 		   (conc-name graphics-device/)
@@ -204,23 +218,13 @@ MIT in each case. |#
 
 
 (define (make-graphics-device type-name . arguments)
-
-  (define (graphics-device-type-specification->type spec)
-    (if (graphics-device-type? spec)
-	spec
-	(let ((types (enumerate-graphics-device-types))
-	      (use   (lambda (name) (cdr (assq name graphics-types)))))
-	  (if (null? types)
-	      (error "No graphics device types supported" 'make-graphics-device)
-	      (cond ((eq? spec #f)     (use (car types)))
-		    ((memq spec types) (use spec))
-		    (else
-		     (error "Graphics type not supported:" spec
-			    'make-graphics-device)))))))
-	
-  (let* ((type  (graphics-device-type-specification->type type-name))
-	 (descriptor
-	  (apply (graphics-device-type/operation/open type) arguments)))
+  (let ((descriptor
+	 (apply
+	  (graphics-device-type/operation/open
+	   (cond ((graphics-device-type? type-name) type-name)
+		 ((not type-name) (get-default-graphics-device-type))
+		 (else (lookup-graphics-device-type type-name))))
+	  arguments)))
     (and descriptor
 	 (%make-graphics-device type descriptor))))
 
@@ -360,25 +364,20 @@ MIT in each case. |#
 (define (graphics-drag-cursor device x y)
   ((graphics-device/operation/drag-cursor device) device x y)
   (maybe-flush device))
+
+;;;; Images
+;;; rectangular images that can be copied from and into the graphics
+;;; device
 
-;;
-;;  Images: rectangular images that can be copied from and into the graphics
-;;  device
-;;
-
-(define-structure
-  (image-type
-   (conc-name image-type/)
-   (constructor %make-image-type))
+(define-structure (image-type (conc-name image-type/)
+			      (constructor %make-image-type))
   (operation/create  false read-only true)
   (operation/destroy false read-only true)
   (operation/width   false read-only true)
   (operation/height  false read-only true)
   (operation/draw    false read-only true)
   (operation/draw-subimage    false read-only true)
-  (operation/fill-from-byte-vector  false read-only true)
-)
-
+  (operation/fill-from-byte-vector  false read-only true))
 
 (define (make-image-type operations)
   (let ((operations
@@ -411,11 +410,7 @@ MIT in each case. |#
 			      width height 
 			      draw draw-subimage fill-from-byte-vector))))))
 
-
-(define-structure
-  (image
-   (conc-name image/)
-   (constructor %make-image))
+(define-structure (image (conc-name image/) (constructor %make-image))
   type
   descriptor)
 
@@ -423,9 +418,8 @@ MIT in each case. |#
 
 (define (image/create type device width height)
   ;; operation/create returns a descriptor
-  (%make-image
-   type
-   ((image-type/operation/create type) device width height)))
+  (%make-image type
+	       ((image-type/operation/create type) device width height)))
 
 (define (image/destroy image)
   ((image-type/operation/destroy (image/type image)) image)
