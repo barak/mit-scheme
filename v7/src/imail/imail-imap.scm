@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.11 2000/05/02 22:13:00 cph Exp $
+;;; $Id: imail-imap.scm,v 1.12 2000/05/03 19:29:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -170,7 +170,7 @@
 		    (begin
 		      (guarantee-imap-connection-open connection)
 		      connection)
-		    (loop (weak-cdr connections) alist))
+		    (loop (weak-cdr connections) connections))
 		(let ((next (weak-cdr connections)))
 		  (if prev
 		      (weak-set-cdr! prev next)
@@ -323,7 +323,7 @@
 	  (select-imap-folder connection #f))
       folder)))
 
-(define-method %close-folder ((folder <imap-folder>))
+(define-method close-folder ((folder <imap-folder>))
   (close-imap-connection (imap-folder-connection folder)))
 
 (define-method %folder-valid? ((folder <imap-folder>))
@@ -368,7 +368,7 @@
     (and unseen
 	 (get-message folder unseen))))
 
-(define-method %append-message ((folder <imap-folder>) message)
+(define-method append-message ((folder <imap-folder>) (message <message>))
   ???)
 
 (define-method expunge-deleted-messages ((folder <imap-folder>))
@@ -377,21 +377,18 @@
 (define-method search-folder ((folder <imap-folder>) criteria)
   ???)
 
-(define-method poll-folder ((folder <imap-folder>))
-  (imap:command:noop (imap-folder-connection folder))
-  #f)
+(define-method folder-sync-status ((folder <imap-folder>))
+  ;; Changes are always written through.
+  folder
+  'SYNCHRONIZED)
 
-(define-method synchronize-folder ((folder <imap-folder>))
-  ???)
+(define-method save-folder ((folder <imap-folder>))
+  ;; Changes are always written through.
+  folder
+  unspecific)
 
-(define-method %save-folder ((folder <imap-folder>))
-  ???)
-
-(define-method %maybe-revert-folder ((folder <imap-folder>) resolve-conflict)
-  ???)
-
-(define-method %revert-folder ((folder <imap-folder>))
-  ???)
+(define-method discard-folder-cache ((folder <imap-folder>))
+  (close-imap-connection (imap-folder-connection folder)))
 
 ;;;; IMAP command invocation
 
@@ -472,14 +469,14 @@
     (write command port)
     (for-each (lambda (argument)
 		(write-char #\space port)
-		(imap:send-command-argument connection tag command argument))
+		(imap:send-command-argument connection tag argument))
 	      arguments)
     (write-char #\return port)
     (write-char #\linefeed port)
     (flush-output port)
     tag))
 
-(define (imap:send-command-argument connection tag command argument)
+(define (imap:send-command-argument connection tag argument)
   (let ((port (imap-connection-port connection)))
     (let loop ((argument argument))
       (cond ((or (symbol? argument)

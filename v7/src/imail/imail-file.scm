@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.14 2000/05/02 22:12:59 cph Exp $
+;;; $Id: imail-file.scm,v 1.15 2000/05/03 19:29:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -61,23 +61,20 @@
   (messages define standard
 	    accessor %file-folder-messages
 	    initial-value 'UNKNOWN)
-  (modification-time define standard initial-value #f))
+  (file-modification-time define standard
+			  initial-value #f)
+  (file-modification-count define standard
+			   initial-value #f))
 
 (define (file-folder-messages folder)
   (if (eq? 'UNKNOWN (%file-folder-messages folder))
-      (%revert-folder folder))
+      (revert-file-folder folder))
   (%file-folder-messages folder))
 
 (define (file-folder-pathname folder)
   (file-url-pathname (folder-url folder)))
 
-(define (update-file-folder-modification-time! folder)
-  (set-file-folder-modification-time!
-   folder
-   (file-modification-time (file-folder-pathname folder)))
-  (folder-not-modified! folder))
-
-(define-method %close-folder ((folder <file-folder>))
+(define-method close-folder ((folder <file-folder>))
   (without-interrupts
    (lambda ()
      (let ((messages (%file-folder-messages folder)))
@@ -95,7 +92,7 @@
 (define-method %get-message ((folder <file-folder>) index)
   (list-ref (file-folder-messages folder) index))
 
-(define-method %append-message ((folder <file-folder>) message)
+(define-method append-message ((folder <file-folder>) (message <message>))
   (let ((message (attach-message message folder)))
     (without-interrupts
      (lambda ()
@@ -154,15 +151,47 @@
 	 (error:wrong-type-argument criteria
 				    "search criteria"
 				    'SEARCH-FOLDER))))
+
+(define-generic revert-file-folder (folder))
 
-(define-method synchronize-folder ((folder <file-folder>))
-  folder
-  unspecific)
+(define-method folder-sync-status ((folder <file-folder>))
+  (let ((sync-time (file-folder-file-modification-time folder))
+	(sync-count (file-folder-file-modification-count folder))
+	(current-count (folder-modification-count folder))
+	(current-time (file-modification-time (file-folder-pathname folder))))
+    (if (and sync-time sync-count)
+	(if current-time
+	    (if (= sync-time current-time)
+		(if (= sync-count current-count)
+		    'SYNCHRONIZED
+		    'FOLDER-MODIFIED)
+		(if (= sync-count current-count)
+		    'PERSISTENT-MODIFIED
+		    'BOTH-MODIFIED))
+	    'PERSISTENT-DELETED)
+	'UNSYNCHRONIZED)))
 
-(define-method %maybe-revert-folder ((folder <file-folder>) resolve-conflict)
-  (if (if (eqv? (file-folder-modification-time folder)
-		(file-modification-time (file-folder-pathname folder)))
-	  (or (not (folder-modified? folder))
-	      (resolve-conflict folder))
-	  (folder-modified? folder))
-      (%revert-folder folder)))
+(define (synchronize-file-folder-write folder writer)
+  (let ((pathname (file-folder-pathname folder)))
+    (let loop ()
+      (let ((count (folder-modification-count folder)))
+	(writer folder pathname)
+	(let ((t (file-modification-time pathname)))
+	  (if (and t (= count (folder-modification-count folder)))
+	      (begin
+		(set-file-folder-file-modification-count! folder count)
+		(set-file-folder-file-modification-time! folder t))
+	      (loop)))))))
+
+(define (synchronize-file-folder-read folder reader)
+  (let ((pathname (file-folder-pathname folder)))
+    (let loop ()
+      (let ((t (file-modification-time pathname)))
+	(reader folder pathname)
+	(if (= t (file-modification-time pathname))
+	    (begin
+	      (set-file-folder-file-modification-time! folder t)
+	      (set-file-folder-file-modification-count!
+	       folder
+	       (folder-modification-count folder)))
+	    (loop))))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.36 2000/05/02 22:12:39 cph Exp $
+;;; $Id: imail-core.scm,v 1.37 2000/05/03 19:29:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -83,24 +83,6 @@
 (define-method url-user-id ((url <url>)) url #f)
 
 ;;;; Server operations
-
-;;; In "online" mode, these server operations directly modify the
-;;; server's state.
-
-;;; In "disconnected" mode, server operations don't interact with the
-;;; server, but instead manipulate locally-cached copies of folders
-;;; that reside on the server.  The operations are recorded and saved
-;;; in the file system, then played back when SYNCHRONIZE-FOLDER is
-;;; called.  In this mode, SYNCHRONIZE-FOLDER and POLL-FOLDER are the
-;;; only operations that interact with the server.
-
-;;; [**** Note that SYNCHRONIZE-FOLDER is insufficient to properly
-;;; implement "disconnected" mode.  The client must also know how to
-;;; enumerate the server's folder set, so that it can tell whether a
-;;; given cached folder has been deleted or renamed on the server.
-;;; Similarly, the SYNCHRONIZE-FOLDER operation must be able to tell
-;;; the client that the folder being synchronized has been deleted or
-;;; renamed, so that the client can take appropriate action.]
 
 ;; -------------------------------------------------------------------
 ;; Create a new folder named URL.  Signal an error if the folder
@@ -201,8 +183,8 @@
 
 (define-class <folder> ()
   (url define accessor)
-  (modified? define standard
-	     initial-value #t)
+  (modification-count define standard
+		      initial-value 0)
   (modification-event define accessor
 		      initial-value (make-event-distributor))
   (properties define standard
@@ -231,22 +213,12 @@
   (folder-url folder))
 
 (define (folder-modified! folder)
-  (if (not (folder-modified? folder))
-      (begin
-	(set-folder-modified?! folder #t)
-	(event-distributor/invoke! (folder-modification-event folder)
-				   folder))))
-
-(define (folder-not-modified! folder)
-  (if (folder-modified? folder)
-      (begin
-	(let ((count (folder-length folder)))
-	  (do ((index 0 (+ index 1)))
-	      ((= index count))
-	    (message-not-modified! (get-message folder index))))
-	(set-folder-modified?! folder #f)
-	(event-distributor/invoke! (folder-modification-event folder)
-				   folder))))
+  (without-interrupts
+   (lambda ()
+     (set-folder-modification-count!
+      folder
+      (+ (folder-modification-count folder) 1))))
+  (event-distributor/invoke! (folder-modification-event folder) folder))
 
 (define (get-memoized-folder url)
   (let ((folder (hash-table/get memoized-folders url #f)))
@@ -285,10 +257,7 @@
 ;; of the folder must work, but may incur a significant time or space
 ;; penalty.
 
-(define (close-folder folder)
-  (%close-folder folder))
-
-(define-generic %close-folder (folder))
+(define-generic close-folder (folder))
 
 ;; -------------------------------------------------------------------
 ;; Return #T if FOLDER represents a real folder, i.e. has a
@@ -315,17 +284,13 @@
   (%get-message folder index))
 
 (define-generic %get-message (folder index))
-
+
 ;; -------------------------------------------------------------------
 ;; Insert a copy of MESSAGE in FOLDER at the end of the existing
 ;; messages.  Unspecified result.
 
-(define (append-message folder message)
-  (guarantee-message message 'APPEND-MESSAGE)
-  (%append-message folder message))
+(define-generic append-message (folder message))
 
-(define-generic %append-message (folder message))
-
 ;; -------------------------------------------------------------------
 ;; Remove all messages in FOLDER that are marked for deletion.
 ;; Unspecified result.
@@ -339,41 +304,23 @@
 (define-generic search-folder (folder criteria))
 
 ;; -------------------------------------------------------------------
-;; Poll the inbox associated with FOLDER to see if there is new mail.
-;; If so, the mail is appended to FOLDER.  Return the number of new
-;; messages.  Return #F if FOLDER has no associated inbox.
+;; Compare FOLDER's cache with the persistent folder and return a
+;; symbol indicating whether they are synchronized, as follows:
+;; SYNCHRONIZED FOLDER-MODIFIED PERSISTENT-MODIFIED BOTH-MODIFIED
+;; PERSISTENT-DELETED UNSYNCHRONIZED
 
-(define-generic poll-folder (folder))
-
-;; -------------------------------------------------------------------
-;; Synchronize the local copy of FOLDER with the server's copy.
-;; Unspecified result.
-
-(define-generic synchronize-folder (folder))
+(define-generic folder-sync-status (folder))
 
 ;; -------------------------------------------------------------------
-;; Save any changes made to FOLDER.  This permits the use of caches
-;; for improved performance.
+;; Save any cached changes made to FOLDER.
 
-(define (save-folder folder)
-  (%save-folder folder))
-
-(define-generic %save-folder (folder))
+(define-generic save-folder (folder))
 
 ;; -------------------------------------------------------------------
-;; Check to see if the persistent copy of FOLDER has changed since it
-;; was copied into memory, and update the memory copy if so.  Return
-;; #t if the memory copy is updated, #f if it is not.  If both
-;; the memory copy and the persistent copy have changed, the procedure
-;; RESOLVE-CONFLICT is called with the folder as an argument.
-;; RESOLVE-CONFLICT must return a boolean which if true indicates that
-;; the folder should be reverted.
+;; Discard cached contents of FOLDER.  Subsequent use of FOLDER will
+;; reload contents from the persistent folder.
 
-(define (maybe-revert-folder folder resolve-conflict)
-  (%maybe-revert-folder folder resolve-conflict))
-
-(define-generic %maybe-revert-folder (folder resolve-conflict))
-(define-generic %revert-folder (folder))
+(define-generic discard-folder-cache (folder))
 
 ;;;; Message type
 
@@ -382,8 +329,8 @@
   (header-fields define accessor)
   (body define accessor)
   (flags define standard)
-  (modified? define standard
-	     initial-value #t)
+  (modification-count define standard
+		      initial-value 0)
   (properties define standard)
   (folder define standard
 	  initial-value #f)
@@ -441,13 +388,12 @@
 (define (message-modified! message)
   (without-interrupts
    (lambda ()
-     (set-message-modified?! message #t)
+     (set-message-modification-count!
+      message
+      (+ (message-modification-count message) 1))
      (let ((folder (message-folder message)))
        (if folder
 	   (folder-modified! folder))))))
-
-(define (message-not-modified! message)
-  (set-message-modified?! message #f))
 
 (define (message->string message)
   (string-append (header-fields->string (message-header-fields message))

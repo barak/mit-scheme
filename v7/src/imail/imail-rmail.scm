@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.21 2000/05/02 22:13:01 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.22 2000/05/03 19:29:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -61,12 +61,8 @@
 (define-method rmail-folder-header-fields ((folder <folder>))
   (compute-rmail-folder-header-fields folder))
 
-(define-method %save-folder ((folder <rmail-folder>))
-  (write-rmail-file folder (file-folder-pathname folder))
-  (update-file-folder-modification-time! folder))
-
-(define-method poll-folder ((folder <rmail-folder>))
-  (rmail-get-new-mail folder))
+(define-method save-folder ((folder <rmail-folder>))
+  (synchronize-file-folder-write folder write-rmail-file))
 
 (define (compute-rmail-folder-header-fields folder)
   (list (make-header-field "Version" " 5")
@@ -81,17 +77,24 @@
 
 ;;;; Read RMAIL file
 
-(define-method %revert-folder ((folder <rmail-folder>))
-  (call-with-binary-input-file (file-folder-pathname folder)
-    (lambda (port)
-      (set-rmail-folder-header-fields! folder (read-rmail-prolog port))
-      (let loop ()
-	(let ((message (read-rmail-message port)))
-	  (if message
-	      (begin
-		(append-message folder message)
-		(loop)))))))
-  (update-file-folder-modification-time! folder))
+(define-method revert-file-folder ((folder <rmail-folder>))
+  (synchronize-file-folder-read folder
+    (lambda (folder pathname)
+      (without-interrupts
+       (lambda ()
+	 (let ((messages (%file-folder-messages folder)))
+	   (if (not (eq? 'UNKNOWN messages))
+	       (for-each detach-message messages)))
+	 (set-file-folder-messages! folder '())))
+      (call-with-binary-input-file pathname
+	(lambda (port)
+	  (set-rmail-folder-header-fields! folder (read-rmail-prolog port))
+	  (let loop ()
+	    (let ((message (read-rmail-message port)))
+	      (if message
+		  (begin
+		    (append-message folder message)
+		    (loop))))))))))
 
 (define (read-rmail-prolog port)
   (if (not (string-prefix? "BABYL OPTIONS:" (read-required-line port)))

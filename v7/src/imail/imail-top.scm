@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.27 2000/05/02 22:19:34 cph Exp $
+;;; $Id: imail-top.scm,v 1.28 2000/05/03 19:29:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -32,11 +32,6 @@
 ;;;
 ;;; * Build generic message cache?  Need to figure out when cached
 ;;;   info can be deleted.
-;;;
-;;; * The following operations are all ways of doing synchronization,
-;;;   so try to figure out a more unified viewpoint: POLL-FOLDER,
-;;;   SYNCHRONIZE-FOLDER, SAVE-FOLDER, MAYBE-REVERT-FOLDER,
-;;;   REVERT-FOLDER.
 
 (declare (usual-integrations))
 
@@ -109,9 +104,7 @@ May be called with an IMAIL folder URL as argument;
 	       (let ((buffer (new-buffer (imail-url->buffer-name url))))
 		 (associate-imail-folder-with-buffer folder buffer)
 		 (select-message folder (first-unseen-message folder) #t)
-		 buffer))))))
-    (if (not url-string)
-	((ref-command imail-get-new-mail) #f))))
+		 buffer))))))))
 
 (define (imail-authenticator host user-id receiver)
   (call-with-pass-phrase (string-append "Password for user " user-id
@@ -164,39 +157,6 @@ May be called with an IMAIL folder URL as argument;
 (define (imail-url->buffer-name url)
   (url-body url))
 
-(define-command imail-get-new-mail
-  "Get new mail from this folder's inbox."
-  ()
-  (lambda ()
-    (let ((folder (selected-folder)))
-      (tl-maybe-revert-folder folder)
-      (let ((n-new (poll-folder folder)))
-	(cond ((not n-new)
-	       (message "(This folder has no associated inbox.)"))
-	      ((= 0 n-new)
-	       (message "(No new mail has arrived.)"))
-	      (else
-	       (select-message folder (- (folder-length folder) n-new))
-	       (event-distributor/invoke! (ref-variable imail-new-mail-hook))
-	       (message n-new
-			" new message"
-			(if (= n-new 1) "" "s")
-			" read")))))))
-
-(define (tl-maybe-revert-folder folder)
-  (maybe-revert-folder folder
-    (lambda (folder)
-      (prompt-for-yes-or-no?
-       (string-append
-	"Persistent copy of folder has changed since last read.  "
-	(if (folder-modified? folder)
-	    "Discard your changes"
-	    "Re-read folder"))))))
-
-(define-variable imail-new-mail-hook
-  "An event distributor that is invoked when IMAIL incorporates new mail."
-  (make-event-distributor))
-
 (define-major-mode imail read-only "IMAIL"
   "IMAIL mode is used by \\[imail] for editing IMAIL files.
 All normal editing commands are turned off.
@@ -221,8 +181,6 @@ DEL	Scroll to previous screen of this message.
 \\[imail-save-folder]	Save the current folder.
 
 \\[imail-quit]       Quit IMAIL: save, then switch to another buffer.
-
-\\[imail-get-new-mail]	Read any new mail from the associated inbox into this folder.
 
 \\[imail-mail]	Mail a message (same as \\[mail-other-window]).
 \\[imail-reply]	Reply to this message.  Like \\[imail-mail] but initializes some fields.
@@ -280,7 +238,6 @@ DEL	Scroll to previous screen of this message.
 (define-key 'imail #\x		'imail-expunge)
 
 (define-key 'imail #\s		'imail-save-folder)
-(define-key 'imail #\g		'imail-get-new-mail)
 
 (define-key 'imail #\c-m-h	'imail-summary)
 (define-key 'imail #\c-m-l	'imail-summary-by-flags)
@@ -303,16 +260,30 @@ DEL	Scroll to previous screen of this message.
   (let ((folder (selected-folder #f buffer))
 	(message (selected-message #f buffer)))
     (let ((index (and message (message-index message))))
-      (if (or dont-confirm?
-	      (prompt-for-yes-or-no?
-	       (string-append "Revert buffer from folder "
-			      (url->string (folder-url folder)))))
-	  (select-message
-	   folder
-	   (cond ((eq? folder (message-folder message)) message)
-		 ((and (<= 0 index) (< index (folder-length folder))) index)
-		 (else (first-unseen-message folder)))
-	   (tl-maybe-revert-folder folder))))))
+      (if (let ((status (folder-sync-status folder)))
+	    (case status
+	      ((UNSYNCHRONIZED)
+	       #t)
+	      ((SYNCHRONIZED PERSISTENT-MODIFIED)
+	       (or dont-confirm?
+		   (prompt-for-yes-or-no? "Revert buffer from folder")))
+	      ((FOLDER-MODIFIED)
+	       (prompt-for-yes-or-no? "Discard your changes to folder"))
+	      ((BOTH-MODIFIED)
+	       (prompt-for-yes-or-no?
+		"Persistent copy of folder changed; discard your changes"))
+	      ((PERSISTENT-DELETED)
+	       (editor-error "Persistent copy of folder deleted."))
+	      (else
+	       (error "Unknown folder-sync status:" status))))
+	  (begin
+	    (discard-folder-cache folder)
+	    (select-message
+	     folder
+	     (cond ((eq? folder (message-folder message)) message)
+		   ((and (<= 0 index) (< index (folder-length folder))) index)
+		   (else (first-unseen-message folder)))
+	     #t))))))
 
 (define (imail-kill-buffer buffer)
   (let ((folder (selected-folder #f buffer)))
@@ -331,13 +302,6 @@ DEL	Scroll to previous screen of this message.
   ()
   (lambda ()
     (save-folder (selected-folder))))
-
-(define-command imail-synchronize
-  "Synchronize the current folder with the master copy on the server.
-Currently meaningless for file-based folders."
-  ()
-  (lambda ()
-    (synchronize-folder (selected-folder))))
 
 ;;;; Navigation
 
@@ -652,10 +616,10 @@ Completion is performed over known flags when reading."
     (let ((folder (open-folder url-string))
 	  (message (selected-message)))
       (append-message folder message)
-      (save-folder folder)
-      (set-message-flag message "filed"))
-    (if (ref-variable imail-delete-after-output)
-	((ref-command imail-delete-forward) #f))))
+      (set-message-flag message "filed")
+      (if (ref-variable imail-delete-after-output)
+	  ((ref-command imail-delete-forward) #f))
+      (save-folder folder))))
 
 ;;;; Sending mail
 
