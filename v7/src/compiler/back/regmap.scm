@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 1.88 1987/05/19 18:06:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 1.89 1987/06/13 20:16:51 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -85,42 +85,13 @@ REGISTER-RENUMBERs are equal.
 
 |#
 
-(define empty-register-map)
-(define bind-allocator-values)
-
-(define load-alias-register)
-(define allocate-alias-register)
-(define allocate-temporary-register)
-(define add-pseudo-register-alias)
-
-(define machine-register-contents)
-(define pseudo-register-aliases)
-
-(define machine-register-alias)
-(define pseudo-register-alias)
-
-(define save-machine-register)
-(define save-pseudo-register)
-
-(define delete-machine-register)
-(define delete-pseudo-register)
-
-(define delete-pseudo-registers)
-(define delete-other-locations)
-
-(define coerce-map-instructions)
-(define clear-map-instructions)
-
-(define register-allocator-package
-  (make-environment
-
 ;;;; Register Map
 
 (define-integrable make-register-map cons)
 (define-integrable map-entries car)
 (define-integrable map-registers cdr)
 
-(define-export (empty-register-map)
+(define (empty-register-map)
   (make-register-map '() available-machine-registers))
 
 (define-integrable (map-entries:search map procedure)
@@ -311,7 +282,7 @@ REGISTER-RENUMBERs are equal.
 
 ;;;; Allocator Operations
 
-(let ()
+(package (load-alias-register allocate-alias-register)
 
 (define-export (load-alias-register map type needed-registers home)
   ;; Finds or makes an alias register for HOME, and loads HOME's
@@ -361,30 +332,30 @@ REGISTER-RENUMBERs are equal.
 
 )
 
-(define-export (allocate-temporary-register map type needed-registers)
+(define (allocate-temporary-register map type needed-registers)
   (bind-allocator-values (make-free-register map type needed-registers)
     (lambda (alias map instructions)
       (allocator-values alias
 			(register-map:add-home map false alias true)
 			instructions))))
 
-(define-export (add-pseudo-register-alias map register alias saved-into-home?)
+(define (add-pseudo-register-alias map register alias saved-into-home?)
   (let ((entry (map-entries:find-home map register)))
     (if entry
 	(register-map:add-alias map entry alias)
 	(register-map:add-home map register alias saved-into-home?))))
 
-(define-export (machine-register-contents map register)
+(define (machine-register-contents map register)
   (let ((entry (map-entries:find-alias map register)))
     (and entry
 	 (map-entry-home entry))))
 
-(define-export (pseudo-register-aliases map register)
+(define (pseudo-register-aliases map register)
   (let ((entry (map-entries:find-home map register)))
     (and entry
 	 (map-entry-aliases entry))))
 
-(define-export (machine-register-alias map type register)
+(define (machine-register-alias map type register)
   (let ((entry (map-entries:find-alias map register)))
     (and entry
 	 (list-search-positive (map-entry-aliases entry)
@@ -392,13 +363,13 @@ REGISTER-RENUMBERs are equal.
 	     (and (not (eq? register register*))
 		  (register-type? type register*)))))))
 
-(define-export (pseudo-register-alias map type register)
+(define (pseudo-register-alias map type register)
   (let ((entry (map-entries:find-home map register)))
     (and entry
 	 (list-search-positive (map-entry-aliases entry)
 	   (register-type-predicate type)))))
 
-(define-export (save-machine-register map register receiver)
+(define (save-machine-register map register receiver)
   (let ((entry (map-entries:find-alias map register)))
     (if (and entry
 	     (not (map-entry-saved-into-home? entry))
@@ -407,7 +378,7 @@ REGISTER-RENUMBERs are equal.
 		  (save-into-home-instruction entry))
 	(receiver map '()))))
 
-(define-export (save-pseudo-register map register receiver)
+(define (save-pseudo-register map register receiver)
   (let ((entry (map-entries:find-home map register)))
     (if (and entry
 	     (not (map-entry-saved-into-home? entry)))
@@ -415,20 +386,20 @@ REGISTER-RENUMBERs are equal.
 		  (save-into-home-instruction entry))
 	(receiver map '()))))
 
-(define-export (delete-machine-register map register)
+(define (delete-machine-register map register)
   (let ((entry (map-entries:find-alias map register)))
     (if entry
 	(register-map:delete-alias map entry register)
 	map)))
 
-(define-export (delete-pseudo-register map register receiver)
+(define (delete-pseudo-register map register receiver)
   (let ((entry (map-entries:find-home map register)))
     (if entry
 	(receiver (register-map:delete-entry map entry)
 		  (map-entry-aliases entry))
 	(receiver map '()))))
 
-(define-export (delete-pseudo-registers map registers receiver)
+(define (delete-pseudo-registers map registers receiver)
   ;; Used to remove dead registers from the map.
   (let loop ((registers registers)
 	     (receiver
@@ -444,7 +415,7 @@ REGISTER-RENUMBERs are equal.
 		  (receiver (cons entry entries) aliases))
 		receiver))))))
 
-(define-export (delete-other-locations map register)
+(define (delete-other-locations map register)
   ;; Used in assignments to indicate that other locations containing
   ;; the same value no longer contain the value for a given home.
   (register-map:delete-other-aliases
@@ -456,7 +427,7 @@ REGISTER-RENUMBERs are equal.
 (define-integrable (allocator-values alias map instructions)
   (vector alias map instructions))
 
-(define-export (bind-allocator-values values receiver)
+(define (bind-allocator-values values receiver)
   (receiver (vector-ref values 0)
 	    (vector-ref values 1)
 	    (vector-ref values 2)))
@@ -471,7 +442,7 @@ REGISTER-RENUMBERs are equal.
 ;;; another.  They are used when joining two branches of a control
 ;;; flow graph which have different maps (e.g. in a loop.)
 
-(let ()
+(package (coerce-map-instructions clear-map-instructions)
 
 (define-export (coerce-map-instructions input-map output-map)
   (three-way-sort map-entry=?
@@ -530,7 +501,4 @@ REGISTER-RENUMBERs are equal.
 		       (loop (cdr aliases))))
 	    instructions))))
 
-)
-
-;;; end REGISTER-ALLOCATOR-PACKAGE
 )
