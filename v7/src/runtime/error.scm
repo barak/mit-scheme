@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.15 1991/07/15 23:56:28 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.16 1991/07/18 23:37:33 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -709,27 +709,38 @@ MIT in each case. |#
 	    condition-type:wrong-type-datum
 	    '(OPERANDS)
 	  (lambda (condition port)
-	    (write-string "The procedure " port)
-	    (write-operator (access-condition condition 'DATUM) port)
-	    (write-string " has been called with " port)
-	    (write (length (access-condition condition 'OPERANDS)) port)
-	    (write-string " arguments; it requires " port)
-	    (let ((arity (access-condition condition 'TYPE)))
-	      (cond ((not (pair? arity))
-		     (write-string "exactly " port)
-		     (write arity port))
-		    ((not (cdr arity))
-		     (write-string "at least " port)
-		     (write (car arity) port))
-		    ((= (car arity) (cdr arity))
-		     (write-string "exactly " port)
-		     (write (car arity) port))
-		    (else
-		     (write-string "between " port)
-		     (write (car arity) port)
-		     (write-string " and " port)
-		     (write (cdr arity) port))))
-	    (write-string " arguments." port))))
+	    (let ((pluralize-argument
+		   (lambda (number)
+		     (write-string
+		      (if (= number 1) " argument" " arguments")
+		      port))))
+	      (write-string "The procedure " port)
+	      (write-operator (access-condition condition 'DATUM) port)
+	      (write-string " has been called with " port)
+	      (let ((count (length (access-condition condition 'OPERANDS))))
+		(write count port)
+		(pluralize-argument count))
+	      (write-string "; it requires " port)
+	      (let ((arity (access-condition condition 'TYPE)))
+		(cond ((not (pair? arity))
+		       (write-string "exactly " port)
+		       (write arity port)
+		       (pluralize-argument arity))
+		      ((not (cdr arity))
+		       (write-string "at least " port)
+		       (write (car arity) port)
+		       (pluralize-argument (car arity)))
+		      ((= (car arity) (cdr arity))
+		       (write-string "exactly " port)
+		       (write (car arity) port)
+		       (pluralize-argument (car arity)))
+		      (else
+		       (write-string "between " port)
+		       (write (car arity) port)
+		       (write-string " and " port)
+		       (write (cdr arity) port)
+		       (write-string " arguments" port))))
+	      (write-char #\. port)))))
 
   (set! condition-type:control-error
 	(make-condition-type 'CONTROL-ERROR condition-type:error '()
