@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pcsample.c,v 1.4 1995/11/19 19:30:17 adams Exp $
+$Id: pcsample.c,v 1.5 1997/10/05 05:44:37 adams Exp $
 
 Copyright (c) 1990-1995 Massachusetts Institute of Technology
 
@@ -467,8 +467,6 @@ DEFUN (find_sigcontext_ptr_pc, (scp, trinfo),
 
     pc_in_builtin        = (builtin_index != -1);
     pc_in_utility        = (utility_index != -1);    
-    pc_in_C              = (   (the_pc <= ((long) (get_etext ())))
-			    && (!pc_in_builtin));
     pc_in_heap           = (   (the_pc <  ((long) Heap_Top   ))
 			    && (the_pc >= ((long) Heap_Bottom)));
     pc_in_constant_space = (   (the_pc <  ((long) Free_Constant ))
@@ -476,6 +474,12 @@ DEFUN (find_sigcontext_ptr_pc, (scp, trinfo),
     pc_in_scheme         = (   pc_in_heap
 			    || pc_in_constant_space
 			    || pc_in_builtin);
+    /* This doesnt work for dynamically loaded libraries, e.g. libc.sl:
+    pc_in_C              = (   (the_pc <= ((long) (get_etext ())))
+			    && (!pc_in_builtin));
+    */
+    pc_in_C              = (   (!pc_in_scheme)
+			    && (!pc_in_builtin));
     pc_in_hyper_space    = (   (! pc_in_C     )
 			    && (! pc_in_scheme));
   }
