@@ -20,5 +20,5 @@ pcsdld.o: pcsdld.c pcsample.c pcscobl.c pcsiproc.c
 
 install: pcsdld.sl $(SCHEME_OBJECTS) pcs.bco pcs.bld
 	-mkdir $(INSTALL_DIRECTORY)
-	cp pcsdld.sl $(INSTALL_DIRECTORY)
-	cp pcs.bco pcs.bld *.com *.bci $(INSTALL_DIRECTORY)
+	cp -p pcsdld.sl $(INSTALL_DIRECTORY)
+	cp -p pcs.bco pcs.bld *.com *.bci $(INSTALL_DIRECTORY)
