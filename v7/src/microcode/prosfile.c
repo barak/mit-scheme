@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosfile.c,v 1.6 1993/06/24 07:09:24 gjr Exp $
+$Id: prosfile.c,v 1.7 1994/11/20 08:23:29 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -97,7 +97,7 @@ Second argument MODE says how to open the file:\n\
   }
 }
 
-DEFINE_PRIMITIVE ("FILE-LENGTH-NEW", Prim_file_length, 1, 1,
+DEFINE_PRIMITIVE ("FILE-LENGTH-NEW", Prim_file_length_new, 1, 1,
   "Return the length of CHANNEL in characters.")
 {
   PRIMITIVE_HEADER (1);
