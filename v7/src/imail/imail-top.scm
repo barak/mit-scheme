@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.56 2000/05/17 19:11:16 cph Exp $
+;;; $Id: imail-top.scm,v 1.57 2000/05/17 19:24:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -161,18 +161,6 @@ May be called with an IMAIL folder URL as argument;
   (let ((buffer (imail-folder->buffer folder #f)))
     (if buffer
 	(imail-update-mode-line! buffer))))
-
-(define (selected-folder #!optional error? buffer)
-  (let ((buffer
-	 (if (or (default-object? buffer) (not buffer))
-	     (selected-buffer)
-	     buffer)))
-    (let ((folder (buffer-get buffer 'IMAIL-FOLDER 'UNKNOWN)))
-      (if (eq? 'UNKNOWN folder)
-	  (error "IMAIL-FOLDER property not bound:" buffer))
-      (or folder
-	  (and (if (default-object? error?) #t error?)
-	       (error:bad-range-argument buffer 'SELECTED-FOLDER))))))
 
 (define (imail-default-url)
   (let ((primary-folder (ref-variable imail-primary-folder)))
@@ -484,10 +472,10 @@ With prefix argument N moves backward N messages with these flags."
 	(begin
 	  (buffer-reset! buffer)
 	  (associate-imail-with-buffer buffer folder message)
-	  (buffer-put! buffer 'IMAIL-FULL-HEADERS? full-headers?)
 	  (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
 	    (if message
 		(begin
+		  (store-property! message 'FULL-HEADERS? full-headers?)
 		  (insert-string
 		   (header-fields->string
 		    (if full-headers?
@@ -505,31 +493,53 @@ With prefix argument N moves backward N messages with these flags."
     (if message
 	(message-seen message))
     (imail-update-mode-line! buffer)))
-
+
 (define (selected-message #!optional error? buffer)
   (or (let ((buffer
 	     (if (or (default-object? buffer) (not buffer))
 		 (selected-buffer)
 		 buffer)))
-	(let ((message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN)))
-	  (if (eq? message 'UNKNOWN)
-	      (error "IMAIL-MESSAGE property not bound:" buffer))
-	  (and message
-	       (let ((folder (selected-folder #f buffer)))
-		 (if (message-attached? message folder)
-		     message
-		     (let ((message
-			    (let ((index
-				   (and folder
-					(message-detached? message)
-					(message-index message))))
-			      (and index
-				   (< index (folder-length folder))
-				   (get-message folder index)))))
-		       (buffer-put! buffer 'IMAIL-MESSAGE message)
-		       message))))))
+	(let ((method (buffer-get buffer 'IMAIL-MESSAGE-METHOD #f)))
+	  (if method
+	      (method buffer)
+	      (let ((message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN)))
+		(if (eq? message 'UNKNOWN)
+		    (error "IMAIL-MESSAGE property not bound:" buffer))
+		(and message
+		     (let ((folder (selected-folder #f buffer)))
+		       (if (message-attached? message folder)
+			   message
+			   (let ((message
+				  (let ((index
+					 (and folder
+					      (message-detached? message)
+					      (message-index message))))
+				    (and index
+					 (< index (folder-length folder))
+					 (get-message folder index)))))
+			     (buffer-put! buffer 'IMAIL-MESSAGE message)
+			     message))))))))
       (and (if (default-object? error?) #t error?)
 	   (error "No selected IMAIL message."))))
+
+(define (selected-folder #!optional error? buffer)
+  (let ((buffer
+	 (chase-imail-buffer
+	  (if (or (default-object? buffer) (not buffer))
+	      (selected-buffer)
+	      buffer))))
+    (let ((folder (buffer-get buffer 'IMAIL-FOLDER 'UNKNOWN)))
+      (if (eq? 'UNKNOWN folder)
+	  (error "IMAIL-FOLDER property not bound:" buffer))
+      (or folder
+	  (and (if (default-object? error?) #t error?)
+	       (error:bad-range-argument buffer 'SELECTED-FOLDER))))))
+
+(define (chase-imail-buffer buffer)
+  (let ((buffer* (buffer-get buffer 'IMAIL-BUFFER-REDIRECT #f)))
+    (if buffer*
+	(chase-imail-buffer buffer*)
+	buffer)))
 
 (define (imail-update-mode-line! buffer)
   (local-set-variable! mode-line-process
@@ -908,11 +918,11 @@ Currently useful only for IMAP folders."
   "Show full message headers if pruned headers currently shown, or vice versa."
   ()
   (lambda ()
-    (select-message
-     (selected-folder)
-     (selected-message)
-     #t
-     (not (buffer-get (selected-buffer) 'IMAIL-FULL-HEADERS? #f)))))
+    (let ((message (selected-message)))
+      (select-message (selected-folder)
+		      message
+		      #t
+		      (not (get-property message 'FULL-HEADERS? #f))))))
 
 (define-command imail-search
   "Show message containing next match for given string.
