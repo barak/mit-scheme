@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.46 1998/07/20 04:15:14 cph Exp $
+$Id: option.c,v 1.47 1998/07/20 06:52:53 cph Exp $
 
 Copyright (c) 1990-98 Massachusetts Institute of Technology
 
@@ -59,11 +59,12 @@ extern int atoi ();
 
 #include <unistd.h>
 #include <string.h>
+extern char * EXFUN (malloc, (int));
 
 #else /* not _POSIX */
 
 extern int strlen ();
-extern char * malloc ();
+extern char * EXFUN (malloc, (int));
 
 #endif /* not _POSIX */
 #endif /* not WINNT */
