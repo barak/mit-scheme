@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dosconio.c,v 1.9 1992/11/23 04:18:59 gjr Exp $
+$Id: dosconio.c,v 1.10 1993/07/16 20:56:45 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -265,12 +265,17 @@ extern void EXFUN (DOS_initialize_fov, (SCHEME_OBJECT));
 void
 DEFUN (DOS_initialize_fov, (fov), SCHEME_OBJECT fov)
 {
+  int in;
+  SCHEME_OBJECT iv, imv, prim;
   extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
-  SCHEME_OBJECT iv, prim;
 
+  in = Global_GC_Level;
   prim = (make_primitive ("DOS-HIGH-PRIORITY-TIMER-INTERRUPT"));
   iv = (FAST_VECTOR_REF (fov, System_Interrupt_Vector));
-  VECTOR_SET (iv, Global_GC_Level, prim);
+  VECTOR_SET (iv, in, prim);
+  imv = (FAST_VECTOR_REF (fov, FIXOBJ_INTERRUPT_MASK_VECTOR));
+  /* No interrupts allowed while processing this interrupt. */
+  VECTOR_SET (imv, in, (long_to_integer (0)));
   return;
 }
 
