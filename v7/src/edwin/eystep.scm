@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: eystep.scm,v 1.4 1997/02/23 06:24:36 cph Exp $
+;;;	$Id: eystep.scm,v 1.5 1997/12/30 00:02:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
@@ -89,7 +89,7 @@
   "Major mode for the stepper.
 space	advances the computation by one step
 o	steps over the current expression
-u	step over, but show the intevening events
+u	step over, but show the intervening events
 U	step over, show and animate intervening events
 r	run current expression to completion without stepping
 e	expand the step under the cursor
