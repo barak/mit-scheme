@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.12 1999/01/02 06:19:10 cph Exp $
+$Id: vector.scm,v 14.13 1999/11/08 18:22:52 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -110,20 +110,24 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (loop (fix:+ index 1)))))
     vector))
 
-(define (vector-map vector procedure)
-  (guarantee-vector vector 'VECTOR-MAP)
-  (let ((length (vector-length vector)))
-    (if (fix:= 0 length)
-	vector
-	(let ((result (make-vector length)))
-	  (let loop ((index 0))
-	    (if (fix:< index length)
-		(begin
-		  (vector-set! result
-			       index
-			       (procedure (vector-ref vector index)))
-		  (loop (fix:+ index 1)))))
-	  result))))
+(define (vector-map procedure vector)
+  (if (and (vector? procedure) (procedure? vector))
+      ;; KLUDGE: accept arguments in old order.
+      (vector-map vector procedure)
+      (begin
+	(guarantee-vector vector 'VECTOR-MAP)
+	(let ((length (vector-length vector)))
+	  (if (fix:= 0 length)
+	      vector
+	      (let ((result (make-vector length)))
+		(let loop ((index 0))
+		  (if (fix:< index length)
+		      (begin
+			(vector-set! result
+				     index
+				     (procedure (vector-ref vector index)))
+			(loop (fix:+ index 1)))))
+		result))))))
 
 (define (for-each-vector-element vector procedure)
   (guarantee-vector vector 'FOR-EACH-VECTOR-ELEMENT)

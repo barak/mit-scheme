@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.80 1999/08/20 20:52:45 cph Exp $
+@comment $Id: scheme.texinfo,v 1.81 1999/11/08 18:23:39 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -7850,7 +7850,7 @@ initialized from the corresponding elements of @var{vector}.  The
 remaining elements of the result are unspecified.
 @end deffn
 
-@deffn {procedure+} vector-map vector procedure
+@deffn {procedure+} vector-map procedure vector
 @cindex mapping, of vector
 @var{Procedure} must be a procedure of one argument.  @code{vector-map}
 applies @var{procedure} element-wise to the elements of @var{vector} and
@@ -7860,10 +7860,10 @@ elements of @var{vector} is unspecified.
 
 @example
 @group
-(vector-map '#((a b) (d e) (g h)) cadr)     @result{}  #(b e h)
-(vector-map '#(1 2 3 4) (lambda (n) (expt n n)))
+(vector-map cadr '#((a b) (d e) (g h)))     @result{}  #(b e h)
+(vector-map (lambda (n) (expt n n)) '#(1 2 3 4))
                                             @result{}  #(1 4 27 256)
-(vector-map '#(5 7 9) +)                    @result{}  #(5 7 9)
+(vector-map + '#(5 7 9))                    @result{}  #(5 7 9)
 @end group
 @end example
 @end deffn
