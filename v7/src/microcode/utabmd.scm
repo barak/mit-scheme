@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.52 1990/10/03 16:49:07 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.53 1990/11/26 16:58:32 jinx Rel $
 
 (declare (usual-integrations))
 
@@ -465,6 +465,7 @@
 	       HARDWARE-TRAP				;5C
 	       INTERNAL-APPLY-VAL			;5D
 	       COMPILER-ERROR-RESTART			;5E
+	       PRIMITIVE-CONTINUE			;5F
 	       ))
 
 ;;; [] Errors
@@ -530,6 +531,7 @@
 	       FASDUMP-ENVIRONMENT			;38
 	       FASLOAD-BAND				;39
 	       FASLOAD-COMPILED-MISMATCH		;3A
+	       UNKNOWN-PRIMITIVE-CONTINUATION		;3B
 	       ))
 
 ;;; [] Terminations
@@ -588,4 +590,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.52 1990/10/03 16:49:07 jinx Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.53 1990/11/26 16:58:32 jinx Rel $"
