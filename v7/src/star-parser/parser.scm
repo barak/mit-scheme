@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.7 2001/06/26 23:46:41 cph Exp $
+;;; $Id: parser.scm,v 1.8 2001/06/27 01:53:53 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -151,10 +151,12 @@
     (lambda (start-pointers)
       (compile-matcher-expression matcher start-pointers
 	(lambda (pointers)
-	  (if-succeed pointers
-		      `(VECTOR (GET-PARSER-BUFFER-TAIL
-				,*buffer-name*
-				,(current-pointer start-pointers)))))
+	  (with-variable-binding
+	      `(VECTOR (GET-PARSER-BUFFER-TAIL
+			,*buffer-name*
+			,(current-pointer start-pointers)))
+	    (lambda (v)
+	      (if-succeed pointers v))))
 	if-fail))))
 
 (define-parser (noise matcher)
