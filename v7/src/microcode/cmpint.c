@@ -1,9 +1,10 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.102 2004/11/18 18:13:58 cph Exp $
+$Id: cmpint.c,v 1.103 2004/11/19 04:18:44 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 

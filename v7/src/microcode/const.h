@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: const.h,v 9.49 2004/11/18 18:14:02 cph Exp $
+$Id: const.h,v 9.50 2004/11/19 04:18:17 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1997,2000,2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
