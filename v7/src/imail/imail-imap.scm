@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.33 2000/05/12 18:22:52 cph Exp $
+;;; $Id: imail-imap.scm,v 1.34 2000/05/15 19:01:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -420,7 +420,6 @@
 ;;;; Message datatype
 
 (define-class (<imap-message> (constructor (folder index))) (<message>)
-  (properties initial-value '())
   (uid)
   (length))
 

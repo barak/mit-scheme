@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.55 2000/05/15 12:54:18 cph Exp $
+;;; $Id: imail-core.scm,v 1.56 2000/05/15 19:01:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -333,12 +333,10 @@
 
 ;;;; Message type
 
-(define-class (<message> (constructor (header-fields body flags properties)))
-    ()
+(define-class (<message> (constructor (header-fields body flags))) ()
   (header-fields define accessor)
   (body define accessor)
   (flags define standard)
-  (properties define standard)
   (modification-count define standard
 		      initial-value 0)
   (folder define standard
@@ -359,32 +357,28 @@
 
 (define (make-detached-message headers body)
   (call-with-values (lambda () (parse-imail-header-fields headers))
-    (lambda (headers flags properties)
-      (make-message headers body flags properties))))
+    (lambda (headers flags)
+      (make-message headers body flags))))
 
 (define (parse-imail-header-fields headers)
-  (let loop ((headers headers) (headers* '()) (flags '()) (properties '()))
+  (let loop ((headers headers) (headers* '()) (flags '()))
     (cond ((not (pair? headers))
 	   (values (reverse! headers*)
-		   (remove-duplicates! (reverse! flags) string-ci=?)
-		   (reverse! properties)))
+		   (remove-duplicates! (reverse! flags) string-ci=?)))
 	  ((header-field->message-flags (car headers))
 	   => (lambda (flags*)
-		(loop (cdr headers) headers*
-		      (append! (reverse! (cdr flags*)) flags) properties)))
-	  ((header-field->message-property (car headers))
-	   => (lambda (property)
-		(loop (cdr headers) headers* flags
-		      (cons property properties))))
+		(loop (cdr headers)
+		      headers*
+		      (append! (reverse! (cdr flags*)) flags))))
 	  (else
-	   (loop (cdr headers) (cons (car headers) headers*) flags
-		 properties)))))
+	   (loop (cdr headers)
+		 (cons (car headers) headers*)
+		 flags)))))
 
 (define (copy-message message)
   (make-message (map copy-header-field (message-header-fields message))
 		(message-body message)
-		(list-copy (message-flags message))
-		(alist-copy (message-properties message))))
+		(list-copy (message-flags message))))
 
 (define (attach-message! message folder index)
   (guarantee-folder folder 'ATTACH-MESSAGE!)
@@ -555,84 +549,6 @@
 (define (message-not-resent? msg) (not (message-flagged? msg "resent")))
 (define (message-resent msg) (set-message-flag msg "resent"))
 (define (message-not-resent msg) (clear-message-flag msg "resent"))
-
-;;;; Message properties
-
-;;; Properties are used to associate information with a message.  A
-;;; property is a distinguished header field that carries information
-;;; intended for the mail reader rather than the user.
-
-(define (get-message-property message name default)
-  (guarantee-message-property-name name 'GET-MESSAGE-PROPERTY)
-  (let loop ((headers (message-properties message)))
-    (if (pair? headers)
-	(if (string-ci=? name (caar headers))
-	    (cdar headers)
-	    (loop (cdr headers)))
-	default)))
-
-(define (set-message-property message name value)
-  (guarantee-message-property-name name 'SET-MESSAGE-PROPERTY)
-  (guarantee-message-property-value value 'SET-MESSAGE-PROPERTY)
-  (let ((alist (message-properties message)))
-    (let loop ((alist* alist))
-      (if (pair? alist*)
-	  (if (string-ci=? name (caar alist*))
-	      (set-cdr! (car alist*) value)
-	      (loop (cdr alist*)))
-	  (set-message-properties! message
-				   (cons (cons name value) alist)))))
-  (message-modified! message))
-
-(define (message-property-name? object)
-  (header-field-name? object))
-
-(define (message-property-value? object)
-  (or (header-field-value? object)
-      (and (list? object)
-	   (for-all? object header-field?))))
-
-(define (guarantee-message-property-name name procedure)
-  (if (not (message-property-name? name))
-      (error:wrong-type-argument name "message-property name" procedure)))
-
-(define (guarantee-message-property-value value procedure)
-  (if (not (message-property-value? value))
-      (error:wrong-type-argument value "message-property value" procedure)))
-
-(define (message-property->header-field name value)
-  (make-header-field
-   (string-append message-property:prefix name)
-   (if (header-field-value? value)
-       (string-append message-property:string-marker value)
-       (apply string-append
-	      message-property:headers-marker
-	      (map (lambda (line)
-		     (string-append "\n" line))
-		   (quote-lines
-		    (append-map (lambda (header)
-				  (header-field->lines header))
-				value)))))))
-
-(define (header-field->message-property header)
-  (and (string-prefix-ci? message-property:prefix (header-field-name header))
-       (cons (string-tail (header-field-name header)
-			  (string-length message-property:prefix))
-	     (let ((value (header-field-value header)))
-	       (cond ((string-prefix? message-property:string-marker value)
-		      (string-tail
-		       value
-		       (string-length message-property:string-marker)))
-		     ((string-prefix? message-property:headers-marker value)
-		      (lines->header-fields
-		       (unquote-lines
-			(cdr (burst-string value #\newline #f)))))
-		     (else
-		      (error "Malformed message-property value:" value)))))))
-
-(define message-property:prefix "X-IMAIL-PROPERTY-")
-(define message-property:string-marker "[string]")
-(define message-property:headers-marker "[headers]")
 
 ;;;; Header fields
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.25 2000/05/12 18:22:56 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.26 2000/05/15 19:01:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -80,6 +80,18 @@
 	(make-header-field "Note" "   If you are seeing it in rmail,")
 	(make-header-field "Note"
 			   "    it means the file has no messages in it.")))
+
+;;;; Message
+
+(define-class (<rmail-message>
+	       (constructor (header-fields body flags
+					   displayed-header-fields)))
+    (<message>)
+  (displayed-header-fields define accessor))
+
+(define-method rmail-message-displayed-header-fields ((message <message>))
+  message
+  'UNDEFINED)
 
 ;;;; Read RMAIL file
 
@@ -128,19 +140,11 @@
 	      (lines->header-fields (read-header-lines port)))
 	     (body (read-to-eom port))
 	     (finish
-	      (lambda (headers)
-		(let ((message (make-detached-message headers body)))
-		  (for-each (lambda (flag)
-			      (set-message-flag message flag))
-			    flags)
-		  message))))
+	      (lambda (headers displayed-headers)
+		(make-rmail-message headers body flags displayed-headers))))
 	(if formatted?
-	    (let ((message (finish headers)))
-	      (set-message-property message
-				    "displayed-header-fields"
-				    displayed-headers)
-	      message)
-	    (finish displayed-headers))))))
+	    (finish headers displayed-headers)
+	    (finish displayed-headers 'UNDEFINED))))))
 
 (define (parse-attributes-line line)
   (let ((parts (map string-trim (burst-string line #\, #f))))
@@ -204,25 +208,20 @@
   (write-char rmail-message:start-char port)
   (newline port)
   (let ((headers (message-header-fields message))
-	(displayed-headers
-	 (get-message-property message "displayed-header-fields" 'NONE)))
-    (write-rmail-attributes-line message displayed-headers port)
-    (if (not (eq? 'NONE displayed-headers))
-	(begin
-	  (write-rmail-properties message port)
-	  (write-header-fields headers port)
-	  (newline port)))
-    (write-string rmail-message:headers-separator port)
-    (newline port)
-    (if (eq? 'NONE displayed-headers)
-	(begin
-	  (write-rmail-properties message port)
-	  (write-header-fields headers port))
-	(write-header-fields displayed-headers port))
-    (newline port)
-    (write-string (message-body message) port)
-    (fresh-line port)
-    (write-char rmail-message:end-char port)))
+	(displayed-headers (rmail-message-displayed-header-fields message)))
+    (let ((formatted? (not (eq? 'UNDEFINED displayed-headers))))
+      (write-rmail-attributes-line message formatted? port)
+      (if formatted?
+	  (begin
+	    (write-header-fields headers port)
+	    (newline port)))
+      (write-string rmail-message:headers-separator port)
+      (newline port)
+      (write-header-fields (if formatted? displayed-headers headers) port)
+      (newline port)
+      (write-string (message-body message) port)
+      (fresh-line port)
+      (write-char rmail-message:end-char port))))
 
 (define (write-rmail-attributes-line message formatted? port)
   (write-char (if formatted? #\1 #\0) port)
@@ -240,16 +239,6 @@
 	(write-char #\, port)
 	(write-markers labels))))
   (newline port))
-
-(define (write-rmail-properties message port)
-  (let ((alist (message-properties message)))
-    (for-each
-     (lambda (n.v)
-       (if (not (string-ci=? "displayed-header-fields" (car n.v)))
-	   (write-header-field
-	    (message-property->header-field (car n.v) (cdr n.v))
-	    port)))
-     alist)))
 
 ;;;; Get new mail
 

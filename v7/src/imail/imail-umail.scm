@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.21 2000/05/15 18:19:46 cph Exp $
+;;; $Id: imail-umail.scm,v 1.22 2000/05/15 19:01:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -62,6 +62,21 @@
 
 (define-method save-folder ((folder <umail-folder>))
   (synchronize-file-folder-write folder write-umail-file))
+
+;;;; Message
+
+(define-class <umail-message> (<message>)
+  (from-line define accessor))
+
+(define-method umail-message-from-line ((message <message>))
+  (string-append "From "
+		 (or (let ((from
+			    (get-first-header-field-value message "from" #f)))
+		       (and from
+			    (rfc822:first-address from)))
+		     "unknown")
+		 " "
+		 (universal-time->local-ctime-string (get-universal-time))))
 
 ;;;; Read unix mail file
 
@@ -114,17 +129,24 @@
 	    (else
 	     (read-headers (cons line header-lines)))))))
 
-(define (make-umail-message from-line header-lines body-lines)
-  (let ((message
-	 (make-detached-message
-	  (lines->header-fields header-lines)
-	  (lines->string (map (lambda (line)
-				(if (string-prefix-ci? ">From " line)
-				    (string-tail line 1)
-				    line))
-			      body-lines)))))
-    (set-message-property message "umail-from-line" from-line)
-    message))
+(define make-umail-message
+  (let ((constructor
+	 (instance-constructor <umail-message>
+			       '(HEADER-FIELDS BODY FLAGS FROM-LINE))))
+    (lambda (from-line header-lines body-lines)
+      (call-with-values
+	  (lambda ()
+	    (parse-imail-header-fields (lines->header-fields header-lines)))
+	(lambda (headers flags)
+	  (constructor headers
+		       (lines->string
+			(map (lambda (line)
+			       (if (string-prefix-ci? ">From " line)
+				   (string-tail line 1)
+				   line))
+			     body-lines))
+		       flags
+		       from-line))))))
 
 (define (umail-delimiter? line)
   (re-string-match unix-mail-delimiter line))
@@ -144,32 +166,10 @@
     (close-port port)))
 
 (define (write-umail-message message port)
-  (let ((from-line (get-message-property message "umail-from-line" #f)))
-    (if from-line
-	(write-string from-line port)
-	(begin
-	  (write-string "From " port)
-	  (write-string (or (let ((from
-				   (get-first-header-field-value
-				    message "from" #f)))
-			      (and from
-				   (rfc822:first-address from)))
-			    "unknown")
-			port)
-	  (write-string " " port)
-	  (write-string
-	   (universal-time->local-ctime-string (get-universal-time))
-	   port))))
+  (write-string (umail-message-from-line message) port)
   (newline port)
-  (write-header-field
-   (message-flags->header-field (message-flags message))
-   port)
-  (for-each (lambda (n.v)
-	      (if (not (string-ci=? "umail-from-line" (car n.v)))
-		  (write-header-field
-		   (message-property->header-field (car n.v) (cdr n.v))
-		   port)))
-	    (message-properties message))
+  (write-header-field (message-flags->header-field (message-flags message))
+		      port)
   (write-header-fields (message-header-fields message) port)
   (newline port)
   (for-each (lambda (line)
