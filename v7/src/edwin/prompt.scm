@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.158 1993/08/02 03:06:37 cph Exp $
+;;;	$Id: prompt.scm,v 1.159 1993/08/02 22:24:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -815,10 +815,7 @@ Whilst editing the command, the following commands are available:
 (define (prompt-for-confirmed-password)
   (let ((password1 (prompt-for-password "Password: ")))
     (let ((password2 (prompt-for-password "Verify: ")))
-      (if (string=? password1 password2)
-	  password1
-	  (begin
-	    (editor-beep)
-	    (message "Passwords do not match!")
-	    (abort-current-command))))))
+      (if (not (string=? password1 password2))
+	  (editor-error "Passwords do not match!"))
+      password1)))
 

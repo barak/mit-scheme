@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.36 1993/07/22 19:12:26 cph Exp $
+;;;	$Id: unix.scm,v 1.37 1993/08/02 22:24:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -481,9 +481,7 @@ filename suffix \".KY\"."
      (decrypt the-encrypted-file password
 	      (lambda () 
 		(kill-buffer (mark-buffer mark))
-		(editor-beep)
-		(message "krypt: Password error!")
-		(abort-current-command))
+		(editor-error "krypt: Password error!"))
 	      (lambda (x) 
 		(editor-beep)
 		(message "krypt: Checksum error!")
