@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.51 1996/04/04 18:37:13 cph Exp $
+;;;	$Id: xterm.scm,v 1.52 1996/04/04 18:39:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -334,10 +334,14 @@
 
 (define (xterm-screen/grab-focus! screen)
   (and last-focus-time
-       (screen-visible? screen)
-       (begin
-	 (x-window-set-input-focus (screen-xterm screen) last-focus-time)
-	 true)))
+       (not (screen-deleted? screen))
+       (let ((xterm (screen-xterm screen)))
+	 (if (eq? (screen-visibility screen) 'UNMAPPED)
+	     (begin
+	       (x-window-map xterm)
+	       (x-window-flush xterm)))
+	 (x-window-set-input-focus xterm last-focus-time)
+	 #t)))
 
 (define (xterm-screen/exit! screen)
   (set-screen-selected?! screen false)
@@ -391,10 +395,14 @@
 (define-integrable (maybe-raise-screen)
   (if x-screen-auto-raise
       (let ((screen (selected-screen)))
-	(if (let ((visibility (screen-visibility screen)))
-	      (or (eq? visibility 'OBSCURED)
-		  (eq? visibility 'PARTIALLY-OBSCURED)))
-	    (x-window-raise (screen-xterm screen))))))
+	(let ((xterm (screen-xterm screen)))
+	  (case (screen-visibility screen)
+	    ((OBSCURED PARTIALLY-OBSCURED)
+	     (x-window-raise xterm))
+	    ((UNMAPPED)
+	     (x-window-map xterm)
+	     (x-window-flush xterm)
+	     (x-window-raise xterm)))))))
 
 (define (get-xterm-input-operations)
   (let ((display x-display-data)
