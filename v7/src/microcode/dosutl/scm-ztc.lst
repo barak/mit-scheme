@@ -73,14 +73,11 @@ doskbutl.obj
 dosexcp.obj
 dosxcutl.obj
 dosasutl.obj
-dosfg.obj
 fasdump.obj
 gcloop.obj
 memmag.obj
 purify.obj
 usrdef.obj
-fgp.lib
-x386.lib
 -lm
 -mx
 -3

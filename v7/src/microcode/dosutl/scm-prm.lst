@@ -54,7 +54,6 @@ prostty.c
 prdosenv.c
 prdosfs.c
 dosconio.c
-dosfg.c
 fasdump.c
 gcloop.c
 memmag.c

@@ -54,7 +54,6 @@ prostty.c
 prdosenv.c
 prdosfs.c
 dosconio.c
-dosfg.c
 bchdmp.c
 bchgcl.c
 bchmmg.c
