@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.17 1992/09/02 03:18:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.18 1993/01/12 21:30:52 gjs Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -79,7 +79,7 @@ MIT in each case. |#
 			       false
 			       (x-geometry-string x y width height)
 			       true)))
-    (graphics-set-coordinate-limits window 0 (- height) width 0)
+    (graphics-set-coordinate-limits window 0 (- (- height 1)) (- width 1) 0)
     ;; Prevent this window from receiving the keyboard focus.
     (x-graphics/disable-keyboard-focus window)
     ;; Inform the window manager that this window does not do any
@@ -252,7 +252,7 @@ MIT in each case. |#
 	(graphics-device-coordinate-limits window))
     (lambda (x1 y1 x2 y2)
       (set! *last-picture-displayed* pic)
-      (graphics-set-coordinate-limits window 0 (- y1 y2) (- x2 x1) 0)
+      (graphics-set-coordinate-limits window 0 (- y2 y1) (- x2 x1) 0)
       (let* ((win-wid (fix:+ 1 (fix:- x2 x1)))
 	     (win-hgt (fix:+ 1 (fix:- y1 y2)))
 	     (len&margin (integer-divide win-wid (picture-width pic)))
