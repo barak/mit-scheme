@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.19 2000/05/18 19:53:28 cph Exp $
+;;; $Id: imap-response.scm,v 1.20 2000/05/19 02:42:58 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -297,8 +297,8 @@
 				   (fix:>= start* n))))
 		    (*read-literal-progress-hook* start* n))
 		(loop start*)))))
-      (if trace-imap-server-responses?
-	  (write-string s (notification-output-port)))
+      (if imap-transcript-port
+	  (write-string s imap-transcript-port))
       (translate-network-line-endings-to-scheme! s)
       s)))
 
@@ -477,17 +477,53 @@
 
 (define (read-char-internal port)
   (let ((char (read-char port)))
-    (if trace-imap-server-responses?
-	(write-char char (notification-output-port)))
+    (if imap-transcript-port
+	(write-char char imap-transcript-port))
     char))
 
 (define (read-string-internal delimiters port)
   (let ((s (read-string delimiters port)))
-    (if trace-imap-server-responses?
-	(write-string s (notification-output-port)))
+    (if imap-transcript-port
+	(write-string s imap-transcript-port))
     s))
 
-(define trace-imap-server-responses? #f)
+(define (start-imap-transcript pathname)
+  (set! imap-transcript-port (open-output-file pathname))
+  unspecific)
+
+(define (stop-imap-transcript)
+  (if imap-transcript-port
+      (begin
+	(close-port imap-transcript-port)
+	(set! imap-transcript-port #f)
+	unspecific)))
+
+(define (imap-transcript-write-char char port)
+  (write-char char port)
+  (if imap-transcript-port
+      (write-char char imap-transcript-port)))
+
+(define (imap-transcript-write-substring string start end port)
+  (write-substring string start end port)
+  (if imap-transcript-port
+      (write-substring string start end imap-transcript-port)))
+
+(define (imap-transcript-write-string string port)
+  (write-string string port)
+  (if imap-transcript-port
+      (write-string string imap-transcript-port)))
+
+(define (imap-transcript-write object port)
+  (write object port)
+  (if imap-transcript-port
+      (write object imap-transcript-port)))
+
+(define (imap-transcript-flush-output port)
+  (flush-output port)
+  (if imap-transcript-port
+      (flush-output imap-transcript-port)))
+
+(define imap-transcript-port #f)
 
 (define (imap:response:bad? response) (eq? (car response) 'BAD))
 (define (imap:response:bye? response) (eq? (car response) 'BYE))
