@@ -1174,7 +1174,7 @@ This option causes Scheme to ignore the @file{~/.scheme.init} or
 
 @item -no-suspend-file
 @findex -no-suspend-file
-Under some circumstances Scheme will write out file called
+Under some circumstances Scheme will write out a file called
 @file{scheme_suspend} in the user's home directory.@footnote{On unix,
 this file is written when Scheme is terminated by the @code{SIGUSR1},
 @code{SIGHUP}, or @code{SIGPWR} signals.  On the PC, this file is never
@@ -2261,7 +2261,7 @@ bar
 @deffn {procedure+} where [obj]
 The procedure @code{where} enters the environment examination system.
 This allows environments and variable bindings to be examined and
-modified.  @code{Where} accepts one letter commands.  The commands can
+modified.  @code{where} accepts one letter commands.  The commands can
 be found by typing @kbd{?} to the @samp{where>} prompt.  The optional
 argument, @var{obj}, is an object with an environment associated with
 it: an environment, a procedure, or a promise.  If @var{obj} is omitted,
@@ -2533,7 +2533,7 @@ Note: with the C back-end, @code{disk-save} is not very useful.  The
 reason is that compiled procedures are compiled C code that has been
 dynamically linked in, and @code{disk-save} does not save any C
 procedures.  If you need to build a band for a C back-end system, please
-contact us.  You system is a C back-end system if the following
+contact us.  Your system is a C back-end system if the following
 expression does not evaluate to @code{#f}:
 
 @example
