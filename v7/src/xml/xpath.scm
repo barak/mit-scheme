@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xpath.scm,v 1.2 2003/09/30 04:33:46 cph Exp $
+$Id: xpath.scm,v 1.3 2004/08/12 06:18:44 cph Exp $
 
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -50,18 +50,14 @@ USA.
 (define-method node-ns-decls ((node <node>)) node '())
 (define-method node-name ((node <node>)) node #f)
 
-(define-class <parent-node> (<node>))
+(define-class <parent-node> (<node>)
+  (children accessor node-children))
 
 (define-class <parented-node> (<node>)
   (parent accessor parent-node))
 
 (define-class <content-node> (<parented-node>)
   (index accessor parent-index))
-
-(define (content-node-nodifier item-class node-class)
-  (let ((make-node (instance-constructor node-class '(item parent index))))
-    (define-method nodify-item ((item item-class) parent index)
-      (make-node item parent index))))
 
 (define-method next-node ((node <content-node>))
   (let ((children (node-children node)))
@@ -87,12 +83,16 @@ USA.
 		  node)))
 	  parent))))
 
-(define (nodify items node)
-  (stream-map (lambda (item index)
-		(nodify-item attr node index))
-	      items
-	      (let iota ((n 0))
-		(cons-stream n (iota (fix:+ n 1))))))
+(define nodify-children!
+  (let ((set-node-children! (slot-modifier <parent-node> 'children)))
+    (lambda (items parent)
+      (set-node-children!
+       parent
+       (let loop ((items items) (index 0))
+	 (if (pair? items)
+	     (cons-stream (nodify-item (car items) parent index)
+			  (loop (cdr items) (fix:+ index 1)))
+	     '()))))))
 
 (define (keep-matching predicate items)
   (let loop ((items items))
@@ -127,25 +127,22 @@ USA.
 		     (error:bad-range-argument prefix 'EXPAND-PREFIX))
 		 (loop parent)))))))
 
-(define-class <root-node> (<parent-node>)
-  (children accessor node-children))
+(define-class <root-node> (<parent-node>))
 
 (define make-root-node
-  (let ((make-node (instance-constructor <root-node> '(item)))
-	(set-node-children! (slot-modifier <root-node> 'children)))
+  (let ((make-node (instance-constructor <root-node> '(item))))
     (lambda (doc)
       (let ((node (make-node doc)))
-	(set-node-children!
-	 node
-	 (nodify (let ((p
-			(lambda (item)
-			  (or (xml-comment? item)
-			      (xml-processing-instructions? item)))))
-		   (stream-append (keep-matching p (xml-document-misc-1 doc))
-				  (keep-matching p (xml-document-misc-2 doc))
-				  (stream (xml-document-root doc))
-				  (keep-matching p (xml-document-misc-3 doc))))
-		 node))
+	(nodify-children!
+	 (let ((p
+		(lambda (item)
+		  (or (xml-comment? item)
+		      (xml-processing-instructions? item)))))
+	   (append! (keep-matching-items (xml-document-misc-1 doc) p)
+		    (keep-matching-items (xml-document-misc-2 doc) p)
+		    (list (xml-document-root doc))
+		    (keep-matching-items (xml-document-misc-3 doc) p)))
+	 node)
 	node))))
 
 (define-method node-string ((node <root-node>))
@@ -155,19 +152,15 @@ USA.
 	(loop (force (cdr children))))))
 
 (define-class <element-node> (<parent-node> <content-node>)
-  (children accessor node-children)
   (attrs accessor node-attrs)
   (ns-decls accessor node-ns-decls))
 
 (let ((make-node (instance-constructor <element-node> '(item parent index)))
-      (set-node-children! (slot-modifier <element-node> 'children))
       (set-node-attrs! (slot-modifier <element-node> 'attrs))
       (set-node-ns-decls! (slot-modifier <element-node> 'ns-decls)))
   (define-method nodify-item ((item <xml-element>) parent index)
     (let ((node (make-node item parent index)))
-      (set-node-children! node
-			  (nodify (list->stream (xml-element-content item))
-				  node))
+      (nodify-children! (xml-element-content item) node)
       (set-node-attrs!
        node
        (stream-map (lambda (attr)
@@ -224,10 +217,23 @@ USA.
       (make-attribute-node attr parent)))
 
 
-(define-class <processing-instructions-node> (<content-node>))
+(define-syntax define-simple-content
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
+	 (let ((node-type (close-syntax (cadr form) environment))
+	       (item-type (close-syntax (caddr form) environment)))
+	   `(BEGIN
+	      (DEFINE-CLASS ,node-type (<CONTENT-NODE>))
+	      (ADD-METHOD
+	       NODIFY-ITEM
+	       (MAKE-METHOD (LIST ,item-type)
+			    (INSTANCE-CONSTRUCTOR ,node-type
+						  '(ITEM PARENT INDEX))))))
+	 (ill-formed-syntax form)))))
 
-(content-node-nodifier <xml-processing-instructions>
-		       <processing-instructions-node>)
+(define-simple-content <processing-instructions-node>
+  <xml-processing-instructions>)
 
 (define-method node-name ((node <processing-instructions-node>))
   (xml-processing-instructions-name (node-item node)))
@@ -236,17 +242,13 @@ USA.
   (xml-processing-instructions-text (node-item node)))
 
 
-(define-class <comment-node> (<content-node>))
-
-(content-node-nodifier <xml-comment> <comment-node>)
+(define-simple-content <comment-node> <xml-comment>)
 
 (define-method node-string ((node <element-node>))
   (xml-comment-text (node-item node)))
 
 
-(define-class <text-node> (<content-node>))
-
-(content-node-nodifier <string> <text-node>)
+(define-simple-content <string> <text-node>)
 
 (define-method node-string ((node <element-node>))
   (node-item node))
