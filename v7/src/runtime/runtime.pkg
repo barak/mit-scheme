@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.276 1997/04/24 06:35:29 cph Exp $
+$Id: runtime.pkg,v 14.277 1997/05/15 00:14:06 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -2325,6 +2325,7 @@ MIT in each case. |#
 	  x-graphics/get-default
 	  x-graphics/flush
 	  x-graphics/iconify-window
+	  x-graphics/image-depth
 	  x-graphics/lower-window
 	  x-graphics/map-window
 	  x-graphics/move-cursor
@@ -2354,6 +2355,7 @@ MIT in each case. |#
 	  x-graphics/set-mouse-shape
 	  x-graphics/set-window-name
 	  x-graphics/starbase-filename
+	  x-graphics/visual-info
 	  x-graphics/window-id
 	  x-graphics/withdraw-window
 	  x-graphics:auto-raise?
@@ -2365,7 +2367,23 @@ MIT in each case. |#
 	  x-image/height
 	  x-image/set-pixel
 	  x-image/width
-	  x-image?)
+	  x-image?
+	  x-visual-class:direct-color
+	  x-visual-class:gray-scale
+	  x-visual-class:pseudo-color
+	  x-visual-class:static-color
+	  x-visual-class:static-gray
+	  x-visual-class:true-color
+	  x-visual-info/bits-per-rgb
+	  x-visual-info/blue-mask
+	  x-visual-info/class
+	  x-visual-info/colormap-size
+	  x-visual-info/depth
+	  x-visual-info/green-mask
+	  x-visual-info/red-mask
+	  x-visual-info/screen
+	  x-visual-info/visual
+	  x-visual-info/visual-id)
   (initialization (initialize-package!)))
 
 (define-package (runtime starbase-graphics)
