@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/conect.scm,v 4.2 1988/08/18 01:35:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/conect.scm,v 4.3 1988/08/18 03:28:41 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -48,7 +48,11 @@ MIT in each case. |#
 
 (define (procedure-direct-linked? procedure)
   (if (procedure-continuation? procedure)
-      (continuation/ever-known-operator? procedure)
+      (and (continuation/ever-known-operator? procedure)
+	   (there-exists? (continuation/combinations procedure)
+	     (lambda (combination)
+	       (and (combination/inline? combination)
+		    (combination/continuation-push combination)))))
       (procedure-inline-code? procedure)))
 
 (define (walk-node node color)
