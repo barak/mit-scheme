@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.25 2000/05/23 03:55:08 cph Exp $
+;;; $Id: imail-util.scm,v 1.26 2000/05/27 00:10:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -126,6 +126,13 @@
 (define char-set:lwsp
   (char-set #\space #\tab))
 
+(define (skip-lwsp-backwards string start end)
+  (let loop ((end end))
+    (if (and (fix:< start end)
+	     (char-lwsp? (string-ref string (fix:- end 1))))
+	(loop (fix:- end 1))
+	end)))
+
 (define (quote-lines lines)
   (map (lambda (line)
 	 (string-append "\t" line))
@@ -169,12 +176,6 @@
   (decorated-string-append "" ""
 			   (if (default-object? line-ending) "\n" line-ending)
 			   lines))
-
-(define (short-name->pathname name)
-  (merge-pathnames name (current-home-directory)))
-
-(define (pathname->short-name pathname)
-  (enough-namestring pathname (current-home-directory)))
 
 (define (write-header-fields headers port)
   (for-each (lambda (header)
