@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.18 1993/09/09 21:17:21 cph Exp $
+;;;	$Id: debug.scm,v 1.19 1993/09/09 21:21:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -496,6 +496,7 @@
 			 (call-with-interface-port
 			  (buffer-end buffer)
 			  (lambda (port)
+			    port
 			    (prompt-for-yes-or-no? prompt)))))
 		      (prompt-for-evaluated-expression
 		       (lambda (prompt #!optional environment port)
@@ -505,7 +506,7 @@
 			  (lambda (port)
 			    (hook/repl-eval #f
 					    (prompt-for-expression prompt)
-					    (if (unassigned? environment)
+					    (if (default-object? environment)
 						(nearest-repl/environment)
 						environment)
 					    (nearest-repl/syntax-table))))))
@@ -1720,9 +1721,7 @@ once it has been renamed, it will not be deleted automatically.")
 
 (define (environment/write-description bline port)
   (let ((environment (bline/object bline)))
-
-    (show-environment-name-and-bindings environment port)
-))
+    (show-environment-name-and-bindings environment port)))
 
 (define (show-environment-name-and-bindings environment port)
   (show-environment-name environment port)
