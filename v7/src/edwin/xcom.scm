@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xcom.scm,v 1.14 1996/12/10 22:49:52 cph Exp $
+;;;	$Id: xcom.scm,v 1.15 1996/12/11 00:45:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -47,6 +47,7 @@
   (x-window-lower 1)
   (x-window-raise 1)
   (x-window-get-position 1)
+  (x-window-get-size 1)
   (x-window-set-background-color 2)
   (x-window-set-border-color 2)
   (x-window-set-border-width 2)
@@ -130,15 +131,16 @@
   ()
   (lambda ()
     (let ((screen (selected-screen)))
-      (message "Frame is "
-	       (screen-x-size screen)
-	       " chars wide and "
-	       (screen-y-size screen)
-	       " chars high ("
-	       (x-window-x-size (screen-xterm screen))
-	       "x"
-	       (x-window-y-size (screen-xterm screen))
-	       " pixels)"))))
+      (let ((w.h (x-window-get-size (screen-xterm screen))))
+	(message "Frame is "
+		 (screen-x-size screen)
+		 " chars wide and "
+		 (screen-y-size screen)
+		 " chars high ("
+		 (car w.h)
+		 "x"
+		 (cdr w.h)
+		 " pixels)")))))
 
 (define-command set-frame-size
   "Set size of selected frame to WIDTH x HEIGHT."
