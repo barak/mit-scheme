@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.22 1987/04/16 02:22:34 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.23 1987/07/27 16:55:48 jinx Rel $
  *
  * This file contains support for floating point arithmetic.  Most
  * of these primitives have been superceded by generic arithmetic.
@@ -189,7 +189,7 @@ Built_In_Primitive(Prim_Ln_Flonum, 1, "LN-FLONUM", 0x77)
 
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  if (Arg1 <= 0.0)
+  if (Get_Float(Arg1) <= 0.0)
     Primitive_Error(ERR_ARG_1_BAD_RANGE);
   Flonum_Result(log(Get_Float(Arg1)));
 }
