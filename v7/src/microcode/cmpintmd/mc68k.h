@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.24 1991/03/28 05:36:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.25 1991/03/28 20:07:53 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -98,8 +98,27 @@ extern void EXFUN (NeXT_cacheflush, (void));
 
 #  ifdef IN_CMPINT_C
 
+/* This is not inlined because trap #2 clobbers %d0.
+   Since %d0 is a compiler supertemporary, doing the trap
+   out of line wins.
+   Perhaps this should be more paranoid and preserve all, but...
+ */
+
+void
+DEFUN_VOID (NeXT_cacheflush)
+{
+  asm ("trap #2");
+  return;
+}
+
+#  endif /* IN_CMPINT_C */
+
+#  define SPLIT_CACHES
+#  define FLUSH_I_CACHE()			NeXT_cacheflush ()
+#  define FLUSH_I_CACHE_REGION(addr,nwords)	FLUSH_I_CACHE()
+
 #endif /* _NEXTOS */
-#  define FLUSH_I_CACHE()			asm ("trap #2")
+
 #ifdef __hpux
 
 /* The following is a test for HP-UX >= 7.05 */
@@ -122,30 +141,34 @@ extern void EXFUN (swiss_cachectl, (int, void *, unsigned long));
 
 #      ifdef IN_CMPINT_C
 
+static int
+  swiss_cachectl_init_p = 0,
   swiss_cachectl_flush_p = 0;
 
-#        include <sys/utsname.h>
+void
+DEFUN (swiss_cachectl,
+       (mode, base, count),
        int mode AND PTR base AND unsigned long count)
 {
   if (swiss_cachectl_init_p == 0)
   {
     int length;
     char *string, *posn;
-  static int init_p = 0, flush_p = 0;
-
-  if (init_p == 0)
+    extern char * EXFUN (strstr, (char *, char *));
     extern int EXFUN (getcontext, (char *, int));
-    struct utsname my_desc;
 
-    (void) (uname (&my_desc));
-    flush_p = ((my_desc.release[0] > '7')
-	       || ((my_desc.release[0] == '7')
-		   && ((my_desc.release[2] > '0')
-		       || ((my_desc.release[2] == '0')
-			   && (my_desc.release[3] >= '5')))));
-    init_p = 1;
+    string = ((char *) Free);
+    length = (getcontext (string,
+			  ((MemTop - Free) * (sizeof (SCHEME_OBJECT)))));
+    swiss_cachectl_flush_p =
+      (((strstr (string, "HP-MC68040")) == ((char *) NULL)) ? 0 : 1);
+    swiss_cachectl_init_p = 1;
   }
-  if (flush_p == 1)
+  if (swiss_cachectl_flush_p == 1)
+  {
+    (void) (cachectl (mode, base, count));
+  }
+  return;
 }
 
 #      endif /* IN_CMPINT_C */
@@ -201,6 +224,10 @@ DEFUN (operate_on_cache_region,
 #ifndef FLUSH_CACHE_INITIALIZE
 #  define FLUSH_CACHE_INITIALIZE() NOP()
 #endif /* FLUSH_CACHE_INITIALIZE */
+
+#ifndef FLUSH_I_CACHE_REGION
+#  define FLUSH_I_CACHE_REGION(addr, nwords) NOP()
+#endif /* not FLUSH_I_CACHE_REGION */
 
 #ifndef PUSH_D_CACHE_REGION
 #  define PUSH_D_CACHE_REGION(addr, nwords) FLUSH_I_CACHE_REGION(addr, nwords)
@@ -551,6 +578,7 @@ DEFUN_VOID (mc68k_reset_hook)
   SETUP_REGISTER (asm_generic_quotient);		/* 38 */
   SETUP_REGISTER (asm_generic_remainder);		/* 39 */
 #if 0
+
   interface_initialize ();
   return;
 }
