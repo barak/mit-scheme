@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.30 1992/05/26 20:06:18 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.31 1992/05/26 20:32:35 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -424,7 +424,7 @@ MIT in each case. |#
 		       (vector-set! bsm pos labels)
 		       (set-dbg-info/labels/desc!
 			dbg-info
-			(and bsmnname (cons bsmname pos)))
+			(and bsmname (cons bsmname pos)))
 		       (loop (fix:1+ pos))))))))
 	  (else 
 	   (error "Unknown inf file format" infpath)))))
