@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.19 1996/07/24 22:56:34 adams Exp $
+$Id: laterew.scm,v 1.20 1996/07/24 23:42:04 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -84,16 +84,16 @@ MIT in each case. |#
   `(IF ,(laterew/expr pred)
        ,(laterew/expr conseq)
        ,(laterew/expr alt)))
-
+
 (define-late-rewriter CALL (rator #!rest rands)
   (cond ((and (QUOTE/? rator)
 	      (rewrite-operator/late? (quote/text rator)))
 	 => (lambda (handler)
 	      (handler form (laterew/expr* rands))))
 	(else
-	 (laterew/jump (laterew/expr rator) (laterew/expr* rands) 0))))
-
-
+	 (let ((rands* (laterew/expr* rands)))
+	   (laterew/jump (laterew/expr rator) (car rands*) (cdr rands*) 0)))))
+
 (define (laterew/expr expr)
   (if (not (pair? expr))
       (illegal expr))
@@ -166,7 +166,7 @@ MIT in each case. |#
 			  `(CALL (LAMBDA (,cont-var)
 				   ,(laterew/invoke-continuation
 				     `(LOOKUP ,cont-var)
-				     expr))
+				     (list expr)))
 				 ,cont)))))))
 	  (cond ((form/number? x)
 		 => (lambda (x-value)
@@ -321,82 +321,76 @@ MIT in each case. |#
 ;; in-lined predicate.
 
 (define (laterew/invoke-continuation cont rands)
-  (laterew/jump `(QUOTE ,%invoke-continuation) rands 0))
+  (laterew/jump `(QUOTE ,%invoke-continuation) cont rands 0))
 
-(define-rewrite/late %invoke-continuation
-  (lambda (form rands)
-    (laterew/jump (call/operator form) rands 0)))
+(let ()
+  (define (invocation-operator operator n-extra)
+    (define-rewrite/late operator
+      (lambda (form rands)
+	(laterew/jump (call/operator form) (car rands) (cdr rands) n-extra))))
 
-(define-rewrite/late %invoke-operator-cache
-  (lambda (form rands)
-    (laterew/jump (call/operator form) rands 2)))
+  ;; %internal-apply is omitted because it tends to be a sequence of
+  ;; instructions and we don't really want to duplicate the sequence.
+  ;; This is another reason why RTLGEN/RTLOPT/LAPOPT is a better place
+  ;; for this code.
 
-(define-rewrite/late %invoke-remote-cache
-  (lambda (form rands)
-    (laterew/jump (call/operator form) rands 2)))
+  (invocation-operator %invoke-continuation 0)
+  (invocation-operator %invoke-operator-cache 2)
+  (invocation-operator %invoke-remote-cache 2)
+  (invocation-operator %internal-apply-unchecked 2))
 
-(define-rewrite/late %internal-apply-unchecked
-  (lambda (form rands)
-    (laterew/jump (call/operator form) rands 2)))
-
-;; %internal-apply is omitted because it tends to be a sequence of
-;; instructions and we dont really want to duplicate the sequence.
-;; This is another reason why RTLGEN/RTLOPT/LAPOPT is a better place
-;; for this code.
 
-(define (laterew/jump rator cont+rands n-extra)
-  (let ((cont (first cont+rands))
-	(all-rands (cdr cont+rands)))
+(define (laterew/jump rator cont all-rands n-extra)
 
-    (define (default)
-      `(CALL ,rator ,cont ,@all-rands))
+  (define (default)
+    `(CALL ,rator ,cont ,@all-rands))
 
-    (define (split expression test true-value false-value)
-      (let loop ((rands all-rands)
-		 (pos   0)
-		 (rands-t '())
-		 (rands-f '()))
-	(define (next t f)
-	  (loop (cdr rands) (+ pos 1) (cons t rands-t) (cons f rands-f)))
+  (define (split expression test true-value false-value)
+    (let loop ((rands all-rands)
+	       (pos   0)
+	       (rands-t '())
+	       (rands-f '()))
+      (define (next t f)
+	(loop (cdr rands) (+ pos 1) (cons t rands-t) (cons f rands-f)))
+      (cond ((null? rands)
+	     `(IF ,test
+		  (CALL ,rator ,cont ,@(reverse rands-t))
+		  (CALL ,rator ,cont ,@(reverse rands-f))))
+	    ((eq? (car rands) expression)
+	     (next true-value false-value))
+	    ((or (LOOKUP/? (car rands))
+		 (QUOTE/? (car rands)))
+	     (next (car rands) (car rands)))
+	    (else
+	     (let ((name (compat/new-name 'ARG)))
+	       `(LET ((,name ,(car rands)))
+		  ,(next `(LOOKUP ,name) `(LOOKUP ,name))))))))
+
+  (define (predicate-call? expr)
+    (and (CALL/? expr)
+	 (let ((rator (call/operator expr)))
+	   (and
+	    (QUOTE/? rator)
+	    (operator/satisfies? (quote/text rator) '(PROPER-PREDICATE))))))
+
+  (if (and (or (LOOKUP/? cont)
+	       (call/%stack-closure-ref? cont))
+	   (<= (length all-rands) (+ n-extra 2)))
+      (let search ((rands  (reverse all-rands)))
 	(cond ((null? rands)
-	       `(IF ,test
-		    (CALL ,rator ,cont ,@(reverse rands-t))
-		    (CALL ,rator ,cont ,@(reverse rands-f))))
-	      ((eq? (car rands) expression)
-	       (next true-value false-value))
-	      ((or (LOOKUP/? (car rands))
-		   (QUOTE/? (car rands)))
-	       (next (car rands) (car rands)))
-	      (else
-	       (let ((name (compat/new-name 'ARG)))
-		 `(LET ((,name ,(car rands)))
-		    ,(next `(LOOKUP ,name) `(LOOKUP ,name))))))))
-
-    (define (predicate-call? expr)
-      (and (CALL/? expr)
-	   (let ((rator (call/operator expr)))
-	     (and
-	      (QUOTE/? rator)
-	      (operator/satisfies? (quote/text rator) '(PROPER-PREDICATE))))))
-
-    (if (and (or (LOOKUP/? cont)
-		 (call/%stack-closure-ref? cont))
-	     (<= (length all-rands) (+ n-extra 2)))
-	(let search ((rands  (reverse all-rands)))
-	  (cond ((null? rands)
-		 (default))
-		((IF/? (car rands))
-		 (split (car rands)
-			(if/predicate (car rands))
-			(if/consequent (car rands))
-			(if/alternative (car rands))))
-		((predicate-call? (car rands))
-		 (split (car rands)
-			(car rands)
-			`(QUOTE ,#T)
-			`(QUOTE ,#F)))
-		(else (search (cdr rands)))))
-	(default))))
+	       (default))
+	      ((IF/? (car rands))
+	       (split (car rands)
+		      (if/predicate (car rands))
+		      (if/consequent (car rands))
+		      (if/alternative (car rands))))
+	      ((predicate-call? (car rands))
+	       (split (car rands)
+		      (car rands)
+		      `(QUOTE ,#T)
+		      `(QUOTE ,#F)))
+	      (else (search (cdr rands)))))
+      (default)))
 
 (define-rewrite/late %make-multicell
   (lambda (form rands)
