@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.4 1988/01/15 20:14:23 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.5 1988/02/12 19:40:21 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -189,15 +189,15 @@ MIT in each case. |#
 	(else
 	 (INST (CMP B (& ,n) ,effective-address)))))  
 
-(define (set-standard-branches! cc)
+(define (set-standard-branches! condition-code)
   (set-current-branches!
    (lambda (label)
-     (LAP (B ,cc (@PCR ,label))))
+     (LAP (B ,condition-code (@PCR ,label))))
    (lambda (label)
-     (LAP (B ,(invert-cc cc) (@PCR ,label))))))
+     (LAP (B ,(invert-cc condition-code) (@PCR ,label))))))
 
-(define (invert-cc cc)
-  (cdr (or (assq cc
+(define (invert-cc condition-code)
+  (cdr (or (assq condition-code
 		 '((NEQU . EQLU) (EQLU . NEQU)
 		   (NEQ . EQL) (EQL . NEQ)
 		   (GTR . LEQ) (LEQ . GTR)
@@ -206,7 +206,7 @@ MIT in each case. |#
 		   (CC . CS) (CS . CC)
 		   (GTRU . LEQU) (LEQU . GTRU)
 		   (GEQU . LSSU) (LSSU . GEQU)))
-	   (error "INVERT-CC: Not a known CC" cc))))
+	   (error "INVERT-CC: Not a known CC" condition-code))))
 
 (define (expression->machine-register! expression register)
   (let ((target (register-reference register)))
@@ -230,18 +230,16 @@ MIT in each case. |#
       result)))
 
 (define (indirect-reference! register offset)
-  (if (= register regnum:frame-pointer)
-      (offset-reference regnum:stack-pointer (+ offset (frame-pointer-offset)))
-      (offset-reference
-       (if (machine-register? register)
-	   register
-	   (or (register-alias register false)
-	       ;; This means that someone has written an address out
-	       ;; to memory, something that should happen only when the
-	       ;; register block spills something.
-	       (begin (warn "Needed to load indirect register!" register)
-		      (load-alias-register! register 'GENERAL))))
-       offset)))
+  (offset-reference
+   (if (machine-register? register)
+       register
+       (or (register-alias register false)
+	   ;; This means that someone has written an address out
+	   ;; to memory, something that should happen only when the
+	   ;; register block spills something.
+	   (begin (warn "Needed to load indirect register!" register)
+		  (load-alias-register! register 'GENERAL))))
+   offset))
 
 (define (coerce->any register)
   (if (machine-register? register)
