@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dirunx.scm,v 1.6 1994/09/14 20:50:07 cph Exp $
+;;;	$Id: dirunx.scm,v 1.7 1994/09/28 22:44:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -47,7 +47,7 @@
 
 (declare (usual-integrations))
 
-(define (dired-change-inode name program)
+(define (dired-change-inode program)
   (lambda (attribute argument)
     (dired-change-files (string-append "change" attribute "of") argument
       (let ((program (find-program program #f))
@@ -60,17 +60,17 @@
 (define-command dired-chmod
   "Change mode of this file."
   "sChange to Mode\nP"
-  (dired-change-inode "mode" "chmod"))
+  (dired-change-inode "chmod"))
 
 (define-command dired-chgrp
   "Change group of this file."
   "sChange to Group\nP"
-  (dired-change-inode "group" "chgrp"))
+  (dired-change-inode "chgrp"))
 
 (define-command dired-chown
   "Change owner of this file."
   "sChange to Owner\nP"
-  (dired-change-inode "owner" "chown"))
+  (dired-change-inode "chown"))
 
 (define-command dired-do-compress
   "Compress or uncompress marked (or next ARG) files.
@@ -84,15 +84,9 @@ The files are compressed or uncompressed using gzip."
 	       (lambda (pathname lstart)
 		 (let ((type (pathname-type pathname))
 		       (namestring (->namestring pathname)))
-		   (let ((decompress?
-			  (and (string? type)
-			       (or (string=? "gz" type)
-				   (string=? "z" type)
-				   (string=? "Z" type)))))
+		   (let ((decompress? (member type '("gz" "z" "Z"))))
 		     (message (if decompress? "Unc" "C")
-			      "ompressing file `"
-			      namestring
-			      "'...")
+			      "ompressing file `" namestring "'...")
 		     (run-synchronous-process #f #f directory #f
 					      gzip
 					      (if decompress? "-d" "")
