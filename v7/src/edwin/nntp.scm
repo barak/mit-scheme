@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.8 1996/10/15 19:42:29 cph Exp $
+;;;	$Id: nntp.scm,v 1.9 1996/10/15 20:19:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -453,8 +453,8 @@
   (connection #f read-only #t)
   (name #f read-only #t)
   (%header-table #f)
-  (%header-gdbf 'UNKNOWN)
-  (%body-gdbf 'UNKNOWN)
+  (%header-gdbf #f)
+  (%body-gdbf #f)
   (%estimated-n-articles #f)
   (%first-article #f)
   (%last-article #f)
@@ -690,18 +690,20 @@
 
 (define (news-group:header-gdbf group create?)
   (let ((gdbf (news-group:%header-gdbf group)))
-    (if (eq? 'UNKNOWN gdbf)
+    (if gdbf
+	(if (eq? 'UNAVAILABLE gdbf) #f gdbf)
 	(let ((gdbf
 	       (and (gdbm-available?)
 		    (let ((pathname
 			   (news-group:header-gdbf-pathname group)))
 		      (guarantee-init-file-directory pathname)
 		      (and (or create? (file-exists? pathname))
-			   (gdbm-open pathname 0 GDBM_WRCREAT #o666))))))
-	  (if gdbf (gdbm-setopt gdbf gdbm_fastmode 1))
+			   (gdbm-open pathname
+				      0
+				      (fix:+ GDBM_WRCREAT GDBM_FAST)
+				      #o666))))))
 	  (set-news-group:%header-gdbf! group gdbf)
-	  gdbf)
-	gdbf)))
+	  gdbf))))
 
 (define (news-group:header-gdbf-pathname group)
   (init-file-specifier->pathname
@@ -766,18 +768,20 @@
 
 (define (news-group:body-gdbf group create?)
   (let ((gdbf (news-group:%body-gdbf group)))
-    (if (eq? 'UNKNOWN gdbf)
+    (if gdbf
+	(if (eq? 'UNAVAILABLE gdbf) #f gdbf)
 	(let ((gdbf
 	       (and (gdbm-available?)
 		    (let ((pathname
 			   (news-group:body-gdbf-pathname group)))
 		      (guarantee-init-file-directory pathname)
 		      (and (or create? (file-exists? pathname))
-			   (gdbm-open pathname 0 GDBM_WRCREAT #o666))))))
-	  (if gdbf (gdbm-setopt gdbf gdbm_fastmode 1))
+			   (gdbm-open pathname
+				      0
+				      (fix:+ GDBM_WRCREAT GDBM_FAST)
+				      #o666))))))
 	  (set-news-group:%body-gdbf! group gdbf)
-	  gdbf)
-	gdbf)))
+	  gdbf))))
 
 (define (news-group:body-gdbf-pathname group)
   (init-file-specifier->pathname
@@ -836,8 +840,8 @@
   (if (gdbm-available?)
       (if (eq? predicate 'ALL)
 	  (begin
-	    (set-news-group:%header-gdbf! group 'UNKNOWN)
-	    (set-news-group:%body-gdbf! group 'UNKNOWN)
+	    (set-news-group:%header-gdbf! group #f)
+	    (set-news-group:%body-gdbf! group #f)
 	    (delete-file-no-errors (news-group:header-gdbf-pathname group))
 	    (delete-file-no-errors (news-group:body-gdbf-pathname group)))
 	  (let ((purge
@@ -864,10 +868,10 @@
 		   (gdbm-close gdbf))))
 	    (let ((gdbf (news-group:header-gdbf group #f)))
 	      (if gdbf (purge gdbf #f))
-	      (set-news-group:%header-gdbf! group 'UNKNOWN))
+	      (set-news-group:%header-gdbf! group #f))
 	    (let ((gdbf (news-group:body-gdbf group #f)))
 	      (if gdbf (purge gdbf #t))
-	      (set-news-group:%body-gdbf! group 'UNKNOWN))))))
+	      (set-news-group:%body-gdbf! group #f))))))
 
 (define (with-gdbf-fast gdbf thunk)
   #|
