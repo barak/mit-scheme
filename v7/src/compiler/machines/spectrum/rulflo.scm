@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 4.37 1993/07/01 03:24:33 gjr Exp $
+$Id: rulflo.scm,v 4.38 1993/07/01 07:48:28 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -116,9 +116,10 @@ MIT in each case. |#
     (LAP (FSTDX (S) ,source (INDEX ,index 0 ,base)))))
 
 (define (float-load/offset target base offset)
-  (%float-load/offset (flonum-target! target)
-		      (standard-source! base)
-		      offset))
+  (let ((base (standard-source! base)))
+    (%float-load/offset (flonum-target! target)
+			base
+			offset)))
 
 (define (float-store/offset base offset source)
   (%float-store/offset (standard-source! base)
@@ -140,6 +141,26 @@ MIT in each case. |#
 	     (FSTDS () ,source (OFFSET 0 0 ,base*))))))
 
 ;;;; Optimized floating-point references
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET (OFFSET-ADDRESS (OBJECT->ADDRESS (REGISTER (? base)))
+					(MACHINE-CONSTANT (? w-offset)))
+			(MACHINE-CONSTANT (? f-offset))))
+  (let ((b-offset (+ (* 4 w-offset) (* 8 f-offset))))
+    (reuse-pseudo-register-alias!
+     base 'GENERAL
+     (lambda (base)
+       (let ((target (flonum-target! target)))
+	 (LAP ,@(object->address base)
+	      ,@(%float-load/offset target base b-offset))))
+     (lambda ()
+       (let* ((base (standard-source! base))
+	      (base* (standard-temporary!))
+	      (target (flonum-target! target)))
+	 (LAP (LDO () (OFFSET ,b-offset 0 ,base) ,base*)
+	      ,@(object->address base*)
+	      (FLDDS () (OFFSET 0 0 ,base*) ,target)))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
