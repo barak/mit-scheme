@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.51 2000/06/08 16:42:13 cph Exp $
+;;; $Id: imail.pkg,v 1.52 2000/06/08 18:08:29 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -106,25 +106,6 @@
 	  url:rexp:xchar
 	  url:string-encoded?
 	  url:substring-encoded?))
-
-(define-package (edwin imail rfc822)
-  (files "rfc822")
-  (parent (edwin imail))
-  (export (edwin imail)
-	  rfc822:addresses->string
-	  rfc822:first-address
-	  rfc822:header-field-name?
-	  rfc822:parse-addr-spec
-	  rfc822:parse-domain
-	  rfc822:parse-list
-	  rfc822:parse-msg-id
-	  rfc822:parse-word
-	  rfc822:received-header-components
-	  rfc822:string->addresses
-	  rfc822:string->tokens
-	  rfc822:strip-comments
-	  rfc822:strip-quoted-names
-	  rfc822:tokens->string))
 
 (define-package (edwin imail imap-syntax)
   (files "imap-syntax")

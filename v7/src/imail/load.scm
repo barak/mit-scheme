@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.16 2000/06/08 16:44:16 cph Exp $
+;;; $Id: load.scm,v 1.17 2000/06/08 18:08:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -21,7 +21,6 @@
 ;;;; IMAIL mail reader: loader
 
 (load-option 'HASH-TABLE)
-(load-option 'MIME-CODEC)
 (load-option 'REGULAR-EXPRESSION)
 (load-option 'SOS)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))

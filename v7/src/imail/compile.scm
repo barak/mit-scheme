@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.9 2000/06/08 16:42:11 cph Exp $
+;;; $Id: compile.scm,v 1.10 2000/06/08 18:08:25 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -35,7 +35,6 @@
 		"imap-syntax"
 		"parser"
 		"rexp"
-		"rfc822"
 		"url"))
     (for-each (let ((syntax-table
 		     (access edwin-syntax-table (->environment '(EDWIN)))))

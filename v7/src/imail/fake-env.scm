@@ -10,5 +10,4 @@
   (new-child '(EDWIN IMAIL) 'IMAP-SYNTAX)
   (new-child '(EDWIN IMAIL) 'PARSER)
   (new-child '(EDWIN IMAIL) 'REXP)
-  (new-child '(EDWIN IMAIL) 'RFC822)
   (new-child '(EDWIN IMAIL) 'URL))
