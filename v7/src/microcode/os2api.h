@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2api.h,v 1.4 1995/01/06 17:41:36 cph Exp $
+$Id: os2api.h,v 1.5 1995/01/31 21:29:42 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -58,6 +58,7 @@ enum syscall_names
   syscall_dos_find_close,
   syscall_dos_find_first,
   syscall_dos_find_next,
+  syscall_dos_free_mem,
   syscall_dos_get_info_blocks,
   syscall_dos_get_message,
   syscall_dos_kill_process,
@@ -72,6 +73,7 @@ enum syscall_names
   syscall_dos_query_fs_attach,
   syscall_dos_query_fs_info,
   syscall_dos_query_h_type,
+  syscall_dos_query_mem,
   syscall_dos_query_n_p_h_state,
   syscall_dos_query_path_info,
   syscall_dos_query_sys_info,
@@ -87,6 +89,7 @@ enum syscall_names
   syscall_dos_set_fh_state,
   syscall_dos_set_file_ptr,
   syscall_dos_set_file_size,
+  syscall_dos_set_mem,
   syscall_dos_set_path_info,
   syscall_dos_start_timer,
   syscall_dos_stop_timer,
