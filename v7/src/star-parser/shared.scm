@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.20 2001/11/14 20:53:32 cph Exp $
+;;; $Id: shared.scm,v 1.21 2001/11/20 04:13:00 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -46,11 +46,18 @@
 		(maybe-make-let (map (lambda (b)
 				       (list (cdr b) (car b)))
 				     (cdr internal-bindings))
-		  (maybe-peephole-optimize
-		   (strip-protection-wrappers
-		    (maybe-optimize-pointer-usage
-		     (maybe-optimize-by-substitution
-		      (generator expression)))))))))))))
+		  (strip-protection-wrappers
+		   (run-optimizers
+		    (generator expression)))))))))))
+
+(define (run-optimizers expression)
+  (let ((expression*
+	 (maybe-peephole-optimize
+	  (maybe-optimize-pointer-usage
+	   (maybe-optimize-by-substitution expression)))))
+    (if (equal? expression* expression)
+	expression
+	(run-optimizers expression*))))
 
 (define (maybe-optimize-by-substitution expression)
   (if debug:disable-substitution-optimizer?
@@ -597,8 +604,16 @@
   ;; is bound to such an operand is eliminated by beta substitution.
   (or (symbol? operand)
       (and (lambda-expression? operand)
-	   (or (boolean? (caddr operand))
-	       (symbol? (caddr operand))))
+	   (let ((body (caddr operand)))
+	     (or (boolean? body)
+		 (symbol? body)
+		 (and (syntax-match?
+		       '('BEGIN
+			  ('SET-PARSER-BUFFER-POINTER! EXPRESSION IDENTIFIER)
+			  EXPRESSION)
+		       body)
+		      (or (boolean? (caddr body))
+			  (symbol? (caddr body)))))))
       (equal? operand '(VECTOR))))
 
 (define (operand-substitutable? operand body)
@@ -613,7 +628,8 @@
 (define (operand-discardable? operand)
   ;; Returns true iff OPERAND can be removed from the program,
   ;; provided that its value is unused.
-  (not (expression-may-have-side-effects? operand)))
+  (or (lambda-expression? operand)
+      (not (expression-may-have-side-effects? operand))))
 
 (define (expression-may-have-side-effects? expression)
   (let loop ((tree expression))
@@ -879,53 +895,33 @@
 	      (OR ,@(except-last-pair (cdr (caddr expression)))))
 	 ,(cadddr expression))))
 
-(define-peephole-optimizer '('LET ((IDENTIFIER EXPRESSION))
-			      ('IF IDENTIFIER
-				   IDENTIFIER
-				   EXPRESSION))
+(define-peephole-optimizer '(('LAMBDA (IDENTIFIER)
+			       ('IF IDENTIFIER
+				    IDENTIFIER
+				    EXPRESSION))
+			     EXPRESSION)
     (lambda (expression)
-      (and (eq? (caar (cadr expression))
-		(cadr (caddr expression)))
-	   (eq? (caddr (caddr expression))
-		(cadr (caddr expression)))))
+      (let ((operator (car expression)))
+	(let ((identifier (car (cadr operator)))
+	      (body (caddr operator)))
+	  (and (eq? identifier (cadr body))
+	       (eq? identifier (caddr body))))))
   (lambda (expression)
-    `(OR ,(cadar (cadr expression))
-	 ,(cadddr (caddr expression)))))
+    `(OR ,(cadr expression)
+	 ,(cadddr (caddr (car expression))))))
 
-(define-peephole-optimizer '('LET ((IDENTIFIER EXPRESSION))
-			      ('AND IDENTIFIER
-				    IDENTIFIER))
+(define-peephole-optimizer '(('LAMBDA (IDENTIFIER)
+			       ('AND IDENTIFIER
+				     IDENTIFIER))
+			     EXPRESSION)
     (lambda (expression)
-      (and (eq? (caar (cadr expression))
-		(cadr (caddr expression)))
-	   (eq? (caddr (caddr expression))
-		(cadr (caddr expression)))))
+      (let ((operator (car expression)))
+	(let ((identifier (car (cadr operator)))
+	      (body (caddr operator)))
+	  (and (eq? identifier (cadr body))
+	       (eq? identifier (caddr body))))))
   (lambda (expression)
-    (cadar (cadr expression))))
-
-(define-default-peephole-optimizer 'LET
-  (lambda (expression)
-    (if (symbol? (cadr expression))
-	`(LET ,(cadr expression)
-	   ,(map (lambda (binding)
-		   `(,(car binding) ,(peephole-optimize (cadr binding))))
-		 (caddr expression))
-	   ,@(map peephole-optimize (cdddr expression)))
-	`(LET ,(map (lambda (binding)
-		      `(,(car binding) ,(peephole-optimize (cadr binding))))
-		    (cadr expression))
-	   ,@(map peephole-optimize (cddr expression))))))
-
-(define-peephole-optimizer '(('LAMBDA (* IDENTIFIER) . (* EXPRESSION))
-			     . (* EXPRESSION))
-    (lambda (expression)
-      (= (length (cadr (car expression)))
-	 (length (cdr expression))))
-  (lambda (expression)
-    `(LET ,(map (lambda (v x) (list v x))
-		(cadr (car expression))
-		(map peephole-optimize (cdr expression)))
-       ,@(map peephole-optimize (cddr (car expression))))))
+    (cadr expression)))
 
 (define-peephole-optimizer '('LAMBDA (* IDENTIFIER) EXPRESSION) #f
   (lambda (expression)
@@ -940,8 +936,12 @@
   (lambda (expression)
     `(VECTOR (,(cadr expression) ,(cadr (caddr expression))))))
 
-(define-peephole-optimizer '('VECTOR-MAP IDENTIFIER ('VECTOR . (* EXPRESSION)))
-    #f
+(define-peephole-optimizer '('VECTOR-MAP EXPRESSION ('VECTOR . (* EXPRESSION)))
+    (lambda (expression)
+      (or (symbol? (cadr expression))
+	  (and (pair? (cadr expression))
+	       (eq? 'PROTECT (car (cadr expression)))
+	       (symbol? (cadr (cadr expression))))))
   (lambda (expression)
     `(VECTOR
       ,@(map (lambda (subexpression)
