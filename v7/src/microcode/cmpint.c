@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.35 1991/05/02 06:11:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.36 1991/05/05 00:41:58 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -176,6 +176,7 @@ do {                                                                    \
 
 extern long
   EXFUN (compiler_cache_operator, (void)),
+  EXFUN (compiler_cache_global_operator, (void)),
   EXFUN (compiler_cache_lookup, (void)),
   EXFUN (compiler_cache_assignment, (void));
 
@@ -293,10 +294,13 @@ extern SCHEME_UTILITY struct utility_result
   EXFUN (comutil_increment, ()),
   EXFUN (comutil_less, ()),
   EXFUN (comutil_minus, ()),
+  EXFUN (comutil_modulo, ()),
   EXFUN (comutil_multiply, ()),
   EXFUN (comutil_negative, ()),
   EXFUN (comutil_plus, ()),
   EXFUN (comutil_positive, ()),
+  EXFUN (comutil_quotient, ()),
+  EXFUN (comutil_remainder, ()),
   EXFUN (comutil_zero, ()),
   EXFUN (comutil_access, ()),
   EXFUN (comutil_reference, ()),
@@ -377,7 +381,10 @@ struct utility_result
   comutil_assignment,				/* 0x33 */
   comutil_definition,				/* 0x34 */
   comutil_lookup_apply,				/* 0x35 */
-  comutil_primitive_error			/* 0x36 */
+  comutil_primitive_error,			/* 0x36 */
+  comutil_quotient,				/* 0x37 */
+  comutil_remainder,				/* 0x38 */
+  comutil_modulo				/* 0x39 */
   };
 
 /* These definitions reflect the indices into the table above. */
@@ -919,22 +926,41 @@ DEFUN (link_cc_block,
   while ((--sections) >= 0)
   {
     header = (block_address[last_header_offset]);
+
     kind = (READ_LINKAGE_KIND (header));
-    if (kind == OPERATOR_LINKAGE_KIND)
+    switch (kind)
     {
-      execute_p = true;
-      entry_size = EXECUTE_CACHE_ENTRY_SIZE;
-      cache_handler = compiler_cache_operator;
-      count = (READ_OPERATOR_LINKAGE_COUNT (header));
-    }
-    else
-    {
-      execute_p = false;
-      entry_size = 1;
-      cache_handler = ((kind == REFERENCE_LINKAGE_KIND) ?
-                       compiler_cache_lookup :
-                       compiler_cache_assignment);
-      count = (READ_CACHE_LINKAGE_COUNT (header));
+      case OPERATOR_LINKAGE_KIND:
+	cache_handler = compiler_cache_operator;
+
+      handle_operator:
+        execute_p = true;
+	entry_size = EXECUTE_CACHE_ENTRY_SIZE;
+	count = (READ_OPERATOR_LINKAGE_COUNT (header));
+	break;
+
+      case GLOBAL_OPERATOR_LINKAGE_KIND:
+	cache_handler = compiler_cache_global_operator;
+	goto handle_operator;
+
+      case REFERENCE_LINKAGE_KIND:
+	cache_handler = compiler_cache_lookup;
+      handle_reference:
+	execute_p = false;
+	entry_size = 1;
+	count = (READ_CACHE_LINKAGE_COUNT (header));
+	break;
+
+      case ASSIGNMENT_LINKAGE_KIND:
+	cache_handler = compiler_cache_assignment;
+	goto handle_reference;
+
+      default:
+	offset += 1;
+	total_count = (READ_CACHE_LINKAGE_COUNT (header));
+	count = (total_count - 1);
+	result = ERR_COMPILED_CODE_ERROR;
+	goto back_out;
     }
 
     /* This accomodates the re-entry case after a GC.
@@ -978,6 +1004,7 @@ DEFUN (link_cc_block,
 	   match the assembly language versions.
 	 */
 
+  back_out:
         STACK_PUSH (ENTRY_TO_OBJECT (ret_add));
         STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (sections + 1));
         STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (last_header_offset));
@@ -1804,10 +1831,13 @@ COMPILER_ARITH_PRIM (comutil_greater, GENERIC_TRAMPOLINE_GREATER_P, 3);
 COMPILER_ARITH_PRIM (comutil_increment, GENERIC_TRAMPOLINE_SUCCESSOR, 2);
 COMPILER_ARITH_PRIM (comutil_less, GENERIC_TRAMPOLINE_LESS_P, 3);
 COMPILER_ARITH_PRIM (comutil_minus, GENERIC_TRAMPOLINE_SUBTRACT, 3);
+COMPILER_ARITH_PRIM (comutil_modulo, GENERIC_TRAMPOLINE_MODULO, 3);
 COMPILER_ARITH_PRIM (comutil_multiply, GENERIC_TRAMPOLINE_MULTIPLY, 3);
 COMPILER_ARITH_PRIM (comutil_negative, GENERIC_TRAMPOLINE_NEGATIVE_P, 2);
 COMPILER_ARITH_PRIM (comutil_plus, GENERIC_TRAMPOLINE_ADD, 3);
 COMPILER_ARITH_PRIM (comutil_positive, GENERIC_TRAMPOLINE_POSITIVE_P, 2);
+COMPILER_ARITH_PRIM (comutil_quotient, GENERIC_TRAMPOLINE_QUOTIENT, 3);
+COMPILER_ARITH_PRIM (comutil_remainder, GENERIC_TRAMPOLINE_REMAINDER, 3);
 COMPILER_ARITH_PRIM (comutil_zero, GENERIC_TRAMPOLINE_ZERO_P, 2);
 
 /*
@@ -2481,12 +2511,14 @@ DEFUN (make_uuo_link,
        long offset)
 {
   long kind, result, nactuals;
-  SCHEME_OBJECT trampoline, *cache_address;
+  SCHEME_OBJECT orig_proc, trampoline, *cache_address;
 
   cache_address = (MEMORY_LOC (block, offset));
   EXTRACT_EXECUTE_CACHE_ARITY (nactuals, cache_address);
   /* nactuals >= 0 */
 
+  orig_proc = procedure;
+loop:
   switch (OBJECT_TYPE (procedure))
   {
     case TC_COMPILED_ENTRY:
@@ -2521,6 +2553,26 @@ DEFUN (make_uuo_link,
 
     case TC_ENTITY:
     {
+      SCHEME_OBJECT data, tag, handler;
+
+      data = (MEMORY_REF (procedure, ENTITY_DATA));
+      if ((VECTOR_P (data))
+	  && (nactuals < (VECTOR_LENGTH (data)))
+	  && ((VECTOR_REF (data, nactuals)) != SHARP_F)
+	  && ((VECTOR_REF (data, 0))
+	      == (Get_Fixed_Obj_Slot (ARITY_DISPATCHER_TAG))))
+      {
+	if (procedure == orig_proc)
+	{
+	  procedure = (VECTOR_REF (data, nactuals));
+	  goto loop;
+	}
+	else
+	{
+	  /* No loops allowed! */
+	  procedure = orig_proc;
+	}
+      }
       kind = TRAMPOLINE_K_ENTITY;
       break;
     }
