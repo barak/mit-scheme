@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.13 1995/05/20 02:40:20 cph Exp $
+$Id: os2pmcon.c,v 1.14 1995/05/20 03:08:13 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -162,7 +162,7 @@ void
 OS2_console_font_change_hook (font_metrics_t * metrics)
 {
   font_metrics_t * copy = (OS_malloc (sizeof (font_metrics_t)));
-  FASTCOPY (metrics, copy, (sizeof (font_metrics_t)));
+  FASTCOPY (((char *) metrics), ((char *) copy), (sizeof (font_metrics_t)));
   grab_console_lock ();
   OS_free (console_metrics);
   console_metrics = copy;
