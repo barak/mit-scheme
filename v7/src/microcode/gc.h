@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.27 1989/06/08 00:23:04 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.28 1989/07/05 18:34:26 cph Rel $
  *
  * Garbage collection related macros of sufficient utility to be
  * included in all compilations.
@@ -48,7 +48,7 @@ MIT in each case. */
 
 #ifdef BAD_TYPES_INNOCUOUS
 #ifdef BAD_TYPES_LETHAL
-#error "gc.h: BAD_TYPES both lethal and innocuous"
+#include "error: gc.h: BAD_TYPES both lethal and innocuous"
 #endif /* BAD_TYPES_LETHAL */
 #else /* not BAD_TYPES_INNOCUOUS */
 #ifndef BAD_TYPES_LETHAL
