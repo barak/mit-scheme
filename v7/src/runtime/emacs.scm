@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.7 1991/02/15 18:05:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.8 1991/03/06 23:03:24 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -87,9 +87,7 @@ MIT in each case. |#
 	(repl-history/record! (repl/printer-history repl) object)
 	(cond ((undefined-value? object)
 	       (transmit-signal-with-argument #\v ""))
-	      ((object-non-pointer? object)
-	       (transmit-signal-with-argument #\v (object->string object)))
-	      (else
+	      ((repl-write/show-hash? object)
 	       ;; The #\P command used to do something useful, but now
 	       ;; it just sets the Emacs variable `xscheme-prompt' to
 	       ;; its string argument.  We use this to advantage here.
@@ -97,7 +95,9 @@ MIT in each case. |#
 	       (emacs-eval
 		"(xscheme-write-message-1 xscheme-prompt (format \";Value "
 		(number->string (object-hash object))
-		": %s\" xscheme-prompt))"))))
+		": %s\" xscheme-prompt))"))
+	      (else
+	       (transmit-signal-with-argument #\v (object->string object)))))
       (normal/repl-write repl object)))
 
 (define (emacs/cmdl-message cmdl string)

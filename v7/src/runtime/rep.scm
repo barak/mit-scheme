@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.17 1991/02/15 18:06:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.18 1991/03/06 23:02:54 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -518,12 +518,16 @@ MIT in each case. |#
 	  (write-string "\n;No value" output-port)
 	  (begin
 	    (write-string "\n;Value" output-port)
-	    (if (object-pointer? object)
+	    (if (repl-write/show-hash? object)
 		(begin
 		  (write-string " " output-port)
 		  (write (object-hash object) output-port)))
 	    (write-string ": " output-port)
 	    (write object output-port))))))
+
+(define (repl-write/show-hash? object)
+  (and (object-pointer? object)
+       (not (interned-symbol? object))))
 
 ;;;; History
 

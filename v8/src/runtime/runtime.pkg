@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.92 1991/03/06 05:14:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.93 1991/03/06 23:03:37 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1708,7 +1708,8 @@ MIT in each case. |#
 	  hook/read-command-char
 	  hook/repl-environment
 	  hook/repl-read
-	  hook/repl-write)
+	  hook/repl-write
+	  repl-write/show-hash?)
   (export (runtime debugger-command-loop)
 	  hook/repl-environment)
   (initialization (initialize-package!)))
