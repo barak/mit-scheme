@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.39 1993/07/06 00:56:29 gjr Exp $
+$Id: rules3.scm,v 4.40 1993/07/06 03:58:25 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -823,8 +823,8 @@ long-word aligned and there is no need for shuffling.
 (define (generate/remote-links n-code-blocks code-blocks-label n-sections)
   (if (= n-code-blocks 0)
       (LAP)
-      (let ((loop (generate-label))
-	    (bytes (generate-label)))
+      (let ((loop (generate-label 'LOOP))
+	    (bytes (generate-label 'BYTES)))
 	(LAP (CLR L (D 0))
 	     ;; Set up counter
 	     (MOV L (D 0) (@-A 7))
@@ -841,7 +841,12 @@ long-word aligned and there is no need for shuffling.
 	     (MOV L (@AOXS 0 4 ((D 0) L 4)) (D 2))
 	     ;; Get number of linkage sections
 	     (CLR L (D 4))
-	     (MOV B (@PCRXS ,bytes ((D 0) L 1)) (D 4))
+	     ,@(if (<= n-code-blocks 100)
+		   ;; Approximate decision, to avoid extending the
+		   ;; branch tensioner.
+		   (LAP (MOV B (@PCRXS ,bytes ((D 0) L 1)) (D 4)))
+		   (LAP (LEA (@PCR ,bytes) (A 0))
+			(MOV B (@AOXS 0 0 ((D 0) L 1)) (D 4))))
 	     ;; block -> address
 	     (AND L (D 7) (D 2))
 	     (MOV L (D 2) (A 0))
