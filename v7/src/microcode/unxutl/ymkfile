@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.45 1991/07/02 18:18:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.46 1991/07/02 18:25:05 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -466,7 +466,7 @@ BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS
 
 /* Construction rules. */
 
-all: Psbtobin scheme $(XTRA_TARGETS)
+all: Bintopsb Psbtobin scheme bchscheme $(XTRA_TARGETS)
 
 scheme xscheme : $(OBJECTS) $(SCHEME_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
