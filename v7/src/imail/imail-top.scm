@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.279 2001/12/03 18:12:58 cph Exp $
+;;; $Id: imail-top.scm,v 1.280 2002/02/19 12:47:02 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -160,7 +160,7 @@ Otherwise, they are inserted into the message body."
   "List of regular expressions matching character-set names.
 Text messages using these character sets are displayed inline;
  when other character sets are used, the text is treated as an attachment."
-  (list "us-ascii" "iso-8859-[0-9]+" "utf-8" "windows-[0-9]+")
+  (list "us-ascii" "iso-8859-[0-9]+" "utf-8" "windows-[0-9]+" "unknown-8bit")
   list-of-strings?)
 
 (define-variable imail-inline-mime-text-subtypes
