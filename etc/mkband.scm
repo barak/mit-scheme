@@ -1,5 +1,5 @@
 ;;; -*- Scheme -*-
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/mkband.scm,v 1.5 1990/12/12 03:07:58 cph Exp $
+;;; $Id: mkband.scm,v 1.6 2000/03/21 17:32:59 cph Exp $
 ;;; Input file to build standard bands.
 
 (set-working-directory-pathname! "../sf")

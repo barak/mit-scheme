@@ -1,5 +1,5 @@
 #!/bin/csh -f
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/run_scheme,v 1.1 1989/07/27 00:37:15 cph Rel $
+# $Id: run_scheme,v 1.2 2000/03/21 17:32:59 cph Exp $
 #
 # This file is a script to allow Scheme to be run out of a
 # non-standard directory without recompiling the microcode.  After

@@ -28,7 +28,7 @@
 ;; of special forms.  Probably the code should be merged at some point 
 ;; so that there is sharing between both libraries.
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.9 1994/02/15 19:19:06 cph Exp $
+;;; $Id: scheme.el,v 1.10 2000/03/21 17:32:59 cph Exp $
 
 ;;; Code:
 

@@ -1,5 +1,5 @@
 #!/bin/sh
 # Script to generate standard runtime band from binaries.
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/make_runtime,v 1.4 1991/02/14 17:53:25 cph Exp $
+# $Id: make_runtime,v 1.5 2000/03/21 17:32:59 cph Exp $
 cd runtime
 exec ../microcode/scheme -library ../lib -large -fasl make.bin < ../etc/mkband.scm
