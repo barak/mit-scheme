@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.13 2001/06/15 20:38:37 cph Exp $
+$Id: chrset.scm,v 14.14 2001/08/10 16:50:29 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -79,7 +79,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (let loop ((code char-set-table-length) (chars '()))
       (if (fix:< 0 code)
 	  (loop (fix:- code 1)
-		(if (fix:zero? (vector-8b-ref table (fix:- code 1)))
+		(if (fix:= 0 (vector-8b-ref table (fix:- code 1)))
 		    chars
 		    (cons (integer->char (fix:- code 1)) chars)))
 	  chars))))
@@ -89,7 +89,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (error:wrong-type-argument char-set "character set" 'CHAR-SET-MEMBER?))
   (let ((code (char->integer char)))
     (and (fix:< code char-set-table-length)
-	 (not (fix:zero? (vector-8b-ref (char-set-table char-set) code))))))
+	 (not (fix:= 0 (vector-8b-ref (char-set-table char-set) code))))))
 
 (define (char-set-invert char-set)
   (predicate->char-set
@@ -169,16 +169,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   unspecific)
 
 (define-integrable (char-upper-case? char)
-  (and (fix:<= (char->integer #\A) char)
-       (fix:<= char (char->integer #\Z))))
+  (and (fix:<= (char->integer #\A) (char->integer char))
+       (fix:<= (char->integer char) (char->integer #\Z))))
 
 (define-integrable (char-lower-case? char)
-  (and (fix:<= (char->integer #\a) char)
-       (fix:<= char (char->integer #\z))))
+  (and (fix:<= (char->integer #\a) (char->integer char))
+       (fix:<= (char->integer char) (char->integer #\z))))
 
 (define-integrable (char-numeric? char)
-  (and (fix:<= (char->integer #\0) char)
-       (fix:<= char (char->integer #\9))))
+  (and (fix:<= (char->integer #\0) (char->integer char))
+       (fix:<= (char->integer char) (char->integer #\9))))
 
 (define-integrable (char-graphic? char)
   (char-set-member? char-set:graphic char))
