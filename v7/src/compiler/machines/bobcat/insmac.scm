@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.121 1987/07/21 18:34:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.122 1987/07/22 17:16:31 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -128,30 +128,70 @@ MIT in each case. |#
 
 ;;;; Utility procedures
 
-(define (parse-word expression tail #!optional early?)
+(define (parse-instruction expression tail early?)
   (define (kernel)
-    (expand-descriptors (cdr expression)
-     (lambda (instruction size src dst)
-       (if (zero? (remainder size 16))
-	   (let ((code
-		  (let ((code
-			 (let ((code (if dst `(,@dst '()) '())))
-			   (if src
-			       `(,@src ,code)
-			       code))))
-		    (if (null? tail)
-			code
-			`(,(if (null? code) 'CONS 'CONS-SYNTAX)
-			  ,(car tail)
-			  ,code)))))
-	     `(,(if (null? code) 'CONS 'CONS-SYNTAX)
-	       ,(optimize-group-syntax instruction
-				       (if (unassigned? early?) false early?))
-	       ,code))
-	   (error "PARSE-WORD: Instructions must be 16 bit multiples" size)))))
+    (case (car expression)
+      ((WORD)
+       (parse-word expression tail))
+      ((GROWING-WORD)
+       (parse-growing-word expression tail))
+      (else
+       (error "PARSE-INSTRUCTION: unknown expression" expression))))
+    
   (if (or (unassigned? early?) (not early?))
-      (kernel)
+      (with-normal-selectors kernel)
       (with-early-selectors kernel)))
+
+;;; Variable width instruction parsing
+
+(define (parse-growing-word expression tail)
+  (if (not (null? tail))
+      (error "PARSE-GROWING-WORD: non null tail" tail))
+  (let ((binding (cadr expression)))
+    (variable-width-expression-syntaxer
+     (car binding)
+     (cadr binding)
+     (map (lambda (clause)
+	    (if (not (null? (cddr clause)))
+		(error "PARSE-GROWING-WORD: Extension found in clause" clause))
+	    (expand-descriptors
+	     (cdadr clause)
+	     (lambda (instruction size src dst)
+	       (if (not (zero? (remainder size 16)))
+		   (error "PARSE-GROWING-WORD: Instructions must be 16 bit multiples"
+			  size)
+		   (list (caar clause)			; Range low
+			 (cadar clause)			; Range high
+			 size				; Width in bits
+			 (collect-word instruction src dst '()))))))
+	  (cddr expression)))))
+
+;;;; Fixed width instruction parsing
+
+(define (parse-word expression tail)
+  (expand-descriptors (cdr expression)
+   (lambda (instruction size src dst)
+     (if (zero? (remainder size 16))
+	 (collect-word instruction src dst tail)
+	 (error "PARSE-WORD: Instructions must be 16 bit multiples" size)))))
+
+(define (collect-word instruction src dst tail)
+  (let ((code
+	 (let ((code
+		(let ((code (if dst `(,@dst '()) '())))
+		  (if src
+		      `(,@src ,code)
+		      code))))
+	   (cond ((null? tail) code)
+		 ((null? (cdr tail))
+		  `(,(if (null? code) 'CONS 'CONS-SYNTAX)
+		    ,(car tail)
+		    ,code))
+		 (else
+		  (error "PARSE-WORD: multiple tail elements" tail))))))
+    `(,(if (null? code) 'CONS 'CONS-SYNTAX)
+      ,(optimize-group-syntax instruction early-instruction-parsing?)
+      ,code)))
 
 (define (expand-descriptors descriptors receiver)
   (if (null? descriptors)
@@ -175,20 +215,33 @@ MIT in each case. |#
 				destination)
 			    destination*))))))))
 
+;;;; Hooks for early instruction processing
+
+(define early-instruction-parsing? false)
 (define ea-keyword-selector 'EA-KEYWORD)
 (define ea-categories-selector 'EA-CATEGORIES)
 (define ea-mode-selector 'EA-MODE)
 (define ea-register-selector 'EA-REGISTER)
 (define ea-extension-selector 'EA-EXTENSION)
 
+(define (with-normal-selectors handle)
+  (fluid-let ((early-instruction-parsing? false)
+	      (ea-keyword-selector 'EA-KEYWORD)
+	      (ea-categories-selector 'EA-CATEGORIES)
+	      (ea-mode-selector 'EA-MODE)
+	      (ea-register-selector 'EA-REGISTER)
+	      (ea-extension-selector 'EA-EXTENSION))
+    (handle)))
+
 (define (with-early-selectors handle)
-  (fluid-let ((ea-keyword-selector 'EA-KEYWORD-EARLY)
+  (fluid-let ((early-instruction-parsing? true)
+	      (ea-keyword-selector 'EA-KEYWORD-EARLY)
 	      (ea-categories-selector 'EA-CATEGORIES-EARLY)
 	      (ea-mode-selector 'EA-MODE-EARLY)
 	      (ea-register-selector 'EA-REGISTER-EARLY)
 	      (ea-extension-selector 'EA-EXTENSION-EARLY))
     (handle)))
-
+
 (define (expand-descriptor descriptor receiver)
   (let ((size (car descriptor))
 	(expression (cadr descriptor))

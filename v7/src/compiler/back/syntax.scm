@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.16 1987/07/15 02:57:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.17 1987/07/22 17:15:00 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -69,13 +69,13 @@ MIT in each case. |#
 
 (define instructions
   '())
-
+
 (define (integer-syntaxer expression coercion-type size)
   (let ((coercion (make-coercion-name coercion-type size)))
     (if (integer? expression)
 	`',((lexical-reference coercion-environment coercion) expression)
-	`(SYNTAX-EVALUATION ,expression ,coercion))))
-
+	`(SYNTAX-EVALUATION ,expression ,coercion))))					 
+
 (define (syntax-evaluation expression coercion)
   (if (integer? expression)
       (coercion expression)
@@ -120,6 +120,46 @@ MIT in each case. |#
 	      ((null? (cdr components))
 	       (receiver (car components) false))
 	      (else (receiver components true)))))))
+
+;;;; Variable width expression processing
+
+(define (choose-clause value clauses)
+  (define (in-range? value low high)
+    (and (or (null? low)
+	     (<= low value))
+	 (or (null? high)
+	     (<= value high))))
+
+  (cond ((null? clauses)
+	 (error "choose-clause: value out of range" value))
+	((in-range? value (caar clauses) (cadar clauses))
+	 (car clauses))
+	(else (choose-clause (cdr clauses)))))
+
+(define (variable-width-expression-syntaxer name expression clauses)
+  (if (integer? expression)
+      (let ((chosen (choose-clause expression clauses)))
+	`(let ((,name ,expression))
+	   (declare (integrate ,name))
+	   ,(cadddr chosen)))
+      `(LIST
+	(SYNTAX-VARIABLE-WIDTH-EXPRESSION
+	 ,expression
+	 (LIST
+	  ,@(map (LAMBDA (clause)
+		   `(LIST ,(car clause)
+			  ,(cadr clause)
+			  ,(caddr clause)
+			  (LAMBDA (,name)
+			    ,(cadddr clause))))
+		 clauses))))))
+
+(define (syntax-variable-width-expression expression clauses)
+  (if (integer? expression)      (let ((chosen (choose-clause expression clauses)))
+	((cadddr chosen) expression))
+      (cons* 'VARIABLE-WIDTH-EXPRESSION
+	     expression
+	     clauses)))
 
 ;;;; Coercion Machinery
 

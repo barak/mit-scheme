@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/inerly.scm,v 1.2 1987/07/01 21:02:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/inerly.scm,v 1.3 1987/07/22 17:16:22 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -48,20 +48,21 @@ MIT in each case. |#
 (syntax-table-define early-syntax-table 'DEFINE-INSTRUCTION
   (macro (opcode . patterns)
     `(set! early-instructions
-	   (cons (list ',opcode
-		       ,@(map (lambda (pattern)
-				`(early-parse-rule
-				  ',(car pattern)
-				  (lambda (pat vars)
-				    (early-make-rule
-				     pat
-				     vars
-				     (scode-quote
-				      (instruction->instruction-sequence
-				       ,(parse-word (cadr pattern)
-						    (cddr pattern)
-						    true)))))))
-			      patterns))
+	   (cons
+	    (list ',opcode
+		  ,@(map (lambda (pattern)
+			   `(early-parse-rule
+			     ',(car pattern)
+			     (lambda (pat vars)
+			       (early-make-rule
+				pat
+				vars
+				(scode-quote
+				 (instruction->instruction-sequence
+				  ,(parse-instruction (cadr pattern)
+						      (cddr pattern)
+						      true)))))))
+			 patterns))
 		 early-instructions))))
 
 (syntax-table-define early-syntax-table 'EXTENSION-WORD

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.2 1987/07/16 10:14:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.3 1987/07/22 17:14:09 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -179,8 +179,8 @@ MIT in each case. |#
 			    (vector-ref this 1)
 			    (vector-ref this 2)))
 	       ((VARIABLE-WIDTH-EXPRESSION)
-		(let ((sel (vector-ref this 3)))
-		  (evaluation (selector/handler sel)
+		(let ((sel (car (vector-ref this 3))))
+		  (evaluation (variable-handler-wrapper (selector/handler sel))
 			      (vector-ref this 1)
 			      (selector/length sel))))
 	       (else
@@ -269,11 +269,11 @@ MIT in each case. |#
 		     ((VARIABLE-WIDTH-EXPRESSION)
 		      (process-variable-width
 		       (vector 'VARIABLE-WIDTH-EXPRESSION
-			       (cadr directive)
+			       (cadr this)
 			       (if (null? pc-stack)
 				   (make-machine-interval pcmin pcmax)
 				   (car pc-stack))
-			       (map list->vector (cddr directive)))))
+			       (map list->vector (cddr this)))))
 		     ((GROUP)
 		      (new-directive! (vector 'TICK true))
 		      (loop (append (cdr this)
@@ -304,7 +304,7 @@ MIT in each case. |#
 (define (phase-1 directives)
   (define (loop rem pcmin pcmax pc-stack vars)
     (if (null? rem)
-	(let ((ecmin (pad pcmin))
+	(let ((emin (pad pcmin))
 	      (emax (+ pcmax maximum-padding-length)))
 	  (symbol-table-define! *the-symbol-table*
 				*end-label*
@@ -386,8 +386,21 @@ MIT in each case. |#
 	 (v (vector 'EVALUATION
 		    (vector-ref var 1)	; Expression
 		    (selector/length sel)
-		    (selector/handler sel))))
+		    (variable-handler-wrapper (selector/handler sel)))))
     (vector-set! var 0 'FIXED-WIDTH-GROUP)
     (vector-set! var 1 l)
     (vector-set! var 2 (list v))
     (vector-set! var 3 '())))
+
+(define (variable-handler-wrapper handler)
+  (lambda (value)
+    (let ((l (handler value)))
+      (if (null? l)
+	  (bit-string-allocate 0)
+	  (list->bit-string l)))))
+
+(define (list->bit-string l)
+  (if (null? (cdr l))
+      (car l)
+      (bit-string-append (car l)
+			 (list->bit-string (cdr l)))))

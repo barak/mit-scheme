@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/asmmac.scm,v 1.3 1987/07/08 22:00:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/asmmac.scm,v 1.4 1987/07/22 17:15:34 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -44,7 +44,7 @@ MIT in each case. |#
 	 (lambda (pattern actions)
 	   (if (null? actions)
 	       (error "DEFINE-INSTRUCTION: Too few forms")
-	       (parse-word (car actions) (cdr actions))))))))
+	       (parse-instruction (car actions) (cdr actions) false)))))))
 
 (define (compile-database cases procedure)
   `(LIST

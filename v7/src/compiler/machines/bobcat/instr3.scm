@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.12 1987/07/17 15:49:06 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.13 1987/07/22 17:16:43 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,129 +37,85 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;;; Control Transfer
+;;;; Control Transfer: Branch instructions
 
 ;; The size U (unknown, undecided?) means that the assembler should
-;; choose the right size.  For the time being it is the same as W.
+;; choose the right size.
 
-(define-instruction B
-  (((? c cc) B (@PCO (? o)))
-   (WORD (4 #b0110)
-	 (4 c)
-	 (8 o SIGNED)))
+;; When the displacement goes to 0, a NOP is issued.
+;; The instruction is hard to remove because of the workings of the
+;; branch tensioner.  Note that the NOP ``kludge'' is not correct for
+;; the BSR instruction.
 
-  (((? c cc) B (@PCR (? l)))
-   (WORD (4 #b0110)
-	 (4 c)
-	 (8 l SHORT-LABEL)))
+(let-syntax
+    ((define-branch-instruction
+       (macro (opcode prefix . field)
+	 `(define-instruction ,opcode
+	    ((,@prefix B (@PCO (? o)))
+	     (WORD ,@field
+		   (8 o SIGNED)))
 
-  (((? c cc) W (@PCO (? o)))
-   (WORD (4 #b0110)
-	 (4 c)
-	 (8 #b00000000))
-   (immediate-word o))
+	    ((,@prefix B (@PCR (? l)))
+	     (WORD ,@field
+		   (8 l SHORT-LABEL)))
 
-  (((? c cc) W (@PCR (? l)))
-   (WORD (4 #b0110)
-	 (4 c)
-	 (8 #b00000000))
-   (relative-word l))
+	    ((,@prefix W (@PCO (? o)))
+	     (WORD ,@field
+		   (8 #b00000000))
+	     (immediate-word o))
 
-  ;; 68020 only
+	    ((,@prefix W (@PCR (? l)))
+	     (WORD ,@field
+		   (8 #b00000000))
+	     (relative-word l))
 
-  (((? c cc) L (@PCO (? o)))
-   (WORD (4 #b0110)
-	 (4 cc)
-	 (8 #b11111111))
-   (immediate-long o))
+	    ;; 68020 only
 
-  (((? c cc) L (@PCR (? l)))
-   (WORD (4 #b0110)
-	 (4 cc)
-	 (8 #b11111111))
-   (relative-long l))
+	    ((,@prefix L (@PCO (? o)))
+	     (WORD ,@field
+		   (8 #b11111111))
+	     (immediate-long o))
 
-  (((? c cc) U (@PCO (? o)))
-   (WORD (4 #b0110)
-	 (4 c)
-	 (8 #b00000000))
-   (immediate-word o))
-
-  (((? c cc) U (@PCR (? l)))
-   (WORD (4 #b0110)
-	 (4 c)
-	 (8 #b00000000))
-   (relative-word l)))
+	    ((,@prefix L (@PCR (? l)))
+	     (WORD ,@field
+		   (8 #b11111111))
+	     (relative-long l))
 
-(define-instruction BRA
-  ((B (@PCO (? o)))
-   (WORD (8 #b01100000)
-	 (8 o SIGNED)))
+	    ((,@prefix U (@PCO (? o)))
+	     (GROWING-WORD (disp o)
+	      ((0 0)
+	       (WORD (16 #b0100111001110001))) 		; NOP
+	      ((-128 127)
+	       (WORD ,@field
+		     (8 disp SIGNED)))
+	      ((-32768 32767)
+	       (WORD ,@field
+		     (8 #b00000000)
+		     (16 disp SIGNED)))
+	      ((() ())
+	       (WORD ,@field
+		     (8 #b11111111)
+		     (32 disp SIGNED)))))
 
-  ((B (@PCR (? l)))
-   (WORD (8 #b01100000)
-	 (8 l SHORT-LABEL)))
+	    ((,@prefix U (@PCR (? l)))
+	     (GROWING-WORD (disp `(- ,l (+ *PC* 2)))
+	      ((0 0)
+	       (WORD (16 #b0100111001110001)))		; NOP
+	      ((-128 127)
+	       (WORD ,@field
+		     (8 disp SIGNED)))
+	      ((-32768 32767)
+	       (WORD ,@field
+		     (8 #b00000000)
+		     (16 disp SIGNED)))
+	      ((() ())
+	       (WORD ,@field
+		     (8 #b11111111)
+		     (32 disp SIGNED)))))))))
 
-  ((W (@PCO (? o)))
-   (WORD (16 #b0110000000000000))
-   (immediate-word o))
-
-  ((W (@PCR (? l)))
-   (WORD (16 #b0110000000000000))
-   (relative-word l))
-
-  ;; 68020 only
-
-  ((L (@PCO (? o)))
-   (WORD (16 #b0110000011111111))
-   (immediate-long o))
-
-  ((L (@PCR (? l)))
-   (WORD (16 #b0110000011111111))
-   (relative-long l))
-
-  ((U (@PCO (? o)))
-   (WORD (16 #b0110000000000000))
-   (immediate-word o))
-
-  ((U (@PCR (? l)))
-   (WORD (16 #b0110000000000000))
-   (relative-word l)))
-
-(define-instruction BSR
-  ((B (@PCO (? o)))
-   (WORD (8 #b01100001)
-	 (8 o SIGNED)))
-
-  ((B (@PCR (? o)))
-   (WORD (8 #b01100001)
-	 (8 o SHORT-LABEL)))
-
-  ((W (@PCO (? o)))
-   (WORD (16 #b0110000100000000))
-   (immediate-word o))
-
-  ((W (@PCR (? l)))
-   (WORD (16 #b0110000100000000))
-   (relative-word l))
-
-  ;; 68020 onlyu
-
-  ((L (@PCO (? o)))
-   (WORD (16 #b0110000111111111))
-   (immediate-long o))
-
-  ((L (@PCR (? l)))
-   (WORD (16 #b0110000111111111))
-   (relative-long l))
-
-  ((U (@PCO (? o)))
-   (WORD (16 #b0110000100000000))
-   (immediate-word o))
-
-  ((U (@PCR (? l)))
-   (WORD (16 #b0110000100000000))
-   (relative-word l)))
+  (define-branch-instruction B ((? c cc)) (4 #b0110) (4 c))
+  (define-branch-instruction BRA () (8 #b01100000))
+  (define-branch-instruction BSR () (8 #b01100001)))
 
 (define-instruction DB
   (((? c cc) (D (? rx)) (@PCO (? o)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bitutl.scm,v 1.1 1987/07/15 03:00:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bitutl.scm,v 1.2 1987/07/22 17:14:31 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -224,11 +224,11 @@ MIT in each case. |#
   (declare (integrate sel))
   (vector-ref sel 1))
 
-(define (selector/handler sel)
+(define (selector/length sel)
   (declare (integrate sel))
   (vector-ref sel 2))
 
-(define (selector/length sel)
+(define (selector/handler sel)
   (declare (integrate sel))
   (vector-ref sel 3))
 
