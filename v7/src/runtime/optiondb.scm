@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.7 1999/05/13 03:04:08 cph Exp $
+$Id: optiondb.scm,v 1.8 1999/09/07 00:53:24 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -63,6 +63,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (FORMAT	(RUNTIME FORMAT)	(INITIALIZE-PACKAGE!)	"format")
    (GDBM	(RUNTIME GDBM)		(INITIALIZE-PACKAGE!)	"gdbm")
    (HASH-TABLE	(RUNTIME HASH-TABLE)	(INITIALIZE-PACKAGE!)	"hashtb")
+   (KRYPT	(RUNTIME KRYPT)		#F			"krypt")
    (ORDERED-VECTOR (RUNTIME ORDERED-VECTOR) #F			"ordvec")
    (RB-TREE	(RUNTIME RB-TREE)	#F			"rbtree")
    (STEPPER	(RUNTIME STEPPER)	#F			"ystep")
