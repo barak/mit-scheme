@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.10 1991/11/26 06:32:14 cph Exp $
+$Id: advice.scm,v 14.11 1992/11/20 19:37:03 gjr Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -206,14 +206,14 @@ MIT in each case. |#
       (receiver (car state) (cdr state)))))
 
 (define (make-advice-hook)
-  (make-combination syntaxed-advice-procedure
-		    (list (make-the-environment))))
+  ;; This inserts the actual procedure in a constant list
+  (make-combination
+   (make-combination car
+		     (list (list hook/advised-procedure-wrapper)))
+   (list (make-the-environment))))
 
-(define syntaxed-advice-procedure
-  (scode-quote
-   ((ACCESS PACKAGE/REFERENCE #F)
-    ((ACCESS FIND-PACKAGE #F) '(RUNTIME ADVICE))
-    'ADVISED-PROCEDURE-WRAPPER)))
+(define (hook/advised-procedure-wrapper environment)
+  (advised-procedure-wrapper environment))
 
 ;;;; The Advice Hook
 
