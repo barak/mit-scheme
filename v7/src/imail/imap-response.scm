@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.20 2000/05/19 02:42:58 cph Exp $
+;;; $Id: imap-response.scm,v 1.21 2000/05/19 02:43:49 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -355,13 +355,16 @@
     s))
 
 (define (read-pflag port)
-  (discard-known-char #\\ port)
   (intern
-   (if (char=? #\* (peek-char-no-eof port))
+   (if (char=? #\\ (peek-char-no-eof port))
        (begin
 	 (discard-char port)
-	 "\\*")
-       (string-append "\\" (read-atom port)))))
+	 (if (char=? #\* (peek-char-no-eof port))
+	     (begin
+	       (discard-char port)
+	       "\\*")
+	     (string-append "\\" (read-atom port))))
+       (read-atom port))))
 
 (define (read-flag port)
   (intern
