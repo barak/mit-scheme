@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: gcfinal.scm,v 14.2 2000/04/10 19:10:53 cph Exp $
+$Id: gcfinal.scm,v 14.3 2002/07/08 17:25:29 cph Exp $
 
-Copyright (c) 2000 Massachusetts Institute of Technology
+Copyright (c) 2000, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -84,11 +84,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (let loop ()
 	 (let ((items (gc-finalizer-items finalizer)))
 	   (if (pair? items)
-	       (begin
+	       (let ((item (car items)))
 		 (set-gc-finalizer-items! finalizer (cdr items))
-		 (let ((object (weak-cdr (car items))))
-		   (if object
-		       (procedure object)))
+		 (if (weak-pair/car? item)
+		     (procedure (weak-cdr item)))
 		 (loop)))))))))
 
 (define (search-gc-finalizer finalizer predicate)
@@ -133,13 +132,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (if (pair? items)
 	     (if (weak-pair/car? (car items))
 		 (loop (cdr items) items)
-		 (begin
-		   (procedure (weak-cdr (car items)))
-		   (let ((next (cdr items)))
-		     (if prev
-			 (set-cdr! prev next)
-			 (set-gc-finalizer-items! finalizer next))
-		     (loop next prev))))))))))
+		 (let ((context (weak-cdr (car items)))
+		       (next (cdr items)))
+		   (if prev
+		       (set-cdr! prev next)
+		       (set-gc-finalizer-items! finalizer next))
+		   (procedure context)
+		   (loop next prev)))))))))
 
 (define (walk-gc-finalizers-list procedure)
   (let loop ((finalizers gc-finalizers) (prev #f))
