@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: class.scm,v 1.3 1997/06/19 20:12:30 cph Exp $
+;;; $Id: class.scm,v 1.4 1997/06/19 20:22:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -111,18 +111,12 @@
   (guarantee-class class 'CLASS->DISPATCH-TAG)
   (class/dispatch-tag class))
 
-(define (subclass? c1 c2)
-  (guarantee-class c1 'SUBCLASS?)
-  (cond ((class? c2)
-	 (memq c2 (class/precedence-list c1)))
-	((record-type? c2)
-	 (memq (record-type-class c2) (class/precedence-list c1)))
-	((union-specializer? c2)
-	 (there-exists? (union-specializer-classes c2)
-	   (lambda (c2)
-	     (memq c2 (class/precedence-list c1)))))
-	(else
-	 (error:wrong-type-argument c2 "specializer" 'SUBCLASS?))))
+(define (subclass? c s)
+  (let ((pl (class-precedence-list c)))
+    (and (there-exists? (specializer-classes s)
+	   (lambda (s)
+	     (memq s pl)))
+	 #t)))
 
 (define (guarantee-class class name)
   (if (not (class? class))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: method.scm,v 1.4 1997/06/16 09:00:48 cph Exp $
+;;; $Id: method.scm,v 1.5 1997/06/19 20:22:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -292,6 +292,16 @@
       (and (union-specializer? s1)
 	   (union-specializer? s2)
 	   (union-specializer=? s1 s2))))
+
+(define (specializer-classes s)
+  (cond ((class? s)
+	 (list s))
+	((record-type? s)
+	 (list (record-type-class s)))
+	((union-specializer? s)
+	 (union-specializer-classes s))
+	(else
+	 (error:wrong-type-argument s "specializer" 'SPECIALIZER-CLASSES))))
 
 (define union-spec-rtd (make-record-type 'UNION-SPECIALIZER '(CLASSES)))
 (define make-union-specializer (record-constructor union-spec-rtd))
