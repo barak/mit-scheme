@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/instr1.scm,v 1.1 1990/01/25 16:36:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/instr1.scm,v 1.2 1990/07/19 04:03:55 jinx Rel $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -140,8 +140,8 @@ MIT in each case. |#
 	((memq 'C compl-list) 1)
 	(else 0)))
 
-(define-integrable (extract-deposit-condition compl)
-  (cond ((null? compl) 0)
+(define (extract-deposit-condition compl)
+  (cond ((or (null? compl) (memq 'NV compl)) 0)
 	((or (memq 'EQ compl) (memq '= compl)) 1)
 	((or (memq 'LT compl) (memq '< compl)) 2)
 	((memq 'OD compl) 3)
@@ -149,14 +149,19 @@ MIT in each case. |#
 	((or (memq 'LTGT compl) (memq '<> compl)) 5)
 	((or (memq 'GTEQ compl) (memq '>= compl)) 6)
 	((memq 'EV compl) 7)
-	(else 0)))
+	(else
+	 ;; This should really error out, but it's hard to
+	 ;; arrange given that the compl includes other
+	 ;; fields.
+	 0)))
 
 (define-integrable (encode-fpformat compl)
   (case compl
     ((DBL) 1)
     ((SGL) 0)
     ((QUAD) 3)
-    (else (error "Missing Floating Point Format" compl))))
+    (else
+     (error "Missing Floating Point Format" compl))))
 
 (define-integrable (encode-fpcond fpcond)
   (let ((place (assq fpcond float-condition-table)))
