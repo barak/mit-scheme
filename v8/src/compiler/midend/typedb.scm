@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.3 1995/10/25 18:35:15 adams Exp $
+$Id: typedb.scm,v 1.4 1995/11/03 21:11:31 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -125,6 +125,39 @@ MIT in each case. |#
 
 (define-operator-type (make-primitive-procedure 'COERCE-TO-COMPILED-PROCEDURE)
   (primitive-procedure-type (list type:any) type:compiled-procedure
+			    'function))
+
+
+;;; MIT Scheme charatcers have a 7 code-bits + 5 bucky-bits encoding,
+;;; hence some results are fix in bytes:
+
+(define-operator-type (make-primitive-procedure 'CHAR-CODE)
+  (primitive-procedure-type (list type:character) type:unsigned-byte
+			    'function))
+
+(define-operator-type (make-primitive-procedure 'CHAR-BITS)
+  (primitive-procedure-type (list type:character) type:unsigned-byte
+			    'function))
+
+(define-operator-type (make-primitive-procedure 'MAKE-CHAR)
+  (primitive-procedure-type (list type:unsigned-byte type:unsigned-byte)
+			    type:character
+			    'function))
+
+(define-operator-type (make-primitive-procedure 'CHAR->INTEGER)
+  (primitive-procedure-type (list type:character) type:small-fixnum>=0
+			    'function))
+
+(define-operator-type (make-primitive-procedure 'INTEGER->CHAR)
+  (primitive-procedure-type (list type:small-fixnum>=0) type:character
+			    'function))
+
+(define-operator-type (make-primitive-procedure 'CHAR->ASCII)
+  (primitive-procedure-type (list type:character) type:unsigned-byte
+			    'function))
+
+(define-operator-type (make-primitive-procedure 'ASCII->CHAR)
+  (primitive-procedure-type (list type:unsigned-byte type:character)
 			    'function))
 
 
