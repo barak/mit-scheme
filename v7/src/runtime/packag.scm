@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.29 2001/08/15 02:56:08 cph Exp $
+$Id: packag.scm,v 14.30 2001/08/16 20:02:35 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -239,7 +239,7 @@ USA.
 (define-structure (package-description (type vector)
 				       (conc-name package-description/))
   (name #f read-only #t)
-  (parent-name #f read-only #t)
+  (ancestors #f read-only #t)
   (file-cases #f read-only #t)
   (initialization #f read-only #t)
   (finalization #f read-only #t)
@@ -268,8 +268,7 @@ USA.
   (and (vector? object)
        (fix:= (vector-length object) 8)
        (package-name? (package-description/name object))
-       (or (package-name? (package-description/parent-name object))
-	   (eq? (package-description/parent-name object) 'NONE))
+       (list-of-type? (package-description/ancestors object) package-name?)
        (list-of-type? (package-description/file-cases object)
 	 (lambda (case)
 	   (and (pair? case)
@@ -332,10 +331,10 @@ USA.
   (let ((name (package-description/name description))
 	(environment
 	 (extend-package-environment
-	  (let ((parent (package-description/parent-name description)))
-	    (if (eq? parent 'NONE)
-		null-environment
-		(package/environment (find-package parent))))
+	  (let ((ancestors (package-description/ancestors description)))
+	    (if (pair? ancestors)
+		(package/environment (find-package (car ancestors)))
+		null-environment))
 	  (cons (package-description/internal-names description)
 		(lambda (name) name))
 	  (cons (package-description/internal-bindings description)

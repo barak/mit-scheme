@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpkg.scm,v 1.9 2001/08/15 02:59:35 cph Exp $
+$Id: conpkg.scm,v 1.10 2001/08/16 20:02:58 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -45,10 +45,11 @@ USA.
 	(split-bindings-list (package/sorted-bindings package)))
     (lambda (internal external)
       (vector (package/name package)
-	      (let ((parent (package/parent package)))
-		(if parent
-		    (package/name parent)
-		    'NONE))
+	      (let loop ((package package))
+		(let ((parent (package/parent package)))
+		  (if parent
+		      (cons (package/name parent) (loop parent))
+		      '())))
 	      (map (let ((map-files
 			  (lambda (clause)
 			    (map ->namestring
