@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.38 2003/03/10 06:05:53 cph Exp $
+$Id: record.scm,v 1.39 2003/03/12 20:41:42 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -70,11 +70,8 @@ USA.
 	  (%record #f
 		   #f
 		   "record-type"
-		   '#(RECORD-TYPE-NAME
-		      RECORD-TYPE-DISPATCH-TAG
-		      RECORD-TYPE-FIELD-NAMES
-		      RECORD-TYPE-DEFAULT-VALUES)
-		   (vector-cons 4 #f))))
+		   '#(NAME DISPATCH-TAG FIELD-NAMES DEFAULT-INITS)
+		   (vector-cons 4 (lambda () #f)))))
     (set! record-type-type-tag (make-dispatch-tag type))
     (%record-set! type 0 record-type-type-tag)
     (%record-set! type 1 record-type-type-tag))
@@ -126,7 +123,8 @@ USA.
 		  (loop (fix:- i 1)
 			(cons (list i (%record-ref record i)) d)))))))))
 
-(define (make-record-type type-name field-names #!optional default-values)
+(define (make-record-type type-name field-names
+			  #!optional default-inits unparser-method)
   (let ((caller 'MAKE-RECORD-TYPE))
     (guarantee-list-of-unique-symbols field-names caller)
     (let* ((names (list->vector field-names))
@@ -136,11 +134,13 @@ USA.
 		     #f
 		     (->type-name type-name)
 		     names
-		     (vector-cons n #f)))
+		     (vector-cons n (lambda () #f))))
 	   (tag (make-dispatch-tag record-type)))
       (%record-set! record-type 1 tag)
-      (if (not (default-object? default-values))
-	  (%set-record-type-default-values! record-type default-values caller))
+      (if (not (default-object? default-inits))
+	  (%set-record-type-default-inits! record-type default-inits caller))
+      (if (not (default-object? unparser-method))
+	  (set-record-type-unparser-method! record-type unparser-method))
       record-type)))
 
 (define (record-type? object)
@@ -158,7 +158,7 @@ USA.
 (define-integrable (%record-type-field-names record-type)
   (%record-ref record-type 3))
 
-(define-integrable (%record-type-default-values record-type)
+(define-integrable (%record-type-default-inits record-type)
   (%record-ref record-type 4))
 
 (define-integrable (%record-type-n-fields record-type)
@@ -167,6 +167,10 @@ USA.
 (define-integrable (%record-type-length record-type)
   (fix:+ 1 (%record-type-n-fields record-type)))
 
+(define (record-type-dispatch-tag record-type)
+  (guarantee-record-type record-type 'RECORD-TYPE-DISPATCH-TAG)
+  (%record-type-dispatch-tag record-type))
+
 (define (record-type-name record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-NAME)
   (%record-type-name record-type))
@@ -177,9 +181,9 @@ USA.
   (let ((v (%record-type-field-names record-type)))
     (subvector->list v 0 (vector-length v))))
 
-(define (record-type-default-values record-type)
-  (guarantee-record-type record-type 'RECORD-TYPE-DEFAULT-VALUES)
-  (let* ((v (%record-type-default-values record-type))
+(define (record-type-default-inits record-type)
+  (guarantee-record-type record-type 'RECORD-TYPE-DEFAULT-INITS)
+  (let* ((v (%record-type-default-inits record-type))
 	 (n (vector-length v))
 	 (v* (vector-cons n #f)))
     (do ((i 0 (fix:+ i 1)))
@@ -187,24 +191,24 @@ USA.
       (vector-set! v* i (vector-ref v i)))
     v*))
 
-(define (set-record-type-default-values! record-type default-values)
-  (let ((caller 'SET-RECORD-TYPE-DEFAULT-VALUES!))
+(define (set-record-type-default-inits! record-type default-inits)
+  (let ((caller 'SET-RECORD-TYPE-DEFAULT-INITS!))
     (guarantee-record-type record-type caller)
-    (%set-record-type-default-values! record-type default-values caller)))
+    (%set-record-type-default-inits! record-type default-inits caller)))
 
-(define (%set-record-type-default-values! record-type default-values caller)
-  (if (not (fix:= (guarantee-list->length default-values caller)
+(define (%set-record-type-default-inits! record-type default-inits caller)
+  (if (not (fix:= (guarantee-list->length default-inits caller)
 		  (%record-type-n-fields record-type)))
-      (error:bad-range-argument default-values caller))
-  (let ((v (%record-type-default-values record-type)))
-    (do ((values default-values (cdr values))
+      (error:bad-range-argument default-inits caller))
+  (let ((v (%record-type-default-inits record-type)))
+    (do ((values default-inits (cdr values))
 	 (i 0 (fix:+ i 1)))
 	((not (pair? values)))
-      (%record-set! v i (car values)))))
+      (vector-set! v i (car values)))))
 
-(define (record-type-dispatch-tag record-type)
-  (guarantee-record-type record-type 'RECORD-TYPE-DISPATCH-TAG)
-  (%record-type-dispatch-tag record-type))
+(define (record-type-default-value record-type field-name)
+  ((vector-ref (%record-type-default-inits record-type)
+	       (fix:- (record-type-field-index record-type field-name #t) 1))))
 
 (define set-record-type-unparser-method!
   (named-lambda (set-record-type-unparser-method!/booting record-type method)
@@ -321,14 +325,14 @@ USA.
 		     (if (not (null? values)) (lose)))
 		  (if (not (pair? values)) (lose))
 		  (%record-set! record (car indexes) (car values)))
-		(let ((v (%record-type-default-values record-type))
+		(let ((v (%record-type-default-inits record-type))
 		      (n (vector-length defaults)))
 		  (do ((i 0 (fix:+ i 1)))
 		      ((not (fix:< i n)))
 		    (%record-set!
 		     record
 		     (vector-ref defaults i)
-		     (vector-ref v (fix:- (vector-ref defaults i) 1)))))
+		     ((vector-ref v (fix:- (vector-ref defaults i) 1))))))
 		record)))))
       constructor)))
 
@@ -351,11 +355,11 @@ USA.
 		      (begin
 			(%record-set! record i (cadr kl))
 			(vector-set! seen? i #t)))))
-	      (let ((v (%record-type-default-values record-type)))
+	      (let ((v (%record-type-default-inits record-type)))
 		(do ((i 1 (fix:+ i 1)))
 		    ((not (fix:< i n)))
 		  (if (not (vector-ref seen? i))
-		      (%record-set! record i (vector-ref v (fix:- i 1))))))
+		      (%record-set! record i ((vector-ref v (fix:- i 1)))))))
 	      record)))))
     constructor))
 
@@ -465,6 +469,7 @@ USA.
 (define structure-type/name)
 (define structure-type/field-names)
 (define structure-type/field-indexes)
+(define structure-type/default-inits)
 (define structure-type/unparser-method)
 (define set-structure-type/unparser-method!)
 
@@ -472,9 +477,22 @@ USA.
   (set! <structure-type>
 	(make-record-type "structure-type"
 			  '(TYPE NAME FIELD-NAMES FIELD-INDEXES
-				 UNPARSER-METHOD)))
+				 DEFAULT-INITS UNPARSER-METHOD)))
   (set! make-define-structure-type
-	(record-constructor <structure-type>))
+	(let ((constructor (record-constructor <structure-type>)))
+	  (lambda (type name field-names field-indexes v1 #!optional v2)
+	    (receive (default-inits unparser-method)
+		(if (default-object? v2)
+		    (values #f v1)
+		    (values v1 v2))
+	      (constructor type name
+			   (list->vector field-names)
+			   (list->vector field-indexes)
+			   (if default-inits
+			       (list->vector default-inits)
+			       (make-vector (length field-names)
+					    (lambda () #f)))
+			   unparser-method)))))
   (set! structure-type?
 	(record-predicate <structure-type>))
   (set! structure-type/type
@@ -485,12 +503,14 @@ USA.
 	(record-accessor <structure-type> 'FIELD-NAMES))
   (set! structure-type/field-indexes
 	(record-accessor <structure-type> 'FIELD-INDEXES))
+  (set! structure-type/default-inits
+	(record-accessor <structure-type> 'DEFAULT-INITS))
   (set! structure-type/unparser-method
 	(record-accessor <structure-type> 'UNPARSER-METHOD))
   (set! set-structure-type/unparser-method!
 	(record-modifier <structure-type> 'UNPARSER-METHOD))
   unspecific)
-
+
 (define (structure-tag/unparser-method tag type)
   (let ((structure-type (tag->structure-type tag type)))
     (and structure-type
@@ -512,8 +532,8 @@ USA.
 	      (let ((accessor (if (pair? structure) list-ref vector-ref)))
 		(map (lambda (field-name index)
 		       `(,field-name ,(accessor structure index)))
-		     (structure-type/field-names type)
-		     (structure-type/field-indexes type)))))
+		     (vector->list (structure-type/field-names type))
+		     (vector->list (structure-type/field-indexes type))))))
 	(else
 	 (error:wrong-type-argument structure "named structure"
 				    'NAMED-STRUCTURE/DESCRIPTION))))
@@ -526,6 +546,14 @@ USA.
 	(and (structure-type? structure-type)
 	     (eq? (structure-type/type structure-type) type)
 	     structure-type))))
+
+(define (structure-tag/default-value tag type field-name)
+  (let ((type (tag->structure-type tag type)))
+    (if (not type)
+	(error:wrong-type-argument tag "structure tag"
+				   'STRUCTURE-TAG/DEFAULT-VALUE))
+    ((vector-ref (structure-type/default-inits type)
+		 (structure-type/field-name-index type field-name)))))
 
 ;;;; Support for safe accessors
 
@@ -572,7 +600,7 @@ USA.
 	(lambda (structure value)
 	  (check-list-untagged structure index type-name accessor-name)
 	  (set-car! (list-tail structure index) value)))))
-
+
 (define-integrable (check-vector structure tag index type accessor-name)
   (if (not (and (vector? structure)
 		(fix:> (vector-length structure) index)
@@ -597,7 +625,7 @@ USA.
   (and (pair? object)
        (or (fix:= 0 index)
 	   (list-to-index? (cdr object) (fix:- index 1)))))
-
+
 (define (accessor-parameters tag field-name structure-type accessor-type)
   (if (exact-nonnegative-integer? tag)
       (values #f
@@ -614,30 +642,41 @@ USA.
 		(structure-type/name type)
 		`(,accessor-type ,type ',field-name)))))
 
-(define (structure-type/field-index type name)
-  (let loop
-      ((names (structure-type/field-names type))
-       (indexes (structure-type/field-indexes type)))
-    (if (pair? names)
-	(if (eq? name (car names))
-	    (car indexes)
-	    (loop (cdr names) (cdr indexes)))
-	(error:bad-range-argument name 'STRUCTURE-TYPE/FIELD-INDEX))))
+(define (define-structure/keyword-parser type argument-list)
+  (let ((inits (structure-type/default-inits type)))
+    (let ((n (vector-length inits)))
+      (if (pair? argument-list)
+	  (let* ((unseen (list 'UNSEEN))
+		 (values (make-vector n unseen)))
+	    (do ((args argument-list (cddr args)))
+		((not (pair? args)))
+	      (if (not (pair? (cdr args)))
+		  (error "Keyword list does not have even length:"
+			 argument-list))
+	      (let ((i (structure-type/field-name-index type (car args))))
+		(if (eq? (vector-ref values i) unseen)
+		    (vector-set! values i (cadr args)))))
+	    (do ((i (fix:- n 1) (fix:- i 1))
+		 (l '()
+		    (cons (if (eq? (vector-ref values i) unseen)
+			      (vector-ref values i)
+			      ((vector-ref inits i)))
+			  l)))
+		((not (fix:>= i 0)) l)))
+	  (do ((i (fix:- n 1) (fix:- i 1))
+	       (l '() (cons ((vector-ref inits i)) l)))
+	      ((not (fix:>= i 0)) l))))))
 
-(define (define-structure/keyword-parser argument-list default-alist)
-  (if (pair? argument-list)
-      (let ((alist
-	     (map (lambda (entry) (cons (car entry) (cdr entry)))
-		  default-alist)))
-	(let loop ((arguments argument-list))
-	  (if (pair? arguments)
-	      (begin
-		(if (not (pair? (cdr arguments)))
-		    (error "Keyword list does not have even length:"
-			   argument-list))
-		(set-cdr! (or (assq (car arguments) alist)
-			      (error "Unknown keyword:" (car arguments)))
-			  (cadr arguments))
-		(loop (cddr arguments)))))
-	(map cdr alist))
-      (map cdr default-alist)))
+(define (structure-type/field-index type field-name)
+  (vector-ref (structure-type/field-indexes type)
+	      (structure-type/field-name-index type field-name)))
+
+(define (structure-type/field-name-index type field-name)
+  (let ((names (structure-type/field-names type)))
+    (let ((n (vector-length names)))
+      (let loop ((i 0))
+	(if (not (fix:< i n))
+	    (error:no-such-slot type field-name))
+	(if (eq? (vector-ref names i) field-name)
+	    i
+	    (loop (fix:+ i 1)))))))
