@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.22 1991/04/21 00:52:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.23 1991/05/06 01:09:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -188,3 +188,7 @@
   ;; Useful as a type for option variables.
   (or (false? object)
       (string? object)))
+
+(define (list-of-strings? object)
+  (and (list? object)
+       (for-all? object string?)))
