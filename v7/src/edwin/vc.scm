@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.58 2000/04/01 05:16:08 cph Exp $
+;;; $Id: vc.scm,v 1.59 2000/04/01 05:17:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -859,7 +859,7 @@ Normally shows only locked files; prefix arg says to show all files."
 		  (kill-buffer buffer))
 	      (message "No files are currently "
 		       (if all-files? "registered" "locked")
-		       " under "
+		       " in "
 		       (->namestring directory)))
 	    (pop-up-buffer buffer #t))))))
 
