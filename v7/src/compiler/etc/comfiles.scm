@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comfiles.scm,v 1.7 2002/11/20 19:45:48 cph Exp $
+$Id: comfiles.scm,v 1.8 2003/02/13 18:17:09 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright 1989,1991,1993,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -28,9 +28,9 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (define compiler-directories
   `("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
-	   ,(if (equal? microcode-id/operating-system-name "unix")
+	   ,(if (eq? 'UNIX microcode-id/operating-system)
 		"machine"
-		"machines/i386")))	   
+		"machines/i386")))
 
 (define runtime-directories
   '("runtime" "sf" "cref"))
@@ -79,3 +79,21 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (check-compiler #!optional stage)
   (check-stage compiler-directories
 	       (if (default-object? stage) "STAGE2" stage)))
+
+(define (compare-trees root1 root2)
+  (for-each (lambda (d)
+	      (compare-directory
+	       (pathname-as-directory (merge-pathnames d root1))
+	       (pathname-as-directory (merge-pathnames d root2))))
+	    (append runtime-directories
+		    (map (lambda (d) (string-append "compiler/" d))
+			 compiler-directories))))
+
+(define (compare-directory d1 d2)
+  (for-each (lambda (p1)
+	      (let ((p2 (merge-pathnames (file-pathname p1) d2)))
+		(if (file-exists? p2)
+		    (show-differences p1 p2)
+		    (warn "Directory mismatch" `(,p1 exists ,p2 does not)))))
+	    (directory-read (merge-pathnames "*.com" d1))))
+  
