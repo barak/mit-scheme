@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.30 1987/08/06 05:05:07 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.31 1987/08/06 18:03:52 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -200,7 +200,7 @@ typedef unsigned long Pointer;
 #define FASL_CELERITY		9
 #define FASL_HP_SPECTRUM	10
 #define FASL_UMAX		11
-#define FALS_PYR		12
+#define FASL_PYR		12
 #define FASL_ALLIANT		13
 
 /* These (pdp10 and nu) haven't worked in a while.
