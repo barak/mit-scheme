@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: screen.scm,v 1.104 1994/03/08 22:04:44 cph Exp $
+;;;	$Id: screen.scm,v 1.105 1994/03/08 22:05:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -174,7 +174,8 @@
 (define (update-screen! screen display-style)
   (and (or (not (screen-visible? screen))
 	   (begin
-	     (if display-style (screen-force-update screen))
+	     (if (and display-style (not (eq? 'NO-OUTPUT display-style)))
+		 (screen-force-update screen))
 	     (with-screen-in-update screen display-style
 	       (lambda ()
 		 (editor-frame-update-display! (screen-root-window screen)
