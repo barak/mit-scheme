@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.3 2000/04/23 03:04:02 cph Exp $
+;;; $Id: parser.scm,v 1.4 2000/06/01 20:06:38 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -97,12 +97,12 @@
 	       (elements (list (substring string start index))))
 	    (let ((index (match-delimiter string start end)))
 	      (if index
-		  (let ((index* (match-element string start end)))
+		  (let ((index* (match-element string index end)))
 		    (if index*
 			(loop index*
 			      (cons (substring string index index*) elements))
-			(list start (cons keyword elements))))
-		  (list start (cons keyword elements)))))
+			(list start (cons keyword (reverse! elements)))))
+		  (list start (cons keyword (reverse! elements))))))
 	  (list start (list keyword))))))
 
 (define (optional-parser . parsers)
