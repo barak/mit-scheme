@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.3 1991/05/02 01:14:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.4 1991/05/09 03:25:21 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -114,8 +114,8 @@ Otherwise, one argument `-i' is passed to the shell."
     (select-buffer
      (let ((program
 	    (or (ref-variable explicit-shell-file-name)
-		((ucode-primitive get-environment-variable) "ESHELL")
-		((ucode-primitive get-environment-variable) "SHELL")
+		(get-environment-variable "ESHELL")
+		(get-environment-variable "SHELL")
 		"/bin/sh")))
        (apply make-comint
 	      (ref-mode-object shell)

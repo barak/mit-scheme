@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.7 1991/04/11 03:18:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.8 1991/05/09 03:26:15 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -121,7 +121,7 @@ MIT in each case. |#
 (define (console-termcap-description)
   (if (eq? console-description 'UNKNOWN)
       (set! console-description
-	    (let ((term ((ucode-primitive get-environment-variable 1) "TERM")))
+	    (let ((term (get-environment-variable "TERM")))
 	      (and term
 		   (or (and (output-port/baud-rate console-output-port)
 			    (make-termcap-description term))

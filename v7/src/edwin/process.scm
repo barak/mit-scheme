@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.6 1991/04/29 10:51:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.7 1991/05/09 03:24:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -48,8 +48,10 @@
 
 (define (initialize-processes!)
   (set! edwin-processes '())
-  (set-variable! exec-path
-		 (parse-path-string (get-environment-variable "PATH"))))
+  (let ((path (get-environment-variable "PATH")))
+    (if (not path)
+	(error "Can't find PATH environment variable."))
+    (set-variable! exec-path (parse-path-string path))))
 
 (define edwin-processes)
 
