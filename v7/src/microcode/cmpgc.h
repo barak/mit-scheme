@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.5 1989/10/28 15:28:07 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.6 1989/11/01 18:54:12 jinx Exp $
    $MC68020-Header: cmp68kgc.h,v 9.30 89/03/27 23:14:31 GMT jinx Exp $
 
 Utilities to relocate compiled code in garbage collection-like processes. 
@@ -43,14 +43,17 @@ See cmpint.txt, cmpint2.h, cmpint.c, and cmpaux.m4 for more details.
 #ifndef CMPGC_H_INCLUDED
 #define CMPGC_H_INCLUDED
 
+#ifdef HAS_COMPILER_SUPPORT
+
 #include "cmpint2.h"
 
-/* The following is a kludge which is used to get
-   return_to_interpreter to work.  The return to interpreter block is
-   never dumped on normal bin files, but is dumped in complete bands.
-   As long as it does not change in position with respect to the
-   beginning of constant space, it will be relocated correctly on
-   reload.  */
+/*
+  The following is a kludge which is used to get return_to_interpreter
+  to work.  The return to interpreter block is never dumped on normal
+  bin files, but is dumped in complete bands.  As long as it does not
+  change in position with respect to the beginning of constant space,
+  it will be relocated correctly on reload.
+*/
 
 #ifndef In_Fasdump
 
@@ -267,4 +270,73 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
     (((char *) block) + CC_BLOCK_FIRST_GC_OFFSET))) ==			\
    ((BYTE_OFFSET_TO_OFFSET_WORD(CC_BLOCK_FIRST_ENTRY_OFFSET))))
 
+#else /* not HAS_COMPILER_SUPPORT */
+
+typedef unsigned long machine_word;
+
+/* Is there anything else that can be done here? */
+
+#define GC_NO_COMPILER_STMT()						\
+  gc_death								\
+    (TERM_COMPILER_DEATH,						\
+     "relocate_compiled: No compiler support!",				\
+     0, 0)
+
+#define GC_NO_COMPILER_EXPR(value_type)					\
+  ((GC_NO_COMPILER_STMT ()), (value_type 0))
+
+#define RELOCATE_COMPILED(obj, nb, ob) (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT)))
+
+#define Transport_Compiled() (GC_NO_COMPILER_STMT ())
+#define Compiled_BH(flag, then_what) (GC_NO_COMPILER_STMT ())
+#define Get_Compiled_Block(var, address) (GC_NO_COMPILER_STMT ())
+
+#define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
+  (GC_NO_COMPILER_EXPR ((machine_word *)))
+
+#define MANIFEST_CLOSURE_COUNT(scan)					\
+  (GC_NO_COMPILER_EXPR ((long)))
+
+#define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)				\
+  (GC_NO_COMPILER_EXPR ((machine_word *)))
+
+#define CLOSURE_ENTRY_END(word_ptr)					\
+  (GC_NO_COMPILER_EXPR ((machinw_word *)))
+
+#define MANIFEST_CLOSURE_END(end, start)				\
+  (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT *)))
+
+#define EXTRACT_CLOSURE_ENTRY_ADDRESS(target, source)			\
+  (GC_NO_COMPILER_STMT ())
+
+#define STORE_CLOSURE_ENTRY_ADDRESS(source, target)			\
+  (GC_NO_COMPILER_STMT ())
+
+#define READ_LINKAGE_KIND(header)					\
+  (GC_NO_COMPILER_EXPR ((int)))
+
+#define OPERATOR_LINKAGE_KIND 0
+
+#define READ_CACHE_LINKAGE_COUNT(header)				\
+  (GC_NO_COMPILER_EXPR ((int)))
+
+#define READ_OPERATOR_LINKAGE_COUNT(header)				\
+  (GC_NO_COMPILER_EXPR ((int)))
+
+#define END_OPERATOR_LINKAGE_AREA(scan, count)				\
+  (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT *)))
+
+#define FIRST_OPERATOR_LINKAGE_ENTRY(scan)				\
+  (GC_NO_COMPILER_EXPR ((machine_word *)))
+
+#define NEXT_LINKAGE_OPERATOR_ENTRY(ptr)				\
+  (GC_NO_COMPILER_EXPR ((machine_word *)))
+
+#define EXTRACT_OPERATOR_LINKAGE_ADDRESS(target, source)		\
+  (GC_NO_COMPILER_STMT ())
+
+#define STORE_OPERATOR_LINKAGE_ADDRESS(source, target)			\
+  (GC_NO_COMPILER_STMT ())
+
+#endif /* HAS_COMPILER_SUPPORT */
 #endif /* CMPGC_H_INCLUDED */
