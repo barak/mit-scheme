@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.25 2001/01/06 05:49:52 cph Exp $
+;;; $Id: load.scm,v 1.26 2001/03/18 06:27:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; IMAIL mail reader: loader
 
@@ -27,4 +28,4 @@
   (lambda ()
     (fluid-let ((*allow-package-redefinition?* #t))
       (package/system-loader "imail" '() 'QUERY))))
-(add-subsystem-identification! "IMAIL" '(1 9))
+(add-subsystem-identification! "IMAIL" '(1 10))
