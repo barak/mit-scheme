@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prbfish.c,v 1.2 1997/06/09 21:17:48 cph Exp $
+$Id: prbfish.c,v 1.3 1997/06/17 04:58:41 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -143,5 +143,46 @@ Returned value is a string of the same length as INPUT.")
 		    init_vector,
 		    (&num),
 		    (BOOLEAN_ARG (5)));
+  PRIMITIVE_RETURN (output_text);
+}
+
+DEFINE_PRIMITIVE ("BLOWFISH-CFB64-SUBSTRING", Prim_blowfish_cfb64_substring, 7, 7,
+  "(INPUT START END KEY INIT-VECTOR NUM ENCRYPT?)\n\
+Apply Blowfish in Cipher FeedBack mode.\n\
+(INPUT,START,END) is an arbitrary substring.\n\
+KEY is a Blowfish key.\n\
+INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
+  The value from any call may be passed in to a later call.\n\
+NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the\n\
+  number of bytes that have previously been processed in this stream.\n\
+ENCRYPT? says whether to encrypt (#T) or decrypt (#F).\n\
+Returned value is a string of the same length as INPUT.")
+{
+  SCHEME_OBJECT input_text;
+  unsigned long l;
+  unsigned long start;
+  unsigned long end;
+  BF_KEY * key;
+  unsigned char * init_vector;
+  int num;
+  SCHEME_OBJECT output_text;
+  PRIMITIVE_HEADER (7);
+
+  CHECK_ARG (1, STRING_P);
+  input_text = (ARG_REF (1));
+  l = (STRING_LENGTH (input_text));
+  start = (arg_ulong_index_integer (2, l));
+  end = (arg_integer_in_range (3, start, (l + 1)));
+  key = (key_arg (4));
+  init_vector = (init_vector_arg (5));
+  num = (arg_index_integer (6, 8));
+  output_text = (allocate_string (end - start));
+  BF_cfb64_encrypt ((STRING_LOC (input_text, start)),
+		    (STRING_LOC (output_text, 0)),
+		    (end - start),
+		    key,
+		    init_vector,
+		    (&num),
+		    (BOOLEAN_ARG (7)));
   PRIMITIVE_RETURN (output_text);
 }
