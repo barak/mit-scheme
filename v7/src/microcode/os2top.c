@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.2 1994/11/28 03:50:17 cph Exp $
+$Id: os2top.c,v 1.3 1994/12/02 20:40:20 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -43,6 +43,7 @@ extern void OS2_initialize_directory_reader (void);
 extern void OS2_initialize_environment (void);
 extern void OS2_initialize_keyboard_interrupts (void);
 extern void OS2_initialize_message_queues (void);
+extern void OS2_initialize_pm_thread (void);
 extern void OS2_initialize_scheme_thread (void);
 extern void OS2_initialize_tty (void);
 
@@ -64,6 +65,7 @@ OS_initialize (void)
   initialize_locks ();
   OS2_initialize_message_queues ();
   OS2_initialize_scheme_thread ();
+  OS2_initialize_pm_thread ();
   OS2_initialize_channels ();
   OS2_initialize_channel_thread_messages ();
   OS2_initialize_keyboard_interrupts ();
@@ -77,8 +79,11 @@ OS_initialize (void)
     OS_Variant = (OS_malloc ((strlen (OS_Name)) + (strlen (version)) + 2));
     sprintf (((char *) OS_Variant), "%s %s", OS_Name, version);
   }
-  outf_console ("MIT Scheme running under %s\n", OS_Variant);
-  outf_flush_console ();
+}
+
+void
+OS_announcement (void)
+{
 }
 
 static const char *
