@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.emx,v 1.3 1995/10/16 17:26:31 cph Exp $
+###	$Id: makefile.emx,v 1.4 1995/10/17 23:06:27 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -38,7 +38,7 @@
 ###
 
 #### Makefile for Scheme under OS/2 using EMX/GCC
-
+
 # This makefile is configured for use with GNU make, the EMX/GCC
 # development system (compiler, assembler, linker, etc.), and the GNU
 # m4 macro preprocessor.
@@ -65,17 +65,17 @@ ASFLAGS =
 
 %.exe :
 	$(CC) $(LDFLAGS) -o $(basename $@) $^
-	emxbind -b $(basename $@)
+	emxbind -bq $(basename $@)
 	del $(basename $@)
 
 include os2utl\makefile.cmn
 
 scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS)
 	$(CC) $(LDFLAGS) -o $(basename $@) $^ $(SCHEME_LIB)
-	emxbind -bp $(basename $@)
+	emxbind -bpq $(basename $@)
 	del $(basename $@)
 
 bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS)
 	$(CC) $(LDFLAGS) -o $(basename $@) $^ $(SCHEME_LIB)
-	emxbind -bp $(basename $@)
+	emxbind -bpq $(basename $@)
 	del $(basename $@)
