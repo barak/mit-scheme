@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppacach.c,v 1.2 1990/12/01 00:21:19 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppacach.c,v 1.3 1991/05/05 20:26:11 jinx Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -169,19 +169,19 @@ print_sel (sel, name, pattern, op)
       printf (pattern, "D");
       printf (" and ");
       printf (pattern, "I");
-      printf (" must be used to %s it.", op);
+      printf (" must be used to %s.", op);
       break;
 
     case 1:
       printf ("\n      Only ");
       printf (pattern, "D");
-      printf (" needs to be used to %s it.", op);
+      printf (" needs to be used to %s.", op);
       break;
 
     case 2:
       printf ("\n      Only ");
       printf (pattern, "I");
-      printf (" needs to be used to %s it.", op);
+      printf (" needs to be used to %s.", op);
       break;
 
     case 3:
@@ -189,7 +189,7 @@ print_sel (sel, name, pattern, op)
       printf (pattern, "D");
       printf (" or ");
       printf (pattern, "I");
-      printf (" can be used to %s it.", op);
+      printf (" can be used to %s.", op);
       break;
 
     default:
@@ -285,15 +285,15 @@ print_tlb (info, name)
   printf ("    /*\n");
   printf ("      %s-TLB information:\n", name);
 
-  printf ("\tsize\t\t%ld bytes (%ld K).\n",
+  printf ("\tsize\t\t%ld entries (%ld K).\n",
 	  info->size, (info->size / 1024));
-  printf ("\tconf\t\t0x%08lx.\n", info->conf.word);
-  printf ("\tsp_base\t\t0x%lx.\n", info->sp_base);
-  printf ("\tsp_stride\t%ld.\n", info->sp_stride);
-  printf ("\tsp_count\t%ld.\n", info->sp_count);
-  printf ("\toff_base\t0x%lx.\n", info->off_base);
-  printf ("\toff_stride\t%ld.\n", info->off_stride);
-  printf ("\toff_count\t%ld.\n", info->off_count);
+  printf ("\tconf\t\t0x%08lx\n", info->conf.word);
+  printf ("\tsp_base\t\t0x%lx\n", info->sp_base);
+  printf ("\tsp_stride\t%ld\n", info->sp_stride);
+  printf ("\tsp_count\t%ld\n", info->sp_count);
+  printf ("\toff_base\t0x%lx\n", info->off_base);
+  printf ("\toff_stride\t%ld\n", info->off_stride);
+  printf ("\toff_count\t%ld\n", info->off_count);
   printf ("\tloop\t\t%ld association%s per entry.",
 	  info->loop, ((info->loop == 1) ? "" : "s"));
   
@@ -313,15 +313,23 @@ print_tlb (info, name)
 }
 
 void
-print_parameters (pdc_cache)
+print_parameters (pdc_cache, node_p)
      struct pdc_cache_dump *pdc_cache;
+     int node_p;
 {
   struct pdc_cache_result *io_arch_format;
 
-  printf ("/* Emacs: Use -*- C -*- mode when editting this file. */\n\n");
-  printf ("{\n  /* Cache description for %s, an HP PA %s processor. */\n\n",
-	  sysinfo.nodename,
-	  sysinfo.machine);
+  if (node_p)
+  {
+    printf ("/* Emacs: Use -*- C -*- mode when editting this file. */\n\n");
+    printf ("{\n  /* Cache description for %s, an HP PA %s processor. */\n\n",
+	    sysinfo.nodename,
+	    sysinfo.machine);
+  }
+  else
+  {
+    printf ("{\n");
+  }
 
   io_arch_format = ((struct pdc_cache_result *) &(pdc_cache->cache_format));
 
@@ -352,13 +360,13 @@ search_pdc_database (fd, pdc_cache, filename)
       int scr =
 	(read (fd, ((char *) pdc_cache), (sizeof (struct pdc_cache_dump))));
       if (scr < 0)
-	io_lose ("update_pdc_database", "read (%s) failed", filename);
+	io_lose ("search_pdc_database", "read (%s) failed", filename);
       if (scr != (sizeof (struct pdc_cache_dump)))
 	{
 	  if (scr == 0)
 	    return (0);
 	  fprintf (stderr, "%s: %s: incomplete read (%s)\n",
-		   (the_argv[0]), "update_pdc_database", filename);
+		   (the_argv[0]), "search_pdc_database", filename);
 	  fflush (stderr);
 	  exit (1);
 	}
@@ -394,6 +402,51 @@ update_pdc_database (pdc_cache, filename)
     }
   if ((close (fd)) < 0)
     io_lose ("update_pdc_database", "close (%s) failed", filename);
+}
+
+void
+print_pdc_database (filename)
+     char * filename;
+{
+  struct pdc_cache_dump pdc_cache_s, *pdc_cache;
+  int fd = (open (filename, (O_RDONLY), 0666));
+  int first;
+
+  if (fd < 0)
+    io_lose ("print_pdc_database", "open (%s) failed", filename);
+
+  pdc_cache = &pdc_cache_s;
+  first = 1;
+  while (1)
+  {
+    int scr =
+      (read (fd, ((char *) pdc_cache), (sizeof (struct pdc_cache_dump))));
+    if (scr < 0)
+      io_lose ("print_pdc_database", "read (%s) failed", filename);
+    if (scr != (sizeof (struct pdc_cache_dump)))
+    {
+      if (scr == 0)
+	break;
+      fprintf (stderr, "%s: %s: incomplete read (%s)\n",
+	       (the_argv[0]), "print_pdc_database", filename);
+      fflush (stderr);
+      exit (1);
+    }
+
+    if (first == 0)
+    {
+      putchar ('\f');
+      putchar ('\n');
+    }
+    else
+    {
+      first = 0;
+    }
+    print_parameters (pdc_cache, 0);
+  }
+
+  if ((close (fd)) < 0)
+    io_lose ("print_pdc_database", "close (%s) failed", filename);
 }
 
 void
@@ -447,8 +500,9 @@ usage ()
 {
   fprintf (stderr, "usage: one of:\n");
   fprintf (stderr, " %s -update FILENAME\n");
-  fprintf (stderr, " %s -print FILENAME\n");
   fprintf (stderr, " %s -verify FILENAME\n");
+  fprintf (stderr, " %s -print FILENAME\n");
+  fprintf (stderr, " %s -printall FILENAME\n");
   fflush (stderr);
   exit (1);
 }
@@ -475,7 +529,11 @@ main (argc, argv)
       {
 	struct pdc_cache_dump pdc_cache;
 	update_pdc_database ((&pdc_cache), filename);
-	print_parameters (&pdc_cache);
+	print_parameters (&pdc_cache, 1);
+      }
+    else if ((strcmp (keyword, "-printall")) == 0)
+      {
+	print_pdc_database (filename);
       }
     else if ((strcmp (keyword, "-verify")) == 0)
       {
