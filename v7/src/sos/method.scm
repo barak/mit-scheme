@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: method.scm,v 1.3 1997/06/15 06:41:40 cph Exp $
+;;; $Id: method.scm,v 1.4 1997/06/16 09:00:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -446,6 +446,10 @@
 (method-combinator-record method-procedure #t)
 (method-combinator-record computed-emp-key #t)
 
+(set-generic-procedure-default-generator!
+ initialize-instance
+ (lambda classes classes (lambda arguments arguments unspecific)))
+
 (add-method method-specializers
 	    (slot-accessor-method <method> 'SPECIALIZERS))
 
@@ -458,3 +462,5 @@
 (add-method initialize-instance
 	    (make-method (list <instance>)
 			 (lambda (instance) instance unspecific)))
+
+(set-generic-procedure-default-generator! initialize-instance #f)
