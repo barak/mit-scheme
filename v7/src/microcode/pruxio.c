@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxio.c,v 1.1 1993/03/10 17:56:54 cph Exp $
+$Id: pruxio.c,v 1.2 1993/04/06 21:34:02 cph Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -45,6 +45,12 @@ extern Tchannel EXFUN (arg_channel, (int arg_number));
 extern int EXFUN (UX_channel_descriptor, (Tchannel channel));
 #endif
 
+DEFINE_PRIMITIVE ("HAVE-SELECT?", Prim_have_select_p, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (UX_have_select_p));
+}
+
 DEFINE_PRIMITIVE ("SELECT-REGISTRY-SIZE", Prim_selreg_size, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
