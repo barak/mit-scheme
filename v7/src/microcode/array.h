@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.26 1988/02/14 20:16:01 pas Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.27 1988/07/09 11:20:42 pas Exp $ */
 
 
 #define REAL float
@@ -144,9 +144,13 @@ MIT in each case. */
 #define C_Make_Polar(Real, Imag, Mag_Cell, Phase_Cell)                         \
 { double double_Real=((double) Real), double_Imag=((double) Imag);             \
   Mag_Cell = (REAL) sqrt((double_Real*double_Real)+(double_Imag*double_Imag)); \
-  Phase_Cell = (REAL) atan2(double_Imag, double_Real); }
-/* atan has no problem with division by zero
- */
+  if (Mag_Cell==0.0)       \
+    Phase_Cell = 0.0;      \
+  else                     \
+    Phase_Cell = (REAL) atan2(double_Imag, double_Real);  \
+}
+/* Undefined angle at (0,0) ---- Choose value 0.0 */
+
 
 #define Linear_Map(slope,offset,From,To) { (To) = (((slope)*(From))+offset); }
 
