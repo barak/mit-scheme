@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.15 1991/12/05 16:18:51 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.16 1992/01/09 17:55:24 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -388,26 +388,24 @@ Miscellany
     subproblem with its value.
 
 Use \\[kill-buffer] to quit the debugger."
-  (local-set-variable! enable-transcript-buffer true)
-  (local-set-variable! transcript-buffer-name (current-buffer))
   (local-set-variable! comint-input-ring
 		       (make-ring (ref-variable comint-input-ring-size)))
   (local-set-variable! evaluation-input-recorder
 		       continuation-browser-input-recorder)
-  (local-set-variable! transcript-output-wrapper
-		       continuation-browser-output-wrapper))
+  (local-set-variable! evaluation-output-receiver
+		       continuation-browser-output-receiver))
 
 (define (continuation-browser-input-recorder region)
   (ring-push! (ref-variable comint-input-ring) (region->string region)))
 
-(define (continuation-browser-output-wrapper thunk)
-  (with-output-to-mark (current-point)
-    (lambda ()
-      (intercept-^G-interrupts (lambda ()
-				 (fresh-line)
-				 (write-string ";Abort!\n\n")
-				 (^G-signal))
-			       thunk))))
+(define (continuation-browser-output-receiver value output)
+  (let ((point (mark-left-inserting-copy (current-point))))
+    (insert-string output point)
+    (guarantee-newlines 1 point)
+    (insert-string (transcript-value-prefix-string value true) point)
+    (insert-string (transcript-value-string value) point)
+    (insert-newlines 2 point)
+    (mark-temporary! point)))
 
 ;;; Disable EVAL-CURRENT-BUFFER in Debugger Mode.  It is inherited
 ;;; from Scheme mode but does not make sense here:

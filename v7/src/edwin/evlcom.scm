@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.32 1991/12/05 16:20:16 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.33 1992/01/09 17:55:35 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -71,10 +71,10 @@ If #F, disables input recording."
   false)
 
 (define-variable evaluation-output-receiver
-  "A procedure that is called with the value and the output (as a string)
-resulting from evaluation.
-If #F, the output will be thrown in the bit bucket, unless 
-ENABLE-TRANSCRIPT-BUFFER is true."
+  "Procedure to call with the value and output from evaluation.
+The value is an object, and the output is a string.
+If #F, the value is printed in the typein window,
+and the output, if non-null, is shown in a pop-up buffer."
   false)
 
 (define-variable enable-transcript-buffer
@@ -99,14 +99,12 @@ If #F, normal transcript output is done."
   false)
 
 (define-variable transcript-list-depth-limit
-  "List depth to which evaluation results are printed in the transcript
-buffer.  #F means no limit."
+  "List depth to which evaluation results are printed.  #F means no limit."
   false
   (lambda (object) (or (not object) (exact-nonnegative-integer? object))))
 
 (define-variable transcript-list-breadth-limit
-  "List breadth to which evaluation results are printed in the transcript
-buffer.  #F means no limit."
+  "List breadth to which evaluation results are printed.  #F means no limit."
   false
   (lambda (object) (or (not object) (exact-nonnegative-integer? object))))
 
@@ -348,17 +346,15 @@ kludge the mode line."
 		   (let ((evaluation-output-receiver
 			  (ref-variable evaluation-output-receiver)))
 		     (if evaluation-output-receiver
-			 (evaluation-output-receiver
-			  value
-			  output-string)))
-		   (with-output-to-transcript-buffer
-		    (lambda ()
-		      (write-string output-string)
-		      (transcript-write
-		       value
-		       (and (ref-variable enable-transcript-buffer)
-			    (transcript-buffer)))
-		      value)))))))))
+			 (evaluation-output-receiver value output-string)
+			 (with-output-to-transcript-buffer
+			  (lambda ()
+			    (write-string output-string)
+			    (transcript-write
+			     value
+			     (and (ref-variable enable-transcript-buffer)
+				  (transcript-buffer))))))))
+		 value))))))
     (if (ref-variable enable-run-light?)
 	(dynamic-wind
 	 (lambda ()
@@ -460,12 +456,8 @@ FIT           Error messages appear in typein window if they fit;
 (define (transcript-write value buffer)
   (let ((value-string
 	 (string-append
-	  (transcript-value-string value false)
-	  (fluid-let ((*unparser-list-depth-limit*
-		       (ref-variable transcript-list-depth-limit))
-		      (*unparser-list-breadth-limit*
-		       (ref-variable transcript-list-breadth-limit)))
-	    (write-to-string value)))))
+	  (transcript-value-prefix-string value false)
+	  (transcript-value-string value))))
     (if buffer
 	(let ((point (mark-left-inserting-copy (buffer-end buffer))))
 	  (guarantee-newlines 1 point)
@@ -475,7 +467,7 @@ FIT           Error messages appear in typein window if they fit;
     (if (or (not buffer) (null? (buffer-windows buffer)))
 	(message value-string))))
 
-(define (transcript-value-string value hash-number?)
+(define (transcript-value-prefix-string value hash-number?)
   (if (undefined-value? value)
       ";No value"
       (string-append
@@ -489,6 +481,15 @@ FIT           Error messages appear in typein window if they fit;
 	    (write-to-string (object-hash value)))
 	   "")
        ": ")))
+
+(define (transcript-value-string value)
+  (if (undefined-value? value)
+      ""
+      (fluid-let ((*unparser-list-depth-limit*
+		   (ref-variable transcript-list-depth-limit))
+		  (*unparser-list-breadth-limit*
+		   (ref-variable transcript-list-breadth-limit)))
+	(write-to-string value))))
 
 (define (transcript-buffer)
   (let ((name (ref-variable transcript-buffer-name)))
