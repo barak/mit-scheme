@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: oscond.h,v 1.21 1995/10/24 05:08:19 cph Exp $
+$Id: oscond.h,v 1.22 1996/07/01 23:25:27 cph Exp $
 
-Copyright (c) 1990-95 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -76,11 +76,16 @@ MIT in each case. */
 #define _POSIX
 #define _SYSV3
 
+#include <sys/types.h>
+#ifdef PGID_USE_PID
+#define _HPUX_VERSION 100
+#else
 #include <a.out.h>
 #ifdef SHL_MAGIC
 #define _HPUX_VERSION 80
 #else
 #define _HPUX_VERSION 70
+#endif
 #endif
 
 #else /* not __hpux */
