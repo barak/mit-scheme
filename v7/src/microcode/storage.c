@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.46 1990/06/20 17:42:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.47 1990/10/03 15:15:05 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -69,9 +69,7 @@ long
   IntEnb,		/* Interrupts enabled */
   temp_long,		/* temporary for sign extension */
   GC_Reserve,		/* Scheme pointer overflow space in heap */
-  GC_Space_Needed,	/* Amount of space needed when GC triggered */
-  /* Used to signal microcode errors from compiled code. */
-  compiled_code_error_code;
+  GC_Space_Needed;	/* Amount of space needed when GC triggered */
 
 Declare_Fixed_Objects ();
 

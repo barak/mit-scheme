@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.56 1990/06/20 17:41:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.57 1990/10/03 15:16:32 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1688,18 +1688,18 @@ Perform_Application:
 
           case TC_COMPILED_ENTRY:
 	  {
-	    apply_compiled_setup(STACK_ENV_EXTRA_SLOTS +
-				 OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER)));
-	    Export_Registers();
+	    apply_compiled_setup (STACK_ENV_EXTRA_SLOTS +
+				  (OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER))));
+	    Export_Registers ();
 	    Which_Way = apply_compiled_procedure();
 
 return_from_compiled_code:
-	    Import_Registers();
+	    Import_Registers ();
             switch (Which_Way)
             {
 	    case PRIM_DONE:
 	    {
-	      compiled_code_done();
+	      compiled_code_done ();
 	      goto Pop_Return;
 	    }
 
@@ -1724,17 +1724,6 @@ return_from_compiled_code:
 	      Prepare_Apply_Interrupt ();
 	      Interrupt (PENDING_INTERRUPTS ());
 	    }
-
-	    /* The assembly language interfaces return errors
-	       here.  The portable version does not.
-	     */
-	    case ERR_COMPILED_CODE_ERROR:
-	    {
-	      /* The compiled code is signalling a microcode error. */
-	      compiled_error_backout();
-	      /* The Save_Cont is done by Pop_Return_Error. */
-	      Pop_Return_Error( compiled_code_error_code);
-	    }
 
 	    case ERR_INAPPLICABLE_OBJECT:
 	    /* This error code means that apply_compiled_procedure
@@ -1746,8 +1735,8 @@ return_from_compiled_code:
 
 	    case ERR_WRONG_NUMBER_OF_ARGUMENTS:
 	    {
-	      apply_compiled_backout();
-	      Apply_Error( Which_Way);
+	      apply_compiled_backout ();
+	      Apply_Error (Which_Way);
 	    }
 
 	    case ERR_EXECUTE_MANIFEST_VECTOR:
@@ -1757,10 +1746,10 @@ return_from_compiled_code:
 		 This is a kludge!
 	       */
 
-	      execute_compiled_backout();
+	      execute_compiled_backout ();
 	      Val =
 		(OBJECT_NEW_TYPE (TC_COMPILED_ENTRY, (Fetch_Expression ())));
-	      Pop_Return_Error( Which_Way);
+	      Pop_Return_Error (Which_Way);
 	    }
 
 	    case ERR_INAPPLICABLE_CONTINUATION:
@@ -1770,14 +1759,14 @@ return_from_compiled_code:
 		 in a system without compiler support.
 	       */
 
-	      Store_Expression(SHARP_F);
-	      Store_Return(RC_REENTER_COMPILED_CODE);
-	      Pop_Return_Error(Which_Way);
+	      Store_Expression (SHARP_F);
+	      Store_Return (RC_REENTER_COMPILED_CODE);
+	      Pop_Return_Error (Which_Way);
 	    }
 
 	    default:
-	      compiled_error_backout();
-	      Pop_Return_Error(Which_Way);
+	      compiled_error_backout ();
+	      Pop_Return_Error (Which_Way);
             }
           }
 

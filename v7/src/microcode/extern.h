@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.37 1990/08/16 19:19:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.38 1990/10/03 15:14:36 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -123,9 +123,7 @@ extern long
   IntEnb,		/* Interrupts enabled */
   temp_long,		/* temporary for sign extension */
   GC_Reserve,		/* Scheme pointer overflow space in heap */
-  GC_Space_Needed, 	/* Amount of space needed when GC triggered */
-  /* Used to signal microcode errors from compiled code. */
-  compiled_code_error_code;
+  GC_Space_Needed; 	/* Amount of space needed when GC triggered */
 
 extern char * Return_Names [];
 extern long MAX_RETURN;
