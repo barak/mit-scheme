@@ -1,8 +1,8 @@
 /* Interface from Emacs to terminfo.
    Copyright (C) 1985, 1986 Free Software Foundation, Inc.
-   Copyright (C) 1998, 2000, 2001 Massachusetts Institute of Technology
+   Copyright (C) 1998-2001 Massachusetts Institute of Technology
 
-$Id: terminfo.c,v 1.5 2001/02/28 14:40:45 cph Exp $
+$Id: terminfo.c,v 1.6 2001/03/03 02:00:09 cph Exp $
 
 This file is part of GNU Emacs.
 
@@ -21,10 +21,6 @@ can know your rights and responsibilities.  It should be in a
 file named COPYING.  Among other things, the copyright notice
 and this notice must be preserved on all copies.  */
 
-/* Define these variables that serve as global parameters to termcap,
-   so that we do not need to conditionalize the places in Emacs
-   that set them.  */
-
 #include "config.h"
 
 #ifdef STDC_HEADERS
@@ -32,25 +28,32 @@ and this notice must be preserved on all copies.  */
 #  include <string.h>
 #endif
 
+extern char * EXFUN (tparm, (CONST char *, ...));
+
 /* Interface to curses/terminfo library.
    Turns out that all of the terminfo-level routines look
    like their termcap counterparts except for tparm, which replaces
    tgoto.  Not only is the calling sequence different, but the string
-   format is different too.
-*/
+   format is different too.  */
 
 char *
-tparam (string, outstring, len, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
-     char *string;
-     char *outstring;
-     int arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9;
+DEFUN (tparam, (string, outstring, len, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9),
+       CONST char * string AND
+       char * outstring AND
+       int len AND
+       int arg1 AND
+       int arg2 AND
+       int arg3 AND
+       int arg4 AND
+       int arg5 AND
+       int arg6 AND
+       int arg7 AND
+       int arg8 AND
+       int arg9 AND)
 {
-  char *temp;
-  extern char *tparm();
-
-  temp = tparm (string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+  char * temp = (tparm (string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9));
   if (outstring == 0)
     outstring = ((char *) (malloc ((strlen (temp)) + 1)));
   strcpy (outstring, temp);
-  return outstring;
+  return (outstring);
 }
