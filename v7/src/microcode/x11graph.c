@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11graph.c,v 1.37 1996/08/20 03:48:13 adams Exp $
+$Id: x11graph.c,v 1.38 1997/05/15 00:10:06 cph Exp $
 
-Copyright (c) 1989-95 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -881,11 +881,10 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-FILL-POLYGON", Prim_x_graphics_fill_polygon, 2, 2,
 }
 
 DEFINE_PRIMITIVE ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3,
-  "Arguments: Window, width, height\n\
-Returns:   A Scheme image\n\
-\n\
-The window is used to find the Display, Visual, and Depth\n\
-information needed to crate an XImage structure.")
+  "(window width height)\n\
+Creates and returns an XImage object, of dimensions WIDTH by HEIGHT.\n\
+WINDOW is used to set the Display, Visual, and Depth characteristics.\n\
+The image is created by calling XCreateImage.")
 {
   PRIMITIVE_HEADER (3);
   {
@@ -894,12 +893,19 @@ information needed to crate an XImage structure.")
     Display * dpy = (XW_DISPLAY (xw));
     unsigned int width = (arg_ulong_integer (2));
     unsigned int height = (arg_ulong_integer (3));
-    unsigned int bitmap_pad = (BitmapPad (dpy));
-    unsigned int byte_pad = (bitmap_pad / CHAR_BIT);
-    unsigned int bytes_per_line =
-      (((width + (byte_pad - 1)) / byte_pad) * byte_pad);
+    unsigned int bytes_per_pixel;
+    unsigned int bitmap_pad;
+    unsigned int byte_pad;
+    unsigned int bytes_per_line;
     XWindowAttributes attrs;
+
     XGetWindowAttributes (dpy, window, (&attrs));
+    /* This is a total kludge.  I don't understand how to do this right. */
+    bytes_per_pixel = (((attrs . depth) + (CHAR_BIT - 1)) / CHAR_BIT);
+    bitmap_pad = (BitmapPad (dpy));
+    byte_pad = (bitmap_pad / CHAR_BIT);
+    bytes_per_line
+      = ((((width * bytes_per_pixel) + (byte_pad - 1)) / byte_pad) * byte_pad);
     PRIMITIVE_RETURN
       (X_IMAGE_TO_OBJECT
        (XCreateImage
@@ -908,10 +914,7 @@ information needed to crate an XImage structure.")
 	 (attrs . depth),
 	 ZPixmap,
 	 0,
-	 ((char *)
-	  (x_malloc (height
-		     * bytes_per_line
-		     * ((((attrs . depth) - 1) / 8) + 1)))),
+	 ((char *) (x_malloc (height * bytes_per_line))),
 	 width,
 	 height,
 	 bitmap_pad,
@@ -920,31 +923,66 @@ information needed to crate an XImage structure.")
 }
 
 DEFINE_PRIMITIVE ("X-BYTES-INTO-IMAGE", Prim_x_bytes_into_image, 2, 2,
-  "Stick the bytes from the vector-8b (first arg) into the x_image (second arg).")
+  "(vector image)\n\
+VECTOR is a vector or vector-8b of pixel values stored in row-major\n\
+order; it must have the same number of pixels as IMAGE.\n\
+These pixels are written onto IMAGE by repeated calls to XPutPixel.\n\
+This procedure is equivalent to calling X-SET-PIXEL-IN-IMAGE for each\n\
+pixel in VECTOR.")
 {
   PRIMITIVE_HEADER (2);
   {
     SCHEME_OBJECT vector = (ARG_REF (1));
     XImage * image = (XI_IMAGE (x_image_arg (2)));
-    char * image_scan;
     unsigned long width = (image -> width);
     unsigned long height = (image -> height);
-    int x, y;
+    if (STRING_P (vector))
+      {
+	unsigned char * vscan;
+	unsigned long x;
+	unsigned long y;
 
-    if (! (STRING_P (vector)))
+	if ((STRING_LENGTH (vector)) != (width * height))
+	  error_bad_range_arg (1);
+	vscan = (STRING_LOC (vector, 0));
+	for (y = 0; (y < height); y += 1)
+	  for (x = 0; (x < width); x += 1)
+	    XPutPixel (image, x, y, ((unsigned long) (*vscan++)));
+      }
+    else if (VECTOR_P (vector))
+      {
+	unsigned long vlen;
+	SCHEME_OBJECT * vscan;
+	SCHEME_OBJECT * vend;
+	unsigned long x;
+	unsigned long y;
+
+	vlen = (VECTOR_LENGTH (vector));
+	if (vlen != (width * height))
+	  error_bad_range_arg (1);
+	vscan = (VECTOR_LOC (vector, 0));
+	vend = (VECTOR_LOC (vector, vlen));
+	while (vscan < vend)
+	  {
+	    SCHEME_OBJECT elt = (*vscan++);
+	    if (! ((INTEGER_P (elt)) && (integer_to_ulong_p (elt))))
+	      error_bad_range_arg (1);
+	  }
+	vscan = (VECTOR_LOC (vector, 0));
+	for (y = 0; (y < height); y += 1)
+	  for (x = 0; (x < width); x += 1)
+	    XPutPixel (image, x, y, (integer_to_ulong (*vscan++)));
+      }
+    else
       error_wrong_type_arg (1);
-    if (STRING_LENGTH(vector) != (width * height))
-      error_bad_range_arg (1);
-
-    image_scan = ((char *) STRING_LOC (vector, 0));
-    for (y = 0; y < height; y++)
-      for (x = 0; x < width; x++)
-	XPutPixel (image, x, y, ((unsigned long) *image_scan++));
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
 
-DEFINE_PRIMITIVE ("X-GET-PIXEL-FROM-IMAGE", Prim_x_get_image_pixel, 3, 3, 0)
+DEFINE_PRIMITIVE ("X-GET-PIXEL-FROM-IMAGE", Prim_x_get_image_pixel, 3, 3,
+  "(image x y)\n\
+The value of pixel (X,Y) of IMAGE is returned as an integer.\n\
+This is accomplished by calling XGetPixel.")
 {
   PRIMITIVE_HEADER (3);
   {
@@ -957,7 +995,10 @@ DEFINE_PRIMITIVE ("X-GET-PIXEL-FROM-IMAGE", Prim_x_get_image_pixel, 3, 3, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("X-SET-PIXEL-IN-IMAGE", Prim_x_set_image_pixel, 4, 4, 0)
+DEFINE_PRIMITIVE ("X-SET-PIXEL-IN-IMAGE", Prim_x_set_image_pixel, 4, 4,
+  "(image x y pixel-value)\n\
+The pixel (X,Y) of IMAGE is modified to contain PIXEL-VALUE.\n\
+This is accomplished by calling XPutPixel.")
 {
   PRIMITIVE_HEADER (4);
   {
@@ -970,7 +1011,9 @@ DEFINE_PRIMITIVE ("X-SET-PIXEL-IN-IMAGE", Prim_x_set_image_pixel, 4, 4, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("X-DESTROY-IMAGE", Prim_x_destroy_image, 1, 1, 0)
+DEFINE_PRIMITIVE ("X-DESTROY-IMAGE", Prim_x_destroy_image, 1, 1,
+  "(image)\n\
+IMAGE is deallocated by calling XDestroyImage.")
 {
   PRIMITIVE_HEADER (1);
   {
@@ -981,11 +1024,10 @@ DEFINE_PRIMITIVE ("X-DESTROY-IMAGE", Prim_x_destroy_image, 1, 1, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("X-DISPLAY-IMAGE", Prim_x_display_image, 8, 8, 0)
+DEFINE_PRIMITIVE ("X-DISPLAY-IMAGE", Prim_x_display_image, 8, 8,
+  "(image image-xoff image-yoff window window_xoff window_yoff width height)\n\
+IMAGE is drawn on WINDOW by calling XPutImage.")
 {
-  /* Called with Image, X-offset in image, Y-offset in image,
-     Window, X-offset in window, Y-offset in window,
-     Width, Height */
   PRIMITIVE_HEADER (8);
   {
     XImage * image = (XI_IMAGE (x_image_arg (1)));
@@ -1005,7 +1047,9 @@ DEFINE_PRIMITIVE ("X-DISPLAY-IMAGE", Prim_x_display_image, 8, 8, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("X-READ-IMAGE", Prim_x_read_image, 8, 8, 0)
+DEFINE_PRIMITIVE ("X-READ-IMAGE", Prim_x_read_image, 8, 8,
+  "(image image-xoff image-yoff window window_xoff window_yoff width height)\n\
+Reads the specified rectangle of WINDOW into IMAGE by calling XGetSubImage.")
 {
   /* Called with Image, X-offset in image, Y-offset in image,
      Window, X-offset in window, Y-offset in window,
@@ -1027,7 +1071,9 @@ DEFINE_PRIMITIVE ("X-READ-IMAGE", Prim_x_read_image, 8, 8, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("X-WINDOW-DEPTH", Prim_x_window_depth, 1, 1, 0)
+DEFINE_PRIMITIVE ("X-WINDOW-DEPTH", Prim_x_window_depth, 1, 1,
+  "(window)\n\
+Returns the pixel depth of WINDOW as an integer.")
 {
   PRIMITIVE_HEADER (1);
   {
