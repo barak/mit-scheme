@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.39 1999/01/02 06:11:34 cph Exp $
+$Id: dospth.scm,v 1.40 1999/11/11 20:59:28 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -80,6 +80,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       (cons 'ABSOLUTE
 			     (if (and (pair? (cdr components))
 				      (string-null? (cadr components)))
+				 ;; Handle "\\foo\bar" notation here:
+				 ;; the "\\foo" isn't part of the
+				 ;; directory path.
 				 (cons (cadr components)
 				       (parse-directory-components
 					(cddr components)))
@@ -131,17 +134,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (parse-device-and-path components)
   (let ((string (car components)))
-    (let ((colon (string-find-next-char string #\:)))
-      (if (not colon)
-	  (values #f components)
-	  (begin
-	    (if (not (and (= colon 1)
-			  (char-alphabetic? (string-ref string 0))
-			  (= (string-length string) 2)))
-		(error "Device specification must be a single letter:" string))
-	    (values (string-head string colon)
-		    (cons (string-tail string (+ colon 1))
-			  (cdr components))))))))
+    (if (and (fix:= (string-length string) 2)
+	     (char=? #\: (string-ref string 1))
+	     (char-alphabetic? (string-ref string 0)))
+	(values (string-head string 1) (cons "" (cdr components)))
+	(values #f components))))
 
 (define (simplify-directory directory)
   (cond ((and (eq? (car directory) 'RELATIVE) (null? (cdr directory))) #f)
