@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.6 1993/11/13 06:59:59 gjr Exp $
+$Id: ctop.scm,v 1.7 1993/11/13 19:21:09 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -89,8 +89,11 @@ MIT in each case. |#
 	  (let ((result
 		 (apply call/cc
 			(append (c-compiler-switches) (list source)))))
+	    #|
 	    (if (not (zero? result))
-		(error "c-compile: C compiler failed" source)))
+		(error "c-compile: C compiler failed" source))
+	    |#
+	    result)
 	  (set! *call/cc-c-compiler* compiler:c-linker-name)
 	  (newline)
 	  (display ";Linking ")
@@ -104,8 +107,11 @@ MIT in each case. |#
 						     (c-output-extension))))
 				(c-linker-switches)
 				(list object)))))
+	    #|
 	    (if (not (zero? result))
-		(error "c-compile: C linker failed" object)))
+		(error "c-compile: C linker failed" object))
+	    |#
+	    result)
 	  (delete-file object))))))
 
 (define (c-output-extension)
@@ -123,7 +129,7 @@ MIT in each case. |#
 (define c-compiler-switch-table
   `(("SunOS"
      "so"
-     ("-c" "-pic" "-O" "-Dsun4" "-D_SUNOS4")
+     ("-c" "-pic" "-O" "-Dsun4" "-D_SUNOS4" "-w")
      ())
     ("AIX"
      "so"
@@ -174,7 +180,7 @@ MIT in each case. |#
 	((assoc microcode-id/operating-system-variant c-compiler-switch-table)
 	 => (lambda (place)
 	      (let ((switches (cadddr place)))
-		(if (pair? switches)
+		(if (not (procedure? switches))
 		    switches
 		    (let ((dir (system-library-directory-pathname "include")))
 		      (if (not dir)
