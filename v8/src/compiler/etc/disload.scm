@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: disload.scm,v 1.5 1993/07/01 21:49:02 gjr Exp $
+$Id: disload.scm,v 1.6 1993/07/01 22:52:20 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (load-disassembler #!optional directory)
+(define (load-disassembler #!optional directory addressing-granularity)
   (with-working-directory-pathname
     (if (default-object? directory)
 	"/usr/local/lib/mit-scheme/SRC/compiler/machine"
@@ -62,15 +62,9 @@ MIT in each case. |#
 	      (local-assignment
 	       parenv
 	       'addressing-granularity
-	       ;; The following computation assumes:
-	       ;; - The word size is a power of 2.
-	       ;; - Character strings always have a null character.
-	       (let loop ((ag 1)
-			  (vsize (system-vector-length "")))
-		 (let* ((ag* (+ ag ag)))
-		   (if (= vsize (system-vector-length (make-string (-1+ ag*))))
-		       (loop ag* vsize)
-		       ag)))))
+	       (if (default-object? addressing-granularity)
+		   8
+		   addressing-granularity)))
 	  (for-each import
 		    '(compiled-code-block/dbg-info
 		      dbg-info-vector/blocks-vector
