@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.39 1995/01/13 21:48:54 adams Exp $
+$Id: unpars.scm,v 14.40 1995/01/13 22:11:39 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -684,18 +684,19 @@ MIT in each case. |#
       (*unparse-hex ((ucode-primitive primitive-object-datum 1) future)))))
 
 (define (unparse/entity entity)
-  (define (plain name) (*unparse-with-brackets name entity false))
+  (define (plain name)
+    (*unparse-with-brackets name entity false))
+  (define (named-arity-dispatched-procedure name)
+    (*unparse-with-brackets 'ARITY-DISPATCHED-PROCEDURE
+			    entity
+			    (lambda () (*unparse-string name))))
   (cond ((continuation? entity) (plain 'CONTINUATION))
 	((apply-hook? entity)   (plain 'APPLY-HOOK))
 	((arity-dispatched-procedure? entity)
-	 (define (print-with-name name)
-	   (*unparse-with-brackets 'ARITY-DISPATCHED-PROCEDURE
-				   entity
-				   (lambda () (*unparse-string name))))
 	 (let ((proc  (entity-procedure entity)))
 	   (cond ((and (compiled-code-address? proc)
 		       (compiled-procedure? proc)
 		       (compiled-procedure/name proc))
-		  => print-with-name)
+		  => named-arity-dispatched-procedure)
 		 (else (plain 'ARITY-DISPATCHED-PROCEDURE)))))
 	(else (plain 'ENTITY))))
