@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/etc/xcbfdir.scm,v 1.2 1990/04/04 19:47:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/etc/xcbfdir.scm,v 1.3 1990/10/10 02:03:40 jinx Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -36,35 +36,45 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (process-directory dir processor extension)
+(define (process-directory directory processor extension)
   (for-each
    (lambda (pathname)
      (let ((one (pathname-new-type pathname extension))
 	   (two (pathname-new-type pathname "touch")))
-       ;; file-touch returns #T if the file did not exist,
-       ;; it returns #F if it did.
-       (and (file-touch two)
-	    (if (file-exists? one)
-		(delete-file two)
-		(call-with-current-continuation
-		 (lambda (here)
-		   (dynamic-wind
-		    (lambda () false)
-		    (lambda ()
-		      (bind-condition-handler
-		       '()
-		       (lambda (condition)
-			 (newline)
-			 (display ";; *** Aborting ***")
-			 (newline)
-			 (condition/write-report condition)
-			 (newline)
-			 (here 'next))
-		       (lambda ()
-			 (processor pathname))))
-		    (lambda ()
-		      (delete-file two)))))))))
-   (directory-read (string-append dir "/*.bin"))))
+       (call-with-current-continuation
+	(lambda (here)
+	  (bind-condition-handler
+	   '()
+	   (lambda (condition)
+	     (newline)
+	     (display ";; *** Aborting ")
+	     (display pathname)
+	     (display " ***")
+	     (newline)
+	     (condition/write-report condition)
+	     (newline)
+	     (here 'next))
+	   (lambda ()
+	     (let ((touch-created-file?))
+	       (dynamic-wind
+		(lambda ()
+		  ;; file-touch returns #T if the file did not exist,
+		  ;; it returns #F if it did.
+		  (set! touch-created-file?
+			(file-touch two)))
+		(lambda ()
+		  (if (and touch-created-file?
+			   (let ((one-time (file-modification-time one)))
+			     (or (not one-time)
+				 (< one-time
+				    (file-modification-time pathname)))))
+		      (processor pathname)))
+		(lambda ()
+		  (if touch-created-file?
+		      (delete-file two)))))))))))
+   (directory-read
+    (merge-pathnames (pathname-as-directory (->pathname directory))
+		     (->pathname "*.bin")))))
 
 (define (recompile-directory dir)
   (process-directory dir compile-bin-file "com"))
