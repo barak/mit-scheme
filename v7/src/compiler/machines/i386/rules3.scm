@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.7 1992/02/05 17:18:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.8 1992/02/11 14:48:20 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -41,7 +41,7 @@ MIT in each case. |#
 ;;;; Invocations
 
 (define-integrable (clear-continuation-type-code)
-  (LAP (AND W (@RO ,regnum:stack-pointer) (R ,regnum:datum-mask))))
+  (LAP (AND W (@R ,regnum:stack-pointer) (R ,regnum:datum-mask))))
 
 (define-rule statement
   (POP-RETURN)
@@ -90,7 +90,7 @@ MIT in each case. |#
   (with-pc
     (lambda (pc-label pc-register)
       (LAP ,@(clear-map!)
-	   (LEA (R ,ecx) (@RO ,pc-register (- ,label ,pc-label)))
+	   (LEA (R ,ecx) (@RO W ,pc-register (- ,label ,pc-label)))
 	   (MOV W (R ,edx) (& ,number-pushed))
 	   ,@(invoke-interface code:compiler-lexpr-apply)))))
 
@@ -262,7 +262,7 @@ MIT in each case. |#
 	  ((= frame-size 2)
 	   (let ((temp1 (temporary-register-reference))
 		 (temp2 (temporary-register-reference)))
-	     (LAP (MOV W ,temp2 (@RO 4 4))
+	     (LAP (MOV W ,temp2 (@RO B 4 4))
 		  (MOV W ,temp1 (@R 4))
 		  (ADD W (R 4) (& ,(* 4 offset)))
 		  (PUSH W ,temp2)
@@ -296,7 +296,8 @@ MIT in each case. |#
       (let ((temp (get-temp))
 	    (ctr (allocate-temporary-register! 'GENERAL))
 	    (label (generate-label 'MOVE-LOOP)))
-	(LAP (LEA (R ,reg) (@RO ,reg ,(* -4 frame-size)))
+	(LAP (LEA (R ,reg)
+		  ,(byte-offset-reference reg (* -4 frame-size)))
 	     (MOV W (R ,ctr) (& (-1+ frame-size)))
 	     (LABEL ,label)
 	     (MOV W ,temp (@RI 4 ,ctr 4))
@@ -432,17 +433,19 @@ MIT in each case. |#
 	 (MOV W (@R ,regnum:free-pointer)
 	      (&U ,(make-non-pointer-literal (ucode-type manifest-closure)
 					     (+ 4 size))))
-	 (MOV W (@RO ,regnum:free-pointer 4)
+	 (MOV W (@RO B ,regnum:free-pointer 4)
 	      (&U ,(make-closure-code-longword min max 8)))
-	 (LEA ,target (@RO ,regnum:free-pointer 8))
-	 (MOV B (@RO ,regnum:free-pointer 8) (&U #xe8))	; (CALL (@PCR <entry>))
+	 (LEA ,target (@RO B ,regnum:free-pointer 8))
+	 ;; (CALL (@PCR <entry>))
+	 (MOV B (@RO B ,regnum:free-pointer 8) (&U #xe8))
 	 (SUB W ,temp ,target)
-	 (MOV L (@RO ,regnum:free-pointer 9) ,temp) ; displacement
+	 (MOV L (@RO B ,regnum:free-pointer 9) ,temp) ; displacement
 	 (ADD W (R ,regnum:free-pointer) (& ,(* 4 (+ 5 size))))
-	 (LEA ,temp (@RO ,target
+	 (LEA ,temp (@RO UW
+			 ,target
 			 ,(make-non-pointer-literal (ucode-type compiled-entry)
 						    0)))
-	 (MOV W (@RO ,regnum:free-pointer -4) ,temp))))
+	 (MOV W (@RO B ,regnum:free-pointer -4) ,temp))))
 
 (define (generate/cons-multiclosure target nentries size entries)
   (let* ((target (target-register-reference))
@@ -452,16 +455,18 @@ MIT in each case. |#
 	(define (generate-entries entries offset)
 	  (let ((entry (car entries))
 		(rest (cdr entries)))
-	    (LAP (MOV W (@RO ,regnum:free-pointer -9)
+	    (LAP (MOV W (@RO B ,regnum:free-pointer -9)
 		      (&U ,(make-closure-code-longword (cadr entry)
 						       (caddr entry)
 						       offset)))
-		 (MOV B (@RO ,regnum:free-pointer -5) (&U #xe8))
-		 (LEA ,temp (@RO ,pc-reg (- ,(rtl-procedure/external-label
-					      (label->object (car entry)))
-					    ,pc-label)))
+		 (MOV B (@RO B ,regnum:free-pointer -5) (&U #xe8))
+		 (LEA ,temp (@RO W
+				 ,pc-reg
+				 (- ,(rtl-procedure/external-label
+				      (label->object (car entry)))
+				    ,pc-label)))
 		 (SUB W ,temp (R ,regnum:free-pointer))
-		 (MOV W (@RO ,regnum:free-pointer -4) ,temp)
+		 (MOV W (@RO B ,regnum:free-pointer -4) ,temp)
 		 ,@(if (null? rest)
 		       (LAP)
 		       (LAP (ADD W (R ,regnum:free-pointer) 10)
@@ -471,18 +476,19 @@ MIT in each case. |#
 		  (&U ,(make-non-pointer-literal
 			(ucode-type manifest-closure)
 			(+ size (quotient (* 5 (1+ nentries)) 2)))))
-	     (MOV W (@RO ,regnum:free-pointer 4)
+	     (MOV W (@RO B ,regnum:free-pointer 4)
 		  (&U ,(make-closure-longword nentries 0)))
-	     (LEA ,target (@RO ,regnum:free-pointer 12))
+	     (LEA ,target (@RO B ,regnum:free-pointer 12))
 	     (ADD W (R ,regnum:free-pointer) (& 17))
 	     ,@(generate-entries entries 12)
 	     (ADD W (R ,regnum:free-pointer)
 		  (& ,(+ (* 4 size) (if (odd? nentries) 7 5))))
 	     (LEA ,temp
-		  (@RO ,target
+		  (@RO UW
+		       ,target
 		       ,(make-non-pointer-literal (ucode-type compiled-entry)
 						  0)))
-	     (MOV W (@RO ,regnum:free-pointer -4) ,temp))))))
+	     (MOV W (@RO B ,regnum:free-pointer -4) ,temp))))))
 
 (define (generate/closure-header internal-label nentries entry)
   nentries				; ignored
@@ -557,9 +563,10 @@ MIT in each case. |#
 	   (lambda (pc-label prefix)
 	     (LAP ,@prefix
 		  (MOV W (R ,ecx) ,reg:environment)
-		  (MOV W (@RO ,eax (- ,environment-label ,pc-label)) (R ,ecx))
-		  (LEA (R ,edx) (@RO ,eax (- ,*block-label* ,pc-label)))
-		  (LEA (R ,ebx) (@RO ,eax (- ,free-ref-label ,pc-label)))
+		  (MOV W (@RO W ,eax (- ,environment-label ,pc-label))
+		       (R ,ecx))
+		  (LEA (R ,edx) (@RO W ,eax (- ,*block-label* ,pc-label)))
+		  (LEA (R ,ebx) (@RO W ,eax (- ,free-ref-label ,pc-label)))
 		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
 		  #|
 		  (CALL ,entry:compiler-link)
@@ -575,11 +582,11 @@ MIT in each case. |#
   (pc->reg eax
 	   (lambda (pc-label prefix)
 	     (LAP ,@prefix
-		  (MOV W (R ,edx) (@RO ,eax (- ,code-block-label ,pc-label)))
+		  (MOV W (R ,edx) (@RO W ,eax (- ,code-block-label ,pc-label)))
 		  (AND W (R ,edx) (R ,regnum:datum-mask))
-		  (LEA (R ,ebx) (@RO ,edx ,free-ref-offset))
+		  (LEA (R ,ebx) (@RO W ,edx ,free-ref-offset))
 		  (MOV W (R ,ecx) ,reg:environment)
-		  (MOV W (@RO ,edx ,environment-offset) (R ,ecx))
+		  (MOV W (@RO W ,edx ,environment-offset) (R ,ecx))
 		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
 		  #|
 		  (CALL ,entry:compiler-link)

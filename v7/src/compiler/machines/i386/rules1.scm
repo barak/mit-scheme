@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.6 1992/01/30 14:07:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.7 1992/02/11 14:48:05 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -283,7 +283,8 @@ MIT in each case. |#
 (define (load-pc-relative-address/typed target type label)
   (with-pc
     (lambda (pc-label pc-register)
-      (LAP (LEA ,target (@RO ,pc-register
+      (LAP (LEA ,target (@RO UW
+			     ,pc-register
 			     (+ ,(make-non-pointer-literal type 0)
 				(- ,label ,pc-label))))))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.9 1992/02/08 23:08:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.10 1992/02/11 14:48:30 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -68,17 +68,19 @@ MIT in each case. |#
 	       ;; Value is in memory home
 	       (let ((off (pseudo-register-offset source))
 		     (temp (temporary-register-reference)))
-		 (LAP (MOV W ,target (@RO ,regnum:regs-pointer ,off))
-		      (MOV W ,temp (@RO ,regnum:regs-pointer ,(+ 4 off)))
-		      (MOV W (@RO ,regnum:free-pointer 4) ,target)
-		      (MOV W (@RO ,regnum:free-pointer 8) ,temp)))
+		 (LAP (MOV W ,target
+			   ,(offset-reference regnum:regs-pointer off))
+		      (MOV W ,temp
+			   ,(offset-reference regnum:regs-pointer (1+ off)))
+		      (MOV W (@RO B ,regnum:free-pointer 4) ,target)
+		      (MOV W (@RO B ,regnum:free-pointer 8) ,temp)))
 	       (let ((sti (floreg->sti source)))
 		 (if (zero? sti)
-		     (LAP (FST D (@RO ,regnum:free-pointer 4)))
+		     (LAP (FST D (@RO B ,regnum:free-pointer 4)))
 		     (LAP (FLD (ST ,(floreg->sti source)))
-			  (FSTP D (@RO ,regnum:free-pointer 4))))))
+			  (FSTP D (@RO B ,regnum:free-pointer 4))))))
 	 (LEA ,target
-	      (@RO ,regnum:free-pointer
+	      (@RO UW ,regnum:free-pointer
 		   ,(make-non-pointer-literal (ucode-type flonum) 0)))
 	 (ADD W (R ,regnum:free-pointer) (& 12)))))
 
@@ -88,7 +90,7 @@ MIT in each case. |#
   (let* ((source (move-to-temporary-register! source 'GENERAL))
 	 (target (flonum-target! target)))
     (LAP ,@(object->address source)
-	 (FLD D (@RO ,source 4))
+	 (FLD D (@RO B ,source 4))
 	 (FSTP (ST ,(1+ target))))))
 
 (define-rule statement
@@ -149,11 +151,11 @@ MIT in each case. |#
 	    ,@(if (and (zero? target) (zero? source))
 		  (LAP)
 		  (LAP (FLD (ST ,source))))
-	    (MOV B ,temp (@RO ,regnum:free-pointer 1))
-	    (OR B (@RO ,regnum:free-pointer 1) (&U #x0c))
+	    (MOV B ,temp (@RO B ,regnum:free-pointer 1))
+	    (OR B (@RO B ,regnum:free-pointer 1) (&U #x0c))
 	    (FNLDCW (@R ,regnum:free-pointer))
 	    (FRNDINT)
-	    (MOV B (@RO ,regnum:free-pointer 1) ,temp)
+	    (MOV B (@RO B ,regnum:free-pointer 1) ,temp)
 	    ,@(if (and (zero? target) (zero? source))
 		  (LAP)
 		  (LAP (FSTP (ST ,(1+ target)))))

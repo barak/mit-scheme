@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.6 1992/02/08 23:59:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.7 1992/02/11 14:47:53 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -156,9 +156,12 @@ MIT in each case. |#
   (byte-offset-reference register (* 4 offset)))
 
 (define (byte-offset-reference register offset)
-    (if (zero? offset)
-	(INST-EA (@R ,register))
-	(INST-EA (@RO ,register ,offset))))
+  (cond ((zero? offset)
+	 (INST-EA (@R ,register)))
+	((fits-in-signed-byte? offset)
+	 (INST-EA (@RO B ,register ,offset)))
+	(else
+	 (INST-EA (@RO W ,register ,offset)))))
 
 (define-integrable (pseudo-register-offset register)
   (+ (+ (* 16 4) (* 80 4))
@@ -240,12 +243,12 @@ MIT in each case. |#
 (define (load-pc-relative target label-expr)
   (with-pc
     (lambda (pc-label pc-register)
-      (LAP (MOV W ,target (@RO ,pc-register (- ,label-expr ,pc-label)))))))
+      (LAP (MOV W ,target (@RO W ,pc-register (- ,label-expr ,pc-label)))))))
 
 (define (load-pc-relative-address target label-expr)
   (with-pc
     (lambda (pc-label pc-register)
-      (LAP (LEA ,target (@RO ,pc-register (- ,label-expr ,pc-label)))))))  
+      (LAP (LEA ,target (@RO W ,pc-register (- ,label-expr ,pc-label)))))))  
 
 (define (with-pc recvr)
   (with-values (lambda () (get-cached-label))
@@ -361,26 +364,24 @@ MIT in each case. |#
 ;;;; Named registers, codes, and entries
 
 (define reg:compiled-memtop
-  #|
-  (INST-EA (@RO ,regnum:regs-pointer ,(* 4 register-block/memtop-offset)))
-  |#
-  (INST-EA (@R ,regnum:regs-pointer)))
+  (offset-reference regnum:regs-pointer
+		    register-block/memtop-offset))
 
 (define reg:environment
-  (INST-EA (@RO ,regnum:regs-pointer
-		,(* 4 register-block/environment-offset))))
+  (offset-reference regnum:regs-pointer
+		    register-block/environment-offset))
 
 (define reg:dynamic-link
-  (INST-EA (@RO ,regnum:regs-pointer
-		,(* 4 register-block/dynamic-link-offset))))
+  (offset-reference regnum:regs-pointer
+		    register-block/dynamic-link-offset))
 
 (define reg:lexpr-primitive-arity
-  (INST-EA (@RO ,regnum:regs-pointer
-		,(* 4 register-block/lexpr-primitive-arity-offset))))
+  (offset-reference regnum:regs-pointer
+		    register-block/lexpr-primitive-arity-offset))
 
 (define reg:utility-arg-4
-  (INST-EA (@RO ,regnum:regs-pointer
-		,(* 4 register-block/utility-arg4-offset))))
+  (offset-reference regnum:regs-pointer
+		    register-block/utility-arg4-offset))
 
 (let-syntax ((define-codes
 	       (macro (start . names)
@@ -421,7 +422,8 @@ MIT in each case. |#
 		       (cons `(DEFINE-INTEGRABLE
 				,(symbol-append 'ENTRY:COMPILER-
 						(car names))
-				(INST-EA (@RO ,regnum:regs-pointer ,index)))
+				(byte-offset-reference regnum:regs-pointer
+						       ,index))
 			     (loop (cdr names) (+ index 4)))))
 		 `(BEGIN ,@(loop names start)))))
   (define-entries (* 16 4)
