@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.18 1993/09/01 00:10:29 cph Exp $
+$Id: usiexp.scm,v 4.19 1993/10/10 07:50:46 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -467,6 +467,7 @@ MIT in each case. |#
 	(if-not-expanded))))
 
 (define char?-expansion (type-test-expansion (ucode-type character)))
+(define cell?-expansion (type-test-expansion (ucode-type cell)))
 (define vector?-expansion (type-test-expansion (ucode-type vector)))
 (define %record?-expansion (type-test-expansion (ucode-type record)))
 (define weak-pair?-expansion (type-test-expansion (ucode-type weak-cons)))

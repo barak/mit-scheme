@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.16 1993/06/29 23:22:30 cph Exp $
+$Id: gconst.scm,v 4.17 1993/10/10 07:50:39 cph Exp $
 
 Copyright (c) 1987-93 Massachusetts Institute of Technology
 
@@ -70,7 +70,6 @@ MIT in each case. |#
     CAR
     CDR
     CELL-CONTENTS
-    CELL?
     CHAR->ASCII
     CHAR->INTEGER
     CHAR-ASCII?
