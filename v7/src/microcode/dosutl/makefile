@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.7 1993/08/03 08:38:16 gjr Exp $
+###	$Id: makefile,v 1.8 1993/08/03 08:39:52 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -327,8 +327,8 @@ hard-par.exe : hard-par.c
 foo $(USER_PRIM_OBJECTS) : $(HEAD_FILES)
 interp.obj : scheme.tch locks.h trap.h lookup.h history.h cmpint.h zones.h prmcon.h
 hooks.obj : scheme.tch prims.h winder.h history.h
-utils.obj : scheme.tch prims.h winder.h history.h cmpint.h
-primutl.obj : scheme.tch prims.h prename.h
+utils.obj : scheme.tch prims.h winder.h history.h cmpint.h syscall.h
+primutl.obj : scheme.tch prims.h prename.h syscall.h
 hunk.obj list.obj step.obj vector.obj sysprim.obj daemon.obj prim.obj extern.obj : \
 	scheme.tch prims.h
 lookup.obj debug.obj intern.obj : scheme.tch prims.h lookup.h trap.h locks.h
@@ -378,7 +378,6 @@ ostty.obj : ansidecl.h oscond.h posixtype.h os.h ostty.h osscheme.h
 error.obj ptrvec.obj transact.obj : ansidecl.h dstack.h
 wind.obj : ansidecl.h dstack.h obstack.h
 obstack.obj : obstack.h
-util.o : syscall.h
 
 OS_PRIM_DEPENDENCIES = scheme.tch prims.h posixtype.h os.h
 prosenv.obj : osenv.h ostop.h $(OS_PRIM_DEPENDENCIES)
