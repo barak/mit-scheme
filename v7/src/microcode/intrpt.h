@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intrpt.h,v 1.5 1989/03/27 23:15:34 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intrpt.h,v 1.6 1989/07/05 21:36:36 cph Rel $
  *
  * Interrupt manipulation utilities.
  */
@@ -144,7 +144,7 @@ extern void (*critical_section_hook)();
       name = critical_section_name;					\
       critical_section_hook_p = false;					\
       critical_section_name = ((char *) NULL);				\
-      critical_section_hook (name);					\
+      (*critical_section_hook) (name);					\
       /*NOTREACHED*/							\
     }									\
   }									\
