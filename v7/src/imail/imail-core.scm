@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.70 2000/05/18 03:59:43 cph Exp $
+;;; $Id: imail-core.scm,v 1.71 2000/05/18 19:59:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -392,6 +392,16 @@
 		     (rfc822:strip-comments (rfc822:string->tokens date))))))))
 	   (and (not (condition? t))
 		t)))))
+
+(define-generic message-length (message))
+(define-method message-length ((message <message>))
+  (+ (reduce (lambda (header)
+	       (+ (string-length (header-field-name header))
+		  (string-length (header-field-value header))
+		  2))
+	     1
+	     (message-header-fields message))
+     (string-length (message-body message))))
 
 ;;;; Message Navigation
 

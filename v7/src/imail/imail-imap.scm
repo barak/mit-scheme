@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.54 2000/05/18 19:53:26 cph Exp $
+;;; $Id: imail-imap.scm,v 1.55 2000/05/18 19:59:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -504,6 +504,9 @@
 		       (message-index message)
 		       '(INTERNALDATE))
    'INTERNALDATE))
+
+(define-method message-length ((message <imap-message>))
+  (imap-message-length message))
 
 ;;; These reflectors are needed to guarantee that we read the
 ;;; appropriate information from the server.  Normally most message
