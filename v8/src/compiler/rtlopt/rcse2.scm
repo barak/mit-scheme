@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rcse2.scm,v 1.2 1996/07/24 03:09:30 adams Exp $
+$Id: rcse2.scm,v 1.3 1996/07/24 04:44:06 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -145,7 +145,8 @@ MIT in each case. |#
     (define (continue expression)
       (rtl:reduce-subparts expression + 0 loop
 	(lambda (object)
-	  (cond ((real? object)   (round->exact object))
+	  (cond ((flo:flonum? object) (flonum-hash object))
+		((integer? object) (inexact->exact object))
 		((symbol? object) (symbol-hash object))
 		((string? object) (string-hash object))
 		(else (hash object))))))
@@ -154,6 +155,10 @@ MIT in each case. |#
       (receiver (modulo hash (hash-table-size))
 		do-not-record?
 		hash-arg-in-memory?))))
+
+(define (flonum-hash x)
+  (let ((m.e ((ucode-primitive flonum-normalize 1) x)))
+    (+ (round->exact (* (expt 2 53) (car m.e))) (cdr m.e))))
 
 ;;;; Table Search
 
