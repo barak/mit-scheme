@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: scrcom.scm,v 1.6 1999/01/02 06:11:34 cph Exp $
+;;; $Id: scrcom.scm,v 1.7 2000/12/01 05:24:42 cph Exp $
 ;;;
-;;; Copyright (c) 1990-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1990-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -27,7 +27,7 @@
   ()
   (lambda ()
     (if (null? (cdr (screen-list)))
-	(editor-error "Can't delete the only frame"))
+	(editor-error "Can't delete the only frame."))
     (delete-screen! (selected-screen))))
 
 (define-command make-frame
@@ -42,9 +42,9 @@ This command selects the frame ARG steps away in that order.
 A negative ARG moves in the opposite order."
   "p"
   (lambda (arg)
-    (let ((screen (other-screen (selected-screen) arg #t)))
+    (let ((screen (other-screen (selected-screen) arg #f)))
       (if (not screen)
-	  (editor-error "No other frame"))
+	  (editor-error "No other visible frame."))
       (select-screen screen))))
 
 (define-variable frame-name-format
@@ -62,10 +62,3 @@ Used only if `frame-name-format' is non-false."
 (define edwin-command$delete-screen edwin-command$delete-frame)
 (define edwin-variable$x-screen-name-format edwin-variable$frame-name-format)
 (define edwin-variable$x-screen-name-length edwin-variable$frame-name-length)
-
-;;; This command is for Windows, and shouldn't really be here.
-;;; It is for terminal screens only.
-(define-command resize-screen
-  "Resize the screen that point is in."
-  ()
-  (lambda () (resize-screen)))
