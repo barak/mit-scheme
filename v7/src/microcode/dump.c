@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.34 1992/01/16 01:41:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.35 1992/02/03 23:25:45 jinx Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -60,15 +60,15 @@ DEFUN (prepare_dump_header,
 #ifdef DEBUG
 
 #ifndef HEAP_IN_LOW_MEMORY
-  fprintf(stderr, "\nmemory_base = 0x%x\n", memory_base);
+  fprintf(stderr, "\nmemory_base = 0x%lx\n", ((long) memory_base));
 #endif /* HEAP_IN_LOW_MEMORY */
 
-  fprintf(stderr, "\nHeap_Relocation=0x%x, dumped as 0x%x\n",
-	  Heap_Relocation,
-	  (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Heap_Relocation)));
-  fprintf(stderr, "\nDumped object=0x%x, dumped as 0x%x\n",
-	  Dumped_Object,
-	  (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Dumped_Object)));
+  fprintf(stderr, "\nHeap_Relocation=0x%lx, dumped as 0x%lx\n",
+	  ((long) Heap_Relocation),
+	  ((long) (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Heap_Relocation))));
+  fprintf(stderr, "\nDumped object=0x%lx, dumped as 0x%lx\n",
+	  ((long) Dumped_Object),
+	  ((long) (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Dumped_Object))));
 #endif /* DEBUG */
 
   Buffer[FASL_Offset_Marker] = FASL_FILE_MARKER;

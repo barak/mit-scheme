@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.41 1992/01/20 17:59:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.42 1992/02/03 23:24:12 jinx Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -121,8 +121,8 @@ DEFUN_VOID (Show_Pure)
     }
     Pure_Size = OBJECT_DATUM (*Obj_Address);
     Total_Size = OBJECT_DATUM (Obj_Address[1]);
-    printf ("0x%x: pure=0x%x, total=0x%x\n",
-           Obj_Address, Pure_Size, Total_Size);
+    printf ("0x%lx: pure=0x%lx, total=0x%lx\n",
+	    ((long) Obj_Address), ((long) Pure_Size), ((long) Total_Size));
     if (OBJECT_TYPE (*Obj_Address) != TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
       printf ("Missing initial SNMV.\n");
@@ -145,8 +145,8 @@ DEFUN_VOID (Show_Pure)
     }
     if (OBJECT_DATUM (Obj_Address[Pure_Size]) != Pure_Size)
     {
-      printf ("Pure size mismatch 0x%x.\n",
-	     OBJECT_DATUM (Obj_Address[Pure_Size]));
+      printf ("Pure size mismatch 0x%lx.\n",
+	      ((long) (OBJECT_DATUM (Obj_Address[Pure_Size]))));
     }
     if (OBJECT_TYPE (Obj_Address[Total_Size-1]) !=
         TC_MANIFEST_SPECIAL_NM_VECTOR)
@@ -161,8 +161,8 @@ DEFUN_VOID (Show_Pure)
     }
     if (OBJECT_DATUM (Obj_Address[Total_Size]) != Total_Size)
     {
-      printf ("Total size mismatch 0x%x.\n",
-             OBJECT_DATUM (Obj_Address[Total_Size]));
+      printf ("Total size mismatch 0x%lx.\n",
+	      ((long) (OBJECT_DATUM (Obj_Address[Total_Size]))));
     }
     Obj_Address += Total_Size+1;
 #ifdef FLOATING_ALIGNMENT
@@ -270,7 +270,7 @@ DEFUN (print_return_name, (Ptr), SCHEME_OBJECT Ptr)
 	  return;
 	}
     }
-  printf ("[0x%x]", index);
+  printf ("[0x%lx]", index);
   return;
 }
 
@@ -461,11 +461,11 @@ DEFUN (do_printing, (Expr, Detailed),
       goto SPrint;
 
     case TC_FIXNUM:
-      printf ("%d", (FIXNUM_TO_LONG (Expr)));
+      printf ("%ld", ((long) (FIXNUM_TO_LONG (Expr))));
       return;
 
     case TC_BIG_FLONUM:
-      printf ("%f", (FLONUM_TO_DOUBLE (Expr)));
+      printf ("%lf", (FLONUM_TO_DOUBLE (Expr)));
       return;
 
     case TC_WEAK_CONS:
@@ -500,9 +500,9 @@ DEFUN (do_printing, (Expr, Detailed),
       return;
 
     case TC_COMBINATION:
-      printf ("[COMBINATION (%d args) 0x%x]",
-	      ((VECTOR_LENGTH (Expr)) - 1),
-	      Temp_Address);
+      printf ("[COMBINATION (%ld args) 0x%lx]",
+	      ((long) ((VECTOR_LENGTH (Expr)) - 1)),
+	      ((long) Temp_Address));
       if (Detailed)
 	{
 	  printf (" (");
@@ -512,7 +512,7 @@ DEFUN (do_printing, (Expr, Detailed),
       return;
 
     case TC_COMBINATION_1:
-      printf ("[COMBINATION_1 0x%x]", Temp_Address);
+      printf ("[COMBINATION_1 0x%lx]", ((long) Temp_Address));
       if (Detailed)
 	{
 	  printf (" (");
@@ -524,7 +524,7 @@ DEFUN (do_printing, (Expr, Detailed),
       return;
 
     case TC_COMBINATION_2:
-      printf ("[COMBINATION_2 0x%x]", Temp_Address);
+      printf ("[COMBINATION_2 0x%lx]", ((long) Temp_Address));
       if (Detailed)
 	{
 	  printf (" (");
@@ -541,7 +541,7 @@ DEFUN (do_printing, (Expr, Detailed),
       {
 	SCHEME_OBJECT procedure;
 
-	printf ("[ENVIRONMENT 0x%x]", Temp_Address);
+	printf ("[ENVIRONMENT 0x%lx]", ((long) Temp_Address));
 	printf (" (from ");
 	procedure = (MEMORY_REF (Expr, ENVIRONMENT_FUNCTION));
 	if ((OBJECT_TYPE (procedure)) == TC_QUAD)
@@ -557,7 +557,7 @@ DEFUN (do_printing, (Expr, Detailed),
       do_printing ((MEMORY_REF ((MEMORY_REF (Expr, ELAMBDA_NAMES)), 1)),
 		   false);
       if (Detailed)
-	printf (") 0x%x", Temp_Address);
+	printf (") 0x%lx", ((long) Temp_Address));
       return;
 
     case TC_EXTENDED_PROCEDURE:
@@ -565,7 +565,7 @@ DEFUN (do_printing, (Expr, Detailed),
 	printf ("[EXTENDED_PROCEDURE (");
       do_printing ((MEMORY_REF (Expr, PROCEDURE_LAMBDA_EXPR)), false);
       if (Detailed)
-	printf (") 0x%x]", Temp_Address);
+	printf (") 0x%lx]", ((long) Temp_Address));
       break;
 
     case TC_LAMBDA:
@@ -574,7 +574,7 @@ DEFUN (do_printing, (Expr, Detailed),
       do_printing ((MEMORY_REF ((MEMORY_REF (Expr, LAMBDA_FORMALS)), 1)),
 		  false);
       if (Detailed)
-	printf (") 0x%x]", Temp_Address);
+	printf (") 0x%lx]", ((long) Temp_Address));
       return;
 
     case TC_PRIMITIVE:
@@ -588,7 +588,7 @@ DEFUN (do_printing, (Expr, Detailed),
 	printf ("[PROCEDURE (");
       do_printing ((MEMORY_REF (Expr, PROCEDURE_LAMBDA_EXPR)), false);
       if (Detailed)
-	printf (") 0x%x]", Temp_Address);
+	printf (") 0x%lx]", ((long) Temp_Address));
       return;
 
     case TC_REFERENCE_TRAP:
@@ -650,12 +650,12 @@ DEFUN (do_printing, (Expr, Detailed),
 	    break;
 	  }
 
-	printf ("[%s offset: 0x%x entry: 0x%x",
+	printf ("[%s offset: 0x%lx entry: 0x%lx",
 		type_string,
-		(compiled_entry_to_block_offset (entry)),
-		(OBJECT_DATUM (entry)));
+		((long) (compiled_entry_to_block_offset (entry))),
+		((long) (OBJECT_DATUM (entry))));
 	if (closure_p)
-	  printf (" address: 0x%x", Temp_Address);
+	  printf (" address: 0x%lx", ((long) Temp_Address));
 
 	filename = (compiled_entry_debug_filename (entry));
 	if (STRING_P (filename))
@@ -667,7 +667,8 @@ DEFUN (do_printing, (Expr, Detailed),
 	  {
 	    printf (" file: ");
 	    print_filename (PAIR_CAR (filename));
-	    printf (" block: %d", (FIXNUM_TO_LONG (PAIR_CDR (filename))));
+	    printf (" block: %ld",
+		    ((long) (FIXNUM_TO_LONG (PAIR_CDR (filename)))));
 	  }
 	printf ("]");
 	return;
@@ -683,11 +684,13 @@ DEFUN (do_printing, (Expr, Detailed),
       else
 	printf ("[0x%02x", (OBJECT_TYPE (Expr)));
     }
-  printf (" 0x%x]", Temp_Address);
+  printf (" 0x%lx]", ((long) Temp_Address));
   return;
 }
 
-static Boolean
+extern Boolean EXFUN (Print_One_Continuation_Frame, (SCHEME_OBJECT));
+
+Boolean
 DEFUN (Print_One_Continuation_Frame, (Temp), SCHEME_OBJECT Temp)
 {
   SCHEME_OBJECT Expr;
@@ -821,7 +824,7 @@ DEFUN (Print_Primitive, (primitive), SCHEME_OBJECT primitive)
 
   for (i = 0; i < NArgs; i++)
   {
-    sprintf (buffer, "...Arg %d", (i + 1));
+    sprintf (buffer, "...Arg %ld", ((long) (i + 1)));
     Print_Expression ((STACK_REF (i)), buffer);
     printf ("\n");
   }
@@ -931,8 +934,8 @@ DEFUN (show_flags, (all), int all)
     {
       int value = (* (find_flag (i)));
       if (all || value)
-	fprintf (stdout, "Flag %d (%s) is %s.\n",
-		 i, (flag_name (i)), (value ? "set" : "clear"));
+	fprintf (stdout, "Flag %ld (%s) is %s.\n",
+		 ((long) i), (flag_name (i)), (value ? "set" : "clear"));
     }
   fflush (stdout);
   return;
@@ -957,7 +960,7 @@ DEFUN (debug_getdec, (string), CONST char * string)
 {
   int result;
 
-  sscanf (string, "%d", (&result));
+  sscanf (string, "%ld", (&result));
   return (result);
 }
 

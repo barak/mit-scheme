@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.44 1992/01/15 03:37:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.45 1992/02/03 23:28:28 jinx Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -297,9 +297,9 @@ do									\
 	     : ((Heap_Bottom <= Scan) && (Scan < Heap_Top)))))		\
     {									\
       fprintf (stderr, "\nBad transport_vector limit:\n");		\
-      fprintf (stderr, "  limit = 0x%x\n", Scan);			\
-      fprintf (stderr, "  Scan = 0x%x\n", Saved_Scan);			\
-      fprintf (stderr, "  To = 0x%x\n", To);				\
+      fprintf (stderr, "  limit = 0x%lx\n", ((long) Scan));		\
+      fprintf (stderr, "  Scan = 0x%lx\n", ((long) Saved_Scan));	\
+      fprintf (stderr, "  To = 0x%lx\n", ((long) To));			\
       fflush (stderr);							\
       abort ();								\
     }									\
