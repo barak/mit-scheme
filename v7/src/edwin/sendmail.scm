@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.10 1991/08/28 15:55:18 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.11 1991/10/26 21:08:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -471,6 +471,8 @@ Numeric argument means justify as well."
 	  (apply run-synchronous-process
 		 (make-region start end)
 		 (and error-buffer (buffer-end error-buffer))
+		 false
+		 false
 		 (ref-variable sendmail-program)
 		 "-oi" "-t"
 		 ;; Always specify who from, since some systems have

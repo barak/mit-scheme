@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.9 1991/10/10 22:54:44 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.10 1991/10/26 21:08:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -495,8 +495,7 @@ and use that file as the inbox."
 	  (let ((error-buffer (temporary-buffer " movemail errors")))
 	    (let ((start (buffer-start error-buffer))
 		  (end (buffer-end error-buffer)))
-	      (run-synchronous-process false
-				       start
+	      (run-synchronous-process false start false false
 				       (pathname->string
 					(edwin-etc-pathname "movemail"))
 				       (pathname->string source)

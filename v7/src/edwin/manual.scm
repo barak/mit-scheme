@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.5 1991/10/22 10:48:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.6 1991/10/26 21:08:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -89,17 +89,15 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 		 (if section (string-append section " ") "")
 		 topic
 		 "...")
-	(let ((manual-program
-	       (if (file-exists? "/usr/bin/man")
-		   "/usr/bin/man"
-		   "/usr/ucb/man")))
-	  (if section
-	      (shell-command
-	       (string-append manual-program " " section " " topic)
-	       (buffer-point buffer))
-	      (shell-command
-	       (string-append manual-program " " topic)
-	       (buffer-point buffer))))
+	(shell-command false (buffer-point buffer) false false
+		       (string-append (if (file-exists? "/usr/bin/man")
+					  "/usr/bin/man"
+					  "/usr/ucb/man")
+				      (if section
+					  (string-append " " section)
+					  "")
+				      " "
+				      topic))
 	(message "Cleaning manual entry for " topic "...")
 	(nuke-nroff-bs buffer)
 	(buffer-not-modified! buffer)

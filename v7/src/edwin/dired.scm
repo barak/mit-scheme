@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.118 1991/10/22 12:27:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.119 1991/10/26 21:07:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -213,27 +213,24 @@ CANNOT contain the 'F' option."
   (set-buffer-read-only! buffer))
 
 (define (read-directory pathname switches mark)
-  (with-working-directory-pathname (pathname-directory-path pathname)
-    (lambda ()
-      (if (file-directory? pathname)
-	  (run-synchronous-process false
-				   mark
-				   (find-program "ls" false)
-				   switches
-				   (pathname->string pathname))
-	  (shell-command (string-append "ls "
-					switches
-					" "
-					(pathname-name-string pathname))
-			 mark)))))
+  (let ((directory (pathname-directory-path pathname)))
+    (if (file-directory? pathname)
+	(run-synchronous-process false mark directory false
+				 (find-program "ls" false)
+				 switches
+				 (pathname->string pathname))
+	(shell-command false mark directory false
+		       (string-append "ls "
+				      switches
+				      " "
+				      (pathname-name-string pathname))))))
 
 (define (add-dired-entry pathname)
   (let ((lstart (line-start (current-point) 0))
 	(directory (pathname-directory-path pathname)))
     (if (pathname=? (buffer-default-directory (mark-buffer lstart)) directory)
 	(let ((start (mark-right-inserting lstart)))
-	  (run-synchronous-process false
-				   lstart
+	  (run-synchronous-process false lstart directory false
 				   (find-program "ls" directory)
 				   "-d"
 				   (ref-variable dired-listing-switches)
@@ -385,12 +382,11 @@ CANNOT contain the 'F' option."
 
 (define (dired-change-line program argument)
   (let ((pathname (dired-current-pathname)))
-    (run-synchronous-process false
-			     false
-			     (find-program program
-					   (pathname-directory-path pathname))
-			     argument
-			     (pathname->string pathname))
+    (let ((directory (pathname-directory-path pathname)))
+      (run-synchronous-process false false directory false
+			       (find-program program directory)
+			       argument
+			       (pathname->string pathname)))
     (dired-redisplay pathname)))
 
 (define (dired-redisplay pathname)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.10 1991/10/11 03:58:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.11 1991/10/26 21:08:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -140,43 +140,46 @@ False means don't delete them until \\[list-processes] is run."
 	  (mark-right-inserting-copy (buffer-end buffer))))))
 
 (define (start-process name buffer environment program . arguments)
-  (let ((directory (buffer-default-directory buffer)))
-    (let ((make-subprocess
-	   (let ((filename (find-program program directory))
-		 (arguments (list->vector (cons program arguments))))
-	     (if (and (eq? true (ref-variable process-connection-type))
-		      ((ucode-primitive have-ptys? 0)))
-		 (lambda ()
-		   (start-pty-subprocess filename arguments environment))
-		 (lambda ()
-		   (start-pipe-subprocess filename arguments environment))))))
-      ;; Calling WITH-WORKING-DIRECTORY-PATHNAME is a kludge --
-      ;; there's no other way to specify the working directory of the
-      ;; subprocess.  The subprocess abstraction should be fixed to
-      ;; allow this.
-      (with-working-directory-pathname directory
-	(lambda ()
-	  (without-interrupts
-	   (lambda ()
-	     (let ((subprocess (make-subprocess)))
-	       (let ((channel (subprocess-input-channel subprocess)))
-		 (if channel
-		     (begin
-		       (channel-nonblocking channel)
-		       (channel-register channel))))
-	       (let ((process
-		      (%make-process
-		       subprocess
-		       (do ((n 2 (+ n 1))
-			    (name* name
-				   (string-append name
-						  "<" (number->string n) ">")))
-			   ((not (get-process-by-name name*)) name*))
-		       buffer)))
-		 (update-process-mark! process)
-		 (subprocess-put! subprocess 'EDWIN-PROCESS process)
-		 (set! edwin-processes (cons process edwin-processes))
-		 process)))))))))
+  (let ((make-subprocess
+	 (let ((filename
+		(find-program program (buffer-default-directory buffer)))
+	       (arguments (list->vector (cons program arguments))))
+	   (if (and (eq? true (ref-variable process-connection-type))
+		    ((ucode-primitive have-ptys? 0)))
+	       (lambda ()
+		 (start-pty-subprocess filename arguments environment))
+	       (lambda ()
+		 (start-pipe-subprocess filename arguments environment))))))
+    (with-process-directory buffer
+      (lambda ()
+	(without-interrupts
+	 (lambda ()
+	   (let ((subprocess (make-subprocess)))
+	     (let ((channel (subprocess-input-channel subprocess)))
+	       (if channel
+		   (begin
+		     (channel-nonblocking channel)
+		     (channel-register channel))))
+	     (let ((process
+		    (%make-process
+		     subprocess
+		     (do ((n 2 (+ n 1))
+			  (name* name
+				 (string-append name
+						"<" (number->string n) ">")))
+			 ((not (get-process-by-name name*)) name*))
+		     buffer)))
+	       (update-process-mark! process)
+	       (subprocess-put! subprocess 'EDWIN-PROCESS process)
+	       (set! edwin-processes (cons process edwin-processes))
+	       process))))))))
+
+(define (with-process-directory buffer thunk)
+  ;; Calling WITH-WORKING-DIRECTORY-PATHNAME is a kludge -- there's
+  ;; no other way to specify the working directory of the subprocess.
+  ;; The subprocess abstraction should be fixed to allow this.
+  (with-working-directory-pathname (buffer-default-directory buffer)
+    thunk))
 
 (define (delete-process process)
   (let ((subprocess (process-subprocess process)))
@@ -455,23 +458,25 @@ after the listing is made.)"
 
 ;;;; Synchronous Subprocesses
 
-(define (shell-command command output-mark)
-  (run-synchronous-process false output-mark "/bin/sh" "-c" command))
-
-(define (shell-command-region command output-mark input-region)
-  (run-synchronous-process input-region output-mark "/bin/sh" "-c" command))
-
-(define (run-synchronous-process input-region output-mark program . arguments)
-  (let ((process false))
+(define (run-synchronous-process input-region output-mark directory pty?
+				 program . arguments)
+  (let ((process false)
+	(start-process
+	 (lambda ()
+	   ((if (and pty? ((ucode-primitive have-ptys? 0)))
+		start-pty-subprocess
+		start-pipe-subprocess)
+	    program
+	    (list->vector
+	     (cons (os/filename-non-directory program) arguments))
+	    false))))
     (dynamic-wind
      (lambda ()
        (if (not process)
 	   (set! process
-		 (start-pipe-subprocess
-		  program
-		  (list->vector
-		   (cons (os/filename-non-directory program) arguments))
-		  false)))
+		 (if directory
+		     (with-working-directory-pathname directory start-process)
+		     (start-process))))
        unspecific)
      (lambda ()
        (call-with-output-copier process output-mark
@@ -588,17 +593,18 @@ Optional second arg true (prefix arg, if interactive) means
 insert output in current buffer after point (leave mark after it)."
   "sShell command\nP"
   (lambda (command insert-at-point?)
-    (if insert-at-point?
-	(begin
-	  (if (buffer-read-only? (current-buffer))
-	      (barf-if-read-only))
-	  (let ((point (current-point)))
-	    (push-current-mark! point)
-	    (shell-command command point))
-	  ((ref-command exchange-point-and-mark)))
-	(shell-command-pop-up-output
-	 (lambda (output-mark)
-	   (shell-command command output-mark))))))
+    (let ((directory (buffer-default-directory (current-buffer))))
+      (if insert-at-point?
+	  (begin
+	    (if (buffer-read-only? (current-buffer))
+		(barf-if-read-only))
+	    (let ((point (current-point)))
+	      (push-current-mark! point)
+	      (shell-command false point directory false command))
+	    ((ref-command exchange-point-and-mark)))
+	  (shell-command-pop-up-output
+	   (lambda (output-mark)
+	      (shell-command false output-mark directory false command)))))))
 
 (define-command shell-command-on-region
   "Execute string COMMAND in inferior shell with region as input.
@@ -606,32 +612,35 @@ Normally display output (if any) in temp buffer;
 Prefix arg means replace the region with it."
   "r\nsShell command on region\nP"
   (lambda (region command replace-region?)
-    (if replace-region?
-	(let ((point (current-point))
-	      (mark (current-mark)))
-	  (let ((swap? (mark< point mark))
-		(temp))
-	    (dynamic-wind
-	     (lambda () unspecific)
-	     (lambda ()
-	       (set! temp (temporary-buffer " *shell-output*"))
-	       (shell-command-region command
-				     (buffer-start temp)
-				     (make-region point mark))
-	       (without-interrupts
-		 (lambda ()
-		   (delete-string point mark)
-		   (insert-region (buffer-start temp)
-				  (buffer-end temp)
-				  (current-point)))))
-	     (lambda ()
-	       (kill-buffer temp)
-	       (set! temp)
-	       unspecific))
-	    (if swap? ((ref-command exchange-point-and-mark)))))
-	(shell-command-pop-up-output
-	 (lambda (output-mark)
-	   (shell-command-region command output-mark region))))))
+    (let ((directory (buffer-default-directory (current-buffer))))
+      (if replace-region?
+	  (let ((point (current-point))
+		(mark (current-mark)))
+	    (let ((swap? (mark< point mark))
+		  (temp))
+	      (dynamic-wind
+	       (lambda () unspecific)
+	       (lambda ()
+		 (set! temp (temporary-buffer " *shell-output*"))
+		 (shell-command (make-region point mark)
+				(buffer-start temp)
+				directory
+				false
+				command)
+		 (without-interrupts
+		  (lambda ()
+		    (delete-string point mark)
+		    (insert-region (buffer-start temp)
+				   (buffer-end temp)
+				   (current-point)))))
+	       (lambda ()
+		 (kill-buffer temp)
+		 (set! temp)
+		 unspecific))
+	      (if swap? ((ref-command exchange-point-and-mark)))))
+	  (shell-command-pop-up-output
+	   (lambda (output-mark)
+	     (shell-command region output-mark directory false command)))))))
 
 (define (shell-command-pop-up-output generate-output)
   (let ((buffer (temporary-buffer "*Shell Command Output*")))
@@ -641,6 +650,10 @@ Prefix arg means replace the region with it."
       (if (mark< start (buffer-end buffer))
 	  (pop-up-buffer buffer false)
 	  (message "(Shell command completed with no output)")))))
+
+(define (shell-command input-region output-mark directory pty? command)
+  (run-synchronous-process input-region output-mark directory pty?
+			   "/bin/sh" "-c" command))
 
 ;;; These procedures are not specific to the process abstraction.
 
