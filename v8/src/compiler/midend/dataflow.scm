@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.6 1995/02/01 20:52:17 adams Exp $
+$Id: dataflow.scm,v 1.7 1995/02/01 20:53:41 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -2289,8 +2289,7 @@ MIT in each case. |#
 		       (value-set/singletons values))
 		     (display (map (lambda (p) (or (value/procedure? p)
 						   (value/closure/kind p)))
-				   (value-set/singletons values)))
-		     (bkpt 1))
+				   (value-set/singletons values))))
 		    (else unspecific)))))
     (graph/nodes graph)))
 
