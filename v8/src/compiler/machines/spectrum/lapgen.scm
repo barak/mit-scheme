@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.4 1995/04/01 16:49:32 adams Exp $
+$Id: lapgen.scm,v 1.5 1995/08/06 19:24:46 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -89,22 +89,43 @@ MIT in each case. |#
 		   0
 		   ,regnum:regs-pointer)))
 
-(define machine-register-preference
-  ;; `Less is better'.  The idea is that we want to prefer registers that
-  ;; do not have special uses or are unlikely to be holding or
-  ;; required for an argument.
-  (let ((v (make-vector number-of-machine-registers 100)))
-    (for-each (lambda (r x) (vector-set! v r x))
-      '( 6  7  8  9 10 11 12 13 14 15 16 17  19 23 24 26 28 29 31)
-      '(20 19 18 17 16 15 14 13 12 11 10  9  50 30 30 30 14 14 14))
-    v))
+(define sort-machine-registers
+  ;; Bucket sort according to cost equivalence class. Costs classes are: 0
+  ;; (prefered), 1 (ok), 2 (default) and 3 (avoid if possible).  The
+  ;; sort is stable, allowing the register allocator to cycle through
+  ;; registers of the same cost class.
+  (let ((regcost (make-vector number-of-machine-registers 2))) ;default cost
+    (define ((cost= n) reg) (vector-set! regcost reg n))
+    (for-each (cost= 0) (list 13 14 15 16 17))
+    (for-each (cost= 1) (list 9 10 11 12))
+    (for-each (cost= 3) (list 2 31 24 25 fp4 fp5)) ;all have special uses
 
-(define (sort-machine-registers registers)
-  (sort registers
-	(lambda (r1 r2)
-	  (<= (vector-ref machine-register-preference r1)
-	      (vector-ref machine-register-preference r2)))))
-
+    (lambda (registers)
+      (define-integrable (new-header)
+	;; The cdr of each header points to the list in this bucket.  The car
+        ;; points to the last pair (initially the header), used to add
+        ;; elements to the end of the bucket and to link the buckets
+        ;; lists into one result list
+	(let ((pair (cons '() '())))
+	  (set-car! pair pair)
+	  pair))
+      (let ((buckets
+	     (vector (new-header) (new-header) (new-header) (new-header))))
+	(for-each (lambda (reg)
+		    (let ((header (vector-ref buckets (vector-ref regcost reg)))
+			  (cell   (cons reg '())))
+		      (set-cdr! (car header) cell)
+		      (set-car! header cell)))
+	  registers)
+	;; Now link all the buckets together.
+	(let loop ((i (fix:- (vector-length buckets) 1))
+		   (regs '()))
+	  (if (fix:< i 0)
+	      regs
+	      (let ((header (vector-ref buckets i)))
+		(set-cdr! (car header) regs)
+		(loop (fix:- i 1) (cdr header)))))))))
+
 ;; ***
 ;; Note: fp16-fp31 only exist on PA-RISC 1.1 or later.
 ;; If compiling for PA-RISC 1.0, truncate this
@@ -117,25 +138,25 @@ MIT in each case. |#
   ;; too.
   (sort-machine-registers
    (list
-   ;; g0 g1 g2 g3 g4 g5
-   g6 g7 g8 g9
-   g10 g11 g12 g13 g14 g15 g16 g17
-   ;; g18: holds '()
-   g19 
-   ;;g20 g21 g22
-   g23 g24 ;; g25
-   g26
-   ;; g27
-   g28 g29
-   ;; g30
-   g31
-   ;; fp0 fp1 fp2 fp3
-   fp12 fp13 fp14 fp15
-   fp4 fp5 fp6 fp7 fp8 fp9 fp10 fp11
-   ;; The following are only available on newer processors
-   fp16 fp17 fp18 fp19 fp20 fp21 fp22 fp23
-   fp24 fp25 fp26 fp27 fp28 fp29 fp30 fp31
-   )))
+    ;; g0 g1 g2 g3 g4 g5
+    g6 g7 g8 g9
+    g10 g11 g12 g13 g14 g15 g16 g17
+    ;; g18: holds '()
+    g19 
+    ;;g20 g21 g22
+    g23 g24;; g25
+    g26
+    ;; g27
+    g28 g29
+    ;; g30
+    g31
+    ;; fp0 fp1 fp2 fp3
+    fp12 fp13 fp14 fp15
+    fp4 fp5 fp6 fp7 fp8 fp9 fp10 fp11
+    ;; The following are only available on newer processors
+    fp16 fp17 fp18 fp19 fp20 fp21 fp22 fp23
+    fp24 fp25 fp26 fp27 fp28 fp29 fp30 fp31
+    )))
 
 
 (define-integrable (float-register? register)
