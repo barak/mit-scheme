@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.3 2000/04/22 05:05:20 cph Exp $
+;;; $Id: imail-imap.scm,v 1.4 2000/04/27 02:35:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -27,7 +27,7 @@
 (define-class (<imap-url>
 	       (constructor (user-id auth-type host port mailbox uid)))
     (<url>)
-  (user-id define accessor)
+  (user-id accessor url-user-id)
   (auth-type define accessor)
   (host define accessor)
   (port define accessor)
@@ -60,8 +60,131 @@
 
 ;;;; Server operations
 
-(define-method %open-folder ((url <imap-url>))
+(define-class (<imap-connection> (constructor (user-id host port))) ()
+  (host define accessor)
+  (user-id define accessor)
+  (port define standard)
+  (sequence-number define standard)
+  (response-queue define accessor
+		  initializer (lambda () (cons '() '())))
+  (folder define standard
+	  accessor selected-imap-folder
+	  modifier select-imap-folder
+	  initial-value #f))
+
+(define-class (<imap-folder> (constructor (url))) (<folder>)
+  (url accessor folder-url)
+  (allowed-flags define standard)
+  (permanent-flags define standard)
+  (uidvalidity define standard)
+  (first-unseen define standard)
+  (messages define standard))
+
+(define-class (<imap-message>) (<message>)
+  )
+
+(define (next-imap-command-tag connection)
+  (let ((n (imap-connection-sequence-number connection)))
+    (set-imap-connection-sequence-number! connection (+ n 1))
+    (string-append "A" (string-pad-left (number->string n) 4 #\0))))
+
+(define (open-imap-connection url)
+  (let ((host (imap-url-host url))
+	(user-id (or (url-user-id url) (imail-default-user-id))))
+    (let loop ((alist associated-imap-connections) (prev #f))
+      (if (pair? alist)
+	  (let ((connection (weak-car (car alist))))
+	    (if connection
+		(if (let ((h.u (weak-cdr (car alist))))
+		      (and (string-ci=? (car h.u) host)
+			   (string=? (cdr h.u) user-id)))
+		    connection
+		    (loop (cdr alist) alist))
+		(let ((next (cdr alist)))
+		  (if prev
+		      (set-cdr! prev next)
+		      (set! associated-imap-connections next))
+		  (loop next prev))))
+	  (let ((connection
+		 (make-imap-connection
+		  host user-id
+		  (let ((port (open-tcp-stream-socket host "imap2" #f "\n")))
+		    (read-line port)	;discard server announcement
+		    port))))
+	    (set! associated-imap-connections
+		  (cons (weak-cons connection (cons host user-id))
+			associated-imap-connections))
+	    (if (not (memq 'IMAP4REV1
+			   (imap:command:capability connection)))
+		(begin
+		  (close-imap-connection connection)
+		  (error "Server doesn't support IMAP4rev1:" host)))
+	    (let ((response
+		   (authenticate url user-id
+		     (lambda (passphrase)
+		       (imap:command:login connection user-id passphrase)))))
+	      (if (imap:response:no? response)
+		  (begin
+		    (close-imap-connection connection)
+		    (error "Unable to log in:" response))))
+	    connection)))))
+
+(define (close-imap-connection connection)
+  (let ((port (imap-connection-port connection)))
+    (if port
+	(begin
+	  (close-port port)
+	  (set-imap-connection-port! connection port))))
+  (let ((host (imap-connection-host connection))
+	(user-id (imap-connection-user-id connection)))
+    (let loop ((alist associated-imap-connections) (prev #f))
+      (if (pair? alist)
+	  (let ((connection* (weak-car (car alist))))
+	    (if (or (not connection*) (eq? connection* connection))
+		(let ((next (cdr alist)))
+		  (if prev
+		      (set-cdr! prev next)
+		      (set! associated-imap-connections next))
+		  (if connection*
+		      (loop next prev)))
+		(loop (cdr alist) alist)))))))
+
+(define associated-imap-connections '())
+
+(define (imap-connection/enqueue-response! connection response)
+  (let ((queue (imap-connection-response-queue connection)))
+    (let ((next (cons response '())))
+      (if (pair? (cdr queue))
+	  (set-cdr! (cdr queue) next)
+	  (set-car! queue next))
+      (set-cdr! queue next))))
+
+(define (imap-connection/dequeue-responses! connection)
+  (let ((queue (imap-connection-response-queue connection)))
+    (let ((responses (car queue)))
+      (set-car! queue '())
+      (set-cdr! queue '())
+      responses)))
+
+(define (forget-imap-folder-contents! folder)
   ???)
+
+(define (expunge-imap-folder-message folder index)
+  ???)
+
+(define-method %open-folder ((url <imap-url>))
+  (let ((connection (open-imap-connection url)))
+    (let ((folder (make-imap-folder url)))
+      (for-each (lambda (response)
+		  (case (car response)
+		    ((FLAGS)
+		     )
+		    ((EXISTS)
+		     )
+		    ((OK)
+		     )))
+		(imap:command connection 'SELECT (imap-url-mailbox url)))
+      folder)))
 
 (define-method %new-folder ((url <imap-url>))
   ???)
@@ -82,7 +205,173 @@
   ???)
 
 ;;;; Folder
+
+(define (imap:command:capability connection)
+  (call-with-values (lambda () (imap:command connection 'CAPABILITY))
+    (lambda (response responses)
+      (if (imap:response:no? response)
+	  (error "Server signalled error on CAPABILITY command:" response))
+      (imap:response:capabilities
+       (imap:find-response responses 'CAPABILITY #t)))))
 
-(define-class (<imap-folder> (constructor (url))) (<folder>)
-  (url accessor folder-url)
-  )
+(define (imap:command:login connection user-id passphrase)
+  (call-with-values
+      (lambda () (imap:command connection 'LOGIN user-id passphrase))
+    (lambda (response responses)
+      responses
+      response)))
+
+(define (imap:command connection command . arguments)
+  (imap:wait-for-tagged-response connection
+				 (imap:send-command connection
+						    command arguments)
+				 command))
+
+(define (imap:send-command connection command arguments)
+  (let ((tag (next-imap-command-tag connection))
+	(port (imap-connection-port connection)))
+    (write-string tag port)
+    (write-char #\space port)
+    (write command port)
+    (for-each (lambda (argument)
+		(write-char #\space port)
+		(imap:send-command-argument connection tag command argument))
+	      arguments)
+    (write-char #\return port)
+    (write-char #\linefeed port)
+    (flush-output port)
+    tag))
+
+(define (imap:send-command-argument connection tag command argument)
+  (let ((port (imap-connection-port connection)))
+    (let loop ((argument argument))
+      (cond ((or (symbol? argument)
+		 (exact-nonnegative-integer? argument))
+	     (write argument port))
+	    ((string? argument)
+	     (if (imap:string-may-be-quoted? argument)
+		 (imap:write-quoted-string argument port)
+		 (imap:write-literal-string connection tag argument)))
+	    ((list? argument)
+	     (write-char #\( port)
+	     (if (pair? argument)
+		 (begin
+		   (loop (car argument))
+		   (for-each (lambda (object)
+			       (write-char #\space port)
+			       (loop object))
+			     (cdr argument))))
+	     (write-char #\) port))
+	    (else (error "Illegal IMAP syntax:" argument))))))
+
+(define (imap:write-literal-string connection tag string)
+  (let ((port (imap-connection-port connection)))
+    (imap:write-literal-string-header string port)
+    (flush-output port)
+    (let loop ()
+      (let ((response (imap:read-server-response port)))
+	(cond ((imap:response:continue? response)
+	       (imap:write-literal-string-body string port))
+	      ((and (imap:response:tag response)
+		    (string-ci=? tag (imap:response:tag response)))
+	       (error "Unable to finish continued command:" response))
+	      (else
+	       (imap-connection/enqueue-response! connection response)
+	       (loop)))))))
+
+(define (imap:wait-for-tagged-response connection tag command)
+  (let ((port (imap-connection-port connection)))
+    (let loop ()
+      (let ((response (imap:read-server-response port)))
+	(if (imap:response:tag response)
+	    (let ((responses
+		   (process-responses
+		    connection command
+		    (imap-connection/dequeue-responses! connection))))
+	      (cond ((not (string-ci=? tag (imap:response:tag response)))
+		     (error "Out-of-sequence tag:"
+			    (imap:response:tag response) tag))
+		    ((or (imap:response:ok? response)
+			 (imap:response:no? response))
+		     (values response responses))
+		    (else
+		     (error "IMAP protocol error:" response))))
+	    (begin
+	      (imap-connection/enqueue-response! connection response)
+	      (loop)))))))
+
+(define (process-responses connection command responses)
+  (if (pair? responses)
+      (if (process-response connection command (car responses))
+	  (cons (car responses)
+		(process-responses connection command (cdr responses)))
+	  (process-responses connection command (cdr responses)))
+      '()))
+
+(define (process-response connection command response)
+  (cond ((imap:response:status-response? response)
+	 (let ((code (imap:response:response-text-code response))
+	       (string (imap:response:response-text-string response)))
+	   (if code
+	       (process-response-text connection code string))
+	   (if (and (imap:response:bye? response)
+		    (not (eq? command 'LOGOUT)))
+	       (begin
+		 (close-imap-connection connection)
+		 (error "Server shut down connection:" string))))
+	 (imap:response:preauth? response))
+	((imap:response:exists? response)
+	 (let ((folder (selected-imap-folder connection)))
+	   (if (not (= (imap:response:exists-count response)
+		       (folder-length folder)))
+	       (forget-imap-folder-contents! folder))))
+	((imap:response:expunge? response)
+	 (expunge-imap-folder-message (selected-imap-folder connection)
+				      (imap:response:expunge-index response)))
+	((imap:response:flags? response)
+	 (set-imap-folder-allowed-flags! (selected-imap-folder connection)
+					 (imap:response:flags response)))
+	((imap:response:recent? response)
+	 #f)
+	((or (imap:response:capability? response)
+	     (imap:response:fetch? response)
+	     (imap:response:list? response)
+	     (imap:response:lsub? response)
+	     (imap:response:search? response)
+	     (imap:response:status? response))
+	 #t)
+	(else
+	 (error "Illegal server response:" response))))
+
+(define (process-response-text connection code text)
+  (cond ((imap:response-code:uidvalidity? code)
+	 (let ((folder (selected-imap-folder connection))
+	       (uidvalidity (imap:response-code:uidvalidity code)))
+	   (if (let ((uidvalidity* (imap-folder-uidvalidity folder)))
+		 (or (not uidvalidity*)
+		     (> uidvalidity uidvalidity*)))
+	       (forget-imap-folder-contents! folder))
+	   (set-imap-folder-uidvalidity! folder uidvalidity)))
+	((imap:response-code:unseen? code)
+	 (set-imap-folder-first-unseen! (selected-imap-folder connection)
+					(imap:response-code:unseen code)))
+	((imap:response-code:permanentflags? code)
+	 (set-imap-folder-permanent-flags!
+	  (selected-imap-folder connection)
+	  (imap:response-code:permanentflags code)))
+	((imap:response-code:alert? code)
+	 (imail-present-user-alert
+	  (lambda (port)
+	    (write-string "Alert from IMAP server:" port)
+	    (newline port)
+	    (display text port)
+	    (newline port))))
+	#|
+	((or (imap:response-code:newname? code)
+	     (imap:response-code:parse? code)
+	     (imap:response-code:read-only? code)
+	     (imap:response-code:read-write? code)
+	     (imap:response-code:trycreate? code))
+	 unspecific)
+	|#
+	))
