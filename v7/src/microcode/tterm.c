@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: tterm.c,v 1.4 1993/10/14 21:50:25 gjr Exp $
+$Id: tterm.c,v 1.5 1998/01/20 00:58:43 cph Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -106,15 +106,14 @@ DEFINE_PRIMITIVE ("TERMCAP-PARAM-STRING", Prim_termcap_param_string, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
   {
-    char * s =
-      (tparam ((STRING_ARG (1)), 0, 0,
-	       (arg_nonnegative_integer (2)),
-	       (arg_nonnegative_integer (3)),
-	       (arg_nonnegative_integer (4)),
-	       (arg_nonnegative_integer (5))));
-    SCHEME_OBJECT result = (char_pointer_to_string ((unsigned char *) s));
-    free (s);
-    PRIMITIVE_RETURN (result);
+    char s [4096];
+    (void) tparam
+      ((STRING_ARG (1)), s, (sizeof (s)),
+       (arg_nonnegative_integer (2)),
+       (arg_nonnegative_integer (3)),
+       (arg_nonnegative_integer (4)),
+       (arg_nonnegative_integer (5)));
+    PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) s));
   }
 }
 
