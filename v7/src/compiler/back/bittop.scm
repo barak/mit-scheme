@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.1 1987/07/15 03:01:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.2 1987/07/16 10:14:16 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -43,9 +43,6 @@ MIT in each case. |#
 (define *the-symbol-table*)
 (define *start-label*)
 (define *end-label*)
-
-(define object-address-width
-  (quotient scheme-object-width addressing-granularity))
 
 ;;; Vector header and NMV header for code section
 
@@ -114,16 +111,15 @@ MIT in each case. |#
 		(if (interval? val)
 		    (set-binding-value! (cdr pair) (interval-low val)))))
 	    (symbol-table-bindings *the-symbol-table*))
-  (let ((start (symbol-table-value *the-symbol-table* *start-label*))
-	(end (symbol-table-value *the-symbol-table* *end-label*)))
-    (let ((length (- (* addressing-granularity end) starting-pc)))
-      (let ((output-block
-	     (bit-string-allocate (+ scheme-object-width length))))
-	(bit-string-insert!
-	 (make-nmv-header (quotient (- end start) object-address-width))
-	 output-block
-	 length)
-	(assemble-directives! output-block directives length)))))
+  (let* ((length (- (* addressing-granularity
+		       (symbol-table-value *the-symbol-table* *end-label*))
+		    starting-pc))
+	 (output-block (bit-string-allocate (+ scheme-object-width length))))
+    (bit-string-insert!
+     (make-nmv-header (quotient length scheme-object-width))
+     output-block
+     length)
+    (assemble-directives! output-block directives length)))
 
 (define (assemble-objects! block)
   (let ((objects (queue->list *objects*))
