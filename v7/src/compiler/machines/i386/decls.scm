@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/decls.scm,v 1.1 1992/02/13 03:49:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/decls.scm,v 1.1.1.1 1992/02/19 22:02:51 jinx Exp $
 $MC68020-Header: decls.scm,v 4.27 90/05/03 15:17:08 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -53,7 +53,7 @@ MIT in each case. |#
 
 (define (setup-source-nodes!)
   (let ((filenames
-	 (append-map!
+	 (mapcan
 	  (lambda (subdirectory)
 	    (map (lambda (pathname)
 		   (string-append subdirectory
@@ -100,7 +100,7 @@ MIT in each case. |#
 		   (conc-name source-node/)
 		   (constructor make/source-node (filename)))
   (filename false read-only true)
-  (pathname (->pathname filename) read-only true)
+  (pathname (string->pathname filename) read-only true)
   (forward-links '())
   (backward-links '())
   (forward-closure '())
@@ -283,14 +283,14 @@ MIT in each case. |#
   (if (file-exists? pathname)
       (begin
 	(write-string "\nTouch file: ")
-	(write (enough-namestring pathname))
+	(write (pathname->string pathname))
 	(file-touch pathname))))
 
 (define (pathname-delete! pathname)
   (if (file-exists? pathname)
       (begin
 	(write-string "\nDelete file: ")
-	(write (enough-namestring pathname))
+	(write (pathname->string pathname))
 	(delete-file pathname))))
 
 (define (sc filename)
@@ -578,10 +578,7 @@ MIT in each case. |#
 		  (make-pathname
 		   false
 		   false
-		   (cons 'RELATIVE
-			 (make-list
-			  (length (cdr (pathname-directory pathname)))
-			  'UP))
+		   (make-list (length (pathname-directory pathname)) 'UP)
 		   false
 		   false
 		   false)))
