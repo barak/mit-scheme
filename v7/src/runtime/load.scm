@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.6 1989/08/12 08:18:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.7 1989/08/15 13:19:59 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,18 +65,9 @@ MIT in each case. |#
 (define (fasload/internal true-pathname suppress-loading-message?)
   (let ((value
 	 (let ((true-filename (pathname->string true-pathname)))
-	   (let ((do-it
-		  (lambda ()
-		    ((ucode-primitive binary-fasload) true-filename))))
-	     (if suppress-loading-message?
-		 (do-it)
-		 (let ((port (cmdl/output-port (nearest-cmdl))))
-		   (newline port)
-		   (write-string "FASLoading " port)
-		   (write true-filename port)
-		   (let ((value (do-it)))
-		     (write-string " -- done" port)
-		     value)))))))
+	   (loading-message suppress-loading-message? true-filename
+	     (lambda ()
+	       ((ucode-primitive binary-fasload) true-filename))))))
     (fasload/update-debugging-info! value true-pathname)
     value))
 
@@ -95,6 +86,17 @@ MIT in each case. |#
     (if truename
 	(load truename user-initial-environment)))
   unspecific)
+
+(define (loading-message suppress-loading-message? true-filename do-it)
+  (if suppress-loading-message?
+      (do-it)
+      (let ((port (cmdl/output-port (nearest-cmdl))))
+	(newline port)
+	(write-string "Loading " port)
+	(write true-filename port)
+	(let ((value (do-it)))
+	  (write-string " -- done" port)
+	  value))))
 
 ;;; This is careful to do the minimum number of file existence probes
 ;;; before opening the input file.
@@ -144,25 +146,30 @@ MIT in each case. |#
 
 (define (load/internal pathname true-pathname environment syntax-table
 		       purify? load-noisily?)
-  (let ((port
-	 (open-input-file/internal pathname (pathname->string true-pathname))))
-    (if (= 250 (char->ascii (peek-char port)))
-	(begin
-	  (close-input-port port)
-	  (scode-eval
-	   (let ((scode
-		  (fasload/internal true-pathname
-				    load/suppress-loading-message?)))
-	     (if purify? (purify scode))
-	     scode)
-	   (if (eq? environment default-object)
-	       (nearest-repl/environment)
-	       environment)))
-	(write-stream (eval-stream (read-stream port) environment syntax-table)
-		      (if load-noisily?
-			  (lambda (value)
-			    (hook/repl-write (nearest-repl) value))
-			  (lambda (value) value false))))))
+  (let ((true-filename (pathname->string true-pathname)))
+    (let ((port (open-input-file/internal pathname true-filename)))
+      (if (= 250 (char->ascii (peek-char port)))
+	  (begin
+	    (close-input-port port)
+	    (scode-eval
+	     (let ((scode
+		    (fasload/internal true-pathname
+				      load/suppress-loading-message?)))
+	       (if purify? (purify scode))	       scode)
+	     (if (eq? environment default-object)
+		 (nearest-repl/environment)
+		 environment)))
+	  (let ((value-stream
+		 (eval-stream (read-stream port) environment syntax-table)))
+	    (if load-noisily?
+		(write-stream value-stream
+			      (lambda (value)
+				(hook/repl-write (nearest-repl) value)))
+		(loading-message load/suppress-loading-message? true-filename
+		  (lambda ()
+		    (write-stream value-stream
+				  (lambda (value) value false))))))))))
+
 (define (find-true-pathname pathname default-types)
   (or (let ((try
 	     (lambda (pathname)

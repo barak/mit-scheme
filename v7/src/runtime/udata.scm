@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.10 1989/08/03 23:07:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.11 1989/08/15 13:20:30 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -79,6 +79,10 @@ MIT in each case. |#
 (define-integrable (stack-address? object)
   (object-type? (ucode-type stack-environment) object))
 
+(define (compiled-expression? object)
+  (and (compiled-code-address? object)
+       (eq? (compiled-entry-type object) 'COMPILED-EXPRESSION)))
+
 (define (compiled-procedure? object)
   (and (compiled-code-address? object)
        (eq? (compiled-entry-type object) 'COMPILED-PROCEDURE)))
@@ -149,18 +153,6 @@ MIT in each case. |#
   ;; 68020 specific -- must be rewritten in compiler interface.
   ((ucode-primitive primitive-object-set! 3) closure (+ 2 index) value)
   unspecific)
-
-;;; These are now pretty useless.
-
-(define (compiled-procedure-entry procedure)
-  (if (not (compiled-procedure? procedure))
-      (error "Not a compiled procedure" procedure))
-  procedure)
-
-(define (compiled-procedure-environment procedure)
-  (if (not (compiled-procedure? procedure))
-      (error "Not a compiled procedure" procedure))
-  '())
 
 ;;;; Compiled Code Blocks
 
@@ -338,43 +330,87 @@ that you cannot just vector-ref into.
 
 (define-integrable (compound-procedure-environment procedure)
   (system-pair-cdr procedure))
+
+(define-integrable (make-entity procedure extra)
+  (system-pair-cons (ucode-type entity) procedure extra))
+
+(define-integrable (entity? object)
+  (object-type? (ucode-type entity) object))
+
+(define-integrable (entity-procedure entity)
+  (system-pair-car entity))
+
+(define-integrable (entity-extra entity)
+  (system-pair-cdr entity))
+
+(define-integrable (set-entity-procedure! entity procedure)
+  (system-pair-set-car! entity procedure)
+  unspecific)
+
+(define-integrable (set-entity-extra! entity extra)
+  (system-pair-set-car! entity extra)
+  unspecific)
 
 (define (procedure? object)
   (or (compound-procedure? object)
       (primitive-procedure? object)
       (compiled-procedure? object)
-      (and (object-type? (ucode-type entity) object)
-	   (procedure? (system-pair-car object)))))
+      (and (entity? object)
+	   (procedure? (entity-procedure object)))))
 
-(define-integrable (procedure-lambda procedure)
-  (compound-procedure-lambda (guarantee-compound-procedure procedure)))
+(define (discriminate-procedure object if-primitive if-compound if-compiled)
+  (let loop ((procedure object))
+    (cond ((primitive-procedure? procedure) (if-primitive procedure))
+	  ((compound-procedure? procedure) (if-compound procedure))
+	  ((compiled-procedure? procedure) (if-compiled procedure))
+	  ((entity? procedure) (loop (entity-procedure procedure)))
+	  (else (error "Not a procedure" object)))))
 
-(define-integrable (procedure-environment procedure)
-  (compound-procedure-environment (guarantee-compound-procedure procedure)))
+(define (procedure-lambda object)
+  (discriminate-procedure
+   object
+   (lambda (procedure) procedure false)
+   compound-procedure-lambda
+   compiled-procedure/lambda))
 
-(define (procedure-components procedure receiver)
-  (guarantee-compound-procedure procedure)
-  (receiver (compound-procedure-lambda procedure)
-	    (compound-procedure-environment procedure)))
+(define (procedure-environment object)
+  (discriminate-procedure
+   object
+   (lambda (procedure)
+     (error "Primitive procedures have no closing environment" procedure))
+   compound-procedure-environment
+   compiled-procedure/environment))
 
-(define (procedure-arity procedure)
-  (cond ((primitive-procedure? procedure)
-	 (let ((arity (primitive-procedure-arity procedure)))
-	   (if (negative? arity)
-	       (cons 0 false)
-	       (cons arity arity))))
-	((compound-procedure? procedure)
-	 (lambda-components (compound-procedure-lambda procedure)
-	   (lambda (name required optional rest auxiliary decl body)
-	     name auxiliary decl body
-	     (let ((r (length required)))
-	       (cons r
-		     (and (not rest)
-			  (+ r (length optional))))))))
-	((compiled-procedure? procedure)
-	 (compiled-procedure-arity procedure))
-	(else
-	 (error "PROCEDURE-ARITY: not a procedure" procedure))))
+(define (procedure-components object receiver)
+  (discriminate-procedure
+   object
+   (lambda (procedure)
+     (error "Primitive procedures have no components" procedure))
+   (lambda (procedure)
+     (receiver (compound-procedure-lambda procedure)
+	       (compound-procedure-environment procedure)))
+   (lambda (procedure)
+     (receiver (compiled-procedure/lambda procedure)
+	       (compiled-procedure/environment procedure)))))
+
+(define (procedure-arity object)
+  (discriminate-procedure
+   object
+   (lambda (procedure)
+     (let ((arity (primitive-procedure-arity procedure)))
+       (if (negative? arity)
+	   (cons 0 false)
+	   (cons arity arity))))
+   (lambda (procedure)
+     (lambda-components (compound-procedure-lambda procedure)
+       (lambda (name required optional rest auxiliary decl body)
+	 name auxiliary decl body
+	 (let ((r (length required)))
+	   (cons r
+		 (and (not rest)
+		      (+ r (length optional))))))))
+   compiled-procedure-arity))
+
 (define (procedure-arity-valid? procedure n-arguments)
   (let ((arity (procedure-arity procedure)))
     (and (<= (car arity) n-arguments)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.7 1989/08/07 07:36:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.8 1989/08/15 13:20:02 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -66,17 +66,20 @@ MIT in each case. |#
 		  (not (negative? object))
 		  (unhash object))
 	     object))
-	(port (if (default-object? port) (current-output-port) port)))    (newline port)
-    (cond ((named-structure? object)
-	   (pretty-print object port)
-	   (for-each (lambda (element)
-		       (newline port)
-		       (pretty-print element port))
-		     (named-structure/description object)))
-	  ((compound-procedure? object)
-	   (pretty-print (procedure-lambda object) port))
-	  (else
-	   (apply pretty-print object port rest)))))
+	(port (if (default-object? port) (current-output-port) port)))    (let ((pretty-print
+	   (lambda (object) (apply pretty-print object port rest))))
+      (newline port)
+      (if (named-structure? object)
+	  (begin
+	    (pretty-print object)
+	    (for-each (lambda (element)
+			(newline port)
+			(pretty-print element))
+		      (named-structure/description object)))
+	  (pretty-print
+	   (or (and (procedure? object) (procedure-lambda object))
+	       object))))))
+
 (define (pretty-print object #!optional port as-code?)
   (let ((port (if (default-object? port) (current-output-port) port)))
     (if (scode-constant? object)

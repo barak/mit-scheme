@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.8 1989/08/12 08:18:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.9 1989/08/15 13:19:54 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,6 @@ MIT in each case. |#
 (declare (integrate-external "infstr"))
 
 (define (initialize-package!)
-  (set! blocks-with-memoized-debugging-info (make-population))
   (set! special-form-procedure-names
 	`((,lambda-tag:unnamed . LAMBDA)
 	  (,lambda-tag:internal-lambda . LAMBDA)
@@ -47,7 +46,8 @@ MIT in each case. |#
 	  (,lambda-tag:let . LET)
 	  (,lambda-tag:fluid-let . FLUID-LET)
 	  (,lambda-tag:make-environment . MAKE-ENVIRONMENT)))
-  unspecific)
+  (set! blocks-with-memoized-debugging-info (make-population))
+  (add-secondary-gc-daemon! discard-debugging-info!))
 
 (define (compiled-code-block/dbg-info block demand-load?)
   (let ((old-info (compiled-code-block/debugging-info block)))
@@ -113,26 +113,31 @@ MIT in each case. |#
     (let ((dbg-info
 	   (compiled-code-block/dbg-info block
 					 (if (default-object? demand-load?)
-					     true
+					     load-debugging-info-on-demand?
 					     demand-load?))))
       (and dbg-info
-	   (discriminate-compiled-entry entry
-	     (lambda ()
-	       (vector-binary-search (dbg-info/procedures dbg-info)
-				     <
-				     dbg-procedure/label-offset
-				     offset))
-	     (lambda ()
-	       (vector-binary-search (dbg-info/continuations dbg-info)
-				     <
-				     dbg-continuation/label-offset
-				     offset))
-	     (lambda ()
-	       (let ((expression (dbg-info/expression dbg-info)))
-		 (and (= offset (dbg-expression/label-offset expression))
-		      expression)))
-	     (lambda ()
-	       false))))))
+	   (let ((find-procedure
+		  (lambda ()
+		    (vector-binary-search (dbg-info/procedures dbg-info)
+					  <
+					  dbg-procedure/label-offset
+					  offset))))
+	     (discriminate-compiled-entry entry
+	       find-procedure
+	       (lambda ()
+		 (vector-binary-search (dbg-info/continuations dbg-info)
+				       <
+				       dbg-continuation/label-offset
+				       offset))	       (lambda ()
+		 (let ((expression (dbg-info/expression dbg-info)))
+		   (if (= offset (dbg-expression/label-offset expression))
+		       expression
+		       (find-procedure))))
+	       (lambda ()
+		 false)))))))
+
+(define load-debugging-info-on-demand?
+  true)
 
 (define (compiled-entry/block entry)
   (if (compiled-closure? entry)
@@ -264,18 +269,28 @@ MIT in each case. |#
 		 index
 		 (loop (1+ index))))))))
 
-  (let ((procedure
-	 (compiled-entry/dbg-object entry *compiler-info/load-on-demand?*)))
+(define (compiled-procedure/name entry)
   (let ((procedure (compiled-entry/dbg-object entry)))
     (and procedure
 	 (let ((name (dbg-procedure/name procedure)))
 	   (or (special-form-procedure-name? name)
-	       (symbol->string name))))))(define *compiler-info/load-on-demand?*
-  false)
-
-
+	       (symbol->string name))))))
 (define (special-form-procedure-name? name)
   (let ((association (assq name special-form-procedure-names)))
     (and association
 	 (symbol->string (cdr association)))))
-(define special-form-procedure-names)	entry)))
+
+(define special-form-procedure-names)
+
+(define (compiled-procedure/lambda entry)
+  (let ((procedure (compiled-entry/dbg-object entry)))
+    (and procedure
+	 (dbg-procedure/source-code procedure))))
+
+(define (compiled-expression/scode entry)
+  (let ((object (compiled-entry/dbg-object entry)))
+    (or (and (dbg-procedure? object)
+	     (let ((scode (dbg-procedure/source-code object)))
+	       (and scode
+		    (lambda-body scode))))
+	entry)))

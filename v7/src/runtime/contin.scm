@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/contin.scm,v 14.3 1989/02/10 23:37:59 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/contin.scm,v 14.4 1989/08/15 13:19:35 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -76,7 +76,7 @@ MIT in each case. |#
        (set-fluid-bindings! fluid-bindings)
        (translate-to-state-point dynamic-state)
        value))))
-
+
 ;; These two are correctly locked for multiprocessing, but not for
 ;; multiprocessors.
 
@@ -85,7 +85,8 @@ MIT in each case. |#
   (if (without-interrupts
        (lambda ()
 	 (let ((method (continuation/invocation-method continuation)))
-	   (or (eq? method invocation-method/reentrant)
+	   (if (eq? method invocation-method/reentrant)
+	       true
 	       (and (eq? method invocation-method/unused)
 		    (begin
 		      (set-continuation/invocation-method!
@@ -111,8 +112,7 @@ MIT in each case. |#
   (error "Reentering used continuation" continuation))
 
 (define (make-continuation type control-point dynamic-state fluid-bindings)
-  (system-pair-cons
-   (ucode-type entity)
+  (make-entity
    (case type
      ((REENTRANT) invocation-method/reentrant)
      ((UNUSED) invocation-method/unused)
@@ -128,8 +128,10 @@ MIT in each case. |#
 	  (else (error "Illegal invocation-method" invocation-method)))))
 
 (define (continuation? object)
-  (and (object-type? (ucode-type entity) object)
-       (%continuation? (system-pair-cdr object))))
+  (and (entity? object)
+       (if (%continuation? (entity-extra object))
+	   true
+	   (continuation? (entity-procedure object)))))
 
 (define (guarantee-continuation continuation)
   (if (not (continuation? continuation))
@@ -137,19 +139,20 @@ MIT in each case. |#
   continuation)
 
 (define-integrable (continuation/invocation-method continuation)
-  (system-pair-car continuation))
+  (entity-procedure continuation))
 
 (define-integrable (set-continuation/invocation-method! continuation method)
-  (system-pair-set-car! continuation method))
+  (set-entity-procedure! continuation method))
 
 (define-integrable (continuation/control-point continuation)
-  (%continuation/control-point (system-pair-cdr continuation)))
+  (%continuation/control-point (entity-extra continuation)))
 
 (define-integrable (continuation/dynamic-state continuation)
-  (%continuation/dynamic-state (system-pair-cdr continuation)))
+  (%continuation/dynamic-state (entity-extra continuation)))
 
 (define-integrable (continuation/fluid-bindings continuation)
-  (%continuation/fluid-bindings (system-pair-cdr continuation)))
+  (%continuation/fluid-bindings (entity-extra continuation)))
+
 (define-structure (%continuation (constructor make-%continuation)
 				 (conc-name %continuation/))
   (control-point false read-only true)

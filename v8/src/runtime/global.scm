@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.12 1989/08/12 08:18:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.13 1989/08/15 13:19:51 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -134,8 +134,9 @@ MIT in each case. |#
 	  (write object)))))
 
 (define (pa procedure)
-  (if (not (compound-procedure? procedure))
-      (error "Must be a compound procedure" procedure))  (pp (unsyntax-lambda-list (procedure-lambda procedure))))
+  (if (not (procedure? procedure))
+      (error "Must be a procedure" procedure))
+  (pp (unsyntax-lambda-list (procedure-lambda procedure))))
 
 (define (pwd)
   (working-directory-pathname))

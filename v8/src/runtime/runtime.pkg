@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.48 1989/08/12 08:18:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.49 1989/08/15 13:20:12 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -76,6 +76,8 @@ MIT in each case. |#
 	  package/system-loader
 	  package?
 	  system-global-package)
+  (export (runtime environment)
+	  package-name-tag)
   (initialization (initialize-package!)))
 
 (define-package (runtime)
@@ -212,13 +214,15 @@ MIT in each case. |#
   (files "infstr" "infutl")
   (parent ())
   (export ()
-	  *compiler-info/load-on-demand?*
 	  compiled-entry/block
 	  compiled-entry/dbg-object
 	  compiled-entry/filename
 	  compiled-entry/offset
+	  compiled-expression/scode
 	  compiled-procedure/name
-	  discard-debugging-info!)
+	  compiled-procedure/lambda
+	  discard-debugging-info!
+	  load-debugging-info-on-demand?)
   (export (runtime load)	  fasload/update-debugging-info!)
   (export (runtime debugger-command-loop)
 	  special-form-procedure-name?)
@@ -421,6 +425,7 @@ MIT in each case. |#
   (files "uenvir")
   (parent ())
   (export ()
+	  compiled-procedure/environment
 	  environment-arguments
 	  environment-assign!
 	  environment-assignable?
@@ -571,6 +576,7 @@ MIT in each case. |#
   (export ()
 	  add-gc-daemon!
 	  add-secondary-gc-daemon!
+	  gc-clean
 	  trigger-secondary-gc-daemons!)
   (initialization (initialize-package!)))
 
@@ -580,7 +586,9 @@ MIT in each case. |#
   (export ()
 	  gc-statistic->string
 	  print-gc-statistics
-	  toggle-gc-notification!))
+	  toggle-gc-notification!
+	  with-gc-notification!))
+
 (define-package (runtime gc-statistics)
   (files "gcstat")
   (parent ())

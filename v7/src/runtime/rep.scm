@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.11 1989/08/07 07:36:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.12 1989/08/15 13:20:07 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -484,7 +484,8 @@ MIT in each case. |#
 	 object)
 	((package? object)
 	 (package/environment object))
-	((compound-procedure? object)	 (procedure-environment object))
+	((procedure? object)
+	 (procedure-environment object))
 	((promise? object)
 	 (promise-environment object))
 	(else

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.3 1989/08/11 02:59:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.4 1989/08/15 13:19:40 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -117,11 +117,11 @@ MIT in each case. |#
 		unspecific))))))
 
 (define (default/stack-overflow)
-  (abort "maximum recursion depth exceeded"))
+  (abort-to-nearest-driver "Aborting!: maximum recursion depth exceeded"))
 
 (define (default/hardware-trap escape-code)
   escape-code
-  (abort "the hardware trapped"))
+  (abort-to-nearest-driver "Aborting!: the hardware trapped"))
 
 (define pure-space-queue)
 (define constant-space-queue)
@@ -152,19 +152,23 @@ MIT in each case. |#
   start-value space-remaining
   false)
 
-(define-integrable (gc-abort-test space-remaining)
+(define (gc-abort-test space-remaining)
   (if (< space-remaining 4096)
-      (abort "out of memory")))
-
-(define (abort message)
-  (abort-to-nearest-driver (string-append "Aborting!: " message)))
+      (abort->nearest
+       (cmdl-message/append
+	(cmdl-message/standard "Aborting!: out of memory")
+	;; Clean up whatever possible to avoid a reoccurrence.
+	(cmdl-message/active
+	 (lambda () (with-gc-notification! true gc-clean)))))))
 
 ;;;; User Primitives
 
 (define (set-gc-safety-margin! #!optional safety-margin)
   (if (not (or (default-object? safety-margin) (not safety-margin)))
-      (begin (set! default-safety-margin safety-margin)
-	     (gc-flip safety-margin)))  default-safety-margin)
+      (begin
+	(set! default-safety-margin safety-margin)
+	(gc-flip safety-margin)))
+  default-safety-margin)
 
 (define (gc-flip #!optional safety-margin)
   ;; Optionally overrides the GC safety margin for this flip only.

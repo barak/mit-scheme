@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcdemn.scm,v 14.2 1988/06/13 11:45:08 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcdemn.scm,v 14.3 1989/08/15 13:19:44 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -56,11 +56,27 @@ MIT in each case. |#
 (define (trigger-daemons daemons . extra-args)
   (let loop ((daemons daemons))
     (if (not (null? daemons))
-	(begin (apply (car daemons) extra-args)
-	       (loop (cdr daemons))))))
+	(begin
+	  (apply (car daemons) extra-args)
+	  (loop (cdr daemons))))))
 
 (define (add-gc-daemon! daemon)
-  (set! gc-daemons (cons daemon gc-daemons)))
+  (set! gc-daemons (cons daemon gc-daemons))
+  unspecific)
 
 (define (add-secondary-gc-daemon! daemon)
-  (set! secondary-gc-daemons (cons daemon secondary-gc-daemons)))
+  (set! secondary-gc-daemons (cons daemon secondary-gc-daemons))
+  unspecific)
+
+(define (gc-clean #!optional threshold)
+  (let ((threshold
+	 (cond ((default-object? threshold) 100)
+	       ((not (negative? threshold)) threshold)
+	       (else (error "threshold must be non-negative" threshold)))))
+    (let loop ((previous-free (gc-flip)))
+      (trigger-secondary-gc-daemons!)
+      (let ((this-free (gc-flip)))
+	;; Don't bother to continue if the savings starts getting small.
+	(if (<= (- this-free previous-free) threshold)
+	    this-free
+	    (loop this-free))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.9 1989/06/09 16:51:40 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.10 1989/08/15 13:20:21 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -51,7 +51,8 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! disk-save (setup-image disk-save/kernel))
-  (set! dump-world (setup-image dump-world/kernel)))
+  (set! dump-world (setup-image dump-world/kernel))
+  unspecific)
 
 (define disk-save)
 (define dump-world)
@@ -61,9 +62,7 @@ MIT in each case. |#
     (let ((identify
 	   (if (default-object? identify) world-identification identify))
 	  (time (get-decoded-time)))
-      (discard-debugging-info!)
-      (gc-flip)
-      (trigger-secondary-gc-daemons!)
+      (gc-clean)
       (save-image filename
 		  (lambda ()
 		    (set! time-world-saved time)
@@ -119,12 +118,15 @@ MIT in each case. |#
 	  after-suspend)))))
 
 (define (disk-restore #!optional filename)
-  (if (default-object? filename)
-      (set! filename
-	    (or ((ucode-primitive reload-band-name))
-		(error "DISK-RESTORE: No default band name available"))))
-  (event-distributor/invoke! event:before-exit)
-  ((ucode-primitive load-band) (canonicalize-input-filename filename)))
+  ;; Force order of events -- no need to run event:before-exit if
+  ;; there's an error here.
+  (let ((filename
+	 (if (default-object? filename)
+	     (or ((ucode-primitive reload-band-name))
+		 (error "DISK-RESTORE: No default band name available"))
+	     filename)))
+    (event-distributor/invoke! event:before-exit)
+    ((ucode-primitive load-band) (canonicalize-input-filename filename))))
 (define world-identification "Scheme")
 (define time-world-saved)
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.4 1989/08/04 02:38:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.5 1989/08/15 13:20:41 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -62,8 +62,7 @@ MIT in each case. |#
   unspecific)
 
 (define (unsyntax scode)
-  (unsyntax-object
-   (if (compound-procedure? scode) (procedure-lambda scode) scode)))
+  (unsyntax-object (if (procedure? scode) (procedure-lambda scode) scode)))
 
 (define (unsyntax-object object)
   ((scode-walk unsyntaxer/scode-walker object) object))
@@ -85,9 +84,15 @@ MIT in each case. |#
 ;;;; Unsyntax Quanta
 
 (define (unsyntax-constant object)
-  (if (or (pair? object) (symbol? object))
-      `(QUOTE ,object)
-      object))
+  (cond ((or (pair? object) (symbol? object))
+	 `(QUOTE ,object))
+	((compiled-expression? object)
+	 (let ((scode (compiled-expression/scode object)))
+	   (if (eq? scode object)
+	       `(SCODE-QUOTE object)
+	       (unsyntax-object scode))))
+	(else
+	 object)))
 
 (define (unsyntax-QUOTATION quotation)
   `(SCODE-QUOTE ,(unsyntax-object (quotation-expression quotation))))
@@ -132,9 +137,7 @@ MIT in each case. |#
   `(UNASSIGNED? ,(unassigned?-name unassigned?)))
 
 (define (unsyntax-COMMENT-object comment)
-  (comment-components comment
-    (lambda (text expression)
-      `(COMMENT ,text ,(unsyntax-object expression)))))
+  (unsyntax-object (comment-expression comment)))
 (define (unsyntax-DECLARATION-object declaration)
   (declaration-components declaration
     (lambda (text expression)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.11 1989/08/08 02:02:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.12 1989/08/15 13:20:35 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -171,7 +171,7 @@ MIT in each case. |#
 (define (system-global-environment/bound-names environment)
   (list-transform-negative (obarray->list (fixed-objects-item 'OBARRAY))
     (lambda (symbol)
-      (lexical-unbound? environment symbol))))
+      (unbound-name? environment symbol))))
 
 (define-integrable (ic-environment? object)
   (object-type? (ucode-type environment) object))
@@ -197,7 +197,12 @@ MIT in each case. |#
 		  (environment-extension-aux-list extension)
 		  '())))
     (lambda (name)
-      (lexical-unbound? environment name))))
+      (unbound-name? environment name))))
+
+(define (unbound-name? environment name)
+  (if (eq? name package-name-tag)
+      true
+      (lexical-unbound? environment name)))
 
 (define (ic-environment/arguments environment)
   (lambda-components* (select-lambda (ic-environment->external environment))
@@ -222,8 +227,9 @@ MIT in each case. |#
   (system-pair-set-cdr!
    (let ((extension (ic-environment/extension environment)))
      (if (environment-extension? extension)
-	 (begin (set-environment-extension-parent! extension parent)
-		(environment-extension-procedure extension))
+	 (begin
+	   (set-environment-extension-parent! extension parent)
+	   (environment-extension-procedure extension))
 	 extension))
    parent))
 
@@ -234,7 +240,7 @@ MIT in each case. |#
   (object-new-type (ucode-type null) 1))
 
 (define (make-null-interpreter-environment)
-  (let ((environment (the-environment)))
+  (let ((environment (let () (the-environment))))
     (ic-environment/remove-parent! environment)
     environment))
 
@@ -290,5 +296,275 @@ MIT in each case. |#
 		     (guarantee-ic-environment (stack-frame/ref frame index))
 		     default)))
 	      (else
-	       (error "Illegal continuation parent" parent)))))
+	       (error "Illegal continuation parent block" parent)))))
 	default)))
+(define (compiled-procedure/environment entry)
+  (let ((procedure (compiled-entry/dbg-object entry)))
+    (if (not procedure)
+	(error "Unable to obtain closing environment" entry))
+    (let ((block (dbg-procedure/block procedure)))
+      (let ((parent (dbg-block/parent block)))
+	(case (dbg-block/type parent)
+	  ((CLOSURE)
+	   (make-closure-ccenv (dbg-block/original-parent block)
+			       parent
+			       entry))
+	  ((IC)
+	   (guarantee-ic-environment
+	    (compiled-code-block/environment
+	     (compiled-code-address->block entry))))
+	  (else
+	   (error "Illegal procedure parent block" parent)))))))
+
+(define (stack-ccenv/has-parent? environment)
+  (dbg-block/parent (stack-ccenv/block environment)))
+
+(define (stack-ccenv/parent environment)
+  (let ((block (stack-ccenv/block environment)))
+    (let ((parent (dbg-block/parent block)))
+      (case (dbg-block/type parent)
+	((STACK)
+	 (let loop
+	     ((block block)
+	      (frame (stack-ccenv/frame environment))
+	      (index
+	       (+ (stack-ccenv/start-index environment)
+		  (vector-length (dbg-block/layout block)))))
+	   (let ((stack-link (dbg-block/stack-link block)))
+	     (cond ((not stack-link)
+		    (with-values
+			(lambda ()
+			  (stack-frame/resolve-stack-address
+			   frame
+			   (stack-ccenv/static-link environment)))
+		      (lambda (frame index)
+			(let ((block (dbg-block/parent block)))
+			  (if (eq? block parent)
+			      (make-stack-ccenv parent frame index)
+			      (loop block frame index))))))
+		   ((eq? stack-link parent)
+		    (make-stack-ccenv parent frame index))
+		   (else
+		    (loop stack-link frame index))))))	((CLOSURE)
+	 (make-closure-ccenv (dbg-block/original-parent block)
+			     parent
+			     (stack-ccenv/normal-closure environment)))
+	((IC)
+	 (guarantee-ic-environment
+	  (if (dbg-block/static-link-index block)
+	      (stack-ccenv/static-link environment)
+	      (compiled-code-block/environment
+	       (compiled-code-address->block
+		(stack-frame/return-address
+		 (stack-ccenv/frame environment)))))))
+	(else
+	 (error "illegal parent block" parent))))))
+
+(define (stack-ccenv/lambda environment)
+  (dbg-block/source-code (stack-ccenv/block environment)))
+
+(define (stack-ccenv/arguments environment)
+  (let ((procedure (dbg-block/procedure (stack-ccenv/block environment))))
+    (if procedure
+	(let ((lookup
+	       (lambda (variable)
+		 (if (eq? (dbg-variable/type variable) 'INTEGRATED)
+		     (dbg-variable/value variable)
+		     (stack-ccenv/lookup environment
+					 (dbg-variable/name variable))))))
+	  (map* (map* (let ((rest (dbg-procedure/rest procedure)))
+			(if rest (lookup rest) '()))
+		      lookup
+		      (dbg-procedure/optional procedure))
+		lookup
+		(dbg-procedure/required procedure)))
+	'UNKNOWN)))
+
+(define (stack-ccenv/bound-names environment)
+  (map dbg-variable/name
+       (list-transform-positive
+	   (vector->list (dbg-block/layout (stack-ccenv/block environment)))
+	 dbg-variable?)))
+
+(define (stack-ccenv/bound? environment name)
+  (dbg-block/find-name (stack-ccenv/block environment) name))
+
+(define (stack-ccenv/lookup environment name)
+  (lookup-dbg-variable (stack-ccenv/block environment)
+		       name
+		       (stack-ccenv/get-value environment)))
+
+(define (stack-ccenv/assignable? environment name)
+  (assignable-dbg-variable? (stack-ccenv/block environment) name))
+
+(define (stack-ccenv/assign! environment name value)
+  (assign-dbg-variable! (stack-ccenv/block environment)
+			name
+			(stack-ccenv/get-value environment)
+			value))
+
+(define (stack-ccenv/get-value environment)
+  (lambda (index)
+    (stack-frame/ref (stack-ccenv/frame environment)
+		     (+ (stack-ccenv/start-index environment) index))))
+
+(define (stack-ccenv/static-link environment)
+  (let ((static-link
+	 (stack-frame/ref
+	  (stack-ccenv/frame environment)
+	  (+ (stack-ccenv/start-index environment)
+	     (let ((index
+		    (dbg-block/static-link-index
+		     (stack-ccenv/block environment))))
+	       (if (not index)
+		   (error "unable to find static link" environment))
+	       index)))))
+    (if (not (or (stack-address? static-link)
+		 (interpreter-environment? static-link)))
+	(error "illegal static link in frame" static-link environment))
+    static-link))
+
+(define (stack-ccenv/normal-closure environment)
+  (let ((block (stack-ccenv/block environment)))
+    (let ((closure
+	   (stack-frame/ref
+	    (stack-ccenv/frame environment)
+	    (+ (stack-ccenv/start-index environment)
+	       (let ((index (dbg-block/normal-closure-index block)))
+		 (if (not index)
+		     (error "unable to find closure" environment))
+		 index)))))
+      (if (not (compiled-closure? closure))
+	  (error "frame missing closure" closure environment))
+      (if (not (eq? (compiled-entry/dbg-object closure)
+		    (dbg-block/procedure block)))
+	  (error "wrong closure in frame" closure environment))      closure)))
+
+(define-structure (closure-ccenv
+		   (named
+		    (string->symbol "#[(runtime environment)closure-ccenv]"))
+		   (conc-name closure-ccenv/))
+  (stack-block false read-only true)
+  (closure-block false read-only true)
+  (closure false read-only true))
+
+(define (closure-ccenv/bound-names environment)
+  (map dbg-variable/name
+       (list-transform-positive
+	   (vector->list
+	    (dbg-block/layout (closure-ccenv/stack-block environment)))
+	 (lambda (variable)
+	   (and (dbg-variable? variable)
+		(closure-ccenv/variable-bound? environment variable))))))
+
+(define (closure-ccenv/bound? environment name)
+  (let ((block (closure-ccenv/stack-block environment)))
+    (let ((index (dbg-block/find-name block name)))
+      (and index
+	   (closure-ccenv/variable-bound?
+	    environment
+	    (vector-ref (dbg-block/layout block) index))))))
+
+(define (closure-ccenv/variable-bound? environment variable)
+  (or (eq? (dbg-variable/type variable) 'INTEGRATED)
+      (vector-find-next-element
+       (dbg-block/layout (closure-ccenv/closure-block environment))
+       variable)))
+
+(define (closure-ccenv/lookup environment name)
+  (lookup-dbg-variable (closure-ccenv/closure-block environment)
+		       name
+		       (closure-ccenv/get-value environment)))
+
+(define (closure-ccenv/assignable? environment name)
+  (assignable-dbg-variable? (closure-ccenv/closure-block environment) name))
+
+(define (closure-ccenv/assign! environment name value)
+  (assign-dbg-variable! (closure-ccenv/closure-block environment)
+			name
+			(closure-ccenv/get-value environment)
+			value))
+
+(define (closure-ccenv/get-value environment)
+  (lambda (index)
+    (compiled-closure/ref (closure-ccenv/closure environment) index)))
+
+(define (closure-ccenv/has-parent? environment)
+  (let ((stack-block (closure-ccenv/stack-block environment)))
+    (let ((parent (dbg-block/parent stack-block)))
+      (and parent
+	   (case (dbg-block/type parent)
+	     ((CLOSURE) (dbg-block/original-parent stack-block))
+	     ((STACK IC) true)
+	     (else (error "Illegal parent block" parent)))))))
+
+(define (closure-ccenv/parent environment)
+  (let ((stack-block (closure-ccenv/stack-block environment))
+	(closure-block (closure-ccenv/closure-block environment))
+	(closure (closure-ccenv/closure environment)))
+    (let ((parent (dbg-block/parent stack-block)))
+      (case (dbg-block/type parent)
+	((STACK)
+	 (make-closure-ccenv parent closure-block closure))
+	((CLOSURE)
+	 (make-closure-ccenv (dbg-block/original-parent stack-block)
+			     closure-block
+			     closure))
+	((IC)
+	 (guarantee-ic-environment
+	  (let ((index (dbg-block/ic-parent-index closure-block)))
+	    (if index
+		(compiled-closure/ref closure index)
+		(compiled-code-block/environment
+		 (compiled-entry/block closure))))))
+	(else
+	 (error "Illegal parent block" parent))))))
+
+(define (closure-ccenv/lambda environment)
+  (dbg-block/source-code (closure-ccenv/stack-block environment)))
+
+(define (lookup-dbg-variable block name get-value)
+  (let ((index (dbg-block/find-name block name)))
+    (let ((variable (vector-ref (dbg-block/layout block) index)))
+      (case (dbg-variable/type variable)
+	((NORMAL)
+	 (get-value index))
+	((CELL)
+	 (let ((value (get-value index)))
+	   (if (not (cell? value))
+	       (error "Value of variable should be in cell" variable value))
+	   (cell-contents value)))
+	((INTEGRATED)
+	 (dbg-variable/value variable))
+	(else
+	 (error "Unknown variable type" variable))))))
+
+(define (assignable-dbg-variable? block name)
+  (eq? 'CELL
+       (dbg-variable/type
+	(vector-ref (dbg-block/layout block)
+		    (dbg-block/find-name block name)))))
+
+(define (assign-dbg-variable! block name get-value value)
+  (let ((index (dbg-block/find-name block name)))
+    (let ((variable (vector-ref (dbg-block/layout block) index)))
+      (case (dbg-variable/type variable)
+	((CELL)
+	 (let ((cell (get-value index)))
+	   (if (not (cell? cell))
+	       (error "Value of variable should be in cell" name cell))
+	   (set-cell-contents! cell value)
+	   unspecific))
+	((NORMAL INTEGRATED)	 (error "Variable cannot be side-effected" variable))
+	(else
+	 (error "Unknown variable type" variable))))))
+
+(define (dbg-block/name block)
+  (let ((procedure (dbg-block/procedure block)))
+    (and procedure
+	 (dbg-procedure/name procedure))))
+
+(define (dbg-block/source-code block)
+  (let ((procedure (dbg-block/procedure block)))
+    (and procedure
+	 (dbg-procedure/source-code procedure))))
