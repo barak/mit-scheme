@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: grpops.scm,v 1.20 1993/08/10 23:36:03 cph Exp $
+;;;	$Id: grpops.scm,v 1.21 1993/08/13 23:20:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -183,7 +183,7 @@
 	       (fix:+ (group-modified-tick group) 1))
   (undo-record-insertion! group index (fix:+ index n))
   ;; The MODIFIED? bit must be set *after* the undo recording.
-  (set-group-modified! group true)
+  (set-group-modified?! group true)
   (if (group-text-properties group)
       (update-intervals-for-insertion! group index n)))
 
@@ -258,7 +258,7 @@
 	(vector-set! group group-index:modified-tick
 		     (fix:+ (group-modified-tick group) 1))
 	;; The MODIFIED? bit must be set *after* the undo recording.
-	(set-group-modified! group true)
+	(set-group-modified?! group true)
 	(if (group-text-properties group)
 	    (update-intervals-for-deletion! group start end))
 	(set-interrupt-enables! interrupt-mask)

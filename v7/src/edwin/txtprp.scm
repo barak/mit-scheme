@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.4 1993/08/13 11:17:59 jawilson Exp $
+;;;	$Id: txtprp.scm,v 1.5 1993/08/13 23:20:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -108,7 +108,7 @@
   (if p
       (begin
 	(undo-record-property-changes! group p)
-	(set-group-modified! group true)
+	(set-group-modified?! group true)
 	(vector-set! group group-index:modified-tick
 		     (fix:+ (group-modified-tick group) 1))
 	true)
@@ -209,6 +209,7 @@
 	      (or (not root)
 		  (fix:= start 0)
 		  (fix:= start (interval-total-length root)))))
+       (not (eq? 'FULLY (group-writable? group)))
        (let ((interval (find-interval group start)))
 	 (let ((datum (interval-property interval 'READ-ONLY)))
 	   (and datum
@@ -249,6 +250,7 @@
 ;; export
 (define (text-not-deleteable? group start end)
   (and (group-text-properties group)
+       (not (eq? 'FULLY (group-writable? group)))
        (let loop ((interval (find-interval group start)))
 	 (or (interval-property interval 'READ-ONLY)
 	     (let ((next (next-interval interval)))

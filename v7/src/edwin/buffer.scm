@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.162 1993/08/10 23:28:12 cph Exp $
+;;;	$Id: buffer.scm,v 1.163 1993/08/13 23:20:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -261,7 +261,7 @@ The buffer is guaranteed to be deselected at that time."
      (let ((group (buffer-group buffer)))
        (if (group-modified? group)
 	   (begin
-	     (set-group-modified! group false)
+	     (set-group-modified?! group false)
 	     (buffer-modeline-event! buffer 'BUFFER-MODIFIED)
 	     (vector-set! buffer buffer-index:auto-saved? false)))))))
 
@@ -271,12 +271,12 @@ The buffer is guaranteed to be deselected at that time."
      (let ((group (buffer-group buffer)))
        (if (not (group-modified? group))
 	   (begin
-	     (set-group-modified! group true)
+	     (set-group-modified?! group true)
 	     (buffer-modeline-event! buffer 'BUFFER-MODIFIED)))))))
 
 (define (set-buffer-auto-saved! buffer)
   (vector-set! buffer buffer-index:auto-saved? true)
-  (set-group-modified! (buffer-group buffer) 'AUTO-SAVED))
+  (set-group-modified?! (buffer-group buffer) 'AUTO-SAVED))
 
 (define-integrable (buffer-auto-save-modified? buffer)
   (eq? true (group-modified? (buffer-group buffer))))
@@ -303,18 +303,14 @@ The buffer is guaranteed to be deselected at that time."
 (define (with-read-only-defeated mark thunk)
   (let ((group (mark-group mark))
 	(outside)
-	(inside false))
+	(inside 'FULLY))
     (dynamic-wind (lambda ()
-		    (set! outside (group-read-only? group))
-		    (if inside
-			(set-group-read-only! group)
-			(set-group-writable! group)))
+		    (set! outside (group-writable? group))
+		    (set-group-writable?! group inside))
 		  thunk
 		  (lambda ()
-		    (set! inside (group-read-only? group))
-		    (if outside
-			(set-group-read-only! group)
-			(set-group-writable! group))))))
+		    (set! inside (group-writable? group))
+		    (set-group-writable?! group outside)))))
 
 ;;;; Local Bindings
 

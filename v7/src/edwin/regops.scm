@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regops.scm,v 1.85 1992/02/04 04:03:52 cph Exp $
+;;;	$Id: regops.scm,v 1.86 1993/08/13 23:20:45 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -117,10 +117,10 @@
 (define (%group-narrow! group start end)
   (let ((start (make-permanent-mark group start false))
 	(end (make-permanent-mark group end true)))
-    (vector-set! group group-index:start-mark start)
-    (vector-set! group group-index:end-mark end)
-    (vector-set! group group-index:display-start start)
-    (vector-set! group group-index:display-end end)))
+    (set-group-start-mark! group start)
+    (set-group-end-mark! group end)
+    (set-group-display-start! group start)
+    (set-group-display-end! group end)))
 
 (define (group-widen! group)
   (record-clipping! group 0 (group-length group))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: struct.scm,v 1.86 1993/08/09 19:15:15 jawilson Exp $
+;;;	$Id: struct.scm,v 1.87 1993/08/13 23:19:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -96,7 +96,7 @@
   marks
   start-mark
   end-mark
-  read-only?
+  writable?
   display-start
   display-end
   start-changes-index
@@ -110,6 +110,42 @@
   shrink-length
   text-properties)
 
+(define-integrable (set-group-marks! group marks)
+  (vector-set! group group-index:marks marks))
+
+(define-integrable (set-group-start-mark! group start)
+  (vector-set! group group-index:start-mark start))
+
+(define-integrable (set-group-end-mark! group end)
+  (vector-set! group group-index:end-mark end))
+
+(define-integrable (set-group-writable?! group writable?)
+  (vector-set! group group-index:writable? writable?))
+
+(define-integrable (set-group-display-start! group start)
+  (vector-set! group group-index:display-start start))
+
+(define-integrable (set-group-display-end! group end)
+  (vector-set! group group-index:display-end end))
+
+(define-integrable (set-group-start-changes-index! group start)
+  (vector-set! group group-index:start-changes-index start))
+
+(define-integrable (set-group-end-changes-index! group end)
+  (vector-set! group group-index:end-changes-index end))
+
+(define-integrable (set-group-modified-tick! group tick)
+  (vector-set! group group-index:modified-tick tick))
+
+(define-integrable (set-group-undo-data! group undo-data)
+  (vector-set! group group-index:undo-data undo-data))
+
+(define-integrable (set-group-modified?! group sense)
+  (vector-set! group group-index:modified? sense))
+
+(define-integrable (set-group-text-properties! group properties)
+  (vector-set! group group-index:text-properties properties))
+
 (define (make-group buffer)
   (let ((group (%make-group)))
     (vector-set! group group-index:text (string-allocate 0))
@@ -123,7 +159,7 @@
     (let ((end (make-permanent-mark group 0 true)))
       (vector-set! group group-index:end-mark end)
       (vector-set! group group-index:display-end end))
-    (vector-set! group group-index:read-only? false)
+    (vector-set! group group-index:writable? false)
     (vector-set! group group-index:start-changes-index false)
     (vector-set! group group-index:end-changes-index false)
     (vector-set! group group-index:modified-tick 0)
@@ -163,23 +199,14 @@
 (define-integrable (group-display-end-index? group index)
   (fix:>= index (group-display-end-index group)))
 
-(define-integrable (set-group-read-only! group)
-  (vector-set! group group-index:read-only? true))
-
 (define-integrable (set-group-writable! group)
-  (vector-set! group group-index:read-only? false))
+  (set-group-writable?! group #t))
 
-(define-integrable (set-group-start-changes-index! group start)
-  (vector-set! group group-index:start-changes-index start))
+(define-integrable (set-group-read-only! group)
+  (set-group-writable?! group #f))
 
-(define-integrable (set-group-end-changes-index! group end)
-  (vector-set! group group-index:end-changes-index end))
-
-(define-integrable (set-group-marks! group marks)
-  (vector-set! group group-index:marks marks))
-
-(define-integrable (set-group-text-properties! group properties)
-  (vector-set! group group-index:text-properties properties))
+(define-integrable (group-read-only? group)
+  (not (group-writable? group)))
 
 (define (group-region group)
   (%make-region (group-start-mark group) (group-end-mark group)))
@@ -208,12 +235,6 @@
 	 (group-gap-end group))
 	(else
 	 (group-gap-start group))))
-
-(define-integrable (set-group-undo-data! group undo-data)
-  (vector-set! group group-index:undo-data undo-data))
-
-(define-integrable (set-group-modified! group sense)
-  (vector-set! group group-index:modified? sense))
 
 (define-integrable (set-group-point! group point)
   (vector-set! group group-index:point (mark-left-inserting-copy point)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.27 1993/01/12 19:05:06 gjr Exp $
+;;;	$Id: rmail.scm,v 1.28 1993/08/13 23:20:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-1993 Massachusetts Institute of Technology
 ;;;
@@ -1971,27 +1971,27 @@ Leaves original message, deleted, before the undigestified messages."
   (with-group-undo-disabled (buffer-group buffer) thunk))
 
 (define (with-group-open group thunk)
-  (let ((outside-ro)
-	(inside-ro false)
+  (let ((outside-writable)
+	(inside-writable 'FULLY)
 	(outside-start)
 	(outside-end)
 	(inside-start (mark-permanent! (group-absolute-start group)))
 	(inside-end (mark-permanent! (group-absolute-end group))))
     (unwind-protect (lambda ()
-		      (set! outside-ro (group-read-only? group))
+		      (set! outside-writable (group-writable? group))
 		      (set! outside-start (group-start-mark group))
 		      (set! outside-end (group-end-mark group))
-		      (vector-set! group group-index:read-only? inside-ro)
-		      (vector-set! group group-index:start-mark inside-start)
-		      (vector-set! group group-index:end-mark inside-end))
+		      (set-group-writable?! group inside-writable)
+		      (set-group-start-mark! group inside-start)
+		      (set-group-end-mark! group inside-end))
 		    thunk
 		    (lambda ()
-		      (set! inside-ro (group-read-only? group))
+		      (set! inside-writable (group-writable? group))
 		      (set! inside-start (group-start-mark group))
 		      (set! inside-end (group-end-mark group))
-		      (vector-set! group group-index:read-only? outside-ro)
-		      (vector-set! group group-index:start-mark outside-start)
-		      (vector-set! group group-index:end-mark outside-end)))))
+		      (set-group-writable?! group outside-writable)
+		      (set-group-start-mark! group outside-start)
+		      (set-group-end-mark! group outside-end)))))
 
 ;;;; Constants
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.118 1993/08/10 06:41:16 cph Exp $
+;;;	$Id: fileio.scm,v 1.119 1993/08/13 23:20:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -53,7 +53,7 @@
   (let ((truename false)
 	(file-error false))
     ;; Set modified so that file supercession check isn't done.
-    (set-group-modified! (buffer-group buffer) true)
+    (set-group-modified?! (buffer-group buffer) true)
     (region-delete! (buffer-unclipped-region buffer))
     (call-with-current-continuation
      (lambda (continuation)
