@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.59 2003/02/14 18:28:33 cph Exp $
+$Id: rep.scm,v 14.60 2003/03/07 20:41:23 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1998,1999,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -62,43 +64,34 @@ USA.
 
 ;;;; Command Loops
 
-(define cmdl-rtd
-  (make-record-type "cmdl"
-		    '(LEVEL PARENT PORT DRIVER STATE OPERATIONS PROPERTIES)))
+(define-record-type <cmdl>
+    (%make-cmdl level parent port driver state operations properties)
+    cmdl?
+  (level cmdl/level)
+  (parent cmdl/parent)
+  (port cmdl/port set-cmdl/port!)
+  (driver cmdl/driver)
+  (state cmdl/state set-cmdl/state!)
+  (operations cmdl/operations)
+  (properties cmdl/properties))
 
-(define cmdl? (record-predicate cmdl-rtd))
-(define cmdl/level (record-accessor cmdl-rtd 'LEVEL))
-(define cmdl/parent (record-accessor cmdl-rtd 'PARENT))
-(define cmdl/port (record-accessor cmdl-rtd 'PORT))
-(define set-cmdl/port! (record-updater cmdl-rtd 'PORT))
-(define cmdl/driver (record-accessor cmdl-rtd 'DRIVER))
-(define cmdl/state (record-accessor cmdl-rtd 'STATE))
-(define set-cmdl/state! (record-updater cmdl-rtd 'STATE))
-(define cmdl/operations (record-accessor cmdl-rtd 'OPERATIONS))
-(define cmdl/properties (record-accessor cmdl-rtd 'PROPERTIES))
-
-(define make-cmdl
-  (let ((constructor
-	 (record-constructor
-	  cmdl-rtd
-	  '(LEVEL PARENT PORT DRIVER STATE OPERATIONS PROPERTIES))))
-    (lambda (parent port driver state operations)
-      (if (not (or (not parent) (cmdl? parent)))
-	  (error:wrong-type-argument parent "cmdl" 'MAKE-CMDL))
-      (if (not (or parent port))
-	  (error:bad-range-argument port 'MAKE-CMDL))
-      (constructor (if parent (+ (cmdl/level parent) 1) 1)
-		   parent
-		   (let ((port* (and parent (cmdl/child-port parent))))
-		     (if port
-			 (if (eq? port port*)
-			     port
-			     (make-transcriptable-port port))
-			 port*))
-		   driver
-		   state
-		   (parse-operations-list operations 'MAKE-CMDL)
-		   (make-1d-table)))))
+(define (make-cmdl parent port driver state operations)
+  (if (not (or (not parent) (cmdl? parent)))
+      (error:wrong-type-argument parent "cmdl" 'MAKE-CMDL))
+  (if (not (or parent port))
+      (error:bad-range-argument port 'MAKE-CMDL))
+  (%make-cmdl (if parent (+ (cmdl/level parent) 1) 1)
+	      parent
+	      (let ((port* (and parent (cmdl/child-port parent))))
+		(if port
+		    (if (eq? port port*)
+			port
+			(make-transcriptable-port port))
+		    port*))
+	      driver
+	      state
+	      (parse-operations-list operations 'MAKE-CMDL)
+	      (make-1d-table)))
 
 (define (cmdl/child-port cmdl)
   (or (let ((operation (cmdl/local-operation cmdl 'CHILD-PORT)))

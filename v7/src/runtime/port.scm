@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.27 2003/03/07 05:47:41 cph Exp $
+$Id: port.scm,v 1.28 2003/03/07 20:36:53 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
@@ -168,21 +168,19 @@ USA.
 	  (and accessor
 	       (accessor type))))))
 
-(define port-rtd (make-record-type "port" '(TYPE STATE THREAD-MUTEX)))
-(define %make-port (record-constructor port-rtd '(TYPE STATE THREAD-MUTEX)))
-(define port? (record-predicate port-rtd))
-(define port/type (record-accessor port-rtd 'TYPE))
-(define %port/state (record-accessor port-rtd 'STATE))
-(define port/thread-mutex (record-accessor port-rtd 'THREAD-MUTEX))
-(define set-port/thread-mutex! (record-modifier port-rtd 'THREAD-MUTEX))
+(define-record-type <port>
+    (%make-port type state thread-mutex)
+    port?
+  (type port/type)
+  (state %port/state %set-port/state!)
+  (thread-mutex port/thread-mutex)
+  (thread-mutex set-port/thread-mutex!))
 
 (define (port/state port)
   (%port/state (base-port port)))
 
-(define set-port/state!
-  (let ((modifier (record-modifier port-rtd 'STATE)))
-    (lambda (port state)
-      (modifier (base-port port) state))))
+(define (set-port/state! port state)
+  (%set-port/state! (base-port port) state))
 
 (define (base-port port)
   (let ((state (%port/state port)))
@@ -217,7 +215,7 @@ USA.
 (define (output-port/operation/discretionary-flush port)
   (port-type/discretionary-flush-output (port/type port)))
 
-(set-record-type-unparser-method! port-rtd
+(set-record-type-unparser-method! <port>
   (lambda (state port)
     ((let ((name
 	    (cond ((i/o-port? port) 'I/O-PORT)
