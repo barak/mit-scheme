@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.7 1991/09/17 20:32:04 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.8 1991/09/24 17:53:24 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -220,7 +220,8 @@ together with two commands to return to regular RMAIL:
 	(end (buffer-end buffer)))
     (if (re-match-forward babyl-header-start-regexp start end false)
 	(let ((end
-	       (or (re-search-forward babyl-header-end-regexp start end false)
+	       (if (re-search-forward babyl-header-end-regexp start end false)
+		   (re-match-start 0)
 		   end)))
 	  (let ((start (search-forward "\nMail:" start end true)))
 	    (if start
