@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: texcom.scm,v 1.40 2000/02/25 17:46:45 cph Exp $
+;;; $Id: texcom.scm,v 1.41 2000/02/25 19:02:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -110,6 +110,18 @@ With a zero argument, it transposes the words at point and mark."
   "p"
   (lambda (argument)
     (transpose-things forward-word argument)))
+
+(define (count-words-region region)
+  (let ((end (region-end region)))
+    (let loop ((start (region-start region)) (count 0))
+      (let ((start (forward-to-word start 'LIMIT)))
+	(if (mark< start end)
+	    (let ((count (+ count 1))
+		  (m (forward-word start 1 #f)))
+	      (if m
+		  (loop m count)
+		  count))
+	    count)))))
 
 ;;;; Case Conversion
 
