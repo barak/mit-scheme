@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.12 1992/01/23 20:59:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.13 1992/03/13 10:05:26 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -375,7 +375,7 @@ comint-prompt-regexp."
     (let ((mark
 	   (re-match-forward (ref-variable comint-prompt-regexp)
 			     start
-			     (group-end mark))))
+			     (line-end mark 0))))
       (if (and mark (mark<= mark (line-end start 0)))
 	  mark
 	  start))))
