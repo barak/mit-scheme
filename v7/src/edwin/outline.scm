@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/outline.scm,v 1.6 1993/02/09 03:35:32 arthur Exp $
+;;;	$Id: outline.scm,v 1.7 1993/08/10 06:57:20 cph Exp $
 ;;;
-;;;	Copyright (c) 1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -41,21 +41,8 @@
 
 (declare (usual-integrations))
 
-(define-variable outline-pattern
-  "Regexp describing outline topic beginnings.  The more characters
-match, the deeper our level in the outline."
-  "^\*+"
-  string?)
-
-(define (topic-level outline-pattern mark)
-  (and (re-search-backward
-	outline-pattern (line-end mark 0) (group-start mark))
-       (- (re-match-end-index 0)
-	  (re-match-start-index 0))))
-
 (define (%forward-up-topic start end outline-pattern)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related:" start end))
+  (if (not (mark<= start end)) (error "Marks incorrectly related:" start end))
   (and (mark< start end)
        (let ((level (topic-level outline-pattern start)))
 	 (let next-topic ((start start))
@@ -71,8 +58,7 @@ match, the deeper our level in the outline."
 		    (re-match-start 0)))))))
 
 (define (%backward-up-topic end start outline-pattern)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related:" start end))
+  (if (not (mark<= start end)) (error "Marks incorrectly related:" start end))
   (and (mark< start end)
        (let ((level (topic-level outline-pattern end)))
 	 (and level
@@ -87,8 +73,7 @@ match, the deeper our level in the outline."
 			   (re-match-start 0)))))))))
 
 (define (%forward-topic start end outline-pattern)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related:" start end))
+  (if (not (mark<= start end)) (error "Marks incorrectly related:" start end))
   (and (mark< start end)
        (let ((level (topic-level outline-pattern start)))
 	 (let next-topic ((start start))
@@ -106,8 +91,7 @@ match, the deeper our level in the outline."
 		    (re-match-start 0)))))))
 
 (define (%backward-topic end start outline-pattern)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related:" start end))
+  (if (not (mark<= start end)) (error "Marks incorrectly related:" start end))
   (and (mark< start end)
        (let ((level (topic-level outline-pattern end)))
 	 (and level
@@ -122,10 +106,9 @@ match, the deeper our level in the outline."
 			     ((< found-level level)
 			      false)
 			     (else (previous-topic (re-match-start 0)))))))))))
-
+
 (define (%forward-down-topic start end outline-pattern)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related:" start end))
+  (if (not (mark<= start end)) (error "Marks incorrectly related:" start end))
   (and (mark< start end)
        (let ((level (topic-level outline-pattern start)))
 	 (if level
@@ -142,8 +125,7 @@ match, the deeper our level in the outline."
 		  (re-match-start 0))))))
 
 (define (%backward-down-topic end start outline-pattern)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related:" start end))
+  (if (not (mark<= start end)) (error "Marks incorrectly related:" start end))
   (and (mark< start end)
        (let ((level (topic-level outline-pattern start)))
 	 (if level
@@ -158,44 +140,39 @@ match, the deeper our level in the outline."
 			  (re-match-start 0)))))
 	     (and (re-search-forward outline-pattern start end)
 		  (re-match-start 0))))))
-
+
 (define (forward-one-topic mark)
   (%forward-topic mark
 		  (group-end mark)
-		  (mark-local-ref mark (ref-variable-object outline-pattern))))
+		  (ref-variable outline-pattern mark)))
 
 (define (backward-one-topic mark)
   (%backward-topic mark
 		  (group-start mark)
-		  (mark-local-ref mark (ref-variable-object outline-pattern))))
+		  (ref-variable outline-pattern mark)))
 
 (define (forward-up-one-topic mark)
-  (%forward-up-topic
-   mark
-   (group-end mark)
-   (mark-local-ref mark (ref-variable-object outline-pattern))))
+  (%forward-up-topic mark
+		     (group-end mark)
+		     (ref-variable outline-pattern mark)))
 
 (define (backward-up-one-topic mark)
-  (%backward-up-topic
-   mark
-   (group-start mark)
-   (mark-local-ref mark (ref-variable-object outline-pattern))))
+  (%backward-up-topic mark
+		      (group-start mark)
+		      (ref-variable outline-pattern mark)))
 
 (define (forward-down-one-topic mark)
-  (%forward-down-topic
-   mark
-   (group-end mark)
-   (mark-local-ref mark (ref-variable-object outline-pattern))))
+  (%forward-down-topic mark
+		       (group-end mark)
+		       (ref-variable outline-pattern mark)))
 
 (define (backward-down-one-topic mark)
-  (%backward-down-topic
-   mark
-   (group-start mark)
-   (mark-local-ref mark (ref-variable-object outline-pattern))))
+  (%backward-down-topic mark
+			(group-start mark)
+			(ref-variable outline-pattern mark)))
 
 (define forward-topic)
 (define backward-topic)
-
 (make-motion-pair forward-one-topic backward-one-topic
  (lambda (f b)
    (set! forward-topic f)
@@ -204,7 +181,6 @@ match, the deeper our level in the outline."
 
 (define forward-up-topic)
 (define backward-up-topic)
-
 (make-motion-pair forward-up-one-topic backward-up-one-topic
  (lambda (f b)
    (set! forward-up-topic f)
@@ -213,16 +189,27 @@ match, the deeper our level in the outline."
 
 (define forward-down-topic)
 (define backward-down-topic)
-
 (make-motion-pair forward-down-one-topic backward-down-one-topic
  (lambda (f b)
    (set! forward-down-topic f)
    (set! backward-down-topic b)
    unspecific))
+
+(define-variable outline-pattern
+  "Regexp describing outline topic beginnings.
+The more characters match, the deeper our level in the outline."
+  "^\*+"
+  string?)
+
+(define (topic-level outline-pattern mark)
+  (and (re-search-backward outline-pattern
+			   (line-end mark 0)
+			   (group-start mark))
+       (- (re-match-end-index 0) (re-match-start-index 0))))
 
 (define (topic-region mark)
   (let ((end (group-end mark))
-	(pattern (ref-variable outline-pattern)))
+	(pattern (ref-variable outline-pattern mark)))
     (let ((level (topic-level pattern mark)))
       (if level
 	  (make-region
@@ -241,7 +228,7 @@ match, the deeper our level in the outline."
 			    (next-topic (re-match-end 0))))))
 	       (group-end mark)))
 	  (make-region (group-start mark) (group-end mark))))))
-
+
 (define-command narrow-to-topic
   "Narrow to show the current outline level only."
   "d"
