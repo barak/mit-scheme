@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.9 1996/04/23 21:16:54 cph Exp $
+$Id: redpkg.scm,v 1.10 1997/07/18 04:03:01 adams Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -180,11 +180,12 @@ MIT in each case. |#
 				    (primitive-procedure-name name)
 				    expression))
 		   ((access? name)
-		    (if (access-environment name)
-			(error "Non-root access" name))
-		    (make-reference root-package
-				    (access-name name)
-				    expression))
+		    (if (eq? (access-environment name)
+			     system-global-environment)
+			(make-reference root-package
+					(access-name name)
+					expression)
+			(warn "Non-root access" (unsyntax name))))
 		   (else
 		    (error "Illegal reference name" name)))))
 	 (if name
