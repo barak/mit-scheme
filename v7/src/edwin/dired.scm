@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.108 1991/04/21 01:48:46 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.109 1991/05/06 22:28:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -46,7 +46,7 @@
 
 (declare (usual-integrations))
 
-(define-major-mode dired fundamental "Dired"
+(define-major-mode dired read-only "Dired"
   "Mode for \"editing\" directory listings.
 In dired, you are \"editing\" a list of the files in a directory.
 You can move using the usual cursor motion commands.
