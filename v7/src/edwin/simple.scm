@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: simple.scm,v 1.46 1995/04/19 01:40:24 cph Exp $
+;;;	$Id: simple.scm,v 1.47 1995/04/20 03:35:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -308,7 +308,7 @@
 			(mark-index end)
 			key))
 
-(define (region-get mark key)
+(define (region-get mark key default)
   (get-text-property (mark-group mark)
 		     (mark-index mark)
 		     key
