@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.9 1991/05/08 22:47:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.10 1991/08/28 15:55:18 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -67,6 +67,26 @@ so you can remove or alter the BCC field to override the default."
   "Name of file to write all outgoing messages in, or false for none."
   false
   string-or-false?)
+
+(define-variable mail-header-function
+  "A function of one argument, POINT (the current point), which
+inserts additional header lines into a mail message.  By default,
+this function inserts the header line \"X-Scheme-Mailer: Edwin\"
+followed by the version number of Edwin.  The function is called
+immediately after the Reply-to: header is inserted, if any.  If this
+variable is false, it is ignored."  
+  (lambda (point)
+    (insert-string "X-Scheme-Mailer:" point)
+    (for-each-system!
+     (lambda (system)
+       (if (string=? "Edwin"
+		     (system/name system))
+	   (begin
+	     (insert-string " " point)
+	     (insert-string 
+	      (system/identification-string system)
+	      point)))))
+    (insert-newline point)))
 
 (define-variable mail-header-separator
   "Line used to separate headers from text in messages being composed."
@@ -177,6 +197,9 @@ is inserted."
 	    (insert-string "Reply-to: " point)
 	    (insert-string mail-default-reply-to point)
 	    (insert-newline point))))
+    (let ((mail-header-function (ref-variable mail-header-function)))
+      (if mail-header-function
+	  (mail-header-function point)))
     (if (ref-variable mail-self-blind)
 	(begin
 	  (insert-string "BCC: " point)
