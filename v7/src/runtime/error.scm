@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.32 1992/11/03 22:41:24 jinx Exp $
+$Id: error.scm,v 14.33 1993/04/27 08:43:07 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. |#
 (define-structure (condition-type
 		   (conc-name %condition-type/)
 		   (constructor %make-condition-type
-				(name field-indexes reporter))
+				(name field-indexes number-of-fields reporter))
 		   (print-procedure
 		    (unparser/standard-method 'CONDITION-TYPE
 		      (lambda (state type)
@@ -50,7 +50,7 @@ MIT in each case. |#
   (name false read-only true)
   generalizations
   (field-indexes false read-only true)
-  (number-of-fields (length field-indexes) read-only true)
+  (number-of-fields false read-only true)
   (reporter false read-only true)
   (properties (make-1d-table) read-only true))
 
@@ -59,46 +59,36 @@ MIT in each case. |#
       (guarantee-condition-type generalization 'MAKE-CONDITION-TYPE))
   (guarantee-list-of-symbols field-names 'MAKE-CONDITION-TYPE)
   (let ((type
-	 (%make-condition-type
-	  (cond ((string? name) (string-copy name))
-		((symbol? name) (symbol->string name))
-		((false? name) "(anonymous)")
-		(else
-		 (error:wrong-type-argument name "condition-type name"
-					    'MAKE-CONDITION-TYPE)))
-	  (let ((old-indexes
-		 (if generalization
-		     (%condition-type/field-indexes generalization)
-		     '())))
-	    (do ((old-indexes old-indexes (cdr old-indexes))
-		 (indexes (do ((field-names field-names (cdr field-names))
-			       (index (length old-indexes) (1+ index))
-			       (indexes '()
-					(cons (cons (car field-names) index)
-					      indexes)))
-			      ((null? field-names)
-			       indexes))
-			  (let ((entry (car old-indexes)))
-			    (if (assq (car entry) indexes)
-				indexes
-				(cons entry indexes)))))
-		((null? old-indexes)
-		 (reverse! indexes))))
-	  (cond ((string? reporter)
-		 (lambda (condition port)
-		   condition
-		   (write-string reporter port)))
-		((procedure-of-arity? reporter 2)
-		 reporter)
-		((false? reporter)
-		 (if generalization
-		     (%condition-type/reporter generalization)
+	 (call-with-values
+	     (lambda ()
+	       (compute-field-indexes generalization field-names))
+	   (lambda (n-fields field-indexes)
+	     (%make-condition-type
+	      (cond ((string? name) (string-copy name))
+		    ((symbol? name) (symbol->string name))
+		    ((false? name) "(anonymous)")
+		    (else
+		     (error:wrong-type-argument name "condition-type name"
+						'MAKE-CONDITION-TYPE)))
+	      field-indexes
+	      n-fields
+	      (cond ((string? reporter)
 		     (lambda (condition port)
-		       (write-string "undocumented condition of type " port)
-		       (write (%condition/type condition) port))))
-		(else
-		 (error:wrong-type-argument reporter "condition-type reporter"
-					    'MAKE-CONDITION-TYPE))))))
+		       condition
+		       (write-string reporter port)))
+		    ((procedure-of-arity? reporter 2)
+		     reporter)
+		    ((false? reporter)
+		     (if generalization
+			 (%condition-type/reporter generalization)
+			 (lambda (condition port)
+			   (write-string "undocumented condition of type "
+					 port)
+			   (write (%condition/type condition) port))))
+		    (else
+		     (error:wrong-type-argument reporter
+						"condition-type reporter"
+						'MAKE-CONDITION-TYPE))))))))
     (set-%condition-type/generalizations!
      type
      (cons type
@@ -107,6 +97,31 @@ MIT in each case. |#
 	       '())))
     type))
 
+(define (compute-field-indexes generalization field-names)
+  (call-with-values
+      (lambda ()
+	(if generalization
+	    (values (%condition-type/number-of-fields generalization)
+		    (%condition-type/field-indexes generalization))
+	    (values 0 '())))
+    (lambda (old-n-fields old-indexes)
+      (let loop
+	  ((field-names field-names)
+	   (index old-n-fields)
+	   (indexes (let loop ((old-indexes old-indexes) (indexes '()))
+		      (if (null? old-indexes)
+			  indexes
+			  (loop (cdr old-indexes)
+				(let ((entry (car old-indexes)))
+				  (if (memq (car entry) field-names)
+				      indexes
+				      (cons entry indexes))))))))
+	(if (null? field-names)
+	    (values index (reverse! indexes))
+	    (loop (cdr field-names)
+		  (+ index 1)
+		  (cons (cons (car field-names) index) indexes)))))))
+
 (define (%condition-type/field-index type field-name operator)
   (let ((association (assq field-name (%condition-type/field-indexes type))))
     (if (not association)
@@ -209,18 +224,19 @@ MIT in each case. |#
   (guarantee-condition-type type 'CONDITION-PREDICATE)
   (lambda (object)
     (and (condition? object)
-	 (eq? type (%condition/type object)))))
+	 (memq type
+	       (%condition-type/generalizations (%condition/type object))))))
 
 (define (condition-accessor type field-name)
   (guarantee-condition-type type 'CONDITION-ACCESSOR)
   (guarantee-symbol field-name 'CONDITION-ACCESSOR)
-  (let ((index
+  (let ((predicate (condition-predicate type))
+	(index
 	 (%condition-type/field-index type
 				      field-name
 				      'CONDITION-ACCESSOR)))
     (lambda (condition)
-      (if (not (and (condition? condition)
-		    (eq? type (%condition/type condition))))
+      (if (not (predicate condition))
 	  (error:wrong-type-argument condition
 				     (string-append "condition of type "
 						    (write-to-string type))
