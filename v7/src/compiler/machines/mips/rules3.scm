@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.12 1992/08/20 01:26:56 jinx Exp $
+$Id: rules3.scm,v 1.13 1992/09/26 15:49:20 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -427,18 +427,16 @@ MIT in each case. |#
 	 ,@(interrupt-check gc-label))))
 
 (define (interrupt-check gc-label)
-  (LAP (SLT ,regnum:assembler-temp ,regnum:memtop ,regnum:free)
-       (BNE ,regnum:assembler-temp 0 (@PCR ,gc-label))
-       (LW ,regnum:memtop ,reg:memtop)
-       ,@(if compiler:generate-stack-checks?
-	     (LAP (LW ,regnum:assembler-temp ,reg:stack-guard)
-		  (NOP)
-		  (SLT ,regnum:assembler-temp
-		       ,regnum:stack-pointer
-		       ,regnum:assembler-temp)
-		  (BNE ,regnum:assembler-temp 0 (@PCR ,gc-label))
-		  (NOP))
-	     (LAP))))
+  (if (not compiler:generate-stack-checks?)
+      (LAP (SLT ,regnum:assembler-temp ,regnum:memtop ,regnum:free)
+	   (BNE ,regnum:assembler-temp 0 (@PCR ,gc-label))
+	   (LW ,regnum:memtop ,reg:memtop))
+      (LAP (LW ,regnum:first-arg ,reg:stack-guard)
+	   (SLT ,regnum:assembler-temp ,regnum:memtop ,regnum:free)
+	   (BNE ,regnum:assembler-temp 0 (@PCR ,gc-label))
+	   (SLT ,regnum:assembler-temp ,regnum:stack-pointer ,regnum:first-arg)
+	   (BNE ,regnum:assembler-temp 0 (@PCR ,gc-label))
+	   (LW ,regnum:memtop ,reg:memtop))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
