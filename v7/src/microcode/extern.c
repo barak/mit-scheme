@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.32 1992/01/20 16:06:21 jinx Exp $
+$Id: extern.c,v 9.33 1993/06/24 07:08:24 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 

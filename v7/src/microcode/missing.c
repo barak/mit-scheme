@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.29 1992/02/20 16:23:58 jinx Exp $
+$Id: missing.c,v 9.30 1993/06/24 07:09:00 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 

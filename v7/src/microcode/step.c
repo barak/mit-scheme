@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.30 1992/01/15 04:02:33 jinx Exp $
+$Id: step.c,v 9.31 1993/06/24 07:09:53 gjr Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 

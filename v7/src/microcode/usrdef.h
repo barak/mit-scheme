@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/usrdef.h,v 9.38 1992/01/15 17:34:23 jinx Exp $
+$Id: usrdef.h,v 9.39 1993/06/24 07:10:05 gjr Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 

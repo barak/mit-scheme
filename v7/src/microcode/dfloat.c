@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dfloat.c,v 1.3 1991/10/29 22:55:11 jinx Exp $
+$Id: dfloat.c,v 1.4 1993/06/24 07:07:55 gjr Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 

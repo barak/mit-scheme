@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/zones.h,v 9.24 1990/06/20 17:42:58 cph Rel $
+/* $Id: zones.h,v 9.25 1993/06/24 07:05:28 gjr Exp $
  *
  * Metering stuff.
  * We break all times into time zones suitable for external analysis.

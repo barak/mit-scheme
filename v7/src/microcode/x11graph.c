@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.29 1992/08/18 19:33:19 cph Exp $
+$Id: x11graph.c,v 1.30 1993/06/24 07:10:31 gjr Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 

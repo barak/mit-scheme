@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.h,v 1.4 1992/06/05 20:07:24 jinx Exp $
+$Id: uxsock.h,v 1.5 1993/06/24 07:10:15 gjr Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph.h,v 1.5 1989/09/20 23:05:07 cph Rel $
+$Id: sgraph.h,v 1.6 1993/06/24 07:09:48 gjr Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 

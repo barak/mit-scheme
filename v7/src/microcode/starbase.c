@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbase.c,v 1.5 1992/04/24 17:07:13 mhwu Exp $
+$Id: starbase.c,v 1.6 1993/06/24 07:09:50 gjr Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 

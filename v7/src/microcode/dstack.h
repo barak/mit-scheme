@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dstack.h,v 1.5 1992/02/10 13:09:11 jinx Exp $ */
+/* $Id: dstack.h,v 1.6 1993/06/24 07:08:21 gjr Exp $ */
 
 #ifndef __DSTACK_H__
 #define __DSTACK_H__

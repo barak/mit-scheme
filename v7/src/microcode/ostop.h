@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ostop.h,v 1.3 1991/01/24 04:34:30 cph Exp $
+$Id: ostop.h,v 1.4 1993/06/24 07:09:10 gjr Exp $
 
 Copyright (c) 1990-1 Massachusetts Institute of Technology
 

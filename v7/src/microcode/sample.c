@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sample.c,v 9.24 1989/09/20 23:11:19 cph Rel $ */
+/* $Id: sample.c,v 9.25 1993/06/24 07:09:43 gjr Exp $ */
 
 /* This file is intended to help you find out how to write primitives.
    Many concepts needed to write primitives can be found by looking

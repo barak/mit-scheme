@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/winder.h,v 9.24 1989/09/20 23:13:09 cph Rel $
+$Id: winder.h,v 9.25 1993/06/24 07:10:25 gjr Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 

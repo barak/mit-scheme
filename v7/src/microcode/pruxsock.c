@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxsock.c,v 1.6 1992/06/05 19:45:15 jinx Exp $
+$Id: pruxsock.c,v 1.7 1993/06/24 07:09:34 gjr Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.35 1992/07/21 18:19:00 cph Exp $
+$Id: prim.c,v 9.36 1993/06/24 07:09:17 gjr Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 

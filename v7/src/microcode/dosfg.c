@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosfg.c,v 1.2 1992/05/08 19:05:26 mhwu Exp $
+$Id: dosfg.c,v 1.3 1993/06/24 07:08:02 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 

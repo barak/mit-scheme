@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxutil.c,v 1.4 1991/10/16 22:26:19 jinx Exp $
+$Id: uxutil.c,v 1.5 1993/06/24 07:10:22 gjr Exp $
 
 Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 

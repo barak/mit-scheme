@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/future.c,v 9.27 1989/09/20 23:08:34 cph Rel $
+$Id: future.c,v 9.28 1993/06/24 07:08:36 gjr Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 

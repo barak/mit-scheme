@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/critsec.h,v 1.2 1991/10/29 22:55:11 jinx Exp $
+$Id: critsec.h,v 1.3 1993/06/24 07:07:54 gjr Exp $
 
 Copyright (c) 1990-1991 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.7 1992/03/26 10:54:49 cph Exp $
+$Id: osproc.h,v 1.8 1993/06/24 07:09:06 gjr Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 

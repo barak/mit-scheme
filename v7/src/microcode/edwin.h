@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/edwin.h,v 1.5 1991/04/02 19:45:17 cph Exp $
+$Id: edwin.h,v 1.6 1993/06/24 07:08:23 gjr Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 

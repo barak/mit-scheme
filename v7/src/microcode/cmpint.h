@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.h,v 10.4 1990/06/20 17:39:09 cph Rel $
+$Id: cmpint.h,v 10.5 1993/06/24 07:07:13 gjr Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 

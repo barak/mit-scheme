@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.34 1993/02/22 20:35:53 nick Exp $
+$Id: array.h,v 9.35 1993/06/24 07:06:53 gjr Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 

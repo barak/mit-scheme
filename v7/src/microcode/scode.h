@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scode.h,v 9.24 1989/09/20 23:11:26 cph Rel $
+/* $Id: scode.h,v 9.25 1993/06/24 07:09:45 gjr Exp $
  *
  * Format of the SCode representation of programs.  Each of these
  * is described in terms of the slots in the data structure.

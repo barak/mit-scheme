@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11color.c,v 1.3 1991/07/23 08:16:51 cph Exp $
+$Id: x11color.c,v 1.4 1993/06/24 07:10:29 gjr Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hunk.c,v 9.27 1992/01/15 02:27:57 jinx Exp $
+$Id: hunk.c,v 9.28 1993/06/24 07:08:45 gjr Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.44 1992/08/16 23:22:34 jinx Exp $
+$Id: ppband.c,v 9.45 1993/06/24 07:09:15 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 

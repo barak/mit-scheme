@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gpio.c,v 1.9 1991/04/27 00:43:27 cph Exp $ */
+/* $Id: gpio.c,v 1.10 1993/06/24 07:08:42 gjr Exp $ */
 
 /* Scheme primitives for GPIO */
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osfile.h,v 1.1 1990/06/20 19:36:20 cph Rel $
+$Id: osfile.h,v 1.2 1993/06/24 07:09:05 gjr Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 

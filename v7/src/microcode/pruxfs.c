@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.50 1992/09/05 03:03:25 cph Exp $
+$Id: pruxfs.c,v 9.51 1993/06/24 07:09:32 gjr Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 

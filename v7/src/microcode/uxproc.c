@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.14 1992/03/26 10:54:40 cph Exp $
+$Id: uxproc.c,v 1.15 1993/06/24 07:10:11 gjr Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 

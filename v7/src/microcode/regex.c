@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.12 1992/08/20 23:47:58 jinx Exp $
+$Id: regex.c,v 1.13 1993/06/24 07:09:38 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.31 1989/09/20 23:11:29 cph Rel $
+/* $Id: sdata.h,v 9.32 1993/06/24 07:09:46 gjr Exp $
  *
  * Description of the user data objects.  This should parallel the
  * file SDATA.SCM in the runtime system.

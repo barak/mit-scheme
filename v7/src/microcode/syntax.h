@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.h,v 1.7 1989/09/20 23:12:04 cph Rel $
+$Id: syntax.h,v 1.8 1993/06/24 07:09:59 gjr Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ossig.h,v 1.2 1992/05/05 06:57:20 jinx Exp $
+$Id: ossig.h,v 1.3 1993/06/24 07:09:09 gjr Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 

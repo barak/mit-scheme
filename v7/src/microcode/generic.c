@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.36 1991/05/06 18:10:38 jinx Exp $
+$Id: generic.c,v 9.37 1993/06/24 07:08:40 gjr Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 

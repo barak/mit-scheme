@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosexcp.h,v 1.2 1992/07/28 14:34:56 jinx Exp $
+$Id: dosexcp.h,v 1.3 1993/06/24 07:08:00 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 

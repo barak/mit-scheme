@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bigprm.c,v 1.2 1991/10/29 22:55:11 jinx Exp $
+$Id: bigprm.c,v 1.3 1993/06/24 07:07:02 gjr Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.h,v 1.4 1992/06/03 21:54:00 jinx Exp $
+$Id: bchdrn.h,v 1.5 1993/06/24 07:06:55 gjr Exp $
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
 

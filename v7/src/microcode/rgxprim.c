@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.9 1991/04/02 19:45:24 cph Exp $
+$Id: rgxprim.c,v 1.10 1993/06/24 07:09:41 gjr Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 

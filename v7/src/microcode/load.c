@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.31 1992/01/16 01:47:56 jinx Exp $
+$Id: load.c,v 9.32 1993/06/24 07:08:53 gjr Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbasx.c,v 1.4 1990/10/02 22:52:12 cph Rel $
+$Id: starbasx.c,v 1.5 1993/06/24 07:09:52 gjr Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 

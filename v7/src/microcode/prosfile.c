@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfile.c,v 1.5 1992/06/10 21:36:45 jinx Exp $
+$Id: prosfile.c,v 1.6 1993/06/24 07:09:24 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 

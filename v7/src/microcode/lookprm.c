@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.8 1992/01/20 13:26:19 jinx Exp $
+$Id: lookprm.c,v 1.9 1993/06/24 07:08:56 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 

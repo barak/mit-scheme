@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.12 1992/03/27 20:32:53 cph Exp $
+$Id: prosproc.c,v 1.13 1993/06/24 07:09:26 gjr Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 

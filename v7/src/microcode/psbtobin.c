@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.48 1992/08/16 23:16:30 jinx Exp $
+$Id: psbtobin.c,v 9.49 1993/06/24 07:09:36 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 

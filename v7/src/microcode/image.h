@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.h,v 9.23 1989/09/20 23:09:19 cph Rel $
+$Id: image.h,v 9.24 1993/06/24 07:08:49 gjr Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 

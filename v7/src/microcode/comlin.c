@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comlin.c,v 1.7 1992/01/15 21:04:42 jinx Exp $
+/* $Id: comlin.c,v 1.8 1993/06/24 07:07:15 gjr Exp $
  *
  * This file contains the scheme command parser.
  *

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixobj.h,v 9.30 1991/05/05 00:29:26 jinx Exp $
+$Id: fixobj.h,v 9.31 1993/06/24 07:08:32 gjr Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 

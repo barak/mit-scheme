@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ostty.h,v 1.3 1992/02/27 18:53:26 mhwu Exp $
+$Id: ostty.h,v 1.4 1993/06/24 07:09:13 gjr Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 

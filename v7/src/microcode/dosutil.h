@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosutil.h,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Id: dosutil.h,v 1.2 1993/06/24 07:08:19 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/trap.h,v 9.42 1989/09/20 23:12:11 cph Rel $ */
+/* $Id: trap.h,v 9.43 1993/06/24 07:10:00 gjr Exp $ */
 
 /* Kinds of traps:
 

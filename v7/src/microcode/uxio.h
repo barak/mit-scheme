@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.h,v 1.2 1991/03/11 23:43:07 cph Exp $
+$Id: uxio.h,v 1.3 1993/06/24 07:10:10 gjr Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 

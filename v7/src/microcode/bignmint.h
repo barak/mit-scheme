@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignmint.h,v 1.2 1992/06/10 21:43:58 jinx Exp $
+$Id: bignmint.h,v 1.3 1993/06/24 07:07:01 gjr Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 

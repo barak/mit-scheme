@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bltdef.h,v 1.2 1988/08/15 20:42:54 cph Rel $
+/* $Id: bltdef.h,v 1.3 1993/06/24 07:07:08 gjr Exp $
  *
  * Names and arity's of old "built-in" primitives.
  * The tables here are used by Bintopsb to upgrade binaries.

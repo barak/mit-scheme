@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.h,v 1.3 1991/01/07 23:57:22 cph Rel $
+$Id: uxterm.h,v 1.4 1993/06/24 07:10:16 gjr Exp $
 
 Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 

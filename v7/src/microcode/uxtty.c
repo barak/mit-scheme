@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.8 1992/02/10 13:51:02 jinx Exp $
+$Id: uxtty.c,v 1.9 1993/06/24 07:10:20 gjr Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.c,v 9.27 1992/02/03 23:21:38 jinx Exp $
+$Id: bkpt.c,v 9.28 1993/06/24 07:07:04 gjr Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 

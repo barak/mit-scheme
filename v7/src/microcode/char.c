@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.29 1991/10/29 22:55:11 jinx Exp $
+$Id: char.c,v 9.30 1993/06/24 07:07:11 gjr Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 

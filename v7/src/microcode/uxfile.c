@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfile.c,v 1.6 1991/06/15 00:40:32 cph Exp $
+$Id: uxfile.c,v 1.7 1993/06/24 07:10:08 gjr Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/breakup.c,v 9.23 1991/08/13 06:20:37 cph Exp $ */
+/* $Id: breakup.c,v 9.24 1993/06/24 07:07:09 gjr Exp $ */
 
 #include <stdio.h>
 

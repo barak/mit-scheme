@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.39 1992/02/27 18:26:30 mhwu Exp $
+$Id: flonum.c,v 9.40 1993/06/24 07:08:34 gjr Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 

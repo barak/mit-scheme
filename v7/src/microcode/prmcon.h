@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/prmcon.h,v 1.1 1990/11/21 07:00:30 jinx Rel $
+$Id: prmcon.h,v 1.2 1993/06/24 07:09:22 gjr Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.58 1992/06/03 21:54:53 jinx Exp $
+$Id: bchpur.c,v 9.59 1993/06/24 07:06:59 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 

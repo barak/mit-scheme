@@ -1,8 +1,6 @@
 /* -*-C-*-
 
-$Id: prim.h,v 9.43 1993/06/24 07:09:18 gjr Exp $
-
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,30 +30,5 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* Primitive declarations.
-   Note that the following cannot be changed without changing
-   Findprim.c. */
+/* $Id: copyrigh.c,v 1.1 1993/06/24 07:07:29 gjr Exp $ */
 
-extern SCHEME_OBJECT EXFUN ((*(Primitive_Procedure_Table[])), (void));
-extern int Primitive_Arity_Table[];
-extern int Primitive_Count_Table[];
-extern char *Primitive_Name_Table[];
-extern char *Primitive_Documentation_Table[];
-extern long MAX_PRIMITIVE;
-
-#define CHUNK_SIZE 20		/* Grow undefined vector by this much */
-
-extern SCHEME_OBJECT Undefined_Primitives;
-extern SCHEME_OBJECT Undefined_Primitives_Arity;
-
-/* Utility macros */
-
-#define NUMBER_OF_DEFINED_PRIMITIVES() (MAX_PRIMITIVE + 1)
-
-#define NUMBER_OF_UNDEFINED_PRIMITIVES()				\
-  ((Undefined_Primitives == SHARP_F)					\
-   ? 0									\
-   : (UNSIGNED_FIXNUM_TO_LONG (VECTOR_REF (Undefined_Primitives, 0))))
-
-#define NUMBER_OF_PRIMITIVES()						\
-  ((NUMBER_OF_UNDEFINED_PRIMITIVES ()) + (NUMBER_OF_DEFINED_PRIMITIVES ()))

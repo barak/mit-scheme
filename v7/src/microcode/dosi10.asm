@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosi10.asm,v 1.1 1992/07/28 18:12:49 jinx Exp $
+;;;	$Id: dosi10.asm,v 1.2 1993/06/24 07:08:05 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;

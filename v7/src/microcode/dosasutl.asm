@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosasutl.asm,v 1.2 1992/07/28 18:03:24 jinx Exp $
+;;;	$Id: dosasutl.asm,v 1.3 1993/06/24 07:07:58 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.47 1992/02/27 18:31:48 mhwu Exp $
+$Id: lookup.h,v 9.48 1993/06/24 07:08:58 gjr Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 

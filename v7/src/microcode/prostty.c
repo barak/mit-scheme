@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prostty.c,v 1.4 1992/05/05 06:37:58 jinx Exp $
+$Id: prostty.c,v 1.5 1993/06/24 07:09:30 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
