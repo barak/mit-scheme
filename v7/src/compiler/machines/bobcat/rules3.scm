@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.29 1991/03/24 23:53:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.30 1991/05/07 13:45:31 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -110,6 +110,17 @@ MIT in each case. |#
        ;;       (JMP (@@PCR ,(free-uuo-link-label name frame-size)))
        ;; and to have <entry> at label, but it is longer and slower.
        (BRA (@PCR ,(free-uuo-link-label name frame-size)))))
+
+(define-rule statement
+  (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
+  continuation
+  (LAP ,@(clear-map!)
+       ;; The following assumes that at label there is
+       ;;	(JMP (L <entry>))
+       ;; The other possibility would be
+       ;;       (JMP (@@PCR ,(global-uuo-link-label name frame-size)))
+       ;; and to have <entry> at label, but it is longer and slower.
+       (BRA (@PCR ,(global-uuo-link-label name frame-size)))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
@@ -159,7 +170,7 @@ MIT in each case. |#
 		      (LAP ,(load-dnl frame-size 2)
 			   (MOV L (@PCR ,(constant->label primitive)) (D 1))
 			   ,@(invoke-interface code:compiler-apply))))))))
-
+
 (let-syntax
     ((define-special-primitive-invocation
        (macro (name)
@@ -169,23 +180,42 @@ MIT in each case. |#
 	     (? continuation)
 	     ,(make-primitive-procedure name true))
 	    frame-size continuation
-	    ,(list 'LAP
-		   (list 'UNQUOTE-SPLICING '(clear-map!))
-		   (list 'JMP
-			 (list 'UNQUOTE
-			       (symbol-append 'ENTRY:COMPILER- name))))))))
-  (define-special-primitive-invocation &+)
-  (define-special-primitive-invocation &-)
-  (define-special-primitive-invocation &*)
-  (define-special-primitive-invocation &/)
-  (define-special-primitive-invocation &=)
-  (define-special-primitive-invocation &<)
-  (define-special-primitive-invocation &>)
-  (define-special-primitive-invocation 1+)
-  (define-special-primitive-invocation -1+)
-  (define-special-primitive-invocation zero?)
-  (define-special-primitive-invocation positive?)
-  (define-special-primitive-invocation negative?))
+	    (special-primitive-invocation
+	     ,(symbol-append 'CODE:COMPILER- name)))))
+
+     (define-optimized-primitive-invocation
+       (macro (name)
+	 `(define-rule statement
+	    (INVOCATION:SPECIAL-PRIMITIVE
+	     (? frame-size)
+	     (? continuation)
+	     ,(make-primitive-procedure name true))
+	    frame-size continuation
+	    (optimized-primitive-invocation
+	     ,(symbol-append 'ENTRY:COMPILER- name))))))
+
+  (define-optimized-primitive-invocation &+)
+  (define-optimized-primitive-invocation &-)
+  (define-optimized-primitive-invocation &*)
+  (define-optimized-primitive-invocation &/)
+  (define-optimized-primitive-invocation &=)
+  (define-optimized-primitive-invocation &<)
+  (define-optimized-primitive-invocation &>)
+  (define-optimized-primitive-invocation 1+)
+  (define-optimized-primitive-invocation -1+)
+  (define-optimized-primitive-invocation zero?)
+  (define-optimized-primitive-invocation positive?)
+  (define-optimized-primitive-invocation negative?)
+  (define-optimized-primitive-invocation quotient)
+  (define-optimized-primitive-invocation remainder))
+
+(define (special-primitive-invocation code)
+  (LAP ,@(clear-map!)
+       ,@(invoke-interface code)))
+
+(define (optimized-primitive-invocation hook)
+  (LAP ,@(clear-map!)
+       (JMP ,hook)))
 
 ;;;; Invocation Prefixes
 
@@ -567,10 +597,10 @@ long-word aligned and there is no need for shuffling.
       (let ((temp (reference-temporary-register! 'ADDRESS)))
 	(LAP ,@(load-non-pointer (ucode-type manifest-closure)
 				 (+ size MC68040/closure-entry-size)
-				 (INST-EA (@AO ,an -8)))
+				 (INST-EA (@A+ ,an)))
 	     (MOV UL
 		  (& ,(+ (* (make-procedure-code-word min max) #x10000) 8))
-		  (@AO ,an -4))
+		  (@A+ ,an))
 	     (LEA (@PCR ,(rtl-procedure/external-label
 			  (label->object procedure-label)))
 		  ,temp)
@@ -597,12 +627,13 @@ long-word aligned and there is no need for shuffling.
 		     (MOV L (A ,atmp2) (@A+ ,atmp1))
 		     ,@(store-entries (+ 12 offset) (cdr entries))))))
 
-	(LAP (LEA (@AO ,atarget -12) (A ,atmp1))
-	     ,@(load-non-pointer (ucode-type manifest-closure)
+	(LAP ,@(load-non-pointer (ucode-type manifest-closure)
 				 (+ size 1
 				    (* nentries MC68040/closure-entry-size))
-				 (INST-EA (@A+ ,atmp1)))
-	     (MOV UL (& ,(* nentries #x10000)) (@A+ ,atmp1))
+				 (INST-EA (@A+ ,atarget)))
+	     (MOV UL (& ,(* nentries #x10000)) (@A+ ,atarget))
+	     (MOV L (A ,atarget) (A ,atmp1))
+	     (ADDQ L (& 4) (A ,atarget))
 	     ,@(store-entries 12 entries))))))
 
 ;;;; Utilities for MC68040 closures.
@@ -612,12 +643,11 @@ long-word aligned and there is no need for shuffling.
   (- (make-non-pointer-literal (ucode-type compiled-entry) 0)
      6))
 
-;; In what follows, entry:compiler-allocate-closure gets its parameters in d0
-;; and d1, and returns its value in a0.
+;; In what follows, entry:compiler-allocate-closure gets its parameter in d0
+;; and returns its value in a0.
 
-(define (MC68040/allocate-closure nentries size)
-  (LAP ,(load-dnl nentries 0)
-       ,(load-dnl size 1)
+(define (MC68040/allocate-closure size)
+  (LAP ,(load-dnl size 0)
        (JSR ,entry:compiler-allocate-closure)))
 
 ;; If this issues too much code, the optional code can be eliminated at
@@ -625,23 +655,20 @@ long-word aligned and there is no need for shuffling.
 
 (define (MC68040/with-allocated-closure target nentries size recvr)
   (require-register! d0)
-  (require-register! d1)
   (rtl-target:=machine-register! target a0)
-  (let ((compare (+ size (-1+ (* MC68040/closure-entry-size nentries))))
-	(delta (* MC68040/closure-entry-size
-		  (+ (1+ nentries)
-		     (quotient (+ size 1)
-			       MC68040/closure-entry-size))))
+  (let ((total-size (+ 1
+		       (if (= nentries 1) 0 1)
+		       (* MC68040/closure-entry-size nentries)
+		       size))
 	(label (generate-label)))
     (LAP
      ;; Optional code:
      (MOV L ,reg:closure-free (A 0))
-     ,@(ea+=constant reg:closure-free (* 4 delta))	 
-     ,@(ea+=constant reg:closure-space (- 0 delta))
-     (CMPI L (& ,(- compare delta)) ,reg:closure-space)
+     ,@(ea+=constant reg:closure-free (* 4 total-size))
+     ,@(ea+=constant reg:closure-space (- 0 total-size))
      (B GE B (@PCR ,label))
      ;; End of optional code.
-     ,@(MC68040/allocate-closure nentries size)
+     ,@(MC68040/allocate-closure size)
      (LABEL ,label)
      ,@(recvr 0))))
 
@@ -756,13 +783,19 @@ long-word aligned and there is no need for shuffling.
 	 ,@(make-external-label (continuation-code-word false)
 				(generate-label)))))
 
-(define (generate/constants-block constants references assignments uuo-links)
+(define (generate/constants-block constants references assignments
+				  uuo-links global-links static-vars)
   (let ((constant-info
 	 (declare-constants 0 (transmogrifly uuo-links)
 	   (declare-constants 1 references
 	     (declare-constants 2 assignments
-	       (declare-constants false constants
-		 (cons false (LAP))))))))
+	       (declare-constants 3 (transmogrifly global-links)
+		 (declare-constants false
+		     (map (lambda (pair)
+			    (cons false (cdr pair)))
+			  static-vars)
+		   (declare-constants false constants
+		     (cons false (LAP))))))))))
     (let ((free-ref-label (car constant-info))
 	  (constants-code (cdr constant-info))
 	  (debugging-information-label (allocate-constant-label))
@@ -770,7 +803,8 @@ long-word aligned and there is no need for shuffling.
 	  (n-sections
 	   (+ (if (null? uuo-links) 0 1)
 	      (if (null? references) 0 1)
-	      (if (null? assignments) 0 1))))
+	      (if (null? assignments) 0 1)
+	      (if (null? global-links) 0 1))))
       (values
        (LAP ,@constants-code
 	    ;; Place holder for the debugging info filename
