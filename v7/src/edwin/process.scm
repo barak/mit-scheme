@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.15 1992/01/24 23:05:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.16 1992/01/24 23:13:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -533,9 +533,9 @@ after the listing is made.)"
 				 (loop)
 				 status)))))))
 		 (begin
-		   (group-write-to-channel (region-group region)
-					   (region-start-index region)
-					   (region-end-index region)
+		   (group-write-to-channel (region-group input-region)
+					   (region-start-index input-region)
+					   (region-end-index input-region)
 					   (subprocess-output-channel process))
 		   (subprocess-wait process)))))))
       (begin
