@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.9 2004/11/01 04:56:51 cph Exp $
+$Id: mod-lisp.scm,v 1.10 2004/11/02 04:37:12 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -774,11 +774,13 @@ USA.
 
 (define (log-requests request)
   (if request-log-port
-      (write-line (list (get-universal-time)
-			(http-message-method request)
-			(http-message-url request)
-			(http-message-user-name request)
-			(http-message-post-parameters request))
-		  request-log-port)))
+      (begin
+	(write-line (list (get-universal-time)
+			  (http-message-method request)
+			  (http-message-url request)
+			  (http-message-user-name request)
+			  (http-message-post-parameters request))
+		    request-log-port)
+	(flush-output request-log-port))))
 
 (define request-log-port #f)
