@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.335 2000/01/04 05:14:26 cph Exp $
+$Id: runtime.pkg,v 14.336 2000/01/04 17:24:06 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -3033,6 +3033,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (files "strout")
   (parent ())
   (export ()
+	  get-output-from-accumulator
+	  make-accumulator-output-port
 	  with-string-output-port
 	  with-output-to-string)
   (initialization (initialize-package!)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.12 1999/02/24 21:36:29 cph Exp $
+$Id: strout.scm,v 14.13 2000/01/04 17:24:00 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -24,37 +24,75 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations))
 
+(define (make-accumulator-output-port)
+  (make-port accumulator-output-port-type
+	     (make-accumulator-state (make-string 16) 0)))
+
+(define (get-output-from-accumulator port)
+  ((port/operation port 'EXTRACT-OUTPUT!) port))
+
+(define (with-output-to-string thunk)
+  (with-string-output-port (lambda (port) (with-output-to-port port thunk))))
+
+(define (with-string-output-port generator)
+  (let ((port (make-accumulator-output-port)))
+    (generator port)
+    (operation/extract-output! port)))
+
+(define accumulator-output-port-type)
 (define (initialize-package!)
-  (set! output-string-port-type
+  (set! accumulator-output-port-type
 	(make-port-type `((WRITE-SELF ,operation/write-self)
 			  (WRITE-CHAR ,operation/write-char)
-			  (WRITE-SUBSTRING ,operation/write-substring))
+			  (WRITE-SUBSTRING ,operation/write-substring)
+			  (EXTRACT-OUTPUT! ,operation/extract-output!))
 			#f))
   unspecific)
 
-(define (with-output-to-string thunk)
-  (with-string-output-port
-   (lambda (port)
-     (with-output-to-port port thunk))))
+(define (operation/write-self port output-port)
+  port
+  (write-string " to string" output-port))
 
-(define (with-string-output-port generator)
-  (let ((state (make-output-string-state (make-string 16) 0)))
-    (let ((port (make-port output-string-port-type state)))
-      (generator port)
-      (without-interrupts
-       (lambda ()
-	 (string-head (output-string-state/accumulator state)
-		      (output-string-state/counter state)))))))
+(define (operation/write-char port char)
+  (without-interrupts
+   (lambda ()
+     (let* ((state (port/state port))
+	    (n (accumulator-state-counter state))
+	    (n* (fix:+ n 1)))
+       (if (fix:= n (string-length (accumulator-state-accumulator state)))
+	   (grow-accumulator! state n*))
+       (string-set! (accumulator-state-accumulator state) n char)
+       (set-accumulator-state-counter! state n*)))))
 
-(define output-string-port-type)
+(define (operation/write-substring port string start end)
+  (without-interrupts
+   (lambda ()
+     (let* ((state (port/state port))
+	    (n (accumulator-state-counter state))
+	    (n* (fix:+ n (fix:- end start))))
+       (if (fix:> n* (string-length (accumulator-state-accumulator state)))
+	   (grow-accumulator! state n*))
+       (substring-move-left! string start end
+			     (accumulator-state-accumulator state) n)
+       (set-accumulator-state-counter! state n*)))))
 
-(define-structure (output-string-state (type vector)
-				       (conc-name output-string-state/))
+(define (operation/extract-output! port)
+  (without-interrupts
+   (lambda ()
+     (let ((state (port/state port)))
+       (let ((result
+	      (string-head (accumulator-state-accumulator state)
+			   (accumulator-state-counter state))))
+	 (set-accumulator-state-accumulator! state (make-string 16))
+	 (set-accumulator-state-counter! state 0)
+	 result)))))
+
+(define-structure (accumulator-state (type vector))
   accumulator
   counter)
 
 (define (grow-accumulator! state min-size)
-  (let* ((old (output-string-state/accumulator state))
+  (let* ((old (accumulator-state-accumulator state))
 	 (n (string-length old))
 	 (new
 	  (make-string
@@ -63,31 +101,4 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 n
 		 (loop (fix:+ n n)))))))
     (substring-move-left! old 0 n new 0)
-    (set-output-string-state/accumulator! state new)))
-
-(define (operation/write-char port char)
-  (without-interrupts
-   (lambda ()
-     (let* ((state (port/state port))
-	    (n (output-string-state/counter state))
-	    (n* (fix:+ n 1)))
-       (if (fix:= (string-length (output-string-state/accumulator state)) n)
-	   (grow-accumulator! state n*))
-       (string-set! (output-string-state/accumulator state) n char)
-       (set-output-string-state/counter! state n*)))))
-
-(define (operation/write-substring port string start end)
-  (without-interrupts
-   (lambda ()
-     (let* ((state (port/state port))
-	    (n (output-string-state/counter state))
-	    (n* (fix:+ n (fix:- end start))))
-       (if (fix:> n* (string-length (output-string-state/accumulator state)))
-	   (grow-accumulator! state n*))
-       (substring-move-left! string start end
-			     (output-string-state/accumulator state) n)
-       (set-output-string-state/counter! state n*)))))
-
-(define (operation/write-self port output-port)
-  port
-  (write-string " to string" output-port))
+    (set-accumulator-state-accumulator! state new)))
