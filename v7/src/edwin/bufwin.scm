@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.282 1989/08/14 09:22:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.283 1989/08/14 10:23:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -111,12 +111,20 @@
       (%window-setup-truncate-lines! window false)
       (%window-force-redraw! window (and old-y (%window-cursor-y window))))))
 
+(define-method buffer-window :set-size!
+  set-buffer-window-size!)
+
+(define-method buffer-window (:set-x-size! window x)
+  (set-buffer-window-size! window x y-size))
+
+(define-method buffer-window (:set-y-size! window y)
+  (set-buffer-window-size! window x-size y))
+
 (define (%window-setup-truncate-lines! window redraw-type)
   (with-instance-variables buffer-window window ()
     (if (not (within-editor?))
 	(begin
-	  (set! truncate-lines?
-		(variable-value (ref-variable-object truncate-lines)))
+	  (set! truncate-lines? (ref-variable truncate-lines))
 	  unspecific)
 	(let ((new-truncate-lines?
 	       (or (and (variable-local-value
@@ -132,14 +140,30 @@
 		(if (and redraw-type (not force-redraw?))
 		    (%window-force-redraw! window redraw-type))))))))
 
-(define-method buffer-window :set-size!
-  set-buffer-window-size!)
+(define-variable-per-buffer truncate-lines
+  "*True means do not display continuation lines;
+give each line of text one screen line.
+Automatically becomes local when set in any fashion.
 
-(define-method buffer-window (:set-x-size! window x)
-  (set-buffer-window-size! window x y-size))
+Note that this is overridden by the variable
+truncate-partial-width-windows if that variable is true
+and this buffer is not full-screen width."
+  false)
 
-(define-method buffer-window (:set-y-size! window y)
-  (set-buffer-window-size! window x-size y))
+(define-variable truncate-partial-width-windows
+  "*True means truncate lines in all windows less than full screen wide."
+  true)
+
+(let ((setup-truncate-lines!
+       (lambda (variable)
+	 variable			;ignore
+	 (for-each window-setup-truncate-lines! (all-windows)))))
+  (add-variable-assignment-daemon!
+   (ref-variable-object truncate-lines)
+   setup-truncate-lines!)
+  (add-variable-assignment-daemon!
+   (ref-variable-object truncate-partial-width-windows)
+   setup-truncate-lines!))
 
 ;;;; Group Operations
 
@@ -445,7 +469,7 @@
 
 (define (maybe-recenter! window)
   (with-instance-variables buffer-window window ()
-    (let ((threshold (ref-variable cursor-centering-threshold))
+    (let ((threshold (ref-variable scroll-step))
 	  (recenter!
 	   (lambda ()
 	     (%window-redraw! window (%window-y-center window)))))
@@ -474,6 +498,12 @@
 		     (fix:- (%window-point-y window)
 			    (fix:-1+ (window-y-size window))))
 		    (recenter!))))))))
+
+(define-variable scroll-step
+  "*The number of lines to try scrolling a window by when point moves out.
+If that fails to bring point back on screen, point is centered instead.
+If this is zero, point is always centered after it moves off screen."
+  0)
 
 (define (%window-force-redraw! window redraw-type)
   (with-instance-variables buffer-window window ()
@@ -613,13 +643,15 @@
 (define (%window-y-center window)
   (with-instance-variables buffer-window window ()
     (let ((result
-	   (let ((qr
-		  (integer-divide
-		   (* y-size (ref-variable cursor-centering-point))
-		   100)))
-	     (if (fix:< (integer-divide-remainder qr) 50)
-		 (integer-divide-quotient qr)
-		 (fix:1+ (integer-divide-quotient qr))))))
+	   (integer-round
+	    (* y-size
+	       (inexact->exact (round (ref-variable cursor-centering-point))))
+	    100)))
       (cond ((fix:< result 0) 0)
 	    ((fix:< result y-size) result)
 	    (else (fix:-1+ y-size))))))
+
+(define-variable cursor-centering-point
+  "The distance from the top of the window at which to center the point.
+This number is a percentage, where 0 is the window's top and 100 the bottom."
+  50)

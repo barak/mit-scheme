@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.13 1989/08/14 09:48:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.14 1989/08/14 10:23:37 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -282,6 +282,11 @@ MIT in each case. |#
 	  editor-frame-typein-window
 	  editor-frame-window0
 	  editor-frame-windows
+	  edwin-variable$cursor-centering-point
+	  edwin-variable$mode-line-inverse-video
+	  edwin-variable$scroll-step
+	  edwin-variable$truncate-lines
+	  edwin-variable$truncate-partial-width-windows
 	  initialize-buttons!
 	  make-editor-frame
 	  set-window-point!

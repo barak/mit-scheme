@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.95 1989/08/11 11:50:52 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.96 1989/08/14 10:23:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
@@ -46,16 +46,6 @@
 
 (declare (usual-integrations))
 
-(define-variable cursor-centering-point
-  "The distance from the top of the window at which to center the point.
-This number is a percentage, where 0 is the window's top and 100 the bottom."
-  50)
-
-(define-variable cursor-centering-threshold
-  "If point moves offscreen by more than this many lines, recenter.
-Otherwise, the screen is scrolled to put point at the edge it moved over."
-  0)
-
 (define-variable window-minimum-width
   "Delete any window less than this wide.
 Do not set this variable below 2."
@@ -71,10 +61,6 @@ Do not set this variable below 1."
   "*Number of lines of continuity when scrolling by screenfuls."
   2)
 
-(define-variable mode-line-inverse-video
-  "*True means use inverse video, or other suitable display mode, for the mode line."
-  true)
-
 (define-variable pop-up-windows
   "True enables the use of pop-up windows."
   true)
@@ -88,31 +74,6 @@ Do not set this variable below 1."
 If there is only one window, it is split regardless of this value."
   500)
 
-(define-variable-per-buffer truncate-lines
-  "*True means do not display continuation lines;
-give each line of text one screen line.
-Automatically becomes local when set in any fashion.
-
-Note that this is overridden by the variable
-truncate-partial-width-windows if that variable is true
-and this buffer is not full-screen width."
-  false)
-
-(define-variable truncate-partial-width-windows
-  "*True means truncate lines in all windows less than full screen wide."
-  true)
-
-(let ((setup-truncate-lines!
-       (lambda (variable)
-	 variable			;ignore
-	 (for-each window-setup-truncate-lines! (all-windows)))))
-  (add-variable-assignment-daemon!
-   (ref-variable-object truncate-lines)
-   setup-truncate-lines!)
-  (add-variable-assignment-daemon!
-   (ref-variable-object truncate-partial-width-windows)
-   setup-truncate-lines!))
-
 (define-command redraw-display
   "Redraws the entire display from scratch."
   ()
@@ -132,12 +93,9 @@ negative args count from the bottom."
 	  (begin
 	    (window-redraw! window false)
 	    (update-screens! true))
-	  (window-scroll-y-absolute! window
-				     (let ((size (window-y-size window)))
-				       (let ((n (remainder argument size)))
-					 (if (negative? n)
-					     (+ n size)
-					     n))))))))
+	  (window-scroll-y-absolute!
+	   window
+	   (modulo argument (window-y-size window)))))))
 
 (define-command move-to-window-line
   "Position point relative to window.
@@ -152,11 +110,7 @@ negative means relative to bottom of window."
 		  window 0
 		  (if (not argument)
 		      (window-y-center window)
-		      (let ((y-size (window-y-size window)))
-			(let ((n (remainder argument y-size)))
-			  (if (negative? n)
-			      (+ n y-size)
-			      n)))))
+		      (modulo argument (window-y-size window))))
 		 (window-coordinates->mark
 		  window 0
 		  (window-mark->y window
@@ -205,6 +159,25 @@ Just minus as an argument moves down full screen."
       (scroll-window window
 		     (multi-scroll-window-argument window argument -1)))))
 
+(define-command scroll-other-window
+  "Scroll text of next window up ARG lines, or near full screen if no arg."
+  "P"
+  (lambda (argument)
+    (let ((window (other-window-interactive 1)))
+      (scroll-window window
+		     (standard-scroll-window-argument window argument 1)))))
+
+(define-command scroll-other-window-several-screens
+  "Scroll other window up several screenfuls.
+Specify the number as a numeric argument, negative for down.
+The default is one screenful up.  Just minus as an argument
+means scroll one screenful down."
+  "P"
+  (lambda (argument)
+    (let ((window (other-window-interactive 1)))
+      (scroll-window window
+		     (multi-scroll-window-argument window argument 1)))))
+
 (define (scroll-window window n #!optional limit)
   (if (if (negative? n)
 	  (= (window-start-index window)
@@ -231,26 +204,9 @@ Just minus as an argument moves down full screen."
        (cond ((not argument) quantum)
 	     ((command-argument-negative-only?) (- quantum))
 	     (else (* argument quantum))))))
-
-(define-command toggle-screen-video
-  "Toggle the screen's use of inverse video.
-With a positive argument, inverse video is forced.
-With a negative argument, normal video is forced."
-  "P"
-  (lambda (argument)
-    (screen-inverse-video!
-     (current-screen)
-     (if (not argument)
-	 (screen-inverse-video! (current-screen) false)
-	 (positive? argument)))
-    (update-screens! true)))
 
 (define-command what-cursor-position
-  "Print various things about where cursor is.
-Print the X position, the Y position,
-the ASCII code for the following character,
-point absolutely and as a percentage of the total file size,
-and the virtual boundaries, if any."
+  "Print info on cursor position (on screen and within buffer)."
   ()
   (lambda ()
     (let ((buffer (current-buffer))
@@ -271,7 +227,7 @@ and the virtual boundaries, if any."
 		 "("
 		 (write-to-string (if (zero? total)
 				      0
-				      (round (* 100 (/ position total)))))
+				      (integer-round (* 100 position) total)))
 		 "%) "
 		 (let ((group (mark-group point)))
 		   (let ((start (group-start-index group))
@@ -359,25 +315,6 @@ ARG lines.  No arg means split equally."
   (if (typein-window? (current-window))
       (editor-error "Not implemented for typein window")))
 
-(define-command scroll-other-window
-  "Scroll text of next window up ARG lines, or near full screen if no arg."
-  "P"
-  (lambda (argument)
-    (let ((window (other-window-interactive 1)))
-      (scroll-window window
-		     (standard-scroll-window-argument window argument 1)))))
-
-(define-command scroll-other-window-several-screens
-  "Scroll other window up several screenfuls.
-Specify the number as a numeric argument, negative for down.
-The default is one screenful up.  Just minus as an argument
-means scroll one screenful down."
-  "P"
-  (lambda (argument)
-    (let ((window (other-window-interactive 1)))
-      (scroll-window window
-		     (multi-scroll-window-argument window argument 1)))))
-
 ;;;; Pop-up Buffers
 
 (define-command kill-pop-up-buffer
@@ -398,8 +335,9 @@ Also kills any pop up window it may have created."
   (let ((window (object-unhash *previous-popped-up-window*)))
     (if (and window (window-visible? window))
 	(begin
-	 (set! *previous-popped-up-window* (object-hash false))
-	 (window-delete! window))))  (let ((buffer (object-unhash *previous-popped-up-buffer*)))
+	  (set! *previous-popped-up-window* (object-hash false))
+	  (window-delete! window))))
+  (let ((buffer (object-unhash *previous-popped-up-buffer*)))
     (cond ((and buffer (buffer-alive? buffer))
 	   (set! *previous-popped-up-buffer* (object-hash false))
 	   (kill-buffer-interactive buffer))

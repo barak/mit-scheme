@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.31 1989/08/11 11:30:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.32 1989/08/14 10:23:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -69,7 +69,12 @@
 	     (window-buffer superior)
 	     (ref-variable-object mode-line-inverse-video))
 	    (with-inverse-video! screen thunk)
-	    (thunk))))  true)
+	    (thunk))))
+  true)
+
+(define-variable mode-line-inverse-video
+  "*True means use inverse video, or other suitable display mode, for the mode line."
+  true)
 
 (define (with-inverse-video! screen thunk)
   (let ((old-inverse? (screen-inverse-video! screen false))
