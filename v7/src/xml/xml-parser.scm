@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.22 2003/03/01 16:53:16 cph Exp $
+$Id: xml-parser.scm,v 1.23 2003/03/02 02:48:39 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -713,7 +713,11 @@ USA.
 		      (if expand?
 			  (expand-entity-value-string name (car elements) p)
 			  (vector (car elements)))
-		      (vector (make-xml-entity-ref name)))))
+		      (begin
+			(if (or *standalone?* *internal-dtd?*)
+			    (perror p "Reference to partially-defined entity"
+				    name))
+			(vector (make-xml-entity-ref name))))))
 	      (begin
 		(if (or *standalone?* *internal-dtd?*)
 		    (perror p "Reference to undefined entity" name))
