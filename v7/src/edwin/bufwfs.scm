@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwfs.scm,v 1.17 1993/08/25 05:11:12 cph Exp $
+;;;	$Id: bufwfs.scm,v 1.18 1993/10/05 23:05:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -213,28 +213,26 @@
 		(y y-start))
 	     (if (fix:< y yu)
 		 (let loop
-		     ((interval (and (group-text-properties group)
-				     (find-interval group index)))
-		      (column-offset column-offset)
+		     ((column-offset column-offset)
 		      (xl* xl)
 		      (index index))
 		   (let ((end-index*
-			  (if interval
-			      (let ((iend (interval-end interval)))
-				(if (fix:< end-index iend) end-index iend))
+			  (or (next-specific-property-change group
+							     index
+							     end-index
+							     'HIGHLIGHTED)
 			      end-index))
 			 ;; If line is clipped off top of window, draw it 
 			 ;; anyway so that index and column calculations
 			 ;; get done. Use first visible line for image
 			 ;; output so as to avoid consing a dummy image
 			 ;; buffer.
-			 (line (screen-get-output-line
-				screen
-				(if (fix:< y yl) yl y)
-				xl* xu
-				(and interval
-				     (interval-property interval
-							'HIGHLIGHTED #f)))))
+			 (line
+			  (screen-get-output-line
+			   screen
+			   (if (fix:< y yl) yl y)
+			   xl* xu
+			   (get-text-property group index 'HIGHLIGHTED #f))))
 		     (let ((fill-line
 			    (lambda (index xl*)
 			      (group-image! group index end-index*
@@ -251,8 +249,7 @@
 					     ((fix:= x xu))
 					   (string-set! line x #\space)))))
 				    ((fix:= (vector-ref results 0) end-index*)
-				     (loop (next-interval interval)
-					   (fix:+ column-offset
+				     (loop (fix:+ column-offset
 						  (fix:- (vector-ref results 1)
 							 xl*))
 					   (vector-ref results 1)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: undo.scm,v 1.55 1993/08/09 19:11:49 jawilson Exp $
+;;;	$Id: undo.scm,v 1.56 1993/10/05 23:05:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -128,8 +128,7 @@
 	    (set-group-undo-data!
 	     group
 	     (cons (cons 'REINSERT-PROPERTIES
-			 (vector start end
-				 (group-extract-properties group start end)))
+			 (group-extract-properties group start end))
 		   (group-undo-data group))))
 	(set-group-undo-data!
 	 group
@@ -153,7 +152,7 @@
 	      (undo-record-first-change! group))
 	  (set-group-undo-data!
 	   group
-	   (cons (cons 'SET-TEXT-PROPERTIES properties)
+	   (cons (cons 'REINSERT-PROPERTIES properties)
 		 (group-undo-data group))))))
 
 (define (undo-record-first-change! group)
@@ -203,7 +202,7 @@ which includes both the saved text and other data."
 	     (words->bytes (ref-variable undo-strong-limit buffer)))))))))
 
 (add-gc-daemon! truncate-buffer-undo-lists!)
-
+
 (define (truncate-undo-data! undo-data min-size max-size)
   (letrec
       ((loop
@@ -226,10 +225,17 @@ which includes both the saved text and other data."
 		 (loop (cdr undo-data)
 		       undo-data
 		       (fix:+ size
-			      (cond ((not (pair? (car undo-data))) 2)
-				    ((not (string? (caar undo-data))) 4)
-				    (else (fix:+ 5 (system-vector-length
-						    (caar undo-data))))))
+			      (if (pair? (car undo-data))
+				  (fix:+
+				   4
+				   (let ((a (caar undo-data))
+					 (b (cdar undo-data)))
+				     (cond ((eq? 'REINSERT-PROPERTIES a)
+					    (reinsert-properties-size b))
+					   ((string? a)
+					    (fix:+ 1 (system-vector-length a)))
+					   (else 0))))
+				  2))
 		       boundary))))))
     (cond ((or (null? undo-data)
 	       (eq? #t undo-data))
@@ -317,18 +323,8 @@ A numeric argument serves as a repeat count."
 			       ;; (#t . MOD-TIME) means first modification
 			       (if (eqv? b (buffer-modification-time buffer))
 				   (buffer-not-modified! buffer)))
-			      ((eq? 'SET-TEXT-PROPERTIES a)
-			       (for-each (lambda (entry)
-					   (set-text-properties group
-								(car entry)
-								(cadr entry)
-								(caddr entry)))
-					 b))
 			      ((eq? 'REINSERT-PROPERTIES a)
-			       (group-reinsert-properties! group
-							   (vector-ref b 0)
-							   (vector-ref b 1)
-							   (vector-ref b 2)))
+			       (group-reinsert-properties! group b))
 			      ((fix:fixnum? a)
 			       ;; (START . END) means insertion
 			       (if (or (fix:< a (group-start-index group))

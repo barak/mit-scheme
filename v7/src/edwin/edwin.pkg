@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.133 1993/09/09 21:42:13 cph Exp $
+$Id: edwin.pkg,v 1.134 1993/10/05 23:05:56 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -837,7 +837,6 @@ MIT in each case. |#
   (files "txtprp")
   (parent (edwin))
   (export (edwin)
-	  add-text-properties
 	  add-text-property
 	  get-text-properties
 	  get-text-property
@@ -846,9 +845,7 @@ MIT in each case. |#
 	  next-specific-property-change
 	  previous-property-change
 	  previous-specific-property-change
-	  remove-text-properties
-	  remove-text-property
-	  set-text-properties)
+	  remove-text-property)
   (export (edwin group-operations)
 	  text-not-deleteable?
 	  text-not-insertable?
@@ -856,12 +853,8 @@ MIT in each case. |#
 	  update-intervals-for-insertion!)
   (export (edwin undo)
 	  group-extract-properties
-	  group-reinsert-properties!)
-  (export (edwin window)
-	  find-interval
-	  interval-end
-	  interval-property
-	  next-interval))
+	  group-reinsert-properties!
+	  reinsert-properties-size))
 
 ;;;; This is the variant used under DOS and NT (for now)
 
