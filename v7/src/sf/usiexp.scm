@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.2 1988/10/29 00:07:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.3 1988/12/12 18:06:47 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -310,6 +310,7 @@ MIT in each case. |#
 (define vector?-expansion (type-test-expansion 'VECTOR))
 (define weak-pair?-expansion (type-test-expansion 'WEAK-CONS))
 
+#|
 (define compiled-code-address?-expansion (type-test-expansion 'COMPILED-ENTRY))
 (define compiled-code-block?-expansion
   (type-test-expansion 'COMPILED-CODE-BLOCK))
@@ -329,6 +330,7 @@ MIT in each case. |#
 (define quotation?-expansion (type-test-expansion 'QUOTATION))
 (define the-environment?-expansion (type-test-expansion 'THE-ENVIRONMENT))
 (define variable?-expansion (type-test-expansion 'VARIABLE))
+|#
 
 ;;;; Tables
 
@@ -343,9 +345,7 @@ MIT in each case. |#
     =
     >
     >=
-    access?
     apply
-    assignment?
     caaaar
     caaadr
     caaar
@@ -375,39 +375,24 @@ MIT in each case. |#
     cdddr
     cddr
     char?
-    comment?
-    compiled-code-address?
-    compiled-code-block?
-    conditional?
     cons*
-    definition?
-    delay?
-    disjunction?
     eighth
     fifth
     fix:quotient
     fix:remainder
     fourth
-    ic-environment?
-    in-package?
     list
     make-string
-    primitive-procedure?
-    promise?
-    quotation?
     quotient
     remainder
-    return-address?
     second
     seventh
     sixth
-    the-environment?
     third
-    variable?
     vector?
     weak-pair?
     ))
-
+
 (define usual-integrations/expansion-values
   (list
    *-expansion
@@ -419,9 +404,7 @@ MIT in each case. |#
    =-expansion
    >-expansion
    >=-expansion
-   access?-expansion
    apply*-expansion
-   assignment?-expansion
    caaaar-expansion
    caaadr-expansion
    caaar-expansion
@@ -451,35 +434,20 @@ MIT in each case. |#
    cdddr-expansion
    cddr-expansion
    char?-expansion
-   comment?-expansion
-   compiled-code-address?-expansion
-   compiled-code-block?-expansion
-   conditional?-expansion
    cons*-expansion
-   definition?-expansion
-   delay?-expansion
-   disjunction?-expansion
    eighth-expansion
    fifth-expansion
    fix:quotient-expansion
    fix:remainder-expansion
    fourth-expansion
-   ic-environment?-expansion
-   in-package?-expansion
    list-expansion
    make-string-expansion
-   primitive-procedure?-expansion
-   promise?-expansion
-   quotation?-expansion
    quotient-expansion
    remainder-expansion
-   return-address?-expansion
    second-expansion
    seventh-expansion
    sixth-expansion
-   the-environment?-expansion
    third-expansion
-   variable?-expansion
    vector?-expansion
    weak-pair?-expansion   ))
 
