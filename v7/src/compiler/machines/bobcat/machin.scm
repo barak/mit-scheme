@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.20 1990/01/18 22:43:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.21 1990/04/01 22:28:28 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -43,11 +43,18 @@ MIT in each case. |#
 (define-integrable scheme-object-width 32)
 (define-integrable scheme-type-width 6)	;or 8
 
+;; NOTE: expt is not being constant-folded now.
+;; For the time being, some of the parameters below are
+;; pre-computed and marked with ***
+;; There are similar parameters in lapgen.scm
+;; Change them if any of the parameters above do.
+
 (define-integrable scheme-datum-width
   (- scheme-object-width scheme-type-width))
 
 (define-integrable type-scale-factor
-  (expt 2 (- 8 scheme-type-width)))
+  ;; (expt 2 (- 8 scheme-type-width)) ***
+  4)
 
 (define-integrable flonum-size 2)
 (define-integrable float-alignment 32)
@@ -64,9 +71,15 @@ MIT in each case. |#
 
 (define-integrable address-units-per-packed-char 1)
 
-(define-integrable signed-fixnum/upper-limit (expt 2 (-1+ scheme-datum-width)))
-(define-integrable signed-fixnum/lower-limit (- signed-fixnum/upper-limit))
-(define-integrable unsigned-fixnum/upper-limit (* 2 signed-fixnum/upper-limit))
+(define-integrable signed-fixnum/upper-limit
+  ;; (expt 2 (-1+ scheme-datum-width)) ***
+  33554432)
+
+(define-integrable signed-fixnum/lower-limit
+  (- signed-fixnum/upper-limit))
+
+(define-integrable unsigned-fixnum/upper-limit
+  (* 2 signed-fixnum/upper-limit))
 
 (define-integrable (stack->memory-offset offset) offset)
 (define-integrable ic-block-first-parameter-offset 2)
