@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.96 2004/11/17 05:24:19 cph Exp $
+$Id: make.scm,v 14.97 2004/12/13 03:22:21 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
@@ -337,7 +337,6 @@ USA.
   (export 'PACKAGE/NAME)
   (export 'PACKAGE/PARENT)
   (export 'PACKAGE/REFERENCE)
-  (export 'PACKAGE/SYSTEM-LOADER)
   (export 'PACKAGE?)
   (export 'SYSTEM-GLOBAL-PACKAGE))
 (package/add-child! system-global-package 'PACKAGE environment-for-package)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.2 2004/11/02 03:57:41 cph Exp $
+$Id: load.scm,v 1.3 2004/12/13 03:22:21 cph Exp $
 
 Copyright 2004 Massachusetts Institute of Technology
 
@@ -45,5 +45,5 @@ USA.
     (export 'xml-comment 'comment)))
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (package/system-loader "xdoc" '() 'query)))
+    (load-package-set "xdoc")))
 (add-subsystem-identification! "XDOC" '(0 3))

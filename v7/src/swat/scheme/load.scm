@@ -1,6 +1,5 @@
 #|
-(with-working-directory-pathname
-    (directory-pathname (current-load-pathname))
+(with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     ;; Dynamically load the microcode.  Order important.
     (load "dynload/scxl")
@@ -13,8 +12,8 @@
      (working-directory-pathname)
      (pathname-as-directory "lib/swat")
      (lambda ()
-       (package/system-loader "swat" '() 'QUERY)))
-    (add-identification! "SWAT" 1 0)))
+       (load-package-set "swat")))
+    (add-subsystem-identification! "SWAT" '(1 0))))
 |#
 
 

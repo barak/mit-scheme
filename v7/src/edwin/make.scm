@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.120 2004/02/16 05:43:45 cph Exp $
+$Id: make.scm,v 3.121 2004/12/13 03:22:21 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,2000,2001,2002,2003,2004 Massachusetts Institute of Technology
@@ -28,8 +28,7 @@ USA.
 
 (declare (usual-integrations))
 
-(with-working-directory-pathname
-    (directory-pathname (current-load-pathname))
+(with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     ((access with-directory-rewriting-rule
 	     (->environment '(RUNTIME COMPILER-INFO)))
@@ -40,4 +39,4 @@ USA.
        (load-package-set "edwin"
 	 `((alternate-package-loader
 	    . ,(load "edwin.bld" system-global-environment))))))))
-(add-identification! "Edwin" 3 116)
+(add-subsystem-identification! "Edwin" '(3 116))

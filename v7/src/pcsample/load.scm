@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.8 2003/02/14 18:28:31 cph Exp $
+$Id: load.scm,v 1.9 2004/12/13 03:22:21 cph Exp $
 
-Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
+Copyright 1995,1998,2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,8 +27,8 @@ USA.
 
 (declare (usual-integrations))
 
-(package/system-loader "pcs" '() 'QUERY)
-(add-identification! "PC Sampler" 1 0)
+(load-package-set "pcs")
+(add-subsystem-identification! "PC Sampler" '(1 0))
 
 (let ()
   (define (package-initialize package-name

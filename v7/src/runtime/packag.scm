@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.44 2003/03/13 18:13:52 cph Exp $
+$Id: packag.scm,v 14.45 2004/12/13 03:22:21 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1998,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -164,57 +165,52 @@ USA.
 
 (define system-loader/enable-query? #f)
 
-(define (load-package-set filename #!optional options load-interpreted?)
-  (let ((pathname (package-set-pathname filename))
-	(options
-	 (cons (cons 'OS-TYPE microcode-id/operating-system)
-	       (if (default-object? options) '() options))))
-    (with-working-directory-pathname (directory-pathname pathname)
-      (lambda ()
-	(let ((file (fasload pathname)))
-	  (if (not (package-file? file))
-	      (error "Malformed package-description file:" pathname))
-	  (construct-packages-from-file file)
-	  (fluid-let
-	      ((load/default-types
-		(if (if (or (default-object? load-interpreted?)
-			    (eq? load-interpreted? 'QUERY))
-			(and system-loader/enable-query?
-			     (prompt-for-confirmation "Load interpreted"))
-			load-interpreted?)
-		    (list (assoc "bin" load/default-types)
-			  (assoc "scm" load/default-types))
-		    load/default-types)))
-	    (let ((alternate-loader
-		   (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
-		  (load-component
-		   (lambda (component environment)
-		     (let ((value
-			    (filename->compiled-object filename component)))
-		       (if value
-			   (begin
-			     (purify (load/purification-root value))
-			     (scode-eval value environment))
-			   (load component environment 'DEFAULT #t))))))
-	      (if alternate-loader
-		  (alternate-loader load-component options)
-		  (begin
-		    (load-packages-from-file file options load-component)
-		    (initialize-packages-from-file file)))))))))
+(define (load-package-set filename #!optional options)
+  (let ((os-type microcode-id/operating-system))
+    (let ((pathname (package-set-pathname filename os-type))
+	  (options
+	   (cons (cons 'OS-TYPE os-type)
+		 (if (default-object? options) '() options))))
+      (with-working-directory-pathname (directory-pathname pathname)
+	(lambda ()
+	  (let ((file (fasload pathname)))
+	    (if (not (package-file? file))
+		(error "Malformed package-description file:" pathname))
+	    (construct-packages-from-file file)
+	    (fluid-let
+		((load/default-types
+		  (if (and system-loader/enable-query?
+			   (prompt-for-confirmation "Load interpreted"))
+		      (list (assoc "bin" load/default-types)
+			    (assoc "scm" load/default-types))
+		      load/default-types)))
+	      (let ((alternate-loader
+		     (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
+		    (load-component
+		     (lambda (component environment)
+		       (let ((value
+			      (filename->compiled-object filename component)))
+			 (if value
+			     (begin
+			       (purify (load/purification-root value))
+			       (scode-eval value environment))
+			     (load component environment 'DEFAULT #t))))))
+		(if alternate-loader
+		    (alternate-loader load-component options)
+		    (begin
+		      (load-packages-from-file file options load-component)
+		      (initialize-packages-from-file file))))))))))
   ;; Make sure that everything we just loaded is purified.  If the
   ;; program runs before it gets purified, some of its run-time state
   ;; can end up being purified also.
   (flush-purification-queue!))
 
-(define (package-set-pathname pathname #!optional os-type)
+(define (package-set-pathname pathname os-type)
   (make-pathname (pathname-host pathname)
 		 (pathname-device pathname)
 		 (pathname-directory pathname)
 		 (string-append (pathname-name pathname)
-				(case (if (or (default-object? os-type)
-					      (not os-type))
-					  microcode-id/operating-system
-					  os-type)
+				(case os-type
 				  ((NT) "-w32")
 				  ((OS/2) "-os2")
 				  ((UNIX) "-unx")
@@ -239,8 +235,6 @@ USA.
 		 (write-string ";Initialized " port)
 		 (write name port)
 		 value))))))
-
-(define package/system-loader load-package-set)
 
 (define-integrable (make-package-file tag version descriptions loads)
   (vector tag version descriptions loads))

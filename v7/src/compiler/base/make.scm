@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.123 2004/07/05 03:59:36 cph Exp $
+$Id: make.scm,v 4.124 2004/12/13 03:22:21 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1998 Massachusetts Institute of Technology
 Copyright 1999,2001,2002,2003,2004 Massachusetts Institute of Technology
@@ -30,12 +30,12 @@ USA.
 
 (lambda (architecture-name)
   architecture-name
+  (load-option 'COMPRESS)
+  (load-option 'RB-TREE)
   ((access with-directory-rewriting-rule
 	   (->environment '(RUNTIME COMPILER-INFO)))
    (working-directory-pathname)
    (pathname-as-directory "compiler")
    (lambda ()
-     (load-option 'COMPRESS)
-     (load-option 'RB-TREE)
      (load-package-set "compiler")))
-  (add-identification! "LIAR" 4 117))
+  (add-subsystem-identification! "LIAR" '(4 117)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sbuild.scm,v 1.7 2003/02/14 18:28:35 cph Exp $
+$Id: sbuild.scm,v 1.8 2004/12/13 03:22:21 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright 1990,1991,1998,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,6 +30,6 @@ USA.
 (for-each (lambda (filename)
 	    (load filename system-global-environment))
 	  '("compat" "graphics" "strmac" "stream" "genenv" "studen"))
-(add-identification! "Student (6.001)" 14 3)
+(add-subsystem-identification! "Student (6.001)" '(14 3))
 
 "Student environment loaded."

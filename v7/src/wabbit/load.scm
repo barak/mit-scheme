@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.5 2003/02/14 18:28:35 cph Exp $
+$Id: load.scm,v 1.6 2004/12/13 03:22:21 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright 1994,1995,1998,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,8 +31,8 @@ USA.
        (display "\n; Package already loaded under some other alias")
        'ok)
       (else
-       (package/system-loader "wabbit" '() 'QUERY)
-       (add-identification! "Wabbit Hunting / Headhunting GC" 1 0)
+       (load-package-set "wabbit")
+       (add-subsystem-identification! "Wabbit Hunting / Headhunting GC" '(1 0))
 
        (let ()
 	 (define (package-initialize package-name
@@ -81,4 +81,3 @@ USA.
 	 (package-initialize '(gc-wabbits)))))
 
 ;;; fini
-

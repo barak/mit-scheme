@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.5 2004/11/24 20:20:41 cph Exp $
+$Id: load.scm,v 1.6 2004/12/13 03:22:21 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -30,5 +30,5 @@ USA.
 (load-option 'mime-codec)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (package/system-loader "ssp" '() 'query)))
+    (load-package-set "ssp")))
 (add-subsystem-identification! "SSP" '(0 4))

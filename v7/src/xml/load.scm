@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.14 2004/07/24 03:45:34 cph Exp $
+$Id: load.scm,v 1.15 2004/12/13 03:22:21 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -27,5 +27,5 @@ USA.
 (load-option 'SOS)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (package/system-loader "xml" '() 'QUERY)))
+    (load-package-set "xml")))
 (add-subsystem-identification! "XML" '(0 7))
