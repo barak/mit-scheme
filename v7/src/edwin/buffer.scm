@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.149 1991/11/06 21:55:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.150 1992/01/09 17:45:32 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -519,7 +519,7 @@ The buffer is guaranteed to be deselected at that time."
   (memq mode (buffer-minor-modes buffer)))
 
 (define (enable-buffer-minor-mode! buffer mode)
-  (if (not (and (mode? mode) (not (mode-major? mode))))
+  (if (not (minor-mode? mode))
       (error:wrong-type-argument mode "minor mode" 'ENABLE-BUFFER-MINOR-MODE!))
   (without-interrupts
    (lambda ()
@@ -528,13 +528,13 @@ The buffer is guaranteed to be deselected at that time."
 	   (begin
 	     (set-cdr! modes (append! (cdr modes) (list mode)))
 	     (set-buffer-comtabs! buffer
-				  (cons (mode-comtab mode)
+				  (cons (minor-mode-comtab mode)
 					(buffer-comtabs buffer)))
 	     (%add-buffer-initialization! buffer (mode-initialization mode))
 	     (buffer-modeline-event! buffer 'BUFFER-MODES)))))))
 
 (define (disable-buffer-minor-mode! buffer mode)
-  (if (not (and (mode? mode) (not (mode-major? mode))))
+  (if (not (minor-mode? mode))
       (error:wrong-type-argument mode "minor mode"
 				 'DISABLE-BUFFER-MINOR-MODE!))
   (without-interrupts
@@ -544,6 +544,6 @@ The buffer is guaranteed to be deselected at that time."
 	   (begin
 	     (set-cdr! modes (delq! mode (cdr modes)))
 	     (set-buffer-comtabs! buffer
-				  (delq! (mode-comtab mode)
+				  (delq! (minor-mode-comtab mode)
 					 (buffer-comtabs buffer)))
 	     (buffer-modeline-event! buffer 'BUFFER-MODES)))))))

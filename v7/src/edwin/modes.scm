@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modes.scm,v 1.25 1989/08/10 04:42:21 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modes.scm,v 1.26 1992/01/09 17:45:16 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -46,55 +46,69 @@
 
 (declare (usual-integrations))
 
-(define-named-structure "Mode"
-  name
+(define-structure (mode
+		   (constructor %make-mode (name comtabs))
+		   (print-procedure
+		    (unparser/standard-method 'MODE
+		      (lambda (state mode)
+			(unparse-object state (mode-name mode))
+			(if (not (mode-major? mode))
+			    (unparse-string state " (minor)"))))))
+  (name false read-only true)
+  (comtabs false read-only true)
   display-name
   major?
-  comtabs
   description
   initialization
-  alist
-  )
+  alist)
 
-(unparser/set-tagged-vector-method!
- %mode-tag
- (unparser/standard-method 'MODE
-   (lambda (state mode)
-     (unparse-object state (mode-name mode))
-     (if (not (mode-major? mode))
-	 (unparse-string state " (minor)")))))
-
-(define (make-mode name major? display-name comtabs description initialization)
+(define (make-mode name major? display-name super-mode description
+		   initialization)
   (let ((mode
-	 (let ((name (symbol->string name)))
-	   (or (string-table-get editor-modes name)
-	       (let ((mode (%make-mode)))
-		 (vector-set! mode mode-index:comtabs (list (make-comtab)))
-		 (string-table-put! editor-modes name mode)
+	 (let ((string (symbol->string name)))
+	   (or (string-table-get editor-modes string)
+	       (let ((mode (%make-mode name (list (make-comtab)))))
+		 (string-table-put! editor-modes string mode)
 		 mode)))))
-    (vector-set! mode mode-index:name name)
-    (vector-set! mode mode-index:display-name display-name)
-    (vector-set! mode mode-index:major? major?)
-    (set-cdr! (vector-ref mode mode-index:comtabs) comtabs)
-    (vector-set! mode mode-index:description description)
-    (vector-set! mode mode-index:initialization initialization)
-    (vector-set! mode mode-index:alist '())
+    (set-mode-display-name! mode display-name)
+    (set-mode-major?! mode major?)
+    (set-cdr! (mode-comtabs mode)
+	      (cond ((not super-mode)
+		     '())
+		    ((mode? super-mode)
+		     (mode-comtabs super-mode))
+		    (else
+		     ;; Old code passes a comtabs list here, so accept
+		     ;; that as a valid argument.  Later, this can be
+		     ;; an error.
+		     super-mode)))
+    (set-mode-description! mode description)
+    (set-mode-initialization! mode initialization)
+    (set-mode-alist! mode '())
     mode))
 
-(define-integrable (mode-comtab mode)
-  (car (mode-comtabs mode)))
-
-(define editor-modes (make-string-table))
-
-(define (name->mode name)
-  (let ((name (canonicalize-name name)))
-    (or (string-table-get editor-modes (symbol->string name))
-	(make-mode name
-		   true
-		   (symbol->string name)
-		   '()
-		   ""
-		   (lambda () (error "Undefined mode" name))))))
+(define editor-modes
+  (make-string-table))
 
 (define (->mode object)
-  (if (mode? object) object (name->mode object)))
+  (if (mode? object)
+      object
+      (let ((name (canonicalize-name object)))
+	(or (string-table-get editor-modes (symbol->string name))
+	    (make-mode name
+		       true
+		       (symbol->string name)
+		       false
+		       ""
+		       (lambda () (error "Undefined mode" name)))))))
+
+(define (major-mode? object)
+  (and (mode? object)
+       (mode-major? object)))
+
+(define (minor-mode? object)
+  (and (mode? object)
+       (not (mode-major? object))))
+
+(define-integrable (minor-mode-comtab mode)
+  (car (mode-comtabs mode)))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.50 1991/05/02 01:12:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.51 1992/01/09 17:46:01 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -82,9 +82,7 @@
     (make-mode name
 	       true
 	       display-name
-	       (if super-mode-name
-		   (mode-comtabs (name->mode super-mode-name))
-		   '())
+	       (and super-mode-name (->mode super-mode-name))
 	       description
 	       (make-autoloading-procedure library-name
 					   (lambda ()
@@ -99,7 +97,7 @@
     (make-mode name
 	       false
 	       display-name
-	       '()
+	       false
 	       description
 	       (make-autoloading-procedure library-name
 					   (lambda ()

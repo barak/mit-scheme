@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.53 1991/08/13 20:59:40 newts Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.54 1992/01/09 17:47:27 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -186,11 +186,11 @@
 	   (and super-mode-name (canonicalize-name super-mode-name))))
       `(DEFINE ,(mode-name->scheme-name name)
 	 (MAKE-MODE ',name
-		    TRUE
+		    #T
 		    ',(or display-name (symbol->string name))
 		    ,(if super-mode-name
-			 `(MODE-COMTABS (NAME->MODE ',super-mode-name))
-			 ''())
+			 `(->MODE ',super-mode-name)
+			 `#F)
 		    ',description
 		    (LAMBDA ()
 		      ,@(let ((initialization
@@ -209,9 +209,9 @@
     (let ((name (canonicalize-name name)))
       `(DEFINE ,(mode-name->scheme-name name)
 	 (MAKE-MODE ',name
-		    FALSE
+		    #F
 		    ',(or display-name (symbol->string name))
-		    '()
+		    #F
 		    ',description
 		    (LAMBDA ()
 		      ,@(if (null? initialization)

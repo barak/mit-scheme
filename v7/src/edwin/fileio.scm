@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.103 1991/11/04 20:51:04 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.104 1992/01/09 17:46:59 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -157,7 +157,8 @@
 		       (assoc-string-ci
 			type
 			(ref-variable file-type-to-major-mode))))))))
-    (and entry (name->mode (cdr entry)))))
+    (and entry
+	 (->mode (cdr entry)))))
 
 (define assoc-string-ci
   (association-procedure string-ci=? car))
