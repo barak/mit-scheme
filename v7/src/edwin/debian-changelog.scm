@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debian-changelog.scm,v 1.2 2001/02/05 21:48:34 cph Exp $
+;;; $Id: debian-changelog.scm,v 1.3 2001/02/06 04:30:29 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -36,19 +36,19 @@ Key bindings:
 
 \\{debian-changelog-mode-map}"
   (lambda (buffer)
-    (local-set-variable! left-margin 2)
-    (local-set-variable! fill-prefix "  ")
-    (local-set-variable! fill-column 74)
+    (local-set-variable! left-margin 2 buffer)
+    (local-set-variable! fill-prefix "  " buffer)
+    (local-set-variable! fill-column 74 buffer)
 
     ;; Let each entry behave as one paragraph:
-    (local-set-variable! paragraph-start "\\*")
-    (local-set-variable! paragraph-separate "\\*\\|\\s-*$|\\S-")
+    (local-set-variable! paragraph-start "\\*" buffer)
+    (local-set-variable! paragraph-separate "\\*\\|\\s-*$|\\S-" buffer)
 
     ;; Let each version behave as one page.
     ;; Match null string on the heading line so that the heading line
     ;; is grouped with what follows.
-    (local-set-variable! page-delimiter "^\\<")
-    (local-set-variable! version-control 'NEVER)
+    (local-set-variable! page-delimiter "^\\<" buffer)
+    (local-set-variable! version-control 'NEVER buffer)
 
     (event-distributor/invoke! (ref-variable debian-changelog-mode-hook buffer)
 			       buffer)))
