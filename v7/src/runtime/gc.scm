@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 13.42 1987/02/15 15:42:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 13.43 1987/03/18 20:07:23 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -195,8 +195,10 @@
 	      ((access snarf-version microcode-system))
 	      (reset-keyboard-interrupt-dispatch-table!)
 	      (set! *rep-keyboard-map* (keyboard-interrupt-dispatch-table))
+	      ((access reset! primitive-io))
 	      ((access reset! working-directory-package))
 	      after-restore))))
 	ie)))))
 
 ;;; end GARBAGE-COLLECTOR-PACKAGE.
+))
