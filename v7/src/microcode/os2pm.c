@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.15 1995/05/16 09:20:06 cph Exp $
+$Id: os2pm.c,v 1.16 1995/05/19 21:04:16 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -35,6 +35,9 @@ MIT in each case. */
 #define INCL_WIN
 #define INCL_GPI
 #include "os2.h"
+
+extern psid_t OS2_console_psid (void);
+extern void OS2_console_font_change_hook (font_metrics_t *);
 
 typedef enum { pst_window, pst_memory } pst_t;
 
@@ -2373,6 +2376,8 @@ OS2_ps_set_font (psid_t psid, unsigned short id, const char * name)
     = (OS2_message_transaction ((PS_QID (ps)), message, mt_ps_set_font_reply));
   metrics = (SM_PS_SET_FONT_REPLY_METRICS (message));
   OS2_destroy_message (message);
+  if ((metrics != 0) && (psid == (OS2_console_psid ())))
+    OS2_console_font_change_hook (metrics);
   return (metrics);
 }
 

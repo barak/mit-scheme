@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.7 1995/05/07 05:53:20 cph Exp $
+$Id: os2pmcon.c,v 1.8 1995/05/19 21:04:27 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -61,7 +61,7 @@ static unsigned short console_pel_height;
 static unsigned short console_width;
 static unsigned short console_height;
 static char * console_chars;
-static font_metrics_t * metrics;
+static font_metrics_t * console_metrics;
 static unsigned short point_x;
 static unsigned short point_y;
 static int console_visiblep;
@@ -78,9 +78,9 @@ static qid_t console_pm_qid;
 static wid_t console_wid;
 static psid_t console_psid;
 
-#define CHAR_WIDTH (FONT_METRICS_WIDTH (metrics))
-#define CHAR_HEIGHT (FONT_METRICS_HEIGHT (metrics))
-#define CHAR_DESCENDER (FONT_METRICS_DESCENDER (metrics))
+#define CHAR_WIDTH (FONT_METRICS_WIDTH (console_metrics))
+#define CHAR_HEIGHT (FONT_METRICS_HEIGHT (console_metrics))
+#define CHAR_DESCENDER (FONT_METRICS_DESCENDER (console_metrics))
 #define CHAR_LOC(x, y) (& (console_chars [((y) * console_width) + (x)]))
 
 #define FASTFILL(p, n, c)						\
@@ -117,8 +117,8 @@ OS2_initialize_pm_console (void)
   }
   OS2_window_permanent (console_wid);
   console_psid = (OS2_window_client_ps (console_wid));
-  metrics = (OS2_ps_set_font (console_psid, 1, "4.System VIO"));
-  if (metrics == 0)
+  console_metrics = (OS2_ps_set_font (console_psid, 1, "4.System VIO"));
+  if (console_metrics == 0)
     OS2_logic_error ("Unable to find 4 point System VIO font.");
   OS2_window_set_grid (console_wid, CHAR_WIDTH, CHAR_HEIGHT);
   OS2_window_shape_cursor
@@ -141,6 +141,18 @@ wid_t
 OS2_console_wid (void)
 {
   return (console_wid);
+}
+
+psid_t
+OS2_console_psid (void)
+{
+  return (console_psid);
+}
+
+void
+OS2_console_font_change_hook (font_metrics_t * metrics)
+{
+  font_metrics = metrics;
 }
 
 static void
