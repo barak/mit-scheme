@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.9 2000/07/20 02:56:28 cph Exp $
+@comment $Id: imail.texinfo,v 1.10 2000/07/20 02:57:34 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -1220,13 +1220,12 @@ folder and switching to another buffer.
 
 @menu
 * Appearance Options::          
-* Primary Folder::              
 * Mail-Sending Options::        
 * Summary Options::             
 * Other Variables::             
 @end menu
 
-@node Appearance Options, Primary Folder, Variables, Variables
+@node Appearance Options, Mail-Sending Options, Variables, Variables
 @section Appearance Options
 
 @example
@@ -1241,7 +1240,7 @@ folder and switching to another buffer.
 (@code{imail-use-original-mime-boundaries})
 @end example
 
-@node Mail-Sending Options, Summary Options, Primary Folder, Variables
+@node Mail-Sending Options, Summary Options, Appearance Options, Variables
 @section Mail-Sending Options
 
 @example
