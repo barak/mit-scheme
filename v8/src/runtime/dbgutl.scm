@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.5 1988/12/30 23:29:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.6 1988/12/31 06:38:40 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -72,6 +72,7 @@ MIT in each case. |#
     (cdr x)))
 
 (define (show-frame environment depth brief?)
+  (newline)
   (write-string "Environment ")
   (let ((show-bindings?
 	 (let ((package (environment->package environment)))
@@ -91,8 +92,7 @@ MIT in each case. |#
     (if show-bindings?
 	(begin
 	  (newline)
-	  (show-environment-bindings environment brief?))))
-  (newline))
+	  (show-environment-bindings environment brief?)))))
 
 (define (show-environment-bindings environment brief?)
   (let ((names (environment-bound-names environment)))
