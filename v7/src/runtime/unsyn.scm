@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.7 1990/06/14 00:02:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.8 1990/06/14 01:27:54 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -131,7 +131,7 @@ MIT in each case. |#
       (lambda-components** value
 	(lambda (lambda-name required optional rest body)
 	  (if (eq? lambda-name name)
-	      `(DEFINE (,name . ,(lambda-list required optional rest))
+	      `(DEFINE (,name . ,(lambda-list required optional rest '()))
 		 ,@(unsyntax-sequence body))
 	      `(DEFINE ,name ,@(unexpand-binding-value value)))))
       `(DEFINE ,name ,@(unexpand-binding-value value))))
@@ -290,7 +290,7 @@ MIT in each case. |#
   (lambda-components** expression
     (lambda (name required optional rest body)
       name body
-      (lambda-list required optional rest))))
+      (lambda-list required optional rest '()))))
 
 (define lambda-auxiliary-tag)
 
