@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.23 1992/04/14 18:41:28 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.24 1992/07/28 14:17:51 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -37,9 +37,12 @@
 ###	without prior written consent from MIT in each case.
 ###
 
-#### Intel i386 assembly language (gas syntax) part of the compiled
-#### code interface.  See cmpint.txt, cmpint.c, cmpint-mc68k.h, and
-#### cmpgc.h for more documentation.
+#### Intel i386 assembly language part of the compiled code interface.
+#### See cmpint.txt, cmpint.c, cmpint-mc68k.h, and cmpgc.h for more
+#### documentation.
+####
+#### This m4 source expands into either Unix (gas) source or DOS
+#### (masm) source.
 ####
 #### NOTE:
 ####	Assumptions:
@@ -52,11 +55,11 @@
 ####
 ####	2) The C compiler divides registers into three groups:
 ####	- Linkage registers, used for procedure calls and global
-####	references.  On i386 (gcc): %ebp, %esp.
+####	references.  On i386 (gcc and Zortech C): %ebp, %esp.
 ####	- super temporaries, not preserved accross procedure calls and
-####	always usable. On i386 (gcc): %eax, %edx, %ecx.
+####	always usable. On i386 (gcc and Zortech C): %eax, %edx, %ecx.
 ####	- preserved registers saved by the callee if they are written.
-####	On i386 (gcc): all others (%ebx, %esi, %edi).
+####	On i386 (gcc and Zortech C): all others (%ebx, %esi, %edi).
 ####
 ####	3) Arguments, if passed on a stack, are popped by the caller
 ####	or by the procedure return instruction (as on the VAX).  Thus
@@ -73,10 +76,12 @@
 ####    register.  Two word structures are returned differently,
 ####    depending on the C compiler used.  When using GCC, two-word
 ####    structures are returned in {%eax, %edx}.  When using a
-####    compiler compatible with MicroSoft's C compiler, two word
-####    structures are returned by returning in %eax the address of a
-####    structure allocated statically.  If the Scheme system ever
-####    becomes reentrant, this will have to change.
+####    compiler compatible with MicroSoft's C compiler (e.g. Zortech
+####    C), two word structures are returned by returning in %eax the
+####    address of a structure allocated statically.  If the Scheme
+####    system ever becomes reentrant, this will have to change.
+####	Note the assumption below is that all DOS compilers are
+####	compatible with MicroSoft C.
 ####
 ####	6) Floating point registers are not preserved by this
 ####	interface.  The interface is only called from the Scheme
@@ -104,8 +109,12 @@
 ####	Utility macros and definitions
 
 ifdef(`DOS',
-`',
-`	.file	"cmpaux-i386.s"')
+      `define(IFDOS,`$1')',
+      `define(IFDOS,`')')
+
+ifdef(`DOS',
+      `define(IFNDOS,`')',
+      `define(IFNDOS,`$1')')
 
 ifdef(`DISABLE_387',
       `define(IF387,`')',
@@ -114,6 +123,8 @@ ifdef(`DISABLE_387',
 ifdef(`DISABLE_387',
       `define(IFN387,`$1')',
       `define(IFN387,`')')
+
+	IFNDOS(`.file	"cmpaux-i386.s"')
 
 ifdef(`DOS',
       `define(use_external_data,`	extrn _$1':dword)',
@@ -232,7 +243,7 @@ ifdef(`DOS',
       `define(IJMP,`$1')',
       `define(IJMP,`*$1')')
 
-ifdef(`DOS',`define(TYPE_CODE_LENGTH,6)')
+IFDOS(`define(TYPE_CODE_LENGTH,6)')
 
 define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
 define(DATUM_LENGTH, eval(32 - TC_LENGTH))
@@ -271,9 +282,8 @@ define(regs,REG(esi))
 define(rfree,REG(edi))
 define(rmask,REG(ebp))
 
-ifdef(`DOS',
-`.386
-.model small')
+IFDOS(`.386
+.model tiny')
 
 DECLARE_DATA_SEGMENT()
 declare_alignment(2)
@@ -282,8 +292,7 @@ use_external_data(Free)
 use_external_data(Ext_Stack_Pointer)
 use_external_data(utility_table)
 
-ifdef(`DOS',
-`define_data(C_Stack_Segment)
+IFDOS(`define_data(C_Stack_Segment)
 allocate_longword(C_Stack_Segment)')
 
 define_data(C_Stack_Pointer)
@@ -295,10 +304,12 @@ allocate_longword(C_Frame_Pointer)
 define_data(i387_presence)
 allocate_longword(i387_presence)
 
-define_data(Regstart)
+ifdef(`DOS',
+`use_external_data(Registers)',
+`define_data(Regstart)
 allocate_space(Regstart,128)
 define_data(Registers)
-allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))
+allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))')
 
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
@@ -345,11 +356,11 @@ define_c_label(C_to_interface)
 							# Preserve stack ptr
 	OP(mov,l)	TW(REG(esp),EDR(C_Stack_Pointer))
 							# Register block = %esi
-ifdef(`DOS',
-`	OP(mov,w)	TW(REG(ss),REG(ax))		# Obtain stack segment
-	OP(mov,l)	TW(REG(eax),EDR(C_Stack_Segment))
+
+IFDOS(`	OP(mov,w)	TW(REG(ss),REG(ax))		# Obtain stack segment
 							# and preserve it
-')
+	OP(mov,l)	TW(REG(eax),EDR(C_Stack_Segment))')
+
 	OP(lea,l)	TW(ABS(EDR(Registers)),regs)
 	jmp	external_code_reference(interface_to_scheme)
 
@@ -368,10 +379,10 @@ define_c_label(asm_scheme_to_interface)
 define_debugging_label(scheme_to_interface)
 	OP(mov,l)	TW(REG(esp),EDR(Ext_Stack_Pointer))
 	OP(mov,l)	TW(rfree,EDR(Free))
-ifdef(`DOS',
-`	OP(mov,l)	TW(EDR(C_Stack_Segment),REG(edi)) # Swap stack segments
-	OP(mov,w)	TW(REG(di),REG(ss))
-')
+
+IFDOS(`	OP(mov,l)	TW(EDR(C_Stack_Segment),REG(edi)) # Swap stack segments
+	OP(mov,w)	TW(REG(di),REG(ss))')
+
 	OP(mov,l)	TW(EDR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EDR(C_Frame_Pointer),REG(ebp))
 	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # Utility args
@@ -385,10 +396,10 @@ ifdef(`DOS',
 
 define_debugging_label(scheme_to_interface_return)
 	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
-ifdef(`DOS',
-`	OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx))
-	OP(mov,l)	TW(IND(REG(eax)),REG(eax))
-')
+
+IFDOS(`	OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx))
+	OP(mov,l)	TW(IND(REG(eax)),REG(eax))')
+
 	jmp	IJMP(REG(eax))				# Invoke handler
 
 define_c_label(interface_to_scheme)
@@ -397,10 +408,10 @@ define_c_label(interface_to_scheme)
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax))
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
 	OP(mov,l)	TW(EDR(Ext_Stack_Pointer),REG(esp))
-ifdef(`DOS',
-`	OP(mov,w)	TW(REG(ds),REG(bx))		# Swap stack segments
-	OP(mov,w)	TW(REG(bx),REG(ss))
-')
+
+IFDOS(`	OP(mov,w)	TW(REG(ds),REG(bx))		# Swap stack segments
+	OP(mov,w)	TW(REG(bx),REG(ss))')
+
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential
 							#  dynamic link
@@ -870,4 +881,4 @@ define_jump_indirection(nofp_quotient,37)
 define_jump_indirection(nofp_remainder,38)
 define_jump_indirection(nofp_modulo,39)
 
-ifdef(`DOS',`end')
+IFDOS(`end')
