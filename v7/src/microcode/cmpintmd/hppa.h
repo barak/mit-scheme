@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.12 1990/04/23 02:41:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.13 1990/08/08 20:20:40 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -82,21 +82,21 @@ typedef unsigned short format_word;
    instructions, an LDIL and a BLE instruction.
  */
 
-extern unsigned long hppa_extract_absolute_address();
-extern void hppa_store_absolute_address();
+extern unsigned long hppa_extract_absolute_address ();
+extern void hppa_store_absolute_address ();
 
 #define EXTRACT_ABSOLUTE_ADDRESS(target, address)			\
 {									\
   (target) =								\
     ((SCHEME_OBJECT)							\
-     (hppa_extract_absolute_address((unsigned long *) (address))));	\
+     (hppa_extract_absolute_address ((unsigned long *) (address))));	\
 }
 
 #define STORE_ABSOLUTE_ADDRESS(entry_point, address, nullify_p)		\
 {									\
-  hppa_store_absolute_address(((unsigned long *) (address)),		\
-			      ((unsigned long) (entry_point)),		\
-			      ((unsigned long) (nullify_p)));		\
+  hppa_store_absolute_address (((unsigned long *) (address)),		\
+			       ((unsigned long) (entry_point)),		\
+			       ((unsigned long) (nullify_p)));		\
 }
 
 #ifdef IN_CMPINT_C
@@ -203,9 +203,10 @@ hppa_store_absolute_address (addr, sourcev, nullify_p)
   ldil.fields.opcode = 0x08;
   ldil.fields.base = 26;
   ldil.fields.E = 0;
+#else
+  ldil.inst = ((0x08 << 26) | (26 << 21));
 #endif
 
-  ldil.inst = ((0x08 << 26) | (26 << 21));
   ldil.fields.A = source.fields.A;
   ldil.fields.B = source.fields.B;
   ldil.fields.C = source.fields.C;
@@ -217,9 +218,10 @@ hppa_store_absolute_address (addr, sourcev, nullify_p)
   ble.fields.w1 = 0;
   ble.fields.s = 3;
   ble.fields.w0 = 0;
+#else
+  ble.inst = ((0x39 << 26) | (26 << 21) | (3 << 13));
 #endif
 
-  ble.inst = ((0x39 << 26) | (26 << 21) | (3 << 13));
   ble.fields.w2a = source.fields.w2a;
   ble.fields.w2b = source.fields.w2b;
   ble.fields.n = (nullify_p & 1);
@@ -227,6 +229,76 @@ hppa_store_absolute_address (addr, sourcev, nullify_p)
   *addr++ = ldil.inst;
   *addr = ble.inst;
   return;
+}
+
+/* I-Cache flushing code.
+   Uses routines from cmpaux-hppa.m4.
+ */
+
+#define C_SCHEME
+#include "hppacache.h"
+
+static struct pdc_cache_dump cache_info;
+
+extern void flush_i_cache ();
+
+void
+flush_i_cache ()
+{
+  extern void cache_flush_all ();
+
+  cache_flush_all ((D_CACHE | I_CACHE),
+		   &cache_info.cache_format);
+  return;
+}
+
+int
+flush_i_cache_initialize ()
+{
+  int fd, read_result;
+  struct utsname sysinfo;
+  char filename[MAXPATHLEN];
+
+  if ((uname (&sysinfo)) < 0)
+  {
+    fprintf (stderr, "\n: flush_i_cache: uname failed.\n");
+    return (-1);
+  }
+    
+  sprintf (&filename[0],
+	   CACHE_FILENAME,
+	   CACHE_FILENAME_PATH,
+	   sysinfo.nodename,
+	   sysinfo.machine);
+
+  fd = (open ((&filename[0]), O_RDONLY));
+  if (fd < 0)
+  {
+    fprintf (stderr, "\n: flush_i_cache: open (%s) failed.\n",
+	     (&filename[0]));
+    return (-1);
+  }
+
+  read_result = (read (fd,
+		       ((char *) (&cache_info)),
+		       (sizeof (struct pdc_cache_dump))));
+  close (fd);
+
+  if (read_result != (sizeof (struct pdc_cache_dump)))
+  {
+    fprintf (stderr, "\n: flush_i_cache: read (%s) failed.\n",
+	     (&filename[0]));
+    return (-1);
+  }
+
+  if ((strcmp (sysinfo.machine, cache_info.hardware)) != 0)
+  {
+    fprintf (stderr,
+	     "\n: flush_i_cache: information in %s does not match hardware.\n",
+	     (&filename[0]));
+    return (-1);
+  }
+  return (0);
 }
 
 #endif	/* IN_CMPINT_C */
@@ -238,6 +310,12 @@ procedures and continuations differ from closures) */
 
 #define ENTRY_SKIPPED_CHECK_OFFSET 	4
 #define CLOSURE_SKIPPED_CHECK_OFFSET 	16
+
+/* The length of the GC recovery code that precedes an entry.
+   On the HP-PA a "ble, ldi" instruction sequence.
+ */
+
+#define ENTRY_PREFIX_LENGTH		8
 
 /*
   The instructions for a normal entry should be something like
@@ -314,7 +392,7 @@ do {									\
 
 /* Trampolines
 
-   On the PA, here's a picture of a trampoline (offset in bytes from
+   Here's a picture of a trampoline on the PA (offset in bytes from
    entry point)
 
      -12: MANIFEST vector header
@@ -465,7 +543,11 @@ do {									\
 
 #define STORE_EXECUTE_CACHE_ADDRESS(address, entry)			\
 {									\
-  STORE_ABSOLUTE_ADDRESS(entry, address, true);				\
+  extern void cache_flush_region ();					\
+  void *instr_addr = ((void *) (entry));				\
+									\
+  STORE_ABSOLUTE_ADDRESS(instr_addr, address, true);			\
+  cache_flush_region (instr_addr, EXECUTE_CACHE_ENTRY_SIZE);		\
 }
 
 /* This stores the fixed part of the instructions leaving the
@@ -481,6 +563,29 @@ do {									\
 #define STORE_EXECUTE_CACHE_CODE(address)				\
 {									\
 }
+
+/* This flushes the I-cache after a GC or disk-restore.  It's needed
+   because the GC has moved code around, and in addition, closures and
+   execute cache cells have absolute addresses that the processor
+   might have old copies of.
+ */
+
+#define FLUSH_I_CACHE()							\
+do {									\
+  extern void flush_i_cache ();						\
+									\
+  flush_i_cache ();							\
+} while (0)
+
+#define ASM_RESET_HOOK()						\
+do {									\
+  if ((flush_i_cache_initialize ()) < 0)				\
+  {									\
+    fprintf (stderr,							\
+	     "\nASM_RESET_HOOK: Unable to read cache parameters.\n");	\
+    Microcode_Termination (TERM_COMPILER_DEATH);			\
+  }									\
+} while (0)
 
 /* Derived parameters and macros.
 
