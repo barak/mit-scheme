@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.14 2001/03/08 06:28:54 cph Exp $
+# $Id: Makefile.in.in,v 1.15 2001/03/08 18:05:12 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -278,8 +278,8 @@ install-auxLIBS: $(aux_LIBS)
 	@list='$(aux_LIBS)'; \
 	for p in $$list; do \
 	    if test -f $$p; then \
-		echo "  $(INSTALL_LIBS) $$p $(DESTDIR)$(AUXDIR)/lib/."; \
-		$(INSTALL_LIBS) $$p $(DESTDIR)$(AUXDIR)/lib/.; \
+		echo "  $(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/lib/."; \
+		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/lib/.; \
 	    fi; \
 	done
 
