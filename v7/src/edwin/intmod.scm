@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.70 1993/10/16 10:11:21 cph Exp $
+;;;	$Id: intmod.scm,v 1.71 1993/10/16 11:07:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -306,7 +306,7 @@ REPL uses current evaluation environment."
 		(write-string
 		 ";Type D to debug error, Q to quit back to REP loop: "
 		 port)
-		(let ((char (read-command-char port (cmdl/level rep))))
+		(let ((char (read-command-char port (cmdl/level repl))))
 		  (write-char char port)
 		  (cond ((char-ci=? char #\d)
 			 (fresh-line port)
