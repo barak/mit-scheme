@@ -4,14 +4,14 @@
 
 (define-integrable ts 256)				; Actual table size to use
 
-(define-structure (key (conc-name key/)
-		       (constructor %make-key))
+(define-structure (krypt-key (conc-name krypt-key/)
+			     (constructor %make-krypt-key))
   state-table
   index-i
   index-j)
 
-(define (make-key)
-  (%make-key
+(define (make-krypt-key)
+  (%make-krypt-key
     (make-vector ts)
     #f
     #f))
@@ -20,11 +20,11 @@
   (let loop ((i 0))
     (if (fix:< i ts)
 	(begin
-	  (vector-set! (key/state-table key) i i)
+	  (vector-set! (krypt-key/state-table key) i i)
 	  (loop (fix:1+ i)))
 	(begin
-	  (set-key/index-i! key 0)
-	  (set-key/index-j! key 0)))))
+	  (set-krypt-key/index-i! key 0)
+	  (set-krypt-key/index-j! key 0)))))
 
 (define (rcm-key key kbuf)
   (let ((m (string-length kbuf)))
@@ -33,7 +33,7 @@
 	       (k 0))
       (if (fix:< i ts)
 	  (begin
-	    (let ((s (key/state-table key)))
+	    (let ((s (krypt-key/state-table key)))
 	      (let* ((j (fix:remainder (fix:+ (fix:+ j 1)
 					      (fix:+ (vector-ref s i)
 						     (vector-8b-ref kbuf k)))
@@ -56,9 +56,9 @@
   (rcm-iter key n buf 0))
 
 (define (rcm-iter key n buf start-index)
-  (let ((i (key/index-i key))
-	(j (key/index-j key))
-	(s (key/state-table key))
+  (let ((i (krypt-key/index-i key))
+	(j (krypt-key/index-j key))
+	(s (krypt-key/state-table key))
 	(end-index (fix:+ n start-index)))
     (let loop ((k start-index)
 	       (i i)
@@ -78,8 +78,8 @@
 						      ts))))
 	      (loop (fix:1+ k) i j)))
 	  (begin
-	    (set-key/index-i! key i)
-	    (set-key/index-j! key j))))))
+	    (set-krypt-key/index-i! key i)
+	    (set-krypt-key/index-j! key j))))))
 
 (define kryptid "This file krypted ")
 
@@ -93,13 +93,13 @@
 			  "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")
 	       (-1+ (decoded-time/month the-time)))
      " "
-     (write-to-string (decoded-time/day the-time))
+     (string-pad-left (write-to-string (decoded-time/day the-time)) 2)
      " "
-     (write-to-string (decoded-time/hour the-time))
+     (string-pad-left (write-to-string (decoded-time/hour the-time)) 2)
      ":"
-     (write-to-string (decoded-time/minute the-time))
+     (string-pad-left (write-to-string (decoded-time/minute the-time)) 2 #\0)
      ":"
-     (write-to-string (decoded-time/second the-time))
+     (string-pad-left (write-to-string (decoded-time/second the-time)) 2 #\0)
      " "
      (write-to-string (decoded-time/year the-time)))))
 #|
@@ -121,7 +121,7 @@
 	 (hlen (string-length header))
 	 (output-string (make-string (fix:+ 6 (fix:+ hlen (string-length input-string)))))
 	 (end-index (fix:- (string-length output-string) ts)))
-    (let ((key1 (make-key)))
+    (let ((key1 (make-krypt-key)))
       (rcm-keyinit key1)
       (rcm-key key1 header)
       (rcm-key key1 password)
@@ -151,7 +151,7 @@
 	 (pwordmac (substring input-string header-length (fix:+ header-length 5)))
 	 (output-string (string-tail input-string (fix:+ header-length 5)))
 	 (end-index (fix:- (string-length output-string) ts))
-	 (key1 (make-key))
+	 (key1 (make-krypt-key))
 	 (checksum 0))
       (rcm-keyinit key1)
       (rcm-key key1 header)
