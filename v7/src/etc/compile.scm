@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.7 2003/02/14 18:48:11 cph Exp $
+$Id: compile.scm,v 1.8 2004/01/16 21:06:06 cph Exp $
 
-Copyright 2000,2001,2002 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,7 +47,7 @@ USA.
 	  (load "cref.sf"))))
   (for-each (lambda (name)
 	      (load (merge-pathnames "compile" (pathname-as-directory name))))
-	    '("sos" "star-parser" "imail" "xml"))
+	    '("sos" "star-parser" "imail" "xml" "ssp"))
   (with-working-directory-pathname "runtime-check"
     (lambda ()
       (load "runtime.cbf"))))
