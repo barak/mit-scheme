@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.13 1992/07/21 03:41:40 cph Exp $
+$Id: scode.scm,v 14.14 1992/11/08 04:24:31 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -116,14 +116,18 @@ MIT in each case. |#
 		    string
 		    (make-unbound-reference-trap)))
 
-(define-integrable string->symbol
-  (ucode-primitive string->symbol))
-
 (define-integrable find-symbol
   (ucode-primitive find-symbol))
 
+(define (string->symbol string)
+  ;; This prevents the symbol from being affected if the string
+  ;; is mutated.  The string is copied only if the symbol is
+  ;; created.
+  (or (find-symbol string)
+      ((ucode-primitive string->symbol) (string-copy string))))
+
 (define-integrable (intern string)
-  (string->symbol (string-downcase string)))
+  ((ucode-primitive string->symbol) (string-downcase string)))
 
 (define (intern-soft string)
   (find-symbol (string-downcase string)))
@@ -139,7 +143,7 @@ MIT in each case. |#
 (define (symbol-append . symbols)
   (let ((string (apply string-append (map symbol-name symbols))))
     (string-downcase! string)
-    (string->symbol string)))
+    ((ucode-primitive string->symbol) string)))
 
 (define-integrable (symbol-hash symbol)
   (string-hash (symbol-name symbol)))
@@ -252,7 +256,7 @@ MIT in each case. |#
 	      (eq? (car text) declaration-tag)))))
 
 (define-integrable declaration-tag
-  (string->symbol "#[declaration]"))
+  ((ucode-primitive string->symbol) "#[declaration]"))
 
 (define-integrable (declaration-text declaration)
   (cdr (comment-text declaration)))
