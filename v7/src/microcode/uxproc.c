@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.5 1991/03/01 00:56:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.6 1991/03/08 03:10:04 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -205,6 +205,7 @@ void
 DEFUN (OS_process_deallocate, (process), Tprocess process)
 {
   (PROCESS_STATUS (process)) = process_status_free;
+  (PROCESS_REASON (process)) = 0;
   (PROCESS_ID (process)) = 0;
 }
 
@@ -266,6 +267,7 @@ DEFUN (OS_make_subprocess,
       /* In the parent process. */
       (PROCESS_ID (child)) = child_pid;
       (PROCESS_STATUS (child)) = process_status_running;
+      (PROCESS_REASON (child)) = 0;
       (PROCESS_JC_STATUS (child)) = child_jc_status;
       if (child_jc_status == process_jc_status_jc)
 	STD_VOID_SYSTEM_CALL
@@ -453,6 +455,7 @@ DEFUN (OS_process_continue_background, (process), Tprocess process)
   if ((PROCESS_STATUS (process)) == process_status_stopped)
     {
       (PROCESS_STATUS (process)) = process_status_running;
+      (PROCESS_REASON (process)) = 0;
       OS_process_send_signal (process, SIGCONT);
     }
   transaction_commit ();
@@ -468,6 +471,7 @@ DEFUN (OS_process_continue_foreground, (process), Tprocess process)
   if ((PROCESS_STATUS (process)) == process_status_stopped)
     {
       (PROCESS_STATUS (process)) = process_status_running;
+      (PROCESS_REASON (process)) = 0;
       OS_process_send_signal (process, SIGCONT); 
     }
   {

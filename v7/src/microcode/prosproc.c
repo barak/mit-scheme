@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.3 1991/03/01 00:55:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.4 1991/03/08 03:10:16 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -297,19 +297,14 @@ DEFINE_PRIMITIVE ("PROCESS-STATUS", Prim_process_status, 1, 1,
 
 DEFINE_PRIMITIVE ("PROCESS-REASON", Prim_process_reason, 1, 1, 
   "Return the termination reason of process PROCESS-NUMBER.\n\
-It is an error if the process is running.\n\
 This is a nonnegative integer, which depends on the process's status:\n\
+  running => zero;\n\
   stopped => the signal that stopped the process;\n\
   exited => the exit code returned by the process;\n\
   signalled => the signal that killed the process.")
 {
   PRIMITIVE_HEADER (1);
-  {
-    Tprocess process = (arg_process (1));
-    if ((OS_process_status (process)) == process_status_running)
-      error_bad_range_arg (1);
-    PRIMITIVE_RETURN (long_to_integer (OS_process_reason (process)));
-  }
+  PRIMITIVE_RETURN (long_to_integer (OS_process_reason (arg_process (1))));
 }
 
 DEFINE_PRIMITIVE ("PROCESS-JOB-CONTROL-STATUS", Prim_process_jc_status, 1, 1, 
