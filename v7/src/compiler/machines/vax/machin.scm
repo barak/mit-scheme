@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.3 1988/02/23 19:37:41 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.4 1988/03/07 22:17:01 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -48,6 +48,7 @@ MIT in each case. |#
   ;; In the following, temp, and temp+3 are assumed to qualify as byte
   ;; offsets.
   (case (rtl:expression-type expression)
+    ((ASSIGNMENT-CACHE VARIABLE-CACHE) 16) ;move.l d(pc),reg
     ((CONS-POINTER)
      ;; movl  free,temp(regs)	 = 4
      ;; movb  &type,3+temp(regs) = 4 (literal, rather than byte immediate)
