@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pic-ops.scm,v 1.5 1999/01/02 06:06:43 cph Exp $
+$Id: pic-ops.scm,v 1.6 2001/12/20 03:24:10 cph Exp $
 
-Copyright (c) 1993, 1999 Massachusetts Institute of Technology
+Copyright (c) 1993, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,13 +16,14 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
-
+
 ;;; Operations for manipulating pictures
 
 (declare (usual-integrations))
-
+
 (define-integrable (in-rect? x y width height)
   (and (fix:< -1 x) (fix:< x width) (fix:< -1 y) (fix:< y height)))
 
@@ -57,8 +58,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (let x-loop ((x 0))
 	      (if (fix:< x wid2)
 		  (begin  
-		    (floating-vector-set! new-yth-row (fix:- x lf) 
-				 (floating-vector-ref p2-yth-row x))
+		    (flo:vector-set! new-yth-row (fix:- x lf) 
+				     (flo:vector-ref p2-yth-row x))
 		    (x-loop (fix:+ x 1)))
 		  (y-loop (fix:+ y 1)))))))
 
@@ -66,13 +67,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (let y-loop ((y 0))
       (if (fix:< y hgt1)
 	  (let* ((p1-yth-row (vector-ref p1-data y))
-		 (new-yth-row (vector-ref new-data
-						   (fix:+ y p1y-offset)))) 
+		 (new-yth-row (vector-ref new-data (fix:+ y p1y-offset)))) 
 	    (let x-loop ((x 0))
 	      (if (fix:< x wid1)
 		  (begin  
-		    (floating-vector-set! new-yth-row (fix:+ x p1x-offset) 
-				 (floating-vector-ref p1-yth-row x))
+		    (flo:vector-set! new-yth-row (fix:+ x p1x-offset) 
+				     (flo:vector-ref p1-yth-row x))
 		    (x-loop (fix:+ x 1)))
 		  (y-loop (fix:+ y 1)))))))
     (picture-set-data! new-pic new-data)
@@ -96,8 +96,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (let x-loop ((x 0))
 		    (if (fix:< x wid1)
 			(begin
-			  (floating-vector-set! p2-yth-row (fix:+ x u)
-				       (floating-vector-ref p1-yth-row x))
+			  (flo:vector-set! p2-yth-row (fix:+ x u)
+					   (flo:vector-ref p1-yth-row x))
 			  (x-loop (fix:+ x 1)))
 			(y-loop (fix:+ y 1))))))
 	    (picture-set-data! pic2 p2-data))
@@ -127,8 +127,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (let x-loop ((x 0))
 	      (if (fix:< x cut-wid)
 		  (begin
-		    (floating-vector-set! new-yth-row x
-				 (floating-vector-ref old-yth-row (fix:+ u x)))
+		    (flo:vector-set! new-yth-row x
+				     (flo:vector-ref old-yth-row (fix:+ u x)))
 		    (x-loop (fix:+ x 1)))
 		  (y-loop (fix:+ y 1))))))
       (picture-set-data! new-pic new-data)
@@ -150,17 +150,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (if (fix:< ny hgt)
 	  (let ((y-index (->discrete-y (/ ny ysf))))
 	    (if (fix:= y-index old-y-index)  ; don't recompute the row
-		(floating-vector-set! new-data ny
-			     (floating-vector-copy
-			      (vector-ref new-data (fix:- ny 1))))
+		(flo:vector-set! new-data ny
+				 (flo:vector-copy
+				  (vector-ref new-data (fix:- ny 1))))
 		(let ((yth-row (vector-ref data y-index))
 		      (new-yth-row (vector-ref new-data ny)))
 		  (let x-loop ((nx 0))
 		    (if (fix:< nx wid)
 			(begin
-			  (floating-vector-set! new-yth-row nx
-				       (floating-vector-ref yth-row 
-						   (->discrete-x (/ nx xsf))))
+			  (flo:vector-set!
+			   new-yth-row nx
+			   (flo:vector-ref yth-row 
+					   (->discrete-x (/ nx xsf))))
 			  (x-loop (fix:+ nx 1)))))))
 	    (y-loop (fix:+ ny 1) y-index))))
     (picture-set-data! new-pic new-data)
@@ -210,7 +211,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (set! new-data (make-initialized-vector
 			   new-hgt
 			   (lambda (n)
-			     (floating-vector-copy
+			     (flo:vector-copy
 			      (vector-ref data n))))))
 
 	  ((and (close-enough? (xcor ur) lx)   ; check for 
@@ -221,11 +222,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (let x-loop ((nx 0))
 		     (if (fix:< nx new-wid)
 			 (begin
-			   (floating-vector-set! yth-row nx
-					(floating-vector-ref 
-					 (vector-ref
-					  data (fix:- nx-max nx))
-					 ny))
+			   (flo:vector-set! yth-row nx
+					    (flo:vector-ref 
+					     (vector-ref
+					      data (fix:- nx-max nx))
+					     ny))
 			   (x-loop (fix:+ nx 1)))
 			 (y-loop (fix:+ ny 1))))))))
 
@@ -237,10 +238,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (let x-loop ((nx 0))
 		     (if (fix:< nx new-wid)
 			 (begin
-			   (floating-vector-set! yth-row nx
-					(floating-vector-ref 
-					 (vector-ref data nx) 
-					 (fix:- ny-max ny)))
+			   (flo:vector-set! yth-row nx
+					    (flo:vector-ref 
+					     (vector-ref data nx) 
+					     (fix:- ny-max ny)))
 			   (x-loop (fix:+ nx 1)))
 			 (y-loop (fix:+ ny 1))))))))
 
@@ -249,12 +250,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (let y-loop ((ny 0))
 	     (if (fix:< ny new-hgt)
 		 (begin
-		   (floating-vector-set! new-data ny 
-				(list->vector
-				 (reverse 
-				  (vector->list 
-				   (vector-ref data
-							(fix:- ny-max ny))))))
+		   (flo:vector-set! new-data ny 
+				    (list->vector
+				     (reverse 
+				      (vector->list 
+				       (vector-ref data
+						   (fix:- ny-max ny))))))
 		   (y-loop (fix:+ ny 1))))))
 
 	  (else
@@ -272,11 +273,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       (if (fix:< nx new-wid)
 			   (let ((x (round->exact inner-x))
 				 (y (round->exact inner-y)))
-			     (floating-vector-set! nyth-row nx
-					  (if (in-rect? x y wid hgt)
-					      (floating-vector-ref
-					       (vector-ref data y) x)
-					      pic-min))
+			     (flo:vector-set! nyth-row nx
+					      (if (in-rect? x y wid hgt)
+						  (flo:vector-ref
+						   (vector-ref data y) x)
+						  pic-min))
 			     (x-loop (fix:+ nx 1) 
 				     (flo:+ inner-x c) (flo:- inner-y s)))
 			   (y-loop (fix:+ ny 1) 
@@ -296,7 +297,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (if (fix:< y hgt)
 	  (begin
 	    (vector-set! new-data y 
-			 (floating-vector-copy
+			 (flo:vector-copy
 			  (vector-ref data (fix:- y-max y))))
 	    (y-loop (fix:+ y 1)))))
     (picture-set-data! new-pic new-data)
@@ -312,19 +313,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (if (fix:< y hgt)
 	  (begin
 	    (vector-set! new-data y
-			 (floating-vector-reverse (vector-ref data y)))
+			 (flo:vector-reverse (vector-ref data y)))
 	    (y-loop (fix:+ y 1)))))
     (picture-set-data! new-pic new-data)
     new-pic))
 
-(define (floating-vector-reverse vector)
-  (let* ((length (floating-vector-length vector))
-	 (new-vector (floating-vector-cons length))
+(define (flo:vector-reverse vector)
+  (let* ((length (flo:vector-length vector))
+	 (new-vector (flo:vector-cons length))
 	 (length-1 (- length 1)))
     (do 
 	((i 0 (+ i 1)))
 	((= i length))
-      (floating-vector-set! new-vector i 
-			    (floating-vector-ref vector (- length-1 i))))
+      (flo:vector-set! new-vector i 
+		       (flo:vector-ref vector (- length-1 i))))
     new-vector))
 

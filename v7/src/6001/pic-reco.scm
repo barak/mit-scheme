@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pic-reco.scm,v 1.7 1999/01/02 06:06:43 cph Exp $
+$Id: pic-reco.scm,v 1.8 2001/12/20 03:24:33 cph Exp $
 
-Copyright (c) 1993, 1999 Massachusetts Institute of Technology
+Copyright (c) 1993, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;; Representation of pictures using records
@@ -53,7 +54,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 height
 			 (lambda (n)
 			   n	; ignored
-			   (make-floating-vector width initial-val))))
+			   (flo:make-vector width initial-val))))
     (%picture-set-image! pic #f)
     pic))
 
@@ -104,7 +105,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (fix:< y (picture-height picture))))
 	   (bad-range-signal y 'PICTURE-REF))
 	  (else
-	   (floating-vector-ref
+	   (flo:vector-ref
 	    (vector-ref (picture-data picture) y) x)))))
 
 (define (make-picture-setter bad-type-predicate bad-range-signal)
@@ -120,7 +121,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (fix:< y (picture-height picture))))
 	   (bad-range-signal y 'PICTURE-SET!))
 	  (else
-	   (floating-vector-set! (vector-ref (picture-data picture) y)
+	   (flo:vector-set! (vector-ref (picture-data picture) y)
 			x (exact->inexact value))
 	   (invalidate-cached-values picture)))))
 
@@ -163,9 +164,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (let ((yth-row (vector-ref picdata y)))
 	    (let x-loop ((x 0))
 	      (if (< x width)
-		  (begin (floating-vector-set! yth-row x 
-				      (exact->inexact 
-				       (fn x y)))
+		  (begin (flo:vector-set! yth-row x 
+					  (exact->inexact (fn x y)))
 			 (x-loop (1+ x)))
 		  (y-loop (1+ y))))))
       (invalidate-cached-values picture))))
@@ -191,14 +191,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let* ((picdata (picture-data picture))
 	 (width (picture-width picture))
 	 (height (picture-height picture))
-	 (current-min (floating-vector-ref (vector-ref picdata 0) 0))
+	 (current-min (flo:vector-ref (vector-ref picdata 0) 0))
 	 (current-max current-min))
     (let y-loop ((y 0))
       (if (< y height)
 	  (let ((yth-row (vector-ref picdata y)))
 	    (let x-loop ((x 0))
 	      (if (< x width)
-		  (let ((v (floating-vector-ref yth-row x)))
+		  (let ((v (flo:vector-ref yth-row x)))
 		    (set! current-min (min current-min v))
 		    (set! current-max (max current-max v))
 		    (x-loop (1+ x)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win32.pkg,v 1.13 2001/08/18 04:52:11 cph Exp $
+$Id: win32.pkg,v 1.14 2001/12/20 03:27:54 cph Exp $
 
 Copyright (c) 1993-2001 Massachusetts Institute of Technology
 
@@ -25,7 +25,7 @@ USA.
 (global-definitions "../runtime/runtime")
 
 (define-package (win32)
-  (parent ())
+  (parent (runtime))
   (files "winuser"
 	 "wt_user"
 	 "wf_user"

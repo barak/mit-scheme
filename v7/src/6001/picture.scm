@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: picture.scm,v 1.29 1999/02/16 01:00:07 cph Exp $
+$Id: picture.scm,v 1.30 2001/12/20 03:24:45 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright (c) 1991-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; 6.001 Images
@@ -25,26 +26,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Miscellaneous Utilities
 
-(define-primitives
-  floating-vector-ref
-  floating-vector-set!
-  floating-vector-cons
-  floating-vector-length)
-
-(define (make-floating-vector length init)
-  (let ((result (floating-vector-cons length)))
+(define (flo:make-vector length init)
+  (let ((result (flo:vector-cons length)))
     (if (not (= init 0.))
 	(do ((i 0 (fix:+ i 1)))
 	    ((fix:= i length))
-	  (floating-vector-set! result i init)))
+	  (flo:vector-set! result i init)))
     result))
 
-(define (floating-vector-copy vector)
-  (let* ((length (floating-vector-length vector))
-	 (result (floating-vector-cons length)))
+(define (flo:vector-copy vector)
+  (let* ((length (flo:vector-length vector))
+	 (result (flo:vector-cons length)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i length))
-      (floating-vector-set! result i (floating-vector-ref vector i)))
+      (flo:vector-set! result i (flo:vector-ref vector i)))
     result))
 
 (define (side-effecting-iter n proc)
@@ -62,10 +57,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (up-bound interval-length)
   (floor->exact (1+ (/ interval-length 2))))
 
-(define (floating-vector->list vector)
-  (generate-list (floating-vector-length vector)
+(define (flo:vector->list vector)
+  (generate-list (flo:vector-length vector)
     (lambda (i)
-      (floating-vector-ref vector i))))
+      (flo:vector-ref vector i))))
 
 (define (generate-list n proc) ; ==> ( (proc 0) (proc 1) ... (proc n-1) )
   (let loop ((i (- n 1)) (list '()))
@@ -337,10 +332,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 (let x-loop ((x 0))
 			   (if (fix:< x width)
 			       (begin
-				 (floating-vector-set!
+				 (flo:vector-set!
 				  out-yth-row x
 				  (exact->inexact
-				   (f (floating-vector-ref in-yth-row x))))
+				   (f (flo:vector-ref in-yth-row x))))
 				 (x-loop (fix:+ 1 x)))
 			       (y-loop (fix:+ 1 y)))))))))
 	      ((null? (cddr pic-list))
@@ -354,11 +349,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 (let x-loop ((x 0))
 			   (if (fix:< x width)
 			       (begin
-				 (floating-vector-set!
+				 (flo:vector-set!
 				  out-yth-row x
 				  (exact->inexact
-				   (f (floating-vector-ref in-yth-row1 x)
-				      (floating-vector-ref in-yth-row2 x))))
+				   (f (flo:vector-ref in-yth-row1 x)
+				      (flo:vector-ref in-yth-row2 x))))
 				 (x-loop (fix:+ 1 x)))
 			       (y-loop (fix:+ 1 y)))))))))
 	      (else
@@ -373,12 +368,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 (let x-loop ((x 0))
 			   (if (fix:< x width)
 			       (begin
-				 (floating-vector-set!
+				 (flo:vector-set!
 				  out-yth-row x
 				  (exact->inexact
 				   (apply f
 					  (map (lambda (row)
-						 (floating-vector-ref row x))
+						 (flo:vector-ref row x))
 					       in-yth-rows))))
 				 (x-loop (fix:+ 1 x)))
 			       (y-loop (fix:+ 1 y))))))))))
@@ -485,7 +480,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				   (lambda (x)
 				     (ascii->char
 				      (round->exact (* (- x pmin) scale)))))))
-			  (floating-vector->list (vector-ref data row)))))
+			  (flo:vector->list (vector-ref data row)))))
 		(begin
 		  (write-string (list->string rowvals) port)
 		  (rowloop (- row 1))))))))))

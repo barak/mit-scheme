@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pic-read.scm,v 1.5 1999/01/02 06:06:43 cph Exp $
+$Id: pic-read.scm,v 1.6 2001/12/20 03:24:21 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright (c) 1991-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Procedures to read a file in raw pgm format into a picture
@@ -70,7 +71,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   width
 	   (lambda (index)
 	     index			; ignored
-	     (make-floating-vector length 0.))))) ;initialize to blank
+	     (flo:make-vector length 0.))))) ;initialize to blank
     (side-effecting-iter
      width
      (lambda (n)
@@ -78,7 +79,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (side-effecting-iter
 	  length
 	  (lambda (m)
-	    (floating-vector-set!
+	    (flo:vector-set!
 	     nth-row
 	     m
 	     (exact->inexact (char->ascii (read-char port)))))))))
