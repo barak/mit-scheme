@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.16 1994/10/12 01:52:11 cph Exp $
+;;;	$Id: vc.scm,v 1.17 1995/01/06 00:59:18 cph Exp $
 ;;;
-;;;	Copyright (c) 1994 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -1222,8 +1222,8 @@ the value of vc-log-mode-hook."
 		  (buffer-end command-buffer)
 		  #f
 		  #f
-		  (find-program command
-				(buffer-default-directory command-buffer))
+		  (os/find-program command
+				   (buffer-default-directory command-buffer))
 		  (vc-command-arguments arguments))))
       (if (and (eq? 'EXITED (car result))
 	       (<= 0 (cdr result) status-limit))

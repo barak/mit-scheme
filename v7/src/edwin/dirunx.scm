@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dirunx.scm,v 1.7 1994/09/28 22:44:45 cph Exp $
+;;;	$Id: dirunx.scm,v 1.8 1995/01/06 00:58:41 cph Exp $
 ;;;
-;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -50,7 +50,7 @@
 (define (dired-change-inode program)
   (lambda (attribute argument)
     (dired-change-files (string-append "change" attribute "of") argument
-      (let ((program (find-program program #f))
+      (let ((program (os/find-program program #f))
 	    (directory (buffer-default-directory (current-buffer))))
 	(lambda (pathname lstart)
 	  (run-synchronous-process #f #f directory #f
@@ -79,7 +79,7 @@ The files are compressed or uncompressed using gzip."
   (lambda (argument)
     (let ((n
 	   (dired-change-files "compress" argument
-	     (let ((gzip (find-program "gzip" #f))
+	     (let ((gzip (os/find-program "gzip" #f))
 		   (directory (buffer-default-directory (current-buffer))))
 	       (lambda (pathname lstart)
 		 (let ((type (pathname-type pathname))
