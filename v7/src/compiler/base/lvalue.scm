@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lvalue.scm,v 4.24 2001/12/23 17:20:57 cph Exp $
+$Id: lvalue.scm,v 4.25 2002/02/07 05:58:14 cph Exp $
 
-Copyright (c) 1988-1990, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1990, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -103,10 +103,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-named-variable
-      (non-hygienic-macro-transformer
-       (lambda (name)
-	 (let ((symbol
-		(intern (string-append "#[" (symbol->string name) "]"))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let* ((name (cadr form))
+		(symbol
+		 (intern (string-append "#[" (symbol->string name) "]"))))
 	   `(BEGIN (DEFINE-INTEGRABLE
 		     (,(symbol-append 'MAKE- name '-VARIABLE) BLOCK)
 		     (MAKE-VARIABLE BLOCK ',symbol))

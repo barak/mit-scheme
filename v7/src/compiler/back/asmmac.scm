@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: asmmac.scm,v 1.10 2001/12/23 17:20:57 cph Exp $
+$Id: asmmac.scm,v 1.11 2002/02/07 05:57:44 cph Exp $
 
-Copyright (c) 1988, 1990, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,16 +25,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (declare (usual-integrations))
 
 (define-syntax define-instruction
-  (non-hygienic-macro-transformer
-   (lambda (keyword . rules)
-     `(ADD-INSTRUCTION!
-       ',keyword
-       ,(compile-database rules
-	  (lambda (pattern actions)
-	    pattern
-	    (if (not (pair? actions))
-		(error "DEFINE-INSTRUCTION: Too few forms."))
-	    (parse-instruction (car actions) (cdr actions) #f)))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(SYMBOL * DATUM) (cdr form))
+	 `(ADD-INSTRUCTION!
+	   ',(cadr form)
+	   ,(compile-database (cddr form)
+	      (lambda (pattern actions)
+		pattern
+		(if (not (pair? actions))
+		    (error "DEFINE-INSTRUCTION: Too few forms."))
+		(parse-instruction (car actions) (cdr actions) #f))))
+	 (ill-formed-syntax form)))))
 
 (define (compile-database cases procedure)
   `(LIST

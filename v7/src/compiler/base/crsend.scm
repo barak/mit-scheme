@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: crsend.scm,v 1.12 2001/12/23 17:20:57 cph Exp $
+$Id: crsend.scm,v 1.13 2002/02/07 05:58:04 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,6 +26,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
+(define-syntax ucode-primitive
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (apply make-primitive-procedure (cdr form)))))
+
+(define-syntax ucode-type
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (apply microcode-type (cdr form)))))
+
 (define (cross-compile-bin-file-end input-string #!optional output-string)
   (compiler-pathnames input-string
 		      (and (not (default-object? output-string)) output-string)
@@ -118,20 +130,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		   label
 		   (with-absolutely-no-interrupts
 		     (lambda ()
-		       (let-syntax ((ucode-primitive
-				     (non-hygienic-macro-transformer
-				      (lambda (name)
-					(make-primitive-procedure name))))
-				    (ucode-type
-				     (non-hygienic-macro-transformer
-				      (lambda (name)
-					(microcode-type name)))))
-			 ((ucode-primitive PRIMITIVE-OBJECT-SET-TYPE)
-			  (ucode-type COMPILED-ENTRY)
-			  (make-non-pointer-object
-			   (+ (cdr (or (assq label label-bindings)
-				       (error "Missing entry point" label)))
-			      (object-datum code-vector)))))))))
+		       ((ucode-primitive primitive-object-set-type)
+			(ucode-type compiled-entry)
+			(make-non-pointer-object
+			 (+ (cdr (or (assq label label-bindings)
+				     (error "Missing entry point" label)))
+			    (object-datum code-vector))))))))
 		(cc-vector/entry-points cc-vector)))))
     (let ((label->expression
 	   (lambda (label)
@@ -145,32 +149,24 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	expression))))
 
 (define (cross-link/finish-assembly code-block objects scheme-object-width)
-  (let-syntax ((ucode-primitive
-		(non-hygienic-macro-transformer
-		 (lambda (name)
-		   (make-primitive-procedure name))))
-	       (ucode-type
-		(non-hygienic-macro-transformer
-		 (lambda (name)
-		   (microcode-type name)))))
-    (let* ((bl (quotient (bit-string-length code-block)
-			 scheme-object-width))
-	   (non-pointer-length
-	    ((ucode-primitive make-non-pointer-object) bl))
-	   (output-block (make-vector (1+ (+ (length objects) bl)))))
-      (with-absolutely-no-interrupts
-	(lambda ()
-	  (vector-set! output-block 0
-		       ((ucode-primitive primitive-object-set-type)
-			(ucode-type manifest-nm-vector)
-			non-pointer-length))))
-      (write-bits! output-block
-		   ;; After header just inserted.
-		   (* scheme-object-width 2)
-		   code-block)
-      (insert-objects! output-block objects (1+ bl))
-      (object-new-type (ucode-type compiled-code-block)
-		       output-block))))
+  (let* ((bl (quotient (bit-string-length code-block)
+		       scheme-object-width))
+	 (non-pointer-length
+	  ((ucode-primitive make-non-pointer-object) bl))
+	 (output-block (make-vector (1+ (+ (length objects) bl)))))
+    (with-absolutely-no-interrupts
+      (lambda ()
+	(vector-set! output-block 0
+		     ((ucode-primitive primitive-object-set-type)
+		      (ucode-type manifest-nm-vector)
+		      non-pointer-length))))
+    (write-bits! output-block
+		 ;; After header just inserted.
+		 (* scheme-object-width 2)
+		 code-block)
+    (insert-objects! output-block objects (1+ bl))
+    (object-new-type (ucode-type compiled-code-block)
+		     output-block)))
 
 (define (insert-objects! v objects where)
   (cond ((not (null? objects))

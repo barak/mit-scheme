@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgn3.scm,v 4.14 2001/12/23 17:20:57 cph Exp $
+$Id: lapgn3.scm,v 4.15 2002/02/07 05:57:54 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -39,54 +39,58 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (let ((label
 	 (string->uninterned-symbol
 	  (string-append prefix (number->string *next-constant*)))))
-    (set! *next-constant* (1+ *next-constant*))
+    (set! *next-constant* (+ *next-constant* 1))
     label))
 
 (define (allocate-constant-label)
   (allocate-named-label "CONSTANT-"))
 
 (define (warning-assoc obj pairs)
-  (define (local-eqv? obj1 obj2)
-    (or (eqv? obj1 obj2)
-	(and (string? obj1)
-	     (string? obj2)
-	     (zero? (string-length obj1))
-	     (zero? (string-length obj2)))))
-
   (let ((pair (assoc obj pairs)))
     (if (and compiler:coalescing-constant-warnings?
 	     (pair? pair)
-	     (not (local-eqv? obj (car pair))))
+	     (not (let ((obj* (car pair)))
+		    (or (eqv? obj obj*)
+			(and (string? obj)
+			     (string? obj*)
+			     (fix:= 0 (string-length obj))
+			     (fix:= 0 (string-length obj*)))))))
 	(warn "Coalescing two copies of constant object" obj))
     pair))
 
-(define-integrable (object->label find read write allocate-label)
-  (lambda (object)
-    (let ((entry (find object (read))))
-      (if entry
-	  (cdr entry)
-	  (let ((label (allocate-label object)))
-	    (write (cons (cons object label)
-			 (read)))
-	    label)))))
+(define ((object->label find read write allocate-label) object)
+  (let ((entry (find object (read))))
+    (if entry
+	(cdr entry)
+	(let ((label (allocate-label object)))
+	  (write (cons (cons object label) (read)))
+	  label))))
 
 (let-syntax
     ((->label
-      (non-hygienic-macro-transformer
-       (lambda (find var #!optional suffix)
-	 `(object->label ,find
-			 (lambda () ,var)
-			 (lambda (new)
-			   (declare (integrate new))
-			   (set! ,var new))
-			 ,(if (default-object? suffix)
-			      `(lambda (object)
-				 object ; ignore
-				 (allocate-named-label "OBJECT-"))
-			      `(lambda (object)
-				 (allocate-named-label
-				  (string-append (symbol->string object)
-						 ,suffix)))))))))
+      (sc-macro-transformer
+       (let ((pattern `(EXPRESSION IDENTIFIER ? ,string?)))
+	 (lambda (form environment)
+	   (if (syntax-match? pattern (cdr form))
+	       (let ((find (close-syntax (cadr form) environment))
+		     (var (close-syntax (caddr form) environment))
+		     (suffix (and (pair? (cdddr form)) (cadddr form))))
+		 `(OBJECT->LABEL ,find
+				 (LAMBDA () ,var)
+				 (LAMBDA (NEW)
+				   (DECLARE (INTEGRATE NEW))
+				   (SET! ,var NEW))
+				 ,(if suffix
+				      `(LAMBDA (OBJECT)
+					 (ALLOCATE-NAMED-LABEL
+					  (STRING-APPEND
+					   (SYMBOL->STRING OBJECT)
+					   ,suffix)))
+				      `(LAMBDA (OBJECT)
+					 OBJECT ; ignore
+					 (ALLOCATE-NAMED-LABEL "OBJECT-")))))
+	       (ill-formed-syntax form)))))))
+
 (define constant->label
   (->label warning-assoc *interned-constants*))
 
@@ -99,7 +103,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define free-static-label
   (->label assq *interned-static-variables* "-HOME-"))
 
-;; End of let-syntax
 )
 
 ;; These are different because different uuo-links are used for different
