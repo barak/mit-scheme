@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.34 1991/03/28 05:23:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.35 1991/05/02 06:11:10 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -439,6 +439,10 @@ DEFUN_VOID (enter_compiled_expression)
   environment = (block_address [length]);
   if (!(ENVIRONMENT_P (environment)))
   {
+    /* We could actually flush just the non-marked section.
+       The uuo-section will be flushed when linked.
+     */
+
     PUSH_D_CACHE_REGION (block_address, (length + 1));
   }
 #endif /* SPLIT_CACHES */
