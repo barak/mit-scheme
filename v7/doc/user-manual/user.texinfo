@@ -9,6 +9,7 @@
 @setchapternewpage odd
 @synindex vr fn
 
+
 @ifinfo
 This file documents the use of MIT Scheme.
 
@@ -52,7 +53,7 @@ literature without prior written consent from MIT in each case.
 @titlepage
 @title{MIT Scheme User's Manual}
 @subtitle Edition 0.9
-@subtitle for Scheme Release 7.1
+@subtitle for Scheme Release 7.3
 @subtitle DRAFT: @today{}
 @author by Chris Hanson
 
@@ -143,6 +144,39 @@ Declarations
 * In-line Coding::              In-line Coding
 * Operator Reduction::          Operator Reduction
 @end menu
+
+
+
+@node
+@chapter Installation
+
+
+
+@node
+@section Generic Unix
+
+Installation information for Unix versions goes here.
+(perhaps several a multitude of unixes?
+
+
+@node
+@section C-backend
+
+Installation information for C back-end versions goes here?
+
+
+@node
+@section Microsoft Windows and Windows NT
+
+Installation information for  Microsoft Windows and Windows NT goes here.
+
+
+@node
+@section DOS
+
+Installation information for DOS version goes here
+
+
 
 @node Running Scheme, REPL, Top, Top
 @chapter Running Scheme
@@ -306,7 +340,6 @@ option that starts with a hyphen.  The files are loaded in the
 Specifies that large heap, constant, and stack sizes should be used.
 These are specified by the environment variables
 
-@group
 @findex MITSCHEME_LARGE_HEAP
 @findex MITSCHEME_LARGE_CONSTANT
 @findex MITSCHEME_LARGE_STACK
@@ -315,13 +348,11 @@ MITSCHEME_LARGE_HEAP
 MITSCHEME_LARGE_CONSTANT
 MITSCHEME_LARGE_STACK
 @end example
-@end group
 
 @noindent
 If this option isn't given, the small sizes are used, specified by the
 environment variables
 
-@group
 @findex MITSCHEME_SMALL_HEAP
 @findex MITSCHEME_SMALL_CONSTANT
 @findex MITSCHEME_SMALL_STACK
@@ -330,7 +361,6 @@ MITSCHEME_SMALL_HEAP
 MITSCHEME_SMALL_CONSTANT
 MITSCHEME_SMALL_STACK
 @end example
-@end group
 
 @noindent
 There are reasonable built-in defaults for all of these environment
@@ -402,7 +432,8 @@ Sets the library search path to @var{path}.  This is a colon-separated
 list of directories that is searched to find various library files, such
 as bands.  If this option is not given, the value of the environment
 variable @code{MITSCHEME_LIBRARY_PATH} is used; if that isn't defined,
-@file{/usr/local/lib/mit-scheme} is used.
+the default (@file{/usr/local/lib/mit-scheme} on Unix, @file{c:\scheme}
+on PCs) is used.
 
 @item -utabmd @var{filename}
 @item -utab @var{filename}
@@ -525,19 +556,22 @@ and if that is not defined, 0 is used, disabling overlapped writes.
 This is a summary of the environment variables that are specific to MIT
 Scheme.
 
+@node
+@subsection General Environment Variables
+
 @table @asis
 
-@item @code{MITSCHEME_BAND} (default: @file{runtime.com})
+@item @code{MITSCHEME_BAND} (default: @file{runtime.com} on the library path)
 @findex MITSCHEME_BAND
 The initial band to be loaded.  Overridden by @code{-band},
 @code{-compiler}, or @code{-edwin}.
 
-@item @code{MITSCHEME_COMPILER_BAND} (default: @file{compiler.com})
+@item @code{MITSCHEME_COMPILER_BAND} (default: @file{compiler.com} on the library path)
 @findex MITSCHEME_COMPILER_BAND
 The initial band to be loaded if the @code{-compiler} option is given.
 Overridden by @code{-band}.
 
-@item @code{MITSCHEME_EDWIN_BAND} (default: @file{edwin.com})
+@item @code{MITSCHEME_EDWIN_BAND} (default: @file{edwin.com} on the library path)
 @findex MITSCHEME_EDWIN_BAND
 The initial band to be loaded if the @code{-edwin} option is given.
 Overridden by @code{-band}.
@@ -560,10 +594,22 @@ The size of the stack, in 1024-word blocks, if the @code{-large},
 @code{-compiler}, or @code{-edwin} options are given.  Overridden by
 @code{-stack}.
 
-@item @code{MITSCHEME_LIBRARY_PATH} (default: @file{/usr/local/lib/mit-scheme})
+@item @code{MITSCHEME_LIBRARY_PATH}
 @findex MITSCHEME_LIBRARY_PATH
-A colon-separated list of directories.  These directories are searched,
+A list of directories.  These directories are searched,
 left to right, to find bands and various other files.
+On Unix systems the list is colon separated, with the default
+@file{/usr/local/lib/mit-scheme}.
+On PC systems the list is semi-colon separated with the default
+@file{c:\scheme\lib}
+
+
+@item @code{MITSCHEME_INF_DIRECTORY}
+Directory containing the debugging information files for the system. It
+should contain subdirectories corresponding to the subdirectories in the
+source tree.  For example, if its value is @file{f:\random}, then runtime system
+debugging files will be expected in @file{f:\random\runtime}, while edwin
+debugging files will be expected in @file{f:\random\edwin}
 
 @item @code{MITSCHEME_SMALL_CONSTANT} (default: @samp{400})
 @findex MITSCHEME_SMALL_CONSTANT
@@ -584,10 +630,18 @@ The size of the stack, in 1024-word blocks, if the size options are not
 given.  Overridden by @code{-stack}, @code{-large}, @code{-compiler}, or
 @code{-edwin}.
 
-@item @code{MITSCHEME_UTABMD_FILE} (default: @file{utabmd.bin})
+@item @code{MITSCHEME_UTABMD_FILE} (default: @file{utabmd.bin} in the library path)
 @findex MITSCHEME_UTABMD_FILE
 The file containing the microcode tables.  Overridden by @code{-utabmd}
-and @code{-utab}.
+and @code{-utab}.  It is only necessary when re-building
+@file{runtime.com}.
+
+@end table
+
+@node
+@subsection Environment variables for Bchscheme
+
+@table @asis
 
 @item @code{MITSCHEME_GC_DIRECTORY} (default: @file{/tmp})
 @findex MITSCHEME_GC_DIRECTORY
@@ -597,7 +651,11 @@ The directory where to write gc files.  Overriden by @code{-gc-directory}.
 @findex MITSCHEME_GC_DRONE
 The program to use as the I/O drone during garbage collection.
 Overriden by @code{-gc-drone}.
+@end table
 
+***** Are the following unix specific or should they be flushed completely?
+
+@table @asis
 @item @code{MITSCHEME_GC_END_POSITION} (default: start-position + heap-size)
 @findex MITSCHEME_GC_END_POSITION
 The last position in the gc file to use.  Overriden by
@@ -629,6 +687,124 @@ Overriden by @code{-gc-window-size}.
 The maximum number of simultaneous write operations.  Overriden by
 @code{-gc-write-overlap}.
 @end table
+
+@node
+@subsection Environment variables for PC versions
+
+These environment variables only make sense to the Microsoft Windows,
+Windows NT or MS-DOS versions of MIT Scheme.
+
+@table @asis
+@item @code{MITSCHEME_DPMI_EXT_KBD} (default: @samp{false})
+@findex MITSCHEME_DPMI_EXT_KBD
+DOS version only.
+Boolean option specifying whether Scheme inserts its own keyboard handling
+routine when running under DPMI/Windows.
+
+@item @code{MITSCHEME_X32_EXT_KBD} (default: @samp{false})
+@findex MITSCHEME_X32_EXT_KBD
+DOS version only.
+Boolean option specifying whether Scheme inserts its own keyboard handling
+routine when @emph{not} running under DPMI/Windows.
+
+@item @code{MITSCHEME_TRAP_ALT_TAB} (default: @samp{false})
+@findex MITSCHEME_TRAP_ALT_TAB
+@item @code{MITSCHEME_TRAP_ALT_ESCAPE} (default: @samp{false})
+@findex MITSCHEME_TRAP_ALT_ESCAPE
+Microsoft Windows and Windows NT only.
+Boolean option specifying the handling of system command accelerators.
+These options do not actually work.
+
+@item @code{MITSCHEME_GEOMETRY} (default: @samp{-1,-1,-1,-1})
+@findex MITSCHEME_GEOMETRY
+Microsoft Windows and Windows NT only.  Four integers separated by
+commas or spaces which specify the placement and size of the MIT Scheme
+window as a @var{left,top,width,height} quadruple.  The units are screen
+pixels, and @samp{-1} means allow the system to choose this parameter.
+E.g.  @samp{-1,-1,500,300} places a 500 by 300 pixel window at some
+system determined position on the screen.  The width and height include
+the window border and title.
+
+@item @code{MITSCHEME_FOREGROUND} (default: according to desktop color scheme)
+@findex MITSCHEME_FOREGROUND
+Microsoft Windows and Windows NT only.  An value specifying the window
+text color.  The color is specified as hex blue, green and red values
+(@emph{not} RGB):, E.g. @code{0xff0000} for blue.
+
+@item @code{MITSCHEME_BACKGROUND} (default: according to desktop color scheme)
+@findex MITSCHEME_BACKGROUND
+Microsoft Windows and Windows NT only.
+A value value specifying the window background color.  See above.
+
+@end table
+
+
+@subsection Environment variables that affect the runtime system
+
+
+@table @asis
+@item @code{HOME}
+@findex HOME
+Directory where to look for init files.  E.g. @samp{c:\users\joe} or
+@samp{/homes/joe}
+
+@item @code{TEMP}, @code{TMP}
+@findex TMP
+@findex TEMP
+Directory for various temporary files.  @code{TEMP} is given preference
+to @code{TMP}.
+
+@end table
+
+@node
+@subsection Environment variables that affect Edwin
+
+@table @asis
+@item @code{EDWIN_BINARY_DIRECTORY} (default: @file{edwin\autoload} on the library path)
+@findex EDWIN_BINARY_DIRECTORY
+Directory where edwin expects to find files providing autoloaded
+facilities.
+
+@item @code{EDWIN_INFO_DIRECTORY} (default: @file{edwin\info} on the library path)
+@findex EDWIN_INFO_DIRECTORY
+Directory where edwin expects to find files for the `info' documentation
+subsystem.
+
+@item @code{EDWIN_ETC_DIRECTORY} (default: @file{edwin/etc} on the library path)
+@findex EDWIN_ETC_DIRECTORY
+Directory where edwin expects to find utility programs.  Currently not
+supported under DOS or Windows.
+
+@item @code{EDWIN_FOREGROUND} (default: none (white))
+@findex EDWIN_FOREGROUND
+DOS only?
+ANSI foreground color specifier. Must be a two-digit sequence in the range
+30-37.  E.g. 32 (green).
+
+@item @code{EDWIN_BACKGROUND} (default: none (black))
+@findex EDWIN_BACKGROUND
+DOS only?
+ANSI background color specifier. Must be a two-digit sequence in the range
+40-47. E.g. 40 (black).
+
+@item @code{TERM}
+@findex TERM
+Terminal type.
+For DOS, should be @samp{ansi.sys} or @samp{ibm_pc_bios}.
+For Windows and Windows NT it should be @samp{ansi.sys}.
+
+@item @code{LINES} (default: auto-sense or 25)
+@findex LINES
+Number of text lines on the screen, depending on the terminal type (Unix) or
+the video adapter and support software (DOS).  E.g. 43.
+
+@item @code{COLUMNS} (default: auto-sense, or 80)
+@findex COLUMNS
+Number of text columns on the screen, depending on the terminal type (Unix) or
+video adapter and support software (DOS).  E.g. 132.
+
+@end table
+
 
 @node Leaving Scheme,  , Environment Variables, Running Scheme
 @section Leaving Scheme
@@ -1487,7 +1663,6 @@ definition.  For example:
 @noindent
 First use the @code{integrate-operator} declaration:
 
-@group
 @lisp
 ((lambda (foo bar)
    (declare (integrate foo bar))
@@ -1495,30 +1670,25 @@ First use the @code{integrate-operator} declaration:
  (car baz)
  (cdr baz))
 @end lisp
-@end group
 
 @noindent
 Next use the internal @code{integrate} declaration:
 
-@group
 @lisp
 ((lambda (foo bar)
    (vector-ref (vector-ref (car baz) (cdr baz)) 3))
  (car baz)
  (cdr baz))
 @end lisp
-@end group
 
 @noindent
 Next notice that the variables @code{foo} and @code{bar} are not used,
 and eliminate them:
 
-@group
 @lisp
 ((lambda ()
    (vector-ref (vector-ref (car baz) (cdr baz)) 3)))
 @end lisp
-@end group
 
 @noindent
 Finally, remove the @code{((lambda () @dots{}))} to produce
@@ -1538,86 +1708,70 @@ Here are some examples:
 @noindent
 Declaration:
 
-@group
 @lisp
 (declare (reduce-operator (cons* cons)))
 @end lisp
-@end group
 
 @noindent
 Replacements:
 
-@group
 @lisp
 (cons* @var{x} @var{y} @var{z} @var{w}) @expansion{} (cons @var{x} (cons @var{y} (cons @var{z} @var{w}))),
 (cons* @var{x} @var{y}) @expansion{} (cons @var{x} @var{y})
 (cons* @var{x}) @expansion{} @var{x}
 (cons*) @error{} too few arguments
 @end lisp
-@end group
 
 @noindent
 Declaration:
 
-@group
 @lisp
 (declare (reduce-operator (list cons (null-value '() any))))
 @end lisp
-@end group
 
 @noindent
 Replacements:
 
-@group
 @lisp
 (list @var{x} @var{y} @var{z} @var{w}) @expansion{} (cons @var{x} (cons @var{y} (cons @var{z} (cons @var{w} '()))))
 (list @var{x} @var{y}) @expansion{} (cons @var{x} (cons @var{y} '()))
 (list @var{x}) @expansion{} (cons @var{x} '())
 (list) @expansion{} '()
 @end lisp
-@end group
 
 @noindent
 Declaration:
 
-@group
 @lisp
 (declare (reduce-operator (- %- (null-value 0 single) (group left))))
 @end lisp
-@end group
 
 @noindent
 Replacements:
 
-@group
 @lisp
 (- @var{x} @var{y} @var{z} @var{w}) @expansion{} (%- (%- (%- @var{x} @var{y}) @var{z}) @var{w})
 (- @var{x} @var{y}) @expansion{} (%- @var{x} @var{y})
 (- @var{x}) @expansion{} (%- 0 @var{x})
 (-) @expansion{} 0
 @end lisp
-@end group
 
 @noindent
 Declaration:
 
-@group
 @lisp
 (declare (reduce-operator (+ %+ (null-value 0 none) (group right))))
 @end lisp
-@end group
 
 @noindent
 Replacements:
 
-@group
 @lisp
 (+ @var{x} @var{y} @var{z} @var{w}) @expansion{} (%+ @var{x} (%+ @var{y} (%+ @var{z} @var{w})))
 (+ @var{x} @var{y}) @expansion{} (%+ @var{x} @var{y})
 (+ @var{x}) @expansion{} @var{x}
 (+) @expansion{} 0
 @end lisp
-@end group
 
 Note: This declaration does not cause an appropriate definition of
 @code{+} (in the last example) to appear in your code.  It merely
@@ -1628,7 +1782,6 @@ provide a definition of @code{+} as well, although it is not required.
 The general format of the declaration is (brackets denote optional
 elements):
 
-@group
 @lisp
 (reduce-operator
  (@var{name}
@@ -1639,7 +1792,6 @@ elements):
   @r{[}(wrapper @var{wrap})@r{]}
   ))
 @end lisp
-@end group
 
 @noindent
 where
