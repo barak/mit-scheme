@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.24 2000/05/10 17:01:34 cph Exp $
+;;; $Id: imail-imap.scm,v 1.25 2000/05/10 17:03:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -25,7 +25,8 @@
 ;;;; URL
 
 (define-class (<imap-url>
-	       (constructor (user-id auth-type host port mailbox uid)))
+	       (constructor %make-imap-url
+			    (user-id auth-type host port mailbox uid)))
     (<url>)
   ;; User name to connect as.
   (user-id define accessor)
@@ -40,6 +41,9 @@
   ;; Unique ID specifying a message.  Ignored.
   (uid define accessor))
 
+(define (make-rmail-url user-id auth-type host port mailbox uid)
+  (save-url (%make-rmail-url user-id auth-type host port mailbox uid)))
+
 (define-url-protocol "imap" <imap-url>
   (let ((//server/
 	 (optional-parser
@@ -53,14 +57,14 @@
 	  (let ((pv2
 		 (or (parse-substring mbox string (car pv1) end)
 		     (error:bad-range-argument string 'STRING->URL))))
-	    (make-imap-url (parser-token pv1 'USER-ID)
-			   (parser-token pv1 'AUTH-TYPE)
-			   (parser-token pv1 'HOST)
-			   (let ((port (parser-token pv1 'PORT)))
-			     (and port
-				  (string->number port)))
-			   (parser-token pv2 'MAILBOX)
-			   (parser-token pv2 'UID))))))))
+	    (%make-imap-url (parser-token pv1 'USER-ID)
+			    (parser-token pv1 'AUTH-TYPE)
+			    (parser-token pv1 'HOST)
+			    (let ((port (parser-token pv1 'PORT)))
+			      (and port
+				   (string->number port)))
+			    (parser-token pv2 'MAILBOX)
+			    (parser-token pv2 'UID))))))))
 
 (define-method url-body ((url <imap-url>))
   (string-append

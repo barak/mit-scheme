@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.51 2000/05/10 16:53:19 cph Exp $
+;;; $Id: imail-core.scm,v 1.52 2000/05/10 17:03:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -61,6 +61,13 @@
 		(string-tail string (fix:+ colon 1))))))
 	(hash-table/put! saved-urls string url)
 	url)))
+
+(define (save-url url)
+  (let ((string (url->string url)))
+    (or (hash-table/get saved-urls string #f)
+	(begin
+	  (hash-table/put! saved-urls string url)
+	  url))))
 
 (define saved-urls
   (make-string-hash-table))
