@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.32 1993/08/20 18:53:41 cph Exp $
+;;;	$Id: utils.scm,v 1.33 1993/09/07 21:49:11 gjr Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -46,10 +46,16 @@
 
 (declare (usual-integrations))
 
-(define (guarantee-heap-available n-words operator)
+;; Allow gc and after-gc hooks.
+
+(define-integrable interrupt-mask/gc-normal #x0025)
+
+(define (guarantee-heap-available n-words operator old-mask)
   (gc-flip)
   (if (not ((ucode-primitive heap-available? 1) n-words))
-      (error:allocation-failure n-words operator)))
+      (begin
+	(set-interrupt-enables! old-mask)
+	(error:allocation-failure n-words operator))))
 
 (define condition-type:allocation-failure
   (make-condition-type 'ALLOCATION-FAILURE condition-type:error
@@ -74,6 +80,7 @@
 (define-macro (chars-to-words-shift)
   ;; This is written as a macro so that the shift will be a constant
   ;; in the compiled code.
+  ;; It does not work when cross-compiled!
   (let ((chars-per-word (vector-ref ((ucode-primitive gc-space-status 0)) 0)))
     (case chars-per-word
       ((4) -2)
@@ -85,25 +92,27 @@
       (error:wrong-type-argument n-chars "fixnum" 'STRING-ALLOCATE))
   (if (not (fix:>= n-chars 0))
       (error:bad-range-argument n-chars 'STRING-ALLOCATE))
-  (let ((n-words (fix:+ (fix:lsh n-chars (chars-to-words-shift)) 3)))
-    (if (not ((ucode-primitive heap-available? 1) n-words))
-	(guarantee-heap-available n-words 'STRING-ALLOCATE))
-    (let ((mask (set-interrupt-enables! interrupt-mask/none)))
-      (let ((result
-	     ((ucode-primitive primitive-get-free 1)
-	      (ucode-type string))))
-	((ucode-primitive primitive-object-set! 3)
-	 result
-	 0
-	 ((ucode-primitive primitive-object-set-type 2)
-	  (ucode-type manifest-nm-vector)
-	  (fix:- n-words 1)))
-	(set-string-length! result n-chars)
-	;; This won't work if range-checking is turned on.
-	(string-set! result n-chars #\nul)
-	((ucode-primitive primitive-increment-free 1) n-words)
-	(set-interrupt-enables! mask)
-	result))))
+  (let* ((n-words (fix:+ (fix:lsh n-chars (chars-to-words-shift)) 3))
+	 (mask (if ((ucode-primitive heap-available? 1) n-words)
+		   (set-interrupt-enables! interrupt-mask/none)
+		   (let ((mask
+			  (set-interrupt-enables! interrupt-mask/gc-normal)))
+		     (guarantee-heap-available n-words 'STRING-ALLOCATE mask)
+		     (set-interrupt-enables! interrupt-mask/none)
+		     mask)))
+	 (result ((ucode-primitive primitive-get-free 1) (ucode-type string))))
+    ((ucode-primitive primitive-object-set! 3)
+     result
+     0
+     ((ucode-primitive primitive-object-set-type 2)
+      (ucode-type manifest-nm-vector)
+      (fix:- n-words 1)))
+    (set-string-length! result n-chars)
+    ;; This won't work if range-checking is turned on.
+    (string-set! result n-chars #\nul)
+    ((ucode-primitive primitive-increment-free 1) n-words)
+    (set-interrupt-enables! mask)
+    result))
 
 (define (set-string-maximum-length! string n-chars)
   (if (not (string? string))
