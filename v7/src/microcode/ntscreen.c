@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.50 2003/02/14 18:48:12 cph Exp $
+$Id: ntscreen.c,v 1.51 2004/01/31 02:16:53 cph Exp $
 
-Copyright 1993-2002 Massachusetts Institute of Technology
+Copyright 1993,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
+Copyright 2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,7 +24,6 @@ USA.
 
 */
 
-/* #include <stdio.h> */
 #include <stdlib.h>
 #include "nt.h"
 #include "ntscreen.h"
@@ -2110,23 +2110,7 @@ process_keydown (HWND handle, UINT message, WPARAM wparam, LPARAM lparam)
     }
 
   /* Otherwise, handle translation directly, as otherwise Windows
-     will do the wrong thing.  */
-
-  /* Don't translate modified alphabetic keystrokes, so the user
-     doesn't need to constantly switch layout to type control or meta
-     keystrokes when the normal layout translates alphabetic
-     characters to non-ascii characters.  */
-  if (('A' <= wparam) && (wparam <= 'Z'))
-    {
-      make_key_event
-	(handle, wparam, lparam,
-	 (((modifier_set_p (VK_SHIFT)) || (modifier_set_p (VK_CAPITAL)))
-	  ? wparam
-	  : (wparam + ('a' - 'A'))));
-      return (1);
-    }
-
-  /* OK, here's the real hair.  Translate the unmodified keystroke to
+     will do the wrong thing.  Translate the unmodified keystroke to
      the corresponding character(s), then add the modifiers back in.  */
   {
     BYTE keystate [256];
