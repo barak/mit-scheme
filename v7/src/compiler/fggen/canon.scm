@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.12 1993/03/02 01:16:21 gjr Exp $
+$Id: canon.scm,v 1.13 1993/03/02 01:30:36 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -370,12 +370,15 @@ ARBITRARY:	The expression may be executed more than once.  It
 		 bound
 		 context))))))))
 
+(define (%single-definition name value)
+  (scode/make-combination
+   (ucode-primitive local-assignment)
+   (list (scode/make-variable environment-variable)
+	 name
+	 (canout-expr value))))
+
 (define (single-definition name value)
-  (make-canout (scode/make-combination
-		(ucode-primitive local-assignment)
-		(list (scode/make-variable environment-variable)
-		      name
-		      (canout-expr value)))
+  (make-canout (%single-definition name value)
 	       (canout-safe? value)
 	       true
 	       false))
@@ -386,7 +389,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 (define (multi-definition names* values*)
   (define (collect names values wrapper)
     (if (null? (cdr values))
-	(single-definition (car names) (car values))
+	(%single-definition (car names) (car values))
 	(scode/make-combination
 	 (scode/make-absolute-reference 'DEFINE-MULTIPLE)
 	 (list (scode/make-variable environment-variable)
@@ -421,10 +424,10 @@ ARBITRARY:	The expression may be executed more than once.  It
 		   (let ((vnames (reverse vnames)) (vvals (reverse vvals))
 			 (knames (reverse knames)) (kvals (reverse kvals)))
 		     (if (eq? last 'CONSTANT)
-			 (join (collect vnames vvals directive-wrapper)
-			       (collect knames kvals identity-procedure))
-			 (join (collect knames kvals identity-procedure)
-			       (collect vnames vvals) directive-wrapper)))))
+			 (join (collect vnames vvals identity-procedure)
+			       (collect knames kvals directive-wrapper))
+			 (join (collect knames kvals directive-wrapper)
+			       (collect vnames vvals identity-procedure))))))
 	    (for-all? values canout-safe?)
 	    true
 	    false))
