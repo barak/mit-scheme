@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/class.scm,v 1.69 1989/04/28 22:48:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/class.scm,v 1.70 1989/05/01 21:10:16 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -92,7 +92,7 @@
 	(and class
 	     (or (eq? class class*)
 		 (loop (class-superclass class)))))))
-
+
 (define (make-object class)
   (if (not (class? class))
       (error "not a class" class))
@@ -118,6 +118,11 @@
 
 (define-integrable (object-method object name)
   (class-method (object-class object) name))
+
+(define (object-description object)
+  (map (lambda (transform)
+	 (list (car transform) (vector-ref object (cdr transform))))
+       (class-instance-transforms (object-class object))))
 
 (define (send object operation . args)
   (apply (object-method object operation) object args))
