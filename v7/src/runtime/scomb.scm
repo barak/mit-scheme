@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.6 1990/06/27 14:07:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.7 1990/06/28 19:09:25 jinx Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -58,72 +58,72 @@ MIT in each case. |#
 	       CHAR-UPCASE
 	       COMPILED-CODE-ADDRESS->BLOCK
 	       COMPILED-CODE-ADDRESS->OFFSET
+	       DIVIDE-FIXNUM
 	       EQ?
-	       FIX:*
-	       FIX:+
-	       FIX:-
-	       FIX:-1+
-	       FIX:1+
-	       FIX:<
-	       FIX:=
-	       FIX:>
-	       FIX:AND
-	       FIX:ANDC
-	       FIX:DIVIDE
-	       FIX:GCD
-	       FIX:NEGATIVE?
-	       FIX:NOT
-	       FIX:OR
-	       FIX:POSITIVE?
-	       FIX:QUOTIENT
-	       FIX:REMAINDER
-	       FIX:XOR
-	       FIX:ZERO?
-	       FLO:*
-	       FLO:+
-	       FLO:-
-	       FLO:/
-	       FLO:<
-	       FLO:=
-	       FLO:>
-	       FLO:ABS
-	       FLO:ACOS
-	       FLO:ASIN
-	       FLO:ATAN
-	       FLO:ATAN2
-	       FLO:CEILING
-	       FLO:CEILING->EXACT
-	       FLO:COS
-	       FLO:EXP
-	       FLO:EXPT
-	       FLO:FLOOR
-	       FLO:FLOOR->EXACT
-	       FLO:LOG
-	       FLO:NEGATE
-	       FLO:NEGATIVE?
-	       FLO:POSITIVE?
-	       FLO:ROUND
-	       FLO:ROUND->EXACT
-	       FLO:SIN
-	       FLO:SQRT
-	       FLO:TAN
-	       FLO:TRUNCATE
-	       FLO:TRUNCATE->EXACT
-	       FLO:ZERO?
+	       EQUAL-FIXNUM?
+	       FIXNUM-AND
+	       FIXNUM-ANDC
+	       FIXNUM-NOT
+	       FIXNUM-OR
+	       FIXNUM-QUOTIENT
+	       FIXNUM-REMAINDER
+	       FIXNUM-XOR
+	       FLONUM-ABS
+	       FLONUM-ACOS
+	       FLONUM-ADD
+	       FLONUM-ASIN
+	       FLONUM-ATAN
+	       FLONUM-ATAN2
+	       FLONUM-CEILING
+	       FLONUM-CEILING->EXACT
+	       FLONUM-COS
+	       FLONUM-DIVIDE
+	       FLONUM-EQUAL?
+	       FLONUM-EXP
+	       FLONUM-EXPT
+	       FLONUM-FLOOR
+	       FLONUM-FLOOR->EXACT
+	       FLONUM-GREATER?
+	       FLONUM-LESS?
+	       FLONUM-LOG
+	       FLONUM-MULTIPLY
+	       FLONUM-NEGATE
+	       FLONUM-NEGATIVE?
+	       FLONUM-POSITIVE?
+	       FLONUM-ROUND
+	       FLONUM-ROUND->EXACT
+	       FLONUM-SIN
+	       FLONUM-SQRT
+	       FLONUM-SUBTRACT
+	       FLONUM-TAN
+	       FLONUM-TRUNCATE
+	       FLONUM-TRUNCATE->EXACT
+	       FLONUM-ZERO?
+	       GCD-FIXNUM
+	       GREATER-THAN-FIXNUM?
 	       INTEGER->CHAR
+	       LESS-THAN-FIXNUM?
 	       MAKE-CHAR
 	       MAKE-NON-POINTER-OBJECT
+	       MINUS-FIXNUM
+	       MINUS-ONE-PLUS-FIXNUM
+	       MULTIPLY-FIXNUM
+	       NEGATIVE-FIXNUM?
 	       NEGATIVE?
 	       NOT
 	       OBJECT-TYPE
 	       OBJECT-TYPE?
+	       ONE-PLUS-FIXNUM
 	       PAIR?
+	       PLUS-FIXNUM
+	       POSITIVE-FIXNUM?
 	       POSITIVE?
 	       PRIMITIVE-PROCEDURE-ARITY
 	       ;; STRING->SYMBOL is a special case.  Strings have can
 	       ;; be side-effected, but it is useful to be able to
 	       ;; constant fold this primitive anyway.
 	       STRING->SYMBOL
+	       ZERO-FIXNUM?
 	       ZERO?
 	       ))))
 
