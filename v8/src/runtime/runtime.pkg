@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.208 1993/10/21 12:14:20 cph Exp $
+$Id: runtime.pkg,v 14.209 1993/10/21 13:57:31 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2465,9 +2465,10 @@ MIT in each case. |#
 	  unparser-table/entry
 	  unparser-table/set-entry!
 	  unparser-table?
-	  user-object-type)
+	  user-object-type
+	  with-current-unparser-state)
   (export (runtime output-port)
-	  unparse-object/internal)
+	  unparse-object/top-level)
   (export (runtime pretty-printer)
 	  unparse-list/prefix-pair?
 	  unparse-list/unparser

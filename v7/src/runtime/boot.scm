@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.9 1993/08/31 08:42:34 cph Exp $
+$Id: boot.scm,v 14.10 1993/10/21 13:57:29 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -37,31 +37,49 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (unparser/standard-method name #!optional unparser)
-  (lambda (state object)
-    (if (not (unparser-state? state)) (error "Bad unparser state" state))
-    (let ((port (unparser-state/port state))
-	  (hash-string (number->string (hash object))))
-      (if *unparse-with-maximum-readability?*
-	  (begin
-	    (write-string "#@" port)
-	    (write-string hash-string port))
-	  (begin
-	    (write-string "#[" port)
-	    (if (string? name)
-		(write-string name port)
-		(unparse-object state name))
-	    (write-char #\space port)
-	    (write-string hash-string port)
-	    (if (and (not (default-object? unparser)) unparser)
-		(begin (write-char #\Space port)
-		       (unparser state object)))
-	    (write-char #\] port))))))
+(define standard-unparser-method)
+(define unparser/standard-method)
+(let ((make-method
+       (lambda (name unparser)
+	 (lambda (state object)
+	   (let ((port (unparser-state/port state))
+		 (hash-string (number->string (hash object))))
+	     (if *unparse-with-maximum-readability?*
+		 (begin
+		   (write-string "#@" port)
+		   (write-string hash-string port))
+		 (begin
+		   (write-string "#[" port)
+		   (if (string? name)
+		       (write-string name port)
+		       (with-current-unparser-state state
+			 (lambda (port)
+			   (write name port))))
+		   (write-char #\space port)
+		   (write-string hash-string port)
+		   (if unparser (unparser state object))
+		   (write-char #\] port))))))))
+  (set! standard-unparser-method
+	(lambda (name unparser)
+	  (make-method name
+		       (and unparser
+			    (lambda (state object)
+			      (with-current-unparser-state state
+				(lambda (port)
+				  (unparser object port))))))))
+  (set! unparser/standard-method
+	(lambda (name #!optional unparser)
+	  (make-method name
+		       (and (not (default-object? unparser))
+			    unparser
+			    (lambda (state object)
+			      (unparse-char state #\space)
+			      (unparser state object)))))))
 
 (define (unparser-method? object)
   (and (procedure? object)
        (procedure-arity-valid? object 2)))
-
+
 (define-integrable interrupt-bit/stack     #x0001)
 (define-integrable interrupt-bit/global-gc #x0002)
 (define-integrable interrupt-bit/gc        #x0004)

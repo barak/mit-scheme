@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.31 1993/06/18 02:45:33 gjr Exp $
+$Id: unpars.scm,v 14.32 1993/10/21 13:57:33 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -54,6 +54,7 @@ MIT in each case. |#
   (set! *unparse-disambiguate-null-lambda-list?* false)
   (set! *unparse-compound-procedure-names?* true)
   (set! system-global-unparser-table (make-system-global-unparser-table))
+  (set! *default-list-depth* 0)
   (set-current-unparser-table! system-global-unparser-table))
 
 (define *unparser-radix*)
@@ -67,13 +68,14 @@ MIT in each case. |#
 (define *unparse-disambiguate-null-lambda-list?*)
 (define *unparse-compound-procedure-names?*)
 (define system-global-unparser-table)
+(define *default-list-depth*)
 (define *current-unparser-table*)
 
 (define (current-unparser-table)
   *current-unparser-table*)
 
 (define (set-current-unparser-table! table)
-  (guarantee-unparser-table table)
+  (guarantee-unparser-table table 'SET-CURRENT-UNPARSER-TABLE!)
   (set! *current-unparser-table* table)
   unspecific)
 
@@ -114,8 +116,9 @@ MIT in each case. |#
 				  (conc-name unparser-table/))
   (dispatch-vector false read-only true))
 
-(define (guarantee-unparser-table table)
-  (if (not (unparser-table? table)) (error "Bad unparser table" table))
+(define (guarantee-unparser-table table procedure)
+  (if (not (unparser-table? table))
+      (error:wrong-type-argument table "unparser table" procedure))
   table)
 
 (define (make-unparser-table default-method)
@@ -140,27 +143,38 @@ MIT in each case. |#
   (slashify? false read-only true)
   (unparser-table false read-only true))
 
-(define (guarantee-unparser-state state)
-  (if (not (unparser-state? state)) (error "Bad unparser state" state))
+(define (guarantee-unparser-state state procedure)
+  (if (not (unparser-state? state))
+      (error:wrong-type-argument table state "unparser state" procedure))
   state)
+
+(define (with-current-unparser-state state procedure)
+  (guarantee-unparser-state state 'WITH-CURRENT-UNPARSER-STATE)
+  (fluid-let
+      ((*default-list-depth* (unparser-state/list-depth state))
+       (*current-unparser-table* (unparser-state/list-unparser-table state)))
+    (procedure (unparser-state/port state))))
 
 ;;;; Top Level
 
 (define (unparse-char state char)
-  (guarantee-unparser-state state)
+  (guarantee-unparser-state state 'UNPARSE-CHAR)
   (write-char char (unparser-state/port state)))
 
 (define (unparse-string state string)
-  (guarantee-unparser-state state)
+  (guarantee-unparser-state state 'UNPARSE-STRING)
   (write-string string (unparser-state/port state)))
 
 (define (unparse-object state object)
-  (guarantee-unparser-state state)
+  (guarantee-unparser-state state 'UNPARSE-OBJECT)
   (unparse-object/internal object
 			   (unparser-state/port state)
 			   (unparser-state/list-depth state)
 			   (unparser-state/slashify? state)
 			   (unparser-state/unparser-table state)))
+
+(define (unparse-object/top-level object port slashify? table)
+  (unparse-object/internal object port *default-list-depth* slashify? table))
 
 (define (unparse-object/internal object port list-depth slashify? table)
   (fluid-let ((*output-port* port)

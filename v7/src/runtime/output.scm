@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.15 1993/10/21 11:49:47 cph Exp $
+$Id: output.scm,v 14.16 1993/10/21 13:57:30 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -49,7 +49,7 @@ MIT in each case. |#
   ((output-port/operation/write-substring port) port string start end))
 
 (define (output-port/write-object port object)
-  (unparse-object/internal object port 0 true (current-unparser-table)))
+  (unparse-object/top-level object port #t (current-unparser-table)))
 
 (define (output-port/flush-output port)
   ((output-port/operation/flush-output port) port))
@@ -131,10 +131,10 @@ MIT in each case. |#
 	(unparser-table
 	 (if (default-object? unparser-table)
 	     (current-unparser-table)
-	     (guarantee-unparser-table unparser-table))))
+	     (guarantee-unparser-table unparser-table 'DISPLAY))))
     (if (string? object)
 	(output-port/write-string port object)
-	(unparse-object/internal object port 0 false unparser-table))
+	(unparse-object/top-level object port #f unparser-table))
     (output-port/discretionary-flush port)))
 
 (define (write object #!optional port unparser-table)
@@ -145,8 +145,8 @@ MIT in each case. |#
 	(unparser-table
 	 (if (default-object? unparser-table)
 	     (current-unparser-table)
-	     (guarantee-unparser-table unparser-table))))
-    (unparse-object/internal object port 0 true unparser-table)
+	     (guarantee-unparser-table unparser-table 'WRITE))))
+    (unparse-object/top-level object port #t unparser-table)
     (output-port/discretionary-flush port)))
 
 (define (write-line object #!optional port unparser-table)
@@ -157,9 +157,9 @@ MIT in each case. |#
 	(unparser-table
 	 (if (default-object? unparser-table)
 	     (current-unparser-table)
-	     (guarantee-unparser-table unparser-table))))
+	     (guarantee-unparser-table unparser-table 'WRITE-LINE))))
     (output-port/write-char port #\Newline)
-    (unparse-object/internal object port 0 true unparser-table)
+    (unparse-object/top-level object port #t unparser-table)
     (output-port/discretionary-flush port)))
 
 (define (flush-output #!optional port)
