@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.44 2000/03/27 20:54:33 cph Exp $
+;;; $Id: vc.scm,v 1.45 2000/03/27 20:55:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -254,7 +254,7 @@ Otherwise, the mod time of the file is the checkout time."
 			    (message
 			     "Warning: editing through the link bypasses version control.")
 			    buffer)))
-		     (else (follow))))))))
+		     (else (follow)))))))
 	 (else buffer)))))
 
 (set-variable!
