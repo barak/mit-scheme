@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.44 2000/06/01 20:10:14 cph Exp $
+;;; $Id: imail.pkg,v 1.45 2000/06/02 02:33:54 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -214,21 +214,24 @@
 	 "imail-top"
 	 "imail-summary")
   (parent (edwin))
-  #|
   (export (edwin)
 	  edwin-command$imail
 	  edwin-command$imail-add-flag
 	  edwin-command$imail-continue
+	  edwin-command$imail-copy-folder
+	  edwin-command$imail-copy-messages
 	  edwin-command$imail-create-folder
 	  edwin-command$imail-delete-backward
 	  edwin-command$imail-delete-folder
 	  edwin-command$imail-delete-forward
 	  edwin-command$imail-delete-message
+	  edwin-command$imail-disconnect
 	  edwin-command$imail-expunge
 	  edwin-command$imail-first-message
 	  edwin-command$imail-forward
 	  edwin-command$imail-get-new-mail
 	  edwin-command$imail-input
+	  edwin-command$imail-input-from-folder
 	  edwin-command$imail-kill-flag
 	  edwin-command$imail-last-message
 	  edwin-command$imail-mail
@@ -256,16 +259,20 @@
 	  edwin-command$imail-undelete-previous-message
 	  edwin-mode$imail
 	  edwin-mode$imail-summary
+	  edwin-variable$imail-auto-wrap
+	  edwin-variable$imail-auto-wrap-mime-encoded
 	  edwin-variable$imail-default-dont-reply-to-names
 	  edwin-variable$imail-default-imap-mailbox
 	  edwin-variable$imail-default-imap-server
 	  edwin-variable$imail-default-user-id
 	  edwin-variable$imail-delete-after-output
 	  edwin-variable$imail-dont-reply-to-names
+	  edwin-variable$imail-expunge-confirmation
 	  edwin-variable$imail-ignored-headers
 	  edwin-variable$imail-kept-headers
 	  edwin-variable$imail-message-filter
 	  edwin-variable$imail-mode-hook
+	  edwin-variable$imail-pass-phrase-retention-time
 	  edwin-variable$imail-primary-folder
 	  edwin-variable$imail-receive-mime
 	  edwin-variable$imail-reply-with-re
@@ -273,9 +280,8 @@
 	  edwin-variable$imail-summary-mode-hook
 	  edwin-variable$imail-summary-pop-up-message
 	  edwin-variable$imail-summary-show-date
-	  edwin-variable$imail-summary-subject-width)
-  |#
-  )
+	  edwin-variable$imail-summary-subject-width
+	  edwin-variable$imail-update-interval))
 
 (define-package (edwin imail mime-codec)
   (files "mime-codec")
