@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 13.45 1987/08/06 19:29:19 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 13.46 1987/08/10 20:26:15 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -61,12 +61,17 @@
    bit-substring-find-next-set-bit))
 
 (define (bit-string-append x y)
+  (declare (integrate x y))
   (let ((x-length (bit-string-length x))
 	(y-length (bit-string-length y)))
     (let ((result (bit-string-allocate (+ x-length y-length))))
       (bit-substring-move-right! x 0 x-length result 0)
       (bit-substring-move-right! y 0 y-length result x-length)
       result)))
+
+(define (bit-string-append-reversed x y)
+  (declare (integrate bit-string-append))
+  (bit-string-append y x))
 
 (define (bit-substring bit-string start end)
   (let ((result (bit-string-allocate (- end start))))
