@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.7 1987/07/22 21:54:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.8 1987/07/30 14:59:49 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -69,21 +69,11 @@ long
 compiled_entry_to_block_offset(ce)
      Pointer ce;
 {
-#ifdef Get_Compiled_Offset
-
   Pointer *address;
-  long offset;
 
   address = Get_Pointer(ce);
-  Get_Compiled_Offset(offset, address);
-  return offset;
-
-#else
-
-  error_external_return();
-  /*NOTREACHED*/
-
-#endif
+  return (((unsigned long) address) -
+	  ((unsigned long) compiled_entry_to_block_address(address)));
 }
 
 Built_In_Primitive (Prim_comp_code_address_block, 1,
