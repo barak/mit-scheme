@@ -88,6 +88,8 @@
 		syntax-table/system-internal)
     ("io"	(runtime primitive-io)
 		syntax-table/system-internal)
+    ("krypt"	(runtime krypt)
+		syntax-table/system-internal)
     ("lambda"	(runtime lambda-abstraction)
 		syntax-table/system-internal)
     ("lambdx"	()
