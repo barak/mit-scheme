@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.28 1990/03/12 23:20:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.29 1990/03/13 00:20:45 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -390,10 +390,9 @@ MIT in each case. |#
     (lambda (target)
       (LAP
        ,(if (eq? type 'FLOAT)
-	    (let ((source (standard-register-reference source type false)))
-	      (if (effective-address/float-register? source)
-		  (INST (FMOVE ,source ,target))
-		  (INST (FMOVE D ,source ,target))))
+	    (load-float-register
+	     (standard-register-reference source type false)
+	     target)
 	    (INST (MOV L
 		       ,(standard-register-reference source type true)
 		       ,target)))
@@ -408,7 +407,7 @@ MIT in each case. |#
 	   (let ((temp (reference-temporary-register! type)))
 	     (LAP ,@(operate-on-machine-target temp)
 		  ,(if (eq? type 'FLOAT)
-		       (INST (FMOVE ,temp ,target))
+		       (load-float-register temp target)
 		       (INST (MOV L ,temp ,target))))))))
     (case (rtl:expression-type target)
       ((REGISTER)
@@ -423,6 +422,11 @@ MIT in each case. |#
 	(use-temporary (offset->indirect-reference! target)))
        (else
 	(error "Illegal machine target" target)))))
+
+(define (load-float-register source target)
+  (if (effective-address/float-register? source)
+      (INST (FMOVE ,source ,target))
+      (INST (FMOVE D ,source ,target))))
 
 (define (reuse-and-operate-on-machine-target! type target operate-on-target)
   (reuse-machine-target! type target
@@ -442,7 +446,7 @@ MIT in each case. |#
   (let ((worst-case
 	 (lambda (target source1 source2)
 	   (LAP ,(if (eq? target-type 'FLOAT)
-		     (INST (FMOVE ,source1 ,target))
+		     (load-float-register source1 target)
 		     (INST (MOV L ,source1 ,target)))
 		,@(operate target source2)))))
     (reuse-machine-target! target-type target
