@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.17 1990/06/28 16:35:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.18 1990/08/21 04:18:47 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -136,10 +136,12 @@ MIT in each case. |#
 	     (discriminate-compiled-entry entry
 	       find-procedure
 	       (lambda ()
-		 (vector-binary-search (dbg-info/continuations dbg-info)
-				       <
-				       dbg-continuation/label-offset
-				       offset))	       (lambda ()
+		 (or (vector-binary-search (dbg-info/continuations dbg-info)
+					   <
+					   dbg-continuation/label-offset
+					   offset)
+		     (find-procedure)))
+	       (lambda ()
 		 (let ((expression (dbg-info/expression dbg-info)))
 		   (if (= offset (dbg-expression/label-offset expression))
 		       expression

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.72 1990/07/20 01:21:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.73 1990/08/21 04:18:57 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -245,8 +245,11 @@ MIT in each case. |#
 	  dbg-block/stack-link
 	  dbg-block/static-link-index
 	  dbg-block/type
+	  dbg-continuation?
 	  dbg-continuation/block
 	  dbg-continuation/offset
+	  dbg-expression?
+	  dbg-procedure?
 	  dbg-procedure/block
 	  dbg-procedure/name
 	  dbg-procedure/required
@@ -258,7 +261,12 @@ MIT in each case. |#
 	  dbg-variable/value
 	  dbg-variable?)
   (export (runtime debugging-info)
-	  dbg-continuation/source-code)
+	  dbg-continuation?
+	  dbg-continuation/source-code
+	  dbg-procedure?
+	  dbg-procedure/source-code
+	  dbg-expression?
+	  )
   (initialization (initialize-package!)))
 
 (define-package (runtime console-input)
@@ -330,7 +338,11 @@ MIT in each case. |#
 	  stack-frame/type
 	  stack-frame?)
   (export (runtime debugger)
-	  stack-frame/compiled-code?)  (initialization (initialize-package!)))
+	  stack-frame/compiled-code?)
+  (export (runtime debugging-info)
+	  stack-frame-type/interrupt-compiled-procedure
+	  stack-frame-type/interrupt-compiled-expression)
+  (initialization (initialize-package!)))
 
 (define-package (runtime control-point)
   (files "cpoint")

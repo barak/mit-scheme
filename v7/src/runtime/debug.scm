@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.17 1989/12/19 15:37:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.18 1990/08/21 04:18:33 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -559,11 +559,14 @@ MIT in each case. |#
 		(return value))))
 	(debugger-failure "Can't continue!!!"))))
 
+(define *dstate*)
+
 (define (command/internal dstate)
-  dstate				;ignore
-  (debug/read-eval-print (->environment '(RUNTIME DEBUGGER))
-			 "You are now in the debugger environment"
-			 "Debugger-->"))
+  (fluid-let ((*dstate* dstate))
+    (debug/read-eval-print (->environment '(RUNTIME DEBUGGER))
+			   "You are now in the debugger environment"
+			   "Debugger-->")))
+
 (define (command/frame dstate)
   (presentation
    (lambda ()

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.13 1990/06/07 19:55:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.14 1990/08/21 04:19:05 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -124,10 +124,25 @@ MIT in each case. |#
   (let ((info ((ucode-primitive compiled-entry-kind 1) object)))
     (if (not (= (system-hunk3-cxr0 info) 0))
 	(error "COMPILED-PROCEDURE-ARITY: bad compiled procedure" object))
+    ;; max = (-1)^tail? * (1 + req + opt + tail?)
+    ;; min = (1 + req)
     (cons (-1+ (system-hunk3-cxr1 info))
 	  (let ((max (system-hunk3-cxr2 info)))
 	    (and (not (negative? max))
 		 (-1+ max))))))
+
+(define (compiled-procedure-frame-size procedure)
+  (let ((info ((ucode-primitive compiled-entry-kind 1) procedure)))
+    (if (not (= (system-hunk3-cxr0 info) 0))
+	(error "COMPILED-PROCEDURE-FRAME-SIZE: bad compiled procedure"
+	       procedure))
+    (let ((max (system-hunk3-cxr2 info)))
+      ;; max = (-1)^tail? * (1 + req + opt + tail?)
+      ;; frame = req + opt + tail?
+      (if (negative? max)
+	  (- -1 max)
+	  (-1+ max)))))
+
 (define (compiled-continuation/next-continuation-offset entry)
   (let ((offset
 	 (system-hunk3-cxr2 ((ucode-primitive compiled-entry-kind 1) entry))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.18 1990/08/07 20:11:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.19 1990/08/21 04:19:12 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -279,26 +279,47 @@ MIT in each case. |#
   (start-index false read-only true))
 
 (define (stack-frame/environment frame default)
-  (let ((continuation
-	 (compiled-entry/dbg-object (stack-frame/return-address frame))))
-    (if continuation
-	(let ((block (dbg-continuation/block continuation)))
-	  (let ((parent (dbg-block/parent block)))
-	    (case (dbg-block/type parent)
-	      ((STACK)
-	       (make-stack-ccenv
-		parent
-		frame
-		(+ (dbg-continuation/offset continuation)
-		   (vector-length (dbg-block/layout-vector block)))))
-	      ((IC)
-	       (let ((index (dbg-block/ic-parent-index block)))
-		 (if index
-		     (guarantee-ic-environment (stack-frame/ref frame index))
-		     default)))
-	      (else
-	       (error "Illegal continuation parent block" parent)))))
-	default)))
+  (let* ((ret-add (stack-frame/return-address frame))
+	 (object (compiled-entry/dbg-object ret-add)))
+    (cond ((not object)
+	   default)
+	  ((dbg-continuation? object)
+	   (let ((block (dbg-continuation/block object)))
+	     (let ((parent (dbg-block/parent block)))
+	       (case (dbg-block/type parent)
+		 ((STACK)
+		  (make-stack-ccenv
+		   parent
+		   frame
+		   (+ (dbg-continuation/offset object)
+		      (vector-length (dbg-block/layout-vector block)))))
+		 ((IC)
+		  (let ((index (dbg-block/ic-parent-index block)))
+		    (if index
+			(guarantee-ic-environment (stack-frame/ref frame index))
+			default)))
+		 (else
+		  (error "Illegal continuation parent block" parent))))))
+	  ((dbg-procedure? object)
+	   (let ((block (dbg-procedure/block object)))
+	     (case (dbg-block/type block)
+	       ((STACK)
+		(make-stack-ccenv
+		 block
+		 frame
+		 (if (compiled-closure? ret-add)
+		     0
+		     1)))
+	       (else
+		(error "Illegal procedure block" block)))))
+	  #|
+	  ((dbg-expression? object)
+	   ;; for now
+	   default)
+	  |#
+	  (else
+	   default))))
+
 (define (compiled-procedure/environment entry)
   (let ((procedure (compiled-entry/dbg-object entry)))
     (if (not procedure)

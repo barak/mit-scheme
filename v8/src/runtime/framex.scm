@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/framex.scm,v 14.10 1990/01/29 22:34:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/framex.scm,v 14.11 1990/08/21 04:18:40 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -108,26 +108,36 @@ MIT in each case. |#
 
 (define (method/compiled-code frame)
   (values
-   (let ((continuation
+   (let ((object
 	  (compiled-entry/dbg-object (stack-frame/return-address frame)))
 	 (lose (lambda () compiled-code)))
-     (if continuation
-	 (let ((source-code (dbg-continuation/source-code continuation)))
-	   (if (and (vector? source-code)
-		    (not (zero? (vector-length source-code))))
-	       (case (vector-ref source-code 0)
-		 ((SEQUENCE-2-SECOND
-		   SEQUENCE-3-SECOND
-		   SEQUENCE-3-THIRD
-		   CONDITIONAL-DECIDE
-		   ASSIGNMENT-CONTINUE
-		   DEFINITION-CONTINUE
-		   COMBINATION-OPERAND)
-		  (vector-ref source-code 1))
-		 (else
-		  (lose)))
-	       (lose)))
-	 (lose)))
+     (cond ((not object)
+	    (lose))
+	   ((dbg-continuation? object)
+	    (let ((source-code (dbg-continuation/source-code object)))
+	      (if (and (vector? source-code)
+		       (not (zero? (vector-length source-code))))
+		  (case (vector-ref source-code 0)
+		    ((SEQUENCE-2-SECOND
+		      SEQUENCE-3-SECOND
+		      SEQUENCE-3-THIRD
+		      CONDITIONAL-DECIDE
+		      ASSIGNMENT-CONTINUE
+		      DEFINITION-CONTINUE
+		      COMBINATION-OPERAND)
+		     (vector-ref source-code 1))
+		    (else
+		     (lose)))
+		  (lose))))
+	   ((dbg-procedure? object)
+	    (lambda-body (dbg-procedure/source-code object)))
+	   #|
+	   ((dbg-expression? object)
+	    ;; no expression!
+	    (lose))
+	   |#
+	   (else
+	    (lose))))
    (stack-frame/environment frame undefined-environment)))
 
 (define (method/primitive-combination-3-first-operand frame)
@@ -289,7 +299,13 @@ MIT in each case. |#
 
 	    (,method/hardware-trap
 	     HARDWARE-TRAP)))
-  (1d-table/put!
-   (stack-frame-type/properties stack-frame-type/compiled-return-address)
-   method-tag
-   method/compiled-code))
+  (for-each
+   (lambda (type)
+     (1d-table/put!
+      (stack-frame-type/properties type)
+      method-tag
+      method/compiled-code))
+   (list
+    stack-frame-type/compiled-return-address
+    stack-frame-type/interrupt-compiled-procedure
+    stack-frame-type/interrupt-compiled-expression)))

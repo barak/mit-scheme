@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.16 1990/08/08 00:57:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.17 1990/08/21 04:18:26 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -140,7 +140,8 @@ MIT in each case. |#
   (previous-history-control-point false read-only true)
   (element-stream false read-only true)
   (n-elements false read-only true)
-  (next-control-point false read-only true))
+  (next-control-point false read-only true)
+  (allow-next-extended? false read-only true))
 
 (define (continuation->stack-frame continuation)
   (parse/control-point (continuation/control-point continuation)
@@ -159,14 +160,16 @@ MIT in each case. |#
 	 (control-point/previous-history-control-point control-point)
 	 (control-point/element-stream control-point)
 	 (control-point/n-elements control-point)
-	 (control-point/next-control-point control-point)))))
+	 (control-point/next-control-point control-point)
+	 false))))
 
 (define (parse/start state)
   (let ((stream (parser-state/element-stream state)))
     (if (stream-pair? stream)
 	(let ((type
 	       (return-address->stack-frame-type
-		(element-stream/head stream))))
+		(element-stream/head stream)
+		(parser-state/allow-next-extended? state))))
 	  (let ((length
 		 (let ((length (stack-frame-type/length type)))
 		   (if (exact-nonnegative-integer? length)
@@ -175,12 +178,13 @@ MIT in each case. |#
 	    ((stack-frame-type/parser type)
 	     type
 	     (list->vector (stream-head stream length))
-	     (parse/next-state state length (stream-tail stream length)))))
+	     (parse/next-state state length (stream-tail stream length)
+			       (stack-frame-type/allow-extended? type)))))
 	(parse/control-point (parser-state/next-control-point state)
 			     (parser-state/dynamic-state state)
 			     (parser-state/fluid-bindings state)))))
 
-(define (parse/next-state state length stream)
+(define (parse/next-state state length stream allow-extended?)
   (let ((previous-history-control-point
 	 (parser-state/previous-history-control-point state)))
     (make-parser-state
@@ -195,7 +199,8 @@ MIT in each case. |#
      previous-history-control-point
      stream
      (- (parser-state/n-elements state) length)
-     (parser-state/next-control-point state))))
+     (parser-state/next-control-point state)
+     allow-extended?)))
 
 (define (make-frame type elements state element-stream n-elements)
   (let ((history-subproblem?
@@ -227,7 +232,8 @@ MIT in each case. |#
 		       previous-history-control-point
 		       element-stream
 		       n-elements
-		       (parser-state/next-control-point state)))))
+		       (parser-state/next-control-point state)
+		       (stack-frame-type/allow-extended? type)))))
 
 (define (element-stream/head stream)
   (if (not (stream-pair? stream)) (error "not a stream-pair" stream))
@@ -312,11 +318,16 @@ MIT in each case. |#
 	  (1+ frame-size)
 	  (stack-address->index (element-stream/ref stream 1) offset)))))
 
+(define (length/interrupt-compiled-procedure stream offset)
+  offset				; ignored
+  (1+ (compiled-procedure-frame-size (element-stream/head stream))))
+
 (define (verify paranoia-index stream offset)
   (or (zero? paranoia-index)
       (stream-null? stream)
       (let* ((type (return-address->stack-frame-type
-		    (element-stream/head stream)))
+		    (element-stream/head stream)
+		    false))
 	     (length
 	      (let ((length (stack-frame-type/length type)))
 		(if (exact-nonnegative-integer? length)
@@ -325,10 +336,9 @@ MIT in each case. |#
 	     (ltail (stream-tail* stream length)))
 	(and ltail
 	     (return-address? (element-stream/head ltail))
-	     (verify (-1+ paranoia-index)
-		     ltail
-		     (+ offset length))))))
-
+	     (loop (-1+ paranoia-index)
+		   ltail
+		   (+ offset length))))))
 (define (stream-tail* stream n)
   (cond ((or (zero? n) (stream-null? stream))
 	 stream)
@@ -366,7 +376,8 @@ MIT in each case. |#
 		      previous-history-control-point
 		      (parser-state/element-stream state)
 		      (parser-state/n-elements state)
-		      (parser-state/next-control-point state))))
+		      (parser-state/next-control-point state)
+		      false)))
 
 (define (parser/restore-dynamic-state type elements state)
   (make-restore-frame type elements state
@@ -427,12 +438,21 @@ MIT in each case. |#
   (length false read-only true)
   (parser false read-only true))
 
+(define allow-extended-return-addresses?-tag
+  "stack-frame-type/allow-extended")
+
+(define (stack-frame-type/allow-extended? type)
+  (1d-table/get
+   (stack-frame-type/properties type)
+   allow-extended-return-addresses?-tag
+   false))
+
 (define (microcode-return/code->type code)
   (if (not (< code (vector-length stack-frame-types)))
       (error "return-code too large" code))
   (vector-ref stack-frame-types code))
 
-(define (return-address->stack-frame-type return-address)
+(define (return-address->stack-frame-type return-address allow-extended?)
   (cond ((interpreter-return-address? return-address)
 	 (let ((code (return-address/code return-address)))
 	   (let ((type (microcode-return/code->type code)))
@@ -444,6 +464,10 @@ MIT in each case. |#
 	      return-address)
 	     stack-frame-type/return-to-interpreter
 	     stack-frame-type/compiled-return-address))
+	((and allow-extended? (compiled-procedure? return-address))
+	 stack-frame-type/interrupt-compiled-procedure)
+	((and allow-extended? (compiled-expression? return-address))
+	 stack-frame-type/interrupt-compiled-expression)
 	(else
 	 (error "illegal return address" return-address))))
 
@@ -467,6 +491,19 @@ MIT in each case. |#
 			       true
 			       1
 			       parser/standard-next))
+  (set! stack-frame-type/interrupt-compiled-procedure
+	(make-stack-frame-type false
+			       true
+			       false
+			       length/interrupt-compiled-procedure
+			       parser/standard-next))
+  (set! stack-frame-type/interrupt-compiled-expression
+	(make-stack-frame-type false
+			       true
+			       false
+			       1
+			       parser/standard-next))
+  
   (set! word-size
 	(let ((initial (system-vector-length (make-bit-string 1 #f))))
 	  (let loop ((size 2))
@@ -480,6 +517,8 @@ MIT in each case. |#
 (define stack-frame-type/compiled-return-address)
 (define stack-frame-type/return-to-interpreter)
 (define stack-frame-type/hardware-trap)
+(define stack-frame-type/interrupt-compiled-procedure)
+(define stack-frame-type/interrupt-compiled-expression)
 
 (define (make-stack-frame-types)
   (let ((types (make-vector (microcode-return/code-limit) false)))
@@ -488,11 +527,11 @@ MIT in each case. |#
 			      history-subproblem?
 			      length parser)
       (let ((code (microcode-return name)))
-	(vector-set! types
-		     code
-		     (make-stack-frame-type code subproblem?
-					    history-subproblem?
-					    length parser))))
+	(let ((type (make-stack-frame-type code subproblem?
+					   history-subproblem?
+					   length parser)))
+	  (vector-set! types code type)
+	  type)))
 
     (define (standard-frame name length #!optional parser)
       (stack-frame-type name
@@ -564,7 +603,13 @@ MIT in each case. |#
 	(compiler-subproblem 'COMPILER-LOOKUP-APPLY-TRAP-RESTART length)
 	(compiler-subproblem 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART length))
 
-      (compiler-frame 'COMPILER-INTERRUPT-RESTART 3)      (compiler-frame 'COMPILER-LINK-CACHES-RESTART 8)
+      (let ((type
+	     (compiler-frame 'COMPILER-INTERRUPT-RESTART 3)))
+	(1d-table/put! (stack-frame-type/properties type)
+		       allow-extended-return-addresses?-tag
+		       true))
+
+      (compiler-frame 'COMPILER-LINK-CACHES-RESTART 8)
       (compiler-frame 'REENTER-COMPILED-CODE 2)
 
       (compiler-subproblem 'COMPILER-ACCESS-RESTART 4)
