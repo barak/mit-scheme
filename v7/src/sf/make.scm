@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.36 2000/03/16 17:29:55 cph Exp $
+$Id: make.scm,v 4.37 2001/07/19 18:25:22 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SCode Optimizer: System Construction
@@ -34,4 +35,4 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (package/system-loader "sf" '() 'QUERY)))
     ((package/reference (find-package '(SCODE-OPTIMIZER))
 			'USUAL-INTEGRATIONS/CACHE!))))
-(add-subsystem-identification! "SF" '(4 36))
+(add-subsystem-identification! "SF" '(4 37))

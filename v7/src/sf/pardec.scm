@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pardec.scm,v 4.11 1999/01/02 06:06:43 cph Exp $
+$Id: pardec.scm,v 4.12 2001/07/19 18:24:33 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SCode Optimizer: Parse Declarations
@@ -28,10 +29,28 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Main Entry Points
 
 (define (declarations/parse block declarations)
-  (make-declaration-set declarations
-			(append-map (lambda (declaration)
-				      (parse-declaration block declaration))
-				    declarations)))
+  (let ((declarations (merge-usual-integrations declarations)))
+    (make-declaration-set declarations
+			  (append-map (lambda (declaration)
+					(parse-declaration block declaration))
+				      declarations))))
+
+(define (merge-usual-integrations declarations)
+  (let loop ((declarations declarations) (exclusions 'NONE) (other '()))
+    (if (pair? declarations)
+	(if (eq? (caar declarations) 'USUAL-INTEGRATIONS)
+	    (loop (cdr declarations)
+		  (if (eq? exclusions 'NONE)
+		      (cdar declarations)
+		      (append exclusions (cdar declarations)))
+		  other)
+	    (loop (cdr declarations)
+		  exclusions
+		  (cons (car declarations) other)))
+	(if (eq? exclusions 'NONE)
+	    (reverse! other)
+	    (cons `(USUAL-INTEGRATIONS ,@exclusions)
+		  (reverse! other))))))
 
 (define (declarations/make-null)
   (make-declaration-set '() '()))
@@ -79,8 +98,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     "#[(scode-optimizer declarations)declaration-set]"))
 		   (constructor make-declaration-set)
 		   (conc-name declaration-set/))
-  (original false read-only true)
-  (declarations false read-only true))
+  (original #f read-only #t)
+  (declarations #f read-only #t))
 
 (define-structure (declaration
 		   (type vector)
@@ -91,24 +110,24 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (conc-name declaration/))
   ;; OPERATION is the name of the operation that is to be performed by
   ;; this declaration.
-  (operation false read-only true)
+  (operation #f read-only #t)
 
   ;; The variable that this declaration affects.
-  (variable false read-only true)
+  (variable #f read-only #t)
 
   ;; The value associated with this declaration.  The meaning of this
   ;; field depends on OPERATION.
-  (value false read-only true)
+  (value #f read-only #t)
 
   ;; OVERRIDABLE? means that a user-defined variable of the same name
   ;; will override this declaration.  It also means that this
   ;; declaration should not be written out to the ".ext" file.
-  (overridable? false read-only true))
+  (overridable? #f read-only #t))
 
 (define (make-declarations operation variables values overridable?)
   (if (eq? values 'NO-VALUES)
       (map (lambda (variable)
-	     (make-declaration operation variable false overridable?))
+	     (make-declaration operation variable #f overridable?))
 	   variables)
       (map (lambda (variable value)
 	     (make-declaration operation variable value overridable?))
@@ -169,13 +188,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (constructor
 	     (lambda (operation)
 	       (lambda (name value)
-		 (let ((variable (block/lookup-name block name false)))
+		 (let ((variable (block/lookup-name block name #f)))
 		   (if variable
 		       (set! declarations
 			     (cons (make-declaration operation
 						     variable
 						     value
-						     true)
+						     #t)
 				   declarations))
 		       (set! remaining
 			     (cons (vector operation name value)
@@ -208,16 +227,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (vector-ref remaining 0)
 		 (variable/make&bind! top-level-block (vector-ref remaining 1))
 		 (vector-ref remaining 2)
-		 true)))
+		 #t)))
 	    remaining))))
 
 (define (define-integration-declaration operation)
   (define-declaration operation
     (lambda (block names)
       (make-declarations operation
-			 (block/lookup-names block names true)
+			 (block/lookup-names block names #t)
 			 'NO-VALUES
-			 false))))
+			 #f))))
 
 (define-integration-declaration 'INTEGRATE)
 (define-integration-declaration 'INTEGRATE-OPERATOR)
@@ -249,7 +268,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					     name)
 					 (make-integration-info
 					  (copy/expression/extern block value))
-					 true))))))
+					 #t))))))
 	    externs))))
      (append-map (lambda (specification)
 		   (let ((value
@@ -263,10 +282,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 specifications))))
 
 (define (operations->external operations environment)
-  (let ((block (block/make false false '())))
+  (let ((block (block/make #f #f '())))
     (values
      block
-     (delq! false
+     (delq! #f
 	    (operations/map-external operations
 	      (lambda (operation variable value)
 		(let ((finish
@@ -278,7 +297,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 (variable/final-value variable
 					       environment
 					       finish
-					       (lambda () false)))
+					       (lambda () #f)))
 			((integration-info? value)
 			 (finish (integration-info/expression value)))
 			((dumpable-expander? value)
@@ -313,7 +332,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (for-each (lambda (variable)
 		(if variable
 		    (variable/can-ignore! variable)))
-	      (block/lookup-names block names false))
+	      (block/lookup-names block names #f))
     '()))
 
 ;;;; Reductions and Expansions
@@ -324,10 +343,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (check-declaration-syntax 'REDUCE-OPERATOR reduction-rules)
     (map (lambda (rule)
 	   (make-declaration 'EXPAND
-			     (block/lookup-name block (car rule) true)
+			     (block/lookup-name block (car rule) #t)
 			     (make-dumpable-expander (reducer/make rule block)
 						     `(REDUCE-OPERATOR ,rule))
-			     false))
+			     #f))
 	 reduction-rules)))
 
 (define (check-declaration-syntax kind declarations)
@@ -360,7 +379,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    'EXPAND
 	    (let ((name (car replacement)))
 	      (cond ((symbol? name)
-		     (block/lookup-name block name true))
+		     (block/lookup-name block name #t))
 		    ((and (pair? name)
 			  (eq? (car name) 'PRIMITIVE))
 		     (make-primitive-procedure (cadr name)
@@ -371,7 +390,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (make-dumpable-expander
 	     (replacement/make replacement block)
 	     `(REPLACE-OPERATOR ,replacement))
-	    false))
+	    #f))
 	 replacements)))
 
 (define (make-dumpable-expander expander declaration)
@@ -408,8 +427,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     block				;ignored
     (map (lambda (expander)
 	   (make-declaration 'EXPAND
-			     (block/lookup-name block (car expander) true)
+			     (block/lookup-name block (car expander) #t)
 			     (eval (cadr expander)
 				   expander-evaluation-environment)
-			     false))
+			     #f))
 	 expanders)))
