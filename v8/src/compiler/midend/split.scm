@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: split.scm,v 1.4 1995/03/20 02:01:39 adams Exp $
+$Id: split.scm,v 1.5 1995/08/19 22:42:51 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -249,14 +249,35 @@ MIT in each case. |#
 
 (define (find-lambda-drift-frame code)
   (define (loop previous code)
+
     (define (insert-LETREC!)
-      (let ((old-body (let/body previous)))
-	(if (LETREC/?  old-body)
-	    old-body
-	    (let ((result `(LETREC () ,old-body)))
-	      (split/remember* result previous)
-	      (form/rewrite! previous `(LET ,(let/bindings previous) ,result))
-	      result))))
+      (cond ((LET/? previous)
+	     (let ((old-body (let/body previous)))
+	       (if (LETREC/?  old-body)
+		   old-body
+		   (let ((new-body `(LETREC () ,old-body)))
+		     (split/remember* new-body previous)
+		     (form/rewrite! previous
+		       `(LET ,(let/bindings previous) ,new-body))
+		     new-body))))
+	    ((CALL/? previous)
+	     (let* ((lambda-expr (call/operator previous))
+		    (old-body    (lambda/body lambda-expr)))
+	       (if (LETREC/?  old-body)
+		   old-body
+		   (let ((new-body `(LETREC () ,old-body)))		     
+		     (split/remember* new-body previous)
+		     (form/rewrite! previous
+		       `(CALL (LAMBDA ,(lambda/formals lambda-expr)
+				,new-body)
+			      ,(call/continuation previous)
+			      ,@(call/operands previous)))
+		     new-body))))
+	    ((LETREC/? previous)
+	     previous)
+	    (else (internal-error "Unexpected binding form for inserting LETREC"
+				  previous))))
+
     ;; Unwrap all static (and pseudo-static) bindings, and force the
     ;; next level to be a LETREC.  Return a pointer to the LETREC.
     (cond ((LET/? code)
@@ -268,6 +289,15 @@ MIT in each case. |#
 		       (form/static? value))))
 		 (loop code body)
 		 (insert-LETREC!))))
+	  ((and (CALL/? code)
+		(LAMBDA/? (call/operator code))
+		(equal? (call/continuation code) '(QUOTE #F)))
+	   (if (for-all? (call/operands code) form/static?)
+	       (loop code (lambda/body (call/operator code)))
+	       (insert-letrec!)))
+	  ((and (LETREC/? code)
+		(null? (letrec/bindings code)))
+	   (loop code (letrec/body code)))
 	  (else (insert-LETREC!))))
 
   (if (not (and (LET/? code) (null? (let/bindings code))))
