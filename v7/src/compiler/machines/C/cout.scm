@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.15 1993/11/13 19:24:04 gjr Exp $
+$Id: cout.scm,v 1.16 1993/11/15 05:59:13 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -89,7 +89,7 @@ MIT in each case. |#
 			    suffix))
 	    ((not path)
 	     (string-append default suffix time-stamp))
-	    ((string-null? suffix)
+	    ((or (string-null? suffix) *disable-timestamps?*)
 	     (let ((dir (pathname-directory path)))
 	       (string-append (if (or (not dir) (null? dir))
 				  default
@@ -97,7 +97,8 @@ MIT in each case. |#
 				   (car (last-pair dir))))
 			      "_"
 			      (canonicalize-label-name (pathname-name path))
-			      midfix)))
+			      midfix
+			      suffix)))
 	    (else
 	     (string-append (canonicalize-label-name (pathname-name path))
 			    "_"
