@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.19 1992/02/17 22:38:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.20 1992/02/18 04:35:56 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -142,17 +142,19 @@ MIT in each case. |#
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? register)))
-  (fixnum-branch! predicate)
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
   (LAP (CMP W ,(source-register-reference register) (& 0))))
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (OBJECT->FIXNUM (REGISTER (? register))))
+  (QUALIFIER (or (eq? predicate 'NEGATIVE-FIXNUM?)
+		 (eq? predicate 'ZERO-FIXNUM?)))
   (fixnum-branch! predicate)
   (object->fixnum (standard-move-to-temporary! register)))
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (OFFSET (REGISTER (? address)) (? offset)))
-  (fixnum-branch! predicate)
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
   (LAP (CMP W ,(source-indirect-reference! address offset) (& 0))))
 
 (define-rule predicate
@@ -526,8 +528,7 @@ MIT in each case. |#
 	    (LAP ,@load-dividend
 		 (MOV W (R ,edx) (R ,eax))
 		 (SAR W (R ,edx) (& 31))
-		 (IDIV W (R ,eax) ,source2)
-		 (SAL W (R ,edx) (& ,scheme-type-width))))))))
+		 (IDIV W (R ,eax) ,source2)))))))
 
 (define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -629,25 +630,33 @@ MIT in each case. |#
 	     (load-fixnum-constant 0 target))
 	    ((integer-power-of-2? n)
 	     (let ((sign (temporary-register-reference))
-		   (label (generate-label 'REM-MERGE))
-		   (mask (-1+ (* n fixnum-1))))
+		   (label (generate-label 'REM-MERGE)))
 	       ;; This may produce a branch to a branch, but a
 	       ;; peephole optimizer should be able to fix this.
 	       (LAP (MOV W ,sign ,target)
-		    (AND W ,target (& ,mask))
+		    (AND W ,target (& ,(* (-1+ n) fixnum-1)))
 		    (JZ B (@PCR ,label))
 		    (SAR W ,sign (& ,(-1+ scheme-object-width)))
-		    (XOR W ,sign (& ,mask))
+		    (AND W ,sign (& ,(* n (- 0 fixnum-1))))
 		    (OR W ,target ,sign)
 		    (LABEL ,label))))
 	    (else
 	     (error "Fixnum-remainder/constant: Bad value" n))))))
 
+(define (fixnum-predicate/unary->binary predicate)
+  (case predicate
+    ((ZERO-FIXNUM?) 'EQUAL-FIXNUM?)
+    ((NEGATIVE-FIXNUM?) 'LESS-THAN-FIXNUM?)
+    ((POSITIVE-FIXNUM?) 'GREATER-THAN-FIXNUM?)
+    (else
+     (error "fixnum-predicate/unary->binary: Unknown unary predicate"
+	    predicate))))
+
 (define (commute-fixnum-predicate predicate)
   (case predicate
-    ((EQUAL-FIXNUM? ZERO-FIXNUM?) 'EQUAL-FIXNUM?)
-    ((LESS-THAN-FIXNUM? NEGATIVE-FIXNUM?) 'GREATER-THAN-FIXNUM?)
-    ((GREATER-THAN-FIXNUM? POSITIVE-FIXNUM?) 'LESS-THAN-FIXNUM?)
+    ((EQUAL-FIXNUM?) 'EQUAL-FIXNUM?)
+    ((LESS-THAN-FIXNUM?) 'GREATER-THAN-FIXNUM?)
+    ((GREATER-THAN-FIXNUM?) 'LESS-THAN-FIXNUM?)
     (else
      (error "commute-fixnum-predicate: Unknown predicate"
 	    predicate))))
@@ -656,15 +665,22 @@ MIT in each case. |#
   (case predicate
     ((EQUAL-FIXNUM? ZERO-FIXNUM?)
      (set-equal-branches!))
-    ((LESS-THAN-FIXNUM? NEGATIVE-FIXNUM?)
+    ((LESS-THAN-FIXNUM?)
      (set-current-branches! (lambda (label)
 			      (LAP (JL (@PCR ,label))))
 			    (lambda (label)
 			      (LAP (JGE (@PCR ,label))))))
-    ((GREATER-THAN-FIXNUM? POSITIVE-FIXNUM?)
+    ((GREATER-THAN-FIXNUM?)
      (set-current-branches! (lambda (label)
 			      (LAP (JG (@PCR ,label))))
 			    (lambda (label)
 			      (LAP (JLE (@PCR ,label))))))
+    ((NEGATIVE-FIXNUM?)
+     (set-current-branches! (lambda (label)
+			      (LAP (JS (@PCR ,label))))
+			    (lambda (label)
+			      (LAP (JNS (@PCR ,label))))))
+    ((POSITIVE-FIXNUM?)
+     (error "fixnum-branch!: Cannot handle directly" predicate))
     (else
-     (error "FIXNUM-BRANCH!: Unknown predicate" predicate))))
+     (error "fixnum-branch!: Unknown predicate" predicate))))
