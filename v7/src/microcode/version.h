@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: version.h,v 11.164 1999/12/21 18:52:57 cph Exp $
+$Id: version.h,v 11.165 2000/01/10 04:47:54 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -24,7 +24,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 /* Scheme system release version */
 
 #ifndef RELEASE
-#define RELEASE		"7.5pre1"
+#define RELEASE		"7.5pre1.6"
 #endif
 
 /* Microcode release version */
@@ -33,5 +33,5 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define VERSION		11
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	164
+#define SUBVERSION	165
 #endif

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.26 1999/03/03 05:25:10 cph Exp $
+$Id: ntgui.c,v 1.27 2000/01/10 04:44:17 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -40,7 +40,6 @@ static SCHEME_OBJECT parse_event (SCREEN_EVENT *);
 void *xmalloc(int);
 void xfree(void*);
 
-#ifdef GUI
 int WINAPI
 WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -122,7 +121,6 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
     scheme_main (argc, ((const char **) argv));
     return (0);
 }
-#endif
 
 BOOL
 DEFUN (InitApplication, (hInstance), HANDLE hInstance)
@@ -130,24 +128,6 @@ DEFUN (InitApplication, (hInstance), HANDLE hInstance)
     static BOOL done = FALSE;
     if (done) return (TRUE);
     done = TRUE;
-
-#if 0
-    {
-      WNDCLASS wc;
-      (wc . style) = (CS_HREDRAW | CS_VREDRAW);
-      (wc . lpfnWndProc) = TranscriptWndProc;
-      (wc . cbClsExtra) = 0;
-      (wc . cbWndExtra) = (sizeof (Transcript *));
-      (wc . hInstance) = hInstance;
-      (wc . hIcon) = 0;
-      (wc . hCursor) = (LoadCursor (NULL, IDC_ARROW));
-      (wc . hbrBackground) = (GetStockObject (WHITE_BRUSH));
-      (wc . lpszMenuName) = transcript_class_name;
-      (wc . lpszClassName) = transcript_class_name;
-      return (RegisterClass (&wc));
-    }
-#endif
-
     return (Screen_InitApplication (hInstance));
 }
 
@@ -156,67 +136,20 @@ static BOOL instance_initialized = FALSE;
 BOOL
 DEFUN (InitInstance, (hInstance, nCmdShow), HANDLE hInstance AND int nCmdShow)
 {
-    instance_initialized = TRUE;
-#if 0
-    return (TRUE);
-#endif
-    return (Screen_InitInstance (hInstance, nCmdShow));
+  instance_initialized = TRUE;
+  return (Screen_InitInstance (hInstance, nCmdShow));
 }
-
-#if 0
-void
-DEFUN_VOID (nt_gui_default_poll)
-{
-  static int n = 0;
-#ifdef GUI
-  DWORD pending_types;
-  int events_processed = 0;
-
-  outf_console("\001");  outf_flush_console();
-  while ((events_processed < 5)
-	 && ((pending_types = GetQueueStatus(QS_INPUT)) >> 16))
-    {
-      MSG msg;
-      outf_console("GetQueueStatus() = 0x%08x\n", pending_types);
-      outf_console("GetMessage()\n");
-      outf_console("\360");  outf_flush_console();
-      GetMessage (&msg, 0, 0, 0);
-      TranslateMessage(&msg);
-      DispatchMessage(&msg);
-      outf_console("\361");  outf_flush_console();
-      events_processed ++;
-    }
-  outf_console("events_processed = %d\n", events_processed);
-  outf_console("\002");  outf_flush_console();
-#endif /* end GUI */
-}
-#endif /* end 0 */
-
-#if 0
-extern BOOL MIT_TranslateMessage (CONST MSG *);
-#endif
 
 void
 DEFUN_VOID (nt_gui_default_poll)
 {
-#ifdef GUI
-  MSG  msg;
+  MSG msg;
   int events_processed = 0;
-
-  while (
-#if 0
-	 (events_processed < 5) &&
-#endif
-	 (PeekMessage (&msg, 0, 0, 0, PM_REMOVE)))
+  while (PeekMessage ((&msg), 0, 0, 0, PM_REMOVE))
     {
-#if 0
-      MIT_TranslateMessage (&msg);
-#endif
-      TranslateMessage (&msg);
       DispatchMessage (&msg);
       events_processed += 1;
     }
-#endif
 }
 
 extern HANDLE master_tty_window;
@@ -260,14 +193,7 @@ nt_gui_high_priority_poll (void)
   if (PeekMessage (&close_msg, master_tty_window,
 		   WM_CATATONIC, (WM_CATATONIC + 1),
 		   PM_REMOVE))
-    {
-#if 0
-      MIT_TranslateMessage (&close_msg);
-#endif
-      TranslateMessage (&close_msg);
-      DispatchMessage (&close_msg);
-    }
-  return;
+    DispatchMessage (&close_msg);
 }
 
 DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER", Prim_microcode_poll_interrupt_handler, 2, 2,
@@ -300,7 +226,7 @@ DEFINE_PRIMITIVE ("NT-DEFAULT-POLL-GUI", Prim_nt_default_poll_gui, 2, 2, 0)
   PRIMITIVE_HEADER(2)
   {
     nt_gui_default_poll ();
-    PRIMITIVE_RETURN  (UNSPECIFIC);
+    PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
 
@@ -309,12 +235,13 @@ extern void EXFUN (NT_gui_init, (void));
 void
 DEFUN_VOID (NT_gui_init)
 {
-   if (!instance_initialized) {
-     if (!InitApplication (ghInstance))
-       outf_console ("InitApplication failed\n");
-     if (!InitInstance (ghInstance, SW_SHOWNORMAL))
-       outf_console ("InitInstance failed\n");
-   }
+  if (!instance_initialized)
+    {
+      if (!InitApplication (ghInstance))
+	outf_console ("InitApplication failed\n");
+      if (!InitInstance (ghInstance, SW_SHOWNORMAL))
+	outf_console ("InitInstance failed\n");
+    }
 }
 
 static long
@@ -829,7 +756,7 @@ xmalloc (int size)
 static void
 xfree (void *p)
 {
-    free (p);
+  free (p);
 }
 
 /* GUI utilities for debuggging .*/

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.18 1999/03/03 05:25:05 cph Exp $
+$Id: ntscreen.h,v 1.19 2000/01/10 04:44:25 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -121,6 +121,7 @@ typedef struct
 #define SCREEN_LEFT_ALT_PRESSED       0x0040
 #define SCREEN_RIGHT_ALT_PRESSED      0x0080
 #define SCREEN_NUMLOCK_ON             0x0100
+#define SCREEN_SCROLLLOCK_ON          0x0200
 #define SCREEN_ANY_ALT_KEY_MASK	      SCREEN_ALT_PRESSED
 
 /* button_state flags */
