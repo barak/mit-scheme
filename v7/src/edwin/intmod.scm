@@ -1,25 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: intmod.scm,v 1.117 2002/11/20 19:46:00 cph Exp $
-;;;
-;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: intmod.scm,v 1.118 2003/01/10 20:10:00 cph Exp $
+
+Copyright 1986,1989,1991,1992,1993,1999 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; Inferior REPL Mode
 ;;; Package: (edwin inferior-repl)
@@ -383,29 +385,28 @@ evaluated in the specified inferior REPL buffer."
 			   (loop))))))
 	      cmdl-interrupt/abort-top-level))
 	    ((PROMPT)
-	     (if (and (ref-variable debug-on-evaluation-error)
-		      (let ((start? (ref-variable debugger-start-on-error?)))
-			(if (eq? 'ASK start?)
-			    (let loop ()
-			      (fresh-line port)
-			      (write-string ";Start debugger? (y or n): " port)
-			      (let ((char
-				     (read-command-char port
-							(cmdl/level repl))))
-				(write-char char port)
-				(cond ((or (char-ci=? char #\y)
-					   (char-ci=? char #\space))
-				       (fresh-line port)
-				       (write-string ";Starting debugger..."
-						     port)
-				       #t)
-				      ((or (char-ci=? char #\n)
-					   (char-ci=? char #\rubout))
-				       #f)
-				      (else
-				       (beep port)
-				       (loop)))))
-			    start?)))
+	     (if (let ((start? (ref-variable debug-on-evaluation-error #f)))
+		   (if (eq? 'ASK start?)
+		       (let loop ()
+			 (fresh-line port)
+			 (write-string ";Start debugger? (y or n): " port)
+			 (let ((char
+				(read-command-char port
+						   (cmdl/level repl))))
+			   (write-char char port)
+			   (cond ((or (char-ci=? char #\y)
+				      (char-ci=? char #\space))
+				  (fresh-line port)
+				  (write-string ";Starting debugger..."
+						port)
+				  #t)
+				 ((or (char-ci=? char #\n)
+				      (char-ci=? char #\rubout))
+				  #f)
+				 (else
+				  (beep port)
+				  (loop)))))
+		       start?))
 		 (start-debugger))))))))
 
 ;;;; Modes

@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.283 2002/12/09 06:04:58 cph Exp $
+$Id: edwin.pkg,v 1.284 2003/01/10 20:09:46 cph Exp $
 
-Copyright (c) 1989-2002 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -813,9 +815,6 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define-package (edwin debugger)
   (files "debug")
   (parent (edwin))
-  (export ()
-	  with-break-on
-	  call-with-break)
   (export (edwin)
 	  debug-scheme-error
 	  edwin-command$browse-continuation
@@ -840,10 +839,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  edwin-variable$debugger-split-window?
 	  edwin-variable$debugger-start-new-frame?
 	  edwin-variable$debugger-start-new-screen?
-	  edwin-variable$debugger-start-on-error?
 	  edwin-variable$debugger-verbose-mode?
-	  edwin-variable$environment-package-limit
-	  maybe-debug-scheme-error)
+	  edwin-variable$environment-package-limit)
   (import (runtime debugger)
 	  command/condition-restart
 	  command/frame

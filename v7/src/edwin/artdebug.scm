@@ -1,25 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: artdebug.scm,v 1.31 2002/11/20 19:45:57 cph Exp $
-;;;
-;;; Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: artdebug.scm,v 1.32 2003/01/10 20:09:22 cph Exp $
+
+Copyright 1989,1990,1991,1992,1993,1998 Massachusetts Institute of Technology
+Copyright 1999,2001,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; Continuation Browser
 
@@ -108,13 +110,6 @@ will always create a new buffer."
   'ASK
   (lambda (value) (or (boolean? value) (eq? value 'ASK))))
 
-(define-variable debugger-start-on-error?
-  "True means always start the debugger on evaluation errors, false
-means never start the debugger on errors, and ASK means ask the user
-each time."
-  'ASK
-  (lambda (value) (or (boolean? value) (eq? value 'ASK))))
-
 (define-variable debugger-quit-on-return?
   "True means quit debugger when executing a \"return\" command."
   #t
@@ -165,36 +160,36 @@ or #F meaning no limit."
   #f
   boolean?)
 
-(define in-debugger? #f)
+(define starting-debugger? #f)
 (define in-debugger-evaluation? #f)
 
-(define (maybe-debug-scheme-error switch-variable condition error-type-name)
-  (if (variable-value switch-variable)
-      (debug-scheme-error condition error-type-name)))
-
-(define (debug-scheme-error condition error-type-name)
-  (cond (in-debugger?
+(define (debug-scheme-error error-type condition ask?)
+  (cond (starting-debugger?
 	 (quit-editor-and-signal-error condition))
-	((and (if in-debugger-evaluation?
-		  (ref-variable debugger-debug-evaluations?)
-		  (ref-variable debugger-start-on-error?))
-	      (or (not (eq? (ref-variable debugger-start-on-error?) 'ASK))
-		  (debug-scheme-error? condition error-type-name)))
-	 (fluid-let ((in-debugger? #t))
-	   ((if (ref-variable debugger-split-window?)
-		select-buffer-other-window
-		select-buffer)
-	    (continuation-browser-buffer condition)))
-	 (message error-type-name " error")
-	 (editor-beep)
+	((and in-debugger-evaluation?
+	      (not (ref-variable debugger-debug-evaluations? #f)))
+	 unspecific)
+	(else
+	 (let ((start-debugger
+		(lambda ()
+		  (fluid-let ((starting-debugger? #t))
+		    ((if (ref-variable debugger-split-window? #f)
+			 select-buffer-other-window
+			 select-buffer)
+		     (continuation-browser-buffer condition))))))
+	   (if ask?
+	       (if (cleanup-pop-up-buffers
+		    (lambda ()
+		      (standard-error-report error-type condition #t)
+		      (editor-beep)
+		      (prompt-for-confirmation? "Start debugger")))
+		   (start-debugger))
+	       (begin
+		 (start-debugger)
+		 (message (string-capitalize (symbol->string error-type))
+			  " error")
+		 (editor-beep))))
 	 (return-to-command-loop condition))))
-
-(define (debug-scheme-error? condition error-type-name)
-  (cleanup-pop-up-buffers
-   (lambda ()
-     (standard-error-report condition error-type-name #t)
-     (editor-beep)
-     (prompt-for-confirmation? "Start debugger"))))
 
 (define-command browse-continuation
   "Invoke the continuation-browser on CONTINUATION."

@@ -1,25 +1,28 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: editor.scm,v 1.255 2002/12/27 03:48:01 cph Exp $
-;;;
-;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: editor.scm,v 1.256 2003/01/10 20:09:36 cph Exp $
+
+Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; Editor Top Level
 
@@ -260,6 +263,8 @@ with the contents of the startup message."
 (add-gc-daemon!/no-restore editor-gc-daemon)
 (add-event-receiver! event:after-restore editor-gc-daemon)
 
+;;;; Error handling
+
 (define (internal-error-handler condition)
   (cond ((and (eq? condition-type:primitive-procedure-error
 		   (condition/type condition))
@@ -273,25 +278,32 @@ with the contents of the startup message."
 	(debug-internal-errors?
 	 (error condition))
 	(else
-	 (maybe-debug-scheme-error
-	  (ref-variable-object debug-on-internal-error)
-	  condition "internal")
-	 (editor-beep)
-	 (message (condition/report-string condition))
-	 (return-to-command-loop condition))))
+	 (maybe-debug-scheme-error 'INTERNAL condition))))
+
+(define (maybe-debug-scheme-error error-type condition)
+  (let ((p
+	 (variable-default-value
+	  (or (name->variable (symbol-append 'DEBUG-ON- error-type '-ERROR) #f)
+	      (ref-variable-object debug-on-internal-error)))))
+    (if p
+	(debug-scheme-error error-type condition (eq? p 'ASK))))
+  (standard-error-report error-type condition #f)
+  (editor-beep)
+  (return-to-command-loop condition))
 
 (define-variable debug-on-internal-error
-  "True means enter debugger if error is signalled while the editor is running.
+  "True means enter debugger if an internal error is signalled.
+False means ignore the error and resume editing (this is the default value).
+The symbol ASK means ask what to do.
 This does not affect editor errors or evaluation errors."
   #f
-  boolean?)
+  (lambda (x) (or (boolean? x) (eq? x 'ASK))))
 
 (define debug-internal-errors? #f)
 
 (define condition-type:editor-error
   (make-condition-type 'EDITOR-ERROR condition-type:error '(STRINGS)
     (lambda (condition port)
-      (write-string "Editor error: " port)
       (write-string (message-args->string (editor-error-strings condition))
 		    port))))
 
@@ -307,52 +319,62 @@ This does not affect editor errors or evaluation errors."
   (condition-accessor condition-type:editor-error 'STRINGS))
 
 (define (editor-error-handler condition)
-  (maybe-debug-scheme-error (ref-variable-object debug-on-editor-error)
-			    condition "editor")
-  (editor-beep)
-  (let ((strings (editor-error-strings condition)))
-    (if (not (null? strings))
-	(apply message strings)))
-  (return-to-command-loop condition))
+  (maybe-debug-scheme-error 'EDITOR condition))
 
 (define-variable debug-on-editor-error
-  "True means signal Scheme error when an editor error occurs."
+  "True means enter debugger if an editor error is signalled.
+False means ignore the error and resume editing (this is the default value).
+The symbol ASK means ask what to do.
+This does not affect internal errors or evaluation errors."
   #f
-  boolean?)
+  (lambda (x) (or (boolean? x) (eq? x 'ASK))))
 
-(define (standard-error-report condition error-type-name in-prompt?)
-  (let ((report-string (condition/report-string condition)))
+(define (standard-error-report error-type condition in-prompt?)
+  (let ((type-string
+	 (string-append (string-capitalize (symbol->string error-type))
+			" error"))
+	(report-string (condition/report-string condition))
+	(get-error-buffer
+	 (lambda strings
+	   (string->temporary-buffer (apply string-append strings)
+				     "*error*"
+				     '(SHRINK-WINDOW)))))
     (let ((typein-report
 	   (lambda ()
-	     (message (string-capitalize error-type-name)
-		      " error: "
-		      report-string)))
+	     (if (eq? error-type 'EDITOR)
+		 (message report-string)
+		 (message type-string ": " report-string))))
 	  (error-buffer-report
 	   (lambda ()
-	     (string->temporary-buffer report-string "*error*"
-				       '(SHRINK-WINDOW))
-	     (message (string-capitalize error-type-name) " error")
+	     (if in-prompt?
+		 (if (eq? error-type 'EDITOR)
+		     (get-error-buffer report-string)
+		     (get-error-buffer type-string ":\n" report-string))
+		 (begin
+		   (get-error-buffer report-string)
+		   (message type-string)))
 	     (update-screens! #f)))
 	  (transcript-report
 	   (lambda ()
 	     (and (ref-variable enable-transcript-buffer)
 		  (begin
 		    (with-output-to-transcript-buffer
-		      (lambda ()
-			(fresh-line)
-			(write-string ";Error: ")
-			(write-string report-string)
-			(newline)
-			(newline)))
+			(lambda ()
+			  (fresh-line)
+			  (write-string ";")
+			  (write-string type-string)
+			  (write-string ": ")
+			  (write-string report-string)
+			  (newline)
+			  (newline)))
 		    #t)))))
       (let ((fit-report
 	     (lambda ()
 	       (if (and (not in-prompt?)
 			(not (string-find-next-char report-string #\newline))
-			(< (string-columns
-			    report-string 0 8
-			    (variable-default-value
-			     (ref-variable-object char-image-strings)))
+			(< (string-columns report-string 0 8
+					   (ref-variable char-image-strings
+							 #f))
 			   (window-x-size (typein-window))))
 		   (typein-report)
 		   (error-buffer-report)))))
@@ -367,16 +389,18 @@ This does not affect editor errors or evaluation errors."
   "Value of this variable controls the way evaluation error messages
 are displayed:
 STANDARD      like FIT, except messages also appear in transcript buffer,
-                if it is enabled.
+                if it is enabled (this is the default value).
 FIT           messages appear in typein window if they fit;
-                in *error* buffer if they don't.
+                in \"*error*\" buffer if they don't.
 TYPEIN        messages appear in typein window.
-ERROR-BUFFER  messages appear in *error* buffer.
+ERROR-BUFFER  messages appear in \"*error*\" buffer.
 TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
                 otherwise this is the same as FIT."
   'STANDARD
   (lambda (value) (memq value '(STANDARD TRANSCRIPT ERROR-BUFFER TYPEIN FIT))))
 
+;;;; Abort and quit
+
 (define condition-type:abort-current-command
   (make-condition-type 'ABORT-CURRENT-COMMAND #f '(INPUT)
     (lambda (condition port)
@@ -510,6 +534,8 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 (define (editor-child-cmdl-port port)
   (lambda (cmdl) cmdl port))
 
+;;;; Inferior threads
+
 (define inferior-thread-changes?)
 (define inferior-threads)
 
