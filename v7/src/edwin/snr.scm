@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.21 1996/12/07 07:25:31 cph Exp $
+;;;	$Id: snr.scm,v 1.22 1996/12/07 07:32:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -1061,10 +1061,11 @@ This shows News groups that have been created since the last time that
 	       (make-news-group-1 connection name #f #f '() '()))))))
 
 (define (ang-buffer:mark-group-name mark)
-  (and (re-match-forward "^[ U] [ 0-9][ 0-9][ 0-9][ 0-9][ 0-9] \\([^ ]+\\)$"
-			 (line-start mark 0)
-			 (line-end mark 0)
-			 #f)
+  (and (re-match-forward
+	"^[ U][ M] [ 0-9][ 0-9][ 0-9][ 0-9][ 0-9] \\([^ ]+\\)$"
+	(line-start mark 0)
+	(line-end mark 0)
+	#f)
        (extract-string (re-match-start 1) (re-match-end 1))))
 
 ;;;; News-Group Buffer
