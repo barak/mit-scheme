@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.63 1999/01/02 06:11:34 cph Exp $
+;;; $Id: macros.scm,v 1.64 1999/01/28 03:54:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -110,7 +110,7 @@
 	       `(BEGIN
 		  (DEFINE ,scheme-name
 		    (MAKE-VARIABLE ',name
-				   ',description
+				   ,description
 				   ,(if (default-object? value) '#F value)
 				   ',buffer-local?))
 		  ,@(if (default-object? test)
@@ -169,7 +169,7 @@
 		    ,(if super-mode-name
 			 `(->MODE ',super-mode-name)
 			 `#F)
-		    ',description
+		    ,description
 		    ,(let ((super-initialization
 			    (and super-mode-name
 				 `(MODE-INITIALIZATION
@@ -194,7 +194,7 @@
 		    #F
 		    ',(or display-name (symbol->string name))
 		    #F
-		    ',description
+		    ,description
 		    ,(if (and (not (default-object? initialization))
 			      initialization)
 			 initialization
