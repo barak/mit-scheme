@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.93 1991/04/21 00:38:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.94 1991/07/09 22:52:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -403,12 +403,20 @@
 			 (highlight
 			  (boolean-vector-set! new-hl-enable y true)
 			  (if (boolean-vector-ref current-hl-enable y)
-			      (boolean-vector-move! current-hl
+			      (boolean-vector-move! (vector-ref current-hl y)
 						    (vector-ref new-hl y))
 			      (boolean-vector-fill! (vector-ref new-hl y)
 						    false))
 			  (boolean-subvector-fill! (vector-ref new-hl y)
-						   xl xu highlight)))))))
+						   xl xu highlight))
+			 ((boolean-vector-ref current-hl-enable y)
+			  (let ((nhl (vector-ref new-hl y)))
+			    (boolean-vector-move! (vector-ref current-hl y)
+						  nhl)
+			    (boolean-subvector-fill! nhl xl xu false)
+			    (if (not (boolean-vector-all-elements? nhl false))
+				(boolean-vector-set! new-hl-enable y
+						     true)))))))))
 	    (highlight
 	     (do ((y yl (fix:1+ y)))
 		 ((fix:= y yu))
