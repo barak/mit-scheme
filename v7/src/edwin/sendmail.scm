@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.41 1998/02/12 05:58:12 cph Exp $
+;;;	$Id: sendmail.scm,v 1.42 1998/02/12 06:11:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-98 Massachusetts Institute of Technology
 ;;;
@@ -392,7 +392,7 @@ is inserted."
 
 (define (mailer-version-string buffer)
   (and (ref-variable mail-identify-reader buffer)
-       (string-append "Edwin [version"
+       (string-append "Edwin [version "
 		      (get-subsystem-version-string "edwin")
 		      ", MIT Scheme Release "
 		      microcode-id/release-string
