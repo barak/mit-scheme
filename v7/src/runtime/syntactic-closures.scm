@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntactic-closures.scm,v 14.6 2002/02/19 21:28:20 cph Exp $
+;;; $Id: syntactic-closures.scm,v 14.7 2002/02/22 01:35:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -500,7 +500,7 @@
 
 (define (environment/rename environment name)
   environment
-  (identifier->symbol name))
+  (rename-top-level-identifier name))
 
 ;;; Top-level syntactic environments represent top-level environments.
 ;;; They are always layered over a real syntactic environment.
@@ -553,7 +553,7 @@
 
 (define (top-level-syntactic-environment/rename environment name)
   environment
-  (identifier->symbol name))
+  (rename-top-level-identifier name))
 
 (define (top-level-syntactic-environment->environment environment)
   (syntactic-environment->environment
@@ -1188,6 +1188,16 @@
   (let ((state (make-rename-state)))
     (lambda (identifier)
       (rename-identifier identifier state))))
+
+(define (rename-top-level-identifier identifier)
+  (if (symbol? identifier)
+      identifier
+      (intern
+       (string-append "."
+		      (symbol->string (identifier->symbol identifier))
+		      "."
+		      (number->string (hash identifier))
+		      "-0"))))
 
 (define (reverse-syntactic-environments environment procedure)
   (capture-syntactic-environment
