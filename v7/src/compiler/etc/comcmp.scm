@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comcmp.scm,v 1.9 2001/12/23 17:20:57 cph Exp $
+$Id: comcmp.scm,v 1.10 2001/12/24 04:15:36 cph Exp $
 
 Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 
@@ -24,9 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
-(if (unassigned? compiled-code-block/bytes-per-object)
-    (set! compiled-code-block/bytes-per-object 4))
-
 (define-syntax ucode-type
   (non-hygienic-macro-transformer
    (lambda (name)

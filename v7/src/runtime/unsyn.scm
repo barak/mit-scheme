@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.26 2001/12/22 03:17:22 cph Exp $
+$Id: unsyn.scm,v 14.27 2001/12/24 04:17:53 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -185,7 +185,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       `(,(unsyntax-object value))))
 
 (define (unsyntax-UNASSIGNED?-object object)
-  `(UNASSIGNED? ,(unassigned?-name object)))
+  `(DEFAULT-OBJECT? ,(unassigned?-name object)))
 
 (define (unsyntax-COMMENT-object comment)
   (let ((expression (unsyntax-object (comment-expression comment))))

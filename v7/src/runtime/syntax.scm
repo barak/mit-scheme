@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.49 2001/12/22 03:17:19 cph Exp $
+$Id: syntax.scm,v 14.50 2001/12/24 04:18:01 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -63,7 +63,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      ;; Environment extensions
      (ACCESS ,syntax/access)
      (THE-ENVIRONMENT ,syntax/the-environment)
-     (UNASSIGNED? ,syntax/unassigned?)
      ;; To facilitate upgrade to new option argument mechanism.
      (DEFAULT-OBJECT? ,syntax/unassigned?)
 
@@ -88,9 +87,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (fluid-let ((*syntax-table*
 		      (make-syntax-table
 		       (if (eq? table 'DEFAULT)
-			   (if (unassigned? *syntax-table*)
-			       (nearest-repl/environment)
-			       *syntax-table*)
+			   (nearest-repl/environment)
 			   (guarantee-syntax-table table name))))
 		     (*current-keyword* #f))
 	   (syntaxer #t expression))))
