@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.19 1996/07/23 02:27:12 adams Exp $
+$Id: typerew.scm,v 1.20 1996/07/23 15:41:23 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -838,7 +838,11 @@ MIT in each case. |#
   (define (rewrite-call! form rator cont rands)
 
     (define (install-replacement! replacement-generator)
-      (sample/1 '(typerew/replacements count) 1)
+      (sample/1 '(typerew/replaced-operators histogram)
+		(let ((op (quote/text (call/operator form))))
+		  (if (eq? op %invoke-remote-cache)
+		      (first (quote/text (call/operand1 form)))
+		      op)))
       (form/rewrite! form (replacement-generator form)))
 
     (define (apply-method method rands*)
@@ -852,18 +856,21 @@ MIT in each case. |#
 
     (rewrite!* rands)
     (rewrite! cont)
-    (cond ((not (QUOTE/? rator))
-	   (rewrite! rator))
-	  ((typerew/replacement-method? (quote/text rator) (length rands))
-	   => (lambda (method)
-		(apply-method method rands)))
-	  ((and (eq? (quote/text rator) %invoke-remote-cache)
-		(typerew/replacement-method?
-		 (first (quote/text (first rands)))
-		 (second (quote/text (first rands)))))
-	   => (lambda (method)
-		(apply-method method (cddr rands))))
-	  (else (rewrite! rator))))
+    (if (QUOTE/? rator)
+	(let ((rator* (quote/text rator)))
+	  (if compiler:type-error-warnings?
+	      (typerew/type-check form rator* rands))
+	  (cond ((typerew/replacement-method? rator* (length rands))
+		 => (lambda (method)
+		      (apply-method method rands)))
+		((and (eq? rator* %invoke-remote-cache)
+		      (typerew/replacement-method?
+		       (first (quote/text (first rands)))
+		       (second (quote/text (first rands)))))
+		 => (lambda (method)
+		      (apply-method method (cddr rands))))
+		(else (rewrite! rator))))
+	(rewrite! rator)))
 
   (define (check-constant form simple?)
     (let ((type (typerew/type/no-error form)))
@@ -873,7 +880,8 @@ MIT in each case. |#
 		(form/rewrite! form
 		  (if simple?
 		      cst
-		      `(BEGIN ,(code-rewrite/remember (form/preserve form) form)
+		      `(BEGIN ,(code-rewrite/remember (form/preserve form)
+						      form)
 			      ,cst))))))))
 
   (define (rewrite! form)
@@ -905,6 +913,68 @@ MIT in each case. |#
 	  (else (illegal form))))
   
   (rewrite! program))
+
+(define (typerew/type-check form rator* rands)
+  ;; Inspect the argument types of FORM and report any errors.
+  ;;   FORM = `(call (quote ,RATOR*) '#f ,RANDS)
+  
+  (define (report errors)
+    (user-warning
+     (with-output-to-string
+       (lambda ()
+	 (display "This form has ")
+	 (display (if (null? (cdr errors)) "a type error." "type errors."))
+	 (for-each display errors)
+	 errors))
+     (form->source-irritant form)))
+
+  (define (format position required-type actual-type)
+    (with-output-to-string
+      (lambda ()
+	(display "\n; Argument ")
+	(display position)
+	(display " is ")
+	(display (type:user-description actual-type))
+	(display ", should be ")
+	(display (type:user-description required-type))
+	(display "."))))
+
+  (define (check proc-type rands)
+    (let ((argument-types (procedure-type/argument-types proc-type))
+	  (asserted-types (procedure-type/argument-assertions proc-type)))
+      (let loop ((rands  rands)
+		 (position 1)
+		 (argument-types argument-types)
+		 (asserted-types asserted-types)
+		 (errors '()))		; list (string)
+	(define (next errors*)
+	  (loop (cdr rands) (+ position 1) 
+		(if (pair? argument-types) (cdr argument-types) argument-types)
+		(if (pair? asserted-types) (cdr asserted-types) asserted-types)
+		errors*))
+	(define (test argument-type asserted-type)
+	  (let ((rand-type (typerew/type (car rands)))
+		(req-type  (type:and asserted-type argument-type)))
+	    (if (and (type:disjoint? rand-type req-type)
+		     (not (type:subset? rand-type type:empty)))
+		(next (cons (format position req-type rand-type) errors))
+		(next errors))))
+	(cond ((null? rands)
+	       (if (pair? errors)
+		   (report (reverse! errors))))
+	      ((pair? argument-types)
+	       (test (car argument-types) (car asserted-types)))
+	      (else
+	       (test argument-types asserted-types))))))
+
+  (cond ((and (eq? rator* %invoke-remote-cache)
+	      (operator-type (first (quote/text (first rands)))))
+	 => (lambda (operator-type)
+	      (check operator-type (cddr rands))))
+	((operator-type rator*)
+	 => (lambda (operator-type)
+	      (check operator-type rands)))
+	(else unspecific)))		; we know nothing
 
 ;; REPLACEMENT METHODS
 ;;
@@ -939,28 +1009,6 @@ MIT in each case. |#
 
 (define (typerew-no-replacement form)
   form)
-
-(define (typerew-guaranteed-error-replacement error-kind bad-thing good-thing)
-  (lambda (form)
-    (warn
-     (with-output-to-string
-       (lambda ()
-	 (display "This form is guaranteed to signal a ")
-	 (display error-kind)
-	 (display " error at runtime.  ")
-	 (display "\n;The ")
-	 (display error-kind)
-	 (display " is ")
-	 (display bad-thing)
-	 (display ", but should be ")
-	 (display good-thing)
-	 (display ".\n;")))
-     form)
-    form))
-
-(define (typerew-guaranteed-type-error-replacement bad-type good-type)
-  (typerew-guaranteed-error-replacement "type" bad-type good-type))
-
 
 (define (typerew-simple-operator-replacement new-op)
   ;; Coerces operator to a replacement procedure
@@ -1004,7 +1052,7 @@ MIT in each case. |#
   (define (equivalent form*)
     (typerew/remember* form* original-form))
   (sample/1 '(typerew/diamond-replacements histogram)
-	    (call/operator original-form))
+	    (quote/text (call/operator original-form)))
   (equivalent `(IF ,test-form
 		   ,(equivalent form*1)
 		   ,(equivalent form*2))))
@@ -1400,6 +1448,7 @@ MIT in each case. |#
 (define (typerew/rewrite/coerced-arguments op coerce-left coerce-right)
   (lambda (form)
     (define (make args)
+      (sample/1 '(typerew/coerced->flonum-replacements histogram) op)
       `(CALL (QUOTE ,op)
 	     '#F
 	     ,(coerce-left  (first args))
@@ -1958,13 +2007,8 @@ MIT in each case. |#
 				 (not (type:subset? i-type type:fixnum))))
 			v-length)))
 	      (if (or check/1? check/2?)
-		  (if (type:disjoint? v-type collection-type)
-		      ;;typerew-no-replacement
-		      (typerew-guaranteed-type-error-replacement
-		       v-type collection-type)
-		      (make-checked-selection (vector check/1? check/2?)))
+		  (make-checked-selection (vector check/1? check/2?))
 		  unchecked-selection))))))
-
 
     (let ((mutator         (make-primitive-procedure mutator-name))
 	  (unsafe-mutation (typerew-simple-operator-replacement %mutator)))
