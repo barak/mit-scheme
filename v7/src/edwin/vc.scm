@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.10 1994/03/09 23:11:03 cph Exp $
+;;;	$Id: vc.scm,v 1.11 1994/03/16 23:32:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -44,12 +44,6 @@
 
 ;;;; Version Control
 ;;;  Translated from "vc.el" in Emacs 19.22.
-
-#|
-
-* Modify "dired.scm" -- add new marking stuff.
-
-|#
 
 (declare (usual-integrations))
 
@@ -216,28 +210,26 @@ lock steals will raise an error.
    For checkin, a prefix argument lets you specify the version number to use."
   "P"
   (lambda (revision?)
-    (let ((workfile (buffer-pathname (current-buffer))))
-      (if (not workfile)
-	  (vc-registration-error #f))
-      (vc-next-action-on-file workfile revision? #f))
-    #|
-    (cond ((not (eq? (current-major-mode) (ref-mode-object vc-dired-mode)))
-	   (let ((workfile (buffer-pathname (current-buffer))))
-	     (if (not workfile)
-		 (vc-registration-error #f))
-	     (vc-next-action-on-file workfile revision? #f)))
-	  ((= (length (dired-get-marked-files)) 1)
-	   (let ((workfile (dired-current-pathname)))
-	     (find-file-other-window workfile)
-	     (vc-next-action-on-file workfile revision? #f)))
-	  (else
-	   (vc-start-entry #f
-			   "Enter a change comment for the marked files."
-			   #f
-			   vc-next-action-dired
-			   #f)))
-    |#
-    ))
+    (if (not (eq? (current-major-mode) (ref-mode-object dired)))
+	(let ((workfile (buffer-pathname (current-buffer))))
+	  (if (not workfile)
+	      (vc-registration-error #f))
+	  (vc-next-action-on-file workfile revision? #f))
+	(let ((files
+	       (let ((files (dired-marked-files)))
+		 (if (null? files)
+		     (dired-next-files 1)
+		     files))))
+	  (cond ((null? files)
+		 unspecific)
+		((null? (cdr files))
+		 (vc-next-action-on-file (caar files) revision? #f))
+		(else
+		 (vc-start-entry #f
+				 "Enter a change comment for the marked files."
+				 #f
+				 (vc-next-action-dired (current-buffer))
+				 #f)))))))
 
 (define-command vc-register
   "Register the current file into your version-control system."
@@ -267,6 +259,15 @@ lock steals will raise an error.
 		       (vc-revert master revision)))
 		  (else
 		   (vc-steal-lock master revision comment owner))))))))
+
+(define (vc-next-action-dired buffer)
+  (lambda (comment)
+    (for-each-dired-mark buffer
+      (lambda (file)
+	(let ((msg (string-append "Processing " (->namestring file) "...")))
+	  (message msg)
+	  (vc-next-action-on-file file #f comment)
+	  (message msg "done"))))))
 
 (define (vc-register workfile revision comment keep?)
   (let ((revision
@@ -523,6 +524,118 @@ A prefix argument means do not revert the buffer afterwards."
     no-revert?
     (editor-error "VC-CANCEL-VERSION not implemented.")))
 
+;;;; VC Dired
+
+(define-command vc-directory
+  "Show version-control status of files under a directory.
+Normally shows only locked files; prefix arg says to show all files."
+  "P"
+  (lambda (all-files?)
+    (let ((directory (buffer-default-directory (current-buffer))))
+      (let ((buffer (vc-dired directory all-files?)))
+	(if (> (buffer-length buffer) 0)
+	    (pop-up-buffer buffer #t)
+	    (begin
+	      (if (not (buffer-visible? buffer))
+		  (kill-buffer buffer))
+	      (message "No files are currently "
+		       (if all-files? "registered" "locked")
+		       " under "
+		       (->namestring directory))))))))
+
+(define-command vc-dired
+  "Show version-control status of files under a directory.
+Normally shows only locked files; prefix arg says to show all files."
+  "DVC-Dired (directory)\nP"
+  (lambda (directory all-files?)
+    (select-buffer (vc-dired directory all-files?))))
+
+(define (vc-dired directory all-files?)
+  (let ((buffer (get-vc-dired-buffer directory)))
+    (fill-vc-dired-buffer! buffer directory all-files?)
+    buffer))
+
+(define (get-vc-dired-buffer directory)
+  (or (list-search-positive (buffer-list)
+	(lambda (buffer)
+	  (let ((spec (buffer-get buffer 'VC-DIRECTORY-SPEC)))
+	    (and spec
+		 (pathname=? (car spec) directory)))))
+      (new-buffer (pathname->buffer-name directory))))
+
+(define (fill-vc-dired-buffer! buffer directory all-files?)
+  (let ((msg
+	 (string-append "Reading directory " (->namestring directory) "...")))
+    (buffer-reset! buffer)
+    (set-buffer-major-mode! buffer (ref-mode-object dired))
+    (define-variable-local-value! buffer (ref-variable-object mode-name)
+      "VC-Dired")
+    (set-buffer-default-directory! buffer (directory-pathname directory))
+    (buffer-put! buffer 'VC-DIRECTORY-SPEC (cons directory all-files?))
+    (buffer-put! buffer 'REVERT-BUFFER-METHOD revert-vc-dired-buffer)
+    (message msg)
+    (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
+      (insert-string (string-append "  Files currently "
+				    (if all-files? "registered" "locked")
+				    " under "
+				    (->namestring directory)
+				    ":\n")
+		     mark)
+      (generate-vc-dired-lines directory all-files? mark)
+      (mark-temporary! mark))
+    (message msg "done"))
+  (set-buffer-point! buffer (buffer-start buffer))
+  (buffer-not-modified! buffer)
+  (set-buffer-read-only! buffer))
+
+(define (revert-vc-dired-buffer buffer dont-use-auto-save? dont-confirm?)
+  (let ((spec (buffer-get buffer 'VC-DIRECTORY-SPEC)))
+    (if spec
+	(fill-vc-dired-buffer! buffer (car spec) (cdr spec))
+	(revert-buffer-default buffer dont-use-auto-save? dont-confirm?))))
+
+(define (generate-vc-dired-lines directory all-files? mark)
+  (for-each (lambda (file)
+	      (let ((attr (file-attributes-direct file)))
+		(if (and attr (not (file-attributes/type attr)))
+		    (let ((master (file-vc-master file)))
+		      (if master
+			  (let ((locker (vc-locking-user master #f)))
+			    (if (or locker all-files?)
+				(generate-vc-dired-line file
+							attr
+							locker
+							mark))))))))
+	    (directory-read directory)))
+
+(define (generate-vc-dired-line file attr locker mark)
+  (insert-string
+   (string-append
+    "  "
+    (file-attributes/mode-string attr)
+    " "
+    (pad-on-left-to (number->string (file-attributes/n-links attr)) 3)
+    " "
+    (pad-on-right-to (or locker "") 10)
+    " "
+    (pad-on-left-to (number->string (file-attributes/length attr)) 8)
+    " "
+    (ls-file-time-string attr)
+    " "
+    (file-namestring file)
+    "\n")
+   mark))
+
+(define (ls-file-time-string attr)
+  (let ((time (file-attributes/modification-time attr)))
+    (let ((s (unix/file-time->string time))
+	  (delta (- ((ucode-primitive encoded-time)) time)))
+      (if (<= delta (* 60 60 24 180))
+	  (substring s 4 16)
+	  (string-append (substring s 4 11)
+			 " "
+			 (substring s 20 24))))))
+
 ;;;; Log Entries
 
 (define (vc-start-entry master msg comment finish-entry after)
@@ -534,7 +647,8 @@ A prefix argument means do not revert the buffer afterwards."
 	(set-buffer-major-mode! log-buffer (ref-mode-object vc-log))
 	(if (vc-master? master)
 	    (vc-mode-line master log-buffer))
-	(buffer-put! log-buffer 'VC-PARENT-BUFFER (vc-workfile-buffer master))
+	(buffer-put! log-buffer 'VC-PARENT-BUFFER
+		     (and master (vc-workfile-buffer master)))
 	(let ((window (current-window)))
 	  (let ((log-window (pop-up-buffer log-buffer #t)))
 	    (buffer-put! log-buffer
@@ -632,12 +746,20 @@ the value of vc-log-mode-hook."
 	(%file-vc-master workfile require-master?))))
 
 (define (current-vc-master #!optional require-master?)
-  (buffer-vc-master (let ((buffer (current-buffer)))
-		      (or (buffer-get buffer 'VC-PARENT-BUFFER)
-			  buffer))
-		    (if (default-object? require-master?)
-			#f
-			require-master?)))
+  (let ((buffer (current-buffer))
+	(require-master?
+	 (if (default-object? require-master?)
+	     #f
+	     require-master?)))
+    (if (eq? (buffer-major-mode buffer) (ref-mode-object dired))
+	(let ((file (dired-this-file)))
+	  (if file
+	      (file-vc-master (car file) require-master?)
+	      (begin
+		(if require-master? (vc-registration-error #f))
+		#f)))
+	(buffer-vc-master (or (buffer-get buffer 'VC-PARENT-BUFFER) buffer)
+			  require-master?))))
 
 (define (buffer-vc-master buffer #!optional require-master?)
   (let ((require-master?
@@ -849,7 +971,9 @@ the value of vc-log-mode-hook."
 ;;;; RCS Commands
 
 (define vc-type:rcs
-  (make-vc-type 'RCS "$Id: vc.scm,v 1.10 1994/03/09 23:11:03 cph Exp $"))
+  ;; Splitting up string constant prevents RCS from expanding this
+  ;; keyword.
+  (make-vc-type 'RCS (string-append "$" "Id" "$")))
 
 (define-vc-master-template vc-type:rcs
   (lambda (pathname)
