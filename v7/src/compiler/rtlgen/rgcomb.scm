@@ -37,7 +37,7 @@
 
 ;;;; RTL Generation: Combinations
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.3 1986/12/21 19:34:42 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.4 1986/12/22 23:52:13 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -324,7 +324,7 @@
 
 (define (reduction:stack->primitive combination offset)
   (make-call:primitive combination offset invocation-prefix:stack->closure
-		        false))
+		       false))
 
 (define (reduction:stack->closure combination offset)
   (make-call:closure combination offset invocation-prefix:stack->closure
@@ -400,10 +400,39 @@
 	 continuation
 	 operator)))))
 
-(define (make-call:stack combination offset invocation-prefix continuation)
+(package (make-call:stack make-call:stack-with-link make-call:child)
+
+(define-export (make-call:stack combination offset invocation-prefix
+				continuation)
+  (stack-call combination offset invocation-prefix continuation 0))
+
+(define-export (make-call:stack-with-link combination offset invocation-prefix
+					  continuation)
+  (link-call combination offset invocation-prefix continuation 0))
+
+(define-export (make-call:child combination offset make-receiver receiver-size)
+  (scfg*node->node!
+   (make-receiver (block-frame-size (combination-block combination)))
+   (let ((extra (receiver-size)))
+     (link-call combination (+ offset extra) invocation-prefix:null false
+		extra))))
+
+(define (link-call combination offset invocation-prefix continuation extra)
+  (scfg*node->node!
+   (rtl:make-push
+    (rtl:make-address
+     (block-ancestor-or-self->locative
+      (combination-block combination)
+      (block-parent (procedure-block (combination-known-operator combination)))
+      offset)))
+   (stack-call combination (1+ offset) invocation-prefix continuation
+	       (1+ extra))))
+
+(define (stack-call combination offset invocation-prefix continuation extra)
   (make-call:dont-push-operator combination offset
     (lambda (number-pushed)
-      (let ((operator (combination-known-operator combination)))
+      (let ((number-pushed (+ number-pushed extra))
+	    (operator (combination-known-operator combination)))
 	((if (procedure-rest operator)
 	     rtl:make-invocation:lexpr
 	     rtl:make-invocation:jump)
@@ -412,22 +441,7 @@
 	 continuation
 	 operator)))))
 
-(define (make-call:stack-with-link combination offset invocation-prefix
-				   continuation)
-  (scfg*node->node!
-   (rtl:make-push
-    (rtl:make-address
-     (block-ancestor-or-self->locative
-      (combination-block combination)
-      (block-parent (procedure-block (combination-known-operator combination)))
-      offset)))
-   (make-call:stack combination (1+ offset) invocation-prefix continuation)))
-
-(define (make-call:child combination offset make-receiver receiver-size)
-  (scfg*node->node!
-   (make-receiver (block-frame-size (combination-block combination)))
-   (make-call:stack-with-link combination (+ offset (receiver-size))
-			      invocation-prefix:null false)))
+)
 
 ;;;; Prefixes
 
