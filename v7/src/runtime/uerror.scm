@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.35 1993/10/21 11:49:55 cph Exp $
+$Id: uerror.scm,v 14.36 1993/12/14 22:22:49 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -119,7 +119,7 @@ MIT in each case. |#
 	(continuation unspecific))
     (lambda (restart)
       (restart/put! restart 'INTERACTIVE
-	(let ((prompt (string-append "Define " (write-to-string name) " as")))
+	(let ((prompt (string-append "Set " (write-to-string name) " to")))
 	  (lambda ()
 	    (values (prompt-for-evaluated-expression prompt environment)))))
       (thunk))))
@@ -332,7 +332,7 @@ MIT in each case. |#
 	 (values "determine existence of" "file"))
 	((or (eq? primitive (ucode-primitive file-directory? 1))
 	     (eq? primitive (ucode-primitive file-soft-link? 1)))
-	 (values "determine type of of" "file"))
+	 (values "determine type of" "file"))
 	((or (eq? primitive (ucode-primitive file-open-append-channel 1))
 	     (eq? primitive (ucode-primitive file-open-input-channel 1))
 	     (eq? primitive (ucode-primitive file-open-io-channel 1))
