@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.9 1999/01/28 06:11:07 cph Exp $
+;;; $Id: compile.scm,v 1.10 1999/01/28 06:13:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -22,11 +22,19 @@
 
 (declare (usual-integrations))
 
+(define-variable compile-command
+  "Initial contents of \\[compile] prompt."
+  "make -k"
+  string?)
+
 (define-command compile
   "Compile the program including the current buffer.  Default: run `make'.
 Runs COMMAND, a shell command, in a separate process asynchronously
 with output going to the buffer *compilation*."
   (lambda ()
+    (if (null? (prompt-history-strings 'COMPILE))
+	(set-prompt-history-strings! 'COMPILE
+				     (list (ref-variable compile-command))))
     (list (prompt-for-string "Compile command" #f
 			     'DEFAULT-TYPE 'INSERTED-DEFAULT
 			     'HISTORY 'COMPILE
