@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme16.c,v 1.2 1993/08/21 03:51:47 gjr Exp $
+$Id: scheme16.c,v 1.3 1993/08/21 05:30:41 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -482,12 +482,6 @@ ntw16lib_handler (LPVOID buf, DWORD func)
 {
   switch (func)
   {
-    case NTW32LIB_MALLOC:
-      return (win16_allocate_heap (buf));
-
-    case NTW32LIB_FREE:
-      return (win16_release_heap (buf));
-
     case NTW32LIB_VIRTUAL_LOCK:
       return (win16_lock_area (buf));
 
