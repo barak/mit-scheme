@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.18 1990/02/02 18:37:22 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.19 1991/02/14 18:44:48 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -442,15 +442,22 @@ MIT in each case. |#
 ;;;      We must take care of moving the data ourselves.
 
 (define (with-register-copy-alias! source type target rec1 rec2)
-  (reuse-pseudo-register-alias! source type
-    (lambda (alias)
-      (delete-dead-registers!)
-      (add-pseudo-register-alias! target alias)
-      (rec1 (register-reference alias)))
-    (lambda ()
-      (let ((source (standard-register-reference source type true)))
-	(delete-dead-registers!)
-	(rec2 source (reference-target-alias! target type))))))
+  (if (and (machine-register? target)
+	   (register-type? target type))
+      (let* ((source (standard-register-reference source type true))
+	     (target (register-reference target)))
+	(rec2 source target))
+      (reuse-pseudo-register-alias! source type
+       (lambda (alias)
+	 (delete-dead-registers!)
+	 (if (machine-register? target)
+	     (suffix-instructions! (register->register-transfer alias target))
+	     (add-pseudo-register-alias! target alias))
+	 (rec1 (register-reference alias)))
+       (lambda ()
+	 (let ((source (standard-register-reference source type true)))
+	   (delete-dead-registers!)
+	   (rec2 source (reference-target-alias! target type)))))))
 
 (define (with-temporary-register-copy! source type rec1 rec2)
   (reuse-pseudo-register-alias! source type
@@ -462,14 +469,15 @@ MIT in each case. |#
 	    (reference-temporary-register! type)))))
 
 (define (register-copy-if-available source type target)
-  (reuse-pseudo-register-alias source type
-    (lambda (reusable-alias)
-      (lambda ()
-	(delete-register! reusable-alias)
-	(delete-dead-registers!)
-	(add-pseudo-register-alias! target reusable-alias)
-	(register-reference reusable-alias)))
-    (lambda () false)))
+  (and (not (machine-register? target))
+       (reuse-pseudo-register-alias source type
+	(lambda (reusable-alias)
+	  (lambda ()
+	    (delete-register! reusable-alias)
+	    (delete-dead-registers!)
+	    (add-pseudo-register-alias! target reusable-alias)
+	    (register-reference reusable-alias)))
+	(lambda () false))))
 
 (define (temporary-copy-if-available source type)
   (reuse-pseudo-register-alias source type
