@@ -1,8 +1,19 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.117 2001/04/15 20:59:02 cph Exp $
+$Id: todo.txt,v 1.118 2001/05/04 19:37:30 cph Exp $
 
 Bug fixes
 ---------
+
+* The URL-EXISTS? procedure in "imail-imap.scm" should not use the
+  STATUS command to probe the mailbox.  STATUS is explicitly allowed
+  to be slow and the standard recommends against using it in
+  situations where performance may be an issue.  Instead, use the LIST
+  command, which looks as though it could serve the same purpose.
+
+  It may matter how URL-EXISTS? is used.  In particular, if it is used
+  only to determine if a mailbox is capable of holding messages, then
+  we must check the returned flags from the LIST command to eliminate
+  \NOSELECT mailboxes.
 
 * When network connection gets wedged, Edwin locks up and can't be
   interrupted with C-g.  This is fundamentally an Edwin problem, but
