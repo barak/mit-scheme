@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.24 1992/05/12 02:43:41 cph Exp $
+;;;	$Id: process.scm,v 1.25 1992/09/23 23:03:55 jinx Exp $
 ;;;
-;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-1992 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -43,9 +43,12 @@
 ;;;
 
 ;;;; Subprocess Support
+;; package: (edwin process)
 
 (declare (usual-integrations))
 
+(define subprocesses-available? true)
+
 (define (initialize-processes!)
   (set! edwin-processes '())
   (let ((path (get-environment-variable "PATH")))

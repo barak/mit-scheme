@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/make.scm,v 3.73 1992/08/27 06:48:09 jinx Exp $
+$Id: make.scm,v 3.74 1992/09/23 23:03:22 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -40,4 +40,4 @@ MIT in each case. |#
  "edwin"
  `((os-type . ,(intern (microcode-identification-item 'OS-NAME-STRING))))
  'QUERY)
-(add-system! (make-system "Edwin" 3 72 '()))
+(add-system! (make-system "Edwin" 3 74 '()))

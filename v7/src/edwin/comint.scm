@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.13 1992/03/13 10:05:26 cph Exp $
+$Id: comint.scm,v 1.14 1992/09/23 23:03:42 jinx Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -91,12 +91,7 @@ Good choices:
 This is a good thing to set in mode hooks."
   "^")
 
-(define-variable-per-buffer comint-input-ring-size
-  "Size of input history ring."
-  30)
-
 (define-variable comint-last-input-end "" false)
-(define-variable comint-input-ring "" false)
 
 (define-variable comint-program-name
   "File name of program that is running in this buffer."
@@ -219,80 +214,6 @@ history list.  Default is to save anything that isn't all whitespace."
   (lambda (string)
     (not (re-match-string-forward (re-compile-pattern "\\`\\s *\\'" false)
 				  false (ref-variable syntax-table) string))))
-
-(define-command comint-previous-input
-  "Cycle backwards through input history."
-  "*p"
-  (lambda (argument)
-    (let ((point (current-point))
-	  (ring (ref-variable comint-input-ring)))
-      (let ((size (+ (ring-size ring) 1)))
-	(let ((index
-	       (modulo (+ argument
-			  (command-message-receive comint-input-ring-tag
-			    (lambda (index)
-			      (delete-string (current-mark) point)
-			      index)
-			    (lambda ()
-			      (push-current-mark! point)
-			      (cond ((positive? argument) 0)
-				    ((negative? argument) 2)
-				    (else 1)))))
-		       size)))
-	  (message (number->string index))
-	  (if (positive? index)
-	      (insert-string (ring-ref ring (- index 1)) point))
-	  (set-command-message! comint-input-ring-tag index))))))
-
-(define comint-input-ring-tag
-  '(COMINT-INPUT-RING))
-	 
-(define-command comint-next-input
-  "Cycle forwards through input history."
-  "*p"
-  (lambda (argument)
-    ((ref-command comint-previous-input) (- argument))))
-
-(define-variable comint-last-input-match "" false)
-
-(define-command comint-history-search-backward
-  "Search backwards through the input history for a matching substring."
-  (lambda ()
-    (list (prompt-for-string "History search backward"
-			     (ref-variable comint-last-input-match))))
-  (lambda (string)
-    (comint-history-search string true)))
-
-(define-command comint-history-search-forward
-  "Search forwards through the input history for a matching substring."
-  (lambda ()
-    (list (prompt-for-string "History search forward"
-			     (ref-variable comint-last-input-match))))
-  (lambda (string)
-    (comint-history-search string false)))
-
-(define (comint-history-search string backward?)
-  (let ((ring (ref-variable comint-input-ring))
-	(syntax-table (ref-variable syntax-table))
-	(pattern (re-compile-pattern (re-quote-string string) false)))
-    (let ((size (+ (ring-size ring) 1)))
-      (let ((start
-	     (command-message-receive comint-input-ring-tag
-	       (lambda (index) index)
-	       (lambda () (if backward? 0 size)))))
-	(let loop ((index start))
-	  (let ((index (+ index (if backward? 1 -1))))
-	    (cond ((if backward? (>= index size) (< index 0))
-		   (set-command-message! comint-input-ring-tag start)
-		   (editor-failure "Not found"))
-		  ((re-search-string-forward pattern
-					     false
-					     syntax-table
-					     (ring-ref ring (- index 1)))
-		   (set-variable! comint-last-input-match string)
-		   ((ref-command comint-previous-input) (- index start)))
-		  (else
-		   (loop index)))))))))
 
 (define-command comint-previous-similar-input
   "Reenter the last input that matches the string typed so far.
