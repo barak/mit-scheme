@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.46 1993/06/15 19:00:20 gjr Exp $
+$Id: ux.h,v 1.47 1993/06/24 06:34:39 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -41,7 +41,7 @@ MIT in each case. */
 
 #include "oscond.h"
 #include "ansidecl.h"
-#include "posixtype.h"
+#include "posixtyp.h"
 
 #ifndef _POSIX			/* Prevent multiple inclusion */
 # include <sys/times.h>
@@ -54,10 +54,6 @@ MIT in each case. */
 #include <errno.h>
 #include <pwd.h>
 #include <grp.h>
-
-#include "oscond.h"
-#include "ansidecl.h"
-#include "posixtype.h"
 
 extern int errno;
 

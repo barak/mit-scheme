@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Id: y300.lcl,v 1.23 1992/12/07 22:14:10 cph Exp $
+   $Id: y300.lcl,v 1.24 1993/06/24 06:40:31 gjr Exp $
  */
 
 COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
@@ -8,10 +8,10 @@ COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJ
 /* These extra files are for 6003.  They assume we're using HP-UX. */
 
 6003_SOURCES = $(X_SOURCES) $(TERMCAP_OBJECTS) $(GRAPHICS_SOURCES)\
-	SOURCES_SYSTEM SOURCES_MACHINE Sgraph_ar.c fft.c array.c\
+	SOURCES_SYSTEM SOURCES_MACHINE sgraph_a.c fft.c array.c\
        image.c
 6003_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS) $(GRAPHICS_OBJECTS)\
-	OBJECTS_SYSTEM OBJECTS_MACHINE Sgraph_ar.o fft.o array.o\
+	OBJECTS_SYSTEM OBJECTS_MACHINE sgraph_a.o fft.o array.o\
        image.o usr6003.o
 6003_LIB =  $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
 	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
@@ -46,12 +46,12 @@ KIT_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS) $(GRAPHICS_OBJECTS)\
 KIT_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
 	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD LIB_DVIO
 
-/* Franklyn's personal scheme: 6003-like + Sgraph_xt. */
+/* Franklyn's personal scheme: 6003-like + sgraph_xt. */
 
 LYN_SOURCES = $(X_SOURCES) $(CTERM_SOURCES) $(GRAPHICS_SOURCES)\
-	unixprim.c  Sgraph_ar.c Sgraph_xt.c fft.c array.c image.c
+	unixprim.c  sgraph_a.c sgraph_x.c fft.c array.c image.c
 LYN_OBJECTS = $(X_OBJECTS) $(CTERM_OBJECTS) $(GRAPHICS_OBJECTS)\
-	unixprim.o  Sgraph_ar.o Sgraph_xt.o fft.o array.o image.o\
+	unixprim.o  sgraph_a.o sgraph_x.o fft.o array.o image.o\
 	usrLYN.o
 LYN_LIB =  $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB)\
 	-lm
@@ -67,7 +67,7 @@ SIG_LIB =  $(USER_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
 
 world: all scmsig scm6003 kitscheme
 
-everything: world Ppband
+everything: world ppband
 
 install.world: install scm6003
 	-mv -f $(BINDIR)/scm6003 $(BINDIR)/scm6003.busy
@@ -82,10 +82,10 @@ scm6003 : $(COMMON_OBJECTS) $(6003_OBJECTS)
 	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ $(COMMON_OBJECTS) $(6003_OBJECTS) $(6003_LIB)
 
-usr6003.c : $(6003_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
+usr6003.c : $(6003_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.tch findprim xmkfile
 	@ECHO "#** Re-making" $@ because of $?
 	rm -f usr6003.c
-	./Findprim $(6003_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usr6003.c
+	./findprim $(6003_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usr6003.c
 
 kitscheme : $(COMMON_OBJECTS) $(KIT_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
@@ -98,22 +98,22 @@ kitscheme : $(COMMON_OBJECTS) $(KIT_OBJECTS)
 	/usr/local/lib/gcc-gnulib -lc /usr/local/lib/gcc-gnulib
 #endif
 
-usrkit.c : $(KIT_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
+usrkit.c : $(KIT_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.tch findprim xmkfile
 	@ECHO "#** Re-making" $@ because of $?
 	rm -f usrkit.c
-	./Findprim $(KIT_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrkit.c
+	./findprim $(KIT_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrkit.c
 
 scmLYN : $(COMMON_OBJECTS) $(LYN_OBJECTS)
 	@echo "#** Re-linking" $@ because of $?
 	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ $(COMMON_OBJECTS) $(LYN_OBJECTS) $(LYN_LIB)
 
-usrLYN.c : $(LYN_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
+usrLYN.c : $(LYN_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.tch findprim xmkfile
 	@echo "#** Re-making" $@ because of $?
 	rm -f usrLYN.c
-	./Findprim $(LYN_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrLYN.c
+	./findprim $(LYN_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrLYN.c
 
-gpio.o : gpio.c scheme.touch prims.h
+gpio.o : gpio.c scheme.tch prims.h
 
 
 scmsig : $(COMMON_OBJECTS) $(SIG_OBJECTS)
@@ -121,8 +121,8 @@ scmsig : $(COMMON_OBJECTS) $(SIG_OBJECTS)
 	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ $(COMMON_OBJECTS) $(SIG_OBJECTS) $(SIG_LIB)
 
-usrSIG.c : $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
+usrSIG.c : $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.tch findprim xmkfile
 	@ECHO "#** Re-making" $@ because of $?
 	rm -f usrSIG.c
-	./Findprim $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrSIG.c
+	./findprim $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrSIG.c
 

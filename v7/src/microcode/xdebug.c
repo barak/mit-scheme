@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: xdebug.c,v 9.31 1992/11/24 23:14:38 gjr Exp $
+$Id: xdebug.c,v 9.32 1993/06/24 06:38:10 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -122,7 +122,7 @@ DEFUN (Find_In_Area, (Name, From, To, Obj, Mode, print_p, store_p),
 
   if (print_p)
   {
-    printf("    Looking in %s:\n", Name);
+    outf_console("    Looking in %s:\n", Name);
   }
   Where = From-1;
 
@@ -131,10 +131,10 @@ DEFUN (Find_In_Area, (Name, From, To, Obj, Mode, print_p, store_p),
     occurrences += 1;
     if (print_p)
 #ifndef b32
-      printf("Location = 0x%lx; Contents = 0x%lx\n",
+      outf_console("Location = 0x%lx; Contents = 0x%lx\n",
 	     ((long) Where), ((long) (*Where)));
 #else
-      printf("Location = 0x%08lx; Contents = 0x%08lx\n",
+      outf_console("Location = 0x%08lx; Contents = 0x%08lx\n",
 	     ((long) Where), ((long) (*Where)));
 #endif
     if (store_p)
@@ -163,10 +163,10 @@ DEFUN (Find_Who_Points, (Obj, Find_Mode, Collect_Mode),
   {
     putchar('\n');
 #ifndef b32
-    printf("*** Looking for Obj = 0x%lx; Find_Mode = %2ld ***\n",
+    outf_console("*** Looking for Obj = 0x%lx; Find_Mode = %2ld ***\n",
 	   ((long) Obj), ((long) Find_Mode));
 #else
-    printf("*** Looking for Obj = 0x%08lx; Find_Mode = %2ld ***\n",
+    outf_console("*** Looking for Obj = 0x%08lx; Find_Mode = %2ld ***\n",
 	   ((long) Obj), ((long) Find_Mode));
 #endif
   }
@@ -183,7 +183,7 @@ DEFUN (Find_Who_Points, (Obj, Find_Mode, Collect_Mode),
 #endif
   if (print_p)
   {
-    printf("Done.\n");
+    outf_console("Done.\n");
   }
   if (store_p)
   {
@@ -204,21 +204,21 @@ DEFUN (Print_Memory, (Where, How_Many),
   fast SCHEME_OBJECT *End   = &Where[How_Many];
 
 #ifndef b32
-  printf ("\n*** Memory from 0x%lx to 0x%lx (excluded) ***\n",
+  outf_console ("\n*** Memory from 0x%lx to 0x%lx (excluded) ***\n",
 	  ((long) Where), ((long) End));
   while (Where < End)
   {
-    printf ("0x%lx\n", ((long) (*Where++)));
+    outf_console ("0x%lx\n", ((long) (*Where++)));
   }
 #else
-  printf ("\n*** Memory from 0x%08lx to 0x%08lx (excluded) ***\n",
+  outf_console ("\n*** Memory from 0x%08lx to 0x%08lx (excluded) ***\n",
 	  ((long) Where), ((long) End));
   while (Where < End)
   {
-    printf ("0x%0l8x\n", ((long) (*Where++)));
+    outf_console ("0x%0l8x\n", ((long) (*Where++)));
   }
 #endif
-  printf ("Done.\n");
+  outf_console ("Done.\n");
   return;
 }
 
@@ -228,7 +228,7 @@ DEFINE_PRIMITIVE ("DEBUG-SHOW-PURE", Prim_debug_show_pure, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
-  printf ("\n*** Constant & Pure Space: ***\n");
+  outf_console ("\n*** Constant & Pure Space: ***\n");
   Show_Pure ();
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -239,7 +239,7 @@ DEFINE_PRIMITIVE ("DEBUG-SHOW-ENV", Prim_debug_show_env, 1, 1, 0)
   PRIMITIVE_HEADER (1);
 
   environment = (ARG_REF (1));
-  printf ("\n*** Environment = 0x%lx ***\n", ((long) environment));
+  outf_console ("\n*** Environment = 0x%lx ***\n", ((long) environment));
   Show_Env (environment);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -248,8 +248,8 @@ DEFINE_PRIMITIVE ("DEBUG-STACK-TRACE", Prim_debug_stack_trace, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
-  printf ("\n*** Back Trace: ***\n");
-  Back_Trace (stdout);
+  outf_console ("\n*** Back Trace: ***\n");
+  Back_Trace (console_output);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -264,12 +264,12 @@ DEFINE_PRIMITIVE ("DEBUG-FIND-SYMBOL", Prim_debug_find_symbol, 1, 1, 0)
     fast SCHEME_OBJECT symbol = (find_symbol ((STRING_LENGTH (string)),
 					      (STRING_LOC (string, 0))));
     if (symbol == SHARP_F)
-      printf ("\nNot interned.\n");
+      outf_console ("\nNot interned.\n");
     else
       {
-	printf ("\nInterned Symbol: 0x%lx", ((long) symbol));
+	outf_console ("\nInterned Symbol: 0x%lx", ((long) symbol));
 	Print_Expression (MEMORY_REF (symbol, SYMBOL_GLOBAL_VALUE), "Value");
-	printf ("\n");
+	outf_console ("\n");
       }
   }
   PRIMITIVE_RETURN (UNSPECIFIC);

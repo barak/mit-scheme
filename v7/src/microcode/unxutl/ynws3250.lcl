@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ynws3250.lcl,v 1.1 1992/12/07 22:15:13 cph Exp $
+   $Id: ynws3250.lcl,v 1.2 1993/06/24 06:45:27 gjr Exp $
  */
 
 COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
@@ -16,7 +16,7 @@ SIG_LIB =  $(USER_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
 
 world: all scmsig
 
-everything: world Ppband
+everything: world ppband
 
 install.world: install scmsig
 	-mv -f $(BINDIR)/scmsig $(BINDIR)/scmsig.busy
@@ -28,7 +28,7 @@ scmsig : $(COMMON_OBJECTS) $(SIG_OBJECTS)
 	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ $(COMMON_OBJECTS) $(SIG_OBJECTS) $(SIG_LIB)
 
-usrSIG.c : $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
+usrSIG.c : $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.tch findprim xmkfile
 	@ECHO "#** Re-making" $@ because of $?
 	rm -f usrSIG.c
-	./Findprim $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrSIG.c
+	./findprim $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrSIG.c

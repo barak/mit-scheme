@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.67 1993/06/15 18:59:34 gjr Exp $
+$Id: ymkfile,v 1.68 1993/06/24 06:49:03 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -167,12 +167,12 @@ GRAPHICS_LIBS =
 #if (PROC_TYPE == PROC_TYPE_68020)
 #define PROC_TYPE_KNOWN
 MACHINE_SWITCHES =
-MACHINE_SOURCES = cmpint.c cmpaux-mc68k.m4
-MACHINE_OBJECTS = cmpint.o cmpaux-mc68k.o
-GC_HEAD_FILES = gccode.h cmpgc.h cmpint-mc68k.h
+MACHINE_SOURCES = cmpint.c cmpauxmd.m4
+MACHINE_OBJECTS = cmpint.o cmpauxmd.o
+GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 
-cmpaux-mc68k.o : cmpaux-mc68k.s
-cmpaux-mc68k.s : cmpaux-mc68k.m4 xmakefile
+cmpauxmd.o : cmpauxmd.s
+cmpauxmd.s : cmpauxmd.m4 xmkfile
 
 #endif /* PROC_TYPE_68020 */
 
@@ -187,12 +187,12 @@ GC_HEAD_FILES = gccode.h cmpgc.h
 #if (PROC_TYPE == PROC_TYPE_VAX)
 #define PROC_TYPE_KNOWN
 MACHINE_SWITCHES =
-MACHINE_SOURCES = cmpint.c cmpaux-vax.m4
-MACHINE_OBJECTS = cmpint.o cmpaux-vax.o
-GC_HEAD_FILES = gccode.h cmpgc.h cmpint-vax.h
+MACHINE_SOURCES = cmpint.c cmpauxmd.m4
+MACHINE_OBJECTS = cmpint.o cmpauxmd.o
+GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 
-cmpaux-vax.o : cmpaux-vax.s
-cmpaux-vax.s : cmpaux-vax.m4 xmakefile
+cmpauxmd.o : cmpauxmd.s
+cmpauxmd.s : cmpauxmd.m4 xmkfile
 
 #endif /* PROC_TYPE_VAX */
 
@@ -200,13 +200,13 @@ cmpaux-vax.s : cmpaux-vax.m4 xmakefile
 #define PROC_TYPE_KNOWN
 #undef hppa
 MACHINE_SWITCHES =
-MACHINE_SOURCES = cmpint.c cmpaux-hppa.m4
-MACHINE_OBJECTS = cmpint.o cmpaux-hppa.o
-GC_HEAD_FILES = gccode.h cmpgc.h cmpint-hppa.h hppacache.h
-XTRA_TARGETS = hppacache
+MACHINE_SOURCES = cmpint.c cmpauxmd.m4
+MACHINE_OBJECTS = cmpint.o cmpauxmd.o
+GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h hppacach.h
+XTRA_TARGETS = hppacach
 
-cmpaux-hppa.o : cmpaux-hppa.s
-cmpaux-hppa.s : cmpaux-hppa.m4 xmakefile
+cmpauxmd.o : cmpauxmd.s
+cmpauxmd.s : cmpauxmd.m4 xmkfile
 
 #endif /* PROC_TYPE_HPPA */
 
@@ -214,12 +214,12 @@ cmpaux-hppa.s : cmpaux-hppa.m4 xmakefile
 #define PROC_TYPE_KNOWN
 #undef mips
 MACHINE_SWITCHES =
-MACHINE_SOURCES = cmpint.c cmpaux-mips.m4
-MACHINE_OBJECTS = cmpint.o cmpaux-mips.o
-GC_HEAD_FILES = gccode.h cmpgc.h cmpint-mips.h
+MACHINE_SOURCES = cmpint.c cmpauxmd.m4
+MACHINE_OBJECTS = cmpint.o cmpauxmd.o
+GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 
-cmpaux-mips.o : cmpaux-mips.s
-cmpaux-mips.s : cmpaux-mips.m4 xmakefile
+cmpauxmd.o : cmpauxmd.s
+cmpauxmd.s : cmpauxmd.m4 xmkfile
 
 #endif /* PROC_TYPE_MIPS */
 
@@ -227,38 +227,38 @@ cmpaux-mips.s : cmpaux-mips.m4 xmakefile
 #define PROC_TYPE_KNOWN
 #undef i386
 MACHINE_SWITCHES =
-MACHINE_SOURCES = cmpint.c cmpaux-i386.m4
-MACHINE_OBJECTS = cmpint.o cmpaux-i386.o
-GC_HEAD_FILES = gccode.h cmpgc.h cmpint-i386.h
+MACHINE_SOURCES = cmpint.c cmpauxmd.m4
+MACHINE_OBJECTS = cmpint.o cmpauxmd.o
+GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 
-cmpaux-i386.o : cmpaux-i386.s
-cmpaux-i386.s : cmpaux-i386.m4 xmakefile
+cmpauxmd.o : cmpauxmd.s
+cmpauxmd.s : cmpauxmd.m4 xmkfile
 
 #endif /* PROC_TYPE_I386 */
 
 #if (PROC_TYPE == PROC_TYPE_ALPHA)
 #define PROC_TYPE_KNOWN
 MACHINE_SWITCHES =
-MACHINE_SOURCES = cmpint.c cmpaux-alpha.m4
-MACHINE_OBJECTS = cmpint.o cmpaux-alpha.o
-GC_HEAD_FILES = gccode.h cmpgc.h cmpint-alpha.h
+MACHINE_SOURCES = cmpint.c cmpauxmd.m4
+MACHINE_OBJECTS = cmpint.o cmpauxmd.o
+GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 
-cmpaux-alpha.o : cmpaux-alpha.s
-cmpaux-alpha.s : cmpaux-alpha.m4 xmakefile
+cmpauxmd.o : cmpauxmd.s
+cmpauxmd.s : cmpauxmd.m4 xmkfile
 
 #endif /* PROC_TYPE_ALPHA */
 
 #if (PROC_TYPE == PROC_TYPE_LIARC)
 #define PROC_TYPE_KNOWN
 
-#include "ymake.cclist"
+#include "ymake.ccl"
 
 COMPILED_OBJECTS = $(COMPILED_SOURCES:.c=.o)
 
 MACHINE_SWITCHES = -DNATIVE_CODE_IS_C
-MACHINE_SOURCES = cmpint.c cmpaux-C.c compinit.c $(COMPILED_SOURCES)
-MACHINE_OBJECTS = cmpint.o cmpaux-C.o compinit.o $(COMPILED_OBJECTS)
-GC_HEAD_FILES = gccode.h cmpgc.h cmpint-C.h
+MACHINE_SOURCES = cmpint.c cmpauxmd.c compinit.c $(COMPILED_SOURCES)
+MACHINE_OBJECTS = cmpint.o cmpauxmd.o compinit.o $(COMPILED_OBJECTS)
+GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 LIARC_HEAD_FILES = \
 ansidecl.h \
 config.h \
@@ -271,21 +271,22 @@ const.h \
 interp.h \
 prim.h \
 $(GC_HEAD_FILES)
-cmpaux-C.o : cmpaux-C.c liarc.touch bignum.h
-compinit.o : compinit.c liarc.touch compinit.h
-/* The following includes liarc.touch in case COMPILED_SOURCES is empty,
+cmpauxmd.o : cmpauxmd.c liarc.tch bignum.h
+compinit.o : compinit.c liarc.tch compinit.h
+/* The following includes liarc.tch in case COMPILED_SOURCES is empty,
    to prevent fgrep from reading stdin.
  */
-compinit.h : $(COMPILED_SOURCES) liarc.touch xmakefile
+compinit.h : $(COMPILED_SOURCES) liarc.tch xmkfile
 	@echo "#*** Generating" $@ "because of" $?
 	rm -f $@
-	fgrep DECLARE_COMPILED_CODE liarc.touch $(COMPILED_SOURCES) | \
+	fgrep DECLARE_COMPILED_CODE liarc.tch $(COMPILED_SOURCES) | \
 	sed -e 's/.*:/  /' -e 's/)/);' > $@
 
-$(COMPILED_OBJECTS) : liarc.touch
-liarc.touch: liarc.h $(LIARC_HEAD_FILES)
+$(COMPILED_OBJECTS) : liarc.tch
+liarc.tch: liarc.h $(LIARC_HEAD_FILES)
 	@echo "#** Generating" $@ because of $?
-	touch liarc.touch
+	rm -f $@
+	echo "touch" > $@
 
 #endif /* PROC_TYPE_LIARC */
 
@@ -354,7 +355,7 @@ CFLAGS = -DMIT_SCHEME C_OPTIMIZE_SWITCH C_DEBUG_SWITCH C_SWITCH_MACHINE C_SWITCH
 	$(CC) $(CFLAGS) -c $*.c
 
 .c.cpp: ; @ECHO "#** Generating" $@
-	make -f xmakefile Breakup
+	make -f xmkfile Breakup
 	$(CC) $(CFLAGS) -E $*.c | \
 	RUN(Breakup) | \
 	sed -e 's/^#.*//' -e 's/^[ 	]*$$//' -e 's/^$$//' | \
@@ -405,6 +406,7 @@ obstack.c \
 option.c \
 osscheme.c \
 ostty.c \
+outf.c \
 prim.c \
 primutl.c \
 prmcon.c \
@@ -467,7 +469,7 @@ pruxfs.c \
 pruxio.c \
 pruxsock.c
 
-HEAD_FILES = scheme.touch prims.h zones.h locks.h bignum.h \
+HEAD_FILES = scheme.tch prims.h zones.h locks.h bignum.h \
 	$(GC_HEAD_FILES) trap.h lookup.h history.h cmpint.h
 
 CORE_OBJECTS = \
@@ -500,6 +502,7 @@ obstack.o \
 option.o \
 osscheme.o \
 ostty.o \
+outf.o \
 prim.o \
 primutl.o \
 prmcon.o \
@@ -569,7 +572,7 @@ BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS
 
 /* Construction rules. */
 
-all: Bintopsb Psbtobin scheme bchscheme bchdrn $(XTRA_TARGETS)
+all: bintopsb psbtobin scheme bchscheme bchdrn $(XTRA_TARGETS)
 
 scheme xscheme : $(OBJECTS) $(SCHEME_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
@@ -586,27 +589,27 @@ bchdrn : bchdrn.o bchutl.o
 	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ bchdrn.o bchutl.o
 
-Findprim : Findprim.o
+findprim : findprim.o
 	@ECHO "#** Re-linking" $@ because of $?
-	$(CC) $(LDFLAGS) -o $@ Findprim.o
+	$(CC) $(LDFLAGS) -o $@ findprim.o
 
-Bintopsb : Bintopsb.o missing.o
+bintopsb : bintopsb.o missing.o
 	@ECHO "#** Re-linking" $@ because of $?
-	$(CC) $(LDFLAGS) -o $@ Bintopsb.o missing.o LIB_MATH
+	$(CC) $(LDFLAGS) -o $@ bintopsb.o missing.o LIB_MATH
 
-Psbtobin : Psbtobin.o missing.o
+psbtobin : psbtobin.o missing.o
 	@ECHO "#** Re-linking" $@ because of $?
-	$(CC) $(LDFLAGS) -o $@ Psbtobin.o missing.o LIB_MATH
+	$(CC) $(LDFLAGS) -o $@ psbtobin.o missing.o LIB_MATH
 
-Breakup : Breakup.o
+breakup : breakup.o
 	@ECHO "#** Re-linking" $@ because of $?
-	$(CC) $(LDFLAGS) -o $@ Breakup.o
+	$(CC) $(LDFLAGS) -o $@ breakup.o
 
-Wsize : Wsize.o
+wsize : wsize.o
 	@ECHO "#** Re-linking" $@ because of $?
-	$(CC) $(LDFLAGS) -o $@ Wsize.o LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
+	$(CC) $(LDFLAGS) -o $@ wsize.o LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
-Ppband : Ppband.o
+ppband : ppband.o
 	@ECHO "#** Re-linking" $@ because of $?
 	$(CC) $(LDFLAGS) -o $@ Ppband.o
 
@@ -626,23 +629,23 @@ usrdef.txt :
 	RUN(make_vmslist) usrdef.txt $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES)
 
 vmsusrdef.c :
-	echo "$$ Findprim -o usrdef.c -l [-.vms]usrdef.txt"
+	echo "$$ findprim -o usrdef.c -l [-.vms]usrdef.txt"
 	$(CC) $(CFLAGS) -c usrdef.c
 
-usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
+usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.tch findprim xmkfile
 	@ECHO "#** Re-making" $@ because of $?
 	rm -f usrdef.c
-	RUN(Findprim) $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrdef.c
+	RUN(findprim) $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrdef.c
 
-bchdef.c : $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
+bchdef.c : $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) usrdef.tch findprim xmkfile
 	@ECHO "#** Re-making" $@ because of $?
 	rm -f bchdef.c
-	RUN(Findprim) $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) > bchdef.c
+	RUN(findprim) $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) > bchdef.c
 
 primitive_tables :
 	rm -f usrdef.c usrdef.o bchdef.c bchdef.o
 
-scheme.touch psbmap.touch usrdef.touch :
+scheme.tch psbmap.tch usrdef.tch :
 	@ECHO "#** Resetting" $@ because of $?
 	rm -f $@
 	/* Create the file by opening rather than using `touch' program.
@@ -650,30 +653,30 @@ scheme.touch psbmap.touch usrdef.touch :
 	   file server's clock is not synchronized with the client's. */
 	echo "touch" > $@
 
-#include "ymake.local"
+#include "ymake.lcl"
 
-/* scheme.touch depends also on butterfly.h rename.c */
-scheme.touch : scheme.h oscond.h ansidecl.h dstack.h obstack.h config.h \
+/* scheme.tch depends also on butterfly.h rename.c */
+scheme.tch : scheme.h oscond.h ansidecl.h dstack.h obstack.h config.h \
 	bkpt.h object.h scode.h sdata.h gc.h interp.h stack.h futures.h \
 	types.h errors.h returns.h const.h fixobj.h default.h extern.h prim.h \
-	intrpt.h critsec.h float.h
-psbmap.touch : config.h object.h bignum.h bignumint.h bitstr.h types.h \
+	intrpt.h critsec.h float.h outf.h
+psbmap.tch : config.h object.h bignum.h bignmint.h bitstr.h types.h \
 	sdata.h const.h psbmap.h $(GC_HEAD_FILES) comlin.h comlin.c
-usrdef.touch : usrdef.h config.h object.h prim.h
+usrdef.tch : usrdef.h config.h object.h prim.h
 
-limits.h : hard-params
+limits.h : hard-par
 	rm -f limits.h
-	RUN(hard-params) -l > limits.h
-float.h : hard-params
+	RUN(hard-par) -l > limits.h
+float.h : hard-par
 	rm -f float.h
-	RUN(hard-params) -f > float.h
-hard-params : hard-params.c
-	$(CC) -DNO_SC $(LDFLAGS) -o hard-params hard-params.c
+	RUN(hard-par) -f > float.h
+hard-par : hard-par.c
+	$(CC) -DNO_SC $(LDFLAGS) -o hard-par hard-par.c
 
-hppacache.o : hppacache.h
+hppacach.o : hppacach.h
 
-hppacache : hppacache.o
-	$(CC) $(CFLAGS) -o hppacache hppacache.o
+hppacach : hppacach.o
+	$(CC) $(CFLAGS) -o hppacach hppacach.o
 
 lint.out : $(SOURCES) $(SCHEME_SOURCES) $(CSRC) usrdef.c $(HEAD_FILES)
 	rm -f lint.out
@@ -684,86 +687,83 @@ lint.out : $(SOURCES) $(SCHEME_SOURCES) $(CSRC) usrdef.c $(HEAD_FILES)
 /* "foo" prevents syntax error when USER_PRIM_OBJECTS is empty. */
 foo $(USER_PRIM_OBJECTS) : $(HEAD_FILES)
 
-interp.o : scheme.touch locks.h trap.h lookup.h history.h cmpint.h zones.h prmcon.h
-hooks.o : scheme.touch prims.h winder.h history.h
-utils.o : scheme.touch prims.h winder.h history.h cmpint.h
-primutl.o : scheme.touch prims.h prename.h
+interp.o : scheme.tch locks.h trap.h lookup.h history.h cmpint.h zones.h prmcon.h
+hooks.o : scheme.tch prims.h winder.h history.h
+utils.o : scheme.tch prims.h winder.h history.h cmpint.h
+primutl.o : scheme.tch prims.h prename.h
 
 hunk.o list.o step.o vector.o sysprim.o daemon.o prim.o extern.o : \
-	scheme.touch prims.h
+	scheme.tch prims.h
 
-lookup.o lookprm.o debug.o intern.o : scheme.touch prims.h lookup.h trap.h locks.h
+lookup.o lookprm.o debug.o intern.o : scheme.tch prims.h lookup.h trap.h locks.h
 
-fasload.o : scheme.touch prims.h osscheme.h osfile.h osio.h $(GC_HEAD_FILES) \
+fasload.o : scheme.tch prims.h osscheme.h osfile.h osio.h $(GC_HEAD_FILES) \
 	trap.h option.h prmcon.h load.c fasl.h
-fasdump.o : scheme.touch prims.h osio.h osfile.h osfs.h $(GC_HEAD_FILES) \
+fasdump.o : scheme.tch prims.h osio.h osfile.h osfs.h $(GC_HEAD_FILES) \
 	trap.h lookup.h fasl.h dump.c
 
-memmag.o : scheme.touch prims.h $(GC_HEAD_FILES)
-gcloop.o : scheme.touch $(GC_HEAD_FILES)
-purify.o : scheme.touch prims.h $(GC_HEAD_FILES) zones.h
-purutl.o : scheme.touch prims.h $(GC_HEAD_FILES) zones.h
-comutl.o : scheme.touch prims.h
+memmag.o : scheme.tch prims.h $(GC_HEAD_FILES)
+gcloop.o : scheme.tch $(GC_HEAD_FILES)
+purify.o : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
+purutl.o : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
+comutl.o : scheme.tch prims.h
 gctype.o : config.h
 
-artutl.o : scheme.touch
-bignum.o : scheme.touch bignumint.h limits.h
-bigprm.o flonum.o intprm.o : scheme.touch prims.h zones.h
-generic.o : scheme.touch prims.h
-fixnum.o : scheme.touch prims.h mul.c
+artutl.o : scheme.tch
+bignum.o : scheme.tch bignmint.h limits.h
+bigprm.o flonum.o intprm.o : scheme.tch prims.h zones.h
+generic.o : scheme.tch prims.h
+fixnum.o : scheme.tch prims.h mul.c
 
-storage.o : scheme.touch gctype.c
+storage.o : scheme.tch gctype.c
 
-char.o string.o dfloat.o : scheme.touch prims.h
-tterm.o : scheme.touch prims.h osterm.h
+char.o string.o dfloat.o : scheme.tch prims.h
+tterm.o : scheme.tch prims.h osterm.h
 
-boot.o : scheme.touch prims.h version.h option.h ostop.h
+boot.o : scheme.tch prims.h version.h option.h ostop.h os.h
 option.o : ansidecl.h obstack.h config.h osenv.h
-term.o : scheme.touch
+term.o : scheme.tch
 missing.o : config.h
 
 BCHGCC_H = bchgcc.h oscond.h $(GC_HEAD_FILES)
-bchdmp.o : scheme.touch prims.h uxio.h osio.h osfile.h trap.h lookup.h \
+bchdmp.o : scheme.tch prims.h uxio.h osio.h osfile.h trap.h lookup.h \
 	$(BCHGCC_H) fasl.h dump.c
 bchdrn.o : ansidecl.h bchdrn.h
-bchmmg.o : scheme.touch prims.h ux.h $(BCHGCC_H) option.h bchdrn.h
-bchgcl.o : scheme.touch $(BCHGCC_H)
-bchpur.o : scheme.touch prims.h $(BCHGCC_H) zones.h
+bchmmg.o : scheme.tch prims.h ux.h $(BCHGCC_H) option.h bchdrn.h
+bchgcl.o : scheme.tch $(BCHGCC_H)
+bchpur.o : scheme.tch prims.h $(BCHGCC_H) zones.h
 bchutl.o : ansidecl.h
 
-syntax.o : scheme.touch prims.h edwin.h syntax.h
-bitstr.o : scheme.touch prims.h bitstr.h
-regex.o : scheme.touch syntax.h regex.h
-rgxprim.o : scheme.touch prims.h edwin.h syntax.h regex.h
+syntax.o : scheme.tch prims.h edwin.h syntax.h
+bitstr.o : scheme.tch prims.h bitstr.h
+regex.o : scheme.tch syntax.h regex.h
+rgxprim.o : scheme.tch prims.h edwin.h syntax.h regex.h
 
-Bintopsb.o : psbmap.touch trap.h limits.h fasl.h load.c bltdef.h
-Psbtobin.o : psbmap.touch float.h fasl.h dump.c
+Bintopsb.o : psbmap.tch trap.h limits.h fasl.h load.c bltdef.h
+Psbtobin.o : psbmap.tch float.h fasl.h dump.c
 Ppband.o : ansidecl.h config.h errors.h types.h const.h object.h \
         $(GC_HEAD_FILES) sdata.h load.c fasl.h
 Wsize.o : config.h
 
-dmpwrld.o : scheme.touch prims.h ux.h osfs.h \
-	unexec.c unexhp9k800.c getpagesize.h
+dmpwrld.o : scheme.tch prims.h ux.h osfs.h \
+	unexec.c unexhppa.c getpgsz.h
 
-x11base.o x11color.o x11graph.o x11term.o starbasex.o : scheme.touch prims.h \
+x11base.o x11color.o x11graph.o x11term.o starbasx.o : scheme.tch prims.h \
 	x11.h
 x11base.o : ux.h uxselect.h
-starbase.o : scheme.touch prims.h
+starbase.o : scheme.tch prims.h
 
-cmpint.o : scheme.touch prim.h $(GC_HEAD_FILES)
-cmpaux-hppa.s : cmpaux-hppa.m4
-cmpaux-mc68k.s : cmpaux-mc68k.m4
-cmpaux-vax.s : cmpaux-vax.m4
+cmpint.o : scheme.tch prim.h $(GC_HEAD_FILES)
 
-osscheme.o : scheme.touch posixtype.h os.h osscheme.h
-ostty.o : ansidecl.h oscond.h posixtype.h os.h ostty.h osscheme.h
+osscheme.o : scheme.tch posixtyp.h os.h osscheme.h
+ostty.o : ansidecl.h oscond.h posixtyp.h os.h ostty.h osscheme.h
 
-error.o ptrvec.o transact.o : ansidecl.h dstack.h
+error.o ptrvec.o transact.o : ansidecl.h dstack.h outf.h
 wind.o : ansidecl.h dstack.h obstack.h
 obstack.o : obstack.h
 
 $(UNIX_OBJECTS) pruxenv.o pruxfs.o pruxio.o pruxsock.o : oscond.h ansidecl.h \
-       posixtype.h intext.h dstack.h os.h osscheme.h ux.h
+       posixtyp.h intext.h dstack.h os.h osscheme.h ux.h
 uxctty.o : osctty.h ossig.h
 uxenv.o : osenv.h
 uxfile.o : osfile.h osio.h uxio.h
@@ -774,14 +774,14 @@ uxsig.o : ossig.h osctty.h ostty.h uxtrap.h uxutil.h critsec.h
 uxsock.o : uxsock.h osio.h uxio.h prims.h
 uxterm.o : osterm.h uxterm.h osio.h uxio.h ospty.h
 uxtop.o : ostop.h uxtop.h osctty.h uxutil.h errors.h option.h
-uxtrap.o : scheme.touch uxtrap.h uxutil.h option.h $(GC_HEAD_FILES)
+uxtrap.o : scheme.tch uxtrap.h uxutil.h option.h $(GC_HEAD_FILES)
 uxtty.o : ostty.h osenv.h osio.h uxio.h osterm.h uxterm.h
 uxutil.o : uxutil.h
 pruxfs.o : osfs.h
 pruxio.o : osio.h uxselect.h
 pruxsock.o : osio.h uxsock.h
 
-$(OS_PRIM_OBJECTS) : scheme.touch prims.h posixtype.h os.h
+$(OS_PRIM_OBJECTS) : scheme.tch prims.h posixtyp.h os.h
 prosenv.o : osenv.h ostop.h
 prosfile.o : osfile.h
 prosfs.o : osfs.h
@@ -791,5 +791,5 @@ prospty.o : osterm.h osio.h ospty.h
 prosterm.o : osterm.h osio.h
 prostty.o : ostty.h osctty.h osfile.h osio.h
 
-prmcon.o : scheme.touch prims.h prmcon.h
+prmcon.o : scheme.tch prims.h prmcon.h
 

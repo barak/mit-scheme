@@ -14,11 +14,12 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/wind.c,v 1.4 1991/07/06 21:42:41 cph Exp $ */
+/* $Id: wind.c,v 1.5 1993/06/24 06:37:10 gjr Exp $ */
 
 #include <stdio.h>
 #include "obstack.h"
 #include "dstack.h"
+#include "outf.h"
 extern void EXFUN (free, (PTR ptr));
 #define obstack_chunk_alloc xmalloc
 #define obstack_chunk_free free
@@ -31,8 +32,8 @@ DEFUN (error, (procedure_name, message),
        CONST char * procedure_name AND
        CONST char * message)
 {
-  fprintf (stderr, "%s: %s\n", procedure_name, message);
-  fflush (stderr);
+  outf_fatal ("%s: %s\n", procedure_name, message);
+  outf_flush_fatal ();
   abort ();
 }
 

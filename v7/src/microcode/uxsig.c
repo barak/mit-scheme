@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.25 1993/02/21 00:00:58 gjr Exp $
+$Id: uxsig.c,v 1.26 1993/06/24 06:35:59 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -1138,7 +1138,7 @@ DEFUN_VOID (interactive_back_trace)
   }
   INTERACTIVE_NEWLINE ();
   if ((strlen (&input_string[0])) == 0)
-    debug_back_trace (stdout);
+    debug_back_trace (console_output);
   else
   {
     transaction_begin ();
@@ -1146,19 +1146,19 @@ DEFUN_VOID (interactive_back_trace)
       FILE * to_dump = (fopen (&input_string[0], "w"));
       if (to_dump == ((FILE *) NULL))
       {
-	printf ("Error opening \"%s\".\n", (&input_string[0]));
+	outf_error ("Error opening \"%s\".\n", (&input_string[0]));
 	transaction_abort ();
 	return;
       }
       transaction_record_action (tat_always,
 				 eta_fclose,
 				 ((PTR) to_dump));
-      fprintf (stdout, "Writing the stack trace to file \"%s\" -- ",
-	       &input_string[0]);
-      fflush (stdout);
-      debug_back_trace (to_dump);
-      fputs ("Done.\n", stdout);
-      fflush (stdout);
+      outf_console ("Writing the stack trace to file \"%s\" -- ",
+                    &input_string[0]);
+      outf_flush_console ();
+      debug_back_trace ((outf_channel) to_dump);
+      outf_console ("Done.\n");
+      outf_flush_console ();
     }
     transaction_commit ();
   }

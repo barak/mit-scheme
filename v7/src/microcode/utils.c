@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.56 1993/02/23 02:38:36 gjr Exp $
+$Id: utils.c,v 9.57 1993/06/24 06:32:28 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -57,14 +57,12 @@ DEFUN (Setup_Interrupt, (Masked_Interrupts), long Masked_Interrupts)
 
   if (!(VECTOR_P (Int_Vector)))
   {
-    fprintf (stderr,
-	     "\nInvalid handlers vector (0x%lx)\n", Int_Vector);
+    outf_fatal ("\nInvalid handlers vector (0x%lx)\n", Int_Vector);
 lose_big:
-    fprintf (stderr,
-	     "Interrupts = 0x%08lx, Mask = 0x%08lx, Masked = 0x%08lx\n",
-	     FETCH_INTERRUPT_CODE(),
-	     FETCH_INTERRUPT_MASK(),
-	     Masked_Interrupts);
+    outf_fatal("Interrupts = 0x%08lx, Mask = 0x%08lx, Masked = 0x%08lx\n",
+	       FETCH_INTERRUPT_CODE(),
+	       FETCH_INTERRUPT_MASK(),
+	       Masked_Interrupts);
     Microcode_Termination (TERM_NO_INTERRUPT_HANDLER);
   }
 
@@ -94,9 +92,8 @@ lose_big:
   /* Handle case where interrupt vector is too small. */
   if (Int_Number >= (VECTOR_LENGTH (Int_Vector)))
   {
-    fprintf (stderr,
-	     "\nInterrupt out of range: %ld (vector length = %ld)\n",
-	     Int_Number, (VECTOR_LENGTH (Int_Vector)));
+    outf_fatal("\nInterrupt out of range: %ld (vector length = %ld)\n",
+	       Int_Number, (VECTOR_LENGTH (Int_Vector)));
     goto lose_big;
   }
 
@@ -131,14 +128,14 @@ Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
 /* Error processing utilities */
 
 void
-DEFUN (err_print, (error_code, where), long error_code AND FILE * where)
+DEFUN (err_print, (error_code, where), long error_code AND outf_channel where)
 {
   extern char * Error_Names [];
 
   if (error_code > MAX_ERROR)
-    fprintf (where, "Unknown error code 0x%lx.\n", error_code);
+    outf (where, "Unknown error code 0x%lx.\n", error_code);
   else
-    fprintf (where, "Error code 0x%lx (%s).\n",
+    outf (where, "Error code 0x%lx (%s).\n",
 	     error_code,
 	     (Error_Names [error_code]));
   return;
@@ -151,10 +148,10 @@ void
 DEFUN (error_death, (code, message), long code AND char * message)
 {
   death_blow = code;
-  fprintf (stderr, "\nMicrocode Error: %s.\n", message);
-  err_print (code, stderr);
-  fprintf (stderr, "\n**** Stack Trace ****\n\n");
-  Back_Trace (stderr);
+  outf_fatal ("\nMicrocode Error: %s.\n", message);
+  err_print (code, fatal_output);
+  outf_error ("\n**** Stack Trace ****\n\n");
+  Back_Trace (error_output);
   termination_no_error_handler ();
   /*NOTREACHED*/
 }
@@ -162,7 +159,7 @@ DEFUN (error_death, (code, message), long code AND char * message)
 void
 DEFUN_VOID (Stack_Death)
 {
-  fprintf (stderr, "\nWill_Push vs. Pushed inconsistency.\n");
+  outf_fatal("\nWill_Push vs. Pushed inconsistency.\n");
   Microcode_Termination (TERM_BAD_STACK);
   /*NOTREACHED*/
 }
@@ -194,8 +191,8 @@ DEFUN_VOID (back_out_of_primitive_internal)
   primitive = (Regs [REGBLOCK_PRIMITIVE]);
   if (! (PRIMITIVE_P (primitive)))
     {
-      fprintf (stderr,
-	       "\nback_out_of_primitive backing out when not in primitive!\n");
+      outf_fatal(
+	      "\nback_out_of_primitive backing out when not in primitive!\n");
       Microcode_Termination (TERM_BAD_BACK_OUT);
     }
   nargs = (PRIMITIVE_N_ARGUMENTS (primitive));
@@ -238,9 +235,8 @@ DEFUN_VOID (canonicalize_primitive_context)
   primitive = (Regs [REGBLOCK_PRIMITIVE]);
   if (! (PRIMITIVE_P (primitive)))
     {
-      fprintf
-	(stderr,
-	 "\ncanonicalize_primitive_context invoked when not in primitive!\n");
+      outf_fatal
+	("\ncanonicalize_primitive_context invoked when not in primitive!\n");
       Microcode_Termination (TERM_BAD_BACK_OUT);
     }
   nargs = (PRIMITIVE_N_ARGUMENTS (primitive));
@@ -456,20 +452,20 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
 
   if (Consistency_Check)
   {
-    err_print(Err, stdout);
+    err_print(Err, error_output);
     Print_Expression(Fetch_Expression(), "Expression was");
-    printf ("\nEnvironment 0x%lx (#%lo).\n",
+    outf_error ("\nEnvironment 0x%lx (#%lo).\n",
 	    ((long) (Fetch_Env ())), ((long) (Fetch_Env ())));
     Print_Return("Return code");
-    printf("\n");
+    outf_error ("\n");
   }
 
   Error_Exit_Hook();
 
   if (Trace_On_Error)
   {
-    printf("\n\n**** Stack Trace ****\n\n");
-    Back_Trace(stdout);
+    outf_error ("\n\n**** Stack Trace ****\n\n");
+    Back_Trace (error_output);
   }
 
 #ifdef ENABLE_DEBUGGING_TOOLS
@@ -732,7 +728,7 @@ DEFUN (Restore_History, (hist_obj), SCHEME_OBJECT hist_obj)
   }
   else if (new_hist == SHARP_T)
   {
-    fprintf(stderr, "\nBad history to restore.\n");
+    outf_fatal ("\nBad history to restore.\n");
     Microcode_Termination (TERM_EXIT);
     /*NOTREACHED*/
   }
@@ -764,17 +760,16 @@ DEFUN (primitive_apply_internal, (primitive), SCHEME_OBJECT primitive)
       {
 	int arity = (PRIMITIVE_N_ARGUMENTS (primitive));
 	Print_Expression (primitive, "Stack bad after ");
-	fprintf (stderr, "\nStack was 0x%lx, now 0x%lx, #args=%ld.\n",
-		 ((long) saved_stack), ((long) Stack_Pointer), ((long) arity));
-	fflush (stderr);
+	outf_fatal ("\nStack was 0x%lx, now 0x%lx, #args=%ld.\n",
+		    ((long) saved_stack), ((long) Stack_Pointer), ((long) arity));
 	Microcode_Termination (TERM_EXIT);
       }
   }
   if (Primitive_Debug)
     {
       Print_Expression (result, "Primitive Result");
-      putc ('\n', stderr);
-      fflush (stderr);
+      outf_error("\n");
+      outf_flush_error();
     }
   return (result);
 }
@@ -887,7 +882,7 @@ DEFUN (Find_State_Space, (State_Point), SCHEME_OBJECT State_Point)
 #ifdef ENABLE_DEBUGGING_TOOLS
     if (Point == SHARP_F)
     {
-      fprintf(stderr,
+      outf_fatal(
 	      "\nState_Point 0x%lx wrong: count was %ld, #F at %ld\n",
 	      ((long) State_Point), ((long) How_Far), ((long) i));
       Microcode_Termination(TERM_EXIT);
@@ -985,8 +980,8 @@ DEFUN (Translate_To_Point, (Target), SCHEME_OBJECT Target)
 #ifdef ENABLE_DEBUGGING_TOOLS
   if (Merge_Depth < 0)
   {
-    fprintf(stderr, "\nMerge_Depth went negative: %d\n", Merge_Depth);
-    Microcode_Termination(TERM_EXIT);
+    outf_fatal("\nMerge_Depth went negative: %d\n", Merge_Depth);
+    Microcode_Termination (TERM_EXIT);
   }
 #endif /* ENABLE_DEBUGGING_TOOLS */
 
