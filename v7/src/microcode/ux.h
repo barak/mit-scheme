@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.63 1996/04/23 20:42:41 cph Exp $
+$Id: ux.h,v 1.64 1996/04/23 20:58:11 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -239,6 +239,7 @@ extern int EXFUN (kill, (pid_t, int));
 #define HAVE_POSIX_SIGNALS
 #define HAVE_WAITPID
 #define VOID_SIGNAL_HANDLERS
+#define HAVE_STATFS
 
 #endif /* _HPUX_VERSION */
 
