@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.26 1995/10/31 08:08:14 cph Exp $
+;;;	$Id: os2.scm,v 1.27 1995/12/19 18:18:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -97,7 +97,9 @@
      (if (fix:< (string-length string) #x10000) string ""))))
 
 (define (os/interprogram-paste)
-  (convert-crlf-to-newline (os2-clipboard-read-text)))
+  (let ((text (os2-clipboard-read-text)))
+    (and text
+	 (convert-crlf-to-newline text))))
 
 (define (convert-newline-to-crlf string)
   (let ((end (string-length string)))
