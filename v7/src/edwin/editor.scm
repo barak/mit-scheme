@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.217 1992/02/19 00:05:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.218 1992/03/13 10:08:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -47,18 +47,21 @@
 (declare (usual-integrations))
 
 (define (edit . args)
-  (cond ((within-editor?)
-	 (error "edwin: Editor already running"))
-	((not edwin-editor)
-	 (apply create-editor args))
-	((not (null? args))
-	 (error "edwin: Arguments ignored when re-entering editor" args))
-	(edwin-continuation
-	 => (lambda (continuation)
-	      (set! edwin-continuation false)
-	      (continuation unspecific))))
   (call-with-current-continuation
    (lambda (continuation)
+     (cond ((within-editor?)
+	    (error "edwin: Editor already running"))
+	   ((not edwin-editor)
+	    (apply create-editor args))
+	   ((not (null? args))
+	    (error "edwin: Arguments ignored when re-entering editor" args))
+	   (edwin-continuation
+	    => (lambda (restart)
+		 (set! edwin-continuation false)
+		 (within-continuation restart
+		   (lambda ()
+		     (set! editor-abort continuation)
+		     unspecific)))))
      (fluid-let ((editor-abort continuation)
 		 (current-editor edwin-editor)
 		 (editor-thread (current-thread))
