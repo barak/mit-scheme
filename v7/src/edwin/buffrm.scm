@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.43 1992/09/08 18:18:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.44 1992/09/08 18:39:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -405,9 +405,9 @@ Automatically becomes local when set in any fashion."
       (make-window-configuration
        (screen-x-size screen)
        (screen-y-size screen)
+       root-window
        (window-x-size frame)
        (window-y-size frame)
-       root-window
        (converted-window (editor-frame-selected-window frame))
        (converted-window (editor-frame-cursor-window frame))
        (let ((window (object-unhash *minibuffer-scroll-window*)))
