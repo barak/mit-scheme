@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.9 1991/08/26 00:20:07 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.10 1991/08/26 15:10:30 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -209,7 +209,7 @@
 			  (begin
 			    ((ref-command next-line) 1)
 			    (current-point))))))
-	       (set! line (rmail-make-basic-summary-line inner-begin))
+	       (set! line (rmail-make-basic-summary-line inner-begin end))
 	       (insert-string (string-append "Summary-line: " line)
 			      (line-start start 2))))
 	 (set! pos (string-find-next-char line #\#))
@@ -223,10 +223,10 @@
 			 (string-tail line (1+ pos))))))
        (set-current-point! old-point)))))
 
-(define (rmail-make-basic-summary-line the-begin)
+(define (rmail-make-basic-summary-line the-begin the-end)
   (string-append
    (let ((the-mark
-	  (re-search-forward "^Date:" the-begin (group-end the-begin))))
+	  (re-search-forward "^Date:" the-begin the-end)))
      (if (not the-mark)
 	 "      "
 	 (let ((the-end-of-line (line-end the-mark 0)))
@@ -251,7 +251,7 @@
 	     "??????")))))
    "  "
    (let ((the-mark
-	  (re-search-forward "^From:[ \t]*" the-begin (group-end the-begin))))
+	  (re-search-forward "^From:[ \t]*" the-begin the-end)))
      (if (not the-mark)
 	 "                         "
 	 (let* ((from
@@ -275,7 +275,7 @@
 	    0 25))))
    "  #"
    (let ((the-mark
-	  (re-search-forward "^Subject:" the-begin (group-end the-begin))))
+	  (re-search-forward "^Subject:" the-begin the-end)))
      (if the-mark
 	 (let ((the-start (skip-chars-forward " \t" the-mark)))
 	   (extract-string the-start (line-end the-start 0)))
@@ -412,6 +412,12 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 		 (string->number (string-trim (extract-string start end)))))
 	    (if (not (null? the-message-number))
 		(begin
+		  (if (char=? (mark-right-char end) #\-)
+		      (begin
+			(set-buffer-writeable! (current-buffer))
+			(mark-delete-right-char! end)
+			(insert-char #\space end)
+			(set-buffer-read-only! (current-buffer))))
 		  (select-buffer-other-window rmail-buffer)
 		  ((command-procedure
 		    (comtab-entry (mode-comtabs (current-major-mode)) #\j))
