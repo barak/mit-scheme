@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.8 1990/11/02 02:06:32 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.9 1991/04/11 03:24:12 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -56,6 +56,7 @@ MIT in each case. |#
   state
   (operation/write-char false read-only true)
   (operation/write-string false read-only true)
+  (operation/write-substring false read-only true)
   (operation/flush-output false read-only true)
   (custom-operations false read-only true)
   (operation-names false read-only true))
@@ -78,51 +79,71 @@ MIT in each case. |#
       (case name
 	((WRITE-CHAR) output-port/write-char)
 	((WRITE-STRING) output-port/write-string)
+	((WRITE-SUBSTRING) output-port/write-substring)
 	((FLUSH-OUTPUT) output-port/flush-output)
 	(else false))))
-
+
 (define (make-output-port operations state)
   (let ((operations
 	 (map (lambda (entry)
 		(cons (car entry) (cadr entry)))
 	      operations)))
     (let ((operation
-	   (lambda (name default)
+	   (lambda (name)
 	     (let ((entry (assq name operations)))
-	       (if entry
-		   (begin (set! operations (delq! entry operations))
-			  (cdr entry))
-		   (or default
-		       (error "MAKE-OUTPUT-PORT: missing operation" name)))))))
-      (let ((write-char (operation 'WRITE-CHAR false))
-	    (write-string
-	     (operation 'WRITE-STRING default-operation/write-string))
-	    (flush-output
-	     (operation 'FLUSH-OUTPUT default-operation/flush-output)))
-	(%make-output-port state write-char write-string flush-output
+	       (and entry
+		    (begin
+		      (set! operations (delq! entry operations))
+		      (cdr entry)))))))
+      (let ((write-char (operation 'WRITE-CHAR))
+	    (write-string (operation 'WRITE-STRING))
+	    (write-substring (operation 'WRITE-SUBSTRING))
+	    (flush-output (operation 'FLUSH-OUTPUT)))
+	(if (not (or write-char write-substring))
+	    (error "Must specify at least one of the following:"
+		   '(WRITE-CHAR WRITE-SUBSTRING)))
+	(%make-output-port state
+			   (or write-char default-operation/write-char)
+			   (or write-string default-operation/write-string)
+			   (or write-substring
+			       default-operation/write-substring)
+			   (or flush-output default-operation/flush-output)
 			   operations
-			   (append '(WRITE-CHAR WRITE-STRING FLUSH-OUTPUT)
+			   (append '(WRITE-CHAR WRITE-STRING WRITE-SUBSTRING
+						FLUSH-OUTPUT)
 				   (map car operations)))))))
 
+(define (default-operation/write-char port char)
+  ((output-port/operation/write-substring port) port (char->string char) 0 1))
+
 (define (default-operation/write-string port string)
-  (let ((write-char (output-port/operation/write-char port))
-	(end (string-length string)))
-    (let loop ((index 0))
+  ((output-port/operation/write-substring port)
+   port
+   string 0 (string-length string)))
+
+(define (default-operation/write-substring port string start end)
+  (let ((write-char (output-port/operation/write-char port)))
+    (let loop ((index start))
       (if (< index end)
-	  (begin (write-char port (string-ref string index))
-		 (loop (1+ index)))))))
+	  (begin
+	    (write-char port (string-ref string index))
+	    (loop (+ index 1)))))))
 
 (define (default-operation/flush-output port)
   port
-  false)
+  unspecific)
 
 (define (output-port/write-char port char)
   ((output-port/operation/write-char port) port char))
 
 (define (output-port/write-string port string)
-  (let ((length (string-length string)))
-    (if (positive? length)
-	((output-port/operation/write-string port) port string))))
+  ((output-port/operation/write-string port) port string))
+
+(define (output-port/write-substring port string start end)
+  ((output-port/operation/write-substring port) port string start end))
+
+(define (output-port/write-object port object)
+  (unparse-object/internal object port 0 true (current-unparser-table)))
 
 (define (output-port/flush-output port)
   ((output-port/operation/flush-output port) port))

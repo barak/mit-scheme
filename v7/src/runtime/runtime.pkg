@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.99 1991/03/14 04:29:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.100 1991/04/11 03:24:25 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -763,6 +763,7 @@ MIT in each case. |#
 	  operation/read-char
 	  operation/read-chars
 	  operation/read-string
+	  operation/read-substring
 	  operation/set-buffer-size)
   (initialization (initialize-package!)))
 
@@ -785,7 +786,8 @@ MIT in each case. |#
 	  operation/flush-output
 	  operation/set-buffer-size
 	  operation/write-char
-	  operation/write-string)
+	  operation/write-string
+	  operation/write-substring)
   (initialization (initialize-package!)))
 
 (define-package (runtime gensym)
@@ -1299,7 +1301,9 @@ MIT in each case. |#
 	  output-port/operation-names
 	  output-port/state
 	  output-port/write-char
+	  output-port/write-object
 	  output-port/write-string
+	  output-port/write-substring
 	  output-port/x-size
 	  output-port?
 	  set-current-output-port!
@@ -1552,6 +1556,7 @@ MIT in each case. |#
 	  output-buffer/size
 	  output-buffer/write-char-block
 	  output-buffer/write-string-block
+	  output-buffer/write-substring-block
 	  set-channel-port!)
   (export (runtime file-input)
 	  input-buffer/chars-remaining
