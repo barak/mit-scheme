@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.3 1989/07/26 03:52:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.4 1989/07/26 04:16:35 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -59,3 +59,13 @@ MIT in each case. */
    */
 
 #define C_SWITCH_FEATURES -DCOMPILE_HISTORY
+
+/* The following two switches are mutually exclusive for most C compilers.
+   An exception is the GNU C compiler. */
+
+/* If defined, this prevents the C compiler from running its optimizer. */
+/* #define SUPPRESS_C_OPTIMIZER */
+
+/* If defined, this prevents the C compiler from
+   generating debugging information. */
+#define SUPPRESS_C_DEBUGGING
