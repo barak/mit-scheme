@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.153 2001/02/06 04:19:13 cph Exp $
+;;; $Id: fileio.scm,v 1.154 2001/05/10 18:22:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; File <-> Buffer I/O
 
@@ -526,11 +527,12 @@ Otherwise, a message is written both before and after long file writes."
 		    ((ref-variable file-precious-flag buffer)
 		     (let ((old (os/precious-backup-pathname pathname)))
 		       (let ((rename-back?
-			      (catch-file-errors (lambda () #f)
-				(lambda ()
-				  (rename-file pathname old)
-				  (set! modes (file-modes old))
-				  #t))))
+			      (catch-file-errors
+			       (lambda (condition) condition #f)
+			       (lambda ()
+				 (rename-file pathname old)
+				 (set! modes (file-modes old))
+				 #t))))
 			 (unwind-protect
 			  #f
 			  (lambda ()
@@ -564,7 +566,7 @@ Otherwise, a message is written both before and after long file writes."
 		     (write-buffer buffer)))
 	      (if modes
 		  (catch-file-errors
-		   (lambda () unspecific)
+		   (lambda (condition) condition unspecific)
 		   (lambda ()
 		     (os/restore-modes-to-updated-file! pathname modes))))
 	      (event-distributor/invoke! event:after-buffer-save buffer)))))))
@@ -714,14 +716,15 @@ Otherwise, a message is written both before and after long file writes."
        (os/backup-buffer? truename)
        (let ((truename (file-chase-links truename)))
 	 (catch-file-errors
-	  (lambda () #f)
+	  (lambda (condition) condition #f)
 	  (lambda ()
 	    (call-with-values
 		(lambda () (os/buffer-backup-pathname truename buffer))
 	      (lambda (backup-pathname targets)
 		(let ((modes
 		       (catch-file-errors
-			(lambda ()
+			(lambda (condition)
+			  condition
 			  (let ((filename (os/default-backup-filename)))
 			    (temporary-message
 			     "Cannot write backup file; backing up in "

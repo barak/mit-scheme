@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utils.scm,v 1.47 2001/02/05 18:34:54 cph Exp $
+;;; $Id: utils.scm,v 1.48 2001/05/10 18:22:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Editor Utilities
 
@@ -269,7 +270,7 @@
   (loop))
 
 (define (delete-directory-no-errors filename)
-  (catch-file-errors (lambda () #f)
+  (catch-file-errors (lambda (condition) condition #f)
 		     (lambda () (delete-directory filename) #t)))
 
 (define (string-or-false? object)
@@ -342,7 +343,6 @@
    (lambda (continuation)
      (bind-condition-handler (list condition-type:file-error
 				   condition-type:port-error)
-	 (if (procedure-arity-valid? if-error 0)
-	     (lambda (condition) condition (continuation (if-error)))
-	     (lambda (condition) (continuation (if-error condition))))
+	 (lambda (condition)
+	   (continuation (if-error condition)))
        thunk))))

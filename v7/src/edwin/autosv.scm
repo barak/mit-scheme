@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: autosv.scm,v 1.33 1999/01/02 06:11:34 cph Exp $
+;;; $Id: autosv.scm,v 1.34 2001/05/10 18:22:26 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Auto Save
 
@@ -162,7 +163,8 @@ This file is not the file you visited; that changes only when you save."
 
 (define (auto-save-buffer buffer)
   (catch-file-errors
-   (lambda ()
+   (lambda (condition)
+     condition
      (editor-beep)
      (let ((name (buffer-name buffer)))
        (message "Autosaving...error for " name)

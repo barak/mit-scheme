@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.183 2001/05/09 21:03:05 cph Exp $
+;;; $Id: dired.scm,v 1.184 2001/05/10 18:22:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -573,15 +573,11 @@ When renaming multiple or marked files, you specify a directory."
 (define (dired-create-file-operation operation)
   (lambda (lstart from to)
     lstart
-    (call-with-current-continuation
-     (lambda (continuation)
-       (bind-condition-handler (list condition-type:file-error
-				     condition-type:port-error)
-	   continuation
-	 (lambda ()
-	   (dired-handle-overwrite to)
-	   (operation from to)
-	   #f))))))
+    (catch-file-errors (lambda (condition) condition)
+      (lambda ()
+	(dired-handle-overwrite to)
+	(operation from to)
+	#f))))
 
 (define (dired-handle-overwrite to)
   (if (and (file-exists? to)
