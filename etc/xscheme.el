@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.1 1987/10/19 19:42:39 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.2 1987/11/02 20:19:30 cph Exp $
 
 (require 'scheme)
 
@@ -152,12 +152,13 @@ The strings are concatenated and terminated by a newline."
 (defun xscheme-send-string-1 (strings)
   (let ((string (apply 'concat strings)))
     (xscheme-send-string-2 string)
-    (setq xscheme-previous-send string)))
+    (if (xscheme-process-buffer-current-p)
+	(setq xscheme-previous-send string))))
 
 (defun xscheme-send-string-2 (string)
   (let ((process (get-process "scheme")))
     (send-string process (concat string "\n"))
-    (if (eq (current-buffer) (process-buffer process))
+    (if (xscheme-process-buffer-current-p)
 	(set-marker (process-mark process) (point)))))
 
 (defun xscheme-yank-previous-send ()
@@ -170,10 +171,9 @@ The strings are concatenated and terminated by a newline."
   "Send the current region to the Scheme process.
 The region is sent terminated by a newline."
   (interactive "r")
-  (let ((process (get-process "scheme")))
-    (if (and process (eq (current-buffer) (process-buffer process)))
-	(progn (goto-char end)
-	       (set-marker (process-mark process) end))))
+  (if (xscheme-process-buffer-current-p)
+      (progn (goto-char end)
+	     (set-marker (process-mark (get-process "scheme")) end)))
   (xscheme-send-string (buffer-substring start end)))
 
 (defun xscheme-send-definition ()
@@ -219,7 +219,7 @@ Useful for working with `adb'."
 (defun xscheme-send-buffer ()
   "Send the current buffer to the Scheme process."
   (interactive)
-  (if (eq (current-buffer) (xscheme-process-buffer))
+  (if (xscheme-process-buffer-current-p)
       (error "Not allowed to send this buffer's contents to Scheme"))
   (xscheme-send-region (point-min) (point-max)))
 
@@ -336,6 +336,10 @@ Control returns to the top level rep loop."
 (defun xscheme-process-buffer-window ()
   (let ((buffer (xscheme-process-buffer)))
     (and buffer (get-buffer-window buffer))))
+
+(defun xscheme-process-buffer-current-p ()
+  "True iff the current buffer is the Scheme process buffer."
+  (eq (xscheme-process-buffer) (current-buffer)))
 
 ;;;; Process Filter
 
