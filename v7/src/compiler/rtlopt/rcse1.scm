@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.103 1987/05/07 00:14:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.104 1987/05/18 23:24:33 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -107,22 +107,29 @@ MIT in each case. |#
 			(not (interpreter-frame-pointer? address)))
 		   (insert-register-destination! address (insert-source!))))
 	      (else
-	       (let ((memory-invalidate!
-		      (cond ((stack-push/pop? address)
-			     (lambda () 'DONE))
-			    ((heap-allocate? address)
-			     (lambda ()
-			       (register-expression-invalidate!
-				(rtl:address-register address))))
-			    (else
-			     (let ((predicate
-				    (if (expression-varies? address)
-					element-address-varies?
-					element-in-memory?)))
-			       (lambda ()
-				 (hash-table-delete-class! predicate)))))))
-		 (full-expression-hash address
-		   (lambda (hash volatile?* in-memory?*)
+	       (full-expression-hash address
+		 (lambda (hash volatile?* in-memory?*)
+		   (let ((memory-invalidate!
+			  (cond ((and (memq (rtl:expression-type address)
+					    '(PRE-INCREMENT POST-INCREMENT))
+				      (or (interpreter-stack-pointer?
+					   (rtl:address-register address))
+					  (interpreter-free-pointer?
+					   (rtl:address-register address))))
+				 (lambda ()
+				   (register-expression-invalidate!
+				    (rtl:address-register address))))
+				((expression-address-varies? address)
+				 (lambda ()
+				   (hash-table-delete-class!
+				    element-in-memory?)))
+				(else
+				 (lambda ()
+				   (hash-table-delete!
+				    hash
+				    (hash-table-lookup hash address))
+				   (hash-table-delete-class!
+				    element-address-varies?))))))
 		     (cond (volatile?* (memory-invalidate!))
 			   ((not volatile?)
 			    (let ((address
@@ -134,11 +141,7 @@ MIT in each case. |#
 				 address
 				 element
 				 (modulo (+ (symbol-hash 'ASSIGN) hash)
-					 n-buckets)))))))))
-	       ;; **** Kludge.  Works only because stack-pointer
-	       ;; gets used in very fixed way by code generator.
-	       (if (stack-push/pop? address)
-		   (stack-pointer-invalidate!))))))))
+					 n-buckets)))))))))))))))
 
 (define (trivial-action volatile? insert-source!)
   (if (not volatile?)
@@ -303,10 +306,20 @@ MIT in each case. |#
 (define (non-object-invalidate!)
   (hash-table-delete-class!
    (lambda (element)
-     (expression-not-object? (element-expression element)))))
+     (memq (rtl:expression-type (element-expression element))
+	   '(OBJECT->ADDRESS OBJECT->DATUM OBJECT->TYPE)))))
 
 (define (element-address-varies? element)
-  (expression-address-varies? (element-expression element)))
+  (and (element-in-memory? element)
+       (expression-address-varies? (element-expression element))))
+
+(define (expression-address-varies? expression)
+  (if (memq (rtl:expression-type expression)
+	    '(OFFSET PRE-INCREMENT POST-INCREMENT))
+      (let ((expression (rtl:address-register expression)))
+	(not (or (= regnum:regs-pointer (rtl:register-number expression))
+		 (= regnum:frame-pointer (rtl:register-number expression)))))
+      (rtl:any-subexpression? expression expression-address-varies?)))
 
 (define (expression-invalidate! expression)
   ;; Delete any expression which refers to this expression from the
