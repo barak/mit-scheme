@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.h,v 1.3 1994/02/15 04:23:49 cph Exp $
+$Id: uxsig.h,v 1.4 1994/02/18 21:14:25 cph Exp $
 
 Copyright (c) 1993-94 Massachusetts Institute of Technology
 
@@ -97,6 +97,7 @@ DEFUN (name, (signo, info, pscp),					\
   DECLARE_FULL_SIGCONTEXT (scp);					\
   INITIALIZE_FULL_SIGCONTEXT (pscp, scp);				\
   ENTER_HANDLER (signo);						\
+  record_signal_delivery (signo);					\
   STD_HANDLER_abortp = (enter_interruption_extent ());			\
   transaction_begin ();							\
   {									\
@@ -120,4 +121,9 @@ DEFUN (name, (signo, info, pscp),					\
 extern void EXFUN (ta_abort_handler, (PTR));
 
 #endif /* NEED_HANDLER_TRANSACTION */
+
+#ifndef DEBUG_SIGNAL_DELIVERY
+#define record_signal_delivery(signo)
+#endif
+
 #endif /* SCM_UXSIG_H */

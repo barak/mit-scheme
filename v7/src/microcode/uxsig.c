@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.29 1994/02/15 20:02:54 cph Exp $
+$Id: uxsig.c,v 1.30 1994/02/18 21:14:18 cph Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -208,7 +208,6 @@ DEFUN (record_signal_delivery, (signo), int signo)
 #else /* not DEBUG_SIGNAL_DELIVERY */
 
 #define initialize_signal_debugging()
-#define record_signal_delivery(signo)
 
 #endif /* not DEBUG_SIGNAL_DELIVERY */
 
