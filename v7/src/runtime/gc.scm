@@ -1,205 +1,185 @@
-;;; -*-Scheme-*-
-;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 13.44 1988/05/05 08:39:12 cph Exp $
-;;;
-;;;	Copyright (c) 1988 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.1 1988/06/13 11:45:00 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; Garbage Collector
+;;; package: (runtime garbage-collector)
 
-(declare (usual-integrations)
-	 (integrate-primitive-procedures
-	  garbage-collect primitive-purify primitive-impurify primitive-fasdump
-	  set-interrupt-enables! enable-interrupts! primitive-gc-type pure?
-	  get-next-constant call-with-current-continuation hunk3-cons
-	  set-fixed-objects-vector! tty-write-char tty-write-string exit))
+(declare (usual-integrations))
 
-(define add-gc-daemon!)
-(define gc-flip)
-(define purify)
-(define impurify)
-(define fasdump)
-(define suspend-world)
-(define set-default-gc-safety-margin!)
+(define (initialize-package!)
+  (set! hook/gc-flip default/gc-flip)
+  (set! hook/purify default/purify)
+  (set! hook/stack-overflow default/stack-overflow)
+  (set! hook/hardware-trap default/hardware-trap)
+  (set! default-safety-margin 4500)
+  (set! pure-space-queue '())
+  (set! constant-space-queue '())
+  (set! hook/gc-start default/gc-start)
+  (set! hook/gc-finish default/gc-finish)
+  (let ((fixed-objects (get-fixed-objects-vector)))
+    (let ((interrupt-vector (vector-ref fixed-objects 1)))
+      (vector-set! interrupt-vector 0 condition-handler/stack-overflow)
+      (vector-set! interrupt-vector 2 condition-handler/gc))
+    (vector-set! fixed-objects #x0C condition-handler/hardware-trap)
+    ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
 
-(define garbage-collector-package
-  (make-environment
+(define (condition-handler/gc interrupt-code interrupt-enables)
+  interrupt-code interrupt-enables
+  (hook/gc-flip default-safety-margin))
 
-(define default-safety-margin 4500)
+(define (condition-handler/stack-overflow interrupt-code interrupt-enables)
+  interrupt-code
+  (hook/stack-overflow)
+  (set-interrupt-enables! interrupt-enables))
 
-;; SET-DEFAULT-GC-SAFETY-MARGIN! changes the amount of memory
-;; saved from the heap to allow the GC handler to run.
+(define (condition-handler/hardware-trap escape-code)
+  escape-code
+  (hook/hardware-trap))
 
-(set! set-default-gc-safety-margin!
-(named-lambda (set-default-gc-safety-margin! #!optional margin)
-  (if (or (unassigned? margin) (null? margin))
-      default-safety-margin
-      (begin (set! default-safety-margin margin)
-	     (gc-flip margin)))))
-
-;;;; Cold Load GC
-
-(define (reset)
-  (enable-interrupts! interrupt-mask-none))
-
-;;; User call -- optionally overrides the default GC safety
-;;; margin for this flip only.
-
-(set! gc-flip
-(named-lambda (gc-flip #!optional new-safety-margin)
-  (with-interrupts-reduced interrupt-mask-none
-   (lambda (old-interrupt-mask)
-     (garbage-collect
-      (if (unassigned? new-safety-margin)
-	  default-safety-margin
-	  new-safety-margin))))))
-
-(vector-set! (vector-ref (get-fixed-objects-vector) 1)
-	     2				;Local Garbage Collection Interrupt
-	     (named-lambda (gc-interrupt interrupt-code interrupt-enables)
-	       (gc-flip Default-Safety-Margin)))
-
-(vector-set! (vector-ref (get-fixed-objects-vector) 1)
-	     0				;Local Stack Overflow Interrupt
-	     (named-lambda (stack-overflow-interrupt interrupt-code
-						     interrupt-enables)
-	       (stack-overflow)
-	       (set-interrupt-enables! interrupt-enables)))
+(define hook/gc-flip)
+(define hook/purify)
+(define hook/stack-overflow)
+(define hook/hardware-trap)
+(define default-safety-margin)
 
-;;; This variable is clobbered by GCSTAT.
-(define (stack-overflow)
-  (tty-write-char char:newline)
-  (tty-write-string "Stack overflow!")
-  (tty-write-char char:newline)
-  (exit))
+(define (default/gc-flip safety-margin)
+  (cond ((not (null? pure-space-queue))
+	 (let ((result (purify-internal pure-space-queue true safety-margin)))
+	   (if (car result)
+	       (set! pure-space-queue '())
+	       (begin
+		 (set! pure-space-queue (cdr pure-space-queue))
+		 (queued-purification-failure)))
+	   (cdr result)))
+	((not (null? constant-space-queue))
+	 (let ((result
+		(purify-internal constant-space-queue false safety-margin)))
+	   (if (car result)
+	       (set! constant-space-queue '())
+	       (begin
+		 (set! constant-space-queue (cdr constant-space-queue))
+		 (queued-purification-failure)))
+	   (cdr result)))
+	(else
+	 (gc-flip-internal safety-margin))))
 
-(vector-set! (get-fixed-objects-vector)
-	     #x0C
-	     (named-lambda (hardware-trap-handler escape-code)
-	       (hardware-trap)))
+(define (queued-purification-failure)
+  (warn "Unable to purify all queued items; dequeuing one"))
 
-;;; This is clobbered also by GCSTAT.
-(define (hardware-trap)
-  (tty-write-char char:newline)
-  (tty-write-string "Hardware trap")
-  (tty-write-char char:newline)
-  (exit))
+(define (default/purify item pure-space? queue?)
+  (if (not (if pure-space? (object-pure? item) (object-constant? item)))
+      (cond ((not queue?)
+	     (if (not (car (purify-internal item
+					    pure-space?
+					    default-safety-margin)))
+		 (error "PURIFY: not enough room in constant space" item)))
+	    (pure-space?
+	     (with-absolutely-no-interrupts
+	      (lambda ()
+		(set! pure-space-queue (cons item pure-space-queue)))))
+	    (else
+	     (with-absolutely-no-interrupts
+	      (lambda ()
+		(set! constant-space-queue
+		      (cons item constant-space-queue))))))))
 
-;;; The GC daemon is invoked by the microcode whenever there is a need.
-;;; All we provide here is a trivial extension mechanism.
+(define (default/stack-overflow)
+  (abort "maximum recursion depth exceeded"))
 
-(vector-set! (get-fixed-objects-vector)
-	     #x0B
-	     (named-lambda (gc-daemon)
-	       (trigger-daemons gc-daemons)))
-
-(set-fixed-objects-vector! (get-fixed-objects-vector))
-
-(define (trigger-daemons daemons . extra-args)
-  (let loop ((daemons daemons))
-    (if (not (null? daemons))
-	(begin (apply (car daemons) extra-args)
-	       (loop (cdr daemons))))))
-
-(define gc-daemons '())
-
-(set! add-gc-daemon!
-(named-lambda (add-gc-daemon! daemon)
-  (if (not (memq daemon gc-daemons))
-      (set! gc-daemons (cons daemon gc-daemons)))))
-
-(reset)
+(define (default/hardware-trap)
+  (abort "the hardware trapped"))
 
-;;;; "GC-like" Primitives
+(define pure-space-queue)
+(define constant-space-queue)
+(define hook/gc-start)
+(define hook/gc-finish)
 
-;; Purify an item -- move it into pure space and clean everything
-;; by doing a gc-flip
+(define (gc-flip-internal safety-margin)
+  (let ((start-value (hook/gc-start)))
+    (let ((space-remaining ((ucode-primitive garbage-collect) safety-margin)))
+      (gc-abort-test space-remaining)
+      (hook/gc-finish start-value space-remaining)
+      space-remaining)))
 
-(set! purify
-(named-lambda (purify item #!optional really-pure?)
-  (if (not (car (primitive-purify item
-				  (if (unassigned? really-pure?)
-				      false
-				      really-pure?)
-				  default-safety-margin)))
-      (error "Not enough room in constant space" purify item))
-  item))
-	      
-(set! impurify
-(named-lambda (impurify object)
-  (if (or (zero? (primitive-gc-type object))
-	  (not (pure? object)))
-      object
-      (primitive-impurify object))))
+(define (purify-internal item pure-space? safety-margin)
+  (let ((start-value (hook/gc-start)))
+    (let ((result
+	   ((ucode-primitive primitive-purify) item
+					       pure-space?
+					       safety-margin)))
+      (gc-abort-test (cdr result))
+      (hook/gc-finish start-value (cdr result))
+      result)))
 
-(set! fasdump
-(named-lambda (fasdump object filename)
-  (let ((filename (canonicalize-output-filename filename))
-	(port (rep-output-port)))
-    (newline port)
-    (write-string "FASDumping " port)
-    (write filename port)
-    (if (not (primitive-fasdump object filename false))
-	(error "Object is too large to be dumped" fasdump object))
-    (write-string " -- done" port))
-  object))
+(define (default/gc-start)
+  false)
+
+(define (default/gc-finish start-value space-remaining)
+  start-value space-remaining
+  false)
+
+(define-integrable (gc-abort-test space-remaining)
+  (if (< space-remaining 4096)
+      (abort "out of memory")))
+
+(define (abort message)
+  (abort-to-nearest-driver (string-append "Aborting!: " message)))
 
-(set! suspend-world
-(named-lambda (suspend-world suspender after-suspend after-restore)
-  (with-interrupts-reduced interrupt-mask-gc-ok
-    (lambda (ie)
-      ((call-with-current-continuation
-	(lambda (cont)
-	  (let ((fixed-objects-vector (get-fixed-objects-vector))
-		(dynamic-state (current-dynamic-state)))
-	    (fluid-let ()
-	      (call-with-current-continuation
-	       (lambda (restart)
-		 (gc-flip)
-		 (suspender restart)
-		 (cont after-suspend)))
-	      (set-fixed-objects-vector! fixed-objects-vector)
-	      (set-current-dynamic-state! dynamic-state)
-	      (reset)
-	      ((access snarf-version microcode-system))
-	      (reset-keyboard-interrupt-dispatch-table!)
-	      (set! *rep-keyboard-map* (keyboard-interrupt-dispatch-table))
-	      ((access reset! primitive-io))
-	      ((access reset! working-directory-package))
-	      after-restore))))
-	ie)))))
+;;;; User Primitives
 
-;;; end GARBAGE-COLLECTOR-PACKAGE.
-))
+(define (set-gc-safety-margin! #!optional safety-margin)
+  (if (not (or (default-object? safety-margin) (not safety-margin)))
+      (begin (set! default-safety-margin safety-margin)
+	     (gc-flip safety-margin)))  default-safety-margin)
+
+(define (gc-flip #!optional safety-margin)
+  ;; Optionally overrides the GC safety margin for this flip only.
+  (with-absolutely-no-interrupts
+   (lambda ()
+     (hook/gc-flip (if (default-object? safety-margin)
+		       default-safety-margin
+		       safety-margin)))))
+(define (purify item #!optional pure-space? queue?)
+  ;; Purify an item -- move it into pure space and clean everything by
+  ;; doing a gc-flip.
+  (hook/purify item
+	       (if (default-object? pure-space?) true pure-space?)
+	       (if (default-object? queue?) true queue?))
+  item)
+
+(define (constant-space/in-use)
+  (- (get-next-constant) constant-space/base))
+
+;; This is set to the correct value during the cold load.
+(define constant-space/base)

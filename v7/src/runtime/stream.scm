@@ -1,184 +1,133 @@
-;;; -*-Scheme-*-
-;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/stream.scm,v 13.41 1987/01/23 00:20:30 jinx Rel $
-;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5.  In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
 
-;;;; Stream Utilities
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/stream.scm,v 14.1 1988/06/13 11:51:38 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; Basic Stream Operations
+;;; package: (runtime stream)
 
 (declare (usual-integrations))
 
-;;;; General Streams
+(define (stream-pair? stream)
+  (and (pair? stream)
+       (promise? (cdr stream))))
 
-(define (nth-stream n s)
-  (cond ((empty-stream? s)
-	 (error "Empty stream -- NTH-STREAM" n))
-	((= n 0)
-	 (head s))
-	(else
-	 (nth-stream (- n 1) (tail s)))))
+(define-integrable (stream-null? stream)
+  (null? stream))
 
-(define (accumulate combiner initial-value stream)
-  (if (empty-stream? stream)
-      initial-value
-      (combiner (head stream)
-		(accumulate combiner
-			    initial-value
-			    (tail stream)))))
+(define-integrable (stream-car stream)
+  (car stream))
 
-(define (filter pred stream)
-  (cond ((empty-stream? stream)
-	 the-empty-stream)
-	((pred (head stream))
-	 (cons-stream (head stream)
-		      (filter pred (tail stream))))
-	(else
-	 (filter pred (tail stream)))))
+(define-integrable (stream-cdr stream)
+  (force (cdr stream)))
 
-(define (map-stream proc stream)
-  (if (empty-stream? stream)
-      the-empty-stream
-      (cons-stream (proc (head stream))
-		   (map-stream proc (tail stream)))))
+(define (stream . list)
+  (list->stream list))
 
-(define (map-stream-2 proc s1 s2)
-  (if (or (empty-stream? s1)
-	  (empty-stream? s2))
-      the-empty-stream
-      (cons-stream (proc (head s1) (head s2))
-		   (map-stream-2 proc (tail s1) (tail s2)))))
+(define (list->stream list)
+  (if (pair? list)
+      (cons-stream (car list) (list->stream (cdr list)))
+      (begin (if (not (null? list))
+		 (error "LIST->STREAM: not a proper list" list))
+	     '())))
 
-(define (append-streams s1 s2)
-  (if (empty-stream? s1)
-      s2
-      (cons-stream (head s1)
-		   (append-streams (tail s1) s2))))
+(define (stream->list stream)
+  (if (stream-pair? stream)
+      (cons (stream-car stream) (stream->list (stream-cdr stream)))
+      (begin (guarantee-stream-null stream 'STREAM->LIST) '())))
 
-(define (enumerate-fringe tree)
-  (if (pair? tree)
-      (append-streams (enumerate-fringe (car tree))
-		      (enumerate-fringe (cdr tree)))
-      (cons-stream tree the-empty-stream)))
+(define (stream-length stream)
+  (let loop ((stream stream) (length 0))
+    (if (stream-pair? stream)
+	(loop (stream-cdr stream) (1+ length))
+	(begin (guarantee-stream-null stream 'STREAM-LENGTH) length))))
+
+(define (stream-ref stream index)
+  (let ((tail (stream-tail stream index)))
+    (if (not (stream-pair? tail))
+	(error "STREAM-REF: index too large" index))
+    (stream-car tail)))
+
+(define (stream-tail stream index)
+  (if (not (and (integer? index) (not (negative? index))))
+      (error "STREAM-TAIL: index must be nonnegative integer" index))  (let loop ((stream stream) (index index))
+    (if (zero? index)
+	stream
+	(begin (if (not (stream-pair? stream))
+		   (error "STREAM-TAIL: index too large" index))
+	       (loop (stream-cdr stream) (-1+ index))))))
 
-;;;; Numeric Streams
+(define (stream-map stream procedure)
+  (let loop ((stream stream))
+    (if (stream-pair? stream)
+	(cons-stream (procedure (stream-car stream))
+		     (loop (stream-cdr stream)))
+	(begin (guarantee-stream-null stream 'STREAM-MAP) '()))))
 
-(define (add-streams s1 s2)
-  (cond ((empty-stream? s1) s2)
-	((empty-stream? s2) s1)
-	(else
-	 (cons-stream (+ (head s1) (head s2))
-		      (add-streams (tail s1) (tail s2))))))
+(define (guarantee-stream-null stream name)
+  (if (not (null? stream))
+      (error (string-append (symbol->string name) ": not a proper stream")
+	     stream)))
 
-(define (scale-stream c s)
-  (map-stream (lambda (x) (* c x)) s))
+(define-integrable the-empty-stream
+  '())
 
-(define (enumerate-interval n1 n2)
-  (if (> n1 n2)
-      the-empty-stream
-      (cons-stream n1 (enumerate-interval (1+ n1) n2))))
+(define-integrable (empty-stream? stream)
+  (stream-null? stream))
 
-(define (integers-from n)
-  (cons-stream n (integers-from (1+ n))))
+(define-integrable (head stream)
+  (stream-car stream))
 
-(define integers
-  (integers-from 0))
-
-;;;; Some Hairier Stuff
+(define-integrable (tail stream)
+  (stream-cdr stream))
 
-(define (merge s1 s2)
-  (cond ((empty-stream? s1) s2)
-        ((empty-stream? s2) s1)
-        (else
-	 (let ((h1 (head s1))
-	       (h2 (head s2)))
-	   (cond ((< h1 h2)
-		  (cons-stream h1
-			       (merge (tail s1)
-				      s2)))
-		 ((> h1 h2)
-		  (cons-stream h2
-			       (merge s1
-				      (tail s2))))
-		 (else
-		  (cons-stream h1
-			       (merge (tail s1)
-				      (tail s2)))))))))
-
-;;;; Printing
+(define prime-numbers-stream)
 
-(define print-stream
-  (let ()
-    (define (iter s)
-      (if (empty-stream? s)
-	  (write-string "}")
-	  (begin (write-string " ")
-		 (write (head s))
-		 (iter (tail s)))))
-    (lambda (s)
-      (newline)
-      (write-string "{")
-      (if (empty-stream? s)
-	  (write-string "}")
-	  (begin (write (head s))
-		 (iter (tail s)))))))
-
-;;;; Support for COLLECT
-
-(define (flatmap f s)
-  (flatten (map-stream f s)))
-
-(define (flatten stream)
-  (accumulate-delayed interleave-delayed
-		      the-empty-stream
-		      stream))
-
-(define (accumulate-delayed combiner initial-value stream)
-  (if (empty-stream? stream)
-      initial-value
-      (combiner (head stream)
-		(delay (accumulate-delayed combiner
-					   initial-value
-					   (tail stream))))))
-
-(define (interleave-delayed s1 delayed-s2)
-  (if (empty-stream? s1)
-      (force delayed-s2)
-      (cons-stream (head s1)
-		   (interleave-delayed (force delayed-s2)
-				       (delay (tail s1))))))
-
-(define ((spread-tuple procedure) tuple)
-  (apply procedure tuple))
+(define (make-prime-numbers-stream)
+  (letrec ((primes
+	    (cons-stream
+	     (cons 2 4)
+	     (let filter ((integer 3))
+	       (if (let loop ((primes primes))
+		     (let ((prime (stream-car primes)))
+		       (or (> (cdr prime) integer)
+			   (and (not (zero? (remainder integer
+						       (car prime))))
+				(loop (stream-cdr primes))))))
+		   (cons-stream (cons integer (* integer integer))
+				(filter (1+ integer)))
+		   (filter (1+ integer)))))))
+    (let loop ((primes primes))
+      (cons-stream (car (stream-car primes))
+		   (loop (stream-cdr primes))))))
+(define (initialize-package!)
+  (set! prime-numbers-stream (make-prime-numbers-stream)))

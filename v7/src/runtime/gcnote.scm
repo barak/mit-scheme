@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.1 1988/05/20 00:57:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.2 1988/06/13 11:45:12 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; GC Notification
-;;; package: gc-notification-package
+;;; package: (runtime gc-notification)
 
 (declare (usual-integrations))
 

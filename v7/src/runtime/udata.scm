@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.1 1988/05/20 01:04:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.2 1988/06/13 11:58:26 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Simple Microcode Data Structures
+;;; package: ()
 
 (declare (usual-integrations))
 
@@ -237,6 +238,11 @@ to the correct value before these operations are used.
 (define-integrable (primitive-procedure? object)
   (object-type? (ucode-type primitive) object))
 
+(define (guarantee-primitive-procedure object)
+  (if (not (primitive-procedure? object))
+      (error "Not a primitive procedure" object))
+  object)
+
 (define (make-primitive-procedure name #!optional arity)
   (let ((arity (if (default-object? arity) false arity)))
     (let ((result ((ucode-primitive get-primitive-address) name arity)))
@@ -244,8 +250,9 @@ to the correct value before these operations are used.
 		   (eq? arity true)))
 	  (if (false? result)
 	      (error "MAKE-PRIMITIVE-PROCEDURE: unknown name" name)
-	      (error "MAKE-PRIMITIVE-PROCEDURE: inconsistent arity"
-		     name 'NEW: arity 'OLD: result)))
+	      (error "MAKE-PRIMITIVE-PROCEDURE: inconsistent arity" name
+		     (error-irritant/noise "new:") arity
+		     (error-irritant/noise "old:") result)))
       result)))
 
 (define (implemented-primitive-procedure? object)
@@ -253,13 +260,17 @@ to the correct value before these operations are used.
 					   false))
 
 (define (primitive-procedure-name primitive)
-  (if (not (primitive-procedure? primitive))
-      (error "PRIMITIVE-PROCEDURE-NAME: Not a primitive procedure" primitive))
-  ((ucode-primitive get-primitive-name) (object-datum primitive)))
+  ((ucode-primitive get-primitive-name)
+   (object-datum (guarantee-primitive-procedure primitive))))
 
 (define (compound-procedure? object)
   (or (object-type? (ucode-type procedure) object)
       (object-type? (ucode-type extended-procedure) object)))
+
+(define (guarantee-compound-procedure object)
+  (if (not (compound-procedure? object))
+      (error "Not a compound procedure" object))
+  object)
 
 (define-integrable (compound-procedure-lambda procedure)
   (system-pair-car procedure))
@@ -272,15 +283,16 @@ to the correct value before these operations are used.
       (primitive-procedure? object)
       (compiled-procedure? object)))
 
-(define (procedure-lambda procedure)
-  (if (not (compound-procedure? procedure))
-      (error "PROCEDURE-LAMBDA: Not a compound procedure" procedure))
-  (compound-procedure-lambda procedure))
+(define-integrable (procedure-lambda procedure)
+  (compound-procedure-lambda (guarantee-compound-procedure procedure)))
 
-(define (procedure-environment procedure)
-  (if (not (compound-procedure? procedure))
-      (error "PROCEDURE-ENVIRONMENT: Not a compound procedure" procedure))
-  (compound-procedure-environment procedure))
+(define-integrable (procedure-environment procedure)
+  (compound-procedure-environment (guarantee-compound-procedure procedure)))
+
+(define (procedure-components procedure receiver)
+  (guarantee-compound-procedure procedure)
+  (receiver (compound-procedure-lambda procedure)
+	    (compound-procedure-environment procedure)))
 
 (define (procedure-arity procedure)
   (cond ((primitive-procedure? procedure)

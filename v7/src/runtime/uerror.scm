@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.1 1988/05/20 01:04:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.2 1988/06/13 11:58:37 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Microcode Errors
-;;; package: microcode-errors
+;;; package: (runtime microcode-errors)
 
 (declare (usual-integrations))
 
@@ -72,10 +72,11 @@ MIT in each case. |#
 
 (define (make-error-translator alist error-type)
   (lambda (error-code interrupt-enables)
+    error-code
     (set-interrupt-enables! interrupt-enables)
     (with-proceed-point proceed-value-filter
       (lambda ()
-	(signal-condition
+	(signal-error
 	 (let ((frame
 		(continuation/first-subproblem
 		 (current-proceed-continuation))))
@@ -98,7 +99,7 @@ MIT in each case. |#
   (set-interrupt-enables! interrupt-enables)
   (with-proceed-point proceed-value-filter
     (lambda ()
-      (signal-condition
+      (signal-error
        (make-error-condition
 	error-type:anomalous
 	(list (or (microcode-error/code->name error-code) error-code))
@@ -191,7 +192,7 @@ MIT in each case. |#
   (set-interrupt-enables! interrupt-enables)
   (with-proceed-point proceed-value-filter
     (lambda ()
-      (signal-condition
+      (signal-error
        (make-error-condition error-type:bad-error-code
 			     (list error-code)
 			     repl-environment)))))
@@ -247,7 +248,7 @@ MIT in each case. |#
 				      " argument position")))
 
 (define (make-wrong-type-type n)
-  (make-condition-type (list error-type:bad-range-argument)
+  (make-condition-type (list error-type:wrong-type-argument)
 		       (string-append "Illegal datum in "
 				      (vector-ref nth-string n)
 				      " argument position")))
@@ -451,6 +452,12 @@ MIT in each case. |#
     (define-internal-apply-handler 'UNBOUND-VARIABLE 0
       internal-apply-frame/add-fluid-binding-name
       (ucode-primitive add-fluid-binding! 3))
+
+    (define-internal-apply-handler 'UNBOUND-VARIABLE 0 2
+      (ucode-primitive environment-link-name))
+
+    (define-internal-apply-handler 'BAD-ASSIGNMENT 0 2
+      (ucode-primitive environment-link-name))
 
     (define-standard-frame-handler 'UNASSIGNED-VARIABLE 'EVAL-ERROR
       standard-frame/variable? variable-name)

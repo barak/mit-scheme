@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntab.scm,v 14.1 1988/05/20 01:02:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntab.scm,v 14.2 1988/06/13 11:52:05 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Syntax Table
-;;; package: syntax-table-package
+;;; package: (runtime syntax-table)
 
 (declare (usual-integrations))
 
@@ -43,17 +43,17 @@ MIT in each case. |#
   (parent false read-only true))
 
 (define (make-syntax-table #!optional parent)
-  (if (default-object? parent)
-      (set! parent false)
-      (check-syntax-table parent 'MAKE-SYNTAX-TABLE))
-  (%make-syntax-table '() parent))
+  (%make-syntax-table '()
+		      (if (default-object? parent)
+			  false
+			  (guarantee-syntax-table parent))))
 
-(define (check-syntax-table table name)
-  (if (not (syntax-table? table))
-      (error "Not a syntax table" name table)))
+(define (guarantee-syntax-table table)
+  (if (not (syntax-table? table)) (error "Illegal syntax table" table))
+  table)
 
-(define (syntax-table-ref table name)
-  (check-syntax-table table 'SYNTAX-TABLE-REF)
+(define (syntax-table/ref table name)
+  (guarantee-syntax-table table)
   (let loop ((table table))
     (and table
 	 (let ((entry (assq name (syntax-table/alist table))))
@@ -61,8 +61,11 @@ MIT in each case. |#
 	       (cdr entry)
 	       (loop (syntax-table/parent table)))))))
 
-(define (syntax-table-define table name transform)
-  (check-syntax-table table 'SYNTAX-TABLE-DEFINE)
+(define syntax-table-ref
+  syntax-table/ref)
+
+(define (syntax-table/define table name transform)
+  (guarantee-syntax-table table)
   (let ((entry (assq name (syntax-table/alist table))))
     (if entry
 	(set-cdr! entry transform)
@@ -70,13 +73,16 @@ MIT in each case. |#
 				 (cons (cons name transform)
 				       (syntax-table/alist table))))))
 
+(define syntax-table-define
+  syntax-table/define)
+
 (define (syntax-table/copy table)
-  (check-syntax-table table 'SYNTAX-TABLE/COPY)
+  (guarantee-syntax-table table)
   (let loop ((table table))
     (and table
 	 (%make-syntax-table (alist-copy (syntax-table/alist table))
 			     (loop (syntax-table/parent table))))))
 
 (define (syntax-table/extend table alist)
-  (check-syntax-table table 'SYNTAX-TABLE/EXTEND)
+  (guarantee-syntax-table table)
   (%make-syntax-table (alist-copy alist) table))

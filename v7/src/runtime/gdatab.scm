@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gdatab.scm,v 14.1 1988/05/20 00:58:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gdatab.scm,v 14.2 1988/06/13 11:45:24 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Global Databases
-;;; package: global-database-package
+;;; package: (runtime global-database)
 
 (declare (usual-integrations))
 

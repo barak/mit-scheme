@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sysmac.scm,v 14.1 1988/05/20 01:03:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sysmac.scm,v 14.2 1988/06/13 11:58:05 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; System Internal Syntax
-;;; package: system-macros-package
+;;; package: (runtime system-macros)
 
 (declare (usual-integrations))
 
@@ -46,8 +46,7 @@ MIT in each case. |#
   (let ((table (make-syntax-table system-global-syntax-table)))
     (for-each (lambda (entry)
 		(syntax-table-define table (car entry) (cadr entry)))
-	      `((DEFINE-INTEGRABLE ,transform/define-integrable)
-		(DEFINE-PRIMITIVES ,transform/define-primitives)
+	      `((DEFINE-PRIMITIVES ,transform/define-primitives)
 		(UCODE-PRIMITIVE ,transform/ucode-primitive)
 		(UCODE-RETURN-ADDRESS ,transform/ucode-return-address)
 		(UCODE-TYPE ,transform/ucode-type)))
@@ -79,51 +78,3 @@ MIT in each case. |#
 (define transform/ucode-return-address
   (macro arguments
     (make-return-address (apply microcode-return arguments))))
-
-(define transform/define-integrable
-  (macro (pattern . body)
-    (parse-define-syntax pattern body
-      (lambda (name body)
-	`(BEGIN (DECLARE (INTEGRATE ,pattern))
-		(DEFINE ,name ,@body)))
-      (lambda (pattern body)
-	`(BEGIN (DECLARE (INTEGRATE-OPERATOR ,(car pattern)))
-		(DEFINE ,pattern
-		  ,@(if (list? (cdr pattern))
-			`((DECLARE
-			   (INTEGRATE
-			    ,@(lambda-list->bound-names (cdr pattern)))))
-			'())
-		  ,@body))))))
-
-(define (parse-define-syntax pattern body if-variable if-lambda)
-  (cond ((pair? pattern)
-	 (let loop ((pattern pattern) (body body))
-	   (cond ((pair? (car pattern))
-		  (loop (car pattern) `((LAMBDA ,(cdr pattern) ,@body))))
-		 ((symbol? (car pattern))
-		  (if-lambda pattern body))
-		 (else
-		  (error "Illegal name" (car pattern))))))
-	((symbol? pattern)
-	 (if-variable pattern body))
-	(else
-	 (error "Illegal name" pattern))))
-
-(define (lambda-list->bound-names lambda-list)
-  (cond ((null? lambda-list)
-	 '())
-	((pair? lambda-list)
-	 (let ((lambda-list
-		(if (eq? (car lambda-list) lambda-optional-tag)
-		    (begin (if (not (pair? (cdr lambda-list)))
-			       (error "Missing optional variable" lambda-list))
-			   (cdr lambda-list))
-		    lambda-list)))
-	   (cons (let ((parameter (car lambda-list)))
-		   (if (pair? parameter) (car parameter) parameter))
-		 (lambda-list->bound-names (cdr lambda-list)))))
-	(else
-	 (if (not (symbol? lambda-list))
-	     (error "Illegal rest variable" lambda-list))
-	 (list lambda-list))))

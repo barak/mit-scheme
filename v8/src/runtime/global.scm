@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.1 1988/05/20 00:58:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.2 1988/06/13 11:45:33 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Miscellaneous Global Definitions
+;;; package: ()
 
 (declare (usual-integrations))
 
@@ -55,6 +56,7 @@ MIT in each case. |#
   (object-datum 1)
   (object-type? 2)
   (object-new-type object-set-type 2)
+  make-non-pointer-object
   eq?
 
   ;; Cells
@@ -256,7 +258,7 @@ MIT in each case. |#
   (not (object-non-pointer? object)))
 
 (define (impurify object)
-  (if (and (object-pointer? object) (pure? object))
+  (if (and (object-pointer? object) (object-pure? object))
       ((ucode-primitive primitive-impurify) object))
   object)
 

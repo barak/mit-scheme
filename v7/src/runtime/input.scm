@@ -1,65 +1,193 @@
-;;; -*-Scheme-*-
-;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.52 1988/05/06 12:40:26 cph Exp $
-;;;
-;;;	Copyright (c) 1988 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.1 1988/06/13 11:46:00 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; Input
+;;; package: (runtime input-port)
 
 (declare (usual-integrations))
 
 ;;;; Input Ports
 
-(define input-port-tag
-  "Input Port")
+(define (initialize-package!)
+  (set! *current-input-port* console-input-port))
 
-(define (input-port? object)
-  (and (environment? object)
-       (not (lexical-unreferenceable? object ':type))
-       (eq? (access :type object) input-port-tag)))
+(define (input-port/unparse state port)
+  ((unparser/standard-method 'INPUT-PORT
+			     (input-port/custom-operation port 'PRINT-SELF))
+   state
+   port))
 
+(define-structure (input-port (conc-name input-port/)
+			      (constructor %make-input-port)
+			      (copier %input-port/copy)
+			      (print-procedure input-port/unparse))
+  state
+  (operation/char-ready? false read-only true)
+  (operation/peek-char false read-only true)
+  (operation/read-char false read-only true)
+  (operation/peek-char-immediate false read-only true)
+  (operation/read-char-immediate false read-only true)
+  (operation/discard-char false read-only true)
+  (operation/read-string false read-only true)
+  (operation/discard-chars false read-only true)
+  (operation/read-start! false read-only true)
+  (operation/read-finish! false read-only true)
+  (custom-operations false read-only true))
+
+(define (guarantee-input-port port)
+  (if (not (input-port? port)) (error "Bad input port" port))
+  port)
+
+(define (input-port/custom-operation port name)
+  (let ((entry (assq name (input-port/custom-operations port))))
+    (and entry
+	 (cdr entry))))
+
+(define (input-port/copy port state)
+  (let ((result (%input-port/copy port)))
+    (set-input-port/state! result state)
+    result))
+
+(define (input-port/char-ready? port interval)
+  ((input-port/operation/char-ready? port) port interval))
+
+(define (input-port/peek-char port)
+  ((input-port/operation/peek-char port) port))
+
+(define (input-port/read-char port)
+  ((input-port/operation/read-char port) port))
+
+(define (input-port/peek-char-immediate port)
+  ((input-port/operation/peek-char-immediate port) port))
+
+(define (input-port/read-char-immediate port)
+  ((input-port/operation/read-char-immediate port) port))
+
+(define (input-port/discard-char port)
+  ((input-port/operation/discard-char port) port))
+
+(define (input-port/read-string port delimiters)
+  ((input-port/operation/read-string port) port delimiters))
+
+(define (input-port/discard-chars port delimiters)
+  ((input-port/operation/discard-chars port) port delimiters))
+
+(define (input-port/read-start! port)
+  ((input-port/operation/read-start! port) port))
+
+(define (input-port/read-finish! port)
+  ((input-port/operation/read-finish! port) port))
+
+(define (make-input-port operations state)
+  (let ((operations
+	 (map (lambda (entry)
+		(cons (car entry) (cadr entry)))
+	      operations)))
+    (let ((operation
+	   (lambda (name default)
+	     (let ((entry (assq name operations)))
+	       (if entry
+		   (begin (set! operations (delq! entry operations))
+			  (cdr entry))
+		   (or default
+		       (error "MAKE-INPUT-PORT: missing operation" name)))))))
+      (let ((char-ready? (operation 'CHAR-READY? false))
+	    (peek-char (operation 'PEEK-CHAR false))
+	    (read-char (operation 'READ-CHAR false))
+	    (read-string
+	     (operation 'READ-STRING default-operation/read-string))
+	    (discard-chars
+	     (operation 'DISCARD-CHARS default-operation/discard-chars))
+	    (read-start!
+	     (operation 'READ-START! default-operation/read-start!))
+	    (read-finish!
+	     (operation 'READ-FINISH! default-operation/read-finish!)))
+	(let ((peek-char-immediate (operation 'PEEK-CHAR-IMMEDIATE peek-char))
+	      (read-char-immediate (operation 'READ-CHAR-IMMEDIATE read-char))
+	      (discard-char (operation 'DISCARD-CHAR read-char)))
+	  (%make-input-port state
+			    char-ready?
+			    peek-char
+			    read-char
+			    peek-char-immediate
+			    read-char-immediate
+			    discard-char
+			    read-string
+			    discard-chars
+			    read-start!
+			    read-finish!
+			    operations))))))
+
+(define (default-operation/read-string port delimiters)
+  (list->string
+   (let ((peek-char (input-port/operation/peek-char port))
+	 (read-char (input-port/operation/read-char port)))
+     (let loop ()
+       (if (char-set-member? delimiters (peek-char port))
+	   '()
+	   (let ((char (read-char port)))
+	     (cons char (loop))))))))
+
+(define (default-operation/discard-chars port delimiters)
+  (let ((peek-char (input-port/operation/peek-char port))
+	(discard-char (input-port/operation/discard-char port)))
+    (let loop ()
+      (if (not (char-set-member? delimiters (peek-char port)))
+	  (begin (discard-char port)
+		 (loop))))))
+
+(define (default-operation/read-start! port)
+  port
+  false)
+
+(define (default-operation/read-finish! port)
+  port
+  false)
+
 (define eof-object
   "EOF Object")
 
 (define (eof-object? object)
   (eq? object eof-object))
 
+(define (make-eof-object port)
+  port
+  eof-object)
+
 (define *current-input-port*)
 
-(define (current-input-port)
+(define-integrable (current-input-port)
   *current-input-port*)
 
 (define (with-input-from-port port thunk)
@@ -68,524 +196,87 @@
     (thunk)))
 
 (define (with-input-from-file input-specifier thunk)
-  (define new-port (open-input-file input-specifier))
-  (define old-port)
-  (dynamic-wind (lambda ()
-		  (set! old-port
-			(set! *current-input-port*
-			      (set! new-port))))
-		thunk
-		(lambda ()
-		  (let ((port))
-		    ;; Only SET! is guaranteed to do the right thing with
-		    ;; an unassigned value.  Binding may not work right.
-		    (set! port (set! *current-input-port* (set! old-port)))
-		    (if (not (unassigned? port))
-			(close-input-port port))))))
+  (let ((new-port (open-input-file input-specifier))
+	(old-port false))
+    (dynamic-wind (lambda ()
+		    (set! old-port *current-input-port*)
+		    (set! *current-input-port* new-port)
+		    (set! new-port false))
+		  thunk
+		  (lambda ()
+		    (if *current-input-port*
+			(close-input-port *current-input-port*))
+		    (set! *current-input-port* old-port)
+		    (set! old-port false)))))
 
 (define (call-with-input-file input-specifier receiver)
   (let ((port (open-input-file input-specifier)))
     (let ((value (receiver port)))
       (close-input-port port)
       value)))
-
-(define (close-input-port port)
-  ((access :close port)))
-
-;;;; Console Input Port
-
-(define console-input-port)
-(let ()
-
-(define tty-read-char
-  (make-primitive-procedure 'TTY-READ-CHAR))
-
-(define tty-read-char-immediate
-  (make-primitive-procedure 'TTY-READ-CHAR-IMMEDIATE))
-
-(define tty-read-char-ready?
-  (make-primitive-procedure 'TTY-READ-CHAR-READY?))
-
-(define tty-read-finish
-  (make-primitive-procedure 'TTY-READ-FINISH))
-
-(define (read-start-hook)
-  'DONE)
-
-(define (read-finish-hook)
-  'DONE)
-
-(set! console-input-port
-      (make-environment
-
-(define :type input-port-tag)
-
-(define (:print-self)
-  (unparse-with-brackets
-   (lambda ()
-     (write-string "Console input port"))))
-
-(define (:close)
-  'DONE)
-
-(define character-buffer
-  false)
-
-(define (:peek-char)
-  (or character-buffer
-      (begin (set! character-buffer (tty-read-char))
-	     character-buffer)))
-
-(define (:discard-char)
-  (set! character-buffer false))
-
-(define (:read-char)
-  (if character-buffer
-      (set! character-buffer false)
-      (tty-read-char)))
-
-(define (:read-string delimiters)
-  (define (loop)
-    (if (char-set-member? delimiters (:peek-char))
-	'()
-	(let ((char (:read-char)))
-	  (cons char (loop)))))
-  (list->string (loop)))
-
-(define (:discard-chars delimiters)
-  (define (loop)
-    (if (not (char-set-member? delimiters (:peek-char)))
-	(begin (:discard-char)
-	       (loop))))
-  (loop))
-
-(define (:peek-char-immediate)
-  (or character-buffer
-      (begin (set! character-buffer (tty-read-char-immediate))
-	     character-buffer)))
-
-(define (:read-char-immediate)
-  (if character-buffer
-      (set! character-buffer false)
-      (tty-read-char-immediate)))
-
-(define (:char-ready? delay)
-  (or character-buffer (tty-read-char-ready? delay)))
-
-(define (:read-start!)
-  (read-start-hook))
-
-(define :read-finish!
-  (let ()
-    (define (read-finish-loop)
-      (if (and (:char-ready? 0)
-	       (char-whitespace? (:peek-char)))
-	  (begin (:discard-char)
-		 (read-finish-loop))))
-    (lambda ()
-      (tty-read-finish)
-      (read-finish-loop)
-      (read-finish-hook))))
-
-;;; end CONSOLE-INPUT-PORT.
-))
-
-)
-
-(set! *current-input-port* console-input-port)
-
-;;;; File Input Ports
-
-(define open-input-file)
-(let ()
-
-(define file-fill-input-buffer
-  (make-primitive-procedure 'FILE-FILL-INPUT-BUFFER))
-
-(define file-length
-  (make-primitive-procedure 'FILE-LENGTH))
-
-(define file-port-buffer-size
-  512)
-
-(set! open-input-file
-(named-lambda (open-input-file filename)
-  (let ((file-channel ((access open-input-channel primitive-io)
-		       (canonicalize-input-filename filename))))
-
-(define :type input-port-tag)
-
-(define (:print-self)
-  (unparse-with-brackets
-   (lambda ()
-     (write-string "Buffered input port for file: ")
-     (write ((access channel-name primitive-io) file-channel)))))
-
-(define (:pathname)
-  (->pathname filename))
-
-(define (:truename)
-  (->pathname ((access channel-name primitive-io) file-channel)))
-
-(define (:length)
-  (file-length file-channel))
-
-(define buffer false)
-(define start-index 0)
-(define end-index -1)
-
-(define (refill-buffer!)
-  (if (not buffer) (set! buffer (string-allocate file-port-buffer-size)))
-  (set! start-index 0)
-  (set! end-index (file-fill-input-buffer file-channel buffer))
-  (zero? end-index))
-
-(declare (integrate buffer-ready?))
-
-(define (buffer-ready?)
-  (and (not (zero? end-index))
-       (not (refill-buffer!))))
-
-(define (:char-ready? delay)
-  (or (< start-index end-index)
-      (buffer-ready?)))
-
-(define (:close)
-  (set! end-index 0)
-  (set! buffer false)
-  ((access close-physical-channel primitive-io) file-channel))
-
-(define (:peek-char)
-  (if (< start-index end-index)
-      (string-ref buffer start-index)
-      (and (buffer-ready?)
-	   (string-ref buffer 0))))
-
-(define (:discard-char)
-  (set! start-index (1+ start-index)))
-
-(define (:read-char)
-  (if (< start-index end-index)
-      (string-ref buffer (set! start-index (1+ start-index)))
-      (and (buffer-ready?)
-	   (begin (set! start-index 1)
-		  (string-ref buffer 0)))))
-
-(define (:read-string delimiters)
-  (define (loop)
-    (let ((index
-	   (substring-find-next-char-in-set buffer start-index end-index
-					    delimiters)))
-      (if index
-	  (substring buffer (set! start-index index) index)
-	  (let ((head (substring buffer start-index end-index)))
-	    (if (refill-buffer!)
-		head
-		(let ((tail (loop))
-		      (head-length (string-length head)))
-		  (let ((result (string-allocate (+ head-length
-						    (string-length tail)))))
-		    (substring-move-right! head 0 head-length
-					   result 0)
-		    (substring-move-right! tail 0 (string-length tail)
-					   result head-length)
-		    result)))))))
-  (and (or (< start-index end-index)
-	   (buffer-ready?))
-       (loop)))
-
-(define (:discard-chars delimiters)
-  (define (loop)
-    (let ((index
-	   (substring-find-next-char-in-set buffer start-index end-index
-					    delimiters)))
-      (cond (index (set! start-index index))
-	    ((not (refill-buffer!)) (loop)))))
-  (if (or (< start-index end-index)
-	  (buffer-ready?))
-      (loop)))
-
-(define (:rest->string)
-  (define (read-rest)
-    (set! end-index 0)
-    (loop))
-
-  (define (loop)
-    (let ((buffer (string-allocate file-port-buffer-size)))
-      (let ((n (file-fill-input-buffer file-channel buffer)))
-	(cond ((zero? n) '())
-	      ((< n file-port-buffer-size)
-	       (set-string-length! buffer n)
-	       (list buffer))
-	      (else (cons buffer (loop)))))))
-
-  (if (zero? end-index)
-      (error "End of file -- :REST->STRING"))
-  (cond ((= -1 end-index)
-	 (let ((l (:length)))
-	   (if l
-	       (let ((buffer (string-allocate l)))
-		 (set! end-index 0)
-		 (file-fill-input-buffer file-channel buffer)
-		 buffer)
-	       (apply string-append (read-rest)))))
-	((< start-index end-index)
-	 (let ((first (substring buffer start-index end-index)))
-	   (apply string-append
-		  (cons first
-			(read-rest)))))
-	(else
-	 (apply string-append (read-rest)))))
-
-(the-environment))))
-
-)
-
-;;;; String Input Ports
-
-(define (with-input-from-string string thunk)
-  (fluid-let ((*current-input-port* (string->input-port string)))
-    (thunk)))
-
-(define (string->input-port string #!optional start end)
-  (cond ((unassigned? start)
-	 (set! start 0)
-	 (set! end (string-length string)))
-	((unassigned? end)
-	 (set! end (string-length string))))
-
-(define :type input-port-tag)
-
-(define (:print-self)
-  (unparse-with-brackets
-   (lambda ()
-     (write-string "Input port for string"))))
-
-(define (:char-ready? delay)
-  (< start end))
-
-(define (:close) 'DONE)
-
-(define (:peek-char)
-  (and (< start end)
-       (string-ref string start)))
-
-(define (:discard-char)
-  (set! start (1+ start)))
-
-(define (:read-char)
-  (and (< start end)
-       (string-ref string (set! start (1+ start)))))
-
-(define (:read-string delimiters)
-  (and (< start end)
-       (let ((index
-	      (or (substring-find-next-char-in-set string start end delimiters)
-		  end)))
-	 (substring string (set! start index) index))))
-
-(define (:discard-chars delimiters)
-  (if (< start end)
-      (set! start
-	    (or (substring-find-next-char-in-set string start end delimiters)
-		end))))
-
-;;; end STRING->INPUT-PORT.
-(the-environment))
 
 ;;;; Input Procedures
 
+;;; **** The INTERVAL option for this operation works only for the
+;;; console port.  Only Edwin uses this option.
+
+(define (char-ready? #!optional port interval)
+  (let ((port
+	 (if (default-object? port)
+	     (current-input-port)
+	     (guarantee-input-port port))))
+    (if (not (and (integer? interval) (>= interval 0)))
+	(error "Bad interval" interval))
+    (input-port/char-ready? port interval)))
+
 (define (peek-char #!optional port)
-  (cond ((unassigned? port) (set! port *current-input-port*))
-	((not (input-port? port)) (error "Bad input port" port)))
-  (or ((if (lexical-unreferenceable? port ':peek-char-immediate)
-	   (access :peek-char port)
-	   (access :peek-char-immediate port)))
-      eof-object))
+  (let ((port
+	 (if (default-object? port)
+	     (current-input-port)
+	     (guarantee-input-port port))))
+    (or (input-port/peek-char-immediate port)
+	eof-object)))
 
 (define (read-char #!optional port)
-  (cond ((unassigned? port) (set! port *current-input-port*))
-	((not (input-port? port)) (error "Bad input port" port)))
-  (or ((if (lexical-unreferenceable? port ':read-char-immediate)
-	   (access :read-char port)
-	   (access :read-char-immediate port)))
-      eof-object))
-
-(define (read-string delimiters #!optional port)
-  (cond ((unassigned? port) (set! port *current-input-port*))
-	((not (input-port? port)) (error "Bad input port" port)))
-  (or ((access :read-string port) delimiters)
-      eof-object))
-
-(define (read #!optional port)
-  (cond ((unassigned? port) (set! port *current-input-port*))
-	((not (input-port? port)) (error "Bad input port" port)))
-  (if (not (lexical-unreferenceable? port ':read-start!))
-      ((access :read-start! port)))
-  (let ((object ((access *parse-object parser-package) port)))
-    (if (not (lexical-unreferenceable? port ':read-finish!))
-	((access :read-finish! port)))
-    object))
-
-;;; **** The DELAY option for this operation works only for the
-;;; console port.  Since it is a kludge, it is probably OK.
-
-(define (char-ready? #!optional port delay)
-  (cond ((unassigned? port) (set! port *current-input-port*))
-	((not (input-port? port)) (error "Bad input port" port)))
-  (cond ((unassigned? delay) (set! delay 0))
-	((not (and (integer? delay) (>= delay 0))) (error "Bad delay" delay)))
-  ((access :char-ready? port) delay))
+  (let ((port
+	 (if (default-object? port)
+	     (current-input-port)
+	     (guarantee-input-port port))))
+    (or (input-port/read-char-immediate port)
+	eof-object)))
 
 (define (read-char-no-hang #!optional port)
-  (cond ((unassigned? port) (set! port *current-input-port*))
-	((not (input-port? port)) (error "Bad input port" port)))
-  (and ((access :char-ready? port) 0)
-       (read-char port)))
-
-(define load/default-types '("bin" "scm"))
-(define load-noisily? false)
+  (let ((port
+	 (if (default-object? port)
+	     (current-input-port)
+	     (guarantee-input-port port))))
+    (and (input-port/char-ready? port 0)
+	 (or (input-port/read-char-immediate port)
+	     eof-object))))
 
-(define (load-noisily filename #!optional environment)
-  (let ((environment
-	 (if (unassigned? environment) (rep-environment) environment)))
-    (fluid-let ((load-noisily? true))
-      (load filename environment))))
+(define (read-string delimiters #!optional port)
+  (let ((port
+	 (if (default-object? port)
+	     (current-input-port)
+	     (guarantee-input-port port))))
+    (or (input-port/read-string port delimiters)
+	eof-object)))
 
-(define read-file)
-(define load)
-(let ()
+(define (read #!optional port parser-table)
+  (let ((port
+	 (if (default-object? port)
+	     (current-input-port)
+	     (guarantee-input-port port)))
+	(parser-table
+	 (if (default-object? parser-table)
+	     (current-parser-table)
+	     (guarantee-parser-table parser-table))))
+    (input-port/read-start! port)
+    (let ((object (parse-object/internal port parser-table)))
+      (input-port/read-finish! port)
+      object)))
 
-(set! read-file
-  (named-lambda (read-file filename)
-    (call-with-input-file
-	(pathname-default-version (->pathname filename) 'NEWEST)
-      (access *parse-objects-until-eof parser-package))))
-
-;;; This crufty piece of code, once it decides which file to load,
-;;; does `file-exists?' on that file at least three times!!
-
-(set! load
-  (named-lambda (load filename/s #!optional environment)
-    (let ((environment
-	   (if (unassigned? environment) (rep-environment) environment)))
-      (let ((kernel
-	     (lambda (filename last-file?)
-	       (let ((value
-		      (load/internal (find-true-filename (->pathname filename)
-							 load/default-types)
-				     environment
-				     load-noisily?)))
-		 (cond (last-file? value)
-		       (load-noisily? (rep-value value)))))))
-	(if (pair? filename/s)
-	    (let loop ((filenames filename/s))
-	      (if (null? (cdr filenames))
-		  (kernel (car filenames) true)
-		  (begin (kernel (car filenames) false)
-			 (loop (cdr filenames)))))
-	    (kernel filename/s true))))))
-
-(define (load/internal true-filename environment load-noisily?)
-  (let ((port (open-input-file true-filename)))
-    (if (= 250 (char->ascii (peek-char port)))
-	(begin (close-input-port port)
-	       (scode-eval (fasload true-filename) environment))
-	(let ((syntax-table (rep-syntax-table))
-	      (no-value "no value"))
-	  (let load-loop ((value no-value))
-	    (let ((s-expression (read port)))
-	      (if (eof-object? s-expression)
-		  (begin (close-input-port port)
-			 value)
-		  (begin (if (and load-noisily? (not (eq? no-value value)))
-			     (rep-value value))
-			 (load-loop (rep-eval-hook s-expression
-						   environment
-						   syntax-table))))))))))
-
-(define (find-true-filename pathname default-types)
-  (pathname->string
-   (or (let ((try
-	      (lambda (pathname)
-		(pathname->input-truename
-		 (pathname-default-version pathname 'NEWEST)))))
-	 (if (pathname-type pathname)
-	     (try pathname)
-	     (or (pathname->input-truename pathname)
-		 (let loop ((types default-types))
-		   (and (not (null? types))
-			(or (try (pathname-new-type pathname (car types)))
-			    (loop (cdr types))))))))
-       (error "No such file" pathname))))
-
-(define (pathname-default-version pathname version)
-  (if (pathname-version pathname)
-      pathname
-      (pathname-new-version pathname version)))
-
-)
-
-(define (stickify-input-filenames filename/s default-pathname)
-  (map (if default-pathname
-	   (lambda (filename)
-	     (merge-pathnames (->pathname filename) default-pathname))
-	   ->pathname)
-       (if (pair? filename/s)
-	   filename/s
-	   (list filename/s))))
-
-#|(define (stickify-input-filenames filename/s default-pathname)
-  (let loop
-      ((filenames 
-	(if (pair? filename/s)
-	    filename/s
-	    (list filename/s)))
-       (default-pathname default-pathname))
-    (let ((pathname
-	   (let ((pathname (->pathname (car filenames))))
-	     (if default-pathname
-		 (merge-pathnames pathname default-pathname)
-		 pathname))))
-      (cons pathname
-	    (if (pair? (cdr filenames))
-		(loop (cdr filenames) pathname)
-		'())))))|#
-
-(define fasload)
-(let ()
-
-(define default-pathname
-  (make-pathname false false false "bin" 'NEWEST))
-
-(define binary-fasload
-  (make-primitive-procedure 'BINARY-FASLOAD))
-
-(set! fasload
-(named-lambda (fasload filename)
-  (let ((port (rep-output-port))
-	(filename (canonicalize-input-filename
-		   (merge-pathnames (->pathname filename)
-				     default-pathname))))
-    (newline port)
-    (write-string "FASLoading " port)
-    (write filename port)
-    (let ((value (binary-fasload filename)))
-      (write-string " -- done" port)
-      value))))
-
-)
-
-(define transcript-on
-  (let ((photo-open (make-primitive-procedure 'PHOTO-OPEN)))
-    (named-lambda (transcript-on filename)
-      (if (not (photo-open (canonicalize-output-filename filename)))
-	  (error "Transcript file already open: TRANSCRIPT-ON" filename))
-      *the-non-printing-object*)))
-
-(define transcript-off
-  (let ((photo-close (make-primitive-procedure 'PHOTO-CLOSE)))
-    (named-lambda (transcript-off)
-      (if (not (photo-close))
-	  (error "Transcript file already closed: TRANSCRIPT-OFF"))
-      *the-non-printing-object*)))
+(define (close-input-port port)
+  (let ((operation (input-port/custom-operation port 'CLOSE)))
+    (if operation
+	(operation port))))

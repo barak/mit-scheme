@@ -1,556 +1,384 @@
-;;; -*-Scheme-*-
-;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.51 1988/05/03 19:04:42 jinx Exp $
-;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.1 1988/06/13 11:44:09 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; Error System
+;;; package: (runtime error-handler)
 
-(declare (usual-integrations)
-	 (integrate-primitive-procedures set-fixed-objects-vector!))
+(declare (usual-integrations))
 
-(define error-procedure
-  (make-primitive-procedure 'ERROR-PROCEDURE 3))
+(define (initialize-package!)
+  (set! next-condition-type-index 0)
+  (set! handler-frames false)
+  (set! condition-type:error
+	(let ((dependencies (list false)))
+	  (let ((result (%make-condition-type dependencies true false)))
+	    (set-car! dependencies result)
+	    result)))
+  (set! error-type:vanilla
+	(make-condition-type (list condition-type:error) "Anonymous error"))
+  (set! hook/error-handler default/error-handler)
+  (set! hook/error-decision default/error-decision)
+  (let ((fixed-objects (get-fixed-objects-vector)))
+    (vector-set! fixed-objects
+		 (fixed-objects-vector-slot 'ERROR-PROCEDURE)
+		 error-procedure-handler)
+    (vector-set! fixed-objects
+		 (fixed-objects-vector-slot 'COMPILER-ERROR-PROCEDURE)
+		 error-from-compiled-code)
+    ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
 
-(define (error-from-compiled-code message . irritant-info)
-  (error-procedure message
-		   (cond ((null? irritant-info) *the-non-printing-object*)
-			 ((null? (cdr irritant-info)) (car irritant-info))
-			 (else irritant-info))
-		   (rep-environment)))
+(define (error-procedure-handler message irritants environment)
+  (with-proceed-point proceed-value-filter
+    (lambda ()
+      (simple-error
+       environment
+       message
+       ;; Kludge to support minimal upwards compatibility with `error'
+       ;; forms syntaxed by older syntaxer.  Should be flushed after
+       ;; new runtime system has been in use for a while.
+       (cond ((eq? irritants *the-non-printing-object*) '())
+	     ((or (null? irritants) (pair? irritants)) irritants)
+	     (else (list irritants)))))))
 
-(define (error-message)
-  (access error-message error-system))
-
-(define (error-irritant) 
-  (access error-irritant error-system))
-
-(define error-prompt
-  "Error->")
-
-(define error-system
-  (make-environment
-
-(define *error-code*)
-(define *error-hook*)
-(define *error-decision-hook* false)
-
-(define error-message
-  "")
-
-(define error-irritant
-  *the-non-printing-object*)
-
-;;;; REP Interface
-
-(define (error-procedure-handler message irritant environment)
-  (with-proceed-point
-   proceed-value-filter
-   (lambda ()
-     (fluid-let ((error-message message)
-		 (error-irritant irritant))
-       (*error-hook* environment message irritant false)))))
-
-(define ((error-handler-wrapper handler) error-code interrupt-enables)
-  (with-interrupts-reduced interrupt-mask-gc-ok
-   (lambda (old-mask)
-     (fluid-let ((*error-code* error-code))
-       (with-proceed-point
-	proceed-value-filter
-	(lambda ()
-	  (set-interrupt-enables! interrupt-enables)
-	  (handler error-code
-		   (continuation-expression (rep-continuation)))))))))
-
-(define (wrapped-error-handler wrapper)
-  (access handler (procedure-environment wrapper)))
+(define (error-from-compiled-code message . irritants)
+  (with-proceed-point proceed-value-filter
+    (lambda ()
+      (simple-error repl-environment message irritants))))
 
 ;;; (PROCEED) means retry error expression, (PROCEED value) means
 ;;; return VALUE as the value of the error subproblem.
 
-(define (proceed-value-filter value)
-  (let ((continuation (rep-continuation)))
-    (if (or (null? value) (null-continuation? continuation))
-	(continuation '())
-	((continuation-next-continuation continuation) (car value)))))
+(define (proceed-value-filter continuation values)
+  (let ((next-subproblem
+	 (and (not (null? values))
+	      (continuation/first-subproblem continuation))))
+    (if next-subproblem
+	((stack-frame->continuation next-subproblem) (car values))
+	(continuation *the-non-printing-object*))))
 
-(define (start-error-rep message irritant)
-  (fluid-let ((error-message message)
-	      (error-irritant irritant))
-    (let ((environment (continuation-environment (rep-continuation))))
-      (if (continuation-undefined-environment? environment)
-	  (*error-hook* (rep-environment) message irritant true)
-	  (*error-hook* environment message irritant false)))))
+(define (simple-error environment message irritants)
+  (signal-error
+   (if (condition-type? message)
+       (make-error-condition message irritants environment)
+       ;; This handles old and "vanilla" errors.
+       (let ((condition
+	      (make-error-condition error-type:vanilla
+				    irritants
+				    environment)))
+	 (1d-table/put! (condition/properties condition) message-tag message)
+	 condition))))
 
-(define (standard-error-hook environment message irritant
-			     substitute-environment?)
-  (push-rep environment
-	    (let ((message (make-error-message message irritant)))
-	      (if substitute-environment?
-		  (lambda ()
-		    (message)
-		    (write-string "
-There is no environment available;
-using the current read-eval-print environment."))
-		  message))
-	    (standard-rep-prompt error-prompt)))
+(define (make-error-condition condition-type irritants environment)
+  ;; Microcode errors also use this.
+  (let ((condition
+	 (make-condition condition-type
+			 irritants
+			 (current-proceed-continuation))))
+    (1d-table/put! (condition/properties condition)
+		   environment-tag
+		   (if (eq? environment repl-environment)
+		       (cons (standard-repl-environment) true)
+		       (cons environment false)))
+    condition))
 
-(define ((make-error-message message irritant))
-  (newline)
-  (write-string message)
-  (if (not (eq? irritant *the-non-printing-object*))
-      (let ((out (write-to-string irritant 40)))
-	(write-char #\Space)
-	(write-string (cdr out))
-	(if (car out) (write-string "..."))))
-  (if *error-decision-hook* (*error-decision-hook*)))
+(define message-tag
+  "message-tag")
+
+(define environment-tag
+  "environment-tag")
+
+(define repl-environment
+  "repl-environment")
+
+(define error-type:vanilla)
+
+(define (condition/message condition)
+  (let ((condition-type (condition/type condition)))
+    (or (and (eq? condition-type error-type:vanilla)
+	     (1d-table/get (condition/properties condition) message-tag false))
+	(condition-type/message condition-type))))
+
+(define-integrable (condition/environment condition)
+  (car (1d-table/get (condition/properties condition) environment-tag false)))
+
+(define-integrable (condition/substitute-environment? condition)
+  (cdr (1d-table/get (condition/properties condition) environment-tag false)))
 
-;;;; Error Handlers
+;;;; Standard Error Handler
 
-;;; All error handlers have the following form:
+(define (standard-error-handler condition)
+  (fluid-let ((*error-condition* condition))
+    (hook/error-handler condition)))
 
-(define ((make-error-handler direction-alist operator-alist
-			     default-handler default-combination-handler)
-	 error-code expression)
-  ((let direction-loop ((alist direction-alist))
-     (cond ((null? alist)
-	    (cond ((combination? expression)
-		   (let ((operator (combination-operator* expression)))
-		     (let operator-loop ((alist operator-alist))
-		       (cond ((null? alist) default-combination-handler)
-			     ((memq operator (caar alist)) (cdar alist))
-			     (else (operator-loop (cdr alist)))))))
-		  (else default-handler)))
-	   (((caar alist) expression) (cdar alist))
-	   (else (direction-loop (cdr alist)))))
-   expression))
+(define hook/error-handler)
+(define (default/error-handler condition)
+  (push-repl (condition/environment condition)
+	     (let ((message
+		    (cmdl-message/append
+		     (apply cmdl-message/error
+			    (condition/message condition)
+			    (condition/irritants condition))
+		     (cmdl-message/active hook/error-decision))))
+	       (if (condition/substitute-environment? condition)
+		   (cmdl-message/append
+		    message
+		    (cmdl-message/strings
+		     ""
+		     "There is no environment available;"
+		     "using the current REPL environment"))
+		   message))
+	     "Error->"))
 
-;;; Then there are several methods for modifying the behavior of a
-;;; given error handler.
+(define hook/error-decision)
+(define (default/error-decision)
+  false)
 
-(define expression-specific-adder)
-(define operation-specific-adder)
+(define *error-condition* false)
 
-(let ()
-  (define (((alist-adder name) error-handler) filter receiver)
-    (let ((environment
-	   (procedure-environment (wrapped-error-handler error-handler))))
-      (lexical-assignment environment
-			  name
-			  (cons (cons filter receiver)
-				(lexical-reference environment name)))))
+(define-integrable (error-condition)
+  *error-condition*)
 
-  (set! expression-specific-adder
-	(alist-adder 'DIRECTION-ALIST))
-  (set! operation-specific-adder
-	(alist-adder 'OPERATOR-ALIST)))
+(define (error-continuation)
+  (let ((condition (error-condition)))
+    (and condition
+	 (condition/continuation condition))))
 
-(define default-expression-setter)
-(define default-combination-setter)
+(define-integrable (error-message)
+  (condition/message (error-condition)))
 
-(let ()
-  (define (((set-default name) error-handler) receiver)
-    (lexical-assignment
-     (procedure-environment (wrapped-error-handler error-handler))
-     name
-     receiver))
-
-  (set! default-expression-setter
-	(set-default 'DEFAULT-HANDLER))
-  (set! default-combination-setter
-	(set-default 'DEFAULT-COMBINATION-HANDLER)))
+(define-integrable (error-irritants)
+  (condition/irritants (error-condition)))
 
-;;;; Error Vector
+;;;; Error Messages
 
-;;; Initialize the error vector to the default state:
+(define (warn string . irritants)
+  (with-output-to-port (cmdl/output-port (nearest-cmdl))
+    (lambda ()
+      (newline)
+      (write-string "Warning: ")
+      (format-error-message string irritants))))
 
-(define (error-code-or-name code)
-  (let ((v (vector-ref (get-fixed-objects-vector)
-		       (fixed-objects-vector-slot 'MICROCODE-ERRORS-VECTOR))))
-    (if (or (>= code (vector-length v))
-	    (null? (vector-ref v code)))
-	code
-	(vector-ref v code))))	
+(define-integrable (error-irritants/sans-noise)
+  (list-transform-negative (error-irritants)
+    error-irritant/noise?))
 
-(define (default-error-handler expression)
-  (start-error-rep "Anomalous error -- get a wizard"
-		   (error-code-or-name *error-code*)))
+(define (error-irritant)
+  (let ((irritants (error-irritants/sans-noise)))
+    (cond ((null? irritants) *the-non-printing-object*)
+	  ((null? (cdr irritants)) (car irritants))
+	  (else irritants))))
 
-(define system-error-vector
-  (make-initialized-vector number-of-microcode-errors
-    (lambda (error-code)
-      (error-handler-wrapper
-       (make-error-handler '()
-			   '()
-			   default-error-handler
-			   default-error-handler)))))
+(define (cmdl-message/error string . irritants)
+  (cmdl-message/strings
+   (if (null? irritants)
+       string
+       (with-output-to-string
+	 (lambda ()
+	   (format-error-message string irritants))))))
 
-;;; Use this procedure to displace the default handler completely.
+(define (format-error-message message irritants)
+  (fluid-let ((*unparser-list-depth-limit* 2)
+	      (*unparser-list-breadth-limit* 5))
+    (for-each (lambda (irritant)
+		(if (error-irritant/noise? irritant)
+		    (display (error-irritant/noise-value irritant))
+		    (begin
+		      (write-char #\Space)
+		      (write irritant))))
+	      (cons (if (string? message)
+			(error-irritant/noise message)
+			message)
+		    irritants))))
 
-(define (define-total-error-handler error-name handler)
-  (vector-set! system-error-vector
-	       (microcode-error error-name)
-	       (error-handler-wrapper handler)))
+(define-integrable (error-irritant/noise noise)
+  (cons error-irritant/noise-tag noise))
 
-;;; It will be installed later.
+(define (error-irritant/noise? irritant)
+  (and (pair? irritant)
+       (eq? (car irritant) error-irritant/noise-tag)))
 
-(define (install)
-  (set! *error-hook* standard-error-hook)
-  (vector-set! (get-fixed-objects-vector)
-	       (fixed-objects-vector-slot 'SYSTEM-ERROR-VECTOR)
-	       system-error-vector)
-  (vector-set! (get-fixed-objects-vector)
-	       (fixed-objects-vector-slot 'ERROR-PROCEDURE)
-	       error-procedure-handler)
-  (vector-set! (get-fixed-objects-vector)
-	       (fixed-objects-vector-slot 'COMPILER-ERROR-PROCEDURE)
-	       error-from-compiled-code)
-  (set-fixed-objects-vector! (get-fixed-objects-vector)))
+(define-integrable (error-irritant/noise-value irritant)
+  (cdr irritant))
+
+(define error-irritant/noise-tag
+  "error-irritant/noise")
 
-;;;; Error Definers
+;;;; Condition Types
 
-(define ((define-definer type definer) error-name . args)
-  (apply definer
-	 (type (vector-ref system-error-vector (microcode-error error-name)))
-	 args))
+(define-structure (condition-type
+		   (constructor %make-condition-type
+				(dependencies error? message))
+		   (conc-name condition-type/))
+  ;; `dependencies' is sorted in decreasing `index' order.
+  (dependencies false read-only true)
+  (error? false read-only true)
+  (message false read-only true)
+  (index (allocate-condition-type-index!) read-only true)
+  (properties (make-1d-table) read-only true))
 
-(define ((define-specific-error error-name message) filter selector)
-  ((cond ((pair? filter) define-operation-specific-error)
-	 (else define-expression-specific-error))
-   error-name filter message selector))
+(define (make-condition-type dependencies message)
+  (for-each guarantee-condition-type dependencies)
+  (let ((dependencies
+	 (cons false
+	       (reduce dependencies/union
+		       '()
+		       (map condition-type/dependencies dependencies)))))
+    (let ((result
+	   (%make-condition-type dependencies
+				 (if (memq condition-type:error dependencies)
+				     true
+				     false)
+				 message)))
+      (set-car! dependencies result)
+      result)))
 
-(define define-expression-specific-error
-  (define-definer expression-specific-adder
-    (lambda (adder filter message selector)
-      (adder filter (expression-error-rep message selector)))))
+(define (allocate-condition-type-index!)
+  (let ((index next-condition-type-index))
+    (set! next-condition-type-index (1+ index))
+    index))
 
-(define define-operation-specific-error
-  (define-definer operation-specific-adder
-    (lambda (adder filter message selector)
-      (adder filter (combination-error-rep message selector)))))
+(define next-condition-type-index)
 
-(define define-operand-error
-  (define-definer default-combination-setter
-    (lambda (setter message selector)
-      (setter (combination-error-rep message selector)))))
+(define (guarantee-condition-type object)
+  (if (not (condition-type? object)) (error "Illegal condition-type" object))
+  object)
 
-(define define-operator-error
-  (define-definer default-combination-setter
-    (lambda (setter message)
-      (setter (expression-error-rep message combination-operator*)))))
-
-(define define-combination-error
-  (define-definer default-combination-setter
-    (lambda (setter message selector)
-      (setter (expression-error-rep message selector)))))
-
-(define define-default-error
-  (define-definer default-expression-setter
-    (lambda (setter message selector)
-      (setter (expression-error-rep message selector)))))
-
-(define ((expression-error-rep message selector) expression)
-  (start-error-rep message (selector expression)))
-
-(define ((combination-error-rep message selector) combination)
-  (start-error-rep
-   (string-append message " "
-		  (let ((out (write-to-string (selector combination) 40)))
-		    (if (car out)
-			(string-append (cdr out) "...")
-			(cdr out)))
-		  "\nwithin procedure")
-   (combination-operator* combination)))
+(define-integrable (condition-type<? x y)
+  (< (condition-type/index x) (condition-type/index y)))
 
-;;;; Combination Operations
+(define (dependencies/union x y)
+  ;; This takes advantage of (and preserves) the dependency ordering.
+  (cond ((null? x) y)
+	((null? y) x)
+	((eq? (car x) (car y))
+	 (cons (car x) (dependencies/union (cdr x) (cdr y))))
+	((condition-type<? (car x) (car y))
+	 (cons (car y) (dependencies/union x (cdr y))))
+	(else
+	 (cons (car x) (dependencies/union (cdr x) y)))))
 
-;;; Combinations coming out of the continuation parser are either all
-;;; unevaluated, or all evaluated, or all operands evaluated and the
-;;; operator undefined.  Thus we must be careful about unwrapping
-;;; the components when necessary.  In practice, it turns out that
-;;; all but one of the interesting errors happen at the application
-;;; point, at which all of the combination's components are evaluated.
+(define (dependencies/intersect? x y)
+  (cond ((or (null? x) (null? y)) false)
+	((eq? (car x) (car y)) true)
+	((condition-type<? (car x) (car y))
+	 (dependencies/intersect? x (cdr y)))
+	(else
+	 (dependencies/intersect? (cdr x) y))))
 
-(define (combination-operator* combination)
-  (unwrap-evaluated-object (combination-operator combination)))
+(define (make-error-type dependencies message)
+  (make-condition-type (if (there-exists? dependencies condition-type/error?)
+			   dependencies
+			   (cons condition-type:error dependencies))
+		       message))
 
-(define ((combination-operand selector) combination)
-  (unwrap-evaluated-object (selector (combination-operands combination))))
+(define (error-type? object)
+  (and (condition-type? object)
+       (condition-type/error? object)))
 
-(define combination-first-operand (combination-operand first))
-(define combination-second-operand (combination-operand second))
-(define combination-third-operand (combination-operand third))
-
-(define (combination-operands* combination)
-  (map unwrap-evaluated-object (combination-operands combination)))
-
-(define (unwrap-evaluated-object object)
-  (if (continuation-evaluated-object? object)
-      (continuation-evaluated-object-value object)
-      (error "Not evaluated -- get a wizard" unwrap-evaluated-object object)))
-
-(define (combination-operator? expression)
-  (and (combination? expression)
-       (variable? (combination-operator expression))))
-
-(define (combination-operator-name combination)
-  (variable-name (combination-operator combination)))
+(define condition-type:error)
 
-;;;; Environment Operation Errors
+;;;; Condition Instances
 
-(define define-unbound-variable-error
-  (define-specific-error 'UNBOUND-VARIABLE
-    "Unbound Variable"))
+(define-structure (condition
+		   (constructor %make-condition (type irritants continuation))
+		   (conc-name condition/))
+  (type false read-only true)
+  (irritants false read-only true)
+  (continuation false read-only true)
+  (properties (make-1d-table) read-only true))
 
-(define-unbound-variable-error variable? variable-name)
-(define-unbound-variable-error access? access-name)
-(define-unbound-variable-error assignment? assignment-name)
-(define-unbound-variable-error combination-operator? combination-operator-name)
-(define-unbound-variable-error
-  (list (make-primitive-procedure 'LEXICAL-REFERENCE 2)
-	(make-primitive-procedure 'LEXICAL-ASSIGNMENT 3))
-  combination-second-operand)
+(define (make-condition type irritants continuation)
+  (guarantee-condition-type type)
+  (if (not (list? irritants))
+      (error "Illegal condition irritants" irritants))
+  (guarantee-continuation continuation)
+  (%make-condition type irritants continuation))
 
-(define-unbound-variable-error
-  (list (make-primitive-procedure 'ENVIRONMENT-LINK-NAME 3))
-  combination-third-operand)
+(define (guarantee-condition object)
+  (if (not (condition? object)) (error "Illegal condition" object))
+  object)
 
-(define-unbound-variable-error
-  (list (make-primitive-procedure 'ADD-FLUID-BINDING! 3))
-  (lambda (obj)
-    (let ((object (combination-second-operand obj)))
-      (cond ((variable? object) (variable-name object))
-	    ((symbol? object) object)
-	    (else (error "Handler has bad object -- GET-A-WIZARD" object))))))
+(define-integrable (condition/dependencies condition)
+  (condition-type/dependencies (condition/type condition)))
 
-(define define-unassigned-variable-error
-  (define-specific-error 'UNASSIGNED-VARIABLE
-    "Unassigned Variable"))
+(define-integrable (condition/error? condition)
+  (condition-type/error? (condition/type condition)))
 
-(define-unassigned-variable-error variable? variable-name)
-(define-unassigned-variable-error access? access-name)
-(define-unassigned-variable-error combination-operator?
-  combination-operator-name)
-(define-unassigned-variable-error
-  (list (make-primitive-procedure 'LEXICAL-REFERENCE 2))
-  combination-second-operand)
-
-(define define-bad-frame-error
-  (define-specific-error 'BAD-FRAME
-    "Illegal Environment Frame"))
-
-(define-bad-frame-error access? access-environment)
-(define-bad-frame-error in-package? in-package-environment)
+(define (error? object)
+  (and (condition? object)
+       (condition/error? object)))
 
-;;;; Application Errors
+;;;; Condition Handling
 
-(define-operator-error 'UNDEFINED-PROCEDURE
-  "Application of Non-Procedure Object")
+(define handler-frames)
 
-(define-operator-error 'UNDEFINED-PRIMITIVE-OPERATION
-  "Undefined Primitive Procedure")
+(define-structure (handler-frame (type structure)
+				 (conc-name handler-frame/))
+  (condition-types false read-only true)
+  (handler false read-only true)
+  (next false read-only true))
 
-(define-operator-error 'UNIMPLEMENTED-PRIMITIVE
-  "Unimplemented Primitive Procedure")
+(define (bind-condition-handler condition-types handler thunk)
+  (for-each guarantee-condition-type condition-types)
+  (fluid-let ((handler-frames
+	       (make-handler-frame condition-types
+				   handler
+				   handler-frames)))
+    (thunk)))
 
-(define-operand-error 'WRONG-NUMBER-OF-ARGUMENTS
-  "Wrong Number of Arguments"
-  (lambda (combination)
-    (length (combination-operands* combination))))
+(define-integrable (signal-error condition)
+  (signal-condition condition standard-error-handler))
 
-(let ((make
-       (lambda (wta-error-code bra-error-code position-string
-			       position-selector)
-	 (let ((ap-string (string-append position-string " argument position"))
-	       (selector (combination-operand position-selector)))
-	   (define-operand-error wta-error-code
-	     (string-append "Illegal datum in " ap-string)
-	     selector)
-	   (define-operand-error bra-error-code
-	     (string-append "Datum out of range in " ap-string)
-	     selector)))))
-  (make 'WRONG-TYPE-ARGUMENT-0 'BAD-RANGE-ARGUMENT-0 "first" first)
-  (make 'WRONG-TYPE-ARGUMENT-1 'BAD-RANGE-ARGUMENT-1 "second" second)
-  (make 'WRONG-TYPE-ARGUMENT-2 'BAD-RANGE-ARGUMENT-2 "third" third)
-  (make 'WRONG-TYPE-ARGUMENT-3 'BAD-RANGE-ARGUMENT-3 "fourth" fourth)
-  (make 'WRONG-TYPE-ARGUMENT-4 'BAD-RANGE-ARGUMENT-4 "fifth" fifth)
-  (make 'WRONG-TYPE-ARGUMENT-5 'BAD-RANGE-ARGUMENT-5 "sixth" sixth)
-  (make 'WRONG-TYPE-ARGUMENT-6 'BAD-RANGE-ARGUMENT-6 "seventh" seventh)
-  (make 'WRONG-TYPE-ARGUMENT-7 'BAD-RANGE-ARGUMENT-7 "eighth" eighth)
-  (make 'WRONG-TYPE-ARGUMENT-8 'BAD-RANGE-ARGUMENT-8
-	"ninth" (lambda (list) (general-car-cdr list #x1400)))
-  (make 'WRONG-TYPE-ARGUMENT-9 'BAD-RANGE-ARGUMENT-9
-	"tenth" (lambda (list) (general-car-cdr list #x3000))))
+(define (signal-condition condition #!optional default-handler)
+  (guarantee-condition condition)
+  (let ((condition-type (condition/type condition)))
+    (let ((dependencies (condition-type/dependencies condition-type)))
+      (or (scan-handler-frames handler-frames dependencies
+	    (lambda (frame)
+	      (fluid-let ((handler-frames (handler-frame/next frame)))
+		((handler-frame/handler frame) condition))))
+	  (and (not (default-object? default-handler))
+	       (fluid-let ((handler-frames false))
+		 (default-handler condition)))))))
 
-(define-operand-error 'FAILED-ARG-1-COERCION
-  "Argument 1 cannot be coerced to floating point"
-  combination-first-operand)
-
-(define-operand-error 'FAILED-ARG-2-COERCION
-  "Argument 2 cannot be coerced to floating point"
-  combination-second-operand)
-
-;;;; Primitive Operator Errors
-
-(let ((fasload (make-primitive-procedure 'BINARY-FASLOAD 1))
-      (fasdump (make-primitive-procedure 'PRIMITIVE-FASDUMP 3))
-      (load-band (make-primitive-procedure 'LOAD-BAND 1)))
-
-  (define-operation-specific-error 'FASL-FILE-TOO-BIG
-    (list fasload load-band)
-    "FASLOAD: Not enough room"
-    combination-first-operand)
-
-  (define-operation-specific-error 'FASL-FILE-BAD-DATA
-    (list fasload load-band)
-    "FASLOAD: Bad binary file"
-    combination-first-operand)
-
-  ;; This one will never be reported by load-band.
-  ;; It is too late to run the old image.
-  (define-operation-specific-error 'WRONG-ARITY-PRIMITIVES
-    (list fasload load-band)
-    "FASLOAD: Primitives in binary file have the wrong arity"
-    combination-first-operand)
-
-  (define-operation-specific-error 'IO-ERROR
-    (list fasload load-band)
-    "FASLOAD: I/O error"
-    combination-first-operand)
-
-  (define-operation-specific-error 'FASLOAD-COMPILED-MISMATCH
-    (list fasload load-band)
-    "FASLOAD: Binary file contains compiled code for a different microcode"
-    combination-first-operand)
-
-  (define-operation-specific-error 'FASLOAD-BAND
-    (list fasload)
-    "FASLOAD: Binary file contains a scheme image (band), not an object"
-    combination-first-operand)
-
-  (define-operation-specific-error 'IO-ERROR
-    (list fasdump)
-    "FASDUMP: I/O error"
-    combination-second-operand)
-
-  (define-operation-specific-error 'FASDUMP-ENVIRONMENT
-    (list fasdump)
-    "FASDUMP: Object to dump is or points to environment objects"
-    combination-first-operand)
-  )
-
-;;; This will trap any external-primitive errors that
-;;; aren't caught by special handlers.
-
-(define-operator-error 'EXTERNAL-RETURN
-  "Error during External Application")
-
-(define-operation-specific-error 'EXTERNAL-RETURN
-  (list (make-primitive-procedure 'FILE-OPEN-CHANNEL 2))
-  "Unable to open file"
-  combination-first-operand)
-
-(define-operation-specific-error 'OUT-OF-FILE-HANDLES
-  (list (make-primitive-procedure 'FILE-OPEN-CHANNEL 2))
-  "Too many open files"
-  combination-first-operand)
-
-(define-operation-specific-error 'BAD-ASSIGNMENT
-  (list (make-primitive-procedure 'ENVIRONMENT-LINK-NAME 3))
-  "Bound variable"
-  combination-third-operand)
-
-;;; SCODE Syntax Errors
-
-;;; This error gets an unevaluated combination, but it doesn't ever
-;;; look at the components, so it doesn't matter.
-
-(define define-broken-variable-error
-  (define-specific-error 'BROKEN-CVARIABLE
-    "Broken Compiled Variable -- get a wizard"))
-
-(define-broken-variable-error variable? variable-name)
-(define-broken-variable-error assignment? assignment-name)
-
-;;;; System Errors
-
-(define-total-error-handler 'BAD-ERROR-CODE
-  (lambda (error-code expression)
-    (start-error-rep "Bad Error Code -- get a wizard"
-		     (error-code-or-name error-code))))
-
-(define-default-error 'BAD-INTERRUPT-CODE
-  "Illegal Interrupt Code -- get a wizard"
-  identity-procedure)
-
-(define-default-error 'EXECUTE-MANIFEST-VECTOR
-  "Attempt to execute Manifest Vector -- get a wizard"
-  identity-procedure)
- 
-(define-default-error 'UNDEFINED-USER-TYPE
-  "Undefined Type Code -- get a wizard"
-  identity-procedure)
-
-(define-default-error 'INAPPLICABLE-CONTINUATION
-  "Inapplicable continuation -- get a wizard"
-  identity-procedure)
-
-(define-default-error 'COMPILED-CODE-ERROR
-  "Compiled code error -- get a wizard"
-  identity-procedure)
-
-(define-default-error 'ILLEGAL-REFERENCE-TRAP
-  "Illegal reference trap -- get a wizard"
-  identity-procedure)
-
-(define-default-error 'BROKEN-VARIABLE-CACHE
-  "Broken variable value cell"
-  identity-procedure)
-
-;;;; Harmless system errors
-
-(define-default-error 'FLOATING-OVERFLOW
-  "Floating point overflow"
-  identity-procedure)
-
-(define-total-error-handler 'WRITE-INTO-PURE-SPACE
-  (lambda (error-code expression)
-    (newline)
-    (write-string "Automagically IMPURIFYing an object....")
-    (impurify (combination-first-operand expression))))
-
-;;; end ERROR-SYSTEM package.
-))
+(define (scan-handler-frames frames dependencies try-frame)
+  (let loop ((frame frames))
+    (and frame
+	 (or (and (let ((condition-types
+			 (handler-frame/condition-types frame)))
+		    (or (null? condition-types)
+			(dependencies/intersect? dependencies
+						 condition-types)))
+		  (try-frame frame))
+	     (loop (handler-frame/next frame))))))

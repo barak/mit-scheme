@@ -1,194 +1,114 @@
-;;; -*-Scheme-*-
-;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.48 1988/02/21 18:14:55 jinx Rel $
-;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.1 1988/06/13 11:46:23 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; Interrupt System
+;;; package: (runtime interrupt-handler)
 
-(declare (usual-integrations)
-	 (integrate-primitive-procedures set-fixed-objects-vector!))
+(declare (usual-integrations))
 
-(define with-external-interrupts-handler)
+(define (initialize-package!)
+  (set! index:interrupt-vector
+	(fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))
+  (set! index:termination-vector
+	(fixed-objects-vector-slot 'MICROCODE-TERMINATIONS-PROCEDURES))
+  (set! timer-interrupt default/timer-interrupt)
+  (set! external-interrupt default/external-interrupt)
+  (set! keyboard-interrupts
+	(let ((table (make-vector 256 losing-keyboard-interrupt)))
+	  (for-each (lambda (entry)
+		      (vector-set! table
+				   (char->ascii (car entry))
+				   (cadr entry)))
+		    `((#\B ,(keep-typeahead ^B-interrupt-handler))
+		      (#\G ,(flush-typeahead ^G-interrupt-handler))
+		      (#\U ,(flush-typeahead ^U-interrupt-handler))
+		      (#\X ,(flush-typeahead ^X-interrupt-handler))
+		      ;; (#\S ,(keep-typeahead ^S-interrupt-handler))
+		      ;; (#\Q ,(keep-typeahead ^Q-interrupt-handler))
+		      ;; (#\P ,(flush-typeahead ^P-interrupt-handler))
+		      ;; (#\Z ,(flush-typeahead ^Z-interrupt-handler))
+		      ))
+	  table))
+  (set! hook/^B-interrupt default/^B-interrupt)
+  (set! hook/^G-interrupt default/^G-interrupt)
+  (set! hook/^U-interrupt default/^U-interrupt)
+  (set! hook/^X-interrupt default/^X-interrupt)
+  (set! hook/^S-interrupt default/^S-interrupt)
+  (set! hook/^Q-interrupt default/^Q-interrupt)
+  (set! hook/^P-interrupt default/^P-interrupt)
+  (set! hook/^Z-interrupt default/^Z-interrupt)
+  (install))
 
-(define timer-interrupt
-  (let ((setup-timer-interrupt
-	 (make-primitive-procedure 'SETUP-TIMER-INTERRUPT 2)))
-    (named-lambda (timer-interrupt)
-      (setup-timer-interrupt '() '())
-      (error "Unhandled Timer interrupt received"))))
+(define-primitives
+  (setup-timer-interrupt 2)
+  get-next-interrupt-character
+  check-and-clean-up-input-channel
+  set-fixed-objects-vector!)
 
-(define interrupt-system
-  (let ((get-next-interrupt-character
-	 (make-primitive-procedure 'GET-NEXT-INTERRUPT-CHARACTER))
-	(check-and-clean-up-input-channel
-	 (make-primitive-procedure 'CHECK-AND-CLEAN-UP-INPUT-CHANNEL))
-	(index:interrupt-vector
-	 (fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))
-	(index:termination-vector
-	 (fixed-objects-vector-slot
-	  'MICROCODE-TERMINATIONS-PROCEDURES))
-	(^Q-Hook '()))
+(define-integrable stack-overflow-slot 0)
+(define-integrable gc-slot 2)
+(define-integrable character-slot 4)
+(define-integrable timer-slot 6)
+(define-integrable suspend-slot 8)
+(define-integrable illegal-interrupt-slot 9)
+
+(define index:interrupt-vector)
+(define index:termination-vector)
 
-;;;; Soft interrupts
+;;;; Miscellaneous Interrupts
 
 (define (timer-interrupt-handler interrupt-code interrupt-enables)
+  interrupt-code interrupt-enables
   (timer-interrupt))
 
+(define timer-interrupt)
+(define (default/timer-interrupt)
+  (setup-timer-interrupt '() '())
+  (error "Unhandled Timer interrupt received"))
+
 (define (suspend-interrupt-handler interrupt-code interrupt-enables)
-  (fluid-let (((access *error-hook* error-system)
-	       (lambda (environment message irritant substitute-environment?)
-		 (%exit))))
-    (if (not (disk-save (merge-pathnames (string->pathname "scheme_suspend")
-					 (home-directory-pathname))
-			true))
-	(%exit))))
-
-;;; Keyboard Interrupts
-
-(define (external-interrupt-handler interrupt-code interrupt-enables)
-  (let ((interrupt-character (get-next-interrupt-character)))
-    ((vector-ref keyboard-interrupts interrupt-character) interrupt-character
-							  interrupt-enables)))
-
-(define (losing-keyboard-interrupt interrupt-character interrupt-enables)
-  (error "Bad interrupt character" interrupt-character))
-
-(define keyboard-interrupts
-  (vector-cons 256 losing-keyboard-interrupt))
-
-(define (install-keyboard-interrupt! interrupt-char handler)
-  (vector-set! keyboard-interrupts
-	       (char->ascii interrupt-char)
-	       handler))
-
-(define (remove-keyboard-interrupt! interrupt-char)
-  (vector-set! keyboard-interrupts
-	       (char->ascii interrupt-char)
-	       losing-keyboard-interrupt))
-
-(define until-most-recent-interrupt-character 0)	;for Pascal, ugh!
-(define multiple-copies-only 1)
-
-(define ((flush-typeahead kernel) interrupt-character interrupt-enables)
-  (if (check-and-clean-up-input-channel until-most-recent-interrupt-character
-					interrupt-character)
-      (kernel interrupt-character interrupt-enables)))
-
-(define ((keep-typeahead kernel) interrupt-character interrupt-enables)
-  (if (check-and-clean-up-input-channel multiple-copies-only
-					interrupt-character)
-      (kernel interrupt-character interrupt-enables)))
-
-(define ^B-interrupt-handler
-  (keep-typeahead
-   (lambda (interrupt-character interrupt-enables)
-     (with-standard-proceed-point
-      (lambda ()
-	(breakpoint "^B interrupt" (rep-environment)))))))
-
-(define ^G-interrupt-handler
-  (flush-typeahead
-   (lambda (interrupt-character interrupt-enables)
-     (if ((access under-emacs? emacs-interface-package))
-	 ((access transmit-signal emacs-interface-package) #\g))
-     (abort-to-top-level-driver "Quit!"))))
-
-(define ^U-interrupt-handler
-  (flush-typeahead
-   (lambda (interrupt-character interrupt-enables)
-     (abort-to-previous-driver "Up!"))))
-
-(define ^X-interrupt-handler
-  (flush-typeahead
-   (lambda (interrupt-character interrupt-enables)
-     (abort-to-nearest-driver "Abort!"))))
+  interrupt-code interrupt-enables
+  (bind-condition-handler '() (lambda (condition) condition (%exit))
+    (lambda ()
+      (if (not (disk-save (merge-pathnames (string->pathname "scheme_suspend")
+					   (home-directory-pathname))
+			  true))
+	  (%exit)))))
 
 (define (gc-out-of-space-handler . args)
+  args
   (abort-to-nearest-driver "Aborting! Out of memory"))
-
-#|
-(define ^S-interrupt-handler
-  (keep-typeahead
-   (lambda (interrupt-character interrupt-enables)
-     (if (null? ^Q-Hook)
-	 (begin
-	   (set-interrupt-enables! interrupt-enables)
-	   (beep)
-	   (call-with-current-continuation
-	    (lambda (stop-^S-wait)
-	      (fluid-let ((^Q-Hook Stop-^S-Wait))
-		(let busy-wait () (busy-wait))))))))))
- 
-(define ^Q-interrupt-handler
-  (keep-typeahead
-   (lambda (interrupt-character interrupt-enables)
-     (if (not (null? ^Q-Hook))
-	 (begin
-	   (set-interrupt-enables! interrupt-enables)
-	   (^Q-Hook 'GO-ON))))))
- 
-(define ^P-interrupt-handler
-  (flush-typeahead
-   (lambda (interrupt-character interrupt-enables)
-     (set-interrupt-enables! interrupt-enables)
-     (proceed))))
- 
-(define ^Z-interrupt-handler
-  (flush-typeahead
-   (lambda (interrupt-character interrupt-enables)
-     (set-interrupt-enables! interrupt-enables)
-     (edit))))
-|#
-
-(install-keyboard-interrupt! #\G ^G-interrupt-handler)
-(install-keyboard-interrupt! #\B ^B-interrupt-handler)
-; (install-keyboard-interrupt! #\P ^P-interrupt-handler)
-(install-keyboard-interrupt! #\U ^U-interrupt-handler)
-(install-keyboard-interrupt! #\X ^X-interrupt-handler)
-; (install-keyboard-interrupt! #\Z ^Z-interrupt-handler)
-; (install-keyboard-interrupt! #\S ^S-interrupt-handler)
-; (install-keyboard-interrupt! #\Q ^Q-interrupt-handler)
-
-(define stack-overflow-slot 0)
-(define gc-slot 2)
-(define character-slot 4)
-(define timer-slot 6)
-(define suspend-slot 8)
-(define illegal-interrupt-slot 9)
 
 (define (illegal-interrupt-handler interrupt-code interrupt-enables)
   (error "Illegal interrupt" interrupt-code interrupt-enables))
@@ -196,9 +116,125 @@
 (define (default-interrupt-handler interrupt-code interrupt-enables)
   (error "Anomalous interrupt" interrupt-code interrupt-enables))
 
+;;;; Keyboard Interrupts
+
+(define (external-interrupt-handler interrupt-code interrupt-enables)
+  interrupt-code
+  (external-interrupt (get-next-interrupt-character) interrupt-enables))
+
+(define (with-external-interrupts-handler handler thunk)
+  (fluid-let ((external-interrupt (flush-typeahead handler)))
+    (thunk)))
+
+(define external-interrupt)
+(define (default/external-interrupt character interrupt-enables)
+  ((vector-ref keyboard-interrupts character) character interrupt-enables))
+
+(define (losing-keyboard-interrupt character interrupt-enables)
+  interrupt-enables
+  (error "Bad interrupt character" character))
+
+(define keyboard-interrupts)
+
+;;; The following definitions must match the microcode.
+(define until-most-recent-interrupt-character 0)
+(define multiple-copies-only 1)
+
+(define ((flush-typeahead kernel) character interrupt-enables)
+  (if (check-and-clean-up-input-channel until-most-recent-interrupt-character
+					character)
+      (kernel character interrupt-enables)))
+
+(define ((keep-typeahead kernel) character interrupt-enables)
+  (if (check-and-clean-up-input-channel multiple-copies-only character)
+      (kernel character interrupt-enables)))
+
+(define (^B-interrupt-handler character interrupt-enables)
+  character
+  (hook/^B-interrupt interrupt-enables))
+
+(define (^G-interrupt-handler character interrupt-enables)
+  character
+  (hook/^G-interrupt interrupt-enables))
+
+(define (^U-interrupt-handler character interrupt-enables)
+  character
+  (hook/^U-interrupt interrupt-enables))
+
+(define (^X-interrupt-handler character interrupt-enables)
+  character
+  (hook/^X-interrupt interrupt-enables))
+
+(define (^S-interrupt-handler character interrupt-enables)
+  character
+  (hook/^S-interrupt interrupt-enables))
+
+(define (^Q-interrupt-handler character interrupt-enables)
+  character
+  (hook/^Q-interrupt interrupt-enables))
+
+(define (^P-interrupt-handler character interrupt-enables)
+  character
+  (hook/^P-interrupt interrupt-enables))
+
+(define (^Z-interrupt-handler character interrupt-enables)
+  character
+  (hook/^Z-interrupt interrupt-enables))
+
+(define hook/^B-interrupt)
+(define hook/^G-interrupt)
+(define hook/^U-interrupt)
+(define hook/^X-interrupt)
+(define hook/^S-interrupt)
+(define hook/^Q-interrupt)
+(define hook/^P-interrupt)
+(define hook/^Z-interrupt)
+
+(define (default/^B-interrupt interrupt-enables)
+  interrupt-enables
+  (cmdl-interrupt/breakpoint))
+
+(define (default/^G-interrupt interrupt-enables)
+  interrupt-enables
+  (cmdl-interrupt/abort-top-level))
+
+(define (default/^U-interrupt interrupt-enables)
+  interrupt-enables
+  (cmdl-interrupt/abort-previous))
+
+(define (default/^X-interrupt interrupt-enables)
+  interrupt-enables
+  (cmdl-interrupt/abort-nearest))
+
+(define (default/^S-interrupt interrupt-enables)
+  (if (not busy-wait-continuation)
+      (begin
+	(set-interrupt-enables! interrupt-enables)
+	(beep console-output-port)
+	(call-with-current-continuation
+	 (lambda (continuation)
+	   (fluid-let ((busy-wait-continuation continuation))
+	     (let busy-wait () (busy-wait))))))))
+
+(define (default/^Q-interrupt interrupt-enables)
+  (if busy-wait-continuation
+      (begin (set-interrupt-enables! interrupt-enables)
+	     (busy-wait-continuation false))))
+
+(define busy-wait-continuation
+  false)
+
+(define (default/^P-interrupt interrupt-enables)
+  (set-interrupt-enables! interrupt-enables)
+  (proceed))
+
+(define (default/^Z-interrupt interrupt-enables)
+  (set-interrupt-enables! interrupt-enables)
+  (edit))
+
 (define (install)
-  (with-interrupts-reduced interrupt-mask-gc-ok
-   (lambda (old-mask)
+  (without-interrupts
+   (lambda ()
      (let ((old-system-interrupt-vector
 	    (vector-ref (get-fixed-objects-vector) index:interrupt-vector))
 	   (old-termination-vector
@@ -208,16 +244,15 @@
 	     (previous-stack-interrupt
 	      (vector-ref old-system-interrupt-vector stack-overflow-slot))
 	     (system-interrupt-vector
-	      (vector-cons (vector-length old-system-interrupt-vector)
+	      (make-vector (vector-length old-system-interrupt-vector)
 			   default-interrupt-handler))
 	     (termination-vector
-	      (if old-termination-vector
-		  (if (> number-of-microcode-terminations
-			 (vector-length old-termination-vector))
-		      (vector-grow old-termination-vector
-				   number-of-microcode-terminations)
-		      old-termination-vector)
-		  (vector-cons number-of-microcode-terminations false))))
+	      (let ((length (microcode-termination/code-limit)))
+		(if old-termination-vector
+		    (if (> length (vector-length old-termination-vector))
+			(vector-grow old-termination-vector length)
+			old-termination-vector)
+		    (make-vector length false)))))
 
 	 (vector-set! system-interrupt-vector gc-slot previous-gc-interrupt)
 	 (vector-set! system-interrupt-vector stack-overflow-slot
@@ -245,30 +280,3 @@
 		      termination-vector)
 
 	 (set-fixed-objects-vector! (get-fixed-objects-vector)))))))
-
-(set! with-external-interrupts-handler
-(named-lambda (with-external-interrupts-handler handler code)
-  (define (interrupt-routine interrupt-code interrupt-enables)
-    (let ((character (get-next-interrupt-character)))
-      (check-and-clean-up-input-channel
-       until-most-recent-interrupt-character
-       character)
-      (handler character interrupt-enables)))
-
-  (define old-handler interrupt-routine)
-
-  (define interrupt-vector
-    (vector-ref (get-fixed-objects-vector) index:interrupt-vector))
-
-  (dynamic-wind
-   (lambda ()
-     (set! old-handler
-	   (vector-set! interrupt-vector character-slot old-handler)))
-   code
-   (lambda ()
-     (vector-set! interrupt-vector character-slot
-		  (set! old-handler
-			(vector-ref interrupt-vector character-slot)))))))
-
-;;; end INTERRUPT-SYSTEM package.
-(the-environment)))

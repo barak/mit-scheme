@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.1 1988/05/20 00:59:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.2 1988/06/13 11:47:32 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Code Loader
-;;; package: load-package
+;;; package: (runtime load)
 
 (declare (usual-integrations))
 
@@ -48,10 +48,10 @@ MIT in each case. |#
 (define fasload/default-types)
 
 (define (read-file filename)
-  (stream->list
-   (call-with-input-file
-       (pathname-default-version (->pathname filename) 'NEWEST)
-     read-stream)))
+  (call-with-input-file
+      (pathname-default-version (->pathname filename) 'NEWEST)
+    (lambda (port)
+      (stream->list (read-stream port)))))
 
 (define (fasload filename)
   (fasload/internal
@@ -66,10 +66,15 @@ MIT in each case. |#
       (write-string " -- done" port)
       value)))
 
-(define (load-noisily filename #!optional environment)
+(define (load-noisily filename #!optional environment syntax-table purify?)
   (fluid-let ((load-noisily? true))
     (load filename
-	  (if (default-object? environment) default-object environment))))
+	  ;; This defaulting is a kludge until we get the optional
+	  ;; defaulting fixed.  Right now it must match the defaulting
+	  ;; of `load'.
+	  (if (default-object? environment) default-object environment)
+	  (if (default-object? syntax-table) default-object syntax-table)
+	  (if (default-object? purify?) default-object purify?))))
 
 (define (load-init-file)
   (let ((truename (init-file-truename)))
@@ -80,10 +85,24 @@ MIT in each case. |#
 ;;; This is careful to do the minimum number of file existence probes
 ;;; before opening the input file.
 
-(define (load filename/s #!optional environment)
+(define (load filename/s #!optional environment syntax-table purify?)
   (let ((environment
 	 ;; Kludge until optional defaulting fixed.
-	 (if (default-object? environment) default-object environment)))
+	 (if (or (default-object? environment)
+		 (eq? environment default-object))
+	     default-object
+	     (->environment environment)))
+	(syntax-table
+	 ;; Kludge until optional defaulting fixed.
+	 (if (or (default-object? syntax-table)
+		 (eq? syntax-table default-object))
+	     default-object
+	     (guarantee-syntax-table syntax-table)))
+	(purify?
+	 (if (or (default-object? purify?)
+		 (eq? purify? default-object))
+	     false
+	     purify?)))
     (let ((kernel
 	   (lambda (filename last-file?)
 	     (let ((value
@@ -92,6 +111,8 @@ MIT in each case. |#
 				     (find-true-filename pathname
 							 load/default-types)
 				     environment
+				     syntax-table
+				     purify?
 				     load-noisily?))))
 	       (cond (last-file? value)
 		     (load-noisily? (write-line value)))))))
@@ -106,19 +127,22 @@ MIT in each case. |#
 (define default-object
   "default-object")
 
-(define (load/internal pathname true-filename environment load-noisily?)
+(define (load/internal pathname true-filename environment syntax-table
+		       purify? load-noisily?)
   (let ((port (open-input-file/internal pathname true-filename)))
     (if (= 250 (char->ascii (peek-char port)))
 	(begin (close-input-port port)
-	       (scode-eval (fasload/internal true-filename)
+	       (scode-eval (let ((scode (fasload/internal true-filename)))
+			     (if purify? (purify scode))
+			     scode)
 			   (if (eq? environment default-object)
 			       (standard-repl-environment)
 			       environment)))
-	(write-stream (eval-stream (read-stream port) environment)
+	(write-stream (eval-stream (read-stream port) environment syntax-table)
 		      (if load-noisily?
 			  (lambda (value)
 			    (hook/repl-write (nearest-repl) value))
-			  (lambda (value) value false))))))
+			  (lambda (value) value false))))))
 (define (find-true-filename pathname default-types)
   (pathname->string
    (or (let ((try
@@ -133,7 +157,7 @@ MIT in each case. |#
 			(or (try (pathname-new-type pathname (car types)))
 			    (loop (cdr types))))))))
        (error "No such file" pathname))))
-
+
 (define (read-stream port)
   (parse-objects port
 		 (current-parser-table)
@@ -142,14 +166,18 @@ MIT in each case. |#
 			(begin (close-input-port port)
 			       true)))))
 
-(define (eval-stream stream environment)
+(define (eval-stream stream environment syntax-table)
   (stream-map stream
 	      (lambda (s-expression)
-		(hook/repl-eval (nearest-repl)
-				s-expression
-				(if (eq? environment default-object)
-				    (standard-repl-environment)
-				    environment)))))
+		(let ((repl (nearest-repl)))
+		  (hook/repl-eval repl
+				  s-expression
+				  (if (eq? environment default-object)
+				      (repl/environment repl)
+				      environment)
+				  (if (eq? syntax-table default-object)
+				      (repl/syntax-table repl)
+				      syntax-table))))))
 
 (define (write-stream stream write)
   (if (stream-pair? stream)

@@ -1,235 +1,264 @@
-;;; -*-Scheme-*-
-;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.50 1987/12/05 16:38:53 cph Rel $
-;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.1 1988/06/13 11:43:56 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; GNU Emacs/Scheme Modeline Interface
+;;; package: (runtime emacs-interface)
 
 (declare (usual-integrations))
 
-(define emacs-interface-package
-  (make-environment
+(define-primitives
+  tty-read-char-ready?
+  tty-read-char-immediate
+  (under-emacs? 0))
 
 (define (transmit-signal type)
   (write-char #\Altmode console-output-port)
   (write-char type console-output-port))
 
 (define (transmit-signal-without-gc type)
-  (with-interrupts-reduced interrupt-mask-none
-    (lambda (old-mask)
-      (transmit-signal type))))
-
-(define (emacs-read-start)
-  (transmit-signal-without-gc #\s))
-
-(define (emacs-read-finish)
-  (transmit-signal-without-gc #\f))
-
-(define (emacs-start-gc)
-  (transmit-signal #\b))
-
-(define (emacs-finish-gc state)
-  (transmit-signal #\e))
+  (with-absolutely-no-interrupts
+   (lambda ()
+     (transmit-signal type))))
 
 (define (transmit-signal-with-argument type string)
-  (with-interrupts-reduced interrupt-mask-none
-    (lambda (old-mask)
-      (transmit-signal type)
-      (write-string string console-output-port)
-      (write-char #\Altmode console-output-port))))
-
-(define (emacs-rep-message string)
-  (transmit-signal-with-argument #\m string))
-
-(define (emacs-rep-value object)
-  (transmit-signal-with-argument #\v (object->string object)))
+  (with-absolutely-no-interrupts
+   (lambda ()
+     (transmit-signal type)
+     (write-string string console-output-port)
+     (write-char #\Altmode console-output-port))))
 
 (define (object->string object)
   (with-output-to-string
     (lambda ()
       (write object))))
+
+(define (emacs/read-start)
+  (transmit-signal-without-gc #\s))
+
+(define (emacs/read-finish)
+  (transmit-signal-without-gc #\f))
+
+(define (emacs/gc-start)
+  (transmit-signal #\b)
+  (normal/gc-start))
+
+(define (emacs/gc-finish start-value space-remaining)
+  (transmit-signal #\e)
+  (normal/gc-finish start-value space-remaining))
 
-(define paranoid-error-hook?
-  false)
-
-(define (emacs-error-hook)
-  (transmit-signal-without-gc #\z)
-  (beep)
-  (if paranoid-error-hook?
+(define (emacs/repl-read repl)
+  (if (cmdl/io-to-console? repl)
       (begin
-	(transmit-signal-with-argument #\P
-"Error! Type ctl-E to enter error loop, anything else to return to top level.")
-	(if (not (char-ci=? (emacs-read-char-immediate) #\C-E))
-	    (abort-to-previous-driver "Quit!")))))
+	(transmit-signal-without-gc #\R)
+	(let ((s-expression (read console-input-port)))
+	  (repl-history/record! (repl/reader-history repl) s-expression)
+	  s-expression))
+      (normal/repl-read repl)))
 
-(define (emacs-rep-prompt level string)
+(define (emacs/repl-write repl object)
+  (if (cmdl/io-to-console? repl)
+      (begin
+	(repl-history/record! (repl/printer-history repl) object)
+	(transmit-signal-with-argument #\v
+				       (if (undefined-value? object)
+					   ""
+					   (object->string object))))
+      (normal/repl-write repl object)))
+
+(define (emacs/cmdl-message cmdl string)
+  (if (cmdl/io-to-console? cmdl)
+      (transmit-signal-with-argument #\m string)
+      (normal/cmdl-message cmdl string)))
+
+(define (emacs/cmdl-prompt cmdl prompt)
   (transmit-signal-with-argument
    #\p
-   (string-append (object->string level)
+   (string-append (object->string (cmdl/level cmdl))
 		  " "
-		  (let ((entry (assoc string emacs-rep-prompt-alist)))
+		  (let ((entry (assoc prompt cmdl-prompt-alist)))
 		    (if entry
 			(cdr entry)
-			string)))))
+			prompt)))))
 
-(define emacs-rep-prompt-alist
+(define cmdl-prompt-alist
   '(("]=>" . "[Normal REPL]")
     ("==>" . "[Normal REPL]")
     ("Eval-in-env-->" . "[Normal REPL]")
     ("Bkpt->" . "[Breakpoint REPL]")
     ("Error->" . "[Error REPL]")
-    ("Debug-->" . "[Debugger]")
     ("Debugger-->" . "[Debugger REPL]")
     ("Visiting->" . "[Visiting environment]")
+    ("Debug-->" . "[Debugger]")
     ("Where-->" . "[Environment Inspector]")
     ("Which-->" . "[Task Inspector]")))
-
-(define (emacs-read-char-immediate)
-  (define (loop)
-    (let ((char (primitive-read-char-immediate)))
-      (if (char=? char char:newline)
-	  (loop)
-	  (begin (emacs-read-finish)
-		 char))))
-  (emacs-read-start)
-  (if (not (primitive-read-char-ready? 0))
-      (transmit-signal-without-gc #\c))
-  (loop))
-
-(define primitive-read-char-ready?
-  (make-primitive-procedure 'TTY-READ-CHAR-READY?))
-
-(define primitive-read-char-immediate
-  (make-primitive-procedure 'TTY-READ-CHAR-IMMEDIATE))
 
-(define (emacs/prompt-for-command-char prompt)
-  (emacs-rep-prompt (rep-level) prompt)
-  (transmit-signal-with-argument
-   #\D
-   (cond ((string=? "Debug-->" prompt) "Scheme-debug")
-	 ((string=? "Where-->" prompt) "Scheme-where")
-	 (else "Scheme")))
-  (transmit-signal-without-gc #\o)
-  (emacs/read-char-internal))
+(define (emacs/error-decision)
+  (transmit-signal-without-gc #\z)
+  (beep console-output-port)
+  (if paranoid-error-decision?
+      (begin
+	(transmit-signal-with-argument #\P
+"Error! Type ctl-E to enter error loop, anything else to return to top level.")
+	(if (not (char-ci=? (emacs/read-char-immediate) #\C-E))
+	    (abort-to-previous-driver "Quit!")))))
 
-(define (emacs/prompt-for-confirmation prompt)
-  (transmit-signal-with-argument #\n prompt)
-  (emacs/read-char-internal))
+(define paranoid-error-decision?
+  false)
 
-(define (emacs/read-char-internal)
-  (emacs-read-start)
-  (let ((char (primitive-read-char-immediate)))
-    (emacs-read-finish)
+(define (emacs/^G-interrupt interrupt-enables)
+  (transmit-signal #\g)
+  (normal/^G-interrupt interrupt-enables))
+
+(define (emacs/read-char-immediate)
+  (emacs/read-start)
+  (let ((char (tty-read-char-immediate)))
+    (emacs/read-finish)
     char))
 
-(define (emacs/prompt-for-expression prompt)
-  (transmit-signal-with-argument #\i prompt)
-  (read))
+(define (emacs/read-command-char cmdl prompt)
+  (if (cmdl/io-to-console? cmdl)
+      (begin
+	(transmit-signal-with-argument
+	 #\D
+	 (cond ((string=? "Debug-->" prompt) "Scheme-debug")
+	       ((string=? "Where-->" prompt) "Scheme-where")
+	       ((string=? "Which-->" prompt) "Scheme-which")
+	       (else "Scheme")))
+	(transmit-signal-without-gc #\o)
+	(read-char-internal))
+      (normal/read-command-char cmdl prompt)))
 
-(define (emacs/rep-read-hook)
-  (transmit-signal-without-gc #\R)
-  (read))
+(define (emacs/prompt-for-confirmation cmdl prompt)
+  (if (cmdl/io-to-console? cmdl)
+      (begin
+	(transmit-signal-with-argument #\n prompt)
+	(char=? #\y (read-char-internal)))
+      (normal/prompt-for-confirmation cmdl prompt)))
+
+(define (emacs/prompt-for-expression cmdl prompt)
+  (if (cmdl/io-to-console? cmdl)
+      (begin
+	(transmit-signal-with-argument #\i prompt)
+	(read console-input-port))
+      (normal/prompt-for-expression cmdl prompt)))
+
+(define (read-char-internal)
+  (let ((char (emacs/read-char-immediate)))
+    (if (char=? char char:newline)
+	(read-char-internal)
+	char)))
+
+(define (cmdl/io-to-console? cmdl)
+  (and (eq? console-input-port (cmdl/input-port cmdl))
+       (eq? console-output-port (cmdl/output-port cmdl))))
+
+(define (emacs/set-working-directory-pathname! pathname)
+  (transmit-signal-with-argument #\w (pathname->string pathname)))
 
-(define normal-start-gc (access gc-start-hook gc-statistics-package))
-(define normal-finish-gc (access gc-finish-hook gc-statistics-package))
-(define normal-rep-message rep-message-hook)
-(define normal-rep-prompt rep-prompt-hook)
-(define normal-rep-value rep-value-hook)
-(define normal-read-start (access read-start-hook console-input-port))
-(define normal-read-finish (access read-finish-hook console-input-port))
-(define normal-read-char-immediate
-  (access tty-read-char-immediate console-input-port))
-(define normal-error-hook (access *error-decision-hook* error-system))
-(define normal/rep-read-hook rep-read-hook)
-(define normal/prompt-for-command-char
-  (access prompt-for-command-char debugger-package))
-(define normal/prompt-for-confirmation
-  (access prompt-for-confirmation debugger-package))
-(define normal/prompt-for-expression
-  (access prompt-for-expression debugger-package))
+(define normal/gc-start)
+(define normal/gc-finish)
+(define normal/cmdl-message)
+(define normal/cmdl-prompt)
+(define normal/repl-write)
+(define normal/repl-read)
+(define normal/read-char-immediate)
+(define normal/read-start)
+(define normal/read-finish)
+(define normal/error-decision)
+(define normal/read-command-char)
+(define normal/prompt-for-confirmation)
+(define normal/prompt-for-expression)
+(define normal/^G-interrupt)
+(define normal/set-working-directory-pathname!)
 
-(define (install-emacs-hooks!)
-  (set! (access gc-start-hook gc-statistics-package) emacs-start-gc)
-  (set! (access gc-finish-hook gc-statistics-package) emacs-finish-gc)
-  (set! rep-message-hook emacs-rep-message)
-  (set! rep-prompt-hook emacs-rep-prompt)
-  (set! rep-value-hook emacs-rep-value)
-  (set! (access read-start-hook console-input-port) emacs-read-start)
-  (set! (access read-finish-hook console-input-port) emacs-read-finish)
-  (set! (access tty-read-char-immediate console-input-port)
-	emacs-read-char-immediate)
-  (set! (access *error-decision-hook* error-system) emacs-error-hook)
-  (set! rep-read-hook emacs/rep-read-hook)
-  (set! (access prompt-for-command-char debugger-package)
-	emacs/prompt-for-command-char)
-  (set! (access prompt-for-confirmation debugger-package)
-	emacs/prompt-for-confirmation)
-  (set! (access prompt-for-expression debugger-package)
-	emacs/prompt-for-expression))
-
-(define (install-normal-hooks!)
-  (set! (access gc-start-hook gc-statistics-package) normal-start-gc)
-  (set! (access gc-finish-hook gc-statistics-package) normal-finish-gc)
-  (set! rep-message-hook normal-rep-message)
-  (set! rep-prompt-hook normal-rep-prompt)
-  (set! rep-value-hook normal-rep-value)
-  (set! (access read-start-hook console-input-port) normal-read-start)
-  (set! (access read-finish-hook console-input-port) normal-read-finish)
-  (set! (access tty-read-char-immediate console-input-port)
-	normal-read-char-immediate)
-  (set! (access *error-decision-hook* error-system) normal-error-hook)
-  (set! rep-read-hook normal/rep-read-hook)
-  (set! (access prompt-for-command-char debugger-package)
-	normal/prompt-for-command-char)
-  (set! (access prompt-for-confirmation debugger-package)
-	normal/prompt-for-confirmation)
-  (set! (access prompt-for-expression debugger-package)
-	normal/prompt-for-expression))
-
-(define under-emacs?
-  (make-primitive-procedure 'UNDER-EMACS? 0))
-
+(define (initialize-package!)
+  (set! normal/gc-start hook/gc-start)
+  (set! normal/gc-finish hook/gc-finish)
+  (set! normal/cmdl-message hook/cmdl-message)
+  (set! normal/cmdl-prompt hook/cmdl-prompt)
+  (set! normal/repl-write hook/repl-write)
+  (set! normal/repl-read hook/repl-read)
+  (set! normal/read-char-immediate hook/read-char-immediate)
+  (set! normal/read-start hook/read-start)
+  (set! normal/read-finish hook/read-finish)
+  (set! normal/error-decision hook/error-decision)
+  (set! normal/read-command-char hook/read-command-char)
+  (set! normal/prompt-for-confirmation hook/prompt-for-confirmation)
+  (set! normal/prompt-for-expression hook/prompt-for-expression)
+  (set! normal/^G-interrupt hook/^G-interrupt)
+  (set! normal/set-working-directory-pathname!
+	hook/set-working-directory-pathname!)
+  (add-event-receiver! event:after-restore install!)
+  (install!))
+
 (define (install!)
   ((if (under-emacs?)
        install-emacs-hooks!
        install-normal-hooks!)))
 
-(add-event-receiver! event:after-restore install!)
-(install!)
+(define (install-emacs-hooks!)
+  (set! hook/gc-start emacs/gc-start)
+  (set! hook/gc-finish emacs/gc-finish)
+  (set! hook/cmdl-message emacs/cmdl-message)
+  (set! hook/cmdl-prompt emacs/cmdl-prompt)
+  (set! hook/repl-write emacs/repl-write)
+  (set! hook/repl-read emacs/repl-read)
+  (set! hook/read-char-immediate emacs/read-char-immediate)
+  (set! hook/read-start emacs/read-start)
+  (set! hook/read-finish emacs/read-finish)
+  (set! hook/error-decision emacs/error-decision)
+  (set! hook/read-command-char emacs/read-command-char)
+  (set! hook/prompt-for-confirmation emacs/prompt-for-confirmation)
+  (set! hook/prompt-for-expression emacs/prompt-for-expression)
+  (set! hook/^G-interrupt emacs/^G-interrupt)
+  (set! hook/set-working-directory-pathname!
+	emacs/set-working-directory-pathname!))
 
-;;; end EMACS-INTERFACE-PACKAGE
-))
+(define (install-normal-hooks!)
+  (set! hook/gc-start normal/gc-start)
+  (set! hook/gc-finish normal/gc-finish)
+  (set! hook/cmdl-message normal/cmdl-message)
+  (set! hook/cmdl-prompt normal/cmdl-prompt)
+  (set! hook/repl-write normal/repl-write)
+  (set! hook/repl-read normal/repl-read)
+  (set! hook/read-char-immediate normal/read-char-immediate)
+  (set! hook/read-start normal/read-start)
+  (set! hook/read-finish normal/read-finish)
+  (set! hook/error-decision normal/error-decision)
+  (set! hook/read-command-char normal/read-command-char)
+  (set! hook/prompt-for-confirmation normal/prompt-for-confirmation)
+  (set! hook/prompt-for-expression normal/prompt-for-expression)
+  (set! hook/^G-interrupt normal/^G-interrupt)
+  (set! hook/set-working-directory-pathname!
+	normal/set-working-directory-pathname!))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.1 1988/05/20 00:54:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.2 1988/06/13 11:41:24 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Continuation Parser
-;;; package: continuation-parser-package
+;;; package: (runtime continuation-parser)
 
 (declare (usual-integrations))
 
@@ -158,9 +158,7 @@ MIT in each case. |#
     (if (not (return-address? return-address))
 	(error "illegal return address" return-address))
     (let ((code (return-address/code return-address)))
-      (if (>= code (vector-length stack-frame-types))
-	  (error "return-code too large" code))
-      (let ((type (vector-ref stack-frame-types code)))
+      (let ((type (microcode-return/code->type code)))
 	(if (not type)
 	    (error "return-code has no type" code))
 	type))))
@@ -378,6 +376,11 @@ MIT in each case. |#
   (length false read-only true)
   (parser false read-only true)
   (unparser false read-only true))
+
+(define (microcode-return/code->type code)
+  (if (not (< code (vector-length stack-frame-types)))
+      (error "return-code too large" code))
+  (vector-ref stack-frame-types code))
 
 (define (initialize-package!)
   (set! stack-frame-types (make-stack-frame-types)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/prop1d.scm,v 14.1 1988/05/20 01:00:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/prop1d.scm,v 14.2 1988/06/13 11:50:11 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; One Dimensional Property Tables
-;;; package: 1d-property-package
+;;; package: (runtime 1d-property)
 
 (declare (usual-integrations))
 
@@ -87,6 +87,12 @@ MIT in each case. |#
     (if entry
 	(system-pair-cdr entry)
 	default)))
+
+(define (1d-table/lookup table key if-found if-not-found)
+  (let ((entry (weak-assq (or key false-key) table)))
+    (if entry
+	(if-found (system-pair-cdr entry))
+	(if-not-found))))
 
 (define (1d-table/put! table key value)
   (let ((key (or key false-key)))

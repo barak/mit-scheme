@@ -1,483 +1,459 @@
-;;; -*-Scheme-*-
-;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 13.44 1988/03/05 00:20:30 cph Rel $
-;;;
-;;;	Copyright (c) 1988 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.1 1988/06/13 11:49:02 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; Scheme Parser
+;;; package: (runtime parser)
 
 (declare (usual-integrations))
 
-(define *parser-radix* #d10)
-(define *parser-table*)
+(define (initialize-package!)
+  (set! char-set/undefined-atom-delimiters (char-set #\[ #\] #\{ #\} #\|))
+  (set! char-set/whitespace
+	(char-set #\Tab #\Linefeed #\Page #\Return #\Space))
+  (set! char-set/non-whitespace (char-set-invert char-set/whitespace))
+  (set! char-set/comment-delimiters (char-set #\Newline))
+  (set! char-set/special-comment-leaders (char-set #\# #\|))
+  (set! char-set/string-delimiters (char-set #\" #\\))
+  (set! char-set/atom-delimiters
+	(char-set-union char-set/whitespace
+			(char-set-union char-set/undefined-atom-delimiters
+					(char-set #\( #\) #\; #\" #\' #\`))))
+  (set! char-set/atom-constituents (char-set-invert char-set/atom-delimiters))
+  (set! char-set/char-delimiters
+	(char-set-union (char-set #\- #\\) char-set/atom-delimiters))
+  (set! char-set/symbol-leaders
+	(char-set-difference char-set/atom-constituents
+			     (char-set #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9
+				       #\+ #\- #\. #\#)))
 
-(define parser-package
-  (make-environment
+  (set! lambda-optional-tag (intern "#!optional"))
+  (set! lambda-rest-tag (intern "#!rest"))
+  (set! dot-symbol (intern "."))
+  (set! named-objects
+	`((NULL . ,(list))
+	  (FALSE . ,false)
+	  (TRUE . ,true)
+	  (OPTIONAL . ,lambda-optional-tag)
+	  (REST . ,lambda-rest-tag)))
 
-(define *parser-parse-object-table*)
-(define *parser-collect-list-table*)
-(define *parser-parse-object-special-table*)
-(define *parser-collect-list-special-table*)
+  (set! *parser-radix* 10)
+  (set! system-global-parser-table (make-system-global-parser-table))
+  (set-current-parser-table! system-global-parser-table))
+
+(define char-set/undefined-atom-delimiters)
+(define char-set/whitespace)
+(define char-set/non-whitespace)
+(define char-set/comment-delimiters)
+(define char-set/special-comment-leaders)
+(define char-set/string-delimiters)
+(define char-set/atom-delimiters)
+(define char-set/atom-constituents)
+(define char-set/char-delimiters)
+(define char-set/symbol-leaders)
+
+(define lambda-optional-tag)
+(define lambda-rest-tag)
+(define *parser-radix*)
+(define system-global-parser-table)
+
+(define (make-system-global-parser-table)
+  (let ((table
+	 (make-parser-table parse-object/atom
+			    (collect-list-wrapper parse-object/atom)
+			    parse-object/special-undefined
+			    collect-list/special-undefined)))
+    (for-each (lambda (entry)
+		(parser-table/set-entry!
+		 table
+		 (car entry)
+		 (cadr entry)
+		 (if (null? (cddr entry))
+		     (collect-list-wrapper (cadr entry))
+		     (caddr entry))))
+	      `(("#" ,parse-object/special ,collect-list/special)
+		(,char-set/symbol-leaders ,parse-object/symbol)
+		(("#b" "#B") ,parse-object/numeric-prefix)
+		(("#o" "#O") ,parse-object/numeric-prefix)
+		(("#d" "#D") ,parse-object/numeric-prefix)
+		(("#x" "#X") ,parse-object/numeric-prefix)
+		(("#i" "#I") ,parse-object/numeric-prefix)
+		(("#e" "#E") ,parse-object/numeric-prefix)
+		(("#s" "#S") ,parse-object/numeric-prefix)
+		(("#l" "#L") ,parse-object/numeric-prefix)
+		("#*" ,parse-object/bit-string)
+		("(" ,parse-object/list-open)
+		("#(" ,parse-object/vector-open)
+		(")" ,parse-object/list-close ,collect-list/list-close)
+		(,char-set/whitespace
+		 ,parse-object/whitespace
+		 ,collect-list/whitespace)
+		(,char-set/undefined-atom-delimiters
+		 ,parse-object/undefined-atom-delimiter
+		 ,collect-list/undefined-atom-delimiter)
+		(";" ,parse-object/comment ,collect-list/comment)
+		("#|"
+		 ,parse-object/special-comment
+		 ,collect-list/special-comment)
+		("'" ,parse-object/quote)
+		("`" ,parse-object/quasiquote)
+		("," ,parse-object/unquote)
+		("\"" ,parse-object/string-quote)
+		("#\\" ,parse-object/char-quote)
+		(("#f" "#F") ,parse-object/false)
+		(("#t" "#T") ,parse-object/true)
+		("#!" ,parse-object/named-constant)))
+    table))
+
+;;;; Top Level
+
+(define (parse-object port parser-table)
+  (if (not (parser-table? parser-table))
+      (error "Not a valid parser table" parser-table))
+  (parse-object/internal port parser-table))
+
+(define (parse-objects port parser-table last-object?)
+  (if (not (parser-table? parser-table))
+      (error "Not a valid parser table" parser-table))
+  (parse-objects/internal port parser-table last-object?))
+
+(define (parse-object/internal port parser-table)
+  (within-parser port parser-table parse-object/dispatch))
+
+(define (parse-objects/internal port parser-table last-object?)
+  (let loop ()
+    (let ((object (parse-object/internal port parser-table)))
+      (if (last-object? object)
+	  '()
+	  (cons-stream object (loop))))))
+
+(define (within-parser port parser-table thunk)
+  (fluid-let
+      ((*parser-input-port* port)
+       (*parser-peek-char* (input-port/operation/peek-char port))
+       (*parser-discard-char* (input-port/operation/discard-char port))
+       (*parser-read-char* (input-port/operation/read-char port))
+       (*parser-read-string* (input-port/operation/read-string port))
+       (*parser-discard-chars* (input-port/operation/discard-chars port))
+       (*parser-parse-object-table* (parser-table/parse-object parser-table))
+       (*parser-collect-list-table* (parser-table/collect-list parser-table))
+       (*parser-parse-object-special-table*
+	(parser-table/parse-object-special parser-table))
+       (*parser-collect-list-special-table*
+	(parser-table/collect-list-special parser-table)))
+    (thunk)))
+
+;;;; Character Operations
+
+(define *parser-input-port*)
 (define *parser-peek-char*)
 (define *parser-discard-char*)
 (define *parser-read-char*)
 (define *parser-read-string*)
 (define *parser-discard-chars*)
-(define *parser-input-port*)
 
-(define (*parse-object port)
-  (fluid-let ((*parser-input-port* port)
-	      (*parser-parse-object-table* (caar *parser-table*))
-	      (*parser-collect-list-table* (cdar *parser-table*))
-	      (*parser-parse-object-special-table* (cadr *parser-table*))
-	      (*parser-collect-list-special-table* (cddr *parser-table*))
-	      (*parser-peek-char* (access :peek-char port))
-	      (*parser-discard-char* (access :discard-char port))
-	      (*parser-read-char* (access :read-char port))
-	      (*parser-read-string* (access :read-string port))
-	      (*parser-discard-chars* (access :discard-chars port)))
-    (parse-object)))
+(define-integrable (peek-char)
+  (or (peek-char/eof-ok)
+      (parse-error/end-of-file)))
 
-(define (*parse-objects-until-eof port)
-  (fluid-let ((*parser-input-port* port)
-	      (*parser-parse-object-table* (caar *parser-table*))
-	      (*parser-collect-list-table* (cdar *parser-table*))
-	      (*parser-parse-object-special-table* (cadr *parser-table*))
-	      (*parser-collect-list-special-table* (cddr *parser-table*))
-	      (*parser-peek-char* (access :peek-char port))
-	      (*parser-discard-char* (access :discard-char port))
-	      (*parser-read-char* (access :read-char port))
-	      (*parser-read-string* (access :read-string port))
-	      (*parser-discard-chars* (access :discard-chars port)))
-    (define (loop object)
-      (if (eof-object? object)
-	  '()
-	  (cons object (loop (parse-object)))))
-    (loop (parse-object))))
+(define-integrable (peek-char/eof-ok)
+  (*parser-peek-char* *parser-input-port*))
+
+(define-integrable (read-char)
+  (or (read-char/eof-ok)
+      (parse-error/end-of-file)))
+
+(define-integrable (read-char/eof-ok)
+  (*parser-read-char* *parser-input-port*))
+
+(define-integrable (discard-char)
+  (*parser-discard-char* *parser-input-port*))
+
+(define-integrable (read-string delimiters)
+  (*parser-read-string* *parser-input-port* delimiters))
+
+(define-integrable (discard-chars delimiters)
+  (*parser-discard-chars* *parser-input-port* delimiters))
+
+(define (parse-error/end-of-file)
+  (parse-error "end of file"))
+
+(define (parse-error message #!optional irritant)
+  (error (string-append "PARSE-OBJECT: " message)
+	 (if (default-object? irritant) *the-non-printing-object* irritant)))
 
-;;;; Character Operations
+;;;; Dispatch Points
 
-(declare (integrate peek-char read-char discard-char
-		    read-string discard-chars))
+(define *parser-parse-object-table*)
+(define *parser-collect-list-table*)
+(define *parser-parse-object-special-table*)
+(define *parser-collect-list-special-table*)
 
-(define (peek-char)
-  (or (*parser-peek-char*)
-      (error "End of file within READ")))
+(define-integrable (parse-object/dispatch)
+  (let ((char (peek-char/eof-ok)))
+    (if char
+	((vector-ref *parser-parse-object-table*
+		     (or (char-ascii? char) (parse-error/non-ascii))))
+	(make-eof-object *parser-input-port*))))
 
-(define (read-char)
-  (or (*parser-read-char*)
-      (error "End of file within READ")))
+(define-integrable (collect-list/dispatch)
+  ((vector-ref *parser-collect-list-table* (peek-ascii))))
 
-(define (discard-char)
-  (*parser-discard-char*))
+(define (parse-object/special)
+  (discard-char)
+  ((vector-ref *parser-parse-object-special-table* (peek-ascii))))
 
-(define (read-string delimiters)
-  (declare (integrate delimiters))
-  (*parser-read-string* delimiters))
+(define (collect-list/special)
+  (discard-char)
+  ((vector-ref *parser-collect-list-special-table* (peek-ascii))))
 
-(define (discard-chars delimiters)
-  (declare (integrate delimiters))
-  (*parser-discard-chars* delimiters))
+(define-integrable (peek-ascii)
+  (or (char-ascii? (peek-char))
+      (parse-error/non-ascii)))
+
+(define (parse-error/non-ascii)
+  (parse-error "Non-ASCII character encountered" (read-char)))
+
+(define (parse-object/special-undefined)
+  (parse-error "No such special reader macro" (peek-char))
+  (parse-object/dispatch))
+
+(define (collect-list/special-undefined)
+  (parse-error "No such special reader macro" (peek-char))
+  (collect-list/dispatch))
 
-;;; There are two major dispatch tables, one for parsing at top level,
-;;; the other for parsing the elements of a list.  Most of the entries
-;;; for each table are have similar actions.
+;;;; Symbols/Numbers
 
-;;; Default is atomic object.  Parsing an atomic object does not
-;;; consume its terminator.  Thus different terminators [such as open
-;;; paren, close paren, and whitespace], can have different effects on
-;;; parser.
-
-(define (parse-object:atom)
+(define (parse-object/atom)
   (build-atom (read-atom)))
 
-(define ((collect-list-wrapper object-parser))
-  (let ((first (object-parser)))			;forces order.
-    (let ((rest (collect-list)))
+(define-integrable (read-atom)
+  (read-string char-set/atom-delimiters))
+
+(define (build-atom string)
+  (or (parse-number string)
+      (intern-string! string)))
+
+(define-integrable (parse-number string)
+  (string->number string false *parser-radix*))
+
+(define (intern-string! string)
+  ;; Special version of `intern' to reduce consing and increase speed.
+  (substring-upcase! string 0 (string-length string))
+  (string->symbol string))
+
+(define (parse-object/symbol)
+  (intern-string! (read-atom)))
+
+(define (parse-object/numeric-prefix)
+  (let ((number
+	 (let ((char (read-char)))
+	   (string-append (char->string #\# char) (read-atom)))))
+    (or (parse-number number)
+	(parse-error "Bad number syntax" number))))
+
+(define (parse-object/bit-string)
+  (discard-char)
+  (let ((string (read-atom)))
+    (unsigned-integer->bit-string
+     (string-length string)
+     (or (string->number string false 2)
+	 (error "READ: bad syntax for bit-string")))))
+;;;; Lists/Vectors
+
+(define (parse-object/list-open)
+  (discard-char)
+  (collect-list/top-level))
+
+(define (parse-object/vector-open)
+  (discard-char)
+  (list->vector (collect-list/top-level)))
+
+(define (parse-object/list-close)
+  (if (and ignore-extra-list-closes
+	   (eq? console-input-port *parser-input-port*))
+      (discard-char)
+      (parse-error "Unmatched close paren" (read-char)))
+  (parse-object/dispatch))
+
+(define (collect-list/list-close)
+  (discard-char)
+  '())
+
+(define ignore-extra-list-closes
+  true)
+
+(define (collect-list/top-level)
+  (let ((value (collect-list/dispatch)))
+    (if (and (pair? value)
+	     (eq? dot-symbol (car value)))
+	(parse-error "Improperly formed dotted list" value)
+	value)))
+
+(define ((collect-list-wrapper parse-object))
+  (let ((first (parse-object)))			;forces order.
+    (let ((rest (collect-list/dispatch)))
       (if (and (pair? rest)
 	       (eq? dot-symbol (car rest)))
 	  (if (and (pair? (cdr rest))
 		   (null? (cddr rest)))
 	      (cons first (cadr rest))
-	      (error "PARSE-OBJECT: Improperly formed dotted list"
-		     (cons first rest)))
+	      (parse-error "Improperly formed dotted list" (cons first rest)))
 	  (cons first rest)))))
 
-(define dot-symbol
-  (string->symbol "."))
-
-(define (parse-undefined-special)
-  (error "No such special reader macro" (peek-char)))
-
-(set! *parser-table*
-      (cons (cons (vector-cons 256 parse-object:atom)
-		  (vector-cons 256 (collect-list-wrapper parse-object:atom)))
-	    (cons (vector-cons 256 parse-undefined-special)
-		  (vector-cons 256 parse-undefined-special))))
-
-(define ((parser-char-definer tables)
-	 char/chars procedure #!optional list-procedure)
-  (if (unassigned? list-procedure)
-      (set! list-procedure (collect-list-wrapper procedure)))
-  (define (do-it char)
-    (vector-set! (car tables) (char->ascii char) procedure)
-    (vector-set! (cdr tables) (char->ascii char) list-procedure))
-  (cond ((char? char/chars) (do-it char/chars))
-	((char-set? char/chars)
-	 (for-each do-it (char-set-members char/chars)))
-	((pair? char/chars) (for-each do-it char/chars))
-	(else (error "Unknown character" char/chars))))
-
-(define define-char
-  (parser-char-definer (car *parser-table*)))
-
-(define define-char-special
-  (parser-char-definer (cdr *parser-table*)))
+(define dot-symbol)
 
-(declare (integrate peek-ascii parse-object collect-list))
+;;;; Whitespace/Comments
 
-(define (peek-ascii)
-  (or (char-ascii? (peek-char))
-      (non-ascii-error)))
+(define (parse-object/whitespace)
+  (discard-whitespace)
+  (parse-object/dispatch))
 
-(define (non-ascii-error)
-  (error "Non-ASCII character encountered during parse" (read-char)))
-
-(define (parse-object)
-  (let ((char (*parser-peek-char*)))
-    (if char
-	((vector-ref *parser-parse-object-table*
-		     (or (char-ascii? char)
-			 (non-ascii-error))))
-	eof-object)))
-
-(define (collect-list)
-  ((vector-ref *parser-collect-list-table* (peek-ascii))))
-
-(define-char #\#
-  (lambda ()
-    (discard-char)
-    ((vector-ref *parser-parse-object-special-table* (peek-ascii))))
-  (lambda ()
-    (discard-char)
-    ((vector-ref *parser-collect-list-special-table* (peek-ascii)))))
-
-(define numeric-leaders
-  (char-set-union char-set:numeric
-		  (char-set #\+ #\- #\. #\#)))
-
-(define undefined-atom-delimiters
-  (char-set #\[ #\] #\{ #\} #\|))
-
-(define atom-delimiters
-  (char-set-union char-set:whitespace
-		  (char-set-union undefined-atom-delimiters
-				  (char-set #\( #\) #\; #\" #\' #\`))))
-
-(define atom-constituents
-  (char-set-invert atom-delimiters))
-
-(declare (integrate read-atom))
-
-(define (read-atom)
-  (read-string atom-delimiters))
-
-(define (build-atom string)
-  (or (parse-number string)
-      (intern-string! string)))
-
-(declare (integrate parse-number))
-
-(define (parse-number string)
-  (declare (integrate string))
-  (string->number string false *parser-radix*))
-
-(define (intern-string! string)
-  (substring-upcase! string 0 (string-length string))
-  (string->symbol string))
-
-(define-char (char-set-difference atom-constituents numeric-leaders)
-  (lambda ()
-    (intern-string! (read-atom))))
-
-(let ((numeric-prefix
-       (lambda ()
-	 (let ((number
-		(let ((char (read-char)))
-		  (string-append (char->string #\# char) (read-atom)))))
-	   (or (parse-number number)
-	       (error "READ: Bad number syntax" number))))))
-  (define-char-special '(#\b #\B) numeric-prefix)
-  (define-char-special '(#\o #\O) numeric-prefix)
-  (define-char-special '(#\d #\D) numeric-prefix)
-  (define-char-special '(#\x #\X) numeric-prefix)
-  (define-char-special '(#\i #\I) numeric-prefix)
-  (define-char-special '(#\e #\E) numeric-prefix)
-  (define-char-special '(#\s #\S) numeric-prefix)
-  (define-char-special '(#\l #\L) numeric-prefix))
-
-(define-char #\(
-  (lambda ()
-    (discard-char)
-    (collect-list/top-level)))
-
-(define-char-special #\(
-  (lambda ()
-    (discard-char)
-    (list->vector (collect-list/top-level))))
-
-(define (collect-list/top-level)
-  (let ((value (collect-list)))
-    (if (and (pair? value)
-	     (eq? dot-symbol (car value)))
-	(error "PARSE-OBJECT: Improperly formed dotted list" value)
-	value)))
-
-(define ignore-extra-close-parens
-  true)
-
-(define-char #\)
-  (lambda ()
-    (if (and ignore-extra-close-parens
-	     (eq? console-input-port *parser-input-port*))
-	(discard-char)
-	(error "PARSE-OBJECT: Unmatched close paren" (read-char)))
-    (parse-object))
-  (lambda ()
-    (discard-char)
-    '()))
-
-(define-char undefined-atom-delimiters
-  (lambda ()
-    (error "PARSE-OBJECT: Undefined atom delimiter" (read-char))
-    (parse-object))
-  (lambda ()
-    (error "PARSE-OBJECT: Undefined atom delimiter" (read-char))
-    (collect-list)))
-
-(let ()
-
-(define-char char-set:whitespace
-  (lambda ()
-    (discard-whitespace)
-    (parse-object))
-  (lambda ()
-    (discard-whitespace)
-    (collect-list)))
+(define (collect-list/whitespace)
+  (discard-whitespace)
+  (collect-list/dispatch))
 
 (define (discard-whitespace)
-  (discard-chars non-whitespace))
+  (discard-chars char-set/non-whitespace))
 
-(define non-whitespace
-  (char-set-invert char-set:whitespace))
+(define (parse-object/undefined-atom-delimiter)
+  (parse-error "Undefined atom delimiter" (read-char))
+  (parse-object/dispatch))
 
-)
-
-(let ()
+(define (collect-list/undefined-atom-delimiter)
+  (parse-error "Undefined atom delimiter" (read-char))
+  (collect-list/dispatch))
 
-(define-char #\;
-  (lambda ()
-    (discard-comment)
-    (parse-object))
-  (lambda ()
-    (discard-comment)
-    (collect-list)))
+(define (parse-object/comment)
+  (discard-comment)
+  (parse-object/dispatch))
+
+(define (collect-list/comment)
+  (discard-comment)
+  (collect-list/dispatch))
 
 (define (discard-comment)
   (discard-char)
-  (discard-chars comment-delimiters)
+  (discard-chars char-set/comment-delimiters)
   (discard-char))
 
-(define comment-delimiters
-  (char-set char:newline))
+(define (parse-object/special-comment)
+  (discard-special-comment)
+  (parse-object/dispatch))
 
-)
-
-(let ()
-
-(define-char-special #\|
-  (lambda ()
-    (discard-char)
-    (discard-special-comment)
-    (parse-object))
-  (lambda ()
-    (discard-char)
-    (discard-special-comment)
-    (collect-list)))
+(define (collect-list/special-comment)
+  (discard-special-comment)
+  (collect-list/dispatch))
 
 (define (discard-special-comment)
-  (discard-chars special-comment-leaders)
-  (if (char=? #\| (read-char))
-      (if (char=? #\# (peek-char))
-	  (discard-char)
-	  (discard-special-comment))
-      (begin (if (char=? #\| (peek-char))
-		 (begin (discard-char)
-			(discard-special-comment)))
-	     (discard-special-comment))))
-
-(define special-comment-leaders
-  (char-set #\# #\|))
-
-)
-
-(define-char #\'
-  (lambda ()
-    (discard-char)
-    (list 'QUOTE (parse-object))))
-
-(define-char #\`
-  (lambda ()
-    (discard-char)
-    (list 'QUASIQUOTE (parse-object))))
-
-(define-char #\,
-  (lambda ()
-    (discard-char)
-    (if (char=? #\@ (peek-char))
-	(begin (discard-char)
-	       (list 'UNQUOTE-SPLICING (parse-object)))
-	(list 'UNQUOTE (parse-object)))))
-
-(define-char #\"
-  (let ((delimiters (char-set #\" #\\)))
-    (lambda ()
-      (define (loop string)
-	(if (char=? #\" (read-char))
-	    string
-	    (let ((char (read-char)))
-	      (string-append string
-			     (char->string
-			      (cond ((char-ci=? char #\t) #\Tab)
-				    ((char-ci=? char #\n) char:newline)
-				    ((char-ci=? char #\f) #\Page)
-				    (else char)))
-			     (loop (read-string delimiters))))))
-      (discard-char)
-      (loop (read-string delimiters)))))
-
-(define-char-special #\\
-  (let ((delimiters (char-set-union (char-set #\- #\\) atom-delimiters)))
-    (lambda ()
-      (define (loop)
-	(cond ((char=? #\\ (peek-char))
-	       (discard-char)
-	       (char->string (read-char)))
-	      ((char-set-member? delimiters (peek-char))
-	       (char->string (read-char)))
-	      (else
-	       (let ((string (read-string delimiters)))
-		 (if (let ((char (*parser-peek-char*)))
-		       (and char
-			    (char=? #\- char)))
-		     (begin (discard-char)
-			    (string-append string "-" (loop)))
-		     string)))))
-      (discard-char)
-      (if (char=? #\\ (peek-char))
-	  (read-char)
-	  (name->char (loop))))))
-
-(define ((fixed-object-parser object))
   (discard-char)
-  object)
-
-(define-char-special '(#\f #\F) (fixed-object-parser false))
-(define-char-special '(#\t #\T) (fixed-object-parser true))
-
-(define-char-special #\!
-  (lambda ()
-    (discard-char)
-    (let ((object-name (parse-object)))
-      (cdr (or (assq object-name named-objects)
-	       (error "No object by this name" object-name))))))
-
-(define named-objects
-  `((NULL . ,(list))
-    (FALSE . ,(eq? 'TRUE 'FALSE))
-    (TRUE . ,(eq? 'TRUE 'TRUE))
-    (OPTIONAL . ,(access lambda-optional-tag lambda-package))
-    (REST . ,(access lambda-rest-tag lambda-package))))
-
-;;; end PARSER-PACKAGE.
-))
+  (let loop ()
+    (discard-chars char-set/special-comment-leaders)
+    (if (char=? #\| (read-char))
+	(if (char=? #\# (peek-char))
+	    (discard-char)
+	    (loop))
+	(begin (if (char=? #\| (peek-char))
+		   (begin (discard-char)
+			  (loop)))
+	       (loop)))))
 
-;;;; Parser Tables
+;;;; Quoting
 
-(define (parser-table-copy table)
-  (cons (cons (vector-copy (caar table))
-	      (vector-copy (cdar table)))
-	(cons (vector-copy (cadr table))
-	      (vector-copy (cddr table)))))
+(define (parse-object/quote)
+  (discard-char)
+  (list 'QUOTE (parse-object/dispatch)))
 
-(define parser-table-entry)
-(define set-parser-table-entry!)
-(let ()
+(define (parse-object/quasiquote)
+  (discard-char)
+  (list 'QUASIQUOTE (parse-object/dispatch)))
 
-(define (decode-parser-char table char receiver)
-  (cond ((char? char)
-	 (receiver (car table) (char->ascii char)))
-	((string? char)
-	 (cond ((= (string-length char) 1)
-		(receiver (car table) (char->ascii (string-ref char 0))))
-	       ((and (= (string-length char) 2)
-		     (char=? #\# (string-ref char 0)))
-		(receiver (cdr table) (char->ascii (string-ref char 1))))
+(define (parse-object/unquote)
+  (discard-char)
+  (if (char=? #\@ (peek-char))
+      (begin (discard-char)
+	     (list 'UNQUOTE-SPLICING (parse-object/dispatch)))
+      (list 'UNQUOTE (parse-object/dispatch))))
+
+(define (parse-object/string-quote)
+  (discard-char)
+  (let loop ()
+    (let ((string (read-string char-set/string-delimiters)))
+      (if (char=? #\" (read-char))
+	  string
+	  (let ((char (read-char)))
+	    (string-append string
+			   (char->string
+			    (cond ((char-ci=? char #\t) #\Tab)
+				  ((char-ci=? char #\n) #\Newline)
+				  ((char-ci=? char #\f) #\Page)
+				  (else char)))
+			   (loop)))))))
+
+(define (parse-object/char-quote)
+  (discard-char)
+  (if (char=? #\\ (peek-char))
+      (read-char)
+      (name->char
+       (let loop ()
+	 (cond ((char=? #\\ (peek-char))
+		(discard-char)
+		(char->string (read-char)))
+	       ((char-set-member? char-set/char-delimiters (peek-char))
+		(char->string (read-char)))
 	       (else
-		(error "Bad character" 'DECODE-PARSER-CHAR char))))
-	(else
-	 (error "Bad character" 'DECODE-PARSER-CHAR char))))
+		(let ((string (read-string char-set/char-delimiters)))
+		  (if (let ((char (peek-char/eof-ok)))
+			(and char
+			     (char=? #\- char)))
+		      (begin (discard-char)
+			     (string-append string "-" (loop)))
+		      string))))))))
+
+;;;; Constants
 
-(define (ptable-ref table index)
-  (cons (vector-ref (car table) index)
-	(vector-ref (cdr table) index)))
+(define (parse-object/false)
+  (discard-char)
+  false)
 
-(define (ptable-set! table index value)
-  (vector-set! (car table) index (car value))
-  (vector-set! (cdr table) index (cdr value)))
+(define (parse-object/true)
+  (discard-char)
+  true)
 
-(set! parser-table-entry
-(named-lambda (parser-table-entry table char)
-  (decode-parser-char table char ptable-ref)))
+(define (parse-object/named-constant)
+  (discard-char)
+  (let ((object-name (parse-object/dispatch)))
+    (cdr (or (assq object-name named-objects)
+	     (parse-error "No object by this name" object-name)))))
 
-(set! set-parser-table-entry!
-(named-lambda (set-parser-table-entry! table char entry)
-  (decode-parser-char table char
-    (lambda (sub-table index)
-      (ptable-set! sub-table index entry)))))
-
-)
-
+(define named-objects)

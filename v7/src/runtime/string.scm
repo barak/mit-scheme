@@ -1,86 +1,74 @@
-;;; -*-Scheme-*-
-;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 13.43 1987/12/17 20:32:25 cph Rel $
-;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5.  In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 14.1 1988/06/13 11:51:44 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; Character String Operations
+;;; package: ()
 
 (declare (usual-integrations))
 
 ;;;; Primitives
 
-(let-syntax ((define-primitives
-	       (macro names
-		 `(BEGIN ,@(map (lambda (name)
-				  `(LOCAL-ASSIGNMENT
-				    SYSTEM-GLOBAL-ENVIRONMENT
-				    ',name
-				    ,(make-primitive-procedure name)))
-				names)))))
-  (define-primitives
-   string-allocate string? string-ref string-set!
-   string-length string-maximum-length set-string-length!
-   substring=? substring-ci=? substring<?
-   substring-move-right! substring-move-left!
-   substring-find-next-char-in-set
-   substring-find-previous-char-in-set
-   substring-match-forward substring-match-backward
-   substring-match-forward-ci substring-match-backward-ci
-   substring-upcase! substring-downcase! string-hash string-hash-mod
+(define-primitives
+  string-allocate string? string-ref string-set!
+  string-length string-maximum-length set-string-length!
+  substring=? substring-ci=? substring<?
+  substring-move-right! substring-move-left!
+  substring-find-next-char-in-set
+  substring-find-previous-char-in-set
+  substring-match-forward substring-match-backward
+  substring-match-forward-ci substring-match-backward-ci
+  substring-upcase! substring-downcase! string-hash string-hash-mod
 
-   vector-8b-ref vector-8b-set! vector-8b-fill!
-   vector-8b-find-next-char vector-8b-find-previous-char
-   vector-8b-find-next-char-ci vector-8b-find-previous-char-ci))
+  vector-8b-ref vector-8b-set! vector-8b-fill!
+  vector-8b-find-next-char vector-8b-find-previous-char
+  vector-8b-find-next-char-ci vector-8b-find-previous-char-ci)
 
 ;;; Character Covers
 
-(define (substring-fill! string start end char)
+(define-integrable (substring-fill! string start end char)
   (vector-8b-fill! string start end (char->ascii char)))
 
-(define (substring-find-next-char string start end char)
+(define-integrable (substring-find-next-char string start end char)
   (vector-8b-find-next-char string start end (char->ascii char)))
 
-(define (substring-find-previous-char string start end char)
+(define-integrable (substring-find-previous-char string start end char)
   (vector-8b-find-previous-char string start end (char->ascii char)))
 
-(define (substring-find-next-char-ci string start end char)
+(define-integrable (substring-find-next-char-ci string start end char)
   (vector-8b-find-next-char-ci string start end (char->ascii char)))
 
-(define (substring-find-previous-char-ci string start end char)
+(define-integrable (substring-find-previous-char-ci string start end char)
   (vector-8b-find-previous-char-ci string start end (char->ascii char)))
 
 ;;; Special, not implemented in microcode.
@@ -178,19 +166,25 @@
 ;;;; Basic Operations
 
 (define (make-string length #!optional char)
-  (if (unassigned? char)
+  (if (default-object? char)
       (string-allocate length)
       (let ((result (string-allocate length)))
 	(substring-fill! result 0 length char)
 	result)))
 
-(define (string-null? string)
+(define-integrable (string-null? string)
   (zero? (string-length string)))
 
 (define (substring string start end)
   (let ((result (string-allocate (- end start))))
     (substring-move-right! string start end result 0)
     result))
+
+(define-integrable (string-head string end)
+  (substring string 0 end))
+
+(define (string-tail string start)
+  (substring string start (string-length string)))
 
 (define (list->string chars)
   (let ((result (string-allocate (length chars))))
@@ -348,11 +342,23 @@
 		     string2 0 (string-length string2)))
 
 (define (substring-prefix? string1 start1 end1 string2 start2 end2)
-  (and (<= (- end1 start1) (- end2 start2))
-       (= (substring-match-forward string1 start1 end1
-				   string2 start2 end2)
-	  end1)))
+  (let ((length (- end1 start1)))
+    (and (<= length (- end2 start2))
+	 (= (substring-match-forward string1 start1 end1
+				     string2 start2 end2)
+	    length))))
 
+(define (string-suffix? string1 string2)
+  (substring-suffix? string1 0 (string-length string1)
+		     string2 0 (string-length string2)))
+
+(define (substring-suffix? string1 start1 end1 string2 start2 end2)
+  (let ((length (- end1 start1)))
+    (and (<= length (- end2 start2))
+	 (= (substring-match-backward string1 start1 end1
+				      string2 start2 end2)
+	    length))))
+
 (define (string-compare-ci string1 string2 if= if< if>)
   (let ((size1 (string-length string1))
 	(size2 (string-length string2)))
@@ -369,15 +375,27 @@
 			string2 0 (string-length string2)))
 
 (define (substring-prefix-ci? string1 start1 end1 string2 start2 end2)
-  (and (<= (- end1 start1) (- end2 start2))
-       (= (substring-match-forward-ci string1 start1 end1
-				      string2 start2 end2)
-	  end1)))
+  (let ((length (- end1 start1)))
+    (and (<= length (- end2 start2))
+	 (= (substring-match-forward-ci string1 start1 end1
+					string2 start2 end2)
+	    length))))
+
+(define (string-suffix-ci? string1 string2)
+  (substring-suffix-ci? string1 0 (string-length string1)
+			string2 0 (string-length string2)))
+
+(define (substring-suffix-ci? string1 start1 end1 string2 start2 end2)
+  (let ((length (- end1 start1)))
+    (and (<= length (- end2 start2))
+	 (= (substring-match-backward-ci string1 start1 end1
+					 string2 start2 end2)
+	    length))))
 
 ;;;; Trim/Pad
 
 (define (string-trim-left string #!optional char-set)
-  (if (unassigned? char-set) (set! char-set char-set:not-whitespace))
+  (if (default-object? char-set) (set! char-set char-set:not-whitespace))
   (let ((index (string-find-next-char-in-set string char-set))
 	(length (string-length string)))
     (if (not index)
@@ -385,14 +403,14 @@
 	(substring string index length))))
 
 (define (string-trim-right string #!optional char-set)
-  (if (unassigned? char-set) (set! char-set char-set:not-whitespace))
+  (if (default-object? char-set) (set! char-set char-set:not-whitespace))
   (let ((index (string-find-previous-char-in-set string char-set)))
     (if (not index)
 	""
 	(substring string 0 (1+ index)))))
 
 (define (string-trim string #!optional char-set)
-  (if (unassigned? char-set) (set! char-set char-set:not-whitespace))
+  (if (default-object? char-set) (set! char-set char-set:not-whitespace))
   (let ((index (string-find-next-char-in-set string char-set)))
     (if (not index)
 	""
@@ -400,7 +418,7 @@
 		   (1+ (string-find-previous-char-in-set string char-set))))))
 
 (define (string-pad-right string n #!optional char)
-  (if (unassigned? char) (set! char #\Space))
+  (if (default-object? char) (set! char #\Space))
   (let ((length (string-length string)))
     (if (= length n)
 	string
@@ -412,7 +430,7 @@
 	  result))))
 
 (define (string-pad-left string n #!optional char)
-  (if (unassigned? char) (set! char #\Space))
+  (if (default-object? char) (set! char #\Space))
   (let ((length (string-length string)))
     (if (= length n)
 	string

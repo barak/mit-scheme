@@ -1,70 +1,73 @@
-;;; -*-Scheme-*-
-;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.49 1988/02/18 16:46:02 jrm Rel $
-;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
 
-;;;; UNSYNTAX: SCODE -> S-Expressions
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.1 1988/06/13 11:59:14 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; UNSYNTAX: SCode -> S-Expression
+;;; package: (runtime unsyntaxer)
 
 (declare (usual-integrations))
 
-(define unsyntax)
-(define unsyntax-lambda-list)
-(define make-unsyntax-table)
-(define unsyntax-table?)
-(define current-unsyntax-table)
-(define set-current-unsyntax-table!)
-(define with-unsyntax-table)
+(define (initialize-package!)
+  (set! unsyntaxer/scode-walker
+	(make-scode-walker unsyntax-constant
+			   `((ACCESS ,unsyntax-ACCESS-object)
+			     (ASSIGNMENT ,unsyntax-ASSIGNMENT-object)
+			     (COMBINATION ,unsyntax-COMBINATION-object)
+			     (COMMENT ,unsyntax-COMMENT-object)
+			     (CONDITIONAL ,unsyntax-CONDITIONAL-object)
+			     (DECLARATION ,unsyntax-DECLARATION-object)
+			     (DEFINITION ,unsyntax-DEFINITION-object)
+			     (DELAY ,unsyntax-DELAY-object)
+			     (DISJUNCTION ,unsyntax-DISJUNCTION-object)
+			     (ERROR-COMBINATION
+			      ,unsyntax-ERROR-COMBINATION-object)
+			     (IN-PACKAGE ,unsyntax-IN-PACKAGE-object)
+			     (LAMBDA ,unsyntax-LAMBDA-object)
+			     (OPEN-BLOCK ,unsyntax-OPEN-BLOCK-object)
+			     (QUOTATION ,unsyntax-QUOTATION)
+			     (SEQUENCE ,unsyntax-SEQUENCE-object)
+			     (THE-ENVIRONMENT ,unsyntax-THE-ENVIRONMENT-object)
+			     (UNASSIGNED? ,unsyntax-UNASSIGNED?-object)
+			     (VARIABLE ,unsyntax-VARIABLE-object)))))
 
-(define unsyntaxer-package
-  (make-environment
-
-(set! unsyntax
-  (named-lambda (unsyntax scode #!optional unsyntax-table)
-    (let ((object (if (compound-procedure? scode)
-		      (procedure-lambda scode)
-		      scode)))
-      (if (unassigned? unsyntax-table)
-	  (unsyntax-object object)
-	  (with-unsyntax-table unsyntax-table
-	    (lambda ()
-	      (unsyntax-object object)))))))
+(define (unsyntax scode)
+  (unsyntax-object
+   (if (compound-procedure? scode) (procedure-lambda scode) scode)))
 
 (define (unsyntax-object object)
-  ((unsyntax-dispatcher object) object))
+  ((scode-walk unsyntaxer/scode-walker object) object))
+
+(define unsyntaxer/scode-walker)
 
 (define (unsyntax-objects objects)
   (if (null? objects)
@@ -72,24 +75,24 @@
       (cons (unsyntax-object (car objects))
 	    (unsyntax-objects (cdr objects)))))
 
-(define (absolute-reference? object)
-  (and (access? object)
-       (eq? (access-environment object) system-global-environment)))
-
-(define (absolute-reference-name reference)
-  (access-name reference))
-
-(define (absolute-reference-to? object name)
-  (and (absolute-reference? object)
-       (eq? (absolute-reference-name object) name)))
+(define (unsyntax-error keyword message . irritants)
+  (error (string-append "UNSYNTAX: "
+			(symbol->string keyword)
+			": "
+			message)
+	 (cond ((null? irritants) *the-non-printing-object*)
+	       ((null? (cdr irritants)) (car irritants))
+	       (else irritants))))
 
 ;;;; Unsyntax Quanta
 
+(define (unsyntax-constant object)
+  (if (or (pair? object) (symbol? object))
+      `(QUOTE ,object)
+      object))
+
 (define (unsyntax-QUOTATION quotation)
   `(SCODE-QUOTE ,(unsyntax-object (quotation-expression quotation))))
-
-(define (unsyntax-constant object)
-  `(QUOTE ,object))
 
 (define (unsyntax-VARIABLE-object object)
   (variable-name object))
@@ -111,31 +114,25 @@
   (assignment-components assignment
     (lambda (name value)
       `(SET! ,name
-	     ,@(if (unassigned-object? value)
+	     ,@(if (unassigned-reference-trap? value)
 		   '()
 		   `(,(unsyntax-object value)))))))
 
-(define ((definition-unexpander key lambda-key) name value)
+(define (unexpand-definition name value)
   (if (lambda? value)
       (lambda-components** value
 	(lambda (lambda-name required optional rest body)
 	  (if (eq? lambda-name name)
-	      `(,lambda-key (,name . ,(lambda-list required optional rest))
+	      `(DEFINE (,name . ,(lambda-list required optional rest))
 		 ,@(unsyntax-sequence body))
-	      `(,key ,name ,@(unexpand-binding-value value)))))
-      `(,key ,name ,@(unexpand-binding-value value))))
+	      `(DEFINE ,name ,@(unexpand-binding-value value)))))
+      `(DEFINE ,name ,@(unexpand-binding-value value))))
 
 (define (unexpand-binding-value value)
-  (if (unassigned-object? value)
+  (if (unassigned-reference-trap? value)
       '()
       `(,(unsyntax-object value))))
-
-(define unexpand-definition
-  (definition-unexpander 'DEFINE 'DEFINE))
 
-(define (unsyntax-UNBOUND?-object unbound?)
-  `(UNBOUND? ,(unbound?-name unbound?)))
-
 (define (unsyntax-UNASSIGNED?-object unassigned?)
   `(UNASSIGNED? ,(unassigned?-name unassigned?)))
 
@@ -171,7 +168,12 @@
 	 ,@(unsyntax-sequence expression)))))
 
 (define (unsyntax-THE-ENVIRONMENT-object object)
+  object
   `(THE-ENVIRONMENT))
+
+(define (unsyntax-MAKE-ENVIRONMENT names values body)
+  names values
+  `(MAKE-ENVIRONMENT ,@(except-last-pair (unsyntax-sequence body))))
 
 (define (unsyntax-DISJUNCTION-object object)
   `(OR ,@(disjunction-components object unexpand-disjunction)))
@@ -233,8 +235,8 @@
 
 ;;;; Lambdas
 
-(define (unsyntax-LAMBDA-object lambda)
-  (lambda-components** lambda
+(define (unsyntax-LAMBDA-object expression)
+  (lambda-components** expression
     (lambda (name required optional rest body)
       (let ((bvl (lambda-list required optional rest))
 	    (body (unsyntax-sequence body)))
@@ -242,28 +244,26 @@
 	    `(LAMBDA ,bvl ,@body)
 	    `(NAMED-LAMBDA (,name . ,bvl) ,@body))))))
 
-(set! unsyntax-lambda-list
-  (named-lambda (unsyntax-lambda-list lambda)
-    (if (not (lambda? lambda))
-	(error "Must be a lambda expression" lambda))
-    (lambda-components** lambda
-      (lambda (name required optional rest body)
-	(lambda-list required optional rest)))))
+(define (unsyntax-lambda-list expression)
+  (if (not (lambda? expression))
+      (error "Must be a lambda expression" expression))
+  (lambda-components** expression
+    (lambda (name required optional rest body)
+      name body
+      (lambda-list required optional rest))))
 
 (define (lambda-list required optional rest)
   (cond ((null? rest)
 	 (if (null? optional)
 	     required
-	     `(,@required ,(access lambda-optional-tag lambda-package)
-			  ,@optional)))
+	     `(,@required ,lambda-optional-tag ,@optional)))
 	((null? optional)
 	 `(,@required . ,rest))
 	(else
-	 `(,@required ,(access lambda-optional-tag lambda-package)
-		      ,@optional . ,rest))))
+	 `(,@required ,lambda-optional-tag ,@optional . ,rest))))
 
-(define (lambda-components** lambda receiver)
-  (lambda-components lambda
+(define (lambda-components** expression receiver)
+  (lambda-components expression
     (lambda (name required optional rest auxiliary declarations body)
       (receiver name required optional rest
 		(unscan-defines auxiliary declarations body)))))
@@ -273,58 +273,50 @@
 (define (unsyntax-COMBINATION-object combination)
   (combination-components combination
     (lambda (operator operands)
+      (let ((ordinary-combination
+	     (lambda ()
+	       (cons (unsyntax-object operator)
+		     (unsyntax-objects operands)))))
+	(cond ((and (or (eq? operator cons)
+			(absolute-reference-to? operator 'CONS))
+		    (= (length operands) 2)
+		    (delay? (cadr operands)))
+	       `(CONS-STREAM ,(unsyntax-object (car operands))
+			     ,(unsyntax-object
+			       (delay-expression (cadr operands)))))
+	      ((absolute-reference-to? operator 'BREAKPOINT-PROCEDURE)
+	       (unsyntax-error-like-form operands 'BKPT))
+	      ((lambda? operator)
+	       (lambda-components** operator
+		 (lambda (name required optional rest body)
+		   (if (and (null? optional)
+			    (null? rest))
+		       (cond ((or (eq? name lambda-tag:unnamed)
+				  (eq? name lambda-tag:let))
+			      `(LET ,(unsyntax-let-bindings required operands)
+				 ,@(unsyntax-sequence body)))
+			     ((eq? name lambda-tag:fluid-let)
+			      (unsyntax/fluid-let required
+						  operands
+						  body
+						  ordinary-combination))
+			     ((eq? name lambda-tag:make-environment)
+			      (unsyntax-make-environment required
+							 operands
+							 body))
+			     (else (ordinary-combination)))
+		       (ordinary-combination)))))
+	      (else
+	       (ordinary-combination)))))))
 
-      (define (unsyntax-default)
-	(cons (unsyntax-object operator)
-	      (unsyntax-objects operands)))
+(define (unsyntax-let-bindings names values)
+  (map unsyntax-let-binding names values))
 
-      (cond ((and (or (eq? operator cons)
-		      (and (variable? operator)
-			   (eq? (variable-name operator) 'CONS)))
-		  (= (length operands) 2)
-		  (delay? (cadr operands)))
-	     `(CONS-STREAM ,(unsyntax-object (car operands))
-			   ,(unsyntax-object
-			     (delay-expression (cadr operands)))))
-	    ((eq? operator error-procedure)
-	     (unsyntax-error-like-form operands 'ERROR))
-	    ((absolute-reference? operator)
-	     (case (absolute-reference-name operator)
-	       ((ERROR-PROCEDURE)
-		(unsyntax-error-like-form operands 'ERROR))
-	       ((BREAKPOINT-PROCEDURE)
-		(unsyntax-error-like-form operands 'BKPT))
-	       (else (unsyntax-default))))
-	    ((lambda? operator)
-	     (lambda-components** operator
-	       (lambda (name required optional rest body)
-		 (if (and (null? optional)
-			  (null? rest))
-		     (cond ((or (eq? name lambda-tag:unnamed)
-				(eq? name lambda-tag:let))
-			    `(LET ,(unsyntax-let-bindings required operands)
-			       ,@(unsyntax-sequence body)))
-			   ((eq? name lambda-tag:deep-fluid-let)
-			    (unsyntax-deep-fluid-let required operands body))
-			   ((eq? name lambda-tag:shallow-fluid-let)
-			    (unsyntax-shallow-fluid-let required operands
-							body))
-			   ((eq? name lambda-tag:common-lisp-fluid-let)
-			    (unsyntax-common-lisp-fluid-let required operands
-							    body))
-			   ((eq? name lambda-tag:make-environment)
-			    (unsyntax-make-environment required operands body))
-			   #|
-		            Old way when named-lambda was a letrec
-			    `(LET ,name
-			       ,(unsyntax-let-bindings required operands)
-			       ,@(unsyntax-sequence body))))
-			   |#
-			   (else (unsyntax-default)))
-		     (unsyntax-default)))))
-	    (else (unsyntax-default))))))
+(define (unsyntax-let-binding name value)
+  `(,name ,@(unexpand-binding-value value)))
+(define (unsyntax-ERROR-COMBINATION-object combination)
+  (unsyntax-error-like-form (combination-operands combination) 'ERROR))
 
-
 (define (unsyntax-error-like-form operands name)
   (cons* name
 	 (unsyntax-object (first operands))
@@ -339,26 +331,43 @@
 			  `(,(unsyntax-object operand))))))
 		 (else
 		  `(,(unsyntax-object operand)))))))
-
-(define (unsyntax-shallow-FLUID-LET names values body)
+
+(define (unsyntax/fluid-let names values body if-malformed)
   (combination-components body
     (lambda (operator operands)
-      `(FLUID-LET ,(unsyntax-let-bindings
-		    (map extract-transfer-var
-			 (sequence-actions (lambda-body (car operands))))
-		    (let every-other ((values values))
-		      (if (null? values)
-			  '()
-			  (cons (car values) (every-other (cddr values))))))
-	 ,@(lambda-components** (cadr operands)
-	     (lambda (name required optional rest body)
-	       (unsyntax-sequence body)))))))
+      (cond ((or (absolute-reference-to? operator 'DYNAMIC-WIND)
+		 (and (variable? operator)
+		      (eq? (variable-name operator) 'DYNAMIC-WIND)))
+	     (unsyntax/fluid-let/shallow names values operands))
+	    ((and (eq? operator (ucode-primitive with-saved-fluid-bindings 1))
+		  (null? names)
+		  (null? values)
+		  (not (null? operands))
+		  (null? (cdr operands)))
+	     (unsyntax/fluid-let/deep (car operands)))
+	    (else
+	     (if-malformed))))))
+
+(define (unsyntax/fluid-let/shallow names values operands)
+  names
+  `(FLUID-LET ,(unsyntax-let-bindings
+		(map extract-transfer-var
+		     (sequence-actions (lambda-body (car operands))))
+		(let every-other ((values values))
+		  (if (null? values)
+		      '()
+		      (cons (car values) (every-other (cddr values))))))
+     ,@(lambda-components** (cadr operands)
+	 (lambda (name required optional rest body)
+	   name required optional rest
+	   (unsyntax-sequence body)))))
 
 (define (extract-transfer-var assignment)
   (assignment-components assignment
     (lambda (name value)
+      name
       (cond ((assignment? value)
-	     (assignment-components value (lambda (name value) name)))
+	     (assignment-components value (lambda (name value) value name)))
 	    ((combination? value)
 	     (combination-components value
 	       (lambda (operator operands)
@@ -366,131 +375,43 @@
 			`(ACCESS ,(cadr operands)
 				 ,@(unexpand-access (car operands))))
 		       (else
-			(error "FLUID-LET: Unknown SCODE form" assignment))))))
+			(unsyntax-error 'FLUID-LET
+					"Unknown SCODE form"
+					assignment))))))
 	    (else
-	     (error "FLUID-LET: Unknown SCODE form" assignment))))))
+	     (unsyntax-error 'FLUID-LET "Unknown SCODE form" assignment))))))
 
-(define ((unsyntax-deep-or-common-FLUID-LET name prim)
-	 ignored-required ignored-operands body)
-  (define (sequence->list seq)
-    (if (sequence? seq)
-	(sequence-actions seq)
-	(list seq)))
-  (define (unsyntax-fluid-bindings l)
-    (define (unsyntax-fluid-assignment combi)
-      (let ((operands (combination-operands combi)))
-	(let ((env (first operands))
-	      (name (second operands))
-	      (val (third operands)))
-	  (cond ((symbol? name)
-		 `((ACCESS ,name ,(unsyntax-object env))
-		   ,(unsyntax-object val)))
-		((quotation? name)
-		 (let ((var (quotation-expression name)))
-		   (if (variable? var)
-		       `(,(variable-name var) ,(unsyntax-object val))
-		       (error "FLUID-LET unsyntax: unexpected name" name))))
-		(else
-		 (error "FLUID-LET unsyntax: unexpected name" name))))))
-    (let ((first (car l)))
-      (if (and (combination? first)
-	       (eq? (combination-operator first) prim))
-	  (let ((remainder (unsyntax-fluid-bindings (cdr l))))
-	    (cons
-	     (cons (unsyntax-fluid-assignment first) (car remainder))
-	     (cdr remainder)))
-	  (cons '() (unsyntax-objects l)))))
-	  
-  (let* ((thunk (car (combination-operands body)))
-	 (real-body (lambda-body thunk))
-	 (seq-list (sequence->list real-body))
-	 (fluid-binding-list (unsyntax-fluid-bindings seq-list)))
-    `(,name ,(car fluid-binding-list) ,@(cdr fluid-binding-list))))
+(define (unsyntax/fluid-let/deep expression)
+  (let ((body (lambda-body expression)))
+    (let loop
+	((actions (sequence-actions body))
+	 (receiver
+	  (lambda (bindings body)
+	    `(FLUID-LET ,bindings ,@body))))
+      (let ((action (car actions)))
+	(if (and (combination? action)
+		 (or (eq? (combination-operator action)
+			  (ucode-primitive add-fluid-binding! 3))
+		     (eq? (combination-operator action)
+			  (ucode-primitive make-fluid-binding! 3))))
+	    (loop (cdr actions)
+	      (lambda (bindings body)
+		(receiver (cons (unsyntax-fluid-assignment action) bindings)
+			  body)))
+	    (receiver '() (unsyntax-objects actions)))))))
 
-(define unsyntax-deep-FLUID-LET
-  (unsyntax-deep-or-common-FLUID-LET
-   'FLUID-LET (make-primitive-procedure 'add-fluid-binding! 3)))
-
-(define unsyntax-common-lisp-FLUID-LET
-  (unsyntax-deep-or-common-FLUID-LET
-   'FLUID-BIND (make-primitive-procedure 'make-fluid-binding! 3)))
-
-(define (unsyntax-MAKE-ENVIRONMENT names values body)
-  `(MAKE-ENVIRONMENT ,@(except-last-pair (unsyntax-sequence body))))
-
-(define (unsyntax-let-bindings names values)
-  (map unsyntax-let-binding names values))
-
-(define (unsyntax-let-binding name value)
-  `(,name ,@(unexpand-binding-value value)))
-
-;;;; Unsyntax Tables
-
-(define unsyntax-table-tag
-  '(UNSYNTAX-TABLE))
-
-(set! make-unsyntax-table
-  (named-lambda (make-unsyntax-table alist)
-    (cons unsyntax-table-tag
-	  (make-type-dispatcher alist identity-procedure))))
-
-(set! unsyntax-table?
-  (named-lambda (unsyntax-table? object)
-    (and (pair? object)
-	 (eq? (car object) unsyntax-table-tag))))
-
-(set! current-unsyntax-table
-  (named-lambda (current-unsyntax-table)
-    *unsyntax-table))
-
-(set! set-current-unsyntax-table!
-  (named-lambda (set-current-unsyntax-table! table)
-    (if (not (unsyntax-table? table))
-	(error "Not an unsyntax table" 'SET-CURRENT-UNSYNTAX-TABLE! table))
-    (set-table! table)))
-
-(set! with-unsyntax-table
-  (named-lambda (with-unsyntax-table table thunk)
-    (define old-table)
-    (if (not (unsyntax-table? table))
-	(error "Not an unsyntax table" 'WITH-UNSYNTAX-TABLE table))
-    (dynamic-wind (lambda ()
-		    (set! old-table (set-table! table)))
-		  thunk
-		  (lambda ()
-		    (set! table (set-table! old-table))))))
-
-(define unsyntax-dispatcher)
-(define *unsyntax-table)
-
-(define (set-table! table)
-  (set! unsyntax-dispatcher (cdr table))
-  (set! *unsyntax-table table))
-
-;;;; Default Unsyntax Table
-
-(set-table!
- (make-unsyntax-table
-  `((,(microcode-type-object 'LIST) ,unsyntax-constant)
-    (,symbol-type ,unsyntax-constant)
-    (,variable-type ,unsyntax-VARIABLE-object)
-    (,unbound?-type ,unsyntax-UNBOUND?-object)
-    (,unassigned?-type ,unsyntax-UNASSIGNED?-object)
-    (,combination-type ,unsyntax-COMBINATION-object)
-    (,quotation-type ,unsyntax-QUOTATION)
-    (,access-type ,unsyntax-ACCESS-object)
-    (,definition-type ,unsyntax-DEFINITION-object)
-    (,assignment-type ,unsyntax-ASSIGNMENT-object)
-    (,conditional-type ,unsyntax-CONDITIONAL-object)
-    (,disjunction-type ,unsyntax-DISJUNCTION-object)
-    (,comment-type ,unsyntax-COMMENT-object)
-    (,declaration-type ,unsyntax-DECLARATION-object)
-    (,sequence-type ,unsyntax-SEQUENCE-object)
-    (,open-block-type ,unsyntax-OPEN-BLOCK-object)
-    (,delay-type ,unsyntax-DELAY-object)
-    (,in-package-type ,unsyntax-IN-PACKAGE-object)
-    (,the-environment-type ,unsyntax-THE-ENVIRONMENT-object)
-    (,lambda-type ,unsyntax-LAMBDA-object))))
-
-;;; end UNSYNTAXER-PACKAGE
-))
+(define (unsyntax-fluid-assignment combination)
+  (let ((operands (combination-operands combination)))
+    (let ((environment (car operands))
+	  (name (cadr operands))
+	  (value (caddr operands)))
+      (cond ((symbol? name)
+	     `((ACCESS ,name ,(unsyntax-object environment))
+	       ,(unsyntax-object value)))
+	    ((quotation? name)
+	     (let ((variable (quotation-expression name)))
+	       (if (variable? variable)
+		   `(,(variable-name variable) ,(unsyntax-object value))
+		   (unsyntax-error 'FLUID-LET "unexpected name" name))))
+	    (else
+	     (unsyntax-error 'FLUID-LET "unexpected name" name))))))

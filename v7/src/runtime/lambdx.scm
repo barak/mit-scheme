@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambdx.scm,v 14.1 1988/05/20 00:58:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambdx.scm,v 14.2 1988/06/13 11:47:06 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Alternative Components for Lambda
+;;; package: ()
 
 (declare (usual-integrations))
 

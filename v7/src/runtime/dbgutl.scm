@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.1 1988/05/20 00:55:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.2 1988/06/13 11:43:10 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Debugger Utilities
-;;; package: debugger-utilities-package
+;;; package: (runtime debugger-utilities)
 
 (declare (usual-integrations))
 
@@ -111,3 +111,8 @@ MIT in each case. |#
 			    (write->string (cadr binding)
 					   (max (- x-size (string-length s))
 						0)))))))))
+
+(define (debug/read-eval-print-1 environment)
+  (let ((value (debug/eval (prompt-for-expression "Eval--> ") environment)))
+    (newline)
+    (write value)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.1 1988/05/20 00:59:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.2 1988/06/13 11:47:44 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -38,9 +38,8 @@ MIT in each case. |#
 
 ((ucode-primitive set-interrupt-enables!) 0)
 (define system-global-environment (the-environment))
-(define system-packages (let () (the-environment)))
 
-(let ()
+(let ((environment-for-package (let () (the-environment))))
 
 (define-primitives
   (+ &+)
@@ -49,6 +48,7 @@ MIT in each case. |#
   (file-exists? 1)
   garbage-collect
   get-fixed-objects-vector
+  get-next-constant
   get-primitive-address
   get-primitive-name
   lexical-reference
@@ -63,7 +63,9 @@ MIT in each case. |#
   substring=?
   substring-move-right!
   substring-upcase!
+  tty-beep
   tty-flush-output
+  tty-read-char-immediate
   tty-write-char
   tty-write-string
   vector-ref
@@ -85,10 +87,32 @@ MIT in each case. |#
   (tty-write-char newline-char)
   (tty-flush-output)
   (exit))
+
+(define (prompt-for-confirmation prompt)
+  (let loop ()
+    (tty-write-char newline-char)
+    (tty-write-string prompt)
+    (tty-write-string "(y or n) ")
+    (tty-flush-output)
+    (let ((char (tty-read-char-immediate)))
+      (cond ((or (eq? #\y char)
+		 (eq? #\Y char))
+	     (tty-write-string "Yes")
+	     (tty-flush-output)
+	     true)
+	    ((or (eq? #\n char)
+		 (eq? #\N char))
+	     (tty-write-string "No")
+	     (tty-flush-output)
+	     false)
+	    (else
+	     (tty-beep)
+	     (loop))))))
 
 ;;;; GC, Interrupts, Errors
 
 (define safety-margin 4500)
+(define constant-space/base (get-next-constant))
 
 (let ((condition-handler/gc
        (lambda (interrupt-code interrupt-enables)
@@ -142,7 +166,8 @@ MIT in each case. |#
   (get-primitive-address (get-primitive-name (object-datum primitive)) false))
 
 (define map-filename
-  (if (implemented-primitive-procedure? file-exists?)
+  (if (and (implemented-primitive-procedure? file-exists?)
+	   (not (prompt-for-confirmation "Load interpreted? ")))
       (lambda (filename)
 	(let ((com-file (string-append filename ".com")))
 	  (if (file-exists? com-file)
@@ -172,22 +197,23 @@ MIT in each case. |#
 
 (define (package-initialize package-name procedure-name)
   (tty-write-char newline-char)
-  (tty-write-string "initialize:")
+  (tty-write-string "initialize: (")
   (let loop ((name package-name))
     (if (not (null? name))
-	(begin (tty-write-string " ")
+	(begin (if (not (eq? name package-name))
+		   (tty-write-string " "))
 	       (tty-write-string (system-pair-car (car name)))
 	       (loop (cdr name)))))
+  (tty-write-string ")")
+  (if (not (eq? procedure-name 'INITIALIZE-PACKAGE!))
+      (begin (tty-write-string " [")
+	     (tty-write-string (system-pair-car procedure-name))
+	     (tty-write-string "]")))
   (tty-flush-output)
   ((lexical-reference (package-reference package-name) procedure-name)))
 
 (define (package-reference name)
-  (if (null? name)
-      system-global-environment
-      (let loop ((name name) (environment system-packages))
-	(if (null? name)
-	    environment
-	    (loop (cdr name) (lexical-reference environment (car name)))))))
+  (package/environment (find-package name)))
 
 (define (package-initialization-sequence packages)
   (let loop ((packages packages))
@@ -196,39 +222,66 @@ MIT in each case. |#
 	       (loop (cdr packages))))))
 
 ;; Construct the package structure.
+;; Lotta hair here to load the package code before its package is built.
+(eval (cold-load/purify (fasload (map-filename "packag")))
+      environment-for-package)
+((access initialize-package! environment-for-package))
+(let loop ((names
+	    '(FIND-PACKAGE
+	      NAME->PACKAGE
+	      PACKAGE/ADD-CHILD!
+	      PACKAGE/CHILD
+	      PACKAGE/CHILDREN
+	      PACKAGE/ENVIRONMENT
+	      PACKAGE/NAME
+	      PACKAGE/PARENT
+	      PACKAGE/REFERENCE
+	      PACKAGE/SYSTEM-LOADER
+	      PACKAGE?
+	      SYSTEM-GLOBAL-PACKAGE)))
+  (if (not (null? names))
+      (begin (environment-link-name system-global-environment
+				    environment-for-package
+				    (car names))
+	     (loop (cdr names)))))
+(package/add-child! system-global-package 'PACKAGE environment-for-package)
 (eval (fasload "runtim.bcon") system-global-environment)
 
 ;; Global databases.  Load, then initialize.
-
 (let loop
     ((files
-      '(("gcdemn" . (GC-DAEMONS))
-	("poplat" . (POPULATION))
-	("prop1d" . (1D-PROPERTY))
-	("events" . (EVENT-DISTRIBUTOR))
-	("gdatab" . (GLOBAL-DATABASE))
+      '(("gcdemn" . (RUNTIME GC-DAEMONS))
+	("poplat" . (RUNTIME POPULATION))
+	("prop1d" . (RUNTIME 1D-PROPERTY))
+	("events" . (RUNTIME EVENT-DISTRIBUTOR))
+	("gdatab" . (RUNTIME GLOBAL-DATABASE))
 	("boot" . ())
 	("queue" . ())
-	("gc" . (GARBAGE-COLLECTOR)))))
+	("gc" . (RUNTIME GARBAGE-COLLECTOR)))))
   (if (not (null? files))
       (begin
 	(eval (cold-load/purify (fasload (map-filename (car (car files)))))
 	      (package-reference (cdr (car files))))
 	(loop (cdr files)))))
-(package-initialize '(GC-DAEMONS) 'INITIALIZE-PACKAGE!)
-(package-initialize '(POPULATION) 'INITIALIZE-PACKAGE!)
-(package-initialize '(1D-PROPERTY) 'INITIALIZE-PACKAGE!)
-(package-initialize '(EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE!)
-(package-initialize '(GLOBAL-DATABASE) 'INITIALIZE-PACKAGE!)
-(package-initialize '(POPULATION) 'INITIALIZE-UNPARSER!)
-(package-initialize '(1D-PROPERTY) 'INITIALIZE-UNPARSER!)
-(package-initialize '(EVENT-DISTRIBUTOR) 'INITIALIZE-UNPARSER!)
-(package-initialize '(GARBAGE-COLLECTOR) 'INITIALIZE-PACKAGE!)
+(package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE!)
+(package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE!)
+(package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE!)
+(package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE!)
+(package-initialize '(RUNTIME GLOBAL-DATABASE) 'INITIALIZE-PACKAGE!)
+(package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER!)
+(package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER!)
+(package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-UNPARSER!)
+(package-initialize '(PACKAGE) 'INITIALIZE-UNPARSER!)
+(package-initialize '(RUNTIME GARBAGE-COLLECTOR) 'INITIALIZE-PACKAGE!)
+(lexical-assignment (package-reference '(RUNTIME GARBAGE-COLLECTOR))
+		    'CONSTANT-SPACE/BASE
+		    constant-space/base)
 
 ;; Load everything else.
 ((eval (fasload "runtim.bldr") system-global-environment)
  (lambda (filename environment)
-   (if (not (or (string=? filename "gcdemn")
+   (if (not (or (string=? filename "packag")
+		(string=? filename "gcdemn")
 		(string=? filename "poplat")
 		(string=? filename "prop1d")
 		(string=? filename "events")
@@ -244,81 +297,75 @@ MIT in each case. |#
 (package-initialization-sequence
  '(
    ;; Microcode interface
-   (MICROCODE-TABLES)
-   (PRIMITIVE-IO)
-   (SAVE/RESTORE)
-   (STATE-SPACE)
-   (SYSTEM-CLOCK)
+   (RUNTIME MICROCODE-TABLES)
+   (RUNTIME PRIMITIVE-IO)
+   (RUNTIME SAVE/RESTORE)
+   (RUNTIME STATE-SPACE)
+   (RUNTIME SYSTEM-CLOCK)
 
    ;; Basic data structures
-   (NUMBER)
-   (LIST)
-   (CHARACTER)
-   (CHARACTER-SET)
-   (GENSYM)
-   (STREAM)
-   (2D-PROPERTY)
-   (HASH)
-   (RANDOM-NUMBER)
+   (RUNTIME NUMBER)
+   (RUNTIME LIST)
+   (RUNTIME CHARACTER)
+   (RUNTIME CHARACTER-SET)
+   (RUNTIME GENSYM)
+   (RUNTIME STREAM)
+   (RUNTIME 2D-PROPERTY)
+   (RUNTIME HASH)
+   (RUNTIME RANDOM-NUMBER)
 
    ;; Microcode data structures
-   (HISTORY)
-   (LAMBDA-ABSTRACTION)
-   (SCODE)
-   (SCODE-COMBINATOR)
-   (SCODE-SCAN)
-   (SCODE-WALKER)
-   (CONTINUATION-PARSER)
+   (RUNTIME HISTORY)
+   (RUNTIME LAMBDA-ABSTRACTION)
+   (RUNTIME SCODE)
+   (RUNTIME SCODE-COMBINATOR)
+   (RUNTIME SCODE-SCAN)
+   (RUNTIME SCODE-WALKER)
+   (RUNTIME CONTINUATION-PARSER)
 
-   ;; I/O ports
-   (CONSOLE-INPUT)
-   (CONSOLE-OUTPUT)
-   (FILE-INPUT)
-   (FILE-OUTPUT)
-   (STRING-INPUT)
-   (STRING-OUTPUT)
-   (TRUNCATED-STRING-OUTPUT)
-   (INPUT-PORT)
-   (OUTPUT-PORT)
-   (WORKING-DIRECTORY)
-   (LOAD)
+   ;; I/O
+   (RUNTIME CONSOLE-INPUT)
+   (RUNTIME CONSOLE-OUTPUT)
+   (RUNTIME FILE-INPUT)
+   (RUNTIME FILE-OUTPUT)
+   (RUNTIME STRING-INPUT)
+   (RUNTIME STRING-OUTPUT)
+   (RUNTIME TRUNCATED-STRING-OUTPUT)
+   (RUNTIME INPUT-PORT)
+   (RUNTIME OUTPUT-PORT)
+   (RUNTIME WORKING-DIRECTORY)
+   (RUNTIME DIRECTORY)
+   (RUNTIME LOAD)
 
    ;; Syntax
-   (PARSER)
-   (NUMBER-UNPARSER)
-   (UNPARSER)
-   (SYNTAXER)
-   (MACROS)
-   (SYSTEM-MACROS)
-   (DEFSTRUCT)
-   (UNSYNTAXER)
-   (PRETTY-PRINTER)
-
+   (RUNTIME PARSER)
+   (RUNTIME NUMBER-UNPARSER)   (RUNTIME UNPARSER)
+   (RUNTIME SYNTAXER)
+   (RUNTIME MACROS)
+   (RUNTIME SYSTEM-MACROS)
+   (RUNTIME DEFSTRUCT)
+   (RUNTIME UNSYNTAXER)
+   (RUNTIME PRETTY-PRINTER)
    ;; REP Loops
-   (ERROR-HANDLER)
-   (MICROCODE-ERRORS)
-   (INTERRUPT-HANDLER)
-   (GC-STATISTICS)
-   (REP)
+   (RUNTIME ERROR-HANDLER)
+   (RUNTIME MICROCODE-ERRORS)
+   (RUNTIME INTERRUPT-HANDLER)
+   (RUNTIME GC-STATISTICS)
+   (RUNTIME REP)
 
    ;; Debugging
-   (ADVICE)
-   (DEBUGGER-COMMAND-LOOP)
-   (DEBUGGER-UTILITIES)
-   (ENVIRONMENT-INSPECTOR)
-   (DEBUGGING-INFO)
-   (DEBUGGER)
+   (RUNTIME ADVICE)
+   (RUNTIME DEBUGGER-COMMAND-LOOP)
+   (RUNTIME DEBUGGER-UTILITIES)
+   (RUNTIME ENVIRONMENT-INSPECTOR)
+   (RUNTIME DEBUGGING-INFO)
+   (RUNTIME DEBUGGER)
 
+   (RUNTIME)
    ;; Emacs -- last because it grabs the kitchen sink.
-   (EMACS-INTERFACE)
+   (RUNTIME EMACS-INTERFACE)
    ))
-
+
 )
 
-(add-system! (make-system "Microcode"
-			  microcode-id/version
-			  microcode-id/modification
-			  '()))
-(add-system! (make-system "Runtime" 14 0 '()))
-(remove-environment-parent! system-packages)
 (initial-top-level-repl)

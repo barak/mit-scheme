@@ -1,339 +1,556 @@
-;;; -*-Scheme-*-
-;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 13.44 1988/04/26 19:41:15 cph Exp $
-;;;
-;;;	Copyright (c) 1988 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.1 1988/06/13 11:50:36 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; Read-Eval-Print Loop
+;;; package: (runtime rep)
 
 (declare (usual-integrations))
 
+(define (initialize-package!)
+  (set! *nearest-cmdl* false)
+  (set! hook/cmdl-prompt default/cmdl-prompt)
+  (set! hook/cmdl-message default/cmdl-message)
+  (set! cmdl-interrupt/breakpoint default/breakpoint)
+  (set! cmdl-interrupt/abort-top-level default/abort-top-level)
+  (set! cmdl-interrupt/abort-previous default/abort-previous)
+  (set! cmdl-interrupt/abort-nearest default/abort-nearest)
+  (set! hook/repl-environment default/repl-environment)
+  (set! hook/repl-read default/repl-read)
+  (set! hook/repl-write default/repl-write)
+  (set! hook/repl-eval default/repl-eval)
+  (set! hook/read-command-char default/read-command-char)
+  (set! hook/prompt-for-confirmation default/prompt-for-confirmation)
+  (set! hook/prompt-for-expression default/prompt-for-expression))
+
+(define (initial-top-level-repl)
+  (fluid-let ((user-repl-environment user-initial-environment)
+	      (user-repl-syntax-table user-initial-syntax-table))
+    (let loop ((message "Cold load finished"))
+      (with-standard-proceed-point
+       (lambda ()
+	 (make-repl false
+		    user-repl-environment
+		    user-repl-syntax-table
+		    user-initial-prompt
+		    console-input-port
+		    console-output-port
+		    (cmdl-message/standard message))))
+      (loop "Reset!"))))
+
 ;;;; Command Loops
 
-(define make-command-loop)
-(define push-command-loop)
-(define push-command-hook)
-(define with-rep-continuation)
-(define continue-rep)
-(define rep-continuation)
-(define rep-state)
-(define rep-level)
-(define abort->nearest)
-(define abort->previous)
-(define abort->top-level)
-(let ()
-
-(define top-level-driver-hook)
-(define previous-driver-hook)
-(define nearest-driver-hook)
-(define current-continuation)
-(define current-state)
-(define current-level 0)
-
-;; PUSH-COMMAND-HOOK is provided so that the Butterfly, in particular,
-;; can add its own little code just before creating a REP loop
-(set! push-command-hook
-  (lambda (startup driver state continuation)
-    (continuation startup driver state (lambda () 'ignore))))
-
-(set! make-command-loop
-      (named-lambda (make-command-loop message driver)
-	(define (driver-loop message)
-	  (driver-loop
-	   (with-rep-continuation
-	    (lambda (quit)
-	      (set! top-level-driver-hook quit)
-	      (set! nearest-driver-hook quit)
-	      (driver message)))))
-	(set-interrupt-enables! interrupt-mask-gc-ok)
-	(fluid-let ((top-level-driver-hook)
-		    (nearest-driver-hook))
-	  (driver-loop message))))
-
-(set! push-command-loop
-(named-lambda (push-command-loop startup-hook driver initial-state)
-  (define (restart entry-hook each-time)
-    (let ((reentry-hook
-	   (call-with-current-continuation
-	    (lambda (again)
-	      (set! nearest-driver-hook again)
-	      (set-interrupt-enables! interrupt-mask-all)
-	      (each-time)
-	      (entry-hook)
-	      (loop)))))
-      (set-interrupt-enables! interrupt-mask-gc-ok)
-      (restart reentry-hook each-time)))
-
-  (define (loop)
-    (set! current-state (driver current-state))
-    (loop))
-
-  (fluid-let ((current-level (1+ current-level))
-	      (previous-driver-hook nearest-driver-hook)
-	      (nearest-driver-hook)
-	      (current-state))
-    (push-command-hook
-     startup-hook driver initial-state
-     (lambda (startup-hook driver initial-state each-time)
-       (set! current-state initial-state)
-       (restart startup-hook each-time))))))
-
-(set! with-rep-continuation
-(named-lambda (with-rep-continuation receiver)
-  (call-with-current-continuation
-   (lambda (raw-continuation)
-     (let ((continuation (raw-continuation->continuation raw-continuation)))
-       (fluid-let ((current-continuation continuation))
-	 (receiver continuation)))))))
-
-(set! continue-rep
-(named-lambda (continue-rep value)
-  (current-continuation
-   (if (eq? current-continuation top-level-driver-hook)
-       (lambda ()
-	 (write-line value))
-       value))))
-
-(set! abort->nearest
-(named-lambda (abort->nearest message)
-  (nearest-driver-hook message)))
-
-(set! abort->previous
-(named-lambda (abort->previous message)
-  ((if (null? previous-driver-hook)
-       nearest-driver-hook
-       previous-driver-hook)
-   message)))
-
-(set! abort->top-level
-(named-lambda (abort->top-level message)
-  (top-level-driver-hook message)))
-
-(set! rep-continuation
-(named-lambda (rep-continuation)
-  current-continuation))
-
-(set! rep-state
-(named-lambda (rep-state)
-  current-state))
-
-(set! rep-level
-(named-lambda (rep-level)
-  current-level))
-
-) ; LET
-
-;;;; Read-Eval-Print Loops
-
-(define *rep-base-environment*)
-(define *rep-current-environment*)
-(define *rep-base-syntax-table*)
-(define *rep-current-syntax-table*)
-(define *rep-base-prompt*)
-(define *rep-current-prompt*)
-(define *rep-base-input-port*)
-(define *rep-current-input-port*)
-(define *rep-base-output-port*)
-(define *rep-current-output-port*)
-(define *rep-keyboard-map*)
-(define *rep-error-hook*)
-
-(define (rep-environment)
-  *rep-current-environment*)
-
-(define (rep-base-environment)
-  *rep-base-environment*)
-
-(define (set-rep-environment! environment)
-  (set! *rep-current-environment* environment)
-  (environment-warning-hook *rep-current-environment*))
-
-(define (set-rep-base-environment! environment)
-  (set! *rep-base-environment* environment)
-  (set! *rep-current-environment* environment)
-  (environment-warning-hook *rep-current-environment*))
-
-(define (rep-syntax-table)
-  *rep-current-syntax-table*)
-
-(define (rep-base-syntax-table)
-  *rep-base-syntax-table*)
-
-(define (set-rep-syntax-table! syntax-table)
-  (set! *rep-current-syntax-table* syntax-table))
-
-(define (set-rep-base-syntax-table! syntax-table)
-  (set! *rep-base-syntax-table* syntax-table)
-  (set! *rep-current-syntax-table* syntax-table))
-
-(define (rep-prompt)
-  *rep-current-prompt*)
-
-(define (set-rep-prompt! prompt)
-  (set! *rep-current-prompt* prompt))
-
-(define (rep-base-prompt)
-  *rep-base-prompt*)
-
-(define (set-rep-base-prompt! prompt)
-  (set! *rep-base-prompt* prompt)
-  (set! *rep-current-prompt* prompt))
-
-(define (rep-input-port)
-  *rep-current-input-port*)
-
-(define (rep-output-port)
-  *rep-current-output-port*)
-
-(define environment-warning-hook
-  identity-procedure)
-
-(define rep-read-hook
-  read)
-
-(define rep-value-hook
-  write-line)
-
-(define make-rep)
-(define push-rep)
-(define rep-eval-hook)
-(define rep-value)
-(define reader-history)
-(define printer-history)
-(let ()
-
-(set! make-rep
-(named-lambda (make-rep environment syntax-table prompt input-port output-port
-			message)
-  (fluid-let ((*rep-base-environment* environment)
-	      (*rep-base-syntax-table* syntax-table)
-	      (*rep-base-prompt* prompt)
-	      (*rep-base-input-port* input-port)
-	      (*rep-base-output-port* output-port)
-	      (*rep-keyboard-map* (keyboard-interrupt-dispatch-table))
-	      (*rep-error-hook* (access *error-hook* error-system)))
-    (make-command-loop message rep-top-driver))))
-
-(define (rep-top-driver message)
-  (push-rep *rep-base-environment* message *rep-base-prompt*))
-
-(set! push-rep
-(named-lambda (push-rep environment message prompt)
-  (fluid-let ((*rep-current-environment* environment)
-	      (*rep-current-syntax-table* *rep-base-syntax-table*)
-	      (*rep-current-prompt* prompt)
-	      (*rep-current-input-port* *rep-base-input-port*)
-	      (*rep-current-output-port* *rep-base-output-port*)
-	      (*current-input-port* *rep-base-input-port*)
-	      (*current-output-port* *rep-base-output-port*)
-	      ((access *error-hook* error-system) *rep-error-hook*))
-    (with-keyboard-interrupt-dispatch-table *rep-keyboard-map*
-      (lambda ()
-	(environment-warning-hook *rep-current-environment*)
-	(push-command-loop message
-			   rep-driver
-			   (make-rep-state (make-history 5)
-					   (make-history 10))))))))
-
-(define (rep-driver state)
-  (*rep-current-prompt*)
-  (rep-value (rep-eval-hook (rep-read-hook)
-			    *rep-current-environment*
-			    *rep-current-syntax-table*))
+(define-structure (cmdl (conc-name cmdl/) (constructor %make-cmdl))
+  (parent false read-only true)
+  (level false read-only true)
+  (driver false read-only true)
+  (proceed-continuation false read-only true)
+  continuation
+  input-port
+  output-port
   state)
 
-(set! rep-eval-hook
-  (named-lambda (rep-eval-hook s-expression environment syntax-table)
-    (record-in-history! (rep-state-reader-history (rep-state)) s-expression)
-    (with-new-history
-     (let ((scode (syntax s-expression syntax-table)))
-       (lambda () (scode-eval scode environment))))))
+(define (make-cmdl parent input-port output-port driver state message)
+  (if (and parent (not (cmdl? parent)))
+      (error "MAKE-CMDL: illegal parent" parent))
+  (let ((cmdl
+	 (%make-cmdl parent
+		     (let loop ((parent parent))
+		       (if parent
+			   (1+ (loop (cmdl/parent parent)))
+			   1))
+		     driver
+		     (current-proceed-continuation)
+		     false
+		     input-port
+		     output-port
+		     state)))
+    (let loop ((message message))
+      (loop
+       (call-with-current-continuation
+	(lambda (continuation)
+	  (set-cmdl/continuation! cmdl continuation)
+	  (fluid-let
+	      ((*nearest-cmdl* cmdl)
+	       (cmdl-interrupt/abort-nearest default/abort-nearest)
+	       (cmdl-interrupt/abort-previous default/abort-previous)
+	       (cmdl-interrupt/abort-top-level default/abort-top-level)
+	       (cmdl-interrupt/breakpoint default/breakpoint))
+	    (with-interrupt-mask interrupt-mask/all
+	      (lambda (interrupt-mask)
+		interrupt-mask
+		(message cmdl)
+		(driver cmdl))))))))))
 
-(set! rep-value
-  (named-lambda (rep-value object)
-    (record-in-history! (rep-state-printer-history (rep-state)) object)
-    (rep-value-hook object)))
+(define *nearest-cmdl*)
+
+(define (nearest-cmdl)
+  (if (not *nearest-cmdl*) (error "NEAREST-CMDL: no cmdl"))
+  *nearest-cmdl*)
+
+(define (push-cmdl driver state message)
+  (let ((cmdl (nearest-cmdl)))
+    (make-cmdl cmdl
+	       (cmdl/input-port cmdl)
+	       (cmdl/output-port cmdl)
+	       driver
+	       state
+	       message)))
+
+(define (cmdl/base cmdl)
+  (let ((parent (cmdl/parent cmdl)))
+    (if parent
+	(cmdl/base parent)
+	cmdl)))
 
-;;; History Manipulation
+;;;; Messages
 
-(define (make-history size)
-  (let ((list (make-list size '())))
-    (append! list list)
-    (vector history-tag size list)))
+(define hook/cmdl-prompt)
 
-(define history-tag
-  '(REP-HISTORY))
+(define (default/cmdl-prompt cmdl prompt)
+  (write-string
+   (string-append "\n\n" (number->string (cmdl/level cmdl)) " " prompt " ")
+   (cmdl/output-port cmdl)))
 
-(define (record-in-history! history object)
-  (if (not (null? (vector-ref history 2)))
-      (begin (set-car! (vector-ref history 2) object)
-	     (vector-set! history 2 (cdr (vector-ref history 2))))))
+(define ((cmdl-message/standard string) cmdl)
+  (hook/cmdl-message cmdl string))
 
-(define (read-history history n)
+(define hook/cmdl-message)
+
+(define (default/cmdl-message cmdl string)
+  (write-string (string-append "\n" string) (cmdl/output-port cmdl)))
+
+(define ((cmdl-message/strings . strings) cmdl)
+  (let ((port (cmdl/output-port cmdl)))
+    (for-each (lambda (string)
+		(write-string (string-append "\n" string) port))
+	      strings)))
+
+(define ((cmdl-message/null) cmdl)
+  cmdl
+  false)
+
+(define ((cmdl-message/active thunk) cmdl)
+  (with-output-to-port (cmdl/output-port cmdl)
+    thunk))
+
+(define ((cmdl-message/append . messages) cmdl)
+  (for-each (lambda (message) (message cmdl)) messages))
+
+;;;; Interrupts
+
+(define cmdl-interrupt/abort-nearest)
+(define cmdl-interrupt/abort-previous)
+(define cmdl-interrupt/abort-top-level)
+(define cmdl-interrupt/breakpoint)
+
+(define (default/abort-nearest)
+  (abort-to-nearest-driver "Abort!"))
+
+(define (abort-to-nearest-driver message)
+  (abort->nearest (cmdl-message/standard message)))
+
+(define (abort->nearest message)
+  ((cmdl/continuation (nearest-cmdl)) message))
+
+(define (default/abort-previous)
+  (abort-to-previous-driver "Up!"))
+
+(define (abort-to-previous-driver message)
+  (abort->previous (cmdl-message/standard message)))
+
+(define (abort->previous message)
+  ((cmdl/continuation 
+    (let ((cmdl (nearest-cmdl)))
+      (or (cmdl/parent cmdl)
+	  cmdl)))
+   message))
+
+(define (default/abort-top-level)
+  (abort-to-top-level-driver "Quit!"))
+
+(define (abort-to-top-level-driver message)
+  (abort->top-level (cmdl-message/standard message)))
+
+(define (abort->top-level message)
+  ((let ((cmdl (cmdl/base (nearest-cmdl))))
+     (if cmdl-interrupt/abort-top-level/reset?
+	 (cmdl/proceed-continuation cmdl)
+	 (cmdl/continuation cmdl)))
+   message))
+
+;; User option variable
+(define cmdl-interrupt/abort-top-level/reset? false)
+
+(define (default/breakpoint)
+  (with-standard-proceed-point
+   (lambda ()
+     (breakpoint (cmdl-message/standard "^B interrupt")
+		 (standard-repl-environment)))))
+
+;;;; Proceed
+
+(define (with-proceed-point value-filter thunk)
+  (call-with-current-continuation
+   (lambda (continuation)
+     (fluid-let ((proceed-continuation continuation)
+		 (proceed-value-filter value-filter))
+       (thunk)))))
+
+(define (current-proceed-continuation)
+  proceed-continuation)
+
+(define (proceed . arguments)
+  (proceed-value-filter proceed-continuation arguments))
+
+(define proceed-continuation false)
+(define proceed-value-filter)
+
+(define (with-standard-proceed-point thunk)
+  (with-proceed-point standard-value-filter thunk))
+
+(define (standard-value-filter continuation arguments)
+  (continuation
+   (if (null? arguments)
+       *the-non-printing-object*
+       (car arguments))))
+
+;;;; REP Loops
+
+(define-structure (repl-state (conc-name repl-state/))
+  prompt
+  environment
+  syntax-table
+  reader-history
+  printer-history)
+
+(define (make-repl parent environment syntax-table prompt input-port
+		   output-port message)
+  (make-cmdl parent
+	     input-port
+	     output-port
+	     repl-driver
+	     (make-repl-state prompt
+			      environment
+			      syntax-table
+			      (make-repl-history reader-history-size)
+			      (make-repl-history printer-history-size))
+	     message))
+
+(define (repl-driver repl)
+  (fluid-let ((hook/error-handler default/error-handler))
+    (hook/cmdl-prompt repl (repl/prompt repl))
+    (let ((s-expression (hook/repl-read repl)))
+      (cmdl-message/value
+       (hook/repl-eval repl
+		       s-expression
+		       (repl/environment repl)
+		       (repl/syntax-table repl))))))
+
+(define (repl? object)
+  (and (cmdl? object)
+       (repl-state? (cmdl/state object))))
+
+(define-integrable (repl/prompt repl)
+  (repl-state/prompt (cmdl/state repl)))
+
+(define-integrable (set-repl/prompt! repl prompt)
+  (set-repl-state/prompt! (cmdl/state repl) prompt))
+
+(define-integrable (repl/environment repl)
+  (repl-state/environment (cmdl/state repl)))
+
+(define-integrable (set-repl/environment! repl environment)
+  (set-repl-state/environment! (cmdl/state repl) environment))
+
+(define-integrable (repl/syntax-table repl)
+  (repl-state/syntax-table (cmdl/state repl)))
+
+(define-integrable (set-repl/syntax-table! repl syntax-table)
+  (set-repl-state/syntax-table! (cmdl/state repl) syntax-table))
+
+(define-integrable (repl/reader-history repl)
+  (repl-state/reader-history (cmdl/state repl)))
+
+(define-integrable (set-repl/reader-history! repl reader-history)
+  (set-repl-state/reader-history! (cmdl/state repl) reader-history))
+
+(define-integrable (repl/printer-history repl)
+  (repl-state/printer-history (cmdl/state repl)))
+
+(define-integrable (set-repl/printer-history! repl printer-history)
+  (set-repl-state/printer-history! (cmdl/state repl) printer-history))
+
+(define (repl/parent repl)
+  (skip-non-repls (cmdl/parent repl)))
+
+(define (nearest-repl)
+  (or (skip-non-repls (nearest-cmdl))
+      (error "NEAREST-REPL: no REPLs")))
+
+(define (skip-non-repls cmdl)
+  (and cmdl
+       (if (repl-state? (cmdl/state cmdl))
+	   cmdl
+	   (skip-non-repls (cmdl/parent cmdl)))))
+
+(define (repl/base repl)
+  (let ((parent (repl/parent repl)))
+    (if parent
+	(repl/base parent)
+	repl)))
+
+(define (standard-repl-environment)
+  (let ((repl (nearest-repl)))
+    (if repl
+	(repl/environment repl)
+	user-initial-environment)))
+
+(define (standard-repl-syntax-table)
+  (let ((repl (nearest-repl)))
+    (if repl
+	(repl/syntax-table repl)
+	user-initial-syntax-table)))
+
+(define (push-repl environment message prompt)
+  (let ((parent (nearest-cmdl)))
+    (make-repl parent
+	       environment
+	       (standard-repl-syntax-table)
+	       prompt
+	       (cmdl/input-port parent)
+	       (cmdl/output-port parent)
+	       message)))
+
+(define (read-eval-print environment message prompt)
+  (with-standard-proceed-point
+   (lambda ()
+     (push-repl environment message prompt))))
+
+(define (breakpoint message environment)
+  (push-repl environment message "Bkpt->"))
+
+(define (breakpoint-procedure environment message . irritants)
+  (with-history-disabled
+   (lambda ()
+     (with-standard-proceed-point
+      (lambda ()
+	(breakpoint (apply cmdl-message/error message irritants)
+		    environment))))))
+
+;;;; Hooks
+
+(define hook/repl-environment)
+(define hook/repl-read)
+(define hook/repl-eval)
+(define hook/repl-write)
+
+(define (default/repl-environment repl environment)
+  repl environment
+  false)
+
+(define (default/repl-read repl)
+  (let ((s-expression (read (cmdl/input-port repl))))
+    (repl-history/record! (repl/reader-history repl) s-expression)
+    s-expression))
+
+(define (default/repl-eval repl s-expression environment syntax-table)
+  repl					;ignore
+  (let ((scode (syntax s-expression syntax-table)))
+    (with-new-history (lambda () (scode-eval scode environment)))))
+(define ((cmdl-message/value value) repl)
+  (hook/repl-write repl value))
+
+(define (default/repl-write repl object)
+  (repl-history/record! (repl/printer-history repl) object)
+  (let ((port (cmdl/output-port repl)))
+    (if (undefined-value? object)
+	(write-string "\n;No value" port)
+	(write-line object port))))
+
+;;;; History
+
+(define reader-history-size 5)
+(define printer-history-size 10)
+
+(define-structure (repl-history (constructor %make-repl-history)
+				(conc-name repl-history/))
+  (size false read-only true)
+  elements)
+
+(define (make-repl-history size)
+  (%make-repl-history size (make-circular-list size '())))
+
+(define (repl-history/record! history object)
+  (let ((elements (repl-history/elements history)))
+    (if (not (null? elements))
+	(begin (set-car! elements object)
+	       (set-repl-history/elements! history (cdr elements))))))
+
+(define (repl-history/read history n)
   (if (not (and (integer? n)
-		(not (negative? n))
-		(< n (vector-ref history 1))))
-      (error "Bad argument: READ-HISTORY" n))
-  (list-ref (vector-ref history 2)
-	    (- (-1+ (vector-ref history 1)) n)))
+		(not (negative? n))		(< n (repl-history/size history))))
+      (error "REPL-HISTORY/READ: Bad argument" n))
+  (list-ref (repl-history/elements history)
+	    (- (-1+ (repl-history/size history)) n)))
+
+;;; User Interface Stuff
 
-(define ((history-reader selector name) n)
-  (let ((state (rep-state)))
-    (if (rep-state? state)
-	(read-history (selector state) n)
-	(error "Not in REP loop" name))))
+(define user-repl-environment)
+(define user-repl-syntax-table)
 
-(define rep-state-tag
-  "REP State")
+(define (ge environment)
+  (let ((repl (nearest-repl))
+	(environment (->environment environment)))
+    (set! user-repl-environment environment)
+    (set-repl-state/environment! (cmdl/state repl) environment)
+    (hook/repl-environment repl environment)
+    environment))
 
-(define (make-rep-state reader-history printer-history)
-  (vector rep-state-tag reader-history printer-history))
+(define (ve environment)
+  (let ((repl (nearest-repl))
+	(environment (->environment environment)))
+    (set-repl-state/environment! (cmdl/state repl) environment)
+    (set-repl-state/prompt! (cmdl/state repl) "Visiting->")
+    (hook/repl-environment repl environment)
+    environment))
 
-(define (rep-state? object)
-  (and (vector? object)
-       (not (zero? (vector-length object)))
-       (eq? (vector-ref object 0) rep-state-tag)))
+(define (->environment object)
+  (cond ((or (eq? object system-global-environment)
+	     (environment? object))
+	 object)
+	((compound-procedure? object)	 (procedure-environment object))
+	((promise? object)
+	 (promise-environment object))
+	(else
+	 (let ((package
+		(let ((package-name
+		       (cond ((symbol? object) (list object))
+			     ((list? object) object)
+			     (else false))))
+		  (and package-name
+		       (name->package package-name)))))
+	   (if (not package)
+	       (error "->ENVIRONMENT: Not an environment" object))
+	   (package/environment package)))))
 
-(define rep-state-reader-history vector-second)
-(define rep-state-printer-history vector-third)
+(define (gst syntax-table)
+  (guarantee-syntax-table syntax-table)
+  (set! user-repl-syntax-table syntax-table)
+  (set-repl-state/syntax-table! (cmdl/state (nearest-repl)) syntax-table)
+  *the-non-printing-object*)
 
-(set! reader-history
-      (history-reader rep-state-reader-history 'READER-HISTORY))
+(define (vst syntax-table)
+  (guarantee-syntax-table syntax-table)
+  (set-repl-state/syntax-table! (cmdl/state (nearest-repl)) syntax-table)
+  *the-non-printing-object*)
 
-(set! printer-history
-      (history-reader rep-state-printer-history 'PRINTER-HISTORY))
+(define (re #!optional index)
+  (let ((repl (nearest-repl)))
+    (hook/repl-eval repl
+		    (repl-history/read (repl/reader-history repl)
+				       (if (default-object? index) 1 index))
+		    (repl/environment repl)
+		    (repl/syntax-table repl))))
 
-)
+(define (in #!optional index)
+  (repl-history/read (repl/reader-history (nearest-repl))
+		     (if (default-object? index) 1 index)))
+
+(define (out #!optional index)
+  (repl-history/read (repl/printer-history (nearest-repl))
+		     (-1+ (if (default-object? index) 1 index))))
+
+;; Compatibility.
+(define %ge ge)
+(define %ve ve)
+(define %gst gst)
+(define %vst vst)
+(define %in in)
+(define %out out)
+
+;;;; Prompting
+
+(define (prompt-for-command-char prompt #!optional cmdl)
+  (let ((cmdl (if (default-object? cmdl) (nearest-cmdl) cmdl)))
+    (hook/cmdl-prompt cmdl prompt)
+    (hook/read-command-char cmdl prompt)))
+
+(define (prompt-for-confirmation prompt #!optional cmdl)
+  (hook/prompt-for-confirmation (if (default-object? cmdl) (nearest-cmdl) cmdl)
+				prompt))
+
+(define (prompt-for-expression prompt #!optional cmdl)
+  (hook/prompt-for-expression (if (default-object? cmdl) (nearest-cmdl) cmdl)
+			      prompt))
+
+(define hook/read-command-char)
+(define hook/prompt-for-confirmation)
+(define hook/prompt-for-expression)
+
+(define (default/read-command-char cmdl prompt)
+  ;; Prompt argument is random.  Emacs interface needs it right now.
+  prompt
+  (read-char-internal (cmdl/input-port cmdl)))
+
+(define (default/prompt-for-confirmation cmdl prompt)
+  (let ((input-port (cmdl/input-port cmdl))
+	(output-port (cmdl/output-port cmdl)))
+    (let loop ()
+      (newline output-port)
+      (write-string prompt output-port)
+      (write-string "(y or n) " output-port)
+      (let ((char (char-upcase (read-char-internal input-port))))
+	(cond ((or (char=? #\Y char)
+		   (char=? #\Space char))
+	       (write-string "Yes" output-port)
+	       true)
+	      ((or (char=? #\N char)
+		   (char=? #\Rubout char))
+	       (write-string "No" output-port)
+	       false)
+	      (else
+	       (beep output-port)
+	       (loop)))))))
+
+(define (default/prompt-for-expression cmdl prompt)
+  (let ((output-port (cmdl/output-port cmdl)))
+    (newline output-port)
+    (write-string prompt output-port)    (read (cmdl/input-port cmdl))))
+
+(define (read-char-internal input-port)
+  (let loop ()
+    (let ((char (read-char input-port)))
+      (if (char=? char char:newline)
+	  (loop)
+	  char))))

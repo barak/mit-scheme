@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/random.scm,v 14.1 1988/05/20 01:01:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/random.scm,v 14.2 1988/06/13 11:50:32 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Random Number Generator
-;;; package: random-number-package
+;;; package: (runtime random-number)
 
 (declare (usual-integrations))
 

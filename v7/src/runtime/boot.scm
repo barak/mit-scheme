@@ -1,185 +1,91 @@
-;;; -*-Scheme-*-
-;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 13.46 1988/05/03 19:04:10 jinx Exp $
-;;;
-;;;	Copyright (c) 1988 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
 
-;;;; Boot Utilities
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 14.1 1988/06/13 11:40:56 cph Exp $
 
-(declare (usual-integrations)
-	 (integrate-primitive-procedures
-	  compiled-code-address->block
-	  compiled-code-address->offset
-	  primitive-object-set-type))
+Copyright (c) 1988 Massachusetts Institute of Technology
 
-;;; The utilities in this file are the first thing loaded into the
-;;; world after the type tables.  They shouldn't depend on anything else
-;;; except those tables.
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; Boot Time Definitions
+;;; package: ()
+
+(declare (usual-integrations))
 
-;;;; Primitive Operators
+(define (unparser/standard-method name #!optional unparser)
+  (lambda (state object)
+    (if (not (unparser-state? state)) (error "Bad unparser state" state))
+    (let ((port (unparser-state/port state)))
+      (write-string "#[" port)
+      (if (string? name)
+	  (write-string name port)
+	  (unparse-object state name))
+      (write-char #\Space port)
+      (write-string (number->string (hash object)) port)
+      (if (and (not (default-object? unparser)) unparser)
+	  (begin (write-char #\Space port)
+		 (unparser state object)))
+      (write-char #\] port))))
+(define *the-non-printing-object*
+  (object-new-type (ucode-type true) 1))
 
-(let-syntax ((define-global-primitives
-	      (macro names
-		`(BEGIN
-		  ,@(map (lambda (name)
-			   `(DEFINE ,name ,(make-primitive-procedure name)))
-			 names)))))
-  (define-global-primitives
-   SCODE-EVAL FORCE
-   SET-INTERRUPT-ENABLES! WITH-INTERRUPTS-REDUCED
-   WITH-INTERRUPT-MASK
-   GET-FIXED-OBJECTS-VECTOR WITH-HISTORY-DISABLED
-   PRIMITIVE-PROCEDURE-ARITY NOT FALSE?
-   ;; Environment
-   LEXICAL-REFERENCE LEXICAL-ASSIGNMENT LOCAL-ASSIGNMENT
-   LEXICAL-UNASSIGNED? LEXICAL-UNBOUND? LEXICAL-UNREFERENCEABLE?
-   ;; Pointers
-   EQ?
-   PRIMITIVE-SET-TYPE MAKE-NON-POINTER-OBJECT
-   PRIMITIVE-TYPE? PRIMITIVE-TYPE PRIMITIVE-DATUM
+(define-integrable interrupt-bit/stack     #x0001)
+(define-integrable interrupt-bit/global-gc #x0002)
+(define-integrable interrupt-bit/gc        #x0004)
+(define-integrable interrupt-bit/global-1  #x0008)
+(define-integrable interrupt-bit/kbd       #x0010)
+(define-integrable interrupt-bit/global-2  #x0020)
+(define-integrable interrupt-bit/timer     #x0040)
+(define-integrable interrupt-bit/global-3  #x0080)
+(define-integrable interrupt-bit/suspend   #x0100)
 
-   ;; List Operations
-   ;; (these appear here for the time being because the compiler
-   ;; couldn't handle the `in-package' required to put them in
-   ;; `list.scm'.  They should be moved back when that is fixed.
-   CONS PAIR? NULL? LENGTH CAR CDR SET-CAR! SET-CDR!
-   GENERAL-CAR-CDR MEMQ ASSQ
+;; GC & stack overflow only
+(define-integrable interrupt-mask/gc-ok    #x0007)
 
-   ;; System Compound Datatypes
-   MAKE-CELL CELL? CELL-CONTENTS SET-CELL-CONTENTS!
+;; Absolutely everything off
+(define-integrable interrupt-mask/none     #x0000)
 
-   SYSTEM-PAIR-CONS SYSTEM-PAIR?
-   SYSTEM-PAIR-CAR SYSTEM-PAIR-SET-CAR!
-   SYSTEM-PAIR-CDR SYSTEM-PAIR-SET-CDR!
+;; Normal: all enabled
+(define-integrable interrupt-mask/all      #xFFFF)
 
-   SYSTEM-HUNK3-CXR0 SYSTEM-HUNK3-SET-CXR0!
-   SYSTEM-HUNK3-CXR1 SYSTEM-HUNK3-SET-CXR1!
-   SYSTEM-HUNK3-CXR2 SYSTEM-HUNK3-SET-CXR2!
-
-   SYSTEM-LIST-TO-VECTOR SYSTEM-SUBVECTOR-TO-LIST SYSTEM-VECTOR?
-   SYSTEM-VECTOR-SIZE SYSTEM-VECTOR-REF SYSTEM-VECTOR-SET!
-   )
-;;; end of DEFINE-GLOBAL-PRIMITIVES scope.
-)
-
-;;;; Potpourri
-
-(define *the-non-printing-object* '(*THE-NON-PRINTING-OBJECT*))
-(define (identity-procedure x) x)
-(define false #F)
-(define true #T)
-
-(define (null-procedure . args) args '()) ; args ignored
-(define (false-procedure . args) args #F) ; args ignored
-(define (true-procedure . args) args #T) ; args ignored
-
-(define (without-interrupts thunk)
-  (with-interrupts-reduced interrupt-mask-gc-ok
-    (lambda (old-mask)
-      old-mask ;; ignored
+(define (with-absolutely-no-interrupts thunk)
+  (with-interrupt-mask interrupt-mask/none
+    (lambda (interrupt-mask)
+      interrupt-mask
       (thunk))))
 
-(define apply
-  (let ((primitive (make-primitive-procedure 'APPLY)))
-    (named-lambda (apply f . args)
-      (primitive f
-		 (if (null? args)
-		     '()
-		     (let loop
-			 ((first-element (car args))
-			  (rest-elements (cdr args)))
-		       (if (null? rest-elements)
-			   first-element
-			   (cons first-element
-				 (loop (car rest-elements)
-				       (cdr rest-elements))))))))))
+(define (without-interrupts thunk)
+  (with-interrupt-mask interrupt-mask/gc-ok
+    (lambda (interrupt-mask)
+      interrupt-mask
+      (thunk))))
 
-(define system-hunk3-cons
-  (let ((hunk3-cons (make-primitive-procedure 'HUNK3-CONS)))
-    (named-lambda (system-hunk3-cons type cxr0 cxr1 cxr2)
-      (primitive-set-type type (hunk3-cons cxr0 cxr1 cxr2)))))
-
-(define (symbol-hash symbol)
-  (string-hash (symbol->string symbol)))
-
-(define (symbol-append . symbols)
-  (string->symbol (apply string-append (map symbol->string symbols))))
-
-(define (boolean? object)
-  (or (eq? object #F)
-      (eq? object #T)))
-
-;;; This won't work until vector is loaded, but it has no better place to go.
-
-(let-syntax ((ucode-type (macro (name) (microcode-type name))))
-
-(define (copy-program exp)
-  (if (not (primitive-type? (ucode-type COMPILED-ENTRY) exp))
-      (error "copy-program: Can only copy compiled programs" exp))
-  (let* ((original (compiled-code-address->block exp))
-	 (block (primitive-set-type
-		 (ucode-type COMPILED-CODE-BLOCK)
-		 (vector-copy
-		  (primitive-set-type (ucode-type VECTOR)
-				      original))))
-	 (end (system-vector-size block)))
-
-    (define (map-entry entry)
-      (with-interrupt-mask
-       interrupt-mask-none
-       (lambda (old)
-	 old ;; ignored
-	 (primitive-object-set-type
-	  (primitive-type entry)
-	  (+ (compiled-code-address->offset entry)
-	     (primitive-datum block))))))
-
-    (let loop ((n (1+ (primitive-datum (system-vector-ref block 0)))))
-      (cond ((>= n end)
-	     (map-entry exp))
-	    ((not (lambda? (system-vector-ref block n)))
-	     (loop (1+ n)))
-	    (else
-	     (lambda-components (system-vector-ref block n)
-	       (lambda (name req opt rest aux decl body)
-		 (if (and (primitive-type? (ucode-type COMPILED-ENTRY) body)
-			  (eq? original (compiled-code-address->block body)))
-		     (system-vector-set! block n
-		      (make-lambda name req opt rest aux decl
-				   (map-entry body))))
-		 (loop (1+ n)))))))))
-
-) ;; End of let-syntax
+(define-primitives
+  (object-pure? pure?)
+  (object-constant? constant?)
+  get-next-constant)

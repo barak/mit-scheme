@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpoint.scm,v 14.1 1988/05/20 00:55:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpoint.scm,v 14.2 1988/06/13 11:42:56 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Control Points
-;;; package: control-point-package
+;;; package: (runtime control-point)
 
 (declare (usual-integrations))
 
