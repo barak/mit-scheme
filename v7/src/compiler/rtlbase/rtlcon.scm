@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.10 1987/07/03 18:56:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.11 1987/07/21 22:40:30 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -289,13 +289,13 @@ MIT in each case. |#
 
 (define-expression-method 'CELL-CONS
   (lambda (receiver scfg-append! expression)
-    (let ((free (interpreter-free-pointer)))
-      (assign-to-temporary
-       (rtl:make-cons-pointer (rtl:make-constant type-code:cell) free)
-       scfg-append!
-       (lambda (temporary)
-	 (expression-simplify expression scfg-append!
-	   (lambda (expression)
+    (expression-simplify expression scfg-append!
+      (lambda (expression)
+	(let ((free (interpreter-free-pointer)))
+	  (assign-to-temporary
+	   (rtl:make-cons-pointer (rtl:make-constant type-code:cell) free)
+	   scfg-append!
+	   (lambda (temporary)
 	     (scfg-append!
 	      (%make-assign (rtl:make-post-increment free 1) expression)
 	      (receiver temporary)))))))))
@@ -313,16 +313,17 @@ MIT in each case. |#
       (let ((target (rtl:make-post-increment free 1)))
 	(expression-simplify type scfg-append!
 	  (lambda (type)
-	    (assign-to-temporary (rtl:make-cons-pointer type free) scfg-append!
-	      (lambda (temporary)
-		(expression-simplify car scfg-append!
-		  (lambda (car)
-		    (scfg-append!
-		     (%make-assign target car)
-		     (expression-simplify cdr scfg-append!
-		       (lambda (cdr)
-			 (scfg-append! (%make-assign target cdr)
-				       (receiver temporary)))))))))))))))
+	    (expression-simplify car scfg-append!
+	      (lambda (car)
+		 (expression-simplify cdr scfg-append!
+		   (lambda (cdr)
+		     (assign-to-temporary (rtl:make-cons-pointer type free)
+					  scfg-append!
+		       (lambda (temporary)
+			 (scfg-append!
+			  (%make-assign target car)
+			  (scfg-append! (%make-assign target cdr)
+					(receiver temporary)))))))))))))))
 
 (define-expression-method 'OBJECT->TYPE
   (lambda (receiver scfg-append! expression)
