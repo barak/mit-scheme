@@ -1,8 +1,15 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.111 2000/09/25 16:16:34 cph Exp $
+$Id: todo.txt,v 1.112 2000/12/20 07:18:25 cph Exp $
 
 Bug fixes
 ---------
+
+* When network connection gets wedged, Edwin locks up and can't be
+  interrupted with C-g.  This is fundamentally an Edwin problem, but
+  it occurs much more frequently with IMAIL.  See if there's a better
+  way to handle this -- if Edwin were running under a terminal window,
+  it would have a real interrupt character, which would do what we
+  want.  This should happen under X as well.
 
 * When Rmail parser encounters corruption, tell the user what message
   is corrupted and attempt to recover the parse by looking for the
@@ -22,6 +29,19 @@ MIME conformance
 New features
 ------------
 
+* Implement generic operation to say whether a folder is open or
+  closed.  This is needed to implement a command that closes open
+  folders, prompting the user for each folder.
+
+* Implement decoder for uuencoded attachments.  Agnes recently sent me
+  a message with a uuencoded attachment.
+
+* Allow the user to specify that elements of a MIME digest are to be
+  treated as out-of-line rather than inline.  In this case the
+  attachment summaries need to show the "from" and "subject" headers
+  so that the digest can be browsed.  We will also need commands to
+  toggle all of the elements between in-line and out-of-line.
+
 * Implement generic operation to say whether a folder rename can work.
   Use this to extend M-x imail-rename-folder to work in all cases by
   using copy/delete when rename inapplicable.
@@ -33,8 +53,14 @@ New features
 
 * Implement cache that saves information about messages on disk.  This
   should use UIDs for IMAP folders; for other folders perhaps the
-  message ID can be used.  (Or perhaps no cache is required for
-  non-IMAP folders.)
+  message ID can be used.
+
+  For file folders, this might be used to aid in reading large
+  folders: a contiguous message file could be incrementally read from
+  the source file, and any changes written back to the cache.  When
+  the folder was saved, the updated file could be recreated by
+  merging the (cached) modified messages back into the original file,
+  then deleting the cache.
 
 * Set the IMAIL buffer's modification bit to indicate whether the
   folder is locally modified.  Meaningful only for file folders.  Hook
@@ -46,6 +72,9 @@ New features
 
 Design changes
 --------------
+
+* We must be able to read larger RMAIL files.  See suggestion above
+  for using a cache to accomplish this.
 
 * Move pathname-completion code into the runtime system.
 
