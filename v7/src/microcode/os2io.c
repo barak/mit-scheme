@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2io.c,v 1.4 1995/04/28 06:45:37 cph Exp $
+$Id: os2io.c,v 1.5 1995/11/03 01:23:41 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -155,8 +155,10 @@ handle_channel_type (LHANDLE handle)
 	    return (channel_type_unnamed_pipe);
 	}
       }
-  OS2_error_anonymous ();
-  return (channel_type_unknown);
+  /* Anything that can't be recognized should be treated as a pipe.
+     This is safe since pipes aren't assumed to have any special
+     properties.  */
+  return (channel_type_unnamed_pipe);
 }
 
 static void
