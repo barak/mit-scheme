@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.77 2000/10/16 20:29:07 cph Exp $
+@comment $Id: user.texinfo,v 1.78 2000/11/28 18:46:21 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -29,9 +29,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.77
-@subtitle for Scheme Release 7.5
-@subtitle 16 October 2000
+@subtitle Edition 1.78
+@subtitle for Scheme Release 7.5.11
+@subtitle 28 November 2000
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -164,7 +164,7 @@ To install the software in @file{/usr/local}, do the following
 cd /usr/local
 rm -f bin/scheme bin/bchscheme
 rm -rf lib/mit-scheme
-gzip -cd scheme-7.5.10-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.5.11-ix86-gnu-linux.tar.gz | tar xvf -
 @end group
 @end example
 
@@ -182,7 +182,7 @@ First unpack the distribution:
 @example
 mkdir temp
 cd temp
-gzip -cd scheme-7.5.10-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.5.11-ix86-gnu-linux.tar.gz | tar xvf -
 @end example
 
 @item
@@ -522,9 +522,9 @@ itself, clear the screen, and print something like this:
 
 @example
 @group
-Scheme saved on Friday October 13, 2000 at 9:03:36 PM
-  Release 7.5.10
-  Microcode 11.170
+Scheme saved on Tuesday November 28, 2000 at 1:26:51 PM
+  Release 7.5.11
+  Microcode 11.171
   Runtime 14.184
 @end group
 @end example
@@ -4706,6 +4706,12 @@ the Algorithmic Language Scheme}.
 These are the changes since release 7.5.0:
 
 @itemize @bullet
+@item
+Release 7.5.11 includes unencumbered support for blowfish encryption,
+reflecting recent changes to US export controls.  More bug fixes,
+including a fatal bug in the PURIFY procedure when running bchscheme,
+which has been around for many years and never noticed.
+
 @item
 Release 7.5.10 fixes numerous bugs, and offers significant speed
 improvements to the basic operation of @acronym{IMAIL}.  This release
