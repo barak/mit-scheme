@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.unix,v 1.7 1991/08/22 01:00:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.unix,v 1.8 1992/03/03 23:24:39 jinx Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,5 +67,8 @@ MIT in each case. |#
      "/scheme/800/"
      "/altdorf/scheme/800"
      "/nfs/altdorf/root/scheme/800/"
+     "/scheme/700/"
+     "/altdorf/scheme/700"
+     "/nfs/altdorf/root/scheme/700/"
      "/scheme/SONY/"
      "/nfs/altdorf/root/scheme/SONY/")))
