@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.2 1994/11/23 03:18:44 adams Exp $
+$Id: toplev.scm,v 1.3 1994/11/23 20:03:26 gjr Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -254,7 +254,10 @@ MIT in each case. |#
 		      rtl-output-port
 		      lap-output-port)
   (initialize-machine-register-map!)
-  (fluid-let ((*info-output-filename* info-output-pathname)
+  (fluid-let ((*info-output-filename*
+	       (if (memq info-output-pathname '(KEEP RECURSIVE))
+		   *info-output-filename*
+		   info-output-pathname))
 	      (*rtl-output-port* rtl-output-port)
 	      (*lap-output-port* lap-output-port)
 	      (*kmp-output-port* kmp-output-port)
