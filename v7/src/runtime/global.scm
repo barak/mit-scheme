@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.39 1992/07/21 17:28:45 boogles Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.40 1992/07/21 21:57:58 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -277,7 +277,7 @@ MIT in each case. |#
       (eq? object (microcode-object/unassigned))))
 
 (define unspecific
-  (object-new-type (microcode-type 'CONSTANT) 1))
+  (object-new-type (ucode-type constant) 1))
 
 (define *the-non-printing-object*
   unspecific)

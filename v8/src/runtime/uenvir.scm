@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.26 1992/07/21 04:25:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.27 1992/07/21 22:01:58 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -237,7 +237,7 @@ MIT in each case. |#
   (ic-environment/set-parent! environment null-environment))
 
 (define null-environment
-  (object-new-type (microcode-type 'NULL) 1))
+  (object-new-type (ucode-type null) 1))
 
 (define (make-null-interpreter-environment)
   (let ((environment (let () (the-environment))))
