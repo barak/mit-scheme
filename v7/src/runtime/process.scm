@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.16 1995/04/14 19:06:04 cph Exp $
+$Id: process.scm,v 1.17 1995/09/13 19:58:39 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -85,11 +85,16 @@ MIT in each case. |#
 (define (subprocess-remove! process key)
   (1d-table/remove! (subprocess-properties process) key))
 
-(define (subprocess-i/o-port process #!optional line-translation)
-  (let ((line-translation
-	 (if (default-object? line-translation)
-	     'DEFAULT
-	     line-translation)))
+(define (subprocess-i/o-port process #!optional
+			     input-line-translation outnput-line-translation)
+  (let* ((input-line-translation
+	  (if (default-object? input-line-translation)
+	      'DEFAULT
+	      input-line-translation))
+	 (output-line-translation
+	  (if (default-object? output-line-translation)
+	      input-line-translation
+	      output-line-translation)))
     (without-interrupts
      (lambda ()
        (or (subprocess-%i/o-port process)
@@ -100,14 +105,15 @@ MIT in each case. |#
 			(if output-channel
 			    (make-generic-i/o-port input-channel output-channel
 						   512 512
-						   line-translation)
+						   input-line-translation
+						   output-line-translation)
 			    (make-generic-input-port input-channel
 						     512
-						     line-translation))
+						     input-line-translation))
 			(if output-channel
 			    (make-generic-output-port output-channel
 						      512
-						      line-translation)
+						      output-line-translation)
 			    false)))))
 	     (set-subprocess-%i/o-port! process port)
 	     port))))))
