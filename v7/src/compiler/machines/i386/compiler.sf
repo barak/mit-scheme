@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.17 2001/12/20 05:04:28 cph Exp $
+$Id: compiler.sf,v 1.18 2001/12/22 03:21:25 cph Exp $
 
 Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
@@ -48,7 +48,6 @@ USA.
       (newline)
       (sf-and-load '("base/switch") '(COMPILER))
       (sf-and-load '("base/macros") '(COMPILER MACROS))
-      ((access initialize-package! (->environment '(COMPILER MACROS))))
       (sf-and-load '("machines/i386/decls") '(COMPILER DECLARATIONS))
       (let ((environment (->environment '(COMPILER DECLARATIONS))))
 	(set! (access source-file-expression environment) "*.scm")

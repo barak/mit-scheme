@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.20 2001/12/20 04:14:49 cph Exp $
+$Id: macros.scm,v 4.21 2001/12/22 03:21:08 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -25,48 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (let ((compiler-env (->environment '(COMPILER)))
-	(lap-syntaxer-env (->environment '(COMPILER LAP-SYNTAXER))))
-    (set-environment-syntax-table! compiler-env
-				   (make-syntax-table (->environment '())))
-    (let ((runtime-env (->environment '(RUNTIME))))
-      (for-each (lambda (name)
-		  (syntax-table/define compiler-env name
-				       (syntax-table/ref runtime-env name)))
-		'(UCODE-PRIMITIVE UCODE-TYPE)))
-    (for-each (lambda (entry)
-		(syntax-table/define compiler-env (car entry) (cadr entry)))
-	      `((CFG-NODE-CASE ,transform/cfg-node-case)
-		(DEFINE-ENUMERATION ,transform/define-enumeration)
-		(DEFINE-EXPORT ,transform/define-export)
-		(DEFINE-LVALUE ,transform/define-lvalue)
-		(DEFINE-PNODE ,transform/define-pnode)
-		(DEFINE-ROOT-TYPE ,transform/define-root-type)
-		(DEFINE-RTL-EXPRESSION ,transform/define-rtl-expression)
-		(DEFINE-RTL-PREDICATE ,transform/define-rtl-predicate)
-		(DEFINE-RTL-STATEMENT ,transform/define-rtl-statement)
-		(DEFINE-RULE ,transform/define-rule)
-		(DEFINE-RVALUE ,transform/define-rvalue)
-		(DEFINE-SNODE ,transform/define-snode)
-		(DEFINE-VECTOR-SLOTS ,transform/define-vector-slots)
-		(DESCRIPTOR-LIST ,transform/descriptor-list)
-		(ENUMERATION-CASE ,transform/enumeration-case)
-		(INST-EA ,transform/inst-ea)
-		(LAP ,transform/lap)
-		(LAST-REFERENCE ,transform/last-reference)
-		(MAKE-LVALUE ,transform/make-lvalue)
-		(MAKE-PNODE ,transform/make-pnode)
-		(MAKE-RVALUE ,transform/make-rvalue)
-		(MAKE-SNODE ,transform/make-snode)
-		(PACKAGE ,transform/package)))
-    (set-environment-syntax-table! lap-syntaxer-env
-				   (make-syntax-table compiler-env))
-    (syntax-table/define lap-syntaxer-env
-			 'DEFINE-RULE
-			 transform/define-rule)))
-
-(define transform/last-reference
+(define-syntax last-reference
   (lambda (name)
     (let ((x (generate-uninterned-symbol)))
       `(IF COMPILER:PRESERVE-DATA-STRUCTURES?
@@ -75,27 +34,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	     (SET! ,name)
 	     ,x)))))
 
-(define (transform/package names . body)
-  (make-syntax-closure
-   (scode/make-sequence
-    `(,@(map (lambda (name)
-	       (scode/make-definition name (make-unassigned-reference-trap)))
-	     names)
-      ,(scode/make-combination
-	(let ((block (syntax* (append body (list unspecific)))))
-	  (if (scode/open-block? block)
-	      (scode/open-block-components block
-		(lambda (names* declarations body)
-		  (scode/make-lambda lambda-tag:let '() '() #f
-				     (list-transform-negative names*
-				       (lambda (name)
-					 (memq name names)))
-				     declarations
-				     body)))
-	      (scode/make-lambda lambda-tag:let '() '() #f '() '() block)))
-	'())))))
+(define-syntax package
+  (lambda (names . body)
+    (make-syntax-closure
+     (scode/make-sequence
+      `(,@(map (lambda (name)
+		 (scode/make-definition name (make-unassigned-reference-trap)))
+	       names)
+	,(scode/make-combination
+	  (let ((block (syntax* (append body (list unspecific)))))
+	    (if (scode/open-block? block)
+		(scode/open-block-components block
+		  (lambda (names* declarations body)
+		    (scode/make-lambda lambda-tag:let '() '() #f
+				       (list-transform-negative names*
+					 (lambda (name)
+					   (memq name names)))
+				       declarations
+				       body)))
+		(scode/make-lambda lambda-tag:let '() '() #f '() '() block)))
+	  '()))))))
 
-(define transform/define-export
+(define-syntax define-export
   (lambda (pattern . body)
     (parse-define-syntax pattern body
       (lambda (name body)
@@ -105,11 +65,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	`(SET! ,(car pattern)
 	       (NAMED-LAMBDA ,pattern ,@body))))))
 
-(define transform/define-vector-slots
+(define-syntax define-vector-slots
   (lambda (class index . slots)
     (define (loop slots n)
-      (if (null? slots)
-	  '()
+      (if (pair? slots)
 	  (let ((make-defs
 		 (lambda (slot)
 		   (let ((ref-name (symbol-append class '- slot)))
@@ -122,16 +81,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(rest (loop (cdr slots) (1+ n))))
 	    (if (pair? (car slots))
 		(map* rest make-defs (car slots))
-		(cons (make-defs (car slots)) rest)))))
-    (if (null? slots)
-	'*THE-NON-PRINTING-OBJECT*
-	`(BEGIN ,@(loop slots index)))))
+		(cons (make-defs (car slots)) rest)))
+	  '()))
+    (if (pair? slots)
+	`(BEGIN ,@(loop slots index))
+	'UNSPECIFIC)))
 
-(define transform/define-root-type
+(define-syntax define-root-type
   (lambda (type . slots)
     (let ((tag-name (symbol-append type '-TAG)))
       `(BEGIN (DEFINE ,tag-name
-		(MAKE-VECTOR-TAG FALSE ',type FALSE))
+		(MAKE-VECTOR-TAG #F ',type #F))
 	      (DEFINE ,(symbol-append type '?)
 		(TAGGED-VECTOR/SUBCLASS-PREDICATE ,tag-name))
 	      (DEFINE-VECTOR-SLOTS ,type 1 ,@slots)
@@ -140,7 +100,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	       (LAMBDA (,type)
 		 (DESCRIPTOR-LIST ,type ,@slots)))))))
 
-(define transform/descriptor-list
+(define-syntax descriptor-list
   (lambda (type . slots)
     (let ((ref-name (lambda (slot) (symbol-append type '- slot))))
       `(LIST ,@(map (lambda (slot)
@@ -152,106 +112,103 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    slots)))))
 
 (let-syntax
- ((define-type-definition
-    (lambda (name reserved enumeration)
-      (let ((parent (symbol-append name '-TAG)))
-	`(DEFINE ,(symbol-append 'TRANSFORM/DEFINE- name)
-	   (lambda (type . slots)
-	     (let ((tag-name (symbol-append type '-TAG)))
-	       `(BEGIN (DEFINE ,tag-name
-			 (MAKE-VECTOR-TAG ,',parent ',type ,',enumeration))
-		       (DEFINE ,(symbol-append type '?)
-			 (TAGGED-VECTOR/PREDICATE ,tag-name))
-		       (DEFINE-VECTOR-SLOTS ,type ,,reserved ,@slots)
-		       (SET-VECTOR-TAG-DESCRIPTION!
-			,tag-name
-			(LAMBDA (,type)
-			  (APPEND!
-			   ((VECTOR-TAG-DESCRIPTION ,',parent) ,type)
-			   (DESCRIPTOR-LIST ,type ,@slots))))))))))))
- (define-type-definition snode 5 false)
- (define-type-definition pnode 6 false)
- (define-type-definition rvalue 2 rvalue-types)
- (define-type-definition lvalue 14 false))
+    ((define-type-definition
+       (lambda (name reserved enumeration)
+	 (let ((parent (symbol-append name '-TAG)))
+	   `(DEFINE-SYNTAX ,(symbol-append 'DEFINE- name)
+	      (lambda (type . slots)
+		(let ((tag-name (symbol-append type '-TAG)))
+		  `(BEGIN (DEFINE ,tag-name
+			    (MAKE-VECTOR-TAG ,',parent ',type ,',enumeration))
+			  (DEFINE ,(symbol-append type '?)
+			    (TAGGED-VECTOR/PREDICATE ,tag-name))
+			  (DEFINE-VECTOR-SLOTS ,type ,,reserved ,@slots)
+			  (SET-VECTOR-TAG-DESCRIPTION!
+			   ,tag-name
+			   (LAMBDA (,type)
+			     (APPEND!
+			      ((VECTOR-TAG-DESCRIPTION ,',parent) ,type)
+			      (DESCRIPTOR-LIST ,type ,@slots))))))))))))
+  (define-type-definition snode 5 #f)
+  (define-type-definition pnode 6 #f)
+  (define-type-definition rvalue 2 rvalue-types)
+  (define-type-definition lvalue 14 #f))
 
 ;;; Kludge to make these compile efficiently.
 
-(define transform/make-snode
+(define-syntax make-snode
   (lambda (tag . extra)
     `((ACCESS VECTOR ,system-global-environment)
-      ,tag FALSE '() '() FALSE ,@extra)))
+      ,tag #F '() '() #F ,@extra)))
 
-(define transform/make-pnode
+(define-syntax make-pnode
   (lambda (tag . extra)
     `((ACCESS VECTOR ,system-global-environment)
-      ,tag FALSE '() '() FALSE FALSE ,@extra)))
+      ,tag #F '() '() #F #F ,@extra)))
 
-(define transform/make-rvalue
+(define-syntax make-rvalue
   (lambda (tag . extra)
     `((ACCESS VECTOR ,system-global-environment)
-      ,tag FALSE ,@extra)))
+      ,tag #F ,@extra)))
 
-(define transform/make-lvalue
+(define-syntax make-lvalue
   (lambda (tag . extra)
     (let ((result (generate-uninterned-symbol)))
       `(let ((,result
 	      ((ACCESS VECTOR ,system-global-environment)
-	       ,tag FALSE '() '() '() '() '() '() 'NOT-CACHED
-	       FALSE '() FALSE FALSE '() ,@extra)))
+	       ,tag #F '() '() '() '() '() '() 'NOT-CACHED
+	       #F '() #F #F '() ,@extra)))
 	 (SET! *LVALUES* (CONS ,result *LVALUES*))
 	 ,result))))
 
-(define transform/define-rtl-expression)
-(define transform/define-rtl-statement)
-(define transform/define-rtl-predicate)
-(let ((rtl-common
-       (lambda (type prefix components wrap-constructor types)
-	 `(BEGIN
-	    (SET! ,types (CONS ',type ,types))
-	    (DEFINE-INTEGRABLE
-	      (,(symbol-append prefix 'MAKE- type) ,@components)
-	      ,(wrap-constructor `(LIST ',type ,@components)))
-	    (DEFINE-INTEGRABLE (,(symbol-append 'RTL: type '?) EXPRESSION)
-	      (EQ? (CAR EXPRESSION) ',type))
-	    ,@(let loop ((components components)
-			 (ref-index 6)
-			 (set-index 2))
-		(if (null? components)
-		    '()
-		    (let* ((slot (car components))
-			   (name (symbol-append type '- slot)))
-		      `((DEFINE-INTEGRABLE (,(symbol-append 'RTL: name) ,type)
-			  (GENERAL-CAR-CDR ,type ,ref-index))
-			,(let ((slot (if (eq? slot type)
-					 (symbol-append slot '-VALUE)
-					 slot)))
-			   `(DEFINE-INTEGRABLE
-			      (,(symbol-append 'RTL:SET- name '!)
-			       ,type ,slot)
-			      (SET-CAR! (GENERAL-CAR-CDR ,type ,set-index)
-					,slot)))
-			,@(loop (cdr components)
-				(* ref-index 2)
-				(* set-index 2))))))))))
-  (set! transform/define-rtl-expression
-	(lambda (type prefix . components)
-	  (rtl-common type prefix components
-		      identity-procedure
-		      'RTL:EXPRESSION-TYPES)))
+(define-syntax define-rtl-expression
+  (lambda (type prefix . components)
+    (rtl-common type prefix components
+		identity-procedure
+		'RTL:EXPRESSION-TYPES)))
 
-  (set! transform/define-rtl-statement
-	(lambda (type prefix . components)
-	  (rtl-common type prefix components
-		      (lambda (expression) `(STATEMENT->SRTL ,expression))
-		      'RTL:STATEMENT-TYPES)))
+(define-syntax define-rtl-statement
+  (lambda (type prefix . components)
+    (rtl-common type prefix components
+		(lambda (expression) `(STATEMENT->SRTL ,expression))
+		'RTL:STATEMENT-TYPES)))
 
-  (set! transform/define-rtl-predicate
-	(lambda (type prefix . components)
-	  (rtl-common type prefix components
-		      (lambda (expression) `(PREDICATE->PRTL ,expression))
-		      'RTL:PREDICATE-TYPES))))
+(define-syntax define-rtl-predicate
+  (lambda (type prefix . components)
+    (rtl-common type prefix components
+		(lambda (expression) `(PREDICATE->PRTL ,expression))
+		'RTL:PREDICATE-TYPES)))
 
-(define transform/define-rule
+(define (rtl-common type prefix components wrap-constructor types)
+  `(BEGIN
+     (SET! ,types (CONS ',type ,types))
+     (DEFINE-INTEGRABLE
+       (,(symbol-append prefix 'MAKE- type) ,@components)
+       ,(wrap-constructor `(LIST ',type ,@components)))
+     (DEFINE-INTEGRABLE (,(symbol-append 'RTL: type '?) EXPRESSION)
+       (EQ? (CAR EXPRESSION) ',type))
+     ,@(let loop ((components components)
+		  (ref-index 6)
+		  (set-index 2))
+	 (if (pair? components)
+	     (let* ((slot (car components))
+		    (name (symbol-append type '- slot)))
+	       `((DEFINE-INTEGRABLE (,(symbol-append 'RTL: name) ,type)
+		   (GENERAL-CAR-CDR ,type ,ref-index))
+		 ,(let ((slot (if (eq? slot type)
+				  (symbol-append slot '-VALUE)
+				  slot)))
+		    `(DEFINE-INTEGRABLE
+		       (,(symbol-append 'RTL:SET- name '!)
+			,type ,slot)
+		       (SET-CAR! (GENERAL-CAR-CDR ,type ,set-index)
+				 ,slot)))
+		 ,@(loop (cdr components)
+			 (* ref-index 2)
+			 (* set-index 2))))
+	     '()))))
+
+(define-syntax define-rule
   (lambda (type pattern . body)
     (parse-rule pattern body
       (lambda (pattern variables qualifier actions)
@@ -264,17 +221,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  ,(rule-result-expression variables qualifier
 				   `(BEGIN ,@actions)))))))
 
-;;;; Lap instruction sequences.
+;;;; LAP instruction sequences.
 
-(define transform/lap
+(define-syntax lap
   (lambda some-instructions
     (list 'QUASIQUOTE some-instructions)))
 
-(define transform/inst-ea
+(define-syntax inst-ea
   (lambda (ea)
     (list 'QUASIQUOTE ea)))
 
-(define transform/define-enumeration
+(define-syntax define-enumeration
   (lambda (name elements)
     (let ((enumeration (symbol-append name 'S)))
       `(BEGIN (DEFINE ,enumeration
@@ -293,12 +250,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (let ((body
 	     `(COND
 	       ,@(let loop ((clauses clauses))
-		   (cond ((null? clauses)
+		   (cond ((not (pair? clauses))
 			  (default expression*))
 			 ((eq? (caar clauses) 'ELSE)
-			  (if (null? (cdr clauses))
-			      clauses
-			      (error "ELSE clause not last" clauses)))
+			  (if (pair? (cdr clauses))
+			      (error "ELSE clause not last" clauses))
+			  clauses)
 			 (else
 			  `(((OR ,@(map (lambda (element)
 					  (predicate expression* element))
@@ -310,7 +267,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	       ,body)
 	    body)))))
 
-(define transform/enumeration-case
+(define-syntax enumeration-case
   (lambda (name expression . clauses)
     (macros/case-macro expression
 		       clauses
@@ -320,7 +277,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			 expression
 			 '()))))
 
-(define transform/cfg-node-case
+(define-syntax cfg-node-case
   (lambda (expression . clauses)
     (macros/case-macro expression
 		       clauses

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.26 2001/12/20 03:04:02 cph Exp $
+$Id: compiler.pkg,v 1.27 2001/12/22 03:21:44 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -90,7 +90,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  compiler:show-procedures?
 	  compiler:show-subphases?
 	  compiler:show-time-reports?
-	  compiler:use-multiclosures?))
+	  compiler:use-multiclosures?)
+  (import (runtime system-macros)
+	  ucode-primitive
+	  ucode-type))
 
 (define-package (compiler reference-contexts)
   (files "base/refctx")
@@ -110,9 +113,32 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-package (compiler macros)
   (files "base/macros")
   (parent (compiler))
+  (export (compiler)
+	  cfg-node-case
+	  define-enumeration
+	  define-export
+	  define-lvalue
+	  define-pnode
+	  define-root-type
+	  define-rtl-expression
+	  define-rtl-predicate
+	  define-rtl-statement
+	  define-rule
+	  define-rvalue
+	  define-snode
+	  define-vector-slots
+	  descriptor-list
+	  enumeration-case
+	  inst-ea
+	  lap
+	  last-reference
+	  make-lvalue
+	  make-pnode
+	  make-rvalue
+	  make-snode
+	  package)
   (import (runtime macros)
-	  parse-define-syntax)
-  (initialization (initialize-package!)))
+	  parse-define-syntax))
 
 (define-package (compiler declarations)
   (files "machines/i386/decls")
