@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: mklogs.scm,v 1.8 1995/11/19 19:20:50 adams Exp $
+$Id: mklogs.scm,v 1.9 1997/06/04 22:29:57 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,5 +50,6 @@ MIT in each case. |#
 	    "/scheme/8.0/src/rcs"
 	    "/scheme/8.0/src/runtime"
 	    "/scheme/8.0/src/sf"
+	    "/scheme/8.0/src/sos"
 	    "/scheme/8.0/src/swat"
 	    "/scheme/8.0/src/win32"))
