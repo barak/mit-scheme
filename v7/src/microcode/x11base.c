@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.30 1992/01/22 23:13:31 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.31 1992/02/04 04:37:26 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -779,8 +779,11 @@ DEFUN (xd_process_events, (xd, non_block_p),
 	  case select_input_none:
 	    return (SHARP_F);
 	  case select_input_other:
+	    return (LONG_TO_FIXNUM (-2));
 	  case select_input_process_status:
-	    return (SHARP_T);
+	    return (LONG_TO_FIXNUM (-3));
+	  case select_input_interrupt:
+	    return (LONG_TO_FIXNUM (-4));
 	  case select_input_argument:
 	    events_queued = (XEventsQueued (display, QueuedAfterReading));
 	    continue;

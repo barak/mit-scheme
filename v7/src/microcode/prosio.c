@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.6 1991/03/14 04:22:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.7 1992/02/04 04:36:56 cph Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -233,8 +233,10 @@ DEFINE_PRIMITIVE ("CHANNEL-UNREGISTER", Prim_channel_unregister, 1, 1,
 
 DEFINE_PRIMITIVE ("CHANNEL-SELECT-THEN-READ", Prim_channel_select_then_read, 4, 4,
   "Like CHANNEL-READ, but also watches registered input channels.\n\
-If there is no input on CHANNEL, but there is input on some other registered\n\
-channel or some subprocess status changes, this procedure returns #T.")
+If there is no input on CHANNEL, returns #F.\n\
+If there is input on some other registered channel, returns -2.\n\
+If the status of some subprocess changes, returns -3.\n\
+If an interrupt occurs during the read, returns -4.")
 {
   PRIMITIVE_HEADER (4);
   CHECK_ARG (2, STRING_P);
@@ -247,11 +249,6 @@ channel or some subprocess status changes, this procedure returns #T.")
       (OS_channel_select_then_read ((arg_channel (1)),
 				    (STRING_LOC (buffer, start)),
 				    (end - start)));
-    PRIMITIVE_RETURN
-      ((nread == -2)
-       ? SHARP_T
-       : (nread < 0)
-       ? SHARP_F
-       : (long_to_integer (nread)));
+    PRIMITIVE_RETURN ((nread == (-1)) ? SHARP_F : (long_to_integer (nread)));
   }
 }

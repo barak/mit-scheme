@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxselect.h,v 1.1 1991/06/22 19:09:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxselect.h,v 1.2 1992/02/04 04:37:11 cph Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,7 +40,8 @@ enum select_input
   select_input_argument,
   select_input_other,
   select_input_none,
-  select_input_process_status
+  select_input_process_status,
+  select_input_interrupt
 };
 
 extern CONST int UX_have_select_p;

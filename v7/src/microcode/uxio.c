@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.17 1992/01/20 18:52:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.18 1992/02/04 04:37:03 cph Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -406,9 +406,11 @@ DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 	error_system_call (errno, syscall_select);
       else if (status_change_p)
 	return (select_input_process_status);
-      deliver_pending_interrupts ();
+      if (pending_interrupts_p ())
+	return (select_input_interrupt);
     }
 #else
+  error_system_call (ENOSYS, syscall_select);
   return (select_input_argument);
 #endif
 }
@@ -419,16 +421,17 @@ DEFUN (OS_channel_select_then_read, (channel, buffer, nbytes),
        PTR buffer AND
        size_t nbytes)
 {
-#ifdef HAVE_SELECT
   switch (UX_select_input ((CHANNEL_DESCRIPTOR (channel)),
 			   (! (CHANNEL_NONBLOCKING (channel)))))
     {
     case select_input_none:
       return (-1);
     case select_input_other:
-    case select_input_process_status:
       return (-2);
+    case select_input_process_status:
+      return (-3);
+    case select_input_interrupt:
+      return (-4);
     }
-#endif
   return (OS_channel_read (channel, buffer, nbytes));
 }
