@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.24 1992/11/17 17:42:13 cph Exp $
+;;;	$Id: rmail.scm,v 1.25 1992/11/18 21:30:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -455,10 +455,11 @@ and use that file as the inbox."
 	   (and (file-exists? pathname)
 		(let ((mark (mark-left-inserting-copy mark)))
 		  (insert-file mark pathname)
-;		  (if (let ((char (mark-left-char mark)))
-;			(and char
-;			     (not (char=? char #\newline))))
-;		      (insert-newline mark))
+		  (if (let ((char (mark-left-char mark)))
+			(and char
+			     (not (char=? char #\newline))
+			     (not (char=? char (integer->char #o037)))))
+		      (insert-newline mark))
 		  (mark-temporary! mark)
 		  pathname)))))
     (let ((source (->pathname filename)))
@@ -1424,19 +1425,27 @@ buffer visiting that file."
 			    (if (mark< point (msg-memo/end memo))
 				(begin
 				  ; Need to force a recalc of the summary line
-				  ; after message edit 
-				  (if (ref-variable rmail-summary-buffer)
-				      (if (ref-variable rmail-summary-vector
-							(ref-variable rmail-summary-buffer))
-					  (vector-set! 
-					   (ref-variable rmail-summary-vector
-							 (ref-variable rmail-summary-buffer))
-					   (-1+ (msg-memo/number memo)) #f)))
-				  (let ((point (line-start (msg-memo/start memo) 2)))
+				  ; after message edit
+				  (let ((rmail-summary-buffer
+					 (ref-variable rmail-summary-buffer)))
+				    (if rmail-summary-buffer
+					(let ((rmail-summary-vector
+					       (ref-variable
+						rmail-summary-vector
+						rmail-summary-buffer)))
+					  (if rmail-summary-vector
+					      (vector-set! 
+					       rmail-summary-vector
+					       (- (msg-memo/number memo) 1)
+					       false)))))
+				  (let ((point
+					 (line-start (msg-memo/start memo) 2)))
 				    (if (string-prefix?
 					 "Summary-line: "
-					 (extract-string point (line-end point 0)))
-					(delete-string point (line-start point 1))))
+					 (extract-string point
+							 (line-end point 0)))
+					(delete-string point
+						       (line-start point 1))))
 				  (select-message buffer memo))
 				(loop (msg-memo/next memo))))))))))))))
 
@@ -1902,7 +1911,9 @@ Leaves original message, deleted, before the undigestified messages."
     (sit-for 1)
     end)
 
-  (with-text-clipped start end (lambda () (loop (skip-chars-forward "\n" start end) 0))))
+  (with-text-clipped start end
+    (lambda ()
+      (loop (skip-chars-forward "\n" start end) 0))))
 
 (define (convert-buffer-to-babyl-format buffer)
   (with-buffer-open buffer
