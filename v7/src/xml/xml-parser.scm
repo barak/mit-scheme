@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.59 2004/02/26 04:50:14 cph Exp $
+$Id: xml-parser.scm,v 1.60 2004/05/26 15:26:29 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -201,7 +201,9 @@ USA.
 	      (let ((coding (xml-declaration-encoding declaration)))
 		(and coding
 		     (intern coding))))))
-    (if (and coding (not (port/known-coding? port coding)))
+    (if (and coding
+	     (not (port/known-coding? port coding))
+	     (port/supports-coding? port))
 	(error:bad-range-argument coding #f))
     coding))
 
