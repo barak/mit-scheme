@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.129 2001/05/23 23:23:18 cph Exp $
+;;; $Id: imail-core.scm,v 1.130 2001/05/24 01:01:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -320,9 +320,6 @@
 (define-class <resource> (<property-mixin> <modification-event-mixin>)
   (locator define accessor))
 
-(define-class <folder> (<resource>))
-(define-class <container> (<resource>))
-
 (define-method write-instance ((r <resource>) port)
   (write-instance-helper (resource-type-name r) r port
     (lambda ()
@@ -331,9 +328,33 @@
 
 (define-generic resource-type-name (resource))
 (define-method resource-type-name ((r <resource>)) r 'RESOURCE)
+
+(define-generic url-protocol ((resource <resource>))
+  (url-protocol (resource-locator resource)))
+
+(define-generic url-body ((resource <resource>))
+  (url-body (resource-locator resource)))
+
+(define-method container-url ((resource <resource>))
+  (container-url (resource-locator resource)))
+
+(define-class <folder> (<resource>))
+(define-class <container> (<resource>))
+
 (define-method resource-type-name ((r <folder>)) r 'FOLDER)
 (define-method resource-type-name ((r <container>)) r 'CONTAINER)
 
+(define-method make-child-url ((container <container>) name)
+  (make-child-url (resource-locator container) name))
+
+(define (guarantee-folder folder procedure)
+  (if (not (folder? folder))
+      (error:wrong-type-argument folder "IMAIL folder" procedure)))
+
+(define (guarantee-container container procedure)
+  (if (not (container? container))
+      (error:wrong-type-argument container "IMAIL container" procedure)))
+
 (define (get-memoized-resource url)
   (let ((resource (hash-table/get memoized-resources url #f)))
     (and resource
@@ -368,14 +389,6 @@
 
 (define memoized-resources
   (make-eq-hash-table))
-
-(define (guarantee-folder folder procedure)
-  (if (not (folder? folder))
-      (error:wrong-type-argument folder "IMAIL folder" procedure)))
-
-(define (guarantee-container container procedure)
-  (if (not (container? container))
-      (error:wrong-type-argument container "IMAIL container" procedure)))
 
 ;;;; Folder operations
 
