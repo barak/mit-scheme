@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.26 1992/02/08 15:23:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.27 1992/02/11 19:01:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -506,7 +506,7 @@
   (lambda (screen event)
     event
     (if (not (screen-deleted? screen))
-	(if (other-screen screen)
+	(if (other-screen screen true)
 	    (delete-screen! screen)
 	    (begin
 	      (save-buffers-kill-edwin)
@@ -529,7 +529,7 @@
 	(begin
 	  (set-screen-visibility! screen 'INVISIBLE)
 	  (if (selected-screen? screen)
-	      (let ((screen (other-screen screen)))
+	      (let ((screen (other-screen screen false)))
 		(if screen
 		    (select-screen screen))))))))
 

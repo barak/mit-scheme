@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.95 1992/02/08 15:23:26 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.96 1992/02/11 19:01:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -80,10 +80,10 @@
   (without-interrupts
    (lambda ()
      (if (selected-screen? screen)
-	 (let ((screen* (other-screen screen)))
-	   (if (not screen*)
-	       (error "can't delete only screen" screen))
-	   (select-screen screen*)))
+	 (select-screen
+	  (or (other-screen screen false)
+	      (other-screen screen true)
+	      (error "Can't delete only screen:" screen))))
      (screen-discard! screen)
      (set-editor-screens! current-editor
 			  (delq! screen
@@ -155,18 +155,15 @@
 	(else
 	 screen)))
 
-(define (other-screen screen)
-  (let ((screen*
-	 (let loop ((screen* screen))
-	   (let ((screen* (screen1+ screen*)))
-	     (cond ((eq? screen* screen)
-		    (screen1+ screen*))
-		   ((screen-visible? screen*)
-		    screen*)
-		   (else
-		    (loop screen*)))))))
-    (and (not (eq? screen screen*))
-	 screen*)))
+(define (other-screen screen invisible-ok?)
+  (let loop ((screen* screen))
+    (let ((screen* (screen1+ screen*)))
+      (cond ((eq? screen* screen)
+	     false)
+	    ((or invisible-ok? (screen-visible? screen*))
+	     screen*)
+	    (else
+	     (loop screen*))))))
 
 ;;;; Windows
 
@@ -199,6 +196,10 @@
   (screen-select-cursor! (window-screen window) window))
 
 (define (window-visible? window)
+  (and (window-live? window)
+       (screen-visible? (window-screen window))))
+
+(define (window-live? window)
   (or (typein-window? window)
       (let ((window0 (window0)))
 	(let loop ((window* (window1+ window0)))

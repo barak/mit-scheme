@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.109 1992/02/04 04:04:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.110 1992/02/11 19:01:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -336,7 +336,7 @@ ARG lines.  No arg means split equally."
     (let ((window (current-window)))
       (if (and (window-has-no-neighbors? window)
 	       (use-multiple-screens?)
-	       (other-screen (selected-screen)))
+	       (other-screen (selected-screen) false))
 	  (delete-screen! (selected-screen))
 	  (window-delete! window)))))
 
@@ -357,7 +357,7 @@ ARG lines.  No arg means split equally."
 	 (let ((window (other-window n)))
 	   (if (current-window? window)
 	       (and (use-multiple-screens?)
-		    (let ((screen (other-screen (selected-screen))))
+		    (let ((screen (other-screen (selected-screen) false)))
 		      (and screen
 			   (screen-selected-window screen))))
 	       window))))
@@ -395,7 +395,7 @@ ARG lines.  No arg means split equally."
 (define (select-buffer-other-screen buffer)
   (if (multiple-screens?)
       (select-screen
-       (let ((screen (other-screen (selected-screen))))
+       (let ((screen (other-screen (selected-screen) false)))
 	 (if screen
 	     (begin
 	       (select-buffer-in-window buffer (screen-selected-window screen))
@@ -425,7 +425,7 @@ Also kills any pop up window it may have created."
     (if window
 	(begin
 	  (set! *previous-popped-up-window* (object-hash false))
-	  (if (and (window-visible? window)
+	  (if (and (window-live? window)
 		   (not (window-has-no-neighbors? window)))
 	      (window-delete! window)))))
   (let ((buffer (object-unhash *previous-popped-up-buffer*)))
@@ -471,7 +471,7 @@ Also kills any pop up window it may have created."
 		   (if (< (ref-variable split-height-threshold) limit)
 		       (set-variable! split-height-threshold limit))
 		   (cond ((and (use-multiple-screens?)
-			       (other-screen (selected-screen)))
+			       (other-screen (selected-screen) false))
 			  =>
 			  (lambda (screen)
 			    (pop-into-window (screen-selected-window screen))))
@@ -513,7 +513,7 @@ Also kills any pop up window it may have created."
 		       window
 		       (loop (window1+ window)))))))
       (and (use-multiple-screens?)
-	   (or (let ((screen (other-screen (selected-screen))))
+	   (or (let ((screen (other-screen (selected-screen) false)))
 		 (and screen
 		      (list-search-positive (screen-window-list screen)
 			(lambda (window)
