@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.7 2002/12/30 04:29:40 cph Exp $
+# $Id: Makefile.in,v 1.8 2002/12/30 04:33:08 cph Exp $
 #
 # Copyright (c) 2000, 2001, 2002 Massachusetts Institute of Technology
 #
@@ -98,6 +98,7 @@ maintainer-clean:
 	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
 	done
 	rm -f $(DISTCLEAN_FILES) configure
+	rm -rf autom4te.cache
 
 tags TAGS:
 
