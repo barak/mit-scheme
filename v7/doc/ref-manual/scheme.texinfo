@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.63 1996/07/12 18:51:05 adams Exp $
+@comment $Id: scheme.texinfo,v 1.64 1997/02/13 02:24:02 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -69,7 +69,7 @@
 @ifinfo
 This file documents the MIT Scheme system.
 
-Copyright @copyright{} 1988-96 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -108,9 +108,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.62
-@subtitle for Scheme Release 7.4
-@subtitle 16 April 1996
+@subtitle Edition 1.64
+@subtitle for Scheme Release 7.5
+@subtitle 12 February 1997
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -118,7 +118,7 @@ literature without prior written consent from MIT in each case.
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1988-96 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -4420,21 +4420,60 @@ allows for infinities, NaNs, and non-flonum representations.
 @defvr {variable+} flonum-unparser-cutoff
 This variable controls the action of @code{number->string} when
 @var{number} is a flonum (and consequently controls all printing of
-flonums); it can have the following values:
+flonums).  The value of this variable is normally a list of three items:
 
-@itemize @bullet
-@item
-The symbol @code{normal}, which is the initial value of this variable,
-causes flonums to be printed with full precision.  @code{number->string}
-uses as many digits as are necessary to display all of the information
-in the flonum.  This value may also be specified as a list @code{(normal
-@var{n})} where @var{n} is an exact integer; @var{n} is ignored.
+@table @var
+@item rounding-type
+One of the following symbols: @code{normal}, @code{relative}, or
+@code{absolute}.  The symbol @code{normal} means that the number should
+be printed with full precision.  The symbol @code{relative} means that
+the number should be rounded to a specific number of digits.  The symbol
+@code{absolute} means that the number should be rounded so that there
+are a specific number of digits to the right of the decimal point.
 
-@item
-The list @code{(relative @var{n})}, where @var{n} is an exact positive
-integer, constrains @code{number->string} to represent the flonum using
-at most @var{n} significant digits.  @code{number->string} rounds the
-result so that it is as accurate as possible.  For example:
+@item precision
+An exact integer.  If @var{rounding-type} is @code{normal},
+@var{precision} is ignored.  If @var{rounding-type} is @code{relative},
+@var{precision} must be positive, and it specifies the number of digits
+to which the printed representation will be rounded.  If
+@var{rounding-type} is @code{absolute}, the printed representation will
+be rounded @var{precision} digits to the right of the decimal point; if
+@var{precision} is negative, the representation is rounded @code{(-
+@var{precision})} digits to the left of the decimal point.
+
+@item format-type
+One of the following symbols: @code{normal}, @code{scientific}, or
+@code{engineering}.  This specifies the format in which the number will
+be printed.  @code{scientific} specifies that the number will be printed
+using scientific notation: @code{@var{x}.@var{xxx}e@var{yyy}}.  In other
+words, the number is printed as a mantissa between zero inclusive and
+ten exclusive, and an exponent.  @code{engineering} is like
+@code{scientific}, except that the exponent is always a power of three,
+and the mantissa is constrained to be between zero inclusive and 1000
+exclusive.  If @code{normal} is specified, the number will be printed in
+positional notation if it is ``small enough'', otherwise it is printed
+in scientific notation.  A number is ``small enough'' when the number of
+digits that would be printed using positional notation does not exceed
+the number of digits of precision in the underlying floating-point
+number representation; @sc{ieee} double-precision floating-point numbers
+have 17 digits of precision.
+@end table
+
+@noindent
+This three-element list may be abbreviated in two ways.  First, the
+symbol @code{normal} may be used, which is equivalent to the list
+@code{(normal 0 normal)}.  Second, the third element of the list,
+@var{format-type}, may be omitted, in which case it defaults to
+@code{normal}.
+
+@noindent
+The default value for @code{flonum-unparser-cutoff} is @code{normal}.
+If it is bound to a value different from those described here,
+@code{number->string} issues a warning and acts as though the value had
+been @code{normal}.
+
+@noindent
+Some examples:
 
 @example
 @group
@@ -4446,18 +4485,15 @@ result so that it is as accurate as possible.  For example:
 (fluid-let ((flonum-unparser-cutoff '(relative 5)))
   (number->string (* 4000 (atan 1 1))))
                                     @result{} "3141.6"
-@end group
-@end example
-
-@item
-The list @code{(absolute @var{n})}, where @var{n} is an exact integer,
-constrains @code{number->string} to represent the flonum by rounding it
-at the @var{n}th digit to the right of the decimal point; if @var{n} is
-negative, the number is rounded @code{(- @var{n})} digits to the left of
-the decimal point.  For example:
-
-@example
-@group
+(fluid-let ((flonum-unparser-cutoff '(relative 5 scientific)))
+  (number->string (* 4000 (atan 1 1))))
+                                    @result{} "3.1416e3"
+(fluid-let ((flonum-unparser-cutoff '(relative 5 scientific)))
+  (number->string (* 40000 (atan 1 1))))
+                                    @result{} "3.1416e4"
+(fluid-let ((flonum-unparser-cutoff '(relative 5 engineering)))
+  (number->string (* 40000 (atan 1 1))))
+                                    @result{} "31.416e3"
 (fluid-let ((flonum-unparser-cutoff '(absolute 5)))
   (number->string (* 4 (atan 1 1))))
                                     @result{} "3.14159"
@@ -4467,17 +4503,17 @@ the decimal point.  For example:
 (fluid-let ((flonum-unparser-cutoff '(absolute -4)))
   (number->string (* 4e10 (atan 1 1))))
                                     @result{} "31415930000."
+(fluid-let ((flonum-unparser-cutoff '(absolute -4 scientific)))
+  (number->string (* 4e10 (atan 1 1))))
+                                    @result{} "3.141593e10"
+(fluid-let ((flonum-unparser-cutoff '(absolute -4 engineering)))
+  (number->string (* 4e10 (atan 1 1))))
+                                    @result{} "31.41593e9"
 (fluid-let ((flonum-unparser-cutoff '(absolute -5)))
   (number->string (* 4e10 (atan 1 1))))
                                     @result{} "31415900000."
 @end group
 @end example
-@end itemize
-
-@noindent
-If @code{flonum-unparser-cutoff} is bound to a value different from
-those described here, @code{number->string} issues a warning and acts as
-though it had been bound to @code{normal}.
 @end defvr
 
 @deffn procedure string->number string [radix]
@@ -17317,7 +17353,7 @@ The window is created with a @code{backing_store} attribute of
 @node Utilities for X Graphics, Custom Operations on X Graphics Devices, X Graphics Type, X Graphics
 @subsection Utilities for X Graphics
 
-@deffn {procedure+} x-open-display display-name
+@deffn {procedure+} x-graphics/open-display display-name
 @cindex display, X graphics
 @cindex X display, graphics
 Opens a connection to the display whose name is @var{display-name},
@@ -17328,7 +17364,7 @@ meaning to use the value of the unix environment variable
 @code{DISPLAY}.
 @end deffn
 
-@deffn {procedure+} x-close-display display
+@deffn {procedure+} x-graphics/close-display display
 Closes @var{display}; after calling this procedure, it is an error to
 use @var{display} for any purpose.  Any windows that were previously
 opened on @var{display} are destroyed and their resources returned to
