@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.49 1987/07/24 21:57:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.50 1987/07/24 22:11:16 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -512,14 +512,13 @@
 )
 
 (define (stickify-input-filenames filename/s default-pathname)
-  (let ((->pathname
-	 (if default-pathname
-	     (lambda (filename)
-	       (merge-pathnames (->pathname filename) default-pathname))
-	     ->pathname)))
-    (if (pair? filename/s)
-	(map ->pathname filename/s)
-	(->pathname filename/s))))
+  (map (if default-pathname
+	   (lambda (filename)
+	     (merge-pathnames (->pathname filename) default-pathname))
+	   ->pathname)
+       (if (pair? filename/s)
+	   filename/s
+	   (list filename/s))))
 
 #|(define (stickify-input-filenames filename/s default-pathname)
   (let loop
