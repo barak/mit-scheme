@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: telnet.scm,v 1.8 1992/11/17 17:51:04 cph Exp $
+$Id: telnet.scm,v 1.9 1993/02/14 23:14:18 gjr Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,6 +59,7 @@ and telnet-mode-hook, in that order."
 
 (define-key 'telnet #\C-m 'telnet-send-input)
 (define-key 'telnet '(#\C-c #\C-c) 'telnet-self-send)
+(define-key 'telnet '(#\C-c #\C-d) 'telnet-self-send)
 (define-key 'telnet '(#\C-c #\C-g) 'telnet-self-send)
 (define-key 'telnet '(#\C-c #\C-q) 'telnet-send-character)
 (define-key 'telnet '(#\C-c #\C-z) 'telnet-self-send)
