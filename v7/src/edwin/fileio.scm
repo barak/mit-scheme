@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.126 1995/04/30 07:12:12 cph Exp $
+;;;	$Id: fileio.scm,v 1.127 1995/05/02 20:49:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -155,11 +155,12 @@ Each procedure is called with three arguments:
 		 (if buffer
 		     (input-buffer/read-substring buffer text index end)
 		     (channel-read-block channel text index end)))))
-	  (without-interrupts
-	    (lambda ()
-	      (let ((gap-start* (fix:+ index n)))
-		(undo-record-insertion! group index gap-start*)
-		(finish-group-insert! group index n))))
+	  (if (fix:> n 0)
+	      (without-interrupts
+		(lambda ()
+		  (let ((gap-start* (fix:+ index n)))
+		    (undo-record-insertion! group index gap-start*)
+		    (finish-group-insert! group index n)))))
 	  (channel-close channel)
 	  n)))))
 
