@@ -1,11 +1,21 @@
 #!/bin/sh
-#
-#	Update RCS.log file in background.  no arguments
-#
-#	Currently being run daily from cph crontab on aarau
 
-PATH=/usr/contrib/bin:/usr/local/bin:/usr/bin:/bin
-export PATH
+# Update Scheme ChangeLog files.
+# Run daily from cph crontab on aarau.
+
 umask 002
 
-bgx -ioe /scheme/etc/update-rcs-log scheme -heap 4000 -no-init-file
+exec > /scheme/etc/update-rcs-log.out 2>&1
+
+generate_log ()
+{
+    cd "${1}"
+    /usr/local/bin/cvs2cl -r -U /scheme/v7/src/etc/usermap
+    /bin/rm -f ChangeLog.bak
+}
+
+generate_log /scheme/v7/doc
+generate_log /scheme/v7/src
+generate_log /scheme/etc
+generate_log /gunk/hlsim/doc
+generate_log /gunk/hlsim/src
