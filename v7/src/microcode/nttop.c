@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.27 1998/10/21 07:38:10 cph Exp $
+$Id: nttop.c,v 1.28 1998/10/21 07:52:13 cph Exp $
 
 Copyright (c) 1993-98 Massachusetts Institute of Technology
 
@@ -128,6 +128,23 @@ OS_under_emacs_p (void)
 
 enum windows_type NT_windows_type;
 
+static int
+empty_string_p (const char * s)
+{
+  const char * p = s;
+  while (1)
+    switch (*p++)
+      {
+      case '\0':
+	return (1);
+      case ' ':
+      case '\t':
+	break;
+      default:
+	return (0);
+      }
+}
+
 void
 OS_initialize (void)
 {
@@ -157,7 +174,7 @@ OS_initialize (void)
 		 (info.dwMajorVersion),
 		 (info.dwMinorVersion),
 		 (info.dwBuildNumber));
-	if (((info.szCSDVersion)[0]) != '\0')
+	if (!empty_string_p (info.szCSDVersion))
 	  {
 	    strcat (p, "; ");
 	    strcat (p, (info.szCSDVersion));
@@ -174,7 +191,7 @@ OS_initialize (void)
 		  ? "98"
 		  : "9?"),
 		 (LOWORD (info.dwBuildNumber)));
-	if (((info.szCSDVersion)[0]) != '\0')
+	if (!empty_string_p (info.szCSDVersion))
 	  {
 	    strcat (p, "; ");
 	    strcat (p, (info.szCSDVersion));
