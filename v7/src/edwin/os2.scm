@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.40 1997/06/09 08:12:22 cph Exp $
+;;;	$Id: os2.scm,v 1.41 1997/10/26 01:35:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
@@ -45,17 +45,8 @@
 
 (declare (usual-integrations))
 
-(define dos/encoding-pathname-types
-  '("gz" "bf" "ky"))
-
-(define dos/executable-pathname-types
-  '("exe" "cmd"))
-
 (define dos/default-shell-file-name
   "cmd.exe")
-
-(define (os/form-shell-command command)
-  (list "/c" command))
 
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname
@@ -71,25 +62,25 @@
   dir
   (error "Can't quit."))
 
-(define (os/hostname)
-  (if (not os2/cached-hostname)
-      (let ((buffer (temporary-buffer "*hostname*")))
-	(let ((status.reason
-	       (run-synchronous-process #f (buffer-end buffer) #f #f
-					"hostname")))
-	  (if (not (equal? status.reason '(EXITED . 0)))
-	      (begin
-		(pop-up-buffer buffer)
-		(error "Error running HOSTNAME program:" status.reason))))
-	(set! os2/cached-hostname (string-trim (buffer-string buffer)))
-	(kill-buffer buffer)))
-  os2/cached-hostname)
-
-(define os2/cached-hostname #f)
-(add-event-receiver! event:after-restore
-  (lambda ()
-    (set! os2/cached-hostname #f)
-    unspecific))
+(define (dos/read-dired-files file all-files?)
+  (let loop
+      ((pathnames
+	(let ((pathnames (directory-read file #f)))
+	  (if all-files?
+	      pathnames
+	      (list-transform-positive pathnames
+		(let ((mask
+		       (fix:or os2-file-mode/hidden os2-file-mode/system)))
+		  (lambda (pathname)
+		    (fix:= (fix:and (file-modes pathname) mask) 0)))))))
+       (result '()))
+    (if (null? pathnames)
+	result
+	(loop (cdr pathnames)
+	      (let ((attr (file-attributes (car pathnames))))
+		(if attr
+		    (cons (cons (file-namestring (car pathnames)) attr) result)
+		    result))))))
 
 ;;;; OS/2 Clipboard Interface
 
@@ -158,256 +149,6 @@
 		      (%substring-move! string start cr copy cindex)
 		      (loop (fix:+ cr 1) (fix:+ cindex (fix:- cr start)))))))
 	    copy)))))
-
-;;;; Dired customization
-
-(define-variable dired-listing-switches
-  "Dired listing format."
-  "-l"
-  string?)
-
-(define-variable list-directory-brief-switches
-  "list-directory brief listing format."
-  ""
-  string?)
-
-(define-variable list-directory-verbose-switches
-  "list-directory verbose listing format."
-  "-l"
-  string?)
-
-(define (insert-directory! file switches mark type)
-  ;; Insert directory listing for FILE at MARK.
-  ;; SWITCHES are examined for the presence of "a" and "t".
-  ;; TYPE can have one of three values:
-  ;;   'WILDCARD means treat FILE as shell wildcard.
-  ;;   'DIRECTORY means FILE is a directory and a full listing is expected.
-  ;;   'FILE means FILE itself should be listed, and not its contents.
-  (let ((mark (mark-left-inserting-copy mark))
-	(now (get-universal-time)))
-    (catch-file-errors (lambda (c)
-			 (insert-string (condition/report-string c) mark)
-			 (insert-newline mark))
-      (lambda ()
-	(for-each
-	 (lambda (entry)
-	   (insert-string (os2/dired-line-string (car entry) (cdr entry) now)
-			  mark)
-	   (insert-newline mark))
-	 (if (eq? 'FILE type)
-	     (let ((attributes (file-attributes file)))
-	       (if attributes
-		   (list (cons (file-namestring file) attributes))
-		   '()))
-	     (sort (os2/read-dired-files file
-					 (string-find-next-char switches #\a))
-		   (if (string-find-next-char switches #\t)
-		       (lambda (x y)
-			 (> (file-attributes/modification-time (cdr x))
-			    (file-attributes/modification-time (cdr y))))
-		       (lambda (x y)
-			 (string-ci<? (car x) (car y)))))))))
-    (mark-temporary! mark)))
-
-(define (os2/dired-line-string name attr now)
-  (string-append
-   (file-attributes/mode-string attr)
-   " "
-   (string-pad-left (number->string (file-attributes/length attr)) 10 #\space)
-   " "
-   (file-time->ls-string (file-attributes/modification-time attr) now)
-   " "
-   name))
-
-(define (os2/read-dired-files file all-files?)
-  (let loop
-      ((pathnames
-	(let ((pathnames (directory-read file #f)))
-	  (if all-files?
-	      pathnames
-	      (list-transform-positive pathnames
-		(let ((mask
-		       (fix:or os2-file-mode/hidden os2-file-mode/system)))
-		  (lambda (pathname)
-		    (fix:= (fix:and (file-modes pathname) mask) 0)))))))
-       (result '()))
-    (if (null? pathnames)
-	result
-	(loop (cdr pathnames)
-	      (let ((attr (file-attributes (car pathnames))))
-		(if attr
-		    (cons (cons (file-namestring (car pathnames)) attr) result)
-		    result))))))
-
-(define dired-pathname-wild?
-  pathname-wild?)
-
-;;;; File-Encoding Methods
-
-(define (os/read-file-methods)
-  `((,read/write-compressed-file?
-     . ,(lambda (pathname mark visit?)
-	  visit?
-	  (read-compressed-file "gzip -d" pathname mark)))
-    (,read/write-encrypted-file?
-     . ,(lambda (pathname mark visit?)
-	  visit?
-	  (read-encrypted-file pathname mark)))))
-
-(define (os/write-file-methods)
-  `((,read/write-compressed-file?
-     . ,(lambda (region pathname visit?)
-	  visit?
-	  (write-compressed-file "gzip" region pathname)))
-    (,read/write-encrypted-file?
-     . ,(lambda (region pathname visit?)
-	  visit?
-	  (write-encrypted-file region pathname)))))
-
-(define (os/alternate-pathnames group pathname)
-  (if (dos/fs-long-filenames? pathname)
-      (append (if (and (ref-variable enable-compressed-files group)
-		       (not (equal? "gz" (pathname-type pathname))))
-		  (list (string-append (->namestring pathname) ".gz"))
-		  '())
-	      (if (and (ref-variable enable-encrypted-files group)
-		       (not (equal? "bf" (pathname-type pathname))))
-		  (list (string-append (->namestring pathname) ".bf"))
-		  '())
-	      (if (and (ref-variable enable-encrypted-files group)
-		       (not (equal? "ky" (pathname-type pathname))))
-		  (list (string-append (->namestring pathname) ".ky"))
-		  '()))
-      '()))
-
-;;;; Compressed Files
-
-(define-variable enable-compressed-files
-  "If true, compressed files are automatically uncompressed when read,
-and recompressed when written.  A compressed file is identified by the
-filename suffix \".gz\"."
-  #t
-  boolean?)
-
-(define (read/write-compressed-file? group pathname)
-  (and (ref-variable enable-compressed-files group)
-       (equal? "gz" (pathname-type pathname))))
-
-(define (read-compressed-file program pathname mark)
-  (message "Uncompressing file " (->namestring pathname) "...")
-  (let ((value
-	 (call-with-temporary-file-pathname
-	  (lambda (temporary)
-	    (if (not (equal? '(EXITED . 0)
-			     (shell-command #f #f
-					    (directory-pathname pathname)
-					    #f
-					    (string-append
-					     program
-					     " < "
-					     (file-namestring pathname)
-					     " > "
-					     (->namestring temporary)))))
-		(error:file-operation pathname
-				      program
-				      "file"
-				      "[unknown]"
-				      read-compressed-file
-				      (list pathname mark)))
-	    (group-insert-file! (mark-group mark)
-				(mark-index mark)
-				temporary
-				(pathname-newline-translation pathname))))))
-    (append-message "done")
-    value))
-
-(define (write-compressed-file program region pathname)
-  (message "Compressing file " (->namestring pathname) "...")
-  (if (not (equal? '(EXITED . 0)
-		   (shell-command region
-				  #f
-				  (directory-pathname pathname)
-				  #f
-				  (string-append program
-						 " > "
-						 (file-namestring pathname)))))
-      (error:file-operation pathname
-			    program
-			    "file"
-			    "[unknown]"
-			    write-compressed-file
-			    (list region pathname)))
-  (append-message "done"))
-
-;;;; Encrypted files
-
-(define-variable enable-encrypted-files
-  "If true, encrypted files are automatically decrypted when read,
-and recrypted when written.  An encrypted file is identified by the
-filename suffixes \".bf\" and \".ky\"."
-  #t
-  boolean?)
-
-(define (read/write-encrypted-file? group pathname)
-  (and (ref-variable enable-encrypted-files group)
-       (or (and (equal? "bf" (pathname-type pathname))
-		(blowfish-available?))
-	   (equal? "ky" (pathname-type pathname)))))
-
-(define (read-encrypted-file pathname mark)
-  (let ((password (prompt-for-password "Password: "))
-	(type (pathname-type pathname)))
-    (message "Decrypting file " (->namestring pathname) "...")
-    (cond ((equal? "bf" type)
-	   (call-with-binary-input-file pathname
-	     (lambda (input)
-	       (read-blowfish-file-header input)
-	       (call-with-output-mark mark
-		 (lambda (output)
-		   (blowfish-encrypt-port input output password #f))))))
-	  ((or (equal? "ky" type) (equal? "KY" type))
-	   (insert-string (let ((the-encrypted-file
-				 (call-with-binary-input-file pathname
-				   (lambda (port)
-				     (read-string (char-set) port)))))
-			    (decrypt the-encrypted-file password
-				     (lambda () 
-				       (kill-buffer (mark-buffer mark))
-				       (editor-error "krypt: Password error!"))
-				     (lambda (x) 
-				       (editor-beep)
-				       (message "krypt: Checksum error!")
-				       x)))
-			  mark)))
-    ;; Disable auto-save here since we don't want to
-    ;; auto-save the unencrypted contents of the 
-    ;; encrypted file.
-    (define-variable-local-value! (mark-buffer mark)
-	(ref-variable-object auto-save-default)
-      #f)
-    (append-message "done")))
-
-(define (write-encrypted-file region pathname)
-  (let ((password (prompt-for-confirmed-password))
-	(type (pathname-type pathname)))
-    (message "Encrypting file " (->namestring pathname) "...")
-    (cond ((equal? "bf" type)
-	   (let ((input
-		  (make-buffer-input-port (region-start region)
-					  (region-end region))))
-	     (call-with-binary-output-file pathname
-	       (lambda (output)
-		 (write-blowfish-file-header output)
-		 (blowfish-encrypt-port input output password #t)))))
-	  ((or (equal? "ky" type) (equal? "KY" type))
-	   (let ((the-encrypted-file
-		  (encrypt (extract-string (region-start region)
-					   (region-end region))
-			   password)))
-	     (call-with-binary-output-file pathname
-	       (lambda (port)
-		 (write-string the-encrypted-file port))))))
-    (append-message "done")))
 
 ;;;; Mail Customization
 

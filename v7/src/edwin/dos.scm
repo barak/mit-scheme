@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.44 1997/01/06 00:18:19 cph Exp $
+;;;	$Id: dos.scm,v 1.45 1997/10/26 01:35:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-97 Massachusetts Institute of Technology
 ;;;
@@ -46,20 +46,22 @@
 
 (declare (usual-integrations))
 
-(define dos/encoding-pathname-types
-  '())
-
-(define dos/executable-pathname-types
-  ;; Not sure if there are other possibilities under WinNT and/or Win95.
-  '("exe" "com" "bat"))
+(define dos/windows-type
+  (cond ((string-prefix? "Microsoft Windows NT"
+			 microcode-id/operating-system-variant)
+	 'WINNT)
+	((string-prefix? "Microsoft Windows 95"
+			 microcode-id/operating-system-variant)
+	 'WIN95)
+	((string-prefix? "Microsoft Win32s"
+			 microcode-id/operating-system-variant)
+	 'WIN31)
+	(else #f)))
 
 (define dos/default-shell-file-name
-  ;; Not sure if this is right for WinNT and/or Win95.
-  "command.com")
-
-(define (os/form-shell-command command)
-  ;; Not sure if this is right.
-  (list "/c" command))
+  (if (eq? 'WINNT dos/windows-type)
+      "cmd.exe"
+      "command.com"))
 
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname
@@ -93,8 +95,23 @@
        ((ucode-primitive set-working-directory-pathname! 1) outside)
        (set-working-directory-pathname! outside)
        (start-thread-timer)))))
+
+(define (dos/read-dired-files file all-files?)
+  (map (lambda (entry) (cons (file-namestring (car entry)) (cdr entry)))
+       (let ((entries (directory-read file #f #t)))
+	 (if all-files?
+	     entries
+	     (list-transform-positive entries
+	       (let ((mask
+		      (fix:or nt-file-mode/hidden nt-file-mode/system)))
+		 (lambda (entry)
+		   (fix:= (fix:and (file-attributes/modes (cdr entry)) mask)
+			  0))))))))
 
-(define cut-and-paste-active? #T)
+;;;; Win32 Clipboard Interface
+
+(define cut-and-paste-active?
+  #t)
 
 (define (os/interprogram-cut string push?)
   push?
@@ -163,104 +180,10 @@
 		      (%substring-move! string start cr copy cindex)
 		      (loop (fix:+ cr 1) (fix:+ cindex (fix:- cr start)))))))
 	    copy)))))
-
-(define (os/read-file-methods) '())
-(define (os/write-file-methods) '())
-(define (os/alternate-pathnames group pathname) group pathname '())
+
+;;;; Mail Customization
 
 (define (os/rmail-spool-directory) #f)
 (define (os/rmail-primary-inbox-list system-mailboxes) system-mailboxes '())
 (define (os/sendmail-program) "sendmail.exe")
 (define (os/rmail-pop-procedure) #f)
-(define (os/hostname) (error "OS/HOSTNAME procedure unimplemented."))
-
-;;;; Dired customization
-
-(define-variable dired-listing-switches
-  "Dired listing format.
-Recognized switches are:
-    -a	show all files including system and hidden files
-    -t	sort files according to modification time
-    -l	ignored (but allowed for unix compatibility)
-Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
-  "-l"
-  string?)
-
-(define-variable list-directory-brief-switches
-  "list-directory brief listing format.
-Recognized switches are:
-    -a	show all files including system and hidden files
-    -t	sort files according to modification time
-    -l	ignored (but allowed for unix compatibility)
-Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
-  "-l"
-  string?)
-
-(define-variable list-directory-verbose-switches
-  "list-directory verbose listing format.
-Recognized switches are:
-    -a	show all files including system and hidden files
-    -t	sort files according to modification time
-    -l	ignored (but allowed for unix compatibility)
-Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
-  "-l"
-  string?)
-
-(define (insert-directory! file switches mark type)
-  ;; Insert directory listing for FILE at MARK.
-  ;; SWITCHES are examined for the presence of "a" and "t".
-  ;; TYPE can have one of three values:
-  ;;   'WILDCARD means treat FILE as shell wildcard.
-  ;;   'DIRECTORY means FILE is a directory and a full listing is expected.
-  ;;   'FILE means FILE itself should be listed, and not its contents.
-  (let ((mark (mark-left-inserting-copy mark))
-	(now (get-universal-time)))
-    (catch-file-errors (lambda (c)
-			 (insert-string (condition/report-string c) mark)
-			 (insert-newline mark))
-      (lambda ()
-	(for-each
-	 (lambda (entry)
-	   (insert-string (win32/dired-line-string (car entry) (cdr entry) now)
-			  mark)
-	   (insert-newline mark))
-	 (if (eq? 'FILE type)
-	     (let ((attributes (file-attributes file)))
-	       (if attributes
-		   (list (cons (file-namestring file) attributes))
-		   '()))
-	     (sort (win32/read-dired-files
-		    file
-		    (string-find-next-char switches #\a))
-		   (if (string-find-next-char switches #\t)
-		       (lambda (x y)
-			 (> (file-attributes/modification-time (cdr x))
-			    (file-attributes/modification-time (cdr y))))
-		       (lambda (x y)
-			 (string-ci<? (car x) (car y)))))))))
-    (mark-temporary! mark)))
-
-(define (win32/dired-line-string name attr now)
-  (string-append
-   (file-attributes/mode-string attr)
-   " "
-   (string-pad-left (number->string (file-attributes/length attr)) 10 #\space)
-   " "
-   (file-time->ls-string (file-attributes/modification-time attr) now)
-   " "
-   name))
-
-(define (win32/read-dired-files file all-files?)
-  (map (lambda (entry) (cons (file-namestring (car entry)) (cdr entry)))
-       (let ((entries (directory-read file #f #t)))
-	 (if all-files?
-	     entries
-	     (list-transform-positive entries
-	       (let ((mask
-		      (fix:or nt-file-mode/hidden nt-file-mode/system)))
-		 (lambda (entry)
-		   (fix:= (fix:and (file-attributes/modes (cdr entry)) mask)
-			  0))))))))
-
-(define dired-pathname-wild?
-  pathname-wild?)
