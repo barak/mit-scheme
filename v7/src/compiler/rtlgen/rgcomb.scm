@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.8 1987/04/12 00:22:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.9 1987/04/17 07:46:08 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -150,7 +150,7 @@ MIT in each case. |#
     (operand->index combination 1
       (lambda (index)
 	(open-code:memory-reference combination offset rest-generator
-				    index)))))
+				    (1+ index))))))
 
 (define (open-code:memory-reference combination offset rest-generator index)
   (open-code-expression-1 combination offset rest-generator
