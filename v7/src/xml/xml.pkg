@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.37 2004/02/23 20:56:05 cph Exp $
+$Id: xml.pkg,v 1.38 2004/02/24 20:36:23 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -277,7 +277,8 @@ USA.
 	  string->xml)
   (export (runtime xml)
 	  alphabet:name-initial
-	  alphabet:name-subsequent))
+	  alphabet:name-subsequent
+	  normalize-coding))
 
 (define-package (runtime xml output)
   (files "xml-output")

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.29 2004/02/23 20:55:11 cph Exp $
+$Id: xml-output.scm,v 1.30 2004/02/24 20:36:25 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -28,12 +28,21 @@ USA.
 (declare (usual-integrations))
 
 (define (write-xml xml port . options)
+  (set-coding xml port)
   (write-xml-1 xml port options))
 
 (define (write-xml-file xml pathname . options)
   (call-with-output-file pathname
     (lambda (port)
+      (set-coding xml port)
       (write-xml-1 xml port options))))
+
+(define (set-coding xml port)
+  (port/set-coding port
+		   (normalize-coding port
+				     (and (xml-document? xml)
+					  (xml-document-declaration xml))))
+  (port/set-line-ending port 'TEXT))
 
 (define (xml->wide-string xml . options)
   (call-with-wide-output-string

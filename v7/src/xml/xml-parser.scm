@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.56 2004/02/23 20:56:21 cph Exp $
+$Id: xml-parser.scm,v 1.57 2004/02/24 20:36:42 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -72,6 +72,8 @@ USA.
     (*parser
      (alt (sbracket description "\"" "\"" (match (* (alphabet a1))))
 	  (sbracket description "'" "'" (match (* (alphabet a2))))))))
+
+;;;; Entry points
 
 (define (read-xml-file pathname #!optional pi-handlers)
   (call-with-input-file pathname
@@ -79,68 +81,167 @@ USA.
       (read-xml port (if (default-object? pi-handlers) '() pi-handlers)))))
 
 (define (read-xml port #!optional pi-handlers)
-  (let ((operation (port/operation port 'SET-CODING)))
-    (if operation
-	(operation port 'UTF-8)))
-  (let ((operation (port/operation port 'SET-LINE-ENDING)))
-    (if operation
-	(operation port 'XML-1.0)))
-  (parse-xml (input-port->parser-buffer port)
-	     (if (default-object? pi-handlers) '() pi-handlers)))
+  (let ((coding (determine-coding port)))
+    (parse-xml (input-port->parser-buffer port)
+	       coding
+	       (if (default-object? pi-handlers)
+		   '()
+		   (begin
+		     (guarantee-pi-handlers pi-handlers 'STRING->XML)
+		     pi-handlers)))))
 
 (define (string->xml string #!optional start end pi-handlers)
   (parse-xml (string->parser-buffer string
 				    (if (default-object? start) #f start)
 				    (if (default-object? end) #f end))
-	     (if (default-object? pi-handlers) '() pi-handlers)))
+	     (if (string? string)
+		 'ISO-8859-1
+		 'ANY)
+	     (if (default-object? pi-handlers)
+		 '()
+		 (begin
+		   (guarantee-pi-handlers pi-handlers 'STRING->XML)
+		   pi-handlers))))
+
+(define (guarantee-pi-handlers object caller)
+  (if (not (list-of-type? object
+	     (lambda (entry)
+	       (and (pair? entry)
+		    (symbol? (car entry))
+		    (pair? (cdr entry))
+		    (procedure? (cadr entry))
+		    (procedure-arity-valid? (cadr entry) 1)
+		    (null? (cddr entry))))))
+      (error:wrong-type-argument object "handler alist" caller)))
+
+;;;; Character coding
+
+(define (determine-coding port)
+  (port/set-coding port 'ISO-8859-1)
+  (port/set-line-ending port 'XML-1.0)
+  (receive (coding name char) (determine-coding-1 port)
+    (if coding (port/set-coding port coding))
+    (if char (unread-char char port))
+    name))
+
+(define (determine-coding-1 port)
+  (let ((rc
+	 (lambda ()
+	   (let ((c (read-char port)))
+	     (if (eof-object? c)
+		 (error "EOF while determining char coding."))
+	     c)))
+	(lose
+	 (lambda chars
+	   (error "Illegal starting bytes:" (map char->integer chars)))))
+    (let ((c0 (rc)))
+      (case c0
+	((#\U+00)
+	 (let* ((c1 (rc))
+		(c2 (rc))
+		(c3 (rc)))
+	   (if (and (char=? c1 #\U+00)
+		    (char=? c2 #\U+FE)
+		    (char=? c3 #\U+FF))
+	       (values 'UTF-32BE 'UTF-32 #f)
+	       (lose c0 c1 c2 c3))))
+	((#\U+EF)
+	 (let* ((c1 (rc))
+		(c2 (rc)))
+	   (if (and (char=? c1 #\U+BB) (char=? c2 #\U+BF))
+	       (values 'UTF-8 'UTF-8 #f)
+	       (lose c0 c1 c2))))
+	((#\U+FE)
+	 (let ((c1 (rc)))
+	   (if (char=? c1 #\U+FF)
+	       (values 'UTF-16BE 'UTF-16 #f)
+	       (lose c0 c1))))
+	((#\U+FF)
+	 (let* ((c1 (rc))
+		(c2 (rc))
+		(c3 (rc)))
+	   (if (char=? c1 #\U+FE)
+	       (if (and (char=? c2 #\U+00) (char=? c3 #\U+00))
+		   (values 'UTF-32LE 'UTF-32 #f)
+		   (values 'UTF-16LE
+			   'UTF-16
+			   (wide-string-ref
+			    (utf16-le-string->wide-string (string c2 c3))
+			    0)))
+	       (lose c0 c1 c2 c3))))
+	((#\U+3C)
+	 (values #f '8-BIT #\<))
+	(else
+	 (values 'UTF-8 'UTF-8 c0))))))
+
+(define (finish-coding buffer coding declaration)
+  (let ((port (parser-buffer-port buffer)))
+    (if port
+	(let* ((declared (normalize-coding port declaration))
+	       (lose
+		(lambda ()
+		  (error "Incorrect encoding declaration:" declared))))
+	  (case coding
+	    ((UTF-8 UTF-16)
+	     (if (not (or (not declared) (eq? declared coding)))
+		 (lose)))
+	    ((UTF-32)
+	     (if (not (eq? declared coding))
+		 (lose)))
+	    ((8-BIT)
+	     (if (memq declared
+		       '(UTF-16 UTF-16BE UTF-16LE UTF-32 UTF-32BE UTF-32LE))
+		 (lose))
+	     (port/set-coding port (or declared 'UTF-8)))
+	    ((ANY) unspecific)
+	    (else (error:bad-range-argument coding #f)))))))
+
+(define (normalize-coding port declaration)
+  (let ((coding
+	 (and declaration
+	      (let ((coding (xml-declaration-encoding declaration)))
+		(and coding
+		     (intern coding))))))
+    (if (and coding (not (port/known-coding? port coding)))
+	(error:bad-range-argument coding #f))
+    coding))
 
 ;;;; Top level
 
-(define (parse-xml buffer #!optional pi-handlers) ;[1,22]
-  (if (not (parser-buffer? buffer))
-      (error:wrong-type-argument buffer "parser buffer" 'PARSE-XML))
-  (let ((pi-handlers (if (default-object? pi-handlers) '() pi-handlers)))
-    (if (not (list-of-type? pi-handlers
-	       (lambda (entry)
-		 (and (pair? entry)
-		      (symbol? (car entry))
-		      (pair? (cdr entry))
-		      (procedure? (cadr entry))
-		      (procedure-arity-valid? (cadr entry) 1)
-		      (null? (cddr entry))))))
-	(error:wrong-type-argument pi-handlers "handler alist" 'PARSE-XML))
-    (let ((one-value (lambda (v) (and v (vector-ref v 0)))))
-      (fluid-let ((*general-entities* (predefined-entities))
-		  (*standalone?*)
-		  (*internal-dtd?* #t)
-		  (*elt-decls* '())
-		  (*att-decls* '())
-		  (*pi-handlers* pi-handlers)
-		  (*in-dtd?* #f)
-		  (*prefix-bindings* '()))
-	(let ((declaration (one-value (parse-declaration buffer))))
-	  (set! *standalone?*
-		(and declaration
-		     (equal? (xml-declaration-standalone declaration)
-			     "yes")))
-	  (let* ((misc-1 (one-value (parse-misc buffer)))
-		 (dtd
-		  (one-value
-		   (fluid-let ((*in-dtd?* #t))
-		     (parse-dtd buffer))))
-		 (misc-2 (if dtd (one-value (parse-misc buffer)) '()))
-		 (element
-		  (or (one-value (parse-element buffer))
-		      (perror buffer "Missing root element")))
-		 (misc-3 (one-value (parse-misc buffer))))
-	    (if (peek-parser-buffer-char buffer)
-		(perror buffer "Unparsed content in input"))
-	    (make-xml-document declaration
-			       misc-1
-			       dtd
-			       misc-2
-			       element
-			       misc-3)))))))
+(define (parse-xml buffer coding pi-handlers) ;[1,22]
+  (let ((one-value (lambda (v) (and v (vector-ref v 0)))))
+    (fluid-let ((*general-entities* (predefined-entities))
+		(*standalone?*)
+		(*internal-dtd?* #t)
+		(*elt-decls* '())
+		(*att-decls* '())
+		(*pi-handlers* pi-handlers)
+		(*in-dtd?* #f)
+		(*prefix-bindings* '()))
+      (let ((declaration (one-value (parse-declaration buffer))))
+	(set! *standalone?*
+	      (and declaration
+		   (equal? (xml-declaration-standalone declaration)
+			   "yes")))
+	(finish-coding buffer coding declaration)
+	(let* ((misc-1 (one-value (parse-misc buffer)))
+	       (dtd
+		(one-value
+		 (fluid-let ((*in-dtd?* #t))
+		   (parse-dtd buffer))))
+	       (misc-2 (if dtd (one-value (parse-misc buffer)) '()))
+	       (element
+		(or (one-value (parse-element buffer))
+		    (perror buffer "Missing root element")))
+	       (misc-3 (one-value (parse-misc buffer))))
+	  (if (peek-parser-buffer-char buffer)
+	      (perror buffer "Unparsed content in input"))
+	  (make-xml-document declaration
+			     misc-1
+			     dtd
+			     misc-2
+			     element
+			     misc-3))))))
 
 (define *standalone?*)
 (define *internal-dtd?*)
