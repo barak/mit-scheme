@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.15 1992/04/30 04:06:22 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.16 1992/07/23 12:35:58 jinx Exp $
 # Modelled on the configuration script for GNU CC
 #   Copyright (C) 1988 Free Software Foundation, Inc.
 
@@ -93,6 +93,7 @@ case $# in
 	i386-sysv)
 		system_file=sysv3
 		machine_file=i386
+		cmpint_file=cmpint-i386.h
 		;;
 	sun3)
 		system_file=sunos4
@@ -136,6 +137,11 @@ case $# in
 	umax)				# Encore Multimax
 	    	system_file=umax
 		machine_file=umax
+		;;
+	alpha-osf)			# DEC Alpha running OSF
+		system_file=decosf
+		machine_file=alpha
+		cmpint_file=cmpint-alpha.h
 		;;
 	*)
 		echo "$progname: unknown machine name: $machine"
