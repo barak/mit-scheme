@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.37 2003/02/14 18:28:24 cph Exp $
+$Id: uxtrap.c,v 1.38 2003/05/09 19:45:53 cph Exp $
 
-Copyright (c) 1990-2002 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1995,1997 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -391,6 +392,10 @@ DEFUN_VOID (soft_reset)
   setup_trap_frame (0, 0, 0, (&trinfo), new_stack_pointer);
 }
 
+#ifdef HAS_COMPILER_SUPPORT
+#  include "gccode.h"
+#endif
+
 #if !defined(HAVE_STRUCT_SIGCONTEXT) || !defined(HAS_COMPILER_SUPPORT) || defined(USE_STACKLETS)
 
 static struct trap_recovery_info dummy_recovery_info =
@@ -426,8 +431,6 @@ DEFUN (continue_from_trap, (signo, info, scp),
    3) guess what C global state is still valid; and
    4) set up a recovery frame for the interpreter so that debuggers can
       display more information. */
-
-#include "gccode.h"
 
 #define SCHEME_ALIGNMENT_MASK		((sizeof (long)) - 1)
 #define STACK_ALIGNMENT_MASK		SCHEME_ALIGNMENT_MASK
