@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/pic-read.scm,v 1.3 1992/07/10 21:56:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/pic-read.scm,v 1.4 1992/07/13 15:20:17 aragorn Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -67,6 +67,7 @@ MIT in each case. |#
 	(let ((line (read-string delimiters port)))
 	  (if (eof-object? line)
 	      (error "EOF encountered when parsing line."))
+	  (read-char port)
 	  ;; ignore comments
 	  (if (and (not (string-null? line))
 		   (char=? #\# (string-ref line 0)))
