@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.45 1987/05/07 00:05:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.46 1987/05/09 01:07:56 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -81,6 +81,15 @@ MIT in each case. |#
     (set-vnode-combinations! value
 			     (cons combination (vnode-combinations value)))
     (snode->scfg combination)))
+
+(define-integrable (combination-compiled-for-predicate? combination)
+  (eq? 'PREDICATE (combination-compilation-type combination)))
+
+(define-integrable (combination-compiled-for-effect? combination)
+  (eq? 'EFFECT (combination-compilation-type combination)))
+
+(define-integrable (combination-compiled-for-value? combination)
+  (eq? 'VALUE (combination-compilation-type combination)))
 
 (define-snode continuation rtl-edge label frame-pointer-offset)
 (define *continuations*)
