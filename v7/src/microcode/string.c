@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: string.c,v 9.42 2001/03/08 17:02:02 cph Exp $
+$Id: string.c,v 9.43 2001/03/08 17:13:59 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -60,7 +60,7 @@ DEFUN (allocate_string_no_gc, (nbytes), unsigned long nbytes)
 SCHEME_OBJECT
 DEFUN (memory_to_string, (nbytes, data),
        unsigned long nbytes AND
-       unsigned char * data)
+       CONST unsigned char * data)
 {
   SCHEME_OBJECT result = (allocate_string (nbytes));
   unsigned char * scan_result = (STRING_LOC (result, 0));
@@ -73,7 +73,7 @@ DEFUN (memory_to_string, (nbytes, data),
 SCHEME_OBJECT
 DEFUN (memory_to_string_no_gc, (nbytes, data),
        unsigned long nbytes AND
-       unsigned char * data)
+       CONST unsigned char * data)
 {
   SCHEME_OBJECT result = (allocate_string_no_gc (nbytes));
   unsigned char * scan_result = (STRING_LOC (result, 0));
@@ -84,7 +84,8 @@ DEFUN (memory_to_string_no_gc, (nbytes, data),
 }
 
 SCHEME_OBJECT
-DEFUN (char_pointer_to_string, (char_pointer), unsigned char * char_pointer)
+DEFUN (char_pointer_to_string, (char_pointer),
+       CONST unsigned char * char_pointer)
 {
   unsigned char * scan = char_pointer;
   if (scan == 0)
@@ -97,7 +98,7 @@ DEFUN (char_pointer_to_string, (char_pointer), unsigned char * char_pointer)
 
 SCHEME_OBJECT
 DEFUN (char_pointer_to_string_no_gc, (char_pointer),
-       unsigned char * char_pointer)
+       CONST unsigned char * char_pointer)
 {
   unsigned char * scan = char_pointer;
   if (scan == 0)

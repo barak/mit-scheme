@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.58 2001/03/08 17:01:55 cph Exp $
+$Id: extern.h,v 9.59 2001/03/08 17:12:50 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -212,11 +212,12 @@ extern SCHEME_OBJECT EXFUN (make_vector, (long, SCHEME_OBJECT, Boolean));
 extern SCHEME_OBJECT EXFUN (allocate_string, (unsigned long));
 extern SCHEME_OBJECT EXFUN (allocate_string_no_gc, (unsigned long));
 extern SCHEME_OBJECT EXFUN
-  (memory_to_string, (unsigned long, unsigned char *));
+  (memory_to_string, (unsigned long, CONST unsigned char *));
 extern SCHEME_OBJECT EXFUN
-  (memory_to_string_no_gc, (unsigned long, unsigned char *));
-extern SCHEME_OBJECT EXFUN (char_pointer_to_string, (unsigned char *));
-extern SCHEME_OBJECT EXFUN (char_pointer_to_string_no_gc, (unsigned char *));
+  (memory_to_string_no_gc, (unsigned long, CONST unsigned char *));
+extern SCHEME_OBJECT EXFUN (char_pointer_to_string, (CONST unsigned char *));
+extern SCHEME_OBJECT EXFUN
+  (char_pointer_to_string_no_gc, (CONST unsigned char *));
 
 /* Random and OS utilities */
 extern Boolean EXFUN (Restore_History, (SCHEME_OBJECT));
