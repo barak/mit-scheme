@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: default.h,v 9.41 1993/10/14 21:43:15 gjr Exp $
+$Id: default.h,v 9.42 1993/10/15 00:13:50 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -125,7 +125,7 @@ MIT in each case. */
 
 #ifndef CONSTANT_AREA_START
 #define CONSTANT_AREA_START()	Stack_Pointer
-#endif CONSTANT_AREA_START
+#endif /* CONSTANT_AREA_START */
 
 #ifndef SEAL_CONSTANT_SPACE
 #define SEAL_CONSTANT_SPACE() do					\
