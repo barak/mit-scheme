@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm2.scm,v 1.6 1992/08/18 13:55:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm2.scm,v 1.7 1992/08/19 03:18:54 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/dassm2.scm,v 4.18 1991/05/07 13:46:04 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -109,7 +109,7 @@ MIT in each case. |#
 			     `(WORD U ,word))
 			 'INSTRUCTION)))
 	    ((external-label-marker? symbol-table offset state)
-	     (let ((word ,(next-unsigned-16-bit-word)))
+	     (let ((word (next-unsigned-16-bit-word)))
 	       (receiver *current-offset
 			 `(WORD U ,word)
 			 'EXTERNAL-LABEL-OFFSET)))
