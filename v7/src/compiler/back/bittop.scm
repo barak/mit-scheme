@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.9 1988/06/14 08:09:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.10 1988/08/11 19:54:25 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -115,7 +115,7 @@ MIT in each case. |#
 
 (define (assemble-objects! block)
   (let ((objects (queue->list *objects*))
-	(bl (/ (bit-string-length block) scheme-object-width)))
+	(bl (quotient (bit-string-length block) scheme-object-width)))
     (let* ((ol (length objects))
 	   (v (make-vector (+ ol bl))))
       (write-bits! v scheme-object-width block)
