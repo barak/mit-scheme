@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.441 2003/04/14 18:19:26 cph Exp $
+$Id: runtime.pkg,v 14.442 2003/04/14 18:59:08 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -173,6 +173,7 @@ USA.
   (files "fixart")
   (parent (runtime))
   (export ()
+	  (exact-integer? int:integer?)
 	  ->flonum
 	  fix:*
 	  fix:+
@@ -2207,43 +2208,75 @@ USA.
   (files "arith" "dragon4")
   (parent (runtime))
   (export ()
+	  (-1+ complex:-1+)
+	  (1+ complex:1+)
+	  (abs complex:abs)
+	  (acos complex:acos)
+	  (angle complex:angle)
+	  (asin complex:asin)
+	  (ceiling complex:ceiling)
+	  (ceiling->exact complex:ceiling->exact)
+	  (complex? complex:complex?)
+	  (conjugate complex:conjugate)
+	  (cos complex:cos)
+	  (denominator complex:denominator)
+	  (even? complex:even?)
+	  (exact->inexact complex:exact->inexact)
+	  (exact-rational? rat:rational?)
+	  (exact? complex:exact?)
+	  (exp complex:exp)
+	  (expt complex:expt)
+	  (floor complex:floor)
+	  (floor->exact complex:floor->exact)
+	  (imag-part complex:imag-part)
+	  (inexact->exact complex:inexact->exact)
+	  (integer-ceiling complex:integer-ceiling)
+	  (integer-divide complex:divide)
+	  (integer-floor complex:integer-floor)
+	  (integer-round complex:integer-round)
+	  (integer-truncate complex:quotient)
+	  (integer? complex:integer?)
+	  (log complex:log)
+	  (magnitude complex:magnitude)
+	  (make-polar complex:make-polar)
+	  (make-rectangular complex:make-rectangular)
+	  (negative? complex:negative?)
+	  (number? complex:complex?)
+	  (numerator complex:numerator)
+	  (positive? complex:positive?)
+	  (rational? complex:rational?)
+	  (rationalize complex:rationalize)
+	  (rationalize->exact complex:rationalize->exact)
+	  (real-part complex:real-part)
+	  (real? complex:real?)
+	  (round complex:round)
+	  (round->exact complex:round->exact)
+	  (simplest-exact-rational complex:simplest-exact-rational)
+	  (simplest-rational complex:simplest-rational)
+	  (sin complex:sin)
+	  (sqrt complex:sqrt)
+	  (tan complex:tan)
+	  (truncate complex:truncate)
+	  (truncate->exact complex:truncate->exact)
+	  (zero? complex:zero?)
 	  *
 	  +
 	  -
-	  -1+
 	  /
-	  1+
 	  <
 	  <=
 	  =
 	  >
 	  >=
-	  abs
-	  acos
-	  angle
-	  asin
 	  atan
-	  ceiling
-	  ceiling->exact
-	  complex?
-	  conjugate
-	  cos
-	  denominator
-	  even?
-	  exact->inexact
-	  exact-integer?
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
-	  exact-rational?
-	  exact?
-	  exp
-	  expt
+	  flo:significand-digits-base-10
+	  flo:significand-digits-base-2
 	  flonum-unparser-cutoff
 	  flonum-unparser:engineering-output
 	  flonum-unparser:normal-output
 	  flonum-unparser:scientific-output
-	  floor
-	  floor->exact
 	  gcd
 	  guarantee-complex
 	  guarantee-exact
@@ -2256,49 +2289,18 @@ USA.
 	  guarantee-number
 	  guarantee-rational
 	  guarantee-real
-	  imag-part
-	  inexact->exact
 	  inexact?
-	  integer-ceiling
-	  integer-divide
 	  integer-divide-quotient
 	  integer-divide-remainder
-	  integer-floor
-	  integer-round
-	  integer-truncate
-	  integer?
 	  lcm
-	  log
-	  magnitude
-	  make-polar
-	  make-rectangular
 	  max
 	  min
 	  modulo
-	  negative?
 	  number->string
-	  number?
-	  numerator
 	  odd?
-	  positive?
 	  quotient
-	  rational?
-	  rationalize
-	  rationalize->exact
-	  real-part
-	  real?
 	  remainder
-	  round
-	  round->exact
-	  simplest-exact-rational
-	  simplest-rational
-	  sin
-	  square
-	  sqrt
-	  tan
-	  truncate
-	  truncate->exact
-	  zero?)
+	  square)
   (initialization
    (begin
      (initialize-package!)

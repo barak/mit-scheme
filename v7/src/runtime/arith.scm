@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.56 2003/02/14 18:28:32 cph Exp $
+$Id: arith.scm,v 1.57 2003/04/14 18:59:05 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2001,2002 Massachusetts Institute of Technology
@@ -1673,39 +1673,39 @@ USA.
 	 ((copy real:sqrt) z))))
 
 (define (complex:expt z1 z2)
-  (let ((general-case
-	 (lambda ()
-	   (complex:exp (complex:* (complex:log z1) z2)))))
-    (cond ((recnum? z1)
-	   (if (and (rec:exact? z1)
-		    (int:integer? z2))
-	       (let ((exact-method
-		      (lambda (z2)
-			(if (int:= 1 z2)
-			    z1
-			    (let loop ((z1 z1) (z2 z2) (answer 1))
-			      (let ((qr (int:divide z2 2)))
-				(let ((z1 (complex:* z1 z1))
-				      (z2 (integer-divide-quotient qr))
-				      (answer
-				       (if (int:zero?
-					    (integer-divide-remainder qr))
-					   answer
-					   (complex:* answer z1))))
-				  (if (int:= 1 z2)
-				      (complex:* answer z1)
-				      (loop z1 z2 answer)))))))))
-		 (cond ((int:positive? z2) (exact-method z2))
-		       ((int:negative? z2)
-			(complex:/ 1 (exact-method (int:negate z2))))
-		       (else 1)))
-	       (general-case)))
-	  ((or (recnum? z2)
-	       (and (real:negative? z1)
-		    (not (real:integer? z2))))
-	   (general-case))
-	  (else
-	   (real:expt z1 z2)))))
+  (cond ((complex:zero? z1)
+	 (cond ((complex:zero? z2) (if (complex:exact? z2) 1 1.0))
+	       ((complex:positive? z2) (real:0 (complex:exact? z1)))
+	       (else (error:divide-by-zero 'EXPT (list z1 z2)))))
+	((and (recnum? z1)
+	      (int:integer? z2))
+	 (let ((exact-method
+		(lambda (z2)
+		  (if (int:= 1 z2)
+		      z1
+		      (let loop ((z1 z1) (z2 z2) (answer 1))
+			(let ((qr (int:divide z2 2)))
+			  (let ((z1 (complex:* z1 z1))
+				(z2 (integer-divide-quotient qr))
+				(answer
+				 (if (int:zero?
+				      (integer-divide-remainder qr))
+				     answer
+				     (complex:* answer z1))))
+			    (if (int:= 1 z2)
+				(complex:* answer z1)
+				(loop z1 z2 answer)))))))))
+	   (cond ((int:positive? z2) (exact-method z2))
+		 ((int:negative? z2)
+		  (complex:/ 1 (exact-method (int:negate z2))))
+		 (else 1))))
+	((or (recnum? z1)
+	     (recnum? z2)
+	     (and (real:negative? z1)
+		  (not (real:integer? z2))))
+	 (complex:exp (complex:* (complex:log z1) z2)))
+	(else
+	 (real:expt z1 z2))))
 
 (define (complex:make-rectangular real imag)
   (let ((check-arg
@@ -1774,15 +1774,6 @@ USA.
 
 (define imaginary-unit-j? #f)
 
-(define number? complex:complex?)
-(define complex? complex:complex?)
-(define real? complex:real?)
-(define rational? complex:rational?)
-(define integer? complex:integer?)
-(define exact? complex:exact?)
-(define exact-rational? rat:rational?)
-(define exact-integer? int:integer?)
-
 (define (inexact? z)
   (not (complex:exact? z)))
 
@@ -1816,8 +1807,44 @@ USA.
 (define-guarantee inexact "inexact number")
 (define-guarantee exact-nonnegative-integer "exact non-negative integer")
 (define-guarantee exact-positive-integer "exact positive integer")
+
+;;; The following three procedures were originally just renamings of
+;;; their COMPLEX: equivalents.  They have been rewritten this way to
+;;; cause the compiler to generate better code for them.
+
+(define (quotient n d)
+  ((ucode-primitive quotient 2) n d))
+
+(define (remainder n d)
+  ((ucode-primitive remainder 2) n d))
+
+(define (modulo n d)
+  (let ((r ((ucode-primitive remainder 2) n d)))
+    (if (or (zero? r)
+	    (if (negative? n)
+		(negative? d)
+		(not (negative? d))))
+	r
+	(+ r d))))
+
+(define-integrable integer-divide-quotient car)
+(define-integrable integer-divide-remainder cdr)
+
+(define (gcd . integers)
+  (fold-left complex:gcd 0 integers))
+
+(define (lcm . integers)
+  (fold-left complex:lcm 1 integers))
+
+(define (atan z #!optional x)
+  (if (default-object? x)
+      (complex:atan z)
+      (complex:atan2 z x)))
+
+(define (square z)
+  (complex:* z z))
 
-;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!
+;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
 
 (define =)
 (define <)
@@ -1839,17 +1866,10 @@ USA.
 		 (and (binary-comparator x y)
 		      (loop y (cdr rest)))))))))
 
-(define zero? complex:zero?)
-(define positive? complex:positive?)
-(define negative? complex:negative?)
-
 (define (odd? n)
   (not (complex:even? n)))
 
-(define even? complex:even?)
-
-
-;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!
+;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
 
 (define +)
 (define *)
@@ -1871,87 +1891,6 @@ USA.
 	  (if (null? xs)
 	      x1
 	      (loop x1 xs))))))
-
-(define 1+ complex:1+)
-(define -1+ complex:-1+)
-
-(define conjugate complex:conjugate)
-
-(define abs complex:abs)
-
-;;; The following three procedures were originally just renamings of
-;;; their COMPLEX: equivalents.  They have been rewritten this way to
-;;; cause the compiler to generate better code for them.
-
-(define (quotient n d)
-  ((ucode-primitive quotient 2) n d))
-
-(define (remainder n d)
-  ((ucode-primitive remainder 2) n d))
-
-(define (modulo n d)
-  (let ((r ((ucode-primitive remainder 2) n d)))
-    (if (or (zero? r)
-	    (if (negative? n)
-		(negative? d)
-		(not (negative? d))))
-	r
-	(+ r d))))
-
-(define integer-floor complex:integer-floor)
-(define integer-ceiling complex:integer-ceiling)
-(define integer-truncate complex:quotient)
-(define integer-round complex:integer-round)
-(define integer-divide complex:divide)
-(define-integrable integer-divide-quotient car)
-(define-integrable integer-divide-remainder cdr)
-
-(define (gcd . integers)
-  (fold-left complex:gcd 0 integers))
-
-(define (lcm . integers)
-  (fold-left complex:lcm 1 integers))
-
-(define numerator complex:numerator)
-(define denominator complex:denominator)
-(define floor complex:floor)
-(define ceiling complex:ceiling)
-(define truncate complex:truncate)
-(define round complex:round)
-(define floor->exact complex:floor->exact)
-(define ceiling->exact complex:ceiling->exact)
-(define truncate->exact complex:truncate->exact)
-(define round->exact complex:round->exact)
-(define rationalize complex:rationalize)
-(define rationalize->exact complex:rationalize->exact)
-(define simplest-rational complex:simplest-rational)
-(define simplest-exact-rational complex:simplest-exact-rational)
-(define exp complex:exp)
-(define log complex:log)
-(define sin complex:sin)
-(define cos complex:cos)
-(define tan complex:tan)
-(define asin complex:asin)
-(define acos complex:acos)
-
-(define (atan z #!optional x)
-  (if (default-object? x)
-      (complex:atan z)
-      (complex:atan2 z x)))
-
-(define sqrt complex:sqrt)
-(define expt complex:expt)
-(define make-rectangular complex:make-rectangular)
-(define make-polar complex:make-polar)
-(define real-part complex:real-part)
-(define imag-part complex:imag-part)
-(define magnitude complex:magnitude)
-(define angle complex:angle)
-(define exact->inexact complex:exact->inexact)
-(define inexact->exact complex:inexact->exact)
-
-(define (square z)
-  (complex:* z z))
 
 (define (number->string z #!optional radix)
   (complex:->string
