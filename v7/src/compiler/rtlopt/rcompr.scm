@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.3 1987/08/07 17:07:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.4 1988/04/26 18:56:24 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -66,38 +66,50 @@ MIT in each case. |#
 
 (define (optimize-rtl live rinst rtl)
   (if (rtl:assign? rtl)
-      (let ((address (rtl:assign-address rtl)))
-	(if (rtl:register? address)
-	    (let ((register (rtl:register-number address))
-		  (next (rinst-next rinst)))
-	      (if (and (pseudo-register? register)
-		       (= 2 (register-n-refs register))
-		       (rinst-dead-register? next register)
-		       (rtl:any-subexpression? (rinst-rtl next)
-			 (lambda (expression)
-			   (and (rtl:register? expression)
-				(= (rtl:register-number expression)
-				   register)))))
-		  (begin
-		    (let ((dead (rinst-dead-registers rinst)))
-		      (for-each increment-register-live-length! dead)
-		      (set-rinst-dead-registers!
-		       next
-		       (eqv-set-union dead
-				      (delv! register
-					     (rinst-dead-registers next)))))
-		    (for-each-regset-member live 
-		      decrement-register-live-length!)
-		    (rtl:modify-subexpressions (rinst-rtl next)
-		      (lambda (expression set-expression!)
-			(if (and (rtl:register? expression)
-				 (= (rtl:register-number expression)
-				    register))
-			    (set-expression! (rtl:assign-expression rtl)))))
-		    (set-rinst-rtl! rinst false)
-		    (reset-register-n-refs! register)
-		    (reset-register-n-deaths! register)
-		    (reset-register-live-length! register)
-		    (set-register-bblock! register false))))))))
+      ;;; In order to avoid a combinatorial explosion in the number of
+      ;;; rules required in the lapgen phase we create a class of
+      ;;; expression types which we don't want optimized. We will
+      ;;; explicitly assign these expression types to registers during
+      ;;; rtl generation and then we need only create rules for how to
+      ;;; generate assignments to registers. Some day we will have
+      ;;; some facility for subrule hierarchies which may avoid the
+      ;;; combinatorial explosion. When that happens the next test may
+      ;;; be removed.
+      (if (rtl:optimizable? (rtl:assign-expression rtl))
+	  (let ((address (rtl:assign-address rtl)))
+	    (if (rtl:register? address)
+		(let ((register (rtl:register-number address))
+		      (next (rinst-next rinst)))
+		  (if (and (pseudo-register? register)
+			   (= 2 (register-n-refs register))
+			   (rinst-dead-register? next register)
+			   (rtl:any-subexpression?
+			    (rinst-rtl next)
+			    (lambda (expression)
+			      (and (rtl:register? expression)
+				   (= (rtl:register-number expression)
+				      register)))))
+		      (begin
+			(let ((dead (rinst-dead-registers rinst)))
+			  (for-each increment-register-live-length! dead)
+			  (set-rinst-dead-registers!
+			   next
+			   (eqv-set-union dead
+					  (delv! register
+						 (rinst-dead-registers next)))))
+			(for-each-regset-member live 
+						decrement-register-live-length!)
+			(rtl:modify-subexpressions
+			 (rinst-rtl next)
+			 (lambda (expression set-expression!)
+			   (if (and (rtl:register? expression)
+				    (= (rtl:register-number expression)
+				       register))
+			       (set-expression! (rtl:assign-expression rtl)))))
+			(set-rinst-rtl! rinst false)
+			(reset-register-n-refs! register)
+			(reset-register-n-deaths! register)
+			(reset-register-live-length! register)
+			(set-register-bblock! register false)))))))))
 
 )
