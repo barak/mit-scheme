@@ -1,6 +1,6 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.17 1991/03/05 20:54:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.18 1991/03/06 03:46:47 jinx Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -1520,7 +1520,7 @@ REUSE-PSEUDO-REGISTER-ALIAS! but occasionally neither meets the
 requirements.
 [*Markf: continuations? really?]
 
-* NEED-REGISTER! expects and RTL machine register and informs the
+* NEED-REGISTER! expects an RTL machine register and informs the
 register allocator that the rule in use requires that register so it
 should not be available for subsequent requests while translating the
 current RTL statement or expression.  The register is available for
@@ -1535,6 +1535,10 @@ register to the machine register.  It is used to pass arguments on
 registers to out-of-line code, typically in the compiled code runtime
 library.
 [*Markf: Explain the register map.]
+
+* ADD-PSEUDO-REGISTER-ALIAS! expects an RTL pseudo-register and an
+available machine register (no longer an alias), and makes the
+specified machine register an alias for the pseudo-register.
 
 * CLEAR-REGISTERS! expects any number of RTL registers and clears them
 from the register map, pushing their current contents to memory if
