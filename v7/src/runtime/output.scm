@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.33 2004/02/16 05:37:21 cph Exp $
+$Id: output.scm,v 14.34 2004/05/26 17:03:14 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1999,2001,2002,2003 Massachusetts Institute of Technology
@@ -36,19 +36,20 @@ USA.
   ((port/operation/write-char port) port char))
 
 (define (output-port/write-string port string)
-  (output-port/write-substring port string 0 (xstring-length string)))
+  (output-port/write-substring port string 0 (string-length string)))
 
 (define (output-port/write-substring port string start end)
   ((port/operation/write-substring port) port string start end))
 
 (define (output-port/write-wide-string port string)
-  (output-port/write-wide-substring port string 0 (xstring-length string)))
+  (output-port/write-wide-substring port string 0 (wide-string-length string)))
 
 (define (output-port/write-wide-substring port string start end)
   ((port/operation/write-wide-substring port) port string start end))
 
 (define (output-port/write-external-string port string)
-  (output-port/write-external-substring port string 0 (xstring-length string)))
+  (output-port/write-external-substring port string 0
+					(external-string-length string)))
 
 (define (output-port/write-external-substring port string start end)
   ((port/operation/write-external-substring port) port string start end))
