@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pcsdld.c,v 1.2 1995/08/08 22:37:15 adams Exp $
+$Id: pcsdld.c,v 1.3 1995/08/08 22:58:33 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -904,7 +904,7 @@ DEFUN_VOID        (initialize_pcsample_primitives)
 Set current pc-sampling zone to INDEX (a small exact integer), returning \
 the previous value.");
 
-  declare_primitive ("%PC-SAMPLE/GET-MAX-ZONE",
+  declare_primitive ("%PC-SAMPLE/MAX-ZONE",
 		     Prim_pc_sample_get_max_zone, 0, 0, 0);
 
   declare_primitive ("%PC-SAMPLE/CLEAR-ZONES!",

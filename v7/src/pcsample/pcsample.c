@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pcsample.c,v 1.2 1995/08/08 22:36:48 adams Exp $
+$Id: pcsample.c,v 1.3 1995/08/08 22:58:17 adams Exp $
 
 Copyright (c) 1990-1995 Massachusetts Institute of Technology
 
@@ -1462,7 +1462,7 @@ the previous value.")
     }
 }
 
-DEFINE_PRIMITIVE ("%PC-SAMPLE/GET-MAX-ZONE",
+DEFINE_PRIMITIVE ("%PC-SAMPLE/MAX-ZONE",
 		  Prim_pc_sample_get_max_zone, 0, 0, 0)
 {
     PRIMITIVE_HEADER(0);
