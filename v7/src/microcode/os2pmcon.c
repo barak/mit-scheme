@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.24 1999/01/02 06:11:34 cph Exp $
+$Id: os2pmcon.c,v 1.25 1999/04/28 03:50:38 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -100,8 +100,8 @@ static short console_point_x;
 static short console_point_y;
 
 static const char * console_font_specs [] =
-  { "4.System VIO", "8.Courier", "10.Courier", "12.Courier",
-    "10.System Monospaced" };
+  { "8.Courier", "10.Courier", "12.Courier", 
+    "4.System VIO", "10.System Monospaced" };
 
 #define CHAR_WIDTH (FONT_METRICS_WIDTH (console_metrics))
 #define CHAR_HEIGHT (FONT_METRICS_HEIGHT (console_metrics))
