@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.18 1993/09/13 18:38:09 gjr Exp $
+$Id: ntscreen.c,v 1.19 1993/09/16 22:44:33 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -635,11 +635,18 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       {
 	extern HANDLE master_tty_window;
 
-	if (IDOK != (MessageBox (hWnd, "OK to close screen window?",
-				 "MIT Scheme",
-				 (MB_ICONQUESTION | MB_OKCANCEL))))
+	if (IDOK != 
+	    MessageBox (hWnd, 
+			hWnd==(HWND)master_tty_window
+			? ("Closing this window will terminate Scheme.\n"
+			   "Changes to Edwin buffers might be lost.\n"
+			   "\n"
+			   "Really Exit Scheme?")
+			: "OK to close screen window?",
+			"MIT Scheme",
+			(MB_ICONQUESTION | MB_OKCANCEL)))
 	  break ;
-	else if (hWnd == ((HWND) master_tty_window))
+	if (hWnd == ((HWND) master_tty_window))
 	{
 	  extern void termination_normal (int);
 	  termination_normal (0);
