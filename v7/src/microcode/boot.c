@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.93 1994/12/19 22:24:43 cph Exp $
+$Id: boot.c,v 9.94 1995/01/06 17:42:11 cph Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -117,6 +117,9 @@ DEFUN (main_name, (argc, argv),
   init_exit_scheme ();
   scheme_program_name = (argv[0]);
   initial_C_stack_pointer = ((PTR) (&argc));
+#ifdef PREALLOCATE_HEAP_MEMORY
+  PREALLOCATE_HEAP_MEMORY ();
+#endif
   obstack_init (&scratch_obstack);
   dstack_initialize ();
   transaction_initialize ();

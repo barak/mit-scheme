@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.5 1995/01/05 23:38:01 cph Exp $
+$Id: os2top.c,v 1.6 1995/01/06 17:41:46 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -32,6 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#define SCM_OS2TOP_C
 #include "os2.h"
 #include "ostop.h"
 #include "option.h"
@@ -129,7 +130,48 @@ OS2_version_string (void)
   sprintf (result, "%d.%s%s", (major / 10), sminor, srev);
   return (result);
 }
+
+#if 0
 
+static void * OS2_heap_base;
+
+void
+OS2_alloc_heap (void)
+{
+  APIRET rc
+    = (dos_alloc_mem ((& OS2_heap_base),
+		      0x04000000,
+		      (PAG_EXECUTE | PAG_READ | PAG_WRITE)));
+  if (rc != NO_ERROR)
+    {
+      fprintf (stderr, "Can't allocate heap memory.");
+      fflush (stderr);
+      exit (EXIT_FAILURE);
+    }
+}
+
+void *
+OS2_commit_heap (unsigned long size)
+{
+  APIRET rc = (dos_set_mem (OS2_heap_base, size, (PAG_COMMIT | PAG_DEFAULT)));
+  return ((rc == NO_ERROR) ? OS2_heap_base : 0);
+}
+
+#else
+
+void
+OS2_alloc_heap (void)
+{
+}
+
+void *
+OS2_commit_heap (unsigned long size)
+{
+  return (malloc (size));
+}
+
+#endif
+
 void
 OS2_exit_scheme (int value)
 {
@@ -144,7 +186,7 @@ OS_reset (void)
 {
   execute_reload_cleanups ();
 }
-
+
 void
 OS_quit (int code, int abnormal_p)
 {
@@ -1506,80 +1548,6 @@ OS_error_code_to_message (unsigned int syserr)
   return (last_message);
 }
 
-static char * syscall_names_table [] =
-{
-  "dos-async-timer",
-  "dos-close",
-  "dos-close-event-sem",
-  "dos-close-mutex-sem",
-  "dos-close-queue",
-  "dos-create-dir",
-  "dos-create-event-sem",
-  "dos-create-mutex-sem",
-  "dos-create-pipe",
-  "dos-create-queue",
-  "dos-create-thread",
-  "dos-delete",
-  "dos-delete-dir",
-  "dos-dup-handle",
-  "dos-exec-pgm",
-  "dos-exit",
-  "dos-find-close",
-  "dos-find-first",
-  "dos-find-next",
-  "dos-get-info-blocks",
-  "dos-get-message",
-  "dos-kill-process",
-  "dos-kill-thread",
-  "dos-move",
-  "dos-open",
-  "dos-post-event-sem",
-  "dos-query-current-dir",
-  "dos-query-current-disk",
-  "dos-query-fh-state",
-  "dos-query-file-info",
-  "dos-query-fs-attach",
-  "dos-query-fs-info",
-  "dos-query-h-type",
-  "dos-query-n-p-h-state",
-  "dos-query-path-info",
-  "dos-query-sys-info",
-  "dos-read",
-  "dos-read-queue",
-  "dos-release-mutex-sem",
-  "dos-request-mutex-sem",
-  "dos-reset-event-sem",
-  "dos-scan-env",
-  "dos-send-signal-exception",
-  "dos-set-current-dir",
-  "dos-set-default-disk",
-  "dos-set-fh-state",
-  "dos-set-file-ptr",
-  "dos-set-file-size",
-  "dos-set-path-info",
-  "dos-start-timer",
-  "dos-stop-timer",
-  "dos-wait-child",
-  "dos-wait-event-sem",
-  "dos-write",
-  "dos-write-queue",
-  "beginthread",
-  "kbd-char-in",
-  "localtime",
-  "malloc",
-  "mktime",
-  "realloc",
-  "time",
-  "vio-wrt-tty"
-};
-
-void
-OS_syscall_names (unsigned int * length, unsigned char *** names)
-{
-  (*length) = ((sizeof (syscall_names_table)) / (sizeof (char *)));
-  (*names) = ((unsigned char **) syscall_names_table);
-}
-
 /* Machine-generated table, do not edit: */
 static char * syserr_names_table [] =
 {
@@ -2196,4 +2164,11 @@ OS_syserr_names (unsigned int * length, unsigned char *** names)
 {
   (*length) = ((sizeof (syserr_names_table)) / (sizeof (char *)));
   (*names) = ((unsigned char **) syserr_names_table);
+}
+
+void
+OS_syscall_names (unsigned int * length, unsigned char *** names)
+{
+  (*length) = ((sizeof (syscall_names_table)) / (sizeof (char *)));
+  (*names) = ((unsigned char **) syscall_names_table);
 }

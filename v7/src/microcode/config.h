@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.85 1994/11/28 04:06:33 cph Exp $
+$Id: config.h,v 9.86 1995/01/06 17:41:59 cph Exp $
 
-Copyright (c) 1987-94 Massachusetts Institute of Technology
+Copyright (c) 1987-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -443,11 +443,6 @@ extern unsigned long winnt_address_delta;
 
 #endif /* WINNT && !WINNT_RAW_ADDRESSES */
 
-#ifdef _OS2
-#define EXIT_SCHEME_DECLARATIONS extern void OS2_exit_scheme (int)
-#define EXIT_SCHEME OS2_exit_scheme
-#endif
-
 #endif /* i386 */
 
 #ifdef mips
@@ -527,6 +522,22 @@ extern void * alpha_heap_malloc (long);
 #endif
 
 #endif /* __alpha */
+
+#ifdef _OS2
+
+#define PREALLOCATE_HEAP_MEMORY()					\
+{									\
+  extern void OS2_alloc_heap (void);					\
+  OS2_alloc_heap ();							\
+}
+
+extern void * OS2_commit_heap (unsigned long);
+#define HEAP_MALLOC OS2_commit_heap
+
+#define EXIT_SCHEME_DECLARATIONS extern void OS2_exit_scheme (int)
+#define EXIT_SCHEME OS2_exit_scheme
+
+#endif /* _OS2 */
 
 /* These (pdp10, nu) haven't worked in a while.
    Should be upgraded or flushed some day.  */
