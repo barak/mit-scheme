@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.13 1991/05/07 18:47:55 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.14 1991/05/08 02:17:14 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -419,6 +419,7 @@ multiply_fixnum
         FCNVXF,SGL,DBL  5,5				; arg2
 	FMPY,DBL	4,5,4
 	FLDWS	8(0,21),5				; FIXNUM_LIMIT
+        FCNVXF,SGL,DBL  5,5				; FIXNUM_LIMIT
 	COPY	0,25					; signal no overflow
 	FCMP,DBL,!>=	4,5				; result too large?
 	FTEST
