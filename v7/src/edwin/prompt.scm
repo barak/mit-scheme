@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.154 1992/04/06 20:14:08 bal Exp $
+;;;	$Id: prompt.scm,v 1.155 1992/09/17 23:18:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -114,10 +114,13 @@
 
 (define (typein-edit-other-window)
   (let loop ((windows typein-saved-windows))
-    (and (not (null? windows))
-	 (if (typein-window? (car windows))
-	     (loop (cdr windows))
-	     (car windows)))))
+    (cond ((null? windows)
+	   (window0))
+	  ((and (not (typein-window? (car windows)))
+		(window-visible? (car windows)))
+	   (car windows))
+	  (else
+	   (loop (cdr windows))))))
 
 (define-variable enable-recursive-minibuffers
   "True means allow minibuffers to invoke commands that use recursive minibuffers."
