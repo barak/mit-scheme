@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.6 2003/02/28 04:40:25 cph Exp $
+$Id: unicode.scm,v 1.7 2003/03/01 05:38:22 cph Exp $
 
 Copyright 2001,2003 Massachusetts Institute of Technology
 
@@ -952,7 +952,7 @@ USA.
 		 (error "Truncated UTF-8 input."))
 	     (if (not (%valid-trailer? b))
 		 (error "Illegal subsequent UTF-8 byte:" b))
-	     (fix:and b #x3F)))))
+	     b))))
     (if b0
 	(integer->char
 	 (cond ((fix:< b0 #x80)
@@ -1089,18 +1089,18 @@ USA.
 
 (define-integrable (%cp2 b0 b1)
   (fix:or (fix:lsh (fix:and b0 #x1F) 6)
-	  b1))
+	  (fix:and b1 #x3F)))
 
 (define-integrable (%cp3 b0 b1 b2)
   (fix:or (fix:lsh (fix:and b0 #x0F) 12)
-	  (fix:or (fix:lsh b1 6)
-		  b2)))
+	  (fix:or (fix:lsh (fix:and b1 #x3F) 6)
+		  (fix:and b2 #x3F))))
 
 (define-integrable (%cp4 b0 b1 b2 b3)
   (fix:or (fix:lsh (fix:and b0 #x07) 18)
-	  (fix:or (fix:lsh b1 12)
-		  (fix:or (fix:lsh b2 6)
-			  b3))))
+	  (fix:or (fix:lsh (fix:and b1 #x3F) 12)
+		  (fix:or (fix:lsh (fix:and b2 #x3F) 6)
+			  (fix:and b3 #x3F)))))
 
 (define-integrable (%valid-trailer? n)
   (fix:= #x80 (fix:and #xC0 n)))
