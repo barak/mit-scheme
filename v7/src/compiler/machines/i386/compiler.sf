@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.4 1993/10/13 00:01:04 cph Exp $
+$Id: compiler.sf,v 1.5 1994/01/08 21:11:45 gjr Exp $
 
-Copyright (c) 1992-93 Massachusetts Institute of Technology
+Copyright (c) 1992-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,13 +42,13 @@ MIT in each case. |#
 (if (not (name->package '(COMPILER)))
     (begin
       ;; If there is no existing package constructor, generate one.
-      (if (not (file-exists? "comp.bcon"))
+      (if (not (file-exists? "compiler.bcon"))
 	  (begin
 	    ((access cref/generate-trivial-constructor
 		     (->environment '(CROSS-REFERENCE)))
 	     "comp")
-	    (sf "comp.con" "comp.bcon")))
-      (load "comp.bcon")))
+	    (sf "compiler.con" "compiler.bcon")))
+      (load "compiler.bcon")))
 
 ;; Guarantee that the necessary syntactic transforms and optimizers
 ;; are loaded.
@@ -105,6 +105,6 @@ MIT in each case. |#
 ((access syntax-files! (->environment '(COMPILER))))
 
 ;; Rebuild the package constructors and cref.
-(cref/generate-constructors "comp")
-(sf "comp.con" "comp.bcon")
-(sf "comp.ldr" "comp.bldr")
+(cref/generate-constructors "compiler")
+(sf "compiler.con" "compiler.bcon")
+(sf "compiler.ldr" "compiler.bldr")

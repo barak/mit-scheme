@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.18 1993/12/09 03:22:45 gjr Exp $
+$Id: compiler.pkg,v 1.19 1994/01/08 21:15:50 gjr Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,7 +34,7 @@ MIT in each case. |#
 
 ;;;; Compiler Packaging
 
-(global-definitions "../runtime/runtim")
+(global-definitions "../runtime/runtime")
 
 (define-package (compiler)
   (files "base/switch"

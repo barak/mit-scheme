@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: bootstrap.scm,v 1.3 1992/11/07 16:13:44 jinx Exp $
+$Id: bootstrap.scm,v 1.4 1994/01/08 21:23:00 gjr Exp $
 
-Copyright (c) 1991-1992 Massachusetts Institute of Technology
+Copyright (c) 1991-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,13 +83,13 @@ MIT in each case. |#
 ;;; Generate CREF files for runtime system
 (with-working-directory-pathname "runtime"
   (lambda ()
-    (if (not (and (file-exists? "runtim.glob")
-		  (file-exists? "runtim.con")
-		  (file-exists? "runtim.ldr")))
+    (if (not (and (file-exists? "runtime.glob")
+		  (file-exists? "runtime.con")
+		  (file-exists? "runtime.ldr")))
 	(begin
-	  (cref/generate-constructors "runtim")
-	  (sf "runtim.con" "runtim.bcon")
-	  (sf "runtim.ldr" "runtim.bldr")))))
+	  (cref/generate-constructors "runtime")
+	  (sf "runtime.con" "runtime.bcon")
+	  (sf "runtime.ldr" "runtime.bldr")))))
 
 ;;; Generate CREF files for CREF subsystem
 (with-working-directory-pathname "cref"
@@ -119,9 +119,9 @@ MIT in each case. |#
     (with-working-directory-pathname "compiler"
       (lambda ()
 	(if (or (and (file-symbolic-link? "machine")
-		     (file-symbolic-link? "comp.cbf")
-		     (file-symbolic-link? "comp.pkg")
-		     (file-symbolic-link? "comp.sf")
+		     (file-symbolic-link? "compiler.cbf")
+		     (file-symbolic-link? "compiler.pkg")
+		     (file-symbolic-link? "compiler.sf")
 		     (file-symbolic-link? "make.com")
 		     (file-symbolic-link? "make.binf"))
 		(let ((types
@@ -152,53 +152,56 @@ MIT in each case. |#
 		    (newline)
 		    (write-string "Enter machine type: ")
 		    (let ((type (read)))
-		      (cond ((not (assq type types))
-			     (beep)
-			     (loop))
-			    ((eq? type 'OTHER)
-			     false)
-			    (else
-			     (let ((directory
-				    (case type
-				      ((ALPHA) "alpha")
-				      ((HP-PA) "spectrum")
-				      ((I386) "i386")
-				      ((MC68030 MC68040) "bobcat")
-				      ((PMAX MIPS) "mips")
-				      ((VAX) "vax")))
-				   (ln-sf
-				    (let ((ln-s
-					   (let ((prim (make-primitive-procedure
-							'FILE-LINK-SOFT)))
-					     (lambda (from to)
-					       (prim (->namestring (merge-pathnames from))
-						     (->namestring (merge-pathnames to)))))))
-				      (lambda (from to)
-					(if (file-exists? to)
-					    (delete-file to))
-					(ln-s from to)))))
-			       (let ((prefix
-				      (string-append "machines/" directory)))
-				 (with-working-directory-pathname prefix
-				   (lambda ()
-				     (case type
-				       ((MC68030)
-					(ln-sf "make020.scm" "make.scm"))
-				       ((MC68040)
-					(ln-sf "make040.scm" "make.scm"))
-				       ((PMAX)
-					(ln-sf "comp.sf-little" "comp.sf")
-					(ln-sf "make.scm-little" "make.scm"))
-				       ((MIPS)
-					(ln-sf "comp.sf-big" "comp.sf")
-					(ln-sf "make.scm-big" "make.scm")))))
-				 (ln-sf prefix "machine")
-				 (ln-sf "machine/comp.cbf" "comp.cbf")
-				 (ln-sf "machine/comp.pkg" "comp.pkg")
-				 (ln-sf "machine/comp.sf" "comp.sf")
-				 (ln-sf "machine/make.com" "make.com")
-				 (ln-sf "machine/make.binf" "make.binf")))
-			     true))))))
+		      (cond
+		       ((not (assq type types))
+			(beep)
+			(loop))
+		       ((eq? type 'OTHER)
+			false)
+		       (else
+			(let ((directory
+			       (case type
+				 ((ALPHA) "alpha")
+				 ((HP-PA) "spectrum")
+				 ((I386) "i386")
+				 ((MC68030 MC68040) "bobcat")
+				 ((PMAX MIPS) "mips")
+				 ((VAX) "vax")))
+			      (ln-sf
+			       (let ((ln-s
+				      (let ((prim (make-primitive-procedure
+						   'FILE-LINK-SOFT)))
+					(lambda (from to)
+					  (prim (->namestring
+						 (merge-pathnames from))
+						(->namestring
+						 (merge-pathnames to)))))))
+				 (lambda (from to)
+				   (if (file-exists? to)
+				       (delete-file to))
+				   (ln-s from to)))))
+			  (let ((prefix
+				 (string-append "machines/" directory)))
+			    (with-working-directory-pathname prefix
+			      (lambda ()
+				(case type
+				  ((MC68030)
+				   (ln-sf "make020.scm" "make.scm"))
+				  ((MC68040)
+				   (ln-sf "make040.scm" "make.scm"))
+				  ((PMAX)
+				   (ln-sf "compiler.sf-little" "compiler.sf")
+				   (ln-sf "make.scm-little" "make.scm"))
+				  ((MIPS)
+				   (ln-sf "compiler.sf-big" "compiler.sf")
+				   (ln-sf "make.scm-big" "make.scm")))))
+			    (ln-sf prefix "machine")
+			    (ln-sf "machine/compiler.cbf" "compiler.cbf")
+			    (ln-sf "machine/compiler.pkg" "compiler.pkg")
+			    (ln-sf "machine/compiler.sf" "compiler.sf")
+			    (ln-sf "machine/make.com" "make.com")
+			    (ln-sf "machine/make.binf" "make.binf")))
+			true))))))
 	    (begin
-	      (load "comp.sf")
-	      (load "comp.cbf"))))))
+	      (load "compiler.sf")
+	      (load "compiler.cbf"))))))
