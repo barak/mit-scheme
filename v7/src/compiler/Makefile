@@ -1,5 +1,5 @@
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.7 1991/06/24 20:23:02 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.8 1991/08/15 18:32:50 cph Exp $
 #
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
@@ -8,7 +8,7 @@
 #
 
 SOURCES = back/foo base/foo fggen/foo fgopt/foo\
-	bobcat/foo rtlbase/foo rtlgen/foo rtlopt/foo
+	machine/foo rtlbase/foo rtlgen/foo rtlopt/foo
 SUBDIRS = $(SOURCES:foo=)
 
 SHELL = /bin/sh
