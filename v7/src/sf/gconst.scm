@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.7 1990/06/25 18:53:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.8 1990/07/15 22:57:43 jinx Exp $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -98,6 +98,7 @@ MIT in each case. |#
     FIX:ANDC
     FIX:DIVIDE
     FIX:GCD
+    FIX:LSH
     FIX:NEGATIVE?
     FIX:NOT
     FIX:OR
