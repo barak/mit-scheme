@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.353 2000/06/22 03:48:49 cph Exp $
+$Id: runtime.pkg,v 14.354 2000/06/26 22:12:59 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -3632,6 +3632,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (else))
   (parent ())
   (export ()
+	  call-with-decode-base64-output-port
+	  call-with-decode-binhex40-output-port
+	  call-with-decode-quoted-printable-output-port
 	  decode-base64:finalize
 	  decode-base64:initialize
 	  decode-base64:update
@@ -3646,4 +3649,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  encode-base64:update
 	  encode-quoted-printable:finalize
 	  encode-quoted-printable:initialize
-	  encode-quoted-printable:update))
+	  encode-quoted-printable:update
+	  make-decode-base64-port
+	  make-decode-binhex40-port
+	  make-decode-quoted-printable-port))

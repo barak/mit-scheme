@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 14.4 2000/06/22 03:45:16 cph Exp $
+;;; $Id: mime-codec.scm,v 14.5 2000/06/26 22:12:54 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -156,6 +156,26 @@
 ;;; strategy is that we process as much of the input packet as
 ;;; possible, then save enough state to continue when the next packet
 ;;; comes along.
+
+(define (call-with-decode-quoted-printable-output-port port text? generator)
+  (let ((port (make-decode-quoted-printable-port port text?)))
+    (let ((v (generator port)))
+      (close-output-port port)
+      v)))
+
+(define (make-decode-quoted-printable-port port text?)
+  (make-port decode-quoted-printable-port-type
+	     (decode-quoted-printable:initialize port text?)))
+
+(define decode-quoted-printable-port-type
+  (make-port-type
+   `((WRITE-SUBSTRING
+      ,(lambda (port string start end)
+	 (decode-quoted-printable:update (port/state port) string start end)))
+     (CLOSE-OUTPUT
+      ,(lambda (port)
+	 (decode-quoted-printable:finalize (port/state port)))))
+   #f))
 
 (define-structure (qp-decoding-context
 		   (conc-name qp-decoding-context/)
@@ -423,6 +443,25 @@
 
 ;;;; Decode BASE64
 
+(define (call-with-decode-base64-output-port port text? generator)
+  (let ((port (make-decode-base64-port port text?)))
+    (let ((v (generator port)))
+      (close-output-port port)
+      v)))
+
+(define (make-decode-base64-port port text?)
+  (make-port decode-base64-port-type (decode-base64:initialize port text?)))
+
+(define decode-base64-port-type
+  (make-port-type
+   `((WRITE-SUBSTRING
+      ,(lambda (port string start end)
+	 (decode-base64:update (port/state port) string start end)))
+     (CLOSE-OUTPUT
+      ,(lambda (port)
+	 (decode-base64:finalize (port/state port)))))
+   #f))
+
 (define-structure (base64-decoding-context
 		   (conc-name base64-decoding-context/)
 		   (constructor decode-base64:initialize (port text?)))
@@ -541,6 +580,26 @@
 
 ;;;; Decode BinHex 4.0
 
+(define (call-with-decode-binhex40-output-port port text? generator)
+  (let ((port (make-decode-binhex40-port port text?)))
+    (let ((v (generator port)))
+      (close-output-port port)
+      v)))
+
+(define (make-decode-binhex40-port port text?)
+  (make-port decode-binhex40-port-type
+	     (decode-binhex40:initialize port text?)))
+
+(define decode-binhex40-port-type
+  (make-port-type
+   `((WRITE-SUBSTRING
+      ,(lambda (port string start end)
+	 (decode-binhex40:update (port/state port) string start end)))
+     (CLOSE-OUTPUT
+      ,(lambda (port)
+	 (decode-binhex40:finalize (port/state port)))))
+   #f))
+
 (define-structure (binhex40-decoding-context
 		   (conc-name binhex40-decoding-context/)
 		   (constructor make-binhex40-decoding-context (port)))
@@ -553,7 +612,8 @@
 
 (define (decode-binhex40:initialize port text?)
   text?					;ignored
-  (make-binhex40-decoding-context port))
+  (make-binhex40-decoding-context
+   (make-binhex40-decompressing-port port)))
 
 (define (decode-binhex40:finalize context)
   (let ((state (binhex40-decoding-context/state context)))
@@ -688,3 +748,55 @@
   (vector-8b-set! binhex40-char-table
 		  (vector-8b-ref binhex40-digit-table code)
 		  code))
+
+;;;; BinHex 4.0 decompression
+
+(define (make-binhex40-decompressing-port port)
+  (make-port binhex40-decompressing-port-type
+	     (make-binhex40-decompressor-state port)))
+
+(define binhex40-decompressing-port-type
+  (make-port-type
+   `((WRITE-CHAR
+      ,(lambda (port char)
+	 (let ((state (port/state port)))
+	   (let ((port (binhex40-decompressor-state/port state))
+		 (char* (binhex40-decompressor-state/char state)))
+	     (cond ((binhex40-decompressor-state/marker-seen? state)
+		    (let ((n (char->integer char)))
+		      (cond ((fix:= n 0)
+			     (if char* (write-char char* port))
+			     (set-binhex40-decompressor-state/char!
+			      state binhex40-compression-marker))
+			    (char*
+			     (do ((i 0 (fix:+ i 1)))
+				 ((fix:= i n))
+			       (write-char char* port))
+			     (set-binhex40-decompressor-state/char! state
+								    #f))))
+		    (set-binhex40-decompressor-state/marker-seen?! state #f))
+		   ((char=? char binhex40-compression-marker)
+		    (set-binhex40-decompressor-state/marker-seen?! state #t))
+		   (else
+		    (if char* (write-char char* port))
+		    (set-binhex40-decompressor-state/char! state char)))))))
+     (CLOSE-OUTPUT
+      ,(lambda (port)
+	 (let ((state (port/state port)))
+	   (let ((port (binhex40-decompressor-state/port state))
+		 (char* (binhex40-decompressor-state/char state)))
+	     (if char*
+		 (write-char char* port))
+	     (if (binhex40-decompressor-state/marker-seen? state)
+		 (write-char binhex40-compression-marker port)))))))
+   #f))
+
+(define-structure (binhex40-decompressor-state
+		   (conc-name binhex40-decompressor-state/)
+		   (constructor make-binhex40-decompressor-state (port)))
+  (port #f read-only #t)
+  (char #f)
+  (marker-seen? #f))
+
+(define-integrable binhex40-compression-marker
+  (integer->char #x90))
