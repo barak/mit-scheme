@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.11 1991/08/06 15:55:10 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.12 1992/01/09 17:49:31 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -155,33 +155,33 @@
 			   (if (zero? bits) "C-" "C-M-")
 			   (string
 			    (ascii->char
-			     (+ code (if (<= #x01 code #x1A) #x60 #x40))))))))))
+			     (+ code
+				(if (<= #x01 code #x1A) #x60 #x40))))))))))
 	    (cond ((< bits 2)
 		   (process-code bits))
 		  ((and handle-prefixes? (< bits 4))
-		   (string-append (if (= 2 bits) "C-^ " "C-z ") (process-code 0)))
+		   (string-append (if (= 2 bits) "C-^ " "C-z ")
+				  (process-code 0)))
 		  (else
 		   (char->name (unmap-alias-key key)))))))))
-
+
 (define (key? object)
   (or (char? object)
       (special-key? object)))
 
 (define (key<? key1 key2)
-  (cond ((char? key2)
-	 (char>? key2
-		 (if (char? key1)
-		     key1
-		     (string-ref (special-key/name key1) 0))))
-	((char? key1)
-	 (not (or (key=? key1 key2)
-		  (key<? key2 key1))))
-	(else (let ((name1 (special-key/name key1))
-		    (name2 (special-key/name key2)))
-		(if (string=? name1 name2)
-		    (< (special-key/bucky-bits key1)
-		       (special-key/bucky-bits key2))
-		    (string<? name1 name2))))))
+  (if (char? key1)
+      (if (char? key2)
+	  (char<? key1 key2)
+	  (<= (char-bits key1) (special-key/bucky-bits key2)))
+      (let ((bits1 (special-key/bucky-bits key1)))
+	(if (char? key2)
+	    (< bits1 (char-bits key2))
+	    (let ((bits2 (special-key/bucky-bits key2)))
+	      (or (< bits1 bits2)
+		  (and (= bits1 bits2)
+		       (string<? (special-key/name key1)
+				 (special-key/name key2)))))))))
 
 (define (key=? key1 key2)
   (if (and (char? key1)
@@ -206,10 +206,7 @@
   (cond ((key? xkey)
 	 (list xkey))
 	((and (not (null? xkey))
-	      (list-of-type? xkey
-			     (lambda (element)
-			       (or (char? element)
-				   (special-key? element)))))
+	      (list-of-type? xkey key?))
 	 xkey)
 	((and (string? xkey)
 	      (not (string-null? xkey)))
