@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rexp.scm,v 1.7 2000/04/13 16:40:04 cph Exp $
+;;; $Id: rexp.scm,v 1.8 2000/04/13 16:56:49 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -36,16 +36,22 @@
 		(for-all? (cdr rexp) rexp?))
 	       ((GROUP OPTIONAL * +)
 		(and (one-arg)
-		     (not (and (pair? rexp)
-			       (memq (car rexp) nongroupable-rexp-types)))))
+		     (not (or (and (string? rexp)
+				   (string-null? rexp))
+			      (and (pair? rexp)
+				   (memq (car rexp) boundary-rexp-types))))))
 	       ((ANY-CHAR LINE-START LINE-END STRING-START STRING-END
 			  WORD-EDGE NOT-WORD-EDGE WORD-START WORD-END
 			  WORD-CHAR NOT-WORD-CHAR)
-		#t)
+		(null? (cdr rexp)))
 	       ((SYNTAX-CHAR NOT-SYNTAX-CHAR)
 		(and (one-arg)
 		     (assq (cadr rexp) syntax-type-alist)))
 	       (else #f))))))
+
+(define boundary-rexp-types
+  '(LINE-START LINE-END STRING-START STRING-END WORD-EDGE NOT-WORD-EDGE
+	       WORD-START WORD-END))
 
 (define syntax-type-alist
   '((WHITESPACE . " ")
@@ -66,17 +72,51 @@
   `(ALTERNATIVES ,@rexps))
 
 (define (rexp-sequence . rexps)
-  `(SEQUENCE ,@(map (lambda (rexp)
-		      (if (and (pair? rexp)
-			       (eq? (car rexp) 'ALTERNATIVES))
-			  (rexp-group rexp)
-			  rexp))
-		    rexps)))
+  (let ((rexps (simplify-sequence-args rexps)))
+    (if (pair? rexps)
+	(if (pair? (cdr rexps))
+	    `(SEQUENCE ,@rexps)
+	    (car rexps))
+	"")))
 
-(define (rexp-group rexp) `(GROUP ,rexp))
-(define (rexp-optional rexp) `(OPTIONAL ,(rexp-groupify rexp)))
-(define (rexp* rexp) `(* ,(rexp-groupify rexp)))
-(define (rexp+ rexp) `(+ ,(rexp-groupify rexp)))
+(define (simplify-sequence-args rexps)
+  (append-map (lambda (rexp)
+		(cond ((and (string? rexp) (string-null? rexp))
+		       '())
+		      ((and (pair? rexp) (eq? 'SEQUENCE (car rexp)))
+		       (cdr rexp))
+		      ((and (pair? rexp) (eq? 'ALTERNATIVES (car rexp)))
+		       (list (rexp-group rexp)))
+		      (else
+		       (list rexp))))
+	      rexps))
+
+(define (rexp-group . rexps)
+  `(GROUP ,(apply rexp-sequence rexps)))
+
+(define (rexp-optional . rexps)
+  `(OPTIONAL ,(rexp-groupify (apply rexp-sequence rexps))))
+
+(define (rexp* . rexps)
+  `(* ,(rexp-groupify (apply rexp-sequence rexps))))
+
+(define (rexp+ . rexps)
+  `(+ ,(rexp-groupify (apply rexp-sequence rexps))))
+
+(define (rexp-groupify rexp)
+  (let ((no-group (lambda () (error "Expression can't be grouped:" rexp))))
+    (cond ((string? rexp)
+	   (case (string-length rexp)
+	     ((0) (no-group))
+	     ((1) rexp)
+	     (else (rexp-group rexp))))
+	  ((pair? rexp)
+	   (cond ((memq (car rexp) boundary-rexp-types)
+		  (no-group))
+		 ((memq (car rexp) '(ALTERNATIVES SEQUENCE OPTIONAL * +))
+		  (rexp-group rexp))
+		 (else rexp)))
+	  (else rexp))))
 
 (define (rexp-any-char) `(ANY-CHAR))
 (define (rexp-line-start) `(LINE-START))
@@ -102,35 +142,6 @@
 	   (cons (car rexp)
 		 (map rexp-case-fold (cdr rexp))))
 	  (else rexp))))
-
-(define (rexp-groupify rexp)
-  (let ((lose (lambda () (error "Malformed rexp:" rexp))))
-    (cond ((string? rexp)
-	   (if (fix:= 1 (string-length rexp))
-	       rexp
-	       (rexp-group rexp)))
-	  ((char-set? rexp)
-	   rexp)
-	  ((pair? rexp)
-	   (cond ((memq (car rexp) grouped-rexp-types)
-		  rexp)
-		 ((memq (car rexp) groupable-rexp-types)
-		  (rexp-group rexp))
-		 ((memq (car rexp) nongroupable-rexp-types)
-		  (error "Expression can't be grouped:" rexp))
-		 (else
-		  (lose))))
-	  (else (lose)))))
-
-(define grouped-rexp-types
-  '(GROUP ANY-CHAR WORD-CHAR NOT-WORD-CHAR SYNTAX-CHAR NOT-SYNTAX-CHAR))
-
-(define groupable-rexp-types
-  '(ALTERNATIVES SEQUENCE OPTIONAL * +))
-
-(define nongroupable-rexp-types
-  '(LINE-START LINE-END STRING-START STRING-END WORD-EDGE NOT-WORD-EDGE
-	       WORD-START WORD-END))
 
 (define (rexp-compile rexp)
   (re-compile-pattern (rexp->regexp rexp) #f))

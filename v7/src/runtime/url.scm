@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: url.scm,v 1.5 2000/04/13 16:40:17 cph Exp $
+;;; $Id: url.scm,v 1.6 2000/04/13 16:58:40 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -52,11 +52,10 @@
 (define url:rexp:hostname
   (let ((tail
 	 (rexp-optional
-	  (rexp-sequence
-	   (rexp*
-	    (char-set-union char-set:alphanumeric (string->char-set "-")))
-	   char-set:alphanumeric))))
-    (rexp-sequence (rexp* (rexp-sequence char-set:alphanumeric tail "."))
+	  (rexp*
+	   (char-set-union char-set:alphanumeric (string->char-set "-")))
+	  char-set:alphanumeric)))
+    (rexp-sequence (rexp* char-set:alphanumeric tail ".")
 		   char-set:alphabetic
 		   tail)))
 
@@ -68,8 +67,7 @@
   (rexp-alternatives url:rexp:hostname url:rexp:hostnumber))
 
 (define url:rexp:hostport
-  (rexp-sequence url:rexp:host
-		 (rexp-optional (rexp-sequence ":" (rexp+ char-set:numeric)))))
+  (rexp-sequence url:rexp:host (rexp-optional ":" (rexp+ char-set:numeric))))
 
 (define (url:string-encoded? string)
   (url:substring-encoded? string 0 (string-length string)))

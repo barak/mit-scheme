@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap-url.scm,v 1.4 2000/04/13 16:42:16 cph Exp $
+;;; $Id: imail-imap-url.scm,v 1.5 2000/04/13 16:58:39 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -193,7 +193,7 @@
 				    imap:rexp:iauth)))
 
 (define imap:rexp:iserver
-  (rexp-sequence (rexp-optional (rexp-sequence imap:rexp:iuserauth "@"))
+  (rexp-sequence (rexp-optional imap:rexp:iuserauth "@")
 		 url:rexp:hostport))
 
 (define imap:rexp:imailboxlist
@@ -213,14 +213,12 @@
 
 (define imap:rexp:imessagelist
   (rexp-sequence imap:rexp:enc-mailbox
-		 (rexp-optional (rexp-sequence "?" imap:rexp:enc-search))
+		 (rexp-optional "?" imap:rexp:enc-search)
 		 (rexp-optional imap:rexp:uidvalidity)))
 
 (define imap:rexp:imessagepart
   (rexp-sequence imap:rexp:enc-mailbox
 		 (rexp-optional imap:rexp:uidvalidity)
 		 imap:rexp:iuid
-		 (rexp-optional
-		  (rexp-sequence (rexp-case-fold "/;SECTION=")
-				 imap:rexp:enc-section))))
-		 
+		 (rexp-optional (rexp-case-fold "/;SECTION=")
+				imap:rexp:enc-section)))
