@@ -1,0 +1,119 @@
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/Attic/triv.con,v 1.1 1989/05/26 16:28:55 jinx Rel $
+
+Copyright (c) 1989 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; "Trivial" constructor needed to bootstrap cref.
+
+(declare (usual-integrations))
+
+(package/add-child!
+ (find-package '())
+ 'cross-reference
+ (in-package (package/environment (find-package '()))
+   (let ((cref/generate-all)
+	 (cref/generate-constructors)
+	 (cref/generate-cref)
+	 (cref/generate-trivial-constructor))
+     (the-environment))))
+(let ((source (package/environment (find-package '( cross-reference))))
+      (destination (package/environment (find-package '()))))
+  (environment-link-name destination source 'cref/generate-all)
+  (environment-link-name destination source 'cref/generate-constructors)
+  (environment-link-name destination source 'cref/generate-cref)
+  (environment-link-name destination source 'cref/generate-trivial-constructor))
+
+(package/add-child!
+ (find-package '(cross-reference))
+ 'balanced-binary-tree
+ (in-package (package/environment (find-package '(cross-reference)))
+   (let ((btree-delete!)
+	 (btree-fringe)
+	 (btree-insert!)
+	 (btree-lookup)
+	 (make-btree))
+     (the-environment))))
+(let ((source (package/environment (find-package '(cross-reference balanced-binary-tree))))
+      (destination (package/environment (find-package '(cross-reference)))))
+  (environment-link-name destination source 'btree-delete!)
+  (environment-link-name destination source 'btree-fringe)
+  (environment-link-name destination source 'btree-insert!)
+  (environment-link-name destination source 'btree-lookup)
+  (environment-link-name destination source 'make-btree))
+
+(package/add-child!
+ (find-package '(cross-reference))
+ 'analyze-file
+ (in-package (package/environment (find-package '(cross-reference)))
+   (let ((analyze/directory)
+	 (read-analyzed-file))
+     (the-environment))))
+(let ((source (package/environment (find-package '(cross-reference analyze-file))))
+      (destination (package/environment (find-package '(cross-reference)))))
+  (environment-link-name destination source 'analyze/directory)
+  (environment-link-name destination source 'read-analyzed-file))
+
+(package/add-child!
+ (find-package '(cross-reference))
+ 'constructor
+ (in-package (package/environment (find-package '(cross-reference)))
+   (let ((construct-constructor)
+	 (construct-loader))
+     (the-environment))))
+(let ((source (package/environment (find-package '(cross-reference constructor))))
+      (destination (package/environment (find-package '(cross-reference)))))
+  (environment-link-name destination source 'construct-constructor)
+  (environment-link-name destination source 'construct-loader))
+
+(package/add-child!
+ (find-package '(cross-reference))
+ 'formatter
+ (in-package (package/environment (find-package '(cross-reference)))
+   (let ((format-packages))
+     (the-environment))))
+(let ((source (package/environment (find-package '(cross-reference formatter))))
+      (destination (package/environment (find-package '(cross-reference)))))
+  (environment-link-name destination source 'format-packages))
+
+(package/add-child!
+ (find-package '(cross-reference))
+ 'reader
+ (in-package (package/environment (find-package '(cross-reference)))
+   (let ((read-file-analyses!)
+	 (read-package-model)
+	 (resolve-references!))
+     (the-environment))))
+(let ((source (package/environment (find-package '(cross-reference reader))))
+      (destination (package/environment (find-package '(cross-reference)))))
+  (environment-link-name destination source 'read-file-analyses!)
+  (environment-link-name destination source 'read-package-model)
+  (environment-link-name destination source 'resolve-references!))
