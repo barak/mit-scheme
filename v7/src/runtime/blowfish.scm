@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.12 1999/08/09 18:27:38 cph Exp $
+$Id: blowfish.scm,v 1.13 1999/08/10 16:59:46 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -93,14 +93,21 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((key (blowfish-set-key key))
 	(input-buffer (make-string 4096))
 	(output-buffer (make-string 4096)))
-    (let loop ((m 0))
-      (let ((n (input-port/read-string! input input-buffer)))
-	(if (not (fix:= 0 n))
-	    (let ((m
-		   (blowfish-cfb64 input-buffer 0 n output-buffer 0
-				   key init-vector m encrypt?)))
-	      (write-substring output-buffer 0 n output)
-	      (loop m)))))))
+    (dynamic-wind
+     (lambda ()
+       unspecific)
+     (lambda ()
+       (let loop ((m 0))
+	 (let ((n (input-port/read-string! input input-buffer)))
+	   (if (not (fix:= 0 n))
+	       (let ((m
+		      (blowfish-cfb64 input-buffer 0 n output-buffer 0
+				      key init-vector m encrypt?)))
+		 (write-substring output-buffer 0 n output)
+		 (loop m))))))
+     (lambda ()
+       (string-fill! input-buffer #\NUL)
+       (string-fill! output-buffer #\NUL)))))
 
 (define (write-blowfish-file-header port)
   (write-string blowfish-file-header-v2 port)
@@ -143,13 +150,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (lambda (port)
       (let ((buffer (make-string 4096))
 	    (context (md5-init)))
-	(let loop ()
-	  (let ((n (read-string! buffer 0 4096 port)))
-	    (if (fix:= 0 n)
-		(md5-final context)
-		(begin
-		  (md5-update context buffer 0 n)
-		  (loop)))))))))
+	(dynamic-wind (lambda ()
+			unspecific)
+		      (lambda ()
+			(let loop ()
+			  (let ((n (read-string! buffer 0 4096 port)))
+			    (if (fix:= 0 n)
+				(md5-final context)
+				(begin
+				  (md5-update context buffer 0 n)
+				  (loop))))))
+		      (lambda ()
+			(string-fill! buffer #\NUL)))))))
 
 (define (md5-sum->number sum)
   (let ((l (string-length sum)))
