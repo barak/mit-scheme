@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.68 2000/05/19 16:32:51 cph Exp $
+;;; $Id: imail-top.scm,v 1.69 2000/05/19 17:50:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -385,7 +385,8 @@ FLAGS should be a comma-separated list of flag names.
 If FLAGS is empty, the last set of flags specified is used.
 With prefix argument N moves forward N messages with these flags."
   (lambda ()
-    (flagged-message-arguments "Move to next message with flags"))
+    (list (command-argument)
+	  (imail-prompt-for-flags "Move to next message with flags")))
   (lambda (n flags)
     (let ((flags (map string-trim (burst-string flags "," #f))))
       (if (null? flags)
@@ -412,17 +413,17 @@ FLAGS should be a comma-separated list of flag names.
 If FLAGS is empty, the last set of flags specified is used.
 With prefix argument N moves backward N messages with these flags."
   (lambda ()
-    (flagged-message-arguments "Move to previous message with flags"))
+    (list (command-argument)
+	  (imail-prompt-for-flags "Move to previous message with flags")))
   (lambda (n flags)
     ((ref-command imail-next-flagged-message) (- n) flags)))
 
-(define (flagged-message-arguments prompt)
-  (list (command-argument)
-	(prompt-for-string prompt
-			   #f
-			   'DEFAULT-TYPE 'INSERTED-DEFAULT
-			   'HISTORY 'IMAIL-NEXT-FLAGGED-MESSAGE
-			   'HISTORY-INDEX 0)))
+(define (imail-prompt-for-flags prompt)
+  (prompt-for-string prompt
+		     #f
+		     'DEFAULT-TYPE 'INSERTED-DEFAULT
+		     'HISTORY 'IMAIL-PROMPT-FOR-FLAGS
+		     'HISTORY-INDEX 0))
 
 (define (move-relative delta predicate noun operation)
   (if (not (= 0 delta))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.10 2000/05/19 17:26:24 cph Exp $
+;;; $Id: imail-summary.scm,v 1.11 2000/05/19 17:50:30 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -53,7 +53,8 @@ If false, the message buffer is updated but not popped up."
   "Display a summary of the selected folder, one line per message.
 Only messages marked with one of the given flags are shown.
 The flags are specified as a comma-separated list of names."
-  "sFlags to summarize by"
+  (lambda ()
+    (list (imail-prompt-for-flags "Flags to summarize by")))
   (lambda (flags-string)
     (imail-summary (string-append "Flags " flags-string)
 		   (let ((flags (parse-comma-list-string flags-string)))
