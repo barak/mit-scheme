@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for MIPS computers.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/mips.h,v 1.3 1990/04/12 21:04:06 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/mips.h,v 1.4 1990/11/29 05:06:40 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -39,5 +39,8 @@ MIT in each case. */
     libg but ULTRIX on the pmax doesn't! */
 #define LIB_DEBUG
 
-/* The following allows optimization of interp.c */
-#define C_SWITCH_MACHINE -Olimit 2000  -DTYPE_CODE_LENGTH=6
+/* The "-Olimit" switch is needed because some procedures are larger
+   than the built-in optimization limit.  The "-w" switch says not to
+   report warnings -- there are many of them, all harmless, that would
+   not be reported if this were an ANSI compiler. */
+#define C_SWITCH_MACHINE -Olimit 2000 -w -DTYPE_CODE_LENGTH=6
