@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.4 1995/01/22 17:13:24 adams Exp $
+$Id: cleanup.scm,v 1.5 1995/01/28 17:13:24 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -43,12 +43,17 @@ MIT in each case. |#
 (define-macro (define-cleanup-handler keyword bindings . body)
   (let ((proc-name (symbol-append 'CLEANUP/ keyword)))
     (call-with-values
-     (lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
-     (lambda (names code)
-       `(DEFINE ,proc-name
-	  (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
-	    (NAMED-LAMBDA (,proc-name ENV FORM)
-	      (CLEANUP/REMEMBER ,code FORM))))))))
+	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+	     (NAMED-LAMBDA (,proc-name ENV FORM)
+	       (LET ((TRANSFORM-CODE (LAMBDA () ,code)))
+		 (LET ((INFO (CLEANUP/GET-DBG-INFO ENV FORM)))
+		   (LET ((CODE (TRANSFORM-CODE)))
+		     (IF INFO
+			 (CODE-REWRITE/REMEMBER* CODE INFO))
+		     CODE))))))))))
 
 (define-cleanup-handler LOOKUP (env name)
   (let ((place (assq name env)))
@@ -121,9 +126,17 @@ MIT in each case. |#
 
 (define-cleanup-handler CALL (env rator cont #!rest rands)
   (define (default)
-    `(CALL ,(cleanup/expr env rator)
-           ,(cleanup/expr env cont)
-           ,@(cleanup/expr* env rands)))
+    (let* ((rator* (cleanup/expr env rator))
+	   (result
+	    `(CALL ,rator*
+		   ,(cleanup/expr env cont)
+		   ,@(cleanup/expr* env rands))))
+      (and compiler:guru?
+	   (QUOTE/? rator*)
+	   (for-all? (cddr result) QUOTE/?)
+	   (hash-table/get *cleanup/delta-rewriters* (QUOTE/text rator*) 'BAD)
+	   (internal-warning "Missed delta:" result))
+      result))
   (cond ((LAMBDA/? rator)
          (let ((lambda-list (lambda/formals rator))
                (lambda-body (lambda/body rator)))
@@ -187,6 +200,28 @@ MIT in each case. |#
                                        `(CALL ,lam-expr ,cont ,@rands)))))
                  (else
                   call*))))))
+
+
+(define *cleanup/delta-rewriters* (make-eq-hash-table))
+(for-each (lambda (item)
+	    (hash-table/put! *cleanup/delta-rewriters* item #F))
+	  (list cons
+		%cons
+		%fetch-continuation
+		%fetch-environment
+		%fetch-stack-closure
+		%make-cell
+		%make-read-variable-cache
+		%make-write-variable-cache
+		%make-operator-variable-cache
+		%make-remote-operator-variable-cache
+		vector
+		%vector
+		%vector-cons
+		%floating-vector-cons
+		string-allocate
+		%string-allocate
+		%vector-index))
 
 (define (cleanup/call/maybe-flush-closure call* env match-result)
   (let ((lambda-expr    (cadr (assq cleanup/?lam-expr match-result)))
@@ -459,3 +494,29 @@ MIT in each case. |#
 
 (define (cleanup/remember new old)
   (code-rewrite/remember new old))
+
+(define (cleanup/get-dbg-info env expr)
+  (cond ((code-rewrite/original-form/previous expr)
+         => (lambda (dbg-info)
+              ;; Copy the dbg info, rewriting the expressions
+              (let* ((block     (new-dbg-form/block dbg-info))
+                     (block*    (new-dbg-block/copy-transforming
+                                 (lambda (expr)
+                                   (cleanup/copy-dbg-kmp expr env))
+                                 block))
+                     (dbg-info* (new-dbg-form/new-block dbg-info block*)))
+                dbg-info*)))
+        (else #F)))
+
+
+(define (cleanup/copy-dbg-kmp expr env)
+  (form/copy-transforming
+   (lambda (form copy uninteresting)
+     copy
+     (cond ((and (LOOKUP/? form)
+		 (assq (lookup/name form) env))
+	    => (lambda (place)
+		 (form/copy (cadr place))))
+	   (else
+	    (uninteresting form))))
+   expr))
