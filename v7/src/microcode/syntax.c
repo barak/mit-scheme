@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.9 1988/08/15 20:56:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.10 1989/03/14 01:57:10 cph Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -135,9 +135,9 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
   CHECK_ARG (1, SYNTAX_TABLE_P);
   PRIMITIVE_RETURN
     (c_char_to_scheme_char
-     ((char)
-      (SYNTAX_ENTRY_CODE
-       (SYNTAX_TABLE_REF ((ARG_REF (1)), (arg_ascii_char (2)))))));
+     (syntax_code_spec
+      [SYNTAX_ENTRY_CODE
+       (SYNTAX_TABLE_REF ((ARG_REF (1)), (arg_ascii_char (2))))]));
 }
 
 /* Parser Initialization */
@@ -389,7 +389,7 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 		  break;
 		}
 	    }
-	  break;
+	  continue;
 	}
 
       switch (SYNTAX_ENTRY_CODE (sentry))
@@ -477,7 +477,7 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 		}
 	    }
 	  MOVE_RIGHT (start);
-	  WIN_IF ((depth == 0) || sexp_flag);
+	  WIN_IF ((depth == 0) && sexp_flag);
 	  break;
 
 	default:
@@ -517,13 +517,13 @@ DEFINE_PRIMITIVE ("SCAN-LIST-BACKWARD", Prim_scan_list_backward, 7, 7, 0)
 		  READ_LEFT (start, sentry);
 		  LOSE_IF_LEFT_END (start);
 		  if ((SYNTAX_ENTRY_COMSTART_SECOND (sentry)) &&
-		      (SYNTAX_ENTRY_COMSTART_SECOND (PEEK_LEFT (start))))
+		      (SYNTAX_ENTRY_COMSTART_FIRST (PEEK_LEFT (start))))
 		    {
 		      MOVE_LEFT (start);
 		      break;
 		    }
 		}
-	      break;
+	      continue;
 	    }
 	}
 
