@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.h,v 1.6 1992/02/04 00:48:55 jinx Exp $
+$Id: osscheme.h,v 1.7 1992/08/29 13:04:26 jinx Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,7 +55,7 @@ extern void EXFUN (error_out_of_processes, (void));
 extern void EXFUN (error_floating_point_exception, (void));
 
 extern void EXFUN (termination_eof, (void));
-extern void EXFUN (termination_normal, (int));
+extern void EXFUN (termination_normal, (CONST int));
 extern void EXFUN (termination_init_error, (void));
 extern void EXFUN (termination_signal, (CONST char * signal_name));
 extern void EXFUN (termination_trap, (void));
