@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: win32com.scm,v 1.5 1996/05/03 06:58:21 cph Exp $
+;;;	$Id: win32com.scm,v 1.6 1996/05/03 06:58:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -160,7 +160,3 @@ desktop."
       (update-name win32-screen/set-name!
 		   (ref-variable frame-name-format buffer)
 		   (ref-variable frame-name-length buffer)))))
-
-(define edwin-command$set-screen-position edwin-command$set-frame-position)
-(define edwin-command$show-screen-size edwin-command$show-frame-size)
-(define edwin-command$show-screen-position edwin-command$show-frame-position)
