@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.9 1987/04/12 01:14:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.10 1987/04/18 00:26:35 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -441,18 +441,23 @@ MIT in each case. |#
 		  (ic-locative closure-block block offset)))))
 	  ((closure-block? block)
 	   (let ((closure-block (procedure-closure-block procedure)))
-	     (define (loop variables n receiver)
-	       (if (null? variables)
-		   (receiver offset n '())
-		   (loop (cdr variables) (1+ n)
-		     (lambda (offset n pushes)
-		       (receiver (1+ offset) n
-				 (cons (rtl:make-push
-					(rtl:make-fetch
-					 (find-closure-variable closure-block
-								(car variables)
-								offset)))
-				       pushes))))))
+	     (define (loop variables n)
+	       (cond ((null? variables)
+		      (return-3 offset n '()))
+		     ((integrated-vnode? (car variables))
+		      (loop (cdr variables) n))
+		     (else 
+		      (transmit-values (loop (cdr variables) (1+ n))
+			(lambda (offset n pushes)
+			  (return-3
+			   (1+ offset)
+			   n
+			   (cons (rtl:make-push
+				  (rtl:make-fetch
+				   (find-closure-variable closure-block
+							  (car variables)
+							  offset)))
+				 pushes)))))))
 
 	     (define (make-frame n pushes)
 	       (scfg-append! (scfg*->scfg!
@@ -461,7 +466,7 @@ MIT in each case. |#
 				     pushes)))
 			     (receiver (rtl:interpreter-call-result:enclose))))
 
-	     (loop (block-bound-variables block) 0
+	     (transmit-values (loop (block-bound-variables block) 0)
 	       (lambda (offset n pushes)
 		 (let ((parent (block-parent block)))
 		   (if parent
