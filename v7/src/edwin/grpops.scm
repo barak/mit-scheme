@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: grpops.scm,v 1.24 1999/01/02 06:11:34 cph Exp $
+;;; $Id: grpops.scm,v 1.25 1999/11/01 03:40:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -129,8 +129,8 @@
 			     (group-gap-start group)
 			     (group-text group)
 			     new-end)
-	   (vector-set! group group-index:gap-start new-start)
-	   (vector-set! group group-index:gap-end new-end)))
+	   (set-group-gap-start! group new-start)
+	   (set-group-gap-end! group new-end)))
 	((fix:> new-start (group-gap-start group))
 	 (let ((new-end (fix:+ new-start (group-gap-length group))))
 	   (%substring-move! (group-text group)
@@ -138,12 +138,12 @@
 			     new-end
 			     (group-text group)
 			     (group-gap-start group))
-	   (vector-set! group group-index:gap-start new-start)
-	   (vector-set! group group-index:gap-end new-end)))))
+	   (set-group-gap-start! group new-start)
+	   (set-group-gap-end! group new-end)))))
 
 (define (finish-group-insert! group index n)
-  (vector-set! group group-index:gap-start (fix:+ index n))
-  (vector-set! group group-index:gap-length (fix:- (group-gap-length group) n))
+  (set-group-gap-start! group (fix:+ index n))
+  (set-group-gap-length! group (fix:- (group-gap-length group) n))
   (if (group-start-changes-index group)
       (begin
 	(if (fix:< index (group-start-changes-index group))
@@ -164,8 +164,7 @@
 		      (mark-left-inserting? (system-pair-car marks)))))
 	(set-mark-index! (system-pair-car marks)
 			 (fix:+ (mark-index (system-pair-car marks)) n))))
-  (vector-set! group group-index:modified-tick
-	       (fix:+ (group-modified-tick group) 1))
+  (set-group-modified-tick! group (fix:+ (group-modified-tick group) 1))
   (undo-record-insertion! group index (fix:+ index n))
   ;; The MODIFIED? bit must be set *after* the undo recording.
   (set-group-modified?! group true)
@@ -208,9 +207,9 @@
 	  ;; The undo recording must occur *before* the deletion.
 	  (undo-record-deletion! group start end)
 	  (let ((gap-end (fix:+ end gap-length)))
-	    (vector-set! group group-index:gap-start start)
-	    (vector-set! group group-index:gap-end gap-end)
-	    (vector-set! group group-index:gap-length (fix:- gap-end start))
+	    (set-group-gap-start! group start)
+	    (set-group-gap-end! group gap-end)
+	    (set-group-gap-length! group (fix:- gap-end start))
 	    (if (and (group-shrink-length group)
 		     (fix:<= (fix:- (string-length text)
 				    (fix:- gap-end start))
@@ -240,8 +239,7 @@
 		   (set-mark-index!
 		    (system-pair-car marks)
 		    (fix:- (mark-index (system-pair-car marks)) n))))))
-	(vector-set! group group-index:modified-tick
-		     (fix:+ (group-modified-tick group) 1))
+	(set-group-modified-tick! group (fix:+ (group-modified-tick group) 1))
 	;; The MODIFIED? bit must be set *after* the undo recording.
 	(set-group-modified?! group true)
 	(if (group-text-properties group)
@@ -255,14 +253,14 @@
   (let ((text (group-text group))
 	(gap-start (group-gap-start group))
 	(gap-end (group-gap-end group))
-	(reallocation-factor (group-reallocation-factor group)))
+	(realloc-factor (group-reallocation-factor group)))
     (let ((text-length (string-length text))
 	  (gap-delta (- new-gap-start gap-start)))
       (let ((n-chars (- text-length (group-gap-length group))))
 	(let ((new-text-length
 	       (let ((minimum-text-length (+ n-chars n)))
 		 (let loop ((length (if (= text-length 0) 1 text-length)))
-		   (let ((length (ceiling (* length reallocation-factor))))
+		   (let ((length (ceiling (* length realloc-factor))))
 		     (if (< length minimum-text-length)
 			 (loop length)
 			 length))))))
@@ -285,26 +283,25 @@
 		       (%substring-move! text gap-end ngsp new-text gap-start)
 		       (%substring-move! text ngsp text-length
 					 new-text new-gap-end))))
-	      (vector-set! group group-index:text new-text)
-	      (vector-set! group group-index:gap-start new-gap-start)
-	      (vector-set! group group-index:gap-end new-gap-end)
-	      (vector-set! group group-index:gap-length new-gap-length))))))
-    (memoize-shrink-length! group reallocation-factor)))
+	      (set-group-text! group new-text)
+	      (set-group-gap-start! group new-gap-start)
+	      (set-group-gap-end! group new-gap-end)
+	      (set-group-gap-length! group new-gap-length))))))
+    (memoize-shrink-length! group realloc-factor)))
 
 (define (shrink-group! group)
   (let ((text (group-text group))
 	(gap-length (group-gap-length group))
-	(reallocation-factor (group-reallocation-factor group)))
+	(realloc-factor (group-reallocation-factor group)))
     (let ((text-length (string-length text)))
       (let ((n-chars (- text-length gap-length)))
 	(let ((new-text-length
 	       (if (= n-chars 0)
 		   0
 		   (let loop ((length text-length))
-		     (let ((length (floor (/ length reallocation-factor))))
+		     (let ((length (floor (/ length realloc-factor))))
 		       (let ((sl
-			      (compute-shrink-length length
-						     reallocation-factor)))
+			      (compute-shrink-length length realloc-factor)))
 			 (if (< sl n-chars)
 			     length
 			     (loop length)))))))
@@ -312,18 +309,18 @@
 	  (let ((delta (- text-length new-text-length)))
 	    (let ((new-gap-end (- gap-end delta)))
 	      (%substring-move! text gap-end text-length text new-gap-end)
-	      (vector-set! group group-index:gap-end new-gap-end)
-	      (vector-set! group group-index:gap-length (- gap-length delta))))
+	      (set-group-gap-end! group new-gap-end)
+	      (set-group-gap-length! group (- gap-length delta))))
 	  (set-string-maximum-length! text new-text-length))))
-    (memoize-shrink-length! group reallocation-factor)))
+    (memoize-shrink-length! group realloc-factor)))
 
-(define (memoize-shrink-length! group reallocation-factor)
-  (vector-set! group group-index:shrink-length
-	       (compute-shrink-length (string-length (group-text group))
-				      reallocation-factor)))
+(define (memoize-shrink-length! group realloc-factor)
+  (set-group-shrink-length!
+   group
+   (compute-shrink-length (string-length (group-text group)) realloc-factor)))
 
-(define (compute-shrink-length length reallocation-factor)
-  (floor (/ (floor (/ length reallocation-factor)) reallocation-factor)))
+(define (compute-shrink-length length realloc-factor)
+  (floor (/ (floor (/ length realloc-factor)) realloc-factor)))
 
 (define (group-reallocation-factor group)
   ;; We assume the result satisfies (LAMBDA (G) (AND (REAL? G) (> G 1)))

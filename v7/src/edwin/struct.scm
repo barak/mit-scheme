@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: struct.scm,v 1.91 1999/01/02 06:11:34 cph Exp $
+;;; $Id: struct.scm,v 1.92 1999/11/01 03:40:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -62,95 +62,47 @@
 
 ;;;; Groups
 
-(define-named-structure "Group"
-  ;; The microcode file "edwin.h" depends on the fields TEXT,
-  ;; GAP-START, GAP-LENGTH, GAP-END, START-MARK, and END-MARK.
-  text
-  gap-start
-  gap-length
-  gap-end
-  marks
+(define-structure (group
+		   (type vector)
+		   (named)
+		   (constructor %make-group (buffer)))
+  ;; The microcode file "edwin.h" depends on this structure being a
+  ;; named vector, and knows the indexes of the fields TEXT,
+  ;; GAP-START, GAP-LENGTH, GAP-END, START-MARK, END-MARK, and
+  ;; MODIFIED?.
+  (text (string-allocate 0))
+  (gap-start 0)
+  (gap-length 0)
+  (gap-end 0)
+  (marks '())
   start-mark
   end-mark
-  writable?
+  (writable? #t)
   display-start
   display-end
-  start-changes-index
-  end-changes-index
-  modified-tick
-  clip-daemons
-  undo-data
-  modified?
-  point
+  (start-changes-index #f)
+  (end-changes-index #f)
+  (modified-tick 0)
+  (clip-daemons '())
+  (undo-data #f)
+  (modified? #f)
+  %point
   buffer
-  shrink-length
-  text-properties
-  %hash-number)
+  (shrink-length 0)
+  (text-properties #f)
+  (%hash-number #f))
 
-(define-integrable (set-group-marks! group marks)
-  (vector-set! group group-index:marks marks))
-
-(define-integrable (set-group-start-mark! group start)
-  (vector-set! group group-index:start-mark start))
-
-(define-integrable (set-group-end-mark! group end)
-  (vector-set! group group-index:end-mark end))
-
-(define-integrable (set-group-writable?! group writable?)
-  (vector-set! group group-index:writable? writable?))
-
-(define-integrable (set-group-display-start! group start)
-  (vector-set! group group-index:display-start start))
-
-(define-integrable (set-group-display-end! group end)
-  (vector-set! group group-index:display-end end))
-
-(define-integrable (set-group-start-changes-index! group start)
-  (vector-set! group group-index:start-changes-index start))
-
-(define-integrable (set-group-end-changes-index! group end)
-  (vector-set! group group-index:end-changes-index end))
-
-(define-integrable (set-group-modified-tick! group tick)
-  (vector-set! group group-index:modified-tick tick))
-
-(define-integrable (set-group-undo-data! group undo-data)
-  (vector-set! group group-index:undo-data undo-data))
-
-(define-integrable (set-group-modified?! group sense)
-  (vector-set! group group-index:modified? sense))
-
-(define-integrable (set-group-text-properties! group properties)
-  (vector-set! group group-index:text-properties properties))
-
-(define-integrable (set-group-%hash-number! group n)
-  (vector-set! group group-index:%hash-number n))
+(define-integrable group-point group-%point)
 
 (define (make-group buffer)
-  (let ((group (%make-group)))
-    (vector-set! group group-index:text (string-allocate 0))
-    (vector-set! group group-index:gap-start 0)
-    (vector-set! group group-index:gap-length 0)
-    (vector-set! group group-index:gap-end 0)
-    (vector-set! group group-index:marks '())
-    (let ((start (make-permanent-mark group 0 false)))
-      (vector-set! group group-index:start-mark start)
-      (vector-set! group group-index:display-start start))
-    (let ((end (make-permanent-mark group 0 true)))
-      (vector-set! group group-index:end-mark end)
-      (vector-set! group group-index:display-end end))
-    (vector-set! group group-index:writable? #t)
-    (vector-set! group group-index:start-changes-index false)
-    (vector-set! group group-index:end-changes-index false)
-    (vector-set! group group-index:modified-tick 0)
-    (vector-set! group group-index:clip-daemons '())
-    (vector-set! group group-index:undo-data false)
-    (vector-set! group group-index:modified? false)
-    (vector-set! group group-index:point (make-permanent-mark group 0 true))
-    (vector-set! group group-index:buffer buffer)
-    (vector-set! group group-index:shrink-length 0)
-    (vector-set! group group-index:text-properties false)
-    (vector-set! group group-index:%hash-number #f)
+  (let ((group (%make-group buffer)))
+    (let ((start (make-permanent-mark group 0 #f)))
+      (set-group-start-mark! group start)
+      (set-group-display-start! group start))
+    (let ((end (make-permanent-mark group 0 #t)))
+      (set-group-end-mark! group end)
+      (set-group-display-end! group end))
+    (set-group-%point! group (make-permanent-mark group 0 #t))
     group))
 
 (define (group-length group)
@@ -218,13 +170,13 @@
 	 (group-gap-start group))))
 
 (define-integrable (set-group-point! group point)
-  (vector-set! group group-index:point (mark-left-inserting-copy point)))
+  (set-group-%point! group (mark-left-inserting-copy point)))
 
 (define (group-absolute-start group)
-  (make-temporary-mark group 0 false))
+  (make-temporary-mark group 0 #f))
 
 (define (group-absolute-end group)
-  (make-temporary-mark group (group-length group) true))
+  (make-temporary-mark group (group-length group) #t))
 
 (define (group-hash-number group)
   (or (group-%hash-number group)
@@ -253,25 +205,25 @@
 (define (with-group-text-clipped! group start end thunk)
   (let ((old-text-start)
 	(old-text-end)
-	(new-text-start (make-permanent-mark group start false))
-	(new-text-end (make-permanent-mark group end true)))
+	(new-text-start (make-permanent-mark group start #f))
+	(new-text-end (make-permanent-mark group end #t)))
     (unwind-protect (lambda ()
 		      (set! old-text-start (group-start-mark group))
 		      (set! old-text-end (group-end-mark group))
-		      (vector-set! group group-index:start-mark new-text-start)
-		      (vector-set! group group-index:end-mark new-text-end))
+		      (set-group-start-mark! group new-text-start)
+		      (set-group-end-mark! group new-text-end))
 		    thunk
 		    (lambda ()
 		      (set! new-text-start (group-start-mark group))
 		      (set! new-text-end (group-end-mark group))
-		      (vector-set! group group-index:start-mark old-text-start)
-		      (vector-set! group group-index:end-mark old-text-end)))))
+		      (set-group-start-mark! group old-text-start)
+		      (set-group-end-mark! group old-text-end)))))
 
 (define (group-text-clip group start end)
-  (let ((start (make-permanent-mark group start false))
-	(end (make-permanent-mark group end true)))
-    (vector-set! group group-index:start-mark start)
-    (vector-set! group group-index:end-mark end)))
+  (let ((start (make-permanent-mark group start #f))
+	(end (make-permanent-mark group end #t)))
+    (set-group-start-mark! group start)
+    (set-group-end-mark! group end)))
 
 (define (record-clipping! group start end)
   (let ((buffer (group-buffer group)))
@@ -281,7 +233,7 @@
 		    (let ((display-start (mark-index display-start)))
 		      (or (fix:< display-start start)
 			  (fix:> display-start end))))))
-	(set-buffer-display-start! buffer false)))
+	(set-buffer-display-start! buffer #f)))
   (invoke-group-daemons! (group-clip-daemons group) group start end))
 
 (define (invoke-group-daemons! daemons group start end)
@@ -292,14 +244,10 @@
 	  (loop (cdr daemons))))))
 
 (define (add-group-clip-daemon! group daemon)
-  (vector-set! group
-	       group-index:clip-daemons
-	       (cons daemon (vector-ref group group-index:clip-daemons))))
+  (set-group-clip-daemons! group (cons daemon (group-clip-daemons group))))
 
 (define (remove-group-clip-daemon! group daemon)
-  (vector-set! group
-	       group-index:clip-daemons
-	       (delq! daemon (vector-ref group group-index:clip-daemons))))
+  (set-group-clip-daemons! group (delq! daemon (group-clip-daemons group))))
 
 (define (group-local-ref group variable)
   (variable-local-value (let ((buffer (group-buffer group)))
@@ -339,16 +287,16 @@
 					    " right"))))))
   ;; The microcode file "edwin.h" depends on the definition of this
   ;; structure.
-  (group false read-only true)
-  (index false)
-  (left-inserting? false read-only true))
+  (group #f read-only #t)
+  (index #f)
+  (left-inserting? #f read-only #t))
 
 (define (guarantee-mark mark)
   (if (not (mark? mark)) (error "not a mark" mark))
   mark)
 
 (define-integrable (make-mark group index)
-  (make-temporary-mark group index true))
+  (make-temporary-mark group index #t))
 
 (define (move-mark-to! mark target)
   (set-mark-index! mark (mark-index target)))
@@ -363,19 +311,19 @@
 
 (define (mark-right-inserting mark)
   (if (mark-left-inserting? mark)
-      (make-permanent-mark (mark-group mark) (mark-index mark) false)
+      (make-permanent-mark (mark-group mark) (mark-index mark) #f)
       (mark-permanent! mark)))
 
 (define (mark-right-inserting-copy mark)
-  (make-permanent-mark (mark-group mark) (mark-index mark) false))
+  (make-permanent-mark (mark-group mark) (mark-index mark) #f))
 
 (define (mark-left-inserting mark)
   (if (mark-left-inserting? mark)
       (mark-permanent! mark)
-      (make-permanent-mark (mark-group mark) (mark-index mark) true)))
+      (make-permanent-mark (mark-group mark) (mark-index mark) #t)))
 
 (define (mark-left-inserting-copy mark)
-  (make-permanent-mark (mark-group mark) (mark-index mark) true))
+  (make-permanent-mark (mark-group mark) (mark-index mark) #t))
 
 (define (make-permanent-mark group index left-inserting?)
   (let ((mark (make-temporary-mark group index left-inserting?)))
@@ -547,7 +495,7 @@
     (if (null? marks)
 	(begin
 	  (set-group-marks! group '())
-	  false)
+	  #f)
 	(let ((mark (system-pair-car marks)))
 	  (cond ((not mark)
 		 (scan-head (system-pair-cdr marks)))
@@ -577,7 +525,7 @@
     (if (null? marks)
 	(begin
 	  (system-pair-set-cdr! previous '())
-	  false)
+	  #f)
 	(let ((mark (system-pair-car marks)))
 	  (if (not mark)
 	      (skip-nulls previous (system-pair-cdr marks))

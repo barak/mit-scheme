@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.64 1999/01/28 03:54:36 cph Exp $
+;;; $Id: macros.scm,v 1.65 1999/11/01 03:40:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -25,45 +25,6 @@
 (define edwin-syntax-table
   (make-syntax-table syntax-table/system-internal))
 
-;;; DEFINE-NAMED-STRUCTURE is a simple alternative to DEFSTRUCT,
-;;; which defines a vector-based tagged data structure.  The first
-;;; argument is a string, which will be stored in the structure's 0th
-;;; slot.  The remaining arguments are symbols, which should be the
-;;; names of the slots.  Do not use the slot names %TAG or %SIZE.
-
-(syntax-table-define edwin-syntax-table 'DEFINE-NAMED-STRUCTURE
-  (lambda (name . slots)
-    (let ((name (if (symbol? name) name (intern name)))
-	  (indexes
-	   (let loop ((slots slots) (index 1))
-	     (if (null? slots)
-		 '()
-		 (cons index (loop (cdr slots) (+ index 1)))))))
-      (let ((tag-name (symbol-append '% name '-TAG)))
-	`(BEGIN
-	   (DEFINE ,tag-name
-	     (MAKE-DEFINE-STRUCTURE-TYPE 'VECTOR
-					 ',name
-					 ',slots
-					 ',indexes
-					 (UNPARSER/STANDARD-METHOD ',name)))
-	   (DEFINE (,(symbol-append '%MAKE- name))
-	     (LET ((,name (MAKE-VECTOR ,(+ (length slots) 1) '())))
-	       (VECTOR-SET! ,name 0 ,tag-name)
-	       ,name))
-	   (DEFINE (,(symbol-append name '?) OBJECT)
-	     (AND (VECTOR? OBJECT)
-		  (NOT (ZERO? (VECTOR-LENGTH OBJECT)))
-		  (EQ? ,tag-name (VECTOR-REF OBJECT 0))))
-	   ,@(append-map
-	      (lambda (slot index)
-		`((DEFINE-INTEGRABLE (,(symbol-append name '- slot) ,name)
-		    (VECTOR-REF ,name ,index))
-		  (DEFINE-INTEGRABLE ,(symbol-append name '-INDEX: slot)
-		    ,index)))
-	      slots
-	      indexes))))))
-
 (syntax-table-define edwin-syntax-table 'DEFINE-COMMAND
   (lambda (name description interactive procedure)
     (let ((name (canonicalize-name name)))
