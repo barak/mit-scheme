@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.56 1996/02/15 22:30:52 cph Exp $
+@comment $Id: scheme.texinfo,v 1.57 1996/04/04 23:25:13 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -108,9 +108,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.55 beta
+@subtitle Edition 1.57
 @subtitle for Scheme Release 7.4
-@subtitle 15 Feb 1996
+@subtitle 4 April 1996
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -234,7 +234,7 @@ Special Forms
 
 * Lambda Expressions::          
 * Lexical Binding::             
-* Fluid Binding::               
+* Dynamic Binding::               
 * Definitions::                 
 * Assignments::                 
 * Quoting::                     
@@ -675,9 +675,11 @@ message is shown, prefaced by @samp{@error{}}:
 An example that shows printed output marks it with @samp{@print{}}:
 
 @example
+@group
 (begin (write 'foo) 'bar)
      @print{} foo
      @result{} bar
+@end group
 @end example
 
 @cindex unspecified result (defn)
@@ -1114,10 +1116,10 @@ Every object satisfies at most one of the following predicates (but
 
 @example
 @group
-bit-string?     environment?    pathname?       string?
-boolean?        null?           port?           symbol?
-cell?           number?         procedure?      vector?
-char?           pair?           promise?        weak-pair?
+bit-string?     environment?    port?           symbol?
+boolean?        null?           procedure?      vector?
+cell?           number?         promise?        weak-pair?
+char?           pair?           string?
 condition?
 @end group
 @end example
@@ -1268,11 +1270,13 @@ position), it is poor programming practice.
 Here are some examples of identifiers:
 
 @example
+@group
 lambda             q
 list->vector       soup
 +                  V17a
 <=?                a34kTMNs
 the-word-recursion-has-many-meanings
+@end group
 @end example
 
 @node Uppercase and Lowercase, Naming Conventions, Identifiers, Lexical Conventions
@@ -1414,7 +1418,7 @@ This character sequence introduces a character constant
 This character sequence introduces a vector constant (@pxref{Vectors}).
 A close parenthesis, @samp{)}, terminates a vector constant.
 
-@item #e #i #b #o #d #x
+@item #e #i #b #o #d #l #s #x
 These character sequences are used in the notation for numbers
 (@pxref{Numbers}).
 
@@ -1436,6 +1440,23 @@ This notation is an MIT Scheme extension.
 @item #*
 This character sequence introduces a bit string (@pxref{Bit Strings}).
 This notation is an MIT Scheme extension.
+
+@item #[
+This character sequence is used to denote objects that do not have a
+readable external representation (@pxref{Custom Output}).  A close
+bracket, @samp{]}, terminates the object's notation.  This notation is
+an MIT Scheme extension.
+
+@item #@@
+This character sequence is a convenient shorthand used to refer to
+objects by their hash number (@pxref{Custom Output}).  This notation is
+an MIT Scheme extension.
+
+@item #=
+@item ##
+These character sequences introduce a notation used to show circular
+structures in printed output, or to denote them in input.  The notation
+works much like that in Common Lisp, and is an MIT Scheme extension.
 @end table
 
 @node Expressions,  , Lexical Conventions, Overview
@@ -1466,10 +1487,12 @@ must be @emph{quoted} (@pxref{Quoting}); but some external
 representations can be used without quotation.
 
 @example
+@group
 "abc"                                   @result{}  "abc"
 145932                                  @result{}  145932
 #t                                      @result{}  #t
 #\a                                     @result{}  #\a
+@end group
 @end example
 
 The external representation of numeric constants, string constants,
@@ -1490,8 +1513,10 @@ stored in the location to which the variable is bound.  An error is
 signalled if the referenced variable is unbound or unassigned.
 
 @example
+@group
 (define x 28)
 x                                       @result{}  28
+@end group
 @end example
 
 @node Special Form Syntax, Procedure Call Syntax, Variable References, Expressions
@@ -1595,7 +1620,7 @@ This chapter describes the basic Scheme special forms.
 @menu
 * Lambda Expressions::          
 * Lexical Binding::             
-* Fluid Binding::               
+* Dynamic Binding::               
 * Definitions::                 
 * Assignments::                 
 * Quoting::                     
@@ -1733,6 +1758,7 @@ arguments.
 Some examples of @code{lambda} expressions:
 
 @example
+@group
 (lambda (x) (+ x x))            @result{}  #[compound-procedure 53]
 
 ((lambda (x) (+ x x)) 4)                @result{}  8
@@ -1746,6 +1772,7 @@ Some examples of @code{lambda} expressions:
   (let ((x 4))
     (lambda (y) (+ x y))))
 (foo 6)                                 @result{}  10
+@end group
 @end example
 @end deffn
 
@@ -1768,7 +1795,7 @@ that means ``unnamed''.
 @end example
 @end deffn
 
-@node Lexical Binding, Fluid Binding, Lambda Expressions, Special Forms
+@node Lexical Binding, Dynamic Binding, Lambda Expressions, Special Forms
 @section Lexical Binding
 
 @cindex lexical binding expression
@@ -1801,8 +1828,10 @@ case the corresponding @var{variable}s are unassigned.
 Note that the following are equivalent:
 
 @example
+@group
 (let ((@var{variable} @var{init}) @dots{}) @var{expression} @var{expression} @dots{})
 ((lambda (@var{variable} @dots{}) @var{expression} @var{expression} @dots{}) @var{init} @dots{})
+@end group
 @end example
 
 Some examples:
@@ -1910,11 +1939,11 @@ all the @var{init}s are @code{lambda} or @code{delay} expressions and
 the restriction is satisfied automatically.
 @end deffn
 
-@node Fluid Binding, Definitions, Lexical Binding, Special Forms
-@section Fluid Binding
+@node Dynamic Binding, Definitions, Lexical Binding, Special Forms
+@section Dynamic Binding
 
 @deffn {special form+} fluid-let ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
-@cindex binding expression, fluid (or dynamic)
+@cindex binding expression, dynamic (or fluid)
 @cindex fluid binding
 @cindex dynamic binding
 @cindex variable binding, fluid-let
@@ -1929,7 +1958,7 @@ the last @var{expression} is returned.
 The syntax of this special form is similar to that of @code{let}, but
 @code{fluid-let} temporarily rebinds existing variables.  Unlike
 @code{let}, @code{fluid-let} creates no new bindings; instead it
-@emph{assigns} the values of each @var{init} to the binding (determined
+@emph{assigns} the value of each @var{init} to the binding (determined
 by the rules of lexical scoping) of its corresponding @var{variable}.
 
 @cindex unassigned variable, and dynamic bindings
@@ -1994,7 +2023,7 @@ binding and continuations:
 @page
 @example
 @group
-(define (complicated-fluid-binding)
+(define (complicated-dynamic-binding)
   (let ((variable 1)
         (inside-continuation))
     (write-line variable)
@@ -2018,7 +2047,7 @@ binding and continuations:
 @end example
 
 @noindent
-Evaluating @samp{(complicated-fluid-binding)} writes the following on
+Evaluating @samp{(complicated-dynamic-binding)} writes the following on
 the console:
 
 @example
@@ -2046,7 +2075,7 @@ the body has been preserved.  Finally, we exit body normally, and write
 the body was also preserved.
 @end deffn
 
-@node Definitions, Assignments, Fluid Binding, Special Forms
+@node Definitions, Assignments, Dynamic Binding, Special Forms
 @section Definitions
 @cindex definition
 
@@ -2130,6 +2159,7 @@ unbound variable).  If you omit @var{expression}, the variable becomes
 unassigned; an attempt to reference such a variable is an error.
 
 @example
+@group
 (define add3
    (lambda (x) (+ x 3)))                @result{}  @r{unspecified}
 (add3 3)                                @result{}  6
@@ -2139,6 +2169,7 @@ unassigned; an attempt to reference such a variable is an error.
 
 (define bar)                            @result{}  @r{unspecified}
 bar                                     @error{} Unassigned variable
+@end group
 @end example
 
 @node Internal Definitions,  , Top-Level Definitions, Definitions
@@ -2311,6 +2342,7 @@ and the elements of the list are inserted in place of the comma at-sign
 expression sequence.
 
 @example
+@group
 `(list ,(+ 1 2) 4)                           @result{}  (list 3 4)
 
 (let ((name 'a)) `(list ,name ',name))       @result{}  (list a 'a)
@@ -2324,6 +2356,7 @@ expression sequence.
                                              @result{}  #(10 5 2 4 3 8)
 
 `,(+ 2 3)                                    @result{}  5
+@end group
 @end example
 
 @cindex nesting, of quasiquote expressions
@@ -2410,11 +2443,13 @@ An @code{if} expression evaluates either @var{consequent} or
 of an @code{if} expression that has no @var{alternative}.
 
 @example
+@group
 (if (> 3 2) 'yes 'no)                   @result{}  yes
 (if (> 2 3) 'yes 'no)                   @result{}  no
 (if (> 3 2)
     (- 3 2)
     (+ 3 2))                            @result{}  1
+@end group
 @end example
 @end deffn
 
@@ -2495,8 +2530,10 @@ procedure of one argument; this procedure is then invoked on the value
 of the @var{predicate}.
 
 @example
+@group
 (cond ((assv 'b '((a 1) (b 2))) => cadr)
       (else #f))                        @result{}  2
+@end group
 @end example
 @end deffn
 
@@ -2549,6 +2586,7 @@ clause.
 For example,
 
 @example
+@group
 (case (* 2 3)
    ((2 3 5 7) 'prime)
    ((1 4 6 8 9) 'composite))            @result{}  composite
@@ -2561,6 +2599,7 @@ For example,
    ((a e i o u) 'vowel)
    ((w y) 'semivowel)
    (else 'consonant))                   @result{}  consonant
+@end group
 @end example
 @end deffn
 
@@ -2795,8 +2834,10 @@ Steele's Common Lisp book.
 Each @var{slot-description} takes one of the following forms:
 
 @example
+@group
 @var{slot-name}
 (@var{slot-name} @var{default-init} [@var{slot-option} @var{value}]*)
+@end group
 @end example
 
 @cindex keyword constructor
@@ -2871,16 +2912,20 @@ When options are not supplied, @code{(@var{name})} may be abbreviated to
 and @var{slot-options}.  Hence, these are equivalent:
 
 @example
+@group
 (define-structure foo a b c)
 (define-structure (foo) (a) b (c))
+@end group
 @end example
 
 @noindent
 as are
 
 @example
+@group
 (define-structure (foo keyword-constructor) a b c)
 (define-structure (foo (keyword-constructor)) a b c)
+@end group
 @end example
 
 When specified as option values, @code{false} and @code{nil} are
@@ -3034,8 +3079,10 @@ type descriptor will be defined; also, the @code{print-procedure}
 option may not be given.
 
 @example
+@group
 (define-structure (foo (type list)) a b) 
 (make-foo 1 2)                          @result{} (1 2)
+@end group
 @end example
 @end deffn
 
@@ -3061,8 +3108,10 @@ the first element of the list.
 
 
 @example
+@group
 (define-structure (foo (type vector) named) a b c)
 (vector-ref (make-foo 1 2 3) 0) @result{} #[structure-type 52]
+@end group
 @end example
 
 If @var{expression} is specified, it is an expression that is evaluated
@@ -3076,8 +3125,10 @@ descriptor is normally stored, as described above.  If @var{expression}
 is specified, no type descriptor is defined, only a predicate.
 
 @example
+@group
 (define-structure (foo (type vector) (named 'foo)) a b c)
 (vector-ref (make-foo 1 2 3) 0) @result{} foo
+@end group
 @end example
 @end deffn
 
@@ -3094,8 +3145,10 @@ slots.  Otherwise, the ``offset'' slots come first, followed by the
 regular slots.
 
 @example
+@group
 (define-structure (foo (type vector) (initial-offset 3)) a b c)
 (make-foo 1 2 3)                @result{} #(() () () 1 2 3)
+@end group
 @end example
 @end deffn
 
@@ -3188,9 +3241,11 @@ The @code{eqv?} procedure returns @code{#t} if:
 @var{obj1} and @var{obj2} are both interned symbols and
 
 @example
+@group
 (string=? (symbol->string @var{obj1})
           (symbol->string @var{obj2}))
      @result{} #t
+@end group
 @end example
 @findex string=?
 @findex symbol->string
@@ -3233,9 +3288,11 @@ one of @var{obj1} and @var{obj2} is @code{#t} but the other is
 @var{obj1} and @var{obj2} are symbols but
 
 @example
+@group
 (string=? (symbol->string @var{obj1})
           (symbol->string @var{obj2}))
      @result{} #f
+@end group
 @end example
 @findex string=?
 @findex symbol->string
@@ -3351,11 +3408,13 @@ constants where appropriate.  Thus the value of @code{eqv?} on constants
 is sometimes unspecified.
 
 @example
+@group
 (let ((x '(a)))
   (eqv? x x))                    @result{}  #t
 (eqv? '(a) '(a))                 @result{}  @r{unspecified}
 (eqv? "a" "a")                   @result{}  @r{unspecified}
 (eqv? '(b) (cdr '(a b)))         @result{}  @r{unspecified}
+@end group
 @end example
 
 Rationale: The above definition of @code{eqv?} allows implementations
@@ -3380,6 +3439,7 @@ true.  @code{eq?} may also behave differently from @code{eqv?} on empty
 vectors and empty strings.
 
 @example
+@group
 (eq? 'a 'a)                     @result{}  #t
 (eq? '(a) '(a))                 @result{}  @r{unspecified}
 (eq? (list 'a) (list 'a))       @result{}  #f
@@ -3397,6 +3457,7 @@ vectors and empty strings.
   (eq? x x))                    @result{}  #t
 (let ((p (lambda (x) x)))
   (eq? p p))                    @result{}  #t
+@end group
 @end example
 
 Rationale: It will usually be possible to implement @code{eq?} much more
@@ -3933,9 +3994,11 @@ $$0\leq n_4<n_2$$
 @ifinfo
 
 @example
+@group
 @var{n1} = (@var{n2} * @var{n3}) + @var{n4}
 
 0 <= @var{n4} < @var{n2}
+@end group
 @end example
 
 @end ifinfo
@@ -4217,9 +4280,11 @@ $$\tan^{-1} z = (\log (1 + i z) - \log (1 - i z)) / (2 i)$$
 @ifinfo
 
 @example
+@group
 arcsin(@var{z}) = -i log(i @var{z} + sqrt(1 - @var{z}^2))
 arccos(@var{z}) = pi/2 - arcsin(@var{z})
 arctan(@var{z}) = (log(1 + i @var{z}) + log(1 - i @var{z})) / (2 i)
+@end group
 @end example
 
 @end ifinfo
@@ -4712,8 +4777,7 @@ state of the art in random-number generation is constantly changing.  If
 necessary, the implementation will be updated to use a new algorithm
 while retaining the same interface.
 
-The interface described here is essentially identical to that of Common
-Lisp.
+The interface described here is very similar to that of Common Lisp.
 
 @deffn {procedure+} random modulus [state]
 @var{Modulus} must be a positive real number.  @code{random} returns a
@@ -4743,6 +4807,21 @@ pseudo-random-number generator and is altered as a side effect of the
 @end group
 @end example
 @end deffn
+
+@deffn {procedure+} flo:random-unit state
+@var{State} must be a random-state object.  @code{flo:random-unit}
+returns a pseudo-random number between zero inclusive and one exclusive;
+the returned number is always a flonum and therefore an inexact real
+number.  @code{flo:random-unit} is equivalent to @code{random} with a
+@var{modulus} of @code{1.0}, except that it is faster.
+@end deffn
+
+The next three definitions concern random-state objects.  In addition to
+these definitions, it is important to know that random-state objects are
+specifically designed so that they can be saved to disk using the
+@code{fasdump} procedure, and later restored using the @code{fasload}
+procedure.  This allows a particular random-state object to be saved in
+order to replay a particular pseudo-random sequence.
 
 @defvr {variable+} *random-state*
 This variable holds a data structure, a random-state object, that
@@ -4798,11 +4877,13 @@ Characters are written using the notation @code{#\@var{character}} or
 @code{#\@var{character-name}}.  For example:
 
 @example
+@group
 #\a                     @r{; lowercase letter}
 #\A                     @r{; uppercase letter}
 #\(                     @r{; left parenthesis}
 #\space                 @r{; the space character}
 #\newline               @r{; the newline character}
+@end group
 @end example
 @findex #\space
 @findex #\newline
@@ -4910,10 +4991,12 @@ component of the external representation, combined with the appropriate
 bucky bit prefixes.
 
 @example
+@group
 (char->name #\a)                        @result{}  "a"
 (char->name #\space)                    @result{}  "Space"
 (char->name #\c-a)                      @result{}  "C-a"
 (char->name #\control-a)                @result{}  "C-a"
+@end group
 @end example
 
 @findex read
@@ -4936,10 +5019,12 @@ If @var{string} does not name any character, @code{name->char} signals
 an error.
 
 @example
+@group
 (name->char "a")                        @result{}  #\a
 (name->char "space")                    @result{}  #\Space
 (name->char "c-a")                      @result{}  #\C-a
 (name->char "control-a")                @result{}  #\C-a
+@end group
 @end example
 @end deffn
 
@@ -5115,10 +5200,12 @@ Returns the exact integer representation of @var{char}'s bucky bits.
 For example,
 
 @example
+@group
 (char-bits #\a)                         @result{}  0
 (char-bits #\m-a)                       @result{}  1
 (char-bits #\c-a)                       @result{}  2
 (char-bits #\c-m-a)                     @result{}  3
+@end group
 @end example
 @end deffn
 
@@ -5127,8 +5214,10 @@ Returns the character code of @var{char}, an exact integer.  For
 example,
 
 @example
+@group
 (char-code #\a)                         @result{}  97
 (char-code #\c-a)                       @result{}  97
+@end group
 @end example
 @end deffn
 
@@ -5179,6 +5268,15 @@ then
          (integer->char y))             @result{}  #t
 @end group
 @end example
+
+Note: if @var{char} is a character constant for which
+@code{char->integer} returns an integer strictly less than 256, then the
+compiler will constant-fold the call, replacing it with the
+corresponding integer.  Likewise, if @var{k} is an integer constant
+strictly less than 256, the compiler will constant-fold a call to
+@code{integer->char}, replacing it with the corresponding character.
+This is a very useful way to denote unusual character constants or
+@sc{ascii} codes.
 @end deffn
 
 @defvr {variable+} char-integer-limit
@@ -5520,10 +5618,12 @@ Returns a newly allocated string consisting of the specified characters.
 The arguments must all satisfy @code{char-ascii?}.
 
 @example
+@group
 (string #\a)                                @result{}  "a"
 (string #\a #\b #\c)                        @result{}  "abc"
 (string #\a #\space #\b #\space #\c)        @result{}  "a b c"
 (string)                                    @result{}  ""
+@end group
 @end example
 
 @findex char->string
@@ -5558,6 +5658,7 @@ you wish to copy a string and preserve its maximum length, do the
 following:
 
 @example
+@group
 (define (string-copy-preserving-max-length string)
   (let ((length))
     (dynamic-wind 
@@ -5568,6 +5669,7 @@ following:
        (string-copy string))
      (lambda ()
        (set-string-length! string length)))))
+@end group
 @end example
 @end deffn
 
@@ -5869,8 +5971,10 @@ Returns a newly allocated copy of the initial substring of @var{string},
 up to but excluding @var{end}.  It could have been defined by:
 
 @example
+@group
 (define (string-head string end)
   (substring string 0 end))
+@end group
 @end example
 @end deffn
 
@@ -5880,10 +5984,12 @@ starting at index @var{start} and going to the end of @var{string}.  It
 could have been defined by:
 
 @example
+@group
 (define (string-tail string start)
   (substring string start (string-length string)))
 
 (string-tail "uncommon" 2)      @result{}  "common"
+@end group
 @end example
 @end deffn
 
@@ -6064,8 +6170,10 @@ the prefix of the second; otherwise returns @code{#f}.  The @code{-ci}
 procedures don't distinguish uppercase and lowercase letters.
 
 @example
+@group
 (string-prefix? "abc" "abcdef")         @result{}  #t
 (string-prefix? "" any-string)          @result{}  #t
+@end group
 @end example
 @end deffn
 
@@ -6079,8 +6187,10 @@ the suffix of the second; otherwise returns @code{#f}.  The @code{-ci}
 procedures don't distinguish uppercase and lowercase letters.
 
 @example
+@group
 (string-suffix? "ous" "bulbous")        @result{}  #t
 (string-suffix? "" any-string)          @result{}  #t
+@end group
 @end example
 @end deffn
 
@@ -6546,8 +6656,10 @@ of @var{path} will be 30 operations (32 bits, less the sign bit and the
 
 For example, the following are equivalent:
 @example
+@group
 (general-car-cdr @var{object} #b1011)
 (cdr (car (car @var{object})))
+@end group
 @end example
 
 Here is a partial table of path/operation equivalents:
@@ -6679,8 +6791,10 @@ elements of the given substring.  The inverse of @code{string->list} is
 @code{list->string}.
 
 @example
+@group
 (string->list "abcd")                   @result{}  (#\a #\b #\c #\d)
 (substring->list "abcdef" 1 3)          @result{}  (#\b #\c)
+@end group
 @end example
 @end deffn
 
@@ -6751,10 +6865,12 @@ less than the length of the list.  The first element of a list has index
 @code{0}, the second has index @code{1}, and so on.
 
 @example
+@group
 (list-ref '(a b c d) 2)                 @result{}  c
 (list-ref '(a b c d)
           (inexact->exact (round 1.8)))
      @result{}  c
+@end group
 @end example
 
 @findex list-tail
@@ -7107,11 +7223,13 @@ the first element to the last, and the value returned by @code{for-each}
 is unspecified.
 
 @example
+@group
 (let ((v (make-vector 5)))
   (for-each (lambda (i)
               (vector-set! v i (* i i)))
             '(0 1 2 3 4))
   v)                            @result{}  #(0 1 4 9 16)
+@end group
 @end example
 @end deffn
 
@@ -7159,16 +7277,18 @@ Combines all of the elements of @var{list} using the binary operation
 @var{initial} is always used:
 
 @example
+@group
 (fold-right + 0 '(1 2 3 4))             @result{}  10
 (fold-right + 0 '(foo))                 @error{} Illegal datum
 (fold-right list '() '(1 2 3 4))        @result{}  (1 (2 (3 (4 ()))))
+@end group
 @end example
 
 @code{Fold-right} has interesting properties because it establishes a
 homomorphism between (@code{cons}, @code{()}) and (@var{procedure},
 @var{initial}).  It can be thought of as replacing the pairs in the
 spine of the list with @var{procedure} and replacing the @code{()} at
-the end with @var{initial}.  Many of the classical list processing
+the end with @var{initial}.  Many of the classical list-processing
 procedures can be expressed in terms of @code{fold-right}, at least for
 the simple versions that take a fixed number of arguments:
 
@@ -7298,12 +7418,12 @@ cdr of @var{list} is not a pair, the empty list is returned by either
 procedure.
 @end deffn
 
-@deffn {procedure+} sort list procedure
+@deffn {procedure+} sort sequence procedure
 @cindex total ordering (defn)
-@var{Procedure} must be a procedure of two arguments that defines a
-@dfn{total ordering} on the elements of @var{list}.  In other words, if
-@var{x} and @var{y} are two distinct elements of @var{list}, then it
-must be the case that
+@var{Sequence} must be either a list or a vector.  @var{Procedure} must be a
+procedure of two arguments that defines a @dfn{total ordering} on the
+elements of @var{sequence}.  In other words, if @var{x} and @var{y} are two
+distinct elements of @var{sequence}, then it must be the case that
 
 @example
 @group
@@ -7313,15 +7433,16 @@ must be the case that
 @end group
 @end example
 
-@code{sort} returns a newly allocated list whose elements are the
-elements of @var{list}, except that the elements are rearranged so that
-they are sorted in the order defined by @var{procedure}.  So, for
-example, if the elements of @var{list} are numbers, and @var{procedure}
-is @code{<}, then the resulting list is sorted in monotonically
-nondecreasing order.  Likewise, if @var{procedure} is @code{>}, the
-resulting list is sorted in monotonically nonincreasing order.  To be
-precise, if @var{x} and @var{y} are any two adjacent elements in the
-resulting list, where @var{x} precedes @var{y}, it is the case that
+If @var{sequence} is a list (vector), @code{sort} returns a newly
+allocated list (vector) whose elements are those of @var{sequence},
+except that they are rearranged to be sorted in the order defined by
+@var{procedure}.  So, for example, if the elements of @var{sequence} are
+numbers, and @var{procedure} is @code{<}, then the resulting elements
+are sorted in monotonically nondecreasing order.  Likewise, if
+@var{procedure} is @code{>}, the resulting elements are sorted in
+monotonically nonincreasing order.  To be precise, if @var{x} and
+@var{y} are any two adjacent elements in the result, where @var{x}
+precedes @var{y}, it is the case that
 
 @example
 @group
@@ -7329,6 +7450,8 @@ resulting list, where @var{x} precedes @var{y}, it is the case that
      @result{}  #f
 @end group
 @end example
+
+See also the definition of @code{sort!}.
 @end deffn
 
 @node Vectors, Bit Strings, Lists, Top
@@ -7460,11 +7583,10 @@ remaining elements of the result are unspecified.
 @deffn {procedure+} vector-map vector procedure
 @cindex mapping, of vector
 @var{Procedure} must be a procedure of one argument.  @code{vector-map}
-applies @var{procedure} element-wise to the elements of the @var{vector}
-and returns a vector of the results, with the each result in the
-position corresponding with that of the element.  The dynamic order in
-which @var{procedure} is applied to the elements of the @var{list}s is
-unspecified.
+applies @var{procedure} element-wise to the elements of @var{vector} and
+returns a newly allocated vector of the results, in order from left to
+right.  The dynamic order in which @var{procedure} is applied to the
+elements of @var{vector} is unspecified.
 
 @example
 @group
@@ -7529,14 +7651,12 @@ procedurs is not a valid index of @var{vector}.
 
 @deffn {procedure+} vector-binary-search vector key<? unwrap-key key
 @cindex searching, of vector
-Searches @var{vector} for an item with a key matching @var{KEY},
-returning the object if one is found or @code{#F} if not found.  The
+Searches @var{vector} for an element with a key matching @var{key},
+returning the element if one is found or @code{#f} if none.  The
 search operation takes time proportional to the logarithm of the length
-@var{VECTOR}.
-The key of an object in @var{vector} is obtained by applying
-@var{unwrap-key} to the object.
-The objects in @var{vector} must be ordered according to the relation
-@var{key<?} on the object's keys.
+of @var{vector}.  @var{Unwrap-key} must be a procedure that maps each
+element of @var{vector} to a key.  @var{Key<?} must be a procedure that
+implements a total ordering on the keys of the elements.
 
 @example
 @group
@@ -7613,6 +7733,19 @@ indices to smaller).  Thus if @var{vector1} and @var{vector2} are the
 same, this procedure moves the elements toward the right inside the
 vector.
 @end table
+@end deffn
+
+@deffn {procedure+} sort! vector procedure
+@var{Procedure} must be a procedure of two arguments that defines a
+@dfn{total ordering} on the elements of @var{vector}.  The elements of
+@var{vector} are rearranged so that they are sorted in the order defined
+by @var{procedure}.  The elements are rearranged in place, that is,
+@var{vector} is destructively modified so that its elements are in the
+new order.
+
+@code{sort!} returns @var{vector} as its value.
+
+See also the definition of @code{sort}.
 @end deffn
 
 @node Bit Strings, Miscellaneous Datatypes, Vectors, Top
@@ -7747,16 +7880,19 @@ substring.
 
 The following procedure uses @code{bit-substring-find-next-set-bit} to
 find all the set bits and display their indexes:
+
 @example
+@group
 (define (scan-bitstring bs)
   (let ((end (bit-string-length bs)))
     (let loop ((start 0))
       (let ((next (bit-substring-find-next-set-bit bs start end)))
-	(if next
-	    (begin
-	      (write-line next)
-	      (if (< next end)
-		  (loop (+ next 1)))))))))
+        (if next
+            (begin
+              (write-line next)
+              (if (< next end)
+                  (loop (+ next 1)))))))))
+@end group
 @end example
 @end deffn
 
@@ -7970,8 +8106,9 @@ t                                       @error{} Unbound variable
 @defvr {variable+} false
 @defvrx {variable+} true
 These variables are bound to the objects @code{#f} and @code{#t}
-respectively.  The compiler, given some standard declarations, replaces
-references to these variables with their respective values.
+respectively.  The compiler, given the @code{usual-integrations}
+declaration, replaces references to these variables with their
+respective values.
 
 Note that the symbol @code{true} is not equivalent to @code{#t}, and the
 symbol @code{false} is not equivalent to @code{#f}.
@@ -7983,8 +8120,10 @@ Returns @code{#t} if @var{object} is either @code{#t} or @code{#f};
 otherwise returns @code{#f}.
 
 @example
+@group
 (boolean? #f)                           @result{}  #t
 (boolean? 0)                            @result{}  #f
+@end group
 @end example
 @end deffn
 
@@ -7998,10 +8137,12 @@ values.  These two procedures have identical semantics; their names are
 different to give different connotations to the test.
 
 @example
+@group
 (not #t)                                @result{}  #f
 (not 3)                                 @result{}  #f
 (not (list 3))                          @result{}  #f
 (not #f)                                @result{}  #t
+@end group
 @end example
 @end deffn
 
@@ -8051,10 +8192,10 @@ In fact, their primary purpose is to simplify the generation of unique
 variable names in programs that generate Scheme code.}
 
 @findex string=?
-@findex eqv?
+@findex eq?
 Interned symbols have an extremely useful property: any two interned
 symbols whose names are the same, in the sense of @code{string=?}, are
-the same object (i.e.@: they are @code{eqv?} to one another).  The term
+the same object (i.e.@: they are @code{eq?} to one another).  The term
 @dfn{interned} refers to the process of @dfn{interning} by which this is
 accomplished.  Uninterned symbols do not share this property.
 
@@ -8079,7 +8220,7 @@ writing an identifier (@pxref{Identifiers}).  Any interned symbol that
 has been returned as part of a literal expression, or read using the
 @code{read} procedure and subsequently written out using the
 @code{write} procedure, will read back in as the identical symbol (in
-the sense of @code{eqv?}).
+the sense of @code{eq?}).
 
 Usually it is also true that reading in an interned symbol that was
 previously written out produces the same symbol.  An exception are
@@ -8170,6 +8311,15 @@ identifiers (@pxref{Identifiers}), otherwise the resulting symbol cannot
 be read as itself.
 @end deffn
 
+@deffn {procedure+} intern-soft string
+Returns the interned symbol whose name is @var{string}.  Converts
+@var{string} to the standard alphabetic case before generating the
+symbol.  If no such interned symbol exists, returns @code{#f}.
+
+This is exactly like @code{intern}, except that it will not create an
+interned symbol, but only returns symbols that already exist.
+@end deffn
+
 @deffn procedure string->symbol string
 @cindex string, interning as symbol
 Returns the interned symbol whose name is @var{string}.  Although you
@@ -8205,31 +8355,45 @@ Note: this is the fastest way to make a symbol.
 
 @deffn {procedure+} generate-uninterned-symbol [object]
 @cindex gensym (see uninterned symbol)
-@findex eqv?
-Returns a newly allocated uninterned symbol that is guaranteed not to be
-@code{eqv?} to any other object in the Scheme system.  The symbol's name
-consists of a string (initially @code{"G"}) followed by an integer that
-is incremented on every call (the integer is initially 0).  The optional
-@var{object} can be an integer or a symbol.  If @var{object} is a
-symbol, the string prefix of all subsequently generated symbol names
-will be that symbol's name.  If @var{object} is an integer, the integer
-suffix of all subsequently generated symbol names will start counting
-from that value.
+@findex eq?
+Returns a newly allocated uninterned symbol that is guaranteed to be
+different from any other object.  The symbol's name consists of a prefix
+string followed by the (exact non-negative integer) value of an internal
+counter.  The counter is initially zero, and is incremented after each
+call to this procedure.
+
+The optional argument @var{object} is used to control how the symbol is
+generated.  It may take one of the following values:
+
+@itemize @bullet
+@item
+If @var{object} is omitted or @code{#f}, the prefix is @code{"G"}.
+
+@item
+If @var{object} is an exact non-negative integer, the internal counter
+is set to that integer prior to generating the result.
+
+@item
+If @var{object} is a string, it is used as the prefix.
+
+@item
+If @var{object} is a symbol, its name is used as the prefix.
+@end itemize
 
 @example
 @group
 (generate-uninterned-symbol)
-     @result{}  #[uninterned-symbol 31 g0]
+     @result{}  #[uninterned-symbol 31 G0]
 (generate-uninterned-symbol)
-     @result{}  #[uninterned-symbol 32 g1]
+     @result{}  #[uninterned-symbol 32 G1]
 (generate-uninterned-symbol 'this)
      @result{}  #[uninterned-symbol 33 this2]
 (generate-uninterned-symbol)
-     @result{}  #[uninterned-symbol 34 this3]
+     @result{}  #[uninterned-symbol 34 G3]
 (generate-uninterned-symbol 100)
-     @result{}  #[uninterned-symbol 35 this100]
+     @result{}  #[uninterned-symbol 35 G100]
 (generate-uninterned-symbol)
-     @result{}  #[uninterned-symbol 36 this101]
+     @result{}  #[uninterned-symbol 36 G101]
 @end group
 @end example
 @end deffn
@@ -8243,12 +8407,14 @@ names of its arguments, so if one or more of the arguments' names has
 non-standard case, the result will also have non-standard case.
 
 @example
+@group
 (symbol-append 'foo- 'bar)              @result{}  foo-bar
 @r{;; the arguments may be uninterned:}
 (symbol-append 'foo- (string->uninterned-symbol "baz"))
                                         @result{}  foo-baz
 @r{;; the result has the same case as the arguments:}
 (symbol-append 'foo- (string->symbol "BAZ"))    @result{}  foo-BAZ
+@end group
 @end example
 @end deffn
 
@@ -8256,7 +8422,34 @@ non-standard case, the result will also have non-standard case.
 @cindex hashing, of symbol
 @findex string-hash
 Returns a hash number for @var{symbol}, which is computed by calling
-@code{string-hash} on @var{symbol}'s name.
+@code{string-hash} on @var{symbol}'s name.  The hash number is an exact
+non-negative integer.
+@end deffn
+
+@deffn {procedure+} symbol-hash-mod symbol modulus
+@var{Modulus} must be an exact positive integer.  Equivalent to
+
+@example
+@group
+(modulo (symbol-hash @var{symbol}) @var{modulus})
+@end group
+@end example
+
+This procedure is provided for convenience in constructing hash tables.
+However, it is normally preferable to use @code{make-eq-hash-table} to
+build hash tables keyed by symbols, because @code{eq?} hash tables are
+much faster.
+@end deffn
+
+@deffn {procedure+} symbol<? symbol1 symbol2
+This procedure computes a total order on symbols.  It is equivalent to
+
+@example
+@group
+(string<? (symbol->string @var{symbol1})
+          (symbol->string @var{symbol2}))
+@end group
+@end example
 @end deffn
 
 @node Cells, Records, Symbols, Miscellaneous Datatypes
@@ -8292,8 +8485,8 @@ unspecified value.
 Alters the contents of @var{cell} to be @var{object}, calls @var{thunk}
 with no arguments, then restores the original contents of @var{cell} and
 returns the value returned by @var{thunk}.  This is completely
-equivalent to fluid binding of a variable, including the behavior when
-continuations are used (@pxref{Fluid Binding}).
+equivalent to dynamic binding of a variable, including the behavior when
+continuations are used (@pxref{Dynamic Binding}).
 @end deffn
 
 @node Records, Promises, Cells, Miscellaneous Datatypes
@@ -8593,12 +8786,9 @@ This allows streams to be used to represent infinitely long lists.
 
 @deffn {procedure+} stream object @dots{}
 @cindex construction, of stream
-@findex the-empty-stream
 Returns a newly allocated stream whose elements are the arguments.  Note
 that the expression @code{(stream)} returns the empty stream, or
-end-of-stream marker.@footnote{The variable @code{the-empty-stream},
-which is bound to the end-of-stream marker, is provided for
-compatibility with old code; use @code{(stream)} in new code.}
+end-of-stream marker.
 @end deffn
 
 @deffn {procedure+} list->stream list
@@ -8646,11 +8836,8 @@ promise.  Otherwise returns @code{#f}.  This could have been defined by
 @deffn {procedure+} stream-car stream
 @deffnx {procedure+} stream-first stream
 @findex car
-@findex head
 Returns the first element in @var{stream}.  @code{stream-car} is
-equivalent to @code{car}.@footnote{@code{head}, a synonym for
-@code{stream-car}, is provided for compatibility with old code; use
-@code{stream-car} in new code.}  @code{stream-first} is a synonym for
+equivalent to @code{car}.  @code{stream-first} is a synonym for
 @code{stream-car}.
 @end deffn
 
@@ -8658,24 +8845,16 @@ equivalent to @code{car}.@footnote{@code{head}, a synonym for
 @deffnx {procedure+} stream-rest stream
 @findex force
 @findex cdr
-@findex tail
-Returns the first tail of @var{stream}.  Equivalent to @code{(force
-(cdr @var{stream}))}.@footnote{@code{tail}, a synonym for
-@code{stream-cdr}, is provided for compatibility with old code; use
-@code{stream-cdr} in new code.}  @code{stream-rest} is a synonym for
-@code{stream-cdr}.
+Returns the first tail of @var{stream}.  Equivalent to @code{(force (cdr
+@var{stream}))}.  @code{stream-rest} is a synonym for @code{stream-cdr}.
 @end deffn
 
 @deffn {procedure+} stream-null? stream
 @cindex empty stream, predicate for
 @findex null?
-@findex empty-stream?
-Returns @code{#t} if @var{stream} is the end-of-stream marker;
-otherwise returns @code{#f}.  This is equivalent to @code{null?}, but
-should be used whenever testing for the end of a
-stream.@footnote{@code{empty-stream?}, a synonym for
-@code{stream-null?}, is provided for compatibility with old code; use
-@code{stream-null?} in new code.}
+Returns @code{#t} if @var{stream} is the end-of-stream marker; otherwise
+returns @code{#f}.  This is equivalent to @code{null?}, but should be
+used whenever testing for the end of a stream.
 @end deffn
 
 @deffn {procedure+} stream-length stream
@@ -8694,6 +8873,12 @@ the @var{k}th element.  @var{K} must be an exact non-negative integer
 strictly less than the length of @var{stream}.
 @end deffn
 
+@deffn {procedure+} stream-head stream k
+Returns the first @var{k} elements of @var{stream} as a list.  @var{K}
+must be an exact non-negative integer strictly less than the length of
+@var{stream}.
+@end deffn
+
 @deffn {procedure+} stream-tail stream k
 Returns the tail of @var{stream} that is indexed by @var{k}; that is,
 the @var{k}th tail.  This is equivalent to performing @code{stream-cdr}
@@ -8701,12 +8886,23 @@ the @var{k}th tail.  This is equivalent to performing @code{stream-cdr}
 less than the length of @var{stream}.
 @end deffn
 
-@deffn {procedure+} stream-map stream procedure
+@deffn {procedure+} stream-map procedure stream stream @dots{}
 @cindex mapping, of stream
 Returns a newly allocated stream, each element being the result of
-invoking @var{procedure} with the corresponding element of @var{stream}
-as its argument.  @var{Procedure} must be a procedure of one argument.
+invoking @var{procedure} with the corresponding elements of the
+@var{stream}s as its arguments.
 @end deffn
+
+@findex the-empty-stream
+@findex head
+@findex tail
+@findex empty-stream?
+The following are supported for compatibility with old code.  Please do
+not use these for new code.  The variable @code{the-empty-stream} is
+bound to the end-of-stream marker; use @code{(stream)} in new code.
+@code{head} is a synonym for @code{stream-car}.  @code{tail} is a
+synonym for @code{stream-cdr}.  @code{empty-stream?} is a synonym for
+@code{stream-null?}.
 
 @node Weak Pairs,  , Streams, Miscellaneous Datatypes
 @section Weak Pairs
@@ -8850,11 +9046,11 @@ implementation supports destructive insertion and deletion operations
 with a good constant factor.
 
 @item
-@dfn{Weight-Balanced trees} are a kind of balanced binary trees.  The
+@dfn{Weight-Balanced trees} are a kind of balanced binary tree.  The
 implementation provides non-destructive operations.  There is a
-comprehensive set of operations including a constant time size
-operation, many high-level operations such as the set operations union,
-intersection and difference, and indexing of elements by position.
+comprehensive set of operations, including: a constant-time size
+operation; many high-level operations such as the set operations union,
+intersection and difference; and indexing of elements by position.
 
 @end itemize
 
@@ -8941,6 +9137,7 @@ association lists whose elements are, say, vectors instead of pairs
 (also @pxref{Searching Lists}).
 
 For example, here is how @code{assv} could be implemented:
+
 @example
 (define assv (association-procedure eqv? car))
 @end example
@@ -9276,7 +9473,7 @@ returns an exact non-negative integer that is less than the modulus.
 The optional argument @var{rehash-after-gc?}, if true, says that the
 values returned by @var{key-hash} might change after a garbage
 collection.  If so, the hash-table implementation arranges for the table
-to be rehashed when necessary.  (@pxref{Address Hashing}, for
+to be rehashed when necessary.  (@xref{Address Hashing}, for
 information about hash procedures that have this property.)  Otherwise,
 it is assumed that @var{key-hash} always returns the same value for the
 same arguments.  The default value of this argument is @code{#f}.
@@ -9297,6 +9494,7 @@ been defined:
 @findex string-hash-mod
 @findex string=?
 @example
+@group
 (define make-eq-hash-table
   (weak-hash-table/constructor eq-hash-mod eq? #t))
 
@@ -9305,6 +9503,7 @@ been defined:
 
 (define make-string-hash-table
   (strong-hash-table/constructor string-hash-mod string=? #f))
+@end group
 @end example
 
 The following procedure is sometimes useful in conjunction with weak
@@ -9451,6 +9650,7 @@ physical size, and from this to estimate the amount of space used by the
 table:
 
 @example
+@group
 (define (hash-table-space-bounds count rehash-size rehash-threshold)
   (let ((tf (/ 1 rehash-threshold)))
     (values (if (exact-integer? rehash-size)
@@ -9458,6 +9658,7 @@ table:
                    (* tf (+ rehash-size rehash-size)))
                 (* count (+ 4 (/ tf (* rehash-size rehash-size)))))
             (* count (+ 4 tf)))))
+@end group
 @end example
 
 @noindent
@@ -9606,11 +9807,14 @@ numbers computed by your key-hashing procedure must be recomputed after
 a garbage collection.
 
 @deffn {procedure+} eq-hash object
-This procedure returns a hash number for @var{object}.  The result is
-always a non-negative fixnum (and therefore an exact non-negative
-integer).  Two objects that are @code{eq?} to one another map to the
-same hash number, provided that the garbage collector does not run
-during or between the two calls to @code{eq-hash}.
+@deffnx {procedure+} eqv-hash object
+@deffnx {procedure+} equal-hash object
+These procedures return a hash number for @var{object}.  The result is
+always a non-negative integer, and in the case of @code{eq-hash}, a
+non-negative fixnum.  Two objects that are equivalent according to
+@code{eq?}, @code{eqv?}, or @code{equal?}, respectively, will produce the
+same hash number when passed as arguments to these procedures, provided
+that the garbage collector does not run during or between the two calls.
 @end deffn
 
 The following procedures are the key-hashing procedures used by the
@@ -9688,7 +9892,7 @@ result.
 An optional argument that, if true, says the values returned by
 @var{key-hash} might change after a garbage collection.  If so, the
 hash-table implementation arranges for the table to be rehashed when
-necessary.  (@pxref{Address Hashing}, for information about hash
+necessary.  (@xref{Address Hashing}, for information about hash
 procedures that have this property.)  Otherwise, it is assumed that
 @var{key-hash} always returns the same value for the same arguments.
 The default value of this argument is @code{#f}.
@@ -10011,12 +10215,14 @@ proportional to the number of associations in the tree.
 The returned value satisfies the following:
 
 @example
+@group
 (lambda (rb-tree)
   (let ((size (rb-tree/size rb-tree))
         (lg (lambda (x) (/ (log x) (log 2)))))
     (<= (lg size)
         (rb-tree/height rb-tree)
         (* 2 (lg (+ size 1))))))
+@end group
 @end example
 @end deffn
 
@@ -10032,6 +10238,7 @@ Returns a newly allocated red-black tree that contains the same
 associations as @var{alist}.  This procedure is equivalent to:
 
 @example
+@group
 (lambda (alist key=? key<?)
   (let ((tree (make-rb-tree key=? key<?)))
     (for-each (lambda (association)
@@ -10040,6 +10247,7 @@ associations as @var{alist}.  This procedure is equivalent to:
                                  (cdr association)))
               alist)
     tree))
+@end group
 @end example
 @end deffn
 
@@ -10052,7 +10260,7 @@ associations as @var{alist}.  This procedure is equivalent to:
 @cindex weight-balanced binary trees
 Balanced binary trees are a useful data structure for maintaining large
 sets of ordered objects or sets of associations whose keys are ordered.
-MIT Scheme has an comprehensive implementation of weight-balanced binary
+MIT Scheme has a comprehensive implementation of weight-balanced binary
 trees which has several advantages over the other data structures for
 large aggregates:
 
@@ -10062,7 +10270,7 @@ In addition to the usual element-level operations like insertion,
 deletion and lookup, there is a full complement of collection-level
 operations, like set intersection, set union and subset test, all of
 which are implemented with good orders of growth in time and space.
-This makes weight balanced trees ideal for rapid prototyping of
+This makes weight-balanced trees ideal for rapid prototyping of
 functionally derived specifications.
 
 @item
@@ -10071,7 +10279,7 @@ of the keys, and the ordinal position of an element may be determined,
 both with reasonable efficiency.
 
 @item
-Operations to find and remove minimum element make weight balanced trees
+Operations to find and remove minimum element make weight-balanced trees
 simple to use for priority queues.
 
 @item
@@ -10082,21 +10290,19 @@ modifies neither the constant 1 nor the value bound to @code{x}.  The
 trees are referentially transparent thus the programmer need not worry
 about copying the trees.  Referential transparency allows space
 efficiency to be achieved by sharing subtrees.
-
 @end itemize
 
 These features make weight-balanced trees suitable for a wide range of
-applications, especially those that
-require large numbers of sets or discrete maps.  Applications that have
-a few global databases and/or concentrate on element-level operations like
-insertion and lookup are probably better off using hash-tables or
-red-black trees.
+applications, especially those that require large numbers of sets or
+discrete maps.  Applications that have a few global databases and/or
+concentrate on element-level operations like insertion and lookup are
+probably better off using hash tables or red-black trees.
 
 The @emph{size} of a tree is the number of associations that it
-contains.  Weight balanced binary trees are balanced to keep the sizes
+contains.  Weight-balanced binary trees are balanced to keep the sizes
 of the subtrees of each node within a constant factor of each other.
 This ensures logarithmic times for single-path operations (like lookup
-and insertion).  A weight balanced tree takes space that is proportional
+and insertion).  A weight-balanced tree takes space that is proportional
 to the number of associations in the tree.  For the current
 implementation, the constant of proportionality is six words per
 association.
@@ -10105,29 +10311,27 @@ association.
 @cindex binary trees, as discrete maps
 @cindex sets, using binary trees
 @cindex discrete maps, using binary trees
-Weight balanced trees can be used as an implementation for either
+Weight-balanced trees can be used as an implementation for either
 discrete sets or discrete maps (associations).  Sets are implemented by
 ignoring the datum that is associated with the key.  Under this scheme
-if an associations exists in the tree this indicates that the key of the
+if an association exists in the tree this indicates that the key of the
 association is a member of the set.  Typically a value such as
 @code{()}, @code{#t} or @code{#f} is associated with the key.
 
 Many operations can be viewed as computing a result that, depending on
 whether the tree arguments are thought of as sets or maps, is known by
-two different names.
-An example is @code{wt-tree/member?}, which, when
-regarding the tree argument as a set, computes the set membership operation, but,
-when regarding the tree as a discrete map, @code{wt-tree/member?} is the
-predicate testing if the map is defined at an element in its domain.
-Most names in this package have been chosen based on interpreting the
-trees as sets, hence the name @code{wt-tree/member?} rather than
-@code{wt-tree/defined-at?}.
-
+two different names.  An example is @code{wt-tree/member?}, which, when
+regarding the tree argument as a set, computes the set membership
+operation, but, when regarding the tree as a discrete map,
+@code{wt-tree/member?} is the predicate testing if the map is defined at
+an element in its domain.  Most names in this package have been chosen
+based on interpreting the trees as sets, hence the name
+@code{wt-tree/member?} rather than @code{wt-tree/defined-at?}.
 
 @cindex run-time-loadable option
 @cindex option, run-time-loadable
-The weight balanced tree implementation is a run-time-loadable option.
-To use weight balanced trees, execute
+The weight-balanced tree implementation is a run-time-loadable option.
+To use weight-balanced trees, execute
 
 @example
 (load-option 'wt-tree)
@@ -10136,7 +10340,6 @@ To use weight balanced trees, execute
 
 @noindent
 once before calling any of the procedures defined here.
-
 
 @menu
 * Construction of Weight-Balanced Trees::  
@@ -10149,10 +10352,10 @@ once before calling any of the procedures defined here.
 @subsection Construction of Weight-Balanced Trees
 
 Binary trees require there to be a total order on the keys used to
-arrange the elements in the tree.  Weight balanced trees are organized
+arrange the elements in the tree.  Weight-balanced trees are organized
 by @emph{types}, where the type is an object encapsulating the ordering
 relation.  Creating a tree is a two-stage process.  First a tree type
-must be created from the predicate which gives the ordering.  The tree type
+must be created from the predicate that gives the ordering.  The tree type
 is then used for making trees, either empty or singleton trees or trees
 from other aggregate structures like association lists.  Once created, a
 tree `knows' its type and the type is used to test compatibility between
@@ -10167,11 +10370,13 @@ predicate @var{key<?}.
 key values @code{a}, @code{b} and @code{c}:
 
 @example
+@group
 (key<? a a)                         @result{} #f
 (and (key<? a b) (key<? b a))       @result{} #f
 (if (and (key<? a b) (key<? b c))
     (key<? a c)
     #t)                             @result{} #t
+@end group
 @end example
 
 @noindent
@@ -10179,11 +10384,10 @@ Two key values are assumed to be equal if neither is less than the other
 by @var{key<?}.
 
 Each call to @code{make-wt-tree-type} returns a distinct value, and
-trees are only compatible if their tree types are @code{eq?}.
-A consequence is 
-that trees that are intended to be used in binary tree operations must all be
-created with a tree type originating from the same call to
-@code{make-wt-tree-type}.
+trees are only compatible if their tree types are @code{eq?}.  A
+consequence is that trees that are intended to be used in binary-tree
+operations must all be created with a tree type originating from the
+same call to @code{make-wt-tree-type}.
 @end deffn
 
 @defvr {variable+} number-wt-type
@@ -10204,19 +10408,17 @@ could have been defined by
 @end example
 @end defvr
 
-
-
 @deffn {procedure+} make-wt-tree wt-tree-type
-This procedure creates and returns a newly allocated weight balanced
+This procedure creates and returns a newly allocated weight-balanced
 tree.  The tree is empty, i.e. it contains no associations.
-@var{Wt-tree-type} is a weight balanced tree type obtained by calling
+@var{Wt-tree-type} is a weight-balanced tree type obtained by calling
 @code{make-wt-tree-type}; the returned tree has this type.
 @end deffn
 
 @deffn {procedure+} singleton-wt-tree wt-tree-type key datum
-This procedure creates and returns a newly allocated weight balanced
+This procedure creates and returns a newly allocated weight-balanced
 tree.  The tree contains a single association, that of @var{datum} with
-@var{key}.  @var{Wt-tree-type} is a weight balanced tree type obtained
+@var{key}.  @var{Wt-tree-type} is a weight-balanced tree type obtained
 by calling @code{make-wt-tree-type}; the returned tree has this type.
 @end deffn
 
@@ -10225,6 +10427,7 @@ Returns a newly allocated weight-balanced tree that contains the same
 associations as @var{alist}.  This procedure is equivalent to:
 
 @example
+@group
 (lambda (type alist)
   (let ((tree (make-wt-tree type)))
     (for-each (lambda (association)
@@ -10233,15 +10436,14 @@ associations as @var{alist}.  This procedure is equivalent to:
                               (cdr association)))
               alist)
     tree))
+@end group
 @end example
 @end deffn
-
-
 
 @node Basic Operations on Weight-Balanced Trees, Advanced Operations on Weight-Balanced Trees, Construction of Weight-Balanced Trees, Weight-Balanced Trees
 @subsection Basic Operations on Weight-Balanced Trees
 
-This section describes the basic tree operations on weight balanced
+This section describes the basic tree operations on weight-balanced
 trees.  These operations are the usual tree operations for insertion,
 deletion and lookup, some predicates and a procedure for determining the
 number of associations in a tree.
@@ -10260,7 +10462,6 @@ returns @code{#f}.
 Returns the number of associations in @var{wt-tree}, an exact
 non-negative integer.  This operation takes constant time.
 @end deffn
-
 
 @deffn {procedure+} wt-tree/add wt-tree key datum
 Returns a new tree containing all the associations in @var{wt-tree} and
@@ -10309,7 +10510,6 @@ times required by this operation are proportional to the logarithm of
 the number of associations in @var{wt-tree}.
 @end deffn
 
-
 @node Advanced Operations on Weight-Balanced Trees, Indexing Operations on Weight-Balanced Trees, Basic Operations on Weight-Balanced Trees, Weight-Balanced Trees
 @subsection Advanced Operations on Weight-Balanced Trees
 
@@ -10319,7 +10519,7 @@ associations.
 
 @deffn {procedure+} wt-tree/split< wt-tree bound
 Returns a new tree containing all and only the associations in
-@var{wt-tree} which have a key that is less than @var{bound} in the
+@var{wt-tree} that have a key that is less than @var{bound} in the
 ordering relation of the tree type of @var{wt-tree}.  The average and
 worst-case times required by this operation are proportional to the
 logarithm of the size of @var{wt-tree}.
@@ -10327,10 +10527,10 @@ logarithm of the size of @var{wt-tree}.
 
 @deffn {procedure+} wt-tree/split> wt-tree bound
 Returns a new tree containing all and only the associations in
-@var{wt-tree} which have a key that is greater than @var{bound} in the
+@var{wt-tree} that have a key that is greater than @var{bound} in the
 ordering relation of the tree type of @var{wt-tree}.  The average and
 worst-case times required by this operation are proportional to the
-logarithm of size of @var{wt-tree}.
+logarithm of the size of @var{wt-tree}.
 @end deffn
 
 @deffn {procedure+} wt-tree/union wt-tree-1 wt-tree-2
@@ -10344,33 +10544,32 @@ union of the arguments.
 The worst-case time required by this operation
 is proportional to the sum of the sizes of both trees.
 If the minimum key of one tree is greater than the maximum key of
-the other tree then the time required is at worst proportional to
+the other tree then the worst-case time required is proportional to
 the logarithm of the size of the larger tree.
 @end deffn
 
 @deffn {procedure+} wt-tree/intersection wt-tree-1 wt-tree-2
 Returns a new tree containing all and only those associations from
-@var{wt-tree-1} which have keys appearing as the key of an association
+@var{wt-tree-1} that have keys appearing as the key of an association
 in @var{wt-tree-2}.  Thus the associated data in the result are those
 from @var{wt-tree-1}.  If the trees are being used as sets the result is
 the set intersection of the arguments.  As a discrete map operation,
 @code{wt-tree/intersection} computes the domain restriction of
 @var{wt-tree-1} to (the domain of) @var{wt-tree-2}.
-The time required by this operation is never worse that proportional to
+The worst-case time required by this operation is proportional to
 the sum of the sizes of the trees.
 @end deffn
 
 @deffn {procedure+} wt-tree/difference wt-tree-1 wt-tree-2
 Returns a new tree containing all and only those associations from
-@var{wt-tree-1} which have keys that @emph{do not} appear as the key of
+@var{wt-tree-1} that have keys that @emph{do not} appear as the key of
 an association in @var{wt-tree-2}.  If the trees are viewed as sets the
 result is the asymmetric set difference of the arguments.  As a discrete
 map operation, it computes the domain restriction of @var{wt-tree-1} to
 the complement of (the domain of) @var{wt-tree-2}.
-The time required by this operation is never worse that proportional to
+The worst-case time required by this operation is proportional to
 the sum of the sizes of the trees.
 @end deffn
-
 
 @deffn {procedure+} wt-tree/subset? wt-tree-1 wt-tree-2
 Returns @code{#t} iff the key of each association in @var{wt-tree-1} is
@@ -10380,9 +10579,11 @@ predicate.
 A proper subset predicate can be constructed:
 
 @example
+@group
 (define (proper-subset? s1 s2)
   (and (wt-tree/subset? s1 s2)
        (< (wt-tree/size s1) (wt-tree/size s2))))
+@end group
 @end example
 
 As a discrete map operation, @code{wt-tree/subset?} is the subset
@@ -10391,28 +10592,28 @@ required by this operation is proportional to the size of
 @var{wt-tree-1}.
 @end deffn
 
-
 @deffn {procedure+} wt-tree/set-equal? wt-tree-1 wt-tree-2
 Returns @code{#t} iff for every association in @var{wt-tree-1} there is
 an association in @var{wt-tree-2} that has the same key, and @emph{vice
 versa}.
 
-Viewing the arguments as sets @code{wt-tree/set-equal?} is the set
+Viewing the arguments as sets, @code{wt-tree/set-equal?} is the set
 equality predicate.  As a map operation it determines if two maps are
 defined on the same domain.
 
 This procedure is equivalent to
 
 @example
+@group
 (lambda (wt-tree-1 wt-tree-2)
   (and (wt-tree/subset? wt-tree-1 wt-tree-2
        (wt-tree/subset? wt-tree-2 wt-tree-1)))
+@end group
 @end example
 
-In the worst-case the time required by this operation is proportional to
+In the worst case the time required by this operation is proportional to
 the size of the smaller tree.
 @end deffn
-
 
 @deffn {procedure+} wt-tree/fold combiner initial wt-tree
 This procedure reduces @var{wt-tree} by combining all the associations,
@@ -10425,36 +10626,42 @@ proportional to the size of @var{wt-tree}.
 A sorted association list can be derived simply:
 
 @example
-(wt-tree/fold  (lambda (key datum list)
-                 (cons (cons key datum) list))
-               '()
-               @var{wt-tree}))
+@group
+(wt-tree/fold (lambda (key datum list)
+                (cons (cons key datum) list))
+              '()
+              @var{wt-tree}))
+@end group
 @end example
 
 The data in the associations can be summed like this:
 
 @example
-(wt-tree/fold  (lambda (key datum sum) (+ sum datum))
-               0
-               @var{wt-tree})
+@group
+(wt-tree/fold (lambda (key datum sum) (+ sum datum))
+              0
+              @var{wt-tree})
+@end group
 @end example
 @end deffn
 
 @deffn {procedure+} wt-tree/for-each action wt-tree
-This procedure traverses the tree in-order, applying @var{action} to
+This procedure traverses @var{wt-tree} in order, applying @var{action} to
 each association.
 The associations are processed in increasing order of their keys.
-@var{Action} is a procedure of two arguments which take the key and
+@var{Action} is a procedure of two arguments that takes the key and
 datum respectively of the association.
 Provided @var{action} takes time bounded by a constant,
-@code{wt-tree/for-each} takes time proportional to in the size of
+@code{wt-tree/for-each} takes time proportional to the size of
 @var{wt-tree}.
 The example prints the tree:
 
 @example
+@group
 (wt-tree/for-each (lambda (key value)
                     (display (list key value)))
                   @var{wt-tree}))
+@end group
 @end example
 @end deffn
 
@@ -10472,16 +10679,18 @@ from @var{wt-tree-2}.  @var{Merge} is of the form
 If some key occurs only in one tree, that association will appear in the
 result tree without being processed by @var{merge}, so for this
 operation to make sense, either @var{merge} must have both a right and
-left identity which correspond to the association being absent in one of
+left identity that correspond to the association being absent in one of
 the trees, or some guarantee must be made, for example, all the keys in
 one tree are known to occur in the other.
 
 These are all reasonable procedures for @var{merge}
 
 @example
+@group
 (lambda (key val1 val2) (+ val1 val2))
 (lambda (key val1 val2) (append val1 val2))
 (lambda (key val1 val2) (wt-tree/union val1 val2))
+@end group
 @end example
 
 However, a procedure like
@@ -10495,13 +10704,15 @@ occuring in both trees but associations with keys occuring in only the
 second tree would be copied, not negated, as is presumably be intent.
 The programmer might ensure that this never happens.
 
-This procedure has the same time behaviour as @code{wt-tree/union} but
+This procedure has the same time behavior as @code{wt-tree/union} but
 with a slightly worse constant factor.  Indeed, @code{wt-tree/union}
-might have beed defined like this:
+might have been defined like this:
 
 @example
+@group
 (define (wt-tree/union tree1 tree2)
   (wt-tree/union-merge tree1 tree2 (lambda (key val1 val2) val2)))
+@end group
 @end example
 @end deffn
 
@@ -10512,7 +10723,7 @@ data are not independent of the key.
 @node Indexing Operations on Weight-Balanced Trees,  , Advanced Operations on Weight-Balanced Trees, Weight-Balanced Trees
 @subsection Indexing Operations on Weight-Balanced Trees
 
-Weight balanced trees support operations that view the tree as sorted
+Weight-balanced trees support operations that view the tree as sorted
 sequence of associations.  Elements of the sequence can be accessed by
 position, and the position of an element in the sequence can be
 determined, both in logarthmic time.
@@ -10530,17 +10741,19 @@ key and its datum.  The average and worst-case times required by this
 operation are proportional to the logarithm of the number of
 associations in the tree.
 
-These operations signal an error if the tree is empty, if
-@var{index}@code{<0}, or if @var{index} is greater than or equal to the
-number of associations in the tree.
+These operations signal a condition of type
+@code{condition-type:bad-range-argument} if @var{index}@code{<0} or if
+@var{index} is greater than or equal to the number of associations in
+the tree.  If the tree is empty, they signal an anonymous error.
 
 Indexing can be used to find the median and maximum keys in the tree as
 follows:
 
 @example
+@group
 median:   (wt-tree/index @var{wt-tree} (quotient (wt-tree/size @var{wt-tree}) 2))
-
-maximum:  (wt-tree/index @var{wt-tree} (-1+ (wt-tree/size @var{wt-tree})))
+maximum:  (wt-tree/index @var{wt-tree} (- (wt-tree/size @var{wt-tree}) 1))
+@end group
 @end example
 @end deffn
 
@@ -10566,10 +10779,13 @@ proportional to the logarithm of the number of associations in the tree.
 
 These operations signal an error if the tree is empty.
 They could be written
+
 @example
+@group
 (define (wt-tree/min tree)        (wt-tree/index tree 0))
 (define (wt-tree/min-datum tree)  (wt-tree/index-datum tree 0))
 (define (wt-tree/min-pair tree)   (wt-tree/index-pair tree 0))
+@end group
 @end example
 @end deffn
 
@@ -10585,7 +10801,6 @@ operation is equivalent to
 (wt-tree/delete @var{wt-tree} (wt-tree/min @var{wt-tree}))
 @end example
 @end deffn
-
 
 @deffn {procedure+} wt-tree/delete-min! wt-tree
 Removes the association with the least key under the @var{wt-tree}'s
@@ -10892,10 +11107,10 @@ Returns @code{#t} if @var{object} is a continuation; otherwise returns
 @var{Continuation} must be a continuation produced by
 @code{call-with-current-continuation}.
 @var{Thunk} must be a procedure of no arguments.
-Conceptually, @code{within-continuation} invokes @code{continuation} on
-the result of invoking @code{thunk}, but @code{thunk} is executed in the
-dynamic context of @code{continuation}.  In other words, the ``current''
-continuation is abandoned before @code{thunk} is invoked.
+Conceptually, @code{within-continuation} invokes @var{continuation} on
+the result of invoking @var{thunk}, but @var{thunk} is executed in the
+dynamic context of @var{continuation}.  In other words, the ``current''
+continuation is abandoned before @var{thunk} is invoked.
 @end deffn
 
 @deffn {procedure+} dynamic-wind before-thunk action-thunk after-thunk
@@ -11206,9 +11421,11 @@ environment, and returns the new environment.  Note that
 is equivalent to:
 
 @example
+@group
 (let ()
   @var{expression} @dots{}
   (the-environment))
+@end group
 @end example
 @end deffn
 
@@ -11374,8 +11591,8 @@ value of @code{console-i/o-port}.
 procedures binds one of the standard ports to its first argument, calls
 @var{thunk} with no arguments, restores the port to its original value,
 and returns the result that was yielded by @var{thunk}.  This temporary
-binding is performed the same way as fluid binding of a variable,
-including the behavior in the presence of continuations (@pxref{Fluid
+binding is performed the same way as dynamic binding of a variable,
+including the behavior in the presence of continuations (@pxref{Dynamic
 Binding}).
 
 @code{with-input-from-port} binds the current input port,
@@ -11402,8 +11619,7 @@ corresponds to the name of the procedure.
 @cindex output port, console
 @code{console-i/o-port} is an @sc{i/o} port that communicates with the
 ``console''.  Under unix, the console is the controlling terminal of the
-Scheme process.  Under @sc{ms-dos}, the console is a combination of the
-keyboard and the display.  Under Windows, the console is the window that
+Scheme process.  Under Windows and OS/2, the console is the window that
 is created when Scheme starts up.
 
 This variable is rarely used; instead programs should use one of the
@@ -11451,9 +11667,8 @@ pathname that is then opened.
 @cindex newline translation
 Any file can be opened in one of two modes, @dfn{normal} or
 @dfn{binary}.  Normal mode is for accessing text files, and binary mode
-is for accessing other files.  Some operating systems, e.g.@: unix, do
-not distinguish these modes.  @sc{ms-dos} is an example of an operating
-system that does distinguish these modes: in normal mode, @sc{ms-dos}
+is for accessing other files.  Unix does not distinguish these modes,
+but @sc{dos}, Windows, and OS/2 do: in normal mode, their
 file ports perform @dfn{newline translation}, mapping between the
 carriage-return/linefeed sequence that terminates text lines in files,
 and the @code{#\newline} that terminates lines in Scheme.  In binary
@@ -11629,17 +11844,21 @@ previous default and returns the accumulated output as a newly allocated
 string.
 
 @example
+@group
 (with-output-to-string
   (lambda ()
     (write 'abc)))                    @result{}  "abc"
+@end group
 @end example
 
 Note: this procedure is equivalent to:
 
 @example
+@group
 (with-string-output-port
  (lambda (port)
    (with-output-to-port port @var{thunk})))
+@end group
 @end example
 @end deffn
 
@@ -11982,12 +12201,14 @@ variable must be an exact non-negative integer, or @code{#f} meaning no
 limit; the default is @code{#f}.
 
 @example
+@group
 (fluid-let ((*unparser-list-breadth-limit* 4))
   (write-to-string '(a b c d)))
                                 @result{} "(a b c d)"
 (fluid-let ((*unparser-list-breadth-limit* 4))
   (write-to-string '(a b c d e)))
                                 @result{} "(a b c d ...)"
+@end group
 @end example
 @end defvr
 
@@ -12000,12 +12221,14 @@ exact non-negative integer, or @code{#f} meaning no limit; the default
 is @code{#f}.
 
 @example
+@group
 (fluid-let ((*unparser-list-depth-limit* 4))
   (write-to-string '((((a))) b c d)))
                                 @result{} "((((a))) b c d)"
 (fluid-let ((*unparser-list-depth-limit* 4))
   (write-to-string '(((((a)))) b c d)))
                                 @result{} "((((...))) b c d)"
+@end group
 @end example
 @end defvr
 
@@ -12018,12 +12241,14 @@ exact non-negative integer, or @code{#f} meaning no limit; the default
 is @code{#f}.
 
 @example
+@group
 (fluid-let ((*unparser-string-length-limit* 4))
   (write-to-string "abcd"))
                                 @result{} "\"abcd\""
 (fluid-let ((*unparser-string-length-limit* 4))
   (write-to-string "abcde"))
                                 @result{} "\"abcd...\""
+@end group
 @end example
 @end defvr
 
@@ -12327,8 +12552,11 @@ Prompts the user for an expression that is to be executed as a command.
 This is the procedure called by the @sc{rep} loop to read the user's
 expressions.
 
-The prompt string is formed by appending a space to @var{prompt}, unless
-@var{prompt} already ends in a space or is an empty string.
+If @var{prompt} is a string, it is used verbatim as the prompt string.
+Otherwise, it must be a pair whose car is @code{standard} and whose cdr
+is a string; in this case the prompt string is formed by appending a
+space to the cdr string, unless it already ends in a space or is an
+empty string.
 
 The default behavior of this procedure is to print two newlines, the
 current @sc{rep} loop ``level number'', a space, and the prompt string;
@@ -12354,8 +12582,11 @@ follow the character with a carriage return or similar rubbish.
 This is the procedure called by @code{debug} and @code{where} to read
 the user's commands.
 
-The prompt string is formed by appending a space to @var{prompt}, unless
-@var{prompt} already ends in a space or is an empty string.
+If @var{prompt} is a string, it is used verbatim as the prompt string.
+Otherwise, it must be a pair whose car is @code{standard} and whose cdr
+is a string; in this case the prompt string is formed by appending a
+space to the cdr string, unless it already ends in a space or is an
+empty string.
 
 The default behavior of this procedure is to print two newlines, the
 current @sc{rep} loop ``level number'', a space, and the prompt string;
@@ -12372,7 +12603,8 @@ returned as the value of this procedure.
 Prompts the user for an expression.
 
 The prompt string is formed by appending a colon and a space to
-@var{prompt}, unless @var{prompt} already ends in a space.
+@var{prompt}, unless @var{prompt} already ends in a space or is the null
+string.
 
 The default behavior of this procedure is to print two newlines and the
 prompt string; flush the output buffer; then read an object and return
@@ -12393,7 +12625,8 @@ Prompts the user for confirmation.  The result yielded by this procedure
 is a boolean.
 
 The prompt string is formed by appending the string @code{" (y or n)? "}
-to @var{prompt}, unless @var{prompt} already ends in a space.
+to @var{prompt}, unless @var{prompt} already ends in a space or is the
+null string.
 
 The default behavior of this procedure is to print two newlines and the
 prompt string; flush the output buffer; then read a character in raw
@@ -12722,6 +12955,7 @@ restored if @var{thunk} escapes from its continuation.
 @cindex input port operations
 
 This section describes the standard operations on input ports.
+Following that, some useful custom operations are described.
 
 @defop {operation+} {input port} read-char input-port
 @cindex character, input from port
@@ -12807,6 +13041,60 @@ Each of these procedures invokes the respective operation on
 @end example
 @end deffn
 
+The following custom operations are implemented for input ports to
+files, and will also work with some other kinds of input ports:
+
+@defop {operation+} {input port} eof? input-port
+Returns @code{#t} if @var{input-port} is known to be at end of file,
+otherwise it returns @code{#f}.
+@end defop
+
+@defop {operation+} {input port} read-chars input-port string
+Attempts to read enough characters from @var{input-port} to fill
+@var{string}, returning the number of characters actually read.
+The string will be completely filled unless the port is unable to
+deliver the characters; this can happen when it is a file port and there
+aren't that many characters available, or when it is an interactive port
+in non-blocking mode and doesn't have that many characters immediately
+available.
+This is an extremely fast way to read characters from the port.
+@end defop
+
+@defop {operation+} {input port} read-substring input-port string start end
+Attempts to read enough characters from @var{input-port} to fill the
+substring specified by @var{string}, @var{start}, and @var{end},
+returning the number of characters actually read.
+The string will be completely filled unless the port is unable to
+deliver the characters; this can happen when it is a file port and there
+aren't that many characters available, or when it is an interactive port
+in non-blocking mode and doesn't have that many characters immediately
+available.
+This is an extremely fast way to read characters from the port.
+@end defop
+
+@defop {operation+} {input port} chars-remaining input-port
+Computes an estimate of the number of characters remaining to be read
+from @var{input-port}.  This is useful only when @var{input-port} is a
+file port in binary mode; in other cases, it returns @code{#f}.
+@end defop
+
+@defop {operation+} {input port} buffered-input-chars input-port
+Returns the number of unread characters that are stored in
+@var{input-port}'s buffer.  This will always be less than or equal to
+the buffer's size.
+@end defop
+
+@defop {operation+} {input port} input-buffer-size input-port
+Returns the maximum number of characters that @var{input-port}'s buffer
+can hold.
+@end defop
+
+@defop {operation+} {input port} set-input-buffer-size input-port size
+Resizes @var{input-port}'s buffer so that it can hold at most @var{size}
+characters.  Characters in the buffer are discarded.  @var{Size} must be
+an exact non-negative integer.
+@end defop
+
 @node Output Port Operations,  , Input Port Operations, Port Primitives
 @subsection Output Port Operations
 @cindex output port operations
@@ -12883,6 +13171,23 @@ Each of these procedures invokes the respective operation on
 
 The following custom operations are generally useful.
 
+@defop {operation+} {output port} buffered-output-chars output-port
+Returns the number of unwritten characters that are stored in
+@var{output-port}'s buffer.  This will always be less than or equal to
+the buffer's size.
+@end defop
+
+@defop {operation+} {output port} output-buffer-size output-port
+Returns the maximum number of characters that @var{output-port}'s buffer
+can hold.
+@end defop
+
+@defop {operation+} {output port} set-output-buffer-size output-port size
+Resizes @var{output-port}'s buffer so that it can hold at most @var{size}
+characters.  Characters in the buffer are discarded.  @var{Size} must be
+an exact non-negative integer.
+@end defop
+
 @defop {operation+} {output port} x-size output-port
 Returns an exact positive integer that is the width of @var{output-port}
 in characters.  If @var{output-port} has no natural width, e.g.@: if it is
@@ -12926,7 +13231,7 @@ dealing with other aspects of the file system:
 
 @itemize @bullet
 @item
-@dfn{Pathnames} are a reasonably operating system independent tool for
+@dfn{Pathnames} are a reasonably operating-system independent tool for
 manipulating the component parts of file names.  This can be useful for
 implementing defaulting of file name components.
 @cindex pathname
@@ -12974,7 +13279,7 @@ MULTICS         >udd>LispIO>format.fasl
 TENEX           <LISPIO>FORMAT.FASL;13
 VAX/VMS         [LISPIO]FORMAT.FAS;13
 UNIX            /usr/lispio/format.fasl
-MS-DOS          C:\USR\LISPIO\FORMAT.FAS
+DOS             C:\USR\LISPIO\FORMAT.FAS
 @end group
 @end example
 
@@ -13081,6 +13386,7 @@ pathname, e.g.@: on unix with symbolic links the directory
 @file{/usr/morris/../} need not be the same as @file{/usr/}.  In cases
 of uncertainty the behavior is conservative, returning the original or a
 partly simplified pathname.
+
 @example
 @group
 (pathname-simplify "/usr/morris/../morris/dance")
@@ -13172,11 +13478,11 @@ missing components.
 
 Any component of a pathname may be the symbol @code{unspecific}, meaning
 that the component simply does not exist, for file systems in which such
-a value makes no sense.  For example, unix and @sc{ms-dos} file systems
-usually do not support version numbers, so the version component for a
-unix or @sc{ms-dos} host might be @code{unspecific}.@footnote{This
-description is adapted from @cite{Common Lisp, The Language}, second
-edition, section 23.1.1.}
+a value makes no sense.  For example, unix, @sc{dos}, Windows, and OS/2
+file systems usually do not support version numbers, so the version
+component for such a host might be
+@code{unspecific}.@footnote{This description is adapted from
+@cite{Common Lisp, The Language}, second edition, section 23.1.1.}
 @comment **** end CLTL ****
 
 Each component in a pathname is typically one of the following (with
@@ -13375,9 +13681,12 @@ components unspecified) may be equivalent.
 
 @deffn {procedure+} pathname-absolute? pathname
 Returns @code{#t} if @var{pathname} is an absolute rather than relative
-pathname object; otherwise returns @code{#f}.  All pathnames are either
-absolute or relative, so if this procedure returns @code{#f}, the
-argument is a relative pathname.
+pathname object; otherwise returns @code{#f}.  Specifically, this
+procedure returns @code{#t} when the directory component of
+@var{pathname} is a list starting with the symbol @code{absolute}, and
+returns @code{#f} in all other cases.  All pathnames are either absolute
+or relative, so if this procedure returns @code{#f}, the argument is a
+relative pathname.
 @end deffn
 
 @deffn {procedure+} pathname-wild? pathname
@@ -13521,6 +13830,7 @@ the directory component is represented as a file.
 The last directory is removed from the directory component and converted
 into name and type components.
 This is the inverse operation to @code{pathname-as-directory}.
+
 @example
 @group
 (directory-pathname-as-file (->pathname "/usr/blisp/"))
@@ -13577,6 +13887,11 @@ pathname host; otherwise returns @code{#f}.
 Returns a pathname for the user's initialization file on @var{host}.
 The @var{host} argument defaults to the value of @code{local-host}.  If
 the initialization file does not exist this procedure returns @code{#f}.
+
+Under unix, the init file is called @file{.scheme.init}; under Windows
+and OS/2, the init file is called @file{scheme.ini}.  In either case, it
+is located in the user's home directory, which is computed by
+@code{user-homedir-pathname}.
 @end deffn
 
 @deffn {procedure+} user-homedir-pathname [host]
@@ -13585,10 +13900,33 @@ Returns a pathname for the user's ``home directory'' on @var{host}.  The
 @var{host} argument defaults to the value of @code{local-host}.  The
 concept of a ``home directory'' is itself somewhat
 implementation-dependent, but it should be the place where the user
-keeps personal files, such as initialization files and mail.  For
-example, on unix this is the user's unix home directory, whereas on
-@sc{ms-dos} the home directory is determined from the @code{HOME},
-@code{USER} and @code{USERDIR} environment variables.
+keeps personal files, such as initialization files and mail.
+
+Under unix, the user's home directory is specified by the @code{HOME}
+environment variable.  If this variable is undefined, the user name is
+computed using the @code{getlogin} system call, or if that fails, the
+@code{geteuid} system call.  The resulting user name is passed to the
+@code{getpwnam} system call to obtain the home directory.
+
+Under OS/2, the user's home directory is specified by the @code{HOME}
+environment variable.  If this variable is undefined, but the
+@code{USERDIR} and @code{USER} environment variables are defined, then
+the user's home directory is @file{%USERDIR%\%USER%}.  If only
+@code{USERDIR} is defined, then the user's home directory is
+@file{%USERDIR%\nouser}.  If none of these variables is defined, then
+the home directory is the root directory of the current drive.
+
+Under Windows, the user's home directory is computed by examining
+several environment variables, in the following order.  If
+@code{HOMEPATH} is defined, the home directory is
+@file{%HOMEDRIVE%%HOMEPATH%}.  If @code{HOME} is defined, the home
+directory is @file{%HOMEDRIVE%%HOME%}.  If @code{USERDIR} and
+@code{USERNAME} are defined, the home directory is
+@file{%USERDIR%\%USERNAME%}.  If @code{USERDIR} and @code{USER} are
+defined, the home directory is @file{%USERDIR%\%USER%}.  If
+@code{USERDIR} is defined, the home directory is
+@file{%USERDIR%\nouser}.  If none of these variables is defined, then
+the home directory is the root directory of the current drive.
 @end deffn
 
 @deffn {procedure+} system-library-pathname pathname
@@ -13662,9 +14000,8 @@ Additionally, @code{set-working-directory-pathname!} modifies the value
 of @code{*default-pathname-defaults*} by merging the new working
 directory into it.
 
-In the unix implementation, when this procedure is executed in the
-top-level @sc{rep} loop, it changes the working directory of the running
-Scheme executable.
+When this procedure is executed in the top-level @sc{rep} loop, it
+changes the working directory of the running Scheme executable.
 
 @example
 @group
@@ -13701,8 +14038,8 @@ restores the previous working directory and returns the value yielded by
 directory, @code{with-working-directory-pathname} also binds the
 variable @code{*default-pathname-defaults*}, merging the old value of
 that variable with the new working directory pathname.  Both bindings
-are performed in exactly the same way as fluid binding of a variable
-(@pxref{Fluid Binding}).
+are performed in exactly the same way as dynamic binding of a variable
+(@pxref{Dynamic Binding}).
 @end deffn
 
 @node File Manipulation, Directory Reader, Working Directory, File-System Interface
@@ -13745,6 +14082,24 @@ In the unix implementation, this will not rename across file systems.
 Deletes the file named @var{filename}.
 @end deffn
 
+@deffn {procedure+} delete-file-no-errors filename
+Like @code{delete-file}, but returns a boolean value indicating whether
+an error occurred during the deletion.  If no errors occurred, @code{#t}
+is returned.  If an error of type @code{condition-type:file-error} or
+@code{condition-type:port-error} is signalled, @code{#f} is returned.
+@end deffn
+
+@deffn {procedure+} make-directory filename
+Creates a new directory named @var{filename}.  Signals an error if
+@var{filename} already exists, or if the directory cannot be created.
+@end deffn
+
+@deffn {procedure+} delete-directory filename
+Deletes the directory named @var{filename}.  Signals an error if
+the directory does not exist, is not a directory, or contains any files
+or subdirectories.
+@end deffn
+
 @deffn {procedure+} ->truename filename
 @cindex truename, of input file
 This procedure attempts to discover and return the ``true name'' of the
@@ -13754,16 +14109,46 @@ appropriate file cannot be located within the file system.
 @findex condition-type:file-operation-error
 @end deffn
 
-@deffn {procedure+} call-with-temporary-filename procedure
-@code{call-with-temporary-filename} generates a temporary filename, and
-calls @var{procedure} with that filename as its sole argument.  The
-filename is guaranteed not to refer to any existing file, and, barring
-unusual circumstances, it can be used to open an output file without
-error.  When @var{procedure} returns, if the file referred to by the
-filename exists, it is deleted; then, the value yielded by
-@var{procedure} is returned.  If @var{procedure} escapes from its
-continuation, and the file referred to by the filename exists, it is
-deleted.
+@deffn {procedure+} call-with-temporary-file-pathname procedure
+@code{call-with-temporary-file-pathname} calls
+@code{temporary-file-pathname} to create a temporary file, then calls
+@var{procedure} with one argument, the pathname referring to that file.
+When @var{procedure} returns, if the temporary file still exists, it is
+deleted; then, the value yielded by @var{procedure} is returned.  If
+@var{procedure} escapes from its continuation, and the file still
+exists, it is deleted.
+@end deffn
+
+@deffn {procedure+} temporary-file-pathname
+Creates a new empty temporary file and returns a pathname referring to
+it.  The temporary file is created with Scheme's default permissions, so
+barring unusual circumstances it can be opened for input and/or output
+without error.  The temporary file will remain in existence until
+explicitly deleted.  If the file still exists when the Scheme process
+terminates, it will be deleted.
+@end deffn
+
+@deffn {procedure+} temporary-directory-pathname
+Returns the pathname of an existing directory that can be used to store
+temporary files.  These directory names are tried, in order, until a
+writable directory is found:
+
+@itemize @bullet
+@item
+The directory specified by the @code{TEMP} environment variable, if any.
+
+@item
+The directory specified by the @code{TMP} environment variable, if any.
+
+@item
+Under unix, the directories @file{/tmp} and @file{/usr/tmp}.
+
+@item
+Under OS/2 or Windows, the directories: @file{\tmp} on the current
+drive; @file{c:\}; the current directory; and @file{\} on the current
+drive.  (The current directory and drive are specified by
+@code{*default-pathname-defaults*}.)
+@end itemize
 @end deffn
 
 @deffn {procedure+} file-directory? filename
@@ -13796,6 +14181,15 @@ Returns @code{#t} if @var{filename} names a file that can be opened for
 output; i.e.@: a @dfn{writable} file.  Otherwise returns @code{#f}.
 @end deffn
 
+@deffn {procedure+} file-executable? filename
+Returns @code{#t} if @var{filename} names a file that can be executed.
+Otherwise returns @code{#f}.  Under unix, an executable file is
+identified by its mode bits.  Under OS/2, an executable file has one of
+the file extensions @file{.exe}, @file{.com}, @file{.cmd}, or
+@file{.bat}.  Under Windows, an executable file has one of the file
+extensions @file{.exe}, @file{.com}, or @file{.bat}.
+@end deffn
+
 @deffn {procedure+} file-access filename mode
 @var{Mode} must be an exact integer between @code{0} and @code{7}
 inclusive; it is a bitwise-encoded predicate selector with @code{1}
@@ -13806,6 +14200,13 @@ meaning ``readable''.  @code{file-access} returns @code{#t} if
 must be both readable and executable.  If @var{filename} doesn't exist,
 or if it does not satisfy the selected predicates, @code{#f} is
 returned.
+@end deffn
+
+@deffn {procedure+} file-eq? filename1 filename2
+Determines whether @var{filename1} and @var{filename2} refer to the same
+file.  Under unix, this is done by comparing the inodes and devices of
+the two files.  Under OS/2 and Windows, this is done by comparing the
+filename strings.
 @end deffn
 
 @deffn {procedure+} file-modes filename
@@ -13826,9 +14227,9 @@ permissions to be those encoded by @var{modes}.
 
 @deffn {procedure+} file-modification-time filename
 @cindex modification time, of file
-Returns the modification time of @var{filename} as an exact integer.
-The result may be compared to other file times using ordinary integer
-arithmetic.  If @var{filename} names a file that does not exist,
+Returns the modification time of @var{filename} as an exact non-negative
+integer.  The result may be compared to other file times using ordinary
+integer arithmetic.  If @var{filename} names a file that does not exist,
 @code{file-modification-time} returns @code{#f}.
 
 @findex file-modification-time-direct
@@ -13845,9 +14246,9 @@ the link itself; in all other respects it is identical to
 
 @deffn {procedure+} file-access-time filename
 @cindex access time, of file
-Returns the access time of @var{filename} as an exact integer.  The
-result may be compared to other file times using ordinary integer
-arithmetic.  If @var{filename} names a file that does not exist,
+Returns the access time of @var{filename} as an exact non-negative
+integer.  The result may be compared to other file times using ordinary
+integer arithmetic.  If @var{filename} names a file that does not exist,
 @code{file-access-time} returns @code{#f}.
 
 Some operating systems don't implement access times; in those systems
@@ -13876,46 +14277,29 @@ in this case the corresponding time is not changed.
 @code{set-file-times!} returns an unspecified value.
 @end deffn
 
+@deffn {procedure+} current-file-time
+Returns the current time as an exact non-negative integer, in the same
+format used by the above file-time procedures.  This number can be
+compared to other file times using ordinary arithmetic operations.
+@end deffn
+
+@deffn {procedure+} file-touch filename
+@dfn{Touches} the file named @var{filename}.  If the file already
+exists, its modification time is set to the current file time and
+@code{#f} is returned.  Otherwise, the file is created and @code{#t} is
+returned.  This is an atomic test-and-set operation, so it is useful as
+a synchronization mechanism.
+@end deffn
+
+@deffn {procedure+} file-length filename
+Returns the length, in bytes, of the file named @var{filename}.
+@end deffn
+
 @deffn {procedure+} file-attributes filename
 @cindex attribute, of file
 This procedure determines if the file named @var{filename} exists, and
 returns information about it if so; if the file does not exist, it
-returns @code{#f}.  The information returned is a vector of 10 items:
-
-@enumerate
-@item
-The file type: @code{#t} if the file is a directory, a character string
-(the name linked to) if a symbolic link, or @code{#f} for all other
-types of file.
-
-@item
-The number of links to the file.
-
-@item
-The user id of the file's owner, an exact non-negative integer.
-
-@item
-The group id of the file's group, an exact non-negative integer.
-
-@item
-The last access time of the file, an exact non-negative integer.
-
-@item
-The last modification time of the file, an exact non-negative integer.
-
-@item
-The last change time of the file, an exact non-negative integer.
-
-@item
-The size of the file in bytes.
-
-@item
-The mode string of the file.  This is a newly allocated string showing
-the file's mode bits.
-
-@item
-The inode number of the file, an exact non-negative integer.
-@end enumerate
+returns @code{#f}.
 
 @findex file-attributes-direct
 @findex file-attributes-indirect
@@ -13926,6 +14310,71 @@ the link itself.  An alternate procedure,
 linked to; in all other respects it is identical to
 @code{file-attributes}.  For symmetry, @code{file-attributes-direct} is
 a synonym of @code{file-attributes}.
+@end deffn
+
+The information returned by @code{file-attributes} is decoded by
+accessor procedures.  The following accessors are defined in all
+operating systems:
+
+@deffn {procedure+} file-attributes/type attributes
+The file type: @code{#t} if the file is a directory, a character string
+(the name linked to) if a symbolic link, or @code{#f} for all other
+types of file.
+@end deffn
+
+@deffn {procedure+} file-attributes/access-time attributes
+The last access time of the file, an exact non-negative integer.
+@end deffn
+
+@deffn {procedure+} file-attributes/modification-time attributes
+The last modification time of the file, an exact non-negative integer.
+@end deffn
+
+@deffn {procedure+} file-attributes/change-time attributes
+The last change time of the file, an exact non-negative integer.
+@end deffn
+
+@deffn {procedure+} file-attributes/length attributes
+The length of the file in bytes.
+@end deffn
+
+@deffn {procedure+} file-attributes/mode-string attributes
+The mode string of the file.  This is a newly allocated string showing
+the file's mode bits.  Under unix and Windows, this string is in unix
+format (simulated under Windows).  Under OS/2, this string shows the
+standard OS/2 attributes in their usual format.
+@end deffn
+
+@deffn {procedure+} file-attributes/n-links attributes
+The number of links to the file, an exact positive integer.  Under
+Windows and OS/2, this is always @code{1}.
+@end deffn
+
+The following additional accessors are defined under unix:
+
+@deffn {procedure+} file-attributes/uid attributes
+The user id of the file's owner, an exact non-negative integer.
+@end deffn
+
+@deffn {procedure+} file-attributes/gid attributes
+The group id of the file's group, an exact non-negative integer.
+@end deffn
+
+@deffn {procedure+} file-attributes/inode-number attributes
+The inode number of the file, an exact non-negative integer.
+@end deffn
+
+The following additional accessors are defined under OS/2:
+
+@deffn {procedure+} file-attributes/modes attributes
+The attribute bits of the file.  This is an exact non-negative integer
+containing the file's attribute bits, exactly as specified by the OS/2
+API.
+@end deffn
+
+@deffn {procedure+} file-attributes/allocated-length attributes
+The allocated length of the file, which can be larger than the length of
+the file due to fixed-length allocation units.
 @end deffn
 
 @node Directory Reader,  , File Manipulation, File-System Interface
@@ -14924,9 +15373,11 @@ the restarts to be made available, a warning message, and a list of
 irritants that caused the warning:
 
 @example
+@group
 (define make-simple-warning
   (condition-constructor condition-type:simple-warning
                          '(message irritants)))
+@end group
 @end example
 @end deffn
 
@@ -15817,10 +16268,12 @@ by the current drawing mode.
 This is equivalent to
 
 @example
+@group
 (lambda (device x y)
   (graphics-bind-drawing-mode device 0
     (lambda ()
       (graphics-draw-point device x y))))
+@end group
 @end example
 @end deffn
 
@@ -16061,8 +16514,10 @@ removing the @code{graphics-} prefix from the corresponding procedure.
 For example, the following are equivalent:
 
 @example
+@group
 (graphics-draw-point device x y)
 (graphics-operation device 'draw-point x y)
+@end group
 @end example
 
 For information on the custom operations for a particular device, see
@@ -16157,11 +16612,11 @@ from left to right.  There must be at least @code{(* (image/height
 @section Win32 Graphics
 @cindex Win32 graphics
 
-MIT Scheme supports graphics on Microsoft Windows 3.1 and Microsoft
-Windows NT 3.1.  In addition to the usual operations, there are
-operations to control the size, position and colors of a graphics
-window.  Win32 devices support images, which are implemented as device
-independent bitmaps (@sc{dib}s).
+MIT Scheme supports graphics on Microsoft Windows 3.1, Windows 95, and
+Windows NT.  In addition to the usual operations, there are operations
+to control the size, position and colors of a graphics window.  Win32
+devices support images, which are implemented as device independent
+bitmaps (@sc{dib}s).
 
 The Win32 graphics device type is implemented as a top level window.
 @code{graphics-enable-buffering} is implemented and gives a 2x to 4x
@@ -16312,9 +16767,11 @@ Draws a filled polygon using the current foreground color.
 @var{Points} is a vector of real numbers.
 The numbers are in the order x1 y1 x2 y2 ... xn yn.
 For example,
+
 @example
 (graphics-operation device 'fill-polygon #(0 0 0 1 1 0))
 @end example
+
 @noindent
 draws a solid triangular region between the points (0, 0), (0, 1) and
 (1, 0).
@@ -16625,15 +17082,20 @@ operation.  The mask is specified by setting the bits corresponding to
 the event types that you are interested in, as follows:
 
 @example
+@group
 Number  Mask    Description
 ------  -----   -----------
-0       #x01    Button press/release
-1       #x02    Close (a command to close the window)
-2       #x04    Focus change
-3       #x08    Key press/release
-4       #x10    Paint
-5       #x20    Size change
-6       #x40    Visibility change
+0       #x001   Button press/release
+1       #x002   Close (close the window) [WM_CLOSE]
+2       #x004   Focus change [WM_SETFOCUS]
+3       #x008   Key press/release [WM_CHAR]
+4       #x010   Paint [WM_PAINT]
+5       #x020   Size change [WM_SIZE]
+6       #x040   Visibility change [WM_SHOW]
+7       #x080   Command [WM_COMMAND]
+8       #x100   Help [WM_HELP]
+9       #x200   Mouse-move [WM_MOUSEMOVE]
+@end group
 @end example
 
 @noindent
@@ -16696,6 +17158,21 @@ changed, and @var{width} and @var{height} specify the new size in pels
 A visibility event.  Indicates that the graphics-device window has been
 hidden or revealed.  If @var{shown?} is @code{#f}, the window is hidden,
 and if it is @code{#t}, the window is shown.
+
+@item #(7 @var{device} @var{source} @var{mouse?})
+A menu command.  @var{Source} specifies which menu item was selected to
+cause this event, and @var{mouse?} is a boolean indicating whether the
+item was selected with the mouse or the keyboard.
+
+@item #(8 @var{device} @var{source} @var{mouse?})
+A help menu command.  @var{Source} specifies which menu item was
+selected to cause this event, and @var{mouse?} is a boolean indicating
+whether the item was selected with the mouse or the keyboard.
+
+@item #(9 @var{device} @var{x} @var{y} @var{hit-test} @var{flags})
+The mouse was moved.  @var{X} and @var{y} specify the position of the
+mouse, @var{hit-test} contains the hit-test information, and @var{flags}
+specifies the modifier keys that were pressed at the time.
 @end table
 
 @defop {operation+} os2-graphics-device discard-events
@@ -16716,12 +17193,12 @@ This operation sets the font used for drawing text in the
 graphics-device window.  @var{Font-name} is a string describing the
 font; this string is in the form "<point-size>.<family-name>", for
 example, @code{"10.Courier"}.  You may specify any fixed-pitch font
-family, in any point size which is supported for that font family.  This
+family, in any point size that is supported for that font family.  This
 includes both image fonts and outline fonts.
 @end defop
 
 @defop {operation+} os2-graphics-device capture-image x-left y-bottom x-right y-top
-This operation creates and returns an image which contains part of the
+This operation creates and returns an image that contains part of the
 client area of the graphics-device window.  The portion of the client
 area that is selected is specified by the four coordinate arguments,
 which are given in the current virtual coordinates for the device.
@@ -16732,15 +17209,17 @@ which are given in the current virtual coordinates for the device.
 This operation draws multiple disjoint lines; it is like multiple calls
 to @code{graphics-draw-line} but much faster.  The arguments @var{xv}
 and @var{yv} are vectors of coordinates; these vectors must be the same
-length, and the length must a multiple of two.  The contents of the
+length, and the length must be a multiple of two.  The contents of the
 vectors are alternating start/end pairs.  For example, the following are
 equivalent:
 
 @example
+@group
 (graphics-draw-line device xs ys xe ye)
 (graphics-operation device 'draw-lines
                     (vector xs xe)
                     (vector ys ye))
+@end group
 @end example
 @end defop
 
@@ -16872,9 +17351,11 @@ it is ignored.
 Examples:
 
 @example
+@group
 (x-geometry-string #f #f 100 200) @result{} "100x200"
 (x-geometry-string 2 -3 100 200) @result{} "100x200+2-3"
 (x-geometry-string 2 -3 #f #f) @result{} "+2-3"
+@end group
 @end example
 
 Note that the @var{x} and @var{y} arguments cannot distinguish between
@@ -17325,20 +17806,24 @@ Windows types are @emph{not} first class values, so they cannot be
 stored in variables or defined using @code{define}:
 
 @example
+@group
 (define my-type unchecked)                       @error{}  Unbound variable
 (define-similar-windows-type my-type unchecked)  @r{;; the correct way}
+@end group
 @end example
 
 Scheme characters must be converted to integers.  This is accomplished
 as follows:
 
 @example
+@group
 (define-windows-type char
    char?          @r{; check}
    char->integer  @r{; convert}
    integer->char  @r{; convert return value}
    #f             @r{; cannot be passed by reference}
 )
+@end group
 @end example
 @end deffn
 
@@ -17354,11 +17839,13 @@ Scheme booleans are analogous to C integers @code{0} and @code{1}.
 Windows type @code{bool} have been defined as:
 
 @example
+@group
 (define-windows-type bool
    boolean?
    (lambda (x) (if x 1 0))
    (lambda (x) (if (eq? x 0) #f #t))
    #f)
+@end group
 @end example
 @end deffn
 
@@ -17448,7 +17935,7 @@ The module returned is a description for the DLL, and the DLL need not
 necessarily be linked at or immediately after this call.  DLL modules
 are linked on need and unlinked before Scheme exits and when there
 are no remaining references to entry points after a garbage-collection.
-This behaviour ensures that the Scheme system can run when a DLL is
+This behavior ensures that the Scheme system can run when a DLL is
 absent, provided the DLL is not actually used (i.e.@: no attempt is made
 to call a procedure in the DLL).
 @end deffn
@@ -17507,6 +17994,7 @@ variable @code{set-window-title} is defined to have this procedure as
 it's value.
 
 @example
+@group
 (define set-window-title
   (windows-procedure (set-window-text (window hwnd) (text string))
     bool user32.dll "SetWindowText"))
@@ -17516,6 +18004,7 @@ it's value.
 
 set-window-title                 @result{}  #[compiled-procedure  ...]
 set-window-text                  @error{}  Unbound variable
+@end group
 @end example
 
 
@@ -17569,9 +18058,11 @@ environment.  To signal an error, use @code{access} to get @code{error}
 from the system global environment:
 
 @example
+@group
 (declare (usual-integrations))
 ...
 ((access error system-global-environment) "Complain" ...)
+@end group
 @end example
 
 
@@ -17628,7 +18119,9 @@ In the Scheme world a DIB is a structure containing information
 about the bitmap (specifically the integer that represents the handle).
 We also include @code{#f} in the @code{dib} windows type to mirror the
 null handle error value.
+
 @example
+@group
 (define dib-result
   (lambda (handle)
     (if (= handle 0)
@@ -17645,6 +18138,7 @@ null handle error value.
   (lambda (thing) (or (dib? thing) (eq? thing #f)))
   dib-arg
   dib-result)
+@end group
 @end example
 @end deffn
 
@@ -17798,7 +18292,7 @@ calling convention.
 @c @strong{Warning:} Do not try to do this.  It is very hard to get it even
 @c partly right and probably impossible to make the program 100% reliable.
 @c 
-@c It is possible to write Scheme procedures that determine the behaviour
+@c It is possible to write Scheme procedures that determine the behavior
 @c of windows and controls on the screen.  To succeed at this you need a
 @c good understanding of how you would do the same thing in C using the
 @c Windows SDK, the limitations of mixed language working when C calls
@@ -17810,7 +18304,7 @@ calling convention.
 @c 
 @c Currently, Scheme `wndprocs' are run during interrupt processing.  They
 @c are run in the dynamic context of whatever was running when the
-@c interrupt was signalled.  Any procedure that relies upon a fluid
+@c interrupt was signalled.  Any procedure that relies upon a dynamic
 @c variable cannot be used reliably.  Thus doing, say, a @code{display}
 @c might result in the output unintentionally being inserted in a file
 @c rather than appearing on the screen.  Errors are not handled, thus a
@@ -17833,7 +18327,7 @@ calling convention.
 @c 
 @c @deffn {procedure+} get-handle index
 @c Return a magic number that cannot be found any other way.
-@c Subject to change, the current behaviour is:
+@c Subject to change, the current behavior is:
 @c 
 @c @table @code
 @c @item 0
@@ -17886,9 +18380,9 @@ calling convention.
 @c @end table
 @c @end deffn
 @c 
-@c @deffn {procedure+} subclass-window! hwnd subclass-behaviour
+@c @deffn {procedure+} subclass-window! hwnd subclass-behavior
 @c Replace @var{hwnd}'s wndproc with a wndproc formed by calling
-@c @var{subclass-behaviour} on the original wndproc.
+@c @var{subclass-behavior} on the original wndproc.
 @c @end deffn
 @c 
 @c @deffn {procedure+} register-class  style wndproc clsExtra wndExtra hInstance hIcon hCursor hBackground menu-name class-name
@@ -17921,7 +18415,7 @@ calling convention.
 @c Scheme has the advantage over C that first class procedures can be used
 @c to organize the data used by the window.
 @c A useful idiom idiom is to parameterize the code with the default
-@c behaviour.
+@c behavior.
 @c This example behaves like @var{default-wndproc}, except that it
 @c beeps every time the left mouse button is pressed.
 @c 
