@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.40 1989/03/27 23:17:22 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.41 1989/05/24 15:11:28 jinx Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -758,7 +758,7 @@ Apply_Primitive (primitive)
     Print_Primitive(primitive);
   }
   Saved_Stack = Stack_Pointer;
-  Result = INTERNAL_APPLY_PRIMITIVE(primitive);
+  INTERNAL_APPLY_PRIMITIVE(Result, primitive);
   if (Saved_Stack != Stack_Pointer)
   {
 
