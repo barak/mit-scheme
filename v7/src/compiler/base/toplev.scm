@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.42 1992/05/27 02:09:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.43 1992/06/12 01:43:14 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -56,22 +56,30 @@ MIT in each case. |#
 	(kernel input))))
 
 (define (compile-bin-file input-string #!optional output-string)
-  (compiler-pathnames input-string
-		      (and (not (default-object? output-string)) output-string)
-		      (make-pathname false false false false "bin" 'NEWEST)
-    (lambda (input-pathname output-pathname)
-      (maybe-open-file compiler:generate-rtl-files?
-		       (pathname-new-type output-pathname "rtl")
-	(lambda (rtl-output-port)
-	  (maybe-open-file compiler:generate-lap-files?
-			   (pathname-new-type output-pathname "lap")
-	    (lambda (lap-output-port)
-	      (compile-scode/internal
-	       (compiler-fasload input-pathname)
-	       (pathname-new-type output-pathname "inf")
-	       rtl-output-port
-	       lap-output-port)))))))
-  unspecific)
+  (if compiler:cross-compiling?
+      (apply cross-compile-bin-file
+	     (cons input-string (if (default-object? output-string)
+				    '()
+				    (list output-string))))
+      (begin
+	(compiler-pathnames
+	 input-string
+	 (and (not (default-object? output-string)) output-string)
+	 (make-pathname false false false false "bin" 'NEWEST)
+	 (lambda (input-pathname output-pathname)
+	   (maybe-open-file
+	    compiler:generate-rtl-files?
+	    (pathname-new-type output-pathname "rtl")
+	    (lambda (rtl-output-port)
+	      (maybe-open-file compiler:generate-lap-files?
+			       (pathname-new-type output-pathname "lap")
+			       (lambda (lap-output-port)
+				 (compile-scode/internal
+				  (compiler-fasload input-pathname)
+				  (pathname-new-type output-pathname "inf")
+				  rtl-output-port
+				  lap-output-port)))))))
+	unspecific)))
 
 (define (maybe-open-file open? pathname receiver)
   (if open?
@@ -968,7 +976,8 @@ MIT in each case. |#
       (if (not (zero? *recursive-compilation-number*))
 	  (begin
 	    (write-char #\page port)
-	    (newline port))))))
+	    (newline port)))
+      (output-port/flush-output port))))
 
 (define (phase/lap-generation)
   (compiler-phase "LAP Generation"
@@ -1056,7 +1065,8 @@ MIT in each case. |#
 	    (if (not (zero? *recursive-compilation-number*))
 		(begin
 		  (write-char #\page)
-		  (newline)))))))))
+		  (newline)))
+	    (output-port/flush-output port)))))))
 
 (define (phase/assemble)
   (compiler-phase "Assembly"
@@ -1077,9 +1087,12 @@ MIT in each case. |#
 		 (if (zero? count) " iteration." " iterations.")))))))))
 
 (define (phase/info-generation-2 pathname)
+  (info-generation-2 pathname set-compiled-code-block/debugging-info!))
+
+(define (info-generation-2 pathname set-debugging-info!)
   (compiler-phase "Debugging Information Generation"
     (lambda ()
-      (set-compiled-code-block/debugging-info!
+      (set-debugging-info!
        *code-vector*
        (let ((info
 	      (info-generation-phase-3

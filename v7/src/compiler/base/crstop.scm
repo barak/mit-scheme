@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.9 1991/11/04 20:35:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.10 1992/06/12 01:43:21 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,7 +67,7 @@ MIT in each case. |#
 	     (lambda (lap-output-port)
 	       (cross-compile-scode (compiler-fasload input-pathname)
 				    (pathname-new-type output-pathname
-						       "fnib")
+						       "fni")
 				    rtl-output-port
 				    lap-output-port)))))))))
 
@@ -105,6 +105,8 @@ MIT in each case. |#
 	(wrapper
 	 (if (default-object? wrapper) in-compiler wrapper)))
     (fluid-let ((compiler:compile-by-procedures? false)
+		(compiler:cross-compiling? true)
+		(compiler:dump-info-file compiler:dump-inf-file)
 		(*info-output-filename*
 		 (if (pathname? info-output-pathname)
 		     (->namestring info-output-pathname)
@@ -127,12 +129,20 @@ MIT in each case. |#
 	 (if lap-output-port
 	     (phase/lap-file-output lap-output-port))
 	 (phase/assemble)
+	 ;; Here is were this procedure differs
+	 ;; from compile-scode
 	 (if info-output-pathname
-	     (phase/info-generation-2 info-output-pathname))
-	 ;; Here is were this procedure differs from compile-scode
-	 (phase/cross-link)
+	     (cross-compiler-phase/info-generation-2 info-output-pathname))
+	 (cross-compiler-phase/link)
 	 *result*)))))
 
+(define-structure (cc-code-block (type vector)
+				 (conc-name cc-code-block/))
+  (debugging-info false read-only false)
+  (bit-string false read-only true)
+  (objects false read-only true)
+  (object-width false read-only true))
+
 (define-structure (cc-vector (constructor cc-vector/make)
 			     (conc-name cc-vector/))
   (code-vector false read-only true)
@@ -141,7 +151,10 @@ MIT in each case. |#
   (label-bindings false read-only true)
   (ic-procedure-headers false read-only true))
 
-(define (phase/cross-link)
+(define (cross-compiler-phase/info-generation-2 pathname)
+  (info-generation-2 pathname set-cc-code-block/debugging-info!))
+
+(define (cross-compiler-phase/link)
   (compiler-phase
    "Cross Linkification"
    (lambda ()

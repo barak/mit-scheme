@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.14 1991/05/06 22:48:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.15 1992/06/12 01:43:44 jinx Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -88,7 +88,7 @@ MIT in each case. |#
 	(let* ((count (relax! directives vars))
 	       (block (assemble-objects (final-phase directives))))
 	  (values count
-		  (object-new-type (ucode-type compiled-code-block) block)
+		  block
 		  (queue->list *entry-points*)
 		  (symbol-table->assq-list *the-symbol-table*)
 		  (queue->list *linkage-info*)))))))
@@ -130,24 +130,27 @@ MIT in each case. |#
     code-block))
 
 (define (assemble-objects code-block)
-  (let* ((objects (queue->list *objects*))
-	 (bl (quotient (bit-string-length code-block)
-		       scheme-object-width))
-	 (output-block (make-vector (1+ (+ (length objects) bl)))))
-    (let ((non-pointer-length
-	   ((ucode-primitive make-non-pointer-object) bl)))
-      (with-absolutely-no-interrupts
-	(lambda ()
-	  (vector-set! output-block 0
-		       ((ucode-primitive primitive-object-set-type)
-			(ucode-type manifest-nm-vector)
-			non-pointer-length)))))
-    (write-bits! output-block
-		 ;; After header just inserted.
-		 (* scheme-object-width 2)
-		 code-block)
-    (insert-objects! output-block objects (1+ bl))
-    output-block))
+  (let ((objects (queue->list *objects*)))
+    (if compiler:cross-compiling?
+	(vector 'DEBUGGING-INFO-SLOT code-block objects scheme-object-width)
+	(let* ((bl (quotient (bit-string-length code-block)
+			     scheme-object-width))
+	       (non-pointer-length
+		((ucode-primitive make-non-pointer-object) bl))
+	       (output-block (make-vector (1+ (+ (length objects) bl)))))
+	  (with-absolutely-no-interrupts
+	    (lambda ()
+	      (vector-set! output-block 0
+			   ((ucode-primitive primitive-object-set-type)
+			    (ucode-type manifest-nm-vector)
+			    non-pointer-length))))
+	  (write-bits! output-block
+		       ;; After header just inserted.
+		       (* scheme-object-width 2)
+		       code-block)
+	  (insert-objects! output-block objects (1+ bl))
+	  (object-new-type (ucode-type compiled-code-block)
+			   output-block)))))
 
 (define (insert-objects! v objects where)
   (cond ((not (null? objects))

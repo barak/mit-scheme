@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crsend.scm,v 1.7 1992/04/17 22:55:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crsend.scm,v 1.8 1992/06/12 01:43:04 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -47,7 +47,7 @@ MIT in each case. |#
       (cross-compile-scode-end (fasload input-pathname)))))
 
 (define (compiler-pathnames input-string output-string default transform)
-  (let* ((core
+  (let ((kernel
 	  (lambda (input-string)
 	    (let ((input-pathname (merge-pathnames input-string default)))
 	      (let ((output-pathname
@@ -62,17 +62,10 @@ MIT in each case. |#
 		(write-string " => ")
 		(write (enough-namestring output-pathname))
 		(fasdump (transform input-pathname output-pathname)
-			 output-pathname)))))
-	 (kernel
-	  (if compiler:batch-mode?
-	      (batch-kernel core)
-	      core)))
+			 output-pathname))))))
     (if (pair? input-string)
 	(for-each kernel input-string)
 	(kernel input-string))))
-
-(define compiler:batch-mode?
-  false)
 
 (define (cross-compile-scode-end cross-compilation)
   (let ((compile-by-procedures? (vector-ref cross-compilation 0))
@@ -94,6 +87,13 @@ MIT in each case. |#
 		all-blocks)))
 	 expression))))
 
+(define-structure (cc-code-block (type vector)
+				 (conc-name cc-code-block/))
+  (debugging-info false read-only false)
+  (bit-string false read-only true)
+  (objects false read-only true)
+  (object-width false read-only true))
+
 (define-structure (cc-vector (constructor cc-vector/make)
 			     (conc-name cc-vector/))
   (code-vector false read-only true)
@@ -102,10 +102,28 @@ MIT in each case. |#
   (label-bindings false read-only true)
   (ic-procedure-headers false read-only true))
 
-(define (cross-link-end cc-vector)
+(define (cross-link-end object)
+  (let ((code-vector (cc-vector/code-vector object)))
+    (cross-link/process-code-vector
+     (cond ((compiled-code-block? code-vector)
+	    code-vector)
+	   ((vector? code-vector)
+	    (let ((new-code-vector (cross-link/finish-assembly
+				    (cc-code-block/bit-string code-vector)
+				    (cc-code-block/objects code-vector)
+				    (cc-code-block/object-width code-vector))))
+	      (set-compiled-code-block/debugging-info!
+	       new-code-vector
+	       (cc-code-block/debugging-info code-vector))
+	      new-code-vector))
+	   (else
+	    (error "cross-link-end: Unexpected code-vector"
+		   code-vector object)))
+     object)))
+
+(define (cross-link/process-code-vector code-vector cc-vector)
   (let ((bindings
-	 (let ((code-vector (cc-vector/code-vector cc-vector))
-	       (label-bindings (cc-vector/label-bindings cc-vector)))
+	 (let ((label-bindings (cc-vector/label-bindings cc-vector)))
 	   (map (lambda (label)
 		  (cons
 		   label
@@ -113,9 +131,12 @@ MIT in each case. |#
 		     (lambda ()
 		       (let-syntax ((ucode-primitive
 				     (macro (name)
-				       (make-primitive-procedure name))))
-			 ((ucode-primitive primitive-object-set-type)
-			  type-code:compiled-entry
+				       (make-primitive-procedure name)))
+				    (ucode-type
+				     (macro (name)
+				       (microcode-type name))))
+			 ((ucode-primitive PRIMITIVE-OBJECT-SET-TYPE)
+			  (ucode-type COMPILED-ENTRY)
 			  (make-non-pointer-object
 			   (+ (cdr (or (assq label label-bindings)
 				       (error "Missing entry point" label)))
@@ -131,6 +152,38 @@ MIT in each case. |#
 				      (label->expression (cdr entry))))
 		  (cc-vector/ic-procedure-headers cc-vector))
 	expression))))
+
+(define (cross-link/finish-assembly code-block objects scheme-object-width)
+  (let-syntax ((ucode-primitive
+		(macro (name)
+		  (make-primitive-procedure name)))
+	       (ucode-type
+		(macro (name)
+		  (microcode-type name))))
+    (let* ((bl (quotient (bit-string-length code-block)
+			 scheme-object-width))
+	   (non-pointer-length
+	    ((ucode-primitive make-non-pointer-object) bl))
+	   (output-block (make-vector (1+ (+ (length objects) bl)))))
+      (with-absolutely-no-interrupts
+	(lambda ()
+	  (vector-set! output-block 0
+		       ((ucode-primitive primitive-object-set-type)
+			(ucode-type manifest-nm-vector)
+			non-pointer-length))))
+      (write-bits! output-block
+		   ;; After header just inserted.
+		   (* scheme-object-width 2)
+		   code-block)
+      (insert-objects! output-block objects (1+ bl))
+      (object-new-type (ucode-type compiled-code-block)
+		       output-block))))
 
-(define type-code:compiled-entry
-  (microcode-type 'COMPILED-ENTRY))
+(define (insert-objects! v objects where)
+  (cond ((not (null? objects))
+	 (vector-set! v where (cadar objects))
+	 (insert-objects! v (cdr objects) (1+ where)))
+	((not (= where (vector-length v)))
+	 (error "insert-objects!: object phase error" where))
+	(else
+	 unspecific)))
