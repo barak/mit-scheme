@@ -51,7 +51,13 @@
 
 (load "decls")
 
-(cref/generate-all "edwin")
+(in-package (->environment '(CROSS-REFERENCE))
+  ((generate/common
+    (lambda (pathname pmodel)
+      (write-cref pathname pmodel)
+      (write-globals pathname pmodel)
+      (write-constructor pathname pmodel)))
+   "edwin"))
 (sf "edwin.con" "edwin.bcon")
 (if (not (file-processed? "edwin" "ldr" "bldr"))
     (sf "edwin.ldr" "edwin.bldr"))
