@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.3 1995/01/20 20:31:21 adams Exp $
+$Id: assconv.scm,v 1.4 1995/01/22 01:06:01 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -90,14 +90,14 @@ MIT in each case. |#
     (call-with-values
      (lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
      (lambda (names code)
-       `(define ,proc-name
-	  (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
-	    (named-lambda (,proc-name env form)
-	      (let ((info (assconv/get-dbg-info env form)))
-		(let ((code ,code))
-		  (if info
-		      (code-rewrite/remember* code info))
-		  code)))))))))
+       `(DEFINE ,proc-name
+	  (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+	    (NAMED-LAMBDA (,proc-name ENV FORM)
+	      (LET ((INFO (ASSCONV/GET-DBG-INFO ENV FORM)))
+		(LET ((CODE ,code))
+		  (IF INFO
+		      (CODE-REWRITE/REMEMBER* CODE INFO))
+		  CODE)))))))))
 
 ;;;; Variable manipulation forms
 
