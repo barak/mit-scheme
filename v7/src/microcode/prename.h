@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prename.h,v 1.1 1988/03/24 07:04:30 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prename.h,v 1.2 1988/05/13 03:01:07 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -45,7 +45,9 @@ static struct primitive_alias aliases [] =
     { "PRIMITIVE-SET-TYPE", "OBJECT-SET-TYPE" },
     { "&MAKE-OBJECT", "PRIMITIVE-OBJECT-SET-TYPE" },
     { "SYSTEM-MEMORY-REF", "PRIMITIVE-OBJECT-REF" },
-    { "SYSTEM-MEMORY-SET!", "PRIMITIVE-OBJECT-SET!" }
+    { "SYSTEM-MEMORY-SET!", "PRIMITIVE-OBJECT-SET!" },
+    { "OBJECT-NEW-TYPE", "OBJECT-SET-TYPE" },
+    { "PRIMITIVE-OBJECT-NEW-TYPE", "PRIMITIVE-OBJECT-SET-TYPE" }
   };
 
-#define N_ALIASES 10
+#define N_ALIASES 12
