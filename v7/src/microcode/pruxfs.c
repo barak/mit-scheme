@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.30 1988/10/17 11:52:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.31 1988/10/20 11:00:08 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -43,8 +43,10 @@ MIT in each case. */
 #include <sys/stat.h>
 #ifdef bsd
 #include <sys/time.h>
+#include <sys/file.h>
 #else
 #include <time.h>
+#include <fcntl.h>
 #endif
 #ifdef hpux
 #include <unistd.h>
@@ -458,18 +460,35 @@ Waits until the shell terminates, then returns its exit status as an integer.")
   PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (system (STRING_ARG (1))));
 }
 
+static Pointer file_touch ();
+
 DEFINE_PRIMITIVE ("FILE-TOUCH", Prim_file_touch, 1, 1,
   "Given a file name, changes the times of the file to the current time.\n\
 If the file does not exist, creates it.\n\
 Both the access time and modification time are changed.\n\
 Returns #F if successful, otherwise a unix error string.")
 {
-#if defined(bsd) || defined(hpux)
+  PRIMITIVE_HEADER (1);
 
-  char * filename;
+  PRIMITIVE_RETURN (file_touch (STRING_ARG (1)));
+}
+
+static Pointer
+file_touch (filename)
+     char * filename;
+{
   int result;
   struct stat file_status;
+  int fd;
+  char buf [1];
+
+  extern int ftruncate ();
+  extern int lseek ();
+  extern int open ();
+  extern int read ();
   extern int stat ();
+  extern int write ();
+
 #ifdef bsd
   extern long time ();
   long current_time;
@@ -480,40 +499,125 @@ Returns #F if successful, otherwise a unix error string.")
   extern int utime ();
 #endif /* hpux */
 #endif /* bsd */
-  PRIMITIVE_HEADER (1);
 
-  filename = (STRING_ARG (1));
+  /* CASE 1: create the file if it doesn't exist. */
   result = (stat (filename, (& file_status)));
   if (result != 0)
     {
-      if ((errno == EACCES) || (errno == EIO))
-	PRIMITIVE_RETURN (system_error_message ("stat"));
-      result = (creat (filename, 0666));
-      if (result < 0)
-	PRIMITIVE_RETURN (system_error_message ("creat"));
-      result = (close (result));
-      if (result != 0)
-	PRIMITIVE_RETURN (system_error_message ("close"));
+      /* Use O_EXCL to prevent overwriting existing file.  This
+	 prevents lossage when `stat' fails because of access or I/O
+	 errors.  */
+      fd = (open (filename, (O_RDWR | O_CREAT | O_EXCL), 0666));
+      if (fd < 0)
+	return (system_error_message ("open"));
+      goto zero_length_file;
     }
+
+  /* CASE 2: try utime (utimes) if it's available. */
 #ifdef bsd
+
   current_time = (time (0));
   ((tvp [0]) . tv_sec) = current_time;
   ((tvp [0]) . tv_usec) = 0;
   ((tvp [1]) . tv_sec) = current_time;
   ((tvp [1]) . tv_usec) = 0;
   result = (utimes (filename, tvp));
-  if (result != 0)
-    PRIMITIVE_RETURN (system_error_message ("utimes"));
+  if (result == 0)
+    return (SHARP_F);
+
 #else /* not bsd */
 #ifdef hpux
+
   result = (utime (filename, 0));
-  if (result != 0)
-    PRIMITIVE_RETURN (system_error_message ("utime"));
+  if (result == 0)
+    return (SHARP_F);
+
 #endif /* hpux */
 #endif /* bsd */
-  PRIMITIVE_RETURN (SHARP_F);
 
-#else /* neither bsd nor hpux */
-  PRIMITIVE_RETURN (C_String_to_Scheme_String ("unimplemented"));
-#endif
+  /* utime (utimes) has failed, or does not exist.  Instead, open the
+     file, read one byte, and write it back in place.  */
+  fd = (open (filename, O_RDWR, 0666));
+  if (fd < 0)
+    return (system_error_message ("open"));
+
+  /* CASE 3: file length of 0 needs special treatment. */
+  if ((file_status . st_size) == 0)
+    {
+    zero_length_file:
+      (buf [0]) = '\0';
+      while (1)
+	{
+	  result = (write (fd, buf, 1));
+	  if (result > 0) break;
+	  if ((result < 0) && (errno != EINTR))
+	    {
+	      (void) close (fd);
+	      return (system_error_message ("write"));
+	    }
+	}
+      if ((lseek (fd, 0, 0)) != 0)
+	{
+	  (void) ftruncate (fd, 0);
+	  (void) close (fd);
+	  return (system_error_message ("lseek"));
+	}
+      while (1)
+	{
+	  result = (read (fd, buf, 1));
+	  if (result > 0) break;
+	  if (result == 0)
+	    {
+	      (void) ftruncate (fd, 0);
+	      (void) close (fd);
+	      return (C_String_To_Scheme_String ("read: eof encountered"));
+	    }
+	  if ((result < 0) && (errno != EINTR))
+	    {
+	      (void) ftruncate (fd, 0);
+	      (void) close (fd);
+	      return (system_error_message ("read"));
+	    }
+	}
+      if ((ftruncate (fd, 0)) != 0)
+	return (system_error_message ("ftruncate"));
+      if ((close (fd)) != 0)
+	return (system_error_message ("close"));
+      return (SHARP_F);
+    }
+
+  /* CASE 4: read, then write back the first byte in the file. */
+  while (1)
+    {
+      result = (read (fd, buf, 1));
+      if (result > 0) break;
+      if (result == 0)
+	{
+	  (void) close (fd);
+	  return (C_String_To_Scheme_String ("read: eof encountered"));
+	}
+      if ((result < 0) && (errno != EINTR))
+	{
+	  (void) close (fd);
+	  return (system_error_message ("read"));
+	}
+    }
+  if ((lseek (fd, 0, 0)) != 0)
+    {
+      (void) close (fd);
+      return (system_error_message ("lseek"));
+    }
+  while (1)
+    {
+      result = (write (fd, buf, 1));
+      if (result > 0) break;
+      if ((result < 0) && (errno != EINTR))
+	{
+	  (void) close (fd);
+	  return (system_error_message ("write"));
+	}
+    }
+  if ((close (fd)) != 0)
+    return (system_error_message ("close"));
+  return (SHARP_F);
 }
