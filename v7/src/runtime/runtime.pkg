@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.358 2001/01/06 19:07:55 cph Exp $
+$Id: runtime.pkg,v 14.359 2001/02/05 18:33:19 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -326,7 +326,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  char-set:graphic
 	  char-set:lower-case
 	  char-set:newline
+	  char-set:not-alphabetic
+	  char-set:not-alphanumeric
 	  char-set:not-graphic
+	  char-set:not-lower-case
+	  char-set:not-numeric
+	  char-set:not-standard
+	  char-set:not-upper-case
 	  char-set:not-whitespace
 	  char-set:numeric
 	  char-set:standard
