@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.241 1999/10/31 04:34:09 cph Exp $
+$Id: edwin.pkg,v 1.242 2000/02/23 22:58:28 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -606,7 +606,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-package (edwin command-summary)
   (files "keymap")
-  (parent (edwin)))
+  (parent (edwin))
+  (export (edwin)
+	  describe-bindings
+	  edwin-command$describe-bindings
+	  edwin-command$make-command-summary
+	  make-command-summary))
 
 (define-package (edwin inferior-repl)
   (files "intmod")
