@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.76 1994/10/04 22:05:53 cph Exp $
+;;; $Id: utabmd.scm,v 9.77 1995/07/26 21:36:10 adams Exp $
 ;;;
 ;;;	Copyright (c) 1987-1994 Massachusetts Institute of Technology
 ;;;
@@ -122,76 +122,112 @@
 	       PC-Sample/UFO-Table			;3E
 	       COMPILED-CODE-BKPT-HANDLER		;3F
 	       GC-WABBIT-DESCWIPTOR			;40
+	       LINKER-TRAMPOLINE-GENERATOR              ;41
 	       ))
 
 ;;; [] Types
 
+;;; This tagging arrangement has a rationale:
+;;; 
+;;; Numbers are arranged for efficent signed fixnums, and range-testing
+;;; of the following predicates integer-type (i), machine-efficient (*)
+;;; real (r), NUMBER? (n)
+;;;   n r    * 111110 flonum       
+;;;   n r  i * 111111 -ve fixnum (reserved)
+;;;   n r  i * 000000 whole fixnum
+;;;   n r  i   000001 bignum
+;;;   n r      000010 rational
+;;;   n        000011 complex
+;;;
+;;; The other important tag is COMPILED-ENTRY.  Sadly, this depends on
+;;; both CPU architecture and operationg system.  Good choices are:
+;;;
+;;;   000100 (00)  MIPS
+;;;   010000 (00)  spectrum
+;;; Alpha, 68k and VAX all loose by prefering 0 or -1 -- already fixnums
+;;; 
+;;; This file is right for HP-PA spectrum. Tag RETURN-CODE, which is not
+;;; position sensitive, is in the MIPS-favoured spot.
+
 (vector-set! (get-fixed-objects-vector)
 	     4 ;(fixed-objects-vector-slot 'MICROCODE-TYPES-VECTOR)
-	     #((NULL FALSE MANIFEST-VECTOR GLOBAL-ENVIRONMENT) ;00
-	       (PAIR LIST)				;01
-	       CHARACTER		       		;02
-	       QUOTATION				;03
-	       PRIMITIVE-COMBINATION-2 	                ;04
-	       UNINTERNED-SYMBOL			;05
-	       (FLONUM BIG-FLONUM)			;06
-	       COMBINATION-1				;07
-	       (TRUE CONSTANT)				;08
-	       EXTENDED-PROCEDURE			;09		
-	       VECTOR					;0A
-	       (RETURN-CODE RETURN-ADDRESS)		;0B
-	       COMBINATION-2				;0C
-	       MANIFEST-CLOSURE 	       		;0D
-	       (BIGNUM BIG-FIXNUM)			;0E
-	       PROCEDURE				;0F
-	       (ENTITY)					;10
-	       DELAY					;11
-	       ENVIRONMENT		      		;12
-	       (PROMISE DELAYED)			;13
-	       EXTENDED-LAMBDA				;14
-	       COMMENT					;15
-	       NON-MARKED-VECTOR			;16
-	       LAMBDA					;17
-	       PRIMITIVE				;18
-	       SEQUENCE-2				;19
-	       (FIXNUM ADDRESS POSITIVE-FIXNUM NEGATIVE-FIXNUM) ;1A
-	       PRIMITIVE-COMBINATION-1			;1B
-	       CONTROL-POINT	       			;1C
-	       INTERNED-SYMBOL				;1D
-	       (STRING CHARACTER-STRING VECTOR-8B)	;1E
-	       ACCESS					;1F
-	       (HUNK3-A UNMARKED-HISTORY)		;20
-	       DEFINITION				;21
-	       BROKEN-HEART		       		;22
-	       ASSIGNMENT				;23
-	       (TRIPLE HUNK3 HUNK3-B MARKED-HISTORY)	;24
-	       IN-PACKAGE				;25
-	       COMBINATION	       			;26
-	       MANIFEST-NM-VECTOR	       		;27
-	       COMPILED-ENTRY				;28
-	       LEXPR					;29
-	       PRIMITIVE-COMBINATION-3		       	;2A
-	       MANIFEST-SPECIAL-NM-VECTOR	  	;2B
-	       VARIABLE					;2C
-	       THE-ENVIRONMENT	      			;2D
-	       FUTURE					;2E
-	       VECTOR-1B	          		;2F
-	       PRIMITIVE-COMBINATION-0	       	       	;30
-	       VECTOR-16B		       		;31
-	       (REFERENCE-TRAP UNASSIGNED)     		;32
-	       SEQUENCE-3	       			;33
-	       CONDITIONAL				;34
-	       DISJUNCTION				;35
-	       CELL					;36
-	       WEAK-CONS				;37
-	       QUAD        				;38
-	       LINKAGE-SECTION				;39
-	       RATNUM					;3A
-	       STACK-ENVIRONMENT			;3B
-	       (RECNUM COMPLEX)				;3C
-	       COMPILED-CODE-BLOCK			;3D
-	       RECORD					;3E
-	       #F					;3F
+	     #(
+#|1A|#         (POSITIVE-FIXNUM MANIFEST-VECTOR ADDRESS) ;00
+#|0E|#         (BIGNUM BIG-FIXNUM)			;01
+#|3A|#         RATNUM					;02
+#|3C|#         (RECNUM COMPLEX)				;03
+
+#|0B|#         (RETURN-CODE RETURN-ADDRESS)		;04
+
+#|00|#         (NULL FALSE GLOBAL-ENVIRONMENT)          ;05
+#|27|#         MANIFEST-NM-VECTOR	       		;06
+#|02|#         CHARACTER		       		;07
+#|08|#         (CONSTANT TRUE)				;08
+#|18|#         PRIMITIVE				;09
+#|0D|#         MANIFEST-CLOSURE 	       		;0A
+
+#|36|#         CELL					;0B
+#|01|#         (PAIR LIST)				;0C
+#|37|#         WEAK-CONS				;0D
+#|05|#         UNINTERNED-SYMBOL			;0E
+#|1D|#         INTERNED-SYMBOL				;0F
+
+#|28|#         COMPILED-ENTRY				;10
+
+#|22|#         BROKEN-HEART		       		;11
+#|20|#         (HUNK3-A UNMARKED-HISTORY)		;12
+#|24|#         (TRIPLE HUNK3 HUNK3-B MARKED-HISTORY)	;13
+#|38|#         QUAD        				;14
+
+#|2B|#         MANIFEST-SPECIAL-NM-VECTOR	  	;15
+#|16|#         NON-MARKED-VECTOR			;16
+#|0A|#         VECTOR					;17
+#|3E|#         RECORD					;18
+#|2F|#         VECTOR-1B	          		;19
+#|1E|#         (STRING CHARACTER-STRING VECTOR-8B)	;1A
+#|31|#         VECTOR-16B		       		;1B
+
+#|32|#         (REFERENCE-TRAP UNASSIGNED)     		;1C
+#|3D|#         COMPILED-CODE-BLOCK			;1D
+#|39|#         LINKAGE-SECTION				;1E
+#|1C|#         CONTROL-POINT	       			;1F
+
+#|3B|#         STACK-ENVIRONMENT			;20
+#|0F|#         PROCEDURE				;21
+#|09|#         EXTENDED-PROCEDURE			;22		
+#|29|#         LEXPR					;23
+#|10|#         (ENTITY)					;24
+#|12|#         ENVIRONMENT		      		;25
+#|13|#         (PROMISE DELAYED)			;26
+#|2E|#         FUTURE					;27
+
+           ;; scode structures
+#|25|#         IN-PACKAGE				;28
+#|15|#         COMMENT					;29
+#|03|#         QUOTATION				;2A
+#|2C|#         VARIABLE					;2B
+#|1F|#         ACCESS					;2C
+#|17|#         LAMBDA					;2D
+#|14|#         EXTENDED-LAMBDA				;2E
+#|19|#         SEQUENCE-2				;2F
+#|33|#         SEQUENCE-3	       			;30
+#|34|#         CONDITIONAL				;31
+#|35|#         DISJUNCTION				;32
+#|26|#         COMBINATION	       			;33
+#|07|#         COMBINATION-1				;34
+#|0C|#         COMBINATION-2				;35
+#|30|#         PRIMITIVE-COMBINATION-0	       	       	;36
+#|1B|#         PRIMITIVE-COMBINATION-1			;37
+#|04|#         PRIMITIVE-COMBINATION-2 	                ;38
+#|2A|#         PRIMITIVE-COMBINATION-3		       	;39
+#|11|#         DELAY					;3A
+#|21|#         DEFINITION				;3B
+#|23|#         ASSIGNMENT				;3C
+#|2D|#         THE-ENVIRONMENT	      			;3D
+
+#|06|#         (FLONUM BIG-FLONUM)			;3E
+#|3F|#         NEGATIVE-FIXNUM	                        ;3F
+
 	       #F        				;40
 	       #F					;41
 	       #F					;42
@@ -486,6 +522,7 @@
 	       INTERNAL-APPLY-VAL			;5D
 	       COMPILER-ERROR-RESTART			;5E
 	       PRIMITIVE-CONTINUE			;5F
+	       COMPILER-LINK-CACHES-CONTINUE		;60
 	       ))
 
 ;;; [] Errors
@@ -725,4 +762,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.76 1994/10/04 22:05:53 cph Exp $"
+"$Id: utabmd.scm,v 9.77 1995/07/26 21:36:10 adams Exp $"
