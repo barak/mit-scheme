@@ -1,9 +1,45 @@
-;;; Procedure to build an image given a picture and the magnification factors
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/pic-imag.scm,v 1.2 1992/04/13 19:19:45 hal Exp $
+
+Copyright (c) 1991-92 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; 6.001 Images
 
 (declare (usual-integrations))
+
+;;; Procedure to build an image given a picture and the magnification factors
 
 (define (build-image pic window h-sf v-sf pic-min pic-max)
-  (let* ((colormap-size (colormap-size (get-visual-info window)))
+  (let* ((gray-map (n-gray-map window))
 	 (pic-height (picture-height pic))	;py
 	 (pic-width (picture-width pic))	;x
 	 (pic-data (picture-data pic))
@@ -17,15 +53,16 @@
 	 (range (flo:- pic-max pic-min))
 	 (mul (if (flo:< range 1e-12)
 		  0.
-		  (/ colormap-size (flo:* (flo:+ 1. 7.142e-8)  ; 1+epsilon
-					  range))))) 
+		  (/ (string-length gray-map)
+		     (flo:* (flo:+ 1. 7.142e-8)	; 1+epsilon
+			    range)))))
 
     ;; The range was slightly adjusted so that an illegal grey level would
     ;; never be generated. epsilon was carefully chosen so that no error would
-    ;; be incurred in transforming to actual grey levels up to a colormap-size
+    ;; be incurred in transforming to actual grey levels up to a gray-levels
     ;; of 2^24. In general, choose epsilon such that:
-    ;;            colormap-size < (/ (1+ epsilon) epsilon)
-    
+    ;;            gray-levels < (/ (1+ epsilon) epsilon)
+
     (cond ((and (fix:= 1 h-sf) (fix:= 1 v-sf))
 	   (let y-loop ((py py-max) (iy-index 0))
 	     (if (fix:<= 0 py)
@@ -37,10 +74,12 @@
 			     (vector-8b-set!
 			      byte-string
 			      (fix:+ px iy-index)
-			      (flo:floor->exact
-			       (flo:* mul 
-				      (flo:- (floating-vector-ref pic-row px) 
-					     pic-min))))
+			      (vector-8b-ref
+			       gray-map
+			       (flo:floor->exact
+				(flo:* mul 
+				       (flo:- (floating-vector-ref pic-row px) 
+					      pic-min)))))
 			     (x-loop (fix:+ px 1))))))
 		   (y-loop (fix:- py 1) (fix:+ iy-index rect-index-height))))))
 
@@ -52,10 +91,14 @@
 		     (if (fix:< px pic-width)
 			 (let* ((n-is-0 (fix:+ ix iy-index))
 				(n-is-1 (fix:+ n-is-0 image-width))
-				(v (flo:floor->exact
-				    (flo:* mul 
-					   (flo:- (floating-vector-ref pic-row px) 
-						  pic-min)))))
+				(v
+				 (vector-8b-ref
+				  gray-map
+				  (flo:floor->exact
+				   (flo:* mul 
+					  (flo:- (floating-vector-ref pic-row
+								      px)
+						 pic-min))))))
 			   (vector-8b-set! byte-string n-is-0 v)
 			   (vector-8b-set! byte-string (fix:+ n-is-0 1) v)
 			   (vector-8b-set! byte-string n-is-1 v)
@@ -73,10 +116,14 @@
 			 (let* ((row0 (fix:+ ix iy-index))
 				(row1 (fix:+ row0 image-width))
 				(row2 (fix:+ row1 image-width))
-				(v (flo:floor->exact
-				    (flo:* mul 
-					   (flo:- (floating-vector-ref pic-row px) 
-						  pic-min)))))
+				(v
+				 (vector-8b-ref
+				  gray-map
+				  (flo:floor->exact
+				   (flo:* mul 
+					  (flo:- (floating-vector-ref pic-row
+								      px)
+						 pic-min))))))
 			   (vector-8b-set! byte-string row0 v)
 			   (vector-8b-set! byte-string (fix:+ row0 1) v)
 			   (vector-8b-set! byte-string (fix:+ row0 2) v)
@@ -100,10 +147,14 @@
 				(row1 (fix:+ row0 image-width))
 				(row2 (fix:+ row1 image-width))
 				(row3 (fix:+ row2 image-width))
-				(v (flo:floor->exact
-				    (flo:* mul 
-					   (flo:- (floating-vector-ref pic-row px) 
-						  pic-min)))))
+				(v
+				 (vector-8b-ref
+				  gray-map
+				  (flo:floor->exact
+				   (flo:* mul 
+					  (flo:- (floating-vector-ref pic-row
+								      px)
+						 pic-min))))))
 			   (vector-8b-set! byte-string row0 v)
 			   (vector-8b-set! byte-string (fix:+ row0 1) v)
 			   (vector-8b-set! byte-string (fix:+ row0 2) v)
@@ -130,10 +181,14 @@
 		 (let ((pic-row (floating-vector-ref pic-data py)))
 		   (let x-loop ((px 0) (ix 0))
 		     (if (fix:< px pic-width)
-			 (let* ((v (flo:floor->exact
-				    (flo:* mul 
-					   (flo:- (floating-vector-ref pic-row px) 
-						  pic-min))))
+			 (let* ((v
+				 (vector-8b-ref
+				  gray-map
+				  (flo:floor->exact
+				   (flo:* mul 
+					  (flo:- (floating-vector-ref pic-row
+								      px)
+						 pic-min)))))
 				(n-start (fix:+ ix iy-index))
 				(n-end (fix:+ n-start rect-index-height)))
 			   (let n-loop ((n n-start))
