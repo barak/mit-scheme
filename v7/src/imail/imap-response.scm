@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.27 2000/05/28 15:25:37 cph Exp $
+;;; $Id: imap-response.scm,v 1.28 2000/05/28 15:29:22 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -291,12 +291,12 @@
 				    port)))
 	      (if (fix:= m 0)
 		  (error "Premature EOF:" port))
-	      (let ((start* (fix:+ start m)))
+	      (let ((start (fix:+ start m)))
 		(if (and *read-literal-progress-hook*
-			 (not (and (fix:= start 0)
-				   (fix:>= start* n))))
-		    (*read-literal-progress-hook* start* n))
-		(loop start*)))))
+			 (fix:> start 0)
+			 (fix:<= start n))
+		    (*read-literal-progress-hook* start n))
+		(loop start)))))
       (if imap-transcript-port
 	  (write-string s imap-transcript-port))
       (let ((n* (translate-line-endings!:network->scheme string 0 n)))
