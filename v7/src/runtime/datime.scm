@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.7 1995/04/15 06:56:27 cph Exp $
+$Id: datime.scm,v 14.8 1995/04/22 23:37:09 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -139,3 +139,34 @@ MIT in each case. |#
 		   (number->string second)
 		   " "
 		   (if (< hour 12) "AM" "PM"))))
+
+(define (time-zone? object)
+  (and (number? object)
+       (exact? object)
+       (<= -24 object 24)
+       (integer? (* 3600 object))))
+
+(define (time-zone->string tz)
+  (if (not (time-zone? tz))
+      (error:wrong-type-argument tz "time zone" 'TIME-ZONE->STRING))
+  (let ((minutes (round (* 60 (- tz)))))
+    (let ((qr (integer-divide (abs minutes) 60)))
+      (string-append (if (< minutes 0) "-" "+")
+		     (string-pad-left (integer-divide-quotient qr) 2 #\0)
+		     (string-pad-left (integer-divide-remainder qr) 2 #\0)))))
+
+(define (decoded-time/daylight-savings-time? dt)
+  ;; In current implementation, DAY-OF-WEEK field might be missing, so
+  ;; there this will return wrong answer near the changeovers.
+  (let ((month (decoded-time/month dt)))
+    (cond ((= 4 month)
+	   (or (> (decoded-time/day dt) 7)
+	       (not (eqv? (decoded-time/day-of-week dt) 6))
+	       (> (decode-time/hour dt) 1)))
+	  ((= 10 month)
+	   (or (< (decoded-time/day dt) 25)
+	       (not (eqv? (decoded-time/day-of-week dt) 6))
+	       ;; Since DT is a local time, it's impossible to
+	       ;; tell whether we're in the overlapped hour.
+	       (< (decode-time/hour dt) 3)))
+	  (else (<= 5 month 9)))))

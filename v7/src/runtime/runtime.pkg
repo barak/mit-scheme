@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.252 1995/04/15 06:10:04 cph Exp $
+$Id: runtime.pkg,v 14.253 1995/04/22 23:37:23 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -375,6 +375,7 @@ MIT in each case. |#
 	  decoded-time/date-string
 	  decoded-time/day
 	  decoded-time/day-of-week
+	  decoded-time/daylight-savings-time?
 	  decoded-time/hour
 	  decoded-time/minute
 	  decoded-time/month
@@ -387,7 +388,9 @@ MIT in each case. |#
 	  make-decoded-time
 	  month/long-string
 	  month/max-days
-	  month/short-string))
+	  month/short-string
+	  time-zone->string
+	  time-zone?))
 
 (define-package (runtime debugger)
   (files "debug")
