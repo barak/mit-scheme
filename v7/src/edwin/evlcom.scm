@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.27 1991/08/28 21:07:07 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.28 1991/08/28 22:28:42 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -304,16 +304,44 @@ may be available.  The following commands are special to this mode:
 (define scheme-syntax-table?
   (access syntax-table? system-global-environment))
 
+(define-variable run-light
+  "Scheme run light.  Not intended to be modified by users, but needed to
+kludge the mode line."
+  false)
+
+(define-variable enable-run-light?
+  "Whether to display the Scheme run light."
+  true
+  boolean?)
+
 (define (editor-eval sexp environment)
-  (let ((to-transcript? (ref-variable enable-transcript-buffer)))
-    (with-output-to-transcript-buffer
-     (lambda ()
-       (let* ((buffer (transcript-buffer))
-	      (value (eval-with-history sexp environment)))
-	 (transcript-write value
-			   buffer
-			   to-transcript?)
-	 value)))))
+  (let* ((to-transcript? (ref-variable enable-transcript-buffer))
+	 (core 
+	  (lambda ()
+	    (with-output-to-transcript-buffer
+	     (lambda ()
+	       (let* ((buffer (transcript-buffer))
+		      (value (eval-with-history sexp environment)))
+		 (transcript-write value
+				   buffer
+				   to-transcript?)
+		 value))))))
+    (if (ref-variable enable-run-light?)
+	(dynamic-wind
+	 (lambda ()
+	   (set-variable! run-light "eval")
+	   (for-each (lambda (window)
+		       (window-modeline-event! window 'RUN-LIGHT))
+		     (window-list))
+	   (update-screens! false))
+	 core
+	 (lambda ()
+	   (set-variable! run-light false)
+	   (for-each (lambda (window)
+		       (window-modeline-event! window 'RUN-LIGHT))
+		     (window-list))
+	   (update-screens! false)))
+	(core))))
 
 (define (eval-with-history expression environment)
   (let ((syntax-table (evaluation-syntax-table environment)))
