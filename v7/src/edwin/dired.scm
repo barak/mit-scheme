@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.170 1999/08/10 16:54:51 cph Exp $
+;;; $Id: dired.scm,v 1.171 2000/03/22 16:12:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -63,7 +63,7 @@ Type \\[dired-mark] to Mark a file for later commands.
   the next ARG (or previous -ARG if ARG<0) files, or just `1'
   to operate on the current file only.  Prefix arguments override marks.
 Type \\[dired-unmark] to Unmark a file.
-Type \\[dired-unmark-backward] to back up one line and unmark.
+Type \\[dired-backup-unmark] to back up one line and unmark.
 Type \\[dired-do-deletions] to eXecute the deletions requested.
 Type f to Find the current line's file
   (or dired it in another buffer, if it is a directory).
