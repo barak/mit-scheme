@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.49 1999/01/02 06:11:34 cph Exp $
+### $Id: i386.m4,v 1.50 2000/02/07 04:42:14 cph Exp $
 ###
-### Copyright (c) 1992-1999 Massachusetts Institute of Technology
+### Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ###
 ### This program is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
@@ -122,6 +122,11 @@
 ###	that space on the top of the stack.  If STATIC_STRUCT_RETURN
 ###	is defined, the callee returns a pointer to a static struct in
 ###	EAX.  Otherwise, the callee returns the struct in EAX/EDX.
+### CALLEE_POPS_STRUCT_RETURN
+###	Modifies the CALLER_ALLOCS_STRUCT_RETURN calling convention.
+###	Under the modified convention, the callee pops the pointer to
+###	the allocated space, so the caller doesn't have to.  This
+###	convention is used by GCC 2.9.x.
 ### WCC386
 ###	Should be defined when using Watcom assembler.
 ### WCC386R
@@ -628,8 +633,9 @@ ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
 
 define_debugging_label(scheme_to_interface_return)
 ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
+ifdef(`CALLEE_POPS_STRUCT_RETURN',`',`
 	OP(add,l)	TW(IMM(4),REG(esp))	# pop pointer to struct return
-')
+')')
 	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
 
 ifdef(`STATIC_STRUCT_RETURN',`

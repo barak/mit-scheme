@@ -1,9 +1,9 @@
 /* -*-C-*-
    System file for Linux
 
-$Id: linux.h,v 1.18 1999/03/03 05:32:18 cph Exp $
+$Id: linux.h,v 1.19 2000/02/07 04:42:25 cph Exp $
 
-Copyright (c) 1995-1999 Massachusetts Institute of Technology
+Copyright (c) 1995-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,7 +29,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define LINUX_STATIC_LIBS(libs) -Xlinker -Bstatic libs -Xlinker -Bdynamic
 
 #ifdef __ELF__
+#if ((__GNUC__ > 2) || ((__GNUC__ == 2) && (__GNUC_MINOR__ >= 9)))
+#define M4_SWITCH_SYSTEM -P "define(LINUX_ELF,1)" -P "define(CALLEE_POPS_STRUCT_RETURN,1)"
+#else
 #define M4_SWITCH_SYSTEM -P "define(LINUX_ELF,1)"
+#endif
 /* Newer versions of Debian don't really support termcap.  However,
    ncurses is supported on all GNU/Linux systems, so we'll use that
    instead.  */
