@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.6 1990/11/16 01:07:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.7 1990/11/16 01:11:44 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -49,6 +49,7 @@ MIT in each case. |#
 (define (edwin-tutorial-pathname)
   (bind-condition-handler (list error-type:open-file)
       (lambda (condition)
+	condition
 	(editor-error "Unable to find TUTORIAL file"))
     (lambda ()
       (system-library-pathname
