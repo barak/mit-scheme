@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: triv.pkg,v 1.6 2001/08/20 02:49:18 cph Exp $
+$Id: triv.pkg,v 1.7 2001/08/20 21:02:43 cph Exp $
 
 Copyright (c) 2001 Massachusetts Institute of Technology
 
@@ -22,55 +22,58 @@ USA.
 
 ;;;; CREF Packaging: hand-compiled package for bootstrapping
 
-(let ((v
-       (let ((package
-	      (lambda (package-name ancestors files
-				    exported-names imported-names)
-		(vector package-name
-			ancestors
-			(list (cons #f files))
-			#f
-			#f
-			'#()
-			(list->vector
-			 (map (lambda (name)
-				(vector name (car ancestors)))
-			      exported-names))
-			(list->vector
-			 (map (lambda (n.p)
-				(vector (car n.p) (cdr n.p)))
-			      imported-names))
-			#f))))
-	 (vector (package '(cross-reference)
-			  '(())
-			  '("mset" "object" "toplev")
-			  '(cref/generate-all
-			    cref/generate-constructors
-			    cref/generate-cref
-			    cref/generate-cref-unusual
-			    cref/generate-trivial-constructor)
-			  '())
-		 (package '(cross-reference analyze-file)
-			  '((cross-reference) ())
-			  '("anfile")
-			  '(analyze-file)
-			  '())
-		 (package '(cross-reference constructor)
-			  '((cross-reference) ())
-			  '("conpkg")
-			  '(construct-external-descriptions)
-			  '())
-		 (package '(cross-reference formatter)
-			  '((cross-reference) ())
-			  '("forpkg")
-			  '(format-packages
-			    format-packages-unusual)
-			  '())
-		 (package '(cross-reference reader)
-			  '((cross-reference) ())
-			  '("redpkg")
-			  '(read-file-analyses!
-			    read-package-model
-			    resolve-references!)
-			  '((package-file? . (package))))))))
-  (vector 'PACKAGE-DESCRIPTIONS 2 v v))
+(vector
+ 'PACKAGE-DESCRIPTIONS
+ 2
+ (let ((package
+	(lambda (package-name ancestors exported-names imported-names)
+	  (vector package-name
+		  ancestors
+		  '#()
+		  (list->vector
+		   (map (lambda (name)
+			  (vector name (car ancestors)))
+			exported-names))
+		  (list->vector
+		   (map (lambda (n.p)
+			  (vector (car n.p) (cdr n.p)))
+			imported-names))
+		  #f))))
+   (vector (package '(cross-reference)
+		    '(())
+		    '(cref/generate-all
+		      cref/generate-constructors
+		      cref/generate-cref
+		      cref/generate-cref-unusual
+		      cref/generate-trivial-constructor)
+		    '())
+	   (package '(cross-reference analyze-file)
+		    '((cross-reference) ())
+		    '(analyze-file)
+		    '())
+	   (package '(cross-reference constructor)
+		    '((cross-reference) ())
+		    '(construct-external-descriptions)
+		    '())
+	   (package '(cross-reference formatter)
+		    '((cross-reference) ())
+		    '(format-packages
+		      format-packages-unusual)
+		    '())
+	   (package '(cross-reference reader)
+		    '((cross-reference) ())
+		    '(read-file-analyses!
+		      read-package-model
+		      resolve-references!)
+		    '((package-file? . (package))))))
+ (let ((files
+	(lambda (package-name . files)
+	  (vector package-name
+		  (vector (list->vector files))
+		  '#()
+		  '#()))))
+   (vector (files '(cross-reference) "mset" "object" "toplev")
+	   (files '(cross-reference analyze-file) "anfile")
+	   (files '(cross-reference constructor) "conpkg")
+	   (files '(cross-reference formatter) "forpkg")
+	   (files '(cross-reference reader) "redpkg"))))

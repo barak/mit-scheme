@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.17 2001/08/20 02:49:09 cph Exp $
+$Id: redpkg.scm,v 1.18 2001/08/20 21:02:41 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -30,10 +30,11 @@ USA.
     (with-values
 	(lambda ()
 	  (sort-descriptions (read-and-parse-model model-pathname)))
-      (lambda (packages extensions globals)
+      (lambda (packages extensions loads globals)
 	(descriptions->pmodel
 	 packages
 	 extensions
+	 loads
 	 (map (lambda (pathname)
 		(cons
 		 (->namestring pathname)
@@ -54,30 +55,61 @@ USA.
 			 #f)))))
 	      globals)
 	 model-pathname)))))
-
+
 (define (sort-descriptions descriptions)
-  (let ((packages '())
-	(extensions '())
-	(globals '()))
-    (let loop ((descriptions descriptions))
-      (for-each (lambda (description)
-		  (case (car description)
-		    ((DEFINE-PACKAGE)
-		     (set! packages (cons (cdr description) packages)))
-		    ((EXTEND-PACKAGE)
-		     (set! extensions (cons (cdr description) extensions)))
-		    ((GLOBAL-DEFINITIONS)
-		     (set! globals
-			   (append! globals (list-copy (cdr description)))))
-		    ((NESTED-DESCRIPTIONS)
-		     (loop (cdr description)))
-		    (else
-		     (error "Unknown description keyword:"
-			    (car description)))))
-		descriptions))
-    (values (reverse! packages)
-	    (reverse! extensions)
-	    globals)))
+  (letrec
+      ((loop
+	(lambda (descriptions packages extensions loads globals)
+	  (if (pair? descriptions)
+	      (let ((description (car descriptions))
+		    (descriptions (cdr descriptions)))
+		(case (car description)
+		  ((DEFINE-PACKAGE)
+		   (loop descriptions
+			 (cons (cdr description) packages)
+			 extensions
+			 (if (interesting-package-to-load? (cdr description))
+			     (cons (cdr description) loads)
+			     loads)
+			 globals))
+		  ((EXTEND-PACKAGE)
+		   (loop descriptions
+			 packages
+			 (cons (cdr description) extensions)
+			 (if (interesting-package-to-load? (cdr description))
+			     (cons (cdr description) loads)
+			     loads)
+			 globals))
+		  ((GLOBAL-DEFINITIONS)
+		   (loop descriptions
+			 packages
+			 extensions
+			 loads
+			 (append! (reverse (cdr description)) globals)))
+		  ((NESTED-DESCRIPTIONS)
+		   (call-with-values
+		       (lambda ()
+			 (loop (cdr description)
+			       packages
+			       extensions
+			       loads
+			       globals))
+		     (lambda (packages extensions loads globals)
+		       (loop descriptions packages extensions loads globals))))
+		  (else
+		   (error "Unknown description keyword:" (car description)))))
+	      (values packages extensions loads globals)))))
+    (call-with-values (lambda () (loop descriptions '() '() '() '()))
+      (lambda (packages extensions loads globals)
+	(values (reverse! packages)
+		(reverse! extensions)
+		(reverse! loads)
+		(reverse! globals))))))
+
+(define (interesting-package-to-load? description)
+  (or (pair? (package-description/file-cases description))
+      (pair? (package-description/initializations description))
+      (pair? (package-description/finalizations description))))
 
 (define (read-file-analyses! pmodel)
   (call-with-values (lambda () (cache-file-analyses! pmodel))
@@ -305,29 +337,37 @@ USA.
 		((FILES)
 		 (set-package-description/file-cases!
 		  package
-		  (append (package-description/file-cases package)
-			  (list (parse-filenames (cdr option))))))
+		  (append! (package-description/file-cases package)
+			   (list (parse-filenames (cdr option))))))
 		((FILE-CASE)
 		 (set-package-description/file-cases!
 		  package
-		  (append (package-description/file-cases package)
-			  (list (parse-file-case (cdr option))))))
+		  (append! (package-description/file-cases package)
+			   (list (parse-file-case (cdr option))))))
 		((EXPORT)
 		 (set-package-description/exports!
 		  package
-		  (append (package-description/exports package)
-			  (list (parse-import/export (cdr option))))))
+		  (append! (package-description/exports package)
+			   (list (parse-import/export (cdr option))))))
 		((IMPORT)
 		 (set-package-description/imports!
 		  package
-		  (append (package-description/imports package)
-			  (list (parse-import/export (cdr option))))))
+		  (append! (package-description/imports package)
+			   (list (parse-import/export (cdr option))))))
 		((INITIALIZATION)
-		 (if (package-description/initialization package)
-		     (error "Multiple INITIALIZATION options:" option))
-		 (set-package-description/initialization!
-		  package
-		  (parse-initialization (cdr option))))
+		 (let ((initialization (parse-initialization (cdr option))))
+		   (if initialization
+		       (set-package-description/initializations!
+			package
+			(append! (package-description/initializations package)
+				 (list initialization))))))
+		((FINALIZATION)
+		 (let ((finalization (parse-initialization (cdr option))))
+		   (if finalization
+		       (set-package-description/finalizations!
+			package
+			(append! (package-description/finalizations package)
+				 (list finalization))))))
 		(else
 		 (error "Unrecognized option keyword:" (car option)))))
 	    options))
@@ -362,9 +402,11 @@ USA.
   (->pathname filename))
 
 (define (parse-initialization initialization)
-  (if (not (and (pair? initialization) (null? (cdr initialization))))
-      (error "illegal initialization" initialization))
-  (car initialization))
+  (if (and (pair? initialization) (null? (cdr initialization)))
+      (car initialization)
+      (begin
+	(warn "Illegal initialization/finalization:" initialization)
+	#f)))
 
 (define (parse-import/export object)
   (if (not (and (pair? object)
@@ -390,7 +432,7 @@ USA.
 
 ;;;; Packages
 
-(define (descriptions->pmodel descriptions extensions globals pathname)
+(define (descriptions->pmodel descriptions extensions loads globals pathname)
   (let ((packages
 	 (map (lambda (description)
 		(make-package (package-description/name description) 'UNKNOWN))
@@ -439,12 +481,18 @@ USA.
 	    extension
 	    get-package
 	    #f))
-	 extensions))
-      (make-pmodel root-package
-		   (make-package primitive-package-name #f)
-		   packages
-		   extra-packages
-		   pathname))))
+	 extensions)
+	(make-pmodel root-package
+		     (make-package primitive-package-name #f)
+		     packages
+		     extra-packages
+		     (map (lambda (package)
+			    (process-package-load
+			     (get-package (package-description/name package)
+					  #f)
+			     package))
+			  loads)
+		     pathname)))))
 
 (define (process-globals-info file namestring get-package)
   (for-each-vector-element (vector-ref file 2)
@@ -461,11 +509,11 @@ USA.
 		  (set-package/parent! package #f))))
 	(let ((expression (make-expression package namestring #f)))
 	  ;; Unlinked internal names.
-	  (for-each-vector-element (vector-ref desc 5)
+	  (for-each-vector-element (vector-ref desc 2)
 	    (lambda (name)
 	      (bind! package name expression #f)))
 	  ;; Exported bindings.
-	  (for-each-vector-element (vector-ref desc 6)
+	  (for-each-vector-element (vector-ref desc 3)
 	    (lambda (entry)
 	      (let ((name (vector-ref entry 0))
 		    (external-package (get-package (vector-ref entry 1) #t))
@@ -478,7 +526,7 @@ USA.
 		       external-package external-name
 		       package #f))))
 	  ;; Imported bindings.
-	  (for-each-vector-element (vector-ref desc 7)
+	  (for-each-vector-element (vector-ref desc 4)
 	    (lambda (entry)
 	      (let ((external-package (get-package (vector-ref entry 1) #t))
 		    (external-name 
@@ -503,20 +551,12 @@ USA.
 
 (define (process-package-description package description get-package new?)
   (let ((file-cases (package-description/file-cases description)))
-    (set-package/file-cases! package
-			     (append! (package/file-cases package)
-				      (list-copy file-cases)))
     (set-package/files!
      package
      (append! (package/files package)
 	      (append-map! (lambda (file-case)
 			     (append-map cdr (cdr file-case)))
 			   file-cases))))
-  (let ((initialization (package-description/initialization description)))
-    (if (and initialization
-	     (package/initialization package))
-	(error "Multiple package initializations:" initialization))
-    (set-package/initialization! package initialization))
   (for-each (lambda (export)
 	      (let ((destination (get-package (car export) #t)))
 		(for-each (lambda (names)
@@ -536,6 +576,12 @@ USA.
 
 (define primitive-package-name
   (list (string->symbol "#[(cross-reference reader)primitives]")))
+
+(define (process-package-load package description)
+  (make-package-load package
+		     (package-description/file-cases description)
+		     (package-description/initializations description)
+		     (package-description/finalizations description)))
 
 ;;;; Binding and Reference
 
