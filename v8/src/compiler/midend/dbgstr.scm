@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.4 1994/11/26 22:05:20 gjr Exp $
+$Id: dbgstr.scm,v 1.5 1994/11/28 03:55:12 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -34,17 +34,24 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-structure (new-dbg-expression
-		   (conc-name new-dbg-expression/)
-		   (constructor new-dbg-expression/make (expr))
-		   (constructor new-dbg-expression/make2 (expr block)))
+(define-structure
+  (new-dbg-expression
+   (conc-name new-dbg-expression/)
+   (constructor new-dbg-expression/make (expr))
+   (constructor new-dbg-expression/make2 (expr block))
+   (print-procedure
+    (standard-unparser-method 'NEW-DBG-EXPRESSION
+      (lambda (e port)
+	(write-char #\Space port)
+	(display (new-dbg-expression/expr e) port)))))
   (expr false read-only true)
   (block false read-only false))
 
-(define-structure (new-dbg-procedure
-		   (conc-name new-dbg-procedure/)
-		   (constructor new-dbg-procedure/make (lam-expr lambda-list))
-		   (constructor new-dbg-procedure/%make))
+(define-structure
+  (new-dbg-procedure
+   (conc-name new-dbg-procedure/)
+   (constructor new-dbg-procedure/make (lam-expr lambda-list))
+   (constructor new-dbg-procedure/%make))
   (lam-expr false read-only true)
   (lambda-list false read-only true)
   (block false read-only false))
@@ -54,17 +61,26 @@ MIT in each case. |#
 			   (new-dbg-procedure/lambda-list dbg-proc)
 			   (new-dbg-procedure/block dbg-proc)))
 
-(define-structure (new-dbg-continuation
-		   (conc-name new-dbg-continuation/)
-		   (constructor new-dbg-continuation/make (type outer inner)))
+(define-structure
+  (new-dbg-continuation
+   (conc-name new-dbg-continuation/)
+   (constructor new-dbg-continuation/make (type outer inner)))
   (type false read-only true)
   (outer false read-only true)
   (inner false read-only true)
   (block false read-only false))
 
-(define-structure (new-dbg-variable
-		   (conc-name new-dbg-variable/)
-		   (constructor new-dbg-variable/make (original-name block)))
+(define-structure
+  (new-dbg-variable
+   (conc-name new-dbg-variable/)
+   (constructor new-dbg-variable/make (original-name block))
+   (print-procedure
+    (standard-unparser-method 'NEW-DBG-VARIABLE
+      (lambda (var port)
+	(write-char #\Space port)
+	(write (new-dbg-variable/name var) port)
+	(write-string " -> " port)
+	(write (new-dbg-variable/original-name var) port)))))
   (name original-name read-only false)
   (original-name name read-only true)
   (block false read-only false)
@@ -72,9 +88,20 @@ MIT in each case. |#
   (offset false read-only false)
   (extra false read-only false))
 
-(define-structure (new-dbg-block
-		   (conc-name new-dbg-block/)
-		   (constructor new-dbg-block/make (type parent)))
+(define-structure 
+  (new-dbg-block
+   (conc-name new-dbg-block/)
+   (constructor new-dbg-block/make (type parent))
+   (print-procedure
+    (standard-unparser-method 'NEW-DBG-BLOCK
+      (lambda (block port)
+	(write-char #\Space port)
+	(write (new-dbg-block/type block) port)
+	(write-string " vars:" port)
+	(for-each (lambda (var)
+		    (write-char #\Space port)
+		    (write (new-dbg-variable/name var) port))
+		  (new-dbg-block/variables block))))))
   (type false read-only false)
   (variables '() read-only false)
   (parent false read-only false)
