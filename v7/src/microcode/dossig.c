@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dossig.c,v 1.7 1992/09/19 19:06:16 jinx Exp $
+$Id: dossig.c,v 1.8 1992/09/25 01:23:24 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -833,6 +833,7 @@ unsigned short scheme_ss = 0;
 
 static char i386_exceptions_to_handle[] =
 {
+  DOS_EXCP_Stack_exception,	/* Must be first */
   DOS_EXCP_Integer_divide_by_zero,
   DOS_EXCP_Debug_exception,
   DOS_EXCP_Breakpoint,
@@ -843,7 +844,6 @@ static char i386_exceptions_to_handle[] =
   DOS_EXCP_Numeric_co_processor_segment_overrun,
   DOS_EXCP_Invalid_TSS,
   DOS_EXCP_Segment_not_present,
-  DOS_EXCP_Stack_exception,
   DOS_EXCP_General_protection,
   DOS_EXCP_Page_Fault,
   DOS_EXCP_Floating_point_exception,
@@ -909,7 +909,7 @@ DEFUN (DPMI_stack_fault_handler, (trapno, trapcode, scp),
        unsigned trapno AND unsigned trapcode AND struct sigcontext * scp)
 {
   Scheme_Stack_Segment_Selector = scheme_ds;
-  if ((scp->sc_ss == scheme_ss)
+  if (((scp->sc_ss & 0xffff) == scheme_ss)
       && (scp->sc_esp < (((unsigned long) Stack_Guard) + 0x1000)))
   {
     scp->sc_ss = scheme_ds;
@@ -944,7 +944,8 @@ DEFUN (install_exception_handlers, (get_vector, set_handler, restore),
        AND int EXFUN ((* restore), (unsigned)))
 {
   int i;
-
+  char * normal_stack = ((char *) NULL);
+
   for (i = 0; dos_true ; i++)
   {
     int excp = ((int) i386_exceptions_to_handle[i]);
@@ -961,23 +962,26 @@ DEFUN (install_exception_handlers, (get_vector, set_handler, restore),
       void EXFUN ((* handler), (unsigned, unsigned, struct sigcontext *));
       char * stack;
 
-      stack = ((char *) (malloc (STACK_EXCEPTION_STACK_SIZE)));
+      stack = ((char *) (malloc (2 * STACK_EXCEPTION_STACK_SIZE)));
       if (stack == ((char *) NULL))
 	continue;
       handler = exception_handler;
       if ((under_DPMI_p ())
+	  && (enable_DPMI_exceptions_p ())
 	  && ((DPMI_alloc_scheme_stack (&scheme_ds, &scheme_ss,
 					(Regs[REGBLOCK_STACK_GUARD])))
 	      == DOS_SUCCESS))
       {
 	Scheme_Stack_Segment_Selector = scheme_ss;
 	handler = DPMI_stack_fault_handler;
+	normal_stack = (stack + STACK_EXCEPTION_STACK_SIZE);
       }
       if (((* set_handler) (((unsigned) excp),
 			    handler,
 			    ((void *) (stack + STACK_EXCEPTION_STACK_SIZE))))
 	  != DOS_SUCCESS)
       {
+	normal_stack = ((char *) NULL);
 	free (stack);
 	if (handler != exception_handler)
 	{
@@ -991,7 +995,7 @@ DEFUN (install_exception_handlers, (get_vector, set_handler, restore),
     }
     else if (((* set_handler) (((unsigned) excp),
 			       exception_handler,
-			       ((void *) NULL)))
+			       ((void *) normal_stack)))
 	     != DOS_SUCCESS)
       continue;
     dos_record_interrupt_interception ((excp + NUM_DOS_INTVECT), restore);
@@ -1026,8 +1030,10 @@ static void
 DEFUN_VOID (DOS_install_interrupts)
 {
   extern dos_boolean EXFUN (under_X32_p, (void));
+  dos_boolean x32_p = (under_X32_p ());
+  dos_boolean dpmi_p = (under_DPMI_p ());
   
-  if (under_X32_p ())
+  if (x32_p)
   {
     extern void EXFUN (X32_asm_initialize, (void));
     extern int EXFUN (X32_lock_scheme_microcode, (void));
@@ -1062,10 +1068,6 @@ DEFUN_VOID (DOS_install_interrupts)
     else
       dos_record_interrupt_interception (DOS_INTVECT_USER_TIMER_TICK,
 					 X32_interrupt_restore);
-
-    install_exception_handlers (X32_get_exception_vector,
-				X32_set_exception_handler,
-				X32_restore_handler);
   }
 
   else
@@ -1074,15 +1076,11 @@ DEFUN_VOID (DOS_install_interrupts)
 		       bios_timer_handler, 
 		       256);
 
-    if (!under_DPMI_p ())
+    if (!dpmi_p)
       scm_int_intercept (DOS_INTVECT_KB_CTRL_BREAK,
 			 control_break_handler,
 			 256);
 
-    else if (enable_DPMI_exceptions_p ())
-      install_exception_handlers (DPMI_get_exception_vector,
-				  DPMI_set_exception_handler,
-				  DPMI_restore_handler);
   }
 
   if ((dos_install_kbd_hook ()) == DOS_SUCCESS)
@@ -1091,6 +1089,16 @@ DEFUN_VOID (DOS_install_interrupts)
 				       DOS_restore_keyboard);
     DOS_keyboard_intercepted_p = true;    
   }
+
+  if (dpmi_p && (enable_DPMI_exceptions_p ()))
+    install_exception_handlers (DPMI_get_exception_vector,
+				DPMI_set_exception_handler,
+				DPMI_restore_handler);
+  else if (x32_p)
+    install_exception_handlers (X32_get_exception_vector,
+				X32_set_exception_handler,
+				X32_restore_handler);
+
   return;
 }
 
