@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motion.scm,v 1.81 1989/08/14 09:22:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motion.scm,v 1.82 1990/11/02 03:12:37 cph Rel $
 ;;;
-;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -216,13 +216,13 @@
 (define (group-column-length group start-index end-index start-column)
   (if (fix:= start-index end-index)
       0
-      (let ((start (group-index->position group start-index true))
-	    (end (group-index->position group end-index false))
+      (let ((start (group-index->position-integrable group start-index true))
+	    (end (group-index->position-integrable group end-index false))
 	    (gap-start (group-gap-start group))
 	    (gap-end (group-gap-end group))
 	    (text (group-text group)))
-	(if (and (not (fix:> start gap-start))
-		 (not (fix:> gap-end end)))
+	(if (and (fix:<= start gap-start)
+		 (fix:<= gap-end end))
 	    (substring-column-length text gap-end end
 	      (substring-column-length text start gap-start start-column))
 	    (substring-column-length text start end start-column)))))
@@ -230,14 +230,14 @@
 (define (group-column->index group start-index end-index start-column column)
   (if (fix:= start-index end-index)
       start-index
-      (let ((start (group-index->position group start-index true))
-	    (end (group-index->position group end-index false))
+      (let ((start (group-index->position-integrable group start-index true))
+	    (end (group-index->position-integrable group end-index false))
 	    (gap-start (group-gap-start group))
 	    (gap-end (group-gap-end group))
 	    (text (group-text group)))
-	(cond ((not (fix:> end gap-start))
+	(cond ((fix:<= end gap-start)
 	       (substring-column->index text start end start-column column))
-	      ((not (fix:< start gap-end))
+	      ((fix:>= start gap-end)
 	       (fix:- (substring-column->index text start end
 					       start-column column)
 		      (group-gap-length group)))

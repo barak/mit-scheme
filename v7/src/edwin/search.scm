@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/search.scm,v 1.146 1989/04/28 22:53:11 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/search.scm,v 1.147 1990/11/02 03:13:38 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -71,36 +71,50 @@
     (and index (make-mark (mark-group start) index))))
 |#
 (define (%find-next-newline group start end)
-  (and (not (= start end))
+  ;; Assume (FIX:<= START END)
+  (and (not (fix:= start end))
        (let ((start (group-index->position group start true))
-	     (end (group-index->position group end false))
-	     (gap-start (group-gap-start group))
-	     (gap-end (group-gap-end group))
-	     (text (group-text group))
-	     (char #\newline))
-	 (let ((pos
-		(if (and (<= start gap-start) (<= gap-end end))
-		    (or (substring-find-next-char text start gap-start char)
-			(substring-find-next-char text gap-end end char))
-		    (substring-find-next-char text start end char))))
-	   (and pos
-		(group-position->index group pos))))))
+	     (end (group-index->position group end false)))
+	 (let ((position
+		(if (and (fix:<= start (group-gap-start group))
+			 (fix:<= (group-gap-end group) end))
+		    (or (substring-find-next-char (group-text group)
+						  start
+						  (group-gap-start group)
+						  #\newline)
+			(substring-find-next-char (group-text group)
+						  (group-gap-end group)
+						  end
+						  #\newline))
+		    (substring-find-next-char (group-text group)
+					      start
+					      end
+					      #\newline))))
+	   (and position
+		(group-position->index group position))))))
 
 (define (%find-previous-newline group start end)
-  (and (not (= start end))
+  ;; Assume (FIX:>= START END)
+  (and (not (fix:= start end))
        (let ((start (group-index->position group start false))
-	     (end (group-index->position group end true))
-	     (gap-start (group-gap-start group))
-	     (gap-end (group-gap-end group))
-	     (text (group-text group))
-	     (char #\newline))
-	 (let ((pos
-		(if (and (<= end gap-start) (<= gap-end start))
-		    (or (substring-find-previous-char text gap-end start char)
-			(substring-find-previous-char text end gap-start char))
-		    (substring-find-previous-char text end start char))))
-	   (and pos
-		(1+ (group-position->index group pos)))))))
+	     (end (group-index->position group end true)))
+	 (let ((position
+		(if (and (fix:<= end (group-gap-start group))
+			 (fix:<= (group-gap-end group) start))
+		    (or (substring-find-previous-char (group-text group)
+						      (group-gap-end group)
+						      start
+						      #\newline)
+			(substring-find-previous-char (group-text group)
+						      end
+						      (group-gap-start group)
+						      #\newline))
+		    (substring-find-previous-char (group-text group)
+						  end
+						  start
+						  #\newline))))
+	   (and position
+		(fix:+ (group-position->index group position) 1))))))
 
 ;;;; Character-set Search
 #|
