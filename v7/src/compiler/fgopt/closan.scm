@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.10 1989/10/26 07:36:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.11 1989/12/02 21:19:29 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -309,7 +309,11 @@ MIT in each case. |#
      (let ((entries
 	    (list-transform-negative! (cdr entry)
 	      (lambda (entry*)
-		(null? (cdr entry*))))))
+		(for-all? (cdr entry*)
+		  (lambda (condition)
+		    (and condition
+			 (eq? 'CONTAGION (cadr condition))
+			 (procedure/trivial-closure? (caddr condition)))))))))
        (if (not (null? entries))
 	   (undrift-block! (car entry)
 			   (reduce original-block-nearest-ancestor
