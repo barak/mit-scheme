@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dosenv.c,v 1.6 1993/08/28 22:46:35 gjr Exp $
+$Id: dosenv.c,v 1.7 1995/04/23 03:04:52 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,6 +55,7 @@ DEFUN (OS_decode_time, (t, buffer), time_t t AND struct time_structure * buffer)
   (buffer -> hour) = (ts -> tm_hour);
   (buffer -> minute) = (ts -> tm_min);
   (buffer -> second) = (ts -> tm_sec);
+  (buffer -> daylight_savings_time) = (ts -> tm_isdst);
   {
     /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
     int wday = (ts -> tm_wday);

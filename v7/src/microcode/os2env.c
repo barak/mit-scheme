@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.3 1995/04/23 02:42:38 cph Exp $
+$Id: os2env.c,v 1.4 1995/04/23 03:03:44 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -86,6 +86,7 @@ OS_decode_time (time_t t, struct time_structure * buffer)
   (buffer -> hour) = (ts -> tm_hour);
   (buffer -> minute) = (ts -> tm_min);
   (buffer -> second) = (ts -> tm_sec);
+  (buffer -> daylight_savings_time) = (ts -> tm_isdst);
   {
     /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
     int wday = (ts -> tm_wday);

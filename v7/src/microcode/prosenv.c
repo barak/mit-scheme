@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosenv.c,v 1.11 1993/08/29 19:54:27 ziggy Exp $
+$Id: prosenv.c,v 1.12 1995/04/23 03:03:31 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,36 +39,6 @@ MIT in each case. */
 #include "osenv.h"
 #include "ostop.h"
 
-/* This primitive is obsolete.
-   Left here for a while for compatibility purposes (booting old bands).
- */
-
-DEFINE_PRIMITIVE ("GET-DECODED-TIME", Prim_get_decoded_time, 1, 1,
-  "Return a vector with the current decoded time;\n\
-arg TAG is used to tag the vector.\n\
-The vector's elements are:\n\
-  #(TAG second minute hour day month year day-of-week)")
-{
-  time_t t;
-  struct time_structure ts;
-  PRIMITIVE_HEADER (1);
-
-  t = (OS_encoded_time ());
-  OS_decode_time (t, &ts);
-  {
-    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 8, 1));
-    FAST_VECTOR_SET (result, 0, (ARG_REF (1)));
-    FAST_VECTOR_SET (result, 1, (long_to_integer (ts . second)));
-    FAST_VECTOR_SET (result, 2, (long_to_integer (ts . minute)));
-    FAST_VECTOR_SET (result, 3, (long_to_integer (ts . hour)));
-    FAST_VECTOR_SET (result, 4, (long_to_integer (ts . day)));
-    FAST_VECTOR_SET (result, 5, (long_to_integer (ts . month)));
-    FAST_VECTOR_SET (result, 6, (long_to_integer (ts . year)));
-    FAST_VECTOR_SET (result, 7, (long_to_integer (ts . day_of_week)));
-    PRIMITIVE_RETURN (result);
-  }
-}
-
 DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
   "Return the current time as an integer.")
 {
@@ -78,14 +48,16 @@ DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
 DEFINE_PRIMITIVE ("DECODE-TIME", Prim_decode_time, 2, 2,
   "Fill a vector with the second argument decoded.\n\
 The vector's elements are:\n\
-  #(TAG second minute hour day month year day-of-week)")
+  #(TAG second minute hour day month year day-of-week dst)")
 {
   SCHEME_OBJECT vec;
+  unsigned int len;
   struct time_structure ts;
   PRIMITIVE_HEADER (1);
 
   vec = (VECTOR_ARG (1));
-  if ((VECTOR_LENGTH (vec)) != 8)
+  len = (VECTOR_LENGTH (vec));
+  if (! (len >= 8))
     error_bad_range_arg (1);
   OS_decode_time (((time_t) (arg_integer (2))), &ts);
   FAST_VECTOR_SET (vec, 1, (long_to_integer (ts . second)));
@@ -95,6 +67,8 @@ The vector's elements are:\n\
   FAST_VECTOR_SET (vec, 5, (long_to_integer (ts . month)));
   FAST_VECTOR_SET (vec, 6, (long_to_integer (ts . year)));
   FAST_VECTOR_SET (vec, 7, (long_to_integer (ts . day_of_week)));
+  if (len > 8)
+    FAST_VECTOR_SET (vec, 8, (long_to_integer (ts . daylight_savings_time)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -102,20 +76,25 @@ DEFINE_PRIMITIVE ("ENCODE-TIME", Prim_encode_time, 1, 1,
   "Return the file time corresponding to the time structure given.")
 {
   SCHEME_OBJECT vec;
+  unsigned int len;
   struct time_structure ts;
   PRIMITIVE_HEADER (1);
 
   vec = (VECTOR_ARG (1));
-  if ((VECTOR_LENGTH (vec)) != 8)
+  len = (VECTOR_LENGTH (vec));
+  if (! (len >= 8))
     error_bad_range_arg (1);
-
-  ts.second = (integer_to_long (FAST_VECTOR_REF (vec, 1)));
-  ts.minute = (integer_to_long (FAST_VECTOR_REF (vec, 2)));
-  ts.hour = (integer_to_long (FAST_VECTOR_REF (vec, 3)));
-  ts.day = (integer_to_long (FAST_VECTOR_REF (vec, 4)));
-  ts.month = (integer_to_long (FAST_VECTOR_REF (vec, 5)));
-  ts.year = (integer_to_long (FAST_VECTOR_REF (vec, 6)));
-  ts.day_of_week = (integer_to_long (FAST_VECTOR_REF (vec, 7)));
+  (ts . second) = (integer_to_long (FAST_VECTOR_REF (vec, 1)));
+  (ts . minute) = (integer_to_long (FAST_VECTOR_REF (vec, 2)));
+  (ts . hour) = (integer_to_long (FAST_VECTOR_REF (vec, 3)));
+  (ts . day) = (integer_to_long (FAST_VECTOR_REF (vec, 4)));
+  (ts . month) = (integer_to_long (FAST_VECTOR_REF (vec, 5)));
+  (ts . year) = (integer_to_long (FAST_VECTOR_REF (vec, 6)));
+  (ts . day_of_week) = (integer_to_long (FAST_VECTOR_REF (vec, 7)));
+  (ts . daylight_savings_time)
+    = ((len > 8)
+       ? (integer_to_long (FAST_VECTOR_REF (vec, 8)))
+       : (-1));
   PRIMITIVE_RETURN (long_to_integer ((long) (OS_encode_time (&ts))));
 }
 
