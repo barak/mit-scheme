@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/ring.scm,v 1.9 1989/04/28 22:52:56 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/ring.scm,v 1.10 1991/03/15 23:30:49 cph Exp $
 ;;;
-;;;	Copyright (c) 1984, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1984, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -112,10 +112,10 @@
 
 (set! ring-ref
 (named-lambda (ring-ref ring index)
-  (list-ref (vector-ref ring 2) (remainder index (ring-size ring)))))
+  (list-ref (vector-ref ring 2) (modulo index (ring-size ring)))))
 
 (set! ring-set!
 (named-lambda (ring-set! ring index object)
-  (list-set! (vector-ref ring 2) (remainder index (ring-size ring)) object)))
+  (list-set! (vector-ref ring 2) (modulo index (ring-size ring)) object)))
 
 )
