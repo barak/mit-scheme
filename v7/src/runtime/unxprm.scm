@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.68 2004/10/28 03:22:07 cph Exp $
+$Id: unxprm.scm,v 1.69 2004/10/28 19:38:50 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -147,6 +147,8 @@ USA.
      (or access-time (file-access-time-direct filename))
      (or modification-time (file-modification-time-direct filename)))))
 
+;;;; Environment variables
+
 (define environment-variables)
 
 (define (get-environment-variable name)
@@ -175,33 +177,35 @@ USA.
   (set! environment-variables (make-string-hash-table))
   (add-event-receiver! event:after-restart reset-environment-variables!))
 
+;;;; MIME types
+
 (define (os/suffix-mime-type suffix)
   (import-mime-types)
   (hash-table/get mime-types suffix #f))
 
 (define (initialize-mime-types!)
   (set! mime-types (make-string-hash-table))
-  (set! mime-types-files (make-vector (length mime-types-pathnames) (list #f)))
+  (set! mime.types-files (make-vector (length mime.types-pathnames) (list #f)))
   unspecific)
 
 (define mime-types)
-(define mime-types-files)
+(define mime.types-files)
 
-(define mime-types-pathnames
+(define mime.types-pathnames
   '("/etc/mime.types" "~/.mime.types"))
 
 (define (import-mime-types)
-  (if (let loop ((pathnames mime-types-pathnames) (index 0) (changed? #f))
+  (if (let loop ((pathnames mime.types-pathnames) (index 0) (changed? #f))
 	(if (pair? pathnames)
 	    (loop (cdr pathnames)
 		  (fix:+ index 1)
-		  (boolean/or (import-mime-types-file (car pathnames) index)
+		  (boolean/or (import-mime.types-file (car pathnames) index)
 			      changed?))
 	    changed?))
       (with-thread-events-blocked
 	(lambda ()
 	  (hash-table/clear! mime-types)
-	  (for-each-vector-element mime-types-files
+	  (for-each-vector-element mime.types-files
 	    (lambda (p)
 	      (for-each (lambda (entry)
 			  (let ((type (car entry)))
@@ -211,22 +215,22 @@ USA.
 							 type))
 				      (cdr entry))))
 			(cdr p))))))))
-
-(define (import-mime-types-file pathname index)
+
+(define (import-mime.types-file pathname index)
   (let ((changed? #f))
     (let loop ((t (file-modification-time pathname)))
       (with-thread-events-blocked
 	(lambda ()
-	  (let ((t* (car (vector-ref mime-types-files index))))
+	  (let ((t* (car (vector-ref mime.types-files index))))
 	    (cond ((eqv? t* t)
 		   unspecific)
 		  (t
-		   (vector-set! mime-types-files
+		   (vector-set! mime.types-files
 				index
-				(cons t (read-mime-types-file pathname)))
+				(cons t (read-mime.types-file pathname)))
 		   (set! changed? #t))
 		  (t*
-		   (vector-set! mime-types-files
+		   (vector-set! mime.types-files
 				index
 				(list #f))
 		   (set! changed? #t))))))
@@ -235,19 +239,30 @@ USA.
 	    (loop t*))))
     changed?))
 
-(define (read-mime-types-file pathname)
+(define (read-mime.types-file pathname)
   (call-with-input-file pathname
     (lambda (port)
       (let loop ((entries '()))
 	(let ((line (read-line port)))
 	  (if (eof-object? line)
 	      (reverse! entries)
-	      (loop (let ((line (string-trim line)))
-		      (if (or (string-null? line)
-			      (char=? (string-ref line 0) #\#))
-			  entries
-			  (cons (burst-string line char-set:whitespace #t)
-				entries))))))))))
+	      (loop (let ((entry (parse-mime.types-line line)))
+		      (if entry
+			  (cons entry entries)
+			  entries)))))))))
+
+(define (parse-mime.types-line line)
+  (if (and (fix:> (string-length line) 0)
+	   (char=? (string-ref line 0) #\#))
+      #f
+      (let ((parts (burst-string line char-set:whitespace #t)))
+	(if (pair? parts)
+	    (if (mime-type-string? (car parts))
+		parts
+		(begin
+		  (warn "Invalid mime.types line:" line)
+		  #f))
+	    #f))))
 
 (define (user-home-directory user-name)
   (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))
