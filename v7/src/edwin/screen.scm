@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: screen.scm,v 1.113 1996/07/02 21:01:15 cph Exp $
+;;;	$Id: screen.scm,v 1.114 1996/09/28 03:50:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -550,15 +550,20 @@
 		    (boolean-vector-set! new-hl-enable y true)))))
 	(string-fill! (vector-ref current-contents y) #\space)
 	(boolean-vector-set! current-enable y true)
-	(boolean-vector-set! current-hl-enable y false)))
+	(boolean-vector-set! current-hl-enable y false))))
+  (invalidate-cursor screen)
+  (set-screen-needs-update?! screen true))
+
+(define (invalidate-cursor screen)
+  (let ((current-matrix (screen-current-matrix screen))
+	(new-matrix (screen-new-matrix screen)))
     (if (or (matrix-cursor-x current-matrix)
 	    (matrix-cursor-y current-matrix))
 	(begin
 	  (set-matrix-cursor-x! new-matrix (matrix-cursor-x current-matrix))
 	  (set-matrix-cursor-y! new-matrix (matrix-cursor-y current-matrix))
 	  (set-matrix-cursor-x! current-matrix #f)
-	  (set-matrix-cursor-y! current-matrix #f))))
-  (set-screen-needs-update?! screen true))
+	  (set-matrix-cursor-y! current-matrix #f)))))
 
 (define (screen-scroll-lines-down screen xl xu yl yu amount)
   (if (screen-debug-trace screen)
@@ -588,22 +593,25 @@
 			    ((boolean-vector-ref hl-enable y*)
 			     (boolean-subvector-fill! (vector-ref hl y*) xl xu
 						      false))))
-		    (if (eq? scrolled? 'CLEARED)
-			(let ((yu (fix:+ yl amount)))
-			  (if (and (fix:= xl 0)
-				   (fix:= xu (screen-x-size screen)))
-			      (do ((y yl (fix:1+ y)))
-				  ((fix:= y yu))
-				(substring-fill! (vector-ref contents y) xl xu
-						 #\space)
-				(boolean-vector-set! hl-enable y false))
-			      (do ((y yl (fix:1+ y)))
-				  ((fix:= y yu))
-				(substring-fill! (vector-ref contents y) xl xu
-						 #\space)
-				(if (boolean-vector-ref hl-enable y)
-				    (boolean-subvector-fill! (vector-ref hl y)
-							     xl xu false)))))))
+		    (case scrolled?
+		      ((CLEARED)
+		       (let ((yu (fix:+ yl amount)))
+			 (if (and (fix:= xl 0)
+				  (fix:= xu (screen-x-size screen)))
+			     (do ((y yl (fix:1+ y)))
+				 ((fix:= y yu))
+			       (substring-fill! (vector-ref contents y) xl xu
+						#\space)
+			       (boolean-vector-set! hl-enable y false))
+			     (do ((y yl (fix:1+ y)))
+				 ((fix:= y yu))
+			       (substring-fill! (vector-ref contents y) xl xu
+						#\space)
+			       (if (boolean-vector-ref hl-enable y)
+				   (boolean-subvector-fill! (vector-ref hl y)
+							    xl xu false))))))
+		      ((CLOBBERED-CURSOR)
+		       (invalidate-cursor screen))))
 		  scrolled?))))))
 
 (define (screen-scroll-lines-up screen xl xu yl yu amount)
@@ -634,21 +642,24 @@
 			    ((boolean-vector-ref hl-enable y)
 			     (boolean-subvector-fill! (vector-ref hl y) xl xu
 						      false))))
-		    (if (eq? scrolled? 'CLEARED)
-			(if (and (fix:= xl 0)
-				 (fix:= xu (screen-x-size screen)))
-			    (do ((y (fix:- yu amount) (fix:1+ y)))
-				((fix:= y yu))
-			      (substring-fill! (vector-ref contents y) xl xu
-					       #\space)
-			      (boolean-vector-set! hl-enable y false))
-			    (do ((y (fix:- yu amount) (fix:1+ y)))
-				((fix:= y yu))
-			      (substring-fill! (vector-ref contents y) xl xu
-					       #\space)
-			      (if (boolean-vector-ref hl-enable y)
-				  (boolean-subvector-fill! (vector-ref hl y)
-							   xl xu false))))))
+		    (case scrolled?
+		      ((CLEARED)
+		       (if (and (fix:= xl 0)
+				(fix:= xu (screen-x-size screen)))
+			   (do ((y (fix:- yu amount) (fix:1+ y)))
+			       ((fix:= y yu))
+			     (substring-fill! (vector-ref contents y) xl xu
+					      #\space)
+			     (boolean-vector-set! hl-enable y false))
+			   (do ((y (fix:- yu amount) (fix:1+ y)))
+			       ((fix:= y yu))
+			     (substring-fill! (vector-ref contents y) xl xu
+					      #\space)
+			     (if (boolean-vector-ref hl-enable y)
+				 (boolean-subvector-fill! (vector-ref hl y)
+							  xl xu false)))))
+		      ((CLOBBERED-CURSOR)
+		       (invalidate-cursor screen))))
 		  scrolled?))))))
 
 (define (with-screen-in-update screen display-style thunk)
