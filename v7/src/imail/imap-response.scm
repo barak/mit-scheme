@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.21 2000/05/19 02:43:49 cph Exp $
+;;; $Id: imap-response.scm,v 1.22 2000/05/19 05:02:01 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -86,10 +86,7 @@
       (cons* delim (read-astring port) flags))))
 
 (define (read-search-response port)
-  (let ((numbers (read-open-list read-nz-number port)))
-    (if (pair? numbers)
-	numbers
-	(error "Empty search response."))))
+  (read-open-list read-nz-number port))
 
 (define (read-status-response port)
   (discard-known-char #\space port)
