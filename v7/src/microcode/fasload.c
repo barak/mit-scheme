@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.55 1990/08/16 20:06:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.56 1990/08/16 23:36:51 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -696,7 +696,7 @@ DEFUN (add_reload_cleanup, (cleanup_procedure), Tcleanup cleanup_procedure)
     ptrvec_adjoin (reload_cleanups, cleanup_procedure);
 }
 
-static void
+void
 DEFUN_VOID (execute_reload_cleanups)
 {
   PTR * scan = (PTRVEC_START (reload_cleanups));

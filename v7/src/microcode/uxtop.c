@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.3 1990/08/10 02:01:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.4 1990/08/16 23:36:36 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -52,6 +52,7 @@ extern void EXFUN (UX_initialize_userio, (void));
 extern void EXFUN (UX_reset_channels, (void));
 extern void EXFUN (UX_reset_processes, (void));
 extern void EXFUN (UX_reset_terminals, (void));
+extern void EXFUN (execute_reload_cleanups, (void));
 
 extern void EXFUN (OS_initialize_transcript_file, (void));
 
@@ -135,6 +136,7 @@ DEFUN_VOID (OS_reset)
   UX_reset_channels ();
   UX_reset_terminals ();
   UX_reset_processes ();
+  execute_reload_cleanups ();
 }
 
 void
