@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.17 1993/07/27 00:46:36 cph Exp $
+$Id: thread.scm,v 1.18 1993/09/03 06:59:24 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -740,28 +740,40 @@ MIT in each case. |#
   (without-interrupts %stop-thread-timer))
 
 (define (%maybe-toggle-thread-timer)
-  (let ((use-timer-interval?
-	 (and timer-interval
+  (cond ((and timer-interval
 	      (let ((current-thread first-running-thread))
 		(and current-thread
 		     (or (thread/next current-thread)
-			 input-registrations))))))
-    (if (or use-timer-interval? timer-records)
-	(begin
-	  (let ((interval
-		 (if use-timer-interval?
-		     timer-interval
-		     (let ((next-event-interval
-			    (- (timer-record/time timer-records)
-			       (real-time-clock))))
-		       (if (or (not timer-interval)
-			       (> next-event-interval timer-interval))
-			   next-event-interval
-			   timer-interval)))))
-	    ((ucode-primitive real-timer-set) interval interval))
-	  (set! thread-timer-running? true)
-	  unspecific)
-	(%stop-thread-timer))))
+			 input-registrations))))
+	 (%start-thread-timer timer-interval #t))
+	(timer-records
+	 (let ((next-event-time (timer-record/time timer-records)))
+	   (let ((next-event-interval (- next-event-time (real-time-clock))))
+	     (if (or (not timer-interval)
+		     (> next-event-interval timer-interval))
+		 (%start-thread-timer next-event-interval next-event-time)
+		 (%start-thread-timer timer-interval #t)))))
+	(else
+	 (%stop-thread-timer))))
+
+(define (%start-thread-timer interval time)
+  ;; If TIME is #T, that means interval is TIMER-INTERVAL.  Otherwise,
+  ;; INTERVAL is longer than TIMER-INTERVAL, and TIME is when INTERVAL
+  ;; ends.  The cases are as follows:
+  ;; 1. Timer not running: start it.
+  ;; 2. Timer running TIMER-INTERVAL: do nothing.
+  ;; 3. Timer running long interval, request sooner: restart it.
+  ;; 4. Otherwise: do nothing.
+  (if (or (not thread-timer-running?)
+	  (and (not (eq? #t thread-timer-running?))
+	       (< (if (eq? #t time)
+		      (+ (real-time-clock) interval)
+		      time)
+		  thread-timer-running?)))
+      (begin
+	((ucode-primitive real-timer-set) interval interval)
+	(set! thread-timer-running? time)
+	unspecific)))
 
 (define (%stop-thread-timer)
   (if thread-timer-running?
