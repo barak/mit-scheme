@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.95 2002/07/03 04:10:36 cph Exp $
+$Id: interp.c,v 9.96 2002/09/05 15:49:49 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -155,7 +155,7 @@ extern long EXFUN (return_to_compiled_code, (void));
   goto do_expression;							\
 }
 
-#define REDUCES_TO_NTH(n) (REDUCES_TO (FAST_MEMORY_REF (exp_register, (n))))
+#define REDUCES_TO_NTH(n) REDUCES_TO (FAST_MEMORY_REF (exp_register, (n)))
 
 #define DO_NTH_THEN(Return_Code, n)					\
 {									\
