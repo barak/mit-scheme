@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.3 2004/02/23 20:53:22 cph Exp $
+$Id: xml-names.scm,v 1.4 2004/02/26 04:52:03 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -38,13 +38,14 @@ USA.
 
 (define (check-prefix+iri qname iri)
   (let ((s (symbol-name qname)))
-    (let ((c (string-find-next-char s #\:)))
-      (if (and c
-	       (let ((prefix (string-head->symbol s c)))
-		 (or (and (eq? prefix 'xml)
-			  (not (eq? iri xml-iri)))
-		     (and (eq? prefix 'xmlns)
-			  (not (eq? iri xmlns-iri))))))
+    (let ((c (find-prefix-separator s)))
+      (if (if c
+	      (let ((prefix (string-head->symbol s c)))
+		(or (and (eq? prefix 'xml)
+			 (not (eq? iri xml-iri)))
+		    (and (eq? prefix 'xmlns)
+			 (not (eq? iri xmlns-iri)))))
+	      iri)
 	  (error:bad-range-argument iri 'MAKE-XML-NAME)))))
 
 (define (%make-xml-name qname iri)
@@ -106,37 +107,21 @@ USA.
 
 (define (string-is-xml-nmtoken? string)
   (let ((buffer (string->parser-buffer (utf8-string->wide-string string))))
-    (let ((check-char
-	   (lambda ()
-	     (match-parser-buffer-char-in-alphabet buffer
-						   alphabet:name-subsequent))))
-      (letrec
-	  ((no-colon
-	    (lambda ()
-	      (cond ((match-parser-buffer-char buffer #\:)
-		     (colon))
-		    ((peek-parser-buffer-char buffer)
-		     (and (check-char)
-			  (no-colon)))
-		    (else 'NAME))))
-	   (colon
-	    (lambda ()
-	      (cond ((match-parser-buffer-char buffer #\:)
-		     (nmtoken?))
-		    ((peek-parser-buffer-char buffer)
-		     (and (check-char)
-			  (colon)))
-		    (else 'NAME))))
-	   (nmtoken?
-	    (lambda ()
-	      (if (peek-parser-buffer-char buffer)
-		  (and (check-char)
-		       (nmtoken?))
-		  'NMTOKEN))))
-	(if (match-parser-buffer-char-in-alphabet buffer alphabet:name-initial)
-	    (no-colon)
-	    (and (check-char)
-		 (nmtoken?)))))))
+    (letrec
+	((match-tail
+	  (lambda ()
+	    (if (peek-parser-buffer-char buffer)
+		(and (match-parser-buffer-char-in-alphabet
+		      buffer alphabet:name-subsequent)
+		     (match-tail))
+		#t))))
+      (if (match-parser-buffer-char-in-alphabet buffer alphabet:name-initial)
+	  (and (match-tail)
+	       'NAME)
+	  (and (match-parser-buffer-char-in-alphabet buffer
+						     alphabet:name-subsequent)
+	       (match-tail)
+	       'NMTOKEN)))))
 
 (define (string-composed-of? string char-set)
   (and (string? string)
@@ -238,17 +223,29 @@ USA.
 
 (define (xml-qname-local qname)
   (let ((s (symbol-name qname)))
-    (let ((c (string-find-next-char s #\:)))
+    (let ((c (find-prefix-separator s)))
       (if c
 	  (string-tail->symbol s (fix:+ c 1))
 	  qname))))
 
 (define (xml-qname-prefix qname)
   (let ((s (symbol-name qname)))
-    (let ((c (string-find-next-char s #\:)))
+    (let ((c (find-prefix-separator s)))
       (if c
 	  (string-head->symbol s c)
 	  (null-xml-name-prefix)))))
+
+(define (find-prefix-separator s)
+  (let ((c (string-find-next-char s #\:)))
+    (and c
+	 (let ((i (fix:+ c 1))
+	       (e (string-length s)))
+	   (and (let ((char (read-utf8-char (open-input-string s i e))))
+		  (and (not (eof-object? char))
+		       (not (char=? char #\:))
+		       (char-in-alphabet? char alphabet:name-initial)))
+		(not (substring-find-next-char s i e #\:))))
+	 c)))
 
 (define-record-type <combo-name>
     (make-combo-name qname expanded)
