@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.15 1988/05/19 15:39:50 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.16 1988/06/03 15:14:13 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -44,12 +44,12 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 4)
-      (define :modification 15)
+      (define :modification 16)
       (define :files)
 
       (define :rcs-header
 
-	"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.15 1988/05/19 15:39:50 markf Exp $"
+	"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.16 1988/06/03 15:14:13 cph Exp $"
 
 	)
       (define :files-lists
@@ -207,17 +207,12 @@ MIT in each case. |#
 
   (load-system! compiler-system))
 
-;; This does not use system-global-environment so that multiple
-;; versions of the compiler can coexist in different environments.
-;; This file must therefore be loaded into system-global-environment
-;; when the names below must be exported everywhere.
-
-(let ((top-level-env (the-environment)))
-  (for-each (lambda (name)
-	    (local-assignment top-level-env name
+(for-each (lambda (name)
+	    (local-assignment system-global-environment
+			      name
 			      (lexical-reference compiler-package name)))
-	    '(CF
-	      COMPILE-BIN-FILE
-	      COMPILE-PROCEDURE
-	      COMPILER:RESET!
-	      COMPILER:WRITE-LAP-FILE)))
+	  '(CF
+	    COMPILE-BIN-FILE
+	    COMPILE-PROCEDURE
+	    COMPILER:RESET!
+	    COMPILER:WRITE-LAP-FILE))
