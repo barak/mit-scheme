@@ -1,18 +1,18 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.44 2000/05/23 14:13:44 cph Exp $
+$Id: todo.txt,v 1.45 2000/05/23 18:37:04 cph Exp $
 
 Bug fixes
 ---------
-
-* APPEND-MESSAGE not doing autocreate because TRYCREATE appears in
-  response to continuation request.
 
 * M-x imail-copy-messages re-reads the target folder UIDs for each
   message that is written, when the target folder is not being
   visited.
 
-* M-x imail-copy-messages appears to rewrite an RMAIL file that is the
-  source of the copy.
+* M-x imail-copy-messages rewrites an RMAIL file that is the source of
+  the copy.  The problem is that closing a file folder writes the
+  folder to the file, whether it's needed or not.  Both closing the
+  folder and M-x imail-save-folder should save the folder only if
+  needed.
 
 * Implement operations for IMAP: URL-EXISTS?.
 
@@ -48,6 +48,9 @@ Design changes
 
 New features
 ------------
+
+* Set the IMAIL buffer's modification bit to indicate whether the
+  folder is locally modified.  Meaningful only for file folders.
 
 * M-x imail-copy-messages needs prompt that distinguishes itself from
   M-x imail-output.  Both of these commands should provide feedback
@@ -89,3 +92,6 @@ New features
 
 * Implement something closer to the IMAP COPY operation, e.g.
   APPEND-MESSAGES.
+
+* Commands such as create-folder and delete-folder should produce
+  status messages that indicate the result.
