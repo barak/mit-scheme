@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.148 1994/08/04 04:37:00 cph Exp $
+$Id: edwin.pkg,v 1.149 1994/08/04 08:50:44 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -694,7 +694,7 @@ MIT in each case. |#
 	  edwin-command$dired-chmod
 	  edwin-command$dired-chown
 	  edwin-command$dired-clean-directory
-	  edwin-command$dired-compress
+	  edwin-command$dired-do-compress
 	  edwin-command$dired-do-copy
 	  edwin-command$dired-do-deletions
 	  edwin-command$dired-do-rename
@@ -711,7 +711,6 @@ MIT in each case. |#
 	  edwin-command$dired-quit
 	  edwin-command$dired-revert
 	  edwin-command$dired-summary
-	  edwin-command$dired-uncompress
 	  edwin-command$dired-unmark
 	  edwin-command$dired-unmark-all-files
 	  edwin-command$list-directory
