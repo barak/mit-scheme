@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 1.6 1993/10/11 23:31:42 cph Exp $
+$Id: object.scm,v 1.7 1993/10/12 00:00:56 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -71,8 +71,8 @@ MIT in each case. |#
   (initialization false read-only true)
   parent
   (children '())
-  (bindings (make-rb-tree symbol=? symbol<?) read-only true)
-  (references (make-rb-tree symbol=? symbol<?) read-only true))
+  (bindings (make-rb-tree eq? symbol<?) read-only true)
+  (references (make-rb-tree eq? symbol<?) read-only true))
 
 (define (make-package name file-cases initialization parent)
   (let ((files

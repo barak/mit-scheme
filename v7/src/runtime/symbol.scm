@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.2 1993/10/11 23:16:41 cph Exp $
+$Id: symbol.scm,v 1.3 1993/10/12 00:00:11 cph Exp $
 
 Copyright (c) 1992-93 Massachusetts Institute of Technology
 
@@ -89,19 +89,6 @@ MIT in each case. |#
 
 (define-integrable (symbol-hash-mod symbol modulus)
   (string-hash-mod (symbol-name symbol) modulus))
-
-(define (symbol=? x y)
-  (or (eq? x y)
-      (and (uninterned-symbol? x)
-	   (uninterned-symbol? y)
-	   (let ((sx (system-pair-car x))
-		 (sy (system-pair-car y)))
-	     (let ((l (string-length sx)))
-	       (and (fix:= l (string-length sy))
-		    (let loop ((i 0))
-		      (or (fix:= i l)
-			  (and (char=? (string-ref sx i) (string-ref sy i))
-			       (loop (fix:+ i 1)))))))))))
 
 (define (symbol<? x y)
   (let ((sx (system-pair-car x))
