@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.26 1996/07/19 02:27:59 adams Exp $
+$Id: fakeprim.scm,v 1.27 1996/07/20 22:57:13 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -756,6 +756,11 @@ MIT in each case. |#
   ;;   Always used in statement position - has no value.
   (make-operator/simple* "#[flo:multicell-set!]" '(UNSPECIFIC-RESULT)))
 
+
+(define %fixnum->flonum
+  ;; (CALL ',%fixnum->flonum '#F fixnum)
+  ;;  Convert a fixnum into a flonum.
+  (make-operator/simple "#[fixnum->flonum]" '(RESULT-TYPE FLONUM)))
 
 ;; Tuples are collections of values.  Each slot is named.  LAYOUT
 ;; describes the arrangment of the slots in memory.  Currently it is
