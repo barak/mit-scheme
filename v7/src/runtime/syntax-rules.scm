@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax-rules.scm,v 14.3 2003/01/31 05:00:52 cph Exp $
+$Id: syntax-rules.scm,v 14.4 2003/01/31 06:04:38 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -199,7 +199,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 						  ellipsis
 						  (loop (car template)
 							(cons ellipsis
-							      ellipses))))
+							      ellipses))
+						  syntax-error))
 			     (loop (cddr template) ellipses)))
 	  ((pair? template)
 	   (optimized-cons rename compare
@@ -225,22 +226,25 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	    ((pair? ellipses)
 	     (syntax-error "Extra ellipsis in expansion." #f))))))
 
-(define (generate-ellipsis rename ellipsis body)
+(define (generate-ellipsis rename ellipsis body syntax-error)
   (let ((sids (ellipsis-sids ellipsis)))
-    (let ((name (sid-name (car sids)))
-	  (expression (sid-expression (car sids))))
-      (cond ((and (null? (cdr sids))
-		  (eq? body name))
-	     expression)
-	    ((and (null? (cdr sids))
-		  (pair? body)
-		  (pair? (cdr body))
-		  (eq? (cadr body) name)
-		  (null? (cddr body)))
-	     `(,(rename 'MAP) ,(car body) ,expression))
-	    (else
-	     `(,(rename 'MAP) (,(rename 'LAMBDA) ,(map sid-name sids) ,body)
-			      ,@(map sid-expression sids)))))))
+    (if (pair? sids)
+	(let ((name (sid-name (car sids)))
+	      (expression (sid-expression (car sids))))
+	  (cond ((and (null? (cdr sids))
+		      (eq? body name))
+		 expression)
+		((and (null? (cdr sids))
+		      (pair? body)
+		      (pair? (cdr body))
+		      (eq? (cadr body) name)
+		      (null? (cddr body)))
+		 `(,(rename 'MAP) ,(car body) ,expression))
+		(else
+		 `(,(rename 'MAP) (,(rename 'LAMBDA) ,(map sid-name sids)
+						     ,body)
+				  ,@(map sid-expression sids)))))
+	(syntax-error "Missing ellipsis in expansion." #f))))
 
 (define (zero-or-more? pattern rename compare)
   (and (pair? pattern)
