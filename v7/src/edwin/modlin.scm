@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.1 1989/08/09 13:40:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.2 1989/08/11 11:28:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -272,11 +272,11 @@ If #F, the normal method is used."
 		(string-pad-left
 		 (number->string
 		  (min
-		   (round
-		    (* 100
-		       (let ((start (mark-index (buffer-start buffer))))
-			 (/ (- (mark-index (window-start-mark window)) start)
-			    (- (mark-index (buffer-end buffer)) start)))))		   99))
+		   (let ((start (mark-index (buffer-start buffer))))
+		     (integer-round
+		      (* 100 (- (window-start-index window) start))
+		      (- (mark-index (buffer-end buffer)) start)))
+		   99))
 		 2)
 		"%"))))
       ((#\[ #\])
