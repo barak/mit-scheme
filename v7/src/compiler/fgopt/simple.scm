@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simple.scm,v 4.3 1988/12/12 21:52:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simple.scm,v 4.4 1989/01/21 09:09:28 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,7 +79,8 @@ MIT in each case. |#
     ((APPLICATION)
      (case (application-type node)
        ((COMBINATION)
-	(if (combination/inline? node)
+	(if (and (combination/inline? node)
+		 (combination/inline/simple? node))
 	    (walk/return-operator (combination/continuation node) continuation)
 	    (let ((callee (rvalue-known-value (combination/operator node))))
 	      (and callee
