@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bootstrap-compile.scm,v 1.1 2000/10/16 18:17:49 cph Exp $
+$Id: bootstrap-compile.scm,v 1.2 2000/10/16 18:19:51 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -21,12 +21,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (sf "microcode/utabmd")
 
+(with-working-directory-pathname name
+  (lambda ()
+    (load "cref.sf")
+    (load "cref.cbf")))
+
 (for-each (lambda (name)
 	    (with-working-directory-pathname name
 	      (lambda ()
 		(load (pathname-new-type name "sf"))
 		(load (pathname-new-type name "cbf")))))
-	  '("cref" "runtime" "sf" "compiler" "edwin" "6001"))
+	  '("runtime" "sf" "compiler" "edwin" "6001"))
 
 (for-each (lambda (name)
 	    (load (merge-pathnames "compile" (pathname-as-directory name))))
