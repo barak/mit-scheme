@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.7 2000/01/19 21:22:15 cph Exp $
+;;; $Id: imail-top.scm,v 1.8 2000/01/19 21:37:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -222,7 +222,7 @@ DEL	Scroll to previous screen of this message.
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?
   (let ((folder (buffer->imail-folder buffer))
-	(message (selected-message buffer)))
+	(message (selected-message #f buffer)))
     (let ((index (and message (message-index message))))
       (maybe-revert-folder folder
 	(lambda (folder)
@@ -235,12 +235,6 @@ DEL	Scroll to previous screen of this message.
        (cond ((eq? folder (message-folder message)) message)
 	     ((and (<= 0 index) (< index (count-messages folder))) index)
 	     (else (first-unseen-message folder)))))))
-
-(define-command imail-input
-  "Append messages to this folder from a specified folder."
-  "sInput from IMAIL folder"
-  (lambda (url-string)
-    ???))
 
 (define-command imail-quit
   "Quit out of IMAIL."
@@ -411,13 +405,14 @@ With prefix argument N moves backward N messages with these flags."
 		       buffer)
   (buffer-modeline-event! buffer 'PROCESS-STATUS))
 
-(define (selected-message #!optional buffer)
+(define (selected-message #!optional error? buffer)
   (or (buffer-get (if (or (default-object? buffer) (not buffer))
 		      (selected-buffer)
 		      buffer)
 		  'SELECTED-MESSAGE
 		  #f)
-      (error "No selected IMAIL message.")))
+      (and (if (default-object? error?) #t error?)
+	   (error "No selected IMAIL message."))))
 
 ;;;; Message deletion
 
@@ -425,9 +420,7 @@ With prefix argument N moves backward N messages with these flags."
   "Delete this message and stay on it."
   ()
   (lambda ()
-    (let ((message (selected-message)))
-      (if message
-	  (delete-message message)))))
+    (delete-message (selected-message))))
 
 (define-command imail-delete-forward
   "Delete this message and move to next nondeleted one.
@@ -435,9 +428,7 @@ Deleted messages stay in the file until the \\[imail-expunge] command is given.
 With prefix argument, delete and move backward."
   "P"
   (lambda (backward?)
-    (let ((message (selected-message)))
-      (if message
-	  (delete-message message)))
+    ((ref-command imail-delete-message))
     ((ref-command imail-next-undeleted-message) (if backward? -1 1))))
 
 (define-command imail-delete-backward
@@ -452,14 +443,13 @@ Deleted messages stay in the file until the \\[imail-expunge] command is given."
   ()
   (lambda ()
     (let ((message (selected-message)))
-      (if message
-	  (if (message-deleted? message)
-	      (undelete-message message)
-	      (let ((message (previous-deleted-message message)))
-		(if (not message)
-		    (editor-error "No previous deleted message."))
-		(undelete-message message)
-		(select-message (message-folder message) message)))))))
+      (if (message-deleted? message)
+	  (undelete-message message)
+	  (let ((message (previous-deleted-message message)))
+	    (if (not message)
+		(editor-error "No previous deleted message."))
+	    (undelete-message message)
+	    (select-message (message-folder message) message))))))
 
 (define-command imail-expunge
   "Actually erase all deleted messages in the folder."
@@ -504,3 +494,29 @@ Completion is performed over known flags when reading."
    'HISTORY 'IMAIL-READ-FLAG
    'HISTORY-INDEX 0
    'REQUIRE-MATCH? require-match?))
+
+;;;; Message I/O
+
+(define-command imail-input
+  "Append messages to this folder from a specified folder."
+  "sInput from IMAIL folder"
+  (lambda (url-string)
+    (let ((folder (selected-folder))
+	  (message (selected-message))
+	  (folder* (open-folder url-string)))
+      (let ((n (count-messages folder*)))
+	(do ((index 0 (+ index 1)))
+	    ((= index n))
+	  (append-message folder (get-message folder* index))))
+      (if (not message)
+	  (select-message folder (first-unseen-message folder))))))
+
+(define-command rmail-output
+  "Append this message to a specified folder."
+  "sOutput to IMAIL folder"
+  (lambda (url-string)
+    (let ((message (selected-message)))
+      (append-message (open-folder url-string) message)
+      (set-message-flag message "filed"))
+    (if (ref-variable imail-delete-after-output)
+	((ref-command imail-delete-forward) #f))))
