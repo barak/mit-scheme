@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.55 1995/01/06 00:46:30 cph Exp $
+$Id: make.scm,v 14.56 1995/01/06 18:44:17 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -330,7 +330,7 @@ MIT in each case. |#
 			       (car names))
 	(loop (cdr names)))))
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
-(eval (fasload "runtime.bcon" #f) system-global-environment)
+(eval (fasload "runtime.bco" #f) system-global-environment)
 
 ;;; Global databases.  Load, then initialize.
 (let ((files1
@@ -376,7 +376,7 @@ MIT in each case. |#
 ;; Note: The following code needs MAP* and MEMBER-PROCEDURE
 ;; from runtime/list. Fortunately that file has already been loaded.
 
-  ((eval (fasload "runtime.bldr" #f) system-global-environment)
+  ((eval (fasload "runtime.bld" #f) system-global-environment)
    (let ((to-avoid
 	  (cons "packag"
 		(map* (if (file-exists? "runtime.bad")
