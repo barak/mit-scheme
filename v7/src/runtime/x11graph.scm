@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.32 1993/09/08 22:39:24 cph Exp $
+$Id: x11graph.scm,v 1.33 1993/09/15 04:14:15 adams Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -219,11 +219,13 @@ MIT in each case. |#
 	   (coordinate-limits ,x-graphics/coordinate-limits)
 	   (copy-area ,x-graphics/copy-area)
 	   (create-colormap ,create-x-colormap)
-	   (create-image ,create-x-image)
+	   (create-image ,x-graphics/create-image)
 	   (device-coordinate-limits ,x-graphics/device-coordinate-limits)
 	   (drag-cursor ,x-graphics/drag-cursor)
+	   (draw-image ,image/draw)
 	   (draw-line ,x-graphics/draw-line)
 	   (draw-point ,x-graphics/draw-point)
+	   (draw-subimage ,image/draw-subimage)
 	   (draw-text ,x-graphics/draw-text)
 	   (fill-polygon ,x-graphics/fill-polygon)
 	   (flush ,x-graphics/flush)
@@ -258,6 +260,8 @@ MIT in each case. |#
 	   (set-window-name ,x-graphics/set-window-name)
 	   (starbase-filename ,x-graphics/starbase-filename)
 	   (withdraw-window ,x-graphics/withdraw-window))))
+  (register-graphics-device-type 'X x-graphics-device-type)
+;  (register-graphics-device 'X11 x-graphics-device-type)
   (set! display-list (make-protection-list))
   (add-gc-daemon! close-lost-displays-daemon)
   (add-event-receiver! event:after-restore drop-all-displays)
@@ -530,11 +534,14 @@ MIT in each case. |#
 				    (number->string y))
 		     "")))
 
-(define (x-graphics/open display geometry #!optional suppress-map?)
+
+(define default-geometry "512x512")
+
+(define (x-graphics/open #!optional display geometry suppress-map?)
   (let ((display
-	 (if (x-display? display)
-	     display
-	     (x-graphics/open-display display))))
+	 (cond ((default-object? display) (x-graphics/open-display #f))
+	       ((x-display? display)      display)
+	       (else  	                  (x-graphics/open-display display)))))
     (call-with-values
 	(lambda ()
 	  (decode-suppress-map-arg (and (not (default-object? suppress-map?))
@@ -542,9 +549,10 @@ MIT in each case. |#
 				   'MAKE-GRAPHICS-DEVICE))
       (lambda (map? resource class)
 	(let ((xw
-	       (x-graphics-open-window (x-display/xd display)
-				       geometry
-				       (vector #f resource class))))
+	       (x-graphics-open-window
+		 (x-display/xd display)
+		 (if (default-object? geometry) default-geometry geometry)
+		 (vector #f resource class))))
 	  (x-window-set-event-mask xw event-mask:normal)
 	  (let ((window (make-x-window xw display)))
 	    (add-to-protection-list! (x-display/window-list display) window xw)
@@ -812,22 +820,33 @@ MIT in each case. |#
 
 ;;;; Images
 
-(define x-image?)
-(define make-x-image)
-(define x-image/descriptor)
-(define x-image/window)
-(define x-image/width)
-(define x-image/height)
+;; X-IMAGE is the descriptor of the generic images.
+
+(define-structure
+  (x-image
+    (conc-name x-image/))
+  descriptor
+  window
+  width
+  height)
+
 (define image-list)
 
+;; This is the generic image interface to X-IMAGES:
+
+(define x-graphics-image-type)
+
 (define (initialize-image-datatype)
-  (let ((rtd (make-record-type "image" '(DESCRIPTOR WINDOW WIDTH HEIGHT))))
-    (set! x-image? (record-predicate rtd))
-    (set! make-x-image (record-constructor rtd))
-    (set! x-image/descriptor (record-accessor rtd 'DESCRIPTOR))
-    (set! x-image/window (record-accessor rtd 'WINDOW))
-    (set! x-image/width (record-accessor rtd 'WIDTH))
-    (set! x-image/height (record-accessor rtd 'HEIGHT)))
+  (set! x-graphics-image-type
+	(make-image-type
+	 `((create   ,create-x-image) ;;this one returns an IMAGE descriptor
+	   (destroy  ,x-graphics-image/destroy)
+	   (width    ,x-graphics-image/width)
+	   (height   ,x-graphics-image/height)
+	   (draw     ,x-graphics-image/draw)
+	   (draw-subimage  ,x-graphics-image/draw-subimage)
+	   (fill-from-byte-vector  ,x-graphics-image/fill-from-byte-vector))))
+
   (set! image-list (make-protection-list))
   (add-gc-daemon! destroy-lost-images-daemon))
 
@@ -863,6 +882,39 @@ MIT in each case. |#
 
 (define (x-image/fill-from-byte-vector image byte-vector)
   (x-bytes-into-image byte-vector (x-image/descriptor image)))
+
+;; Abstraction layer for generic images
+
+(define (x-graphics/create-image device width height)
+  (image/create x-graphics-image-type device width height))
+
+;;(define x-graphics-image/create create-x-image)
+
+(define (x-graphics-image/destroy image)
+  (x-image/destroy (image/descriptor image)))
+
+(define (x-graphics-image/width image)
+  (x-image/width (image/descriptor image)))
+
+(define (x-graphics-image/height image)
+  (x-image/height (image/descriptor image)))
+
+(define (x-graphics-image/draw device x y image)
+  (let* ((x-image  (image/descriptor image))
+	 (w        (x-image/width x-image))
+	 (h        (x-image/height x-image)))
+    (x-display-image (x-image/descriptor x-image) 0 0
+		     (x-graphics-device/xw device) x y
+		     w h)))
+
+(define (x-graphics-image/draw-subimage device x y image im-x im-y w h)
+  (let ((x-image  (image/descriptor image)))
+    (x-display-image (x-image/descriptor x-image) im-x im-y
+		     (x-graphics-device/xw device) x y
+		     w h)))
+
+(define (x-graphics-image/fill-from-byte-vector image byte-vector)
+  (x-image/fill-from-byte-vector (image/descriptor image) byte-vector))
 
 ;;;; Colormaps
 
