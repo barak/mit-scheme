@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.10 1995/07/08 03:31:36 adams Exp $
+$Id: stackopt.scm,v 1.11 1995/08/03 00:17:40 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -83,6 +83,7 @@ the call.  This is in addition to the requirement that the slot
 assignments for the parameters and values are fixed by the calling
 sequence.
 
+
 		THEOREM AND PROOF
 
 THEOREM: The stack slot assignments provided for the saved values in
@@ -213,7 +214,7 @@ End of Big Note A |#
 ;; A better solution would be to separate the model tree from the
 ;; environment function of matching up the frame vectors for a
 ;; particular frame variable.
-
+
 (define-stack-optimizer CALL (state rator cont #!rest rands)
   (if (and (QUOTE/? rator)
 	   (eq? (quote/text rator) %stack-closure-ref))
@@ -866,7 +867,7 @@ End of Big Note A |#
 			    (else '())))) ; Wired but slot's not free
 		  pairs))))
 	 (stackopt/model/children model))))
-  
+
   (call-with-values
       (lambda ()
 	(list-split (walk model
