@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: disload.scm,v 1.6 1993/07/01 22:52:20 gjr Exp $
+$Id: disload.scm,v 1.7 1993/07/16 19:58:09 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -38,9 +38,12 @@ MIT in each case. |#
 
 (define (load-disassembler #!optional directory addressing-granularity)
   (with-working-directory-pathname
-    (if (default-object? directory)
-	"/usr/local/lib/mit-scheme/SRC/compiler/machine"
-	directory)
+    (cond ((not (default-object? directory))
+	   directory)
+	  ((equal? microcode-id/operating-system-name "unix")
+	   "/usr/local/lib/mit-scheme/SRC/compiler/machine")
+	  (else
+	   "/scheme/compiler/machines/i386"))
     (lambda ()
       (let* ((parent (or (name->package '(compiler))
 			 (find-package '())))
