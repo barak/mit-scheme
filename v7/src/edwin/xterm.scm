@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.33 1992/03/25 21:40:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.34 1992/09/02 02:35:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -206,10 +206,16 @@
   (set-screen-selected?! screen true)
   (let ((xterm (screen-xterm screen)))
     (xterm-enable-cursor xterm true)
-    (xterm-draw-cursor xterm)
-    (if (and last-focus-time (screen-visible? screen))
-	(x-window-set-input-focus xterm last-focus-time)))
+    (xterm-draw-cursor xterm))
+  (xterm-screen/grab-focus! screen)
   (xterm-screen/flush! screen))
+
+(define (xterm-screen/grab-focus! screen)
+  (and last-focus-time
+       (screen-visible? screen)
+       (begin
+	 (x-window-set-input-focus (screen-xterm screen) last-focus-time)
+	 true)))
 
 (define (xterm-screen/exit! screen)
   (set-screen-selected?! screen false)
