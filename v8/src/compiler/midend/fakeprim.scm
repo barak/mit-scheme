@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.15 1995/05/19 21:18:25 adams Exp $
+$Id: fakeprim.scm,v 1.16 1995/06/22 01:50:10 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -595,24 +595,17 @@ MIT in each case. |#
 
 (define %make-cell
   ;; (CALL ',%make-cell '#F <value> 'NAME)
-  ;; Note:
-  ;;   Introduced by assconv.scm for local assigned variables.
   (make-operator/simple "#[make-cell]"))
 (cookie-call %make-cell '#F value 'NAME)
 
 (define %cell-ref
   ;; (CALL ',%cell-ref '#F <cell> 'NAME)
-  ;; Note:
-  ;;   Introduced by assconv.scm for read references to local assigned
-  ;;     variables.
   (make-operator/effect-sensitive "#[cell-ref]"))
 (cookie-call %cell-ref '#F cell 'NAME)
 
 (define %cell-set!
   ;; (CALL ',%cell-set '#F <cell> <value> 'NAME)
   ;; Note:
-  ;;   Introduced by assconv.scm for write references to local
-  ;;     assigned variables.
   ;;   Returns no value, because the rewrite is to something like
   ;;     (LET ((old-value ...))
   ;;       (CALL ',%cell-set! ...)
@@ -621,8 +614,10 @@ MIT in each case. |#
 (cookie-call %cell-set! '#F cell value 'NAME)
 
 ;; Multicells are collections of cells.  Each cell is named.  LAYOUT
-;; describes the arrangment of the cells in memeory.  Currently it is
+;; describes the arrangment of the cells in memory.  Currently it is
 ;; just a vector of names.
+;; Multicells are introduced by assconv.scm for references to local
+;; mutable variables.
 
 (define %make-multicell
   ;; (CALL ',%make-multicell '#F 'LAYOUT <value> <value> ...)
@@ -636,6 +631,8 @@ MIT in each case. |#
 
 (define %multicell-set!
   ;; (CALL ',%multicell-set! '#F cell value 'LAYOUT 'NAME)
+  ;; Note:
+  ;;   Always used in statement position - has no value.
   (make-operator/simple* "#[multicell-set!]" '(UNSPECIFIC-RESULT)))
 (cookie-call %multicell-set! '#F cell value 'LAYOUT 'NAME)
 
