@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.31 1993/09/10 19:12:52 cph Exp $
+;;;	$Id: process.scm,v 1.32 1993/11/23 01:23:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-93 Massachusetts Institute of Technology
 ;;;
@@ -277,16 +277,18 @@ Initialized from the SHELL environment variable."
   (let ((channel (process-input-channel process))
 	(buffer (make-string 512)))
     (and (channel-open? channel)
-	 (let ((n (channel-read channel buffer 0 512)))
-	   (cond ((not n)
-		  #f)
-		 ((> n 0)
-		  (output-substring process buffer n))
-		 (else
+	 (let ((close-input
+		(lambda ()
 		  (deregister-process-input process)
 		  (channel-close channel)
 		  (%update-global-notification-tick)
-		  (poll-process-for-status-change process)))))))
+		  (poll-process-for-status-change process))))
+	   (if (process-runnable? process)
+	       (let ((n (channel-read channel buffer 0 512)))
+		 (cond ((not n) #f)
+		       ((> n 0) (output-substring process buffer n))
+		       (else (close-input))))
+	       (close-input))))))
 
 (define (process-send-eof process)
   (process-send-char process #\EOT))
