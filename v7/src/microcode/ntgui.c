@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.21 1998/04/14 05:13:19 cph Exp $
+$Id: ntgui.c,v 1.22 1998/04/16 06:05:39 cph Exp $
 
 Copyright (c) 1993-98 Massachusetts Institute of Technology
 
@@ -674,10 +674,7 @@ call_ff_really (void)
 	= (scheme_object_to_windows_object
 	   (STACK_LOCATIVE_PUSH (argument_scan)));
 #ifdef CL386
-      __asm
-      {
-	push dword ptr [arg]
-      }
+      __asm push arg
 #else /* not CL386 */
 #ifdef __WATCOMC__
       {
@@ -691,9 +688,9 @@ call_ff_really (void)
 #ifdef CL386
   __asm
   {
-    mov eax, dword ptr [function_address]
+    mov eax, function_address
     call eax
-    mov dword ptr [result], eax
+    mov result, eax
   }
 #else /* not CL386 */
 #ifdef __WATCOMC__
