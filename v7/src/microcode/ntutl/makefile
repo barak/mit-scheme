@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile,v 1.25 2001/07/18 05:25:00 cph Exp $
+###     $Id: makefile,v 1.26 2001/07/18 05:27:33 cph Exp $
 ###
 ###     Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ###
@@ -38,6 +38,13 @@ USER_LIBS =
 # /zq		operate quietly
 ASFLAGS = /bt=nt /d1 /fpi /fp3 /mf /zq
 AS = wasm
+
+# **** I'm told that this is the right command line for using
+# **** Microsoft's assembler.  To use this, comment out the two lines
+# **** above, and uncomment these two.  (You will probably need to
+# **** adjust the path in the definition of AS.)
+#ASFLAGS = /Cx /Zm /coff /c
+#AS = c:\masm611\bin\ml
 
 !IFDEF NODEBUG
 cflags = $(cflags) -Ox
