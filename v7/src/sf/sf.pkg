@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sf.pkg,v 4.15 2001/12/21 18:39:24 cph Exp $
+$Id: sf.pkg,v 4.16 2002/01/09 05:11:38 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -52,7 +52,6 @@ USA.
 	  sf/default-declarations
 	  sf/default-syntax-table
 	  sf/pathname-defaulting
-	  sf/set-file-syntax-table!
 	  sf/set-usual-integrations-default-deletions!
 	  sf/top-level-definitions
 	  sf/usual-integrations-default-deletions

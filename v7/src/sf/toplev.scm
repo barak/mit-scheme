@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.21 2001/12/21 18:32:11 cph Exp $
+$Id: toplev.scm,v 4.22 2002/01/09 05:11:21 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -58,11 +58,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define sf:noisy? true)
 
-(define (sf/set-file-syntax-table! pathname syntax-table)
-  (pathname-map/insert! file-info/syntax-table
-			(pathname/normalize pathname)
-			syntax-table))
-
 (define (sf/set-usual-integrations-default-deletions! del-list)
   (if (not (list-of-symbols? del-list))
       (error "sf/set-usual-integrations-default-deletions!: Bad deletion list"
@@ -76,13 +71,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  (append! (file-info/get-declarations pathname)
 				   (list-copy declarations)))))
 
-(define (file-info/find pathname)
-  (let ((pathname (pathname/normalize pathname)))
-    (values (pathname-map/lookup file-info/syntax-table
-				 pathname
-				 identity-procedure
-				 (lambda () sf/default-syntax-table))
-	    (file-info/get-declarations pathname))))
+(define (sf/file-declarations pathname)
+  (file-info/get-declarations (pathname/normalize pathname)))
 
 (define (file-info/get-declarations pathname)
   (pathname-map/lookup file-info/declarations
@@ -93,14 +83,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (pathname/normalize pathname)
   (pathname-default-type (merge-pathnames pathname) "scm"))
 
-(define file-info/syntax-table
-  (pathname-map/make))
-
 (define file-info/declarations
   (pathname-map/make))
 
 (define sf/default-syntax-table
-  false)
+  system-global-environment)
 
 (define sf/default-declarations
   '())
@@ -120,8 +107,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; File Syntaxer
 
 (define (syntax-file input-string bin-string spec-string)
-  (if (not (or (not sf/default-syntax-table)
-	       (environment? sf/default-syntax-table)))
+  (if (not (environment? sf/default-syntax-table))
       (error "Malformed binding of SF/DEFAULT-SYNTAX-TABLE:"
 	     sf/default-syntax-table))
   (if (not (list-of-symbols? sf/top-level-definitions))
@@ -134,10 +120,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 					    bin-string
 					    spec-string))
 		(lambda (input-pathname bin-pathname spec-pathname)
-		  (call-with-values (lambda () (file-info/find input-pathname))
-		    (lambda (syntax-table declarations)
-		      (sf/internal input-pathname bin-pathname spec-pathname
-				   syntax-table declarations))))))
+		  (sf/internal input-pathname bin-pathname spec-pathname
+			       sf/default-syntax-table
+			       (sf/file-declarations input-pathname)))))
 	    (if (pair? input-string)
 		input-string
 		(list input-string))))
@@ -163,7 +148,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    false)))
 
 (define (sf/internal input-pathname bin-pathname spec-pathname
-		     syntax-table declarations)
+		     environment declarations)
   spec-pathname				;ignored
   (let ((start-date (get-decoded-time)))
     (if sf:noisy?
@@ -183,11 +168,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		      ,(decoded-time/minute start-date)
 		      ,(decoded-time/second start-date)))
 	      (sf/file->scode input-pathname bin-pathname
-			      syntax-table declarations))
+			      environment declarations))
 	     bin-pathname)))
 
 (define (sf/file->scode input-pathname output-pathname
-			syntax-table declarations)
+			environment declarations)
   (fluid-let ((sf/default-externs-pathname
 	       (make-pathname (pathname-host input-pathname)
 			      (pathname-device input-pathname)
@@ -197,7 +182,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			      'NEWEST)))
     (call-with-values
 	(lambda ()
-	  (integrate/file input-pathname syntax-table declarations))
+	  (integrate/file input-pathname environment declarations))
       (lambda (expression externs-block externs)
 	(if output-pathname
 	    (write-externs-file (pathname-new-type output-pathname
@@ -310,7 +295,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (phase:syntax s-expression environment)
   (mark-phase "Syntax")
-  (syntax* s-expression (or environment system-global-environment)))
+  (syntax* s-expression environment))
 
 (define (phase:transform scode)
   (mark-phase "Transform")
