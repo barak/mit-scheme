@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.25 1987/04/16 02:32:05 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.26 1987/04/25 20:27:27 cph Exp $
 
 (declare (usual-integrations))
 
@@ -476,9 +476,9 @@
 	       SYSTEM-VECTOR-REF			;$9A
 	       SYSTEM-VECTOR-SET!			;$9B
 	       WITH-HISTORY-DISABLED			;$9C
-	       #F					;$9D
-	       #F					;$9E
-	       #F					;$9F
+	       SUBVECTOR-MOVE-RIGHT!			;$9D
+	       SUBVECTOR-MOVE-LEFT!			;$9E
+	       SUBVECTOR-FILL!				;$9F
 	       #F					;$A0
 	       #F					;$A1
 	       #F					;$A2
@@ -537,7 +537,7 @@
 	       BIT-STRING-SET!				;$D7
 	       BIT-STRING-CLEAR!			;$D8
 	       BIT-STRING-ZERO?				;$D9
-	       #F					;$DA
+	       BIT-SUBSTRING-FIND-NEXT-SET-BIT		;$DA
 	       #F					;$DB
 	       UNSIGNED-INTEGER->BIT-STRING		;$DC
 	       BIT-STRING->UNSIGNED-INTEGER		;$DD
@@ -854,4 +854,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.25 1987/04/16 02:32:05 jinx Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.26 1987/04/25 20:27:27 cph Exp $"
