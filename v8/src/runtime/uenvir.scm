@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.41 1999/01/02 06:19:10 cph Exp $
+$Id: uenvir.scm,v 14.42 1999/10/23 03:01:24 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -31,7 +31,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (environment-has-parent? environment)
   (cond ((system-global-environment? environment)
-	 false)
+	 #f)
 	((ic-environment? environment)
 	 (ic-environment/has-parent? environment))
 	((ccenv? environment)
@@ -81,7 +81,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (environment-lambda environment)
   (cond ((system-global-environment? environment)
-	 false)
+	 #f)
 	((ic-environment? environment)
 	 (ic-environment/lambda environment))
 	((ccenv? environment)
@@ -104,7 +104,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (environment-assignable? environment name)
   (cond ((interpreter-environment? environment)
-	 true)
+	 #t)
 	((ccenv? environment)
 	 (ccenv/assignable? environment name))
 	(else (illegal-environment environment 'ENVIRONMENT-ASSIGNABLE?))))
@@ -184,7 +184,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (unbound-name? environment name)
   (if (eq? name package-name-tag)
-      true
+      #t
       (lexical-unbound? environment name)))
 
 (define (ic-environment/arguments environment)
@@ -211,7 +211,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (ic-environment/remove-parent! environment)
   (ic-environment/set-parent! environment null-environment))
-
 
 ;;  This corresponds to the `#define END_OF_CHAIN ...' in sdata.h
 
@@ -244,6 +243,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (select-lambda environment)
   (procedure-lambda (select-procedure environment)))
+
+(define (extend-ic-environment environment)
+  (if (not (ic-environment? environment))
+      (illegal-environment environment 'EXTEND-IC-ENVIRONMENT))
+  (let ((environment (eval '(let () (the-environment)) environment)))
+    (set-environment-syntax-table!
+     environment
+     (make-syntax-table (environment-syntax-table environment)))
+    environment))
 
 ;;;; Compiled Code Environments
 
@@ -254,10 +262,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     "#[(runtime environment)ccenv]"))
 		   (conc-name ccenv/))
   ;; BLOCK is a block structure description (a DBG-BLOCK).
-  (block false read-only true)
+  (block #f read-only #t)
   ;; ROOT is the object from which to de-reference access paths, usually a
   ;; STACK-FRAME or a compiled closure.
-  (root  false read-only true))
+  (root #f read-only #t))
 
 (define (ccenv/has-parent? env)
   (let ((block  (ccenv/block env)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.38 1999/01/02 06:06:43 cph Exp $
+$Id: uenvir.scm,v 14.39 1999/10/23 03:01:29 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -32,14 +32,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (environment-has-parent? environment)
   (cond ((system-global-environment? environment)
-	 false)
+	 #f)
 	((ic-environment? environment)
 	 (ic-environment/has-parent? environment))
 	((stack-ccenv? environment)
 	 (stack-ccenv/has-parent? environment))
 	((closure-ccenv? environment)
 	 (closure-ccenv/has-parent? environment))
-	(else (error "Illegal environment" environment))))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-HAS-PARENT?))))
 
 (define (environment-parent environment)
   (cond ((system-global-environment? environment)
@@ -50,7 +51,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (stack-ccenv/parent environment))
 	((closure-ccenv? environment)
 	 (closure-ccenv/parent environment))
-	(else (error "Illegal environment" environment))))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-PARENT))))
 
 (define (environment-bound-names environment)
   (cond ((system-global-environment? environment)
@@ -61,7 +63,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (stack-ccenv/bound-names environment))
 	((closure-ccenv? environment)
 	 (closure-ccenv/bound-names environment))
-	(else (error "Illegal environment" environment))))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-BOUND-NAMES))))
 
 (define (environment-bindings environment)
   (map (lambda (name)
@@ -80,7 +83,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	((or (system-global-environment? environment)
 	     (closure-ccenv? environment))
 	 'UNKNOWN)
-	(else (error "Illegal environment" environment))))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-ARGUMENTS))))
 
 (define (environment-procedure-name environment)
   (let ((scode-lambda (environment-lambda environment)))
@@ -89,14 +93,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (environment-lambda environment)
   (cond ((system-global-environment? environment)
-	 false)
+	 #f)
 	((ic-environment? environment)
 	 (ic-environment/lambda environment))
 	((stack-ccenv? environment)
 	 (stack-ccenv/lambda environment))
 	((closure-ccenv? environment)
 	 (closure-ccenv/lambda environment))
-	(else (error "Illegal environment" environment))))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-LAMBDA))))
 
 (define (environment-bound? environment name)
   (cond ((interpreter-environment? environment)
@@ -105,7 +110,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (stack-ccenv/bound? environment name))
 	((closure-ccenv? environment)
 	 (closure-ccenv/bound? environment name))
-	(else (error "Illegal environment" environment))))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-BOUND?))))
 
 (define (environment-lookup environment name)
   (cond ((interpreter-environment? environment)
@@ -114,16 +120,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (stack-ccenv/lookup environment name))
 	((closure-ccenv? environment)
 	 (closure-ccenv/lookup environment name))
-	(else (error "Illegal environment" environment))))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-LOOKUP))))
 
 (define (environment-assignable? environment name)
   (cond ((interpreter-environment? environment)
-	 true)
+	 #t)
 	((stack-ccenv? environment)
 	 (stack-ccenv/assignable? environment name))
 	((closure-ccenv? environment)
 	 (closure-ccenv/assignable? environment name))
-	(else (error "Illegal environment" environment))))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-ASSIGNABLE?))))
 
 (define (environment-assign! environment name value)
   (cond ((interpreter-environment? environment)
@@ -132,7 +140,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (stack-ccenv/assign! environment name value))
 	((closure-ccenv? environment)
 	 (closure-ccenv/assign! environment name value))
-	(else (error "Illegal environment" environment))))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-ASSIGN!))))
+
+(define (illegal-environment object procedure)
+  (error:wrong-type-argument object "environment" procedure))
 
 ;;;; Interpreter Environments
 
@@ -199,7 +211,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (unbound-name? environment name)
   (if (eq? name package-name-tag)
-      true
+      #t
       (lexical-unbound? environment name)))
 
 (define (ic-environment/arguments environment)
@@ -226,7 +238,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (ic-environment/remove-parent! environment)
   (ic-environment/set-parent! environment null-environment))
-
 
 ;;  This corresponds to the #defines in sdata.h
 
@@ -262,6 +273,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (select-lambda environment)
   (procedure-lambda (select-procedure environment)))
+
+(define (extend-ic-environment environment)
+  (if (not (ic-environment? environment))
+      (illegal-environment environment 'EXTEND-IC-ENVIRONMENT))
+  (let ((environment (eval '(let () (the-environment)) environment)))
+    (set-environment-syntax-table!
+     environment
+     (make-syntax-table (environment-syntax-table environment)))
+    environment))
 
 ;;;; Compiled Code Environments
 
@@ -270,9 +290,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				((ucode-primitive string->symbol)
 				 "#[(runtime environment)stack-ccenv]"))
 			       (conc-name stack-ccenv/))
-  (block false read-only true)
-  (frame false read-only true)
-  (start-index false read-only true))
+  (block #f read-only #t)
+  (frame #f read-only #t)
+  (start-index #f read-only #t))
 
 (define (stack-frame/environment frame default)
   (let* ((ret-add (stack-frame/return-address frame))
@@ -343,7 +363,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (stack-ccenv/has-parent? environment)
   (if (dbg-block/parent (stack-ccenv/block environment))
-      true
+      #t
       'SIMULATED))
 
 (define (stack-ccenv/parent environment)
@@ -530,9 +550,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime environment)closure-ccenv]"))
 		   (conc-name closure-ccenv/))
-  (stack-block false read-only true)
-  (closure-block false read-only true)
-  (closure false read-only true))
+  (stack-block #f read-only #t)
+  (closure-block #f read-only #t)
+  (closure #f read-only #t))
 
 (define (closure-ccenv/bound-names environment)
   (map dbg-variable/name
@@ -594,8 +614,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(let ((parent (dbg-block/parent stack-block)))
 	  (and parent
 	       (case (dbg-block/type parent)
-		 ((CLOSURE) (and (dbg-block/original-parent stack-block) true))
-		 ((STACK IC) true)
+		 ((CLOSURE) (and (dbg-block/original-parent stack-block) #t))
+		 ((STACK IC) #t)
 		 (else (error "Illegal parent block" parent))))))
       'SIMULATED))
 
