@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.27 1993/12/28 18:20:48 cph Exp $
+$Id: arith.scm,v 1.28 1994/08/05 20:34:56 cph Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -1668,9 +1668,9 @@ MIT in each case. |#
 		(if (real:exact1= i)
 		    ""
 		    (real:->string i radix)))))
-	 (if (real:positive? i)
-	     (string-append "+" (positive-case i))
-	     (string-append "-" (positive-case (real:negate i)))))
+	 (if (real:negative? i)
+	     (string-append "-" (positive-case (real:negate i)))
+	     (string-append "+" (positive-case i))))
        (if imaginary-unit-j? "j" "i"))
       (real:->string z radix)))
 
