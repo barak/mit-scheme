@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/win32/graphics.scm,v 1.1 1993/09/20 01:13:04 adams Exp $
+$Id: graphics.scm,v 1.2 1993/11/10 21:38:05 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -784,14 +784,17 @@ MIT in each case. |#
 	  ;(display ";Special full window image/draw\n")
 	  (set-win32-device/bitmap! window bm)
 	  (delete-object (select-object hdc bm)))
-	(dib-blt hdc x y w h dib 0 0 SRCCOPY))
+;;	(dib-blt hdc x y w h dib 0 0 SRCCOPY))
+	(dib-blt hdc (win32-xform-x window x) (win32-xform-y window y) w h
+		 dib 0 0 SRCCOPY))
     (win32-device/invalidate! window)))
 
 (define (dib-image/draw-subimage device x y image im-x im-y w h)
   (let*  ((dib    (image/descriptor image))
 	  (window (graphics-device/descriptor device))
 	  (hdc    (win32-device/hdc window)))
-    (dib-blt hdc x y w h dib im-x im-y SRCCOPY)
+    (dib-blt hdc (win32-xform-x window x) (win32-xform-y window y) w h
+	     dib im-x im-y SRCCOPY)
     (win32-device/invalidate! window)))
 
 (define (dib-image/fill-from-byte-vector image byte-vector)
