@@ -169,3 +169,12 @@ fi
 #
 find ${destination} -type f -print | xargs chmod a-w
 find ${destination} -type d -print | xargs chmod og-w
+
+tarfile=${destination}.tar.gz
+if [ -f ${tarfile} ]
+then
+  rm -f ${tarfile}
+fi
+(cd ${destination}; tar cvzf ../${tarfile} *)
+chmod 444 ${tarfile}
+rm -rf ${destination}
