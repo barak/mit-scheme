@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intext.c,v 1.3 1991/07/05 23:30:46 cph Exp $
+$Id: intext.c,v 1.4 1993/06/24 22:00:05 gjr Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
