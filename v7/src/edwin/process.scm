@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.22 1992/03/02 04:08:37 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.23 1992/03/24 22:52:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -284,7 +284,7 @@ False means don't delete them until \\[list-processes] is run."
 	 (cond ((process-sentinel process)
 		=>
 		(lambda (sentinel)
-		  (sentinel process status reason)
+		  (sentinel process (status->emacs-status status) reason)
 		  true))
 	       ((eq? status 'RUNNING)
 		false)
