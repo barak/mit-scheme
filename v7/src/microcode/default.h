@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.28 1987/12/13 21:23:53 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.29 1988/04/24 10:04:59 cph Exp $
  *
  * This file contains default definitions for some hooks which 
  * various machines require.  These machines define these hooks
@@ -246,15 +246,15 @@ extern Pointer Apply_Primitive();
 Loc = Apply_Primitive(N)
 #endif
 
-#ifndef Eval_Ucode_Hook()
+#ifndef Eval_Ucode_Hook
 #define Eval_Ucode_Hook()
 #endif
 
-#ifndef Pop_Return_Ucode_Hook()
+#ifndef Pop_Return_Ucode_Hook
 #define Pop_Return_Ucode_Hook()
 #endif
 
-#ifndef Apply_Ucode_Hook()
+#ifndef Apply_Ucode_Hook
 #define Apply_Ucode_Hook()
 #endif
 
