@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.4 1989/04/26 18:53:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.5 1989/06/21 10:39:07 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -209,8 +209,27 @@ MIT in each case. |#
   (files "xterm")
   (parent (edwin))
   (export (edwin)
-	  X-display)
+	  button1-down
+	  button2-down
+	  button3-down
+	  button4-down
+	  button5-down
+	  button1-up
+	  button2-up
+	  button3-up
+	  button4-up
+	  button5-up
+	  x-display)
+  (export (edwin x-commands)
+	  screen-xterm)
   (initialization (initialize-package!)))
+
+(define-package (edwin x-commands)
+  (files "xcom")
+  (parent (edwin))
+  (export (edwin)
+	  x-move-to-coordinates
+	  x-switch-to-window))
 
 (define-package (edwin console-screen)
   (files "cterm")
@@ -235,6 +254,9 @@ MIT in each case. |#
   (export ()
 	  edwin-set-display!)
   (export (edwin)
+	  button-downify
+	  button-upify
+	  button?
 	  editor-frame-select-cursor!
 	  editor-frame-select-window!
 	  editor-frame-selected-window
@@ -247,6 +269,7 @@ MIT in each case. |#
 	  edwin-reset
 	  edwin-reset-windows
 	  edwin-screen
+	  initialize-buttons!
 	  make-display
 	  make-editor-frame
 	  modeline-mode-string
