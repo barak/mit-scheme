@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.12 1995/11/04 11:52:19 adams Exp $
+$Id: usiexp.scm,v 1.13 1996/07/22 19:04:06 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -639,19 +639,26 @@ MIT in each case. |#
     ERROR:BAD-RANGE-ARGUMENT
     ERROR:WRONG-TYPE-ARGUMENT
     ERROR:WRONG-TYPE-DATUM
+    EXACT->INEXACT
     EXP
     EXPT
     FLOOR
     FLOOR->EXACT
     FOR-EACH
+    INEXACT->EXACT
     LIST-REF
     LOG
+    MAKE-STRING
+    MAKE-VECTOR
     MAP
     MEMQ
     ROUND
     ROUND->EXACT
     SIN
     SQRT
+    STRING
+    STRING-APPEND
+    STRING-COPY
     STRING->SYMBOL
     (SYMBOL-NAME 1)
     TAN
