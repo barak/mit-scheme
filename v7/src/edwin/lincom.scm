@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.106 1991/03/22 00:32:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.107 1991/04/12 23:20:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -222,7 +222,7 @@ and indent the new line indent according to mode."
   (lambda ()
     (delete-horizontal-space)
     ((ref-command indent-according-to-mode))
-    ((ref-command newline))
+    ((ref-command newline) false)
     ((ref-command indent-according-to-mode))))
 
 (define-command newline
