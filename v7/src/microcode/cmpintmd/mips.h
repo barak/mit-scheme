@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: mips.h,v 1.21 1998/07/19 20:40:10 cph Exp $
+$Id: mips.h,v 1.22 1998/07/20 03:34:03 cph Exp $
 
-Copyright (c) 1989-1994 Massachusetts Institute of Technology
+Copyright (c) 1989-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
