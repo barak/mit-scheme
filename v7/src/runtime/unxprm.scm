@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.36 1995/04/15 06:13:17 cph Exp $
+$Id: unxprm.scm,v 1.37 1995/04/23 05:19:06 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -235,6 +235,9 @@ MIT in each case. |#
 
 (define (decode-file-time time)
   (decode-universal-time time))
+
+(define (encode-file-time dt)
+  (encode-universal-time dt))
 
 (define unix/user-home-directory user-home-directory)
 (define unix/current-home-directory current-home-directory)
