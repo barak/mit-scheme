@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.42 1990/11/21 07:03:45 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.43 1991/03/24 05:06:11 jinx Exp $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -109,9 +109,11 @@ DEFUN_VOID (read_a_char)
   switch (C)
   {
     case 'n':  OUT ('\n');
-    case 't':  OUT ('\n');
+    case 't':  OUT ('\t');
+    case 'b':  OUT ('\b');
     case 'r':  OUT ('\r');
     case 'f':  OUT ('\f');
+    case '\\': OUT ('\\');
     case '0':  OUT ('\0');
     case 'X':
     {
@@ -124,7 +126,6 @@ DEFUN_VOID (read_a_char)
       getc (portable_file);			/* Space */
       OUT (Code);
     }
-    case '\\': OUT ('\\');
     default  : OUT (C);
   }
 }
