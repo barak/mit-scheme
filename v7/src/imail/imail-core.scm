@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.50 2000/05/08 20:32:50 cph Exp $
+;;; $Id: imail-core.scm,v 1.51 2000/05/10 16:53:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -467,13 +467,21 @@
 
 (define (set-message-flag message flag)
   (guarantee-message-flag flag 'SET-MESSAGE-FLAG)
-  (set-message-flags! message (flags-add flag (message-flags message)))
-  (message-modified! message))
+  (without-interrupts
+   (lambda ()
+     (let ((flags (message-flags message)))
+       (if (not (flags-member? flag flags))
+	   (set-message-flags! message (cons flag flags))))
+     (message-modified! message))))
 
 (define (clear-message-flag message flag)
   (guarantee-message-flag flag 'SET-MESSAGE-FLAG)
-  (set-message-flags! message (flags-delete! flag (message-flags message)))
-  (message-modified! message))
+  (without-interrupts
+   (lambda ()
+     (let ((flags (message-flags message)))
+       (if (flags-member? flag flags)
+	   (set-message-flags! message (flags-delete! flag flags))))
+     (message-modified! message))))
 
 (define (folder-flags folder)
   (let ((n (folder-length folder)))
