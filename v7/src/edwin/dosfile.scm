@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosfile.scm,v 1.34 2000/02/03 22:23:06 cph Exp $
+;;; $Id: dosfile.scm,v 1.35 2000/02/03 22:24:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -582,11 +582,10 @@ filename suffix \".gz\"."
   (append-message "done"))
 
 (define (quote-program program arguments)
-  (let ((arguments
-	 (apply string-append
-		(map (lambda (argument)
-		       (string-append " " arg))
-		     arguments))))
-    (if (eq? 'NT microcode-id/operating-system)
-	(string-append "\"" (os/find-program program #f) "\"" arguments)
-	(string-append program arguments))))
+  (string-append (if (eq? 'NT microcode-id/operating-system)
+		     (string-append "\"" (os/find-program program #f) "\"")
+		     program)
+		 (apply string-append
+			(map (lambda (argument)
+			       (string-append " " argument))
+			     arguments))))
