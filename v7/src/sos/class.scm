@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: class.scm,v 1.6 1997/06/25 03:44:50 cph Exp $
+;;; $Id: class.scm,v 1.7 1997/06/25 03:51:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -56,6 +56,13 @@
   dispatch-tag)
 
 (define (make-class name direct-superclasses direct-slots)
+  (if (not (and (list? direct-superclasses)
+		(for-all? direct-superclasse sclass?)))
+      (error:wrong-type-argument direct-superclasses
+				 "list of classes"
+				 'MAKE-CLASS))
+  (if (not (list? direct-slots))
+      (error:wrong-type-argument direct-slots "list" 'MAKE-CLASS))
   (let ((class
 	 (%make-class name
 		      (if (null? direct-superclasses)
@@ -344,9 +351,13 @@
 	  (else <object>))))
 
 (define (make-record-type-class type)
-  (make-class (string->symbol (string-append "<" (record-type-name type) ">"))
-	      (list <record>)
-	      (record-type-field-names type)))
+  (let ((class
+	 (make-class (string->symbol
+		      (string-append "<" (record-type-name type) ">"))
+		     (list <record>)
+		     (record-type-field-names type))))
+    (set-class/dispatch-tag! class (record-type-dispatch-tag type))
+    class))
 
 (define built-in-class-table
   (make-eq-hash-table))
