@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sort.scm,v 1.5 1992/11/24 04:28:08 arthur Exp $
+;;;	$Id: sort.scm,v 1.6 1992/11/24 23:03:53 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -74,19 +74,14 @@
     (mark-temporary! delete-end)))
 
 (define (identify-records region forward-record record-end)
-  (define (mark-temporary-right-inserting-copy mark)
-    (make-temporary-mark (mark-group mark) (mark-index mark) false))
   (let ((limit (region-end region)))
     (let next-record ((start (region-start region)))
       (if (and start (mark< start limit))
 	  (let ((end (record-end start)))
 	    (if (and end (mark< end limit))
-		(cons (cons start
-			    (mark-temporary-right-inserting-copy end))
+		(cons (cons start (mark-temporary-copy end))
 		      (next-record (forward-record end)))
-		(list (cons start
-			    (mark-temporary-right-inserting-copy
-			     (region-end region))))))
+		(list (cons start (mark-temporary-copy limit)))))
 	  '()))))
 
 (define (insert-reordered-region start end sorted-list unsorted-list)
