@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.52 2003/01/01 02:35:50 cph Exp $
+$Id: arith.scm,v 1.53 2003/01/01 05:38:22 cph Exp $
 
-Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright (c) 1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright (c) 1994,1995,1996,1997,1999 Massachusetts Institute of Technology
+Copyright (c) 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -1780,12 +1782,16 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define exact-rational? rat:rational?)
 (define exact-integer? int:integer?)
 
+(define (inexact? z)
+  (not (complex:exact? z)))
+
 (define (exact-nonnegative-integer? object)
   (and (int:integer? object)
        (not (int:negative? object))))
 
-(define (inexact? z)
-  (not (complex:exact? z)))
+(define (exact-positive-integer? object)
+  (and (int:integer? object)
+       (int:positive? object)))
 
 (let-syntax
     ((define-guarantee
@@ -1806,8 +1812,9 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (define-guarantee exact "exact number")
   (define-guarantee exact-rational "exact rational number")
   (define-guarantee exact-integer "exact integer")
+  (define-guarantee inexact "inexact number")
   (define-guarantee exact-nonnegative-integer "exact non-negative integer")
-  (define-guarantee inexact "inexact number"))
+  (define-guarantee exact-positive-integer "exact positive integer"))
 
 ;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!
 

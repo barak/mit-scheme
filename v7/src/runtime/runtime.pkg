@@ -1,8 +1,11 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.418 2003/01/01 02:36:10 cph Exp $
+$Id: runtime.pkg,v 14.419 2003/01/01 05:38:34 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
+Copyright (c) 1998,1999,2000,2001,2002 Massachusetts Institute of Technology
+Copyright (c) 2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -2210,6 +2213,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  exact->inexact
 	  exact-integer?
 	  exact-nonnegative-integer?
+	  exact-positive-integer?
 	  exact-rational?
 	  exact?
 	  exp
@@ -2225,6 +2229,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  guarantee-exact
 	  guarantee-exact-integer
 	  guarantee-exact-nonnegative-integer
+	  guarantee-exact-positive-integer
 	  guarantee-exact-rational
 	  guarantee-inexact
 	  guarantee-integer
