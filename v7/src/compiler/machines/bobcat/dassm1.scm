@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.9 1988/11/05 22:21:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.10 1988/12/30 07:05:04 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -68,41 +68,27 @@ MIT in each case. |#
 		  object
 		  (lambda (text expression)
 		    expression ;; ignored
-		    (if (and (pair? text)
-			     (eq? (car text) compiler-entries-tag)
-			     (vector? (cadr text)))
-			(for-each disassembler/write-compiled-code-block
-				  (vector->list (cadr text))
-				  (if (false? info)
-				      (make-list (vector-length (cadr text))
-						 false)
-				      (vector->list info)))
+		    (if (dbg-info-vector? text)
+			(let ((items (dbg-info-vector/items text)))
+			  (for-each disassembler/write-compiled-code-block
+				    (vector->list items)
+				    (if (false? info)
+					(make-list (vector-length items) false)
+					(vector->list info))))
 			(error "compiler:write-lap-file : Not a compiled file"
 			       (pathname-new-type pathname "com"))))))))))))
 
 (define disassembler/base-address)
 
 (define (compiler:disassemble entry)
-  (define (do-it the-block)
-    (compiler-info/with-on-demand-loading ;force compiler info loading
-     (lambda ()
-       (compiled-code-block->compiler-info the-block
-         (lambda (info)
-	   (fluid-let ((disassembler/write-offsets? 	true)
-		       (disassembler/write-addresses? 	true)
-		       (disassembler/base-address (object-datum the-block)))
-	     (newline)
-	     (newline)
-	     (disassembler/write-compiled-code-block the-block info)))
-	 (lambda () (error "No compiler info for entry" entry))))))
-
-  (compiled-entry->block-and-offset entry
-    (lambda (block offset) offset (do-it block))
-    (lambda (manifest-block manifest-offset block offset)
-      manifest-block manifest-offset offset
-      (write-string "Writing MANIFEST-CLOSURE")
-      (do-it block))
-    (lambda () (error "Cannot disassemble entry" entry))))
+  (let ((block (compiled-entry/block entry)))
+    (let ((info (compiled-code-block/dbg-info block)))
+      (fluid-let ((disassembler/write-offsets? true)
+		  (disassembler/write-addresses? true)
+		  (disassembler/base-address (object-datum block)))
+	(newline)
+	(newline)
+	(disassembler/write-compiled-code-block block info)))))
 
 ;;; Operations exported from the disassembler package
 
@@ -125,8 +111,7 @@ MIT in each case. |#
   (write-string "]"))
 
 (define (disassembler/write-compiled-code-block block info #!optional page?)
-  (let ((symbol-table (compiler-info/symbol-table info)))
-    (if (or (default-object? page?) page?)
+  (let ((symbol-table (dbg-info/labels info)))    (if (or (default-object? page?) page?)
 	(begin
 	  (write-char #\page)
 	  (newline)))
@@ -285,12 +270,12 @@ MIT in each case. |#
 
 (define (disassembler/write-instruction symbol-table offset write-instruction)
   (if symbol-table
-      (sorted-vector/for-each symbol-table offset
-	(lambda (label)
-	  (write-char #\Tab)
-	  (write-string (string-downcase (label-info-name label)))
-	  (write-char #\:)
-	  (newline))))
+      (let ((label (dbg-labels/find-offset symbol-table offset)))
+	(if label
+	    (begin
+	      (write-char #\Tab)
+	      (write-string (string-downcase (dbg-label/name label)))	      (write-char #\:)
+	      (newline)))))
 
   (if disassembler/write-addresses?
       (begin

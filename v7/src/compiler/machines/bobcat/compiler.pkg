@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.15 1988/12/19 20:23:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.16 1988/12/30 07:01:53 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -71,11 +71,6 @@ MIT in each case. |#
 	 "rtlbase/rtlobj"		;RTL: CFG objects
 	 "rtlbase/regset"		;RTL: register sets
 
-	 #|
-	 ;;; Now in runtime system (I hope) ~JRM
-	 "base/infutl"			;utilities for info generation, shared
-	 |#
-
 	 "back/insseq"			;LAP instruction sequences
 	 )
   (parent ())
@@ -112,6 +107,16 @@ MIT in each case. |#
 	  reference-context/procedure
 	  reference-context?
 	  set-reference-context/offset!))
+
+(define-package (compiler balanced-binary-tree)
+  (files "base/btree")
+  (parent (compiler))
+  (export (compiler)
+	  btree-delete!
+	  btree-fringe
+	  btree-insert!
+	  btree-lookup
+	  make-btree))
 
 (define-package (compiler macros)
   (files "base/macros")
@@ -158,7 +163,9 @@ MIT in each case. |#
   (export (compiler debug)
 	  *root-expression*
 	  *rtl-procedures*
-	  *rtl-graphs*))
+	  *rtl-graphs*)
+  (import (runtime compiler-info)
+	  make-dbg-info-vector))
 
 (define-package (compiler debug)
   (files "base/debug")
@@ -208,7 +215,65 @@ MIT in each case. |#
 	  make-database-transformer
 	  make-symbol-transformer
 	  make-bit-mask-transformer))
+
+(define-package (compiler debugging-information)
+  (files "base/infnew")
+  (parent (compiler))
+  (export (compiler top-level)
+	  info-generation-phase-1
+	  info-generation-phase-2
+	  info-generation-phase-3)
+  (export (compiler rtl-generator)
+	  generated-dbg-continuation)
+  (import (runtime compiler-info)
+	  make-dbg-info
 
+	  make-dbg-expression
+	  dbg-expression/block
+	  dbg-expression/label
+	  set-dbg-expression/label!
+
+	  make-dbg-procedure
+	  dbg-procedure/block
+	  dbg-procedure/label
+	  set-dbg-procedure/label!
+	  dbg-procedure/name
+	  dbg-procedure/required
+	  dbg-procedure/optional
+	  dbg-procedure/rest
+	  dbg-procedure/auxiliary
+	  dbg-procedure/external-label
+	  set-dbg-procedure/external-label!
+	  dbg-procedure<?
+
+	  make-dbg-continuation
+	  dbg-continuation/block
+	  dbg-continuation/label
+	  set-dbg-continuation/label!
+	  dbg-continuation<?
+
+	  make-dbg-block
+	  dbg-block/parent
+	  dbg-block/layout
+	  dbg-block/stack-link
+	  set-dbg-block/procedure!
+
+	  dbg-block-name/dynamic-link
+	  dbg-block-name/ic-parent
+	  dbg-block-name/normal-closure
+	  dbg-block-name/return-address
+	  dbg-block-name/static-link
+
+	  make-dbg-label
+	  dbg-label/names
+	  set-dbg-label/names!
+	  dbg-label/offset
+	  set-dbg-label/name!
+	  set-dbg-label/external?!
+
+	  symbol->dbg-name
+	  ))
+
 (define-package (compiler fg-generator)
   (files "fggen/canon"			;SCode canonicalizer
 	 "fggen/fggen"			;SCode->flow-graph converter
@@ -218,7 +283,7 @@ MIT in each case. |#
   (export (compiler top-level)
 	  canonicalize/top-level
 	  construct-graph))
-
+
 (define-package (compiler fg-optimizer)
   (files "fgopt/outer"			;outer analysis
 	 "fgopt/operan"			;operator analysis
@@ -255,7 +320,7 @@ MIT in each case. |#
   (files "fgopt/offset")
   (parent (compiler fg-optimizer))
   (export (compiler top-level) compute-node-offsets))
-
+
 (define-package (compiler fg-optimizer connectivity-analysis)
   (files "fgopt/conect")
   (parent (compiler fg-optimizer))
@@ -302,7 +367,6 @@ MIT in each case. |#
 
 (define-package (compiler rtl-generator)
   (files "rtlgen/rtlgen"		;RTL generator
-	 "rtlgen/rgproc"		;procedure headers
 	 "rtlgen/rgstmt"		;statements
 	 "rtlgen/fndvar"		;find variables
 	 "machines/bobcat/rgspcm"	;special close-coded primitives
@@ -320,19 +384,21 @@ MIT in each case. |#
   (import (compiler top-level)
 	  label->object))
 
+(define-package (compiler rtl-generator generate/procedure-header)
+  (files "rtlgen/rgproc")
+  (parent (compiler rtl-generator))
+  (export (compiler rtl-generator) generate/procedure-header))
+
 (define-package (compiler rtl-generator combination/inline)
   (files "rtlgen/opncod")
   (parent (compiler rtl-generator))
-  (export (compiler rtl-generator)
-	  combination/inline)
-  (export (compiler top-level)
-	  open-coding-analysis))
+  (export (compiler rtl-generator) combination/inline)
+  (export (compiler top-level) open-coding-analysis))
 
 (define-package (compiler rtl-generator find-block)
   (files "rtlgen/fndblk")
   (parent (compiler rtl-generator))
-  (export (compiler rtl-generator)
-	  find-block))
+  (export (compiler rtl-generator) find-block))
 
 (define-package (compiler rtl-generator generate/rvalue)
   (files "rtlgen/rgrval")
@@ -389,16 +455,6 @@ MIT in each case. |#
   (files "rtlopt/rdeath")
   (parent (compiler rtl-optimizer))
   (export (compiler top-level) code-compression))
-
-(define-package (compiler debugging-information)
-  (files "base/infnew")
-  (parent (compiler))
-  (export (compiler top-level)
-	  generate-top-level-info
-	  generate-top-level-object
-	  generation-phase2)
-  (import (runtime compiler-info)
-	  compiler-entries-tag))
 
 (define-package (compiler lap-syntaxer)
   (files "back/lapgn1"			;LAP generator
@@ -469,4 +525,9 @@ MIT in each case. |#
 	  compiler:write-lap-file
 	  compiler:disassemble)
   (import (runtime compiler-info)
-	  compiler-entries-tag))
+	  compiled-code-block/dbg-info
+	  dbg-info-vector/items	  dbg-info-vector?
+	  dbg-info/labels
+	  dbg-label/external?
+	  dbg-label/name
+	  dbg-labels/find-offset))

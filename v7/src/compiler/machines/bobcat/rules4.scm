@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.4 1988/08/29 22:56:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.5 1988/12/30 07:05:28 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -61,8 +61,7 @@ MIT in each case. |#
       (LAP ,@set-environment
 	   ,@clear-map
 	   ,(load-constant name (INST-EA (A 1)))
-	   (JSR ,entry)
-	   ,@(make-external-label continuation-code-word (generate-label))))))
+	   (JSR ,entry)))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name) (? value))
@@ -82,9 +81,7 @@ MIT in each case. |#
 	     ,@set-value
 	     ,@clear-map
 	     ,(load-constant name (INST-EA (A 1)))
-	     (JSR ,entry)
-	     ,@(make-external-label continuation-code-word
-				    (generate-label)))))))
+	     (JSR ,entry))))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name)
@@ -110,9 +107,7 @@ MIT in each case. |#
 	     ,@clear-map
 	     (MOV L ,reg:temp (A 2))
 	     ,(load-constant name (INST-EA (A 1)))
-	     (JSR ,entry)
-	     ,@(make-external-label continuation-code-word
-				    (generate-label)))))))
+	     (JSR ,entry))))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name)
@@ -136,8 +131,7 @@ MIT in each case. |#
 	 (MOV B (& ,type) (@A 7))
 	 (MOV L (@A+ 7) (A 2))
 	 ,(load-constant name (INST-EA (A 1)))
-	 (JSR ,entry)
-	 ,@(make-external-label continuation-code-word (generate-label)))))
+	 (JSR ,entry))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-REFERENCE (? extension) (? safe?))
@@ -147,8 +141,7 @@ MIT in each case. |#
 	   ,@clear-map
 	   (JSR ,(if safe?
 		     entry:compiler-safe-reference-trap
-		     entry:compiler-reference-trap))
-	   ,@(make-external-label continuation-code-word (generate-label))))))
+		     entry:compiler-reference-trap))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
@@ -159,9 +152,7 @@ MIT in each case. |#
 	(LAP ,@set-extension
 	     ,@set-value
 	     ,@clear-map
-	     (JSR ,entry:compiler-assignment-trap)
-	     ,@(make-external-label continuation-code-word
-				    (generate-label)))))))
+	     (JSR ,entry:compiler-assignment-trap))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension)
@@ -174,9 +165,7 @@ MIT in each case. |#
 	     (MOV B (& ,type) ,reg:temp)
 	     ,@clear-map
 	     (MOV L ,reg:temp (A 1))
-	     (JSR ,entry:compiler-assignment-trap)
-	     ,@(make-external-label continuation-code-word
-				    (generate-label)))))))
+	     (JSR ,entry:compiler-assignment-trap))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT
@@ -188,8 +177,7 @@ MIT in each case. |#
 	 ,@(clear-map!)
 	 (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
 	 (MOV B (& ,type) (@A 7))	 (MOV L (@A+ 7) (A 1))
-	 (JSR ,entry:compiler-assignment-trap)
-	 ,@(make-external-label continuation-code-word (generate-label)))))
+	 (JSR ,entry:compiler-assignment-trap))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? extension))
@@ -197,5 +185,4 @@ MIT in each case. |#
     (let ((clear-map (clear-map!)))
       (LAP ,@set-extension
 	   ,@clear-map
-	   (JSR ,entry:compiler-unassigned?-trap)
-	   ,@(make-external-label continuation-code-word (generate-label))))))
+	   (JSR ,entry:compiler-unassigned?-trap)))))

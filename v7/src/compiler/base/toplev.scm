@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.13 1988/12/13 13:02:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.14 1988/12/30 07:02:55 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -56,6 +56,9 @@ MIT in each case. |#
 (define *rtl-continuations*)
 (define *rtl-graphs*)
 (define label->object)
+(define *dbg-expression*)
+(define *dbg-procedures*)
+(define *dbg-continuations*)
 
 ;;; These variable names mistakenly use the format "compiler:..."
 ;;; instead of the correct format, which is "*...*".  Fix it sometime.
@@ -87,7 +90,6 @@ MIT in each case. |#
   (set! *lvalues*)
   (set! *applications*)
   (set! *parallels*)
-  ;; (set! *assignments*)
   (set! *ic-procedure-headers*)
   (set! *root-expression*)
   (set! *root-block*)
@@ -96,6 +98,9 @@ MIT in each case. |#
   (set! *rtl-continuations*)
   (set! *rtl-graphs*)
   (set! label->object)
+  (set! *dbg-expression*)
+  (set! *dbg-procedures*)
+  (set! *dbg-continuations*)
   (set! *machine-register-map*)
   (set! compiler:external-labels)
   (set! compiler:label-bindings)
@@ -117,7 +122,6 @@ MIT in each case. |#
 	      (*lvalues*)
 	      (*applications*)
 	      (*parallels*)
-	      ;; (*assignments*)
 	      (*ic-procedure-headers*)
 	      (*root-expression*)
 	      (*root-block*))
@@ -126,6 +130,9 @@ MIT in each case. |#
 		(*rtl-continuations*)
 		(*rtl-graphs*)
 		(label->object)
+		(*dbg-expression*)
+		(*dbg-procedures*)
+		(*dbg-continuations*)
 		(*machine-register-map*)
 		(compiler:external-labels)
 		(compiler:label-bindings)
@@ -141,15 +148,27 @@ MIT in each case. |#
   (fluid-let ((compiler:process-time 0)
 	      (compiler:real-time 0))
     (compiler:reset!)
-    (let*  ((topl (thunk))
-	    (value
-	     (generate-top-level-object topl *recursive-compilation-results*)))
+    (let ((value
+	   (let ((expression (thunk)))
+	     (let ((others (recursive-compilation-results)))
+	       (if (null? others)
+		   expression
+		   (scode/make-comment
+		    (make-dbg-info-vector
+		     (list->vector
+		      (cons (compiled-code-address->block expression)
+			    (map (lambda (other) (vector-ref other 2))
+				 others))))
+		    expression))))))
       (if (not compiler:preserve-data-structures?)
 	  (compiler:reset!))
       (compiler-time-report "Total compilation time"
 			    compiler:process-time
 			    compiler:real-time)
       value)))
+
+(define (recursive-compilation-results)
+  (sort *recursive-compilation-results* (lambda (x y) (< (car x) (car y)))))
 
 ;;;; The file compiler, its usual mode.
 
@@ -380,9 +399,12 @@ MIT in each case. |#
   (write-string " (real time)"))
 
 (define-macro (last-reference name)
-  `(IF COMPILER:PRESERVE-DATA-STRUCTURES?
-       ,name
-       (SET! ,name)))
+  (let ((x (generate-uninterned-symbol)))
+    `(IF COMPILER:PRESERVE-DATA-STRUCTURES?
+	 ,name
+	 (LET ((,x ,name))
+	   (SET! ,name)
+	   ,x))))
 
 (define (phase/fg-generation)
   (compiler-superphase "Flow Graph Generation"
@@ -406,14 +428,13 @@ MIT in each case. |#
       (set! *lvalues* '())
       (set! *applications* '())
       (set! *parallels* '())
-      ;; (set! *assignments* '())
       (set! *root-expression* (construct-graph (last-reference *scode*)))
       (set! *root-block* (expression-block *root-expression*))
       (if (or (null? *expressions*)
 	      (not (null? (cdr *expressions*))))
 	  (error "Multiple expressions"))
       (set! *expressions*))))
-
+
 (define (phase/fg-optimization)
   (compiler-superphase "Flow Graph Optimization"
     (lambda ()
@@ -433,6 +454,7 @@ MIT in each case. |#
       (phase/subproblem-ordering)
       (phase/connectivity-analysis)
       (phase/compute-node-offsets)
+      (phase/info-generation-1)
       (phase/fg-optimization-cleanup))))
 
 (define (phase/simulate-application)
@@ -462,8 +484,8 @@ MIT in each case. |#
 
 (define (phase/environment-optimization)
   (compiler-subphase "Environment Optimization"
-   (lambda ()
-     (optimize-environments! *procedures*))))
+    (lambda ()
+      (optimize-environments! *procedures*))))
 
 (define (phase/identify-closure-limits)
   (compiler-subphase "Closure Limit Identification"
@@ -477,16 +499,14 @@ MIT in each case. |#
       (setup-closure-contexts! *root-expression* *procedures*))))
 
 (define (phase/compute-call-graph)
-  (compiler-subphase
-   "Call Graph Computation"
-   (lambda ()
-     (compute-call-graph! *procedures*))))
+  (compiler-subphase "Call Graph Computation"
+    (lambda ()
+      (compute-call-graph! *procedures*))))
 
 (define (phase/side-effect-analysis)
-  (compiler-subphase
-   "Side Effect Analysis"
-   (lambda ()
-     (side-effect-analysis *procedures* *applications*))))
+  (compiler-subphase "Side Effect Analysis"
+    (lambda ()
+      (side-effect-analysis *procedures* *applications*))))
 
 (define (phase/continuation-analysis)
   (compiler-subphase "Continuation Analysis"
@@ -524,6 +544,11 @@ MIT in each case. |#
     (lambda ()
       (compute-node-offsets *root-expression*))))
 
+(define (phase/info-generation-1)
+  (compiler-subphase "Debugging Information Initialization"
+    (lambda ()
+      (info-generation-phase-1 *root-expression* *procedures*))))
+
 (define (phase/fg-optimization-cleanup)
   (compiler-subphase "Flow Graph Optimization Cleanup"
     (lambda ()
@@ -535,7 +560,6 @@ MIT in each case. |#
 		 (set! *lvalues*)
 		 (set! *applications*)
 		 (set! *parallels*)
-		 ;; (set! *assignments*)
 		 (set! *root-block*))))))
 
 (define (phase/rtl-generation)
@@ -658,6 +682,15 @@ MIT in each case. |#
 	     (linearize-bits *rtl-expression*
 			     *rtl-procedures*
 			     *rtl-continuations*)))
+      (with-values
+	  (lambda ()
+	    (info-generation-phase-2 *rtl-expression*
+				     *rtl-procedures*
+				     *rtl-continuations*))
+	(lambda (expression procedures continuations)
+	  (set! *dbg-expression* expression)
+	  (set! *dbg-procedures* procedures)
+	  (set! *dbg-continuations* continuations)))
       (if (not compiler:preserve-data-structures?)
 	  (begin (set! label->object)
 		 (set! *rtl-expression*)
@@ -668,49 +701,51 @@ MIT in each case. |#
 (define (phase/assemble)
   (compiler-phase "Assembly"
     (lambda ()
-      (if compiler:preserve-data-structures?
-	  (assemble compiler:block-label compiler:bits phase/assemble-finish)
-	  (assemble (set! compiler:block-label)
-		    (set! compiler:bits)
-		    phase/assemble-finish)))))
-
-(define (phase/assemble-finish count code-vector labels bindings linkage-info)
-  linkage-info ;; ignored
-  (set! compiler:code-vector code-vector)
-  (set! compiler:entry-points labels)
-  (set! compiler:label-bindings bindings)
-  (newline)
-  (display "      Branch tensioning done in ")
-  (write (1+ count))
-  (if (zero? count)
-      (display " iteration.")
-      (display " iterations.")))
+      (assemble (last-reference compiler:block-label)
+		(last-reference compiler:bits)
+	(lambda (count code-vector labels bindings linkage-info)
+	  linkage-info		; ignored
+	  (set! compiler:code-vector code-vector)
+	  (set! compiler:entry-points labels)
+	  (set! compiler:label-bindings bindings)
+	  (newline)
+	  (display "      Branch tensioning done in ")
+	  (write (1+ count))
+	  (if (zero? count)
+	      (display " iteration.")
+	      (display " iterations.")))))))
 
 (define (phase/info-generation-2 pathname)
   (compiler-phase "Debugging Information Generation"
-   (lambda ()
-     (let ((info
-	    (generation-phase2 compiler:label-bindings
-			       (last-reference compiler:external-labels))))
-	     
-       (if (eq? pathname true)		; recursive compilation
-	   (begin
-	     (set! *recursive-compilation-results*
-		   (cons (list *recursive-compilation-number*
-			       info
-			       compiler:code-vector)
-			 *recursive-compilation-results*))
-	     (set-compiled-code-block/debugging-info!
-	      compiler:code-vector
-	      (cons (pathname->string *info-output-pathname*)
-		    *recursive-compilation-number*)))
-	   (begin
-	     (fasdump
-	      (generate-top-level-info info *recursive-compilation-results*)
-	      pathname)
-	     (set-compiled-code-block/debugging-info!
-	      compiler:code-vector
-	      (pathname->string pathname))))))))
+    (lambda ()
+      (set-compiled-code-block/debugging-info!
+       compiler:code-vector
+       (let ((info
+	      (info-generation-phase-3
+	       (last-reference *dbg-expression*)
+	       (last-reference *dbg-procedures*)
+	       (last-reference *dbg-continuations*)
+	       compiler:label-bindings
+	       (last-reference compiler:external-labels))))
+	 (if (eq? pathname true)	; recursive compilation
+	     (begin
+	       (set! *recursive-compilation-results*
+		     (cons (vector *recursive-compilation-number*
+				   info
+				   compiler:code-vector)
+			   *recursive-compilation-results*))
+	       (cons (pathname->string *info-output-pathname*)
+		     *recursive-compilation-number*))
+	     (begin
+	       (fasdump (let ((others (recursive-compilation-results)))
+			  (if (null? others)
+			      info
+			      (list->vector
+			       (cons info
+				     (map (lambda (other) (vector-ref other 1))
+					  others)))))
+			pathname)
+	       (pathname->string pathname))))))))
 
 (define (phase/link)
   (compiler-phase "Linkification"

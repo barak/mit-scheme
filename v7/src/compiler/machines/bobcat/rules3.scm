@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.14 1988/11/08 12:36:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.15 1988/12/30 07:05:20 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -289,16 +289,13 @@ MIT in each case. |#
   (+ (* #x100 min) max))
 
 (define (make-procedure-code-word min max)
-  (define (coerce val)
-    (cond ((and (not (negative? val))
-		(< val 128))
-	   val)
-	  ((and (negative? val)
-		(> val -128))
-	   (+ 256 val))
-	  (else
-	   (error "make-procedure-code-word: Bad value" val))))
-  (make-code-word (coerce min) (coerce max)))
+  ;; The "min" byte must be less than #x80; the "max" byte may not
+  ;; equal #x80 but can take on any other value.
+  (if (or (negative? min) (>= min #x80))
+      (error "MAKE-PROCEDURE-CODE-WORD: minimum out of range" min))
+  (if (>= (abs max) #x80)
+      (error "MAKE-PROCEDURE-CODE-WORD: maximum out of range" max))
+  (make-code-word min (if (negative? max) (+ #x100 max) max)))
 
 (define expression-code-word
   (make-code-word #xff #xff))
@@ -306,10 +303,20 @@ MIT in each case. |#
 (define internal-entry-code-word
   (make-code-word #xff #xfe))
 
-;; This is the same until information is encoded in them
-
-(define continuation-code-word
-  (make-code-word #x80 #x80))
+(define (continuation-code-word label)
+  (let ((offset
+	 (if label
+	     (rtl-continuation/next-continuation-offset (label->object label))
+	     0)))
+    (cond ((not offset)
+	   (make-code-word #xff #xfc))
+	  ((< offset #x2000)
+	   ;; This uses up through (#xff #xdf).
+	   (let ((qr (integer-divide offset #x80)))
+	     (make-code-word (+ #x80 (integer-divide-remainder qr))
+			     (+ #x80 (integer-divide-quotient qr)))))
+	  (else
+	   (error "Unable to encode continuation offset" offset)))))
 
 ;;;; Procedure headers
 
@@ -337,12 +344,12 @@ MIT in each case. |#
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
-  (make-external-label continuation-code-word
+  (make-external-label (continuation-code-word internal-label)
 		       internal-label))
 
 (define-rule statement
   (CONTINUATION-HEADER (? internal-label))
-  (simple-procedure-header continuation-code-word
+  (simple-procedure-header (continuation-code-word internal-label)
 			   internal-label
 			   entry:compiler-interrupt-continuation))
 
@@ -498,7 +505,7 @@ MIT in each case. |#
 					(if (null? assignments) 0 1))
 				     0)
 			  (JSR ,entry:compiler-link)
-			  ,@(make-external-label continuation-code-word
+			  ,@(make-external-label (continuation-code-word false)
 						 (generate-label))))))))))
 
 ;;; Local Variables: ***

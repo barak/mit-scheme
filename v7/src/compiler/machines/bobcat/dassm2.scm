@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.11 1988/12/12 22:11:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.12 1988/12/30 07:05:13 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -173,15 +173,15 @@ MIT in each case. |#
 (set! disassembler/lookup-symbol
   (lambda (symbol-table offset)
     (and symbol-table
-	 (let ((label (sorted-vector/find-element symbol-table offset)))
+	 (let ((label (dbg-labels/find-offset symbol-table offset)))
 	   (and label 
-		(label-info-name label))))))
+		(dbg-label/name label))))))
 
 (define (external-label-marker? symbol-table offset state)
   (if symbol-table
-      (sorted-vector/there-exists? symbol-table
-				   (+ offset 4)
-				   label-info-external?)
+      (let ((label (dbg-labels/find-offset symbol-table (+ offset 4))))
+	(and label
+	     (dbg-label/external? label)))
       (and *block
 	   (not (eq? state 'INSTRUCTION))
 	   (let loop ((offset (+ offset 4)))
