@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.2 1990/07/30 23:14:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.3 1990/08/10 02:02:25 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -85,6 +85,7 @@ MIT in each case. */
 #endif
 
 #if defined(_ULTRIX)
+#define _POSIX
 #define _BSD4_3
 #endif
 
