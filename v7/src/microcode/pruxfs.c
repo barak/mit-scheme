@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.26 1988/02/12 16:53:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.27 1988/03/02 09:00:38 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -153,9 +153,77 @@ DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1)
   PRIMITIVE_RETURN (C_String_To_Scheme_String (entry -> gr_name));
 }
 
+DEFINE_PRIMITIVE ("FILE-DIRECTORY?", Prim_file_directory_p, 1)
+{
+  struct stat stat_result;
+  PRIMITIVE_HEADER (1);
+
+  CHECK_ARG (1, STRING_P);
+  if ((stat ((Scheme_String_To_C_String (ARG_REF (1))), (& stat_result))) < 0)
+    PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN
+    ((((stat_result . st_mode) & S_IFMT) == S_IFDIR) ? TRUTH : NIL);
+}
+
+/* The following is originally from GNU Emacs. */
+
+#ifdef S_IFLNK
+
+static Pointer
+file_symlink_p (filename)
+     Pointer filename;
+{
+  char *buf;
+  int bufsize;
+  int valsize;
+  Pointer val;
+  extern char *malloc ();
+  extern void free ();
+
+  bufsize = 100;
+  while (1)
+    {
+      buf = (malloc (bufsize));
+      if (buf == NULL)
+	error_external_return ();
+      valsize =
+	(readlink ((Scheme_String_To_C_String (filename)), buf, bufsize));
+      if (valsize < bufsize)
+	break;
+      /* Buffer was not long enough */
+      free (buf);
+      bufsize *= 2;
+    }
+  if (valsize < 0)
+    {
+      free (buf);
+      return (NIL);
+    }
+  (buf [valsize]) = '\0';
+  val = (C_String_To_Scheme_String (buf));
+  free (buf);
+  return (val);
+}
+
+#endif /* S_IFLNK */
+
+DEFINE_PRIMITIVE ("FILE-SYMLINK?", Prim_file_symlink_p, 1)
+{
+  PRIMITIVE_HEADER (1);
+
+  CHECK_ARG (1, STRING_P);
+#ifdef S_IFLNK
+  PRIMITIVE_RETURN (file_symlink_p (ARG_REF (1)));
+#else /* not S_IFLNK */
+  PRIMITIVE_RETURN (NIL);
+#endif /* S_IFLNK */
+}
+
 /* Returns a vector of 10 items:
 
-   0 = #T iff the file is a directory
+   0 = #T iff the file is a directory,
+       string (name linked to) for symbolic link,
+       #F for all other files.
    1 = number of links to the file
    2 = user id, as an unsigned integer
    3 = group id, as an unsigned integer
@@ -183,9 +251,20 @@ DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1)
     PRIMITIVE_RETURN (NIL);
   result = (allocate_marked_vector (TC_VECTOR, 10, true));
   modes = (allocate_string (10));
-  User_Vector_Set
-    (result, 0,
-     ((((stat_result . st_mode) & S_IFMT) == S_IFDIR) ? TRUTH : NIL));
+  switch ((stat_result . st_mode) & S_IFMT)
+    {
+    case S_IFDIR:
+      User_Vector_Set (result, 0, TRUTH);
+      break;
+#ifdef S_IFLNK
+    case S_IFLNK:
+      User_Vector_Set (result, 0, (file_symlink_p (ARG_REF (1))));
+      break;
+#endif
+    default:
+      User_Vector_Set (result, 0, NIL);
+      break;
+    }
   User_Vector_Set (result, 1, (MAKE_UNSIGNED_FIXNUM (stat_result . st_nlink)));
   User_Vector_Set (result, 2, (MAKE_UNSIGNED_FIXNUM (stat_result . st_uid)));
   User_Vector_Set (result, 3, (MAKE_UNSIGNED_FIXNUM (stat_result . st_gid)));
