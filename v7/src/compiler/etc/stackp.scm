@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/etc/stackp.scm,v 1.1 1988/01/07 23:04:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/etc/stackp.scm,v 1.2 1988/10/26 04:14:53 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,82 +36,49 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define rcd)
-(define rcr)
-(define write-continuation)
-(define continuation-ref)
-(let ()
+(define (rcd #!optional filename continuation)
+  (let ((do-it
+	 (lambda ()
+	   (write-continuation
+	    (if (default-object? continuation)
+		(error-continuation)
+		continuation)))))
+    (if (default-object? filename)
+	(do-it)
+	(with-output-to-file filename do-it))))
 
-(set! rcd
-  (named-lambda (rcd #!optional filename)
-    (if (unassigned? filename)
-	(write-continuation)
-	(with-output-to-file filename write-continuation))))
+(define (rcr n #!optional continuation)
+  (continuation-ref (if (default-object? continuation)
+			(error-continuation)
+			continuation)
+		    n))
 
-(set! rcr
-  (named-lambda (rcr n)
-    (continuation-ref (rep-continuation) n)))
+(define (write-continuation continuation)
+  (let write-stack-stream
+      ((stream (continuation->stream continuation)) (n 0))
+    (if (not (stream-null? stream))
+	(begin (if (return-address? (stream-car stream))
+		   (newline))
+	       (newline)
+	       (write n)
+	       (write-string "\t")
+	       (let ((string (write-to-string (stream-car stream) 60)))
+		 (write-string (cdr string))
+		 (if (car string)
+		     (write-string "...")))
+	       (write-stack-stream (tail stream) (1+ n)))))
+  unspecific)
 
-(set! write-continuation
-  (named-lambda (write-continuation #!optional continuation)
-    (if (unassigned? continuation) (set! continuation (rep-continuation)))
-    (write-stack-stream (continuation->stream continuation) 0)))
+(define (continuation-ref continuation n)
+  (stream-ref (continuation->stream continuation) n))
 
-(define (write-stack-stream stream n)
-  (if (null? stream)
-      *the-non-printing-object*
-      (begin (if (return-address? (stack-stream-head stream))
-		 (newline))
-	     (newline)
-	     (write n)
-	     (write-string "\t")
-	     (let ((string (write-to-string (stack-stream-head stream) 60)))
-	       (write-string (cdr string))
-	       (if (car string)
-		   (write-string "...")))
-	     (write-stack-stream (tail stream) (1+ n)))))
-
-(set! continuation-ref
-  (named-lambda (continuation-ref continuation n)
-    (stack-stream-ref (continuation->stream continuation) n)))
-
-(define (stack-stream-ref stream n)
-  (cond ((null? stream) (error "index too large" n))
-	((positive? n) (stack-stream-ref (tail stream) (-1+ n)))
-	(else (stack-stream-head stream))))
-
 (define (continuation->stream continuation)
-  (control-point->stream (continuation->control-point continuation)))
-
-(define (continuation->control-point continuation)
-  (force (access promised-control-point (procedure-environment continuation))))
-
-(define (control-point->stream control-point)
-  (stack->stream
-   ((access control-point->stack continuation-package) control-point)))
-
-(define (stack->stream stack)
-  (if (null? stack)
-      '()
-      (let ((item (stack-stream-head stack))
-	    (rest (tail stack)))
-	(cons-stream item
-		     (if (and (return-address? item)
-			      (= return-code:join-stacklets
-				 (primitive-datum item)))
-			 (cons-stream (head rest)
-				      (control-point->stream (head rest)))
-			 (stack->stream rest))))))
-
-(define (stack-stream-head stack)
-  (if (primitive-type? type-code:reference-trap (head stack))
-      (map-reference-trap (lambda () (head stack)))
-      (head stack)))
-
-(define return-code:join-stacklets
-  (microcode-return 'JOIN-STACKLETS))
-
-(define type-code:reference-trap
-  (microcode-type 'REFERENCE-TRAP))
-
-)
+  (let stack-frame->stream ((frame (continuation->stack-frame continuation)))
+    (let ((length (stack-frame/length frame)))
+      (let loop ((n 0))
+	(if (< n length)
+	    (cons-stream (stack-frame/ref frame n) (loop (1+ n)))
+	    (let ((next (stack-frame/next frame)))
+	      (if next
+		  (stack-frame->stream next)
+		  (stream))))))))
