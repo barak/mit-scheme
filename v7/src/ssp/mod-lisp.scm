@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.13 2004/11/22 14:03:02 cph Exp $
+$Id: mod-lisp.scm,v 1.14 2004/11/22 16:23:34 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -473,19 +473,6 @@ USA.
 	       (else
 		(values #f start))))
       (values #f #f)))
-
-(define (parse-cookie message string)
-  (set-http-message-cookies!
-   message
-   (append! (http-message-cookies message)
-	    (map (lambda (binding)
-		   (let ((nv (burst-string binding #\= #f)))
-		     (if (not (and (pair? nv)
-				   (pair? (cdr nv))
-				   (null? (cddr nv))))
-			 (error "Malformed cookie value:" string))
-		     (cons (car nv) (cdr nv))))
-		 (map string-trim (burst-string string #\; #f))))))
 
 ;;;; HTTP message datatype
 
@@ -619,6 +606,19 @@ USA.
   (set-header message 'CONTENT-TYPE (symbol-name type)))
 
 ;;;; Cookie support
+
+(define (parse-cookie message string)
+  (set-http-message-cookies!
+   message
+   (append! (http-message-cookies message)
+	    (map (lambda (binding)
+		   (let ((nv (burst-string binding #\= #f)))
+		     (if (not (and (pair? nv)
+				   (pair? (cdr nv))
+				   (null? (cddr nv))))
+			 (error "Malformed cookie value:" string))
+		     (cons (intern (car nv)) (cdr nv))))
+		 (map string-trim (burst-string string #\; #f))))))
 
 (define (set-cookie message name value attrs)
   ;; Version 0 ("netscape") cookies.
