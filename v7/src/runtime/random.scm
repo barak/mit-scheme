@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.23 2000/04/11 03:46:50 cph Exp $
+$Id: random.scm,v 14.24 2001/09/25 04:33:50 cph Exp $
 
-Copyright (c) 1993-2000 Massachusetts Institute of Technology
+Copyright (c) 1993-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Random Number Generator
@@ -114,10 +115,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					(char->integer (read-char port)))))
 			     ((< n b) n)
 			     (else (outer)))))))))
-	    (initial-random-state
-	     (congruential-rng (+ (real-time-clock) 123456789))))
+	    (simple-random-state))
 	(copy-random-state
 	 (guarantee-random-state state 'MAKE-RANDOM-STATE)))))
+
+(define (simple-random-state)
+  (initial-random-state
+   (congruential-rng (+ ((ucode-primitive real-time-clock)) 123456789))))
 
 (define (initial-random-state generate-random-seed)
   ;; The numbers returned by GENERATE-RANDOM-SEED are not critical.
@@ -204,9 +208,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define *random-state*)
 
 (define (initialize-package!)
-  (set! *random-state*
-	(initial-random-state
-	 (congruential-rng (+ (real-time-clock) 123456789))))
+  (set! *random-state* (simple-random-state))
   unspecific)
 
 (define (finalize-random-state-type!)
