@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intprm.c,v 1.6 1997/04/23 05:40:32 cph Exp $
+$Id: intprm.c,v 1.7 1997/04/28 07:20:33 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -180,7 +180,7 @@ DEFINE_PRIMITIVE ("INTEGER->FLONUM", Prim_integer_to_flonum, 2, 2, 0)
     PRIMITIVE_RETURN (SHARP_F);
   }
 }
-
+
 DEFINE_PRIMITIVE ("INTEGER-SHIFT-LEFT", Prim_integer_shift_left, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
@@ -191,5 +191,56 @@ DEFINE_PRIMITIVE ("INTEGER-SHIFT-LEFT", Prim_integer_shift_left, 2, 2, 0)
     if (integer_negative_p (n))
       error_bad_range_arg (1);
     PRIMITIVE_RETURN (integer_shift_left (n, (arg_ulong_integer (2))));
+  }
+}
+
+static unsigned int
+DEFUN (list_to_integer_producer, (context), PTR context)
+{
+  SCHEME_OBJECT * digits = context;
+  unsigned int digit = (UNSIGNED_FIXNUM_TO_LONG (PAIR_CAR (*digits)));
+  (*digits) = (PAIR_CDR (*digits));
+  return (digit);
+}
+
+DEFINE_PRIMITIVE ("LIST->INTEGER", Prim_list_to_integer, 3, 3,
+  "(list radix negative?)\n\
+LIST is a non-null list of digits in RADIX, most-significant first.\n\
+Converts the list to an integer.  NEGATIVE? specifies the sign.")
+{
+  PRIMITIVE_HEADER (3);
+  Set_Time_Zone (Zone_Math);
+  CHECK_ARG (1, PAIR_P);
+  {
+    SCHEME_OBJECT digits = (ARG_REF (1));
+    unsigned long radix = (arg_ulong_integer (2));
+    unsigned int n_digits;
+    if ((radix < 2) || (radix >= (bignum_max_digit_stream_radix ())))
+      error_bad_range_arg (2);
+    {
+      SCHEME_OBJECT scan = digits;
+      n_digits = 0;
+      while (1)
+	{
+	  SCHEME_OBJECT digit = (PAIR_CAR (scan));
+	  if (!UNSIGNED_FIXNUM_P (digit))
+	    error_wrong_type_arg (1);
+	  if ((UNSIGNED_FIXNUM_TO_LONG (digit)) >= radix)
+	    error_bad_range_arg (1);
+	  n_digits += 1;
+	  scan = (PAIR_CDR (scan));
+	  if (scan == EMPTY_LIST)
+	    break;
+	  if (!PAIR_P (scan))
+	    error_wrong_type_arg (1);
+	}
+    }
+    PRIMITIVE_RETURN
+      (bignum_to_integer
+       (digit_stream_to_bignum (n_digits,
+				list_to_integer_producer,
+				(&digits),
+				radix,
+				(OBJECT_TO_BOOLEAN (ARG_REF (3))))));
   }
 }
