@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.111 1991/05/10 05:10:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.112 1991/05/14 20:41:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -234,7 +234,7 @@ specified left-margin column."
   ()
   (lambda ()
     (delete-horizontal-space)
-    (insert-newlines 1)
+    (insert-newline)
     (let ((fill-prefix (ref-variable fill-prefix)))
       (if fill-prefix
 	  (region-insert-string! (current-point) fill-prefix)
@@ -248,7 +248,7 @@ and indent the new line indent according to mode."
   (lambda ()
     (delete-horizontal-space)
     ((ref-command indent-according-to-mode))
-    ((ref-command newline) false)
+    (insert-newline)
     ((ref-command indent-according-to-mode))))
 
 (define-variable-per-buffer indent-tabs-mode
@@ -368,28 +368,10 @@ With argument COLUMN, indent each line to that column."
       (mark-temporary! end))))
 
 (define-command newline
-  "Insert newline, or move onto blank line.
-A blank line is one containing only spaces and tabs
-\(which are killed if we move onto it).  Single blank lines
-\(followed by nonblank lines) are not eaten up this way.
-An argument inhibits this."
-  "P"
+  "Insert a newline.  With arg, insert that many newlines."
+  "*P"
   (lambda (argument)
-    (cond (argument
-	   (insert-newlines (command-argument-value argument)))
-	  ((not (line-end? (current-point)))
-	   (insert-newline))
-	  (else
-	   (let ((m1 (line-start (current-point) 1)))
-	     (if (and m1
-		      (line-blank? m1)
-		      (let ((m2 (line-start m1 1)))
-			(and m2
-			     (line-blank? m2))))
-		 (begin
-		   (set-current-point! m1)
-		   (delete-horizontal-space))
-		 (insert-newlines 1)))))))
+    (insert-newlines (command-argument-numeric-value argument))))
 
 (define-command split-line
   "Move rest of this line vertically down.
