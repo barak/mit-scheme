@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.39 1988/03/21 21:10:17 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.40 1988/05/06 09:09:44 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -468,7 +468,7 @@ Purify_Pass_2(info)
   /*NOTREACHED*/
 }
 
-/* (PRIMITIVE-PURIFY OBJECT PURE?)
+/* (PRIMITIVE-PURIFY OBJECT PURE? SAFETY-MARGIN)
 
    Copy an object from the heap into constant space.  It should only
    be used through the wrapper provided in the Scheme runtime system.
@@ -482,28 +482,39 @@ Purify_Pass_2(info)
 
    This primitive does not return normally.  It always escapes into
    the interpreter because some of its cached registers (eg. History)
-   have changed.
-*/
-Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY", 0xB4)
-Define_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY")
+   have changed.  */
+
+DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_Primitive_Purify, 3)
 {
-  Pointer object, purify_result, daemon;
-  Primitive_2_Args();
+  Pointer object, daemon;
+  Pointer result;
+  Primitive_3_Args();
 
   if ((Arg2 != TRUTH) && (Arg2 != NIL))
     Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+  Arg_3_Type(TC_FIXNUM);
   Touch_In_Primitive(Arg1, object);
-  purify_result = purify(object, Arg2);
-  Pop_Primitive_Frame(2);
+  GC_Reserve = (Get_Integer (Arg3));
+  {
+    Pointer purify_result;
+    Pointer words_free;
+
+    purify_result = purify(object, Arg2);
+    words_free = (Make_Unsigned_Fixnum (MemTop - Free));
+    result = (Make_Pointer (TC_LIST, Free));
+    (*Free++) = purify_result;
+    (*Free++) = words_free;
+  }
+  Pop_Primitive_Frame(3);
   daemon = Get_Fixed_Obj_Slot(GC_Daemon);
   if (daemon == NIL)
   {
-    Val = purify_result;
+    Val = result;
     PRIMITIVE_ABORT(PRIM_POP_RETURN);
     /*NOTREACHED*/
   }
  Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
-  Store_Expression(purify_result);
+  Store_Expression(result);
   Store_Return(RC_RESTORE_VALUE);
   Save_Cont();
   Push(daemon);
