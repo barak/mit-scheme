@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.193 1993/09/15 04:07:38 adams Exp $
+$Id: runtime.pkg,v 14.194 1993/09/15 20:26:09 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2174,6 +2174,8 @@ MIT in each case. |#
 	  x-font-structure/start-index
 	  x-geometry-string
 	  x-graphics-device-type
+	  x-graphics-default-display-name
+	  x-graphics-default-geometry
 	  x-graphics/available?
 	  x-graphics/clear
 	  x-graphics/close-display
