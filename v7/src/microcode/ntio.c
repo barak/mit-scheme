@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.4 1993/07/21 04:42:25 gjr Exp $
+$Id: ntio.c,v 1.5 1993/07/27 21:00:51 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -96,10 +96,11 @@ DEFUN_VOID (NT_initialize_channels)
     termination_init_error ();
   }
 
+#ifndef GUI
   SetConsoleMode (STDIN_HANDLE,
         ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT);
   SetConsoleCtrlHandler (NT_ctrl_handler, TRUE);
-
+#endif /* GUI */
 
   master_tty_window = Screen_Create (NULL, "MIT Scheme", SW_SHOWNORMAL);
 
@@ -237,6 +238,14 @@ DEFUN (OS_terminal_drain_output, (channel), Tchannel channel)
 //    return (DOS_read (fd, buffer, nbytes));
 //}
 
+static void
+Relinquish_Timeslice (void)
+{
+  Sleep (0);
+  REQUEST_INTERRUPT (INT_Global_1);	/* windows polling */
+  return;
+}
+
 int
 DEFUN (nt_channel_read, (channel, buffer, nbytes),
        Tchannel channel AND PTR buffer AND size_t nbytes)
@@ -245,12 +254,14 @@ DEFUN (nt_channel_read, (channel, buffer, nbytes),
   
   if (nbytes == 0)
     return 0;
-  else if (Screen_IsScreenHandle(CHANNEL_HANDLE (channel))) {
+  else if (Screen_IsScreenHandle(CHANNEL_HANDLE (channel)))
+  {
     bytesRead = Screen_Read ((CHANNEL_HANDLE (channel)),
 			     ((BOOL) (CHANNEL_BUFFERED (channel))),
 			     buffer, nbytes);
     if (bytesRead == 0xffffffff) {
-      Sleep(0);  /* for pleasantness give up rest of this timeslice */
+      /* for pleasantness give up rest of this timeslice */
+      Relinquish_Timeslice ();    
       errno = ERRNO_NONBLOCK;
     }
     return  (int)bytesRead;

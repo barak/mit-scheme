@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.76 1993/06/24 03:49:40 gjr Exp $
+$Id: bchmmg.c,v 9.77 1993/07/27 21:00:46 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ MIT in each case. */
 
 /* Memory management top level.  Garbage collection to disk. */
 
+#include "memmag.h"
 #include "scheme.h"
 #include "prims.h"
 #include "option.h"
@@ -2040,10 +2041,14 @@ DEFUN (Clear_Memory, (heap_size, stack_size, constant_space_size),
   return;
 }
 
+static PTR Lowest_Allocated_Address;
+
 void
 DEFUN_VOID (Reset_Memory)
 {
   BUFFER_SHUTDOWN (1);
+  HEAP_FREE (Lowest_Allocated_Address);
+  DEALLOCATE_REGISTERS ();
   return;
 }
 
@@ -2120,6 +2125,8 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
   SCHEME_OBJECT test_value;
   int real_stack_size, fudge_space;
 
+  ALLOCATE_REGISTERS ();
+
   /* Consistency check 1 */
   if (heap_size == 0)
   {
@@ -2164,6 +2171,7 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
     /*NOTREACHED*/
   }
 
+  Lowest_Allocated_Address = ((PTR) Heap);
   Heap += HEAP_BUFFER_SPACE;
   Heap = ((SCHEME_OBJECT *) (ALIGN_UP_TO_IO_PAGE (Heap)));
   aligned_heap = Heap;
@@ -2191,6 +2199,7 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
 	     "\
 \tAllocate less space or re-configure without HEAP_IN_LOW_MEMORY.\n");
     fflush (stderr);
+    Reset_Memory ();
     termination_init_error ();
     /*NOTREACHED*/
   }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.4 1993/07/16 18:55:35 gjr Exp $
+$Id: nttop.c,v 1.5 1993/07/27 21:00:55 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -47,7 +47,6 @@ extern void EXFUN (DOS_initialize_ctty, (int interactive));
 extern void EXFUN (DOS_initialize_directory_reader, (void));
 extern void EXFUN (DOS_initialize_environment, (void));
 extern void EXFUN (DOS_initialize_processes, (void));
-extern void EXFUN (DOS_initialize_signals, (void));
 extern void EXFUN (DOS_initialize_terminals, (void));
 /*extern void EXFUN (DOS_initialize_trap_recovery, (void));*/
 extern void EXFUN (DOS_initialize_conio, (void));
@@ -66,6 +65,7 @@ extern void EXFUN (DOS_ctty_restore_internal_state, (void));
 extern void EXFUN (DOS_ctty_restore_external_state, (void));
 
 extern void EXFUN (NT_initialize_signals, (void));
+extern void EXFUN (NT_restore_signals, (void));
 
 /* reset_interruptable_extent */
 
@@ -209,17 +209,19 @@ DEFUN (DOS_prim_check_errno, (name), enum syscall_names name)
 {
   if (errno != EINTR)
     error_system_call (errno, name);
-  deliver_pending_interrupts();
-}
-
-void OS_restore_external_state (void)
-{ extern void DOS_restore_interrupts(void);
-
-  DOS_restore_interrupts();
+  deliver_pending_interrupts ();
   return;
 }
 
-void bcopy (const char *s1, char *s2, int n)
+void
+OS_restore_external_state (void)
+{
+  NT_restore_signals ();
+  return;
+}
+
+void bcopy
+(const char * s1, char * s2, int n)
 {
   while (n-- > 0)
     *s2++ = *s1++;

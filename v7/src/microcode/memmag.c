@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.50 1993/06/24 05:56:59 gjr Exp $
+$Id: memmag.c,v 9.51 1993/07/27 21:00:50 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -44,6 +44,7 @@ MIT in each case. */
    memory management utilities.
  */
 
+#include "memmag.h"
 #include "scheme.h"
 #include "prims.h"
 #include "gccode.h"
@@ -118,6 +119,16 @@ DEFUN_VOID (failed_consistency_check)
     exit (1);
 }
 
+static PTR Lowest_Allocated_Address;
+
+void
+DEFUN_VOID (Reset_Memory)
+{
+  HEAP_FREE (Lowest_Allocated_Address);
+  DEALLOCATE_REGISTERS ();
+  return;
+}
+
 /* This procedure allocates and divides the total memory. */
 
 void
@@ -127,9 +138,7 @@ DEFUN (Setup_Memory,
 {
   SCHEME_OBJECT test_value;
 
-#ifdef WINNT
-  winnt_allocate_registers();
-#endif
+  ALLOCATE_REGISTERS ();
 
   /* Consistency check 1 */
   if (Our_Heap_Size == 0)
@@ -153,6 +162,7 @@ DEFUN (Setup_Memory,
   }
 
   /* Initialize the various global parameters */
+  Lowest_Allocated_Address = ((PTR) Heap);
   Heap += HEAP_BUFFER_SPACE;
   INITIAL_ALIGN_FLOAT (Heap);
   Unused_Heap = (Heap + Our_Heap_Size);
@@ -171,22 +181,12 @@ DEFUN (Setup_Memory,
         "Largest address does not fit in datum field of object.\n");
     outf_fatal (
         "Allocate less space or re-configure without HEAP_IN_LOW_MEMORY.\n");
+    Reset_Memory ();
     failed_consistency_check ();
   }
 
   Heap_Bottom = Heap;
   Clear_Memory (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size);
-  return;
-}
-
-/* In this version, this does nothing. */
-
-void
-DEFUN_VOID (Reset_Memory)
-{
-#ifdef WINNT
-  winnt_deallocate_registers();
-#endif
   return;
 }
 

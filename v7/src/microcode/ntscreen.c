@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.3 1993/07/21 04:43:00 gjr Exp $
+$Id: ntscreen.c,v 1.4 1993/07/27 21:00:53 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -1045,7 +1045,7 @@ PaintScreen (HWND hWnd)
       SelectObject (hDC, hOldFont);
    }
    EndPaint (hWnd, &ps);
-   MoveScreenCursor(screen);
+   MoveScreenCursor (screen);
    return (TRUE);
 }
 
@@ -1560,7 +1560,8 @@ Screen_BS (SCREEN screen)
     screen->row --;
     screen->column = screen->width-1;
   }
-  MoveScreenCursor (screen);
+  if (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE)
+    MoveScreenCursor (screen);
   return;
 }
 
@@ -1575,9 +1576,11 @@ Screen_LF (SCREEN screen)
     //screen->row-- ;
     screen->row = screen->height-1;
   }
-  MoveScreenCursor (screen);
   if (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE)
+  {
+    MoveScreenCursor (screen);
     UpdateWindow (screen->hWnd);
+  }
   return;
 }
 
@@ -1587,7 +1590,7 @@ Screen_CR (SCREEN screen)
   screen->column = 0 ;
   if (screen->mode_flags & SCREEN_MODE_NEWLINE)
     Screen_LF (screen);
-  else
+  else if (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE)
     MoveScreenCursor (screen);
   return;
 }
@@ -1674,7 +1677,8 @@ relocate_cursor (SCREEN screen, int row, int col)
 		    : ((col > screen->width)
 		       ? (screen->width - 1)
 		       : col));
-  MoveScreenCursor (screen);
+  if (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE)
+    MoveScreenCursor (screen);
   return;
 }
 
@@ -1930,6 +1934,7 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
    if (saved_mode_flags != 0)
    {
      UpdateWindow (screen->hWnd);
+     MoveScreenCursor (screen);
      screen->mode_flags |= saved_mode_flags;
    }
    return (TRUE);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.5 1993/07/21 04:43:46 gjr Exp $
+$Id: ntsig.c,v 1.6 1993/07/27 21:00:54 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -56,8 +56,7 @@ MIT in each case. */
 #include "extern.h"
 #include "ntutil.h"
 #include "ntscreen.h"
-
-#include <mmsystem.h>
+#include "ntscmlib.h"
 
 #ifndef fileno
 #define fileno(fp)	((fp)->_file)
@@ -680,7 +679,7 @@ DEFUN_VOID (DOS_interactive_interrupt_handler)
 	print_interrupt_help ();
 	break;
       }
-
+
       case 'u':
       case 'U':
       case CONTROL_U:
@@ -707,581 +706,63 @@ DEFUN_VOID (DOS_interactive_interrupt_handler)
     }
  }
 }
-
+
 void
 DEFUN_VOID (OS_restartable_exit)
 {
   return;
 }
-
-#ifdef UNUSED
-
-#define IF_POSIX_SIGNALS(code) do {} while (0)
-
-DEFUN_STD_HANDLER (sighnd_stop, {})
-
-#ifdef HAVE_ITIMER
-
-DEFUN_STD_HANDLER (sighnd_timer,
-  {
-    request_timer_interrupt ();
-  })
-
-#else /* not HAVE_ITIMER */
-
-extern void EXFUN (reschedule_alarm, (void));
-
-DEFUN_STD_HANDLER (sighnd_timer,
-  {
-    /* reschedule_alarm ();
-       request_timer_interrupt ();
-     */
-  })
-
-#endif /* HAVE_ITIMER */
 
-DEFUN_STD_HANDLER (sighnd_save_then_terminate,
-  (request_suspend_interrupt ()))
+/* Timer interrupt */
 
-#ifndef SIGNUP
-#define SIGHUP 999
-#endif
+/* Why does this raise INT_Timer as well?
+   We could request an synchronous Windows timer that would trigger
+   the timer interrupt bit.
 
-DEFUN_STD_HANDLER (sighnd_terminate,
-  (termination_signal
-   ((! (option_emacs_subprocess && (signo == SIGHUP)))
-    ? (find_signal_name (signo))
-    : 0)))
-
-#define VOID ((struct sigcontext *) 0)
-
-DEFUN_STD_HANDLER (sighnd_fpe,
-  {
-    if (executing_scheme_primitive_p ())
-      error_floating_point_exception ();
-    trap_handler ("floating-point exception signal", signo, VOID, VOID);
-  })
-
-DEFUN_STD_HANDLER (sighnd_hardware_trap,
-  (trap_handler ("hardware fault signal", signo, VOID, VOID)))
-
-DEFUN_STD_HANDLER (sighnd_software_trap,
-  (trap_handler ("system software fault signal", signo, VOID, VOID)))
-
-
-/* When a child process terminates, it becomes a zombie until its
-   parent process calls one of the wait() routines to obtain the
-   child's termination status.  The SIGCHLD handler must always call
-   wait() or waitpid() to permit the child process's resources to be
-   freed. */
-
-/* On systems with waitpid() (i.e. those that support WNOHANG) we must
-   loop until there are no more processes, because some of those
-   systems may deliver only one SIGCHLD when more than one child
-   terminates.  Systems without waitpid() (e.g. _SYSV) typically
-   provide queuing of SIGCHLD such that one SIGCHLD is delivered for
-   every child that terminates.  Systems that provide neither
-   waitpid() nor queuing are so losing that we can't win, in which
-   case we just hope that child terminations don't happen too close to
-   one another to cause problems. */
-
-DEFUN_STD_HANDLER (sighnd_dead_subprocess,
-  {
-  })
-#endif /* UNUSED */
-
-/* PC specific low-level interrupt hooks. */
-/* Control-Break Interrupt. */
-
-int
-DEFUN (control_break_handler, (pd), struct INT_DATA * pd)
-{
-  tty_set_next_interrupt_char (CONTROL_G_INTERRUPT_CHAR);
-  return (INTERRUPT_RETURN);
-}
-
-/* Critical-Error (abort, retry, ignore, fail) handler */
-
-#define CE_CAN_ERROR_BIT	0x1000
-#define CE_CAN_RETRY_BIT	0x0800
-#define CE_CAN_IGNORE_BIT	0x0400
-
-#define CE_IGNORE		0
-#define CE_RETRY		1
-#define CE_KILL			2
-#define CE_ERROR		3
-
-int
-ce_handler (int * ax, int * di)
-{
-  if (((* ax) & CE_CAN_ERROR_BIT) != 0)
-    * ax = (((* ax) & 0xff00) | CE_ERROR);
-
-  else if (((* ax) & CE_CAN_IGNORE_BIT) != 0)
-    * ax = (((* ax) & 0xff00) | CE_IGNORE);
-
-  else if (((* ax) & CE_CAN_RETRY_BIT) != 0)
-    * ax = (((* ax) & 0xff00) | CE_RETRY);
-
-  else
-    /* We should really kill Scheme,
-       but there may be no way to do this from here.
-     */
-    * ax = (((* ax) & 0xff00) | CE_KILL);
-
-  return (1);
-}
-
-#ifdef USE_ZORTECH_CERROR
-
-int _far _cdecl
-critical_error_handler (int * ax, int * di)
-{
-  return (ce_handler (ax, di));
-}
-
-#else /* not USE_ZORTECH_CERROR */
-
-int
-DEFUN (critical_error_handler, (pd), struct INT_DATA * pd)
-{
-/* SRA HACK
-  int value = (ce_handler (&pd->regs.e.eax, &pd->regs.e.edi));
-  return ((value == 1) ? INTERRUPT_RETURN : INTERRUPT_CHAIN_NEXT);
-*/
-  return  INTERRUPT_CHAIN_NEXT;
-}
-
-#endif /* USE_ZORTECH_CERROR */
-
-/* Interval timer */
-
-/* Scheme timer emulation; DOS does not have an ITIMER like unix. */
-/* Zero means timer is not set or has expired. */
-
-extern unsigned long scm_itimer_counter;
-extern unsigned long scm_itimer_reload;
-
-unsigned long scm_itimer_counter = 0;
-unsigned long scm_itimer_reload = 0;
-
-extern void EXFUN (dos_process_timer_interrupt, (void));
-
-void
-DEFUN_VOID (dos_process_timer_interrupt)
-{
-  if (scm_itimer_counter != 0)
-  {
-    if (--scm_itimer_counter == 0)
-    {
-      scm_itimer_counter = scm_itimer_reload;
-      request_timer_interrupt ();
-    }
-  }
-  return;
-}
-
-extern int EXFUN (bios_timer_handler, (struct INT_DATA *));
-
-int
-DEFUN (bios_timer_handler, (pd), struct INT_DATA *pd)
-{
-#if 0
-  dos_process_timer_interrupt ();
-#else
-  /* This is a kludge for DOS.
-     Reuse INT_Global_GC as a high-priority interrupt from
-     which the keyboard interrupt and real timer interrupt are
-     derived.
-   */
-  REQUEST_INTERRUPT (INT_Global_GC);
-#endif
-  return (INTERRUPT_CHAIN_NEXT);
-}
-
-static Boolean
-  dos_interrupts_initialized_p = false,
-  ctrl_c_check_flag = true;
-
-dos_boolean DOS_keyboard_intercepted_p = false;
-
-#define NUM_DOS_INTVECT		(MAX_DOS_INTVECT + 1)
-#define NUM_DOS_HANDLERS	(NUM_DOS_INTVECT + NUM_DOS_EXCP)
-static int EXFUN ((* (dos_interrupt_restoration[NUM_DOS_HANDLERS])),
-                  (unsigned));
-
-static void
-DEFUN (dos_record_interrupt_interception, (intno, restorer),
-       unsigned intno AND int ((*restorer) (unsigned)))
-{
-  dos_interrupt_restoration[intno] = restorer;
-  return;
-}
-
-static int
-DEFUN (scm_int_restore, (iv), unsigned iv)
-{
-/*SRA
-  int_restore (iv);
-*/
-  return (DOS_SUCCESS);		/* A big lie. */
-}
-
-static int
-DEFUN (scm_int_intercept, (iv, proc, stack),
-       unsigned iv AND int (*proc)(struct INT_DATA *) AND unsigned stack)
-{
-  if ((int_intercept (iv, proc, stack)) != 0)
-    return (DOS_FAILURE);
-
-  dos_record_interrupt_interception (iv, scm_int_restore);
-  return (DOS_SUCCESS);
-}
-
-static void
-DEFUN_VOID (DOS_initialize_interrupts)
-{
-  int iv;
-
-#ifdef USE_ZORTECH_CERROR
-  _cerror_handler = ((int _far _cdecl (*) (int *, int *)) NULL);
-#endif
-
-  ctrl_c_check_flag = (dos_set_ctrl_c_check_flag (0));
-
-  for (iv = (NUM_DOS_HANDLERS - 1); iv >= 0; iv--)
-    dos_interrupt_restoration[iv] = ((int (*) (unsigned)) NULL);
-
-  dos_interrupts_initialized_p = true;
-  return;
-}
-
-extern int EXFUN (DPMI_free_scheme_stack, (unsigned short));
-extern int EXFUN (DPMI_alloc_scheme_stack,
-		  (unsigned short *, unsigned short *, unsigned long));
-
-extern unsigned short Scheme_Stack_Segment_Selector;
-extern unsigned short scheme_ss, scheme_ds;
-unsigned short scheme_ds = 0;
-unsigned short scheme_ss = 0;
-
-static char i386_exceptions_to_handle[] =
-{
-  DOS_EXCP_Stack_exception,	/* Must be first */
-  DOS_EXCP_Integer_divide_by_zero,
-  DOS_EXCP_Debug_exception,
-  DOS_EXCP_Breakpoint,
-  DOS_EXCP_Integer_overflow,
-  DOS_EXCP_Bounds_check,
-  DOS_EXCP_Invalid_opcode,
-  DOS_EXCP_Numeric_co_processor_not_available,
-  DOS_EXCP_Numeric_co_processor_segment_overrun,
-  DOS_EXCP_Invalid_TSS,
-  DOS_EXCP_Segment_not_present,
-  DOS_EXCP_General_protection,
-  DOS_EXCP_Page_Fault,
-  DOS_EXCP_Floating_point_exception,
-  DOS_EXCP_Alignment_check,
-  DOS_INVALID_TRAP
-};
-
-static short old_excp_handler_cs[NUM_DOS_EXCP];
-static unsigned old_excp_handler_eip[NUM_DOS_EXCP];
-static void * stack_exception_fault_stack = ((void *) NULL);
-
-#define STACK_EXCEPTION_STACK_SIZE	2048
-
-static int
-DEFUN (restore_exception_handler, (iv, restore),
-       unsigned iv
-       AND int EXFUN ((* restore), (unsigned, unsigned short, unsigned)))
-{
-  unsigned excp = (iv - NUM_DOS_INTVECT);
-
-  if (((* restore) (excp,
-		    old_excp_handler_cs[excp],
-		    old_excp_handler_eip[excp]))
-      != DOS_SUCCESS)
-    return (DOS_FAILURE);
-  if (excp == DOS_EXCP_Stack_exception)
-  {
-    if (scheme_ss != 0)
-    {
-      Scheme_Stack_Segment_Selector = scheme_ds;
-      /* SRA
-      DPMI_free_scheme_stack (scheme_ss);
-      */
-    }
-    free (stack_exception_fault_stack);
-    stack_exception_fault_stack = ((void *) NULL);
-  }
-  return (DOS_SUCCESS);
-}
-
-/* The following two procedures would not be here if C had lambda */
-
-static int
-DEFUN (DPMI_restore_handler, (iv), unsigned iv)
-{
-  return (restore_exception_handler (iv, DPMI_restore_exception_handler));
-}
-
-static int
-DEFUN (X32_restore_handler, (iv), unsigned iv)
-{
-  return (restore_exception_handler (iv, X32_restore_exception_handler));
-}
-
-static void
-DEFUN (exception_handler, (trapno, trapcode, scp),
-       unsigned trapno AND unsigned trapcode AND struct sigcontext * scp)
-{
-  trap_handler ("hardware exception", ((int) trapno), trapcode, scp);
-  /*NOTREACHED*/
-}
-
-static void
-DEFUN (DPMI_stack_fault_handler, (trapno, trapcode, scp),
-       unsigned trapno AND unsigned trapcode AND struct sigcontext * scp)
-{
-  Scheme_Stack_Segment_Selector = scheme_ds;
-  if (((scp->sc_ss & 0xffff) == scheme_ss)
-      && (scp->sc_esp < (((unsigned long) Stack_Guard) + 0x1000)))
-  {
-    scp->sc_ss = scheme_ds;
-    REQUEST_INTERRUPT (INT_Stack_Overflow);
-    return;
-  }
-  trap_handler ("hardware exception", ((int) trapno), trapcode, scp);
-  /*NOTREACHED*/
-}
-
-extern void EXFUN (dos386_stack_reset, (void));
-
-void
-DEFUN_VOID (dos386_stack_reset)
-{
-  if (scheme_ss != 0)
-    Scheme_Stack_Segment_Selector = scheme_ss;
-  return;
-}
-
-static void
-DEFUN (install_exception_handlers, (get_vector, set_handler, restore),
-       int EXFUN ((* get_vector),
-		  (unsigned, unsigned short *, unsigned *))
-       AND int EXFUN ((* set_handler),
-		      (unsigned,
-		       void EXFUN ((*),
-				   (unsigned,
-				    unsigned,
-				    struct sigcontext *)),
-		       void *))
-       AND int EXFUN ((* restore), (unsigned)))
-{
-  int i;
-  char * normal_stack = ((char *) NULL);
-
-  for (i = 0; dos_true ; i++)
-  {
-    int excp = ((int) i386_exceptions_to_handle[i]);
-
-    if (excp == DOS_INVALID_TRAP)
-      break;
-    if (((* get_vector) (((unsigned) excp),
-			 & old_excp_handler_cs[excp],
-			 & old_excp_handler_eip[excp]))
-	!= DOS_SUCCESS)
-      continue;
-    if (excp == DOS_EXCP_Stack_exception)
-    {
-      void EXFUN ((* handler), (unsigned, unsigned, struct sigcontext *));
-      char * stack;
-
-      stack = ((char *) (malloc (2 * STACK_EXCEPTION_STACK_SIZE)));
-      if (stack == ((char *) NULL))
-	continue;
-      handler = exception_handler;
-/*SRA
-      if ((under_DPMI_p ())
-	  && (enable_DPMI_exceptions_p ())
-	  && ((DPMI_alloc_scheme_stack (&scheme_ds, &scheme_ss,
-					((unsigned long) Stack_Guard)))
-	      == DOS_SUCCESS))
-      {
-	Scheme_Stack_Segment_Selector = scheme_ss;
-	handler = DPMI_stack_fault_handler;
-	normal_stack = (stack + STACK_EXCEPTION_STACK_SIZE);
-      }
-*/
-      if (((* set_handler) (((unsigned) excp),
-			    handler,
-			    ((void *) (stack + STACK_EXCEPTION_STACK_SIZE))))
-	  != DOS_SUCCESS)
-      {
-	normal_stack = ((char *) NULL);
-	free (stack);
-	if (handler != exception_handler)
-	{
-	  Scheme_Stack_Segment_Selector = scheme_ds;
-	  /*SRA
-	  DPMI_free_scheme_stack (scheme_ss);
-	  */
-	  scheme_ss = 0;
-	}
-	continue;
-      }
-      stack_exception_fault_stack = ((void *) stack);
-    }
-    else if (((* set_handler) (((unsigned) excp),
-			       exception_handler,
-			       ((void *) normal_stack)))
-	     != DOS_SUCCESS)
-      continue;
-    dos_record_interrupt_interception ((excp + NUM_DOS_INTVECT), restore);
-  }
-  return;
-}
-
-/* No lambda! foo. */
-
-/*SRA
-static int
-DEFUN (DOS_restore_keyboard, (intno), unsigned intno)
-{
-  if ((dos_restore_kbd_hook ()) != DOS_SUCCESS)
-    return (DOS_FAILURE);
-  DOS_keyboard_intercepted_p = false;
-  return (DOS_SUCCESS);
-}*/
-
-/* This defaults to true. */
-
-static dos_boolean
-DEFUN (feature_enabled_p, (symbol), char * symbol)
-{
-  extern int strcmp_ci (char *, char *);
-  char * envvar = (DOS_getenv (symbol));
-
-  if ((envvar == NULL)
-      || ((strcmp_ci (envvar, "true")) == 0)
-      || ((strcmp_ci (envvar, "yes")) == 0))
-    return (dos_true);
-  else
-    return (dos_false);
-}
-
-
-static dos_boolean
-DEFUN_VOID (enable_DPMI_exceptions_p)
-{
-  return (feature_enabled_p ("MITSCHEME_DPMI_EXCEPTIONS"));
-}
-
-static dos_boolean
-DEFUN_VOID (enable_X32_exceptions_p)
-{
-  return (feature_enabled_p ("MITSCHEME_X32_EXCEPTIONS"));
-}
-
-static void
-DEFUN_VOID (DOS_install_interrupts)
-{
-
-  return;
-}
-
-void
-DEFUN_VOID (DOS_restore_interrupts)
-{
-  int iv;
-
-  if (dos_interrupts_initialized_p)
-  {
-    for (iv = (NUM_DOS_HANDLERS - 1); iv >= 0; iv--)
-      if ((dos_interrupt_restoration[iv]) != ((int (*) (unsigned)) NULL))
-      {
-	(void) ((dos_interrupt_restoration[iv]) (iv));
-	dos_interrupt_restoration[iv] = ((int (*) (unsigned)) NULL);
-      }
-
-    dos_interrupts_initialized_p = false;
-  }
-  dos_set_ctrl_c_check_flag (ctrl_c_check_flag);
-  return;
-}
-
-/* Signal Bindings */
-
-#ifdef UNUSED
-
-static void
-DEFUN (bind_handler, (signo, handler),
-       int signo AND
-       Tsignal_handler handler)
-{
-  if ((signo != 0)
-      && ((handler != ((Tsignal_handler) sighnd_stop)))
-      && ((current_handler (signo)) == SIG_DFL))
-    INSTALL_HANDLER (signo, handler);
-  return;
-}
-
-#endif /* UNUSED */
-
-
-
-
-
-
-/*
- *   Timer interrupt based on multimedia system
- *
- *   WARNING: the docs say that timer_tick and all that it references must
- *   be in a DLL witha a FIXED attribute.
- *   Also, it appears to need _stdcall, but mmsystem.h refutes this
+   INT_Global_1: Windows polling interrupt
+   INT_Timer:    Scheme timer interrupt
  */
 
-void _stdcall
-DEFUN (timer_tick, (wID, wMsg, dwUser, dw1, dw2),
-       UINT wID  AND UINT wMsg AND DWORD dwUser AND DWORD dw1 AND DWORD dw2)
-{
-//    REQUEST_INTERRUPT(INT_Global_GC);	/* windows polling */
-    REQUEST_INTERRUPT(INT_Global_1);	/* windows polling */
-    REQUEST_INTERRUPT(INT_Timer);	/* scheme interrupt */
-}
+static void * timer_state = ((void *) NULL);
 
-static TIMECAPS tc;
-static UINT msTargetResolution = 50;
-static UINT msInterval = 75;
-static UINT wTimerRes;
-static UINT wTimerID;
-
-char *
 DEFUN_VOID (install_timer)
 {
-/*
-    outf_error (";; !Warning: timer interrupt not installed %s:%d.\n",
-      __FILE__,__LINE__);
-    return 0;
-/**/
-    if (timeGetDevCaps(&tc, sizeof(TIMECAPS)) != TIMERR_NOERROR)
-      return  "timeGetDevCaps";
-    wTimerRes = min(max(tc.wPeriodMin, msTargetResolution), tc.wPeriodMax);
-    if (timeBeginPeriod (wTimerRes) == TIMERR_NOCANDO)
-      return  "timeBeginPeriod";
-    wTimerID =
-        timeSetEvent (msInterval,
-	              wTimerRes,
-		      (LPTIMECALLBACK) timer_tick,
-		      0,
-		      TIME_PERIODIC);
-    if (! wTimerID)
-      return  "timeSetEvent";
-    
-    return  0;
+  switch (win32_install_async_timer (&Registers[REGBLOCK_INT_CODE],
+				     &Registers[REGBLOCK_INT_MASK],
+				     &Registers[REGBLOCK_MEMTOP],
+				     (INT_Global_1 | INT_Timer),
+				     &timer_state))
+  {
+    case WIN32_ASYNC_TIMER_OK:
+      return (NULL);
+
+    case WIN32_ASYNC_TIMER_NONE:
+      return ("No asynchronous timer facilities available");
+
+    case WIN32_ASYNC_TIMER_EXHAUSTED:
+      return ("No asynchronous timers available");
+
+    case WIN32_ASYNC_TIMER_RESOLUTION:
+      return ("Wrong asynchronous timer resolution");
+
+    case WIN32_ASYNC_TIMER_NOLOCK:
+      return ("Unable to lock the system timer interrupt handler");
+
+    case WIN32_ASYNC_TIMER_NOMEM:
+      return ("Not enough memory to install the timer interrupt handler");
+
+    default:
+      return ("Unknown asynchronous timer return code");
+  }
 }
 
+static void
+DEFUN_VOID (flush_timer)
+{
+  win32_flush_async_timer (timer_state);
+  return;
+}
+
 /* This sets up the interrupt handlers for both DOS and NT,
    so that bands can be shared.
  */
@@ -1292,14 +773,16 @@ DEFUN (NT_initialize_fov, (fov), SCHEME_OBJECT fov)
   int ctr, in;
   SCHEME_OBJECT iv, imv, prim, mask;
   extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
-  static int interrupt_numbers[] = {
+  static int interrupt_numbers[2] =
+  {
     Global_GC_Level,
-    Global_1_Level
-    };
-  static long interrupt_masks[] = {
+    Global_1_Level,
+  };
+  static long interrupt_masks[2] =
+  {
     0,				/* No interrupts allowed */
-    (INT_Stack_Overflow | INT_Global_GC | INT_GC)
-    };
+    (INT_Stack_Overflow | INT_Global_GC | INT_GC),
+  };
 
   iv = (FAST_VECTOR_REF (fov, System_Interrupt_Vector));
   imv = (FAST_VECTOR_REF (fov, FIXOBJ_INTERRUPT_MASK_VECTOR));
@@ -1313,50 +796,26 @@ DEFUN (NT_initialize_fov, (fov), SCHEME_OBJECT fov)
   }
   return;
 }
-
+
 void
 DEFUN_VOID (NT_initialize_signals)
 {
-    char *timer_error = install_timer();
-    if (timer_error) {
-      outf_fatal ("install_timer:  %s", timer_error);
-      outf_flush_fatal ();
-      abort ();
-    }	
+  char * timer_error = (install_timer ());
 
-    
-#ifdef UNUSED
-  initialize_signal_descriptors ();
-  bind_handler (SIGINT,		sighnd_control_c);
-  bind_handler (SIGTERM,	sighnd_control_g);
-  bind_handler (SIGFPE,		sighnd_fpe);
-  if ((isatty (STDIN_FILENO)) || option_emacs_subprocess)
-    {
-      bind_handler (SIGILL,	sighnd_hardware_trap);
-      bind_handler (SIGSEGV,	sighnd_hardware_trap);
-      bind_handler (SIGABRT,	sighnd_software_trap);
-    }
+  if (timer_error)
   {
-    struct signal_descriptor * scan = signal_descriptors;
-    struct signal_descriptor * end = (scan + signal_descriptors_length);
-    while (scan < end)
-      {
-	if (((scan -> flags) & NOCATCH) == 0)
-	  switch (scan -> action)
-	    {
-	    case dfl_terminate:
-	      bind_handler ((scan -> signo), sighnd_terminate);
-	      break;
-	    case dfl_stop:
-	      bind_handler ((scan -> signo), sighnd_stop);
-	      break;
-	    }
-	scan += 1;
-      }
-  }
-#else /* UNUSED */
-  DOS_initialize_interrupts ();
-  DOS_install_interrupts ();
-#endif /* UNUSED */
+    outf_fatal ("install_timer:  %s", timer_error);
+    outf_flush_fatal ();
+    abort ();
+  }	
+  return;
+}
+
+extern void EXFUN (NT_restore_signals, (void));
+
+void
+DEFUN_VOID (NT_restore_signals)
+{
+  flush_timer ();
   return;
 }

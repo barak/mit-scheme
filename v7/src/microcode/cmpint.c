@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.57 1993/06/24 21:55:37 gjr Exp $
+$Id: cmpint.c,v 1.58 1993/07/27 21:00:48 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -2804,7 +2804,7 @@ SCHEME_OBJECT
   compiler_utilities,
   return_to_interpreter;
 
-#ifndef REGBLOCK_ALLOCATED_BY_INTERFACE
+#if !defined(REGBLOCK_ALLOCATED_BY_INTERFACE) && !defined(WINNT)
 SCHEME_OBJECT
   Registers[REGBLOCK_LENGTH];
 #endif
@@ -3197,3 +3197,48 @@ DEFUN (coerce_to_compiled,
 }
 
 #endif	/* HAS_COMPILER_SUPPORT */
+
+#ifdef WINNT
+#include "ntscmlib.h"
+
+extern void EXFUN (winnt_allocate_registers, (void));
+extern void EXFUN (winnt_allocate_registers, (void));
+
+#ifndef REGBLOCK_LENGTH
+#  define REGBLOCK_LENGTH REGBLOCK_MINIMUM_LENGTH
+#endif
+
+typedef struct register_storage
+{
+  /* The following two must be allocated consecutively */
+#if (COMPILER_PROCESSOR_TYPE == COMPILER_I386_TYPE)
+  void * Regstart[32];	/* Negative byte offsets from &Registers[0] */
+#endif
+  SCHEME_OBJECT Registers [REGBLOCK_LENGTH];
+} REGMEM;
+
+SCHEME_OBJECT * RegistersPtr = 0;
+static REGMEM regmem;
+
+void
+DEFUN_VOID (winnt_allocate_registers)
+{
+    REGMEM * mem = & regmem;
+
+    RegistersPtr = mem->Registers;
+    if (! (win32_lock_memory_area (mem, (sizeof (REGMEM)))))
+    {
+      outf_error ("Unable to lock registers\n");
+      outf_flush_error ();
+    }
+    return;
+}
+
+void
+DEFUN_VOID (winnt_deallocate_registers)
+{
+  win32_unlock_memory_area (&regmem, (sizeof (REGMEM)));
+  return;
+}
+
+#endif /* WINNT */
