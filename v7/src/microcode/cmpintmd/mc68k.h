@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.10 1989/11/30 05:45:25 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.11 1989/12/10 00:49:58 cph Exp $
  *
  * Compiled code interface macros.
  *
@@ -195,30 +195,17 @@ procedures and continuations differ from closures) */
 
 #define A6_TRAMPOLINE_TO_INTERFACE_OFFSET				\
   ((COMPILER_REGBLOCK_N_FIXED + (2 * COMPILER_HOOK_SIZE)) *		\
-((COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE))
-
-/* These must match machines/bobcat/lapgen.scm */
-
-#define A6_SCHEME_TO_INTERFACE_OFFSET					\
-(COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)))
-
-#define A6_SCHEME_TO_INTERFACE_JSR_OFFSET				\
-(A6_SCHEME_TO_INTERFACE_OFFSET +					\
- (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT))))
+(COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)
 
 #define A6_CLOSURE_HOOK_OFFSET						\
-(A6_SCHEME_TO_INTERFACE_JSR_OFFSET +					\
- (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT))))
-
-#define A6_SHORTCIRCUIT_APPLY_OFFSET					\
-(A6_TRAMPOLINE_TO_INTERFACE_OFFSET +					\
- (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT))))
+((COMPILER_REGBLOCK_N_FIXED + (2 * COMPILER_HOOK_SIZE)) *		\
+ (sizeof (SCHEME_OBJECT)))
 
 #ifdef CAST_FUNCTION_TO_INT_BUG
 
-#define ASM_RESET_HOOK	mc68k_reset_hook
+#define SETUP_REGISTER(hook) do						\
 {									\
-#define SETUP_REGISTER(hook, offset)					\
+#define SETUP_REGISTER(hook)						\
       (((unsigned short *) (a6_value + offset)) + 1))) =		\
   extern void hook();							\
 									\
@@ -226,25 +213,52 @@ procedures and continuations differ from closures) */
 } while (0)
 
 #endif
+
 }
 DEFUN_VOID (mc68k_reset_hook)
 
 mc68k_reset_hook ()
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
-  unsigned char *a6_value;
-  extern void interface_initialize();
+  /* These must match machines/bobcat/lapgen.scm */
 
-  a6_value = ((unsigned char *) (&Registers[0]));
+  extern void interface_initialize ();
+  SETUP_REGISTER (asm_scheme_to_interface_jsr);		/* 1 */
+  if (offset != A6_TRAMPOLINE_TO_INTERFACE_OFFSET)
+  {
+  SETUP_REGISTER (asm_shortcircuit_apply_size_2);	/* 5 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_3);	/* 6 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_4);	/* 7 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_5);	/* 8 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_6);	/* 9 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_7);	/* 10 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_8);	/* 11 */
+  SETUP_REGISTER (asm_primitive_apply);			/* 12 */
+  SETUP_REGISTER (asm_primitive_lexpr_apply);		/* 13 */
+  SETUP_REGISTER (asm_error);				/* 14 */
+  SETUP_REGISTER (asm_link);				/* 15 */
+  SETUP_REGISTER (asm_interrupt_closure);		/* 16 */
+  SETUP_REGISTER (asm_interrupt_dlink);			/* 17 */
+  SETUP_REGISTER (asm_interrupt_procedure);		/* 18 */
+  SETUP_REGISTER (asm_interrupt_continuation);		/* 19 */
+  SETUP_REGISTER (asm_assignment_trap);			/* 20 */
+  SETUP_REGISTER (asm_reference_trap);			/* 21 */
+  SETUP_REGISTER (asm_safe_reference_trap);		/* 22 */
+  SETUP_REGISTER (asm_generic_add);			/* 23 */
+  SETUP_REGISTER (asm_generic_subtract);		/* 24 */
+  SETUP_REGISTER (asm_generic_multiply);		/* 25 */
+  SETUP_REGISTER (asm_generic_divide);			/* 26 */
+  SETUP_REGISTER (asm_generic_equal);			/* 27 */
+  SETUP_REGISTER (asm_generic_less);			/* 28 */
+  SETUP_REGISTER (asm_generic_greater);			/* 29 */
+  SETUP_REGISTER (asm_generic_increment);		/* 30 */
+  SETUP_REGISTER (asm_generic_decrement);		/* 31 */
+  SETUP_REGISTER (asm_generic_zero);			/* 32 */
+  SETUP_REGISTER (asm_generic_positive);		/* 33 */
+  SETUP_REGISTER (asm_generic_negative);		/* 34 */
+  SETUP_REGISTER (asm_primitive_error);			/* 35 */
+  SETUP_REGISTER (asm_allocate_closure);		/* 36 */
 
-  SETUP_REGISTER(asm_scheme_to_interface,
-		 A6_SCHEME_TO_INTERFACE_OFFSET);
-  SETUP_REGISTER(asm_scheme_to_interface_jsr,
-		 A6_SCHEME_TO_INTERFACE_JSR_OFFSET);
-  SETUP_REGISTER(asm_trampoline_to_interface,
-		 A6_TRAMPOLINE_TO_INTERFACE_OFFSET);
-  SETUP_REGISTER(asm_shortcircuit_apply,
-		 A6_SHORTCIRCUIT_APPLY_OFFSET);
-  interface_initialize();
+
 #define CLOSURE_ENTRY_WORDS						\
   (COMPILED_CLOSURE_ENTRY_SIZE / (sizeof (SCHEME_OBJECT)))
 /* On the 68K, here's a  picture of a trampoline (offset in bytes from

@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.7 1989/11/30 05:44:04 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.8 1989/12/10 00:49:54 cph Exp $
 ###
 ###	Copyright (c) 1989 Massachusetts Institute of Technology
 ###
@@ -303,6 +303,58 @@ define_debugging_label(scheme_to_interface_jsr)
 	addq.l	&4,%d1			# Skip format info.
 	bra	scheme_to_interface
 
+define(define_interface_indirection,
+`define_c_label(asm_$1)
+	movq	&HEX($2),%d0
+	bra	scheme_to_interface')
+
+define(define_interface_jsr_indirection,
+`define_c_label(asm_$1)
+	movq	&HEX($2),%d0
+	bra	scheme_to_interface_jsr')
+
+define_interface_indirection(primitive_lexpr_apply,13)
+define_interface_indirection(error,15)
+define_interface_jsr_indirection(link,17)
+define_interface_indirection(interrupt_closure,18)
+define_interface_jsr_indirection(interrupt_procedure,1a)
+define_interface_jsr_indirection(interrupt_continuation,1b)
+define_interface_jsr_indirection(assignment_trap,1d)
+define_interface_jsr_indirection(reference_trap,1f)
+define_interface_jsr_indirection(safe_reference_trap,20)
+define_interface_indirection(generic_decrement,22)
+define_interface_indirection(generic_divide,23)
+define_interface_indirection(generic_equal,24)
+define_interface_indirection(generic_greater,25)
+define_interface_indirection(generic_increment,26)
+define_interface_indirection(generic_less,27)
+define_interface_indirection(generic_subtract,28)
+define_interface_indirection(generic_multiply,29)
+define_interface_indirection(generic_negative,2a)
+define_interface_indirection(generic_add,2b)
+define_interface_indirection(generic_positive,2c)
+define_interface_indirection(generic_zero,2d)
+
+# Save an additional instruction here to load the dynamic link.
+define_c_label(asm_interrupt_dlink)
+	mov.l	%a4,%d2			# Dynamic link -> d2
+	movq	&HEX(19),%d0
+	bra	scheme_to_interface_jsr
+
+# Bum this one for speed.
+define_c_label(asm_primitive_apply)
+	switch_to_C_registers()
+	mov.l	%d1,-(%sp)		# only one argument
+	mov.l	extern_c_label(utility_table)+HEX(12)*4,%a0
+	jsr	(%a0)
+	addq.l	&4,%sp			# pop the argument
+
+### On return, %d0 contains the address of interface_to_scheme or
+### interface_to_C.  %d1 contains the appropriate data for them.
+
+	mov.l	%d0,%a0
+	jmp	(%a0)
+
 	set	tc_compiled_entry,HEX(28)
 	set	offset_apply,HEX(14)
 
@@ -336,3 +388,34 @@ define_debugging_label(shortcircuit_apply_1)
 					# Fall through
 define_debugging_label(shortcircuit_apply_2)
 	call_utility(apply)
+
+### Optimized versions of shortcircuit_apply for 0-7 arguments.
+
+define(define_apply_size_n,
+`define_c_label(asm_shortcircuit_apply_size_$1)
+define_debugging_label(shortcircuit_apply_size_$1)
+	EXTRACT_TYPE_CODE((%sp),%d0)	# Get procedure type
+	mov.l	(%sp)+,%d1		# Get procedure
+	COMPARE_TYPE_CODE(%d0,tc_compiled_entry)
+	bne.b	shortcircuit_apply_size_$1_2
+	and.l	rmask,%d1		# Extract entry point
+	mov.l	%d1,%a0
+	cmp.b	-3(%a0),&$1		# Is the frame size right?
+	bne.b	shortcircuit_apply_size_$1_1
+	jmp	(%a0)			# Invoke
+
+define_debugging_label(shortcircuit_apply_size_$1_1)
+	mov.l	-4(%sp),%d1		# Recover the type code
+					# Fall through
+define_debugging_label(shortcircuit_apply_size_$1_2)
+	movq	&$1,%d2			# initialize frame size
+	call_utility(apply)')
+
+define_apply_size_n(1)
+define_apply_size_n(2)
+define_apply_size_n(3)
+define_apply_size_n(4)
+define_apply_size_n(5)
+define_apply_size_n(6)
+define_apply_size_n(7)
+define_apply_size_n(8)
