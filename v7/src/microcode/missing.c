@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.25 1989/09/22 09:33:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.26 1989/10/28 11:00:32 cph Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -45,7 +45,7 @@ frexp (value, eptr)
 {
   register double x = ((value < 0) ? (-value) : value);
   int e = 0;
-  if (x > 1)
+  if (x >= 1)
     {
       while (1)
 	{
@@ -84,7 +84,7 @@ frexp (value, eptr)
 	    }
 	}
     }
-  else if ((x > 0) && (x < 1))
+  else if (x > 0)
     {
       while (1)
 	{
@@ -93,6 +93,7 @@ frexp (value, eptr)
 	      register double xr = (x * 4);
 	      register double r = 4;
 	      register int n = 1;
+	      x *= 2;
 	      while (xr < 1)
 		{
 		  x = xr;
