@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.7 1988/08/15 21:58:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.8 1989/05/21 17:14:29 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -259,3 +259,21 @@ MIT in each case. |#
 
 (define unspecific
   (object-new-type (ucode-type true) 1))
+
+;;;; Obarray->list
+
+(define (obarray->list #!optional obarray)
+  (let ((table (if (default-object? obarray)
+		   (fixed-objects-item 'OBARRAY)
+		   obarray)))
+    (let per-bucket ((index (-1+ (vector-length table))) (accumulator '()))
+      (if (< index 0)
+	  accumulator
+	  (let per-symbol
+	      ((bucket (vector-ref table index))
+	       (accumulator accumulator))
+	    (if (null? bucket)
+		(per-bucket (-1+ index) accumulator)
+		(per-symbol
+		 (cdr bucket)
+		 (cons (car bucket) accumulator))))))))
