@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.20 1997/04/02 07:43:51 cph Exp $
+$Id: nttop.c,v 1.21 1997/06/26 07:05:11 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -82,6 +82,7 @@ HINSTANCE win32_system_utilities_dll = 0;
 void
 NT_initialize_win32_system_utilities ()
 {
+#ifdef USE_SCHEME_DLL
   char * dll_name = win32_under_win32s_p() ? "SCHEME31.DLL" : "SCHEME32.DLL";
   char * entry_name = "install_win32_system_utilities";
   FARPROC install;
@@ -106,6 +107,11 @@ NT_initialize_win32_system_utilities ()
   }
 
   install (&win32_system_utilities);
+#else
+  extern void FAR WINAPI install_win32_system_utilities
+    (WIN32_SYSTEM_UTILITIES *);
+  install_win32_system_utilities (&win32_system_utilities);
+#endif
 }
 
 static int interactive;
@@ -156,7 +162,7 @@ DEFUN_VOID (OS_initialize)
     }
 
     OS_Variant = malloc (128);
-    sprintf (OS_Variant, "%s 386/486\n", variant);
+    sprintf (((char *) OS_Variant), "%s 386/486\n", variant);
   }
 }
 
