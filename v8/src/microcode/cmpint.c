@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.20 1989/11/27 20:25:42 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.21 1989/11/28 05:03:10 jinx Exp $
  *
  * Compiled code interface.  Portable version.
  * This file requires a bit of assembly language from cmpaux-md.m4
@@ -2483,7 +2483,7 @@ coerce_to_compiled (procedure, arity, location)
 
 #define REGBLOCK_LENGTH							\
 ((COMPILER_REGBLOCK_N_FIXED * COMPILER_FIXED_SIZE) +			\
- (COMPILER_REGBLOCK_N_TEMPS * COMPILER_TEMP_SIZE)			\
+ (COMPILER_REGBLOCK_N_TEMPS * COMPILER_TEMP_SIZE) +			\
  COMPILER_REGBLOCK_EXTRA_SIZE)
 
 #ifndef ASM_RESET_HOOK
