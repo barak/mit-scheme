@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/stream.scm,v 14.4 1989/08/15 13:20:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/stream.scm,v 14.5 1989/09/20 15:06:47 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -128,22 +128,25 @@ MIT in each case. |#
 (define prime-numbers-stream)
 
 (define (make-prime-numbers-stream)
-  (letrec ((primes
-	    (cons-stream
-	     (cons 2 4)
-	     (let filter ((integer 3))
-	       (if (let loop ((primes primes))
-		     (let ((prime (stream-car primes)))
-		       (or (> (cdr prime) integer)
-			   (and (not (zero? (remainder integer
-						       (car prime))))
-				(loop (stream-cdr primes))))))
-		   (cons-stream (cons integer (* integer integer))
-				(filter (1+ integer)))
-		   (filter (1+ integer)))))))
-    (let loop ((primes primes))
-      (cons-stream (car (stream-car primes))
-		   (loop (stream-cdr primes))))))
+  (cons-stream
+   2
+   (letrec ((primes
+	     (cons-stream
+	      (cons 3 9)
+	      (let filter ((integer 5))
+		(let loop ((primes primes))
+		  (let ((prime (stream-car primes)))
+		    (cond ((< integer (cdr prime))
+			   (cons-stream (cons integer (* integer integer))
+					(filter (+ integer 2))))
+			  ((zero? (remainder integer (car prime)))
+			   (filter (+ integer 2)))
+			  (else
+			   (loop (stream-cdr primes))))))))))
+     (let loop ((primes primes))
+       (cons-stream (car (stream-car primes))
+		    (loop (stream-cdr primes)))))))
+
 (define (initialize-package!)
   (let ((reset-primes!
 	 (lambda ()
