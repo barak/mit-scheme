@@ -1,6 +1,6 @@
 /* #define DEBUG_INTERFACE */ /* -*-Midas-*- */
  ###
- ###	$Id: mips.m4,v 1.12 1997/11/16 23:12:44 cph Exp $
+ ###	$Id: mips.m4,v 1.13 1998/07/19 20:41:30 cph Exp $
  ###
  ###	Copyright (c) 1989-97 Massachusetts Institute of Technology
  ###
@@ -137,6 +137,11 @@
 	.set	noat
 	.set	noreorder
 
+ # This is required to work around a bug in the IRIX 6.3 assembler.
+ # The bug caused an incorrect reference to be generated in the
+ # "la	$closure_reg,closure_hook" instruction.
+	.globl	closure_hook
+
 define(value, 2)
 define(stack, 3)
 define(C_arg1, 4)
@@ -165,26 +170,26 @@ define(TC_CCENTRY, 0x28)
 	.globl	C_to_interface
 	.ent	C_to_interface
 C_to_interface:
-	addi	$sp,$sp,-116
-	.frame	$sp,116,$0
+	addi	$sp,$sp,-120
+	.frame	$sp,120,$0
 	.mask	0x80ff0000,0
-	sw	$31,112($sp)		# Save return address
-	sw	$30,108($sp)
-	sw	$23,104($sp)
-	sw	$22,100($sp)
-	sw	$21,96($sp)
-	sw	$20,92($sp)
-	sw	$19,88($sp)
-	sw	$18,84($sp)
-	sw	$17,80($sp)
-	sw	$16,76($sp)
+	sw	$31,116($sp)		# Save return address
+	sw	$30,112($sp)
+	sw	$23,108($sp)
+	sw	$22,104($sp)
+	sw	$21,100($sp)
+	sw	$20,96($sp)
+	sw	$19,92($sp)
+	sw	$18,88($sp)
+	sw	$17,84($sp)
+	sw	$16,80($sp)
 	.fmask	0x00000fff,0
-	s.d	$f30,68($sp)
-	s.d	$f28,60($sp)
-	s.d	$f26,52($sp)
-	s.d	$f24,44($sp)
-	s.d	$f22,36($sp)
-	s.d	$f20,28($sp)
+	s.d	$f30,72($sp)
+	s.d	$f28,64($sp)
+	s.d	$f26,56($sp)
+	s.d	$f24,48($sp)
+	s.d	$f22,40($sp)
+	s.d	$f20,32($sp)
 	# 20 and 24($sp) hold return data structure from C hooks
         # 16 is reserved for 4th argument to hooks, if used.
         # 4, 8, and 12($sp) are space for 1st - 3rd argument.
@@ -281,7 +286,7 @@ scheme_to_interface:
 	sw	$value,8($registers)
 	sw	$closure_free,36($registers)
 #ifdef DEBUG_INTERFACE
-	lw	$value,Free_Constant
+	lw	$value,Stack_Bottom
 	addi	$0,$0,0			# Load delay
 	sltu	$at,$stack,$value
 	bne	$at,$0,Stack_Overflow_Detected
@@ -428,54 +433,54 @@ invoke_allocate_closure:
  # $at contains in its datum the minimum size to allocate.
  # $7  contains the "return address" for cons_closure or cons_multi.
  # $31 contains the return address for invoke_allocate_closure.
-	addi	$sp,$sp,-76
+	addi	$sp,$sp,-80
  # 1 is at, a temp
-	sw	$2,76-4($sp)
-	sw	$3,76-8($sp)
+	sw	$2,80-4($sp)
+	sw	$3,80-8($sp)
 	and	$4,$at,$addr_mask	# total size (- 1)
-	sw	$5,76-12($sp)
-	sw	$6,76-16($sp)
-	sw	$7,76-20($sp)		# Original value of r31
+	sw	$5,80-12($sp)
+	sw	$6,80-16($sp)
+	sw	$7,80-20($sp)		# Original value of r31
  #	sw	$8,0($registers)	# memtop is read-only
 	la	$7,Free
 	sw	$9,0($7)
-	sw	$10,76-24($sp)
-	sw	$11,76-28($sp)
-	sw	$12,76-32($sp)
-	sw	$13,76-36($sp)
-	sw	$14,76-40($sp)
-	sw	$15,76-44($sp)
+	sw	$10,80-24($sp)
+	sw	$11,80-28($sp)
+	sw	$12,80-32($sp)
+	sw	$13,80-36($sp)
+	sw	$14,80-40($sp)
+	sw	$15,80-44($sp)
  # 16-23 are callee-saves registers.
-	sw	$24,76-48($sp)
-	sw	$25,76-52($sp)
+	sw	$24,80-48($sp)
+	sw	$25,80-52($sp)
  # 26-29 are taken up by the OS and the C calling convention.
  # 30 is a callee-saves register.
-	sw	$31,76-60($sp)		# return address
+	sw	$31,80-60($sp)		# return address
 	jal	allocate_closure
 	sw	$closure_free,36($registers) # uncache
 
 	lw	$closure_free,36($registers)
-	lw	$31,76-20($sp)		# original value of r31
-	lw	$25,76-52($sp)
-	lw	$24,76-48($sp)
-	lw	$15,76-44($sp)
-	lw	$14,76-40($sp)
-	lw	$13,76-36($sp)
-	lw	$12,76-32($sp)
-	lw	$11,76-28($sp)
-	lw	$10,76-24($sp)
+	lw	$31,80-20($sp)		# original value of r31
+	lw	$25,80-52($sp)
+	lw	$24,80-48($sp)
+	lw	$15,80-44($sp)
+	lw	$14,80-40($sp)
+	lw	$13,80-36($sp)
+	lw	$12,80-32($sp)
+	lw	$11,80-28($sp)
+	lw	$10,80-24($sp)
 	lw	$9,Free
 	lw	$8,0($registers)
-	lw	$7,76-60($sp)		# return address for invoke...
-	lw	$6,76-16($sp)
-	lw	$5,76-12($sp)
-	lw	$3,76-8($sp)
-	lw	$2,76-4($sp)
+	lw	$7,80-60($sp)		# return address for invoke...
+	lw	$6,80-16($sp)
+	lw	$5,80-12($sp)
+	lw	$3,80-8($sp)
+	lw	$2,80-4($sp)
 	lw	$at,0($31)		# manifest closure header
 	or	$4,$closure_free,$0	# setup result
 
 	j	$7
-	addi	$sp,$sp,76
+	addi	$sp,$sp,80
 
 	.globl	shortcircuit_apply
 shortcircuit_apply:
@@ -566,23 +571,23 @@ set_interrupt_enables_2:
  # Argument 1 (in $C_arg1) is the returned value
 	.globl interface_to_C
 interface_to_C:
-	l.d	$f20,28($sp)
-	l.d	$f22,36($sp)
-	l.d	$f24,44($sp)
-	l.d	$f26,52($sp)
-	l.d	$f28,60($sp)
-	l.d	$f30,68($sp)
-	lw	$16,76($sp)
-	lw	$17,80($sp)
-	lw	$18,84($sp)
-	lw	$19,88($sp)
-	lw	$20,92($sp)
-	lw	$21,96($sp)
-	lw	$22,100($sp)
-	lw	$23,104($sp)
-	lw	$30,108($sp)
-	lw	$31,112($sp)
-	addi	$sp,$sp,116		# Pop stack back
+	l.d	$f20,32($sp)
+	l.d	$f22,40($sp)
+	l.d	$f24,48($sp)
+	l.d	$f26,56($sp)
+	l.d	$f28,64($sp)
+	l.d	$f30,72($sp)
+	lw	$16,80($sp)
+	lw	$17,84($sp)
+	lw	$18,88($sp)
+	lw	$19,92($sp)
+	lw	$20,96($sp)
+	lw	$21,100($sp)
+	lw	$22,104($sp)
+	lw	$23,108($sp)
+	lw	$30,112($sp)
+	lw	$31,116($sp)
+	addi	$sp,$sp,120		# Pop stack back
 	j	$31			# Return
 	add	$2,$0,$C_arg1		# Return value to C
 	.end	C_to_interface
