@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.42 1987/02/20 13:49:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.43 1987/04/24 13:37:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -114,16 +114,6 @@
        (*unparse-string "RETURN-ADDRESS ")
        (*unparse-object (return-address-name return-address))))))
 
-(define (unparse-unassigned x)
-  (unparse-with-brackets
-   (lambda ()
-     (*unparse-string "UNASSIGNED"))))
-
-(define (unparse-unbound x)
-  (unparse-with-brackets
-   (lambda ()
-     (*unparse-string "UNBOUND"))))
-
 (define (unparse-symbol symbol)
   (*unparse-string (symbol->string symbol)))
 
@@ -197,16 +187,49 @@
 
 (define-type 'LIST
   (lambda (object)
-    ((cond ((future? (car object)) unparse-list)
-	   ((unassigned-object? object) unparse-unassigned)
-	   ((unbound-object? object) unparse-unbound)
-	   (else
-	    (let ((entry (assq (car object) *unparser-special-pairs*)))
-	      (if entry
-		  (cdr entry)
-		  unparse-list))))
-     object)))
+    ((or (unparse-list/unparser object) unparse-list) object)))
 
+(define (unparse-list list)
+  (let ((kernel
+	 (lambda ()
+	   (*unparse-char #\()
+	   (*unparse-object-or-future (car list))
+	   (unparse-tail (cdr list) 2)
+	   (*unparse-char #\)))))
+    (if *unparser-list-depth-limit*
+	(fluid-let ((*unparser-list-depth* (1+ *unparser-list-depth*)))
+	  (if (> *unparser-list-depth* *unparser-list-depth-limit*)
+	      (*unparse-string "...")
+	      (kernel)))
+	(kernel))))
+
+(define (unparse-tail l n)
+  (cond ((pair? l)
+	 (let ((unparser (unparse-list/unparser l)))
+	   (if unparser
+	       (begin (*unparse-string " . ")
+		      (unparser l))
+	       (begin (*unparse-char #\Space)
+		      (*unparse-object-or-future (car l))
+		      (if (and *unparser-list-breadth-limit*
+			       (>= n *unparser-list-breadth-limit*)
+			       (not (null? (cdr l))))
+			  (*unparse-string " ...")
+			  (unparse-tail (cdr l) (1+ n)))))))
+	((not (null? l))
+	 (*unparse-string " . ")
+	 (*unparse-object-or-future l))))
+
+(define (unparse-list/unparser object)
+  (cond ((future? (car object)) false)
+	((unassigned-object? object) unparse-unassigned)
+	((unbound-object? object) unparse-unbound)
+	((reference-trap? object) unparse-reference-trap)
+	(else
+	 (let ((entry (assq (car object) *unparser-special-pairs*)))
+	   (and entry
+		(cdr entry))))))
+
 (define *unparser-special-pairs* '())
 
 (define (add-unparser-special-pair! key unparser)
@@ -223,32 +246,21 @@
 	       (*unparse-object-or-future (cadr pair)))
 	(unparse-list pair))))
 
-(define (unparse-list list)
-  (if *unparser-list-depth-limit*
-      (fluid-let ((*unparser-list-depth* (1+ *unparser-list-depth*)))
-	(if (> *unparser-list-depth* *unparser-list-depth-limit*)
-	    (*unparse-string "...")
-	    (begin (*unparse-char #\()
-		   (*unparse-object-or-future (car list))
-		   (unparse-tail (cdr list) 2)
-		   (*unparse-char #\)))))
-      (begin (*unparse-char #\()
-	     (*unparse-object-or-future (car list))
-	     (unparse-tail (cdr list) 2)
-	     (*unparse-char #\)))))
+(define (unparse-unassigned x)
+  (unparse-with-brackets
+   (lambda ()
+     (*unparse-string "UNASSIGNED"))))
 
-(define (unparse-tail l n)
-  (cond ((pair? l)
-	 (*unparse-char #\Space)
-	 (*unparse-object-or-future (car l))
-	 (if (and *unparser-list-breadth-limit*
-		  (>= n *unparser-list-breadth-limit*)
-		  (not (null? (cdr l))))
-	     (*unparse-string " ...")
-	     (unparse-tail (cdr l) (1+ n))))
-	((not (null? l))
-	 (*unparse-string " . ")
-	 (*unparse-object-or-future l))))
+(define (unparse-unbound x)
+  (unparse-with-brackets
+   (lambda ()
+     (*unparse-string "UNBOUND"))))
+
+(define (unparse-reference-trap x)
+  (unparse-with-brackets
+   (lambda ()
+     (*unparse-string "REFERENCE-TRAP ")
+     (*unparse-object (reference-trap-kind x)))))
 
 ;;;; Procedures and Environments
 
@@ -299,6 +311,4 @@
 (define-type 'COMPLEX unparse-number)
 
 ;;; end UNPARSER-PACKAGE.
-))
-
 ))

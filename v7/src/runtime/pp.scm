@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 13.42 1987/03/17 18:52:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 13.43 1987/04/24 13:36:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -331,14 +331,20 @@
       (walk-unquoted-pair pair)))
 
 (define (walk-unquoted-pair pair)
-  (if (null? (cdr pair))
-      (make-singleton-list-node (numerical-walk (car pair)))
-      (make-list-node
-       (numerical-walk (car pair))
-       (if (pair? (cdr pair))
-	   (walk-unquoted-pair (cdr pair))
-	   (make-singleton-list-node
-	    (make-prefix-node ". " (numerical-walk (cdr pair))))))))
+  (cond (((access unparse-list/unparser unparser-package) pair)
+	 (walk-general pair))
+	((null? (cdr pair))
+	 (make-singleton-list-node (numerical-walk (car pair))))
+	(else
+	 (make-list-node
+	  (numerical-walk (car pair))
+	  (if (and (pair? (cdr pair))
+		   (not
+		    ((access unparse-list/unparser unparser-package)
+		     (cdr pair))))
+	      (walk-unquoted-pair (cdr pair))
+	      (make-singleton-list-node
+	       (make-prefix-node ". " (numerical-walk (cdr pair)))))))))
 
 (define (walk-vector vector)
   (if (zero? (vector-length vector))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sdata.scm,v 13.42 1987/04/03 00:52:12 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sdata.scm,v 13.43 1987/04/24 13:37:01 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -80,154 +80,151 @@
       (&make-object (make-primitive-procedure '&MAKE-OBJECT))
       (hunk3-cons (make-primitive-procedure 'HUNK3-CONS)))
 
-  (define (map-unassigned object)
-    (cond ((eq? object &unbound-object)
-	   (&make-object &unassigned-type &unbound-datum))
-	  ((eq? object &unassigned-object)
-	   (&make-object &unassigned-type &unassigned-datum))
-	  (else object)))
+(define (map-unassigned object)
+  (cond ((eq? object &unbound-object)
+	 (&make-object &unassigned-type &unbound-datum))
+	((eq? object &unassigned-object)
+	 (&make-object &unassigned-type &unassigned-datum))
+	(else object)))
 
-  ;; This is no longer really right, given the other traps.
-  (define (map-from-unassigned datum)
-    (if (eq? datum &unassigned-datum)				;**** cheat for speed.
-	&unassigned-object
-	&unbound-object))
+;;; This is no longer really right, given the other traps.
+(define (map-from-unassigned datum)
+  (if (eq? datum &unassigned-datum)	;**** cheat for speed.
+      &unassigned-object
+      &unbound-object))
 
-  (define (map-unassigned-list list)
-    (if (null? list)
-	'()
-	(cons (map-unassigned (car list))
-	      (map-unassigned-list (cdr list)))))
+(define (map-unassigned-list list)
+  (if (null? list)
+      '()
+      (cons (map-unassigned (car list))
+	    (map-unassigned-list (cdr list)))))
 
 (set! make-unbound-object
-      (lambda ()
-	&unbound-object))
+  (lambda ()
+    &unbound-object))
 
 (set! unbound-object?
-      (lambda (object)
-	(eq? object &unbound-object)))
+  (lambda (object)
+    (eq? object &unbound-object)))
 
 (set! make-unassigned-object
-      (lambda ()
-	&unassigned-object))
+  (lambda ()
+    &unassigned-object))
 
 (set! unassigned-object?
-      (let ((microcode-unassigned-object
-	     (vector-ref (get-fixed-objects-vector)
-			 (fixed-objects-vector-slot 'NON-OBJECT))))
-	(lambda (object)
-	  (or (eq? object &unassigned-object)
-	      (eq? object microcode-unassigned-object)))))
-
+  (let ((microcode-unassigned-object
+	 (vector-ref (get-fixed-objects-vector)
+		     (fixed-objects-vector-slot 'NON-OBJECT))))
+    (lambda (object)
+      (or (eq? object &unassigned-object)
+	  (eq? object microcode-unassigned-object)))))
+
 (set! &typed-singleton-cons
-      (lambda (type element)
-	(system-pair-cons type
-			  (map-unassigned element)
-			  #!NULL)))
+  (lambda (type element)
+    (system-pair-cons type (map-unassigned element) '())))
 
 (set! &singleton-element
-      (lambda (singleton)
-	(if (primitive-type? &unassigned-type (system-pair-car singleton))
-	    (map-from-unassigned (primitive-datum (system-pair-car singleton)))
-	    (system-pair-car singleton))))
+  (lambda (singleton)
+    (if (primitive-type? &unassigned-type (system-pair-car singleton))
+	(map-from-unassigned (primitive-datum (system-pair-car singleton)))
+	(system-pair-car singleton))))
 
 (set! &singleton-set-element!
-      (lambda (singleton new-element)
-	(system-pair-set-car! singleton (map-unassigned new-element))))
-
+  (lambda (singleton new-element)
+    (system-pair-set-car! singleton (map-unassigned new-element))))
+
 (set! &typed-pair-cons
-      (lambda (type car cdr)
-	(system-pair-cons type
-			  (map-unassigned car)
-			  (map-unassigned cdr))))
+  (lambda (type car cdr)
+    (system-pair-cons type
+		      (map-unassigned car)
+		      (map-unassigned cdr))))
 
 (set! &pair-car
-      (lambda (pair)
-	(if (primitive-type? &unassigned-type (system-pair-car pair))
-	    (map-from-unassigned (primitive-datum (system-pair-car pair)))
-	    (system-pair-car pair))))
+  (lambda (pair)
+    (if (primitive-type? &unassigned-type (system-pair-car pair))
+	(map-from-unassigned (primitive-datum (system-pair-car pair)))
+	(system-pair-car pair))))
 
 (set! &pair-set-car!
-      (lambda (pair new-car)
-	(system-pair-set-car! pair (map-unassigned new-car))))
+  (lambda (pair new-car)
+    (system-pair-set-car! pair (map-unassigned new-car))))
 
 (set! &pair-cdr
-      (lambda (pair)
-	(if (primitive-type? &unassigned-type (system-pair-cdr pair))
-	    (map-from-unassigned (primitive-datum (system-pair-cdr pair)))
-	    (system-pair-cdr pair))))
+  (lambda (pair)
+    (if (primitive-type? &unassigned-type (system-pair-cdr pair))
+	(map-from-unassigned (primitive-datum (system-pair-cdr pair)))
+	(system-pair-cdr pair))))
 
 (set! &pair-set-cdr!
-      (lambda (pair new-cdr)
-	(system-pair-set-cdr! pair (map-unassigned new-cdr))))
-
+  (lambda (pair new-cdr)
+    (system-pair-set-cdr! pair (map-unassigned new-cdr))))
+
 (set! &typed-triple-cons
-      (lambda (type first second third)
-	(primitive-set-type type
-			    (hunk3-cons (map-unassigned first)
-					(map-unassigned second)
-					(map-unassigned third)))))
+  (lambda (type first second third)
+    (primitive-set-type type
+			(hunk3-cons (map-unassigned first)
+				    (map-unassigned second)
+				    (map-unassigned third)))))
 
 (set! &triple-first
-      (lambda (triple)
-	(if (primitive-type? &unassigned-type (system-hunk3-cxr0 triple))
-	    (map-from-unassigned (primitive-datum (system-hunk3-cxr0 triple)))
-	    (system-hunk3-cxr0 triple))))
+  (lambda (triple)
+    (if (primitive-type? &unassigned-type (system-hunk3-cxr0 triple))
+	(map-from-unassigned (primitive-datum (system-hunk3-cxr0 triple)))
+	(system-hunk3-cxr0 triple))))
 
 (set! &triple-set-first!
-      (lambda (triple new-first)
-	(system-hunk3-set-cxr0! triple (map-unassigned new-first))))
+  (lambda (triple new-first)
+    (system-hunk3-set-cxr0! triple (map-unassigned new-first))))
 
 (set! &triple-second
-      (lambda (triple)
-	(if (primitive-type? &unassigned-type (system-hunk3-cxr1 triple))
-	    (map-from-unassigned (primitive-datum (system-hunk3-cxr1 triple)))
-	    (system-hunk3-cxr1 triple))))
+  (lambda (triple)
+    (if (primitive-type? &unassigned-type (system-hunk3-cxr1 triple))
+	(map-from-unassigned (primitive-datum (system-hunk3-cxr1 triple)))
+	(system-hunk3-cxr1 triple))))
 
 (set! &triple-set-second!
-      (lambda (triple new-second)
-	(system-hunk3-set-cxr0! triple (map-unassigned new-second))))
+  (lambda (triple new-second)
+    (system-hunk3-set-cxr0! triple (map-unassigned new-second))))
 
 (set! &triple-third
-      (lambda (triple)
-	(if (primitive-type? &unassigned-type (system-hunk3-cxr2 triple))
-	    (map-from-unassigned (primitive-datum (system-hunk3-cxr2 triple)))
-	    (system-hunk3-cxr2 triple))))
+  (lambda (triple)
+    (if (primitive-type? &unassigned-type (system-hunk3-cxr2 triple))
+	(map-from-unassigned (primitive-datum (system-hunk3-cxr2 triple)))
+	(system-hunk3-cxr2 triple))))
 
 (set! &triple-set-third!
-      (lambda (triple new-third)
-	(system-hunk3-set-cxr0! triple (map-unassigned new-third))))
+  (lambda (triple new-third)
+    (system-hunk3-set-cxr0! triple (map-unassigned new-third))))
 
 (set! &typed-vector-cons
-      (lambda (type elements)
-	(system-list-to-vector type (map-unassigned-list elements))))
+  (lambda (type elements)
+    (system-list-to-vector type (map-unassigned-list elements))))
 
 (set! &list-to-vector
-      list->vector)
+  list->vector)
 
 (set! &vector-size
-      system-vector-size)
+  system-vector-size)
 
 (set! &vector-ref
-      (lambda (vector index)
-	(if (primitive-type? &unassigned-type (system-vector-ref vector index))
-	    (map-from-unassigned
-	     (primitive-datum (system-vector-ref vector index)))
-	    (system-vector-ref vector index))))
+  (lambda (vector index)
+    (if (primitive-type? &unassigned-type (system-vector-ref vector index))
+	(map-from-unassigned
+	 (primitive-datum (system-vector-ref vector index)))
+	(system-vector-ref vector index))))
 
 (set! &vector-to-list
-      (lambda (vector)
-	(&subvector-to-list vector 0 (system-vector-size vector))))
+  (lambda (vector)
+    (&subvector-to-list vector 0 (system-vector-size vector))))
 
 (set! &subvector-to-list
-      (lambda (vector start stop)
-	(let loop ((sublist (system-subvector-to-list vector start stop)))
-	  (if (null? sublist)
-	      '()
-	      (cons (if (primitive-type? &unassigned-type (car sublist))
-			(map-from-unassigned (primitive-datum (car sublist)))
-			(car sublist))
-		    (loop (cdr sublist)))))))
+  (lambda (vector start stop)
+    (let loop ((sublist (system-subvector-to-list vector start stop)))
+      (if (null? sublist)
+	  '()
+	  (cons (if (primitive-type? &unassigned-type (car sublist))
+		    (map-from-unassigned (primitive-datum (car sublist)))
+		    (car sublist))
+		(loop (cdr sublist)))))))
 
-)
 )
