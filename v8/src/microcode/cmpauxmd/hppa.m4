@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.25 1993/03/16 22:09:38 gjr Exp $
+;;;	$Id: hppa.m4,v 1.26 1993/03/17 01:47:18 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -653,7 +653,6 @@ generic_$1_one_unk				; ~FLO * ??
 	B,N	generic_$1_fail
 	EXTRS	6,31,FIXNUM_LENGTH,6		; sign extend arg1
 	STW	6,0(0,21)			; through memory into fp
-	LDO	8(22),22			; pop args from stack
 	DEP	5,TC_START,TC_LENGTH,8		; data segment quadrant bits
 	FLDWS	0(0,21),4			; single int arg1 -> fr4
 	FLDDS	4(0,8),5			; arg2 -> fr5
@@ -666,7 +665,6 @@ generic_$1_two_unk				; FLO * ~FLO
 	B,N	generic_$1_fail
 	EXTRS	8,31,FIXNUM_LENGTH,8		; sign extend arg2
 	STW	8,0(0,21)			; through memory into fpcp
-	LDO	8(22),22			; pop args from stack
 	DEP	5,TC_START,TC_LENGTH,6		; data segment quadrant bits
 	FLDWS	0(0,21),5			; single int arg2 -> fr5
 	FLDDS	4(0,6),4			; arg1 -> fr4
