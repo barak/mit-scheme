@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasl.h,v 9.35 1993/11/08 06:34:23 gjr Exp $
+$Id: fasl.h,v 9.36 1994/11/19 21:22:47 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,7 +93,7 @@ MIT in each case. */
 #define MAKE_CI_VERSION(Band_p, Version, Processor_Type)		\
   MAKE_OBJECT (((Band_p) ? TC_TRUE : TC_NULL),				\
 	       ((((unsigned long) (Version)) << (DATUM_LENGTH / 2))	\
-		| (Processor_Type)))					\
+		| (Processor_Type)))
 
 /* "Memorable" FASL versions -- ones where we modified something
    and want to remain backwards compatible.
