@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.20 1992/04/16 05:12:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.21 1992/08/12 08:50:05 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -218,30 +218,33 @@ these rules:
 
 (define (pathname-new-directory pathname directory)
   (let ((pathname (->pathname pathname)))
-    (%make-pathname (%pathname-host pathname)
-		    (%pathname-device pathname)
-		    directory
-		    (%pathname-name pathname)
-		    (%pathname-type pathname)
-		    (%pathname-version pathname))))
+    ((host-operation/pathname-canonicalize (%pathname-host pathname))
+     (%make-pathname (%pathname-host pathname)
+		     (%pathname-device pathname)
+		     directory
+		     (%pathname-name pathname)
+		     (%pathname-type pathname)
+		     (%pathname-version pathname)))))
 
 (define (pathname-new-name pathname name)
   (let ((pathname (->pathname pathname)))
-    (%make-pathname (%pathname-host pathname)
-		    (%pathname-device pathname)
-		    (%pathname-directory pathname)
-		    name
-		    (%pathname-type pathname)
-		    (%pathname-version pathname))))
+    ((host-operation/pathname-canonicalize (%pathname-host pathname))
+     (%make-pathname (%pathname-host pathname)
+		     (%pathname-device pathname)
+		     (%pathname-directory pathname)
+		     name
+		     (%pathname-type pathname)
+		     (%pathname-version pathname)))))
 
 (define (pathname-new-type pathname type)
   (let ((pathname (->pathname pathname)))
-    (%make-pathname (%pathname-host pathname)
-		    (%pathname-device pathname)
-		    (%pathname-directory pathname)
-		    (%pathname-name pathname)
-		    type
-		    (%pathname-version pathname))))
+    ((host-operation/pathname-canonicalize (%pathname-host pathname))
+     (%make-pathname (%pathname-host pathname)
+		     (%pathname-device pathname)
+		     (%pathname-directory pathname)
+		     (%pathname-name pathname)
+		     type
+		     (%pathname-version pathname)))))
 
 (define (pathname-new-version pathname version)
   (let ((pathname (->pathname pathname)))
@@ -443,7 +446,8 @@ these rules:
   (operation/user-homedir-pathname false read-only true)
   (operation/init-file-pathname false read-only true)
   (operation/pathname-simplify false read-only true)
-  (operation/end-of-line-string false read-only true))
+  (operation/end-of-line-string false read-only true)
+  (operation/pathname-canonicalize false read-only true))
 
 (define-structure (host
 		   (named (string->symbol "#[(runtime pathname)host]"))
@@ -499,6 +503,9 @@ these rules:
 
 (define (host-operation/end-of-line-string host)
   (host-type/operation/end-of-line-string (host/type host)))
+
+(define (host-operation/pathname-canonicalize host)
+  (host-type/operation/pathname-canonicalize (host/type host)))
 
 ;;;; File System Stuff
 

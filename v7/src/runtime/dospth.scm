@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.7 1992/07/28 19:43:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.8 1992/08/12 08:49:46 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -62,7 +62,8 @@ MIT in each case. |#
 		  dos/user-homedir-pathname
 		  dos/init-file-pathname
 		  dos/pathname-simplify
-		  dos/end-of-line-string))
+		  dos/end-of-line-string
+		  dos/canonicalize))
 
 (define (initialize-package!)
   (add-pathname-host-type! 'DOS make-dos-host-type))
@@ -190,6 +191,29 @@ MIT in each case. |#
   (if (substring=? string start end "*" 0 1)
       'WILD
       (substring string start end)))
+
+(define (dos/canonicalize pathname)
+  (define (valid? field length)
+    (or (not (string? field))
+	(<= (string-length field) length)))
+
+  (define (canonicalize-field field length)
+    (if (not (string? field))
+	field
+	(substring field 0 length)))
+
+  ;; This should really canonicalize the directory as well.
+  (let ((name (%pathname-name pathname))
+	(type (%pathname-type pathname)))
+    (if (and (valid? name 8)
+	     (valid? type 3)
+	pathname
+	(%make-pathname (%pathname-host pathname)
+			(%pathname-device pathname)
+			(%pathname-directory pathname)
+			(canonicalize-field name 8)
+			(canonicalize-field type 3)
+			(%pathname-version pathname))))))
 
 ;;;; Pathname Unparser
 
