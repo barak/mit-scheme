@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.13 1992/04/22 20:51:33 mhwu Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.14 1992/10/20 20:03:03 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -220,3 +220,36 @@
 	 (string->list xkey))
 	(else
 	 (error "Not a key or list of keys" xkey))))
+
+;;;; Special keys (room for system-dependent extension)
+
+(define-structure (special-key (constructor %make-special-key)
+			       (conc-name special-key/))
+  (symbol false read-only true)
+  (bucky-bits false read-only true))
+
+(define (special-key/name special-key)
+  ;; Notice this system dependence:
+  (define-integrable (%symbol-name symbol)
+    (system-pair-car symbol))
+
+  (string-append (bucky-bits->name (special-key/bucky-bits special-key))
+		 (%symbol-name (special-key/symbol special-key))))
+
+(define (bucky-bits->name bits)
+  (let ((bucky-bit-map '#("M-" "C-" "S-" "H-" "T-")))
+    (let loop ((n (fix:-1+ (vector-length bucky-bit-map)))
+	       (bit (fix:lsh 1 (fix:-1+ (vector-length bucky-bit-map))))
+	       (name ""))
+      (cond ((fix:negative? n) name)
+	    ((fix:zero? (fix:and bit bits))
+	     (loop (fix:-1+ n) (fix:lsh bit -1) name))
+	    (else
+	     (loop (fix:-1+ n)
+		   (fix:lsh bit -1)
+		   (string-append (vector-ref bucky-bit-map n) name)))))))
+
+(define hook/make-special-key %make-special-key)
+
+(define (make-special-key name bits)
+  (hook/make-special-key name bits))

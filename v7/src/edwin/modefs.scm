@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modefs.scm,v 1.140 1992/09/30 17:49:54 cph Exp $
+;;;	$Id: modefs.scm,v 1.141 1992/10/20 20:03:14 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -307,36 +307,3 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\{) 'shrink-window-horizontally)
 (define-key 'fundamental '(#\c-x #\}) 'enlarge-window-horizontally)
 (define-key 'fundamental '(#\c-x #\rubout) 'backward-kill-sentence)
-
-(let-syntax ((define-function-key
-               (macro (mode key command)
-                 (let ((token (if (pair? key) (car key) key)))
-                   `(if (not (lexical-unreferenceable? (the-environment)
-                                                       ',token))
-                        (define-key ,mode ,key ,command))))))
-
-  (define-function-key 'fundamental left 'backward-char)
-  (define-function-key 'fundamental deletechar 'delete-char)
-  (define-function-key 'fundamental right 'forward-char)
-  (define-function-key 'fundamental deleteline 'kill-line)
-  (define-function-key 'fundamental down 'next-line)
-  (define-function-key 'fundamental insertline 'open-line)
-  (define-function-key 'fundamental up 'previous-line)
-  (define-function-key 'fundamental next 'scroll-up)
-  (define-function-key 'fundamental home 'home-cursor)
-  (define-function-key 'fundamental prior 'scroll-down)
-  (define-function-key 'fundamental (make-special-key 'next 1)
-    'scroll-other-window)
-  (define-function-key 'fundamental (make-special-key 'prior 1) 
-    'scroll-other-window-down)
-
-;;; Jokes
-
-  (define-key 'fundamental #\h-space 'hyper-space)
-  (define-function-key 'fundamental (make-special-key 'malesymbol 4) 
-    'super-man)
-  (define-function-key 'fundamental (make-special-key 'menu 4) 'super-menu)
-  (define-key 'fundamental #\t-$ 'top-dollar)
-  (define-key 'fundamental #\t-^ 'top-hat)
-
-) ;; End of let-syntax

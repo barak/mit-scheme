@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.100 1992/09/23 23:06:38 jinx Exp $
+$Id: edwin.pkg,v 1.101 1992/10/20 20:02:13 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -75,8 +75,6 @@ MIT in each case. |#
 	 "basic"			; basic commands
 	 "bufcom"			; buffer commands
 	 "comhst"			; command history
-	 "comint"			; command interpreter process stuff
-	 "compile"			; compilation subprocess
 	 "evlcom"			; evaluation commands
 	 "filcom"			; file commands
 	 "fill"				; text fill commands
@@ -90,9 +88,6 @@ MIT in each case. |#
 	 "schmod"			; scheme mode
 	 "scrcom"			; screen commands
 	 "sercom"			; search commands
-	 "shell"			; shell subprocess commands
-	 "techinfo"			; techinfo commands
-	 "telnet"			; telnet subprocess commands
 	 "texcom"			; text commands
 	 "wincom"			; window commands
 
@@ -103,10 +98,21 @@ MIT in each case. |#
 	 "midas"
 	 "pasmod"
 	 "tximod"
+	 "notify"			; mode line notifications
+	 "outline"			; outline minor mode
+
+	 ;; These are only available under Unix/X
+
+	 "comint"			; command interpreter process stuff
+	 "compile"			; compilation subprocess
+	 "shell"			; shell subprocess commands
+	 "techinfo"			; techinfo commands
+	 "telnet"			; telnet subprocess commands
+	 "xmodef"			; x bindings for fundamental mode
 	 "manual"			; man page display
 	 "print"			; printer output
-	 "notify"			; mode line notifications
-	 "outline")			; outline minor mode
+	 )
+
   (parent ())
   (import (runtime rep)
 	  hook/repl-eval)
@@ -264,89 +270,13 @@ MIT in each case. |#
 	  set-screen-root-window!
 	  update-screen!
 	  window-screen
-	  with-screen-in-update)
-  (export (edwin console-screen)
-	  make-screen)
-  (export (edwin x-screen)
-	  make-screen
-	  set-screen-size!
-	  set-screen-visibility!))
+	  with-screen-in-update))
 
-(define-package (edwin x-screen)
-  (files "xterm")
-  (parent (edwin))
-  (export (edwin)
-	  x-screen-auto-raise
-	  xterm-screen/flush!
-	  xterm-screen/grab-focus!)
-  (export (edwin x-commands)
-	  screen-xterm)
-  (initialization (initialize-package!)))
-
-(define-package (edwin x-commands)
-  (files "xcom")
-  (parent (edwin))
-  (export (edwin)
-	  x-button1-down
-	  x-button2-down
-	  x-button3-down
-	  x-button4-down
-	  x-button5-down
-	  x-button1-up
-	  x-button2-up
-	  x-button3-up
-	  x-button4-up
-	  x-button5-up
-	  edwin-variable$x-screen-name-format
-	  edwin-variable$x-screen-icon-name-format
-	  edwin-variable$x-screen-icon-name-length)
-  (export (edwin x-screen)
-	  update-xterm-screen-names!))
-
-(define-package (edwin keys)
-  (files "key")
-  (parent (edwin))
-  (export (edwin x-screen)
-	  x-make-special-key)
-  (export (edwin)
-	  make-special-key
-	  special-key?
-	  special-key/name
-	  special-key/bucky-bits
-	  stop
-	  f1
-	  f2
-	  f3
-	  f4
-	  menu
-	  system
-	  user
-	  f5
-	  f6
-	  f7
-	  f8
-	  f9
-	  f10
-	  f11
-	  f12
-	  insertline
-	  deleteline
-	  insertchar
-	  deletechar
-	  home
-	  prior
-	  next
-	  up
-	  down
-	  left
-	  right
-	  select
-	  print)
-  (initialization (initialize-package!)))
-
-(define-package (edwin console-screen)
-  (files "termcap" "tterm" "ansi" "bios")
-  (parent (edwin))
+(define-package (edwin screen console-screen)
+  (files "termcap" "tterm")
+  (file-case os-type
+    ((dos) "ansi" "bios"))
+  (parent (edwin screen))
   (import (runtime primitive-io)
 	  channel-type=terminal?
 	  terminal-get-state
@@ -700,39 +630,29 @@ MIT in each case. |#
   (files "keymap")
   (parent (edwin)))
 
-(define-package (edwin debugger)
-  (files "debug")
+(define-package (edwin inferior-repl)
+  (files "intmod")
   (parent (edwin))
   (export (edwin)
-	  continuation-browser-buffer
-	  debug-scheme-error
-	  edwin-command$browse-continuation
-	  edwin-command$browse-environment
-	  edwin-command$browser-evaluator
-	  edwin-command$browser-next-line
-	  edwin-command$browser-previous-line
-	  edwin-command$browser-quit
-	  edwin-command$browser-select-line
-	  edwin-command$browser-where
-	  edwin-mode$continuation-browser
-	  edwin-mode$environment-browser
-	  edwin-variable$debugger-one-at-a-time?
-	  edwin-variable$debugger-start-on-error?
-	  edwin-variable$debugger-max-subproblems
-	  edwin-variable$debugger-confirm-return?
-	  edwin-variable$debugger-quit-on-restart?
-	  edwin-variable$debugger-quit-on-return?
-	  edwin-variable$environment-browser-package-limit
-	  environment-browser-buffer)
-  (import (runtime debugger)
-	  debugger-pp
-	  expression-indentation
-	  invalid-expression?)
-  (import (runtime debugger-utilities)
-	  print-binding
-	  show-environment-name)
-  (import (runtime error-handler)
-	  hook/invoke-restart))
+	  buffer/inferior-cmdl
+	  current-repl-buffer
+	  edwin-command$inferior-cmdl-abort-nearest
+	  edwin-command$inferior-cmdl-abort-previous
+	  edwin-command$inferior-cmdl-abort-top-level
+	  edwin-command$inferior-cmdl-breakpoint
+	  edwin-command$inferior-cmdl-self-insert
+	  edwin-command$inferior-repl-eval-defun
+	  edwin-command$inferior-repl-eval-last-sexp
+	  edwin-command$inferior-repl-eval-region
+	  edwin-command$repl
+	  edwin-mode$inferior-cmdl
+	  edwin-mode$inferior-repl
+	  edwin-variable$repl-enable-transcript-buffer
+	  edwin-variable$repl-error-decision
+	  inferior-repl-eval-expression
+	  inferior-repl-eval-region
+	  initialize-inferior-repls!
+	  start-inferior-repl!))
 
 (define-package (edwin dired)
   (files "dired")
@@ -799,9 +719,131 @@ MIT in each case. |#
 	  edwin-command$visit-tags-table
 	  edwin-variable$tags-table-pathname))
 
-(define-package (edwin rcs)
-  (files "rcs")
-  (parent (edwin)))
+(define-package (edwin occurrence)
+  (files "occur")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$count-matches
+	  edwin-command$delete-matching-lines
+	  edwin-command$delete-non-matching-lines
+	  edwin-command$flush-lines
+	  edwin-command$how-many
+	  edwin-command$keep-lines
+	  edwin-command$list-matching-lines
+	  edwin-command$occur
+	  edwin-command$occur-mode-goto-occurrence
+	  edwin-mode$occur
+	  edwin-variable$list-matching-lines-default-context-lines))
+
+;;;; The following are the variants used under DOS
+
+#|
+(define-package (edwin debugger)
+  (files "debug")
+  (parent (edwin))
+  (export (edwin)
+	  continuation-browser-buffer
+	  debug-scheme-error
+	  edwin-command$browse-continuation
+	  edwin-mode$continuation-browser
+	  edwin-variable$debugger-confirm-return?
+	  edwin-variable$debugger-debug-evaluations?
+	  edwin-variable$debugger-expand-reductions?
+	  edwin-variable$debugger-hide-system-code?
+	  edwin-variable$debugger-max-subproblems
+	  edwin-variable$debugger-one-at-a-time?
+	  edwin-variable$debugger-open-markers?
+	  edwin-variable$debugger-quit-on-restart?
+	  edwin-variable$debugger-quit-on-return?
+	  edwin-variable$debugger-show-help-message?
+	  edwin-variable$debugger-split-window?
+	  edwin-variable$debugger-start-on-error?
+	  edwin-variable$debugger-verbose-mode?)
+  (import (runtime continuation-parser)
+	  stack-frame/reductions)
+  (import (runtime debugger)
+	  command/condition-restart
+	  command/frame
+	  command/print-environment-procedure
+	  command/print-expression
+	  command/show-all-frames
+	  command/show-current-frame
+	  debugger-pp
+	  dstate/environment-list
+	  dstate/expression
+	  dstate/number-of-reductions
+	  dstate/previous-subproblems
+	  dstate/reduction
+	  dstate/reduction-number
+	  dstate/subproblem
+	  dstate/subproblem-number
+	  dstate/using-history?
+	  improper-list-length
+	  invalid-expression?
+	  make-initial-dstate
+	  print-reduction-expression
+	  print-subproblem-environment
+	  print-subproblem-expression
+	  reduction-environment
+	  reduction-expression
+	  set-current-subproblem!
+	  set-dstate/environment-list!
+	  set-dstate/reduction-number!
+	  show-environment-name
+	  stack-frame/compiled-code?
+	  write-restarts)
+  (import (runtime error-handler)
+	  hook/invoke-restart))
+
+(define-package (edwin process)
+  (file-case os-type
+    ((unix) "process")
+    ((dos)  "dosproc"))
+  (parent (edwin))
+  (export (edwin)
+	  buffer-processes			; always present
+	  delete-process			; always present
+	  get-buffer-process			; always present
+	  initialize-processes!			; always present
+	  process-list				; always present
+	  subprocesses-available?))		; always present
+|#
+
+;;;; The following are the variants used under Unix/X
+
+(define-package (edwin debugger)
+  (files "debug")
+  (parent (edwin))
+  (export (edwin)
+	  continuation-browser-buffer
+	  debug-scheme-error
+	  edwin-command$browse-continuation
+	  edwin-command$browse-environment
+	  edwin-command$browser-evaluator
+	  edwin-command$browser-next-line
+	  edwin-command$browser-previous-line
+	  edwin-command$browser-quit
+	  edwin-command$browser-select-line
+	  edwin-command$browser-where
+	  edwin-mode$continuation-browser
+	  edwin-mode$environment-browser
+	  edwin-variable$debugger-one-at-a-time?
+	  edwin-variable$debugger-start-on-error?
+	  edwin-variable$debugger-max-subproblems
+	  edwin-variable$debugger-confirm-return?
+	  edwin-variable$debugger-quit-on-restart?
+	  edwin-variable$debugger-quit-on-return?
+	  edwin-variable$environment-browser-package-limit
+	  environment-browser-buffer)
+  (import (runtime debugger)
+	  debugger-pp
+	  expression-indentation
+	  invalid-expression?)
+  (import (runtime debugger-utilities)
+	  print-binding
+	  show-environment-name)
+  (import (runtime error-handler)
+	  hook/invoke-restart))
 
 (define-package (edwin process)
   (file-case os-type
@@ -856,6 +898,78 @@ MIT in each case. |#
 	  stop-process
 	  subprocesses-available?		; always present
 	  run-synchronous-process))
+
+(define-package (edwin screen x-screen)
+  (files "xterm")
+  (parent (edwin screen))
+  (export (edwin)
+	  x-screen-auto-raise
+	  xterm-screen/flush!
+	  xterm-screen/grab-focus!)
+  (export (edwin x-commands)
+	  screen-xterm)
+  (initialization (initialize-package!)))
+
+(define-package (edwin x-commands)
+  (files "xcom")
+  (parent (edwin))
+  (export (edwin)
+	  x-button1-down
+	  x-button2-down
+	  x-button3-down
+	  x-button4-down
+	  x-button5-down
+	  x-button1-up
+	  x-button2-up
+	  x-button3-up
+	  x-button4-up
+	  x-button5-up
+	  edwin-variable$x-screen-name-format
+	  edwin-variable$x-screen-icon-name-format
+	  edwin-variable$x-screen-icon-name-length)
+  (export (edwin screen x-screen)
+	  update-xterm-screen-names!))
+
+(define-package (edwin keys)
+  (files "key")
+  (parent (edwin))
+  (export (edwin screen x-screen)
+	  x-make-special-key)
+  (export (edwin)
+	  stop
+	  f1
+	  f2
+	  f3
+	  f4
+	  menu
+	  system
+	  user
+	  f5
+	  f6
+	  f7
+	  f8
+	  f9
+	  f10
+	  f11
+	  f12
+	  insertline
+	  deleteline
+	  insertchar
+	  deletechar
+	  home
+	  prior
+	  next
+	  up
+	  down
+	  left
+	  right
+	  select
+	  print)
+  (initialization (initialize-package!)))
+
+(define-package (edwin rcs)
+  (files "rcs")
+  (parent (edwin)))
 
 (define-package (edwin sendmail)
   (files "sendmail")
@@ -965,30 +1079,6 @@ MIT in each case. |#
 	  edwin-variable$rmail-reply-with-re
 	  rmail-spool-directory))
 
-(define-package (edwin inferior-repl)
-  (files "intmod")
-  (parent (edwin))
-  (export (edwin)
-	  buffer/inferior-cmdl
-	  current-repl-buffer
-	  edwin-command$inferior-cmdl-abort-nearest
-	  edwin-command$inferior-cmdl-abort-previous
-	  edwin-command$inferior-cmdl-abort-top-level
-	  edwin-command$inferior-cmdl-breakpoint
-	  edwin-command$inferior-cmdl-self-insert
-	  edwin-command$inferior-repl-eval-defun
-	  edwin-command$inferior-repl-eval-last-sexp
-	  edwin-command$inferior-repl-eval-region
-	  edwin-command$repl
-	  edwin-mode$inferior-cmdl
-	  edwin-mode$inferior-repl
-	  edwin-variable$repl-enable-transcript-buffer
-	  edwin-variable$repl-error-decision
-	  inferior-repl-eval-expression
-	  inferior-repl-eval-region
-	  initialize-inferior-repls!
-	  start-inferior-repl!))
-
 (define-package (edwin bochser)
   (files "bochser"
 	 "bochsmod")
@@ -1027,19 +1117,3 @@ MIT in each case. |#
   (import (runtime debugger-utilities)
 	  show-environment-bindings)
   (initialization (initialize-bochser-mode!)))
-
-(define-package (edwin occurrence)
-  (files "occur")
-  (parent (edwin))
-  (export (edwin)
-	  edwin-command$count-matches
-	  edwin-command$delete-matching-lines
-	  edwin-command$delete-non-matching-lines
-	  edwin-command$flush-lines
-	  edwin-command$how-many
-	  edwin-command$keep-lines
-	  edwin-command$list-matching-lines
-	  edwin-command$occur
-	  edwin-command$occur-mode-goto-occurrence
-	  edwin-mode$occur
-	  edwin-variable$list-matching-lines-default-context-lines))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.40 1992/09/23 23:05:59 jinx Exp $
+$Id: decls.scm,v 1.41 1992/10/20 20:02:54 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -199,7 +199,8 @@ MIT in each case. |#
 		"unix"
 		"wincom"
 		"winout"
-		"xcom")))
+		"xcom"
+		"xmodef")))
   (for-each sf-class
 	    '("comwin"
 	      "modwin"
