@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.42 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.43 1992/01/15 17:21:50 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,7 +54,7 @@ extern Boolean Bignum_Debug;
 extern Boolean Fluids_Debug;
 
 extern sp_record_list SP_List;
-extern void Pop_Return_Break_Point ();
+extern void EXFUN (Pop_Return_Break_Point, (void));
 extern int debug_slotno;
 extern int debug_nslots;
 extern int local_slotno;
@@ -271,5 +271,5 @@ extern void EXFUN (Allocate_New_Stacklet, (long));
 #endif
 
 #if false
-extern void EXFUN (Clear_Perfinfo_Data, ());
+extern void EXFUN (Clear_Perfinfo_Data, (void));
 #endif
