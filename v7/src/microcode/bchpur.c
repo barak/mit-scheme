@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchpur.c,v 9.59 1993/06/24 07:06:59 gjr Exp $
+$Id: bchpur.c,v 9.60 1993/08/22 22:39:01 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -116,9 +116,7 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 	   and if so we need a new bufferfull. */
 	Scan += (OBJECT_DATUM (Temp));
 	if (Scan < scan_buffer_top)
-	{
 	  break;
-	}
 	else
 	{
 	  unsigned long overflow;
@@ -535,6 +533,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
   GC_Reserve = (arg_nonnegative_integer (3));
 
   ENTER_CRITICAL_SECTION ("purify");
+  run_pre_gc_hooks ();
   {
     SCHEME_OBJECT purify_result;
     SCHEME_OBJECT words_free;
@@ -545,6 +544,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
     (*Free++) = purify_result;
     (*Free++) = words_free;
   }
+  run_post_gc_hooks ();
   POP_PRIMITIVE_FRAME (3);
   daemon = (Get_Fixed_Obj_Slot (GC_Daemon));
   if (daemon == SHARP_F)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.78 1993/08/03 08:29:35 gjr Exp $
+$Id: bchmmg.c,v 9.79 1993/08/22 22:38:59 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -3135,9 +3135,11 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
     termination_gc_out_of_space ();
 
   ENTER_CRITICAL_SECTION ("garbage collector");
+  run_pre_gc_hooks ();
   gc_counter += 1;
   GC_Reserve = new_gc_reserve;
   GC (0);
+  run_post_gc_hooks ();
   POP_PRIMITIVE_FRAME (1);
   GC_Daemon_Proc = (Get_Fixed_Obj_Slot (GC_Daemon));
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.49 1993/08/21 02:25:29 gjr Exp $
+$Id: gccode.h,v 9.50 1993/08/22 22:39:02 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -362,20 +362,16 @@ extern SCHEME_OBJECT * gc_objects_referencing_end;
 
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
 
+extern void EXFUN (check_transport_vector_lossage,
+		   (SCHEME_OBJECT *, SCHEME_OBJECT *, SCHEME_OBJECT *));
+
 #define CHECK_TRANSPORT_VECTOR_TERMINATION()				\
 {									\
   if (! ((To <= Scan)							\
 	 && (((Constant_Space <= To) && (To < Constant_Top))		\
 	     ? ((Constant_Space <= Scan) && (Scan < Constant_Top))	\
 	     : ((Heap_Bottom <= Scan) && (Scan < Heap_Top)))))		\
-    {									\
-      outf_fatal ("\nBad transport_vector limit:\n");			\
-      outf_fatal ("  limit = 0x%lx\n", ((long) Scan));			\
-      outf_fatal ("  Scan = 0x%lx\n", ((long) Saved_Scan));		\
-      outf_fatal ("  To = 0x%lx\n", ((long) To));			\
-      outf_flush_fatal ();						\
-      abort ();								\
-    }									\
+    check_transport_vector_lossage (Scan, Saved_Scan, To);		\
   if ((OBJECT_DATUM (*Old)) > 65536)					\
     {									\
       outf_error ("\nWarning: copying large vector: %d\n",		\
@@ -542,3 +538,14 @@ extern SCHEME_OBJECT Weak_Chain;
 /* Compiled Code Relocation Utilities */
 
 #include "cmpgc.h"
+
+typedef struct gc_hook_list_s
+{
+  void EXFUN ((* hook), (void));
+  struct gc_hook_list_s * next;
+} * gc_hook_list;
+
+extern int EXFUN (add_pre_gc_hook, (void (*) (void)));
+extern int EXFUN (add_post_gc_hook, (void (*) (void)));
+extern void EXFUN (run_pre_gc_hooks, (void));
+extern void EXFUN (run_post_gc_hooks, (void));

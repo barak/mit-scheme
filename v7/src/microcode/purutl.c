@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purutl.c,v 9.44 1993/06/24 06:20:03 gjr Exp $
+$Id: purutl.c,v 9.45 1993/08/22 22:39:05 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -286,9 +286,7 @@ DEFUN (find_constant_space_block,
 #endif
     where -= (1 + OBJECT_DATUM (*where));
     if (where < obj_address)
-    {
       return (where + 1);
-    }
   }
   return ((SCHEME_OBJECT *) NULL);
 }
@@ -302,9 +300,7 @@ DEFUN (Pure_Test,
 
   block = (find_constant_space_block (obj_address));
   if (block == ((SCHEME_OBJECT *) NULL))
-  {
     return (false);
-  }
   return
     ((Boolean) (obj_address <= (block + (OBJECT_DATUM (*block)))));
 }
@@ -337,8 +333,7 @@ DEFINE_PRIMITIVE ("CONSTANT?", Prim_constant_p, 1, 1,
   PRIMITIVE_HEADER (1);
   {
     fast SCHEME_OBJECT object = (ARG_REF (1));
-    if ((GC_Type_Non_Pointer (object)) ||
-	(GC_Type_Special (object)))
+    if ((GC_Type_Non_Pointer (object)) || (GC_Type_Special (object)))
       PRIMITIVE_RETURN (SHARP_T);
     TOUCH_IN_PRIMITIVE (object, object);
     PRIMITIVE_RETURN
@@ -384,13 +379,72 @@ DEFUN (copy_to_constant_space,
   *dest++ = (MAKE_OBJECT (CONSTANT_PART, 3));
   result = dest;
   for (i = nobjects; --i >= 0; )
-  {
     *dest++ = *source++;
-  }
   *dest++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
   *dest++ = (MAKE_OBJECT (END_OF_BLOCK, nobjects + 5));
   Free_Constant = dest;
   SET_CONSTANT_TOP ();
 
-  return result;
+  return (result);
+}
+
+gc_hook_list  pre_gc_hooks = ((gc_hook_list) NULL);
+gc_hook_list post_gc_hooks = ((gc_hook_list) NULL);
+
+static int
+DEFUN (add_gc_hook, (cell, hook),
+       gc_hook_list * cell AND void EXFUN ((* hook), (void)))
+{
+  gc_hook_list new = ((gc_hook_list)
+		      (malloc (sizeof (struct gc_hook_list_s))));
+  if (new == ((gc_hook_list) NULL))
+    return (-1);
+
+  new->hook = hook;
+  new->next = ((gc_hook_list) NULL);
+
+  while ((* cell) != ((gc_hook_list) NULL))
+    cell = (& ((* cell)->next));
+
+  * cell = new;
+  return (0);
+}
+
+static void
+DEFUN (run_gc_hooks, (gc_hooks), gc_hook_list gc_hooks)
+{
+  while (gc_hooks != ((gc_hook_list) NULL))
+  {
+    (* (gc_hooks->hook)) ();
+    gc_hooks = gc_hooks->next;
+  }
+  return;
+}
+
+int
+DEFUN (add_pre_gc_hook, (hook),
+       void EXFUN ((* hook), (void)))
+{
+  return (add_gc_hook ((& pre_gc_hooks), hook));
+}
+
+int
+DEFUN (add_post_gc_hook, (hook),
+       void EXFUN ((* hook), (void)))
+{
+  return (add_gc_hook ((& post_gc_hooks), hook));
+}
+
+void
+DEFUN_VOID (run_pre_gc_hooks)
+{
+  run_gc_hooks (pre_gc_hooks);
+  return;
+}
+
+void
+DEFUN_VOID (run_post_gc_hooks)
+{
+  run_gc_hooks (post_gc_hooks);
+  return;
 }

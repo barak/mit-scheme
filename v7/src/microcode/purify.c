@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.50 1993/08/21 04:01:15 gjr Exp $
+$Id: purify.c,v 9.51 1993/08/22 22:39:04 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -426,6 +426,7 @@ DEFUN (Purify,
 
 /* Pass 1 -- Copy object to new heap, then GC into that heap */
 
+  run_pre_gc_hooks ();
   GCFlip ();
   Heap_Start = Free;
   *Free++ = Object;
@@ -443,6 +444,7 @@ DEFUN (Purify,
   Free[Purify_Really_Pure] = Purify_Object;
   Answer =  MAKE_POINTER_OBJECT (TC_VECTOR, Free);
   Free += (Purify_N_Slots + 1);
+  run_post_gc_hooks ();
   return (Answer);
 }
 
@@ -456,21 +458,16 @@ DEFUN (Purify_Pass_2,
   SCHEME_OBJECT *New_Object, Relocated_Object, *Result;
   long Pure_Length, Recomputed_Length;
 
+  run_pre_gc_hooks ();
   STACK_SANITY_CHECK ("PURIFY");
   Length = (OBJECT_DATUM (FAST_MEMORY_REF (Info, Purify_Length)));
   if (FAST_MEMORY_REF (Info, Purify_Really_Pure) == SHARP_F)
-  {
     Purify_Object =  false;
-  }
   else
-  {
     Purify_Object = true;
-  }
   Relocated_Object = *Heap_Bottom;
   if (!(TEST_CONSTANT_TOP (Free_Constant + Length + 6)))
-  {
     return (SHARP_F);
-  }
   New_Object = Free_Constant;
   GCFlip ();
   *Free_Constant++ = SHARP_F;	/* Will hold pure space header */
@@ -487,9 +484,7 @@ DEFUN (Purify_Pass_2,
     Pure_Length = ((Free_Constant - New_Object) + 1);
   }
   else
-  {
     Pure_Length = 3;
-  }
   *Free_Constant++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
   *Free_Constant++ = (MAKE_OBJECT (CONSTANT_PART, Pure_Length));
   if (Purify_Object)
@@ -530,6 +525,7 @@ DEFUN (Purify_Pass_2,
   *New_Object = (MAKE_OBJECT (PURE_PART, (Recomputed_Length + 5)));
   SET_CONSTANT_TOP ();
   GC ();
+  run_post_gc_hooks ();
   return (SHARP_T);
 }
 

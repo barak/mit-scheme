@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.53 1993/08/03 22:15:14 gjr Exp $
+$Id: memmag.c,v 9.54 1993/08/22 22:39:03 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -483,10 +483,12 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   }
 
   ENTER_CRITICAL_SECTION ("garbage collector");
+  run_pre_gc_hooks ();
   gc_counter += 1;
   GC_Reserve = new_gc_reserve;
   GCFlip ();
   GC ();
+  run_post_gc_hooks ();
   POP_PRIMITIVE_FRAME (1);
   GC_Daemon_Proc = (Get_Fixed_Obj_Slot (GC_Daemon));
 
@@ -530,4 +532,18 @@ DEFINE_PRIMITIVE ("GC-TRACE-REFERENCES", Prim_gc_trace_references, 2, 2, 0)
 #endif /* not ENABLE_GC_DEBUGGING_TOOLS */
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+void
+DEFUN (check_transport_vector_lossage, (Scan, Saved_Scan, To),
+       SCHEME_OBJECT * Scan
+       AND SCHEME_OBJECT * Saved_Scan
+       AND SCHEME_OBJECT * To)
+{
+  outf_fatal ("\nBad transport_vector limit:\n");
+  outf_fatal ("  limit = 0x%lx\n", ((long) Scan));
+  outf_fatal ("  Scan = 0x%lx\n", ((long) Saved_Scan));
+  outf_fatal ("  To = 0x%lx\n", ((long) To));
+  outf_flush_fatal ();
+  abort ();
 }
