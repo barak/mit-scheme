@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.197 2001/09/25 12:57:26 cph Exp $
+;;; $Id: prompt.scm,v 1.198 2001/10/30 19:25:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -359,6 +359,22 @@
 	  (else
 	   (error "Illegal options tail:" options)))))
 
+(define (lookup-prompt-option options keyword default)
+  ;; If there are multiple instances of KEYWORD, return the last.
+  (let loop ((options options) (winner #f))
+    (if (pair? options)
+	(begin
+	  (if (not (pair? (cdr options)))
+	      (error "Options list has odd length:" options))
+	  (loop (cddr options)
+		(if (eq? keyword (car options)) options winner)))
+	(begin
+	  (if (not (null? options))
+	      (error "Illegal options tail:" options))
+	  (if winner
+	      (cadr winner)
+	      default)))))
+
 (define prompt-options-table
   '())
 
@@ -463,6 +479,18 @@
 	       (and (> length 0)
 		    (< index length))))
 	(set-options/default-string! options (list-ref (cdr history) index)))))
+
+(define (prompt-options-default-string options)
+  (or (lookup-prompt-option options 'DEFAULT-STRING #f)
+      (let ((index (lookup-prompt-option options 'HISTORY-INDEX #f)))
+	(and index
+	     (<= 0 index)
+	     (let ((strings
+		    (cdr
+		     (name->history
+		      (lookup-prompt-option options 'HISTORY #f)))))
+	       (and (< index (length strings))
+		    (list-ref strings index)))))))
 
 ;;;; String Prompt Modes
 

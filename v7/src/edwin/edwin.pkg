@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.274 2001/09/21 02:56:15 cph Exp $
+$Id: edwin.pkg,v 1.275 2001/10/30 19:25:15 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -469,6 +469,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  edwin-mode$minibuffer-local-yes-or-no
 	  edwin-variable$enable-recursive-minibuffers
 	  edwin-variable$completion-auto-help
+	  lookup-prompt-option
 	  pop-up-completions-list
 	  pop-up-generated-completions
 	  prompt-for-alist-value
@@ -486,6 +487,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  prompt-for-variable
 	  prompt-for-yes-or-no?
 	  prompt-history-strings
+	  prompt-options-default-string
 	  set-prompt-history-strings!
 	  standard-completion
 	  temporary-typein-message
