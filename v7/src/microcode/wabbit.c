@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: wabbit.c,v 1.4 1996/10/02 18:59:11 cph Exp $
+$Id: wabbit.c,v 1.5 1997/07/14 17:59:57 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -941,7 +941,7 @@ DEFUN_VOID (fix_weak_chain_and_hunt_wabbits)
     this_object, * old_space_addr, * low_heap;
 
   low_heap = Constant_Top;
-  while (Weak_Chain != EMPTY_LIST)
+  while (Weak_Chain != EMPTY_WEAK_CHAIN)
   {
     old_weak_pair = (OBJECT_ADDRESS (Weak_Chain));
     scan = (OBJECT_ADDRESS (*old_weak_pair++));
