@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.25 1995/05/21 01:36:23 cph Exp $
+$Id: dospth.scm,v 1.26 1995/07/11 22:29:22 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -83,21 +83,21 @@ MIT in each case. |#
     (lambda (device components)
       (call-with-values (lambda () (parse-name (car (last-pair components))))
 	(lambda (name type)
-	  (%make-pathname host
-			  device
-			  (let ((components (except-last-pair components)))
-			    (and (not (null? components))
-				 (simplify-directory
-				  (if (string=? "" (car components))
-				      (cons 'ABSOLUTE
-					    (map parse-directory-component
-						 (cdr components)))
-				      (cons 'RELATIVE
-					    (map parse-directory-component
-						 components))))))
-			  name
-			  type
-			  'UNSPECIFIC))))))
+	  (%%make-pathname host
+			   device
+			   (let ((components (except-last-pair components)))
+			     (and (not (null? components))
+				  (simplify-directory
+				   (if (string=? "" (car components))
+				       (cons 'ABSOLUTE
+					     (map parse-directory-component
+						  (cdr components)))
+				       (cons 'RELATIVE
+					     (map parse-directory-component
+						  components))))))
+			   name
+			   type
+			   'UNSPECIFIC))))))
 
 (define (expand-directory-prefixes components)
   (let ((string (car components)))
@@ -222,7 +222,7 @@ MIT in each case. |#
 ;;;; Pathname Constructors
 
 (define (dos/make-pathname host device directory name type version)
-  (%make-pathname
+  (%%make-pathname
    host
    (cond ((string? device) device)
 	 ((memq device '(#F UNSPECIFIC)) device)
@@ -233,7 +233,9 @@ MIT in each case. |#
 	 ((and (list? directory)
 	       (not (null? directory))
 	       (memq (car directory) '(RELATIVE ABSOLUTE))
-	       (for-all? (cdr directory)
+	       (for-all? (if (server-directory? directory)
+			     (cddr directory)
+			     (cdr directory))
 		 (lambda (element)
 		   (if (string? element)
 		       (not (string-null? element))
@@ -253,12 +255,32 @@ MIT in each case. |#
    (if (memq version '(#F UNSPECIFIC WILD NEWEST))
        'UNSPECIFIC
        (error:wrong-type-argument version "pathname version" 'MAKE-PATHNAME))))
+
+(define (%%make-pathname host device directory name type version)
+  ;; This is a kludge to make the \\foo\bar notation work correctly.
+  ;; This kludge does not distinguish the \\foo component from any
+  ;; other directory component, as some rare programs might wish,
+  ;; because doing so is a more pervasive change.  Until someone has
+  ;; the energy to fix it correctly, this will have to do.
+  (%make-pathname host
+		  (if (server-directory? directory) 'UNSPECIFIC device)
+		  directory
+		  name
+		  type
+		  version))
+
+(define (server-directory? directory)
+  (and (pair? directory)
+       (eq? (car directory) 'ABSOLUTE)
+       (pair? (cdr directory))
+       (string? (cadr directory))
+       (string-null?? (cadr directory))))
 
 (define (dos/pathname-as-directory pathname)
   (let ((name (%pathname-name pathname))
 	(type (%pathname-type pathname)))
     (if (or name type)
-	(%make-pathname
+	(%%make-pathname
 	 (%pathname-host pathname)
 	 (%pathname-device pathname)
 	 (simplify-directory
@@ -280,23 +302,23 @@ MIT in each case. |#
 		      (pair? (cdr directory)))))
 	(error:bad-range-argument pathname 'DIRECTORY-PATHNAME-AS-FILE))
     (if (null? (cdr directory))
-	(%make-pathname (%pathname-host pathname)
-			(%pathname-device pathname)
-			directory
-			""
-			#f
-			'UNSPECIFIC)
+	(%%make-pathname (%pathname-host pathname)
+			 (%pathname-device pathname)
+			 directory
+			 ""
+			 #f
+			 'UNSPECIFIC)
 	(call-with-values
 	    (lambda ()
 	      (parse-name
 	       (unparse-directory-component (car (last-pair directory)))))
 	  (lambda (name type)
-	    (%make-pathname (%pathname-host pathname)
-			    (%pathname-device pathname)
-			    (simplify-directory (except-last-pair directory))
-			    name
-			    type
-			    'UNSPECIFIC))))))
+	    (%%make-pathname (%pathname-host pathname)
+			     (%pathname-device pathname)
+			     (simplify-directory (except-last-pair directory))
+			     name
+			     type
+			     'UNSPECIFIC))))))
 
 ;;;; Miscellaneous
 
