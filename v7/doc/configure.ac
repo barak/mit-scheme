@@ -1,14 +1,14 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme documentation],
-	[7.7.2],
-	[bug-cscheme@zurich.ai.mit.edu],
+	[7.7.91],
+	[bug-mit-scheme@gnu.org],
 	[mit-scheme-doc])
-AC_REVISION([$Id: configure.ac,v 1.2 2003/02/14 19:22:43 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.3 2004/10/14 04:10:14 cph Exp $])
 AC_CONFIG_SRCDIR([ref-manual/scheme.texinfo])
 
 AC_COPYRIGHT(
-[Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+[Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -75,11 +75,6 @@ test "${psdir}" = "" || INST_TARGETS="${INST_TARGETS} install-ps"
 AC_SUBST([psdir])
 
 AC_SUBST([INST_TARGETS])
-
-for D in ref-manual sos user-manual; do
-    test -L "${D}/gfdl.texinfo" \
-      || (cd "${D}"; ${LN_S} ../imail/gfdl.texinfo .)
-done
 
 AC_CONFIG_FILES([
 	Makefile
