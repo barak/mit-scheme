@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.40 1997/06/12 21:10:28 cph Exp $
+$Id: arith.scm,v 1.41 1997/07/07 20:24:45 adams Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -118,6 +118,7 @@ MIT in each case. |#
 (define (initialize-package!)
   (initialize-microcode-dependencies!)
   (add-event-receiver! event:after-restore initialize-microcode-dependencies!)
+  (initialize-*maximum-fixnum-radix-powers*!)
   (let ((fixed-objects-vector (get-fixed-objects-vector)))
     (let ((set-trampoline!
 	   (lambda (slot operator)
@@ -289,7 +290,7 @@ MIT in each case. |#
 		  (int:negative? d)))
 	  q
 	  (int:1+ q)))))
-
+
 (define (int:round n d)
   (let ((positive-case
 	 (lambda (n d)
@@ -308,7 +309,7 @@ MIT in each case. |#
 	(if (int:negative? d)
 	    (int:negate (positive-case n (int:negate d)))
 	    (positive-case n d)))))
-
+
 (define (int:expt b e)
   (cond ((int:positive? e)
 	 (cond ((or (int:= 1 e)
@@ -332,167 +333,131 @@ MIT in each case. |#
 	((int:zero? e) 1)
 	(else (error:bad-range-argument e 'EXPT))))
 
-#|
-;; Disabled.  The version below runs much better for large bignums,
-;; and no worse for smaller numbers.
+;; A vector indexed by radix of pairs of the form (N . (expt RADIX N))
+;; where N is the maximum value for which the cdr is a fixnum.  Used
+;; to quickly determine how many digits to process at a time to
+;; optimize the use of fixnum arithmetic.
 
-(define (int:->string n radix)
-  (if (int:integer? n)
-      (list->string
-       (let ((0<n
-	      (lambda (n)
-		(let ((char
-		       (lambda (digit)
-			 (digit->char digit radix))))
-		  (if (int:bignum? n)
-		      (map char (listify-bignum n radix))
-		      (let loop ((n n) (tail '()))
-			(if (int:zero? n)
-			    tail
-			    (let ((qr (integer-divide n radix)))
-			      (loop (integer-divide-quotient qr)
-				    (cons (char (integer-divide-remainder qr))
-					  tail))))))))))
-	 (cond ((int:positive? n) (0<n n))
-	       ((int:negative? n) (cons #\- (0<n (int:negate n))))
-	       (else (list #\0)))))
-      (error:wrong-type-argument n false 'NUMBER->STRING)))
-|#
+(define *maximum-fixnum-radix-powers*)
+
+(define (initialize-*maximum-fixnum-radix-powers*!)
+  (set! *maximum-fixnum-radix-powers*
+	(make-initialized-vector 37
+	  (lambda (radix)
+	    (and (fix:> radix 2)
+		 (let loop ((digits 0) (factor 1))
+		   (let ((nf (int:* factor radix)))
+		     (if (fix:fixnum? nf)
+			 (loop (int:+ digits 1) nf)
+			 (cons digits factor)))))))))
 
-#|
-(define (listify-bignum value radix)
-  (define (separate leftmost? value stack tail)
-    (if (null? stack)
-	(cons value tail)
-	(let ((split (integer-divide value (car stack)))
-	      (rest (cdr stack)))
-	  (let ((next-left (integer-divide-quotient split)))
-	    (if (and leftmost? (zero? next-left))
-		(separate true
-			  (integer-divide-remainder split)
-			  rest
-			  tail)
-		(separate leftmost?
-			  next-left
-			  rest
-			  (separate false
-				    (integer-divide-remainder split)
-				    rest
-				    tail)))))))
-
-  (define (make-power-stack value quantum stack)
-    (if (> quantum value)
-	stack
-	(make-power-stack value
-			  (* quantum quantum)
-			  (cons quantum stack))))
-  (separate true
-	    value
-	    (make-power-stack value radix '())
-	    '()))
-
-|#
-
-;; This version of int:->string handles bignums in the same way as the
-;; preceding version of listify-bignum, but generates a string
-;; directly.  The decision on which algorithm to use is dependent on
-;; the quality of the current compiler.  Changes in compiler
-;; performance would move the barriers around.
+;; INT:->STRING chooses between 3 strategies for generating the digits:
+;;
+;;  PRINT-FIXNUM exploits fast fixnum arithmetic
+;;  PRINT-MEDIUM chops off groups of digits that can be printed by PRINT-FIXNUM
+;;  PRINT-LARGE works by dividing the problem into approximately equal sizes,
+;;   which is asympotically faster but requires more operations for moderate
+;;   values.
 
 (define (int:->string number radix)
-  (define (digits->string value digits)
-    (list->string
-     (if (eq? number value)
-	 digits
-	 (cons #\- digits))))
+  ;; Pre: (and (exact-integer? NUMBER) (fixnum? radix) (<= 2 radix 36))
 
-  (define (print-small value)
-    (digits->string
-     value
-     (let loop ((n value) (tail '()))
-       (if (fix:fixnum? n)
-	   (let fixnum-loop ((n n) (tail tail))
-	     (cond ((not (fix:zero? n))
-		    (fixnum-loop (fix:quotient n radix)
-				 (cons (digit->char (fix:remainder n radix)
-						    radix)
-				       tail)))
-		   ((null? tail)
-		    '(#\0))
-		   (else
-		    tail)))
-	   (let ((qr (integer-divide n radix)))
-	     (loop (integer-divide-quotient qr)
-		   (cons (digit->char (integer-divide-remainder qr)
+  (define-integrable (digit->char digit radix)
+    radix ; ignored
+    (string-ref "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" digit))
+
+  (define (print-fixnum n min-digits tail)
+    (let loop ((n n) (n-digits 0) (tail tail))
+      (cond ((not (fix:zero? n))
+	     (loop (fix:quotient n radix)
+		   (fix:+ n-digits 1)
+		   (cons (digit->char (fix:remainder n radix)
 				      radix)
-			 tail)))))))
+			 tail)))
+	    ((fix:< n-digits min-digits)
+	     (loop n (fix:+ n-digits 1) (cons #\0 tail)))
+	    (else
+	     tail))))
+
+  (define (print-medium value split-factor split-digits)
+    (let loop ((n value) (tail '()))
+      (if (fix:fixnum? n)
+	  (print-fixnum n 0 tail)
+	  (let ((qr (integer-divide n split-factor)))
+	    (loop (integer-divide-quotient qr)
+		  (print-fixnum (integer-divide-remainder qr)
+				split-digits
+				tail))))))
+
+  (define (fast-test-to-avoid-ultimate-multiply quantum value)
+    ;; Uses the number of bignum `digits' or words to test if
+    ;; QUANTUM^2>VALUE (the `-1' skips the bignum internal header).
+    ;; Since an N digit multiply takes time O(N^2), the benefit of
+    ;; avoiding the last squaring is detectable for VALUE>10^100,
+    ;; increases with VALUE, but is limited to about 40-50% overall
+    ;; improvement by the division operations.
+    (define-integrable (bignum-digits n) (fix:+ -1 (system-vector-length n)))
+    (and (not (fixnum? quantum))	; i.e. bignum
+	 (fix:> (fix:- (fix:* (bignum-digits quantum) 2) 1)
+		(bignum-digits value))))
+
+  (define (make-power-stack value quantum stack n-digits)
+    (cond ((> quantum value)
+	   (use-power-stack value stack n-digits))
+	  ((fast-test-to-avoid-ultimate-multiply quantum value)
+	   (use-power-stack value (cons quantum stack) (* 2 n-digits)))
+	  (else
+	   (make-power-stack value
+			     (* quantum quantum)
+			     (cons quantum stack)
+			     (* 2 n-digits)))))
 
-  (define (print-medium value)
-    (digits->string value
-		    (map (lambda (digit)
-			   (digit->char digit radix))
-			 ((ucode-primitive listify-bignum 2) value radix))))
+  (define (use-power-stack value stack digits)
+    ;; Test at [1] could be (null? stack), but (fixnum? value) is true
+    ;; in this case by construction and accelerates printing of numbers
+    ;; with a large number of zero digits.
+    (define (separate leftmost? value stack n-digits tail)
+      (if (fix:fixnum? value)		; [1]
+	  (print-fixnum value (if leftmost? 0 n-digits) tail)
+	  (let ((split (integer-divide value (car stack)))
+		(rest (cdr stack)))
+	    (let ((next-left (integer-divide-quotient split))
+		  (n-digits/2 (fix:quotient n-digits 2)))
+	      (if (and leftmost? (zero? next-left))
+		  (separate true
+			    (integer-divide-remainder split)
+			    rest
+			    n-digits/2
+			    tail)
+		  (separate leftmost?
+			    next-left
+			    rest
+			    n-digits/2
+			    (separate false
+				      (integer-divide-remainder split)
+				      rest
+				      n-digits/2
+				      tail)))))))
 
-  (define (make-power-stack value quantum stack)
-    (if (> quantum value)
-	stack
-	(make-power-stack value
-			  (* quantum quantum)
-			  (cons quantum stack))))
+    (separate true value stack digits '()))
 
-  (define (print-large value)
-    (let ((stack (make-power-stack value radix '())))
-      (let ((string (make-string (fix:1+ (int:expt 2 (length stack)))
-				 #\0))
-	    (index 0))
-	(define-integrable (push-char! char)
-	  (string-set! string index char)
-	  (set! index (1+ index)))
-
-	(define-integrable (push! value)
-	  (push-char! (digit->char value radix)))
-
-	(define (bash! leftmost? value stack)
-	  (if (null? stack)
-	      (push! value)
-	      (let ((split (integer-divide value (car stack)))
-		    (rest (cdr stack)))
-		(let ((next-left (integer-divide-quotient split)))
-		  (if (and leftmost? (zero? next-left))
-		      (bash! true
-			     (integer-divide-remainder split)
-			     rest)
-		      (begin
-			(bash! leftmost?
-			       next-left
-			       rest)
-			(bash! false
-			       (integer-divide-remainder split)
-			       rest)))))))
-
-	(if (not (eq? value number))
-	    (push-char! #\-))
-	(bash! true value stack)
-	;; set-string-maximum-length! also sets the length.
-	;; (set-string-length! string index)
-	((ucode-primitive set-string-maximum-length! 2) string index)
-	string)))
-
-  (cond ((fix:fixnum? number)
-	 (print-small (if (fix:negative? number)
-			  (- 0 number)	; can't be fix:- because of "-0"
-			  number)))
-	((not (int:integer? number))
+  (define (n>0 value)
+    (if (fix:fixnum? value)
+	(print-fixnum value 1 '())
+	(let* ((split-info (vector-ref *maximum-fixnum-radix-powers* radix))
+	       (split-digits (car split-info))
+	       (split-factor (cdr split-info))
+	       (sl (system-vector-length value)))
+	  (if (< sl 10)
+	      (print-medium value split-factor split-digits)
+	      (make-power-stack value split-factor '() split-digits)))))
+  
+  (cond ((not (int:integer? number))
 	 (error:wrong-type-argument number false 'NUMBER->STRING))
+	((int:negative? number)
+	 (list->string (cons #\- (n>0 (int:negate number)))))
 	(else
-	 (let ((sl (system-vector-length number))
-	       (value (if (int:negative? number)
-			  (int:negate number)
-			  number)))
-	   ((cond ((< sl 3) print-small)
-		  ((< sl 6) print-medium)
-		  (else print-large))
-	    value)))))
+	 (list->string (n>0 number)))))
 
 (declare (integrate-operator rat:rational?))
 (define (rat:rational? object)
