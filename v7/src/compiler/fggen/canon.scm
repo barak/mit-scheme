@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.8 1990/04/03 04:50:50 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.9 1991/05/06 22:36:48 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -422,10 +422,17 @@ ARBITRARY:	The expression may be executed more than once.  It
 			 (if (eq? context 'TOP-LEVEL)
 			     'ONCE-ONLY
 			     context))
-   (combine-list
-    (map (lambda (op)
-	   (canonicalize/expression op bound context))
-	 operands))))
+   (let ((process-arguments
+	  (lambda ()
+	    (combine-list
+	     (map (lambda (op)
+		    (canonicalize/expression op bound context))
+		  operands)))))
+     (if (and compiler:compile-by-procedures?
+	      (eq? context 'TOP-LEVEL))
+	 (fluid-let ((compiler:compile-by-procedures? false))
+	   (process-arguments))
+	 (process-arguments)))))
 
 ;;;; Protect from further canonicalization
 
