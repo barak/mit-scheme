@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.26 1990/07/26 04:22:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.27 1990/08/05 05:42:43 jinx Exp $
 $MC68020-Header: rules3.scm,v 4.24 90/05/03 15:17:33 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -469,7 +469,7 @@ MIT in each case. |#
     (else
      (cons-multiclosure target nentries size (vector->list entries)))))
 
-(define (cons-closure target entry min max size)
+(define (%cons-closure target total-size size core)
   (let* ((flush-reg (require-registers! regnum:first-arg
 					#| regnum:addil-result |#
 				        regnum:ble-return))
@@ -477,47 +477,47 @@ MIT in each case. |#
     (LAP ,@flush-reg
 	 ;; Vector header
 	 ,@(load-non-pointer (ucode-type manifest-closure)
-			     (+ size closure-entry-size)
+			     total-size
 			     regnum:first-arg)
 	 (STWM () ,regnum:first-arg (OFFSET 4 0 ,regnum:free-pointer))
-	 ;; Entry point is result.
-	 ,@(load-offset 4 regnum:free-pointer target)
-	 ,@(cons-closure-entry entry min max 8)
+	 ;; Make entries and store result
+	 ,@(core target)
 	 ;; Allocate space for closed-over variables
 	 ,@(load-offset (* 4 size)
 			regnum:free-pointer
 			regnum:free-pointer))))
 
-(define (cons-multiclosure target nentries size entries)
-  (let* ((flush-reg (require-registers! regnum:first-arg
-					#| regnum:addil-result |#
-					regnum:ble-return))
-	 (target (standard-target! target)))
-    (define (generate-entries offset entries)
-      (if (null? entries)
-	  (LAP)
-	  (let ((entry (car entries)))
-	    (LAP ,@(cons-closure-entry (car entry) (cadr entry) (caddr entry)
-				       offset)
-		 ,@(generate-entries (+ offset (* 4 closure-entry-size))
-				     (cdr entries))))))
+(define (cons-closure target entry min max size)
+  (%cons-closure
+   target
+   (+ size closure-entry-size)
+   size
+   (lambda (target)
+     (LAP ;; Entry point is result.
+	 ,@(load-offset 4 regnum:free-pointer target)
+	 ,@(cons-closure-entry entry min max 8)))))
 
-    (LAP ,@flush-reg
-	 ;; Vector header
-	 ,@(load-non-pointer (ucode-type manifest-closure)
-			     (+ 1 (* closure-entry-size nentries) size)
-			     regnum:first-arg)
-	 (STWM () ,regnum:first-arg (offset 4 0 ,regnum:free-pointer))
-	 ;; Number of closure entries
+(define (cons-multiclosure target nentries size entries)
+  (define (generate-entries offset entries)
+    (if (null? entries)
+	(LAP)
+	(let ((entry (car entries)))
+	  (LAP ,@(cons-closure-entry (car entry) (cadr entry) (caddr entry)
+				     offset)
+	       ,@(generate-entries (+ offset (* 4 closure-entry-size))
+				   (cdr entries))))))
+
+  (%cons-closure
+   target
+   (+ 1 (* closure-entry-size nentries) size)
+   size
+   (lambda (target)
+     (LAP ;; Number of closure entries
 	 ,@(load-entry-format nentries 0 target)
 	 (STWM () ,target (offset 4 0 ,regnum:free-pointer))
 	 ;; First entry point is result.
-	 ,@(load-offset 4 21 target)
-	 ,@(generate-entries 12 entries)
-	 ;; Allocate space for closed-over variables
-	 ,@(load-offset (* 4 size)
-			regnum:free-pointer
-			regnum:free-pointer))))
+	 ,@(load-offset 4 regnum:free-pointer target)
+	 ,@(generate-entries 12 entries)))))
 
 ;; Magic for compiled entries.
 
@@ -549,6 +549,9 @@ MIT in each case. |#
     (LAP ,@(load-entry-format (make-procedure-code-word min max)
 			      offset
 			      regnum:first-arg)
+	 #|
+	 ;; This does not work!!! The LDO may overflow.
+	 ;; A new pseudo-op has been introduced for this purpose.
 	 (BLE ()
 	      (OFFSET ,hook:compiler-store-closure-entry
 		      4
@@ -557,7 +560,14 @@ MIT in each case. |#
 	      (OFFSET (- ,entry-label (+ *PC* 4))
 		      0
 		      ,regnum:ble-return)
-	      ,regnum:addil-result))))
+	      ,regnum:addil-result)
+	 |#
+	 (PCR-HOOK ()
+		   ,regnum:addil-result
+		   (OFFSET ,hook:compiler-store-closure-entry
+			   4
+			   ,regnum:scheme-to-interface-ble)
+		   (@PCR ,entry-label)))))
 
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP generator.
