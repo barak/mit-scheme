@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 1.3 1987/08/24 22:22:04 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 1.4 1987/10/14 22:03:14 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -331,6 +331,7 @@ functionality is not implemented.
 		       (slot/name slot))))
 	      `((DECLARE (INTEGRATE-OPERATOR ,accessor-name))
 		(DEFINE (,accessor-name STRUCTURE)
+		  (DECLARE (INTEGRATE STRUCTURE))
 		  ,(case (structure/scheme-type structure)
 		     ((VECTOR)
 		      `((ACCESS VECTOR-REF ,system-global-environment)
@@ -343,7 +344,7 @@ functionality is not implemented.
 		     (else
 		      (error "Unknown scheme type" structure)))))))
 	  (structure/slots structure)))
-
+
 (define (settor-definitions structure)
   (mapcan (lambda (slot)
 	    (if (slot/read-only? slot)
@@ -359,6 +360,7 @@ functionality is not implemented.
 					  '!))))
 		  `((DECLARE (INTEGRATE-OPERATOR ,settor-name))
 		    (DEFINE (,settor-name STRUCTURE VALUE)
+		      (DECLARE (INTEGRATE STRUCTURE VALUE))
 		      ,(case (structure/scheme-type structure)
 			 ((VECTOR)
 			  `((ACCESS VECTOR-SET! ,system-global-environment)
