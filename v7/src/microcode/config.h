@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.73 1992/07/30 15:08:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.74 1992/08/05 02:49:29 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -467,6 +467,12 @@ typedef unsigned long SCHEME_OBJECT;
 #define HAS_FLOOR
 /* #define HAS_FREXP */
 #define HAS_MODF
+
+#ifdef HAS_COMPILER_SUPPORT
+extern void * alpha_heap_malloc (long);
+#  define HEAP_MALLOC		alpha_heap_malloc
+#endif
+
 #endif /* __alpha */
 
 /* These (pdp10, nu) haven't worked in a while.
