@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.3 1988/08/05 20:46:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.4 1989/01/06 22:24:05 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -115,11 +115,25 @@ MIT in each case. |#
      (read-eval-print environment (cmdl-message/standard message) prompt))))
 
 (define (debug/eval expression environment)
-  (hook/repl-environment (nearest-cmdl) environment)
-  (leaving-command-loop
-   (lambda ()
-     (eval expression environment))))
-
+  (if (interpreter-environment? environment)
+      (leaving-command-loop (lambda () (eval expression environment)))
+      (begin
+	(if (not (symbol? expression))
+	    (error "Can only lookup symbols in compiled code environments"
+		   expression))
+	(let loop ((environment environment))
+	  (if (environment-bound? environment expression)
+	      (let ((value (environment-lookup environment expression)))
+		(if (unassigned-reference-trap? value)
+		    (error "Unassigned variable" expression))
+		value)
+	      (begin
+		(if (not (environment-has-parent? environment))
+		    (error "Unbound variable" expression))
+		(let ((parent (environment-parent environment)))
+		  (if (interpreter-environment? parent)
+		      (lexical-reference parent expression)
+		      (loop parent)))))))))
 (define (debug/where environment)
   (leaving-command-loop
    (lambda ()
