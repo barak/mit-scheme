@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.12 1992/10/19 19:11:17 jinx Exp $
+$Id: macros.scm,v 4.13 1993/07/01 03:09:43 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -236,9 +236,14 @@ MIT in each case. |#
 			   (name (symbol-append type '- slot)))
 		      `((DEFINE-INTEGRABLE (,(symbol-append 'RTL: name) ,type)
 			  (GENERAL-CAR-CDR ,type ,ref-index))
-			(DEFINE-INTEGRABLE (,(symbol-append 'RTL:SET- name '!)
-					    ,type ,slot)
-			  (SET-CAR! (GENERAL-CAR-CDR ,type ,set-index) ,slot))
+			,(let ((slot (if (eq? slot type)
+					 (symbol-append slot '-VALUE)
+					 slot)))
+			   `(DEFINE-INTEGRABLE
+			      (,(symbol-append 'RTL:SET- name '!)
+			       ,type ,slot)
+			      (SET-CAR! (GENERAL-CAR-CDR ,type ,set-index)
+					,slot)))
 			,@(loop (cdr components)
 				(* ref-index 2)
 				(* set-index 2))))))))))
