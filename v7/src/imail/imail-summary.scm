@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.45 2001/09/20 17:45:26 cph Exp $
+;;; $Id: imail-summary.scm,v 1.46 2001/09/20 18:13:01 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -308,6 +308,12 @@ SUBJECT is a string of regexps separated by commas."
 	(mark-temporary! mark)))))
 
 (define (write-imail-summary-line! message index-digits mark)
+  (let ((m (get-property message 'IMAIL-SUMMARY-MARK #f)))
+    (if m
+	(mark-temporary! m)))
+  (store-property! message
+		   'IMAIL-SUMMARY-MARK
+		   (mark-right-inserting-copy mark))
   (insert-char #\space mark)
   (insert-string (message-flag-markers message) mark)
   (insert-char #\space mark)
@@ -530,29 +536,35 @@ SUBJECT is a string of regexps separated by commas."
 	(round->exact (* (window-y-size window) height)))))
 
 (define (imail-summary-find-message buffer message)
-  (let ((index (message-index message)))
-    (if index
-	(let ((m (imail-summary-first-line buffer)))
-	  (let ((index* (imail-summary-selected-message-index m)))
-	     (cond ((not index*)
-		    (values #f #f))
-		   ((< index* index)
-		    (let loop ((last m))
-		      (let ((m (line-start last 1 #f)))
-			(if m
-			    (let ((index*
-				   (imail-summary-selected-message-index m)))
-			       (cond ((or (not index*)
-					  (> index* index))
-				      (values last #t))
-				     ((= index index*)
-				      (values m #f))
-				     (else
-				      (loop m))))
-			    (values last #t)))))
-		   (else
-		    (values m (> index* index))))))
-	(values #f #f))))
+  (let ((mark (get-property message 'IMAIL-SUMMARY-MARK #f)))
+    (if (and mark
+	     (eqv? (imail-summary-selected-message-index mark)
+		   (message-index message)))
+	(values mark #f)
+	(let ((index (message-index message)))
+	  (if index
+	      (let ((m (imail-summary-first-line buffer)))
+		(let ((index* (imail-summary-selected-message-index m)))
+		   (cond ((not index*)
+			  (values #f #f))
+			 ((< index* index)
+			  (let loop ((last m))
+			    (let ((m (line-start last 1 #f)))
+			      (if m
+				  (let ((index*
+					 (imail-summary-selected-message-index
+					  m)))
+				     (cond ((or (not index*)
+						(> index* index))
+					    (values last #t))
+					   ((= index index*)
+					    (values m #f))
+					   (else
+					    (loop m))))
+				  (values last #t)))))
+			 (else
+			  (values m (> index* index))))))
+	      (values #f #f))))))
 
 (define (imail-summary-first-line buffer)
   (line-start (buffer-start buffer) 2 'LIMIT))
