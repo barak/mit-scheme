@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.36 2003/12/29 05:08:15 uid67408 Exp $
+$Id: xml.pkg,v 1.37 2004/02/23 20:56:05 cph Exp $
 
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -272,11 +272,9 @@ USA.
   (export ()
 	  alphabet:xml-char
 	  char-set:xml-whitespace
-	  parse-xml-document
 	  read-xml
 	  read-xml-file
-	  string->xml
-	  substring->xml)
+	  string->xml)
   (export (runtime xml)
 	  alphabet:name-initial
 	  alphabet:name-subsequent))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.55 2004/02/18 19:52:06 cph Exp $
+$Id: xml-parser.scm,v 1.56 2004/02/23 20:56:21 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -79,22 +79,26 @@ USA.
       (read-xml port (if (default-object? pi-handlers) '() pi-handlers)))))
 
 (define (read-xml port #!optional pi-handlers)
-  (parse-xml-document (input-port->parser-buffer port)
-		      (if (default-object? pi-handlers) '() pi-handlers)))
+  (let ((operation (port/operation port 'SET-CODING)))
+    (if operation
+	(operation port 'UTF-8)))
+  (let ((operation (port/operation port 'SET-LINE-ENDING)))
+    (if operation
+	(operation port 'XML-1.0)))
+  (parse-xml (input-port->parser-buffer port)
+	     (if (default-object? pi-handlers) '() pi-handlers)))
 
-(define (string->xml string #!optional pi-handlers)
-  (parse-xml-document (string->parser-buffer string)
-		      (if (default-object? pi-handlers) '() pi-handlers)))
-
-(define (substring->xml string start end #!optional pi-handlers)
-  (parse-xml-document (substring->parser-buffer string start end)
-		      (if (default-object? pi-handlers) '() pi-handlers)))
+(define (string->xml string #!optional start end pi-handlers)
+  (parse-xml (string->parser-buffer string
+				    (if (default-object? start) #f start)
+				    (if (default-object? end) #f end))
+	     (if (default-object? pi-handlers) '() pi-handlers)))
 
 ;;;; Top level
 
-(define (parse-xml-document buffer #!optional pi-handlers) ;[1,22]
+(define (parse-xml buffer #!optional pi-handlers) ;[1,22]
   (if (not (parser-buffer? buffer))
-      (error:wrong-type-argument buffer "parser buffer" 'PARSE-XML-DOCUMENT))
+      (error:wrong-type-argument buffer "parser buffer" 'PARSE-XML))
   (let ((pi-handlers (if (default-object? pi-handlers) '() pi-handlers)))
     (if (not (list-of-type? pi-handlers
 	       (lambda (entry)
@@ -104,8 +108,7 @@ USA.
 		      (procedure? (cadr entry))
 		      (procedure-arity-valid? (cadr entry) 1)
 		      (null? (cddr entry))))))
-	(error:wrong-type-argument pi-handlers "handler alist"
-				   'PARSE-XML-DOCUMENT))
+	(error:wrong-type-argument pi-handlers "handler alist" 'PARSE-XML))
     (let ((one-value (lambda (v) (and v (vector-ref v 0)))))
       (fluid-let ((*general-entities* (predefined-entities))
 		  (*standalone?*)
@@ -365,8 +368,6 @@ USA.
 	    (must-match?
 	     (let ((p (get-parser-buffer-pointer buffer))
 		   (c (peek-parser-buffer-char buffer)))
-	       ;; Not quite right -- we should be getting the next
-	       ;; UTF-8 character, but this gets the next byte.
 	       (if c
 		   (perror p "Illegal character" c)
 		   (perror p "Unexpected EOF"))))
