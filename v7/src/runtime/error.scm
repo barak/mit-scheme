@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.20 1991/08/27 00:52:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.21 1991/09/02 03:55:24 sybok Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1137,3 +1137,41 @@ MIT in each case. |#
 (define-integrable (guarantee-restarts object operator)
   (if (not (and (list? object) (for-all? object restart?)))
       (error:wrong-type-argument object "list of restarts" operator)))
+
+;; WITHOUT-STEPPING restores the stepper hooks to the state
+;; encountered on each entry to the thunk. It might be better to
+;; restore the hooks to the initial state. I flipped a coin.
+
+(define *old-hook-storage-environment*)
+
+(let-syntax ((ufixed-objects-slot
+	      (macro (name)
+		(fixed-objects-vector-slot name))))
+
+  (define (without-stepping thunk)
+    (define (get-stepper-hooks)
+      (vector-ref (get-fixed-objects-vector)
+		  (ufixed-objects-slot stepper-state)))
+    (let ((old-stepper-hooks)
+	  (null-hooks (hunk3-cons #f #f #f)))
+      (set! *old-hook-storage-environment* (the-environment))
+      (dynamic-wind
+       (lambda ()
+	 (set! old-stepper-hooks (get-stepper-hooks))
+	 (if old-stepper-hooks
+	     ((ucode-primitive primitive-return-step 2)
+	      unspecific null-hooks)))
+       thunk
+       (lambda ()
+	 ((ucode-primitive primitive-return-step 2)
+	  unspecific
+	  (or old-stepper-hooks
+	      null-hooks)))))))
+
+;; Without-stepping doesn't work right with the stepper unless stepping-off!
+;; is included in the thunk passed to it.
+
+(define (stepping-off!)
+  (set! (access old-stepper-hooks *old-hook-storage-environment*)
+	(access null-hooks *old-hook-storage-environment*)))
+

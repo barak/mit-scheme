@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.119 1991/08/29 21:47:26 sybok Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.120 1991/09/02 03:57:21 sybok Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -619,10 +619,12 @@ MIT in each case. |#
 	  standard-error-hook
 	  standard-warning-handler
 	  standard-warning-hook
+	  stepping-off!
 	  store-value
 	  use-value
 	  warn
 	  with-simple-restart
+	  without-stepping
 	  write-condition-report
 	  write-restart-report)
   (export (runtime microcode-errors)
