@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.138 1989/08/11 10:54:26 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.139 1989/08/12 08:32:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -74,53 +74,9 @@
 			   (revert-buffer buffer true true))))
 		buffer)
 	      (let ((buffer (new-buffer (pathname->buffer-name pathname))))
-		(after-find-file
-		 buffer
-		 (catch-file-errors (lambda () true)
-		   (lambda ()
-		     (not (read-buffer buffer pathname)))))
+		(visit-file buffer pathname)
 		buffer))))))
 
-(define (after-find-file buffer error?)
-  (let ((pathname (or (buffer-truename buffer) (buffer-pathname buffer))))
-    (if (or (not pathname) (file-writable? pathname))
-	(set-buffer-writeable! buffer)
-	(set-buffer-read-only! buffer)))
-  (let ((msg
-	 (cond ((not (buffer-read-only? buffer))
-		(and error? "(New file)"))
-	       ((not error?)
-		"File is write protected")
-	       ((file-attributes (buffer-pathname buffer))
-		"File exists, but is read-protected.")
-	       ((file-attributes
-		 (pathname-directory-path (buffer-pathname buffer)))
-		"File not found and directory write-protected")
-	       (else
-		"File not found and directory doesn't exist"))))
-    (if msg
-	(message msg)))
-  (setup-buffer-auto-save! buffer)
-  (initialize-buffer! buffer))
-
-(define (pathname->buffer pathname)
-  (or (list-search-positive (buffer-list)
-	(lambda (buffer)
-	  (let ((pathname* (buffer-pathname buffer)))
-	    (and pathname*
-		 (pathname=? pathname pathname*)))))
-      (let ((truename (pathname->input-truename pathname)))
-	(and truename
-	     (list-search-positive (buffer-list)
-	       (lambda (buffer)
-		 (let ((pathname* (buffer-pathname buffer)))
-		   (and pathname*
-			(or (pathname=? pathname pathname*)
-			    (pathname=? truename pathname*)
-			    (let ((truename* (buffer-truename buffer)))
-			      (and truename*
-				   (pathname=? truename truename*))))))))))))
-
 (define-command find-file
   "Visit a file in its own buffer.
 If the file is already in some buffer, select that buffer.
@@ -151,6 +107,38 @@ Like \\[kill-buffer] followed by \\[find-file]."
 	    (let ((buffer* (new-buffer "*dummy*")))
 	      (do-it)
 	      (kill-buffer buffer*)))))))
+
+(define-command revert-buffer
+  "Replace the buffer text with the text of the visited file on disk.
+This undoes all changes since the file was visited or saved.
+If latest auto-save file is more recent than the visited file,
+asks user whether to use that instead.
+Argument means don't offer to use auto-save file."
+  "P"
+  (lambda (argument)
+    (revert-buffer (current-buffer) argument false)))
+
+(define (revert-buffer buffer dont-use-auto-save? dont-confirm?)
+  (let ((method (buffer-get buffer 'REVERT-BUFFER-METHOD)))
+    (if method
+	(method buffer dont-use-auto-save? dont-confirm?)
+	(let ((pathname (buffer-pathname buffer)))
+	  (cond ((not pathname)
+		 (editor-error
+		  "Buffer does not seem to be associated with any file"))
+		((not (file-exists? pathname))
+		 (editor-error "File "
+			       (pathname->string pathname)
+			       " no longer exists!"))
+		((or dont-confirm?
+		     (prompt-for-yes-or-no?
+		      (string-append "Revert buffer from file "
+				     (pathname->string pathname))))
+		 (let ((where (mark-index (buffer-point buffer))))
+		   (visit-file buffer pathname)
+		   (set-buffer-point!
+		    buffer
+		    (mark+ (buffer-start buffer) where 'LIMIT)))))))))
 
 (define-command toggle-read-only
   "Change whether this buffer is visiting its file read-only."
@@ -161,6 +149,60 @@ Like \\[kill-buffer] followed by \\[find-file]."
 	   set-buffer-read-only!
 	   set-buffer-writeable!)
        buffer))))
+
+(define (visit-file buffer pathname)
+  (let ((error?
+	 (catch-file-errors (lambda () true)
+	   (lambda ()
+	     (not (read-buffer buffer pathname))))))
+    (let ((pathname (or (buffer-truename buffer) pathname)))
+      (if (file-writable? pathname)
+	  (set-buffer-writeable! buffer)
+	  (set-buffer-read-only! buffer))
+      (let ((msg
+	     (cond ((not (buffer-read-only? buffer))
+		    (and error? "(New file)"))
+		   ((not error?)
+		    "File is write protected")
+		   ((file-attributes pathname)
+		    "File exists, but is read-protected.")
+		   ((file-attributes (pathname-directory-path pathname))
+		    "File not found and directory write-protected")
+		   (else
+		    "File not found and directory doesn't exist"))))
+	(if msg
+	    (message msg)))))
+  (setup-buffer-auto-save! buffer)
+  (initialize-buffer! buffer)
+  (let ((filename (os/find-file-initialization-filename pathname)))
+    (if filename
+	(let ((database (load-edwin-file filename '(EDWIN) false)))
+	  (if (and (procedure? database)
+		   (procedure-arity-valid? database 0))
+	      (add-buffer-initialization! buffer database)
+	      (message
+	       "Ill-formed find-file initialization file: "
+	       (os/pathname->display-string (->pathname filename))))))))
+
+(define (standard-scheme-find-file-initialization database)
+  ;; DATABASE -must- be a vector whose elements are all three element
+  ;; lists.  The car of each element must be a string, and the
+  ;; elements must be sorted on those strings.
+  (lambda ()
+    (let ((entry
+	   (let ((pathname (buffer-pathname (current-buffer))))
+	     (and pathname
+		  (equal? "scm" (pathname-type pathname))
+		  (let ((name (pathname-name pathname)))
+		    (and name
+			 (vector-binary-search database
+					       string<?
+					       car
+					       name)))))))
+      (if entry
+	  (begin
+	    (local-set-variable! scheme-environment (cadr entry))
+	    (local-set-variable! scheme-syntax-table (caddr entry)))))))
 
 (define (save-buffer buffer)
   (if (buffer-modified? buffer)
@@ -262,22 +304,6 @@ if you wish to make buffer not be visiting any file."
        (buffer-modified! buffer))
       (disable-buffer-auto-save! buffer)))
 
-(define (pathname->buffer-name pathname)
-  (let ((name (pathname-name pathname)))
-    (if name
-	(pathname->string
-	 (make-pathname false false false
-			name
-			(pathname-type pathname)
-			false))
-	(let ((name
-	       (let ((directory (pathname-directory pathname)))
-		 (and (pair? directory)
-		      (car (last-pair directory))))))
-	  (if (string? name)
-	      name
-	      "*random*")))))
-
 (define-command write-file
   "Store buffer in specified file.
 This file becomes the one being visited."
@@ -301,39 +327,6 @@ Leaves point at the beginning, mark at the end."
   "FInsert file"
   (lambda (filename)
     (set-current-region! (insert-file (current-point) filename))))
-
-(define-command revert-buffer
-  "Replace the buffer text with the text of the visited file on disk.
-This undoes all changes since the file was visited or saved.
-If latest auto-save file is more recent than the visited file,
-asks user whether to use that instead.
-Argument means don't offer to use auto-save file."
-  "P"
-  (lambda (argument)
-    (revert-buffer (current-buffer) argument false)))
-
-(define (revert-buffer buffer dont-use-auto-save? dont-confirm?)
-  (let ((method (buffer-get buffer 'REVERT-BUFFER-METHOD)))
-    (if method
-	(method buffer dont-use-auto-save? dont-confirm?)
-	(let ((pathname (buffer-pathname buffer)))
-	  (cond ((not pathname)
-		 (editor-error
-		  "Buffer does not seem to be associated with any file"))
-		((not (file-exists? pathname))
-		 (editor-error "File "
-			       (pathname->string pathname)
-			       " no longer exists!"))
-		((or dont-confirm?
-		     (prompt-for-yes-or-no?
-		      (string-append "Revert buffer from file "
-				     (pathname->string pathname))))
-		 (let ((where (mark-index (buffer-point buffer))))
-		   (read-buffer buffer pathname)
-		   (set-buffer-point!
-		    buffer
-		    (mark+ (buffer-start buffer) where 'LIMIT)))
-		 (after-find-file buffer false)))))))
 
 (define-command copy-file
   "Copy a file; the old and new names are read in the typein window.
@@ -386,6 +379,8 @@ If a file with the new name already exists, confirmation is requested first."
 
 ;;;; Printer Support
 
+#|
+
 (define-command print-file
   "Print a file on the local printer."
   "fPrint File"
@@ -410,8 +405,6 @@ If a file with the new name already exists, confirmation is requested first."
   (lambda (region)
     (print-region region)))
 
-#|
-
 (define (print-region region)
   (let ((temp (temporary-buffer "*Printout*")))
     (region-insert! (buffer-point temp) region)
@@ -433,10 +426,13 @@ If a file with the new name already exists, confirmation is requested first."
 ;;;; Prompting
 
 (define (prompt-for-filename prompt default require-match?)
-  (let ((default (pathname-directory-path default)))
+  (let ((default
+	  (if default
+	      (pathname-directory-path default)
+	      (working-directory-pathname))))
     (prompt-for-completed-string
      prompt
-     (pathname-directory-string default)
+     (os/pathname->display-string default)
      'INSERTED-DEFAULT
      (lambda (string if-unique if-not-unique if-not-found)
        (define (loop directory filenames)
@@ -553,3 +549,33 @@ If a file with the new name already exists, confirmation is requested first."
 
 (define-integrable (prompt-string->pathname string)
   (string->pathname (os/trim-pathname-string string)))
+
+(define (pathname->buffer-name pathname)
+  (let ((name (pathname-name pathname)))
+    (if name
+	(pathname->string
+	 (make-pathname false false false
+			name (pathname-type pathname) false))
+	(let ((name
+	       (let ((directory (pathname-directory pathname)))
+		 (and (pair? directory)
+		      (car (last-pair directory))))))
+	  (if (string? name) name "*random*")))))
+
+(define (pathname->buffer pathname)
+  (or (list-search-positive (buffer-list)
+	(lambda (buffer)
+	  (let ((pathname* (buffer-pathname buffer)))
+	    (and pathname*
+		 (pathname=? pathname pathname*)))))
+      (let ((truename (pathname->input-truename pathname)))
+	(and truename
+	     (list-search-positive (buffer-list)
+	       (lambda (buffer)
+		 (let ((pathname* (buffer-pathname buffer)))
+		   (and pathname*
+			(or (pathname=? pathname pathname*)
+			    (pathname=? truename pathname*)
+			    (let ((truename* (buffer-truename buffer)))
+			      (and truename*
+				   (pathname=? truename truename*))))))))))))

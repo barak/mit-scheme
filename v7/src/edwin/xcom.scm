@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.2 1989/08/11 11:50:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.3 1989/08/12 08:32:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -51,6 +51,7 @@
   (x-window-x-size 1)
   (x-window-y-size 1)
   (x-window-set-size 3)
+  (x-window-set-position 3)
   (x-window-map 1)
   (x-window-unmap 1)
   (x-window-beep 1)
@@ -119,10 +120,17 @@
 	(xterm-set-size xterm x-size y-size)))))
 
 (define-command x-set-size
-  "Set size of editor screen to (WIDTH, HEIGHT)."
-  "nScreen width\nnScreen height"
+  "Set size of editor screen to WIDTH x HEIGHT."
+  "nScreen width (chars)\nnScreen height (chars)"
   (lambda (width height)
     (xterm-set-size (current-xterm) (max 2 width) (max 2 height))))
+
+(define-command x-set-position
+  "Set position of editor screen to (X,Y)."
+  "nX position (pixels)\nnY position (pixels)"
+  (lambda (x y)
+    (x-window-set-position (current-xterm) x y)))
+
 (define-command x-set-border-width
   "Set width of border to WIDTH."
   "nSet border width"

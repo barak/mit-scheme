@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.191 1989/08/11 16:17:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.192 1989/08/12 08:31:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -46,42 +46,39 @@
 
 (declare (usual-integrations))
 
-(define (edwin)
+(define (edit)
   (if (not edwin-editor)
-      (apply edwin-reset edwin-reset-args))
+      (apply create-editor create-editor-args))
   (call-with-current-continuation
    (lambda (continuation)
      (fluid-let ((editor-abort continuation)
 		 (*auto-save-keystroke-count* 0))
        (within-editor edwin-editor
 	 (lambda ()
-	   (using-screen edwin-screen
+	   (with-editor-interrupts
 	     (lambda ()
-	       (with-editor-input-port edwin-input-port
+	       (with-current-local-bindings!
 		 (lambda ()
-		   (with-editor-interrupts
+		   (bind-condition-handler '() internal-error-handler
 		     (lambda ()
-		       (with-current-local-bindings!
-			 (lambda ()
-			   (bind-condition-handler '() internal-error-handler
-			     (lambda ()
-			       (dynamic-wind
-				(lambda () (update-screens! true))
-				(lambda ()
-				  (let ((message (cmdl-message/null)))
-				    (push-cmdl (lambda (cmdl)
-						 cmdl ;ignore
-						 (top-level-command-reader
-						  edwin-initialization)
-						 message)
-					       false
-					       message)))
-				(lambda () unspecific)))))))))))))))))
+		       (dynamic-wind
+			(lambda () (update-screens! true))
+			(lambda ()
+			  (let ((message (cmdl-message/null)))
+			    (push-cmdl (lambda (cmdl)
+					 cmdl ;ignore
+					 (top-level-command-reader
+					  edwin-initialization)
+					 message)
+				       false
+				       message)))
+			(lambda () unspecific)))))))))))))
   (if edwin-finalization (edwin-finalization))
   unspecific)
 
-(define edwin-reset-args '())
+(define create-editor-args (list false))
 (define editor-abort)
+(define edwin-editor false)
 
 ;; Set this before entering the editor to get something done after the
 ;; editor's dynamic environment is initialized, but before the command
@@ -93,13 +90,84 @@
 ;; reset and then reenter the editor.
 (define edwin-finalization false)
 
+(define (create-editor display-type . make-screen-args)
+  (reset-editor)
+  (initialize-typein!)
+  (initialize-typeout!)
+  (initialize-syntax-table!)
+  (initialize-command-reader!)
+  (if display-type
+      (set-editor-display-type! display-type)
+      (initialize-display-type!))
+  (set! edwin-editor
+	(let ((screen (apply make-editor-screen make-screen-args)))
+	  (make-editor "Edwin" screen (make-editor-input-port screen))))
+  (set! edwin-initialization
+	(lambda ()
+	  (set! edwin-initialization false)
+	  (with-editor-interrupts-disabled standard-editor-initialization)))
+  unspecific)
+
+(define (reset-editor)
+  (without-interrupts
+   (lambda ()
+     (if edwin-editor
+	 (begin
+	   (screen-discard! (editor-screen edwin-editor))
+	   (set! edwin-editor false)
+	   unspecific)))))
+
+(define (standard-editor-initialization)
+  (if (not init-file-loaded?)
+      (begin
+	(let ((filename (os/init-file-name)))
+	  (if (file-exists? filename)
+	      (load-edwin-file filename '(EDWIN) true)))
+	(set! init-file-loaded? true)
+	unspecific))
+  (if (not (ref-variable inhibit-startup-message))
+      (let ((window (current-window)))
+	(with-output-to-mark (window-point window)
+	  write-initial-buffer-greeting!)
+	(let ((buffer (window-buffer window)))
+	  (set-window-start-mark! window (buffer-start buffer) false)
+	  (buffer-not-modified! buffer)
+	  (sit-for 120000)
+	  (region-delete! (buffer-unclipped-region buffer))
+	  (buffer-not-modified! buffer)))))
+
+(define inhibit-editor-init-file? false)
+(define init-file-loaded? false)
+
+(define-variable inhibit-startup-message
+  "*True inhibits the initial startup messages.
+This is for use in your personal init file, once you are familiar
+with the contents of the startup message."
+  false)
+
+(define (write-initial-buffer-greeting!)
+  (identify-world)
+  (write-string initial-buffer-greeting))
+
+(define initial-buffer-greeting
+  "
+
+;You are in an interaction window of the Edwin editor.
+;Type C-h for help.  C-h m will describe some commands.
+
+")
+
 ;;;; Recursive Edit Levels
 
 (define (within-editor editor thunk)
   (fluid-let ((current-editor editor)
 	      (recursive-edit-continuation false)
 	      (recursive-edit-level 0))
-    (thunk)))
+    (using-screen (current-screen)
+      (lambda ()
+	(with-editor-input-port (current-editor-input-port)
+	  thunk)))))
+
 (define (within-editor?)
   (not (unassigned? current-editor)))
 (define (enter-recursive-edit)

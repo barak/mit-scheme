@@ -3,11 +3,12 @@
    '("bufinp"
      "bufott"
      "bufout"
-     "comtab"
      "class"
      "clscon"
      "clsmac"
+     "comtab"
      "cterm"
+     "display"
      "entity"
      "grpops"
      "image"
@@ -26,10 +27,10 @@
      "strpad"
      "strtab"
      "utils"
-     "xform"
-     "xterm"
      "winout"
-     "winren")))
+     "winren"
+     "xform"
+     "xterm")))
 
 (fluid-let ((sf/default-syntax-table
 	     (access edwin-syntax-table (->environment '(EDWIN)))))
@@ -50,7 +51,9 @@
      "curren"
      "debug"
      "debuge"
-     "dired"     "editor"
+     "dired"
+     "ed-ffi"
+     "editor"
      "edtstr"
      "evlcom"
      "filcom"

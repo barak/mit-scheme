@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.9 1989/08/09 13:18:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.10 1989/08/12 08:32:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -70,6 +70,12 @@
 	      (working-directory-pathname))
 	(wrap (pathname-name-string pathname)
 	      (pathname-directory-path pathname)))))
+
+(define (os/pathname->display-string pathname)
+  (let ((relative (pathname-relative? pathname (home-directory-pathname))))
+    (if relative
+	(string-append "~/" (pathname->string relative))
+	(pathname->string pathname))))
 
 (define-variable backup-by-copying-when-linked
   "*Non-false means use copying to create backups for files with multiple names.
@@ -228,6 +234,22 @@ Includes the new backup.  Must be > 0"
   (sort pathnames
     (lambda (x y)
       (string<? (pathname-name-string x) (pathname-name-string y)))))
+
+(define (os/truncate-filename-for-modeline filename width)
+  (let ((length (string-length filename)))
+    (if (< 0 width length)
+	(let ((result
+	       (substring
+		filename
+		(let ((index (- length width)))
+		  (or (and (not (char=? #\/ (string-ref filename index)))
+			   (substring-find-next-char filename index length
+						     #\/))
+		      (1+ index)))
+		length)))
+	  (string-set! result 0 #\$)
+	  result)
+	filename)))
 
 (define (os/directory-list directory)
   (dynamic-wind
@@ -289,18 +311,18 @@ Includes the new backup.  Must be > 0"
      ("txt" . text)
      ("y" . c))))
 
-(define (os/truncate-filename-for-modeline filename width)
-  (let ((length (string-length filename)))
-    (if (< 0 width length)
-	(let ((result
-	       (substring
-		filename
-		(let ((index (- length width)))
-		  (or (and (not (char=? #\/ (string-ref filename index)))
-			   (substring-find-next-char filename index length
-						     #\/))
-		      (1+ index)))
-		length)))
-	  (string-set! result 0 #\$)
-	  result)
-	filename)))
+(define (os/init-file-name)
+  "~/.edwin")
+
+(define os/find-file-initialization-filename
+  (let ((name-path (string->pathname ".edwin-ffi")))
+    (lambda (pathname)
+      (or (and (equal? "scm" (pathname-type pathname))
+	       (let ((pathname (pathname-new-version pathname "ffi")))
+		 (and (file-exists? pathname)
+		      pathname)))
+	  (let ((pathname
+		 (merge-pathnames name-path
+				  (pathname-directory-path pathname))))
+	    (and (file-exists? pathname)
+		 pathname))))))

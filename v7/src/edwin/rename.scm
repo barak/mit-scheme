@@ -50,10 +50,8 @@
   (let ((g<-e
 	 (lambda (g e)
 	   (local-assignment global g (lexical-reference edwin e)))))
-    (g<-e 'edit 'edwin)
-    (g<-e 'save-editor-files 'debug-save-files)
-    (g<-e 'reset-editor 'edwin-discard-state!)
-    (g<-e 'reset-editor-windows 'edwin-reset-windows))  (let ((e<-w
+    (g<-e 'save-editor-files 'debug-save-files))
+  (let ((e<-w
 	 (lambda (e w)
 	   (lexical-assignment edwin e (lexical-reference window w)))))
     (e<-w 'window? 'buffer-frame?)

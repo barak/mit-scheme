@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.7 1989/06/21 10:43:20 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.8 1989/08/12 08:32:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -403,7 +403,7 @@
 
 ;;;; Display description for X displays
 
-(define x-display)
+(define x-display-type)
 (define x-display-data false)
 
 (define (get-x-display)
@@ -418,13 +418,15 @@
   unspecific)
 
 (define (initialize-package!)
-  (set! x-display
-	(make-display get-x-display
-		      make-xterm-screen
-		      make-xterm-input-port
-		      with-editor-interrupts-from-x
-		      with-x-interrupts-enabled
-		      with-x-interrupts-disabled))  (initialize-buttons! 5)
+  (set! x-display-type
+	(make-display-type 'X
+			   get-x-display
+			   make-xterm-screen
+			   make-xterm-input-port
+			   with-editor-interrupts-from-x
+			   with-x-interrupts-enabled
+			   with-x-interrupts-disabled))
+  (initialize-buttons! 5)
   (set! button1-down (button-downify 0))
   (set! button2-down (button-downify 1))
   (set! button3-down (button-downify 2))

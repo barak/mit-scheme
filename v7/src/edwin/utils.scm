@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.17 1989/08/11 10:54:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.18 1989/08/12 08:32:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -175,9 +175,10 @@
 
 (define (write-value value truncate?)
   (if (undefined-value? value)
-      (write-string ";No value")
+      (write-string "No value")
       (begin
-	(write-string ";Value: ")	(if truncate?
+	(write-string "Value: ")
+	(if truncate?
 	    (fluid-let ((*unparser-list-depth-limit* 5)
 			(*unparser-list-breadth-limit* 10))
 	      (write value))

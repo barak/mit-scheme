@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.85 1989/08/09 13:17:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.86 1989/08/12 08:31:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -171,13 +171,17 @@
   (bufferset-rename-buffer (current-bufferset) buffer new-name))
 
 (define (kill-buffer buffer)
-  (if (buffer-visible? buffer)
-      (let ((new-buffer
-	     (or (other-buffer buffer)
-		 (error "Buffer to be killed has no replacement" buffer))))
-	(for-each (lambda (window)
-		    (set-window-buffer! window new-buffer false))
-		  (buffer-windows buffer))))  (bufferset-kill-buffer! (current-bufferset) buffer))
+  (let loop
+      ((windows (buffer-windows buffer))
+       (last-buffer false))
+    (if (not (null? windows))
+	(let ((new-buffer
+	       (or (other-buffer buffer)
+		   last-buffer
+		   (error "Buffer to be killed has no replacement" buffer))))
+	  (set-window-buffer! (car windows) new-buffer false)
+	  (loop (cdr windows) new-buffer))))
+  (bufferset-kill-buffer! (current-bufferset) buffer))
 
 (define-integrable (select-buffer buffer)
   (set-window-buffer! (current-window) buffer true))

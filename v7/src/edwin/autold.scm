@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.45 1989/08/09 13:16:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.46 1989/08/12 08:31:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -51,7 +51,7 @@
 (define (make-autoloading-procedure library-name get-procedure)
   (define entity
     (make-entity (lambda arguments
-		   (load-library library-name)
+		   ((ref-command load-library) library-name 'NO-WARN)
 		   (let ((procedure (get-procedure)))
 		     (set-entity-procedure! entity procedure)
 		     (apply procedure (cdr arguments))))
@@ -129,7 +129,9 @@
 (define (guarantee-command-loaded command)
   (let ((procedure (command-procedure command)))
     (if (autoloading-procedure? procedure)
-	(load-library (autoloading-procedure/library-name procedure)))))
+	((ref-command load-library)
+	 (autoloading-procedure/library-name procedure)
+	 'NO-WARN))))
 
 ;;;; Libraries
 
@@ -174,42 +176,16 @@
 	    (hook)
 	    (loop))))
     (if entry (loop))))
-
-(define (load-library name)
-  (if (not (library-loaded? name))
-      (let ((entry (assq name known-libraries)))
-	(if entry
-	    (%load-library entry)
-	    (error "LOAD-LIBRARY: Unknown library name" name)))))
-
-(define (%load-library library)
-  (for-each (lambda (entry)
-	      (apply load-edwin-file entry))
-	    (cdr library))
-  (if (not (memq (car library) loaded-libraries))
-      (set! loaded-libraries (cons (car library) loaded-libraries)))
-  (run-library-load-hooks! (car library)))
 
 ;;;; Loading
 
-(define (load-edwin-file filename package #!optional purify?)
-  (let ((pathname
-	 (merge-pathnames (->pathname filename) (edwin-binary-directory))))
-    (temporary-message "Loading file \"" (pathname->string pathname) "\"")
-    (let ((scode (fasload pathname true)))
-      (if (or (default-object? purify?) purify?) (purify scode))
-      (scode-eval-with-history scode (->environment package))))
-  (append-message " -- done"))
-
-(define-command load-file
-  "Load an Edwin binary file.
-An argument, if given, means purify the file too."
-  "fLoad file\nP"
-  (lambda (filename purify?)
-    (load-edwin-file filename '(EDWIN) purify?)))
-
 (define-command load-library
-  "Load an Edwin library."
+  "Load the Edwin library NAME.
+Second arg FORCE? controls what happens if the library is already loaded:
+ 'NO-WARN means do nothing,
+ false means display a warning message in the minibuffer,
+ anything else means load it anyway.
+Second arg is prefix arg when called interactively."
   (lambda ()
     (list
      (car
@@ -217,8 +193,46 @@ An argument, if given, means purify the file too."
 			      (map (lambda (library)
 				     (cons (symbol->string (car library))
 					   library))
-				   known-libraries)))))
-  (lambda (name)
-    (%load-library
-     (or (assq name known-libraries)
-	 (editor-error "Unknown library name: " name)))))
+				   known-libraries)))
+     (command-argument-standard-value)))
+  (lambda (name force?)
+    (let ((do-it
+	   (let ((library 
+		  (or (assq name known-libraries)
+		      (editor-error "Unknown library name: " name))))
+	     (temporary-message "Loading " (car library))
+	     (let ((directory (edwin-binary-directory)))
+	       (for-each
+		(lambda (entry)
+		  (load-edwin-file
+		   (merge-pathnames (->pathname (car entry)) directory)
+		   (cadr entry)
+		   (or (null? (cddr entry)) (caddr entry))))
+		(cdr library)))
+	     (if (not (memq (car library) loaded-libraries))
+		 (set! loaded-libraries (cons (car library) loaded-libraries)))
+	     (run-library-load-hooks! (car library))
+	     (append-message " -- done"))))
+      (cond ((not (library-loaded? name))
+	     (do-it))
+	    ((not force?)
+	     (temporary-message "Library already loaded: " name))
+	    ((not (eq? force? 'NO-WARN))
+	     (do-it))))))
+
+(define-command load-file
+  "Load the Edwin binary file FILENAME.
+Second arg PURIFY? means purify the file's contents after loading;
+ this is the prefix arg when called interactively."
+  "fLoad file\nP"
+  (lambda (filename purify?)
+    (temporary-message "Loading file \"" filename "\"")
+    (load-edwin-file filename '(EDWIN) purify?)
+    (append-message " -- done")))
+(define (load-edwin-file filename environment purify?)
+  (with-output-to-transcript-buffer
+   (lambda ()
+     (bind-condition-handler '() evaluation-error-handler
+       (lambda ()
+	 (fluid-let ((load/suppress-loading-message? true))
+	   (load filename environment edwin-syntax-table purify?)))))))

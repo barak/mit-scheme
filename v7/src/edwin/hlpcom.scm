@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.89 1989/08/03 23:32:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.90 1989/08/12 08:32:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -49,7 +49,7 @@
 (define-command help-prefix
   "This is a prefix for more commands.
 It reads another character (a subcommand) and dispatches on it."
-  "cA C D I K L M T V W or C-h for more help"
+  "cA C F I K L M T V W or C-h for more help"
   (lambda (char)
     (dispatch-on-char
      (current-comtabs)
@@ -66,7 +66,7 @@ A   command-apropos.  Type a substring, and see a list of commands
 	that contain that substring.
 C   describe-key-briefly.  Type a key sequence;
 	it prints the name of the command that sequence runs.
-D   describe-command.  Type a command name and get its documentation.
+F   describe-command.  Type a command name and get its documentation.
 I   info.  The Info documentation reader.
 K   describe-key.  Type a key sequence;
 	it prints the full documentation.
@@ -84,7 +84,7 @@ W   where-is.  Type a command name and get its key binding."
 		      (let loop ()
 			(let ((char
 			       (prompt-for-char
-				"A C D I K L M T V W or space to scroll")))			  (let ((test-for
+				"A C F I K L M T V W or space to scroll")))			  (let ((test-for
 				 (lambda (char*)
 				   (char=? char (remap-alias-char char*)))))
 			    (cond ((or (test-for #\C-h)

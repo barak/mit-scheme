@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.16 1989/08/09 13:17:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.17 1989/08/12 08:32:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -66,7 +66,7 @@ This does not affect editor errors."
 
 (define-variable enable-transcript-buffer
   "If true, output from evaluation commands is recorded in transcript buffer."
-  true)
+  false)
 
 (define-variable transcript-buffer-name
   "Name of evaluation transcript buffer.
@@ -140,18 +140,44 @@ With an argument, prompts for the evaluation environment."
   "xEvaluate expression\nP"
   (lambda (expression argument)
     (editor-eval expression (evaluation-environment argument))))
-
+
 (define-command set-environment
-  "Sets the environment for the editor and any inferior REP loops."
+  "Make ENVIRONMENT the current evaluation environment."
   "XSet environment"
+  (lambda (environment)
+    (set-variable! scheme-environment (->environment environment))))
+
+(define-command set-syntax-table
+  "Make SYNTAX-TABLE the current syntax table."
+  "XSet syntax table"
+  (lambda (syntax-table)
+    (set-variable! scheme-syntax-table syntax-table)))
+
+(define-command set-default-environment
+  "Make ENVIRONMENT the default evaluation environment."
+  "XSet default environment"
+  (lambda (environment)
+    (set-variable-default-value! (ref-variable-object scheme-environment)
+				 (->environment environment))))
+
+(define-command set-default-syntax-table
+  "Make SYNTAX-TABLE the default syntax table."
+  "XSet default syntax table"
+  (lambda (syntax-table)
+    (set-variable-default-value! (ref-variable-object scheme-syntax-table)
+				 syntax-table)))
+
+(define-command set-repl-environment
+  "Make ENVIRONMENT the environment of the nearest REP loop."
+  "XSet REPL environment"
   (lambda (environment)
     (set-repl/environment! (nearest-repl) (->environment environment))))
 
-(define-command set-syntactic-environment
-  "Sets the current syntactic environment."
-  "XSet syntactic environment"
-  (lambda (syntactic-environment)
-    (set-repl/syntax-table! (nearest-repl) syntactic-environment)))
+(define-command set-repl-syntax-table
+  "Make SYNTAX-TABLE the syntax table of the nearest REP loop."
+  "XSet REPL syntax table"
+  (lambda (syntax-table)
+    (set-repl/syntax-table! (nearest-repl) syntax-table)))
 
 (define-command select-transcript-buffer
   "Select the transcript buffer."
@@ -207,20 +233,43 @@ may be available.  The following commands are special to this mode:
 		(loop (read)))))))))
 
 (define (evaluation-environment argument)
-  (if argument
-      (if (environment? argument)
-	  argument
-	  (->environment
-	   (prompt-for-expression-value "Evaluate in environment")))
-      (let ((environment (ref-variable scheme-environment)))
-	(if (eq? 'DEFAULT environment)
-	    (nearest-repl/environment)
-	    (->environment environment)))))
+  (let ((->environment
+	 (lambda (object)
+	   (bind-condition-handler '()
+	       (lambda (condition)
+		 (and (not (condition/internal? condition))
+		      (error? condition)
+		      (editor-error "Illegal environment: " object)))
+	     (lambda ()
+	       (->environment object))))))
+    (if argument
+	(if (environment? argument)
+	    argument
+	    (->environment
+	     (prompt-for-expression-value "Evaluate in environment")))
+	(let ((environment (ref-variable scheme-environment)))
+	  (if (eq? 'DEFAULT environment)
+	      (nearest-repl/environment)
+	      (->environment environment))))))
 
-(define (evaluation-syntax-table)
-  (or (ref-variable scheme-syntax-table)
-      (nearest-repl/syntax-table)))
+(define (evaluation-syntax-table environment)
+  (let ((syntax-table (ref-variable scheme-syntax-table)))
+    (cond ((or (not syntax-table) (eq? 'DEFAULT syntax-table))
+	   (nearest-repl/syntax-table))
+	  ((scheme-syntax-table? syntax-table)
+	   syntax-table)
+	  ((and (symbol? syntax-table)
+		(not (lexical-unreferenceable? environment syntax-table))
+		(let ((syntax-table
+		       (lexical-reference environment syntax-table)))
+		  (and (scheme-syntax-table? syntax-table)
+		       syntax-table))))
+	  (else
+	   (editor-error "Illegal syntax table: " syntax-table)))))
 
+(define scheme-syntax-table?
+  (access syntax-table? system-global-environment))
+
 (define (editor-eval sexp environment)
   (with-output-to-transcript-buffer
    (lambda ()
@@ -229,34 +278,36 @@ may be available.  The following commands are special to this mode:
        value))))
 
 (define (eval-with-history expression environment)
-  (scode-eval-with-history (syntax expression (evaluation-syntax-table))
+  (scode-eval-with-history (syntax expression
+				   (evaluation-syntax-table environment))
 			   environment))
 
 (define (scode-eval-with-history scode environment)
-  (bind-condition-handler '()
-      (lambda (condition)
-	(and (not (condition/internal? condition))
-	     (error? condition)
-	     (begin
-	       (if (ref-variable debug-on-evaluation-error)
-		   (debug-scheme-error condition)
-		   (let ((string
-			  (with-output-to-string
-			    (lambda ()
-			      ((condition/reporter condition)
-			       condition
-			       (current-output-port))))))
-		     (if (and (not (string-find-next-char string #\newline))
-			      (< (string-column-length string 18) 80))
-			 (message "Evaluation error: " string)
-			 (begin
-			   (string->temporary-buffer string "*Error*")
-			   (message "Evaluation error")))))
-	       (%editor-error))))
+  (bind-condition-handler '() evaluation-error-handler
     (lambda ()
       (with-new-history
        (lambda ()
 	 (extended-scode-eval scode environment))))))
+
+(define (evaluation-error-handler condition)
+  (and (not (condition/internal? condition))
+       (error? condition)
+       (begin
+	 (if (ref-variable debug-on-evaluation-error)
+	     (debug-scheme-error condition)
+	     (let ((string
+		    (with-output-to-string
+		      (lambda ()
+			((condition/reporter condition)
+			 condition
+			 (current-output-port))))))
+	       (if (and (not (string-find-next-char string #\newline))
+			(< (string-column-length string 18) 80))
+		   (message "Evaluation error: " string)
+		   (begin
+		     (string->temporary-buffer string "*Error*")
+		     (message "Evaluation error")))))
+	 (%editor-error))))
 
 ;;;; Transcript Buffer
 
@@ -289,7 +340,9 @@ may be available.  The following commands are special to this mode:
     (let ((value-message (lambda () (message value-string))))
       (if (ref-variable enable-transcript-buffer)
 	  (begin
-	    (fresh-lines 1)	    (write-string value-string)
+	    (fresh-lines 1)
+	    (write-char #\;)
+	    (write-string value-string)
 	    (fresh-lines 2)
 	    (if (null? (buffer-windows (transcript-buffer)))
 		(value-message)))

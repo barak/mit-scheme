@@ -47,13 +47,14 @@
 (define-structure (editor (constructor %make-editor))
   (name false read-only true)
   (screen false read-only true)
+  (input-port false read-only true)
   (frame-window false read-only true)
   (bufferset false read-only true)
   (kill-ring false read-only true)
   (char-history false read-only true)
   (button-event false))
 
-(define (make-editor name screen)
+(define (make-editor name screen input-port)
   (let ((initial-buffer (make-buffer initial-buffer-name initial-buffer-mode)))
     (let ((bufferset (make-bufferset initial-buffer)))
       (let ((frame
@@ -64,6 +65,7 @@
 	(set-screen-window! screen frame)
 	(%make-editor name
 		      screen
+		      input-port
 		      frame
 		      bufferset
 		      (make-ring 10)
@@ -75,6 +77,10 @@
 
 (define-integrable (all-screens)
   (list (current-screen)))
+
+(define-integrable (current-editor-input-port)
+  (editor-input-port current-editor))
+
 (define-integrable (current-editor-frame)
   (editor-frame-window current-editor))
 

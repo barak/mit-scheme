@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.135 1989/08/11 11:49:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.136 1989/08/12 08:31:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -87,6 +87,7 @@ The buffer is guaranteed to be deselected at that time."
 	(let ((daemon (buffer-modification-daemon buffer)))
 	  (add-group-insert-daemon! group daemon)
 	  (add-group-delete-daemon! group daemon))
+	(add-group-clip-daemon! group (buffer-clip-daemon buffer))
 	(if (not (minibuffer? buffer))
 	    (enable-group-undo! group))
 	(vector-set! buffer
@@ -274,6 +275,12 @@ The buffer is guaranteed to be deselected at that time."
 	  (buffer-modeline-event! buffer 'BUFFER-MODIFIED)))
     (vector-set! buffer buffer-index:auto-save-modified? true)
     unspecific))
+
+(define (buffer-clip-daemon buffer)
+  (lambda (group start end)
+    group start end			;ignore
+    (buffer-modeline-event! buffer 'CLIPPING-CHANGED)))
+
 (define-integrable (buffer-read-only? buffer)
   (group-read-only? (buffer-group buffer)))
 

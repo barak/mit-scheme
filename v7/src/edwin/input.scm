@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.80 1989/08/07 08:44:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.81 1989/08/12 08:32:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -174,8 +174,6 @@ B 3BAB8C
 
 (define editor-input-port)
 
-(define (set-editor-input-port! port)
-  (set! editor-input-port port))
 (define (with-editor-input-port new-port thunk)
   (fluid-let ((editor-input-port new-port))
     (thunk)))

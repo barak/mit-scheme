@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.10 1989/08/11 11:50:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.11 1989/08/12 08:32:00 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -100,7 +100,11 @@ MIT in each case. |#
   (export (edwin class-macros)
 	  class-instance-transforms)
   (export ()
-	  edwin-reset-args))
+	  create-editor
+	  create-editor-args
+	  edit
+	  inhibit-editor-init-file?
+	  reset-editor))
 
 (define-package (edwin class-macros)
   (files "clsmac")
@@ -179,6 +183,23 @@ MIT in each case. |#
 	  undo-record-deletion!
 	  undo-record-insertion!))
 
+(define-package (edwin display-type)
+  (files "display")
+  (parent (edwin))
+  (export ()
+	  editor-display-type
+	  editor-display-types)
+  (export (edwin)
+	  display-type?
+	  initialize-display-type!
+	  make-display-type
+	  make-editor-input-port
+	  make-editor-screen
+	  set-editor-display-type!
+	  with-editor-interrupts
+	  with-editor-interrupts-disabled
+	  with-editor-interrupts-enabled))
+
 (define-package (edwin screen)
   (files "screen")
   (parent (edwin))
@@ -219,23 +240,20 @@ MIT in each case. |#
 	  button3-up
 	  button4-up
 	  button5-up
-	  x-display)
+	  x-display-type)
   (export (edwin x-commands)
 	  screen-xterm)
   (initialization (initialize-package!)))
 
 (define-package (edwin x-commands)
   (files "xcom")
-  (parent (edwin))
-  (export (edwin)
-	  x-move-to-coordinates
-	  x-switch-to-window))
+  (parent (edwin)))
 
 (define-package (edwin console-screen)
   (files "cterm")
   (parent (edwin))
   (export (edwin)
-	  console-display)
+	  console-display-type)
   (initialization (initialize-package!)))
 
 (define-package (edwin window)
@@ -252,7 +270,7 @@ MIT in each case. |#
 	 "winmis")
   (parent (edwin))
   (export ()
-	  edwin-set-display!)
+	  reset-editor-windows)
   (export (edwin)
 	  button-downify
 	  button-upify
@@ -263,15 +281,7 @@ MIT in each case. |#
 	  editor-frame-typein-window
 	  editor-frame-window0
 	  editor-frame-windows
-	  edwin-discard-state!
-	  edwin-display
-	  edwin-editor
-	  edwin-input-port
-	  edwin-reset
-	  edwin-reset-windows
-	  edwin-screen
 	  initialize-buttons!
-	  make-display
 	  make-editor-frame
 	  set-window-point!
 	  set-window-start-mark!
@@ -307,10 +317,7 @@ MIT in each case. |#
 	  window-set-override-message!
 	  window-setup-truncate-lines!
 	  window-start-index
-	  window-y-center
-	  with-editor-interrupts
-	  with-editor-interrupts-enabled
-	  with-editor-interrupts-disabled)
+	  window-y-center)
   (export (edwin prompt)
 	  clear-override-message!
 	  frame-text-inferior
@@ -386,7 +393,6 @@ MIT in each case. |#
 	  char-metafy
 	  clear-message
 	  command-prompt
-	  editor-input-port
 	  initialize-typeout!
 	  keyboard-active?
 	  keyboard-peek-char
@@ -395,7 +401,6 @@ MIT in each case. |#
 	  message-args->string
 	  reset-command-prompt!
 	  set-command-prompt!
-	  set-editor-input-port!
 	  temporary-message
 	  with-editor-input-port))
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.103 1989/08/11 10:51:43 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.104 1989/08/12 08:31:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -280,7 +280,7 @@ With argument, saves visited file first."
 	  (lambda ()
 	    (set! edwin-finalization false)
 	    (quit)
-	    (edwin)))
+	    (edit)))
     ((ref-command suspend-edwin))))
 
 (define-command suspend-edwin
@@ -424,3 +424,60 @@ on new line, with no new terminator or starter."
 	  (let ((com ((ref-variable comment-locator-hook) start)))
 	    (if com
 		(kill-string (horizontal-space-start (car com)) end)))))))
+
+;;;; Useful Documentation
+
+(define-command define-command
+  "Scheme special form used to define commands:
+
+  (define-command NAME DOCUMENTATION INTERACTIVE-SPEC PROCEDURE)
+
+where:
+  NAME is a symbol;
+  DOCUMENTATION is a string;
+  INTERACTIVE-SPEC describes how to call PROCEDURE when the command is
+    invoked interactively (see below); and
+  PROCEDURE is a Scheme procedure that is called to perform the
+    command's actions.
+
+INTERACTIVE-SPEC and PROCEDURE are evaluated, the others aren't.
+
+INTERACTIVE-SPEC specifies a way of parsing arguments for interactive
+use of a command.  For example, write
+  (define-command foo \"Doc string\" \"p\" (lambda (arg) ...use arg...))
+to make arg be the prefix numeric argument when foo is invoked.
+
+INTERACTIVE-SPEC is usually a string containing a code letter
+ followed by a prompt.  (Some code letters do not use I/O to get
+ the argument and do not need prompts.)  To prompt for multiple arguments,
+ give a code letter, its prompt, a newline, and another code letter, etc.
+If INTERACTIVE-SPEC is not a string, it is either a procedure or ().
+ If it's a procedure, then the procedure is invoked with no arguments,
+ and should return a list of arguments for the command.
+ Otherwise, if it's the empty list, the command gets no arguments.
+
+Code letters available are:
+b -- Name of existing buffer (string).
+B -- Name of buffer, possibly nonexistent (string).
+c -- Character.
+C -- Command name (symbol).
+d -- Value of point (editor-mark object).  Does not do I/O.
+D -- Directory name (string).
+f -- Existing file name (string).
+F -- Possibly nonexistent file name (string).
+k -- Key sequence (list of chars).
+m -- Value of mark (editor-mark object).  Does not do I/O.
+n -- Number read using minibuffer.
+N -- Prefix arg converted to number, or if none, do like code `n'.
+p -- Prefix arg converted to number, or 1 if no prefix.  Does not do I/O.
+P -- Prefix arg converted to number, or #F if no prefix.  Does not do I/O.
+r -- Region: current region (editor-region object).  Does no I/O.
+s -- Any string.
+v -- Variable name (symbol).
+x -- Scheme expression read but not evaluated.
+X -- Scheme expression read and evaluated.
+In addition, if the first character of the string is '*' then an error is
+ signaled if the buffer is read-only.
+ This happens before reading any arguments."
+  ()
+  (lambda () (editor-error "DEFINE-COMMAND shouldn't be invoked")))

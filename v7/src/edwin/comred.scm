@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.80 1989/08/11 16:17:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.81 1989/08/12 08:31:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -62,13 +62,13 @@
   unspecific)
 
 (define (top-level-command-reader initialization)
-  (let loop ()
+  (let loop ((initialization initialization))
     (with-keyboard-macro-disabled
      (lambda ()
        (intercept-^G-interrupts (lambda () unspecific)
 	 (lambda ()
 	   (command-reader initialization)))))
-    (loop)))
+    (loop false)))
 
 (define (command-reader #!optional initialization)
   (define (command-reader-loop)
@@ -182,57 +182,56 @@
 (define (%dispatch-on-command window command record?)
   (set! *command* command)
   (guarantee-command-loaded command)
-  (let ((procedure (command-procedure command)))
+  (let ((point (window-point window))
+	(point-x (window-point-x window))
+	(procedure (command-procedure command)))
     (let ((normal
 	   (lambda ()
+	     (set! *non-undo-count* 0)
+	     (undo-boundary! point)
 	     (apply procedure (interactive-arguments command record?)))))
-      (if (or *executing-keyboard-macro?*
-	      (window-needs-redisplay? window)
-	      (command-argument-standard-value?))
-	  (begin
-	    (set! *non-undo-count* 0)
-	    (normal))
-	  (let ((point (window-point window))
-		(point-x (window-point-x window)))
-	    (if (or (eq? procedure (ref-command self-insert-command))
-		    (and (eq? procedure (ref-command auto-fill-space))
-			 (not (auto-fill-break? point)))
-		    (command-argument-self-insert? procedure))
-		(let ((char *command-char*))
-		  (if (let ((buffer (window-buffer window)))
-			(and (buffer-auto-save-modified? buffer)
-			     (null? (cdr (buffer-windows buffer)))
-			     (line-end? point)
-			     (char-graphic? char)
-			     (< point-x (-1+ (window-x-size window)))))
-		      (begin
-			(if (or (zero? *non-undo-count*)
-				(>= *non-undo-count* 20))
-			    (begin
-			      (undo-boundary! point)
-			      (set! *non-undo-count* 0)))
-			(set! *non-undo-count* (1+ *non-undo-count*))
-			(window-direct-output-insert-char! window char))
-		      (region-insert-char! point char)))
-		(begin
-		  (set! *non-undo-count* 0)
-		  (cond ((eq? procedure (ref-command forward-char))
-			 (if (and (not (group-end? point))
-				  (char-graphic? (mark-right-char point))
-				  (< point-x (- (window-x-size window) 2)))
-			     (window-direct-output-forward-char! window)
-			     (normal)))
-			((eq? procedure (ref-command backward-char))
-			 (if (and (not (group-start? point))
-				  (char-graphic? (mark-left-char point))
-				  (positive? point-x)
-				  (< point-x (-1+ (window-x-size window))))
-			     (window-direct-output-backward-char! window)
-			     (normal)))
-			(else
-			 (if (not (typein-window? window))
-			     (undo-boundary! point))
-			 (normal))))))))))
+      (cond ((or *executing-keyboard-macro?*
+		 (command-argument-standard-value?))
+	     (set! *non-undo-count* 0)
+	     (apply procedure (interactive-arguments command record?)))
+	    ((window-needs-redisplay? window)
+	     (normal))
+	    ((eq? procedure (ref-command forward-char))
+	     (if (and (not (group-end? point))
+		      (char-graphic? (mark-right-char point))
+		      (< point-x (- (window-x-size window) 2)))
+		 (window-direct-output-forward-char! window)
+		 (normal)))
+	    ((eq? procedure (ref-command backward-char))
+	     (if (and (not (group-start? point))
+		      (char-graphic? (mark-left-char point))
+		      (positive? point-x)
+		      (< point-x (-1+ (window-x-size window))))
+		 (window-direct-output-backward-char! window)
+		 (normal)))
+	    ((or (eq? procedure (ref-command self-insert-command))
+		 (and (eq? procedure (ref-command auto-fill-space))
+		      (not (auto-fill-break? point)))
+		 (command-argument-self-insert? procedure))
+	     (let ((char *command-char*))
+	       (if (let ((buffer (window-buffer window)))
+		     (and (buffer-auto-save-modified? buffer)
+			  (null? (cdr (buffer-windows buffer)))
+			  (line-end? point)
+			  (char-graphic? char)
+			  (< point-x (-1+ (window-x-size window)))))
+		   (begin
+		     (if (or (zero? *non-undo-count*)
+			     (>= *non-undo-count* 20))
+			 (begin
+			   (set! *non-undo-count* 0)
+			   (undo-boundary! point)))
+		     (set! *non-undo-count* (1+ *non-undo-count*))
+		     (window-direct-output-insert-char! window char))
+		   (region-insert-char! point char))))
+	    (else
+	     (normal))))))
+
 (define (interactive-arguments command record?)
   (let ((specification (command-interactive-specification command))
 	(record-command-arguments

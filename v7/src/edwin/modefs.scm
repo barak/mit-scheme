@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.120 1989/08/09 13:17:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.121 1989/08/12 08:32:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -229,7 +229,8 @@ and the cdrs of which are major modes."
 (define-key 'fundamental '(#\c-c #\c-s) 'select-transcript-buffer)
 
 (define-key 'fundamental '(#\c-h #\a) 'command-apropos)(define-key 'fundamental '(#\c-h #\c) 'describe-key-briefly)
-(define-key 'fundamental '(#\c-h #\d) 'describe-command)(define-key 'fundamental '(#\c-h #\i) 'info)
+(define-key 'fundamental '(#\c-h #\f) 'describe-command)
+(define-key 'fundamental '(#\c-h #\i) 'info)
 (define-key 'fundamental '(#\c-h #\k) 'describe-key)
 (define-key 'fundamental '(#\c-h #\l) 'view-lossage)
 (define-key 'fundamental '(#\c-h #\m) 'describe-mode)
