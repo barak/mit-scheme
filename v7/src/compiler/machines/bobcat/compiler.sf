@@ -49,6 +49,9 @@
 		      '("instr1" "instr2" "instr3" "instr4")))))))
 
 ((package/reference (find-package '(COMPILER DECLARATIONS)) 'SYNTAX-FILES!))
+
+(if (not (name->package '(CROSS-REFERENCE)))
+    (with-working-directory-pathname "/scheme/cref" (lambda () (load "make"))))
 (cref/generate-all "comp")
 (sf "comp.con" "comp.bcon")
 (sf "comp.ldr" "comp.bldr")
