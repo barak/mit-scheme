@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.8 1988/11/04 02:24:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.9 1988/11/05 22:21:54 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -183,7 +183,9 @@ MIT in each case. |#
 			      (macro (name) (microcode-type name))))
 		  (ucode-type linkage-section))
 		(system-vector-ref block index))
-	       (loop (disassembler/write-linkage-section block symbol-table index)))
+	       (loop (disassembler/write-linkage-section block
+							 symbol-table
+							 index)))
 	      (else
 	       (disassembler/write-instruction
 		symbol-table
@@ -241,42 +243,26 @@ MIT in each case. |#
 	 (write-string "#[LINKAGE-SECTION ")
 	 (write field)
 	 (write-string "]")))
-      (case kind
-	((0)
-	 (write-caches (1+ index)
-		       compiled-code-block/objects-per-procedure-cache
-		       (quotient length compiled-code-block/objects-per-procedure-cache)
-		       disassembler/write-procedure-cache))
-	((1)
-	 (write-caches (1+ index)
-		       compiled-code-block/objects-per-variable-cache
-		       (quotient length compiled-code-block/objects-per-variable-cache)
-		       (lambda (block index)
-			 (disassembler/write-variable-cache
-			  "Reference"
-			  block
-			  index))))
-	((2)
-	 (write-caches (1+ index) 
-		       compiler/variable-cache-size
-		       (quotient length compiler/variable-cache-size)
-		       (lambda (block index)
-			 (disassembler/write-variable-cache
-			  "Assignment"
-			  block
-			  index))))
-	(else
-	 (error "disassembler/write-linkage-section: Unknown section kind"
-		kind)))
+      (write-caches
+       (1+ index)
+       compiled-code-block/objects-per-procedure-cache
+       (quotient length compiled-code-block/objects-per-procedure-cache)
+       (case kind
+	 ((0)
+	  disassembler/write-procedure-cache)
+	 ((1)
+	  (lambda (block index)
+	    (disassembler/write-variable-cache "Reference" block index)))
+	 ((2)
+	  (lambda (block index)
+	    (disassembler/write-variable-cache "Assignment" block index)))
+	 (else
+	  (error "disassembler/write-linkage-section: Unknown section kind"
+		 kind))))
       (1+ (+ index length)))))
 
-(define (variable-cache-name cache)
-  (let-syntax ((ucode-primitive
-		(macro (name arity)
-		  (make-primitive-procedure name arity))))
-    ((ucode-primitive primitive-object-ref 2)
-     cache
-     1)))
+(define-integrable (variable-cache-name cache)
+  ((ucode-primitive primitive-object-ref 2) cache 1))
 
 (define (disassembler/write-variable-cache kind block index)
   (write-string kind)
