@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.9 1990/02/06 16:15:20 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.10 1990/04/12 22:46:59 jinx Exp $
 ###
 ###	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ###
@@ -358,6 +358,7 @@ define_interface_indirection(generic_negative,2a)
 define_interface_indirection(generic_add,2b)
 define_interface_indirection(generic_positive,2c)
 define_interface_indirection(generic_zero,2d)
+define_interface_jsr_indirection(interrupt_multiclosure,36)
 
 # Save an additional instruction here to load the dynamic link.
 define_c_label(asm_interrupt_dlink)
