@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.3 1987/07/08 22:01:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.4 1987/08/28 18:51:09 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -147,10 +147,44 @@ MIT in each case. |#
 	  (delete-dead-registers!)
 	  (let ((target (if-not)))
 	    (prefix-instructions!
-	    (cond ((not alias) (home->register-transfer source target))
-		  ((= alias target) '())
-		  (else (register->register-transfer alias target))))
+	     (cond ((not alias) (home->register-transfer source target))
+		   ((= alias target) '())
+		   (else (register->register-transfer alias target))))
 	    (register-reference target))))))
+
+(define (with-register-copy-alias! source type target rec1 rec2)
+  ;; REC1 is invoked if we are resuing an alias of source.
+  ;;      It already contains the data to operate on.
+  ;; REC2 is invoked if a `brand-new' alias for target has been allocated.
+  ;;      We must take care of moving the data ourselves.
+  ;; This procedure should be used when the copy is going to be transformed,
+  ;; and the machine has 3 operand instructions, which allow an
+  ;; implicit motion in the transformation operation.
+  ;; For example, on the DEC VAX it is cheaper to do
+  ;;	bicl3	op1,source,target
+  ;; than
+  ;; 	movl	source,target
+  ;; 	bicl2	op1,target
+  (let ((reusable-alias
+	 (and (dead-register? source)
+	      (register-alias source type))))
+    (if reusable-alias
+	(begin (delete-dead-registers!)
+	       (add-pseudo-register-alias! target reusable-alias false)
+	       (rec1 (register-reference reusable-alias)))
+	(let ((alias (if (machine-register? source)
+			 source
+			 (register-alias source false))))
+	  (delete-dead-registers!)
+	  (let ((target (allocate-alias-register! target type)))
+	    (cond ((not alias)
+		   (rec2 (pseudo-register-home source)
+			 (register-reference target)))
+		  ((= alias target)
+		   (rec1 (register-reference target)))
+		  (else
+		   (rec2 (register-reference alias)
+			 (register-reference target)))))))))
 
 (define (add-pseudo-register-alias! register alias saved-into-home?)
   (set! *register-map*
