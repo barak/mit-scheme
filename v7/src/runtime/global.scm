@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.51 1999/01/02 06:06:43 cph Exp $
+$Id: global.scm,v 14.52 2000/01/10 03:35:47 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -145,13 +145,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	((and (primitive-procedure? procedure)
 	      (primitive-procedure-documentation procedure))
 	 => (lambda (documentation)
-	      (newline)
-	      (display documentation)))
+	      (display documentation)
+	      (newline)))
 	(else
-	 (newline)
 	 (display "No documentation or debugging info for ")
 	 (display procedure)
-	 (display "."))))
+	 (display ".")
+	 (newline))))
 
 (define (pwd)
   (working-directory-pathname))
@@ -161,12 +161,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (if (default-object? pathname)
         (user-homedir-pathname)
  	pathname)))
-
-#|
-;; Compatibility.
-(define %pwd pwd)
-(define %cd cd)
-|#
 
 (define (show-time thunk)
   (let ((process-start (process-time-clock))
@@ -179,7 +173,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (process-time (- process-end process-start))
 	     (process-time/nogc
 	      (round->exact (* 1000 (- process-end/nogc process-start/nogc)))))
-	(newline)
 	(write-string "process time: ")
 	(write process-time)
 	(write-string " (")
@@ -187,9 +180,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(write-string " RUN + ")
 	(write (- process-time process-time/nogc))
 	(write-string " GC); real time: ")
-	(write (- real-end real-start)))
+	(write (- real-end real-start))
+	(newline))
       value)))
-
+
 (define (wait-interval ticks)
   (let ((end (+ (real-time-clock) ticks)))
     (let wait-loop ()
@@ -276,7 +270,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (write-string ";Dumping " port)
 		   (write (enough-namestring filename) port))
 		 (lambda ()
-		   (write-string " -- done" port))))
+		   (write-string " -- done" port)
+		   (newline port))))
 	(do-it no-print no-print))))
 
 (define (undefined-value? object)

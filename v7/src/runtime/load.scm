@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.54 1999/12/20 23:11:01 cph Exp $
+$Id: load.scm,v 14.55 2000/01/10 03:35:36 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -92,10 +92,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				       purify?
 				       load-noisily?))))
 			(cond (last-file? (load-it))
-			      (load-noisily?
-			       (let ((value (load-it)))
-				 (newline)
-				 (write value)))
+			      (load-noisily? (write-line (load-it)))
 			      (else (load-it) unspecific)))))))))
 	 (if (pair? filename/s)
 	     (let loop ((filenames filename/s))
@@ -285,6 +282,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(write (enough-namestring pathname) port)
 	(let ((value (do-it)))
 	  (write-string " -- done" port)
+	  (newline port)
 	  value))))
 
 (define *purification-root-marker*)
@@ -606,8 +604,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(let ((port (notification-output-port)))
 	  (fresh-line port)
 	  (write-string kind port)
-	  (write-string (->namestring (->pathname fname)))
-	  (write-string "..."))))
+	  (write-string (->namestring (->pathname fname)) port)
+	  (write-string "..." port)
+	  (newline port))))
 
   (with-binary-input-file (->truename pathname)
     (lambda (channel)
