@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.2 1989/04/23 23:31:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.3 1989/04/24 23:45:23 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -38,19 +38,35 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (file-directory? filename)
-  (let ((truename (pathname->input-truename (->pathname filename))))
-    (and truename
-	 ((ucode-primitive file-directory?) (pathname->string truename)))))
+  ((ucode-primitive file-directory?)
+   (pathname->string (pathname->absolute-pathname (->pathname filename)))))
 
 (define (file-symbolic-link? filename)
-  (let ((truename (pathname->input-truename (->pathname filename))))
-    (and truename
-	 ((ucode-primitive file-symlink?) (pathname->string truename)))))
+  ((ucode-primitive file-symlink?)
+   (pathname->string (pathname->absolute-pathname (->pathname filename)))))
+
+(define (file-modes filename)
+  ((ucode-primitive file-modes)
+   (pathname->string (pathname->absolute-pathname (->pathname filename)))))
+
+(define-integrable (set-file-modes! filename modes)
+  ((ucode-primitive set-file-modes!) (canonicalize-input-filename filename)
+				     modes))
+
+(define (unix/file-access filename amode)
+  ((ucode-primitive file-access)
+   (pathname->string (pathname->absolute-pathname (->pathname filename)))
+   amode))
+
+(define (file-writable? filename)
+  (let ((pathname (pathname->absolute-pathname (->pathname filename))))
+    (or ((ucode-primitive file-access) (pathname->string pathname) 2)
+	((ucode-primitive file-access) (pathname-directory-string pathname)
+				       2))))
 
 (define (file-attributes filename)
-  (let ((truename (pathname->input-truename (->pathname filename))))
-    (and truename
-	 ((ucode-primitive file-attributes) (pathname->string truename)))))
+  ((ucode-primitive file-attributes)
+   (pathname->string (pathname->absolute-pathname (->pathname filename)))))
 
 (define-structure (file-attributes
 		   (type vector)
@@ -71,28 +87,7 @@ MIT in each case. |#
   (let ((attributes (file-attributes filename)))
     (and attributes
 	 (file-attributes/modification-time attributes))))
-
-(define (file-modes filename)
-  (let ((truename (pathname->input-truename (->pathname filename))))
-    (and truename
-	 ((ucode-primitive file-modes) (pathname->string truename)))))
-
-(define-integrable (set-file-modes! filename modes)
-  ((ucode-primitive set-file-modes!) (canonicalize-input-filename filename)
-				     modes))
 
-(define (unix/file-access filename amode)
-  (let ((truename (pathname->input-truename (->pathname filename))))
-    (and truename
-	 ((ucode-primitive file-access) (pathname->string truename) amode))))
-
-(define (file-writable? filename)
-  (let ((pathname (pathname->absolute-pathname (->pathname filename))))
-    ((ucode-primitive file-access)
-     (pathname->string (or (pathname->input-truename pathname)
-			   (pathname-directory-path pathname)))
-     2)))
-
 (define (get-environment-variable name)
   (or ((ucode-primitive get-environment-variable) name)
       (error "GET-ENVIRONMENT-VARIABLE: Unbound name" name)))
