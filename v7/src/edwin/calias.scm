@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.15 1994/10/25 01:46:12 adams Exp $
+;;;	$Id: calias.scm,v 1.16 1995/04/13 23:26:00 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -221,42 +221,18 @@
 	(else
 	 (error "Not a key or list of keys" xkey))))
 
-;;;; Special keys (room for system-dependent extension)
+;;;; Special Keys (system-dependent)
 
-(define-structure
-  (special-key (constructor %make-special-key)
-	       (conc-name special-key/)
-	       (print-procedure
-		(standard-unparser-method 'SPECIAL-KEY
-		 (lambda (key port)
-		   (write-char #\space port)
-		   (write-string (special-key/name key) port)))))
+(define-structure (special-key (constructor %make-special-key)
+			       (conc-name special-key/)
+			       (print-procedure
+				(standard-unparser-method 'SPECIAL-KEY
+				  (lambda (key port)
+				    (write-char #\space port)
+				    (write-string (special-key/name key)
+						  port)))))
   (symbol false read-only true)
   (bucky-bits false read-only true))
-
-(define (special-key/name special-key)
-  ;; Notice this system dependence:
-  (define-integrable (%symbol-name symbol)
-    (system-pair-car symbol))
-
-  (string-append (bucky-bits->name (special-key/bucky-bits special-key))
-		 (%symbol-name (special-key/symbol special-key))))
-
-(define (bucky-bits->name bits)
-  (let ((bucky-bit-map '#("M-" "C-" "S-" "H-" "T-")))
-    (let loop ((n (fix:-1+ (vector-length bucky-bit-map)))
-	       (bit (fix:lsh 1 (fix:-1+ (vector-length bucky-bit-map))))
-	       (name ""))
-      (cond ((fix:negative? n) name)
-	    ((fix:zero? (fix:and bit bits))
-	     (loop (fix:-1+ n) (fix:lsh bit -1) name))
-	    (else
-	     (loop (fix:-1+ n)
-		   (fix:lsh bit -1)
-		   (string-append (vector-ref bucky-bit-map n) name)))))))
-
-
-(define hashed-keys)
 
 (define (intern-special-key name bucky-bits)
   (let ((name-entry (assq name (cdr hashed-keys))))
@@ -275,20 +251,37 @@
 			  (cdr hashed-keys)))
 	  new-key))))
 
+(define hashed-keys
+  (list 'HASHED-KEYS))
 
-(define hook/make-special-key intern-special-key)
+(define (special-key/name special-key)
+  (string-append (bucky-bits->name (special-key/bucky-bits special-key))
+		 (symbol-name (special-key/symbol special-key))))
 
+(define (bucky-bits->name bits)
+  (let ((bucky-bit-map '#("M-" "C-" "S-" "H-" "T-")))
+    (let loop ((n (fix:- (vector-length bucky-bit-map) 1))
+	       (bit (fix:lsh 1 (fix:- (vector-length bucky-bit-map) 1)))
+	       (name ""))
+      (cond ((fix:< n 0)
+	     name)
+	    ((fix:= 0 (fix:and bit bits))
+	     (loop (fix:- n 1) (fix:lsh bit -1) name))
+	    (else
+	     (loop (fix:- n 1)
+		   (fix:lsh bit -1)
+		   (string-append (vector-ref bucky-bit-map n) name)))))))
+
 (define (make-special-key name bits)
   (hook/make-special-key name bits))
 
+(define hook/make-special-key
+  intern-special-key)
 
 ;; Predefined special keys
-
-(set! hashed-keys (list 'hashed-keys))
-
 (let-syntax ((make-key
 	      (macro (name)
-		`(define ,name (intern-special-key ',name 0)))))
+		`(DEFINE ,name (INTERN-SPECIAL-KEY ',name 0)))))
   (make-key backspace)
   (make-key stop)
   (make-key f1)
