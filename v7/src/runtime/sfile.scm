@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.31 2001/12/17 17:40:59 cph Exp $
+$Id: sfile.scm,v 14.32 2001/12/18 18:39:55 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -21,7 +21,7 @@ USA.
 |#
 
 ;;;; Simple File Operations
-;;; package: ()
+;;; package: (runtime simple-file-ops)
 
 (declare (usual-integrations))
 

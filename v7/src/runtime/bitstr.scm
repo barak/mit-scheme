@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: bitstr.scm,v 14.3 1999/01/02 06:11:34 cph Exp $
+$Id: bitstr.scm,v 14.4 2001/12/18 18:39:17 cph Exp $
 
-Copyright (c) 1988, 1999 Massachusetts Institute of Technology
+Copyright (c) 1988, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,24 +16,25 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Bit String Primitives
-;;; package: ()
+;;; package: (runtime bit-string)
 
 (declare (usual-integrations))
 
 (define-primitives
- bit-string-allocate make-bit-string bit-string?
- bit-string-length bit-string-ref bit-string-clear! bit-string-set!
- bit-string-zero? bit-string=?
- bit-string-fill! bit-string-move! bit-string-movec!
- bit-string-or! bit-string-and! bit-string-andc!
- bit-string-xor! bit-substring-move-right!
- bit-string->unsigned-integer unsigned-integer->bit-string
- read-bits! write-bits!
- bit-substring-find-next-set-bit)
+  bit-string-allocate make-bit-string bit-string?
+  bit-string-length bit-string-ref bit-string-clear! bit-string-set!
+  bit-string-zero? bit-string=?
+  bit-string-fill! bit-string-move! bit-string-movec!
+  bit-string-or! bit-string-and! bit-string-andc!
+  bit-string-xor! bit-substring-move-right!
+  bit-string->unsigned-integer unsigned-integer->bit-string
+  read-bits! write-bits!
+  bit-substring-find-next-set-bit)
 
 (define (bit-string-copy bit-string)
   (let ((result (bit-string-allocate (bit-string-length bit-string))))

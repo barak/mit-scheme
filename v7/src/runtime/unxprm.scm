@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.61 2001/05/09 03:17:14 cph Exp $
+$Id: unxprm.scm,v 1.62 2001/12/18 18:40:04 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -21,7 +21,7 @@ USA.
 |#
 
 ;;;; Miscellaneous Unix Primitives
-;;; package: ()
+;;; package: (runtime os-primitives)
 
 (declare (usual-integrations))
 
@@ -97,18 +97,18 @@ USA.
 
 (define-structure (file-attributes
 		   (type vector)
-		   (constructor false)
+		   (constructor #f)
 		   (conc-name file-attributes/))
-  (type false read-only true)
-  (n-links false read-only true)
-  (uid false read-only true)
-  (gid false read-only true)
-  (access-time false read-only true)
-  (modification-time false read-only true)
-  (change-time false read-only true)
-  (length false read-only true)
-  (mode-string false read-only true)
-  (inode-number false read-only true))
+  (type #f read-only #t)
+  (n-links #f read-only #t)
+  (uid #f read-only #t)
+  (gid #f read-only #t)
+  (access-time #f read-only #t)
+  (modification-time #f read-only #t)
+  (change-time #f read-only #t)
+  (length #f read-only #t)
+  (mode-string #f read-only #t)
+  (inode-number #f read-only #t))
 
 (define (file-length filename)
   (file-attributes/length (file-attributes-direct filename)))
@@ -148,9 +148,9 @@ USA.
 (define reset-environment-variables!)
 
 (let ((environment-variables '()))
-  ;; Kludge: since getenv returns false for unbound,
+  ;; Kludge: since getenv returns #f for unbound,
   ;; that can also be the marker for a deleted variable
-  (define-integrable *variable-deleted* false)
+  (define-integrable *variable-deleted* #f)
 
   (set! get-environment-variable
 	(lambda (variable)
@@ -278,8 +278,8 @@ USA.
 (define (copy-file from to)
   (let ((input-filename (->namestring (merge-pathnames from)))
 	(output-filename (->namestring (merge-pathnames to))))
-    (let ((input-channel false)
-	  (output-channel false))
+    (let ((input-channel #f)
+	  (output-channel #f))
       (dynamic-wind
        (lambda ()
 	 (set! input-channel (file-open-input-channel input-filename))
@@ -340,7 +340,7 @@ USA.
   (let ((registry (make-string ((ucode-primitive select-registry-size 0)))))
     ((ucode-primitive select-registry-clear-all 1) registry)
     (do ((descriptors descriptors (cdr descriptors)))
-	((null? descriptors))
+	((not (pair? descriptors)))
       ((ucode-primitive select-registry-set 2) registry (car descriptors)))
     registry))
 
@@ -402,25 +402,26 @@ USA.
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (let ((v
 	   (let loop ((rv select-registry-result-vectors))
-	     (cond ((null? rv)
-		    (make-vector ((ucode-primitive select-registry-lub 0)) #f))
-		   ((car rv)
-		    => (lambda (v) (set-car! rv #f) v))
-		   (else
-		    (loop (cdr rv)))))))
+	     (if (pair? rv)
+		 (let ((v (car rv)))
+		   (if v
+		       (begin
+			 (set-car! rv #f)
+			 v)
+		       (loop (cdr rv))))
+		 (make-vector ((ucode-primitive select-registry-lub 0)) #f)))))
       (set-interrupt-enables! interrupt-mask)
       v)))
 
 (define (deallocate-select-registry-result-vector v)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (let loop ((rv select-registry-result-vectors))
-      (cond ((null? rv)
-	     (set! select-registry-result-vectors
-		   (cons v select-registry-result-vectors)))
-	    ((car rv)
-	     (loop (cdr rv)))
-	    (else
-	     (set-car! rv v))))
+      (if (pair? rv)
+	  (if (car rv)
+	      (loop (cdr rv))
+	      (set-car! rv v))
+	  (set! select-registry-result-vectors
+		(cons v select-registry-result-vectors))))
     (set-interrupt-enables! interrupt-mask)))
 
 ;;;; Subprocess/Shell Support
@@ -445,7 +446,7 @@ USA.
 		    (try program))
 		   ((not default-directory)
 		    (let loop ((path exec-path))
-		      (and (not (null? path))
+		      (and (pair? path)
 			   (or (and (car path)
 				    (pathname-absolute? (car path))
 				    (try (merge-pathnames program (car path))))
@@ -454,7 +455,7 @@ USA.
 		    (let ((default-directory
 			    (merge-pathnames default-directory)))
 		      (let loop ((path exec-path))
-			(and (not (null? path))
+			(and (pair? path)
 			     (or (try (merge-pathnames
 				       program
 				       (if (car path)
@@ -484,7 +485,7 @@ USA.
 	  (let ((index (substring-find-next-char string start end #\:)))
 	    (if index
 		(cons (if (= index start)
-			  false
+			  #f
 			  (substring string start index))
 		      (loop (+ index 1)))
 		(list (substring string start end))))

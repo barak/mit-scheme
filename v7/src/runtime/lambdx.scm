@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lambdx.scm,v 14.9 2000/10/14 00:56:20 cph Exp $
+$Id: lambdx.scm,v 14.10 2001/12/18 18:39:35 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,14 +16,15 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Alternative Components for Lambda
-;;; package: ()
+;;; package: (runtime alternative-lambda)
 
 (declare (usual-integrations))
-
+
 (define (make-lambda* name required optional rest body)
   (scan-defines
    body
@@ -40,25 +41,24 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (lambda-components* *lambda
     (lambda (name required optional rest body)
       (receiver (make-lambda-pattern name required optional rest)
-		(append required optional (if (false? rest) '() (list rest)))
+		(append required optional (if rest (list rest) '()))
 		body))))
 
 (define-structure (lambda-pattern (conc-name lambda-pattern/))
-  (name false read-only true)
-  (required false read-only true)
-  (optional false read-only true)
-  (rest false read-only true))
+  (name #f read-only #t)
+  (required #f read-only #t)
+  (optional #f read-only #t)
+  (rest #f read-only #t))
 
 (define (make-lambda** pattern bound body)
 
   (define (split pattern bound receiver)
-    (cond ((null? pattern)
-	   (receiver '() bound))
-	  (else
-	   (split (cdr pattern) (cdr bound)
-	     (lambda (copy tail)
-	       (receiver (cons (car bound) copy)
-			 tail))))))
+    (if (pair? pattern)
+	(split (cdr pattern) (cdr bound)
+	  (lambda (copy tail)
+	    (receiver (cons (car bound) copy)
+		      tail)))
+	(receiver '() bound)))
 
   (split (lambda-pattern/required pattern) bound
     (lambda (required tail)
@@ -67,5 +67,5 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (make-lambda* (lambda-pattern/name pattern)
 			required
 			optional
-			(if (null? rest) #F (car rest))
+			(if (pair? rest) (car rest) #f)
 			body))))))

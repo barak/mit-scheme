@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: queue.scm,v 14.4 1999/01/02 06:11:34 cph Exp $
+$Id: queue.scm,v 14.5 2001/12/18 18:39:49 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,11 +16,12 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Simple Queue Abstraction
-;;; package: ()
+;;; package: (runtime simple-queue)
 
 (declare (usual-integrations))
 
@@ -28,38 +29,40 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (cons '() '()))
 
 (define-integrable (queue-empty? queue)
-  (null? (car queue)))
+  (not (pair? (car queue))))
 
 (define-integrable (queued?/unsafe queue item)
   (memq item (car queue)))
 
 (define (enqueue!/unsafe queue object)
   (let ((next (cons object '())))
-    (if (null? (cdr queue))
-	(set-car! queue next)
-	(set-cdr! (cdr queue) next))
+    (if (pair? (cdr queue))
+	(set-cdr! (cdr queue) next)
+	(set-car! queue next))
     (set-cdr! queue next)
     unspecific))
 
 (define (dequeue!/unsafe queue)
   (let ((next (car queue)))
-    (if (null? next)
+    (if (not (pair? next))
 	(error "Attempt to dequeue from empty queue"))
-    (if (null? (cdr next))
-	(begin (set-car! queue '())
-	       (set-cdr! queue '()))
-	(set-car! queue (cdr next)))
+    (if (pair? (cdr next))
+	(set-car! queue (cdr next))
+	(begin
+	  (set-car! queue '())
+	  (set-cdr! queue '())))
     (car next)))
 
 (define (queue-map!/unsafe queue procedure)
   (let loop ()
     (if (not (queue-empty? queue))
-	(begin (procedure (dequeue!/unsafe queue))
-	       (loop)))))
+	(begin
+	  (procedure (dequeue!/unsafe queue))
+	  (loop)))))
 
 (define-integrable (queue->list/unsafe queue)
   (car queue))
-
+
 ;;; Safe (interrupt locked) versions of the above operations.
 
 (define-integrable (queued? queue item)
@@ -72,7 +75,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (without-interrupts (lambda () (dequeue!/unsafe queue))))
 
 (define (queue-map! queue procedure)
-  (let ((empty "empty"))
+  (let ((empty (list 'EMPTY)))
     (let loop ()
       (let ((item
 	     (without-interrupts
@@ -81,8 +84,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    empty
 		    (dequeue!/unsafe queue))))))
 	(if (not (eq? item empty))
-	    (begin (procedure item)
-		   (loop)))))))
+	    (begin
+	      (procedure item)
+	      (loop)))))))
 
 (define (queue->list queue)
   (without-interrupts

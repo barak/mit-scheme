@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.5 2001/06/15 20:38:49 cph Exp $
+$Id: symbol.scm,v 1.6 2001/12/18 18:39:57 cph Exp $
 
 Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 |#
 
 ;;;; Symbols
-;;; package: (runtime scode)
+;;; package: (runtime symbol)
 
 (declare (usual-integrations))
 

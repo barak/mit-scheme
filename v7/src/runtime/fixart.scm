@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fixart.scm,v 1.7 2001/10/22 00:28:09 cph Exp $
+$Id: fixart.scm,v 1.8 2001/12/18 18:39:31 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 |#
 
 ;;;; Fixnum Arithmetic
-;;; package: ()
+;;; package: (runtime fixnum-arithmetic)
 
 (declare (usual-integrations))
 

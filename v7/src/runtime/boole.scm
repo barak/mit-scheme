@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: boole.scm,v 14.3 1999/01/02 06:11:34 cph Exp $
+$Id: boole.scm,v 14.4 2001/12/18 18:39:22 cph Exp $
 
-Copyright (c) 1988, 1999 Massachusetts Institute of Technology
+Copyright (c) 1988, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,46 +16,54 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Boolean Operations
-;;; package: ()
+;;; package: (runtime boolean)
 
 (declare (usual-integrations))
-
+
 (define-primitives not (false? not))
 
-(define false #F)
-(define true #T)
+(define false #f)
+(define true #t)
 
 (define (boolean? object)
-  (or (eq? object #F)
-      (eq? object #T)))
+  (or (eq? object #f)
+      (eq? object #t)))
 
 (define (boolean=? x y)
   (if x y (not y)))
 
 (define (boolean/or . arguments)
   (let loop ((arguments arguments))
-    (cond ((null? arguments) false)
-	  ((car arguments) true)
-	  (else (loop (cdr arguments))))))
+    (if (pair? arguments)
+	(if (car arguments)
+	    #t
+	    (loop (cdr arguments)))
+	#f)))
 
 (define (boolean/and . arguments)
   (let loop ((arguments arguments))
-    (cond ((null? arguments) true)
-	  ((car arguments) (loop (cdr arguments)))
-	  (else false))))
+    (if (pair? arguments)
+	(if (car arguments)
+	    (loop (cdr arguments))
+	    #f)
+	#t)))
 
 (define (there-exists? items predicate)
   (let loop ((items items))
-    (and (not (null? items))
-	 (or (predicate (car items))
-	     (loop (cdr items))))))
+    (if (pair? items)
+	(or (predicate (car items))
+	    (loop (cdr items)))
+	#f)))
 
 (define (for-all? items predicate)
   (let loop ((items items))
-    (or (null? items)
-	(and (predicate (car items))
-	     (loop (cdr items))))))
+    (if (pair? items)
+	(if (predicate (car items))
+	    (loop (cdr items))
+	    #f)
+	#t)))

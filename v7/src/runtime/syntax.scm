@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.33 2001/03/21 19:15:18 cph Exp $
+$Id: syntax.scm,v 14.34 2001/12/18 18:39:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -90,25 +90,27 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (syntax expression #!optional table)
   (syntax-top-level 'SYNTAX syntax-expression expression
-		    (if (default-object? table) #f table)))
+		    (if (default-object? table) 'DEFAULT table)))
 
 (define (syntax* expressions #!optional table)
   (syntax-top-level 'SYNTAX* syntax-sequence expressions
-		    (if (default-object? table) #f table)))
+		    (if (default-object? table) 'DEFAULT table)))
 
 (define (syntax-top-level name syntaxer expression table)
   (let ((scode
 	 (fluid-let ((*syntax-table*
-		      (if table
-			  (begin
-			    (if (not (syntax-table? table))
-				(error:wrong-type-argument table
-							   "syntax table"
-							   name))
-			    table)
-			  (if (unassigned? *syntax-table*)
-			      (nearest-repl/syntax-table)
-			      *syntax-table*)))
+		      (cond ((eq? table 'DEFAULT)
+			     (if (unassigned? *syntax-table*)
+				 (nearest-repl/syntax-table)
+				 *syntax-table*))
+			    ((environment? table)
+			     (environment-syntax-table table))
+			    (else
+			     (if (not (syntax-table? table))
+				 (error:wrong-type-argument table
+							    "syntax table"
+							    name))
+			     table)))
 		     (*current-keyword* #f))
 	   (syntaxer #t expression))))
     (if *disallow-illegal-definitions?*

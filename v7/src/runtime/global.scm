@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.54 2001/10/02 18:51:54 cph Exp $
+$Id: global.scm,v 14.55 2001/12/18 18:39:33 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -21,14 +21,14 @@ USA.
 |#
 
 ;;;; Miscellaneous Global Definitions
-;;; package: ()
+;;; package: (runtime miscellaneous-global)
 
 (declare (usual-integrations))
 
 ;;;; Primitive Operators
 
 (define-primitives
-  force error-procedure
+  error-procedure
   set-interrupt-enables! enable-interrupts! with-interrupt-mask
   get-fixed-objects-vector with-history-disabled
   (primitive-procedure-arity 1)
@@ -71,17 +71,15 @@ USA.
 
 (define (identity-procedure x) x)
 (define (null-procedure . args) args '())
-(define (false-procedure . args) args false)
-(define (true-procedure . args) args true)
+(define (false-procedure . args) args #f)
+(define (true-procedure . args) args #t)
 
 ;; This definition is replaced when the 
 ;; later in the boot sequence.
 (define apply (ucode-primitive apply 2))
 
 (define (eval expression environment)
-  (extended-scode-eval (syntax expression
-			       (environment-syntax-table environment))
-		       environment))
+  (extended-scode-eval (syntax expression environment) environment))
 
 (define (scode-eval scode environment)
   (hook/scode-eval scode environment))
@@ -99,13 +97,13 @@ USA.
        (lambda ()
 	 (set! old-value (get-component object))
 	 (set-component! object new-value)
-	 (set! new-value false)
+	 (set! new-value #f)
 	 unspecific)
        thunk
        (lambda ()
 	 (set! new-value (get-component object))
 	 (set-component! object old-value)
-	 (set! old-value false)
+	 (set! old-value #f)
 	 unspecific)))))
 
 (define (bind-cell-contents! cell new-value thunk)
@@ -192,7 +190,7 @@ USA.
 	  (wait-loop)))))
 
 (define (exit #!optional integer)
-  (hook/exit (if (default-object? integer) false integer)))
+  (hook/exit (if (default-object? integer) #f integer)))
 
 (define (default/exit integer)
   (if (prompt-for-confirmation "Kill Scheme")
@@ -218,10 +216,12 @@ USA.
 (define hook/quit default/quit)
 
 (define syntaxer/default-environment
-  (let () (the-environment)))
+  (*make-environment system-global-environment
+		     (vector lambda-tag:unnamed)))
 
 (define user-initial-environment
-  (let () (the-environment)))
+  (*make-environment system-global-environment
+		     (vector lambda-tag:unnamed)))
 
 (define user-initial-prompt
   "]=>")
@@ -261,7 +261,7 @@ USA.
 	      (if ((ucode-primitive primitive-fasdump)
 		   object filename
 		   (if (default-object? dump-option)
-		       false
+		       #f
 		       dump-option))
 		  (end-message)
 		  (begin
@@ -312,6 +312,6 @@ USA.
 	  (let per-symbol
 	      ((bucket (vector-ref obarray index))
 	       (accumulator accumulator))
-	    (if (null? bucket)
-		(per-bucket (fix:- index 1) accumulator)
-		(per-symbol (cdr bucket) (cons (car bucket) accumulator))))))))
+	    (if (pair? bucket)
+		(per-symbol (cdr bucket) (cons (car bucket) accumulator))
+		(per-bucket (fix:- index 1) accumulator)))))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.16 2001/08/15 02:56:30 cph Exp $
+$Id: vector.scm,v 14.17 2001/12/18 18:40:07 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,18 +16,19 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Operations on Vectors
-;;; package: ()
+;;; package: (runtime vector)
 
 (declare (usual-integrations))
 
 (define-primitives
- vector? vector-length vector-ref vector-set!
- list->vector vector subvector->list
- subvector-move-right! subvector-move-left! subvector-fill!)
+  vector? vector-length vector-ref vector-set!
+  list->vector vector subvector->list
+  subvector-move-right! subvector-move-left! subvector-fill!)
 
 (define-integrable (guarantee-vector object procedure)
   (if (not (vector? object))
@@ -81,18 +82,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((result
 	 (make-vector
 	  (let loop ((vectors vectors) (length 0))
-	    (if (null? vectors)
-		length
+	    (if (pair? vectors)
 		(begin
 		  (guarantee-vector (car vectors) 'VECTOR-APPEND)
 		  (loop (cdr vectors)
-			(fix:+ (vector-length (car vectors)) length))))))))
+			(fix:+ (vector-length (car vectors)) length)))
+		length)))))
     (let loop ((vectors vectors) (index 0))
-      (if (null? vectors)
-	  result
+      (if (pair? vectors)
 	  (let ((size (vector-length (car vectors))))
 	    (subvector-move-right! (car vectors) 0 size result index)
-	    (loop (cdr vectors) (fix:+ index size)))))))
+	    (loop (cdr vectors) (fix:+ index size)))
+	  result))))
 
 (define (vector-grow vector length #!optional value)
   (guarantee-vector vector 'VECTOR-GROW)

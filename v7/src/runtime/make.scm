@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.74 2001/12/18 18:27:24 cph Exp $
+$Id: make.scm,v 14.75 2001/12/18 18:39:38 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -438,7 +438,7 @@ USA.
    ((RUNTIME RECORD-SLOT-ACCESS) INITIALIZE-CONDITIONS! #t)
    ((RUNTIME STREAM) INITIALIZE-CONDITIONS! #t)
    ;; System dependent stuff
-   (() INITIALIZE-SYSTEM-PRIMITIVES! #f)
+   ((RUNTIME OS-PRIMITIVES) INITIALIZE-SYSTEM-PRIMITIVES! #t)
    ;; Threads
    (RUNTIME THREAD)
    ;; I/O

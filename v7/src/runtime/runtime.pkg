@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.384 2001/12/17 17:40:59 cph Exp $
+$Id: runtime.pkg,v 14.385 2001/12/18 18:39:52 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -22,27 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Runtime System Packaging
 
-(define-package ()
-  (files "blowfish"
-	 "bitstr"
-	 "boole"
-	 "boot"
-	 "equals"
-	 "fixart"
-	 "global"
-	 "lambdx"
-	 "msort"
-	 "qsort"
-	 "queue"
-	 "sfile"
-	 "symbol"
-	 "udata"
-	 "vector")
-  (file-case os-type
-    ((unix) "unxprm")
-    ((nt) "ntprm")
-    ((os/2) "os2prm")
-    (else)))
+(define-package ())
 
 (define-package (package)
   ;; The information appearing here must be exactly duplicated in the
@@ -77,9 +57,638 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (parent ())
   (initialization (initialize-package!)))
 
+(define-package (runtime bit-string)
+  (files "bitstr")
+  (parent (runtime))
+  (export ()
+	  bit-string->signed-integer
+	  bit-string->unsigned-integer
+	  bit-string-allocate
+	  bit-string-and
+	  bit-string-and!
+	  bit-string-andc
+	  bit-string-andc!
+	  bit-string-append
+	  bit-string-append-reversed
+	  bit-string-clear!
+	  bit-string-copy
+	  bit-string-fill!
+	  bit-string-length
+	  bit-string-move!
+	  bit-string-movec!
+	  bit-string-not
+	  bit-string-or
+	  bit-string-or!
+	  bit-string-ref
+	  bit-string-set!
+	  bit-string-xor
+	  bit-string-xor!
+	  bit-string-zero?
+	  bit-string=?
+	  bit-string?
+	  bit-substring
+	  bit-substring-extend
+	  bit-substring-find-next-set-bit
+	  bit-substring-move-right!
+	  make-bit-string
+	  read-bits!
+	  signed-integer->bit-string
+	  unsigned-integer->bit-string
+	  write-bits!))
+
+(define-package (runtime blowfish)
+  (files "blowfish")
+  (parent (runtime))
+  (export ()
+	  blowfish-available?
+	  blowfish-cbc
+	  blowfish-cfb64
+	  blowfish-ecb
+	  blowfish-encrypt-port
+	  blowfish-file?
+	  blowfish-ofb64
+	  blowfish-set-key
+	  compute-blowfish-init-vector
+	  read-blowfish-file-header
+	  write-blowfish-file-header))
+
+(define-package (runtime boolean)
+  (files "boole")
+  (parent (runtime))
+  (export ()
+	  boolean/and
+	  boolean/or
+	  boolean=?
+	  boolean?
+	  false
+	  false?
+	  for-all?
+	  not
+	  there-exists?
+	  true))
+
+(define-package (runtime boot-definitions)
+  (files "boot")
+  (parent (runtime))
+  (export ()
+	  future?
+	  get-next-constant
+	  interrupt-bit/after-gc
+	  interrupt-bit/gc
+	  interrupt-bit/global-1
+	  interrupt-bit/global-3
+	  interrupt-bit/global-gc
+	  interrupt-bit/kbd
+	  interrupt-bit/stack
+	  interrupt-bit/suspend
+	  interrupt-bit/timer
+	  interrupt-mask/all
+	  interrupt-mask/gc-ok
+	  interrupt-mask/no-background
+	  interrupt-mask/none
+	  interrupt-mask/timer-ok
+	  object-constant?
+	  object-pure?
+	  standard-unparser-method
+	  unparser-method?
+	  unparser/standard-method
+	  with-absolutely-no-interrupts
+	  without-background-interrupts
+	  without-interrupts))
+
+(define-package (runtime equality)
+  (files "equals")
+  (parent (runtime))
+  (export ()
+	  equal?
+	  eqv?))
+
+(define-package (runtime fixnum-arithmetic)
+  (files "fixart")
+  (parent (runtime))
+  (export ()
+	  ->flonum
+	  fix:*
+	  fix:+
+	  fix:-
+	  fix:-1+
+	  fix:1+
+	  fix:<
+	  fix:<=
+	  fix:=
+	  fix:>
+	  fix:>=
+	  fix:and
+	  fix:andc
+	  fix:divide
+	  fix:fixnum?
+	  fix:gcd
+	  fix:lsh
+	  fix:max
+	  fix:min
+	  fix:negative?
+	  fix:not
+	  fix:or
+	  fix:positive?
+	  fix:quotient
+	  fix:remainder
+	  fix:xor
+	  fix:zero?
+	  fixnum?
+	  flo:*
+	  flo:+
+	  flo:-
+	  flo:/
+	  flo:<
+	  flo:<=
+	  flo:=
+	  flo:>
+	  flo:>=
+	  flo:abs
+	  flo:acos
+	  flo:asin
+	  flo:atan
+	  flo:atan2
+	  flo:ceiling
+	  flo:ceiling->exact
+	  flo:cos
+	  flo:exp
+	  flo:expt
+	  flo:finite?
+	  flo:flonum?
+	  flo:floor
+	  flo:floor->exact
+	  flo:log
+	  flo:max
+	  flo:min
+	  flo:negate
+	  flo:negative?
+	  flo:positive?
+	  flo:round
+	  flo:round->exact
+	  flo:sin
+	  flo:sqrt
+	  flo:tan
+	  flo:truncate
+	  flo:truncate->exact
+	  flo:vector-cons
+	  flo:vector-length
+	  flo:vector-ref
+	  flo:vector-set!
+	  flo:zero?
+	  index-fixnum?
+	  int:*
+	  int:+
+	  int:-
+	  int:-1+
+	  int:->flonum
+	  int:1+
+	  int:<
+	  int:<=
+	  int:=
+	  int:>
+	  int:>=
+	  int:divide
+	  int:integer?
+	  int:negate
+	  int:negative?
+	  int:positive?
+	  int:quotient
+	  int:remainder
+	  int:zero?))
+
+(define-package (runtime miscellaneous-global)
+  (files "global")
+  (parent (runtime))
+  (export ()
+	  %exit
+	  %quit
+	  *the-non-printing-object*
+	  apply
+	  bind-cell-contents!
+	  call-with-values
+	  cd
+	  cell-contents
+	  cell?
+	  default/exit
+	  default/quit
+	  enable-interrupts!
+	  environment-link-name
+	  eq?
+	  error-procedure
+	  eval
+	  exit
+	  false-procedure
+	  fasdump
+	  get-fixed-objects-vector
+	  hook/exit
+	  hook/quit
+	  hook/scode-eval
+	  hunk3-cons
+	  identity-procedure
+	  impurify
+	  lexical-assignment
+	  lexical-reference
+	  lexical-unassigned?
+	  lexical-unbound?
+	  lexical-unreferenceable?
+	  link-variables
+	  local-assignment
+	  make-cell
+	  make-non-pointer-object
+	  null-procedure
+	  obarray->list
+	  object-component-binder
+	  object-datum
+	  object-gc-type
+	  object-new-type
+	  object-non-pointer?
+	  object-pointer?
+	  object-type
+	  object-type?
+	  pa
+	  primitive-procedure-arity
+	  primitive-procedure-documentation
+	  pwd
+	  quit
+	  scode-eval
+	  set-cell-contents!
+	  set-interrupt-enables!
+	  show-time
+	  syntaxer/default-environment
+	  system-hunk3-cons
+	  system-hunk3-cxr0
+	  system-hunk3-cxr1
+	  system-hunk3-cxr2
+	  system-hunk3-set-cxr0!
+	  system-hunk3-set-cxr1!
+	  system-hunk3-set-cxr2!
+	  system-list->vector
+	  system-pair-car
+	  system-pair-cdr
+	  system-pair-cons
+	  system-pair-set-car!
+	  system-pair-set-cdr!
+	  system-pair?
+	  system-subvector->list
+	  system-vector-length
+	  system-vector-ref
+	  system-vector-set!
+	  system-vector?
+	  true-procedure
+	  unbind-variable
+	  undefined-value?
+	  unspecific
+	  user-initial-environment
+	  user-initial-prompt
+	  values
+	  wait-interval
+	  with-history-disabled
+	  with-interrupt-mask
+	  with-values
+	  write-to-string))
+
+(define-package (runtime alternative-lambda)
+  (files "lambdx")
+  (parent (runtime))
+  (export ()
+	  lambda-components*
+	  lambda-components**
+	  lambda-pattern/name
+	  lambda-pattern/optional
+	  lambda-pattern/required
+	  lambda-pattern/rest
+	  lambda-pattern?
+	  make-lambda*
+	  make-lambda**
+	  make-lambda-pattern))
+
+(define-package (runtime merge-sort)
+  (files "msort")
+  (parent (runtime))
+  (export ()
+	  merge-sort
+	  merge-sort!
+	  sort
+	  sort!))
+
+(define-package (runtime quick-sort)
+  (files "qsort")
+  (parent (runtime))
+  (export ()
+	  quick-sort
+	  quick-sort!))
+
+(define-package (runtime simple-queue)
+  (files "queue")
+  (parent (runtime))
+  (export ()
+	  make-queue
+	  queue-empty?
+	  queued?/unsafe
+	  enqueue!/unsafe
+	  dequeue!/unsafe
+	  queue-map!/unsafe
+	  queue->list/unsafe
+	  queued?
+	  enqueue!
+	  dequeue!
+	  queue-map!
+	  queue->list))
+
+(define-package (runtime simple-file-ops)
+  (files "sfile")
+  (parent (runtime))
+  (export ()
+	  allocate-temporary-file
+	  call-with-temporary-file-pathname
+	  call-with-temporary-filename
+	  current-file-time
+	  deallocate-temporary-file
+	  delete-directory
+	  delete-file
+	  delete-file-no-errors
+	  directory-file-names
+	  file-access
+	  file-directory?
+	  file-eq?
+	  file-executable?
+	  file-exists-direct?
+	  file-exists-indirect?
+	  file-exists?
+	  file-modification-time<?
+	  file-processed?
+	  file-readable?
+	  file-regular?
+	  file-soft-link?
+	  file-symbolic-link?
+	  file-touch
+	  file-type-direct
+	  file-type-indirect
+	  file-writable?
+	  file-writeable?
+	  guarantee-init-file-directory
+	  guarantee-init-file-specifier
+	  hard-link-file
+	  init-file-specifier?
+	  make-directory
+	  open-input-init-file
+	  open-output-init-file
+	  rename-file
+	  soft-link-file))
+
+(define-package (runtime symbol)
+  (files "symbol")
+  (parent (runtime))
+  (export ()
+	  intern
+	  intern-soft
+	  interned-symbol?
+	  string->symbol
+	  string->uninterned-symbol
+	  symbol->string
+	  symbol-append
+	  symbol-hash
+	  symbol-hash-mod
+	  symbol-name
+	  symbol<?
+	  symbol?
+	  uninterned-symbol?))
+
+(define-package (runtime microcode-data)
+  (files "udata")
+  (parent (runtime))
+  (export ()
+	  compiled-code-address->block
+	  compiled-code-address->offset
+	  compiled-code-address?
+	  compiled-code-block/bytes-per-object
+	  compiled-code-block/code-end
+	  compiled-code-block/code-length
+	  compiled-code-block/code-start
+	  compiled-code-block/constants-end
+	  compiled-code-block/constants-start
+	  compiled-code-block/debugging-info
+	  compiled-code-block/debugging-info?
+	  compiled-code-block/environment
+	  compiled-code-block/index->offset
+	  compiled-code-block/manifest-closure?
+	  compiled-code-block/marked-start
+	  compiled-code-block/offset->index
+	  compiled-code-block/read-file
+	  compiled-code-block?
+	  compiled-continuation/next-continuation-offset
+	  compiled-continuation/reflect-to-interface?
+	  compiled-continuation/return-to-interpreter?
+	  compiled-entry-type
+	  compiled-expression?
+	  compiled-return-address?
+	  discriminate-compiled-entry
+	  environment-extension-aux-list
+	  environment-extension-parent
+	  environment-extension-procedure
+	  environment-extension?
+	  force
+	  interpreter-return-address?
+	  make-return-address
+	  microcode-error
+	  microcode-return
+	  microcode-termination
+	  microcode-type
+	  promise-environment
+	  promise-expression
+	  promise-forced?
+	  promise-non-expression?
+	  promise-value
+	  promise?
+	  return-address/code
+	  return-address/name
+	  return-address?
+	  set-compiled-code-block/debugging-info!
+	  set-environment-extension-parent!
+	  stack-address->index
+	  stack-address-offset
+	  stack-address?))
+
+(define-package (runtime vector)
+  (files "vector")
+  (parent (runtime))
+  (export ()
+	  for-each-vector-element
+	  guarantee-subvector
+	  guarantee-vector
+	  list->vector
+	  make-initialized-vector
+	  make-vector
+	  subvector
+	  subvector->list
+	  subvector-fill!
+	  subvector-filled?
+	  subvector-find-next-element
+	  subvector-find-next-element-not
+	  subvector-find-previous-element
+	  subvector-find-previous-element-not
+	  subvector-move-left!
+	  subvector-move-right!
+	  subvector-uniform?
+	  vector
+	  vector->list
+	  vector-append
+	  vector-binary-search
+	  vector-copy
+	  vector-eighth
+	  vector-fifth
+	  vector-fill!
+	  vector-filled?
+	  vector-find-next-element
+	  vector-find-previous-element
+	  vector-first
+	  vector-fourth
+	  vector-grow
+	  vector-head
+	  vector-length
+	  vector-map
+	  vector-move!
+	  vector-of-type?
+	  vector-ref
+	  vector-second
+	  vector-set!
+	  vector-seventh
+	  vector-sixth
+	  vector-tail
+	  vector-third
+	  vector-uniform?
+	  vector?))
+
+(define-package (runtime os-primitives)
+  (parent (runtime))
+  (export ()
+	  add-to-select-registry!
+	  copy-file
+	  current-home-directory
+	  current-user-name
+	  decode-file-time
+	  decoded-time->file-time
+	  encode-file-time
+	  file-access-time
+	  file-access-time-direct
+	  file-access-time-indirect
+	  file-attributes
+	  file-attributes-direct
+	  file-attributes-indirect
+	  file-attributes/access-time
+	  file-attributes/change-time
+	  file-attributes/length
+	  file-attributes/mode-string
+	  file-attributes/modification-time
+	  file-attributes/n-links
+	  file-attributes/type
+	  file-length
+	  file-modes
+	  file-modification-time
+	  file-modification-time-direct
+	  file-modification-time-indirect
+	  file-time->global-decoded-time
+	  file-time->local-decoded-time
+	  file-time->universal-time
+	  get-environment-variable
+	  init-file-specifier->pathname
+	  make-select-registry
+	  os/default-end-of-line-translation
+	  os/exec-path
+	  os/executable-pathname-types
+	  os/file-end-of-line-translation
+	  os/find-program
+	  os/form-shell-command
+	  os/make-subprocess
+	  os/parse-path-string
+	  os/shell-file-name
+	  remove-from-select-registry!
+	  select-descriptor
+	  select-registry-test
+	  set-file-modes!
+	  set-file-times!
+	  temporary-directory-pathname
+	  temporary-file-pathname
+	  universal-time->file-time
+	  user-home-directory)
+  (initialization (initialize-system-primitives!)))
+
+(os-type-case
+ ((unix)
+  (extend-package (runtime os-primitives)
+    (files "unxprm")
+    (export ()
+	    delete-environment-variable!
+	    file-attributes/gid
+	    file-attributes/inode-number
+	    file-attributes/uid
+	    set-environment-variable!
+	    unix/current-gid
+	    unix/current-pid
+	    unix/current-uid
+	    unix/gid->string
+	    unix/system
+	    unix/uid->string)))
+ ((nt)
+  (extend-package (runtime os-primitives)
+    (files "ntprm")
+    (export ()
+	    console-channel-descriptor
+	    delete-environment-variable!
+	    dos/fs-drive-type
+	    dos/fs-long-filenames?
+	    file-attributes/gid
+	    file-attributes/inode-number
+	    file-attributes/modes
+	    file-attributes/uid
+	    nt-file-mode/archive
+	    nt-file-mode/compressed
+	    nt-file-mode/directory
+	    nt-file-mode/hidden
+	    nt-file-mode/normal
+	    nt-file-mode/read-only
+	    nt-file-mode/system
+	    nt-file-mode/temporary
+	    nt-fs-flag/case-preserved-names
+	    nt-fs-flag/case-sensitive-search
+	    nt-fs-flag/file-compression
+	    nt-fs-flag/persistent-acls
+	    nt-fs-flag/unicode-on-disk
+	    nt-fs-flag/volume-is-compressed
+	    nt-volume-info
+	    nt-volume-info/file-system-flags
+	    nt-volume-info/file-system-name
+	    nt-volume-info/max-component-length
+	    nt-volume-info/name
+	    nt-volume-info/serial-number
+	    nt/hide-subprocess-windows?
+	    nt/scheme-executable-pathname
+	    nt/subprocess-argument-escape-char
+	    nt/subprocess-argument-quote-char
+	    nt/system-root-directory
+	    nt/windows-type
+	    set-environment-variable!
+	    set-environment-variable-default!)))
+ ((os/2)
+  (extend-package (runtime os-primitives)
+    (files "os2prm")
+    (export ()
+	    dos/fs-drive-type
+	    dos/fs-long-filenames?
+	    file-attributes/allocated-length
+	    file-attributes/modes
+	    os2-file-mode/archived
+	    os2-file-mode/directory
+	    os2-file-mode/hidden
+	    os2-file-mode/read-only
+	    os2-file-mode/system
+	    os2/current-pid
+	    os2/system-root-directory))))
+
 (define-package (runtime string)
   (files "string")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  allocate-external-string
 	  burst-string
@@ -212,7 +821,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime 1d-property)
   (files "prop1d")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  1d-table/for-each
 	  1d-table/alist
@@ -226,7 +835,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime 2d-property)
   (files "prop2d")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  2d-get
 	  2d-get-alist-x
@@ -237,7 +846,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime advice)
   (files "advice")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  *args*
 	  *proc*
@@ -268,12 +877,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime apply)
   (files "apply")
-  (parent ())
+  (parent (runtime))
   (initialization (initialize-package!)))
 
 (define-package (runtime character)
   (files "char")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  ascii->char
 	  char->ascii
@@ -314,7 +923,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime character-set)
   (files "chrset")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  ascii-range->char-set
 	  char-alphabetic?
@@ -363,7 +972,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime compiler-info)
   (files "infstr" "infutl")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  *save-uncompressed-files?*
 	  *uncompressed-file-lifetime*
@@ -431,7 +1040,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime console-i/o-port)
   (files "ttyio")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  console-i/o-port
 	  console-input-port
@@ -444,7 +1053,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime continuation)
   (files "contin")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  call-with-current-continuation
 	  continuation/block-thread-events?
@@ -461,7 +1070,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime continuation-parser)
   (files "conpar")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  continuation->stack-frame
 	  continuation/first-subproblem
@@ -506,7 +1115,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime control-point)
   (files "cpoint")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  control-point/element-stream
 	  control-point/history
@@ -522,7 +1131,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime date/time)
   (files "datime")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  ctime-string->decoded-time
 	  ctime-string->file-time
@@ -592,7 +1201,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime debugger-command-loop)
   (files "dbgcmd")
-  (parent ())
+  (parent (runtime))
   (initialization (initialize-package!)))
 
 (define-package (runtime debugger-utilities)
@@ -615,7 +1224,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime debugging-info)
   (files "framex")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  debugging-info/compiled-code?
 	  debugging-info/evaluated-object-value
@@ -630,7 +1239,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime defstruct)
   (files "defstr")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  define-structure/keyword-parser
 	  define-structure/list-accessor
@@ -645,26 +1254,31 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (initialization (initialize-package!)))
 
 (define-package (runtime directory)
-  (file-case os-type
-    ((unix) "unxdir")
-    ((os/2) "os2dir")
-    ((nt) "ntdir")
-    ;;(else "unkdir")
-    (else))
-  (parent ())
+  (parent (runtime))
   (export (runtime pathname)
 	  *expand-directory-prefixes?*)
   (export ()
 	  directory-read))
 
+(os-type-case
+ ((unix)
+  (extend-package (runtime directory)
+    (files "unxdir")))
+ ((nt)
+  (extend-package (runtime directory)
+    (files "ntdir")))
+ ((os/2)
+  (extend-package (runtime directory)
+    (files "os2dir"))))
+
 (define-package (runtime emacs-interface)
   (files "emacs")
-  (parent ())
+  (parent (runtime))
   (initialization (initialize-package!)))
 
 (define-package (runtime procedure)
   (files "uproc")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  apply-hook-extra
 	  apply-hook-procedure
@@ -701,7 +1315,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime environment)
   (files "uenvir")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  compiled-procedure/environment
 	  environment-arguments
@@ -736,7 +1350,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime error-handler)
   (files "error")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  abort
 	  access-condition
@@ -857,7 +1471,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime event-distributor)
   (files "events")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  add-event-receiver!
 	  event-distributor/invoke!
@@ -869,7 +1483,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime extended-scode-eval)
   (files "xeval")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  extended-scode-eval
 	  hook/extended-scode-eval)
@@ -877,7 +1491,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime file-i/o-port)
   (files "fileio")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  call-with-append-file
 	  call-with-binary-append-file
@@ -900,7 +1514,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime transcript)
   (files "tscript")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  transcript-off
 	  transcript-on)
@@ -915,14 +1529,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "format")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  format)
   (initialization (initialize-package!)))
 
 (define-package (runtime garbage-collector)
   (files "gc")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  constant-space/in-use
 	  flush-purification-queue!
@@ -938,7 +1552,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime gc-daemons)
   (files "gcdemn")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  add-gc-daemon!
 	  add-gc-daemon!/no-restore
@@ -957,7 +1571,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime gc-finalizer)
   (files "gcfinal")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  add-to-gc-finalizer!
 	  gc-finalizer-elements
@@ -970,7 +1584,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime gc-notification)
   (files "gcnote")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  gc-statistic->string
 	  print-gc-statistics
@@ -980,7 +1594,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime gc-statistics)
   (files "gcstat")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  gc-history-mode
 	  gc-statistic/heap-left
@@ -1003,7 +1617,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime generic-i/o-port)
   (files "genio")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  make-generic-i/o-port
 	  make-generic-input-port
@@ -1019,14 +1633,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime gensym)
   (files "gensym")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  generate-uninterned-symbol)
   (initialization (initialize-package!)))
 
 (define-package (runtime global-database)
   (files "gdatab")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  add-unparser-special-object!
 	  add-unparser-special-pair!
@@ -1044,7 +1658,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime hash)
   (files "hash")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  hash
 	  hash-table/make
@@ -1059,7 +1673,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "hashtb")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  eq-hash
 	  eq-hash-mod
@@ -1107,7 +1721,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime history)
   (files "histry")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  with-new-history)
   (export (runtime continuation-parser)
@@ -1121,7 +1735,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "krypt")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  encrypt
 	  decrypt))
@@ -1130,7 +1744,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "cpress")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  compress
 	  uncompress
@@ -1138,7 +1752,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime port)
   (files "port")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  close-input-port
 	  close-output-port
@@ -1246,7 +1860,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime input-port)
   (files "input")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  char-ready?
 	  eof-object?
@@ -1273,7 +1887,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime output-port)
   (files "output")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  beep
 	  clear
@@ -1298,7 +1912,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime interrupt-handler)
   (files "intrpt")
-  (parent ())
+  (parent (runtime))
   (export (runtime emacs-interface)
 	  hook/^G-interrupt
 	  hook/clean-input/flush-typeahead)
@@ -1308,7 +1922,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime lambda-abstraction)
   (files "lambda")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  block-declaration?
 	  block-declaration-text
@@ -1335,7 +1949,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime list)
   (files "list")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  add-member-procedure
 	  alist-copy
@@ -1468,7 +2082,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime load)
   (files "load")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  argument-command-line-parser
 	  condition-type:not-loading
@@ -1494,7 +2108,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime macros)
   (files "macros")
-  (parent ())
+  (parent (runtime))
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-errors)
@@ -1525,7 +2139,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime microcode-tables)
   (files "utabs")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  char:newline
 	  fixed-object/code->name
@@ -1569,7 +2183,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime number)
   (files "arith" "dragon4")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  *
 	  +
@@ -1672,7 +2286,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime number-parser)
   (files "numpar")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  flonum-parser-fast?
 	  string->number
@@ -1680,7 +2294,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime options)
   (files "option")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  *initial-options-file*
 	  declare-shared-library
@@ -1694,7 +2308,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime parser)
   (files "parse")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  *parser-canonicalize-symbols?*
 	  *parser-radix*
@@ -1725,7 +2339,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime parser-table)
   (files "partab")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  current-parser-table
 	  guarantee-parser-table
@@ -1745,7 +2359,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime pathname)
   (files "pathnm")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  *default-pathname-defaults*
 	  ->namestring
@@ -1809,7 +2423,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime population)
   (files "poplat")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  add-to-population!
 	  exists-an-inhabitant?
@@ -1823,7 +2437,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime pretty-printer)
   (files "pp")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  *pp-arity-dispatched-procedure-style*
 	  *pp-auto-highlighter*
@@ -1844,7 +2458,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime primitive-io)
   (files "io") 
-  (parent ())
+  (parent (runtime))
   (export ()
 	  all-open-channels
 	  channel-blocking
@@ -1988,14 +2602,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime program-copier)
   (files "prgcop")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  copy-program)
   (initialization (initialize-package!)))
 
 (define-package (runtime random-number)
   (files "random")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  *random-state*
 	  flo:random-unit
@@ -2007,7 +2621,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime record)
   (files "record")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  %make-record
 	  %record
@@ -2038,7 +2652,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime reference-trap)
   (files "urtrap")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  cached-reference-trap-value
 	  cached-reference-trap?
@@ -2057,7 +2671,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime rep)
   (files "rep")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  ->environment
 	  abort->nearest
@@ -2156,7 +2770,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime save/restore)
   (files "savres")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  disk-restore
 	  disk-save
@@ -2170,7 +2784,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime scode)
   (files "scode")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  absolute-reference-name
 	  absolute-reference-to?
@@ -2231,7 +2845,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime scode-combinator)
   (files "scomb")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  combination-components
 	  combination-operands
@@ -2266,7 +2880,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime scode-data)
   (files "sdata")
-  (parent ())
+  (parent (runtime))
   (export (runtime lambda-abstraction)
 	  &pair-car
 	  &pair-cdr
@@ -2328,7 +2942,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime scode-scan)
   (files "scan")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  make-open-block
 	  open-block-components
@@ -2338,7 +2952,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime scode-walker)
   (files "codwlk")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  make-scode-walker
 	  scode-walk
@@ -2347,7 +2961,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime socket)
   (files "socket")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  allocate-host-address
 	  canonical-host-name
@@ -2369,7 +2983,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "process")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  make-subprocess
 	  process-environment-bind
@@ -2420,7 +3034,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "syncproc")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  condition-type:subprocess-abnormal-termination
 	  condition-type:subprocess-signalled
@@ -2430,7 +3044,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime graphics)
   (files "graphics")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  enumerate-graphics-types
 	  graphics-bind-drawing-mode
@@ -2483,7 +3097,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case os-type
     ((unix) "x11graph")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  create-x-colormap
 	  create-x-image
@@ -2606,7 +3220,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case os-type
     ((unix) "starbase")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  starbase-graphics-device-type)
   (initialization (initialize-package!)))
@@ -2615,7 +3229,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case os-type
     ((os/2) "os2graph" "os2ctype")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  os2-console/color?
 	  os2-console/get-font-metrics
@@ -2638,7 +3252,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case os-type
     ((os/2) "os2winp")
     (else))
-  (parent ())
+  (parent (runtime))
   (export (runtime os2-graphics)
 	  bbo_and
 	  bbo_ignore
@@ -3051,7 +3665,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime state-space)
   (files "wind")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  dynamic-wind
 	  shallow-fluid-bind)
@@ -3070,7 +3684,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime stream)
   (files "stream")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  condition-type:illegal-stream-element
 	  empty-stream?
@@ -3102,7 +3716,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime string-input)
   (files "strnin")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  string->input-port
 	  with-input-from-string)
@@ -3110,7 +3724,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime string-output)
   (files "strout")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  get-output-from-accumulator
 	  make-accumulator-output-port
@@ -3120,7 +3734,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime syntax-table)
   (files "syntab")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  guarantee-syntax-table
 	  make-syntax-table
@@ -3136,7 +3750,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime syntaxer)
   (files "syntax")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  environment-syntax-table
 	  hook/syntax-expression
@@ -3161,14 +3775,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime illegal-definitions)
   (files "illdef")
-  (parent ())
+  (parent (runtime))
   (export (runtime syntaxer)
 	  check-for-illegal-definitions)
   (initialization (initialize-package!)))
 
 (define-package (runtime system)
   (files "system")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  add-identification!
 	  add-subsystem-identification!
@@ -3180,7 +3794,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime system-clock)
   (files "sysclk")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  internal-time/seconds->ticks
 	  internal-time/ticks->seconds
@@ -3196,21 +3810,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime system-macros)
   (files "sysmac")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  syntax-table/system-internal)
   (initialization (initialize-package!)))
 
 (define-package (runtime truncated-string-output)
   (files "strott")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  with-output-to-truncated-string)
   (initialization (initialize-package!)))
 
 (define-package (runtime unparser)
   (files "unpars")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  *unparse-abbreviate-quotations?*
 	  *unparse-compound-procedure-names?*
@@ -3254,7 +3868,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime unsyntaxer)
   (files "unsyn")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  unsyntax
 	  unsyntax-lambda-list
@@ -3263,7 +3877,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime working-directory)
   (files "wrkdir")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  set-working-directory-pathname!
 	  with-working-directory-pathname
@@ -3274,7 +3888,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime user-interface)
   (files "usrint")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  prompt-for-command-char
 	  prompt-for-command-expression
@@ -3300,7 +3914,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime thread)
   (files "thread")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  block-thread-events
 	  condition-type:no-current-thread
@@ -3361,7 +3975,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "rbtree")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  alist->rb-tree
 	  make-rb-tree
@@ -3394,7 +4008,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "wttree")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  number-wt-type
 	  string-wt-type
@@ -3433,7 +4047,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime apropos)
   (files "apropos")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  apropos
 	  apropos-list))
@@ -3442,7 +4056,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "ystep")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  step
 	  step-form
@@ -3458,7 +4072,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "ordvec")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  match-ordered-subvector
 	  match-ordered-vector
@@ -3473,7 +4087,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "gdbm")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  gdbm-available?
 	  gdbm-close
@@ -3500,7 +4114,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime generic-procedure)
   (files "gentag" "gencache" "generic")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  ;; tag.scm:
 	  dispatch-tag-contents
@@ -3531,7 +4145,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime generic-procedure multiplexer)
   (files "genmult")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  add-generic-procedure-generator
 	  condition-type:extra-applicable-methods
@@ -3544,7 +4158,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime tagged-vector)
   (files "tvector")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  guarantee-tagged-vector
 	  make-tagged-vector
@@ -3560,7 +4174,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime record-slot-access)
   (files "recslot")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  condition-type:no-such-slot
 	  condition-type:slot-error
@@ -3579,7 +4193,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime generic-procedure eqht)
   (files "geneqht")
-  (parent ())
+  (parent (runtime))
   (export (runtime generic-procedure)
 	  eqht/for-each
 	  eqht/get
@@ -3588,7 +4202,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime crypto)
   (files "crypto")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  make-mhash-keygen-type
 	  mcrypt-algorithm-name
@@ -3643,7 +4257,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "regexp")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  char-set->regexp
 	  guarantee-re-register
@@ -3668,7 +4282,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "rgxcmp")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  compiled-regexp?
 	  compiled-regexp/byte-stream
@@ -3686,7 +4300,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "rexp")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  rexp*
 	  rexp+
@@ -3716,7 +4330,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "chrsyn")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  char->syntax-code
 	  char-syntax->string
@@ -3736,7 +4350,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (file-case options
     ((load) "mime-codec")
     (else))
-  (parent ())
+  (parent (runtime))
   (export ()
 	  call-with-decode-base64-output-port
 	  call-with-decode-binhex40-output-port
@@ -3762,7 +4376,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime parser-buffer)
   (files "parser-buffer")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  discard-parser-buffer-head!
 	  get-parser-buffer-pointer
@@ -3803,7 +4417,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (runtime unicode)
   (files "unicode")
-  (parent ())
+  (parent (runtime))
   (export ()
 	  8-bit-alphabet?
 	  alphabet+

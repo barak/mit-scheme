@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: msort.scm,v 14.8 2001/11/26 19:11:18 cph Exp $
+$Id: msort.scm,v 14.9 2001/12/18 18:39:40 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -21,7 +21,7 @@ along with this program; if not, write to the Free Software
 |#
 
 ;;;; Merge Sort
-;;; package: ()
+;;; package: (runtime merge-sort)
 
 (declare (usual-integrations))
 

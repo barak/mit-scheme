@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.36 2001/05/09 03:17:05 cph Exp $
+$Id: ntprm.scm,v 1.37 2001/12/18 18:39:42 cph Exp $
 
 Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
@@ -21,7 +21,7 @@ USA.
 |#
 
 ;;;; Miscellaneous Win32 Primitives
-;;; package: ()
+;;; package: (runtime os-primitives)
 
 (declare (usual-integrations))
 
@@ -409,14 +409,14 @@ USA.
   (guarantee-init-file-specifier specifier 'INIT-FILE-SPECIFIER->PATHNAME)
   (let ((long-base (merge-pathnames ".mit-scheme/" (user-homedir-pathname))))
     (if (dos/fs-long-filenames? long-base)
-	(if (null? specifier)
-	    (directory-pathname-as-file long-base)
+	(if (pair? specifier)
 	    (merge-pathnames
 	     (apply string-append
 		    (cons (car specifier)
 			  (append-map (lambda (string) (list "/" string))
 				      (cdr specifier))))
-	     long-base))
+	     long-base)
+	    (directory-pathname-as-file long-base))
 	(let ((short-base
 	       (merge-pathnames "mitschem.ini/" (user-homedir-pathname))))
 	  (let ((file-map-pathname (merge-pathnames "filemap.dat" short-base)))
@@ -545,7 +545,7 @@ USA.
 		    (map (lambda (s) (fix:+ (string-length s) 1))
 			 strings)))))
       (let loop ((strings strings) (index 0))
-	(if (not (null? strings))
+	(if (pair? strings)
 	    (let ((n (string-length (car strings))))
 	      (substring-move! (car strings) 0 n result index)
 	      (let ((index* (fix:+ index n)))
@@ -566,8 +566,7 @@ USA.
 						 quote-char escape-char))))
 
 (define (nt/rewrite-subprocess-arguments/no-quoting strings)
-  (if (null? strings)
-      ""
+  (if (pair? strings)
       (let ((result
 	     (make-string
 	      (fix:+ (reduce +
@@ -582,7 +581,8 @@ USA.
 		  (string-set! result index #\space)
 		  (substring-move! (car strings) 0 n result (fix:+ index 1))
 		  (loop (cdr strings) (fix:+ (fix:+ index 1) n))))))
-	result)))
+	result)
+      ""))
 
 (define (nt/rewrite-subprocess-arguments/quoting strings
 						 quote-char escape-char)
@@ -632,7 +632,7 @@ USA.
 			      (fix:+ index 1))))))
 	      ((fix:= i n) index))))
       (let loop ((index 0) (strings strings) (analyses analyses))
-	(if (not (null? strings))
+	(if (pair? strings)
 	    (loop (do-arg index (car strings) (car analyses))
 		  (cdr strings)
 		  (cdr analyses))))
@@ -653,7 +653,7 @@ USA.
 				(file-exists? pathname)
 				(->namestring pathname))
 			   (let loop ((types types))
-			     (and (not (null? types))
+			     (and (pair? types)
 				  (let ((p
 					 (pathname-new-type pathname
 							    (car types))))
@@ -670,14 +670,14 @@ USA.
 			  (try-dir (directory-pathname ns))))
 		   (if (not default-directory)
 		       (let loop ((path exec-path))
-			 (and (not (null? path))
+			 (and (pair? path)
 			      (or (and (pathname-absolute? (car path))
 				       (try-dir (car path)))
 				  (loop (cdr path)))))
 		       (let ((default-directory
 			       (merge-pathnames default-directory)))
 			 (let loop ((path exec-path))
-			   (and (not (null? path))
+			   (and (pair? path)
 				(or (try-dir
 				     (merge-pathnames (car path)
 						      default-directory))

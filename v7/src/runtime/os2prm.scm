@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.47 2001/05/09 03:17:08 cph Exp $
+$Id: os2prm.scm,v 1.48 2001/12/18 18:39:45 cph Exp $
 
 Copyright (c) 1994-2001 Massachusetts Institute of Technology
 
@@ -21,7 +21,7 @@ USA.
 |#
 
 ;;;; Miscellaneous OS/2 Primitives
-;;; package: ()
+;;; package: (runtime os-primitives)
 
 (declare (usual-integrations))
 
@@ -309,14 +309,14 @@ USA.
   (guarantee-init-file-specifier specifier 'INIT-FILE-SPECIFIER->PATHNAME)
   (let ((long-base (merge-pathnames ".mit-scheme/" (user-homedir-pathname))))
     (if (dos/fs-long-filenames? long-base)
-	(if (null? specifier)
-	    (directory-pathname-as-file long-base)
+	(if (pair? specifier)
 	    (merge-pathnames
 	     (apply string-append
 		    (cons (car specifier)
 			  (append-map (lambda (string) (list "/" string))
 				      (cdr specifier))))
-	     long-base))
+	     long-base)
+	    (directory-pathname-as-file long-base))
 	(let ((short-base
 	       (merge-pathnames "mitschem.ini/" (user-homedir-pathname))))
 	  (let ((file-map-pathname (merge-pathnames "filemap.dat" short-base)))
@@ -364,25 +364,26 @@ USA.
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (let ((v
 	   (let loop ((rv select-registry-result-vectors))
-	     (cond ((null? rv)
-		    (make-string os2/select-registry-lub))
-		   ((car rv)
-		    => (lambda (v) (set-car! rv #f) v))
-		   (else
-		    (loop (cdr rv)))))))
+	     (if (pair? rv)
+		 (let ((v (car rv)))
+		   (if v
+		       (begin
+			 (set-car! rv #f)
+			 v)
+		       (loop (cdr rv))))
+		 (make-string os2/select-registry-lub)))))
       (set-interrupt-enables! interrupt-mask)
       v)))
 
 (define (deallocate-select-registry-result-vector v)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (let loop ((rv select-registry-result-vectors))
-      (cond ((null? rv)
-	     (set! select-registry-result-vectors
-		   (cons v select-registry-result-vectors)))
-	    ((car rv)
-	     (loop (cdr rv)))
-	    (else
-	     (set-car! rv v))))
+      (if (pair? rv)
+	  (if (car rv)
+	      (loop (cdr rv))
+	      (set-car! rv v))
+	  (set! select-registry-result-vectors
+		(cons v select-registry-result-vectors))))
     (set-interrupt-enables! interrupt-mask))
   unspecific)
 
@@ -390,7 +391,7 @@ USA.
   (let ((registry (make-string os2/select-registry-lub)))
     (vector-8b-fill! registry 0 os2/select-registry-lub 0)
     (do ((descriptors descriptors (cdr descriptors)))
-	((null? descriptors))
+	((not (pair? descriptors)))
       (add-to-select-registry! registry (car descriptors)))
     registry))
 
@@ -457,9 +458,11 @@ USA.
 
 (define (os2/rewrite-subprocess-arguments strings)
   (let ((strings
-	 (cond ((null? strings) (list "" ""))
-	       ((null? (cdr strings)) (list (car strings) ""))
-	       (else strings))))
+	 (if (pair? strings)
+	     (if (pair? (cdr strings))
+		 strings
+		 (list (car strings) ""))
+	     (list "" ""))))
     (let ((result
 	   (make-string
 	    (reduce +
@@ -471,11 +474,11 @@ USA.
 	(let loop ((strings (cdr strings)) (index (fix:+ n 1)))
 	  (let ((n (string-length (car strings))))
 	    (substring-move! (car strings) 0 n result index)
-	    (if (null? (cdr strings))
-		(string-set! result (fix:+ index n) #\NUL)
+	    (if (pair? (cdr strings))
 		(begin
 		  (string-set! result (fix:+ index n) #\space)
-		  (loop (cdr strings) (fix:+ (fix:+ index n) 1)))))))
+		  (loop (cdr strings) (fix:+ (fix:+ index n) 1)))
+		(string-set! result (fix:+ index n) #\NUL)))))
       result)))
 
 (define (os2/rewrite-subprocess-environment strings)
@@ -485,7 +488,7 @@ USA.
 		  0
 		  (map (lambda (s) (fix:+ (string-length s) 1)) strings)))))
     (let loop ((strings strings) (index 0))
-      (if (not (null? strings))
+      (if (pair? strings)
 	  (let ((n (string-length (car strings))))
 	    (substring-move! (car strings) 0 n result index)
 	    (string-set! result (fix:+ index n) #\NUL)
@@ -507,7 +510,7 @@ USA.
 				(file-exists? pathname)
 				(->namestring pathname))
 			   (let loop ((types types))
-			     (and (not (null? types))
+			     (and (pair? types)
 				  (let ((p
 					 (pathname-new-type pathname
 							    (car types))))
@@ -521,7 +524,7 @@ USA.
 		  (try program))
 		 ((not default-directory)
 		  (let loop ((path exec-path))
-		    (and (not (null? path))
+		    (and (pair? path)
 			 (or (and (pathname-absolute? (car path))
 				  (try-dir (car path)))
 			     (loop (cdr path))))))
@@ -529,7 +532,7 @@ USA.
 		  (let ((default-directory
 			  (merge-pathnames default-directory)))
 		    (let loop ((path exec-path))
-		      (and (not (null? path))
+		      (and (pair? path)
 			   (or (try-dir
 				(merge-pathnames (car path) default-directory))
 			       (loop (cdr path)))))))))))
