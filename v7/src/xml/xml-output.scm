@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.22 2003/07/30 19:43:59 cph Exp $
+$Id: xml-output.scm,v 1.23 2003/08/01 19:31:02 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -172,7 +172,7 @@ USA.
   (let ((type (xml-!element-content-type decl)))
     (cond ((symbol? type)
 	   (emit-string (string-upcase (symbol-name type)) ctx))
-	  ((and (pair? type) (eq? (car type) 'MIX))
+	  ((and (pair? type) (eq? (car type) '|#PCDATA|))
 	   (emit-string "(#PCDATA" ctx)
 	   (if (pair? (cdr type))
 	       (begin
@@ -194,7 +194,7 @@ USA.
 		       (emit-string "(" ctx)
 		       (write-cp (cadr type))
 		       (for-each
-			(let ((sep (if (eq? (car type) 'ALT) "|" ",")))
+			(let ((sep (if (eq? (car type) 'alt) "|" ",")))
 			  (lambda (type)
 			    (emit-string sep ctx)
 			    (write-cp type)))
@@ -234,7 +234,7 @@ USA.
 	   (let ((type (cadr definition)))
 	     (cond ((symbol? type)
 		    (emit-string (string-upcase (symbol-name type)) ctx))
-		   ((and (pair? type) (eq? (car type) 'NOTATION))
+		   ((and (pair? type) (eq? (car type) '|NOTATION|))
 		    (emit-string "NOTATION (" ctx)
 		    (if (pair? (cdr type))
 			(begin
@@ -244,7 +244,7 @@ USA.
 				      (write-xml-name name ctx))
 				    (cddr type))))
 		    (emit-string ")" ctx))
-		   ((and (pair? type) (eq? (car type) 'ENUMERATED))
+		   ((and (pair? type) (eq? (car type) 'enumerated))
 		    (emit-string "(" ctx)
 		    (if (pair? (cdr type))
 			(begin
@@ -258,15 +258,14 @@ USA.
 		    (error "Malformed !ATTLIST type:" type))))
 	   (emit-string " " ctx)
 	   (let ((default (caddr definition)))
-	     (cond ((eq? default 'REQUIRED)
-		    (emit-string "#REQUIRED" ctx))
-		   ((eq? default 'IMPLIED)
-		    (emit-string "#IMPLIED" ctx))
-		   ((and (pair? default) (eq? (car default) 'FIXED))
-		    (emit-string "#FIXED" ctx)
+	     (cond ((or (eq? default '|#REQUIRED|)
+			(eq? default '|#IMPLIED|))
+		    (emit-string (symbol-name default) ctx))
+		   ((and (pair? default) (eq? (car default) '|#FIXED|))
+		    (emit-string (symbol-name (car default)) ctx)
 		    (emit-string " " ctx)
 		    (write-xml-attribute-value (cdr default) ctx))
-		   ((and (pair? default) (eq? (car default) 'DEFAULT))
+		   ((and (pair? default) (eq? (car default) 'default))
 		    (write-xml-attribute-value (cdr default) ctx))
 		   (else
 		    (error "Malformed !ATTLIST default:" default)))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.30 2003/08/01 03:50:16 cph Exp $
+$Id: xml-parser.scm,v 1.31 2003/08/01 19:30:55 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -974,10 +974,10 @@ USA.
 	 (encapsulate encapsulate-suffix
 	   (seq (sbracket "!ELEMENT type" "(" ")"
 		  S?
-		  (alt (encapsulate (lambda (v) (cons 'ALT (vector->list v)))
+		  (alt (encapsulate (lambda (v) (cons 'alt (vector->list v)))
 			 (seq parse-cp
 			      (+ (seq S? "|" S? parse-cp))))
-		       (encapsulate (lambda (v) (cons 'SEQ (vector->list v)))
+		       (encapsulate (lambda (v) (cons 'seq (vector->list v)))
 			 (seq parse-cp
 			      (* (seq S? "," S? parse-cp)))))
 		  S?)
@@ -1005,14 +1005,14 @@ USA.
 	 parse-required-element-name
 	 S
 	 ;;[46]
-	 (alt (map intern (match (string "EMPTY")))
-	      (map intern (match (string "ANY")))
+	 (alt (map xml-intern (match "EMPTY"))
+	      (map xml-intern (match "ANY"))
 	      ;;[51]
-	      (encapsulate (lambda (v) (cons 'MIX (vector->list v)))
+	      (encapsulate vector->list
 		(with-pointer p
 		  (seq "("
 		       S?
-		       "#PCDATA"
+		       (map string->symbol (match "#PCDATA"))
 		       (alt (seq S? ")")
 			    (seq (* (seq S? "|" S?
 					 parse-required-element-name))
@@ -1042,7 +1042,7 @@ USA.
 			(type (vector-ref v 1))
 			(default (vector-ref v 2)))
 		    (list name type
-			  (if (and (not (eq? type 'CDATA))
+			  (if (and (not (eq? type '|CDATA|))
 				   (pair? default))
 			      (list (car default)
 				    (trim-attribute-whitespace (cadr default)))
@@ -1057,27 +1057,23 @@ USA.
 
 (define parse-!attlist-type		;[54,57]
   (*parser
-   (alt (map intern
+   (alt (map xml-intern
 	     ;;[55,56]
-	     (alt (match (string "CDATA"))
-		  (match (string "IDREFS"))
-		  (match (string "IDREF"))
-		  (match (string "ID"))
-		  (match (string "ENTITY"))
-		  (match (string "ENTITIES"))
-		  (match (string "NMTOKENS"))
-		  (match (string "NMTOKEN"))))
+	     (match (alt "CDATA" "IDREFS" "IDREF" "ID"
+			 "ENTITY" "ENTITIES" "NMTOKENS" "NMTOKEN")))
 	;;[58]
-	(encapsulate (lambda (v) (cons 'NOTATION (vector->list v)))
+	(encapsulate vector->list
 	  (bracket "notation type"
-	      (noise (seq (string "NOTATION") S (string "(")))
+	      (seq (map xml-intern (match "NOTATION"))
+		   S
+		   "(")
 	      ")"
 	    S?
 	    parse-notation-name
 	    (* (seq S? "|" S? parse-notation-name))
 	    S?))
 	;;[59]
-	(encapsulate (lambda (v) (cons 'ENUMERATED (vector->list v)))
+	(encapsulate (lambda (v) (cons 'enumerated (vector->list v)))
 	  (sbracket "enumerated type" "(" ")"
 	    S?
 	    parse-required-name-token
@@ -1086,16 +1082,12 @@ USA.
 
 (define parse-!attlist-default		;[60]
   (*parser
-   (alt (seq "#"
-	     (map intern
-		  (alt (match (string "REQUIRED"))
-		       (match (string "IMPLIED")))))
+   (alt (map string->symbol (match (alt "#REQUIRED" "#IMPLIED")))
 	(encapsulate (lambda (v) (cons (vector-ref v 0) (vector-ref v 1)))
-	  (seq "#"
-	       (map intern (match (string "FIXED")))
+	  (seq (map string->symbol (match "#FIXED"))
 	       S
 	       parse-attribute-value))
-	(encapsulate (lambda (v) (cons 'DEFAULT (vector-ref v 0)))
+	(encapsulate (lambda (v) (cons 'default (vector-ref v 0)))
 	  parse-attribute-value))))
 
 (define parse-!entity			;[70,71,72,73,74,76]
@@ -1203,7 +1195,7 @@ USA.
 			     (seq (char #\") (* (alphabet a2)) (char #\"))
 			     (seq (char #\') (* (alphabet a3)) (char #\'))))
 		       parse-parameter-entity-reference))
-	       (match (string ">")))))))))))
+	       (match ">"))))))))))
 
 (define (reparse-text v parser description ptr)
   (let ((v (coalesce-elements v)))
@@ -1297,7 +1289,7 @@ USA.
 		S?
 		parse-parameter-entity-reference
 		S?
-		(match (string "[")))
+		(match "["))
 	   (match (string conditional-end))
 	 (match (* match-!ignore-contents)))))))
 
