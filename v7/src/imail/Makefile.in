@@ -1,6 +1,6 @@
-# $Id: Makefile.in,v 1.1 2000/12/21 18:12:20 cph Exp $
+# $Id: Makefile.in,v 1.2 2001/08/15 03:27:11 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
 # Standard Makefile for Scheme subsystem directories.
 # This makefile supports some utilities for Scheme subsystems.
@@ -76,8 +77,7 @@ install:
 	$(mkinstalldirs) $(DESTDIR)$(IMAIL_DIR)
 	$(INSTALL_DATA) *.com $(DESTDIR)$(IMAIL_DIR)/.
 	$(INSTALL_DATA) *.bci $(DESTDIR)$(IMAIL_DIR)/.
-	$(INSTALL_DATA) imail.bco $(DESTDIR)$(IMAIL_DIR)/.
-	$(INSTALL_DATA) imail.bld $(DESTDIR)$(IMAIL_DIR)/.
+	$(INSTALL_DATA) imail.pkd $(DESTDIR)$(IMAIL_DIR)/.
 	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(IMAIL_DIR)/.
 
 .PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install

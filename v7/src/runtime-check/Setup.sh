@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.3 2000/12/08 18:04:13 cph Exp $
+# $Id: Setup.sh,v 1.4 2001/08/15 03:30:05 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
 # Utility to set up an MIT Scheme build directory.
 # The working directory must be the build directory.
@@ -35,8 +36,6 @@ for FNS in `cd ../runtime; ls *.scm`; do
     maybe_link ${FN} ../runtime/${FN}
 done
 
-for FN in runtime.bco runtime.bld; do
-    maybe_link ${FN} ../runtime/${FN}
-done
+maybe_link runtime.pkd ../runtime/runtime.pkd
 
 exit 0

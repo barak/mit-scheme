@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.1 2000/12/08 05:27:17 cph Exp $
+# $Id: Clean.sh,v 1.2 2001/08/15 03:34:18 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
 # Utility for cleaning up the MIT Scheme runtime-check directory.
 # The working directory must be the runtime-check directory.
@@ -29,8 +30,8 @@ fi
 ../etc/Clean.sh "${1}" rm-com
 
 if [ "${1}" = "maintainer-clean" ]; then
-    echo "rm -f *.bin runtime.bco runtime.bld"
-    rm -f *.bin runtime.bco runtime.bld
+    echo "rm -f *.bin runtime.pkd"
+    rm -f *.bin runtime.pkd
 fi
 
 exit 0
