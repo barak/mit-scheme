@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.123 1997/03/04 06:43:14 cph Exp $
+;;;	$Id: info.scm,v 1.124 1997/03/19 05:23:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -90,13 +90,18 @@ Such selection regions are active only when info-selection-key is set."
 This variable is now obsolete; use info-directory-list instead."
   #f
   string-or-false?)
-
+
 (define-variable info-directory-list
   "List of directories to search for Info documentation files.
 Empty list means not yet initialized.  In this case, the environment
 variable INFOPATH is used to initialize it."
   '()
-  list-of-strings?)
+  (lambda (object)
+    (and (list? object)
+	 (for-all? object
+	   (lambda (object)
+	     (or (pathname? object)
+		 (string? object)))))))
 
 (define-variable info-suffix-list
   "List of file-name suffixes for Info documentation files."
