@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xdoc.scm,v 1.2 2003/12/29 07:31:19 uid67408 Exp $
+$Id: xdoc.scm,v 1.3 2004/02/04 05:01:32 cph Exp $
 
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -880,21 +880,15 @@ USA.
 	      "incorrect")
 	  "malformed"))))
 
-(define close-enough?
-  (let ((machine-epsilon
-	 (let loop ((e 1.))
-	   (if (> (+ e 1) 1)
-	       (loop (/ e 2))
-	       (* 2 e)))))
-    (lambda (z expected tolerance)
-      (if (= tolerance 0)
-	  (= z expected)
-	  (<= (magnitude (- z expected))
-	      (/ (* (max tolerance machine-epsilon)
-		    (+ (magnitude z)
-		       (magnitude tolerance)
-		       2))
-		 2))))))
+(define (close-enough? z expected tolerance)
+  (cond ((= tolerance 0)
+	 (= z expected))
+	((= expected 0)
+	 (<= (magnitude (- z expected))
+	     (magnitude tolerance)))
+	(else
+	 (<= (magnitude (- z expected))
+	     (magnitude (* tolerance expected))))))
 
 (define-unary-xdoc-output 'boolean #f
   (lambda (elt)
