@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.32 1995/01/13 18:39:16 adams Exp $
+$Id: pp.scm,v 14.33 1995/01/14 00:29:51 adams Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -77,17 +77,74 @@ MIT in each case. |#
   (let ((port (if (default-object? port) (current-output-port) port)))
     (let ((pretty-print
 	   (lambda (object) (apply pretty-print object port rest))))
+      (define (pretty-print* object parts)
+	(pretty-print object)
+	(for-each (lambda (element)
+		    (newline port)
+		    (pretty-print element))
+		  parts))
       (newline port)
-      (if (named-structure? object)
-	  (begin
-	    (pretty-print object)
-	    (for-each (lambda (element)
-			(newline port)
-			(pretty-print element))
-		      (named-structure/description object)))
-	  (pretty-print
-	   (or (and (procedure? object) (procedure-lambda object))
-	       object))))))
+      (cond ((named-structure? object)
+	     (pretty-print* object (named-structure/description object)))
+	    ((arity-dispatched-procedure? object)
+	     (pretty-print (unsyntax-entity object)))
+	    ((and (procedure? object) (procedure-lambda object))
+	     => pretty-print)
+	    ((%record? object)		; unnamed record
+	     (let loop ((i (- (%record-length object) 1)) (d '()))
+	       (if (< i 0)
+		   (pretty-print* object d)
+		   (loop (- i 1) (cons (list i (%record-ref object i)) d)))))
+	    ((weak-pair? object)
+	     (pretty-print* object `((weak-car ,(weak-car object))
+				     (weak-cdr ,(weak-cdr object)))))
+	    ((cell? object)
+	     (pretty-print* object `((contents ,(cell-contents object)))))
+	    (else
+	     (pretty-print object))))))
+
+;; Controls the appearance of procedures in the CASE statement used to describe
+;; an arity dispatched procedure:
+;;  FULL:  full bodies of procedures
+;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
+;;  SHORT: procedures appear in #[...] unparser syntax
+(define *pp-arity-dispatched-procedure-style* 'FULL)
+
+(define (unsyntax-entity object)
+  (define (unsyntax-entry procedure)
+    (case *pp-arity-dispatched-procedure-style*
+      ((FULL)  (unsyntax-entity procedure))
+      ((NAMED)
+       (let ((text (unsyntax-entity procedure)))
+	 (if (and (pair? text)
+		  (eq? (car text) 'named-lambda)
+		  (pair? (cdr text))
+		  (pair? (cadr text)))
+	     (caadr text)
+	     text)))
+      ((SHORT) procedure)
+      (else procedure)))
+  (cond ((arity-dispatched-procedure? object)
+	 (let* ((default  (entity-procedure  object))
+		(cases    (cdr (vector->list (entity-extra object))))
+		(cases*
+		 (let loop ((i 0) (tests '()) (cases cases))
+		   (cond ((null? cases) (reverse tests))
+			 ((car cases)
+			  (loop (+ i 1)
+				(cons `((,i) ,(unsyntax-entry (car cases)))
+				      tests)
+				(cdr cases)))
+			 (else
+			  (loop (+ i 1) tests (cdr cases)))))))
+	   `(CASE NUMBER-OF-ARGUMENTS
+	      ,@cases*
+	      (ELSE
+	       ,(unsyntax-entry default)))))
+	((and (procedure? object) (procedure-lambda object))
+	 => unsyntax)
+	(else
+	 object)))
 
 (define (pretty-print object #!optional port as-code? indentation)
   (let ((as-code?
