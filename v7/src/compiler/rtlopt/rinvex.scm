@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rinvex.scm,v 1.9 1999/01/02 06:06:43 cph Exp $
+$Id: rinvex.scm,v 1.10 2001/09/25 05:35:21 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; RTL Invertible Expression Elimination
@@ -193,7 +194,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (register-value (rtl:register-number expression)))
       expression))
 
-(define (define-method type method)
+(define (define-general-method type method)
   (let ((entry (assq type methods)))
     (if entry
 	(set-cdr! entry method)
@@ -220,7 +221,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(set-register-value! (rtl:register-number address)
 			     (rtl:assign-expression statement)))))
 
-(define-method 'INVOCATION:SPECIAL-PRIMITIVE
+(define-general-method 'INVOCATION:SPECIAL-PRIMITIVE
   (lambda (statement)
     statement
     (for-each-pseudo-register
@@ -228,7 +229,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (set-register-value! register false)))))
 
 (for-each (lambda (type)
-	    (define-method type (lambda (statement) statement unspecific)))
+	    (define-general-method type (lambda (statement) statement unspecific)))
 	  '(CLOSURE-HEADER
 	    CONTINUATION-ENTRY
 	    CONTINUATION-HEADER
@@ -247,7 +248,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    PROCEDURE-HEADER))
 
 (define (define-one-arg-method type get set)
-  (define-method type
+  (define-general-method type
     (lambda (statement)
       (expression-update! get set statement))))
 
@@ -304,7 +305,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   rtl:set-interpreter-call:unbound?-environment!)
 
 (define (define-two-arg-method type get-1 set-1 get-2 set-2)
-  (define-method type
+  (define-general-method type
     (lambda (statement)
       (expression-update! get-1 set-1 statement)
       (expression-update! get-2 set-2 statement))))
