@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.34 2002/11/20 19:45:46 cph Exp $
+$Id: edextra.scm,v 1.35 2002/12/27 03:48:38 cph Exp $
 
-Copyright (c) 1992-2001 Massachusetts Institute of Technology
+Copyright (c) 1992-2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -32,7 +32,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define pset-list-file)
 (define command-line-student-directory #f)
 
-(set-command-line-parser! "-student" 
+(set-command-line-parser! "student"
   (lambda (command-line)
     (let ((name (cadr command-line)))
       (if (file-directory? name)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.63 2002/12/27 03:18:40 cph Exp $
+$Id: load.scm,v 14.64 2002/12/27 03:47:36 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -26,7 +26,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 ;;; package: (runtime load)
 
 (declare (usual-integrations))
-
+
 (define (initialize-package!)
   (set! *purification-root-marker* (intern "#[PURIFICATION-ROOT]"))
   (set! load-noisily? #f)
@@ -394,40 +394,38 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (default/process-command-line unused-command-line)
   (let ((after-parsing-actions '()))
 
-    (define (process-keyword command-line unused-options)
+    (define (process-keyword command-line unused)
       (if (pair? command-line)
-	  (let* ((keyword (car command-line))
-		 (place (assoc keyword *command-line-parsers*)))
-	    (cond (place
-		   (call-with-values
-		       (lambda () ((cdr place) command-line))
-		     (lambda (next tail-action)
-		       (if tail-action
-			   (set! after-parsing-actions
-				 (cons tail-action after-parsing-actions)))
-		       (process-keyword next unused-options))))
-		  ((zero? (string-length keyword))
-		   (process-keyword (cdr command-line)
-				    unused-options))
-		  (else
-		   (if (or (not (char=? (string-ref keyword 0) #\-))
-			   (= (string-length keyword) 1))
-		       (warn "process-command-line: Invalid keyword" keyword))
-		   (find-next-keyword (cdr command-line)
-				      (cons (car command-line)
-					    unused-options)))))
-	  (let ((unused (reverse unused-options)))
-	    (if (pair? unused)
-		(warn "Unhandled command line options:" unused))
-	    unused)))
+	  (let ((keyword (car command-line)))
+	    (if (option-keyword? keyword)
+		(let ((parser (find-keyword-parser keyword)))
+		  (if parser
+		      (call-with-values (lambda () (parser command-line))
+			(lambda (next tail-action)
+			  (if tail-action
+			      (set! after-parsing-actions
+				    (cons tail-action after-parsing-actions)))
+			  (process-keyword next unused)))
+		      (find-next-keyword command-line unused)))
+		(begin
+		  (warn "Invalid keyword:" keyword)
+		  (find-next-keyword command-line unused))))
+	  (done unused)))
 
-    (define (find-next-keyword command-line unused-options)
-      (if (pair? command-line)
-	  (if (option-keyword? (car command-line))
-	      (process-keyword command-line unused-options)
-	      (find-next-keyword (cdr command-line)
-				 (cons keyword unused-options)))
-	  (process-keyword '() unused-options)))
+    (define (find-next-keyword command-line unused)
+      (let ((unused (cons (car command-line) unused))
+	    (command-line (cdr command-line)))
+	(if (pair? command-line)
+	    (if (option-keyword? (car command-line))
+		(process-keyword command-line unused)
+		(find-next-keyword command-line unused))
+	    (done unused))))
+
+    (define (done unused)
+      (let ((unused (reverse! unused)))
+	(if (pair? unused)
+	    (warn "Unhandled command line options:" unused))
+	unused))
 
     (if unused-command-line
 	(begin
@@ -442,9 +440,17 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  (set! *unused-command-line* #f)
 	  (load-init-file)))))
 
+(define (find-keyword-parser keyword)
+  (let ((entry (assoc (strip-leading-hyphens keyword) *command-line-parsers*)))
+    (and entry
+	 (cdr entry))))
+
 (define (option-keyword? argument)
   (and (fix:> (string-length argument) 1)
-       (char=? #\- (string-ref argument 0))))
+       (char=? #\- (string-ref argument 0))
+       (or (not (char=? #\- (string-ref argument 1)))
+	   (and (fix:> (string-length argument) 2)
+		(not (char=? #\- (string-ref argument 2)))))))
 
 (define (load-init-file)
   (let ((pathname (init-file-pathname)))
@@ -472,16 +478,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (define (set-command-line-parser! keyword proc)
   (guarantee-string keyword 'SET-COMMAND-LINE-PARSER!)
-  (let ((keyword
-	 (let ((end (string-length keyword)))
-	   (let loop ((start 0))
-	     (cond ((and (fix:< start end)
-			 (char=? #\- (string-ref keyword start)))
-		    (loop (fix:+ start 1)))
-		   ((fix:= start 0)
-		    keyword)
-		   (else
-		    (substring keyword start end)))))))
+  (let ((keyword (strip-leading-hyphens keyword)))
     (if (string-null? keyword)
 	(error:bad-range-argument keyword 'SET-COMMAND-LINE-PARSER!))
     (let ((place (assoc keyword *command-line-parsers*)))
@@ -492,6 +489,17 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		  (cons (cons keyword proc)
 			*command-line-parsers*))
 	    unspecific)))))
+
+(define (strip-leading-hyphens keyword)
+  (let ((end (string-length keyword)))
+    (let loop ((start 0))
+      (cond ((and (fix:< start end)
+		  (char=? #\- (string-ref keyword start)))
+	     (loop (fix:+ start 1)))
+	    ((fix:= start 0)
+	     keyword)
+	    (else
+	     (substring keyword start end))))))
 
 (define (simple-command-line-parser keyword thunk)
   (set-command-line-parser! keyword

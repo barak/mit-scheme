@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: editor.scm,v 1.254 2002/11/20 19:45:59 cph Exp $
+;;; $Id: editor.scm,v 1.255 2002/12/27 03:48:01 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This file is part of MIT Scheme.
 ;;;
@@ -85,7 +85,7 @@
 	      message))))))))
 
 (define (edwin . args) (apply edit args))
-(simple-command-line-parser "-edit" edit)
+(simple-command-line-parser "edit" edit)
 
 (define edwin-editor #f)
 (define editor-abort)
