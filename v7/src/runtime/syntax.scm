@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.36 2001/12/19 01:39:46 cph Exp $
+$Id: syntax.scm,v 14.37 2001/12/19 04:10:18 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -36,7 +36,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (set! user-initial-syntax-table
 	(make-syntax-table system-global-syntax-table))
   (set-environment-syntax-table! user-initial-environment
-				 user-initial-syntax-table))
+				 user-initial-syntax-table)
+  (set! syntaxer/default-environment
+	(extend-interpreter-environment system-global-environment))
+  unspecific)
 
 (define system-global-syntax-table)
 (define user-initial-syntax-table)
@@ -476,6 +479,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-integrable (syntax-eval scode)
   (extended-scode-eval scode syntaxer/default-environment))
+
+(define syntaxer/default-environment
+  (*make-environment system-global-environment
+		     (vector lambda-tag:unnamed)))
 
 ;;;; FLUID-LET
 
