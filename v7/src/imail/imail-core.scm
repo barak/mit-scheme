@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.18 2000/01/20 17:46:52 cph Exp $
+;;; $Id: imail-core.scm,v 1.19 2000/01/21 20:21:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -385,6 +385,11 @@
 	  (or (header-field->message-flags header)
 	      (header-field->message-property header))))
       headers))
+
+(define (message->string message)
+  (string-append (header-fields->string (header-fields message))
+		 "\n"
+		 (message-body message)))
 
 ;;;; Message Navigation
 
