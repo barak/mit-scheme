@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.82 2004/10/22 04:48:13 cph Exp $
+$Id: sendmail.scm,v 1.83 2004/10/28 19:40:07 cph Exp $
 
 Copyright 1991,1992,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1997,1998,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -1558,7 +1558,9 @@ Otherwise, the MIME type is determined from the file's suffix;
 	    (cond (entry
 		   (finish (cadr entry) (caddr entry)))
 		  ((pathname-mime-type pathname)
-		   => (lambda (t.s) (finish (car t.s) (cdr t.s))))
+		   => (lambda (t)
+			(finish (mime-type/top-level t)
+				(mime-type/subtype t))))
 		  (else
 		   (let loop ()
 		     (case (prompt-for-char

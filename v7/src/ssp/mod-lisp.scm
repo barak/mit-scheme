@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.3 2004/10/27 20:04:07 cph Exp $
+$Id: mod-lisp.scm,v 1.4 2004/10/28 19:41:18 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -277,9 +277,11 @@ USA.
   (or (let ((extension (pathname-type pathname)))
 	(and (string? extension)
 	     (hash-table/get mime-extensions extension #f)))
-      (let ((p (pathname-mime-type pathname)))
-	(and p
-	     (symbol (car p) '/ (cdr p))))))
+      (let ((t (pathname-mime-type pathname)))
+	(and t
+	     (symbol (mime-type/top-level t)
+		     '/
+		     (mime-type/subtype t))))))
 
 (define (get-mime-handler type)
   (hash-table/get mime-handlers type #f))
