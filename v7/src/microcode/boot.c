@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.68 1991/03/28 20:09:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.69 1991/05/02 06:12:32 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -413,7 +413,7 @@ DEFUN (gc_death,
 }
 
 void
-DEFUN (stack_death, (name), const char *name)
+DEFUN (stack_death, (name), CONST char *name)
 {
   fprintf (stderr,
 	   "\n%s: Constant space is no longer sealed!\n",
