@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.41 1995/09/08 16:49:08 adams Exp $
+$Id: rtlgen.scm,v 1.42 1996/03/08 15:57:43 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -2863,9 +2863,15 @@ MIT in each case. |#
 (define (define-open-coder name-or-object nargs
 	  vhandler shandler phandler ohandler sphandler
 	  #!optional requires-form?)
-  (let ((rator (if (known-operator? name-or-object)
-		   name-or-object
-		   (make-primitive-procedure name-or-object nargs))))
+  (let ((rator
+	 (if (known-operator? name-or-object)
+	     name-or-object
+	     (let ((prim (make-primitive-procedure name-or-object nargs)))
+	       (if (not (known-operator? prim))
+		   ;; Applicat makes these into %primitive-apply
+		   (warn "Unknown operator: open coder will never be called"
+			 name-or-object))
+	       prim))))
     (hash-table/put!
      *open-coders*
      rator
