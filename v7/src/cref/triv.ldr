@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/Attic/triv.ldr,v 1.1 1989/05/26 16:29:27 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/Attic/triv.ldr,v 1.2 1993/08/28 23:30:13 gjr Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -38,11 +38,18 @@ MIT in each case. |#
 
 (lambda (load alist)
   alist
-  (load "mset" (package/environment (find-package '(cross-reference))))
-  (load '("object" "toplev") (package/environment (find-package '(cross-reference))))
-  (load '("mset" "object" "toplev") (package/environment (find-package '(cross-reference))))
-  (load "btree" (package/environment (find-package '(cross-reference balanced-binary-tree))))
-  (load "anfile" (package/environment (find-package '(cross-reference analyze-file))))
-  (load "conpkg" (package/environment (find-package '(cross-reference constructor))))
-  (load "forpkg" (package/environment (find-package '(cross-reference formatter))))
-  (load "redpkg" (package/environment (find-package '(cross-reference reader)))))
+  (let ((env (package/environment (find-package '(cross-reference)))))
+    (load "mset" env)
+    (load "object" env)
+    (load "toplev" env))
+  (load "btree"
+	(package/environment
+	 (find-package '(cross-reference balanced-binary-tree))))
+  (load "anfile"
+	(package/environment (find-package '(cross-reference analyze-file))))
+  (load "conpkg"
+	(package/environment (find-package '(cross-reference constructor))))
+  (load "forpkg"
+	(package/environment (find-package '(cross-reference formatter))))
+  (load "redpkg"
+	(package/environment (find-package '(cross-reference reader)))))
