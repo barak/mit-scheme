@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.51 1999/01/02 06:06:43 cph Exp $
+$Id: load.scm,v 14.52 1999/05/11 20:30:16 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -87,14 +87,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (find-pathname filename load/default-types))
 		  (lambda (pathname loader)
 		    (fluid-let ((load/current-pathname pathname))
-		      (let ((value
-			     (loader pathname
-				     environment
-				     syntax-table
-				     purify?
-				     load-noisily?)))
-			(cond (last-file? value)
-			      (load-noisily? (write-line value))))))))))
+		      (let ((load-it
+			     (lambda ()
+			       (loader pathname
+				       environment
+				       syntax-table
+				       purify?
+				       load-noisily?))))
+			(cond (last-file? (load-it))
+			      (load-noisily? (write-line (load-it)))
+			      (else (load-it) unspecific)))))))))
 	 (if (pair? filename/s)
 	     (let loop ((filenames filename/s))
 	       (if (null? (cdr filenames))
@@ -437,10 +439,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;; delayed actions.
 
 (define (set-command-line-parser! keyword proc)
-  (if (or (not (string? keyword))
-	  (< (string-length keyword) 2)
-	  (not (char=? (string-ref keyword 0) #\-)))
-      (error "set-command-line-parser!: Invalid keyword" keyword))
+  (if (not (and (string? keyword)
+		(>= (string-length keyword) 2)
+		(char=? #\- (string-ref keyword 0))))
+      (error:wrong-type-argument keyword
+				 "command-line option keyword"
+				 'SET-COMMAND-LINE-PARSER!))
   (let ((place (assoc keyword *command-line-parsers*)))
     (if place
 	(set-cdr! place proc)
@@ -450,54 +454,65 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      *command-line-parsers*))
 	  unspecific))))
 
-(define (simple-option-parser keyword thunk)
+(define (simple-command-line-parser keyword thunk)
   (set-command-line-parser! keyword
 			    (lambda (command-line)
-			      (thunk)
-			      (values (cdr command-line) #f))))
+			      (values (cdr command-line) thunk))))
+
+;; Upwards compatibility.
+(define simple-option-parser simple-command-line-parser)
+
+(define (argument-command-line-parser keyword multiple? procedure)
+  (set-command-line-parser!
+   keyword
+   (if multiple?
+       (lambda (command-line)
+	 (for-each-non-keyword (cdr command-line) procedure))
+       (lambda (command-line)
+	 (if (null? (cdr command-line))
+	     (values '()
+		     (lambda ()
+		       (warn "Missing argument to command-line option:"
+			     keyword)))
+	     (values (cddr command-line)
+		     (lambda () (procedure (cadr command-line)))))))))
 
 (define (for-each-non-keyword command-line processor)
-  (define (end command-line accum)
-    (if (null? accum)
-	(values command-line #f)
-	(let ((objects (reverse accum)))
-	  (values command-line
-		  (lambda ()
-		    (for-each processor objects))))))
-  
-  (let loop ((command-line command-line)
-	     (accum '()))
-    (if (null? command-line)
-	(end '() accum)
-	(let ((next (car command-line)))
-	  (if (and (> (string-length next) 0)
-		   (char=? (string-ref next 0) #\-))
-	      (end command-line accum)
-	      (loop (cdr command-line)
-		    (cons next accum)))))))
-
+  (let ((end
+	 (lambda (command-line accum)
+	   (if (null? accum)
+	       (values command-line #f)
+	       (let ((objects (reverse accum)))
+		 (values command-line
+			 (lambda () (for-each processor objects))))))))
+    (let loop ((command-line command-line) (accum '()))
+      (if (null? command-line)
+	  (end '() accum)
+	  (let ((next (car command-line)))
+	    (if (and (> (string-length next) 0)
+		     (char=? #\- (string-ref next 0)))
+		(end command-line accum)
+		(loop (cdr command-line) (cons next accum))))))))
+
 (define (initialize-command-line-parsers)
-  (simple-option-parser "-no-init-file"
-			(lambda () (set! *load-init-file?* #f)))
-
+  (simple-command-line-parser "-no-init-file"
+			      (lambda ()
+				(set! *load-init-file?* #f)
+				unspecific))
   (set! generate-suspend-file? #f)
-  (simple-option-parser "-suspend-file"
-			(lambda () (set! generate-suspend-file? #t)))
-  (simple-option-parser "-no-suspend-file"
-			(lambda () (set! generate-suspend-file? #f)))
-
-  (set-command-line-parser!
-   "-load"
-   (lambda (command-line)
-     (for-each-non-keyword (cdr command-line) load)))
-
-  (set-command-line-parser!
-   "-eval"
-   (lambda (command-line)
-     (for-each-non-keyword (cdr command-line)
-			   (lambda (arg)
-			     (eval (with-input-from-string arg read)
-				   user-initial-environment))))))
+  (simple-command-line-parser "-suspend-file"
+			      (lambda ()
+				(set! generate-suspend-file? #t)
+				unspecific))
+  (simple-command-line-parser "-no-suspend-file"
+			      (lambda ()
+				(set! generate-suspend-file? #f)
+				unspecific))
+  (argument-command-line-parser "-load" #t load)
+  (argument-command-line-parser "-eval" #t
+				(lambda (arg)
+				  (eval (with-input-from-string arg read)
+					user-initial-environment))))
 
 ;;;; Loader for packed binaries
 
@@ -615,7 +630,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (with-binary-input-file file action)
   (with-binary-file-channel file action
     open-binary-input-file
-    input-port/channel
+    port/input-channel
     'with-binary-input-file))
 
 (define (with-binary-file-channel file action open extract-channel name)
