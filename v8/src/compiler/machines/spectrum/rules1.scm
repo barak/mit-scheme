@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.4 1996/07/22 17:47:18 adams Exp $
+$Id: rules1.scm,v 1.5 1996/07/23 20:02:21 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -360,15 +360,6 @@ MIT in each case. |#
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
 (define-rule statement
-  ;; load char object from memory and convert to ASCII byte
-  (ASSIGN (REGISTER (? target))
-	  (CHAR->ASCII (OFFSET (REGISTER (? base))
-			       (MACHINE-CONSTANT (? offset)))))
-  (standard-unary-conversion base target
-    (lambda (base target)
-      (load-byte (+ 3 (* 4 offset)) base target))))
-
-(define-rule statement
   ;; load ASCII byte from memory
   (ASSIGN (REGISTER (? target))
 	  (BYTE-OFFSET (REGISTER (? base))
@@ -400,25 +391,10 @@ MIT in each case. |#
     (lambda (source target)
       (LAP (EXTRU () ,source 31 8 ,target)))))
 
-;(define-rule statement
-;  (ASSIGN (REGISTER (? target))
-;	  (CHAR->ASCII (CONS-POINTER (? anything) (REGISTER (? source)))))
-;  anything ; ignore
-;  (standard-unary-conversion source target
-;    (lambda (source target)
-;      (LAP (EXTRU () ,source 31 8 ,target)))))
-
 (define-rule statement
   ;; store ASCII byte in memory
   (ASSIGN (BYTE-OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
 	  (REGISTER (? source)))
-  (store-byte (standard-source! source) offset (standard-source! base)))
-
-(define-rule statement
-  ;; convert char object to ASCII byte and store it in memory
-  ;; register + byte offset <- contents of register (clear top bits)
-  (ASSIGN (BYTE-OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
-	  (CHAR->ASCII (REGISTER (? source))))
   (store-byte (standard-source! source) offset (standard-source! base)))
 
 (define-rule statement
@@ -432,9 +408,4 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (BYTE-OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
 	  (MACHINE-CONSTANT 0))
-  (store-byte 0 offset (standard-source! base)))
-
-(define-rule statement
-  (ASSIGN (BYTE-OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
-	  (CHAR->ASCII (CONSTANT #\NUL)))
   (store-byte 0 offset (standard-source! base)))
