@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.83 2002/02/03 03:38:55 cph Exp $
+;;; $Id: utabmd.scm,v 9.84 2002/02/05 17:34:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1987-2002 Massachusetts Institute of Technology
 ;;;
@@ -572,23 +572,20 @@
 	       BAD-BACK-OUT			;20
 	       ))
 
-;;; [] System-call names
+;;; [] System-call names and errors
 
-(define-syntax ucode-primitive
-  (sc-macro-transformer
-   (lambda (form environment)
-     environment
-     (apply make-primitive-procedure (cdr form)))))
-
-(vector-set! (get-fixed-objects-vector)
-	     #x09 ;(fixed-objects-vector-slot 'SYSTEM-CALL-NAMES)
-	     ((ucode-primitive microcode-system-call-names 0)))
-
-;;; [] System-call errors
-
-(vector-set! (get-fixed-objects-vector)
-	     #x0A ;(fixed-objects-vector-slot 'SYSTEM-CALL-ERRORS)
-	     ((ucode-primitive microcode-system-error-names 0)))
+(let-syntax
+    ((ucode-primitive
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (apply make-primitive-procedure (cdr form))))))
+  (vector-set! (get-fixed-objects-vector)
+	       #x09 ;(fixed-objects-vector-slot 'SYSTEM-CALL-NAMES)
+	       ((ucode-primitive microcode-system-call-names 0)))
+  (vector-set! (get-fixed-objects-vector)
+	       #x0A ;(fixed-objects-vector-slot 'SYSTEM-CALL-ERRORS)
+	       ((ucode-primitive microcode-system-error-names 0))))
 
 ;;; [] Identification
 
@@ -609,4 +606,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.83 2002/02/03 03:38:55 cph Exp $"
+"$Id: utabmd.scm,v 9.84 2002/02/05 17:34:04 cph Exp $"
