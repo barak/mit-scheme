@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.11 1987/07/21 01:40:20 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.12 1987/07/30 07:10:59 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -67,7 +67,7 @@ MIT in each case. |#
   (QUALIFIER (not (memq (car prefix) '(APPLY-CLOSURE APPLY-STACK))))
   (disable-frame-pointer-offset!
    (LAP ,@(generate-invocation-prefix prefix '())
-	(BRA U (@PCR ,label)))))
+	(BRA (@PCR ,label)))))
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? prefix) (? continuation)
@@ -75,7 +75,7 @@ MIT in each case. |#
   (disable-frame-pointer-offset!
    (LAP ,@(generate-invocation-prefix prefix '())
 	,(load-dnw number-pushed 0)
-	(BRA U (@PCR ,label)))))
+	(BRA (@PCR ,label)))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? prefix) (? continuation)
@@ -323,5 +323,5 @@ MIT in each case. |#
 (define (make-external-label label)
   (set! compiler:external-labels 
 	(cons label compiler:external-labels))
-  (LAP (DC W (- ,label ,*block-start-label*))
+  (LAP (DC O (- ,label ,*block-start-label*))
        (LABEL ,label)))

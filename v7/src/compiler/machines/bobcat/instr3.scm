@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.13 1987/07/22 17:16:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.14 1987/07/30 07:09:49 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,13 +39,16 @@ MIT in each case. |#
 
 ;;;; Control Transfer: Branch instructions
 
-;; The size U (unknown, undecided?) means that the assembler should
-;; choose the right size.
+;; No size suffix means that the assembler should choose the right
+;; size offset.
 
 ;; When the displacement goes to 0, a NOP is issued.
 ;; The instruction is hard to remove because of the workings of the
-;; branch tensioner.  Note that the NOP ``kludge'' is not correct for
-;; the BSR instruction.
+;; branch tensioner.
+
+;; Note that this NOP ``kludge'' is not correct for the BSR
+;; instruction, but doing a BSR to the following instruction is even
+;; stranger than branching to the following instruction.
 
 (let-syntax
     ((define-branch-instruction
@@ -81,7 +84,7 @@ MIT in each case. |#
 		   (8 #b11111111))
 	     (relative-long l))
 
-	    ((,@prefix U (@PCO (? o)))
+	    ((,@prefix (@PCO (? o)))
 	     (GROWING-WORD (disp o)
 	      ((0 0)
 	       (WORD (16 #b0100111001110001))) 		; NOP
@@ -97,7 +100,7 @@ MIT in each case. |#
 		     (8 #b11111111)
 		     (32 disp SIGNED)))))
 
-	    ((,@prefix U (@PCR (? l)))
+	    ((,@prefix (@PCR (? l)))
 	     (GROWING-WORD (disp `(- ,l (+ *PC* 2)))
 	      ((0 0)
 	       (WORD (16 #b0100111001110001)))		; NOP

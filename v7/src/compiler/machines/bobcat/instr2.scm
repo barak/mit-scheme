@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr2.scm,v 1.11 1987/07/17 15:48:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr2.scm,v 1.12 1987/07/30 07:09:32 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,7 +41,19 @@ MIT in each case. |#
 
 (define-instruction DC
   ((W (? expression))
-   (WORD (16 expression SIGNED))))
+   (WORD (16 expression SIGNED)))
+
+  ((L (? expression))
+   (WORD (32 expression SIGNED)))
+
+  ((O (? expression))
+   (GROWING-WORD
+    (offset expression)
+    ((0 65535)
+     (WORD (16 offset)))
+    ;; Always non-negative
+    ((0 ())
+     (WORD (32 (1+ offset)))))))
 
 ;;;; BCD Arithmetic
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.122 1987/07/22 17:16:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.123 1987/07/30 07:08:55 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -45,21 +45,9 @@ MIT in each case. |#
     `(define ,ea-database-name
        ,(compile-database rules
 	 (lambda (pattern actions)
-	   (let ((keyword (car pattern))
-		 (categories (car actions))
-		 (mode (cadr actions))
-		 (register (caddr actions))
-		 (extension (cdddr actions)))
-	     ;;(declare (integrate keyword categories mode register extension))
-	     `(MAKE-EFFECTIVE-ADDRESS
-	       ',keyword
-	       ,(integer-syntaxer mode 'UNSIGNED 3)
-	       ,(integer-syntaxer register 'UNSIGNED 3)
-	       (LAMBDA (IMMEDIATE-SIZE INSTRUCTION-TAIL)
-		 ,(if (null? extension)
-		      'INSTRUCTION-TAIL
-		      `(CONS-SYNTAX ,(car extension) INSTRUCTION-TAIL)))
-	       ',categories)))))))
+	   (if (null? (cddr actions))
+	       (make-position-dependent pattern actions)
+	       (make-position-independent pattern actions)))))))
 
 (syntax-table-define assembler-syntax-table 'EXTENSION-WORD
   (macro descriptors
@@ -71,6 +59,67 @@ MIT in each case. |#
 		(optimize-group-syntax instruction false)
 		(error "EXTENSION-WORD: Extensions must be 16 bit multiples"
 		       size)))))))
+
+(syntax-table-define assembler-syntax-table 'VARIABLE-EXTENSION
+  (macro (binding . clauses)
+    (variable-width-expression-syntaxer
+     (car binding)
+     (cadr binding)
+     (map (lambda (clause)
+	    `((LIST ,(caddr clause))
+	      ,(cadr clause)
+	      ,@(car clause)))
+	  clauses))))
+
+(define (make-position-independent pattern actions)
+  (let ((keyword (car pattern))
+	(categories (car actions))
+	(mode (cadr actions))
+	(register (caddr actions))
+	(extension (cdddr actions)))
+    ;;(declare (integrate keyword categories mode register extension))
+    `(MAKE-EFFECTIVE-ADDRESS
+      ',keyword
+      ,(integer-syntaxer mode 'UNSIGNED 3)
+      ,(integer-syntaxer register 'UNSIGNED 3)
+      (LAMBDA (IMMEDIATE-SIZE INSTRUCTION-TAIL)
+	,(if (null? extension)
+	     'INSTRUCTION-TAIL
+	     `(CONS-SYNTAX ,(car extension) INSTRUCTION-TAIL)))
+      ',categories)))
+
+(define (process-ea-field field)
+  (if (integer? field)      (integer-syntaxer field 'UNSIGNED 3)
+      (let ((binding (cadr field))
+	    (clauses (cddr field)))
+	(variable-width-expression-syntaxer
+	 (car binding)
+	 (cadr binding)
+	 (map (lambda (clause)
+		`((LIST ,(integer-syntaxer (cadr clause) 'UNSIGNED 3))
+		  3
+		  ,@(car clause)))
+	      clauses)))))
+
+(define (make-position-dependent pattern actions)
+  (let ((keyword (car pattern))
+	(categories (car actions))
+	(code (cdr (cadr actions))))
+    (let ((name (car code))
+	  (mode (cadr code))
+	  (register (caddr code))
+	  (extension (cadddr code)))
+      `(LET ((,name (GENERATE-LABEL 'MARK)))
+	 (make-effective-address
+	  ',keyword
+	  ,(process-ea-field mode)
+	  ,(process-ea-field register)
+	  (LAMBDA (IMMEDIATE-SIZE INSTRUCTION-TAIL)
+	    ,(if (null? extension)
+		 'INSTRUCTION-TAIL
+		 `(CONS (LIST 'LABEL ,name)
+			(CONS-SYNTAX ,extension INSTRUCTION-TAIL))))
+	  ',categories)))))
 
 ;;;; Transformers
 
@@ -148,23 +197,23 @@ MIT in each case. |#
   (if (not (null? tail))
       (error "PARSE-GROWING-WORD: non null tail" tail))
   (let ((binding (cadr expression)))
-    (variable-width-expression-syntaxer
-     (car binding)
-     (cadr binding)
-     (map (lambda (clause)
-	    (if (not (null? (cddr clause)))
-		(error "PARSE-GROWING-WORD: Extension found in clause" clause))
-	    (expand-descriptors
-	     (cdadr clause)
-	     (lambda (instruction size src dst)
-	       (if (not (zero? (remainder size 16)))
-		   (error "PARSE-GROWING-WORD: Instructions must be 16 bit multiples"
-			  size)
-		   (list (caar clause)			; Range low
-			 (cadar clause)			; Range high
-			 size				; Width in bits
-			 (collect-word instruction src dst '()))))))
-	  (cddr expression)))))
+    `(LIST
+      ,(variable-width-expression-syntaxer
+	(car binding)
+	(cadr binding)
+	(map (lambda (clause)
+	       (if (not (null? (cddr clause)))
+		   (error "PARSE-GROWING-WORD: Extension found in clause" clause))
+	       (expand-descriptors
+		(cdadr clause)
+		(lambda (instruction size src dst)
+		  (if (not (zero? (remainder size 16)))
+		      (error "PARSE-GROWING-WORD: Instructions must be 16 bit multiples"
+			     size)
+		      `(,(collect-word instruction src dst '())
+			,size
+			,@(car clause)))))) ; Range
+	     (cddr expression))))))
 
 ;;;; Fixed width instruction parsing
 

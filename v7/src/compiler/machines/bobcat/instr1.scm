@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.64 1987/07/21 18:34:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.65 1987/07/30 07:09:17 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -79,7 +79,7 @@ MIT in each case. |#
    (DATA MEMORY CONTROL) #b111 #b010
    (output-16bit-offset o))
 
-  ((@PCR (? l))
+  ((@PCR.W (? l))
    (DATA MEMORY CONTROL) #b111 #b010
    (output-16bit-relative l))
 
@@ -166,7 +166,25 @@ MIT in each case. |#
    (DATA MEMORY CONTROL) #b111 #b011
    (output-full-format-extension-word xtype xr xsz factor
 				      pcs irs bdtype `(- ,bd *PC*)
-				      memtype odtype od)))
+				      memtype odtype od))
+
+;;; Optimized addressing modes.
+;;; Only a subset of those that can be optimized.
+
+  ((@PCR (? l))
+   (DATA MEMORY CONTROL)
+   (POSITION-DEPENDENT label
+    #b111
+    (FIELD (offset `(- ,l ,label))
+	   ((-32768 32767) #b010)
+	   ((() ()) #b011))
+    (VARIABLE-EXTENSION (offset `(- ,l ,label))
+			((-32768 32767)
+			 16
+			 (EXTENSION-WORD (16 offset SIGNED)))
+			((() ())
+			 48
+			 (output-32bit-offset offset))))))
 
 ;;;; Effective address transformers (restrictions)
 

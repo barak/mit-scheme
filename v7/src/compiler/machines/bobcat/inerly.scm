@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/inerly.scm,v 1.3 1987/07/22 17:16:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/inerly.scm,v 1.4 1987/07/30 07:08:36 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,6 +36,8 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+;;;; Transformers and utilities
+
 (define early-instructions '())
 
 (define early-transformers '())
@@ -44,6 +46,38 @@ MIT in each case. |#
   (set! early-transformers
 	(cons (cons name transformer)
 	      early-transformers)))
+
+(define (make-ea-transformer #!optional modes keywords)
+  (make-database-transformer
+    (mapcan (lambda (rule)
+	      (apply
+	       (lambda (pattern variables categories expression)
+		 (if (and (or (unassigned? modes) (eq-subset? modes categories))
+			  (or (unassigned? keywords) (not (memq (car pattern) keywords))))
+		     (list (early-make-rule pattern variables expression))
+		     '()))
+	       rule))
+	    early-ea-database)))
+
+
+(define (eq-subset? s1 s2)
+  (or (null? s1)
+      (and (memq (car s1) s2)
+	   (eq-subset? (cdr s1) s2))))
+
+(syntax-table-define early-syntax-table 'DEFINE-EA-TRANSFORMER
+  (macro (name . restrictions)
+    `(define-early-transformer ',name (apply make-ea-transformer ',restrictions))))
+
+(syntax-table-define early-syntax-table 'DEFINE-SYMBOL-TRANSFORMER
+  (macro (name . assoc)
+    `(define-early-transformer ',name (make-symbol-transformer ',assoc))))
+
+(syntax-table-define early-syntax-table 'DEFINE-REG-LIST-TRANSFORMER
+  (macro (name . assoc)
+    `(define-early-transformer ',name (make-bit-mask-transformer 16 ',assoc))))
+
+;;;; Instruction and addressing mode macros
 
 (syntax-table-define early-syntax-table 'DEFINE-INSTRUCTION
   (macro (opcode . patterns)
@@ -76,17 +110,16 @@ MIT in each case. |#
 		(error "EXTENSION-WORD: Extensions must be 16 bit multiples"
 		       size)))))))
 
-(syntax-table-define early-syntax-table 'DEFINE-SYMBOL-TRANSFORMER
-  (macro (name . assoc)
-    `(define-early-transformer ',name (make-symbol-transformer ',assoc))))
-
-(syntax-table-define early-syntax-table 'DEFINE-REG-LIST-TRANSFORMER
-  (macro (name . assoc)
-    `(define-early-transformer ',name (make-bit-mask-transformer 16 ',assoc))))
-
-(syntax-table-define early-syntax-table 'DEFINE-EA-TRANSFORMER
-  (macro (name . restrictions)
-    `(define-early-transformer ',name (apply make-ea-transformer ',restrictions))))
+(syntax-table-define early-syntax-table 'VARIABLE-EXTENSION
+  (macro (binding . clauses)
+    (variable-width-expression-syntaxer
+     (car binding)
+     (cadr binding)
+     (map  (lambda (clause)
+	     `((LIST ,(caddr clause))
+	       ,(cadr clause)		; Size
+	       ,@(car clause)))		; Range
+	  clauses))))
 
 ;;;; Early effective address assembly.
 
@@ -97,27 +130,9 @@ MIT in each case. |#
     `(define early-ea-database
        (list
 	,@(map (lambda (rule)
-		 (apply (lambda (pattern categories mode register . extension)
-			  (let ((keyword (car pattern)))
-			    `(early-parse-rule
-			      ',pattern
-			      (lambda (pat vars)
-				(list pat
-				      vars
-				      ',categories
-				      (scode-quote
-				       (MAKE-EFFECTIVE-ADDRESS
-					',keyword
-					,(integer-syntaxer mode 'UNSIGNED 3)
-					,(integer-syntaxer register 'UNSIGNED 3)
-					(lambda (IMMEDIATE-SIZE INSTRUCTION-TAIL)
-					  (DECLARE (INTEGRATE IMMEDIATE-SIZE INSTRUCTION-TAIL))
-					  ,(if (null? extension)
-					       'INSTRUCTION-TAIL
-					       `(CONS-SYNTAX ,(car extension)
-							     INSTRUCTION-TAIL)))
-					',categories)))))))
-			rule))
+		 (if (null? (cdddr rule))
+		     (apply make-position-dependent-early rule)
+		     (apply make-position-independent-early rule)))
 	       rules)))))
 
 (define (make-ea-selector-expander late-name index)
@@ -145,22 +160,53 @@ MIT in each case. |#
 (define ea-register-expander (make-ea-selector-expander 'EA-REGISTER 2))
 (define ea-extension-expander (make-ea-selector-expander 'EA-EXTENSION 3))
 (define ea-categories-expander (make-ea-selector-expander 'EA-CATEGORIES 4))
+
+;;;; Utilities
 
-;;; Utility procedures
+(define (make-position-independent-early pattern categories mode register . extension)
+  (let ((keyword (car pattern)))
+    `(early-parse-rule
+      ',pattern
+      (lambda (pat vars)
+	(list pat
+	      vars
+	      ',categories
+	      (scode-quote
+	       (MAKE-EFFECTIVE-ADDRESS
+		',keyword
+		,(integer-syntaxer mode 'UNSIGNED 3)
+		,(integer-syntaxer register 'UNSIGNED 3)
+		(LAMBDA (IMMEDIATE-SIZE INSTRUCTION-TAIL)
+		  (DECLARE (INTEGRATE IMMEDIATE-SIZE INSTRUCTION-TAIL))
+		  ,(if (null? extension)
+		       'INSTRUCTION-TAIL
+		       `(CONS-SYNTAX ,(car extension)
+				     INSTRUCTION-TAIL)))
+		',categories)))))))
 
-(define (make-ea-transformer #!optional modes keywords)
-  (make-database-transformer
-    (mapcan (lambda (rule)
-	      (apply
-	       (lambda (pattern variables categories expression)
-		 (if (and (or (unassigned? modes) (eq-subset? modes categories))
-			  (or (unassigned? keywords) (not (memq (car pattern) keywords))))
-		     (list (early-make-rule pattern variables expression))
-		     '()))
-	       rule))
-	    early-ea-database)))
-
-(define (eq-subset? s1 s2)
-  (or (null? s1)
-      (and (memq (car s1) s2)
-	   (eq-subset? (cdr s1) s2))))
+(define (make-position-dependent-early pattern categories code-list)
+  (let ((keyword (car pattern))
+	(code (cdr code-list)))
+    (let ((name (car code))
+	  (mode (cadr code))
+	  (register (caddr code))
+	  (extension (cadddr code)))
+      `(EARLY-PARSE-RULE
+	',pattern
+	(LAMBDA (PAT VARS)
+	  (LIST PAT
+		VARS
+		',categories
+		(SCODE-QUOTE
+		 (LET ((,name (GENERATE-LABEL 'MARK)))
+		   (MAKE-EFFECTIVE-ADDRESS
+		    ',keyword
+		    ,(process-ea-field mode)
+		    ,(process-ea-field register)
+		    (LAMBDA (IMMEDIATE-SIZE INSTRUCTION-TAIL)
+		      (DECLARE (INTEGRATE IMMEDIATE-SIZE INSTRUCTION-TAIL))
+		      ,(if (null? extension)
+			   'INSTRUCTION-TAIL
+			   `(CONS (LIST 'LABEL ,name)
+				  (CONS-SYNTAX ,extension INSTRUCTION-TAIL))))
+		    ',categories)))))))))

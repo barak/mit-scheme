@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.4 1987/07/21 18:34:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.5 1987/07/30 07:10:09 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -152,26 +152,28 @@ MIT in each case. |#
 					   memory-indirection-type
 					   outer-displacement-size
 					   outer-displacement)
-  (EXTENSION-WORD (1 index-register-type)
-		  (3 index-register)
-		  (1 index-size)
-		  (2 factor SCALE-FACTOR)
-		  (1 #b1)
-		  (1 base-suppress)
-		  (1 index-suppress)
-		  (2 base-displacement-size)
-		  (1 #b0)
-		  (3 (case memory-indirection-type
-		       ((#F)
-			#b000)
-		       ((PRE)
-			outer-displacement-size)
-		       ((POST)
-			(+ #b100 outer-displacement-size))
-		       (else
-			"bad memory indirection-type" memory-indirection-type))))
-  (output-displacement base-displacement-size base-displacement)
-  (output-displacement outer-displacement-size outer-displacement))
+  (append-syntax!
+   (EXTENSION-WORD (1 index-register-type)
+		   (3 index-register)
+		   (1 index-size)
+		   (2 factor SCALE-FACTOR)
+		   (1 #b1)
+		   (1 base-suppress)
+		   (1 index-suppress)
+		   (2 base-displacement-size)
+		   (1 #b0)
+		   (3 (case memory-indirection-type
+			((#F)
+			 #b000)
+			((PRE)
+			 outer-displacement-size)
+			((POST)
+			 (+ #b100 outer-displacement-size))
+			(else
+			 (error "bad memory indirection-type" memory-indirection-type)))))
+   (append-syntax!
+    (output-displacement base-displacement-size base-displacement)
+    (output-displacement outer-displacement-size outer-displacement))))
 
 (define (output-displacement size displacement)
   (case size
@@ -206,6 +208,19 @@ MIT in each case. |#
 		  (1 #b0)
 		  (3 #b000)		;no memory indirection
 		  (16 displacement SIGNED)))
+
+(define (output-32bit-offset offset)
+  (EXTENSION-WORD (1 #b0)		;index register = data
+		  (3 #b000)		;register number = 0
+		  (1 #b0)		;index size = 32 bits
+		  (2 #b00)		;scale factor = 1
+		  (1 #b1)
+		  (1 #b0)		;use base register
+		  (1 #b1)		;suppress index register
+		  (2 #b11)		;base displacement size = 32 bits
+		  (1 #b0)
+		  (3 #b000)		;no memory indirection
+		  (32 offset SIGNED)))
 
 ;;;; Operand Syntaxers.
 

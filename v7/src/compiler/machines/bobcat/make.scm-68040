@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.36 1987/07/22 17:17:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.37 1987/07/30 07:10:47 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -46,11 +46,11 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 1)
-      (define :modification 36)
+      (define :modification 37)
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.36 1987/07/22 17:17:01 jinx Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.37 1987/07/30 07:10:47 jinx Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bitutl.scm,v 1.2 1987/07/22 17:14:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bitutl.scm,v 1.3 1987/07/30 07:05:24 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -213,24 +213,24 @@ MIT in each case. |#
     (and (or (false? low) (<= low val))
 	 (or (false? high) (<= val high)))))
 
-(declare (integrate-operator selector/low selector/high
+(declare (integrate-operator selector/high selector/low
 			     selector/handler selector/length))
-
-(define (selector/low sel)
-  (declare (integrate sel))
-  (vector-ref sel 0))
 
 (define (selector/high sel)
   (declare (integrate sel))
-  (vector-ref sel 1))
+  (vector-ref sel 3))
 
-(define (selector/length sel)
+(define (selector/low sel)
   (declare (integrate sel))
   (vector-ref sel 2))
 
+(define (selector/length sel)
+  (declare (integrate sel))
+  (vector-ref sel 1))
+
 (define (selector/handler sel)
   (declare (integrate sel))
-  (vector-ref sel 3))
+  (vector-ref sel 0))
 
 ;;;; Random utilities
 

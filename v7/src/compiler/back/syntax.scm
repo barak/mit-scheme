@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.17 1987/07/22 17:15:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.18 1987/07/30 07:05:33 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -45,6 +45,20 @@ MIT in each case. |#
 	     directives)
       (cons directive directives)))
 
+(define (append-syntax! directives1 directives2)
+  (cond ((null? directives1) directives2)
+	((null? directives2) directives1)
+	(else
+	 (let ((tail (last-pair directives1)))
+	   (if (and (bit-string? (car tail))
+		    (bit-string? (car directives2)))
+	       (begin
+		 (set-car! tail
+			   (bit-string-append (car directives2) (car tail)))
+		 (set-cdr! tail (cdr directives2)))
+	       (set-cdr! tail directives2))
+	   directives1))))
+
 (define-export (lap:syntax-instruction instruction)
   (if (memq (car instruction) '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL))
       (directive->instruction-sequence instruction)
@@ -74,12 +88,13 @@ MIT in each case. |#
   (let ((coercion (make-coercion-name coercion-type size)))
     (if (integer? expression)
 	`',((lexical-reference coercion-environment coercion) expression)
-	`(SYNTAX-EVALUATION ,expression ,coercion))))					 
+	`(SYNTAX-EVALUATION ,expression ,coercion))))
 
 (define (syntax-evaluation expression coercion)
-  (if (integer? expression)
-      (coercion expression)
-      (list 'EVALUATION expression (coercion-size coercion) coercion)))
+  (cond ((integer? expression)
+	 (coercion expression))
+	(else
+	 (list 'EVALUATION expression (coercion-size coercion) coercion))))
 
 (define (optimize-group . components)
   (optimize-group-internal components
@@ -132,34 +147,30 @@ MIT in each case. |#
 
   (cond ((null? clauses)
 	 (error "choose-clause: value out of range" value))
-	((in-range? value (caar clauses) (cadar clauses))
+	((in-range? value (caddr (car clauses)) (cadddr (car clauses)))
 	 (car clauses))
-	(else (choose-clause (cdr clauses)))))
+	(else (choose-clause value (cdr clauses)))))
 
 (define (variable-width-expression-syntaxer name expression clauses)
   (if (integer? expression)
       (let ((chosen (choose-clause expression clauses)))
-	`(let ((,name ,expression))
-	   (declare (integrate ,name))
-	   ,(cadddr chosen)))
-      `(LIST
-	(SYNTAX-VARIABLE-WIDTH-EXPRESSION
-	 ,expression
-	 (LIST
-	  ,@(map (LAMBDA (clause)
-		   `(LIST ,(car clause)
-			  ,(cadr clause)
-			  ,(caddr clause)
-			  (LAMBDA (,name)
-			    ,(cadddr clause))))
-		 clauses))))))
+	`(LET ((,name ,expression))
+	   (DECLARE (INTEGRATE ,name))
+	   (CAR ,(car chosen))))
+      `(SYNTAX-VARIABLE-WIDTH-EXPRESSION
+	,expression
+	(LIST
+	 ,@(map (LAMBDA (clause)
+		  `(CONS (LAMBDA (,name) ,(car clause))
+			 ',(cdr clause)))
+		clauses)))))
 
 (define (syntax-variable-width-expression expression clauses)
   (if (integer? expression)      (let ((chosen (choose-clause expression clauses)))
-	((cadddr chosen) expression))
-      (cons* 'VARIABLE-WIDTH-EXPRESSION
-	     expression
-	     clauses)))
+	(car ((car chosen) expression)))
+      `(VARIABLE-WIDTH-EXPRESSION
+	,expression
+	,@clauses)))
 
 ;;;; Coercion Machinery
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.3 1987/07/22 17:14:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.4 1987/07/30 07:05:13 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -402,5 +402,5 @@ MIT in each case. |#
 (define (list->bit-string l)
   (if (null? (cdr l))
       (car l)
-      (bit-string-append (car l)
-			 (list->bit-string (cdr l)))))
+      (bit-string-append (list->bit-string (cdr l))
+			 (car l))))

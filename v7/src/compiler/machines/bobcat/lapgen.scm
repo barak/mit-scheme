@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.186 1987/07/16 10:10:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.187 1987/07/30 07:10:24 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -145,9 +145,9 @@ MIT in each case. |#
 (define (set-standard-branches! cc)
   (set-current-branches!
    (lambda (label)
-     (LAP (B ,cc U (@PCR ,label))))
+     (LAP (B ,cc (@PCR ,label))))
    (lambda (label)
-     (LAP (B ,(invert-cc cc) U (@PCR ,label))))))
+     (LAP (B ,(invert-cc cc) (@PCR ,label))))))
 
 (define (invert-cc cc)
   (cdr (or (assq cc
@@ -251,13 +251,13 @@ MIT in each case. |#
   (INST (LABEL ,label)))
 
 (define-export (lap:make-unconditional-branch label)
-  (INST (BRA U (@PCR ,label))))
+  (INST (BRA (@PCR ,label))))
 
 (define-export (lap:make-entry-point label block-start-label)
   (set! compiler:external-labels
 	(cons label compiler:external-labels))
   (LAP (ENTRY-POINT ,label)
-       (DC W (- ,label ,block-start-label))
+       (DC O (- ,label ,block-start-label))
        (LABEL ,label)))
 
 ;;;; Registers/Entries
