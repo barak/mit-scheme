@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emodel.scm,v 4.2 1993/01/02 07:33:35 cph Exp $
+$Id: emodel.scm,v 4.3 1993/01/04 07:42:38 cph Exp $
 
 Copyright (c) 1987, 1993 Massachusetts Institute of Technology
 
@@ -50,6 +50,10 @@ MIT in each case. |#
     block))
 
 (define (variable/make&bind! block name)
+  (or (%block/lookup-name block name)
+      (%variable/make&bind! block name)))
+
+(define (%variable/make&bind! block name)
   (let ((variable (variable/make block name '()))
 	(bound-variables (block/bound-variables block)))
     (cond ((hash-table? bound-variables)
@@ -68,21 +72,20 @@ MIT in each case. |#
 
 (define (block/lookup-name block name intern?)
   (let search ((block block))
-    (let ((bound-variables (block/bound-variables block)))
-      (if (hash-table? bound-variables)
-	  (or (hash-table-lookup bound-variables name)
-	      (if (block/parent block)
-		  (search (block/parent block))
-		  (and intern? (variable/make&bind! block name))))
-	  (let loop ((variables (cdr bound-variables)))
-	    (cond ((null? variables)
-		   (if (block/parent block)
-		       (search (block/parent block))
-		       (and intern? (variable/make&bind! block name))))
-		  ((eq? name (variable/name (car variables)))
-		   (car variables))
-		  (else
-		   (loop (cdr variables)))))))))
+    (or (%block/lookup-name block name)
+	(if (block/parent block)
+	    (search (block/parent block))
+	    (and intern? (%variable/make&bind! block name))))))
+
+(define (%block/lookup-name block name)
+  (let ((bound-variables (block/bound-variables block)))
+    (if (hash-table? bound-variables)
+	(hash-table-lookup bound-variables name)
+	(let loop ((variables (cdr bound-variables)))
+	  (and (not (null? variables))
+	       (if (eq? name (variable/name (car variables)))
+		   (car variables)
+		   (loop (cdr variables))))))))
 
 (define (block/limited-lookup block name limit)
   (let search ((block block))
