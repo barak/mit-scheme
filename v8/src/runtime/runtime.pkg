@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.26 1989/01/06 21:00:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.27 1989/02/09 04:16:28 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -1653,6 +1653,7 @@ MIT in each case. |#
   (export (runtime output-port)
 	  unparse-object/internal)
   (export (runtime pretty-printer)
+	  unparse-list/prefix-pair?
 	  unparse-list/unparser
 	  unparse-vector/unparser)
   (export (runtime debugger)
