@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wttree.scm,v 1.8 1995/03/02 05:41:11 adams Exp $
+$Id: wttree.scm,v 1.9 1995/04/24 23:19:23 adams Exp $
 
 Copyright (c) 1993-94 Massachusetts Institute of Technology
 
@@ -486,20 +486,28 @@ reference:
 ;;;
 ;;;
 
+(define (guarantee-tree/report tree procedure)
+  (error:wrong-type-argument tree "weight-balanced tree" procedure))
+
 (define-integrable (guarantee-tree tree procedure)
   (if (not (wt-tree? tree))
-      (error:wrong-type-argument tree "weight-balanced tree" procedure)))
+      (guarantee-tree/report tree procedure)))
 
 (define-integrable (guarantee-tree-type type procedure)
   (if (not (tree-type? type))
       (error:wrong-type-argument type "weight-balanced tree type" procedure)))
 
-(define-integrable (guarantee-compatible-trees tree1 tree2 procedure)
+(define-integrable (guarantee-compatible-trees/report tree1 tree2 procedure)
   (guarantee-tree tree1 procedure)
   (guarantee-tree tree2 procedure)
-  (if (not (eq? (tree/type tree1) (tree/type tree2)))
-      (error "The trees" tree1 'and tree2 'have 'incompatible 'types
-	     (tree/type tree1) 'and (tree/type tree2))))
+  (error "The trees" tree1 'and tree2 'have 'incompatible 'types
+	 (tree/type tree1) 'and (tree/type tree2)))
+
+(define-integrable (guarantee-compatible-trees tree1 tree2 procedure)
+  (if (or (not (wt-tree? tree1))
+	  (not (wt-tree? tree2))
+	  (not (eq? (tree/type tree1) (tree/type tree2))))
+      (guarantee-compatible-trees/report tree1 tree2 procedure)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -639,12 +647,12 @@ reference:
 
 (define number-wt-type
   ((lambda()
-     ;(declare (integrate-operator make-wt-tree-type))
+     (declare (integrate-operator make-wt-tree-type))
      (make-wt-tree-type  (lambda (x y) (< x y))))))
 
 (define string-wt-type
   ((lambda()
-     ;(declare (integrate-operator make-wt-tree-type))
+     (declare (integrate-operator make-wt-tree-type))
      (make-wt-tree-type  string<?))))
 
 ;;;
