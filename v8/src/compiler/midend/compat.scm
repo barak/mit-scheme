@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.7 1995/03/10 14:44:08 adams Exp $
+$Id: compat.scm,v 1.8 1995/03/11 17:44:22 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -115,17 +115,17 @@ MIT in each case. |#
 			 (compat/choose-stack-formals 1 lambda-list)))
 
 (define-compatibility-rewrite LET (env bindings body)
-  `(LET ,(lmap (lambda (binding)
-		 (list (car binding)
-		       (compat/expr env (cadr binding))))
-	       bindings)
+  `(LET ,(map (lambda (binding)
+		(list (car binding)
+		      (compat/expr env (cadr binding))))
+	      bindings)
      ,(compat/expr env body)))  
 
 (define-compatibility-rewrite LETREC (env bindings body)
-  `(LETREC ,(lmap (lambda (binding)
-		    (list (car binding)
-			  (compat/expr env (cadr binding))))
-		  bindings)
+  `(LETREC ,(map (lambda (binding)
+		   (list (car binding)
+			 (compat/expr env (cadr binding))))
+		 bindings)
      ,(compat/expr env body)))
 
 (define-compatibility-rewrite QUOTE (env object)
@@ -186,16 +186,13 @@ MIT in each case. |#
     ((BEGIN)    (compat/begin env expr))
     ((IF)       (compat/if env expr))
     ((LETREC)   (compat/letrec env expr))
-    ((SET! UNASSIGNED? OR DELAY
-      ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
     (else
      (illegal expr))))
 
 (define (compat/expr* env exprs)
-  (lmap (lambda (expr)
-	  (compat/expr env expr))
-	exprs))
+  (map (lambda (expr)
+	 (compat/expr env expr))
+       exprs))
 
 (define (compat/remember new old)
   (code-rewrite/remember new old))
@@ -214,17 +211,17 @@ MIT in each case. |#
   (define (compat/new-env frame-variable old-frame-vector new-frame-vector)
     ;; The new environment maps names to %stack-closure-refs and %vector-index
     ;; vectors to new, extended vectors
-    (let ((alist  (lmap (lambda (name)
-			  (list name
-				`(CALL (QUOTE ,%stack-closure-ref)
-				       (QUOTE #F)
-				       (LOOKUP ,frame-variable)
-				       (CALL (QUOTE ,%vector-index)
-					     (QUOTE #F)
-					     (QUOTE ,new-frame-vector)
-					     (QUOTE ,name))
-				       (QUOTE ,name))))
-			formals-on-stack)))
+    (let ((alist  (map (lambda (name)
+			 (list name
+			       `(CALL (QUOTE ,%stack-closure-ref)
+				      (QUOTE #F)
+				      (LOOKUP ,frame-variable)
+				      (CALL (QUOTE ,%vector-index)
+					    (QUOTE #F)
+					    (QUOTE ,new-frame-vector)
+					    (QUOTE ,name))
+				      (QUOTE ,name))))
+		       formals-on-stack)))
       (if old-frame-vector
 	  (cons (list old-frame-vector new-frame-vector)
 		alist)
@@ -264,13 +261,13 @@ MIT in each case. |#
 			     (list->vector formals-on-stack)
 			     body)))))
 	   
-(define (compat/choose-stack-formals special-arguments lambda-list)
-  ;; SPECIAL-ARGUMENTS is the number of arguments passed by a special
+(define (compat/choose-stack-formals special-argument-count lambda-list)
+  ;; SPECIAL-ARGUMENT-COUNT is the number of arguments passed by a special
   ;; mechanism, usually 1 for the continuation, or 2 for the
   ;; continuation and heap closure.
   (call-with-values
       (lambda ()
-	(%compat/split-register&stack special-arguments
+	(%compat/split-register&stack special-argument-count
 				      (lambda-list->names lambda-list)))
     (lambda (register-formals stack-formals)
       register-formals			; ignored
@@ -533,9 +530,9 @@ MIT in each case. |#
     ;; (CALL ',%variable-write-cache '#F <write-variable-cache> 'NAME)
     ;;       -------- rator -------- cont -------- rands -----------
     rator				; ignored
-    (let ((cont  (compat/expr env cont))
-	  (cell  (compat/expr env (first rands)))
-	  (value (compat/expr env (second rands)))
+    (let ((cont        (compat/expr env cont))
+	  (cell        (compat/expr env (first rands)))
+	  (value       (compat/expr env (second rands)))
 	  (quoted-name (compat/expr env (third rands))))
       ;; (compat/verify-hook-continuation cont)
       (if (not (equal? cont '(QUOTE #F)))
@@ -635,8 +632,7 @@ MIT in each case. |#
   (define (compat/->stack-names rands)
     (compat/uniquify-append
      '()
-     (lmap compat/expression->name
-	   rands)))
+     (map compat/expression->name rands)))
 
   (define (compat/->stack-frame names)
     (list->vector (cons (car names) (reverse (cdr names)))))
