@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.7 1991/10/26 21:11:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.8 1992/04/02 08:14:42 cph Exp $
 ;;;
-;;;	Copyright (c) 1991 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -123,7 +123,9 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 					       group
 					       index
 					       (group-end-index group))
-		     (loop (mark-index (delete-match)))))))))
+		     (let ((start (re-match-start-index 0)))
+		       (group-delete! group start (re-match-end-index 0))
+		       (loop start))))))))
       ;; Nuke underlining
       (nuke-regexp "\\(_\b\\)+" false)
       ;; Nuke overstriking
@@ -143,7 +145,9 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 				      group
 				      index
 				      (group-end-index group))
-	    (loop (mark-index (replace-match "\n\n" false true)))))))
+	    (let ((start (re-match-start-index 0)))
+	      (group-delete! group (fix:+ start 2) (re-match-end-index 0))
+	      (loop start))))))
   ;; Nuke blanks lines at start.
   (if (re-match-forward "\\([ \t]*\n\\)+"
 			(buffer-start buffer)
