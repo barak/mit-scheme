@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.34 1989/04/28 22:53:47 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.35 1990/10/06 00:00:30 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -120,7 +120,8 @@ See documentation of variable tags-file-name."
       (let ((mark
 	     (re-search-backward
 	      "\\sw\\|\\s_"
-	      (re-search-forward "\\(\\sw\\|\\s_\\)*" point end 'LIMIT))))
+	      (or (re-match-forward "\\(\\sw\\|\\s_\\)*" point end)
+		  point))))
 	(and mark
 	     (let ((mark (mark1+ mark)))
 	       (let ((mark*
