@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.43 2003/09/14 01:52:35 cph Exp $
+$Id: ntprm.scm,v 1.44 2003/09/23 03:37:16 cph Exp $
 
 Copyright 1995,1996,1998,1999,2000,2001 Massachusetts Institute of Technology
 Copyright 2003 Massachusetts Institute of Technology
@@ -468,8 +468,8 @@ USA.
     (reset!)
     (add-event-receiver! event:after-restart reset!))
   (set! nt/hide-subprocess-windows? #t)
-  (set! nt/subprocess-argument-quote-char #f)
-  (set! nt/subprocess-argument-escape-char #f)
+  (set! nt/subprocess-argument-quote-char #\")
+  (set! nt/subprocess-argument-escape-char #\\)
   unspecific)
 
 (define (os/make-subprocess filename arguments environment working-directory
@@ -478,16 +478,16 @@ USA.
       (error "Can't manipulate controlling terminal of subprocess:" ctty))
   ((ucode-primitive nt-make-subprocess 8)
    filename
-   (nt/rewrite-subprocess-arguments filename (vector->list arguments))
+   (rewrite-args filename (vector->list arguments))
    (and environment
-	(nt/rewrite-subprocess-environment (vector->list environment)))
+	(rewrite-env (vector->list environment)))
    working-directory
    stdin
    stdout
    stderr
    (vector nt/hide-subprocess-windows?)))
 
-(define (nt/rewrite-subprocess-environment strings)
+(define (rewrite-env strings)
   (let ((strings
 	 (map car
 	      (sort (map (lambda (binding)
@@ -513,7 +513,7 @@ USA.
 		(loop (cdr strings) (fix:+ index* 1))))))
       result)))
 
-(define (nt/rewrite-subprocess-arguments program strings)
+(define (rewrite-args program strings)
   ;; PROGRAM will eventually be used to determine the appropriate
   ;; escape character -- strangely enough, this depends on what
   ;; runtime library PROGRAM is linked with.
@@ -521,11 +521,10 @@ USA.
   (let ((quote-char nt/subprocess-argument-quote-char)
 	(escape-char nt/subprocess-argument-escape-char))
     (if (not quote-char)
-	(nt/rewrite-subprocess-arguments/no-quoting strings)
-	(nt/rewrite-subprocess-arguments/quoting strings
-						 quote-char escape-char))))
+	(rewrite-args/no-quoting strings)
+	(rewrite-args/quoting strings quote-char escape-char))))
 
-(define (nt/rewrite-subprocess-arguments/no-quoting strings)
+(define (rewrite-args/no-quoting strings)
   (if (pair? strings)
       (let ((result
 	     (make-string
@@ -544,27 +543,27 @@ USA.
 	result)
       ""))
 
-(define (nt/rewrite-subprocess-arguments/quoting strings
-						 quote-char escape-char)
+(define (rewrite-args/quoting strings quote-char escape-char)
   (define (analyze-arg s)
     (let ((need-quotes? #f)
 	  (n (string-length s)))
       (do ((i 0 (fix:+ i 1))
-	   (j 0
-	      (fix:+ j
+	   (j 0 (if (char=? escape-char (string-ref s i)) (fix:+ j 1) 0))
+	   (k 0
+	      (fix:+ k
 		     (let ((c (string-ref s i)))
-		       (if (or (char=? quote-char c)
-			       (char=? escape-char c))
+		       (if (char=? quote-char c)
 			   (begin
 			     (set! need-quotes? #t)
-			     2)
+			     ;; Double preceding escape chars.
+			     (fix:+ j 2))
 			   (begin
 			     (if (or (char=? #\space c)
 				     (char=? #\tab c))
 				 (set! need-quotes? #t))
 			     1))))))
 	  ((fix:= i n)
-	   (cons (if need-quotes? (fix:+ j 2) j)
+	   (cons (if need-quotes? (fix:+ k 2) k)
 		 need-quotes?)))))
   (let ((analyses (map analyze-arg strings)))
     (let ((result (make-string (reduce + 0 (map car analyses)))))
@@ -572,21 +571,22 @@ USA.
 	(if (cdr analysis)
 	    (begin
 	      (string-set! result index quote-char)
-	      (let ((index (do-arg-1 index s)))
+	      (let ((index (do-arg-1 (fix:+ index 1) s)))
 		(string-set! result index quote-char)
 		(fix:+ index 1)))
 	    (do-arg-1 index s)))
       (define (do-arg-1 index s)
 	(let ((n (string-length s)))
 	  (do ((i 0 (fix:+ i 1))
+	       (j 0 (if (char=? escape-char (string-ref s i)) (fix:+ j 1) 0))
 	       (index index
 		      (let ((c (string-ref s i)))
-			(if (or (char=? quote-char c)
-				(char=? escape-char c))
-			    (begin
-			      (string-set! result index escape-char)
-			      (string-set! result (fix:+ index 1) c)
-			      (fix:+ index 2))
+			(if (char=? quote-char c)
+			    (let ((index* (fix:+ index (fix:+ j 1))))
+			      ;; Double preceding escape chars.
+			      (substring-fill! result index index* escape-char)
+			      (string-set! result index* c)
+			      (fix:+ index* 1))
 			    (begin
 			      (string-set! result index c)
 			      (fix:+ index 1))))))
