@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.52 1994/12/19 19:39:14 cph Exp $
+$Id: edwin.ldr,v 1.53 1995/01/06 01:03:24 cph Exp $
 
-Copyright (c) 1989-94 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,9 +79,10 @@ MIT in each case. |#
       (define (boolean-and a b) (and a b))
 
       (if (eq? (lookup 'OS-TYPE) 'UNIX)
-	  (begin
-	    (load-option 'KRYPT #t)	;no error if not present.
-	    (load-option 'SUBPROCESS)))
+	  ;; #T means no error if not present.
+	  (load-option 'KRYPT #t))
+      (if (memq (lookup 'OS-TYPE) '(UNIX OS/2))
+	  (load-option 'SUBPROCESS))
       (load-option 'RB-TREE)
       (load-option 'HASH-TABLE)
 
@@ -187,9 +188,9 @@ MIT in each case. |#
 
 	(load-case 'OS-TYPE
 		   '((UNIX . "process")
+		     (OS/2 . "process")
 		     (DOS . "dosproc")
-		     (NT . "dosproc")
-		     (OS/2 . "dosproc"))
+		     (NT . "dosproc"))
 		   (->environment '(EDWIN PROCESS)))
 
 	(load "mousecom" environment)
