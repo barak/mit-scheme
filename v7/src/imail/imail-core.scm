@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.59 2000/05/15 19:20:40 cph Exp $
+;;; $Id: imail-core.scm,v 1.60 2000/05/16 04:14:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -331,26 +331,6 @@
   (if (not (message? message))
       (error:wrong-type-argument message "IMAIL message" procedure)))
 
-(define (make-detached-message headers body)
-  (call-with-values (lambda () (parse-imail-header-fields headers))
-    (lambda (headers flags)
-      (make-message headers body flags))))
-
-(define (parse-imail-header-fields headers)
-  (let loop ((headers headers) (headers* '()) (flags '()))
-    (cond ((not (pair? headers))
-	   (values (reverse! headers*)
-		   (remove-duplicates! (reverse! flags) string-ci=?)))
-	  ((header-field->message-flags (car headers))
-	   => (lambda (flags*)
-		(loop (cdr headers)
-		      headers*
-		      (append! (reverse! (cdr flags*)) flags))))
-	  (else
-	   (loop (cdr headers)
-		 (cons (car headers) headers*)
-		 flags)))))
-
 (define (copy-message message)
   (make-message (map copy-header-field (message-header-fields message))
 		(message-body message)
@@ -376,6 +356,24 @@
      (let ((folder (message-folder message)))
        (if folder
 	   (folder-modified! folder))))))
+
+(define-generic message-internal-time (message))
+
+(define-method message-internal-time ((message <message>))
+  (let loop ((headers (get-all-header-fields headers "received")) (winner #f))
+    (if (pair? headers)
+	(call-with-values
+	    (lambda ()
+	      (rfc822:received-header-components
+	       (header-field-value (car headers))))
+	  (lambda (from by via with id for time)
+	    from by via with id for	;ignored
+	    (loop (cdr headers)
+		  (if (or (not winner) (< time winner)) time winner))))
+	(or winner
+	    (let ((date (get-first-header-field-value headers "date" #f)))
+	      (and date
+		   (string->universal-time date)))))))
 
 ;;;; Message Navigation
 
@@ -490,6 +488,21 @@
        (cons #f (burst-string (header-field-value header) char-set:lwsp #t))))
 
 (define message-flags:name "X-IMAIL-FLAGS")
+
+(define (parse-imail-header-fields headers)
+  (let loop ((headers headers) (headers* '()) (flags '()))
+    (cond ((not (pair? headers))
+	   (values (reverse! headers*)
+		   (remove-duplicates! (reverse! flags) string-ci=?)))
+	  ((header-field->message-flags (car headers))
+	   => (lambda (flags*)
+		(loop (cdr headers)
+		      headers*
+		      (append! (reverse! (cdr flags*)) flags))))
+	  (else
+	   (loop (cdr headers)
+		 (cons (car headers) headers*)
+		 flags)))))
 
 (define (message-deleted? msg) (message-flagged? msg "deleted"))
 (define (message-undeleted? msg) (not (message-flagged? msg "deleted")))

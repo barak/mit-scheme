@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.23 2000/05/15 19:20:58 cph Exp $
+;;; $Id: imail-umail.scm,v 1.24 2000/05/16 04:14:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -76,6 +76,10 @@
 		     "unknown")
 		 " "
 		 (universal-time->local-ctime-string (get-universal-time))))
+
+(define-method message-internal-time ((message <umail-message>))
+  (or (extract-umail-from-time (umail-message-from-line message))
+      (call-next-method message)))
 
 ;;;; Read unix mail file
 

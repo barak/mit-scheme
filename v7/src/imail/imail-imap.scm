@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.42 2000/05/16 03:36:17 cph Exp $
+;;; $Id: imail-imap.scm,v 1.43 2000/05/16 04:14:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -454,6 +454,13 @@
 	((string-ci=? flag "deleted") '\DELETED)
 	((string-ci=? flag "seen") '\SEEN)
 	(else (intern flag))))
+
+(define-method message-internal-time ((message <imap-message>))
+  (imap:response:fetch-attribute
+   (imap:command:fetch (imap-message-connection message)
+		       (message-index message)
+		       '(INTERNALDATE))
+   'INTERNALDATE))
 
 ;;; These reflectors are needed to guarantee that we read the
 ;;; appropriate information from the server.  Normally most message
