@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.8 1989/11/30 16:02:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.9 1990/08/21 02:24:08 jinx Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -58,7 +58,8 @@ MIT in each case. |#
 				(rgraph label entry-edge name n-required
 					n-optional rest? closure?
 					dynamic-link? type
-					debugging-info))
+					debugging-info
+					next-continuation-offset))
 		   (print-procedure
 		    (standard-unparser (symbol->string 'RTL-PROCEDURE)
 		      (lambda (state procedure)
@@ -75,7 +76,9 @@ MIT in each case. |#
   (dynamic-link? false read-only true)
   (type false read-only true)
   (%external-label false)
-  (debugging-info false read-only true))
+  (debugging-info false read-only true)
+  (next-continuation-offset false read-only true))
+
 (define-integrable (rtl-procedure/entry-node procedure)
   (edge-right-node (rtl-procedure/entry-edge procedure)))
 

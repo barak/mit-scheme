@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.22 1989/11/30 16:03:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.23 1990/08/21 02:24:33 jinx Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -124,7 +124,8 @@ MIT in each case. |#
 	      (stack-block/dynamic-link? block)
 	      true))
        (procedure/type procedure)
-       (procedure-debugging-info procedure)))))
+       (procedure-debugging-info procedure)
+       (block/next-continuation-offset (procedure-block procedure) 0)))))
 
 (define (generate/procedure-entry/inline procedure)
   (generate/procedure-header procedure
@@ -165,7 +166,7 @@ MIT in each case. |#
 	 rgraph
 	 label
 	 entry-edge
-	 (continuation/next-continuation-offset
+	 (block/next-continuation-offset
 	  (continuation/closing-block continuation)
 	  (continuation/offset continuation))
 	 (continuation/debugging-info continuation))))))
@@ -203,14 +204,14 @@ MIT in each case. |#
 		   *current-rgraph*
 		   label
 		   (cfg-entry-edge cleanup)
-		   (continuation/next-continuation-offset
+		   (block/next-continuation-offset
 		    closing-block
 		    (reference-context/offset context))
 		   (generated-dbg-continuation context label))
 		  *extra-continuations*))
       (values label setup cleanup))))
 
-(define (continuation/next-continuation-offset block offset)
+(define (block/next-continuation-offset block offset)
   (if (stack-block? block)
       (let ((popping-limit (block-popping-limit block)))
 	(and popping-limit
@@ -225,7 +226,8 @@ MIT in each case. |#
 			(continuation-block? stack-link)
 			(continuation/always-known-operator?
 			 (block-procedure stack-link)))
-		   (continuation/next-continuation-offset		    (block-parent stack-link)
+		   (block/next-continuation-offset
+		    (block-parent stack-link)
 		    offset)
 		   offset))))
       offset))
