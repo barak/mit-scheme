@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.3 1989/08/02 16:18:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.4 1989/08/03 23:33:15 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -36,11 +36,21 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define edwin-binary-directory
-  (string->pathname "/usr/local/lib/mit-scheme/edwin/autoload/"))
+(define (edwin-binary-directory)
+  (pathname-as-directory
+   (merge-pathnames (string->pathname "autoload")
+		    (edwin-library-directory-pathname))))
 
-(define edwin-info-directory
-  (string->pathname "/usr/local/lib/mit-scheme/edwin/info/"))
+(define (edwin-info-directory)
+  (pathname-as-directory
+   (merge-pathnames (string->pathname "info")
+		    (edwin-library-directory-pathname))))
 
-(define edwin-tutorial-pathname
-  (string->pathname "/usr/local/lib/mit-scheme/edwin/TUTORIAL"))
+(define (edwin-tutorial-pathname)
+  (merge-pathnames (string->pathname "TUTORIAL")
+		   (edwin-library-directory-pathname)))
+
+(define (edwin-library-directory-pathname)
+  (pathname-as-directory
+   (merge-pathnames (string->pathname "edwin")
+		    (system-library-directory-pathname))))

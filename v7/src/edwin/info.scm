@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.91 1989/08/03 01:34:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.92 1989/08/03 23:32:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -594,7 +594,12 @@ The name may be an abbreviation of the reference name."
 				   (eq? (car directory) 'SELF)))
 			    (pathname-directory-path
 			     (current-default-pathname))
-			    (->pathname (ref-variable info-directory)))))))		(if (file-exists? pathname)
+			    (let ((info-directory
+				   (ref-variable info-directory)))
+			      (if info-directory
+				  (->pathname info-directory)
+				  (edwin-info-directory))))))))
+		(if (file-exists? pathname)
 		    pathname
 		    (let ((pathname*
 			   (pathname-new-name

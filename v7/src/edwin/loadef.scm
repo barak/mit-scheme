@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.4 1989/08/03 01:32:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.5 1989/08/03 23:32:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -61,8 +61,10 @@ The Scheme code is executed when the node is selected."
   true)
 
 (define-variable info-directory
-  "Default directory pathname for Info documentation files."
-  edwin-info-directory)
+  "If not false, default directory for Info documentation files.
+Otherwise the standard directory is used."
+  false)
+
 (define-variable info-previous-search
   "Default search string for Info \\[info-search] command to search for."
   false)

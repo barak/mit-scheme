@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.88 1989/04/28 22:50:06 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.89 1989/08/03 23:32:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -265,7 +265,8 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	(if buffer
 	    (select-buffer buffer)
 	    (let ((buffer (new-buffer (pathname->buffer-name pathname))))
-	      (read-buffer buffer edwin-tutorial-pathname)	      (set-buffer-pathname! buffer pathname)
+	      (read-buffer buffer (edwin-tutorial-pathname))
+	      (set-buffer-pathname! buffer pathname)
 	      (set-buffer-truename! buffer false)
 	      (select-buffer buffer)
 	      (set-current-major-mode! (ref-mode-object fundamental))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.43 1989/04/28 22:46:55 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.44 1989/08/03 23:33:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -194,7 +194,8 @@
 
 (define (load-edwin-file filename package #!optional purify?)
   (let ((pathname
-	 (merge-pathnames (->pathname filename) edwin-binary-directory)))    (temporary-message "Loading file \"" (pathname->string pathname) "\"")
+	 (merge-pathnames (->pathname filename) (edwin-binary-directory))))
+    (temporary-message "Loading file \"" (pathname->string pathname) "\"")
     (let ((scode (fasload pathname true)))
       (if (or (default-object? purify?) purify?) (purify scode))
       (scode-eval scode (->environment package))))  (append-message " -- done"))
