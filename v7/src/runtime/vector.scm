@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.8 1997/02/23 06:10:13 cph Exp $
+$Id: vector.scm,v 14.9 1997/02/23 06:11:12 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -238,5 +238,5 @@ MIT in each case. |#
       #t))
 
 (define (vector-uniform? vector)
-  (guarantee-subvector vector 'VECTOR-UNIFORM?)
+  (guarantee-vector vector 'VECTOR-UNIFORM?)
   (subvector-uniform? vector 0 (vector-length vector)))
