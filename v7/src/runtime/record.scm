@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.50 2005/03/19 03:33:21 cph Exp $
+$Id: record.scm,v 1.51 2005/03/19 04:56:37 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -193,13 +193,7 @@ USA.
 
 (define (record-type-default-inits record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-DEFAULT-INITS)
-  (let* ((v (%record-type-default-inits record-type))
-	 (n (vector-length v))
-	 (v* (vector-cons n #f)))
-    (do ((i 0 (fix:+ i 1)))
-	((not (fix:< i n)))
-      (vector-set! v* i (vector-ref v i)))
-    v*))
+  (vector->list (%record-type-default-inits record-type)))
 
 (define (set-record-type-default-inits! record-type default-inits)
   (let ((caller 'SET-RECORD-TYPE-DEFAULT-INITS!))
