@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbase.c,v 1.4 1990/01/18 19:18:02 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbase.c,v 1.5 1992/04/24 17:07:13 mhwu Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -329,7 +329,7 @@ DEFINE_PRIMITIVE ("STARBASE-COLOR-MAP-SIZE", Prim_starbase_color_map_size, 1, 1,
 }
 
 DEFINE_PRIMITIVE ("STARBASE-DEFINE-COLOR", Prim_starbase_define_color, 5, 5,
-  "(STARBASE-DEFINE-COLOR COLOR-INDEX RED GREEN BLUE)\n\
+  "(STARBASE-DEFINE-COLOR DEVICE COLOR-INDEX RED GREEN BLUE)\n\
 COLOR-INDEX must be a valid index for the current device's color map.\n\
 RED, GREEN, and BLUE must be numbers between 0 and 1 inclusive.\n\
 Changes the color map, defining COLOR-INDEX to be the given RGB color.")
