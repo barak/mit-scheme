@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/c-mode.scm,v 1.48 1991/10/29 13:44:38 cph Exp $
+;;;	$Id: c-mode.scm,v 1.49 1992/11/16 22:40:53 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -92,20 +92,39 @@ Settings for K&R and BSD indentation styles are
   c-brace-offset               -5   -8
   c-argdecl-indent              0    8
   c-label-offset               -5   -8"
-  (local-set-variable! syntax-table c-mode:syntax-table)
-  (local-set-variable! syntax-ignore-comments-backwards true)
-  (local-set-variable! paragraph-start
-		       (string-append "^$\\|" (ref-variable page-delimiter)))
-  (local-set-variable! paragraph-separate (ref-variable paragraph-start))
-  (local-set-variable! paragraph-ignore-fill-prefix true)
-  (local-set-variable! indent-line-procedure (ref-command c-indent-command))
-  (local-set-variable! require-final-newline true)
-  (local-set-variable! comment-start "/* ")
-  (local-set-variable! comment-end " */")
-  (local-set-variable! comment-column 32)
-  (local-set-variable! comment-locator-hook c-mode:comment-locate)
-  (local-set-variable! comment-indent-hook c-mode:comment-indent)
-  (event-distributor/invoke! (ref-variable c-mode-hook)))
+  (lambda (buffer)
+    (define-variable-local-value! buffer (ref-variable-object syntax-table)
+      c-mode:syntax-table)
+    (define-variable-local-value! buffer
+	(ref-variable-object syntax-ignore-comments-backwards)
+      true)
+    (define-variable-local-value! buffer (ref-variable-object paragraph-start)
+      (string-append "^$\\|" (ref-variable page-delimiter)))
+    (define-variable-local-value! buffer
+	(ref-variable-object paragraph-separate)
+      (ref-variable paragraph-start))
+    (define-variable-local-value! buffer
+	(ref-variable-object paragraph-ignore-fill-prefix)
+      true)
+    (define-variable-local-value! buffer
+	(ref-variable-object indent-line-procedure)
+      (ref-command c-indent-command))
+    (define-variable-local-value! buffer
+	(ref-variable-object require-final-newline)
+      true)
+    (define-variable-local-value! buffer (ref-variable-object comment-start)
+      "/* ")
+    (define-variable-local-value! buffer (ref-variable-object comment-end)
+      " */")
+    (define-variable-local-value! buffer (ref-variable-object comment-column)
+      32)
+    (define-variable-local-value! buffer
+	(ref-variable-object comment-locator-hook)
+      c-mode:comment-locate)
+    (define-variable-local-value! buffer
+	(ref-variable-object comment-indent-hook)
+      c-mode:comment-indent)
+    (event-distributor/invoke! (ref-variable c-mode-hook) buffer)))
 
 (define-variable c-mode-hook
   "An event distributor that is invoked when entering C mode."

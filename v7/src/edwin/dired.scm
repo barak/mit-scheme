@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.130 1992/11/16 21:09:32 gjr Exp $
+;;;	$Id: dired.scm,v 1.131 1992/11/16 22:40:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -73,8 +73,10 @@ Also:
  M, G, O -- change file's mode, group or owner.
  C -- compress this file.  U -- uncompress this file."
 ;;Type v to view a file in View mode, returning to Dired when done.
-  (local-set-variable! case-fold-search false)
-  (event-distributor/invoke! (ref-variable dired-mode-hook)))
+  (lambda (buffer)
+    (define-variable-local-value! buffer (ref-variable-object case-fold-search)
+      false)
+    (event-distributor/invoke! (ref-variable dired-mode-hook) buffer)))
 
 (define-variable dired-mode-hook
   "An event distributor that is invoked when entering Dired mode."

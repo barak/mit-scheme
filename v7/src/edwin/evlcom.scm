@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.39 1992/11/12 18:00:23 cph Exp $
+;;;	$Id: evlcom.scm,v 1.40 1992/11/16 22:40:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -595,13 +595,16 @@ FIT           Error messages appear in typein window if they fit;
 	      (if (ref-variable transcript-buffer-read-only)
 		  (set-buffer-read-only! buffer))
 	      (if (ref-variable transcript-disable-evaluation)
-		  (add-buffer-initialization! buffer
-		    (lambda ()
-		      (local-set-variable! disable-evaluation-commands true)
-		      (if (eq? (buffer-major-mode buffer)
-			       (ref-mode-object scheme))
-			  (begin
-			    (local-set-variable! evaluate-in-inferior-repl
-						 false)
-			    (local-set-variable! run-light false))))))
+		  (define-variable-local-value! buffer
+		      (ref-variable-object disable-evaluation-commands)
+		    true)
+		  (if (eq? (buffer-major-mode buffer)
+			   (ref-mode-object scheme))
+		      (begin
+			(define-variable-local-value! buffer
+			    (ref-variable-object evaluate-in-inferior-repl)
+			  false)
+			(define-variable-local-value! buffer
+			    (ref-variable-object run-light)
+			  false))))
 	      buffer)))))

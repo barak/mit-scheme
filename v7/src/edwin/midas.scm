@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/midas.scm,v 1.15 1990/10/03 04:55:33 cph Rel $
+;;;	$Id: midas.scm,v 1.16 1992/11/16 22:41:08 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -54,16 +54,30 @@
 
 (define-major-mode midas fundamental "Midas"
   "Major mode for editing assembly code."
-  (local-set-variable! syntax-table midas-mode:syntax-table)
-  (local-set-variable! comment-column 40)
-  (local-set-variable! comment-locator-hook lisp-comment-locate)
-  (local-set-variable! comment-indent-hook midas-comment-indentation)
-  (local-set-variable! comment-start ";")
-  (local-set-variable! comment-end "")
-  (local-set-variable! paragraph-start "^$")
-  (local-set-variable! paragraph-separate (ref-variable paragraph-start))
-  (local-set-variable! indent-line-procedure (ref-command insert-tab))
-  (event-distributor/invoke! (ref-variable midas-mode-hook)))
+  (lambda (buffer)
+    (define-variable-local-value! buffer (ref-variable-object syntax-table)
+      midas-mode:syntax-table)
+    (define-variable-local-value! buffer (ref-variable-object comment-column)
+      40)
+    (define-variable-local-value! buffer
+	(ref-variable-object comment-locator-hook)
+      lisp-comment-locate)
+    (define-variable-local-value! buffer
+	(ref-variable-object comment-indent-hook)
+      midas-comment-indentation)
+    (define-variable-local-value! buffer (ref-variable-object comment-start)
+      ";")
+    (define-variable-local-value! buffer (ref-variable-object comment-end)
+      "")
+    (define-variable-local-value! buffer (ref-variable-object paragraph-start)
+      "^$")
+    (define-variable-local-value! buffer
+	(ref-variable-object paragraph-separate)
+      (ref-variable paragraph-start))
+    (define-variable-local-value! buffer
+	(ref-variable-object indent-line-procedure)
+      (ref-command insert-tab))
+    (event-distributor/invoke! (ref-variable midas-mode-hook))))
 
 (define midas-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! midas-mode:syntax-table #\; "<   ")

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/compile.scm,v 1.1 1992/03/24 23:31:41 cph Exp $
+;;;	$Id: compile.scm,v 1.2 1992/11/16 22:40:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -88,12 +88,9 @@ with output going to the buffer *compilation*."
     (disable-group-undo! (buffer-group buffer))
     (set-buffer-default-directory! buffer directory)
     (set-buffer-major-mode! buffer (ref-mode-object fundamental))
-    (add-buffer-initialization!
-     buffer
-     (lambda ()
-       (define-variable-local-value! buffer
-	 (ref-variable-object mode-line-process)
-	 '(": %s"))))
+    (define-variable-local-value! buffer
+	(ref-variable-object mode-line-process)
+      '(": %s"))
     (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
       (let ((window (get-buffer-window buffer)))
 	(if window

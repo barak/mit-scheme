@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.112 1992/11/12 18:00:33 cph Exp $
+;;;	$Id: info.scm,v 1.113 1992/11/16 22:41:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -134,15 +134,29 @@ g	Move to node specified by name.
 	You may include a filename as well, as (FILENAME)NODENAME.
 s	Search through this Info file for specified regexp,
 	and select the node in which the next occurrence is found."
-  (local-set-variable! syntax-table text-mode:syntax-table)
-  (local-set-variable! case-fold-search true)
-  (local-set-variable! info-history (ref-variable info-history))
-  (local-set-variable! info-current-file false)
-  (local-set-variable! info-current-subfile false)
-  (local-set-variable! info-current-node false)
-  (local-set-variable! info-tag-table-start false)
-  (local-set-variable! info-tag-table-end false)
-  (info-set-mode-line!))
+  (lambda (buffer)
+    (define-variable-local-value! buffer (ref-variable-object syntax-table)
+      text-mode:syntax-table)
+    (define-variable-local-value! buffer (ref-variable-object case-fold-search)
+      true)
+    (define-variable-local-value! buffer (ref-variable-object info-history)
+      (ref-variable info-history))
+    (define-variable-local-value! buffer
+	(ref-variable-object info-current-file)
+      false)
+    (define-variable-local-value! buffer
+	(ref-variable-object info-current-subfile)
+      false)
+    (define-variable-local-value! buffer
+	(ref-variable-object info-current-node)
+      false)
+    (define-variable-local-value! buffer
+	(ref-variable-object info-tag-table-start)
+      false)
+    (define-variable-local-value! buffer
+	(ref-variable-object info-tag-table-end)
+      false)
+    (info-set-mode-line! buffer)))
 
 (define-key 'info #\space 'scroll-up)
 (define-key 'info #\. 'beginning-of-buffer)
@@ -166,17 +180,6 @@ s	Search through this Info file for specified regexp,
 (define-key 'info #\s 'info-search)
 (define-key 'info #\u 'info-up)
 (define-key 'info #\rubout 'scroll-down)
-
-(define (info-set-mode-line!)
-  (local-set-variable! mode-line-buffer-identification
-		       (string-append
-			"Info:  ("
-			(let ((pathname (ref-variable info-current-file)))
-			  (if pathname
-			      (file-namestring pathname)
-			      ""))
-			")"
-			(or (ref-variable info-current-node) ""))))
 
 ;;;; Motion
 
@@ -296,9 +299,9 @@ Allowed only if the variable Info Enable Edit is not false."
   "Major mode for editing the contents of an Info node.
 The editing commands are the same as in Text mode,
 except for \\[info-cease-edit] to return to Info."
-  (local-set-variable! page-delimiter
-		       (string-append "^\f\\|"
-				      (ref-variable page-delimiter))))
+  (lambda (buffer)
+    (define-variable-local-value! buffer (ref-variable-object page-delimiter)
+      (string-append "^\f\\|" (ref-variable page-delimiter)))))
 
 (define-key 'info-edit '(#\c-c #\c-c) 'info-cease-edit)
 
@@ -697,7 +700,7 @@ The name may be an abbreviation of the reference name."
 	  (begin
 	    (set-variable! info-current-subfile false)
 	    (set-variable! info-current-node nodename)
-	    (info-set-mode-line!))
+	    (info-set-mode-line! buffer))
 	  (select-node
 	   (let ((end (buffer-end buffer)))
 	     (let loop ((start (node-search-start nodename)))
@@ -709,6 +712,17 @@ The name may be an abbreviation of the reference name."
 			    (string-ci=? nodename name)))
 		     node
 		     (loop node))))))))))
+
+(define (info-set-mode-line! buffer)
+  (define-variable-local-value! buffer
+      (ref-variable-object mode-line-buffer-identification)
+    (string-append "Info:  ("
+		   (let ((pathname (ref-variable info-current-file)))
+		     (if pathname
+			 (file-namestring pathname)
+			 ""))
+		   ")"
+		   (or (ref-variable info-current-node) ""))))
 
 (define (parse-node-name name receiver)
   (let ((name (string-trim name)))
@@ -726,7 +740,7 @@ The name may be an abbreviation of the reference name."
 (define (select-node point)
   (let ((node (node-start point (group-start point))))
     (set-variable! info-current-node (extract-node-name node))
-    (info-set-mode-line!)
+    (info-set-mode-line! (current-buffer))
     ;; **** need to add active node hacking here ****
     (region-clip! (node-region node))
     (set-current-point! point)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.171 1992/11/15 21:58:24 cph Exp $
+;;;	$Id: filcom.scm,v 1.172 1992/11/16 22:41:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -206,7 +206,7 @@ invocation."
 				  edwin-syntax-table))))))))))
 	  (if (and (procedure? database)
 		   (procedure-arity-valid? database 0))
-	      (add-buffer-initialization! buffer database)
+	      (database buffer)
 	      (message
 	       "Ill-formed find-file initialization file: "
 	       (os/pathname->display-string pathname)))))))
@@ -215,9 +215,9 @@ invocation."
   ;; DATABASE -must- be a vector whose elements are all three element
   ;; lists.  The car of each element must be a string, and the
   ;; elements must be sorted on those strings.
-  (lambda ()
+  (lambda (buffer)
     (let ((entry
-	   (let ((pathname (buffer-pathname (current-buffer))))
+	   (let ((pathname (buffer-pathname buffer)))
 	     (and pathname
 		  (equal? "scm" (pathname-type pathname))
 		  (let ((name (pathname-name pathname)))
@@ -228,10 +228,18 @@ invocation."
 					       name)))))))
       (if entry
 	  (begin
-	    (local-set-variable! scheme-environment (cadr entry))
-	    (local-set-variable! scheme-syntax-table (caddr entry))
-	    (local-set-variable! evaluate-in-inferior-repl false)
-	    (local-set-variable! run-light false))))))
+	    (define-variable-local-value! buffer
+		(ref-variable-object scheme-environment)
+	      (cadr entry))
+	    (define-variable-local-value! buffer
+		(ref-variable-object scheme-syntax-table)
+	      (caddr entry))
+	    (define-variable-local-value! buffer
+		(ref-variable-object evaluate-in-inferior-repl)
+	      false)
+	    (define-variable-local-value! buffer
+		(ref-variable-object run-light)
+	      false))))))
 
 (define (find-file-revert buffer)
   (if (not (verify-visited-file-modification-time? buffer))

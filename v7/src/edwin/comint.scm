@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.15 1992/11/13 21:36:15 cph Exp $
+$Id: comint.scm,v 1.16 1992/11/16 22:40:54 cph Exp $
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
@@ -119,14 +119,20 @@ If you accidentally suspend your process, use \\[comint-continue-subjob]
 to continue it.
 
 Entry to this mode runs the hooks on comint-mode-hook."
-  (local-set-variable! mode-line-process '(": %s"))
-  (local-set-variable! comint-input-ring
-		       (make-ring (ref-variable comint-input-ring-size)))
-  (local-set-variable! comint-last-input-end
-		       (mark-right-inserting-copy
-			(buffer-end (current-buffer))))
-  (local-set-variable! comint-last-input-match false)
-  (event-distributor/invoke! (ref-variable comint-mode-hook)))
+  (lambda (buffer)
+    (define-variable-local-value! buffer
+	(ref-variable-object mode-line-process)
+      '(": %s"))
+    (define-variable-local-value! buffer
+	(ref-variable-object comint-input-ring)
+      (make-ring (ref-variable comint-input-ring-size)))
+    (define-variable-local-value! buffer
+	(ref-variable-object comint-last-input-end)
+      (mark-right-inserting-copy (buffer-end (current-buffer))))
+    (define-variable-local-value! buffer
+	(ref-variable-object comint-last-input-match)
+      false)
+    (event-distributor/invoke! (ref-variable comint-mode-hook) buffer)))
 
 (define-variable comint-mode-hook
   "An event distributor that is invoked when entering Comint mode."

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tximod.scm,v 1.16 1991/10/03 21:30:47 cph Exp $
+;;;	$Id: tximod.scm,v 1.17 1992/11/16 22:41:21 cph Exp $
 ;;;
-;;;	Copyright (c) 1987-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -66,20 +66,26 @@ set up so expression commands skip Texinfo bracket groups.
   In addition, Texinfo mode provides commands that insert various
 frequently used @-sign commands into the buffer.  You can use these
 commands to save keystrokes."
-  (local-set-variable! syntax-table texinfo-mode:syntax-table)
-  (local-set-variable! fill-column 72)
-  (local-set-variable! require-final-newline true)
-  (local-set-variable! indent-tabs-mode false)
-  (local-set-variable!
-   page-delimiter
-   "^@\\(chapter\\|unnumbered \\|appendix \\|majorheading\\|chapheading\\)")
-  (local-set-variable! paragraph-start
-		       (string-append "^\\|^@[a-zA-Z]*[ \n]\\|"
-				      (ref-variable paragraph-start)))
-  (local-set-variable! paragraph-separate
-		       (string-append "^\\|^@[a-zA-Z]*[ \n]\\|"
-				      (ref-variable paragraph-separate)))
-  (event-distributor/invoke! (ref-variable texinfo-mode-hook)))
+  (lambda (buffer)
+    (define-variable-local-value! buffer (ref-variable-object syntax-table)
+      texinfo-mode:syntax-table)
+    (define-variable-local-value! buffer (ref-variable-object fill-column) 72)
+    (define-variable-local-value! buffer
+	(ref-variable-object require-final-newline)
+      true)
+    (define-variable-local-value! buffer
+	(ref-variable-object indent-tabs-mode)
+      false)
+    (define-variable-local-value! buffer (ref-variable-object page-delimiter)
+      "^@\\(chapter\\|unnumbered \\|appendix \\|majorheading\\|chapheading\\)")
+    (define-variable-local-value! buffer (ref-variable-object paragraph-start)
+      (string-append "^\\|^@[a-zA-Z]*[ \n]\\|"
+		     (ref-variable paragraph-start)))
+    (define-variable-local-value! buffer
+	(ref-variable-object paragraph-separate)
+      (string-append "^\\|^@[a-zA-Z]*[ \n]\\|"
+		     (ref-variable paragraph-separate)))
+    (event-distributor/invoke! (ref-variable texinfo-mode-hook) buffer)))
 
 (define texinfo-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! texinfo-mode:syntax-table #\" " ")

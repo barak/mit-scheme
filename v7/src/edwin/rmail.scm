@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.22 1992/11/15 21:59:17 cph Exp $
+;;;	$Id: rmail.scm,v 1.23 1992/11/16 22:41:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -163,25 +163,32 @@ C-M-l	Like h only just messages with particular label(s) are summarized.
 C-M-r   Like h only just messages with particular recipient(s) are summarized.
 t	Toggle header, show Rmail header if unformatted or vice versa.
 w	Edit the current message.  C-c C-c to return to Rmail."
-  (guarantee-variables-initialized)
-  (let ((buffer (current-buffer)))
-    (local-set-variable! mode-line-modified "--- ")
-    (local-set-variable! version-control 'NEVER)
-    (local-set-variable! file-precious-flag true)
-    (local-set-variable! require-final-newline false)
-    (local-set-variable! rmail-last-file (ref-variable rmail-last-file))
-    (local-set-variable!
-     rmail-inbox-list
-     (let ((inboxes (parse-file-inboxes buffer)))
-       (if (and (null? inboxes)
-		(pathname=? (buffer-pathname buffer)
-			    (ref-variable rmail-file-name)))
-	   (ref-variable rmail-primary-inbox-list)
-	   inboxes)))
+  (lambda (buffer)
+    (guarantee-variables-initialized)
+    (define-variable-local-value! buffer
+	(ref-variable-object mode-line-modified)
+      "--- ")
+    (define-variable-local-value! buffer (ref-variable-object version-control)
+      'NEVER)
+    (define-variable-local-value! buffer
+	(ref-variable-object file-precious-flag)
+      true)
+    (define-variable-local-value! buffer
+	(ref-variable-object require-final-newline)
+      false)
+    (define-variable-local-value! buffer (ref-variable-object rmail-last-file)
+      (ref-variable rmail-last-file))
+    (define-variable-local-value! buffer (ref-variable-object rmail-inbox-list)
+      (let ((inboxes (parse-file-inboxes buffer)))
+	(if (and (null? inboxes)
+		 (pathname=? (buffer-pathname buffer)
+			     (ref-variable rmail-file-name)))
+	    (ref-variable rmail-primary-inbox-list)
+	    inboxes)))
     (buffer-put! buffer 'REVERT-BUFFER-METHOD rmail-revert-buffer)
     (memoize-buffer buffer)
-    (set-buffer-read-only! buffer))
-  (event-distributor/invoke! (ref-variable rmail-mode-hook)))
+    (set-buffer-read-only! buffer)
+    (event-distributor/invoke! (ref-variable rmail-mode-hook) buffer)))
 
 (define-major-mode rmail-edit text "RMAIL Edit"
   "Major mode for editing the contents of an RMAIL message.
@@ -217,7 +224,8 @@ together with two commands to return to regular RMAIL:
 			   babyl-header-start-regexp
 			   "\\|^[\037]?"
 			   babyl-message-start-regexp
-			   "\\)"))))
+			   "\\)")))
+  unspecific)
 
 (define (parse-file-inboxes buffer)
   (let ((start (buffer-start buffer))

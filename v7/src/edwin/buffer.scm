@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.157 1992/11/12 18:00:12 cph Exp $
+;;;	$Id: buffer.scm,v 1.158 1992/11/16 22:40:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -60,7 +60,6 @@
   alist
   local-bindings
   local-bindings-installed?
-  initializations
   auto-save-pathname
   auto-saved?
   save-length
@@ -102,14 +101,12 @@ The buffer is guaranteed to be deselected at that time."
       (vector-set! buffer buffer-index:alist '())
       (vector-set! buffer buffer-index:local-bindings '())
       (vector-set! buffer buffer-index:local-bindings-installed? false)
-      (vector-set! buffer
-		   buffer-index:initializations
-		   (list (mode-initialization mode)))
       (vector-set! buffer buffer-index:auto-save-pathname false)
       (vector-set! buffer buffer-index:auto-saved? false)
       (vector-set! buffer buffer-index:save-length 0)
       (vector-set! buffer buffer-index:backed-up? false)
       (vector-set! buffer buffer-index:modification-time false)
+      (set-buffer-major-mode! buffer mode)
       (event-distributor/invoke! (ref-variable buffer-creation-hook) buffer)
       buffer)))
 
@@ -246,25 +243,6 @@ The buffer is guaranteed to be deselected at that time."
 
 (define-integrable (reset-buffer-alist! buffer)
   (vector-set! buffer buffer-index:alist '()))
-
-(define (add-buffer-initialization! buffer thunk)
-  (without-interrupts (lambda () (%add-buffer-initialization! buffer thunk))))
-
-(define (%add-buffer-initialization! buffer thunk)
-  (if (current-buffer? buffer)
-      (thunk)
-      (vector-set! buffer
-		   buffer-index:initializations
-		   (append! (buffer-initializations buffer) (list thunk)))))
-
-(define (perform-buffer-initializations! buffer)
-  ;; Assumes that interrupts are disabled and BUFFER is selected.
-  (let loop ((thunks (buffer-initializations buffer)))
-    (if (not (null? thunks))
-	(begin
-	  ((car thunks))
-	  (loop (cdr thunks)))))
-  (vector-set! buffer buffer-index:initializations '()))
 
 (define (->buffer object)
   (cond ((buffer? object) object)
@@ -439,8 +417,7 @@ The buffer is guaranteed to be deselected at that time."
   (do ((bindings (buffer-local-bindings buffer) (cdr bindings)))
       ((null? bindings))
     (vector-set! (caar bindings) variable-index:value (cdar bindings)))
-  (vector-set! buffer buffer-index:local-bindings-installed? true)
-  (perform-buffer-initializations! buffer))
+  (vector-set! buffer buffer-index:local-bindings-installed? true))
 
 (define (uninstall-buffer-local-bindings! buffer)
   (do ((bindings (buffer-local-bindings buffer) (cdr bindings)))
@@ -492,10 +469,9 @@ The buffer is guaranteed to be deselected at that time."
        (set-cdr! modes '()))
      (set-buffer-comtabs! buffer (mode-comtabs mode))
      (vector-set! buffer buffer-index:alist '())
-     (vector-set! buffer buffer-index:initializations '())
-     (buffer-modeline-event! buffer 'BUFFER-MODES)
-     (%add-buffer-initialization! buffer undo-local-bindings!)
-     (%add-buffer-initialization! buffer (mode-initialization mode)))))
+     (undo-local-bindings!)
+     ((mode-initialization mode) buffer)
+     (buffer-modeline-event! buffer 'BUFFER-MODES))))
 
 (define-integrable (buffer-minor-modes buffer)
   (cdr (buffer-modes buffer)))
@@ -517,7 +493,7 @@ The buffer is guaranteed to be deselected at that time."
 	     (set-buffer-comtabs! buffer
 				  (cons (minor-mode-comtab mode)
 					(buffer-comtabs buffer)))
-	     (%add-buffer-initialization! buffer (mode-initialization mode))
+	     ((mode-initialization mode) buffer)
 	     (buffer-modeline-event! buffer 'BUFFER-MODES)))))))
 
 (define (disable-buffer-minor-mode! buffer mode)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: macros.scm,v 1.56 1992/10/20 20:46:51 jinx Exp $
+;;;	$Id: macros.scm,v 1.57 1992/11/16 22:41:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -188,7 +188,8 @@
   (symbol-append 'EDWIN-VARIABLE$ name))
 
 (syntax-table-define edwin-syntax-table 'DEFINE-MAJOR-MODE
-  (lambda (name super-mode-name display-name description . initialization)
+  (lambda (name super-mode-name display-name description
+		#!optional initialization)
     (let ((name (canonicalize-name name))
 	  (super-mode-name
 	   (and super-mode-name (canonicalize-name super-mode-name))))
@@ -200,20 +201,24 @@
 			 `(->MODE ',super-mode-name)
 			 `#F)
 		    ',description
-		    (LAMBDA ()
-		      ,@(let ((initialization
-			       (if super-mode-name
-				   `(((MODE-INITIALIZATION
-				       ,(mode-name->scheme-name
-					 super-mode-name)))
-				     ,@initialization)
-				   initialization)))
-			  (if (null? initialization)
-			      `(',unspecific)
-			      initialization))))))))
+		    ,(let ((super-initialization
+			    (and super-mode-name
+				 `(MODE-INITIALIZATION
+				   ,(mode-name->scheme-name super-mode-name))))
+			   (initialization
+			    (and (not (default-object? initialization))
+				 initialization)))
+		       (cond (super-initialization
+			      `(LAMBDA (BUFFER)
+				 (,super-initialization BUFFER)
+				 ,@(if initialization
+				       `((,initialization BUFFER))
+				       `())))
+			     (initialization)
+			     (else `(LAMBDA (BUFFER) BUFFER UNSPECIFIC)))))))))
 
 (syntax-table-define edwin-syntax-table 'DEFINE-MINOR-MODE
-  (lambda (name display-name description . initialization)
+  (lambda (name display-name description #!optional initialization)
     (let ((name (canonicalize-name name)))
       `(DEFINE ,(mode-name->scheme-name name)
 	 (MAKE-MODE ',name
@@ -221,10 +226,10 @@
 		    ',(or display-name (symbol->string name))
 		    #F
 		    ',description
-		    (LAMBDA ()
-		      ,@(if (null? initialization)
-			    `(',unspecific)
-			    initialization)))))))
+		    ,(if (and (not (default-object? initialization))
+			      initialization)
+			 initialization
+			 `(LAMBDA (BUFFER) BUFFER UNSPECIFIC)))))))
 
 (syntax-table-define edwin-syntax-table 'REF-MODE-OBJECT
   (lambda (name)

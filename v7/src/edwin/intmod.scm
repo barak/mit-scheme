@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.51 1992/09/29 21:12:19 cph Exp $
+;;;	$Id: intmod.scm,v 1.52 1992/11/16 22:41:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -95,29 +95,25 @@ REPL uses current evaluation environment."
   (if (ref-variable repl-mode-locked)
       (buffer-put! buffer 'MAJOR-MODE-LOCKED true))
   (set-buffer-default-directory! buffer (working-directory-pathname))
-  (add-buffer-initialization!
-   buffer
-   (lambda ()
-     (create-thread
-      editor-thread-root-continuation
-      (lambda ()
-	(let ((thread (current-thread)))
-	  (detach-thread thread)
-	  (let ((port (make-interface-port buffer thread)))
-	    (attach-buffer-interface-port! buffer port)
-	    (with-input-from-port port
-	      (lambda ()
-		(with-output-to-port port
-		  (lambda ()
-		    (repl/start (make-repl false
-					   port
-					   environment
-					   syntax-table
-					   false
-					   `((ERROR-DECISION
-					      ,error-decision))
-					   user-initial-prompt)
-				message))))))))))))
+  (create-thread editor-thread-root-continuation
+		 (lambda ()
+		   (let ((thread (current-thread)))
+		     (detach-thread thread)
+		     (let ((port (make-interface-port buffer thread)))
+		       (attach-buffer-interface-port! buffer port)
+		       (with-input-from-port port
+			 (lambda ()
+			   (with-output-to-port port
+			     (lambda ()
+			       (repl/start (make-repl false
+						      port
+						      environment
+						      syntax-table
+						      false
+						      `((ERROR-DECISION
+							 ,error-decision))
+						      user-initial-prompt)
+					   message))))))))))
 
 (define (current-repl-buffer)
   (let ((buffer (current-buffer)))
@@ -291,7 +287,8 @@ The REPL may be controlled by the following commands:
 
 \\[inferior-cmdl-abort-top-level] returns to top level.
 \\[inferior-cmdl-abort-previous] goes up one level."
-  (event-distributor/invoke! (ref-variable inferior-repl-mode-hook)))
+  (lambda (buffer)
+    (event-distributor/invoke! (ref-variable inferior-repl-mode-hook) buffer)))
 
 (define-variable inferior-repl-mode-hook
   "An event distributor that is invoked when entering Inferior REPL mode."
@@ -313,7 +310,7 @@ The REPL may be controlled by the following commands:
 (define-key 'inferior-repl '(#\C-c #\C-s) 'comint-history-search-forward)
 
 (define-key 'inferior-repl '(#\C-c #\C-d) 'inferior-repl-debug)
-
+
 (define-major-mode inferior-cmdl scheme "CMDL"
   "Major mode for communicating with an inferior command loop.
 Like Scheme mode except that the evaluation commands are disabled,
@@ -324,7 +321,8 @@ Additionally, these commands abort the command loop:
 
 \\[inferior-cmdl-abort-top-level] returns to the top-level REPL.
 \\[inferior-cmdl-abort-previous] returns to the previous level REPL."
-  (event-distributor/invoke! (ref-variable inferior-cmdl-mode-hook)))
+  (lambda (buffer)
+    (event-distributor/invoke! (ref-variable inferior-cmdl-mode-hook) buffer)))
 
 (define-variable inferior-cmdl-mode-hook
   "An event distributor that is invoked when entering Inferior CMDL mode."

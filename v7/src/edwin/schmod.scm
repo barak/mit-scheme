@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.26 1992/04/08 17:57:48 cph Exp $
+;;;	$Id: schmod.scm,v 1.27 1992/11/16 22:41:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -64,22 +64,46 @@ The following commands evaluate Scheme expressions:
 \\[eval-defun] evaluates the current definition.
 \\[eval-current-buffer] evaluates the buffer.
 \\[eval-region] evaluates the current region."
-  (local-set-variable! syntax-table scheme-mode:syntax-table)
-  (local-set-variable! syntax-ignore-comments-backwards false)
-  (local-set-variable! lisp-indent-hook standard-lisp-indent-hook)
-  (local-set-variable! lisp-indent-methods scheme-mode:indent-methods)
-  (local-set-variable! comment-column 40)
-  (local-set-variable! comment-locator-hook lisp-comment-locate)
-  (local-set-variable! comment-indent-hook lisp-comment-indentation)
-  (local-set-variable! comment-start ";")
-  (local-set-variable! comment-end "")
-  (let ((separate (string-append "^$\\|" (ref-variable page-delimiter))))
-    (local-set-variable! paragraph-start separate)
-    (local-set-variable! paragraph-separate separate))
-  (local-set-variable! paragraph-ignore-fill-prefix true)
-  (local-set-variable! indent-line-procedure (ref-command lisp-indent-line))
-  (local-set-variable! mode-line-process '(RUN-LIGHT (": " RUN-LIGHT) ""))
-  (event-distributor/invoke! (ref-variable scheme-mode-hook)))
+  (lambda (buffer)
+    (define-variable-local-value! buffer (ref-variable-object syntax-table)
+      scheme-mode:syntax-table)
+    (define-variable-local-value! buffer
+	(ref-variable-object syntax-ignore-comments-backwards)
+      false)
+    (define-variable-local-value! buffer (ref-variable-object lisp-indent-hook)
+      standard-lisp-indent-hook)
+    (define-variable-local-value! buffer
+	(ref-variable-object lisp-indent-methods)
+      scheme-mode:indent-methods)
+    (define-variable-local-value! buffer (ref-variable-object comment-column)
+      40)
+    (define-variable-local-value! buffer
+	(ref-variable-object comment-locator-hook)
+      lisp-comment-locate)
+    (define-variable-local-value! buffer
+	(ref-variable-object comment-indent-hook)
+      lisp-comment-indentation)
+    (define-variable-local-value! buffer (ref-variable-object comment-start)
+      ";")
+    (define-variable-local-value! buffer (ref-variable-object comment-end)
+      "")
+    (let ((separate (string-append "^$\\|" (ref-variable page-delimiter))))
+      (define-variable-local-value! buffer
+	  (ref-variable-object paragraph-start)
+	separate)
+      (define-variable-local-value! buffer
+	  (ref-variable-object paragraph-separate))
+      separate)
+    (define-variable-local-value! buffer
+	(ref-variable-object paragraph-ignore-fill-prefix)
+      true)
+    (define-variable-local-value! buffer
+	(ref-variable-object indent-line-procedure)
+      (ref-command lisp-indent-line))
+    (define-variable-local-value! buffer
+	(ref-variable-object mode-line-process)
+      '(RUN-LIGHT (": " RUN-LIGHT) ""))
+    (event-distributor/invoke! (ref-variable scheme-mode-hook) buffer)))
 
 (define-variable scheme-mode-hook
   "An event distributor that is invoked when entering Scheme mode."

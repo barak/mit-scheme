@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.15 1992/09/25 01:00:55 cph Exp $
+;;;	$Id: sendmail.scm,v 1.16 1992/11/16 22:41:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -242,19 +242,19 @@ C-c C-f  move to a header field (and create it if there isn't):
 C-c C-w  mail-signature (insert ~/.signature at end).
 C-c C-y  mail-yank-original (insert current message, in Rmail).
 C-c C-q  mail-fill-yanked-message (fill what was yanked)."
-  (local-set-variable!
-   paragraph-start
-   (string-append "^"
-		  (re-quote-string (ref-variable mail-header-separator))
-		  "$\\|^[ \t]*[-_][-_][-_]+$\\|"
-		  (ref-variable paragraph-start)))
-  (local-set-variable!
-   paragraph-separate
-   (string-append "^"
-		  (re-quote-string (ref-variable mail-header-separator))
-		  "$\\|^[ \t]*[-_][-_][-_]+$\\|"
-		  (ref-variable paragraph-separate)))
-  (event-distributor/invoke! (ref-variable mail-mode-hook)))
+  (lambda (buffer)
+    (define-variable-local-value! buffer (ref-variable-object paragraph-start)
+      (string-append "^"
+		     (re-quote-string (ref-variable mail-header-separator))
+		     "$\\|^[ \t]*[-_][-_][-_]+$\\|"
+		     (ref-variable paragraph-start)))
+    (define-variable-local-value! buffer
+	(ref-variable-object paragraph-separate)
+      (string-append "^"
+		     (re-quote-string (ref-variable mail-header-separator))
+		     "$\\|^[ \t]*[-_][-_][-_]+$\\|"
+		     (ref-variable paragraph-separate)))
+    (event-distributor/invoke! (ref-variable mail-mode-hook) buffer)))
 
 (define-variable mail-mode-hook
   "An event distributor that is invoked when entering Mail mode."

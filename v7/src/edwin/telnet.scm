@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: telnet.scm,v 1.6 1992/10/26 22:37:03 cph Exp $
+$Id: telnet.scm,v 1.7 1992/11/16 22:41:18 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -50,10 +50,12 @@ Return before end of process output copies rest of line to end (skipping
 
 Customization: Entry to this mode runs the hooks on comint-mode-hook
 and telnet-mode-hook, in that order."
-  (set-variable! comint-prompt-regexp
-		 (or (ref-variable telnet-prompt-pattern)
-		     (ref-variable shell-prompt-pattern)))
-  (event-distributor/invoke! (ref-variable telnet-mode-hook)))
+  (lambda (buffer)
+    (define-variable-local-value! buffer
+	(ref-variable-object comint-prompt-regexp)
+      (or (ref-variable telnet-prompt-pattern)
+	  (ref-variable shell-prompt-pattern)))
+    (event-distributor/invoke! (ref-variable telnet-mode-hook) buffer)))
 
 (define-key 'telnet #\C-m 'telnet-send-input)
 (define-key 'telnet '(#\C-c #\C-c) 'telnet-self-send)

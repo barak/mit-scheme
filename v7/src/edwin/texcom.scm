@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/texcom.scm,v 1.35 1992/02/04 03:37:17 cph Exp $
+;;;	$Id: texcom.scm,v 1.36 1992/11/16 22:41:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -48,8 +48,10 @@
 
 (define-major-mode text fundamental "Text"
   "Major mode for editing english text."
-  (local-set-variable! syntax-table text-mode:syntax-table)
-  (event-distributor/invoke! (ref-variable text-mode-hook)))
+  (lambda (buffer)
+    (define-variable-local-value! buffer (ref-variable-object syntax-table)
+      text-mode:syntax-table)
+    (event-distributor/invoke! (ref-variable text-mode-hook) buffer)))
 
 (define-key 'text #\m-s 'center-line)
 
@@ -77,7 +79,10 @@
 
 (define-major-mode indented-text text "Indented-Text"
   "Like Text mode, but indents each line under previous non-blank line."
-  (local-set-variable! indent-line-procedure (ref-command indent-relative)))
+  (lambda (buffer)
+    (define-variable-local-value! buffer
+	(ref-variable-object indent-line-procedure)
+      (ref-command indent-relative))))
 
 (define-command indented-text-mode
   "Make the current mode be Indented Text mode."

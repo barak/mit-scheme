@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.9 1992/02/04 04:04:10 cph Exp $
+$Id: shell.scm,v 1.10 1992/11/16 22:41:17 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -80,11 +80,18 @@ shell-mode-hook (in that order).
 
 Variables shell-cd-regexp, shell-pushd-regexp and shell-popd-regexp are used
 to match their respective commands."
-  (set-variable! comint-prompt-regexp (ref-variable shell-prompt-pattern))
-  (set-variable! comint-input-sentinel shell-directory-tracker)
-  (local-set-variable! shell-dirstack '())
-  (local-set-variable! shell-dirtrack? true)
-  (event-distributor/invoke! (ref-variable shell-mode-hook)))
+  (lambda (buffer)
+    (define-variable-local-value! buffer
+	(ref-variable-object comint-prompt-regexp)
+      (ref-variable shell-prompt-pattern))
+    (define-variable-local-value! buffer
+	(ref-variable-object comint-input-sentinel)
+      shell-directory-tracker)
+    (define-variable-local-value! buffer (ref-variable-object shell-dirstack)
+      '())
+    (define-variable-local-value! buffer (ref-variable-object shell-dirtrack?)
+      true)
+    (event-distributor/invoke! (ref-variable shell-mode-hook))))
 
 (define-variable shell-mode-hook
   "An event distributor that is invoked when entering Shell mode."

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.26 1992/11/12 19:37:19 bal Exp $
+;;;	$Id: rmailsum.scm,v 1.27 1992/11/16 22:41:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.26 1992/11/12 19:37:19 bal Exp $"
+  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.27 1992/11/16 22:41:13 cph Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
@@ -176,7 +176,6 @@ RECIPIENTS is a string of names separated by commas."
 			      (ref-mode-object rmail-summary))
       (let ((the-rmail-summary-buffer (ref-variable rmail-summary-buffer)))
 	(select-buffer-other-window (ref-variable rmail-summary-buffer))
-	(perform-buffer-initializations! (current-buffer))
 	(select-buffer-other-window the-rmail-buffer)
 	(define-variable-local-value! 
 	  the-rmail-summary-buffer (ref-variable-object rmail-buffer)
@@ -427,9 +426,9 @@ m       Send a mail message.
 r       Reply to this mail message.
 
 Entering this mode calls value of hook variable rmail-summary-mode-hook."
-  (let ((buffer (current-buffer)))
-    (set-buffer-read-only! buffer))
-  (event-distributor/invoke! (ref-variable rmail-summary-mode-hook)))
+  (lambda (buffer)
+    (set-buffer-read-only! buffer)
+    (event-distributor/invoke! (ref-variable rmail-summary-mode-hook) buffer)))
 
 (define-key 'rmail-summary #\j		'rmail-summary-show-message)
 (define-key 'rmail-summary #\n		'rmail-summary-next-undeleted-message)

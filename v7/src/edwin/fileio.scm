@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.112 1992/11/15 21:58:51 cph Exp $
+;;;	$Id: fileio.scm,v 1.113 1992/11/16 22:41:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -339,15 +339,9 @@ after you find a file.  If you explicitly request such a scan with
 			       (lambda ()
 				 (if (string-ci=? var "Eval")
 				     (evaluate val)
-				     (add-buffer-initialization!
-				      buffer
-				      (let ((variable (name->variable var))
-					    (value (evaluate val)))
-					(lambda ()
-					  (define-variable-local-value!
-					   (current-buffer)
-					   variable
-					   value))))))))))
+				     (define-variable-local-value! buffer
+					 (name->variable var)
+				       (evaluate val))))))))
 		      (loop m4))))))))
 
       (loop start))))

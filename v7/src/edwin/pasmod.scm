@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/pasmod.scm,v 1.44 1991/11/04 20:48:36 cph Exp $
+;;;	$Id: pasmod.scm,v 1.45 1992/11/16 22:41:09 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -54,17 +54,33 @@
 
 (define-major-mode pascal fundamental "Pascal"
   "Major mode specialized for editing Pascal code."
-  (local-set-variable! syntax-table pascal-mode:syntax-table)
-  (local-set-variable! syntax-ignore-comments-backwards true)
-  (local-set-variable! indent-line-procedure (ref-command pascal-indent-line))
-  (local-set-variable! comment-column 32)
-  (local-set-variable! comment-locator-hook pascal-comment-locate)
-  (local-set-variable! comment-indent-hook pascal-comment-indentation)
-  (local-set-variable! comment-start "(* ")
-  (local-set-variable! comment-end " *)")
-  (local-set-variable! paragraph-start "^$")
-  (local-set-variable! paragraph-separate (ref-variable "Paragraph Start"))
-  (event-distributor/invoke! (ref-variable pascal-mode-hook)))
+  (lambda (buffer)
+    (define-variable-local-value! buffer (ref-variable-object syntax-table)
+      pascal-mode:syntax-table)
+    (define-variable-local-value! buffer
+	(ref-variable-object syntax-ignore-comments-backwards)
+      true)
+    (define-variable-local-value! buffer
+	(ref-variable-object indent-line-procedure)
+      (ref-command pascal-indent-line))
+    (define-variable-local-value! buffer (ref-variable-object comment-column)
+      32)
+    (define-variable-local-value! buffer
+	(ref-variable-object comment-locator-hook)
+      pascal-comment-locate)
+    (define-variable-local-value! buffer
+	(ref-variable-object comment-indent-hook)
+      pascal-comment-indentation)
+    (define-variable-local-value! buffer (ref-variable-object comment-start)
+      "(* ")
+    (define-variable-local-value! buffer (ref-variable-object comment-end)
+      " *)")
+    (define-variable-local-value! buffer (ref-variable-object paragraph-start)
+      "^$")
+    (define-variable-local-value! buffer
+	(ref-variable-object paragraph-separate)
+      (ref-variable paragraph-start))
+    (event-distributor/invoke! (ref-variable pascal-mode-hook) buffer)))
 
 (define pascal-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! pascal-mode:syntax-table #\( "()1 ")
