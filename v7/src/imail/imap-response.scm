@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.16 2000/05/16 15:14:16 cph Exp $
+;;; $Id: imap-response.scm,v 1.17 2000/05/16 18:55:41 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -292,7 +292,7 @@
     (let ((i (substring-search-forward "\r\n" string 0 n)))
       (if i
 	  (let loop ((i i) (n n))
-	    (let* ((n (substring-move! s (fix:+ i 1) n s i))
+	    (let* ((n (substring-move! string (fix:+ i 1) n string i))
 		   (i (substring-search-forward "\r\n" string (fix:+ i 1) n)))
 	      (if i
 		  (loop i n)

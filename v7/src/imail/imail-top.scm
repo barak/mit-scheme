@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.45 2000/05/16 02:16:49 cph Exp $
+;;; $Id: imail-top.scm,v 1.46 2000/05/16 18:55:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -664,8 +664,7 @@ Completion is performed over known flags when reading."
       (append-message message url-string)
       (message-filed message)
       (if (ref-variable imail-delete-after-output)
-	  ((ref-command imail-delete-forward) #f))
-      (save-folder folder))))
+	  ((ref-command imail-delete-forward) #f)))))
 
 ;;;; Sending mail
 

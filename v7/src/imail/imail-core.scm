@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.60 2000/05/16 04:14:33 cph Exp $
+;;; $Id: imail-core.scm,v 1.61 2000/05/16 18:55:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -360,7 +360,7 @@
 (define-generic message-internal-time (message))
 
 (define-method message-internal-time ((message <message>))
-  (let loop ((headers (get-all-header-fields headers "received")) (winner #f))
+  (let loop ((headers (get-all-header-fields message "received")) (winner #f))
     (if (pair? headers)
 	(call-with-values
 	    (lambda ()
@@ -371,7 +371,7 @@
 	    (loop (cdr headers)
 		  (if (or (not winner) (< time winner)) time winner))))
 	(or winner
-	    (let ((date (get-first-header-field-value headers "date" #f)))
+	    (let ((date (get-first-header-field-value message "date" #f)))
 	      (and date
 		   (string->universal-time date)))))))
 

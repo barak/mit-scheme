@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.27 2000/05/15 19:20:55 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.28 2000/05/16 18:55:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -182,7 +182,7 @@
   ;; **** Do backup of file here.
   (call-with-binary-output-file pathname
     (lambda (port)
-      (write-rmail-file-header (rmail-folder-header-fields folder))
+      (write-rmail-file-header (rmail-folder-header-fields folder) port)
       (for-each (lambda (message) (write-rmail-message message port))
 		(file-folder-messages folder)))))
 
@@ -194,10 +194,11 @@
 	  (close-port port))
 	(call-with-binary-output-file pathname
 	  (lambda (port)
-	    (write-rmail-file-header (make-rmail-folder-header-fields '()))
+	    (write-rmail-file-header (make-rmail-folder-header-fields '())
+				     port)
 	    (write-rmail-message message port))))))
 
-(define (write-rmail-file-header header-fields)
+(define (write-rmail-file-header header-fields port)
   (write-string "BABYL OPTIONS: -*- rmail -*-" port)
   (newline port)
   (write-header-fields header-fields port)

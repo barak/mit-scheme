@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.44 2000/05/16 15:14:13 cph Exp $
+;;; $Id: imail-imap.scm,v 1.45 2000/05/16 18:55:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -711,7 +711,7 @@
 
 (define (imap:command:no-response connection command . arguments)
   (let ((response
-	 (apply imap:command:no-response-1 connection command . arguments)))
+	 (apply imap:command:no-response-1 connection command arguments)))
     (if (not (imap:response:ok? response))
 	(error "Server signalled a command error:" response))))
 
