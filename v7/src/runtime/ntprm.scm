@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.3 1995/11/10 23:47:59 cph Exp $
+$Id: ntprm.scm,v 1.4 1996/04/09 20:13:30 adams Exp $
 
-Copyright (c) 1992-95 Massachusetts Institute of Technology
+Copyright (c) 1992-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -316,11 +316,24 @@ MIT in each case. |#
     (add-event-receiver! event:after-restart reset!)))
 
 (define (dos/fs-drive-type pathname)
+  ;; (system-name . [nfs-]mount-point)
   (cons (nt-volume-info/file-system-name (nt-volume-info pathname)) ""))
 
 (define (dos/fs-long-filenames? pathname)
-  ;; 32 is random -- FAT is 12 and everything else is much larger.
-  (> (nt-volume-info/max-component-length (nt-volume-info pathname)) 32))
+  ;; Currently we have a problem with long filenames on FAT systems because
+  ;; the invented backup names may clash: FOO.SCM and FOO.SCM~ are confused.
+  ;; The temporary fix is to treat backup names on FAT systems like the short
+  ;; version, even if the VFAT driver is being used to provide long file names.
+  (let* ((volume-info (nt-volume-info pathname))
+	 (fs-type     (nt-volume-info/file-system-name volume-info)))
+    (cond ((string-ci=? fs-type "VFAT")
+	   'VFAT)			; ``kind of''
+	  ((string-ci=? fs-type "FAT")
+	   #F)
+	  ((> (nt-volume-info/max-component-length volume-info) 32)
+	   ;; 32 is random -- FAT is 12 and everything else is much larger.
+	   #T)				; NTFS HPFS
+	  (else #F))))			; FAT
 
 (define (nt-volume-info pathname)
   (let ((root
