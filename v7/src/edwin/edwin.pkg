@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.68 1991/11/26 08:03:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.69 1991/11/26 20:11:34 markf Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -977,3 +977,42 @@ MIT in each case. |#
 	  edwin-mode$inferior-debugger
 	  edwin-mode$inferior-repl
 	  start-inferior-repl!))
+
+(define-package (edwin bochser)
+  (files "bochser"
+	 "bochsmod")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$bochser-mode
+	  edwin-mode$bochser
+	  edwin-variable$bochs
+	  edwin-variable$bochsmod-internal-bochs-table
+	  edwin-variable$bochsmod-bindings-buffer
+	  edwin-variable$bochsmod-bochs-buffer
+	  edwin-variable$bochsmod-default-scheme-environment
+	  edwin-variable$bochsmod-default-syntax-table
+	  edwin-variable$bochsmod-current-environment-bochs
+	  edwin-variable$bochsmod-smart-windows
+	  edwin-variable$bochsmod-show-bindings
+	  edwin-variable$bochsmod-create-env-buffers?
+	  edwin-variable$bochsmod-buffers-in-screens?
+	  edwin-command$bochsmod-open-bochs-before-point
+	  edwin-command$bochsmod-open-bochs-before-mouse-point
+	  edwin-command$bochsmod-close-bochs-before-point
+	  edwin-command$bochsmod-close-bochs-before-mouse-point
+	  edwin-command$bochsmod-close-bochs-around-point
+	  edwin-command$bochsmod-close-bochs-around-mouse-point
+	  edwin-command$bochsmod-extract-code
+	  edwin-command$bochsmod-kill-buffer
+	  edwin-command$bochsmod-delete-window
+	  edwin-command$bochsmod-delete-other-windows
+	  edwin-command$bochsmod-switch-to-buffer
+	  edwin-command$down-bochs
+	  edwin-command$backward-down-bochs
+	  edwin-command$up-bochs
+	  edwin-command$backward-up-bochs
+	  edwin-command$bochsmod-attach-bindings
+	  edwin-variable$bindings-window-fraction)
+  (import (runtime debugger-utilities)
+	  show-environment-bindings)
+  (initialization (initialize-bochser-mode!)))
