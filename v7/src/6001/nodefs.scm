@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: nodefs.scm,v 1.7 1993/08/12 08:32:46 cph Exp $
+$Id: nodefs.scm,v 1.8 1993/08/13 00:08:00 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -42,17 +42,18 @@ MIT in each case. |#
   unspecific)
 
 (define (student/repl-eval repl s-expression environment syntax-table)
-  (let ((scode
-	 (rewrite-scode (syntax s-expression syntax-table)
-			(and repl
-			     (let ((port (cmdl/port repl)))
-			       (let ((operation
-				      (port/operation
-				       port
-				       'CURRENT-EXPRESSION-CONTEXT)))
-				 (and operation
-				      (operation port s-expression))))))))
-    (with-new-history (lambda () (extended-scode-eval scode environment)))))
+  (repl-scode-eval
+   repl
+   (rewrite-scode (syntax s-expression syntax-table)
+		  (and repl
+		       (let ((port (cmdl/port repl)))
+			 (let ((operation
+				(port/operation
+				 port
+				 'CURRENT-EXPRESSION-CONTEXT)))
+			   (and operation
+				(operation port s-expression))))))
+   environment))
 
 (define (rewrite-scode expression context)
   (let ((expression
