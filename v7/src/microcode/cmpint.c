@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.1 1989/06/02 14:49:59 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.2 1989/06/03 15:07:11 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.35 88/10/26 20:02:13 GMT cph Exp $
@@ -43,24 +43,25 @@ MIT in each case. */
  */
 
 /*
- * Procedures in this file divide into the following categories:
+ * Procedures in this file belong to the following categories:
  *
- * 0: local C procedures.  These are static procedures used only by
- * this file.  They are called by the other procedures in this file,
- * and have been separated only for modularity reasons.  They are
- * tagged with the C keyword `static'.
+ * Local C procedures.  These are local procedures called only by
+ * other procedures in this file, and have been separated only for
+ * modularity reasons.  They are tagged with the C keyword `static'.
  *
- * 1: C interface entries.  These procedures are called from C and
- * ultimately enter the Scheme compiled code world by using the
- * assembly language utility `enter_compiled_code'.  They are tagged
- * with the noise word `C_TO_SCHEME'.
+ * C interface entries.  These procedures are called from the
+ * interpreter (written in C) and ultimately enter the Scheme compiled
+ * code world by using the assembly language utility
+ * `enter_compiled_code'.  They are tagged with the noise word
+ * `C_TO_SCHEME'.
  *
- * 2: C utility procedures.  These procedures are called from C and
- * never leave the C world.  They constitute the compiled code data
- * abstraction as far as other C parts of the Scheme system are
- * concerned.  They are tagged with the noise word `C_UTILITY'.
+ * C utility procedures.  These procedures are called from C
+ * primitives and other subsystems and never leave the C world.  They
+ * constitute the compiled code data abstraction as far as other C
+ * parts of the Scheme "microcode" are concerned.  They are tagged
+ * with the noise word `C_UTILITY'.
  *
- * 3: Scheme interface utilities.  These procedures are called from
+ * Scheme interface utilities.  These procedures are called from
  * the assembly language interface and return to it.  They never leave
  * the Scheme compiled code world.  If an error occurs or an interrupt
  * must be processed, they return an exit code to the assembly language
@@ -74,18 +75,27 @@ MIT in each case. */
 #define C_UTILITY
 #define C_TO_SCHEME
 #define SCHEME_UTILITY
-
-#include "config.h"	/* Pointer type declaration */
-#include "object.h"	/* Making pointers */
+
+/* Macro imports */
+
+#include "config.h"	/* Pointer type declaration and machine dependencies */
+#include "object.h"	/* Making and destructuring Scheme objects */
 #include "sdata.h"	/* Needed by const.h */
 #include "types.h"	/* Needed by const.h */
 #include "errors.h"	/* Error codes and Termination codes */
-#include "const.h"	/* REGBLOCK_MINIMUM_LENGTH */
-#include "returns.h"	/* RC_POP_FROM_COMPILED_CODE */
+#include "const.h"	/* REGBLOCK_MINIMUM_LENGTH and PRIM_... codes */
 #include "trap.h"	/* UNASSIGNED_OBJECT */
-#include "cmpint.h"
+#include "interp.h"	/* Interpreter state and primitive destructuring */
+#include "prims.h"	/* LEXPR */
+#include "cmpint.h"	/* Compiled code object destructuring */
+#include "default.h"	/* Metering_Apply_Primitive */
+
+/* Imports from the rest of the "microcode" */
 
-/* Exports */
+extern term_type
+  Microcode_Termination();
+
+/* Exports to the rest of the "microcode" */
 
 extern long
   compiler_interface_version,
@@ -116,14 +126,23 @@ extern Pointer
 
 extern void
   store_variable_cache(),
-  compiled_entry_type(),
-  Microcode_Termination();
+  compiled_entry_type();
 
 /* Imports from assembly language */
 
 extern long
   enter_compiled_code();
+
+/* Exports to assembly language */
+
+extern long
+  comutil_error(),
+  comutil_apply(),
+  comutil_setup_lexpr(),
+  comutil_remove_me();
 
+/* Main compiled code entry points. */
+
 C_TO_SCHEME long
 enter_compiled_expression()
 {
@@ -143,7 +162,7 @@ enter_compiled_expression()
 C_TO_SCHEME long
 apply_compiled_procedure()
 {
-  static long setup_compiled_application();
+  static long setup_compiled_invocation();
   Pointer nactuals, procedure;
   machine_word *procedure_entry;
   long result;
@@ -151,8 +170,8 @@ apply_compiled_procedure()
   nactuals = (Pop ());
   procedure = (Pop ());
   procedure_entry = ((machine_word *) (Get_Pointer(procedure)));
-  result = setup_compiled_application ((OBJECT_DATUM (nactuals)),
-				       procedure_entry);
+  result = setup_compiled_invocation ((OBJECT_DATUM (nactuals)),
+				      (procedure_entry));
   if (result == PRIM_DONE)
   {
     /* Go into compiled code. */
@@ -176,12 +195,17 @@ return_to_compiled_code ()
   return (enter_compiled_code (compiled_entry_address));
 }
 
+/* NOTE: In the rest of this file, number of arguments (or minimum
+   number of arguments, etc.) is always 1 greater than the number of
+   arguments (it includes the procedure object).
+ */
+
 static long
-setup_compiled_application (nactuals, compiled_entry_address)
+setup_compiled_invocation (nactuals, compiled_entry_address)
      register long nactuals;
      register machine_word *compiled_entry_address;
 {
-  static long setup_lexpr_application();
+  static long setup_lexpr_invocation();
   static Pointer *open_gap();
   register long nmin, nmax, delta;	/* all +1 */
 
@@ -224,7 +248,7 @@ setup_compiled_application (nactuals, compiled_entry_address)
   /* The procedure can take arbitrarily many arguments, ie.
      it is a lexpr.
    */
-  return (setup_lexpr_application (nactuals, nmin, nmax));
+  return (setup_lexpr_invocation (nactuals, nmax));
 }
 
 /* Default some optional parameters, and return the location
@@ -257,8 +281,8 @@ open_gap (nactuals, delta)
 /* Setup a rest argument as appropriate. */
 
 static long
-setup_lexpr_application (nactuals, nmin, nmax)
-     register long nactuals, nmin, nmax;
+setup_lexpr_invocation (nactuals, nmax)
+     register long nactuals, nmax;
 {
   register long delta;
 
@@ -342,8 +366,10 @@ setup_lexpr_application (nactuals, nmin, nmax)
 
     gap_location = (STACK_LOC(nactuals - 1));
     STACK_LOCATIVE_INCREMENT(source_location);
-    nmin -= 1;
-    while ((--nmin) >= 0)
+
+    /* Remember that nmax is originally negative! */
+
+    for (nmax = ((-nmax) - 1); ((--max) >= 0); )
     {
       STACK_LOCATIVE_PUSH(gap_location) = STACK_LOCATIVE_PUSH(source_location);
     }
@@ -353,19 +379,161 @@ setup_lexpr_application (nactuals, nmin, nmax)
 }
 
 /*
-  This entry point is invoked to reformat the frame when compiled code
-  calls a known lexpr.
-  Important: This assumes that it is always invoked with a valid
+  comutil_apply is used by compiled code when calling unknown
+  procedures. It expects the arguments to be pushed on
+  the stack, and is given the number of arguments and the
+  procedure object to invoke.  It returns the following codes:
+
+  PRIM_DONE:
+    The procedure being invoked is compiled, the frame is "ready to go",
+    and the procedure's entry point is in the Val interpreter "register".
+
+  PRIM_APPLY:
+    The procedure being applied is a primitive, the primitive object is
+    in the Val interpreter "register", and we are ready to go.
+
+  PRIM_REENTER:
+    The procedure being invoked needs to be applied by the interpreter.
+    The frame has already been prepared.
+
+  PRIM_APPLY_INTERRUPT:
+    The procedure being invoked has a rest argument and the system needs
+    to garbage collect before proceeding with the application.
+
+  ERR_INAPPLICABLE_OBJECT:
+    The object being invoked is not a procedure.
+
+  ERR_WRONG_NUMBER_OF_ARGUMENTS:
+    The procedure being invoked has been given the wrong number of arguments.
+*/
+
+SCHEME_UTILITY long
+comutil_apply (nactuals, procedure)
+     long nactuals;
+     Pointer procedure;
+{
+  switch (OBJECT_TYPE(procedure))
+  {
+    callee_is_compiled:
+    case TC_COMPILED_ENTRY:
+    {
+      machine_word *entry_point;
+
+      entry_point = ((machine_word *) (Get_Pointer(procedure)));
+      Val = ((Pointer) entry_point);
+      return (setup_compiled_invocation (nactuals, entry_point));
+    }
+
+    case TC_ENTITY:
+    {
+      Pointer operator;
+
+      operator = Vector_Ref(procedure, entity_operator);
+      if ((OBJECT_TYPE(operator)) != TC_COMPILED_ENTRY)
+	goto callee_is_interpreted;
+      Push(procedure);		/* The entity itself */
+      procedure = operator;
+      nactuals += 1;
+      goto callee_is_compiled;
+    }
+
+    case TC_PRIMITIVE:
+    {
+      /* This code depends on the fact that unimplemented
+	 primitives map into a "fake" primitive which accepts
+	 any number of arguments, thus the arity test will
+	 fail for unimplemented primitives.
+       */
+
+      long arity;
+
+      arity = PRIMITIVE_ARITY(procedure);
+      if (arity == (nactuals - 1))
+      {
+	/* We are all set. */
+	Val = procedure;
+	return (PRIM_APPLY);
+      }
+      if (arity != LEXPR)
+      {
+	/* Wrong number of arguments. */
+	Push(procedure);
+	Push(nactuals);
+	return (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+      }
+      if (!(IMPLEMENTED_PRIMITIVE_P(procedure)))
+      {
+	/* Let the interpreter handle it. */
+	goto callee_is_interpreted;
+      }
+      /* "Lexpr" primitive. */
+      Regs[REGBLOCK_LEXPR_ACTUALS] = ((Pointer) (nactuals - 1));
+      Val = procedure;
+      return (PRIM_APPLY);
+    }
+      
+    callee_is_interpreted:
+    default:
+    {
+      Push(procedure);
+      Push(MAKE_UNSIGNED_FIXNUM(nactuals));
+      return (PRIM_REENTER);
+    }
+  }
+}
+
+/*
+  comutil_error is used by compiled code to signal an error.  It
+  expects the arguments to the error procedure to be pushed on the
+  stack, and is passed the number of arguments.
+*/
+
+SCHEME_UTILITY long
+comutil_error (nactuals)
+     long nactuals;
+{
+  Pointer error_procedure;
+
+  error_procedure = (Get_Fixed_Obj_Slot(Compiler_Err_Procedure));
+  return (comutil_apply (nactuals, error_procedure));
+}
+
+/*
+  comutil_setup_lexpr is invoked to reformat the frame when compiled
+  code calls a known lexpr.  The actual arguments are on the stack,
+  and it is given the number of arguments (and the entry point being
+  invoked).
+
+  Important: This code assumes that it is always invoked with a valid
   number of arguments (the compiler checked it), and will not check.
  */
 
 SCHEME_UTILITY long
-invoke_lexpr (nactuals, compiled_entry_address)
+comutil_setup_lexpr (nactuals, compiled_entry_address)
      register long nactuals;
      register machine_word *compiled_entry_address;
 {
-  /* Use setup_lexpr_application */
-/* *** HERE *** */
+  return (setup_lexpr_invocation
+	  ((nactuals),
+	   (COMPILED_ENTRY_MAXIMUM_ARITY(compiled_entry_address))));
+}
+/*
+  comutil_invoke_primitive is used to invoked a C primitive.
+  It returns the value returned by the C primitive.
+  Note that some C primitives (the so called interpreter hooks)
+  will not return normally, but will "longjmp" to the interpreter
+  instead.  Thus the assembly language invoking this should have
+  set up the appropriate locations in case this happens.
+ */
+
+SCHEME_UTILITY Pointer
+comutil_invoke_primitive (primitive)
+     register Pointer primitive;
+{
+  Pointer result;
+
+  Metering_Apply_Primitive(result, primitive);
+  return (result);
 }
 
 Pointer
