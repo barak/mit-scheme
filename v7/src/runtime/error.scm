@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.49 1987/11/17 20:09:48 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.50 1988/02/10 17:24:43 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -421,28 +421,53 @@ using the current read-eval-print environment."))
 
 ;;;; Primitive Operator Errors
 
-(let ((fasload (make-primitive-procedure 'BINARY-FASLOAD 1)))
+(let ((fasload (make-primitive-procedure 'BINARY-FASLOAD 1))
+      (fasdump (make-primitive-procedure 'PRIMITIVE-FASDUMP 3))
+      (load-band (make-primitive-procedure 'LOAD-BAND 1)))
 
   (define-operation-specific-error 'FASL-FILE-TOO-BIG
-    (list fasload)
+    (list fasload load-band)
     "FASLOAD: Not enough room"
     combination-first-operand)
 
   (define-operation-specific-error 'FASL-FILE-BAD-DATA
-    (list fasload)
+    (list fasload load-band)
     "FASLOAD: Bad binary file"
     combination-first-operand)
 
+  ;; This one will never be reported by load-band.
+  ;; It is too late to run the old image.
+  (define-operation-specific-error 'WRONG-ARITY-PRIMITIVES
+    (list fasload load-band)
+    "FASLOAD: Primitives in binary file have the wrong arity"
+    combination-first-operand)
+
   (define-operation-specific-error 'IO-ERROR
-    (list fasload)
+    (list fasload load-band)
     "FASLOAD: I/O error"
     combination-first-operand)
 
-  (define-operation-specific-error 'WRONG-ARITY-PRIMITIVES
-    (list fasload)
-    "FASLOAD: Primitives in binary file have the wrong arity"
-    combination-first-operand))
+  (define-operation-specific-error 'FASLOAD-COMPILED-MISMATCH
+    (list fasload load-band)
+    "FASLOAD: Binary file contains compiled code for a different microcode"
+    combination-first-operand)
 
+  (define-operation-specific-error 'FASLOAD-BAND
+    (list fasload)
+    "FASLOAD: Binary file contains a scheme image (band), not an object"
+    combination-first-operand)
+
+  (define-operation-specific-error 'IO-ERROR
+    (list fasdump)
+    "FASDUMP: I/O error"
+    combination-second-operand)
+
+  (define-operation-specific-error 'FASDUMP-ENVIRONMENT
+    (list fasdump)
+    "FASDUMP: Object to dump is or points to environment objects"
+    combination-first-operand)
+  )
+
 ;;; This will trap any external-primitive errors that
 ;;; aren't caught by special handlers.
 
@@ -458,8 +483,8 @@ using the current read-eval-print environment."))
   (list (make-primitive-procedure 'FILE-OPEN-CHANNEL 2))
   "Too many open files"
   combination-first-operand)
-
-;;;; SCODE Syntax Errors
+
+;;; SCODE Syntax Errors
 
 ;;; This error gets an unevaluated combination, but it doesn't ever
 ;;; look at the components, so it doesn't matter.
