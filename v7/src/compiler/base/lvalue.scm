@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.8 1988/11/15 16:33:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.9 1988/12/06 18:52:19 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -75,18 +75,19 @@ MIT in each case. |#
 (define-lvalue variable
   block		;block in which variable is defined
   name		;name of variable [symbol]
-  assigned?	;true iff variable appears in an assignment
+  assignments	;true iff variable appears in an assignment
   in-cell?	;true iff variable requires cell at runtime
   (normal-offset ;offset of variable within `block'
    popping-limit) ;popping-limit for continuation variables
   declarations	;list of declarations for this variable
+  closed-over?	;true iff a closure references it freely.
   )
 
 (define continuation-variable/type variable-in-cell?)
 (define set-continuation-variable/type! set-variable-in-cell?!)
 
 (define (make-variable block name)
-  (make-lvalue variable-tag block name false false false '()))
+  (make-lvalue variable-tag block name '() false false '() false))
 
 (define variable-assoc
   (association-procedure eq? variable-name))
@@ -183,19 +184,17 @@ MIT in each case. |#
 
 (define-integrable (lvalue-mark-set? lvalue mark)
   (memq mark (lvalue-marks lvalue)))
-#|
+
 (define-integrable (variable-auxiliary! variable)
   (set-variable-auxiliary?! variable true))
 
-(define (variable-assigned! variable)
-  (set-variable-assignments! variable (1+ (variable-assignments variable))))
+(define (variable-assigned! variable assignment)
+  (set-variable-assignments!
+   variable
+   (cons assignment (variable-assignments variable))))
 
 (define (variable-assigned? variable)
-  (> (variable-assignments variable)
-     (if (variable-auxiliary? variable) 1 0)))
-|#
-(define-integrable (variable-assigned! variable)
-  (set-variable-assigned?! variable true))
+  (not (null? (variable-assignments variable))))
 
 ;; Note:
 ;; If integration of known block values (first class environments) is

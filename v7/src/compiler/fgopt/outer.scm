@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/outer.scm,v 4.4 1988/11/15 16:32:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/outer.scm,v 4.5 1988/12/06 18:57:30 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -54,16 +54,9 @@ MIT in each case. |#
      (for-each prepare-application applications))
    check-application
    applications))
-
+
 (define (prepare-application application)
-  (let ((values
-	 (let ((operands (application-operands application)))
-	   (if (null? operands)
-	       '()
-	       (eq-set-union* (rvalue-values (car operands))
-			      (map rvalue-values (cdr operands)))))))
-    (set-application-operand-values! application values)
-    (set-application-arguments! application values))
+  (set-application-args-passed-out?! application false)
   ;; Need more sophisticated test here so that particular primitive
   ;; operators only pass out specific operands.  A good test case is
   ;; `lexical-unassigned?' with a known block for its first argument
@@ -75,13 +68,13 @@ MIT in each case. |#
 
 (define (check-application application)
   (if (and (rvalue-passed-in? (application-operator application))
-	   (not (null? (application-arguments application))))
+	   (not (application-args-passed-out? application)))
       (application-arguments-passed-out! application)))
 
-(define (application-arguments-passed-out! application)
-  (let ((arguments (application-arguments application)))
-    (set-application-arguments! application '())
-    (for-each rvalue-passed-out! arguments)))
+(define-integrable (application-arguments-passed-out! application)
+  (set-application-args-passed-out?! application true)
+  (for-each rvalue-passed-out!
+	    (application-operands application)))
 
 (define (rvalue-passed-out! rvalue)
   ((method-table-lookup passed-out-methods (tagged-vector/index rvalue))
@@ -151,7 +144,7 @@ MIT in each case. |#
 (define (%lvalue-passed-in! lvalue value)
   (set-lvalue-passed-in?! lvalue value)
   (for-each (lambda (application)
-	      (if (not (null? (application-arguments application)))
+	      (if (not (application-args-passed-out? application))
 		  (enqueue-node! application)))
 	    (lvalue-applications lvalue)))
 

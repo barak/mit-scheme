@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.9 1988/11/02 21:52:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.10 1988/12/06 18:53:47 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -46,6 +46,7 @@ MIT in each case. |#
 (define compiler:cache-free-variables? true)
 (define compiler:implicit-self-static? false)
 (define compiler:optimize-environments? true)
+(define compiler:analyze-side-effects? true)
 (define compiler:cse? true)
 (define compiler:open-code-primitives? true)
 (define compiler:generate-rtl-files? false)

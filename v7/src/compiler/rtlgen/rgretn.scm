@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.8 1988/11/04 10:28:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.9 1988/12/06 18:58:19 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -39,7 +39,7 @@ MIT in each case. |#
 (define (generate/return return)
   (generate/return* (return/block return)
 		    (return/operator return)
-		    false
+		    (application-continuation-push return)
 		    (trivial-return-operand (return/operand return))
 		    (node/offset return)))
 
@@ -70,7 +70,10 @@ MIT in each case. |#
 
 (define-export (generate/return* block operator not-on-stack? operand offset)
   (let ((continuation (rvalue-known-value operator)))
-    (if continuation
+    (if (and continuation
+	     (not (procedure/simplified?
+		   (block-procedure
+		    (continuation/closing-block continuation)))))
 	((method-table-lookup simple-methods (continuation/type continuation))
 	 (if not-on-stack?
 	     (return-operator/pop-frames block operator offset 0)

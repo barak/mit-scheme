@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/envopt.scm,v 1.2 1988/11/17 05:12:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/envopt.scm,v 1.3 1988/12/06 18:56:41 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -92,12 +92,12 @@ MIT in each case. |#
 	     ;;    external stuff, and irrelevant of whether they are
 	     ;;    closures or not.
 	     (not (block-ancestor-or-self? (procedure-block value) block)))
-	(add-caller&callee! procedure value))))
+	(add-caller&callee! procedure value variable))))
 
 (define (check-callee! procedure block callee)
   ;; Here we do not need to worry about such things ***
   (if (not (block-ancestor-or-self? (procedure-block callee) block))
-      (add-caller&callee! procedure callee)))
+      (add-caller&callee! procedure callee *NEED-A-VARIABLE-HERE*)))
 |#
 
 (define (initialize-target-block! procedure)
@@ -123,10 +123,12 @@ MIT in each case. |#
 	    (set-procedure-target-block! procedure target-block))
 	  (let ((value (lvalue-known-value (car free-vars)))
 		(new-block (variable-block (car free-vars))))
+	    ;; Should this piece of code deal with sets
+	    ;; of values rather than known values only?
 	    (cond ((and value (rvalue/constant? value))
 		   (loop target-block (cdr free-vars)))
 		  ((and value (rvalue/procedure? value))
-		   (add-caller&callee! procedure value)
+		   (add-caller&callee! procedure value (car free-vars))
 		   (loop target-block (cdr free-vars)))
 		  ((block-ancestor? new-block target-block)
 		   ;; The current free variable is bound in a block
@@ -149,7 +151,7 @@ MIT in each case. |#
 	       (target-block original))
       ;; (constraint (block-ancestor-or-self? block target-block))
       (cond ((not (null? dependencies))
-	     (let ((this-block (procedure-target-block (car dependencies))))
+	     (let ((this-block (procedure-target-block (caar dependencies))))
 	       (if (block-ancestor-or-self? this-block block)
 		   (loop (cdr dependencies) target-block)
 		   (let ((merge-block
@@ -173,11 +175,6 @@ MIT in each case. |#
 (define (choose-target-block! procedure)
   (let ((callers (procedure-free-callers procedure))
 	(closing-block (procedure-closing-block procedure)))
-    ;; Clean up
-    (if (not compiler:preserve-data-structures?)
-	(begin
-	  (set-procedure-free-callees! procedure '())
-	  (set-procedure-free-callers! procedure '())))
     ;; The following conditional makes some cases of LET-like procedures
     ;; track their parents in order to avoid closing over the same
     ;; variables twice.
@@ -208,18 +205,22 @@ MIT in each case. |#
 
 ;;; Utilities
 
-(define (add-caller&callee! procedure on-whom)
+(define (add-caller&callee! procedure on-whom var)
   (if (not (procedure-continuation? on-whom))
       (begin
-	(add-free-callee! procedure on-whom)
+	(add-free-callee! procedure on-whom var)
 	(add-free-caller! on-whom procedure))))
 
-(define (add-free-callee! procedure on-whom)
+(define (add-free-callee! procedure on-whom var)
   (let ((bucket (procedure-free-callees procedure)))
-    (cond ((null? bucket)
-	   (set-procedure-free-callees! procedure (list on-whom)))
-	  ((not (memq on-whom bucket))
-	   (set-procedure-free-callees! procedure (cons on-whom bucket))))
+    (if (null? bucket)
+	(set-procedure-free-callees! procedure (list (list on-whom var)))
+	(let ((place (assq on-whom bucket)))
+	  (if (false? place)
+	      (set-procedure-free-callees! procedure
+					   (cons (list on-whom var) bucket))
+	      (set-cdr! place
+			(cons var (cdr place))))))
     'DONE))
 
 (define (add-free-caller! procedure on-whom)

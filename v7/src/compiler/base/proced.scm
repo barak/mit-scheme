@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.6 1988/11/01 04:48:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.7 1988/12/06 18:53:20 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -57,14 +57,21 @@ MIT in each case. |#
   closure-offset	;for closure, offset of procedure in stack frame
   register		;for continuation, argument register
   closure-size		;for closure, virtual size of frame [integer or false]
-  target-block		;where procedure is "really" closed [block]
-  free-callees		;procedures invoked by means of free variables
-  free-callers		;procedures that invoke me by means of free variables
+  (target-block		;where procedure is "really" closed [block]
+   initial-callees)	;procs. invoked by me directly
+  (free-callees		;procs. invoked by means of free variables (1)
+   callees)		;procs. invoked by me (transitively)
+  (free-callers		;procs. that invoke me by means of free variables (1)
+   callers)		;procs. that invoke me (transitively)
   virtual-closure?	;need entry point but no environment? [boolean]
   closure-reasons	;reasons why a procedure is closed.
-  side-effects		;classes of side-effects performed by this procedure
-  trivial?		;true if body is trivial and should open code [boolean]
+  (variables		;variables which may be bound to this procedure (1)
+   side-effects)	;classes of side-effects performed by this procedure
+  properties		;random bits of information [assq list]
   )
+
+;; (1) The first meaning is used during closure analysis.
+;;     The second meaning is used during side-effect analysis.
 
 (define *procedures*)
 
@@ -154,8 +161,14 @@ MIT in each case. |#
 (define-integrable (procedure-application-unique? procedure)
   (null? (cdr (procedure-applications procedure))))
 
+(define-integrable (procedure/simplified? procedure)
+  (assq 'SIMPLIFIED (procedure-properties procedure)))
+
+(define-integrable (procedure/trivial? procedure)
+  (assq 'TRIVIAL (procedure-properties procedure)))
+
 (define (procedure-inline-code? procedure)
-  (or (procedure-trivial? procedure)
+  (or (procedure/trivial? procedure)
       (and (procedure-always-known-operator? procedure)
 	   (procedure-application-unique? procedure)
 	   (procedure/virtually-open? procedure))))

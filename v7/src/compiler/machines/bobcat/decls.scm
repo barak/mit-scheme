@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.16 1988/11/07 13:53:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.17 1988/12/06 18:54:49 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -347,7 +347,7 @@ MIT in each case. |#
 	     (filename/append "fgopt"
 			      "blktyp" "closan" "conect" "contan" "desenv"
 			      "envopt" "folcon" "offset" "operan" "order"
-			      "outer" "simapp" "simple")
+			      "outer" "sideff" "simapp" "simple")
 	     (filename/append "rtlbase"
 			      "regset" "rgraph" "rtlcfg" "rtlcon" "rtlexp"
 			      "rtline" "rtlobj" "rtlreg" "rtlty1" "rtlty2")
@@ -481,7 +481,7 @@ MIT in each case. |#
       (filename/append "fgopt"
 		       "blktyp" "closan" "conect" "contan" "desenv"
 		       "envopt" "folcon" "offset" "operan" "order"
-		       "outer" "simapp" "simple"))
+		       "outer" "sideff" "simapp" "simple"))
      (append front-end-base bobcat-base))
 
     (file-dependency/integration/join

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.7 1988/11/15 16:33:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.8 1988/12/06 18:54:25 jinx Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -254,11 +254,11 @@ MIT in each case. |#
       (symbol? object)
       (scode/primitive-procedure? object)
       (eq? object compiled-error-procedure)))
-
-(define invariant-names
+
+(define function-names
   '(
     ;; Predicates
-    OBJECT-TYPE? EQ?  FALSE? NULL? PAIR? VECTOR? SYMBOL? STRING?
+    OBJECT-TYPE? EQ? FALSE? NULL? PAIR? VECTOR? SYMBOL? STRING?
     NUMBER? CHAR? PROMISE? BIT-STRING? CELL? CHAR-ASCII?
 
     ;; Numbers
@@ -276,37 +276,76 @@ MIT in each case. |#
     OBJECT-TYPE NOT ASCII->CHAR CHAR->INTEGER CHAR-BITS CHAR-CODE
     CHAR-DOWNCASE CHAR-UPCASE INTEGER->CHAR VECTOR-LENGTH MAKE-CHAR
     PRIMITIVE-PROCEDURE-ARITY STRING-MAXIMUM-LENGTH
+    ))
 
-    ;; If we could guarantee no side effects
-    #| APPLY CONS LIST CONS* MAKE-STRING VECTOR MAKE-VECTOR LIST-COPY VECTOR-COPY
+;; The following definition is used to avoid computation if possible.
+;; Not to avoid recomputation.  To avoid recomputation, function-names
+;; should be used.
+;;
+;; Example: CONS has no side effects, yet it is not a function.
+;; Thus if the result of a CONS is not going to be used, we can avoid the
+;; CONS operation, yet we can't reuse its result even when given the same
+;; arguments again because the two pairs should not be EQ?.
+
+(define side-effect-free-additional-names
+  `(
+    ;; Constructors
+    CONS LIST CONS* MAKE-STRING VECTOR MAKE-VECTOR LIST-COPY VECTOR-COPY
     CAR CDR VECTOR-REF STRING-REF BIT-STRING-REF LENGTH LIST->VECTOR VECTOR->LIST
     MAKE-BIT-STRING MAKE-CELL STRING->SYMBOL STRING-LENGTH
-    |#
     ))
-
-;;;; Constant "Foldable" operators
 
-(define (constant-foldable-primitive? operator)
-  (memq operator constant-foldable-primitives))
-
-(define (variable-usual-definition name)
-  (let ((place (assq name invariant-variables)))
-    (and place
-	 (cdr place))))
-
-(define invariant-variables
-  (map (lambda (name)
-	 (cons name
-	       (lexical-reference system-global-environment name)))
-       invariant-names))
-
-(define constant-foldable-primitives
-  (append!
-   (list-transform-positive
-       (map cdr invariant-variables)
-     (lexical-reference system-global-environment 'PRIMITIVE-PROCEDURE?))
+(define additional-function-primitives
    (list
     (ucode-primitive &+) (ucode-primitive &-)
     (ucode-primitive &*) (ucode-primitive &/)
     (ucode-primitive &<) (ucode-primitive &>)
-    (ucode-primitive &=) (ucode-primitive &atan))))
+    (ucode-primitive &=) (ucode-primitive &atan)))
+
+;;;; "Foldable" and side-effect-free operators
+
+(define function-variables
+  (map (lambda (name)
+	 (cons name
+	       (lexical-reference system-global-environment name)))
+       function-names))
+
+(define-integrable (constant-foldable-variable? name)
+  (assq name function-variables))
+
+(define side-effect-free-variables
+  (map* function-variables
+	(lambda (name)
+	 (cons name
+	       (lexical-reference system-global-environment name)))
+	side-effect-free-additional-names))
+
+(define-integrable (side-effect-free-variable? name)
+  (assq name side-effect-free-variables))
+
+(define (variable-usual-definition name)
+  (let ((place (assq name side-effect-free-variables)))
+    (and place
+	 (cdr place))))
+
+(define function-primitives
+  (append!
+   (list-transform-positive
+       (map cdr function-variables)
+     (lexical-reference system-global-environment 'PRIMITIVE-PROCEDURE?))
+   additional-function-primitives))
+
+(define (constant-foldable-primitive? operator)
+  (memq operator function-primitives))
+
+(define side-effect-free-primitives
+  (append!
+   (list-transform-positive
+       (map cdr side-effect-free-variables)
+     (lexical-reference system-global-environment 'PRIMITIVE-PROCEDURE?))
+   additional-function-primitives))
+
+(define (side-effect-free-primitive? operator)  (memq operator side-effect-free-primitives))
+
+(define procedure-object?
+  (lexical-reference system-global-environment 'PROCEDURE?))

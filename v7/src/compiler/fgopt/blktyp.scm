@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.6 1988/11/17 05:18:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.7 1988/12/06 18:55:58 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -90,12 +90,16 @@ MIT in each case. |#
 		 (and val
 		      (or (eq? val procedure)
 			  (and (rvalue/procedure? val)
-			       (procedure/trivial-or-virtual? val))))))))
+			       (procedure/trivial-or-virtual? val)))))
+	       (begin
+		 (set-variable-closed-over?! lvalue true)
+		 false))))
        '())
-      (if (and previously-trivial?
-	       (not (procedure/trivial-closure? procedure)))
-	  (error "close-procedure! trivial becoming non-trivial"
-		 procedure))
+      (let ((new (procedure/trivial-closure? procedure)))
+	(if (or (and previously-trivial? (not new))
+		(and (not previously-trivial?) new))
+	    (error "close-procedure! trivial becoming non-trivial or viceversa"
+		   procedure)))
       (set-block-children! current-parent
 			   (delq! block (block-children current-parent)))
       (set-block-disowned-children!
@@ -118,14 +122,17 @@ MIT in each case. |#
 	   (filter-bound-variables (block-bound-variables block)
 				   free-variables
 				   bound-variables)
-	   (find-internal (block-original-parent block))))))
+	   (find-internal (original-block-parent block))))))
   find-internal)
 
 ;; This only works for procedures (not continuations) and it assumes
 ;; that all procedures' target-block field have been initialized.
 
-(define-integrable (block-original-parent block)
-  (procedure-target-block (block-procedure block)))
+(define-integrable (original-block-parent block)
+  (let ((procedure (block-procedure block)))
+    (and procedure
+	 (rvalue/procedure? procedure)
+	 (procedure-target-block procedure))))
 
 (define (filter-bound-variables bindings free-variables bound-variables)
   (cond ((null? bindings)

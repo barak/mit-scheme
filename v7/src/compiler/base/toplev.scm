@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.11 1988/11/01 04:49:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.12 1988/12/06 18:54:04 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -87,7 +87,7 @@ MIT in each case. |#
   (set! *lvalues*)
   (set! *applications*)
   (set! *parallels*)
-  (set! *assignments*)
+  ;; (set! *assignments*)
   (set! *ic-procedure-headers*)
   (set! *root-expression*)
   (set! *root-block*)
@@ -117,7 +117,7 @@ MIT in each case. |#
 	      (*lvalues*)
 	      (*applications*)
 	      (*parallels*)
-	      (*assignments*)
+	      ;; (*assignments*)
 	      (*ic-procedure-headers*)
 	      (*root-expression*)
 	      (*root-block*))
@@ -406,7 +406,7 @@ MIT in each case. |#
       (set! *lvalues* '())
       (set! *applications* '())
       (set! *parallels* '())
-      (set! *assignments* '())
+      ;; (set! *assignments* '())
       (set! *root-expression* (construct-graph (last-reference *scode*)))
       (set! *root-block* (expression-block *root-expression*))
       (if (or (null? *expressions*)
@@ -424,7 +424,9 @@ MIT in each case. |#
       (phase/operator-analysis)
       (phase/environment-optimization)
       (phase/identify-closure-limits)
-      (phase/setup-block-types)      (phase/continuation-analysis)
+      (phase/setup-block-types)      (phase/compute-call-graph)
+      (phase/side-effect-analysis)
+      (phase/continuation-analysis)
       (phase/simplicity-analysis)
       (phase/subproblem-ordering)
       (phase/connectivity-analysis)
@@ -458,30 +460,42 @@ MIT in each case. |#
       (operator-analysis *procedures* *applications*))))
 
 (define (phase/environment-optimization)
-  (compiler-subphase "Environment optimization"
+  (compiler-subphase "Environment Optimization"
    (lambda ()
      (optimize-environments! *procedures*))))
 
 (define (phase/identify-closure-limits)
   (compiler-subphase "Closure Limit Identification"
     (lambda ()
-      (identify-closure-limits! *procedures* *applications* *assignments*))))
+      (identify-closure-limits! *procedures* *applications* *lvalues*))))
 
 (define (phase/setup-block-types)
   (compiler-subphase "Block Type Determination"
     (lambda ()
       (setup-block-types! *root-block*))))
 
+(define (phase/compute-call-graph)
+  (compiler-subphase
+   "Call Graph Computation"
+   (lambda ()
+     (compute-call-graph! *procedures*))))
+
+(define (phase/side-effect-analysis)
+  (compiler-subphase
+   "Side Effect Analysis"
+   (lambda ()
+     (side-effect-analysis *procedures* *applications*))))
+
 (define (phase/continuation-analysis)
   (compiler-subphase "Continuation Analysis"
     (lambda ()
       (continuation-analysis *blocks*))))
-
+
 (define (phase/simplicity-analysis)
   (compiler-subphase "Simplicity Analysis"
     (lambda ()
       (simplicity-analysis *parallels*))))
-
+
 (define (phase/subproblem-ordering)
   (compiler-subphase "Subproblem Ordering"
     (lambda ()
@@ -506,13 +520,14 @@ MIT in each case. |#
   (compiler-subphase "Flow Graph Optimization Cleanup"
     (lambda ()
       (if (not compiler:preserve-data-structures?)
-	  (begin (set! *constants*)
+	  (begin (clear-call-graph! *procedures*)
+		 (set! *constants*)
 		 (set! *blocks*)
 		 (set! *procedures*)
 		 (set! *lvalues*)
 		 (set! *applications*)
 		 (set! *parallels*)
-		 (set! *assignments*)
+		 ;; (set! *assignments*)
 		 (set! *root-block*))))))
 
 (define (phase/rtl-generation)

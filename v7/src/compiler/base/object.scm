@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.3 1988/07/20 00:09:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.4 1988/12/06 18:52:56 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -134,7 +134,7 @@ MIT in each case. |#
 	 (not (zero? (vector-length object)))
 	 (let loop ((tag* (tagged-vector/tag object)))
 	   (or (eq? tag tag*)
-	       (and (pair? tag*)
+	       (and (vector-tag? tag*)
 		    (loop (vector-tag-parent tag*))))))))
 
 (define (tagged-vector/description object)

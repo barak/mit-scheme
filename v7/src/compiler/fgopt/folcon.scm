@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 4.4 1988/11/15 16:32:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 4.5 1988/12/06 18:56:59 jinx Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -39,6 +39,24 @@ MIT in each case. |#
 (package (fold-constants)
 
 (define-export (fold-constants lvalues applications)
+  #|
+  ;; This is needed only if we use the version of eliminate-known-nodes
+  ;; commented out below.
+  ;; 
+  ;; Initialize
+  ;; a. Remove circularities
+  (for-each (lambda (lvalue)
+	      (set-lvalue-source-links!
+	       lvalue
+	       (list-transform-negative
+		   (lvalue-backward-links lvalue)
+		 (lambda (lvalue*)
+		   (memq lvalue (lvalue-backward-links lvalue*))))))
+	    lvalues)
+  ;; b. Remove nop nodes
+  (transitive-closure false delete-if-nop! lvalues)
+  |#
+  ;; Do the actual work
   (let loop
       ((lvalues lvalues)
        (combinations
@@ -50,6 +68,21 @@ MIT in each case. |#
 	      (loop unknown-lvalues not-folded)
 	      not-folded))))))
 
+#|
+(define (delete-if-nop! lvalue)
+  (if (and (not (lvalue-passed-in? lvalue))
+	   (null? (lvalue-values lvalue))
+	   (null? (lvalue-source-links lvalue)))
+      (for-each
+       (lambda (lvalue*)
+	 (set-lvalue-source-links!
+	  lvalue*
+	  (delq! lvalue (lvalue-source-links lvalue*)))
+	 (enqueue-node! lvalue*))
+       (lvalue-forward-links lvalue))))
+|#
+
+#|
 (define (eliminate-known-nodes lvalues)
   (let ((knowable-nodes
 	 (list-transform-positive lvalues
@@ -73,17 +106,33 @@ MIT in each case. |#
 
 (define (delete-if-known! lvalue)
   (if (and (not (lvalue-known-value lvalue))
-	   (for-all? (lvalue-backward-links lvalue)
-	     (lambda (lvalue*)
-	       (if (eq? lvalue lvalue*)
-		   true
-		   (lvalue-known-value lvalue*)))))
+	   (for-all? (lvalue-source-links lvalue) lvalue-known-value))
       (let ((value (car (lvalue-values lvalue))))
 	(for-each (lambda (lvalue*)
 		    (if (lvalue-mark-set? lvalue* 'KNOWABLE)
 			(enqueue-node! lvalue*)))
 		  (lvalue-forward-links lvalue))
 	(set-lvalue-known-value! lvalue value))))
+|#
+
+(define (eliminate-known-nodes lvalues)
+  (list-transform-negative lvalues
+      (lambda (lvalue)
+	(and (not (or (lvalue-passed-in? lvalue)
+		      (and (variable? lvalue)
+			   (variable-assigned? lvalue)
+			   (not (memq 'CONSTANT
+				      (variable-declarations lvalue))))))
+		 
+	     (let ((values (lvalue-values lvalue)))
+	       (and (not (null? values))
+		    (null? (cdr values))
+		    (let ((value (car values)))
+		      (and (or (rvalue/procedure? value)
+			       (rvalue/constant? value))
+			   (begin
+			     (set-lvalue-known-value! lvalue value)
+			     true)))))))))
 
 (define (fold-combinations combinations)
   (if (null? combinations)
@@ -134,9 +183,9 @@ MIT in each case. |#
 		 (set-lvalue-passed-in?! lvalue new))
 		((recompute-lvalue-passed-in! lvalue)
 		 (for-each (lambda (lvalue)
-			     ;; We don't recompute-lvalue-passed-in! recursively
-			     ;; because the forward-link relationship is transitively
-			     ;; closed.
+			     ;; We don't recompute-lvalue-passed-in!
+			     ;; recursively because the forward-link
+			     ;; relationship is transitively closed.
 			     (if (eq? (lvalue-passed-in? lvalue) 'INHERITED)
 				 (recompute-lvalue-passed-in! lvalue)))
 			   (lvalue-forward-links lvalue))))))))
@@ -164,7 +213,7 @@ MIT in each case. |#
 	   (not (reference-to-known-location? rv))
 	   (let ((var (reference-lvalue rv)))
 	     (and (memq 'USUAL-DEFINITION (variable-declarations var))
-		  (variable-usual-definition (variable-name var)))))))
+		  (constant-foldable-variable? (variable-name var)))))))
 
 (define (constant-foldable-operator-value rv)
   (if (rvalue/reference? rv)

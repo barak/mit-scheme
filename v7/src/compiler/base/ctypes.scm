@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.6 1988/11/01 04:46:49 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.7 1988/12/06 18:51:59 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -45,10 +45,11 @@ MIT in each case. |#
   operands
   (parallel-node owner)
   (operators		;used in simulate-application
-   arguments)		;used in outer-analysis
+   args-passed-out?)	;used in outer-analysis
   operand-values	;set by outer-analysis, used by identify-closure-limits
   continuation-push
   model			;set by identify-closure-limits, used in generation
+  destination-block	;used by identify-closure-limits to quench propagation
   )
 
 (define *applications*)
@@ -57,7 +58,7 @@ MIT in each case. |#
   (let ((application
 	 (make-snode application-tag
 		     type block operator operands false '() '()
-		     continuation-push false)))
+		     continuation-push false true)))
     (set! *applications* (cons application *applications*))
     (add-block-application! block application)
     (if (rvalue/reference? operator)
@@ -109,8 +110,8 @@ MIT in each case. |#
 
 (define-integrable combination/block application-block)
 (define-integrable combination/operator application-operator)
-(define-integrable combination/inliner application-arguments)
-(define-integrable set-combination/inliner! set-application-arguments!)
+(define-integrable combination/inliner application-operators)
+(define-integrable set-combination/inliner! set-application-operators!)
 (define-integrable combination/frame-size application-operand-values)
 (define-integrable set-combination/frame-size! set-application-operand-values!)
 (define-integrable combination/inline? combination/inliner)
@@ -162,13 +163,13 @@ MIT in each case. |#
   lvalue
   rvalue)
 
-(define *assignments*)
+;; (define *assignments*)
 
 (define (make-assignment block lvalue rvalue)
   (lvalue-connect! lvalue rvalue)
-  (variable-assigned! lvalue)
   (let ((assignment (make-snode assignment-tag block lvalue rvalue)))
-    (set! *assignments* (cons assignment *assignments*))
+    ;; (set! *assignments* (cons assignment *assignments*))
+    (variable-assigned! lvalue assignment)
     (snode->scfg assignment)))
 
 (define-integrable (node/assignment? node)
