@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 4.14 2001/12/19 21:39:30 cph Exp $
+$Id: decls.scm,v 4.15 2001/12/20 03:04:02 cph Exp $
 
 Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
@@ -66,7 +66,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	     source-filenames))
   (initialize/syntax-dependencies!)
   (initialize/integration-dependencies!)
-  (initialize/expansion-dependencies!)
   (source-nodes/rank!))
 
 (define source-file-expression "*.scm")
@@ -293,12 +292,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    (lambda (declarations)
 	      (list-transform-negative declarations
 		integration-declaration?)))
-	((if compiler:enable-expansion-declarations?
-	     identity-procedure
-	     (lambda (declarations)
-	       (list-transform-negative declarations
-		 expansion-declaration?)))
-	 (source-node/declarations node)))))))
+	(source-node/declarations node))))))
 
 (define-integrable (modification-time node type)
   (file-modification-time
@@ -576,37 +570,3 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-integrable (integration-declaration? declaration)
   (eq? (car declaration) 'INTEGRATE-EXTERNAL))
-
-;;;; Expansion Dependencies
-
-(define (initialize/expansion-dependencies!)
-  (let ((file-dependency/expansion/join
-	 (lambda (filenames expansions)
-	   (for-each (lambda (filename)
-		       (let ((node (filename->source-node filename)))
-			 (set-source-node/declarations!
-			  node
-			  (cons (make-expansion-declaration expansions)
-				(source-node/declarations node)))))
-		     filenames))))
-    (file-dependency/expansion/join
-     (filename/append "machines/vax"
-		      "lapgen" "rules1" "rules2" "rules3" "rules4" "rulfix")
-     (map (lambda (entry)
-	    `(,(car entry)
-	      (PACKAGE/REFERENCE (FIND-PACKAGE '(COMPILER LAP-SYNTAXER))
-				 ',(cadr entry))))
-	  '((LAP:SYNTAX-INSTRUCTION LAP:SYNTAX-INSTRUCTION-EXPANDER)
-	    (INSTRUCTION->INSTRUCTION-SEQUENCE
-	     INSTRUCTION->INSTRUCTION-SEQUENCE-EXPANDER)
-	    (SYNTAX-EVALUATION SYNTAX-EVALUATION-EXPANDER)
-	    (CONS-SYNTAX CONS-SYNTAX-EXPANDER)
-	    (OPTIMIZE-GROUP-EARLY OPTIMIZE-GROUP-EXPANDER)
-	    ;; (COERCE-TO-TYPE-EARLY COERCE-TO-TYPE-EXPANDER) ; not used now
-	    (EA-VALUE-EARLY EA-VALUE-EXPANDER))))))
-
-(define-integrable (make-expansion-declaration expansions)
-  `(EXPAND-OPERATOR ,@expansions))
-
-(define-integrable (expansion-declaration? declaration)
-  (eq? (car declaration) 'EXPAND-OPERATOR))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.25 2001/12/19 21:39:30 cph Exp $
+$Id: compiler.pkg,v 1.26 2001/12/20 03:04:02 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -71,7 +71,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  compiler:compile-by-procedures?
 	  compiler:cse?
 	  compiler:default-top-level-declarations
-	  compiler:enable-expansion-declarations?
 	  compiler:enable-integration-declarations?
 	  compiler:generate-lap-files?
 	  compiler:generate-range-checks?
@@ -573,7 +572,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 "machines/i386/coerce"		;Coercions: integer -> bit string
 	 "back/asmmac"			;Macros for hairy syntax
 	 "machines/i386/insmac"		;Macros for hairy syntax
-	 "machines/i386/inerly"		;Early binding version
 	 "machines/i386/insutl"		;i386 instruction utilities
 	 "machines/i386/instr1"		;i386 instructions
 	 "machines/i386/instr2"		;  "        "

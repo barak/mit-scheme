@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.21 2001/12/19 21:39:30 cph Exp $
+$Id: compiler.sf,v 1.22 2001/12/20 03:04:02 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -68,23 +68,7 @@ USA.
 		   '(COMPILER LAP-SYNTAXER))
       (sf-and-load '("base/scode") '(COMPILER))
       (sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))
-      (sf-and-load '("machines/spectrum/inerly" "back/syerly")
-		   '(COMPILER LAP-SYNTAXER))))
-
-;; Load the assembler instruction database.
-(in-package (->environment '(COMPILER LAP-SYNTAXER))
-  (if (and compiler:enable-expansion-declarations?
-	   (null? early-instructions))
-      (fluid-let ((load-noisily? #f)
-		  (load/suppress-loading-message? #f))
-	(fresh-line)
-	(newline)
-	(write-string "---- Pre-loading instruction sets ----")
-	(newline)
-	(for-each (lambda (name)
-		    (load (string-append "machines/spectrum/" name ".scm")
-			  '(COMPILER LAP-SYNTAXER)))
-		  '("instr1" "instr2" "instr3")))))
+      (sf-and-load '("back/syerly") '(COMPILER LAP-SYNTAXER))))
 
 ;; Resyntax any files that need it.
 ((access syntax-files! (->environment '(COMPILER))))

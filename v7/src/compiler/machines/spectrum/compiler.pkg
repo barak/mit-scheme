@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.51 2001/12/19 21:39:30 cph Exp $
+$Id: compiler.pkg,v 1.52 2001/12/20 03:04:02 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -71,7 +71,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  compiler:compile-by-procedures?
 	  compiler:cse?
 	  compiler:default-top-level-declarations
-	  compiler:enable-expansion-declarations?
 	  compiler:enable-integration-declarations?
 	  compiler:generate-lap-files?
 	  compiler:generate-range-checks?
@@ -574,7 +573,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 "machines/spectrum/coerce"	;Coercions: integer -> bit string
 	 "back/asmmac"			;Macros for hairy syntax
 	 "machines/spectrum/insmac"	;Macros for hairy syntax
-	 "machines/spectrum/inerly"	;Early binding version
 	 "machines/spectrum/instr1"	;Spectrum instruction utilities
 	 "machines/spectrum/instr2"	;Spectrum instructions
 	 "machines/spectrum/instr3"	;  "        "
