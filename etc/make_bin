@@ -6,10 +6,11 @@ if (! -e $scheme/microcode/Psbtobin ) then
   (cd $scheme/microcode; make Psbtobin)
 endif
 
-foreach i (runtime sf)
-  cd $scheme/$i
-  foreach j (*.psb)
+cd $scheme/psb
+foreach i (*)
+  cd $scheme/psb/$i
+  foreach j (*)
     echo "Psbtobin $scheme/$i/$j"
-    $scheme/microcode/Psbtobin <$j >$j:r.bin
+    $scheme/microcode/Psbtobin < $j >! $scheme/$i/$j
   end
 end
