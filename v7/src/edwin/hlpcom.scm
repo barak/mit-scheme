@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: hlpcom.scm,v 1.117 2000/06/15 00:25:39 cph Exp $
+;;; $Id: hlpcom.scm,v 1.118 2000/06/15 00:34:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -301,18 +301,20 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 (define (with-output-to-help-display thunk)
   (with-output-to-temporary-buffer "*Help*" '(READ-ONLY) thunk))
 
-(define (write-description description)
-  (write-string (substitute-command-keys description)))
+(define (write-description description #!optional port)
+  (write-string (substitute-command-keys description)
+		(if (default-object? port) (current-output-port) port)))
 
-(define (print-key-bindings command column)
-  (let ((bindings (comtab-key-bindings (current-comtabs) command)))
-    (if (not (null? bindings))
+(define (print-key-bindings command column #!optional port)
+  (let ((port (if (default-object? port) (current-output-port) port))
+	(bindings (comtab-key-bindings (current-comtabs) command)))
+    (if (pair? bindings)
 	(begin
-	  (write-string
-	   (if (< column 30)
-	       (make-string (- 30 column) #\space)
-	       " "))
-	  (write-string (key-list-string bindings))))))
+	  (write-string (if (< column 30)
+			    (make-string (- 30 column) #\space)
+			    " ")
+			port)
+	  (write-string (key-list-string bindings) port)))))
 
 (define (key-list-string xkeys)
   (let loop ((xkeys (sort xkeys xkey<?)))
@@ -327,14 +329,15 @@ If you want VALUE to be a string, you must surround it with doublequotes."
   (write (variable-value variable))
   (newline))
 
-(define (print-short-description prefix description)
-  (write-string "    ")
-  (if prefix
-      (begin
-	(write-string prefix)
-	(write-string ": ")))
-  (write-description (description-first-line description))
-  (newline))
+(define (print-short-description prefix description #!optional port)
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (write-string "    " port)
+    (if prefix
+	(begin
+	  (write-string prefix port)
+	  (write-string ": " port)))
+    (write-description (description-first-line description) port)
+    (newline port)))
 
 (define (description-first-line description)
   (let ((string (description->string description)))
