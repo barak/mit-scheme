@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.200 2003/09/19 03:26:50 cph Exp $
+$Id: imail-imap.scm,v 1.201 2004/02/16 05:48:59 cph Exp $
 
-Copyright 1999,2000,2001,2003 Massachusetts Institute of Technology
+Copyright 1999,2000,2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1741,17 +1741,17 @@ USA.
       (write-string string port))))
 
 (define (file->string pathname)
-  (call-with-input-file pathname
+  (call-with-output-string
     (lambda (port)
-      ((input-port/custom-operation port 'REST->STRING) port))))
+      (file->port pathname port))))
 
 (define (file->port pathname output-port)
   (call-with-input-file pathname
     (lambda (input-port)
-      (let ((buffer (make-string 4096)))
+      (let ((buffer (make-string #x1000)))
 	(let loop ()
 	  (let ((n (read-string! buffer input-port)))
-	    (if (> n 0)
+	    (if (fix:> n 0)
 		(begin
 		  (write-substring buffer 0 n output-port)
 		  (loop)))))))))

@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 1.66 2003/03/07 19:34:48 cph Exp $
+$Id: debug.scm,v 1.67 2004/02/16 05:43:03 cph Exp $
 
 Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -477,18 +478,24 @@ USA.
 		port))))
 	  (message "No condition to restart from."))))
 
-;;;
-;;;Sort of a kludge, borrowed from arthur's debugger,
-;;;this makes sure that the interface port that the restart
-;;;stuff gets called with uses the minibuffer for prompts
 (define (call-with-interface-port mark receiver)
   (let ((mark (mark-left-inserting-copy mark)))
     (let ((value (receiver (make-port interface-port-type mark))))
       (mark-temporary! mark)
       value)))
 
-;;;Another thing borrowed from arthur, calls the cont
-;;;and exits the debugger
+(define interface-port-type
+  (make-port-type
+   `((WRITE-CHAR
+      ,(lambda (port char)
+	 (guarantee-8-bit-char char)
+	 (region-insert-char! (port/state port) char)))
+     (PROMPT-FOR-CONFIRMATION
+      ,(lambda (port prompt) port (prompt-for-confirmation? prompt)))
+     (PROMPT-FOR-EXPRESSION
+      ,(lambda (port prompt) port (prompt-for-expression prompt))))
+   #f))
+
 (define (invoke-continuation continuation arguments avoid-deletion?)
   (let ((buffer (current-buffer)))
     (if (and (not avoid-deletion?)
@@ -1774,23 +1781,3 @@ once it has been renamed, it will not be deleted automatically.")
 				  (lambda () (write value)))
 		port)))))
     (debugger-newline port)))
-
-;;;; Interface Port
-
-(define (operation/write-char port char)
-  (region-insert-char! (port/state port) char))
-
-(define (operation/prompt-for-confirmation port prompt)
-  port
-  (prompt-for-confirmation? prompt))
-
-(define (operation/prompt-for-expression port prompt)
-  port
-  (prompt-for-expression prompt))
-
-(define interface-port-type
-  (make-port-type
-   `((WRITE-CHAR ,operation/write-char)
-     (PROMPT-FOR-CONFIRMATION ,operation/prompt-for-confirmation)
-     (PROMPT-FOR-EXPRESSION ,operation/prompt-for-expression))
-   #f))

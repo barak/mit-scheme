@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: debuge.scm,v 1.57 2003/02/14 18:28:11 cph Exp $
+$Id: debuge.scm,v 1.58 2004/02/16 05:43:09 cph Exp $
 
-Copyright 1986, 1989-2000 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1995,1998,2000,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -62,9 +63,8 @@ USA.
 		    (write-string "'")
 		    (let ((region (buffer-unclipped-region buffer)))
 		      (group-write-to-file
-		       (and (ref-variable translate-file-data-on-output
-					  (region-group region))
-			    (pathname-newline-translation pathname))
+		       (ref-variable translate-file-data-on-output
+				     (region-group region))
 		       (region-group region)
 		       (region-start-index region)
 		       (region-end-index region)

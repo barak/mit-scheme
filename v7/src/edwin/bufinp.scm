@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: bufinp.scm,v 1.11 2003/02/14 18:28:11 cph Exp $
+$Id: bufinp.scm,v 1.12 2004/02/16 05:42:49 cph Exp $
 
-Copyright 1986, 1989-1999 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1999,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,107 +32,62 @@ USA.
     (let ((value (with-input-from-port port thunk)))
       (if (default-object? receiver)
 	  value
-	  (receiver
-	   value
-	   (let ((state (port/state port)))
-	     (make-mark (buffer-input-port-state/group state)
-			(buffer-input-port-state/current-index state))))))))
+	  (receiver value (input-port/mark port))))))
 
 (define (with-input-from-region region thunk)
-  (with-input-from-port (make-buffer-input-port (region-start region)
-						(region-end region))
+  (with-input-from-port
+      (make-buffer-input-port (region-start region) (region-end region))
     thunk))
 
-(define-structure (buffer-input-port-state
-		   (conc-name buffer-input-port-state/))
-  (group #f read-only #t)
-  (end-index #f read-only #t)
-  (current-index #f))
+(define (call-with-input-mark mark procedure)
+  (procedure (make-buffer-input-port mark (group-end mark))))
 
-(define (make-buffer-input-port mark end)
+(define (call-with-input-region region procedure)
+  (procedure
+   (make-buffer-input-port (region-start region) (region-end region))))
+
+(define (make-buffer-input-port start end)
   ;; This uses indices, so it can only be used locally
   ;; where there is no buffer-modification happening.
   (make-port buffer-input-port-type
-	     (make-buffer-input-port-state (mark-group mark)
-					   (mark-index end)
-					   (mark-index mark))))
+	     (make-bstate (mark-group start)
+			  (mark-index start)
+			  (mark-index end))))
 
-(define (operation/char-ready? port interval)
-  interval				;ignore
-  (let ((state (port/state port)))
-    (< (buffer-input-port-state/current-index state)
-       (buffer-input-port-state/end-index state))))
+(define (input-port/mark port)
+  (let ((operation (port/operation port 'BUFFER-MARK)))
+    (if (not operation)
+	(error:bad-range-argument port 'INPUT-PORT/MARK))
+    (operation port)))
 
-(define (operation/peek-char port)
-  (let ((state (port/state port)))
-    (let ((current-index (buffer-input-port-state/current-index state)))
-      (if (< current-index (buffer-input-port-state/end-index state))
-	  (group-right-char (buffer-input-port-state/group state)
-			    current-index)
-	  (make-eof-object port)))))
-
-(define (operation/discard-char port)
-  (let ((state (port/state port)))
-    (set-buffer-input-port-state/current-index!
-     state
-     (1+ (buffer-input-port-state/current-index state)))))
-
-(define (operation/read-char port)
-  (let ((state (port/state port)))
-    (let ((current-index (buffer-input-port-state/current-index state)))
-      (if (< current-index (buffer-input-port-state/end-index state))
-	  (let ((char
-		 (group-right-char (buffer-input-port-state/group state)
-				   current-index)))
-	    (set-buffer-input-port-state/current-index! state
-							(1+ current-index))
-	    char)
-	  (make-eof-object port)))))
-
-(define (operation/read-string port delimiters)
-  (let ((state (port/state port)))
-    (let ((current-index (buffer-input-port-state/current-index state))
-	  (end-index (buffer-input-port-state/end-index state))
-	  (group (buffer-input-port-state/group state)))
-      (if (>= current-index end-index)
-	  (make-eof-object port)
-	  (let ((new-index
-		 (or (group-find-next-char-in-set group current-index end-index
-						  delimiters)
-		     end-index)))
-	    (let ((string
-		   (group-extract-string group current-index new-index)))
-	      (set-buffer-input-port-state/current-index! state new-index)
-	      string))))))
-
-(define (operation/discard-chars port delimiters)
-  (let ((state (port/state port)))
-    (let ((current-index (buffer-input-port-state/current-index state))
-	  (end-index (buffer-input-port-state/end-index state)))
-      (if (< current-index end-index)
-	  (set-buffer-input-port-state/current-index!
-	   state
-	   (or (group-find-next-char-in-set
-		(buffer-input-port-state/group state)
-		current-index
-		end-index
-		delimiters)
-	       end-index))))))
-
-(define (operation/print-self state port)
-  (unparse-string state "from buffer at ")
-  (unparse-object
-   state
-   (let ((state (port/state port)))
-     (make-mark (buffer-input-port-state/group state)
-		(buffer-input-port-state/current-index state)))))
+(define-structure bstate
+  (group #f read-only #t)
+  (start #f)
+  (end #f read-only #t))
 
 (define buffer-input-port-type
-  (make-port-type `((CHAR-READY? ,operation/char-ready?)
-		    (DISCARD-CHAR ,operation/discard-char)
-		    (DISCARD-CHARS ,operation/discard-chars)
-		    (PEEK-CHAR ,operation/peek-char)
-		    (PRINT-SELF ,operation/print-self)
-		    (READ-CHAR ,operation/read-char)
-		    (READ-STRING ,operation/read-string))
-		  #f))
+  (make-port-type
+   `((BUFFER-MARK
+      ,(lambda (port)
+	(let ((state (port/state port)))
+	  (make-mark (bstate-group state)
+		     (bstate-start state)))))
+     (CHAR-READY?
+      ,(lambda (port)
+	 (let ((state (port/state port)))
+	   (fix:< (bstate-start state)
+		  (bstate-end state)))))
+     (READ-CHAR
+      ,(lambda (port)
+	 (let ((state (port/state port)))
+	   (let ((start (bstate-start state)))
+	     (if (fix:< start (bstate-end state))
+		 (let ((char (group-right-char (bstate-group state) start)))
+		   (set-bstate-start! state (fix:+ start 1))
+		   char)
+		 (make-eof-object port))))))
+     (WRITE-SELF
+      ,(lambda (port output)
+	 (write-string " from buffer at " output)
+	 (write (input-port/mark port) output))))
+   #f))

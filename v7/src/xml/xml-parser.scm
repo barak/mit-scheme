@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.53 2004/01/11 05:25:57 cph Exp $
+$Id: xml-parser.scm,v 1.54 2004/02/16 05:50:43 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -362,7 +362,7 @@ USA.
 	       (lambda (end)
 		 (match-parser-buffer-string-no-advance buffer end)))
 	     #t)
-	    ((match-utf8-char-in-alphabet buffer alphabet)
+	    ((match-parser-buffer-char-in-alphabet buffer alphabet)
 	     (loop))
 	    (must-match?
 	     (let ((p (get-parser-buffer-pointer buffer))
@@ -427,9 +427,10 @@ USA.
 (define parse-notation-name (simple-name-parser "notation"))
 
 (define (match-name buffer)
-  (and (match-utf8-char-in-alphabet buffer alphabet:name-initial)
+  (and (match-parser-buffer-char-in-alphabet buffer alphabet:name-initial)
        (let loop ()
-	 (if (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
+	 (if (match-parser-buffer-char-in-alphabet buffer
+						   alphabet:name-subsequent)
 	     (loop)
 	     #t))))
 
@@ -439,9 +440,10 @@ USA.
      (map make-xml-nmtoken (match match-name-token)))))
 
 (define (match-name-token buffer)
-  (and (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
+  (and (match-parser-buffer-char-in-alphabet buffer alphabet:name-subsequent)
        (let loop ()
-	 (if (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
+	 (if (match-parser-buffer-char-in-alphabet buffer
+						   alphabet:name-subsequent)
 	     (loop)
 	     #t))))
 

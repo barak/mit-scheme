@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.163 2003/09/24 04:47:57 cph Exp $
+$Id: fileio.scm,v 1.164 2004/02/16 05:43:33 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -198,11 +198,9 @@ of the predicates is satisfied, the file is written in the usual way."
 	(method truename mark visit?)
 	(let ((do-it
 	       (lambda ()
-		 (group-insert-file!
-		  (mark-group mark)
-		  (mark-index mark)
-		  truename
-		  (pathname-newline-translation truename)))))
+		 (group-insert-file! (mark-group mark)
+				     (mark-index mark)
+				     truename))))
 	  (if (ref-variable read-file-message mark)
 	      (let ((msg
 		     (string-append "Reading file \""
@@ -214,44 +212,37 @@ of the predicates is satisfied, the file is written in the usual way."
 		  value))
 	      (do-it))))))
 
-(define (group-insert-file! group index truename translation)
-  (let ((filename (->namestring truename)))
-    (let ((channel (file-open-input-channel filename)))
-      (let ((length (channel-file-length channel))
-	    (buffer
-	     (and translation
-		  (ref-variable translate-file-data-on-input group)
-		  (make-input-buffer channel 4096 translation))))
+(define (group-insert-file! group start truename)
+  (call-with-input-file truename
+    (lambda (port)
+      (if (not (ref-variable translate-file-data-on-input group))
+	  (port/set-line-ending port 'BINARY))
+      (let ((length ((port/operation port 'LENGTH) port)))
 	(bind-condition-handler (list condition-type:allocation-failure)
 	    (lambda (condition)
 	      condition
-	      (error "File too large to fit in memory:" filename))
+	      (error "File too large to fit in memory:"
+		     (->namestring truename)))
 	  (lambda ()
 	    (without-interrupts
 	      (lambda ()
-		(prepare-gap-for-insert! group index length)))))
+		(prepare-gap-for-insert! group start length)))))
 	(let ((n
 	       (let ((text (group-text group))
-		     (end (fix:+ index length)))
-		 (if buffer
-		     (fix:- (let loop ((index index))
-			      (if (fix:< index end)
-				  (let ((n
-					 (input-buffer/read-substring
-					  buffer text index end)))
-				    (if (fix:= n 0)
-					index
-					(loop (fix:+ index n))))
-				  index))
-			    index)
-		     (channel-read-block channel text index end)))))
+		     (end (fix:+ start length)))
+		 (let loop ((i start))
+		   (if (fix:< i end)
+		       (let ((n (input-port/read-substring! port text i end)))
+			 (if (fix:> n 0)
+			     (loop (fix:+ i n))
+			     (fix:- i start)))
+		       length)))))
 	  (if (fix:> n 0)
 	      (without-interrupts
 		(lambda ()
-		  (let ((gap-start* (fix:+ index n)))
-		    (undo-record-insertion! group index gap-start*)
-		    (finish-group-insert! group index n)))))
-	  (channel-close channel)
+		  (let ((gap-start* (fix:+ start n)))
+		    (undo-record-insertion! group start gap-start*)
+		    (finish-group-insert! group start n)))))
 	  n)))))
 
 ;;;; Buffer Mode Initialization
@@ -642,7 +633,6 @@ Otherwise, a message is written both before and after long file writes."
 	  (if (eq? 'DEFAULT translate?)
 	      (ref-variable translate-file-data-on-output group)
 	      translate?))
-	 (translation (and translate? (pathname-newline-translation pathname)))
 	 (filename (->namestring pathname))
 	 (method (write-file-method group pathname)))
     (if method
@@ -668,9 +658,9 @@ Otherwise, a message is written both before and after long file writes."
 	(let ((do-it
 	       (lambda ()
 		 (if append?
-		     (group-append-to-file translation group start end
+		     (group-append-to-file translate? group start end
 					   filename)
-		     (group-write-to-file translation group start end
+		     (group-write-to-file translate? group start end
 					  filename)))))
 	  (cond ((not message?)
 		 (do-it))
@@ -689,28 +679,19 @@ Otherwise, a message is written both before and after long file writes."
     ;; the operating system after the channel is closed.
     filename))
 
-(define (group-write-to-file translation group start end filename)
-  (let ((channel (file-open-output-channel filename)))
-    (group-write-to-channel translation group start end channel)
-    (channel-close channel)))
+(define (group-write-to-file translate? group start end filename)
+  (call-with-output-file filename
+    (lambda (port)
+      (if (not translate?)
+	  (port/set-line-ending port 'BINARY))
+      (group-write-to-port group start end port))))
 
-(define (group-append-to-file translation group start end filename)
-  (let ((channel (file-open-append-channel filename)))
-    (group-write-to-channel translation group start end channel)
-    (channel-close channel)))
-
-(define (group-write-to-channel translation group start end channel)
-  (let ((buffer
-	 (and translation (make-output-buffer channel 4096 translation))))
-    (%group-write group start end
-		  (if buffer
-		      (lambda (string start end)
-			(output-buffer/write-substring-block buffer
-							     string start end))
-		      (lambda (string start end)
-			(channel-write-block channel string start end))))
-    (if buffer
-	(output-buffer/drain-block buffer))))
+(define (group-append-to-file translate? group start end filename)
+  (call-with-append-file filename
+    (lambda (port)
+      (if (not translate?)
+	  (port/set-line-ending port 'BINARY))
+      (group-write-to-port group start end port))))
 
 (define (group-write-to-port group start end port)
   (%group-write group start end

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: matcher.scm,v 1.32 2003/02/14 18:28:35 cph Exp $
+$Id: matcher.scm,v 1.33 2004/02/16 05:46:41 cph Exp $
 
-Copyright 2001, 2002 Massachusetts Institute of Technology
+Copyright 2001,2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -291,7 +291,8 @@ USA.
 				    ,(protect char-set free-names)))
 
 (define-atomic-matcher (alphabet alphabet)
-  `(MATCH-UTF8-CHAR-IN-ALPHABET ,*buffer-name* ,(protect alphabet free-names)))
+  `(MATCH-PARSER-BUFFER-CHAR-IN-ALPHABET ,*buffer-name*
+					 ,(protect alphabet free-names)))
 
 (define-atomic-matcher (string string)
   `(MATCH-PARSER-BUFFER-STRING ,*buffer-name* ,(protect string free-names)))

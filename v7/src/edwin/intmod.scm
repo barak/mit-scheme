@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: intmod.scm,v 1.119 2003/02/14 18:28:12 cph Exp $
+$Id: intmod.scm,v 1.120 2004/02/16 05:43:38 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1999 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -854,15 +854,13 @@ If this is an error, the debugger examines the error condition."
 ;;; Output operations
 
 (define (operation/write-char port char)
-  (enqueue-output-string! port (string char)))
+  (guarantee-8-bit-char char)
+  (enqueue-output-string! port (string char))
+  1)
 
 (define (operation/write-substring port string start end)
-  (enqueue-output-string! port (substring string start end)))
-
-(define (operation/fresh-line port)
-  (enqueue-output-operation!
-   port
-   (lambda (mark transcript?) transcript? (guarantee-newline mark) #t)))
+  (enqueue-output-string! port (substring string start end))
+  (fix:- end start))
 
 (define (operation/beep port)
   (enqueue-output-operation!
@@ -957,9 +955,6 @@ If this is an error, the debugger examines the error condition."
     result))
 
 ;;; Input operations
-
-(define (operation/peek-char port)
-  (error "PEEK-CHAR not supported on this port:" port))
 
 (define (operation/read-char port)
   (error "READ-CHAR not supported on this port:" port))
@@ -1120,7 +1115,6 @@ If this is an error, the debugger examines the error condition."
   (make-port-type
    `((WRITE-CHAR ,operation/write-char)
      (WRITE-SUBSTRING ,operation/write-substring)
-     (FRESH-LINE ,operation/fresh-line)
      (BEEP ,operation/beep)
      (X-SIZE ,operation/x-size)
      (DEBUGGER-FAILURE ,operation/debugger-failure)
@@ -1132,7 +1126,6 @@ If this is an error, the debugger examines the error condition."
      (PROMPT-FOR-COMMAND-CHAR ,operation/prompt-for-command-char)
      (SET-DEFAULT-DIRECTORY ,operation/set-default-directory)
      (SET-DEFAULT-ENVIRONMENT ,operation/set-default-environment)
-     (PEEK-CHAR ,operation/peek-char)
      (READ-CHAR ,operation/read-char)
      (READ ,operation/read)
      (CURRENT-EXPRESSION-CONTEXT ,operation/current-expression-context)

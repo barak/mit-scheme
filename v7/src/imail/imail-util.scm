@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-util.scm,v 1.43 2003/03/10 20:53:51 cph Exp $
+$Id: imail-util.scm,v 1.44 2004/02/16 05:49:16 cph Exp $
 
-Copyright 2000,2001,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -431,37 +431,37 @@ USA.
 (define (open-xstring-input-port xstring position)
   (if (not (<= 0 position (external-string-length xstring)))
       (error:bad-range-argument position 'OPEN-XSTRING-INPUT-PORT))
-  (let ((state (make-xstring-input-state xstring position position position)))
+  (let ((state (make-istate xstring position position position)))
     (read-xstring-buffer state)
     (make-port xstring-input-type state)))
 
-(define-structure (xstring-input-state
-		   (constructor make-xstring-input-state
+(define-structure (istate
+		   (constructor make-istate
 				(xstring position buffer-start buffer-end))
-		   (conc-name xstring-input-state/))
+		   (conc-name istate-))
   xstring
   position
-  (buffer (make-string 65536) read-only #t)
+  (buffer (make-string #x10000) read-only #t)
   buffer-start
   buffer-end)
 
 (define (xstring-port/xstring port)
-  (xstring-input-state/xstring (port/state port)))
+  (istate-xstring (port/state port)))
 
 (define (xstring-port/position port)
-  (xstring-input-state/position (port/state port)))
+  (istate-position (port/state port)))
 
 (define (read-xstring-buffer state)
-  (let ((xstring (xstring-input-state/xstring state))
-	(start (xstring-input-state/position state)))
+  (let ((xstring (istate-xstring state))
+	(start (istate-position state)))
     (let ((xend (external-string-length xstring)))
       (and (< start xend)
-	   (let* ((buffer (xstring-input-state/buffer state))
+	   (let* ((buffer (istate-buffer state))
 		  (end (min (+ start (string-length buffer)) xend)))
 	     (without-interrupts
 	      (lambda ()
-		(set-xstring-input-state/buffer-start! state start)
-		(set-xstring-input-state/buffer-end! state end)
+		(set-istate-buffer-start! state start)
+		(set-istate-buffer-end! state end)
 		(xsubstring-move! xstring start end buffer 0)))
 	     #t)))))
 
@@ -472,98 +472,80 @@ USA.
 
 (define (xstring-input-port/discard-chars port delimiters)
   (let ((state (port/state port)))
-    (if (or (< (xstring-input-state/position state)
-	       (xstring-input-state/buffer-end state))
+    (if (or (< (istate-position state) (istate-buffer-end state))
 	    (read-xstring-buffer state))
 	(let loop ()
-	  (let* ((start (xstring-input-state/buffer-start state))
+	  (let* ((start (istate-buffer-start state))
 		 (index
 		  (substring-find-next-char-in-set
-		   (xstring-input-state/buffer state)
-		   (- (xstring-input-state/position state) start)
-		   (- (xstring-input-state/buffer-end state) start)
+		   (istate-buffer state)
+		   (- (istate-position state) start)
+		   (- (istate-buffer-end state) start)
 		   delimiters)))
 	    (if index
-		(set-xstring-input-state/position! state (+ start index))
+		(set-istate-position! state (+ start index))
 		(begin
-		  (set-xstring-input-state/position!
-		   state
-		   (xstring-input-state/buffer-end state))
+		  (set-istate-position! state (istate-buffer-end state))
 		  (if (read-xstring-buffer state)
 		      (loop)))))))))
 
 (define (xstring-input-port/read-string port delimiters)
   (let ((state (port/state port)))
-    (if (or (< (xstring-input-state/position state)
-	       (xstring-input-state/buffer-end state))
+    (if (or (< (istate-position state) (istate-buffer-end state))
 	    (read-xstring-buffer state))
 	(let loop ((prefix #f))
-	  (let* ((start (xstring-input-state/buffer-start state))
-		 (b (xstring-input-state/buffer state))
-		 (si (- (xstring-input-state/position state) start))
-		 (ei (- (xstring-input-state/buffer-end state) start))
+	  (let* ((start (istate-buffer-start state))
+		 (b (istate-buffer state))
+		 (si (- (istate-position state) start))
+		 (ei (- (istate-buffer-end state) start))
 		 (index (substring-find-next-char-in-set b si ei delimiters)))
 	    (if index
 		(begin
-		  (set-xstring-input-state/position! state (+ start index))
+		  (set-istate-position! state (+ start index))
 		  (let ((s (make-string (fix:- index si))))
 		    (substring-move! b si index s 0)
-		    (if prefix (string-append prefix s) s)))
+		    (if prefix
+			(string-append prefix s)
+			s)))
 		(begin
-		  (set-xstring-input-state/position!
-		   state
-		   (xstring-input-state/buffer-end state))
+		  (set-istate-position! state (istate-buffer-end state))
 		  (let ((s (make-string (fix:- ei si))))
 		    (substring-move! b si ei s 0)
-		    (let ((p (if prefix (string-append prefix s) s)))
+		    (let ((p
+			   (if prefix
+			       (string-append prefix s)
+			       s)))
 		      (if (read-xstring-buffer state)
 			  (loop p)
 			  p)))))))
 	(make-eof-object port))))
-
+
 (define xstring-input-type
   (make-port-type
-   (let ((read
-	  (lambda (port discard?)
-	    (let ((state (port/state port)))
-	      (let ((position (xstring-input-state/position state)))
-		(if (or (< position (xstring-input-state/buffer-end state))
-			(read-xstring-buffer state))
-		    (let ((char
-			   (string-ref
-			    (xstring-input-state/buffer state)
-			    (- position
-			       (xstring-input-state/buffer-start state)))))
-		      (if discard?
-			  (set-xstring-input-state/position!
-			   state (+ position 1)))
-		      char)
-		    (make-eof-object port))))))
-	 (xlength
-	  (lambda (state)
-	    (external-string-length (xstring-input-state/xstring state)))))
-     `((READ-CHAR ,(lambda (port) (read port #t)))
-       (PEEK-CHAR ,(lambda (port) (read port #f)))
-       (DISCARD-CHAR
-	,(lambda (port)
-	   (let* ((state (port/state port))
-		  (position (xstring-input-state/position state)))
-	     (if (< position (xlength state))
-		 (set-xstring-input-state/position! state (+ position 1))))))
-       (DISCARD-CHARS ,xstring-input-port/discard-chars)
-       (READ-STRING ,xstring-input-port/read-string)
-       (LENGTH ,(lambda (port) (xlength (port/state port))))
-       (EOF?
-	,(lambda (port)
-	   (let ((state (port/state port)))
-	     (>= (xstring-input-state/position state) (xlength state)))))
-       (CLOSE
-	,(lambda (port)
-	   (let ((state (port/state port)))
-	     (without-interrupts
-	      (lambda ()
-		(set-xstring-input-state/xstring! state #f)
-		(set-xstring-input-state/position! state 0)
-		(set-xstring-input-state/buffer-start! state 0)
-		(set-xstring-input-state/buffer-end! state 0))))))))
+   `((READ-CHAR
+      ,(lambda (port)
+	 (let ((state (port/state port)))
+	   (let ((position (istate-position state)))
+	     (if (or (< position (istate-buffer-end state))
+		     (read-xstring-buffer state))
+		 (let ((char
+			(string-ref (istate-buffer state)
+				    (- position (istate-buffer-start state)))))
+		   (set-istate-position! state (+ position 1))
+		   char)
+		 (make-eof-object port))))))
+     (EOF?
+      ,(lambda (port)
+	 (let ((state (port/state port)))
+	   (>= (istate-position state)
+	       (external-string-length (istate-xstring state))))))
+     (CLOSE
+      ,(lambda (port)
+	 (let ((state (port/state port)))
+	   (without-interrupts
+	    (lambda ()
+	      (set-istate-xstring! state #f)
+	      (set-istate-position! state 0)
+	      (set-istate-buffer-start! state 0)
+	      (set-istate-buffer-end! state 0)))))))
    #f))

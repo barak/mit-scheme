@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.1 2003/09/26 03:56:48 cph Exp $
+$Id: xml-names.scm,v 1.2 2004/02/16 05:50:37 cph Exp $
 
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -105,10 +105,12 @@ USA.
   (eq? (string-is-xml-nmtoken? string) 'NAME))
 
 (define (string-is-xml-nmtoken? string)
-  (let ((buffer (string->parser-buffer string)))
+  (let ((buffer
+	 (wide-string->parser-buffer (utf8-string->wide-string string))))
     (let ((check-char
 	   (lambda ()
-	     (match-utf8-char-in-alphabet buffer alphabet:name-subsequent))))
+	     (match-parser-buffer-char-in-alphabet buffer
+						   alphabet:name-subsequent))))
       (letrec
 	  ((no-colon
 	    (lambda ()
@@ -132,7 +134,7 @@ USA.
 		  (and (check-char)
 		       (nmtoken?))
 		  'NMTOKEN))))
-	(if (match-utf8-char-in-alphabet buffer alphabet:name-initial)
+	(if (match-parser-buffer-char-in-alphabet buffer alphabet:name-initial)
 	    (no-colon)
 	    (and (check-char)
 		 (nmtoken?)))))))

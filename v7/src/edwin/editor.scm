@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: editor.scm,v 1.258 2003/02/14 18:28:12 cph Exp $
+$Id: editor.scm,v 1.259 2004/02/16 05:43:21 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -510,21 +510,25 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 			  exit)))))))
 
 (define dummy-i/o-port
-  (make-i/o-port
-   (map (lambda (name)
-	  (list name
-		(lambda (port . ignore)
-		  ignore
-		  (error "Attempt to perform a"
-			 name
-			 (error-irritant/noise " operation on dummy I/O port:")
-			 port))))
-	'(CHAR-READY? READ-CHAR PEEK-CHAR WRITE-CHAR))
-   #f))
+  (make-port (make-port-type
+	      (map (lambda (name)
+		     (list name
+			   (lambda (port . ignore)
+			     ignore
+			     (error "Attempt to perform a"
+				    name
+				    (error-irritant/noise
+				     " operation on dummy I/O port:")
+				    port))))
+		   '(CHAR-READY? READ-CHAR WRITE-CHAR))
+	      #f)
+	     #f))
 
 (define null-output-port
-  (make-output-port `((WRITE-CHAR ,(lambda (port char) port char unspecific)))
-		    #f))
+  (make-port (make-port-type
+	      `((WRITE-CHAR ,(lambda (port char) port char unspecific)))
+	      #f)
+	     #f))
 
 (define (editor-start-child-cmdl with-editor-ungrabbed)
   (lambda (cmdl thunk) cmdl (with-editor-ungrabbed thunk)))

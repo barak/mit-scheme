@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: winout.scm,v 1.17 2003/02/14 18:28:14 cph Exp $
+$Id: winout.scm,v 1.18 2004/02/16 05:44:11 cph Exp $
 
-Copyright 1986, 1989-2000 Massachusetts Institute of Technology
+Copyright 1989,1991,1992,1994,1999,2000 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,11 +38,8 @@ USA.
 (define (window-output-port window)
   (make-port window-output-port-type window))
 
-(define (operation/fresh-line port)
-  (if (not (line-start? (window-point (port/state port))))
-      (operation/write-char port #\newline)))
-
 (define (operation/write-char port char)
+  (guarantee-8-bit-char char)
   (let ((window (port/state port)))
     (let ((buffer (window-buffer window))
 	  (point (window-point window)))
@@ -98,15 +96,14 @@ USA.
 (define (operation/x-size port)
   (window-x-size (port/state port)))
 
-(define (operation/print-self state port)
-  (unparse-string state "to window ")
-  (unparse-object state (port/state port)))
+(define (operation/write-self port output)
+  (write-string " to window " output)
+  (write (port/state port) output))
 
 (define window-output-port-type
   (make-port-type `((FLUSH-OUTPUT ,operation/flush-output)
-		    (FRESH-LINE ,operation/fresh-line)
-		    (PRINT-SELF ,operation/print-self)
 		    (WRITE-CHAR ,operation/write-char)
+		    (WRITE-SELF ,operation/write-self)
 		    (WRITE-SUBSTRING ,operation/write-substring)
 		    (X-SIZE ,operation/x-size))
 		  #f))

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: dosfile.scm,v 1.44 2003/09/24 01:57:39 cph Exp $
+$Id: dosfile.scm,v 1.45 2004/02/16 05:43:14 cph Exp $
 
 Copyright 1995,1996,1999,2000,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -536,8 +537,7 @@ filename suffix \".gz\"."
 				  (list pathname mark)))
 	(group-insert-file! (mark-group mark)
 			    (mark-index mark)
-			    temporary
-			    (pathname-newline-translation pathname)))))))
+			    temporary))))))
 
 (define (write-compressed-file program arguments region pathname)
   ((message-wrapper #f "Compressing file " (->namestring pathname))

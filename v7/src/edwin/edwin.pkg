@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.286 2003/04/25 03:10:00 cph Exp $
+$Id: edwin.pkg,v 1.287 2004/02/16 05:43:26 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -104,12 +104,6 @@ USA.
   (parent ())
   (import (runtime rep)
 	  hook/repl-eval)
-  (import (runtime primitive-io)
-	  input-buffer/read-substring
-	  make-input-buffer
-	  make-output-buffer
-	  output-buffer/drain-block
-	  output-buffer/write-substring-block)
   (import (runtime character)
 	  bucky-bits->prefix)
   (import (runtime char-syntax)

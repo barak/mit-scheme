@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: unix.scm,v 1.117 2003/09/24 01:57:52 cph Exp $
+$Id: unix.scm,v 1.118 2004/02/16 05:44:05 cph Exp $
 
 Copyright 1989,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1999,2000,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -401,8 +402,7 @@ of the filename suffixes \".gz\", \".bz2\", or \".Z\"."
 				  (list pathname mark)))
 	(group-insert-file! (mark-group mark)
 			    (mark-index mark)
-			    temporary
-			    (pathname-newline-translation pathname)))))))
+			    temporary))))))
 
 (define (write-compressed-file program region pathname)
   ((message-wrapper #f "Compressing file " (->namestring pathname))

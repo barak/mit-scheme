@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.119 2004/01/16 20:38:09 cph Exp $
+$Id: make.scm,v 3.120 2004/02/16 05:43:45 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,2000,2001,2002,2003,2004 Massachusetts Institute of Technology
@@ -40,4 +40,4 @@ USA.
        (load-package-set "edwin"
 	 `((alternate-package-loader
 	    . ,(load "edwin.bld" system-global-environment))))))))
-(add-identification! "Edwin" 3 115)
+(add-identification! "Edwin" 3 116)
