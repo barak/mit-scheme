@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.3 1990/08/22 02:02:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.4 1990/11/28 22:32:23 cph Rel $
 $MC68020-Header: rules3.scm,v 4.26 90/08/21 02:23:26 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -136,7 +136,7 @@ MIT in each case. |#
 		      (invoke-interface code:compiler-primitive-apply))
 		     ((= arity -1)
 		      (LAP ,@(load-immediate (-1+ frame-size)
-					     ,regnum:assembler-temp)
+					     regnum:assembler-temp)
 
 			   (SW ,regnum:assembler-temp
 			       ,reg:lexpr-primitive-arity)
@@ -205,13 +205,11 @@ MIT in each case. |#
 	   (error "invocation-prefix:move-frame-up: bad specs"
 		  frame-size offset))
 	  ((zero? frame-size)
-	   (add-immediate how-far ,regnum:stack-pointer
-			  ,regnum:stack-pointer))
+	   (add-immediate how-far regnum:stack-pointer regnum:stack-pointer))
 	  ((= frame-size 1)
 	   (let ((temp (standard-temporary!)))
 	     (LAP (LW ,temp (OFFSET ,how-far ,regnum:stack-pointer))
-		  (ADDI ,regnum:stack-pointer
-			,regnum:stack-pointer ,how-far)
+		  (ADDI ,regnum:stack-pointer ,regnum:stack-pointer ,how-far)
 		  (STW ,temp (OFFSET 0 ,regnum:stack-pointer)))))
 	  ((= frame-size 2)
 	   (let ((temp1 (standard-temporary!))
@@ -224,8 +222,7 @@ MIT in each case. |#
 	  (else
 	   (generate/move-frame-up frame-size
 	     (lambda (reg)
-	       (add-immediate
-		(* 4 offset) ,regnum:stack-pointer reg)))))))
+	       (add-immediate (* 4 offset) regnum:stack-pointer reg)))))))
 
 (define-rule statement
   ;; Move <frame-size> words back to base virtual register + offset
@@ -252,8 +249,7 @@ MIT in each case. |#
 	   (= source regnum:stack-pointer))
       (LAP)
       (let ((env-reg (standard-move-to-temporary! source)))
-	(LAP (SLTU ,regnum:assembler-temp
-		   ,env-reg ,regnum:dynamic-link)
+	(LAP (SLTU ,regnum:assembler-temp ,env-reg ,regnum:dynamic-link)
 	     (BNE 0 ,regnum:assembler-temp (@PCO 8))
 	     (NOP)			; +0: DELAY SLOT
 	     (ADD ,env-reg 0		; +4: Skipped instruction
