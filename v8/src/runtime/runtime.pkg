@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.108 1991/05/15 22:02:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.109 1991/06/14 23:57:41 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -428,6 +428,7 @@ MIT in each case. |#
 	  debugging-info/evaluated-object?
 	  debugging-info/undefined-environment?
 	  debugging-info/undefined-expression?
+	  debugging-info/unknown-expression?
 	  debugging-info/noise
 	  debugging-info/noise?
 	  stack-frame/debugging-info)
