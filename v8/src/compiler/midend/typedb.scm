@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.13 1996/10/03 14:08:12 adams Exp $
+$Id: typedb.scm,v 1.14 1997/07/11 02:35:04 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -367,6 +367,9 @@ MIT in each case. |#
    2 int:= int:< int:>
    1 int:zero? int:negative? int:positive?)
 
+  ((unchecked-function type:fixnum type:flonum)
+   (ucode-primitive fixnum->flonum 1))
+  
   (let-syntax ((p (macro spec (apply make-primitive-procedure spec))))
     ((checked-function type:number type:number)
      2 %+ %- %* %/ (p &+) (p &-) (p &*) (p &/))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.26 1997/07/09 06:44:01 adams Exp $
+$Id: typerew.scm,v 1.27 1997/07/11 02:34:48 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -1426,6 +1426,7 @@ and we dont do much with that.
   (def  'TRUNCATE  FLO:TRUNCATE))
 
 (let ((INTEGER->FLONUM (ucode-primitive INTEGER->FLONUM 2))
+      (FIXNUM->FLONUM  (ucode-primitive FIXNUM->FLONUM 1))
       (type:false/flonum (type:or type:false type:flonum))
       (type:0/1          (type:or type:exact-zero type:exact-one)))
   (define-typerew-binary-variants-type-method INTEGER->FLONUM
@@ -1442,7 +1443,13 @@ and we dont do much with that.
   ;; [2] if fixnums may not fix in a flonum (e.g. 64 bit machine).
 
   (define-typerew-binary-variants-replacement-method INTEGER->FLONUM
-    type:fixnum        type:any      type:flonum (typerew/%1 %fixnum->flonum)))
+    type:fixnum        type:any      type:flonum (typerew/%1 %fixnum->flonum))
+
+  (define-typerew-unary-variants-replacement-method FIXNUM->FLONUM
+    type:fixnum        type:flonum      %fixnum->flonum))
+
+
+
 
 (define-typerew-unary-variants-type-method 'COS
   type:number     type:number       effect:none
