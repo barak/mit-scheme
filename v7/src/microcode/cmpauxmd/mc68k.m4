@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.20 1991/05/28 19:04:34 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.21 1991/11/15 22:31:39 jinx Exp $
 ###
 ###	Copyright (c) 1989-1991 Massachusetts Institute of Technology
 ###
@@ -377,7 +377,7 @@ define_interface_indirection(generic_modulo,39)
 
 # Save an additional instruction here to load the dynamic link.
 define_c_label(asm_interrupt_dlink)
-	mov.l	%a4,%d2			# Dynamic link -> d2
+	mov.l	dlink,%d2		# Dynamic link -> d2
 	movq	&HEX(19),%d0
 	bra	scheme_to_interface_jsr
 
