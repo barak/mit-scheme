@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.27 1990/08/08 20:22:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.28 1990/08/17 21:00:39 markf Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -596,7 +596,7 @@ Ppband.o : config.h types.h const.h object.h sdata.h fasl.h load.c
 
 dmpwrld.o : unexec.c getpagesize.h
 
-x11base.o x11graph.o : scheme.touch prims.h x11.h
+x11base.o x11graph.o : scheme.touch prims.h x11.h ux.h
 x11term.o x11xtra.o : scheme.touch prims.h x11.h x11term.h
 cterm.o : scheme.touch prims.h
 starbase.o : scheme.touch prims.h
