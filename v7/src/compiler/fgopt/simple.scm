@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simple.scm,v 4.4 1989/01/21 09:09:28 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simple.scm,v 4.5 1989/07/18 20:22:38 cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -68,7 +68,7 @@ MIT in each case. |#
 	    (let ((prefix (subproblem-prefix subproblem)))
 	      (if (cfg-null? prefix)
 		  true
-		  (walk/node (cfg-entry-node prefix)))))))
+		  (walk/node (cfg-entry-node prefix) false))))))
   unspecific)
 
 (define (walk/node node continuation)
