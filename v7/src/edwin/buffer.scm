@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.166 1994/11/01 22:25:42 cph Exp $
+;;;	$Id: buffer.scm,v 1.167 1994/11/02 02:20:20 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -124,12 +124,23 @@ The buffer is guaranteed to be deselected at that time."
 	  (window-modeline-event! (car windows) type)
 	  (loop (cdr windows))))))
 
+
+(define (without-editor-interrupts thunk)
+  ;; Control interrupts whether or not in the editor.
+  ;; WITH-EDITOR-INTERRUPTS-DISABLED is required in the running editor but
+  ;; buffers are created at editor initialization time and variables may
+  ;; be set as early as initial file load time (prior to dumping the band).
+  (if within-editor?
+      (with-editor-interrupts-disabled thunk)
+      (without-interrupts thunk)))
+
+
 (define (buffer-reset! buffer)
   (set-buffer-writable! buffer)
   (buffer-widen! buffer)
   (region-delete! (buffer-region buffer))
   (buffer-not-modified! buffer)
-  (with-editor-interrupts-disabled
+  (without-editor-interrupts
    (lambda ()
      (undo-local-bindings! buffer #t)
      (%buffer-reset! buffer)
@@ -262,7 +273,7 @@ The buffer is guaranteed to be deselected at that time."
   (group-modified? (buffer-group buffer)))
 
 (define (buffer-not-modified! buffer)
-  (with-editor-interrupts-disabled
+  (without-editor-interrupts
    (lambda ()
      (let ((group (buffer-group buffer)))
        (if (group-modified? group)
@@ -272,7 +283,7 @@ The buffer is guaranteed to be deselected at that time."
 	     (vector-set! buffer buffer-index:auto-saved? #f)))))))
 
 (define (buffer-modified! buffer)
-  (with-editor-interrupts-disabled
+  (without-editor-interrupts
    (lambda ()
      (let ((group (buffer-group buffer)))
        (if (not (group-modified? group))
@@ -322,7 +333,7 @@ The buffer is guaranteed to be deselected at that time."
 
 (define (define-variable-local-value! buffer variable value)
   (let ((value (normalize-variable-value variable value)))
-    (with-editor-interrupts-disabled
+    (without-editor-interrupts
      (lambda ()
        (let ((binding (search-local-bindings buffer variable)))
 	 (if binding
@@ -336,7 +347,7 @@ The buffer is guaranteed to be deselected at that time."
        (invoke-variable-assignment-daemons! buffer variable)))))
 
 (define (undefine-variable-local-value! buffer variable)
-  (with-editor-interrupts-disabled
+  (without-editor-interrupts
    (lambda ()
      (let ((binding (search-local-bindings buffer variable)))
        (if binding
@@ -370,7 +381,7 @@ The buffer is guaranteed to be deselected at that time."
 	 =>
 	 (lambda (binding)
 	   (let ((value (normalize-variable-value variable value)))
-	     (with-editor-interrupts-disabled
+	     (without-editor-interrupts
 	      (lambda ()
 		(set-cdr! binding value)
 		(if (buffer-local-bindings-installed? buffer)
@@ -381,7 +392,7 @@ The buffer is guaranteed to be deselected at that time."
 
 (define (set-variable-default-value! variable value)
   (let ((value (normalize-variable-value variable value)))
-    (with-editor-interrupts-disabled
+    (without-editor-interrupts
      (lambda ()
        (set-variable-%default-value! variable value)
        (if (not (search-local-bindings (current-buffer) variable))
@@ -440,7 +451,8 @@ The buffer is guaranteed to be deselected at that time."
       (set-variable-local-value! (current-buffer) variable value)
       (begin
 	(let ((value (normalize-variable-value variable value)))
-	  (with-editor-interrupts-disabled
+	  (without-interrupts
+	   ;; Not with-editor-interrupts-disabled as we are not within-editor?
 	   (lambda ()
 	     (set-variable-%default-value! variable value)
 	     (set-variable-%value! variable value)
@@ -470,11 +482,13 @@ The buffer is guaranteed to be deselected at that time."
       (error:wrong-type-argument mode "major mode" 'SET-BUFFER-MAJOR-MODE!))
   (if (buffer-get buffer 'MAJOR-MODE-LOCKED)
       (editor-error "The major mode of this buffer is locked: " buffer))
-  (with-editor-interrupts-disabled
+  ;; The very first buffer is created before the editor
+  (without-editor-interrupts
    (lambda ()
      (undo-local-bindings! buffer #f)
      (%set-buffer-major-mode! buffer mode)
      (buffer-modeline-event! buffer 'BUFFER-MODES))))
+
 
 (define (%set-buffer-major-mode! buffer mode)
   (vector-set! buffer buffer-index:modes (list mode))
@@ -495,7 +509,7 @@ The buffer is guaranteed to be deselected at that time."
 (define (enable-buffer-minor-mode! buffer mode)
   (if (not (minor-mode? mode))
       (error:wrong-type-argument mode "minor mode" 'ENABLE-BUFFER-MINOR-MODE!))
-  (with-editor-interrupts-disabled
+  (without-editor-interrupts
    (lambda ()
      (let ((modes (buffer-modes buffer)))
        (if (not (memq mode (cdr modes)))
@@ -512,7 +526,7 @@ The buffer is guaranteed to be deselected at that time."
   (if (not (minor-mode? mode))
       (error:wrong-type-argument mode "minor mode"
 				 'DISABLE-BUFFER-MINOR-MODE!))
-  (with-editor-interrupts-disabled
+  (without-editor-interrupts
    (lambda ()
      (let ((modes (buffer-modes buffer)))
        (if (memq mode (cdr modes))
