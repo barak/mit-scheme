@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.30 1997/10/22 05:16:01 cph Exp $
+$Id: os2prm.scm,v 1.31 1997/10/22 20:00:47 cph Exp $
 
 Copyright (c) 1994-97 Massachusetts Institute of Technology
 
@@ -416,9 +416,54 @@ MIT in each case. |#
 
 (define os2/select-result-values
   '#(INPUT-AVAILABLE #F INTERRUPT PROCESS-STATUS-CHANGE))
-
+
 (define (os/make-subprocess filename arguments environment working-directory
 			    ctty stdin stdout stderr)
-  ((ucode-primitive make-subprocess 7) filename arguments
-				       (cons environment working-directory)
-				       ctty stdin stdout stderr))
+  (if ctty
+      (error "Can't manipulate controlling terminal of subprocess:" ctty))
+  ((ucode-primitive os2-make-subprocess 7)
+   filename
+   (os2/rewrite-subprocess-arguments (vector->list arguments))
+   (and environment
+	(os2/rewrite-subprocess-environment (vector->list environment)))
+   working-directory
+   stdin
+   stdout
+   stderr))
+
+(define (os2/rewrite-subprocess-arguments strings)
+  (let ((strings
+	 (cond ((null? strings) (list "" ""))
+	       ((null? (cdr strings)) (list (car strings) ""))
+	       (else strings))))
+    (let ((result
+	   (make-string
+	    (reduce +
+		    0
+		    (map (lambda (s) (fix:+ (string-length s) 1)) strings)))))
+      (let ((n (string-length (car strings))))
+	(substring-move-left! (car strings) 0 n result 0)
+	(string-set! result (fix:+ index n) #\NUL)
+	(let loop ((strings (cdr strings)) (index (fix:+ n 1)))
+	  (let ((n (string-length (car strings))))
+	    (substring-move-left! (car strings) 0 n result index)
+	    (if (null? (cdr strings))
+		(string-set! result (fix:+ index n) #\NUL)
+		(begin
+		  (string-set! result (fix:+ index n) #\space)
+		  (loop (cdr strings) (fix:+ (fix:+ index n) 1)))))))
+      result)))
+
+(define (os2/rewrite-subprocess-environment strings)
+  (let ((result
+	 (make-string
+	  (reduce +
+		  0
+		  (map (lambda (s) (fix:+ (string-length s) 1)) strings)))))
+    (let loop ((strings strings) (index 0))
+      (if (not (null? strings))
+	  (let ((n (string-length (car strings))))
+	    (substring-move-left! (car strings) 0 n result index)
+	    (string-set! result (fix:+ index n) #\NUL)
+	    (loop (cdr strings) (fix:+ (fix:+ index n) 1)))))
+    result))
