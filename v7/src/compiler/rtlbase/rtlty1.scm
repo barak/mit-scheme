@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.17 1990/05/03 15:10:31 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.18 1991/05/06 22:42:42 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -158,6 +158,7 @@ MIT in each case. |#
 (define-rtl-statement invocation:lexpr rtl: pushed continuation procedure)
 (define-rtl-statement invocation:computed-lexpr rtl: pushed continuation)
 (define-rtl-statement invocation:uuo-link rtl: pushed continuation name)
+(define-rtl-statement invocation:global-link rtl: pushed continuation name)
 (define-rtl-statement invocation:primitive rtl: pushed continuation procedure)
 (define-rtl-statement invocation:special-primitive rtl: pushed continuation
   procedure)

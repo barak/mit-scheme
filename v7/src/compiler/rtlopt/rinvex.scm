@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.4 1990/05/03 15:22:29 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.5 1991/05/06 22:44:31 jinx Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -254,6 +254,7 @@ MIT in each case. |#
 	    INVOCATION:LEXPR
 	    INVOCATION:PRIMITIVE
 	    INVOCATION:UUO-LINK
+	    INVOCATION:GLOBAL-LINK
 	    OPEN-PROCEDURE-HEADER
 	    OVERFLOW-TEST
 	    POP-RETURN

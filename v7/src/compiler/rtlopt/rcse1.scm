@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.20 1990/01/18 22:47:43 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.21 1991/05/06 22:44:07 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,7 @@ MIT in each case. |#
 
 ;;;; RTL Common Subexpression Elimination: Codewalker
 ;;;  Based on the GNU C Compiler
+;;; package: (compiler rtl-cse)
 
 (declare (usual-integrations))
 
@@ -339,6 +340,7 @@ MIT in each case. |#
 (define-cse-method 'INVOCATION:COMPUTED-JUMP method/unknown-invocation)
 (define-cse-method 'INVOCATION:COMPUTED-LEXPR method/unknown-invocation)
 (define-cse-method 'INVOCATION:UUO-LINK method/unknown-invocation)
+(define-cse-method 'INVOCATION:GLOBAL-LINK method/unknown-invocation)
 (define-cse-method 'INVOCATION:PRIMITIVE method/unknown-invocation)
 (define-cse-method 'INVOCATION:SPECIAL-PRIMITIVE method/unknown-invocation)
 
