@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cfg1.scm,v 4.6 2002/02/08 03:07:00 cph Exp $
+$Id: cfg1.scm,v 4.7 2002/02/08 03:31:11 cph Exp $
 
 Copyright (c) 1987, 1989, 1999, 2002 Massachusetts Institute of Technology
 
@@ -25,7 +25,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Node Datatypes
 
-(define cfg-node-tag (make-vector-tag false 'CFG-NODE false))
+(define cfg-node-tag (make-vector-tag #f 'CFG-NODE #f))
 (define cfg-node? (tagged-vector/subclass-predicate cfg-node-tag))
 (define-vector-slots node 1 generation alist previous-edges)
 
@@ -34,13 +34,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  (lambda (node)
    (descriptor-list node node generation alist previous-edges)))
 
-(define snode-tag (make-vector-tag cfg-node-tag 'SNODE false))
+(define snode-tag (make-vector-tag cfg-node-tag 'SNODE #f))
 (define snode? (tagged-vector/subclass-predicate snode-tag))
 (define-vector-slots snode 4 next-edge)
 
 ;;; converted to a macro.
 ;;; (define (make-snode tag . extra)
-;;;   (list->vector (cons* tag false '() '() false extra)))
+;;;   (list->vector (cons* tag #f '() '() #f extra)))
 
 (set-vector-tag-description!
  snode-tag
@@ -48,13 +48,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (append! ((vector-tag-description (vector-tag-parent snode-tag)) snode)
 	    (descriptor-list snode snode next-edge))))
 
-(define pnode-tag (make-vector-tag cfg-node-tag 'PNODE false))
+(define pnode-tag (make-vector-tag cfg-node-tag 'PNODE #f))
 (define pnode? (tagged-vector/subclass-predicate pnode-tag))
 (define-vector-slots pnode 4 consequent-edge alternative-edge)
 
 ;;; converted to a macro.
 ;;; (define (make-pnode tag . extra)
-;;;   (list->vector (cons* tag false '() '() false false extra)))
+;;;   (list->vector (cons* tag #f '() '() #f #f extra)))
 
 (set-vector-tag-description!
  pnode-tag
@@ -107,7 +107,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     edge))
 
 (define-integrable (node->edge node)
-  (create-edge! false false node))
+  (create-edge! #f #f node))
 
 (define (edge-next-node edge)
   (and edge (edge-right-node edge)))
@@ -134,15 +134,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(left-connect (edge-left-connect edge)))
     (if left-node
 	(begin
-	  (set-edge-left-node! edge false)
-	  (set-edge-left-connect! edge false)
-	  (left-connect left-node false)))))
+	  (set-edge-left-node! edge #f)
+	  (set-edge-left-connect! edge #f)
+	  (left-connect left-node #f)))))
 
 (define (edge-disconnect-right! edge)
   (let ((right-node (edge-right-node edge)))
     (if right-node
 	(begin
-	  (set-edge-right-node! edge false)
+	  (set-edge-right-node! edge #f)
 	  (delete-node-previous-edge! right-node edge)))))
 
 (define (edge-disconnect! edge)
