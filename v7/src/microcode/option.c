@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.1 1990/11/13 08:46:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.2 1990/11/14 10:53:20 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -656,7 +656,7 @@ DEFUN (error_library_search, (option, filename, default_p, wdp),
       CONST char * element = (*path++);
       if (element == 0)
 	break;
-      fprintf (stderr, "   %s\n", element);
+      fprintf (stderr, "    %s\n", element);
     }
   termination_init_error ();
 }
