@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.150 2000/03/23 03:19:11 cph Exp $
+;;; $Id: fileio.scm,v 1.151 2000/03/23 22:48:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -568,7 +568,8 @@ Otherwise, a message is written both before and after long file writes."
 		   (lambda () unspecific)
 		   (lambda ()
 		     (os/restore-modes-to-updated-file! pathname
-							modes))))))))))
+							modes))))
+	      (vc-after-save buffer)))))))
 
 (define (verify-visited-file-modification-time? buffer)
   (let ((truename (buffer-truename buffer))
