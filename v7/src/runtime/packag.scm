@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.14 1993/06/10 06:08:20 gjr Exp $
+$Id: packag.scm,v 14.15 1993/06/25 23:11:03 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -179,26 +179,25 @@ MIT in each case. |#
 (define (filename->compiled-object system component)
   (let ((prim (ucode-primitive initialize-c-compiled-block 1)))
     (and (implemented-primitive-procedure? prim)
-	 (let ((name
-		(let* ((p (->pathname component))
-		       (d (pathname-directory p)))
-		  (string-append
-		   (if (or (not d) (null? d))
-		       system
-		       (car (last-pair d)))
-		   "_"
-		   (string-replace (pathname-name p) ; kludge
-				   #\-
-				   #\_)))))
+	 (let* ((name
+		 (let* ((p (->pathname component))
+			(d (pathname-directory p)))
+		   (string-append
+		    (if (or (not d) (null? d))
+			system
+			(car (last-pair d)))
+		    "_"
+		    (string-replace (pathname-name p) ; kludge
+				    #\-
+				    #\_))))
+		(value (prim name)))
 	   (if load/suppress-loading-message?
-	       (prim name)
+	       value
 	       (let ((port (nearest-cmdl/port)))
 		 (fresh-line port)
-		 (write-string ";Initializing " port)
+		 (write-string ";Initialized " port)
 		 (write name port)
-		 (let ((value (prim name)))
-		   (write-string " -- done" port)
-		   value)))))))
+		 value))))))
 
 (define-integrable (package/reference package name)
   (lexical-reference (package/environment package) name))
