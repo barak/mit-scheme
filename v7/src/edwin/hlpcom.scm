@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: hlpcom.scm,v 1.120 2000/06/15 00:58:43 cph Exp $
+;;; $Id: hlpcom.scm,v 1.121 2000/10/26 19:25:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -299,7 +299,9 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	      (buffer-not-modified! buffer)))))))
 
 (define (with-output-to-help-display thunk)
-  (with-output-to-temporary-buffer "*Help*" '(READ-ONLY) thunk))
+  (string->temporary-buffer (with-output-to-string thunk)
+			    "*Help*"
+			    '(READ-ONLY)))
 
 (define (write-description description #!optional port)
   (write-string (substitute-command-keys description)
