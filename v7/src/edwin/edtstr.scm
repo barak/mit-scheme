@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edtstr.scm,v 1.30 2003/03/06 05:05:52 cph Exp $
+$Id: edtstr.scm,v 1.31 2003/03/06 05:14:21 cph Exp $
 
 Copyright 1989,1990,1991,1992,2003 Massachusetts Institute of Technology
 
@@ -113,7 +113,7 @@ USA.
      (lambda ()
        (set-editor-button-event! current-editor old-button-event)))))
 
-(define-record-type button-record-type
+(define-record-type <button>
   (%%make-button number down?)
   button?
   (number button/number)
@@ -152,9 +152,9 @@ USA.
   button
   0)
 
-(set-record-type-unparser-method! button-record-type
-  (unparser/standard-method (record-type-name button-record-type)
-    (lambda (state button)
-      (unparse-string state (if (button/down? button) "down" "up"))
-      (unparse-char state #\space)
-      (unparse-object state (button/number button)))))
+(set-record-type-unparser-method! <button>
+  (standard-unparser-method (record-type-name <button>)
+    (lambda (button port)
+      (write-string (if (button/down? button) "down" "up") port)
+      (write-char #\space port)
+      (write (button/number button) port))))
