@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prpgsql.c,v 1.3 2003/06/06 23:36:12 cph Exp $
+$Id: prpgsql.c,v 1.4 2003/06/08 04:37:57 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -126,12 +126,14 @@ DEFINE_PRIMITIVE ("PQ-EXEC", Prim_pq_exec, 3, 3, 0)
 }
 
 DEFINE_PRIMITIVE ("PQ-MAKE-EMPTY-PG-RESULT", Prim_pq_make_empty_pg_result,
-		  2, 2, 0)
+		  3, 3, 0)
 {
-  PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN
-    (ANY_TO_UINT (PQmakeEmptyPGresult ((ARG_CONN (1)),
-				       (ARG_EXEC_STATUS (1)))));
+  PRIMITIVE_HEADER (3);
+  CHECK_ARG (3, WEAK_PAIR_P);
+  SET_PAIR_CDR ((ARG_REF (3)),
+		(ANY_TO_UINT (PQmakeEmptyPGresult ((ARG_CONN (1)),
+						   (ARG_EXEC_STATUS (1))))));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("PQ-RESULT-STATUS", Prim_pq_result_status, 1, 1, 0)
