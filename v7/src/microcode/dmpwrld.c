@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.21 1987/01/22 14:23:30 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.22 1987/04/09 15:59:37 jinx Exp $
  *
  * This file contains a primitive to dump an executable version of Scheme.
  */
@@ -42,12 +42,8 @@ MIT in each case. */
 #include "Error: dumpworld.c does not work on non-unix machines."
 #endif
 
-/* Suns and others probably work also, but we have no machines
-   where to try them out.
-*/
-
-#if (!defined(vax) && !defined(hp9000s200) && !defined(celerity))
-#include "Error: dumpworld.c only supported for vax and hp9000s200."
+#if (!defined(vax) && !defined(hp9000s200) && !defined(celerity) && !defined(sun3))
+#include "Error: dumpworld.c only works on a few machines."
 #endif
 
 /* Making sure that IO will be alright when restored. */
