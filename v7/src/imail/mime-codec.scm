@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 1.8 2000/06/07 18:37:25 cph Exp $
+;;; $Id: mime-codec.scm,v 1.9 2000/06/08 01:46:37 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -68,9 +68,9 @@
 	     (let ((char (string-ref string start))
 		   (start (fix:+ start 1)))
 	       (cond ((not (char-lwsp? char))
-		      (if (char-set-member? char-set:qp-encoded char)
-			  (write-qp-encoded context char)
-			  (write-qp-clear context char))
+		      (if (char-qp-unencoded? char)
+			  (write-qp-clear context char)
+			  (write-qp-encoded context char))
 		      (loop start))
 		     ((and (eq? type 'PARTIAL)
 			   (not (fix:< start end)))
@@ -112,8 +112,8 @@
   (let ((port (qp-encoding-context/port context))
 	(column (qp-encoding-context/column context))
 	(d (char->integer char)))
-    (let ((c1 (digit->char (fix:lsh d -4) 16))
-	  (c2 (digit->char (fix:and d #x0F) 16)))
+    (let ((c1 (hex-digit->char (fix:lsh d -4)))
+	  (c2 (hex-digit->char (fix:and d #x0F))))
       (if (fix:= column 73)
 	  (set-qp-encoding-context/pending-output! context (string #\= c1 c2))
 	  (begin
@@ -165,177 +165,179 @@
 				(port text?)))
   (port #f read-only #t)
   (text? #f read-only #t)
-  ;; Either #F, or a string.  If a string, the string will entirely
-  ;; consist of LWSP characters.  This is whitespace that appeared at
-  ;; the end of an input packet.  We are waiting to see if it is
-  ;; followed by a newline, meaning it is to be discarded, or
-  ;; otherwise is part of the output.
-  (pending #f)
-  ;; Either #F, 'EQUALS, or a character.  If not #F, it indicates that
-  ;; a packet ended with an unfinished = sequence that we can't decode
-  ;; until we get more characters.  The symbol 'EQUALS means we saw
-  ;; the equals sign but nothing else.  A character means we saw the
-  ;; equals sign and that character.
-  (partial #f))
+  ;; Pending input that can't be processed until more input is
+  ;; available.  Can take on one of the following values:
+  ;; * #F means no pending input.
+  ;; * A string, consisting entirely of LWSP characters, is whitespace
+  ;;   that appeared at the end of an input packet.  We are waiting to
+  ;;   see if it is followed by a newline, meaning it is to be
+  ;;   discarded.  Otherwise it is part of the output.
+  ;; * The character #\=, meaning that the equals-sign character has
+  ;;   been seen and we need more characters to decide what to do with
+  ;;   it.
+  ;; * A hexadecimal-digit character (0-9, A-F), meaning that an
+  ;;   equals sign and that character have been seen, and we are
+  ;;   waiting for the second hexadecimal digit to arrive.
+  (pending #f))
 
 (define (decode-quoted-printable:finalize context)
-  (decode-qp-pending context 'INPUT-END))
+  (decode-qp context "" 0 0 'INPUT-END))
 
 (define (decode-quoted-printable:update context string start end)
   (let loop ((start start))
-    (if (fix:< start end)
-	(let ((i (substring-find-next-char string start end #\newline)))
-	  (if i
-	      (begin
-		(let ((i (skip-lwsp-backwards string start i)))
-		  (cond ((fix:< start i)
-			 (decode-qp-pending context 'PARTIAL)
-			 (decode-qp context string start i 'LINE-END))
-			((not (decode-qp-pending context 'LINE-END))
-			 (decode-qp context "" 0 0 'LINE-END))))
-		(loop (fix:+ i 1)))
-	      (let ((end* (skip-lwsp-backwards string start end)))
-		(if (fix:< start end*)
-		    (begin
-		      (decode-qp-pending context 'PARTIAL)
-		      (decode-qp context string start end* 'PARTIAL)))
-		(if (fix:< end* end)
-		    (set-qp-decoding-context/pending!
-		     context
-		     (let ((string (substring string end* end))
-			   (pending (qp-decoding-context/pending context)))
-		       (if pending
-			   (string-append pending string)
-			   string))))))))))
-
-(define (decode-qp-pending context type)
-  (let ((pending (qp-decoding-context/pending context)))
-    (and pending
-	 (begin
-	   (set-qp-decoding-context/pending! context #f)
-	   (decode-qp context pending 0
-		      (if (eq? type 'PARTIAL) (string-length pending) 0)
-		      type)
-	   #t))))
+    (let ((i (substring-find-next-char string start end #\newline)))
+      (if i
+	  (begin
+	    (decode-qp context
+		       string start (skip-lwsp-backwards string start i)
+		       'LINE-END)
+	    (loop (fix:+ i 1)))
+	  (decode-qp context string start end 'PARTIAL)))))
 
 (define (decode-qp context string start end type)
-  (let ((port (qp-decoding-context/port context)))
-    (let loop ((start (decode-qp-partial context string start end type)))
-      (let ((i
-	     (substring-find-next-char-in-set
-	      string start end char-set:qp-encoded)))
-	(if i
-	    (begin
-	      (if (fix:< start i)
-		  (write-substring string start i port))
-	      (cond ((not (char=? (string-ref string i) #\=))
-		     ;; This case is illegal.  RFC 2045 recommends
-		     ;; dropping the char altogether.
-		     (loop (fix:+ i 1)))
-		    ((fix:< (fix:+ i 2) end)
-		     (loop
-		      (fix:+ (fix:+ i 1)
-			     (decode-qp-hex-octet
-			      context
-			      (string-ref string (fix:+ i 1))
-			      (string-ref string (fix:+ i 2))))))
-		    ((eq? type 'PARTIAL)
-		     (set-qp-decoding-context/partial!
-		      context
-		      (if (fix:< (fix:+ i 1) end)
-			  (string-ref string (fix:+ i 1))
-			  'EQUALS)))
-		    ((fix:< (fix:+ i 1) end)
-		     ;; This case is illegal.  RFC 2045 recommends
-		     ;; leaving it unconverted.
-		     (write-char #\= port)
-		     (write-char (string-ref string (fix:+ i 1)) port))
-		    ((eq? type 'INPUT-END)
-		     ;; This case is illegal.  RFC 2045 recommends
-		     ;; leaving it unconverted.
-		     (write-char #\= port))
-		    (else
-		     ;; This is a soft line break.
-		     unspecific)))
-	    (begin
-	      (if (fix:< start end)
-		  (write-substring string start end port))
-	      (if (eq? type 'LINE-END)
-		  (if (qp-decoding-context/text? context)
-		      (if (eq? (qp-decoding-context/partial context) 'EQUALS)
-			  ;; This is a soft line break.
-			  (set-qp-decoding-context/partial! context #f)
-			  ;; This is a hard line break.
-			  (newline port))
-		      ;; I think this is illegal (RFC 2045 doesn't
-		      ;; say).  Most sensible thing to do is treat it
-		      ;; like a soft line break.
-		      unspecific))))))))
+  (let ((port (qp-decoding-context/port context))
+	(end* (skip-lwsp-backwards string start end)))
 
-(define char-set:qp-encoded
-  (char-set-invert
-   (char-set-union (char-set-difference (ascii-range->char-set #x21 #x7F)
-					(char-set #\=))
-		   char-set:lwsp)))
+    (define (loop start)
+      (if (fix:< start end*)
+	  (let ((char (string-ref string start))
+		(start (fix:+ start 1)))
+	    (if (char=? char #\=)
+		(handle-equals start)
+		(begin
+		  ;; RFC 2045 recommends dropping illegal encoded char.
+		  (if (char-qp-unencoded? char)
+		      (write-char char port))
+		  (loop start))))
+	  (finish)))
+
+    (define (handle-equals start)
+      (if (fix:< (fix:+ start 1) end*)
+	  (loop (decode-qp-hex context
+			       (string-ref string start)
+			       (string-ref string (fix:+ start 1))
+			       (fix:+ start 2)))
+	  (begin
+	    (if (fix:< start end*)
+		(let ((char (string-ref string start)))
+		  (if (char-hex-digit? char)
+		      (set-qp-decoding-context/pending! context char)
+		      ;; Illegal: RFC 2045 recommends leaving as is.
+		      (begin
+			(write-char #\= port)
+			(write-char char port))))
+		(set-qp-decoding-context/pending! context #\=))
+	    (finish))))
+
+    (define (finish)
+      (let ((pending (qp-decoding-context/pending context)))
+	(set-qp-decoding-context/pending! context #f)
+	(cond ((eq? type 'PARTIAL)
+	       (set-qp-decoding-context/pending!
+		context
+		(decode-qp-pending-string pending string end* end)))
+	      ((not pending)
+	       (if (and (eq? type 'LINE-END)
+			(qp-decoding-context/text? context))
+		   ;; Hard line break.
+		   (newline port)))
+	      ((eqv? pending #\=)
+	       (if (eq? type 'LINE-END)
+		   ;; Soft line break.
+		   unspecific
+		   ;; Illegal: RFC 2045 recommends leaving as is.
+		   (write-char #\= port)))
+	      ((char? pending)
+	       ;; Illegal: RFC 2045 recommends leaving as is.
+	       (write-char #\= port)
+	       (write-char pending port))
+	      ((string? pending)
+	       ;; Trailing whitespace: discard.
+	       unspecific)
+	      (else (error "Illegal PENDING value:" pending)))))
+
+    (let ((pending (qp-decoding-context/pending context)))
+      (if (and pending (fix:< start end*))
+	  (begin
+	    (set-qp-decoding-context/pending! context #f)
+	    (cond ((eqv? pending #\=)
+		   (handle-equals start))
+		  ((char? pending)
+		   (loop (decode-qp-hex context
+					pending
+					(string-ref string start)
+					(fix:+ start 1))))
+		  ((string? pending)
+		   (write-string pending port)
+		   (loop start))
+		  (else (error "Illegal PENDING value:" pending))))
+	  (loop start)))))
 
-(define (decode-qp-partial context string start end type)
-  (let ((partial (qp-decoding-context/partial context)))
-    (cond ((not (and partial (fix:< start end)))
-	   (if (and partial (not (eq? type 'PARTIAL)))
-	       (let ((port (qp-decoding-context/port context)))
-		 ;; If PARTIAL is a character, this is illegal.
-		 ;; Otherwise, this is a soft line break.
-		 (cond ((char? partial)
-			;; Illegal.
-			(write-char #\= port)
-			(write-char partial port)
-			(set-qp-decoding-context/partial! context #f))
-		       ((eq? type 'INPUT-END)
-			;; Illegal.
-			(write-char #\= port)
-			(set-qp-decoding-context/partial! context #f))
-		       (else
-			;; Soft line break.
-			unspecific))))
-	   start)
-	  ((eq? partial 'EQUALS)
-	   (if (fix:< (fix:+ start 1) end)
-	       (begin
-		 (set-qp-decoding-context/partial! context #f)
-		 (fix:+ start
-			(decode-qp-hex-octet
-			 context
-			 (string-ref string start)
-			 (string-ref string (fix:+ start 1)))))
-	       (begin
-		 (set-qp-decoding-context/partial! context
-						   (string-ref string start))
-		 (fix:+ start 1))))
-	  (else
-	   (set-qp-decoding-context/partial! context #f)
-	   (fix:+ start
-		  (fix:- (decode-qp-hex-octet context
-					      partial
-					      (string-ref string start))
-			 1))))))
+(define (decode-qp-pending-string pending string start end)
+  (if (fix:< start end)
+      (if pending
+	  (let ((s
+		 (make-string
+		  (fix:+ (string-length pending) (fix:- end start)))))
+	    (substring-move! string start end
+			     s (string-move! pending s 0))
+	    s)
+	  (substring string start end))
+      pending))
 
-(define (decode-qp-hex-octet context c1 c2)
+(define-integrable (char-qp-unencoded? char)
+  (char-set-member? char-set:qp-unencoded char))
+
+(define char-set:qp-unencoded
+  (char-set-union (char-set-difference (ascii-range->char-set #x21 #x7F)
+				       (char-set #\=))
+		  char-set:lwsp))
+
+(define (decode-qp-hex context c1 c2 start)
   (let ((port (qp-decoding-context/port context)))
     (let ((char
-	   (let ((d1 (char->digit c1 16))
-		 (d2 (char->digit c2 16)))
-	     (and d1 d2
+	   (let ((d1 (char->hex-digit c1))
+		 (d2 (char->hex-digit c2)))
+	     (and (fix:< d1 #x10)
+		  (fix:< d2 #x10)
 		  (integer->char (fix:or (fix:lsh d1 4) d2))))))
       (if char
 	  (begin
 	    (write-char char port)
-	    2)
+	    start)
 	  ;; This case is illegal.  RFC 2045 recommends
 	  ;; leaving it unconverted.
 	  (begin
 	    (write-char #\= port)
 	    (write-char c1 port)
-	    1)))))
+	    (fix:- start 1))))))
+
+(define-integrable (char-hex-digit? char)
+  (fix:< (char->hex-digit char) #x10))
+
+(define-integrable (char->hex-digit char)
+  (vector-8b-ref hex-char-table (char->integer char)))
+
+(define-integrable (hex-digit->char digit)
+  (string-ref hex-digit-table digit))
+
+(define hex-char-table)
+(define hex-digit-table)
+(let ((char-table (make-string 256 (integer->char #xff)))
+      (digit-table (make-string 16)))
+  (define (do-range low high value)
+    (do-char low value)
+    (if (fix:< low high)
+	(do-range (fix:+ low 1) high (fix:+ value 1))))
+  (define (do-char code value)
+    (vector-8b-set! char-table code value)
+    (vector-8b-set! digit-table value code))
+  (do-range (char->integer #\0) (char->integer #\9) 0)
+  (do-range (char->integer #\A) (char->integer #\F) 10)
+  (do-range (char->integer #\a) (char->integer #\f) 10)
+  (set! hex-char-table char-table)
+  (set! hex-digit-table digit-table)
+  unspecific)
 
 ;;;; Encode BASE64
 
@@ -520,7 +522,6 @@
   (define (do-char code value)
     (vector-8b-set! char-table code value)
     (vector-8b-set! digit-table value code))
-    
   (do-range (char->integer #\A) (char->integer #\Z) 0)
   (do-range (char->integer #\a) (char->integer #\z) 26)
   (do-range (char->integer #\0) (char->integer #\9) 52)
