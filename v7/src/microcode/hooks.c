@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.33 1988/10/21 00:12:37 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.34 1988/12/08 10:48:14 cph Exp $
  *
  * This file contains various hooks and handles which connect the
  * primitives with the main interpreter.
@@ -556,7 +556,7 @@ See `mask_interrupt_enables' for more information on interrupts.")
 }
 
 DEFINE_PRIMITIVE ("CLEAR-INTERRUPTS!", Prim_clear_interrupts, 1, 1, 
-  "Clears the interrupt bits in the MASK argument.
+  "Clears the interrupt bits in the MASK argument.\n\
 The bits in MASK are interpreted as for `get-interrupt-enables'.")
 {
   PRIMITIVE_HEADER (1);
