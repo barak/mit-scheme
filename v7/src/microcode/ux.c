@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.18 2000/01/31 03:32:37 cph Exp $
+$Id: ux.c,v 1.19 2000/01/31 03:42:03 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -656,21 +656,13 @@ void *
 freebsd_heap_malloc (unsigned long requested_length)
 {
   unsigned long ps = (getpagesize ());
-  char * p = ((char *) ps);
-  void * addr;
-  while (p < 0x04000000)
-    {
-      addr
-	= (mmap (p,
-		 (((requested_length + (ps - 1)) / ps) * ps),
-		 (PROT_EXEC | PROT_READ | PROT_WRITE),
-		 (MAP_PRIVATE | MAP_ANON | MAP_FIXED),
-		 (-1), 0));
-      if (addr != MAP_FAILED)
-	return (addr);
-      p += ps;
-    }
-  return (0);
+  void * addr
+    = (mmap (((void *) ps),
+	     (((requested_length + (ps - 1)) / ps) * ps),
+	     (PROT_EXEC | PROT_READ | PROT_WRITE),
+	     (MAP_PRIVATE | MAP_ANON | MAP_FIXED),
+	     (-1), 0));
+  return ((addr == MAP_FAILED) ? 0 : addr);
 }
 
 #endif /* __FreeBSD__ */
