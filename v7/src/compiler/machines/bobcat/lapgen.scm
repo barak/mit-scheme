@@ -37,7 +37,7 @@
 
 ;;;; RTL Rules for 68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.151 1987/01/10 00:29:59 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.152 1987/01/10 03:12:31 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -234,9 +234,9 @@
 (define reg:enclose-result '(@AO 6 #x0014))
 (define reg:compiled-memtop '(@A 6))
 
-(define popper:apply-closure '(@AO 6 #x016E))
-(define popper:apply-stack '(@AO 6 #x01AE))
-(define popper:value '(@AO 6 #x01EE))
+(define popper:apply-closure '(@AO 6 #x0168))
+(define popper:apply-stack '(@AO 6 #x01A8))
+(define popper:value '(@AO 6 #x01E8))
 
 ;;;; Transfers to Registers
 
@@ -738,8 +738,7 @@
   (list '(MOVE L (& #x00200000) (@-A 7))))
 
 (define (apply-closure-sequence frame-size receiver-offset label)
-  `((MOVEQ (& -1) (D 0))
-    ,(load-dnw frame-size 1)
+  `(,(load-dnw frame-size 1)
     (LEA (@AO 7 ,(* receiver-offset 4)) (A 0))
     (LEA (@PCR ,label) (A 1))
     (JMP ,popper:apply-closure)))
@@ -754,8 +753,7 @@
 (define-rule statement
   (MESSAGE-SENDER:VALUE (? receiver-offset))
   `(,@(clear-map!)
-    (MOVEQ (& -1) (D 0))
-    (LEA (@AO 7 ,(* receiver-offset 4)) (A 0))
+    ,@(increment-anl 7 receiver-offset)
     (JMP ,popper:value)))
 
 ;;; end USING-SYNTAX
