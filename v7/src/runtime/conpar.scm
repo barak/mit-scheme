@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.13 1990/04/12 22:54:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.14 1990/06/28 16:36:12 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -682,15 +682,31 @@ MIT in each case. |#
 	  (newline)
 	  (write-string ";; Top of the stack")))))
 
+(define (write-hex value)
+  (if (< value #x10)
+      (write value)
+      (begin
+	(write-string "#x")
+	(write-string (number->string value #x10)))))
+
 (define (hardware-trap-frame/describe frame long?)
   (guarantee-hardware-trap-frame frame)
   (let ((name (stack-frame/ref frame hardware-trap/signal-name-index))
 	(state (stack-frame/ref frame hardware-trap/state-index)))
-    (if name
-	(begin
+    (if (not name)
+	(write-string "User microcode reset")
+	(let ((code (stack-frame/ref frame hardware-trap/code-index)))
 	  (write-string "Hardware trap ")
-	  (write-string name))
-	(write-string "User microcode reset"))
+	  (write-string name)
+	  (write-string " (")
+	  (if (and (pair? code) (cdr code))
+	      (write-string (cdr code))
+	      (begin
+		(write-string "code = ")
+		(write-hex (if (pair? code)
+			       (car code)
+			       code))))
+	  (write-string ")")))
     (if long?
 	(case state
 	  ((0)				; unknown
@@ -700,10 +716,7 @@ MIT in each case. |#
 	   (write (stack-frame/ref frame hardware-trap/pc-info1-index)))
 	  ((2)				; compiled code
 	   (write-string " at offset ")
-	   (write-string
-	    (number->string (stack-frame/ref frame
-					     hardware-trap/pc-info2-index)
-			    16))
+	   (write-hex (stack-frame/ref frame hardware-trap/pc-info2-index))
 	   (newline)
 	   (write-string "within ")
 	   (let ((block (stack-frame/ref frame hardware-trap/pc-info1-index)))
