@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.1 1996/07/26 14:25:07 adams Exp $
+$Id: coerce.scm,v 1.2 1996/07/26 14:38:01 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -35,7 +35,7 @@ MIT in each case. |#
 ;;;; Coerce-to-compiled-procedure
 ;;; package: (runtime coerce-to-compiled-procedure)
 
-;;  This file must be syntaxed with teh 8.0 compiler loaded
+;;  This file must be syntaxed with the 8.0 compiler loaded
 
 (declare (usual-integrations))
 
@@ -97,18 +97,18 @@ MIT in each case. |#
 	     (else (default))))
 	  ((2)
 	   (case max
-	     ((3)  (lambda (a1) (f a1 xx)))
-	     ((4)  (lambda (a1) (f a1 xx xx)))
-	     ((5)  (lambda (a1) (f a1 xx xx xx)))
+	     ((3)  (lambda (a1) (%funcall f a1 xx)))
+	     ((4)  (lambda (a1) (%funcall f a1 xx xx)))
+	     ((5)  (lambda (a1) (%funcall f a1 xx xx xx)))
 	     (else (default))))
 	  ((3)
 	   (case max
-	     ((4)  (lambda (a1 a2) (f a1 a2 xx)))
-	     ((5)  (lambda (a1 a2) (f a1 a2 xx xx)))
+	     ((4)  (lambda (a1 a2) (%funcall f a1 a2 xx)))
+	     ((5)  (lambda (a1 a2) (%funcall f a1 a2 xx xx)))
 	     (else (default))))
 	  ((4)
 	   (case max
-	     ((5)  (lambda (a1 a2 a3) (f a1 a2 a3 xx)))
+	     ((5)  (lambda (a1 a2 a3) (%funcall f a1 a2 a3 xx)))
 	     (else (default))))
 	  (else (default))))
        (else;; max >= 128

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.60 1996/07/23 03:44:03 adams Exp $
+$Id: make.scm,v 14.61 1996/07/26 14:38:26 adams Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -63,6 +63,11 @@ MIT in each case. |#
 ;; This definition is replaced later in the boot sequence.
 
 (define apply (ucode-primitive apply 2))
+
+;; So is this definition.
+
+(define coerce-to-compiled-procedure
+  (ucode-primitive coerce-to-compiled-procedure 2))
 
 ;; This must go before the uses of the-environment later,
 ;; and after apply above.
@@ -347,6 +352,7 @@ MIT in each case. |#
 	 ("list" . (RUNTIME LIST))
 	 ("symbol" . ())
 	 ("uproc" . (RUNTIME PROCEDURE))
+	 ("coerce" . (RUNTIME COERCE-TO-COMPILED-PROCEDURE))
 	 ("fixart" . ())
 	 ("random" . (RUNTIME RANDOM-NUMBER))
 	 ("gentag" . (RUNTIME GENERIC-PROCEDURE))
@@ -370,6 +376,8 @@ MIT in each case. |#
 		      'CONSTANT-SPACE/BASE
 		      constant-space/base)
   (package-initialize '(RUNTIME LIST) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME COERCE-TO-COMPILED-PROCEDURE)
+		      'INITIALIZE-PACKAGE! true)
   (package-initialize '(RUNTIME RANDOM-NUMBER) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME GENERIC-PROCEDURE) 'INITIALIZE-TAG-CONSTANTS!
 		      #t)

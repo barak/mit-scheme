@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.274 1996/07/26 00:36:11 adams Exp $
+$Id: runtime.pkg,v 14.275 1996/07/26 14:38:16 adams Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -3308,3 +3308,10 @@ MIT in each case. |#
 	  eqht/get
 	  eqht/put!
 	  make-eqht))
+
+
+(define-package (runtime coerce-to-compiled-procedure)
+  (files "coerce")
+  (parent ())
+  (export ()
+	  coerce-to-compiled-procedure))
