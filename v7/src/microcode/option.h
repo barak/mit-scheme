@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: option.h,v 1.14 2003/02/14 18:28:22 cph Exp $
+$Id: option.h,v 1.15 2003/03/20 03:51:14 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1995,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,6 +38,7 @@ extern int option_emacs_subprocess;
 extern int option_force_interactive;
 extern int option_disable_core_dump;
 extern int option_empty_list_eq_false;
+extern int option_suppress_noise;
 
 /* String options */
 extern CONST char ** option_library_path;

@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.113 2003/02/14 18:48:11 cph Exp $
+$Id: boot.c,v 9.114 2003/03/20 03:51:08 cph Exp $
 
-Copyright 1988-2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -384,10 +386,13 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   OS_initialize ();
   if (I_Am_Master)
     {
-      outf_console ("MIT/GNU Scheme running under %s\n", OS_Variant);
-      OS_announcement ();
-      outf_console ("\n");
-      outf_flush_console ();
+      if (!option_suppress_noise)
+	{
+	  outf_console ("MIT/GNU Scheme running under %s\n", OS_Variant);
+	  OS_announcement ();
+	  outf_console ("\n");
+	  outf_flush_console ();
+	}
       Current_State_Point = SHARP_F;
       Fluid_Bindings = EMPTY_LIST;
       INIT_FIXED_OBJECTS ();
@@ -736,4 +741,10 @@ DEFINE_PRIMITIVE ("RELOAD-RETRIEVE-STRING", Prim_reload_retrieve_string, 0, 0, 0
     reload_saved_string = 0;
     PRIMITIVE_RETURN (result);
   }
+}
+
+DEFINE_PRIMITIVE ("SUPPRESS-NOISE", Prim_suppress_noise, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (option_suppress_noise));
 }
