@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.8 1991/02/15 18:14:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.9 1991/05/07 20:22:35 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -46,12 +46,17 @@ MIT in each case. |#
    (merge-pathnames (string->pathname "info")
 		    (pathname-as-directory (string->pathname "edwin")))))
 
+(define (edwin-etc-directory)
+  (system-library-directory-pathname
+   (merge-pathnames (string->pathname "etc")
+		    (pathname-as-directory (string->pathname "edwin")))))
+
+(define (edwin-etc-pathname filename)
+  (let ((pathname
+	 (merge-pathnames (->pathname filename) (edwin-etc-directory))))
+    (if (not (file-exists? pathname))
+	(editor-error "Unable to find file: " (pathname->string pathname)))
+    pathname))
+
 (define (edwin-tutorial-pathname)
-  (bind-condition-handler (list condition-type:open-file-error)
-      (lambda (condition)
-	condition
-	(editor-error "Unable to find TUTORIAL file"))
-    (lambda ()
-      (system-library-pathname
-       (merge-pathnames (string->pathname "TUTORIAL")
-			(pathname-as-directory (string->pathname "edwin")))))))
+  (edwin-etc-pathname "TUTORIAL"))
