@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.7 1994/03/08 21:54:38 cph Exp $
+;;;	$Id: vc.scm,v 1.8 1994/03/08 22:06:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -840,7 +840,7 @@ the value of vc-log-mode-hook."
 ;;;; RCS Commands
 
 (define vc-type:rcs
-  (make-vc-type 'RCS "$Id: vc.scm,v 1.7 1994/03/08 21:54:38 cph Exp $"))
+  (make-vc-type 'RCS "$Id: vc.scm,v 1.8 1994/03/08 22:06:19 cph Exp $"))
 
 (define-vc-master-template vc-type:rcs
   (lambda (pathname)
@@ -1194,7 +1194,7 @@ the value of vc-log-mode-hook."
 	(point-context (vc-mark-context (buffer-point buffer)))
 	(mark-context (vc-mark-context (buffer-mark buffer))))
     (revert-buffer buffer #t dont-confirm?)
-    (update-screens! #f)
+    (update-screens! 'NO-OUTPUT)
     (if (null? point-contexts)
 	(let ((m (vc-find-context buffer point-context)))
 	  (if m
