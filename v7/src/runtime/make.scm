@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.16 1989/08/11 02:59:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.17 1989/08/17 12:18:09 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -44,6 +44,7 @@ MIT in each case. |#
 (define-primitives
   (+ &+)
   binary-fasload
+  environment-link-name
   exit
   (file-exists? 1)
   garbage-collect
@@ -145,7 +146,7 @@ MIT in each case. |#
   (tty-write-string " purified")
   (tty-flush-output)
   object)
-
+
 (define (string-append x y)
   (let ((x-length (string-length x))
 	(y-length (string-length y)))
@@ -228,10 +229,11 @@ MIT in each case. |#
 	      PACKAGE?
 	      SYSTEM-GLOBAL-PACKAGE)))
   (if (not (null? names))
-      (begin (environment-link-name system-global-environment
-				    environment-for-package
-				    (car names))
-	     (loop (cdr names)))))
+      (begin
+	(environment-link-name system-global-environment
+			       environment-for-package
+			       (car names))
+	(loop (cdr names)))))
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
 (eval (fasload "runtim.bcon" #f)
       ;; (cold-load/purify (fasload "runtim.bcon" #f))
@@ -250,8 +252,7 @@ MIT in each case. |#
 	("gc" . (RUNTIME GARBAGE-COLLECTOR)))))
   (if (not (null? files))
       (begin
-	(eval (cold-load/purify
-	       (fasload (map-filename (car (car files))) #t))
+	(eval (cold-load/purify (fasload (map-filename (car (car files))) #t))
 	      (package-reference (cdr (car files))))
 	(loop (cdr files)))))
 (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE!)
@@ -377,4 +378,6 @@ MIT in each case. |#
 
 )
 
-(package/add-child! system-global-package 'USER user-initial-environment)(flush-purification-queue!)(initial-top-level-repl)
+(package/add-child! system-global-package 'USER user-initial-environment)
+(environment-link-name '(RUNTIME ENVIRONMENT) '(PACKAGE) 'PACKAGE-NAME-TAG)
+(flush-purification-queue!)(initial-top-level-repl)
