@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.11 1993/09/11 02:45:55 gjr Exp $
+$Id: ntgui.c,v 1.12 1994/10/05 17:57:47 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -46,9 +46,6 @@ extern /*static*/ HANDLE  ghInstance = 0;
 
 BOOL InitApplication(HANDLE);
 BOOL InitInstance(HANDLE, int);
-
-void *xmalloc(int);
-void xfree(void*);
 
 #ifdef GUI
 int PASCAL
@@ -405,7 +402,7 @@ C_to_Scheme_WndProc_2 (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
       return  DefWindowProc (hwnd, message, wParam, lParam);
     
     result = apply4(general_scheme_wndproc,
-                    ulong_to_integer(hwnd), ulong_to_integer(message),
+                    ulong_to_integer(hwnd),   ulong_to_integer(message),
 		    ulong_to_integer(wParam), ulong_to_integer(lParam));
 
     return  scheme_object_to_windows_object (result);
@@ -584,7 +581,7 @@ DEFINE_PRIMITIVE ("NT:LOAD-LIBRARY", Prim_nt_load_library, 1, 1,
     HANDLE it;
 
     PRIMITIVE_HEADER (1);
-    
+    Primitive_GC_If_Needed (5); /* >= size of the handle if a bignum. */
     CHECK_ARG (1, STRING_P);
     it = LoadLibrary ((LPSTR)STRING_LOC (ARG_REF (1), 0));
     PRIMITIVE_RETURN (long_to_integer (it));
@@ -687,24 +684,6 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
 //    PRIMITIVE_RETURN (long_to_integer (fudge_call_2 (f, call_ff_arg (ARG_REF(2)), call_ff_arg (ARG_REF(3)))));
 //}
 //
-//static long fudge_call_3 (long (* WINAPI f)(long,long,long),
-//                          long a1, long a2, long a3)
-//{
-//    return  f(a1,a2,a3);
-//}
-//
-//DEFINE_PRIMITIVE ("CALL-FF-3", Prim_call_ff_3, 4, 4,
-//"")
-//{
-//    long (*f)(long,long,long);
-//    long result;
-//    
-//    PRIMITIVE_HEADER (4);
-//    
-//    f =  arg_integer (1);
-//    result = fudge_call_3 (f, call_ff_arg(ARG_REF(2)), call_ff_arg(ARG_REF(3)), call_ff_arg(ARG_REF(4)));
-//    PRIMITIVE_RETURN (long_to_integer (result));
-//}
 
 static  SCHEME_OBJECT call_ff_really()
 {
@@ -754,8 +733,8 @@ static  SCHEME_OBJECT call_ff_really()
       local.old_esp = saved_esp;
       __asm
       {
-	// Important: The order of these instructions guards against
-	// stack pointer relative addressing.
+	// Important: The order of these instructions keeps stack pointer
+        // relative addressing correct.
 	mov	eax, dword ptr [function_address]
 	mov	dword ptr [saved_esp], esp
 	mov	esp, dword ptr [arg_sp]
@@ -775,6 +754,7 @@ DEFINE_PRIMITIVE ("CALL-FF", Prim_call_ff, 0, LEXPR, 0)
        rather than in a bad position in relation to the bogus C argument
        stack */
     PRIMITIVE_HEADER (LEXPR);
+    Primitive_GC_If_Needed(5); /* for possible bignum result */
     PRIMITIVE_RETURN (call_ff_really());
 }
 
@@ -852,24 +832,6 @@ DEFINE_PRIMITIVE ("UINT32-OFFSET-SET!", Prim_uint32_offset_set, 3, 3,
       * (unsigned long*) (((char*)base)+offset)  =  value;
     }
     PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-static void *
-xmalloc (int size)
-{
-    void *result = malloc(size);
-    if (!result) {
-      outf_fatal ("ntgui: xmalloc failed");
-      outf_flush_fatal ();
-      abort ();
-    }
-    return  result;
-}
-
-static void
-xfree (void *p)
-{
-    free (p);
 }
 
 /* GUI utilities for debuggging .*/
