@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.5 1992/01/27 04:24:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.6 1992/01/27 14:24:56 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -14,11 +14,31 @@ restrictions and understandings.
 1. Any copy made of this software must include this copyright notice
 in full.
 
-MOVB	vs.	MOVW
-ADDB	vs.	ADDW
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
 they make, so that these may be included in future releases; and (b)
-The assembler assumes that it is always running in 32-bit mode.
-It matters for immediate operands, displacements in addressing modes, and displacements in pc-relative jump  instructions.
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; LAP Generation Rules: Fixnum operations.
+;;; package: (compiler lap-syntaxer)
+
+(declare (usual-integrations))
+
+;;;; Making and examining fixnums
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
