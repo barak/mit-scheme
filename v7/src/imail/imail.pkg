@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.90 2001/10/10 04:26:26 cph Exp $
+;;; $Id: imail.pkg,v 1.91 2001/11/05 21:19:37 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -25,6 +25,34 @@
 (global-definitions "../sos/sos")
 (global-definitions "../edwin/edwinunx")
 (global-definitions "../star-parser/parser")
+
+(define-package (runtime url)
+  (file-case options
+    ((load) "url")
+    (else))
+  (parent ())
+  (export ()
+	  url:char-set:escaped
+	  url:char-set:extra
+	  url:char-set:national
+	  url:char-set:punctuation
+	  url:char-set:reserved
+	  url:char-set:safe
+	  url:char-set:unescaped
+	  url:char-set:unreserved
+	  url:decode-string
+	  url:decode-substring
+	  url:encode-string
+	  url:encode-substring
+	  url:match:escape
+	  url:match:host
+	  url:match:hostname
+	  url:match:hostnumber
+	  url:match:uchar
+	  url:match:xchar
+	  url:parse:hostport
+	  url:string-encoded?
+	  url:substring-encoded?))
 
 (define-package (edwin imail)
   (files "imail-util"
