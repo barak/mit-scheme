@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.166 1995/04/13 23:28:20 cph Exp $
+$Id: edwin.pkg,v 1.167 1995/04/15 06:41:26 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1331,8 +1331,6 @@ MIT in each case. |#
 (define-package (edwin sendmail)
   (files "sendmail")
   (parent (edwin))
-  (import (runtime date/time)
-	  get-time)
   (export (edwin)
 	  edwin-command$mail
 	  edwin-command$mail-bcc
