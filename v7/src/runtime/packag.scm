@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.36 2001/12/17 17:40:59 cph Exp $
+$Id: packag.scm,v 14.37 2001/12/18 19:35:50 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -379,12 +379,15 @@ USA.
 	(do ((i 0 (fix:+ i 1)))
 	    ((fix:= i n))
 	  (let ((binding (vector-ref bindings i)))
-	    (link-variables environment
-			    (vector-ref binding 0)
-			    (find-package-environment (vector-ref binding 1))
-			    (if (fix:= (vector-length binding) 3)
-				(vector-ref binding 2)
-				(vector-ref binding 0)))))))))
+	    (let ((source-environment
+		   (find-package-environment (vector-ref binding 1)))
+		  (source-name
+		   (if (fix:= (vector-length binding) 3)
+		       (vector-ref binding 2)
+		       (vector-ref binding 0))))
+	      (guarantee-binding source-environment source-name)
+	      (link-variables environment (vector-ref binding 0)
+			      source-environment source-name))))))))
 
 (define (extend-package-environment environment . name-sources)
   (let ((n
@@ -427,8 +430,18 @@ USA.
 (define (find-package-environment name)
   (package/environment (find-package name)))
 
+(define (guarantee-binding environment name)
+  (if (lexical-unbound? environment name)
+      (local-assignment environment
+			name
+			(primitive-object-set-type (ucode-type reference-trap)
+						   0))))
+
 (define-primitives
-  link-variables)
+  lexical-unbound?
+  link-variables
+  local-assignment
+  primitive-object-set-type)
 
 ;; LOAD-PACKAGES-FROM-FILE is called from the cold load and must only
 ;; use procedures that are inline-coded by the compiler.
