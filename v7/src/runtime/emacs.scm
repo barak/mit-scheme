@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.41 1987/01/23 00:11:34 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.42 1987/03/07 17:36:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -88,7 +88,7 @@
   (with-output-to-string
     (lambda ()
       (write object))))
-
+
 (define (emacs-read-char-immediate)
   (define (loop)
     (let ((char (primitive-read-char-immediate)))
@@ -97,8 +97,12 @@
 	  (begin (emacs-read-finish)
 		 char))))
   (emacs-read-start)
-  (transmit-signal-without-gc #\c)
+  (if (not (primitive-read-char-ready? 0))
+      (transmit-signal-without-gc #\c))
   (loop))
+
+(define primitive-read-char-ready?
+  (make-primitive-procedure 'TTY-READ-CHAR-READY?))
 
 (define primitive-read-char-immediate
   (make-primitive-procedure 'TTY-READ-CHAR-IMMEDIATE))
@@ -163,5 +167,4 @@
 (install!)
 
 ;;; end EMACS-INTERFACE-PACKAGE
-))
 ))
