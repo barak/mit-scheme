@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.18 1995/05/31 00:17:27 cph Exp $
+$Id: os2pm.c,v 1.19 1995/05/31 14:59:48 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -3455,8 +3455,6 @@ create_ps (pst_t type, HDC hdc, qid_t qid)
 		      (PU_PELS | GPIF_DEFAULT | GPIT_MICRO | GPIA_ASSOC)));
   if (hps == 0)
     window_error (GpiCreatePS);
-  if (!GpiSetBackMix (hps, BM_OVERPAINT))
-    window_warning (GpiSetBackMix);
   /* Put color table in RGB mode so we can specify colors
      directly in RGB values rather than as indices.  */
   if (!GpiCreateLogColorTable (hps, LCOL_PURECOLOR, LCOLF_RGB, 0, 0, 0))
@@ -3464,11 +3462,10 @@ create_ps (pst_t type, HDC hdc, qid_t qid)
   (PS_HANDLE (ps)) = hps;
   (PS_ID (ps)) = (allocate_id ((& psid_table), ps));
   (PS_QID (ps)) = qid;
-  (PS_FOREGROUND_COLOR (ps)) = CLR_DEFAULT;
-  (PS_BACKGROUND_COLOR (ps)) = CLR_BACKGROUND;
   (PS_VISUAL_TYPE (ps)) = type;
   (PS_VISUAL (ps)) = 0;
   (PS_CHAR_INCREMENTS (ps)) = 0;
+  ps_set_colors (ps, RGB_BLACK, RGB_WHITE);
   return (ps);
 }
 
