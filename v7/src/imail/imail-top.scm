@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.220 2000/11/13 21:28:37 cph Exp $
+;;; $Id: imail-top.scm,v 1.221 2000/11/27 18:51:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -815,11 +815,12 @@ If point is not on an attachment, prompts for the attachment to save.
 With prefix argument, prompt even when point is on an attachment."
   "P"
   (lambda (always-prompt?)
-    (save-mime-entity (car (maybe-prompt-for-mime-info "Save attachment"
-						       (current-point)
-						       always-prompt?
-						       mime-attachment?))
-		      (imail-folder->buffer (selected-folder) #t))))
+    (let ((buffer (imail-folder->buffer (selected-folder) #t)))
+      (save-mime-entity (car (maybe-prompt-for-mime-info "Save attachment"
+							 (buffer-point buffer)
+							 always-prompt?
+							 mime-attachment?))
+			buffer))))
 
 (define-command imail-mouse-save-mime-entity
   "Save the MIME entity that mouse is on."
