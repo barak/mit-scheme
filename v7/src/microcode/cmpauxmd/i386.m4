@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.26 1992/08/24 15:21:27 jinx Exp $
+###	$Id: i386.m4,v 1.27 1992/09/18 02:05:26 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -292,8 +292,10 @@ use_external_data(Free)
 use_external_data(Ext_Stack_Pointer)
 use_external_data(utility_table)
 
-IFDOS(`define_data(C_Stack_Segment)
-allocate_longword(C_Stack_Segment)')
+IFDOS(`define_data(C_Stack_Segment_Selector)
+allocate_longword(C_Stack_Segment_Selector)
+define_data(Scheme_Stack_Segment_Selector)
+allocate_longword(Scheme_Stack_Segment_Selector)')
 
 define_data(C_Stack_Pointer)
 allocate_longword(C_Stack_Pointer)
@@ -317,6 +319,15 @@ declare_alignment(2)
 define_c_label(i386_interface_initialize)
 	OP(push,l)	REG(ebp)
 	OP(mov,l)	TW(REG(esp),REG(ebp))
+
+							# Initialize stack
+							# selectors
+IFDOS(`	OP(xor,l)	TW(REG(eax),REG(eax))
+	OP(mov,w)	TW(REG(ss),REG(ax))
+	OP(mov,l)	TW(REG(eax),EDR(C_Stack_Segment_Selector))
+	OP(mov,w)	TW(REG(ds),REG(ax))
+	OP(mov,l)	TW(REG(eax),EDR(Scheme_Stack_Segment_Selector))')
+
 	OP(xor,l)	TW(REG(eax),REG(eax))		# No 387 available
 
 # Unfortunately, the `movl cr0,ecx' instruction is privileged.
@@ -361,10 +372,6 @@ define_c_label(C_to_interface)
 	OP(mov,l)	TW(REG(esp),EDR(C_Stack_Pointer))
 							# Register block = %esi
 
-IFDOS(`	OP(mov,w)	TW(REG(ss),REG(ax))		# Obtain stack segment
-							# and preserve it
-	OP(mov,l)	TW(REG(eax),EDR(C_Stack_Segment))')
-
 	OP(lea,l)	TW(ABS(EDR(Registers)),regs)
 	jmp	external_code_reference(interface_to_scheme)
 
@@ -384,8 +391,7 @@ define_debugging_label(scheme_to_interface)
 	OP(mov,l)	TW(REG(esp),EDR(Ext_Stack_Pointer))
 	OP(mov,l)	TW(rfree,EDR(Free))
 
-IFDOS(`	OP(mov,l)	TW(EDR(C_Stack_Segment),REG(edi)) # Swap stack segments
-	OP(mov,w)	TW(REG(di),REG(ss))')
+IFDOS(`	OP(mov,w)	TW(EDR(C_Stack_Segment_Selector),REG(ss))')	# Swap stack segments
 
 	OP(mov,l)	TW(EDR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EDR(C_Frame_Pointer),REG(ebp))
@@ -411,11 +417,11 @@ define_c_label(interface_to_scheme)
 							# Value/dynamic link
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax))
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
+
+							# Swap stack segments
+IFDOS(`	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ss))')
+
 	OP(mov,l)	TW(EDR(Ext_Stack_Pointer),REG(esp))
-
-IFDOS(`	OP(mov,w)	TW(REG(ds),REG(bx))		# Swap stack segments
-	OP(mov,w)	TW(REG(bx),REG(ss))')
-
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential
 							#  dynamic link
