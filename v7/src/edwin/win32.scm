@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: win32.scm,v 1.6 1996/10/07 18:20:09 cph Exp $
+;;;	$Id: win32.scm,v 1.7 1997/01/02 04:39:45 cph Exp $
 ;;;
-;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -414,9 +414,6 @@
 
   (define-integrable (change-event? event)  (fix:fixnum? event))
 
-  (define (read-event block?)
-    (read-event-1 input-screen block?))
-
   (define (process-event event)
     (cond ((win32-key-event? event)
 	   (let ((key (process-key-event event)))
@@ -509,59 +506,62 @@
 
 (define input-screen)
 
-(define (give-up-time-slice!)
-  (if (other-running-threads?)
-      (yield-current-thread)       ; yield to scheme threads
-      (sleep 1)))                  ; ... or to win32 threads / processes
+(define-integrable interrupt-mask/gc+win32
+  ;; Include INTERRUPT-BIT/GLOBAL-1 so that messages are dispatched to
+  ;; the screen by the interrupt-handler.
+  ;;(fix:or interrupt-mask/gc-ok interrupt-bit/global-1)
+  15)
 
-(define (read-event-1 screen block?)
-  (let ((screen-handle (and screen (screen->handle screen))))
-    (let loop ()
-      (define (return-or-block result)
-	(if (and (not result) block?)
-	    (begin
-	      (give-up-time-slice!)
-	      (loop))
-	    result))
-      (let ((interrupt-mask
-	     ;;(set-interrupt-enables! 5)
-	     ;;(set-interrupt-enables! interrupt-mask/gc-ok)
-	     ;; Include INTERRUPT-BIT/GLOBAL-1 so that messages are dispatched
-	     ;; to the screen by the interrupt-handler.
-	     (set-interrupt-enables!
-	      (fix:or interrupt-mask/gc-ok interrupt-bit/global-1))))
-	(if (eq? block? 'IN-UPDATE)
-	    (and screen-handle
-		 (let ((result  (win32-screen-get-event screen-handle)))
-		   (set-interrupt-enables! interrupt-mask)
-		   result))
-	    (cond (inferior-thread-changes?
-		   (set-interrupt-enables! interrupt-mask)
-		   event:inferior-thread-output)
-		  ((process-output-available?)
-		   (set-interrupt-enables! interrupt-mask)
-		   event:process-output)
-		  ((process-status-changes?)
-		   (set-interrupt-enables! interrupt-mask)
-		   event:process-status)
-		  ((or (not screen-handle)
-		       (not (eqv? screen-handle (win32-screen-current-focus))))
-		   ;;(debug 'FIND-FOCUS screen-handle)
-		   (let* ((handle  (win32-screen-current-focus))
-			  (screen* (handle->win32-screen handle)))
-		     (set-interrupt-enables! interrupt-mask)
-		     (if screen*
-			 (begin
-			   (set! input-screen screen*)
-			   (make-input-event 'SELECT-SCREEN
-					     select-screen
-					     screen*))
-			 (return-or-block #F))))
-		  (else
-		   (let ((result (win32-screen-get-event screen-handle)))
-		     (set-interrupt-enables! interrupt-mask)
-		     ;; in lieu of blocking we give up our timeslice.
-		     (return-or-block result)))))))))
+(define (read-event block?)
+  (let ((handle (and input-screen (screen->handle input-screen))))
+    (if (eq? block? 'IN-UPDATE)
+	(read-event-2 handle)
+	(read-event-1 handle block?))))
+
+(define (read-event-1 handle block?)
+  (or (read-event-2 handle)
+      (let loop ()
+	(let ((mask (set-interrupt-enables! interrupt-mask/gc+win32)))
+	  (cond (inferior-thread-changes?
+		 (set-interrupt-enables! mask)
+		 event:inferior-thread-output)
+		((process-output-available?)
+		 (set-interrupt-enables! mask)
+		 event:process-output)
+		((process-status-changes?)
+		 (set-interrupt-enables! mask)
+		 event:process-status)
+		(else
+		 (let ((handle* (win32-screen-current-focus)))
+		   (if (eqv? handle handle*)
+		       (let ((flag
+			      (test-for-input-on-descriptor
+			       ;; console-channel-descriptor here
+			       ;; means "input from message queue".
+			       console-channel-descriptor block?)))
+			 (set-interrupt-enables! mask)
+			 (case flag
+			   ((#F) #f)
+			   ((PROCESS-STATUS-CHANGE) event:process-status)
+			   ((INTERRUPT) (loop))
+			   (else (read-event-1 handle block?))))
+		       (let ((screen* (handle->win32-screen handle*)))
+			 (set-interrupt-enables! mask)
+			 (if screen*
+			     (begin
+			       (set! input-screen screen*)
+			       (make-input-event 'SELECT-SCREEN
+						 select-screen
+						 screen*))
+			     (and block?
+				  (read-event-1 handle block?))))))))))))
+
+(define (read-event-2 handle)
+  (and handle
+       (let ((mask (set-interrupt-enables! interrupt-mask/gc+win32)))
+	 (let ((result (win32-screen-get-event handle)))
+	   (set-interrupt-enables! mask)
+	   result))))
 
 (define (process-change-event event)
   (cond ((fix:= event event:process-output) (accept-process-output))
@@ -586,12 +586,7 @@
   (let ((x-size (screen-x-size screen))
 	(y-size (screen-y-size screen)))
     (win32-screen-set-font! (screen->handle screen) font)
-    ;; This doesn't work, for no obvious reason.  The screen ends up
-    ;; being either too large or too small.  I guess there is some
-    ;; kind of timing error that causes the new size of the screen to
-    ;; be mis-computed by use of old information.
-    ;;(win32-screen/set-size! screen x-size y-size)
-    ))
+    (win32-screen/set-size! screen x-size y-size)))
 
 (define (win32-screen/set-icon! screen icon)
   (win32-screen-set-icon! (screen->handle screen) icon))
