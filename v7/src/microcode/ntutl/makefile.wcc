@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile.wcc,v 1.5 1997/01/05 23:36:01 cph Exp $
+###     $Id: makefile.wcc,v 1.6 1997/01/05 23:36:47 cph Exp $
 ###
 ###     Copyright (c) 1992-97 Massachusetts Institute of Technology
 ###
@@ -442,8 +442,8 @@ fasload.obj : scheme.tch prims.h osscheme.h osfile.h osio.h $(GC_HEAD_FILES) &
 	trap.h option.h prmcon.h load.c fasl.h
 
 hooks.obj : scheme.tch prims.h winder.h history.h
-utils.obj : scheme.tch prims.h winder.h history.h cmpint.h syscall.h
-primutl.obj : scheme.tch os.h prims.h usrdef.h prename.h syscall.h &
+utils.obj : scheme.tch prims.h winder.h history.h cmpint.h syscall.h ntapi.h
+primutl.obj : scheme.tch os.h prims.h usrdef.h prename.h syscall.h ntapi.h &
 	avltree.h $(GC_HEAD_FILES)
 hunk.obj list.obj step.obj vector.obj : scheme.tch prims.h
 sysprim.obj daemon.obj prim.obj extern.obj : scheme.tch prims.h
@@ -508,7 +508,7 @@ prostty.obj : prostty.c ostty.h osctty.h ossig.h osfile.h osio.h &
 prmcon.obj : prmcon.c scheme.tch prims.h prmcon.h $(OS_PRIM_DEPENDENCIES)
 
 NT_DEPENDENCIES = oscond.h ansidecl.h posixtyp.h intext.h &
-		   dstack.h os.h osscheme.h nt.h ntsys.h syscall.h
+		   dstack.h os.h osscheme.h nt.h ntapi.h ntsys.h syscall.h
 ntenv.obj : ntenv.c scheme.tch osenv.h ntscreen.h $(NT_DEPENDENCIES)
 ntfile.obj : ntfile.c osfile.h osio.h ntio.h $(NT_DEPENDENCIES)
 ntfs.obj : ntfs.c osfs.h $(NT_DEPENDENCIES)
@@ -527,7 +527,7 @@ ntkbutl.obj : ntkbutl.asm
 prntenv.obj : prntenv.c $(NT_DEPENDENCIES)
 prntfs.obj : prntfs.c $(NT_DEPENDENCIES) scheme.tch prims.h osfs.h
 prntio.obj : prntio.c $(NT_DEPENDENCIES) scheme.tch prims.h ntio.h osio.h &
-	syscall.h ntscreen.h
+	syscall.h ntapi.h ntscreen.h
 
 cmpauxmd.obj : cmpauxmd.asm
 
