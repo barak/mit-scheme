@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.10 1990/11/02 02:06:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.11 1990/11/09 08:43:59 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -63,7 +63,8 @@ MIT in each case. |#
 	  (let ((type ((ucode-primitive channel-type 1) descriptor))
 		(types
 		 '#(#F FILE PIPE FIFO TERMINAL PTY-MASTER
-		       UNIX-STREAM-SOCKET TCP-STREAM-SOCKET)))
+		       UNIX-STREAM-SOCKET TCP-STREAM-SOCKET
+		       TCP-SERVER-SOCKET DIRECTORY)))
 	    (and (< type (vector-length types))
 		 (vector-ref types type))))))
     (with-absolutely-no-interrupts
@@ -83,6 +84,9 @@ MIT in each case. |#
 		 (loop (cdr channels)))))
       (make-channel descriptor)))
 
+(define-integrable (channel-type=unknown? channel)
+  (false? (channel-type channel)))
+
 (define-integrable (channel-type=file? channel)
   (eq? 'FILE (channel-type channel)))
 
@@ -91,6 +95,9 @@ MIT in each case. |#
 
 (define-integrable (channel-type=pty-master? channel)
   (eq? 'PTY-MASTER (channel-type channel)))
+
+(define-integrable (channel-type=directory? channel)
+  (eq? 'DIRECTORY (channel-type channel)))
 
 (define (channel-close channel)
   ;; This is locked from interrupts, but GC can occur since the
@@ -221,36 +228,28 @@ MIT in each case. |#
 
 ;;;; File Primitives
 
+(define (file-open primitive filename)
+  (let ((channel
+	 (without-interrupts (lambda () (make-channel (primitive filename))))))
+    (if (or (channel-type=directory? channel)
+	    (channel-type=unknown? channel))
+	(begin
+	  (channel-close channel)
+	  (error:datum-out-of-range filename primitive)))
+    channel))
+
 (define (file-open-input-channel filename)
-  (without-interrupts
-   (lambda ()
-     (make-channel ((ucode-primitive file-open-input-channel 1) filename)))))
+  (file-open (ucode-primitive file-open-input-channel 1) filename))
 
 (define (file-open-output-channel filename)
   ((ucode-primitive file-remove-link 1) filename)
-  (without-interrupts
-   (lambda ()
-     (make-channel ((ucode-primitive file-open-output-channel 1) filename)))))
+  (file-open (ucode-primitive file-open-output-channel 1) filename))
 
 (define (file-open-io-channel filename)
-  (without-interrupts
-   (lambda ()
-     (make-channel ((ucode-primitive file-open-io-channel 1) filename)))))
+  (file-open (ucode-primitive file-open-io-channel 1) filename))
 
 (define (file-open-append-channel filename)
-  (without-interrupts
-   (lambda ()
-     (make-channel ((ucode-primitive file-open-append-channel 1) filename)))))
-
-(define (tty-input-channel)
-  (without-interrupts
-   (lambda ()
-     (make-channel ((ucode-primitive tty-input-channel 0))))))
-
-(define (tty-output-channel)
-  (without-interrupts
-   (lambda ()
-     (make-channel ((ucode-primitive tty-output-channel 0))))))
+  (file-open (ucode-primitive file-open-append-channel 1) filename))
 
 (define (file-length channel)
   ((ucode-primitive file-length-new 1) (channel-descriptor channel)))
@@ -263,6 +262,16 @@ MIT in each case. |#
 					 position))
 
 ;;;; Terminal Primitives
+
+(define (tty-input-channel)
+  (without-interrupts
+   (lambda ()
+     (make-channel ((ucode-primitive tty-input-channel 0))))))
+
+(define (tty-output-channel)
+  (without-interrupts
+   (lambda ()
+     (make-channel ((ucode-primitive tty-output-channel 0))))))
 
 (define (terminal-get-state channel)
   ((ucode-primitive terminal-get-state 1) (channel-descriptor channel)))
@@ -309,8 +318,6 @@ MIT in each case. |#
   (without-interrupts
    (lambda ()
      (let ((result ((ucode-primitive open-pty-master 0))))
-       (if (not result)
-	   (error "unable to open pty master"))
        (values (make-channel (vector-ref result 0))
 	       (vector-ref result 1)
 	       (vector-ref result 2))))))
@@ -318,6 +325,21 @@ MIT in each case. |#
 (define (pty-master-send-signal channel signal)
   ((ucode-primitive pty-master-send-signal 2) (channel-descriptor channel)
 					      signal))
+
+(define (pty-master-kill channel)
+  ((ucode-primitive pty-master-kill 1) (channel-descriptor channel)))
+
+(define (pty-master-stop channel)
+  ((ucode-primitive pty-master-stop 1) (channel-descriptor channel)))
+
+(define (pty-master-continue channel)
+  ((ucode-primitive pty-master-continue 1) (channel-descriptor channel)))
+
+(define (pty-master-interrupt channel)
+  ((ucode-primitive pty-master-interrupt 1) (channel-descriptor channel)))
+
+(define (pty-master-quit channel)
+  ((ucode-primitive pty-master-quit 1) (channel-descriptor channel)))
 
 ;;;; File Copying
 
@@ -372,105 +394,101 @@ MIT in each case. |#
   string
   position)
 
-(define-integrable (make-output-buffer channel buffer-size)
-  (%make-output-buffer channel (make-string buffer-size) 0))
+(define (make-output-buffer channel buffer-size)
+  (%make-output-buffer channel
+		       (and (fix:> buffer-size 0) (make-string buffer-size))
+		       0))
 
 (define (output-buffer/close buffer)
   (output-buffer/drain-block buffer)
   (channel-close (output-buffer/channel buffer)))
 
 (define (output-buffer/size buffer)
-  (string-length (output-buffer/string buffer)))
+  (let ((string (output-buffer/string buffer)))
+    (if string
+	(string-length string)
+	0)))
 
 (define (output-buffer/set-size buffer buffer-size)
-  (if (> (output-buffer/position buffer) buffer-size)
-      (let loop () (if (>= (output-buffer/drain buffer) buffer-size) (loop))))
-  (let ((position (output-buffer/position buffer))
-	(string (make-string buffer-size)))
-    (substring-move-left! (output-buffer/string buffer) 0 position string 0)
-    (set-output-buffer/string! buffer string)
-    (if (= position buffer-size) (output-buffer/drain buffer))))
+  (output-buffer/drain-block buffer)
+  (set-output-buffer/string! buffer
+			     (and (fix:> buffer-size 0)
+				  (make-string buffer-size))))
 
 (define output-buffer/buffered-chars
   output-buffer/position)
 
 (define (output-buffer/drain buffer)
-  (let ((position (output-buffer/position buffer)))
-    (if (zero? position)
+  (let ((string (output-buffer/string buffer))
+	(position (output-buffer/position buffer)))
+    (if (or (not string) (zero? position))
 	0
-	(let ((channel (output-buffer/channel buffer))
-	      (string (output-buffer/string buffer)))
-	  (let ((n (channel-write channel string 0 position)))
-	    (cond ((or (not n) (zero? n)) position)
-		  ((< n position)
-		   (let ((position* (- position n)))
-		     (substring-move-left! string n position string 0)
-		     (set-output-buffer/position! buffer position*)
-		     position*))
-		  (else
-		   (set-output-buffer/position! buffer 0)
-		   0)))))))
+	(let ((n
+	       (channel-write (output-buffer/channel buffer)
+			      string 0 position)))
+	  (cond ((or (not n) (fix:= n 0))
+		 position)
+		((< n position)
+		 (let ((position* (fix:- position n)))
+		   (substring-move-left! string n position string 0)
+		   (set-output-buffer/position! buffer position*)
+		   position*))
+		(else
+		 (set-output-buffer/position! buffer 0)
+		 0))))))
 
 (define (output-buffer/flush buffer)
   (set-output-buffer/position! buffer 0))
 
 (define (output-buffer/write-substring buffer string start end)
-  (if (= start end)
-      0
-      (let loop ((start start) (n-left (- end start)) (n-previous 0))
-	(let ((string* (output-buffer/string buffer))
-	      (position (output-buffer/position buffer)))
-	  (let ((length (string-length string*))
-		(position* (+ position n-left)))
-	    (cond ((<= position* length)
-		   (substring-move-left! string start end string* position)
-		   (set-output-buffer/position! buffer position*)
-		   (if (= position* length) (output-buffer/drain buffer))
-		   (+ n-previous n-left))
-		  ((< position length)
-		   (let ((room (- length position)))
-		     (let ((end (+ start room))
-			   (n-previous (+ n-previous room)))
-		       (substring-move-left! string start end string* position)
-		       (set-output-buffer/position! buffer length)
-		       (if (< (output-buffer/drain buffer) length)
-			   (loop end (- n-left room) n-previous)
-			   n-previous))))
-		  (else
-		   (if (< (output-buffer/drain buffer) length)
-		       (loop start n-left n-previous)
-		       n-previous))))))))
-
-(define (output-buffer/write-char buffer char)
-  (let* ((string (output-buffer/string buffer))
-	 (length (string-length string)))
-    (and (or (< (output-buffer/position buffer) length)
-	     (< (output-buffer/drain buffer) length))
-	 (let ((position (output-buffer/position buffer)))
-	   (string-set! string position char)
-	   (let ((position (1+ position)))
-	     (set-output-buffer/position! buffer position)
-	     (if (= position length) (output-buffer/drain buffer))
-	     true)))))
+  (cond ((fix:= start end)
+	 0)
+	((not (output-buffer/string buffer))
+	 (or (channel-write (output-buffer/channel buffer) string start end)
+	     0))
+	(else
+	 (let loop ((start start) (n-left (fix:- end start)) (n-previous 0))
+	   (let ((string* (output-buffer/string buffer))
+		 (position (output-buffer/position buffer)))
+	     (let ((length (string-length string*))
+		   (position* (fix:+ position n-left)))
+	       (cond ((fix:<= position* length)
+		      (substring-move-left! string start end string* position)
+		      (set-output-buffer/position! buffer position*)
+		      (if (fix:= position* length)
+			  (output-buffer/drain buffer))
+		      (fix:+ n-previous n-left))
+		     ((fix:< position length)
+		      (let ((room (fix:- length position)))
+			(let ((end (fix:+ start room))
+			      (n-previous (fix:+ n-previous room)))
+			  (substring-move-left! string start end
+						string* position)
+			  (set-output-buffer/position! buffer length)
+			  (if (fix:< (output-buffer/drain buffer) length)
+			      (loop end (fix:- n-left room) n-previous)
+			      n-previous))))
+		     (else
+		      (if (fix:< (output-buffer/drain buffer) length)
+			  (loop start n-left n-previous)
+			  n-previous)))))))))
 
 (define (output-buffer/drain-block buffer)
   (let loop ()
-    (if (not (zero? (output-buffer/drain buffer)))
+    (if (not (fix:= (output-buffer/drain buffer) 0))
 	(loop))))
+
+(define (output-buffer/write-substring-block buffer string start end)
+  (do ((start start
+	      (fix:+ start
+		     (output-buffer/write-substring buffer string start end))))
+      ((fix:>= start end))))
+
+(define (output-buffer/write-char-block buffer char)
+  (output-buffer/write-substring-block buffer (string char) 0 1))
 
 (define (output-buffer/write-string-block buffer string)
   (output-buffer/write-substring-block buffer string 0 (string-length string)))
-
-(define (output-buffer/write-substring-block buffer string start end)
-  (let loop ((start start) (n-left (- end start)))
-    (let ((n (output-buffer/write-substring buffer string start end)))
-      (if (< n n-left)
-	  (loop (+ start n) (- n-left n))))))
-
-(define (output-buffer/write-char-block buffer char)
-  (let loop ()
-    (if (not (output-buffer/write-char buffer char))
-	(loop))))
 
 ;;;; Buffered Input
 
@@ -483,10 +501,11 @@ MIT in each case. |#
   end-index)
 
 (define (make-input-buffer channel buffer-size)
-  (%make-input-buffer channel
-		      (make-string buffer-size)
-		      buffer-size
-		      buffer-size))
+  (let ((buffer-size (if (fix:> buffer-size 1) buffer-size 1)))
+    (%make-input-buffer channel
+			(make-string buffer-size)
+			buffer-size
+			buffer-size)))
 
 (define (input-buffer/close buffer)
   (set-input-buffer/end-index! buffer 0)
@@ -496,108 +515,114 @@ MIT in each case. |#
   (string-length (input-buffer/string buffer)))
 
 (define (input-buffer/set-size buffer buffer-size)
-  ;; If the buffer's contents will not fit with the new size, the
-  ;; oldest part of it is discarded.
-  (let ((start-index (input-buffer/start-index buffer))
-	(end-index (input-buffer/end-index buffer))
-	(string (make-string buffer-size)))
-    (substring-move-left! (input-buffer/string buffer)
-			  (max start-index (- end-index buffer-size))
-			  end-index
-			  string
-			  0)
-    (set-input-buffer/string! buffer string)
-    (set-input-buffer/start-index! buffer 0)
-    (set-input-buffer/end-index! buffer (- end-index start-index))))
+  ;; Returns the actual buffer size, which may be different from the arg.
+  ;; Discards any buffered characters.
+  (let ((buffer-size (if (fix:> buffer-size 1) buffer-size 1)))
+    (set-input-buffer/string! buffer (make-string buffer-size))
+    (let ((index (if (fix:= (input-buffer/end-index buffer) 0) 0 buffer-size)))
+      (set-input-buffer/start-index! buffer index)
+      (set-input-buffer/end-index! buffer index))
+    buffer-size))
 
 (define (input-buffer/flush buffer)
-  (let ((end-index (input-buffer/end-index buffer)))
-    (if (< (input-buffer/start-index buffer) end-index)
-	(set-input-buffer/start-index! buffer end-index))))
+  (set-input-buffer/start-index! buffer (input-buffer/end-index buffer)))
 
 (define (input-buffer/buffered-chars buffer)
-  (- (input-buffer/end-index buffer) (input-buffer/start-index buffer)))
+  (fix:- (input-buffer/end-index buffer) (input-buffer/start-index buffer)))
 
 (define (input-buffer/chars-remaining buffer)
   (let ((channel (input-buffer/channel buffer)))
     (and (channel-type=file? channel)
-	 (let ((n (- (file-length channel) (file-position channel))))
-	   (and (not (negative? n))
-		(+ (input-buffer/buffered-chars buffer) n))))))
+	 (let ((n (fix:- (file-length channel) (file-position channel))))
+	   (and (fix:>= n 0)
+		(fix:+ (input-buffer/buffered-chars buffer) n))))))
 
 (define (input-buffer/char-ready? buffer interval)
-  (let ((fill
-	 (if (positive? interval)
-	     (lambda ()
-	       (let ((timeout (+ (real-time-clock) interval)))
-		 (let loop ()
-		   (cond ((input-buffer/fill buffer) true)
-			 ((< (real-time-clock) timeout) (loop))
-			 (else false)))))
-	     (lambda ()
-	       (input-buffer/fill buffer)))))
-    (char-ready? buffer
-      (lambda (buffer)
-	(let ((channel (input-buffer/channel buffer)))
-	  (case (channel-blocking? channel)
-	    ((#F) (fill))
-	    ((#T) (with-channel-blocking channel false fill))
-	    (else false)))))))
+  (char-ready? buffer
+    (lambda (buffer)
+      (with-channel-blocking (input-buffer/channel buffer) false
+	(lambda ()
+	  (if (positive? interval)
+	      (let ((timeout (+ (real-time-clock) interval)))
+		(let loop ()
+		  (let ((n (input-buffer/fill buffer)))
+		    (if n
+			(fix:> n 0)
+			(and (< (real-time-clock) timeout)
+			     (loop))))))
+	      (input-buffer/fill* buffer)))))))
 
 (define (char-ready? buffer fill)
   (let ((end-index (input-buffer/end-index buffer)))
-    (cond ((< (input-buffer/start-index buffer) end-index) true)
-	  ((zero? (input-buffer/end-index buffer)) false)
+    (cond ((fix:= (input-buffer/end-index buffer) 0) false)
+	  ((fix:< (input-buffer/start-index buffer) end-index) true)
 	  (else (fill buffer)))))
+
+(define (input-buffer/eof? buffer)
+  ;; This returns true iff it knows that it is at EOF.
+  ;; If BUFFER is non-blocking with no input available, it returns false.
+  (and (not (input-buffer/char-ready? buffer 0))
+       (fix:= (input-buffer/end-index buffer) 0)))
 
 (define (input-buffer/fill buffer)
   (let ((end-index
 	 (let ((string (input-buffer/string buffer)))
 	   (channel-read (input-buffer/channel buffer)
 			 string 0 (string-length string)))))
-    (and end-index
-	 (begin
-	   (set-input-buffer/start-index! buffer 0)
-	   (set-input-buffer/end-index! buffer end-index)
-	   (not (zero? end-index))))))
+    (if end-index
+	(begin
+	  (set-input-buffer/start-index! buffer 0)
+	  (set-input-buffer/end-index! buffer end-index)))
+    end-index))
+
+(define-integrable (input-buffer/fill* buffer)
+  (let ((n (input-buffer/fill buffer)))
+    (and n (fix:> n 0))))
 
 (define (input-buffer/read-char buffer)
   (let ((start-index (input-buffer/start-index buffer))
 	(end-index (input-buffer/end-index buffer)))
-    (if (< start-index end-index)
-	(begin
-	  (set-input-buffer/start-index! buffer (1+ start-index))
-	  (string-ref (input-buffer/string buffer) start-index))
-	(and (not (zero? end-index))
-	     (input-buffer/fill buffer)
-	     (begin
-	       (set-input-buffer/start-index! buffer 1)
-	       (string-ref (input-buffer/string buffer) 0))))))
+    (cond ((fix:< start-index end-index)
+	   (set-input-buffer/start-index! buffer (fix:+ start-index 1))
+	   (string-ref (input-buffer/string buffer) start-index))
+	  ((fix:= end-index 0)
+	   eof-object)
+	  (else
+	   (let ((n (input-buffer/fill buffer)))
+	     (cond ((not n) false)
+		   ((fix:= n 0) eof-object)
+		   (else
+		    (set-input-buffer/start-index! buffer 1)
+		    (string-ref (input-buffer/string buffer) 0))))))))
 
 (define (input-buffer/peek-char buffer)
   (let ((start-index (input-buffer/start-index buffer))
 	(end-index (input-buffer/end-index buffer)))
-    (if (< start-index end-index)
-	(string-ref (input-buffer/string buffer) start-index)
-	(and (not (zero? end-index))
-	     (input-buffer/fill buffer)
-	     (string-ref (input-buffer/string buffer) 0)))))
+    (cond ((fix:< start-index end-index)
+	   (string-ref (input-buffer/string buffer) start-index))
+	  ((fix:= end-index 0)
+	   eof-object)
+	  (else
+	   (let ((n (input-buffer/fill buffer)))
+	     (cond ((not n) false)
+		   ((fix:= n 0) eof-object)
+		   (else (string-ref (input-buffer/string buffer) 0))))))))
 
 (define (input-buffer/discard-char buffer)
   (let ((start-index (input-buffer/start-index buffer)))
-    (if (< start-index (input-buffer/end-index buffer))
-	(set-input-buffer/start-index! buffer (1+ start-index)))))
+    (if (fix:< start-index (input-buffer/end-index buffer))
+	(set-input-buffer/start-index! buffer (fix:+ start-index 1)))))
 
 (define (input-buffer/read-substring buffer string start end)
   (let ((start-index (input-buffer/start-index buffer))
 	(end-index (input-buffer/end-index buffer)))
-    (cond ((< start-index end-index)
+    (cond ((fix:< start-index end-index)
 	   (let ((string* (input-buffer/string buffer))
-		 (available (- end-index start-index))
-		 (needed (- end start)))
-	     (if (>= available needed)
+		 (available (fix:- end-index start-index))
+		 (needed (fix:- end start)))
+	     (if (fix:>= available needed)
 		 (begin
-		   (let ((end-index (+ start-index needed)))
+		   (let ((end-index (fix:+ start-index needed)))
 		     (substring-move-left! string* start-index end-index
 					   string start)
 		     (set-input-buffer/start-index! buffer end-index))
@@ -606,52 +631,58 @@ MIT in each case. |#
 		   (substring-move-left! string* start-index end-index
 					 string start)
 		   (set-input-buffer/start-index! buffer end-index)
-		   (+ available
-		      (or (channel-read (input-buffer/channel buffer)
-					string
-					(+ start available)
-					end)
-			  0))))))
-	  ((zero? end-index)
+		   (fix:+ available
+			  (or (channel-read (input-buffer/channel buffer)
+					    string
+					    (fix:+ start available)
+					    end)
+			      0))))))
+	  ((fix:= end-index 0)
 	   0)
 	  (else
 	   (channel-read (input-buffer/channel buffer) string start end)))))
 
 (define (input-buffer/read-until-delimiter buffer delimiters)
-  (and (char-ready? buffer input-buffer/fill)
-       (let ((string (input-buffer/string buffer)))
-	 (let loop ()
-	   (let ((start-index (input-buffer/start-index buffer))
-		 (end-index (input-buffer/end-index buffer)))
-	     (let ((delimiter-index
-		    (substring-find-next-char-in-set string
-						     start-index
-						     end-index
-						     delimiters)))
-	       (if delimiter-index
-		   (let ((head (substring string start-index delimiter-index)))
-		     (set-input-buffer/start-index! buffer delimiter-index)
-		     head)
-		   (let ((head (substring string start-index end-index)))
-		     (set-input-buffer/start-index! buffer end-index)
-		     (if (input-buffer/fill buffer)
-			 (string-append head (loop))
-			 head)))))))))
+  (with-channel-blocking (input-buffer/channel buffer) true
+    (lambda ()
+      (if (char-ready? buffer input-buffer/fill*)
+	  (let ((string (input-buffer/string buffer)))
+	    (let loop ()
+	      (let ((start-index (input-buffer/start-index buffer))
+		    (end-index (input-buffer/end-index buffer)))
+		(let ((delimiter-index
+		       (substring-find-next-char-in-set string
+							start-index
+							end-index
+							delimiters)))
+		  (if delimiter-index
+		      (let ((head
+			     (substring string start-index delimiter-index)))
+			(set-input-buffer/start-index! buffer delimiter-index)
+			head)
+		      (let ((head (substring string start-index end-index)))
+			(set-input-buffer/start-index! buffer end-index)
+			(if (input-buffer/fill* buffer)
+			    (string-append head (loop))
+			    head)))))))
+	  eof-object))))
 
 (define (input-buffer/discard-until-delimiter buffer delimiters)
-  (if (char-ready? buffer input-buffer/fill)
-      (let ((string (input-buffer/string buffer)))
-	(let loop ()
-	  (let ((end-index (input-buffer/end-index buffer)))
-	    (let ((delimiter-index
-		   (substring-find-next-char-in-set
-		    string
-		    (input-buffer/start-index buffer)
-		    end-index
-		    delimiters)))
-	      (if delimiter-index
-		  (set-input-buffer/start-index! buffer delimiter-index)
-		  (begin
-		    (set-input-buffer/start-index! buffer end-index)
-		    (if (input-buffer/fill buffer)
-			(loop))))))))))
+  (with-channel-blocking (input-buffer/channel buffer) true
+    (lambda ()
+      (if (char-ready? buffer input-buffer/fill*)
+	  (let ((string (input-buffer/string buffer)))
+	    (let loop ()
+	      (let ((end-index (input-buffer/end-index buffer)))
+		(let ((delimiter-index
+		       (substring-find-next-char-in-set
+			string
+			(input-buffer/start-index buffer)
+			end-index
+			delimiters)))
+		  (if delimiter-index
+		      (set-input-buffer/start-index! buffer delimiter-index)
+		      (begin
+			(set-input-buffer/start-index! buffer end-index)
+			(if (input-buffer/fill* buffer)
+			    (loop))))))))))))

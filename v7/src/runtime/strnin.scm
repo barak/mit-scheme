@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/strnin.scm,v 14.2 1988/06/13 11:51:51 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/strnin.scm,v 14.3 1990/11/09 08:44:34 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,31 +83,35 @@ MIT in each case. |#
   (< (input-port/start port) (input-port/end port)))
 
 (define (operation/peek-char port)
-  (and (< (input-port/start port) (input-port/end port))
-       (string-ref (input-port/string port) (input-port/start port))))
+  (if (< (input-port/start port) (input-port/end port))
+      (string-ref (input-port/string port) (input-port/start port))
+      (make-eof-object port)))
 
 (define (operation/discard-char port)
   (set-input-port/start! port (1+ (input-port/start port))))
 
 (define (operation/read-char port)
   (let ((start (input-port/start port)))
-    (and (< start (input-port/end port))
-	 (begin (set-input-port/start! port (1+ start))
-		(string-ref (input-port/string port) start)))))
+    (if (< start (input-port/end port))
+	(begin
+	  (set-input-port/start! port (1+ start))
+	  (string-ref (input-port/string port) start))
+	(make-eof-object port))))
 
 (define (operation/read-string port delimiters)
   (let ((start (input-port/start port))
 	(end (input-port/end port)))
-    (and (< start end)
-	 (let ((string (input-port/string port)))
-	   (let ((index
-		  (or (substring-find-next-char-in-set string
-						       start
-						       end
-						       delimiters)
-		      end)))
-	     (set-input-port/start! port index)
-	     (substring string start index))))))
+    (if (< start end)
+	(let ((string (input-port/string port)))
+	  (let ((index
+		 (or (substring-find-next-char-in-set string
+						      start
+						      end
+						      delimiters)
+		     end)))
+	    (set-input-port/start! port index)
+	    (substring string start index)))
+	(make-eof-object port))))
 
 (define (operation/discard-chars port delimiters)
   (let ((start (input-port/start port))

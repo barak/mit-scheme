@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.82 1990/11/02 02:06:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.83 1990/11/09 08:44:23 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -690,6 +690,63 @@ MIT in each case. |#
 	  hook/record-statistic!)
   (initialization (initialize-package!)))
 
+(define-package (runtime generic-input)
+  (files "genin")
+  (parent ())
+  (export (runtime console-input)
+	  operation/buffer-size
+	  operation/buffered-chars
+	  operation/channel
+	  operation/char-ready?
+	  operation/set-buffer-size)
+  (export (runtime file-input)
+	  operation/buffer-size
+	  operation/buffered-chars
+	  operation/channel
+	  operation/char-ready?
+	  operation/chars-remaining
+	  operation/close
+	  operation/discard-char
+	  operation/discard-chars
+	  operation/eof?
+	  operation/peek-char
+	  operation/read-char
+	  operation/read-chars
+	  operation/read-string
+	  operation/set-buffer-size)
+  (export (runtime socket)
+	  make-generic-input-port
+	  set-input-port/associated-port!)
+  (export (runtime subprocess)
+	  make-generic-input-port
+	  set-input-port/associated-port!)
+  (initialization (initialize-package!)))
+
+(define-package (runtime generic-output)
+  (files "genout")
+  (parent ())
+  (export (runtime console-output)
+	  operation/buffer-size
+	  operation/buffered-chars
+	  operation/channel
+	  operation/set-buffer-size)
+  (export (runtime file-output)
+	  operation/buffer-size
+	  operation/buffered-chars
+	  operation/channel
+	  operation/close
+	  operation/flush-output
+	  operation/set-buffer-size
+	  operation/write-char
+	  operation/write-string)
+  (export (runtime socket)
+	  make-generic-output-port
+	  set-output-port/associated-port!)
+  (export (runtime subprocess)
+	  make-generic-output-port
+	  set-output-port/associated-port!)
+  (initialization (initialize-package!)))
+
 (define-package (runtime gensym)
   (files "gensym")
   (parent ())
@@ -812,6 +869,8 @@ MIT in each case. |#
 	  set-input-port/state!
 	  with-input-from-file
 	  with-input-from-port)
+  (export (runtime primitive-io)
+	  eof-object)
   (initialization (initialize-package!)))
 
 (define-package (runtime interrupt-handler)
@@ -1343,9 +1402,20 @@ MIT in each case. |#
   (export ()
 	  close-all-open-files
 	  copy-file)
-  (export (runtime file-input)
-	  file-length
-	  file-open-input-channel
+  (export (runtime socket)
+	  channel-close
+	  channel-descriptor
+	  make-channel
+	  with-channel-blocking)
+  (export (runtime subprocess)
+	  make-channel
+	  pty-master-continue
+	  pty-master-interrupt
+	  pty-master-kill
+	  pty-master-quit
+	  pty-master-send-signal
+	  pty-master-stop)
+  (export (runtime generic-input)
 	  input-buffer/buffered-chars
 	  input-buffer/channel
 	  input-buffer/char-ready?
@@ -1353,45 +1423,54 @@ MIT in each case. |#
 	  input-buffer/close
 	  input-buffer/discard-char
 	  input-buffer/discard-until-delimiter
+	  input-buffer/eof?
 	  input-buffer/peek-char
 	  input-buffer/read-char
 	  input-buffer/read-substring
 	  input-buffer/read-until-delimiter
+	  input-buffer/set-size
+	  input-buffer/size
 	  make-input-buffer)
-  (export (runtime file-output)
-	  channel-close
-	  channel-write-char-block
-	  channel-write-string-block
-	  file-open-append-channel
-	  file-open-output-channel
+  (export (runtime generic-output)
 	  make-output-buffer
 	  output-buffer/buffered-chars
+	  output-buffer/channel
 	  output-buffer/close
 	  output-buffer/drain-block
 	  output-buffer/set-size
 	  output-buffer/size
-	  output-buffer/write-char-block
 	  output-buffer/write-string-block)
-  (export (runtime console-output)
-	  channel-write-char-block
-	  channel-write-string-block
-	  make-output-buffer
-	  output-buffer/buffered-chars
-	  output-buffer/drain-block
-	  output-buffer/set-size
-	  output-buffer/size
-	  output-buffer/write-char-block
-	  output-buffer/write-string-block
-	  tty-output-channel)
+  (export (runtime file-input)
+	  file-length
+	  file-open-input-channel
+	  input-buffer/chars-remaining
+	  input-buffer/read-substring
+	  make-input-buffer)
+  (export (runtime file-output)
+	  file-open-append-channel
+	  file-open-output-channel
+	  make-output-buffer)
   (export (runtime console-input)
 	  channel-type=file?
 	  input-buffer/buffered-chars
 	  input-buffer/channel
 	  input-buffer/char-ready?
+	  input-buffer/eof?
 	  input-buffer/peek-char
 	  input-buffer/read-char
+	  input-buffer/set-size
+	  input-buffer/size
 	  make-input-buffer
 	  tty-input-channel)
+  (export (runtime console-output)
+	  make-output-buffer
+	  output-buffer/buffered-chars
+	  output-buffer/channel
+	  output-buffer/drain-block
+	  output-buffer/set-size
+	  output-buffer/size
+	  output-buffer/write-string-block
+	  tty-output-channel)
   (export (runtime rep)
 	  channel-type=terminal?
 	  terminal-cooked-input
@@ -1742,6 +1821,37 @@ MIT in each case. |#
 	  make-scode-walker
 	  scode-walk
 	  scode-walker?)
+  (initialization (initialize-package!)))
+
+(define-package (runtime socket)
+  (files "socket")
+  (parent ())
+  (export ()
+	  open-tcp-server-socket
+	  open-tcp-stream-socket
+	  open-unix-stream-socket
+	  tcp-server-connection-accept))
+
+(define-package (runtime subprocess)
+  (files "process")
+  (parent ())
+  (export ()
+	  make-subprocess
+	  os-job-control?
+	  scheme-subprocess-environment
+	  subprocess-continue
+	  subprocess-ctty-type
+	  subprocess-delete
+	  subprocess-id
+	  subprocess-input-port
+	  subprocess-interrupt
+	  subprocess-kill
+	  subprocess-list
+	  subprocess-output-port
+	  subprocess-quit
+	  subprocess-signal
+	  subprocess-status
+	  subprocess-stop)
   (initialization (initialize-package!)))
 
 (define-package (runtime graphics)

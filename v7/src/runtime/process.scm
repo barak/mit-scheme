@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.3 1990/03/24 19:14:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.4 1990/11/09 08:44:17 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -32,69 +32,135 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Subprocess support
-;;; package: (runtime subprocesses)
+;;;; Subprocess Support
+;;; package: (runtime subprocess)
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
+(define-structure (subprocess
+		   (constructor %make-subprocess)
+		   (conc-name subprocess-))
+  (index false read-only true)
+  (ctty-type false read-only true)
+  (pty false read-only true)
+  (id false read-only true)
+  (synchronous? false read-only true)
+  ;; Input to the subprocess; an OUTPUT port.
+  (input-port false read-only true)
+  ;; Output from the subprocess; an INPUT port.
+  (output-port false read-only true))
+
+(define (make-subprocess filename arguments environment ctty-type)
+  (let ((index
+	 ((ucode-primitive make-subprocess 4)
+	  filename
+	  arguments
+	  environment
+	  (case ctty-type
+	    ((none) 0)
+	    ((inherited) 1)
+	    ((pipe) 2)
+	    ((pty) 3)
+	    (else (error:illegal-datum ctty-type 'MAKE-SUBPROCESS))))))
+    (let ((input-channel
+	   (without-interrupts
+	    (lambda ()
+	      (make-channel ((ucode-primitive process-input 1) index)))))
+	  (output-channel
+	   (without-interrupts
+	    (lambda ()
+	      (make-channel ((ucode-primitive process-output 1) index)))))
+	  (ctty-type
+	   (let ((type ((ucode-primitive process-ctty-type 1) index))
+		 (types '#(NONE INHERITED PIPE PTY)))
+	     (and (< type (vector-length types))
+		  (vector-ref types type)))))
+      (let ((input-port (make-generic-output-port input-channel 512))
+	    (output-port (make-generic-input-port output-channel 512)))
+	(set-input-port/associated-port! input-port output-port)
+	(set-output-port/associated-port! output-port input-port)
+	(let ((process
+	       (%make-subprocess
+		index
+		ctty-type
+		(and (eq? ctty-type 'PTY) input-channel)
+		((ucode-primitive process-id 1) index)
+		((ucode-primitive process-synchronous? 1) index)
+		input-port
+		output-port)))
+	  (set! subprocesses (cons process subprocesses))
+	  process)))))
+
+(define (subprocess-delete process)
+  (close-output-port (subprocess-input-port process))
+  (close-input-port (subprocess-output-port process))
+  ((ucode-primitive process-delete 1) (subprocess-index process))
+  (set! subprocesses (delq! process subprocesses))
   unspecific)
 
-(let-syntax
-    ((define-special-primitives
-       (macro names
-	 `(DEFINE-PRIMITIVES
-	    ,@(map (lambda (name)
-		     (let ((name (car name))
-			   (arity (cadr name)))
-		       (list (symbol-append 'prim- name)
-			     name
-			     arity)))
-		   names)))))
-  (define-special-primitives
-    (create-process 1)
-    (process-get-pid 1)
-    (process-get-input-channel 1)
-    (process-get-output-channel 1)
-    (process-get-status-flags 1)
-    (process-char-ready? 2)))
+(define (subprocess-list)
+  (list-copy subprocesses))
 
-(let-syntax
-    ((define-process-primitives
-       (macro names
-	 `(BEGIN ,@(map (lambda (name)
-			  `(BEGIN
-			     (DEFINE (,name PROCESS)
-			       (,(symbol-append 'prim- name)
-				(PROCESS/MICROCODE-PROCESS PROCESS)))))
-			names)))))
-  (define-process-primitives
-    process-get-pid
-    process-get-input-channel
-    process-get-output-channel
-    process-get-status-flags))
+(define subprocesses)
+(define scheme-subprocess-environment)
 
-(define-structure (process
-		   (conc-name process/)
-		   (constructor make-process
-				(command-string microcode-process)))
-  (command-string false read-only true)		;original command
-  (microcode-process false read-only true) 	;index into microcode
-						;process table
-  (to-port false)				;port to write to process
-  (from-port false)				;port to read from process
-  )
+(define (initialize-package!)
+  (reset-package!)
+  (add-event-receiver! event:after-restore reset-package!))
 
-(define (create-process command-string)
-  (let* ((prim-process ((ucode-primitive create-process 1) command-string))
-	 (process (make-process command-string prim-process)))
-    (set-process/to-port! process (open-process-output process))
-    (set-process/from-port! process (open-process-input process))
-    process))
+(define (reset-package!)
+  (set! subprocesses '())
+  (set! scheme-subprocess-environment ((ucode-primitive scheme-environment 0)))
+  unspecific)
+
+(define (subprocess-status process)
+  (let ((index (subprocess-index process)))
+    (let ((status
+	   (let ((status ((ucode-primitive process-status 1) index))
+		 (statuses '#(RUNNING STOPPED EXITED SIGNALLED UNSTARTED)))
+	     (and (< status (vector-length statuses))
+		  (vector-ref statuses status)))))
+      (if (or (eq? status 'STOPPED)
+	      (eq? status 'EXITED)
+	      (eq? status 'SIGNALLED))
+	  (cons status ((ucode-primitive process-reason 1) index))
+	  status))))
 
-(define (kill-process process)
-  ((ucode-primitive kill-process 1) (process/microcode-process process)))
+(define-integrable os-job-control?
+  (ucode-primitive os-job-control? 0))
 
-(define (delete-process process)
-  (close-output-port (process/to-port process))
-  (kill-process process))
+(define (subprocess-signal process signal to-process-group?)
+  (let ((pty (and to-process-group? (subprocess-pty process))))
+    (if (not pty)
+	((ucode-primitive process-signal 2) (subprocess-index process) signal)
+	(pty-master-send-signal pty signal))))
+
+(define (subprocess-kill process to-process-group?)
+  (let ((pty (and to-process-group? (subprocess-pty process))))
+    (if (not pty)
+	((ucode-primitive process-kill 1) (subprocess-index process))
+	(pty-master-kill pty))))
+
+(define (subprocess-stop process to-process-group?)
+  (let ((pty (and to-process-group? (subprocess-pty process))))
+    (if (not pty)
+	((ucode-primitive process-stop 1) (subprocess-index process))
+	(pty-master-stop pty))))
+
+(define (subprocess-continue process to-process-group?)
+  (let ((pty (and to-process-group? (subprocess-pty process))))
+    (if (not pty)
+	((ucode-primitive process-continue 1) (subprocess-index process))
+	(pty-master-continue pty))))
+
+(define (subprocess-interrupt process to-process-group?)
+  (let ((pty (and to-process-group? (subprocess-pty process))))
+    (if (not pty)
+	((ucode-primitive process-interrupt 1) (subprocess-index process))
+	(pty-master-interrupt pty))))
+
+(define (subprocess-quit process to-process-group?)
+  (let ((pty (and to-process-group? (subprocess-pty process))))
+    (if (not pty)
+	((ucode-primitive process-quit 1) (subprocess-index process))
+	(pty-master-quit pty))))

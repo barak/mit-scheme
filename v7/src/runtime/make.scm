@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.23 1990/07/20 01:20:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.24 1990/11/09 08:44:06 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -316,6 +316,8 @@ MIT in each case. |#
    (RUNTIME CONSOLE-INPUT)
    (RUNTIME CONSOLE-OUTPUT)
    (RUNTIME TRANSCRIPT)
+   (RUNTIME GENERIC-INPUT)
+   (RUNTIME GENERIC-OUTPUT)
    (RUNTIME FILE-INPUT)
    (RUNTIME FILE-OUTPUT)
    (RUNTIME STRING-INPUT)
@@ -353,6 +355,7 @@ MIT in each case. |#
    (RUNTIME)
    (RUNTIME X-GRAPHICS)
    (RUNTIME STARBASE-GRAPHICS)
+   (RUNTIME SUBPROCESS)
    ;; Emacs -- last because it grabs the kitchen sink.
    (RUNTIME EMACS-INTERFACE)))
 

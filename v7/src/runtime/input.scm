@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.9 1990/11/02 02:06:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.10 1990/11/09 08:43:53 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -130,22 +130,34 @@ MIT in each case. |#
 				    (map car operations))))))))
 
 (define (default-operation/read-string port delimiters)
-  (list->string
-   (let ((peek-char (input-port/operation/peek-char port))
-	 (read-char (input-port/operation/read-char port)))
-     (let loop ()
-       (if (char-set-member? delimiters (peek-char port))
-	   '()
-	   (let ((char (read-char port)))
-	     (cons char (loop))))))))
+  (let ((peek-char (input-port/operation/peek-char port))
+	(discard-char (input-port/operation/discard-char port)))
+    (let ((peek-char (let loop () (or (peek-char port) (loop)))))
+      (let ((char (peek-char)))
+	(if (eof-object? char)
+	    char
+	    (list->string
+	     (let loop ((char char))
+	       (if (or (eof-object? char)
+		       (char-set-member? delimiters char))
+		   '()
+		   (begin
+		     (discard-char port)
+		     (cons char (loop (peek-char))))))))))))
 
 (define (default-operation/discard-chars port delimiters)
   (let ((peek-char (input-port/operation/peek-char port))
 	(discard-char (input-port/operation/discard-char port)))
     (let loop ()
-      (if (not (char-set-member? delimiters (peek-char port)))
-	  (begin (discard-char port)
-		 (loop))))))
+      (let ((char
+	     (let loop ()
+	       (or (peek-char port)
+		   (loop)))))
+	(if (not (or (eof-object? char)
+		     (char-set-member? delimiters char)))
+	    (begin
+	      (discard-char port)
+	      (loop)))))))
 
 (define (input-port/char-ready? port interval)
   ((input-port/operation/char-ready? port) port interval))
@@ -216,56 +228,53 @@ MIT in each case. |#
 
 ;;;; Input Procedures
 
-;;; **** The INTERVAL option for this operation works only for the
-;;; console port.  Only Edwin uses this option.
-
 (define (char-ready? #!optional port interval)
-  (let ((port
-	 (if (default-object? port)
-	     (current-input-port)
-	     (guarantee-input-port port)))
-	(interval
-	 (if (default-object? interval)
-	     0
-	     (begin
-	       (if (not (exact-nonnegative-integer? interval))
-		   (error "interval must be exact nonnegative integer"
-			  interval))
-	       interval))))
-    (input-port/char-ready? port interval)))
+  (input-port/char-ready? (if (default-object? port)
+			      (current-input-port)
+			      (guarantee-input-port port))
+			  (if (default-object? interval)
+			      0
+			      (begin
+				(if (not (exact-nonnegative-integer? interval))
+				    (error:illegal-datum interval
+							 'CHAR-READY?))
+				interval))))
 
 (define (peek-char #!optional port)
   (let ((port
 	 (if (default-object? port)
 	     (current-input-port)
 	     (guarantee-input-port port))))
-    (or (input-port/peek-char port)
-	eof-object)))
+    (let loop ()
+      (or (input-port/peek-char port)
+	  (loop)))))
 
 (define (read-char #!optional port)
   (let ((port
 	 (if (default-object? port)
 	     (current-input-port)
 	     (guarantee-input-port port))))
-    (or (input-port/read-char port)
-	eof-object)))
+    (let loop ()
+      (or (input-port/read-char port)
+	  (loop)))))
 
 (define (read-char-no-hang #!optional port)
   (let ((port
 	 (if (default-object? port)
 	     (current-input-port)
 	     (guarantee-input-port port))))
-    (and (input-port/char-ready? port 0)
-	 (or (input-port/read-char port)
-	     eof-object))))
+    (if (input-port/char-ready? port 0)
+	(input-port/read-char port)
+	(let ((eof? (input-port/custom-operation port 'EOF?)))
+	  (and eof?
+	       (eof? port)
+	       eof-object)))))
 
 (define (read-string delimiters #!optional port)
-  (let ((port
-	 (if (default-object? port)
-	     (current-input-port)
-	     (guarantee-input-port port))))
-    (or (input-port/read-string port delimiters)
-	eof-object)))
+  (input-port/read-string (if (default-object? port)
+			      (current-input-port)
+			      (guarantee-input-port port))
+			  delimiters))
 
 (define (read #!optional port parser-table)
   (let ((port

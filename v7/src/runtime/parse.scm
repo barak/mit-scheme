@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.12 1990/10/10 06:30:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.13 1990/11/09 08:44:12 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -155,11 +155,6 @@ MIT in each case. |#
 (define (within-parser port parser-table thunk)
   (fluid-let
       ((*parser-input-port* port)
-       (*parser-peek-char* (input-port/operation/peek-char port))
-       (*parser-discard-char* (input-port/operation/discard-char port))
-       (*parser-read-char* (input-port/operation/read-char port))
-       (*parser-read-string* (input-port/operation/read-string port))
-       (*parser-discard-chars* (input-port/operation/discard-chars port))
        (*parser-parse-object-table* (parser-table/parse-object parser-table))
        (*parser-collect-list-table* (parser-table/collect-list parser-table))
        (*parser-parse-object-special-table*
@@ -171,34 +166,37 @@ MIT in each case. |#
 ;;;; Character Operations
 
 (define *parser-input-port*)
-(define *parser-peek-char*)
-(define *parser-discard-char*)
-(define *parser-read-char*)
-(define *parser-read-string*)
-(define *parser-discard-chars*)
 
-(define-integrable (peek-char)
-  (or (peek-char/eof-ok)
-      (parse-error/end-of-file)))
+(define (peek-char)
+  (let ((char (peek-char/eof-ok)))
+    (if (eof-object? char)
+	(parse-error/end-of-file))
+    char))
 
-(define-integrable (peek-char/eof-ok)
-  (*parser-peek-char* *parser-input-port*))
+(define (peek-char/eof-ok)
+  (let loop ()
+    (or (input-port/peek-char *parser-input-port*)
+	(loop))))
 
-(define-integrable (read-char)
-  (or (read-char/eof-ok)
-      (parse-error/end-of-file)))
+(define (read-char)
+  (let ((char (read-char/eof-ok)))
+    (if (eof-object? char)
+	(parse-error/end-of-file))
+    char))
 
-(define-integrable (read-char/eof-ok)
-  (*parser-read-char* *parser-input-port*))
+(define (read-char/eof-ok)
+  (let loop ()
+    (or (input-port/read-char *parser-input-port*)
+	(loop))))
 
 (define-integrable (discard-char)
-  (*parser-discard-char* *parser-input-port*))
+  (input-port/discard-char *parser-input-port*))
 
 (define-integrable (read-string delimiters)
-  (*parser-read-string* *parser-input-port* delimiters))
+  (input-port/read-string *parser-input-port* delimiters))
 
 (define-integrable (discard-chars delimiters)
-  (*parser-discard-chars* *parser-input-port* delimiters))
+  (input-port/discard-chars *parser-input-port* delimiters))
 
 (define (parse-error/end-of-file)
   (parse-error "end of file"))
@@ -218,10 +216,10 @@ MIT in each case. |#
 
 (define-integrable (parse-object/dispatch)
   (let ((char (peek-char/eof-ok)))
-    (if char
+    (if (eof-object? char)
+	char
 	((vector-ref *parser-parse-object-table*
-		     (or (char-ascii? char) (parse-error/non-ascii))))
-	(make-eof-object *parser-input-port*))))
+		     (or (char-ascii? char) (parse-error/non-ascii)))))))
 
 (define-integrable (collect-list/dispatch)
   ((vector-ref *parser-collect-list-table* (peek-ascii))))
@@ -392,10 +390,12 @@ MIT in each case. |#
 	(if (char=? #\# (peek-char))
 	    (discard-char)
 	    (loop))
-	(begin (if (char=? #\| (peek-char))
-		   (begin (discard-char)
-			  (loop)))
-	       (loop)))))
+	(begin
+	  (if (char=? #\| (peek-char))
+	      (begin
+		(discard-char)
+		(loop)))
+	  (loop)))))
 
 ;;;; Quoting
 
@@ -410,8 +410,9 @@ MIT in each case. |#
 (define (parse-object/unquote)
   (discard-char)
   (if (char=? #\@ (peek-char))
-      (begin (discard-char)
-	     (list 'UNQUOTE-SPLICING (parse-object/dispatch)))
+      (begin
+	(discard-char)
+	(list 'UNQUOTE-SPLICING (parse-object/dispatch)))
       (list 'UNQUOTE (parse-object/dispatch))))
 
 (define (parse-object/string-quote)
@@ -459,10 +460,11 @@ MIT in each case. |#
 	       (else
 		(let ((string (read-string char-set/char-delimiters)))
 		  (if (let ((char (peek-char/eof-ok)))
-			(and char
+			(and (not (eof-object? char))
 			     (char=? #\- char)))
-		      (begin (discard-char)
-			     (string-append string "-" (loop)))
+		      (begin
+			(discard-char)
+			(string-append string "-" (loop)))
 		      string))))))))
 
 ;;;; Constants

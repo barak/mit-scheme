@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.8 1990/04/04 18:51:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.9 1990/11/09 08:44:51 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -91,9 +91,8 @@ MIT in each case. |#
   (inode-number false read-only true))
 
 (define (file-modification-time filename)
-  (let ((attributes (file-attributes-indirect filename)))
-    (and attributes
-	 (file-attributes/modification-time attributes))))
+  ((ucode-primitive file-mod-time-indirect 1)
+   (pathname->string (pathname->absolute-pathname (->pathname filename)))))
 
 (define (get-environment-variable name)
   (or ((ucode-primitive get-environment-variable) name)
