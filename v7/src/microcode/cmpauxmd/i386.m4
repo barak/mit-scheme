@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.36 1995/02/26 03:34:36 cph Exp $
+###	$Id: i386.m4,v 1.37 1995/10/01 07:19:42 cph Exp $
 ###
 ###	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ###
@@ -139,12 +139,16 @@ ifdef(`DOS',
       `define(use_external_code,`')')
 
 ifdef(`OS2',
+      `define(`SUPPRESS_LEADING_UNDERSCORE',1)',
+      `')
+
+ifdef(`SUPPRESS_LEADING_UNDERSCORE',
       `define(external_data_reference,`$1')',
       `define(external_data_reference,`_$1')')
 
 define(EDR,`external_data_reference($1)')
 
-ifdef(`OS2',
+ifdef(`SUPPRESS_LEADING_UNDERSCORE',
       `define(external_code_reference,`$1')',
       `define(external_code_reference,`_$1')')
 
