@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.132 1989/08/09 13:16:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.133 1989/08/09 14:43:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -307,7 +307,8 @@ The buffer is guaranteed to be deselected at that time."
     (if (not (null? thunks))
 	(begin
 	  ((car thunks))
-	  (loop))))  (vector-set! buffer buffer-index:initializations '())
+	  (loop (cdr thunks)))))
+  (vector-set! buffer buffer-index:initializations '())
   unspecific)
 
 ;;;; Local Bindings
