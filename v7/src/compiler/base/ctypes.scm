@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.8 1988/12/13 13:02:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.9 1988/12/20 23:13:08 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -154,7 +154,11 @@ MIT in each case. |#
   (let ((continuation (combination/continuation combination)))
     (set-application-type! combination 'RETURN)
     (set-application-operator! combination continuation)
-    (set-application-operands! combination (list rvalue))))
+    (set-application-operands! combination (list rvalue)))
+  (let ((push (combination/continuation-push combination)))
+    (if (and push (rvalue-known-value (combination/continuation combination)))
+	(set-virtual-continuation/type! (virtual-return-operator push)
+					continuation-type/effect))))
 
 (define-integrable (make-return block continuation rvalue)
   (make-application 'RETURN block continuation (list rvalue) false))
@@ -164,7 +168,7 @@ MIT in each case. |#
 
 (define-integrable return/context application-context)
 (define-integrable return/operator application-operator)
-
+(define-integrable return/continuation-push application-continuation-push)
 (define-integrable (return/operand return)
   (car (application-operands return)))
 

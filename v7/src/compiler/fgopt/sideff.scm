@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.3 1988/12/13 18:21:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.4 1988/12/20 23:13:20 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -317,7 +317,8 @@ MIT in each case. |#
 
 (define (analyze-combination! app)
   (define (simplify-combination! value)
-    (combination/trivial! app value)
+    (combination/constant! app
+			   (r/lvalue->rvalue (combination/context app) value))
     (enqueue-node! (block-procedure (application-block app))))
 
   (define (check value op-vals)
@@ -403,16 +404,6 @@ MIT in each case. |#
       (make-reference context r/lvalue false)
       r/lvalue))
 
-(define (combination/trivial! comb r/lvalue)
-  (let ((push (combination/continuation-push comb)))
-    (if (and push (rvalue-known-value (combination/continuation comb)))
-	(set-virtual-continuation/type!
-	 (virtual-return-operator push)
-	 continuation-type/effect)))
-  (combination/constant!
-   comb
-   (r/lvalue->rvalue (combination/context comb) r/lvalue)))
-
 (define (procedure/trivial! procedure kind)
   (let ((place (assq 'TRIVIAL (procedure-properties procedure))))
     (cond ((not place)
