@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pack-edwin.scm,v 1.3 1992/09/23 23:59:26 jinx Exp $
+$Id: pack-edwin.scm,v 1.4 1992/10/20 21:36:31 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -78,7 +78,7 @@ MIT in each case. |#
 		    "buffrm.com"
 		    "edtfrm.com"
 		    ;; "xterm.com"
-		    "key.com"
+		    ;; "key.com"
 		    "termcap.com"
 		    "tterm.com"
 		    "ansi.com"
@@ -150,6 +150,7 @@ MIT in each case. |#
 		    "scrcom.com"
 		    ;; "xcom.com"
 		    "modefs.com"
+		    ;; "xmodef.com"
 		    "rename.com"
 		    "loadef.com"
 		    ;; "bochser.com"
