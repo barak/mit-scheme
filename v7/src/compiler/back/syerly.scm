@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syerly.scm,v 1.9 1993/12/08 17:44:21 gjr Exp $
+$Id: syerly.scm,v 1.10 1994/02/02 04:05:29 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -61,7 +61,7 @@ MIT in each case. |#
 		  operands)))
 	       (else
 		(let ((place (assq (car instruction) early-instructions)))
-		  (if (null? place)
+		  (if (not place)
 		      (ierror "unknown opcode"))
 		  (let ((opcode (car instruction))
 			(body (cdr instruction))

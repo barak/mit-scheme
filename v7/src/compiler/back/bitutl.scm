@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bitutl.scm,v 1.8 1993/12/23 11:14:25 cph Exp $
+$Id: bitutl.scm,v 1.9 1994/02/02 04:03:50 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -124,7 +124,7 @@ MIT in each case. |#
 
 (define (find-operator keyword)
   (let ((place (assq keyword operators)))
-    (if (null? place)
+    (if (not place)
 	(error "evaluate: unknown operator:" keyword))
     ((cdr place))))
 
