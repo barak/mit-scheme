@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.24 1995/10/31 08:05:02 cph Exp $
+$Id: os2prm.scm,v 1.25 1996/04/24 03:21:30 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -110,31 +110,6 @@ MIT in each case. |#
    access-time
    modification-time))
 
-(define (file-time->string time)
-  ;; The returned string is in the format specified by RFC 822,
-  ;; "Standard for the Format of ARPA Internet Text Messages".
-  (let ((dt (decode-file-time time))
-	(d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
-    (string-append (day-of-week/short-string (decoded-time/day-of-week dt))
-		   ", "
-		   (number->string (decoded-time/day dt))
-		   " "
-		   (month/short-string (decoded-time/month dt))
-		   " "
-		   (number->string (decoded-time/year dt))
-		   " "
-		   (d2 (decoded-time/hour dt))
-		   ":"
-		   (d2 (decoded-time/minute dt))
-		   ":"
-		   (d2 (decoded-time/second dt))
-		   " "
-		   (time-zone->string
-		    (let ((tz (local-time-zone)))
-		      (if (decoded-time/daylight-savings-time? dt)
-			  (- tz 1)
-			  tz))))))
-
 (define (local-time-zone)
   (/ ((ucode-primitive os2-time-zone 0)) 3600))
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.267 1995/11/13 07:22:06 cph Exp $
+$Id: runtime.pkg,v 14.268 1996/04/24 03:21:18 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -373,6 +373,7 @@ MIT in each case. |#
 	  day-of-week/long-string
 	  day-of-week/short-string
 	  decode-universal-time
+	  decoded-time->string
 	  decoded-time/date-string
 	  decoded-time/day
 	  decoded-time/day-of-week
@@ -383,7 +384,9 @@ MIT in each case. |#
 	  decoded-time/second
 	  decoded-time/time-string
 	  decoded-time/year
+	  decoded-time/zone
 	  encode-universal-time
+	  file-time->string
 	  get-decoded-time
 	  get-universal-time
 	  make-decoded-time
@@ -391,7 +394,8 @@ MIT in each case. |#
 	  month/max-days
 	  month/short-string
 	  time-zone->string
-	  time-zone?))
+	  time-zone?
+	  universal-time->string))
 
 (define-package (runtime debugger)
   (files "debug")
@@ -1404,7 +1408,6 @@ MIT in each case. |#
 	  imag-part
 	  inexact->exact
 	  inexact?
-	  int:->flonum
 	  integer-ceiling
 	  integer-divide
 	  integer-divide-quotient
