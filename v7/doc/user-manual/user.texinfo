@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.34 1995/10/31 02:21:50 adams Exp $
+@comment $Id: user.texinfo,v 1.35 1995/11/01 16:51:08 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -4275,6 +4275,30 @@ Note that @code{flo:} operations are usually effective only within a
 single arithmetic expression.  If the expression contains conditionals
 or calls to procedures then the values tend to get boxed anyway.
 
+
+@subsubheading A safer alternative
+
+An alternative to putting in @code{flo:} operations yourself is to let
+the compiler try.
+In the next definition of @code{distance}, the programmer explicitly
+tests for flonum arguments and duplicates the expression.
+
+The compiler compiles the expressions differently: for the first
+expression it knows from the conditional that @var{x} and @var{y} are
+flonums and will replace both @code{*} and the @code{+} operators with
+flonum operators.
+It doesn't replace the @code{sqrt} operator, though, as it doesn't know
+that sums of squares of reals are non-negative.
+
+This approach has the advantage of being completely safe, and
+@code{distance} will still work for other kinds of number.
+
+@example
+(define (distance x y)
+  (if (and (flo:flonum? x) (flo:flonum? y))
+      (sqrt (+ (* x x) (* y y)))
+      (sqrt (+ (* x x) (* y y)))))
+@end example
 
 @subsubheading Flonum vectors
 
