@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.75 1993/08/21 04:59:54 gjr Exp $
+$Id: ymkfile,v 1.76 1993/08/24 18:21:44 bal Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -453,7 +453,8 @@ uxterm.c \
 uxtop.c \
 uxtrap.c \
 uxtty.c \
-uxutil.c
+uxutil.c \
+uxyp.c 
 
 OS_PRIM_SOURCES = \
 prosenv.c \
@@ -536,7 +537,8 @@ uxterm.o \
 uxtop.o \
 uxtrap.o \
 uxtty.o \
-uxutil.o
+uxutil.o \
+uxyp.o
 
 OS_PRIM_OBJECTS = \
 prosenv.o \
@@ -777,6 +779,7 @@ uxtop.o : ostop.h uxtop.h osctty.h uxutil.h errors.h option.h
 uxtrap.o : scheme.tch uxtrap.h uxutil.h option.h $(GC_HEAD_FILES)
 uxtty.o : ostty.h osenv.h osio.h uxio.h osterm.h uxterm.h
 uxutil.o : uxutil.h
+uxyp.o : uxyp.h
 pruxfs.o : osfs.h
 pruxio.o : osio.h uxselect.h
 pruxsock.o : osio.h uxsock.h
