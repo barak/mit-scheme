@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11graph.c,v 1.36 1996/07/12 20:12:15 adams Exp $
+$Id: x11graph.c,v 1.37 1996/08/20 03:48:13 adams Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -587,7 +587,8 @@ If FILL? is true, the arc is filled.")
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-STRING", Prim_x_graphics_draw_string, 4, 4,
   "(X-GRAPHICS-DRAW-STRING WINDOW X Y STRING)\n\
-Draw characters in the current font at the given coordinates.")
+Draw characters in the current font at the given coordinates, with\n\
+transparent background.")
 {
   PRIMITIVE_HEADER (4);
   {
@@ -595,6 +596,29 @@ Draw characters in the current font at the given coordinates.")
     unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
     char * s = (STRING_ARG (4));
     XDrawString
+      ((XW_DISPLAY (xw)),
+       (XW_WINDOW (xw)),
+       (XW_NORMAL_GC (xw)),
+       (internal_border_width + (arg_x_coordinate (2, xw))),
+       (internal_border_width + (arg_y_coordinate (3, xw))),
+       s,
+       (STRING_LENGTH (ARG_REF (4))));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-IMAGE-STRING",
+		  Prim_x_graphics_draw_image_string, 4, 4,
+  "(X-GRAPHICS-DRAW-IMAGE-STRING WINDOW X Y STRING)\n\
+Draw characters in the current font at the given coordinates, with\n\
+solid background.")
+{
+  PRIMITIVE_HEADER (4);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+    char * s = (STRING_ARG (4));
+    XDrawImageString
       ((XW_DISPLAY (xw)),
        (XW_WINDOW (xw)),
        (XW_NORMAL_GC (xw)),
