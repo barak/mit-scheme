@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parser-buffer.scm,v 1.11 2004/02/16 05:37:34 cph Exp $
+$Id: parser-buffer.scm,v 1.12 2004/02/17 05:46:20 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -87,7 +87,7 @@ USA.
    (lambda (string start end)
      (port/with-input-blocking-mode port 'BLOCKING
        (lambda ()
-	 (input-port/read-substring! port string start end))))))
+	 (input-port/read-wide-substring! port string start end))))))
 
 (define (source->parser-buffer source)
   (make-parser-buffer (make-wide-string min-length) 0 0 0 0 source #f 0))
@@ -112,7 +112,7 @@ USA.
   (set-parser-buffer-line! buffer (parser-buffer-pointer-line p)))
 
 (define (get-parser-buffer-tail buffer p)
-  (call-with-parser-buffer-tail buffer p wide-substring))
+  (call-with-parser-buffer-tail buffer p wide-string->utf8-string))
 
 (define (call-with-parser-buffer-tail buffer p procedure)
   ;; P must be a buffer pointer previously returned by
