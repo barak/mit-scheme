@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.unix,v 1.6 1991/08/15 19:13:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.unix,v 1.7 1991/08/22 01:00:44 cph Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -66,4 +66,6 @@ MIT in each case. |#
      "/nfs/altdorf/root/scheme/300/"
      "/scheme/800/"
      "/altdorf/scheme/800"
-     "/nfs/altdorf/root/scheme/800/")))
+     "/nfs/altdorf/root/scheme/800/"
+     "/scheme/SONY/"
+     "/nfs/altdorf/root/scheme/SONY/")))
