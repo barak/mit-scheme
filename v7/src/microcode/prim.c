@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.27 1987/10/28 18:31:11 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.28 1987/11/17 08:14:49 jinx Rel $
  *
  * The leftovers ... primitives that don't seem to belong elsewhere.
  *
@@ -46,6 +46,7 @@ MIT in each case. */
    the primitive known as NOT, NIL?, and NULL? in Scheme.
 */
 Built_In_Primitive(Prim_Null, 1, "NULL?", 0xC)
+Define_Primitive(Prim_Null, 1, "NULL?")
 {
   Primitive_1_Arg();
 
@@ -58,6 +59,7 @@ Built_In_Primitive(Prim_Null, 1, "NULL?", 0xC)
    and datum.  Returns NIL otherwise.
 */
 Built_In_Primitive(Prim_Eq, 2, "EQ?", 0xD)
+Define_Primitive(Prim_Eq, 2, "EQ?")
 {
   Primitive_2_Args();
 
@@ -77,6 +79,8 @@ Built_In_Primitive(Prim_Eq, 2, "EQ?", 0xD)
 */
 Built_In_Primitive(Prim_Make_Non_Pointer, 1,
 		   "MAKE-NON-POINTER-OBJECT", 0xB1)
+Define_Primitive(Prim_Make_Non_Pointer, 1,
+		   "MAKE-NON-POINTER-OBJECT")
 {
   Primitive_1_Arg();
 
@@ -88,6 +92,7 @@ Built_In_Primitive(Prim_Make_Non_Pointer, 1,
    Returns the datum part of OBJECT.
 */
 Built_In_Primitive(Prim_Primitive_Datum, 1, "PRIMITIVE-DATUM", 0xB0)
+Define_Primitive(Prim_Primitive_Datum, 1, "PRIMITIVE-DATUM")
 {
   Primitive_1_Arg();
 
@@ -99,6 +104,7 @@ Built_In_Primitive(Prim_Primitive_Datum, 1, "PRIMITIVE-DATUM", 0xB0)
    Note: THE OBJECT IS TOUCHED FIRST.
 */
 Built_In_Primitive(Prim_Prim_Type, 1, "PRIMITIVE-TYPE", 0x10)
+Define_Primitive(Prim_Prim_Type, 1, "PRIMITIVE-TYPE")
 {
   Primitive_1_Arg();
 
@@ -112,6 +118,7 @@ Built_In_Primitive(Prim_Prim_Type, 1, "PRIMITIVE-TYPE", 0x10)
 */
 
 Built_In_Primitive(Prim_Gc_Type, 1, "PRIMITIVE-GC-TYPE", 0xBC)
+Define_Primitive(Prim_Gc_Type, 1, "PRIMITIVE-GC-TYPE")
 {
   Primitive_1_Arg(); 
 
@@ -124,6 +131,7 @@ Built_In_Primitive(Prim_Gc_Type, 1, "PRIMITIVE-GC-TYPE", 0xBC)
    Note: THE OBJECT IS TOUCHED FIRST.
 */
 Built_In_Primitive(Prim_Prim_Type_QM, 2, "PRIMITIVE-TYPE?", 0xF)
+Define_Primitive(Prim_Prim_Type_QM, 2, "PRIMITIVE-TYPE?")
 {
   Primitive_2_Args();
 
@@ -140,6 +148,7 @@ Built_In_Primitive(Prim_Prim_Type_QM, 2, "PRIMITIVE-TYPE?", 0xF)
 */
 
 Built_In_Primitive(Prim_Primitive_Set_Type, 2, "PRIMITIVE-SET-TYPE", 0x11)
+Define_Primitive(Prim_Primitive_Set_Type, 2, "PRIMITIVE-SET-TYPE")
 {
   long New_GC_Type, New_Type;
   Primitive_2_Args();
@@ -173,6 +182,7 @@ Built_In_Primitive(Prim_Primitive_Set_Type, 2, "PRIMITIVE-SET-TYPE", 0x11)
 */
 
 Built_In_Primitive(Prim_And_Make_Object, 2, "&MAKE-OBJECT", 0x8D)
+Define_Primitive(Prim_And_Make_Object, 2, "&MAKE-OBJECT")
 {
   long New_Type;
   Primitive_2_Args();
@@ -188,6 +198,7 @@ Built_In_Primitive(Prim_And_Make_Object, 2, "&MAKE-OBJECT", 0x8D)
 */
 
 Built_In_Primitive(Prim_System_Memory_Ref, 2, "SYSTEM-MEMORY-REF", 0x195)
+Define_Primitive(Prim_System_Memory_Ref, 2, "SYSTEM-MEMORY-REF")
 {
   Primitive_2_Args();
 
@@ -201,6 +212,7 @@ Built_In_Primitive(Prim_System_Memory_Ref, 2, "SYSTEM-MEMORY-REF", 0x195)
 */
 
 Built_In_Primitive(Prim_System_Memory_Set, 3, "SYSTEM-MEMORY-SET!", 0x196)
+Define_Primitive(Prim_System_Memory_Set, 3, "SYSTEM-MEMORY-SET!")
 {
   long index;
   Primitive_3_Args();
@@ -216,6 +228,7 @@ Built_In_Primitive(Prim_System_Memory_Set, 3, "SYSTEM-MEMORY-SET!", 0x196)
    Creates a cell with contents CONTENTS.
 */
 Built_In_Primitive(Prim_Make_Cell, 1, "MAKE-CELL", 0x61)
+Define_Primitive(Prim_Make_Cell, 1, "MAKE-CELL")
 {
   Primitive_1_Arg();
 
@@ -228,6 +241,7 @@ Built_In_Primitive(Prim_Make_Cell, 1, "MAKE-CELL", 0x61)
    Returns the contents of the cell CELL.
 */
 Built_In_Primitive(Prim_Cell_Contents, 1, "CELL-CONTENTS", 0x62)
+Define_Primitive(Prim_Cell_Contents, 1, "CELL-CONTENTS")
 {
   Primitive_1_Arg();
 
@@ -240,6 +254,7 @@ Built_In_Primitive(Prim_Cell_Contents, 1, "CELL-CONTENTS", 0x62)
    NIL.
 */
 Built_In_Primitive(Prim_Cell, 1, "CELL?", 0x63)
+Define_Primitive(Prim_Cell, 1, "CELL?")
 {
   Primitive_1_Arg();
 
@@ -251,6 +266,7 @@ Built_In_Primitive(Prim_Cell, 1, "CELL?", 0x63)
    Stores VALUE as contents of CELL.  Returns the previous contents of CELL.
 */
 Built_In_Primitive(Prim_Set_Cell_Contents, 2, "SET-CELL-CONTENTS!", 0x8C)
+Define_Primitive(Prim_Set_Cell_Contents, 2, "SET-CELL-CONTENTS!")
 {
   Primitive_2_Args();
 

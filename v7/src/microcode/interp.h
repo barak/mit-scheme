@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.25 1987/10/09 16:12:22 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.26 1987/11/17 08:13:39 jinx Exp $
  *
  * Macros used by the interpreter and some utilities.
  *
@@ -205,20 +205,25 @@ MIT in each case. */
 
 /* Primitive utility macros */
 
+/* The first two are only valid for implemented primitives. */
+
 #define Internal_Apply_Primitive(primitive_code)			\
   ((*(Primitive_Procedure_Table[primitive_code]))())
 
-#define N_Args_Primitive(primitive_code)				\
+#define PRIMITIVE_ARITY(primitive_code)					\
   (Primitive_Arity_Table[primitive_code])
 
-#define Internal_Apply_External(external_code)				\
-  ((*(External_Procedure_Table[external_code]))())
+extern long primitive_to_arity();
 
-#define N_Args_External(external_code)					\
-  (External_Arity_Table[external_code])
+#define PRIMITIVE_N_PARAMETERS(primitive_code)				\
+  (primitive_to_arity(primitive_code))
 
-#define Apply_External(N)						\
-  Internal_Apply_External(N)
+/* This is only valid during a primitive call. */
+
+extern long primitive_to_arguments();
+
+#define PRIMITIVE_N_ARGUMENTS(primitive_code)				\
+  (primitive_to_arguments(primitive_code))
 
 #define Pop_Primitive_Frame(NArgs)					\
   Stack_Pointer = Simulate_Popping(NArgs)

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.34 1987/11/04 20:02:10 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.35 1987/11/17 08:13:04 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -95,7 +95,7 @@ MIT in each case. */
 #define Immediate_GC(N)							\
 {									\
   Request_GC(N);							\
-  Interrupt(IntCode & IntEnb);						\
+  Interrupt(PENDING_INTERRUPTS());					\
 }
 
 #define Prepare_Eval_Repeat()						\
@@ -196,15 +196,22 @@ if (GC_Check(Amount))							\
   Orig_Arg = *Arg;							\
 									\
   if (Type_Code(*Arg) != TC_FUTURE)					\
+  {									\
     Pop_Return_Error(Err_No);						\
+  }									\
 									\
   while ((Type_Code(*Arg) == TC_FUTURE) && (Future_Has_Value(*Arg)))	\
   {									\
-    if (Future_Is_Keep_Slot(*Arg)) Log_Touch_Of_Future(*Arg);		\
+    if (Future_Is_Keep_Slot(*Arg))					\
+    {									\
+      Log_Touch_Of_Future(*Arg);					\
+    }									\
     *Arg = Future_Value(*Arg);						\
   }									\
   if (Type_Code(*Arg) != TC_FUTURE)					\
-    goto Prim_No_Trap_Apply;						\
+  {									\
+    goto Apply_Non_Trapping;						\
+  }									\
 									\
   Save_Cont();								\
  Will_Push(STACK_ENV_EXTRA_SLOTS+2);					\
@@ -337,21 +344,46 @@ Interpret(dumped_p)
 
 Repeat_Dispatch:
   switch (Which_Way)
-  { case PRIM_APPLY:         goto Internal_Apply;
-    case PRIM_NO_TRAP_APPLY: goto Apply_Non_Trapping;
-    case PRIM_DO_EXPRESSION: Reduces_To(Fetch_Expression());
-    case PRIM_NO_TRAP_EVAL:  New_Reduction(Fetch_Expression(),Fetch_Env());
-	                     goto Eval_Non_Trapping;
-    case 0: 		     if (!dumped_p) break; /* Else fall through */
-    case PRIM_POP_RETURN:    goto Pop_Return;
-    default:                 Pop_Return_Error(Which_Way);
+  { case PRIM_APPLY:
+      goto Internal_Apply;
+
+    case PRIM_NO_TRAP_APPLY:
+      goto Apply_Non_Trapping;
+
+    case PRIM_DO_EXPRESSION:
+      Reduces_To(Fetch_Expression());
+
+    case PRIM_NO_TRAP_EVAL:
+      New_Reduction(Fetch_Expression(),Fetch_Env());
+      goto Eval_Non_Trapping;
+
+    case 0:
+      if (!dumped_p)
+      {
+	break;
+      }
+      /* Else fall through */
+
+    case PRIM_POP_RETURN:
+      goto Pop_Return;
+
+    default:
+      Pop_Return_Error(Which_Way);
+
     case PRIM_INTERRUPT:
-    { Save_Cont();
-      Interrupt(IntCode & IntEnb);
+    {
+      Save_Cont();
+      Interrupt(PENDING_INTERRUPTS());
     }
-    case ERR_ARG_1_WRONG_TYPE: Arg_Type_Error(1, ERR_ARG_1_WRONG_TYPE);
-    case ERR_ARG_2_WRONG_TYPE: Arg_Type_Error(2, ERR_ARG_2_WRONG_TYPE);
-    case ERR_ARG_3_WRONG_TYPE: Arg_Type_Error(3, ERR_ARG_3_WRONG_TYPE);
+
+    case ERR_ARG_1_WRONG_TYPE:
+      Arg_Type_Error(1, ERR_ARG_1_WRONG_TYPE);
+
+    case ERR_ARG_2_WRONG_TYPE:
+      Arg_Type_Error(2, ERR_ARG_2_WRONG_TYPE);
+
+    case ERR_ARG_3_WRONG_TYPE:
+      Arg_Type_Error(3, ERR_ARG_3_WRONG_TYPE);
   }
 
 Do_Expression:
@@ -432,7 +464,6 @@ Eval_Non_Trapping:
     case TC_NON_MARKED_VECTOR:
     case TC_NULL:
     case TC_PRIMITIVE:
-    case TC_PRIMITIVE_EXTERNAL:
     case TC_PROCEDURE:
     case TC_QUAD:
     case TC_UNINTERNED_SYMBOL:
@@ -583,38 +614,9 @@ Eval_Non_Trapping:
       /* In case we back out */
       Reserve_Stack_Space();			/* CONTINUATION_SIZE */
       Finished_Eventual_Pushing();		/* of this primitive */
+      Store_Expression(Make_New_Pointer(TC_PRIMITIVE, Fetch_Expression()));
+      goto Primitive_Internal_Apply;
 
-Primitive_Internal_Apply:
-      if (Microcode_Does_Stepping && Trapping &&
-           (Fetch_Apply_Trapper() != NIL))
-      {Will_Push(3); 
-        Push(Fetch_Expression());
-        Push(Fetch_Apply_Trapper());
-        Push(STACK_FRAME_HEADER + 1 +
-	     N_Args_Primitive(Get_Integer(Fetch_Expression())));
-       Pushed();
-        Stop_Trapping();
-	goto Apply_Non_Trapping;
-      }
-Prim_No_Trap_Apply:
-      {
-	fast long primitive_code;
-
-	primitive_code = Get_Integer(Fetch_Expression());
-
-	Export_Regs_Before_Primitive();
-	Metering_Apply_Primitive(Val, primitive_code);
-	Import_Regs_After_Primitive();
-	Pop_Primitive_Frame(N_Args_Primitive(primitive_code));
-	if (Must_Report_References())
-	{ Store_Expression(Val);
-	  Store_Return(RC_RESTORE_VALUE);
-	  Save_Cont();
-	  Call_Future_Logging();
-	}
-	break;
-      }
-
     case TC_PCOMB1:
        Reserve_Stack_Space();	/* 1+CONTINUATION_SIZE */
        Do_Nth_Then(RC_PCOMB1_APPLY, PCOMB1_ARG_SLOT, {});
@@ -734,7 +736,7 @@ lookup_end_restart:
       if (temp == PRIM_INTERRUPT)
       {
 	Prepare_Eval_Repeat();
-	Interrupt(IntCode & IntEnb);
+	Interrupt(PENDING_INTERRUPTS());
       }
 
       Eval_Error(temp);
@@ -951,7 +953,7 @@ Pop_Return:
 	  Pop_Return_Error(Result);
 	}
 	Prepare_Pop_Return_Interrupt(RC_EXECUTE_ACCESS_FINISH, value);
-	Interrupt(IntCode & IntEnb);
+	Interrupt(PENDING_INTERRUPTS());
       }
       Val = value;
       Pop_Return_Error(ERR_BAD_FRAME);
@@ -1114,7 +1116,7 @@ external_assignment_return:
 
       Prepare_Pop_Return_Interrupt(RC_EXECUTE_ASSIGNMENT_FINISH,
 				   value);
-      Interrupt(IntCode & IntEnb);
+      Interrupt(PENDING_INTERRUPTS());
     }
       
 /* Interpret() continues on the next page */
@@ -1143,7 +1145,7 @@ external_assignment_return:
 	{
 	  Prepare_Pop_Return_Interrupt(RC_EXECUTE_DEFINITION_FINISH,
 				       value);
-	  Interrupt(IntCode & IntEnb);
+	  Interrupt(PENDING_INTERRUPTS());
 	}
 	Val = value;
         Pop_Return_Error(result);
@@ -1228,11 +1230,11 @@ Internal_Apply:
 
 Apply_Non_Trapping:
 
-      if ((IntCode & IntEnb) != 0)
+      if ((PENDING_INTERRUPTS()) != 0)
       {
 	long Interrupts;
 
-	Interrupts = (IntCode & IntEnb);
+	Interrupts = (PENDING_INTERRUPTS());
 	Store_Expression(NIL);
 	Val = NIL;
 	Prepare_Apply_Interrupt();
@@ -1328,48 +1330,49 @@ Perform_Application:
 	  /*
 	     After checking the number of arguments, remove the
 	     frame header since primitives do not expect it.
+
+	     NOTE: This code must match the application code which
+	     follows Primitive_Internal_Apply.
 	   */
 
           case TC_PRIMITIVE:
           { 
-            if (Get_Integer(Stack_Ref(STACK_ENV_HEADER)) !=
-                STACK_ENV_FIRST_ARG + N_Args_Primitive(Get_Integer(Function)) - 1)
+	    long nargs;
+	    fast long primitive_code;
+
+	    primitive_code = OBJECT_DATUM(Function);
+	    if (primitive_code > MAX_PRIMITIVE)
 	    {
-	      Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
+	      Apply_Error(ERR_UNIMPLEMENTED_PRIMITIVE);
+	    }
+
+	    /* Note that the test below will fail for lexpr primitives. */
+ 
+	    nargs = (OBJECT_DATUM(Stack_Ref(STACK_ENV_HEADER)) -
+		     (STACK_ENV_FIRST_ARG - 1));     
+            if (nargs != PRIMITIVE_ARITY(primitive_code))
+	    {
+	      if (PRIMITIVE_ARITY(primitive_code) != LEXPR_PRIMITIVE_ARITY)
+	      {
+		Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
+	      }
+	      Regs[REGBLOCK_LEXPR_ACTUALS] = ((Pointer) nargs);
 	    }
             Stack_Pointer = Simulate_Popping(STACK_ENV_FIRST_ARG);
             Store_Expression(Function);
-            goto Prim_No_Trap_Apply;
-          }
-
-          case TC_PRIMITIVE_EXTERNAL:
-          {
-	    fast long NArgs, Proc;
-
-	    Proc = Datum(Function);
-	    if (Proc > MAX_EXTERNAL_PRIMITIVE)
-	    {
-	      Apply_Error(ERR_UNDEFINED_PRIMITIVE);
-	    }
-            NArgs = N_Args_External(Proc);
-            if (Get_Integer(Stack_Ref(STACK_ENV_HEADER)) !=
-		(NArgs + (STACK_ENV_FIRST_ARG - 1)))
-	    {
-               Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
-	     }
-            Stack_Pointer = Simulate_Popping(STACK_ENV_FIRST_ARG);
-            Store_Expression(Function);
-
-Repeat_External_Primitive:
-	    /* Reinitialize Proc in case we "goto Repeat_External..." */
-            Proc = Get_Integer(Fetch_Expression());
 
 	    Export_Regs_Before_Primitive();
-            Val = Apply_External(Proc);
-	    Set_Time_Zone(Zone_Working);
+	    Metering_Apply_Primitive(Val, primitive_code);
 	    Import_Regs_After_Primitive();
-	    Pop_Primitive_Frame(N_Args_External(Proc));
 
+	    Pop_Primitive_Frame(nargs);
+	    if (Must_Report_References())
+	    {
+	      Store_Expression(Val);
+	      Store_Return(RC_RESTORE_VALUE);
+	      Save_Cont();
+	      Call_Future_Logging();
+	    }
 	    goto Pop_Return;
 	  }
 
@@ -1502,16 +1505,31 @@ return_from_compiled_code:
 	    }
 
 	    case PRIM_INTERRUPT:
-	    { compiled_error_backout();
+	    {
+	      compiled_error_backout();
 	      Save_Cont();
-	      Interrupt( (IntCode & IntEnb));
+	      Interrupt(PENDING_INTERRUPTS());
 	    }
 
 	    case ERR_WRONG_NUMBER_OF_ARGUMENTS:
-	    { apply_compiled_backout();
+	    {
+	      apply_compiled_backout();
 	      Apply_Error( Which_Way);
 	    }
 
+	    case ERR_UNIMPLEMENTED_PRIMITIVE:
+	    {
+	      /* This error code means that compiled code
+		 attempted to call an unimplemented primitive.
+	       */
+	      extern void Back_Out_Of_Primitive();
+
+	      Export_Registers();
+	      Back_Out_Of_Primitive();
+	      Import_Registers();
+	      goto Repeat_Dispatch;
+	    }
+
 	    case ERR_EXECUTE_MANIFEST_VECTOR:
 	    { /* This error code means that enter_compiled_expression
 		 was called in a system without compiler support.
@@ -1630,8 +1648,54 @@ return_from_compiled_code:
       Push(Val);		/* Argument value */
       Finished_Eventual_Pushing();
       Store_Expression(Fast_Vector_Ref(Fetch_Expression(), PCOMB1_FN_SLOT));
-      goto Primitive_Internal_Apply;
 
+Primitive_Internal_Apply:
+      if (Microcode_Does_Stepping && Trapping &&
+	  (Fetch_Apply_Trapper() != NIL))
+      {
+	/* Does this work in the stacklet case?
+	   We may have a non-contiguous frame. -- Jinx
+	 */
+       Will_Push(3); 
+        Push(Fetch_Expression());
+        Push(Fetch_Apply_Trapper());
+        Push(STACK_FRAME_HEADER + 1 +
+	     PRIMITIVE_N_PARAMETERS(OBJECT_DATUM(Fetch_Expression())));
+       Pushed();
+        Stop_Trapping();
+	goto Apply_Non_Trapping;
+      }
+      /* NOTE: This code must match the code in the TC_PRIMITIVE
+	 case of Internal_Apply.
+	 This code is simpler because it need not deal with lexpr
+	 primitives.
+       */
+      {
+	fast long primitive_code;
+
+	primitive_code = OBJECT_DATUM(Fetch_Expression());
+	if (primitive_code > MAX_PRIMITIVE)
+	{
+	  Push(Fetch_Expression());
+	  Push(STACK_FRAME_HEADER + PRIMITIVE_N_PARAMETERS(primitive_code));
+	  Apply_Error(ERR_UNIMPLEMENTED_PRIMITIVE);
+	}
+
+	Export_Regs_Before_Primitive();
+	Metering_Apply_Primitive(Val, primitive_code);
+	Import_Regs_After_Primitive();
+
+	Pop_Primitive_Frame(PRIMITIVE_ARITY(primitive_code));
+	if (Must_Report_References())
+	{
+	  Store_Expression(Val);
+	  Store_Return(RC_RESTORE_VALUE);
+	  Save_Cont();
+	  Call_Future_Logging();
+	}
+	break;
+      }
+
     case RC_PCOMB2_APPLY:
       End_Subproblem();
       Push(Val);		/* Value of arg. 1 */
@@ -1717,11 +1781,6 @@ return_from_compiled_code:
       Restore_Cont();
       goto Repeat_Dispatch;
 
-    case RC_REPEAT_PRIMITIVE:
-      if (Type_Code(Fetch_Expression()) == TC_PRIMITIVE_EXTERNAL)
-        goto Repeat_External_Primitive;
-      else goto Primitive_Internal_Apply;
-
 /* Interpret() continues on the next page */
 
 /* Interpret(), continued */
@@ -1737,16 +1796,24 @@ return_from_compiled_code:
 */
 
     case RC_RESTORE_DONT_COPY_HISTORY:
-    { Pointer Stacklet;
+    {
+      Pointer Stacklet;
+
       Prev_Restore_History_Offset = Get_Integer(Pop());
       Stacklet = Pop();
       History = Get_Pointer(Fetch_Expression());
       if (Prev_Restore_History_Offset == 0)
+      {
 	Prev_Restore_History_Stacklet = NULL;
+      }
       else if (Stacklet == NIL)
+      {
         Prev_Restore_History_Stacklet = NULL;
+      }
       else
+      {
 	Prev_Restore_History_Stacklet = Get_Pointer(Stacklet);
+      }
       break;
     }
 
@@ -1789,12 +1856,12 @@ return_from_compiled_code:
 
     case RC_RESTORE_FLUIDS:
       Fluid_Bindings = Fetch_Expression();
-      New_Compiler_MemTop();
+      /* Why is this here? -- Jinx */ 
+      COMPILER_SETUP_INTERRUPT();
       break;
 
     case RC_RESTORE_INT_MASK: 
-      IntEnb = Get_Integer(Fetch_Expression());
-      New_Compiler_MemTop();
+      SET_INTERRUPT_MASK(Get_Integer(Fetch_Expression()));
       break;
 
 /* Interpret() continues on the next page */

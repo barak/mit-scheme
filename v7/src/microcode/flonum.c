@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.23 1987/07/27 16:55:48 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.24 1987/11/17 08:11:14 jinx Rel $
  *
  * This file contains support for floating point arithmetic.  Most
  * of these primitives have been superceded by generic arithmetic.
@@ -51,6 +51,7 @@ MIT in each case. */
 */
 
 Built_In_Primitive(Prim_Plus_Flonum, 2, "PLUS-FLONUM", 0x69)
+Define_Primitive(Prim_Plus_Flonum, 2, "PLUS-FLONUM")
 {
   Primitive_2_Args();
 
@@ -61,6 +62,7 @@ Built_In_Primitive(Prim_Plus_Flonum, 2, "PLUS-FLONUM", 0x69)
 }
 
 Built_In_Primitive(Prim_Minus_Flonum, 2, "MINUS-FLONUM", 0x6A)
+Define_Primitive(Prim_Minus_Flonum, 2, "MINUS-FLONUM")
 {
   Primitive_2_Args();
 
@@ -71,6 +73,7 @@ Built_In_Primitive(Prim_Minus_Flonum, 2, "MINUS-FLONUM", 0x6A)
 }
 
 Built_In_Primitive(Prim_Multiply_Flonum, 2, "MULTIPLY-FLONUM", 0x6B)
+Define_Primitive(Prim_Multiply_Flonum, 2, "MULTIPLY-FLONUM")
 {
   Primitive_2_Args();
 
@@ -81,6 +84,7 @@ Built_In_Primitive(Prim_Multiply_Flonum, 2, "MULTIPLY-FLONUM", 0x6B)
 }
 
 Built_In_Primitive(Prim_Divide_Flonum, 2, "DIVIDE-FLONUM", 0x6C)
+Define_Primitive(Prim_Divide_Flonum, 2, "DIVIDE-FLONUM")
 {
   Primitive_2_Args();
 
@@ -102,6 +106,7 @@ Built_In_Primitive(Prim_Divide_Flonum, 2, "DIVIDE-FLONUM", 0x6C)
 */
 
 Built_In_Primitive(Prim_Equal_Flonum, 2, "EQUAL-FLONUM?", 0x6D)
+Define_Primitive(Prim_Equal_Flonum, 2, "EQUAL-FLONUM?")
 {
   Primitive_2_Args();
 
@@ -113,6 +118,7 @@ Built_In_Primitive(Prim_Equal_Flonum, 2, "EQUAL-FLONUM?", 0x6D)
 }
 
 Built_In_Primitive(Prim_Greater_Flonum, 2, "GREATER-THAN-FLONUM?", 0xAA)
+Define_Primitive(Prim_Greater_Flonum, 2, "GREATER-THAN-FLONUM?")
 {
   Primitive_2_Args();
 
@@ -124,6 +130,7 @@ Built_In_Primitive(Prim_Greater_Flonum, 2, "GREATER-THAN-FLONUM?", 0xAA)
 }
 
 Built_In_Primitive(Prim_Less_Flonum, 2, "LESS-THAN-FLONUM?", 0x6E)
+Define_Primitive(Prim_Less_Flonum, 2, "LESS-THAN-FLONUM?")
 {
   Primitive_2_Args();
 
@@ -143,6 +150,7 @@ Built_In_Primitive(Prim_Less_Flonum, 2, "LESS-THAN-FLONUM?", 0x6E)
 */
 
 Built_In_Primitive(Prim_Sine_Flonum, 1, "SINE-FLONUM", 0x73)
+Define_Primitive(Prim_Sine_Flonum, 1, "SINE-FLONUM")
 {
   extern double sin();
   Primitive_1_Arg();
@@ -153,6 +161,7 @@ Built_In_Primitive(Prim_Sine_Flonum, 1, "SINE-FLONUM", 0x73)
 }
 
 Built_In_Primitive(Prim_Cosine_Flonum, 1, "COSINE-FLONUM", 0x74)
+Define_Primitive(Prim_Cosine_Flonum, 1, "COSINE-FLONUM")
 {
   extern double cos();
   Primitive_1_Arg();
@@ -163,6 +172,7 @@ Built_In_Primitive(Prim_Cosine_Flonum, 1, "COSINE-FLONUM", 0x74)
 }
 
 Built_In_Primitive(Prim_Arctan_Flonum, 1, "ARCTAN-FLONUM", 0x75)
+Define_Primitive(Prim_Arctan_Flonum, 1, "ARCTAN-FLONUM")
 {
   extern double atan();
   Primitive_1_Arg();
@@ -173,6 +183,7 @@ Built_In_Primitive(Prim_Arctan_Flonum, 1, "ARCTAN-FLONUM", 0x75)
 }
 
 Built_In_Primitive(Prim_Exp_Flonum, 1, "EXP-FLONUM", 0x76)
+Define_Primitive(Prim_Exp_Flonum, 1, "EXP-FLONUM")
 {
   extern double exp();
   Primitive_1_Arg();
@@ -183,6 +194,7 @@ Built_In_Primitive(Prim_Exp_Flonum, 1, "EXP-FLONUM", 0x76)
 }
 
 Built_In_Primitive(Prim_Ln_Flonum, 1, "LN-FLONUM", 0x77)
+Define_Primitive(Prim_Ln_Flonum, 1, "LN-FLONUM")
 {
   extern double log();
   Primitive_1_Arg();
@@ -195,6 +207,7 @@ Built_In_Primitive(Prim_Ln_Flonum, 1, "LN-FLONUM", 0x77)
 }
 
 Built_In_Primitive(Prim_Sqrt_Flonum, 1, "SQRT-FLONUM", 0x78)
+Define_Primitive(Prim_Sqrt_Flonum, 1, "SQRT-FLONUM")
 {
   extern double sqrt();
   double Arg;
@@ -209,6 +222,7 @@ Built_In_Primitive(Prim_Sqrt_Flonum, 1, "SQRT-FLONUM", 0x78)
 }
 
 Built_In_Primitive(Prim_Zero_Flonum, 1, "ZERO-FLONUM?", 0xA7)
+Define_Primitive(Prim_Zero_Flonum, 1, "ZERO-FLONUM?")
 {
   Primitive_1_Arg();
 
@@ -218,6 +232,7 @@ Built_In_Primitive(Prim_Zero_Flonum, 1, "ZERO-FLONUM?", 0xA7)
 }
 
 Built_In_Primitive(Prim_Positive_Flonum, 1, "POSITIVE-FLONUM?", 0xA8)
+Define_Primitive(Prim_Positive_Flonum, 1, "POSITIVE-FLONUM?")
 {
   Primitive_1_Arg();
 
@@ -227,6 +242,7 @@ Built_In_Primitive(Prim_Positive_Flonum, 1, "POSITIVE-FLONUM?", 0xA8)
 }
 
 Built_In_Primitive(Prim_Negative_Flonum, 1, "NEGATIVE-FLONUM?", 0xA9)
+Define_Primitive(Prim_Negative_Flonum, 1, "NEGATIVE-FLONUM?")
 {
   Primitive_1_Arg();
 
@@ -242,6 +258,7 @@ Built_In_Primitive(Prim_Negative_Flonum, 1, "NEGATIVE-FLONUM?", 0xA9)
       the correct type, FIXNUM-OR-BIGNUM is returned unchanged.
 */
 Built_In_Primitive(Prim_Int_To_Float, 1, "COERCE-INTEGER-TO-FLONUM", 0x72)
+Define_Primitive(Prim_Int_To_Float, 1, "COERCE-INTEGER-TO-FLONUM")
 {
   Primitive_1_Arg();
 
@@ -263,6 +280,7 @@ Built_In_Primitive(Prim_Int_To_Float, 1, "COERCE-INTEGER-TO-FLONUM", 0x72)
       Returns NIL if FLONUM isn't a floating point number
 */
 Built_In_Primitive(Prim_Truncate_Flonum, 1, "TRUNCATE-FLONUM", 0x70)
+Define_Primitive(Prim_Truncate_Flonum, 1, "TRUNCATE-FLONUM")
 {
   fast double A;
   long Answer;	/* Faulty VAX/UNIX C optimizer */
@@ -282,6 +300,7 @@ Built_In_Primitive(Prim_Truncate_Flonum, 1, "TRUNCATE-FLONUM", 0x70)
       FLONUM is a floating point number.  Otherwise returns FLONUM.
 */
 Built_In_Primitive(Prim_Round_Flonum, 1, "ROUND-FLONUM", 0x71)
+Define_Primitive(Prim_Round_Flonum, 1, "ROUND-FLONUM")
 {
   fast double A;
   long Answer;	/* Faulty VAX/UNIX C optimizer */

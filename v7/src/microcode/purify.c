@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.28 1987/06/05 17:29:07 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.29 1987/11/17 08:15:39 jinx Rel $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -385,6 +385,7 @@ Pointer Info;
 */
 
 Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY", 0xB4)
+Define_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY")
 {
   long Saved_Zone;
   Pointer Object, Lost_Objects, Purify_Result, Daemon;

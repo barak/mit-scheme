@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.27 1987/06/23 22:01:36 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.28 1987/11/17 08:09:39 jinx Exp $
  *
  * External declarations.
  *
@@ -101,16 +101,14 @@ extern Pointer
 
 extern Declare_Fixed_Objects();
 		
-extern long IntCode,	/* Interrupts requesting */
- 	    IntEnb,	/* Interrupts enabled */
-            GC_Reserve,	/* Scheme pointer overflow space in heap */
-	    GC_Space_Needed, /* Amount of space needed when GC triggered */
-	    /* Used to signal microcode errors from compiled code. */
-	    compiled_code_error_code;
-
-/* The lookup routines receive the slot location using these: */
-extern Pointer Lookup_Base;
-extern long Lookup_Offset;
+extern long
+  IntCode,		/* Interrupts requesting */
+  IntEnb,		/* Interrupts enabled */
+  temp_long,		/* temporary for sign extension */
+  GC_Reserve,		/* Scheme pointer overflow space in heap */
+  GC_Space_Needed, 	/* Amount of space needed when GC triggered */
+  /* Used to signal microcode errors from compiled code. */
+  compiled_code_error_code;
 
 extern char *Return_Names[];
 extern long MAX_RETURN;

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.42 1987/08/01 06:56:48 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.43 1987/11/17 08:12:53 jinx Exp $
 
    Utilities for manipulating symbols. 
  */
@@ -83,17 +83,23 @@ string_equal(String1, String2)
 
   if (Address(String1) == Address(String2))
     return true;
-  Length1 = Get_Integer(Fast_Vector_Ref(String1, STRING_LENGTH));
-  Length2 = Get_Integer(Fast_Vector_Ref(String2, STRING_LENGTH));
+  Length1 = ((long) (Fast_Vector_Ref(String1, STRING_LENGTH)));
+  Length2 = ((long) (Fast_Vector_Ref(String2, STRING_LENGTH)));
   if (Length1 != Length2)
+  {
     return false;
+  }
 
   S1 = ((char *) Nth_Vector_Loc(String1, STRING_CHARS));
   S2 = ((char *) Nth_Vector_Loc(String2, STRING_CHARS));
   for (i = 0; i < Length1; i++)
+  {
     if (*S1++ != *S2++)
-      return false;
-  return true;
+    {
+      return (false);
+    }
+  }
+  return (true);
 }
 
 /* Interning involves hashing the input string and either returning
@@ -215,6 +221,7 @@ Find_Symbol(scheme_string)
    instead of a list of ascii values as argument.
  */
 Built_In_Primitive(Prim_String_To_Symbol, 1, "STRING->SYMBOL", 0x7)
+Define_Primitive(Prim_String_To_Symbol, 1, "STRING->SYMBOL")
 {
   Primitive_1_Arg();
 
@@ -233,6 +240,8 @@ Built_In_Primitive(Prim_String_To_Symbol, 1, "STRING->SYMBOL", 0x7)
 
 Built_In_Primitive(Prim_Intern_Character_List, 1,
 		   "INTERN-CHARACTER-LIST", 0xAB)
+Define_Primitive(Prim_Intern_Character_List, 1,
+		   "INTERN-CHARACTER-LIST")
 {
   extern Pointer list_to_string();
   Primitive_1_Arg();
@@ -246,6 +255,7 @@ Built_In_Primitive(Prim_Intern_Character_List, 1,
    the reader in creating interned symbols.
 */
 Built_In_Primitive(Prim_String_Hash, 1, "STRING-HASH", 0x83)
+Define_Primitive(Prim_String_Hash, 1, "STRING-HASH")
 {
   Primitive_1_Arg();
 
@@ -254,6 +264,7 @@ Built_In_Primitive(Prim_String_Hash, 1, "STRING-HASH", 0x83)
 }
 
 Built_In_Primitive (Prim_string_hash_mod, 2, "STRING-HASH-MOD", 0x8A)
+Define_Primitive (Prim_string_hash_mod, 2, "STRING-HASH-MOD")
 {
   Primitive_2_Args ();
   CHECK_ARG (1, STRING_P);
@@ -271,6 +282,8 @@ Built_In_Primitive (Prim_string_hash_mod, 2, "STRING-HASH-MOD", 0x8A)
 */
 Built_In_Primitive(Prim_Character_List_Hash, 1,
 		   "CHARACTER-LIST-HASH", 0x65)
+Define_Primitive(Prim_Character_List_Hash, 1,
+		   "CHARACTER-LIST-HASH")
 { 
   long Length;
   Pointer This_Char;

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hunk.c,v 9.23 1987/10/09 16:11:45 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hunk.c,v 9.24 1987/11/17 08:12:44 jinx Rel $
  *
  * Support for Hunk3s (triples)
  */
@@ -42,6 +42,7 @@ MIT in each case. */
       Returns a triple consisting of the specified values.
 */
 Built_In_Primitive(Prim_Hunk3_Cons, 3, "HUNK3-CONS", 0x28)
+Define_Primitive(Prim_Hunk3_Cons, 3, "HUNK3-CONS")
 {
   Primitive_3_Args();
 
@@ -56,6 +57,7 @@ Built_In_Primitive(Prim_Hunk3_Cons, 3, "HUNK3-CONS", 0x28)
       Returns the Nth item from the TRIPLE.  N must be 0, 1, or 2.
 */
 Built_In_Primitive(Prim_Hunk3_Cxr, 2, "HUNK3-CXR", 0x29)
+Define_Primitive(Prim_Hunk3_Cxr, 2, "HUNK3-CXR")
 {
   long Offset;
   Primitive_2_Args();
@@ -71,6 +73,7 @@ Built_In_Primitive(Prim_Hunk3_Cxr, 2, "HUNK3-CXR", 0x29)
       Returns the previous contents.
 */
 Built_In_Primitive(Prim_Hunk3_Set_Cxr, 3, "HUNK3-SET-CXR!", 0x2A)
+Define_Primitive(Prim_Hunk3_Set_Cxr, 3, "HUNK3-SET-CXR!")
 {
   long Offset;
   Primitive_3_Args();
@@ -88,6 +91,7 @@ Built_In_Primitive(Prim_Hunk3_Set_Cxr, 3, "HUNK3-SET-CXR!", 0x2A)
       a COMBINATION_2_OPERAND SCode item.
 */
 Built_In_Primitive(Prim_Sys_H3_0, 1, "SYSTEM-HUNK3-CXR0", 0x8E)
+Define_Primitive(Prim_Sys_H3_0, 1, "SYSTEM-HUNK3-CXR0")
 {
   Primitive_1_Arg();
 
@@ -101,6 +105,7 @@ Built_In_Primitive(Prim_Sys_H3_0, 1, "SYSTEM-HUNK3-CXR0", 0x8E)
       slot of a COMBINATION_2_OPERAND SCode item.
 */
 Built_In_Primitive(Prim_Sys_H3_1, 1, "SYSTEM-HUNK3-CXR1", 0x91)
+Define_Primitive(Prim_Sys_H3_1, 1, "SYSTEM-HUNK3-CXR1")
 {
   Primitive_1_Arg();
 
@@ -114,6 +119,7 @@ Built_In_Primitive(Prim_Sys_H3_1, 1, "SYSTEM-HUNK3-CXR1", 0x91)
       slot of a COMBINATION_2_OPERAND SCode item.
 */
 Built_In_Primitive(Prim_Sys_H3_2, 1, "SYSTEM-HUNK3-CXR2", 0x94)
+Define_Primitive(Prim_Sys_H3_2, 1, "SYSTEM-HUNK3-CXR2")
 {
   Primitive_1_Arg();
 
@@ -128,6 +134,7 @@ Built_In_Primitive(Prim_Sys_H3_2, 1, "SYSTEM-HUNK3-CXR2", 0x94)
       the previous contents.
 */
 Built_In_Primitive(Prim_SH3_Set_0, 2, "SYSTEM-HUNK3-SET-CXR0!", 0x8F)
+Define_Primitive(Prim_SH3_Set_0, 2, "SYSTEM-HUNK3-SET-CXR0!")
 {
   Primitive_2_Args();
   Arg_1_GC_Type(GC_Triple);
@@ -143,6 +150,7 @@ Built_In_Primitive(Prim_SH3_Set_0, 2, "SYSTEM-HUNK3-SET-CXR0!", 0x8F)
       Returns the previous contents.
 */
 Built_In_Primitive(Prim_SH3_Set_1, 2, "SYSTEM-HUNK3-SET-CXR1!", 0x92)
+Define_Primitive(Prim_SH3_Set_1, 2, "SYSTEM-HUNK3-SET-CXR1!")
 {
   Primitive_2_Args();
   Arg_1_GC_Type(GC_Triple);
@@ -158,6 +166,7 @@ Built_In_Primitive(Prim_SH3_Set_1, 2, "SYSTEM-HUNK3-SET-CXR1!", 0x92)
       Returns the previous contents.
 */
 Built_In_Primitive(Prim_SH3_Set_2, 2, "SYSTEM-HUNK3-SET-CXR2!", 0x95)
+Define_Primitive(Prim_SH3_Set_2, 2, "SYSTEM-HUNK3-SET-CXR2!")
 {
   Primitive_2_Args();
   Arg_1_GC_Type(GC_Triple);

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.23 1987/10/09 16:14:01 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.24 1987/11/17 08:16:42 jinx Exp $ */
 
 /* This file contains macros for manipulating stacks and stacklets. */
 
@@ -361,7 +361,7 @@ do									\
 				     STACKLET_UNUSED_LENGTH))) +	\
 	     STACKLET_HEADER_SIZE);					\
   valid = ((len + 1) - invalid);					\
-  IntCode &= (~ INT_Stack_Overflow);					\
+  CLEAR_INTERRUPT(INT_Stack_Overflow);					\
   To_Where = (Stack_Top - valid);					\
   From_Where = Nth_Vector_Loc (Control_Point, invalid);			\
   Stack_Check (To_Where);						\

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.8 1987/07/30 14:59:49 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.9 1987/11/17 08:08:27 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -78,6 +78,8 @@ compiled_entry_to_block_offset(ce)
 
 Built_In_Primitive (Prim_comp_code_address_block, 1,
 		    "COMPILED-CODE-ADDRESS->BLOCK", 0xB5)
+Define_Primitive (Prim_comp_code_address_block, 1,
+		    "COMPILED-CODE-ADDRESS->BLOCK")
 {
   Pointer *address;
   Primitive_1_Arg ();
@@ -89,6 +91,8 @@ Built_In_Primitive (Prim_comp_code_address_block, 1,
 
 Built_In_Primitive (Prim_comp_code_address_offset, 1,
 		    "COMPILED-CODE-ADDRESS->OFFSET", 0xAC)
+Define_Primitive (Prim_comp_code_address_offset, 1,
+		    "COMPILED-CODE-ADDRESS->OFFSET")
 {
   long offset;
   Primitive_1_Arg ();

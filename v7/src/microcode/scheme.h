@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.26 1987/10/09 16:13:39 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.27 1987/11/17 08:16:21 jinx Exp $
  *
  * General declarations for the SCode interpreter.  This
  * file is INCLUDED by others and contains declarations only.
@@ -78,7 +78,8 @@ MIT in each case. */
 #include "types.h"	/* Type code numbers */
 #include "const.h"	/* Various named constants */
 #include "object.h"	/* Scheme object representation */
-#include "gc.h"		/* Garbage collector related macros */
+#include "interrupt.h"	/* Interrupt processing macros */
+#include "gc.h"		/* Memory management related macros */
 #include "scode.h"	/* Scheme scode representation */
 #include "sdata.h"	/* Scheme user data representation */
 #include "futures.h"	/* Support macros, etc. for FUTURE */
@@ -95,4 +96,4 @@ MIT in each case. */
 #include "bkpt.h"	/* Shadows some defaults */
 #include "default.h"	/* Defaults for various hooks. */
 #include "extern.h"	/* External declarations */
-#include "prim.h"	/* Declarations for external primitives. */
+#include "prim.h"	/* Declarations for primitives. */

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.37 1987/11/04 20:01:34 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.38 1987/11/17 08:14:11 jinx Rel $
  *
  * This file contains symbol lookup and modification routines.  See
  * Hal Abelson for a paper describing and justifying the algorithm.
@@ -2019,6 +2019,7 @@ compiler_assignment_trap(extension, value)
    (set! <symbol> <value>) in <environment>.
 */
 Built_In_Primitive(Prim_Lexical_Assignment, 3, "LEXICAL-ASSIGNMENT", 0x0)
+Define_Primitive(Prim_Lexical_Assignment, 3, "LEXICAL-ASSIGNMENT")
 {
   Primitive_3_Args();
 
@@ -2032,6 +2033,7 @@ Built_In_Primitive(Prim_Lexical_Assignment, 3, "LEXICAL-ASSIGNMENT", 0x0)
    Indistinguishable from evaluating <symbol> in <environment>.
 */
 Built_In_Primitive(Prim_Lexical_Reference, 2, "LEXICAL-REFERENCE", 0x12)
+Define_Primitive(Prim_Lexical_Reference, 2, "LEXICAL-REFERENCE")
 {
   Primitive_2_Args();
 
@@ -2042,6 +2044,7 @@ Built_In_Primitive(Prim_Lexical_Reference, 2, "LEXICAL-REFERENCE", 0x12)
    Identical to LEXICAL_REFERENCE, here for histerical reasons.
 */
 Built_In_Primitive(Prim_Local_Reference, 2, "LOCAL-REFERENCE", 0x1)
+Define_Primitive(Prim_Local_Reference, 2, "LOCAL-REFERENCE")
 {
   Primitive_2_Args();
 
@@ -2060,6 +2063,7 @@ Built_In_Primitive(Prim_Local_Reference, 2, "LOCAL-REFERENCE", 0x1)
    (define <symbol> <value>) in <environment>.
 */
 Built_In_Primitive(Prim_Local_Assignment, 3, "LOCAL-ASSIGNMENT", 0x2)
+Define_Primitive(Prim_Local_Assignment, 3, "LOCAL-ASSIGNMENT")
 {
   Primitive_3_Args();
 
@@ -2074,6 +2078,7 @@ Built_In_Primitive(Prim_Local_Assignment, 3, "LOCAL-ASSIGNMENT", 0x2)
    The special form (unassigned? <symbol>) is built on top of this.
 */
 Built_In_Primitive(Prim_Unassigned_Test, 2, "LEXICAL-UNASSIGNED?", 0x18)
+Define_Primitive(Prim_Unassigned_Test, 2, "LEXICAL-UNASSIGNED?")
 {
   Primitive_2_Args();
 
@@ -2087,6 +2092,7 @@ Built_In_Primitive(Prim_Unassigned_Test, 2, "LEXICAL-UNASSIGNED?", 0x18)
    The special form (unbound? <symbol>) is built on top of this.
 */
 Built_In_Primitive(Prim_Unbound_Test, 2, "LEXICAL-UNBOUND?", 0x33)
+Define_Primitive(Prim_Unbound_Test, 2, "LEXICAL-UNBOUND?")
 {
   Primitive_2_Args();
 
@@ -2099,6 +2105,8 @@ Built_In_Primitive(Prim_Unbound_Test, 2, "LEXICAL-UNBOUND?", 0x33)
 */
 Built_In_Primitive(Prim_Unreferenceable_Test, 2,
 		   "LEXICAL-UNREFERENCEABLE?", 0x13)
+Define_Primitive(Prim_Unreferenceable_Test, 2,
+		   "LEXICAL-UNREFERENCEABLE?")
 {
   long Result;
   Primitive_2_Args();

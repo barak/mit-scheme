@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.34 1987/08/06 06:06:22 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.35 1987/11/17 08:06:48 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -340,6 +340,7 @@ purify(object, flag)
    have changed.
 */
 Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY", 0xB4)
+Define_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY")
 {
   Pointer object, purify_result, daemon;
   Primitive_2_Args();

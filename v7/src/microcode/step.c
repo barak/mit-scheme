@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.22 1987/04/16 02:29:36 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.23 1987/11/17 08:16:54 jinx Exp $
  *
  * Support for the stepper
  */
@@ -76,6 +76,7 @@ Boolean Return_Hook_Too;
 */
 
 Built_In_Primitive(Prim_Eval_Step, 3, "PRIMITIVE-EVAL-STEP", 0xCA)
+Define_Primitive(Prim_Eval_Step, 3, "PRIMITIVE-EVAL-STEP")
 {
   Primitive_3_Args();
 
@@ -98,6 +99,7 @@ Built_In_Primitive(Prim_Eval_Step, 3, "PRIMITIVE-EVAL-STEP", 0xCA)
 */
 
 Built_In_Primitive(Prim_Apply_Step, 3, "PRIMITIVE-APPLY-STEP", 0xCB)
+Define_Primitive(Prim_Apply_Step, 3, "PRIMITIVE-APPLY-STEP")
 {
   Pointer Next_From_Slot, *Next_To_Slot;
   long Number_Of_Args, i;
@@ -143,6 +145,7 @@ Built_In_Primitive(Prim_Apply_Step, 3, "PRIMITIVE-APPLY-STEP", 0xCB)
 */
 
 Built_In_Primitive(Prim_Return_Step, 2, "PRIMITIVE-RETURN-STEP", 0xCC)
+Define_Primitive(Prim_Return_Step, 2, "PRIMITIVE-RETURN-STEP")
 {
   Pointer Return_Hook;
   Primitive_2_Args();

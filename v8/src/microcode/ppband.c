@@ -30,13 +30,20 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.28 1987/10/09 16:08:24 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.29 1987/11/17 08:04:37 jinx Rel $
  *
  * Dumps Scheme FASL in user-readable form .
  */
-
-#include "scheme.h"
 
+#include <stdio.h>
+#include "config.h"
+#include "types.h"
+#include "const.h"
+#include "object.h"
+#include "sdata.h"
+
+#define fast register
+
 /* These are needed by load.c */
 
 static Pointer *Memory_Base;
@@ -74,8 +81,8 @@ Close_Dump_File()
 
 #define Reloc_or_Load_Debug true
 
+#include "fasl.h"
 #include "load.c"
-#include "gctype.c"
 
 #ifdef Heap_In_Low_Memory
 #ifdef spectrum
@@ -91,7 +98,7 @@ Close_Dump_File()
 #define Relocate(P)						\
 	(((long) (P) < Const_Base) ?				\
 	 File_To_Pointer(((long) (P)) - Heap_Base) :		\
-	 (Heap_Count+File_To_Pointer(((long) (P)) - Const_Base)))
+	 (Heap_Count + File_To_Pointer(((long) (P)) - Const_Base)))
 #else
 #define Relocate_Into(What, P)
 if (((long) (P)) < Const_Base)
@@ -113,20 +120,33 @@ scheme_string(From, Quoted)
   fast long i, Count;
   fast char *Chars;
 
-  Chars = (char *) &Data[From+STRING_CHARS];
+  Chars = ((char *) &Data[From +  STRING_CHARS]);
   if (Chars < ((char *) end_of_memory))
-  { Count = Get_Integer(Data[From+STRING_LENGTH]);
+  {
+    Count = ((long) (Data[From + STRING_LENGTH]));
     if (&Chars[Count] < ((char *) end_of_memory))
-    { putchar(Quoted ? '\"' : '\'');
-      for (i=0; i < Count; i++) printf("%c", *Chars++);
-      if (Quoted) putchar('\"');
+    {
+      if (Quoted)
+      {
+	putchar('\"');
+      }
+      for (i = 0; i < Count; i++)
+      {
+	printf("%c", *Chars++);
+      }
+      if (Quoted)
+      {
+	putchar('\"');
+      }
       putchar('\n');
-      return true;
+      return (true);
     }
   }
   if (Quoted)
-    printf("String not in memory; datum = %x\n", From);
-  return false;
+  {
+    printf("String not in memory; datum = %lx\n", From);
+  }
+  return (false);
 }
 
 #define via(File_Address)	Relocate(OBJECT_DATUM(Data[File_Address]))
@@ -139,156 +159,247 @@ scheme_symbol(From)
 
   symbol = &Data[From+SYMBOL_NAME];
   if ((symbol >= end_of_memory) ||
-      !scheme_string(via(From+SYMBOL_NAME), false))
-    printf("symbol not in memory; datum = %x\n", From);
+      (!(scheme_string(via(From + SYMBOL_NAME), false))))
+  {
+    printf("symbol not in memory; datum = %lx\n", From);
+  }
   return;
 }
 
+static char string_buffer[10];
+
+#define PRINT_OBJECT(type, datum)					\
+{									\
+  printf("[%s %lx]", type, datum);					\
+}
+
+#define NON_POINTER(string)						\
+{									\
+  the_string = string;							\
+  Points_To = The_Datum;						\
+  break;								\
+}
+
+#define POINTER(string)							\
+{									\
+  the_string = string;							\
+  break;								\
+}
+
 void
 Display(Location, Type, The_Datum)
      long Location, Type, The_Datum;
 {
+  char *the_string;
   long Points_To;
 
-  printf("%5x: %2x|%6x     ", Location, Type, The_Datum);
-  if (GC_Type_Map[Type] != GC_Non_Pointer)
-    Points_To = Relocate((Pointer *) The_Datum);
-  else
-    Points_To = The_Datum;
+  printf("%5lx: %2lx|%6lx     ", Location, Type, The_Datum);
+  Points_To = Relocate((Pointer *) The_Datum);
+
   switch (Type)
   { /* "Strange" cases */
-    case TC_NULL: if (The_Datum == 0)
-                  { printf("NIL\n");
-		    return;
-		  }
-                  else printf("[NULL ");
-                  break;
-    case TC_TRUE: if (The_Datum == 0)
-                  { printf("TRUE\n");
-		    return;
-		  }
-		  else printf("[TRUE ");
-                  break;
-    case TC_BROKEN_HEART: printf("[BROKEN-HEART ");
-                          if (The_Datum == 0)
-			    Points_To = 0;
-                          break;
-    case TC_MANIFEST_SPECIAL_NM_VECTOR: printf("[MANIFEST-SPECIAL-NM ");
-                                        Points_To = The_Datum;
-                                        break;
-    case TC_MANIFEST_NM_VECTOR: printf("[MANIFEST-NM-VECTOR ");
-                                Points_To = The_Datum;
-                                break;
-    case TC_INTERNED_SYMBOL: scheme_symbol(Points_To);
-                             return;
-    case TC_UNINTERNED_SYMBOL: 
-      printf("uninterned ");
+    case TC_NULL:
+      if (The_Datum == 0)
+      {
+	printf("NIL\n");
+	return;
+      }
+      NON_POINTER("NULL");
+
+    case TC_TRUE:
+      if (The_Datum == 0)
+      {
+	printf("TRUE\n");
+	return;
+      }
+      NON_POINTER("TRUE");
+
+    case TC_MANIFEST_SPECIAL_NM_VECTOR:
+      NON_POINTER("MANIFEST-SPECIAL-NM");
+
+    case TC_MANIFEST_NM_VECTOR:
+      NON_POINTER("MANIFEST-NM-VECTOR");
+
+    case TC_BROKEN_HEART:
+      if (The_Datum == 0)
+      {
+	Points_To = 0;
+      }
+      POINTER("BROKEN-HEART");
+
+    case TC_INTERNED_SYMBOL:
+      PRINT_OBJECT("INTERNED-SYMBOL", Points_To);
+      printf(" = ");
       scheme_symbol(Points_To);
       return;
-    case TC_CHARACTER_STRING: scheme_string(Points_To, true);
-                              return;
-    case TC_FIXNUM: printf("%d\n", Points_To);
-                    return;
 
-    /* Default cases */
-    case TC_LIST: printf("[LIST "); break;
-    case TC_CHARACTER: printf("[CHARACTER "); break;
-    case TC_SCODE_QUOTE: printf("[SCODE-QUOTE "); break;
-    case TC_PCOMB2: printf("[PCOMB2 "); break;
-    case TC_BIG_FLONUM: printf("[BIG-FLONUM "); break;
-    case TC_COMBINATION_1: printf("[COMBINATION-1 "); break;
-    case TC_EXTENDED_PROCEDURE: printf("[EXTENDED-PROCEDURE "); break;
-    case TC_VECTOR: printf("[VECTOR "); break;
-    case TC_RETURN_CODE: printf("[RETURN-CODE "); break;
-    case TC_COMBINATION_2: printf("[COMBINATION-2 "); break;
-    case TC_COMPILED_PROCEDURE: printf("[COMPILED-PROCEDURE "); break;
-    case TC_BIG_FIXNUM: printf("[BIG-FIXNUM "); break;
-    case TC_PROCEDURE: printf("[PROCEDURE "); break;
-    case TC_PRIMITIVE_EXTERNAL: printf("[PRIMITIVE-EXTERNAL "); break;
-    case TC_DELAY: printf("[DELAY "); break;
-    case TC_ENVIRONMENT: printf("[ENVIRONMENT "); break;
-    case TC_DELAYED: printf("[DELAYED "); break;
-    case TC_EXTENDED_LAMBDA: printf("[EXTENDED-LAMBDA "); break;
-    case TC_COMMENT: printf("[COMMENT "); break;
-    case TC_NON_MARKED_VECTOR: printf("[NON-MARKED-VECTOR "); break;
-    case TC_LAMBDA: printf("[LAMBDA "); break;
-    case TC_PRIMITIVE: printf("[PRIMITIVE "); break;
-    case TC_SEQUENCE_2: printf("[SEQUENCE-2 "); break;
-    case TC_PCOMB1: printf("[PCOMB1 "); break;
-    case TC_CONTROL_POINT: printf("[CONTROL-POINT "); break;
-    case TC_ACCESS: printf("[ACCESS "); break;
-    case TC_DEFINITION: printf("[DEFINITION "); break;
-    case TC_ASSIGNMENT: printf("[ASSIGNMENT "); break;
-    case TC_HUNK3_A: printf("[HUNK3_A "); break;
-    case TC_HUNK3_B: printf("[HUNK3_B "); break;
-    case TC_IN_PACKAGE: printf("[IN-PACKAGE "); break;
-    case TC_COMBINATION: printf("[COMBINATION "); break;
-    case TC_COMPILED_EXPRESSION: printf("[COMPILED-EXPRESSION "); break;
-    case TC_LEXPR: printf("[LEXPR "); break;
-    case TC_PCOMB3: printf("[PCOMB3 "); break;
+    case TC_UNINTERNED_SYMBOL: 
+      PRINT_OBJECT("UNINTERNED-SYMBOL", Points_To);
+      printf(" = ");
+      scheme_symbol(Points_To);
+      return;
 
-    case TC_VARIABLE: printf("[VARIABLE "); break;
-    case TC_THE_ENVIRONMENT: printf("[THE-ENVIRONMENT "); break;
-    case TC_FUTURE: printf("[FUTURE "); break;
-    case TC_VECTOR_1B: printf("[VECTOR-1B "); break;
-    case TC_PCOMB0: printf("[PCOMB0 "); break;
-    case TC_VECTOR_16B: printf("[VECTOR-16B "); break;
-    case TC_SEQUENCE_3: printf("[SEQUENCE-3 "); break;
-    case TC_CONDITIONAL: printf("[CONDITIONAL "); break;
-    case TC_DISJUNCTION: printf("[DISJUNCTION "); break;
-    case TC_CELL: printf("[CELL "); break;
-    case TC_WEAK_CONS: printf("[WEAK-CONS "); break;
-    case TC_REFERENCE_TRAP: printf("[REFERENCE-TRAP "); break;
-    case TC_RETURN_ADDRESS: printf("[RETURN-ADDRESS "); break;
-    case TC_COMPILER_LINK: printf("[COMPILER-LINK "); break;
-    case TC_STACK_ENVIRONMENT: printf("[STACK-ENVIRONMENT "); break;
-    case TC_COMPLEX: printf("[COMPLEX "); break;
-    case TC_QUAD: printf("[QUAD "); break;
+    case TC_CHARACTER_STRING:
+      PRINT_OBJECT("CHARACTER-STRING", Points_To);
+      printf(" = ");
+      scheme_string(Points_To, true);
+      return;
 
-    default: printf("[0x%02x ", Type); break;
+    case TC_FIXNUM:
+      PRINT_OBJECT("FIXNUM", The_Datum);
+      Sign_Extend(The_Datum, Points_To);
+      printf(" = %ld\n", Points_To);
+      return;
+
+    case TC_REFERENCE_TRAP:
+      if (The_Datum <= TRAP_MAX_IMMEDIATE)
+      {
+	NON_POINTER("REFERENCE-TRAP");
+      }
+      else
+      {
+	POINTER("REFERENCE-TRAP");
+      }
+
+    case TC_CHARACTER:			NON_POINTER("CHARACTER");
+    case TC_RETURN_CODE:		NON_POINTER("RETURN-CODE");
+    case TC_PRIMITIVE:			NON_POINTER("PRIMITIVE");
+    case TC_THE_ENVIRONMENT:		NON_POINTER("THE-ENVIRONMENT");
+    case TC_PCOMB0:			NON_POINTER("PCOMB0");
+    case TC_LIST:			POINTER("LIST");
+    case TC_SCODE_QUOTE:		POINTER("SCODE-QUOTE");
+    case TC_PCOMB2:			POINTER("PCOMB2");
+    case TC_BIG_FLONUM:			POINTER("FLONUM");
+
+    case TC_COMBINATION_1:		POINTER("COMBINATION-1");
+    case TC_EXTENDED_PROCEDURE:		POINTER("EXTENDED-PROCEDURE");
+    case TC_VECTOR:			POINTER("VECTOR");
+    case TC_COMBINATION_2:		POINTER("COMBINATION-2");
+    case TC_COMPILED_PROCEDURE:		POINTER("COMPILED-PROCEDURE");
+    case TC_BIG_FIXNUM:			POINTER("BIG-FIXNUM");
+    case TC_PROCEDURE:			POINTER("PROCEDURE");
+    case TC_DELAY:			POINTER("DELAY");
+    case TC_ENVIRONMENT:		POINTER("ENVIRONMENT");
+    case TC_DELAYED:			POINTER("DELAYED");
+    case TC_EXTENDED_LAMBDA:		POINTER("EXTENDED-LAMBDA");
+    case TC_COMMENT:			POINTER("COMMENT");
+    case TC_NON_MARKED_VECTOR:		POINTER("NON-MARKED-VECTOR");
+    case TC_LAMBDA:			POINTER("LAMBDA");
+    case TC_SEQUENCE_2:			POINTER("SEQUENCE-2");
+    case TC_PCOMB1:			POINTER("PCOMB1");
+    case TC_CONTROL_POINT:		POINTER("CONTROL-POINT");
+    case TC_ACCESS:			POINTER("ACCESS");
+    case TC_DEFINITION:			POINTER("DEFINITION");
+    case TC_ASSIGNMENT:			POINTER("ASSIGNMENT");
+    case TC_HUNK3_A:			POINTER("HUNK3_A");
+    case TC_HUNK3_B:			POINTER("HUNK3-B");
+    case TC_IN_PACKAGE:			POINTER("IN-PACKAGE");
+    case TC_COMBINATION:		POINTER("COMBINATION");
+    case TC_COMPILED_EXPRESSION:	POINTER("COMPILED-EXPRESSION");
+    case TC_LEXPR:			POINTER("LEXPR");
+    case TC_PCOMB3:			POINTER("PCOMB3");
+    case TC_VARIABLE:			POINTER("VARIABLE");
+    case TC_FUTURE:			POINTER("FUTURE");
+    case TC_VECTOR_1B:			POINTER("VECTOR-1B");
+    case TC_VECTOR_16B:			POINTER("VECTOR-16B");
+    case TC_SEQUENCE_3:			POINTER("SEQUENCE-3");
+    case TC_CONDITIONAL:		POINTER("CONDITIONAL");
+    case TC_DISJUNCTION:		POINTER("DISJUNCTION");
+    case TC_CELL:			POINTER("CELL");
+    case TC_WEAK_CONS:			POINTER("WEAK-CONS");
+    case TC_RETURN_ADDRESS:		POINTER("RETURN-ADDRESS");
+    case TC_COMPILER_LINK:		POINTER("COMPILER_LINK");
+    case TC_STACK_ENVIRONMENT:		POINTER("STACK-ENVIRONMENT");
+    case TC_COMPLEX:			POINTER("COMPLEX");
+    case TC_QUAD:			POINTER("QUAD");
+    case TC_COMPILED_CODE_BLOCK:	POINTER("COMPILED-CODE-BLOCK");
+
+    default:
+      sprintf(&the_string[0], "0x%02lx ", Type);
+      POINTER(&the_string[0]);
   }
-  printf("%x]\n", Points_To);
+  PRINT_OBJECT(the_string, Points_To);
+  putchar('\n');
+  return;
 }
+
+Pointer *
+show_area(area, size, name)
+     fast Pointer *area;
+     fast long size;
+     char *name;
+{
+  fast long i;
 
+  printf("\n%s contents:\n\n", name);
+  for (i = 0; i < size;  area++, i++)
+  {
+    if (OBJECT_TYPE(*area) == TC_MANIFEST_NM_VECTOR)
+    {
+      fast long j, count;
+
+      count = Get_Integer(*area);
+      Display(i, OBJECT_TYPE(*area), OBJECT_DATUM(*area));
+      area += 1;
+      for (j = 0; j < count ; j++, area++)
+      {
+        printf("          %02lx%06lx\n",
+               OBJECT_TYPE(*area), OBJECT_DATUM(*area));
+      }
+      i += count;
+      area -= 1;
+    }
+    else
+    {
+      Display(i, OBJECT_TYPE(*area),  OBJECT_DATUM(*area));
+    }
+  }
+  return (area);
+}
+
 main(argc, argv)
      int argc;
      char **argv;
 {
-  Pointer *Next;
-  long i, total_length;
+  fast Pointer *Next;
+  long total_length, load_length;
 
   if (argc == 1)
   {
     if (!Read_Header())
-    { fprintf(stderr, "Input does not appear to be in FASL format.\n");
+    {
+      fprintf(stderr,
+	      "%s: Input does not appear to be in correct FASL format.\n",
+	      argv[0]);
       exit(1);
     }
-    printf("Dumped object at 0x%x\n", Relocate(Dumped_Object));
-    if (Sub_Version >= FASL_LONG_HEADER)
-      printf("External primitives at 0x%x\n\n", Relocate(Ext_Prim_Vector));
+    printf("Dumped object at 0x%lx\n", Relocate(Dumped_Object));
   }
   else
   {
     Const_Count = 0;
+    Primitive_Table_Size = 0;
     sscanf(argv[1], "%x", &Heap_Base);
     sscanf(argv[2], "%x", &Const_Base);
     sscanf(argv[3], "%d", &Heap_Count);
-    printf("Heap Base = 0x%08x; Constant Base = 0x%08x; Heap Count = %d\n",
+    printf("Heap Base = 0x%08lx; Constant Base = 0x%08lx; Heap Count = %ld\n",
 	   Heap_Base, Const_Base, Heap_Count);
   }    
-  Data = ((Pointer *) malloc(sizeof(Pointer) * (Heap_Count + Const_Count)));
+
+  load_length = (Heap_Count + Const_Count + Primitive_Table_Size);
+  Data = ((Pointer *) malloc(sizeof(Pointer) * (load_length + 4)));
   if (Data == NULL)
   {
-    fprintf(stderr, "Allocation of %d words failed.\n", (Heap_Count + Const_Count));
+    fprintf(stderr, "Allocation of %ld words failed.\n", (load_length + 4));
     exit(1);
   }
-  end_of_memory = &Data[Heap_Count + Const_Count];
-  total_length = Load_Data(Heap_Count + Const_Count, Data);
-  if (total_length != (Heap_Count + Const_Count))
+  total_length = Load_Data(load_length, Data);
+  end_of_memory = &Data[total_length];
+  if (total_length != load_length)
   {
     printf("The FASL file does not have the right length.\n");
-    printf("Expected %d objects.  Obtained %d objects.\n\n",
-	   (Heap_Count + Const_Count), total_length);
+    printf("Expected %d objects.  Obtained %ld objects.\n\n",
+	   load_length, total_length);
     if (total_length < Heap_Count)
     {
       Heap_Count = total_length;
@@ -298,51 +409,46 @@ main(argc, argv)
     {
       Const_Count = total_length;
     }
+    total_length -= Const_Count;
+    if (total_length < Primitive_Table_Size)
+    {
+      Primitive_Table_Size = total_length;
+    }
   }
-  printf("Heap contents:\n\n");
-  for (Next = Data, i = 0; i < Heap_Count;  Next++, i++)
+
+  if (Heap_Count > 0)
   {
-    if (OBJECT_TYPE(*Next) == TC_MANIFEST_NM_VECTOR)
-    {
-      long j, count;
-
-      count = Get_Integer(*Next);
-      Display(i, OBJECT_TYPE(*Next), OBJECT_DATUM(*Next));
-      Next += 1;
-      for (j = 0; j < count ; j++, Next++)
-      {
-        printf("          %02x%06x\n",
-               OBJECT_TYPE(*Next), OBJECT_DATUM(*Next));
-      }
-      i += count;
-      Next -= 1;
-    }
-    else
-    {
-      Display(i, OBJECT_TYPE(*Next),  OBJECT_DATUM(*Next));
-    }
+    Next = show_area(Data, Heap_Count, "Heap");
   }
-  printf("\n\nConstant space:\n\n");
-  for (; i < Heap_Count + Const_Count;  Next++, i++)
+  if (Const_Count > 0)
   {
-    if (OBJECT_TYPE(*Next) == TC_MANIFEST_NM_VECTOR)
-    {
-      long j, count;
-
-      count = Get_Integer(*Next);
-      Display(i, OBJECT_TYPE(*Next), OBJECT_DATUM(*Next));
-      Next += 1;
-      for (j = 0; j < count ; j++, Next++)
-      {
-        printf("          %02x%06x\n",
-               OBJECT_TYPE(*Next), OBJECT_DATUM(*Next));
-      }
-      i += count;
-      Next -= 1;
-    }
-    else
-    {
-      Display(i, OBJECT_TYPE(*Next),  OBJECT_DATUM(*Next));
-    }
+    Next = show_area(Next, Const_Count, "Constant Space");
   }
+  if ((Primitive_Table_Size > 0) && (Next < end_of_memory))
+  {
+    long arity, size;
+    fast long entries, count;
+
+    /* This is done in case the file is short. */
+    end_of_memory[0] = ((Pointer) 0);
+    end_of_memory[1] = ((Pointer) 0);
+    end_of_memory[2] = ((Pointer) 0);
+    end_of_memory[3] = ((Pointer) 0);
+
+    entries = Primitive_Table_Length;
+    printf("\nPrimitive table: number of entries = %ld\n\n", entries);
+
+    for (count = 0;
+	 ((count < entries) && (Next < end_of_memory));
+	 count += 1)
+    {
+      Sign_Extend(*Next++, arity);
+      size = Get_Integer(*Next);
+      printf("Number = %3lx; Arity = %2ld; Name = ", count, arity);
+      scheme_string((Next - Data), true);
+      Next += (1 + size);
+    }
+    printf("\n");
+  }
+  exit(0);
 }

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.26 1987/07/23 21:53:19 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.27 1987/11/17 08:21:09 jinx Exp $
  *
  * This file contains procedures for handling vectors and conversion
  * back and forth to lists.
@@ -154,6 +154,7 @@ fast Pointer List;
 */
 
 Built_In_Primitive(Prim_List_To_Vector, 1, "LIST->VECTOR", 0x7C)
+Define_Primitive(Prim_List_To_Vector, 1, "LIST->VECTOR")
 {
   Primitive_1_Arg();
 
@@ -166,6 +167,7 @@ Built_In_Primitive(Prim_List_To_Vector, 1, "LIST->VECTOR", 0x7C)
    all the items in V.
 */
 Built_In_Primitive(Prim_Subvector_To_List, 3, "SUBVECTOR->LIST", 0x7D)
+Define_Primitive(Prim_Subvector_To_List, 3, "SUBVECTOR->LIST")
 {
   Primitive_3_Args();
 
@@ -178,6 +180,7 @@ Built_In_Primitive(Prim_Subvector_To_List, 3, "SUBVECTOR->LIST", 0x7D)
    initialized to CONTENTS. */
 
 Built_In_Primitive (Prim_Vector_Cons, 2, "VECTOR-CONS", 0x2C)
+Define_Primitive (Prim_Vector_Cons, 2, "VECTOR-CONS")
 {
   Primitive_2_Args ();
 
@@ -189,6 +192,7 @@ Built_In_Primitive (Prim_Vector_Cons, 2, "VECTOR-CONS", 0x2C)
    Return the OFFSETth entry in VECTOR.  Entries are numbered from 0.
 */
 Built_In_Primitive(Prim_Vector_Ref, 2, "VECTOR-REF", 0x2E)
+Define_Primitive(Prim_Vector_Ref, 2, "VECTOR-REF")
 {
   long Offset;
   Primitive_2_Args();
@@ -206,6 +210,7 @@ Built_In_Primitive(Prim_Vector_Ref, 2, "VECTOR-REF", 0x2E)
    previous value of the entry.
 */
 Built_In_Primitive(Prim_Vector_Set, 3, "VECTOR-SET!", 0x30)
+Define_Primitive(Prim_Vector_Set, 3, "VECTOR-SET!")
 {
   long Offset;
   Primitive_3_Args();
@@ -222,6 +227,7 @@ Built_In_Primitive(Prim_Vector_Set, 3, "VECTOR-SET!", 0x30)
    Returns the number of entries in VECTOR.
 */
 Built_In_Primitive(Prim_Vector_Size, 1, "VECTOR-LENGTH", 0x2D)
+Define_Primitive(Prim_Vector_Size, 1, "VECTOR-LENGTH")
 {
   Primitive_1_Arg();
 
@@ -235,6 +241,7 @@ Built_In_Primitive(Prim_Vector_Size, 1, "VECTOR-LENGTH", 0x2D)
    an environment from a list of values.
 */
 Built_In_Primitive(Prim_Sys_List_To_Vector, 2, "SYSTEM-LIST-TO-VECTOR", 0x97)
+Define_Primitive(Prim_Sys_List_To_Vector, 2, "SYSTEM-LIST-TO-VECTOR")
 {
   long Type;
   Primitive_2_Args();
@@ -254,6 +261,8 @@ Built_In_Primitive(Prim_Sys_List_To_Vector, 2, "SYSTEM-LIST-TO-VECTOR", 0x97)
 */
 Built_In_Primitive(Prim_Sys_Subvector_To_List, 3,
 		 "SYSTEM-SUBVECTOR-TO-LIST", 0x98)
+Define_Primitive(Prim_Sys_Subvector_To_List, 3,
+		 "SYSTEM-SUBVECTOR-TO-LIST")
 {
   Primitive_3_Args();
   Touch_In_Primitive(Arg1, Arg1);
@@ -267,6 +276,7 @@ Built_In_Primitive(Prim_Sys_Subvector_To_List, 3,
    returns NIL.
 */
 Built_In_Primitive(Prim_Sys_Vector, 1, "SYSTEM-VECTOR?", 0x99)
+Define_Primitive(Prim_Sys_Vector, 1, "SYSTEM-VECTOR?")
 {
   Primitive_1_Arg();
 
@@ -281,6 +291,7 @@ Built_In_Primitive(Prim_Sys_Vector, 1, "SYSTEM-VECTOR?", 0x99)
    Like VECTOR_REF, but for anything of GC type VECTOR.
 */
 Built_In_Primitive(Prim_Sys_Vector_Ref, 2, "SYSTEM-VECTOR-REF", 0x9A)
+Define_Primitive(Prim_Sys_Vector_Ref, 2, "SYSTEM-VECTOR-REF")
 {
   long Offset;
   Primitive_2_Args();
@@ -296,6 +307,7 @@ Built_In_Primitive(Prim_Sys_Vector_Ref, 2, "SYSTEM-VECTOR-REF", 0x9A)
    Like VECTOR_SET, but for anything of GC type VECTOR.
 */
 Built_In_Primitive(Prim_Sys_Vec_Set, 3, "SYSTEM-VECTOR-SET!", 0x9B)
+Define_Primitive(Prim_Sys_Vec_Set, 3, "SYSTEM-VECTOR-SET!")
 {
   long Offset;
   Primitive_3_Args();
@@ -312,6 +324,7 @@ Built_In_Primitive(Prim_Sys_Vec_Set, 3, "SYSTEM-VECTOR-SET!", 0x9B)
    Like VECTOR_SIZE, but for anything of GC type VECTOR.
 */
 Built_In_Primitive(Prim_Sys_Vec_Size, 1, "SYSTEM-VECTOR-SIZE", 0xAE)
+Define_Primitive(Prim_Sys_Vec_Size, 1, "SYSTEM-VECTOR-SIZE")
 {
   Primitive_1_Arg();
 
@@ -348,6 +361,7 @@ Built_In_Primitive(Prim_Sys_Vec_Size, 1, "SYSTEM-VECTOR-SIZE", 0xAE)
 
 Built_In_Primitive (Prim_subvector_move_right, 5, "SUBVECTOR-MOVE-RIGHT!",
 		    0x9D)
+Define_Primitive (Prim_subvector_move_right, 5, "SUBVECTOR-MOVE-RIGHT!")
 {
   subvector_move_prefix ();
 
@@ -359,6 +373,7 @@ Built_In_Primitive (Prim_subvector_move_right, 5, "SUBVECTOR-MOVE-RIGHT!",
 }
 
 Built_In_Primitive (Prim_subvector_move_left, 5, "SUBVECTOR-MOVE-LEFT!", 0x9E)
+Define_Primitive (Prim_subvector_move_left, 5, "SUBVECTOR-MOVE-LEFT!")
 {
   subvector_move_prefix ();
 
@@ -370,6 +385,7 @@ Built_In_Primitive (Prim_subvector_move_left, 5, "SUBVECTOR-MOVE-LEFT!", 0x9E)
 }
 
 Built_In_Primitive (Prim_vector_fill, 4, "SUBVECTOR-FILL!", 0x9F)
+Define_Primitive (Prim_vector_fill, 4, "SUBVECTOR-FILL!")
 {
   Pointer *scan;
   long start, end, length;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.39 1987/10/09 16:09:14 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.40 1987/11/17 08:07:35 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -451,8 +451,7 @@ Start_Scheme(Start_Prim, File_Name)
 
 	/* Setup registers */
 
-  IntEnb = INT_Mask;
-  IntCode = 0;
+  INITIALIZE_INTERRUPTS();
   Env = Make_Non_Pointer(GLOBAL_ENV, 0);
   Trapping = false;
   Return_Hook_Address = NULL;
@@ -490,136 +489,104 @@ Enter_Interpreter()
   /*NOTREACHED*/
 }
 
-/*VARARGS1*/
 term_type
-Microcode_Termination(Err, Micro_Error)
-     long Err, Micro_Error;
+Microcode_Termination(code)
+     long code;
 {
-  long value;
+  extern char *Term_Messages[];
   Pointer Term_Vector;
+  long value;
 
-  value = 1;
-  if ((Err != TERM_HALT) &&
+  if ((code != TERM_HALT) &&
       (Valid_Fixed_Obj_Vector()) &&
       (Type_Code(Term_Vector =
 		 Get_Fixed_Obj_Slot(Termination_Proc_Vector)) ==
        TC_VECTOR) &&
-      (Vector_Length(Term_Vector) > Err))
+      (Vector_Length(Term_Vector) > code))
   { 
+    extern long death_blow;
     Pointer Handler;
 
-    Handler = User_Vector_Ref(Term_Vector, Err);
+    Handler = User_Vector_Ref(Term_Vector, code);
     if (Handler != NIL)
     {
      Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS +
- 	       ((Err == TERM_NO_ERROR_HANDLER) ? 5 : 4));
+ 	       ((code == TERM_NO_ERROR_HANDLER) ? 5 : 4));
       Store_Return(RC_HALT);
-      Store_Expression(Make_Unsigned_Fixnum(Err));
+      Store_Expression(Make_Unsigned_Fixnum(code));
       Save_Cont();
-      if (Err == TERM_NO_ERROR_HANDLER)
-	Push(Make_Unsigned_Fixnum(Micro_Error));
+      if (code == TERM_NO_ERROR_HANDLER)
+      {
+	Push(MAKE_UNSIGNED_FIXNUM(death_blow));
+      }
       Push(Val);			/* Arg 3 */
       Push(Fetch_Env());		/* Arg 2 */
       Push(Fetch_Expression());		/* Arg 1 */
       Push(Handler);			/* The handler function */
-      Push(STACK_FRAME_HEADER + ((Err==TERM_NO_ERROR_HANDLER) ? 4 : 3));
+      Push(STACK_FRAME_HEADER + ((code == TERM_NO_ERROR_HANDLER) ? 4 : 3));
      Pushed();
       longjmp(*Back_To_Eval, PRIM_NO_TRAP_APPLY);
     }
+  }
+
+  putchar('\n');
+  if ((code < 0) ||  (code > MAX_ERROR))
+  {
+    printf("Unknown termination code 0x%x\n", code);
+  }
+  else
+  {
+    printf("%s.\n", Term_Messages[code]);
   }
 
 /* Microcode_Termination continues on the next page */
 
 /* Microcode_Termination, continued */
 
-  putchar ('\n');
-  switch(Err)
-  { case TERM_BAD_PRIMITIVE:
-      printf("Bad primitive invoked.");
-      break;
-    case TERM_BAD_PRIMITIVE_DURING_ERROR:
-      printf("Error during unknown primitive.");
-      break;
-    case TERM_BAD_ROOT:
-      printf("Band file isn't a control point.");
-      break;
-    case TERM_BAD_STACK:
-      printf("Control stack messed up.");
-      break;
-    case TERM_BROKEN_HEART:
-      printf("Broken heart encountered.");
-      break;
-    case TERM_COMPILER_DEATH:
-      printf("Mismatch between compiled code and compiled code support.");
-      break;
-    case TERM_DISK_RESTORE:
-      printf("Unrecoverable error while loading a band.");
-      break;
-    case TERM_EOF:
-      printf("End of input stream reached.");
-      break;
-    case TERM_END_OF_COMPUTATION:
-      Print_Expression(Val, "End of computation; final result");
-      break;
-    case TERM_EXIT:
-      printf("Inconsistency detected.");
-      break;
-    case TERM_GC_OUT_OF_SPACE:
-      printf("Out of space after GC.  Needed %d, have %d",
-	     Get_Integer(Fetch_Expression()), Space_Before_GC());
-      break;
+  switch(code)
+  {
     case TERM_HALT:
-      printf("Moriturus te saluto.");
       value = 0;
       break;
-    case TERM_INVALID_TYPE_CODE:
-      printf("Bad Type: check GC_Type map.");
+
+    case TERM_END_OF_COMPUTATION:
+      Print_Expression(Val, "Final result");
+      putchar('\n');
+      value = 0;
       break;
-
-    case TERM_NO_ERROR_HANDLER:
-      printf("No handler for error code: %d", Micro_Error);
-      break;
-    case TERM_NO_INTERRUPT_HANDLER:
-      printf("No interrupt handler.");
-      break;
+
     case TERM_NON_EXISTENT_CONTINUATION:
-      printf("No such return code 0x%08x.", Fetch_Return());
+      printf("Return code = 0x%x\n", Fetch_Return());
+      goto normal_termination;
+
+    case TERM_GC_OUT_OF_SPACE:
+      printf("Memory: required = %d; available = %d\n",
+	     Get_Integer(Fetch_Expression()), Space_Before_GC());
+      goto normal_termination;
+
+    case TERM_NO_ERROR_HANDLER:
+      /* This does not print a back trace because it was printed before
+	 getting here irrelevant of the state of Trace_On_Error.
+       */
+      value = 1;
       break;
-    case TERM_NON_POINTER_RELOCATION:
-      printf("Non pointer relocation!?");
-      break;
-    case TERM_STACK_ALLOCATION_FAILED:
-      printf("No space for stack!?");
-      break;
-    case TERM_STACK_OVERFLOW:
-      printf("Recursion depth exceeded.");
-      break;
-    case TERM_TERM_HANDLER:
-      printf("Termination handler returned.");
-      break;
-    case TERM_UNIMPLEMENTED_CONTINUATION:
-      printf("Return code not implemented.");
-      break;
-    case TERM_NO_SPACE:
-      printf("Not enough memory.");
-      break;
-    case TERM_SIGNAL:
-      printf("Unhandled signal received.");
-      break;
+
     default:
-      printf("Termination code 0x%x.", Err);
-  }
-  putchar ('\n');
-  if ((Trace_On_Error) && (Err != TERM_HALT))
-  {
-    printf( "\n\nStack trace:\n\n");
-    Back_Trace();
+    normal_termination:
+      value = 1;
+      if (Trace_On_Error)
+      {
+	printf("\n\n**** Stack trace ****\n\n");
+	Back_Trace(stdout);
+      }
+      break;
   }
   OS_Flush_Output_Buffer();
   OS_Quit();
   Reset_Memory();
   Exit_Hook();
   Exit_Scheme(value);
+  /*NOTREACHED*/
 }
 
 /* Utility primitives. */
@@ -637,6 +604,7 @@ Microcode_Termination(Err, Micro_Error)
 #define ID_OS_VARIANT		9		/* OS variant (string) */
 
 Built_In_Primitive (Prim_Microcode_Identify, 0, "MICROCODE-IDENTIFY", 0xE5)
+Define_Primitive (Prim_Microcode_Identify, 0, "MICROCODE-IDENTIFY")
 {
   Pointer *Result;
   long i;
@@ -669,11 +637,13 @@ Built_In_Primitive (Prim_Microcode_Identify, 0, "MICROCODE-IDENTIFY", 0xE5)
     = (C_String_To_Scheme_String (OS_Name));
   Result[(ID_OS_VARIANT + VECTOR_DATA)]
     = (C_String_To_Scheme_String (OS_Variant));
-  return (Make_Pointer (TC_VECTOR, Result));
+  PRIMITIVE_RETURN(Make_Pointer (TC_VECTOR, Result));
 }
 
 Built_In_Primitive(Prim_Microcode_Tables_Filename,
 		   0, "MICROCODE-TABLES-FILENAME", 0x180)
+Define_Primitive(Prim_Microcode_Tables_Filename,
+		   0, "MICROCODE-TABLES-FILENAME")
 {
   fast char *From, *To;
   char *Prefix, *Suffix;
@@ -727,14 +697,15 @@ Built_In_Primitive(Prim_Microcode_Tables_Filename,
   }
   *To = '\0';
   Free += STRING_CHARS + ((Count + sizeof(Pointer)) / sizeof(Pointer));
-  Vector_Set(Result, STRING_LENGTH, Make_Unsigned_Fixnum(Count));
+  Vector_Set(Result, STRING_LENGTH, ((Pointer) Count));
   Vector_Set(Result, STRING_HEADER,
     Make_Non_Pointer(TC_MANIFEST_NM_VECTOR,
 		     ((Free - Get_Pointer(Result)) - 1)));
-  return Result;
+  PRIMITIVE_RETURN(Result);
 }
 
 Built_In_Primitive(Prim_Get_Command_Line, 0, "GET-COMMAND-LINE", 0x25)
+Define_Primitive(Prim_Get_Command_Line, 0, "GET-COMMAND-LINE")
 {
   fast int i;
   Pointer result;
@@ -750,5 +721,5 @@ Built_In_Primitive(Prim_Get_Command_Line, 0, "GET-COMMAND-LINE", 0x25)
   {
     User_Vector_Set(result, i, C_String_To_Scheme_String(Saved_argv[i]));
   }
-  return result;
+  PRIMITIVE_RETURN(result);
 }

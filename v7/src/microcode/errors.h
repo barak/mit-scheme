@@ -30,10 +30,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.25 1987/10/05 18:32:03 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.26 1987/11/17 08:09:19 jinx Exp $
  *
- * Error and termination code declarations.  This must correspond
- * to UTABMD.SCM
+ * Error and termination code declarations.
  *
  */
 
@@ -100,8 +99,15 @@ MIT in each case. */
 #define ERR_UNIMPLEMENTED_PRIMITIVE		0x33
 #define ERR_ILLEGAL_REFERENCE_TRAP		0x34
 #define ERR_BROKEN_VARIABLE_CACHE		0x35
+#define ERR_WRONG_ARITY_PRIMITIVES		0x36
+#define ERR_IO_ERROR				0x37
 
-#define MAX_ERROR				0x35
+/*
+  If you add any error codes here, remember to add them to
+  storage.c and utabmd.scm as well.
+ */
+
+#define MAX_ERROR				0x37
 
 /* Termination codes: the interpreter halts on these */
 
@@ -128,3 +134,10 @@ MIT in each case. */
 #define TERM_GC_OUT_OF_SPACE			0x14
 #define TERM_NO_SPACE				0x15
 #define TERM_SIGNAL				0x16
+
+/*
+  If you add any termination codes here, remember to add them to
+  storage.c as well.
+ */
+
+#define MAX_TERMINATION				0x16

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbmap.h,v 9.22 1987/08/07 15:36:46 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbmap.h,v 9.23 1987/11/17 08:18:32 jinx Exp $
  *
  * This file contains macros and declarations for Bintopsb.c
  * and Psbtobin.c
@@ -48,7 +48,6 @@ MIT in each case. */
 #include "object.h"
 #include "bignum.h"
 #include "bitstr.h"
-#include "gc.h"
 #include "types.h"
 #include "sdata.h"
 #include "const.h"
@@ -61,22 +60,21 @@ extern double frexp(), ldexp();
 #include "missing.c"
 #endif
 
-#define PORTABLE_VERSION	2
+#define PORTABLE_VERSION	3
 
 /* Number of objects which, when traced recursively, point at all other
-   objects dumped.  Currently the dumped object and the external
-   primitives vector.
+   objects dumped.  Currently only the dumped object.
  */
 
-#define NROOTS			2
+#define NROOTS			1
 
 /* Types to recognize external object references.  Any occurrence of these 
    (which are external types and thus handled separately) means a reference
    to an external object.
  */
 
-#define CONSTANT_CODE		TC_BIG_FIXNUM
-#define HEAP_CODE		TC_FIXNUM
+#define CONSTANT_CODE		TC_FIXNUM
+#define HEAP_CODE		TC_CHARACTER
 
 #define fixnum_to_bits		FIXNUM_LENGTH
 #define bignum_to_bits(len)	((len) * SHIFT)
@@ -144,55 +142,81 @@ struct Option_Struct { char *name;
 		       Boolean *ptr;
 		     };
 
-Boolean strequal(s1, s2)
-fast char *s1, *s2;
-{ while (*s1 != '\0')
-    if (*s1++ != *s2++) return false;
+Boolean
+strequal(s1, s2)
+     fast char *s1, *s2;
+{
+  while (*s1 != '\0')
+  {
+    if (*s1++ != *s2++)
+    {
+      return false;
+    }
+  }
   return (*s2 == '\0');
 }
 
-char *Find_Options(argc, argv, Noptions, Options)
-int argc;
-char **argv;
-int Noptions;
-struct Option_Struct Options[];
-{ for ( ; --argc >= 0; argv++)
-  { char *this = *argv;
+char *
+Find_Options(argc, argv, Noptions, Options)
+     int argc;
+     char **argv;
+     int Noptions;
+     struct Option_Struct Options[];
+{
+  for ( ; --argc >= 0; argv++)
+  {
+    char *this;
     int n;
+
+    this = *argv;
     for (n = 0;
 	 ((n < Noptions) && (!strequal(this, Options[n].name)));
-	 n++) ;
-    if (n >= Noptions) return this;
+	 n++)
+    {};
+    if (n >= Noptions)
+    {
+      return (this);
+    }
     *(Options[n].ptr) = Options[n].value;
   }
-  return NULL;
+  return (NULL);
 }
 
 /* Usage information */
 
+void
 Print_Options(n, options, where)
-int n;
-struct Option_Struct *options;
-FILE *where;
-{ if (--n < 0) return;
+     int n;
+     struct Option_Struct *options;
+     FILE *where;
+{
+  if (--n < 0)
+  {
+    return;
+  }
   fprintf(where, "[%s]", options->name);
   options += 1;
   for (; --n >= 0; options += 1)
+  {
     fprintf(where, " [%s]", options->name);
+  }
   return;
 }
 
+void
 Print_Usage_and_Exit(noptions, options, io_options)
-int noptions;
-struct Option_Struct *options;
-char *io_options;
-{ fprintf(stderr, "usage: %s%s%s",
+     int noptions;
+     struct Option_Struct *options;
+     char *io_options;
+{
+  fprintf(stderr, "usage: %s%s%s",
 	  Program_Name,
 	  (((io_options == NULL) ||
 	    (io_options[0] == '\0')) ? "" : " "),
 	  io_options);
   if (noptions != 0)
-  { putc(' ', stderr);
+  {
+    putc(' ', stderr);
     Print_Options(noptions, options, stderr);
   }
   putc('\n', stderr);
@@ -211,59 +235,79 @@ char *io_options;
 
 /* On unix use io redirection */
 
+void
 Setup_Program(argc, argv, Noptions, Options)
-int argc;
-char *argv[];
-int Noptions;
-struct Option_Struct *Options;
-{ extern do_it();
+     int argc;
+     char *argv[];
+     int Noptions;
+     struct Option_Struct *Options;
+{
   Program_Name = argv[0];
   Input_File = stdin;
   Output_File = stdout;
   if (((argc - 1) > Noptions) ||
       (Find_Options((argc - 1), &argv[1], Noptions, Options) != NULL))
+  {
     Print_Usage_and_Exit(Noptions, Options, "");
-  do_it();
+  }
   return;
 }
 
-#else
+#define quit exit
+
+#else /* not unix */
 
 /* Otherwise use command line arguments */
 
+void
 Setup_Program(argc, argv, Noptions, Options)
-int argc;
-char *argv[];
-int Noptions;
-struct Option_Struct *Options;
-{ extern do_it();
+     int argc;
+     char *argv[];
+     int Noptions;
+     struct Option_Struct *Options;
+{
   Program_Name = argv[0];
   if ((argc < 3) ||
       ((argc - 3) > Noptions) ||
       (Find_Options((argc - 3), &argv[3], Noptions, Options) != NULL))
+  {
     Print_Usage_and_Exit(Noptions, Options, "input_file output_file");
+  }
   Input_File = ((strequal(argv[1], "-")) ?
 		stdin :
 		fopen(argv[1], "r"));
   if (Input_File == NULL)
-  { perror("Open failed.");
+  {
+    perror("Open failed.");
     exit(1);
   }
   Output_File = ((strequal(argv[2], "-")) ?
 		 stdout :
 		 fopen(argv[2], "w"));
   if (Output_File == NULL)
-  { perror("Open failed.");
+  {
+    perror("Open failed.");
     fclose(Input_File);
     exit(1);
   }
   fprintf(stderr, "%s: Reading from %s, writing to %s.\n",
           Program_Name, argv[1], argv[2]);
-  do_it();
+  return;
+}
+
+void
+quit(code)
+     int code;
+{
   fclose(Input_File);
   fclose(Output_File);
+  /* VMS brain dammage */
+  if (code != 0)
+  {
+    exit(code);
+  }
   return;
 }
 
-#endif
+#endif /* unix */
 

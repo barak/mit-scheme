@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/future.c,v 9.24 1987/10/09 16:10:27 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/future.c,v 9.25 1987/11/17 08:11:25 jinx Rel $
 
    Support code for futures
 */
@@ -271,7 +271,7 @@ Define_Primitive(Prim_Lock_Future, 1, "LOCK-FUTURE!")
   {
     return NIL;
   }
-  while ((IntEnb & IntCode) == 0)
+  while (!(INTERRUPT_PENDING_P(INT_Mask)))
   {
     if (Swap_Pointers(Nth_Vector_Loc(Arg1, FUTURE_LOCK), 
                       TRUTH) == NIL)
@@ -389,7 +389,7 @@ Define_Primitive(Prim_Make_Initial_Process, 1, "MAKE-INITIAL-PROCESS")
 
 #endif /* USE_STACKLETS */
 
-  Free[CONTINUATION_EXPRESSION] = Make_Non_Pointer(TC_FIXNUM, IntEnb);
+  Free[CONTINUATION_EXPRESSION] = MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK());
   Free[CONTINUATION_RETURN_CODE] = 
     Make_Non_Pointer(TC_RETURN_CODE, RC_RESTORE_INT_MASK);
   Free += CONTINUATION_SIZE;

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.34 1987/09/21 21:55:23 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.35 1987/11/17 08:06:17 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -43,9 +43,15 @@ MIT in each case. */
 #include "lookup.h"		/* UNCOMPILED_VARIABLE */
 #define In_Fasdump
 #include "bchgcc.h"
+#include "fasl.h"
 #include "dump.c"
 
-extern Pointer Make_Prim_Exts();
+extern Pointer
+  dump_renumber_primitive(),
+  *initialize_primitive_table(),
+  *cons_primitive_table(),
+  *cons_whole_primitive_table();
+
 static char *dump_file_name;
 static int real_gc_file, dump_file;
 static Pointer *saved_free;
@@ -99,32 +105,48 @@ static fixup_count = 0;
   fasdump_normal_end();							\
 }
 
-#define fasdump_remember_to_fix(location, contents)			\
-{									\
-  if ((fixup == fixup_buffer) && (!reset_fixes()))			\
-    return false;							\
-  *--fixup = contents;							\
-  *--fixup = ((Pointer) location);					\
+#define fasdump_remember_to_fix(location, contents)
+{
+  if ((fixup == fixup_buffer) && (!reset_fixes()))
+    return false;
+  *--fixup = contents;
+  *--fixup = ((Pointer) location);
 }
 
 Boolean
 fasdump_exit(length)
      long length;
 {
-  extern int ftruncate(), unlink();
   fast Pointer *fixes, *fix_address;
   Boolean result;
 
   Free = saved_free;
   gc_file = real_gc_file;
-  ftruncate(dump_file, length);
-  result = (close(dump_file) == 0);
+#if true
+  {
+    extern int ftruncate();
+
+    ftruncate(dump_file, length);
+    result = (close(dump_file) == 0);
+  }
+#else
+  {
+    extern int truncate();
+
+    result = (close(dump_file) == 0);
+    truncate(dump_file_name, length);
+  }
+#endif
   if (length == 0)
+  {
+    extern int unlink();
+
     unlink(dump_file_name);
+  }
   dump_file_name = ((char *) NULL);
   
   fixes = fixup;
-
+
 next_buffer:
 
   while (fixes != fixup_buffer_end)
@@ -150,7 +172,7 @@ next_buffer:
   
   fixup = fixes;
   Fasdump_Exit_Hook();
-  return result;
+  return (result);
 }
 
 Boolean
@@ -159,9 +181,11 @@ reset_fixes()
   fixup_count += 1;
   if ((lseek(real_gc_file, (fixup_count * GC_BUFFER_BYTES), 0) == -1) ||
       (write(real_gc_file, fixup_buffer, GC_BUFFER_BYTES) != GC_BUFFER_BYTES))
-    return false;
+  {
+    return (false);
+  }
   fixup = fixup_buffer_end;
-  return true;
+  return (true);
 }
 
 /* A copy of GCLoop, with minor modifications. */
@@ -185,27 +209,37 @@ dumploop(Scan, To_ptr, To_Address_ptr)
     {
       case TC_BROKEN_HEART:
         if (OBJECT_DATUM(Temp) == 0)
+	{
 	  break;
+	}
         if (Scan != (Get_Pointer(Temp)))
 	{
 	  fprintf(stderr, "\ndumploop: Broken heart in scan.\n");
 	  Microcode_Termination(TERM_BROKEN_HEART);
 	}
 	if (Scan != scan_buffer_top)
+	{
 	  goto end_dumploop;
-	/* The -1 is here because of the Scan++ in the for header. */
-	Scan = dump_and_reload_scan_buffer(0, &success) - 1;
-	if (!success)
-	  return false;
-	continue;
+	}
 
+	/* The -1 is here because of the Scan++ in the for header. */
+
+	Scan = (dump_and_reload_scan_buffer(0, &success) - 1);
+	if (!success)
+	{
+	  return false;
+	}
+	continue;
+
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
 	/* Check whether this bumps over current buffer,
 	   and if so we need a new bufferfull. */
 	Scan += Get_Integer(Temp);
 	if (Scan < scan_buffer_top)
+	{
 	  break;
+	}
 	else
 	{
 	  unsigned long overflow;
@@ -215,11 +249,17 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	  Scan = ((dump_and_reload_scan_buffer((overflow / GC_DISK_BUFFER_SIZE), &success) +
 		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
 	  if (!success)
+	  {
 	    return false;
+	  }
 	  break;
 	}
-
-      case TC_PRIMITIVE_EXTERNAL:
+
+      case TC_PRIMITIVE:
+      case TC_PCOMB0:
+	*Scan = dump_renumber_primitive(*Scan);
+	break;
+
       case TC_STACK_ENVIRONMENT:
       case_Fasload_Non_Pointer:
 	break;
@@ -234,12 +274,14 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));
 	  copy_vector(&success);
 	  if (!success)
+	  {
 	    return false;
+	  }
 	  *Saved_Old = New_Address;
 	  *Scan = Relocate_Compiled(Temp, Get_Pointer(New_Address), Saved_Old);
 	  continue;
 	}
-
+
       case_Cell:
 	fasdump_normal_pointer(copy_cell(), 1);
 
@@ -272,7 +314,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	fasdump_transport_end(2);
 	fasdump_normal_end();
       }
-
+
       case_Triple:
 	fasdump_normal_pointer(copy_triple(), 3);
 
@@ -285,7 +327,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	fasdump_transport_end(3);
 	fasdump_normal_end();
       }
-
+
       case_Quadruple:
 	fasdump_normal_pointer(copy_quadruple(), 4);
 
@@ -302,13 +344,17 @@ dumploop(Scan, To_ptr, To_Address_ptr)
       Move_Vector:
 	copy_vector(&success);
 	if (!success)
+	{
 	  return false;
+	}
 	fasdump_normal_end();
 
       case TC_FUTURE:
 	fasdump_normal_setup();
 	if (!(Future_Spliceable(Temp)))
+	{
 	  goto Move_Vector;
+	}
 	*Scan = Future_Value(Temp);
 	Scan -= 1;
 	continue;
@@ -323,7 +369,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 end_dumploop:
   *To_ptr = To;
   *To_Address_ptr = To_Address;
-  return true;
+  return (true);
 }
 
 /* (PRIMITIVE-FASDUMP object-to-dump file-name flag)
@@ -339,28 +385,38 @@ end_dumploop:
 */
 
 Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
+Define_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
 {
   Boolean success;
-  long length, hlength;
-  Pointer Prim_Exts, *dumped_object, *exts, *free_buffer;
+  long length, hlength, tlength, tsize;
+  Pointer *dumped_object, *free_buffer;
+  Pointer *table_start, *table_end, *table_top;
   Pointer header[FASL_HEADER_LENGTH];
   Primitive_3_Args();
 
-  success = true;
-  if (Type_Code(Arg2) != TC_CHARACTER_STRING)
-    Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+  CHECK_ARG (2, STRING_P);
   dump_file_name = Scheme_String_To_C_String(Arg2);
+
   dump_file = open(dump_file_name, GC_FILE_FLAGS, 0666);
   if (dump_file < 0)
+  {
     Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  }
 
-  Prim_Exts = Make_Prim_Exts();
-
+  success = true;
   real_gc_file = gc_file;
   gc_file = dump_file;
   saved_free = Free;
   fixup = fixup_buffer_end;
   fixup_count = -1;
+
+  table_top = &saved_free[Space_Before_GC()];
+  table_start = initialize_primitive_table(saved_free, table_end);
+  if (table_start >= table_top)
+  {
+    fasdump_exit(0);
+    Primitive_GC(table_top - saved_free);
+  }
 
 #if (GC_DISK_BUFFER_SIZE <= FASL_HEADER_LENGTH)
 #include "error in bchdmp.c: FASL_HEADER_LENGTH too large"
@@ -371,9 +427,6 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
   free_buffer += FASL_HEADER_LENGTH;
   *free_buffer++ = Arg1;
   dumped_object = Free;
-  Free += 1;
-  *free_buffer++ = Prim_Exts;
-  exts = Free;
   Free += 1;
 
   if (!dumploop((initialize_scan_buffer() + FASL_HEADER_LENGTH),
@@ -390,16 +443,36 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
   }
 
   length = (Free - dumped_object);
-  prepare_dump_header(header, length, dumped_object, dumped_object,
-		      0, Constant_Space, exts);
-  hlength = (FASL_HEADER_LENGTH * sizeof(Pointer));
+
+  table_end = cons_primitive_table(table_start, table_top, &tlength);
+  if (table_end >= table_top)
+  {
+    fasdump_exit(0);
+    Primitive_GC(table_top - saved_free);
+  }
+
+  tsize = (table_end - table_start);
+  hlength = (sizeof(Pointer) * tsize);
+  if ((lseek(gc_file,
+	     0,
+	     (sizeof(Pointer) * (length + FASL_HEADER_LENGTH))) == -1) ||
+      (write(gc_file, ((char *) &table_start[0]), hlength) != hlength))
+  {
+    fasdump_exit(0);
+    PRIMITIVE_RETURN(NIL);
+  }
+
+  hlength = (sizeof(Pointer) * FASL_HEADER_LENGTH);
+  prepare_dump_header(header, dumped_object, length, dumped_object,
+		      0, Constant_Space, tlength, tsize);
   if ((lseek(gc_file, 0, 0) == -1) ||
       (write(gc_file, ((char *) &header[0]), hlength) != hlength))
   {
     fasdump_exit(0);
     PRIMITIVE_RETURN(NIL);
   }
-  PRIMITIVE_RETURN(fasdump_exit((sizeof(Pointer) * length) + hlength) ?
+  PRIMITIVE_RETURN(fasdump_exit((sizeof(Pointer) *
+				 (length + tsize)) + hlength) ?
 		   TRUTH : NIL);
 }
 
@@ -409,46 +482,66 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
    argument of NIL.
 */
 Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
+Define_Primitive(Prim_Band_Dump, 2, "DUMP-BAND")
 {
   extern Pointer compiler_utilities;
-  Pointer Combination, Ext_Prims;
-  long Arg1Type;
+  Pointer Combination, *table_start, *table_end, *saved_free;
+  long Arg1Type, table_length;
   Boolean result;
   Primitive_2_Args();
 
   Band_Dump_Permitted();
   Arg1Type = Type_Code(Arg1);
   if ((Arg1Type != TC_CONTROL_POINT) &&
-      (Arg1Type != TC_PRIMITIVE) &&
-      (Arg1Type != TC_PRIMITIVE_EXTERNAL) &&
-      (Arg1Type != TC_EXTENDED_PROCEDURE)) Arg_1_Type(TC_PROCEDURE);
+      (Arg1Type != TC_EXTENDED_PROCEDURE) &&
+      (Arg1Type != TC_PRIMITIVE))
+  {
+    Arg_1_Type(TC_PROCEDURE);
+  }
   Arg_2_Type(TC_CHARACTER_STRING);
+
   if (!Open_Dump_File(Arg2, WRITE_FLAG))
+  {
     Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  /* Free cannot be saved around this code since Make_Prim_Exts will
-     intern the undefined externals and potentially allocate space.
-   */
-  Ext_Prims = Make_Prim_Exts();
+  }
+  Primitive_GC_If_Needed(5);
+  saved_free = Free;
   Combination = Make_Pointer(TC_COMBINATION_1, Free);
   Free[COMB_1_FN] = Arg1;
   Free[COMB_1_ARG_1] = NIL;
   Free += 2;
   *Free++ = Combination;
   *Free++ = compiler_utilities;
-  *Free = Make_Pointer(TC_LIST, Free-2);
+  *Free = Make_Pointer(TC_LIST, (Free - 2));
   Free++;  /* Some compilers are TOO clever about this and increment Free
 	      before calculating Free-2! */
-  *Free++ = Ext_Prims;
-  /* Aligning here confuses some of the counts computed.
-     Align_Float(Free);
-   */
-  result = Write_File(((long) (Free - Heap_Bottom)), Heap_Bottom, (Free - 2),
-		      ((long) (Free_Constant - Constant_Space)),
-		      Constant_Space, (Free - 1));
-  result = (result && Close_Dump_File());
+  table_start = Free;
+  table_end = cons_whole_primitive_table(Free, Heap_Top, &table_length);
+  if (table_end >= Heap_Top)
+  {
+    result = false;
+  }
+  else
+  {
+#if false
+  /* Aligning here confuses some of the counts computed. */
+    Align_Float(Free);
+#endif
+    result = Write_File((Free - 1),
+			((long) (Free - Heap_Bottom)), Heap_Bottom,
+			((long) (Free_Constant - Constant_Space)),
+			Constant_Space,
+			table_start, table_length,
+			((long) (table_end - table_start)));
+  }
+  /* The and is short-circuit, so it must be done in this order. */
+  result = (Close_Dump_File() && result);
   Band_Dump_Exit_Hook();
+  Free = saved_free;
   if (result)
+  {
     PRIMITIVE_RETURN(TRUTH);
+  }
   else
   {
     extern int unlink();

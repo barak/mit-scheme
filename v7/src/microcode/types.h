@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/types.h,v 9.25 1987/10/09 16:14:39 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/types.h,v 9.26 1987/11/17 08:18:54 jinx Rel $
  *
  * Type code definitions, numerical order
  *
@@ -52,7 +52,9 @@ MIT in each case. */
 #define TC_COMPILED_PROCEDURE		0x0D
 #define TC_BIG_FIXNUM			0x0E
 #define TC_PROCEDURE			0x0F
-#define TC_PRIMITIVE_EXTERNAL		0x10
+/* 0x10 used to be TC_PRIMITIVE_EXTERNAL */
+/* if it is reused, define PRIMITIVE_EXTERNAL_REUSED below. */
+/* Unused				0x10 */
 #define TC_DELAY			0x11
 #define TC_ENVIRONMENT			0x12
 #define TC_DELAYED			0x13
@@ -101,6 +103,12 @@ MIT in each case. */
 #define TC_COMPILED_CODE_BLOCK		0x3D
 
 /* If you add a new type, don't forget to update gccode.h and gctype.c */
+
+/* Remove #if false and #endif if type code 0x10 is reused. */
+
+#if false
+#define PRIMITIVE_EXTERNAL_REUSED
+#endif
 
 /* Aliases */
 

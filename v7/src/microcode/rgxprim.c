@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.3 1987/07/21 04:32:56 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.4 1987/11/17 08:16:12 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -95,6 +95,7 @@ MIT in each case. */
 } while (0)
 
 Built_In_Primitive (Prim_re_char_set_adjoin, 2, "RE-CHAR-SET-ADJOIN!", 0x190)
+Define_Primitive (Prim_re_char_set_adjoin, 2, "RE-CHAR-SET-ADJOIN!")
 {
   int ascii;
   Primitive_2_Args ();
@@ -107,6 +108,7 @@ Built_In_Primitive (Prim_re_char_set_adjoin, 2, "RE-CHAR-SET-ADJOIN!", 0x190)
 }
 
 Built_In_Primitive (Prim_re_compile_fastmap, 4, "RE-COMPILE-FASTMAP", 0x191)
+Define_Primitive (Prim_re_compile_fastmap, 4, "RE-COMPILE-FASTMAP")
 {
   int can_be_null;
   Primitive_4_Args ();
@@ -176,14 +178,19 @@ Built_In_Primitive (Prim_re_compile_fastmap, 4, "RE-COMPILE-FASTMAP", 0x191)
 }
 
 Built_In_Primitive (Prim_re_match_substring, 7, "RE-MATCH-SUBSTRING", 0x118)
+Define_Primitive (Prim_re_match_substring, 7, "RE-MATCH-SUBSTRING")
   RE_SUBSTRING_PRIMITIVE (re_match)
 
 Built_In_Primitive (Prim_re_search_substr_forward, 7,
 		    "RE-SEARCH-SUBSTRING-FORWARD", 0x119)
+Define_Primitive (Prim_re_search_substr_forward, 7,
+		    "RE-SEARCH-SUBSTRING-FORWARD")
   RE_SUBSTRING_PRIMITIVE (re_search_forward)
 
 Built_In_Primitive (Prim_re_search_substr_backward, 7,
 		    "RE-SEARCH-SUBSTRING-BACKWARD", 0x11A)
+Define_Primitive (Prim_re_search_substr_backward, 7,
+		    "RE-SEARCH-SUBSTRING-BACKWARD")
   RE_SUBSTRING_PRIMITIVE (re_search_backward)
 
 #define RE_BUFFER_PRIMITIVE(procedure)					\
@@ -234,12 +241,17 @@ Built_In_Primitive (Prim_re_search_substr_backward, 7,
 }
 
 Built_In_Primitive (Prim_re_match_buffer, 7, "RE-MATCH-BUFFER", 0x192)
+Define_Primitive (Prim_re_match_buffer, 7, "RE-MATCH-BUFFER")
   RE_BUFFER_PRIMITIVE (re_match)
 
 Built_In_Primitive (Prim_re_search_buffer_forward, 7,
 		    "RE-SEARCH-BUFFER-FORWARD", 0x193)
+Define_Primitive (Prim_re_search_buffer_forward, 7,
+		    "RE-SEARCH-BUFFER-FORWARD")
   RE_BUFFER_PRIMITIVE (re_search_forward)
 
 Built_In_Primitive (Prim_re_search_buffer_backward, 7,
 		    "RE-SEARCH-BUFFER-BACKWARD", 0x194)
+Define_Primitive (Prim_re_search_buffer_backward, 7,
+		    "RE-SEARCH-BUFFER-BACKWARD")
   RE_BUFFER_PRIMITIVE (re_search_backward)

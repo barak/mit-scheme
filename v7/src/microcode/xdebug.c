@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.22 1987/10/09 16:15:41 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.23 1987/11/17 08:21:49 jinx Rel $
  *
  * This file contains primitives to debug the memory management in the
  * Scheme system.
@@ -249,7 +249,7 @@ Define_Primitive(Prim_Stack_Trace, 0, "STACK-TRACE")
   Primitive_0_Args();
 
   printf("\n*** Back Trace: ***\n");
-  Back_Trace();
+  Back_Trace(stdout);
   return TRUTH;
 }
 

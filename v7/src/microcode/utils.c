@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.34 1987/10/09 16:15:08 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.35 1987/11/17 08:20:10 jinx Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -54,7 +54,7 @@ Setup_Interrupt (Masked_Interrupts)
   long i, Int_Number, The_Int_Code, New_Int_Enb;
   long Save_Space;
 
-  The_Int_Code = IntCode;
+  The_Int_Code = FETCH_INTERRUPT_CODE();
   Int_Vector = (Get_Fixed_Obj_Slot (System_Interrupt_Vector));
 
   /* The interrupt vector is normally of size (MAX_INTERRUPT_NUMBER + 1).
@@ -64,20 +64,20 @@ Setup_Interrupt (Masked_Interrupts)
   Int_Number = 0;
   i = 1;
   while (true)
+  {
+    if (Int_Number > MAX_INTERRUPT_NUMBER)
     {
-      if (Int_Number > MAX_INTERRUPT_NUMBER)
-	{
-	  New_Int_Enb = IntEnb;
-	  break;
-	}
-      if ((Masked_Interrupts & i) != 0)
-	{
-	  New_Int_Enb = ((1 << Int_Number) - 1);
-	  break;
-	}
-      Int_Number += 1;
-      i = (i << 1);
+      New_Int_Enb = FETCH_INTERRUPT_MASK();
+      break;
     }
+    if ((Masked_Interrupts & i) != 0)
+    {
+      New_Int_Enb = ((1 << Int_Number) - 1);
+      break;
+    }
+    Int_Number += 1;
+    i = (i << 1);
+  }
 
   /* Handle case where interrupt vector is too small. */
   if (Int_Number >= (Vector_Length (Int_Vector)))
@@ -87,7 +87,9 @@ Setup_Interrupt (Masked_Interrupts)
 	       Int_Number, (Vector_Length (Int_Vector)));
       fprintf (stderr,
 	       "Interrupts = 0x%x, Mask= 0x%x, Masked = 0x%x\n",
-	       IntCode, IntEnb, Masked_Interrupts);
+	       FETCH_INTERRUPT_CODE(),
+	       FETCH_INTERRUPT_MASK(),
+	       Masked_Interrupts);
       Microcode_Termination (TERM_NO_INTERRUPT_HANDLER);
     }
 
@@ -101,14 +103,18 @@ Setup_Interrupt (Masked_Interrupts)
 Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
   Stop_History();
   Save_Space = CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS+3;
-  if (New_Int_Enb+1 == INT_GC) Save_Space += CONTINUATION_SIZE;
+  if ((New_Int_Enb + 1) == INT_GC)
+  {
+    Save_Space += CONTINUATION_SIZE;
+  }
  Will_Push(Save_Space);
   /* Return from interrupt handler will re-enable interrupts */
   Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(Make_Unsigned_Fixnum(IntEnb));
+  Store_Expression(MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK()));
   Save_Cont();
-  if (New_Int_Enb+1 == INT_GC)
-  { Store_Return(RC_GC_CHECK);
+  if ((New_Int_Enb + 1) == INT_GC)
+  {
+    Store_Return(RC_GC_CHECK);
     Store_Expression(Make_Unsigned_Fixnum(GC_Space_Needed));
     Save_Cont();
   }
@@ -119,149 +125,93 @@ Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
  * the currently enabled interrupts.
  */
 
-  Push(Make_Unsigned_Fixnum(IntEnb));
-  Push(Make_Unsigned_Fixnum(The_Int_Code));
+  Push(MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK()));
+  Push(MAKE_SIGNED_FIXNUM(The_Int_Code));
   Push(Handler);
   Push(STACK_FRAME_HEADER+2);
  Pushed();
-  IntEnb = New_Int_Enb;	/* Turn off interrupts */
-  New_Compiler_MemTop();
+  /* Turn off interrupts */
+  SET_INTERRUPT_MASK(New_Int_Enb);
+  return;
 }
 
-                      /******************/
-                      /* ERROR HANDLING */
-                      /******************/
-
-/* It is assumed that any caller of the error code has already
- * restored its state to a situation which will make it
- * restartable if the error handler returns normally.  As a
- * result, the only work to be done on an error is to verify
- * that there is an error handler, save the current continuation and
- * create a new one if entered from Pop_Return rather than Eval,
- * turn off interrupts, and call it with two arguments: Error-Code
- * and Interrupt-Enables.
- */
+/* Error processing utilities */
 
 void
-Err_Print (Micro_Error)
-     long Micro_Error;
-{ switch (Micro_Error)
-  { 
-/*  case ERR_BAD_ERROR_CODE:
-      printf("unknown error code.\n"); break;
-*/
-    case ERR_UNBOUND_VARIABLE:
-      printf("unbound variable.\n"); break;
-    case ERR_UNASSIGNED_VARIABLE:
-      printf("unassigned variable.\n"); break;
-    case ERR_INAPPLICABLE_OBJECT:
-      printf("Inapplicable operator.\n"); break;
-    case ERR_BAD_FRAME:
-      printf("bad environment frame.\n"); break;
-    case ERR_BROKEN_COMPILED_VARIABLE:
-      printf("compiled variable invalid.\n"); break;
-    case ERR_UNDEFINED_USER_TYPE:
-      printf("undefined type code.\n"); break;
-    case ERR_UNDEFINED_PRIMITIVE:
-      printf("undefined primitive.\n"); break;
-    case ERR_EXTERNAL_RETURN:
-      printf("error during 'external' primitive.\n"); break;
-    case ERR_EXECUTE_MANIFEST_VECTOR:
-      printf("attempt to EVAL a vector.\n"); break;
-    case ERR_WRONG_NUMBER_OF_ARGUMENTS:
-      printf("wrong number of arguments.\n"); break;
-    case ERR_ARG_1_WRONG_TYPE:
-      printf("type error argument 1.\n"); break;
-    case ERR_ARG_2_WRONG_TYPE:
-      printf("type error argument 2.\n"); break;
+err_print(error_code, where)
+     long error_code;
+     FILE *where;
+{
+  extern char *Error_Names[];
 
-/* Err_Print continues on the next page */
-
-/* Err_Print, continued */
-
-    case ERR_ARG_3_WRONG_TYPE:
-      printf("type error argument 3.\n"); break;
-    case ERR_ARG_1_BAD_RANGE:
-      printf("range error argument 1.\n"); break;
-    case ERR_ARG_2_BAD_RANGE:
-      printf("range error, argument 2.\n"); break;
-    case ERR_ARG_3_BAD_RANGE:
-      printf("range error, argument 3.\n"); break;
-    case ERR_FASL_FILE_TOO_BIG:
-      printf("FASL file too large to load.\n"); break;
-    case ERR_FASL_FILE_BAD_DATA:
-      printf("No such file or not FASL format.\n"); break;
-    case ERR_IMPURIFY_OUT_OF_SPACE:
-      printf("Not enough room to impurify object.\n"); break;
-    case ERR_WRITE_INTO_PURE_SPACE:
-      printf("Write into pure area\n"); break;
-    case ERR_BAD_SET:
-      printf("Attempt to perform side-effect on 'self'.\n"); break;
-    case ERR_ARG_1_FAILED_COERCION:
-      printf("First argument couldn't be coerced.\n"); break;
-    case ERR_ARG_2_FAILED_COERCION:
-      printf("Second argument couldn't be coerced.\n"); break;
-    case ERR_OUT_OF_FILE_HANDLES:
-      printf("Too many open files.\n"); break;
-    default:
-      printf("Unknown error 0x%x occurred\n.", Micro_Error);
-      break;
+  if (error_code > MAX_ERROR)
+  {
+    fprintf(where, "Unknown error code 0x%x.\n", error_code);
+  }
+  else
+  {
+    fprintf(where, "Error code 0x%x (%s).\n",
+	    error_code,
+	    Error_Names[error_code]);
   }
   return;
 }
 
+extern long death_blow;
+long death_blow;
+
 void
-Stack_Death ()
+error_death(code, message)
+     long code;
+     char *message;
+{
+  death_blow = code;
+  fprintf(stderr, "\nMicrocode Error: %s.\n", message);
+  err_print(code, stderr);
+  fprintf(stderr, "\n**** Stack Trace ****\n\n");
+  Back_Trace(stderr);
+  Microcode_Termination(TERM_NO_ERROR_HANDLER);
+  /*NOTREACHED*/
+}
+
+void
+Stack_Death()
 {
   fprintf(stderr, "\nWill_Push vs. Pushed inconsistency.\n");
   Microcode_Termination(TERM_BAD_STACK);
-}      
+  /*NOTREACHED*/
+}
 
 /* Back_Out_Of_Primitive sets the registers up so that the backout
- * mechanism in interpret.c will push the primitive number and
- * an appropriate return code so that the primitive can be
- * restarted.
+ * mechanism in interpret.c will cause the primitive to be
+ * restarted if the error/interrupt is proceeded.
  */
-
-#if (TC_PRIMITIVE == 0) || (TC_PRIMITIVE_EXTERNAL == 0)
-#include "Error: Some primitive type is 0"
-#endif
 
 void
 Back_Out_Of_Primitive ()
 {
-  long nargs;
-  Pointer expression = Fetch_Expression();
-
-  /* When primitives are called from compiled code, the type code may
-   * not be in the expression register.
-   */
-
-  if (OBJECT_TYPE(expression) == 0)
-  {
-    expression = Make_Non_Pointer(TC_PRIMITIVE, expression);
-    Store_Expression(expression);
-  }
+  long nargs, code;
+  Pointer primitive;
 
   /* Setup a continuation to return to compiled code if the primitive is
    * restarted and completes successfully.
    */
 
-  nargs = N_Args_Primitive(Get_Integer(expression));
+  primitive = Fetch_Expression();
+  code = OBJECT_DATUM(primitive);
+  nargs = PRIMITIVE_N_ARGUMENTS(code);
   if (OBJECT_TYPE(Stack_Ref(nargs)) == TC_RETURN_ADDRESS)
   { 
-    /* This clobbers the expression register. */
     compiler_apply_procedure(nargs);
-    Store_Expression(expression);
   }
 
-  /* When you come back to the primitive, the environment is
-   * irrelevant .... primitives run with no real environment.
-   * Similarly, the value register is meaningless. 
-   */
-  Store_Return(RC_REPEAT_PRIMITIVE);
+  Push(primitive);
+  Push(STACK_FRAME_HEADER + nargs);
   Store_Env(Make_Non_Pointer(GLOBAL_ENV, END_OF_CHAIN));
   Val = NIL;
+  Store_Return(RC_INTERNAL_APPLY);
+  Store_Expression(NIL);
+  return;
 }
 
 /* Useful error procedures */
@@ -298,8 +248,8 @@ specl_interrupt_from_primitive(local_mask)
   Back_Out_Of_Primitive();
   Save_Cont();
   Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(Make_Unsigned_Fixnum(IntEnb));
-  IntEnb = (local_mask);
+  Store_Expression(MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK()));
+  SET_INTERRUPT_MASK(local_mask);
   PRIMITIVE_ABORT(PRIM_INTERRUPT);
   /*NOTREACHED*/
 }
@@ -364,7 +314,9 @@ arg_fixnum (n)
 
   argument = (ARG_REF (n));
   if (! (FIXNUM_P (argument)))
+  {
     error_wrong_type_arg (n);
+  }
   return
     ((FIXNUM_NEGATIVE_P (argument))
      ? ((UNSIGNED_FIXNUM_VALUE (argument)) | (-1 << ADDRESS_LENGTH))
@@ -379,12 +331,16 @@ arg_nonnegative_integer (n)
 
   argument = (ARG_REF (n));
   if (! (FIXNUM_P (argument)))
+  {
     error_wrong_type_arg (n);
+  }
   if (FIXNUM_NEGATIVE_P (argument))
+  {
     error_bad_range_arg (n);
+  }
   return (UNSIGNED_FIXNUM_VALUE (argument));
 }
-
+
 long
 arg_index_integer (n, upper_limit)
      int n;
@@ -395,15 +351,35 @@ arg_index_integer (n, upper_limit)
 
   argument = (ARG_REF (n));
   if (! (FIXNUM_P (argument)))
+  {
     error_wrong_type_arg (n);
+  }
   if (FIXNUM_NEGATIVE_P (argument))
+  {
     error_bad_range_arg (n);
+  }
   result = (UNSIGNED_FIXNUM_VALUE (argument));
   if (result >= upper_limit)
+  {
     error_bad_range_arg (n);
+  }
   return (result);
 }
 
+                      /******************/
+                      /* ERROR HANDLING */
+                      /******************/
+
+/* It is assumed that any caller of the error code has already
+ * restored its state to a situation which will make it
+ * restartable if the error handler returns normally.  As a
+ * result, the only work to be done on an error is to verify
+ * that there is an error handler, save the current continuation and
+ * create a new one if entered from Pop_Return rather than Eval,
+ * turn off interrupts, and call it with two arguments: Error-Code
+ * and Interrupt-Enables.
+ */
+
 void
 Do_Micro_Error (Err, From_Pop_Return)
      long Err;
@@ -412,26 +388,30 @@ Do_Micro_Error (Err, From_Pop_Return)
   Pointer Error_Vector, Handler;
 
   if (Consistency_Check)
-  { Err_Print(Err);
+  {
+    err_print(Err, stdout);
     Print_Expression(Fetch_Expression(), "Expression was");
     printf("\nEnvironment 0x%x (#%o).\n", Fetch_Env(), Fetch_Env());
     Print_Return("Return code");
-    printf( "\n");
+    printf("\n");
   }
 
   Error_Exit_Hook();
 
   if (Trace_On_Error)
   {
-    printf( "\n**** Stack Trace ****\n\n");
-    Back_Trace();
+    printf("\n\n**** Stack Trace ****\n\n");
+    Back_Trace(stdout);
   }
 
 #ifdef ENABLE_DEBUGGING_TOOLS
   {
     int *From = &(local_circle[0]), *To = &(debug_circle[0]), i;
 
-    for (i=0; i < local_nslots; i++) *To++ = *From++;
+    for (i = 0; i < local_nslots; i++)
+    {
+      *To++ = *From++;
+    }
     debug_nslots = local_nslots;
     debug_slotno = local_slotno;
   }
@@ -446,29 +426,23 @@ Do_Micro_Error (Err, From_Pop_Return)
 		    Get_Fixed_Obj_Slot(System_Error_Vector))) !=
        TC_VECTOR))
   {
-    fprintf(stderr,
-	    "\nMicrocode Error: code = 0x%x; Bad error handlers vector.\n",
-	    Err);
-    printf("\n**** Stack Trace ****\n\n");
-    Back_Trace();
-    Microcode_Termination(TERM_NO_ERROR_HANDLER, Err);
+    error_death(Err, "Bad error handlers vector");
+    /*NOTREACHED*/
   }
 
   if ((Err < 0) || (Err >= (Vector_Length (Error_Vector))))
+  {
+    if (Vector_Length(Error_Vector) == 0)
     {
-      if (Vector_Length(Error_Vector) == 0)
-	{
-	  fprintf(stderr,
-		  "\nMicrocode Error: code = 0x%x; Empty error handlers vector.\n",
-		  Err);
-	  printf("\n**** Stack Trace ****\n\n");
-	  Back_Trace();
-	  Microcode_Termination(TERM_NO_ERROR_HANDLER, Err);
-	}
-      Handler = (User_Vector_Ref (Error_Vector, ERR_BAD_ERROR_CODE));
+      error_death(Err, "Empty error handlers vector");
+      /*NOTREACHED*/
     }
+    Handler = (User_Vector_Ref (Error_Vector, ERR_BAD_ERROR_CODE));
+  }
   else
+  {
     Handler = (User_Vector_Ref (Error_Vector, Err));
+  }
 
   /* This can NOT be folded into the Will_Push below since we cannot
      afford to have the Will_Push put down its own continuation.
@@ -482,13 +456,19 @@ Do_Micro_Error (Err, From_Pop_Return)
     Save_Cont();
    Pushed();
   }
- Will_Push(STACK_ENV_EXTRA_SLOTS+3+2*CONTINUATION_SIZE+HISTORY_SIZE+
+ Will_Push(STACK_ENV_EXTRA_SLOTS + 3 +
+	   2 * CONTINUATION_SIZE +
+	   HISTORY_SIZE +
            (From_Pop_Return ? 0 : 1));
 
   if (From_Pop_Return)
+  {
     Store_Expression(Val);
+  }
   else
+  {
     Push(Fetch_Env());
+  }
 
   Store_Return((From_Pop_Return) ?
 	       RC_POP_RETURN_ERROR :
@@ -499,69 +479,95 @@ Do_Micro_Error (Err, From_Pop_Return)
 
   Stop_History();
   Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(Make_Unsigned_Fixnum(IntEnb));
+  Store_Expression(MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK()));
   Save_Cont();
-  Push(Make_Unsigned_Fixnum(IntEnb));	 /* Arg 2:     Int. mask */
+  /* Arg 2:     Int. mask */
+  Push(MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK()));
+  /* Arg 1:     Err. No   */
   if ((Err >= SMALLEST_FIXNUM) && (Err <= BIGGEST_FIXNUM))
-    Push(Make_Signed_Fixnum(Err));	 /* Arg 1:     Err. No   */
+  {
+    Push(Make_Signed_Fixnum(Err));
+  }
   else
+  {
     Push (Make_Unsigned_Fixnum (ERR_BAD_ERROR_CODE));
-  Push(Handler);			 /* Procedure: Handler   */
-  Push(STACK_FRAME_HEADER+2);
+  }
+  /* Procedure: Handler   */
+  Push(Handler);
+  Push(STACK_FRAME_HEADER + 2);
  Pushed();
 
-  IntEnb = 0;				/* Turn off interrupts */
-  New_Compiler_MemTop();
+  /* Disable all interrupts */
+  SET_INTERRUPT_MASK(0);
+  return;
+}
+
+extern Pointer *copy_c_string_to_scheme_string();
+
+/* Is supposed to have a null character. */
+static char null_string[] = "";
+
+Pointer *
+copy_c_string_to_scheme_string(source, start, end)
+     fast char *source;
+     Pointer *start, *end;
+{
+  Pointer *saved;
+  long char_count, word_count;
+  fast char *dest, *limit;
+
+  saved = start;
+  start += STRING_CHARS;
+  dest = ((char *) start);
+
+  if (source == ((char *) NULL))
+  {
+    source = ((char *) &null_string[0]);
+  }
+  limit = ((char *) end);
+  if (dest < limit)
+  {
+    do
+    {
+      *dest++ = *source;
+    } while ((dest < limit) && (*source++ != '\0'));
+  }
+  if (dest >= limit)
+  {
+    while (*source++ != '\0')
+    {
+      dest += 1;
+    }
+  }
+  char_count = (dest - ((char *) start));
+  word_count = ((char_count + (sizeof(Pointer) - 1)) / sizeof(Pointer));
+  start += word_count;
+  if (start < end)
+  {
+    saved[STRING_HEADER] = Make_Non_Pointer( TC_MANIFEST_NM_VECTOR,
+					    (word_count + 1));
+    saved[STRING_LENGTH] = ((Pointer) (char_count - 1));
+  }
+  return (start);
 }
 
 /* Make a Scheme string with the characters in C_String. */
 
 Pointer
-C_String_To_Scheme_String (C_String)
-     fast char *C_String;
+C_String_To_Scheme_String (c_string)
+     char *c_string;
 {
-  fast char *Next;
-  fast long Length, Max_Length;
-  Pointer Result;
+  Pointer *end, *result, value;
 
-  Result = Make_Pointer( TC_CHARACTER_STRING, Free);
-  Next = (char *) Nth_Vector_Loc( Result, STRING_CHARS);
-  Max_Length = ((Space_Before_GC() - STRING_CHARS) *
-                sizeof( Pointer));
-  if (C_String == NULL)
+  end = &Free[Space_Before_GC()];
+  result = copy_c_string_to_scheme_string(c_string, Free, end);
+  if (result >= end)
   {
-    Length = 0;
-    if (Max_Length < 0)
-    {
-      Primitive_GC(3);
-    }
+    Primitive_GC(result - Free);
   }
-  else
-  {
-    for (Length = 0;
-	 (*C_String != '\0') && (Length < Max_Length);
-	 Length += 1)
-    {
-      *Next++ = *C_String++;
-    }
-    if (Length >= Max_Length)
-    {
-      while (*C_String++ != '\0')
-      {
-	Length += 1;
-      }
-      Primitive_GC(2 +
-		   (((Length + 1) + (sizeof( Pointer) - 1))
-		    / sizeof( Pointer)));
-    }
-  }
-  *Next = '\0';
-  Free += (2 + ((Length + sizeof( Pointer)) / sizeof( Pointer)));
-  Vector_Set(Result, STRING_LENGTH, Length);
-  Vector_Set(Result, STRING_HEADER,
-	     Make_Non_Pointer( TC_MANIFEST_NM_VECTOR,
-			      ((Free - Get_Pointer( Result)) - 1)));
-  return Result;
+  value = Make_Pointer( TC_CHARACTER_STRING, Free);
+  Free = result;
+  return (value);
 }
 
 Boolean
@@ -570,9 +576,10 @@ Open_File (Name, Mode_String, Handle)
      char *Mode_String;
      FILE **Handle;
 {
+  extern FILE *OS_file_open();
+
   *Handle =
-    ((FILE *)
-     OS_file_open( Scheme_String_To_C_String( Name), (*Mode_String == 'w')));
+    OS_file_open( Scheme_String_To_C_String( Name), (*Mode_String == 'w'));
   return ((Boolean) (*Handle != NULL));
 }
 
@@ -583,9 +590,18 @@ Close_File (stream)
   extern Boolean OS_file_close();
 
   if (!OS_file_close( stream))
+  {
     Primitive_Error( ERR_EXTERNAL_RETURN);
+  }
   return;
 }
+
+CRLF ()
+{
+  printf( "\n");
+}
+
+/* HISTORY manipulation */
 
 Pointer *
 Make_Dummy_History ()
@@ -605,9 +621,9 @@ Make_Dummy_History ()
   Free[HIST_PREV_SUBPROBLEM] =
     Make_Pointer(UNMARKED_HISTORY_TYPE, Result);
   Free += 3;
-  return Result;
+  return (Result);
 }
-
+
 /* The entire trick to history is right here: it is either copied or
    reused when restored.  Initially, Stop_History marks the stack so
    that the history will merely be popped and reused.  On a catch,
@@ -619,12 +635,14 @@ Make_Dummy_History ()
 void
 Stop_History ()
 {
-  Pointer Saved_Expression = Fetch_Expression();
-  long Saved_Return_Code = Fetch_Return();
+  Pointer Saved_Expression;
+  long Saved_Return_Code;
 
-Will_Push(HISTORY_SIZE);
+  Saved_Expression = Fetch_Expression();
+  Saved_Return_Code = Fetch_Return();
+ Will_Push(HISTORY_SIZE);
   Save_History(RC_RESTORE_DONT_COPY_HISTORY);
-Pushed();
+ Pushed();
   Prev_Restore_History_Stacklet = NULL;
   Prev_Restore_History_Offset = ((Get_End_Of_Stacklet() - Stack_Pointer) +
 				 CONTINUATION_RETURN_CODE);
@@ -632,14 +650,14 @@ Pushed();
   Store_Return(Saved_Return_Code);
   return;
 }
-
+
 Pointer *
 Copy_Rib (Orig_Rib)
      Pointer *Orig_Rib;
 {
   Pointer *Result, *This_Rib;
 
-  for (This_Rib=NULL, Result=Free;
+  for (This_Rib = NULL, Result = Free;
        (This_Rib != Orig_Rib) && (!GC_Check(0));
        This_Rib = Get_Pointer(This_Rib[RIB_NEXT_REDUCTION]))
   {
@@ -656,10 +674,10 @@ Copy_Rib (Orig_Rib)
     }
     Free += 3;
   }
-  Store_Address((Free-3)[RIB_NEXT_REDUCTION], C_To_Scheme(Result));
-  return Result;
+  Store_Address((Free - 3)[RIB_NEXT_REDUCTION], C_To_Scheme(Result));
+  return (Result);
 }
-
+
 /* Restore_History pops a history object off the stack and
    makes a COPY of it the current history collection object.
    This is called only from the RC_RESTORE_HISTORY case in
@@ -679,14 +697,17 @@ Restore_History (Hist_Obj)
     {
       fprintf(stderr, "Bad history to restore.\n");
       Microcode_Termination(TERM_EXIT);
+      /*NOTREACHED*/
     }
   }
   Orig_Vertebra = Get_Pointer(Hist_Obj);
+
   for (Next_Vertebra = NULL, Prev_Vertebra = NULL;
        Next_Vertebra != Orig_Vertebra;
        Next_Vertebra = 
          Get_Pointer(Next_Vertebra[HIST_NEXT_SUBPROBLEM]))
-  { Pointer *New_Rib;
+  {
+    Pointer *New_Rib;
 
     if (Prev_Vertebra == NULL)
     {
@@ -714,7 +735,7 @@ Restore_History (Hist_Obj)
     Free += 3;
     if (GC_Check(0))
     {
-      return false;
+      return (false);
     }
   }
   Store_Address(New_History[HIST_PREV_SUBPROBLEM], C_To_Scheme(Free-3));
@@ -725,12 +746,7 @@ Restore_History (Hist_Obj)
     HISTORY_MARK(Prev_Vertebra[HIST_MARK]);
   }
   History = New_History;
-  return true;
-}
-
-CRLF ()
-{
-  printf( "\n");
+  return (true);
 }
 
 /* If a debugging version of the interpreter is made, then this
@@ -741,6 +757,7 @@ CRLF ()
  */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
+
 Pointer
 Apply_Primitive (Primitive_Number)
      long Primitive_Number;
@@ -756,7 +773,7 @@ Apply_Primitive (Primitive_Number)
   {
     Print_Primitive(Primitive_Number);
   }
-  NArgs = N_Args_Primitive(Primitive_Number);
+  NArgs = PRIMITIVE_N_ARGUMENTS(Primitive_Number);
   Saved_Stack = Stack_Pointer;
   Result = Internal_Apply_Primitive(Primitive_Number);
   if (Saved_Stack != Stack_Pointer)
@@ -767,47 +784,43 @@ Apply_Primitive (Primitive_Number)
 	    "\nStack was 0x%x, now 0x%x, #args=%d.\n",
             Saved_Stack, Stack_Pointer, NArgs);
     Microcode_Termination(TERM_EXIT);
+    /*NOTREACHED*/
   }
   if (Primitive_Debug)
   {
     Print_Expression(Result, "Primitive Result");
     fprintf(stderr, "\n");
   }
-  return Result;
+  return (Result);
 }
-#endif
+
+#endif /* ENABLE_DEBUGGING_TOOLS */
 
 #ifdef ENABLE_PRIMITIVE_PROFILING
 
-/* The profiling mechanism is enabled by storing a cons of two vectors
-   in the fixed objects vector.  The car will record the profiling for
-   built-in primitives, and the cdr for user defined primitives.  Both
-   vectors should be initialized to contain all zeros. */
+/* The profiling mechanism is enabled by storing a vector in the fixed
+   objects vector.  The vector should be initialized to contain all zeros
+ */
 
 void
 record_primitive_entry (primitive)
      Pointer primitive;
 {
-  if ((Fixed_Objects != NIL) &&
-      ((Get_Fixed_Obj_Slot (Primitive_Profiling_Table)) != NIL))
-    {
-      Pointer table;
-      long index, old_value;
+  Pointer table;
 
-      /* Test for TC_PRIMITIVE_EXTERNAL rather than TC_PRIMITIVE here
-	 because the compiled code interface will use 0 rather than
-	 TC_PRIMITIVE. */
-      table =
-	(Vector_Ref
-	 ((Get_Fixed_Obj_Slot (Primitive_Profiling_Table)),
-	  (((pointer_type (primitive)) == TC_PRIMITIVE_EXTERNAL) ? 1 : 0)));
-      index = (1 + (pointer_datum (primitive)));
-      Scheme_Integer_To_C_Integer ((Vector_Ref (table, index)), &old_value);
-      Vector_Set (table, index, (C_Integer_To_Scheme_Integer (1 + old_value)));
-    }
+  if ((Fixed_Objects != NIL) &&
+      ((table = Get_Fixed_Obj_Slot (Primitive_Profiling_Table)) != NIL))
+  {
+    long index, old_value;
+
+    index = (1 + (pointer_datum (primitive)));
+    Scheme_Integer_To_C_Integer ((Vector_Ref (table, index)), &old_value);
+    Vector_Set (table, index, (C_Integer_To_Scheme_Integer (1 + old_value)));
+  }
+  return;
 }
 
-#endif
+#endif /* ENABLE_PRIMITIVE_PROFILING */
 
 Pointer
 Allocate_Float (F)
@@ -820,8 +833,8 @@ Allocate_Float (F)
   *Free = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, FLONUM_SIZE);
   Get_Float(C_To_Scheme(Free)) = F;
   Primitive_GC_If_Needed(FLONUM_SIZE+1);
-  Free += FLONUM_SIZE+1;
-  return Result;
+  Free += (FLONUM_SIZE + 1);
+  return (Result);
 }
 
 #ifdef USE_STACKLETS
@@ -904,14 +917,17 @@ Find_State_Space (State_Point)
   { 
 #ifdef ENABLE_DEBUGGING_TOOLS
     if (Point == NIL)
-    { printf("\nState_Point 0x%x wrong: count was %d, NIL at %d\n",
+    {
+      fprintf(stderr,
+	      "\nState_Point 0x%x wrong: count was %d, NIL at %d\n",
 	     State_Point, How_Far, i);
       Microcode_Termination(TERM_EXIT);
+      /*NOTREACHED*/
     }
-#endif
+#endif /* ENABLE_DEBUGGING_TOOLS */
     Point = Fast_Vector_Ref(Point, STATE_POINT_NEARER_POINT);
   }
-  return Point; 
+  return (Point);
 }
 
 /* ASSUMPTION: State points, which are created only by the interpreter,
@@ -937,11 +953,12 @@ void
 Translate_To_Point (Target)
      Pointer Target;
 {
-  Pointer State_Space = Find_State_Space(Target);
-  Pointer Current_Location, *Path = Free;
+  Pointer State_Space, Current_Location, *Path;
   fast Pointer Path_Point, *Path_Ptr;
   long Distance, Merge_Depth, From_Depth, i;
 
+  State_Space = Find_State_Space(Target);
+  Path = Free;
   guarantee_state_point();
   Distance =
     Get_Integer(Fast_Vector_Ref(Target, STATE_POINT_DISTANCE_TO_ROOT));
@@ -953,54 +970,70 @@ Translate_To_Point (Target)
   {
     Current_Location = Vector_Ref(State_Space, STATE_SPACE_NEAREST_POINT);
   }
+
   if (Target == Current_Location)
   {
     PRIMITIVE_ABORT(PRIM_POP_RETURN);
     /*NOTREACHED*/
   }
-  for (Path_Ptr=(&(Path[Distance])), Path_Point=Target, i=0;
+
+  for (Path_Ptr = (&(Path[Distance])), Path_Point = Target, i = 0;
        i <= Distance;
-       i++, Path_Point=Fast_Vector_Ref(Path_Point, STATE_POINT_NEARER_POINT))
+       i++)
   {
     *Path_Ptr-- = Path_Point;
+    Path_Point = Fast_Vector_Ref(Path_Point, STATE_POINT_NEARER_POINT);
   }
+
   From_Depth =
     Get_Integer(Fast_Vector_Ref(Current_Location, STATE_POINT_DISTANCE_TO_ROOT));
-  for (Path_Point=Current_Location, Merge_Depth = From_Depth;
+
+  for (Path_Point = Current_Location, Merge_Depth = From_Depth;
        Merge_Depth > Distance;
        Merge_Depth--)
   {
     Path_Point = Fast_Vector_Ref(Path_Point, STATE_POINT_NEARER_POINT);
   }
-  for (Path_Ptr=(&(Path[Merge_Depth])); Merge_Depth >= 0;
-       Merge_Depth--, Path_Ptr--,
-       Path_Point=Fast_Vector_Ref(Path_Point, STATE_POINT_NEARER_POINT))
+
+  for (Path_Ptr = (&(Path[Merge_Depth]));
+       Merge_Depth >= 0;
+       Merge_Depth--, Path_Ptr--)
   {
     if (*Path_Ptr == Path_Point)
     {
       break;
     }
+    Path_Point = Fast_Vector_Ref(Path_Point, STATE_POINT_NEARER_POINT);
   }
+
 #ifdef ENABLE_DEBUGGING_TOOLS
   if (Merge_Depth < 0)
   {
     fprintf(stderr, "\nMerge_Depth went negative: %d\n", Merge_Depth);
     Microcode_Termination(TERM_EXIT);
   }
-#endif
+#endif /* ENABLE_DEBUGGING_TOOLS */
+
  Will_Push(2*CONTINUATION_SIZE + 4); 
   Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(Make_Unsigned_Fixnum(IntEnb));
+  Store_Expression(MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK()));
   Save_Cont();
-  Push(Make_Unsigned_Fixnum((Distance-Merge_Depth)));
+  Push(Make_Unsigned_Fixnum((Distance - Merge_Depth)));
   Push(Target);
-  Push(Make_Unsigned_Fixnum((From_Depth-Merge_Depth)));
+  Push(Make_Unsigned_Fixnum((From_Depth - Merge_Depth)));
   Push(Current_Location);
   Store_Expression(State_Space);
   Store_Return(RC_MOVE_TO_ADJACENT_POINT);
   Save_Cont();
  Pushed();
-  IntEnb &= (INT_GC<<1) - 1;	/* Disable lower than GC level */
+
+  {
+    long mask;
+
+    /* Disable lower than GC level */
+    mask = (FETCH_INTERRUPT_MASK() & ((INT_GC << 1) - 1));
+    SET_INTERRUPT_MASK(mask);
+  }
   PRIMITIVE_ABORT(PRIM_POP_RETURN);
   /*NOTREACHED*/
 }

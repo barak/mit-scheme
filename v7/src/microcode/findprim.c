@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.28 1987/10/27 23:13:41 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.29 1987/11/17 08:04:01 jinx Exp $
  *
  * Preprocessor to find and declare defined primitives.
  *
@@ -39,8 +39,8 @@ MIT in each case. */
 /*
  * This program searches for a particular token which tags primitive
  * definitions.  This token is also a macro defined in primitive.h.
- * For each macro invocation it creates an entry in the External
- * Primitives descriptor used by Scheme.  The entry consists of the C
+ * For each macro invocation it creates an entry in the primitives
+ * descriptor vector used by Scheme.  The entry consists of the C
  * routine implementing the primitive, the (fixed) number of arguments
  * it requires, and the name Scheme uses to refer to it.
  *
@@ -54,9 +54,15 @@ MIT in each case. */
  *    Put the output file in fname.  The default is to put it on the
  *    standard output.
  *
- * -b n
- *    Produce the built-in primitive table instead.  The table should
- *    have size n (in hex).
+ * -e or -b n (exclusive)
+ *    -e: produce the old external primitive table instead of the
+ *    complete primitive table.
+ *    -b: Produce the old built-in primitive table instead of the
+ *    complete primitive table.  The table should have size n (in hex).
+ *
+ * -l fname
+ *    The list of files to examine is contained in fname, one file
+ *    per line.  Semicolons (';') introduce comment lines.
  *
  * Note that some output lines are done in a strange fashion because
  * some C compilers (the vms C compiler, for example) remove comments
@@ -117,14 +123,17 @@ static boolean Built_in_p;
 static long Built_in_table_size;
 
 static char *The_Token;
+static char Default_Token[] = "Define_Primitive";
 static char Built_in_Token[] = "Built_In_Primitive";
 static char External_Token[] = "Define_Primitive";
 
-static char *The_Table;
-static char Built_in_Table[] = "Primitive";
-static char External_Table[] = "External";
+static char *The_Kind;
+static char Default_Kind[] = "Primitive";
+static char Built_in_Kind[] = "Primitive";
+static char External_Kind[] = "External";
 
 static char *The_Variable;
+static char Default_Variable[] = "MAX_PRIMITIVE";
 static char Built_in_Variable[] = "MAX_PRIMITIVE";
 static char External_Variable[] = "MAX_EXTERNAL_PRIMITIVE";
 
@@ -171,11 +180,17 @@ main(argc, argv)
     argv += 2;
     argc -= 2;
   }
-  else
+  else if ((argc >= 2) && (strcmp("-e", argv[1]) == 0))
   {
     void initialize_external();
 
     initialize_external();
+  }
+  else
+  {
+    void initialize_default();
+
+    initialize_default();
   }
 
   /* Check whether there are any files left. */
@@ -360,37 +375,67 @@ scan_to_token_start()
 /* *** FIX *** This should check for field overflow (n too small) */
 
 void
-copy_token(s, cap, Size)
+copy_token(s, size)
      char s[];
-     boolean cap;
-     int *Size;
+     int *size;
 {
   register int c, n;
 
   n = 0;
   while (!(whitespace(c = getc(input))))
-    s[n++] = ((cap && isalpha(c) && islower(c))? toupper(c) : c);
+  {
+    s[n++] = c;
+  }
   s[n] = '\0';
-  if (n > *Size)
-    *Size = n;
+  if (n > *size)
+  {
+    *size = n;
+  }
+  return;
+}
+
+void
+copy_symbol(s, size)
+     char s[];
+     int *size;
+{
+  register int c, n;
+
+  n = 0;
+  c = getc(input);
+  if (c != '\"')
+  {
+  }
+  while ((!(whitespace(c = getc(input)))) && (c != '\"'))
+  {
+    s[n++] = ((isalpha(c) && islower(c)) ? toupper(c) : c);
+  }
+  s[n] = '\0';
+  if (n > *size)
+  {
+    *size = n;
+  }
   return;
 }
 
 void
-copy_string(is, s, cap, Size)
+copy_string(is, s, size)
      register char *is;
      char s[];
-     boolean cap;
-     int *Size;
+     int *size;
 {
   register int c, n;
 
   n = 0;
   while ((c = *is++) != '\0')
-    s[n++] = ((cap && isalpha(c) && islower(c))? toupper(c) : c);
+  {
+    s[n++] = c;
+  }
   s[n] = '\0';
-  if (n > *Size)
-    *Size = n;
+  if (n > *size)
+  {
+    *size = n;
+  }
   return;
 }
 
@@ -420,7 +465,7 @@ static descriptor Dummy_Entry =
 {
   "Dummy_Primitive",
   "0",
-  "\"DUMMY-PRIMITIVE\"",
+  "DUMMY-PRIMITIVE",
   "Findprim.c"
 };
 
@@ -431,12 +476,9 @@ static descriptor Inexistent_Entry =
 {
   "Prim_Inexistent",
   "0",
-  "No_Name",
+  "INEXISTENT-PRIMITIVE",
   "Findprim.c"
 };
-
-static char Inexistent_Real_Name[] =
-  "\"INEXISTENT-PRIMITIVE\"";
 
 static char Inexistent_Error_String[] =
   "Primitive_Error(ERR_UNIMPLEMENTED_PRIMITIVE)";
@@ -445,12 +487,9 @@ static int C_Size = 0;
 static int A_Size = 0;
 static int S_Size = 0;
 static int F_Size = 0;
-
-#define DONT_CAP FALSE
-#define DO_CAP TRUE
 
 pseudo_void
-create_external_entry()
+create_normal_entry()
 {
   if (buffer_index >= BUFFER_SIZE)
   {
@@ -460,12 +499,12 @@ create_external_entry()
     error_exit(FALSE);
   }
   scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).C_Name, DONT_CAP, &C_Size);
+  copy_token((Data_Buffer[buffer_index]).C_Name, &C_Size);
   scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).Arity, DONT_CAP, &A_Size);
+  copy_token((Data_Buffer[buffer_index]).Arity, &A_Size);
   scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).Scheme_Name, DO_CAP, &S_Size);
-  copy_string(file_name, (Data_Buffer[buffer_index]).File_Name, DONT_CAP, &F_Size);
+  copy_symbol((Data_Buffer[buffer_index]).Scheme_Name, &S_Size);
+  copy_string(file_name, (Data_Buffer[buffer_index]).File_Name, &F_Size);
   Result_Buffer[buffer_index] = &Data_Buffer[buffer_index];
   buffer_index++;
   return;
@@ -476,9 +515,20 @@ initialize_external()
 {
   Built_in_p = FALSE;
   The_Token = &External_Token[0];
-  The_Table = &External_Table[0];
+  The_Kind = &External_Kind[0];
   The_Variable = &External_Variable[0];
-  create_entry = create_external_entry;
+  create_entry = create_normal_entry;
+  return;
+}
+
+void
+initialize_default()
+{
+  Built_in_p = FALSE;
+  The_Token = &Default_Token[0];
+  The_Kind = &Default_Kind[0];
+  The_Variable = &Default_Variable[0];
+  create_entry = create_normal_entry;
   return;
 }
 
@@ -513,14 +563,14 @@ create_builtin_entry()
   int index = 0;
 
   scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).C_Name, DONT_CAP, &C_Size);
+  copy_token((Data_Buffer[buffer_index]).C_Name, &C_Size);
   scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).Arity, DONT_CAP, &A_Size);
+  copy_token((Data_Buffer[buffer_index]).Arity, &A_Size);
   scan_to_token_start();
-  copy_token((Data_Buffer[buffer_index]).Scheme_Name, DO_CAP, &S_Size);
-  copy_string(file_name, (Data_Buffer[buffer_index]).File_Name, DONT_CAP, &F_Size);
+  copy_token((Data_Buffer[buffer_index]).Scheme_Name, &S_Size);
+  copy_string(file_name, (Data_Buffer[buffer_index]).File_Name, &F_Size);
   scan_to_token_start();
-  copy_token(index_buffer, DONT_CAP, &index);
+  copy_token(index_buffer, &index);
   index = read_index(index_buffer);
   if (index >= Built_in_table_size)
   {
@@ -563,11 +613,13 @@ initialize_builtin(arg)
     error_exit(FALSE);
   }
   The_Token = &Built_in_Token[0];
-  The_Table = &Built_in_Table[0];
+  The_Kind = &Built_in_Kind[0];
   The_Variable = &Built_in_Variable[0];
   create_entry = create_builtin_entry;
   for (index = Built_in_table_size; --index >= 0; )
+  {
     Result_Buffer[index] = &Inexistent_Entry;
+  }
   initialize_from_entry(&Inexistent_Entry);
   return;
 }
@@ -578,8 +630,8 @@ compare_descriptors(d1, d2)
 {
   int value;
 
-  dprintf("comparing %s", d1->Scheme_Name);
-  dprintf(" and %s.\n", d2->Scheme_Name);
+  dprintf("comparing \"%s\"", d1->Scheme_Name);
+  dprintf(" and \"%s\".\n", d2->Scheme_Name);
   value = strcmp(d1->Scheme_Name, d2->Scheme_Name);
   if (value > 0)
   {
@@ -739,11 +791,11 @@ print_entry(index, primitive_descriptor)
   fprintf(output, "/%c ", '*');
   print_spaces(A_Size - (strlen(primitive_descriptor->Arity)));
   fprintf(output,
-	  "%s %s",
+	  "%s \"%s\"",
 	  (primitive_descriptor->Arity),
 	  (primitive_descriptor->Scheme_Name));
   print_spaces(S_Size-(strlen(primitive_descriptor->Scheme_Name)));
-  fprintf(output, " %s ", ((Built_in_p) ? "Primitive" : "External"));
+  fprintf(output, " %s ", The_Kind);
   find_index_size(index, index_size);
   print_spaces(max_index_size - index_size);
   fprintf(output, "0x%x in %s %c/", index, (primitive_descriptor->File_Name), '*');
@@ -774,7 +826,7 @@ print_primitives(last)
 
   /* Print the procedure table. */
 
-  fprintf(output, "Pointer (*(%s_Procedure_Table[]))() = {\n", The_Table);
+  fprintf(output, "Pointer (*(%s_Procedure_Table[]))() = {\n", The_Kind);
 
   for (count = 0; count < last; count++)
   {
@@ -786,7 +838,7 @@ print_primitives(last)
 
   /* Print the arity table. */
   
-  fprintf(output, "int %s_Arity_Table[] = {\n", The_Table);
+  fprintf(output, "int %s_Arity_Table[] = {\n", The_Kind);
 
   for (count = 0; count < last; count++)
   {
@@ -797,13 +849,13 @@ print_primitives(last)
 
   /* Print the names table. */
   
-  fprintf(output, "char *%s_Name_Table[] = {\n", The_Table);
+  fprintf(output, "char *%s_Name_Table[] = {\n", The_Kind);
 
   for (count = 0; count < last; count++)
   {
-    fprintf(output, "  %s,\n", ((Result_Buffer[count])->Scheme_Name));
+    fprintf(output, "  \"%s\",\n", ((Result_Buffer[count])->Scheme_Name));
   }
-  fprintf(output, "  %s\n", ((Result_Buffer[last])->Scheme_Name));
+  fprintf(output, "  \"%s\"\n", ((Result_Buffer[last])->Scheme_Name));
   fprintf(output, "};\n\n");
 
   return;
@@ -867,16 +919,12 @@ dump(check)
     if (Built_in_p)
     {
       fprintf(output, "       %s();\n\n", &(Inexistent_Entry.C_Name)[0]);
-
-      fprintf(output,
-	      "static char %s[] = %s;\n\n",
-	      Inexistent_Entry.Scheme_Name,
-	      Inexistent_Real_Name);
       print_procedure(&Inexistent_Entry, &Inexistent_Error_String[0]);
     }
     else
+    {
       fprintf(output, "       %s();\n", &(Data_Buffer[end].C_Name)[0]);
-
+    }
   }
 
   fprintf(output, "\f\n");

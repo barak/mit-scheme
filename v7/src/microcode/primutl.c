@@ -30,14 +30,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.40 1987/04/16 14:34:28 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.41 1987/11/17 08:15:15 jinx Exp $
  *
  * This file contains the support routines for mapping primitive names
- * to numbers within the microcode.  This mechanism is only used by
- * the runtime system on "external" primitives.  "Built-in" primitives
- * must match their position in utabmd.scm.  Eventually both
- * mechanisms will be merged.  External primitives are written in C
+ * to numbers within the microcode.  Primitives are written in C
  * and available in Scheme, but not always present in all versions of
  * the interpreter.  Thus, these objects are always referenced
  * externally by name and converted to numeric references only for the
@@ -47,19 +43,27 @@ MIT in each case. */
 #include "scheme.h"
 #include "primitive.h"
 
+Pointer Undefined_Primitives = NIL;
+Pointer Undefined_Primitives_Arity = NIL;
+
 /* Common utilities. */
 
-/* In the following two procedures, size is really 1 less than size.
-   It is really the index of the last valid entry.
+/*
+  In primitive_name_to_code and primitive_code_to_name, size is really
+  1 less than size.  It is really the index of the last valid entry.
  */
+
+#if false
+
+/* This version performs an expensive linear search. */
 
 long
 primitive_name_to_code(name, table, size)
      char *name;
      char *table[];
-     long size;
+     int size;
 {
-  fast long i;
+  fast int i;
 
   for (i = size; i >= 0; i -= 1)
   {
@@ -69,38 +73,98 @@ primitive_name_to_code(name, table, size)
     s2 = table[i];
 
     while (*s1++ == *s2)
+    {
       if (*s2++ == '\0')
-	return i;
-      
+      {
+	return ((long) i);
+      }
+    }
   }
-  return -1;
+  return ((long) (-1));
 }
 
+#else /* false */
+
+/* This version performs a log (base 2) search.
+   The table is assumed to be ordered alphabetically.
+ */
+   
+long
+primitive_name_to_code(name, table, size)
+     char *name;
+     fast char *table[];
+     int size;
+{
+  extern int strcmp();
+  fast int low, high, middle, result;
+
+  low = 0;
+  high = size;
+
+  while(low < high)
+  {
+    middle = ((low + high) / 2);
+    result = strcmp(name, table[middle]);
+    if (result < 0)
+    {
+      high = (middle - 1);
+    }
+    else if (result > 0)
+    {
+      low = (middle + 1);
+    }
+    else
+    {
+      return ((long) middle);
+    }
+  }
+
+  /* This takes care of the fact that division rounds down.
+     If division were to round up, we would have to use high.
+   */
+
+  if (strcmp(name, table[low]) == 0)
+  {
+    return ((long) low);
+  }
+  return ((long) -1);
+}
+
+#endif /* false */
+
 char *
 primitive_code_to_name(code, table, size)
-     long code;
+     int code;
      char *table[];
-     long size;
+     int size;
 {
   if ((code > size) || (code < 0))
+  {
     return ((char *) NULL);
+  }
   else
+  {
     return table[code];
+  }
 }
 
-int
+long
 primitive_code_to_arity(code, table, size)
-     long code;
+     int code;
      int table[];
-     long size;
+     int size;
 {
   if ((code > size) || (code < 0))
-    return -1;
+  {
+    return ((long) -1);
+  }
   else
-    return table[code];
+  {
+    return ((long) table[code]);
+  }
 }
-
-/* Utilities exclusively for built-in primitives. */
+
+/* Externally visible utilities */
 
 extern Pointer make_primitive();
 
@@ -108,155 +172,401 @@ Pointer
 make_primitive(name)
      char *name;
 {
-  long code;
+  long i;
 
-  code = primitive_name_to_code(name,
-				&Primitive_Name_Table[0],
-				MAX_PRIMITIVE);
-  if (code == -1)
-    return NIL;
-  return
-    Make_Non_Pointer(TC_PRIMITIVE, code);
+  i = primitive_name_to_code(name,
+			     &Primitive_Name_Table[0],
+			     MAX_PRIMITIVE);
+  return ((i == ((long) -1)) ?
+	  NIL :
+	  Make_Non_Pointer(TC_PRIMITIVE, i));
 }
-
+
 extern long primitive_to_arity();
 
 long
 primitive_to_arity(code)
      int code;
 {
-  return
-    primitive_code_to_arity(code,
-			    &Primitive_Arity_Table[0],
-			    MAX_PRIMITIVE);
+  if (code <= MAX_PRIMITIVE)
+  {
+    return
+      ((long)
+       (primitive_code_to_arity(code,
+				&Primitive_Arity_Table[0],
+				MAX_PRIMITIVE)));
+  }
+  else
+  {
+    Pointer entry;
+    long arity;
+
+    entry = User_Vector_Ref(Undefined_Primitives_Arity,
+			    (code - MAX_PRIMITIVE));
+    if (entry == NIL)
+    {
+      return ((long) UNKNOWN_PRIMITIVE_ARITY);
+    }
+    else
+    {
+      Sign_Extend(entry, arity);
+    }
+    return (arity);
+  }
 }
 
+extern long primitive_to_arguments();
+
+/*
+  This is only valid during the invocation of a primitive.
+  It is used by various utilities to back out of code.
+ */
+
+long
+primitive_to_arguments(code)
+     long code;
+{
+  long arity;
+
+  arity = primitive_to_arity(code);
+
+  if (arity == ((long) LEXPR_PRIMITIVE_ARITY))
+  {
+    arity = ((long) Regs[REGBLOCK_LEXPR_ACTUALS]);
+  }
+  return (arity);
+}
+
 extern char *primitive_to_name();
 
 char *
 primitive_to_name(code)
      int code;
 {
-  return
-    primitive_code_to_name(code,
-			   &Primitive_Name_Table[0],
-			   MAX_PRIMITIVE);
-}
-
-/* Utilities exclusively for external primitives. */
+  char *string;
 
-Pointer Undefined_Externals = NIL;
-
-Pointer
-external_primitive_name(code)
-     long code;
-{
-  extern Pointer string_to_symbol();
-
-  return
-    string_to_symbol(C_String_To_Scheme_String(External_Name_Table[code]));
-}
-
-extern long make_external_primitive();
-
-long
-make_external_primitive(Symbol, Intern_It)
-     Pointer Symbol, Intern_It;
-{
-  extern Boolean string_equal();
-  Pointer *Next, Name;
-  long i, Max;
-
-  Name = Fast_Vector_Ref(Symbol, SYMBOL_NAME);
-
-  i = primitive_name_to_code(Scheme_String_To_C_String(Name),
-			     &External_Name_Table[0],
-			     MAX_EXTERNAL_PRIMITIVE);
-  if (i != -1)
-    return Make_Non_Pointer(TC_PRIMITIVE_EXTERNAL, i);
-  else if (Intern_It == NIL)
-    return NIL;
-
-  Max = NUndefined();
-  if (Max > 0)
-    Next = Nth_Vector_Loc(Undefined_Externals, 2);
-
-  for (i = 1; i <= Max; i++)
+  if (code <= MAX_PRIMITIVE)
   {
-    if (string_equal(Name, Fast_Vector_Ref(*Next++, SYMBOL_NAME)))
-      return Make_Non_Pointer(TC_PRIMITIVE_EXTERNAL,
-			      (MAX_EXTERNAL_PRIMITIVE + i));
-  }
-  if (Intern_It != TRUTH)
-    return NIL;
-
-  /* Intern the primitive name by adding it to the vector of
-     undefined primitives */
-
-  if ((Max % CHUNK_SIZE) == 0)
-  {
-    Primitive_GC_If_Needed(Max + CHUNK_SIZE + 2);
-    if (Max > 0) Next =
-      Nth_Vector_Loc(Undefined_Externals, 2);
-    Undefined_Externals = Make_Pointer(TC_VECTOR, Free);
-    *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, (Max + CHUNK_SIZE + 1));
-    *Free++ = Make_Unsigned_Fixnum(Max + 1);
-    for (i = 0; i < Max; i++)
-      *Free++ = Fetch(*Next++);
-    *Free++ = Symbol;
-    for (i = 1; i < CHUNK_SIZE; i++)
-      *Free++ = NIL;
+    string = Primitive_Name_Table[code];
   }
   else
   {
-    User_Vector_Set(Undefined_Externals, (Max + 1), Symbol);
-    User_Vector_Set(Undefined_Externals, 0, Make_Unsigned_Fixnum(Max + 1));
-  }
-  return
-    Make_Non_Pointer(TC_PRIMITIVE_EXTERNAL,
-		     (MAX_EXTERNAL_PRIMITIVE + Max + 1));
-}
-
-extern long external_primitive_to_arity();
+    /* NOTE:
+       This is invoked by cons_primitive_table which is invoked by
+       fasdump before the "fixups" are undone.  This means that the scheme
+       string may actually have a broken heart as its first word, but
+       this code will still work because the characters will still be there.
+     */
 
-long
-external_primitive_to_arity(code)
+    Pointer scheme_string;
+
+    scheme_string = User_Vector_Ref(Undefined_Primitives,
+				    (code - MAX_PRIMITIVE));
+    string = Scheme_String_To_C_String(scheme_string);
+  }
+  return (string);
+}
+
+/* this avoids some consing. */
+
+Pointer
+primitive_name(code)
      int code;
 {
-  return
-    primitive_code_to_arity(code,
-			    &External_Arity_Table[0],
-			    MAX_EXTERNAL_PRIMITIVE);
+  Pointer scheme_string;
+  extern Pointer string_to_symbol();
+
+  if (code <= MAX_PRIMITIVE)
+  {
+    scheme_string = C_String_To_Scheme_String(Primitive_Name_Table[code]);
+  }
+  else
+  {
+    scheme_string = User_Vector_Ref(Undefined_Primitives,
+				    (code - MAX_PRIMITIVE));
+  }
+  return (string_to_symbol(scheme_string));
 }
 
-extern Pointer Make_Prim_Exts();
+extern Pointer find_primitiveo();
 
-/*
-   Used to create a vector with symbols for each of the external
-   primitives known to the system.
-*/
-
-Pointer 
-Make_Prim_Exts()
+Pointer
+find_primitive(Name, intern_p, arity, check_p)
+     Pointer Name;
+     Boolean intern_p, check_p;
+     int arity;
 {
-  fast Pointer Result, *scan;
-  fast long i, Max, Count;
+  extern Boolean string_equal();
+  long i, Max, old_arity;
+  Pointer *Next;
 
-  Max = NUndefined();
-  Count = (MAX_EXTERNAL_PRIMITIVE + Max + 1);
-  Primitive_GC_If_Needed(Count + 1);
-  Result = Make_Pointer(TC_VECTOR, Free);
-  scan = Free;
-  Free += Count + 1;
+  i = primitive_name_to_code(Scheme_String_To_C_String(Name),
+			     &Primitive_Name_Table[0],
+			     MAX_PRIMITIVE);
+  if (i != -1)
+  {
+    old_arity = Primitive_Arity_Table[i];
+    if ((!check_p) || (arity == old_arity) ||
+	(arity == UNKNOWN_PRIMITIVE_ARITY))
+    {
+      return (Make_Non_Pointer(TC_PRIMITIVE, i));
+    }
+    else
+    {
+      return (MAKE_SIGNED_FIXNUM(old_arity));
+    }
+  }
+  else if (intern_p == NIL)
+  {
+    return (NIL);
+  }
+
+  /* The vector should be sorted for faster comparison. */
 
-  *scan++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, Count);
-  for (i = 0; i <= MAX_EXTERNAL_PRIMITIVE; i++)
+  Max = NUMBER_OF_UNDEFINED_PRIMITIVES();
+  if (Max > 0)
   {
-    *scan++ = external_primitive_name(i);
+    Next = Nth_Vector_Loc(Undefined_Primitives, 2);
+
+    for (i = 1; i <= Max; i++)
+    {
+      Pointer temp;
+
+      if (string_equal(Name, *Next++))
+      {
+	if (check_p)
+	{
+	  temp = User_Vector_Ref(Undefined_Primitives_Arity, i);
+	  if ((temp == NIL) && (arity != UNKNOWN_PRIMITIVE_ARITY))
+	  {
+	    User_Vector_Set(Undefined_Primitives_Arity,
+			    i,
+			    MAKE_SIGNED_FIXNUM(arity));
+	  }
+	  else
+	  {
+	    Sign_Extend(temp, old_arity);
+	    if ((arity != UNKNOWN_PRIMITIVE_ARITY) && (arity != old_arity))
+	    {
+	      return (temp);
+	    }
+	  }
+	}
+	return (Make_Non_Pointer(TC_PRIMITIVE, (MAX_PRIMITIVE + i)));
+      }
+    }
   }
-  for (i = 1; i <= Max; i++)
+
+  /*
+    Intern the primitive name by adding it to the vector of
+    undefined primitives.
+   */
+
+  if ((Max % CHUNK_SIZE) == 0)
   {
-    *scan++ = User_Vector_Ref(Undefined_Externals, i);
+    Primitive_GC_If_Needed(2 * (Max + CHUNK_SIZE + 2));
+    if (Max > 0)
+    {
+      Next = Nth_Vector_Loc(Undefined_Primitives, 2);
+    }
+    Undefined_Primitives = Make_Pointer(TC_VECTOR, Free);
+    *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, (Max + CHUNK_SIZE + 1));
+    *Free++ = Make_Unsigned_Fixnum(Max + 1);
+    for (i = 0; i < Max; i++)
+    {
+      *Free++ = Fetch(*Next++);
+    }
+    *Free++ = Name;
+    for (i = 1; i < CHUNK_SIZE; i++)
+    {
+      *Free++ = NIL;
+    }
+    if (Max > 0)
+    {
+      Next = Nth_Vector_Loc(Undefined_Primitives_Arity, 2);
+    }
+    Undefined_Primitives_Arity = Make_Pointer(TC_VECTOR, Free);
+    *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, (Max + CHUNK_SIZE + 1));
+    *Free++ = NIL;
+    for (i = 0; i < Max; i++)
+    {
+      *Free++ = Fetch(*Next++);
+    }
+    *Free++ = ((check_p && (arity != UNKNOWN_PRIMITIVE_ARITY)) ?
+	       (MAKE_SIGNED_FIXNUM(arity)) :
+	       NIL);
+    for (i = 1; i < CHUNK_SIZE; i++)
+    {
+      *Free++ = NIL;
+    }
+    Max += 1;
   }
-  return Result;
+  else
+  {
+    Max += 1;
+    User_Vector_Set(Undefined_Primitives, Max, Name);
+    if (check_p && (arity != UNKNOWN_PRIMITIVE_ARITY))
+    {
+      User_Vector_Set(Undefined_Primitives_Arity,
+		      Max,
+		      MAKE_SIGNED_FIXNUM(arity));
+    }
+    User_Vector_Set(Undefined_Primitives, 0, (MAKE_UNSIGNED_FIXNUM(Max)));
+  }
+  return (Make_Non_Pointer(TC_PRIMITIVE, (MAX_PRIMITIVE + Max)));
+}
+
+/* Dumping and loading primitive object references. */
+
+extern Pointer
+  *load_renumber_table,
+  dump_renumber_primitive(),
+  *initialize_primitive_table(),
+  *cons_primitive_table(),
+  *cons_whole_primitive_table();
+
+extern void install_primitive_table();
+
+Pointer *load_renumber_table;
+static Pointer *internal_renumber_table;
+static Pointer *external_renumber_table;
+static long next_primitive_renumber;
+
+Pointer *
+initialize_primitive_table(where, end)
+     fast Pointer *where;
+     Pointer *end;
+{
+  Pointer *top;
+  fast long number_of_primitives;
+
+  number_of_primitives = NUMBER_OF_PRIMITIVES();
+  top = &where[2 * number_of_primitives];
+  if (top < end)
+  {
+    internal_renumber_table = where;
+    external_renumber_table = &where[number_of_primitives];
+    next_primitive_renumber = 0;
+
+    while (--number_of_primitives >= 0)
+    {
+      *where++ = NIL;
+    }
+  }
+  return (top);
+}
+
+Pointer
+dump_renumber_primitive(primitive)
+     fast Pointer primitive;
+{
+  fast Pointer result;
+
+  result = internal_renumber_table[OBJECT_DATUM(primitive)];
+  if (result == NIL)
+  {
+    result = Make_Non_Pointer(OBJECT_TYPE(primitive),
+			      next_primitive_renumber);
+    internal_renumber_table[OBJECT_DATUM(primitive)] = result;
+    external_renumber_table[next_primitive_renumber] = primitive;
+    next_primitive_renumber += 1;
+    return (result);
+  }
+  else
+  {
+    return (Make_New_Pointer(OBJECT_TYPE(primitive), result));
+  }
+}
+
+Pointer *
+copy_primitive_information(code, start, end)
+     long code;
+     fast Pointer *start, *end;
+{
+  extern Pointer *copy_c_string_to_scheme_string();
+
+  if (start < end)
+  {
+    *start++ = MAKE_SIGNED_FIXNUM(primitive_to_arity(((int) code)));
+  }
+  return
+    copy_c_string_to_scheme_string(primitive_to_name(((int) code)),
+				   start,
+				   end);
+}
+
+Pointer *
+cons_primitive_table(start, end, length)
+     Pointer *start, *end;
+     long *length;
+{
+  Pointer *saved;
+  long count, code;
+
+  saved = start;
+  *length = next_primitive_renumber;
+
+  for (count = 0;
+       ((count < next_primitive_renumber) && (start < end));
+       count += 1)
+  {
+    code = (OBJECT_DATUM(external_renumber_table[count]));
+    start = copy_primitive_information(code, start, end);
+  }
+  return (start);
+}
+
+Pointer *
+cons_whole_primitive_table(start, end, length)
+     Pointer *start, *end;
+     long *length;
+{
+  Pointer *saved;
+  long count, number_of_primitives;
+
+  number_of_primitives = NUMBER_OF_PRIMITIVES();
+  *length = number_of_primitives;
+  saved = start;
+
+  for (count = 0;
+       ((count < number_of_primitives) && (start < end));
+       count += 1)
+  {
+    start = copy_primitive_information(count, start, end);
+  }
+  return (start);
+}
+
+void
+install_primitive_table(table, length, flush_p)
+     fast Pointer *table;
+     fast long length;
+     Boolean flush_p;
+{
+  fast Pointer *translation_table;
+  Pointer result;
+  long arity;
+
+  if (flush_p)
+  {
+    Undefined_Primitives = NIL;
+    Undefined_Primitives_Arity = NIL;
+  }
+
+  translation_table = load_renumber_table;
+  while (--length >= 0)
+  {
+    Sign_Extend(*table, arity);
+    table += 1;
+    result =
+      find_primitive(Make_Pointer(TC_CHARACTER_STRING, table),
+		     true, arity, true);
+    if (OBJECT_TYPE(result) != TC_PRIMITIVE)
+    {
+      Primitive_Error(ERR_WRONG_ARITY_PRIMITIVES);
+    }
+    *translation_table++ = result;
+    table += (1 + OBJECT_DATUM(*table));
+  }
+  return;
 }

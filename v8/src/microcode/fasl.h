@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fasl.h,v 9.24 1987/06/05 04:14:25 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fasl.h,v 9.25 1987/11/17 08:10:04 jinx Rel $
 
    Contains information relating to the format of FASL files.
    Some information is contained in CONFIG.H.
@@ -41,7 +41,7 @@ extern Boolean Open_Dump_File(), Close_Dump_File();
 
 /* FASL Version */
 
-#define FASL_FILE_MARKER	0XFAFAFAFA
+#define FASL_FILE_MARKER	0xFAFAFAFA
 
 /* The FASL file has a header which begins as follows: */
 
@@ -55,9 +55,15 @@ extern Boolean Open_Dump_File(), Close_Dump_File();
 #define FASL_Offset_Const_Base	5	/* Address of const. area at dump */
 #define FASL_Offset_Version	6	/* FASL format version info. */ 
 #define FASL_Offset_Stack_Top	7	/* Top of stack when dumped */
-#define FASL_Offset_Ext_Loc	8	/* Where ext. prims. vector is */
+#define FASL_Offset_Prim_Length 8	/* Number of entries in primitive table */
+#define FASL_Offset_Prim_Size	9	/* Size of primitive table in Pointers */
 
-#define FASL_Offset_First_Free	9	/* Used to clear header */
+#define FASL_Offset_First_Free	10	/* Used to clear header */
+
+/* Aliases for backwards compatibility. */
+
+/* Where ext. prims. vector is */
+#define FASL_Offset_Ext_Loc	FASL_Offset_Prim_Length
 
 /* Version information encoding */
 
@@ -88,9 +94,25 @@ extern Boolean Open_Dump_File(), Close_Dump_File();
 #define FASL_DENSE_TYPES	4
 #define FASL_PADDED_STRINGS	5
 #define FASL_REFERENCE_TRAP	6
+#define FASL_MERGED_PRIMITIVES	7
 
-/* Current parameters. */
+/* Current parameters.  Always used on output. */
 
 #define FASL_FORMAT_VERSION	FASL_FORMAT_ADDED_STACK
-#define FASL_SUBVERSION		FASL_REFERENCE_TRAP
-#define FASL_OLDEST_SUPPORTED	FASL_PADDED_STRINGS
+#define FASL_SUBVERSION		FASL_MERGED_PRIMITIVES
+
+/*
+  The definitions below correspond to the ones above.  They usually
+  have the same values.  They differ when the format is changing: A
+  system is built which reads the old format, but dumps the new one.
+ */
+
+#define FASL_READ_VERSION	FASL_FORMAT_VERSION
+#define FASL_READ_SUBVERSION	FASL_SUBVERSION
+
+/* These are for Bintopsb.
+   They are the values of the oldest supported formats.
+ */
+
+#define FASL_OLDEST_VERSION	FASL_FORMAT_ADDED_STACK
+#define FASL_OLDEST_SUBVERSION	FASL_PADDED_STRINGS

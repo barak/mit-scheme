@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.26 1987/11/09 21:35:13 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.27 1987/11/17 08:18:22 jinx Exp $
  *
  * Random system primitives.  Most are implemented in terms of
  * utilities in os.c
@@ -43,6 +43,8 @@ MIT in each case. */
 
 Built_In_Primitive(Prim_Chk_And_Cln_Input_Channel, 2,
 		 "CHECK-AND-CLEAN-UP-INPUT-CHANNEL", 0x107)
+Define_Primitive(Prim_Chk_And_Cln_Input_Channel, 2,
+		 "CHECK-AND-CLEAN-UP-INPUT-CHANNEL")
 {
   extern Boolean OS_Clean_Interrupt_Channel();
   Primitive_2_Args();
@@ -54,6 +56,8 @@ Built_In_Primitive(Prim_Chk_And_Cln_Input_Channel, 2,
 
 Built_In_Primitive(Prim_Get_Next_Interrupt_Char, 0,
 		   "GET-NEXT-INTERRUPT-CHARACTER", 0x106)
+Define_Primitive(Prim_Get_Next_Interrupt_Char, 0,
+		   "GET-NEXT-INTERRUPT-CHARACTER")
 {
   int result;
   extern int OS_Get_Next_Interrupt_Character();
@@ -65,13 +69,14 @@ Built_In_Primitive(Prim_Get_Next_Interrupt_Char, 0,
     Primitive_Error(ERR_EXTERNAL_RETURN);
     /*NOTREACHED*/
   }
-  IntCode &= ~INT_Character;
+  CLEAR_INTERRUPT(INT_Character);
   PRIMITIVE_RETURN(Make_Unsigned_Fixnum(result));
 }
 
 /* Time primitives */
 
 Built_In_Primitive(Prim_System_Clock, 0, "SYSTEM-CLOCK", 0x109)
+Define_Primitive(Prim_System_Clock, 0, "SYSTEM-CLOCK")
 {
   Primitive_0_Args();
 
@@ -80,6 +85,8 @@ Built_In_Primitive(Prim_System_Clock, 0, "SYSTEM-CLOCK", 0x109)
 
 Built_In_Primitive(Prim_Setup_Timer_Interrupt, 2,
 		   "SETUP-TIMER-INTERRUPT", 0x153)
+Define_Primitive(Prim_Setup_Timer_Interrupt, 2,
+		   "SETUP-TIMER-INTERRUPT")
 {
   extern void Clear_Int_Timer(), Set_Int_Timer();
   Primitive_2_Args();
@@ -96,8 +103,7 @@ Built_In_Primitive(Prim_Setup_Timer_Interrupt, 2,
     Sign_Extend(Arg2, Centi_Seconds);
     Set_Int_Timer(Days, Centi_Seconds);
   }
-  IntCode &= ~INT_Timer;
-  New_Compiler_MemTop ();
+  CLEAR_INTERRUPT(INT_Timer);
   PRIMITIVE_RETURN(NIL);
 }
 
@@ -116,21 +122,27 @@ Built_In_Primitive(Prim_Setup_Timer_Interrupt, 2,
 }
 
 Built_In_Primitive(Prim_Current_Year, 0, "CURRENT-YEAR", 0x126)
+Define_Primitive(Prim_Current_Year, 0, "CURRENT-YEAR")
 Date_Primitive(OS_Current_Year)
 
 Built_In_Primitive(Prim_Current_Month, 0, "CURRENT-MONTH", 0x127)
+Define_Primitive(Prim_Current_Month, 0, "CURRENT-MONTH")
 Date_Primitive(OS_Current_Month)
 
 Built_In_Primitive(Prim_Current_Day, 0, "CURRENT-DAY", 0x128)
+Define_Primitive(Prim_Current_Day, 0, "CURRENT-DAY")
 Date_Primitive(OS_Current_Day)
 
 Built_In_Primitive(Prim_Current_Hour, 0, "CURRENT-HOUR", 0x129)
+Define_Primitive(Prim_Current_Hour, 0, "CURRENT-HOUR")
 Date_Primitive(OS_Current_Hour)
 
 Built_In_Primitive(Prim_Current_Minute, 0, "CURRENT-MINUTE", 0x12A)
+Define_Primitive(Prim_Current_Minute, 0, "CURRENT-MINUTE")
 Date_Primitive(OS_Current_Minute)
 
 Built_In_Primitive(Prim_Current_Second, 0, "CURRENT-SECOND", 0x12B)
+Define_Primitive(Prim_Current_Second, 0, "CURRENT-SECOND")
 Date_Primitive(OS_Current_Second)
 
 /* Pretty random primitives */
@@ -140,6 +152,7 @@ Date_Primitive(OS_Current_Second)
 */
 
 Built_In_Primitive(Prim_Non_Restartable_Exit, 0, "EXIT", 0x16)
+Define_Primitive(Prim_Non_Restartable_Exit, 0, "EXIT")
 {
   Primitive_0_Args();
 
@@ -151,6 +164,7 @@ Built_In_Primitive(Prim_Non_Restartable_Exit, 0, "EXIT", 0x16)
    Not all operating systems support this.
 */
 Built_In_Primitive(Prim_Restartable_Exit, 0, "HALT", 0x1A)
+Define_Primitive(Prim_Restartable_Exit, 0, "HALT")
 {
   extern Boolean Restartable_Exit();
   Primitive_0_Args();
@@ -166,6 +180,7 @@ Built_In_Primitive(Prim_Restartable_Exit, 0, "HALT", 0x1A)
 */
 
 Built_In_Primitive(Prim_Set_Run_Light, 1, "SET-RUN-LIGHT!", 0xC0)
+Define_Primitive(Prim_Set_Run_Light, 1, "SET-RUN-LIGHT!")
 {
   Primitive_1_Arg();
 
@@ -183,6 +198,7 @@ Built_In_Primitive(Prim_Set_Run_Light, 1, "SET-RUN-LIGHT!", 0xC0)
 }
 
 Built_In_Primitive( Prim_under_emacs_p, 0, "UNDER-EMACS?", 0x1A1)
+Define_Primitive( Prim_under_emacs_p, 0, "UNDER-EMACS?")
 {
   extern Boolean OS_Under_Emacs();
   Primitive_0_Args();

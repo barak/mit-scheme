@@ -30,19 +30,22 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.24 1987/06/05 04:13:39 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.25 1987/11/17 08:09:10 jinx Rel $
  *
  * This file contains common code for dumping internal format binary files.
  */
 
-#include "fasl.h"
-
 void
-prepare_dump_header(Buffer, Heap_Count, Heap_Relocation, Dumped_Object,
-		    Constant_Count, Constant_Relocation, Prim_Exts)
-     Pointer *Buffer, *Heap_Relocation, *Dumped_Object,
-             *Constant_Relocation, *Prim_Exts;
-     long Heap_Count, Constant_Count;
+prepare_dump_header(Buffer, Dumped_Object,
+		    Heap_Count, Heap_Relocation,
+		    Constant_Count, Constant_Relocation,
+		    table_length, table_size)
+     Pointer
+       *Buffer, *Dumped_Object,
+       *Heap_Relocation, *Constant_Relocation;
+     long
+       Heap_Count, Constant_Count,
+       table_length, table_size;
 {
   long i;
 
@@ -75,38 +78,62 @@ prepare_dump_header(Buffer, Heap_Count, Heap_Relocation, Dumped_Object,
 #else
     Make_Pointer(TC_BROKEN_HEART, Stack_Top);
 #endif
-  Buffer[FASL_Offset_Ext_Loc] = 
-    Make_Pointer(TC_BROKEN_HEART, Prim_Exts);
+  Buffer[FASL_Offset_Prim_Length] = 
+    Make_Pointer(TC_BROKEN_HEART, table_length);
+  Buffer[FASL_Offset_Prim_Size] = 
+    Make_Pointer(TC_BROKEN_HEART, table_size);
   for (i = FASL_Offset_First_Free; i < FASL_HEADER_LENGTH; i++)
+  {
     Buffer[i] = NIL;
+  }
   return;
 }
 
 Boolean
-Write_File(Heap_Count, Heap_Relocation, Dumped_Object,
-           Constant_Count, Constant_Relocation, Prim_Exts)
-     Pointer *Heap_Relocation, *Dumped_Object,
-             *Constant_Relocation, *Prim_Exts;
-     long Heap_Count, Constant_Count;
+Write_File(Dumped_Object, Heap_Count, Heap_Relocation,
+           Constant_Count, Constant_Relocation,
+	   table_start, table_length, table_size)
+     Pointer
+       *Dumped_Object,
+       *Heap_Relocation, *Constant_Relocation,
+       *table_start;
+     long
+       Heap_Count, Constant_Count,
+       table_length, table_size;
 {
   Pointer Buffer[FASL_HEADER_LENGTH];
 
-  prepare_dump_header(Buffer,Heap_Count, Heap_Relocation, Dumped_Object,
-		      Constant_Count, Constant_Relocation, Prim_Exts);
+  prepare_dump_header(Buffer, Dumped_Object,
+		      Heap_Count, Heap_Relocation,
+		      Constant_Count, Constant_Relocation,
+		      table_length, table_size);
   if (Write_Data(FASL_HEADER_LENGTH, ((char *) Buffer)) !=
       FASL_HEADER_LENGTH)
-    return false;
+  {
+    return (false);
+  }
   if (Heap_Count != 0)
   {
     if (Write_Data(Heap_Count, ((char *) Heap_Relocation)) !=
 	Heap_Count)
-      return false;
+    {
+      return (false);
+    }
   }
   if (Constant_Count != 0)
   {
     if (Write_Data(Constant_Count, ((char *) Constant_Relocation)) !=
 	Constant_Count)
-      return false;
+    {
+      return (false);
+    }
   }
-  return true;
+  if (table_size != 0)
+  {
+    if (Write_Data(table_size, ((char *) table_start)) != table_size)
+    {
+      return (false);
+    }
+  }
+  return (true);
 }

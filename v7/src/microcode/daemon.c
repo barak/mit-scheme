@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.24 1987/04/16 02:20:30 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.25 1987/11/17 08:08:45 jinx Rel $
 
    This file contains code for the Garbage Collection daemons.
    There are currently two daemons, one for closing files which
@@ -56,6 +56,7 @@ MIT in each case. */
 */
 
 Built_In_Primitive(Prim_Close_Lost_Open_Files, 1, "CLOSE-LOST-OPEN-FILES", 0xC7)
+Define_Primitive(Prim_Close_Lost_Open_Files, 1, "CLOSE-LOST-OPEN-FILES")
 {
   extern Boolean OS_file_close();
   fast Pointer *Smash, Cell, Weak_Cell, Value;
@@ -150,6 +151,7 @@ long table_size;
 */
 
 Built_In_Primitive(Prim_Rehash, 2, "REHASH", 0x5C)
+Define_Primitive(Prim_Rehash, 2, "REHASH")
 {
   long table_size, counter;
   Pointer *bucket;

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.22 1987/05/14 13:47:45 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.23 1987/11/17 08:07:53 jinx Exp $ */
 
 /* Character primitives. */
 
@@ -70,6 +70,7 @@ arg_ascii_integer (n)
 }
 
 Built_In_Primitive (Prim_Make_Char, 2, "MAKE-CHAR", 0x14)
+Define_Primitive (Prim_Make_Char, 2, "MAKE-CHAR")
 {
   long bucky_bits, code;
   Primitive_2_Args ();
@@ -80,6 +81,7 @@ Built_In_Primitive (Prim_Make_Char, 2, "MAKE-CHAR", 0x14)
 }
 
 Built_In_Primitive (Prim_Char_Bits, 1, "CHAR-BITS", 0x15)
+Define_Primitive (Prim_Char_Bits, 1, "CHAR-BITS")
 {
   Primitive_1_Arg ();
 
@@ -88,6 +90,7 @@ Built_In_Primitive (Prim_Char_Bits, 1, "CHAR-BITS", 0x15)
 }
 
 Built_In_Primitive (Prim_Char_Code, 1, "CHAR-CODE", 0x17)
+Define_Primitive (Prim_Char_Code, 1, "CHAR-CODE")
 {
   Primitive_1_Arg ();
 
@@ -96,6 +99,7 @@ Built_In_Primitive (Prim_Char_Code, 1, "CHAR-CODE", 0x17)
 }
 
 Built_In_Primitive (Prim_Char_To_Integer, 1, "CHAR->INTEGER", 0x1B)
+Define_Primitive (Prim_Char_To_Integer, 1, "CHAR->INTEGER")
 {
   Primitive_1_Arg ();
 
@@ -104,6 +108,7 @@ Built_In_Primitive (Prim_Char_To_Integer, 1, "CHAR->INTEGER", 0x1B)
 }
 
 Built_In_Primitive (Prim_Integer_To_Char, 1, "INTEGER->CHAR", 0x34)
+Define_Primitive (Prim_Integer_To_Char, 1, "INTEGER->CHAR")
 {
   Primitive_1_Arg ();
 
@@ -129,6 +134,7 @@ char_upcase (c)
 }
 
 Built_In_Primitive (Prim_Char_Downcase, 1, "CHAR-DOWNCASE", 0x35)
+Define_Primitive (Prim_Char_Downcase, 1, "CHAR-DOWNCASE")
 {
   Primitive_1_Arg ();
 
@@ -137,6 +143,7 @@ Built_In_Primitive (Prim_Char_Downcase, 1, "CHAR-DOWNCASE", 0x35)
 }
 
 Built_In_Primitive (Prim_Char_Upcase, 1, "CHAR-UPCASE", 0x36)
+Define_Primitive (Prim_Char_Upcase, 1, "CHAR-UPCASE")
 {
   Primitive_1_Arg ();
 
@@ -145,6 +152,7 @@ Built_In_Primitive (Prim_Char_Upcase, 1, "CHAR-UPCASE", 0x36)
 }
 
 Built_In_Primitive (Prim_Ascii_To_Char, 1, "ASCII->CHAR", 0x37)
+Define_Primitive (Prim_Ascii_To_Char, 1, "ASCII->CHAR")
 {
   Primitive_1_Arg ();
 
@@ -152,6 +160,7 @@ Built_In_Primitive (Prim_Ascii_To_Char, 1, "ASCII->CHAR", 0x37)
 }
 
 Built_In_Primitive (Prim_Char_To_Ascii, 1, "CHAR->ASCII", 0x39)
+Define_Primitive (Prim_Char_To_Ascii, 1, "CHAR->ASCII")
 {
   Primitive_1_Arg ();
 
@@ -159,6 +168,7 @@ Built_In_Primitive (Prim_Char_To_Ascii, 1, "CHAR->ASCII", 0x39)
 }
 
 Built_In_Primitive (Prim_Char_Ascii_P, 1, "CHAR-ASCII?", 0x38)
+Define_Primitive (Prim_Char_Ascii_P, 1, "CHAR-ASCII?")
 {
   long ascii;
   Primitive_1_Arg ();

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.26 1987/10/09 16:11:27 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.27 1987/11/17 08:12:25 jinx Exp $
  *
  * This file contains various hooks and handles which connect the
  * primitives with the main interpreter.
@@ -47,6 +47,7 @@ MIT in each case. */
    procedure, or control point. */
 
 Built_In_Primitive(Prim_Apply, 2, "APPLY", 0x5)
+Define_Primitive(Prim_Apply, 2, "APPLY")
 {
   fast Pointer scan_list, *scan_stack;
   fast long number_of_args, i;
@@ -144,7 +145,7 @@ Built_In_Primitive(Prim_Apply, 2, "APPLY", 0x5)
    */									\
   Will_Push(CONTINUATION_SIZE + HISTORY_SIZE);				\
     Save_History(Return_Code);						\
-    Store_Expression(Make_Non_Pointer(TC_FIXNUM, IntEnb));		\
+    Store_Expression(MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK()));	\
     Store_Return(RC_RESTORE_INT_MASK);					\
     Save_Cont();							\
   Pushed();								\
@@ -234,6 +235,7 @@ Built_In_Primitive(Prim_Apply, 2, "APPLY", 0x5)
 */
 
 Built_In_Primitive(Prim_Catch, 1, "CALL-WITH-CURRENT-CONTINUATION", 0x3)
+Define_Primitive(Prim_Catch, 1, "CALL-WITH-CURRENT-CONTINUATION")
 {
   Pointer Control_Point;
   Primitive_1_Arg();
@@ -246,6 +248,8 @@ Built_In_Primitive(Prim_Catch, 1, "CALL-WITH-CURRENT-CONTINUATION", 0x3)
 
 Built_In_Primitive(Prim_Non_Reentrant_Catch, 1,
 		   "NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION", 0x9)
+Define_Primitive(Prim_Non_Reentrant_Catch, 1,
+		   "NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION")
 {
   Pointer Control_Point;
   Primitive_1_Arg();
@@ -272,15 +276,15 @@ Built_In_Primitive(Prim_Non_Reentrant_Catch, 1,
    See MASK_INTERRUPT_ENABLES for more information on interrupts.
 */
 Built_In_Primitive(Prim_Enable_Interrupts, 1, "ENABLE-INTERRUPTS!", 0x1E)
+Define_Primitive(Prim_Enable_Interrupts, 1, "ENABLE-INTERRUPTS!")
 {
-  Pointer Result;
+  long previous;
   Primitive_1_Arg();
 
   Arg_1_Type(TC_FIXNUM);
-  Result = Make_Non_Pointer(TC_FIXNUM, IntEnb);
-  IntEnb = (Get_Integer(Arg1) | INT_Mask);
-  New_Compiler_MemTop();
-  PRIMITIVE_RETURN( Result);
+  previous = FETCH_INTERRUPT_MASK();
+  SET_INTERRUPT_MASK((Get_Integer(Arg1) & INT_Mask) | previous);
+  PRIMITIVE_RETURN( MAKE_SIGNED_FIXNUM(previous));
 }
 
 /* (ERROR-PROCEDURE arg1 arg2 arg3)
@@ -288,6 +292,7 @@ Built_In_Primitive(Prim_Enable_Interrupts, 1, "ENABLE-INTERRUPTS!", 0x1E)
    after turning off history, etc.
 */
 Built_In_Primitive(Prim_Error_Procedure, 3, "ERROR-PROCEDURE", 0x18E)
+Define_Primitive(Prim_Error_Procedure, 3, "ERROR-PROCEDURE")
 {
   Primitive_3_Args();
 
@@ -314,6 +319,8 @@ Built_In_Primitive(Prim_Error_Procedure, 3, "ERROR-PROCEDURE", 0x18E)
 */
 Built_In_Primitive(Prim_Get_Fixed_Objects_Vector, 0,
 		   "GET-FIXED-OBJECTS-VECTOR", 0x7A)
+Define_Primitive(Prim_Get_Fixed_Objects_Vector, 0,
+		   "GET-FIXED-OBJECTS-VECTOR")
 {
   Primitive_0_Args();
 
@@ -330,6 +337,7 @@ Built_In_Primitive(Prim_Get_Fixed_Objects_Vector, 0,
    use.
 */
 Built_In_Primitive(Prim_Force, 1, "FORCE", 0xAF)
+Define_Primitive(Prim_Force, 1, "FORCE")
 {
   Primitive_1_Arg();
 
@@ -348,14 +356,17 @@ Built_In_Primitive(Prim_Force, 1, "FORCE", 0xAF)
   /*NOTREACHED*/
 }
 
-/* (EXECUTE-AT-NEW-POINT SPACE BEFORE DURING AFTER)
+/* (EXECUTE-AT-NEW-STATE-POINT SPACE BEFORE DURING AFTER)
    Create a new state point in the specified state SPACE.  To enter
    the new point you must execute the BEFORE thunk.  On the way out,
    the AFTER thunk is executed.  If SPACE is NIL, then the microcode
    variable Current_State_Point is used to find the current state
    point and no state space is side-effected as the code runs.
 */
-Built_In_Primitive(Prim_Execute_At_New_Point, 4, "EXECUTE-AT-NEW-POINT", 0xE2)
+Built_In_Primitive(Prim_Execute_At_New_Point, 4,
+		   "EXECUTE-AT-NEW-STATE-POINT", 0xE2)
+Define_Primitive(Prim_Execute_At_New_Point, 4,
+		 "EXECUTE-AT-NEW-STATE-POINT")
 {
   Pointer New_Point, Old_Point;
   Primitive_4_Args();
@@ -412,6 +423,7 @@ Built_In_Primitive(Prim_Execute_At_New_Point, 4, "EXECUTE-AT-NEW-POINT", 0xE2)
    the microcode will track motions in this space.
 */
 Built_In_Primitive(Prim_Make_State_Space, 1, "MAKE-STATE-SPACE", 0xE1)
+Define_Primitive(Prim_Make_State_Space, 1, "MAKE-STATE-SPACE")
 {
   Pointer New_Point;
   Primitive_1_Arg();
@@ -447,6 +459,7 @@ Built_In_Primitive(Prim_Make_State_Space, 1, "MAKE-STATE-SPACE", 0xE1)
 }
 
 Built_In_Primitive(Prim_Current_Dynamic_State, 1, "CURRENT-DYNAMIC-STATE", 0xA)
+Define_Primitive(Prim_Current_Dynamic_State, 1, "CURRENT-DYNAMIC-STATE")
 {
   Primitive_1_Arg();
 
@@ -465,6 +478,7 @@ Built_In_Primitive(Prim_Current_Dynamic_State, 1, "CURRENT-DYNAMIC-STATE", 0xA)
 }
 
 Built_In_Primitive(Prim_Set_Dynamic_State, 1, "SET-CURRENT-DYNAMIC-STATE!", 0xB)
+Define_Primitive(Prim_Set_Dynamic_State, 1, "SET-CURRENT-DYNAMIC-STATE!")
 {
   Pointer State_Space, Result;
   Primitive_1_Arg();
@@ -494,6 +508,7 @@ Built_In_Primitive(Prim_Set_Dynamic_State, 1, "SET-CURRENT-DYNAMIC-STATE!", 0xB)
    to be syntaxed into SCode rather than just a list.
 */
 Built_In_Primitive(Prim_Scode_Eval, 2, "SCODE-EVAL", 0x4)
+Define_Primitive(Prim_Scode_Eval, 2, "SCODE-EVAL")
 {
   Primitive_2_Args();
 
@@ -512,15 +527,15 @@ Built_In_Primitive(Prim_Scode_Eval, 2, "SCODE-EVAL", 0x4)
    information on interrupts.
 */
 Built_In_Primitive(Prim_Set_Interrupt_Enables, 1, "SET-INTERRUPT-ENABLES!", 0x6)
+Define_Primitive(Prim_Set_Interrupt_Enables, 1, "SET-INTERRUPT-ENABLES!")
 {
-  Pointer Result;
+  long previous;
   Primitive_1_Arg();
 
   Arg_1_Type(TC_FIXNUM);
-  Result = Make_Unsigned_Fixnum(IntEnb);
-  IntEnb = (Get_Integer(Arg1) & INT_Mask);
-  New_Compiler_MemTop();
-  PRIMITIVE_RETURN( Result);
+  previous = FETCH_INTERRUPT_MASK();
+  SET_INTERRUPT_MASK(Get_Integer(Arg1) & INT_Mask);
+  PRIMITIVE_RETURN( MAKE_SIGNED_FIXNUM(previous));
 }
 
 /* (SET-CURRENT-HISTORY! TRIPLE)
@@ -536,6 +551,7 @@ Built_In_Primitive(Prim_Set_Interrupt_Enables, 1, "SET-INTERRUPT-ENABLES!", 0x6)
    The longjmp forces the interpreter to recache.
 */
 Built_In_Primitive(Prim_Set_Current_History, 1, "SET-CURRENT-HISTORY!", 0x2F)
+Define_Primitive(Prim_Set_Current_History, 1, "SET-CURRENT-HISTORY!")
 {
   Primitive_1_Arg();
 
@@ -562,6 +578,8 @@ Built_In_Primitive(Prim_Set_Current_History, 1, "SET-CURRENT-HISTORY!", 0x2F)
 */
 Built_In_Primitive(Prim_Set_Fixed_Objects_Vector, 1,
 		   "SET-FIXED-OBJECTS-VECTOR!", 0x7B)
+Define_Primitive(Prim_Set_Fixed_Objects_Vector, 1,
+		   "SET-FIXED-OBJECTS-VECTOR!")
 {
   Pointer Result;
   Primitive_1_Arg();
@@ -592,6 +610,8 @@ Built_In_Primitive(Prim_Set_Fixed_Objects_Vector, 1,
 */
 Built_In_Primitive(Prim_Translate_To_Point, 1,
 		   "TRANSLATE-TO-STATE-POINT", 0xE3)
+Define_Primitive(Prim_Translate_To_Point, 1,
+		   "TRANSLATE-TO-STATE-POINT")
 {
   Primitive_1_Arg();
 
@@ -614,6 +634,8 @@ Built_In_Primitive(Prim_Translate_To_Point, 1,
 */
 Built_In_Primitive(Prim_With_History_Disabled, 1,
 		   "WITH-HISTORY-DISABLED", 0x9C)
+Define_Primitive(Prim_With_History_Disabled, 1,
+		   "WITH-HISTORY-DISABLED")
 {
   Pointer *First_Rib, *Rib, *Second_Rib;
   Primitive_1_Arg();
@@ -648,20 +670,25 @@ Built_In_Primitive(Prim_With_History_Disabled, 1,
 
 Built_In_Primitive(Prim_With_Interrupt_Mask, 2,
 		   "WITH-INTERRUPT-MASK", 0x137)
+Define_Primitive(Prim_With_Interrupt_Mask, 2,
+		   "WITH-INTERRUPT-MASK")
 {
+  Pointer mask;
   Primitive_2_Args();
 
   Arg_1_Type(TC_FIXNUM);
   Pop_Primitive_Frame(2);
+  mask = MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK());
  Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+2));
   Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(Make_Unsigned_Fixnum(IntEnb));
+  Store_Expression(mask);
   Save_Cont();
-  Push(Make_Unsigned_Fixnum(IntEnb));	/* Current interrupt mask */
-  Push(Arg2);			/* Function to call */
+
+  Push(mask);		/* Current interrupt mask */
+  Push(Arg2);		/* Function to call */
   Push(STACK_FRAME_HEADER+1);
  Pushed();
-  IntEnb = (INT_Mask & Get_Integer(Arg1));
+  SET_INTERRUPT_MASK(INT_Mask & Get_Integer(Arg1));
   PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
@@ -670,25 +697,36 @@ Built_In_Primitive(Prim_With_Interrupt_Mask, 2,
 
 Built_In_Primitive(Prim_With_Interrupts_Reduced, 2,
 		   "WITH-INTERRUPTS-REDUCED", 0xC9)
+Define_Primitive(Prim_With_Interrupts_Reduced, 2,
+		   "WITH-INTERRUPTS-REDUCED")
 {
-  long new_interrupt_mask;
+  Pointer mask;
+  long new_interrupt_mask, old_interrupt_mask;
   Primitive_2_Args();
 
   Arg_1_Type(TC_FIXNUM);
   Pop_Primitive_Frame(2);
+  mask = MAKE_SIGNED_FIXNUM(FETCH_INTERRUPT_MASK());
+
  Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+2));
   Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(Make_Unsigned_Fixnum(IntEnb));
+  Store_Expression(mask);
   Save_Cont();
-  Push(Make_Unsigned_Fixnum(IntEnb));	/* Current interrupt mask */
-  Push(Arg2);			/* Function to call */
+
+  Push(mask);		/* Current interrupt mask */
+  Push(Arg2);		/* Function to call */
   Push(STACK_FRAME_HEADER+1);
  Pushed();
   new_interrupt_mask = (INT_Mask & Get_Integer( Arg1));
-  if (new_interrupt_mask > IntEnb)
-    IntEnb = new_interrupt_mask;
+  old_interrupt_mask = FETCH_INTERRUPT_MASK();
+  if (new_interrupt_mask > old_interrupt_mask)
+  {
+    SET_INTERRUPT_MASK(new_interrupt_mask);
+  }
   else
-    IntEnb = (new_interrupt_mask & IntEnb);
+  {
+    SET_INTERRUPT_MASK(new_interrupt_mask & old_interrupt_mask);
+  }
   PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
@@ -700,6 +738,8 @@ Built_In_Primitive(Prim_With_Interrupts_Reduced, 2,
 */
 Built_In_Primitive(Prim_Within_Control_Point, 2,
 		   "WITHIN-CONTROL-POINT", 0xBF)
+Define_Primitive(Prim_Within_Control_Point, 2,
+		   "WITHIN-CONTROL-POINT")
 {
   Primitive_2_Args();
 
@@ -725,6 +765,8 @@ Built_In_Primitive(Prim_Within_Control_Point, 2,
 */
 Built_In_Primitive(Prim_With_Threaded_Stack, 2,
 		   "WITH-THREADED-CONTINUATION", 0xBE)
+Define_Primitive(Prim_With_Threaded_Stack, 2,
+		   "WITH-THREADED-CONTINUATION")
 {
   Primitive_2_Args();
 

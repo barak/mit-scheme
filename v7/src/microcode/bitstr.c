@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.34 1987/10/09 16:08:51 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.35 1987/11/17 08:07:17 jinx Exp $
 
    Bit string primitives. 
 
@@ -63,6 +63,7 @@ allocate_bit_string (length)
    Returns an uninitialized bit string of the given length. */
 
 Built_In_Primitive (Prim_bit_string_allocate, 1, "BIT-STRING-ALLOCATE", 0xD1)
+Define_Primitive (Prim_bit_string_allocate, 1, "BIT-STRING-ALLOCATE")
 {
   Primitive_1_Arg ();
 
@@ -73,6 +74,7 @@ Built_In_Primitive (Prim_bit_string_allocate, 1, "BIT-STRING-ALLOCATE", 0xD1)
    Returns true iff object is a bit string. */
 
 Built_In_Primitive (Prim_bit_string_p, 1, "BIT-STRING?", 0xD3)
+Define_Primitive (Prim_bit_string_p, 1, "BIT-STRING?")
 {
   Primitive_1_Arg ();
 
@@ -114,6 +116,7 @@ clear_bit_string( bit_string)
    set to zero if the initialization is false, one otherwise. */
 
 Built_In_Primitive (Prim_make_bit_string, 2, "MAKE-BIT-STRING", 0xD2)
+Define_Primitive (Prim_make_bit_string, 2, "MAKE-BIT-STRING")
 {
   Pointer result;
   Primitive_2_Args ();
@@ -128,6 +131,7 @@ Built_In_Primitive (Prim_make_bit_string, 2, "MAKE-BIT-STRING", 0xD2)
    otherwise fills it with ones. */
 
 Built_In_Primitive (Prim_bit_string_fill_x, 2, "BIT-STRING-FILL!", 0x197)
+Define_Primitive (Prim_bit_string_fill_x, 2, "BIT-STRING-FILL!")
 {
   Primitive_2_Args ();
 
@@ -140,6 +144,7 @@ Built_In_Primitive (Prim_bit_string_fill_x, 2, "BIT-STRING-FILL!", 0x197)
    Returns the number of bits in BIT-STRING. */
 
 Built_In_Primitive (Prim_bit_string_length, 1, "BIT-STRING-LENGTH", 0xD4)
+Define_Primitive (Prim_bit_string_length, 1, "BIT-STRING-LENGTH")
 {
   Primitive_1_Arg ();
 
@@ -164,6 +169,7 @@ Built_In_Primitive (Prim_bit_string_length, 1, "BIT-STRING-LENGTH", 0xD4)
    Returns the boolean value of the indexed bit. */
 
 Built_In_Primitive (Prim_bit_string_ref, 2, "BIT-STRING-REF", 0xD5)
+Define_Primitive (Prim_bit_string_ref, 2, "BIT-STRING-REF")
 {
   ref_initialization ();
 
@@ -175,6 +181,7 @@ Built_In_Primitive (Prim_bit_string_ref, 2, "BIT-STRING-REF", 0xD5)
    as a boolean. */
 
 Built_In_Primitive (Prim_bit_string_clear_x, 2, "BIT-STRING-CLEAR!", 0xD8)
+Define_Primitive (Prim_bit_string_clear_x, 2, "BIT-STRING-CLEAR!")
 {
   ref_initialization ();
 
@@ -192,6 +199,7 @@ Built_In_Primitive (Prim_bit_string_clear_x, 2, "BIT-STRING-CLEAR!", 0xD8)
    as a boolean. */
 
 Built_In_Primitive (Prim_bit_string_set_x, 2, "BIT-STRING-SET!", 0xD7)
+Define_Primitive (Prim_bit_string_set_x, 2, "BIT-STRING-SET!")
 {
   ref_initialization ();
 
@@ -216,6 +224,7 @@ Built_In_Primitive (Prim_bit_string_set_x, 2, "BIT-STRING-SET!", 0xD7)
    Returns true the argument has no "set" bits. */
 
 Built_In_Primitive (Prim_bit_string_zero_p, 1, "BIT-STRING-ZERO?", 0xD9)
+Define_Primitive (Prim_bit_string_zero_p, 1, "BIT-STRING-ZERO?")
 {
   fast Pointer *scan;
   fast long i;
@@ -252,6 +261,7 @@ Built_In_Primitive (Prim_bit_string_zero_p, 1, "BIT-STRING-ZERO?", 0xD9)
    Returns true iff the two bit strings contain the same bits. */
 
 Built_In_Primitive (Prim_bit_string_equal_p, 2, "BIT-STRING=?", 0x19D)
+Define_Primitive (Prim_bit_string_equal_p, 2, "BIT-STRING=?")
 {
   long length;
   Primitive_2_Args ();
@@ -321,21 +331,27 @@ Built_In_Primitive (Prim_bit_string_equal_p, 2, "BIT-STRING=?", 0x19D)
 #define bit_string_xor_x_action()	^=
 
 Built_In_Primitive( Prim_bit_string_move_x, 2, "BIT-STRING-MOVE!", 0x198)
+Define_Primitive( Prim_bit_string_move_x, 2, "BIT-STRING-MOVE!")
      bitwise_op( bit_string_move_x_action)
 
 Built_In_Primitive( Prim_bit_string_movec_x, 2, "BIT-STRING-MOVEC!", 0x199)
+Define_Primitive( Prim_bit_string_movec_x, 2, "BIT-STRING-MOVEC!")
      bitwise_op( bit_string_movec_x_action)
 
 Built_In_Primitive( Prim_bit_string_or_x, 2, "BIT-STRING-OR!", 0x19A)
+Define_Primitive( Prim_bit_string_or_x, 2, "BIT-STRING-OR!")
      bitwise_op( bit_string_or_x_action)
 
 Built_In_Primitive( Prim_bit_string_and_x, 2, "BIT-STRING-AND!", 0x19B)
+Define_Primitive( Prim_bit_string_and_x, 2, "BIT-STRING-AND!")
      bitwise_op( bit_string_and_x_action)
 
 Built_In_Primitive( Prim_bit_string_andc_x, 2, "BIT-STRING-ANDC!", 0x19C)
+Define_Primitive( Prim_bit_string_andc_x, 2, "BIT-STRING-ANDC!")
      bitwise_op( bit_string_andc_x_action)
 
 Built_In_Primitive( Prim_bit_string_xor_x, 2, "BIT-STRING-XOR!", 0x18F)
+Define_Primitive( Prim_bit_string_xor_x, 2, "BIT-STRING-XOR!")
      bitwise_op( bit_string_xor_x_action)
 
 /* (BIT-SUBSTRING-MOVE-RIGHT! source start1 end1 destination start2)
@@ -346,6 +362,8 @@ Built_In_Primitive( Prim_bit_string_xor_x, 2, "BIT-STRING-XOR!", 0x18F)
 
 Built_In_Primitive( Prim_bit_substring_move_right_x, 5,
 		   "BIT-SUBSTRING-MOVE-RIGHT!", 0xD6)
+Define_Primitive( Prim_bit_substring_move_right_x, 5,
+		   "BIT-SUBSTRING-MOVE-RIGHT!")
 {
   long start1, end1, start2, end2, nbits;
   long end1_mod, end2_mod;
@@ -732,6 +750,8 @@ bit_string_to_bignum (nbits, bitstr)
 
 Built_In_Primitive( Prim_unsigned_to_bit_string, 2,
 		   "UNSIGNED-INTEGER->BIT-STRING", 0xDC)
+Define_Primitive( Prim_unsigned_to_bit_string, 2,
+		   "UNSIGNED-INTEGER->BIT-STRING")
 {
   long length;
   Primitive_2_Args ();
@@ -756,6 +776,8 @@ Built_In_Primitive( Prim_unsigned_to_bit_string, 2,
 
 Built_In_Primitive( Prim_bit_string_to_unsigned, 1,
 		   "BIT-STRING->UNSIGNED-INTEGER", 0xDD)
+Define_Primitive( Prim_bit_string_to_unsigned, 1,
+		   "BIT-STRING->UNSIGNED-INTEGER")
 {
   fast Pointer *scan;
   long nwords, nbits, word;
@@ -804,6 +826,7 @@ Built_In_Primitive( Prim_bit_string_to_unsigned, 1,
    into BIT-STRING. */
 
 Built_In_Primitive (Prim_read_bits_x, 3, "READ-BITS!", 0xDF)
+Define_Primitive (Prim_read_bits_x, 3, "READ-BITS!")
 {
   read_bits_initialize();
 
@@ -820,6 +843,7 @@ Built_In_Primitive (Prim_read_bits_x, 3, "READ-BITS!", 0xDF)
    (POINTER,OFFSET). */
 
 Built_In_Primitive (Prim_write_bits_x, 3, "WRITE-BITS!", 0xE0)
+Define_Primitive (Prim_write_bits_x, 3, "WRITE-BITS!")
 {
   read_bits_initialize();
 
@@ -873,6 +897,8 @@ Built_In_Primitive (Prim_write_bits_x, 3, "WRITE-BITS!", 0xE0)
 
 Built_In_Primitive (Prim_bitstr_find_next_set_bit, 3,
 		    "BIT-SUBSTRING-FIND-NEXT-SET-BIT", 0xDA)
+Define_Primitive (Prim_bitstr_find_next_set_bit, 3,
+		    "BIT-SUBSTRING-FIND-NEXT-SET-BIT")
 {
   substring_find_next_initialize ();
 

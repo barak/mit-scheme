@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.37 1987/10/09 16:08:36 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.38 1987/11/17 08:06:33 jinx Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -181,7 +181,7 @@ Clear_Memory (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
      int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 {
   Heap_Top = (Heap_Bottom + Our_Heap_Size);
-  Set_Mem_Top (Heap_Top - GC_Reserve);
+  SET_MEMTOP(Heap_Top - GC_Reserve);
   Free = Heap_Bottom;
   Constant_Top = (Constant_Space + Our_Constant_Size);
   Free_Constant = Constant_Space;
@@ -567,16 +567,37 @@ Fix_Weak_Chain()
   return;
 }
 
+/* Here is the set up for the full garbage collection:
+
+   - First it makes the constant space and stack into one large area
+   by "hiding" the gap between them with a non-marked header.
+   
+   - Then it saves away all the relevant microcode registers into new
+   space, making this the root for garbage collection.
+
+   - Then it does the actual garbage collection in 4 steps:
+     1) Trace constant space.
+     2) Trace objects pointed out by the root and constant space.
+     3) Trace the precious objects, remembering where consing started.
+     4) Update all weak pointers.
+
+   - Load new space to memory.
+
+   - Finally it restores the microcode registers from the copies in
+   new space.
+*/
+
 void
 GC(initial_weak_chain)
      Pointer initial_weak_chain;
 {
-  static Pointer *Root, *Result, *end_of_constant_area,
-  		 The_Precious_Objects, *Root2, *free_buffer;
+  Pointer
+    *Root, *Result, *end_of_constant_area,
+    The_Precious_Objects, *Root2, *free_buffer;
 
   free_buffer = initialize_free_buffer();
   Free = Heap_Bottom;
-  Set_Mem_Top(Heap_Top - GC_Reserve);
+  SET_MEMTOP(Heap_Top - GC_Reserve);
   Weak_Chain = initial_weak_chain;
 
   /* Save the microcode registers so that they can be relocated */
@@ -590,7 +611,8 @@ GC(initial_weak_chain)
 
   *free_buffer++ = Fixed_Objects;
   *free_buffer++ = Make_Pointer(UNMARKED_HISTORY_TYPE, History);
-  *free_buffer++ = Undefined_Externals;
+  *free_buffer++ = Undefined_Primitives;
+  *free_buffer++ = Undefined_Primitives_Arity;
   *free_buffer++ = Get_Current_Stacklet();
   *free_buffer++ = ((Prev_Restore_History_Stacklet == NULL) ?
 		    NIL :
@@ -600,8 +622,10 @@ GC(initial_weak_chain)
   *free_buffer++ = Fluid_Bindings;
   Free += (free_buffer - free_buffer_bottom);
   if (free_buffer >= free_buffer_top)
+  {
     free_buffer = dump_and_reset_free_buffer((free_buffer - free_buffer_top),
 					     NULL);
+  }
 
   /* The 4 step GC */
 
@@ -638,6 +662,9 @@ GC(initial_weak_chain)
   end_transport(NULL);
 
   Fix_Weak_Chain();
+
+  /* Load new space into memory. */
+
   load_buffer(0, Heap_Bottom,
 	      ((Free - Heap_Bottom) * sizeof(Pointer)),
 	      "new space");
@@ -649,16 +676,22 @@ GC(initial_weak_chain)
   Set_Fixed_Obj_Slot(Lost_Objects_Base, Make_Pointer(TC_ADDRESS, Root2));
 
   History = Get_Pointer(*Root++);
-  Undefined_Externals = *Root++;
+  Undefined_Primitives = *Root++;
+  Undefined_Primitives_Arity = *Root++;
+
+  /* Set_Current_Stacklet is sometimes a No-Op! */
+
   Set_Current_Stacklet(*Root);
-  Root += 1;			/* Set_Current_Stacklet is sometimes a No-Op! */
+  Root += 1;
   if (*Root == NIL)
   {
     Prev_Restore_History_Stacklet = NULL;
     Root += 1;
   }
   else
+  {
     Prev_Restore_History_Stacklet = Get_Pointer(*Root++);
+  }
   Current_State_Point = *Root++;
   Fluid_Bindings = *Root++;
   Free_Stacklets = NULL;
@@ -672,6 +705,7 @@ GC(initial_weak_chain)
 */
 
 Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT", 0x3A)
+Define_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
 {
   Pointer GC_Daemon_Proc;
   Primitive_1_Arg();
@@ -689,7 +723,7 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT", 0x3A)
   }
   GC_Reserve = Get_Integer(Arg1);
   GC(NIL);
-  IntCode &= ~INT_GC;
+  CLEAR_INTERRUPT(INT_GC);
   Pop_Primitive_Frame(1);
   GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
   if (GC_Daemon_Proc == NIL)

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.31 1987/10/09 16:12:45 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.32 1987/11/17 08:14:38 jinx Exp $ */
 
 /* Memory management top level.
 
@@ -88,7 +88,7 @@ Clear_Memory (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
   Heap_Top = (Heap_Bottom + Our_Heap_Size);
   Local_Heap_Base = Heap_Bottom;
   Unused_Heap_Top = (Heap_Bottom + (2 * Our_Heap_Size));
-  Set_Mem_Top (Heap_Top - GC_Reserve);
+  SET_MEMTOP(Heap_Top - GC_Reserve);
   Free = Heap_Bottom;
   Constant_Top = (Constant_Space + Our_Constant_Size);
   Free_Constant = Constant_Space;
@@ -173,7 +173,7 @@ GCFlip()
   Unused_Heap_Top = Heap_Top;
   Heap_Top = Temp;
   Free = Heap_Bottom;
-  Set_Mem_Top(Heap_Top - GC_Reserve);
+  SET_MEMTOP(Heap_Top - GC_Reserve);
   Weak_Chain = NIL;
   return;
 }
@@ -286,10 +286,13 @@ Fix_Weak_Chain()
 */
 
 void GC()
-{ Pointer *Root, *Result, *Check_Value,
-  	  The_Precious_Objects, *Root2;
+{
+  Pointer
+    *Root, *Result, *Check_Value,
+    The_Precious_Objects, *Root2;
 
   /* Save the microcode registers so that they can be relocated */
+
   Terminate_Old_Stacklet();
   Terminate_Constant_Space(Check_Value);
 
@@ -300,7 +303,8 @@ void GC()
 
   *Free++ = Fixed_Objects;
   *Free++ = Make_Pointer(UNMARKED_HISTORY_TYPE, History);
-  *Free++ = Undefined_Externals;
+  *Free++ = Undefined_Primitives;
+  *Free++ = Undefined_Primitives_Arity;
   *Free++ = Get_Current_Stacklet();
   *Free++ = ((Prev_Restore_History_Stacklet == NULL) ?
 	     NIL :
@@ -309,18 +313,21 @@ void GC()
   *Free++ = Fluid_Bindings;
 
   /* The 4 step GC */
+
   Result = GCLoop(Constant_Space, &Free);
   if (Result != Check_Value)
   {
     fprintf(stderr, "\nGC: Constant Scan ended too early.\n");
     Microcode_Termination(TERM_BROKEN_HEART);
   }
+
   Result = GCLoop(Root, &Free);
   if (Free != Result)
   {
     fprintf(stderr, "\nGC-1: Heap Scan ended too early.\n");
     Microcode_Termination(TERM_BROKEN_HEART);
   }
+
   Root2 = Free;
   *Free++ = The_Precious_Objects;
   Result = GCLoop(Root2, &Free);
@@ -329,24 +336,31 @@ void GC()
     fprintf(stderr, "\nGC-2: Heap Scan ended too early.\n");
     Microcode_Termination(TERM_BROKEN_HEART);
   }
+
   Fix_Weak_Chain();
 
   /* Make the microcode registers point to the copies in new-space. */
+
   Fixed_Objects = *Root++;
   Set_Fixed_Obj_Slot(Precious_Objects, *Root2);
   Set_Fixed_Obj_Slot(Lost_Objects_Base, Make_Pointer(TC_ADDRESS, Root2));
 
   History = Get_Pointer(*Root++);
-  Undefined_Externals = *Root++;
+  Undefined_Primitives = *Root++;
+  Undefined_Primitives_Arity = *Root++;
+
+  /* Set_Current_Stacklet is sometimes a No-Op! */
   Set_Current_Stacklet(*Root);
-  Root += 1;			/* Set_Current_Stacklet is sometimes a No-Op! */
+  Root += 1;
   if (*Root == NIL)
   {
     Prev_Restore_History_Stacklet = NULL;
     Root += 1;
   }
   else
+  {
     Prev_Restore_History_Stacklet = Get_Pointer(*Root++);
+  }
   Current_State_Point = *Root++;
   Fluid_Bindings = *Root++;
   Free_Stacklets = NULL;
@@ -364,6 +378,7 @@ void GC()
 */
 
 Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT", 0x3A)
+Define_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
 {
   Pointer GC_Daemon_Proc;
   Primitive_1_Arg();
@@ -381,7 +396,7 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT", 0x3A)
   GC_Reserve = Get_Integer(Arg1);
   GCFlip();
   GC();
-  IntCode &= ~INT_GC;
+  CLEAR_INTERRUPT(INT_GC);
   Pop_Primitive_Frame(1);
   GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
   if (GC_Daemon_Proc == NIL)

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.23 1987/10/09 16:10:46 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.24 1987/11/17 08:11:37 jinx Exp $
  *
  * Garbage collection related macros of sufficient utility to be
  * included in all compilations.
@@ -73,30 +73,28 @@ MIT in each case. */
 
 /* Overflow detection, various cases */
 
-#define GC_Check(Amount)	(((Amount+Free) >= MemTop) &&	\
-                                 ((IntEnb & INT_GC) != 0))
+#define GC_ENABLED_P()		(INTERRUPT_ENABLED_P(INT_GC))
 
-#define Space_Before_GC()	(((IntEnb & INT_GC) != 0) ?	\
+#define GC_Check(Amount)	(((Amount + Free) >= MemTop) &&	\
+				 (GC_ENABLED_P()))
+
+#define Space_Before_GC()	((GC_ENABLED_P()) ?		\
 				 (MemTop - Free) :		\
 				 (Heap_Top - Free))
 
-#define Request_Interrupt(code)					\
-{								\
-  IntCode |= (code);						\
-  New_Compiler_MemTop();					\
+#define Request_GC(Amount)						\
+{									\
+  REQUEST_INTERRUPT(INT_GC);						\
+  GC_Space_Needed = Amount;						\
 }
 
-#define Request_GC(Amount)					\
-{								\
-  Request_Interrupt( INT_GC);					\
-  GC_Space_Needed = Amount;					\
+#define SET_MEMTOP(Addr)						\
+{									\
+  MemTop = Addr;							\
+  COMPILER_SET_MEMTOP();						\
 }
 
-#define Set_Mem_Top(Addr)	\
-  MemTop = Addr; New_Compiler_MemTop()
-
-#define Set_Stack_Guard(Addr) Stack_Guard = Addr
-
-#define New_Compiler_MemTop()	\
-  Regs[REGBLOCK_MEMTOP] =  	\
-    ((IntCode & IntEnb)==0) ? ((Pointer) MemTop) : ((Pointer) -1)
+#define Set_Stack_Guard(Addr)						\
+{									\
+  Stack_Guard = Addr;							\
+}

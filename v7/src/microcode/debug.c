@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.25 1987/10/05 18:31:47 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.26 1987/11/17 08:08:55 jinx Exp $
  *
  * Utilities to help with debugging
  */
@@ -237,10 +237,12 @@ Boolean Detailed;
       goto SPrint;
 
     case TC_CHARACTER_STRING:
-    { long Length, i;
+    {
+      long Length, i;
       char *Next, This;
+
       printf("\"");
-      Length = Get_Integer(Vector_Ref(Expr, STRING_LENGTH));
+      Length = ((long) (Vector_Ref(Expr, STRING_LENGTH)));
       Next = (char *) Nth_Vector_Loc(Expr, STRING_CHARS);
       for (i=0; i < Length; i++)
       { This = *Next++;
@@ -294,7 +296,7 @@ Boolean Detailed;
       Return_After_Print = true;
 SPrint:
       Name = Vector_Ref(Expr, SYMBOL_NAME);
-      Length = Get_Integer(Vector_Ref(Name, STRING_LENGTH));
+      Length = ((long) (Vector_Ref(Name, STRING_LENGTH)));
       Next_Char = (char *) Nth_Vector_Loc(Name, STRING_CHARS);
       for (i=0; i < Length; i++)
         printf("%c", *Next_Char++);
@@ -400,11 +402,15 @@ SPrint:
 
     case TC_LAMBDA:
       if (Detailed)
+      {
 	printf("[LAMBDA (");
+      }
       Do_Printing(Vector_Ref(Vector_Ref(Expr, LAMBDA_FORMALS), 1),
 		  false);
       if (Detailed)
+      {
 	printf(") 0x%x]", Temp_Address);
+      }
       return;
 
     case TC_LEXPR: printf("[LEXPR"); break;
@@ -419,11 +425,16 @@ SPrint:
     case TC_PRIMITIVE:
       printf("[PRIMITIVE "); Prt_PName(Temp_Address);
       printf("]"); return;
-    case TC_PRIMITIVE_EXTERNAL: printf("[PRIMITIVE_EXTERNAL"); break;
     case TC_PROCEDURE:
-      if (Detailed) printf("[PROCEDURE (");
+      if (Detailed)
+      {
+	printf("[PROCEDURE (");
+      }
       Do_Printing(Vector_Ref(Expr, PROCEDURE_LAMBDA_EXPR), false);
-      if (Detailed) printf(") 0x%x]", Temp_Address);
+      if (Detailed)
+      {
+	printf(") 0x%x]", Temp_Address);
+      }
       return;
   
 /* Do_Printing continues on the next page */
@@ -479,39 +490,59 @@ Print_One_Continuation_Frame(Temp)
   if ((Datum(Temp) == RC_END_OF_COMPUTATION) ||
       (Datum(Temp) == RC_HALT)) return true;
   if (Datum(Temp) == RC_JOIN_STACKLETS)
+  {
     Stack_Pointer = Previous_Stack_Pointer(Expr);
-  return false;
+  }
+  return (false);
 }
 
 /* Back_Trace relies on (a) only a call to Save_Cont puts a return code on the
-   stack; (b) Save_Cont pushes the expression first. */
+   stack; (b) Save_Cont pushes the expression first. 
+
+   NOTE: currently Back_Trace ignores where and always
+   prints on stdout.  This should eventually be fixed.
+ */
 
 void
-Back_Trace()
+Back_Trace(where)
+     FILE *where;
 {
   Pointer Temp, *Old_Stack;
 
   Back_Trace_Entry_Hook();
   Old_Stack = Stack_Pointer;
   while (true)
-  { if (Return_Hook_Address == &Top_Of_Stack())
-    { Temp = Pop();
+  {
+    if (Return_Hook_Address == &Top_Of_Stack())
+    {
+      Temp = Pop();
       if (Temp != Make_Non_Pointer(TC_RETURN_CODE, RC_RETURN_TRAP_POINT))
+      {
         printf("\n--> Return trap is missing here <--\n");
+      }
       else
-      { printf("\n[Return trap found here as expected]\n");
+      {
+	printf("\n[Return trap found here as expected]\n");
         Temp = Old_Return_Code;
       }
     }
-    else Temp = Pop();
+    else
+    {
+      Temp = Pop();
+    }
     if (Type_Code(Temp) == TC_RETURN_CODE)
-    { if (Print_One_Continuation_Frame(Temp))
+    {
+      if (Print_One_Continuation_Frame(Temp))
+      {
 	break;
+      }
     }
     else
-    { Print_Expression(Temp, "  ...");
+    {
+      Print_Expression(Temp, "  ...");
       if (Type_Code(Temp) == TC_MANIFEST_NM_VECTOR)
-      { Stack_Pointer = Simulate_Popping(Get_Integer(Temp));
+      {
+	Stack_Pointer = Simulate_Popping(Get_Integer(Temp));
         printf(" (skipping)");
       }
       printf("\n");
@@ -519,8 +550,9 @@ Back_Trace()
   }
   Stack_Pointer = Old_Stack;
   Back_Trace_Exit_Hook();
+  return;
 }
-
+
 void
 Print_Stack(SP)
      Pointer *SP;
@@ -529,7 +561,7 @@ Print_Stack(SP)
 
   Saved_SP = Stack_Pointer;
   Stack_Pointer = SP;
-  Back_Trace();
+  Back_Trace(stdout);
   Stack_Pointer = Saved_SP;
   return;
 }
@@ -589,6 +621,7 @@ Pointer Expr;
       interpreter.
 */
 Built_In_Primitive(Prim_Temp_Printer, 1, "DEBUGGING-PRINTER", 0xB2)
+Define_Primitive(Prim_Temp_Printer, 1, "DEBUGGING-PRINTER")
 {
   Primitive_1_Arg();
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.30 1987/09/21 21:55:35 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.31 1987/11/17 08:09:49 jinx Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -41,9 +41,14 @@ MIT in each case. */
 #include "gccode.h"
 #include "trap.h"
 #include "lookup.h"
+#include "fasl.h"
 #include "dump.c"
 
-extern Pointer Make_Prim_Exts();
+extern Pointer
+  dump_renumber_primitive(),
+  *initialize_primitive_table(),
+  *cons_primitive_table(),
+  *cons_whole_primitive_table();
 
 /* Some statics used freely in this file */
 
@@ -109,9 +114,9 @@ DumpLoop(Scan, Dump_Mode)
 
     Switch_by_GC_Type(Temp)
     {
-      case TC_PRIMITIVE_EXTERNAL:
-      case TC_STACK_ENVIRONMENT:
-      case_Fasload_Non_Pointer:
+      case TC_PRIMITIVE:
+      case TC_PCOMB0:
+        *Scan = dump_renumber_primitive(*Scan);
 	break;
 
       case TC_BROKEN_HEART:
@@ -125,6 +130,10 @@ DumpLoop(Scan, Dump_Mode)
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
 	Scan += Get_Integer(Temp);
+	break;
+
+      case TC_STACK_ENVIRONMENT:
+      case_Fasload_Non_Pointer:
 	break;
 
       case_compiled_entry_point:
@@ -184,13 +193,13 @@ DumpLoop(Scan, Dump_Mode)
 		Type_Code(Temp));
 	Invalid_Type_Code();
 
-      }	/* Switch_by_GC_Type */
-  } /* For loop */
+      }
+  }
   NewFree = To;
   Fixup = Fixes;
   return true;
-} /* DumpLoop */
-
+}
+
 Boolean
 Fasdump_Exit()
 {
@@ -225,46 +234,72 @@ Fasdump_Exit()
    The code for dumping pure is severely broken and conditionalized out.
 */
 Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
+Define_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
 {
-  Pointer Object, File_Name, Flag, *New_Object,
-          *Addr_Of_New_Object, Prim_Exts;
-  long Pure_Length, Length;
+  Pointer Object, File_Name, Flag, *New_Object;
+  Pointer *table_start, *table_end;
+  long Pure_Length, Length, table_length;
   Boolean result;
   Primitive_3_Args();
+
+  CHECK_ARG (2, STRING_P);
 
   Object = Arg1;
   File_Name = Arg2;
   Flag = Arg3;
-  if (Type_Code(File_Name) != TC_CHARACTER_STRING)
-    Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+
   if (!Open_Dump_File(File_Name, WRITE_FLAG))
+  {
     Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  }
 #if false
   if ((Flag != NIL) && (Flag != TRUTH))
 #else
   if (Flag != NIL)
-#endif
+#endif /* false */
+  {
     Primitive_Error(ERR_ARG_3_WRONG_TYPE);
+  }
+
+  table_end = &Free[Space_Before_GC()];
+  table_start = initialize_primitive_table(Free, table_end);
+  if (table_start >= table_end)
+  {
+    Primitive_GC(table_end - table_start);
+  }
 
   Fasdump_Free_Calc(NewFree, NewMemTop, Orig_New_Free);
   Fixup = NewMemTop;
-  Prim_Exts = Make_Prim_Exts();
   New_Object = NewFree;
   *NewFree++ = Object;
-  *NewFree++ = Prim_Exts;
 
 #if false
+  /* NOTE: This is wrong!
+
+     Many things will break, among them:
+
+     Symbols will not be interned correctly in the new system.
+
+     The primitive dumping mechanism will break, since
+     dump_renumber_primitive is not being invoked by
+     either phase.
+*/
+
   if (Flag == TRUTH)
   {
+    Pointer *Addr_Of_New_Object;
+
+    *New_Free++ = NIL;
     if (!DumpLoop(New_Object, PURE_COPY))
     {
       Fasdump_Exit();
       PRIMITIVE_RETURN(NIL);
     }
-    /* Can't align.
-       Align_Float(NewFree);
-     */
-    Pure_Length = (NewFree-New_Object) + 1;
+#if false
+    /* Can't align. */
+    Align_Float(NewFree);
+#endif
+    Pure_Length = ((NewFree - New_Object) + 1);
     *NewFree++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
     *NewFree++ = Make_Non_Pointer(CONSTANT_PART, Pure_Length);
     if (!DumpLoop(New_Object, CONSTANT_COPY))
@@ -276,29 +311,52 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
     *NewFree++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
     *NewFree++ = Make_Non_Pointer(END_OF_BLOCK, (Length - 1));
     Addr_Of_New_Object = Get_Pointer(New_Object[0]);
-    Prim_Exts = New_Object[1];
     New_Object[0] = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR,
                                      Pure_Length);
     New_Object[1] = Make_Non_Pointer(PURE_PART, (Length - 1));
-    result = Write_File(0, 0x000000, Addr_Of_New_Object,
-			Length, New_Object, Prim_Exts);
+    table_start = NewFree;
+    table_end = cons_primitive_table(NewFree, Fixup, &table_length);
+    if (table_end >= Fixup)
+    {
+      Fasdump_Exit();
+      PRIMITIVE_RETURN(NIL);
+    }
+    result = Write_File(Addr_Of_New_Object, 0, 0,
+			Length, New_Object,
+			table_start, table_length,
+			((long) (table_end - table_start)));
   }
-  else		/* Dumping for reload into heap */
-#endif
+
+  else
+#endif /* Dumping for reload into heap */
   {
     if (!DumpLoop(New_Object, NORMAL_GC))
     {
       Fasdump_Exit();
       PRIMITIVE_RETURN(NIL);
     }
-    /* Aligning might screw up some of the counters.
-       Align_Float(NewFree);
-     */
+#if false
+    /* Aligning might screw up some of the counters. */
+    Align_Float(NewFree);
+#endif
     Length = (NewFree - New_Object);
-    result = Write_File(Length, New_Object, New_Object,
-			0, Constant_Space, (New_Object + 1));
+    table_start = NewFree;
+    table_end = cons_primitive_table(NewFree, Fixup, &table_length);
+    if (table_end >= Fixup)
+    {
+      Fasdump_Exit();
+      PRIMITIVE_RETURN(NIL);
+    }
+    result = Write_File(New_Object,
+			Length, New_Object,
+			0, Constant_Space,
+			table_start, table_length,
+			((long) (table_end - table_start)));
   }
-  result = (result && Fasdump_Exit());
+
+  /* The and is short-circuit, so it must be done in this order. */
+
+  result = (Fasdump_Exit() && result);
   PRIMITIVE_RETURN(result ? TRUTH : NIL);
 }
 
@@ -308,43 +366,61 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
    argument of NIL.
 */
 Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
+Define_Primitive(Prim_Band_Dump, 2, "DUMP-BAND")
 {
   extern Pointer compiler_utilities;
-  Pointer Combination, Ext_Prims;
-  long Arg1Type;
+  Pointer Combination, *table_start, *table_end, *saved_free;
+  long Arg1Type, table_length;
   Boolean result;
   Primitive_2_Args();
 
   Band_Dump_Permitted();
   Arg1Type = Type_Code(Arg1);
   if ((Arg1Type != TC_CONTROL_POINT) &&
-      (Arg1Type != TC_PRIMITIVE) &&
-      (Arg1Type != TC_PRIMITIVE_EXTERNAL) &&
-      (Arg1Type != TC_EXTENDED_PROCEDURE)) Arg_1_Type(TC_PROCEDURE);
+      (Arg1Type != TC_EXTENDED_PROCEDURE) &&
+      (Arg1Type != TC_PRIMITIVE))
+  {
+    Arg_1_Type(TC_PROCEDURE);
+  }
   Arg_2_Type(TC_CHARACTER_STRING);
+
   if (!Open_Dump_File(Arg2, WRITE_FLAG))
+  {
     Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  /* Free cannot be saved around this code since Make_Prim_Exts will
-     intern the undefined externals and potentially allocate space.
-   */
-  Ext_Prims = Make_Prim_Exts();
+  }
+  Primitive_GC_If_Needed(5);
+  saved_free = Free;
   Combination = Make_Pointer(TC_COMBINATION_1, Free);
   Free[COMB_1_FN] = Arg1;
   Free[COMB_1_ARG_1] = NIL;
   Free += 2;
   *Free++ = Combination;
   *Free++ = compiler_utilities;
-  *Free = Make_Pointer(TC_LIST, Free-2);
+  *Free = Make_Pointer(TC_LIST, (Free - 2));
   Free++;  /* Some compilers are TOO clever about this and increment Free
 	      before calculating Free-2! */
-  *Free++ = Ext_Prims;
-  /* Aligning here confuses some of the counts computed.
-     Align_Float(Free);
-   */
-  result = Write_File(((long) (Free - Heap_Bottom)), Heap_Bottom, (Free - 2),
-		      ((long) (Free_Constant - Constant_Space)),
-		      Constant_Space, (Free - 1));
-  result = (result && Close_Dump_File());
+  table_start = Free;
+  table_end = cons_whole_primitive_table(Free, Heap_Top, &table_length);
+  if (table_end >= Heap_Top)
+  {
+    result = false;
+  }
+  else
+  {
+#if false
+  /* Aligning here confuses some of the counts computed. */
+    Align_Float(Free);
+#endif
+    result = Write_File((Free - 1),
+			((long) (Free - Heap_Bottom)), Heap_Bottom,
+			((long) (Free_Constant - Constant_Space)),
+			Constant_Space,
+			table_start, table_length,
+			((long) (table_end - table_start)));
+  }
+  /* The and is short-circuit, so it must be done in this order. */
+  result = (Close_Dump_File() && result);
   Band_Dump_Exit_Hook();
+  Free = saved_free;
   PRIMITIVE_RETURN(result ? TRUTH : NIL);
 }

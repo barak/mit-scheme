@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.26 1987/10/09 16:13:47 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.27 1987/11/17 08:16:29 jinx Rel $
  *
  * Description of the user data objects.  This should parallel the
  * file SDATA.SCM in the runtime system.
@@ -317,13 +317,6 @@ MIT in each case. */
  * The data portion contains a number specifying a particular primitive
  * operation to be performed.  An object of type PRIMITIVE can be
  * APPLYed in the same way an object of type PROCEDURE can be. 
- */
-
-/* PRIMITIVE_EXTERNAL
- * Functionally identical to PRIMITIVE.  The distinctions are that a
- * PRIMITIVE is constrained to take no more than 3 arguments, PRIMITIVEs
- * can be formed into more efficient PRIMITIVE-COMBINATIONs by a
- * compiler, and that PRIMITIVE_EXTERNALs are user supplied.
  */
 
 /* PROCEDURE (formerly CLOSURE)

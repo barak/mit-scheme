@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.24 1987/07/27 17:47:20 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.25 1987/11/17 08:12:07 jinx Rel $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -39,6 +39,7 @@ MIT in each case. */
 #include "zones.h"
 
 Built_In_Primitive(Prim_Zero, 1, "ZERO?", 0xE6)
+Define_Primitive(Prim_Zero, 1, "ZERO?")
 {
   Primitive_1_Arg();
 
@@ -206,12 +207,14 @@ P2_Sign_Check(Big_Op)
 
 
 Built_In_Primitive(Prim_Positive, 1, "POSITIVE?", 0xE7)
+Define_Primitive(Prim_Positive, 1, "POSITIVE?")
 {
   Sign_Check(>, POS_BIGNUM);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Negative, 1, "NEGATIVE?", 0xE8)
+Define_Primitive(Prim_Negative, 1, "NEGATIVE?")
 {
   Sign_Check(<, NEG_BIGNUM);
   /*NOTREACHED*/
@@ -253,12 +256,14 @@ P3_Inc_Dec(Normal_Op, Big_Op)
   }
 
 Built_In_Primitive(Prim_One_Plus, 1, "1+", 0xF1)
+Define_Primitive(Prim_One_Plus, 1, "1+")
 {
   Inc_Dec(+, plus_signed_bignum);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_M_1_Plus, 1, "-1+", 0xF2)
+Define_Primitive(Prim_M_1_Plus, 1, "-1+")
 {
   Inc_Dec(-, minus_signed_bignum);
   /*NOTREACHED*/
@@ -358,18 +363,21 @@ P7_Two_Op_Comparator(GENERAL_OP, BIG_OP)
   }
 
 Built_In_Primitive(Prim_Equal_Number, 2, "&=", 0xE9)
+Define_Primitive(Prim_Equal_Number, 2, "&=")
 {
   Two_Op_Comparator(==, EQUAL);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Less, 2, "&<", 0xEA)
+Define_Primitive(Prim_Less, 2, "&<")
 {
   Two_Op_Comparator(<, TWO_BIGGER);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Greater, 2, "&>", 0xEB)
+Define_Primitive(Prim_Greater, 2, "&>")
 {
   Two_Op_Comparator(>, ONE_BIGGER);
   /*NOTREACHED*/
@@ -491,18 +499,21 @@ P9_Two_Op_Operator(GENERAL_OP, BIG_OP)
   }
 
 Built_In_Primitive(Prim_Plus, 2, "&+", 0xEC)
+Define_Primitive(Prim_Plus, 2, "&+")
 {
   Two_Op_Operator(+, plus_signed_bignum);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Minus, 2, "&-", 0xED)
+Define_Primitive(Prim_Minus, 2, "&-")
 {
   Two_Op_Operator(-, minus_signed_bignum);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Multiply, 2, "&*", 0xEE)
+Define_Primitive(Prim_Multiply, 2, "&*")
 {
   /* Mul is machine dependent and lives in os.c */
   extern Pointer Mul();
@@ -609,6 +620,7 @@ Built_In_Primitive(Prim_Multiply, 2, "&*", 0xEE)
 }
 
 Built_In_Primitive(Prim_Divide, 2, "&/", 0xEF)
+Define_Primitive(Prim_Divide, 2, "&/")
 {
   Primitive_2_Args();
 
@@ -772,6 +784,7 @@ Built_In_Primitive(Prim_Divide, 2, "&/", 0xEF)
 }
 
 Built_In_Primitive(Prim_Integer_Divide, 2, "INTEGER-DIVIDE", 0xF0)
+Define_Primitive(Prim_Integer_Divide, 2, "INTEGER-DIVIDE")
 {
   Primitive_2_Args();
 
@@ -895,36 +908,42 @@ Generic_Restriction(Scheme_Sqrt, sqrt, <)
 Generic_Restriction(Scheme_Ln, log, <=)
 
 Built_In_Primitive(Prim_Sqrt, 1, "SQRT", 0xF7)
+Define_Primitive(Prim_Sqrt, 1, "SQRT")
 {
   Generic_Function(Scheme_Sqrt);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Exp, 1, "EXP", 0xF8)
+Define_Primitive(Prim_Exp, 1, "EXP")
 {
   Generic_Function(exp);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Ln, 1, "LOG", 0xF9)
+Define_Primitive(Prim_Ln, 1, "LOG")
 {
   Generic_Function(Scheme_Ln);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Sine, 1, "SIN", 0xFA)
+Define_Primitive(Prim_Sine, 1, "SIN")
 {
   Generic_Function(sin);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Cosine, 1, "COS", 0xFB)
+Define_Primitive(Prim_Cosine, 1, "COS")
 {
   Generic_Function(cos);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Arctan, 1, "&ATAN", 0xFC)
+Define_Primitive(Prim_Arctan, 1, "&ATAN")
 {
   Generic_Function(atan);
   /*NOTREACHED*/
@@ -1012,24 +1031,28 @@ ceil(arg)
   }
 
 Built_In_Primitive(Prim_Truncate, 1, "TRUNCATE", 0xF3)
+Define_Primitive(Prim_Truncate, 1, "TRUNCATE")
 {
   Flonum_To_Integer(Truncate_Mapping);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Round, 1, "ROUND", 0xF4)
+Define_Primitive(Prim_Round, 1, "ROUND")
 {
   Flonum_To_Integer(Round_Mapping);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Floor, 1, "FLOOR", 0xF5)
+Define_Primitive(Prim_Floor, 1, "FLOOR")
 {
   Flonum_To_Integer(Floor_Mapping);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Ceiling, 1, "CEILING", 0xF6)
+Define_Primitive(Prim_Ceiling, 1, "CEILING")
 {
   Flonum_To_Integer(Ceiling_Mapping);
   /*NOTREACHED*/

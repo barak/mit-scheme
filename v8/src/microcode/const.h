@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.24 1987/04/16 02:20:20 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.25 1987/11/17 08:08:36 jinx Exp $
  *
  * Named constants used throughout the interpreter
  *
@@ -115,27 +115,12 @@ MIT in each case. */
 #define PRIM_NO_TRAP_EVAL		-5
 #define PRIM_NO_TRAP_APPLY		-6
 #define PRIM_POP_RETURN			-7
+
+/* Some numbers of parameters which mean something special */
+
+#define LEXPR_PRIMITIVE_ARITY		-1
+#define UNKNOWN_PRIMITIVE_ARITY		-2
 
-/* Interrupt bits -- scanned from LSB (1) to MSB (16) */
-
-#define INT_Stack_Overflow	1	/* Local interrupt */
-#define INT_Global_GC		2
-#define INT_GC			4	/* Local interrupt */
-#define INT_Global_1		8
-#define INT_Character		16	/* Local interrupt */
-#define INT_Global_2		32
-#define INT_Timer		64	/* Local interrupt */
-#define INT_Global_3		128
-#define INT_Global_Mask		\
-  (INT_Global_GC | INT_Global_1 | INT_Global_2 | INT_Global_3)
-#define Global_GC_Level		1
-#define Global_1_Level		3
-#define Global_2_Level		5
-#define Global_3_Level		7
-#define MAX_INTERRUPT_NUMBER	7
-
-#define INT_Mask		((1<<(MAX_INTERRUPT_NUMBER+1))-1)
-
 /* Error case detection for precomputed constants */
 /* VMS preprocessor does not like line continuations in conditionals */
 
@@ -161,7 +146,8 @@ MIT in each case. */
 #define REGBLOCK_TEMP			4
 #define REGBLOCK_EXPR			5
 #define REGBLOCK_RETURN			6
-#define REGBLOCK_MINIMUM_LENGTH		7
+#define REGBLOCK_LEXPR_ACTUALS		7
+#define REGBLOCK_MINIMUM_LENGTH		8
 
 /* Codes specifying how to start scheme at boot time. */
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.37 1987/10/28 21:57:38 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.38 1987/11/17 08:14:59 jinx Exp $ */
 
 /*
    Primitive declarations.
@@ -44,19 +44,20 @@ extern int Primitive_Arity_Table[];
 extern char *Primitive_Name_Table[];
 extern long MAX_PRIMITIVE;
 
-extern Pointer (*(External_Procedure_Table[]))();
-extern int External_Arity_Table[];
-extern char *External_Name_Table[];
-extern long MAX_EXTERNAL_PRIMITIVE;
+#define CHUNK_SIZE	20	/* Grow undefined vector by this much */
 
-extern Pointer Undefined_Externals;
+extern Pointer Undefined_Primitives;
+extern Pointer Undefined_Primitives_Arity;
 
 /* Utility macros */
 
-#define NUndefined()					\
-((Undefined_Externals == NIL) ?				\
+#define NUMBER_OF_DEFINED_PRIMITIVES() (MAX_PRIMITIVE + 1)
+
+#define NUMBER_OF_UNDEFINED_PRIMITIVES()		\
+((Undefined_Primitives == NIL) ?			\
  0 :							\
- Get_Integer(User_Vector_Ref(Undefined_Externals, 0)))
+ Get_Integer(User_Vector_Ref(Undefined_Primitives, 0)))
 
-#define CHUNK_SIZE	20	/* Grow undefined vector by this much */
-
+#define NUMBER_OF_PRIMITIVES()				\
+(NUMBER_OF_UNDEFINED_PRIMITIVES() +			\
+ NUMBER_OF_DEFINED_PRIMITIVES())

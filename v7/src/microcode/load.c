@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.23 1987/06/05 04:15:09 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.24 1987/11/17 08:14:00 jinx Rel $
  *
  * This file contains common code for reading internal
  * format binary files.
@@ -39,32 +39,52 @@ MIT in each case. */
 
 #include "fasl.h"
 
+#ifndef BYTE_INVERSION
+
+#define NORMALIZE_HEADER(header, size, base, count)
+#define NORMALIZE_REGION(region, size)
+
+#else
+
+void Byte_Invert_Region(), Byte_Invert_Header();
+
+#define NORMALIZE_HEADER Byte_Invert_Header
+#define NORMALIZE_REGION Byte_Invert_Region
+
+#endif
+
 /* Static storage for some shared variables */
 
-long Heap_Count, Const_Count,
-     Version, Sub_Version, Machine_Type, Ext_Prim_Count,
-     Heap_Base, Const_Base, Dumped_Object,
-     Dumped_Heap_Top, Dumped_Constant_Top, Dumped_Stack_Top;
-Pointer Ext_Prim_Vector;
-Boolean Found_Ext_Prims, Byte_Invert_Fasl_Files;
+static long
+  Version, Sub_Version, Machine_Type,
+  Dumped_Object,
+  Heap_Base, Heap_Count,
+  Const_Base, Const_Count,
+  Dumped_Heap_Top, Dumped_Constant_Top,
+  Dumped_Stack_Top,
+  Primitive_Table_Size, Primitive_Table_Length;
 
+static Pointer Ext_Prim_Vector;
+
 Boolean
 Read_Header()
 {
   Pointer Buffer[FASL_HEADER_LENGTH];
   Pointer Pointer_Heap_Base, Pointer_Const_Base;
 
-  if (Load_Data(FASL_OLD_LENGTH, ((char *) Buffer)) !=
-      FASL_OLD_LENGTH)
-    return false;
+  if (Load_Data(FASL_HEADER_LENGTH, ((char *) Buffer)) !=
+      FASL_HEADER_LENGTH)
+  {
+    return (false);
+  }
   if (Buffer[FASL_Offset_Marker] != FASL_FILE_MARKER)
-    return false;
-#ifdef BYTE_INVERSION
-  Byte_Invert_Header(Buffer,
-		     (sizeof(Buffer) / sizeof(Pointer)),
-		     Buffer[FASL_Offset_Heap_Base],
-		     Buffer[FASL_Offset_Heap_Count]);
-#endif
+  {
+    return (false);
+  }
+  NORMALIZE_HEADER(Buffer,
+		   (sizeof(Buffer) / sizeof(Pointer)),
+		   Buffer[FASL_Offset_Heap_Base],
+		   Buffer[FASL_Offset_Heap_Count]);
   Heap_Count = Get_Integer(Buffer[FASL_Offset_Heap_Count]);
   Pointer_Heap_Base = Buffer[FASL_Offset_Heap_Base];
   Heap_Base = Datum(Pointer_Heap_Base);
@@ -80,16 +100,20 @@ Read_Header()
     C_To_Scheme(Nth_Vector_Loc(Pointer_Heap_Base, Heap_Count));
   Dumped_Constant_Top =
     C_To_Scheme(Nth_Vector_Loc(Pointer_Const_Base, Const_Count));
-  if (Load_Data((FASL_HEADER_LENGTH - FASL_OLD_LENGTH),
-		((char *) &(Buffer[FASL_OLD_LENGTH]))) !=
-      (FASL_HEADER_LENGTH - FASL_OLD_LENGTH))
-    return false;
-#ifdef BYTE_INVERSION
-  Byte_Invert_Region(((char *) &(Buffer[FASL_OLD_LENGTH])),
-		     (FASL_HEADER_LENGTH - FASL_OLD_LENGTH));
-#endif
-  Ext_Prim_Vector =
-    Make_Non_Pointer(TC_CELL, Datum(Buffer[FASL_Offset_Ext_Loc]));
+
+  if (Sub_Version < FASL_MERGED_PRIMITIVES)
+  {
+    Primitive_Table_Length = 0;
+    Primitive_Table_Size = 0;
+    Ext_Prim_Vector =
+      Make_Non_Pointer(TC_CELL, Datum(Buffer[FASL_Offset_Ext_Loc]));
+  }
+  else
+  {
+    Primitive_Table_Length = Get_Integer(Buffer[FASL_Offset_Prim_Length]);
+    Primitive_Table_Size = Get_Integer(Buffer[FASL_Offset_Prim_Size]);
+    Ext_Prim_Vector = NIL;
+  }
   if (Reloc_or_Load_Debug)
   {
     printf("\nHeap_Count = %d; Heap_Base = %x; Dumped_Heap_Top = %x\n",
@@ -99,12 +123,38 @@ Read_Header()
     printf("Dumped_S_Top = %x, Ext_Prim_Vector = 0x%08x\n",
 	   Dumped_Stack_Top, Ext_Prim_Vector);
     printf("Dumped Object (as read from file) = %x\n", Dumped_Object); 
+    printf("Length of primitive table = %d\n", Primitive_Table_Length);
   }
-  return true;
-}
 
+#ifndef INHIBIT_FASL_VERSION_CHECK
+#ifdef BYTE_INVERSION
+  if ((Version != FASL_READ_VERSION) ||
+      (Sub_Version != FASL_READ_SUBVERSION))
+#else
+  if ((Version != FASL_READ_VERSION) ||
+      (Sub_Version != FASL_READ_SUBVERSION) ||
+      (Machine_Type != FASL_INTERNAL_FORMAT))
+#endif
+  {
+    fprintf(stderr,
+	    "\nread_file: FASL File Version %4d Subversion %4d Machine Type %4d.\n",
+	    Version, Sub_Version , Machine_Type);
+    fprintf(stderr,
+	    "           Expected: Version %4d Subversion %4d Machine Type %4d.\n",
+	   FASL_READ_VERSION, FASL_READ_SUBVERSION, FASL_INTERNAL_FORMAT);
+
+    return (false);
+  }
+#endif
+
+  return (true);
+}
+
 #ifdef BYTE_INVERSION
 
+static Boolean Byte_Invert_Fasl_Files;
+
+void
 Byte_Invert_Header(Header, Headsize, Test1, Test2)
      long *Header, Headsize, Test1, Test2;
 {
@@ -118,20 +168,25 @@ Byte_Invert_Header(Header, Headsize, Test1, Test2)
     Byte_Invert_Fasl_Files = true;
     Byte_Invert_Region(Header, Headsize);
   }
+  return;
 }
 
+void
 Byte_Invert_Region(Region, Size)
      long *Region, Size;
 {
   register long word, size;
 
   if (Byte_Invert_Fasl_Files)
+  {
     for (size = Size; size > 0; size--, Region++)
     {
       word = (*Region);
       *Region = (((word>>24)&0xff) | ((word>>8)&0xff00) |
 		 ((word<<8)&0xff0000) | ((word<<24)&0xff000000));
     }
+  }
+  return;
 }
 
 #endif

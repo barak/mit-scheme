@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.5 1987/07/16 00:51:08 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.6 1987/11/17 08:18:08 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -91,6 +91,7 @@ char syntax_code_spec[13] =
 
 Built_In_Primitive (Prim_String_To_Syntax_Entry, 1, "STRING->SYNTAX-ENTRY",
 		    0x176)
+Define_Primitive (Prim_String_To_Syntax_Entry, 1, "STRING->SYNTAX-ENTRY")
 {
   long length, c, result;
   char *scan;
@@ -131,6 +132,7 @@ Built_In_Primitive (Prim_String_To_Syntax_Entry, 1, "STRING->SYNTAX-ENTRY",
 }
 
 Built_In_Primitive (Prim_Char_To_Syntax_Code, 2, "CHAR->SYNTAX-CODE", 0x17E)
+Define_Primitive (Prim_Char_To_Syntax_Code, 2, "CHAR->SYNTAX-CODE")
 {
   Primitive_2_Args ();
 
@@ -283,6 +285,7 @@ Built_In_Primitive (Prim_Char_To_Syntax_Code, 2, "CHAR->SYNTAX-CODE", 0x17E)
 /* Quote Parsers */
 
 Built_In_Primitive (Prim_Quoted_Char_P, 4, "QUOTED-CHAR?", 0x17F)
+Define_Primitive (Prim_Quoted_Char_P, 4, "QUOTED-CHAR?")
 {
   NORMAL_INITIALIZATION_BACKWARD (Primitive_4_Args);
 
@@ -295,6 +298,8 @@ Built_In_Primitive (Prim_Quoted_Char_P, 4, "QUOTED-CHAR?", 0x17F)
 
 Built_In_Primitive (Prim_Scan_Backward_Prefix_Chars, 4,
 		    "SCAN-BACKWARD-PREFIX-CHARS", 0x17D)
+Define_Primitive (Prim_Scan_Backward_Prefix_Chars, 4,
+		    "SCAN-BACKWARD-PREFIX-CHARS")
 {
   NORMAL_INITIALIZATION_BACKWARD (Primitive_4_Args);
 
@@ -312,6 +317,8 @@ Built_In_Primitive (Prim_Scan_Backward_Prefix_Chars, 4,
 
 Built_In_Primitive (Prim_Scan_Forward_To_Word, 4,
 		    "SCAN-FORWARD-TO-WORD", 0x17C)
+Define_Primitive (Prim_Scan_Forward_To_Word, 4,
+		    "SCAN-FORWARD-TO-WORD")
 {
   NORMAL_INITIALIZATION_FORWARD (Primitive_4_Args);
 
@@ -324,6 +331,7 @@ Built_In_Primitive (Prim_Scan_Forward_To_Word, 4,
 }
 
 Built_In_Primitive (Prim_Scan_Word_Forward, 4, "SCAN-WORD-FORWARD", 0x177)
+Define_Primitive (Prim_Scan_Word_Forward, 4, "SCAN-WORD-FORWARD")
 {
   NORMAL_INITIALIZATION_FORWARD (Primitive_4_Args);
 
@@ -343,6 +351,7 @@ Built_In_Primitive (Prim_Scan_Word_Forward, 4, "SCAN-WORD-FORWARD", 0x177)
 }
 
 Built_In_Primitive (Prim_Scan_Word_Backward, 4, "SCAN-WORD-BACKWARD", 0x178)
+Define_Primitive (Prim_Scan_Word_Backward, 4, "SCAN-WORD-BACKWARD")
 {
   NORMAL_INITIALIZATION_BACKWARD (Primitive_4_Args);
 
@@ -364,6 +373,7 @@ Built_In_Primitive (Prim_Scan_Word_Backward, 4, "SCAN-WORD-BACKWARD", 0x178)
 /* S-Expression Parsers */
 
 Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
+Define_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD")
 {
   SCAN_LIST_INITIALIZATION (NORMAL_INITIALIZATION_FORWARD);
 
@@ -488,6 +498,7 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 }
 
 Built_In_Primitive (Prim_Scan_List_Backward, 7, "SCAN-LIST-BACKWARD", 0x17A)
+Define_Primitive (Prim_Scan_List_Backward, 7, "SCAN-LIST-BACKWARD")
 {
   SCAN_LIST_INITIALIZATION (NORMAL_INITIALIZATION_BACKWARD);
 
@@ -629,6 +640,7 @@ struct levelstruct { char *last, *previous; };
 } while (0)
 
 Built_In_Primitive (Prim_Scan_Sexps_Forward, 7, "SCAN-SEXPS-FORWARD", 0x17B)
+Define_Primitive (Prim_Scan_Sexps_Forward, 7, "SCAN-SEXPS-FORWARD")
 {
   long target_depth;
   Boolean stop_before;

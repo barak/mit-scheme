@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.31 1987/10/09 16:13:19 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.32 1987/11/17 08:15:51 jinx Rel $ */
 
 /* Pure/Constant space utilities. */
 
@@ -170,6 +170,7 @@ Make_Impure(Object)
    The object is placed in constant space instead.
 */
 Built_In_Primitive(Prim_Impurify, 1, "PRIMITIVE-IMPURIFY", 0xBD)
+Define_Primitive(Prim_Impurify, 1, "PRIMITIVE-IMPURIFY")
 {
   Pointer Result;
   Primitive_1_Arg();
@@ -213,6 +214,7 @@ Pure_Test(Obj_Address)
    other object, or it is in a pure section of the constant space).
 */
 Built_In_Primitive(Prim_Pure_P, 1, "PURE?", 0xBB)
+Define_Primitive(Prim_Pure_P, 1, "PURE?")
 {
   Primitive_1_Arg();
 
@@ -239,6 +241,7 @@ Built_In_Primitive(Prim_Pure_P, 1, "PURE?", 0xBB)
    pointer.
 */
 Built_In_Primitive(Prim_Constant_P, 1, "CONSTANT?", 0xBA)
+Define_Primitive(Prim_Constant_P, 1, "CONSTANT?")
 {
   Primitive_1_Arg();
 
@@ -253,6 +256,7 @@ Built_In_Primitive(Prim_Constant_P, 1, "CONSTANT?", 0xBA)
    Returns the next free address in constant space.
 */
 Built_In_Primitive(Prim_Get_Next_Constant, 0, "GET-NEXT-CONSTANT", 0xE4)
+Define_Primitive(Prim_Get_Next_Constant, 0, "GET-NEXT-CONSTANT")
 {
   Pointer *Next_Address;
 
