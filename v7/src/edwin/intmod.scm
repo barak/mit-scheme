@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.73 1993/10/21 04:55:23 cph Exp $
+;;;	$Id: intmod.scm,v 1.74 1993/10/26 20:25:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -473,22 +473,21 @@ If this is an error, the debugger examines the error condition."
 	 object)))))
 
 (define (start-continuation-browser port condition)
-  (let ((browser (continuation-browser-buffer condition)))
-    (buffer-put! browser 'INVOKE-CONTINUATION
-      (lambda (continuation arguments)
-	(if (not (buffer-alive? (port/buffer port)))
-	    (editor-error
-	     "Can't continue; REPL buffer no longer exists!"))
-	(signal-thread-event (port/thread port)
-	  (lambda ()
-	    ;; This call to UNBLOCK-THREAD-EVENTS is a kludge.
-	    ;; The continuation should be able to decide whether
-	    ;; or not to unblock, but that isn't so right now.
-	    ;; As a default, having them unblocked is better
-	    ;; than having them blocked.
-	    (unblock-thread-events)
-	    (apply continuation arguments)))))
-    (select-buffer browser)))
+  ((ref-command browse-continuation) condition)
+  (buffer-put! (current-buffer) 'INVOKE-CONTINUATION
+    (lambda (continuation arguments)
+      (if (not (buffer-alive? (port/buffer port)))
+	  (editor-error
+	   "Can't continue; REPL buffer no longer exists!"))
+      (signal-thread-event (port/thread port)
+	(lambda ()
+	  ;; This call to UNBLOCK-THREAD-EVENTS is a kludge.
+	  ;; The continuation should be able to decide whether
+	  ;; or not to unblock, but that isn't so right now.
+	  ;; As a default, having them unblocked is better
+	  ;; than having them blocked.
+	  (unblock-thread-events)
+	  (apply continuation arguments))))))
 
 (define (buffer/inferior-cmdl buffer)
   (let ((port (buffer-interface-port buffer)))
