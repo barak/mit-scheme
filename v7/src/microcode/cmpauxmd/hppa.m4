@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.27 1993/06/30 03:35:29 gjr Exp $
+;;;	$Id: hppa.m4,v 1.28 1993/07/27 17:47:34 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -1030,6 +1030,7 @@ floating_vector_cons
 
 define(define_floating_point_util,
 "flonum_$1
+	STW	2,8(0,4)			; preserve val
 	COPY	22,18				; preserve regs
 	COPY	21,17
 	COPY	19,16
@@ -1039,6 +1040,7 @@ define(define_floating_point_util,
 	COPY	16,19
 	COPY	17,21
 	COPY	18,22
+	LDW	8(0,4),2			; restore val
 	BE	0(5,15)
 	LDW	0(0,4),20")
 
@@ -1055,6 +1057,7 @@ define_floating_point_util(ceiling,ceil)
 define_floating_point_util(floor,floor)
 
 flonum_atan2
+	STW	2,8(0,4)			; preserve val
 	COPY	22,18				; preserve regs
 	COPY	21,17
 	COPY	19,16
@@ -1064,6 +1067,7 @@ flonum_atan2
 	COPY	16,19
 	COPY	17,21
 	COPY	18,22
+	LDW	8(0,4),2			; restore val
 	BE	0(5,15)
 	LDW	0(0,4),20
 
