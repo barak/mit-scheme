@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.227 2000/12/21 05:05:00 cph Exp $
+;;; $Id: imail-top.scm,v 1.228 2000/12/28 05:44:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -172,12 +172,6 @@ Note that this variable does not affect subparts of multipart/alternative."
   '(HTML ENRICHED)
   list-of-strings?)
 
-(define-variable imail-use-original-mime-boundaries
-  "If true, multipart message parts are separated with MIME boundary strings.
-Otherwise, simple dashed-line separators are used."
-  #f
-  boolean?)
-
 (define-variable imail-mime-attachment-directory
   "Default directory in which to store MIME attachments.
 Either #F or a pathname."
@@ -190,6 +184,19 @@ Either #F or a pathname."
 Otherwise, only one of the parts is shown."
   #f
   boolean?)
+
+(define-variable imail-mime-collapse-digest
+  "If true, component messages of a MIME digest are shown as attachments."
+  #t
+  boolean?)
+
+(define-variable imail-mime-boundary-style
+  "Specifies style of separators between parts of multipart MIME message.
+'SIMPLE means use a simple dashed line.
+'SGML is like 'SIMPLE except the line is bracketed with <!-- -->.
+'ORIGINAL means use the original MIME boundary strings."
+  'SIMPLE
+  (lambda (x) (memq x '(SIMPLE SGML ORIGINAL))))
 
 (define-variable imail-global-mail-notification
   "If true, all buffer modelines say if there is unseen mail.
@@ -2079,34 +2086,40 @@ Negative argument means search in reverse."
 ;;;; MIME message formatting
 
 (define (insert-mime-message-body message mark inline-only? left-margin)
-  (insert-mime-message-part
+  (walk-mime-message-part
    message
    (mime-message-body-structure message)
    '()
-   (make-insert-mime-context inline-only? left-margin #f '())
+   (make-walk-mime-context inline-only? left-margin #f '())
    mark))
 
-(define-structure insert-mime-context
+(define-structure walk-mime-context
   (inline-only? #f read-only #t)
   (left-margin #f read-only #t)
   (enclosure #f read-only #t)
   (boundaries #f read-only #t))
 
-(define (make-insert-mime-subcontext context enclosure boundary)
-  (make-insert-mime-context (insert-mime-context-inline-only? context)
-			    (insert-mime-context-left-margin context)
-			    enclosure
-			    (cons (cons boundary (not boundary))
-				  (insert-mime-context-boundaries context))))
+(define (make-walk-mime-subcontext context enclosure boundary)
+  (make-walk-mime-context (walk-mime-context-inline-only? context)
+			  (walk-mime-context-left-margin context)
+			  enclosure
+			  (cons (cons boundary (not boundary))
+				(walk-mime-context-boundaries context))))
+
+(define (mime-enclosure-type? context type subtype)
+  (let ((enclosure (walk-mime-context-enclosure context)))
+    (and enclosure
+	 (eq? (mime-body-type enclosure) type)
+	 (eq? (mime-body-subtype enclosure) subtype))))
 
 (define (maybe-insert-mime-boundary context mark)
   (let ((boundary
-	 (let loop ((boundaries (insert-mime-context-boundaries context)))
+	 (let loop ((boundaries (walk-mime-context-boundaries context)))
 	   (and (pair? boundaries)
 		(if (cdar boundaries)
 		    (caar boundaries)
 		    (loop (cdr boundaries)))))))
-    (let loop ((boundaries (insert-mime-context-boundaries context)))
+    (let loop ((boundaries (walk-mime-context-boundaries context)))
       (if (and (pair? boundaries)
 	       (not (cdar boundaries)))
 	  (begin
@@ -2115,58 +2128,115 @@ Negative argument means search in reverse."
     (if boundary
 	(begin
 	  (insert-newline mark)
-	  (if (eq? boundary 'SIMPLE)
-	      (insert-chars #\- (- (mark-x-size mark) 1) mark)
-	      (begin
-		(insert-string "--" mark)
-		(insert-string boundary mark)))
+	  (cond ((string? boundary)
+		 (insert-string "--" mark)
+		 (insert-string boundary mark))
+		((eq? 'SGML boundary)
+		 (insert-string "<!-- " mark)
+		 (insert-chars #\- (- (mark-x-size mark) 10) mark)
+		 (insert-string " -->" mark))
+		(else
+		 (insert-chars #\- (- (mark-x-size mark) 1) mark)))
 	  (insert-newline mark)
 	  (insert-newline mark)))))
 
 (define (mime-part-encoding context body)
   (let ((encoding
-	 (let ((enclosure (insert-mime-context-enclosure context)))
-	   (and enclosure
-		(eq? (mime-body-type enclosure) 'MESSAGE)
-		(eq? (mime-body-subtype enclosure) 'RFC822)
-		(mime-body-one-part-encoding enclosure)))))
+	 (and (mime-enclosure-type? context 'MESSAGE 'RFC822)
+	      (mime-body-one-part-encoding
+	       (walk-mime-context-enclosure context)))))
     (if (and encoding (not (memq encoding '(7BIT 8BIT BINARY))))
 	;; This is illegal, but Netscape does it.
 	encoding
 	(mime-body-one-part-encoding body))))
 
-(define-generic insert-mime-message-part (message body selector context mark))
+(define-generic walk-mime-message-part (message body selector context mark))
+(define-generic insert-mime-message-inline*
+    (message body selector context mark))
+(define-generic compute-mime-message-outline (body name context))
 
-(define-method insert-mime-message-part
+(define-method walk-mime-message-part
     (message (body <mime-body>) selector context mark)
-  (insert-mime-message-attachment 'ATTACHMENT message body selector context
-				  mark))
+  (insert-mime-message-outline message body selector context mark))
 
-(define-method insert-mime-message-part
+(define-method insert-mime-message-inline*
+    (message (body <mime-body>) selector context mark)
+  (call-with-auto-wrapped-output-mark
+   mark
+   (walk-mime-context-left-margin context)
+   (lambda (port)
+     (call-with-mime-decoding-output-port
+      (mime-part-encoding context body)
+      port
+      #t
+      (lambda (port)
+	(write-mime-message-body-part
+	 message
+	 (if (or (not (walk-mime-context-enclosure context))
+		 (mime-enclosure-type? context 'MESSAGE 'RFC822))
+	     `(,@selector TEXT)
+	     selector)
+	 (mime-body-one-part-n-octets body)
+	 port))))))
+
+(define-method compute-mime-message-outline ((body <mime-body>) name context)
+  context
+  (list (and name (cons "name" name))
+	(cons "type" (mime-body-type-string body))
+	(and (eq? (mime-body-type body) 'TEXT)
+	     (cons "charset" (mime-body-parameter body 'CHARSET "us-ascii")))
+	(let ((encoding (mime-body-one-part-encoding body)))
+	  (and (not (known-mime-encoding? encoding))
+	       (cons "encoding" encoding)))
+	(cons "length" (mime-body-one-part-n-octets body))))
+
+(define-method walk-mime-message-part
     (message (body <mime-body-multipart>) selector context mark)
   (let ((context
-	 (make-insert-mime-subcontext
+	 (make-walk-mime-subcontext
 	  context
 	  body
-	  (if (ref-variable imail-use-original-mime-boundaries mark)
-	      (mime-body-parameter body 'BOUNDARY "----------")
-	      'SIMPLE)))
-	(show-alternatives? (ref-variable imail-mime-show-alternatives mark)))
-    (do ((parts (mime-body-multipart-parts body) (cdr parts))
-	 (i 0 (fix:+ i 1)))
-	((null? parts))
-      (let ((part (car parts))
-	    (selector `(,@selector ,i)))
-	(if (and (fix:> i 0)
-		 (eq? (mime-body-subtype body) 'ALTERNATIVE))
-	    (if show-alternatives?
-		(insert-mime-message-attachment 'ALTERNATIVE message part
-						selector context mark))
-	    (insert-mime-message-part message part selector context mark))))))
-
-(define-method insert-mime-message-part
+	  (let ((style (ref-variable imail-mime-boundary-style mark)))
+	    (if (eq? 'ORIGINAL style)
+		(mime-body-parameter body 'BOUNDARY "----------")
+		style))))
+	(parts (mime-body-multipart-parts body)))
+    (if (eq? (mime-body-subtype body) 'ALTERNATIVE)
+	(if (pair? parts)
+	    (begin
+	      (walk-mime-message-part message
+				      (car parts)
+				      `(,@selector 0)
+				      context
+				      mark)
+	      (if (ref-variable imail-mime-show-alternatives mark)
+		  (do ((parts (cdr parts) (cdr parts))
+		       (i 1 (fix:+ i 1)))
+		      ((null? parts))
+		    (insert-mime-message-outline message
+						 (car parts)
+						 `(,@selector ,i)
+						 context
+						 mark)))))
+	(do ((parts parts (cdr parts))
+	     (i 0 (fix:+ i 1)))
+	    ((null? parts))
+	  (walk-mime-message-part message
+				  (car parts)
+				  `(,@selector ,i)
+				  context
+				  mark)))))
+
+(define-method walk-mime-message-part
     (message (body <mime-body-message>) selector context mark)
-  (maybe-insert-mime-boundary context mark)
+  ((if (and (mime-enclosure-type? context 'MULTIPART 'DIGEST)
+	    (ref-variable imail-mime-collapse-digest mark))
+       insert-mime-message-outline
+       insert-mime-message-inline)
+   message body selector context mark))
+
+(define-method insert-mime-message-inline*
+    (message (body <mime-body-message>) selector context mark)
   (insert-header-fields (with-string-output-port
 			  (lambda (port)
 			    (write-mime-message-body-part message
@@ -2175,117 +2245,106 @@ Negative argument means search in reverse."
 							  port)))
 			#f
 			mark)
-  (insert-mime-message-part message
-			    (mime-body-message-body body)
-			    selector
-			    (make-insert-mime-subcontext context body #f)
-			    mark))
-
-(define-method insert-mime-message-part
-    (message (body <mime-body-text>) selector context mark)
-  (if (and (let ((disposition (mime-body-disposition body)))
-	     (if disposition
-		 (eq? (car disposition) 'INLINE)
-		 (or (not (insert-mime-context-enclosure context))
-		     (let ((subtype (mime-body-subtype body)))
-		       (or (eq? subtype 'PLAIN)
-			   (memq subtype
-				 (ref-variable imail-inline-mime-text-subtypes
-					       mark)))))))
-	   (known-mime-encoding? (mime-part-encoding context body))
-	   (re-string-match
-	    (string-append "\\`"
-			   (apply regexp-group
-				  (ref-variable imail-known-mime-charsets
-						mark))
-			   "\\'")
-	    (mime-body-parameter body 'CHARSET "us-ascii")
-	    #t))
-      (begin
-	(maybe-insert-mime-boundary context mark)
-	(insert-mime-info (make-mime-info 'INLINE #t body selector context)
-			  message
+  (walk-mime-message-part message
+			  (mime-body-message-body body)
+			  selector
+			  (make-walk-mime-subcontext context body #f)
 			  mark))
-      (insert-mime-message-attachment 'ATTACHMENT message body selector context
-				      mark)))
 
-(define (insert-mime-message-attachment class message body selector context
-					mark)
-  (if (not (insert-mime-context-inline-only? context))
+(define-method compute-mime-message-outline
+    ((body <mime-body-message>) name context)
+  name
+  (let ((envelope (mime-body-message-envelope body)))
+    (list (and (not (mime-enclosure-type? context 'MULTIPART 'DIGEST))
+	       (cons "type" (mime-body-type-string body)))
+	  (let ((from (mime-envelope-from envelope)))
+	    (and (pair? from)
+		 (cons
+		  "from"
+		  (or (mime-address-name (car from))
+		      (string-append (mime-address-mailbox (car from))
+				     "@"
+				     (mime-address-host (car from)))))))
+	  (let ((subject (mime-envelope-subject envelope)))
+	    (and subject
+		 (cons "subject" subject)))
+	  (cons "length" (mime-body-one-part-n-octets body)))))
+
+(define-method walk-mime-message-part
+    (message (body <mime-body-text>) selector context mark)
+  ((if (and (let ((disposition (mime-body-disposition body)))
+	      (if disposition
+		  (eq? (car disposition) 'INLINE)
+		  (or (not (walk-mime-context-enclosure context))
+		      (let ((subtype (mime-body-subtype body)))
+			(or (eq? subtype 'PLAIN)
+			    (memq subtype
+				  (ref-variable imail-inline-mime-text-subtypes
+						mark)))))))
+	    (known-mime-encoding? (mime-part-encoding context body))
+	    (re-string-match
+	     (string-append "\\`"
+			    (apply regexp-group
+				   (ref-variable imail-known-mime-charsets
+						 mark))
+			    "\\'")
+	     (mime-body-parameter body 'CHARSET "us-ascii")
+	     #t))
+       insert-mime-message-inline
+       insert-mime-message-outline)
+   message body selector context mark))
+
+(define (insert-mime-message-inline message body selector context mark)
+  (maybe-insert-mime-boundary context mark)
+  (insert-mime-info (make-mime-info #t #t body selector context)
+		    message
+		    mark))
+
+(define (insert-mime-message-outline message body selector context mark)
+  (if (not (walk-mime-context-inline-only? context))
       (begin
 	(maybe-insert-mime-boundary context mark)
-	(insert-mime-info (make-mime-info class #f body selector context)
+	(insert-mime-info (make-mime-info #f #f body selector context)
 			  message
 			  mark))))
-
+
 (define (insert-mime-info info message mark)
-  (let ((start (mark-right-inserting-copy mark)))
+  (let ((start (mark-right-inserting-copy mark))
+	(body (mime-info-body info))
+	(context (mime-info-context info)))
     (if (mime-info-expanded? info)
-	(insert-mime-info-expanded info message mark)
-	(insert-mime-info-collapsed info message mark))
+	(insert-mime-message-inline* message
+				     body
+				     (mime-info-selector info)
+				     context
+				     mark)
+	(insert-mime-outline
+	 (compute-mime-message-outline body
+				       (mime-attachment-name info #f)
+				       context)
+	 mark))
     (attach-mime-info start mark info)
     (mark-temporary! start)))
 
-(define (insert-mime-info-expanded info message mark)
-  (let ((body (mime-info-body info))
-	(context (mime-info-context info)))
-    (call-with-auto-wrapped-output-mark
-     mark
-     (insert-mime-context-left-margin context)
-     (lambda (port)
-       (call-with-mime-decoding-output-port
-	(mime-part-encoding context body)
-	port
-	#t
-	(lambda (port)
-	  (write-mime-message-body-part
-	   message
-	   (if (let ((enclosure (insert-mime-context-enclosure context)))
-		 (or (not enclosure)
-		     (and (eq? (mime-body-type enclosure) 'MESSAGE)
-			  (eq? (mime-body-subtype enclosure) 'RFC822))))
-	       `(,@(mime-info-selector info) TEXT)
-	       (mime-info-selector info))
-	   (mime-body-one-part-n-octets body)
-	   port)))))))
-
-(define (insert-mime-info-collapsed info message mark)
-  message
-  (let ((body (mime-info-body info)))
-    (insert-string "<IMAIL-" mark)
-    (insert-string (string-upcase (symbol->string (mime-info-class info)))
-		   mark)
-    (insert-string " " mark)
-    (let ((column (mark-column mark)))
-      (let ((name (mime-attachment-name info #f)))
-	(if name
-	    (begin
-	      (insert-string "name=" mark)
-	      (insert name mark)
-	      (insert-newline mark)
-	      (change-column column mark))))
-      (insert-string "type=" mark)
-      (insert (mime-body-type body) mark)
-      (insert-string "/" mark)
-      (insert (mime-body-subtype body) mark)
-      (insert-newline mark)
-      (if (eq? (mime-body-type body) 'TEXT)
-	  (begin
-	    (change-column column mark)
-	    (insert-string "charset=" mark)
-	    (insert (mime-body-parameter body 'CHARSET "us-ascii") mark)
-	    (insert-newline mark)))
-      (let ((encoding (mime-body-one-part-encoding body)))
-	(if (not (known-mime-encoding? encoding))
-	    (begin
-	      (change-column column mark)
-	      (insert-string "encoding=" mark)
-	      (insert encoding mark)
-	      (insert-newline mark))))
-      (change-column column mark)
-      (insert-string "length=" mark)
-      (insert (mime-body-one-part-n-octets body) mark))
-    (insert-string ">" mark)
+(define (insert-mime-outline parameters mark)
+  (let ((indentation "    "))
+    (insert-string "<imail-part" mark)
+    (insert-newline mark)
+    (for-each (lambda (n.v)
+		(if n.v
+		    (begin
+		      (insert-string indentation mark)
+		      (insert-string (car n.v) mark)
+		      (insert-string "=" mark)
+		      (insert (let ((value (cdr n.v)))
+				(if (string? value)
+				    value
+				    (write-to-string value)))
+			      mark)
+		      (insert-newline mark))))
+	      parameters)
+    (insert-string indentation mark)
+    (insert-string "/>" mark)
     (insert-newline mark)))
 
 (define (known-mime-encoding? encoding)
@@ -2294,7 +2353,7 @@ Negative argument means search in reverse."
 (define (mime-attachment-name info provide-default?)
   (or (mime-body-parameter (mime-info-body info) 'NAME #f)
       (and provide-default?
-	   (string-append (if (eq? (mime-info-class info) 'INLINE)
+	   (string-append (if (mime-info-inline? info)
 			      "inline-"
 			      "unnamed-attachment-")
 			  (let ((selector (mime-info-selector info)))
@@ -2331,10 +2390,10 @@ Negative argument means search in reverse."
 	    (reverse! attachments))))))
 
 (define (mime-attachment? info)
-  (not (eq? (mime-info-class info) 'INLINE)))
+  (not (mime-info-inline? info)))
 
 (define-structure mime-info
-  (class #f read-only #t)
+  (inline? #f)
   (expanded? #f)
   (body #f read-only #t)
   (selector #f read-only #t)

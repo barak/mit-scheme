@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.78 2000/11/13 21:28:43 cph Exp $
+;;; $Id: imail.pkg,v 1.79 2000/12/28 05:45:07 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -311,14 +311,15 @@
 	  edwin-variable$imail-known-mime-charsets
 	  edwin-variable$imail-message-filter
 	  edwin-variable$imail-mime-attachment-directory
+	  edwin-variable$imail-mime-boundary-style
+	  edwin-variable$imail-mime-collapse-digest
 	  edwin-variable$imail-mime-show-alternatives
 	  edwin-variable$imail-mode-hook
 	  edwin-variable$imail-output-default
 	  edwin-variable$imail-pass-phrase-retention-time
 	  edwin-variable$imail-primary-folder
 	  edwin-variable$imail-reply-with-re
-	  edwin-variable$imail-update-interval
-	  edwin-variable$imail-use-original-mime-boundaries)
+	  edwin-variable$imail-update-interval)
   (export (edwin imail)
 	  imail-ui:body-cache-limit
 	  imail-ui:call-with-pass-phrase

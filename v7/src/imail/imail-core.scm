@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.114 2000/10/20 00:44:28 cph Exp $
+;;; $Id: imail-core.scm,v 1.115 2000/12/28 05:45:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -827,6 +827,11 @@
 (define-generic mime-body-type (body))
 (define-generic mime-body-subtype (body))
 
+(define (mime-body-type-string body)
+  (string-append (symbol->string (mime-body-type body))
+		 "/"
+		 (symbol->string (mime-body-subtype body))))
+
 (define (mime-body-parameter body key default)
   (let ((entry (assq key (mime-body-parameters body))))
     (if entry
@@ -844,9 +849,7 @@
   (write-instance-helper 'MIME-BODY body port 
     (lambda ()
       (write-char #\space port)
-      (write (mime-body-type body) port)
-      (write-char #\/ port)
-      (write (mime-body-subtype body) port))))
+      (write-string (mime-body-type-string body) port))))
 
 (define-class <mime-body-one-part> (<mime-body>)
   (id define accessor)
