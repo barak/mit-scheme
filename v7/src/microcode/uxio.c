@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.27 1993/04/27 09:36:36 cph Exp $
+$Id: uxio.c,v 1.28 1993/04/27 10:03:56 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -549,7 +549,7 @@ DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
       return (s);
   }
   {
-    unsigned int * scan = (&fds);
+    unsigned int * scan = (&fds[0]);
     unsigned int * end = (scan + nfds);
     while (scan < end)
       if ((*scan++) == fd)
