@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sort.scm,v 1.3 1992/11/20 19:10:55 cph Exp $
+;;;	$Id: sort.scm,v 1.4 1992/11/24 04:03:25 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -74,24 +74,33 @@
     (mark-temporary! delete-end)))
 
 (define (identify-records region forward-record record-end)
-  (let ((limit (region-end region)))
-    (let next-record ((start (region-start region)))
-      (if (and start (mark< start limit))
-	  (let ((end (record-end start)))
-	    (if (and end (mark< end limit))
-		(cons (cons start end)
-		      (next-record (forward-record end)))
-		(list (cons start (region-end region)))))
-	  '()))))
+  (define (mark-temporary-right-inserting-copy mark)
+    (make-temporary-mark (mark-group mark) (mark-index mark) false))
+  (map
+   (lambda (record)
+     (cons (car record)
+	   (mark-temporary-right-inserting-copy (cdr record))))
+   (let ((limit (region-end region)))
+     (let next-record ((start (region-start region)))
+       (if (and start (mark< start limit))
+	   (let ((end (record-end start)))
+	     (if (and end (mark< end limit))
+		 (cons (cons start end)
+		       (next-record (forward-record end)))
+		 (list (cons start (region-end region)))))
+	   '())))))
 
 (define (insert-reordered-region start end sorted-list unsorted-list)
-  (let ((insert-mark (mark-left-inserting-copy end)))
+  (let ((end-mark (mark-right-inserting-copy end))
+	(insert-mark (mark-left-inserting-copy end)))
     (let next-element ((previous start)
 		       (sorted-list sorted-list)
 		       (unsorted-list unsorted-list))
       (if (null? sorted-list)
-	  (if (mark< previous end)
-	      (insert-string (extract-string previous end) insert-mark))
+	  (if (mark< previous end-mark)
+	      (insert-string
+	       (extract-string previous end-mark)
+	       insert-mark))
 	  (begin
 	    (if (mark< previous (caar unsorted-list))
 		(insert-string (extract-string previous (caar unsorted-list))
@@ -103,6 +112,7 @@
 	    (next-element (cdar unsorted-list)
 			  (cdr sorted-list)
 			  (cdr unsorted-list)))))
+    (mark-temporary! end-mark)
     (mark-temporary! insert-mark)))
 
 (define (sort-textual-comparison start1 end1 start2 end2)
