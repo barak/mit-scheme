@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.36 1990/09/07 22:25:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.37 1990/09/07 22:35:43 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -800,7 +800,9 @@ MIT in each case. |#
 		    ,@(word->fixnum target)))))
 	  (else
 	   ;; This includes negative n
-	   (LAP (DIV S L (& ,(* n fixnum-1)) ,target))))))
+	   (LAP (DIV S L (& ,(* n fixnum-1)) ,target)
+		(AS L L (& ,scheme-type-width) ,target))))))
+
 (define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source)
     (let ((temp (reference-temporary-register! 'DATA)))
