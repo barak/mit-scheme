@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpgc.h,v 1.28 1994/11/28 03:53:25 cph Exp $
+$Id: cmpgc.h,v 1.29 1995/07/26 23:16:29 adams Exp $
 
-Copyright (c) 1989-94 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -388,15 +388,25 @@ MAKE_POINTER_OBJECT ((OBJECT_TYPE (object)),				\
  */
 
 #define PLAUSIBLE_CC_BLOCK_P(block)					\
-((PLAUSIBLE_BLOCK_START_P((block), CC_BLOCK_FIRST_ENTRY_OFFSET)) ||	\
- (PLAUSIBLE_BLOCK_START_P((block),					\
-			  (CC_BLOCK_FIRST_ENTRY_OFFSET +		\
-			   ENTRY_PREFIX_LENGTH))))
+ (((PLAUSIBLE_BLOCK_START_P((block), CC_BLOCK_FIRST_ENTRY_OFFSET)) ||	\
+   (PLAUSIBLE_BLOCK_START_P((block),					\
+    		            (CC_BLOCK_FIRST_ENTRY_OFFSET +		\
+			    ENTRY_PREFIX_LENGTH))))			\
+  &&									\
+  (PLAUSIBLE_BLOCK_SPAN_AND_END_P(block,				\
+				  (VECTOR_LOC((SCHEME_OBJECT)block,			\
+					      ((VECTOR_LENGTH((SCHEME_OBJECT)block)) - 1))))))
 
 #define PLAUSIBLE_BLOCK_START_P(addr, offset)				\
 ((*((format_word *)							\
     (((char *) (addr)) + ((offset) - (sizeof (format_word)))))) ==	\
    ((BYTE_OFFSET_TO_OFFSET_WORD(offset))))
+
+#define PLAUSIBLE_BLOCK_SPAN_AND_END_P(addr,end)			\
+  (((ADDRESS_HEAP_P(addr)     && ADDRESS_HEAP_P(end)) ||		\
+    (ADDRESS_CONSTANT_P(addr) && ADDRESS_CONSTANT_P(end)))		\
+   &&									\
+   (ENVIRONMENT_P (*(SCHEME_OBJECT *) end)))
 
 #else /* not HAS_COMPILER_SUPPORT */
 
