@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.39 1996/11/07 21:57:58 adams Exp $
+;;;	$Id: debug.scm,v 1.40 1997/02/23 06:24:31 cph Exp $
 ;;;
-;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -52,7 +52,7 @@
 (define (with-output-highlighted port thunk)
   (let ((start (mark-temporary-copy (port/mark port))))
     (thunk)
-    (highlight-region (make-region start (port/mark port)) #t)))
+    (highlight-region (make-region start (port/mark port)) (highlight-face))))
 
 (define (read-only-between start end)
   (region-read-only (make-region start end)))
@@ -61,7 +61,7 @@
   (region-writable (make-region start end)))
 
 (define (dehigh-between start end)
-  (highlight-region (make-region start end) #f))
+  (highlight-region (make-region start end) (default-face)))
 
 (define (debugger-pp-highlight-subexpression expression subexpression
  					     indentation port)
@@ -89,7 +89,7 @@
     (if (and start-mark end-mark)
  	(highlight-region-excluding-indentation
 	 (make-region start-mark end-mark)
-	 #t))
+	 (highlight-face)))
     (if start-mark (mark-temporary! start-mark))
     (if end-mark (mark-temporary! end-mark))))
 
@@ -317,7 +317,7 @@
 				   (if (mark? end)
 				       (mark- end 1)
 				       (line-end mark 0)))
-		      #t)))
+		      (highlight-face))))
 
 (define (unselect-bline browser)
   (let ((bline (browser/selected-line browser)))

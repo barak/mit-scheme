@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.26 1996/12/25 07:20:15 cph Exp $
+;;;	$Id: snr.scm,v 1.27 1997/02/23 06:24:43 cph Exp $
 ;;;
-;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -1425,10 +1425,13 @@ This shows News groups that have been created since the last time that
 	(mark-temporary! mark)))))
 
 (define (news-group-buffer:maybe-highlight-header header mark)
-  (highlight-region (make-region (mark+ mark 2) (mark+ mark 6))
-		    (and (ref-variable news-article-highlight-selected mark)
-			 (find-news-article-buffer (mark-buffer mark)
-						   header))))
+  (highlight-region
+   (make-region (mark+ mark 2) (mark+ mark 6))
+   (if (and (ref-variable news-article-highlight-selected mark)
+	    (find-news-article-buffer (mark-buffer mark)
+				      header))
+       (highlight-face)
+       (default-face))))
 
 (define (news-group-buffer:move-to-header buffer header)
   (let ((point (news-group-buffer:header-mark-1 buffer header))

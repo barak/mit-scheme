@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.121 1996/04/24 01:57:30 cph Exp $
+;;;	$Id: info.scm,v 1.122 1997/02/23 06:24:38 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -844,7 +844,7 @@ The name may be an abbreviation of the reference name."
 	     (let ((region (locator node)))
 	       (if region
 		   (begin
-		     (if highlight? (highlight-region region #t))
+		     (if highlight? (highlight-region region (highlight-face)))
 		     (set-region-local-comtabs! region (comtab command))))))))
       (do-button locate-node-up (ref-command-object info-up))
       (do-button locate-node-previous (ref-command-object info-previous))
@@ -855,7 +855,8 @@ The name may be an abbreviation of the reference name."
 	    (let ((comtabs
 		   (comtab (ref-command-object info-current-menu-item))))
 	      (lambda (group start end)
-		(if highlight? (highlight-subgroup group start end #t))
+		(if highlight?
+		    (highlight-subgroup group start end (highlight-face)))
 		(set-subgroup-local-comtabs! group start end comtabs))))))))
 
 (define (record-node file node point)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: eystep.scm,v 1.3 1996/05/14 01:52:30 cph Exp $
+;;;	$Id: eystep.scm,v 1.4 1997/02/23 06:24:36 cph Exp $
 ;;;
-;;;	Copyright (c) 1994 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -259,8 +259,8 @@ c	contract the step under the cursor")
 			   (eq? (car last-event) 'CALL)
 			   (eq? (cadr last-event) node)
 			   (lambda (region)
-			     (highlight-region-excluding-indentation region
-								     #t))))
+			     (highlight-region-excluding-indentation
+			      region (highlight-face)))))
 		    (insert-string (if (ynode-hidden-children? node)
 				       " ===> "
 				       " => ")
@@ -282,7 +282,7 @@ c	contract the step under the cursor")
 			     (eq? (car last-event) 'RETURN)
 			     (eq? (cadr last-event) value-node)
 			     (lambda (region)
-			       (highlight-region region #t)))))
+			       (highlight-region region (highlight-face))))))
 		    (insert-newline point)
 		    (save-ynode-region! regions node start point)
 		    (if (not (eq? 'STEP-OVER (ynode-type node)))
