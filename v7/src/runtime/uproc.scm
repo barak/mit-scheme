@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uproc.scm,v 1.3 1991/10/29 13:31:30 cph Exp $
+$Id: uproc.scm,v 1.4 1992/12/03 19:18:07 cph Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,11 +79,18 @@ MIT in each case. |#
 	  (else (error "not a procedure" procedure)))))
 
 (define (skip-entities object)
-  (if (%entity? object)
-      (skip-entities (if (%entity-is-apply-hook? object)
-			 (apply-hook-procedure object)
-			 (entity-procedure object)))
-      object))
+  (cond ((%entity? object)
+	 (skip-entities (if (%entity-is-apply-hook? object)
+			    (apply-hook-procedure object)
+			    (entity-procedure object))))
+	((and (%record? object)
+	      (let ((type (%record-ref object 0)))
+		(and (%record? type)
+		     (>= (%record-length type) 2)
+		     (%record-ref type 1))))
+	 => skip-entities)
+	(else
+	 object)))
 
 (define (procedure-arity procedure)
   (let loop ((p procedure) (e 0))
