@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.81 1993/12/07 20:35:55 gjr Exp $
+$Id: cmpint.c,v 1.82 1994/01/08 17:02:13 gjr Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1202,8 +1202,16 @@ DEFUN (link_cc_block,
 exit_proc:
   /* Rather than commit, since we want to undo */
   transaction_abort ();
-  PUSH_D_CACHE_REGION (block_address,
-		       (((unsigned long) (*block_address)) + 1));
+  {
+    SCHEME_OBJECT * ret_add_block;
+    unsigned long block_len = (((unsigned long) (* block_address)) + 1);
+    
+    Get_Compiled_Block (ret_add_block, ret_add);
+    if (ret_add_block == block_address)
+      FLUSH_I_CACHE_REGION (block_address, block_len);
+    else
+      PUSH_D_CACHE_REGION (block_address, block_len);
+  }
   return (result);
 }
 
