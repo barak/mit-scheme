@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.54 2003/02/28 04:34:38 cph Exp $
+$Id: object.h,v 9.55 2003/11/26 05:01:25 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1993,1995,1997,1998,2000,2001 Massachusetts Institute of Technology
@@ -399,8 +399,8 @@ extern SCHEME_OBJECT * memory_base;
 #define FIXNUM_TO_DOUBLE(fixnum) ((double) (FIXNUM_TO_LONG (fixnum)))
 
 #define DOUBLE_TO_FIXNUM_P(number)					\
-  (((number) > (((double) SMALLEST_FIXNUM) - 0.5)) &&			\
-   ((number) < (((double) BIGGEST_FIXNUM) + 0.5)))
+  (((number) > ((double) (SMALLEST_FIXNUM - 1)))			\
+   && ((number) < ((double) (BIGGEST_FIXNUM + 1))))
 
 #ifdef HAVE_DOUBLE_TO_LONG_BUG
 #define DOUBLE_TO_FIXNUM double_to_fixnum
