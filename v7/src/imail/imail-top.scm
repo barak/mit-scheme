@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.74 2000/05/19 20:57:56 cph Exp $
+;;; $Id: imail-top.scm,v 1.75 2000/05/19 21:12:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -775,10 +775,10 @@ With prefix argument N, undeletes backward N messages,
 	  (message
 	   (let ((message (selected-message)))
 	     (if (message-deleted? message)
-		 (or (navigator/next-message message message-undeleted?)
-		     (navigator/previous-message message message-undeleted?)
-		     (navigator/next-message message)
-		     (navigator/previous-message message))
+		 (or (next-message message message-undeleted?)
+		     (previous-message message message-undeleted?)
+		     (next-message message)
+		     (previous-message message))
 		 message))))
       (expunge-deleted-messages folder)
       (select-message folder message))))
