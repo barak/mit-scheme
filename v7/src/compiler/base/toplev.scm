@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.52 1993/11/29 19:11:24 gjr Exp $
+$Id: toplev.scm,v 4.53 1997/06/12 04:35:47 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,7 +37,76 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;;; Usual Entry Point: File Compilation
+;;;; Incremental File Compiler
+
+(define compile-file:override-usual-integrations '())
+(define compile-file:sf-only? #f)
+(define compile-file:force? #f)
+(define compile-file)
+(let ((scm-pathname (lambda (path) (pathname-new-type path "scm")))
+      (bin-pathname (lambda (path) (pathname-new-type path "bin")))
+      (ext-pathname (lambda (path) (pathname-new-type path "ext")))
+      (com-pathname (lambda (path) (pathname-new-type path "com"))))
+
+  (define (process-file input-file output-file dependencies processor)
+    (let ((doit (lambda () (processor input-file output-file dependencies))))
+    (if compile-file:force?
+	(doit)
+	(let ((reasons
+	       (let ((output-time (file-modification-time output-file)))
+		 (if (not output-time)
+		     (list input-file)
+		     (list-transform-positive (cons input-file dependencies)
+		       (lambda (dependency)
+			 (let ((dep-time (file-modification-time dependency)))
+			   (if dep-time
+			       (> dep-time output-time)
+			       (begin
+				 (warn "Missing dependency:"
+				       (->namestring dependency))
+				 #f)))))))))
+	  (if (not (null? reasons))
+	      (begin
+		(newline)
+		(write-string ";Generating ")
+		(write (->namestring output-file))
+		(write-string " because of:")
+		(for-each (lambda (reason)
+			    (write-char #\space)
+			    (write (->namestring reason)))
+			  reasons)
+		(doit)))))))
+
+  (set! compile-file
+	(named-lambda (compile-file file #!optional dependencies syntax-table)
+	  (process-file (scm-pathname file)
+			(bin-pathname file)
+			(map ext-pathname
+			     (if (default-object? dependencies)
+				 '()
+				 dependencies))
+	    (lambda (input-file output-file dependencies)
+	      (fluid-let ((sf/default-syntax-table
+			   (if (default-object? syntax-table)
+			       #f
+			       syntax-table))
+			  (sf/default-declarations
+			   `((USUAL-INTEGRATIONS
+			      ,@compile-file:override-usual-integrations)
+			     ,@(if (null? dependencies)
+				   '()
+				   `((INTEGRATE-EXTERNAL ,@dependencies))))))
+		(sf input-file output-file))))
+	  (if (not compile-file:sf-only?)
+	      (process-file (bin-pathname file)
+			    (com-pathname file)
+			    '()
+		(lambda (input-file output-file dependencies)
+		  dependencies
+		  (fluid-let ((compiler:coalescing-constant-warnings? #f))
+		    (compile-bin-file input-file output-file))))))))
+
+;;;; Non-Incremental File Compiler
 
 (define (cf input #!optional output)
   (let ((kernel
