@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.4 1989/07/24 17:46:33 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.5 1991/05/06 22:48:16 jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Generator
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -43,60 +44,99 @@ MIT in each case. |#
 (define *interned-variables*)
 (define *interned-assignments*)
 (define *interned-uuo-links*)
+(define *interned-global-links*)
+(define *interned-static-variables*)
 
-(define (allocate-constant-label)
+(define (allocate-named-label prefix)
   (let ((label
 	 (string->uninterned-symbol
-	  (string-append "constant-" (number->string *next-constant*)))))
+	  (string-append prefix (number->string *next-constant*)))))
     (set! *next-constant* (1+ *next-constant*))
     label))
 
-(define-integrable (object->label find read write)
+(define (allocate-constant-label)
+  (allocate-named-label "CONSTANT-"))
+
+(define-integrable (object->label find read write allocate-label)
   (lambda (object)
     (let ((entry (find object (read))))
       (if entry
 	  (cdr entry)
-	  (let ((label (allocate-constant-label)))
+	  (let ((label (allocate-label object)))
 	    (write (cons (cons object label)
 			 (read)))
 	    label)))))
 
 (let-syntax ((->label
-	      (macro (find var)
+	      (macro (find var #!optional suffix)
 		`(object->label ,find
 				(lambda () ,var)
 				(lambda (new)
 				  (declare (integrate new))
-				  (set! ,var new))))))
+				  (set! ,var new))
+				,(if (default-object? suffix)
+				     `(lambda (object)
+					object ; ignore
+					(allocate-named-label "OBJECT-"))
+				     `(lambda (object)
+					(allocate-named-label
+					 (string-append (symbol->string object)
+							,suffix))))))))
+  (define constant->label
+    (->label assv *interned-constants*))
 
-  (define constant->label (->label assv *interned-constants*))
+  (define free-reference-label
+    (->label assq *interned-variables* "-READ-CELL-"))
 
-  (define free-reference-label (->label assq *interned-variables*))
+  (define free-assignment-label
+    (->label assq *interned-assignments* "-WRITE-CELL-"))
 
-  (define free-assignment-label (->label assq *interned-assignments*))
+  (define free-static-label
+    (->label assq *interned-static-variables* "-HOME-"))
 
   ;; End of let-syntax
   )
 
-;; This one is different because a different uuo-link is used for different
+;; These are different because different uuo-links are used for different
 ;; numbers of arguments.
 
-(define (free-uuo-link-label name frame-size)
-  (let ((entry (assq name *interned-uuo-links*)))
-    (if entry
-	 (let ((place (assv frame-size (cdr entry))))
-	   (if place
-	       (cdr place)
-	       (let ((label (allocate-constant-label)))
-		 (set-cdr! entry
-			   (cons (cons frame-size label)
-				 (cdr entry)))
-		 label)))
-	 (let ((label (allocate-constant-label)))
-	   (set! *interned-uuo-links*
-		 (cons (list name (cons frame-size label))
-		       *interned-uuo-links*))
-	   label))))
+(define (allocate-uuo-link-label prefix name frame-size)
+  (allocate-named-label
+   (string-append prefix
+		  (symbol->string name)
+		  "-"
+		  (number->string (-1+ frame-size))
+		  "-ARGS-")))
+
+(define-integrable (uuo-link-label read write! prefix)
+  (lambda (name frame-size)
+    (let* ((all (read))
+	   (entry (assq name all)))
+      (if entry
+	  (let ((place (assv frame-size (cdr entry))))
+	    (if place
+		(cdr place)
+		(let ((label (allocate-uuo-link-label prefix name frame-size)))
+		  (set-cdr! entry
+			    (cons (cons frame-size label)
+				  (cdr entry)))
+		  label)))
+	  (let ((label (allocate-uuo-link-label prefix name frame-size)))
+	    (write! (cons (list name (cons frame-size label))
+			  all))
+	    label)))))
+
+(define free-uuo-link-label
+  (uuo-link-label (lambda () *interned-uuo-links*)
+		  (lambda (new)
+		    (set! *interned-uuo-links* new))
+		  ""))
+
+(define global-uuo-link-label
+  (uuo-link-label (lambda () *interned-global-links*)
+		  (lambda (new)
+		    (set! *interned-global-links* new))
+		  "GLOBAL-"))
 
 (define-integrable (set-current-branches! consequent alternative)
   (set-pblock-consequent-lap-generator! *current-bblock* consequent)
