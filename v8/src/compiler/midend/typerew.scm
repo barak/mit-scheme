@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.15 1996/07/22 18:04:14 adams Exp $
+$Id: typerew.scm,v 1.16 1996/07/22 18:06:48 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -1522,7 +1522,6 @@ MIT in each case. |#
 (let ((&*                 (make-primitive-procedure '&*))
       (&/                 (make-primitive-procedure '&/))
       (type:inexact+0     (type:or type:inexact-number type:exact-zero))
-      (type:fixnum-not-0  (type:except type:fixnum type:exact-zero))
       (type:exact-int-not-0  (type:except type:exact-integer type:exact-zero))
       (type:flonum+0      (type:or type:flonum type:exact-zero))
       (type:not-fixnum    (type:not type:fixnum)))
