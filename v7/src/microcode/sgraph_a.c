@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.10 1990/01/18 00:43:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.11 1990/02/06 22:04:04 pas Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -36,6 +36,7 @@ MIT in each case. */
 #include "prims.h"
 #include "Sgraph.h"
 #include "array.h"
+#include "x11.h"
 
 #define SB_DEVICE_ARG(arg) (arg_nonnegative_integer (arg))
 
@@ -75,7 +76,154 @@ arg_plotting_box (arg_number, plotting_box)
     error_wrong_type_arg (arg_number);
   return;
 }
+
+DEFINE_PRIMITIVE ("XPLOT-ARRAY-0", 
+		  Prim_xplot_array_0, 6, 6, 
+		  "(XPLOT-ARRAY-0 WINDOW ARRAY BOX OFFSET SCALE FILL)")
+{
+  SCHEME_OBJECT array;
+  float plotting_box [4];
+  REAL offset, scale;
+  PRIMITIVE_HEADER (6);
+  { 
+    struct xwindow * xw = (WINDOW_ARG (1));
+    CHECK_ARG (2, ARRAY_P);
+    array = (ARG_REF (2));
+    arg_plotting_box (3, plotting_box);
+    offset = (arg_real (4));	/* arg_real is defined in array.h */
+    scale = (arg_real (5));
+    XPlot_C_Array_With_Offset_Scale
+      (xw,
+       (ARRAY_CONTENTS (array)),
+       (ARRAY_LENGTH (array)),
+       plotting_box,
+       (arg_index_integer (6, 2)),
+       offset,
+       scale);
+    PRIMITIVE_RETURN (UNSPECIFIC);
+  }}
 
+/* The following are taken from x11graphics.c 
+ */
+
+struct gw_extra
+{
+  float x_left;
+  float x_right;
+  float y_bottom;
+  float y_top;
+  float x_slope;
+  float y_slope;
+  int x_cursor;
+  int y_cursor;
+};
+
+#define XW_EXTRA(xw) ((struct gw_extra *) ((xw) -> extra))
+
+#define XW_X_LEFT(xw) ((XW_EXTRA (xw)) -> x_left)
+#define XW_X_RIGHT(xw) ((XW_EXTRA (xw)) -> x_right)
+#define XW_Y_BOTTOM(xw) ((XW_EXTRA (xw)) -> y_bottom)
+#define XW_Y_TOP(xw) ((XW_EXTRA (xw)) -> y_top)
+#define XW_X_SLOPE(xw) ((XW_EXTRA (xw)) -> x_slope)
+#define XW_Y_SLOPE(xw) ((XW_EXTRA (xw)) -> y_slope)
+#define XW_X_CURSOR(xw) ((XW_EXTRA (xw)) -> x_cursor)
+#define XW_Y_CURSOR(xw) ((XW_EXTRA (xw)) -> y_cursor)
+
+#define ROUND_FLOAT(flonum)						\
+  ((int) (((flonum) >= 0.0) ? ((flonum) + 0.5) : ((flonum) - 0.5)))
+
+static int xmake_x_coord(xw, virtual_device_x)
+     struct xwindow * xw;
+     float virtual_device_x;
+{
+  float device_x = ((XW_X_SLOPE (xw)) * (virtual_device_x - (XW_X_LEFT (xw))));
+  return (ROUND_FLOAT (device_x));
+}
+
+static int xmake_y_coord(xw, virtual_device_y)
+     struct xwindow * xw;
+     float virtual_device_y;
+{
+  float device_y = ((XW_Y_SLOPE (xw)) * (virtual_device_y - (XW_Y_BOTTOM (xw))));
+  return (((XW_Y_SIZE (xw)) - 1) + (ROUND_FLOAT (device_y)));
+}
+
+
+XPlot_C_Array_With_Offset_Scale (xw, Array, Length, Plotting_Box, 
+				 fill_with_lines, Offset, Scale)
+     struct xwindow * xw;
+     float *Plotting_Box; long Length;
+     int fill_with_lines;	/* plots filled with lines from 0 to y(t) */
+     REAL *Array, Scale, Offset;
+{
+  float box_x_min = Plotting_Box[0];
+  float box_y_min = Plotting_Box[1];
+  float box_x_max = Plotting_Box[2];
+  float box_y_max = Plotting_Box[3];
+  float Box_Length = box_x_max - box_x_min;
+  float Box_Height = box_y_max - box_y_min;
+  long i;
+  float        v_d_clipped_offset;
+  fast float   v_d_x, v_d_y, v_d_x_increment; /* virtual device coordinates */
+  fast int    x, y, clipped_offset; /* X window coordinates */
+  fast int    internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+  
+  v_d_x = box_x_min;		/* horizontal starting point */
+  v_d_x_increment = ((float) Box_Length/Length);
+  
+  if (fill_with_lines == 0)
+    {				/* plot just the points */
+      for (i = 0; i < Length; i++)
+	{
+	  x =     (xmake_x_coord (xw, v_d_x));
+	  v_d_y = ((float) (Offset + (Scale * Array[i])));
+	  y =     (xmake_y_coord (xw, v_d_y));
+	  
+	  XDrawPoint
+	    ((XW_DISPLAY (xw)),
+	     (XW_WINDOW (xw)),
+	     (XW_NORMAL_GC (xw)),
+	     (internal_border_width + x),
+	     (internal_border_width + y));
+	  
+	  v_d_x = v_d_x + v_d_x_increment;
+	  /* Can not use    INTEGERS  x+x_increment    because x_increment may round to 0
+	     and we'll never move the cursor from starting point.
+	     Also   Array[i+skip]   will not work well, say 1024 points for 1000 places => last 24 are chopped
+	     whereas the costly loop we do,   downsamples in between more gracefully. 
+	     i.e. loop over  v_d_coordinates - in floats. */
+	}
+    }
+  else
+    {				/* fill with lines */
+      v_d_clipped_offset = min( max(box_y_min, ((float) Offset)), box_y_max);
+      clipped_offset     = (xmake_y_coord (xw, v_d_clipped_offset));
+      /* The above allows us to 
+	 fill with vertical bars from the zero-line  to the graphed point y(x)
+	 and never go outside box. 
+	 */
+      for (i = 0; i < Length; i++)
+	{
+	  x =     (xmake_x_coord (xw, v_d_x));
+	  v_d_y = ((float) (Offset + (Scale * Array[i])));
+	  y =     (xmake_y_coord (xw, v_d_y));
+	  
+	  XDrawLine
+	    ((XW_DISPLAY (xw)),
+	     (XW_WINDOW (xw)),
+	     (XW_NORMAL_GC (xw)),
+	     (internal_border_width + x),
+	     (internal_border_width + clipped_offset),
+	     (internal_border_width + x),
+	     (internal_border_width + y));
+	  
+	  v_d_x = v_d_x + v_d_x_increment;
+	}
+    }
+}
+
+
+
 /* plot-array-0 is suffixed -0   in case we need more versions of array plot */
 
 DEFINE_PRIMITIVE ("PLOT-ARRAY-0", 
@@ -108,8 +256,8 @@ DEFINE_PRIMITIVE ("PLOT-ARRAY-0",
 		  EMPTY_LIST))));
 }
 
-Plot_C_Array_With_Offset_Scale (device, Array, Length, Plotting_Box, fill_with_lines,
-				Offset, Scale)
+Plot_C_Array_With_Offset_Scale (device, Array, Length, Plotting_Box, 
+				fill_with_lines, Offset, Scale)
      int device; 
      float *Plotting_Box; long Length;
      int fill_with_lines;	/* plots filled with lines from 0 to y(t) */
@@ -127,30 +275,33 @@ Plot_C_Array_With_Offset_Scale (device, Array, Length, Plotting_Box, fill_with_l
   index_inc = ((float) Box_Length/Length);
   x_position = box_x_min;
   if (fill_with_lines == 0)
-  {				/* plot just the points */
-    for (i = 0; i < Length; i++)
-    {
-      y_position = ((float) (Offset + (Scale * Array[i])));
-      move2d(device, x_position, y_position);
-      draw2d(device, x_position, y_position);
-      x_position = x_position + index_inc;
+    {				/* plot just the points */
+      for (i = 0; i < Length; i++)
+	{
+	  y_position = ((float) (Offset + (Scale * Array[i])));
+	  move2d(device, x_position, y_position);
+	  draw2d(device, x_position, y_position);
+	  x_position = x_position + index_inc;
+	}
     }
-  }
   else
-  {				/* fill with lines */
-    clipped_offset = min( max(box_y_min, ((float) Offset)), box_y_max);
-    /* fill from zero-line but do not go outside box,
-       (don't bother with starbase clipping) */
-    for (i = 0; i < Length; i++)
-    {
-      y_position = ((float) (Offset + (Scale * Array[i])));
-      move2d(device, x_position, clipped_offset);
-      draw2d(device, x_position, y_position);
-      x_position = x_position + index_inc;
+    {				/* fill with lines */
+      clipped_offset = min( max(box_y_min, ((float) Offset)), box_y_max);
+      /* Fill from zero-line but do not go outside box,
+	 (Don't bother with starbase clipping)
+	 */
+      for (i = 0; i < Length; i++)
+	{
+	  y_position = ((float) (Offset + (Scale * Array[i])));
+	  move2d(device, x_position, clipped_offset);
+	  draw2d(device, x_position, y_position);
+	  x_position = x_position + index_inc;
+	}
     }
-  }
   make_picture_current(device);
 }
+
+
 
 DEFINE_PRIMITIVE ("POLYGON2D", Prim_polygon2d, 2,2, 0)
 {
