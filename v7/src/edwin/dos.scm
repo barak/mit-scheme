@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.16 1994/10/07 20:04:59 adams Exp $
+;;;	$Id: dos.scm,v 1.17 1994/10/25 01:44:33 adams Exp $
 ;;;
-;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-1994 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -474,18 +474,24 @@ Includes the new backup.  Must be > 0."
   true)
 
 (define (os/quit dir)
-  (without-interrupts
-    (lambda ()
-      (with-real-working-directory-pathname dir %quit))))
+  (with-real-working-directory-pathname dir %quit))
 
 (define (with-real-working-directory-pathname dir thunk)
-  (let ((inside dir)
+  (let ((inside (->namestring (directory-pathname-as-file dir)))
 	(outside false))
     (dynamic-wind
      (lambda ()
-       (set! outside (working-directory-pathname))
-       (set-working-directory-pathname! inside))
+       (stop-thread-timer)
+       (set! outside (->namestring
+			  (directory-pathname-as-file
+			   (working-directory-pathname))))
+       (set-working-directory-pathname! inside)
+       ((ucode-primitive set-working-directory-pathname! 1) inside))
      thunk
      (lambda ()
-       (set! inside (working-directory-pathname))
-       (set-working-directory-pathname! outside)))))
+       (set! inside (->namestring
+		     (directory-pathname-as-file
+		      (working-directory-pathname))))
+       ((ucode-primitive set-working-directory-pathname! 1) outside)
+       (set-working-directory-pathname! outside)
+       (start-thread-timer)))))
