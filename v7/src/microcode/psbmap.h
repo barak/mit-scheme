@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.33 1991/07/03 01:32:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.34 1992/01/15 17:31:41 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,6 +35,9 @@ MIT in each case. */
 /* This file contains macros and declarations for "Bintopsb.c"
    and "Psbtobin.c". */
 
+#ifndef PSBMAP_H_INCLUDED
+#define PSBMAP_H_INCLUDED
+
 /* These definitions insure that the appropriate code is extracted
    from the included files.
 */
@@ -52,7 +55,9 @@ MIT in each case. */
 #include "const.h"
 #include "gccode.h"
 
-extern double frexp(), ldexp();
+extern double
+  EXFUN (frexp, (double, int *)),
+  EXFUN (ldexp, (double, int));
 
 #define PORTABLE_VERSION	5
 
@@ -254,3 +259,5 @@ KEYWORD("input", &input_file_name, STRING_KYWRD, SFRMT, NULL)
 
 #define OUTPUT_KEYWORD()					\
 KEYWORD("output", &output_file_name, STRING_KYWRD, SFRMT, NULL)
+
+#endif /* PSBMAP_H_INCLUDED */

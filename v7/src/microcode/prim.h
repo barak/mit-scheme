@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.41 1989/09/20 23:10:39 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.42 1992/01/15 17:29:50 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,7 +36,7 @@ MIT in each case. */
    Note that the following cannot be changed without changing
    Findprim.c. */
 
-extern SCHEME_OBJECT (*(Primitive_Procedure_Table[]))();
+extern SCHEME_OBJECT EXFUN ((*(Primitive_Procedure_Table[])), (void));
 extern int Primitive_Arity_Table[];
 extern int Primitive_Count_Table[];
 extern char *Primitive_Name_Table[];
