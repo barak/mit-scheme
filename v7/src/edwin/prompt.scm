@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.150 1991/10/21 12:06:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.151 1992/01/19 04:47:05 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -545,17 +545,20 @@ a repetition of this command will exit."
     (lambda (completion)
       (if (not (string=? prefix completion))
 	  (insert-completed-string completion)
-	  (completion-message "Sole completion")))
+	  (completion-message "Sole completion"))
+      (flush-completions-list))
     (lambda (completion generate-completions)
       (cond ((not (string=? prefix completion))
-	     (insert-completed-string completion))
+	     (insert-completed-string completion)
+	     (flush-completions-list))
 	    ((ref-variable completion-auto-help)
 	     (pop-up-generated-completions generate-completions))
 	    (else
 	     (completion-message "Next char not unique"))))
     (lambda ()
       (editor-beep)
-      (completion-message "No completions"))))
+      (completion-message "No completions")
+      (flush-completions-list))))
 
 (define (pop-up-generated-completions generate-completions)
   (message "Making completion list...")
@@ -578,7 +581,7 @@ a repetition of this command will exit."
 			(keyboard-read)
 			(kill-pop-up-buffer false))))
 		(clear-message)))))))
-
+
 (define (pop-up-completions-list strings)
   (with-output-to-temporary-buffer " *Completions*"
     (lambda ()
@@ -591,6 +594,11 @@ a repetition of this command will exit."
       (begin
 	(write-string "Possible completions are:\n")
 	(write-strings-densely strings))))
+
+(define (flush-completions-list)
+  (if (let ((buffer (find-buffer " *Completions*")))
+	(and buffer (eq? buffer (object-unhash *previous-popped-up-buffer*))))
+      (kill-pop-up-buffer false)))
 
 (define (completion-message string)
   (if (typein-window? (current-window))
