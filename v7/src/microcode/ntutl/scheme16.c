@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme16.c,v 1.1 1993/07/27 20:53:27 gjr Exp $
+$Id: scheme16.c,v 1.2 1993/08/21 03:51:47 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -36,121 +36,434 @@ MIT in each case. */
    Win16 side of the Win32s version.
  */
 
+#define _WINDLL
 #define W32SUT_16
-#include <stdarg.h>
-#include <windows.h>
-#include <w32sut.h>
-#include "ntw32lib.h"
+#include "ntscmlib.h"
+#include <dos.h>
 
-#ifndef STD_MSGBOX_STYLE
-#  define STD_MSGBOX_STYLE MB_OK
+struct seg_desc_s
+{
+  unsigned long low;
+  unsigned long high;
+};
+
+static BOOL
+DPMI_get_descriptor (UINT selector, struct seg_desc_s far * desc)
+{
+  UINT saved_es;
+
+  _asm
+  {
+	_emit	066h
+	push	di
+	_emit	066h
+	push	bx
+	_emit	066h
+	xor	di,di
+	mov	ax,es
+	mov	word ptr [bp-2],ax
+	les	di, dword ptr 6[bp]
+	mov	bx, word ptr 4[bp]
+	mov	ax, 000bh
+	int	31h
+	jc	fail
+	mov	ax, word ptr [bp-2]
+	mov	es,ax
+	_emit	066h
+	pop	bx
+	_emit	066h
+	pop	di
+	mov	ax,0
+	leave
+	ret
+  fail:
+	mov	ax, word ptr [bp-2]
+	mov	es,ax
+	_emit	066h
+	pop	bx
+	_emit	066h
+	pop	di
+	mov	ax,1
+	leave
+	ret
+  }
+}
+
+static BOOL
+DPMI_set_descriptor (UINT selector, struct seg_desc_s far * desc)
+{
+  UINT saved_es;
+
+  _asm
+  {
+	_emit	066h
+	push	di
+	_emit	066h
+	push	bx
+	_emit	066h
+	xor	di,di
+	mov	ax,es
+	mov	word ptr [bp-2],ax
+	les	di, dword ptr 6[bp]
+	mov	bx, word ptr 4[bp]
+	mov	ax, 000ch
+	int	31h
+	jc	fail
+	mov	ax, word ptr [bp-2]
+	mov	es,ax
+	_emit	066h
+	pop	bx
+	_emit	066h
+	pop	di
+	mov	ax,0
+	leave
+	ret
+  fail:
+	mov	ax, word ptr [bp-2]
+	mov	es,ax
+	_emit	066h
+	pop	bx
+	_emit	066h
+	pop	di
+	mov	ax,1
+	leave
+	ret
+  }
+}
+
+static DWORD
+win16_alloc_scheme_selectors (struct ntw32lib_selalloc_s FAR * buf)
+{
+  UINT cs_sel, ds_sel;
+  struct seg_desc_s desc;
+  unsigned long nbase, nlimit;
+  
+  ds_sel = (AllocSelector (0));
+  if (ds_sel == 0)
+    return (0L);
+  nbase = (GetSelectorBase (buf->ds32));
+
+  nbase = (nbase + buf->base);
+  (void) DPMI_get_descriptor (buf->ds32, & desc);
+
+  desc.low &= 0xffffUL;
+  desc.low |= (nbase << 16);
+  desc.high &= 0x00ffff00UL;
+  desc.high |= (nbase & 0xff000000UL);
+  desc.high |= ((nbase >> 16) & 0xff);
+  (void) DPMI_set_descriptor (ds_sel, & desc);
+
+  cs_sel = (AllocDStoCSAlias (ds_sel));
+  if (cs_sel == 0)
+  {
+#if 0
+    FreeSelector (ds_sel);
 #endif
+    return (0L);
+  }
+  buf->cs = cs_sel;
+  buf->ds = ds_sel;
+  buf->ss = ds_sel;
+
+  nbase = (GetSelectorBase (cs_sel));
+  nlimit = (GetSelectorLimit (cs_sel));
+
+  if ((nbase != 0) && (nlimit != 0))
+    return (1L);
+  else
+  {
+#if 0
+    FreeSelector (cs_sel);
+    FreeSelector (ds_sel);      
+#endif
+    return (0L);
+  }
+}
+
+static DWORD
+win16_release_scheme_selectors (struct ntw32lib_selfree_s FAR * buf)
+{
+#if 0
+  if ((buf->ds != 0) && (buf->ds != buf->ds32))
+    FreeSelector (buf->ds);
+  if ((buf->cs != 0) && (buf->cs != buf->cs32))
+    FreeSelector (buf->cs);
+#endif
+  return (1L);
+}
+
+static BOOL
+DPMI_lock_unlock (UINT fun, unsigned long lin, unsigned long nbytes)
+{
+  _asm
+  {
+    	push	si
+	push	di
+	push	bx
+
+	mov	ax, 4[bp]
+	mov	cx, 6[bp]
+	mov	bx, 8[bp]
+	mov	di, 10[bp]
+	mov	si, 12[bp]
+
+	int	31h
+	jc	fail
+	mov	ax,1
+	jmp	join
+
+	fail:
+	xor	ax,ax
+	join:
+	pop	bx
+	pop	di
+	pop	si
+	leave
+	ret
+  }
+}
+
+static BOOL
+pagelockunlock (unsigned int dpmi_fun, void FAR * low, unsigned long nbytes)
+{
+  unsigned int seg, off;
+  unsigned long base, lin;
+
+  seg = (FP_SEG (low));
+  off = (FP_OFF (low));
+  base = (GetSelectorBase (seg));
+  lin = (base + ((unsigned long) off));
+
+  return (DPMI_lock_unlock (dpmi_fun, lin, nbytes));
+}
+
+static BOOL
+pagelock (void FAR * low, unsigned long nbytes)
+{
+  return (pagelockunlock (0x0600, low, nbytes));
+}
+
+static BOOL
+pageunlock (void FAR * low, unsigned long nbytes)
+{
+  return (pagelockunlock (0x0601, low, nbytes));
+}
+
+static DWORD
+win16_lock_area (struct ntw32lib_vlock_s FAR * buf)
+{
+  return ((DWORD) (pagelock (buf->area, buf->size)));
+}
+
+static DWORD
+win16_unlock_area (struct ntw32lib_vulock_s FAR * buf)
+{
+  return ((DWORD) (pageunlock (buf->area, buf->size)));  
+}
+
+#ifndef MK_FP
+static void FAR * 
+MK_FP (unsigned short seg, unsigned short off)
+{
+  union
+  {
+    struct
+    {
+      unsigned short off;
+      unsigned short seg;
+    } split;
+    void FAR * result;
+  } views;
+
+  views.split.seg = seg;
+  views.split.off = off;
+  return (views.result);
+}
+#endif /* MK_FP */
+
+static WORD htimer = 0;
+static unsigned long timer_index = 0;
+
+static WORD (FAR PASCAL * KillSystemTimer) (WORD htimer);
+
+static struct ntw16lib_itimer_s
+{
+  struct ntw16lib_itimer_s FAR * next;
+  unsigned long FAR * base;
+  unsigned long memtop_off;
+  unsigned long int_code_off;
+  unsigned long int_mask_off;
+  unsigned long bit_mask;
+  unsigned long index;
+  UINT selector;
+  HGLOBAL ghan;
+} FAR * async_timers = ((struct ntw16lib_itimer_s FAR *) NULL);
+
+void FAR _export 
+scheme_asynctimer (void)
+{
+  struct ntw16lib_itimer_s FAR * scm_timer = async_timers;
+
+  while (scm_timer != ((struct ntw16lib_itimer_s FAR *) NULL))
+  {
+    scm_timer->base[scm_timer->int_code_off] |= scm_timer->bit_mask;
+    if ((scm_timer->base[scm_timer->int_mask_off]
+	 & scm_timer->bit_mask)
+	!= 0)
+      scm_timer->base[scm_timer->memtop_off] = ((unsigned long) -1L);
+    scm_timer = scm_timer->next;
+  }
+  return;
+}
 
 static void
-TellUser (char * format, unsigned long value)
+scheme_asynctimer_end (void)
 {
-  char buffer[128];
-
-  wsprintf (&buffer[0],
-	    ((LPCSTR) format),
-	    value);
-	    
-  MessageBox (NULL,
-	      ((LPCSTR) &buffer[0]),
-	      ((LPCSTR) "MIT Scheme Win16 Notification"),
-	      STD_MSGBOX_STYLE);
+  return;
+}
+
+static void
+possibly_uninstall_async_handler (void)
+{
+  if (async_timers != ((struct ntw16lib_itimer_s FAR *) NULL))
+    return;
+  if (htimer != 0)
+  {
+    KillSystemTimer (htimer);
+    htimer = 0;
+  }
+  pageunlock (&async_timers,
+	      (sizeof (struct ntw16lib_itimer_s FAR *)));
+  pageunlock (((void FAR *) scheme_asynctimer),
+	      ((unsigned long) scheme_asynctimer_end)
+	      - ((unsigned long) scheme_asynctimer));
   return;
 }
 
 static DWORD
-win16_allocate_heap (struct ntw32lib_malloc_s FAR * buf)
+win16_flush_timer (struct ntw32lib_ftimer_s FAR * buf)
 {
-  DWORD linear_address = 0L;
-  DWORD handle = 0L;
-  UINT lose  = 0;
-  UINT code = 0;
-    
-#if 0
-  union _REGS regs;
+  unsigned long index = buf->handle;
+  struct ntw16lib_itimer_s FAR * FAR * ptr = & async_timers;
 
-  regs.x.ax = 0x0501;
-  regs.x.bx = (HIWORD (buf->size));
-  regs.x.cx = (LOWORD (buf->size));
-  (void) _int86 (0x31, &regs, &regs);
-
-  if (regs.x.cflag)
+  while ((* ptr) != ((struct ntw16lib_itimer_s FAR *) NULL))
   {
-    TellUser ("DPMI failed.", 0L);
-    return (0L);
+    if (((* ptr) -> index) == index)
+    {
+      struct ntw16lib_itimer_s FAR * current = (* ptr);
+
+      (* ptr) = current->next;
+      if (index == (timer_index - 1))
+	timer_index = index;
+      FreeSelector (current->selector);
+      GlobalPageUnlock (current->ghan);
+      GlobalUnlock (current->ghan);
+      GlobalFree (current->ghan);
+      possibly_uninstall_async_handler ();
+      return (1L);
+    }
+    ptr = & ((* ptr) -> next);
   }
-  linear_address = (MAKELONG (regs.x.cx, regs.x.bx));
-
-#elif 0
-  TellUser ("Trying to allocate %ld bytes.", buf->size);
-  
-  _asm	les	bx,DWORD PTR [bp+4]
-  _asm	mov	bx,WORD PTR es:[bx+2]
-  _asm	mov	cx,WORD PTR es:[bx]
-  _asm	mov	ax,0501H
-  _asm	int	031h
-
-  _asm	jnc	dpmi_wins
-  _asm	mov	WORD PTR [bp-10],1
-  _asm	jmp	dpmi_merge
-
-  _asm  dpmi_wins:
-  _asm	mov	WORD PTR [bp-4],cx
-  _asm	mov	WORD PTR [bp-2],bx
-  _asm	dpmi_merge:
-
-#else
-
-  TellUser ("Trying to allocate %ld bytes.", buf->size);
-  
-  _asm	les	bx,DWORD PTR [bp+4]
-  _asm	mov	ecx,DWORD PTR es:[bx]
-  _asm	mov	ebx,00200000H
-  _asm	mov	edx,1    
-  _asm	mov	ax,0504H
-  _asm	int	031H
-
-  _asm	jnc	dpmi_wins
-  _asm	mov	WORD PTR [bp-10],1
-  _asm	mov	WORD PTR [bp-12],ax
-  _asm	jmp	dpmi_merge
-
-  _asm  dpmi_wins:
-  _asm	mov	DWORD PTR [bp-4],ebx
-  _asm	mov	DWORD PTR [bp-8],esi
-  _asm	dpmi_merge:
-
-#endif
-
-  if (lose)
-  {
-    TellUser ("DPMI call failed 0x%x", ((unsigned long) code));
-    return (0L);
-  }
-      
-  TellUser ("Linear address = 0x%lx.", linear_address);
-  TellUser ("Handle = 0x%lx.", handle);
-  buf->area = linear_address;
-  buf->handle = handle;
-  return (linear_address);
-}
-
-static DWORD
-win16_release_heap (struct ntw32lib_malloc_s FAR * buf)
-{
-  TellUser ("Freeing arena with handle 0x%lx", buf->handle);
-
-  _asm	les	bx,DWORD PTR [bp+4]
-  _asm	mov	si,WORD PTR es:[bx+6]
-  _asm	mov	di,WORD PTR es:[bx+4]
-  _asm	mov	ax,0502H
-  _asm	int	031H
-
   return (0L);
+}
+
+static DWORD
+do_install_async_handler (void)
+{
+  WORD (FAR PASCAL * CreateSystemTimer) (WORD rate, FARPROC callback);
+  HINSTANCE hsystem;
+
+  if (! (pagelock (((void FAR *) scheme_asynctimer),
+		   ((unsigned long) scheme_asynctimer_end)
+		   - ((unsigned long) scheme_asynctimer))))
+    return (WIN32_ASYNC_TIMER_NOLOCK);
+  else if (! (pagelock (&async_timers,
+			(sizeof (struct ntw16lib_itimer_s FAR *)))))
+  {
+    pageunlock (((void FAR *) scheme_asynctimer),
+		((unsigned long) scheme_asynctimer_end)
+		- ((unsigned long) scheme_asynctimer));
+    return (WIN32_ASYNC_TIMER_NOLOCK);
+  }
+
+  hsystem = (GetModuleHandle ("SYSTEM"));
+  CreateSystemTimer = (GetProcAddress (hsystem, "CREATESYSTEMTIMER"));
+  KillSystemTimer = (GetProcAddress (hsystem, "KILLSYSTEMTIMER"));
+
+  if ((CreateSystemTimer == ((WORD (FAR PASCAL *) (WORD, FARPROC)) NULL))
+      || (KillSystemTimer == ((WORD (FAR PASCAL *) (WORD)) NULL)))
+  {
+    possibly_uninstall_async_handler ();
+    return (WIN32_ASYNC_TIMER_NONE);
+  }
+
+  htimer = (CreateSystemTimer (55, ((FARPROC) scheme_asynctimer)));
+  if (htimer == 0)
+  {
+    possibly_uninstall_async_handler ();
+    return (WIN32_ASYNC_TIMER_EXHAUSTED);
+  }
+  return (WIN32_ASYNC_TIMER_OK);
+}
+
+static DWORD
+win16_install_timer (struct ntw32lib_itimer_s FAR * buf)
+{
+  struct ntw16lib_itimer_s FAR * scm_timer;
+  DWORD result;
+  HGLOBAL ghan;
+
+  if (htimer == 0)
+  {
+    result = (do_install_async_handler ());
+    if (result != WIN32_ASYNC_TIMER_OK)
+      return (result);
+  }
+
+  ghan = (GlobalAlloc (GMEM_FIXED, (sizeof (struct ntw16lib_itimer_s))));
+  if (ghan == ((HGLOBAL) NULL))
+  {
+    possibly_uninstall_async_handler ();
+    return (WIN32_ASYNC_TIMER_NOMEM);
+  }
+  scm_timer = ((struct ntw16lib_itimer_s FAR *) (GlobalLock (ghan)));
+  if (scm_timer == ((struct ntw16lib_itimer_s FAR *) NULL))
+  {
+    GlobalFree (ghan);
+    possibly_uninstall_async_handler ();
+    return (WIN32_ASYNC_TIMER_NOLOCK);
+  }
+  if ((GlobalPageLock (ghan)) == 0)
+  {
+    GlobalUnlock (ghan);
+    GlobalFree (ghan);
+    possibly_uninstall_async_handler ();
+    return (WIN32_ASYNC_TIMER_NOLOCK);
+  }
+
+  scm_timer->selector = (AllocSelector (FP_SEG (buf->base)));
+  if (scm_timer->selector == 0)
+  {
+    GlobalPageUnlock (ghan);
+    GlobalUnlock (ghan);
+    GlobalFree (ghan);
+    possibly_uninstall_async_handler ();
+    return (WIN32_ASYNC_TIMER_NOLDT);
+  }
+
+  scm_timer->ghan = ghan;
+  scm_timer->base = (MK_FP (scm_timer->selector, (FP_OFF (buf->base))));
+  scm_timer->memtop_off = buf->memtop_off;
+  scm_timer->int_code_off = buf->int_code_off;
+  scm_timer->int_mask_off = buf->int_mask_off;
+  scm_timer->bit_mask = buf->bit_mask;
+  scm_timer->index = timer_index++;
+  scm_timer->next = async_timers;
+
+  buf->handle = scm_timer->index;
+  async_timers = scm_timer;
+
+  return (WIN32_ASYNC_TIMER_OK);
 }
 
 /* The 32-bit call-back thunk is not really needed right now, but ... */
@@ -176,16 +489,22 @@ ntw16lib_handler (LPVOID buf, DWORD func)
       return (win16_release_heap (buf));
 
     case NTW32LIB_VIRTUAL_LOCK:
-      return (1L);
+      return (win16_lock_area (buf));
 
     case NTW32LIB_VIRTUAL_UNLOCK:
-      return (1L);
+      return (win16_unlock_area (buf));
 
     case NTW32LIB_INSTALL_TIMER:
-      return (0L);
+      return (win16_install_timer (buf));
 
     case NTW32LIB_FLUSH_TIMER:
-      return (0L);
+      return (win16_flush_timer (buf));
+
+    case NTW32LIB_ALLOC_SELECTORS:
+      return (win16_alloc_scheme_selectors (buf));
+
+    case NTW32LIB_FREE_SELECTORS:
+      return (win16_release_scheme_selectors (buf));
 
     default:
       return (0L);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.6 1993/07/27 21:00:54 gjr Exp $
+$Id: ntsig.c,v 1.7 1993/08/21 03:45:54 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -40,54 +40,21 @@ MIT in each case. */
 #include "scheme.h"
 #include "nt.h"
 #include <signal.h>
-/*#include <int.h> SRA*/
 #include "ossig.h"
 #include "osctty.h"
 #include "ostty.h"
 #include "critsec.h"
-/*#include <bios.h> SRA*/
 #include "ntsys.h"
 #include "ntio.h"
-#include "ntexcp.h"
-#include "ntkbd.h"
-#ifdef USE_ZORTECH_CERROR
-#include <cerror.h>
-#endif
 #include "extern.h"
 #include "ntutil.h"
 #include "ntscreen.h"
 #include "ntscmlib.h"
-
-#ifndef fileno
-#define fileno(fp)	((fp)->_file)
-#endif
-
-cc_t EXFUN (DOS_interactive_interrupt_handler, (void));
 
-/* Signal Manipulation */
+/* Signal mask manipulation */
 
-#ifdef UNUSED
-
-static Tsignal_handler
-DEFUN (current_handler, (signo), int signo)
-{
-  Tsignal_handler result = (DOS_signal (signo, SIG_IGN));
-  if (result != SIG_IGN)
-    DOS_signal (signo, result);
-  return (result);
-}
-#endif /* UNUSED */
-
-#define INSTALL_HANDLER DOS_signal
-#define NEED_HANDLER_TRANSACTION
-
-#define ENTER_HANDLER(signo)
-#define ABORT_HANDLER DOS_signal
-#define EXIT_HANDLER DOS_signal
-
-
-/* These could be implemented, at least under DPMI by examining
-   and setting the virtual interrupt state.
+/* These could be implemented, at least under Win32s/DPMI
+   by examining and setting the virtual interrupt state.
  */
 
 void
@@ -108,159 +75,6 @@ DEFUN_VOID (unblock_signals)
   return;
 }
 
-#ifdef UNUSED
-/* Signal Descriptors */
-
-enum dfl_action { dfl_terminate, dfl_ignore, dfl_stop };
-
-struct signal_descriptor
-{
-  int signo;
-  CONST char * name;
-  enum dfl_action action;
-  int flags;
-};
-
-/* `flags' bits */
-#define NOIGNORE 1
-#define NOBLOCK 2
-#define NOCATCH 4
-#define CORE_DUMP 8
-
-static struct signal_descriptor * signal_descriptors;
-static unsigned int signal_descriptors_length;
-static unsigned int signal_descriptors_limit;
-
-static void
-DEFUN (defsignal, (signo, name, action, flags),
-       int signo AND
-       CONST char * name AND
-       enum dfl_action action AND
-       int flags)
-{
-  if (signo == 0)
-    return;
-  if (signal_descriptors_length == signal_descriptors_limit)
-    {
-      signal_descriptors_limit += 8;
-      signal_descriptors =
-	(DOS_realloc (signal_descriptors,
-		     (signal_descriptors_limit *
-		      (sizeof (struct signal_descriptor)))));
-      if (signal_descriptors == 0)
-	{
-	  outf_fatal ("\nUnable to grow signal definitions table.\n");
-	  termination_init_error ();
-	}
-    }
-  {
-    struct signal_descriptor * sd =
-      (signal_descriptors + (signal_descriptors_length++));
-    (sd -> signo) = signo;
-    (sd -> name) = name;
-    (sd -> action) = action;
-    (sd -> flags) = flags;
-  }
-}
-
-static struct signal_descriptor *
-DEFUN (find_signal_descriptor, (signo), int signo)
-{
-  struct signal_descriptor * scan = signal_descriptors;
-  struct signal_descriptor * end = (scan + signal_descriptors_length);
-  for (; (scan < end); scan += 1)
-    if ((scan -> signo) == signo)
-      return (scan);
-  return (0);
-}
-
-CONST char *
-DEFUN (find_signal_name, (signo), int signo)
-{
-  static char buffer [32];
-  struct signal_descriptor * descriptor = (find_signal_descriptor (signo));
-  if (descriptor != 0)
-    return (descriptor -> name);
-  sprintf (buffer, "unknown signal %d", signo);
-  return ((CONST char *) buffer);
-}
-
-#define OS_SPECIFIC_SIGNALS()
-
-#if (SIGABRT == SIGIOT)
-#undef SIGABRT
-#define SIGABRT 0
-#endif
-
-static void
-DEFUN_VOID (initialize_signal_descriptors)
-{
-  signal_descriptors_length = 0;
-  signal_descriptors_limit = 32;
-  signal_descriptors =
-    (DOS_malloc (signal_descriptors_limit *
-		 (sizeof (struct signal_descriptor))));
-  if (signal_descriptors == 0)
-    {
-      outf_error ("\nUnable to allocate signal definitions table.\n");
-      termination_init_error ();
-    }
-
-  defsignal (SIGINT, "SIGINT",		dfl_terminate,	0);
-  defsignal (SIGILL, "SIGILL",		dfl_terminate,	CORE_DUMP);
-  defsignal (SIGFPE, "SIGFPE",		dfl_terminate,	CORE_DUMP);
-  defsignal (SIGSEGV, "SIGSEGV",	dfl_terminate,	CORE_DUMP);
-  defsignal (SIGTERM, "SIGTERM",	dfl_terminate,	0);
-  defsignal (SIGABRT, "SIGABRT",	dfl_terminate,	CORE_DUMP);
-
-  OS_SPECIFIC_SIGNALS ();
-}
-#endif
-
-/* Signal Handlers */
-
-struct handler_record
-{
-  int signo;
-  Tsignal_handler handler;
-};
-
-#define DEFUN_STD_HANDLER(name, statement)				\
-static Tsignal_handler_result						\
-DEFUN (name, (signo), int signo)					\
-{									\
-  int STD_HANDLER_abortp;						\
-  ENTER_HANDLER (signo);						\
-  STD_HANDLER_abortp = (enter_interruption_extent ());			\
-  transaction_begin ();							\
-  {									\
-    struct handler_record * record =					\
-      (dstack_alloc (sizeof (struct handler_record)));			\
-    (record -> signo) = signo;						\
-    (record -> handler) = 0;						\
-    transaction_record_action (tat_abort, ta_abort_handler, record);	\
-  }									\
-  statement;								\
-  if (STD_HANDLER_abortp)						\
-    {									\
-      transaction_abort ();						\
-      exit_interruption_extent ();					\
-    }									\
-  transaction_commit ();						\
-  EXIT_HANDLER (signo, name);						\
-  SIGNAL_HANDLER_RETURN ();						\
-}
-
-
-static void
-DEFUN (ta_abort_handler, (ap), PTR ap)
-{
-  ABORT_HANDLER ((((struct handler_record *) ap) -> signo),
-		 (((struct handler_record *) ap) -> handler));
-}
-#ifdef UNUSED
-#endif /* UNUSED */
-
 #define CONTROL_B_INTERRUPT_CHAR	'B'
 #define CONTROL_G_INTERRUPT_CHAR	'G'
 #define CONTROL_U_INTERRUPT_CHAR	'U'
@@ -268,7 +82,6 @@ DEFUN (ta_abort_handler, (ap), PTR ap)
 #define INTERACTIVE_INTERRUPT_CHAR	'!'
 #define TERMINATE_INTERRUPT_CHAR	'@'
 #define NO_INTERRUPT_CHAR		'0'
-
 
 static void
 DEFUN (echo_keyboard_interrupt, (c, dc), cc_t c AND cc_t dc)
@@ -282,23 +95,8 @@ DEFUN (echo_keyboard_interrupt, (c, dc), cc_t c AND cc_t dc)
     outf_console ("^?");
   else
     outf_console ("%c", c);
-  outf_flush_console();
+  outf_flush_console ();
 }
-
-DEFUN_STD_HANDLER (sighnd_control_g,
-  {
-    tty_set_next_interrupt_char (CONTROL_G_INTERRUPT_CHAR);
-  })
-
-DEFUN_STD_HANDLER (sighnd_control_c,
-  {
-    cc_t int_char;
-
-    int_char = (DOS_interactive_interrupt_handler ());
-    if (int_char != ((cc_t) 0))
-      tty_set_next_interrupt_char (int_char);
-  })
-
 
 /* Keyboard interrupt */
 
@@ -333,7 +131,7 @@ void
 DEFUN (OS_ctty_set_interrupt_enables, (mask), Tinterrupt_enables * mask)
 {
   /* Kludge: ctl-break always enabled. */
-  keyboard_interrupt_enables = (((unsigned char) (*mask))
+  keyboard_interrupt_enables = (((unsigned char) (* mask))
 				| TERMINATE_INTERRUPT_ENABLE);
   return;
 }
@@ -341,15 +139,19 @@ DEFUN (OS_ctty_set_interrupt_enables, (mask), Tinterrupt_enables * mask)
 /* This is a temporary kludge. */
 
 #define NUM_INT_CHANNELS 6
+
 static cc_t int_chars[NUM_INT_CHANNELS];
 static cc_t int_handlers[NUM_INT_CHANNELS];
 
 #define SCREEN_COMMAND_INTERRUPT_FIRST (SCREEN_COMMAND_CLOSE+10)
 
-LRESULT   master_tty_interrupt (HWND tty, WORD command)
+int EXFUN (signal_keyboard_character_interrupt, (int));
+
+LRESULT
+master_tty_interrupt (HWND tty, WORD command)
 {
-    int  ch = int_chars[command - SCREEN_COMMAND_INTERRUPT_FIRST];
-    return (signal_keyboard_character_interrupt (ch));
+  int ch = int_chars[command - SCREEN_COMMAND_INTERRUPT_FIRST];
+  return (signal_keyboard_character_interrupt (ch));
 }
 
 static void
@@ -358,7 +160,8 @@ DEFUN_VOID (update_interrupt_characters)
   extern HANDLE master_tty_window;
   int i;
 
-  for (i = 0; i < KB_INT_TABLE_SIZE; i++) {
+  for (i = 0; i < KB_INT_TABLE_SIZE; i++)
+  {
     keyboard_interrupt_table[i] = NO_INTERRUPT_CHAR;
     SendMessage (master_tty_window, SCREEN_SETBINDING, i, 0);
   }
@@ -398,11 +201,16 @@ DEFUN_VOID (update_interrupt_characters)
 	break;
     }
     keyboard_interrupt_table[(int) (int_chars[i])] = handler;
-    SendMessage (master_tty_window, SCREEN_SETCOMMAND,
-                 SCREEN_COMMAND_INTERRUPT_FIRST+i,
+
+    SendMessage (master_tty_window,
+		 SCREEN_SETCOMMAND,
+                 (SCREEN_COMMAND_INTERRUPT_FIRST + i),
 		 (LPARAM) master_tty_interrupt);
-    SendMessage (master_tty_window, SCREEN_SETBINDING,
-                 int_chars[i], SCREEN_COMMAND_INTERRUPT_FIRST+i);
+
+    SendMessage (master_tty_window,
+		 SCREEN_SETBINDING,
+                 int_chars[i],
+		 (SCREEN_COMMAND_INTERRUPT_FIRST + i));
   }
   return;
 }
@@ -448,31 +256,15 @@ DEFUN (OS_ctty_set_int_char_handlers, (new_int_handlers),
   return;
 }
 
-extern long EXFUN (text_write, (int, CONST unsigned char *, size_t));
-
 static void
 DEFUN (console_write_string, (string), unsigned char * string)
 {
   outf_console ("%s", string);
-  outf_flush_console();
+  outf_flush_console ();
   return;
-}
-
-static void
-DEFUN (console_write_character, (c), unsigned char c)
-{
-  outf_console ("%c", c);
-  outf_flush_console();
-  return;
-}
-
-static unsigned char
-DEFUN_VOID (console_read_character)
-{
-  return  userio_read_char();
 }
 
-void
+static void
 DEFUN_VOID (initialize_keyboard_interrupt_table)
 {
   /* Set up default interrupt characters */
@@ -520,19 +312,10 @@ DEFUN_VOID (print_interrupt_help)
     "(exit) to exit Scheme\r\n"
     );
 
-/*
-  console_write_string ("\nInterrupt Choices are:\n");
-  console_write_string ("C-G interrupt:    G, g, ^G (abort to top level)\n");
-  console_write_string ("C-X interrupt:    X, x, ^x (abort)\n");
-  console_write_string ("C-B interrupt:    B, b, ^B (break)\n");
-  console_write_string ("C-U interrupt:    U, u, ^U (up)\n");
-  console_write_string ("Ignore interrupt: I, i     (dismiss)\n");
-  console_write_string ("Reset scheme:     R, r     (hard reset)\n");
-  console_write_string ("Quit scheme:      Q, q     (exit)\n");
-  console_write_string ("Print help:       ?");
-*/
   return;
 }
+
+extern void EXFUN (tty_set_next_interrupt_char, (cc_t));
 
 #define REQUEST_INTERRUPT_IF_ENABLED(mask) do				\
 {									\
@@ -545,8 +328,6 @@ DEFUN_VOID (print_interrupt_help)
     interrupt_p = 0;							\
 } while (0)
 
-int EXFUN (signal_keyboard_character_interrupt, (int));
-
 int
 DEFUN (signal_keyboard_character_interrupt, (c), int c)
 {
@@ -572,6 +353,7 @@ DEFUN (signal_keyboard_character_interrupt, (c), int c)
     }
     return (0);
   }
+
   else if ((c >= 0) && (c < KB_INT_TABLE_SIZE))
   {
     int interrupt_p, interrupt_char;
@@ -603,21 +385,8 @@ DEFUN (signal_keyboard_character_interrupt, (c), int c)
 	  break;
 	}
 interactive_interrupt:
-	{
-	  cc_t int_char;
-
-	  /*int_char = (DOS_interactive_interrupt_handler ());*/
-	  print_interrupt_help();
-	  int_char = 0;
-	  
-	  if (int_char == ((cc_t) 0))
-	    hard_attn_counter = 0;
-	  else
-	  {
-	    tty_set_next_interrupt_char ((int) int_char);
-	    interrupt_p = 1;
-	  }
-	}
+	print_interrupt_help ();
+	interrupt_p = 0;
 	break;
 
       default:
@@ -626,85 +395,6 @@ interactive_interrupt:
     return (interrupt_p);
   }
   return (0);
-}
-
-cc_t
-DEFUN_VOID (DOS_interactive_interrupt_handler)
-{
-  while (1)
-  {
-    unsigned char response;
-
-    console_write_string
-      ("\nKeyboard interrupt, type character (? for help): ");
-
-    response = (console_read_character ());
-    console_write_character (response);
-
-    switch (response)
-    {
-      case 'b':
-      case 'B':
-      case CONTROL_B:
-	return CONTROL_B_INTERRUPT_CHAR;
-
-      case 'g':
-      case 'G':
-      case CONTROL_G:
-	return CONTROL_G_INTERRUPT_CHAR;
-
-      case 'i':
-      case 'I':
-	return ((cc_t) 0);
-
-      case 'R':
-      case 'r':
-      {
-	extern void EXFUN (soft_reset, (void));
-	soft_reset ();
-	/*NOTREACHED*/
-      }
-
-      case 'q':
-      case 'Q':
-      {
-	console_write_string ("\nTerminate scheme (y or n)? ");
-	response = (console_read_character ());
-	console_write_character (response);
-	if ((response == 'y') || (response == 'Y'))
-	{
-	  console_write_string ("\n");
-	  termination_normal (0);
-	}
-	print_interrupt_help ();
-	break;
-      }
-
-      case 'u':
-      case 'U':
-      case CONTROL_U:
-	return CONTROL_U_INTERRUPT_CHAR;
-
-      case 'x':
-      case 'X':
-      case CONTROL_X:
-	return CONTROL_X_INTERRUPT_CHAR;
-
-      case '?':
-	print_interrupt_help ();
-	break;
-
-      default:
-      {
-	unsigned char temp[128];
-
-	sprintf (temp, "\nIllegal interrupt character: [%c]", response);
-	console_write_string (temp);
-	print_interrupt_help ();
-	break;
-      }
-    }
- }
 }
 
 void
@@ -725,11 +415,13 @@ DEFUN_VOID (OS_restartable_exit)
 
 static void * timer_state = ((void *) NULL);
 
+static char *
 DEFUN_VOID (install_timer)
 {
-  switch (win32_install_async_timer (&Registers[REGBLOCK_INT_CODE],
-				     &Registers[REGBLOCK_INT_MASK],
-				     &Registers[REGBLOCK_MEMTOP],
+  switch (win32_install_async_timer (&Registers[0],
+				     REGBLOCK_MEMTOP,
+				     REGBLOCK_INT_CODE,
+				     REGBLOCK_INT_MASK,
 				     (INT_Global_1 | INT_Timer),
 				     &timer_state))
   {
@@ -751,6 +443,9 @@ DEFUN_VOID (install_timer)
     case WIN32_ASYNC_TIMER_NOMEM:
       return ("Not enough memory to install the timer interrupt handler");
 
+    case WIN32_ASYNC_TIMER_NOLDT:
+      return ("Not enough selectors to fix the timer interrupt handler");
+
     default:
       return ("Unknown asynchronous timer return code");
   }
@@ -771,7 +466,7 @@ void
 DEFUN (NT_initialize_fov, (fov), SCHEME_OBJECT fov)
 {
   int ctr, in;
-  SCHEME_OBJECT iv, imv, prim, mask;
+  SCHEME_OBJECT iv, imv, prim;
   extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
   static int interrupt_numbers[2] =
   {
@@ -800,8 +495,10 @@ DEFUN (NT_initialize_fov, (fov), SCHEME_OBJECT fov)
 void
 DEFUN_VOID (NT_initialize_signals)
 {
-  char * timer_error = (install_timer ());
+  char * timer_error;
 
+  initialize_keyboard_interrupt_table ();
+  timer_error = (install_timer ());
   if (timer_error)
   {
     outf_fatal ("install_timer:  %s", timer_error);

@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: scheme16.mak,v 1.1 1993/07/27 20:53:38 gjr Exp $
+###	$Id: scheme16.mak,v 1.2 1993/08/21 03:54:51 gjr Exp $
 ###
 ###	Copyright (c) 1993 Massachusetts Institute of Technology
 ###
@@ -45,15 +45,9 @@ all: ntw16lib.dll
 # with the Win16 SDK!
 
 ntw16lib.obj: ntw16lib.c ntw32lib.h
-	cl /c /ASw /Fa /G2 /Gsw /Ow /W2 /Zp1 ntw16lib.c
-
-# ntw16lib.dll: ntw16lib.obj ntw16lib.def
-#	link ntw16lib.obj libentry.obj, ntw16lib.dll,ntw16lib.map /map, \
-#	     w32sut16.lib mdllcew.lib libw.lib/noe/nod,ntw16lib.def
+	cl /c /ASw /G2 /Gsw /Ow /W2 /Zp1 ntw16lib.c
 
 ntw16lib.dll: ntw16lib.obj ntw16lib.def
 	link ntw16lib.obj, ntw16lib.dll,ntw16lib.map /map, \
 	     w32sut16.lib mdllcew.lib libw.lib/noe/nod,ntw16lib.def
-
-
 

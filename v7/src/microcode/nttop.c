@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.6 1993/08/03 08:29:55 gjr Exp $
+$Id: nttop.c,v 1.7 1993/08/21 03:48:26 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -42,30 +42,18 @@ MIT in each case. */
 #include "option.h"
 #include "outf.h"
 
-extern void EXFUN (NT_initialize_channels, (void));
-extern void EXFUN (DOS_initialize_ctty, (int interactive));
-extern void EXFUN (DOS_initialize_directory_reader, (void));
-extern void EXFUN (DOS_initialize_environment, (void));
-extern void EXFUN (DOS_initialize_processes, (void));
-extern void EXFUN (DOS_initialize_terminals, (void));
-/*extern void EXFUN (DOS_initialize_trap_recovery, (void));*/
-extern void EXFUN (DOS_initialize_conio, (void));
-extern void EXFUN (DOS_initialize_tty, (void));
-extern void EXFUN (NT_initialize_userio, (void));
-extern void EXFUN (DOS_initialize_real_mode, (void));
-
-extern void EXFUN (DOS_reset_channels, (void));
-extern void EXFUN (DOS_reset_processes, (void));
-extern void EXFUN (DOS_reset_terminals, (void));
 extern void EXFUN (execute_reload_cleanups, (void));
 
-extern void EXFUN (DOS_ctty_save_external_state, (void));
-extern void EXFUN (DOS_ctty_save_internal_state, (void));
-extern void EXFUN (DOS_ctty_restore_internal_state, (void));
-extern void EXFUN (DOS_ctty_restore_external_state, (void));
-
+extern void EXFUN (NT_initialize_channels, (void));
+extern void EXFUN (NT_initialize_directory_reader, (void));
 extern void EXFUN (NT_initialize_signals, (void));
+extern void EXFUN (NT_initialize_traps, (void));
+extern void EXFUN (NT_initialize_tty, (void));
+
+extern void EXFUN (NT_reset_channels, (void));
+
 extern void EXFUN (NT_restore_signals, (void));
+extern void EXFUN (NT_restore_traps, (void));
 
 /* reset_interruptable_extent */
 
@@ -89,29 +77,30 @@ DEFUN_VOID (OS_initialize)
 
   NT_gui_init ();
   NT_initialize_channels ();
-  DOS_initialize_environment ();
-  DOS_initialize_tty ();
-  /*DOS_initialize_trap_recovery ();*/
+  NT_initialize_tty ();
   NT_initialize_signals ();
-  DOS_initialize_directory_reader ();
-  DOS_initialize_conio();
-  /*DOS_initialize_real_mode (); SRA*/
+  NT_initialize_traps ();
+  NT_initialize_directory_reader ();
+
   OS_Name = SYSTEM_NAME;
   OS_Variant = SYSTEM_VARIANT;
 
-  { version_t version_number;
+  {
+    version_t version_number;
 
-    dos_get_version(&version_number);
+    nt_get_version (&version_number);
     outf_console ("MIT Scheme running under %s %d.%d 386/486\r\n",
-		     OS_Variant,
-		     (int) version_number.major, (int) version_number.minor);
+		  OS_Variant,
+		  ((int) version_number.major),
+		  ((int) version_number.minor));
     /* To make our compiler vendors happy. */
-    outf_console(
-      "Copyright (c) 1993 Massachusetts Institute of Technology\r\n");
+    outf_console
+      ("Copyright (c) 1993 Massachusetts Institute of Technology\r\n");
   }
 
   outf_console ("\r\n");
   outf_flush_console ();
+  return;
 }
 
 void
@@ -122,8 +111,9 @@ DEFUN_VOID (OS_reset)
     but the rest seem innocuous.
    */
 
-  DOS_reset_channels ();
+  NT_reset_channels ();
   execute_reload_cleanups ();
+  return;
 }
 
 void
@@ -131,6 +121,7 @@ DEFUN (OS_quit, (code, abnormal_p), int code AND int abnormal_p)
 {
   outf_console ("\nScheme has terminated abnormally!\n");
   OS_restore_external_state ();
+  return;
 }
 
 #ifndef EAGAIN
@@ -195,7 +186,7 @@ DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
 }
 
 void
-DEFUN (DOS_prim_check_errno, (name), enum syscall_names name)
+DEFUN (NT_prim_check_errno, (name), enum syscall_names name)
 {
   if (errno != EINTR)
     error_system_call (errno, name);
@@ -206,12 +197,13 @@ DEFUN (DOS_prim_check_errno, (name), enum syscall_names name)
 void
 OS_restore_external_state (void)
 {
+  NT_restore_traps ();
   NT_restore_signals ();
   return;
 }
 
-void bcopy
-(const char * s1, char * s2, int n)
+void 
+bcopy (const char * s1, char * s2, int n)
 {
   while (n-- > 0)
     *s2++ = *s1++;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.4 1993/07/27 21:27:06 gjr Exp $
+$Id: nttrap.c,v 1.5 1993/08/21 03:48:49 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -32,203 +32,252 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#include <stdarg.h>
 #include "scheme.h"
 #include "os.h"
 #include "nt.h"
 #include "nttrap.h"
-#include "ntexcp.h"
-#include "ntinsn.h"
-#include "extern.h"
+#include "gccode.h"
+#include "ntscmlib.h"
+#include <windows.h>
 
-extern void EXFUN (DOS_initialize_trap_recovery, (void));
-CONST char * EXFUN (find_trap_name, (int trapno));
-extern PTR initial_C_stack_pointer;
+#ifdef W32_TRAP_DEBUG
+extern char * AskUser (char *, int);
+extern int EXFUN (TellUser, (char *, ...));
+extern int EXFUN (TellUserEx, (int, char *, ...));
+#endif /* W32_TRAP_DEBUG */
+
+extern void EXFUN (NT_initialize_traps, (void));
+extern void EXFUN (NT_restore_traps, (void));
+
+extern unsigned short
+  Scheme_Code_Segment_Selector,
+  Scheme_Data_Segment_Selector,
+  Scheme_Stack_Segment_Selector,
+  C_Code_Segment_Selector,
+  C_Data_Segment_Selector,
+  C_Extra_Segment_Selector,
+  C_Stack_Segment_Selector;
+
+extern DWORD
+  C_Stack_Pointer,
+  C_Frame_Pointer;
 
-static enum trap_state trap_state;
-static enum trap_state user_trap_state;
+#ifdef W32_TRAP_DEBUG
 
-static enum trap_state saved_trap_state;
-static int saved_trapno;
-static SIGINFO_T saved_info;
-static struct FULL_SIGCONTEXT * saved_scp;
+static BOOL trap_verbose_p = FALSE;
 
-static unsigned short
-  initial_C_ss = 0,
-  initial_C_ds = 0,
-  initial_C_cs = 0;
+#define IFVERBOSE(command) do						\
+{									\
+  if (trap_verbose_p)							\
+  {									\
+    int result = command;						\
+    if (result == IDCANCEL)						\
+      trap_verbose_p = FALSE;						\
+  }									\
+} while (0)
 
-static void EXFUN (initialize_dos_trap_codes, (void));
-static void EXFUN
-  (continue_from_trap,
-   (int trapno, SIGINFO_T info, struct FULL_SIGCONTEXT * scp));
+#else /* not W32_TRAP_DEBUG */
 
-/*SRA
-void
-DEFUN_VOID (DOS_initialize_trap_recovery)
+#define IFVERBOSE(command)		do { } while (0)
+
+#endif /* W32_TRAP_DEBUG */
+
+static char * trap_output = ((char *) NULL);
+static char * trap_output_pointer = ((char *) NULL);
+
+static void
+DEFUN_VOID (trap_noise_start)
 {
-  extern unsigned short getSS (void);
-
-  initial_C_ss = (getSS ());
-  initial_C_ds = (getDS ());
-  initial_C_cs = (getCS ());
-  trap_state = trap_state_recover;
-  user_trap_state = trap_state_recover;
-  initialize_dos_trap_codes ();
-} */
-
-enum trap_state
-DEFUN (OS_set_trap_state, (state), enum trap_state state)
-{
-  enum trap_state old_trap_state = user_trap_state;
-  user_trap_state = state;
-  trap_state = state;
-  return (old_trap_state);
+  trap_output = ((char *) NULL);
+  trap_output_pointer = ((char *) NULL);
+  return;
 }
 
 static void
-DEFUN_VOID (trap_normal_termination)
+DEFUN (trap_noise, (format), char * format DOTS)
 {
-  trap_state = trap_state_exitting_soft;
-  termination_trap ();
+  va_list arg_ptr;
+  unsigned long size;
+  char * temp;
+  
+  size = (trap_output_pointer - trap_output);
+  temp = ((trap_output == ((char *) NULL))
+	  ? ((char *) (malloc (256)))
+	  : ((char *) (realloc (trap_output, (256 + size)))));
+  if (temp == ((char *) NULL))
+    return;
+
+  trap_output = temp;
+  trap_output_pointer = (temp + size);
+  va_start (arg_ptr, format);
+  size = (wvsprintf (trap_output_pointer, format, arg_ptr));
+  trap_output_pointer += size;
+  va_end (arg_ptr);
+  return;
 }
 
-static void
-DEFUN_VOID (trap_immediate_termination)
+static int
+DEFUN (trap_noise_end, (style), UINT style)
 {
-  trap_state = trap_state_exitting_hard;
-  OS_restore_external_state ();
-  exit (1);
+  int value;
+
+  if (trap_output == ((char *) NULL))
+    return (IDYES);
+
+  value = (MessageBox (NULL,
+		       trap_output,
+		       "MIT Scheme Exception Information",
+		       style));
+  free (trap_output);
+  trap_output = ((char *) NULL);
+  trap_output_pointer = ((char *) NULL);
+  return (value);
 }
 
-static void
-DEFUN_VOID (trap_recover)
+static BOOL
+DEFUN (isvowel, (c), char c)
 {
-  if (WITHIN_CRITICAL_SECTION_P ())
-    {
-      CLEAR_CRITICAL_SECTION_HOOK ();
-      EXIT_CRITICAL_SECTION ({});
-    }
-  reset_interruptable_extent ();
-  continue_from_trap (saved_trapno, saved_info, saved_scp);
+  switch (c)
+  {
+    case 'a':
+    case 'e':
+    case 'i':
+    case 'o':
+    case 'u':
+    case 'A':
+    case 'E':
+    case 'I':
+    case 'O':
+    case 'U':
+      return (TRUE);
+
+    default:
+      return (FALSE);
+  }
 }
 
-void
-DEFUN (trap_handler, (message, trapno, info, scp),
-       CONST char * message AND
-       int trapno AND
-       SIGINFO_T info AND
-       struct FULL_SIGCONTEXT * scp)
+struct exception_name_s
 {
-  int code = ((SIGINFO_VALID_P (info)) ? (SIGINFO_CODE (info)) : 0);
-  Boolean constant_space_broken = (!(CONSTANT_SPACE_SEALED ()));
-  enum trap_state old_trap_state = trap_state;
+  DWORD code;
+  char * name;
+};
 
-  if (old_trap_state == trap_state_exitting_hard)
-  {
-    _exit (1);
-  }
-  else if (old_trap_state == trap_state_exitting_soft)
-  {
-    trap_immediate_termination ();
-  }
-  trap_state = trap_state_trapped;
-  if (WITHIN_CRITICAL_SECTION_P ())
-  {
-    fprintf (stdout,
-	     "\n>> A %s has occurred within critical section \"%s\".\n",
-	     message, (CRITICAL_SECTION_NAME ()));
-    fprintf (stdout, ">> [exception %d (%s), code %d = 0x%x]\n",
-	     trapno, (find_trap_name (trapno)), code, code);
-  }
-  else if (constant_space_broken || (old_trap_state != trap_state_recover))
-  {
-    fprintf (stdout, "\n>> A %s (%d) has occurred.\n", message, trapno);
-    fprintf (stdout, ">> [exception %d (%s), code %d = 0x%x]\n",
-	     trapno, (find_trap_name (trapno)), code, code);
-  }
-  if (constant_space_broken)
-  {
-    fputs (">> Constant space has been overwritten.\n", stdout);
-    fputs (">> Probably a runaway recursion has overflowed the stack.\n",
-	   stdout);
-  }
-  fflush (stdout);
+static struct exception_name_s exception_names[] =
+{
+ {
+   EXCEPTION_ACCESS_VIOLATION,
+   "ACCESS_VIOLATION",
+ },
+ {
+   EXCEPTION_DATATYPE_MISALIGNMENT,
+   "DATATYPE_MISALIGNMENT",
+ },
+ {
+   EXCEPTION_BREAKPOINT,
+   "BREAKPOINT",
+ },
+ {
+   EXCEPTION_SINGLE_STEP,
+   "SINGLE_STEP",
+ },
+ {
+   EXCEPTION_ARRAY_BOUNDS_EXCEEDED,
+   "ARRAY_BOUNDS_EXCEEDED",
+ },
+ {
+   EXCEPTION_FLT_DENORMAL_OPERAND,
+   "FLT_DENORMAL_OPERAND",
+ },
+ {
+   EXCEPTION_FLT_DIVIDE_BY_ZERO,
+   "FLT_DIVIDE_BY_ZERO",
+ },
+ {
+   EXCEPTION_FLT_INEXACT_RESULT,
+   "FLT_INEXACT_RESULT",
+ },
+ {
+   EXCEPTION_FLT_INVALID_OPERATION,
+   "FLT_INVALID_OPERATION",
+ },
+ {
+   EXCEPTION_FLT_OVERFLOW,
+   "FLT_OVERFLOW",
+ },
+ {
+   EXCEPTION_FLT_STACK_CHECK,
+   "FLT_STACK_CHECK",
+ },
+ {
+   EXCEPTION_FLT_UNDERFLOW,
+   "FLT_UNDERFLOW",
+ },
+ {
+   EXCEPTION_INT_DIVIDE_BY_ZERO,
+   "INT_DIVIDE_BY_ZERO",
+ },
+ {
+   EXCEPTION_INT_OVERFLOW,
+   "INT_OVERFLOW",
+ },
+
+ {
+   EXCEPTION_PRIV_INSTRUCTION,
+   "PRIV_INSTRUCTION",
+ },
+ {
+   EXCEPTION_IN_PAGE_ERROR,
+   "IN_PAGE_ERROR",
+ },
+ {
+   EXCEPTION_ILLEGAL_INSTRUCTION,
+   "ILLEGAL_INSTRUCTION",
+ },
+ {
+   EXCEPTION_NONCONTINUABLE_EXCEPTION,
+   "NONCONTINUABLE_EXCEPTION",
+ },
+ {
+   EXCEPTION_STACK_OVERFLOW,
+   "STACK_OVERFLOW",
+ },
+ {
+   EXCEPTION_INVALID_DISPOSITION,
+   "INVALID_DISPOSITION",
+ },
+};
 
-  switch (old_trap_state)
-  {
-  case trap_state_trapped:
-    if ((saved_trap_state == trap_state_recover) ||
-	(saved_trap_state == trap_state_query))
-    {
-      fputs (">> The trap occurred while processing an earlier trap.\n",
-	     stdout);
-      fprintf (stdout,
-	       ">> [The earlier trap raised exception %d (%s), code %d.]\n",
-	       saved_trapno,
-	       (find_trap_name (saved_trapno)),
-	       ((SIGINFO_VALID_P (saved_info))
-		? (SIGINFO_CODE (saved_info))
-		: 0));
-      fputs (((WITHIN_CRITICAL_SECTION_P ())
-	      ? ">> Successful recovery is extremely unlikely.\n"
-	      : ">> Successful recovery is unlikely.\n"),
-	     stdout);
-      break;
-    }
-    else
-      trap_immediate_termination ();
-  case trap_state_recover:
-    if ((WITHIN_CRITICAL_SECTION_P ()) || constant_space_broken)
-    {
-      fputs (">> Successful recovery is unlikely.\n", stdout);
-      break;
-    }
-    else
-    {
-      saved_trap_state = old_trap_state;
-      saved_trapno = trapno;
-      saved_info = info;
-      saved_scp = scp;
-      trap_recover ();
-    }
-  case trap_state_exit:
-    termination_trap ();
-  }
+const int excp_name_limit = ((sizeof (exception_names))
+			     / (sizeof (struct exception_name_s)));
 
-  fflush (stdout);
-  saved_trap_state = old_trap_state;
-  saved_trapno = trapno;
-  saved_info = info;
-  saved_scp = scp;
+static char *
+find_exception_name (DWORD code)
+{
+  int i;
 
-  while (1)
-  {
-    char option;
-    static CONST char * trap_query_choices[] =
-    {
-      "I = terminate immediately",
-      "N = terminate normally",
-      "R = attempt recovery",
-      "Q = terminate normally",
-      0
-      };
-    option = (userio_choose_option
-	      ("Choose one of the following actions:",
-	       "Action -> ",
-	       trap_query_choices));
-    switch (option)
-    {
-      case 'I':
-        trap_immediate_termination ();
-      case '\0':
-        /* Error in IO. Assume everything scrod. */
-      case 'N':
-      case 'Q':
-        trap_normal_termination ();
-      case 'R':
-        trap_recover ();
-    }
-  }
+  for (i = 0; i < excp_name_limit; i++)
+    if (exception_names[i].code == code)
+      return (exception_names[i].name);
+  return ((char *) NULL);
+}
+
+static void
+DEFUN (describe_trap, (noise, code),
+       char * noise AND DWORD code)
+{
+  char * name;
+
+  name = (find_exception_name (code));
+  if (name == ((char *) NULL))
+    trap_noise (">> The %s an unknown trap [code = %d].\n",
+		noise, code);
+  else
+    trap_noise (">> The %s a%s %s trap.\n",
+		noise,
+		((isvowel (name[0])) ? "n" : ""),
+		name);
+  return;
 }
 
 #define STATE_UNKNOWN		(LONG_TO_UNSIGNED_FIXNUM (0))
@@ -252,195 +301,258 @@ static struct trap_recovery_info dummy_recovery_info =
   SHARP_F
 };
 
-struct dos_trap_code_desc
+struct nt_trap_code_desc
 {
   int trapno;
   unsigned long code_mask;
   unsigned long code_value;
   char *name;
 };
-
-static struct dos_trap_code_desc dos_trap_codes [64];
-
-#define DECLARE_DOS_TRAP_CODE(s, m, v, n)				\
-{									\
-  ((dos_trap_codes [i]) . trapno) = (s);				\
-  ((dos_trap_codes [i]) . code_mask) = (m);				\
-  ((dos_trap_codes [i]) . code_value) = (v);				\
-  ((dos_trap_codes [i]) . name) = (n);					\
-  i += 1;								\
-}
-
-static SCHEME_OBJECT
-DEFUN (find_trap_code_name, (trapno, info, scp),
-       int trapno AND
-       SIGINFO_T info AND
-       struct FULL_SIGCONTEXT * scp)
-{
-  unsigned long code = 0;
-  char * name = 0;
-  if (SIGINFO_VALID_P (info))
-    {
-      code = (SIGINFO_CODE (info));
-      {
-	struct dos_trap_code_desc * entry = (& (dos_trap_codes [0]));
-	while ((entry -> trapno) != DOS_INVALID_TRAP)
-	  if (((entry -> trapno) == trapno)
-	      && (((entry -> code_mask) & code) == (entry -> code_value)))
-	  {
-	    name = (entry -> name);
-	    break;
-	  }
-	  else
-	    entry += 1;
-      }
-    }
-  return (cons ((long_to_integer ((long) code)),
-		((name == 0) ? SHARP_F
-		 : (char_pointer_to_string ((unsigned char *) name)))));
-}
 
-static void
-DEFUN_VOID (initialize_dos_trap_codes)
-{
-  unsigned int i = 0;
+static enum trap_state trap_state;
+static enum trap_state user_trap_state;
 
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Integer_divide_by_zero,
-			 0, 0,
-			 "Integer divide by zero");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Debug_exception,
-			 0, 0,
-			 "Debug exception");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Non_maskable_interrupt,
-			 0, 0,
-			 "Non-maskable interrupt");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Breakpoint,
-			 0, 0,
-			 "Breakpoint");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Integer_overflow,
-			 0, 0,
-			 "Integer overflow");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Bounds_check,
-			 0, 0,
-			 "Bounds check");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Invalid_opcode,
-			 0, 0,
-			 "Invalid opcode");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Numeric_co_processor_not_available,
-			 0, 0,
-			 "Numeric co-processor not available");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Double_fault,
-			 0, 0,
-			 "Double fault");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Numeric_co_processor_segment_overrun,
-			 0, 0,
-			 "Numeric co-processor segment overrun");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Invalid_TSS,
-			 0, 0,
-			 "Invalid TSS");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Segment_not_present,
-			 0, 0,
-			 "Segment not present");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Stack_exception,
-			 0, 0,
-			 "Stack exception");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_General_protection,
-			 0, 0,
-			 "General protection");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Page_Fault,
-			 0, 0,
-			 "Page Fault");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Floating_point_exception,
-			 0, 0,
-			 "Floating-point exception");
-  DECLARE_DOS_TRAP_CODE (DOS_EXCP_Alignment_check,
-			 0, 0,
-			 "Alignment check");
-  DECLARE_DOS_TRAP_CODE (DOS_INVALID_TRAP, 0, 0, ((char *) 0));
+static enum trap_state saved_trap_state;
+static DWORD saved_trap_code;
+
+enum trap_state
+DEFUN (OS_set_trap_state, (state), enum trap_state state)
+{
+  enum trap_state old_trap_state = user_trap_state;
+
+  user_trap_state = state;
+  trap_state = state;
+  return (old_trap_state);
+}
+
+static void
+DEFUN_VOID (trap_normal_termination)
+{
+  trap_state = trap_state_exitting_soft;
+  termination_trap ();
+}
+
+static void
+DEFUN_VOID (trap_immediate_termination)
+{
+  extern void EXFUN (OS_restore_external_state, (void));
+
+  trap_state = trap_state_exitting_hard;
+  OS_restore_external_state ();
+  exit (1);
+}
+
+void
+DEFUN_VOID (NT_initialize_traps)
+{
+  trap_state = trap_state_recover;
+  user_trap_state = trap_state_recover;
   return;
 }
 
-static CONST char *
-trap_names[NUM_DOS_EXCP] =
+void
+DEFUN_VOID (NT_restore_traps)
 {
-  "Integer divide by zero",
-  "Debugging trap",
-  "NMI interrupt",
-  "Breakpoint exception",
-  "INTO -- integer overflow",
-  "BOUND -- range exceeded",
-  "UD -- invalid opcode",
-  "NM -- 387 not available",
-  "DF -- double fault",
-  "387 segment overrun",
-  "TS -- invalid TSS",
-  "NP -- segment not present",
-  "SS -- stack fault",
-  "GP -- general protection",
-  "PF -- page fault",
-  ((CONST char *) NULL),
-  "MF -- floating-point error",
-  "AC -- alignment check"
-};
-
-CONST char *
-DEFUN (find_trap_name, (trapno), int trapno)
-{
-  static char buffer [64], * name;
-  if ((trapno >= 0) &&
-      (trapno < ((sizeof (trap_names)) / (sizeof (char *)))))
-  {
-    name = trap_names[trapno];
-    if ((name != ((char *) NULL))
-        && (name[0] != '\0'))
-      return ((CONST char *) name);
-  }
-  sprintf (buffer, "unknown exception %d", trapno);
-  return ((CONST char *) buffer);
+  return;
 }
 
-static void
-DEFUN (setup_trap_frame, (trapno, info, scp, trinfo, new_stack_pointer),
-       int trapno AND
-       SIGINFO_T info AND
-       struct FULL_SIGCONTEXT * scp AND
-       struct trap_recovery_info * trinfo AND
-       SCHEME_OBJECT * new_stack_pointer)
+static int
+DEFUN (display_exception_information, (info, context, flags),
+       PEXCEPTION_RECORD info AND PCONTEXT context AND int flags)
 {
-  SCHEME_OBJECT handler;
+  int value;
+  char msgbuf[4096];
+  char * flag, * name, * bufptr;
+
+  bufptr = &msgbuf[0];
+  name = (find_exception_name (info->ExceptionCode));
+  flag = ((info->ExceptionFlags == 0) ? "Continuable" : "Non-continuable");
+  if (name == ((char *) NULL))
+    bufptr += (sprintf (bufptr, "%s Unknown Exception %d Raised at address 0x%lx",
+			flag, info->ExceptionCode, info->ExceptionAddress));
+  else
+    bufptr += (sprintf (bufptr, "%s %s Exception Raised at address 0x%lx",
+			flag, name, info->ExceptionAddress));
+
+#ifdef W32_TRAP_DEBUG
+  if (context == ((PCONTEXT) NULL))
+    bufptr += (sprintf (bufptr, "\nContext is NULL."));
+  else
+  {
+    if ((context->ContextFlags & CONTEXT_CONTROL) != 0)
+      bufptr += (sprintf (bufptr,
+			  "\nContext contains CONTROL information."));
+    if ((context->ContextFlags & CONTEXT_INTEGER) != 0)
+      bufptr += (sprintf (bufptr,
+			  "\nContext contains INTEGER registers."));
+    if ((context->ContextFlags & CONTEXT_SEGMENTS) != 0)
+      bufptr += (sprintf (bufptr,
+			  "\nContext contains SEGMENT registers."));
+    if ((context->ContextFlags & CONTEXT_FLOATING_POINT) != 0)
+      bufptr += (sprintf (bufptr,
+			  "\nContext contains floating-point registers."));
+    bufptr += (sprintf (bufptr, "\ncontext->Eip        = 0x%lx.", context->Eip));
+    bufptr += (sprintf (bufptr, "\ncontext->Esp        = 0x%lx.", context->Esp));
+    bufptr += (sprintf (bufptr, "\nStack_Pointer       = 0x%lx.", Stack_Pointer));
+    bufptr += (sprintf (bufptr, "\nwinnt_address_delta = 0x%lx.", winnt_address_delta));
+    bufptr += (sprintf (bufptr, "\nadj (Stack_Pointer) = 0x%lx.",
+			(ADDR_TO_SCHEME_ADDR (Stack_Pointer))));
+    bufptr += (sprintf (bufptr, "\nCS = 0x%04x;\tC CS = 0x%04x;\tS CS = 0x%04x.",
+			context->SegCs,
+			C_Code_Segment_Selector,
+			Scheme_Code_Segment_Selector));
+
+    bufptr += (sprintf (bufptr, "\nDS = 0x%04x;\tC DS = 0x%04x;\tS DS = 0x%04x.",
+			context->SegDs,
+			C_Data_Segment_Selector,
+			Scheme_Data_Segment_Selector));
+
+    bufptr += (sprintf (bufptr, "\nES = 0x%04x;\tC ES = 0x%04x;\tS ES = 0x%04x.",
+			context->SegEs,
+			C_Extra_Segment_Selector,
+			C_Data_Segment_Selector));
+
+    bufptr += (sprintf (bufptr, "\nSS = 0x%04x;\tC SS = 0x%04x;\tS SS = 0x%04x.",
+			context->SegSs,
+			C_Stack_Segment_Selector,
+			Scheme_Stack_Segment_Selector));
+  }
+#endif /* W32_TRAP_DEBUG */
+
+  info = info->ExceptionRecord;
+  if (info != ((PEXCEPTION_RECORD) NULL))
+    bufptr += (sprintf (bufptr,
+			"\nTrap occurred within an earlier trap."));
+
+#ifdef W32_TRAP_DEBUG
+  if (flags == MB_YESNO)
+    bufptr += (sprintf (bufptr, "\n\nDisplay More Information?"));
+#else /* not W32_TRAP_DEBUG */
+  flags = MB_OK;
+  bufptr +=
+    (sprintf (bufptr,
+	      "\n\nScheme cannot find the state necessary to continue."));
+#endif /* W32_TRAP_DEBUG */
+
+  value = (MessageBox (NULL, &msgbuf[0],
+		       "MIT Scheme Exception Info",
+		       (flags | MB_ICONSTOP)));
+  return (value);
+}
+
+#define TEMP_STACK_LEN 2048	/* objects */
+
+static BOOL
+  return_by_aborting,
+  clear_real_stack;
+
+static SCHEME_OBJECT
+  temp_stack_buffer[TEMP_STACK_LEN],
+  * temp_stack = &temp_stack_buffer[0],
+  * temp_stack_end = &temp_stack_buffer[TEMP_STACK_LEN],
+  * temp_stack_limit,
+  * real_stack_guard,
+  * real_stack_pointer;
+
+extern int EXFUN (WinntExceptionTransferHook, (void));
+extern void EXFUN (callWinntExceptionTransferHook, (void));
+
+int
+DEFUN_VOID (WinntExceptionTransferHook)
+{
+  /* These must be static because the memcpy below may
+     be overwriting this procedure's locals!
+   */
+
+  static int size;
+  static SCHEME_OBJECT * temp_stack_ptr, * new_sp;
+
+  temp_stack_ptr = Stack_Pointer;
+  size = (temp_stack_limit - temp_stack_ptr);
+  IFVERBOSE (TellUserEx (MB_OKCANCEL, "WinntExceptionTransferHook."));
+
+  if (clear_real_stack)
+    Initialize_Stack ();
+  else
+  {
+    Stack_Pointer = real_stack_pointer;
+    Stack_Guard = real_stack_guard;
+  }
+    
+  new_sp = (real_stack_pointer - size);
+  if (new_sp != temp_stack_ptr)
+    memcpy (new_sp, temp_stack_ptr, (size * (sizeof (SCHEME_OBJECT))));
+  Stack_Pointer = new_sp;
+  SET_INTERRUPT_MASK ((FETCH_INTERRUPT_MASK ()));
+  if (return_by_aborting)
+    abort_to_interpreter (PRIM_APPLY);
+  return (PRIM_APPLY);
+}
+
+extern unsigned short EXFUN (getCS, (void));
+extern unsigned short EXFUN (getDS, (void));
+extern unsigned short EXFUN (getSS, (void));
+
+/* Needed because Stack_Check checks for <= instead of < when pushing */
+
+#define MAGIC_BUFFER_SIZE	1
+
+static void
+DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
+       DWORD code
+       AND PCONTEXT context
+       AND struct trap_recovery_info * trinfo
+       AND SCHEME_OBJECT * new_stack_pointer)
+{
   SCHEME_OBJECT trap_name, trap_code;
+  SCHEME_OBJECT handler;
   int stack_recovered_p = (new_stack_pointer != 0);
   long saved_mask = (FETCH_INTERRUPT_MASK ());
   SET_INTERRUPT_MASK (0);	/* To prevent GC for now. */
-  if ((! (Valid_Fixed_Obj_Vector ())) ||
-      ((handler = (Get_Fixed_Obj_Slot (Trap_Handler))) == SHARP_F))
+
+  IFVERBOSE (TellUserEx (MB_OKCANCEL,
+			 "setup_trap_frame (%s, 0x%lx, %s, 0x%lx, 0x%lx).",
+			 (find_exception_name (code)),
+			 context,
+			 trinfo,
+			 new_stack_pointer));
+
+  if ((! (Valid_Fixed_Obj_Vector ()))
+      || ((handler = (Get_Fixed_Obj_Slot (Trap_Handler))) == SHARP_F))
     {
-      outf_fatal ("There is no trap handler for recovery!\n");
-      outf_fatal ("Trap = %s.\n", (find_trap_name (trapno)));
-      outf_fatal ("pc = %04x:%08lx; sp = %04x:%08lx.\n",
-	       scp->sc_cs, scp->sc_eip, scp->sc_ss, scp->sc_esp);
+      trap_noise_start ();
+      trap_noise ("There is no trap handler for recovery!\n");
+      describe_trap ("trap is", code);
+      (void) trap_noise_end (MB_OK | MB_ICONSTOP);
       termination_trap ();
     }
   if (Free > MemTop)
     Request_GC (0);
 
-  trap_name =
-    ((trapno <= 0)
-     ? SHARP_F
-     : (char_pointer_to_string
-	((unsigned char *) (find_trap_name (trapno)))));
-  trap_code = (find_trap_code_name (trapno, info, scp));
-  if (!stack_recovered_p)
-    {
+  trap_name = ((context == ((PCONTEXT) NULL))
+	       ? SHARP_F
+	       : (char_pointer_to_string (find_exception_name (code))));
+  trap_code = (long_to_integer (0));
+
+  if (win32_under_win32s_p ())
+  {
+    if (! stack_recovered_p)
       Initialize_Stack ();
-     Will_Push (CONTINUATION_SIZE);
-      Store_Return (RC_END_OF_COMPUTATION);
-      Store_Expression (SHARP_F);
-      Save_Cont ();
-     Pushed ();
-    }
+    clear_real_stack = FALSE;
+    real_stack_pointer = Stack_Pointer;
+    real_stack_guard = Stack_Guard;
+    temp_stack_limit = Stack_Pointer;
+  }
   else
-    Stack_Pointer = new_stack_pointer;
+  {
+    clear_real_stack = (!stack_recovered_p);
+    real_stack_pointer = new_stack_pointer;
+    real_stack_guard = Stack_Guard;
+    temp_stack_limit = temp_stack_end;
+    Stack_Pointer = temp_stack_end;
+    Stack_Guard = temp_stack;
+  }
+
  Will_Push (7 + CONTINUATION_SIZE);
   STACK_PUSH (trinfo -> extra_trap_info);
   STACK_PUSH (trinfo -> pc_info_2);
@@ -450,11 +562,11 @@ DEFUN (setup_trap_frame, (trapno, info, scp, trinfo, new_stack_pointer),
   STACK_PUSH (trap_code);
   STACK_PUSH (trap_name);
   Store_Return (RC_HARDWARE_TRAP);
-  Store_Expression (long_to_integer (trapno));
+  Store_Expression (long_to_integer (code));
   Save_Cont ();
  Pushed ();
   if (stack_recovered_p
-      /* This may want to do it in other cases, but this may be enough. */
+      /* This may want to be done in other cases, but this may be enough. */
       && (trinfo->state == STATE_COMPILED_CODE))
     Stop_History ();
 
@@ -465,75 +577,23 @@ DEFUN (setup_trap_frame, (trapno, info, scp, trinfo, new_stack_pointer),
   STACK_PUSH (STACK_FRAME_HEADER + 1);
  Pushed ();
   SET_INTERRUPT_MASK (saved_mask);
-  abort_to_interpreter (PRIM_APPLY);
+
+  IFVERBOSE (TellUserEx (MB_OKCANCEL, "setup_trap_frame done."));
+  return;
 }
-
-/* DOS_INVALID_TRAP is an invalid trap, it means a user requested reset. */
-
-void
-DEFUN (hard_reset, (scp), struct FULL_SIGCONTEXT * scp)
-{
-  continue_from_trap (DOS_INVALID_TRAP, 0, scp);
-}
-
-/* Called synchronously. */
-
-void
-DEFUN_VOID (soft_reset)
-{
-  struct trap_recovery_info trinfo;
-  SCHEME_OBJECT * new_stack_pointer =
-    (((Stack_Pointer <= Stack_Top) && (Stack_Pointer > Stack_Guard))
-     ? Stack_Pointer
-     : 0);
-  if ((Regs[REGBLOCK_PRIMITIVE]) != SHARP_F)
-    {
-      (trinfo . state) = STATE_PRIMITIVE;
-      (trinfo . pc_info_1) = (Regs[REGBLOCK_PRIMITIVE]);
-      (trinfo . pc_info_2) =
-	(LONG_TO_UNSIGNED_FIXNUM (Regs[REGBLOCK_LEXPR_ACTUALS]));
-      (trinfo . extra_trap_info) = SHARP_F;
-    }
-  else
-    {
-      (trinfo . state) = STATE_UNKNOWN;
-      (trinfo . pc_info_1) = SHARP_F;
-      (trinfo . pc_info_2) = SHARP_F;
-      (trinfo . extra_trap_info) = SHARP_F;
-    }
-  if ((Free >= Heap_Top) || (Free < Heap_Bottom))
-    /* Let's hope this works. */
-    Free = MemTop;
-  setup_trap_frame (DOS_INVALID_TRAP, 0, 0, (&trinfo), new_stack_pointer);
-}
-
-#if !defined(HAVE_SIGCONTEXT) || !defined(HAS_COMPILER_SUPPORT) || defined(USE_STACKLETS)
-
-static void
-DEFUN (continue_from_trap, (trapno, info, scp),
-       int trapno AND
-       SIGINFO_T info AND
-       struct FULL_SIGCONTEXT * scp)
-{
-  if (Free < MemTop)
-    Free = MemTop;
-  setup_trap_frame (trapno, info, scp, (&dummy_recovery_info), 0);
-}
-
-#else /* HAVE_SIGCONTEXT and HAS_COMPILER_SUPPORT and not USE_STACKLETS */
 
 /* Heuristic recovery from processor traps/exceptions.
 
    continue_from_trap attempts to:
 
    1) validate the trap information (pc and sp);
-   2) determine whether compiled code was executing, a primitive was
-      executing, or execution was in the interpreter;
+   2) determine whether compiled code was executing,
+      a primitive was executing,
+      or execution was in the interpreter;
    3) guess what C global state is still valid; and
    4) set up a recovery frame for the interpreter so that debuggers can
-      display more information. */
-
-#include "gccode.h"
+      display more information. 
+*/
 
 #define SCHEME_ALIGNMENT_MASK		((sizeof (long)) - 1)
 #define STACK_ALIGNMENT_MASK		SCHEME_ALIGNMENT_MASK
@@ -546,70 +606,103 @@ DEFUN (continue_from_trap, (trapno, info, scp),
 /* But they may have bits that can be masked by this. */
 
 #ifndef PC_VALUE_MASK
-#define PC_VALUE_MASK			(~0)
+# define PC_VALUE_MASK			(~0)
 #endif
 
 #define C_STACK_SIZE			0x01000000
 
 #ifdef HAS_COMPILER_SUPPORT
-#define ALLOW_ONLY_C 0
+# define ALLOW_ONLY_C 0
 #else
-#define ALLOW_ONLY_C 1
-#define PLAUSIBLE_CC_BLOCK_P(block)	0
+# define ALLOW_ONLY_C 1
+# define PLAUSIBLE_CC_BLOCK_P(block)	0
 #endif
 
 static SCHEME_OBJECT * EXFUN
   (find_block_address, (char * pc_value, SCHEME_OBJECT * area_start));
 
-#if 0
-#define get_etext() (&etext)
-#else
+#define I386_NREGS 12
+
 /* For now */
-#define get_etext() (Heap_Bottom)
-#endif
+#define GET_ETEXT() (Heap_Bottom)
 
 static void
-DEFUN (continue_from_trap, (trapno, info, scp),
-       int trapno AND
-       SIGINFO_T info AND
-       struct FULL_SIGCONTEXT * scp)
+DEFUN (continue_from_trap, (code, context),
+       DWORD code AND PCONTEXT context)
 {
+  int pc_in_builtin;
+  int builtin_index;
   int pc_in_C;
   int pc_in_heap;
   int pc_in_constant_space;
   int pc_in_scheme;
   int pc_in_hyper_space;
+  int pc_in_utility;
+  int utility_index;
   int scheme_sp_valid;
-  long C_sp;
   long scheme_sp;
   long the_pc;
   SCHEME_OBJECT * new_stack_pointer;
   SCHEME_OBJECT * xtra_info;
   struct trap_recovery_info trinfo;
+  extern int EXFUN (pc_to_utility_index, (unsigned long));
+  extern int EXFUN (pc_to_builtin_index, (unsigned long));
 
-  if (scp == ((struct FULL_SIGCONTEXT *) NULL))
+  IFVERBOSE (TellUserEx (MB_OKCANCEL,
+			 "continue_from_trap (%s, 0x%lx).",
+			 (find_exception_name (code)), context));
+
+  if (context == ((PCONTEXT) NULL))
   {
     if (Free < MemTop)
       Free = MemTop;
-    setup_trap_frame (trapno, info, scp, (&dummy_recovery_info), 0);
+    setup_trap_frame (code, context, (&dummy_recovery_info), 0);
     /*NOTREACHED*/
   }
 
-  C_sp = (FULL_SIGCONTEXT_SP (scp));
-  scheme_sp = (FULL_SIGCONTEXT_SCHSP (scp));
-  the_pc = ((FULL_SIGCONTEXT_PC (scp)) & PC_VALUE_MASK);
-
-#if FALSE
-  outf_error ("\ncontinue_from_trap:");
-  outf_error ("\tpc = 0x%08lx\n", the_pc);
-  outf_error ("\tCsp = 0x%08lx\n", C_sp);
-  outf_error ("\tssp = 0x%08lx\n", scheme_sp);
-  outf_error ("\tesp = 0x%08lx\n", Ext_Stack_Pointer);
-#endif
-
-  if (((the_pc & PC_ALIGNMENT_MASK) != 0)
-      || (scp->sc_cs != initial_C_cs))
+  if (context->SegSs == (getDS ()))
   {
+    IFVERBOSE
+      (TellUserEx
+       (MB_OKCANCEL,
+	"continue_from_trap: SS = C DS; Stack_Pointer = 0x%lx; Esp = 0x%lx.",
+	Stack_Pointer, context->Esp));
+    scheme_sp = (context->Esp);
+  }
+  else if (context->SegSs == Scheme_Stack_Segment_Selector)
+  {
+    IFVERBOSE (TellUserEx (MB_OKCANCEL,
+			   "continue_from_trap: SS = Scheme SS."));
+    scheme_sp = ((long) (SCHEME_ADDR_TO_ADDR (context->Esp)));
+  }
+  else
+  {
+    IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap: SS unknown!"));
+    scheme_sp = 0;
+  }
+
+  if (context->SegCs == (getCS ()))
+  {
+    IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap: CS = C CS."));
+    the_pc = (context->Eip & PC_VALUE_MASK);
+  }
+  else if (context->SegCs == Scheme_Code_Segment_Selector)
+  {
+    IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap: CS = Scheme CS"));
+    /* Assume in Scheme.  Of course, it could be in a builtin. */
+    the_pc = ((long) (SCHEME_ADDR_TO_ADDR (context->Eip & PC_VALUE_MASK)));
+  }
+  else
+  {
+    IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap: CS unknown"));
+    goto pc_in_hyperspace;
+  }
+
+  if ((the_pc & PC_ALIGNMENT_MASK) != 0)
+  {
+pc_in_hyperspace:
+    pc_in_builtin = 0;
+    pc_in_utility = 0;
     pc_in_C = 0;
     pc_in_heap = 0;
     pc_in_constant_space = 0;
@@ -618,33 +711,40 @@ DEFUN (continue_from_trap, (trapno, info, scp),
   }
   else
   {
-    pc_in_C = (the_pc <= ((long) (get_etext ())));
+    builtin_index = (pc_to_builtin_index (the_pc));
+    pc_in_builtin = (builtin_index != -1);
+    utility_index = (pc_to_utility_index (the_pc));
+    pc_in_utility = (utility_index != -1);    
+    pc_in_C = ((the_pc <= ((long) (GET_ETEXT ()))) && (! pc_in_builtin));
     pc_in_heap =
       ((the_pc < ((long) Heap_Top)) && (the_pc >= ((long) Heap_Bottom)));
     pc_in_constant_space =
       ((the_pc < ((long) Constant_Top)) &&
        (the_pc >= ((long) Constant_Space)));
-    pc_in_scheme = (pc_in_heap || pc_in_constant_space);
+    pc_in_scheme = (pc_in_heap || pc_in_constant_space || pc_in_builtin);
     pc_in_hyper_space = ((!pc_in_C) && (!pc_in_scheme));
   }
 
+  IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 1"));
+
   scheme_sp_valid =
     (pc_in_scheme
-     && ((scp->sc_ss & 0xffff) == (scp->sc_ds & 0xffff))
-     && ((scp->sc_ds & 0xffff) == (initial_C_ds & 0xffff))
      && ((scheme_sp < ((long) Stack_Top)) &&
 	 (scheme_sp >= ((long) Absolute_Stack_Base)) &&
 	 ((scheme_sp & STACK_ALIGNMENT_MASK) == 0)));
+
+  IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 2"));
 
   new_stack_pointer =
     (scheme_sp_valid
      ? ((SCHEME_OBJECT *) scheme_sp)
      : ((pc_in_C
-	&& ((scp->sc_ss & 0xffff) == (initial_C_ss & 0xffff))
 	&& (Stack_Pointer < Stack_Top)
 	&& (Stack_Pointer > Absolute_Stack_Base))
         ? Stack_Pointer
         : ((SCHEME_OBJECT *) 0)));
+
+  IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 3"));
 
   if (pc_in_hyper_space || (pc_in_scheme && ALLOW_ONLY_C))
   {
@@ -664,13 +764,34 @@ DEFUN (continue_from_trap, (trapno, info, scp),
     SCHEME_OBJECT * block_addr;
     SCHEME_OBJECT * maybe_free;
     block_addr =
-      (find_block_address (((PTR) the_pc),
-			   (pc_in_heap ? Heap_Bottom : Constant_Space)));
-    if (block_addr == 0)
+      (pc_in_builtin
+       ? ((SCHEME_OBJECT *) NULL)
+       : (find_block_address (((PTR) the_pc),
+			      (pc_in_heap ? Heap_Bottom : Constant_Space))));
+
+    if (block_addr != ((SCHEME_OBJECT *) NULL))
+    {
+      (trinfo . state) = STATE_COMPILED_CODE;
+      (trinfo . pc_info_1) =
+	(MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_addr));
+      (trinfo . pc_info_2) =
+	(LONG_TO_UNSIGNED_FIXNUM (the_pc - ((long) block_addr)));
+    }
+    else if (pc_in_builtin)
+    {
+      (trinfo . state) = STATE_PROBABLY_COMPILED;
+      (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (builtin_index));
+      (trinfo . pc_info_2) = SHARP_T;
+    }
+    else 
     {
       (trinfo . state) = STATE_PROBABLY_COMPILED;
       (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (the_pc));
       (trinfo . pc_info_2) = SHARP_F;
+    }
+
+    if ((block_addr == ((SCHEME_OBJECT *) NULL)) && (! pc_in_builtin))
+    {
       if ((Free < MemTop) ||
 	  (Free >= Heap_Top) ||
 	  ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0))
@@ -678,32 +799,30 @@ DEFUN (continue_from_trap, (trapno, info, scp),
     }
     else
     {
-      (trinfo . state) = STATE_COMPILED_CODE;
-      (trinfo . pc_info_1) =
-	(MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_addr));
-      (trinfo . pc_info_2) =
-	(LONG_TO_UNSIGNED_FIXNUM (the_pc - ((long) block_addr)));
-#ifdef HAVE_FULL_SIGCONTEXT
-      maybe_free = ((SCHEME_OBJECT *) (FULL_SIGCONTEXT_RFREE (scp)));
+      maybe_free = ((SCHEME_OBJECT *) context->Edi);
       if (((((unsigned long) maybe_free) & SCHEME_ALIGNMENT_MASK) == 0)
 	  && (maybe_free >= Heap_Bottom) && (maybe_free < Heap_Top))
 	Free = (maybe_free + FREE_PARANOIA_MARGIN);
       else
-#endif
-      {
 	if ((Free < MemTop) || (Free >= Heap_Top)
 	    || ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0))
 	  Free = MemTop;
-      }
     }
   }
-  else
+
+  else /* pc_in_C */
   {
     /* In the interpreter, a primitive, or a compiled code utility. */
 
     SCHEME_OBJECT primitive = (Regs[REGBLOCK_PRIMITIVE]);
 
-    if ((OBJECT_TYPE (primitive)) != TC_PRIMITIVE)
+    if (pc_in_utility)
+    {
+      (trinfo . state) = STATE_PROBABLY_COMPILED;
+      (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (utility_index));
+      (trinfo . pc_info_2) = UNSPECIFIC;
+    }
+    else if ((OBJECT_TYPE (primitive)) != TC_PRIMITIVE)
     {
       (trinfo . state) = STATE_UNKNOWN;
       (trinfo . pc_info_1) = SHARP_F;
@@ -727,27 +846,55 @@ DEFUN (continue_from_trap, (trapno, info, scp),
     else if ((Free + FREE_PARANOIA_MARGIN) < MemTop)
       Free +=  FREE_PARANOIA_MARGIN;
   }
-  xtra_info = Free;
-  Free += (1 + 2 + PROCESSOR_NREGS);
-  (trinfo . extra_trap_info) =
-    (MAKE_POINTER_OBJECT (TC_NON_MARKED_VECTOR, xtra_info));
-  (*xtra_info++) =
-    (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (2 + PROCESSOR_NREGS)));
-  (*xtra_info++) = ((SCHEME_OBJECT) the_pc);
-  (*xtra_info++) = ((SCHEME_OBJECT) C_sp);
+
+  IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 4"));
+
+  if (win32_under_win32s_p ())
+    (trinfo . extra_trap_info) = SHARP_F;
+  else
   {
-    int counter = FULL_SIGCONTEXT_NREGS;
-    int * regs = (FULL_SIGCONTEXT_FIRST_REG (scp));
-    while ((counter--) > 0)
-      (*xtra_info++) = ((SCHEME_OBJECT) (*regs++));
-  }
-  /* We assume that regs,sp,pc is the order in the processor.
-     Scheme can always fix this. */
-  if ((PROCESSOR_NREGS - FULL_SIGCONTEXT_NREGS) > 0)
-    (*xtra_info++) = ((SCHEME_OBJECT) C_sp);
-  if ((PROCESSOR_NREGS - FULL_SIGCONTEXT_NREGS) > 1)
+    xtra_info = Free;
+    Free += (1 + (I386_NREGS + 2));
+    (trinfo . extra_trap_info) =
+      (MAKE_POINTER_OBJECT (TC_NON_MARKED_VECTOR, xtra_info));
+    (*xtra_info++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (I386_NREGS + 2)));
     (*xtra_info++) = ((SCHEME_OBJECT) the_pc);
-  setup_trap_frame (trapno, info, scp, (&trinfo), new_stack_pointer);
+    (*xtra_info++) = ((SCHEME_OBJECT) scheme_sp);
+    {
+      int counter = I386_NREGS;
+      int * regs = ((int *) context->Edi);
+      while ((counter--) > 0)
+	(*xtra_info++) = ((SCHEME_OBJECT) (*regs++));
+    }
+  }
+
+  IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 5"));
+
+  /* Handshake with try+except. */
+
+  context->Eip = ((DWORD) callWinntExceptionTransferHook);
+  context->SegCs = (getCS ());
+  return_by_aborting = TRUE;
+
+  IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 6"));
+
+  if (pc_in_scheme && (! (win32_under_win32s_p ())))
+  {
+    context->SegCs = C_Code_Segment_Selector;
+    context->SegDs = C_Data_Segment_Selector;
+    context->SegEs = C_Extra_Segment_Selector;
+    context->SegSs = C_Stack_Segment_Selector;
+    context->Esp = C_Stack_Pointer;
+    context->Ebp = C_Frame_Pointer;
+    if (pc_in_scheme)
+      return_by_aborting = FALSE;
+  }
+
+  IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 7"));
+
+  setup_trap_frame (code, context, (&trinfo), new_stack_pointer);
+
+  IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 8"));
 }
 
 /* Find the compiled code block in area which contains `pc_value'.
@@ -867,10 +1014,10 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
 	    {
 	      SCHEME_OBJECT * block = (area - 1);
 	      return
-		(((area == first_valid) ||
-		  ((OBJECT_TYPE (*block)) != TC_MANIFEST_VECTOR) ||
-		  ((OBJECT_DATUM (*block)) < (count + 1)) ||
-		  (! (PLAUSIBLE_CC_BLOCK_P (block))))
+		(((area == first_valid)
+		  || ((OBJECT_TYPE (* block)) != TC_MANIFEST_VECTOR)
+		  || ((OBJECT_DATUM (* block)) < ((unsigned long) (count + 1)))
+		  || (! (PLAUSIBLE_CC_BLOCK_P (block))))
 		 ? 0
 		 : block);
 	    }
@@ -884,6 +1031,240 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
     }
   return (0);
 }
+
+static void
+DEFUN (trap_recover, (code, context),
+       DWORD code AND PCONTEXT context)
+{
+  IFVERBOSE (TellUserEx (MB_OKCANCEL,
+			 "trap_recover (%s, 0x%lx).",
+			 (find_exception_name (code)), context));
 
-#endif /* HAVE_SIGCONTEXT and HAS_COMPILER_SUPPORT and not USE_STACKLETS */
+  if (WITHIN_CRITICAL_SECTION_P ())
+    {
+      CLEAR_CRITICAL_SECTION_HOOK ();
+      EXIT_CRITICAL_SECTION ({});
+    }
+  reset_interruptable_extent ();
+  continue_from_trap (code, context);
+}
 
+static void
+DEFUN (nt_trap_handler, (code, context),
+       DWORD code AND PCONTEXT context)
+{
+  Boolean constant_space_broken = (! (CONSTANT_SPACE_SEALED ()));
+  enum trap_state old_trap_state = trap_state;
+  int flags;
+
+  IFVERBOSE (TellUserEx (MB_OKCANCEL,
+			 "nt_trap_handler (%s, 0x%lx).",
+			 (find_exception_name (code)), context));
+
+  if (old_trap_state == trap_state_exitting_hard)
+    _exit (1);
+  else if (old_trap_state == trap_state_exitting_soft)
+    trap_immediate_termination ();
+
+  trap_state = trap_state_trapped;
+
+  trap_noise_start ();
+  if (WITHIN_CRITICAL_SECTION_P ())
+  {
+    trap_noise (">> The system has trapped within critical section \"%s\".\n",
+		(CRITICAL_SECTION_NAME ()));
+    describe_trap ("trap is", code);
+  }
+  else if (constant_space_broken || (old_trap_state != trap_state_recover))
+  {
+    trap_noise (">> The system has trapped.\n");
+    describe_trap ("trap is", code);
+  }
+  if (constant_space_broken)
+  {
+    trap_noise (">> Constant space has been overwritten.\n");
+    trap_noise (">> Probably a runaway recursion has overflowed the stack.\n");
+  }
+
+  switch (old_trap_state)
+  {
+  case trap_state_trapped:
+    if ((saved_trap_state == trap_state_recover)
+	|| (saved_trap_state == trap_state_query))
+    {
+      trap_noise (">> The trap occurred while processing an earlier trap.\n");
+      describe_trap ("earlier trap was", saved_trap_code);
+      trap_noise ((WITHIN_CRITICAL_SECTION_P ())
+		  ? ">> Successful recovery is extremely unlikely.\n"
+		  : ">> Successful recovery is unlikely.\n");
+      break;
+    }
+    else
+    { 
+      (void) trap_noise_end (MB_OK | MB_ICONSTOP);
+      trap_immediate_termination ();
+    }
+
+  case trap_state_recover:
+    if ((WITHIN_CRITICAL_SECTION_P ()) || constant_space_broken)
+    {
+      trap_noise (">> Successful recovery is unlikely.\n");
+      break;
+    }
+    else
+    {
+      saved_trap_state = old_trap_state;
+      saved_trap_code = code;
+      (void) trap_noise_end (MB_OK | MB_ICONSTOP);
+      trap_recover (code, context);
+      return;
+    }
+  case trap_state_exit:
+    (void) trap_noise_end (MB_OK | MB_ICONSTOP);
+    termination_trap ();
+  }
+
+  trap_noise ("\n");
+  saved_trap_state = old_trap_state;
+  saved_trap_code = code;
+  flags = MB_ICONSTOP;
+
+  while (1)
+  {
+    trap_noise ("Attempt recovery?");
+    if ((trap_noise_end (MB_YESNO | flags)) == IDYES)
+    {
+      trap_recover (code, context);
+      return;
+    }
+    flags = 0;
+
+    trap_noise ("Terminate Scheme normally?");
+    switch (trap_noise_end (MB_YESNOCANCEL))
+    {
+      case IDYES:
+        trap_normal_termination ();
+
+      case IDNO:
+        trap_immediate_termination ();
+	_exit (1);
+
+      default:
+	break;
+    }
+  }
+}
+
+#ifdef W32_TRAP_DEBUG
+
+static void
+DEFUN (parse_response, (buf, addr, len),
+       char * buf AND unsigned long * addr AND int * len)
+{
+  const char * separators = " ,\t;";
+  char * token;
+
+  token = (strtok (buf, separators));
+  if (token == ((char *) NULL))
+    return;
+  * addr = (strtoul (token, ((char **) NULL), 0));
+  token = (strtok (((char *) NULL), separators));
+  if (token == ((char *) NULL))
+    return;
+  * len = ((int) (strtoul (token, ((char **) NULL), 0)));
+  return;
+}
+
+static void
+DEFUN (tinyexcpdebug, (code, info),
+       DWORD code AND LPEXCEPTION_POINTERS info)
+{
+  int count, len;
+  char * message;
+  unsigned long * addr;
+  char responsebuf[256], * response;
+ 
+  if ((MessageBox (NULL, "Debug?", "MIT Scheme Exception Debugger", MB_YESNO))
+      != IDYES)
+    return;
+
+  message = "&info =";
+  addr = ((unsigned long *) (& info));
+  len = 1;
+
+  while (1)
+  {
+    trap_noise_start ();
+    trap_noise ("%s 0x%lx.\n", message, ((unsigned long) addr));
+    for (count = 0; count < len; count++)
+      trap_noise ("\n*0x%08x\t= 0x%08x\t= %d.",
+		  (addr + count),
+		  addr[count],
+		  addr[count]);
+    trap_noise ("\n\nMore?");
+    if ((trap_noise_end (MB_YESNO)) != IDYES)
+      break;
+    response = (AskUser (&responsebuf[0], (sizeof (responsebuf))));
+    if (response == ((char *) NULL))
+      continue;
+    message = "Contents of";
+    parse_response (&responsebuf[0], &addr, &len);
+  }
+  return;
+}
+#endif /* W32_TRAP_DEBUG */
+
+static int
+DEFUN (WinntException, (code, info),
+       DWORD code AND LPEXCEPTION_POINTERS info)
+{
+  PCONTEXT context;
+
+  context = info->ContextRecord;
+  if ((info->ExceptionRecord->ExceptionFlags != 0)
+      || (context == ((PCONTEXT) NULL))
+      || ((context->ContextFlags & CONTEXT_CONTROL) == 0)
+      || ((context->ContextFlags & CONTEXT_INTEGER) == 0)
+      || ((context->ContextFlags & CONTEXT_SEGMENTS) == 0))
+  {
+    (void)
+      display_exception_information (info->ExceptionRecord,
+				     info->ContextRecord,
+				     MB_OK);
+    trap_immediate_termination ();
+  }
+  else
+  {
+#ifdef W32_TRAP_DEBUG
+    trap_verbose_p = ((display_exception_information
+		       (info->ExceptionRecord,
+			info->ContextRecord,
+			MB_YESNO))
+		      == IDYES);
+    tinyexcpdebug (code, info);
+#endif /* W32_TRAP_DEBUG */
+    nt_trap_handler (code, context);
+    return (EXCEPTION_CONTINUE_EXECUTION);
+  }
+}
+
+extern void EXFUN (WinntEnterHook, (void (*) (void)));
+
+void
+DEFUN (WinntEnterHook, (enter_interpreter),
+       void EXFUN ((* enter_interpreter), (void)))
+{
+  do
+  {
+    try
+    {
+      (* enter_interpreter) ();
+    }
+    except (WinntException ((GetExceptionCode ()),
+			    (GetExceptionInformation ())))
+    {
+      outf_fatal ("Exception!\n");
+      termination_trap ();
+    }
+  } while (1);
+}

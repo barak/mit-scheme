@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttty.c,v 1.3 1993/06/24 02:12:04 gjr Exp $
+$Id: nttty.c,v 1.4 1993/08/21 03:51:19 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -102,18 +102,13 @@ DEFUN_VOID (OS_tty_command_clear)
 #define DEFAULT_TTY_Y_SIZE 25
 #endif
 
-
-
 void
-DEFUN_VOID (DOS_initialize_tty)
+DEFUN_VOID (NT_initialize_tty)
 {
   extern Tchannel EXFUN (OS_open_handle, (int fd));
-//  master_tty_window = Screen_Create (NULL, "MIT Scheme", SW_SHOWNORMAL);
-  input_channel  = OS_open_handle (master_tty_window);
-//  input_channel = OS_open_handle (STDIN_HANDLE);
+  input_channel  = (OS_open_handle (master_tty_window));
   (CHANNEL_INTERNAL (input_channel)) = 1;
   output_channel = input_channel;
-//  output_channel = OS_open_handle (STDOUT_HANDLE);
   (CHANNEL_INTERNAL (output_channel)) = 1;
   Screen_GetSize (master_tty_window, &tty_y_size, &tty_x_size);
 
