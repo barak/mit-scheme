@@ -1,4 +1,4 @@
-/* $Id: hppacach.mc,v 1.1 1993/10/29 23:08:34 nick Exp $ */
+/* $Id: hppacach.mc,v 1.2 1993/11/11 05:50:54 gjr Exp $ */
 
 {
   "9000/850",
@@ -790,4 +790,70 @@
       Both PDTLB and PITLB must be used to purge.
     */
     { 96, 0x00002000, 0x0, 0, 1, 0x0, 0, 1, 1 }
+  }};
+
+{
+  "9000/755",
+
+  {
+    /*
+      I-cache information:
+	size		262144 bytes (256 K).
+	conf		0x71402000
+	base		0x0
+	stride		32 bytes.
+	count		8192 entries.
+	loop		1 association per entry.
+	block size	113 lines.
+	line size	2 (16-byte units).
+      It is a read-only cache.
+      It issues coherent operations.
+      Both FDC and FIC must be used to flush.
+    */
+    { 262144, 0x71402000, 0x0, 32, 8192, 1 },
+    /*
+      D-cache information:
+	size		262144 bytes (256 K).
+	conf		0x71402000
+	base		0x0
+	stride		32 bytes.
+	count		8192 entries.
+	loop		1 association per entry.
+	block size	113 lines.
+	line size	2 (16-byte units).
+      It is a write-to cache.
+      It issues coherent operations.
+      Both FDC and FIC must be used to flush.
+    */
+    { 262144, 0x71402000, 0x0, 32, 8192, 1 },
+    /*
+      I-TLB information:
+	size		120 entries (0 K).
+	conf		0x000d2000
+	sp_base		0x0
+	sp_stride	0
+	sp_count	1
+	off_base	0x0
+	off_stride	0
+	off_count	1
+	loop		1 association per entry.
+      It issues coherent operations.
+      Either PDTLB or PITLB can be used to purge.
+    */
+    { 120, 0x000d2000, 0x0, 0, 1, 0x0, 0, 1, 1 },
+    /*
+      D-TLB information:
+	size		120 entries (0 K).
+	conf		0x000c2000
+	sp_base		0x0
+	sp_stride	0
+	sp_count	1
+	off_base	0x0
+	off_stride	0
+	off_count	1
+	loop		1 association per entry.
+      It issues coherent operations.
+      Either PDTLB or PITLB can be used to purge.
+    */
+    { 120, 0x000c2000, 0x0, 0, 1, 0x0, 0, 1, 1 }
   }};
