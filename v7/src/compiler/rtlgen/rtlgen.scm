@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.21 1989/10/26 07:39:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.22 1989/11/30 16:03:27 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -119,6 +119,10 @@ MIT in each case. |#
        (length (procedure-original-optional procedure))
        (and (procedure-original-rest procedure) true)
        (and (procedure/closure? procedure) true)
+       (let ((block (procedure-block procedure)))
+	 (and (stack-block? block)
+	      (stack-block/dynamic-link? block)
+	      true))
        (procedure/type procedure)
        (procedure-debugging-info procedure)))))
 
