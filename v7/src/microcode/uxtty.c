@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.7 1992/01/20 18:50:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.8 1992/02/10 13:51:02 jinx Exp $
 
-Copyright (c) 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -118,7 +118,7 @@ DEFUN (tputs_write_char, (c), char c)
 void
 DEFUN_VOID (UX_initialize_tty)
 {
-  extern int EXFUN (atoi, (const char *));
+  extern int EXFUN (atoi, (CONST char *));
   extern Tchannel EXFUN (OS_open_fd, (int fd));
   input_channel = (OS_open_fd (STDIN_FILENO));
   (CHANNEL_INTERNAL (input_channel)) = 1;
@@ -188,7 +188,7 @@ DEFUN_VOID (UX_initialize_tty)
     tty_command_clear = "\f";
   else
     {
-      extern void EXFUN (tputs, (const char *, int, void (*) (char)));
+      extern void EXFUN (tputs, (CONST char *, int, void (*) (char)));
       char * command = tputs_output_scan;
       tputs (tty_command_clear, tty_y_size, tputs_write_char);
       (*tputs_output_scan++) = '\0';

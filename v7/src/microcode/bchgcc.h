@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.42 1991/11/04 16:49:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.43 1992/02/10 13:52:43 jinx Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,10 +48,10 @@ MIT in each case. */
 extern char * EXFUN (error_name, (int));
 
 extern int EXFUN (retrying_file_operation,
-		  (/* no prototype because (const char *) != (char *) */
-		   int (*)(),
+		  (/* no prototype because (CONST char *) != (char *) */
+		   int EXFUN((*), ()),
 		   int, char *, long, long, char *, char *, long *,
-		   int (*)(char *, char *)));
+		   int EXFUN((*), (char *, char *))));
 
 extern int EXFUN (io_error_retry_p, (char *, char *));
 extern int EXFUN (io_error_always_abort, (char *, char *));

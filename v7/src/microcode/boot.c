@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.71 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.72 1992/02/10 13:52:23 jinx Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,7 +50,7 @@ extern void EXFUN (Clear_Memory, (int, int, int));
 extern void EXFUN (Setup_Memory, (int, int, int));
 extern void EXFUN (compiler_initialize, (long fasl_p));
 
-static void EXFUN (Start_Scheme, (int, const char *));
+static void EXFUN (Start_Scheme, (int, CONST char *));
 static void EXFUN (Enter_Interpreter, (void));
 
 CONST char * scheme_program_name;
@@ -400,7 +400,7 @@ extern unsigned long
 
 extern void EXFUN (gc_death,
 		   (long code, char *, SCHEME_OBJECT *, SCHEME_OBJECT *));
-extern void EXFUN (stack_death, (const char *));
+extern void EXFUN (stack_death, (CONST char *));
 
 extern char
   gc_death_message_buffer[];

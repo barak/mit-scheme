@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.c,v 1.7 1992/02/03 23:45:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.c,v 1.8 1992/02/10 13:51:18 jinx Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,8 +46,8 @@ MIT in each case. */
 #include "uxio.h"
 #include "prims.h"
 
-extern struct servent * EXFUN (getservbyname, (const char *, const char *));
-extern struct hostent * EXFUN (gethostbyname, (const char *));
+extern struct servent * EXFUN (getservbyname, (CONST char *, CONST char *));
+extern struct hostent * EXFUN (gethostbyname, (CONST char *));
 
 Tchannel
 DEFUN (OS_open_tcp_stream_socket, (host, port), char * host AND int port)
@@ -109,7 +109,7 @@ DEFUN (OS_open_unix_stream_socket, (filename), CONST char * filename)
 {
 #ifdef HAVE_UNIX_SOCKETS
   int s;
-  extern char * EXFUN (strncpy, (char *, const char *, size_t));
+  extern char * EXFUN (strncpy, (char *, CONST char *, size_t));
   STD_UINT_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_UNIX, SOCK_STREAM, 0)));
   {

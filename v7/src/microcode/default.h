@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.37 1991/09/24 22:39:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.38 1992/02/10 13:52:06 jinx Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -113,7 +113,7 @@ do									\
 {									\
   if (!(CONSTANT_SPACE_SEALED ()))					\
   {									\
-    extern void EXFUN (stack_death, (const char *));			\
+    extern void EXFUN (stack_death, (CONST char *));			\
 									\
     stack_death (name);							\
     /*NOTREACHED */							\

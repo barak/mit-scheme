@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.59 1992/02/03 22:40:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.60 1992/02/10 13:53:22 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -235,7 +235,7 @@ DEFUN (fasdump_exit, (length), long length)
   }
 #else
   {
-    extern int EXFUN (truncate, (const char *, unsigned long));
+    extern int EXFUN (truncate, (CONST char *, unsigned long));
 
     result = (close (dump_file) == 0);
     truncate (dump_file_name, length);
@@ -244,7 +244,7 @@ DEFUN (fasdump_exit, (length), long length)
 
   if (length == 0)
   {
-    extern int EXFUN (unlink, (const char *));
+    extern int EXFUN (unlink, (CONST char *));
 
     (void) (unlink (dump_file_name));
   }

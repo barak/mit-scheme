@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.19 1992/02/10 13:26:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.20 1992/02/10 13:51:37 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -238,7 +238,7 @@ DEFUN (OS_channel_write_dump_file, (channel, buffer, nbytes),
   return ((scr < 0) ? 0 : scr);
 }
 
-extern int EXFUN (strlen, (const char *));
+extern int EXFUN (strlen, (CONST char *));
 
 void
 DEFUN (OS_channel_write_string, (channel, string),

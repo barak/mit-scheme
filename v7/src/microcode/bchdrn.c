@@ -1,8 +1,8 @@
 /* -*- C -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.c,v 1.2 1991/11/04 16:54:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.c,v 1.3 1992/02/10 13:53:03 jinx Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,10 +44,10 @@ MIT in each case. */
 
 extern char * EXFUN (error_name, (int));
 extern int EXFUN (retrying_file_operation,
-		  (/* no prototype because (const char *) != (char *) */
-		   int (*)(),
+		  (/* no prototype because (CONST char *) != (char *) */
+		   int EXFUN((*), ()),
 		   int, char *, long, long, char *, char *, long *,
-		   int (*)(char *, char *)));
+		   int EXFUN((*), (char *, char *))));
 
 #ifdef HAVE_SYSV_SHARED_MEMORY
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.45 1992/01/20 17:35:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.46 1992/02/10 13:53:34 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -80,8 +80,8 @@ MIT in each case. */
 
 #include <ctype.h>
 
-extern int EXFUN (strcmp, (const char *, const char *));
-extern int EXFUN (strlen, (const char *));
+extern int EXFUN (strcmp, (CONST char *, CONST char *));
+extern int EXFUN (strlen, (CONST char *));
 
 typedef int boolean;
 #define TRUE 1
