@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.25 1987/04/29 15:50:43 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.26 1987/04/29 19:46:39 cph Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -903,8 +903,10 @@ record_primitive_entry (primitive)
 	  (((pointer_type (primitive)) == TC_PRIMITIVE_EXTERNAL) ? 1 : 0)));
       index = (1 + (pointer_datum (primitive)));
       Vector_Set (table, index,
-		  (Make_Unsigned_Fixnum
-		   (1 + (Get_Integer (Vector_Ref (table, index))))));
+		  (C_Integer_To_Scheme_Integer
+		   (1 +
+		    (Scheme_Integer_To_C_Integer
+		     (Vector_Ref (table, index))))));
     }
 }
 
