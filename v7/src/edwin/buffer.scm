@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.177 2000/03/25 20:34:54 cph Exp $
+;;; $Id: buffer.scm,v 1.178 2000/10/27 03:13:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -236,6 +236,7 @@ The buffer is guaranteed to be deselected at that time."
   (cond ((buffer? object) object)
 	((and (mark? object) (mark-buffer object)))
 	((and (group? object) (group-buffer object)))
+	((window? object) (window-buffer object))
 	(else (error "can't coerce to buffer:" object))))
 
 ;;;; Modification Flags
