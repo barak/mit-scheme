@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.6 1993/10/30 12:58:08 gjr Exp $
+$Id: cout.scm,v 1.7 1993/10/31 04:04:20 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -110,11 +110,10 @@ MIT in each case. |#
 	     (let ((dir (pathname-directory path)))
 	       (string-append (if (or (not dir) (null? dir))
 				  default
-				  (car (last-pair dir)))
+				  (canonicalize-label-name
+				   (car (last-pair dir))))
 			      "_"
-			      (string-replace (pathname-name path) ; kludge
-					      #\-
-					      #\_)
+			      (canonicalize-label-name (pathname-name path))
 			      midfix
 			      suffix))))))
 
@@ -377,12 +376,16 @@ MIT in each case. |#
   (or (memq object trivial-objects)
       (guaranteed-fixnum? object)))
 
-(define (name-if-complicated node)
+(define *depth-limit* 2)
+
+(define (name-if-complicated node depth)
   (cond ((fake-compiled-block? node)
 	 (let ((name (fake-block/name node)))
 	   (set! new-variables (cons name new-variables))
 	   name))
-	((or (%record? node) (vector? node))
+	((or (%record? node)
+	     (vector? node)
+	     (> depth *depth-limit*))
 	 (generate-variable-name))
 	(else
 	 false)))  
@@ -397,6 +400,7 @@ MIT in each case. |#
 			table
 			(loop (cdr nodes)
 			      (insert-in-table (car nodes)
+					       0
 					       table))))
 		(lambda (pair)
 		  (cdr pair))))
@@ -421,7 +425,7 @@ MIT in each case. |#
 	      (cons (cons n (car l))
 		    l*)))))
 
-(define (insert-in-table node table)
+(define (insert-in-table node depth table)
   (cond ((trivial? node)
 	 table)
 	((table/find table node)
@@ -430,9 +434,9 @@ MIT in each case. |#
 		  (set-cdr! pair (generate-variable-name)))
 	      table))
 	(else
-	 (let ((table
-		(cons (cons node (name-if-complicated node))
-		      table)))
+	 (let* ((name (name-if-complicated node depth))
+		(depth* (if name 1 (1+ depth)))
+		(table (cons (cons node name) table)))
 
 	   (define-integrable (do-vector-like node vlength vref)
 	     (let loop ((table table)
@@ -441,13 +445,17 @@ MIT in each case. |#
 		   table
 		   (let ((i-1 (-1+ i)))
 		     (loop (insert-in-table (vref node i-1)
+					    depth*
 					    table)
 			   i-1)))))
 	     
 	   (cond ((pair? node)
+		  ;; Special treatment on the CDR because of RCONSM.
 		  (insert-in-table
 		   (car node)
+		   depth*
 		   (insert-in-table (cdr node)
+				    (if name 1 depth)
 				    table)))
 		 ((vector? node)
 		  (do-vector-like node vector-length vector-ref))
