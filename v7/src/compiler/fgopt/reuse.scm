@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/reuse.scm,v 1.6 1990/08/27 13:23:45 jinx Rel $
+$Id: reuse.scm,v 1.7 1992/12/16 12:24:01 gjr Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -151,7 +151,7 @@ MIT in each case. |#
 		(let ((dependents (node-original-dependents node)))
 		  (or (null? dependents)
 		      (and (null? (cdr dependents))
-			   (eq? (node-target (car dependents))
+			   (eq? (car dependents)
 				(node-target node))))))))
 	(lambda (terminal-nodes non-terminal-nodes)
 	  (values terminal-nodes non-terminal-nodes extra-subproblems))))))
