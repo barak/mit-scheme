@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.9 2000/12/06 05:33:27 cph Exp $
+# $Id: Makefile,v 1.10 2000/12/06 05:52:48 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -54,10 +54,6 @@ maintainer-clean:
 		(cd $${SUBDIR} && $(MAKE) $@); \
 	    fi; \
 	done
-	@if test ! -f microcode/Makefile && test -f microcode/configure; then \
-	    (cd microcode && ./configure); \
-	fi
-	echo "making $@ in microcode"
-	@(cd microcode && $(MAKE) $@)
+	(cd microcode && ./Mclean.sh)
 
 .PHONY: all setup tags TAGS mostlyclean clean distclean maintainer-clean
