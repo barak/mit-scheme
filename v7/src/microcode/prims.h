@@ -30,27 +30,21 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.21 1987/04/03 00:18:49 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.22 1987/04/16 02:27:43 jinx Exp $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
    the arguments. */
 
-/* Definition of primitives.  See storage.c for some information. */
+/* Definition of primitives. */
 
 #define Define_Primitive(C_Name, Number_of_args, Scheme_Name)	\
 extern Pointer C_Name();					\
 Pointer C_Name()
 
-#define Built_In_Primitive(C_Name, Number_of_args, Scheme_Name)	\
-Define_Primitive(C_Name, Number_of_args, Scheme_Name)
-
-extern Pointer Not_Implemented_Yet();
-
-#define NIY(C_Name, Number_of_args, Scheme_Name)		\
-Built_In_Primitive(C_Name, Number_of_args, Scheme_Name)		\
-{ return Not_Implemented_Yet(Scheme_Name);			\
-}
+#define Built_In_Primitive(C_Name, Number_of_args, Scheme_Name, index)	\
+extern Pointer C_Name();						\
+Pointer C_Name()
 
 /* Preambles for primitive procedures.  These store the arguments into
  * local variables for fast access.
@@ -178,16 +172,16 @@ if (! (fixnum_p (Arg5))) error_wrong_type_arg_5 ()
 #define guarantee_fixnum_arg_6()				\
 if (! (fixnum_p (Arg6))) error_wrong_type_arg_6 ()
 
-extern long guarantee_nonnegative_integer_arg_1();
-extern long guarantee_nonnegative_integer_arg_2();
-extern long guarantee_nonnegative_integer_arg_3();
-extern long guarantee_nonnegative_integer_arg_4();
-extern long guarantee_nonnegative_integer_arg_5();
-extern long guarantee_nonnegative_integer_arg_6();
-extern long guarantee_nonnegative_integer_arg_7();
-extern long guarantee_nonnegative_integer_arg_8();
-extern long guarantee_nonnegative_integer_arg_9();
-extern long guarantee_nonnegative_integer_arg_10();
+extern long guarantee_nonnegative_int_arg_1();
+extern long guarantee_nonnegative_int_arg_2();
+extern long guarantee_nonnegative_int_arg_3();
+extern long guarantee_nonnegative_int_arg_4();
+extern long guarantee_nonnegative_int_arg_5();
+extern long guarantee_nonnegative_int_arg_6();
+extern long guarantee_nonnegative_int_arg_7();
+extern long guarantee_nonnegative_int_arg_8();
+extern long guarantee_nonnegative_int_arg_9();
+extern long guarantee_nonnegative_int_arg_10();
 
 extern long guarantee_index_arg_1();
 extern long guarantee_index_arg_2();

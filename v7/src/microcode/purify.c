@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.25 1987/04/03 00:19:30 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.26 1987/04/16 02:27:53 jinx Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -274,7 +274,7 @@ Pointer Object, Purify_Object;
   GC();
   Free[Purify_Vector_Header] =
     Make_Non_Pointer(TC_MANIFEST_VECTOR, Purify_N_Slots);
-  Free[Purify_Length] = FIXNUM_0 + Length;
+  Free[Purify_Length] = Make_Unsigned_Fixnum(Length);
   Free[Purify_Really_Pure] = Purify_Object;
   Answer =  Make_Pointer(TC_VECTOR, Free);
   Free += Purify_N_Slots+1;
@@ -364,7 +364,7 @@ Pointer Info;
       have changed.
 */
 
-Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY")
+Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY", 0xB4)
 {
   long Saved_Zone;
   Pointer Object, Lost_Objects, Purify_Result, Daemon;

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.35 1987/04/03 00:47:02 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.36 1987/04/16 02:26:04 jinx Exp $ */
 
 /* Macros and declarations for the variable lookup code. */
 
@@ -53,8 +53,8 @@ extern Pointer
 #define AUX_LIST_TYPE			TC_VECTOR
 
 #define AUX_CHUNK_SIZE			20
-#define AUX_LIST_COUNT			ENVIRONMENT_EXTENSION_COUNT
-#define AUX_LIST_FIRST			ENVIRONMENT_EXTENSION_MIN_SIZE
+#define AUX_LIST_COUNT			ENV_EXTENSION_COUNT
+#define AUX_LIST_FIRST			ENV_EXTENSION_MIN_SIZE
 #define AUX_LIST_INITIAL_SIZE		(AUX_LIST_FIRST + AUX_CHUNK_SIZE)
 
 /* Variable compilation types. */
@@ -89,9 +89,14 @@ extern Pointer
 
 /* The code below depends on the following. */
 
-#if ((VARIABLE_OFFSET == VARIABLE_COMPILED_TYPE) ||			\
-     (VARIABLE_FRAME_NO != VARIABLE_COMPILED_TYPE))
-#include "error: trap.h inconsistency detected."
+/* Done as follows because of VMS. */
+
+#define lookup_inconsistency_p						\
+  ((VARIABLE_OFFSET == VARIABLE_COMPILED_TYPE) ||			\
+   (VARIABLE_FRAME_NO != VARIABLE_COMPILED_TYPE))
+
+#if (lookup_inconsistency_p)
+#include "error: lookup.h inconsistency detected."
 #endif
 
 #define get_offset(hunk) Lexical_Offset(Fetch(hunk[VARIABLE_OFFSET]))
@@ -111,6 +116,7 @@ extern Pointer
 /* Unlike Lock_Cell, cell must be (Pointer *).  This currently does
    not matter, but might on a machine with address mapping.
  */
+
 #define setup_lock(handle, cell)		handle = Lock_Cell(cell)
 #define remove_lock(handle)			Unlock_Cell(handle)
 
@@ -146,61 +152,10 @@ label:									\
       break;								\
 									\
     case FORMAL_REF:							\
-    {									\
-      fast long depth;							\
+      lookup_formal(cell, env, hunk, label);				\
 									\
-      verify(FORMAL_REF, offset, get_offset(hunk), label);		\
-									\
-      depth = Get_Integer(frame);					\
-      frame = env;							\
-      while(--depth >= 0)						\
-      {									\
-	frame = Fast_Vector_Ref(Vector_Ref(frame, ENVIRONMENT_FUNCTION), \
-				PROCEDURE_ENVIRONMENT);			\
-      }									\
-									\
-      cell = Nth_Vector_Loc(frame,					\
-			    verified_offset(offset, get_offset(hunk)));	\
-									\
-      break;								\
-    }									\
-									\
     case AUX_REF:							\
-    {									\
-      fast long depth;							\
-									\
-      verify(AUX_REF, offset, get_offset(hunk), label);			\
-									\
-      depth = Get_Integer(frame);					\
-      frame = env;							\
-      while(--depth >= 0)						\
-      {									\
-	frame = Fast_Vector_Ref(Vector_Ref(frame, ENVIRONMENT_FUNCTION), \
-				PROCEDURE_ENVIRONMENT);			\
-      }									\
-									\
-      frame = Vector_Ref(frame, ENVIRONMENT_FUNCTION);			\
-      if (Type_Code(frame) != AUX_LIST_TYPE)				\
-      {									\
-	cell = uncompiled_trap_object;					\
-	break;								\
-      }									\
-      depth = verified_offset(offset, get_offset(hunk));		\
-      if (depth > Vector_Length(frame))					\
-      {									\
-	cell = uncompiled_trap_object;					\
-	break;								\
-      }									\
-      frame = Vector_Ref(frame, depth);					\
-      if ((frame == NIL) ||						\
-	  (Fast_Vector_Ref(frame, CONS_CAR) != hunk[VARIABLE_SYMBOL]))	\
-      {									\
-	cell = uncompiled_trap_object;					\
-	break;								\
-      }									\
-      cell = Nth_Vector_Loc(frame, CONS_CDR);				\
-      break;								\
-    }									\
+      lookup_aux(cell, env, hunk, label);				\
 									\
     default:								\
       /* Done here rather than in a separate case because of		\
@@ -211,6 +166,61 @@ label:									\
 	      illegal_trap_object);					\
       break;								\
  }									\
+}
+
+#define lookup_formal(cell, env, hunk, label)				\
+{									\
+  fast long depth;							\
+									\
+  verify(FORMAL_REF, offset, get_offset(hunk), label);			\
+  depth = Get_Integer(frame);						\
+  frame = env;								\
+  while(--depth >= 0)							\
+  {									\
+    frame = Fast_Vector_Ref(Vector_Ref(frame, ENVIRONMENT_FUNCTION),	\
+			    PROCEDURE_ENVIRONMENT);			\
+  }									\
+									\
+  cell = Nth_Vector_Loc(frame,						\
+			verified_offset(offset, get_offset(hunk)));	\
+									\
+  break;								\
+}
+
+#define lookup_aux(cell, env, hunk, label)				\
+{									\
+  fast long depth;							\
+									\
+  verify(AUX_REF, offset, get_offset(hunk), label);			\
+  depth = Get_Integer(frame);						\
+  frame = env;								\
+  while(--depth >= 0)							\
+  {									\
+    frame = Fast_Vector_Ref(Vector_Ref(frame, ENVIRONMENT_FUNCTION),	\
+			    PROCEDURE_ENVIRONMENT);			\
+  }									\
+									\
+  frame = Vector_Ref(frame, ENVIRONMENT_FUNCTION);			\
+  if (Type_Code(frame) != AUX_LIST_TYPE)				\
+  {									\
+    cell = uncompiled_trap_object;					\
+    break;								\
+  }									\
+  depth = verified_offset(offset, get_offset(hunk));			\
+  if (depth > Vector_Length(frame))					\
+  {									\
+    cell = uncompiled_trap_object;					\
+    break;								\
+  }									\
+  frame = Vector_Ref(frame, depth);					\
+  if ((frame == NIL) ||							\
+      (Fast_Vector_Ref(frame, CONS_CAR) != hunk[VARIABLE_SYMBOL]))	\
+  {									\
+    cell = uncompiled_trap_object;					\
+    break;								\
+  }									\
+  cell = Nth_Vector_Loc(frame, CONS_CDR);				\
+  break;								\
 }
 
 #define lookup_primitive_type_test()					\

@@ -30,12 +30,16 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/usrdef.h,v 9.35 1987/04/03 00:47:31 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/usrdef.h,v 9.36 1987/04/16 02:31:57 jinx Rel $ */
 
 /* Macros and header for usrdef.c and variants. */
 
 #include "config.h"
 #include "object.h"
+#include "errors.h"
 #include "prim.h"
+#include "primitive.h"
 
-
+extern void
+  Microcode_Termination(),
+  signal_error_from_primitive();

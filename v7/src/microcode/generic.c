@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.21 1987/01/22 14:26:43 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.22 1987/04/16 02:23:19 jinx Rel $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -38,10 +38,30 @@ MIT in each case. */
 #include "flonum.h"
 #include "zones.h"
 
-Pointer C_Integer_To_Scheme_Integer(C)
-long C;
-{ fast bigdigit *Answer, *SCAN, *size;
+Built_In_Primitive(Prim_Zero, 1, "ZERO?", 0xE6)
+{
+  Primitive_1_Arg();
+
+  Set_Time_Zone(Zone_Math);
+  switch (Type_Code(Arg1))
+  { case TC_FIXNUM:     if (Get_Integer(Arg1) == 0) return TRUTH;
+                        else return NIL;
+    case TC_BIG_FLONUM: if (Get_Float(Arg1) == 0.0) return TRUTH;
+                        else return NIL;
+    case TC_BIG_FIXNUM: if (ZERO_BIGNUM(Fetch_Bignum(Arg1))) return TRUTH;
+                        else return NIL;
+    default:            Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  }
+  /*NOTREACHED*/
+}
+
+Pointer
+C_Integer_To_Scheme_Integer(C)
+     long C;
+{
+  fast bigdigit *Answer, *SCAN, *size;
   long Length;
+
   if (Fixnum_Fits(C))
     return Make_Non_Pointer(TC_FIXNUM, C);
   Length = Align(C_INTEGER_LENGTH_AS_BIGNUM);
@@ -49,32 +69,40 @@ long C;
   Answer = BIGNUM(Free); 
   Prepare_Header(Answer, 0, (C >= 0) ? POSITIVE : NEGATIVE);
   size   = &LEN(Answer);
-  if (C < 0) C = - C;
+  if (C < 0)
+    C = - C;
   for (SCAN = Bignum_Bottom(Answer); C != 0; *size += 1)
-  { *SCAN++ = Rem_Radix(C);
-    C    = Div_Radix(C);
+  {
+    *SCAN++ = Rem_Radix(C);
+    C = Div_Radix(C);
   }
   *((Pointer *) Answer) = Make_Header(Align(*size));
-  Free  += Length;
+  Free += Length;
   Debug_Test(Free-Length);
   return Make_Pointer(TC_BIG_FIXNUM, Free-Length);
 }
-
-int Scheme_Integer_To_C_Integer(Arg1, C)
-Pointer Arg1;
-long *C;
-{ int type = Type_Code(Arg1);
+
+int
+Scheme_Integer_To_C_Integer(Arg1, C)
+     Pointer Arg1;
+     long *C;
+{
+  int type = Type_Code(Arg1);  
   fast bigdigit *SCAN, *ARG1;
   fast long Answer, i;
   long Length;
+
   if (type == TC_FIXNUM)
-    { Sign_Extend(Arg1, *C);
-      return PRIM_DONE;
-    }
-  if (type != TC_BIG_FIXNUM) return ERR_ARG_1_WRONG_TYPE;
+  {
+    Sign_Extend(Arg1, *C);
+    return PRIM_DONE;
+  }
+  if (type != TC_BIG_FIXNUM)
+    return ERR_ARG_1_WRONG_TYPE;
   ARG1 = BIGNUM(Get_Pointer(Arg1));
   Length = LEN(ARG1);
-  if (Length==0) Answer = 0;
+  if (Length == 0)
+    Answer = 0;
   else if (Length > C_INTEGER_LENGTH_AS_BIGNUM)
     return ERR_ARG_1_BAD_RANGE;
   else if (Length < C_INTEGER_LENGTH_AS_BIGNUM)
@@ -85,36 +113,26 @@ long *C;
     for (SCAN=Bignum_Top(ARG1), i=0, Answer=0; i< Length; i++)
     /* Attempting to take care of overflow problems */
     { Answer = Mul_Radix(Answer);
-      if (Answer < 0) return ERR_ARG_1_BAD_RANGE;
+      if (Answer < 0)
+	return ERR_ARG_1_BAD_RANGE;
       Answer = Answer + *SCAN--;
-      if (Answer < 0) return ERR_ARG_1_BAD_RANGE;
+      if (Answer < 0)
+	return ERR_ARG_1_BAD_RANGE;
     }
-  if NEG_BIGNUM(ARG1) Answer = - Answer;
+  if NEG_BIGNUM(ARG1)
+    Answer = - Answer;
   *C = Answer;
   return PRIM_DONE;
 }
 
-Pointer Fetch_Bignum_One()
-{ return Get_Fixed_Obj_Slot(Bignum_One);
-}
-
-Built_In_Primitive(Prim_Zero, 1, "ZERO?")
-{ Primitive_1_Arg();
-  Set_Time_Zone(Zone_Math);
-  switch (Type_Code(Arg1))
-  { case TC_FIXNUM:     if (Get_Integer(Arg1) == 0) return TRUTH;
-                        else return NIL;
-    case TC_BIG_FLONUM: if (Get_Float(Arg1) == 0.0) return TRUTH;
-                        else return NIL;
-    case TC_BIG_FIXNUM: if (ZERO_BIGNUM(Fetch_Bignum(Arg1))) return TRUTH;
-                        else return NIL;
-    default:            Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  }				/*NOTREACHED*/
+Pointer
+Fetch_Bignum_One()
+{
+  return Get_Fixed_Obj_Slot(Bignum_One);
 }
 
-#define Sign_Check(C_Name, S_Name, Normal_Op, Big_Op)			\
-Built_In_Primitive(C_Name, 1, S_Name)					\
-{ Primitive_1_Arg();							\
+#define Sign_Check(Normal_Op, Big_Op)					\
+  Primitive_1_Arg();							\
   Set_Time_Zone(Zone_Math);						\
   switch (Type_Code(Arg1))						\
   { case TC_FIXNUM:     { long Value;					\
@@ -133,16 +151,22 @@ P2_Sign_Check(Big_Op)
 			else return NIL;				\
     default:		Primitive_Error(ERR_ARG_1_WRONG_TYPE);		\
   }
-/* } deliberately omitted to make LINT understand about longjmp */
 
-Sign_Check(Prim_Positive, "POSITIVE?", >, POS_BIGNUM)
-/*NOTREACHED*/ }
-Sign_Check(Prim_Negative, "NEGATIVE?", <, NEG_BIGNUM)
-/*NOTREACHED*/ }
+
+Built_In_Primitive(Prim_Positive, 1, "POSITIVE?", 0xE7)
+{
+  Sign_Check(>, POS_BIGNUM);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_Negative, 1, "NEGATIVE?", 0xE8)
+{
+  Sign_Check(<, NEG_BIGNUM);
+  /*NOTREACHED*/
+}
 
-#define Inc_Dec(C_Name, S_Name, Normal_Op, Big_Op)			\
-Built_In_Primitive(C_Name, 1, S_Name)					\
-{ Primitive_1_Arg();							\
+#define Inc_Dec(Normal_Op, Big_Op)					\
+  Primitive_1_Arg();							\
   Set_Time_Zone(Zone_Math);						\
   switch (Type_Code(Arg1))						\
   { case TC_FIXNUM:							\
@@ -175,16 +199,21 @@ P3_Inc_Dec(Normal_Op, Big_Op)
      }									\
     default:		Primitive_Error(ERR_ARG_1_WRONG_TYPE);		\
   }
-/* } deliberately omitted to make LINT understand about longjmp */
 
-Inc_Dec(Prim_One_Plus, "ONE-PLUS", +, plus_signed_bignum)
-/*NOTREACHED*/ }
-Inc_Dec(Prim_M_1_Plus, "MINUS-ONE-PLUS", -, minus_signed_bignum)
-/*NOTREACHED*/ }
+Built_In_Primitive(Prim_One_Plus, 1, "1+", 0xF1)
+{
+  Inc_Dec(+, plus_signed_bignum);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_M_1_Plus, 1, "-1+", 0xF2)
+{
+  Inc_Dec(-, minus_signed_bignum);
+  /*NOTREACHED*/
+}
 
-#define Two_Op_Comparator(C_Name, S_Name, GENERAL_OP, BIG_OP)		\
-Built_In_Primitive(C_Name, 2, S_Name)					\
-{ Primitive_2_Args();							\
+#define Two_Op_Comparator(GENERAL_OP, BIG_OP)				\
+  Primitive_2_Args();							\
   Set_Time_Zone(Zone_Math);						\
   switch (Type_Code(Arg1))						\
   { case TC_FIXNUM:							\
@@ -275,18 +304,27 @@ P7_Two_Op_Comparator(GENERAL_OP, BIG_OP)
      }									\
     default:   Primitive_Error(ERR_ARG_1_WRONG_TYPE);			\
   }
-/* } deliberately omitted to make LINT understand about longjmp */
 
-Two_Op_Comparator(Prim_Equal_Number, "NUMBER-EQUAL?", ==, EQUAL)
-/*NOTREACHED*/ }
-Two_Op_Comparator(Prim_Less, "NUMBER-LESS?", <, TWO_BIGGER)
-/*NOTREACHED*/ }
-Two_Op_Comparator(Prim_Greater, "NUMBER-GREATER?", >, ONE_BIGGER)
-/*NOTREACHED*/ }
+Built_In_Primitive(Prim_Equal_Number, 2, "&=", 0xE9)
+{
+  Two_Op_Comparator(==, EQUAL);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_Less, 2, "&<", 0xEA)
+{
+  Two_Op_Comparator(<, TWO_BIGGER);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_Greater, 2, "&>", 0xEB)
+{
+  Two_Op_Comparator(>, ONE_BIGGER);
+  /*NOTREACHED*/
+}
 
-#define Two_Op_Operator(C_Name, S_Name, GENERAL_OP, BIG_OP)		\
-Built_In_Primitive(C_Name, 2, S_Name)					\
-{ Primitive_2_Args();							\
+#define Two_Op_Operator(GENERAL_OP, BIG_OP)				\
+  Primitive_2_Args();							\
   Set_Time_Zone(Zone_Math);						\
   switch (Type_Code(Arg1))						\
   { case TC_FIXNUM:							\
@@ -399,15 +437,25 @@ P9_Two_Op_Operator(GENERAL_OP, BIG_OP)
      }									\
     default:  Primitive_Error(ERR_ARG_1_WRONG_TYPE);			\
   }
-/* } deliberately omitted to make LINT understand about longjmp */
 
-Two_Op_Operator(Prim_Plus, "PLUS", +, plus_signed_bignum)
-/*NOTREACHED*/ }
-Two_Op_Operator(Prim_Minus, "MINUS", -, minus_signed_bignum)
-/*NOTREACHED*/ }
+Built_In_Primitive(Prim_Plus, 2, "&+", 0xEC)
+{
+  Two_Op_Operator(+, plus_signed_bignum);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_Minus, 2, "&-", 0xED)
+{
+  Two_Op_Operator(-, minus_signed_bignum);
+  /*NOTREACHED*/
+}
 
-Built_In_Primitive(Prim_Multiply, 2, "MULTIPLY")
-{ Primitive_2_Args();
+Built_In_Primitive(Prim_Multiply, 2, "&*", 0xEE)
+{
+  /* Mul is machine dependent and lives in os.c */
+  extern Pointer Mul();
+  Primitive_2_Args();
+
   Set_Time_Zone(Zone_Math);
   switch (Type_Code(Arg1))
   { case TC_FIXNUM:
@@ -444,7 +492,8 @@ Built_In_Primitive(Prim_Multiply, 2, "MULTIPLY")
 	  }
 	 default:
 	  Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-       }			/*NOTREACHED*/
+       }
+       /*NOTREACHED*/
      }
     case TC_BIG_FLONUM:
      { switch (Type_Code(Arg2))
@@ -461,10 +510,12 @@ Built_In_Primitive(Prim_Multiply, 2, "MULTIPLY")
 	    { Reduced_Flonum_Result(Get_Float(Arg1) * Get_Float(B));
             }
 	    Primitive_Error(ERR_ARG_2_FAILED_COERCION);
-          }			/*NOTREACHED*/
+          }
+	  /*NOTREACHED*/
 	 default:
 	  Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-       }			/*NOTREACHED*/
+       }
+       /*NOTREACHED*/
      }
 
 /* Prim_Multiply continues on the next page */
@@ -486,7 +537,8 @@ Built_In_Primitive(Prim_Multiply, 2, "MULTIPLY")
 	    { Reduced_Flonum_Result(Get_Float(A) * Get_Float(Arg2));
             }					 
 	    Primitive_Error(ERR_ARG_1_FAILED_COERCION);
-          }			/*NOTREACHED*/
+          }
+	  /*NOTREACHED*/
 	 case TC_BIG_FIXNUM:
           { Pointer Ans;
             Bignum_Operation(multiply_signed_bignum(Fetch_Bignum(Arg1), 
@@ -496,14 +548,18 @@ Built_In_Primitive(Prim_Multiply, 2, "MULTIPLY")
 	  }
 	 default:
 	   Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-       }			/*NOTREACHED*/
+       }
+       /*NOTREACHED*/
      }
     default:  Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  }				/*NOTREACHED*/
+  }
+  /*NOTREACHED*/
 }
 
-Built_In_Primitive(Prim_Divide, 2, "DIVIDE")
-{ Primitive_2_Args();
+Built_In_Primitive(Prim_Divide, 2, "&/", 0xEF)
+{
+  Primitive_2_Args();
+
   Set_Time_Zone(Zone_Math);
   switch (Type_Code(Arg1))
   { case TC_FIXNUM:
@@ -538,7 +594,7 @@ Built_In_Primitive(Prim_Divide, 2, "DIVIDE")
 	    Divide_Bignum_Operation(div_signed_bignum(Fetch_Bignum(Big_Arg1),
 				                      Fetch_Bignum(Arg2)),
 				    Result);
-	    if (Vector_Ref(Result, CONS_CDR) == FIXNUM_0)
+	    if (Vector_Ref(Result, CONS_CDR) == Make_Unsigned_Fixnum(0))
 	      return (Vector_Ref(Result, CONS_CAR));
 	    Sign_Extend(Arg1, A);
 	    { B = Big_To_Float(Arg2);
@@ -546,11 +602,13 @@ Built_In_Primitive(Prim_Divide, 2, "DIVIDE")
 	      { Reduced_Flonum_Result(A / Get_Float(B));
 	      }
 	      Primitive_Error(ERR_ARG_2_FAILED_COERCION);
-	    }			/*NOTREACHED*/
+	    }
+	    /*NOTREACHED*/
 	  }
 	 default:
 	  Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-       }			/*NOTREACHED*/
+       }
+       /*NOTREACHED*/
      }
     case TC_BIG_FLONUM:
      { switch (Type_Code(Arg2))
@@ -579,10 +637,12 @@ Built_In_Primitive(Prim_Divide, 2, "DIVIDE")
 	    { Reduced_Flonum_Result(Get_Float(Arg1) / Get_Float(B));
             }
 	    Primitive_Error(ERR_ARG_2_FAILED_COERCION);
-          }			/*NOTREACHED*/
+          }
+	  /*NOTREACHED*/
 	 default:
 	  Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-       }			/*NOTREACHED*/
+       }
+       /*NOTREACHED*/
      }
 
 /* Prim_Divide continues on the next page */
@@ -599,7 +659,7 @@ Built_In_Primitive(Prim_Divide, 2, "DIVIDE")
 	    Divide_Bignum_Operation(div_signed_bignum(Fetch_Bignum(Arg1),
 				 	             Fetch_Bignum(Big_Arg2)),
 				    Result);
-	    if (Vector_Ref(Result, CONS_CDR) == FIXNUM_0)
+	    if (Vector_Ref(Result, CONS_CDR) == Make_Unsigned_Fixnum(0))
 	      return (Vector_Ref(Result, CONS_CAR));
 	    A = Big_To_Float(Arg1);
 	    if (Type_Code(A) == TC_BIG_FLONUM)
@@ -608,7 +668,8 @@ Built_In_Primitive(Prim_Divide, 2, "DIVIDE")
 	      Reduced_Flonum_Result(Get_Float(A) / ((double) B));
 	    }
 	    Primitive_Error(ERR_ARG_1_FAILED_COERCION);
-	  }			/*NOTREACHED*/
+	  }
+	  /*NOTREACHED*/
 	 case TC_BIG_FLONUM:
 	  { Pointer A;
 	    if (Get_Float(Arg2) == 0.0)
@@ -618,7 +679,8 @@ Built_In_Primitive(Prim_Divide, 2, "DIVIDE")
 	    { Reduced_Flonum_Result(Get_Float(A) / Get_Float(Arg2));
 	    }
 	    Primitive_Error(ERR_ARG_1_FAILED_COERCION);
-          }			/*NOTREACHED*/
+          }
+	  /*NOTREACHED*/
 
 /* Prim_Divide continues on the next page */
 
@@ -631,7 +693,7 @@ Built_In_Primitive(Prim_Divide, 2, "DIVIDE")
 	    Divide_Bignum_Operation(div_signed_bignum(Fetch_Bignum(Arg1),
                                                       Fetch_Bignum(Arg2)),
                                     Result);
-	    if (Vector_Ref(Result, CONS_CDR) == FIXNUM_0)
+	    if (Vector_Ref(Result, CONS_CDR) == Make_Unsigned_Fixnum(0))
 	      return (Vector_Ref(Result, CONS_CAR));
 	    A = Big_To_Float(Arg1);
 	    if (Type_Code(A) == TC_BIG_FLONUM)
@@ -643,19 +705,24 @@ Built_In_Primitive(Prim_Divide, 2, "DIVIDE")
 	        }
 	      }
 	      Primitive_Error(ERR_ARG_2_FAILED_COERCION);
-	    }			/*NOTREACHED*/
+	    }
+	    /*NOTREACHED*/
 	    Primitive_Error(ERR_ARG_1_FAILED_COERCION);
 	  }
 	 default:
 	   Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-       }			/*NOTREACHED*/
+       }
+       /*NOTREACHED*/
      }
     default:  Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  }				/*NOTREACHED*/
+  }
+  /*NOTREACHED*/
 }
 
-Built_In_Primitive(Prim_Integer_Divide, 2, "INTEGER-DIVIDE")
-{ Primitive_2_Args();
+Built_In_Primitive(Prim_Integer_Divide, 2, "INTEGER-DIVIDE", 0xF0)
+{
+  Primitive_2_Args();
+
   Set_Time_Zone(Zone_Math);
   switch (Type_Code(Arg1))
   { case TC_FIXNUM:
@@ -691,7 +758,8 @@ Built_In_Primitive(Prim_Integer_Divide, 2, "INTEGER-DIVIDE")
 	  }
 	 default:
 	  Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-       }			/*NOTREACHED*/
+       }
+       /*NOTREACHED*/
      }
 
 /* Prim_Integer_Divide continues on the next page */
@@ -721,20 +789,22 @@ Built_In_Primitive(Prim_Integer_Divide, 2, "INTEGER-DIVIDE")
           }
 	 default:
 	   Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-       }			/*NOTREACHED*/
+       }
+       /*NOTREACHED*/
      }
     default:  Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  }				/*NOTREACHED*/
+  }
+  /*NOTREACHED*/
 }
 
 /* Generic sqrt and transcendental functions are created by generalizing
    their floating point counterparts.
 */
 
-#define Generic_Function(Prim_Name, S_Name, Routine)			\
-Built_In_Primitive(Prim_Name, 1, S_Name)				\
-{ double Routine();							\
+#define Generic_Function(Routine)					\
+  double Routine();							\
   Primitive_1_Arg();							\
+									\
   Set_Time_Zone(Zone_Math);						\
   switch (Type_Code(Arg1))						\
   { case TC_FIXNUM:							\
@@ -752,33 +822,61 @@ Built_In_Primitive(Prim_Name, 1, S_Name)				\
      }									\
     default: Primitive_Error(ERR_ARG_1_WRONG_TYPE);			\
   }
-/* } deliberately omitted to make LINT understand about longjmp */
 
 /* This horrible hack because there are no lambda-expressions in C. */
 
-#define Restricted_Generic(C_Name, S_Name, Routine, Lambda, Restriction)\
-double Lambda(arg)							\
-fast double arg;							\
-{ double Routine();							\
-  if (arg Restriction 0.0) Primitive_Error(ERR_ARG_1_BAD_RANGE);	\
+#define Generic_Restriction(Lambda, Routine, Restriction)		\
+double									\
+Lambda(arg)								\
+    fast double arg;							\
+{									\
+  double Routine();							\
+									\
+  if (arg Restriction 0.0)						\
+    Primitive_Error(ERR_ARG_1_BAD_RANGE);				\
   return Routine(arg);							\
-}									\
-Generic_Function(C_Name, S_Name, Lambda)
+}
 
 /* And here the functions themselves */
 
-Restricted_Generic(Prim_Sqrt, "SQRT", sqrt, Scheme_Sqrt, <)
-/*NOTREACHED*/ }
-Generic_Function(Prim_Exp, "EXP", exp)
-/*NOTREACHED*/ }
-Restricted_Generic(Prim_Ln, "LN", log, Scheme_Ln, <=)
-/*NOTREACHED*/ }
-Generic_Function(Prim_Sine, "SINE", sin)
-/*NOTREACHED*/ }
-Generic_Function(Prim_Cosine, "COSINE", cos)
-/*NOTREACHED*/ }
-Generic_Function(Prim_Arctan, "ARCTAN", atan)
-/*NOTREACHED*/ }
+Generic_Restriction(Scheme_Sqrt, sqrt, <)
+Generic_Restriction(Scheme_Ln, log, <=)
+
+Built_In_Primitive(Prim_Sqrt, 1, "SQRT", 0xF7)
+{
+  Generic_Function(Scheme_Sqrt);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_Exp, 1, "EXP", 0xF8)
+{
+  Generic_Function(exp);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_Ln, 1, "LOG", 0xF9)
+{
+  Generic_Function(Scheme_Ln);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_Sine, 1, "SIN", 0xFA)
+{
+  Generic_Function(sin);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_Cosine, 1, "COS", 0xFB)
+{
+  Generic_Function(cos);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_Arctan, 1, "&ATAN", 0xFC)
+{
+  Generic_Function(atan);
+  /*NOTREACHED*/
+}
 
 /* Coercions from Floating point to integers.
 
@@ -799,20 +897,23 @@ Generic_Function(Prim_Arctan, "ARCTAN", atan)
 */
 
 #define Truncate_Mapping(arg)	arg
-#define Round_Mapping(arg)	((arg) >= 0.0 ? (arg)+0.5 : (arg)-0.5)
+#define Round_Mapping(arg)	((arg) >= 0.0 ? ((arg) + 0.5) : ((arg) - 0.5))
 
 #ifdef HAS_FLOOR
+
 extern double floor(), ceil();
 #define Floor_Mapping(arg)	floor(arg)
 #define Ceiling_Mapping(arg)    ceil(arg)
+
 #else
-#define Floor_Mapping(arg)	((arg) >= 0.0 ? (arg) : (arg)-1.0)
-#define Ceiling_Mapping(arg)	((arg) >= 0.0 ? (arg)+1.0 : (arg))
+
+#define Floor_Mapping(arg)	((arg) >= 0.0 ? (arg) : ((arg) - 1.0))
+#define Ceiling_Mapping(arg)	((arg) >= 0.0 ? ((arg) + 1.0) : (arg))
+
 #endif
 
-#define Flonum_To_Integer(Prim_Name, S_Name, How_To_Do_It)		\
-Built_In_Primitive(Prim_Name, 1, S_Name)				\
-{ Primitive_1_Arg();							\
+#define Flonum_To_Integer(How_To_Do_It)					\
+  Primitive_1_Arg();							\
   Set_Time_Zone(Zone_Math);						\
   switch (Type_Code(Arg1))						\
   { case TC_FIXNUM :							\
@@ -827,13 +928,27 @@ Built_In_Primitive(Prim_Name, 1, S_Name)				\
       }									\
     default: Primitive_Error(ERR_ARG_1_WRONG_TYPE);			\
   }
-/* } deliberately omitted to make LINT understand about longjmp */
 
-Flonum_To_Integer(Prim_Truncate, "TRUNCATE", Truncate_Mapping)
-/*NOTREACHED*/ }
-Flonum_To_Integer(Prim_Round, "ROUND", Round_Mapping)
-/*NOTREACHED*/ }
-Flonum_To_Integer(Prim_Floor, "FLOOR", Floor_Mapping)
-/*NOTREACHED*/ }
-Flonum_To_Integer(Prim_Ceiling, "CEILING", Ceiling_Mapping)
-/*NOTREACHED*/ }
+Built_In_Primitive(Prim_Truncate, 1, "TRUNCATE", 0xF3)
+{
+  Flonum_To_Integer(Truncate_Mapping);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_Round, 1, "ROUND", 0xF4)
+{
+  Flonum_To_Integer(Round_Mapping);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_Floor, 1, "FLOOR", 0xF5)
+{
+  Flonum_To_Integer(Floor_Mapping);
+  /*NOTREACHED*/
+}
+
+Built_In_Primitive(Prim_Ceiling, 1, "CEILING", 0xF6)
+{
+  Flonum_To_Integer(Ceiling_Mapping);
+  /*NOTREACHED*/
+}

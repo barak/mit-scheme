@@ -30,13 +30,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/winder.h,v 9.21 1987/01/22 14:37:23 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/winder.h,v 9.22 1987/04/16 02:33:24 jinx Rel $
 
    Header file for dynamic winder. 
 
 */
 
-#if defined(butterfly)
+#ifdef butterfly
 
 #define guarantee_state_point()					\
 {								\

@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.24 1987/04/03 00:22:18 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.25 1987/04/16 02:32:05 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -356,7 +356,7 @@
 	       (CDR FIRST-TAIL)				;$22
 	       (SET-CAR! SET-FIRST!)			;$23
 	       (SET-CDR! SET-FIRST-TAIL!)		;$24
-	       PRINT-STRING				;$25
+	       #F					;$25
 	       TTY-GET-CURSOR				;$26
 	       GENERAL-CAR-CDR				;$27
 	       HUNK3-CONS				;$28
@@ -369,7 +369,7 @@
 	       SET-CURRENT-HISTORY!			;$2F
 	       VECTOR-SET!				;$30
 	       NON-MARKED-VECTOR-CONS			;$31
-	       GET-CHARACTER-FROM-INPUT-CHANNEL		;$32
+	       #F					;$32
 	       LEXICAL-UNBOUND?				;$33
 	       INTEGER->CHAR				;$34
 	       CHAR-DOWNCASE				;$35
@@ -458,7 +458,7 @@
 	       SYSTEM-PAIR-SET-CAR!			;$88
 	       SYSTEM-PAIR-SET-CDR!			;$89
 	       #F					;$8A
-	       GET-CHARACTER-FROM-INPUT-CHANNEL-IMMEDIATE ;$8B
+	       #F					;$8B
 	       SET-CELL-CONTENTS!			;$8C
 	       &MAKE-OBJECT				;$8D
 	       SYSTEM-HUNK3-CXR0			;$8E
@@ -492,7 +492,7 @@
 	       GREATER-THAN-FLONUM?			;$AA
 	       INTERN-CHARACTER-LIST			;$AB
 	       #F					;$AC
-	       (STRING-LENGTH STRING-SIZE VECTOR-8B-SIZE)	;$AD
+	       (STRING-SIZE VECTOR-8B-SIZE)		;$AD
 	       SYSTEM-VECTOR-SIZE			;$AE
 	       FORCE					;$AF
 	       PRIMITIVE-DATUM				;$B0
@@ -519,7 +519,7 @@
 	       FILE-WRITE-CHAR				;$C5
 	       FILE-WRITE-STRING			;$C6
 	       CLOSE-LOST-OPEN-FILES			;$C7
-	       PUT-CHARACTER-TO-OUTPUT-CHANNEL		;$C8
+	       #F					;$C8
 	       WITH-INTERRUPTS-REDUCED			;$C9
 	       PRIMITIVE-EVAL-STEP			;$CA
 	       PRIMITIVE-APPLY-STEP			;$CB
@@ -579,8 +579,8 @@
 	       GET-EXTERNAL-COUNTS			;$101
 	       GET-EXTERNAL-NAME			;$102
 	       GET-EXTERNAL-NUMBER			;$103
-	       OPEN-CHANNEL				;$104
-	       CLOSE-PHYSICAL-CHANNEL			;$105
+	       #F					;$104
+	       #F					;$105
 	       GET-NEXT-INTERRUPT-CHARACTER		;$106
 	       CHECK-AND-CLEAN-UP-INPUT-CHANNEL		;$107
 	       #F					;$108
@@ -854,4 +854,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.24 1987/04/03 00:22:18 jinx Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.25 1987/04/16 02:32:05 jinx Exp $"

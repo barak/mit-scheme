@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.22 1987/04/03 00:15:49 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.23 1987/04/16 02:25:05 jinx Rel $
  *
  * Macros used by the interpreter and some utilities.
  *
@@ -42,7 +42,15 @@ MIT in each case. */
 
 /* Move from register to static storage and back */
 
-#if defined(In_Main_Interpreter) && !defined(ENABLE_DEBUGGING_TOOLS)
+/* Note defined() cannot be used because VMS does not understand it. */
+
+#ifdef In_Main_Interpreter
+#ifndef ENABLE_DEBUGGING_TOOLS
+#define Cache_Registers
+#endif
+#endif
+
+#ifdef Cache_Registers
 
 #define Regs		Reg_Block
 #define Stack_Pointer	Reg_Stack_Pointer
@@ -74,8 +82,8 @@ MIT in each case. */
 #define Import_Val()
 #define Import_Registers_Except_Val()		Import_Registers()
 
-#define Import_Registers_After_Primitive()
-#define Export_Registers_Before_Primitive()	Export_Registers()
+#define Import_Regs_After_Primitive()
+#define Export_Regs_Before_Primitive()		Export_Registers()
 
 #define Env		Regs[REGBLOCK_ENV]
 #define Val		Regs[REGBLOCK_VAL]
@@ -203,14 +211,6 @@ MIT in each case. */
 			                     CONT_PRINT_EXPR_MESSAGE);	\
                             CRLF();					\
                           }
-
-/* Random utility macros */
-
-#define Pop_Primitive_Frame(NArgs)					\
-  Stack_Pointer = Simulate_Popping(NArgs)
-
-#define N_Args_Primitive(primitive_code)				\
-  ((int) Arg_Count_Table[primitive_code])
 
 #define Stop_Trapping()							\
 { Trapping = false;							\
@@ -218,6 +218,26 @@ MIT in each case. */
     *Return_Hook_Address = Old_Return_Code;				\
   Return_Hook_Address = NULL;						\
 }
+
+/* Primitive utility macros */
+
+#define Internal_Apply_Primitive(primitive_code)			\
+  ((*(Primitive_Procedure_Table[primitive_code]))())
+
+#define N_Args_Primitive(primitive_code)				\
+  (Primitive_Arity_Table[primitive_code])
+
+#define Internal_Apply_External(external_code)				\
+  ((*(External_Procedure_Table[external_code]))())
+
+#define N_Args_External(external_code)					\
+  (External_Arity_Table[external_code])
+
+#define Apply_External(N)						\
+  Internal_Apply_External(N)
+
+#define Pop_Primitive_Frame(NArgs)					\
+  Stack_Pointer = Simulate_Popping(NArgs)
 
 /* Compiled code utility macros */
 

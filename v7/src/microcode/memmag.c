@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.27 1987/04/03 00:17:25 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.28 1987/04/16 02:26:14 jinx Exp $ */
 
 /* Memory management top level.
 
@@ -83,8 +83,9 @@ extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
 
 void
 Clear_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
-int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
-{ Heap_Top = Heap_Bottom + Our_Heap_Size;
+     int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
+{
+  Heap_Top = Heap_Bottom + Our_Heap_Size;
   Local_Heap_Base = Heap_Bottom;
   Unused_Heap_Top = Heap_Bottom + 2*Our_Heap_Size;
   Set_Mem_Top(Heap_Top - GC_Reserve);
@@ -99,11 +100,12 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 
 void
 Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
-int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
+     int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 {
   /* Consistency check 1 */
   if (Our_Heap_Size == 0)
-  { printf("Configuration won't hold initial data.\n");
+  {
+    fprintf(stderr, "Configuration won't hold initial data.\n");
     exit(1);
   }
 
@@ -116,7 +118,8 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 
   /* Consistency check 2 */
   if (Heap == NULL)
-  { fprintf(stderr, "Not enough memory for this configuration.\n");
+  {
+    fprintf(stderr, "Not enough memory for this configuration.\n");
     exit(1);
   }
 
@@ -130,7 +133,8 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 
   /* Consistency check 3 */
   if (((C_To_Scheme(Highest_Allocated_Address)) & TYPE_CODE_MASK) != 0)
-  { fprintf(stderr,
+  {
+    fprintf(stderr,
 	    "Largest address does not fit in datum field of Pointer.\n");
     fprintf(stderr,
 	    "Allocate less space or re-compile without Heap_In_Low_Memory.\n");
@@ -143,9 +147,11 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 }
 
 /* In this version, this does nothing. */
+
 void
 Reset_Memory()
-{ return;
+{
+  return;
 }
 
 /* Utilities for the garbage collector top level.
@@ -154,8 +160,11 @@ Reset_Memory()
 
 /* Flip into unused heap */
 
-void GCFlip()
-{ Pointer *Temp;
+void
+GCFlip()
+{
+  Pointer *Temp;
+
   Temp = Unused_Heap;
   Unused_Heap = Heap_Bottom;
   Heap_Bottom = Temp;
@@ -178,11 +187,17 @@ void GCFlip()
    collector, which looks at both old and new space.
 */
 
-void Fix_Weak_Chain()
-{ fast Pointer *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
+Pointer Weak_Chain;
+
+void
+Fix_Weak_Chain()
+{
+  fast Pointer *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
+
   Low_Constant = Constant_Space;
   while (Weak_Chain != NIL)
-  { Old_Weak_Cell = Get_Pointer(Weak_Chain);
+  {
+    Old_Weak_Cell = Get_Pointer(Weak_Chain);
     Scan = Get_Pointer(*Old_Weak_Cell++);
     Weak_Chain = *Old_Weak_Cell;
     Old_Car = *Scan;
@@ -220,7 +235,8 @@ void Fix_Weak_Chain()
       case GC_Vector:
 	Old = Get_Pointer(Old_Car);
 	if (Old >= Low_Constant)
-	{ *Scan = Temp;
+	{
+	  *Scan = Temp;
 	  continue;
 	}
 	Normal_BH(false, continue);
@@ -230,7 +246,8 @@ void Fix_Weak_Chain()
       case GC_Compiled:
 	Old = Get_Pointer(Old_Car);
 	if (Old >= Low_Constant)
-	{ *Scan = Temp;
+	{
+	  *Scan = Temp;
 	  continue;
 	}
 	Compiled_BH(false, continue);
@@ -284,28 +301,31 @@ void GC()
   *Free++ = Make_Pointer(TC_HUNK3, History);
   *Free++ = Undefined_Externals;
   *Free++ = Get_Current_Stacklet();
-  *Free++ = ((Previous_Restore_History_Stacklet == NULL) ?
+  *Free++ = ((Prev_Restore_History_Stacklet == NULL) ?
 	     NIL :
-	     Make_Pointer(TC_CONTROL_POINT, Previous_Restore_History_Stacklet));
+	     Make_Pointer(TC_CONTROL_POINT, Prev_Restore_History_Stacklet));
   *Free++ = Current_State_Point;
   *Free++ = Fluid_Bindings;
 
   /* The 4 step GC */
   Result = GCLoop(Constant_Space, &Free);
   if (Result != Check_Value)
-  { fprintf(stderr, "\nGC: Constant Scan ended too early.\n");
+  {
+    fprintf(stderr, "\nGC: Constant Scan ended too early.\n");
     Microcode_Termination(TERM_BROKEN_HEART);
   }
   Result = GCLoop(Root, &Free);
   if (Free != Result)
-  { fprintf(stderr, "\nGC-1: Heap Scan ended too early.\n");
+  {
+    fprintf(stderr, "\nGC-1: Heap Scan ended too early.\n");
     Microcode_Termination(TERM_BROKEN_HEART);
   }
   Root2 = Free;
   *Free++ = The_Precious_Objects;
   Result = GCLoop(Root2, &Free);
   if (Free != Result)
-  { fprintf(stderr, "\nGC-2: Heap Scan ended too early.\n");
+  {
+    fprintf(stderr, "\nGC-2: Heap Scan ended too early.\n");
     Microcode_Termination(TERM_BROKEN_HEART);
   }
   Fix_Weak_Chain();
@@ -320,10 +340,12 @@ void GC()
   Set_Current_Stacklet(*Root);
   Root += 1;			/* Set_Current_Stacklet is sometimes a No-Op! */
   if (*Root == NIL)
-  { Previous_Restore_History_Stacklet = NULL;
+  {
+    Prev_Restore_History_Stacklet = NULL;
     Root += 1;
   }
-  else Previous_Restore_History_Stacklet = Get_Pointer(*Root++);
+  else
+    Prev_Restore_History_Stacklet = Get_Pointer(*Root++);
   Current_State_Point = *Root++;
   Fluid_Bindings = *Root++;
   Free_Stacklets = NULL;
@@ -331,22 +353,24 @@ void GC()
 }
 
 /* (GARBAGE-COLLECT SLACK)
-      Requests a garbage collection leaving the specified amount of slack
-      for the top of heap check on the next GC.  The primitive ends by invoking
-      the GC daemon if there is one.
+   Requests a garbage collection leaving the specified amount of slack
+   for the top of heap check on the next GC.  The primitive ends by invoking
+   the GC daemon if there is one.
 
-      This primitive never returns normally.  It always escapes into
-      the interpreter because some of its cached registers (eg. History)
-      have changed.
+   This primitive never returns normally.  It always escapes into
+   the interpreter because some of its cached registers (eg. History)
+   have changed.
 */
 
-Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
-{ Pointer GC_Daemon_Proc;
+Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT", 0x3A)
+{
+  Pointer GC_Daemon_Proc;
   Primitive_1_Arg();
 
   Arg_1_Type(TC_FIXNUM);
   if (Free > Heap_Top)
-  { fprintf(stderr,
+  {
+    fprintf(stderr,
 	    "\nGC has been delayed too long, and you are out of room!\n");
     fprintf(stderr,
 	    "Free = 0x%x; MemTop = 0x%x; Heap_Top = 0x%x\n",
@@ -358,7 +382,8 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
   GC();
   IntCode &= ~INT_GC;
   if (GC_Check(GC_Space_Needed))
-  { fprintf(stderr,
+  {
+    fprintf(stderr,
 	    "\nGC just ended.  The free pointer is at 0x%x, the top of this heap\n",
 	   Free);
     fprintf(stderr,
@@ -376,7 +401,7 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
   }
  Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+1));
   Store_Return(RC_NORMAL_GC_DONE);
-  Store_Expression(FIXNUM_0 + (MemTop - Free));
+  Store_Expression(Make_Unsigned_Fixnum(MemTop - Free));
   Save_Cont();
   Push(GC_Daemon_Proc);
   Push(STACK_FRAME_HEADER);

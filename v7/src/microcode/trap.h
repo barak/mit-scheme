@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/trap.h,v 9.36 1987/04/06 11:03:21 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/trap.h,v 9.37 1987/04/16 02:30:49 jinx Exp $ */
 
 /* Kinds of traps:
 
@@ -91,7 +91,7 @@ MIT in each case. */
 
 #define DANGEROUS_OBJECT		Make_Unsigned_Fixnum(TRAP_DANGEROUS)
 
-#if ((TC_REFERENCE_TRAP != 0x32) || (TC_TRUE != 0x08))
-#include "error: lookup.h and types.h are inconsistent"
+#if (TC_REFERENCE_TRAP != 0x32)
+#include "error: trap.h and types.h are inconsistent"
 #endif
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/mul.c,v 9.21 1987/01/22 14:29:18 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/mul.c,v 9.22 1987/04/16 02:26:41 jinx Rel $
  *
  * This file contains the portable fixnum multiplication procedure.
  * Returns NIL if the result does not fit in a fixnum.
@@ -44,26 +44,38 @@ MIT in each case. */
 #define MAX_FIXNUM	(1<<ADDRESS_LENGTH)
 #define	ABS(x)		(((x) < 0) ? -(x) : (x))
 
-Pointer Mul(Arg1, Arg2)
-long Arg1, Arg2;
-{ long A, B, C;
+Pointer
+Mul(Arg1, Arg2)
+     long Arg1, Arg2;
+{
+  long A, B, C;
   fast long Hi_A, Hi_B, Lo_A, Lo_B, Lo_C, Middle_C;
   Boolean Sign;
-  Sign_Extend(Arg1, A); Sign_Extend(Arg2, B);
+
+  Sign_Extend(Arg1, A);
+  Sign_Extend(Arg2, B);
   Sign = ((A < 0) == (B < 0));
-  A = ABS(A); B = ABS(B);
-  Hi_A = (A >> HALF_WORD_SIZE) & HALF_WORD_MASK;
-  Hi_B = (B >> HALF_WORD_SIZE) & HALF_WORD_MASK;
-  Lo_A = A & HALF_WORD_MASK;  Lo_B = B & HALF_WORD_MASK;
-  Lo_C = Lo_A * Lo_B;
-  if (Lo_C > FIXNUM_SIGN_BIT) return NIL;
-  Middle_C = Lo_A * Hi_B + Hi_A * Lo_B;
-  if (Middle_C >= MAX_MIDDLE) return NIL;
-  if ((Hi_A * Hi_B) > 0) return NIL;
+  A = ABS(A);
+  B = ABS(B);
+  Hi_A = ((A >> HALF_WORD_SIZE) & HALF_WORD_MASK);
+  Hi_B = ((B >> HALF_WORD_SIZE) & HALF_WORD_MASK);
+  Lo_A = (A & HALF_WORD_MASK);
+  Lo_B = (B & HALF_WORD_MASK);
+  Lo_C = (Lo_A * Lo_B);
+  if (Lo_C > FIXNUM_SIGN_BIT)
+    return NIL;
+  Middle_C = (Lo_A * Hi_B) + (Hi_A * Lo_B);
+  if (Middle_C >= MAX_MIDDLE)
+    return NIL;
+  if ((Hi_A > 0) && (Hi_B > 0))
+    return NIL;
   C = Lo_C + (Middle_C << HALF_WORD_SIZE);
   if (Fixnum_Fits(C))
-  { if (Sign || (C == 0)) return FIXNUM_0 + C;
-    else return FIXNUM_0 + (MAX_FIXNUM - C);
+  {
+    if (Sign || (C == 0))
+      return Make_Unsigned_Fixnum(C);
+    else
+      return Make_Unsigned_Fixnum(MAX_FIXNUM - C);
   }
   return NIL;
 }

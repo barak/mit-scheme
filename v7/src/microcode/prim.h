@@ -30,17 +30,33 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.35 1987/04/03 00:48:04 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.36 1987/04/16 02:27:34 jinx Rel $ */
+
+/*
+   Primitive declarations.
 
-/* External primitive definition structure. */
+   Note that the following cannot be changed without changing
+   Findprim.c.  
+*/
 
-typedef struct ext_desc	/* User supplied primitive data */
-{
-  Pointer (*proc)();	/* Location of actual procedure */
-  int arity;		/* Number of arguments */
-  char *name;		/* Name of primitive */
-} External_Descriptor;
+extern Pointer (*(Primitive_Procedure_Table[]))();
+extern int Primitive_Arity_Table[];
+extern char *Primitive_Name_Table[];
+extern long MAX_PRIMITIVE;
 
-extern External_Descriptor Ext_Prim_Desc[];
-extern long MAX_EXTERNAL_PRIMITIVE, Get_Ext_Number();
+extern Pointer (*(External_Procedure_Table[]))();
+extern int External_Arity_Table[];
+extern char *External_Name_Table[];
+extern long MAX_EXTERNAL_PRIMITIVE;
+
 extern Pointer Undefined_Externals, Make_Prim_Exts();
+
+/* Utility macros */
+
+#define NUndefined()					\
+((Undefined_Externals == NIL) ?				\
+ 0 :							\
+ Get_Integer(User_Vector_Ref(Undefined_Externals, 0)))
+
+#define CHUNK_SIZE	20	/* Grow undefined vector by this much */
+

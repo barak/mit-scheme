@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.23 1987/04/11 16:05:19 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.24 1987/04/16 02:21:08 jinx Exp $
  *
  * This file contains a primitive to dump an executable version of Scheme.
  * It uses unexec.c from GNU Emacs.
@@ -67,17 +67,26 @@ MIT in each case. */
 #define TEXT_START		(PAGSIZ + (sizeof(struct exec)))
 #endif
 
-/* I don't know whether the following two are right or not. */
+/* I haven't tried any below this point. */
 
-#ifdef sun2
+#if defined(umax)
 #define UNEXEC_AVAILABLE
-#define SEGMENT_MASK		(SEGSIZ - 1)
+#define HAVE_GETPAGESIZE
+#define COFF
+#define UMAX
+#define SECTION_ALIGNMENT	pagemask
+#define SEGMENT_MASK		(64 * 1024 - 1)
 #endif
 
 #ifdef celerity
 #define UNEXEC_AVAILABLE
 #endif
 
+#ifdef sun2
+#define UNEXEC_AVAILABLE
+#define SEGMENT_MASK		(SEGSIZ - 1)
+#endif
+
 #ifndef UNEXEC_AVAILABLE
 #include "Error: dumpworld.c only works on a few machines."
 #endif

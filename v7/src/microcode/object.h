@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.21 1987/04/03 00:18:15 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.22 1987/04/16 02:27:09 jinx Exp $ */
 
 /* This file contains definitions pertaining to the C view of 
    Scheme pointers: widths of fields, extraction macros, pre-computed
@@ -141,8 +141,6 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 
 #define Make_Pointer(TC, A)	Make_Object((TC), C_To_Scheme(A))
 #define Make_Non_Pointer(TC, D)	Make_Object(TC, ((Pointer) (D)))
-#define Make_Unsigned_Fixnum(N)	(FIXNUM_0 + (N))
-#define Make_Signed_Fixnum(N)	Make_Non_Pointer( TC_FIXNUM, (N))
 
 /* (Make_New_Pointer (TC, A)) may be more efficient than
    (Make_Pointer (TC, (Get_Pointer (A)))) */
@@ -173,6 +171,9 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 #define User_Vector_Ref(P, N)		Vector_Ref(P, (N)+1)
 #define User_Vector_Set(P, N, S)  	Vector_Set(P, (N)+1, S)
 
+#define Make_Broken_Heart(N)	(BROKEN_HEART_ZERO + (N))
+#define Make_Unsigned_Fixnum(N)	(FIXNUM_ZERO + (N))
+#define Make_Signed_Fixnum(N)	Make_Non_Pointer( TC_FIXNUM, (N))
 #define fixnum_p(P)    ((pointer_type (P)) == TC_FIXNUM)
 #define Get_Float(P)   (* ((double *) (Nth_Vector_Loc ((P), 1))))
 #define Get_Integer(P) (pointer_datum (P))

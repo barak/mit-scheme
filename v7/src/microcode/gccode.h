@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.22 1987/04/03 00:13:28 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.23 1987/04/16 02:23:06 jinx Exp $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -177,7 +177,7 @@ if And2(In_GC, Consistency_Check)				\
 if (Old >= Low_Constant)					\
   continue;							\
 BH_Code;							\
-New_Address = (BROKEN_HEART_0 + C_To_Scheme(To));		\
+New_Address = (Make_Broken_Heart(C_To_Scheme(To)));		\
 Extra_Code;							\
 continue
 
@@ -255,7 +255,7 @@ Pointer_End()
 #ifdef FLOATING_ALIGNMENT
 #define Transport_Flonum()					\
   Align_Float(To);						\
-  New_Address = (BROKEN_HEART_0 + C_To_Scheme(To));		\
+  New_Address = (Make_Broken_Heart(C_To_Scheme(To)));		\
   Real_Transport_Vector();					\
   Pointer_End()
 #endif
@@ -291,6 +291,8 @@ Scan -= 1
 
 */
 
+extern Pointer Weak_Chain;
+
 #define Transport_Weak_Cons()					\
 { long Car_Type = Type_Code(*Old);				\
   *To++ = Make_New_Pointer(TC_NULL, *Old);			\
@@ -309,7 +311,7 @@ Scan -= 1
 #define Fasdump_Setup_Pointer(Extra_Code, BH_Code)		\
 BH_Code;							\
 /* It must be transported to New Space */			\
-New_Address = (BROKEN_HEART_0 + C_To_Scheme(To));		\
+New_Address = (Make_Broken_Heart(C_To_Scheme(To)));		\
 if ((Fixes - To) < FASDUMP_FIX_BUFFER)				\
 { NewFree = To;							\
   Fixup = Fixes;						\

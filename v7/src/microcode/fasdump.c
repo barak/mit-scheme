@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.23 1987/04/03 00:12:00 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.24 1987/04/16 02:21:39 jinx Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -141,7 +141,7 @@ int Dump_Mode;
 	Setup_Pointer_for_Dump(Transport_Pair());
 
       case TC_INTERNED_SYMBOL:
-	Setup_Pointer_for_Dump(Fasdump_Symbol(BROKEN_HEART_0));
+	Setup_Pointer_for_Dump(Fasdump_Symbol(Make_Broken_Heart(0)));
 
       case TC_UNINTERNED_SYMBOL:
 	Setup_Pointer_for_Dump(Fasdump_Symbol(UNBOUND_OBJECT));
@@ -185,20 +185,71 @@ int Dump_Mode;
   return true;
 } /* DumpLoop */
 
-/* (PRIMITIVE-FASDUMP object-to-dump file-name flag)
-      [Primitive number 0x56]
-      Dump an object into a file so that it can be loaded using
-      BINARY-FASLOAD.  A spare heap is required for this operation.
-      The first argument is the object to be dumped.  The second is
-      the filename and the third a flag.  The flag, if #!TRUE, means
-      that the object is to be dumped for reloading into constant
-      space.  This is currently disabled. If the flag is NIL, it means
-      that it will be reloaded into the heap.  The primitive returns
-      #!TRUE or NIL indicating whether it successfully dumped the
-      object (it can fail on an object that is too large).
+/*
+   Used to create a vector with symbols for each of the external
+   primitives known to the system.
 */
-Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
-{ Pointer Object, File_Name, Flag, *New_Object,
+
+Pointer 
+Make_Prim_Exts()
+{
+  extern Pointer external_primitive_name();
+  fast Pointer Result, *scan;
+  fast long i, Max, Count;
+
+  Max = NUndefined();
+  Count = (MAX_EXTERNAL_PRIMITIVE + Max + 1);
+  Primitive_GC_If_Needed(Count + 1);
+  Result = Make_Pointer(TC_VECTOR, Free);
+  scan = Free;
+  Free += Count + 1;
+
+  *scan++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, Count);
+  for (i = 0; i <= MAX_EXTERNAL_PRIMITIVE; i++)
+  {
+    *scan++ = external_primitive_name(i);
+  }
+  for (i = 1; i <= Max; i++)
+  {
+    *scan++ = User_Vector_Ref(Undefined_Externals, i);
+  }
+  return Result;
+}
+
+void
+Fasdump_Exit()
+{
+  fast Pointer *Fixes;
+
+  Fixes = Fixup;
+  fclose(File_Handle);
+  while (Fixes != NewMemTop)
+  {
+    fast Pointer *Fix_Address;
+
+    Fix_Address = Get_Pointer(*Fixes++); /* Where it goes. */
+    *Fix_Address = *Fixes++;             /* Put it there. */
+  }
+  Fixup = Fixes;
+  Fasdump_Exit_Hook();
+}
+
+/* (PRIMITIVE-FASDUMP object-to-dump file-name flag)
+   Dump an object into a file so that it can be loaded using
+   BINARY-FASLOAD.  A spare heap is required for this operation.
+   The first argument is the object to be dumped.  The second is
+   the filename and the third a flag.  The flag, if #!TRUE, means
+   that the object is to be dumped for reloading into constant
+   space.  This is currently disabled. If the flag is NIL, it means
+   that it will be reloaded into the heap.  The primitive returns
+   #!TRUE or NIL indicating whether it successfully dumped the
+   object (it can fail on an object that is too large).
+
+   The code for dumping pure is severely broken and conditionalized out.
+*/
+Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
+{
+  Pointer Object, File_Name, Flag, *New_Object,
           *Addr_Of_New_Object, Prim_Exts;
   long Pure_Length, Length;
   Primitive_3_Args();
@@ -211,7 +262,6 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
   if (!Open_Dump_File(File_Name, WRITE_FLAG))
     Primitive_Error(ERR_ARG_2_BAD_RANGE);
 #if false
-  /* Cannot dump pure at all */
   if ((Flag != NIL) && (Flag != TRUTH))
 #else
   if (Flag != NIL)
@@ -224,18 +274,12 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
   New_Object = NewFree;
   *NewFree++ = Object;
   *NewFree++ = Prim_Exts;
-
-/* Prim_Primitive_Fasdump continues on next page */
 
-/* Prim_Primitive_Fasdump, continued */
-
 #if false
-  /* This code is supposed to handle pure dumping.  It is severely
-     broken.  It should be removed or fixed.
-   */
-  if (Flag==TRUTH)
+  if (Flag == TRUTH)
   { if (!DumpLoop(New_Object, PURE_COPY))
-    { Fasdump_Exit();
+    {
+      Fasdump_Exit();
       return NIL;
     }
     /* Can't align.
@@ -245,7 +289,8 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
     *NewFree++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
     *NewFree++ = Make_Non_Pointer(CONSTANT_PART, Pure_Length);
     if (!DumpLoop(New_Object, CONSTANT_COPY))
-    { Fasdump_Exit();
+    {
+      Fasdump_Exit();
       return NIL;
     }
     Length =  NewFree-New_Object+2;
@@ -259,15 +304,11 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
     Write_File(0, 0x000000, Addr_Of_New_Object,
                Length, New_Object, Prim_Exts);
   }
-
-/* Fasdump continues on the next page */
-
-/* Fasdump, continued */
-
   else		/* Dumping for reload into heap */
 #endif
   { if (!DumpLoop(New_Object, NORMAL_GC))
-    { Fasdump_Exit();
+    {
+      Fasdump_Exit();
       return NIL;
     }
     /* Aligning might screw up some of the counters.
@@ -280,27 +321,15 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
   Fasdump_Exit();
   return TRUTH;
 }
-
-Fasdump_Exit()
-{ register Pointer *Fixes = Fixup;
-  fclose(File_Handle);
-  while (Fixes != NewMemTop)
-  { register Pointer *Fix_Address;
-    Fix_Address = Get_Pointer(*Fixes++); /* Where it goes. */
-    *Fix_Address = *Fixes++;             /* Put it there. */
-  }
-  Fixup = Fixes;
-  Fasdump_Exit_Hook();
-}
 
 /* (DUMP-BAND PROCEDURE FILE-NAME)
-      [Primitive number 0xB7]
-      Saves all of the heap and pure space on FILE-NAME.  When the
-      file is loaded back using BAND_LOAD, PROCEDURE is called with an
-      argument of NIL.
+   Saves all of the heap and pure space on FILE-NAME.  When the
+   file is loaded back using BAND_LOAD, PROCEDURE is called with an
+   argument of NIL.
 */
-Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND")
-{ Pointer Combination, Ext_Prims;
+Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
+{
+  Pointer Combination, Ext_Prims;
   long Arg1Type;
   Primitive_2_Args();
 

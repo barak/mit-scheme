@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.21 1987/01/22 14:35:52 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.22 1987/04/16 02:32:44 jinx Exp $
  *
  * This file contains procedures for handling vectors and conversion
  * back and forth to lists.
@@ -102,168 +102,179 @@ fast Pointer List;
   return Make_Pointer(Result_Type, Orig_Free);
 }
 
-/* (LIST_TO_VECTOR LIST)
-      [Primitive number 0x7C]
-      Returns a vector made from the items in LIST.
+/* (LIST->VECTOR LIST)
+   Returns a vector made from the items in LIST.
 */
 
-Built_In_Primitive(Prim_List_To_Vector, 1, "LIST->VECTOR")
-{ Primitive_1_Arg();
+Built_In_Primitive(Prim_List_To_Vector, 1, "LIST->VECTOR", 0x7C)
+{
+  Primitive_1_Arg();
+
   return L_To_V(TC_VECTOR, Arg1);
 }
 
-/* (SUBVECTOR_TO_LIST VECTOR FROM TO)
-      [Primitive number 0x7D]
-      Returns a list of the FROMth through TO-1st items in the vector.
-      Thus (SUBVECTOR_TO_LIST V 0 (VECTOR_LENGTH V)) returns a list of
-      all the items in V.
+/* (SUBVECTOR->LIST VECTOR FROM TO)
+   Returns a list of the FROMth through TO-1st items in the vector.
+   Thus (SUBVECTOR_TO_LIST V 0 (VECTOR_LENGTH V)) returns a list of
+   all the items in V.
 */
-Built_In_Primitive(Prim_Subvector_To_List, 3, "SUBVECTOR->LIST")
-{ Primitive_3_Args();
+Built_In_Primitive(Prim_Subvector_To_List, 3, "SUBVECTOR->LIST", 0x7D)
+{
+  Primitive_3_Args();
+
   Arg_1_Type(TC_VECTOR);
-  /* The work is done by Subvector_To_List, in PRIMSUBR.C */
   return Subvector_To_List();
 }
 
 /* (VECTOR_CONS LENGTH CONTENTS)
-      [Primitive number 0x2C]
-      Create a new vector to hold LENGTH entries, all of which are
-      initialized to CONTENTS.
+   Create a new vector to hold LENGTH entries, all of which are
+   initialized to CONTENTS.
 */
-Built_In_Primitive(Prim_Vector_Cons, 2, "VECTOR-CONS")
-{ long Length, i;
+Built_In_Primitive(Prim_Vector_Cons, 2, "VECTOR-CONS", 0x2C)
+{
+  long Length, i;
   Primitive_2_Args();
+
   Arg_1_Type(TC_FIXNUM);
   Length = Get_Integer(Arg1);
   Primitive_GC_If_Needed(Length+1);
   *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, Length);
-  for (i=0; i < Length; i++) *Free++ = Arg2;
-  return Make_Pointer(TC_VECTOR, Free-(Length+1));
+  for (i = 0; i < Length; i++)
+    *Free++ = Arg2;
+  return Make_Pointer(TC_VECTOR, (Free - (Length + 1)));
 }
 
-/* (VECTOR_REF VECTOR OFFSET)
-      [Primitive number 0x2E]
-      Return the OFFSETth entry in VECTOR.  Entries are numbered from
-      0.
+/* (VECTOR-REF VECTOR OFFSET)
+   Return the OFFSETth entry in VECTOR.  Entries are numbered from 0.
 */
-Built_In_Primitive(Prim_Vector_Ref, 2, "VECTOR-REF")
-{ long Offset;
+Built_In_Primitive(Prim_Vector_Ref, 2, "VECTOR-REF", 0x2E)
+{
+  long Offset;
   Primitive_2_Args();
+
   Arg_1_Type(TC_VECTOR);
   Arg_2_Type(TC_FIXNUM);
   Range_Check(Offset, Arg2,
-              0, Vector_Length(Arg1)-1, ERR_ARG_2_BAD_RANGE);
+              0, (Vector_Length(Arg1) - 1), ERR_ARG_2_BAD_RANGE);
   return User_Vector_Ref(Arg1, Offset);
 }
 
-/* (VECTOR_SET VECTOR OFFSET VALUE)
-      [Primitive number 0x30]
-      Store VALUE as the OFFSETth entry in VECTOR.  Entries are
-      numbered from 0.  Returns (bad style to rely on this) the
-      previous value of the entry.
+/* (VECTOR-SET! VECTOR OFFSET VALUE)
+   Store VALUE as the OFFSETth entry in VECTOR.  Entries are
+   numbered from 0.  Returns (bad style to rely on this) the
+   previous value of the entry.
 */
-Built_In_Primitive(Prim_Vector_Set, 3, "VECTOR-SET!")
-{ long Offset;
+Built_In_Primitive(Prim_Vector_Set, 3, "VECTOR-SET!", 0x30)
+{
+  long Offset;
   Primitive_3_Args();
 
   Arg_1_Type(TC_VECTOR);
   Arg_2_Type(TC_FIXNUM);
   Range_Check(Offset, Arg2,
-              0, Vector_Length(Arg1)-1, ERR_ARG_2_BAD_RANGE);
+              0, (Vector_Length(Arg1) - 1), ERR_ARG_2_BAD_RANGE);
   Side_Effect_Impurify(Arg1, Arg3);
-  return Swap_Pointers(Nth_Vector_Loc(Arg1, Offset+1), Arg3);
+  return Swap_Pointers(Nth_Vector_Loc(Arg1, (Offset + 1)), Arg3);
 }
 
-/* (VECTOR_SIZE VECTOR)
-      [Primitive number 0x2D]
-      Returns the number of entries in VECTOR.
+/* (VECTOR-LENGTH VECTOR)
+   Returns the number of entries in VECTOR.
 */
-Built_In_Primitive(Prim_Vector_Size, 1, "VECTOR-SIZE")
-{ Primitive_1_Arg();
+Built_In_Primitive(Prim_Vector_Size, 1, "VECTOR-LENGTH", 0x2D)
+{
+  Primitive_1_Arg();
+
   Arg_1_Type(TC_VECTOR);
-  return FIXNUM_0+Vector_Length(Arg1);
+  return Make_Unsigned_Fixnum(Vector_Length(Arg1));
 }
 
-/* (SYS_LIST_TO_VECTOR GC-LIST)
-      [Primitive number 0x97]
-      Same as LIST_TO_VECTOR except that the resulting vector has the
-      specified type code.  This can be used, for example, to create
-      an environment from a list of values.
+/* (SYSTEM-LIST-TO-VECTOR GC-LIST)
+   Same as LIST_TO_VECTOR except that the resulting vector has the
+   specified type code.  This can be used, for example, to create
+   an environment from a list of values.
 */
-Built_In_Primitive(Prim_Sys_List_To_Vector, 2, "SYSTEM-LIST->VECTOR")
-{ long Type;
+Built_In_Primitive(Prim_Sys_List_To_Vector, 2, "SYSTEM-LIST-TO-VECTOR", 0x97)
+{
+  long Type;
   Primitive_2_Args();
+
   Arg_1_Type(TC_FIXNUM);
   Range_Check(Type, Arg1, 0, MAX_TYPE_CODE, ERR_ARG_1_BAD_RANGE);
-  if (GC_Type_Code(Type) == GC_Vector) return L_To_V(Type, Arg2);
-  else Primitive_Error(ERR_ARG_1_BAD_RANGE); /*NOTREACHED*/
+  if (GC_Type_Code(Type) == GC_Vector)
+    return L_To_V(Type, Arg2);
+  else
+    Primitive_Error(ERR_ARG_1_BAD_RANGE);
+  /*NOTREACHED*/
 }
 
-/* (SYS_SUBVECTOR_TO_LIST GC-VECTOR FROM TO)
-      [Primitive number 0x98]
-      Same as SUBVECTOR_TO_LIST, but accepts anything with a GC type
-      of VECTOR.  Most useful for accessing values from environments.
+/* (SYSTEM-SUBVECTOR-TO-LIST GC-VECTOR FROM TO)
+   Same as SUBVECTOR->LIST, but accepts anything with a GC type
+   of VECTOR.
 */
 Built_In_Primitive(Prim_Sys_Subvector_To_List, 3,
-		 "SYSTEM-SUBVECTOR->LIST")
-{ Primitive_3_Args();
+		 "SYSTEM-SUBVECTOR-TO-LIST", 0x98)
+{
+  Primitive_3_Args();
   Touch_In_Primitive(Arg1, Arg1);
+
   Arg_1_GC_Type(GC_Vector);
-  /* The work is done by Subvector_To_List, in PRIMSUBR.C */
   return Subvector_To_List();
 }
 
-/* (SYS_VECTOR OBJECT)
-      [Primitive number 0x99]
-      Returns #!TRUE if OBJECT is of GC type VECTOR.  Otherwise
-      returns NIL.
+/* (SYSTEM-VECTOR? OBJECT)
+   Returns #!TRUE if OBJECT is of GC type VECTOR.  Otherwise
+   returns NIL.
 */
-Built_In_Primitive(Prim_Sys_Vector, 1, "SYSTEM-VECTOR")
-{ Primitive_1_Arg();
+Built_In_Primitive(Prim_Sys_Vector, 1, "SYSTEM-VECTOR?", 0x99)
+{
+  Primitive_1_Arg();
+
   Touch_In_Primitive(Arg1, Arg1);
-  if (GC_Type_Vector(Arg1)) return TRUTH; else return NIL;
+  if (GC_Type_Vector(Arg1))
+    return TRUTH;
+  else
+    return NIL;
 }
 
-/* (SYS_VECTOR_REF GC-VECTOR OFFSET)
-      [Primitive number 0x9A]
-      Like VECTOR_REF, but for anything of GC type VECTOR (eg.
-      environments)
+/* (SYSTEM-VECTOR-REF GC-VECTOR OFFSET)
+   Like VECTOR_REF, but for anything of GC type VECTOR.
 */
-Built_In_Primitive(Prim_Sys_Vector_Ref, 2, "SYSTEM-VECTOR-REF")
-{ long Offset;
+Built_In_Primitive(Prim_Sys_Vector_Ref, 2, "SYSTEM-VECTOR-REF", 0x9A)
+{
+  long Offset;
   Primitive_2_Args();
+
   Touch_In_Primitive(Arg1, Arg1);
   Arg_1_GC_Type(GC_Vector);
   Range_Check(Offset, Arg2, 0,
-	      Vector_Length(Arg1)-1, ERR_ARG_2_BAD_RANGE);
+	      (Vector_Length(Arg1) - 1), ERR_ARG_2_BAD_RANGE);
   return User_Vector_Ref(Arg1, Offset);
 }
 
-/* (SYS_VECTOR_SET GC-VECTOR OFFSET VALUE)
-      [Primitive number 0x9B]
-      Like VECTOR_SET, but for anything of GC type VECTOR (eg.
-      environments)
+/* (SYSTEM-VECTOR-SET! GC-VECTOR OFFSET VALUE)
+   Like VECTOR_SET, but for anything of GC type VECTOR.
 */
-Built_In_Primitive(Prim_Sys_Vec_Set, 3, "SYSTEM-VECTOR-SET!")
-{ long Offset;
+Built_In_Primitive(Prim_Sys_Vec_Set, 3, "SYSTEM-VECTOR-SET!", 0x9B)
+{
+  long Offset;
   Primitive_3_Args();
+
   Touch_In_Primitive(Arg1, Arg1);
   Arg_1_GC_Type(GC_Vector);
   Range_Check(Offset, Arg2, 0,
 	      Vector_Length(Arg1)-1, ERR_ARG_2_BAD_RANGE);
   Side_Effect_Impurify(Arg1, Arg3);
-  return Swap_Pointers(Nth_Vector_Loc(Arg1, Offset+1), Arg3);
+  return Swap_Pointers(Nth_Vector_Loc(Arg1, (Offset + 1)), Arg3);
 }
 
-/* (SYS_VECTOR_SIZE GC-VECTOR)
-      [Primitive number 0xAE]
-      Like VECTOR_SIZE, but for anything of GC type VECTOR (eg.
-      environments)
+/* (SYSTEM-VECTOR-SIZE GC-VECTOR)
+   Like VECTOR_SIZE, but for anything of GC type VECTOR.
 */
-Built_In_Primitive(Prim_Sys_Vec_Size, 1, "SYSTEM-VECTOR-SIZE")
-{ Primitive_1_Arg();
+Built_In_Primitive(Prim_Sys_Vec_Size, 1, "SYSTEM-VECTOR-SIZE", 0xAE)
+{
+  Primitive_1_Arg();
+
   Touch_In_Primitive(Arg1, Arg1);
   Arg_1_GC_Type(GC_Vector);
-  return FIXNUM_0+Vector_Length(Arg1);
+  return Make_Unsigned_Fixnum(Vector_Length(Arg1));
 }
-

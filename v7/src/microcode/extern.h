@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.23 1987/04/03 00:11:43 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.24 1987/04/16 02:21:28 jinx Exp $
  *
  * External declarations.
  *
@@ -109,11 +109,10 @@ extern long IntCode,	/* Interrupts requesting */
 extern Pointer Lookup_Base;
 extern long Lookup_Offset;
 
-extern char *Primitive_Names[], *Return_Names[];
-extern long MAX_PRIMITIVE, MAX_RETURN;
+extern char *Return_Names[];
+extern long MAX_RETURN;
 
-extern char Arg_Count_Table[],
-            *CONT_PRINT_RETURN_MESSAGE,
+extern char *CONT_PRINT_RETURN_MESSAGE,
             *CONT_PRINT_EXPR_MESSAGE,
             *RESTORE_CONT_RETURN_MESSAGE,
             *RESTORE_CONT_EXPR_MESSAGE;
@@ -122,11 +121,11 @@ extern int GC_Type_Map[];
 
 extern Boolean Photo_Open; /* Photo file open */
 extern jmp_buf *Back_To_Eval;
-extern Boolean Trapping, Can_Do_Cursor;
-extern Pointer Old_Return_Code, *Return_Hook_Address, 
-               *Previous_Restore_History_Stacklet,
-	       Weak_Chain;
-extern long Previous_Restore_History_Offset;
+extern Boolean Trapping;
+extern Pointer Old_Return_Code, *Return_Hook_Address;
+
+extern Pointer *Prev_Restore_History_Stacklet;
+extern long Prev_Restore_History_Offset;
 
 /* And file "channels" */
 
@@ -140,26 +139,24 @@ extern char *OS_Name, *OS_Variant;
 extern long Heap_Size, Constant_Size, Stack_Size;
 extern Pointer *Highest_Allocated_Address;
 
-/* String utilities */
-
-extern Boolean String_Equal();
-extern Pointer Make_String(), C_String_To_Scheme_String();
-#define Scheme_String_To_C_String(Scheme_String) 		\
-   ((char *) Nth_Vector_Loc(Scheme_String, STRING_CHARS))
-
-/* Symbol and variable utilities */
+/* Environment lookup utilities. */
 
 extern long Lex_Ref(), Local_Set(), Lex_Set(),
-            Symbol_Lex_Ref(), Symbol_Lex_Set(), Binding_Lookup_Slot(),
-            Intern(), Lookup_Fluid(), Symbol_Lookup(), Do_Hash();
-extern Pointer Hash();
+            Symbol_Lex_Ref(), Symbol_Lex_Set();
+
+/* String utilities */
+
+extern Pointer C_String_To_Scheme_String();
+
+#define Scheme_String_To_C_String(Scheme_String) 		\
+   ((char *) Nth_Vector_Loc(Scheme_String, STRING_CHARS))
 
 /* Numeric utilities */
 
 extern int Scheme_Integer_To_C_Integer();
 extern Pointer C_Integer_To_Scheme_Integer(), Allocate_Float(), 
                Float_To_Big(), Big_To_Float(), Big_To_Fix(),
-	       Fix_To_Big(), Mul();
+	       Fix_To_Big();
 
 /* Random and OS utilities */
 
@@ -181,14 +178,11 @@ extern void Interpret(), Do_Micro_Error(), Setup_Interrupt(),
 	    Back_Out_Of_Primitive(), Translate_To_Point(),
 	    Stop_History(), Stack_Death();
 
-extern void Clear_Int_Timer(), Set_Int_Timer();
-
 #ifdef USE_STACKLETS
 extern void Allocate_New_Stacklet();
 #endif
 
-extern Pointer (*(Primitive_Table[]))(), *Make_Dummy_History(),
-               Find_State_Space();
+extern Pointer *Make_Dummy_History(), Find_State_Space();
 
 /* Debugging utilities */
 

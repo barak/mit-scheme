@@ -30,59 +30,66 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.21 1987/01/22 14:25:41 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.22 1987/04/16 02:22:34 jinx Rel $
  *
  * This file contains support for floating point arithmetic.  Most
  * of these primitives have been superceded by generic arithmetic.
  */
-
+
 #include "scheme.h"
 #include "primitive.h"
 #include "flonum.h"
 #include "zones.h"
-
+
                 /************************************/
                 /* BINARY FLOATING POINT OPERATIONS */
                 /************************************/
-
-/*          See flohead.c for floating point macros.                     */
 
 /* The binary floating point operations return NIL if either argument
    is not a floating point number.  Otherwise they return the
    appropriate result.
 */
 
-Built_In_Primitive(Prim_Divide_Flonum, 2, "DIVIDE-FLONUM")
-{ Primitive_2_Args();
+Built_In_Primitive(Prim_Plus_Flonum, 2, "PLUS-FLONUM", 0x69)
+{
+  Primitive_2_Args();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Arg_2_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  if (Get_Float(Arg2) == 0) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  Flonum_Result(Get_Float(Arg1) / Get_Float(Arg2));
+  Flonum_Result(Get_Float(Arg1) + Get_Float(Arg2));
 }
-
-Built_In_Primitive(Prim_Minus_Flonum, 2, "MINUS-FLONUM")
-{ Primitive_2_Args();
+
+Built_In_Primitive(Prim_Minus_Flonum, 2, "MINUS-FLONUM", 0x6A)
+{
+  Primitive_2_Args();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Arg_2_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
   Flonum_Result(Get_Float(Arg1) - Get_Float(Arg2));
 }
 
-Built_In_Primitive(Prim_Multiply_Flonum, 2, "MULTIPLY-FLONUM")
-{ Primitive_2_Args();
+Built_In_Primitive(Prim_Multiply_Flonum, 2, "MULTIPLY-FLONUM", 0x6B)
+{
+  Primitive_2_Args();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Arg_2_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
   Flonum_Result(Get_Float(Arg1) * Get_Float(Arg2));
 }
 
-Built_In_Primitive(Prim_Plus_Flonum, 2, "PLUS-FLONUM")
-{ Primitive_2_Args();
+Built_In_Primitive(Prim_Divide_Flonum, 2, "DIVIDE-FLONUM", 0x6C)
+{
+  Primitive_2_Args();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Arg_2_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  Flonum_Result(Get_Float(Arg1) + Get_Float(Arg2));
+  if (Get_Float(Arg2) == 0)
+    Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  Flonum_Result(Get_Float(Arg1) / Get_Float(Arg2));
 }
 
 	        /************************************/
@@ -94,30 +101,37 @@ Built_In_Primitive(Prim_Plus_Flonum, 2, "PLUS-FLONUM")
    true, or a fixnum 0 if it is false.
 */
 
-Built_In_Primitive(Prim_Equal_Flonum, 2, "EQUAL-FLONUM?")
-{ Primitive_2_Args();
+Built_In_Primitive(Prim_Equal_Flonum, 2, "EQUAL-FLONUM?", 0x6D)
+{
+  Primitive_2_Args();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Arg_2_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  return FIXNUM_0+
-           (((Get_Float(Arg1)) == (Get_Float(Arg2))) ? 1 : 0);
+  return
+    Make_Unsigned_Fixnum(((Get_Float(Arg1)) == (Get_Float(Arg2))) ? 1 : 0);
 }
 
-Built_In_Primitive(Prim_Greater_Flonum, 2, "GREATER-FLONUM?")
-{ Primitive_2_Args();
+Built_In_Primitive(Prim_Greater_Flonum, 2, "GREATER-THAN-FLONUM?", 0xAA)
+{
+  Primitive_2_Args();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Arg_2_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  return FIXNUM_0+
-           (((Get_Float(Arg1)) > (Get_Float(Arg2))) ? 1 : 0);
+  return
+    Make_Unsigned_Fixnum(((Get_Float(Arg1)) > (Get_Float(Arg2))) ? 1 : 0);
 }
 
-Built_In_Primitive(Prim_Less_Flonum, 2, "LESS-FLONUM?")
-{ Primitive_2_Args();
+Built_In_Primitive(Prim_Less_Flonum, 2, "LESS-THAN-FLONUM?", 0x6E)
+{
+  Primitive_2_Args();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Arg_2_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  return FIXNUM_0+(((Get_Float(Arg1)) < (Get_Float(Arg2))) ? 1 : 0);
+  return
+    Make_Unsigned_Fixnum(((Get_Float(Arg1)) < (Get_Float(Arg2))) ? 1 : 0);
 }
 
 	        /***********************************/
@@ -128,129 +142,160 @@ Built_In_Primitive(Prim_Less_Flonum, 2, "LESS-FLONUM?")
    not a flonum. Otherwise, they return the appropriate result.
 */
 
-Built_In_Primitive(Prim_Arctan_Flonum, 1, "ARCTAN-FLONUM")
-{ double atan();
+Built_In_Primitive(Prim_Sine_Flonum, 1, "SINE-FLONUM", 0x73)
+{
+  extern double sin();
   Primitive_1_Arg();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  Flonum_Result(atan(Get_Float(Arg1)));
+  Flonum_Result(sin(Get_Float(Arg1)));
 }
 
-Built_In_Primitive(Prim_Cosine_Flonum, 1, "COSINE-FLONUM")
-{ double cos();
+Built_In_Primitive(Prim_Cosine_Flonum, 1, "COSINE-FLONUM", 0x74)
+{
+  extern double cos();
   Primitive_1_Arg();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
   Flonum_Result(cos(Get_Float(Arg1)));
 }
 
-Built_In_Primitive(Prim_Exp_Flonum, 1, "EXP-FLONUM")
-{ double exp();
+Built_In_Primitive(Prim_Arctan_Flonum, 1, "ARCTAN-FLONUM", 0x75)
+{
+  extern double atan();
   Primitive_1_Arg();
+
+  Arg_1_Type(TC_BIG_FLONUM);
+  Set_Time_Zone(Zone_Math);
+  Flonum_Result(atan(Get_Float(Arg1)));
+}
+
+Built_In_Primitive(Prim_Exp_Flonum, 1, "EXP-FLONUM", 0x76)
+{
+  extern double exp();
+  Primitive_1_Arg();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
   Flonum_Result(exp(Get_Float(Arg1)));
 }
-
-Built_In_Primitive(Prim_Ln_Flonum, 1, "LN-FLONUM")
-{ double log();
+
+Built_In_Primitive(Prim_Ln_Flonum, 1, "LN-FLONUM", 0x77)
+{
+  extern double log();
   Primitive_1_Arg();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
   if (Arg1 <= 0.0)
-  Primitive_Error(ERR_ARG_1_BAD_RANGE);
+    Primitive_Error(ERR_ARG_1_BAD_RANGE);
   Flonum_Result(log(Get_Float(Arg1)));
 }
 
-Built_In_Primitive(Prim_Sine_Flonum, 1, "SINE-FLONUM")
-{ double sin();
+Built_In_Primitive(Prim_Sqrt_Flonum, 1, "SQRT-FLONUM", 0x78)
+{
+  extern double sqrt();
+  double Arg;
   Primitive_1_Arg();
-  Arg_1_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  Flonum_Result(sin(Get_Float(Arg1)));
-}
-
-Built_In_Primitive(Prim_Sqrt_Flonum, 1, "SQRT-FLONUM")
-{ double sqrt(), Arg;
-  Primitive_1_Arg();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
   Arg = Get_Float(Arg1);
-  if (Arg < 0) return NIL;
+  if (Arg < 0)
+    return NIL;
   Flonum_Result(sqrt(Arg));
 }
+
+Built_In_Primitive(Prim_Zero_Flonum, 1, "ZERO-FLONUM?", 0xA7)
+{
+  Primitive_1_Arg();
 
-Built_In_Primitive(Prim_Negative_Flonum, 1, "NEGATIVE-FLONUM?")
-{ Primitive_1_Arg();
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  return FIXNUM_0+ ((Get_Float(Arg1) < 0.0) ? 1 : 0);
+  return Make_Unsigned_Fixnum((Get_Float(Arg1) == 0.0) ? 1 : 0);
 }
 
-Built_In_Primitive(Prim_Positive_Flonum, 1, "POSITIVE-FLONUM?")
-{ Primitive_1_Arg();
+Built_In_Primitive(Prim_Positive_Flonum, 1, "POSITIVE-FLONUM?", 0xA8)
+{
+  Primitive_1_Arg();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  return FIXNUM_0+ ((Get_Float(Arg1) > 0.0) ? 1 : 0);
+  return Make_Unsigned_Fixnum((Get_Float(Arg1) > 0.0) ? 1 : 0);
 }
 
-Built_In_Primitive(Prim_Zero_Flonum, 1, "ZERO-FLONUM?")
-{ Primitive_1_Arg();
+Built_In_Primitive(Prim_Negative_Flonum, 1, "NEGATIVE-FLONUM?", 0xA9)
+{
+  Primitive_1_Arg();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  return FIXNUM_0+ ((Get_Float(Arg1) == 0.0) ? 1 : 0);
+  return Make_Unsigned_Fixnum((Get_Float(Arg1) < 0.0) ? 1 : 0);
 }
 
-/* (INT_TO_FLOAT FIXNUM-OR-BIGNUM)
-      [Primitive number 0x72]
+/* (COERCE-INTEGER-TO-FLONUM FIXNUM-OR-BIGNUM)
       Returns the floating point number (flonum) corresponding to
       either a bignum or a fixnum.  If the bignum is too large or small
       to be converted to floating point, or if the argument isn't of
       the correct type, FIXNUM-OR-BIGNUM is returned unchanged.
 */
-Built_In_Primitive(Prim_Int_To_Float, 1, "INT->FLOAT")
-{ Primitive_1_Arg();
+Built_In_Primitive(Prim_Int_To_Float, 1, "COERCE-INTEGER-TO-FLONUM", 0x72)
+{
+  Primitive_1_Arg();
+
   Set_Time_Zone(Zone_Math);
   if (Type_Code(Arg1)==TC_FIXNUM)
-  { long Int;
+  {
+    long Int;
+
     Sign_Extend(Arg1, Int);
     return Allocate_Float((double) Int);
   }
-  if (Type_Code(Arg1)==TC_BIG_FIXNUM) return Big_To_Float(Arg1);
+  if (Type_Code(Arg1) == TC_BIG_FIXNUM)
+    return Big_To_Float(Arg1);
   return Arg1;
 }
 
-/* (ROUND_FLONUM FLONUM)
-      [Primitive number 0x71]
-      Returns the integer found by rounding off FLONUM (upward), if
-      FLONUM is a floating point number.  Otherwise returns FLONUM.
-*/
-Built_In_Primitive(Prim_Round_Flonum, 1, "ROUND-FLONUM")
-{ fast double A;
-  long Answer;	/* Faulty VAX/UNIX C optimizer */
-  Primitive_1_Arg();
-  Set_Time_Zone(Zone_Math);
-  if (Type_Code(Arg1) != TC_BIG_FLONUM) return Arg1;
-  A = Get_Float(Arg1);
-  if (A >= 0) A += 0.5; else A -= 0.5;
-  if (flonum_exceeds_fixnum(A)) return Float_To_Big(A);
-  Answer = (long) A;
-  return Make_Non_Pointer(TC_FIXNUM, Answer);
-}
-
-/* (TRUNCATE_FLONUM FLONUM)
-      [Primitive number 0x70]
+/* (TRUNCATE-FLONUM FLONUM)
       Returns the integer corresponding to FLONUM when truncated.
       Returns NIL if FLONUM isn't a floating point number
 */
-Built_In_Primitive(Prim_Truncate_Flonum, 1, "TRUNCATE-FLONUM")
-{ fast double A;
+Built_In_Primitive(Prim_Truncate_Flonum, 1, "TRUNCATE-FLONUM", 0x70)
+{
+  fast double A;
   long Answer;	/* Faulty VAX/UNIX C optimizer */
   Primitive_1_Arg();
+
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
   A = Get_Float(Arg1);
-  if (flonum_exceeds_fixnum(A)) return Float_To_Big(A);
+  if (flonum_exceeds_fixnum(A))
+    return Float_To_Big(A);
+  Answer = (long) A;
+  return Make_Non_Pointer(TC_FIXNUM, Answer);
+}
+
+/* (ROUND-FLONUM FLONUM)
+      Returns the integer found by rounding off FLONUM (upward), if
+      FLONUM is a floating point number.  Otherwise returns FLONUM.
+*/
+Built_In_Primitive(Prim_Round_Flonum, 1, "ROUND-FLONUM", 0x71)
+{
+  fast double A;
+  long Answer;	/* Faulty VAX/UNIX C optimizer */
+  Primitive_1_Arg();
+
+  Set_Time_Zone(Zone_Math);
+  if (Type_Code(Arg1) != TC_BIG_FLONUM) return Arg1;
+  A = Get_Float(Arg1);
+  if (A >= 0)
+    A += 0.5;
+  else
+    A -= 0.5;
+  if (flonum_exceeds_fixnum(A))
+    return Float_To_Big(A);
   Answer = (long) A;
   return Make_Non_Pointer(TC_FIXNUM, Answer);
 }

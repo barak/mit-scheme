@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.21 1987/01/22 14:28:35 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.22 1987/04/16 02:25:31 jinx Exp $
  *
  * This file contains common code for reading internal
  * format binary files.
@@ -48,14 +48,20 @@ long Heap_Count, Const_Count,
 Pointer Ext_Prim_Vector;
 Boolean Found_Ext_Prims, Byte_Invert_Fasl_Files;
 
-Boolean Read_Header()
-{ Pointer Buffer[FASL_HEADER_LENGTH];
+Boolean
+Read_Header()
+{
+  Pointer Buffer[FASL_HEADER_LENGTH];
   Pointer Pointer_Heap_Base, Pointer_Const_Base;
+
   Load_Data(FASL_OLD_LENGTH, (char *) Buffer);
-  if (Buffer[FASL_Offset_Marker] != FASL_FILE_MARKER) return false;
+  if (Buffer[FASL_Offset_Marker] != FASL_FILE_MARKER)
+    return false;
 #ifdef BYTE_INVERSION
-  Byte_Invert_Header(Buffer,sizeof(Buffer)/sizeof(Pointer),
-		     Buffer[FASL_Offset_Heap_Base],Buffer[FASL_Offset_Heap_Count]);
+  Byte_Invert_Header(Buffer,
+		     (sizeof(Buffer) / sizeof(Pointer)),
+		     Buffer[FASL_Offset_Heap_Base],
+		     Buffer[FASL_Offset_Heap_Count]);
 #endif
   Heap_Count = Get_Integer(Buffer[FASL_Offset_Heap_Count]);
   Pointer_Heap_Base = Buffer[FASL_Offset_Heap_Base];
@@ -72,19 +78,17 @@ Boolean Read_Header()
     C_To_Scheme(Nth_Vector_Loc(Pointer_Heap_Base, Heap_Count));
   Dumped_Constant_Top =
     C_To_Scheme(Nth_Vector_Loc(Pointer_Const_Base, Const_Count));
-  if (Sub_Version >= FASL_LONG_HEADER)
-  { Load_Data(FASL_HEADER_LENGTH-FASL_OLD_LENGTH,
-	      (char *) &(Buffer[FASL_OLD_LENGTH]));
-#if BYTE_INVERSION
-    Byte_Invert_Region((char *) &(Buffer[FASL_OLD_LENGTH]),
-		       FASL_HEADER_LENGTH-FASL_OLD_LENGTH);
+  Load_Data((FASL_HEADER_LENGTH - FASL_OLD_LENGTH),
+	    ((char *) &(Buffer[FASL_OLD_LENGTH])));
+#ifdef BYTE_INVERSION
+  Byte_Invert_Region(((char *) &(Buffer[FASL_OLD_LENGTH])),
+		     (FASL_HEADER_LENGTH - FASL_OLD_LENGTH));
 #endif
-    Ext_Prim_Vector =
-      Make_Non_Pointer(TC_CELL, Datum(Buffer[FASL_Offset_Ext_Loc]));
-  }
-  else Ext_Prim_Vector = NIL;
+  Ext_Prim_Vector =
+    Make_Non_Pointer(TC_CELL, Datum(Buffer[FASL_Offset_Ext_Loc]));
   if (Reloc_or_Load_Debug)
-  { printf("\nHeap_Count = %d; Heap_Base = %x; Dumped_Heap_Top = %x\n",
+  {
+    printf("\nHeap_Count = %d; Heap_Base = %x; Dumped_Heap_Top = %x\n",
            Heap_Count, Heap_Base, Dumped_Heap_Top);
     printf("C_Count = %d; C_Base = %x, Dumped_C_Top = %x\n",
            Const_Count, Const_Base, Dumped_Constant_Top);
@@ -96,25 +100,34 @@ Boolean Read_Header()
 }
 
 #ifdef BYTE_INVERSION
+
 Byte_Invert_Header(Header, Headsize, Test1, Test2)
-long *Header, Headsize, Test1, Test2;
-{ Byte_Invert_Fasl_Files = false;
+     long *Header, Headsize, Test1, Test2;
+{
+  Byte_Invert_Fasl_Files = false;
 
   if ((Test1 & 0xff) == TC_BROKEN_HEART &&
       (Test2 & 0xff) == TC_BROKEN_HEART &&
       (Type_Code(Test1) != TC_BROKEN_HEART ||
-       Type_Code(Test2) != TC_BROKEN_HEART)) {
+       Type_Code(Test2) != TC_BROKEN_HEART))
+  {
     Byte_Invert_Fasl_Files = true;
-    Byte_Invert_Region(Header,Headsize); }
+    Byte_Invert_Region(Header, Headsize);
+  }
 }
 
 Byte_Invert_Region(Region, Size)
-long *Region, Size;
-{ register long word, size;
+     long *Region, Size;
+{
+  register long word, size;
 
   if (Byte_Invert_Fasl_Files)
-    for (size=Size; size>0; size--, Region++) {
-      word=(*Region);
-      *Region=((word>>24)&0xff) | ((word>>8)&0xff00) |
-	((word<<8)&0xff0000) | ((word<<24)&0xff000000); } }
+    for (size = Size; size > 0; size--, Region++)
+    {
+      word = (*Region);
+      *Region = (((word>>24)&0xff) | ((word>>8)&0xff00) |
+		 ((word<<8)&0xff0000) | ((word<<24)&0xff000000));
+    }
+}
+
 #endif

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.23 1987/04/03 00:10:44 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.24 1987/04/16 02:20:42 jinx Rel $
  *
  * Utilities to help with debugging
  */
@@ -109,7 +109,7 @@ Show_Env(The_Env)
   if (Type_Code(procedure) == AUX_LIST_TYPE)
   {
     extension = procedure;
-    procedure = Fast_Vector_Ref(extension, ENVIRONMENT_EXTENSION_PROCEDURE);
+    procedure = Fast_Vector_Ref(extension, ENV_EXTENSION_PROCEDURE);
   }
   else
     extension = NIL;
@@ -146,37 +146,6 @@ Show_Env(The_Env)
       printf("\n");
     }
   }
-}
-
-/* For debugging, given a String, return either a "not interned"
- * message or the address of the symbol and its global value.
- */
-
-void Find_Symbol(Scheme_String)
-Pointer Scheme_String;
-{ Pointer Ob_Array, The_Symbol, *Bucket;
-  char *String, *Temp_String;
-  long i, Hashed_Value;
-  String = Scheme_String_To_C_String(Scheme_String);
-  for (Temp_String=String, i=0; *Temp_String == '\0'; i++) Temp_String++;
-  Hashed_Value = Do_Hash(String, i);
-  Ob_Array = Get_Fixed_Obj_Slot(OBArray);
-  Hashed_Value %= Vector_Length(Ob_Array);
-  Bucket = Nth_Vector_Loc(Ob_Array, Hashed_Value);
-  while (*Bucket != NIL)
-  { if (String_Equal(Scheme_String,
-                     Vector_Ref(Vector_Ref(*Bucket, CONS_CAR),
-                                SYMBOL_NAME)))
-    { The_Symbol = Vector_Ref(*Bucket, CONS_CAR);
-      printf("\nInterned Symbol: 0x%x", The_Symbol);
-      Print_Expression(Vector_Ref(The_Symbol, SYMBOL_GLOBAL_VALUE),
-                       "Value");
-      printf("\n");
-      return;
-    }
-    Bucket = Nth_Vector_Loc(*Bucket, CONS_CDR);
-  }
-  printf("\nNot interned.\n");
 }
 
 List_Print(Expr)
@@ -383,7 +352,7 @@ SPrint:
       printf(" (from ");
       procedure = Vector_Ref(Expr, ENVIRONMENT_FUNCTION);
       if (Type_Code(procedure) == TC_QUAD)
-	procedure = Vector_Ref(procedure, ENVIRONMENT_EXTENSION_PROCEDURE);
+	procedure = Vector_Ref(procedure, ENV_EXTENSION_PROCEDURE);
       Do_Printing(procedure, false);
       printf(")");
       return;
@@ -475,9 +444,12 @@ SPrint:
   printf(" 0x%x]", Temp_Address);
 }
 
-Boolean Print_One_Continuation_Frame(Temp)
-Pointer Temp;
-{ Pointer Expr;
+Boolean
+Print_One_Continuation_Frame(Temp)
+     Pointer Temp;
+{
+  Pointer Expr;
+
   Print_Expression(Temp, "Return code");
   CRLF();
   Expr = Pop();
@@ -493,8 +465,11 @@ Pointer Temp;
 /* Back_Trace relies on (a) only a call to Save_Cont puts a return code on the
    stack; (b) Save_Cont pushes the expression first. */
 
-void Back_Trace()
-{ Pointer Temp, *Old_Stack;
+void
+Back_Trace()
+{
+  Pointer Temp, *Old_Stack;
+
   Back_Trace_Entry_Hook();
   Old_Stack = Stack_Pointer;
   while (true)
@@ -525,9 +500,12 @@ void Back_Trace()
   Back_Trace_Exit_Hook();
 }
 
-void Print_Stack(SP)
-Pointer *SP;
-{ Pointer *Saved_SP;
+void
+Print_Stack(SP)
+     Pointer *SP;
+{
+  Pointer *Saved_SP;
+
   Saved_SP = Stack_Pointer;
   Stack_Pointer = SP;
   Back_Trace();
@@ -535,38 +513,46 @@ Pointer *SP;
   return;
 }
 
-Boolean Prt_PName(Number)
-long Number;
-{ if ((Number < 0) ||
-      (Number > MAX_PRIMITIVE) ||
-      (Primitive_Names[Number] == NULL))
-  { printf("Unknown primitive 0x%08x", Number);
+Boolean 
+Prt_PName(Number)
+     long Number;
+{
+  extern char *primitive_to_name();
+  char *name;
+
+  name = primitive_to_name(Number);
+  if (name == ((char *) NULL))
+  {
+    printf("Unknown primitive 0x%08x", Number);
     return false;
   }
   else
-  { printf("%s", Primitive_Names[Number]);
+  {
+    printf("%s", name);
     return true;
   }
 }
 
 void Print_Primitive(Number)
-long Number;
-{ short NArgs;
+     long Number;
+{
+
+  extern long primitive_to_arity();
+  char buffer1[40], buffer2[40];
+  int NArgs, i;
 
   printf("Primitive: ");
-  if (Prt_PName(Number)) NArgs = (int) Arg_Count_Table[Number];
-  else NArgs = 3;	        /* Unknown primitive */
+  if (Prt_PName(Number))
+    NArgs = primitive_to_arity(Number);
+  else
+    NArgs = 3;	        /* Unknown primitive */
   printf("\n");
-  if (NArgs > 0)
-  { Print_Expression(Stack_Ref(0), "...Arg 1");
-    printf("\n");
-  }
-  if (NArgs > 1)
-  { Print_Expression(Stack_Ref(1), "...Arg 2");
-    printf("\n");
-  }
-  if (NArgs > 2)
-  { Print_Expression(Stack_Ref(2), "...Arg 3");
+
+  for (i = 0; i < NArgs; i++)
+  {
+    sprintf(buffer1, "Stack_Ref(%d)", i);
+    sprintf(buffer2, "...Arg %d", (i + 1));
+    Print_Expression(buffer1, buffer2);
     printf("\n");
   }
 }
@@ -577,13 +563,14 @@ Pointer Expr;
   putchar('\n');
 }
 
-/* (TEMP_PRINTER OBJECT)
-      [Primitive number 0xB2]
+/* (DEBUGGING-PRINTER OBJECT)
       A cheap, built-in printer intended for debugging the
       interpreter.
 */
-Built_In_Primitive(Prim_Temp_Printer, 1, "TEMP-PRINTER")
-{ Primitive_1_Arg();
+Built_In_Primitive(Prim_Temp_Printer, 1, "DEBUGGING-PRINTER", 0xB2)
+{
+  Primitive_1_Arg();
+
   Debug_Printer(Arg1);
   return TRUTH;
 }

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.23 1987/04/03 00:10:26 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.24 1987/04/16 02:20:30 jinx Rel $
 
    This file contains code for the Garbage Collection daemons.
    There are currently two daemons, one for closing files which
@@ -55,12 +55,14 @@ MIT in each case. */
    the runtime system for a longer description.
 */
 
-extern Boolean OS_file_close();
-
-Built_In_Primitive(Prim_Close_Lost_Open_Files, 1, "CLOSE-LOST-OPEN-FILES")
-{ fast Pointer *Smash, Cell, Weak_Cell;
+Built_In_Primitive(Prim_Close_Lost_Open_Files, 1, "CLOSE-LOST-OPEN-FILES", 0xC7)
+{
+  extern Boolean OS_file_close();
+  fast Pointer *Smash, Cell, Weak_Cell, Value;
   long channel_number;
   Primitive_1_Arg();
+
+  Value = TRUTH;
 
   for (Smash = Nth_Vector_Loc(Arg1, CONS_CDR), Cell = *Smash;
        Cell != NIL;
@@ -70,14 +72,15 @@ Built_In_Primitive(Prim_Close_Lost_Open_Files, 1, "CLOSE-LOST-OPEN-FILES")
     if (Fast_Vector_Ref(Weak_Cell, CONS_CAR) == NIL)
     {
       channel_number = Get_Integer(Fast_Vector_Ref(Weak_Cell, CONS_CDR));
-      (void) OS_file_close (Channels[channel_number]);
+      if (!OS_file_close (Channels[channel_number]))
+	Value = NIL;
       Channels[channel_number] = NULL;
       *Smash = Fast_Vector_Ref(Cell, CONS_CDR);
     }
     else
       Smash = Nth_Vector_Loc(Cell, CONS_CDR);
   }
-  return TRUTH;
+  return Value;
 }
 
 /* Utilities for the rehash daemon below */
@@ -146,8 +149,9 @@ long table_size;
    See hash.scm in the runtime system for a description.
 */
 
-Built_In_Primitive(Prim_Rehash, 2, "REHASH")
-{ long table_size, counter;
+Built_In_Primitive(Prim_Rehash, 2, "REHASH", 0x5C)
+{
+  long table_size, counter;
   Pointer *bucket;
   Primitive_2_Args();
 

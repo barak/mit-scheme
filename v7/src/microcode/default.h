@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.21 1987/01/22 14:23:17 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.22 1987/04/16 02:20:58 jinx Exp $
  *
  * This file contains default definitions for some hooks which 
  * various machines require.  These machines define these hooks
@@ -238,7 +238,7 @@ extern Pointer Swap_Temp;
 /* Primitive calling code. */
 
 #ifndef ENABLE_DEBUGGING_TOOLS
-#define Apply_Primitive(N)	(*(Primitive_Table[N]))()
+#define Apply_Primitive(N)	Internal_Apply_Primitive(N)
 #else
 extern Pointer Apply_Primitive();
 #endif

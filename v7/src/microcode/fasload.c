@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.24 1987/04/11 15:16:37 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.25 1987/04/16 02:21:50 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -46,188 +46,21 @@ MIT in each case. */
 #define CCheck_or_Reloc_Debug Or2(Consistency_Check, Reloc_Debug)
 #define Reloc_or_Load_Debug   Or2(Reloc_Debug, File_Load_Debug)
 
-#define print_char(C) printf(((C < ' ') || (C > '|')) ?	\
-			     "\\%03o" : "%c", (C && MAX_CHAR));
-
-Pointer String_To_Symbol();
-
 #include "load.c"
 
-/* Here is a totally randomly constructed string hashing function */
-   
-long Do_Hash(String_Ptr, String_Length)
-char *String_Ptr;
-long String_Length;
-{ long i, Value, End_Count;
-
-  Value = LENGTH_MULTIPLIER*String_Length;
-  End_Count = (String_Length > MAX_HASH_CHARS) ?
-              MAX_HASH_CHARS : String_Length;
-  for (i=0; i < End_Count; i++)
-    Value = (Value << SHIFT_AMOUNT) + (MAX_CHAR & String_Ptr[i]);
-  if (Intern_Debug)
-  { char *C;
-    printf("  Hashing: %d: ", String_Length);
-    C = String_Ptr;
-    for (i=0; i < String_Length; i++, C++)
-      print_char(*C);
-    printf(" -> 0x%x\n", Value);
-  }
-  return Value;
-}
-
-Pointer Hash(Ptr)
-Pointer Ptr;
-{ long String_Length;
-
-  String_Length = Get_Integer(Fast_Vector_Ref(Ptr, STRING_LENGTH));
-  return Make_Non_Pointer(TC_FIXNUM,
-			  Do_Hash(Scheme_String_To_C_String(Ptr),
-				  String_Length));
-}
-
-Pointer Hash_Chars(Ptr)
-Pointer Ptr;
-{ long Length;
-  Pointer This_Char;
-  char String[MAX_HASH_CHARS];
-
-  Touch_In_Primitive(Ptr, Ptr);
-  for (Length=0; Type_Code(Ptr)==TC_LIST; Length++)
-  { if (Length < MAX_HASH_CHARS)
-    { Touch_In_Primitive(Vector_Ref(Ptr, CONS_CAR), This_Char);
-      if (Type_Code(This_Char) != TC_CHARACTER) 
-        Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-      Range_Check(String[Length], This_Char,
-                  (char) 0, (char) MAX_CHAR, ERR_ARG_1_WRONG_TYPE);
-      Touch_In_Primitive(Vector_Ref(Ptr, CONS_CDR), Ptr);
-    }
-  }
-  if (Ptr != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  return Make_Non_Pointer(TC_FIXNUM, Do_Hash(String, Length));
-}
-
-Boolean String_Equal(String1, String2)
-Pointer String1, String2;
-{ char *S1, *S2;
-  long Length1, Length2, i;
-
-  if (Address(String1)==Address(String2)) return true;
-  Length1 = Get_Integer(Fast_Vector_Ref(String1, STRING_LENGTH));
-  Length2 = Get_Integer(Fast_Vector_Ref(String2, STRING_LENGTH));
-  if (Length1 != Length2) return false;
-  S1 = (char *) Nth_Vector_Loc(String1, STRING_CHARS);
-  S2 = (char *) Nth_Vector_Loc(String2, STRING_CHARS);
-  for (i=0; i < Length1; i++) if (*S1++ != *S2++) return false;
-  return true;
-}
-
-Pointer Make_String(Orig_List)
-Pointer Orig_List;
-{ char *Next;
-  long Length;
-  Pointer Result;
-
-  Result = Make_Pointer(TC_CHARACTER_STRING, Free);
-  Next = (char *) Nth_Vector_Loc(Result, STRING_CHARS);
-  Length = 0;
-  Touch_In_Primitive(Orig_List, Orig_List);
-  while (Type_Code(Orig_List) == TC_LIST)
-  { Pointer This_Char;
-    long The_Character;
-
-    Primitive_GC_If_Needed(Free - ((Pointer *) Next));
-    Touch_In_Primitive(Vector_Ref(Orig_List, CONS_CAR), This_Char);
-    if (Type_Code(This_Char) != TC_CHARACTER)
-      Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-    Range_Check(The_Character, This_Char,
-		0, MAX_CHAR, ERR_ARG_1_BAD_RANGE);
-    *Next++ = (char) The_Character;
-    Touch_In_Primitive(Vector_Ref(Orig_List, CONS_CDR), Orig_List);
-    Length += 1;
-  }
-  if (Orig_List != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  *Next++ = '\0';		  /* Add the null */
-  Free += 2 + (Length+sizeof(Pointer))/sizeof(Pointer);
-  Vector_Set(Result, STRING_LENGTH, FIXNUM_0+Length);
-  Vector_Set(Result, STRING_HEADER,
-    Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, (Free-Get_Pointer(Result))-1));
-  return Result;
-}
-
-/* Interning involves hashing the input string and either returning
-   an existing symbol with that name from the ObArray or creating a
-   new symbol and installing it in the ObArray. The resulting interned
-   symbol is stored in *Un_Interned.
-*/
-
-long Intern(Un_Interned)
-Pointer *Un_Interned;
-{ long Hashed_Value;
-  Pointer Ob_Array, *Bucket, String, Temp;
-
-  String = Fast_Vector_Ref(*Un_Interned, SYMBOL_NAME);
-  Temp = Hash(String);
-  Hashed_Value = Get_Integer(Temp);
-  Ob_Array = Get_Fixed_Obj_Slot(OBArray);
-  Hashed_Value %= Vector_Length(Ob_Array);
-  Bucket = Nth_Vector_Loc(Ob_Array, Hashed_Value + 1);
-
-  if (Intern_Debug)
-  { char *C;
-    int i, String_Length;
-    String_Length = Get_Integer(Fast_Vector_Ref(String, STRING_LENGTH));
-    C = (char *) Nth_Vector_Loc(String, STRING_CHARS);  
-    printf("\nInterning ");
-    for (i=0; i < String_Length; i++, C++) print_char(*C);
-  }
-
-/* Intern continues on the next page */
-
-/* Intern, continued */
-
-  while (*Bucket != NIL)
-  { if (Intern_Debug)
-      printf("  Bucket #%o (0x%x) ...\n",
-             Address(*Bucket), Address(*Bucket));
-    if (String_Equal(String,
-                     Fast_Vector_Ref(
-                       Vector_Ref(*Bucket, CONS_CAR),
-	               SYMBOL_NAME)))
-    { if (Intern_Debug) printf("  found\n");
-      *Un_Interned = Vector_Ref(*Bucket, CONS_CAR);
-      return;
-    }
-    Bucket = Nth_Vector_Loc(*Bucket, CONS_CDR);
-  }
-
-/* Symbol does not exist yet in ObArray.  Bucket points to the
-   cell containing the final #!NULL in the list.  Replace this
-   with the CONS of the new symbol and #!NULL (i.e. extend the
-   list in the bucket by 1 new element).
-*/
-
-  Store_Type_Code(*Un_Interned, TC_INTERNED_SYMBOL);
-  if (Intern_Debug) printf("  adding at #%o (0x%x)\n",
-                           (long) Free, (long) Free);
-  *Bucket = Make_Pointer(TC_LIST, Free);
-  Free[CONS_CAR] = *Un_Interned;
-  Free[CONS_CDR] = NIL;
-  Free += 2;
-}
-
+void
 Load_File(Name)
-Pointer Name;
-{ char *Char;
+     Pointer Name;
+{
+  char *Char;
   long N, i;
   Boolean File_Opened;
-  File_Opened = Open_Dump_File(Name, OPEN_FLAG);
-  if (Per_File) Handle_Debug_Flags();
-  if (!File_Opened) Primitive_Error(ERR_ARG_1_BAD_RANGE);
 
-/* Load_File continues on next page */
-
-/* Load_File, continued */
+  File_Opened = Open_Dump_File(Name, OPEN_FLAG);
+  if (Per_File)
+    Handle_Debug_Flags();
+  if (!File_Opened)
+    Primitive_Error(ERR_ARG_1_BAD_RANGE);
 
   if (!Read_Header())
   { fprintf(stderr,
@@ -237,13 +70,16 @@ Pointer Name;
   if (File_Load_Debug)
     printf("\nMachine type %d, Version %d, Subversion %d\n",
            Machine_Type, Version, Sub_Version);
+
 #ifdef BYTE_INVERSION
   if ((Sub_Version != FASL_SUBVERSION))
 #else
   if ((Sub_Version != FASL_SUBVERSION) ||
       (Machine_Type != FASL_INTERNAL_FORMAT))
 #endif
-  { fprintf(stderr,
+
+  {
+    fprintf(stderr,
 	    "\nLoad_File: FASL File Version %4d Subversion %4d Machine Type %4d.\n",
 	    Version, Sub_Version , Machine_Type);
     fprintf(stderr,
@@ -254,11 +90,13 @@ CANNOT_LOAD:
     Primitive_Error(ERR_FASL_FILE_BAD_DATA);
   }
   if (!Test_Pure_Space_Top(Free_Constant+Const_Count))
-  { fclose(File_Handle);
+  {
+    fclose(File_Handle);
     Primitive_Error(ERR_FASL_FILE_TOO_BIG);
   }
   if (GC_Check(Heap_Count))
-  { fclose(File_Handle);
+  {
+    fclose(File_Handle);
     Request_GC(Heap_Count);
     Primitive_Interrupt();
   }
@@ -279,6 +117,7 @@ CANNOT_LOAD:
      Align_Float(Free);
    */
   fclose(File_Handle);
+  return;
 }
 
 /* Statics used by Relocate, below */
@@ -293,9 +132,12 @@ relocation_type Heap_Relocation, Const_Reloc, Stack_Relocation;
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 static Boolean Warned = false;
-Pointer *Relocate(P)
-long P;
-{ Pointer *Result;
+Pointer *
+Relocate(P)
+     long P;
+{
+  Pointer *Result;
+
   if ((P >= Heap_Base) && (P < Dumped_Heap_Top))
     Result = (Pointer *) (P + Heap_Relocation);
   else if ((P >= Const_Base) && (P < Dumped_Constant_Top))
@@ -303,16 +145,19 @@ long P;
   else if (P < Dumped_Stack_Top)
     Result = (Pointer *) (P + Stack_Relocation);
   else
-  { printf("Pointer out of range: 0x%x\n", P, P);
+  {
+    printf("Pointer out of range: 0x%x\n", P, P);
     if (!Warned)
-    { printf("Heap: %x-%x, Constant: %x-%x, Stack: ?-0x%x\n",
+    {
+      printf("Heap: %x-%x, Constant: %x-%x, Stack: ?-0x%x\n",
              Heap_Base, Dumped_Heap_Top,
              Const_Base, Dumped_Constant_Top, Dumped_Stack_Top);
       Warned = true;
     }
     Result = (Pointer *) 0;
   }
-  if (Reloc_Debug) printf("0x%06x -> 0x%06x\n", P, Result);
+  if (Reloc_Debug)
+    printf("0x%06x -> 0x%06x\n", P, Result);
   return Result;
 }
 
@@ -347,15 +192,19 @@ static Pointer *Relocate_Temp;
    block of memory.
 */
 
-long Relocate_Block(Next_Pointer, Stop_At)
-fast Pointer *Next_Pointer, *Stop_At;
-{ if (Reloc_Debug)
+long
+Relocate_Block(Next_Pointer, Stop_At)
+     fast Pointer *Next_Pointer, *Stop_At;
+{
+  if (Reloc_Debug)
     fprintf(stderr,
 	    "Relocation beginning, block=0x%x, length=0x%x, end=0x%x.\n",
 	    Next_Pointer, (Stop_At-Next_Pointer)-1, Stop_At);
   while (Next_Pointer < Stop_At)
-  { fast Pointer Temp = *Next_Pointer;
+  {
+    fast Pointer Temp;
 
+    Temp = *Next_Pointer;
     Switch_by_GC_Type(Temp)
     { case TC_BROKEN_HEART:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
@@ -388,18 +237,28 @@ fast Pointer *Next_Pointer, *Stop_At;
       case_compiled_entry_point:
       	/* Compiled entry points work automagically. */
       default:
-      { fast long Next = Datum(Temp);
+      {
+	fast long Next;
+
+	Next = Datum(Temp);
 	*Next_Pointer++ = Make_Pointer(Type_Code(Temp), Relocate(Next));
       }
     }
   }
 }
 
+extern void Intern();
+
+void
 Intern_Block(Next_Pointer, Stop_At)
-Pointer *Next_Pointer, *Stop_At;
-{ if (Reloc_Debug) printf("Interning a block.\n");
+     Pointer *Next_Pointer, *Stop_At;
+{
+  if (Reloc_Debug)
+    printf("Interning a block.\n");
+
   while (Next_Pointer <= Stop_At)	/* BBN has < for <= */
-  { switch (Type_Code(*Next_Pointer))
+  {
+    switch (Type_Code(*Next_Pointer))
     { case TC_MANIFEST_NM_VECTOR:
         Next_Pointer += Get_Integer(*Next_Pointer)+1;
         break;
@@ -407,18 +266,23 @@ Pointer *Next_Pointer, *Stop_At;
       case TC_INTERNED_SYMBOL:
       if (Type_Code(Vector_Ref(*Next_Pointer, SYMBOL_GLOBAL_VALUE)) ==
           TC_BROKEN_HEART)
-      { Pointer Old_Symbol = *Next_Pointer;
+      {
+	Pointer Old_Symbol;
+
+	Old_Symbol = *Next_Pointer;
         Vector_Set(*Next_Pointer, SYMBOL_GLOBAL_VALUE, UNBOUND_OBJECT);
         Intern(Next_Pointer);
         Primitive_GC_If_Needed(0);
         if (*Next_Pointer != Old_Symbol)
-        { Vector_Set(Old_Symbol, SYMBOL_NAME,
+        {
+	  Vector_Set(Old_Symbol, SYMBOL_NAME,
 		     Make_New_Pointer(TC_BROKEN_HEART, *Next_Pointer));
         }
       }
       else if (Type_Code(Vector_Ref(*Next_Pointer, SYMBOL_NAME)) ==
               TC_BROKEN_HEART)
-      { *Next_Pointer =
+      {
+	*Next_Pointer =
           Make_New_Pointer(Type_Code(*Next_Pointer),
                            Fast_Vector_Ref(*Next_Pointer,
 					   SYMBOL_NAME));
@@ -429,7 +293,8 @@ Pointer *Next_Pointer, *Stop_At;
       default: Next_Pointer += 1;
     }
   }
-  if (Reloc_Debug) printf("Done interning block.\n");
+  if (Reloc_Debug)
+    printf("Done interning block.\n");
   return;
 }
 
@@ -444,35 +309,50 @@ Pointer *Next_Pointer, *Stop_At;
    is ignored and a completely new one will be built.
 */
 
+void
 Install_Ext_Prims(Normal_FASLoad)
-Boolean Normal_FASLoad;
-{ long i;
+     Boolean Normal_FASLoad;
+{
+  long i;
   Pointer *Next;
 
   Vector_Set(Ext_Prim_Vector, 0, 
 	     Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, Ext_Prim_Count));
   Next = Nth_Vector_Loc(Ext_Prim_Vector, 1);
   if (Normal_FASLoad)
-    for (i=0; i < Ext_Prim_Count; i++) Intern(Next++);
+    for (i = 0; i < Ext_Prim_Count; i++) Intern(Next++);
   else Undefined_Externals = NIL;
+  return;
 }
 
+void
 Update_Ext_Prims(Next_Pointer, Stop_At)
-fast Pointer *Next_Pointer, *Stop_At;
-{ for ( ; Next_Pointer < Stop_At; Next_Pointer++)
+     fast Pointer *Next_Pointer, *Stop_At;
+{
+  extern long make_external_primitive();
+
+  for ( ; Next_Pointer < Stop_At; Next_Pointer++)
   { switch (Type_Code(*Next_Pointer))
     { case TC_MANIFEST_NM_VECTOR:
         Next_Pointer += Get_Integer(*Next_Pointer);
         break;
 
       case TC_PRIMITIVE_EXTERNAL:
-      {	long Which = Address(*Next_Pointer);
+      {
+	long Which;
+
+	Which = Address(*Next_Pointer);
+
 	if (Which > Ext_Prim_Count)
-	  printf("External Primitive 0x%x out of range.\n", Which);
+	  fprintf(stderr, "\nExternal Primitive 0x%x out of range.\n", Which);
 	else
-	{ Pointer New_Value = User_Vector_Ref(Ext_Prim_Vector, Which);
+	{
+	  Pointer New_Value;
+
+	  New_Value = User_Vector_Ref(Ext_Prim_Vector, Which);
 	  if (Type_Code(New_Value) == TC_INTERNED_SYMBOL)
-	  { New_Value = (Pointer) Get_Ext_Number(New_Value, TRUTH);
+	  {
+	    New_Value = ((Pointer) make_external_primitive(New_Value, TRUTH));
 	    User_Vector_Set(Ext_Prim_Vector, Which, New_Value);
 	  }
 	  Store_Address(*Next_Pointer, New_Value);
@@ -482,12 +362,15 @@ fast Pointer *Next_Pointer, *Stop_At;
       default: break;
     }
   }
+  return;
 }
 
-Pointer Fasload(FileName, Not_From_Band_Load)
-Pointer FileName;
-Boolean Not_From_Band_Load;
-{ Pointer *Heap_End, *Constant_End, *Orig_Heap, *Orig_Constant, *Xtemp;
+Pointer
+Fasload(FileName, Not_From_Band_Load)
+     Pointer FileName;
+     Boolean Not_From_Band_Load;
+{
+  Pointer *Heap_End, *Constant_End, *Orig_Heap, *Orig_Constant, *Xtemp;
 
 #ifdef ENABLE_DEBUGGING_TOOLS
   Warned = false;
@@ -525,22 +408,18 @@ Boolean Not_From_Band_Load;
 #ifdef BYTE_INVERSION
   Finish_String_Inversion();
 #endif
-
-/* Fasload continues on the next page */
 
-/* Fasload, continued */
-
-	/* Intern */
-
   if (Not_From_Band_Load)
-  { Intern_Block(Orig_Constant, Constant_End);
+  {
+    Intern_Block(Orig_Constant, Constant_End);
     Intern_Block(Orig_Heap, Heap_End);
   }
 
 	/* Update External Primitives */
 
   if ((Ext_Prim_Vector != NIL) && Found_Ext_Prims)
-  { Relocate_Into(Xtemp, Address(Ext_Prim_Vector));
+  {
+    Relocate_Into(Xtemp, Address(Ext_Prim_Vector));
     Ext_Prim_Vector = *Xtemp;
     Ext_Prim_Count = Vector_Length(Ext_Prim_Vector);
     Install_Ext_Prims(Not_From_Band_Load);
@@ -554,18 +433,15 @@ Boolean Not_From_Band_Load;
 }
 
 /* (BINARY-FASLOAD FILE-NAME)
-      [Primitive number 0x57]
       Load the contents of FILE-NAME into memory.  The file was
-      presumably made by a call to PRIMITIVE_FASDUMP, and may contain
+      presumably made by a call to PRIMITIVE-FASDUMP, and may contain
       data for the heap and/or the pure area.  The value returned is
       the object which was dumped.  Typically (but not always) this
       will be a piece of SCode which is then evaluated to perform
       definitions in some environment.
 */
-Built_In_Primitive(Prim_Binary_Fasload, 1, "BINARY-FASLOAD")
-{ /* The code for Fasload, which does all the work, is found in the
-     file FASLOAD.C
-  */
+Built_In_Primitive(Prim_Binary_Fasload, 1, "BINARY-FASLOAD", 0x57)
+{
   Primitive_1_Arg();
   return Fasload(Arg1, true);
 }
@@ -578,7 +454,7 @@ static char *reload_band_name = ((char *) NULL);
    Returns the filename (as a Scheme string) from which the runtime system
    was band loaded (load-band'ed ?), or NIL if the system was fasl'ed.
 */
-Built_In_Primitive(Prim_reload_band_name, 0, "RELOAD-BAND-NAME")
+Built_In_Primitive(Prim_reload_band_name, 0, "RELOAD-BAND-NAME", 0x1A3)
 {
   Primitive_0_Args();
 
@@ -593,9 +469,12 @@ Built_In_Primitive(Prim_reload_band_name, 0, "RELOAD-BAND-NAME")
    which is typically a file created by DUMP-BAND.  The file can,
    however, be any file which can be loaded with BINARY-FASLOAD.
 */
-Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND")
-{ Pointer Save_FO, *Save_Free, *Save_Free_Constant, Save_Undefined,
-          *Save_Stack_Pointer, *Save_Stack_Guard, Result;
+Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND", 0xB9)
+{
+  Pointer Save_FO, *Save_Free, *Save_Free_Constant,
+          Save_Undefined, *Save_Stack_Pointer,
+  	  *Save_Stack_Guard, Result;
+
   long Jump_Value;
   jmp_buf  Swapped_Buf, *Saved_Buf;
   Pointer scheme_band_name;
@@ -671,78 +550,17 @@ Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND")
   }
 }
 
-/* (CHARACTER-LIST-HASH LIST)
-      [Primitive number 0x65]
-      Takes a list of ASCII codes for characters and returns a hash
-      code for them.  This uses the hashing function used to intern
-      symbols in Fasload, and is really intended only for that
-      purpose.
-*/
-Built_In_Primitive(Prim_Character_List_Hash, 1, "CHARACTER-LIST-HASH")
-{ /* The work is done in Hash_Chars.
-     A gross breach of modularity allows Hash_Chars to do the argument
-     type checking.
-  */
-  Primitive_1_Arg();
-  return Hash_Chars(Arg1);
-}
-
-/* (INTERN-CHARACTER-LIST LIST)
-      [Primitive number 0xAB]
-      LIST should consist of the ASCII codes for characters.  Returns
-      a new (interned) symbol made out of these characters.  Notice
-      that this is a fairly low-level primitive, and no checking is
-      done on the characters except that they are in the range 0 to
-      255.  Thus non-printing, lower-case, and special characters can
-      be put into symbols this way.
-*/
-Built_In_Primitive(Prim_Intern_Character_List, 1, "INTERN-CHARACTER-LIST")
-{ Primitive_1_Arg();
-  return String_To_Symbol(Make_String(Arg1));
-}
-
-/* (SYMBOL->STRING STRING)
-      [Primitive number 0x07]
-      Similar to INTERN-CHARACTER-LIST, except this one takes a string
-      instead of a list of ascii values as argument.
- */
-Built_In_Primitive(Prim_String_To_Symbol, 1, "STRING->SYMBOL")
-{ Primitive_1_Arg();
-  Arg_1_Type(TC_CHARACTER_STRING);
-  return String_To_Symbol(Arg1);
-}
-
-Pointer String_To_Symbol(String)
-Pointer String;
-{ Pointer New_Symbol, Interned_Symbol, *Orig_Free;
-  Orig_Free = Free;
-  New_Symbol = Make_Pointer(TC_UNINTERNED_SYMBOL, Free);
-  Free[SYMBOL_NAME] = String;
-  Free[SYMBOL_GLOBAL_VALUE] = UNBOUND_OBJECT;
-  Free += 2;
-  Interned_Symbol = New_Symbol;
-  /* The work is done by Intern which returns in Interned_Symbol
-     either the same symbol we gave it (in which case we need to check
-     for GC) or an existing symbol (in which case we have to release
-     the heap space acquired to hold New_Symbol).
-  */
-  Intern(&Interned_Symbol);
-  if (Address(Interned_Symbol) == Address(New_Symbol))
-  { Primitive_GC_If_Needed(0);	
-  }
-  else Free = Orig_Free;
-  return Interned_Symbol;
-}
-
 #ifdef BYTE_INVERSION
 
-#define MAGIC_OFFSET TC_FIXNUM+1
+#define MAGIC_OFFSET (TC_FIXNUM + 1)
 
 Pointer String_Chain, Last_String;
 extern Boolean Byte_Invert_Fasl_Files;
 
 Setup_For_String_Inversion()
-{ if (!Byte_Invert_Fasl_Files) return;
+{
+  if (!Byte_Invert_Fasl_Files)
+    return;
   String_Chain = NIL;
   Last_String = NIL;
 }
@@ -760,11 +578,14 @@ Finish_String_Inversion()
       printf("String at 0x%x: restoring length of %d.\n",
              Address(String_Chain), Count);
     Next = Fast_Vector_Ref(String_Chain, STRING_LENGTH);
-    Fast_Vector_Set(String_Chain, STRING_LENGTH, FIXNUM_0+Count);
+    Fast_Vector_Set(String_Chain, STRING_LENGTH, Make_Unsigned_Fixnum(Count));
     String_Chain = Next;
   }
 }
 
+#define print_char(C) printf(((C < ' ') || (C > '|')) ?	\
+			     "\\%03o" : "%c", (C && MAX_CHAR));
+
 String_Inversion(Orig_Pointer)
 Pointer *Orig_Pointer;
 { Pointer *Pointer_Address;
@@ -826,5 +647,4 @@ Pointer *Orig_Pointer;
   }
   if (Reloc_Debug) printf("\n");
 }
-#endif
-
+#endif /* BYTE_INVERSION */

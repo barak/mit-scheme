@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.23 1987/04/03 00:09:46 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.24 1987/04/16 02:20:07 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -72,11 +72,6 @@ MIT in each case. */
    option is incompatible with the stepper and compiler.
 */
 /* #define USE_STACKLETS */
-
-/* To enable "trap on reference" variable bindings (used by parallel processor
-   deep binding).
-*/
-/* #define TRAP_ON_REFERENCE */
 #endif
 #endif
 
@@ -90,17 +85,9 @@ MIT in each case. */
 
 #ifdef USE_STACKLETS
 #ifdef COMPILE_STEPPER
-#include "Error: The stepper doesn't work with stacklets.  Fix it."
+#include "Error: The stepper doesn't work with stacklets."
 #endif
 #endif
-
-/* To enable metering of the time spent in various parts of the Scheme
-   interpreter.  Collecting this data slows down the operation of the
-   interpreter, and no tools are supported for accessing the values
-   collected.  Useful for collecting statistics and performance work on
-   the interpreter itself or user programs. */
-
-/* #define METERING */
 
 /* These C type definitions are needed by everybody.  
    They should not be here, but it is unavoidable. */
@@ -110,7 +97,7 @@ typedef char Boolean;
 #define false			0
 
 /* This defines it so that C will be happy.
-   The various fields are defined in OBJECT.H */
+   The various fields are defined in object.h */
 
 typedef unsigned long Pointer;
 
@@ -124,8 +111,9 @@ typedef unsigned long Pointer;
    but if it does, it will probably compute the correct information.
    
    Note that the C type void is used in the sources.  If your version
-   of C does not have this type, you should bypass it.  Look at what
-   vms (below) does.
+   of C does not have this type, you should bypass it.
+   This can be done by inserting the preprocessor command
+   '#define void' in this file.
 
    CHAR_SIZE is the size of a character in bits.
 
@@ -206,6 +194,7 @@ typedef unsigned long Pointer;
 #define FASL_CYBER		8
 #define FASL_CELERITY		9
 #define FASL_HP_SPECTRUM	10
+#define FASL_UMAX		11
 
 /* These (pdp10 and nu) haven't worked in a while.
  * Should be upgraded or flushed some day. 
@@ -219,9 +208,6 @@ typedef unsigned long Pointer;
 #endif
 
 #ifdef nu
-#define noquick			/* Bignum code fails for certain
-				   variables in registers because of
-				   a compiler bug! */
 #define Heap_In_Low_Memory
 #define CHAR_SIZE		8
 #define USHORT_SIZE		16
@@ -232,6 +218,13 @@ typedef unsigned long Pointer;
 #define FLONUM_MANTISSA_BITS	56
 #define MAX_FLONUM_EXPONENT	127
 #define HAS_FREXP
+#ifdef quick
+/* Bignum code fails for certain variables in registers because of a
+   compiler bug! 
+*/
+#undef quick
+#define quick
+#endif
 #endif
 
 #ifdef vax
@@ -253,8 +246,8 @@ typedef unsigned long Pointer;
 
 #ifdef vms
 
-/* VMS C has not void type, thus make it go away */
-#define void
+/* Pre version 4 VMS C has not void type, thus make it go away */
+/* #define void */
 /* Name conflict in VMS with system variable */
 #define Free			Free_Register
 
@@ -265,12 +258,15 @@ typedef unsigned long Pointer;
 #define Exit_Scheme_Declarations static jmp_buf Exit_Point
 
 #define Init_Exit_Scheme()						\
-{ int Which_Way = setjmp(Exit_Point);					\
-  if (Which_Way == NORMAL_EXIT) return;					\
+{									\
+  int Which_Way = setjmp(Exit_Point);					\
+  if (Which_Way == NORMAL_EXIT)						\
+    return;								\
 }
 
 #define Exit_Scheme(value)						\
-if (value != 0) exit(value);						\
+if (value != 0)								\
+  exit(value);								\
 longjmp(Exit_Point, NORMAL_EXIT)
 
 #else /* not a vms */
@@ -278,9 +274,11 @@ longjmp(Exit_Point, NORMAL_EXIT)
 /* Vax Unix C compiler bug */
 
 #define double_into_fixnum(what, target)				\
-      { long For_Vaxes_Sake = (long) what;				\
-	target = Make_Non_Pointer(TC_FIXNUM, For_Vaxes_Sake);		\
-      }
+{									\
+  long For_Vaxes_Sake = ((long) what);					\
+									\
+  target = Make_Non_Pointer(TC_FIXNUM, For_Vaxes_Sake);			\
+}
 
 #endif /* not vms */
 #endif /* vax */
@@ -298,7 +296,8 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MAX_FLONUM_EXPONENT	1023
 #define HAS_FLOOR
 #define HAS_FREXP
-#define term_type int		/* C compiler bug in GC_Type */
+/* C compiler bug in GC_Type */
+#define term_type		int
 #endif
 
 #ifdef hp9000s500
@@ -350,7 +349,6 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define FLONUM_EXPT_SIZE	7
 #define FLONUM_MANTISSA_BITS	56
 #define MAX_FLONUM_EXPONENT	127
-#define Allow_Aux_Compilation	false	/* Prevent race in lookup */
 #include <public.h>
 #define HAS_FREXP
 #define STACK_SIZE		4	/* 4K objects */
@@ -405,6 +403,21 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define HAS_FLOOR
 #define HAS_FREXP
 #endif
+
+#ifdef umax
+#define Heap_In_Low_Memory
+#define UNSIGNED_SHIFT
+#define CHAR_SIZE		8
+#define USHORT_SIZE		16
+#define ULONG_SIZE		32
+#define BELL			'\007'
+#define FASL_INTERNAL_FORMAT	FASL_UMAX
+#define FLONUM_EXPT_SIZE	10
+#define FLONUM_MANTISSA_BITS	53
+#define MAX_FLONUM_EXPONENT	1023
+#define HAS_FLOOR
+#define HAS_FREXP
+#endif
 
 /* Make sure that some definition applies. 
    If this error occurs, and the parameters of the
@@ -413,12 +426,6 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #ifndef CHAR_SIZE
 #include "Error: config.h: Unknown configuration."
-#endif
-
-#ifdef noquick
-#define quick
-#else
-#define quick fast
 #endif
 
 #if (ULONG_SIZE == 32)

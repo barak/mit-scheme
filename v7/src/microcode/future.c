@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/future.c,v 9.21 1987/01/22 14:25:56 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/future.c,v 9.22 1987/04/16 02:22:53 jinx Exp $
 
    Support code for futures
 */
@@ -195,7 +195,7 @@ Define_Primitive(Prim_Future_Size, 1, "FUTURE-SIZE")
 */
 { Primitive_1_Arg();
   Arg_1_Type(TC_FUTURE);
-  return FIXNUM_0+Vector_Length(Arg1);
+  return Make_Unsigned_Fixnum(Vector_Length(Arg1));
 }
 
 Define_Primitive(Prim_Lock_Future, 1, "LOCK-FUTURE!")
@@ -325,10 +325,10 @@ Define_Primitive(Prim_Make_Cheap_Future, 3, "MAKE-CHEAP-FUTURE")
 
   IO_String=Make_Pointer(TC_CHARACTER_STRING,Free);
   *Free++=Make_Non_Pointer(TC_MANIFEST_NM_VECTOR,1);
-  *Free++=FIXNUM_0;
+  *Free++=Make_Unsigned_Fixnum(0);
 
   IO_Cons=Make_Pointer(TC_LIST,Free);
-  *Free++=FIXNUM_0;
+  *Free++=Make_Unsigned_Fixnum(0);
   *Free++=IO_String;
 
   IO_Hunk3=Make_Pointer(TC_HUNK3,Free);

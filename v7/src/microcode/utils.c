@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.22 1987/04/03 00:22:38 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.23 1987/04/16 02:32:25 jinx Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -90,11 +90,11 @@ Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
  Will_Push(Save_Space);
   /* Return from interrupt handler will re-enable interrupts */
   Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(FIXNUM_0 + IntEnb);
+  Store_Expression(Make_Unsigned_Fixnum(IntEnb));
   Save_Cont();
   if (New_Int_Enb+1 == INT_GC)
   { Store_Return(RC_GC_CHECK);
-    Store_Expression(FIXNUM_0 + GC_Space_Needed);
+    Store_Expression(Make_Unsigned_Fixnum(GC_Space_Needed));
     Save_Cont();
   }
 
@@ -104,8 +104,8 @@ Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
  * the currently enabled interrupts.
  */
 
-  Push(FIXNUM_0+IntEnb);
-  Push(FIXNUM_0+The_Int_Code);
+  Push(Make_Unsigned_Fixnum(IntEnb));
+  Push(Make_Unsigned_Fixnum(The_Int_Code));
   Push(Handler);
   Push(STACK_FRAME_HEADER+2);
  Pushed();
@@ -250,12 +250,38 @@ Back_Out_Of_Primitive ()
 
 /* Useful error procedures */
 
+extern void
+  signal_error_from_primitive(),
+  signal_interrupt_from_primitive(),
+  error_wrong_type_arg_1(),
+  error_wrong_type_arg_2(),
+  error_wrong_type_arg_3(),
+  error_wrong_type_arg_4(),
+  error_wrong_type_arg_5(),
+  error_wrong_type_arg_6(),
+  error_wrong_type_arg_7(),
+  error_wrong_type_arg_8(),
+  error_wrong_type_arg_9(),
+  error_wrong_type_arg_10(),
+  error_bad_range_arg_1(),
+  error_bad_range_arg_2(),
+  error_bad_range_arg_3(),
+  error_bad_range_arg_4(),
+  error_bad_range_arg_5(),
+  error_bad_range_arg_6(),
+  error_bad_range_arg_7(),
+  error_bad_range_arg_8(),
+  error_bad_range_arg_9(),
+  error_bad_range_arg_10(),
+  error_external_return();
+
 void
 signal_error_from_primitive (error_code)
      long error_code;
 {
   Back_Out_Of_Primitive ();
   longjmp (*Back_To_Eval, error_code);
+  /*NOTREACHED*/
 }
 
 void
@@ -273,7 +299,7 @@ special_interrupt_from_primitive(local_mask)
   Back_Out_Of_Primitive();
   Save_Cont();
   Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(FIXNUM_0+IntEnb);
+  Store_Expression(Make_Unsigned_Fixnum(IntEnb));
   IntEnb = (local_mask);
   longjmp(*Back_To_Eval, PRIM_INTERRUPT);
   /*NOTREACHED*/
@@ -417,43 +443,43 @@ procedure_name (argument)					\
   return (pointer_datum (argument));				\
 }
 
-define_integer_guarantee (guarantee_nonnegative_integer_arg_1,
+define_integer_guarantee (guarantee_nonnegative_int_arg_1,
 			  error_wrong_type_arg_1,
 			  error_bad_range_arg_1)
 
-define_integer_guarantee (guarantee_nonnegative_integer_arg_2,
+define_integer_guarantee (guarantee_nonnegative_int_arg_2,
 			  error_wrong_type_arg_2,
 			  error_bad_range_arg_2)
 
-define_integer_guarantee (guarantee_nonnegative_integer_arg_3,
+define_integer_guarantee (guarantee_nonnegative_int_arg_3,
 			  error_wrong_type_arg_3,
 			  error_bad_range_arg_3)
 
-define_integer_guarantee (guarantee_nonnegative_integer_arg_4,
+define_integer_guarantee (guarantee_nonnegative_int_arg_4,
 			  error_wrong_type_arg_4,
 			  error_bad_range_arg_4)
 
-define_integer_guarantee (guarantee_nonnegative_integer_arg_5,
+define_integer_guarantee (guarantee_nonnegative_int_arg_5,
 			  error_wrong_type_arg_5,
 			  error_bad_range_arg_5)
 
-define_integer_guarantee (guarantee_nonnegative_integer_arg_6,
+define_integer_guarantee (guarantee_nonnegative_int_arg_6,
 			  error_wrong_type_arg_6,
 			  error_bad_range_arg_6)
 
-define_integer_guarantee (guarantee_nonnegative_integer_arg_7,
+define_integer_guarantee (guarantee_nonnegative_int_arg_7,
 			  error_wrong_type_arg_7,
 			  error_bad_range_arg_7)
 
-define_integer_guarantee (guarantee_nonnegative_integer_arg_8,
+define_integer_guarantee (guarantee_nonnegative_int_arg_8,
 			  error_wrong_type_arg_8,
 			  error_bad_range_arg_8)
 
-define_integer_guarantee (guarantee_nonnegative_integer_arg_9,
+define_integer_guarantee (guarantee_nonnegative_int_arg_9,
 			  error_wrong_type_arg_9,
 			  error_bad_range_arg_9)
 
-define_integer_guarantee (guarantee_nonnegative_integer_arg_10,
+define_integer_guarantee (guarantee_nonnegative_int_arg_10,
 			  error_wrong_type_arg_10,
 			  error_bad_range_arg_10)
 
@@ -609,7 +635,7 @@ Do_Micro_Error (Err, From_Pop_Return)
 
   Stop_History();
   Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(FIXNUM_0 + IntEnb);
+  Store_Expression(Make_Unsigned_Fixnum(IntEnb));
   Save_Cont();
   Push(Make_Unsigned_Fixnum(IntEnb));	 /* Arg 2:     Int. mask */
   Push(Make_Unsigned_Fixnum(Err));	 /* Arg 1:     Err. No   */
@@ -714,10 +740,9 @@ Stop_History ()
 Will_Push(HISTORY_SIZE);
   Save_History(RC_RESTORE_DONT_COPY_HISTORY);
 Pushed();
-  Previous_Restore_History_Stacklet = NULL;
-  Previous_Restore_History_Offset   =
-    (Get_End_Of_Stacklet() - Stack_Pointer) +
-      CONTINUATION_RETURN_CODE;
+  Prev_Restore_History_Stacklet = NULL;
+  Prev_Restore_History_Offset = ((Get_End_Of_Stacklet() - Stack_Pointer) +
+				 CONTINUATION_RETURN_CODE);
   Store_Expression(Saved_Expression);
   Store_Return(Saved_Return_Code);
   return;
@@ -812,32 +837,33 @@ Apply_Primitive (Primitive_Number)
   int NArgs;
 
   if (Primitive_Number > MAX_PRIMITIVE)
+  {
     Primitive_Error(ERR_UNDEFINED_PRIMITIVE);
-  NArgs = (int) Arg_Count_Table[Primitive_Number];
-  if (Primitive_Debug) Print_Primitive(Primitive_Number);
+  }
+  if (Primitive_Debug)
+  {
+    Print_Primitive(Primitive_Number);
+  }
+  NArgs = N_Args_Primitive(Primitive_Number);
   Saved_Stack = Stack_Pointer;
-  Result = (*(Primitive_Table[Primitive_Number]))();
+  Result = Internal_Apply_Primitive(Primitive_Number);
   if (Saved_Stack != Stack_Pointer)
-  { Print_Expression(Make_Non_Pointer(TC_PRIMITIVE, Primitive_Number),
+  {
+    Print_Expression(Make_Non_Pointer(TC_PRIMITIVE, Primitive_Number),
 		     "Stack bad after ");
-    printf( "\nStack was 0x%x, now 0x%x, #args=%d.\n",
+    fprintf(stderr,
+	    "\nStack was 0x%x, now 0x%x, #args=%d.\n",
             Saved_Stack, Stack_Pointer, NArgs);
     Microcode_Termination(TERM_EXIT);
   }
   if (Primitive_Debug)
-  { Print_Expression(Result, "Primitive Result");
-    printf( "\n");
+  {
+    Print_Expression(Result, "Primitive Result");
+    fprintf(stderr, "\n");
   }
   return Result;
 }
 #endif
-
-Built_In_Primitive (Prim_Unused, 0, "Unimplemented Primitive Handler")
-{
-  printf("Ignoring missing primitive. Expression = 0x%02x|%06x\n",
-         Type_Code(Fetch_Expression()), Datum(Fetch_Expression()));
-  Primitive_Error(ERR_UNDEFINED_PRIMITIVE);
-}
 
 Pointer
 Allocate_Float (F)
@@ -953,40 +979,46 @@ Translate_To_Point (Target)
   Pointer State_Space = Find_State_Space(Target);
   Pointer Current_Location, *Path = Free;
   fast Pointer Path_Point, *Path_Ptr;
-  long Distance =
-    Get_Integer(Fast_Vector_Ref(Target, STATE_POINT_DISTANCE_TO_ROOT));
-  long Merge_Depth, From_Depth, i;
+  long Distance, Merge_Depth, From_Depth, i;
 
   guarantee_state_point();
-  if (State_Space == NIL) Current_Location = Current_State_Point;
-  else Current_Location = Vector_Ref(State_Space, STATE_SPACE_NEAREST_POINT);
-  if (Target == Current_Location) longjmp(*Back_To_Eval, PRIM_POP_RETURN);
+  Distance =
+    Get_Integer(Fast_Vector_Ref(Target, STATE_POINT_DISTANCE_TO_ROOT));
+  if (State_Space == NIL)
+    Current_Location = Current_State_Point;
+  else
+    Current_Location = Vector_Ref(State_Space, STATE_SPACE_NEAREST_POINT);
+  if (Target == Current_Location)
+    longjmp(*Back_To_Eval, PRIM_POP_RETURN);
   for (Path_Ptr=(&(Path[Distance])), Path_Point=Target, i=0;
        i <= Distance;
        i++, Path_Point=Fast_Vector_Ref(Path_Point, STATE_POINT_NEARER_POINT))
     *Path_Ptr-- = Path_Point;
   From_Depth =
     Get_Integer(Fast_Vector_Ref(Current_Location, STATE_POINT_DISTANCE_TO_ROOT));
-  for (Path_Point=Current_Location, Merge_Depth=From_Depth;
-       Merge_Depth > Distance; Merge_Depth--)
+  for (Path_Point=Current_Location, Merge_Depth = From_Depth;
+       Merge_Depth > Distance;
+       Merge_Depth--)
     Path_Point = Fast_Vector_Ref(Path_Point, STATE_POINT_NEARER_POINT);
   for (Path_Ptr=(&(Path[Merge_Depth])); Merge_Depth >= 0;
        Merge_Depth--, Path_Ptr--,
        Path_Point=Fast_Vector_Ref(Path_Point, STATE_POINT_NEARER_POINT))
-    if (*Path_Ptr == Path_Point) break;
+    if (*Path_Ptr == Path_Point)
+      break;
 #ifdef ENABLE_DEBUGGING_TOOLS
   if (Merge_Depth < 0)
-  { printf("\nMerge_Depth went negative: %d\n", Merge_Depth);
+  {
+    fprintf(stderr, "\nMerge_Depth went negative: %d\n", Merge_Depth);
     Microcode_Termination(TERM_EXIT);
   }
 #endif
  Will_Push(2*CONTINUATION_SIZE + 4); 
   Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(FIXNUM_0 + IntEnb);
+  Store_Expression(Make_Unsigned_Fixnum(IntEnb));
   Save_Cont();
-  Push(FIXNUM_0+(Distance-Merge_Depth));
+  Push(Make_Unsigned_Fixnum((Distance-Merge_Depth)));
   Push(Target);
-  Push(FIXNUM_0+(From_Depth-Merge_Depth));
+  Push(Make_Unsigned_Fixnum((From_Depth-Merge_Depth)));
   Push(Current_Location);
   Store_Expression(State_Space);
   Store_Return(RC_MOVE_TO_ADJACENT_POINT);
@@ -994,4 +1026,5 @@ Translate_To_Point (Target)
  Pushed();
   IntEnb &= (INT_GC<<1) - 1;	/* Disable lower than GC level */
   longjmp(*Back_To_Eval, PRIM_POP_RETURN);
+  /*NOTREACHED*/
 }

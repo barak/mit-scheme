@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.22 1987/04/03 00:20:33 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.23 1987/04/16 02:29:06 jinx Exp $
  *
  * Description of the user data objects.  This should parallel the
  * file SDATA.SCM in the runtime system.
@@ -210,18 +210,18 @@ MIT in each case. */
    so that the "compiled" lookup code does not have to check whether
    the frame has been extended or not.
 
-   Note that for the code to work, ENVIRONMENT_EXTENSION_PARENT_FRAME
-   must be equal to PROCEDURE_ENVIRONMENT.
+   Note that for the code to work, ENV_EXTENSION_PARENT_FRAME must be
+   equal to PROCEDURE_ENVIRONMENT.
 
    The following constants are implicitely hard-coded in lookup.c,
    where a new extension object is consed in extend_frame.
  */
 
-#define ENVIRONMENT_EXTENSION_HEADER		0
-#define ENVIRONMENT_EXTENSION_PARENT_FRAME	1
-#define ENVIRONMENT_EXTENSION_PROCEDURE		2
-#define ENVIRONMENT_EXTENSION_COUNT		3
-#define ENVIRONMENT_EXTENSION_MIN_SIZE		4
+#define ENV_EXTENSION_HEADER		0
+#define ENV_EXTENSION_PARENT_FRAME	1
+#define ENV_EXTENSION_PROCEDURE		2
+#define ENV_EXTENSION_COUNT		3
+#define ENV_EXTENSION_MIN_SIZE		4
 
 /* EXTENDED_FIXNUM
  * Not used in the C version.  On the 68000 this is used for 24-bit

@@ -30,33 +30,38 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.20 1987/01/21 20:26:56 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.21 1987/04/16 02:29:23 jinx Exp $ */
 
 /* This file contains macros for manipulating stacks and stacklets. */
 
 #ifdef USE_STACKLETS
 /* Stack is made up of linked small parts, each in the heap */
 
-#define Initialize_Stack()
+#define Initialize_Stack()						\
+{									\
   if (GC_Check(Default_Stacklet_Size))					\
     Microcode_Termination(TERM_STACK_ALLOCATION_FAILED);		\
   Stack_Guard = Free+STACKLET_HEADER_SIZE;				\
-  *Free = Make_Non_Pointer(TC_MANIFEST_VECTOR, Default_Stacklet_Size-1);\
+  *Free = Make_Non_Pointer(TC_MANIFEST_VECTOR, Default_Stacklet_Size-1); \
   Free += Default_Stacklet_Size;					\
   Stack_Pointer = Free;							\
-  Free_Stacklets = NULL;                                                \
-  Previous_Restore_History_Stacklet = NULL;				\
-  Previous_Restore_History_Offset = 0
-
-#define Internal_Will_Push(N)						\
-if ((Stack_Pointer - (N)) < Stack_Guard)				\
-{ Export_Registers();							\
-  Allocate_New_Stacklet((N));						\
-  Import_Registers();							\
+  Free_Stacklets = NULL;						\
+  Prev_Restore_History_Stacklet = NULL;					\
+  Prev_Restore_History_Offset = 0;					\
 }
 
-#define Stack_Allocation_Size(Stack_Blocks)	0
+#define Internal_Will_Push(N)						\
+{									\
+  if ((Stack_Pointer - (N)) < Stack_Guard)				\
+  { Export_Registers();							\
+    Allocate_New_Stacklet((N));						\
+    Import_Registers();							\
+  }									\
+}
+
 /* No space required independent of the heap for the stacklets */
+
+#define Stack_Allocation_Size(Stack_Blocks)	0
 
 #define Current_Stacklet	(Stack_Guard-STACKLET_HEADER_SIZE)
 
@@ -64,21 +69,30 @@ if ((Stack_Pointer - (N)) < Stack_Guard)				\
  * collection. This also allows the stack pointer to be reconstructed.
  */
 
+#define Internal_Terminate_Old_Stacklet()				\
+{									\
+  Current_Stacklet[STACKLET_UNUSED_LENGTH] =				\
+    Make_Non_Pointer((DANGER_TYPE | TC_MANIFEST_NM_VECTOR),		\
+	             Stack_Pointer-Stack_Guard);			\
+}
+
 #ifdef ENABLE_DEBUGGING_TOOLS
+
 #define Terminate_Old_Stacklet()					\
+{									\
   if (Stack_Pointer < Stack_Guard)					\
-  { printf("\nStack_Pointer: 0x%x, Guard: 0x%x\n",                      \
-           Stack_Pointer, Stack_Guard);                                       \
+  {									\
+    fprintf(stderr, "\nStack_Pointer: 0x%x, Guard: 0x%x\n",		\
+           Stack_Pointer, Stack_Guard);					\
     Microcode_Termination(TERM_EXIT);					\
   }									\
-  Current_Stacklet[STACKLET_UNUSED_LENGTH] =				\
-    Make_Non_Pointer((DANGER_TYPE | TC_MANIFEST_NM_VECTOR),		\
-	             Stack_Pointer-Stack_Guard)
+  Internal_Terminate_Old_Stacklet();					\
+}
+
 #else
-#define Terminate_Old_Stacklet()					\
-  Current_Stacklet[STACKLET_UNUSED_LENGTH] =				\
-    Make_Non_Pointer((DANGER_TYPE | TC_MANIFEST_NM_VECTOR),		\
-	             Stack_Pointer-Stack_Guard)
+
+#define Terminate_Old_Stacklet()	Internal_Terminate_Old_Stacklet()
+
 #endif
 
 /* Used by garbage collector to detect the end of constant space */
@@ -158,8 +172,8 @@ Pushed()
     ((Pointer) Free_Stacklets);					\
   Free_Stacklets = Stacklet_Top;				\
   if (!(From_Pop_Return))					\
-  { Previous_Restore_History_Stacklet = NULL;			\
-    Previous_Restore_History_Offset = 0;			\
+  { Prev_Restore_History_Stacklet = NULL;			\
+    Prev_Restore_History_Offset = 0;				\
   }								\
   if (!(Dangerous(Fast_Vector_Ref(Previous_Stacklet,		\
 				  STACKLET_UNUSED_LENGTH))))	\
@@ -167,12 +181,14 @@ Pushed()
     { Free_Stacklets =						\
 	((Pointer *) Free_Stacklets[STACKLET_FREE_LIST_LINK]);	\
       Stack_Pointer = Get_End_Of_Stacklet();			\
-      Previous_Restore_History_Stacklet = NULL;			\
-      Previous_Restore_History_Offset = 0;
+      Prev_Restore_History_Stacklet = NULL;			\
+      Prev_Restore_History_Offset = 0;
+
       /* Backout code inserted here, SUN screw up! */
 
+      /* Backout code inserted here, SUN screw up! */
+
 #define Our_Throw_Part_2()					\
-      /* Backout code inserted here, SUN screw up! */		\
       Request_GC(Vector_Length(Previous_Stacklet) + 1);		\
     }								\
     else /* Space available for copy */				\
@@ -181,10 +197,10 @@ Pushed()
 	Get_Pointer(Previous_Stacklet);				\
       Pointer *First_Continuation = 				\
         Nth_Vector_Loc(Previous_Stacklet,			\
-		       ((1+Vector_Length(Previous_Stacklet))-	\
+		       ((1 + Vector_Length(Previous_Stacklet)) - \
                         CONTINUATION_SIZE));			\
-      if (Old_Stacklet_Top==Previous_Restore_History_Stacklet)	\
-        Previous_Restore_History_Stacklet = NULL;		\
+      if (Old_Stacklet_Top == Prev_Restore_History_Stacklet)	\
+        Prev_Restore_History_Stacklet = NULL;			\
       if (First_Continuation[CONTINUATION_RETURN_CODE] == 	\
 	  Make_Non_Pointer(TC_RETURN_CODE, RC_JOIN_STACKLETS))	\
       { Pointer *Even_Older_Stacklet =				\
@@ -207,8 +223,8 @@ Pushed()
   }								\
   else	/* No need to copy the stacklet we are going into */	\
   { if (Get_Pointer(Previous_Stacklet)==			\
-        Previous_Restore_History_Stacklet)			\
-      Previous_Restore_History_Stacklet = NULL;			\
+        Prev_Restore_History_Stacklet)				\
+      Prev_Restore_History_Stacklet = NULL;			\
     Set_Current_Stacklet(Previous_Stacklet);			\
   }								\
 }
@@ -302,16 +318,16 @@ Pushed()
       Microcode_Termination (TERM_BAD_STACK);				\
   if (!(From_Pop_Return))						\
     {									\
-      Previous_Restore_History_Stacklet = NULL;				\
-      Previous_Restore_History_Offset = 0;				\
+      Prev_Restore_History_Stacklet = NULL;				\
+      Prev_Restore_History_Offset = 0;					\
       if ((!Valid_Fixed_Obj_Vector ()) ||				\
 	  (Get_Fixed_Obj_Slot (Dummy_History) == NIL))			\
 	History = Make_Dummy_History ();				\
       else								\
 	History = Get_Pointer (Get_Fixed_Obj_Slot (Dummy_History));	\
     }									\
-  else if (Previous_Restore_History_Stacklet == Get_Pointer (Control_Point)) \
-    Previous_Restore_History_Stacklet = NULL;				\
+  else if (Prev_Restore_History_Stacklet == Get_Pointer (Control_Point)) \
+    Prev_Restore_History_Stacklet = NULL;				\
 }
 
 #define Our_Throw_Part_2()

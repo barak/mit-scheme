@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.23 1987/04/03 00:18:31 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.24 1987/04/16 02:27:21 jinx Exp $
  *
  * The leftovers ... primitives that don't seem to belong elsewhere.
  *
@@ -41,11 +41,11 @@ MIT in each case. */
 
 /* Random predicates: */
 
-/* (NULL OBJECT)
-      Returns #!TRUE if OBJECT is NIL.  Otherwise returns NIL.  This is
-      the primitive known as NOT, NIL?, and NULL? in Scheme.
+/* (NULL? OBJECT)
+   Returns #!TRUE if OBJECT is NIL.  Otherwise returns NIL.  This is
+   the primitive known as NOT, NIL?, and NULL? in Scheme.
 */
-Built_In_Primitive(Prim_Null, 1, "NULL?")
+Built_In_Primitive(Prim_Null, 1, "NULL?", 0xC)
 {
   Primitive_1_Arg();
 
@@ -54,27 +54,29 @@ Built_In_Primitive(Prim_Null, 1, "NULL?")
 }
 
 /* (EQ? OBJECT-1 OBJECT-2)
-      Returns #!TRUE if the two objects have the same type code
-      and datum.  Returns NIL otherwise.
+   Returns #!TRUE if the two objects have the same type code
+   and datum.  Returns NIL otherwise.
 */
-Built_In_Primitive(Prim_Eq, 2, "EQ?")
+Built_In_Primitive(Prim_Eq, 2, "EQ?", 0xD)
 {
   Primitive_2_Args();
 
-  if (Arg1 == Arg2) return TRUTH;
+  if (Arg1 == Arg2)
+    return TRUTH;
   Touch_In_Primitive(Arg1, Arg1);
   Touch_In_Primitive(Arg2, Arg2);
-  return (Arg1 == Arg2) ? TRUTH : NIL;
+  return ((Arg1 == Arg2) ? TRUTH : NIL);
 }
 
 /* Pointer manipulation */
 
-/* (MAKE-NON-POINTER NUMBER)
-      Returns an (extended) fixnum with the same value as NUMBER.  In
-      the CScheme interpreter this is basically a no-op, since fixnums
-      already store 24 bits.
+/* (MAKE-NON-POINTER-OBJECT NUMBER)
+   Returns an (extended) fixnum with the same value as NUMBER.  In
+   the CScheme interpreter this is basically a no-op, since fixnums
+   already store 24 bits.
 */
-Built_In_Primitive(Prim_Make_Non_Pointer, 1, "MAKE-NON-POINTER")
+Built_In_Primitive(Prim_Make_Non_Pointer, 1,
+		   "MAKE-NON-POINTER-OBJECT", 0xB1)
 {
   Primitive_1_Arg();
 
@@ -83,9 +85,9 @@ Built_In_Primitive(Prim_Make_Non_Pointer, 1, "MAKE-NON-POINTER")
 }
 
 /* (PRIMITIVE-DATUM OBJECT)
-      Returns the datum part of OBJECT.
+   Returns the datum part of OBJECT.
 */
-Built_In_Primitive(Prim_Primitive_Datum, 1, "PRIMITIVE-DATUM")
+Built_In_Primitive(Prim_Primitive_Datum, 1, "PRIMITIVE-DATUM", 0xB0)
 {
   Primitive_1_Arg();
 
@@ -93,10 +95,10 @@ Built_In_Primitive(Prim_Primitive_Datum, 1, "PRIMITIVE-DATUM")
 }
 
 /* (PRIMITIVE-TYPE OBJECT)
-      Returns the type code of OBJECT as a number.
-      Note: THE OBJECT IS TOUCHED FIRST.
+   Returns the type code of OBJECT as a number.
+   Note: THE OBJECT IS TOUCHED FIRST.
 */
-Built_In_Primitive(Prim_Prim_Type, 1, "PRIMITIVE-TYPE")
+Built_In_Primitive(Prim_Prim_Type, 1, "PRIMITIVE-TYPE", 0x10)
 {
   Primitive_1_Arg();
 
@@ -104,12 +106,12 @@ Built_In_Primitive(Prim_Prim_Type, 1, "PRIMITIVE-TYPE")
   return Make_Unsigned_Fixnum(Type_Code(Arg1));
 }
 
-/* (GC_TYPE OBJECT)
-      Returns a fixnum indicating the GC type of the object.  The object
-      is NOT touched first.
+/* (PRIMITIVE-GC-TYPE OBJECT)
+   Returns a fixnum indicating the GC type of the object.  The object
+   is NOT touched first.
 */
 
-Built_In_Primitive(Prim_Gc_Type, 1, "GC-TYPE")
+Built_In_Primitive(Prim_Gc_Type, 1, "PRIMITIVE-GC-TYPE", 0xBC)
 {
   Primitive_1_Arg(); 
 
@@ -117,11 +119,11 @@ Built_In_Primitive(Prim_Gc_Type, 1, "GC-TYPE")
 }
 
 /* (PRIMITIVE-TYPE? TYPE-CODE OBJECT)
-      Return #!TRUE if the type code of OBJECT is TYPE-CODE, NIL
-      otherwise.
-      Note: THE OBJECT IS TOUCHED FIRST.
+   Return #!TRUE if the type code of OBJECT is TYPE-CODE, NIL
+   otherwise.
+   Note: THE OBJECT IS TOUCHED FIRST.
 */
-Built_In_Primitive(Prim_Prim_Type_QM, 2, "PRIMITIVE-TYPE?")
+Built_In_Primitive(Prim_Prim_Type_QM, 2, "PRIMITIVE-TYPE?", 0xF)
 {
   Primitive_2_Args();
 
@@ -134,13 +136,13 @@ Built_In_Primitive(Prim_Prim_Type_QM, 2, "PRIMITIVE-TYPE?")
 }
 
 /* (PRIMITIVE-SET-TYPE TYPE-CODE OBJECT)
-      Returns a new object with TYPE-CODE and the datum part of
-      OBJECT.
-      Note : IT TOUCHES ITS SECOND ARGUMENT (for completeness sake).
-      This is a "gc-safe" (paranoid) operation.
+   Returns a new object with TYPE-CODE and the datum part of
+   OBJECT.
+   Note : IT TOUCHES ITS SECOND ARGUMENT (for completeness sake).
+   This is a "gc-safe" (paranoid) operation.
 */
 
-Built_In_Primitive(Prim_Primitive_Set_Type, 2, "PRIMITIVE-SET-TYPE")
+Built_In_Primitive(Prim_Primitive_Set_Type, 2, "PRIMITIVE-SET-TYPE", 0x11)
 {
   long New_GC_Type, New_Type;
   Primitive_2_Args();
@@ -152,7 +154,9 @@ Built_In_Primitive(Prim_Primitive_Set_Type, 2, "PRIMITIVE-SET-TYPE")
   if ((GC_Type(Arg2) == New_GC_Type) ||
       (New_GC_Type == GC_Non_Pointer))
     return Make_New_Pointer(New_Type, Arg2);
-  else Primitive_Error(ERR_ARG_1_BAD_RANGE); /*NOTREACHED*/
+  else
+    Primitive_Error(ERR_ARG_1_BAD_RANGE);
+  /*NOTREACHED*/
 }
 
 /* Subprimitives.  
@@ -167,7 +171,7 @@ Built_In_Primitive(Prim_Primitive_Set_Type, 2, "PRIMITIVE-SET-TYPE")
    OBJECT, and whose type code is TYPE-CODE.  It does not touch.
 */
 
-Built_In_Primitive(Prim_And_Make_Object, 2, "&MAKE-OBJECT")
+Built_In_Primitive(Prim_And_Make_Object, 2, "&MAKE-OBJECT", 0x8D)
 {
   long New_Type;
   Primitive_2_Args();
@@ -182,7 +186,7 @@ Built_In_Primitive(Prim_And_Make_Object, 2, "&MAKE-OBJECT")
    Performs no type checking in object.
 */
 
-Built_In_Primitive(Prim_System_Memory_Ref, 2, "SYSTEM-MEMORY-REF")
+Built_In_Primitive(Prim_System_Memory_Ref, 2, "SYSTEM-MEMORY-REF", 0x195)
 {
   Primitive_2_Args();
 
@@ -195,7 +199,7 @@ Built_In_Primitive(Prim_System_Memory_Ref, 2, "SYSTEM-MEMORY-REF")
    Performs no type checking in object.
 */
 
-Built_In_Primitive(Prim_System_Memory_Set, 3, "SYSTEM-MEMORY-SET!")
+Built_In_Primitive(Prim_System_Memory_Set, 3, "SYSTEM-MEMORY-SET!", 0x196)
 {
   long index;
   Primitive_3_Args();
@@ -207,10 +211,10 @@ Built_In_Primitive(Prim_System_Memory_Set, 3, "SYSTEM-MEMORY-SET!")
 
 /* Playing with the danger bit */
 
-/* (DANGEROUS? OBJECT)
-      Returns #!TRUE if OBJECT has the danger bit set, NIL otherwise.
+/* (OBJECT-DANGEROUS? OBJECT)
+   Returns #!TRUE if OBJECT has the danger bit set, NIL otherwise.
 */
-Built_In_Primitive(Prim_Dangerous_QM, 1, "DANGEROUS?")
+Built_In_Primitive(Prim_Dangerous_QM, 1, "OBJECT-DANGEROUS?", 0x49)
 {
   Primitive_1_Arg();
 
@@ -218,21 +222,21 @@ Built_In_Primitive(Prim_Dangerous_QM, 1, "DANGEROUS?")
 }
 
 /* (MAKE-OBJECT-DANGEROUS OBJECT)
-      Returns OBJECT, but with the danger bit set.
+   Returns OBJECT, but with the danger bit set.
 */
-Built_In_Primitive(Prim_Dangerize, 1, "MAKE-OBJECT-DANGEROUS")
+Built_In_Primitive(Prim_Dangerize, 1, "MAKE-OBJECT-DANGEROUS", 0x48)
 {
   Primitive_1_Arg();
 
   return Set_Danger_Bit(Arg1);
 }
 
-/* (UNDANGERIZE OBJECT)
-      Returns OBJECT with the danger bit cleared.  This does not
-      side-effect the object, it merely returns a new (non-dangerous)
-      pointer to the same item.
+/* (MAKE-OBJECT-SAFE OBJECT)
+   Returns OBJECT with the danger bit cleared.  This does not
+   side-effect the object, it merely returns a new (non-dangerous)
+   pointer to the same item.
 */
-Built_In_Primitive(Prim_Undangerize, 1, "UNDANGERIZE")
+Built_In_Primitive(Prim_Undangerize, 1, "MAKE-OBJECT-SAFE", 0x47)
 {
   Primitive_1_Arg();
 
@@ -242,9 +246,9 @@ Built_In_Primitive(Prim_Undangerize, 1, "UNDANGERIZE")
 /* Cells */
 
 /* (MAKE-CELL CONTENTS)
-	Creates a cell with contents CONTENTS.
+   Creates a cell with contents CONTENTS.
 */
-Built_In_Primitive(Prim_Make_Cell, 1, "MAKE-CELL")
+Built_In_Primitive(Prim_Make_Cell, 1, "MAKE-CELL", 0x61)
 {
   Primitive_1_Arg();
 
@@ -253,10 +257,10 @@ Built_In_Primitive(Prim_Make_Cell, 1, "MAKE-CELL")
   return Make_Pointer(TC_CELL, Free-1);
 }
 
-/* (CONTENTS CELL)
-	Returns the contents of the cell CELL.
+/* (CELL-CONTENTS CELL)
+   Returns the contents of the cell CELL.
 */
-Built_In_Primitive(Prim_Cell_Contents, 1, "CONTENTS")
+Built_In_Primitive(Prim_Cell_Contents, 1, "CELL-CONTENTS", 0x62)
 {
   Primitive_1_Arg();
 
@@ -265,10 +269,10 @@ Built_In_Primitive(Prim_Cell_Contents, 1, "CONTENTS")
 }
 
 /* (CELL? OBJECT)
-      Returns #!TRUE if OBJECT has type-code CELL, otherwise returns
-      NIL.
+   Returns #!TRUE if OBJECT has type-code CELL, otherwise returns
+   NIL.
 */
-Built_In_Primitive(Prim_Cell, 1,"CELL?")
+Built_In_Primitive(Prim_Cell, 1, "CELL?", 0x63)
 {
   Primitive_1_Arg();
 
@@ -276,11 +280,10 @@ Built_In_Primitive(Prim_Cell, 1,"CELL?")
   return (Type_Code(Arg1 == TC_CELL)) ? TRUTH : NIL;
 }
 
-/* (SET-CONTENTS! CELL VALUE)
-	Stores VALUE as contents of CELL.  Returns (bad style to count
-	on this) the previous contents of CELL.
+/* (SET-CELL-CONTENTS! CELL VALUE)
+   Stores VALUE as contents of CELL.  Returns the previous contents of CELL.
 */
-Built_In_Primitive(Prim_Set_Cell_Contents, 2, "SET-CONTENTS!")
+Built_In_Primitive(Prim_Set_Cell_Contents, 2, "SET-CELL-CONTENTS!", 0x8C)
 {
   Primitive_2_Args();
 

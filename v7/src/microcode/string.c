@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.22 1987/04/08 12:25:57 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.23 1987/04/16 02:30:34 jinx Exp $ */
 
 /* String primitives. */
 
@@ -42,13 +42,13 @@ MIT in each case. */
 /* Currently the strings used in symbols have type codes in the length
    field.  They should be changed to have just longwords there. */
 
-Built_In_Primitive (Prim_String_Allocate, 1, "STRING-ALLOCATE")
+Built_In_Primitive (Prim_String_Allocate, 1, "STRING-ALLOCATE", 0x13E)
 {
   long length, count;
   Pointer result;
   Primitive_1_Arg ();
 
-  length = (guarantee_nonnegative_integer_arg_1 (Arg1));
+  length = (guarantee_nonnegative_int_arg_1 (Arg1));
   /* Add 1 to length to account for '\0' at end of string.
      Add 2 to count to account for string header words. */
   count =
@@ -65,14 +65,14 @@ Built_In_Primitive (Prim_String_Allocate, 1, "STRING-ALLOCATE")
   return (result);
 }
 
-Built_In_Primitive (Prim_String_P, 1, "STRING?")
+Built_In_Primitive (Prim_String_P, 1, "STRING?", 0x138)
 {
   Primitive_1_Arg ();
 
   return ((string_p (Arg1)) ? TRUTH : NIL);
 }
 
-Built_In_Primitive (Prim_String_Length, 1, "STRING-LENGTH")
+Built_In_Primitive (Prim_String_Length, 1, "STRING-LENGTH", 0x139)
 {
   Primitive_1_Arg ();
 
@@ -80,7 +80,8 @@ Built_In_Primitive (Prim_String_Length, 1, "STRING-LENGTH")
   return (Make_Unsigned_Fixnum (string_length (Arg1)));
 }
 
-Built_In_Primitive (Prim_String_Maximum_Length, 1, "STRING-MAXIMUM-LENGTH")
+Built_In_Primitive (Prim_String_Maximum_Length, 1,
+		    "STRING-MAXIMUM-LENGTH", 0x13F)
 {
   Primitive_1_Arg ();
 
@@ -88,13 +89,13 @@ Built_In_Primitive (Prim_String_Maximum_Length, 1, "STRING-MAXIMUM-LENGTH")
   return (Make_Unsigned_Fixnum ((maximum_string_length (Arg1)) - 1));
 }
 
-Built_In_Primitive (Prim_Set_String_Length, 2, "SET-STRING-LENGTH!")
+Built_In_Primitive (Prim_Set_String_Length, 2, "SET-STRING-LENGTH!", 0x140)
 {
   long length, result;
   Primitive_2_Args ();
 
   guarantee_string_arg_1 ();
-  length = (guarantee_nonnegative_integer_arg_2 (Arg2));
+  length = (guarantee_nonnegative_int_arg_2 (Arg2));
   if (length > (maximum_string_length (Arg1)))
     error_bad_range_arg_2 ();
 
@@ -126,10 +127,10 @@ substring_length_min (start1, end1, start2, end2)
   return (process_result (string_ref (Arg1, index)));		\
 }
 
-Built_In_Primitive (Prim_String_Ref, 2, "STRING-REF")
+Built_In_Primitive (Prim_String_Ref, 2, "STRING-REF", 0x13A)
   string_ref_body (c_char_to_scheme_char)
 
-Built_In_Primitive (Prim_Vector_8b_Ref, 2, "VECTOR-8B-REF")
+Built_In_Primitive (Prim_Vec_8b_Ref, 2, "VECTOR-8B-REF", 0xA5)
   string_ref_body (Make_Unsigned_Fixnum)
 
 #define string_set_body(get_ascii, process_result)		\
@@ -149,10 +150,10 @@ Built_In_Primitive (Prim_Vector_8b_Ref, 2, "VECTOR-8B-REF")
   return (process_result (result));				\
 }
 
-Built_In_Primitive (Prim_String_Set, 3, "STRING-SET!")
-  string_set_body (guarantee_ascii_character_arg_3, c_char_to_scheme_char)
+Built_In_Primitive (Prim_String_Set, 3, "STRING-SET!", 0x13B)
+  string_set_body (guarantee_ascii_char_arg_3, c_char_to_scheme_char)
 
-Built_In_Primitive (Prim_Vector_8b_Set, 3, "VECTOR-8B-SET!")
+Built_In_Primitive (Prim_Vec_8b_Set, 3, "VECTOR-8B-SET!", 0xA6)
   string_set_body (guarantee_ascii_integer_arg_3, Make_Unsigned_Fixnum)
 
 #define substring_move_prefix()					\
@@ -161,10 +162,10 @@ Built_In_Primitive (Prim_Vector_8b_Set, 3, "VECTOR-8B-SET!")
   Primitive_5_Args ();						\
 								\
   guarantee_string_arg_1 ();					\
-  start1 = (guarantee_nonnegative_integer_arg_2 (Arg2));	\
-  end1 = (guarantee_nonnegative_integer_arg_3 (Arg3));		\
+  start1 = (guarantee_nonnegative_int_arg_2 (Arg2));		\
+  end1 = (guarantee_nonnegative_int_arg_3 (Arg3));		\
   guarantee_string_arg_4 ();					\
-  start2 = (guarantee_nonnegative_integer_arg_5 (Arg5));	\
+  start2 = (guarantee_nonnegative_int_arg_5 (Arg5));		\
 								\
   if (end1 > (string_length (Arg1)))				\
     error_bad_range_arg_2 ();					\
@@ -176,7 +177,8 @@ Built_In_Primitive (Prim_Vector_8b_Set, 3, "VECTOR-8B-SET!")
   if (end2 > (string_length (Arg4)))				\
     error_bad_range_arg_3 ();
 
-Built_In_Primitive (Prim_Substring_Move_Right, 5, "SUBSTRING-MOVE-RIGHT!")
+Built_In_Primitive (Prim_Substring_Move_Right, 5,
+		    "SUBSTRING-MOVE-RIGHT!", 0x13C)
 {
   substring_move_prefix()
 
@@ -187,7 +189,8 @@ Built_In_Primitive (Prim_Substring_Move_Right, 5, "SUBSTRING-MOVE-RIGHT!")
   return (NIL);
 }
 
-Built_In_Primitive (Prim_Substring_Move_Left, 5, "SUBSTRING-MOVE-LEFT!")
+Built_In_Primitive (Prim_Substring_Move_Left, 5,
+		    "SUBSTRING-MOVE-LEFT!", 0x13D)
 {
   substring_move_prefix()
 
@@ -205,8 +208,8 @@ Built_In_Primitive (Prim_Substring_Move_Left, 5, "SUBSTRING-MOVE-LEFT!")
   Primitive_4_Args ();						\
 								\
   guarantee_string_arg_1 ();					\
-  start = (guarantee_nonnegative_integer_arg_2 (Arg2));		\
-  end = (guarantee_nonnegative_integer_arg_3 (Arg3));		\
+  start = (guarantee_nonnegative_int_arg_2 (Arg2));		\
+  end = (guarantee_nonnegative_int_arg_3 (Arg3));		\
   ascii = (guarantee_ascii_integer_arg_4 (Arg4));		\
 								\
   if (end > (string_length (Arg1)))				\
@@ -214,7 +217,7 @@ Built_In_Primitive (Prim_Substring_Move_Left, 5, "SUBSTRING-MOVE-LEFT!")
   if (start > end)						\
     error_bad_range_arg_2 ();
 
-Built_In_Primitive (Prim_Vector_8b_Fill, 4, "VECTOR-8B-FILL!")
+Built_In_Primitive (Prim_Vec_8b_Fill, 4, "VECTOR-8B-FILL!", 0x141)
 {
   vector_8b_substring_prefix ();
 
@@ -225,8 +228,8 @@ Built_In_Primitive (Prim_Vector_8b_Fill, 4, "VECTOR-8B-FILL!")
   return (NIL);
 }
 
-Built_In_Primitive (Prim_Vector_8b_Find_Next_Char, 4,
-		    "VECTOR-8B-FIND-NEXT-CHAR")
+Built_In_Primitive (Prim_Vec_8b_Find_Next_Char, 4,
+		    "VECTOR-8B-FIND-NEXT-CHAR", 0x142)
 {
   vector_8b_substring_prefix ();
 
@@ -240,8 +243,8 @@ Built_In_Primitive (Prim_Vector_8b_Find_Next_Char, 4,
   return (NIL);
 }
 
-Built_In_Primitive (Prim_Vector_8b_Find_Previous_Char, 4,
-		    "VECTOR-8B-FIND-PREVIOUS-CHAR")
+Built_In_Primitive (Prim_Vec_8b_Find_Prev_Char, 4,
+		    "VECTOR-8B-FIND-PREVIOUS-CHAR", 0x143)
 {
   vector_8b_substring_prefix ();
 
@@ -252,8 +255,8 @@ Built_In_Primitive (Prim_Vector_8b_Find_Previous_Char, 4,
   return (NIL);
 }
 
-Built_In_Primitive(Prim_Vector_8b_Find_Next_Char_Ci, 4,
-		   "VECTOR-8B-FIND-NEXT-CHAR-CI")
+Built_In_Primitive(Prim_Vec_8b_Find_Next_Char_Ci, 4,
+		   "VECTOR-8B-FIND-NEXT-CHAR-CI", 0x144)
 {
   char char1;
   vector_8b_substring_prefix ();
@@ -269,8 +272,8 @@ Built_In_Primitive(Prim_Vector_8b_Find_Next_Char_Ci, 4,
   return (NIL);
 }
 
-Built_In_Primitive(Prim_Vector_8b_Find_Previous_Char_Ci, 4,
-		   "VECTOR-8B-FIND-PREVIOUS-CHAR-CI")
+Built_In_Primitive(Prim_Vec_8b_Find_Prev_Char_Ci, 4,
+		   "VECTOR-8B-FIND-PREVIOUS-CHAR-CI", 0x145)
 {
   char char1;
   vector_8b_substring_prefix ();
@@ -291,8 +294,8 @@ Built_In_Primitive(Prim_Vector_8b_Find_Previous_Char_Ci, 4,
   Primitive_4_Args ();						\
 								\
   guarantee_string_arg_1 ();					\
-  start = (guarantee_nonnegative_integer_arg_2 (Arg2));		\
-  end = (guarantee_nonnegative_integer_arg_3 (Arg3));		\
+  start = (guarantee_nonnegative_int_arg_2 (Arg2));		\
+  end = (guarantee_nonnegative_int_arg_3 (Arg3));		\
   guarantee_string_arg_4 ();					\
 								\
   if (end > (string_length (Arg1)))				\
@@ -302,8 +305,8 @@ Built_In_Primitive(Prim_Vector_8b_Find_Previous_Char_Ci, 4,
   if ((string_length (Arg4)) != MAX_ASCII)			\
     error_bad_range_arg_4 ();
 
-Built_In_Primitive(Prim_Substring_Find_Next_Char_In_Set, 4,
-		   "SUBSTRING-FIND-NEXT-CHAR-IN-SET")
+Built_In_Primitive(Prim_Find_Next_Char_In_Set, 4,
+		   "SUBSTRING-FIND-NEXT-CHAR-IN-SET", 0x146)
 {
   substring_find_char_in_set_prefix ();
 
@@ -318,8 +321,8 @@ Built_In_Primitive(Prim_Substring_Find_Next_Char_In_Set, 4,
   return (NIL);
 }
 
-Built_In_Primitive(Prim_Substring_Find_Previous_Char_In_Set, 4,
-		   "SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET")
+Built_In_Primitive(Prim_Find_Prev_Char_In_Set, 4,
+		   "SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET", 0x147)
 {
   substring_find_char_in_set_prefix ();
 
@@ -337,11 +340,11 @@ Built_In_Primitive(Prim_Substring_Find_Previous_Char_In_Set, 4,
   Primitive_6_Args ();						\
 								\
   guarantee_string_arg_1 ();					\
-  start1 = (guarantee_nonnegative_integer_arg_2 (Arg2));	\
-  end1 = (guarantee_nonnegative_integer_arg_3 (Arg3));		\
+  start1 = (guarantee_nonnegative_int_arg_2 (Arg2));		\
+  end1 = (guarantee_nonnegative_int_arg_3 (Arg3));		\
   guarantee_string_arg_4 ();					\
-  start2 = (guarantee_nonnegative_integer_arg_5 (Arg5));	\
-  end2 = (guarantee_nonnegative_integer_arg_6 (Arg6));		\
+  start2 = (guarantee_nonnegative_int_arg_5 (Arg5));		\
+  end2 = (guarantee_nonnegative_int_arg_6 (Arg6));		\
 								\
   if (end1 > (string_length (Arg1)))				\
     error_bad_range_arg_3 ();					\
@@ -364,7 +367,7 @@ Built_In_Primitive(Prim_Substring_Find_Previous_Char_In_Set, 4,
   if (length != (end2 - start2))				\
     return (NIL);
 
-Built_In_Primitive (Prim_Substring_Equal, 6, "SUBSTRING=?")
+Built_In_Primitive(Prim_Substring_Equal, 6, "SUBSTRING=?", 0x148)
 {
   substring_equal_prefix ();
 
@@ -374,7 +377,7 @@ Built_In_Primitive (Prim_Substring_Equal, 6, "SUBSTRING=?")
   return (TRUTH);
 }
 
-Built_In_Primitive(Prim_Substring_Ci_Equal, 6, "SUBSTRING-CI=?")
+Built_In_Primitive(Prim_Substring_Ci_Equal, 6, "SUBSTRING-CI=?", 0x149)
 {
   substring_equal_prefix ();
 
@@ -384,7 +387,7 @@ Built_In_Primitive(Prim_Substring_Ci_Equal, 6, "SUBSTRING-CI=?")
   return (TRUTH);
 }
 
-Built_In_Primitive (Prim_Substring_Less, 6, "SUBSTRING<?")
+Built_In_Primitive (Prim_Substring_Less, 6, "SUBSTRING<?", 0x14A)
 {
   long length, length1, length2;
   substring_compare_prefix (start1, start2);
@@ -407,8 +410,8 @@ Built_In_Primitive (Prim_Substring_Less, 6, "SUBSTRING<?")
   Primitive_3_Args ();						\
 								\
   guarantee_string_arg_1 ();					\
-  start = (guarantee_nonnegative_integer_arg_2 (Arg2));		\
-  end = (guarantee_nonnegative_integer_arg_3 (Arg3));		\
+  start = (guarantee_nonnegative_int_arg_2 (Arg2));		\
+  end = (guarantee_nonnegative_int_arg_3 (Arg3));		\
 								\
   if (end > (string_length (Arg1)))				\
     error_bad_range_arg_3 ();					\
@@ -418,7 +421,7 @@ Built_In_Primitive (Prim_Substring_Less, 6, "SUBSTRING<?")
   length = (end - start);					\
   scan = (string_pointer (Arg1, start));
 
-Built_In_Primitive(Prim_Substring_Upcase, 3, "SUBSTRING-UPCASE!")
+Built_In_Primitive(Prim_Substring_Upcase, 3, "SUBSTRING-UPCASE!", 0x14B)
 {
   substring_modification_prefix ();
 
@@ -429,7 +432,7 @@ Built_In_Primitive(Prim_Substring_Upcase, 3, "SUBSTRING-UPCASE!")
   return (NIL);
 }
 
-Built_In_Primitive(Prim_Substring_Downcase, 3, "SUBSTRING-DOWNCASE!")
+Built_In_Primitive(Prim_Substring_Downcase, 3, "SUBSTRING-DOWNCASE!", 0x14C)
 {
   substring_modification_prefix ();
 
@@ -447,7 +450,8 @@ Built_In_Primitive(Prim_Substring_Downcase, 3, "SUBSTRING-DOWNCASE!")
   length = (substring_length_min (start1, end1, start2, end2));	\
   unmatched = length;
 
-Built_In_Primitive (Prim_Substring_Match_Forward, 6, "SUBSTRING-MATCH-FORWARD")
+Built_In_Primitive (Prim_Match_Forward, 6,
+		    "SUBSTRING-MATCH-FORWARD", 0x14D)
 {
   substring_match_prefix (start1, start2);
 
@@ -457,8 +461,8 @@ Built_In_Primitive (Prim_Substring_Match_Forward, 6, "SUBSTRING-MATCH-FORWARD")
   return (Make_Unsigned_Fixnum (length));
 }
 
-Built_In_Primitive (Prim_Substring_Match_Forward_Ci, 6,
-		   "SUBSTRING-MATCH-FORWARD-CI")
+Built_In_Primitive (Prim_Match_Forward_Ci, 6,
+		   "SUBSTRING-MATCH-FORWARD-CI", 0x14F)
 {
   substring_match_prefix (start1, start2);
 
@@ -468,8 +472,8 @@ Built_In_Primitive (Prim_Substring_Match_Forward_Ci, 6,
   return (Make_Unsigned_Fixnum (length));
 }
 
-Built_In_Primitive (Prim_Substring_Match_Backward, 6,
-		   "SUBSTRING-MATCH-BACKWARD")
+Built_In_Primitive (Prim_Match_Backward, 6,
+		   "SUBSTRING-MATCH-BACKWARD", 0x14E)
 {
   substring_match_prefix (end1, end2);
 
@@ -479,8 +483,8 @@ Built_In_Primitive (Prim_Substring_Match_Backward, 6,
   return (Make_Unsigned_Fixnum (length));
 }
 
-Built_In_Primitive(Prim_Substring_Match_Backward_Ci, 6,
-		   "SUBSTRING-MATCH-BACKWARD-CI")
+Built_In_Primitive(Prim_Match_Backward_Ci, 6,
+		   "SUBSTRING-MATCH-BACKWARD-CI", 0x150)
 {
   substring_match_prefix (end1, end2);
 

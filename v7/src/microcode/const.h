@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.23 1987/04/03 00:10:08 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.24 1987/04/16 02:20:20 jinx Rel $
  *
  * Named constants used throughout the interpreter
  *
@@ -50,16 +50,14 @@ MIT in each case. */
 
 #define NIL			Make_Non_Pointer(TC_NULL, 0)
 #define TRUTH			Make_Non_Pointer(TC_TRUE, 0)
-#define FIXNUM_0		Make_Non_Pointer(TC_FIXNUM, 0)
-#define BROKEN_HEART_0		Make_Non_Pointer(TC_BROKEN_HEART, 0)
-#define STRING_0		Make_Non_Pointer(TC_CHARACTER_STRING, 0)
+#define FIXNUM_ZERO		Make_Non_Pointer(TC_FIXNUM, 0)
+#define BROKEN_HEART_ZERO	Make_Non_Pointer(TC_BROKEN_HEART, 0)
 
 #else				/* 32 bit word */
 #define NIL			0x00000000
 #define TRUTH			0x08000000
-#define FIXNUM_0		0x1A000000
-#define BROKEN_HEART_0		0x22000000
-#define STRING_0		0x1E000000
+#define FIXNUM_ZERO		0x1A000000
+#define BROKEN_HEART_ZERO	0x22000000
 #endif				/* b32 */
 
 #define NOT_THERE 		-1	/* Command line parser */
@@ -164,3 +162,9 @@ MIT in each case. */
 #define REGBLOCK_EXPR			5
 #define REGBLOCK_RETURN			6
 #define REGBLOCK_MINIMUM_LENGTH		7
+
+/* Codes specifying how to start scheme at boot time. */
+
+#define BOOT_FASLOAD		0
+#define BOOT_LOAD_BAND		1
+#define BOOT_GET_WORK		2

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.22 1987/04/03 00:14:51 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.23 1987/04/16 02:24:28 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -593,9 +593,9 @@ Prim_No_Trap_Apply:
 
 	primitive_code = Get_Integer(Fetch_Expression());
 
-	Export_Registers_Before_Primitive();
+	Export_Regs_Before_Primitive();
 	Metering_Apply_Primitive(Val, primitive_code);
-	Import_Registers_After_Primitive();
+	Import_Regs_After_Primitive();
 	Pop_Primitive_Frame(N_Args_Primitive(primitive_code));
 	if (Must_Report_References())
 	{ Store_Expression(Val);
@@ -820,32 +820,32 @@ Pop_Return:
 	goto return_from_compiled_code;					\
       }
 
-      define_compiler_restart( RC_COMPILER_INTERRUPT_RESTART,
-			      compiler_interrupt_restart)
+      define_compiler_restart( RC_COMP_INTERRUPT_RESTART,
+			      comp_interrupt_restart)
 
-      define_compiler_restart( RC_COMPILER_LEXPR_INTERRUPT_RESTART,
-			      compiler_lexpr_interrupt_restart)
+      define_compiler_restart( RC_COMP_LEXPR_INTERRUPT_RESTART,
+			      comp_lexpr_interrupt_restart)
 
-      define_compiler_restart( RC_COMPILER_LOOKUP_APPLY_RESTART,
-			      compiler_lookup_apply_restart)
+      define_compiler_restart( RC_COMP_LOOKUP_APPLY_RESTART,
+			      comp_lookup_apply_restart)
 
-      define_compiler_restart( RC_COMPILER_REFERENCE_RESTART,
-			      compiler_reference_restart)
+      define_compiler_restart( RC_COMP_REFERENCE_RESTART,
+			      comp_reference_restart)
 
-      define_compiler_restart( RC_COMPILER_ACCESS_RESTART,
-			      compiler_access_restart)
+      define_compiler_restart( RC_COMP_ACCESS_RESTART,
+			      comp_access_restart)
 
-      define_compiler_restart( RC_COMPILER_UNASSIGNED_P_RESTART,
-			      compiler_unassigned_p_restart)
+      define_compiler_restart( RC_COMP_UNASSIGNED_P_RESTART,
+			      comp_unassigned_p_restart)
 
-      define_compiler_restart( RC_COMPILER_UNBOUND_P_RESTART,
-			      compiler_unbound_p_restart)
+      define_compiler_restart( RC_COMP_UNBOUND_P_RESTART,
+			      comp_unbound_p_restart)
 
-      define_compiler_restart( RC_COMPILER_ASSIGNMENT_RESTART,
-			      compiler_assignment_restart)
+      define_compiler_restart( RC_COMP_ASSIGNMENT_RESTART,
+			      comp_assignment_restart)
 
-      define_compiler_restart( RC_COMPILER_DEFINITION_RESTART,
-			      compiler_definition_restart)
+      define_compiler_restart( RC_COMP_DEFINITION_RESTART,
+			      comp_definition_restart)
 
     case RC_REENTER_COMPILED_CODE:
       compiled_code_restart();
@@ -1265,7 +1265,7 @@ Perform_Application:
 	    {
 	      Apply_Error(ERR_UNDEFINED_PRIMITIVE);
 	    }
-            NArgs = Ext_Prim_Desc[Proc].arity;
+            NArgs = N_Args_External(Proc);
             if (Get_Integer(Stack_Ref(STACK_ENV_HEADER)) !=
 		(NArgs + (STACK_ENV_FIRST_ARG - 1)))
 	    {
@@ -1278,11 +1278,11 @@ Repeat_External_Primitive:
 	    /* Reinitialize Proc in case we "goto Repeat_External..." */
             Proc = Get_Integer(Fetch_Expression());
 
-	    Export_Registers_Before_Primitive();
-            Val = (*(Ext_Prim_Desc[Proc].proc))();
+	    Export_Regs_Before_Primitive();
+            Val = Apply_External(Proc);
 	    Set_Time_Zone(Zone_Working);
-	    Import_Registers_After_Primitive();
-	    Pop_Primitive_Frame(Ext_Prim_Desc[Proc].arity);
+	    Import_Regs_After_Primitive();
+	    Pop_Primitive_Frame(N_Args_External(Proc));
 
 	    goto Pop_Return;
 	  }
@@ -1473,12 +1473,12 @@ return_from_compiled_code:
       Pointer Thunk, New_Location;
       if (From_Count != 0)
       { Pointer Current = Stack_Ref(TRANSLATE_FROM_POINT);
-	Stack_Ref(TRANSLATE_FROM_DISTANCE) = FIXNUM_0+(From_Count-1);
+	Stack_Ref(TRANSLATE_FROM_DISTANCE) = Make_Unsigned_Fixnum((From_Count - 1));
 	Thunk = Fast_Vector_Ref(Current, STATE_POINT_AFTER_THUNK);
 	New_Location = Fast_Vector_Ref(Current, STATE_POINT_NEARER_POINT);
 	Stack_Ref(TRANSLATE_FROM_POINT) = New_Location;
 	if ((From_Count == 1) &&
-	    (Stack_Ref(TRANSLATE_TO_DISTANCE) == FIXNUM_0))
+	    (Stack_Ref(TRANSLATE_TO_DISTANCE) == Make_Unsigned_Fixnum(0)))
 	  Stack_Pointer = Simulate_Popping(4);
 	else Save_Cont();
       }
@@ -1490,7 +1490,7 @@ return_from_compiled_code:
 	  To_Location = Fast_Vector_Ref(To_Location, STATE_POINT_NEARER_POINT);
 	Thunk = Fast_Vector_Ref(To_Location, STATE_POINT_BEFORE_THUNK);
 	New_Location = To_Location;
-	Stack_Ref(TRANSLATE_TO_DISTANCE) = FIXNUM_0+To_Count;
+	Stack_Ref(TRANSLATE_TO_DISTANCE) = Make_Unsigned_Fixnum(To_Count);
 	if (To_Count==0) 
 	  Stack_Pointer = Simulate_Popping(4);
 	else Save_Cont();
@@ -1650,15 +1650,15 @@ return_from_compiled_code:
 
     case RC_RESTORE_DONT_COPY_HISTORY:
     { Pointer Stacklet;
-      Previous_Restore_History_Offset = Get_Integer(Pop());
+      Prev_Restore_History_Offset = Get_Integer(Pop());
       Stacklet = Pop();
       History = Get_Pointer(Fetch_Expression());
-      if (Previous_Restore_History_Offset == 0)
-	Previous_Restore_History_Stacklet = NULL;
+      if (Prev_Restore_History_Offset == 0)
+	Prev_Restore_History_Stacklet = NULL;
       else if (Stacklet == NIL)
-        Previous_Restore_History_Stacklet = NULL;
+        Prev_Restore_History_Stacklet = NULL;
       else
-	Previous_Restore_History_Stacklet = Get_Pointer(Stacklet);
+	Prev_Restore_History_Stacklet = Get_Pointer(Stacklet);
       break;
     }
 
@@ -1680,19 +1680,19 @@ return_from_compiled_code:
         Immediate_GC((Free > MemTop) ? 0 : ((MemTop-Free)+1));
       }
       Import_Registers();
-      Previous_Restore_History_Offset = Get_Integer(Pop());
+      Prev_Restore_History_Offset = Get_Integer(Pop());
       Stacklet = Pop();
-      if (Previous_Restore_History_Offset == 0)
-	Previous_Restore_History_Stacklet = NULL;
+      if (Prev_Restore_History_Offset == 0)
+	Prev_Restore_History_Stacklet = NULL;
       else
       { if (Stacklet == NIL)
-        { Previous_Restore_History_Stacklet = NULL;
-	  Get_End_Of_Stacklet()[-Previous_Restore_History_Offset] =
+        { Prev_Restore_History_Stacklet = NULL;
+	  Get_End_Of_Stacklet()[-Prev_Restore_History_Offset] =
             Make_Non_Pointer(TC_RETURN_CODE, RC_RESTORE_HISTORY);
         }
         else
-	{ Previous_Restore_History_Stacklet = Get_Pointer(Stacklet);
-	  Previous_Restore_History_Stacklet[-Previous_Restore_History_Offset] =
+	{ Prev_Restore_History_Stacklet = Get_Pointer(Stacklet);
+	  Prev_Restore_History_Stacklet[-Prev_Restore_History_Offset] =
             Make_Non_Pointer(TC_RETURN_CODE, RC_RESTORE_HISTORY);
         }
       }

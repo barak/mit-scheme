@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.22 1987/04/03 00:20:06 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.23 1987/04/16 02:28:57 jinx Exp $
  *
  * General declarations for the SCode interpreter.  This
  * file is INCLUDED by others and contains declarations only.
@@ -45,6 +45,8 @@ MIT in each case. */
 #else
 #define fast			register
 #endif
+
+#define quick			fast
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 #define Consistency_Check	true

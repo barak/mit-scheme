@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.21 1987/01/22 14:32:26 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.22 1987/04/16 02:29:36 jinx Rel $
  *
  * Support for the stepper
  */
@@ -68,40 +68,47 @@ Boolean Return_Hook_Too;
   }
 }
 
-/* (EVAL_STEP EXPRESSION ENV HUNK3)
-      Evaluates EXPRESSION in ENV and intalls the eval-trap,
-      apply-trap, and return-trap from HUNK3.  If any
-      trap is '(), it is a null trap that does a normal EVAL,
-      APPLY or return.
+/* (PRIMITIVE-EVAL-STEP EXPRESSION ENV HUNK3)
+   Evaluates EXPRESSION in ENV and intalls the eval-trap,
+   apply-trap, and return-trap from HUNK3.  If any
+   trap is '(), it is a null trap that does a normal EVAL,
+   APPLY or return.
 */
 
-Built_In_Primitive(Prim_Eval_Step, 3, "EVAL-STEP")
-{ Primitive_3_Args();
+Built_In_Primitive(Prim_Eval_Step, 3, "PRIMITIVE-EVAL-STEP", 0xCA)
+{
+  Primitive_3_Args();
+
   Install_Traps(Arg3, false);
   Pop_Primitive_Frame(3);
   Store_Expression(Arg1);
   Store_Env(Arg2);
   longjmp(*Back_To_Eval, PRIM_NO_TRAP_EVAL);
+  /*NOTREACHED*/
 }
 
-/* (APPLY-STEP OPERATOR OPERANDS HUNK3)
-      Applies OPERATOR to OPERANDS and intalls the eval-trap,
-      apply-trap, and return-trap from HUNK3.  If any
-      trap is '(), it is a null trap that does a normal EVAL,
-      APPLY or return.
-*/
-Built_In_Primitive(Prim_Apply_Step, 3, "APPLY-STEP")
-/* Mostly a copy of Prim_Apply, since this, too, must count the space
+/* (PRIMITIVE-APPLY-STEP OPERATOR OPERANDS HUNK3)
+   Applies OPERATOR to OPERANDS and intalls the eval-trap,
+   apply-trap, and return-trap from HUNK3.  If any
+   trap is '(), it is a null trap that does a normal EVAL,
+   APPLY or return.
+
+   Mostly a copy of Prim_Apply, since this, too, must count the space
    required before actually building a frame
 */
-{ Pointer Next_From_Slot, *Next_To_Slot;
+
+Built_In_Primitive(Prim_Apply_Step, 3, "PRIMITIVE-APPLY-STEP", 0xCB)
+{
+  Pointer Next_From_Slot, *Next_To_Slot;
   long Number_Of_Args, i;
   Primitive_3_Args();
+
   Arg_3_Type(TC_HUNK3);
   Number_Of_Args = 0;
   Next_From_Slot = Arg2;
   while (Type_Code(Next_From_Slot) == TC_LIST)
-  { Number_Of_Args += 1;
+  {
+    Number_Of_Args += 1;
     Next_From_Slot = Vector_Ref(Next_From_Slot, CONS_CDR);
   }
   if (Next_From_Slot != NIL)
@@ -112,29 +119,34 @@ Built_In_Primitive(Prim_Apply_Step, 3, "APPLY-STEP")
   Next_To_Slot = Stack_Pointer - Number_Of_Args;
  Will_Push(Number_Of_Args + STACK_ENV_EXTRA_SLOTS + 1);
   Stack_Pointer = Next_To_Slot;
-  for (i=0; i < Number_Of_Args; i++)
-  { *Next_To_Slot++ = Vector_Ref(Next_From_Slot, CONS_CAR);
+
+  for (i = 0; i < Number_Of_Args; i++)
+  {
+    *Next_To_Slot++ = Vector_Ref(Next_From_Slot, CONS_CAR);
     Next_From_Slot = Vector_Ref(Next_From_Slot, CONS_CDR);
   }
   Push(Arg1);		/* The function */
   Push(STACK_FRAME_HEADER + Number_Of_Args);
  Pushed();
   longjmp(*Back_To_Eval, PRIM_NO_TRAP_APPLY);
+  /*NOTREACHED*/
 }
 
-/* (RETURN_STEP VALUE HUNK3)
-      Returns VALUE and intalls the eval-trap, apply-trap, and
-      return-trap from HUNK3.  If any trap is '(), it is a null trap
-      that does a normal EVAL, APPLY or return.
-*/
+/* (PRIMITIVE-RETURN-STEP VALUE HUNK3)
+   Returns VALUE and intalls the eval-trap, apply-trap, and
+   return-trap from HUNK3.  If any trap is '(), it is a null trap
+   that does a normal EVAL, APPLY or return.
 
-Built_In_Primitive(Prim_Return_Step, 2, "RETURN-STEP")
-/* UGLY ... currently assumes that it is illegal to set a return trap
+   UGLY ... currently assumes that it is illegal to set a return trap
    this way, so that we don't run into stack parsing problems.  If
    this is ever changed, be sure to check for COMPILE_STEPPER flag!
 */
-{ Pointer Return_Hook;
+
+Built_In_Primitive(Prim_Return_Step, 2, "PRIMITIVE-RETURN-STEP", 0xCC)
+{
+  Pointer Return_Hook;
   Primitive_2_Args();
+
   Return_Hook = Vector_Ref(Arg2, HUNK_CXR2);
   if (Return_Hook != NIL)
     Primitive_Error(ERR_ARG_2_BAD_RANGE);

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/history.h,v 9.21 1987/01/22 14:26:55 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/history.h,v 9.22 1987/04/16 02:23:38 jinx Rel $
  *
  * History maintenance data structures and support.
  *
@@ -61,17 +61,19 @@ MIT in each case. */
  * NIL and the offset is 0.
  */
 
-#define Save_History(Return_Code)				\
-if (Previous_Restore_History_Stacklet == NULL)	Push(NIL);	\
-else								\
-  Push(Make_Pointer(TC_CONTROL_POINT,				\
-		    Previous_Restore_History_Stacklet));	\
-Push(Make_Non_Pointer(TC_FIXNUM, 				\
-		      Previous_Restore_History_Offset));	\
-Store_Expression(Make_Pointer(TC_HUNK3, History));		\
-Store_Return((Return_Code));					\
-Save_Cont();							\
-History = Get_Pointer(Get_Fixed_Obj_Slot(Dummy_History))
+#define Save_History(Return_Code)					\
+{									\
+  if (Prev_Restore_History_Stacklet == NULL)				\
+    Push(NIL);								\
+  else									\
+    Push(Make_Pointer(TC_CONTROL_POINT,					\
+		      Prev_Restore_History_Stacklet));			\
+  Push(Make_Non_Pointer(TC_FIXNUM, Prev_Restore_History_Offset));	\
+  Store_Expression(Make_Pointer(TC_HUNK3, History));			\
+  Store_Return((Return_Code));						\
+  Save_Cont();								\
+  History = Get_Pointer(Get_Fixed_Obj_Slot(Dummy_History));		\
+}
 
 /* History manipulation in the interpreter. */
 
