@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.125 2000/05/23 02:08:59 cph Exp $
+;;; $Id: curren.scm,v 1.126 2000/05/23 02:10:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -52,7 +52,7 @@
 	 (event-distributor/invoke!
 	  (variable-default-value (ref-variable-object frame-creation-hook))
 	  screen)
-	 (update-screen! screen false)
+	 (update-screen! screen #f)
 	 screen)))))
 
 (define-variable frame-creation-hook
@@ -91,12 +91,12 @@ The frame is guaranteed to be deselected at that time."
 		 (screen-exit! screen*)
 		 (let ((window (screen-selected-window screen)))
 		   (undo-leave-window! window)
-		   (change-selected-buffer window (window-buffer window) true
+		   (change-selected-buffer window (window-buffer window) #t
 		     (lambda ()
 		       (set-editor-selected-screen! current-editor screen))))
 		 (set-current-message! message)
 		 (screen-enter! screen)
-		 (update-screen! screen false))))))))
+		 (update-screen! screen #f))))))))
 
 (define (update-screens! display-style)
   (let loop ((screens (screen-list)))
@@ -106,9 +106,8 @@ The frame is guaranteed to be deselected at that time."
 	  ;; the screens, so erase the change records.
 	  (do ((buffers (buffer-list) (cdr buffers)))
 	      ((null? buffers))
-	    (set-group-start-changes-index! (buffer-group (car buffers))
-					    false))
-	  true)
+	    (set-group-start-changes-index! (buffer-group (car buffers)) #f))
+	  #t)
 	(and (update-screen! (car screens) display-style)
 	     (loop (cdr screens))))))
 
@@ -190,7 +189,7 @@ The frame is guaranteed to be deselected at that time."
      (undo-leave-window! window)
      (let ((screen (window-screen window)))
        (if (selected-screen? screen)
-	   (change-selected-buffer window (window-buffer window) true
+	   (change-selected-buffer window (window-buffer window) #t
 	     (lambda ()
 	       (screen-select-window! screen window)))
 	   (begin
@@ -322,13 +321,13 @@ The frame is guaranteed to be deselected at that time."
 	(window-set-override-message! window message)
 	(window-clear-override-message! window))
     (if (not *executing-keyboard-macro?*)
-	(window-direct-update! window true))))
+	(window-direct-update! window #t))))
 
 (define (clear-current-message!)
   (let ((window (typein-window)))
     (window-clear-override-message! window)
     (if (not *executing-keyboard-macro?*)
-	(window-direct-update! window true))))
+	(window-direct-update! window #t))))
 
 (define (with-messages-suppressed thunk)
   (fluid-let ((*suppress-messages?* #t))
@@ -361,7 +360,7 @@ The frame is guaranteed to be deselected at that time."
   (other-buffer (selected-buffer)))
 
 (define (other-buffer buffer)
-  (let loop ((less-preferred false) (buffers (buffer-list)))
+  (let loop ((less-preferred #f) (buffers (buffer-list)))
     (cond ((null? buffers)
 	   less-preferred)
 	  ((or (eq? buffer (car buffers))
@@ -406,8 +405,8 @@ The frame is guaranteed to be deselected at that time."
   (without-interrupts
    (lambda ()
      (for-each (lambda (process)
-		 (hangup-process process true)
-		 (set-process-buffer! process false))
+		 (hangup-process process #t)
+		 (set-process-buffer! process #f))
 	       (buffer-processes buffer))
      (for-each (lambda (hook) (hook buffer))
 	       (get-buffer-hooks buffer 'KILL-BUFFER-HOOKS))
@@ -444,10 +443,10 @@ The frame is guaranteed to be deselected at that time."
   (or (buffer-get buffer key) '()))
 
 (define (select-buffer buffer)
-  (select-buffer-in-window buffer (selected-window) true))
+  (select-buffer-in-window buffer (selected-window) #t))
 
 (define (select-buffer-no-record buffer)
-  (select-buffer-in-window buffer (selected-window) false))
+  (select-buffer-in-window buffer (selected-window) #f))
 
 (define (select-buffer-in-window buffer window record?)
   (without-interrupts
@@ -489,7 +488,7 @@ The buffer is guaranteed to be selected at that time."
 		    (let ((window (selected-window)))
 		      (set! old-buffer (window-buffer window))
 		      (if (buffer-alive? buffer)
-			  (select-buffer-in-window buffer window true)))
+			  (select-buffer-in-window buffer window #t)))
 		    (set! buffer)
 		    unspecific)
 		  thunk
@@ -497,7 +496,7 @@ The buffer is guaranteed to be selected at that time."
 		    (let ((window (selected-window)))
 		      (set! buffer (window-buffer window))
 		      (if (buffer-alive? old-buffer)
-			  (select-buffer-in-window old-buffer window true)))
+			  (select-buffer-in-window old-buffer window #t)))
 		    (set! old-buffer)
 		    unspecific))))
 
