@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: version.h,v 11.154 1996/05/18 06:08:14 cph Exp $
+$Id: version.h,v 11.155 1997/01/02 04:33:45 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,5 +46,5 @@ MIT in each case. */
 #define VERSION		11
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	154
+#define SUBVERSION	155
 #endif
