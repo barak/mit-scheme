@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.10 1995/08/03 23:23:50 adams Exp $
+$Id: dbgred.scm,v 1.11 1995/08/03 23:28:21 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -733,9 +733,9 @@ reachable.
 		(cons (vector from to) (cdr *dbg-rewrites*))))
 
     (cond ((eq? from to))
-	  ((CALL/? form)
-	   (if (QUOTE/? (call/operator form))
-	       (let ((op (quote/text (call/operator form))))
+	  ((CALL/? to)
+	   (if (QUOTE/? (call/operator to))
+	       (let ((op (quote/text (call/operator to))))
 		 (cond ((hash-table/get *dbg-forbidden-operators* op #F))
 		       ((hash-table/get dbg-reduce/equivalent-operators op #F)
 			(good))
