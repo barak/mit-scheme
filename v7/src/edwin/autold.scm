@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.52 1992/04/04 12:52:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.53 1992/09/02 02:55:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -187,31 +187,47 @@ Second arg is prefix arg when called interactively."
 				  known-libraries))
      (command-argument)))
   (lambda (name force?)
+    (load-edwin-library name force? true)))
+
+(define (load-edwin-library name #!optional force? interactive?)
+  (let ((force? (if (default-object? force?) false force?))
+	(interactive? (if (default-object? interactive?) false interactive?)))
     (let ((do-it
-	   (lambda ()
-	     (let ((library 
-		    (or (assq name known-libraries)
-			(editor-error "Unknown library name: " name))))
-	       (temporary-message "Loading " (car library) "...")
-	       (let ((directory (edwin-binary-directory)))
-		 (for-each
-		  (lambda (entry)
-		    (load-edwin-file
-		     (merge-pathnames (->pathname (car entry)) directory)
-		     (cadr entry)
-		     (or (null? (cddr entry)) (caddr entry))))
-		  (cdr library)))
-	       (if (not (memq (car library) loaded-libraries))
-		   (set! loaded-libraries
-			 (cons (car library) loaded-libraries)))
-	       (run-library-load-hooks! (car library))
-	       (append-message "done")))))
-      (cond ((not (library-loaded? name))
-	     (do-it))
-	    ((not force?)
-	     (temporary-message "Library already loaded: " name))
-	    ((not (eq? force? 'NO-WARN))
-	     (do-it))))))
+	   (lambda (library)
+	     (let ((directory (edwin-binary-directory)))
+	       (for-each
+		(lambda (entry)
+		  (load (merge-pathnames (car entry) directory)
+			(cadr entry)
+			edwin-syntax-table
+			(or (null? (cddr entry)) (caddr entry))))
+		(cdr library)))
+	     (if (not (memq (car library) loaded-libraries))
+		 (set! loaded-libraries
+		       (cons (car library) loaded-libraries)))
+	     (run-library-load-hooks! (car library)))))
+      (let ((do-it
+	     (lambda ()
+	       (let ((library (assq name known-libraries)))
+		 (if (not library)
+		     (error "Unknown library name:" name))
+		 (if interactive?
+		     (with-output-to-transcript-buffer
+		      (lambda ()
+			(bind-condition-handler (list condition-type:error)
+			    evaluation-error-handler
+			  (lambda ()
+			    (fluid-let ((load/suppress-loading-message? true))
+			      (message "Loading " (car library) "...")
+			      (do-it library)
+			      (append-message "done"))))))
+		     (do-it library))))))
+	(cond ((not (library-loaded? name))
+	       (do-it))
+	      ((not force?)
+	       (if interactive? (message "Library already loaded: " name)))
+	      ((not (eq? force? 'NO-WARN))
+	       (do-it)))))))
 
 (define-command load-file
   "Load the Edwin binary file FILENAME.
