@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.59 1999/07/16 18:07:14 cph Exp $
+@comment $Id: user.texinfo,v 1.60 1999/07/16 18:08:15 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -41,7 +41,7 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.59
+@subtitle Edition 1.60
 @subtitle for Scheme Release 7.5
 @subtitle 16 July 1999
 @author by Stephen Adams
@@ -258,8 +258,6 @@ OS/2 2.1 or later.
 @menu
 * Prerequisites for OS/2 Installation::  
 * OS/2 Installation Procedure::  
-* Image Files for OS/2 Installation::  
-* Documentation for OS/2 Installation::  
 * Environment Variables for OS/2 Installation::  
 @end menu
 
@@ -279,7 +277,7 @@ This release of MIT Scheme has been tested only on OS/2 Warp 4.0, but it
 should also run under OS/2 versions 2.1 and later.  It was compiled using
 IBM Visual Age C++ version 3.0 and the OS/2 Toolkit version 4.0.
 
-@node OS/2 Installation Procedure, Image Files for OS/2 Installation, Prerequisites for OS/2 Installation, OS/2 Installation
+@node OS/2 Installation Procedure, Environment Variables for OS/2 Installation, Prerequisites for OS/2 Installation, OS/2 Installation
 @subsection OS/2 Installation Procedure
 
 After unpacking the @sc{zip} file, @file{os2.zip}, you will have these
@@ -360,7 +358,7 @@ files.  Again, move this directory wherever you like, or delete it.
 described below.
 @end enumerate
 
-@node Environment Variables for OS/2 Installation,  , Documentation for OS/2 Installation, OS/2 Installation
+@node Environment Variables for OS/2 Installation,  , OS/2 Installation Procedure, OS/2 Installation
 @subsection Environment Variables
 
 This section documents several of the environment variables that Scheme
