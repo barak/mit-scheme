@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.7 1990/10/02 22:52:35 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.8 1991/04/15 16:14:09 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -85,7 +85,7 @@ DEFUN (arg_y_coordinate, (arg, xw),
   float virtual_device_y = (arg_real_number (arg));
   float device_y =
     ((XW_Y_SLOPE (xw)) * (virtual_device_y - (XW_Y_BOTTOM (xw))));
-  return (((XW_Y_SIZE (xw)) - 1) + (ROUND_FLOAT (device_y)));
+  return (((int) ((XW_Y_SIZE (xw)) - 1)) + (ROUND_FLOAT (device_y)));
 }
 
 static SCHEME_OBJECT
@@ -100,8 +100,8 @@ DEFUN (y_coordinate_map, (xw, y), struct xwindow * xw AND unsigned int y)
 {
   return
     (FLOAT_TO_FLONUM
-     ((((float) (y + ((XW_Y_SIZE (xw)) - 1))) / (XW_Y_SLOPE (xw)))
-      + (XW_Y_BOTTOM (xw))));
+     (((((float) y) - ((XW_Y_SIZE (xw)) - 1)) / (XW_Y_SLOPE (xw)))
+        + (XW_Y_BOTTOM (xw))));
 }
 
 static void
