@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: krypt.scm,v 1.9 1999/04/07 04:09:02 cph Exp $
+$Id: krypt.scm,v 1.10 1999/08/09 16:26:39 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -125,79 +125,126 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (loop (fix:1+ i) (fix:+ checksum (vector-8b-ref block i)))
 	  (fix:remainder checksum 256)))))
 
-(define (encrypt input-string password)
-  (let* ((checksum 0)
-	 (header (string-append kryptid (get-krypt-time-string) "\n"))
-	 (hlen (string-length header))
-	 (output-string
-	  (make-string (fix:+ 6 (fix:+ hlen (string-length input-string)))))
-	 (end-index (fix:- (string-length output-string) ts)))
-    (let ((key1 (make-krypt-key)))
-      (rcm-keyinit key1)
-      (rcm-key key1 header)
-      (rcm-key key1 password)
-      (let ((passwordmac (make-string 5 #\NUL)))
-	(rcm key1 5 passwordmac)
-	(substring-move-left! header 0 hlen output-string 0)
-	(substring-move-left! passwordmac 0 5 output-string hlen)
-	(substring-move-left! input-string 0 (string-length input-string)
-			      output-string (fix:+ hlen 5)))
-      (let loop ((index (fix:+ hlen 5)))
-	(if (fix:< index end-index)
-	    (begin
-	      (set! checksum (update-checksum checksum output-string index ts))
-	      (rcm-iter key1 ts output-string index)
-	      (loop (fix:+ index ts)))
-	    (let ((count (fix:- (string-length output-string) (fix:1+ index))))
-	      (set! checksum
-		    (update-checksum checksum output-string index count))
-	      (rcm-iter key1 count output-string index))))
-      (let ((check-char (ascii->char (modulo (- checksum) ts))))
-	(let ((cc-string (char->string check-char)))
-	  (rcm key1 1 cc-string)
-	  (string-set! output-string
-		       (fix:-1+ (string-length output-string))
-		       (string-ref cc-string 0))))
-      output-string)))
+(define encrypt)
+(define decrypt)
 
-(define (decrypt input-string password
-		 #!optional password-error checksum-error)
-  (let* ((header-length (+ (string-length kryptid) 25))
-	 (header (string-head input-string header-length))
-	 (pwordmac
-	  (substring input-string header-length (fix:+ header-length 5)))
-	 (output-string (string-tail input-string (fix:+ header-length 5)))
-	 (end-index (fix:- (string-length output-string) ts))
-	 (key1 (make-krypt-key))
-	 (checksum 0))
-      (rcm-keyinit key1)
-      (rcm-key key1 header)
-      (rcm-key key1 password)
-      (let ((passwordmac (make-string 5 #\NUL)))
-	(rcm key1 5 passwordmac)
-	(if (string=? passwordmac pwordmac)
-	    (begin
-	      (let loop ((index 0))
+(let ((unlocked? 'UNKNOWN)
+      (key-sum "84c3aad7f848b9a5a02e65b7834a696c"))
+
+  (define (check-key)
+    (initialize-key)
+    (if (not unlocked?)
+	(error "Krypt support disabled in this implementation.")))
+
+  (define (initialize-key)
+    (if (eq? 'UNKNOWN unlocked?)
+	(set! unlocked?
+	      (and (implemented-primitive-procedure? md5-init)
+		   (let ((pathname
+			  (call-with-current-continuation
+			   (lambda (k)
+			     (bind-condition-handler
+				 (list condition-type:file-error)
+				 (lambda (condition)
+				   condition
+				   (k #f))
+			       (lambda ()
+				 (system-library-pathname "krypt.key")))))))
+		     (and pathname
+			  (string=? key-sum
+				    (md5-sum->hexadecimal
+				     (md5-file pathname)))))))))
+
+  (set! encrypt
+	(lambda (input-string password)
+	  (check-key)
+	  (let* ((checksum 0)
+		 (header (string-append kryptid (get-krypt-time-string) "\n"))
+		 (hlen (string-length header))
+		 (output-string
+		  (make-string
+		   (fix:+ 6 (fix:+ hlen (string-length input-string)))))
+		 (end-index (fix:- (string-length output-string) ts)))
+	    (let ((key1 (make-krypt-key)))
+	      (rcm-keyinit key1)
+	      (rcm-key key1 header)
+	      (rcm-key key1 password)
+	      (let ((passwordmac (make-string 5 #\NUL)))
+		(rcm key1 5 passwordmac)
+		(substring-move-left! header 0 hlen output-string 0)
+		(substring-move-left! passwordmac 0 5 output-string hlen)
+		(substring-move-left! input-string 0
+				      (string-length input-string)
+				      output-string (fix:+ hlen 5)))
+	      (let loop ((index (fix:+ hlen 5)))
 		(if (fix:< index end-index)
 		    (begin
-		      (rcm-iter key1 ts output-string index)
 		      (set! checksum
 			    (update-checksum checksum output-string index ts))
+		      (rcm-iter key1 ts output-string index)
 		      (loop (fix:+ index ts)))
-		    (let ((count (fix:- (string-length output-string) index)))
-		      (rcm-iter key1 count output-string index)
+		    (let ((count
+			   (fix:- (string-length output-string)
+				  (fix:1+ index))))
 		      (set! checksum
 			    (update-checksum checksum output-string index
-					     count)))))
-	      (if (not (= (modulo checksum 256) 0))
-		  (if (default-object? checksum-error)
-		      (error "krypt: Checksum error.")
-		      (checksum-error output-string))
-		  (begin
-		    (set-string-length!
-		     output-string
-		     (fix:-1+ (string-length output-string)))
-		    output-string)))
-	    (if (default-object? password-error)
-		(error "krypt: Password error.")
-		(password-error))))))
+					     count))
+		      (rcm-iter key1 count output-string index))))
+	      (let ((check-char (ascii->char (modulo (- checksum) ts))))
+		(let ((cc-string (char->string check-char)))
+		  (rcm key1 1 cc-string)
+		  (string-set! output-string
+			       (fix:-1+ (string-length output-string))
+			       (string-ref cc-string 0))))
+	      output-string))))
+
+  (set! decrypt
+	(lambda (input-string password
+			      #!optional password-error checksum-error)
+	  (check-key)
+	  (let* ((header-length (+ (string-length kryptid) 25))
+		 (header (string-head input-string header-length))
+		 (pwordmac
+		  (substring input-string header-length
+			     (fix:+ header-length 5)))
+		 (output-string
+		  (string-tail input-string (fix:+ header-length 5)))
+		 (end-index (fix:- (string-length output-string) ts))
+		 (key1 (make-krypt-key))
+		 (checksum 0))
+	      (rcm-keyinit key1)
+	      (rcm-key key1 header)
+	      (rcm-key key1 password)
+	      (let ((passwordmac (make-string 5 #\NUL)))
+		(rcm key1 5 passwordmac)
+		(if (string=? passwordmac pwordmac)
+		    (begin
+		      (let loop ((index 0))
+			(if (fix:< index end-index)
+			    (begin
+			      (rcm-iter key1 ts output-string index)
+			      (set! checksum
+				    (update-checksum checksum output-string
+						     index ts))
+			      (loop (fix:+ index ts)))
+			    (let ((count
+				   (fix:- (string-length output-string)
+					  index)))
+			      (rcm-iter key1 count output-string index)
+			      (set! checksum
+				    (update-checksum checksum output-string
+						     index count)))))
+		      (if (not (= (modulo checksum 256) 0))
+			  (if (default-object? checksum-error)
+			      (error "krypt: Checksum error.")
+			      (checksum-error output-string))
+			  (begin
+			    (set-string-length!
+			     output-string
+			     (fix:-1+ (string-length output-string)))
+			    output-string)))
+		    (if (default-object? password-error)
+			(error "krypt: Password error.")
+			(password-error)))))))
+
+  )
