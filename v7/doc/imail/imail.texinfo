@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.1 2000/07/07 20:53:07 cph Exp $
+@comment $Id: imail.texinfo,v 1.2 2000/07/10 21:41:31 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -27,8 +27,8 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 0.1
-@subtitle 7 July 2000
+@subtitle Edition 0.2
+@subtitle 10 July 2000
 @author by Chris Hanson
 
 @page
@@ -66,39 +66,43 @@ optional behavior.
 @unnumbered Introduction
 
 @cindex Internet Message Access Protocol
-@cindex IMAP
+@cindex @sc{imap}
+@cindex @sc{rfc} 2060
 @sc{imail} is a program for reading electronic mail.  It uses the
-@dfn{Internet Message Access Protocol} (@sc{imap}) to access mail that
-is stored on a server, from which @sc{imail} fetches individual messages
-on demand.  The server may have many different @dfn{folders} in which
-messages are stored, arranged in a hierarchical structure like that of a
-file system.  Messages are easily moved or copied from one folder to
-another.
+@dfn{Internet Message Access Protocol} (@sc{imap})
+(@uref{http://@-www.ietf.org/@-rfc/@-rfc2060.txt, @sc{rfc} 2060}) to
+access mail that is stored on a server, from which @sc{imail} fetches
+individual messages on demand.  The server may have many different
+@dfn{folders} in which messages are stored, arranged in a hierarchical
+structure like that of a file system.  Messages are easily moved or
+copied from one folder to another.
 
 @cindex Multipurpose Internet Mail Extensions
-@cindex MIME
+@cindex @sc{mime}
+@cindex @sc{rfc} 2045
 @sc{imap} also supports the @dfn{Multipurpose Internet Mail Extensions}
-(@sc{mime}), which allows the sending and receiving of
-@dfn{attachments}.  The @sc{imap} protocol supports this by allowing you
-to fetch some parts of a mail message while leaving others on the
-server.  So, for example, if you receive a message containing a large
-attachment, it is possible to view the text of the message without
-waiting for the attachment to be fetched from the server; the attachment
-is fetched only if you want to view or save it.  If you aren't
-interested in the attachment, you can delete the message without ever
-fetching it from the server.
+(@sc{mime}) (@uref{http://@-www.ietf.org/@-rfc/@-rfc2045.txt, @sc{rfc}
+2045}), which allows the sending and receiving of @dfn{attachments}.
+The @sc{imap} protocol supports this by allowing you to fetch some parts
+of a mail message while leaving others on the server.  So, for example,
+if you receive a message containing a large attachment, it is possible
+to view the text of the message without waiting for the attachment to be
+fetched from the server; the attachment is fetched only if you want to
+view or save it.  If you aren't interested in the attachment, you can
+delete the message without ever fetching it from the server.
 
-@cindex RMAIL
+@cindex Rmail
 In addition to these features, @sc{imail} provides a user interface very
-similar to that of the Emacs @sc{rmail} mail reader.  @sc{imail}
-supports most of the same commands and has most of the same key bindings
-as @sc{rmail}.  @sc{imail} is primarily intended to be an @sc{rmail}
-replacement for people who wish to read their mail using an @sc{imap}
-server.  @sc{imail} can also read and write @sc{rmail} files and unix
-mail (mbox) files, and provides the ability to copy messages from such a
-file to an @sc{imap} folder, or vice versa; this greatly simplifies the
-transition from @sc{rmail} to @sc{imail} for those of us who have large
-amounts of mail stored in files.
+similar to that of the Emacs Rmail mail reader (@pxref{Rmail, Rmail,
+Rmail, emacs-e20, The Emacs Editor}).  @sc{imail} supports most of the
+same commands and has most of the same key bindings as Rmail.
+@sc{imail} is primarily intended to be an Rmail replacement for people
+who wish to read their mail using an @sc{imap} server.  @sc{imail} can
+also read and write Rmail files and unix mail (mbox) files, and provides
+the ability to copy messages from such a file to an @sc{imap} folder, or
+vice versa; this greatly simplifies the transition from Rmail to
+@sc{imail} for those of us who have large amounts of mail stored in
+files.
 
 @node Getting Started, Concepts, Introduction, Top
 @chapter Getting Started
@@ -109,10 +113,10 @@ server, and logs in with a user name and a password.  In the near
 future, we will implement @sc{cram-md5} authentication.  However, we
 have no plans to offer encryption for the connection.
 
-Here at MIT, we connect to our server using stunnel
-(@code{http://www.stunnel.org/}) to provide end-to-end encryption.  This
-provides connection security without the need to integrate the
-encryption into the client or the server.
+Here at MIT, we connect to our server using
+@uref{http://@-www.stunnel.org/, stunnel} to provide end-to-end
+encryption.  This provides connection security without the need to
+integrate the encryption into the client or the server.
 
 To use @sc{imail}, you must create an Edwin init file, called
 @file{~/.edwin} on unix machines, and @file{edwin.ini} on Windows or
@@ -136,7 +140,7 @@ setting some variables.  Here is an example:
 Note that this is syntactically similar to Scheme's @code{set!} special
 form, but that it modifies the value of an Edwin editor variable rather
 than a Scheme variable.  There are several other variables that control
-how @sc{imail} connects to the server.  @xref{Variables} for a complete
+how @sc{imail} connects to the server.  @xref{Variables}, for a complete
 list.
 
 By default, @sc{imail} tries to connect to @samp{localhost} using port
@@ -153,6 +157,231 @@ read the mail in the @samp{inbox} folder on your @sc{imap} server, type
 @node Concepts, Commands, Getting Started, Top
 @chapter Concepts
 
+To use @sc{imail} effectively, it is helpful to know the terminology and
+understand the concepts underlying @sc{imail}'s design.  Here we will
+introduce you to @dfn{messages}, @dfn{folders}, and @dfn{@sc{url}s}.
+
+@cindex message
+@cindex email message
+@cindex @sc{rfc} 821
+@cindex @sc{rfc} 822
+@cindex @sc{smtp}
+A @dfn{message}, or @dfn{email message}, is the basic unit of electronic
+mail.  The format of a message is defined by
+@uref{http://@-www.ietf.org/@-rfc/@-rfc0822.txt, @sc{rfc} 822}.  Nearly
+all email messages are transmitted over the internet, which means that
+the contents of such messages are further constrained by the @sc{smtp}
+protocol that is used for internet message transmission, as defined in
+@uref{http://@-www.ietf.org/@-rfc/@-rfc0821.txt, @sc{rfc} 821}.
+
+In brief, the primary constraints on an email message is that it may
+contain only printable @sc{us-ascii} characters, and that lines of text
+in the message may not exceed 1000 characters, @emph{including} the
+carriage-return/linefeed pair at the end of each line.
+
+@cindex Multipurpose Internet Mail Extensions
+@cindex @sc{mime}
+@cindex @sc{rfc} 2045
+These constraints are fairly strict, and do not permit messages to
+contain text in other languages, or to contain non-textual data such as
+images.  The @dfn{Multipurpose Internet Mail Extensions} (@sc{mime})
+(@uref{http://@-www.ietf.org/@-rfc/@-rfc2045.txt, @sc{rfc} 2045})
+provide a way to encode other kinds of text and data so that they can be
+carried in an email message.  Most modern email software supports the
+@sc{mime} standard, with some notable exceptions, including particularly
+Emacs Rmail.
+
+@cindex folder
+Another important concept is a means for grouping messages together.
+All email software provides some means for doing this, and @sc{imail} is
+no exception.  @sc{imail} provides objects called @dfn{folders}.  A
+folder is just a container that holds an arbitrary number of email
+messages.  Messages can be added to a folder, deleted from a folder,
+and moved or copied from one folder to another.
+
+@cindex Rmail file
+@cindex @sc{babyl} file
+@cindex unix mailbox file
+@cindex mbox file
+@cindex @sc{imap} mailbox
+@cindex folder type
+@cindex type of folder
+In @sc{imail}, the concept of the folder is used to embrace different
+grouping mechanisms.  This is because @sc{imail} provides a uniform
+means for accessing different kinds of email systems.  In particular,
+@sc{imail} supports access to Emacs Rmail files (also known as
+@sc{babyl} files, for historical reasons), to unix mailbox files
+(sometimes called @dfn{mbox} files), and to @sc{imap} mailboxes.  Each
+of these grouping mechanisms, although implemented very differently, is
+viewed as a folder by @sc{imail}.  With some exceptions, each of these
+different @dfn{types} of folder are treated exactly the same by
+@sc{imail}.  Finally, because @sc{imail} is extensible, other types of
+folders may be supported in the future.
+
+@cindex Uniform Resource Locator
+@cindex @sc{url}
+@cindex @sc{rfc} 1738
+@cindex @sc{rfc} 2396
+In email software like Rmail, where mail is stored in files, filenames
+are used to refer to groups of messages.  Since @sc{imail} folders often
+aren't files, it is necessary to use a more general kind of reference
+for folders.  To this end, @sc{imail} uses @dfn{Uniform Resource
+Locators} (@sc{url}s) to refer to folders.  (@sc{url}s are defined in
+@uref{http://@-www.ietf.org/@-rfc/@-rfc1738.txt, @sc{rfc} 1738} and
+@uref{http://@-www.ietf.org/@-rfc/@-rfc2396.txt, @sc{rfc} 2396}.)
+
+@cindex @sc{imap} @sc{url}
+@cindex @sc{url}, @sc{imap}
+@sc{imail} supports three different kinds of @sc{url}, corresponding to
+the three types of folder.  The first kind of @sc{url} is an @sc{imap}
+@sc{url}; the syntax for this @sc{url} is defined by
+@uref{http://@-www.ietf.org/@-rfc/@-rfc2192.txt, @sc{rfc} 2192}, except
+that @sc{imail} uses only a subset of the defined syntax.
+
+A fully-specified @sc{imap} @sc{url}, as supported by @sc{imail}, looks
+like this:
+
+@example
+imap://@var{uname}@@@var{hostname}:@var{port}/@var{mailbox}
+@end example
+
+@noindent
+In this syntax, the parts @samp{@var{uname}@@} and @samp{:@var{port}}
+are optional.  @var{Hostname} is the internet host name or @sc{ip}
+address of the @sc{imap} server.  @var{Uname} is the user name that
+identifies the account to be accessed on the server; this defaults to
+your user name.  @var{Port} is the server's @sc{ip} port; this defaults
+to @code{143} and is normally not specified.
+
+@cindex hierarchical folder
+@var{Mailbox} specifies the @sc{imap} mailbox that is being referred to.
+Since most @sc{imap} servers support @dfn{hierarchical} folders, the
+@var{mailbox} is a structured component indicating the location of the
+folder in the hierarchy, much like filenames or @sc{http} @sc{url}s.
+Here are some examples of @sc{imap} @sc{url}s showing different mailbox
+paths:
+
+@example
+imap://localhost/inbox
+imap://localhost/inbox/sysadmin
+imap://localhost/inbox/sysadmin/equipment
+@end example
+
+@noindent
+@cindex inbox
+@cindex primary @sc{imap} mailbox
+Here you see several interesting properties of @sc{imap} mailboxes.  The
+first @sc{url} refers to the primary @sc{imap} mailbox for this account,
+called the @dfn{inbox}.  All @sc{imap} servers must support this
+mailbox, which is always called @samp{inbox}; the name is not case
+sensitive and may be typed in any combination of upper or lower case
+letters.  However, case sensitivity for names other than @samp{inbox} is
+undefined by @sc{imap}, so @sc{imail} treats all other names as if they
+were case sensitive.
+
+@cindex heirarchical @sc{imap} mailbox
+The second and third @sc{url}s show how hierarchically-nested mailboxes
+are referred to: by writing the components of the path, separated by
+slashes.  Note that @sc{imap} does not require particular path-separator
+characters for hierarchical names, and in fact different @sc{imap}
+servers use different separators.  However, @sc{imail} @emph{always}
+uses the forward-slash character as a separator, and translates to the
+server's character as needed.@footnote{This is in opposition to
+@uref{http://@-www.ietf.org/@-rfc/@-rfc2192.txt, @sc{rfc} 2192}, which
+requires use of the server-specific separator.
+@uref{http://@-www.ietf.org/@-rfc/@-rfc2396.txt, @sc{rfc} 2396} and
+@uref{http://@-www.ietf.org/@-rfc/@-rfc2718.txt, @sc{rfc} 2718} provide
+compelling arguments against this design.}
+
+@cindex Cyrus
+Another thing to note about these examples is that @sc{imap}, unlike
+most file systems, allows a folder both to contain messages and to have
+subfolders.  This includes the @samp{inbox} folder, as shown here.  At
+least one server (@uref{http://@-asg.web.cmu.edu/cyrus/, Cyrus}) puts
+@emph{all} subfolders for a user account under @samp{inbox}, but this is
+not required by @sc{imap} and is not generally true.
+
+There are two other @sc{url} types supported by @sc{imail}: Rmail
+@sc{url}s and unix mailbox @sc{url}s.  Both of these use the same
+syntax, which is exactly the same as the @samp{file:} @sc{url} syntax
+defined in @uref{http://@-www.ietf.org/@-rfc/@-rfc1738.txt, @sc{rfc}
+1738}, as follows:
+
+@example
+@group
+rmail://@var{hostname}/@var{pathname}
+umail://@var{hostname}/@var{pathname}
+@end group
+@end example
+
+@noindent
+Here @var{hostname} refers to the host on which the file (folder)
+resides.  Since @sc{imail} supports only files on the local file system,
+@var{hostname} must be @samp{localhost}; it may also be omitted, as in
+
+@example
+rmail:///@var{pathname}
+@end example
+
+@noindent
+@sc{imail} also supports a non-standard abbreviation:
+
+@example
+rmail:/@var{pathname}
+@end example
+
+The prefixes @samp{rmail:} and @samp{umail:} specify the type of file
+folder being referred to, respectively an Rmail file or a unix mailbox
+file.  (In the future, this design may be changed to use the
+@samp{file:} prefix for both types, and determine the file's type from
+its content.)
+
+As specified by the @sc{url} standard, @var{pathname} is a
+slash-separated sequence of path components, where unusual characters
+appearing in the components, such as the space character, are specially
+encoded.  In practice, this means that most unix filenames are written
+verbatim, with exceptions for special characters, and with the leading
+slash omitted.  However, @sc{dos}-style filenames, as used by Windows
+and OS/2, must be specially rewritten to conform to this style.
+
+The rewriting rules for @sc{dos} file @sc{url}s are not specified by the
+standard, so consequently @sc{imail} defines its own rules for this
+encoding, as follows.  A @sc{dos} filename is encoded by replacing all
+of the backslash characters with forward-slash characters, and by
+encoding unusual characters in the path components.  Finally, the drive
+letter is prefixed to the path with an additional forward-slash
+separator.  So for, example, the filename
+
+@example
+C:\My Documents\Mail\My Mail.rmail
+@end example
+
+@noindent
+becomes the @sc{url}
+
+@example
+rmail://localhost/C:/My%20Documents/Mail/My%20Mail.rmail
+@end example
+
+@noindent
+Note that this process is much simpler in practice, as @sc{imail} will
+accept almost any character in the path components and transparently
+encode it as needed.
+
+@ifset dontsetme
+@itemize @bullet
+@item
+@sc{mime} entity
+
+@item
+@sc{imap} extensions: @sc{uidplus}, @sc{namespace}
+
+@item
+differences between Rmail and @sc{imail}: narrowed buffer versus
+individual messages; no editing commands, flags vs. labels.
+@end itemize
+@end ifset
+
 @node Commands, Variables, Concepts, Top
 @chapter Commands
 
@@ -161,6 +390,7 @@ read the mail in the @samp{inbox} folder on your @sc{imap} server, type
 
 @node Index,  , Variables, Top
 @unnumbered Index
+
 @printindex cp
 
 @contents
