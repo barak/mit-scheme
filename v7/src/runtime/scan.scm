@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scan.scm,v 13.41 1987/01/23 00:18:56 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scan.scm,v 13.42 1987/11/17 00:25:34 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -89,11 +89,12 @@
 	   (if (and (vector? first)
 		    (not (zero? (vector-length first)))
 		    (eq? (vector-ref first 0) open-block-tag))
-	       (lambda (names declarations body)
-		 (receiver (append (vector-ref first 1) names)
-			   (append (vector-ref first 2) declarations)
-			   (cons-sequence (&triple-third expression)
-					  body)))
+	       (scan-loop
+		(&triple-third expression)
+		(lambda (names declarations body)
+		  (receiver (append (vector-ref first 1) names)
+			    (append (vector-ref first 2) declarations)
+			    body)))
 	       (scan-loop (&triple-third expression)
 			  (scan-loop (&triple-second expression)
 				     (scan-loop first
@@ -117,7 +118,7 @@
 	   (receiver names
 		     declarations
 		     (cons-sequence expression body))))))
-
+
 (define (cons-sequence action sequence)
   (cond ((primitive-type? sequence-2-type sequence)
 	 (&typed-triple-cons sequence-3-type
