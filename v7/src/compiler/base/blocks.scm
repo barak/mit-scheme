@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.5 1988/12/12 21:51:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.6 1988/12/13 13:00:22 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -281,12 +281,15 @@ from the continuation, and then "glued" into place afterwards.
 (define-integrable (internal-block/dynamic-link? block)
   (not (block-popping-limit block)))
 
-(define-integrable (block-original-parent block)
+(define-integrable (original-block-parent block)
   ;; This only works for the invocation blocks of procedures (not
   ;; continuations), and it assumes that all procedures' target-block
   ;; fields have been initialized (i.e. the environment optimizer has
   ;; been run).
-  (procedure-target-block (block-procedure block)))
+  (let ((procedure (block-procedure block)))
+    (and procedure
+	 (rvalue/procedure? procedure)
+	 (procedure-target-block procedure))))
 
 (define (disown-block-child! block child)
   (set-block-children! block (delq! child (block-children block)))
