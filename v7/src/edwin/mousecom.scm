@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mousecom.scm,v 1.3 1999/01/28 04:16:34 cph Exp $
+;;; $Id: mousecom.scm,v 1.4 2000/06/11 04:24:30 cph Exp $
 ;;;
-;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -70,7 +70,7 @@ Display cursor at that position for a second."
 		   (buffer-end (window-buffer window)))))
 	  (push-current-mark! mark)
 	  (mark-flash mark))))))
-
+
 (define-command mouse-show-event
   "Show the mouse position in the minibuffer."
   ()
@@ -79,6 +79,27 @@ Display cursor at that position for a second."
       (message "window: " (button-event/window button-event)
 	       " x: " (button-event/x button-event)
 	       " y: " (button-event/y button-event)))))
+
+(define-command mouse-scroll-up
+  "Scroll up mouse-scroll-increment lines."
+  ()
+  (lambda ()
+    (scroll-window (selected-window)
+		   (ref-variable mouse-scroll-increment)
+		   (lambda () unspecific))))
+
+(define-command mouse-scroll-down
+  "Scroll down mouse-scroll-increment lines."
+  ()
+  (lambda ()
+    (scroll-window (selected-window)
+		   (- (ref-variable mouse-scroll-increment))
+		   (lambda () unspecific))))
+
+(define-variable mouse-scroll-increment
+  "Number of lines by which a mouse-scroll event moves."
+  10
+  exact-nonnegative-integer?)
 
 (define-command mouse-ignore
   "Don't do anything."

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: modefs.scm,v 1.158 2000/03/25 18:49:16 cph Exp $
+;;; $Id: modefs.scm,v 1.159 2000/06/11 04:24:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -379,6 +379,9 @@ Like Fundamental mode, but no self-inserting characters.")
 ;;; Mouse buttons:
 
 (define-key 'fundamental button1-down 'mouse-set-point)
+;; Next two are for wheel mouse under X.
+(define-key 'fundamental button4-down 'mouse-scroll-down)
+(define-key 'fundamental button5-down 'mouse-scroll-up)
 (define-key 'fundamental button1-up 'mouse-ignore)
 (define-key 'fundamental button2-up 'mouse-ignore)
 (define-key 'fundamental button3-up 'mouse-ignore)
