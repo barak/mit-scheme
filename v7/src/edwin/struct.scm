@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.74 1991/03/22 00:33:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.75 1991/04/01 10:04:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -260,6 +260,14 @@
 	       (delq! daemon (vector-ref group group-index:delete-daemons))))
 
 (define (record-clipping! group start end)
+  (let ((buffer (group-buffer group)))
+    (if (and buffer
+	     (let ((display-start (buffer-display-start buffer)))
+	       (and display-start
+		    (let ((display-start (mark-index display-start)))
+		      (or (fix:< display-start start)
+			  (fix:> display-start end))))))
+	(set-buffer-display-start! buffer false)))
   (invoke-group-daemons! (group-clip-daemons group) group start end))
 
 (define (add-group-clip-daemon! group daemon)
