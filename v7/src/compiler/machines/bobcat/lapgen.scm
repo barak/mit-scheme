@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.17 1988/11/04 10:58:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.18 1988/11/08 12:36:18 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -211,24 +211,6 @@ MIT in each case. |#
 (define-integrable (cc-commutative? cc)
   (memq cc '(T F NE EQ)))
 
-(define (expression->machine-register! expression register)
-  (let ((target (register-reference register)))
-    (let ((result
-	   (case (car expression)
-	     ((REGISTER)
-	      (load-machine-register! (rtl:register-number expression)
-				      register))
-	     ((OFFSET)
-	      (LAP (MOV L ,(offset->indirect-reference! expression) ,target)))
-	     ((CONSTANT)
-	      (LAP ,(load-constant (rtl:constant-value expression) target)))
-	     ((UNASSIGNED)
-	      (LAP ,(load-non-pointer type-code:unassigned 0 target)))
-	     (else
-	      (error "Unknown expression type" (car expression))))))
-      (delete-machine-register! register)
-      result)))
-
 (define-integrable (effective-address/data&alterable? ea)
   (memq (lap:ea-keyword ea) '(D @D @A @A+ @-A @AO @DO @AOX W L)))
 
@@ -300,6 +282,26 @@ MIT in each case. |#
 	    (LAP)
 	    (LAP ,(instruction-gen)
 		 ,@(loop (-1+ n)))))))
+
+;;;; Expression-Generic Operations
+
+(define (expression->machine-register! expression register)
+  (let ((target (register-reference register)))
+    (let ((result
+	   (case (car expression)
+	     ((REGISTER)
+	      (load-machine-register! (rtl:register-number expression)
+				      register))
+	     ((OFFSET)
+	      (LAP (MOV L ,(offset->indirect-reference! expression) ,target)))
+	     ((CONSTANT)
+	      (LAP ,(load-constant (rtl:constant-value expression) target)))
+	     ((UNASSIGNED)
+	      (LAP ,(load-non-pointer type-code:unassigned 0 target)))
+	     (else
+	      (error "Unknown expression type" (car expression))))))
+      (delete-machine-register! register)
+      result)))
 
 (define (put-type-in-ea type-code ea)
   (cond ((effective-address/data-register? ea)
@@ -309,6 +311,27 @@ MIT in each case. |#
 	 (LAP (MOV B (& ,type-code) ,ea)))
 	(else
 	 (error "PUT-TYPE-IN-EA: Illegal effective-address" ea))))
+
+(define (standard-target-expression? target)
+  (or (rtl:offset? target)
+      (rtl:free-push? target)
+      (rtl:stack-push? target)))
+
+(define (rtl:free-push? expression)
+  (and (rtl:post-increment? expression)
+       (interpreter-free-pointer? (rtl:post-increment-register expression))
+       (= 1 (rtl:post-increment-number expression))))
+
+(define (rtl:stack-push? expression)
+  (and (rtl:pre-increment? expression)
+       (interpreter-stack-pointer? (rtl:pre-increment-register expression))
+       (= -1 (rtl:pre-increment-number expression))))
+
+(define (standard-target-expression->ea target)
+  (cond ((rtl:offset? target) (offset->indirect-reference! target))
+	((rtl:free-push? target) (INST-EA (@A+ 5)))
+	((rtl:stack-push? target) (INST-EA (@-A 7)))
+	(else (error "STANDARD-TARGET->EA: Not a standard target" target))))
 
 ;;;; Fixnum Operators
 

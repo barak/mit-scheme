@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.13 1988/11/08 11:11:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.14 1988/11/08 12:36:58 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -396,13 +396,26 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (CONSTANT (? type))
-			(CONS-CLOSURE (ENTRY:PROCEDURE (? internal-label))
+			(CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
 				      (? min) (? max) (? size))))
   (QUALIFIER (pseudo-register? target))
-  (let ((temporary (reference-temporary-register! 'ADDRESS))
-	(target (reference-target-alias! target 'DATA)))
+  (generate/cons-closure (reference-target-alias! target 'DATA)
+			 type procedure-label min max size))
+
+(define-rule statement
+  (ASSIGN (? target)
+	  (CONS-POINTER (CONSTANT (? type))
+			(CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
+				      (? min) (? max) (? size))))
+  (QUALIFIER (standard-target-expression? target))
+  (let ((temporary (reference-temporary-register! 'DATA)))
+    (LAP ,@(generate/cons-closure temporary type procedure-label min max size)
+	 (MOV L ,temporary ,(standard-target-expression->ea target)))))
+
+(define (generate/cons-closure target type procedure-label min max size)
+  (let ((temporary (reference-temporary-register! 'ADDRESS)))
     (LAP (LEA (@PCR ,(rtl-procedure/external-label
-		      (label->object internal-label)))
+		      (label->object procedure-label)))
 	      ,temporary)
 	 ,(load-non-pointer (ucode-type manifest-closure)
 			    (+ 3 size)
