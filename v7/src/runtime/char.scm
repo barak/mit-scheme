@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.19 2003/07/25 23:03:57 cph Exp $
+$Id: char.scm,v 14.20 2003/07/30 04:12:12 cph Exp $
 
 Copyright 1986,1987,1988,1991,1995,1997 Massachusetts Institute of Technology
 Copyright 1998,2001,2003 Massachusetts Institute of Technology
@@ -240,44 +240,43 @@ USA.
 ;;;; Character Names
 
 (define (name->char string)
-  (let ((end (string-length string)))
+  (let ((end (string-length string))
+	(lose (lambda () (error:bad-range-argument string 'NAME->CHAR))))
     (let loop ((start 0) (bits 0))
-      (let ((left (fix:- end start)))
-	(if (fix:= 0 left)
-	    (error:bad-range-argument string 'NAME->CHAR))
-	(if (fix:= 1 left)
-	    (let ((char (string-ref string start)))
-	      (if (not (char-graphic? char))
-		  (error:bad-range-argument string 'NAME->CHAR))
-	      (make-char (char-code char) bits))
-	    (let ((hyphen (substring-find-next-char string start end #\-)))
-	      (if hyphen
-		  (let ((bit (-map-> named-bits string start hyphen)))
-		    (if bit
-			(loop (fix:+ hyphen 1) (fix:or bit bits))
-			(make-char (name->code string start end) bits)))
-		  (make-char (name->code string start end) bits))))))))
-
-(define (name->code string start end)
-  (if (substring-ci=? string start end "newline" 0 7)
-      (char-code char:newline)
-      (or (-map-> named-codes string start end)
-	  (numeric-name->code string start end)
-	  (error "Unknown character name:" (substring string start end)))))
-
-(define (numeric-name->code string start end)
-  (and (> (- end start) 6)
-       (substring-ci=? string start (+ start 5) "<code" 0 5)
-       (substring-ci=? string (- end 1) end ">" 0 1)
-       (string->number (substring string (+ start 5) (- end 1)) 10)))
+      (case (fix:- end start)
+	((0)
+	 (lose))
+	((1)
+	 (let ((char (string-ref string start)))
+	   (if (not (char-graphic? char))
+	       (lose))
+	   (make-char (char-code char) bits)))
+	(else
+	 (let ((hyphen (substring-find-next-char string start end #\-)))
+	   (if hyphen
+	       (let ((bit (->code named-bits string start hyphen)))
+		 (if (not (and bit (fix:= 0 (fix:and bit bits))))
+		     (lose))
+		 (loop (fix:+ hyphen 1) (fix:or bit bits)))
+	       (make-char
+		(or (->code named-codes string start end)
+		    (and (substring-prefix-ci? "U+" 0 1 string start end)
+			 (substring->number string (fix:+ start 2) end 16))
+		    (lose))
+		bits))))))))
 
 (define (char->name char #!optional slashify?)
   (let ((code (char-code char))
 	(bits (char-bits char)))
     (string-append
-     (bucky-bits->prefix bits)
+     (let loop ((entries named-bits))
+       (if (pair? entries)
+	   (if (fix:= 0 (fix:and (caar entries) bits))
+	       (loop (cdr entries))
+	       (string-append (cadar entries) "-" (loop (cdr entries))))
+	   ""))
      (let ((base-char (if (fix:= 0 bits) char (integer->char code))))
-       (cond ((<-map- named-codes code))
+       (cond ((->name named-codes code))
 	     ((and (if (default-object? slashify?) #f slashify?)
 		   (not (fix:= 0 bits))
 		   (or (char=? base-char #\\)
@@ -286,100 +285,71 @@ USA.
 	     ((char-graphic? base-char)
 	      (string base-char))
 	     (else
-	      (string-append "<code" (number->string code 10) ">")))))))
-
-(define (bucky-bits->prefix bits)
-  (let loop ((bits bits) (weight 1))
-    (if (fix:= 0 bits)
-	""
-	(let ((rest (loop (fix:lsh bits -1) (fix:lsh weight 1))))
-	  (if (fix:= 0 (fix:and bits 1))
-	      rest
-	      (string-append (or (<-map- named-bits weight)
-				 (string-append "<bits-"
-						(number->string weight 10)
-						">"))
-			     "-"
-			     rest))))))
-
-(define (-map-> alist string start end)
-  (and (not (null? alist))
-       (let ((key (caar alist)))
-	 (if (substring-ci=? string start end
-			     key 0 (string-length key))
-	     (cdar alist)
-	     (-map-> (cdr alist) string start end)))))
-
-(define (<-map- alist n)
-  (and (not (null? alist))
-       (if (fix:= n (cdar alist))
-	   (caar alist)
-	   (<-map- (cdr alist) n))))
+	      (string-append "U+"
+			     (let ((s (number->string code 16)))
+			       (string-pad-left s
+						(let ((l (string-length s)))
+						  (let loop ((n 2))
+						    (if (fix:<= l n)
+							n
+							(loop (fix:* 2 n)))))
+						#\0)))))))))
 
+(define (->code entries string start end)
+  (let ((entry
+	 (find-matching-item entries
+	   (lambda (entry)
+	     (there-exists? (if (cadr entry) (cdr entry) (cddr entry))
+	       (lambda (key)
+		 (substring-ci=? string start end
+				 key 0 (string-length key))))))))
+    (and entry
+	 (car entry))))
+
+(define (->name entries n)
+  (let ((entry (assv n entries)))
+    (and entry
+	 (cadr entry))))
+
 (define named-codes
-  '(
-    ;; Some are aliases for previous definitions, and will not appear
-    ;; as output.
-
-    ("Backspace" . #x08)
-    ("Tab" . #x09)
-    ("Linefeed" . #x0A)
-    ("Newline" . #x0A)
-    ("Page" . #x0C)
-    ("Return" . #x0D)
-    ("Call" . #x1A)
-    ("Altmode" . #x1B)
-    ("Escape" . #x1B)
-    ("Backnext" . #x1F)
-    ("Space" . #x20)
-    ("Rubout" . #x7F)
-
-    ;; ASCII codes
-
-    ("NUL" . #x0)			; ^@
-    ("SOH" . #x1)			; ^A
-    ("STX" . #x2)			; ^B
-    ("ETX" . #x3)			; ^C
-    ("EOT" . #x4)			; ^D
-    ("ENQ" . #x5)			; ^E
-    ("ACK" . #x6)			; ^F
-    ("BEL" . #x7)			; ^G
-    ("BS" . #x8)			; ^H <Backspace>
-    ("HT" . #x9)			; ^I <Tab>
-    ("LF" . #xA)			; ^J <Linefeed> <Newline>
-    ("NL" . #xA)			; ^J <Linefeed> <Newline>
-    ("VT" . #xB)			; ^K
-    ("FF" . #xC)			; ^L <Page>
-    ("NP" . #xC)			; ^L <Page>
-    ("CR" . #xD)			; ^M <Return>
-    ("SO" . #xE)			; ^N
-    ("SI" . #xF)			; ^O
-    ("DLE" . #x10)			; ^P
-    ("DC1" . #x11)			; ^Q
-    ("DC2" . #x12)			; ^R
-    ("DC3" . #x13)			; ^S
-    ("DC4" . #x14)			; ^T
-    ("NAK" . #x15)			; ^U
-    ("SYN" . #x16)			; ^V
-    ("ETB" . #x17)			; ^W
-    ("CAN" . #x18)			; ^X
-    ("EM" . #x19)			; ^Y
-    ("SUB" . #x1A)			; ^Z <Call>
-    ("ESC" . #x1B)			; ^[ <Altmode> <Escape>
-    ("FS" . #x1C)			; ^\
-    ("GS" . #x1D)			; ^]
-    ("RS" . #x1E)			; ^^
-    ("US" . #x1F)			; ^_ <Backnext>
-    ("SP" . #x20)			; <Space>
-    ("DEL" . #x7F)			; ^? <Rubout>
+  '((#x00 "NUL" "null")			; ^@
+    (#x01 #f "soh")			; ^A
+    (#x02 #f "stx")			; ^B
+    (#x03 #f "etx")			; ^C
+    (#x04 #f "eot")			; ^D
+    (#x05 #f "enq")			; ^E
+    (#x06 #f "ack")			; ^F
+    (#x07 #f "bel")			; ^G
+    (#x08 "BS" "backspace")		; ^H <Backspace>
+    (#x09 "TAB" "ht")			; ^I <Tab>
+    (#x0A "newline" "linefeed" "lfd" "lf") ; ^J <Linefeed> <Newline>
+    (#x0B #f "vt")			; ^K
+    (#x0C "page" "ff" "np")		; ^L <Page>
+    (#x0D "RET" "return" "cr")		; ^M <Return>
+    (#x0E #f "so")			; ^N
+    (#x0F #f "si")			; ^O
+    (#x10 #f "dle")			; ^P
+    (#x11 #f "dc1")			; ^Q
+    (#x12 #f "dc2")			; ^R
+    (#x13 #f "dc3")			; ^S
+    (#x14 #f "dc4")			; ^T
+    (#x15 #f "nak")			; ^U
+    (#x16 #f "syn")			; ^V
+    (#x17 #f "etb")			; ^W
+    (#x18 #f "can")			; ^X
+    (#x19 #f "em")			; ^Y
+    (#x1A #f "sub" "call")		; ^Z <Call>
+    (#x1B "ESC" "escape" "altmode")	; ^[ <Altmode> <Escape>
+    (#x1C #f "fs")			; ^\
+    (#x1D #f "gs")			; ^]
+    (#x1E #f "rs")			; ^^
+    (#x1F #f "us" "backnext")		; ^_ <Backnext>
+    (#x20 "SPC" "sp" "space")		; <Space>
+    (#x7F "DEL" "rubout")		; ^? <Rubout>
     ))
 
 (define named-bits
-  '(("M" . #x01)
-    ("Meta" . #x01)
-    ("C" . #x02)
-    ("Control" . #x02)
-    ("S" . #x04)
-    ("Super" . #x04)
-    ("H" . #x08)
-    ("Hyper" . #x08)))
+  '((#x01 "M" "meta")
+    (#x02 "C" "ctrl" "control")
+    (#x04 "S" "super")
+    (#x08 "H" "hyper")))
