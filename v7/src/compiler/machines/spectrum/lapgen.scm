@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.28 1990/04/02 15:28:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.29 1990/04/03 06:10:06 jinx Exp $
 $MC68020-Header: lapgen.scm,v 4.31 90/04/01 22:26:01 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -558,10 +558,10 @@ MIT in each case. |#
 (define (load-interface-args! first second third fourth)
   (let ((clear-regs
 	 (apply clear-registers!
-		(append (if first (list first) '())
-			(if second (list second) '())
-			(if third (list third) '())
-			(if fourth (list fourth) '()))))
+		(append (if first (list regnum:first-arg) '())
+			(if second (list regnum:second-arg) '())
+			(if third (list regnum:third-arg) '())
+			(if fourth (list regnum:fourth-arg) '()))))
 	(load-reg
 	 (lambda (reg arg)
 	   (if reg (load-machine-register! reg arg) (LAP)))))
