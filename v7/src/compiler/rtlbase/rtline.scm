@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.4 1988/09/07 06:22:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.5 1988/09/15 05:05:44 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -122,7 +122,9 @@ MIT in each case. |#
     (node-mark! bblock)
     (queue-continuations! bblock)
     (if (and (not (bblock-label bblock))
-	     (node-previous>1? bblock))
+	     (let ((edges (node-previous-edges bblock)))
+	       (and (not (null? edges))
+		    (not (null? (cdr edges))))))
 	(bblock-label! bblock))
     (let ((kernel
 	   (lambda ()
@@ -148,24 +150,27 @@ MIT in each case. |#
     (cond ((not sblock)
 	   '())
 	  ((node-marked? sblock)
-	   `(,(rtl:make-jump-statement (bblock-label! sblock))))
+	   `(,(rtl:make-jump-statement (get-bblock-label sblock))))
 	  (else
 	   (linearize-bblock sblock))))
 
   (define (linearize-pblock pblock predicate cn an)
     pblock
     (if (node-marked? cn)
+	(let ((clabel (get-bblock-label cn)))
+	  (if (node-marked? an)
+	      (let ((alabel (get-bblock-label an)))
+		`(,(rtl:make-jumpc-statement predicate clabel)
+		  ,(rtl:make-jump-statement alabel)))
+	      `(,(rtl:make-jumpc-statement predicate clabel)
+		,@(linearize-bblock an))))
 	(if (node-marked? an)
-	    `(,(rtl:make-jumpc-statement predicate (bblock-label! cn))
-	      ,(rtl:make-jump-statement (bblock-label! an)))
-	    `(,(rtl:make-jumpc-statement predicate (bblock-label! cn))
-	      ,@(linearize-bblock an)))
-	(if (node-marked? an)
-	    `(,(rtl:make-jumpc-statement (rtl:negate-predicate predicate)
-					 (bblock-label! an))
-	      ,@(linearize-bblock cn))
-	    (let ((label (bblock-label! cn))
-		  (alternative (linearize-bblock an)))
+	    (let ((alabel (get-bblock-label an)))
+	      `(,(rtl:make-jumpc-statement (rtl:negate-predicate predicate)
+					   alabel)
+		,@(linearize-bblock cn)))
+	    (let* ((label (bblock-label! cn))
+		   (alternative (linearize-bblock an)))
 	      `(,(rtl:make-jumpc-statement predicate label)
 		,@alternative
 		,@(if (node-marked? cn)
@@ -173,6 +178,10 @@ MIT in each case. |#
 		      (linearize-bblock cn)))))))
 
   (linearize-bblock bblock))
+
+(define (get-bblock-label bblock)
+  (or (bblock-label bblock)
+      (error "GET-BBLOCK-LABEL: block not labeled" bblock)))
 
 (define linearize-rtl
   (make-linearizer bblock-linearize-rtl
