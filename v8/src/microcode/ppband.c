@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.43 1992/02/11 21:15:00 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.44 1992/08/16 23:22:34 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -46,6 +46,9 @@ MIT in each case. */
 #include "sdata.h"
 
 #define fast register
+
+#undef HEAP_MALLOC
+#define HEAP_MALLOC malloc
 
 /* These are needed when there is no compiler support. */
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.53 1992/07/18 12:15:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.54 1992/08/16 23:21:57 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -42,6 +42,9 @@ MIT in each case. */
 #include "limits.h"
 #define internal_file input_file
 #define portable_file output_file
+
+#undef HEAP_MALLOC
+#define HEAP_MALLOC malloc
 
 long
 DEFUN (Load_Data, (Count, To_Where),
@@ -448,7 +451,7 @@ DEFUN (print_a_bignum, (bignum_ptr),
 	  }
 	else if (bits_in_digit < length_in_bits)
 	  {
-	    int carry = accumulator;
+	    long carry = accumulator;
 	    int diff_bits = (4 - bits_in_digit);
 	    accumulator = (*scan++);
 	    fprintf (portable_file, "%01lx",
@@ -543,7 +546,7 @@ DEFUN (print_a_flonum, (val),
 {
   fast long size_in_bits;
   fast double mant, temp;
-  int expt;
+  long expt;
   extern double frexp();
 
   fprintf(portable_file, "%02x %c ",
@@ -1008,9 +1011,9 @@ DEFUN (Process_Area, (Code, Area, Bound, Obj, FObj),
 	nmv_p = true;
         if (null_nmv_p)
 	{
-	  fast int i;
+	  fast long i;
 
-	  i = OBJECT_DATUM (This);
+	  i = (OBJECT_DATUM (This));
 	  *Area += 1;
 	  for ( ; --i >= 0; *Area += 1)
 	  {
