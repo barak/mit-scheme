@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.15 1995/08/23 14:07:05 adams Exp $
+$Id: dbgred.scm,v 1.16 1995/08/30 19:54:46 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -196,7 +196,10 @@ reachable.
 		  (let ((edge
 			 (dbg-red/node/add-edge! node `(CC-ENTRY . ,name))))
 		    (dbg-red/edge/statically-available! edge))
-		  (internal-warning "Node absent" name)))))
+		  ;; If no node is found then this binding is likely a
+		  ;; procedure which never corresponded to a user's procedure.
+		  (if compiler:guru?
+		      (internal-warning "Node absent" name))))))
     bindings))
 
 (define-dbg-reducer IF (pred conseq alt)
