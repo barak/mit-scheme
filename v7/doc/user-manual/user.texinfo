@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.29 1995/08/27 18:52:39 adams Exp $
+@comment $Id: user.texinfo,v 1.30 1995/09/04 14:00:54 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -207,6 +207,7 @@ Declarations
 
 Efficiency Tips
 
+* Coding style::                
 * Global variables::            
 * Flonum arithmetic::           
 * Miscellaneous::               
@@ -4010,12 +4011,57 @@ explanations useful.
 
 
 @menu
+* Coding style::                
 * Global variables::            
 * Flonum arithmetic::           
 * Miscellaneous::               
 @end menu
 
-@node Global variables, Flonum arithmetic, Efficiency Tips, Efficiency Tips
+@node Coding style, Global variables, Efficiency Tips, Efficiency Tips
+@subsection Coding style
+
+@subsubheading Better predicates
+
+Consider the following implementation of @code{map} as might be found in
+any introductory book on Scheme:
+
+@lisp
+(define (map f lst)
+  (if (null? lst)
+      '()
+      (cons (f (car lst)) (map f (cdr lst)))))
+@end lisp
+
+The problem with this definition is that at the points where @code{car}
+and @code{cdr} are called we still do not know that @var{lst} is a pair.
+The compiler must insert a type check, or if type checks are disabled,
+the program might give wrong results.  Since one of the fundamental
+properties of @code{map} is that it transforms lists, we should make the
+realationship between the input pairs and the result pairs more apparent
+in the code:
+
+@lisp
+(define (map f lst)
+  (cond ((pair? lst)
+         (cons (f (car lst)) (map f (cdr lst))))
+        ((null? lst)
+         '())
+        (else
+         ...) ; You decide - '() or an error?
+@end lisp
+
+Note also that the @code{pair?} case comes first because we expect that
+@code{map} will be called on lists which have, on average, length
+greater that one.
+
+
+@subsubheading Internal procedures
+
+Calls to internal procedures are slightly faster than calls to global
+procedures.
+
+
+@node Global variables, Flonum arithmetic, Coding style, Efficiency Tips
 @subsection Global variables
 
 @cindex variable caches
