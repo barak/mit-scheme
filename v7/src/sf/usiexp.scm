@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.33 1995/03/20 23:29:00 cph Exp $
+$Id: usiexp.scm,v 4.34 1995/04/29 13:08:29 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -511,6 +511,18 @@ MIT in each case. |#
 	(make-type-test false block (ucode-type big-flonum) (car operands))
 	(make-type-test false block (ucode-type recnum) (car operands))))
       (if-not-expanded)))
+
+(define (symbol?-expansion expr operands if-expanded if-not-expanded block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (if-expanded
+       (make-disjunction
+	expr
+	(make-type-test false block (ucode-type interned-symbol)
+			(car operands))
+	(make-type-test false block (ucode-type uninterned-symbol)
+			(car operands))))
+      (if-not-expanded)))
 
 (define (make-disjunction expr . clauses)
   (let loop ((clauses clauses))
@@ -635,6 +647,7 @@ MIT in each case. |#
     seventh
     sixth
     string->symbol
+    symbol?
     third
     values
     vector?
@@ -720,6 +733,7 @@ MIT in each case. |#
    seventh-expansion
    sixth-expansion
    string->symbol-expansion
+   symbol?-expansion
    third-expansion
    values-expansion
    vector?-expansion
