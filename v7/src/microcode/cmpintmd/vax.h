@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/vax.h,v 1.4 1992/02/12 15:26:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/vax.h,v 1.5 1992/02/12 15:27:27 jinx Exp $
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
@@ -49,6 +49,12 @@ MIT in each case. */
 #define COMPILER_VAX_TYPE			2
 #define COMPILER_SPECTRUM_TYPE			3
 #define COMPILER_MIPS_TYPE			4
+#define COMPILER_MC68040_TYPE			5
+#define COMPILER_SPARC_TYPE			6
+#define COMPILER_RS6000_TYPE			7
+#define COMPILER_MC88K_TYPE			8
+#define COMPILER_I386_TYPE			9
+#define COMPILER_ALPHA_TYPE			10
 
 /* Machine parameters to be set by the user. */
 
