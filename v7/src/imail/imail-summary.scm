@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.2 2000/05/18 04:21:21 cph Exp $
+;;; $Id: imail-summary.scm,v 1.3 2000/05/18 05:19:00 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -75,29 +75,40 @@ The recipients are specified as a comma-separated list of names."
 (define (imail-summary description predicate)
   (let* ((folder (selected-folder))
 	 (folder-buffer (imail-folder->buffer folder #t))
-	 (summary-buffer
-	  (or (buffer-get folder-buffer 'IMAIL-SUMMARY-BUFFER #f)
-	      (let ((buffer
-		     (new-buffer
-		      (string-append (buffer-name folder-buffer)
-				     "-summary"))))
-		(without-interrupts
-		 (lambda ()
-		   (add-event-receiver! (folder-modification-event folder)
-					imail-summary-modification-event)
-		   (associate-buffer-with-imail-buffer
-		    folder-buffer summary-buffer)
-		   (buffer-put! folder-buffer 'IMAIL-SUMMARY-BUFFER buffer)
-		   (buffer-put! summary-buffer 'IMAIL-MESSAGE-METHOD
-				imail-summary-selected-message)))
-		buffer))))
-    (buffer-put! summary-buffer 'IMAIL-SUMMARY-DESCRIPTION description)
-    (buffer-put! summary-buffer 'IMAIL-SUMMARY-PREDICATE predicate)
-    (rebuild-imail-summary-buffer summary-buffer)
-    (select-buffer summary-buffer)))
+	 (buffer
+	  (let ((buffer (buffer-get folder-buffer 'IMAIL-SUMMARY-BUFFER #f)))
+	    (or (and buffer
+		     (if (buffer-alive? buffer)
+			 buffer
+			 (begin
+			   (buffer-remove! folder-buffer 'IMAIL-SUMMARY-BUFFER)
+			   #f)))
+		(let ((buffer
+		       (new-buffer
+			(string-append (buffer-name folder-buffer)
+				       "-summary"))))
+		  (without-interrupts
+		   (lambda ()
+		     (add-event-receiver! (folder-modification-event folder)
+					  imail-summary-modification-event)
+		     (associate-buffer-with-imail-buffer folder-buffer buffer)
+		     (buffer-put! buffer 'IMAIL-MESSAGE-METHOD
+				  imail-summary-selected-message)
+		     (buffer-put! folder-buffer 'IMAIL-SUMMARY-BUFFER buffer)
+		     (add-kill-buffer-hook buffer imail-summary-detach)))
+		  buffer)))))
+    (buffer-put! buffer 'IMAIL-SUMMARY-DESCRIPTION description)
+    (buffer-put! buffer 'IMAIL-SUMMARY-PREDICATE predicate)
+    (rebuild-imail-summary-buffer buffer)
+    (select-buffer buffer)))
+
+(define (imail-summary-detach buffer)
+  (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
+    (if folder-buffer
+	(buffer-remove! folder-buffer 'IMAIL-SUMMARY-BUFFER))))
 
 (define (imail-summary-modification-event folder type parameters)
-  (let ((buffer (imail-folder->buffer folder #f)))
+  (let ((buffer (imail-folder->summary-buffer folder #f)))
     (if buffer
 	(case type
 	  ((FLAGS)
@@ -105,25 +116,28 @@ The recipients are specified as a comma-separated list of names."
 	     (if mark
 		 (with-read-only-defeated mark
 		   (lambda ()
-		     (delete-right-char mark)
-		     (insert-char (if (message-deleted? (car parameters))
-				      #\D
-				      #\space)
-				  mark))))))
+		     (group-replace-char!
+		      (mark-group mark)
+		      (mark-index mark)
+		      (if (message-deleted? (car parameters))
+			  #\D
+			  #\space)))))))
 	  ((SELECT-MESSAGE)
 	   (let ((mark (imail-summary-message-mark buffer (car parameters))))
 	     (if mark
 		 (set-buffer-point! buffer mark))))
 	  ((EXPUNGE)
-	   (let ((m1 (line-start (buffer-start buffer) (car parameters))))
-	     (if m1
-		 (let ((m2 (line-start m1 1)))
-		   (if m2
-		       (with-read-only-defeated m1
-			 (lambda ()
-			   (delete-string m1 m2))))))))
+	   (maybe-add-command-suffix! rebuild-imail-summary-buffer buffer))
 	  ((INCREASE-LENGTH SET-LENGTH)
 	   (rebuild-imail-summary-buffer buffer))))))
+
+(define (imail-folder->summary-buffer folder error?)
+  (let ((buffer (imail-folder->buffer folder error?)))
+    (and buffer
+	 (or (buffer-get buffer 'IMAIL-SUMMARY-BUFFER #f)
+	     (and error?
+		  (error:bad-range-argument folder
+					    'IMAIL-FOLDER->SUMMARY-BUFFER))))))
 
 (define (imail-summary-message-mark buffer message)
   (let ((index (message-index message)))
@@ -131,14 +145,19 @@ The recipients are specified as a comma-separated list of names."
 	 (line-start (buffer-start buffer) index))))
 
 (define (rebuild-imail-summary-buffer buffer)
-  (buffer-reset! buffer)
+  (set-buffer-writeable! buffer)
+  (buffer-widen! buffer)
+  (region-delete! (buffer-region buffer))
   (fill-imail-summary-buffer! buffer
 			      (selected-folder #f buffer)
 			      (buffer-get buffer
 					  'IMAIL-SUMMARY-PREDICATE
 					  #f))
   (set-buffer-major-mode! buffer (ref-mode-object imail))
+  (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-summary-revert-buffer)
+  (remove-kill-buffer-hook buffer imail-kill-buffer)
   (buffer-not-modified! buffer)
+  (set-buffer-point! buffer (buffer-start buffer))
   (local-set-variable! truncate-lines #t buffer)
   (local-set-variable! mode-line-process
 		       (list ": "
@@ -146,7 +165,16 @@ The recipients are specified as a comma-separated list of names."
 					 'IMAIL-SUMMARY-DESCRIPTION
 					 "All"))
 		       buffer)
-  (imail-summary-select-message buffer (selected-message #f buffer)))
+  (let ((message
+	 (selected-message #f (buffer-get buffer 'IMAIL-FOLDER-BUFFER))))
+    (if message
+	(imail-summary-select-message buffer message))))
+
+(define (imail-summary-revert-buffer buffer dont-use-auto-save? dont-confirm?)
+  dont-use-auto-save? dont-confirm?
+  (if (or dont-confirm?
+	  (prompt-for-yes-or-no? "Revert summary buffer"))
+      (rebuild-imail-summary-buffer buffer)))
 
 (define (imail-summary-selected-message buffer)
   (let ((folder (selected-folder #f buffer))
@@ -177,8 +205,8 @@ The recipients are specified as a comma-separated list of names."
       (mark-temporary! mark))))
 
 (define (write-imail-summary-line! message mark)
-  (insert-string " " mark)
-  (insert-string-pad-left (number->string (message-index message))
+  (insert-char (if (message-deleted? message) #\D #\space) mark)
+  (insert-string-pad-left (number->string (+ (message-index message) 1))
 			  4 #\space mark)
   (insert-string "  " mark)
   (insert-string-pad-right (message-summary-date-string message)
@@ -227,4 +255,8 @@ The recipients are specified as a comma-separated list of names."
 	  (else s))))
 
 (define (message-summary-subject-string message)
-  (or (get-first-header-field-value message "subject" #f) ""))
+  (let ((s (or (get-first-header-field-value message "subject" #f) "")))
+    (let ((i (string-find-next-char s #\newline)))
+      (if i
+	  (string-head s i)
+	  s))))
