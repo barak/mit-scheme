@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2.c,v 1.2 1994/12/19 22:30:05 cph Exp $
+$Id: os2.c,v 1.3 1995/01/05 23:36:07 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -140,13 +140,19 @@ OS2_wait_event_semaphore (HEV s, int blockp)
   return (1);
 }
 
+HMTX OS2_create_queue_lock;
+
 HQUEUE
 OS2_create_queue (ULONG priority)
 {
   static unsigned int n = 0;
+  unsigned int this_n;
   char buffer [64];
   HQUEUE result;
-  sprintf (buffer, "\\queues\\scm%d\\%d.que", OS2_scheme_pid, (n++));
+  OS2_request_mutex_semaphore (OS2_create_queue_lock);
+  this_n = (n++);
+  OS2_release_mutex_semaphore (OS2_create_queue_lock);
+  sprintf (buffer, "\\queues\\scm%d\\%d.que", OS2_scheme_pid, this_n);
   STD_API_CALL (dos_create_queue, ((&result), priority, buffer));
   return (result);
 }
