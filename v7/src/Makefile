@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.1 2000/12/05 22:45:50 cph Exp $
+# $Id: Makefile,v 1.2 2000/12/05 22:51:14 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -31,7 +31,9 @@ setup:
 	    || ln -s ../Makefile.std $${SUBDIR}/Makefile; \
 	    (cd $${SUBDIR} && $(MAKE) $@) || exit 1; \
 	done
+	(cd microcode && makegen/makeinit.sh)
 	(cd microcode && $(MAKE) $@)
+	(cd microcode && $(MAKE) distclean)
 
 tags TAGS mostlyclean clean distclean maintainer-clean:
 	@for SUBDIR in $(SUBDIRS); do \
