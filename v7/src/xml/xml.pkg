@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.17 2003/03/01 16:52:30 cph Exp $
+$Id: xml.pkg,v 1.18 2003/03/05 01:15:13 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -176,4 +176,5 @@ USA.
   (export ()
 	  write-xml
 	  write-xml-file
-	  xml->string))
+	  xml->string
+	  xml->wide-string))
