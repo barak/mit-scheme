@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stats.scm,v 1.3 1995/03/12 16:31:16 adams Exp $
+$Id: stats.scm,v 1.4 1995/07/20 16:03:54 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -202,6 +202,8 @@ MIT in each case. |#
 	     (symbol<? u v))
 	    ((and (string? u) (string? v))
 	     (string<? u v))
+	    ((and (primitive-procedure? u) (primitive-procedure? v))
+	     (key<? (primitive-procedure-name u) (primitive-procedure-name v)))
 	    (else '(DONT KNOW))))
 
     (define (pp-alist alist)
