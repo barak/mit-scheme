@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.56 2002/02/13 01:02:55 cph Exp $
+$Id: uenvir.scm,v 14.57 2002/04/24 19:21:01 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -340,7 +340,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(append! (do-frame environment) (do-frame external)))))
 
 (define (walk-ic-procedure-args frame procedure keep? map-entry)
-  (let ((name-vector (system-pair-cdr (procedure-lambda procedure))))
+  (let ((name-vector (lambda-names-vector (procedure-lambda procedure))))
     (let loop ((index (vector-length name-vector)) (result '()))
       (if (fix:> index 1)
 	  (let ((index (fix:- index 1)))
@@ -434,10 +434,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (system-list->vector
    (ucode-type environment)
    (cons (system-pair-cons (ucode-type procedure)
-			   (system-pair-cons (ucode-type lambda)
-					     unspecific
-					     (list->vector
-					      (cons lambda-tag:unnamed names)))
+			   (make-slambda lambda-tag:unnamed names unspecific)
 			   environment)
 	 (if (eq? values 'DEFAULT)
 	     (let ((values (make-list (length names))))
