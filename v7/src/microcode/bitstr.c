@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.22 1987/02/04 17:47:44 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.23 1987/04/07 16:58:25 jinx Exp $
 
    Bit string primitives. 
 
@@ -816,7 +816,7 @@ Built_In_Primitive( Prim_bit_string_to_unsigned_integer, 1,
   if (nbits != 0)
     *scan2 = (*--scan2 & low_mask( nbits));
 
-  return Make_Pointer( TC_BIG_FIXNUM, bignum);
+  return Make_Pointer( TC_BIG_FIXNUM, ((Pointer *) bignum));
 }
 
 /* These primitives should test the type of their first argument to
