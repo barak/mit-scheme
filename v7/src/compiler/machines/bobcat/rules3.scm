@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.4 1988/02/19 20:58:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.5 1988/03/14 19:38:53 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -59,7 +59,18 @@ MIT in each case. |#
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
   (LAP ,@(clear-map!)
        ,(load-dnw number-pushed 0)
-       (BRA (@PCR ,label))))
+       (LEA (@PCR ,label) (A 0))
+       (JMP ,entry:compiler-lexpr-apply)))
+
+(define-rule statement
+  (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
+  (LAP ,@(clear-map!)
+       ;; The following assumes that at label there is
+       ;;	(JMP (L <entry>))
+       ;; The other possibility would be
+       ;;       (JMP (@@PCR ,(free-uuo-link-label name frame-size)))
+       ;; and to have <entry> at label, but it is longer and slower.
+       (BRA (@PCR ,(free-uuo-link-label name frame-size)))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
@@ -80,19 +91,6 @@ MIT in each case. |#
 	 ,(load-constant name (INST-EA (D 5)))
 	 ,(load-dnw frame-size 0)
 	 (JMP ,entry:compiler-lookup-apply))))
-
-(define-rule statement
-  (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
-  (LAP ,@(clear-map!)
-       ,(load-dnw frame-size 0)
-       (MOV L (@PCR ,(free-uuo-link-label name)) (D 1))
-       (MOV L (D 1) (@-A 7))
-       (AND L (D 7) (D 1))
-       (MOV L (D 1) (A 1))
-       (MOV L (@A 1) (D 1))
-       (AND L (D 7) (D 1))
-       (MOV L (D 1) (A 0))
-       (JMP (@A 0))))
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
@@ -197,6 +195,30 @@ MIT in each case. |#
 	   (LABEL ,label)
 	   ,@(generate/move-frame-up* frame-size temp)))))
 
+(define (object->address*dynamic-link frame-size dreg)
+  (let ((label (generate-label))
+	(temp (allocate-temporary-register! 'ADDRESS)))
+    (let ((areg (register-reference temp)))
+      (LAP (AND L ,mask-reference ,dreg)
+	   (MOV L ,dreg ,areg)
+	   (CMP L ,areg (A 4))
+	   (B HS B (@PCR ,label))
+	   (MOV L (A 4) ,areg)
+	   (LABEL ,label)
+	   ,@(generate/move-frame-up* frame-size temp)))))
+
+(define-rule statement
+  (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
+				  (OBJECT->ADDRESS (REGISTER (? source)))
+				  (REGISTER 12))
+  (if (and (dead-register? source)
+	   (register-has-alias? source 'DATA))
+      (object->address*dynamic-link frame-size
+       (register-reference (register-alias source 'DATA)))
+      (let ((temp (reference-temporary-register! 'DATA)))
+	(LAP (MOV L ,(coerce->any source) ,temp)
+	     ,@(object->address*dynamic-link frame-size temp)))))
+
 (define (generate/move-frame-up frame-size destination)
   (let ((temp (allocate-temporary-register! 'ADDRESS)))
     (LAP (LEA ,destination ,(register-reference temp))
@@ -215,60 +237,45 @@ MIT in each case. |#
 	      (generator (allocate-temporary-register! 'DATA))))
 	 (MOV L ,(register-reference destination) (A 7)))))
 
-;;;; Entry Headers
+;;;; External Labels
 
-(define generate/quotation-header
-  ;; This is invoked by the top level of the LAP generator.
-  (let ((declare-constants
-	 (lambda (constants code)
-	   (define (inner constants)
-	     (if (null? constants)
-		 code
-		 (let ((entry (car constants)))
-		   (LAP (SCHEME-OBJECT ,(cdr entry) ,(car entry))
-			,@(inner (cdr constants))))))
-	   (inner constants)))
-	(declare-references
-	 (lambda (references entry:single entry:multiple)
-	   (if (null? references)
-	       (LAP)
-	       (LAP (LEA (@PCR ,(cdar references)) (A 1))
-		    ,@(if (null? (cdr references))
-			  (LAP (JSR ,entry:single))
-			  (LAP ,(load-dnw (length references) 1)
-			       (JSR ,entry:multiple)))
-		    ,@(make-external-label (generate-label)))))))
-    (lambda (block-label constants references assignments uuo-links)
-      (declare-constants uuo-links
-       (declare-constants references
-	(declare-constants assignments
-	 (declare-constants constants
-	  (let ((debugging-information-label (allocate-constant-label))
-		(environment-label (allocate-constant-label)))
-	    (LAP
-	     ;; Place holder for the debugging info filename
-	     (SCHEME-OBJECT ,debugging-information-label DEBUGGING-INFO)
-	     (SCHEME-OBJECT ,environment-label ENVIRONMENT)
-	     (LEA (@PCR ,environment-label) (A 0))
-	     ,@(if (and (null? references)
-			(null? assignments)
-			(null? uuo-links))
-		   (LAP ,(load-constant 0 '(@A 0)))
-		   (LAP (MOV L ,reg:environment (@A 0))
-			(LEA (@PCR ,block-label) (A 0))
-			,@(declare-references
-			   references
-			   entry:compiler-cache-variable
-			   entry:compiler-cache-variable-multiple)
-			,@(declare-references
-			   assignments
-			   entry:compiler-cache-assignment
-			   entry:compiler-cache-assignment-multiple)
-			,@(declare-references
-			   uuo-links
-			   entry:compiler-uuo-link
-			   entry:compiler-uuo-link-multiple))))))))))))
+(define (make-external-label code label)
+  (set! compiler:external-labels 
+	(cons label compiler:external-labels))
+  (LAP (DC UW ,code)
+       (BLOCK-OFFSET ,label)
+       (LABEL ,label)))
+
+;;; Entry point types
+
+(define-integrable (make-code-word min max)
+  (+ (* #x100 min) max))
+
+(define (make-procedure-code-word min max)
+  (define (coerce val)
+    (cond ((and (not (negative? val))
+		(< val 128))
+	   val)
+	  ((and (negative? val)
+		(> val -128))
+	   (+ 256 val))
+	  (else
+	   (error "make-procedure-code-word: Bad value" val))))
+  (make-code-word (coerce min) (coerce max)))
+
+(define expression-code-word
+  (make-code-word #xff #xff))
+
+(define internal-entry-code-word
+  (make-code-word #xff #xfe))
+
+;; This is the same until information is encoded in them
+
+(define continuation-code-word
+  (make-code-word #x80 #x80))
 
+;;;; Procedure headers
+
 ;;; The following calls MUST appear as the first thing at the entry
 ;;; point of a procedure.  They assume that the register map is clear
 ;;; and that no register contains anything of value.
@@ -277,78 +284,166 @@ MIT in each case. |#
 ;;; across calls.  If that were not true, then we would have to save
 ;;; any such registers on the stack so that they would be GC'ed
 ;;; appropriately.
+;;;
+;;; **** This is not strictly true: the dynamic link register may
+;;; contain a valid dynamic link, but the gc handler determines that
+;;; and saves it as appropriate.
 
-(define-rule statement
-  (PROCEDURE-HEAP-CHECK (? label))
-  (let ((gc-label (generate-label)))
-    (LAP ,@(procedure-header (label->object label) gc-label)
-	 (CMP L ,reg:compiled-memtop (A 5))
-	 (B GE B (@PCR ,gc-label)))))
-
-;;; Note: do not change the MOVE.W in the setup-lexpr call to a MOVEQ.
-;;; The setup-lexpr code assumes a fixed calling sequence to compute
-;;; the GC address if that is needed.  This could be changed so that
-;;; the microcode determined how far to back up based on the argument,
-;;; or by examining the calling sequence.
-
-(define-rule statement
-  (SETUP-LEXPR (? label))
-  (let ((procedure (label->object label)))
-    (LAP ,@(procedure-header procedure false)
-	 (MOV W
-	      (& ,(+ (rtl-procedure/n-required procedure)
-		     (rtl-procedure/n-optional procedure)
-		     (if (rtl-procedure/closure? procedure) 1 0)))
-	      (D 1))
-	 (MOVEQ (& ,(if (rtl-procedure/rest? procedure) 1 0)) (D 2))
-	 (JSR ,entry:compiler-setup-lexpr))))
-
-(define-rule statement
-  (CONTINUATION-HEAP-CHECK (? internal-label))
+(define-integrable (simple-procedure-header code-word label
+					    entry:compiler-interrupt)
   (let ((gc-label (generate-label)))
     (LAP (LABEL ,gc-label)
-	 (JSR ,entry:compiler-interrupt-continuation)
-	 ,@(make-external-label internal-label)
+	 (JSR ,entry:compiler-interrupt)
+	 ,@(make-external-label code-word label)
 	 (CMP L ,reg:compiled-memtop (A 5))
 	 (B GE B (@PCR ,gc-label)))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
-  (LAP ,@(make-external-label internal-label)))
-
-(define (procedure-header procedure gc-label)
-  (let ((internal-label (rtl-procedure/label procedure))
-	(external-label (rtl-procedure/external-label procedure)))
-    (LAP ,@(case (rtl-procedure/type procedure)
-	     ((IC)
-	      (LAP (ENTRY-POINT ,external-label)
-		   (EQUATE ,external-label ,internal-label)))
-	     ((CLOSURE)
-	      (let ((required (1+ (rtl-procedure/n-required procedure)))
-		    (optional (rtl-procedure/n-optional procedure)))
-		(LAP (ENTRY-POINT ,external-label)
-		     ,@(make-external-label external-label)
-		     ,(test-dnw required 0)
-		     ,@(cond ((rtl-procedure/rest? procedure)
-			      (LAP (B GE B (@PCR ,internal-label))))
-			     ((zero? optional)
-			      (LAP (B EQ B (@PCR ,internal-label))))
-			     (else
-			      (let ((wna-label (generate-label)))
-				(LAP (B LT B (@PCR ,wna-label))
-				     ,(test-dnw (+ required optional) 0)
-				     (B LE B (@PCR ,internal-label))
-				     (LABEL ,wna-label)))))
-		     (JMP ,entry:compiler-wrong-number-of-arguments))))
-	     (else (LAP)))
-	 ,@(if gc-label
-	       (LAP (LABEL ,gc-label)
-		    (JSR ,entry:compiler-interrupt-procedure))
-	       (LAP))
-	 ,@(make-external-label internal-label))))
+  (make-external-label continuation-code-word
+		       internal-label))
 
-(define (make-external-label label)
-  (set! compiler:external-labels 
-	(cons label compiler:external-labels))
-  (LAP (BLOCK-OFFSET ,label)
-       (LABEL ,label)))
+(define-rule statement
+  (CONTINUATION-HEADER (? internal-label))
+  (simple-procedure-header continuation-code-word
+			   internal-label
+			   entry:compiler-interrupt-continuation))
+
+(define-rule statement
+  (IC-PROCEDURE-HEADER (? internal-label))
+  (let ((procedure (label->object internal-label)))
+    (let ((external-label (rtl-procedure/external-label procedure)))
+    (LAP
+     (ENTRY-POINT ,external-label)
+     (EQUATE ,external-label ,internal-label)
+     ,@(simple-procedure-header expression-code-word
+				internal-label
+				entry:compiler-interrupt-ic-procedure)))))
+
+(define-rule statement
+  (OPEN-PROCEDURE-HEADER (? internal-label))
+  (simple-procedure-header internal-entry-code-word
+			   internal-label
+			   entry:compiler-interrupt-procedure))
+
+(define-rule statement
+  (PROCEDURE-HEADER (? internal-label) (? min) (? max))
+  (LAP (EQUATE ,(rtl-procedure/external-label
+		 (label->object internal-label))
+	       ,internal-label)
+       ,@(simple-procedure-header (make-procedure-code-word min max)
+				  internal-label
+				  entry:compiler-interrupt-procedure)))
+
+;;;; Closures.  These two statements are intertwined:
+
+(define magic-closure-constant
+  (- (* #x1000000 (ucode-type compiled-entry)) 6))
+
+(define-rule statement
+  (CLOSURE-HEADER (? internal-label))
+  (let ((procedure (label->object internal-label)))
+    (let ((gc-label (generate-label))
+	  (external-label (rtl-procedure/external-label procedure)))
+      (LAP (LABEL ,gc-label)
+	   (JMP ,entry:compiler-interrupt-closure)
+	   ,@(make-external-label internal-entry-code-word external-label)
+	   (ADD L (& ,magic-closure-constant) (@A 7))
+	   (LABEL ,internal-label)
+	   (CMP L ,reg:compiled-memtop (A 5))
+	   (B GE B (@PCR ,gc-label))))))
+
+(define-rule statement
+  (CONS-CLOSURE (ENTRY:PROCEDURE (? internal-label)) (? min) (? max) (? size))
+  (let* ((temp (allocate-temporary-register! 'ADDRESS))
+	 (temp-ref (register-reference temp)))
+    (LAP (LEA (@PCR ,(rtl-procedure/external-label
+		      (label->object internal-label)))
+	      ,temp-ref)
+	 ,(load-non-pointer (ucode-type manifest-closure) (+ 3 size)
+			    (INST-EA (@A+ 5)))
+	 (MOVE L (& ,(+ (* (make-procedure-code-word min max) #x10000)
+			#x8))
+	       (@A+ 5))
+	 (MOVE L (A 5) ,reg:enclose-result)
+	 (MOVE B (& ,(ucode-type compiled-entry)) ,reg:enclose-result)
+	 (MOVE W (& #x4eb9) (@A+ 5))			; (JSR (L <entry>))
+	 (MOVE L ,temp-ref (@A+ 5))
+	 (CLR W (@A+ 5))
+	 ,@(increment-anl 5 size))))
+
+;;;; Entry Header
+;;; This is invoked by the top level of the LAP generator.
+
+(define generate/quotation-header
+  (let ((uuo-link-tag 0)
+	(reference-tag 1)
+	(assignment-tag 2))
+
+    (define (make-constant-block-tag tag datum)
+      (if (> datum #xffff)
+	  (error "make-constant-block-tag: datum too large" datum)
+	  (+ (* tag #x10000) datum)))
+
+    (define (declare-constants tag constants info)
+      (define (inner constants)
+	(if (null? constants)
+	    (cdr info)
+	    (let ((entry (car constants)))
+	      (LAP (SCHEME-OBJECT ,(cdr entry) ,(car entry))
+		   ,@(inner (cdr constants))))))
+
+      (if (and tag (not (null? constants)))
+	  (let ((label (allocate-constant-label)))
+	    (cons label
+		  (inner `((,(make-constant-block-tag tag (length constants))
+			    . ,label)
+			   ,@constants))))
+	  (cons (car info) (inner constants))))
+
+    (define (transmogrifly uuos)
+      (define (inner name assoc)
+	(if (null? assoc)
+	    (transmogrifly (cdr uuos))
+	    (cons (cons name (cdar assoc)) 		; uuo-label
+		  (cons (cons (caar assoc)		; frame-size
+			      (allocate-constant-label))
+			(inner name (cdr assoc))))))
+      (if (null? uuos)
+	  '()
+	  (inner (caar uuos) (cdar uuos))))
+
+    (lambda (block-label constants references assignments uuo-links)
+      (let ((constant-info
+	     (declare-constants uuo-link-tag (transmogrifly uuo-links)
+	       (declare-constants reference-tag references
+		 (declare-constants assignment-tag assignments
+		   (declare-constants #f constants
+		     (cons '() (LAP))))))))
+	(let ((free-ref-label (car constant-info))
+	      (constants-code (cdr constant-info))
+	      (debugging-information-label (allocate-constant-label))
+	      (environment-label (allocate-constant-label)))
+	  (LAP ,@constants-code
+	       ;; Place holder for the debugging info filename
+	       (SCHEME-OBJECT ,debugging-information-label DEBUGGING-INFO)
+	       ;; Place holder for the load time environment if needed
+	       (SCHEME-OBJECT ,environment-label
+			      ,(if (null? free-ref-label) 0 'ENVIRONMENT))
+	       ,@(if (null? free-ref-label)
+		     (LAP)
+		     (LAP (LEA (@PCR ,environment-label) (A 0))
+			  (MOV L ,reg:environment (@A 0))
+			  (LEA (@PCR ,block-label) (A 0))
+			  (LEA (@PCR ,free-ref-label) (A 1))
+			  ,(load-dnw (+ (if (null? uuo-links) 0 1)
+					(if (null? references) 0 1)
+					(if (null? assignments) 0 1))
+				     0)
+			  (JSR ,entry:compiler-link)
+			  ,@(make-external-label continuation-code-word
+						 (generate-label))))))))))
+
+;;; Local Variables: ***
+;;; eval: (put 'declare-constants 'scheme-indent-hook 2) ***
+;;; End: ***

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.3 1988/02/19 20:57:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.4 1988/03/14 19:38:35 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -112,14 +112,14 @@ MIT in each case. |#
   (QUALIFIER (pseudo-register? target))
   (LAP (MOV L
 	    (@PCR ,(free-reference-label name))
-	    ,(reference-assignment-alias! target 'DATA))))
+	    ,(reference-assignment-alias! target 'ADDRESS))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ASSIGNMENT-CACHE (? name)))
   (QUALIFIER (pseudo-register? target))
   (LAP (MOV L
 	    (@PCR ,(free-assignment-label name))
-	    ,(reference-assignment-alias! target 'DATA))))
+	    ,(reference-assignment-alias! target 'ADDRESS))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
@@ -175,6 +175,24 @@ MIT in each case. |#
 	       (MOV L ,reg:temp ,target*))
 	  (LAP (MOV L ,datum ,target*)
 	       (MOV B (& ,type) ,target*))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:PROCEDURE (? label))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((temp (register-reference (allocate-temporary-register! 'ADDRESS))))
+    (delete-dead-registers!)
+    (let ((target* (coerce->any target)))
+      (if (register-effective-address? target*)
+	  (LAP (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
+		    ,temp)
+	       (MOV L ,temp ,reg:temp)
+	       (MOV B (& ,type) ,reg:temp)
+	       (MOV L ,reg:temp ,target*))
+	  (LAP (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
+		    ,temp)
+	       (MOV L ,temp ,target*)
+	       (MOV B (& ,type) ,target*))))))
 
 ;;;; Transfers to Memory
 
@@ -210,6 +228,16 @@ MIT in each case. |#
 	 (MOV B (& ,type) ,target))))
 
 (define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
+	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:PROCEDURE (? label))))
+  (let* ((target (indirect-reference! a n))
+	 (temp (register-reference (allocate-temporary-register! 'ADDRESS))))
+    (LAP (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
+	      ,temp)
+	 (MOV L ,temp ,target)
+	 (MOV B (& ,type) ,target))))
+
+(define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a0)) (? n0))
 	  (OFFSET (REGISTER (? a1)) (? n1)))
   (let ((source (indirect-reference! a1 n1)))
@@ -240,15 +268,6 @@ MIT in each case. |#
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (OFFSET (REGISTER (? r)) (? n)))
   (LAP (MOV L ,(indirect-reference! r n) (@A+ 5))))
 
-(define-rule statement
-  (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (ENTRY:PROCEDURE (? label)))
-  (let ((temporary
-	 (register-reference (allocate-temporary-register! 'ADDRESS))))
-    (LAP (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
-	      ,temporary)
-	 (MOV L ,temporary (@A+ 5))
-	 (MOV B (& ,(ucode-type compiled-expression)) (@AO 5 -4)))))
-
 ;; This pops the top of stack into the heap
 
 (define-rule statement
@@ -276,10 +295,16 @@ MIT in each case. |#
        (MOV B (& ,type) (@A 7))))
 
 (define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
+	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:PROCEDURE (? label))))
+  (LAP (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
+       (MOV B (& ,type) (@A 7))))
+
+(define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (OFFSET (REGISTER (? r)) (? n)))
   (LAP (MOV L ,(indirect-reference! r n) (@-A 7))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (ENTRY:CONTINUATION (? label)))
   (LAP (PEA (@PCR ,label))
-       (MOV B (& ,(ucode-type compiler-return-address)) (@A 7))))
+       (MOV B (& ,(ucode-type compiled-entry)) (@A 7))))

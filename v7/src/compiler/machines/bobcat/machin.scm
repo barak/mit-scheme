@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.2 1987/12/30 07:05:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.3 1988/03/14 19:38:06 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,6 +39,9 @@ MIT in each case. |#
   offset)
 
 (define ic-block-first-parameter-offset
+  2)
+
+(define closure-block-first-offset
   2)
 
 (define (rtl:expression-cost expression)
