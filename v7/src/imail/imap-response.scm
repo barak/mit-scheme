@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.44 2001/10/10 04:26:43 cph Exp $
+;;; $Id: imap-response.scm,v 1.45 2002/03/26 03:46:53 cph Exp $
 ;;;
-;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2000-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -26,7 +26,7 @@
 (define (imap:read-server-response port)
   (let ((tag (read-string-internal char-set:space port)))
     (if (eof-object? tag)
-	tag
+	(error "IMAP server unexpectedly disconnected.")
 	(let ((response
 	       (if (string=? "+" tag)
 		   (cons 'CONTINUE (read-response-text port))
