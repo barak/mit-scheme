@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.134 1989/04/20 08:14:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.135 1989/04/26 18:49:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -42,17 +42,32 @@
 (declare (usual-integrations))
 
 (define (find-file filename)
-  (select-buffer (find-file-noselect filename)))
+  (select-buffer (find-file-noselect filename true)))
 
 (define (find-file-other-window filename)
-  (select-buffer-other-window (find-file-noselect filename)))
+  (select-buffer-other-window (find-file-noselect filename true)))
 
-(define (find-file-noselect filename)
+(define (find-file-noselect filename warn?)
   (let ((pathname (pathname->absolute-pathname (->pathname filename))))
     (if (file-directory? pathname)
 	(make-dired-buffer (pathname-as-directory pathname))
 	(let ((buffer (pathname->buffer pathname)))
-	  (or buffer
+	  (if buffer
+	      (begin
+		(if (and warn?
+			 (not (verify-visited-file-modification-time? buffer)))
+		    (cond ((not (file-exists? pathname))
+			   (editor-error "File "
+					 (pathname->string pathname)
+					 " no longer exists!"))
+			  ((prompt-for-yes-or-no?
+			    (string-append
+			     "File has changed since last visited or saved.  "
+			     (if (buffer-modified? buffer)
+				 "Flush your changes"
+				 "Read from disk")))
+			   (revert-buffer buffer true true))))
+		buffer)
 	      (let ((buffer (new-buffer (pathname->buffer-name pathname))))
 		(after-find-file
 		 buffer
@@ -152,9 +167,9 @@ Like \\[kill-buffer] followed by \\[find-file]."
 	    (save-buffer-prepare-version buffer)
 	    (set-visited-pathname buffer
 				  (prompt-for-pathname
-				   (string-append "Write buffer '"
+				   (string-append "Write buffer "
 						  (buffer-name buffer)
-						  "' to file")
+						  " to file")
 				   false)))
 	(if (memv exponent '(2 3)) (set-buffer-backed-up?! buffer false))
 	(write-buffer-interactive buffer)
@@ -326,12 +341,12 @@ If a file with the new name already exists, confirmation is requested first."
   (lambda (old new)
     (if (or (not (file-exists? new))
 	    (prompt-for-yes-or-no?
-	     (string-append "File '"
+	     (string-append "File "
 			    (pathname->string new)
-			    "' already exists; copy anyway")))
+			    " already exists; copy anyway")))
 	(begin (copy-file old new)
-	       (message "Copied '" (pathname->string old)
-			"' => '" (pathname->string new) "'")))))
+	       (message "Copied " (pathname->string old)
+			" => " (pathname->string new))))))
 
 (define-command rename-file
   "Rename a file; the old and new names are read in the typein window.
@@ -345,13 +360,13 @@ If a file with the new name already exists, confirmation is requested first."
     (let ((do-it
 	   (lambda ()
 	     (rename-file old new)
-	     (message "Renamed '" (pathname->string old)
-		      "' => '" (pathname->string new) "'"))))
+	     (message "Renamed " (pathname->string old)
+		      " => " (pathname->string new)))))
       (if (file-exists? new)
 	  (if (prompt-for-yes-or-no?
-	       (string-append "File '"
+	       (string-append "File "
 			      (pathname->string new)
-			      "' already exists; rename anyway"))
+			      " already exists; rename anyway"))
 	      (begin (delete-file new) (do-it)))
 	  (do-it)))))
 

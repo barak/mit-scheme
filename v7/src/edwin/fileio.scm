@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.89 1989/04/15 00:49:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.90 1989/04/26 18:49:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -289,18 +289,17 @@ Otherwise asks confirmation."
   false)
 
 (define (write-buffer-interactive buffer)
-  ;; Need to check for correct modification time here.
   (let ((truename (pathname->output-truename (buffer-pathname buffer))))
     (let ((writable? (file-writable? truename)))
       (if (or writable?
 	      (prompt-for-yes-or-no?
-	       (string-append "File \""
+	       (string-append "File "
 			      (pathname-name-string truename)
-			      "\" is write-protected; try to save anyway"))
+			      " is write-protected; try to save anyway"))
 	      (editor-error
 	       "Attempt to save to a file which you aren't allowed to write"))
 	  (begin
-	   (if (not (or (verify-visited-file-modification-time buffer)
+	   (if (not (or (verify-visited-file-modification-time? buffer)
 			(not (file-exists? truename))
 			(prompt-for-yes-or-no?
 			 "Disk file has changed since visited or saved.  Save anyway")))
@@ -323,17 +322,14 @@ Otherwise asks confirmation."
 		   (lambda ()
 		     (set-file-modes! truename modes))))))))))
 
-(define (verify-visited-file-modification-time buffer)
+(define (verify-visited-file-modification-time? buffer)
   (let ((truename (buffer-truename buffer))
-	(modification-time (buffer-modification-time buffer)))
+	(buffer-time (buffer-modification-time buffer)))
     (or (not truename)
-	(not modification-time)
-	(let ((new-time (file-modification-time truename)))
-	  (and new-time
-	       (or (= modification-time new-time)
-		   (and (positive? modification-time)
-			(positive? new-time)
-			(= 1 (abs (- modification-time new-time))))))))))
+	(not buffer-time)
+	(let ((file-time (file-modification-time truename)))
+	  (and file-time
+	       (< (abs (- buffer-time file-time)) 2))))))
 
 (define (write-buffer buffer)
   (let ((truename
@@ -393,9 +389,8 @@ Otherwise asks confirmation."
 			(lambda ()
 			  (let ((filename (os/default-backup-filename)))
 			    (temporary-message
-			     "Cannot write backup file; backing up in \""
-			     filename
-			     "\"")
+			     "Cannot write backup file; backing up in "
+			     filename)
 			    (copy-file truename
 				       (string->pathname filename))
 			    false))

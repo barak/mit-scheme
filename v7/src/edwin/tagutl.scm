@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.32 1989/04/15 00:53:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.33 1989/04/26 18:50:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -248,11 +248,11 @@ See documentation of variable tags-file-name."
   (if (not (ref-variable tags-table-pathname))
       (dispatch-on-command (ref-command-object visit-tags-table)))
   (let ((pathname (ref-variable tags-table-pathname)))
-    (let ((buffer (find-file-noselect pathname)))
-      (if (and (not (verify-visited-file-modification-time buffer))
+    (let ((buffer (find-file-noselect pathname false)))
+      (if (and (not (verify-visited-file-modification-time? buffer))
 	       (prompt-for-yes-or-no?
 		"Tags file has changed, read new contents"))
-	  (revert-buffer true true))
+	  (revert-buffer buffer true true))
       (if (not (eqv? (extract-right-char (buffer-start buffer)) #\Page))
 	  (editor-error "File "
 			(pathname->string pathname)
