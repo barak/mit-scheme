@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.41 1991/06/12 03:36:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.42 1991/06/12 20:47:39 cph Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -89,7 +89,9 @@ MIT in each case. |#
 		  (make-inliner entry
 				generator
 				indices
-				internal-close-coding?)))))))
+				(if (boolean? internal-close-coding?)
+				    internal-close-coding?
+				    (internal-close-coding?)))))))))
 
 ;;;; Code Generator
 
@@ -276,6 +278,16 @@ MIT in each case. |#
 (define filter/positive-integer
   (constant-filter
    (lambda (value) (and (exact-integer? value) (positive? value)))))
+
+(define (internal-close-coding-for-type-checks)
+  compiler:generate-type-checks?)
+
+(define (internal-close-coding-for-range-checks)
+  compiler:generate-range-checks?)
+
+(define (internal-close-coding-for-type-or-range-checks)
+  (or compiler:generate-type-checks?
+      compiler:generate-range-checks?))
 
 ;;;; Constraint Checkers
 
@@ -337,8 +349,7 @@ MIT in each case. |#
       primitive))))
 
 (define (open-code:type-check expression type)
-  (if (and compiler:generate-type-checks?
-	   type)
+  (if (and type compiler:generate-type-checks?)
       (generate-type-test type
 			  expression
 			  make-false-pcfg
@@ -359,8 +370,7 @@ MIT in each case. |#
 ;; This is not reasonable since the port may not include such open codings.
 
 (define (open-code:range-check index-expression limit-locative)
-  (if (and compiler:generate-range-checks?
-	   limit-locative)
+  (if (and limit-locative compiler:generate-range-checks?)
       (pcfg*pcfg->pcfg!
        (generate-nonnegative-check index-expression)
        (pcfg/prefer-consequent!
@@ -390,15 +400,15 @@ MIT in each case. |#
 
 ;;;; Indexed Memory References
 
-(define (indexed-memory-reference type length-expression index-locative)
-  (lambda (name value-type generator)
+(define (indexed-memory-reference length-expression index-locative)
+  (lambda (name base-type value-type generator)
     (lambda (combination expressions finish)
       (let ((object (car expressions))
 	    (index (cadr expressions)))
 	(open-code:with-checks
 	 combination
 	 (cons*
-	  (open-code:type-check object type)
+	  (open-code:type-check object base-type)
 	  (open-code:type-check index (ucode-type fixnum))
 	  (open-code:range-check index (length-expression object))
 	  (if value-type
@@ -450,24 +460,17 @@ MIT in each case. |#
 
 (define object-memory-reference
   (indexed-memory-reference
-   false
-   (lambda (expression)
-     expression				; ignored
-     false)
+   (lambda (expression) expression false)
    (index-locative-generator rtl:locative-offset 0 address-units-per-object)))
 
 (define vector-memory-reference
   (indexed-memory-reference
-   (ucode-type vector)
-   (lambda (expression)
-     (rtl:make-fetch (rtl:locative-offset expression 0)))
+   (lambda (expression) (rtl:make-fetch (rtl:locative-offset expression 0)))
    (index-locative-generator rtl:locative-offset 1 address-units-per-object)))
 
 (define string-memory-reference
   (indexed-memory-reference
-   (ucode-type string)
-   (lambda (expression)
-     (rtl:make-fetch (rtl:locative-offset expression 1)))
+   (lambda (expression) (rtl:make-fetch (rtl:locative-offset expression 1)))
    (index-locative-generator rtl:locative-byte-offset
 			     2
 			     address-units-per-packed-char)))
@@ -607,7 +610,7 @@ MIT in each case. |#
 	'STRING-ALLOCATE
 	expressions)))
    '(0)
-   compiler:generate-range-checks?))
+   internal-close-coding-for-range-checks))
 |#
 
 (let ((user-ref
@@ -618,15 +621,18 @@ MIT in each case. |#
 	      (let ((expression (car expressions)))
 		(open-code:with-checks
 		 combination
-		 (list (open-code:type-check expression type))
+		 (if type
+		     (list (open-code:type-check expression type))
+		     '())
 		 (finish (make-fetch (rtl:locative-offset expression index)))
 		 finish
 		 name
 		 expressions)))
 	    '(0)
-	    compiler:generate-type-checks?)))))
+	    internal-close-coding-for-type-checks)))))
   (user-ref 'CELL-CONTENTS rtl:make-fetch (ucode-type cell) 0)
   (user-ref 'VECTOR-LENGTH rtl:length-fetch (ucode-type vector) 0)
+  (user-ref 'SYSTEM-VECTOR-SIZE rtl:length-fetch false 0)
   (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
   (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
   (user-ref 'CAR rtl:make-fetch (ucode-type pair) 0)
@@ -681,23 +687,24 @@ MIT in each case. |#
 			  (loop new-pattern expression)))))))))
        1
        '(0)
-       compiler:generate-type-checks?))))
+       internal-close-coding-for-type-checks))))
 
-(for-each (lambda (name)
-	    (define-open-coder/value name
-	      (simple-open-coder
-	       (vector-memory-reference name false
-		 (lambda (locative expressions finish)
-		   expressions
-		   (finish (rtl:make-fetch locative))))
-	       '(0 1)
-	       (or compiler:generate-type-checks?
-		   compiler:generate-range-checks?))))
-	  '(VECTOR-REF SYSTEM-VECTOR-REF))
+(let ((make-ref
+       (lambda (name type)
+	 (define-open-coder/value name
+	   (simple-open-coder
+	    (vector-memory-reference name type false
+	      (lambda (locative expressions finish)
+		expressions
+		(finish (rtl:make-fetch locative))))
+	    '(0 1)
+	    internal-close-coding-for-type-or-range-checks)))))
+  (make-ref 'VECTOR-REF (ucode-type vector))
+  (make-ref 'SYSTEM-VECTOR-REF false))
 
 (define-open-coder/value 'PRIMITIVE-OBJECT-REF
   (simple-open-coder
-   (object-memory-reference 'PRIMITIVE-OBJECT-REF false
+   (object-memory-reference 'PRIMITIVE-OBJECT-REF false false
     (lambda (locative expressions finish)
       expressions
       (finish (rtl:make-fetch locative))))
@@ -724,7 +731,7 @@ MIT in each case. |#
 		 name
 		 expressions)))
 	    '(0 1)
-	    compiler:generate-type-checks?)))))
+	    internal-close-coding-for-type-checks)))))
   (fixed-assignment 'SET-CAR! (ucode-type pair) 0)
   (fixed-assignment 'SET-CDR! (ucode-type pair) 1)
   (fixed-assignment 'SET-CELL-CONTENTS! (ucode-type cell) 0)
@@ -736,22 +743,25 @@ MIT in each case. |#
   (fixed-assignment 'SYSTEM-HUNK3-SET-CXR2! false 2)
   |#)
 
-(for-each (lambda (name)
-	    (define-open-coder/effect name
-	      (simple-open-coder
-	       (vector-memory-reference name false
-		 (lambda (locative expressions finish)
-		   (finish-vector-assignment locative
-					     (caddr expressions)
-					     finish)))
-	       '(0 1 2)
-	       (or compiler:generate-type-checks?
-		   compiler:generate-range-checks?))))
-	  '(VECTOR-SET! #| SYSTEM-VECTOR-SET! |#))
+(let ((make-assignment
+       (lambda (name type)
+	 (define-open-coder/effect name
+	   (simple-open-coder
+	    (vector-memory-reference name type false
+	      (lambda (locative expressions finish)
+		(finish-vector-assignment locative
+					  (caddr expressions)
+					  finish)))
+	    '(0 1 2)
+	    internal-close-coding-for-type-or-range-checks)))))
+  (make-assignment 'VECTOR-SET! (ucode-type vector))
+  #|
+  (make-assignment 'SYSTEM-VECTOR-SET! false)
+  |#)
 
 (define-open-coder/effect 'PRIMITIVE-OBJECT-SET!
   (simple-open-coder
-   (object-memory-reference 'PRIMITIVE-OBJECT-SET! false
+   (object-memory-reference 'PRIMITIVE-OBJECT-SET! false false
     (lambda (locative expressions finish)
       (finish-vector-assignment locative
 				(caddr expressions)
@@ -776,45 +786,45 @@ MIT in each case. |#
 	'CHAR->INTEGER
 	expressions)))
    '(0)
-   compiler:generate-type-checks?))
+   internal-close-coding-for-type-checks))
 
 (define-open-coder/value 'STRING-REF
   (simple-open-coder
-   (string-memory-reference 'STRING-REF false
+   (string-memory-reference 'STRING-REF (ucode-type string) false
      (lambda (locative expressions finish)
        expressions
        (finish (rtl:string-fetch locative))))
    '(0 1)
-   (or compiler:generate-type-checks?
-       compiler:generate-range-checks?)))
+   internal-close-coding-for-type-or-range-checks))
 
 (define-open-coder/value 'VECTOR-8B-REF
   (simple-open-coder
-   (string-memory-reference 'VECTOR-8B-REF false
+   (string-memory-reference 'VECTOR-8B-REF (ucode-type string) false
      (lambda (locative expressions finish)
        expressions
        (finish (rtl:vector-8b-fetch locative))))
    '(0 1)
-   (or compiler:generate-type-checks?
-       compiler:generate-range-checks?)))
+   internal-close-coding-for-type-or-range-checks))
 
 (define-open-coder/effect 'STRING-SET!
   (simple-open-coder
-   (string-memory-reference 'STRING-SET! (ucode-type character)
+   (string-memory-reference 'STRING-SET!
+			    (ucode-type string)
+			    (ucode-type character)
      (lambda (locative expressions finish)
        (finish-string-assignment locative (caddr expressions) finish)))
    '(0 1 2)
-   (or compiler:generate-type-checks?
-       compiler:generate-range-checks?)))
+   internal-close-coding-for-type-or-range-checks))
 
 (define-open-coder/effect 'VECTOR-8B-SET!
   (simple-open-coder
-   (string-memory-reference 'VECTOR-8B-SET! (ucode-type fixnum)
+   (string-memory-reference 'VECTOR-8B-SET!
+			    (ucode-type string)
+			    (ucode-type fixnum)
      (lambda (locative expressions finish)
        (finish-vector-8b-assignment locative (caddr expressions) finish)))
    '(0 1 2)
-   (or compiler:generate-type-checks?
-       compiler:generate-range-checks?)))
+   internal-close-coding-for-type-or-range-checks))
 
 ;;;; Fixnum Arithmetic
 
@@ -912,7 +922,7 @@ MIT in each case. |#
 		 flonum-operator
 		 expressions)))
 	    '(0)
-	    compiler:generate-type-checks?)))
+	    internal-close-coding-for-type-checks)))
        '(FLONUM-NEGATE FLONUM-ABS FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN
 	 FLONUM-ACOS FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-SQRT FLONUM-ROUND
 	 FLONUM-TRUNCATE))
@@ -941,7 +951,7 @@ MIT in each case. |#
 		 flonum-operator
 		 expressions)))
 	    '(0 1)
-	    compiler:generate-type-checks?)))
+	    internal-close-coding-for-type-checks)))
        '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE))
 
       (for-each
@@ -963,7 +973,7 @@ MIT in each case. |#
 		 flonum-pred
 		 expressions)))
 	    '(0)
-	    compiler:generate-type-checks?)))
+	    internal-close-coding-for-type-checks)))
        '(FLONUM-ZERO? FLONUM-POSITIVE? FLONUM-NEGATIVE?))
 
       (for-each
@@ -988,7 +998,7 @@ MIT in each case. |#
 		 flonum-pred
 		 expressions)))
 	    '(0 1)
-	    compiler:generate-type-checks?)))
+	    internal-close-coding-for-type-checks)))
        '(FLONUM-EQUAL? FLONUM-LESS? FLONUM-GREATER?))
 
       ;; end COMPILER:OPEN-CODE-FLOATING-POINT-ARITHMETIC?
