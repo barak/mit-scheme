@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.27 1993/10/16 08:48:11 cph Exp $
+@comment $Id: scheme.texinfo,v 1.28 1993/10/19 08:03:11 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -106,9 +106,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.27 alpha
+@subtitle Edition 1.28 alpha
 @subtitle for Scheme Release 7.2
-@subtitle 16 October 1993
+@subtitle 19 October 1993
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -335,6 +335,7 @@ Hash Tables
 * Construction of Hash Tables::  
 * Basic Hash Table Operations::  
 * Resizing of Hash Tables::     
+* Address Hashing::             
 * Low-Level Hash Table Operations::  
 
 Procedures
@@ -8910,6 +8911,7 @@ once before calling any of the procedures defined here.
 * Construction of Hash Tables::  
 * Basic Hash Table Operations::  
 * Resizing of Hash Tables::     
+* Address Hashing::             
 * Low-Level Hash Table Operations::  
 @end menu
 
@@ -8975,6 +8977,8 @@ All of the above hash table constructors, with the exception of
 @code{make-eqv-hash-table}, could have been created by calls to these
 ``constructor-constructors''; see the examples below.
 
+@deffn {procedure+} strong-hash-table/constructor key-hash key=? [rehash-after-gc?]
+@deffnx {procedure+} weak-hash-table/constructor key-hash key=? [rehash-after-gc?]
 @cindex hashing, of key in hash table
 @cindex modulus, of hashing procedure
 Each of these procedures accepts two arguments and returns a hash-table
@@ -8984,13 +8988,17 @@ that computes a hash number.  Specifically, @var{key-hash} accepts two
 arguments, a key and an exact positive integer (the @dfn{modulus}), and
 returns an exact non-negative integer that is less than the modulus.
 
-@deffn {procedure+} strong-hash-table/constructor key-hash key=?
-The hash-table constructors returned by this procedure hold their keys
-strongly.
-@end deffn
+The optional argument @var{rehash-after-gc?}, if true, says that the
+values returned by @var{key-hash} might change after a garbage
+collection.  If so, the hash-table implementation arranges for the table
+to be rehashed when necessary.  (@pxref{Address Hashing}, for
+information about hash procedures that have this property.)  Otherwise,
+it is assumed that @var{key-hash} always returns the same value for the
+same arguments.  The default value of this argument is @code{#f}.
 
-@deffn {procedure+} weak-hash-table/constructor key-hash key=?
-The hash-table constructors returned by this procedure hold their keys
+The constructors returned by @code{strong-hash-table/constructor} make
+hash tables that hold their keys strongly.  The constructors returned by
+@code{weak-hash-table/constructor} make hash tables that hold their keys
 weakly.
 @end deffn
 
@@ -9115,7 +9123,7 @@ result yielded by the invoked procedure is returned as the result of
 is bounded by a constant.
 @end deffn
 
-@node Resizing of Hash Tables, Low-Level Hash Table Operations, Basic Hash Table Operations, Hash Tables
+@node Resizing of Hash Tables, Address Hashing, Basic Hash Table Operations, Hash Tables
 @subsection Resizing of Hash Tables
 
 @cindex resizing, of hash table
@@ -9244,7 +9252,54 @@ the table, but it usually changes the physical size of the table, which
 causes the associations to be rehashed.
 @end deffn
 
-@node Low-Level Hash Table Operations,  , Resizing of Hash Tables, Hash Tables
+@node Address Hashing, Low-Level Hash Table Operations, Resizing of Hash Tables, Hash Tables
+@subsection Address Hashing
+@cindex address hashing
+
+The procedures described in this section may be used to make very
+efficient key-hashing procedures for arbitrary objects.  All of these
+procedures are based on @dfn{address hashing}, uses the address of an
+object as its hash number.  The great advantage of address hashing is
+that converting an arbitrary object to a hash number is extremely fast
+and takes the same amount of time for any object.
+
+The disadvantage of address hashing is that the address of an object is
+usually changed by the garbage collector.  The hash-table implementation
+compensates for this disadvantage by noticing garbage collections and
+rehashing tables that use address hashing.  Thus, in order to use these
+procedures for key hashing, it is necessary to tell the hash-table
+implementation (by means of the @var{rehash-after-gc?} argument to the
+constructor-constructor procedure) that the hash numbers computed by
+your key-hashing procedure must be recomputed after a garbage
+collection.
+
+@deffn {procedure+} eq-hash object
+This procedure returns a hash number for @var{object}.  The result is
+always a non-negative fixnum (and therefore an exact non-negative
+integer).  Two objects that are @code{eq?} to one another map to the
+same hash number, provided that the garbage collector does not run
+during or between the two calls to @code{eq-hash}.
+@end deffn
+
+The following procedures are the key-hashing procedures used by the
+standard address-hash-based hash tables.
+
+@deffn {procedure+} eq-hash-mod object modulus
+This procedure is the key-hashing procedure used by
+@code{make-eq-hash-table}.
+@end deffn
+
+@deffn {procedure+} eqv-hash-mod object modulus
+This procedure is the key-hashing procedure used by
+@code{make-eqv-hash-table}.
+@end deffn
+
+@deffn {procedure+} equal-hash-mod object modulus
+This procedure is the key-hashing procedure used by
+@code{make-equal-hash-table}.
+@end deffn
+
+@node Low-Level Hash Table Operations,  , Address Hashing, Hash Tables
 @subsection Low-Level Hash Table Operations
 
 The procedures in this section allow the programmer to control some of
@@ -9255,7 +9310,7 @@ structure to maintain the association.  In this section, the data
 structure that represents an association in a hash table is called an
 @dfn{entry}.
 
-@deffn {procedure+} hash-table/constructor key-hash key=? make-entry entry-valid? entry-key entry-datum set-entry-datum!
+@deffn {procedure+} hash-table/constructor key-hash key=? make-entry entry-valid? entry-key entry-datum set-entry-datum! [rehash-after-gc?]
 Creates and returns a hash-table constructor procedure
 (@pxref{Construction of Hash Tables}).  The arguments to
 @code{hash-table/constructor} define the characteristics of the hash
@@ -9294,6 +9349,15 @@ datum.
 A procedure that accepts an entry and an object as arguments, modifies
 the entry's datum to be the object, and returns an unspecified
 result.
+
+@item rehash-after-gc?
+The optional argument that, if true, says that the values returned by
+@var{key-hash} might change after a garbage collection.  If so, the
+hash-table implementation arranges for the table to be rehashed when
+necessary.  (@pxref{Address Hashing}, for information about hash
+procedures that have this property.)  Otherwise, it is assumed that
+@var{key-hash} always returns the same value for the same arguments.
+The default value of this argument is @code{#f}.
 @end table
 
 For example, here is how the constructors for ordinary hash tables could
@@ -11264,9 +11328,9 @@ expressions.
 The prompt string is formed by appending a space to @var{prompt}, unless
 @var{prompt} already ends in a space.
 
-The default behavior of this procedure is to print the prompt string
-preceded by two newlines, flush the output buffer, then read an object
-and return it.
+The default behavior of this procedure is to print two newlines, the
+current @sc{rep} loop ``level number'', a space, and the prompt string;
+flush the output buffer; then read an object and return it.
 
 Under Edwin and Emacs, before the object is read, the interaction buffer
 is put into a mode that allows expressions to be edited and submitted
@@ -11291,9 +11355,10 @@ the user's commands.
 The prompt string is formed by appending a space to @var{prompt}, unless
 @var{prompt} already ends in a space.
 
-The default behavior of this procedure is to print the prompt string
-preceded by two newlines, flush the output buffer, read a character in
-@dfn{raw} mode, echo that character, and return it.
+The default behavior of this procedure is to print two newlines, the
+current @sc{rep} loop ``level number'', a space, and the prompt string;
+flush the output buffer; read a character in @dfn{raw} mode, echo that
+character, and return it.
 
 Under Edwin and Emacs, instead of reading a character, the interaction
 buffer is put into a mode in which graphic characters submit themselves
@@ -11307,9 +11372,9 @@ Prompts the user for an expression.
 The prompt string is formed by appending a colon and a space to
 @var{prompt}, unless @var{prompt} already ends in a space.
 
-The default behavior of this procedure is to print the prompt string
-preceded by two newlines, flush the output buffer, then read an object
-and return it.
+The default behavior of this procedure is to print two newlines and the
+prompt string; flush the output buffer; then read an object and return
+it.
 
 Under Edwin and Emacs, the expression is read in the minibuffer.
 @end deffn
@@ -11328,12 +11393,12 @@ is a boolean.
 The prompt string is formed by appending the string @code{" (y or n)? "}
 to @var{prompt}, unless @var{prompt} already ends in a space.
 
-The default behavior of this procedure is to print the prompt string
-preceded by two newlines, flush the output buffer, then read a
-character.  If the character is @code{#\y}, @code{#\Y}, or
-@code{#\space}, the procedure returns @code{#t}; If the character is
-@code{#\n}, @code{#\N}, or @code{#\rubout}, the procedure returns
-@code{#f}.  Otherwise the prompt is repeated.
+The default behavior of this procedure is to print two newlines and the
+prompt string; flush the output buffer; then read a character.  If the
+character is @code{#\y}, @code{#\Y}, or @code{#\space}, the procedure
+returns @code{#t}; If the character is @code{#\n}, @code{#\N}, or
+@code{#\rubout}, the procedure returns @code{#f}.  Otherwise the prompt
+is repeated.
 
 Under Edwin or Emacs, the confirmation is read in the minibuffer.
 @end deffn
