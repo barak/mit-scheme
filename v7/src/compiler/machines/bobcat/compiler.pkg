@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.28 1990/02/02 18:39:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.29 1990/03/26 23:45:05 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -89,6 +89,7 @@ MIT in each case. |#
 	  compiler:generate-rtl-files?
 	  compiler:generate-type-checks?
 	  compiler:implicit-self-static?
+	  compiler:noisy?
 	  compiler:open-code-flonum-checks?
 	  compiler:open-code-primitives?
 	  compiler:optimize-environments?
