@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.35 1995/05/13 19:01:38 adams Exp $
+$Id: pp.scm,v 14.36 1995/08/06 15:53:07 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -76,15 +76,13 @@ MIT in each case. |#
 (define (pp object #!optional port . rest)
   (let ((port (if (default-object? port) (current-output-port) port)))
     (let ((pretty-print
-	   (lambda (object) (apply pretty-print object port rest))))
-      (newline port)
+	   (lambda (object)
+	     (newline port)
+	     (apply pretty-print object port rest))))
       (cond ((pp-description object)
 	     => (lambda (description)
 		  (pretty-print object)
-		  (for-each (lambda (element)
-			      (newline port)
-			      (pretty-print element))
-			    description)))
+		  (for-each pretty-print description)))
 	    ((arity-dispatched-procedure? object)
 	     (pretty-print (unsyntax-entity object)))
 	    ((and (procedure? object) (procedure-lambda object))
