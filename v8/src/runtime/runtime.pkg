@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.75 1990/09/11 22:33:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.76 1990/09/13 22:31:38 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1858,6 +1858,7 @@ MIT in each case. |#
   (files "strout")
   (parent ())
   (export ()
+	  with-string-output-port
 	  with-output-to-string)
   (initialization (initialize-package!)))
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/strout.scm,v 14.3 1988/10/15 17:19:25 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/strout.scm,v 14.4 1990/09/13 22:31:59 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,7 +36,7 @@ MIT in each case. |#
 ;;; package: (runtime string-output)
 
 (declare (usual-integrations))
-
+
 (define (initialize-package!)
   (set! output-string-template
 	(make-output-port `((PRINT-SELF ,operation/print-self)
@@ -45,10 +45,15 @@ MIT in each case. |#
 			  false)))
 
 (define (with-output-to-string thunk)
+  (with-string-output-port
+   (lambda (port)
+     (with-output-to-port port thunk))))
+
+(define (with-string-output-port generator)
   (apply string-append
 	 (reverse!
 	  (let ((port (output-port/copy output-string-template '())))
-	    (with-output-to-port port thunk)
+	    (generator port)
 	    (output-port/state port)))))
 
 (define output-string-template)
