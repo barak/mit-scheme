@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 13.44 1987/06/21 14:51:56 allen Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 13.45 1987/12/23 04:17:16 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -52,7 +52,7 @@
 		   names)))
   (define-primitives
    vector-length vector-ref vector-set!
-   list->vector vector-cons subvector->list
+   list->vector vector vector-cons subvector->list
    subvector-move-right! subvector-move-left! subvector-fill!))
 
 (let-syntax ()
@@ -64,9 +64,6 @@
 (define (make-vector size #!optional fill)
   (if (unassigned? fill) (set! fill false))
   (vector-cons size fill))
-
-(define (vector . elements)
-  (list->vector elements))
 
 (define (vector->list vector)
   (subvector->list vector 0 (vector-length vector)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.4 1987/12/17 20:34:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.5 1987/12/23 04:19:28 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -72,7 +72,7 @@ MIT in each case. |#
     CONS PAIR? CAR CDR SET-CAR! SET-CDR! GENERAL-CAR-CDR
     NULL? LENGTH MEMQ ASSQ FIRST HEAD EMPTY-STREAM?
 
-    VECTOR-CONS VECTOR-LENGTH VECTOR-REF VECTOR-SET!
+    VECTOR VECTOR-CONS VECTOR-LENGTH VECTOR-REF VECTOR-SET!
     LIST->VECTOR SUBVECTOR->LIST
     SUBVECTOR-MOVE-RIGHT! SUBVECTOR-MOVE-LEFT! SUBVECTOR-FILL!
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.4 1987/07/08 04:43:33 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.5 1987/12/23 04:20:38 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -204,12 +204,6 @@ MIT in each case. |#
       (if-expanded (list-expansion-loop operands))
       (if-not-expanded)))
 
-(define (vector-expansion operands if-expanded if-not-expanded block)
-  (if (< (length operands) 9)
-      (if-expanded (make-combination list->vector
-				     (list (list-expansion-loop operands))))
-      (if-not-expanded)))
-
 (define (list-expansion-loop rest)
   (if (null? rest)
       (constant/make '())
@@ -289,7 +283,7 @@ MIT in each case. |#
 
 (define usual-integrations/expansion-names
   '(= < > <= >= + - * / quotient remainder fix:quotient fix:remainder
-      apply cons* list vector
+      apply cons* list
       caar cadr cdar cddr
       caaar caadr cadar caddr cdaar cdadr cddar cdddr
       caaaar caaadr caadar caaddr cadaar cadadr caddar cadddr
@@ -303,7 +297,7 @@ MIT in each case. |#
 	+-expansion --expansion *-expansion /-expansion
 	quotient-expansion remainder-expansion
 	fix:quotient-expansion fix:remainder-expansion
-	apply*-expansion cons*-expansion list-expansion vector-expansion
+	apply*-expansion cons*-expansion list-expansion
 	caar-expansion cadr-expansion cdar-expansion cddr-expansion
 	caaar-expansion caadr-expansion cadar-expansion caddr-expansion
 	cdaar-expansion cdadr-expansion cddar-expansion cdddr-expansion
