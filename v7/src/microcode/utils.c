@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.29 1987/05/27 14:50:43 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.30 1987/05/28 16:09:22 cph Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -309,17 +309,17 @@ error_wrong_type_arg (n)
 
   switch (n)
     {
-    case 1: error_code = ERR_ARG_1_WRONG_TYPE;
-    case 2: error_code = ERR_ARG_2_WRONG_TYPE;
-    case 3: error_code = ERR_ARG_3_WRONG_TYPE;
-    case 4: error_code = ERR_ARG_4_WRONG_TYPE;
-    case 5: error_code = ERR_ARG_5_WRONG_TYPE;
-    case 6: error_code = ERR_ARG_6_WRONG_TYPE;
-    case 7: error_code = ERR_ARG_7_WRONG_TYPE;
-    case 8: error_code = ERR_ARG_8_WRONG_TYPE;
-    case 9: error_code = ERR_ARG_9_WRONG_TYPE;
-    case 10: error_code = ERR_ARG_10_WRONG_TYPE;
-    default: error_code = ERR_EXTERNAL_RETURN;
+    case 1: error_code = ERR_ARG_1_WRONG_TYPE; break;
+    case 2: error_code = ERR_ARG_2_WRONG_TYPE; break;
+    case 3: error_code = ERR_ARG_3_WRONG_TYPE; break;
+    case 4: error_code = ERR_ARG_4_WRONG_TYPE; break;
+    case 5: error_code = ERR_ARG_5_WRONG_TYPE; break;
+    case 6: error_code = ERR_ARG_6_WRONG_TYPE; break;
+    case 7: error_code = ERR_ARG_7_WRONG_TYPE; break;
+    case 8: error_code = ERR_ARG_8_WRONG_TYPE; break;
+    case 9: error_code = ERR_ARG_9_WRONG_TYPE; break;
+    case 10: error_code = ERR_ARG_10_WRONG_TYPE; break;
+    default: error_code = ERR_EXTERNAL_RETURN; break;
     }
   signal_error_from_primitive (error_code);
 }
@@ -332,17 +332,17 @@ error_bad_range_arg (n)
 
   switch (n)
     {
-    case 1: error_code = ERR_ARG_1_BAD_RANGE;
-    case 2: error_code = ERR_ARG_2_BAD_RANGE;
-    case 3: error_code = ERR_ARG_3_BAD_RANGE;
-    case 4: error_code = ERR_ARG_4_BAD_RANGE;
-    case 5: error_code = ERR_ARG_5_BAD_RANGE;
-    case 6: error_code = ERR_ARG_6_BAD_RANGE;
-    case 7: error_code = ERR_ARG_7_BAD_RANGE;
-    case 8: error_code = ERR_ARG_8_BAD_RANGE;
-    case 9: error_code = ERR_ARG_9_BAD_RANGE;
-    case 10: error_code = ERR_ARG_10_BAD_RANGE;
-    default: error_code = ERR_EXTERNAL_RETURN;
+    case 1: error_code = ERR_ARG_1_BAD_RANGE; break;
+    case 2: error_code = ERR_ARG_2_BAD_RANGE; break;
+    case 3: error_code = ERR_ARG_3_BAD_RANGE; break;
+    case 4: error_code = ERR_ARG_4_BAD_RANGE; break;
+    case 5: error_code = ERR_ARG_5_BAD_RANGE; break;
+    case 6: error_code = ERR_ARG_6_BAD_RANGE; break;
+    case 7: error_code = ERR_ARG_7_BAD_RANGE; break;
+    case 8: error_code = ERR_ARG_8_BAD_RANGE; break;
+    case 9: error_code = ERR_ARG_9_BAD_RANGE; break;
+    case 10: error_code = ERR_ARG_10_BAD_RANGE; break;
+    default: error_code = ERR_EXTERNAL_RETURN; break;
     }
   signal_error_from_primitive (error_code);
 }
