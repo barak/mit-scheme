@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.88 1987/05/22 00:11:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.89 1987/06/24 04:51:11 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -103,24 +103,58 @@ MIT in each case. |#
     (let ((value (thunk)))
       (write-line (- (runtime) start))
       value)))
+
+;;;; Symbol Hash Tables
 
 (define (symbol-hash-table/make n-buckets)
   (make-vector n-buckets '()))
 
-(define (symbol-hash-table/insert! table symbol item)
+(define (symbol-hash-table/modify! table symbol if-found if-not-found)
   (let ((hash (string-hash-mod (symbol->string symbol) (vector-length table))))
     (let ((bucket (vector-ref table hash)))
       (let ((entry (assq symbol bucket)))
 	(if entry
-	    (set-cdr! entry item)
-	    (vector-set! table hash (cons (cons symbol item) bucket)))))))
+	    (set-cdr! entry (if-found (cdr entry)))
+	    (vector-set! table hash
+			 (cons (cons symbol (if-not-found))
+			       bucket)))))))
+
+(define (symbol-hash-table/lookup* table symbol if-found if-not-found)
+  (let ((value
+	 (assq symbol
+	       (vector-ref table
+			   (string-hash-mod (symbol->string symbol)
+					    (vector-length table))))))
+    (if value
+	(if-found (cdr value))
+	(if-not-found))))
+
+(define (symbol-hash-table/insert! table symbol item)
+  (symbol-hash-table/modify! table symbol
+			     (lambda (old-value) item)
+			     (lambda () item)))
 
 (define (symbol-hash-table/lookup table symbol)
-  (cdr (or (assq symbol
-		 (vector-ref table
-			     (string-hash-mod (symbol->string symbol)
-					      (vector-length table))))
-	   (error "Missing item" symbol))))
+  (symbol-hash-table/lookup* table symbol
+			     identity-procedure
+			     (lambda () (error "Missing item" symbol))))
+
+(define (symbol-hash-table/bindings table)
+  (apply append (vector->list table)))
+
+(define (symbol-hash-table/positive-bindings table predicate)
+  (mapcan (lambda (bucket)
+	    (list-transform-positive bucket
+	      (lambda (entry)
+		(predicate (cdr entry)))))
+	  (vector->list table)))
+
+(define (symbol-hash-table/negative-bindings table predicate)
+  (mapcan (lambda (bucket)
+	    (list-transform-negative bucket
+	      (lambda (entry)
+		(predicate (cdr entry)))))
+	  (vector->list table)))
 
 (define-integrable string-hash-mod
   (ucode-primitive string-hash-mod))
