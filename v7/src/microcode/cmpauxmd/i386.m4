@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.52 2001/12/17 19:29:44 cph Exp $
+### $Id: i386.m4,v 1.53 2001/12/17 19:41:58 cph Exp $
 ###
 ### Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ###
@@ -659,7 +659,7 @@ interface_to_C_proceed:')
 	leave
 	ret
 
-define_c_label(ia32_cache_synchronize)
+define_code_label(EFR(ia32_cache_synchronize))
 	OP(push,l)	REG(ebp)
 	OP(mov,l)	TW(REG(esp),REG(ebp))
 	OP(push,l)	REG(ebx)
