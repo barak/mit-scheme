@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.2 1990/06/22 01:44:14 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.3 1991/01/24 11:25:50 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -74,17 +74,17 @@ DEFUN (OS_file_soft_link_p, (name), CONST char * name)
     int buffer_length = 100;
     char * buffer = (UX_malloc (buffer_length));
     if (buffer == 0)
-      error_system_call (ENOMEM, "malloc");
+      error_system_call (ENOMEM, syscall_malloc);
     while (1)
       {
 	STD_UINT_SYSTEM_CALL
-	  ("readlink", scr, (UX_readlink (name, buffer, buffer_length)));
+	  (syscall_readlink, scr, (UX_readlink (name, buffer, buffer_length)));
 	if (scr < buffer_length)
 	  break;
 	buffer_length *= 2;
 	buffer = (UX_realloc (buffer, buffer_length));
 	if (buffer == 0)
-	  error_system_call (ENOMEM, "realloc");
+	  error_system_call (ENOMEM, syscall_realloc);
       }
     (buffer[scr]) = '\0';
     return ((CONST char *) buffer);
@@ -97,7 +97,7 @@ DEFUN (OS_file_soft_link_p, (name), CONST char * name)
 void
 DEFUN (OS_file_remove, (name), CONST char * name)
 {
-  STD_VOID_SYSTEM_CALL ("unlink", (UX_unlink (name)));
+  STD_VOID_SYSTEM_CALL (syscall_unlink, (UX_unlink (name)));
 }
 
 void
@@ -118,7 +118,7 @@ DEFUN (OS_file_link_hard, (from_name, to_name),
        CONST char * from_name AND
        CONST char * to_name)
 {
-  STD_VOID_SYSTEM_CALL ("link", (UX_link (from_name, to_name)));
+  STD_VOID_SYSTEM_CALL (syscall_link, (UX_link (from_name, to_name)));
 }
 
 void
@@ -127,7 +127,7 @@ DEFUN (OS_file_link_soft, (from_name, to_name),
        CONST char * to_name)
 {
 #ifdef HAVE_SYMBOLIC_LINKS
-  STD_VOID_SYSTEM_CALL ("symlink", (UX_symlink (from_name, to_name)));
+  STD_VOID_SYSTEM_CALL (syscall_symlink, (UX_symlink (from_name, to_name)));
 #else
   error_unimplemented_primitive ();
 #endif
@@ -138,13 +138,13 @@ DEFUN (OS_file_rename, (from_name, to_name),
        CONST char * from_name AND
        CONST char * to_name)
 {
-  STD_VOID_SYSTEM_CALL ("rename", (UX_rename (from_name, to_name)));
+  STD_VOID_SYSTEM_CALL (syscall_rename, (UX_rename (from_name, to_name)));
 }
 
 void
 DEFUN (OS_directory_make, (name), CONST char * name)
 {
-  STD_VOID_SYSTEM_CALL ("mkdir", (UX_mkdir (name, MODE_DIR)));
+  STD_VOID_SYSTEM_CALL (syscall_mkdir, (UX_mkdir (name, MODE_DIR)));
 }
 
 #if defined(HAVE_DIRENT) || defined(HAVE_DIR)
@@ -177,7 +177,7 @@ DEFUN (OS_directory_open, (name), CONST char * name)
   directory_pointer = (opendir ((char *) name));
   if (directory_pointer == 0)
 #ifdef HAVE_DIRENT
-    error_system_call (errno, "opendir");
+    error_system_call (errno, syscall_opendir);
 #else
     error_external_return ();
 #endif

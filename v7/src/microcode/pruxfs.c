@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.43 1990/11/08 11:06:12 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.44 1991/01/24 11:25:09 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -66,7 +66,7 @@ DEFINE_PRIMITIVE ("SET-FILE-MODES!", Prim_set_file_modes, 2, 2,
 {
   PRIMITIVE_HEADER (2);
   if ((UX_chmod ((STRING_ARG (1)), (arg_index_integer (2, 010000)))) < 0)
-    error_system_call (errno, "chmod");
+    error_system_call (errno, syscall_chmod);
   PRIMITIVE_RETURN (SHARP_F);
 }
 
@@ -302,12 +302,12 @@ DEFUN (file_touch, (filename), CONST char * filename)
 	      continue;
 	  }
 	if (count >= FILE_TOUCH_OPEN_TRIES)
-	  error_system_call (errno, "open");
+	  error_system_call (errno, syscall_open);
       }
   }
   {
     struct stat file_status;
-    STD_VOID_SYSTEM_CALL ("fstat", (UX_fstat (fd, (&file_status))));
+    STD_VOID_SYSTEM_CALL (syscall_fstat, (UX_fstat (fd, (&file_status))));
     if (((file_status . st_mode) & S_IFMT) != S_IFREG)
       error_bad_range_arg (1);
     /* CASE 3: file length of 0 needs special treatment. */
@@ -315,15 +315,15 @@ DEFUN (file_touch, (filename), CONST char * filename)
       {
 	char buf [1];
 	(buf[0]) = '\0';
-	STD_VOID_SYSTEM_CALL ("write", (UX_write (fd, buf, 1)));
+	STD_VOID_SYSTEM_CALL (syscall_write, (UX_write (fd, buf, 1)));
 #ifdef HAVE_TRUNCATE
-	STD_VOID_SYSTEM_CALL ("ftruncate", (UX_ftruncate (fd, 0)));
+	STD_VOID_SYSTEM_CALL (syscall_ftruncate, (UX_ftruncate (fd, 0)));
 	transaction_commit ();
 #else /* not HAVE_TRUNCATE */
 	transaction_commit ();
 	fd = (UX_open (filename, (O_WRONLY | O_TRUNC), MODE_REG));
 	if (fd >= 0)
-	  STD_VOID_SYSTEM_CALL ("close", (UX_close (fd)));
+	  STD_VOID_SYSTEM_CALL (syscall_close, (UX_close (fd)));
 #endif /* HAVE_TRUNCATE */
 	return (SHARP_F);
       }
@@ -332,11 +332,11 @@ DEFUN (file_touch, (filename), CONST char * filename)
   {
     char buf [1];
     int scr;
-    STD_UINT_SYSTEM_CALL ("read", scr, (UX_read (fd, buf, 1)));
+    STD_UINT_SYSTEM_CALL (syscall_read, scr, (UX_read (fd, buf, 1)));
     if (scr > 0)
       {
-	STD_VOID_SYSTEM_CALL ("lseek", (UX_lseek (fd, 0, SEEK_SET)));
-	STD_VOID_SYSTEM_CALL ("write", (UX_write (fd, buf, 1)));
+	STD_VOID_SYSTEM_CALL (syscall_lseek, (UX_lseek (fd, 0, SEEK_SET)));
+	STD_VOID_SYSTEM_CALL (syscall_write, (UX_write (fd, buf, 1)));
       }
   }
   transaction_commit ();

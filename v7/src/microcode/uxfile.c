@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfile.c,v 1.3 1990/11/12 04:01:05 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfile.c,v 1.4 1991/01/24 11:25:46 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -78,7 +78,8 @@ static Tchannel
 DEFUN (open_file, (filename, oflag), CONST char * filename AND int oflag)
 {
   int fd;
-  STD_UINT_SYSTEM_CALL ("open", fd, (UX_open (filename, oflag, MODE_REG)));
+  STD_UINT_SYSTEM_CALL
+    (syscall_open, fd, (UX_open (filename, oflag, MODE_REG)));
   return (OS_open_fd (fd));
 }
 
@@ -151,7 +152,7 @@ DEFUN (OS_file_length, (channel), Tchannel channel)
 {
   struct stat stat_buf;
   STD_VOID_SYSTEM_CALL
-    ("fstat", (UX_fstat ((CHANNEL_DESCRIPTOR (channel)), (&stat_buf))));
+    (syscall_fstat, (UX_fstat ((CHANNEL_DESCRIPTOR (channel)), (&stat_buf))));
   return (stat_buf . st_size);
 }
 
@@ -160,7 +161,7 @@ DEFUN (OS_file_position, (channel), Tchannel channel)
 {
   off_t result;
   STD_UINT_SYSTEM_CALL
-    ("lseek",
+    (syscall_lseek,
      result,
      (UX_lseek ((CHANNEL_DESCRIPTOR (channel)), 0L, SEEK_CUR)));
   return (result);
@@ -173,7 +174,7 @@ DEFUN (OS_file_set_position, (channel, position),
 {
   off_t result;
   STD_UINT_SYSTEM_CALL
-    ("lseek",
+    (syscall_lseek,
      result,
      (UX_lseek ((CHANNEL_DESCRIPTOR (channel)), position, SEEK_SET)));
   if (result != position)

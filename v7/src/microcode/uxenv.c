@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxenv.c,v 1.2 1990/10/01 22:42:02 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxenv.c,v 1.3 1991/01/24 11:25:41 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,8 +40,8 @@ DEFUN (OS_current_time, (buffer), struct time_structure * buffer)
 {
   time_t t;
   struct tm * ts;
-  STD_UINT_SYSTEM_CALL ("time", t, (UX_time (0)));
-  STD_PTR_SYSTEM_CALL ("localtime", ts, (UX_localtime (&t)));
+  STD_UINT_SYSTEM_CALL (syscall_time, t, (UX_time (0)));
+  STD_PTR_SYSTEM_CALL (syscall_localtime, ts, (UX_localtime (&t)));
   (buffer -> year) = ((ts -> tm_year) + 1900);
   (buffer -> month) = ((ts -> tm_mon) + 1);
   (buffer -> day) = (ts -> tm_mday);
@@ -72,7 +72,7 @@ DEFUN_VOID (OS_process_clock)
 {
   clock_t ct = (UX_SC_CLK_TCK ());
   struct tms buffer;
-  STD_VOID_SYSTEM_CALL ("times", (UX_times (&buffer)));
+  STD_VOID_SYSTEM_CALL (syscall_times, (UX_times (&buffer)));
   return
     (((((buffer . tms_utime) - initial_process_clock) * 2000) + ct) /
      (2 * ct));
@@ -110,7 +110,8 @@ DEFUN_VOID (OS_real_time_clock)
 {
   struct timeval rtc;
   struct timezone tz;
-  STD_VOID_SYSTEM_CALL ("gettimeofday", (UX_gettimeofday ((&rtc), (&tz))));
+  STD_VOID_SYSTEM_CALL
+    (syscall_gettimeofday, (UX_gettimeofday ((&rtc), (&tz))));
   return
     ((((rtc . tv_sec) - (initial_rtc . tv_sec)) * 1000) +
      ((((rtc . tv_usec) - (initial_rtc . tv_usec)) + 500) / 1000));
@@ -134,7 +135,7 @@ DEFUN_VOID (OS_real_time_clock)
   clock_t ct = (UX_SC_CLK_TCK ());
   struct tms buffer;
   clock_t t;
-  STD_UINT_SYSTEM_CALL ("times", t, (UX_times (&buffer)));
+  STD_UINT_SYSTEM_CALL (syscall_times, t, (UX_times (&buffer)));
   return ((((t - initial_rtc) * 2000) + ct) / (2 * ct));
 }
 
@@ -152,7 +153,7 @@ clock_t
 DEFUN_VOID (OS_real_time_clock)
 {
   time_t t;
-  STD_UINT_SYSTEM_CALL ("time", t, (UX_time (0)));
+  STD_UINT_SYSTEM_CALL (syscall_time, t, (UX_time (0)));
   return ((t - initial_rtc) * 1000);
 }
 
@@ -174,7 +175,7 @@ DEFUN (set_timer, (which, first, interval),
   (value . it_interval . tv_sec) = (interval / 1000);
   (value . it_interval . tv_usec) = ((interval % 1000) * 1000);
   STD_VOID_SYSTEM_CALL
-    ("setitimer", (UX_setitimer (which, (&value), (&ovalue))));
+    (syscall_setitimer, (UX_setitimer (which, (&value), (&ovalue))));
 }
 
 void
@@ -265,7 +266,7 @@ DEFUN_VOID (OS_working_dir_pathname)
     {
       path = (UX_malloc (1024));
       if (path == 0)
-	error_system_call (ENOMEM, "malloc");
+	error_system_call (ENOMEM, syscall_malloc);
       path_size = 1024;
     }
   while (1)
@@ -273,14 +274,14 @@ DEFUN_VOID (OS_working_dir_pathname)
       if ((UX_getcwd (path, path_size)) != 0)
 	return (path);
       if (errno != ERANGE)
-	error_system_call (errno, "getcwd");
+	error_system_call (errno, syscall_getcwd);
       path_size *= 2;
       {
 	char * new_path = (UX_realloc (path, path_size));
 	if (new_path == 0)
 	  /* ANSI C requires `path' to be unchanged -- we may have to
 	     discard it for systems that don't behave thus. */
-	  error_system_call (ENOMEM, "realloc");
+	  error_system_call (ENOMEM, syscall_realloc);
 	path = new_path;
       }
     }
@@ -289,7 +290,7 @@ DEFUN_VOID (OS_working_dir_pathname)
 void
 DEFUN (OS_set_working_dir_pathname, (name), CONST char * name)
 {
-  STD_VOID_SYSTEM_CALL ("chdir", (UX_chdir (name)));
+  STD_VOID_SYSTEM_CALL (syscall_chdir, (UX_chdir (name)));
 }
 
 CONST char *

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.7 1990/11/13 08:45:15 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.8 1991/01/24 11:26:14 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -190,19 +190,114 @@ DEFUN_VOID (OS_restore_external_state)
 {
   UX_ctty_restore_external_state ();
 }
+
+static enum syserr_names
+DEFUN (error_code_to_syserr, (code), int code)
+{
+  switch (code)
+    {
+    case E2BIG:		return (syserr_arg_list_too_long);
+    case EACCES:	return (syserr_permission_denied);
+    case EAGAIN:	return (syserr_resource_temporarily_unavailable);
+    case EBADF:		return (syserr_bad_file_descriptor);
+    case EBUSY:		return (syserr_resource_busy);
+    case ECHILD:	return (syserr_no_child_processes);
+    case EDEADLK:	return (syserr_resource_deadlock_avoided);
+    case EDOM:		return (syserr_domain_error);
+    case EEXIST:	return (syserr_file_exists);
+    case EFAULT:	return (syserr_bad_address);
+    case EFBIG:		return (syserr_file_too_large);
+    case EINTR:		return (syserr_interrupted_function_call);
+    case EINVAL:	return (syserr_invalid_argument);
+    case EIO:		return (syserr_io_error);
+    case EISDIR:	return (syserr_is_a_directory);
+    case EMFILE:	return (syserr_too_many_open_files);
+    case EMLINK:	return (syserr_too_many_links);
+    case ENAMETOOLONG:	return (syserr_filename_too_long);
+    case ENFILE:	return (syserr_too_many_open_files_in_system);
+    case ENODEV:	return (syserr_no_such_device);
+    case ENOENT:	return (syserr_no_such_file_or_directory);
+    case ENOEXEC:	return (syserr_exec_format_error);
+    case ENOLCK:	return (syserr_no_locks_available);
+    case ENOMEM:	return (syserr_not_enough_space);
+    case ENOSPC:	return (syserr_no_space_left_on_device);
+    case ENOSYS:	return (syserr_function_not_implemented);
+    case ENOTDIR:	return (syserr_not_a_directory);
+    case ENOTEMPTY:	return (syserr_directory_not_empty);
+    case ENOTTY:	return (syserr_inappropriate_io_control_operation);
+    case ENXIO:		return (syserr_no_such_device_or_address);
+    case EPERM:		return (syserr_operation_not_permitted);
+    case EPIPE:		return (syserr_broken_pipe);
+    case ERANGE:	return (syserr_result_too_large);
+    case EROFS:		return (syserr_read_only_file_system);
+    case ESPIPE:	return (syserr_invalid_seek);
+    case ESRCH:		return (syserr_no_such_process);
+    case EXDEV:		return (syserr_improper_link);
+    default:		return (syserr_unknown);
+    }
+}
+
+static int
+DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
+{
+  switch (syserr)
+    {
+    case syserr_arg_list_too_long:			return (E2BIG);
+    case syserr_bad_address:				return (EFAULT);
+    case syserr_bad_file_descriptor:			return (EBADF);
+    case syserr_broken_pipe:				return (EPIPE);
+    case syserr_directory_not_empty:			return (ENOTEMPTY);
+    case syserr_domain_error:				return (EDOM);
+    case syserr_exec_format_error:			return (ENOEXEC);
+    case syserr_file_exists:				return (EEXIST);
+    case syserr_file_too_large:				return (EFBIG);
+    case syserr_filename_too_long:			return (ENAMETOOLONG);
+    case syserr_function_not_implemented:		return (ENOSYS);
+    case syserr_improper_link:				return (EXDEV);
+    case syserr_inappropriate_io_control_operation:	return (ENOTTY);
+    case syserr_interrupted_function_call:		return (EINTR);
+    case syserr_invalid_argument:			return (EINVAL);
+    case syserr_invalid_seek:				return (ESPIPE);
+    case syserr_io_error:				return (EIO);
+    case syserr_is_a_directory:				return (EISDIR);
+    case syserr_no_child_processes:			return (ECHILD);
+    case syserr_no_locks_available:			return (ENOLCK);
+    case syserr_no_space_left_on_device:		return (ENOSPC);
+    case syserr_no_such_device:				return (ENODEV);
+    case syserr_no_such_device_or_address:		return (ENXIO);
+    case syserr_no_such_file_or_directory:		return (ENOENT);
+    case syserr_no_such_process:			return (ESRCH);
+    case syserr_not_a_directory:			return (ENOTDIR);
+    case syserr_not_enough_space:			return (ENOMEM);
+    case syserr_operation_not_permitted:		return (EPERM);
+    case syserr_permission_denied:			return (EACCES);
+    case syserr_read_only_file_system:			return (EROFS);
+    case syserr_resource_busy:				return (EBUSY);
+    case syserr_resource_deadlock_avoided:		return (EDEADLK);
+    case syserr_resource_temporarily_unavailable:	return (EAGAIN);
+    case syserr_result_too_large:			return (ERANGE);
+    case syserr_too_many_links:				return (EMLINK);
+    case syserr_too_many_open_files:			return (EMFILE);
+    case syserr_too_many_open_files_in_system:		return (ENFILE);
+    default: return (0);
+    }
+}
 
 void
-DEFUN (error_system_call, (code, name), int code AND CONST char * name)
+DEFUN (error_system_call, (code, name), int code AND enum syscall_names name)
 {
-  /* Improve this so that the code and name information is available
-     to the Scheme error handler. */
+  extern unsigned int syscall_error_code;
+  extern unsigned int syscall_error_name;
+  syscall_error_code = ((unsigned int) (error_code_to_syserr (code)));
+  syscall_error_name = ((unsigned int) name);
+  signal_error_from_primitive (ERR_IN_SYSTEM_CALL);
+}
+
+CONST char *
+DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
+{
   extern char * sys_errlist [];
   extern int sys_nerr;
-  if ((code >= 0) && (code <= sys_nerr))
-    fprintf (stderr, "\nerror in system call: %s: %s\n",
-	     name, (sys_errlist [code]));
-  else
-    fprintf (stderr, "\nunknown error %d in system call: %s\n", code, name);
-  fflush (stderr);
-  error_external_return ();
+  int code = (syserr_to_error_code ((enum syserr_names) syserr));
+  return (((code > 0) && (code <= sys_nerr)) ? (sys_errlist [code]) : 0);
 }

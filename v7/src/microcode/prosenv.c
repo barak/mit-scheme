@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosenv.c,v 1.3 1990/06/21 23:09:32 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosenv.c,v 1.4 1991/01/24 11:25:05 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,6 +37,7 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "osenv.h"
+#include "ostop.h"
 
 DEFINE_PRIMITIVE ("GET-DECODED-TIME", Prim_get_decoded_time, 1, 1,
   "Return a vector with the current decoded time;\n\
@@ -213,4 +214,15 @@ DEFINE_PRIMITIVE ("CURRENT-USER-HOME-DIRECTORY", Prim_current_user_home_director
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN
     (char_pointer_to_string (OS_current_user_home_directory ()));
+}
+
+DEFINE_PRIMITIVE ("SYSTEM-CALL-ERROR-MESSAGE", Prim_system_call_error_message, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    CONST char * message =
+      (OS_error_code_to_message (arg_nonnegative_integer (1)));
+    PRIMITIVE_RETURN
+      ((message == 0) ? SHARP_F : (char_pointer_to_string (message)));
+  }
 }

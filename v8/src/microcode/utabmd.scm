@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.54 1991/01/24 11:25:15 cph Exp $
+;;;
+;;;	Copyright (c) 1987-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -37,8 +39,6 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.53 1990/11/26 16:58:32 jinx Rel $
-
 (declare (usual-integrations))
 
 ;;; For quick access to any given table,
@@ -63,8 +63,8 @@
 	       #F					;06
 	       MICROCODE-ERRORS-VECTOR			;07
 	       MICROCODE-IDENTIFICATION-VECTOR		;08
-	       #F					;09
-	       #F					;0A
+	       SYSTEM-CALL-NAMES			;09
+	       SYSTEM-CALL-ERRORS			;0A
 	       GC-DAEMON				;0B
 	       TRAP-HANDLER				;0C
 	       #F					;0D
@@ -170,7 +170,7 @@
 	       STACK-ENVIRONMENT			;3B
 	       (RECNUM COMPLEX)				;3C
 	       COMPILED-CODE-BLOCK			;3D
-	       #F					;3E
+	       RECORD					;3E
 	       #F					;3F
 	       #F        				;40
 	       #F					;41
@@ -476,7 +476,7 @@
 	       UNBOUND-VARIABLE				;01
 	       UNASSIGNED-VARIABLE			;02
 	       UNDEFINED-PROCEDURE			;03
-	       #F					;04
+	       SYSTEM-CALL				;04
 	       #F					;05
 	       BAD-FRAME				;06
 	       BROKEN-CVARIABLE				;07
@@ -571,6 +571,96 @@
 	     23 ;(fixed-objects-vector-slot 'MICROCODE-TERMINATION-PROCEDURES)
 	     #())
 
+;;; [] System-call names
+
+(vector-set! (get-fixed-objects-vector)
+	     #x09 ;(fixed-objects-vector-slot 'SYSTEM-CALL-NAMES)
+	     #(ACCEPT			;00
+	       BIND			;01
+	       CHDIR			;02
+	       CHMOD			;03
+	       CLOSE			;04
+	       CONNECT			;05
+	       FCNTL-GETFL		;06
+	       FCNTL-SETFL		;07
+	       FSTAT			;08
+	       FTRUNCATE		;09
+	       GETCWD			;0A
+	       GETTIMEOFDAY		;0B
+	       IOCTL-TIOCGPGRP		;0C
+	       IOCTL-TIOCSIGSEND	;0D
+	       KILL			;0E
+	       LINK			;0F
+	       LISTEN			;10
+	       LOCALTIME		;11
+	       LSEEK			;12
+	       MALLOC			;13
+	       MKDIR			;14
+	       OPEN			;15
+	       OPENDIR			;16
+	       PIPE			;17
+	       READ			;18
+	       READLINK			;19
+	       REALLOC			;1A
+	       RENAME			;1B
+	       SETITIMER		;1C
+	       SOCKET			;1D
+	       SYMLINK			;1E
+	       TCDRAIN			;1F
+	       TCFLUSH			;20
+	       TERMINAL-GET-STATE	;21
+	       TERMINAL-SET-STATE	;22
+	       TIME			;23
+	       TIMES			;24
+	       UNLINK			;25
+	       VFORK			;26
+	       WRITE			;27
+	       ))
+
+;;; [] System-call errors
+
+(vector-set! (get-fixed-objects-vector)
+	     #x0A ;(fixed-objects-vector-slot 'SYSTEM-CALL-ERRORS)
+	     #(UNKNOWN
+	       ARG-LIST-TOO-LONG
+	       BAD-ADDRESS
+	       BAD-FILE-DESCRIPTOR
+	       BROKEN-PIPE
+	       DIRECTORY-NOT-EMPTY
+	       DOMAIN-ERROR
+	       EXEC-FORMAT-ERROR
+	       FILE-EXISTS
+	       FILE-TOO-LARGE
+	       FILENAME-TOO-LONG
+	       FUNCTION-NOT-IMPLEMENTED
+	       IMPROPER-LINK
+	       INAPPROPRIATE-IO-CONTROL-OPERATION
+	       INTERRUPTED-FUNCTION-CALL
+	       INVALID-ARGUMENT
+	       INVALID-SEEK
+	       IO-ERROR
+	       IS-A-DIRECTORY
+	       NO-CHILD-PROCESSES
+	       NO-LOCKS-AVAILABLE
+	       NO-SPACE-LEFT-ON-DEVICE
+	       NO-SUCH-DEVICE
+	       NO-SUCH-DEVICE-OR-ADDRESS
+	       NO-SUCH-FILE-OR-DIRECTORY
+	       NO-SUCH-PROCESS
+	       NOT-A-DIRECTORY
+	       NOT-ENOUGH-SPACE
+	       OPERATION-NOT-PERMITTED
+	       PERMISSION-DENIED
+	       READ-ONLY-FILE-SYSTEM
+	       RESOURCE-BUSY
+	       RESOURCE-DEADLOCK-AVOIDED
+	       RESOURCE-TEMPORARILY-UNAVAILABLE
+	       RESULT-TOO-LARGE
+	       TOO-MANY-LINKS
+	       TOO-MANY-OPEN-FILES
+	       TOO-MANY-OPEN-FILES
+	       ))
+
 ;;; [] Identification
 
 (vector-set! (get-fixed-objects-vector)
@@ -590,4 +680,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.53 1990/11/26 16:58:32 jinx Rel $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.54 1991/01/24 11:25:15 cph Exp $"

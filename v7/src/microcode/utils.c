@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.47 1990/08/16 08:42:48 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.48 1991/01/24 11:25:25 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -440,6 +440,9 @@ interpreter_applicable_p (object)
  * and Interrupt-Enables.
  */
 
+unsigned int syscall_error_code;
+unsigned int syscall_error_name;
+
 void
 Do_Micro_Error (Err, From_Pop_Return)
      long Err;
@@ -548,14 +551,24 @@ Do_Micro_Error (Err, From_Pop_Return)
   /* Arg 2:     Int. mask */
   STACK_PUSH (LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
   /* Arg 1:     Err. No   */
-  if ((Err >= SMALLEST_FIXNUM) && (Err <= BIGGEST_FIXNUM))
-  {
-    STACK_PUSH (LONG_TO_FIXNUM(Err));
-  }
+  if (Err == ERR_IN_SYSTEM_CALL)
+    {
+      /* System call errors have some additional information.
+	 Encode this as a vector in place of the error code.  */
+      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 0));
+      VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
+      VECTOR_SET (v, 1, (LONG_TO_UNSIGNED_FIXNUM (syscall_error_code)));
+      VECTOR_SET (v, 2, (LONG_TO_UNSIGNED_FIXNUM (syscall_error_name)));
+      STACK_PUSH (v);
+    }
+  else if ((Err >= SMALLEST_FIXNUM) && (Err <= BIGGEST_FIXNUM))
+    {
+      STACK_PUSH (LONG_TO_FIXNUM (Err));
+    }
   else
-  {
-    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (ERR_BAD_ERROR_CODE));
-  }
+    {
+      STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (ERR_BAD_ERROR_CODE));
+    }
   /* Procedure: Handler   */
   STACK_PUSH (Handler);
   STACK_PUSH (STACK_FRAME_HEADER + 2);

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.3 1990/11/08 11:10:56 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.4 1991/01/24 11:26:00 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -156,12 +156,12 @@ DEFUN (OS_make_subprocess, (filename, argv, envp, ctty_type),
   if (ctty_type == ctty_type_pipe)
     {
       int pv [2];
-      STD_VOID_SYSTEM_CALL ("pipe", (UX_pipe (pv)));
+      STD_VOID_SYSTEM_CALL (syscall_pipe, (UX_pipe (pv)));
       MAKE_CHANNEL ((pv[0]), channel_type_pipe, child_read =);
       OS_channel_close_on_abort (child_read);
       MAKE_CHANNEL ((pv[1]), channel_type_pipe, parent_write =);
       OS_channel_close_on_abort (parent_write);
-      STD_VOID_SYSTEM_CALL ("pipe", (UX_pipe (pv)));
+      STD_VOID_SYSTEM_CALL (syscall_pipe, (UX_pipe (pv)));
       MAKE_CHANNEL ((pv[0]), channel_type_pipe, parent_read =);
       OS_channel_close_on_abort (parent_read);
       MAKE_CHANNEL ((pv[1]), channel_type_pipe, child_write =);
@@ -173,7 +173,7 @@ DEFUN (OS_make_subprocess, (filename, argv, envp, ctty_type),
   fflush (stdout);
   fflush (stderr);
 
-  STD_UINT_SYSTEM_CALL ("vfork", child_pid, (UX_vfork ()));
+  STD_UINT_SYSTEM_CALL (syscall_vfork, child_pid, (UX_vfork ()));
   if (child_pid > 0)
     {
       /* In the parent process. */
@@ -345,7 +345,7 @@ DEFUN (OS_process_output, (process), Tprocess process)
 void
 DEFUN (OS_process_send_signal, (process, sig), Tprocess process AND int sig)
 {
-  STD_VOID_SYSTEM_CALL ("kill", (UX_kill ((PROCESS_ID (process)), sig)));
+  STD_VOID_SYSTEM_CALL (syscall_kill, (UX_kill ((PROCESS_ID (process)), sig)));
 }
 
 void

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.10 1991/01/07 23:57:14 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.11 1991/01/24 11:26:08 cph Exp $
 
-Copyright (c) 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1990-1 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -105,7 +105,7 @@ void
 DEFUN (get_terminal_state, (channel, s), Tchannel channel AND Ttty_state * s)
 {
   STD_VOID_SYSTEM_CALL
-    ("terminal_get_state",
+    (syscall_terminal_get_state,
      (UX_terminal_get_state ((CHANNEL_DESCRIPTOR (channel)), s)));
 }
 
@@ -115,7 +115,7 @@ DEFUN (set_terminal_state, (channel, s), Tchannel channel AND Ttty_state * s)
   extern int EXFUN (UX_terminal_control_ok, (int fd));
   if (UX_terminal_control_ok (CHANNEL_DESCRIPTOR (channel)))
     STD_VOID_SYSTEM_CALL
-      ("terminal_set_state",
+      (syscall_terminal_set_state,
        (UX_terminal_set_state ((CHANNEL_DESCRIPTOR (channel)), s)));
 }
 
@@ -461,21 +461,21 @@ void
 DEFUN (OS_terminal_flush_input, (channel), Tchannel channel)
 {
   STD_VOID_SYSTEM_CALL
-    ("tcflush", (UX_tcflush ((CHANNEL_DESCRIPTOR (channel)), TCIFLUSH)));
+    (syscall_tcflush, (UX_tcflush ((CHANNEL_DESCRIPTOR (channel)), TCIFLUSH)));
 }
 
 void
 DEFUN (OS_terminal_flush_output, (channel), Tchannel channel)
 {
   STD_VOID_SYSTEM_CALL
-    ("tcflush", (UX_tcflush ((CHANNEL_DESCRIPTOR (channel)), TCOFLUSH)));
+    (syscall_tcflush, (UX_tcflush ((CHANNEL_DESCRIPTOR (channel)), TCOFLUSH)));
 }
 
 void
 DEFUN (OS_terminal_drain_output, (channel), Tchannel channel)
 {
   STD_VOID_SYSTEM_CALL
-    ("tcdrain", (UX_tcdrain (CHANNEL_DESCRIPTOR (channel))));
+    (syscall_tcdrain, (UX_tcdrain (CHANNEL_DESCRIPTOR (channel))));
 }
 
 int
@@ -550,14 +550,15 @@ DEFUN (OS_pty_master_send_signal, (channel, sig), Tchannel channel AND int sig)
 {
 #ifdef TIOCSIGSEND
   STD_VOID_SYSTEM_CALL
-    ("ioctl_TIOCSIGSEND",
+    (syscall_ioctl_TIOCSIGSEND,
      (UX_ioctl ((CHANNEL_DESCRIPTOR (channel)), TIOCSIGSEND, sig)));
 #else /* not TIOCSIGSEND */
 #ifdef HAVE_BSD_JOB_CONTROL
   int fd = (CHANNEL_DESCRIPTOR (channel));
   int gid;
-  STD_VOID_SYSTEM_CALL ("ioctl_TIOCGPGRP", (UX_ioctl (fd, TIOCGPGRP, (&gid))));
-  STD_VOID_SYSTEM_CALL ("kill", (UX_kill ((-gid), sig)));
+  STD_VOID_SYSTEM_CALL
+    (syscall_ioctl_TIOCGPGRP, (UX_ioctl (fd, TIOCGPGRP, (&gid))));
+  STD_VOID_SYSTEM_CALL (syscall_kill, (UX_kill ((-gid), sig)));
 #else /* not HAVE_BSD_JOB_CONTROL */
   error_unimplemented_primitive ();
 #endif /* HAVE_BSD_JOB_CONTROL */

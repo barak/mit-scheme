@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.c,v 1.2 1990/11/08 11:11:38 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.c,v 1.3 1991/01/24 11:26:04 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,7 +49,8 @@ Tchannel
 DEFUN (OS_open_tcp_stream_socket, (host, port), char * host AND int port)
 {
   int s;
-  STD_UINT_SYSTEM_CALL ("socket", s, (UX_socket (AF_INET, SOCK_STREAM, 0)));
+  STD_UINT_SYSTEM_CALL
+    (syscall_socket, s, (UX_socket (AF_INET, SOCK_STREAM, 0)));
   {
     struct sockaddr_in address;
     (address . sin_family) = AF_INET;
@@ -61,7 +62,7 @@ DEFUN (OS_open_tcp_stream_socket, (host, port), char * host AND int port)
     }
     (address . sin_port) = port;
     STD_VOID_SYSTEM_CALL
-      ("connect", (UX_connect (s, (&address), (sizeof (address)))));
+      (syscall_connect, (UX_connect (s, (&address), (sizeof (address)))));
   }
   MAKE_CHANNEL (s, channel_type_tcp_stream_socket, return);
 }
@@ -105,13 +106,14 @@ Tchannel
 DEFUN (OS_open_unix_stream_socket, (filename), CONST char * filename)
 {
   int s;
-  STD_UINT_SYSTEM_CALL ("socket", s, (UX_socket (AF_UNIX, SOCK_STREAM, 0)));
+  STD_UINT_SYSTEM_CALL
+    (syscall_socket, s, (UX_socket (AF_UNIX, SOCK_STREAM, 0)));
   {
     struct sockaddr_un address;
     (address . sun_family) = AF_UNIX;
     strncpy ((address . sun_path), filename, (sizeof (address . sun_path)));
     STD_VOID_SYSTEM_CALL
-      ("connect", (UX_connect (s, (&address), (sizeof (address)))));
+      (syscall_connect, (UX_connect (s, (&address), (sizeof (address)))));
   }
   MAKE_CHANNEL (s, channel_type_unix_stream_socket, return);
 }
@@ -126,16 +128,18 @@ Tchannel
 DEFUN (OS_open_server_socket, (port), int port)
 {
   int s;
-  STD_UINT_SYSTEM_CALL ("socket", s, (UX_socket (AF_INET, SOCK_STREAM, 0)));
+  STD_UINT_SYSTEM_CALL
+    (syscall_socket, s, (UX_socket (AF_INET, SOCK_STREAM, 0)));
   {
     struct sockaddr_in address;
     (address . sin_family) = AF_INET;
     (address . sin_addr . s_addr) = INADDR_ANY;
     (address . sin_port) = port;
     STD_VOID_SYSTEM_CALL
-      ("bind", (UX_bind (s, (&address), (sizeof (struct sockaddr_in)))));
+      (syscall_bind, (UX_bind (s, (&address), (sizeof (struct sockaddr_in)))));
   }
-  STD_VOID_SYSTEM_CALL ("listen", (UX_listen (s, SOCKET_LISTEN_BACKLOG)));
+  STD_VOID_SYSTEM_CALL
+    (syscall_listen, (UX_listen (s, SOCKET_LISTEN_BACKLOG)));
   MAKE_CHANNEL (s, channel_type_tcp_server_socket, return);
 }
 
@@ -160,7 +164,7 @@ DEFUN (OS_server_connection_accept, (channel, peer_host, peer_port),
       if (errno == EWOULDBLOCK)
 	return (NO_CHANNEL);
 #endif
-      error_system_call (errno, "accept");
+      error_system_call (errno, syscall_accept);
     }
   if (peer_host != 0)
     {

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.5 1991/01/07 23:56:50 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.6 1991/01/24 11:25:31 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,7 +35,7 @@ MIT in each case. */
 #include "ux.h"
 
 void
-DEFUN (UX_prim_check_errno, (name), CONST char * name)
+DEFUN (UX_prim_check_errno, (name), enum syscall_names name)
 {
   if (errno != EINTR)
     error_system_call (errno, name);

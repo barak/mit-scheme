@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.7 1990/11/09 09:07:33 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.8 1991/01/24 11:25:55 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -101,7 +101,7 @@ DEFUN (OS_channel_close, (channel), Tchannel channel)
   if (! (CHANNEL_INTERNAL (channel)))
     {
       STD_VOID_SYSTEM_CALL
-	("close", (UX_close (CHANNEL_DESCRIPTOR (channel))));
+	(syscall_close, (UX_close (CHANNEL_DESCRIPTOR (channel))));
       MARK_CHANNEL_CLOSED (channel);
     }
 }
@@ -155,7 +155,7 @@ DEFUN (OS_channel_read, (channel, buffer, nbytes),
 	  if (errno == ERRNO_NONBLOCK)
 	    return (-1);
 #endif
-	  UX_prim_check_errno ("read");
+	  UX_prim_check_errno (syscall_read);
 	  continue;
 	}
       if (scr > nbytes)
@@ -187,7 +187,7 @@ DEFUN (OS_channel_write, (channel, buffer, nbytes),
 	  if (errno == ERRNO_NONBLOCK)
 	    return (-1);
 #endif
-	  UX_prim_check_errno ("write");
+	  UX_prim_check_errno (syscall_write);
 	  continue;
 	}
       if (scr > nbytes)
@@ -228,14 +228,14 @@ static int
 DEFUN (get_flags, (fd), int fd)
 {
   int scr;
-  STD_UINT_SYSTEM_CALL ("fcntl_GETFL", scr, (UX_fcntl (fd, F_GETFL, 0)));
+  STD_UINT_SYSTEM_CALL (syscall_fcntl_GETFL, scr, (UX_fcntl (fd, F_GETFL, 0)));
   return (scr);
 }
 
 static void
 DEFUN (set_flags, (fd, flags), int fd AND int flags)
 {
-  STD_VOID_SYSTEM_CALL ("fcntl_SETFL", (UX_fcntl (fd, F_SETFL, flags)));
+  STD_VOID_SYSTEM_CALL (syscall_fcntl_SETFL, (UX_fcntl (fd, F_SETFL, flags)));
 }
 
 int
