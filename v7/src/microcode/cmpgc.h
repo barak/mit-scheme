@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpgc.h,v 1.27 1993/12/07 20:35:54 gjr Exp $
+$Id: cmpgc.h,v 1.28 1994/11/28 03:53:25 cph Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -415,7 +415,10 @@ typedef unsigned short format_word;
 #define GC_NO_COMPILER_EXPR(value_type)					\
   ((GC_NO_COMPILER_STMT ()), (value_type 0))
 
-#define RELOCATE_COMPILED(obj, nb, ob) (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT)))
+#define RELOCATE_COMPILED(obj, nb, ob)					\
+  (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT)))
+#define RELOCATE_COMPILED_INTERNAL(ad,nb,ob)				\
+  (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT)))
 #define RELOCATE_COMPILED_RAW_ADDRESS(ad,nb,ob)				\
   (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT)))
 
