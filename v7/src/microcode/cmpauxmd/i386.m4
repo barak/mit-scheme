@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.18 1992/03/11 20:06:32 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.19 1992/03/11 20:08:37 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -160,11 +160,11 @@ ifdef(`DOS',
       `define(declare_alignment,`	.align $1')')
 
 ifdef(`DOS',
-      `define(allocate_longword,`$1 dd 0')',
+      `define(allocate_longword,`_$1 dd 0')',
       `define(allocate_longword,`	.comm _$1,4')')
 
 ifdef(`DOS',
-      `define(allocate_space,`$1 db $2 dup (0)')',
+      `define(allocate_space,`_$1 db $2 dup (0)')',
       `define(allocate_space,`_$1:
 	.space $2')')
 
