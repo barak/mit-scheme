@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.11 1987/12/07 09:59:01 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.12 1987/12/07 10:23:15 cph Exp $
 
 (require 'scheme)
 
@@ -158,9 +158,9 @@ the command interpreter stack:
 
 Some possible command interpreter types and their meanings are:
 
-[Read-Eval-Print]	Read-Eval-Print loop for evaluating expressions
-[Debugger]		single character commands for debugging errors
-[Environment Inspector]	single character commands for examining environments
+[Evaluator]	read-eval-print loop for evaluating expressions
+[Debugger]	single character commands for debugging errors
+[Where]		single character commands for examining environments
 
 The latter two types of command interpreters will change the major
 mode of the Scheme process buffer to scheme-debugger-mode , in which
@@ -185,7 +185,7 @@ with no args, if that value is non-nil."
 (defun scheme-interaction-mode-initialize ()
   (use-local-map scheme-interaction-mode-map)
   (setq major-mode 'scheme-interaction-mode)
-  (setq mode-name "Scheme-Interaction"))
+  (setq mode-name "Scheme Interaction"))
 
 (defun scheme-interaction-mode-commands (keymap)
   (define-key keymap "\C-j" 'advertised-xscheme-send-previous-expression)
@@ -229,7 +229,7 @@ Commands:
 (defun scheme-debugger-mode-initialize ()
   (use-local-map scheme-debugger-mode-map)
   (setq major-mode 'scheme-debugger-mode)
-  (setq mode-name "Scheme-Debugger"))
+  (setq mode-name "Scheme Debugger"))
 
 (defun scheme-debugger-mode-commands (keymap)
   (let ((char ? ))
@@ -350,7 +350,7 @@ parse an expression from the beginning of the line and send that instead."
 
 (defun xscheme-send-current-line ()
   "Send the current line to the Scheme process.
-Useful for working with `adb'."
+Useful for working with debugging Scheme under adb."
   (interactive)
   (let ((line
 	 (save-excursion
@@ -485,10 +485,10 @@ When called, the current buffer will be the Scheme process-buffer.")
 	    (set-marker (process-mark process) (point-max))
 	    (progn (if process (delete-process process))
 		   (goto-char (point-max))
+		   (scheme-interaction-mode)
 		   (if (bobp)
 		       (insert-before-markers
 			(substitute-command-keys xscheme-startup-message)))
-		   (scheme-interaction-mode)
 		   (setq process
 			 (apply 'start-process
 				(cons "scheme"
@@ -845,11 +845,12 @@ the remaining input.")
       string))
 
 (defvar xscheme-prompt-alist
-  '(("[Normal REPL]" . "[Read-Eval-Print]")
-    ("[Error REPL]" . "[Read-Eval-Print]")
-    ("[Breakpoint REPL]" . "[Read-Eval-Print]")
-    ("[Debugger REPL]" . "[Read-Eval-Print]")
-    ("[Visiting Environment]" . "[Read-Eval-Print]"))
+  '(("[Normal REPL]" . "[Evaluator]")
+    ("[Error REPL]" . "[Evaluator]")
+    ("[Breakpoint REPL]" . "[Evaluator]")
+    ("[Debugger REPL]" . "[Evaluator]")
+    ("[Visiting Environment]" . "[Evaluator]")
+    ("[Environment Inspector]" . "[Where]"))
   "An alist which maps the Scheme command interpreter type to a print string.")
 
 (defun xscheme-prompt-for-confirmation (prompt-string)
