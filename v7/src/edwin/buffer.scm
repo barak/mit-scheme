@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.164 1993/10/14 22:43:09 cph Exp $
+;;;	$Id: buffer.scm,v 1.165 1994/03/08 20:22:19 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -131,7 +131,7 @@ The buffer is guaranteed to be deselected at that time."
   (buffer-not-modified! buffer)
   (without-interrupts
    (lambda ()
-     (undo-local-bindings! buffer)
+     (undo-local-bindings! buffer #t)
      (%buffer-reset! buffer)
      (%set-buffer-major-mode!
       buffer
@@ -227,22 +227,28 @@ The buffer is guaranteed to be deselected at that time."
   (there-exists? (buffer-windows buffer) window-visible?))
 
 (define (buffer-get buffer key)
-  (let ((entry (assq key (vector-ref buffer buffer-index:alist))))
+  (let ((entry (assq key (buffer-alist buffer))))
     (and entry
 	 (cdr entry))))
 
 (define (buffer-put! buffer key value)
-  (let ((entry (assq key (vector-ref buffer buffer-index:alist))))
-    (if entry
-	(set-cdr! entry value)
-	(vector-set! buffer buffer-index:alist
-		     (cons (cons key value)
-			   (vector-ref buffer buffer-index:alist))))))
+  (if value
+      (let ((entry (assq key (buffer-alist buffer))))
+	(if entry
+	    (set-cdr! entry value)
+	    (vector-set! buffer buffer-index:alist
+			 (cons (cons key value) (buffer-alist buffer)))))
+      (buffer-remove! buffer key)))
 
 (define (buffer-remove! buffer key)
-  (vector-set! buffer
-	       buffer-index:alist
-	       (del-assq! key (vector-ref buffer buffer-index:alist))))
+  (vector-set! buffer buffer-index:alist
+	       (del-assq! key (buffer-alist buffer))))
+
+(define (remove-impermanent-bindings! alist)
+  ((list-deletor!
+    (lambda (entry)
+      (not (variable-permanent-local? (car entry)))))
+   alist))
 
 (define (->buffer object)
   (cond ((buffer? object) object)
@@ -344,16 +350,21 @@ The buffer is guaranteed to be deselected at that time."
 	     (invoke-variable-assignment-daemons! buffer variable)))))))
 
 (define (variable-local-value buffer variable)
-  (let ((binding (search-local-bindings (->buffer buffer) variable)))
+  (let ((binding
+	 (and buffer
+	      (search-local-bindings (->buffer buffer) variable))))
     (if binding
 	(cdr binding)
 	(variable-default-value variable))))
 
 (define (variable-local-value? buffer variable)
-  (search-local-bindings buffer variable))
+  (or (not buffer)
+      (search-local-bindings buffer variable)))
 
 (define (set-variable-local-value! buffer variable value)
-  (cond ((variable-buffer-local? variable)
+  (cond ((not buffer)
+	 (set-variable-default-value! variable value))
+	((variable-buffer-local? variable)
 	 (define-variable-local-value! buffer variable value))
 	((search-local-bindings buffer variable)
 	 =>
@@ -384,7 +395,7 @@ The buffer is guaranteed to be deselected at that time."
 	     (car bindings)
 	     (loop (cdr bindings))))))
 
-(define (undo-local-bindings! buffer)
+(define (undo-local-bindings! buffer all?)
   ;; Caller guarantees that interrupts are disabled.
   (let ((bindings (buffer-local-bindings buffer)))
     (if (buffer-local-bindings-installed? buffer)
@@ -392,7 +403,8 @@ The buffer is guaranteed to be deselected at that time."
 	    ((null? bindings))
 	  (set-variable-%value! (caar bindings)
 				(variable-default-value (caar bindings)))))
-    (vector-set! buffer buffer-index:local-bindings '())
+    (vector-set! buffer buffer-index:local-bindings
+		 (if all? '() (remove-impermanent-bindings! bindings)))
     (do ((bindings bindings (cdr bindings)))
 	((null? bindings))
       (invoke-variable-assignment-daemons! buffer (caar bindings)))))
@@ -460,13 +472,16 @@ The buffer is guaranteed to be deselected at that time."
       (editor-error "The major mode of this buffer is locked: " buffer))
   (without-interrupts
    (lambda ()
-     (undo-local-bindings! buffer)
+     (undo-local-bindings! buffer #f)
      (%set-buffer-major-mode! buffer mode)
      (buffer-modeline-event! buffer 'BUFFER-MODES))))
 
 (define (%set-buffer-major-mode! buffer mode)
   (vector-set! buffer buffer-index:modes (list mode))
   (vector-set! buffer buffer-index:comtabs (mode-comtabs mode))
+  (set-variable-local-value! buffer
+			     (ref-variable-object mode-name)
+			     (mode-display-name mode))
   ((mode-initialization mode) buffer))
 
 (define (buffer-minor-modes buffer)
@@ -489,6 +504,7 @@ The buffer is guaranteed to be deselected at that time."
 	     (set-buffer-comtabs! buffer
 				  (cons (minor-mode-comtab mode)
 					(buffer-comtabs buffer)))
+	     (add-minor-mode-line-entry! buffer mode)
 	     ((mode-initialization mode) buffer)
 	     (buffer-modeline-event! buffer 'BUFFER-MODES)))))))
 
@@ -505,4 +521,5 @@ The buffer is guaranteed to be deselected at that time."
 	     (set-buffer-comtabs! buffer
 				  (delq! (minor-mode-comtab mode)
 					 (buffer-comtabs buffer)))
+	     (remove-minor-mode-line-entry! buffer mode)
 	     (buffer-modeline-event! buffer 'BUFFER-MODES)))))))
