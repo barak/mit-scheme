@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 13.41 1987/01/23 00:15:18 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 13.42 1987/03/17 18:51:08 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -30,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -49,18 +49,17 @@
 (define lambda-bound)
 
 (define lambda-package
-  (make-package lambda-package
-		((slambda-type (microcode-type 'LAMBDA))
-		 (slexpr-type (microcode-type 'LEXPR))
-		 (xlambda-type (microcode-type 'EXTENDED-LAMBDA))
-		 (internal-lambda-tag (make-named-tag "INTERNAL-LAMBDA"))
-		 (internal-lexpr-tag (make-named-tag "INTERNAL-LEXPR"))
-		 (lambda-optional-tag (make-interned-symbol "#!OPTIONAL"))
-		 (lambda-rest-tag (make-interned-symbol "#!REST")))
+  (let ((slambda-type (microcode-type 'LAMBDA))
+	(slexpr-type (microcode-type 'LEXPR))
+	(xlambda-type (microcode-type 'EXTENDED-LAMBDA))
+	(internal-lambda-tag (make-named-tag "INTERNAL-LAMBDA"))
+	(internal-lexpr-tag (make-named-tag "INTERNAL-LEXPR"))
+	(lambda-optional-tag (make-interned-symbol "#!OPTIONAL"))
+	(lambda-rest-tag (make-interned-symbol "#!REST")))
 
 (define internal-lambda-tags
   (list internal-lambda-tag internal-lexpr-tag))
-
+
 ;;;; Hairy Advice Wrappers
 
 ;;; The body of a LAMBDA object can be modified by transformation.
@@ -178,15 +177,14 @@
 (define (clambda-bound clambda)
   (slambda-components clambda
     (lambda (name required body)
-      (cons name
-	    (if (combination? body)
-		(let ((operator (combination-operator body)))
-		  (if (is-internal-lambda? operator)
-		      (slambda-components operator
-			(lambda (tag auxiliary body)
-			  (append required auxiliary)))
-		      required))
-		required)))))
+      (if (combination? body)
+	  (let ((operator (combination-operator body)))
+	    (if (is-internal-lambda? operator)
+		(slambda-components operator
+		  (lambda (tag auxiliary body)
+		    (append required auxiliary)))
+		required))
+	  required))))
 
 (define (clambda-has-internal-lambda? clambda)
   (let ((body (slambda-body clambda)))
@@ -194,7 +192,7 @@
 	 (let ((operator (combination-operator body)))
 	   (and (is-internal-lambda? operator)
 		operator)))))
-
+
 (define clambda-wrap-body!)
 (define clambda-wrapper-components)
 (define clambda-unwrap-body!)
@@ -255,11 +253,11 @@
     (lambda (name required body)
       (slambda-components (combination-operator body)
 	(lambda (tag auxiliary body)
-	  (cons name (append required auxiliary)))))))
+	  (append required auxiliary))))))
 
 (define (clexpr-has-internal-lambda? clexpr)
   (combination-operator (slexpr-body clexpr)))
-
+
 (define clexpr-wrap-body!)
 (define clexpr-wrapper-components)
 (define clexpr-unwrap-body!)
@@ -316,11 +314,12 @@
 		      (xlambda-unwrapped-body xlambda))))))))
 
 (define (xlambda-bound xlambda)
-  (vector->list (&triple-second xlambda)))
+  (let ((names (&triple-second xlambda)))
+    (subvector->list names 1 (vector-length names))))
 
 (define (xlambda-has-internal-lambda? xlambda)
-  #!FALSE)
-
+  false)
+
 (define xlambda-wrap-body!)
 (define xlambda-wrapper-components)
 (define xlambda-unwrap-body!)
@@ -336,6 +335,8 @@
     (set! xlambda-unwrapped-body unwrapped-body)
     (set! set-xlambda-unwrapped-body! set-unwrapped-body!)))
 
+;;;; Generic Lambda
+
 (set! lambda?
 (named-lambda (lambda? object)
   (or (primitive-type? slambda-type object)
@@ -378,14 +379,14 @@
 		      (block-declaration-text (car actions))
 		      (make-sequence (cdr actions)))
 	    (receiver name required optional rest auxiliary '() body)))))))
-
+
 (define ((dispatch-0 op-name clambda-op clexpr-op xlambda-op) lambda)
   ((cond ((primitive-type? slambda-type lambda) clambda-op)
 	 ((primitive-type? slexpr-type lambda) clexpr-op)
 	 ((primitive-type? xlambda-type lambda) xlambda-op)
 	 (else (error "Not a lambda" op-name lambda)))
    lambda))
-
+
 (define ((dispatch-1 op-name clambda-op clexpr-op xlambda-op) lambda arg)
   ((cond ((primitive-type? slambda-type lambda) clambda-op)
 	 ((primitive-type? slexpr-type lambda) clexpr-op)
@@ -465,7 +466,9 @@
 (define slexpr-body slambda-body)
 
 ;;; end LAMBDA-PACKAGE.
-))
+(the-environment)))
+
+;;;; Alternative Component Views
 
 (define (make-lambda* name required optional rest body)
   (scan-defines body
@@ -481,12 +484,24 @@
 (define (lambda-components** lambda receiver)
   (lambda-components* lambda
     (lambda (name required optional rest body)
-      (let ((rest-list (if (null? rest) '() (list rest))))
-	(receiver (list required optional rest-list)
-		  `(,name ,@required ,@optional ,@rest-list)
-		  body)))))
+      (receiver (vector name required optional rest)
+		(append required optional (if (null? rest) '() (list rest)))
+		body))))
+
+(define (lambda-pattern/name pattern)
+  (vector-ref pattern 0))
+
+(define (lambda-pattern/required pattern)
+  (vector-ref pattern 1))
+
+(define (lambda-pattern/optional pattern)
+  (vector-ref pattern 2))
+
+(define (lambda-pattern/rest pattern)
+  (vector-ref pattern 3))
 
 (define (make-lambda** pattern bound body)
+
   (define (split pattern bound receiver)
     (cond ((null? pattern)
 	   (receiver '() bound))
@@ -495,13 +510,13 @@
 	     (lambda (copy tail)
 	       (receiver (cons (car bound) copy)
 			 tail))))))
-  (split (first pattern) (cdr bound)
+
+  (split (lambda-pattern/required pattern) bound
     (lambda (required tail)
-      (split (second pattern) tail
+      (split (lambda-pattern/optional pattern) tail
 	(lambda (optional rest)
-	  (make-lambda* (car bound)
+	  (make-lambda* (lambda-pattern/name pattern)
 			required
 			optional
 			(if (null? rest) rest (car rest))
-			body))))))
 			body))))))

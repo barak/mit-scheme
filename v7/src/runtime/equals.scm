@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/equals.scm,v 13.41 1987/01/23 00:11:42 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/equals.scm,v 13.42 1987/03/17 18:49:17 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -54,9 +54,12 @@
   (if (eq? x y)
       true
       (and (primitive-type? (primitive-type x) y)
-	   (or (type? big-fixnum y)
-	       (type? big-flonum y))
-	   (= x y))))
+	   (or (and (or (type? big-fixnum y)
+			(type? big-flonum y))
+		    (= x y))
+	       (and (type? vector y)
+		    (zero? (vector-length x))
+		    (zero? (vector-length y)))))))
 
 (define (equal? x y)
   (if (eq? x y)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 1.1 1987/03/12 02:16:51 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 1.2 1987/03/17 18:54:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -61,9 +61,8 @@
 (let ()
 
 (set! string->pathname
-(named-lambda (string->pathname string)
-  (parse-pathname (canonicalize-filename-string string)
-		  make-pathname)))
+  (named-lambda (string->pathname string)
+    (parse-pathname string make-pathname)))
 
 (define (parse-pathname string receiver)
   (let ((components (divide-into-components (string-trim string))))
@@ -109,12 +108,12 @@
 	(else (list string)))))
 
 (set! home-directory-pathname
-      (lambda ()
-	(make-pathname #F
-		       (divide-into-components (get-environment-variable "HOME"))
-		       #F
-		       #F
-		       #F)))	
+  (lambda ()
+    (make-pathname #F
+		   (divide-into-components (get-environment-variable "HOME"))
+		   #F
+		   #F
+		   #F)))	
 
 (define get-environment-variable
   (let ((primitive (make-primitive-procedure 'GET-ENVIRONMENT-VARIABLE)))
@@ -195,11 +194,11 @@
 (let ()
 
 (set! pathname-unparse
-(named-lambda (pathname-unparse device directory name type version)
-  (unparse-device
-   device
-   (unparse-directory directory
-		      (pathname-unparse-name name type version)))))
+  (named-lambda (pathname-unparse device directory name type version)
+    (unparse-device
+     device
+     (unparse-directory directory
+			(pathname-unparse-name name type version)))))
 
 (define (unparse-device device rest)
   (let ((device-string (unparse-component device)))
@@ -222,18 +221,19 @@
 	 (error "Unrecognizable directory" directory))))
 
 (set! pathname-unparse-name
-(named-lambda (pathname-unparse-name name type version)
-  (let ((name-string (unparse-component name))
-	(type-string (unparse-component type))
-	(version-string (unparse-version version)))
-    (cond ((not name-string) "")
-	  ((not type-string) name-string)
-	  ((eq? type-string 'UNSPECIFIC) (string-append name-string "."))
-	  ((not version-string) (string-append name-string "." type-string))
-	  ((eq? version-string 'UNSPECIFIC)
-	   (string-append name-string "." type-string "."))
-	  (else
-	   (string-append name-string "." type-string "." version-string))))))
+  (named-lambda (pathname-unparse-name name type version)
+    (let ((name-string (unparse-component name))
+	  (type-string (unparse-component type))
+	  (version-string (unparse-version version)))
+      (cond ((not name-string) "")
+	    ((not type-string) name-string)
+	    ((eq? type-string 'UNSPECIFIC) (string-append name-string "."))
+	    ((not version-string) (string-append name-string "." type-string))
+	    ((eq? version-string 'UNSPECIFIC)
+	     (string-append name-string "." type-string "."))
+	    (else
+	     (string-append name-string "." type-string "."
+			    version-string))))))
 
 (define (unparse-version version)
   (if (eq? version 'NEWEST)
@@ -297,23 +297,18 @@
 		 string))))))
 
 (set! working-directory-pathname
-(named-lambda (working-directory-pathname)
-  pathname))
+  (named-lambda (working-directory-pathname)
+    pathname))
 
 (set! set-working-directory-pathname!
-(named-lambda (set-working-directory-pathname! name)
-  (set! pathname
-	(pathname-as-directory
-	 (pathname->absolute-pathname (->pathname name))))
-  pathname))
+  (named-lambda (set-working-directory-pathname! name)
+    (set! pathname
+	  (pathname-as-directory
+	   (pathname->absolute-pathname (->pathname name))))
+    pathname))
 
 ;;; end WORKING-DIRECTORY-PACKAGE
 ))
 
 (define init-file-pathname
-  (make-pathname #F
-		 #F
-		 ".scheme"
-		 "init"
-		 #F))
   (make-pathname #F #F ".scheme" "init" #F))

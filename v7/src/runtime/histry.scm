@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 13.42 1987/02/15 15:43:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 13.43 1987/03/17 18:50:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -46,31 +46,30 @@
 (define with-new-history)
 
 (define history-package
-  (make-package history-package
-		((set-current-history!
-		  (make-primitive-procedure 'SET-CURRENT-HISTORY!))
-		 (return-address-pop-from-compiled-code
-		  (make-return-address
-		   (microcode-return 'POP-FROM-COMPILED-CODE)))
+  (let ((set-current-history!
+	 (make-primitive-procedure 'SET-CURRENT-HISTORY!))
+	(return-address-pop-from-compiled-code
+	 (make-return-address
+	  (microcode-return 'POP-FROM-COMPILED-CODE)))
 
-		 ;; VERTEBRA abstraction.
-		 (make-vertebra (make-primitive-procedure 'HUNK3-CONS))
-		 (vertebra-rib system-hunk3-cxr0)
-		 (deeper-vertebra system-hunk3-cxr1)
-		 (shallower-vertebra system-hunk3-cxr2)
-		 (set-vertebra-rib! system-hunk3-set-cxr0!)
-		 (set-deeper-vertebra! system-hunk3-set-cxr1!)
-		 (set-shallower-vertebra! system-hunk3-set-cxr2!)
+	;; VERTEBRA abstraction.
+	(make-vertebra (make-primitive-procedure 'HUNK3-CONS))
+	(vertebra-rib system-hunk3-cxr0)
+	(deeper-vertebra system-hunk3-cxr1)
+	(shallower-vertebra system-hunk3-cxr2)
+	(set-vertebra-rib! system-hunk3-set-cxr0!)
+	(set-deeper-vertebra! system-hunk3-set-cxr1!)
+	(set-shallower-vertebra! system-hunk3-set-cxr2!)
 
-		 ;; REDUCTION abstraction.
-		 (make-reduction (make-primitive-procedure 'HUNK3-CONS))
-		 (reduction-expression system-hunk3-cxr0)
-		 (reduction-environment system-hunk3-cxr1)
-		 (next-reduction system-hunk3-cxr2)
-		 (set-reduction-expression! system-hunk3-set-cxr0!)
-		 (set-reduction-environment! system-hunk3-set-cxr1!)
-		 (set-next-reduction! system-hunk3-set-cxr2!)
-		 )
+	;; REDUCTION abstraction.
+	(make-reduction (make-primitive-procedure 'HUNK3-CONS))
+	(reduction-expression system-hunk3-cxr0)
+	(reduction-environment system-hunk3-cxr1)
+	(next-reduction system-hunk3-cxr2)
+	(set-reduction-expression! system-hunk3-set-cxr0!)
+	(set-reduction-environment! system-hunk3-set-cxr1!)
+	(set-next-reduction! system-hunk3-set-cxr2!)
+	)
 
 (declare (integrate-primitive-procedures
 	  (make-vertebra hunk3-cons)
@@ -118,15 +117,13 @@
 
 (define (create-history depth width)
   (define (new-vertebra)
-    (let ((head (make-reduction #!FALSE #!FALSE '())))
+    (let ((head (make-reduction false false '())))
       (set-next-reduction!
        head
        (let reduction-loop ((n (-1+ width)))
 	 (if (zero? n)
 	     head
-	     (make-reduction #!FALSE
-			     #!FALSE
-			     (reduction-loop (-1+ n))))))
+	     (make-reduction false false (reduction-loop (-1+ n))))))
       (make-vertebra head '() '())))
 
   (cond ((or (not (integer? depth))
@@ -152,23 +149,24 @@
 ;;; SET-CURRENT-HISTORY! is run.
 
 (set! with-new-history
-      (named-lambda (with-new-history thunk)
-	(set-current-history!
-	 (let ((history (push-history! (create-history max-subproblems
-						       max-reductions))))
-	   (if (zero? max-subproblems)
+  (named-lambda (with-new-history thunk)
+    (set-current-history!
+     (let ((history
+	    (push-history! (create-history max-subproblems
+					   max-reductions))))
+       (if (zero? max-subproblems)
 
-	       ;; In this case, we want the history to appear empty,
-	       ;; so when it pops up, there is nothing in it.
-	       history
+	   ;; In this case, we want the history to appear empty,
+	   ;; so when it pops up, there is nothing in it.
+	   history
 
-	       ;; Otherwise, record a dummy reduction, which will appear
-	       ;; in the history.
-	       (begin
-		(record-evaluation-in-history! history
-					       (scode-quote #!FALSE)
-					       system-global-environment)
-		(push-history! history)))))
+	   ;; Otherwise, record a dummy reduction, which will appear
+	   ;; in the history.
+	   (begin
+	    (record-evaluation-in-history! history
+					   (scode-quote #F)
+					   system-global-environment)
+	    (push-history! history)))))
 	(thunk)))
 
 ;;;; Primitive History Operations
@@ -202,8 +200,7 @@
   (let loop ((current history))
     (cons current
 	  (if (marked-vertebra? current)
-	      (cons (delay
-		     (unfold-and-reverse-rib (vertebra-rib current)))
+	      (cons (delay (unfold-and-reverse-rib (vertebra-rib current)))
 		    (delay
 		     (let ((next (shallower-vertebra current)))
 		       (if (eq? next history)
@@ -218,8 +215,7 @@
 	    (reduction-environment reduction))))
 
 (define (unfold-and-reverse-rib rib)
-  (let loop ((current (next-reduction rib))
-	     (output 'WRAP-AROUND))
+  (let loop ((current (next-reduction rib)) (output 'WRAP-AROUND))
     (let ((step
 	   (if (dummy-compiler-reduction? current)
 	       '()
@@ -230,8 +226,7 @@
 			 output)))))
       (if (eq? current rib)
 	  step
-	  (loop (next-reduction current)
-		step)))))
+	  (loop (next-reduction current) step)))))
 
 (define the-empty-history
   (cons (vector-ref (get-fixed-objects-vector)

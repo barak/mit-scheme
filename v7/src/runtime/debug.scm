@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.41 1987/01/23 00:11:14 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.42 1987/03/17 18:49:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -540,8 +540,6 @@
 	       lambda-tag:shallow-fluid-let
 	       lambda-tag:deep-fluid-let
 	       lambda-tag:common-lisp-fluid-let
-	       lambda-tag:make-environment
-	       lambda-tag:make-package)))
+	       lambda-tag:make-environment)))
     (named-lambda (special-name? symbol)
-      (memq symbol the-special-names))))
       (memq symbol the-special-names))))

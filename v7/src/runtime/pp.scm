@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 13.41 1987/01/23 00:17:46 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 13.42 1987/03/17 18:52:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -210,7 +210,7 @@
 	 (print-guaranteed-column nodes optimistic)
 	 (begin (tab-to pessimistic)
 		(print-column nodes pessimistic depth))))))
-
+
 ;;; Print a procedure definition.  The bound variable pattern goes on
 ;;; the same line as the keyword, while everything else gets indented
 ;;; pessimistically.  We may later want to modify this to make higher
@@ -222,7 +222,7 @@
      (print-node (car nodes) optimistic 0)
      (tab-to pessimistic)
      (print-column (cdr nodes) pessimistic depth))))
-
+
 ;;; Print a binding form.  There is a great deal of complication here,
 ;;; some of which is to gracefully handle the case of a badly-formed
 ;;; binder.  But most important is the code that handles the name when
@@ -264,7 +264,7 @@
 	   (else					;Ordinary LET.
 	    (print-node (car nodes) optimistic 0)
 	    (print-body (cdr nodes)))))))
-
+
 (define dispatch-list
   `((COND . ,forced-indentation)
     (IF . ,forced-indentation)
@@ -275,7 +275,7 @@
     (DEFINE . ,print-procedure)
     (LAMBDA . ,print-procedure)
     (NAMED-LAMBDA . ,print-procedure)))
-
+
 ;;;; Alignment
 
 (declare (integrate fits-within?))
@@ -375,15 +375,13 @@
 (define (make-prefix-node prefix subnode)
   (cond ((or (list-node? subnode)
 	     (symbol? subnode))
-	 (vector (+ (string-length prefix)
-		    (node-size subnode))
+	 (vector (+ (string-length prefix) (node-size subnode))
 		 prefix
 		 subnode))
 	((prefix-node? subnode)
 	 (make-prefix-node (string-append prefix (node-prefix subnode))
 			   (node-subnode subnode)))
-	(else
-	 (string-append prefix subnode))))
+	(else (string-append prefix subnode))))
 
 (define prefix-node? vector?)
 (define prefix-node-size vector-first)
@@ -432,28 +430,28 @@
       (define (kernel as-code?)
 	(if (scode-constant? scode)
 	    ((access pp scheme-pretty-printer) scode as-code?)
-	    ((access pp scheme-pretty-printer) (prepare scode) #!TRUE)))
+	    ((access pp scheme-pretty-printer) (prepare scode) true)))
 
       (cond ((null? optionals)
-	     (kernel #!FALSE))
+	     (kernel false))
 	    ((null? (cdr optionals))
 	     (cond ((eq? (car optionals) 'AS-CODE)
-		    (kernel #!TRUE))
+		    (kernel true))
 		   ((output-port? (car optionals))
 		    (with-output-to-port (car optionals)
-		      (lambda () (kernel #!FALSE))))
+		      (lambda () (kernel false))))
 		   (else
 		    (bad-arg (car optionals)))))
 	    ((null? (cddr optionals))
 	     (cond ((eq? (car optionals) 'AS-CODE)
 		    (if (output-port? (cadr optionals))
 			(with-output-to-port (cadr optionals)
-			  (lambda () (kernel #!TRUE)))
+			  (lambda () (kernel true)))
 			(bad-arg (cadr optionals))))
 		   ((output-port? (car optionals))
 		    (if (eq? (cadr optionals) 'AS-CODE)
 			(with-output-to-port (car optionals)
-			  (lambda () (kernel #!TRUE)))
+			  (lambda () (kernel true)))
 			(bad-arg (cadr optionals))))
 		   (else
 		    (bad-arg (car optionals)))))
@@ -464,5 +462,4 @@
 (define (pa procedure)
   (if (not (compound-procedure? procedure))
       (error "Must be a compound procedure" procedure))
-  (pp (unsyntax-lambda-list (procedure-lambda procedure))))
   (pp (unsyntax-lambda-list (procedure-lambda procedure))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.42 1987/02/27 21:59:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.43 1987/03/17 18:53:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -61,9 +61,6 @@
 
 (define lambda-tag:make-environment
   (make-named-tag "MAKE-ENVIRONMENT-PROCEDURE"))
-
-(define lambda-tag:make-package
-  (make-named-tag "MAKE-PACKAGE-PROCEDURE"))
 
 (define syntax)
 (define syntax*)
@@ -212,71 +209,88 @@
 
 ;;;; Quasiquote
 
-(define quasiquote-keyword 'QUASIQUOTE)
-(define unquote-keyword 'UNQUOTE)
-(define unquote-splicing-keyword 'UNQUOTE-SPLICING)
-
 (define expand-quasiquote)
 (let ()
 
-(define (expand expression)
-  (if (pair? expression)
-      (cond ((eq? (car expression) unquote-keyword)
-	     (cadr expression))
-	    ((eq? (car expression) quasiquote-keyword)
-	     (expand (expand (cadr expression))))
-	    ((eq? (car expression) unquote-splicing-keyword)
-	     (error "EXPAND-QUASIQUOTE: Misplaced ,@" expression))
-	    ((and (pair? (car expression))
-		  (eq? (caar expression) unquote-splicing-keyword))
-	     (expand-spread (cadr (car expression))
-			    (expand (cdr expression))))
-	    (else
-	     (expand-pair (expand (car expression))
-			  (expand (cdr expression)))))
-      (list 'QUOTE expression)))
+(define (descend-quasiquote x level return)
+  (cond ((pair? x) (descend-quasiquote-pair x level return))
+	((vector? x) (descend-quasiquote-vector x level return))
+	(else (return 'QUOTE x))))
 
-(define (expand-pair a d)
-  (cond ((pair? d)
-	 (cond ((eq? (car d) 'QUOTE)
-		(cond ((and (pair? a) (eq? (car a) 'QUOTE))
-		       (list 'QUOTE (cons (cadr a) (cadr d))))
-		      ((list? (cadr d))
-		       (cons* 'LIST
-			      a
-			      (map (lambda (element)
-				     (list 'QUOTE element))
-				   (cadr d))))
-		      (else
-		       (list 'CONS a d))))
-	       ((eq? (car d) 'CONS)
-		(cons* 'CONS* a (cdr d)))
-	       ((memq (car d) '(LIST CONS*))
-		(cons* (car d) a (cdr d)))
-	       (else
-		(list 'CONS a d))))
-	(else
-	 (list 'CONS a d))))
+(define (descend-quasiquote-pair x level return)
+  (define (descend-quasiquote-pair* level)
+    (descend-quasiquote (car x) level
+      (lambda (car-mode car-arg)
+	(descend-quasiquote (cdr x) level
+	  (lambda (cdr-mode cdr-arg)
+	    (cond ((and (eq? car-mode 'QUOTE)
+			(eq? cdr-mode 'QUOTE))
+		   (return 'QUOTE x))
+		  ((eq? car-mode 'UNQUOTE-SPLICING)
+		   (if (and (eq? cdr-mode 'QUOTE)
+			    (null? cdr-arg))
+		       (return 'UNQUOTE car-arg)
+		       (return (system 'APPEND)
+			       (list car-arg
+				     (finalize-quasiquote cdr-mode cdr-arg)))))
+		  ((and (eq? cdr-mode 'QUOTE)
+			(null? cdr-arg))
+		   (return 'LIST
+			   (list (finalize-quasiquote car-mode car-arg))))
+		  ((and (eq? cdr-mode 'QUOTE)
+			(list? cdr-arg))
+		   (return 'LIST
+			   (cons (finalize-quasiquote car-mode car-arg)
+				 (map (lambda (el)
+					(finalize-quasiquote 'QUOTE el))
+				      cdr-arg))))
+		  ((memq cdr-mode '(LIST CONS))
+		   (return cdr-mode
+			   (cons (finalize-quasiquote car-mode car-arg)
+				 cdr-arg)))
+		  (else
+		   (return
+		    'CONS
+		    (list (finalize-quasiquote car-mode car-arg)
+			  (finalize-quasiquote cdr-mode cdr-arg))))))))))
+  (case (car x)
+    ((QUASIQUOTE) (descend-quasiquote-pair* (1+ level)))
+    ((UNQUOTE UNQUOTE-SPLICING)
+     (if (zero? level)
+	 (return (car x) (cadr x))
+	 (descend-quasiquote-pair* (- level 1))))
+    (else (descend-quasiquote-pair* level))))
 
-(define (expand-spread a d)
-  (cond ((pair? d)
-	 (cond ((eq? (car d) 'QUOTE)
-		(cond ((and (pair? a) (eq? (car a) 'QUOTE))
-		       (list 'QUOTE (append (cadr a) (cadr d))))
-		      ((null? (cadr d))
-		       a)
-		      (else
-		       (list 'APPEND a d))))
-	       ((eq? (car d) 'APPEND)
-		(cons* (car d) a (cdr d)))
-	       (else
-		(list 'APPEND a d))))
+(define (descend-quasiquote-vector x level return)
+  (descend-quasiquote (vector->list x) level
+    (lambda (mode arg)
+      (case mode
+	((QUOTE)
+	 (return 'QUOTE x))
+	((LIST)
+	 (return (system 'VECTOR) arg))
 	(else
-	 (list 'APPEND a d))))
+	 (return (system 'LIST->VECTOR)
+		 (list (finalize-quasiquote mode arg))))))))
+
+(define (finalize-quasiquote mode arg)
+  (case mode
+    ((QUOTE) `',arg)
+    ((UNQUOTE) arg)
+    ((UNQUOTE-SPLICING) (error ",@ in illegal context" arg))
+    ((LIST) `(,(system 'LIST) ,@arg))
+    ((CONS)
+     (if (= (length arg) 2)
+	 `(,(system 'CONS) ,@arg)
+	 `(,(system 'CONS*) ,@arg)))
+    (else `(,mode ,@arg))))
+
+(define (system name)
+  `(ACCESS ,name #F))
 
 (set! expand-quasiquote
-(named-lambda (expand-quasiquote expression)
-  (syntax-expression (expand expression))))
+  (named-lambda (expand-quasiquote expression)
+    (syntax-expression (descend-quasiquote expression 0 finalize-quasiquote))))
 
 )
 
@@ -436,31 +450,16 @@
      (if (symbol? name-or-pattern)
 	 (syntax-bindings pattern-or-first
 	   (lambda (names values)
-	     (make-combination (make-named-lambda name-or-pattern names
-						  (syntax-sequence rest))
-			       values)))
+	     (make-letrec (list name-or-pattern)
+			  (list (make-named-lambda name-or-pattern names
+						   (syntax-sequence rest)))
+			  (make-combination (make-variable name-or-pattern)
+					    values))))
 	 (syntax-bindings name-or-pattern
 	   (lambda (names values)
 	     (make-closed-block
 	      lambda-tag:let names values
 	      (syntax-sequence (cons pattern-or-first rest)))))))))
-
-(define syntax-MAKE-PACKAGE-form
-  (spread-arguments
-   (lambda (name bindings . body)
-     (if (symbol? name)
-	 (syntax-bindings bindings
-	   (lambda (names values)
-	     (make-closed-block
-	      lambda-tag:make-package
-	      (cons name names)
-	      (cons unassigned-object values)
-	      (make-sequence* (make-assignment name the-environment-object)
-			      (if (null? body)
-				  the-environment-object
-				  (make-sequence* (syntax-sequence body)
-						  the-environment-object))))))
-	 (syntax-error "Bad package name" name)))))
 
 (define syntax-MAKE-ENVIRONMENT-form
   (spread-arguments
@@ -768,6 +767,11 @@
 (define (make-closed-block tag names values body)
   (make-combination (internal-make-lambda tag names '() '() body)
 		    values))
+
+(define (make-letrec names values body)
+  (make-closed-block lambda-tag:let '() '()
+		     (make-sequence (append! (map make-definition names values)
+					     (list body)))))
 
 ;;;; Lambda List Parser
 
@@ -991,7 +995,6 @@
 	       (LOCAL-DECLARE    . ,syntax-LOCAL-DECLARE-form)
 	       (MACRO            . ,syntax-MACRO-form)
 	       (MAKE-ENVIRONMENT . ,syntax-MAKE-ENVIRONMENT-form)
-	       (MAKE-PACKAGE     . ,syntax-MAKE-PACKAGE-form)
 	       (NAMED-LAMBDA     . ,syntax-NAMED-LAMBDA-form)
 	       (OR               . ,syntax-DISJUNCTION-form)
 	       ;; The funniness here prevents QUASIQUOTE from being
@@ -1008,9 +1011,4 @@
 	       ))))
 
 ;;; end SYNTAXER-PACKAGE
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: syntaxer-package
-;;; End:
 )

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 13.41 1987/01/23 00:22:23 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 13.42 1987/03/17 18:55:18 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -30,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -44,11 +44,10 @@
 (declare (usual-integrations))
 
 (define env-package
-  (make-package env-package
-		((env)
-		 (current-frame)
-		 (current-frame-depth)
-		 (env-commands (make-command-set 'WHERE-COMMANDS)))
+  (let ((env)
+	(current-frame)
+	(current-frame-depth)
+	(env-commands (make-command-set 'WHERE-COMMANDS)))
 
 (define (define-where-command letter function help-text)
   (define-letter-command env-commands letter function help-text))
@@ -113,8 +112,7 @@
 			(write-string "Depth (relative to starting frame): ")
 			(write depth)))
 	     (newline)
-	     (let ((bindings (del-assq (environment-name frame)
-				       (environment-bindings frame))))
+	     (let ((bindings (environment-bindings frame)))
 	       (if (null? bindings)
 		   (write-string "Has no bindings")
 		   (begin (write-string "Has bindings:")
@@ -131,7 +129,6 @@
 	   (,lambda-tag:shallow-fluid-let . FLUID-LET)
 	   (,lambda-tag:deep-fluid-let . FLUID-LET)
 	   (,lambda-tag:common-lisp-fluid-let . FLUID-BIND)
-	   (,lambda-tag:make-package . MAKE-PACKAGE)
 	   (,lambda-tag:make-environment . MAKE-ENVIRONMENT))))
     (lambda (frame)
       (let ((name (environment-name frame)))
@@ -142,7 +139,7 @@
 		     (write-string " special form"))
 	      (begin (write-string "the procedure ")
 		     (write name))))))))
-
+
 (define (print-binding binding)
   (define line-width 79)
   (define name-width 40)
@@ -247,7 +244,7 @@
   "Name of procedure which created current environment")
 
 ;;; end ENV-PACKAGE.
-))
+(the-environment)))
 
 (define print-user-friendly-name
   (access print-user-friendly-name env-package))
@@ -258,5 +255,4 @@
 ;;;; Exports
 
 (define where
-  (access where env-package debugger-package))
   (access where env-package debugger-package))

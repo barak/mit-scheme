@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.42 1987/03/12 02:19:48 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.43 1987/03/17 18:53:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -30,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -197,10 +197,10 @@
 	      (lambda (eval-list pure-list constant-list)
 		(if (not (null? pure-list))
 		    (begin (newline) (write-string "Purify")
-			   (purify (list->vector pure-list) #!TRUE)))
+			   (purify (list->vector pure-list) true)))
 		(if (not (null? constant-list))
 		    (begin (newline) (write-string "Constantify")
-			   (purify (list->vector constant-list) #!FALSE)))
+			   (purify (list->vector constant-list) false)))
 		(append! eval-list (loop tail))))))))
   (let ((files (format-files-list (access :files-lists system) compiled?)))
     (set! (access :files system)
@@ -264,12 +264,10 @@
   (let ((char (char-upcase (read-char))))
     (cond ((char=? #\Y char)
 	   (write-string "Yes")
-	   #!TRUE)
+	   true)
 	  ((char=? #\N char)
 	   (write-string "No")
-	   #!FALSE)
+	   false)
 	  (else (beep) (query prompt)))))
-
-)
 
 )

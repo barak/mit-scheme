@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/format.scm,v 13.41 1987/01/23 00:12:19 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/format.scm,v 13.42 1987/03/17 18:49:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -30,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -138,11 +138,9 @@
 
 (define (parse-digit string supplied-arguments parsed-arguments modifiers
 		     receiver)
-  (let accumulate ((acc (char->digit (string-ref string 0) 10))
-		   (i 1))
+  (let accumulate ((acc (char->digit (string-ref string 0) 10)) (i 1))
     (if (char-numeric? (string-ref string i))
-	(accumulate (+ (* acc 10)
-		       (char->digit (string-ref string i) 10))
+	(accumulate (+ (* acc 10) (char->digit (string-ref string i) 10))
 		    (1+ i))
 	(parse-dispatch (string-tail string i)
 			supplied-arguments
@@ -152,11 +150,8 @@
 
 (define (parse-ignore string supplied-arguments parsed-arguments modifiers
 		      receiver)
-  (parse-dispatch (string-tail string 1)
-		  supplied-arguments
-		  parsed-arguments
-		  modifiers
-		  receiver))
+  (parse-dispatch (string-tail string 1) supplied-arguments parsed-arguments
+		  modifiers receiver))
 
 (define (parse-arity string supplied-arguments parsed-arguments modifiers
 		     receiver)
@@ -232,7 +227,7 @@
       (error "Too few arguments" 'FORMAT string))
   (if (unassigned? n-columns)
       (*unparse-string (car arguments))
-      (unparse-string-into-fixed-size (car arguments) #!FALSE
+      (unparse-string-into-fixed-size (car arguments) false
 				      n-columns modifiers))
   (receiver string (cdr arguments)))
 
@@ -279,8 +274,7 @@
 	  ((memq 'COLON modifiers)
 	   (*unparse-string (substring string 0 (- n-columns 4)))
 	   (*unparse-string " ..."))
-	  (else
-	   (*unparse-string (substring string 0 n-columns))))))
+	  (else (*unparse-string (substring string 0 n-columns))))))
 
 ;;;; Dispatcher Setup
 
@@ -318,7 +312,7 @@
 (add-dispatcher! #\V parse-argument)
 (add-dispatcher! #\@ (parse-modifier 'AT))
 (add-dispatcher! #\: (parse-modifier 'COLON))
-
+
 ;;;
 ;;; (format format-string arg arg ...)
 ;;; (format port format-string arg arg ...)
@@ -354,5 +348,4 @@
 (add-dispatcher! #\C (format-wrapper format-code))
 
 ;;; end LET.
-)
 )

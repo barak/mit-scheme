@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.41 1987/01/23 00:21:55 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.42 1987/03/17 18:54:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -124,7 +124,7 @@
 
 (define unexpand-definition
   (definition-unexpander 'DEFINE 'DEFINE))
-
+
 (define (unsyntax-COMMENT-object comment)
   (comment-components comment
     (lambda (text expression)
@@ -186,14 +186,12 @@
     ,@(unsyntax-cond-alternative alternative)))
 
 (define (unsyntax-cond-alternative alternative)
-  (cond ((false? alternative)
-	 '())
+  (cond ((false? alternative) '())
 	((disjunction? alternative)
 	 (disjunction-components alternative unsyntax-cond-disjunction))
 	((conditional? alternative)
 	 (conditional-components alternative unsyntax-cond-conditional))
-	(else
-	 `((ELSE ,@(unsyntax-sequence alternative))))))
+	(else `((ELSE ,@(unsyntax-sequence alternative))))))
 
 (define (unexpand-conjunction predicate consequent)
   (if (conditional? consequent)
@@ -205,8 +203,7 @@
 		  `(,(unsyntax-conditional predicate
 					   consequent
 					   alternative))))))
-      `(,(unsyntax-object predicate)
-	,(unsyntax-object consequent))))
+      `(,(unsyntax-object predicate) ,(unsyntax-object consequent))))
 
 (define (unsyntax-DISJUNCTION-object object)
   `(OR ,@(disjunction-components object unexpand-disjunction)))
@@ -290,13 +287,13 @@
 			   ((eq? name lambda-tag:deep-fluid-let)
 			    (unsyntax-deep-fluid-let required operands body))
 			   ((eq? name lambda-tag:shallow-fluid-let)
-			    (unsyntax-shallow-fluid-let required operands body))
+			    (unsyntax-shallow-fluid-let required operands
+							body))
 			   ((eq? name lambda-tag:common-lisp-fluid-let)
-			    (unsyntax-common-lisp-fluid-let required operands body))
+			    (unsyntax-common-lisp-fluid-let required operands
+							    body))
 			   ((eq? name lambda-tag:make-environment)
 			    (unsyntax-make-environment required operands body))
-			   ((eq? name lambda-tag:make-package)
-			    (unsyntax-make-package required operands body))
 			   (else
 			    `(LET ,name
 			       ,(unsyntax-let-bindings required operands)
@@ -306,7 +303,7 @@
 	    (else
 	     (cons (unsyntax-object operator)
 		   (unsyntax-objects operands)))))))
-
+
 (define (unsyntax-error-like-form operands name)
   (cons* name
 	 (unsyntax-object (first operands))
@@ -325,9 +322,8 @@
 					(null? environment)))))
 			  (unsyntax-objects operands)
 			  `(,(unsyntax-object operand))))))
-		 (else
-		  `(,(unsyntax-object operand)))))))
-
+		 (else `(,(unsyntax-object operand)))))))
+
 (define (unsyntax-shallow-FLUID-LET names values body)
   (combination-components body
     (lambda (operator operands)
@@ -344,16 +340,13 @@
 (define (every-other list)
   (if (null? list)
       '()
-      (cons (car list)
-	    (every-other (cddr list)))))
+      (cons (car list) (every-other (cddr list)))))
 
 (define (extract-transfer-var assignment)
   (assignment-components assignment
     (lambda (name value)
       (cond ((assignment? value)
-	     (assignment-components value
-	       (lambda (name value)
-		 name)))
+	     (assignment-components value (lambda (name value) name)))
 	    ((combination? value)
 	     (combination-components value
 	       (lambda (operator operands)
@@ -379,7 +372,8 @@
 	      (name (second operands))
 	      (val (third operands)))
 	  (cond ((symbol? name)
-		 `((ACCESS ,name ,(unsyntax-object env)) ,(unsyntax-object val)))
+		 `((ACCESS ,name ,(unsyntax-object env))
+		   ,(unsyntax-object val)))
 		((quotation? name)
 		 (let ((var (quotation-expression name)))
 		   (if (variable? var)
@@ -404,20 +398,14 @@
 
 (define unsyntax-deep-FLUID-LET
   (unsyntax-deep-or-common-FLUID-LET
-   'FLUID-LET (make-primitive-procedure 'add-fluid-binding! #!true)))
+   'FLUID-LET (make-primitive-procedure 'add-fluid-binding! true)))
 
 (define unsyntax-common-lisp-FLUID-LET
   (unsyntax-deep-or-common-FLUID-LET
-   'FLUID-BIND (make-primitive-procedure 'make-fluid-binding! #!true)))
-
+   'FLUID-BIND (make-primitive-procedure 'make-fluid-binding! true)))
+
 (define (unsyntax-MAKE-ENVIRONMENT names values body)
   `(MAKE-ENVIRONMENT ,@(except-last-pair (unsyntax-sequence body))))
-
-(define (unsyntax-MAKE-PACKAGE names values body)
-  `(MAKE-PACKAGE ,(car names)
-		 ,(unsyntax-let-bindings (cdr names)
-					 (cdr values))
-     ,@(except-last-pair (cdr (unsyntax-sequence body)))))
 
 (define (unsyntax-let-bindings names values)
   (map unsyntax-let-binding names values))
@@ -494,5 +482,4 @@
     (,lambda-type ,unsyntax-LAMBDA-object))))
 
 ;;; end UNSYNTAXER-PACKAGE
-))
 ))

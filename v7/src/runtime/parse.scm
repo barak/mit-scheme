@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 13.41 1987/01/23 00:17:04 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 13.42 1987/03/17 18:51:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -357,18 +357,15 @@
 (define-char #\`
   (lambda ()
     (discard-char)
-    (list (access quasiquote-keyword syntaxer-package)
-	  (parse-object))))
+    (list 'QUASIQUOTE (parse-object))))
 
 (define-char #\,
   (lambda ()
     (discard-char)
     (if (char=? #\@ (peek-char))
 	(begin (discard-char)
-	       (list (access unquote-splicing-keyword syntaxer-package)
-		     (parse-object)))
-	(list (access unquote-keyword syntaxer-package)
-	      (parse-object)))))
+	       (list 'UNQUOTE-SPLICING (parse-object)))
+	(list 'UNQUOTE (parse-object)))))
 
 (define-char #\"
   (let ((delimiters (char-set #\" #\\)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.42 1987/02/15 15:43:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.43 1987/03/17 18:50:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -46,23 +46,22 @@
 
 (define timer-interrupt
   (let ((setup-timer-interrupt
-	 (make-primitive-procedure 'setup-timer-interrupt #T)))
+	 (make-primitive-procedure 'SETUP-TIMER-INTERRUPT true)))
     (named-lambda (timer-interrupt)
       (setup-timer-interrupt '() '())
       (error "Unhandled Timer interrupt received"))))
 
 (define interrupt-system
-  (make-package interrupt-system
-		((get-next-interrupt-character
-		  (make-primitive-procedure 'GET-NEXT-INTERRUPT-CHARACTER))
-		 (check-and-clean-up-input-channel
-		  (make-primitive-procedure 'CHECK-AND-CLEAN-UP-INPUT-CHANNEL))
-		 (index:interrupt-vector
-		  (fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))
-		 (index:termination-vector
-		  (fixed-objects-vector-slot
-		   'MICROCODE-TERMINATIONS-PROCEDURES))
-		 (^Q-Hook '()))
+  (let ((get-next-interrupt-character
+	 (make-primitive-procedure 'GET-NEXT-INTERRUPT-CHARACTER))
+	(check-and-clean-up-input-channel
+	 (make-primitive-procedure 'CHECK-AND-CLEAN-UP-INPUT-CHANNEL))
+	(index:interrupt-vector
+	 (fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))
+	(index:termination-vector
+	 (fixed-objects-vector-slot
+	  'MICROCODE-TERMINATIONS-PROCEDURES))
+	(^Q-Hook '()))
 
 ;;;; Soft interrupts
 
@@ -171,22 +170,22 @@
 ; (install-keyboard-interrupt! #\S ^S-interrupt-handler)
 ; (install-keyboard-interrupt! #\Q ^Q-interrupt-handler)
 
-(define STACK-OVERFLOW-SLOT	0)
-(define GC-SLOT			2)
-(define CHARACTER-SLOT		4)
-(define TIMER-SLOT		6)
-
+(define stack-overflow-slot	0)
+(define gc-slot			2)
+(define character-slot		4)
+(define timer-slot		6)
+
 (define (install)
-  (with-interrupts-reduced INTERRUPT-MASK-GC-OK
+  (with-interrupts-reduced interrupt-mask-gc-ok
    (lambda (old-mask)
      (let ((old-system-interrupt-vector
 	    (vector-ref (get-fixed-objects-vector) index:interrupt-vector))
 	   (old-termination-vector
 	    (vector-ref (get-fixed-objects-vector) index:termination-vector)))
        (let ((previous-gc-interrupt
-	      (vector-ref old-system-interrupt-vector GC-SLOT))
+	      (vector-ref old-system-interrupt-vector gc-slot))
 	     (previous-stack-interrupt
-	      (vector-ref old-system-interrupt-vector STACK-OVERFLOW-SLOT))
+	      (vector-ref old-system-interrupt-vector stack-overflow-slot))
 	     (system-interrupt-vector
 	      (vector-cons (vector-length old-system-interrupt-vector)
 			   default-interrupt-handler))
@@ -197,14 +196,14 @@
 		      (vector-grow old-termination-vector
 				   number-of-microcode-terminations)
 		      old-termination-vector)
-		  (vector-cons number-of-microcode-terminations #F))))
+		  (vector-cons number-of-microcode-terminations false))))
 
-	 (vector-set! system-interrupt-vector GC-SLOT previous-gc-interrupt)
-	 (vector-set! system-interrupt-vector STACK-OVERFLOW-SLOT
+	 (vector-set! system-interrupt-vector gc-slot previous-gc-interrupt)
+	 (vector-set! system-interrupt-vector stack-overflow-slot
 		      previous-stack-interrupt)
-	 (vector-set! system-interrupt-vector CHARACTER-SLOT
+	 (vector-set! system-interrupt-vector character-slot
 		      external-interrupt-handler)
-	 (vector-set! system-interrupt-vector TIMER-SLOT
+	 (vector-set! system-interrupt-vector timer-slot
 		      timer-interrupt-handler)
 
 	 ;; slots 4-15 unused.
@@ -245,12 +244,12 @@
   (dynamic-wind
    (lambda ()
      (set! old-handler
-	   (vector-set! interrupt-vector CHARACTER-SLOT old-handler)))
+	   (vector-set! interrupt-vector character-slot old-handler)))
    code
    (lambda ()
-     (vector-set! interrupt-vector CHARACTER-SLOT
+     (vector-set! interrupt-vector character-slot
 		  (set! old-handler
-			(vector-ref interrupt-vector CHARACTER-SLOT)))))))
+			(vector-ref interrupt-vector character-slot)))))))
 
 ;;; end INTERRUPT-SYSTEM package.
 (the-environment)))

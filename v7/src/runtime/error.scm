@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.43 1987/02/15 15:42:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.44 1987/03/17 18:49:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -66,7 +66,7 @@
 
 (define *error-code*)
 (define *error-hook*)
-(define *error-decision-hook* #F)
+(define *error-decision-hook* false)
 
 (define error-message
   "")
@@ -82,7 +82,7 @@
    (lambda ()
      (fluid-let ((error-message message)
 		 (error-irritant irritant))
-       (*error-hook* environment message irritant #!FALSE)))))
+       (*error-hook* environment message irritant false)))))
 
 (define ((error-handler-wrapper handler) error-code interrupt-enables)
   (with-interrupts-reduced INTERRUPT-MASK-GC-OK
@@ -102,8 +102,8 @@
 	      (error-irritant irritant))
     (let ((environment (continuation-environment (rep-continuation))))
       (if (continuation-undefined-environment? environment)
-	  (*error-hook* (rep-environment) message irritant #!TRUE)
-	  (*error-hook* environment message irritant #!FALSE)))))
+	  (*error-hook* (rep-environment) message irritant true)
+	  (*error-hook* environment message irritant false)))))
 
 (define (standard-error-hook environment message irritant
 			     substitute-environment?)
@@ -328,7 +328,7 @@ using the current read-eval-print environment."))
   combination-second-operand)
 
 (define-unbound-variable-error
-  (list (make-primitive-procedure 'ADD-FLUID-BINDING! #!true))
+  (list (make-primitive-procedure 'ADD-FLUID-BINDING! true))
   (lambda (obj)
     (let ((object (combination-second-operand obj)))
       (cond ((variable? object) (variable-name object))
@@ -361,8 +361,8 @@ using the current read-eval-print environment."))
 (define-assignment-to-procedure-error
   (list (make-primitive-procedure 'LEXICAL-ASSIGNMENT)
 	(make-primitive-procedure 'LOCAL-ASSIGNMENT)
-	(make-primitive-procedure 'ADD-FLUID-BINDING! #!true)
-	(make-primitive-procedure 'MAKE-FLUID-BINDING! #!true))
+	(make-primitive-procedure 'ADD-FLUID-BINDING! true)
+	(make-primitive-procedure 'MAKE-FLUID-BINDING! true))
   combination-second-operand)
 
 ;;;; Application Errors

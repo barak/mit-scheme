@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.42 1987/03/12 02:20:33 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.43 1987/03/17 18:50:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -30,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -129,7 +129,7 @@
   'DONE)
 
 (define character-buffer
-  #!FALSE)
+  false)
 
 (define (:peek-char)
   (or character-buffer
@@ -137,11 +137,11 @@
 	     character-buffer)))
 
 (define (:discard-char)
-  (set! character-buffer #!FALSE))
+  (set! character-buffer false))
 
 (define (:read-char)
   (if character-buffer
-      (set! character-buffer #!FALSE)
+      (set! character-buffer false)
       (tty-read-char)))
 
 (define (:read-string delimiters)
@@ -166,12 +166,11 @@
 
 (define (:read-char-immediate)
   (if character-buffer
-      (set! character-buffer #!FALSE)
+      (set! character-buffer false)
       (tty-read-char-immediate)))
 
 (define (:char-ready? delay)
-  (or character-buffer
-      (tty-read-char-ready? delay)))
+  (or character-buffer (tty-read-char-ready? delay)))
 
 (define (:read-start!)
   (read-start-hook))
@@ -231,7 +230,7 @@
 (define (:length)
   (file-length file-channel))
 
-(define buffer #!FALSE)
+(define buffer false)
 (define start-index 0)
 (define end-index -1)
 
@@ -246,7 +245,7 @@
 
 (define (:close)
   (set! end-index 0)
-  (set! buffer #!FALSE)
+  (set! buffer false)
   ((access close-physical-channel primitive-io) file-channel))
 
 (define (:peek-char)
@@ -444,12 +443,12 @@
 
 (define load)
 (define load-noisily)
-(define load-noisily? #!FALSE)
+(define load-noisily? false)
 (define read-file)
 (let ()
 
 (define default-pathname
-  (make-pathname #!FALSE #!FALSE #!FALSE #!FALSE 'NEWEST))
+  (make-pathname false false false false 'NEWEST))
 
 ;;; This crufty piece of code, once it decides which file to load,
 ;;; does `file-exists?' on that file at least three times!!
@@ -491,7 +490,7 @@
   (if (pair? filename)
       (for-each kernel filename)
       (kernel filename)))
-
+
 (set! load
 (named-lambda (load filename #!optional environment)
   (if (unassigned? environment) (set! environment (rep-environment)))
@@ -500,7 +499,7 @@
 (set! load-noisily
 (named-lambda (load-noisily filename #!optional environment)
   (if (unassigned? environment) (set! environment (rep-environment)))
-  (fluid-let ((load-noisily? #!TRUE))
+  (fluid-let ((load-noisily? true))
     (basic-load filename environment))))
 
 (set! read-file
@@ -544,5 +543,4 @@
     (named-lambda (transcript-off)
       (if (not (photo-close))
 	  (error "Transcript file already closed: TRANSCRIPT-OFF"))
-      *the-non-printing-object*)))
       *the-non-printing-object*)))

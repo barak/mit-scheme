@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/events.scm,v 13.41 1987/01/23 00:12:11 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/events.scm,v 13.42 1987/03/17 18:49:40 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -30,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -52,22 +52,21 @@
 	  (define receivers '())
 	  (define queue-head '())
 	  (define queue-tail '())
-	  (define event-in-progress? #!FALSE)
-
+	  (define event-in-progress? false)
 	  (lambda arguments
 	    (if (null? queue-head)
 		(begin (set! queue-head (list arguments))
 		       (set! queue-tail queue-head))
 		(begin (set-cdr! queue-tail (list arguments))
 		       (set! queue-tail (cdr queue-tail))))
-	    (if (not (set! event-in-progress? #!TRUE))
+	    (if (not (set! event-in-progress? true))
 		(begin (let ((arguments (car queue-head)))
 			 (set! queue-head (cdr queue-head))
 			 (let loop ((receivers receivers))
 			      (if (not (null? receivers))
 				  (begin (apply (car receivers) arguments)
 					 (loop (cdr receivers))))))
-		       (set! event-in-progress? #!FALSE))))))
+		       (set! event-in-progress? false))))))
 
   (set! event-distributor?
 	(named-lambda (event-distributor? object)
@@ -85,8 +84,7 @@
       (without-interrupts
        (lambda ()
 	 (set! (access receivers e)
-	       (operation event-receiver
-			  (access receivers e)))))))
+	       (operation event-receiver (access receivers e)))))))
 
   (set! add-event-receiver!
 	(make-receiver-modifier 'ADD-EVENT-RECEIVER!
@@ -94,8 +92,6 @@
 	    (append! receivers (list receiver)))))
 
   (set! remove-event-receiver!
-	(make-receiver-modifier 'REMOVE-EVENT-RECEIVER!
-	  delq!))
+	(make-receiver-modifier 'REMOVE-EVENT-RECEIVER! delq!))
 
-)
 )
