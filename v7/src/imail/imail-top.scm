@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.155 2000/06/15 01:37:50 cph Exp $
+;;; $Id: imail-top.scm,v 1.156 2000/06/15 01:58:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -559,6 +559,8 @@ Instead, these commands are available:
 (define-key 'imail #\c-m-f	'imail-summary-by-flags)
 (define-key 'imail #\c-m-h	'imail-summary)
 (define-key 'imail #\c-m-r	'imail-summary-by-recipients)
+(define-key 'imail #\c-m-s	'imail-summary-by-regexp)
+(define-key 'imail #\c-m-t	'imail-summary-by-topic)
 
 ;; These commands have no equivalent in RMAIL.
 (define-key 'imail #\C		'imail-copy-folder)
@@ -570,15 +572,15 @@ Instead, these commands are available:
 ;;(define-key 'imail #\b		'imail-bury)
 ;;(define-key 'imail #\m-m	'imail-retry-failure)
 ;;(define-key 'imail #\w		'imail-output-body-to-file)
-;;(define-key 'imail '(#\c-c #\c-s #\c-d) 'imail-sort-by-date)
-;;(define-key 'imail '(#\c-c #\c-s #\c-s) 'imail-sort-by-subject)
-;;(define-key 'imail '(#\c-c #\c-s #\c-a) 'imail-sort-by-author)
-;;(define-key 'imail '(#\c-c #\c-s #\c-r) 'imail-sort-by-recipient)
-;;(define-key 'imail '(#\c-c #\c-s #\c-c) 'imail-sort-by-correspondent)
-;;(define-key 'imail '(#\c-c #\c-s #\c-l) 'imail-sort-by-lines)
-;;(define-key 'imail '(#\c-c #\c-s #\c-k) 'imail-sort-by-keywords)
-;;(define-key 'imail '(#\c-c #\c-n) 'imail-next-same-subject)
-;;(define-key 'imail '(#\c-c #\c-p) 'imail-previous-same-subject)
+;;(define-key 'imail '(#\c-c #\c-s #\c-d)	'imail-sort-by-date)
+;;(define-key 'imail '(#\c-c #\c-s #\c-s)	'imail-sort-by-subject)
+;;(define-key 'imail '(#\c-c #\c-s #\c-a)	'imail-sort-by-author)
+;;(define-key 'imail '(#\c-c #\c-s #\c-r)	'imail-sort-by-recipient)
+;;(define-key 'imail '(#\c-c #\c-s #\c-c)	'imail-sort-by-correspondent)
+;;(define-key 'imail '(#\c-c #\c-s #\c-l)	'imail-sort-by-lines)
+;;(define-key 'imail '(#\c-c #\c-s #\c-k)	'imail-sort-by-keywords)
+;;(define-key 'imail '(#\c-c #\c-n)	'imail-next-same-subject)
+;;(define-key 'imail '(#\c-c #\c-p)	'imail-previous-same-subject)
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?

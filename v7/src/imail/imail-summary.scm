@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.17 2000/06/11 04:01:38 cph Exp $
+;;; $Id: imail-summary.scm,v 1.18 2000/06/15 01:57:41 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -43,16 +43,15 @@ If false, the message buffer is updated but not popped up."
   "Width of the subject field, in characters."
   35
   exact-nonnegative-integer?)
-
+
 (define-command imail-summary
   "Display a summary of the selected folder, one line per message."
   ()
   (lambda () (imail-summary "All" #f)))
 
 (define-command imail-summary-by-flags
-  "Display a summary of the selected folder, one line per message.
-Only messages marked with one of the given flags are shown.
-The flags are specified as a comma-separated list of names."
+  "Display a summary of all messages with one or more FLAGS.
+FLAGS should be a string containing the desired labels, separated by commas."
   (lambda ()
     (list (imail-prompt-for-flags "Flags to summarize by")))
   (lambda (flags-string)
@@ -64,11 +63,10 @@ The flags are specified as a comma-separated list of names."
 			   (flags-member? flag flags))))))))
 
 (define-command imail-summary-by-recipients
-  "Display a summary of the selected folder, one line per message.
-Only messages addressed to one of the given recipients are shown.
-Normally checks the To, From and CC fields of headers;
- but if prefix arg given, only look in the To and From fields.
-The recipients are specified as a comma-separated list of names."
+  "Display a summary of all messages with the given RECIPIENTS.
+Normally checks the To, From and Cc fields of headers;
+but if prefix arg is given, only look in the To and From fields.
+RECIPIENTS is a string of regexps separated by commas."
   "sRecipients to summarize by\nP"
   (lambda (recipients-string primary-only?)
     (imail-summary
@@ -86,6 +84,38 @@ The recipients are specified as a comma-separated list of names."
 	       (try (get-first-header-field-value m "to" #f))
 	       (and (not primary-only?)
 		    (try (get-first-header-field-value m "cc" #f))))))))))
+
+(define-command imail-summary-by-regexp
+  "Display a summary of all messages according to regexp REGEXP.
+If the regular expression is found in the header of the message
+\(including in the date and other lines, as well as the subject line),
+Edwin will list the header line in the summary."
+  "sRegexp to summarize by"
+  (lambda (regexp)
+    (imail-summary
+     (string-append "Regular expression " recipients-string)
+     (lambda (m)
+       (re-string-search-forward regexp
+				 (header-fields->string
+				  (message-header-fields m))
+				 #t)))))
+
+(define-command imail-summary-by-topic
+  "Display a summary of all messages with the given SUBJECT.
+Checks the Subject field of headers.
+SUBJECT is a string of regexps separated by commas."
+  "sTopics to summarize by"
+  (lambda (regexps-string)
+    (imail-summary
+     (string-append "About " regexps-string)
+     (let ((regexp
+	    (apply regexp-group
+		   (map re-quote-string
+			(burst-comma-list-string recipients-string)))))
+       (lambda (m)
+	 (let ((s (get-first-header-field-value m "subject" #f)))
+	   (and s
+		(re-string-search-forward regexp s #t))))))))
 
 (define (imail-summary description predicate)
   (let* ((folder (selected-folder))
