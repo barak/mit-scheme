@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.63 1999/08/13 00:24:30 cph Exp $
+@comment $Id: user.texinfo,v 1.64 1999/11/24 04:43:49 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -41,9 +41,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.63
+@subtitle Edition 1.64
 @subtitle for Scheme Release 7.5
-@subtitle 12 August 1999
+@subtitle 23 November 1999
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -4751,20 +4751,32 @@ These are the major changes to the base system:
 @itemize @bullet
 
 @item
-@code{-compiler} and @code{-edwin} can now be specified together, which
-specifies that a band containing both compiler and Edwin support should
-be loaded.
+Command-line options:
+
+@itemize @bullet
+@item
+The @code{-compiler} and @code{-edwin} command-line options can now be
+specified together, meaning that a band containing both compiler and
+Edwin support should be loaded.
 
 @item
-Heap-sizing code now automatically defaults @code{-constant} to the
-correct size for the band being loaded, and adds the heap used by the
-band to the requested heap size.  In consequence, it should rarely be
-necessary to specify @code{-constant}, and @code{-heap} will specify
-exactly how much heap space is available when Scheme is started.
+The heap-sizing code now automatically defaults the @code{-constant}
+command-line option to the correct size for the band being loaded, and
+adds the heap used by the band to the requested heap size.  In
+consequence, it should rarely be necessary to specify @code{-constant}.
+An additional benefit is that the @code{-heap} command-line option now
+specifies exactly how much heap space is available when Scheme is
+started; previously the available amount was less than the specified
+amount due to the band's heap usage.
 
 @item
 Command-line arguments can now be defined by user code.
+@end itemize
 
+@item
+Numeric input/output:
+
+@itemize @bullet
 @item
 Several changes to the number reader and printer have resulted in
 greatly improved performance, particularly for floating-point numbers.
@@ -4775,12 +4787,55 @@ which the numbers are to be printed, e.g.@: @code{scientific} or
 @code{engineering}.
 
 @item
+The parser now treats @code{*parser-radix*} differently: if it is set to
+a value other than @code{10} and the parser encounters radix-10 syntax
+(e.g.@: a decimal point), an error is signalled.
+@end itemize
+
+@item
+Strings and characters:
+
+@itemize @bullet
+@item
 Regular-expression match and search are now available for strings.
 
 @item
 String search procedures are now implemented, using Boyer-Moore search
 when appropriate.
 
+@item
+Characters now have 16 bits of character code (instead of 7) to allow
+8-bit ISO latin and Unicode characters.  Strings are still based on
+8-bit characters.
+@end itemize
+
+@item
+Ports:
+
+@itemize @bullet
+@item
+The @code{fresh-line} operation is now supported by all common port
+types.
+
+@item
+@code{close-input-port} and @code{close-output-port} now close
+only one side of a bidirectional port; previously they closed both
+sides.
+
+@item
+The following port operations have been eliminated:
+@code{write-string}, @code{read-chars}, and @code{write-chars}.
+
+@item
+The low-level port data abstraction has been overhauled.  The new design
+has @dfn{port types} that implement the operations for the port, and are
+shared between all ports of a given type.
+@end itemize
+
+@item
+Operating-system interface:
+
+@itemize @bullet
 @item
 Synchronous subprocesses can now be run from Scheme code.
 
@@ -4791,19 +4846,21 @@ on underlying support of the C library, which is sometimes of low
 quality.
 
 @item
-New undocumented generic-procedure dispatch mechanism and its associated
-tagged data structures provides a high-performance substrate for
-building @sc{clos}-like object-oriented programming systems.  This
-mechanism has been fully integrated into the existing record and
-@code{defstruct} code.  The @sc{sos} system has been added as a load
-option to allow writing object-oriented code.
+A bug in socket support has been fixed: port numbers are now specified
+normally and automatically translated to network order.  Previously it
+was necessary to translate them to network order by hand.
 
 @item
-Transcripts (i.e.@: @code{transcript-on}) are now local to a particular
-@sc{repl}.  This is usually relevant only when using Edwin, where there
-can be several @sc{repl} buffers.  Previously transcripts only recorded
-activity on the Scheme console, and ignored any other @sc{repl}s,
-including Edwin @sc{repl} buffers.
+@code{open-tcp-stream-socket} and @code{open-unix-stream-socket} now
+return one @sc{i/o} port rather than an input port and an output port.
+@sc{tcp} sockets now use @code{"\r\n"} end-of-line marker regardless of
+the operating system.
+
+@item
+Under Linux, Scheme now detects various foreign filesystems such as
+@code{msdos}, @code{vfat}, @code{ntfs}, and @code{hpfs}, and sets the
+default line translation for files on those systems to @code{"\r\n"}.
+@end itemize
 
 @item
 Red-black trees now support operations to read or delete the minimum or
@@ -4814,52 +4871,6 @@ Both @code{merge-sort} and @code{quick-sort} are now available.  As
 before, @code{sort} defaults to @code{merge-sort}.
 
 @item
-The @code{fresh-line} operation is now supported by all common port
-types.  @code{close-input-port} and @code{close-output-port} now close
-only one side of a bidirectional port; previously they closed both
-sides.  The following port operations have been eliminated:
-@code{write-string}, @code{read-chars}, and @code{write-chars}.
-
-@item
-Characters now have 16 bits of character code (instead of 7) to allow
-8-bit ISO latin and Unicode characters.  Strings are still based on
-8-bit characters.
-
-@item
-Under X11, the BackSpace keysym is treated as Delete, as long as
-BackSpace is bound to @sc{ascii} backspace.
-
-@item
-Under Linux, Scheme now detects various foreign filesystems such as
-@code{msdos}, @code{vfat}, @code{ntfs}, and @code{hpfs}, and sets the
-default line translation for files on those systems to @code{"\r\n"}.
-
-@item
-@file{hppacach} knows how to find kernel files for HP-UX 10.x and later.
-
-@item
-Under OS/2, the default font for the Scheme console window has been
-changed to @code{"8.Courier"}.
-
-@item
-Under OS/2 Warp 4.0, Scheme now reports the operating-system version
-correctly.
-
-@item
-More sophisticated heuristics are used to discover the user's home
-directory on OS/2 systems.
-
-@item
-Undocumented interfaces now provide support for @code{gdbm}, @sc{md5}
-checksums, and blowfish encryption.  The blowfish encryption is disabled
-by default, but we may later distribute a key to enable it.
-
-@item
-The parser now treats @code{*parser-radix*} differently: if it is set to
-a value other than @code{10} and the parser encounters radix-10 syntax
-(e.g.@: a decimal point), an error is signalled.
-
-@item
 Pathname objects can now be written (using @code{fasdump}) on one
 operating system and read (using @code{fasload}) on another.  Previously
 this didn't work between unlike operating systems, such as Windows and
@@ -4868,9 +4879,15 @@ system it was running on.  Now support for all operating systems is
 loaded, no matter what system is being used.
 
 @item
-Low-level port data abstraction has been overhauled.  New design has
-@dfn{port types} that contain the operations for the port, and are
-shared between all ports of a given type.
+Numerous fixes to stream code, eliminating premature dereferencing of
+streams, and dropping pointers to streams as soon as possible.
+
+@item
+Transcripts (i.e.@: @code{transcript-on}) are now local to a particular
+@sc{repl}.  This is usually relevant only when using Edwin, where there
+can be several @sc{repl} buffers.  Previously transcripts only recorded
+activity on the Scheme console, and ignored any other @sc{repl}s,
+including Edwin @sc{repl} buffers.
 
 @item
 @code{bkpt} is no longer a macro.  Instead, it extracts an environment
@@ -4881,19 +4898,42 @@ will not generate any errors, but will cause the breakpoint to be
 visiting the wrong environment.
 
 @item
-Numerous fixes to stream code, eliminating premature dereferencing of
-streams, and dropping pointers to streams as soon as possible.
+Under X11, the BackSpace keysym is treated as Delete, as long as
+BackSpace is bound to @sc{ascii} backspace.
 
 @item
-Fixed bug in socket support: port numbers are now specified normally and
-automatically translated to network order.  Previously it was necessary
-to translate them to network order by hand.
+The @file{hppacach} program knows how to find kernel files for HP-UX
+10.x and later.
 
 @item
-@code{open-tcp-stream-socket} and @code{open-unix-stream-socket} now
-return one I/O port rather than an input port and an output port.  TCP
-sockets now use @sc{cr-lf} end-of-line marker regardless of the
-operating system.
+OS/2:
+
+@itemize @bullet
+@item
+Under OS/2, the default font for the Scheme console window has been
+changed to @code{"8.Courier"}.
+
+@item
+More sophisticated heuristics are used to discover the user's home
+directory on OS/2 systems.
+
+@item
+Under OS/2 Warp 4.0, Scheme now reports the operating-system version
+correctly.
+@end itemize
+
+@item
+A new undocumented generic-procedure dispatch mechanism and its
+associated tagged data structures provides a high-performance substrate
+for building @sc{clos}-like object-oriented programming systems.  This
+mechanism has been fully integrated into the existing record and
+@code{defstruct} code.  The @sc{sos} system (which @emph{is} documented)
+has been added as a load option to allow writing object-oriented code.
+
+@item
+Undocumented interfaces now provide support for @code{gdbm}, @sc{md5}
+checksums, and blowfish encryption.  The blowfish encryption is disabled
+by default, but we may later distribute a key to enable it.
 
 @end itemize
 
@@ -4905,10 +4945,26 @@ These changes affect only Edwin:
 @itemize @bullet
 
 @item
-Ability to read and write files compressed with @code{bzip2},
-@code{gzip}, or @code{compress}.  Ability to read and write files
+The following are new language modes: @sc{html}, Java, @sc{php},
+Verilog, @sc{vhdl}.  Some of these modes are pretty sketchy, consisting
+of little more than syntax and indentation -- they are not to be
+confused with the more powerful modes provided by Emacs.
+
+@item
+Edwin can read and write files compressed with @code{bzip2},
+@code{gzip}, or @code{compress}.  It can also read and write files
 encrypted with blowfish (but this is currently disabled due to export
 restrictions).
+
+@item
+On PC systems, compressed files, encrypted files, and @sc{rmail} files
+do not have line translation; they are stored in Scheme's native format
+(i.e.@: with newlines as line terminators).
+
+@item
+Edwin now indirects through symbolic links to find the true file being
+edited, and backup files go in the directory of the true file rather
+than the link.
 
 @item
 Commands that read arguments from the minibuffer now have prompt
@@ -4919,9 +4975,9 @@ The command @code{eval-expression} is now bound to @kbd{M-:} for
 compatibility with newer versions of Emacs.
 
 @item
-New command @code{insert-filename}, bound to @kbd{C-c C-i}, prompts for
-a filename in the minibuffer, then inserts it at point.  The formatting
-of the filename is controlled by the variable
+A new command @code{insert-filename}, bound to @kbd{C-c C-i}, prompts
+for a filename in the minibuffer, then inserts it at point.  The
+formatting of the filename is controlled by the variable
 @code{insert-filename-format}, which by default uses Scheme string
 format.
 
@@ -4930,15 +4986,11 @@ Shell buffers now implement command completion.  This is overloaded onto
 the filename-completion command @kbd{C-M-i} just as in Emacs.
 
 @item
-New command-line option @code{-edit} causes the editor to start up when
-Scheme is started.
+A new command-line option @code{-edit} causes the editor to start up
+when Scheme is started.
 
 @item
-New mode for Java code.  This is a minimal hack, not a real
-implementation.
-
-@item
-New command @code{inferior-repl-flush-output}, bound to @kbd{C-c C-o},
+A new command @code{inferior-repl-flush-output}, bound to @kbd{C-c C-o},
 deletes output from the previous command.  This works similarly to the
 corresponding command in shell buffers.
 
@@ -4954,25 +5006,19 @@ available.  If the package's environment is unavailable, or if the
 package doesn't exist, the global environment is used instead.
 
 @item
+The command @code{repl} now treats its argument differently, simplifying
+the creation of multiple inferior @sc{repl} buffers.  A new command
+@code{set-inferior-repl-buffer} associates a Scheme buffer with an
+arbitrary inferior @sc{repl} buffer, so that evaluation commands in that
+Scheme buffer use the specified @sc{repl} buffer.
+
+@item
 Info now supports the variable @code{info-directory-list}, which works
 like that in Emacs.
 
 @item
-Command @code{manual-entry} now uses multiple buffers with Emacs 19
+The command @code{manual-entry} now uses multiple buffers with Emacs 19
 naming conventions.
-
-@item
-New modes for editing Verilog code and @sc{vhdl} code.
-
-@item
-On PC systems, compressed files, encrypted files, and @sc{rmail} files
-do not have line translation; they are stored in Scheme's native format
-(i.e.@: with newlines as line terminators).
-
-@item
-Edwin now indirects through symbolic links to find the true file being
-edited, and backup files go in the directory of the true file rather
-than the link.
 
 @item
 Frame-related commands are now bound to @kbd{C-x 5} as in Emacs, e.g.@:
@@ -4990,8 +5036,14 @@ New commands @code{show-frame-size}, @code{show-frame-position},
 
 @item
 Under X11, Edwin now distinguishes between its primary frame and all
-other frames when finding resources.  New X resource name for these
+other frames when finding resources.  The new X resource name for these
 secondary frames is @code{edwinSecondary}.
+
+@item
+Sending mail is now supported through a direct @sc{smtp} interface.
+This interface will work on any operating system that supports sockets
+(all of the systems we current distribute for).  See the variables
+@code{mail-relay-host} and @code{smtp-require-valid-recipients}.
 
 @end itemize
 
@@ -5009,10 +5061,10 @@ but annoying bugs having to do with events not being read at times when
 they should have been.
 
 @item
-Improved command-line parser so that it will accept arguments with
-spaces in them.  In order for this to work properly, the argument must
-be surrounded by double quotes.  This fix allows Scheme to be installed
-in a directory whose name contains spaces.
+The command-line parser has been improved so that it will accept
+arguments with spaces in them.  In order for this to work properly, the
+argument must be surrounded by double quotes.  This fix allows Scheme to
+be installed in a directory whose name contains spaces.
 
 @item
 Scheme now understands about Windows 98 version strings, and furthermore
@@ -5064,20 +5116,14 @@ Edwin now recognizes the standard Windows shell prompt in shell buffers.
 Edwin printing commands now work.
 
 @item
-Sending mail is now supported through a direct @sc{smtp} interface.
-This interface will work on any system that supports sockets.  See the
-variables @code{mail-relay-host} and
-@code{smtp-require-valid-recipients}.
-
-@item
 Edwin now supports cut and paste using the kill and yank commands.
 
 @item
-All Dired commands are now supported.  Dired formats directory listing
+All Dired commands are now supported.  Dired formats directory listings
 in native format rather than unix format.  The @kbd{M} command changes
-mode bits, which are specified much like the @code{attrib} command.  The
-@kbd{S} command toggles whether or not hidden/system files are shown; by
-default these files do not appear in Dired listings.
+mode bits, which are specified much like arguments to the @code{attrib}
+command.  The @kbd{S} command toggles whether or not hidden/system files
+are shown; by default these files do not appear in Dired listings.
 
 @item
 New undocumented primitives provide access to the registry.
