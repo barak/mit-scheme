@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.21 1987/01/22 14:10:46 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.22 1987/03/12 14:52:23 jinx Exp $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -401,6 +401,8 @@ break
 #define Do_Area(Code, Area, Bound, Obj, FObj)			\
   Process_Area(Code, &Area, &Bound, &Obj, &FObj)
 
+#if 0
+
 #ifdef DEBUG
 #define Show_Upgrade(This, New_Type)				\
   fprintf(stderr, "Upgrading from 0x%02x|%06x to 0x%x\n",       \
@@ -418,6 +420,8 @@ break
   Mem_Base[*Area] = This;					\
   break;							\
 }
+
+#endif 0
 
 Process_Area(Code, Area, Bound, Obj, FObj)
 int Code;
@@ -504,6 +508,8 @@ fast Pointer **FObj;
       case_simple_Vector:
 	Do_Pointer(*Area, Do_Vector);
 
+#if 0
+
 /* This should be cleaned up: We can no longer do it like this
    since we have reused the types.
  */
@@ -546,6 +552,7 @@ fast Pointer **FObj;
 	Upgrade(TC_PCOMB3);
       case OLD_TC_PCOMB2:
 	Upgrade(TC_PCOMB2);
+#endif 0
 
       default:
       Bad_Type:
@@ -614,7 +621,7 @@ char *message;
 
 #define print_header(name, obj, format)				\
 fprintf(Portable_File, (format), (obj));			\
-fprintf(stderr, "%s: ", (name));					\
+fprintf(stderr, "%s: ", (name));				\
 fprintf(stderr, (format), (obj))
 
 #else
@@ -672,7 +679,7 @@ do_it()
   }
 
   { long Size = ((3 * (Heap_Count + Const_Count)) + NROOTS + 1);
-#ifdef FLOATING_ALIGNMENT
+#if 0
     Size += (FLOATING_ALIGNMENT+1)/sizeof(Pointer);
 #endif
     Allocate_Heap_Space(Size);
@@ -683,7 +690,9 @@ do_it()
       exit(1);
     }
   }
+#if 0
   Align_Float(Heap);
+#endif
   Load_Data(Heap_Count, &Heap[0]);
   Load_Data(Const_Count, &Heap[Heap_Count]);
   Heap_Relocation = &Heap[0] - Get_Pointer(Heap_Base);

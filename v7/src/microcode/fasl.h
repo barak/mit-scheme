@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasl.h,v 9.21 1987/01/22 14:24:10 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasl.h,v 9.22 1987/03/12 14:51:36 jinx Exp $
 
    Contains information relating to the format of FASL files.
    Some information is contained in CONFIG.H.
@@ -75,15 +75,19 @@ MIT in each case. */
 #define OPEN_FLAG		"r"
 
 /* "Memorable" FASL sub-versions -- ones where we modified something
-   and want to remain backwards compatible
+   and want to remain backwards compatible.
 */
 
-#define FASL_OLDEST_SUPPORTED	2
 #define FASL_LONG_HEADER	3
 #define FASL_DENSE_TYPES	4
 #define FASL_PADDED_STRINGS	5
+#define FASL_OLDEST_SUPPORTED	5
 
-/* Old Type Codes -- used for conversion purposes */
+#if 0
+/* Old Type Codes -- used for conversion purposes
+   This is no longer possible, because some were re-used
+   without changing the fasl file version.
+*/
 
 #define OLD_TC_CHARACTER			0x40
 #define OLD_TC_PCOMB2				0x44
@@ -105,3 +109,5 @@ MIT in each case. */
 #define OLD_TC_VECTOR_16B			0x7E
 #define OLD_TC_UNASSIGNED			0x38
 #define OLD_TC_SEQUENCE_3			0x3C
+
+#endif 0
