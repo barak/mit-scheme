@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.11 2002/11/20 19:45:46 cph Exp $
+$Id: arith.scm,v 1.12 2003/02/13 05:07:46 cph Exp $
 
-Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1989,1991,1992,1993,1995,2001 Massachusetts Institute of Technology
+Copyright 2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -46,57 +47,57 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (if (not (int:integer? object))
       (error:wrong-type-argument object "number" procedure)))
 
-(let-syntax
-    ((define-standard-unary
-       (sc-macro-transformer
-	(lambda (form environment)
-	  `(DEFINE (,(list-ref form 1) X)
-	     (IF (FLONUM? X)
-		 (,(close-syntax (list-ref form 2) environment) X)
-		 (,(close-syntax (list-ref form 3) environment) X)))))))
-  (define-standard-unary rational? (lambda (x) x true) int:integer?)
-  (define-standard-unary integer? flo:integer? int:integer?)
-  (define-standard-unary exact? (lambda (x) x false)
-    (lambda (x)
-      (guarantee-integer x 'EXACT?)
-      true))
-  (define-standard-unary zero? flo:zero? int:zero?)
-  (define-standard-unary negative? flo:negative? int:negative?)
-  (define-standard-unary positive? flo:positive? int:positive?)
-  (define-standard-unary abs flo:abs int:abs)
-  (define-standard-unary floor flo:floor (lambda (x) x))
-  (define-standard-unary ceiling flo:ceiling (lambda (x) x))
-  (define-standard-unary truncate flo:truncate (lambda (x) x))
-  (define-standard-unary round flo:round (lambda (x) x))
-  (define-standard-unary exact->inexact (lambda (x) x) int:->flonum)
-  (define-standard-unary inexact->exact
-    (lambda (x)
-      (if (not (flo:integer? x))
-	  (error:bad-range-argument x 'INEXACT->EXACT))
-      (flo:truncate->exact x))
-    (lambda (x)
-      (guarantee-integer x 'INEXACT->EXACT)
-      x)))
+(define-syntax define-standard-unary
+  (sc-macro-transformer
+   (lambda (form environment)
+     `(DEFINE (,(list-ref form 1) X)
+	(IF (FLONUM? X)
+	    (,(close-syntax (list-ref form 2) environment) X)
+	    (,(close-syntax (list-ref form 3) environment) X))))))
+
+(define-standard-unary rational? (lambda (x) x true) int:integer?)
+(define-standard-unary integer? flo:integer? int:integer?)
+(define-standard-unary exact? (lambda (x) x false)
+  (lambda (x)
+    (guarantee-integer x 'EXACT?)
+    true))
+(define-standard-unary zero? flo:zero? int:zero?)
+(define-standard-unary negative? flo:negative? int:negative?)
+(define-standard-unary positive? flo:positive? int:positive?)
+(define-standard-unary abs flo:abs int:abs)
+(define-standard-unary floor flo:floor (lambda (x) x))
+(define-standard-unary ceiling flo:ceiling (lambda (x) x))
+(define-standard-unary truncate flo:truncate (lambda (x) x))
+(define-standard-unary round flo:round (lambda (x) x))
+(define-standard-unary exact->inexact (lambda (x) x) int:->flonum)
+(define-standard-unary inexact->exact
+  (lambda (x)
+    (if (not (flo:integer? x))
+	(error:bad-range-argument x 'INEXACT->EXACT))
+    (flo:truncate->exact x))
+  (lambda (x)
+    (guarantee-integer x 'INEXACT->EXACT)
+    x))
 
-(let-syntax
-    ((define-standard-binary
-       (sc-macro-transformer
-	(lambda (form environment)
-	  (let ((flo:op (close-syntax (list-ref form 2) environment))
-		(int:op (close-syntax (list-ref form 3) environment)))
-	    `(DEFINE (,(list-ref form 1) X Y)
-	       (IF (FLONUM? X)
-		   (IF (FLONUM? Y)
-		       (,flo:op X Y)
-		       (,flo:op X (INT:->FLONUM Y)))
-		   (IF (FLONUM? Y)
-		       (,flo:op (INT:->FLONUM X) Y)
-		       (,int:op X Y)))))))))
-  (define-standard-binary real:+ flo:+ int:+)
-  (define-standard-binary real:- flo:- int:-)
-  (define-standard-binary rationalize
-    flo:rationalize
-    int:rationalize))
+(define-syntax define-standard-binary
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((flo:op (close-syntax (list-ref form 2) environment))
+	   (int:op (close-syntax (list-ref form 3) environment)))
+       `(DEFINE (,(list-ref form 1) X Y)
+	  (IF (FLONUM? X)
+	      (IF (FLONUM? Y)
+		  (,flo:op X Y)
+		  (,flo:op X (INT:->FLONUM Y)))
+	      (IF (FLONUM? Y)
+		  (,flo:op (INT:->FLONUM X) Y)
+		  (,int:op X Y))))))))
+
+(define-standard-binary real:+ flo:+ int:+)
+(define-standard-binary real:- flo:- int:-)
+(define-standard-binary rationalize
+  flo:rationalize
+  int:rationalize)
 
 (define (int:rationalize q e)
   (int:simplest-rational (int:- q e) (int:+ q e)))
@@ -188,30 +189,30 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (even? n)
   (int:even? (if (flonum? n) (flo:->integer n) n)))
 
-(let-syntax
-    ((define-integer-binary
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((operator (close-syntax (list-ref form 3) environment))
-	       (flo->int
-		(lambda (n)
-		  `(IF (FLO:INTEGER? ,n)
-		       (FLO:->INTEGER ,n)
-		       (ERROR:WRONG-TYPE-ARGUMENT ,n "integer"
-						  ',(list-ref form 2))))))
-	   `(DEFINE (,(list-ref form 1) N M)
-	      (IF (FLONUM? N)
-		  (INT:->FLONUM
-		   (,operator ,(flo->int 'N)
-			      (IF (FLONUM? M) (FLO:->INTEGER M) M)))
-		  (IF (FLONUM? M)
-		      (INT:->FLONUM (,operator N ,(flo->int 'M)))
-		      (,operator N M)))))))))
-  (define-integer-binary quotient quotient int:quotient)
-  (define-integer-binary remainder remainder int:remainder)
-  (define-integer-binary modulo modulo int:modulo)
-  (define-integer-binary real:gcd gcd int:gcd)
-  (define-integer-binary real:lcm lcm int:lcm))
+(define-syntax define-integer-binary
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((operator (close-syntax (list-ref form 3) environment))
+	   (flo->int
+	    (lambda (n)
+	      `(IF (FLO:INTEGER? ,n)
+		   (FLO:->INTEGER ,n)
+		   (ERROR:WRONG-TYPE-ARGUMENT ,n "integer"
+					      ',(list-ref form 2))))))
+       `(DEFINE (,(list-ref form 1) N M)
+	  (IF (FLONUM? N)
+	      (INT:->FLONUM
+	       (,operator ,(flo->int 'N)
+			  (IF (FLONUM? M) (FLO:->INTEGER M) M)))
+	      (IF (FLONUM? M)
+		  (INT:->FLONUM (,operator N ,(flo->int 'M)))
+		  (,operator N M))))))))
+
+(define-integer-binary quotient quotient int:quotient)
+(define-integer-binary remainder remainder int:remainder)
+(define-integer-binary modulo modulo int:modulo)
+(define-integer-binary real:gcd gcd int:gcd)
+(define-integer-binary real:lcm lcm int:lcm)
 
 (define (numerator q)
   (if (flonum? q)
@@ -227,23 +228,23 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	(guarantee-integer q 'DENOMINATOR)
 	1)))
 
-(let-syntax
-    ((define-transcendental-unary
-       (sc-macro-transformer
-	(lambda (form environment)
-	  `(DEFINE (,(list-ref form 1) X)
-	     (IF (,(close-syntax (list-ref form 2) environment) X)
-		 ,(close-syntax (list-ref form 3) environment)
-		 (,(close-syntax (list-ref form 4) environment)
-		  (REAL:->FLONUM X))))))))
-  (define-transcendental-unary exp real:exact0= 1 flo:exp)
-  (define-transcendental-unary log real:exact1= 0 flo:log)
-  (define-transcendental-unary sin real:exact0= 0 flo:sin)
-  (define-transcendental-unary cos real:exact0= 1 flo:cos)
-  (define-transcendental-unary tan real:exact0= 0 flo:tan)
-  (define-transcendental-unary asin real:exact0= 0 flo:asin)
-  (define-transcendental-unary acos real:exact1= 0 flo:acos)
-  (define-transcendental-unary real:atan real:exact0= 0 flo:atan))
+(define-syntax define-transcendental-unary
+  (sc-macro-transformer
+   (lambda (form environment)
+     `(DEFINE (,(list-ref form 1) X)
+	(IF (,(close-syntax (list-ref form 2) environment) X)
+	    ,(close-syntax (list-ref form 3) environment)
+	    (,(close-syntax (list-ref form 4) environment)
+	     (REAL:->FLONUM X)))))))
+
+(define-transcendental-unary exp real:exact0= 1 flo:exp)
+(define-transcendental-unary log real:exact1= 0 flo:log)
+(define-transcendental-unary sin real:exact0= 0 flo:sin)
+(define-transcendental-unary cos real:exact0= 1 flo:cos)
+(define-transcendental-unary tan real:exact0= 0 flo:tan)
+(define-transcendental-unary asin real:exact0= 0 flo:asin)
+(define-transcendental-unary acos real:exact1= 0 flo:acos)
+(define-transcendental-unary real:atan real:exact0= 0 flo:atan)
 
 (define (real:atan2 y x)
   (if (and (real:exact0= y) (exact? x))
