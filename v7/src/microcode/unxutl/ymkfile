@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.57 1992/08/29 12:28:44 jinx Exp $
+$Id: ymkfile,v 1.58 1992/09/14 20:51:31 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -649,7 +649,7 @@ primutl.o : scheme.touch prims.h prename.h
 hunk.o list.o step.o vector.o sysprim.o daemon.o prim.o extern.o : \
 	scheme.touch prims.h
 
-lookup.o debug.o intern.o : scheme.touch prims.h lookup.h trap.h locks.h
+lookup.o lookprm.o debug.o intern.o : scheme.touch prims.h lookup.h trap.h locks.h
 
 fasload.o : scheme.touch prims.h osscheme.h osfile.h osio.h $(GC_HEAD_FILES) \
 	trap.h option.h prmcon.h load.c fasl.h
