@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.10 1989/10/26 06:46:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.11 1990/02/14 00:20:38 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -113,12 +113,38 @@ MIT in each case. |#
 (define (sublist list start end)
   (list-head (list-tail list start) (- end start)))
 
+#|
+;; This version does not detect circularity
+
 (define (list? object)
   (let loop ((object object))
     (if (null? object)
 	true
 	(and (pair? object)
 	     (loop (cdr object))))))
+|#
+
+(define (list? obj)
+  (define (phase-1 l1 l2)
+    (cond ((pair? l1)
+	   (phase-2 (cdr l1) l2))
+	  ((null? l1)
+	   true)
+	  (else
+	   false)))
+
+  (define (phase-2 l1 l2)
+    (cond ((eq? l1 l2)
+	   ;; Circular list.
+	   false)
+	  ((pair? l1)
+	   (phase-1 (cdr l1) (cdr l2)))
+	  ((null? l1)
+	   true)
+	  (else
+	   false)))
+
+  (phase-1 obj obj))
 
 (define (alist? object)
   (if (null? object)
