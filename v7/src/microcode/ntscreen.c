@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.29 1997/05/17 07:00:14 cph Exp $
+$Id: ntscreen.c,v 1.30 1997/06/19 05:14:14 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -601,6 +601,11 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       case SCREEN_CLEAR:
 	 Screen_Clear (screen, (int)wParam);
 	 return  0L;
+
+      case WM_MOUSEACTIVATE:
+	 if ((LOWORD (lParam)) == HTCLIENT)
+	   return (MA_ACTIVATEANDEAT);
+	 break;
 
       case WM_LBUTTONDOWN:
       case WM_MBUTTONDOWN:
