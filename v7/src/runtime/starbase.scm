@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.11 1994/11/06 18:06:22 adams Exp $
+$Id: starbase.scm,v 1.12 1995/02/21 23:10:48 cph Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,6 +65,7 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! starbase-graphics-device-type
 	(make-graphics-device-type
+	 'STARBASE
 	 `((available? ,operation/available?)
 	   (clear ,operation/clear)
 	   (close ,operation/close)
@@ -94,7 +95,6 @@ MIT in each case. |#
 	   (text-rotation ,operation/text-rotation)
 	   (text-slant ,operation/text-slant)
 	   (write-image-file ,operation/write-image-file))))
-  (register-graphics-device-type 'starbase starbase-graphics-device-type)
   unspecific)
 
 (define starbase-graphics-device-type)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.40 1995/01/06 00:49:43 cph Exp $
+$Id: x11graph.scm,v 1.41 1995/02/21 23:11:22 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -209,6 +209,7 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! x-graphics-device-type
 	(make-graphics-device-type
+	 'X
 	 `((available? ,x-graphics/available?)
 	   (clear ,x-graphics/clear)
 	   (close ,x-graphics/close-window)
@@ -259,8 +260,6 @@ MIT in each case. |#
 	   (set-window-name ,x-graphics/set-window-name)
 	   (starbase-filename ,x-graphics/starbase-filename)
 	   (withdraw-window ,x-graphics/withdraw-window))))
-  (register-graphics-device-type 'X x-graphics-device-type)
-;  (register-graphics-device 'X11 x-graphics-device-type)
   (set! display-list (make-protection-list))
   (add-gc-daemon! close-lost-displays-daemon)
   (add-event-receiver! event:after-restore drop-all-displays)
@@ -837,9 +836,7 @@ MIT in each case. |#
 
 ;; X-IMAGE is the descriptor of the generic images.
 
-(define-structure
-  (x-image
-    (conc-name x-image/))
+(define-structure (x-image (conc-name x-image/))
   descriptor
   window
   width
@@ -847,21 +844,18 @@ MIT in each case. |#
 
 (define image-list)
 
-;; This is the generic image interface to X-IMAGES:
-
-(define x-graphics-image-type)
-
 (define (initialize-image-datatype)
-  (set! x-graphics-image-type
-	(make-image-type
-	 `((create   ,create-x-image) ;;this one returns an IMAGE descriptor
-	   (destroy  ,x-graphics-image/destroy)
-	   (width    ,x-graphics-image/width)
-	   (height   ,x-graphics-image/height)
-	   (draw     ,x-graphics-image/draw)
-	   (draw-subimage  ,x-graphics-image/draw-subimage)
-	   (fill-from-byte-vector  ,x-graphics-image/fill-from-byte-vector))))
-
+  (1d-table/put!
+   (graphics-type-properties x-graphics-device-type)
+   'IMAGE-TYPE
+   (make-image-type
+    `((create   ,create-x-image) ;;this one returns an IMAGE descriptor
+      (destroy  ,x-graphics-image/destroy)
+      (width    ,x-graphics-image/width)
+      (height   ,x-graphics-image/height)
+      (draw     ,x-graphics-image/draw)
+      (draw-subimage  ,x-graphics-image/draw-subimage)
+      (fill-from-byte-vector  ,x-graphics-image/fill-from-byte-vector))))
   (set! image-list (make-protection-list))
   (add-gc-daemon! destroy-lost-images-daemon))
 
@@ -901,7 +895,7 @@ MIT in each case. |#
 ;; Abstraction layer for generic images
 
 (define (x-graphics/create-image device width height)
-  (image/create x-graphics-image-type device width height))
+  (image/create (image-type device) device width height))
 
 ;;(define x-graphics-image/create create-x-image)
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.13 1994/11/06 18:06:33 adams Exp $
+$Id: graphics.scm,v 1.14 1995/02/21 23:10:35 cph Exp $
 
-Copyright (c) 1989-94 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,7 +41,8 @@ MIT in each case. |#
 		   (conc-name graphics-device-type/)
 		   (constructor
 		    %make-graphics-device-type
-		    (operation/available?
+		    (name
+		     operation/available?
 		     operation/clear
 		     operation/close
 		     operation/coordinate-limits
@@ -58,7 +59,13 @@ MIT in each case. |#
 		     operation/set-coordinate-limits
 		     operation/set-drawing-mode
 		     operation/set-line-style
-		     custom-operations)))
+		     custom-operations))
+		   (print-procedure
+		    (standard-unparser-method 'GRAPHICS-TYPE
+		      (lambda (type port)
+			(write-char #\space port)
+			(write (graphics-device-type/name type) port)))))
+  (name false read-only true)
   (operation/available? false read-only true)
   (operation/clear false read-only true)
   (operation/close false read-only true)
@@ -76,9 +83,10 @@ MIT in each case. |#
   (operation/set-coordinate-limits false read-only true)
   (operation/set-drawing-mode false read-only true)
   (operation/set-line-style false read-only true)
-  (custom-operations false read-only true))
+  (custom-operations false read-only true)
+  (properties (make-1d-table) read-only true))
 
-(define (make-graphics-device-type operations)
+(define (make-graphics-device-type name operations)
   (let ((operations
 	 (map (lambda (entry)
 		(if (not (and (pair? entry)
@@ -113,24 +121,28 @@ MIT in each case. |#
 	    (set-coordinate-limits (operation 'set-coordinate-limits))
 	    (set-drawing-mode (operation 'set-drawing-mode))
 	    (set-line-style (operation 'set-line-style)))
-	(%make-graphics-device-type available?
-				    clear
-				    close
-				    coordinate-limits
-				    device-coordinate-limits
-				    drag-cursor
-				    draw-line
-				    draw-point
-				    draw-text
-				    flush
-				    move-cursor
-				    open
-				    reset-clip-rectangle
-				    set-clip-rectangle
-				    set-coordinate-limits
-				    set-drawing-mode
-				    set-line-style
-				    operations)))))
+	(let ((type
+	       (%make-graphics-device-type name
+					   available?
+					   clear
+					   close
+					   coordinate-limits
+					   device-coordinate-limits
+					   drag-cursor
+					   draw-line
+					   draw-point
+					   draw-text
+					   flush
+					   move-cursor
+					   open
+					   reset-clip-rectangle
+					   set-clip-rectangle
+					   set-coordinate-limits
+					   set-drawing-mode
+					   set-line-style
+					   operations)))
+	  (add-graphics-type type)
+	  type)))))
 
 (define (graphics-device-type/operation type name)
   (case name
@@ -171,47 +183,66 @@ MIT in each case. |#
        (cdr entry)))))
 
 (define graphics-types '())
-;; alist of (<symbol> . <graphics-device-type>)
 
-(define (register-graphics-device-type name type)
-  (set! graphics-types (cons (cons name type) graphics-types))
-  unspecific)
+(define (add-graphics-type type)
+  (let ((name (graphics-device-type/name type)))
+    (let loop ((types graphics-types))
+      (cond ((null? types)
+	     (set! graphics-types (cons type graphics-types))
+	     unspecific)
+	    ((eq? name (graphics-device-type/name (car types)))
+	     (set-car! types type))
+	    (else
+	     (loop (cdr types)))))))
 
-(define (graphics-type-available? type-or-name)
-  (let loop ((types (%enumerate-graphics-device-types)))
-    (and (not (null? types))
-	 (or (eq? type-or-name (caar types))
-	     (eq? type-or-name (cdar types))
-	     (loop (cdr types))))))
+(define (graphics-type #!optional object error?)
+  (let ((object (if (default-object? object) #f object))
+	(error? (if (default-object? error?) #t error?)))
+    (let ((test-type
+	   (lambda (type)
+	     (if (graphics-device-type/available? type)
+		 type
+		 (and error?
+		      (error "Graphics type not supported:" type))))))
+      (cond ((graphics-device-type? object)
+	     (test-type object))
+	    ((graphics-device? object)
+	     (test-type (graphics-device/type object)))
+	    ((not object)
+	     (or (list-search-positive graphics-types
+		   graphics-device-type/available?)
+		 (and error?
+		      (error "No graphics types supported."))))
+	    (else
+	     (let ((type
+		    (list-search-positive graphics-types
+		      (lambda (type)
+			(eq? object (graphics-device-type/name type))))))
+	       (if type
+		   (test-type type)
+		   (and error?
+			(error "Graphics type unknown:" object)))))))))
 
-(define (enumerate-graphics-device-types)
-  (map car (%enumerate-graphics-device-types)))
+(define graphics-type-available?
+  graphics-type)
 
-(define (%enumerate-graphics-device-types)
-  (let loop ((items graphics-types) (result '()))
-    (if (null? items)
-	(reverse result)
-	(let ((item (car items)))
-	  (loop (cdr items)
-		(if ((graphics-device-type/operation/available? (cdr item)))
-		    (cons item result)
-		    result))))))
+(define (enumerate-graphics-types)
+  (list-transform-positive graphics-types graphics-device-type/available?))
 
-(define (get-default-graphics-device-type)
-  (let ((types (%enumerate-graphics-device-types)))
-    (if (null? types)
-	(error "No graphics device types supported."
-	       'GET-DEFAULT-GRAPHICS-DEVICE-TYPE))
-    (cdar types)))
+(define (graphics-device-type/available? type)
+  ((graphics-device-type/operation/available? type)))
 
-(define (lookup-graphics-device-type type-name)
-  (let ((entry (assq type-name graphics-types)))
-    (if (not (and entry
-		  ((graphics-device-type/operation/available? (cdr entry)))))
-	(error "Graphics type not supported:"
-	       type-name
-	       'LOOKUP-GRAPHICS-DEVICE-TYPE))
-    (cdr entry)))
+(define (graphics-type-name type)
+  (guarantee-graphics-type type 'GRAPHICS-TYPE-NAME)
+  (graphics-device-type/name type))
+
+(define (graphics-type-properties type)
+  (guarantee-graphics-type type 'GRAPHICS-TYPE-PROPERTIES)
+  (graphics-device-type/properties type))
+
+(define (guarantee-graphics-type type name)
+  (if (not (graphics-device-type? type))
+      (error:wrong-type-argument type "graphics type" name)))
 
 (define-structure (graphics-device
 		   (conc-name graphics-device/)
@@ -225,12 +256,7 @@ MIT in each case. |#
 
 (define (make-graphics-device #!optional type-name . arguments)
   (let ((type
-	 (cond ((or (default-object? type-name) (not type-name))
-		(get-default-graphics-device-type))
-	       ((graphics-device-type? type-name)
-		type-name)
-	       (else
-		(lookup-graphics-device-type type-name)))))
+	 (graphics-type (if (default-object? type-name) #f type-name))))
     (apply (graphics-device-type/operation/open type)
 	   (lambda (descriptor)
 	     (and descriptor
@@ -378,8 +404,10 @@ MIT in each case. |#
 ;;; rectangular images that can be copied from and into the graphics
 ;;; device
 
-(define-structure (image-type (conc-name image-type/)
-			      (constructor %make-image-type))
+(define-structure (image-device-type
+		   (conc-name image-type/)
+		   (constructor %make-image-type)
+		   (predicate image-type?))
   (operation/create  false read-only true)
   (operation/destroy false read-only true)
   (operation/width   false read-only true)
@@ -387,6 +415,20 @@ MIT in each case. |#
   (operation/draw    false read-only true)
   (operation/draw-subimage    false read-only true)
   (operation/fill-from-byte-vector  false read-only true))
+
+(define (image-type #!optional object error?)
+  (let ((object (if (default-object? object) #f object))
+	(error? (if (default-object? error?) #t error?)))
+    (if (image-type? object)
+	object
+	(let ((type (graphics-type object error?)))
+	  (and type
+	       (or (1d-table/get (graphics-type-properties type)
+				 'IMAGE-TYPE
+				 #f)
+		   (and error?
+			(error "Graphics type has no associated image type:"
+			       type))))))))
 
 (define (make-image-type operations)
   (let ((operations
