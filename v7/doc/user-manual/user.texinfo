@@ -165,10 +165,286 @@ Installation information for Unix versions goes here.
 Installation information for C back-end versions goes here?
 
 
+@c NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
 @node
-@section Microsoft Windows and Windows NT
+@section Microsoft Windows and Windows NT installation
 
-Installation information for  Microsoft Windows and Windows NT goes here.
+
+@enumerate
+@item
+Decide on where to install MIT Scheme.
+We suggest the default: @file{C:\SCHEME}.
+Create the root directory which we from now on refer to as @var{root}.
+If for example, you choose the default:
+
+@example
+mkdir c:\scheme
+cd \scheme
+@end example
+
+@noindent
+@var{root} is the string @code{C:\scheme}
+
+@item
+In the @var{root} directory unzip the following essential files:
+@file{BIN.ZIP}, @file{LIB.ZIP}, @file{RUNTIME.ZIP}.
+
+@example
+unzip bin.zip
+unzip lib.zip
+unzip runtime.zip
+@end example
+
+@item
+If you are installing for Windows 3.1 only, either (a) put the following
+line in the @file{AUTOEXEC.BAT} file to ensure that the
+@file{@var{root}\bin\win31} directory is on the path:
+
+@example
+path %PATH%;@var{root}\bin\win31
+@end example
+
+@noindent
+or (b) copy the files from @file{@var{root}\bin\win31} into
+@file{@var{root}\bin}.
+
+
+@item
+If you are installing for Windows NT only, either (a) as system
+administrator add @file{@var{root}\bin\nt} to the @code{PATH in the
+environment (Registry ...)  or (b) as an individual place
+@code{PATH=}@var{root}@code{\bin\nt} in your enviroment (use the control
+panel's system option}, or (c) copy the files from
+@file{@var{root}\bin\nt} into @file{@var{root}\bin}.
+
+
+@item
+If you are installing for both Windows 3.1 and Windows NT then you must
+use an option from the above that does not involve copying files, i.e.
+you must arrange for Windows 3.1 to be run with
+@file{@var{root}\bin\win31} on the path and for Windows NT to be run
+with @file{@var{root}\bin\nt} on the path.
+
+
+@item
+If you did not choose the default installation directory, make sure that
+the environment variable @code{MITSCHEME_LIBRARY_PATH} is defined:
+
+@example
+set MITSCHEME_LIBRARY_PATH=@var{root}\lib
+@end example
+
+
+@item
+Now test the installation so far.
+You should be able to get a Scheme system running in it's terminal
+window by running the following from the Program Manager or the File
+Manager
+
+@example
+@var{root}\bin\scheme
+@end example
+
+@noindent
+If there are any problems at this stage review the installation so far.
+
+
+@item
+Now you should create a Program Manager group for MIT Scheme.
+This can be done by running a Scheme program from the Program Manager
+using the @code{File|Run} option:
+
+@example
+@var{root}\bin\scheme -load @var{root}\etc\pmgrp
+@end example
+
+@noindent
+This program creates a program group called `MIT Scheme' which contains
+@itemize @bullet
+@item
+Icons for running scheme in several configurations
+@item
+Windows Help versions of the Scheme Reference Manual and the MIT Scheme
+User's Manual.
+@item
+`Mincer' icons for building the rest of the system
+@end itemize
+
+@noindent
+At this point only the Scheme icon called `Runtime' will execute.
+Test it.  The other Scheme icons (`Edwin', `Compiler' and `MIT Scheme'
+shield) should report that they cannot find their bands.
+
+
+@item
+To install the Edwin editor you need to build the @file{edwin.com} band.
+First unpack the delta file:
+
+@example
+cd @var{root}
+unzip eddel.com
+@end example
+
+To build @file{edwin.com} start the `build EDWIN.COM band' icon, or run
+the following command:
+
+@example
+@var{root}\bin\scheme -large -load @var{root}\etc\build -eval (edwin.com)
+@end example
+
+@noindent
+This will load in @file{eddel.com} and create the new band.
+After a successful build the program will exit.
+
+
+@item
+To install the compiler you need to build the @file{compiler.com} band.
+First unpack the delta file:
+
+@example
+cd @var{root}
+unzip compdel.com
+@end example
+
+To build @file{compiler.com} start the `build COMPILER.COM band' icon,
+or run the following command:
+
+@example
+@var{root}\bin\scheme -large -load @var{root}\etc\build -eval (compiler.com)
+@end example
+
+@noindent
+This will load in @file{compdel.com} and create the new band.
+After a successful build the program will exit.
+
+
+@item
+If you want both Edwin and the compiler in one band you should build the
+@file{all.com} band.
+First unpack the delta files:
+
+@example
+cd @var{root}
+unzip eddel.com
+unzip compdel.com
+@end example
+
+To build @file{all.com} start the `build ALL.COM band' icon, or run the
+following command:
+
+@example
+@var{root}\bin\scheme -large -load @var{root}\etc\build -eval (all.com)
+@end example
+
+@noindent
+This will load in both @file{eddel.com} and @file{compdel.com} and
+create the new band.  After a successful build the program will exit.
+
+
+@item
+Any combination of @file{edwin.com}, @file{compiler.com} and
+@file{all.com} may be used.  It is not necessary to build either of
+@file{edwin.com} and @file{compiler.com} before building and using
+@file{all.com}.  After building the bands you may tidy the MIT Scheme
+group by removing the mincer icons and recover disk space
+by deleting the delta files.
+
+To create icons that use @code{bchscheme} instead of @code{scheme} copy
+the icons and edit the command lines to change `scheme' to `bchschem'
+(that is right: no tailing `e').
+
+@item
+Debugging information can be installed by uncompressing the files in the
+Scheme root directory @var{root}.  The most useful is the runtime
+debugging info which is in @file{RUNBCI.ZIP}.  These files can be
+installed in another directory.  If this is done then set the
+@var{MITSCHEME_INF_DIRECTORY} environment variable to this directory.
+@file{EDWINBCI.ZIP} and @file{COMPBCI.ZIP} hold the debugging info files
+for Edwin and the compiler respectively.
+
+@end enumerate
+
+@node
+@subsection random junk
+
+@table @asis
+@item Win32s DLLs
+
+@item *
+
+@item Binaries
+Choice 1: 3.1 xor NT: put DLLs with scheme.exe
+Choice 2: 3.1 and NT: (a) two bin directories
+(b) One bin, DLLs in separate directories, these directories on the
+path.
+
+
+@end table
+
+@node
+@subsection Manifest
+
+
+BIN.ZIP
+
+
+@subsection Known Problems
+
+@itemize @asis
+
+@item *
+MIT Scheme is a lot more robust under NT than Windows 3.1
+
+@item Exclusive file access [NT]
+Can't write a file that is still open for reading.  (e.g.
+mismatched paren in @code{(load "foo.scm")}.  Work-around: Quit to top
+level. Do a @code{(gc-flip)} to force file to be closed.  Now you will
+be able to save the file.
+
+
+
+@item Edwin autoloads
+A few files that are automatically part of Edwin under unix are not part
+of Edwin in the PC.  These can be loaded manually from the auto-load
+directory, for example, by putting
+
+@example
+(edwin-load "dabbrev")
+@end example
+
+@noindent
+in your @file{edwin.ini} file.
+
+
+@end itemize
+
+
+
+@node
+@subsection NT build
+
+The windows/NT version can only be built under Windows NT.
+
+@table @asis
+@item no TOUCH command
+Create the following 1 line script in @file{TOUCH.BAT}:
+
+@example
+echo on > %1
+@end example
+
+@item can't find @file{w32sut.h}
+These files are a part of Win32S: @file{w32sut.h}, @file{?.dll}, @file{?.dll}
+You need to copy @file{w32sut.h} from 
+@end table
+
+
+TTD
+
+w32sut.h & dlls to ntutl/config
+
+@c NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
+
 
 
 @node
