@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.3 1992/09/23 23:05:22 jinx Exp $
+;;;	$Id: dos.scm,v 1.4 1992/09/30 04:00:09 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -396,11 +396,13 @@ Includes the new backup.  Must be > 0."
   false?)
 
 (define (read-directory pathname switches mark)
-  (let ((directory (directory-pathname pathname)))
-    (if (file-directory? pathname)
-	(let ((dir (->namestring (pathname-as-directory pathname))))
-	  (generate-dired-listing! (string-append dir "*.*") mark))
-	(generate-dired-listing! pathname mark))))
+  switches				; ignored
+  (if (file-directory? pathname)
+      (generate-dired-listing!
+       (string-append (->namestring (pathname-as-directory pathname))
+		      "*.*")
+       mark)
+      (generate-dired-listing! pathname mark)))
 
 (define (insert-dired-entry! pathname directory lstart)
   directory				; ignored
