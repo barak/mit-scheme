@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 4.14 2002/02/09 06:17:50 cph Exp $
+$Id: object.scm,v 4.15 2002/02/22 01:34:04 cph Exp $
 
 Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -135,8 +135,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 (NAMED
 		  ,(close-syntax (symbol-append name '/ENUMERAND) environment))
 		 (CONC-NAME ,(symbol-append name '/))
-		 (CONSTRUCTOR
-		  ,(close-syntax (symbol-append name '/MAKE) environment)))
+		 (CONSTRUCTOR ,(symbol-append name '/MAKE)))
 	      ,@(if scode?
 		    `((scode #f read-only #t))
 		    `())

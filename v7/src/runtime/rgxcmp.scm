@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rgxcmp.scm,v 1.120 2002/02/09 06:09:59 cph Exp $
+;;; $Id: rgxcmp.scm,v 1.121 2002/02/22 01:33:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
@@ -29,7 +29,8 @@
 (define-syntax define-enumeration
   (sc-macro-transformer
    (lambda (form environment)
-     (let ((name (close-syntax (cadr form) environment))
+     environment
+     (let ((name (cadr form))
 	   (prefix (caddr form))
 	   (suffixes (cdddr form)))
        `(BEGIN

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser-buffer.scm,v 1.3 2002/02/03 03:38:56 cph Exp $
+;;; $Id: parser-buffer.scm,v 1.4 2002/02/22 01:33:48 cph Exp $
 ;;;
 ;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -192,10 +192,8 @@
       (sc-macro-transformer
        (lambda (form environment)
 	 (let ((suffix (cadr form)))
-	   `(DEFINE (,(close-syntax
-		       (intern
-			(string-append "match-parser-buffer-string" suffix))
-		       environment)
+	   `(DEFINE (,(intern
+		       (string-append "match-parser-buffer-string" suffix))
 		     BUFFER STRING)
 	      (,(close-syntax
 		 (intern
@@ -212,10 +210,8 @@
       (sc-macro-transformer
        (lambda (form environment)
 	 (let ((suffix (cadr form)))
-	   `(DEFINE (,(close-syntax
-		       (intern
-			(string-append "match-parser-buffer-substring" suffix))
-		       environment)
+	   `(DEFINE (,(intern
+		       (string-append "match-parser-buffer-substring" suffix))
 		     BUFFER STRING START END)
 	      (LET ((N (FIX:- END START)))
 		(AND (GUARANTEE-BUFFER-CHARS BUFFER N)
@@ -237,12 +233,10 @@
       (sc-macro-transformer
        (lambda (form environment)
 	 (let ((suffix (cadr form)))
-	   `(DEFINE (,(close-syntax
-		       (intern
-			(string-append "match-parser-buffer-substring"
-				       suffix
-				       "-no-advance"))
-		       environment)
+	   `(DEFINE (,(intern
+		       (string-append "match-parser-buffer-substring"
+				      suffix
+				      "-no-advance"))
 		     BUFFER STRING START END)
 	      (LET ((N (FIX:- END START)))
 		(AND (GUARANTEE-BUFFER-CHARS BUFFER N)
