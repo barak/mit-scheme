@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.1 1992/08/29 13:51:31 jinx Exp $
+$Id: rules3.scm,v 1.2 1992/10/15 16:44:01 jinx Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -420,7 +420,7 @@ case.
       (LABEL ,gc-label)
 	 ,@(link-to-interface code)
       ,@(make-external-label code-word label)
-	 ,@(interrupt-check gc-label))))
+	 ,@(interrupt-check label gc-label))))
 
 (define (dlink-procedure-header code-word label)
   (let ((gc-label (generate-label)))    
@@ -429,18 +429,33 @@ case.
 	 (COPY ,regnum:dynamic-link ,regnum:second-arg)
 	 ,@(link-to-interface code:compiler-interrupt-dlink)
       ,@(make-external-label code-word label)
-	 ,@(interrupt-check gc-label))))
+	 ,@(interrupt-check label gc-label))))
 
-(define (interrupt-check gc-label)	; Code sequence 2 in cmpint-alpha.h
+(define (interrupt-check procedure gc-label)
+  ;; Code sequence 2 in cmpint-alpha.h
   (let ((Interrupt (generate-label))
 	(temp (standard-temporary!)))
-    (add-end-of-block-code!		; Make branch prediction work
+    ;; The following trick makes branch prediction work.
+    ;; The interrupt branch (taken very rarely) is guaranteed to
+    ;; be a forward branch, so it is predicted NOT taken.
+    (add-end-of-block-code!		
      (lambda ()
        (LAP (LABEL ,Interrupt)
 	      (BR ,regnum:came-from (@PCR ,gc-label)))))
-    (LAP (CMPLT ,regnum:free ,regnum:memtop ,temp)
-	 (LDQ ,regnum:memtop ,reg:memtop)
-	 (BEQ ,temp (@PCR ,Interrupt))))); forward, so predicted NOT taken
+    (if (not (let ((object (label->object label)))
+	       (and (rtl-procedure? object)
+		    (not (rtl-procedure/stack-leaf? object))
+		    compiler:generate-stack-checks?)))
+	(LAP (CMPLT ,regnum:free ,regnum:memtop ,temp)
+	     (LDQ ,regnum:memtop ,reg:memtop)
+	     (BEQ ,temp (@PCR ,Interrupt)))
+	(let ((temp2 (standard-temporary!)))
+	  (LAP (LDQ ,temp2 ,reg:stack-guard)
+	       (CMPLT ,regnum:free ,regnum:memtop ,temp)
+	       (LDQ ,regnum:memtop ,reg:memtop)
+	       (BEQ ,temp (@PCR ,Interrupt))
+	       (CMPLE ,regnum:stack-pointer ,temp2 ,temp)
+	       (BNE ,temp (@PCR ,Interrupt)))))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
