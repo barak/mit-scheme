@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: test-parser.scm,v 1.3 2001/07/10 17:50:14 cph Exp $
+;;; $Id: test-parser.scm,v 1.4 2001/07/12 05:08:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -42,9 +42,9 @@
        (directory-read
 	(merge-pathnames "*.xml" (pathname-as-directory directory)))))
 
-(define (run-validity-tests root)
+(define (run-xml-tests root)
   (let ((root
-	 (merge-pathnames "xmlconf/xmltest/valid/"
+	 (merge-pathnames "xmlconf/xmltest/"
 			  (pathname-as-directory root))))
     (for-each (lambda (dir)
 		(newline)
@@ -52,4 +52,6 @@
 		(write-string dir)
 		(newline)
 		(test-directory (merge-pathnames dir root)))
-	      '("sa" "ext-sa" "not-sa"))))
+	      '("valid/sa" "valid/ext-sa" "valid/not-sa"
+			   "invalid"
+			   "not-wf/sa" "not-wf/ext-sa" "not-wf/not-sa"))))
