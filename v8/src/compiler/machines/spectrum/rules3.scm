@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.3 1994/11/23 20:43:30 gjr Exp $
+$Id: rules3.scm,v 1.4 1994/12/01 20:40:11 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -1590,18 +1590,36 @@ MIT in each case. |#
   label dbg-info			; ignored
   (LAP))
 
+(define (interrupt-check:procedure/avoid-for-this-label? label)
+  ;; A hack to test Bill's hypothesis that a lot of time is going into the
+  ;; interrupt check at receiver-x, alt-x, and cons-x procedures.
+  (define (like? pattern)
+    (let ((s-pat  (symbol-name pattern))
+	  (s-lab  (symbol-name label)))
+      (and (> (string-length s-lab) (string-length s-pat))
+	   (substring=? s-pat 0 (string-length s-pat)
+			s-lab 0 (string-length s-pat)))))
+  (or (like? 'alt-)
+      (like? 'cons-)
+      (like? 'next-)
+      (like? 'receiver-)))
+
 (define-rule statement
   (INTERRUPT-CHECK:PROCEDURE (? intrpt) (? heap) (? stack) (? label)
 			     (MACHINE-CONSTANT (? frame-size)))
-  (generate-interrupt-check/new
-   intrpt heap stack
-   (lambda (interrupt-label)
-     (let ((ret-add-label (generate-label)))
-       (LAP (LABEL ,interrupt-label)
-	    (LDI () ,(- frame-size 1) 1)
-	    ,@(invoke-hook hook:compiler-interrupt-procedure/new)
-	    (LABEL ,ret-add-label)
-	    (WORD () (- (- ,label ,ret-add-label) ,*privilege-level*)))))))
+  (if (interrupt-check:procedure/avoid-for-this-label? label)
+      (begin
+	(internal-warning "Eliding interrupt check at " label)
+	(LAP))
+      (generate-interrupt-check/new
+       intrpt heap stack
+       (lambda (interrupt-label)
+	 (let ((ret-add-label (generate-label)))
+	   (LAP (LABEL ,interrupt-label)
+		(LDI () ,(- frame-size 1) 1)
+		,@(invoke-hook hook:compiler-interrupt-procedure/new)
+		(LABEL ,ret-add-label)
+		(WORD () (- (- ,label ,ret-add-label) ,*privilege-level*))))))))
 
 (define-rule statement
   (INTERRUPT-CHECK:CONTINUATION (? intrpt) (? heap) (? stack) (? label)
