@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.61 1991/08/15 22:15:04 gjs Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.62 1991/08/24 02:15:56 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -181,6 +181,8 @@ typedef unsigned long SCHEME_OBJECT;
 #define FASL_ALLIANT		13
 #define FASL_SPARC		14
 #define FASL_MIPS		15
+#define FASL_APOLLO_68K		16
+#define FASL_APOLLO_PRISM	17
 
 #ifdef vax
 
@@ -495,6 +497,15 @@ typedef unsigned long SCHEME_OBJECT;
 #define HAS_FREXP
 #define HAS_MODF
 #endif /* alliant */
+
+#ifdef apollo
+#define MACHINE_TYPE          "Apollo 68k"
+#define FASL_INTERNAL_FORMAT  FASL_APOLLO_68K
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#define HAS_FLOOR
+#define HAS_FREXP
+#endif /* apollo */
 
 /* Make sure that some definition applies.  If this error occurs, and
    the parameters of the configuration are unknown, try the Wsize
