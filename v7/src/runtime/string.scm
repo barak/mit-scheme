@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.14 1997/06/26 23:40:24 adams Exp $
+$Id: string.scm,v 14.15 1997/10/02 19:16:40 adams Exp $
 
-Copyright (c) 1988-1995 Massachusetts Institute of Technology
+Copyright (c) 1988-1997 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Character String Operations
-;;; package: ()
+;;; package: (runtime string)
 
 ;; NOTE
 ;;
