@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.38 1992/03/31 01:14:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.39 1992/04/07 19:51:01 jinx Exp $
 $MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
 $MC68020-Header: lapgen.scm,v 4.35 90/07/20 15:53:40 GMT jinx Exp $
 
@@ -659,7 +659,6 @@ MIT in each case. |#
   (lambda (constant ovflw?)
     (let ((factor (abs constant)))
       (and (or (not ovflw?) (= factor 1))
-	   (fits-in-11-bits-signed? (* (- factor 1) fixnum-1))
 	   (integer-log-base-2? factor))))
   (lambda (tgt src constant ovflw?)
     (guarantee-signed-fixnum constant)
@@ -674,13 +673,22 @@ MIT in each case. |#
       (else
        (let* ((factor (abs constant))
 	      (xpt (integer-log-base-2? factor))
-	      (sign (standard-temporary!)))
+	      (sign (standard-temporary!))
+	      (delta (* (-1+ factor) fixnum-1))
+	      (fits? (fits-in-11-bits-signed? delta))
+	      (temp (and (not fits?) (standard-temporary!))))
 	 (if (or (not xpt) ovflw?)
 	     (error "fixnum-quotient: Inconsistency" constant ovflw?))
-	 (LAP ,@(if (negative? constant)
+	 
+	 (LAP ,@(if fits?
+		    (LAP)
+		    (load-immediate delta temp))
+	      ,@(if (negative? constant)
 		    (LAP (SUB (>=) 0 ,src ,tgt))
 		    (LAP (ADD (>=) 0 ,src ,tgt)))
-	      (ADDI () ,(* (-1+ factor) fixnum-1) ,tgt ,tgt)
+	      ,@(if (fits-in-11-bits-signed? delta)
+		    (LAP (ADDI () ,delta ,tgt ,tgt))
+		    (LAP (ADD () ,temp ,tgt ,tgt)))
 	      (EXTRS () ,tgt 0 1 ,sign)
 	      (SHD () ,sign ,tgt ,xpt ,tgt)
 	      (DEP () 0 31 ,scheme-type-width ,tgt)))))))
