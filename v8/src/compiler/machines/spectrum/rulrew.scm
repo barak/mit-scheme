@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.1 1994/11/19 02:08:04 adams Exp $
+$Id: rulrew.scm,v 1.2 1995/03/16 05:27:46 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -150,8 +150,9 @@ MIT in each case. |#
        (non-pointer-object? (rtl:constant-value expression))))
 
 
-;;; These rules are losers because there's no abstract way to cons a
-;;; statement or a predicate without also getting some CFG structure.
+;;; These rules are losers (i.e. have no effect) because there's no
+;;; abstract way to cons a statement or a predicate without also
+;;; getting some CFG structure.
 
 (define-rule rewriting
   ;; Use register 0, always 0.
@@ -170,6 +171,18 @@ MIT in each case. |#
   (EQ-TEST (REGISTER (? comparand register-known-value)) (? source))
   (QUALIFIER (rtl:immediate-zero-constant? comparand))
   (list 'EQ-TEST source (rtl:make-machine-constant 0)))
+
+(define-rule add-pre-cse-rewriting-rule!
+  (EQ-TEST (REGISTER (? comparand register-known-fixnum-constant)) (? source))
+  (QUALIFIER
+   (fits-in-5-bits-signed? (known-fixnum-constant/fixnum-value comparand)))
+  (list `EQ-TEST comparand source))
+
+(define-rule add-pre-cse-rewriting-rule!
+  (EQ-TEST (? source) (REGISTER (? comparand register-known-fixnum-constant)))
+  (QUALIFIER
+   (fits-in-5-bits-signed? (known-fixnum-constant/fixnum-value comparand)))
+  (list `EQ-TEST comparand source))
 
 (define (rtl:immediate-zero-constant? expression)
   (cond ((rtl:constant? expression)
@@ -319,6 +332,11 @@ MIT in each case. |#
    (and (rtl:machine-constant? type)
 	(= 0 (rtl:machine-constant-value type))
 	(rtl:has-type-zero? datum)))
+  datum)
+
+(define-rule add-pre-cse-rewriting-rule!
+  (CONS-NON-POINTER (MACHINE-CONSTANT 0) (? datum))
+  (QUALIFIER (rtl:has-type-zero? datum))
   datum)
 
 (define (rtl:has-type-zero? expr)
