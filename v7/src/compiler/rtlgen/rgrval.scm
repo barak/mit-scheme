@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.4 1987/05/21 14:59:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.5 1987/05/22 00:10:40 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.4 1987/05/21 14:59:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.5 1987/05/22 00:10:40 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -62,21 +62,19 @@ promotional, or sales literature without prior written consent from
 
 (define-rvalue-generator reference-tag
   (lambda (reference)
-    (generate/variable (reference-block reference)
-		       (reference-variable reference))))
-
-(define (generate/variable block variable)
-  (if (vnode-known-constant? variable)
-      (generate/constant (vnode-known-value variable))
-      (find-variable block variable
-	(lambda (locative)
-	  (expression-value/simple (rtl:make-fetch locative)))
-	(lambda (environment name)
-	  (return-2
-	   (rtl:make-interpreter-call:lookup environment
-					     (intern-scode-variable! block
-								     name))
-	   (rtl:interpreter-call-result:lookup))))))
+    (if (vnode-known-constant? (reference-variable reference))
+	(generate/constant (vnode-known-value (reference-variable reference)))
+	(find-variable (reference-block reference)
+		       (reference-variable reference)
+	  (lambda (locative)
+	    (expression-value/simple (rtl:make-fetch locative)))
+	  (lambda (environment name)
+	    (return-2
+	     (rtl:make-interpreter-call:lookup
+	      environment
+	      (intern-scode-variable! (reference-block reference) name)
+	      (reference-safe? reference))
+	     (rtl:interpreter-call-result:lookup)))))))
 
 (define-rvalue-generator temporary-tag
   (lambda (temporary)

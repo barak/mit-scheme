@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.4 1987/05/15 19:50:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.5 1987/05/22 00:11:14 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -65,7 +65,7 @@ MIT in each case. |#
 (define-rtl-statement interpreter-call:access % environment name)
 (define-rtl-statement interpreter-call:define % environment name value)
 (define-rtl-statement interpreter-call:enclose rtl: size)
-(define-rtl-statement interpreter-call:lookup % environment name)
+(define-rtl-statement interpreter-call:lookup % environment name safe?)
 (define-rtl-statement interpreter-call:set! % environment name value)
 (define-rtl-statement interpreter-call:unassigned? % environment name)
 (define-rtl-statement interpreter-call:unbound? % environment name)
