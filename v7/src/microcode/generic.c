@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.30 1989/09/20 23:08:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.31 1989/10/11 15:30:29 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -267,6 +267,16 @@ real_less_p (Arg1, Arg2)
   TWO_OP_COMPARATOR (<, BIGNUM_LESS_P);
 }
 
+#define BIGNUM_GREATER_P(x, y)		(BIGNUM_LESS_P((y), (x)))
+
+static Boolean
+real_greater_p (Arg1, Arg2)
+     fast SCHEME_OBJECT Arg1;
+     fast SCHEME_OBJECT Arg2;
+{
+  TWO_OP_COMPARATOR (>, BIGNUM_GREATER_P);
+}
+
 DEFINE_PRIMITIVE ("&=", Prim_equal_number, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
@@ -298,7 +308,7 @@ DEFINE_PRIMITIVE ("&>", Prim_greater, 2, 2, 0)
   PRIMITIVE_HEADER (2);
   Set_Time_Zone (Zone_Math);
   PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT (real_less_p ((ARG_REF (2)), (ARG_REF (1)))));
+    (BOOLEAN_TO_OBJECT (real_greater_p ((ARG_REF (1)), (ARG_REF (2)))));
 }
 
 #define TWO_OP_OPERATOR(FIXNUM_OP, FLONUM_OP, BIGNUM_OP)		\
