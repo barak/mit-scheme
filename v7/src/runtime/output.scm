@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.13 1992/05/26 23:08:56 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.14 1992/05/26 23:12:19 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -88,7 +88,7 @@ MIT in each case. |#
   (fluid-let ((*current-output-port* port)) (thunk)))
 
 (define ((make-call-with-output-file open) output-specifier receiver)
-  (let ((port (open-output-file output-specifier)))
+  (let ((port (open output-specifier)))
     (let ((value (receiver port)))
       (close-port port)
       value)))

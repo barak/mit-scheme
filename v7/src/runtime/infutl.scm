@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.33 1992/05/26 23:07:52 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.34 1992/05/26 23:16:17 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -517,12 +517,15 @@ MIT in each case. |#
 		    (or (input-port/operation/read-char input-port)
 			(error "Port doesn't support read-char" input-port))))
 	       (lambda (port buffer start end)
-		 (let loop ((i start) (char (port/read-char port)))
-		   (if (eof-object? char)
+		 (let loop ((i start))
+		   (if (fix:>= i end)
 		       (fix:- i start)
-		       (begin
-			 (string-set! buffer i char)
-			 (loop (fix:1+ i) (port/read-char port))))))))))
+		       (let ((char (port/read-char port)))
+			 (if (eof-object? char)
+			     (fix:- i start)
+			     (begin
+			       (string-set! buffer i char)
+			       (loop (fix:1+ i))))))))))))
     (port/read-substring input-port buffer start end)))
 
 (define (find-alternate-file-type base-pathname exts/receivers)
