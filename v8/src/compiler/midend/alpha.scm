@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: alpha.scm,v 1.8 1995/07/04 05:51:14 adams Exp $
+$Id: alpha.scm,v 1.9 1995/07/04 14:39:30 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -65,7 +65,7 @@ MIT in each case. |#
     (for-each (lambda (old new)
 		;; Introduced names, e.g. ENV-14 from envconv
 		(if (uninterned-symbol? old)
-		    (dbg-info/remember old `(LOOKUP ,new))))
+		    (dbg-info/remember old new)))
       names new-names)
     `(LAMBDA ,(alphaconv/rename-lambda-list lambda-list new-names)
        ,(alphaconv/expr state env* body))))
@@ -89,7 +89,7 @@ MIT in each case. |#
 		   (let ((new-name
 			  (alphaconv/env/lookup (new-dbg-variable/name var)
 						env*)))
-		     (dbg-info/remember var `(LOOKUP ,new-name))))
+		     (dbg-info/remember var new-name)))
 		 (new-dbg-block/variables block)))))))
 
  (define (alphaconv/remember-renames form env*)
