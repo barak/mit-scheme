@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.1 1988/06/13 11:51:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.2 1988/06/16 06:38:35 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -40,11 +40,51 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! combination/constant-folding-operators
 	(map make-primitive-procedure
-	     '(PRIMITIVE-TYPE
-	       &+ &- &* &/ INTEGER-DIVIDE 1+ -1+
-	       TRUNCATE ROUND FLOOR CEILING
-	       SQRT EXP LOG SIN COS &ATAN))))
-
+	     '(
+	       &*
+	       &+
+	       &-
+	       &/
+	       &ATAN
+	       -1+
+	       1+
+	       ASCII->CHAR
+	       CEILING
+	       CELL?
+	       CHAR->ASCII
+	       CHAR->INTEGER
+	       CHAR-ASCII?
+	       CHAR-BITS
+	       CHAR-CODE
+	       CHAR-DOWNCASE
+	       CHAR-UPCASE
+	       COMPILED-CODE-ADDRESS->BLOCK
+	       COMPILED-CODE-ADDRESS->OFFSET
+	       COS
+	       EQ?
+	       EXP
+	       FLOOR
+	       INTEGER->CHAR
+	       LOG
+	       MAKE-CHAR
+	       MAKE-NON-POINTER-OBJECT
+	       NEGATIVE?
+	       NOT
+	       OBJECT-TYPE
+	       OBJECT-TYPE?
+	       PAIR?
+	       POSITIVE?
+	       PRIMITIVE-PROCEDURE-ARITY
+	       ROUND
+	       SIN
+	       SQRT
+	       ;; STRING->SYMBOL is a special case.  Strings have can
+	       ;; be side-effected, but it is useful to be able to
+	       ;; constant fold this primitive anyway.
+	       STRING->SYMBOL
+	       TRUNCATE	       ZERO?
+	       ))))
+
 ;;;; Sequence
 
 (define (make-sequence actions)
