@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.16 1990/09/07 18:39:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.17 1990/09/12 16:45:01 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -586,12 +586,12 @@ MIT in each case. |#
 	  command/move-to-parent-environment
 	  command/print-environment-procedure
 	  command/print-expression
-	  command/print-reduction
 	  command/print-reductions
+	  command/print-subproblem-or-reduction
 	  command/return
 	  command/show-all-frames
 	  command/show-current-frame
-	  command/summarize-history
+	  command/summarize-subproblems
 	  dstate/environment-list
 	  make-initial-dstate
 	  show-error-info)
