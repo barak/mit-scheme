@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.2 1987/07/15 22:09:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.3 1987/07/21 04:32:56 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -71,19 +71,17 @@ MIT in each case. */
 	  for (i = 0; (i < RE_NREGS); i += 1)				\
 	    {								\
 	      index = ((registers . start) [i]);			\
-	      User_Vector_Set						\
-		(vector,						\
-		 i,							\
-		 ((index == -1)						\
-		  ? NIL							\
-		  : (C_Integer_To_Scheme_Integer (index))));		\
+	      User_Vector_Set (vector,					\
+			       i,					\
+			       ((index == -1)				\
+				? NIL					\
+				: (C_Integer_To_Scheme_Integer (index)))); \
 	      index = ((registers . end) [i]);				\
-	      User_Vector_Set						\
-		(vector,						\
-		 (i + RE_NREGS),					\
-		 ((index == -1)						\
-		  ? NIL							\
-		  : (C_Integer_To_Scheme_Integer (index))));		\
+	      User_Vector_Set (vector,					\
+			       (i + RE_NREGS),				\
+			       ((index == -1)				\
+				? NIL					\
+				: (C_Integer_To_Scheme_Integer (index)))); \
 	    }								\
 	}								\
       return (C_Integer_To_Scheme_Integer (result));			\

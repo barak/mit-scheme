@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.2 1987/07/15 22:10:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.3 1987/07/21 04:33:17 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -756,21 +756,21 @@ re_match (pattern_start, pattern_end, buffer, registers,
       }
 
 #define RE_MATCH_WORD_BOUND(word_bound_p)				\
-      {									\
-	if ((match_pc == gap_end)					\
-	    ? (word_bound_p						\
-	       (((gap_start != (buffer -> text_start)) &&		\
-		 (WORD_CONSTITUENT_P (TRANSLATE_CHAR (gap_start [-1])))), \
-		((gap_end != (buffer -> text_end)) &&			\
-		 (WORD_CONSTITUENT_P (TRANSLATE_CHAR (gap_end [0]))))))	\
-	    : (word_bound_p						\
-	       (((match_pc != (buffer -> text_start)) &&		\
-		 (WORD_CONSTITUENT_P (TRANSLATE_CHAR (match_pc [-1])))), \
-		((match_pc != (buffer -> text_end)) &&			\
-		 (WORD_CONSTITUENT_P (TRANSLATE_CHAR (match_pc [0]))))))) \
-	  goto re_match_loop;						\
-	goto re_match_fail;						\
-      }
+  if ((match_pc == gap_end)						\
+      ? (word_bound_p (((gap_start != (buffer -> text_start)) &&	\
+			(WORD_CONSTITUENT_P (TRANSLATE_CHAR (gap_start [-1])) \
+			 )),						\
+		       ((gap_end != (buffer -> text_end)) &&		\
+			(WORD_CONSTITUENT_P (TRANSLATE_CHAR (gap_end [0]))) \
+			)))						\
+      : (word_bound_p (((match_pc != (buffer -> text_start)) &&		\
+			(WORD_CONSTITUENT_P (TRANSLATE_CHAR (match_pc [-1]))) \
+			),						\
+		       ((match_pc != (buffer -> text_end)) &&		\
+			(WORD_CONSTITUENT_P (TRANSLATE_CHAR (match_pc [0]))) \
+			))))						\
+      goto re_match_loop;						\
+    goto re_match_fail
 
     case regexpcode_word_bound:
 #define WORD_BOUND_P(left_p, right_p) ((left_p) != (right_p))
