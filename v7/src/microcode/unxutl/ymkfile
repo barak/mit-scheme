@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.78 1993/08/28 05:45:00 gjr Exp $
+$Id: ymkfile,v 1.79 1993/08/28 23:07:44 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -769,12 +769,13 @@ obstack.o : obstack.h
 $(UNIX_OBJECTS) pruxenv.o pruxfs.o pruxio.o pruxsock.o : oscond.h ansidecl.h \
        posixtyp.h intext.h dstack.h os.h osscheme.h ux.h syscall.h
 uxctty.o : osctty.h ossig.h
-uxenv.o : osenv.h
+uxenv.o : ux.h osenv.h config.h
 uxfile.o : osfile.h osio.h uxio.h
 uxfs.o : osfs.h
 uxio.o : osio.h uxio.h uxselect.h
 uxproc.o : osproc.h uxproc.h osio.h uxio.h osterm.h
-uxsig.o : ossig.h osctty.h ostty.h uxtrap.h uxutil.h critsec.h
+uxsig.o : config.h ux.h ossig.h osctty.h ostty.h uxtrap.h uxsig.h \
+          uxutil.h critsec.h
 uxsock.o : uxsock.h osio.h uxio.h prims.h
 uxterm.o : osterm.h uxterm.h osio.h uxio.h ospty.h
 uxtop.o : ostop.h uxtop.h osctty.h uxutil.h errors.h option.h
