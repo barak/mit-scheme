@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.33 1994/05/04 22:55:54 cph Exp $
+;;;	$Id: rmail.scm,v 1.34 1995/04/09 22:33:06 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -205,7 +205,7 @@ together with two commands to return to regular RMAIL:
       (set-variable! rmail-primary-inbox-list
 		     (list "~/mbox"
 			   (string-append rmail-spool-directory
-					  (unix/current-user-name)))))
+					  (current-user-name)))))
   (if (not (ref-variable rmail-dont-reply-to-names))
       (set-variable!
        rmail-dont-reply-to-names
@@ -215,7 +215,7 @@ together with two commands to return to regular RMAIL:
 	  (if rmail-default-dont-reply-to-names
 	      (string-append rmail-default-dont-reply-to-names "\\|")
 	      ""))
-	(re-quote-string (unix/current-user-name))
+	(re-quote-string (current-user-name))
 	"\\>")))
   (if (not umail-message-end-regexp)
       (set! umail-message-end-regexp

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.20 1995/01/23 20:05:12 cph Exp $
+;;;	$Id: dos.scm,v 1.21 1995/04/09 22:33:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -342,8 +342,7 @@ Includes the new backup.  Must be > 0."
 (define (os/init-file-name)
   (let ((user-init-file
 	 (merge-pathnames "edwin.ini"
-			  (pathname-as-directory
-			   (dos/current-home-directory)))))
+			  (pathname-as-directory (current-home-directory)))))
     (if (file-exists? user-init-file)
 	(->namestring user-init-file)
 	"/scheme/lib/edwin.ini")))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.17 1995/01/06 00:59:18 cph Exp $
+;;;	$Id: vc.scm,v 1.18 1995/04/09 22:33:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -167,7 +167,7 @@ Otherwise, the mod time of the file is the checkout time."
 	   (= 0 (unix/current-uid))
 	   (not (let ((locking-user (vc-locking-user master #f)))
 		  (and locking-user
-		       (string=? locking-user (unix/current-user-name))))))
+		       (string=? locking-user (current-user-name))))))
       (set-buffer-read-only! buffer)))
 
 ;;;; Primary Commands
@@ -250,7 +250,7 @@ lock steals will raise an error.
 	  (let ((owner (vc-locking-user master revision)))
 	    (cond ((not owner)
 		   (vc-checkout master revision))
-		  ((string=? owner (unix/current-user-name))
+		  ((string=? owner (current-user-name))
 		   (if (or (let ((buffer (vc-workfile-buffer workfile)))
 			     (and buffer
 				  (buffer-modified? buffer)))
@@ -1034,7 +1034,7 @@ the value of vc-log-mode-hook."
 	    (let ((locks (rcs-admin/locks admin)))
 	      (if (not (null? locks))
 		  (apply string-append
-			 (let ((user (unix/current-user-name)))
+			 (let ((user (current-user-name)))
 			   (map (lambda (lock)
 				  (string-append
 				   ":"
@@ -1154,7 +1154,7 @@ the value of vc-log-mode-hook."
     (vc-run-shell-command master 0 "rlog"
 			  "-L -R"
 			  (and (not all-lockers?)
-			       (string-append "-l" (unix/current-user-name)))
+			       (string-append "-l" (current-user-name)))
 			  (merge-pathnames
 			   "*,v"
 			   (directory-pathname (vc-master-pathname master))))))

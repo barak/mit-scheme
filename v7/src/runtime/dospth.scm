@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.23 1995/02/14 00:33:54 cph Exp $
+$Id: dospth.scm,v 1.24 1995/04/09 22:32:25 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -116,8 +116,8 @@ MIT in each case. |#
 				(directory-pathname-as-file
 				 (let ((user-name (string-tail string 1)))
 				   (if (string-null? user-name)
-				       (dos/current-home-directory)
-				       (dos/user-home-directory user-name)))))
+				       (current-home-directory)
+				       (user-home-directory user-name)))))
 			       sub-directory-delimiters)
 	    (cdr components)))
 	  (else components)))))
@@ -313,7 +313,7 @@ MIT in each case. |#
 
 (define (dos/user-homedir-pathname host)
   (and (eq? host local-host)
-       (pathname-as-directory (dos/current-home-directory))))
+       (pathname-as-directory (current-home-directory))))
 
 (define (dos/init-file-pathname host)
   (let ((pathname

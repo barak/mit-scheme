@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxpth.scm,v 14.17 1995/01/31 19:34:54 cph Exp $
+$Id: unxpth.scm,v 14.18 1995/04/09 22:32:33 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -106,8 +106,8 @@ MIT in each case. |#
 	 (let ((user-name (substring string 1 (string-length string))))
 	   (string-components
 	    (if (string-null? user-name)
-		(unix/current-home-directory)
-		(unix/user-home-directory user-name))
+		(current-home-directory)
+		(user-home-directory user-name))
 	    #\/)))
 	(else (list string)))))
 
@@ -271,7 +271,7 @@ MIT in each case. |#
 
 (define (unix/user-homedir-pathname host)
   (and (eq? host local-host)
-       (pathname-as-directory (unix/current-home-directory))))
+       (pathname-as-directory (current-home-directory))))
 
 (define (unix/init-file-pathname host)
   (let ((pathname

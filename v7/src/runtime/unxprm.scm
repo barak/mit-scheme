@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.33 1995/01/31 19:34:50 cph Exp $
+$Id: unxprm.scm,v 1.34 1995/04/09 22:32:18 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -217,18 +217,22 @@ MIT in each case. |#
 	(lambda () (set! environment-variables '())))
 ) ; End LET
 
-(define (unix/user-home-directory user-name)
+(define (user-home-directory user-name)
   (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))
     (if (not directory)
 	(error "Can't find user's home directory:" user-name))
     directory))
 
-(define (unix/current-home-directory)
+(define (current-home-directory)
   (or (get-environment-variable "HOME")
-      (unix/user-home-directory (unix/current-user-name))))
+      (user-home-directory (current-user-name))))
 
-(define-integrable unix/current-user-name
+(define-integrable current-user-name
   (ucode-primitive current-user-name 0))
+
+(define unix/user-home-directory user-home-directory)
+(define unix/current-home-directory current-home-directory)
+(define unix/current-user-name current-user-name)
 
 (define-integrable unix/current-uid
   (ucode-primitive current-uid 0))

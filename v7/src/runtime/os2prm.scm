@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.7 1995/02/21 23:12:47 cph Exp $
+$Id: os2prm.scm,v 1.8 1995/04/09 22:32:10 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -209,16 +209,17 @@ MIT in each case. |#
 (define-integrable os2/current-pid
   (ucode-primitive current-pid 0))
 
-(define (os2/current-home-directory)
+(define (current-home-directory)
   (let ((home (get-environment-variable "HOME")))
     (if home
 	(pathname-as-directory (merge-pathnames home))
-	(os2/user-home-directory (os2/current-user-name)))))
+	(user-home-directory (current-user-name)))))
 
-(define (os2/current-user-name)
-  (get-environment-variable "USER"))
+(define (current-user-name)
+  (or (get-environment-variable "USER")
+      "nouser"))
 
-(define (os2/user-home-directory user-name)
+(define (user-home-directory user-name)
   (or (and user-name
 	   (let ((directory (get-environment-variable "USERDIR")))
 	     (and directory
@@ -227,10 +228,6 @@ MIT in each case. |#
 		    (pathname-as-directory (merge-pathnames directory))
 		    user-name)))))
       "\\"))
-
-;; These two aliases are needed by the DOS pathname parser.
-(define dos/current-home-directory os2/current-home-directory)
-(define dos/user-home-directory os2/user-home-directory)
 
 (define (os/default-end-of-line-translation)
   "\r\n")

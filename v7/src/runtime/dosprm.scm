@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.25 1995/01/31 19:34:24 cph Exp $
+$Id: dosprm.scm,v 1.26 1995/04/09 22:32:00 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -248,7 +248,7 @@ MIT in each case. |#
 
   unspecific)				; End LET
 
-(define (dos/user-home-directory user-name)
+(define (user-home-directory user-name)
   (or (and user-name
 	   (let ((directory (get-environment-variable "USERDIR")))
 	     (and directory
@@ -257,12 +257,17 @@ MIT in each case. |#
 		   user-name))))
       "\\"))
 
-(define (dos/current-user-name)
-  (get-environment-variable "USER"))
+(define (current-user-name)
+  (or (get-environment-variable "USER")
+      "nouser"))
 
-(define (dos/current-home-directory)
+(define (current-home-directory)
   (or (get-environment-variable "HOME")
-      (dos/user-home-directory (dos/current-user-name))))
+      (user-home-directory (current-user-name))))
+
+(define dos/user-home-directory user-home-directory)
+(define dos/current-user-name current-user-name)
+(define dos/current-home-directory current-home-directory)
 
 (define dos/file-time->string
   (ucode-primitive file-time->string 1))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.20 1995/01/23 20:06:00 cph Exp $
+;;;	$Id: sendmail.scm,v 1.21 1995/04/09 22:33:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -233,7 +233,7 @@ is inserted."
     (if (ref-variable mail-self-blind)
 	(begin
 	  (insert-string "BCC: " point)
-	  (insert-string (unix/current-user-name) point)
+	  (insert-string (current-user-name) point)
 	  (insert-newline point)))
     (let ((mail-archive-file-name (ref-variable mail-archive-file-name)))
       (if mail-archive-file-name
@@ -474,7 +474,7 @@ Numeric argument means justify as well."
 	      (temporary-buffer " sendmail errors")))
 	(temp-buffer (temporary-buffer " sendmail temp"))
 	(mail-buffer (current-buffer))
-	(user-name (unix/current-user-name)))
+	(user-name (current-user-name)))
     (let ((start (buffer-start temp-buffer))
 	  (end (buffer-end temp-buffer)))
       (insert-region (buffer-start mail-buffer)
@@ -548,7 +548,7 @@ Numeric argument means justify as well."
 	  (end (buffer-end temp-buffer)))
       (insert-newline end)
       (insert-string "From " end)
-      (insert-string (unix/current-user-name) end)
+      (insert-string (current-user-name) end)
       (insert-string " " end)
       (insert-string (unix/file-time->string (get-time)) end)
       (insert-newline end)
