@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: key-x11.scm,v 1.1 1994/10/25 01:46:12 adams Exp $
+;;;	$Id: key-x11.scm,v 1.2 1995/04/13 23:28:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-1992 Massachusetts Institute of Technology
 ;;;
@@ -41,6 +41,17 @@
 ;;; Package: (edwin x-keys)
 
 (declare (usual-integrations))
+
+(define (x-make-special-key keysym bucky-bits)
+  (make-special-key (or (keysym->name keysym)
+			(editor-error "Keysym not registered:" keysym))
+		    bucky-bits))
+
+(define (keysym->name keysym)
+  (cdr (vector-binary-search x-key-translation-table
+			     (lambda (u v) (< u v))
+			     (lambda (pair) (car pair))
+			     keysym)))
 
 ;; This table is a simple translation of /usr/include/X11/keysym.h.
 ;; However, that the vendor-specific marker (bit 28, numbered from 0)
@@ -914,22 +925,3 @@
    '(#x84FF6A . osfHelp)
    '(#x84FFFF . osfDelete)
    '(#xFFFFFF . VoidSymbol)))
-
-(define (keysym->name keysym)
-  (cdr
-   (vector-binary-search x-key-translation-table
-			 (lambda (u v) (< u v))
-			 (lambda (pair) (car pair))
-			 keysym)))
-
-(define (x-make-special-key keysym bucky-bits)
-  (make-special-key
-   (or (keysym->name keysym)
-       (editor-error "Keysym not registered" keysym))
-   bucky-bits))
-
-(define (hook/make-special-key/x name bucky-bits)
-  (intern-special-key name bucky-bits))
-
-(define (initialize-package!)
-  (set! hook/make-special-key hook/make-special-key/x))
