@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.7 1995/03/09 22:15:14 adams Exp $
+$Id: fakeprim.scm,v 1.8 1995/03/13 23:23:45 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -738,6 +738,16 @@ MIT in each case. |#
 
 (cookie-call %small-fixnum? '#F value 'precision-bits)
 
+(define %compiled-entry?
+  (make-operator/simple "#[compiled-entry?]"  '(PROPER-PREDICATE)))
+
+(define %compiled-entry-maximum-arity?
+  ;; (call ',%compiled-entry-maximum-arity? '#F 'count value)
+  ;;  Tests if the compiled entry has the specified maximum arity.
+  (make-operator/simple "#[compiled-entry-maximum-arity?]"
+			'(PROPER-PREDICATE)))
+
+(cookie-call %compiled-entry-maximum-arity? '#F 'n entry)
 
 (define %profile-data
   ;; (CALL ',%profile-data '#F '<data>)
@@ -905,6 +915,18 @@ MIT in each case. |#
 			  '(SIDE-EFFECT-INSENSITIVE)
 			  '(OUT-OF-LINE-HOOK))))
  '(&+ &- &* &/ quotient remainder))
+
+(for-each
+    (lambda (prim-name)
+      (let ((prim  (make-primitive-procedure prim-name)))
+	(set! compiler:primitives-with-no-open-coding
+	      (cons prim-name compiler:primitives-with-no-open-coding))
+	(hash-table/put! *operator-properties*
+			 prim
+			 (list ;;'(SIMPLE)
+			       '(SIDE-EFFECT-FREE)
+			       '(SIDE-EFFECT-INSENSITIVE)))))
+  '(COERCE-TO-COMPILED-PROCEDURE))
 
 ;;;; Compatibility operators
 

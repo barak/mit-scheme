@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.16 1995/03/13 06:59:28 adams Exp $
+$Id: rtlgen.scm,v 1.17 1995/03/13 23:25:49 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -3051,7 +3051,8 @@ MIT in each case. |#
   (define-simple-tag-test '%RECORD?    (machine-tag 'RECORD))
   (define-simple-tag-test 'STRING?     (machine-tag 'STRING))
   (define-simple-tag-test 'BIT-STRING? (machine-tag 'VECTOR-1B))
-  (define-simple-tag-test 'FLONUM?     (machine-tag 'FLONUM)))
+  (define-simple-tag-test 'FLONUM?     (machine-tag 'FLONUM))
+  (define-simple-tag-test %compiled-entry? (machine-tag 'COMPILED-ENTRY)))
 
 (define-open-coder/pred 'EQ? 2
   (lambda (state rands open-coder)
@@ -3101,6 +3102,18 @@ MIT in each case. |#
 		    (tag** (rtlgen/new-reg)))
 	       (rtlgen/assign! tag** `(OBJECT->DATUM ,tag*))
 	       (rtlgen/branch/likely state `(EQ-TEST ,obj* ,tag**))))))))
+
+
+(define-open-coder/pred %compiled-entry-maximum-arity?
+  (lambda (state rands open-coder)
+    open-coder
+    (let* ((arity  (rtlgen/->register (first rands)))
+	   (obj    (rtlgen/->register (second rands)))
+	   (obj*   (rtlgen/new-reg))
+	   (arity* (rtlgen/new-reg)))
+      (rtlgen/assign! obj* `(OBJECT->ADDRESS ,obj))
+      (rtlgen/assign! arity* `(BYTE-OFFSET ,obj* (MACHINE-CONSTANT -3)))
+      (rtlgen/branch/likely state `(EQ-TEST ,arity* ,arity)))))
 
 (define-integrable (rtlgen/constant? syllable)
   (and (pair? syllable)
