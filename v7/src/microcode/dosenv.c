@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosenv.c,v 1.4 1993/07/01 22:29:56 cph Exp $
+$Id: dosenv.c,v 1.5 1993/07/07 05:46:49 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -99,7 +99,7 @@ double
 DEFUN_VOID (OS_process_clock)
 {
   /* This must not signal an error in normal use. */
-  return (OS_real_time_clock);
+  return (OS_real_time_clock ());
 }
 
 /* Timer adjustments */
