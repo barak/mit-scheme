@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.115 2001/12/19 05:25:39 cph Exp $
+;;; $Id: intmod.scm,v 1.116 2002/02/13 01:05:37 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -77,7 +77,7 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
 		  repl-buffer))))
 	 (if (>= argument 16)
 	     (make-new
-	      (extend-interpreter-environment system-global-environment))
+	      (extend-top-level-environment system-global-environment))
 	     (or (and (< argument 4) (current-repl-buffer* buffer))
 		 (make-new user-initial-environment))))))))
 

@@ -19,7 +19,7 @@
 
 
 
-(let ((swat-env (extend-interpreter-environment system-global-environment)))
+(let ((swat-env (extend-top-level-environment system-global-environment)))
 
   (package/add-child! (find-package '()) 'SWAT swat-env)
 

@@ -3,7 +3,7 @@
 	 (let ((package (name->package parent)))
 	   (package/add-child! package
 			       name
-			       (extend-interpreter-environment
+			       (extend-top-level-environment
 				(package/environment package)))))))
   (new-child '(EDWIN) 'IMAIL)
   (new-child '(EDWIN IMAIL) 'IMAP-RESPONSE)

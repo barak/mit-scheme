@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.39 2001/12/19 20:50:44 cph Exp $
+$Id: option.scm,v 14.40 2002/02/13 01:04:50 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -54,7 +54,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	find-option))
 
     (define (make-load-environment)
-      (extend-interpreter-environment system-global-environment))
+      (extend-top-level-environment system-global-environment))
 
     (fluid-let ((*parser-canonicalize-symbols?* #t))
       (if (memq name loaded-options)

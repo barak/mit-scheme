@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: disload.scm,v 1.11 2001/12/20 18:01:28 cph Exp $
+$Id: disload.scm,v 1.12 2002/02/13 01:05:22 cph Exp $
 
-Copyright (c) 1993, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1993, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	     (disassembler
 	      (package/add-child! parent
 				  'disassembler
-				  (extend-interpreter-environment parenv))))
+				  (extend-top-level-environment parenv))))
 	(let ((disenv (package/environment disassembler))
 	      (global system-global-environment)
 	      (compinfo (package/environment

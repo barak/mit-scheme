@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xeval.scm,v 1.9 2002/01/05 06:15:10 cph Exp $
+$Id: xeval.scm,v 1.10 2002/02/13 01:06:02 cph Exp $
 
 Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -66,7 +66,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    (if (environment-has-parent? environment)
 		(loop bound-names (environment-parent environment))
 		(finish bound-names
-			(make-null-interpreter-environment))))))))
+			(make-root-top-level-environment))))))))
 
 (define (difference items items*)
   (list-transform-negative items

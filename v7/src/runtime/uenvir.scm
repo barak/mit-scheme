@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.55 2002/02/12 21:17:30 cph Exp $
+$Id: uenvir.scm,v 14.56 2002/02/13 01:02:55 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -421,12 +421,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
    (if (default-object? values) 'DEFAULT values)
    'EXTEND-TOP-LEVEL-ENVIRONMENT))
 
-(define (make-null-top-level-environment #!optional names values)
+(define (make-root-top-level-environment #!optional names values)
   (%extend-top-level-environment
    (object-new-type (object-type #f) (fix:xor (object-datum #f) 1))
    (if (default-object? names) '() names)
    (if (default-object? values) 'DEFAULT values)
-   'MAKE-NULL-TOP-LEVEL-ENVIRONMENT))
+   'MAKE-ROOT-TOP-LEVEL-ENVIRONMENT))
 
 (define (%extend-top-level-environment environment names values procedure)
   (if (not (list-of-type? names symbol?))
