@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.20 1992/02/07 05:58:12 jinx Exp $
+;;;	$Id: hppa.m4,v 1.21 1992/09/12 00:08:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -79,7 +79,7 @@ changecom(`;');;; -*-Midas-*-
 ;;;;    registers as well.  On HPPA: gr28 is used for long returns,
 ;;;;	gr28/gr29 are used for two word structure returns.
 ;;;;	GCC returns two word structures differently: It passes
-;;;;	the address of the structure in gr28!	
+;;;;	the address of the structure in gr28!
 ;;;;
 ;;;;	6) Floating point registers are not preserved by this
 ;;;;	interface.  The interface is only called from the Scheme
@@ -138,6 +138,7 @@ define(C_FRAME_SIZE,
        ifdef("HPC", 112,
 	     ifdef("GCC", 120,
 	           `Unknown C compiler: bad frame size')))
+define(INT_BIT_STACK_OVERFLOW, 31)
 
 	.SPACE  $TEXT$
 	.SUBSPA $CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
@@ -146,7 +147,7 @@ C_to_interface
 	.CALLINFO CALLER,FRAME=28,SAVE_RP
 	.ENTRY
 	STW	2,-20(0,30)		; Save return address
-	STWM	3,eval(C_FRAME_SIZE)(30)	; Save first reg, allocate frame
+	STWM	3,eval(C_FRAME_SIZE)(30) ; Save first reg, allocate frame
 	STW	4,-108(30)		; Save the other regs
 	STW	5,-104(30)
 	STW	6,-100(30)
@@ -250,7 +251,7 @@ fixnum_remainder_hook
 fixnum_lsh_hook
 	B	fixnum_lsh+4
 	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25		; arg2
-
+
 generic_plus_hook
 	B	generic_plus+4
 	LDW	0(0,22),6		; arg1
@@ -302,45 +303,47 @@ generic_negative_hook
 shortcircuit_apply_hook
 	B	shortcircuit_apply+4
 	EXTRU	26,5,6,24		; procedure type -> 24
-	
+
 shortcircuit_apply_1_hook
 	B	shortcircuit_apply_1+4
 	EXTRU	26,5,6,24		; procedure type -> 24
-	
+
 shortcircuit_apply_2_hook
 	B	shortcircuit_apply_2+4
 	EXTRU	26,5,6,24		; procedure type -> 24
-	
+
 shortcircuit_apply_3_hook
 	B	shortcircuit_apply_3+4
 	EXTRU	26,5,6,24		; procedure type -> 24
-	
+
 shortcircuit_apply_4_hook
 	B	shortcircuit_apply_4+4
 	EXTRU	26,5,6,24		; procedure type -> 24
-	
+
 shortcircuit_apply_5_hook
 	B	shortcircuit_apply_5+4
 	EXTRU	26,5,6,24		; procedure type -> 24
-	
+
 shortcircuit_apply_6_hook
 	B	shortcircuit_apply_6+4
 	EXTRU	26,5,6,24		; procedure type -> 24
-	
+
 shortcircuit_apply_7_hook
 	B	shortcircuit_apply_7+4
 	EXTRU	26,5,6,24		; procedure type -> 24
-	
+
 shortcircuit_apply_8_hook
 	B	shortcircuit_apply_8+4
 	EXTRU	26,5,6,24		; procedure type -> 24
+
+stack_and_interrupt_check_hook
+	B	stack_and_interrupt_check+4
+	LDW	44(0,4),25		; Stack_Guard -> r25
 ;;
 ;; Provide dummy trapping hooks in case a newer version of compiled
 ;; code that expects more hooks is run.
 ;;
 no_hook
-	BREAK	0,27
-	NOP
 	BREAK	0,28
 	NOP
 	BREAK	0,28
@@ -400,7 +403,7 @@ store_closure_entry
 ;; 26 contains the format/gc-offset word for this entry.
 ;;
 	DEP	0,31,2,1		; clear PC protection bits
-	STWM	26,4(0,21)		; move format long to heap 
+	STWM	26,4(0,21)		; move format long to heap
 ;; fall through to store_closure_code
 
 store_closure_code
@@ -569,7 +572,7 @@ fixnum_lsh
 	MTSAR	25
 	VSHD	0,26,26			; shift right
 	DEP	0,31,TC_LENGTH,26	; normalize fixnum
-	BE	0(5,31)			; return	
+	BE	0(5,31)			; return
 	COPY	0,25			; signal no overflow
 ;;
 fixnum_lsh_positive
@@ -577,7 +580,7 @@ fixnum_lsh_positive
 	COPY	0,25			; shift left completely
 	MTSAR	25
 	VSHD	26,0,26			; shift right (32 - arg2)
-	BE	0(5,31)			; return	
+	BE	0(5,31)			; return
 	COPY	0,25			; signal no overflow
 
 ;;;; Generic arithmetic utilities.
@@ -613,7 +616,7 @@ generic_$1_one_unk			; ~FLO * ??
         FCNVXF,SGL,DBL  4,4		; convert to double float
 	B	generic_flonum_result	; cons flonum and return
 	$3,DBL	4,5,4			; operate
-	
+
 generic_$1_two_unk			; FLO * ~FLO
 	COMICLR,=	TC_FIXNUM,9,0
 	B,N	generic_$1_fail
@@ -673,7 +676,7 @@ generic_$1_one_unk			; ~FLO * ??
         FCNVXF,SGL,DBL  4,4		; convert to double float
 	B	generic_boolean_result	; cons answer and return
 	FCMP,DBL,$3	4,5		; compare
-	
+
 generic_$1_two_unk			; FLO * ~FLO
 	COMICLR,=	TC_FIXNUM,9,0
 	B,N	generic_$1_fail
@@ -783,13 +786,56 @@ shortcircuit_apply_lose
 	B	scheme_to_interface
 	LDI	0x14,28
 
+;;; Return address in r31.  r26 contains the offset from the return
+;;; address to the interrupt invocation label.
+
+stack_and_interrupt_check
+	LDW	44(0,4),25		; Stack_Guard -> r25
+	LDW	0(0,4),20		; MemTop -> r20
+;;;
+;;; If the Scheme stack pointer is <= Stack_Guard, then the stack has
+;;; overflowed -- in which case we must signal a stack-overflow interrupt.
+	COMB,<=,N 22,25,stack_and_interrupt_check_stack_overflow
+;;;
+;;; If (Free >= MemTop), signal an interrupt.
+	COMB,>=,N 21,20,stack_and_interrupt_check_signal_interrupt
+;;;
+;;; Otherwise, return normally -- there's nothing to do.
+	BE	0(5,31)
+	NOP
+
+stack_and_interrupt_check_stack_overflow
+	LDW	48(0,4),25		; IntCode -> r25
+	LDW	4(0,4),24		; IntEnb -> r24
+;;;
+;;; Set the stack-overflow interrupt bit and write the interrupt word
+;;; back out to memory.  If the stack-overflow interrupt is disabled,
+;;; skip forward to gc test.  Otherwise, set MemTop to -1 and signal
+;;; the interrupt.
+	DEPI	1,INT_BIT_STACK_OVERFLOW,1,25
+	BB,<	24,INT_BIT_STACK_OVERFLOW,stack_and_interrupt_check_no_overflow
+	STW	25,48(0,4)		; r25 -> IntCode
+	ADDI	-1,0,20			; -1 -> r20
+	STW	20,0(0,4)		; r20 -> MemTop
+;;;
+;;; If (Free >= MemTop), signal an interrupt.
+stack_and_interrupt_check_no_overflow
+	SUB,<	21,20,0			; skip next inst. if (Free < MemTop)
+;;;
+;;; To signal the interrupt, add the interrupt invocation offset to
+;;; the return address, then return normally.
+stack_and_interrupt_check_signal_interrupt
+	ADD	26,31,31
+	BE	0(5,31)			; return
+	NOP
+
 ;;;; Assembly language entry point used by utilities in cmpint.c
 ;;;  to return to the interpreter.
 ;;;  It returns from C_to_interface.
 
 ep_interface_to_C
 	COPY	29,28			; Setup C value
-        LDW     -eval(C_FRAME_SIZE+20)(0,30),2		; Restore return address
+        LDW     -eval(C_FRAME_SIZE+20)(0,30),2 ; Restore return address
         LDW     -52(0,30),18		; Restore saved registers
         LDW     -56(0,30),17
         LDW     -60(0,30),16
@@ -809,7 +855,7 @@ ep_interface_to_C
         .EXIT
         LDWM    -eval(C_FRAME_SIZE)(0,30),3	; Restore last reg, pop frame
         .PROCEND			;in=26;out=28;
-
+
 ;;;; Procedure to initialize this interface.
 ;;;
 ;;; C signature:
@@ -845,7 +891,7 @@ known_pc
 	.PROCEND
 
 ;;;; Routine to flush some locations from the processor cache.
-;;; 
+;;;
 ;;; Its C signature is
 ;;;
 ;;; void
@@ -1035,7 +1081,7 @@ i_sync
 
 i_skips
 	NOP				; 7 instructionss as prescribed
-	NOP				; by the programming note in the 
+	NOP				; by the programming note in the
 	NOP				; description for SYNC.
 	NOP
 	NOP
