@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.14 1991/08/27 23:19:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.15 1991/08/27 23:20:30 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -425,7 +425,7 @@ MIT in each case. |#
 		 (let ((char (read-char)))
 		   (cond ((char-ci=? char #\n) #\Newline)
 			 ((char-ci=? char #\t) #\Tab)
-			 ((char-ci=? char #\v) #\HT)
+			 ((char-ci=? char #\v) #\VT)
 			 ((char-ci=? char #\b) #\BS)
 			 ((char-ci=? char #\r) #\Return)
 			 ((char-ci=? char #\f) #\Page)
