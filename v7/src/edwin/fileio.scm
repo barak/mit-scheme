@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.157 2002/02/25 18:53:02 cph Exp $
+;;; $Id: fileio.scm,v 1.158 2002/06/28 18:20:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
@@ -35,6 +35,7 @@ filename suffix \".bf\"."
 (define ((read/write-encrypted-file? write?) group pathname)
   (and (ref-variable enable-encrypted-files group)
        (equal? "bf" (pathname-type pathname))
+       (md5-available?)
        (blowfish-available?)
        (or write? (blowfish-file? pathname))
        #t))

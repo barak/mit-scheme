@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.114 2002/02/03 04:31:55 cph Exp $
+$Id: make.scm,v 3.115 2002/06/28 18:20:35 cph Exp $
 
 Copyright (c) 1989-2002 Massachusetts Institute of Technology
 
@@ -36,4 +36,4 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
        (load-package-set "edwin"
 	 `((alternate-package-loader
 	    . ,(load "edwin.bld" system-global-environment))))))))
-(add-identification! "Edwin" 3 112)
+(add-identification! "Edwin" 3 113)
