@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.16 1993/09/02 22:33:29 jbank Exp $
+;;;	$Id: debug.scm,v 1.17 1993/09/09 21:13:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -43,42 +43,48 @@
 ;;;
 
 ;;;; Browser-style Debug and Where
-;;; Package: (edwin new-debugger)
+;;; Package: (edwin debugger)
 
 (declare (usual-integrations))
 
+;;;; Text prop setup stuff
 
-;;;;;;;;Text prop setup stuff
-
-(define (port/buffer port)
-  (mark-buffer (port/mark port)))
-
-(define (with-output-props props thunk port)
+(define (with-output-property port key datum thunk)
   (let ((start (mark-index (port/mark port))))
     (thunk)
     (let ((end (mark-index (port/mark port))))
-      (add-text-properties (buffer-group (port/buffer port))
-			   (min start end)
-			   (max start end)
-			   props))))
+      (add-text-property (mark-group (port/mark port))
+			 start
+			 end
+			 key
+			 datum))))
 
 (define (readable-between start end)
-  (remove-text-properties  (buffer-group (mark-buffer start))
-			   (mark-index start)
-			   (mark-index end)
-			   (list (list 'READ-ONLY))))
+  (remove-text-property (mark-group start)
+			(mark-index start)
+			(mark-index end)
+			'READ-ONLY))
 
 (define (dehigh-between start end)
-  (remove-text-properties (buffer-group (mark-buffer start))
-		       (mark-index start)
-		       (mark-index end)
-		       '((highlighted . #t))))
+  (remove-text-property (mark-group start)
+			(mark-index start)
+			(mark-index end)
+			'HIGHLIGHTED))
 
 (define (read-only-between start end)
-  (add-text-properties (buffer-group (mark-buffer start))
-		       (mark-index start)
-		       (mark-index end)
-		       (list (list 'READ-ONLY (generate-uninterned-symbol)))))
+  (add-text-property (mark-group start)
+		     (mark-index start)
+		     (mark-index end)
+		     'READ-ONLY
+		     (generate-uninterned-symbol)))
+
+(define (highlight-region start end)
+  (if (not (mark<= start end))
+      (error "Marks incorrectly related:" start end))
+  (group-highlight (mark-group start) (mark-index start) (mark-index end)))
+
+(define (group-highlight group start end)
+  (add-text-property group start end 'HIGHLIGHTED #t))
 
 (define (debugger-pp-highlight-subexpression expression subexpression
  					     indentation port)
@@ -107,7 +113,7 @@
  	(highlight-region-excluding-indentation start-mark end-mark))
     (if start-mark (mark-temporary! start-mark))
     (if end-mark (mark-temporary! end-mark))))
- 
+
 (define (highlight-region-excluding-indentation start end)
   (let loop ((start start))
     (let ((lend (line-end start 0)))
@@ -120,18 +126,7 @@
 		(end (horizontal-space-start end)))
 	    (if (mark< start end)
 		(highlight-region start end)))))))
- 
-(define (highlight-region start end)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related:" start end))
-  (group-highlight (mark-group start) (mark-index start) (mark-index end)))
- 
-(define (group-highlight group start end)
-  (add-text-properties group start end '((HIGHLIGHTED . #T))))
-
-;;;;;;End of text setup stuff.
-
-
+
 ;;;; Browsers
 
 (define browser-rtd
@@ -344,16 +339,13 @@
 	    (highlight-the-number mark)))
 	(set-browser/selected-line! browser bline)
 	(set-buffer-point! (mark-buffer mark) mark)))
-
     (let ((buffer (bline/description-buffer bline)))
       (if buffer
 	  (pop-up-buffer buffer false)))))
 
 (define (highlight-the-number mark)
   (let ((end (re-search-forward "[RSE][0-9]+ " mark (line-end mark 0))))
-    (highlight-region mark (if (mark? end)
-				      (mark- end 1) 
-				      (line-end mark 0)))))
+    (highlight-region mark (if (mark? end) (mark- end 1) (line-end mark 0)))))
 
 (define (unselect-bline browser)
   (let ((bline (browser/selected-line browser)))
@@ -365,15 +357,16 @@
 	      (insert-char #\space (mark1+ mark))
 	      (delete-right-char mark)))))))
 
-;;;For any frame with an environment (excluding the mark frame)
-;;;an inferior repl is started below the other descriptions.
+;;; For any frame with an environment (excluding the mark frame) an
+;;; inferior repl is started below the other descriptions.
+
 (define (bline/description-buffer bline)
-  (let* ((system? 
+  (let* ((system?
 	  (and (subproblem? (bline/object bline))
 	       (system-frame? (subproblem/stack-frame (bline/object bline)))))
 	 (buffer
 	  (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER false))
-	 (get-environment 
+	 (get-environment
 	  (1d-table/get (bline-type/properties (bline/type bline))
 			'GET-ENVIRONMENT
 			false))
@@ -381,9 +374,7 @@
 			  (let ((environment* (get-environment bline)))
 			    (environment? environment*))
 			  #f))
-	 (environment (if env-exists?
-			  (get-environment bline)
-			  #f)))
+	 (environment (if env-exists? (get-environment bline) #f)))
     (if (and buffer (buffer-alive? buffer))
 	buffer
 	(let ((write-description
@@ -392,15 +383,17 @@
 	  (and write-description
 	       (let ((buffer (browser/new-buffer (bline/browser bline) false)))
 		 (call-with-output-mark (buffer-start buffer)
-					(lambda (port)
-					  (write-description bline port)
-					  (if env-exists?
-					      (write-string "\n;EVALUATION may occur below in the environment of the selected frame.\n" port))))
+		   (lambda (port)
+		     (write-description bline port)
+		     (if env-exists?
+			 (write-string
+			  "\n;EVALUATION may occur below in the environment of the selected frame.\n"
+			  port))))
 		 (set-buffer-point! buffer (buffer-start buffer))
 		 (1d-table/put! (bline/properties bline)
 				'DESCRIPTION-BUFFER
 				buffer)
-		 (read-only-between (buffer-start buffer) (buffer-end buffer))	 
+		 (read-only-between (buffer-start buffer) (buffer-end buffer))
 		 (buffer-not-modified! buffer)
 		 (if env-exists?
 		     (start-inferior-repl!
@@ -410,8 +403,7 @@
 		      #f))
 		 (append-message "done")
 		 buffer))))))
-
-
+
 ;;;Main addition deals with possibility that the debugger was
 ;;;called by a break procure, makes sure to restart the thread
 
@@ -473,7 +465,7 @@
     (let* ((buffer (current-buffer))
 	   (thread (buffer-get buffer 'THREAD)))
       (if (thread? thread)
-	  (let ((value (prompt-for-expression-value 
+	  (let ((value (prompt-for-expression-value
 			"Please enter a value to continue with:  "))
 		(cont (maybe-get-continuation buffer)))
 	    (buffer-put! buffer 'THREAD #f)
@@ -486,7 +478,7 @@
 		   (restart-thread thread #t (lambda ()
 					       (cont value))))))
 	  (invoke-restarts #f)))))
-
+
 ;;;Method for invoking the standard restarts from within the
 ;;;debugger.
 (define (invoke-restarts avoid-deletion?)
@@ -506,8 +498,8 @@
 			    (prompt-for-yes-or-no? prompt)))))
 		      (prompt-for-evaluated-expression
 		       (lambda (prompt #!optional environment port)
-			 (call-with-interface-port 
-			  (buffer-end buffer) 
+			 (call-with-interface-port
+			  (buffer-end buffer)
 			  (lambda (port)
 			    (hook/repl-eval #f
 					    (prompt-for-expression prompt)
@@ -520,7 +512,7 @@
 			 (invoke-continuation continuation
 					      arguments
 					      avoid-deletion?))))
-	    (call-with-interface-port 
+	    (call-with-interface-port
 	     (let ((buff (new-buffer " *debug*-RESTARTS")))
 	       (add-browser-buffer! browser buff)
 	       (pop-up-buffer buff)
@@ -529,13 +521,13 @@
 	       (write-string "  " port)
 	       (write-condition-report condition port)
 	       (newline port)
-	       (command/condition-restart 
+	       (command/condition-restart
 		(make-initial-dstate condition)
 		port))))
 	  (message "No condition to restart from."))))
 
 ;;;
-;;;Sort of a kludge, borrowed from arthur's debugger, 
+;;;Sort of a kludge, borrowed from arthur's debugger,
 ;;;this makes sure that the interface port that the restart
 ;;;stuff gets called with uses the minibuffer for prompts
 (define (call-with-interface-port mark receiver)
@@ -611,7 +603,7 @@
      ;; Index of this bline within browser lines vector.  #F if line
      ;; is invisible.
      INDEX
-     
+
      ;; Line start within browser buffer.  #F if line is invisible.
      START-MARK
 
@@ -908,7 +900,7 @@ Quitting the debugger kills the debugger buffer and any associated buffers."
 Quitting the debugger kills the debugger buffer and any associated buffers."
   true
   boolean?)
- 
+
 ;;;Limited this bc the bindings are now pretty-printed
 (define-variable environment-package-limit
   "Packages with more than this number of bindings will be abbreviated.
@@ -924,8 +916,8 @@ Set this variable to #F to disable this abbreviation."
   boolean?)
 
 (define-variable debugger-start-new-screen?
-  "#T means start a new-screen whenever the debugger is invoked.  
-#F means continue in same screen.  
+  "#T means start a new-screen whenever the debugger is invoked.
+#F means continue in same screen.
 'ASK means ask user whether to start new-screen."
   (if (equal? microcode-id/operating-system-name "unix")
       #T
@@ -937,7 +929,7 @@ Set this variable to #F to disable this abbreviation."
 #F means use default screen geometry"
   #F
   boolean?)
-
+
 (define-variable debugger-sticky-prompt
   "#T means don't change variable debugger-prompt-geometry?.
 #F means change debugger-prompt-geometry? if true after the first time."
@@ -978,7 +970,7 @@ False means use default."
   string?)
 
 (define-variable debugger-show-frames?
-  "If true show the environment frames in the description buffer. 
+  "If true show the environment frames in the description buffer.
 If false show the bindings without frames."
   #T
   boolean?)
@@ -992,17 +984,17 @@ If false show the bindings without frames."
 	 " \\*debug\\*-[0-9]+")
 	(where-pattern
 	 " \\*where\\*-[0-9]+"))
-    (or (re-match-string-forward 
+    (or (re-match-string-forward
 	 (re-compile-pattern debug-pattern false) false false buffer-name)
-	(re-match-string-forward 
+	(re-match-string-forward
 	 (re-compile-pattern where-pattern false) false false buffer-name))))
 
 ;;;Makes sure that the prompted geometry is legal
 (define (geometry? geometry)
   (let ((geometry-pattern
 	 "[0-9]+x[0-9]+\\(-[0-9]+\\|+[0-9]+\\|\\)\\(-[0-9]+\\|+[0-9]+\\|\\)"))
-    (re-match-string-forward  (re-compile-pattern geometry-pattern false) 
-			      false 
+    (re-match-string-forward  (re-compile-pattern geometry-pattern false)
+			      false
 			      false
 			      geometry)))
 
@@ -1012,7 +1004,7 @@ If false show the bindings without frames."
 
 ;;;Bad implementation to determine for breaks
 ;;;if a value to proceed with is desired
-(define value? #f)			     
+(define value? #f)
 
 (define (invalid-subexpression? subexpression)
   (or (debugging-info/undefined-expression? subexpression)
@@ -1049,16 +1041,16 @@ Lines identify stack frames, most recent first.
 
 The buffer below describes the current subproblem or reduction.
 -----------")
-
+
 ;;;; Debugger Entry
 
 ;;;many changes
 ;;;see comments after each change
 (define (continuation-browser-buffer object #!optional thread)
   ;;**NOTE: if a thread is passed that means it is being called by a breakpoint
-  (let ((in-debugger? 
+  (let ((in-debugger?
 	 (debugger-evaluation-buffer? (buffer-name (current-buffer))))
-	(break-thread 
+	(break-thread
 	 (if (default-object? thread)
 	     #f
 	     thread)))
@@ -1104,16 +1096,16 @@ The buffer below describes the current subproblem or reduction.
 		       (write-string debugger-help-message port))
 		   (newline port)
 		   (if (condition? object)
-		       (begin 
-			 (write-string 
+		       (begin
+			 (write-string
 			  "The *ERROR* that started the debugger is:"
 			  port)
 			 (newline port)
 			 (newline port)
 			 (write-string "  " port)
-			 (with-output-props '((highlighted . #t))
-			   (lambda () (write-condition-report object port))
-			   port)
+			 (with-output-property port 'HIGHLIGHTED #t
+			   (lambda ()
+			     (write-condition-report object port)))
 			 (newline port)))
 		   (newline port))))))
 	  (insert-blines browser 0 blines)
@@ -1124,7 +1116,7 @@ The buffer below describes the current subproblem or reduction.
 	      (set-buffer-point! buffer (buffer-end buffer))
 	      (select-bline (car blines)))
 	  buffer)))))
-
+
 (define (find-debugger-buffers)
   (list-transform-positive (buffer-list)
     (let ((debugger-mode (ref-mode-object continuation-browser)))
@@ -1133,23 +1125,23 @@ The buffer below describes the current subproblem or reduction.
 
 ;;;Determines if necessary to make a new screen and if so makes it
 (define (make-debug-screen)
-  (cond ((> (length (screen-list)) 1) 
+  (cond ((> (length (screen-list)) 1)
 	 (screen1+ (selected-screen)))
 	((and (multiple-screens?)
 	      (if (eq? (ref-variable debugger-start-new-screen?) 'ASK)
 		  (prompt-for-confirmation? "Start new Xwindow?")
 		  (ref-variable debugger-start-new-screen?)))
 	 (let* ((def-geometry (ref-variable new-screen-geometry))
-		(geometry 
+		(geometry
 		 (if (ref-variable debugger-prompt-geometry?)
-		     (let ((prompted-geometry 
-			    (prompt-for-string 
+		     (let ((prompted-geometry
+			    (prompt-for-string
 			     "Please enter a geometry" def-geometry)))
 		       (if (geometry? prompted-geometry)
 			   (begin
 			     (if (not (ref-variable debugger-sticky-prompt))
 				 (set-variable! debugger-prompt-geometry? #f))
-			     (set-variable! new-screen-geometry 
+			     (set-variable! new-screen-geometry
 					    prompted-geometry)
 			     prompted-geometry)
 			   (begin
@@ -1162,7 +1154,7 @@ The buffer below describes the current subproblem or reduction.
 ;;;Procedure that actually calls the cont-browser with the continuation
 ;;;and stops the thread when a break-pt is called
 (define (break-to-debugger #!optional pred-thunk)
-  (let ((pred 
+  (let ((pred
 	 (if (default-object? pred-thunk)
 	     (prompt-for-yes-or-no?
 	      "Enter the continuation browser at breakpoint")
@@ -1171,9 +1163,9 @@ The buffer below describes the current subproblem or reduction.
 	(with-simple-restart 'CONTINUE "Return from BKPT."
 	  (lambda ()
 	    (let ((thread (current-thread)))
-	      (call-with-current-continuation 
+	      (call-with-current-continuation
 	       (lambda (cont)
-		 (select-buffer 
+		 (select-buffer
 		  (continuation-browser-buffer cont thread))
 		 (if (eq? thread editor-thread)
 		     (abort-current-command)
@@ -1187,7 +1179,7 @@ The buffer below describes the current subproblem or reduction.
 	(bkvalue (break-to-debugger pred-thunk)))
     (set! value? #f)
     (if val
-	bkvalue 
+	bkvalue
 	(val-thunk))))
 
 ;;;Calls the break pt thing with a pred-thunk a proc and args
@@ -1196,12 +1188,12 @@ The buffer below describes the current subproblem or reduction.
 	(bkvalue (break-to-debugger pred-thunk)))
     (set! value? #f)
     (if val
-	bkvalue 
+	bkvalue
 	(apply proc args))))
 
 (define (select-continuation-browser-buffer object)
   (select-buffer (continuation-browser-buffer object)))
-
+
 (define-command browse-continuation
   "Invoke the continuation-browser on CONTINUATION."
   "XBrowse Continuation"
@@ -1261,7 +1253,7 @@ Commands:
 
    Each line beginning with `S' represents either a subproblem or stack
 frame.  A subproblem line may be followed by one or more indented lines
-(beginning with the letter `R') which represent reductions associated
+\(beginning with the letter `R') which represent reductions associated
 with that subproblem.  The subproblems are indexed with the natural
 numbers.  To obtain a more complete description of a subproblem or
 reduction, click the mouse on the desired line or move the cursor to the
@@ -1307,13 +1299,14 @@ automatically deleted when you quit the debugger.  If you wish to keep
 one of these buffers, simply rename it using `M-x rename-buffer': once
 it has been renamed, it will not be deleted automatically."
   )
-
-
+
 (define-key 'continuation-browser #\p 'quit-with-restart-value)
 (if (equal? microcode-id/operating-system-name "unix")
-    (begin (define-key 'continuation-browser down 'browser-next-line)
-	   (define-key 'continuation-browser up 'browser-previous-line)
-	   (define-key 'continuation-browser x-button1-down 'debugger-mouse-select-bline)))
+    (begin
+      (define-key 'continuation-browser down 'browser-next-line)
+      (define-key 'continuation-browser up 'browser-previous-line)
+      (define-key 'continuation-browser x-button1-down
+	'debugger-mouse-select-bline)))
 
 (define-key 'continuation-browser #\c-n 'browser-next-line)
 (define-key 'continuation-browser #\c-p 'browser-previous-line)
@@ -1340,12 +1333,12 @@ it has been renamed, it will not be deleted automatically."
 	       (n 0))
       (if (not frame)
 	  '()
-	  (let* ((next-subproblem 
+	  (let* ((next-subproblem
 		  (lambda (bline)
 		    (loop (stack-frame/next-subproblem frame)
 			  bline
 			  (+ n 1))))
-		 (walk-reductions	
+		 (walk-reductions
 		  (lambda (bline reductions)
 		    (cons bline
 			  (let loop ((reductions reductions) (prev false))
@@ -1362,7 +1355,7 @@ it has been renamed, it will not be deleted automatically."
 		  (lambda ()
 		    (let* ((subproblem (stack-frame->subproblem frame n)))
 		      (if debugger:student-walk?
-			  (let ((reductions 
+			  (let ((reductions
 				 (subproblem/reductions subproblem)))
 			    (if (null? reductions)
 				(let ((bline
@@ -1452,7 +1445,7 @@ it has been renamed, it will not be deleted automatically."
   (let* ((subproblem (bline/object bline))
 	 (frame (subproblem/stack-frame subproblem)))
     (if (system-frame? frame)
-	(write-string "***************Internal System Code Follows***********" 
+	(write-string "***************Internal System Code Follows***********"
 		      port)
 	(begin
 	  (write-string "S" port)
@@ -1467,7 +1460,7 @@ it has been renamed, it will not be deleted automatically."
 		   (print-with-subexpression expression subexpression))
 		  ((debugging-info/noise? expression)
 		   (write-string ";" port)
-		   (write-string ((debugging-info/noise expression) false) 
+		   (write-string ((debugging-info/noise expression) false)
 				 port))
 		  (else
 		   (write-string ";undefined expression" port))))))))
@@ -1496,7 +1489,7 @@ it has been renamed, it will not be deleted automatically."
 				      (unparser-literal/string instance))))
 		   (constructor unparser-literal/make))
   string)
-
+
 (define (subproblem/write-description bline port)
   (let* ((subproblem (bline/object bline))
 	 (frame (subproblem/stack-frame subproblem)))
@@ -1518,18 +1511,19 @@ it has been renamed, it will not be deleted automatically."
 				  port)
 		    (write-string " (from stack):" port)
 		    (newline port)
-		    (write-string 
+		    (write-string
 		     " Subproblem being executed highlighted.\n"
 		     port)
 		    (newline port)
-		    (let ((subexpression 
+		    (let ((subexpression
 			   (subproblem/subexpression subproblem)))
 		      (if (invalid-subexpression? subexpression)
 			  (debugger-pp expression expression-indentation port)
-			  (debugger-pp-highlight-subexpression expression
-							       subexpression
-							       expression-indentation
-							       port))))
+			  (debugger-pp-highlight-subexpression
+			   expression
+			   subexpression
+			   expression-indentation
+			   port))))
 		   ((debugging-info/noise? expression)
 		    (write-string ((debugging-info/noise expression) true)
 				  port))
@@ -1545,7 +1539,8 @@ it has been renamed, it will not be deleted automatically."
 		 (begin
 		   (newline port)
 		   (newline port)
-		   (desc-show-environment-name-and-bindings environment port))))))))
+		   (desc-show-environment-name-and-bindings environment
+							    port))))))))
 
 (define bline-type:subproblem
   (make-bline-type subproblem/write-summary
@@ -1590,7 +1585,7 @@ it has been renamed, it will not be deleted automatically."
     (debugger-pp (reduction/expression reduction) expression-indentation port)
     (newline port)
     (newline port)
-    (desc-show-environment-name-and-bindings (reduction/environment reduction) 
+    (desc-show-environment-name-and-bindings (reduction/environment reduction)
 					port)))
 
 (define bline-type:reduction
@@ -1619,7 +1614,7 @@ it has been renamed, it will not be deleted automatically."
 			 (ref-mode-object environment-browser)
 			 object))
 	  (blines (environment->blines environment)))
-      
+
       (let ((buffer (browser/buffer browser)))
 	(let ((mark (buffer-end buffer)))
 	  (with-buffer-open mark
@@ -1643,7 +1638,7 @@ it has been renamed, it will not be deleted automatically."
 	    (if (eq? true (environment-has-parent? environment))
 		(loop (environment-parent environment) bline)
 		'())))))
-
+
 (define-major-mode environment-browser read-only "Environment Browser"
   "             ********Environment Browser Help********
 
@@ -1681,30 +1676,32 @@ environment in this case, set the `environment-package-limit' variable
 to  `#f'.  This process is initiated by the command `M-x
 set-variable'. You can not use `set!' to set the variable because it
 is an editor variable and does not exist in the current scheme
-environment. 
+environment.
 
    The bottom of the description buffer contains a region for evaluating
 expressions in the environment of the selected subproblem or reduction.
 This is the only portion of the buffer where editing is possible.  This
 region can be used to find the values of variables in different
 environments; you cannot, however, use mutators (set!, etc.) on
-compiled code. 
+compiled code.
 
    Type `q' to quit the environment browser, killing its primary buffer
 and any others that it has created.
 
 NOTE: The environment browser creates discription buffers in which
-debugging information is presented.  These buffers are given names 
-beginning with spaces so that they do not appear in the buffer list; 
+debugging information is presented.  These buffers are given names
+beginning with spaces so that they do not appear in the buffer list;
 they are automatically deleted when you quit the debugger.  If you wish
-to keep one of these buffers, simply rename it using `M-x rename-buffer': 
+to keep one of these buffers, simply rename it using `M-x rename-buffer':
 once it has been renamed, it will not be deleted automatically.")
 
 
 (if (equal? microcode-id/operating-system-name "unix")
-    (begin (define-key 'environment-browser down 'browser-next-line)
-	   (define-key 'environment-browser up 'browser-previous-line)
-	   (define-key 'environment-browser x-button1-down 'debugger-mouse-select-bline)))
+    (begin
+      (define-key 'environment-browser down 'browser-next-line)
+      (define-key 'environment-browser up 'browser-previous-line)
+      (define-key 'environment-browser x-button1-down
+	'debugger-mouse-select-bline)))
 
 (define-key 'environment-browser #\c-n 'browser-next-line)
 (define-key 'environment-browser #\c-p 'browser-previous-line)
@@ -1731,18 +1728,19 @@ once it has been renamed, it will not be deleted automatically.")
   (newline port)
   (let ((names (environment-bound-names environment))
 	(package (environment->package environment))
-	(finish (lambda (names) 
+	(finish (lambda (names)
 		  (newline port)
 		  (for-each (lambda (name)
 			      (myprint-binding name
-					       (environment-lookup environment name)
+					       (environment-lookup environment
+								   name)
 					       environment
 					       port))
 			    names))))
     (cond ((null? names)
 	   (write-string " has no bindings" port))
 	  ((and package
-		(let ((limit 
+		(let ((limit
 		       (ref-variable
 			environment-package-limit)))
 		  (and limit
@@ -1767,17 +1765,17 @@ once it has been renamed, it will not be deleted automatically.")
 		names)))))
   (newline port)
   (newline port)
-  (write-string 
+  (write-string
    "---------------------------------------------------------------------"
    port))
-
+
 ;;;This does some stuff who's end product is to pp the bindings
 (define (myprint-binding name value environment port)
     (let ((x-size (output-port/x-size port)))
       (newline port)
       (write-string
        (let ((name1
-	      (output-to-string 
+	      (output-to-string
 	       (quotient x-size 2)
 	       (lambda ()
 		 (write-dbg-name name (current-output-port))))))
@@ -1785,12 +1783,12 @@ once it has been renamed, it will not be deleted automatically.")
 	     (string-append name1 " is unassigned")
 	     (let* ((s (string-append name1 " = "))
 		    (length (string-length s))
-		    (pret 
-		     (with-output-to-string 
+		    (pret
+		     (with-output-to-string
 		       (lambda ()
-			 (eval `(pp ,name (current-output-port) #t ,length) 
+			 (eval `(pp ,name (current-output-port) #t ,length)
 			       environment)))))
-	       (string-append 
+	       (string-append
 		s
 		(string-tail pret (+ length 1))))))
        port)
@@ -1820,17 +1818,19 @@ once it has been renamed, it will not be deleted automatically.")
   (buffer-not-modified! (mark-buffer mark)))
 
 (define (desc-show-environment-name-and-bindings environment port)
-  (write-string "---------------------------------------------------------------------"
-	      port)  
+  (write-string
+   "---------------------------------------------------------------------"
+   port)
   (if (ref-variable debugger-show-frames?)
       (show-frames-and-bindings environment port)
       (print-the-local-bindings environment port))
   (newline port)
-  (write-string "---------------------------------------------------------------------"
-		port))
+  (write-string
+   "---------------------------------------------------------------------"
+   port))
 
 
-			 
+
 (define (show-frames-and-bindings environment port)
   (define (envs environment)
     (if  (eq? true (environment-has-parent? environment))
@@ -1838,12 +1838,12 @@ once it has been renamed, it will not be deleted automatically.")
 	 '()))
   (let ((env-list (envs environment))
 	(depth 0))
-    (map (lambda (env) 
+    (map (lambda (env)
 	   (let ((ind (make-string (* 2 depth) #\space)))
 	     (newline port)
 	     (if (eq? env environment)
 		 (write-string (if (< 2 (string-length ind))
-				   (string-append 
+				   (string-append
 				    (string-tail ind 2) "==> ")
 				   "==> ")
 			       port)
@@ -1863,10 +1863,11 @@ once it has been renamed, it will not be deleted automatically.")
 	     (for-each (lambda (name)
 			 (let loop ((env environment))
 			   (if (environment-bound? env name)
-			       (print-binding-with-ind name
-						       (environment-lookup env name)
-						       "  "
-						       port)
+			       (print-binding-with-ind
+				name
+				(environment-lookup env name)
+				"  "
+				port)
 			       (loop (environment-parent env)))))
 		       names))))
       (newline port)
@@ -1877,7 +1878,7 @@ once it has been renamed, it will not be deleted automatically.")
 	    (else
 	     (write-string "\n\n  Local Bindings:\n" port)
 	     (finish names))))))
-
+
 (define (show-environment-name environment port)
   (write-string "ENVIRONMENT " port)
   (let ((package (environment->package environment)))
@@ -1897,7 +1898,7 @@ once it has been renamed, it will not be deleted automatically.")
   (let* ((env-list (envs environment))
 	 (names1 (map (lambda (envir)
 			(let ((names (environment-bound-names envir)))
-			  (if (< (length names) 
+			  (if (< (length names)
 				 (ref-variable environment-package-limit))
 			      names
 			      '())))
@@ -1921,10 +1922,11 @@ once it has been renamed, it will not be deleted automatically.")
 	   (lambda (names)
 	     (newline port)
 	     (for-each (lambda (name)
-			 (print-binding-with-ind name
-						 (environment-lookup environment name)
-						 ind
-						 port))
+			 (print-binding-with-ind
+			  name
+			  (environment-lookup environment name)
+			  ind
+			  port))
 		       names))))
       (cond ((zero? n-bindings)
 	     #|(write-string (string-append ind "   has no bindings") port)
@@ -1932,12 +1934,13 @@ once it has been renamed, it will not be deleted automatically.")
 	    ((> n-bindings (ref-variable environment-package-limit))
 	     (write-string (string-append ind "   has ") port)
 	     (write n-bindings port)
-	     (write-string 
-	      " bindings (see editor variable environment-package-limit) " port)
+	     (write-string
+	      " bindings (see editor variable environment-package-limit) "
+	      port)
 	     (newline port))
 	    (else
 	     (finish names))))))
-      
+
 (define (print-binding-with-ind name value ind port)
   (let ((x-size (- (output-port/x-size port) (string-length ind) 4)))
     (write-string (string-append ind "    ")
@@ -1978,9 +1981,3 @@ once it has been renamed, it will not be deleted automatically.")
      (PROMPT-FOR-CONFIRMATION ,operation/prompt-for-confirmation)
      (PROMPT-FOR-EXPRESSION ,operation/prompt-for-expression))
    false))
-
-
-;; Edwin Variables:
-;; scheme-environment: '(edwin debugger)
-;; scheme-syntax-table: (access edwin-syntax-table (->environment '(edwin)))
-;; End:
