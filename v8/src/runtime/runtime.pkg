@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.315 1999/02/16 05:39:45 cph Exp $
+$Id: runtime.pkg,v 14.316 1999/02/16 18:48:36 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -1106,13 +1106,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  input-port/custom-operation
 	  input-port/operation
 	  input-port/operation-names
-	  input-port/operation/char-ready?
-	  input-port/operation/discard-char
-	  input-port/operation/discard-chars
-	  input-port/operation/peek-char
-	  input-port/operation/read-char
-	  input-port/operation/read-string
-	  input-port/operation/read-substring
 	  input-port/state
 	  input-port?
 	  interaction-i/o-port
@@ -1125,10 +1118,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  output-port/custom-operation
 	  output-port/operation
 	  output-port/operation-names
-	  output-port/operation/discretionary-flush
-	  output-port/operation/flush-output
-	  output-port/operation/write-char
-	  output-port/operation/write-substring
 	  output-port/state
 	  output-port?
 	  port/copy
@@ -1165,6 +1154,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  with-notification-output-port
 	  with-output-to-port
 	  with-trace-output-port)
+  (export (runtime input-port)
+	  input-port/operation/char-ready?
+	  input-port/operation/discard-char
+	  input-port/operation/discard-chars
+	  input-port/operation/peek-char
+	  input-port/operation/read-char
+	  input-port/operation/read-string
+	  input-port/operation/read-substring)
+  (export (runtime output-port)
+	  output-port/operation/discretionary-flush
+	  output-port/operation/flush-output
+	  output-port/operation/write-char
+	  output-port/operation/write-substring)
   (export (runtime rep)
 	  *current-input-port*
 	  *current-output-port*

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.60 1999/01/02 06:06:43 cph Exp $
+$Id: infutl.scm,v 1.61 1999/02/16 18:48:42 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -50,8 +50,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (let ((dbg-info (read-debugging-info old-info)))
 	     (if dbg-info (memoize-debugging-info! block dbg-info))
 	     dbg-info))
-	  (else
-	   false))))
+	  (else #f))))
 
 (define (discard-debugging-info!)
   (without-interrupts
@@ -78,8 +77,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(vector? binf)
 		(< (cdr descriptor) (vector-length binf))
 		(vector-ref binf (cdr descriptor)))))
-	(else
-	 false)))
+	(else #f)))
 
 (define (read-binf-file pathname)
   (let ((pathname (canonicalize-debug-info-pathname pathname)))
@@ -133,7 +131,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (let ((dbg-info
 	   (compiled-code-block/dbg-info block
 					 (if (default-object? demand-load?)
-					     true
+					     #t
 					     demand-load?))))
       (and dbg-info
 	   (let ((find-procedure
@@ -177,13 +175,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (compiled-code-block/filename-and-index block)
   (let loop ((info (compiled-code-block/debugging-info block)))
     (cond ((string? info) (values (canonicalize-debug-info-filename info) #f))
-	  ((not (pair? info)) (values false false))
+	  ((not (pair? info)) (values #f #f))
 	  ((dbg-info? (car info)) (loop (cdr info)))
 	  ((string? (car info))
 	   (values (canonicalize-debug-info-filename (car info))
 		   (and (exact-nonnegative-integer? (cdr info))
 			(cdr info))))
-	  (else (values false false)))))
+	  (else (values #f #f)))))
 
 (define (dbg-labels/find-offset labels offset)
   (vector-binary-search labels < dbg-label/offset offset))
@@ -199,7 +197,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (dbg-info-vector/purification-root info)
   (let ((items (dbg-info-vector/items info)))
-    (cond ((vector? items) false)
+    (cond ((vector? items) #f)
 	  ((and (pair? items)
 		(eq? (car items) 'COMPILED-BY-PROCEDURES)
 		(pair? (cdr items))
@@ -369,7 +367,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (symbol->string name))))))
 
 (define load-debugging-info-on-demand?
-  false)
+  #f)
 
 (define (special-form-procedure-name? name)
   (let ((association (assq name special-form-procedure-names)))
@@ -402,7 +400,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				      (vector-ref bsm 0))))
 		      (cond ((pair? first) bsm)
 			    ((vector? first) first)
-			    (else false)))))))
+			    (else #f)))))))
 	((and (pair? descriptor)
 	      (string? (car descriptor))
 	      (exact-nonnegative-integer? (cdr descriptor)))
@@ -411,8 +409,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(vector? bsm)
 		(< (cdr descriptor) (vector-length bsm))
 		(vector-ref bsm (cdr descriptor)))))
-	(else
-	 false)))
+	(else #f)))
 
 (define (read-bsm-file name)
   (let ((pathname
@@ -446,9 +443,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((bifpath (merge-pathnames bifpath))
 	(bsmpath (and bsmpath (merge-pathnames bsmpath))))
     (let ((bsm (split-inf-structure! binf bsmpath)))
-      (fasdump binf bifpath true)
+      (fasdump binf bifpath #t)
       (if bsmpath
-	  (fasdump bsm bsmpath true)))))
+	  (fasdump bsm bsmpath #t)))))
 
 (define (split-inf-structure! binf bsmpath)
   (let ((bsmname (and bsmpath (->namestring bsmpath))))
@@ -477,18 +474,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-integrable window-size 4096)
 
 (define (uncompress-ports input-port output-port #!optional buffer-size)
-  (let ((buffer-size (if (default-object? buffer-size)
-			 4096
-			 buffer-size)))
-    (let ((read-substring (input-port/operation input-port 'READ-SUBSTRING)))
-      (if read-substring
-	  (uncompress-kernel-by-blocks input-port output-port buffer-size
-				       read-substring)
-	  (let ((read-char
-		 (or (input-port/operation/read-char input-port)
-		     (error "Port doesn't support read-char" input-port))))
-	    (uncompress-kernel-by-chars input-port output-port buffer-size
-					read-char))))))
+  (uncompress-kernel-by-blocks
+   input-port output-port
+   (if (default-object? buffer-size) 4096 buffer-size)
+   (input-port/operation input-port 'READ-SUBSTRING)))
 
 (define (uncompress-read-substring port buffer start end)
   (let loop ((i start))
@@ -510,6 +499,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;; . The EOF indicator returned by READ-CHAR must not be a character, which
 ;;   implies that EOF-OBJECT? and CHAR? are disjoint.
 
+#|
 (define (uncompress-kernel-by-chars input-port output-port buffer-size
 				    read-char)
   (let ((buffer (make-string buffer-size))
@@ -576,6 +566,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					  (vector-8b-ref buffer bp*))))
 		      (vector-set! cp-table cp bp)
 		      (loop nbp ncp))))))))))
+|#
 
 ;; This version will uncompress any input that can be read in chunks by
 ;; applying parameter READ-SUBSTRING to INPUT-PORT and a substring
@@ -675,7 +666,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (do ((bp bp (fix:+ bp 1)) (cp cp (cp:+ cp 1)))
 			  ((fix:= bp nbp))
 			(vector-set! cp-table cp bp))
-		      (parse-command nbp ncp nip ip-end buffer buffer-size)))))))
+		      (parse-command nbp ncp nip ip-end buffer
+				     buffer-size)))))))
 
       (define (copy-command byte)
 	(let ((ip* (fix:+ ip 1)))
@@ -708,8 +700,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (call-with-current-continuation
     (lambda (if-fail)
       (bind-condition-handler (list condition-type:fasload-band)
-        (lambda (condition) condition (if-fail false))
-        (lambda () (fasload filename true))))))
+        (lambda (condition) condition (if-fail #f))
+        (lambda () (fasload filename #t))))))
 
 (define (compressed-loader uncompressed-type)
   (lambda (compressed-file)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.63 1999/01/02 06:11:34 cph Exp $
+$Id: infutl.scm,v 1.64 1999/02/16 18:48:47 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -53,7 +53,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define inf-load-types)
 (define bsm-load-types)
 
-
 (define (compiled-module-eval module environment)
   (scode-eval (compiled-module/expression module) environment))
 
@@ -92,13 +91,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (if (vector? labels/desc)
 	       labels/desc
 	       (let ((labels
-		      (read-labels (compiled-code-block/dbg-descriptor block))))
+		      (read-labels
+		       (compiled-code-block/dbg-descriptor block))))
 		 (and labels
 		      (begin
 			(set-dbg-info/labels/desc! info labels)
 			labels))))))))
-
-
+
 (define (discard-debugging-info!)
   (without-interrupts
    (lambda ()
@@ -160,7 +159,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((pathname
 	 (canonicalize-debug-info-pathname (dbg-locator/file locator))))
     (find-alternate-file-type pathname load-types)))
-
 
 (define (find-alternate-file-type base-pathname alist)
   (let loop ((left alist) (time 0) (file #f) (receiver (lambda (x t) t x)))
@@ -225,7 +223,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (lambda ()
 		 (let ((expression (dbg-info/expression dbg-info)))
 		   (if (and expression
-			    (= offset (dbg-expression/label-offset expression)))
+			    (= offset
+			       (dbg-expression/label-offset expression)))
 		       expression
 		       (find-procedure))))
 	       (lambda ()
@@ -336,7 +335,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (and (not (null? x))
 		  (equal? (car x) (car y))
 		  (loop (cdr x) (cdr y)))))))
-
+
 (define (canonicalize-debug-info-filename filename)
   (->namestring (canonicalize-debug-info-pathname filename)))
 
@@ -415,7 +414,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (and scode
 		    (lambda-body scode))))
 	entry)))
-
+
 ;;;; Splitting of info structures
 
 (define (inf->bif/bsm inffile)
@@ -454,18 +453,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-integrable window-size 4096)
 
 (define (uncompress-ports input-port output-port #!optional buffer-size)
-  (let ((buffer-size (if (default-object? buffer-size)
-			 4096
-			 buffer-size)))
-    (let ((read-substring (input-port/operation input-port 'READ-SUBSTRING)))
-      (if read-substring
-	  (uncompress-kernel-by-blocks input-port output-port buffer-size
-				       read-substring)
-	  (let ((read-char
-		 (or (input-port/operation/read-char input-port)
-		     (error "Port doesn't support read-char" input-port))))
-	    (uncompress-kernel-by-chars input-port output-port buffer-size
-					read-char))))))
+  (uncompress-kernel-by-blocks
+   input-port output-port
+   (if (default-object? buffer-size) 4096 buffer-size)
+   (input-port/operation input-port 'READ-SUBSTRING)))
 
 (define (uncompress-read-substring port buffer start end)
   (let loop ((i start))
@@ -488,6 +479,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;; . The EOF indicator returned by READ-CHAR must not be a character, which
 ;;   implies that EOF-OBJECT? and CHAR? are disjoint.
 
+#|
 (define (uncompress-kernel-by-chars input-port output-port buffer-size
 				    read-char)
   (let ((buffer (make-string buffer-size))
@@ -554,6 +546,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					  (vector-8b-ref buffer bp*))))
 		      (vector-set! cp-table cp bp)
 		      (loop nbp ncp))))))))))
+|#
 
 ;; This version will uncompress any input that can be read in chunks by
 ;; applying parameter READ-SUBSTRING to INPUT-PORT and a substring
@@ -653,7 +646,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (do ((bp bp (fix:+ bp 1)) (cp cp (cp:+ cp 1)))
 			  ((fix:= bp nbp))
 			(vector-set! cp-table cp bp))
-		      (parse-command nbp ncp nip ip-end buffer buffer-size)))))))
+		      (parse-command nbp ncp nip ip-end buffer
+				     buffer-size)))))))
 
       (define (copy-command byte)
 	(let ((ip* (fix:+ ip 1)))
@@ -813,7 +807,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (receiver temporary-file))
        (lambda ()
 	 (set-file-entry/last-use-time! entry (real-time-clock)))))))
-
+
 (define (delete-uncompressed-files!)
   (do ((entries (cdr uncompressed-files) (cdr entries)))
       ((null? entries) unspecific)
