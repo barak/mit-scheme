@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.175 1987/06/02 11:35:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.176 1987/06/02 18:49:05 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -646,7 +646,7 @@ MIT in each case. |#
      (delete-dead-registers!)
      `(,@set-extension
        ,@(generate-invocation-prefix prefix)
-       (MOVE W (& ,frame-size) (D 0))
+       ,(load-dnw frame-size 0)
        (LEA (@PCR ,*block-start-label*) (A 1))
        (JMP ,entry:compiler-cache-reference-apply)))))
 
@@ -659,7 +659,7 @@ MIT in each case. |#
      `(,@set-environment
        ,@(generate-invocation-prefix prefix)
        ,(load-constant name '(D 5))
-       (MOVE W (& ,frame-size) (D 0))
+       ,(load-dnw frame-size 0)
        (JMP ,entry:compiler-lookup-apply)))))
 
 (define-rule statement
