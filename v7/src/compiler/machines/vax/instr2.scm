@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr2.scm,v 1.3 1987/08/20 18:21:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr2.scm,v 1.4 1987/08/20 19:33:30 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,6 +37,11 @@ MIT in each case. |#
 ;;; The ordering is essentially that in "Vax Architecture Handbook" 1981.
 
 (declare (usual-integrations))
+
+(define-macro (define-trivial-instruction mnemonic opcode)
+  `(define-instruction ,mnemonic
+     (()
+      (BYTE (8 ,opcode)))))
 
 (define-instruction CVT
   ((B W (? src ea-r-b) (? dst ea-w-w))
