@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rulfix.scm,v 1.1 1989/05/17 20:31:32 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rulfix.scm,v 1.2 1989/12/20 22:42:20 cph Rel $
 $MC68020-Header: rules1.scm,v 4.22 89/04/27 20:06:32 GMT cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
@@ -365,41 +365,40 @@ MIT in each case. |#
     (else
      (error "fixnum-choose-target: Unknown fixnum target" target))))
 
-(define-integrable (fixnum-1-arg target source operation)
+(define (fixnum-1-arg target source operation)
   (fixnum-choose-target
    target
    (lambda (target)
-     (with-register-copy-if-available source 'GENERAL target
-       (lambda (get-target)
-	 (let ((target (get-target)))
-	   (operation target target)))
-       (lambda ()
-	 (let* ((source (standard-fixnum-reference source))
-		(target (standard-target-reference target)))
-	   (operation target source)))))
+     (let ((get-target (register-copy-if-available source 'GENERAL target)))
+       (if get-target
+	   (let ((target (get-target)))
+	     (operation target target))
+	   (let* ((source (standard-fixnum-reference source))
+		  (target (standard-target-reference target)))
+	     (operation target source)))))
    (lambda (target)
      (operation target (standard-fixnum-reference source)))))
 	     
-(define-integrable (fixnum-2-args target source1 source2 operation)
+(define (fixnum-2-args target source1 source2 operation)
   (fixnum-choose-target
    target
    (lambda (target)
-     (with-register-copy-if-available source1 'GENERAL target
-       (lambda (get-target)
-	 (let* ((source2 (standard-fixnum-reference source2))
-		(target (get-target)))
-	   (operation target target source2)))
-       (lambda ()
-	 (with-register-copy-if-available source2 'GENERAL target
-	   (lambda (get-target)
-	     (let* ((source1 (standard-fixnum-reference source1))
-		    (target (get-target)))
-	       (operation target source1 target)))
-	   (lambda ()
-	     (let* ((source1 (standard-fixnum-reference source1))
-		    (source2 (standard-fixnum-reference source2))
-		    (target (standard-target-reference target)))
-	       (operation target source1 source2)))))))
+     (let ((get-target (register-copy-if-available source1 'GENERAL target)))
+       (if get-target
+	   (let* ((source2 (standard-fixnum-reference source2))
+		  (target (get-target)))
+	     (operation target target source2))
+	   (let ((get-target
+		  (register-copy-if-available source2 'GENERAL target)))
+	     (if get-target
+		 (let* ((source1 (standard-fixnum-reference source1))
+			(target (get-target)))
+		   (operation target source1 target))
+		 (let ((source1 (standard-fixnum-reference source1))
+		       (source2 (standard-fixnum-reference source2)))
+		   (operation (standard-target-reference target)
+			      source1
+			      source2)))))))
    (lambda (target)
      (let* ((source1 (standard-fixnum-reference source1))
 	    (source2 (standard-fixnum-reference source2)))
@@ -525,25 +524,23 @@ MIT in each case. |#
   (QUALIFIER (and (pseudo-register? source1)
 		  (pseudo-register? source2)))
   (let ((target (indirect-reference! base offset)))
-    (with-temporary-copy-if-available source1 'GENERAL
-      (lambda (get-temp)
-	(let* ((source2 (standard-fixnum-reference source2))
-	       (temp (get-temp)))
-	  (LAP (ASH L (& -8) ,temp ,temp)
-	       (MUL L ,temp ,source2 ,target))))
-      (lambda ()
-	(with-temporary-copy-if-available source2 'GENERAL
-	  (lambda (get-temp)
-	    (let* ((source1 (standard-fixnum-reference source1))
-		   (temp (get-temp)))
-	      (LAP (ASH L (& -8) ,temp ,temp)
-		   (MUL L ,source1 ,temp ,target))))
-	  (lambda ()
-	    (let* ((source1 (standard-fixnum-reference source1))
-		   (source2 (standard-fixnum-reference source2))
-		   (temp (reference-temporary-register! 'GENERAL)))
-	      (LAP (ASH L (& -8) ,source1 ,temp)
-		   (MUL L ,temp ,source2 ,target)))))))))
+    (let ((get-temp (temporary-copy-if-available source1 'GENERAL)))
+      (if get-temp
+	  (let ((source2 (standard-fixnum-reference source2))
+		(temp (get-temp)))
+	    (LAP (ASH L (& -8) ,temp ,temp)
+		 (MUL L ,temp ,source2 ,target)))
+	  (let ((get-temp (temporary-copy-if-available source2 'GENERAL)))
+	    (if get-temp
+		(let ((source1 (standard-fixnum-reference source1))
+		      (temp (get-temp)))
+		  (LAP (ASH L (& -8) ,temp ,temp)
+		       (MUL L ,source1 ,temp ,target)))
+		(let ((source1 (standard-fixnum-reference source1))
+		      (source2 (standard-fixnum-reference source2))
+		      (temp (reference-temporary-register! 'GENERAL)))
+		  (LAP (ASH L (& -8) ,source1 ,temp)
+		       (MUL L ,temp ,source2 ,target)))))))))
 
 ;;;; Fixnum Predicates
 
