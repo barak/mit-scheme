@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.92 2000/05/23 02:57:28 cph Exp $
+;;; $Id: imail-top.scm,v 1.93 2000/05/23 03:27:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1017,8 +1017,7 @@ original message into it."
 (define-command imail-continue
   "Continue composing outgoing message previously being composed."
   ()
-  (lambda ()
-    ((ref-command mail-other-window) #t)))
+  (lambda () ((ref-command mail-other-window) #t)))
 
 (define-command imail-forward
   "Forward the current message to another user.
@@ -1058,8 +1057,31 @@ see the documentation of `imail-resend'."
 ADDRESSES is a string consisting of several addresses separated by commas."
   "sResend to"
   (lambda (addresses)
-    ???))
-
+    (let ((buffer (selected-buffer))
+	  (message (selected-message)))
+      (make-mail-buffer
+       `(("Resent-From" ,(mail-from-string buffer))
+	 ("Resent-Date" ,(universal-time->string (get-universal-time)))
+	 ("Resent-To" ,addresses)
+	 ,@(if (ref-variable mail-self-blind buffer)
+	       `(("Resent-Bcc" ,(mail-from-string buffer)))
+	       '())
+	 ,@(map transform
+		(lambda (header)
+		  (list (header-field-name header)
+			(header-field-value header)))
+		(list-transform-negative (message-header-fields message)
+		  (lambda (header)
+		    (string-ci=? (header-field-name header) "sender")))))
+       #f
+       (lambda (mail-buffer)
+	 (insert-string (message-body message) (buffer-end mail-buffer))
+	 (set-buffer-point! mail-buffer (buffer-start mail-buffer))
+	 (if (window-has-no-neighbors? (current-window))
+	     (select-buffer mail-buffer)
+	     (select-buffer-other-window mail-buffer))
+	 (message-resent message))))))
+
 (define-command imail-reply
   "Reply to the current message.
 Normally include CC: to all other recipients of original message;
@@ -1075,7 +1097,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
 			(lambda (mail-buffer)
 			  (message-answered message)
 			  (select-buffer-other-window mail-buffer))))))
-
+
 (define (imail-reply-headers message cc?)
   (let ((resent-reply-to
 	 (get-last-header-field-value message "resent-reply-to" #f))

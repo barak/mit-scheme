@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.40 2000/05/23 02:57:49 cph Exp $
+$Id: todo.txt,v 1.41 2000/05/23 03:27:02 cph Exp $
 
 Bug fixes
 ---------
@@ -47,12 +47,6 @@ New features
 
 * Add command to rename folders.  Add command to append all of the
   messages from one folder to another.
-
-* Add command to copy a folder from one URL to another.  This
-  basically creates the target, opens the source, and copies all of
-  the messages.
-
-* Write M-x imail-resend.
 
 * Add mail notification in mode line, active across the editor as long
   as there is an IMAP connection open in some buffer.
