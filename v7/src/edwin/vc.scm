@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.27 1997/07/21 04:36:12 cph Exp $
+;;;	$Id: vc.scm,v 1.28 1998/02/13 19:40:56 cph Exp $
 ;;;
-;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -249,7 +249,9 @@ lock steals will raise an error.
   (let ((master (file-vc-master workfile)))
     (if (not master)
 	(vc-register workfile revision comment 'LOCK)
-	(let ((revision (vc-get-version revision "Version level to act on")))
+	(let ((revision
+	       (or (vc-get-version revision "Version level to act on")
+		   (vc-workfile-version master))))
 	  (let ((owner (vc-locking-user master revision)))
 	    (cond ((not owner)
 		   (vc-checkout master revision))
@@ -1183,7 +1185,9 @@ the value of vc-log-mode-hook."
 			(let ((length (rcs-number-length revision)))
 			  (and (> length 2)
 			       (even? length)
-			       (rcs-number-head revision (- length 1))))))))))
+			       (rcs-number-head revision
+						(- length 1)
+						#f)))))))))
 	(cond ((or (find-keyword "Id") (find-keyword "Header"))
 	       => (lambda (mark)
 		    (get-version
