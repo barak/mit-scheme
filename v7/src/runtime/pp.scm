@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.19 1991/08/21 16:57:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.20 1991/08/29 17:40:09 sybok Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -56,6 +56,9 @@ MIT in each case. |#
   (set! dispatch-default print-combination)
   unspecific)
 
+
+
+  
 (define-structure (pretty-printer-highlight
 		   (conc-name pph/)
 		   (constructor
@@ -78,6 +81,7 @@ MIT in each case. |#
 (define *pp-save-vertical-space?* false)
 (define *pp-lists-as-tables?* true)
 (define *pp-forced-x-size* false)
+(define *pp-avoid-circularity?* false)
 
 (define (pp object #!optional port . rest)
   (let ((port (if (default-object? port) (current-output-port) port)))
@@ -119,7 +123,9 @@ MIT in each case. |#
 (define (pp-top-level expression port as-code? indentation list-depth)
   (fluid-let ((x-size (or *pp-forced-x-size* (output-port/x-size port)))
 	      (output-port port))
-    (let ((node (numerical-walk expression list-depth)))
+    (let* ((numerical-walk 
+	    (if *pp-avoid-circularity?* numerical-walk-avoid-circularities numerical-walk))
+	   (node (numerical-walk expression list-depth)))
       (if (positive? indentation)
 	  (*unparse-string (make-string indentation #\space)))
       (if as-code?
@@ -614,7 +620,9 @@ MIT in each case. |#
 	 false)))
 
 (define (walk-highlighted-object object list-depth)
-  (let ((dl (pph/depth-limit object)))
+  (let ((dl (pph/depth-limit object))
+	(numerical-walk 
+	 (if *pp-avoid-circularity?*  numerical-walk-avoid-circularities numerical-walk)))
     (fluid-let ((*unparser-list-breadth-limit*
 		 (let ((bl (pph/breadth-limit object)))
 		   (if (eq? bl 'default)
@@ -628,6 +636,314 @@ MIT in each case. |#
 		      (if (eq? dl 'default)
 			  list-depth
 			  0)))))
+
+
+;;;  The following are circular list/vector handing procedures.  They allow
+;;;  arbitary circular constructions made from pairs and vectors to be printed
+;;;  in closed form.  The term "current parenthetical level" means the lowest
+;;;  parethetical level which contains the circularity object.  Expressions like
+;;;  "up 1 parenthetical level" refer to the object which is one parenthetical
+;;;  level above the lowest parenthetical level which contains the circularity
+;;;  object--i.e., the second lowest parenthetical level which contains the 
+;;;  circularity object.
+;;;       Finally, the expression, "up 1 parenthetical level, downstream 1 cdr,"
+;;;  means that to find the object being referred to, you should go to the
+;;;  parenthetical level one level above the lowest parenthetical level which
+;;;  contains the circularity object, and then take the cdr of that list.
+;;;  This notation must be used because while a new parenthetical level is
+;;;  generated for each car and each vector-ref, a new parenthetical level
+;;;  obtains from cdring iff the result of said cdring is NOT a pair.
+
+;; This is the master procedure which all circularity-proof printing
+;; goes through.
+
+(define (numerical-walk-avoid-circularities exp list-depth)
+  (numerical-walk-terminating exp (cons exp (make-queue)) list-depth))
+
+
+;; This numerical walker has special pair and vector walkers to guarantee proper termination.
+
+(define (numerical-walk-terminating object half-pointer/queue list-depth)
+  (define queue (cdr half-pointer/queue))
+  (define half-pointer (car half-pointer/queue))
+  (cond ((pair? object)
+	 (let ((prefix (unparse-list/prefix-pair? object)))
+	   (if prefix
+	       (make-prefix-node prefix
+				 (numerical-walk-terminating (cadr object) 
+							     (advance half-pointer (update-queue queue '(cdr car)))
+							     list-depth))
+	       (let ((unparser (unparse-list/unparser object)))
+		 (if unparser
+		     (walk-custom unparser object list-depth)
+		     (walk-pair-terminating object half-pointer/queue list-depth))))))
+	((symbol? object)
+	 (if (or *pp-uninterned-symbols-by-name*
+		 (object-type? (ucode-type interned-symbol) object))
+	     object
+	     (walk-custom unparse-object object list-depth)))
+	((pretty-printer-highlight? object)
+	 (let ((rest (walk-highlighted-object object list-depth))
+	       (start (pph/start-string object))
+	       (end (pph/end-string object)))
+	   (make-highlighted-node
+	    (+ (string-length start)
+	       (string-length end)
+	       (node-size rest))
+	    object
+	    rest)))
+	((vector? object)
+	 (if (zero? (vector-length object))
+	     (walk-custom unparse-object object list-depth)
+	     (let ((unparser (unparse-vector/unparser object)))
+	       (if unparser
+		   (walk-custom unparser object list-depth)
+		   (make-prefix-node "#" (walk-vector-terminating (vector->list object) half-pointer/queue list-depth))))))
+	((primitive-procedure? object)
+	 (if *pp-primitives-by-name*
+	     (primitive-procedure-name object)
+	     (walk-custom unparse-object object list-depth)))
+	(else
+	 (walk-custom unparse-object object list-depth))))
+
+;; The following two procedures walk lists and vectors, respectively.
+
+(define (walk-pair-terminating pair half-pointer/queue list-depth)
+	(if (and *unparser-list-depth-limit*
+	   (>= list-depth *unparser-list-depth-limit*)
+	   (no-highlights? pair))
+      "..."
+      (let ((list-depth (+ list-depth 1)))
+	(let loop ((pair pair) (list-breadth 0) (half-pointer/queue half-pointer/queue))
+	  (cond ((and *unparser-list-breadth-limit*
+		      (>= list-breadth *unparser-list-breadth-limit*)
+		      (no-highlights? pair))
+		 (make-singleton-list-node "..."))
+		((null? (cdr pair))
+		 (make-singleton-list-node
+		  (let ((half-pointer/queue (advance (car half-pointer/queue) (update-queue (cdr half-pointer/queue) '(car)))))
+		    (if (eq? (car half-pointer/queue) (car pair))
+			(circularity-string (cdr half-pointer/queue))
+			(numerical-walk-terminating (car pair) half-pointer/queue list-depth)))))
+		(else
+		 (make-list-node
+		  (let ((half-pointer/queue (advance (car half-pointer/queue) (update-queue (cdr half-pointer/queue) '(car)))))
+		    (if (eq? (car half-pointer/queue) (car pair))
+			(circularity-string (cdr half-pointer/queue))
+			(numerical-walk-terminating (car pair) half-pointer/queue list-depth)))
+		  (let ((list-breadth (+ list-breadth 1)))
+		    (if (and (pair? (cdr pair))
+			     (not (unparse-list/unparser (cdr pair))))
+			(let ((half-pointer/queue (advance (car half-pointer/queue) (update-queue (cdr half-pointer/queue) '(cdr)))))
+			  (if (eq? (car half-pointer/queue) (cdr pair))
+			      (make-singleton-list-node 
+			       (string-append ". " (circularity-string (cdr half-pointer/queue))))
+			      (loop (cdr pair) list-breadth half-pointer/queue)))
+			(make-list-node
+			 "."
+			 (make-singleton-list-node
+			  (if (and *unparser-list-breadth-limit*
+				   (>= list-breadth
+				       *unparser-list-breadth-limit*)
+				   (no-highlights? pair))
+			      "..."
+			      (let ((half-pointer/queue (advance (car half-pointer/queue) (update-queue (cdr half-pointer/queue) '(cdr)))))
+				(if (eq? (car half-pointer/queue) (cdr pair))
+				  (circularity-string (cdr half-pointer/queue))
+				  (numerical-walk-terminating (cdr pair) half-pointer/queue list-depth)))))))))))))))
+
+(define (walk-vector-terminating pair half-pointer/queue list-depth)
+  (if (and *unparser-list-depth-limit*
+	   (>= list-depth *unparser-list-depth-limit*)
+	   (no-highlights? pair))
+      "..."
+      (let ((list-depth (+ list-depth 1)))
+	(let loop ((pair pair) (list-breadth 0))
+	  (cond ((and *unparser-list-breadth-limit*
+		      (>= list-breadth *unparser-list-breadth-limit*)
+		      (no-highlights? pair))
+		 (make-singleton-list-node "..."))
+		((null? (cdr pair))
+		 (make-singleton-list-node
+		  (let ((half-pointer/queue (advance (car half-pointer/queue) (update-queue (cdr half-pointer/queue) (list list-breadth)))))
+		    (if (eq? (car half-pointer/queue) (car pair))
+			(circularity-string (cdr half-pointer/queue))
+			(numerical-walk-terminating (car pair) half-pointer/queue list-depth)))))
+		(else
+		 (make-list-node
+		  (let ((half-pointer/queue (advance (car half-pointer/queue) (update-queue (cdr half-pointer/queue) (list list-breadth)))))
+		    (if (eq? (car half-pointer/queue) (car pair))
+			(circularity-string (cdr half-pointer/queue))
+			(numerical-walk-terminating (car pair) half-pointer/queue list-depth)))
+		  (let ((list-breadth (+ list-breadth 1)))
+		    (if (not (unparse-list/unparser (cdr pair)))
+			(loop (cdr pair) list-breadth)
+			(make-list-node
+			 "."
+			 (make-singleton-list-node
+			  (if (and *unparser-list-breadth-limit*
+				   (>= list-breadth
+				       *unparser-list-breadth-limit*)
+				   (no-highlights? pair))
+			      "..."
+			      (numerical-walk-terminating (cdr pair) half-pointer/queue list-depth)))))))))))))
+
+
+
+;;;; These procedures allow the walkers to interact with the queue.
+
+(define cocked-object (generate-uninterned-symbol 'cocked-object))
+
+(define (advance half-object queue)
+  (cond ((vector? half-object)
+	 (cons (cons cocked-object half-object) queue))
+	((not (pair? half-object))
+	 (cons half-object queue))
+	((eq? (car half-object) cocked-object)
+	 (cons (let ((directive (queue-car queue)))
+		 (cond ((>= directive 0)
+			(vector-ref (cdr half-object) directive))
+		       ((= directive -1)
+			(cadr half-object))
+		       (else
+			(cddr half-object))))
+	       (queue-cdr queue)))
+	(else
+	 (cons (cons cocked-object half-object) queue))))
+
+(define (update-queue queue command-list)
+  (define (uq-iter queue command-list)
+    (cond ((null? command-list) queue)
+	  ((eq? (car command-list) 'car)
+	   (uq-iter (add-car queue) (cdr command-list)))
+	  ((eq? (car command-list) 'cdr)
+	   (uq-iter (add-cdr queue) (cdr command-list)))
+	  (else
+	   (uq-iter (add-vector-ref (car command-list) queue) (cdr command-list)))))
+  (uq-iter queue command-list))
+
+(define (add-car queue)
+  (queue-cons queue -1))
+
+(define (add-cdr queue)
+  (queue-cons queue -2))
+
+(define (add-vector-ref n queue)
+  (queue-cons queue n))
+
+
+;;;; The Queue Abstraction.  Queues are data structures allowing fifo
+;;;  access without mutation.  The following procedures implement them.
+
+(define-structure (queue 
+		   (conc-name queue/)
+		   (constructor
+		    make-queue
+		    (#!optional cons-cell past-cdrs)))
+  (cons-cell (let* ((new-vector (make-fluid-vector))
+		    (pointer (cons 0 new-vector)))
+	       (cons pointer pointer)))
+  (past-cdrs 0))
+
+;;; Fluid Vectors.
+;;  Queues are built on a subabstraction, "fluid-vectors," which
+;;  are actually nested vectors of a default length.
+
+(define default-fluid-vector-length 10)
+(define virtual-fluid-vector-length (-1+ default-fluid-vector-length))
+
+(define (fluid-vector-extend fluid-vector)
+  (define new-fluid-vector (make-fluid-vector))
+  (vector-set! fluid-vector virtual-fluid-vector-length new-fluid-vector)
+  new-fluid-vector)
+
+(define (fluid-vector-set! fluid-vector index object)
+  (define tail (vector-ref fluid-vector virtual-fluid-vector-length))
+  (if (< index virtual-fluid-vector-length)
+      (vector-set! fluid-vector index object)
+      (fluid-vector-set! tail (- index virtual-fluid-vector-length) object)))
+
+(define (make-fluid-vector)
+  (make-vector default-fluid-vector-length #f))
+
+;;; The actual queue constructors/extractors
+
+(define (queue-cons queue object)
+  (let* ((old-cell (queue/cons-cell queue))
+	 (head (car old-cell))
+	 (tail (cdr old-cell)))
+    (if (eq? head tail)
+	(begin
+	  (fluid-vector-set! (cdr tail) 0 object)
+	  (make-queue (cons head (cons 1 (cdr tail))) (queue/past-cdrs queue)))
+	(begin
+	  (fluid-vector-set! (cdr tail) (car tail) object)
+	  (make-queue (cons head
+			    (if (= (car tail) (-1+ virtual-fluid-vector-length))
+				(cons 0 (fluid-vector-extend (cdr tail)))
+				(cons (1+ (car tail)) (cdr tail))))
+		      (queue/past-cdrs queue))))))
+
+(define (queue-car queue)
+  (define head (car (queue/cons-cell queue)))
+  (vector-ref (cdr head) (car head)))
+
+(define (queue-cdr queue)
+  (define head (car (queue/cons-cell queue)))
+  (define tail (cdr (queue/cons-cell queue)))
+  (make-queue
+   (cons 
+    (if (= (car head) (-1+ virtual-fluid-vector-length))
+	(cons 0 (vector-ref (cdr head) virtual-fluid-vector-length))
+	(cons (1+ (car head)) (cdr head)))
+    tail)
+   (if (= (queue-car queue) -2)
+       (1+ (queue/past-cdrs queue))
+       0)))
+
+;; Auxilary queue handlers.
+
+(define (null-queue? queue)
+  (define cell (queue/cons-cell queue))
+  (eq? (car cell) (cdr cell)))
+
+(define (queue-depth queue)
+  (define (flatten starting-vector starting-n ending-vector ending-n)
+    (if (eq? starting-vector ending-vector)
+	(vector->list (subvector starting-vector starting-n ending-n))
+	(append (vector->list (subvector starting-vector starting-n virtual-fluid-vector-length))
+		(flatten (vector-ref starting-vector virtual-fluid-vector-length) 0 ending-vector ending-n))))
+  (define (proc-list-iter list code-cache)
+    (cond ((null? list) (if (eq? code-cache -2) 1 0))
+	  ((>= (car list) 0)
+	   (+ (if (eq? code-cache -2) 2 1)
+	      (proc-list-iter (cdr list) (car list))))
+	  ((= (car list) -1)
+	   (1+ (proc-list-iter (cdr list) (car list))))
+	  (else
+	   (proc-list-iter (cdr list) (car list)))))
+  (let* ((cell (queue/cons-cell queue))
+	 (head (car cell))
+	 (tail (cdr cell))
+	 (operating-list (flatten (cdr head) (car head) (cdr tail) (car tail))))
+    (proc-list-iter operating-list #f)))
+
+
+;;;; This procedure creates the circularity object which is printed within circular structures.
+
+(define (circularity-string queue)
+	(let ((depth (queue-depth queue))
+	      (cdrs (queue/past-cdrs queue)))
+	  (string-append
+	   (cond ((= depth 1) "#[circularity (current parenthetical level")
+		 ((= depth 2) "#[circularity (up 1 parenthetical level")
+		 (else
+		  (string-append "#[circularity (up " (number->string (-1+ depth)) " parenthetical levels")))
+	   (cond ((= cdrs 0) ")]")
+		 ((= cdrs 1) ", downstream 1 cdr.)]")
+		 (else
+		  (string-append ", downstream " (number->string cdrs) " cdrs.)]"))))))
+
 
 ;;;; Node Model
 ;;;  Carefully crafted to use the least amount of memory, while at the
