@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile.wcc,v 1.3 1995/10/25 05:01:08 cph Exp $
+###     $Id: makefile.wcc,v 1.4 1996/10/02 18:50:56 cph Exp $
 ###
-###     Copyright (c) 1992-95 Massachusetts Institute of Technology
+###     Copyright (c) 1992-96 Massachusetts Institute of Technology
 ###
 ###     This material was developed by the Scheme project at the
 ###     Massachusetts Institute of Technology, Department of
@@ -53,7 +53,7 @@ UTIL_SYSTEM = os2v2
 WRCFLAGS_SYSTEM = /i=$(%NT_INCLUDE)
 !else
 UTIL_SYSTEM = nt
-WRCFLAGS_SYSTEM =
+WRCFLAGS_SYSTEM = /i=$(%NT_INCLUDE)
 !endif
 
 # Compiler options.
@@ -61,6 +61,7 @@ WRCFLAGS_SYSTEM =
 # [OPTIMIZE] marks options used for optimization.
 #
 # /4r		386 instructions, 486 timings, register-based args
+# /bd		build NT DLL
 # /bt=nt	build NT binary (default when host is NT)
 # /d1+		generate debug info [OPTIMIZE]
 # /d2		generate debug info [DEBUG]
@@ -83,16 +84,17 @@ WRCFLAGS_SYSTEM =
 # /DMIT_SCHEME	required to specialize some code
 # /DGUI		configure a console window
 # omitted: /DNO_CONST /Di386
-UTIL_CFLAGS = /4r /d2 /ei /fpi /fp3 /op /s /w0 /zc /zp4 /zq
-CFLAGS = $(UTIL_CFLAGS) /bt=nt /DMIT_SCHEME /DGUI
+UTIL_CFLAGS = /4r /d2 /ei /fpi /fp3 /op /s /w1 /zc /zp4 /zq
+CFLAGS = $(UTIL_CFLAGS) /DMIT_SCHEME /DGUI
 
 # Linker options.
 #
 # debug all		include debug info in executable
 # option caseexact	use case-sensitive comparison for identifiers
+# option map		create a .map file
 # option quiet		operate quietly
 # option symfile	put debug info in .sym file
-LDFLAGS = debug all option caseexact option quiet
+LDFLAGS = debug all option caseexact option map option quiet
 
 # M4 options.
 #
@@ -110,7 +112,15 @@ M4FLAGS = -DWIN32 -DWCC386R
 # /zq		operate quietly
 ASFLAGS = /bt=nt /d1 /fpi /fp3 /mf /zq
 
-all : scheme.exe bchschem.exe bintopsb.exe psbtobin.exe
+# Library Manager options.
+#
+# /b		Suppress backup file
+# /c		case-sensitive comparison
+# /n		produce a new output file
+# /q		operate quietly
+WLIB_FLAGS = /b /c /n /q
+
+all : scheme.exe bchschem.exe scheme32.dll bintopsb.exe psbtobin.exe
 
 .c.obj :
 	$(CC) $(CFLAGS) $[@
@@ -370,6 +380,15 @@ bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) ntscmlib.lib ntgui.res
 	library { ntscmlib.lib $(SCHEME_LIB) }
 	wrc /q /ad /bt=nt ntgui.res $^@
 
+ntscmlib.lib : scheme32.dll
+	wlib $(WLIB_FLAGS) $^@ +$[@
+
+scheme32.dll : scheme32.obj scheme32.lnk scheme32.lbc
+	wlink $(LDFLAGS) @scheme32.lnk
+
+scheme32.obj : scheme32.c ntscmlib.h
+	$(CC) /bd $(CFLAGS) $[@
+
 bintopsb.exe : bintopsb.obj missing.obj
 	wlink system nt $(LDFLAGS) name $^@ file { $< }
 
@@ -381,9 +400,6 @@ findprim.exe : findprim.obj
 
 findprim.obj : findprim.c
 	$(CC) $(UTIL_CFLAGS) $[@
-
-ntscmlib.lib : ntscmlib.lbc
-	wlib /b /c /n /q $^@ @$[@
 
 # Update the resource if necessary
 ntgui.res : ntgui.rc ntgui.h ntdialog.dlg ntdialog.h

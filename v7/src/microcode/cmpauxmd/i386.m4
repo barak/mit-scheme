@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.44 1996/03/04 20:31:56 cph Exp $
+###	$Id: i386.m4,v 1.45 1996/10/02 18:53:21 cph Exp $
 ###
 ###	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ###
@@ -133,10 +133,15 @@
 ###	If defined, external symbol names are generated as written;
 ###	otherwise, they have an underscore prepended to them.
 ### CALLER_ALLOCS_STRUCT_RETURN
+### STATIC_STRUCT_RETURN
 ###	Controls the conventions used to return 8-byte structs from C
-###	procedures.  If defined, the caller allocates space on the
-###	stack and passes a pointer to that space on the top of the
-###	stack.  Otherwise, the callee returns the struct in EAX/EDX.
+###	procedures.  If CALLER_ALLOCS_STRUCT_RETURN is defined, the
+###	caller allocates space on the stack and passes a pointer to
+###	that space on the top of the stack.  If STATIC_STRUCT_RETURN
+###	is defined, the callee returns a pointer to a static struct in
+###	EAX.  Otherwise, the callee returns the struct in EAX/EDX.
+### WCC386
+###	Should be defined when using Watcom assembler.
 ### WCC386R
 ###	Should be defined when using Watcom assembler and generating
 ###	code to use the Watcom register-based argument conventions.
@@ -185,6 +190,7 @@ ifdef(`DISABLE_387',
 
 IFDOS(`define(DASM,1)')
 IF_WIN32(`define(DASM,1)')
+ifdef(`WCC386R',`define(WCC386,1)')
 
 ifdef(`DASM',
       `define(IFDASM,`$1')',
@@ -455,6 +461,9 @@ allocate_word(Scheme_Stack_Segment_Selector)
 
 IFOS2(`define(CALLER_ALLOCS_STRUCT_RETURN,1)')
 IF_LINUX_ELF(`define(CALLER_ALLOCS_STRUCT_RETURN,1)')
+
+IFDOS(`define(`STATIC_STRUCT_RETURN',1)')
+IF_WIN32(`ifdef(`WCC386', `define(`STATIC_STRUCT_RETURN',1)')')
 
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
@@ -630,7 +639,7 @@ ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
 ')
 	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
 
-IFDOS(`
+ifdef(`STATIC_STRUCT_RETURN',`
 	OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx))
 	OP(mov,l)	TW(IND(REG(eax)),REG(eax))
 ')
