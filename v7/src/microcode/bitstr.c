@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.58 1996/10/02 21:14:10 cph Exp $
+$Id: bitstr.c,v 9.59 1996/10/02 21:16:23 cph Exp $
 
 Copyright (c) 1987-96 Massachusetts Institute of Technology
 
@@ -624,7 +624,6 @@ DEFUN (bignum_to_bit_string, (length, bignum),
       if (! (bignum_fits_in_word_p (bignum, length, 0)))
 	error_bad_range_arg (2);
       {
-	void EXFUN (btbs_consumer, (unsigned char **, long));
 	SCHEME_OBJECT result = (zero_to_bit_string (length));
 	unsigned char * result_ptr =
 	  ((unsigned char *) (BIT_STRING_LOW_PTR (result)));
@@ -655,7 +654,6 @@ SCHEME_OBJECT
 DEFUN (bit_string_to_bignum, (nbits, bitstr),
        long nbits AND SCHEME_OBJECT bitstr)
 {
-  unsigned int EXFUN (bstb_producer, (struct bitstr_to_bignm_context *));
   struct bitstr_to_bignm_context context;
   int ndigits, skip;
 

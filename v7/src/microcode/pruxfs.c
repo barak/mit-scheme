@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxfs.c,v 9.53 1996/10/02 21:13:59 cph Exp $
+$Id: pruxfs.c,v 9.54 1996/10/02 21:18:08 cph Exp $
 
 Copyright (c) 1987-96 Massachusetts Institute of Technology
 
@@ -424,8 +424,7 @@ DEFINE_PRIMITIVE ("FILE-SYSTEM-TYPE", Prim_file_system_type, 1, 1, 0)
   {
     CONST char * result = (UX_file_system_type (STRING_ARG (1)));
     PRIMITIVE_RETURN
-      (char_pointer_to_string ((result == 0)
-			       ? "unknown"
-			       : ((unsigned char *) result)));
+      (char_pointer_to_string
+       ((unsigned char *) ((result == 0) ? "unknown" : result)));
   }
 }
