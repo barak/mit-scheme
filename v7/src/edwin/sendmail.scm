@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.72 2001/02/05 17:45:37 cph Exp $
+;;; $Id: sendmail.scm,v 1.73 2001/02/05 18:16:07 cph Exp $
 ;;;
-;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as

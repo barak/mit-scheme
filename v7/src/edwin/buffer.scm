@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.179 2001/01/25 00:16:39 cph Exp $
+;;; $Id: buffer.scm,v 1.180 2001/02/05 18:15:49 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
