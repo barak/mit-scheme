@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.48 2000/03/27 23:04:19 cph Exp $
+;;; $Id: vc.scm,v 1.49 2000/03/31 17:03:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -1491,17 +1491,19 @@ the value of vc-log-mode-hook."
 	 'UP-TO-DATE)
 	((string-ci=? status "Locally Modified")
 	 'LOCALLY-MODIFIED)
-	((string-ci=? status "Needs Merge")
-	 'NEEDS-MERGE)
-	((or (string-ci=? status "Needs Checkout")
-	     (string-ci=? status "Needs Patch"))
-	 'NEEDS-CHECKOUT)
-	((or (string-ci=? status "Unresolved Conflict")
-	     (string-ci=? status "File had conflicts on merge"))
-	 'UNRESOLVED-CONFLICT)
 	((or (string-ci=? status "Locally Added")
 	     (string-ci=? status "New file!"))
 	 'LOCALLY-ADDED)
+	((string-ci=? status "Locally Removed")
+	 'LOCALLY-REMOVED)
+	((or (string-ci=? status "Needs Checkout")
+	     (string-ci=? status "Needs Patch"))
+	 'NEEDS-CHECKOUT)
+	((string-ci=? status "Needs Merge")
+	 'NEEDS-MERGE)
+	((or (string-ci=? status "File had conflicts on merge")
+	     (string-ci=? status "Unresolved Conflict"))
+	 'UNRESOLVED-CONFLICT)
 	(else
 	 'UNKNOWN)))
 
