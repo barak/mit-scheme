@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.85 1998/10/23 05:42:24 cph Exp $
+;;;	$Id: unix.scm,v 1.86 1998/11/18 03:40:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -105,7 +105,7 @@ Includes the new backup.  Must be > 0."
   ;; comparison, and will not notice aliases.
   (let ((homedir (user-homedir-pathname)))
     (let loop ((directory (directory-pathname pathname)))
-      (cond ((file-eq? directory homedir)
+      (cond ((file-test-no-errors file-eq? directory homedir)
 	     (string-append
 	      "~/"
 	      (->namestring (enough-pathname pathname directory))))

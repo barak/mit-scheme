@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.195 1998/11/18 03:17:52 cph Exp $
+;;;	$Id: filcom.scm,v 1.196 1998/11/18 03:42:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -186,9 +186,9 @@ invocation."
     (event-distributor/invoke! (ref-variable find-file-hooks buffer) buffer)
     (load-find-file-initialization buffer pathname)))
 
-(define (file-test-no-errors test pathname)
+(define (file-test-no-errors test . args)
   (catch-file-errors (lambda () false)
-		     (lambda () (test pathname))))
+		     (lambda () (apply test args))))
 
 (define (file-newer-than-file? a b)
   (let ((a (file-modification-time-indirect a)))
