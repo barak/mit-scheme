@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.25 1987/12/12 22:06:42 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.26 1987/12/13 00:12:39 pas Rel $ */
 
 /* CONTAINS:                                                         */
 /* Scheme_Array constructors, and selectors                          */
@@ -630,8 +630,9 @@ void C_Array_Make_Histogram(Array, Length, Histogram, npoints)
   Find_Offset_Scale_For_Linear_Map(Min,Max, 0.0, ((REAL) npoints), &Offset, &Scale);
   for (i=0;i<npoints;i++) Histogram[i] = 0.0;
   for (i=0;i<Length;i++) {
-    index = (long) (floor((double) ((Scale*Array[i]) + Offset)));
     /* Everything from 0 to 1 maps to bin 0, and so on */
+    index = (long) (floor((double) ((Scale*Array[i]) + Offset)));
+    if (index==npoints) index = index-1;  /* max that won't floor to legal array index */
     Histogram[index] += 1.0; }
 }
 
