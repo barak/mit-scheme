@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 1.2 1987/08/11 05:41:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 1.3 1987/08/24 22:22:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -49,6 +49,8 @@ differences:
 * The default constructor procedure takes positional arguments, in the
 same order as specified in the definition of the structure.  A keyword
 constructor may be specified by giving the option KEYWORD-CONSTRUCTOR.
+
+* By default, no COPIER procedure is generated.
 
 * The side effect procedure corresponding to the accessor "foo" is
 given the name "set-foo!".
@@ -116,7 +118,7 @@ functionality is not implemented.
 	(keyword-constructor? false)
 	(constructor-name (symbol-append 'make- name))
 	(boa-constructors '())
-	(copier-name (symbol-append 'copy- name))
+	(copier-name false)
 	(predicate-name (symbol-append name '?))
 	(print-procedure false)
 	(type-seen? false)
@@ -134,39 +136,49 @@ functionality is not implemented.
 	      (error "Structure option used with wrong number of arguments"
 		     keyword
 		     arguments)))
-
 	(case keyword
 	  ((CONC-NAME)
 	   (check-arguments 0 1)
 	   (set! conc-name
 		 (and (not (null? arguments))
-		      (parse/option-value (car arguments)))))
+		      (parse/option-value (car arguments)
+					  (symbol-append name '-)))))
 	  ((KEYWORD-CONSTRUCTOR)
 	   (check-arguments 0 1)
 	   (set! constructor-seen? true)
 	   (set! keyword-constructor? true)
 	   (if (not (null? (cdr arguments)))
-	       (set! constructor-name (parse/option-value (car arguments)))))
+	       (set! constructor-name
+		     (parse/option-value (car arguments)
+					 (symbol-append 'make- name)))))
+
 	  ((CONSTRUCTOR)
 	   (check-arguments 0 2)
 	   (cond ((null? arguments)
 		  (set! constructor-seen? true))
 		 ((null? (cdr arguments))
 		  (set! constructor-seen? true)
-		  (set! constructor-name (parse/option-value (car arguments))))
+		  (set! constructor-name
+			(parse/option-value (car arguments)
+					    (symbol-append 'make- name))))
 		 (else
 		  (set! boa-constructors (cons arguments boa-constructors)))))
 	  ((COPIER)
 	   (check-arguments 0 1)
 	   (if (not (null? arguments))
-	       (set! copier-name (parse/option-value (car arguments)))))
+	       (set! copier-name
+		     (parse/option-value (car arguments)
+					 (symbol-append 'copy- name)))))
 	  ((PREDICATE)
 	   (check-arguments 0 1)
 	   (if (not (null? arguments))
-	       (set! predicate-name (parse/option-value (car arguments)))))
+	       (set! predicate-name
+		     (parse/option-value (car arguments)
+					 (symbol-append name '?)))))
 	  ((PRINT-PROCEDURE)
 	   (check-arguments 1 1)
-	   (set! print-procedure (parse/option-value (car arguments))))
+	   (set! print-procedure
+		 (parse/option-value (car arguments) false)))
 	  ((NAMED)
 	   (check-arguments 0 1)
 	   (set! named-seen? true)
@@ -237,10 +249,11 @@ functionality is not implemented.
 	       (if (not (null? options))
 		   (begin (case (car options)
 			    ((TYPE)
-			     (set! type (parse/option-value (cadr options))))
+			     (set! type
+				   (parse/option-value (cadr options) true)))
 			    ((READ-ONLY)
 			     (set! read-only?
-				   (parse/option-value (cadr options)))))
+				   (parse/option-value (cadr options) true))))
 			  (loop (cddr options)))))
 	     (loop options)
 	     (vector name index default type read-only?)))))
@@ -252,10 +265,10 @@ functionality is not implemented.
 	    (kernel (car slot-description) false '()))
 	(kernel slot-description false '()))))
 
-(define (parse/option-value name)
+(define (parse/option-value name default)
   (case name
     ((FALSE NIL) #F)
-    ((TRUE T) #T)
+    ((TRUE T) default)
     (else name)))
 
 ;;;; Descriptive Structure
