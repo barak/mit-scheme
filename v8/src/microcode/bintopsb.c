@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.24 1987/04/16 02:05:24 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.25 1987/04/16 15:30:25 jinx Exp $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -133,7 +133,7 @@ print_a_char(c, name)
     Mem_Base[(Scn)] = Make_Non_Pointer((Code), (Obj));			\
     *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Obj));		\
     (Obj) += 1;								\
-    *(FObj)++ = Make_Non_Pointer(TC_STRING, 0);				\
+    *(FObj)++ = Make_Non_Pointer(TC_CHARACTER_STRING, 0);		\
     *(FObj)++ = Old_Contents;						\
     i = Get_Integer(Old_Contents);					\
     NStrings += 1;							\
