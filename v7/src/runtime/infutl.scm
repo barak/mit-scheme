@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.45 1993/02/27 07:17:38 gjr Exp $
+$Id: infutl.scm,v 1.46 1993/02/27 07:29:50 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -453,21 +453,36 @@ MIT in each case. |#
 ;;;  Note: this is written in a funky style for speed.
 ;;;  It depends on EOF-OBJECTs not being chars!
 
-(define *uncompress-read-char*)
+(define *uncompress-read-char*
+  (lambda (port)
+    (read-char port)))
 (define *uncompress-read-substring*)
 (define-integrable window-size 4096)
 
 (define (uncompress-ports input-port output-port #!optional buffer-size)
-  (fluid-let ((*uncompress-read-char*
-	       (or (input-port/operation/read-char input-port)
-		   (error "Port doesn't support read-char" input-port)))
-	      (*uncompress-read-substring*
-	       (input-port/operation/read-substring input-port)))
-    (uncompress-kernel input-port output-port
-		       (if (default-object? buffer-size)
-			   4096
-			   buffer-size))))
+  (let ((read-char
+	 (or (input-port/operation/read-char input-port)
+	     (error "Port doesn't support read-char" input-port))))
+    (fluid-let ((*uncompress-read-char* read-char)
+		(*uncompress-read-substring*
+		 (or (input-port/operation input-port 'READ-SUBSTRING)
+		     uncompress-read-substring)))
+      (uncompress-kernel input-port output-port
+		       	 (if (default-object? buffer-size)
+			     4096
+			     buffer-size)))))
 
+(define (uncompress-read-substring port buffer start end)
+  (let loop ((i start))
+    (if (fix:>= i end)
+	(fix:- i start)
+	(let ((char (*uncompress-read-char* port)))
+	  (if (not (char? char))
+	      (fix:- i start)
+	      (begin
+		(string-set! buffer i char)
+		(loop (fix:1+ i))))))))
+
 (define (uncompress-kernel input-port output-port buffer-size)
   (let ((buffer (make-string buffer-size))
 	(cp-table (make-vector window-size)))
@@ -541,7 +556,7 @@ MIT in each case. |#
 	     (marker-size (string-length file-marker))
 	     (actual-marker (make-string marker-size)))
 	;; This may get more hairy as we up versions
-	(if (and (fix:= ((input-port/operation/read-substring input)
+	(if (and (fix:= (uncompress-read-substring
 			 input actual-marker 0 marker-size)
 			marker-size)
 		 (string=? file-marker actual-marker))
@@ -550,24 +565,6 @@ MIT in each case. |#
 		(let ((size (file-attributes/length (file-attributes ifile))))
 		  (uncompress-ports input output (fix:* size 2)))))
 	    (if-fail "Not a recognized compressed file" ifile))))))
-
-;;; Should be in the runtime system
-(define (input-port/operation/read-substring input-port)
-  (or (input-port/operation input-port 'READ-SUBSTRING)
-      (let ((port/read-char 
-	     (or (input-port/operation/read-char input-port)
-		 (error "Port doesn't support read-char" input-port))))
-	;; All hell breaks lose if the port isn't the same!
-	(lambda (port buffer start end)
-	  (let loop ((i start))
-	    (if (fix:>= i end)
-		(fix:- i start)
-		(let ((char (port/read-char port)))
-		  (if (not (char? char))
-		      (fix:- i start)
-		      (begin
-			(string-set! buffer i char)
-			(loop (fix:1+ i)))))))))))
 
 (define (find-alternate-file-type base-pathname exts/receivers)
   (let find-loop ((left exts/receivers)
