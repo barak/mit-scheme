@@ -1,8 +1,8 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Id: ntasutl.asm,v 1.4 1993/08/21 05:24:22 gjr Exp $
+;;;	$Id: ntasutl.asm,v 1.5 1996/10/02 17:59:40 cph Exp $
 ;;;
-;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -38,7 +38,7 @@
 ;;;
 
 .386
-.model tiny
+.model flat
 	.code
 
 	public	_getCS
