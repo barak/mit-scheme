@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wf_user.scm,v 1.3 1994/10/26 18:35:04 adams Exp $
+$Id: wf_user.scm,v 1.4 1994/11/02 20:45:19 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -64,6 +64,7 @@ MIT in each case. |#
 (define  end-paint)
 (define  get-dc)
 (define  get-device-caps)
+(define  get-focus)
 (define  get-menu)
 (define  get-menu-check-mark-dimensions)
 (define  get-menu-item-count)
@@ -98,6 +99,7 @@ MIT in each case. |#
 (define  select-object)
 (define  select-palette)
 (define  select-clip-rgn)
+(define  set-active-window)
 (define  set-bk-color)
 (define  set-bk-mode)
 (define  set-cursor)
@@ -110,6 +112,7 @@ MIT in each case. |#
 (define  set-rop2)
 (define  set-stretch-blt-mode)
 (define  set-window-pos)
+(define  show-window)
 (define  stretch-blt)
 (define  text-out)
 (define  track-popup-menu)
@@ -226,6 +229,9 @@ MIT in each case. |#
   (set!  get-device-caps
     (windows-procedure (get-device-caps (hdc hdc) (index int))
       int user32.dll "GetDeviceCaps"))
+
+  (set!  get-focus
+    (windows-procedure (get-focus) hwnd user32.dll "SetFocus"))
 
   (set!  get-menu
     (windows-procedure (get-menu (window hwnd))
@@ -371,6 +377,10 @@ MIT in each case. |#
     (windows-procedure (select-clip-rgn (hdc hdc) (region hrgn))
       int gdi32.dll "SelectClipRgn"))
 
+  (set!  set-active-window
+    (windows-procedure (set-active-window (hwnd hwnd))
+      hwnd user32.dll "SetActiveWindow"))
+
   (set!  set-bk-color
     (windows-procedure (set-bk-color (hdc hdc) (color colorref))
       colorref gdi32.dll "SetBkColor"))
@@ -422,6 +432,10 @@ MIT in each case. |#
 			(x int) (y int) (cx int) (cy int) (flags uint))
       bool user32.dll "SetWindowPos"))
 
+  (set!  show-window
+    (windows-procedure (show-window (hwnd hwnd) (nCmdShow int))
+     bool user32.dll "ShowWindow"))
+
   (set!  stretch-blt
     (windows-procedure
 	(stretch-blt
@@ -449,4 +463,4 @@ MIT in each case. |#
     (windows-procedure (update-window (hwnd hwnd))
       bool user32.dll "UpdateWindow"))
 
-)
+  unspecific)
