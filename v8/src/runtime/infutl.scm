@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.25 1992/05/26 17:20:40 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.26 1992/05/26 17:31:58 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -428,17 +428,17 @@ MIT in each case. |#
 
 ;;; UNCOMPRESS: A simple extractor for compressed binary info files.
 
-(define (uncompress ifile ofile)
+(define (uncompress-internal ifile ofile if-fail)
   (define-integrable window-size 4096)
   (define (expand input-port output-channel buffer-size)
     (let ((buffer (make-string buffer-size))
 	  (cp-table (make-vector window-size))
 	  (port/read-char 
 	   (or (input-port/operation/read-char input-port)
-	       (error "Port doesn't support read-char" input-port)))
+	       (if-fail "Port doesn't support read-char" input-port)))
 	  (port/read-substring
 	   (or (input-port/operation input-port 'READ-SUBSTRING)
-	       (error "Port doesn't support read-substring" input-port))))
+	       (if-fail "Port doesn't support read-substring" input-port))))
       (define (displacement->cp-index displacement cp)
 	(let ((index (fix:- cp displacement)))
 	  (if (fix:< index 0) (fix:+ window-size index) index)))
@@ -488,7 +488,7 @@ MIT in each case. |#
 
   (let ((input (open-binary-input-file (merge-pathnames ifile))))
     (if (not (input-port? input))
-	(error "UNCOMPRESS: error opening input" ifile))
+	(if-fail "Cannot open input" ifile))
     (let* ((file-marker "Compressed-B1-1.00")
 	   (marker-size (string-length file-marker))
 	   (actual-marker (make-string marker-size)))
@@ -503,7 +503,7 @@ MIT in each case. |#
 	    (expand input output (fix:* size 2))
 	    (channel-close output)
 	    (close-input-port input))
-	  (error "Not a recognized compressed file" ifile)))))
+	  (if-fail "Not a recognized compressed file" ifile)))))
 
 (define (find-alternate-file-type base-pathname exts/receivers)
   (or (null? exts/receivers)
@@ -522,6 +522,9 @@ MIT in each case. |#
 (define (compressed-loader compressed-filename)
   (call-with-temporary-filename
     (lambda (uncompressed-filename)
-      (uncompress compressed-filename uncompressed-filename)
-      (fasload-loader uncompressed-filename))))
+      (call-with-current-continuation
+        (lambda (if-fail)
+	  (uncompress-internal compressed-filename uncompressed-filename
+	     (lambda (message . irritants) (if-fail false)))
+	  (fasload-loader uncompressed-filename))))))
   
