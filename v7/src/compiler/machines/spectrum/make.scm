@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/make.scm,v 1.3 1987/03/19 00:56:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/make.scm,v 4.65 1990/01/25 16:21:29 jinx Exp $
+$MC68020-Header: make.scm,v 4.65 90/01/22 23:45:31 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,100 +33,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Compiler Make File for HP Precision Architecture
+;;;; Compiler: System Construction
 
 (declare (usual-integrations))
-
-(set-working-directory-pathname! "$zcomp")
-(load "rcs" system-global-environment)
-(load "load" system-global-environment)
 
-(load-system system-global-environment
-	     'COMPILER-PACKAGE
-	     '(SYSTEM-GLOBAL-ENVIRONMENT)
-	     '(
-	       (SYSTEM-GLOBAL-ENVIRONMENT
-		"macros.bin"		;compiler syntax
-		"pbs.bin"		;bit-string read/write syntax
-		)
-
-	       (COMPILER-PACKAGE
-		"spectrum/machin.bin"	;machine dependent stuff
-		"toplev.bin"		;top level
-		"utils.bin"		;odds and ends
-		"cfg.bin"		;control flow graph
-		"ctypes.bin"		;CFG datatypes
-		"dtypes.bin"		;DFG datatypes
-		"bblock.bin"		;Basic block datatype
-		"dfg.bin"		;data flow graph
-		"rtl.bin"		;register transfer language
-		"emodel.bin"		;environment model
-		"rtypes.bin"		;RTL analyzer datatypes
-		"nmatch.bin"		;simple pattern matcher
-		)
-
-	       (CONVERTER-PACKAGE
-		"graphc.bin"		;SCode->flow-graph converter
-		)
-
-	       (DATAFLOW-PACKAGE
-		"dflow.bin"		;Dataflow analyzer
-		)
-
-	       (RTL-GENERATOR-PACKAGE
-		"rtlgen.bin"		;RTL generator
-		"rgcomb.bin"		;RTL generator: combinations
-		"linear.bin"		;linearization
-		)
-
-	       (RTL-CSE-PACKAGE
-		"rcse.bin"		;RTL common subexpression eliminator
-		)
-
-	       (RTL-ANALYZER-PACKAGE
-		"rlife.bin"		;RTL register lifetime analyzer
-		"ralloc.bin"		;RTL register allocator
-		)
-
-	       (LAP-GENERATOR-PACKAGE
-		"lapgen.bin"		;LAP generator.
-		"regmap.bin"		;Hardware register allocator.
-		"spectrum/lapgen.bin"	;code generation rules.
-		)
-
-	       (LAP-SYNTAXER-PACKAGE
-		"syntax.bin"		;Generic syntax phase
-		"spectrum/insutl.bin"	;Utilities for spectrum
-		"spectrum/coerce.bin"	;Coercions: integer -> bit string
-		"asmmac.bin"		;Macros for hairy syntax
-		"spectrum/instrs.bin"	;Spectrum instructions
-		)
-
-	       (LAP-PACKAGE
-		"spectrum/assmd.bin"	;Machine dependent
-		"symtab.bin"		;Symbol tables
-		"block.bin"		;Assembly blocks
-		"laptop.bin"		;Assembler top level
-		"spectrum/asmops.bin"	;Spectrum assembly operators
-		)
-
-	       ))
-
-(in-package compiler-package
-
-  (define compiler-system
-    (make-environment
-      (define :name "Liar (Spectrum)")
-      (define :version)
-      (define :modification)
-
-      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/make.scm,v 1.3 1987/03/19 00:56:02 cph Exp $"
-	(lambda (filename version date time author state)
-	  (set! :version (car version))
-	  (set! :modification (cadr version))))))
-
-  (add-system! compiler-system))
-
-(%ge compiler-package)
-(%gst (access compiler-syntax-table compiler-package))
-(disk-save "$zcomp/machines/spectrum/compiler")
+(package/system-loader "comp" '() 'QUERY)
+(for-each (lambda (name)
+	    ((package/reference (find-package name) 'INITIALIZE-PACKAGE!)))
+	  '((COMPILER MACROS)
+	    (COMPILER DECLARATIONS)))
+(add-system! (make-system "Liar (HP PA)" 4 65 '()))
