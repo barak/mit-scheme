@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.34 1998/04/16 06:06:26 cph Exp $
+$Id: ntscreen.c,v 1.35 1998/04/16 06:27:06 cph Exp $
 
 Copyright (c) 1993-98 Massachusetts Institute of Technology
 
@@ -233,7 +233,14 @@ screen_y_extra (SCREEN screen)
 {
   return (((GetSystemMetrics (SM_CYFRAME)) * 2)
 	  + (GetSystemMetrics (SM_CYCAPTION))
-	  + ((GetMenu (screen -> hWnd)) ? (GetSystemMetrics (SM_CYMENU)) : 0));
+	  + ((GetMenu (screen -> hWnd)) ? (GetSystemMetrics (SM_CYMENU)) : 0)
+#ifdef __WATCOMC__
+	  /* Magic: when the combination of cyframe*2 and cycaption is
+	     28, AdjustWindowRect indicates that it should be 27.  I
+	     don't know why this only happens under Watcom.  */
+	  - 1
+#endif
+	  );
 }
 
 static long
