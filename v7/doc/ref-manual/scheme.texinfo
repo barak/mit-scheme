@@ -545,7 +545,7 @@ decomposition of what it reads.
 * Expressions::                 Expressions
 @end menu
 
-@node Notational Conventions, Scheme Concepts, Overview, Overview
+@node Notational Conventions, Scheme Concepts,  , Overview
 @section Notational Conventions
 @cindex notational conventions
 @cindex conventions, notational
@@ -559,7 +559,7 @@ of this document.
 * Entry Format::                Entry Format
 @end menu
 
-@node Errors, Examples, Notational Conventions, Notational Conventions
+@node Errors, Examples,  , Notational Conventions
 @subsection Errors
 @cindex errors, notational conventions
 
@@ -806,7 +806,7 @@ character and an output port.
 * Storage Model::               Storage Model
 @end menu
 
-@node Variable Bindings, Environment Concepts, Scheme Concepts, Scheme Concepts
+@node Variable Bindings, Environment Concepts,  , Scheme Concepts
 @subsection Variable Bindings
 @cindex variable binding
 @cindex binding, of variable
@@ -1131,7 +1131,7 @@ This section describes Scheme's lexical conventions.
 * Additional Notations::        Additional Notations
 @end menu
 
-@node Whitespace, Delimiters, Lexical Conventions, Lexical Conventions
+@node Whitespace, Delimiters,  , Lexical Conventions
 @subsection Whitespace
 
 @cindex whitespace, in programs (defn)
@@ -1395,7 +1395,7 @@ expression may be a @emph{literal}, a @emph{variable reference}, a
 * Procedure Call Syntax::       Procedure Call Syntax
 @end menu
 
-@node Literal Expressions, Variable References, Expressions, Expressions
+@node Literal Expressions, Variable References,  , Expressions
 @subsection Literal Expressions
 
 @cindex literal expression (defn)
@@ -1547,7 +1547,7 @@ This chapter describes the basic Scheme special forms.
 * Structure Definitions::       Structure Definitions
 @end menu
 
-@node Lambda Expressions, Lexical Binding, Special Forms, Special Forms
+@node Lambda Expressions, Lexical Binding,  , Special Forms
 @section Lambda Expressions
 
 @deffn {special form} lambda formals expression expression @dots{}
@@ -2037,7 +2037,7 @@ fact, these two expressions are equivalent:
 * Internal Definitions::        Internal Definitions
 @end menu
 
-@node Top-Level Definitions, Internal Definitions, Definitions, Definitions
+@node Top-Level Definitions, Internal Definitions,  , Definitions
 @subsection Top-Level Definitions
 @cindex top-level definition
 @cindex definition, top-level
@@ -2719,26 +2719,26 @@ instead of @code{(@var{variable} @var{init})}.
 @end example
 @end deffn
 
-@node Structure Definitions, , Iteration, Special Forms
+@node Structure Definitions,  , Iteration, Special Forms
+@section Structure Definitions
 
 @comment **** begin CLTL ****
 @comment Altough this documentation isn't plagiarized from Common Lisp,
 @comment the macro certainly is!
 
 This section provides examples and describes the options and syntax of
-@var{define-structure}, an MIT Scheme macro which is essentially
-identical to @var{defstruct} in Common Lisp.  The differences between
+@code{define-structure}, an MIT Scheme macro which is essentially
+identical to @code{defstruct} in Common Lisp.  The differences between
 them are summarized at the end of this section.  For more information,
 see Chapter 19 of Steele's Common Lisp book.
 
-@findex define-structure
-@cindex define-structure
+@deffn {special form+} define-structure (name structure-option @dots{}) slot-description @dots{}
+Each @var{slot-description} takes one of the following forms:
 
-@deffn {syntax} define-structure (name structure-option*) slot-descriptions*
-@end deffn
-
-Each @var{slot-description} is of the form (@var{slot-name}
-@var{default-init} [@var{slot-option} [@var{value}]]*).
+@example
+@var{slot-name}
+(@var{slot-name} @var{default-init} [@var{slot-option} @var{value}]*)
+@end example
 
 @cindex keyword constructor
 @cindex BOA constructor
@@ -2749,12 +2749,12 @@ is not specified, the initial content of the slot is undefined.  Default
 values are only useful with a keyword constructor or BOA constructor
 with argument list (see below).
 
-A call to @var{define-structure} defines a structure descriptor and a
+A call to @code{define-structure} defines a structure descriptor and a
 set of procedures to manipulate instances of the structure.  These
 instances are represented as records by default but may alternately be
 lists or vectors.  The accessors and updaters are declared integrable
-using @var{integrate-operator}.  Usually, no options are required, so a
-simple call to @var{define-structure} looks like:
+using @code{define-integrable}.  Usually, no options are required, so a
+simple call to @code{define-structure} looks like:
 
 @example
 (define-structure foo a b c)
@@ -2765,7 +2765,7 @@ predicate @code{foo?}, accessors @code{foo-a}, @code{foo-b}, and
 @code{foo-c}, and updaters @code{set-foo-a!}, @code{set-foo-b!}, and
 @code{set-foo-c!}.
 
-When optional arguments are not supplied, @var{(name)} may be
+When optional arguments are not supplied, @code{(@var{name})} may be
 abbreviated to @var{name}.  This convention holds equally for
 @var{structure-options} and @var{slot-options}.  Hence, these
 are equivalent:
@@ -2774,7 +2774,10 @@ are equivalent:
 (define-structure foo a b c)
 (define-structure (foo) (a) b (c))
 @end example
+
+@noindent
 as are
+
 @example
 (define-structure (foo keyword-constructor) a b c)
 (define-structure (foo (keyword-constructor)) a b c)
@@ -2783,20 +2786,23 @@ as are
 When specified as option values, @code{false}, @code{nil}, @code{true},
 and @code{t} are treated as if the appropriate boolean constant had been
 specified instead.
+@end deffn
 
 Possible @var{slot-options} are:
-@deffn Option @code{read-only} @var{value}
-When given a value other than @code{#f}, this specifies that no
+
+@deffn {Slot Option} read-only value
+When given a @var{value} other than @code{#f}, this specifies that no
 updater should be created for the slot.
 @end deffn
 
-@deffn Option @code{type} @var{type}
+@deffn {Slot Option} type type-descriptor
 This is accepted but not presently used.
 @end deffn
 
 Possible @var{structure-options} are:
+
+@deffn {Structure Option} keyword-constructor [name]
 @cindex keyword constructor (defn)
-@deffn Option @code{keyword-constructor} [@var{name}]
 This specifies that the constructor should parse its arguments as as a
 list of keywords and values rather than by position (the default).  The
 keywords recognized by the constructor are exactly the names of the
@@ -2810,12 +2816,12 @@ times to name multiple (identical) keyword constructors.
 @end example
 @end deffn
 
-@deffn Option @code{type} @var{representation-type}
+@deffn {Structure Option} type representation-type
 This specifies the representation type for instances of the structure,
-which are records by default.  Possible values are @code{vector} and
-@code{list}.  If the @code{named} option is not specified, the
-representation does not include a tag, and neither a predicate nor a
-type descriptor is generated.
+which are records by default.  Possible values are the symbols
+@code{vector} and @code{list}.  If the @code{named} option is not
+specified, the representation does not include a tag, and neither a
+predicate nor a type descriptor is generated.
 
 @example
 (define-structure (foo (type list)) a b) 
@@ -2823,7 +2829,7 @@ type descriptor is generated.
 @end example
 @end deffn
 
-@deffn Option @code{conc-name} [@var{name}]
+@deffn {Structure Option} conc-name [name]
 By default, the prefix for naming accessors and updaters is the name
 of the structure followed by a hyphen.  The @code{conc-name} option can
 be used to specify an alternative.  If @var{name} is @code{#f}, the slot
@@ -2832,22 +2838,27 @@ names are used directly, without prefix.
 @example
 @code{(define-structure (foo (conc-name moby/)) a b)}
 @end example
-defines the variables @code{foo make-foo moby/a moby/b set-moby/a!
-set-moby/b!  foo?}.
+
+@noindent
+defines the variables @code{foo}, @code{make-foo}, @code{moby/a},
+@code{moby/b}, @code{set-moby/a!}, @code{set-moby/b!}, and @code{foo?}.
 
 @example
-@code{(define-structure (foo (conc-name ())) a b)}
+@code{(define-structure (foo (conc-name #f)) a b)}
 @end example
-defines @code{foo make-foo a b set-a! set-b! foo?}.
+
+@noindent
+defines @code{foo}, @code{make-foo}, @code{a}, @code{b}, @code{set-a!},
+@code{set-b!}, and @code{foo?}.
 @end deffn
 
+@deffn {Structure Option} constructor [name [argument-list]]
 @cindex BOA constructor (defn)
-@deffn Option @code{constructor} [@var{name} [@var{argument-list}]]
 This can be specified multiple times to build constructors with
-different argument lists, called @dfn{BOA constructor}s (By Order of
-Arguments).  This facility can be extrememly useful.  If @var{name} is
+different argument lists, called @dfn{BOA constructors} (By Order of
+Arguments).  This facility can be extremely useful.  If @var{name} is
 @code{#f}, no constructor is generated.  If @var{name} is unspecified,
-the constructor is named as usual.  @var{argument-list} is a Scheme
+the constructor is named as usual.  @var{Argument-list} is a Scheme
 lambda list which may include optional and rest parameters in the usual
 way.  The names of the parameters must be names of defined slots.
 
@@ -2857,20 +2868,20 @@ way.  The names of the parameters must be names of defined slots.
 @end example
 @end deffn
 
-@deffn Option @code{predicate} [@var{name}]
-@var{name} specifies a new name for the predicate.  If it is @code{#f},
+@deffn {Structure Option} predicate [name]
+@var{Name} specifies a new name for the predicate.  If it is @code{#f},
 the predicate is not generated.  If @var{name} is not specified, the
 predicate is named as usual.
 @end deffn
 
-@deffn Option @code{copier} [@var{name}]
+@deffn {Structure Option} copier [name]
 This specifies that a procedure should be generated to copy instances of
 the structure.  If @var{name} is unspecified, the copier is named by
 prefixing the structure name with @code{copy-}.  If @var{name} is
 @code{#f}, the copier is not generated.
 @end deffn
 
-@deffn Option @code{print-procedure} @var{expression}
+@deffn {Structure Option} print-procedure expression
 The use of this option is specific to MIT Scheme.  Evaluating
 @var{expression} must yield a procedure of two arguments, the unparser
 state and a structure instance, which is used to print instances of the
@@ -2878,28 +2889,30 @@ structure.  It is typically generated using
 @code{unparser/standard-method}.
 @end deffn
 
-@deffn Option @code{named} [@var{expression}]
+@deffn {Structure Option} named [expression]
 This is valid only with the @code{type} option and specifies that a tag
-be included in each instance.  @var{expression} is usually a variable
+be included in each instance.  @var{Expression} is usually a variable
 whose value is the tag, which is by default the type descriptor itself.
-@var{expression} is evaluated whenever the tag is needed and must be
-valid when the @code{define-structure} is evaluated.  If
-@var{expression} returns different values from different evaluations,
-strange behavior results.  For convenience, since tags may have large
-printed representations, specifying this parameter causes instances to
-print as records even though they are actually not.
+@var{Expression} is evaluated whenever the tag is needed and must be
+valid when @code{define-structure} is evaluated.  If @var{expression}
+returns different values from different evaluations, strange behavior
+results.  For convenience, since tags may have large printed
+representations, specifying this parameter causes instances to print
+like records even though they are not.
 @end deffn
 
-@deffn Option @code{initial-offset} @var{offset}
-This is valid only with the @code{type} option.  @var{offset} must be a
+@deffn {Structure Option} initial-offset offset
+This is valid only with the @code{type} option.  @var{Offset} must be a
 non-negative integer and specifies a number of slots to leave open at
 the beginning of the structure before the specified slots are allocated.
+Specifying an @var{offset} of zero is equivalent to omitting the
+@code{initial-offset} option.
 @end deffn
 
 The essential differences between MIT Scheme's @code{define-structure}
 and Common Lisp's @code{defstruct} are:
-@itemize @bullet
 
+@itemize @bullet
 @item
 The default constructor procedure takes positional arguments, in the
 same order as specified in the definition of the structure.  A keyword
@@ -2908,18 +2921,18 @@ constructor may be specified by giving the option
 
 @item
 BOA constructors are described using Scheme lambda lists.  Since there
-is nothing corresponding to &aux in Scheme lambda lists, this
+is nothing corresponding to @code{&aux} in Scheme lambda lists, this
 functionality is not implemented.
 
 @item
 By default, no @code{copier} procedure is generated.
 
 @item
-The side effect procedure corresponding to the accessor "foo" is given
-the name "set-foo!".
+The side effect procedure corresponding to the accessor @code{foo} is
+given the name @code{set-foo!}.
 
 @item
-Keywords are just ordinary symbols -- use "foo" instead of ":foo".
+Keywords are ordinary symbols -- use @code{foo} instead of @code{:foo}.
 
 @item
 The option values @code{false}, @code{nil}, @code{true}, and @code{t}
@@ -2933,16 +2946,16 @@ structure instance) rather than three as in Common Lisp.
 
 @item
 By default, named structures are tagged with a unique object of some
-kind.  In Common Lisp, the structures are tagged with symbols, but that
+kind.  In Common Lisp, the structures are tagged with symbols.  This
 depends on the Common Lisp package system to help generate unique tags;
-Scheme has no such way of generating unique symbols.
+Scheme has no such way to generate unique symbols.
 
 @item
 The @code{named} option may optionally take an argument, which is
 normally the name of a variable (any expression may be used, but it is
 evaluated whenever the tag name is needed).  If used, structure
 instances will be tagged with that variable's value.  The variable must
-be defined when the defstruct is evaluated.
+be defined when @code{define-structure} is evaluated.
 
 @item
 The @code{type} option is restricted to the values @code{vector} and
@@ -2950,7 +2963,6 @@ The @code{type} option is restricted to the values @code{vector} and
 
 @item
 The @code{include} option is not implemented.
-
 @end itemize
 
 @comment **** end CLTL ****
@@ -3268,7 +3280,7 @@ as fixed point and floating point are referred to by names such as
 * Fixnum and Flonum Operations::  Fixnum and Flonum Operations
 @end menu
 
-@node Numerical types, Exactness, Numbers, Numbers
+@node Numerical types, Exactness,  , Numbers
 @section Numerical types
 @cindex numerical types
 
@@ -4179,7 +4191,7 @@ malformed objects that confuse the garbage collector.
 * Flonum Operations::           Flonum Operations
 @end menu
 
-@node Fixnum Operations, Flonum Operations, Fixnum and Flonum Operations, Fixnum and Flonum Operations
+@node Fixnum Operations, Flonum Operations,  , Fixnum and Flonum Operations
 @subsection Fixnum Operations
 
 @cindex fixnum (defn)
@@ -4443,7 +4455,7 @@ non-@sc{ascii} operating system.}
 * Character Sets::              Character Sets
 @end menu
 
-@node External Representation of Characters, Comparison of Characters, Characters, Characters
+@node External Representation of Characters, Comparison of Characters,  , Characters
 @section External Representation of Characters
 @cindex external representation, for character
 
@@ -5144,7 +5156,7 @@ between uppercase and lowercase.  The versions that ignore case include
 * Byte Vectors::                Byte Vectors
 @end menu
 
-@node Construction of Strings, Selecting String Components, Strings, Strings
+@node Construction of Strings, Selecting String Components,  , Strings
 @section Construction of Strings
 @cindex construction, of string
 
@@ -6048,7 +6060,7 @@ the use of the @code{read} procedure to parse Scheme programs.
 * Miscellaneous List Operations::  Miscellaneous List Operations
 @end menu
 
-@node Pairs, Construction of Lists, Lists, Lists
+@node Pairs, Construction of Lists,  , Lists
 @section Pairs
 
 This section describes the simple operations that are available for
@@ -6970,7 +6982,7 @@ same, they refer to a null subvector, and if @var{start} is zero and
 * Modifying Vectors::           Modifying Vectors
 @end menu
 
-@node Construction of Vectors, Selecting Vector Components, Vectors, Vectors
+@node Construction of Vectors, Selecting Vector Components,  , Vectors
 @section Construction of Vectors
 @cindex construction, of vector
 
@@ -7205,7 +7217,7 @@ All of the bit-string procedures are MIT Scheme extensions.
 * Integer Conversions of Bit Strings::  Integer Conversions of Bit Strings
 @end menu
 
-@node Construction of Bit Strings, Selecting Bit String Components, Bit Strings, Bit Strings
+@node Construction of Bit Strings, Selecting Bit String Components,  , Bit Strings
 @section Construction of Bit Strings
 @cindex construction, of bit string
 
@@ -7420,7 +7432,7 @@ integer accordingly.
 * Weak Pairs::                  Weak Pairs
 @end menu
 
-@node Booleans, Symbols, Miscellaneous Datatypes, Miscellaneous Datatypes
+@node Booleans, Symbols,  , Miscellaneous Datatypes
 @section Booleans
 
 @findex #t
@@ -8331,7 +8343,7 @@ small tables.  And hash tables are not as flexible as association lists.
 * Hashing::                     Hashing
 @end menu
 
-@node Association Lists, 1D Tables, Associations, Associations
+@node Association Lists, 1D Tables,  , Associations
 @section Association Lists
 
 @comment **** begin CLTL ****
@@ -8987,7 +8999,7 @@ reasons, and may eventually change.
 * Application Hooks::           Application Hooks
 @end menu
 
-@node Procedure Operations, Primitive Procedures, Procedures, Procedures
+@node Procedure Operations, Primitive Procedures,  , Procedures
 @section Procedure Operations
 
 @deffn procedure apply procedure object object @dots{}
@@ -9350,7 +9362,7 @@ an unspecified value.
 * Interpreter Environments::    Interpreter Environments
 @end menu
 
-@node Environment Operations, Environment Variables, Environments, Environments
+@node Environment Operations, Environment Variables,  , Environments
 @section Environment Operations
 
 Environments are first-class objects in MIT Scheme.  An environment
@@ -9553,7 +9565,7 @@ custom ports and high-performance @sc{i/o}.
 * Port Primitives::             Port Primitives
 @end menu
 
-@node Ports, File Ports, Input/Output, Input/Output
+@node Ports, File Ports,  , Input/Output
 @section Ports
 
 @cindex port (defn)
@@ -10428,7 +10440,7 @@ prepared to deal with ports that do not implement them.
 * Output Port Primitives::      Output Port Primitives
 @end menu
 
-@node Input Port Primitives, Output Port Primitives, Port Primitives, Port Primitives
+@node Input Port Primitives, Output Port Primitives,  , Port Primitives
 @subsection Input Port Primitives
 @cindex input port primitives
 
@@ -10735,7 +10747,7 @@ A facility for reading the contents of a directory.
 * Directory Reader::            Directory Reader
 @end menu
 
-@node Pathnames, Working Directory, File-System Interface, File-System Interface
+@node Pathnames, Working Directory,  , File-System Interface
 @section Pathnames
 
 @comment **** begin CLTL ****
@@ -10796,7 +10808,7 @@ external representations.
 * Miscellaneous Pathnames::     Miscellaneous Pathname Functions
 @end menu
 
-@node Filenames and Pathnames, Components of Pathnames, Pathnames, Pathnames
+@node Filenames and Pathnames, Components of Pathnames,  , Pathnames
 @subsection Filenames and Pathnames
 
 Pathname objects are usually created by parsing filenames (character
@@ -11333,7 +11345,7 @@ This is the inverse operation to @code{directory-pathname-as-file}.
 @end deffn
 
 
-@node Miscellaneous Pathnames, , Operations on Pathnames, Pathnames
+@node Miscellaneous Pathnames,  , Operations on Pathnames, Pathnames
 @subsection Miscellaneous Pathname Functions
 @cindex directory, reading
 
@@ -11706,7 +11718,7 @@ condition arose.
 * Predefined Errors::           Predefined Errors
 @end menu
 
-@node Simple Errors, Error Handler, Error System, Error System
+@node Simple Errors, Error Handler,  , Error System
 @section Simple Errors
 
 @cindex irritants, of error (defn)
@@ -12275,7 +12287,7 @@ operations, such as control of colors.
 * Pictures::                    Pictures (MIT 6.001 implementation only)
 @end menu
 
-@node Opening and Closing of Graphics Devices, Coordinates for Graphics, Graphics, Graphics
+@node Opening and Closing of Graphics Devices, Coordinates for Graphics,  , Graphics
 @section Opening and Closing of Graphics Devices
 @cindex graphics, opening and closing devices
 
@@ -12658,7 +12670,7 @@ size, position, colors, and mapping.
 * Custom Operations on X Graphics Devices::  Custom Operations on X Graphics Devices
 @end menu
 
-@node X Graphics Type, Utilities for X Graphics, X Graphics, X Graphics
+@node X Graphics Type, Utilities for X Graphics,  , X Graphics
 @subsection X Graphics Type
 
 @defvr {variable+} x-graphics-device-type
@@ -13042,7 +13054,7 @@ Coordinates (@var{i},@var{j}) are @dfn{valid coordinates} of picture
 * Saving and Restoring Pictures::  Saving and Restoring Pictures
 @end menu
 
-@node Construction of Pictures, Manipulating Pictures, Pictures, Pictures
+@node Construction of Pictures, Manipulating Pictures,  , Pictures
 @subsection Construction of Pictures
 
 @code{make-picture} and @code{procedure->picture} are simple ways to
