@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: advice.scm,v 14.16 1999/07/06 15:08:04 cph Exp $
+$Id: advice.scm,v 14.17 2000/06/07 04:56:23 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -354,7 +354,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   result)
 
 (define (trace-display port procedure arguments #!optional result)
-  (newline port)
+  (fresh-line port)
   (let ((width (- (max 40 (output-port/x-size port)) 1))
 	(write-truncated
 	 (lambda (object width)
@@ -390,7 +390,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(begin
 		  (write-args (list-head arguments 10))
 		  (newline port)
-		  (write-string "          ...]" port))))))))
+		  (write-string "          ...]" port))))))
+    (newline port)))
 
 (define (break-entry-advice procedure arguments environment)
   (fluid-let ((the-procedure procedure)
