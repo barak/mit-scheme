@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.116 1993/08/10 06:43:44 cph Exp $
+;;;	$Id: info.scm,v 1.117 1993/10/06 02:40:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -60,12 +60,23 @@
 
 (define-variable info-enable-edit
   "If true, the \\[info-edit] command in Info can edit the current node."
-  false)
+  false
+  boolean?)
 
 (define-variable info-enable-active-nodes
   "If true, allows Info to execute Scheme code associated with nodes.
 The Scheme code is executed when the node is selected."
-  true)
+  true
+  boolean?)
+
+(define-variable info-selection-key
+  "Specifies a key or button that is used to select Info nodes.
+The value of this variable is either #F, a key, or a mouse button.
+If it is a key or button, menu items and adjacent node names are
+highlighted, and within these highlighted regions the key/button
+is bound to a command that selects the appropriate node."
+  #f
+  (lambda (object) (or (not object) (comtab-key? object))))
 
 (define-variable info-directory
   "If not false, default directory for Info documentation files.
@@ -95,11 +106,11 @@ or #F if current info file is not split into subfiles."
   false)
 
 (define-variable info-tag-table-start
-  "Mark pointing at beginning of current Info file's tag table,
+  "Mark pointing to beginning of current Info file's tag table,
 or #F if file has no tag table.")
 
 (define-variable info-tag-table-end
-  "Mark pointing at end of current Info file's tag table,
+  "Mark pointing to end of current Info file's tag table,
 or #F if file has no tag table.")
 
 (define-major-mode info read-only-noarg "Info"
@@ -413,6 +424,22 @@ except for \\[info-cease-edit] to return to Info."
 		 (prompt-for-alist-value "Menu item"
 					 item-alist))))))))))
 
+(define-command info-current-menu-item
+  "Go to the node of the menu item that point is on."
+  ()
+  (lambda ()
+    (let ((point
+	   (let ((event (current-button-event)))
+	     (let ((window (button-event/window event)))
+	       (or (window-coordinates->mark window
+					     (button-event/x event)
+					     (button-event/y event))
+		   (window-point window))))))
+      (let ((item (current-menu-item point)))
+	(if (not item)
+	    (editor-error "Point not on a menu item"))
+	(goto-node (menu-item-name item))))))
+
 (define (nth-menu-item n)
   (lambda ()
     (let loop
@@ -474,6 +501,19 @@ except for \\[info-cease-edit] to return to Info."
 		(cons (cons keyword item)
 		      (loop item))))
 	    '())))))
+
+(define (mark-menu-items mark marker)
+  (let ((pattern (re-compile-pattern menu-item-regexp false))
+	(group (mark-group mark)))
+    (let ((end (group-end-index group)))
+      (let loop ((start (mark-index mark)))
+	(if (re-search-buffer-forward pattern false false
+				      group start end)
+	    (let ((item (re-match-start-index 1)))
+	      (marker group
+		      item
+		      (re-match-end-index 1))
+	      (loop item)))))))
 
 (define (next-menu-item mark)
   (and (re-search-forward menu-item-regexp mark (group-end mark) false)
@@ -743,13 +783,42 @@ The name may be an abbreviation of the reference name."
     (info-set-mode-line! (current-buffer))
     ;; **** need to add active node hacking here ****
     (region-clip! (node-region node))
-    (set-current-point! point)))
+    (set-current-point! point)
+    (let ((key (ref-variable info-selection-key point)))
+      (if key
+	  (info-enable-selections node key))))
+  (buffer-not-modified! (mark-buffer point)))
+
+(define (info-enable-selections node key)
+  (let ((comtab
+	 (lambda (command)
+	   (let ((comtab (make-comtab)))
+	     (define-key comtab key command)
+	     (list comtab)))))
+    (let ((do-button
+	   (lambda (locator command)
+	     (let ((region (locator node)))
+	       (if region
+		   (begin
+		     (highlight-region region #t)
+		     (set-region-local-comtabs! region (comtab command))))))))
+      (do-button locate-node-up (ref-command-object info-up))
+      (do-button locate-node-previous (ref-command-object info-previous))
+      (do-button locate-node-next (ref-command-object info-next)))
+    (let ((menu (find-menu)))
+      (if menu
+	  (mark-menu-items menu
+	    (let ((comtabs
+		   (comtab (ref-command-object info-current-menu-item))))
+	      (lambda (group start end)
+		(highlight-subgroup group start end #t)
+		(set-subgroup-local-comtabs! group start end comtabs))))))))
 
 (define (record-node file node point)
   (set-variable! info-history
 		 (cons (vector file node point)
 		       (ref-variable info-history))))
-
+
 (define (node-start start end)
   (line-start (or (search-backward "\n" start end false)
 		  (editor-error))
@@ -775,25 +844,46 @@ The name may be an abbreviation of the reference name."
       (and mark
 	   (line-start mark 1))))
 
-(define ((field-value-extractor field) node)
+(define ((field-value-locator field) node)
   (let ((end (line-end node 0)))
-    (let ((mark (re-search-forward field node end true)))
+    (let ((mark (re-search-forward field node end #t)))
       (and mark
-	   (string-trim
-	    (extract-string mark
-			    (skip-chars-forward "^,\t" mark end)))))))
+	   (let ((start (skip-chars-forward " " mark end)))
+	     (make-region start
+			  (skip-chars-backward " "
+					       (skip-chars-forward "^,\t"
+								   start
+								   end)
+					       start)))))))
+
+(define locate-node-name
+  (field-value-locator "Node:"))
+
+(define locate-node-up
+  (field-value-locator "Up:"))
+
+(define locate-node-previous
+  (field-value-locator "Prev\\(ious\\|\\):"))
+
+(define locate-node-next
+  (field-value-locator "Next:"))
+
+(define ((field-value-extractor locator) node)
+  (let ((region (locator node)))
+    (and region
+	 (region->string region))))
 
 (define extract-node-name
-  (field-value-extractor "Node:"))
+  (field-value-extractor locate-node-name))
 
 (define extract-node-up
-  (field-value-extractor "Up:"))
+  (field-value-extractor locate-node-up))
 
 (define extract-node-previous
-  (field-value-extractor "Prev\\(ious\\|\\):"))
+  (field-value-extractor locate-node-previous))
 
 (define extract-node-next
-  (field-value-extractor "Next:"))
+  (field-value-extractor locate-node-next))
 
 ;;;; Tag Tables
 

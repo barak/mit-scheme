@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.137 1993/10/06 01:50:15 cph Exp $
+$Id: edwin.pkg,v 1.138 1993/10/06 02:40:26 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -732,9 +732,9 @@ MIT in each case. |#
 	  edwin-variable$info-directory
 	  edwin-variable$info-enable-active-nodes
 	  edwin-variable$info-enable-edit
-	  edwin-variable$info-enable-selections
 	  edwin-variable$info-history
 	  edwin-variable$info-previous-search
+	  edwin-variable$info-selection-key
 	  edwin-variable$info-tag-table-end
 	  edwin-variable$info-tag-table-start))
 
