@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.121 1991/11/06 22:45:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.122 1992/01/13 20:15:34 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -474,8 +474,8 @@ CANNOT contain the 'F' option."
       (lambda ()
 	(for-each-file-line (current-buffer)
 	  (lambda (lstart)
-	    (if (let ((lend (line-end lstart 0)))
-		  (match-forward "~" (mark- lend 1) lend))
+	    (if (os/backup-filename?
+		 (region->string (dired-filename-region lstart)))
 		(dired-mark-1 lstart #\D))))))))
 
 (define (dired-kill-files)

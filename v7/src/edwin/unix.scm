@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.20 1992/01/13 19:20:25 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.21 1992/01/13 20:15:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -284,6 +284,17 @@ Includes the new backup.  Must be > 0."
 (define unix/encoding-pathname-types
   '("Z"))
 
+(define unix/backup-suffixes
+  (cons "~"
+	(map (lambda (type) (string-append "~." type))
+	     unix/encoding-pathname-types)))
+
+(define (os/backup-filename? filename)
+  (let loop ((suffixes unix/backup-suffixes))
+    (and (not (null? suffixes))
+	 (or (string-suffix? (car suffixes) filename)
+	     (loop (cdr suffixes))))))
+
 (define (os/pathname-type-for-mode pathname)
   (let ((type (pathname-type pathname)))
     (if (member type unix/encoding-pathname-types)
@@ -291,11 +302,10 @@ Includes the new backup.  Must be > 0."
 	type)))
 
 (define (os/completion-ignored-extensions)
-  (append '(".o" ".elc" "~" ".bin" ".lbin" ".fasl"
+  (append '(".o" ".elc" ".bin" ".lbin" ".fasl"
 		 ".dvi" ".toc" ".log" ".aux"
 		 ".lof" ".blg" ".bbl" ".glo" ".idx" ".lot")
-	  (map (lambda (type) (string-append "~." type))
-	       unix/encoding-pathname-types)))
+	  (list-copy unix/backup-suffixes)))
 
 (define (os/file-type-to-major-mode)
   (alist-copy
