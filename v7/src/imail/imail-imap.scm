@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.49 2000/05/17 16:15:34 cph Exp $
+;;; $Id: imail-imap.scm,v 1.50 2000/05/17 16:23:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -336,16 +336,19 @@
   (without-interrupts
    (lambda ()
      (let ((v (imap-folder-messages folder))
-	   (n (imap-folder-n-messages folder)))
+	   (n (fix:- (imap-folder-n-messages folder) 1)))
        (detach-message! (vector-ref v index))
-       (subvector-move-left! v (fix:+ index 1) n v index)
-       (let ((n (fix:- n 1)))
-	 (vector-set! v n #f)
-	 (set-imap-folder-n-messages! folder n)
-	 (let ((new-length (compute-messages-length v n)))
-	   (if new-length
-	       (set-imap-folder-messages! folder
-					  (vector-head v new-length))))))))
+       (do ((i index (fix:+ i 1)))
+	   ((fix:= i n))
+	 (let ((m (vector-ref v (fix:+ i 1))))
+	   (set-message-index! m i)
+	   (vector-set! v i m)))
+       (vector-set! v n #f)
+       (set-imap-folder-n-messages! folder n)
+       (let ((new-length (compute-messages-length v n)))
+	 (if new-length
+	     (set-imap-folder-messages! folder
+					(vector-head v new-length)))))))
   (folder-modified! folder))
 
 (define (initial-messages)
