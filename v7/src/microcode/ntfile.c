@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfile.c,v 1.7 1997/01/01 22:57:22 cph Exp $
+$Id: ntfile.c,v 1.8 1997/01/05 23:38:12 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -103,17 +103,17 @@ DEFUN (name, (filename), CONST char * filename)				\
 // error REPL from a buggy source file.
 
 DEFUN_OPEN_FILE (OS_open_input_file,
-  (filename, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 0,
-   OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0));
+  (filename, GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE), 0,
+   OPEN_EXISTING, (FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN), 0));
 
 DEFUN_OPEN_FILE (OS_open_output_file,
   (filename, GENERIC_WRITE, FILE_SHARE_READ, 0,
-   CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0));
+   CREATE_ALWAYS, (FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN), 0));
 
 DEFUN_OPEN_FILE (OS_open_io_file,
-  (filename, GENERIC_READ | GENERIC_WRITE,
-   FILE_SHARE_READ | FILE_SHARE_WRITE, 0,
-   OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0));
+  (filename, (GENERIC_READ | GENERIC_WRITE),
+   (FILE_SHARE_READ | FILE_SHARE_WRITE), 0,
+   OPEN_ALWAYS, (FILE_ATTRIBUTE_NORMAL | FILE_FLAG_RANDOM_ACCESS), 0));
 
 
 #ifdef HAVE_APPEND
