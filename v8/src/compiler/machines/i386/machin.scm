@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.2 1995/01/10 21:55:11 ssmith Exp $
+$Id: machin.scm,v 1.3 1995/01/10 23:15:57 ssmith Exp $
 
 Copyright (c) 1992-1995 Massachusetts Institute of Technology
 
@@ -75,6 +75,18 @@ MIT in each case. |#
   (quotient scheme-object-width addressing-granularity))
 
 (define-integrable address-units-per-packed-char 1)
+
+; Pulled from Spectrum's 
+(define-integrable max-type-code
+  ;; (-1+ (expt 2 scheme-type-width))  ***
+  63)
+
+; Pulled from Spectrum's 
+(define (machine/cont-adjustment)
+  ;; Distance in bytes between a raw continuation
+  ;; (as left behind by JSR) and the real continuation
+  ;; (after descriptor)
+  0)
 
 (define #|-integrable|# untagged-fixnums?
   ;; true when fixnums have tags 000000... and 111111...
