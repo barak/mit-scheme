@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.34 1995/10/27 08:00:18 cph Exp $
+$Id: dosprm.scm,v 1.35 1995/10/28 01:14:16 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -298,33 +298,61 @@ MIT in each case. |#
     (add-event-receiver! event:after-restart reset!)))
 
 (define (dos/fs-drive-type pathname)
-  (cons (nt-volume-info/file-system-name (nt-volume-info pathname)) ""))
+  pathname
+  (cons "FAT" ""))
 
 (define (dos/fs-long-filenames? pathname)
-  ;; 32 is random -- FAT is 12 and everything else is much larger.
-  (> (nt-volume-info/max-component-length (nt-volume-info pathname)) 32))
+  pathname
+  #f)
 
-(define (nt-volume-info pathname)
-  (let ((root
-	 (pathname-new-directory
-	  (directory-pathname (merge-pathnames pathname))
-	  '(ABSOLUTE))))
-    (let ((info
-	   ((ucode-primitive nt-get-volume-information 1)
-	    (->namestring root))))
-      (if (not info)
-	  (error "Error reading volume information:" root))
-      info)))
-
-(define-structure (nt-volume-info (type vector)
-				  (constructor #f)
-				  (conc-name nt-volume-info/))
-  (name #f read-only #t)
-  (serial-number #f read-only #t)
-  (max-component-length #f read-only #t)
-  (file-system-flags #f read-only #t)
-  (file-system-name #f read-only #t))
-
+(define (copy-file from to)
+  (let ((input-filename (->namestring (merge-pathnames from)))
+	(output-filename (->namestring (merge-pathnames to))))
+    (let ((input-channel false)
+	  (output-channel false))
+      (dynamic-wind
+       (lambda ()
+	 (set! input-channel (file-open-input-channel input-filename))
+	 (set! output-channel
+	       (begin
+		 ((ucode-primitive file-remove-link 1) output-filename)
+		 (file-open-output-channel output-filename)))
+	 unspecific)
+       (lambda ()
+	 (let ((source-length (channel-file-length input-channel))
+	       (buffer-length 8192))
+	   (if (zero? source-length)
+	       0
+	       (let* ((buffer (make-string buffer-length))
+		      (transfer
+		       (lambda (length)
+			 (let ((n-read
+				(channel-read-block input-channel
+						    buffer
+						    0
+						    length)))
+			   (if (positive? n-read)
+			       (channel-write-block output-channel
+						    buffer
+						    0
+						    n-read))
+			   n-read))))
+		 (let loop ((source-length source-length))
+		   (if (< source-length buffer-length)
+		       (transfer source-length)
+		       (let ((n-read (transfer buffer-length)))
+			 (if (= n-read buffer-length)
+			     (+ (loop (- source-length buffer-length))
+				buffer-length)
+			     n-read))))))))
+       (lambda ()
+	 (if output-channel (channel-close output-channel))
+	 (if input-channel (channel-close input-channel)))))
+    (set-file-times! output-filename
+		     #f
+		     (file-modification-time input-filename))
+    (set-file-modes! output-filename (file-modes input-filename))))
+
 (define (select-internal console? handles block?)
   (let* ((nt/qs-allinput #xff)
 	 (select
@@ -346,10 +374,7 @@ MIT in each case. |#
 (define console-channel-descriptor)
 
 (define (cache-console-channel-descriptor!)
-  (set! console-channel-descriptor
-	(if (eq? 'DOS microcode-id/operating-system)
-	    -1
-	    ((ucode-primitive get-handle 1) 1)))
+  (set! console-channel-descriptor -1)
   unspecific)
 
 (define (select-descriptor descriptor block?)
