@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.9 1993/10/21 11:49:56 cph Exp $
+$Id: usrint.scm,v 1.10 1993/11/04 23:53:13 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -116,22 +116,25 @@ MIT in each case. |#
 (define (default/prompt-for-command-char port prompt level)
   (port/with-output-terminal-mode port 'COOKED
     (lambda ()
-      (port/with-input-terminal-mode port 'RAW
-	(lambda ()
-	  (fresh-line port)
-	  (newline port)
-	  (write level port)
-	  (write-string " " port)
-	  (write-string prompt port)
-	  (flush-output port)
-	  (let loop ()
-	    (let ((char (read-char port)))
-	      (if (char-graphic? char)
-		  (begin
-		    (write-char char port)
-		    (flush-output port)
-		    char)
-		  (loop)))))))))
+      (fresh-line port)
+      (newline port)
+      (write level port)
+      (write-string " " port)
+      (write-string prompt port)
+      (flush-output port)))
+  (let loop ()
+    (let ((char
+	   (port/with-input-terminal-mode port 'RAW
+	     (lambda ()
+	       (read-char port)))))
+      (if (char-graphic? char)
+	  (begin
+	    (port/with-output-terminal-mode port 'COOKED
+	      (lambda ()
+		(write-char char port)
+		(flush-output port)))
+	    char)
+	  (loop)))))
 
 (define (prompt-for-confirmation prompt #!optional port)
   (let ((prompt (canonicalize-prompt prompt " (y or n)? "))
@@ -144,30 +147,39 @@ MIT in each case. |#
 (define (default/prompt-for-confirmation port prompt)
   (port/with-output-terminal-mode port 'COOKED
     (lambda ()
-      (port/with-input-terminal-mode port 'RAW
-	(lambda ()
-	  (fresh-line port)
-	  (let loop ()
-	    (newline port)
-	    (write-string prompt port)
-	    (flush-output port)
-	    (let ((char (read-char port)))
-	      (case char
-		((#\y #\Y #\space)
-		 (write-string "Yes" port)
-		 (flush-output port)
-		 true)
-		((#\n #\N #\rubout)
-		 (write-string "No" port)
-		 (flush-output port)
-		 false)
-		((#\newline)
-		 (loop))
-		(else
-		 (write char port)
-		 (beep port)
-		 (flush-output port)
-		 (loop))))))))))
+      (fresh-line port)))
+  (let loop ()
+    (port/with-output-terminal-mode port 'COOKED
+      (lambda ()
+	(newline port)
+	(write-string prompt port)
+	(flush-output port)))
+    (let ((char
+	   (port/with-input-terminal-mode port 'RAW
+	     (lambda ()
+	       (read-char port)))))
+      (case char
+	((#\y #\Y #\space)
+	 (port/with-output-terminal-mode port 'COOKED
+	   (lambda ()
+	     (write-string "Yes" port)
+	     (flush-output port)))
+	 true)
+	((#\n #\N #\rubout)
+	 (port/with-output-terminal-mode port 'COOKED
+	   (lambda ()
+	     (write-string "No" port)
+	     (flush-output port)))
+	 false)
+	((#\newline)
+	 (loop))
+	(else
+	 (port/with-output-terminal-mode port 'COOKED
+	   (lambda ()
+	     (write char port)
+	     (beep port)
+	     (flush-output port)))
+	 (loop))))))
 
 ;;;; Debugger Support
 
