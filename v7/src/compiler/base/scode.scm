@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 4.8 1992/12/30 16:32:12 gjr Exp $
+$Id: scode.scm,v 4.9 1993/06/29 08:41:48 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,7 +65,7 @@ MIT in each case. |#
     in-package-environment in-package-expression
     make-lambda lambda? lambda-components
     make-open-block open-block? open-block-components
-    primitive-procedure?
+    primitive-procedure? procedure?
     make-quotation quotation? quotation-expression
     make-sequence sequence? sequence-actions sequence-components
     symbol?

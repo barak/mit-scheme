@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simapp.scm,v 4.6 1993/06/29 04:35:29 gjr Exp $
+$Id: simapp.scm,v 4.7 1993/06/29 08:41:26 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -114,7 +114,7 @@ MIT in each case. |#
 		 (if (not
 		      (cond ((eq? value compiled-error-procedure)
 			     (positive? argument-count))
-			    ((procedure? value)
+			    ((scode/procedure? value)
 			     (procedure-arity-valid? value argument-count))
 			    (else
 			     (if (not (unassigned-reference-trap? value))
