@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.8 1995/02/24 00:35:30 cph Exp $
+$Id: os2graph.scm,v 1.9 1995/05/20 10:17:55 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -103,12 +103,9 @@ MIT in each case. |#
   (set! event-previewer-registration #f)
   (set! window-list (make-protection-list))
   (set! image-list (make-protection-list))
-  (set! color-table '())
   (set! user-event-mask user-event-mask:default)
   (set! user-event-queue (make-queue))
-  (for-each (lambda (entry)
-	      (os2-graphics/define-color #f (car entry) (cdr entry)))
-	    initial-color-definitions)
+  (initialize-color-table)
   (add-event-receiver! event:before-exit finalize-pm-state!)
   (add-gc-daemon! close-lost-objects-daemon))
 
@@ -117,7 +114,6 @@ MIT in each case. |#
 (define event-previewer-registration)
 (define window-list)
 (define image-list)
-(define color-table)
 (define user-event-mask)
 (define user-event-queue)
 
@@ -443,20 +439,11 @@ MIT in each case. |#
 
 (define (os2-graphics/define-color device name color)
   device
-  (if (not (and (color-name? name)
-		(not (char=? #\# (string-ref name 0)))))
-      (error:wrong-type-argument name "color name" 'DEFINE-COLOR))
-  (let ((entry (lookup-color-name name))
-	(color (->color color 'DEFINE-COLOR)))
-    (if entry
-	(set-cdr! entry color)
-	(begin
-	  (set! color-table (cons (cons name color) color-table))
-	  unspecific))))
+  (os2/define-color name color))
 
 (define (os2-graphics/find-color device specification)
   device
-  (->color specification 'FIND-COLOR))
+  (os2/find-color specification))
 
 (define (os2-graphics/set-background-color device color)
   (let ((window (graphics-device/descriptor device))
@@ -538,6 +525,21 @@ MIT in each case. |#
 
 ;;;; Color Support
 
+(define (os2/define-color name color)
+  (if (not (and (color-name? name)
+		(not (char=? #\# (string-ref name 0)))))
+      (error:wrong-type-argument name "color name" 'OS2/DEFINE-COLOR))
+  (let ((entry (lookup-color-name name))
+	(color (->color color 'OS2/DEFINE-COLOR)))
+    (if entry
+	(set-cdr! entry color)
+	(begin
+	  (set! color-table (cons (cons name color) color-table))
+	  unspecific))))
+
+(define (os2/find-color specification)
+  (->color specification 'OS2/FIND-COLOR))
+
 (define (->color specification procedure)
   (cond ((color? specification)
 	 specification)
@@ -566,7 +568,7 @@ MIT in each case. |#
   (+ (* #x10000 (car triple))
      (* #x100 (cadr triple))
      (caddr triple)))
-
+
 (define (color-name? object)
   (and (string? object)
        (not (string-null? object))))
@@ -589,6 +591,14 @@ MIT in each case. |#
 	     (car entries)
 	     (loop (cdr entries))))))
 
+(define (initialize-color-table)
+  (set! color-table '())
+  (for-each (lambda (entry)
+	      (os2/define-color (car entry) (cdr entry)))
+	    initial-color-definitions))
+
+(define color-table)
+
 (define initial-color-definitions
   `(("red"          255   0   0)
     ("green"          0 255   0)
@@ -607,6 +617,64 @@ MIT in each case. |#
     ("purple"	    127   0 127)
     ("dark green"     0 127   0)
     ("brown"        127  63   0)))
+
+;;;; Console Window
+
+;;; This and the color support really should be in a separate file.
+
+(define (os2-console/color?)
+  (not (= 0 (os2ps-query-capability (os2win-ps (os2win-console-wid))
+				    CAPS_COLOR_TABLE_SUPPORT))))
+
+(define (os2-console/get-font-metrics)
+  (let ((metrics (os2ps-get-font-metrics (os2win-ps (os2win-console-wid)))))
+    (values (font-metrics/width metrics)
+	    (font-metrics/height metrics))))
+
+(define (os2-console/set-font! font-name)
+  (if (not (os2ps-set-font (os2win-ps (os2win-console-wid)) 1 font-name))
+      (error:bad-range-argument font-name 'OS2-CONSOLE/SET-FONT!)))
+
+(define (os2-console/set-colors! foreground background)
+  (let ((wid (os2win-console-wid)))
+    (os2ps-set-colors (os2win-ps wid)
+		      (os2/find-color foreground)
+		      (os2/find-color background))
+    (let ((w.h (os2win-get-size wid)))
+      (os2win-invalidate wid 0 (car w.h) 0 (cdr w.h)))))
+
+(define (os2-console/get-pel-size)
+  (let ((w.h (os2win-get-size (os2win-console-wid))))
+    (values (car w.h)
+	    (cdr w.h))))
+
+(define (os2-console/set-pel-size! width height)
+  (os2win-set-size (os2win-console-wid) width height))
+
+(define (os2-console/get-size)
+  (let ((wid (os2win-console-wid)))
+    (let ((w.h (os2win-get-size wid))
+	  (metrics (os2ps-get-font-metrics (os2win-ps wid))))
+      (values (quotient (car w.h) (font-metrics/width metrics))
+	      (quotient (cdr w.h) (font-metrics/height metrics))))))
+
+(define (os2-console/set-size! width height)
+  (let ((metrics (os2ps-get-font-metrics (os2win-ps (os2win-console-wid)))))
+    (os2-console/set-pel-size! (* width (font-metrics/width metrics))
+			       (* height (font-metrics/height metrics)))))
+
+(define (os2-console/get-frame-size)
+  (let ((w.h (os2win-get-frame-size (os2win-console-wid))))
+    (values (car w.h)
+	    (cdr w.h))))
+
+(define (os2-console/get-frame-position)
+  (let ((x.y (os2win-get-pos (os2win-console-wid))))
+    (values (car x.y)
+	    (cdr x.y))))
+
+(define (os2-console/set-frame-position! x y)
+  (os2win-set-pos (os2win-console-wid) x y))
 
 ;;;; Miscellaneous Support
 
