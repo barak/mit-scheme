@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.41 1987/01/23 00:14:34 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.42 1987/03/12 02:20:33 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -429,7 +429,7 @@
 ;;; **** The DELAY option for this operation works only for the
 ;;; console port.  Since it is a kludge, it is probably OK.
 
-(define (read-char-ready? #!optional port delay)
+(define (char-ready? #!optional port delay)
   (cond ((unassigned? port) (set! port *current-input-port*))
 	((not (input-port? port)) (error "Bad input port" port)))
   (cond ((unassigned? delay) (set! delay 0))
