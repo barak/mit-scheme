@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.18 1992/11/17 17:36:00 cph Exp $
+$Id: comint.scm,v 1.19 1993/08/02 02:50:40 cph Exp $
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
@@ -189,7 +189,7 @@ the input."
 	(let ((point (current-point)))
 	  (move-mark-to! (ref-variable comint-last-input-end) point)
 	  (if ((ref-variable comint-input-filter) string)
-	      (ring-push! (ref-variable comint-input-ring) string))
+	      (comint-record-input (ref-variable comint-input-ring) string))
 	  ((ref-variable comint-input-sentinel) string)
 	  (if delete?
 	      (delete-string mark point)
@@ -197,6 +197,11 @@ the input."
 	  (move-mark-to! mark point)
 	  (process-send-string process (string-append string terminator)))))))
 
+(define (comint-record-input ring string)
+  (if (or (ring-empty? ring)
+	  (not (string=? string (ring-ref ring 0))))
+      (ring-push! ring string)))
+
 (define-variable-per-buffer comint-get-old-input
   "Procedure that submits old text in comint mode.
 This procedure is called when return is typed while the point is in old text.
