@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.18 1992/02/03 23:47:06 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.19 1992/05/05 06:38:52 jinx Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,6 +35,7 @@ MIT in each case. */
 #include "ux.h"
 #include "uxterm.h"
 #include "uxio.h"
+#include "ospty.h"
 
 #if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
 
