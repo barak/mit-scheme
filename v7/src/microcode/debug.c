@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.35 1990/06/20 17:39:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.36 1990/08/07 23:33:31 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -942,7 +942,7 @@ DEFUN (show_flags, (all), int all)
       int value = (* (find_flag (i)));
       if (all || value)
 	fprintf (stdout, "Flag %d (%s) is %s.\n",
-		 i, (flag_name (i)), (Value ? "set" : "clear"));
+		 i, (flag_name (i)), (value ? "set" : "clear"));
     }
   fflush (stdout);
 }
@@ -983,11 +983,11 @@ DEFUN_VOID (debug_edit_flags)
 	  {
 	   case 'c':
 	   case 'C':
-	     set_flag ((DEBUG_GETDEC (input_string)), 0);
+	     set_flag ((DEBUG_GETDEC (input_line)), 0);
 	     break;
 	   case 's':
 	   case 'S':
-	     set_flag ((DEBUG_GETDEC (input_string)), 1);
+	     set_flag ((DEBUG_GETDEC (input_line)), 1);
 	     break;
 	   case 'd':
 	   case 'D':
