@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dragon4.scm,v 1.1 1989/10/26 06:49:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dragon4.scm,v 1.2 1989/10/30 22:36:38 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -53,20 +53,17 @@ MIT in each case. |#
 				   '()
 				   (cons (digit->char u radix)
 					 (generate loop)))))))
-		       (let ((k+1 (1+ k))
-			     (l (string-length digits)))
-			 (let ((k+1-l (- k+1 l))
+		       (let ((k+1 (1+ k)))
+			 (let ((k+1-l (- k+1 (string-length digits)))
 			       (n (flo:significand-digits radix))
 			       (scientific
 				(lambda ()
-				  (let ((e (int:->string k radix)))
-				    (if (= l 1)
-					(string-append digits "e" e)
-					(string-append (string-head digits 1)
-						       "."
-						       (string-tail digits 1)
-						       "e"
-						       e))))))			   (cond ((< k+1-l (- n))
+				  (string-append (string-head digits 1)
+						 "."
+						 (string-tail digits 1)
+						 "e"
+						 (int:->string k radix)))))
+			   (cond ((< k+1-l (- n))
 				  (scientific))
 				 ((negative? k)
 				  (string-append "."
