@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.73 1992/09/02 04:38:57 jinx Exp $
+$Id: boot.c,v 9.74 1992/09/24 01:33:37 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -49,6 +49,7 @@ extern void EXFUN (init_exit_scheme, (void));
 extern void EXFUN (Clear_Memory, (int, int, int));
 extern void EXFUN (Setup_Memory, (int, int, int));
 extern void EXFUN (compiler_initialize, (long fasl_p));
+extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
 
 static void EXFUN (Start_Scheme, (int, CONST char *));
 static void EXFUN (Enter_Interpreter, (void));
@@ -174,7 +175,6 @@ SCHEME_OBJECT
 DEFUN_VOID (make_fixed_objects_vector)
 {
   extern SCHEME_OBJECT initialize_history ();
-  extern SCHEME_OBJECT make_primitive ();
   /* Create the fixed objects vector,
      with 4 extra slots for expansion and debugging. */
   fast SCHEME_OBJECT fixed_objects_vector =
@@ -298,7 +298,6 @@ static void
 DEFUN (Start_Scheme, (Start_Prim, File_Name),
        int Start_Prim AND CONST char * File_Name)
 {
-  extern SCHEME_OBJECT EXFUN (make_primitive, (unsigned char *));
   SCHEME_OBJECT FName, Init_Prog, *Fasload_Call, prim;
   fast long i;
   /* Parallel processor test */
@@ -330,7 +329,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
       Fasload_Call = Free;
       *Free++ = prim;
       *Free++ = FName;
-      prim = make_primitive("SCODE-EVAL");
+      prim = (make_primitive ("SCODE-EVAL"));
       Init_Prog = MAKE_POINTER_OBJECT (TC_PCOMB2, Free);
       *Free++ = prim;
       *Free++ = MAKE_POINTER_OBJECT (TC_PCOMB1, Fasload_Call);
@@ -347,7 +346,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
       break;
 
     case BOOT_GET_WORK:		/* ((GET-WORK)) */
-      prim = make_primitive("GET-WORK");
+      prim = (make_primitive ("GET-WORK"));
       Fasload_Call = Free;
       *Free++ = prim;
       *Free++ = SHARP_F;

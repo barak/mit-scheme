@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosconio.c,v 1.6 1992/09/11 21:57:29 cph Exp $
+$Id: dosconio.c,v 1.7 1992/09/24 01:34:59 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -265,7 +265,7 @@ extern void EXFUN (DOS_initialize_fov, (SCHEME_OBJECT));
 void
 DEFUN (DOS_initialize_fov, (fov), SCHEME_OBJECT fov)
 {
-  extern SCHEME_OBJECT EXFUN (make_primitive, (unsigned char *));
+  extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
   SCHEME_OBJECT iv, prim;
 
   prim = (make_primitive ("DOS-HIGH-PRIORITY-TIMER-INTERRUPT"));
