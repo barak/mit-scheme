@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.223 2000/12/16 06:12:42 cph Exp $
+;;; $Id: imail-top.scm,v 1.224 2000/12/21 04:21:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -229,7 +229,7 @@ regardless of the folder type."
 	   (open-folder
 	    (if url-string
 		(imail-parse-partial-url url-string)
-		(imail-default-url)))))
+		(imail-default-url #f)))))
       (let ((buffer (imail-folder->buffer folder #f)))
 	(if buffer
 	    (begin
@@ -1312,7 +1312,7 @@ If it doesn't exist, it is created first."
 				   (imail-parse-partial-url (car history))))))
 			   (and (url? url)
 				url))))
-		  (imail-default-url))
+		  (imail-default-url #f))
 	      (url-base-name (imail-parse-partial-url from)))
 	     'HISTORY 'IMAIL-COPY-FOLDER-TARGET))))
   (lambda (from to)
@@ -1508,7 +1508,7 @@ Negative argument means search in reverse."
 
 ;;;; URLs
 
-(define (imail-default-url)
+(define (imail-default-url protocol)
   (let ((primary-folder (ref-variable imail-primary-folder #f)))
     (if primary-folder
 	(imail-parse-partial-url primary-folder)
@@ -1560,7 +1560,7 @@ Negative argument means search in reverse."
 	(default
 	  (cond ((string? default) default)
 		((url? default) (url->string default))
-		((not default) (url-container-string (imail-default-url)))
+		((not default) (url-container-string (imail-default-url #f)))
 		(else (error "Illegal default:" default)))))
     (let ((history (get-option 'HISTORY)))
       (if (null? (prompt-history-strings history))
@@ -1910,7 +1910,7 @@ Negative argument means search in reverse."
 			       (imail-mode-line-summary-string buffer)
 			       buffer)
 	  (if (and (ref-variable imail-global-mail-notification buffer)
-		   (eq? (folder-url folder) (imail-default-url)))
+		   (eq? (folder-url folder) (imail-default-url "imap")))
 	      (begin
 		(set-variable! global-mode-string
 			       (if (> (count-unseen-messages folder) 0)
