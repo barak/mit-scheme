@@ -1,7 +1,7 @@
 /* #define DEBUG_INTERFACE */
  ### -*-Midas-*-
  ###
- ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.4 1991/07/12 23:14:52 cph Exp $
+ ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.5 1992/07/30 15:07:46 jinx Exp $
  ###
  ###	Copyright (c) 1989-91 Massachusetts Institute of Technology
  ###
@@ -200,6 +200,7 @@ interface_to_scheme:
 #ifdef DEBUG_INTERFACE
 	andi	$at,$free,3
 	bne	$at,0,Bad_Free_Pointer
+	nop
 Continue_Past_Free_Problem:
 #endif
 	jal	$31,$C_arg1		# Off to compiled code ...
@@ -273,6 +274,7 @@ scheme_to_interface:
 	addi	$value,$value,20
 	la	$12,Debug_Buffer_End
 	bne	$12,$value,Store_Pointer_Back
+	nop
 	la	$12,Debug_Buffer
 	add	$value,$0,$12
 Store_Pointer_Back:
@@ -283,6 +285,7 @@ Store_Pointer_Back:
 	addi	$value,$value,1
 	sw	$value,Debug_Call_Count
 	beq	$value,$12,Debug_Tight_Loop
+	nop
 	.set	noat
 #endif
 after_overflow:
@@ -327,12 +330,12 @@ interface_to_C:
 	.globl	Stack_Overflow_Detected
 Stack_Overflow_Detected:
 	j	after_overflow
-	addi	$0,$0,0
+	nop
 
 	.globl	Bad_Free_Pointer
 Bad_Free_Pointer:
 	j	Continue_Past_Free_Problem
-	addi	$0,$0,0
+	nop
 #endif
 
 	.globl	interface_initialize
