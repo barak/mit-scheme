@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.25 1996/04/24 04:22:46 cph Exp $
+$Id: packag.scm,v 14.26 1998/02/11 04:50:31 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -134,7 +134,7 @@ MIT in each case. |#
 	'()
 	(cons (car list) (loop (cdr list))))))
 
-(define (package/add-child! package name environment #!optional force?)
+(define (package/add-child! package name environment #!optional no-force?)
   (let ((child (package/child package name))
 	(finish
 	 (lambda (child)
@@ -142,11 +142,12 @@ MIT in each case. |#
 	       (local-assignment environment package-name-tag child))
 	   child)))
     (if child
-	(if (and (not (default-object? force?)) force?)
-	    (begin
-	      (set-package/environment! child environment)
-	      (finish child))
-	    (error "Package already has child of given name:" package name))
+	(begin
+	  (if (and (not (default-object? no-force?)) no-force?)
+	      (error "Package already has child of given name:" package name))
+	  (set-package/environment! child environment)
+	  (set-package/children! child '())
+	  (finish child))
 	(let ((child (make-package package name environment)))
 	  (set-package/children! package
 				 (cons child (package/children package)))
