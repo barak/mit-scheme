@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.22 1995/11/04 00:08:27 cph Exp $
+$Id: os2pm.c,v 1.23 1995/11/04 01:34:55 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -2372,7 +2372,7 @@ unparse_font_spec (PSZ name, LONG size, USHORT selection)
   return (result);
 }
 
-/* Pointers */
+/* Pointers and Icons */
 
 static HPOINTER
 query_system_pointer (qid_t qid, HWND desktop, LONG id, BOOL copyp)
@@ -2384,4 +2384,18 @@ static BOOL
 set_pointer (qid_t qid, HWND desktop, HPOINTER pointer)
 {
   return (WinSetPointer (desktop, pointer));
+}
+
+static HPOINTER
+window_load_pointer (window_t * window, HMODULE module, ULONG id)
+{
+  return (WinLoadPointer ((WINDOW_FRAME (window)), module, id));
+}
+
+static BOOL
+window_set_icon (window_t * window, HPOINTER icon)
+{
+  return (LONGFROMMR (WinSendMsg ((WINDOW_FRAME (window)), WM_SETICON,
+				  (MPFROMLONG (icon)),
+				  (MPFROMLONG (0)))));
 }

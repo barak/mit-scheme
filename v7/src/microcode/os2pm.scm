@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2pm.scm,v 1.3 1995/11/04 00:08:40 cph Exp $
+$Id: os2pm.scm,v 1.4 1995/11/04 01:35:01 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -1066,5 +1066,13 @@ MIT in each case. */
 (define-pm-procedure set_pointer
   (value ("BOOL" successp))
   (arguments qid ("HWND" desktop) ("HPOINTER" pointer)))
+
+(define-pm-procedure window_load_pointer
+  (value ("HPOINTER" pointer))
+  (arguments window ("HMODULE" module) (ulong id)))
+
+(define-pm-procedure window_set_icon
+  (value ("BOOL" successp))
+  (arguments window ("HPOINTER" icon)))
 
 (write-all-files)
