@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.7 1992/12/04 03:04:54 cph Exp $
+$Id: string.scm,v 14.8 1992/12/04 03:17:47 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -328,8 +328,8 @@ MIT in each case. |#
   ;; useful if the substring happens to be a sentence.  Again, if you
   ;; need finer control, parse the words yourself.
   (let ((index
-	 (substring-find-first-char-in-set string start end
-					   char-set:alphabetic)))
+	 (substring-find-next-char-in-set string start end
+					  char-set:alphabetic)))
     (if index
 	(begin
 	  (substring-upcase! string index (fix:+ index 1))
