@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.8 1988/03/25 21:22:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.9 1988/04/15 02:16:39 jinx Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,11 +44,11 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 4)
-      (define :modification 8)
+      (define :modification 9)
       (define :files)
 
       (define :rcs-header
-	"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.8 1988/03/25 21:22:06 cph Exp $")
+	"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.9 1988/04/15 02:16:39 jinx Exp $")
 
       (define :files-lists
 	(list
@@ -117,7 +117,8 @@ MIT in each case. |#
 		 ))
 
 	 (cons fg-generator-package
-	       '("fggen/fggen.com"	;SCode->flow-graph converter
+	       '("fggen/canon.com"	;SCode canonicalizer
+		 "fggen/fggen.com"	;SCode->flow-graph converter
 		 "fggen/declar.com"	;Declaration handling
 		 ))
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.3 1988/03/14 19:15:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.4 1988/04/15 02:15:37 jinx Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,14 +49,36 @@ MIT in each case. |#
   (let ((pathname (->pathname filename)))
     (with-output-to-file (pathname-new-type pathname "lap")
       (lambda ()
-	(disassembler/write-compiled-code-block
-	 (compiled-code-block/read-file (pathname-new-type pathname "com"))
-	 (let ((pathname (pathname-new-type pathname "binf")))
-	   (and (if (unassigned? symbol-table?)
-		    (file-exists? pathname)
-		    symbol-table?)
-		(compiler-info/symbol-table
-		 (compiler-info/read-file pathname)))))))))
+	(let ((object (fasload (pathname-new-type pathname "com")))
+	      (info (let ((pathname (pathname-new-type pathname "binf")))
+		      (and (if (unassigned? symbol-table?)
+			       (file-exists? pathname)
+			       symbol-table?)
+			   (fasload pathname)))))
+	  (cond ((compiled-code-address? object)
+		 (disassembler/write-compiled-code-block
+		  (compiled-code-address->block object)
+		  info
+		  false))
+		((not (scode/comment? object))
+		 (error "compiler:write-lap-file : Not a compiled file"
+			(pathname-new-type pathname "com")))
+		(else
+		 (scode/comment-components
+		  object
+		  (lambda (text expression)
+		    expression ;; ignored
+		    (if (and (pair? text)
+			     (eq? (car text) compiler-entries-tag)
+			     (vector? (cadr text)))
+			(for-each disassembler/write-compiled-code-block
+				  (vector->list (cadr text))
+				  (if (false? info)
+				      (make-list (vector-length (cadr text))
+						 false)
+				      (vector->list info)))
+			(error "compiler:write-lap-file : Not a compiled file"
+			       (pathname-new-type pathname "com"))))))))))))
 
 (define disassembler/base-address)
 
@@ -65,15 +87,13 @@ MIT in each case. |#
     (fluid-let ((disassembler/write-offsets? true)
 		(disassembler/write-addresses? true)
 		(disassembler/base-address (primitive-datum the-block)))
-      (let ((info
-	     (compiler-info/read-file
-	      (system-vector-ref the-block
-				 (-  (system-vector-size the-block) 2)))))
-	(newline)
-	(newline)
-	(disassembler/write-compiled-code-block
-	 the-block
-	 (compiler-info/symbol-table info))))))
+      (newline)
+      (newline)
+      (disassembler/write-compiled-code-block
+       the-block
+       (->compiler-info
+	(system-vector-ref the-block
+			   (-  (system-vector-size the-block) 2)))))))
 
 ;;; Operations exported from the disassembler package
 
@@ -82,13 +102,31 @@ MIT in each case. |#
 (define disassembler/instructions/read)
 (define disassembler/lookup-symbol)
 
-(define (disassembler/write-compiled-code-block block symbol-table)
-  (write-string "Code:\n\n")
-  (disassembler/write-instruction-stream
-   symbol-table
-   (disassembler/instructions/compiled-code-block block symbol-table))
-  (write-string "\nConstants:\n\n")
-  (disassembler/write-constants-block block symbol-table))
+(define (write-block block)
+  (write-string "#[COMPILED-CODE-BLOCK ")
+  (write-string
+   (number->string (object-hash block) '(HEUR (RADIX D S))))
+  (write-string " ")
+  (write-string
+   (number->string (primitive-datum block) '(HEUR (RADIX X E))))
+  (write-string "]"))
+
+(define (disassembler/write-compiled-code-block block info #!optional page?)
+  (let ((symbol-table (compiler-info/symbol-table info)))
+    (if (or (unassigned? page?) page?)
+	(begin
+	  (write-char #\page)
+	  (newline)))
+    (write-string "Disassembly of ")
+    (write-block block)
+    (write-string ":\n")
+    (write-string "Code:\n\n")
+    (disassembler/write-instruction-stream
+     symbol-table
+     (disassembler/instructions/compiled-code-block block symbol-table))
+    (write-string "\nConstants:\n\n")
+    (disassembler/write-constants-block block symbol-table)
+    (newline)))
 
 (define (disassembler/instructions/compiled-code-block block symbol-table)
   (disassembler/instructions block
@@ -143,21 +181,26 @@ MIT in each case. |#
 
 (define (write-constant block symbol-table constant)
   (write-string (cdr (write-to-string constant 60)))
-  (if (lambda? constant)
-      (let ((expression (lambda-body constant)))
-	(if (and (compiled-code-address? expression)
-		 (eq? (compiled-code-address->block expression) block))
-	    (begin
-	      (write-string "  (")
-	      (let ((offset (compiled-code-address->offset expression)))
-		(let ((label (disassembler/lookup-symbol symbol-table offset)))
-		  (if label
-		      (write-string (string-downcase label))
-		      (write offset))))
-	      (write-string ")"))))))
-
-)
-
+  (cond ((lambda? constant)
+	 (let ((expression (lambda-body constant)))
+	   (if (and (compiled-code-address? expression)
+		    (eq? (compiled-code-address->block expression) block))
+	       (begin
+		 (write-string "  (")
+		 (let ((offset (compiled-code-address->offset expression)))
+		   (let ((label (disassembler/lookup-symbol symbol-table offset)))
+		     (if label
+			 (write-string (string-downcase label))
+			 (write offset))))
+		 (write-string ")")))))
+	((compiled-code-address? constant)
+	 (write-string "  (offset ")
+	 (write (compiled-code-address->offset constant))
+	 (write-string " in ")
+	 (write-block (compiled-code-address->block constant))
+	 (write-string ")"))
+	(else false))))
+
 (define (disassembler/write-instruction symbol-table offset write-instruction)
   (if symbol-table
       (sorted-vector/for-each symbol-table offset
