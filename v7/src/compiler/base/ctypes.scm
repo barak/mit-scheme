@@ -37,7 +37,7 @@
 
 ;;;; Compiler CFG Datatypes
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.34 1986/12/16 23:47:07 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.35 1986/12/17 19:32:18 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -94,7 +94,7 @@
 			     (cons combination (vnode-combinations value)))
     (snode->scfg combination)))
 
-(define-snode continuation block &entry delta generator &rtl label)
+(define-snode continuation block entry delta generator rtl-frame label)
 (define *continuations*)
 
 (define-integrable (make-continuation block entry delta generator)
@@ -104,20 +104,11 @@
     (set! *continuations* (cons continuation *continuations*))
     continuation))
 
-(define-integrable (continuation-entry continuation)
-  (entry-holder-next (continuation-&entry continuation)))
-
-(define-integrable (set-continuation-entry! continuation entry)
-  (set-entry-holder-next! (continuation-&entry continuation) entry))
-
 (define-integrable (continuation-rtl continuation)
-  (sframe->scfg (continuation-&rtl continuation)))
+  (sframe->scfg (continuation-rtl-frame continuation)))
 
-(define (set-continuation-rtl! continuation rtl)
-  (let ((sframe (continuation-&rtl continuation)))
-    (if sframe
-	(sframe-replace-cfg! sframe rtl)
-	(set-continuation-&rtl! continuation (scfg->sframe rtl)))))
+(define-integrable (set-continuation-rtl! continuation rtl)
+  (set-continuation-rtl-frame! continuation (scfg->sframe rtl)))
 
 (define-unparser continuation-tag
   (lambda (continuation)

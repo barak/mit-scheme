@@ -37,7 +37,7 @@
 
 ;;;; Control Flow Graph Abstraction
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.139 1986/12/17 07:56:20 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.140 1986/12/17 19:32:04 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -655,19 +655,20 @@
     (hooks-connect! (scfg-next-hooks scfg) next)
     (make-sframe entry next)))
 
-(define (sframe-replace-cfg! sframe scfg)
-  (let ((entry (frame-&entry sframe))
-	(next (sframe-&next sframe)))
-    (node-disconnect! entry (entry-holder-&next entry))
-    (hooks-disconnect! (node-previous next) next)
-    (entry-holder-connect! entry (cfg-entry-node scfg))
-    (hooks-connect! (scfg-next-hooks scfg) next)))
-
 (define (sframe->scfg sframe)
   (let ((entry (frame-entry-node sframe)))
     (if entry
 	(make-scfg entry (sframe-next-hooks sframe))
 	(make-null-cfg))))
+
+(define (sframe-edit! sframe procedure)
+  (let ((entry (frame-&entry sframe))
+	(next (sframe-&next sframe)))
+    (let ((scfg
+	   (procedure (entry-holder-disconnect! entry)
+		      (node-previous-disconnect! next))))
+      (entry-holder-connect! entry (cfg-entry-node scfg))
+      (hooks-connect! (scfg-next-hooks scfg) next))))
 
 (define pframe-tag (make-vector-tag frame-tag 'PFRAME))
 (define-vector-slots pframe 2 &consequent &alternative)
@@ -696,24 +697,25 @@
     (hooks-connect! (pcfg-alternative-hooks pcfg) alternative)
     (make-pframe entry consequent alternative)))
 
-(define (pframe-replace-cfg! pframe pcfg)
-  (let ((entry (frame-&entry pframe))
-	(consequent (pframe-&consequent pframe))
-	(alternative (pframe-&alternative pframe)))
-    (node-disconnect! entry (entry-holder-&next entry))
-    (hooks-disconnect! (node-previous consequent) consequent)
-    (hooks-disconnect! (node-previous alternative) alternative)
-    (entry-holder-connect! entry (cfg-entry-node pcfg))
-    (hooks-connect! (pcfg-consequent-hooks pcfg) consequent)
-    (hooks-connect! (pcfg-alternative-hooks pcfg) alternative)))
-
-(define (pframe->scfg pframe)
+(define (pframe->pcfg pframe)
   (let ((entry (frame-entry-node pframe)))
     (if entry
-	(make-scfg entry
+	(make-pcfg entry
 		   (pframe-consequent-hooks pframe)
 		   (pframe-alternative-hooks pframe))
 	(make-null-cfg))))
+
+(define (pframe-edit! pframe procedure)
+  (let ((entry (frame-&entry pframe))
+	(consequent (pframe-&consequent pframe))
+	(alternative (pframe-&alternative pframe)))
+    (let ((pcfg
+	   (procedure (entry-holder-disconnect! entry)
+		      (node-previous-disconnect! consequent)
+		      (node-previous-disconnect! alternative))))
+      (entry-holder-connect! entry (cfg-entry-node pcfg))
+      (hooks-connect! (pcfg-consequent-hooks pcfg) consequent)
+      (hooks-connect! (pcfg-alternative-hooks pcfg) alternative))))
 
 ;;; end USING-SYNTAX
 )
