@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr2.scm,v 1.14 1988/03/14 19:16:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr2.scm,v 1.15 1988/04/22 16:32:44 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -199,7 +199,7 @@ MIT in each case. |#
 (let-syntax ((define-mul-and-div
 	       (macro (keyword word-form-bit long-form-bit)
 		 `(define-instruction ,keyword
-		    (((? sgn us) W (D (? n)) (? ea ea-d))
+		    (((? sgn us) W (? ea ea-d) (D (? n)))
 		     (WORD (1 #b1)
 			   (1 ,word-form-bit)
 			   (2 #b00)
@@ -208,7 +208,7 @@ MIT in each case. |#
 			   (2 #b11)
 			   (6 ea SOURCE-EA 'W)))
 
-		    (((? sgn us) L (D (? q)) (? ea ea-d))
+		    (((? sgn us) L (? ea ea-d) (D (? q)))
 		     (WORD (9 #b010011000)
 			   (1 ,long-form-bit)
 			   (6 ea SOURCE-EA 'L))
@@ -218,7 +218,7 @@ MIT in each case. |#
 				     (8 #b00000000)
 				     (3 q)))
 
-		    (((? sgn us) L (D (? r)) (D (? q)) (? ea ea-d))
+		    (((? sgn us) L (? ea ea-d) (D (? r)) (D (? q)))
 		     (WORD (9 #b010011000)
 			   (1 ,long-form-bit)
 			   (6 ea SOURCE-EA 'L))
@@ -231,7 +231,7 @@ MIT in each case. |#
   (define-mul-and-div DIV #b0 #b1))
 
 (define-instruction DIVL
-  (((? sgn us) L (D (? r)) (D (? q)) (? ea ea-d))
+  (((? sgn us) L (? ea ea-d) (D (? r)) (D (? q)))
    (WORD (9 #b010011000)
 	 (1 #b1)			; DIV long-form-bit
 	 (6 ea SOURCE-EA 'L))
