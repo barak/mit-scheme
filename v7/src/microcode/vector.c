@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.34 1991/10/29 22:55:11 jinx Exp $
+$Id: vector.c,v 9.35 1992/12/02 18:34:46 cph Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +39,11 @@ MIT in each case. */
 
 #define ARG_VECTOR(argument_number)					\
   ((VECTOR_P (ARG_REF (argument_number)))				\
+   ? (ARG_REF (argument_number))					\
+   : ((error_wrong_type_arg (argument_number)), ((SCHEME_OBJECT) 0)))
+
+#define ARG_RECORD(argument_number)					\
+  ((RECORD_P (ARG_REF (argument_number)))				\
    ? (ARG_REF (argument_number))					\
    : ((error_wrong_type_arg (argument_number)), ((SCHEME_OBJECT) 0)))
 
@@ -116,6 +121,25 @@ DEFINE_PRIMITIVE ("VECTOR", Prim_vector, 0, LEXPR, 0)
   }
 }
 
+DEFINE_PRIMITIVE ("%RECORD", Prim_record, 0, LEXPR, 0)
+{
+  PRIMITIVE_HEADER (LEXPR);
+  {
+    long nargs = (LEXPR_N_ARGUMENTS ());
+    if (nargs < 1)
+      signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+    {
+      SCHEME_OBJECT result = (allocate_marked_vector (TC_RECORD, nargs, true));
+      fast SCHEME_OBJECT * argument_scan = (ARG_LOC (1));
+      fast SCHEME_OBJECT * argument_limit = (ARG_LOC (nargs + 1));
+      fast SCHEME_OBJECT * result_scan = (VECTOR_LOC (result, 0));
+      while (argument_scan != argument_limit)
+	(*result_scan++) = (STACK_LOCATIVE_POP (argument_scan));
+      PRIMITIVE_RETURN (result);
+    }
+  }
+}
+
 DEFINE_PRIMITIVE ("SYSTEM-VECTOR?", Prim_sys_vector, 1, 1, 0)
 {
   fast SCHEME_OBJECT object;
@@ -123,7 +147,7 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR?", Prim_sys_vector, 1, 1, 0)
   TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (GC_VECTOR_P (object)));
 }
-
+
 #define VECTOR_LENGTH_PRIMITIVE(arg_type)				\
 {									\
   fast SCHEME_OBJECT vector;						\
@@ -132,8 +156,11 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR?", Prim_sys_vector, 1, 1, 0)
   PRIMITIVE_RETURN (long_to_integer (VECTOR_LENGTH (vector)));		\
 }
 
-DEFINE_PRIMITIVE ("VECTOR-LENGTH", Prim_vector_size, 1, 1, 0)
+DEFINE_PRIMITIVE ("VECTOR-LENGTH", Prim_vector_length, 1, 1, 0)
      VECTOR_LENGTH_PRIMITIVE (ARG_VECTOR)
+
+DEFINE_PRIMITIVE ("%RECORD-LENGTH", Prim_record_length, 1, 1, 0)
+     RECORD_LENGTH_PRIMITIVE (ARG_RECORD)
 
 DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SIZE", Prim_sys_vec_size, 1, 1, 0)
      VECTOR_LENGTH_PRIMITIVE (ARG_GC_VECTOR)
@@ -149,6 +176,9 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SIZE", Prim_sys_vec_size, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("VECTOR-REF", Prim_vector_ref, 2, 2, 0)
      VECTOR_REF_PRIMITIVE (ARG_VECTOR)
+
+DEFINE_PRIMITIVE ("%RECORD-REF", Prim_record_ref, 2, 2, 0)
+     RECORD_REF_PRIMITIVE (ARG_RECORD)
 
 DEFINE_PRIMITIVE ("SYSTEM-VECTOR-REF", Prim_sys_vector_ref, 2, 2, 0)
      VECTOR_REF_PRIMITIVE (ARG_GC_VECTOR)
@@ -168,6 +198,9 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR-REF", Prim_sys_vector_ref, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("VECTOR-SET!", Prim_vector_set, 3, 3, 0)
      VECTOR_SET_PRIMITIVE (ARG_VECTOR)
+
+DEFINE_PRIMITIVE ("%RECORD-SET!", Prim_record_set, 3, 3, 0)
+     RECORD_SET_PRIMITIVE (ARG_RECORD)
 
 DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SET!", Prim_sys_vec_set, 3, 3, 0)
      VECTOR_SET_PRIMITIVE (ARG_GC_VECTOR)

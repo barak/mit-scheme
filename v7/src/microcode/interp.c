@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.70 1992/10/27 01:25:01 jinx Exp $
+$Id: interp.c,v 9.71 1992/12/02 18:34:52 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -1527,6 +1527,26 @@ apply_dispatch:
 
 /* Interpret(), continued */
 
+	  case TC_RECORD:
+	  {
+	    SCHEME_OBJECT record_type = (VECTOR_REF (Function, 0));
+	    if ((RECORD_P (record_type))
+		&& ((VECTOR_LENGTH (record_type)) >= 2)
+		&& ((VECTOR_REF (record_type, 1)) != SHARP_F)
+		&& ((VECTOR_REF (record_type, 1)) != Function))
+	      {
+		SCHEME_OBJECT nargs_object = (STACK_POP ());
+		STACK_PUSH (VECTOR_REF (record_type, 1));
+		STACK_PUSH
+		  (MAKE_OBJECT ((OBJECT_TYPE (nargs_object)),
+				((OBJECT_DATUM (nargs_object)) + 1)));
+		Stack_Check (Stack_Pointer);
+		goto Internal_Apply;
+	      }
+	    else
+	      goto internal_apply_inapplicable;
+	  }
+
 	  case TC_PROCEDURE:
 	  {
 	    fast long nargs;
@@ -1827,6 +1847,7 @@ return_from_compiled_code:
           }
 
           default:
+	  internal_apply_inapplicable:
             Apply_Error (ERR_INAPPLICABLE_OBJECT);
         }       /* End of switch in RC_INTERNAL_APPLY */
       }         /* End of RC_INTERNAL_APPLY case */
