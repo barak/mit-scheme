@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.8 1993/09/01 18:45:02 gjr Exp $
+$Id: nttop.c,v 1.9 1993/09/03 18:04:32 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -36,7 +36,6 @@ MIT in each case. */
 #include "ntgui.h"
 #include "nttop.h"
 #include "osctty.h"
-#include "ntutil.h"
 #include "prims.h"
 #include "errors.h"
 #include "option.h"
@@ -90,6 +89,10 @@ DEFUN_VOID (OS_initialize)
     version_t version_number;
 
     nt_get_version (&version_number);
+    OS_Variant = ((version_number.platform == 0)
+		  ? "Windows-NT"
+		  : "MS Windows");
+
     outf_console ("MIT Scheme running under %s %d.%d 386/486\n",
 		  OS_Variant,
 		  ((int) version_number.major),

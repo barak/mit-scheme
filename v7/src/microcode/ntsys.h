@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsys.h,v 1.3 1993/08/21 03:47:20 gjr Exp $
+$Id: ntsys.h,v 1.4 1993/09/03 18:03:31 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -37,6 +37,7 @@ MIT in each case. */
 
 typedef struct version_struct
 {
+  unsigned char platform;
   unsigned char major;
   unsigned char minor;
 } version_t;

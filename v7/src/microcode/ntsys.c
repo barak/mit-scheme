@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsys.c,v 1.3 1993/08/21 03:46:27 gjr Exp $
+$Id: ntsys.c,v 1.4 1993/09/03 18:03:03 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -53,11 +53,10 @@ nt_get_version (version_t * version_number)
 {
   DWORD ver;
   ver = (GetVersion ());
-  version_number->major = (HIBYTE (HIWORD (ver)));
-  version_number->minor = (LOBYTE (HIWORD (ver)));
-  /* windows version major = (LOBYTE (LOWORD (ver)));
-     windows version minor = (HIBYTE (LOWORD (ver)));
-   */
+  version_number->platform = ((unsigned char)
+			      ((((unsigned long) ver) & 0x80000000UL) >> 31));
+  version_number->major = (LOBYTE (LOWORD (ver)));
+  version_number->minor = (HIBYTE (LOWORD (ver)));
   return;
 }
 
