@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.12 1997/05/15 03:11:58 cph Exp $
+$Id: graphics.scm,v 1.13 1997/09/26 19:52:52 adams Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -163,7 +163,7 @@ MIT in each case. |#
      ((= msg WM_PAINT)
       ;; flush here so that uncovering parts of a buffered window causes
       ;; other visible buffered parts to be updated
-      (win32-device/flush window)
+      (win32-device/flush window #T)
       (let*  ((hdc      (begin-paint hwnd ps))
 	      (palette  (win32-device/palette window))
 	      )
@@ -245,7 +245,7 @@ MIT in each case. |#
 		  0)))))
 
     ((= msg WM_NCLBUTTONDOWN)
-      (win32-device/flush window)
+      (win32-device/flush window #F)
       (default))
 
     (else
@@ -493,21 +493,26 @@ MIT in each case. |#
 (define-integrable (win32-device/invalidate! window)
   (set-win32-device/invalid?!  window #t))
 
-(define (win32-device/flush window)
+(define (win32-device/flush window immediate-update?)
   (if (win32-device/invalid? window)
-    (let ((hwnd   (win32-device/hwnd window)))
-      (set-win32-device/invalid?! window #f)
-      (if hwnd
-	  (begin
-	    (invalidate-rect hwnd #f #f)
-	    unspecific)
-	  (graphics-error
-	   "Attempt to use deleted Scheme Graphics window" window)))))
+      (let ((hwnd   (win32-device/hwnd window)))
+	(set-win32-device/invalid?! window #f)
+	(if hwnd
+	    (begin
+	      (invalidate-rect hwnd #f #f)
+	      (if immediate-update?
+		  (update-window hwnd))
+	      unspecific)
+	    (graphics-error
+	     "Attempt to use deleted Scheme Graphics window" window)))))
 
 (define (win32-graphics/flush device)
-  (win32-device/flush (graphics-device/descriptor device)))
+  ;; If we are in buffered mode, GRAPHICS-FLUSH was called explicitly
+  ;; by the programmer.  If we redraw synchronously, then we get most
+  ;; of the benefits of double-buffering.
+  (win32-device/flush (graphics-device/descriptor device)
+		      (graphics-device/buffer? device)))
 
-    
 
 (define (win32-device/clear window)
   (win32-device/validate-pen window)
@@ -525,8 +530,7 @@ MIT in each case. |#
     unspecific))
 
 (define (win32-graphics/clear device)
-  (win32-device/clear (graphics-device/descriptor device))
-  (win32-graphics/flush device))
+  (win32-device/clear (graphics-device/descriptor device)))
 
 (define (win32-graphics/draw-line device x1 y1 x2 y2)
   (let* ((window (graphics-device/descriptor device))

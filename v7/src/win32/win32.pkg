@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win32.pkg,v 1.9 1996/10/07 18:17:08 cph Exp $
+$Id: win32.pkg,v 1.10 1997/09/26 19:53:02 adams Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -88,6 +88,7 @@ MIT in each case. |#
 	  dib-set-pixels-unaligned
 	  delete-dib)
   (import (runtime graphics)
+	  graphics-device/buffer?
 	  make-image-type)
   (initialization (initialize-package!))
 )
