@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.10 1989/03/14 01:57:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.11 1989/03/14 08:18:39 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -729,7 +729,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
       READ_RIGHT (start, sentry);
       if ((! (RIGHT_END_P (start))) &&
 	  (SYNTAX_ENTRY_COMSTART_FIRST (sentry)) &&
-	  (SYNTAX_ENTRY_COMSTART_FIRST (PEEK_RIGHT (start))))
+	  (SYNTAX_ENTRY_COMSTART_SECOND (PEEK_RIGHT (start))))
 	{
 	  MOVE_RIGHT (start);
 	  in_comment = 2;
@@ -848,6 +848,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 			quoted = true;
 			DONE_IF (true);
 		      }
+		    MOVE_RIGHT (start);
 		  }
 	      }
 	    in_string = -1;
