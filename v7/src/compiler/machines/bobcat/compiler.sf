@@ -1,7 +1,17 @@
 ;;; -*- Scheme -*-
 
+(if (not (name->package '(CROSS-REFERENCE)))
+    (with-working-directory-pathname "/scheme/cref" (lambda () (load "make"))))
+
 (if (not (name->package '(COMPILER)))
-    (load "comp.bcon"))
+    (begin
+      (if (not (file-exists? "comp.bcon"))
+	  (begin
+	    ((package/reference (find-package '(CROSS-REFERENCE))
+				'CREF/GENERATE-TRIVIAL-CONSTRUCTOR)
+	     "comp")
+	    (sf "comp.con" "comp.bcon")))
+      (load "comp.bcon")))
 
 (let ((sf-and-load
        (lambda (files package)
@@ -49,9 +59,6 @@
 		      '("instr1" "instr2" "instr3" "instr4")))))))
 
 ((package/reference (find-package '(COMPILER DECLARATIONS)) 'SYNTAX-FILES!))
-
-(if (not (name->package '(CROSS-REFERENCE)))
-    (with-working-directory-pathname "/scheme/cref" (lambda () (load "make"))))
 (cref/generate-all "comp")
 (sf "comp.con" "comp.bcon")
 (sf "comp.ldr" "comp.bldr")
