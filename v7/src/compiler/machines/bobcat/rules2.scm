@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.5 1988/08/29 22:49:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.6 1988/10/20 18:24:59 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -276,8 +276,8 @@ MIT in each case. |#
   (guarantee-signed-fixnum constant)
   (let ((reference (standard-register-reference register 'DATA)))
     (if (effective-address/register? reference)
-	(LAP (CMP L (& ,constant) ,reference))
-	(LAP (CMPI L (& ,constant) ,reference)))))
+	(LAP (CMP L (& ,(* constant #x100)) ,reference))
+	(LAP (CMPI L (& ,(* constant #x100)) ,reference)))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
@@ -301,8 +301,7 @@ MIT in each case. |#
 (define (fixnum-predicate/memory*constant memory constant cc)
   (set-standard-branches! cc)
   (guarantee-signed-fixnum constant)
-  (LAP (CMPI L (& ,constant) ,memory)))
-
+  (LAP (CMPI L (& ,(* constant #x100)) ,memory)))
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (? memory)
