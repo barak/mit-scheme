@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.30 2000/05/04 17:39:53 cph Exp $
+;;; $Id: imail-top.scm,v 1.31 2000/05/04 18:47:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -439,6 +439,8 @@ With prefix argument N moves backward N messages with these flags."
 		(error:wrong-type-argument selector "message selector"
 					   'SELECT-MESSAGE))))
 	(full-headers? (if (default-object? full-headers?) #f full-headers?)))
+    (if message
+	(message-seen message))
     (if (or (if (default-object? force?) #f force?)
 	    (not (eq? message (buffer-get buffer 'IMAIL-MESSAGE 'UNDEFINED))))
 	(begin
@@ -633,7 +635,7 @@ Completion is performed over known flags when reading."
     (let ((folder (open-folder url-string))
 	  (message (selected-message)))
       (append-message folder message)
-      (set-message-flag message "filed")
+      (message-filed message)
       (if (ref-variable imail-delete-after-output)
 	  ((ref-command imail-delete-forward) #f))
       (save-folder folder))))
@@ -687,7 +689,7 @@ see the documentation of `imail-resend'."
 	     (if (window-has-no-neighbors? (current-window))
 		 (select-buffer mail-buffer)
 		 (select-buffer-other-window mail-buffer))
-	     (set-message-flag message "forwarded")))))))
+	     (message-forwarded message)))))))
 
 (define-command imail-resend
   "Resend current message to ADDRESSES.
@@ -709,7 +711,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
       (make-mail-buffer (imail-reply-headers message (not just-sender?))
 			buffer
 			(lambda (mail-buffer)
-			  (set-message-flag message "answered")
+			  (message-answered message)
 			  (select-buffer-other-window mail-buffer))))))
 
 (define (imail-reply-headers message cc?)
