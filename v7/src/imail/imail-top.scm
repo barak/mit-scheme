@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.272 2001/09/28 00:41:44 cph Exp $
+;;; $Id: imail-top.scm,v 1.273 2001/09/28 15:35:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -378,33 +378,35 @@ Instead, these commands are available:
 \\[imail-input]	Visit a specified folder in its own buffer.
 \\[imail-get-new-mail]	Poll the server for changes.
 \\[imail-disconnect]	Disconnect from the server.
-\\[imail-quit]       Quit IMAIL: disconnect from server, then switch to another buffer.
+\\[imail-quit]	Quit IMAIL: disconnect from server, then switch to another buffer.
 
 \\[imail-mail]	Mail a message (same as \\[mail-other-window]).
 \\[imail-reply]	Reply to this message.  Like \\[imail-mail] but initializes some fields.
 \\[imail-forward]	Forward this message to another user.
 \\[imail-continue]	Continue composing outgoing message started before.
 
-\\[imail-output]       Append this message to a specified folder.
+\\[imail-output]	Append this message to a specified folder.
+\\[imail-file-message]	Append this message to a specified file.
+	  (The message is written in a human-readable format.)
 \\[imail-save-attachment]	Save a MIME attachment to a file.
 \\[imail-save-mime-entity]	Save an arbitrary MIME entity to a file.
 
 \\[imail-add-flag]	Add flag to message.  It will be displayed in the mode line.
 \\[imail-kill-flag]	Remove flag from message.
 \\[imail-next-flagged-message]	Move to next message with specified flag
-          (flag defaults to last one specified).
-          Standard flags:
+	  (flag defaults to last one specified).
+	  Standard flags:
 	    answered, deleted, filed, forwarded, resent, seen.
-          Any other flag is present only if you add it with `\\[imail-add-flag]'.
-\\[imail-previous-flagged-message]   Move to previous message with specified flag.
+	  Any other flag is present only if you add it with `\\[imail-add-flag]'.
+\\[imail-previous-flagged-message]	Move to previous message with specified flag.
 
 \\[imail-summary]	Show headers buffer, with a one line summary of each message.
 \\[imail-summary-by-flags]	Like \\[imail-summary] only just messages with particular flag(s).
-\\[imail-summary-by-recipients]   Like \\[imail-summary] only just messages with particular recipient(s).
-\\[imail-summary-by-topic]   Like \\[imail-summary] only just messages with particular topic(s).
-\\[imail-summary-by-regexp]   Like \\[imail-summary] only just messages matching regular expression.
+\\[imail-summary-by-recipients]	Like \\[imail-summary] only just messages with particular recipient(s).
+\\[imail-summary-by-topic]	Like \\[imail-summary] only just messages with particular topic(s).
+\\[imail-summary-by-regexp]	Like \\[imail-summary] only just messages matching regular expression.
 
-\\[imail-toggle-header]	Toggle between full headers and reduced headers.
+\\[imail-toggle-header]		Toggle between full headers and reduced headers.
 \\[imail-toggle-mime-entity]	Toggle MIME entity between expanded and collapsed formats.
 \\[imail-toggle-message]	Toggle between standard and raw message formats.
 
@@ -496,7 +498,7 @@ Instead, these commands are available:
 (define-key 'imail '(#\c-c #\c-t #\c-h)	'imail-toggle-header)
 (define-key 'imail '(#\c-c #\c-t #\c-m)	'imail-toggle-message)
 (define-key 'imail '(#\c-c #\c-t #\c-w)	'imail-toggle-wrap-entity)
-
+(define-key 'imail #\M-o	'imail-file-message)
 
 ;; Putting these after the group above exploits behavior in the comtab
 ;; abstraction that makes these bindings the ones that show up during
@@ -839,7 +841,8 @@ With prefix argument N, removes FLAG from next N messages,
 		   (lambda () ((ref-command imail-get-new-mail) #f))))))
 
 (define-command imail-output
-  "Append this message to a specified folder."
+  "Append this message to a specified folder.
+With prefix argument, appends next several messages."
   (lambda ()
     (list (prompt-for-folder "Output to folder"
 			     (ref-variable imail-output-default #f)
@@ -860,6 +863,29 @@ With prefix argument N, removes FLAG from next N messages,
 		 (if (= n 1) "" "s")
 		 " written to "
 		 (url->string url))))))
+
+(define-command imail-file-message
+  "Append this message to a text file.
+With prefix argument, appends next several messages.
+This command writes the message to the output file in human-readable format,
+ unlike the \\[imail-output] command which writes in computer format."
+  "FAppend message to file\nP"
+  (lambda (pathname argument)
+    (let ((write-separator? (file-exists? pathname)))
+      (call-with-temporary-buffer " *imail-file-message*"
+	(lambda (buffer)
+	  (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
+	    (move-relative-undeleted argument
+	      (lambda (message)
+		(if write-separator?
+		    (begin
+		      (insert-newline mark)
+		      (insert-chars #\= 79 mark)
+		      (insert-newlines 2 mark))
+		    (set! write-separator? #t))
+		(insert-message message #t 0 mark)))
+	    (mark-temporary! mark))
+	  (append-to-file (buffer-region buffer) pathname #t 'DEFAULT))))))
 
 ;;;; Attachments
 
@@ -895,7 +921,6 @@ With prefix argument, prompt even when point is on an attachment."
 		 (editor-error "Mouse not on a MIME entity."))
 	     info)
 	   buffer))))))
-	
 
 (define-command imail-save-mime-entity
   "Save the MIME entity at point."
