@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.43 1993/02/28 06:16:36 gjr Exp $
+$Id: lapgen.scm,v 4.44 1993/07/01 03:13:42 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -100,7 +100,8 @@ MIT in each case. |#
    ;; g30
    g31
    ;; fp0 fp1 fp2 fp3
-   fp4 fp5 fp6 fp7 fp8 fp9 fp10 fp11 fp12 fp13 fp14 fp15
+   fp12 fp13 fp14 fp15
+   fp4 fp5 fp6 fp7 fp8 fp9 fp10 fp11
    ;; The following are only available on newer processors
    fp16 fp17 fp18 fp19 fp20 fp21 fp22 fp23
    fp24 fp25 fp26 fp27 fp28 fp29 fp30 fp31
@@ -570,8 +571,8 @@ MIT in each case. |#
   (+ (* 4 16) (* 8 (register-renumber register))))
 
 (define-integrable (float-register->fpr register)
-  ;; Float registers are represented by 32 through 47 in the RTL,
-  ;; corresponding to registers 0 through 15 in the machine.
+  ;; Float registers are represented by 32 through 47/63 in the RTL,
+  ;; corresponding to registers 0 through 15/31 in the machine.
   (- register 32))
 
 (define-integrable (fpr->float-register register)
@@ -623,7 +624,8 @@ MIT in each case. |#
     -1+ &/ &= &> 1+ &< &- &* negative? &+ positive? zero?
     access lookup safe-lookup unassigned? unbound?
     set! define lookup-apply primitive-error
-    quotient remainder modulo))
+    quotient remainder modulo
+    apply-in-interpreter allocate-block))
 
 (define-integrable (invoke-interface-ble code)
   ;; Jump to scheme-to-interface-ble
@@ -676,7 +678,23 @@ MIT in each case. |#
     shortcircuit-apply-6
     shortcircuit-apply-7
     shortcircuit-apply-8
-    stack-and-interrupt-check))
+    stack-and-interrupt-check
+    invoke-primitive
+    vector-cons
+    string-allocate
+    floating-vector-cons
+    flonum-sin
+    flonum-cos
+    flonum-tan
+    flonum-asin
+    flonum-acos
+    flonum-atan
+    flonum-exp
+    flonum-log
+    flonum-truncate
+    flonum-ceiling
+    flonum-floor
+    flonum-atan2))
 
 ;; There is a NOP here because otherwise the return address would have 
 ;; to be adjusted by the hook code.  This gives more flexibility to the
