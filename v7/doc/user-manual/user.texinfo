@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.71 2000/05/01 03:17:16 cph Exp $
+@comment $Id: user.texinfo,v 1.72 2000/07/09 03:46:14 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -27,9 +27,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.71
+@subtitle Edition 1.72
 @subtitle for Scheme Release 7.5
-@subtitle 30 April 2000
+@subtitle 8 July 2000
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -4701,6 +4701,37 @@ the Algorithmic Language Scheme}.
 These are the changes since release 7.5.0:
 
 @itemize @bullet
+@item
+Release 7.5.9 adds the @sc{imail} mail reader; @sc{imail} is a new
+@sc{rmail}-like mail reader that supports @sc{imap} and @sc{mime}.
+Edwin's mail-sending support has also been enhanced to understand
+@sc{mime}, so that it is now possible to send @sc{mime} attachments.
+Numerous changes to the runtime system and to Edwin have been made to
+support these changes.
+
+Additional changes:
+
+@itemize @bullet
+@item
+Edwin now has rudimentary support for a mouse wheel.
+
+@item
+Edwin buffer-menu now does better job aligning its columns.
+
+@item
+In Edwin, M-x vc-version-other-window now defaults the version if
+unspecified.
+
+@item
+STRING->DECODED-TIME (and consequently other procedures that convert
+RFC-822 time strings) now accepts two-digit years, pivoting around 1970.
+This is a crock, but we have seen recent email messages utilizing such
+strings.
+
+@item
+New procedure SET-STRING-MAXIMUM-LENGTH!.
+@end itemize
+
 @item
 Release 7.5.8 fixes a nasty uninitialized-memory bug in the Win32
 event-handling code.  No other system is affected.
