@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.2 2000/07/10 21:41:31 cph Exp $
+@comment $Id: imail.texinfo,v 1.3 2000/07/11 01:43:43 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -63,7 +63,7 @@ optional behavior.
 @end menu
 
 @node Introduction, Getting Started, Top, Top
-@unnumbered Introduction
+@chapter Introduction
 
 @cindex Internet Message Access Protocol
 @cindex @sc{imap}
@@ -94,7 +94,7 @@ delete the message without ever fetching it from the server.
 @cindex Rmail
 In addition to these features, @sc{imail} provides a user interface very
 similar to that of the Emacs Rmail mail reader (@pxref{Rmail, Rmail,
-Rmail, emacs-e20, The Emacs Editor}).  @sc{imail} supports most of the
+Rmail, emacs-e20, GNU Emacs Manual}).  @sc{imail} supports most of the
 same commands and has most of the same key bindings as Rmail.
 @sc{imail} is primarily intended to be an Rmail replacement for people
 who wish to read their mail using an @sc{imap} server.  @sc{imail} can
@@ -119,8 +119,8 @@ encryption.  This provides connection security without the need to
 integrate the encryption into the client or the server.
 
 To use @sc{imail}, you must create an Edwin init file, called
-@file{~/.edwin} on unix machines, and @file{edwin.ini} on Windows or
-OS/2 machines.  This file contains arbitrary Scheme expressions that are
+@file{~/.edwin} on unix machines or @file{edwin.ini} on Windows or OS/2
+machines.  This file contains arbitrary Scheme expressions that are
 evaluated in the Edwin environment when Edwin is started.  In addition
 to any other customizations you put in this file, you must include the
 following expression:
@@ -129,11 +129,16 @@ following expression:
 (load-option 'imail)
 @end example
 
+@noindent
 Next, you must tell Edwin where to find your @sc{imap} server, by
-setting some variables.  Here is an example:
+setting some variables; the expression to do this must follow the call
+to @code{load-option}.  Here is an example:
 
 @example
+@group
+(load-option 'imail)
 (set-variable! imail-default-imap-server "imap.foo.org")
+@end group
 @end example
 
 @noindent
@@ -141,17 +146,15 @@ Note that this is syntactically similar to Scheme's @code{set!} special
 form, but that it modifies the value of an Edwin editor variable rather
 than a Scheme variable.  There are several other variables that control
 how @sc{imail} connects to the server.  @xref{Variables}, for a complete
-list.
-
-By default, @sc{imail} tries to connect to @samp{localhost} using port
-@code{143}, and to log in using the user name that you are logged in as.
-This is the right default if you are using stunnel on the client.
+list.  By default, @sc{imail} tries to connect to @samp{localhost} using
+port @code{143}, and to log in using the user name that you are logged
+in as.  This is the right default if you are using stunnel on the
+client.
 
 After you are finished creating the init file, you can either restart
-Edwin, or you can load the file using @kbd{M-x load-file}.
-
-At this point, you are ready to run @sc{imail}.  To start @sc{imail} and
-read the mail in the @samp{inbox} folder on your @sc{imap} server, type
+Edwin, or you can load the file using @kbd{M-x load-file}.  At this
+point, you are ready to run @sc{imail}.  To start @sc{imail} and read
+the mail in the @samp{inbox} folder on your @sc{imap} server, type
 @kbd{M-x imail}.
 
 @node Concepts, Commands, Getting Started, Top
@@ -159,7 +162,16 @@ read the mail in the @samp{inbox} folder on your @sc{imap} server, type
 
 To use @sc{imail} effectively, it is helpful to know the terminology and
 understand the concepts underlying @sc{imail}'s design.  Here we will
-introduce you to @dfn{messages}, @dfn{folders}, and @dfn{@sc{url}s}.
+introduce you to messages, folders, and @sc{url}s.
+
+@menu
+* Messages::                    
+* Folders::                     
+* URLs::                        
+@end menu
+
+@node Messages, Folders, Concepts, Concepts
+@section Messages
 
 @cindex message
 @cindex email message
@@ -191,6 +203,9 @@ carried in an email message.  Most modern email software supports the
 @sc{mime} standard, with some notable exceptions, including particularly
 Emacs Rmail.
 
+@node Folders, URLs, Messages, Concepts
+@section Folders
+
 @cindex folder
 Another important concept is a means for grouping messages together.
 All email software provides some means for doing this, and @sc{imail} is
@@ -218,6 +233,9 @@ different @dfn{types} of folder are treated exactly the same by
 @sc{imail}.  Finally, because @sc{imail} is extensible, other types of
 folders may be supported in the future.
 
+@node URLs,  , Folders, Concepts
+@section URLs
+
 @cindex Uniform Resource Locator
 @cindex @sc{url}
 @cindex @sc{rfc} 1738
@@ -226,19 +244,27 @@ In email software like Rmail, where mail is stored in files, filenames
 are used to refer to groups of messages.  Since @sc{imail} folders often
 aren't files, it is necessary to use a more general kind of reference
 for folders.  To this end, @sc{imail} uses @dfn{Uniform Resource
-Locators} (@sc{url}s) to refer to folders.  (@sc{url}s are defined in
+Locators} (@sc{url}s) to refer to folders.@footnote{@sc{url}s are defined in
 @uref{http://@-www.ietf.org/@-rfc/@-rfc1738.txt, @sc{rfc} 1738} and
-@uref{http://@-www.ietf.org/@-rfc/@-rfc2396.txt, @sc{rfc} 2396}.)
+@uref{http://@-www.ietf.org/@-rfc/@-rfc2396.txt, @sc{rfc} 2396}.}
+@sc{imail} supports two kinds of @sc{url}s: @sc{imap} @sc{url}s and file
+@sc{url}s.
+
+@menu
+* IMAP URLs::                   
+* File URLs::                   
+@end menu
+
+@node IMAP URLs, File URLs, URLs, URLs
+@subsection IMAP URLs
 
 @cindex @sc{imap} @sc{url}
 @cindex @sc{url}, @sc{imap}
 @sc{imail} supports three different kinds of @sc{url}, corresponding to
 the three types of folder.  The first kind of @sc{url} is an @sc{imap}
-@sc{url}; the syntax for this @sc{url} is defined by
+@sc{url},@footnote{The syntax for @sc{imap} @sc{url}s is defined by
 @uref{http://@-www.ietf.org/@-rfc/@-rfc2192.txt, @sc{rfc} 2192}, except
-that @sc{imail} uses only a subset of the defined syntax.
-
-A fully-specified @sc{imap} @sc{url}, as supported by @sc{imail}, looks
+that @sc{imail} uses only a subset of the defined syntax.} which looks
 like this:
 
 @example
@@ -301,11 +327,15 @@ least one server (@uref{http://@-asg.web.cmu.edu/cyrus/, Cyrus}) puts
 @emph{all} subfolders for a user account under @samp{inbox}, but this is
 not required by @sc{imap} and is not generally true.
 
+@node File URLs,  , IMAP URLs, URLs
+@subsection File URLs
+
 There are two other @sc{url} types supported by @sc{imail}: Rmail
 @sc{url}s and unix mailbox @sc{url}s.  Both of these use the same
-syntax, which is exactly the same as the @samp{file:} @sc{url} syntax
-defined in @uref{http://@-www.ietf.org/@-rfc/@-rfc1738.txt, @sc{rfc}
-1738}, as follows:
+syntax, which is exactly the same as the @samp{file:} @sc{url}
+syntax,@footnote{File @sc{url}s are defined in
+@uref{http://@-www.ietf.org/@-rfc/@-rfc1738.txt, @sc{rfc} 1738}.} as
+follows:
 
 @example
 @group
