@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.255 1995/04/24 23:22:30 adams Exp $
+$Id: runtime.pkg,v 14.256 1995/05/03 07:34:31 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -3056,3 +3056,18 @@ MIT in each case. |#
 	  step-run
 	  step-until
 	  step-until-visibly))
+
+(define-package (runtime ordered-vector)
+  (file-case options
+    ((load) "ordvec")
+    (else))
+  (parent ())
+  (export ()
+	  match-ordered-subvector
+	  match-ordered-vector
+	  ordered-subvector-matches
+	  ordered-subvector-minimum-match
+	  ordered-vector-matches
+	  ordered-vector-minimum-match
+	  search-ordered-subvector
+	  search-ordered-vector))

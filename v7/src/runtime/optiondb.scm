@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.2 1994/10/11 20:57:02 cph Exp $
+$Id: optiondb.scm,v 1.3 1995/05/03 07:34:40 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -78,6 +78,7 @@ MIT in each case. |#
    (WT-TREE     (RUNTIME WT-TREE)    #F                    "wttree")
    (SUBPROCESS  (RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process")
    (STEPPER     (RUNTIME STEPPER)    #F                    "ystep")
+   (ORDERED-VECTOR (RUNTIME ORDERED-VECTOR) #F "ordvec")
    ))
 
 (define-load-option 'DOSPROCESS
