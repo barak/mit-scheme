@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/malias.scm,v 1.1 1991/04/24 07:27:43 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/malias.scm,v 1.2 1991/05/04 20:14:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -49,18 +49,13 @@
 (define-command define-mail-alias
   "Define NAME as a mail-alias that translates to DEFINITION."
   (lambda ()
-    (let ((alias (prompt-for-string "Define mail alias" false 'NULL-DEFAULT)))
+    (let ((alias (prompt-for-string "Define mail alias" false)))
       (list alias
 	    (prompt-for-string
 	     (string-append "Define " alias " as mail alias for")
-	     false
-	     'NULL-DEFAULT))))
+	     false))))
   (lambda (alias definition)
-    (if (string-null? alias)
-	(editor-error "Mail alias must be non-null string"))
     (let ((definition (parse-mailrc-line definition 0)))
-      (if (null? definition)
-	  (editor-error "Mail alias definition must be non-null string"))
       (guarantee-mail-aliases)
       (define-mail-alias alias definition))))
 
