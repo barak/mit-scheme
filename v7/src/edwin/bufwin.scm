@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.293 1991/04/03 04:00:46 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.294 1991/04/03 04:36:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -761,7 +761,8 @@
   (%set-window-override-string! window false)
   (%set-window-changes-daemon! window (make-changes-daemon window))
   (%set-window-clip-daemon! window (make-clip-daemon window))
-  (%set-window-debug-trace! window false))
+  (%set-window-debug-trace! window false)
+  (%set-window-saved-screen! window false))
 
 (define (%release-window-outlines! window)
   (%set-window-start-outline! window false)
@@ -774,7 +775,6 @@
   (if (%window-start-line-mark window)
       (clear-start-mark! window))
   (%set-window-point-moved?! window false)
-  (%set-window-saved-screen! window false)
   (%clear-window-incremental-redisplay-state! window))
 
 (define (%clear-window-incremental-redisplay-state! window)
