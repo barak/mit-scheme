@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.3 1987/07/30 21:27:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.4 1987/08/13 02:01:16 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -180,9 +180,9 @@ MIT in each case. |#
 		  (if (scode/constant? (cadr inner-operands))
 		      (scode/make-absolute-reference 'CONS)
 		      operator)
-		  (cons (bit-string-append
-			 (scode/constant-value (car inner-operands))
-			 (scode/constant-value (car operands)))
+		  (cons (instruction-append
+			 (scode/constant-value (car operands))
+			 (scode/constant-value (car inner-operands)))
 			(cdr inner-operands))))
 		(default))))
 	 (default)))))

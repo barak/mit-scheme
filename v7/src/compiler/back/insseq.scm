@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/insseq.scm,v 1.2 1987/07/01 20:48:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/insseq.scm,v 1.3 1987/08/13 02:00:21 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,6 +37,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define lap:syntax-instruction)
+(define instruction-append)
 
 (define (instruction-sequence->directives insts)
   (if (null? insts)
@@ -77,8 +78,7 @@ MIT in each case. |#
 	(else
 	 (if (and (bit-string? (cadr seq1))
 		  (bit-string? (caar seq2)))
-	     (let ((result (bit-string-append (caar seq2)
-					      (cadr seq1))))
+	     (let ((result (instruction-append (cadr seq1) (caar seq2))))
 	       (set-car! (cdr seq1) result)
 	       (if (not (eq? (car seq2) (cdr seq2)))
 		   (begin (set-cdr! (cdr seq1) (cdr (car seq2)))

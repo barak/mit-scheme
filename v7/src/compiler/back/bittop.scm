@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.5 1987/07/30 21:26:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.6 1987/08/13 02:00:44 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -101,9 +101,6 @@ MIT in each case. |#
 
 ;;;; Output block generation
 
-(define (bit-string-insert! b1 b2 position)
-  (bit-substring-move-right! b1 0 (bit-string-length b1) b2 position))
-
 (define (final-phase directives)
   ;; Label values are now integers.
   (for-each (lambda (pair)
@@ -115,11 +112,12 @@ MIT in each case. |#
 		       (symbol-table-value *the-symbol-table* *end-label*))
 		    starting-pc))
 	 (output-block (bit-string-allocate (+ scheme-object-width length))))
-    (bit-string-insert!
+    (instruction-insert!
      (make-nmv-header (quotient length scheme-object-width))
      output-block
-     length)
-    (assemble-directives! output-block directives length)))
+     (instruction-initial-position output-block)
+     (lambda (position)
+       (assemble-directives! output-block directives position)))))
 
 (define (assemble-objects! block)
   (let ((objects (queue->list *objects*))
@@ -138,25 +136,29 @@ MIT in each case. |#
 	 (error "insert-objects!: object phase error" where))
 	(else v)))
 
-(define (assemble-directives! block directives block-length)
+(define (assemble-directives! block directives initial-position)
 
   (define (loop directives dir-stack pc pc-stack position last-blabel blabel)
 
     (define (actual-bits bits l)
-      (let ((np (- position l)))
-	(bit-string-insert! bits block np)
-	(loop (cdr directives) dir-stack (+ pc l) pc-stack np
-	      last-blabel blabel)))
+      (instruction-insert!
+       bits
+       block position
+       (lambda (np)
+	 (declare (integrate np))
+	 (loop (cdr directives) dir-stack (+ pc l) pc-stack np
+	       last-blabel blabel))))
 
     (define (block-offset offset last-blabel blabel)
-      (let ((np (- position block-offset-width)))
-	(bit-string-insert!
-	 (block-offset->bit-string offset (eq? blabel *start-label*))
-	 block np)
-	(loop (cdr directives) dir-stack
-	      (+ pc block-offset-width)
-	      pc-stack np
-	      last-blabel blabel)))
+      (instruction-insert!
+       (block-offset->bit-string offset (eq? blabel *start-label*))
+       block position
+       (lambda (np)
+	 (declare (integrate np))
+	 (loop (cdr directives) dir-stack
+	       (+ pc block-offset-width)
+	       pc-stack np
+	       last-blabel blabel))))
 
     (define (evaluation handler expression l)
       (actual-bits (handler
@@ -209,11 +211,13 @@ MIT in each case. |#
 	  ((not (null? dir-stack))
 	   (loop (car dir-stack) (cdr dir-stack) pc pc-stack position
 		 last-blabel blabel))
-	  ((not (= (+ block-length starting-pc) (+ pc position)))
+	  ((not (= (abs (- position initial-position))
+		   (- pc starting-pc)))
 	   (error "assemble-directives!: phase error"
-		  block-length pc position))
+		  `(PC ,starting-pc ,pc)
+		  `(BIT-POSITION ,initial-position ,position)))
 	  (else (assemble-objects! block))))
-  (loop directives '() starting-pc '() block-length
+  (loop directives '() starting-pc '() initial-position
 	*start-label* *start-label*))
 
 ;;;; Input conversion
@@ -429,5 +433,5 @@ MIT in each case. |#
 (define (list->bit-string l)
   (if (null? (cdr l))
       (car l)
-      (bit-string-append (list->bit-string (cdr l))
-			 (car l))))
+      (instruction-append (car l)
+			  (list->bit-string (cdr l)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/asmmac.scm,v 1.4 1987/07/22 17:15:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/asmmac.scm,v 1.5 1987/08/13 01:59:58 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -76,8 +76,8 @@ MIT in each case. |#
       (cond ((null? components)
 	     (cons (make-constant bit-string) '()))
 	    ((car-constant? components)
-	     (compact (bit-string-append (car-constant-value components)
-					 bit-string)
+	     (compact (instruction-append bit-string
+					  (car-constant-value components))
 		      (cdr components)))
 	    (else
 	     (cons (make-constant bit-string)

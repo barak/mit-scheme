@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.19 1987/07/30 21:27:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.20 1987/08/13 01:59:05 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,7 +41,7 @@ MIT in each case. |#
 	   (not (null? directives))
 	   (bit-string? (car directives)))
       (begin (set-car! directives
-		       (bit-string-append (car directives) directive))
+		       (instruction-append directive (car directives)))
 	     directives)
       (cons directive directives)))
 
@@ -54,7 +54,7 @@ MIT in each case. |#
 		    (bit-string? (car directives2)))
 	       (begin
 		 (set-car! tail
-			   (bit-string-append (car directives2) (car tail)))
+			   (instruction-append (car tail) (car directives2)))
 		 (set-cdr! tail (cdr directives2)))
 	       (set-cdr! tail directives2))
 	   directives1))))
@@ -122,7 +122,7 @@ MIT in each case. |#
       (cond ((null? components)
 	     (list bit-string))
 	    ((bit-string? (car components))
-	     (loop2 (bit-string-append (car components) bit-string)
+	     (loop2 (instruction-append bit-string (car components))
 		    (cdr components)))
 	    (else
 	     (cons bit-string

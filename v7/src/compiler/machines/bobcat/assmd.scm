@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/assmd.scm,v 1.31 1987/07/30 21:43:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/assmd.scm,v 1.32 1987/08/13 01:58:42 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -71,3 +71,16 @@ MIT in each case. |#
 (define (block-offset->bit-string offset start?)
   (unsigned-integer->bit-string block-offset-width
 				(if start? offset (1+ offset))))
+
+;;; Machine dependent instruction order
+
+(define (instruction-initial-position block)
+  (bit-string-length block))
+
+(define (instruction-insert! bits block position receiver)
+  (let* ((l (bit-string-length bits))
+	 (new-position (- position l)))
+    (bit-substring-move-right! bits 0 l block new-position)
+    (receiver new-position)))
+
+(set! instruction-append bit-string-append-reversed)
