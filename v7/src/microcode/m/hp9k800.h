@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for HP9000 series 600, 700, 800.
 
-$Id: hp9k800.h,v 1.12 1993/04/01 18:38:16 cph Exp $
+$Id: hp9k800.h,v 1.13 1993/11/19 22:22:30 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -57,6 +57,10 @@ MIT in each case. */
       tested).  */
 #  define C_SWITCH_MACHINE -Ae
 #  define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6 -DHPC
+/* "-Wl,+s" tells the linker to allow the environment variable
+   SHLIB_PATH to be used to define directories to search for shared
+   libraries when the microcode is executed. */
+#  define LD_SWITCH_MACHINE -Wl,+s
 #else
    /* Assume GCC */
 #  define C_SWITCH_MACHINE
