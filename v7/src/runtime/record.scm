@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.22 1994/01/31 02:49:45 gjr Exp $
+$Id: record.scm,v 1.23 1994/09/01 22:39:01 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -100,7 +100,8 @@ MIT in each case. |#
 (define (%record-application-method record)
   ;; This procedure must match the code in "microcode/interp.c".
   (let ((record-type (%record-ref record 0)))
-    (and (and (object-type? (ucode-type constant)
+    (and (%record? record-type)
+	 (and (object-type? (ucode-type constant)
 			    (primitive-object-ref record-type 0))
 	      (>= (%record-length record-type) 2))
 	 (let ((method (%record-ref record-type 1)))
