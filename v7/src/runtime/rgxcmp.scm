@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rgxcmp.scm,v 1.115 2001/06/15 21:20:48 cph Exp $
+;;; $Id: rgxcmp.scm,v 1.116 2001/09/25 05:07:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -666,7 +666,9 @@
       (let loop
 	  ((chars
 	    (if (input-match? (input-peek) #\])
-		(begin (input-discard!) '(#\]))
+		(begin
+		  (input-discard!)
+		  (list (char->integer #\])))
 		'())))
 	(if (input-end?)
 	    (premature-end))
@@ -678,7 +680,9 @@
 		   ((ucode-primitive re-char-set-adjoin!) charset
 							  (char->ascii char)))
 		 (char-set-members
-		  (re-compile-char-set (list->string (reverse! chars)) #f))))
+		  (re-compile-char-set
+		   (list->string (map ascii->char (reverse! chars)))
+		   #f))))
 	      (loop (cons char chars)))))
       (output-start! (if invert? re-code:not-char-set re-code:char-set))
       ;; Discard any bitmap bytes that are all 0 at the end of
