@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.13 1988/12/19 20:27:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.14 1988/12/19 20:31:25 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -725,19 +725,12 @@ MIT in each case. |#
    continuation
    (scode/make-combination
     (ucode-primitive system-pair-car)
-    (list (make-constant-quotation expression)))))
+    (list (cons constant-quotation-tag expression)))))
 
 (define (generate/constant-quotation block continuation expression)
-  (continue/rvalue-constant
-   block
-   continuation
-   (make-constant (scode/constant-quotation-expression expression))))
-
-(define-integrable (scode/make-constant-quotation name)
-  (cons constant-quotation-tag name))
-
-(define-integrable (scode/constant-quotation-expression expression)
-  (cdr expression))
+  (continue/rvalue-constant block
+			    continuation
+			    (make-constant (cdr expression))))
 
 (define constant-quotation-tag
   "constant-quotation")
