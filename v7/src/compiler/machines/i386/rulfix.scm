@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.28 1997/03/30 23:26:56 cph Exp $
+$Id: rulfix.scm,v 1.29 1998/02/18 07:46:55 adams Exp $
 
-Copyright (c) 1992-97 Massachusetts Institute of Technology
+Copyright (c) 1992-1998 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -587,6 +587,31 @@ MIT in each case. |#
 	  (else
 	   (LAP (SHR W ,target (& ,(- 0 n)))
 		,@(word->fixnum target))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-LSH
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (QUALIFIER (and (exact-integer? n) (< (- scheme-datum-width) n 0)))
+  (fixnum-1-arg target source
+    (lambda (target)
+      (LAP (SHR W ,target (& ,(- scheme-type-width n)))
+	   (OR W ,target
+	       (&U ,(make-non-pointer-literal (ucode-type fixnum) 0)))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-LSH
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 #f))
+  (QUALIFIER (and (exact-integer? n) (< 0 n scheme-datum-width)))
+  (fixnum-1-arg target source
+    (lambda (target)
+      (LAP (SHL W ,target (& ,(+ scheme-type-width n)))))))
 
 (define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n overflow?)
