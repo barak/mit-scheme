@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.74 2001/03/16 21:54:27 cph Exp $
+;;; $Id: sendmail.scm,v 1.75 2001/03/21 19:25:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
@@ -1166,9 +1166,9 @@ the user from the mailer."
 	(subtype (mime-attachment-subtype attachment)))
     (write-message-header-field
      "Content-Type"
-     (string-append (symbol->string type)
+     (string-append (symbol-name type)
 		    "/"
-		    (symbol->string subtype)
+		    (symbol-name subtype)
 		    (mime-parameters->string
 		     (mime-attachment-parameters attachment)))
      port)
@@ -1288,14 +1288,14 @@ the user from the mailer."
   (decorated-string-append
    "; " "" ""
    (map (lambda (parameter)
-	  (string-append (symbol->string (car parameter))
+	  (string-append (symbol-name (car parameter))
 			 "=\""
 			 (cadr parameter)
 			 "\""))
 	parameters)))
 
 (define (mime-disposition->string disposition)
-  (string-append (symbol->string (car disposition))
+  (string-append (symbol-name (car disposition))
 		 (mime-parameters->string (cdr disposition))))
 
 (define (guarantee-mime-compliant-headers h-start h-end)
@@ -1411,9 +1411,9 @@ You can add and delete attachments from that buffer."
   (let ((start (mark-right-inserting-copy mark))
 	(type (mime-attachment-type attachment))
 	(subtype (mime-attachment-subtype attachment)))
-    (insert-string-pad-right (string-append (symbol->string type)
+    (insert-string-pad-right (string-append (symbol-name type)
 					    "/"
-					    (symbol->string subtype))
+					    (symbol-name subtype))
 			     30 #\space mark)
     (if (not (and (eq? type 'MESSAGE) (eq? subtype 'RFC822)))
 	(begin

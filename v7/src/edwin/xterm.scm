@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xterm.scm,v 1.65 2000/12/01 06:16:53 cph Exp $
+;;; $Id: xterm.scm,v 1.66 2001/03/21 19:25:42 cph Exp $
 ;;;
-;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; X Terminal
 ;;; Package: (edwin x-screen)
@@ -829,7 +830,7 @@
 	(or (hash-table/get table name #f)
 	    (let ((atom
 		   (x-intern-atom display
-				  (string-upcase (symbol->string name))
+				  (string-upcase (symbol-name name))
 				  soft?)))
 	      (if (not (= atom 0))
 		  (hash-table/put! table name atom))

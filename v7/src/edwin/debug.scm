@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.55 2000/12/01 06:18:32 cph Exp $
+;;; $Id: debug.scm,v 1.56 2001/03/21 19:25:22 cph Exp $
 ;;;
-;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Browser-style Debug and Where
 ;;; Package: (edwin debugger)
@@ -1651,13 +1652,7 @@ once it has been renamed, it will not be deleted automatically.")
 				#t)))))))
 	  (else
 	   (write-string "  BINDINGS:" port)
-	   (finish
-	    (if package
-		(sort names
-		      (lambda (x y)
-			(string<? (symbol->string x)
-				  (symbol->string y))))
-		names)))))
+	   (finish (if package (sort names symbol<?) names)))))
   (debugger-newline port)
   (debugger-newline port)
   (write-string
@@ -1818,10 +1813,7 @@ once it has been renamed, it will not be deleted automatically.")
 		     (if (null? l)
 			 l
 			 (cons (car l) (loop (delete (car l) l))))))
-	 (names4 (sort names3
-		       (lambda (x y)
-			 (string<? (symbol->string x)
-				   (symbol->string y))))))
+	 (names4 (sort names3 symbol<?)))
     names4))
 
 (define (show-environment-bindings-with-ind environment ind port)

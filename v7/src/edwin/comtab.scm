@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comtab.scm,v 1.71 2001/01/06 05:45:42 cph Exp $
+;;; $Id: comtab.scm,v 1.72 2001/03/21 19:25:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Command Tables
 
@@ -120,7 +121,7 @@
 
 (define (mode-name? object)
   (and (symbol? object)
-       (string-table-get editor-modes (symbol->string object))))
+       (string-table-get editor-modes (symbol-name object))))
 
 (define (list-of-comtabs? object)
   (and (not (null? object))

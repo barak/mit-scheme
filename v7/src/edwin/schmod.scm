@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: schmod.scm,v 1.48 2001/03/15 21:14:58 cph Exp $
+;;; $Id: schmod.scm,v 1.49 2001/03/21 19:25:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -309,13 +309,13 @@ Otherwise, it is shown in the echo area."
 			(cond ((pair? argl)
 			       (insert-char #\space point)
 			       (insert-string (if (symbol? (car argl))
-						  (symbol->string (car argl))
+						  (symbol-name (car argl))
 						  (write-to-string (car argl)))
 					      point)
 			       (loop (cdr argl)))
 			      ((symbol? argl)
 			       (insert-string " . " point)
-			       (insert-string (symbol->string argl) point)))))
+			       (insert-string (symbol-name argl) point)))))
 		    (fluid-let ((*unparse-uninterned-symbols-by-name?* #t))
 		      (message argl))))
 	      (editor-error "Expression does not evaluate to a procedure: "

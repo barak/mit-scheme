@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: autold.scm,v 1.56 2000/04/30 22:16:58 cph Exp $
+;;;$Id: autold.scm,v 1.57 2001/03/21 19:25:13 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Autoloads for Edwin
 
@@ -158,7 +159,7 @@ Second arg is prefix arg when called interactively."
     (list
      (prompt-for-alist-value "Load library"
 			     (map (lambda (library)
-				    (cons (symbol->string (car library))
+				    (cons (symbol-name (car library))
 					  (car library)))
 				  known-libraries))
      (command-argument)))

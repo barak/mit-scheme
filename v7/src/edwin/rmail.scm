@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmail.scm,v 1.71 2000/06/08 17:58:26 cph Exp $
+;;; $Id: rmail.scm,v 1.72 2001/03/21 19:25:34 cph Exp $
 ;;;
-;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; RMAIL Mail Reader
 
@@ -927,7 +928,7 @@ and reverse search is specified by a negative numeric arg."
 		(number->string (msg-memo/number (msg-memo/last memo)))
 		(append-map!
 		 (lambda (label) (list "," label))
-		 (append! (map symbol->string (msg-memo/attributes memo))
+		 (append! (map symbol-name (msg-memo/attributes memo))
 			  (parse-labels (msg-memo/start memo))))))))
 
 ;;;; Message deletion
@@ -1761,7 +1762,7 @@ Completion is performed over known labels when reading."
 	  rmail-last-label
 	  (alist->string-table
 	   (map list
-		(append! (map symbol->string attributes)
+		(append! (map symbol-name attributes)
 			 (buffer-keywords (current-buffer)))))
 	  'REQUIRE-MATCH? require-match?)))
     (set! rmail-last-label label)
@@ -1819,7 +1820,7 @@ Completion is performed over known labels when reading."
 	      (update-mode-line! (mark-buffer start))))))))
 
 (define (attribute->string attribute)
-  (string-append " " (string-downcase (symbol->string attribute)) ","))
+  (string-append " " (string-downcase (symbol-name attribute)) ","))
 
 (define (label->attribute label)
   (let ((s (intern-soft label)))

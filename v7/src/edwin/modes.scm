@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: modes.scm,v 1.33 2000/06/15 00:43:51 cph Exp $
+;;; $Id: modes.scm,v 1.34 2001/03/21 19:25:25 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Modes
 
@@ -45,7 +46,7 @@
   (if (not (or (not super-mode)
 	       (and major? (major-mode? super-mode))))
       (error:wrong-type-argument super-mode "major mode" 'MAKE-MODE))
-  (let ((sname (symbol->string name))
+  (let ((sname (symbol-name name))
 	(major? (if major? #t #f))
 	(super-comtabs (if super-mode (mode-comtabs super-mode) '())))
     (let ((mode (string-table-get editor-modes sname))
@@ -75,7 +76,7 @@
 
 (define (name->mode object #!optional if-undefined)
   (let ((name (canonicalize-name object)))
-    (let ((sname (symbol->string name)))
+    (let ((sname (symbol-name name)))
       (or (string-table-get editor-modes sname)
 	  (case (if (default-object? if-undefined) 'INTERN if-undefined)
 	    ((#F) #f)
@@ -107,7 +108,7 @@
   (let ((desc (mode-%description mode)))
     (if (description? desc)
 	desc
-	(let ((new (->doc-string (symbol->string (mode-name mode)) desc)))
+	(let ((new (->doc-string (symbol-name (mode-name mode)) desc)))
 	  (if new
 	      (set-mode-%description! mode new))
 	  new))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comman.scm,v 1.84 2000/06/15 00:43:40 cph Exp $
+$Id: comman.scm,v 1.85 2001/03/21 19:25:16 cph Exp $
 
-Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Commands and Variables
@@ -38,14 +39,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((desc (command-%description command)))
     (if (description? desc)
 	desc
-	(let ((new
-	       (->doc-string (symbol->string (command-name command)) desc)))
+	(let ((new (->doc-string (symbol-name (command-name command)) desc)))
 	  (if new
 	      (set-command-%description! command new))
 	  new))))
 
 (define (command-name-string command)
-  (editor-name/internal->external (symbol->string (command-name command))))
+  (editor-name/internal->external (symbol-name (command-name command))))
 
 (define (editor-name/internal->external string)
   string)
@@ -54,7 +54,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   string)
 
 (define (make-command name description specification procedure)
-  (let* ((sname (symbol->string name))
+  (let* ((sname (symbol-name name))
 	 (command
 	  (or (string-table-get editor-commands sname)
 	      (let ((command (%make-command)))
@@ -71,7 +71,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (name->command name #!optional if-undefined)
   (let ((name (canonicalize-name name)))
-    (or (string-table-get editor-commands (symbol->string name))
+    (or (string-table-get editor-commands (symbol-name name))
 	(case (if (default-object? if-undefined) 'INTERN if-undefined)
 	  ((#F) #f)
 	  ((ERROR) (error "Undefined command:" name))
@@ -117,8 +117,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((desc (variable-%description variable)))
     (if (description? desc)
 	desc
-	(let ((new
-	       (->doc-string (symbol->string (variable-name variable)) desc)))
+	(let ((new (->doc-string (symbol-name (variable-name variable)) desc)))
 	  (if new
 	      (set-variable-%description! variable new))
 	  new))))
@@ -129,10 +128,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   set-variable-value-validity-test!)
 
 (define (variable-name-string variable)
-  (editor-name/internal->external (symbol->string (variable-name variable))))
+  (editor-name/internal->external (symbol-name (variable-name variable))))
 
 (define (make-variable name description value buffer-local?)
-  (let* ((sname (symbol->string name))
+  (let* ((sname (symbol-name name))
 	 (variable
 	  (or (string-table-get editor-variables sname)
 	      (let ((variable (%make-variable)))
@@ -177,7 +176,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (name->variable name #!optional if-undefined)
   (let ((name (canonicalize-name name)))
-    (or (string-table-get editor-variables (symbol->string name))
+    (or (string-table-get editor-variables (symbol-name name))
 	(case (if (default-object? if-undefined) 'INTERN if-undefined)
 	  ((#F) #f)
 	  ((ERROR) (error "Undefined variable:" name))
