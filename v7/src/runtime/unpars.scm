@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.41 1987/01/23 00:21:48 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.42 1987/02/20 13:49:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -285,7 +285,7 @@
     (unparse-with-brackets
      (lambda ()
        (*unparse-string "VARIABLE ")
-       (unparse-symbol (variable-name variable))))))
+       (*unparse-object (variable-name variable))))))
 
 (define (unparse-datum object)
   (*unparse-string (number->string (primitive-datum object) 16)))
