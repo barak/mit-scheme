@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/etc/comfiles.scm,v 1.2 1991/08/21 20:04:52 cph Exp $
+$Id: comfiles.scm,v 1.3 1993/06/30 21:39:32 gjr Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,27 +55,34 @@ MIT in each case. |#
 					"/*.scm"))))
 	    directories))
 
-(define (for-each-compiler-file proc)
-  (for-each-file proc compiler-directories))
-
-(define (for-each-runtime-file proc)
-  (for-each-file proc runtime-directories))
-
 ;; This assumes that the working directory contains the copy of the compiler
 ;; to check.
 
-(define (check-stage stage directories)
-  (let ((stage (->string stage)))
+(define (check-stage directories #!optional stage)
+  (let ((stage
+	 (if (default-object? stage)
+	     "STAGE2"
+	     (->string stage))))
     (for-each-file
      (lambda (name)
-       (let ((path (pathname-new-type (->pathname name) "com")))
-	 (show-differences path
-			   (pathname-new-directory
-			    path
-			    (append (pathname-directory path)
-				    `(,stage))))))
+       (let* ((path0 (->pathname name))
+	      (path1 (pathname-new-type (->pathname path0) "com"))
+	      (path2 (pathname-new-directory
+		      path1
+		      (append (pathname-directory path1)
+			      `(,stage)))))
+	 (cond ((not (file-exists? path1))
+		(if (file-exists? path2)
+		    (warn "Directory mismatch"
+			  `(,path2 exists ,path1 does not))
+		    (warn "Missing compiled files for" path0)))
+	       ((not (file-exists? path2))
+		(warn "Directory mismatch"
+		      `(,path1 exists ,path2 does not)))
+	       (else
+		(show-differences path1 path2)))))
      directories)))
 
 (define (check-compiler #!optional stage)
-  (check-stage (if (default-object? stage) '"STAGE2" stage)
-	       compiler-directories))
+  (check-stage compiler-directories
+	       (if (default-object? stage) "STAGE2" stage)))
