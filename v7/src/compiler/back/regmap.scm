@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.12 1992/07/05 14:26:38 jinx Exp $
+$Id: regmap.scm,v 4.13 1998/02/19 20:55:06 adams Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1998 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -433,14 +433,14 @@ registers into some interesting sorting order.
       (and alias
 	   (allocator-values alias
 			     (register-map:delete-alias map entry alias)
-			     '()))))
+			     (LAP)))))
   ;; First see if there is an unused register of the given type.
   (or (let ((register
 	     (list-search-positive (map-registers map)
 	       (lambda (alias)
 		 (and (register-type? alias type)
 		      (not (memv alias needed-registers)))))))
-	(and register (allocator-values register map '())))
+	(and register (allocator-values register map (LAP))))
       ;; There are no free registers available, so must reallocate
       ;; one.  First look for a temporary register that is no longer
       ;; needed.
@@ -508,7 +508,7 @@ registers into some interesting sorting order.
 	     (let ((alias (list-search-positive (map-entry-aliases entry)
 			    (register-type-predicate type))))
 	       (and alias
-		    (allocator-values alias map '())))))
+		    (allocator-values alias map (LAP))))))
       (bind-allocator-values (make-free-register map type needed-registers)
 	(lambda (alias map instructions)
 	  (let ((entry (map-entries:find-home map home)))
@@ -604,7 +604,7 @@ for REGISTER.  If no such register exists, returns #F."
 	     (null? (cdr (map-entry-aliases entry))))
 	(receiver (register-map:save-entry map entry)
 		  (save-into-home-instruction entry))
-	(receiver map '()))))
+	(receiver map (LAP)))))
 
 (define (save-pseudo-register map register receiver)
   (let ((entry (map-entries:find-home map register)))
@@ -612,7 +612,7 @@ for REGISTER.  If no such register exists, returns #F."
 	     (not (map-entry-saved-into-home? entry)))
 	(receiver (register-map:save-entry map entry)
 		  (save-into-home-instruction entry))
-	(receiver map '()))))
+	(receiver map (LAP)))))
 
 (define (register-map-label map type)
   (let loop ((entries (map-entries map)))
@@ -787,7 +787,7 @@ for REGISTER.  If no such register exists, returns #F."
 
 (define (output-loop entries)
   (if (null? entries)
-      '()
+      (LAP)
       (let ((home (map-entry-home (car entries))))
 	(if home
 	    (let ((aliases (map-entry-aliases (car entries))))
