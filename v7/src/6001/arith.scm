@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.2 1992/09/22 02:19:42 cph Exp $
+$Id: arith.scm,v 1.3 1992/09/26 15:40:02 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -344,7 +344,7 @@ MIT in each case. |#
   (cond ((null? zs)
 	 0)
 	((null? (cdr zs))
-	 (if (not (complex:complex? (car zs)))
+	 (if (not (number? (car zs)))
 	     (error:wrong-type-argument (car zs) false '+))
 	 (car zs))
 	((null? (cddr zs))
@@ -358,7 +358,7 @@ MIT in each case. |#
   (cond ((null? zs)
 	 1)
 	((null? (cdr zs))
-	 (if (not (complex:complex? (car zs)))
+	 (if (not (number? (car zs)))
 	     (error:wrong-type-argument (car zs) false '*))
 	 (car zs))
 	((null? (cddr zs))
