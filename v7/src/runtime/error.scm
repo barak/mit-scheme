@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.7 1989/03/29 02:45:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.8 1989/05/04 19:45:56 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -160,11 +160,21 @@ MIT in each case. |#
 		    message-tag
 		    "Anonymous error")))
 
-(define-integrable (condition/environment condition)
-  (car (1d-table/get (condition/properties condition) environment-tag false)))
+(define default-condition-environment
+  (cons false false))
 
-(define-integrable (condition/substitute-environment? condition)
-  (cdr (1d-table/get (condition/properties condition) environment-tag false)))
+(define (condition/environment condition)
+  (let ((place (1d-table/get (condition/properties condition)
+			     environment-tag false)))
+    (if (not place)
+	(nearest-repl/environment)
+	(car place))))
+
+(define (condition/substitute-environment? condition)
+  (let ((place (1d-table/get (condition/properties condition)
+			     environment-tag false)))
+    (or (not place)
+	(cdr place))))
 
 ;;;; Standard Error Handler
 
