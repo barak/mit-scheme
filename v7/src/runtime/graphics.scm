@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.8 1993/10/26 23:19:26 cph Exp $
+$Id: graphics.scm,v 1.9 1993/11/04 22:42:45 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -181,21 +181,24 @@ MIT in each case. |#
   (set! graphics-types (cons (cons name type) graphics-types)))
 
 (define (enumerate-graphics-device-types)
-  (define (search items)
-    (if (pair? items)
-	(let* ((name.type (car items)))
-	  (if ((graphics-device-type/operation/available? (cdr name.type)))
-	      (cons (car name.type) (search (cdr items)))
-	      (search (cdr items))))
-	'()))
-  (search graphics-types))
+  (map car (%enumerate-graphics-device-types)))
+
+(define (%enumerate-graphics-device-types)
+  (let loop ((items graphics-types) (result '()))
+    (if (null? items)
+	(reverse result)
+	(let ((item (car items)))
+	  (loop (cdr items)
+		(if ((graphics-device-type/operation/available? (cdr item)))
+		    (cons item result)
+		    result))))))
 
 (define (get-default-graphics-device-type)
-  (let ((types (enumerate-graphics-device-types)))
+  (let ((types (%enumerate-graphics-device-types)))
     (if (null? types)
 	(error "No graphics device types supported."
 	       'GET-DEFAULT-GRAPHICS-DEVICE-TYPE))
-    (car types)))
+    (cdar types)))
 
 (define (lookup-graphics-device-type type-name)
   (let ((entry (assq type-name graphics-types)))
