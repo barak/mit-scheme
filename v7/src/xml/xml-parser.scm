@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.36 2003/08/23 05:39:20 cph Exp $
+$Id: xml-parser.scm,v 1.37 2003/08/23 05:39:58 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -163,6 +163,7 @@ USA.
 ;;;; XML declaration
 
 (define (xml-declaration-parser description text-decl?)
+  description
   (*parser
    (top-level
     (with-pointer p
