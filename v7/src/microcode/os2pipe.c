@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pipe.c,v 1.3 1995/01/05 23:43:32 cph Exp $
+$Id: os2pipe.c,v 1.4 1995/04/22 21:07:12 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -131,5 +131,10 @@ input_pipe_thread (void * arg)
 	break;
       OS2_wait_for_readahead_ack (qid);
     }
+  {
+    tqueue_t * tqueue = (OS2_qid_tqueue (qid));
+    OS2_close_qid (qid);
+    OS2_close_std_tqueue (tqueue);
+  }
   OS2_endthread ();
 }

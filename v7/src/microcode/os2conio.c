@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2conio.c,v 1.5 1995/01/05 23:39:57 cph Exp $
+$Id: os2conio.c,v 1.6 1995/04/22 21:06:57 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -147,6 +147,11 @@ console_thread (void * arg)
 	  }
       }
     }
+  {
+    tqueue_t * tqueue = (OS2_qid_tqueue (console_writer_qid));
+    OS2_close_qid (console_writer_qid);
+    OS2_close_std_tqueue (tqueue);
+  }
   OS2_endthread ();
 }
 
