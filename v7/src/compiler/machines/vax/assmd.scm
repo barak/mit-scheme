@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/assmd.scm,v 4.2 1988/01/08 14:55:40 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/assmd.scm,v 4.3 1988/01/12 16:33:36 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -80,16 +80,17 @@ MIT in each case. |#
 
 ;;; Machine dependent instruction order
 
-;;;
-;;; is this right?
-;;;
+;; These depend on the mapping between instruction streams and bit strings.
+;; Depending on the byte order of the machine, instruction streams will grow
+;; "forwards" or "backwards".
+
 (define (instruction-initial-position block)
   0)
 
 (define (instruction-insert! bits block position receiver)
-  (let* ((l (bit-string-length bits))
-	 (new-position (- position l)))
-    (bit-substring-move-right! bits 0 l block new-position)
-    (receiver new-position)))
+  (declare (integrate receiver))
+  (let ((l (bit-string-length bits)))
+    (bit-substring-move-right! bits 0 l block position)
+    (receiver (+ position l))))
 
 (set! instruction-append bit-string-append)
