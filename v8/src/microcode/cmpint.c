@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.85 1995/07/26 19:08:48 adams Exp $
+$Id: cmpint.c,v 1.86 1995/10/05 03:27:42 cph Exp $
 
 Copyright (c) 1989-1995 Massachusetts Institute of Technology
 
@@ -790,15 +790,16 @@ static utility_result
   EXFUN (compiler_interrupt_common, (SCHEME_ADDR, SCHEME_OBJECT));
 
 #define INVOKE_RETURN_ADDRESS(Value) do					\
-{ if (((long) Free) >= ((long) (Regs[REGBLOCK_MEMTOP])))		\
+{ if (((long) (ADDR_TO_SCHEME_ADDR (Free)))				\
+      >= ((long) (Regs[REGBLOCK_MEMTOP])))				\
     return (compiler_interrupt_common (0, Value));			\
   else									\
   { SCHEME_OBJECT ret = STACK_POP();					\
-    STACK_PUSH (SHARP_F);                                               \
+    STACK_PUSH (SHARP_F);						\
     STACK_PUSH (Value);							\
     STACK_PUSH (FIXNUM_ZERO + 1);					\
     RETURN_TO_SCHEME (OBJECT_ADDRESS (ret));				\
-  }                                                                     \
+  }									\
 } while (0)
 
 #endif /* i386 */
@@ -3253,7 +3254,8 @@ DEFNX (comutil_reflect_to_interface,
     case REFLECT_CODE_CC_BKPT:
     { unsigned long value;
       /* Attempt to process interrupts before really proceeding. */
-      if (((long) Free) >= ((long) (Regs[REGBLOCK_MEMTOP])))
+      if (((long) (ADDR_TO_SCHEME_ADDR (Free)))
+	  >= ((long) (Regs[REGBLOCK_MEMTOP])))
       { STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_CC_BKPT);
 	STACK_PUSH (reflect_to_interface);
 	return (compiler_interrupt_common (0, SHARP_F));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.84 1994/11/28 04:03:58 cph Exp $
+$Id: cmpint.c,v 1.85 1995/10/05 03:27:29 cph Exp $
 
-Copyright (c) 1989-1994 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -845,7 +845,8 @@ static utility_result
 
 #define INVOKE_RETURN_ADDRESS() do					\
 {									\
-  if (((long) Free) >= ((long) (Regs[REGBLOCK_MEMTOP])))		\
+  if (((long) (ADDR_TO_SCHEME_ADDR (Free)))				\
+      >= ((long) (Regs[REGBLOCK_MEMTOP])))				\
     return (compiler_interrupt_common (0, Val));			\
   else									\
     RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
@@ -3089,7 +3090,8 @@ DEFNX (comutil_reflect_to_interface,
 
       /* Attempt to process interrupts before really proceeding. */
 
-      if (((long) Free) >= ((long) (Regs[REGBLOCK_MEMTOP])))
+      if (((long) (ADDR_TO_SCHEME_ADDR (Free)))
+	  >= ((long) (Regs[REGBLOCK_MEMTOP])))
       {
 	STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_CC_BKPT);
 	STACK_PUSH (reflect_to_interface);
