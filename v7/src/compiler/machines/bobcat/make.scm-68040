@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.44 1987/10/05 20:35:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.45 1987/11/21 18:47:39 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ MIT in each case. |#
 
 ;(set-working-directory-pathname! "$zcomp")
 ;(load "base/rcs" system-global-environment)
-(load "base/pkging" system-global-environment)
+(load "base/pkging.bin" system-global-environment)
 
 (in-package compiler-package
 
@@ -46,11 +46,11 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 3)
-      (define :modification 2)
+      (define :modification 3)
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.44 1987/10/05 20:35:38 jinx Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.45 1987/11/21 18:47:39 jinx Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -65,125 +65,125 @@ MIT in each case. |#
 	       '("base/macros.bin"	;compiler syntax
 		 "base/decls.bin"	;declarations
 
-		 "base/object.bin"	;tagged object support
-		 "base/queue.bin"	;queue abstraction
-		 "base/sets.bin"	;set abstraction
-		 "base/mvalue.bin"	;multiple-value support
+		 "base/object.com"	;tagged object support
+		 "base/queue.com"	;queue abstraction
+		 "base/sets.com"	;set abstraction
+		 "base/mvalue.com"	;multiple-value support
 
-		 "machines/bobcat/machin.bin" ;machine dependent stuff
-		 "base/toplv1.bin"	;top level
-		 "base/toplv2.bin"
-		 "base/toplv3.bin"
-		 "base/utils.bin"	;odds and ends
-		 "base/cfg1.bin"	;control flow graph
-		 "base/cfg2.bin"
-		 "base/cfg3.bin"
-		 "base/rgraph.bin"	;program graph abstraction
-		 "base/ctypes.bin"	;CFG datatypes
-		 "base/dtype1.bin"	;DFG datatypes
-		 "base/dtype2.bin"
-		 "base/dtype3.bin"
-		 "base/dfg.bin"		;data flow graph
-		 "base/rtlty1.bin"	;RTL: type definitions
-		 "base/rtlty2.bin"
-		 "base/rtlexp.bin"	;RTL: expression operations
-		 "base/rtlcon.bin"	;RTL: complex constructors
-		 "base/rtlreg.bin"	;RTL: registers
-		 "base/rtlcfg.bin"	;RTL: CFG types
-		 "base/emodel.bin"	;environment model
-		 "base/rtypes.bin"	;RTL Registers
-		 "base/regset.bin"	;RTL Register Sets
-		 "base/pmlook.bin"	;pattern matcher: lookup
-		 "base/pmpars.bin"	;pattern matcher: parser
-		 "base/infutl.bin"	;utilities for info generation, shared
-		 "back-end/insseq.bin"	;lap instruction sequences
-		 "machines/bobcat/dassm1.bin" ;disassembler
-		 "base/linear.bin"	;linearization
+		 "machines/bobcat/machin.com" ;machine dependent stuff
+		 "base/toplv1.com"	;top level
+		 "base/toplv2.com"
+		 "base/toplv3.com"
+		 "base/utils.com"	;odds and ends
+		 "base/cfg1.com"	;control flow graph
+		 "base/cfg2.com"
+		 "base/cfg3.com"
+		 "base/rgraph.com"	;program graph abstraction
+		 "base/ctypes.com"	;CFG datatypes
+		 "base/dtype1.com"	;DFG datatypes
+		 "base/dtype2.com"
+		 "base/dtype3.com"
+		 "base/dfg.com"		;data flow graph
+		 "base/rtlty1.com"	;RTL: type definitions
+		 "base/rtlty2.com"
+		 "base/rtlexp.com"	;RTL: expression operations
+		 "base/rtlcon.com"	;RTL: complex constructors
+		 "base/rtlreg.com"	;RTL: registers
+		 "base/rtlcfg.com"	;RTL: CFG types
+		 "base/emodel.com"	;environment model
+		 "base/rtypes.com"	;RTL Registers
+		 "base/regset.com"	;RTL Register Sets
+		 "base/pmlook.com"	;pattern matcher: lookup
+		 "base/pmpars.com"	;pattern matcher: parser
+		 "base/infutl.com"	;utilities for info generation, shared
+		 "back-end/insseq.com"	;lap instruction sequences
+		 "machines/bobcat/dassm1.com" ;disassembler
+		 "base/linear.com"	;linearization
 		 ))
 
 	 (cons disassembler-package
-	       '("machines/bobcat/dassm2.bin" ;disassembler
-		 "machines/bobcat/dassm3.bin"
+	       '("machines/bobcat/dassm2.com" ;disassembler
+		 "machines/bobcat/dassm3.com"
 		 ))
 
 	 (cons converter-package
-	       '("alpha/fggen1.bin"	;SCode->flow-graph converter
-		 "alpha/fggen2.bin"
-		 "alpha/declar.bin"	;Declaration handling
+	       '("alpha/fggen1.com"	;SCode->flow-graph converter
+		 "alpha/fggen2.com"
+		 "alpha/declar.com"	;Declaration handling
 		 ))
 
 	 (cons dataflow-package
-	       '("alpha/dflow1.bin"	;Dataflow analyzer
-		 "alpha/dflow2.bin"
-		 "alpha/dflow3.bin"
-		 "alpha/dflow4.bin"
-		 "alpha/dflow5.bin"
-		 "alpha/dflow6.bin"
+	       '("alpha/dflow1.com"	;Dataflow analyzer
+		 "alpha/dflow2.com"
+		 "alpha/dflow3.com"
+		 "alpha/dflow4.com"
+		 "alpha/dflow5.com"
+		 "alpha/dflow6.com"
 		 ))
 
 	 (cons rtl-generator-package
-	       '("front-end/rtlgen.bin"	;RTL generator
-		 "front-end/rgproc.bin"	;RTL generator: Procedure Headers
-		 "front-end/rgstmt.bin"	;RTL generator: Statements
-		 "front-end/rgpred.bin"	;RTL generator: Predicates
-		 "front-end/rgrval.bin"	;RTL generator: RValues
-		 "front-end/rgcomb.bin"	;RTL generator: Combinations
-		 "front-end/rgpcom.bin"	;RTL generator: Primitive open-coding
-		 "machines/bobcat/rgspcm.bin" ;RTL generator: primitives treated specially.
+	       '("front-end/rtlgen.com"	;RTL generator
+		 "front-end/rgproc.com"	;RTL generator: Procedure Headers
+		 "front-end/rgstmt.com"	;RTL generator: Statements
+		 "front-end/rgpred.com"	;RTL generator: Predicates
+		 "front-end/rgrval.com"	;RTL generator: RValues
+		 "front-end/rgcomb.com"	;RTL generator: Combinations
+		 "front-end/rgpcom.com"	;RTL generator: Primitive open-coding
+		 "machines/bobcat/rgspcm.com" ;RTL generator: primitives treated specially.
 		 ))
 
 	 (cons rtl-cse-package
-	       '("front-end/rcse1.bin"	;RTL common subexpression eliminator
-		 "front-end/rcse2.bin"
-		 "front-end/rcseep.bin"	;CSE expression predicates
-		 "front-end/rcseht.bin"	;CSE hash table
-		 "front-end/rcserq.bin"	;CSE register/quantity abstractions
+	       '("front-end/rcse1.com"	;RTL common subexpression eliminator
+		 "front-end/rcse2.com"
+		 "front-end/rcseep.com"	;CSE expression predicates
+		 "front-end/rcseht.com"	;CSE hash table
+		 "front-end/rcserq.com"	;CSE register/quantity abstractions
 		 ))
 
 	 (cons rtl-analyzer-package
-	       '("front-end/rlife.bin"	;RTL register lifetime analyzer
-		 "front-end/rdeath.bin"	;RTL dead code eliminations
-		 "front-end/rdebug.bin"	;RTL optimizer debugging output
-		 "front-end/ralloc.bin"	;RTL register allocator
+	       '("front-end/rlife.com"	;RTL register lifetime analyzer
+		 "front-end/rdeath.com"	;RTL dead code eliminations
+		 "front-end/rdebug.com"	;RTL optimizer debugging output
+		 "front-end/ralloc.com"	;RTL register allocator
 		 ))
 
 	 (cons debugging-information-package
-	       '("base/infgen.bin"	;debugging information generation
+	       '("base/infgen.com"	;debugging information generation
 		 ))
 
 	 (cons lap-syntax-package
-	       '("back-end/lapgn1.bin"	;LAP generator.
-		 "back-end/lapgn2.bin"
-		 "back-end/lapgn3.bin"
-		 "back-end/regmap.bin"	;Hardware register allocator.
-		 "machines/bobcat/lapgen.bin" ;code generation rules.
-		 "machines/bobcat/rules1.bin"
-		 "machines/bobcat/rules2.bin"
-		 "machines/bobcat/rules3.bin"
-		 "machines/bobcat/rules4.bin"
-		 "back-end/syntax.bin"	;Generic syntax phase
-		 "machines/bobcat/coerce.bin" ;Coercions: integer -> bit string
-		 "back-end/asmmac.bin"	;Macros for hairy syntax
-		 "machines/bobcat/insmac.bin" ;Macros for hairy syntax
-		 "machines/bobcat/insutl.bin" ;Utilities for instructions
-		 "machines/bobcat/instr1.bin" ;68000 Effective addressing
-		 "machines/bobcat/instr2.bin" ;68000 Instructions
-		 "machines/bobcat/instr3.bin" ;  "        "
-		 "machines/bobcat/instr4.bin" ;  "        "
+	       '("back-end/lapgn1.com"	;LAP generator.
+		 "back-end/lapgn2.com"
+		 "back-end/lapgn3.com"
+		 "back-end/regmap.com"	;Hardware register allocator.
+		 "machines/bobcat/lapgen.com" ;code generation rules.
+		 "machines/bobcat/rules1.com"
+		 "machines/bobcat/rules2.com"
+		 "machines/bobcat/rules3.com"
+		 "machines/bobcat/rules4.com"
+		 "back-end/syntax.com"	;Generic syntax phase
+		 "machines/bobcat/coerce.com" ;Coercions: integer -> bit string
+		 "back-end/asmmac.com"	;Macros for hairy syntax
+		 "machines/bobcat/insmac.com" ;Macros for hairy syntax
+		 "machines/bobcat/insutl.com" ;Utilities for instructions
+		 "machines/bobcat/instr1.com" ;68000 Effective addressing
+		 "machines/bobcat/instr2.com" ;68000 Instructions
+		 "machines/bobcat/instr3.com" ;  "        "
+		 "machines/bobcat/instr4.com" ;  "        "
 		 ))
 
 	 (cons bit-package
-	       '("machines/bobcat/assmd.bin" ;Machine dependent
-		 "back-end/symtab.bin"	;Symbol tables
-		 "back-end/bitutl.bin"	;Assembly blocks
-		 "back-end/bittop.bin"	;Assembler top level
+	       '("machines/bobcat/assmd.com" ;Machine dependent
+		 "back-end/symtab.com"	;Symbol tables
+		 "back-end/bitutl.com"	;Assembly blocks
+		 "back-end/bittop.com"	;Assembler top level
 		 ))
 
 	 ))
 
       ))
 
-  (load-system! compiler-system true))
+  (load-system! compiler-system))
 
 (for-each (lambda (name)
 	    (local-assignment system-global-environment name
