@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: edwin.sf,v 1.23 2000/01/10 03:43:54 cph Exp $
+;;; $Id: edwin.sf,v 1.24 2000/03/02 18:40:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -63,6 +63,7 @@
        (let ((syntax-table
 	      (access class-syntax-table (->environment '(EDWIN)))))
 	 (lambda (filename)
+	   (fresh-line)
 	   (write-string "Pre-loading class definitions from ")
 	   (write filename)
 	   (syntax* (read-file (string-append filename ".scm"))
