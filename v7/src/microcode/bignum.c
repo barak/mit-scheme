@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.33 1990/12/29 22:00:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.34 1991/02/21 16:17:48 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -1611,7 +1611,7 @@ bignum_trim (bignum)
   fast bignum_digit_type * start = (BIGNUM_START_PTR (bignum));
   fast bignum_digit_type * end = (start + (BIGNUM_LENGTH (bignum)));
   fast bignum_digit_type * scan = end;
-  while ((start < scan) && ((*--scan) == 0))
+  while ((start <= scan) && ((*--scan) == 0))
     ;
   scan += 1;
   if (scan < end)
