@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.6 1992/05/28 23:31:22 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.7 1992/05/29 00:11:34 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -151,23 +151,25 @@ MIT in each case. |#
   (define-integrable *variable-deleted* false)
   (set! get-environment-variable
 	(lambda (variable)
-	  (cond ((not (string? variable))
-		 (error "GET-ENVIRONMENT-VARIABLE: Variable must be a string"
-			variable))
-		((assoc variable environment-variables) => cdr)
-		(else
-		 ((ucode-primitive get-environment-variable) variable)))))
+	  (if (not (string? variable))
+	      (error "GET-ENVIRONMENT-VARIABLE: Variable must be a string"
+		     variable)
+	      (let ((variable (string-upcase variable)))
+		(cond ((assoc variable environment-variables) => cdr)
+		      (else ((ucode-primitive get-environment-variable)
+			     variable)))))))
   (set! set-environment-variable!
 	(lambda (variable value)
 	  (if (string? variable)
-	      (cond ((assoc variable environment-variables)
-		     =>
-		     (lambda (pair)
-		       (set-cdr! pair value)))
-		    (else
-		     (set! environment-variables
-			   (cons (cons variable value)
-				 environment-variables))))
+	      (let ((variable (string-upcase variable)))
+		(cond ((assoc variable environment-variables)
+		       =>
+		       (lambda (pair)
+			 (set-cdr! pair value)))
+		      (else
+		       (set! environment-variables
+			     (cons (cons variable value)
+				   environment-variables)))))
 	      (error "SET-ENVIRONMENT-VARIABLE: Variable must be a string"
 		     variable value))
 	  unspecific))
