@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.19 1999/08/09 19:08:50 cph Exp $
+$Id: random.scm,v 14.20 1999/08/09 19:27:13 cph Exp $
 
 Copyright (c) 1993-1999 Massachusetts Institute of Technology
 
@@ -90,21 +90,27 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (make-random-state #!optional state)
   (let ((state (if (default-object? state) #f state)))
     (if (or (eq? #t state) (int:integer? state))
-	(initial-random-state
-	 (congruential-rng
-	  ;; Use good random source if available
-	  (if (file-exists? "/dev/urandom")
-	      (call-with-input-file "/dev/urandom"
-		(lambda (port)
-		  (let* ((b1 (char->integer (read-char port)))
-			 (b2 (char->integer (read-char port)))
-			 (b3 (char->integer (read-char port)))
-			 (b4 (char->integer (read-char port))))
-		    (+ (* b1 #x1000000)
-		       (* b2 #x10000)
-		       (* b3 #x100)
-		       b4))))
-	      (+ (real-time-clock) 123456789))))
+	;; Use good random source if available
+	(if (file-exists? "/dev/urandom")
+	    (call-with-input-file "/dev/urandom"
+	      (lambda (port)
+		(initial-random-state
+		 (lambda (b)
+		   (let loop ()
+		     (let ((n
+			    (let loop
+				((m #x100)
+				 (n (char->integer (read-char port))))
+			      (if (< m b)
+				  (loop (* m #x100)
+					(+ (* n #x100)
+					   (char->integer (read-char port))))
+				  n))))
+		       (if (< n b)
+			   n
+			   (loop))))))))
+	    (initial-random-state
+	     (congruential-rng (+ (real-time-clock) 123456789))))
 	(copy-random-state
 	 (guarantee-random-state state 'MAKE-RANDOM-STATE)))))
 
@@ -193,8 +199,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define *random-state*)
 
 (define (initialize-package!)
-  (set! *random-state* (make-random-state #t))
-  unspecific)
+  (set! *random-state*
+	(initial-random-state
+	 (congruential-rng (+ (real-time-clock) 123456789))))
+  (add-event-receiver! event:after-restore
+		       (lambda ()
+			 (set! *random-state* (make-random-state #t))
+			 unspecific)))
 
 (define (finalize-random-state-type!)
   (named-structure/set-tag-description! random-state-tag
