@@ -1,8 +1,8 @@
 ;;; -*-Fundamental-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dosutl/Attic/bch-prm.lst,v 1.4 1992/07/28 18:42:52 jinx Exp $
+;;;	$Id: bch-prm.lst,v 1.5 1993/06/24 04:35:33 gjr Exp $
 ;;;
-;;;	Copyright (c) 1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
