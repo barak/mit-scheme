@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dostty.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dostty.c,v 1.2 1992/07/28 18:19:19 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -42,8 +42,9 @@ MIT in each case. */
 
 static Tchannel input_channel;
 static Tchannel output_channel;
-static int tty_x_size;
-static int tty_y_size;
+int tty_x_size;
+int tty_y_size;
+  /* 1-based values */
 static char * tty_command_beep;
 static char * tty_command_clear;
 
@@ -95,11 +96,51 @@ DEFUN_VOID (OS_tty_command_clear)
 #define DEFAULT_TTY_Y_SIZE 25
 #endif
 
-static int
-DEFUN (getenv_integer, (var, default_val), char * var AND int default_val)
+int 
+pc_gestalt_screen_x_size (void)
 {
-  CONST char * value = (DOS_getenv(var));
-  return ((value == NULL) ? default_val : (atoi(value)));
+  char* psTemp;
+
+  psTemp = getenv("MITSCHEME_COLUMNS");
+  if (NULL == psTemp)
+    {
+      union REGS rIn;
+      union REGS rOut;
+      rIn.h.ah = 0x0F;
+      rIn.h.al = 0x00;
+      int86(0x10,&rIn,&rOut);
+      tty_x_size = rOut.h.ah;
+    }
+  else
+    {
+      tty_x_size = atoi(psTemp);
+      if (0 == tty_x_size)
+        tty_x_size = DEFAULT_TTY_X_SIZE; /* atoi failed, use default */
+    }
+}
+
+int 
+pc_gestalt_screen_y_size (void)
+{
+  char* psTemp;
+
+  psTemp = getenv("MITSCHEME_LINES");
+  if (NULL == psTemp)
+    {
+      union REGS rIn;
+      union REGS rOut;
+      rIn.x.ax = 0x1130;
+      rIn.h.bh = 0x00;
+      rIn.h.dl = DEFAULT_TTY_Y_SIZE-1;
+      int86(0x10,&rIn,&rOut);
+      tty_y_size = rOut.h.dl + 1;
+    }
+  else
+    {
+      tty_y_size = atoi(psTemp);
+      if (0 == tty_y_size)
+        tty_y_size = DEFAULT_TTY_Y_SIZE; /* atoi failed, use default */
+    }
 }
 
 void
@@ -114,17 +155,17 @@ DEFUN_VOID (DOS_initialize_tty)
   tty_y_size = (-1);
   tty_command_beep = ALERT_STRING;
   tty_command_clear = 0;
-  /* Figure out the size of the terminal.  First ask the operating
-     system, if it has an appropriate system call.  Then try the
-     environment variables COLUMNS and LINES.  Then try termcap.
-     Finally, use the default.  */
-  tty_x_size = getenv_integer("COLUMNS", DEFAULT_TTY_X_SIZE);
-  tty_y_size = getenv_integer("LINES", DEFAULT_TTY_Y_SIZE);
+
+
+  /* Figure out the size of the terminal. Tries environment variables.
+     If that fails, use default values. */
+
+  tty_x_size = pc_gestalt_screen_x_size();
+  tty_y_size = pc_gestalt_screen_y_size();
 
   if (tty_command_clear == 0)
     tty_command_clear = "\033[2J";
 }
-
 
 /* Fake TERMCAP capability */
 short ospeed;
