@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: frag.scm,v 1.2 1995/03/30 20:04:35 adams Exp $
+$Id: frag.scm,v 1.3 1995/04/01 16:54:25 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -220,7 +220,7 @@ MIT in each case. |#
   name
   (let  ((place (assq name env)))
     (if place
-	(form/rewrite! form (cdr place))))
+	(form/rewrite! form (form/preserve (cdr place)))))
   unspecific)
 
 (define-specializer LAMBDA (lambda-list body)
@@ -286,39 +286,67 @@ MIT in each case. |#
 	      (specialize-call! info env form rands)))
 	(else unspecific)))
 
+
+(define *id* 0)
+(define (make-id) (set! *id* (+ *id* 1)) *id*)
+
 (define (specialize-call! info env form rands)
-  (define (extract-placeholders form so-far)
-    (cond ((placeholder? form) (cons form so-far))
+  (define (extract-parameter-placeholders form so-far)
+    (cond ((and (placeholder? form)
+		(not (contains-placeholder? (placeholder/value form))))
+	   ;; Dont extract placeholders which are constants
+	   so-far)
+	  ;;((memq form so-far) so-far)
+	  ((placeholder? form)
+	   (if (placeholder/name form)
+	       (cons form so-far)
+	       (extract-parameter-placeholders (placeholder/value form) so-far)))
 	  ((pair? form)
-	   (extract-placeholders (cdr form)
-				 (extract-placeholders (car form) so-far)))
+	   (extract-parameter-placeholders
+	    (cdr form)
+	    (extract-parameter-placeholders (car form) so-far)))
 	  (else so-far)))
-  (define (substitute? form)
-    (define (immutable? v)
-      (or (number? v) (object-type? v (object-type #F)) (char? v)))
+  (define (immutable? v)
+    (or (number? v) (object-type? v (object-type #F)) (char? v)))
+  (define (substitute/1? form)		; propogate info
     (or (PLACEHOLDER-QUOTE/? form)
 	(and (QUOTE/? form)
 	     (immutable? (quote/text form)))))
-  (let* ((lam-expr  (specializer/info/lambda info))
+  (define (substitute/2? form)		; keep parameters
+    (or (and (PLACEHOLDER-QUOTE/? form)
+	     (not (placeholder?
+		   (placeholder/value (placeholder-quote/object form)))))
+	(and (QUOTE/? form)
+	     (immutable? (quote/text form)))))
+
+  (let* ((id (make-id))
+	 (lam-expr  (specializer/info/lambda info))
 	 (formals   (lambda/formals lam-expr))
 	 (body      (lambda/body lam-expr)))
     (if (and (there-exists? rands PLACEHOLDER-QUOTE/?)
-	     (not (hairy-lambda-list? formals)))
+	     (not (hairy-lambda-list? formals))
+	     (= (length rands) (length (cdr formals)))) ; paranoia
+	
 	(let* ((names*  (map variable/rename formals))
-	       (ph*     (map (lambda (p)
+	       (cont*   (car names*))
+	       (ph*     (extract-parameter-placeholders rands '()))
+	       (ph-env* (map (lambda (p)
 			       (cons p `(LOOKUP ,(new-variable (placeholder/name p)))))
-			     (extract-placeholders rands '())))
-	       (env*    (map* ph*
+			     ph*))
+	       (env*    (map* (cons (cons (car formals) `(LOOKUP ,cont*))
+				    ph-env*)
 			      (lambda (f n v)
-				(if (substitute? v)
+				(if (substitute/1? v)
 				    (cons f v)
 				    (cons f `(LOOKUP ,n))))
 			      (cdr formals)
 			      (cdr names*)
 			      rands))
 	       (body*   (form/copy body)))
+	  (pp `(,id old-body: ,body))
+	  (pp `(,id parameter-placeholders: ,@ph*))
 	  (specialize/expr! env* body*)
-	  (pp `(new-body: ,body*))
+	  (pp `(,id new-body: ,body*))
 	  (cond ((QUOTE/? body*)
 		 (form/rewrite! form body*))
 		((PLACEHOLDER-QUOTE/? body*)
@@ -329,18 +357,25 @@ MIT in each case. |#
 			(placeholders (remove-placeholders! env* body*))
 			;; make new lambda list & call expressions
 			(actuals
-			 (append (list-transform-negative rands substitute?)
-				  (map (lambda (p) (cdr (assq p env)))
-				       placeholders)))
+			 (append (list-transform-negative rands substitute/2?)
+				 ;;(map (lambda (p) (cdr (assq p env)))
+				 ;;     placeholders)
+				 (map quote-placeholder placeholders)))
 			(new-formals
-			 (let loop ((rs rands) (fs names*))
-			    (cond ((null? rs)
-				   (map (lambda (p) (cdr (assq p env*)))
-					placeholders))
-				  ((substitute? (car rs))
-				   (loop (cdr rs) (cdr fs)))
-				  (else
-				   (cons (car fs) (loop (cdr rs) (cdr fs))))))))
+			 (cons cont*
+			       (let loop ((rs rands) (fs (cdr names*)))
+				 (cond ((null? rs)
+					(map (lambda (p)
+					       (lookup/name (cdr (assq p env*))))
+				           placeholders))
+				       ((substitute/2? (car rs))
+					(pp `(elide-arg: ,(car fs) ,(car rs)))
+					(loop (cdr rs) (cdr fs)))
+				       (else
+					(cons (car fs) (loop (cdr rs) (cdr fs)))))))))
+		   (pp `(,id parameter-placeholders: ,placeholders))
+		   (pp `(,id rands: ,rands names*: ,names*))
+		   (pp `(,id new-formals: ,new-formals))
 		   (form/rewrite! form
 		     `(CALL (LOOKUP ,procedure-name)
 			    '#F
@@ -365,20 +400,26 @@ MIT in each case. |#
   ;;  Return alist from placeholders to name
   (let walk ((form form) (ps '()))
     (cond ((PLACEHOLDER-QUOTE/? form)
-	   (let ((text (placeholder-quote/text form)))
-	     (cond ((placeholder? text)
-		    (let ((pair  (assq text env)))
+	   (let ((placeholder  (placeholder-quote/object form)))
+	     (cond ((placeholder/name placeholder)
+		    ;; named placeholder: rewrite as lookup.
+		    (let ((pair  (assq placeholder env)))
 		      (if (not pair)
 			  (internal-error "Not bound" form env))
+		      (set-placeholder/name-used?! placeholder #T)
 		      (form/rewrite! form (cdr pair))
-		      (if (memq text ps) ps (cons text ps))))
-		   ((contains-placeholder? text)
-		    (nasty-residual))
+		      (if (memq placeholder ps) ps (cons placeholder ps))))
+		   ((placeholder? (placeholder/value placeholder))
+		    ;; unnamed placeholder: a `constructed' residual
+		    (nasty-residual placeholder))
+		   ((contains-placeholder? (placeholder/value placeholder))
+		    (nasty-residual placeholder))
 		   (else
-		    (form/rewrite! form `(QUOTE ,text))))))
+		    (form/rewrite! form
+		      `(QUOTE ,(placeholder/value placeholder)))))))
 	  ((QUOTE/? form) ps)
 	  ((LOOKUP/? form) ps)
-	  ((LAMBDA/? form) (walk (lambda/formals form) ps))
+	  ((LAMBDA/? form) (walk (lambda/body form) ps))
 	  ((or (LET/? form) (LETREC/? form))
 	   (let loop ((bds (second form)) (ps ps))
 	     (if (null? bds)
@@ -390,11 +431,6 @@ MIT in each case. |#
 		 ps
 		 (loop (cdr forms) (walk (car forms) ps))))))))
 
-(define (PLACEHOLDER-QUOTE/? expr)
-  (and (pair? expr)
-       (eq? (car expr) 'PLACEHOLDER-QUOTE)))
-
-(define (placeholder-quote/text expr) (second expr))
 
 (define (contains-placeholder? datum)
   (cond ((placeholder? datum)  #T)
@@ -410,21 +446,17 @@ MIT in each case. |#
 	((string? datum)        #F)
 	(else #T)))			; conservative approximation
 
-(define (make-placeholder-quote value)
-  (if (contains-placeholder? value)
-      `(PLACEHOLDER-QUOTE ,value)
-      `(QUOTE ,value)))
 
 (define (specialize/simple? expr)
-  (or (QUOTE/? expr)
-      (PLACEHOLDER-QUOTE/? expr)))
+  (or (PLACEHOLDER-QUOTE/? expr)
+      (QUOTE/? expr)))
 
 (define (specialize/expr! env expr)
   ;; Rewrite EXPR.
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((PLACEHOLDER-QUOTE))
+    ((PLACEHOLDER-QUOTE) unspecific)
     ((QUOTE)    (specializer/quote env expr))
     ((LOOKUP)   (specializer/lookup env expr))
     ((LAMBDA)   (specializer/lambda env expr))
@@ -436,21 +468,49 @@ MIT in each case. |#
     ((LETREC)   (specializer/letrec env expr))
     (else       (illegal expr))))
 
+;;  Placeholders `wrap' every pointer in a placeholder value.
+;;  They are escaped in the source with a PLACEHOLDER-QUOTE form.
+
+(define (PLACEHOLDER-QUOTE/? form)
+  (and (pair? form)
+       (eq? (car form) 'PLACEHOLDER-QUOTE)))
+
+(define (placeholder-quote/object form)
+  (if (not (PLACEHOLDER-QUOTE/? form))
+      (internal-error "placeholder-quote/object of" form))
+  (second form))
+
+(define (quote-placeholder placeholder)
+  (if (not (placeholder? placeholder))
+      (internal-error "not a placeholder:" placeholder))
+  `(PLACEHOLDER-QUOTE ,placeholder))
+
 (define-structure
     (placeholder
      (conc-name placeholder/)
-     (constructor make-placeholder))
+     (constructor %make-placeholder (name)))
   (name  #F read-only true)		; #F or name of variable
-  (value #F read-only true)		; either this placeholder
-					; or structure containing placeholders
-)
+  ;; either this placeholder (a self-reference), or a structure containing
+  ;; placeholders or a simple (non-container) constant.
+  (value #F read-only false)
+  ;; A flag - is this residual used at all the specialized code?
+  (name-used? #F read-only false))
+
+(define (make-placeholder name #!optional value)
+  (let ((p  (%make-placeholder name)))
+    (if (default-object? value)
+	(set-placeholder/value! p p)
+	(set-placeholder/value! p value))
+    p))
 
 (define (arity/top-level program)
   ;; These should be put in a fluid-let when debugging is done:
   (set! *specialization-table* (make-eq-hash-table))
   (set! *lambda-queue* (queue/make))
+  (set! *id* 0)
   (let ((program* (copier/top-level program (lambda (old new) new))))
     (let walk ((expr program*))
+      ;; Find all interesting lambdas and keeping LETREC bindings.
       (cond ((LETREC/? expr)
 	     (for-each
 		 (lambda (binding)
@@ -459,20 +519,42 @@ MIT in each case. |#
 				    (specializer/info/make
 				     (car binding)
 				     (cadr binding)
-				     form)))
+				     expr))
+		   (walk (cadr binding)))
 	       (letrec/bindings expr))
 	     (walk (letrec/body expr)))
-	    ((LET/? expr) (walk (let/body expr)))
+	    ((LET/? expr)
+	     (for-each (lambda (binding) (walk (cadr binding)))
+	       (let/bindings expr))
+	     (walk (let/body expr)))
 	    ((QUOTE/? expr))
 	    ((LOOKUP/? expr))
 	    ((LAMBDA/? expr)
 	     (if (hairy-lambda-list? (lambda/formals expr))
 		 (specialize/enqueue-lambda! expr))
 	     (walk (lambda/body expr)))
-	    (else (for-each walk (cdr expr))))
-      (queue/drain! *lambda-queue* arity/specialize-lambda!))
+	    (else (for-each walk (cdr expr)))))
+    (queue/drain! *lambda-queue* arity/specialize-lambda!)
     program*))
 
+
+;;; Search the specialization space.
+;;
+;;  Generate a specialization for all |optional|+1 defaultings.  If there
+;;  is no #!rest argument we are done.
+;;
+;;  Now generate many #!rest expansions as possible until (1) it fails or
+;;  (2) the last placeholder in the rest list is not used.  Then
+;;  generate a default specializations with a rest argument, by
+;;  searching for progressively shorter lists, keeping the knowledge
+;;  that the list is at least long enough to satisy the existing
+;;  specializations.
+
+(define (nasty-residual placeholder)
+  placeholder
+  (internal-error "Nasty residual" placeholder))
+
+(define *arity/failure*)
 
 (define (arity/specialize-lambda! form)
   (let ((body    (lambda/body form))
@@ -483,81 +565,102 @@ MIT in each case. |#
 	;; required includes continuation.
 	(pp 'specialize-lambda:)
 	(pp form)
-	(let* ((low   (length required))
+	(let* ((specializations '())
+	       (low   (length required))
 	       (high  (if rest
-			  (+ low (length optional) 5)
-			  (+ low (length optional))))
-	       (specializations
-		(let loop ((arity low) (specializations '()))
-		  (if (<= arity high)
-		      (let ((new-lambda
-			     (arity/generate-specialization form arity #F)))
-			(pp `(after: ,new-lambda))
-			(loop (+ arity 1) (cons new-lambda specializations)))
-		      (reverse specializations)))))
+			  (+ low (length optional) 4)
+			  (+ low (length optional)))))
+	  (let loop ((arity low))
+	    (if (<= arity high)
+		(let ((new-lambda
+		       (arity/generate-specialization
+			required optional rest body arity #F)))
+		  (set! specializations (cons new-lambda specializations))
+		  (loop (+ arity 1)))))
 	  (form/rewrite! form
-	    `(CALL 'make-multiple-arity-procedure
+	    `(CALL ',%make-entity
 		   '#F
-		   ',low
-		   ,@specializations))
+		   'default
+		   (CALL ',%vector
+			 '#F
+			 ',%arity-dispatcher-tag
+			 ,@(make-list (- low 1) '(QUOTE #F))
+			 ,@(reverse specializations))))
 	  (pp `(transfomed-procedure: ,form)))))))
 
 
-(define (arity/generate-specialization lam-expr arity rest?)
-  ; ARITY is at least enough to satisfy the requireds
+(define (arity/generate-specialization required optional rest body arity rest?)
+  ;; ARITY is at least enough to satisfy the REQUIREDs
+  ;; returns either (1) a new LAMBDA expression or (2) a
   (define (generate new-ll env)
     (pp '----------)
     (pp `(lambda-list: ,new-ll env: ,env))
-    (let ((body  (form/copy (lambda/body lam-expr))))
+    (let ((body  (form/copy body)))
       (pp `(before: ,body))
       (specialize/expr! env body)
       (remove-placeholders! env body)
       `(LAMBDA ,new-ll ,body)))
 
-  (let ((formals (lambda/formals lam-expr)))
-    (let loop ((env '()) (old-ll formals) (new-ll '()) (position 0))
+  (let ((new-required (map variable/rename required)))
+    (let loop ((env (map (lambda (n n*) (cons n `(LOOKUP ,n*)))
+			 required
+			 new-required))
+	       (optional optional)
+	       (new-args '())
+	       (position (length required)))
       (cond ((= position arity)
-	     (let loop ((env env) (old-ll old-ll))
-	       (cond ((null? old-ll)
-		      (generate (reverse new-ll) env))
-		     ((eq? (car old-ll) '#!optional)
-		      (loop env (cdr old-ll)))
-		     ((eq? (car old-ll) '#!rest)
-		      (generate (reverse new-ll)
-				(cons (cons (second old-ll) `(QUOTE ())) env)))
+	     ;; Default the optionals & rest
+	     (let loop ((env env) (optional optional))
+	       (cond ((null? optional)
+		      (if rest
+			  (generate (append new-required (reverse new-args))
+				    (cons (cons rest
+						(quote-placeholder
+						 (make-placeholder #F '())))
+					  env))
+			  (generate (append new-required (reverse new-args))
+				    env)))
 		     (else
-		      (loop (cons (cons (car old-ll)
-					`(PLACEHOLDER-QUOTE ,%unassigned))
+		      (loop (cons (cons (car optional)
+					(quote-placeholder
+					 (make-placeholder #F %unassigned)))
 				  env)
-			    (cdr old-ll))))))
-	    ((eq? (car old-ll) '#!optional)
-	     (loop env (cdr old-ll) new-ll position))
-	    ((eq? (car old-ll) '#!rest)
-	     (let* ((rest           (second old-ll))
-		    (rest-list-args (make-initialized-list (- arity position)
-				      (lambda (i) i (variable/rename rest))))
+			    (cdr optional))))))
+	    ((null? optional)
+	     (let* ((rest-list-args 
+		     (map  (lambda (i) i (variable/rename rest))
+			   (make-list (- arity position))))
 		    (placeholders   (map make-placeholder rest-list-args))
 		    (new-rest-arg   (and rest? (variable/rename rest)))
-		    (new-rest-ph    (and rest? (make-placeholder new-rest-arg)))
-		    (rest-list-value (if rest?
-					 (append placeholders new-rest-ph)
-					 placeholders)))
+		    (terminal-ph    (if rest?
+					(make-placeholder new-rest-arg)
+					(make-placeholder #F '())))
+		    (rest-list-value
+		     (let walk ((lst placeholders))
+		       (if (null? lst)
+			   terminal-ph
+			   (make-placeholder #F (cons (car lst) (walk (cdr lst))))))))
 	       (define (bind-ph ph name) (cons ph `(LOOKUP ,name)))
-	       (generate (append (reverse new-ll) rest-list-args
+	       (generate (append new-required
+				 (reverse new-args)
+				 rest-list-args
 				 (if rest? (list '#!rest new-rest-arg) '()))
 			 (append (if rest?
-				     (list (bind-ph new-rest-ph new-rest-arg))
+				     (list (bind-ph terminal-ph new-rest-arg))
 				     '())
 				 (map bind-ph placeholders rest-list-args)
 				 (cons (cons rest
-					   `(PLACEHOLDER-QUOTE ,rest-list-value))
+					     (quote-placeholder rest-list-value))
 				       env)))))
 	    (else
-	     (let* ((name   (car old-ll))
-		    (name*  (variable/rename name)))
-	       (loop (cons (cons name `(LOOKUP ,name*)) env)
-		     (cdr old-ll)
-		     (cons name* new-ll)
+	     (let* ((name   (car optional))
+		    (name*  (variable/rename name))
+		    (ph     (make-placeholder name*)))
+	       (loop (cons* (cons name (quote-placeholder ph))
+			    (cons ph `(LOOKUP ,name*))
+			    env)
+		     (cdr optional)
+		     (cons name* new-args)
 		     (+ position 1))))))))
 
 
@@ -573,31 +676,47 @@ MIT in each case. |#
 (define-specializer-rewriter (make-primitive-procedure 'CAR)
   (lambda (form arg)
     (cond ((PLACEHOLDER-QUOTE/? arg)
-	   (if (pair? (placeholder-quote/text arg))
-	       (form/rewrite! form
-		 (make-placeholder-quote (car (placeholder-quote/text arg))))))
+	   (let ((ph (placeholder-quote/object arg)))
+	     (if (pair? (placeholder/value ph))
+		 (form/rewrite! form
+		   (quote-placeholder (car (placeholder/value ph)))))))
 	  (else unspecific))))
 
 (define-specializer-rewriter (make-primitive-procedure 'CDR)
   (lambda (form arg)
     (cond ((PLACEHOLDER-QUOTE/? arg)
-	   (if (pair? (placeholder-quote/text arg))
-	       (form/rewrite! form
-		 (make-placeholder-quote (cdr (placeholder-quote/text arg))))))
+	   (let ((ph (placeholder-quote/object arg)))
+	     (if (pair? (placeholder/value ph))
+		 (form/rewrite! form
+		   (quote-placeholder (cdr (placeholder/value ph)))))))
 	  (else unspecific))))
 
-
 (let ()
-  (define (safe-unary-predicate name pred)
+  (define (safe-unary-type-test name pred)
+    ;; PRED cannot look `into' containers (e.g. pairs), as these will have
+    ;; placeholders inside.
     (define-specializer-rewriter name
       (lambda (form arg)
 	(cond ((PLACEHOLDER-QUOTE/? arg)
-	       (if (not (placeholder? (placeholder-quote/text arg)))
-		   (form/rewrite! form
-		     `(QUOTE ,(pred (placeholder-quote/text arg))))))
+	       (let ((ph (placeholder-quote/object arg)))
+		 (if (not (placeholder? (placeholder/value ph)))
+		     (form/rewrite! form
+		       `(QUOTE ,(pred (placeholder/value ph)))))))
 	      ((QUOTE/? arg)
 	       (form/rewrite! form `(QUOTE ,(pred (quote/text arg)))))
 	      (else unspecific)))))
 
-  (safe-unary-predicate  (make-primitive-procedure 'NULL?) null?)
-  (safe-unary-predicate  %unassigned? (lambda (x) (eq? x %unassigned))))
+  (safe-unary-type-test  (make-primitive-procedure 'NULL?) null?)
+  (safe-unary-type-test  (make-primitive-procedure 'PAIR?) pair?)
+  ;;(safe-unary-type-test  %unassigned? (lambda (x) (eq? x %unassigned)))
+  )
+
+(define-specializer-rewriter %unassigned?
+  (lambda (form arg)
+    (pp form)
+    (cond ((PLACEHOLDER-QUOTE/? arg)
+	   (let ((ph (placeholder-quote/object arg)))
+	     ;; This rewrites `unknown' placeholders to booleans too:
+	     (form/rewrite! form
+	       `(QUOTE ,(eq? (placeholder/value ph) %unassigned)))))
+	  (else unspecific))))
