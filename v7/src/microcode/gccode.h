@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.37 1988/04/15 16:22:00 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.38 1988/04/15 16:54:02 cph Rel $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -423,7 +423,7 @@ typedef unsigned long machine_word;
 #define GC_NO_COMPILER_STMT()						\
   gc_death(TERM_COMPILER_DEATH,						\
 	   "relocate_compiled: No compiler support!",			\
-	   Scan, 0)
+	   0, 0)
 
 #define GC_NO_COMPILER_EXPR(value_type) (GC_NO_COMPILER_STMT(), (value_type 0))
 
