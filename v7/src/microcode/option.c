@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.13 1991/11/21 09:48:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.14 1992/02/18 20:56:12 mhwu Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -52,7 +52,7 @@ extern struct obstack scratch_obstack;
 extern CONST char * scheme_program_name;
 extern void EXFUN (termination_init_error, (void));
 
-#define FILE_ABSOLUTE(filename) (((filename) [0]) == '/')
+#define FILE_ABSOLUTE(filename) (((filename) [0]) == SUB_DIRECTORY_DELIMITER)
 #define FILE_READABLE(filename) ((access ((filename), 4)) >= 0)
 
 static int option_summary;
@@ -243,12 +243,24 @@ The following options are only meaningful to bchscheme:
   overlapped I/O.  Each implies a drone process to manage it, if supported.
 */
 
+#ifndef SUB_DIRECTORY_DELIMITER
+#ifdef DOS386
+#define SUB_DIRECTORY_DELIMITER	'\\'
+#else
+#define SUB_DIRECTORY_DELIMITER '/'
+#endif
+#endif
+
 #ifndef LIBRARY_PATH_VARIABLE
 #define LIBRARY_PATH_VARIABLE "MITSCHEME_LIBRARY_PATH"
 #endif
 
 #ifndef DEFAULT_LIBRARY_PATH
+#ifdef DOS386
+#define DEFAULT_LIBRARY_PATH "\\scheme\\lib"
+#else
 #define DEFAULT_LIBRARY_PATH "/usr/local/lib/mit-scheme"
+#endif
 #endif
 
 #ifndef BAND_VARIABLE
@@ -364,7 +376,11 @@ The following options are only meaningful to bchscheme:
 /* These are only meaningful for bchscheme */
 
 #ifndef DEFAULT_GC_DIRECTORY
+#ifdef DOS386
+#define DEFAULT_GC_DIRECTORY		"\\tmp"
+#else
 #define DEFAULT_GC_DIRECTORY		"/tmp"
+#endif
 #endif
 
 #ifndef GC_DIRECTORY_VARIABLE
@@ -702,7 +718,7 @@ DEFUN_VOID (get_wd)
 {
   CONST char * wd = (OS_working_dir_pathname ());
   unsigned int len = (strlen (wd));
-  if ((wd [len - 1]) == '/')
+  if ((wd [len - 1]) == SUB_DIRECTORY_DELIMITER)
     len -= 1;
   {
     char * result = (xmalloc (len + 1));
@@ -740,7 +756,7 @@ DEFUN (parse_path_string, (path), CONST char * path)
 	      break;
 	    }
 	}
-      if ((start < end) && ((* (end - 1)) == '/'))
+      if ((start < end) && ((* (end - 1)) == SUB_DIRECTORY_DELIMITER))
 	end -= 1;
       if (end == start)
 	obstack_ptr_grow ((&scratch_obstack), (string_copy (wd)));
@@ -757,7 +773,7 @@ DEFUN (parse_path_string, (path), CONST char * path)
 		CONST char * e = (wd + lwd);
 		while (s < e)
 		  (*scan_element++) = (*s++);
-		(*scan_element++) = '/';
+		(*scan_element++) = SUB_DIRECTORY_DELIMITER;
 	      }
 	    {
 	      CONST char * s = start;
@@ -819,7 +835,7 @@ DEFUN (search_for_library_file, (filename), CONST char * filename)
       if (dlen > 0)
 	{
 	  obstack_grow ((&scratch_obstack), directory, dlen);
-	  obstack_1grow ((&scratch_obstack), '/');
+	  obstack_1grow ((&scratch_obstack), SUB_DIRECTORY_DELIMITER);
 	}
       obstack_grow ((&scratch_obstack), filename, flen);
       obstack_1grow ((&scratch_obstack), '\0');
