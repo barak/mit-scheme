@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nt.h,v 1.1 1993/02/10 22:39:46 adams Exp $
+$Id: nt.h,v 1.2 1993/06/24 01:42:39 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -42,7 +42,12 @@ MIT in each case. */
 
 #include <windows.h>
 #include <sys/types.h>
+
+#ifdef WINNT
+#else
 #include <sys/times.h>
+#endif
+
 #include <dos.h>
 #include <io.h>
 #include <conio.h>
@@ -181,7 +186,7 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 
 #include <limits.h>
 #include <time.h>
-#include <termio.h>
+/*#include <termio.h>*/
 
 #define HAVE_MKDIR
 #define HAVE_RMDIR
@@ -191,7 +196,8 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 /* #define HAVE_FCNTL */
 #define VOID_SIGNAL_HANDLERS
 
-#include <sys/dir.h>
+/*#include <sys/dir.h>*/
+
 
 typedef void Tsignal_handler_result;
 #define SIGNAL_HANDLER_RETURN() return
@@ -332,11 +338,13 @@ typedef int wait_status_t;
 #define ALERT_STRING "\007"
 #endif
 
-#ifndef STDIN_FILENO
-#define STDIN_FILENO 0
-#define STDOUT_FILENO 1
-#define STDERR_FILENO 2
-#endif
+//#ifndef STDIN_FILENO
+//#define STDIN_FILENO 0
+//#define STDOUT_FILENO 1
+//#define STDERR_FILENO 2
+//#endif
+
+extern HANDLE  STDIN_HANDLE,  STDOUT_HANDLE,  STDERR_HANDLE;
 
 /* constants for open() and fcntl() */
 #ifndef O_RDONLY
@@ -421,8 +429,8 @@ extern char * EXFUN (getlogin, (void));
 #ifndef WINNT
 extern PTR EXFUN (malloc, (unsigned int size));
 extern PTR EXFUN (realloc, (PTR ptr, unsigned int size));
-#endif
 extern int EXFUN (gethostname, (char * name, unsigned int size));
+#endif
 
 #ifdef HAVE_FCNTL
 #define DOS_fcntl fcntl
@@ -452,12 +460,25 @@ extern void EXFUN (DOS_prim_check_errno, (enum syscall_names name));
 #define STD_VOID_SYSTEM_CALL(name, expression)				\
 {									\
   while ((expression) < 0)						\
-      error_system_call (errno, (name));				\
+    if (errno != EINTR)							\
+      error_system_call (errno, (name));			\
+}
+
+#define STD_BOOL_SYSTEM_CALL(name, expression)				\
+{									\
+  while (! (expression))						\
+      error_system_call (GetLastError(), (name));			\
+}
+
+#define STD_HANDLE_SYSTEM_CALL(name, result, expression)		\
+{									\
+  while (((result) = (expression)) ==  INVALID_HANDLE_VALUE)		\
+      error_system_call (GetLastError(), (name));			\
 }
 
 #define STD_UINT_SYSTEM_CALL(name, result, expression)			\
 {									\
-  while (((result) = (expression)) < 0)					\
+  while (((result) = (expression)) ==  0)				\
       error_system_call (errno, (name));				\
 }
 
