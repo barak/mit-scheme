@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.7 1988/03/30 21:54:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.8 1988/03/30 21:59:38 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -330,7 +330,7 @@ Currently only the 68000 implementation needs this."
 (define (mark-phase this-name)
   (end-phase)
   (newline)
-  (write-string "      ")
+  (write-string "    ")
   (write-string this-name)
   (write-string "...")
   (set! previous-name this-name))
