@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wind.scm,v 14.10 2004/10/01 02:43:49 cph Exp $
+$Id: wind.scm,v 14.11 2004/10/01 04:32:09 cph Exp $
 
 Copyright 1986,1987,1988,1989,1992,1993 Massachusetts Institute of Technology
 Copyright 2004 Massachusetts Institute of Technology
@@ -175,11 +175,11 @@ USA.
     (%execute-at-new-state-point
      state-space:local
      (lambda ()
-       (%%translate-to-state-point fluid-bindings)
+       (%translate-to-state-point fluid-bindings)
        (before))
      during
      (lambda ()
-       (%%translate-to-state-point fluid-bindings)
+       (%translate-to-state-point fluid-bindings)
        (after)))))
 
 (define (initialize-package!)
