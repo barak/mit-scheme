@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules2.scm,v 4.12 1990/01/25 16:40:55 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules2.scm,v 4.13 1992/02/18 16:09:39 jinx Exp $
 $MC68020-Header: rules2.scm,v 4.12 90/01/18 22:44:04 GMT cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,6 +41,14 @@ MIT in each case. |#
   ;; test for two registers EQ?
   (EQ-TEST (REGISTER (? source1)) (REGISTER (? source2)))
   (compare '= (standard-source! source1) (standard-source! source2)))
+
+(define-rule predicate
+  (EQ-TEST (MACHINE-CONSTANT 0) (REGISTER (? register)))
+  (compare-immediate '= 0 (standard-source! register)))
+
+(define-rule predicate
+  (EQ-TEST (REGISTER (? register)) (MACHINE-CONSTANT 0))
+  (compare-immediate '= 0 (standard-source! register)))
 
 (define-rule predicate
   ;; test for register EQ? to constant
