@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.69 2003/01/22 19:46:32 cph Exp $
+$Id: io.scm,v 14.70 2003/01/22 20:30:25 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -244,8 +244,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		   (lambda (k)
 		     (let ((result (test-for-io-on-channel channel 'READ)))
 		       (case result
-			 ((READ ERROR) (do-read))
-			 ((HANGUP) 0)
+			 ((READ) (do-read))
+			 ((HANGUP ERROR) 0)
 			 ((PROCESS-STATUS-CHANGE)
 			  (handle-subprocess-status-change)
 			  (if (channel-closed? channel) 0 (k)))
@@ -255,32 +255,39 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		  (do-test (lambda () #f))))))
 	(do-read))))
 
+(define (channel-write channel buffer start end)
+  (let ((do-write
+	 (lambda ()
+	   ((ucode-primitive channel-write 4)
+	    (channel-descriptor channel)
+	    (if (external-string? buffer)
+		(external-string-descriptor buffer)
+		buffer)
+	    start
+	    end))))
+    (declare (integrate-operator do-write))
+    (if (and have-select? (not (channel-type=file? channel)))
+	(with-thread-events-blocked
+	  (lambda ()
+	    (let ((do-test
+		   (lambda (k)
+		     (let ((result (test-for-io-on-channel channel 'WRITE)))
+		       (case result
+			 ((WRITE) (do-write))
+			 ((HANGUP ERROR) 0)
+			 ((PROCESS-STATUS-CHANGE)
+			  (handle-subprocess-status-change)
+			  (if (channel-closed? channel) 0 (k)))
+			 (else (k)))))))
+	      (if (channel-blocking? channel)
+		  (let loop () (do-test loop))
+		  (do-test (lambda () #f))))))
+	(do-write))))
+
 (define (channel-read-block channel buffer start end)
   (let loop ()
     (or (channel-read channel buffer start end)
 	(loop))))
-
-(define (test-for-io-on-channel channel mode)
-  (test-for-io-on-descriptor (channel-descriptor-for-select channel)
-			     (channel-blocking? channel)
-			     mode))
-
-(define (test-for-io-on-descriptor descriptor block? mode)
-  (if block?
-      (or (test-select-descriptor descriptor #f mode)
-	  (block-on-io-descriptor descriptor mode))
-      (test-select-descriptor descriptor #f mode)))
-
-(define-integrable (channel-descriptor-for-select channel)
-  ((ucode-primitive channel-descriptor 1) (channel-descriptor channel)))
-
-(define (channel-write channel buffer start end)
-  ((ucode-primitive channel-write 4) (channel-descriptor channel)
-				     (if (external-string? buffer)
-					 (external-string-descriptor buffer)
-					 buffer)
-				     start
-				     end))
 
 (define (channel-write-block channel buffer start end)
   (let loop ((start start) (n-left (- end start)))
@@ -1325,3 +1332,17 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  (set! select-registry-result-vectors
 		(cons (cons vfd vmode) select-registry-result-vectors))))
     (set-interrupt-enables! interrupt-mask)))
+
+(define (test-for-io-on-channel channel mode)
+  (test-for-io-on-descriptor (channel-descriptor-for-select channel)
+			     (channel-blocking? channel)
+			     mode))
+
+(define (test-for-io-on-descriptor descriptor block? mode)
+  (if block?
+      (or (test-select-descriptor descriptor #f mode)
+	  (block-on-io-descriptor descriptor mode))
+      (test-select-descriptor descriptor #f mode)))
+
+(define-integrable (channel-descriptor-for-select channel)
+  ((ucode-primitive channel-descriptor 1) (channel-descriptor channel)))
