@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: regexp.scm,v 1.4 1999/08/20 20:34:12 cph Exp $
+;;; $Id: regexp.scm,v 1.5 1999/12/16 22:06:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -83,6 +83,11 @@
 			     (if (null? (cdr alternatives))
 				 (list "\\)")
 				 (cons "\\|" (loop (cdr alternatives)))))))))))
+
+(define (re-match-extrace string i regs)
+  (substring string
+	     (re-match-start-index i regs)
+	     (re-match-end-index i regs)))
 
 (define (make-substring-operation name primitive)
   (lambda (regexp string start end #!optional case-fold? syntax-table)
