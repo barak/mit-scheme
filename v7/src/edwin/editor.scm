@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.236 1994/11/03 04:40:33 adams Exp $
+;;;	$Id: editor.scm,v 1.237 1994/11/14 01:31:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -143,19 +143,17 @@
     (initialize-inferior-repls!)
     (set! edwin-editor
 	  (make-editor "Edwin"
-		       (let ((name (and (not (null? args))
-                                        (car args))))
+		       (let ((name (and (not (null? args)) (car args))))
 			 (if name
-			     (let ((display-type (name->display-type name)))
-			       (if display-type
-				   (if (display-type/available? display-type)
-				       display-type
-				       (error "Requested display type not available:" display-type))
-				   (error "Unknown display type name:" name)))
-			     (default-display-type '() )))
-		       (if (null? args)
-			   '()
-			   (cdr args))))
+			     (let ((type (name->display-type name)))
+			       (if (not type)
+				   (error "Unknown display type name:" name))
+			       (if (not (display-type/available? type))
+				   (error "Requested display type unavailable:"
+					  type))
+			       type)
+			     (default-display-type '())))
+		       (if (null? args) '() (cdr args))))
     (set! edwin-initialization
 	  (lambda ()
 	    (set! edwin-initialization false)
