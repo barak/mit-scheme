@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.23 1990/01/25 16:42:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.24 1990/04/09 21:07:36 cph Exp $
 $MC68020-Header: rules3.scm,v 4.23 90/01/18 22:44:09 GMT cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -486,13 +486,6 @@ MIT in each case. |#
 				      (? min) (? max) (? size))))
   (QUALIFIER (= type (ucode-type compiled-entry)))
   (cons-closure target procedure-label min max size true))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
-			(? min) (? max) (? size)))
-  (QUALIFIER (= type (ucode-type compiled-entry)))
-  (cons-closure target procedure-label min max size false))
 
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP generator.
