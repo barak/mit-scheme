@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.7 1987/05/29 17:53:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.8 1987/06/01 16:08:23 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.7 1987/05/29 17:53:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.8 1987/06/01 16:08:23 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -89,7 +89,8 @@ promotional, or sales literature without prior written consent from
     (let ((cell (rtl:make-fetch temp)))
       (let ((reference (rtl:make-fetch cell)))
 	(let ((n1 (rtl:make-assignment temp (rtl:make-variable-cache name)))
-	      (n2 (rtl:make-type-test reference (ucode-type reference-trap)))
+	      (n2 (rtl:make-type-test (rtl:make-object->type reference)
+				      (ucode-type reference-trap)))
 	      (n4 (rtl:make-assignment result reference))
 	      (n5 (rtl:make-interpreter-call:cache-reference cell safe?))
 	      (n6
@@ -105,9 +106,10 @@ promotional, or sales literature without prior written consent from
 		(pcfg-consequent-connect! n3 n4)
 		(pcfg-alternative-connect! n3 n5))
 	      (pcfg-consequent-connect! n2 n5))
-	  (make-scfg (cfg-entry-node n1)
-		     (hooks-union (scfg-next-hooks n4)
-				  (scfg-next-hooks n6))))))))
+	  (return-2 (make-scfg (cfg-entry-node n1)
+			       (hooks-union (scfg-next-hooks n4)
+					    (scfg-next-hooks n6)))
+		    (rtl:make-fetch result)))))))
 			      (hooks-union (scfg-next-hooks n3)
 (define-rvalue-generator temporary-tag
   (lambda (temporary)
@@ -169,10 +171,12 @@ promotional, or sales literature without prior written consent from
 	   (expression-value/simple (rtl:make-constant false)))
 	  ((ic-block? block)
 	   (expression-value/simple
-	    (let ((closure-block (procedure-closure-block procedure)))
-	      (if (ic-block? closure-block)
-		  (rtl:make-fetch register:environment)
-		  (closure-ic-locative closure-block block)))))
+	    (if compiler:cache-free-variables?
+		(rtl:make-constant false)
+		(let ((closure-block (procedure-closure-block procedure)))
+		  (if (ic-block? closure-block)
+		      (rtl:make-fetch register:environment)
+		      (closure-ic-locative closure-block block))))))
 	  ((closure-block? block)
 	   (let ((closure-block (procedure-closure-block procedure)))
 	     (define (loop variables)
@@ -189,7 +193,7 @@ promotional, or sales literature without prior written consent from
 	     (let ((pushes
 		    (let ((parent (block-parent block))
 			  (pushes (loop (block-bound-variables block))))
-		      (if parent
+		      (if (and parent (not compiler:cache-free-variables?))
 			  (cons (rtl:make-push
 				 (closure-ic-locative closure-block
 						      parent))
