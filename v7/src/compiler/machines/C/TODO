@@ -8,9 +8,13 @@
   runtime/make.scm was hacked specially.  Other systems will not work
   until this is done.
 
+* Edwin autoloads and load options.
+
 * Dynamic C loader!
 
 * Dynamic generation of ymake.cclist file.
+
+* Short documentation (how to compile files and add them to the microcode).
 
 RANDOM INFO:
   USE: 	setenv CMDOPT -DBAND_ALREADY_BUILT
