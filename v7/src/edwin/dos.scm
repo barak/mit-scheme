@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.42 1996/12/07 22:23:42 cph Exp $
+;;;	$Id: dos.scm,v 1.43 1997/01/05 23:46:13 cph Exp $
 ;;;
-;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -251,24 +251,16 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
    name))
 
 (define (win32/read-dired-files file all-files?)
-  (let loop
-      ((pathnames
-	(let ((pathnames (directory-read file #f)))
-	  (if all-files?
-	      pathnames
-	      (list-transform-positive pathnames
-		(let ((mask
-		       (fix:or nt-file-mode/hidden nt-file-mode/system)))
-		  (lambda (pathname)
-		    (fix:= (fix:and (file-modes pathname) mask) 0)))))))
-       (result '()))
-    (if (null? pathnames)
-	result
-	(loop (cdr pathnames)
-	      (let ((attr (file-attributes (car pathnames))))
-		(if attr
-		    (cons (cons (file-namestring (car pathnames)) attr) result)
-		    result))))))
+  (map (lambda (entry) (cons (->namestring (car entry)) (cdr entry)))
+       (let ((entries (directory-read file #f #t)))
+	 (if all-files?
+	     entries
+	     (list-transform-positive entries
+	       (let ((mask
+		      (fix:or nt-file-mode/hidden nt-file-mode/system)))
+		 (lambda (entry)
+		   (fix:= (fix:and (file-attributes/modes (cdr entry)) mask)
+			  0))))))))
 
 (define dired-pathname-wild?
   pathname-wild?)
