@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.39 2001/03/19 22:13:16 cph Exp $
+$Id: string.scm,v 14.40 2001/03/21 05:30:07 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -994,7 +994,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (cond ((string? xstring)
 	 (string-length xstring))
 	((external-string? xstring)
-	 (external-string-length string))
+	 (external-string-length xstring))
 	(else
 	 (error:wrong-type-argument xstring "xstring" 'XSTRING-LENGTH))))
 
