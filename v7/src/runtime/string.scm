@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.18 1999/04/07 04:05:07 cph Exp $
+$Id: string.scm,v 14.19 1999/04/07 21:46:04 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -280,20 +280,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (string-append . strings)
   (%string-append strings))
 
-(define (burst-string string delimiter)
+(define (burst-string string delimiter allow-runs?)
   (let ((end (string-length string)))
     (let loop ((start 0) (index 0) (result '()))
       (cond ((fix:= index end)
 	     (reverse!
-	      (if (fix:< start index)
-		  (cons (substring string start index) result)
-		  result)))
+	      (if (and allow-runs? (fix:= start index))
+		  result
+		  (cons (substring string start index) result))))
 	    ((char=? delimiter (string-ref string index))
 	     (loop (fix:+ index 1)
 		   (fix:+ index 1)
-		   (if (fix:< start index)
-		       (cons (substring string start index) result)
-		       result)))
+		   (if (and allow-runs? (fix:= start index))
+		       result
+		       (cons (substring string start index) result))))
 	    (else
 	     (loop start (fix:+ index 1) result))))))
 

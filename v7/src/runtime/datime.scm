@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.19 1999/04/07 04:47:01 cph Exp $
+$Id: datime.scm,v 14.20 1999/04/07 21:46:13 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -227,23 +227,39 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			       (- zone 1)
 			       zone)))
 			 "")))))
-
+
 (define (string->decoded-time string)
   ;; STRING must be in RFC-822 format.
-  (let ((tokens (burst-string string #\space)))
-    (if (not (fix:= 6 (length tokens)))
-	(error "Ill-formed RFC-822 time string:" string))
-    (let ((time (burst-string (list-ref tokens 4) #\:)))
-      (if (not (fix:= 3 (length time)))
-	  (error "Ill-formed RFC-822 time string:" string))
-      (make-decoded-time (string->number (caddr time))
-			 (string->number (cadr time))
-			 (string->number (car time))
-			 (string->number (list-ref tokens 1))
-			 (short-string->month (list-ref tokens 2))
-			 (string->number (list-ref tokens 3))
-			 (string->time-zone (list-ref tokens 5))))))
-
+  (let ((lose
+	 (lambda ()
+	   (error "Ill-formed RFC-822 time string:" string))))
+    (let ((tokens
+	   (let ((tokens (burst-string string #\space #t)))
+	     (case (length tokens)
+	       ((5) tokens)
+	       ((6)
+		(if (and (fix:= 4 (string-length (car tokens)))
+			 (char=? #\, (string-ref (car tokens) 3))
+			 (string-ci->index days-of-week/short-strings
+					   (substring (car tokens) 0 3)))
+		    (cdr tokens)
+		    (lose)))
+	       (else (lose))))))
+      (let ((time (burst-string (list-ref tokens 3) #\: #f)))
+	(if (not (fix:= 3 (length time)))
+	    (error "Ill-formed RFC-822 time string:" string))
+	(make-decoded-time (string->number (caddr time))
+			   (string->number (cadr time))
+			   (string->number (car time))
+			   (string->number (list-ref tokens 0))
+			   (short-string->month (list-ref tokens 1))
+			   (let ((n (string->number (list-ref tokens 2))))
+			     (and (exact-nonnegative-integer? n)
+				  (if (< n 100)
+				      (+ 1900 n)
+				      n)))
+			   (string->time-zone (list-ref tokens 4)))))))
+
 (define (time-zone->string tz)
   (if (not (time-zone? tz))
       (error:wrong-type-argument tz "time zone" 'TIME-ZONE->STRING))
@@ -255,20 +271,37 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (d2 (integer-divide-remainder qr))))))
 
 (define (string->time-zone string)
-  (let ((n (string->number string)))
-    (if (not (and (exact-integer? n)
-		  (<= -2400 n 2400)))
-	(error "Malformed time zone:" string))
-    (let ((qr (integer-divide (abs n) 100)))
-      (let ((hours (integer-divide-quotient qr))
-	    (minutes (integer-divide-remainder qr)))
-	(if (not (<= 0 minutes 59))
-	    (error "Malformed time zone:" string))
-	(let ((hours (+ hours (/ minutes 60))))
-	  (if (< n 0)
-	      hours
-	      (- hours)))))))
+  (let ((entry
+	 (list-search-positive named-time-zones
+	   (lambda (zone)
+	     (string-ci=? string (car zone))))))
+    (if entry
+	(cadr entry)
+	(let ((n (string->number string)))
+	  (if (not (and (exact-integer? n)
+			(<= -2400 n 2400)))
+	      (error "Malformed time zone:" string))
+	  (let ((qr (integer-divide (abs n) 100)))
+	    (let ((hours (integer-divide-quotient qr))
+		  (minutes (integer-divide-remainder qr)))
+	      (if (not (<= 0 minutes 59))
+		  (error "Malformed time zone:" string))
+	      (let ((hours (+ hours (/ minutes 60))))
+		(if (< n 0)
+		    hours
+		    (- hours)))))))))
 
+(define named-time-zones
+  '(("UT" 0)
+    ("GMT" 0)
+    ("EST" 5) ("EDT" 4) ("CST" 6) ("CDT" 5)
+    ("MST" 7) ("MDT" 6) ("PST" 8) ("PDT" 7)
+    ("A" 1) ("B" 2) ("C" 3) ("D" 4) ("E" 5) ("F" 6)
+    ("G" 7) ("H" 8) ("I" 9) ("K" 10) ("L" 11) ("M" 12)
+    ("N" -1) ("O" -2) ("P" -3) ("Q" -4) ("R" -5) ("S" -6)
+    ("T" -7) ("U" -8) ("V" -9) ("W" -10) ("X" -11) ("Y" -12)
+    ("Z" 0)))
+
 (define (month/max-days month)
   (guarantee-month month 'MONTH/MAX-DAYS)
   (vector-ref '#(31 29 31 30 31 30 31 31 30 31 30 31) (- month 1)))
@@ -277,23 +310,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (guarantee-month month 'MONTH/SHORT-STRING)
   (vector-ref month/short-strings (- month 1)))
 
-(define (short-string->month string)
-  (let loop ((index 0))
-    (if (fix:= index 12)
-	(error "Unknown month designation:" string))
-    (if (string-ci=? string (vector-ref month/short-strings index))
-	(fix:+ index 1)
-	(loop (fix:+ index 1)))))
-
-(define month/short-strings
-  '#("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
-
 (define (month/long-string month)
   (guarantee-month month 'MONTH/LONG-STRING)
-  (vector-ref '#("January" "February" "March" "April" "May" "June"
-			   "July" "August" "September" "October"
-			   "November" "December")
-	      (- month 1)))
+  (vector-ref month/long-strings (- month 1)))
 
 (define (guarantee-month month name)
   (if (not (exact-integer? month))
@@ -301,21 +320,60 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (not (<= 1 month 12))
       (error:bad-range-argument month name)))
 
+(define (short-string->month string)
+  (string->month month/short-strings string))
+
+(define (long-string->month string)
+  (string->month month/long-strings string))
+
+(define (string->month month-strings string)
+  (fix:+ 1
+	 (or (string-ci->index month-strings string)
+	     (error "Unknown month designation:" string))))
+
+(define month/short-strings
+  '#("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
+
+(define month/long-strings
+  '#("January" "February" "March" "April" "May" "June" "July" "August"
+	       "September" "October" "November" "December"))
+
 (define (day-of-week/short-string day)
   (guarantee-day-of-week day 'DAY-OF-WEEK/SHORT-STRING)
-  (vector-ref '#("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun") day))
+  (vector-ref days-of-week/short-strings day))
 
 (define (day-of-week/long-string day)
   (guarantee-day-of-week day 'DAY-OF-WEEK/LONG-STRING)
-  (vector-ref '#("Monday" "Tuesday" "Wednesday" "Thursday" "Friday"
-			  "Saturday" "Sunday")
-	      day))
+  (vector-ref days-of-week/long-strings day))
 
 (define (guarantee-day-of-week day name)
   (if (not (exact-integer? day))
       (error:wrong-type-argument day "day-of-week integer" name))
   (if (not (<= 0 day 6))
       (error:bad-range-argument day name)))
+
+(define (short-string->day-of-week string)
+  (string->day-of-week days-of-week/short-strings string))
+
+(define (long-string->day-of-week string)
+  (string->day-of-week days-of-week/long-strings string))
+
+(define (string->day-of-week string-vector string)
+  (or (string-ci->index string-vector string)
+      (error "Unknown day-of-week designation:" string)))
+
+(define days-of-week/short-strings
+  '#("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"))
+
+(define days-of-week/long-strings
+  '#("Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"))
+
+(define (string-ci->index string-vector string)
+  (let ((end (vector-length string-vector)))
+    (let loop ((index 0))
+      (cond ((fix:= index end) #f)
+	    ((string-ci=? string (vector-ref string-vector index)) index)
+	    (else (loop (fix:+ index 1)))))))
 
 ;; Upwards compatibility
 (define decode-universal-time universal-time->local-decoded-time)
