@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pack-edwin.scm,v 1.5 1992/11/23 21:38:03 gjr Exp $
+$Id: pack-edwin.scm,v 1.6 1993/08/22 17:51:49 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,6 +54,7 @@ MIT in each case. |#
 		    "paths.com"
 		    "struct.com"
 		    "grpops.com"
+		    "txtprp.com"
 		    "regops.com"
 		    "motion.com"
 		    "search.com"
@@ -119,6 +120,7 @@ MIT in each case. |#
 		    ;; "comint.com"
 		    ;; "compile.com"
 		    ;; "dabbrev.com"
+		    ;; "xcom.com"
 		    "debug.com"
 		    "dired.com"
 		    ;; "dirunx.com"
@@ -152,7 +154,6 @@ MIT in each case. |#
 		    "texcom.com"
 		    "wincom.com"
 		    "scrcom.com"
-		    ;; "xcom.com"
 		    "modefs.com"
 		    ;; "xmodef.com"
 		    "rename.com"
