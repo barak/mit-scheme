@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.35 1992/09/26 15:56:19 cph Exp $
+$Id: rules3.scm,v 4.36 1992/09/28 16:35:41 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -449,12 +449,8 @@ MIT in each case. |#
      (LAP (LDW () ,reg:stack-guard ,regnum:first-arg)
 	  (COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer
 		(@PCR ,gc-label))
-	  ;; I think the next two instructions could be interchanged,
-	  ;; allowing the NOP to be eliminated, but since I don't have
-	  ;; the PA-RISC programming manual here I can't be sure. -- CPH
-	  (LDW () ,reg:memtop ,regnum:memtop-pointer)
 	  (COMB (<=) ,regnum:stack-pointer ,regnum:first-arg (@PCR ,gc-label))
-	  (NOP ())))))
+	  (LDW () ,reg:memtop ,regnum:memtop-pointer)))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
