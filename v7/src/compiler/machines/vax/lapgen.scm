@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.1 1988/01/05 15:57:17 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.2 1988/01/13 19:26:26 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -327,10 +327,6 @@ MIT in each case. |#
 ;; These are the results of using bump-type on the corresponding values.
 (define-integrable reg:temp-type (INST-EA (@RO B 13 #x13)))
 (define-integrable reg:enclose-result-type (INST-EA (@RO B 13 #x17)))
-
-(define-integrable popper:apply-closure (INST-EA (@RO W 13 #x021C)))
-(define-integrable popper:apply-stack (INST-EA (@RO W 13 #x027C)))
-(define-integrable popper:value (INST-EA (@RO W 13 #x02DC)))
 
 (define (bump-type effective-address)
   (cond ((eq? (lap:ea-keyword effective-address) '@R)
