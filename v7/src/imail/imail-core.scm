@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.106 2000/06/20 19:44:53 cph Exp $
+;;; $Id: imail-core.scm,v 1.107 2000/06/20 19:45:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -651,6 +651,28 @@
 	((string? object) (string->header-fields object))
 	(else (error:wrong-type-argument object "header fields" #f))))
 
+(define (header-field-name? object)
+  (and (string? object)
+       (rfc822:header-field-name? object 0 (string-length object))))
+
+(define (header-field-value? object)
+  (and (string? object)
+       (let ((end (string-length object)))
+	 (let loop ((index 0))
+	   (let ((nl (substring-find-next-char object index end #\newline)))
+	     (or (not nl)
+		 (and (fix:< (fix:+ nl 1) end)
+		      (char-lwsp? (string-ref object (fix:+ nl 1)))
+		      (loop (fix:+ nl 2)))))))))
+
+(define (guarantee-header-field-name object procedure)
+  (if (not (header-field-name? object))
+      (error:wrong-type-argument object "header-field name" procedure)))
+
+(define (guarantee-header-field-value object procedure)
+  (if (not (header-field-value? object))
+      (error:wrong-type-argument object "header-field value" procedure)))
+
 (define (get-first-header-field headers name error?)
   (let loop ((headers (->header-fields headers)))
     (cond ((pair? headers)
@@ -691,28 +713,6 @@
 	 (string-trim (header-field-value header)))
        (get-all-header-fields headers name)))
 
-(define (header-field-name? object)
-  (and (string? object)
-       (rfc822:header-field-name? object 0 (string-length object))))
-
-(define (header-field-value? object)
-  (and (string? object)
-       (let ((end (string-length object)))
-	 (let loop ((index 0))
-	   (let ((nl (substring-find-next-char object index end #\newline)))
-	     (or (not nl)
-		 (and (fix:< (fix:+ nl 1) end)
-		      (char-lwsp? (string-ref object (fix:+ nl 1)))
-		      (loop (fix:+ nl 2)))))))))
-
-(define (guarantee-header-field-name object procedure)
-  (if (not (header-field-name? object))
-      (error:wrong-type-argument object "header-field name" procedure)))
-
-(define (guarantee-header-field-value object procedure)
-  (if (not (header-field-value? object))
-      (error:wrong-type-argument object "header-field value" procedure)))
-
 (define (header-field->lines header)
   (let ((lines (string->lines (header-field-value header))))
     (cons (string-append (header-field-name header) ":" (car lines))
