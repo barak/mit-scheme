@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.138 1996/05/15 19:10:52 cph Exp $
+;;;	$Id: fileio.scm,v 1.139 1996/12/24 22:33:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -690,39 +690,50 @@ Otherwise, a message is written both before and after long file writes."
        truename
        (file-exists? truename)
        (os/backup-buffer? truename)
-       (catch-file-errors
-	(lambda () false)
-	(lambda ()
-	  (with-values (lambda () (os/buffer-backup-pathname truename buffer))
-	    (lambda (backup-pathname targets)
-	      (let ((modes
-		     (catch-file-errors
-		      (lambda ()
-			(let ((filename (os/default-backup-filename)))
-			  (temporary-message
-			   "Cannot write backup file; backing up in "
-			   filename)
-			  (copy-file truename filename)
-			  false))
-		      (lambda ()
-			(if (or (ref-variable file-precious-flag buffer)
-				(ref-variable backup-by-copying buffer)
-				(os/backup-by-copying? truename buffer))
-			    (begin
-			      (copy-file truename backup-pathname)
-			      false)
-			    (begin
-			      (delete-file-no-errors backup-pathname)
-			      (rename-file truename backup-pathname)
-			      (file-modes backup-pathname)))))))
-		(set-buffer-backed-up?!
-		 buffer
-		 (not (memv backup-mode '(BACKUP-NEXT BACKUP-BOTH))))
-		(if (and (not (null? targets))
-			 (or (ref-variable trim-versions-without-asking buffer)
-			     (prompt-for-confirmation?
-			      (string-append
-			       "Delete excess backup versions of "
-			       (->namestring (buffer-pathname buffer))))))
-		    (for-each delete-file-no-errors targets))
-		modes)))))))
+       (let ((truename (file-chase-links truename)))
+	 (catch-file-errors
+	  (lambda () false)
+	  (lambda ()
+	    (call-with-values
+		(lambda () (os/buffer-backup-pathname truename buffer))
+	      (lambda (backup-pathname targets)
+		(let ((modes
+		       (catch-file-errors
+			(lambda ()
+			  (let ((filename (os/default-backup-filename)))
+			    (temporary-message
+			     "Cannot write backup file; backing up in "
+			     filename)
+			    (copy-file truename filename)
+			    false))
+			(lambda ()
+			  (if (or (ref-variable file-precious-flag buffer)
+				  (ref-variable backup-by-copying buffer)
+				  (os/backup-by-copying? truename buffer))
+			      (begin
+				(copy-file truename backup-pathname)
+				false)
+			      (begin
+				(delete-file-no-errors backup-pathname)
+				(rename-file truename backup-pathname)
+				(file-modes backup-pathname)))))))
+		  (set-buffer-backed-up?!
+		   buffer
+		   (not (memv backup-mode '(BACKUP-NEXT BACKUP-BOTH))))
+		  (if (and (not (null? targets))
+			   (or (ref-variable trim-versions-without-asking
+					     buffer)
+			       (prompt-for-confirmation?
+				(string-append
+				 "Delete excess backup versions of "
+				 (->namestring (buffer-pathname buffer))))))
+		      (for-each delete-file-no-errors targets))
+		  modes))))))))
+
+(define (file-chase-links pathname)
+  (let ((contents (file-symbolic-link? pathname)))
+    (if contents
+	(file-chase-links
+	 (pathname-simplify
+	  (merge-pathnames contents (directory-pathname pathname))))
+	pathname)))
