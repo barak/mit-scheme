@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.cmn,v 1.9 1996/10/03 04:19:53 cph Exp $
+###	$Id: makefile.cmn,v 1.10 1997/06/15 03:43:43 cph Exp $
 ###
-###	Copyright (c) 1994-96 Massachusetts Institute of Technology
+###	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -48,7 +48,8 @@ USER_LIBS =
 
 SCHEME_SOURCES = $(USER_PRIM_SOURCES) missing.c
 SCHEME_OBJECTS = $(USER_PRIM_OBJECTS) missing.$(OBJ)
-SCHEME_LIB = $(USER_LIBS) so32dll.lib tcp32dll.lib gdbm.lib
+SCHEME_LIB = $(USER_LIBS) so32dll.lib tcp32dll.lib \
+	gdbm.lib md5.lib blowfish.lib
 
 CORE_SOURCES = \
 $(MACHINE_SOURCES) \
@@ -179,7 +180,9 @@ bchpur.$(OBJ) \
 bchutl.$(OBJ)
 
 OS_PRIM_SOURCES = \
+prbfish.c \
 prgdbm.c \
+prmd5.c \
 prosenv.c \
 prosfile.c \
 prosfs.c \
@@ -194,7 +197,9 @@ pros2pm.c
 # prospty.c
 
 OS_PRIM_OBJECTS = \
+prbfish.$(OBJ) \
 prgdbm.$(OBJ) \
+prmd5.$(OBJ) \
 prosenv.$(OBJ) \
 prosfile.$(OBJ) \
 prosfs.$(OBJ) \
