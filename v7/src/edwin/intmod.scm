@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.63 1993/08/12 08:27:34 cph Exp $
+;;;	$Id: intmod.scm,v 1.64 1993/09/02 18:45:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -766,18 +766,20 @@ If this is an error, the debugger examines the error condition."
 (define read-expression
   (let ((empty (cons '() '())))
     (lambda (port level)
-      (let ((queue (port/expression-queue port)))
-	(let ((mode (ref-mode-object inferior-repl))
-	      (ready? (lambda (port) (not (queue-empty? queue)))))
-	  (let loop ()
-	    (let ((element (dequeue! queue empty)))
-	      (if (eq? element empty)
-		  (begin
-		    (wait-for-input port level mode ready?)
-		    (loop))
-		  (begin
-		    (set-port/current-queue-element! port element)
-		    (car element))))))))))
+      (let ((queue (port/expression-queue port))
+	    (mode (ref-mode-object inferior-repl))
+	    (ready?
+	     (lambda (port)
+	       (not (queue-empty? (port/expression-queue port))))))
+	(let loop ()
+	  (let ((element (dequeue! queue empty)))
+	    (if (eq? element empty)
+		(begin
+		  (wait-for-input port level mode ready?)
+		  (loop))
+		(begin
+		  (set-port/current-queue-element! port element)
+		  (car element)))))))))
 
 (define (operation/current-expression-context port expression)
   (let ((element (port/current-queue-element port)))
