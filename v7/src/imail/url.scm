@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.10 2001/11/05 21:05:56 cph Exp $
+$Id: url.scm,v 1.11 2001/11/05 21:32:40 cph Exp $
 
 Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 
@@ -23,7 +23,6 @@ USA.
 ;;;; URL Encoding
 
 (declare (usual-integrations))
-(load-option '*PARSER)
 
 (define url:char-set:safe (string->char-set "$-_.+"))
 (define url:char-set:extra (string->char-set "!*'(),"))
