@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.5 1988/08/05 20:49:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.6 1988/08/26 22:53:47 jrm Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -364,11 +364,12 @@ MIT in each case. |#
   (if (symbol? name-or-pattern)
       (syntax-bindings pattern-or-first
 	(lambda (names values)
-	  (make-letrec (list name-or-pattern)
-		       (list (make-named-lambda name-or-pattern names
-						(syntax-sequence rest)))
-		       (make-combination (make-variable name-or-pattern)
-					 values))))
+	  (make-combination
+	   (make-letrec (list name-or-pattern)
+			(list (make-named-lambda name-or-pattern names
+						 (syntax-sequence rest)))
+			(make-variable name-or-pattern))
+	   values)))
       (syntax-bindings name-or-pattern
 	(lambda (names values)
 	  (make-closed-block
