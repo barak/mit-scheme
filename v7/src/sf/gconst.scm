@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.14 1992/11/08 04:23:45 jinx Exp $
+$Id: gconst.scm,v 4.15 1992/12/02 19:36:26 cph Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -43,6 +43,10 @@ MIT in each case. |#
 
 (define global-constant-objects
   '(
+    %RECORD
+    %RECORD-LENGTH
+    %RECORD-REF
+    %RECORD-SET!
     *THE-NON-PRINTING-OBJECT*
     ASCII->CHAR
     BIT-STRING->UNSIGNED-INTEGER

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.48 1992/11/18 00:47:21 gjr Exp $
+$Id: opncod.scm,v 4.49 1992/12/02 19:34:48 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -612,6 +612,19 @@ MIT in each case. |#
 		false)
 	(values false false false))))
 
+(define-open-coder/value '%RECORD
+  (lambda (operands)
+    (if (< 1 (length operands) 32)
+	(values (lambda (combination expressions finish)
+		  combination
+		  (finish
+		   (rtl:make-typed-cons:vector
+		    (rtl:make-machine-constant (ucode-type record))
+		    expressions)))
+		(all-operand-indices operands)
+		false)
+	(values false false false))))
+
 (define (all-operand-indices operands)
   (let loop ((operands operands) (index 0))
     (if (null? operands)
@@ -663,6 +676,7 @@ MIT in each case. |#
 	    internal-close-coding-for-type-checks)))))
   (user-ref 'CELL-CONTENTS rtl:make-fetch (ucode-type cell) 0)
   (user-ref 'VECTOR-LENGTH rtl:length-fetch (ucode-type vector) 0)
+  (user-ref '%RECORD-LENGTH rtl:length-fetch (ucode-type record) 0)
   (user-ref 'SYSTEM-VECTOR-SIZE rtl:vector-length-fetch false 0)
   (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
   (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
@@ -696,6 +710,7 @@ MIT in each case. |#
 	    '(0 1)
 	    internal-close-coding-for-type-or-range-checks)))))
   (make-ref 'VECTOR-REF (ucode-type vector))
+  (make-ref '%RECORD-REF (ucode-type record))
   (make-ref 'SYSTEM-VECTOR-REF false))
 
 (define-open-coder/value 'PRIMITIVE-OBJECT-REF
@@ -707,9 +722,9 @@ MIT in each case. |#
    '(0 1)
    false))
 
-;; For now SYSTEM-XXXX side effect procedures are considered
-;; dangerous to the garbage collector's health.  Some day we will
-;; again be able to enable them.
+;; For now SYSTEM-XXXX side effect procedures are considered dangerous
+;; to the garbage collector's health.  Some day we will again be able
+;; to enable them.
 
 (let ((fixed-assignment
        (lambda (name type index)
@@ -751,9 +766,8 @@ MIT in each case. |#
 	    '(0 1 2)
 	    internal-close-coding-for-type-or-range-checks)))))
   (make-assignment 'VECTOR-SET! (ucode-type vector))
-  #|
-  (make-assignment 'SYSTEM-VECTOR-SET! false)
-  |#)
+  (make-assignment '%RECORD-SET! (ucode-type record))
+  #|(make-assignment 'SYSTEM-VECTOR-SET! false)|#)
 
 (define-open-coder/effect 'PRIMITIVE-OBJECT-SET!
   (simple-open-coder
