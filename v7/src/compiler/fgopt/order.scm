@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: order.scm,v 4.19 2003/02/14 18:28:01 cph Exp $
+$Id: order.scm,v 4.20 2004/11/19 04:28:39 cph Exp $
 
-Copyright (c) 1988-1990, 1999, 2000 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,2000,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -225,7 +225,7 @@ USA.
 	     (stack-block? (procedure-block model))
 	     (or (procedure-always-known-operator? model)
 		 (not (procedure-rest model))))
-	(let ((n-unassigned
+	(let ((n-defaulted
 	       (let ((n-supplied (length (cdr subproblems)))
 		     (n-required
 		      (length (cdr (procedure-original-required model)))))
@@ -247,13 +247,13 @@ USA.
 			     n-expected))
 		   (- n-expected n-supplied))))
 	      (parallel (application-parallel-node combination)))
-	  (if (positive? n-unassigned)
+	  (if (positive? n-defaulted)
 	      (set-parallel-subproblems!
 	       parallel
 	       (append! subproblems
-			(make-unassigned-subproblems
+			(make-defaulted-subproblems
 			 (combination/context combination)
-			 n-unassigned
+			 n-defaulted
 			 '()))))
 	  (let ((parameters
 		 (append (cdr (procedure-original-required model))
@@ -337,13 +337,13 @@ USA.
 	(update-subproblem-contexts! context operator)
 	(values (cons operator effect) push))))
 
-(define (make-unassigned-subproblems context n rest)
-  (let ((unassigned (make-constant (make-unassigned-reference-trap))))
+(define (make-defaulted-subproblems context n rest)
+  (let ((default (make-constant (default-object))))
     (let loop ((n n) (rest rest))
       (if (zero? n)
 	  rest
 	  (loop (-1+ n)
-		(cons (new-subproblem context unassigned) rest))))))
+		(cons (new-subproblem context default) rest))))))
 
 (define (new-subproblem context rvalue)
   (let ((subproblem
