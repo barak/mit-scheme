@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.40 2001/05/18 00:56:43 cph Exp $
+;;; $Id: imail-summary.scm,v 1.41 2001/05/18 01:04:02 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -252,7 +252,7 @@ SUBJECT is a string of regexps separated by commas."
 	    (lambda ()
 	      (region-delete! (buffer-region buffer))
 	      (fill-imail-summary-buffer! buffer
-
+					  folder
 					  (buffer-get buffer
 						      'IMAIL-SUMMARY-PREDICATE
 						      #f))))
