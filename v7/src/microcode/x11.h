@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.6 1990/07/24 22:16:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.7 1990/08/16 19:23:35 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -36,6 +36,7 @@ MIT in each case. */
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
 #include <X11/Xutil.h>
+#include "ansidecl.h"
 
 struct allocation_table
 {
@@ -124,8 +125,8 @@ extern int x_debug;
 extern int x_allocate_table_index ();
 extern char * x_allocation_item_arg ();
 extern int x_allocation_index_arg ();
-extern char * x_malloc ();
-extern char * x_realloc ();
+extern PTR EXFUN (x_malloc, (unsigned int size));
+extern PTR EXFUN (x_realloc, (PTR ptr, unsigned int size));
 extern unsigned long x_decode_color ();
 extern char * x_get_default ();
 extern unsigned long x_default_color ();
@@ -138,11 +139,11 @@ extern Display * x_close_window ();
 extern void x_close_display ();
 extern void xw_enqueue_event ();
 extern int xw_dequeue_event ();
-extern Boolean x_distribute_events ();
+extern int x_distribute_events ();
 extern void xw_wait_for_window_event ();
 extern int check_button ();
-extern Boolean x_process_events ();
-extern Boolean x_wait_for_event ();
+extern int x_process_events ();
+extern int x_wait_for_event ();
 
 #define DISPLAY_ARG(arg)						\
   ((Display *) (x_allocation_item_arg (arg, (& x_display_table))))
