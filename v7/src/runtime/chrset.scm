@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.8 1999/01/02 06:11:34 cph Exp $
+$Id: chrset.scm,v 14.9 2000/04/11 18:17:49 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,14 +29,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (fix:= (string-length object) 256)
        (not (string-find-next-char-in-set object char-set:not-01))))
 
+(define (guarantee-char-set object procedure)
+  (if (not (char-set? object))
+      (error:wrong-type-argument object "character set" procedure)))
+
 (define (char-set . chars)
   (chars->char-set chars))
 
 (define (chars->char-set chars)
   (let ((char-set (string-allocate 256)))
     (vector-8b-fill! char-set 0 256 0)
-    (for-each (lambda (char) (vector-8b-set! char-set (char->ascii char) 1))
-	      chars)
+    (for-each
+     (lambda (char)
+       (vector-8b-set! char-set
+		       (let ((code (char->integer char)))
+			 (if (fix:>= code (string-length char-set))
+			     (error:bad-range-argument chars 'CHARS->CHAR-SET))
+			     code)
+		       1))
+     chars)
     char-set))
 
 (define (string->char-set string)
@@ -59,42 +70,47 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (let loop ((code 0))
       (if (fix:< code 256)
 	  (begin (vector-8b-set! char-set code
-				 (if (predicate (ascii->char code)) 1 0))
+				 (if (predicate (integer->char code)) 1 0))
 		 (loop (fix:+ code 1)))))
     char-set))
 
 (define (char-set-members char-set)
-  (define (loop code)
+  (guarantee-char-set char-set 'CHAR-SET-MEMBERS)
+  (let loop ((code 0))
     (cond ((fix:>= code 256) '())
 	  ((fix:zero? (vector-8b-ref char-set code)) (loop (fix:+ code 1)))
-	  (else (cons (ascii->char code) (loop (fix:+ code 1))))))
-  (loop 0))
+	  (else (cons (integer->char code) (loop (fix:+ code 1)))))))
 
 (define (char-set-member? char-set char)
-  (let ((ascii (char-ascii? char)))
-    (and ascii (not (fix:zero? (vector-8b-ref char-set ascii))))))
+  (guarantee-char-set char-set 'CHAR-SET-MEMBER?)
+  (let ((code (char->integer char)))
+    (and (fix:< code (string-length char-set))
+	 (not (fix:zero? (vector-8b-ref char-set code))))))
 
 (define (char-set-invert char-set)
   (predicate->char-set
-   (lambda (char) (not (char-set-member? char-set char)))))
+   (lambda (char)
+     (not (char-set-member? char-set char)))))
 
-(define (char-set-union char-set-1 char-set-2)
+(define (char-set-union . char-sets)
   (predicate->char-set
    (lambda (char)
-     (or (char-set-member? char-set-1 char)
-	 (char-set-member? char-set-2 char)))))
+     (there-exists? char-sets
+       (lambda (char-set)
+	 (char-set-member? char-set char))))))
 
-(define (char-set-intersection char-set-1 char-set-2)
+(define (char-set-intersection . char-sets)
   (predicate->char-set
    (lambda (char)
-     (and (char-set-member? char-set-1 char)
-	  (char-set-member? char-set-2 char)))))
+     (for-all? char-sets
+       (lambda (char-set)
+	 (char-set-member? char-set char))))))
 
-(define (char-set-difference char-set-1 char-set-2)
+(define (char-set-difference include exclude)
   (predicate->char-set
    (lambda (char)
-     (and (char-set-member? char-set-1 char)
-	  (not (char-set-member? char-set-2 char))))))
+     (and (char-set-member? include char)
+	  (not (char-set-member? exclude char))))))
 
 ;;;; System Character Sets
 
