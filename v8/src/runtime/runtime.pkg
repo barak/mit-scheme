@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.125 1991/11/04 20:29:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.126 1991/11/05 20:37:11 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1389,6 +1389,7 @@ MIT in each case. |#
 	  file-namestring
 	  file-pathname
 	  host-namestring
+	  host=?
 	  host?
 	  init-file-pathname
 	  local-host
@@ -1412,6 +1413,7 @@ MIT in each case. |#
 	  pathname-new-name
 	  pathname-new-type
 	  pathname-new-version
+	  pathname-simplify
 	  pathname-type
 	  pathname-version
 	  pathname-wild?

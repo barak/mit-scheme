@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wrkdir.scm,v 14.3 1991/11/04 20:30:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wrkdir.scm,v 14.4 1991/11/05 20:37:28 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ MIT in each case. |#
 
 (define (reset!)
   (let ((pathname
-	 (simplify-directory
+	 (pathname-simplify
 	  (pathname-as-directory
 	   ((ucode-primitive working-directory-pathname))))))
     (set! *working-directory-pathname* pathname)
@@ -63,7 +63,7 @@ MIT in each case. |#
 	  (merge-pathnames name *working-directory-pathname*))))
     (if (not (file-directory? pathname))
 	(error "Not a valid directory:" pathname))
-    (let ((pathname (simplify-directory pathname)))
+    (let ((pathname (pathname-simplify pathname)))
       (if (eq? *default-pathname-defaults* *working-directory-pathname*)
 	  (set! *default-pathname-defaults* pathname))
       (set! *working-directory-pathname* pathname)
@@ -86,30 +86,3 @@ MIT in each case. |#
 		  (lambda ()
 		    (set! name (working-directory-pathname))
 		    (set-working-directory-pathname! old-pathname)))))
-
-(define (simplify-directory pathname)
-  (or (and (implemented-primitive-procedure? (ucode-primitive file-eq? 2))
-	   (let ((directory (pathname-directory pathname)))
-	     (and (pair? directory)
-		  (let ((directory*
-			 (cons (car directory)
-			       (reverse!
-				(let loop
-				    ((elements (reverse (cdr directory))))
-				  (if (null? elements)
-				      '()
-				       (let ((head (car elements))
-					     (tail (loop (cdr elements))))
-					 (if (and (eq? head 'UP)
-						  (not (null? tail))
-						  (not (eq? (car tail) 'UP)))
-					     (cdr tail)
-					     (cons head tail)))))))))
-		    (and (not (equal? directory directory*))
-			 (let ((pathname*
-				(pathname-new-directory pathname directory*)))
-			   (and ((ucode-primitive file-eq? 2)
-				 (->namestring pathname)
-				 (->namestring pathname*))
-				pathname*)))))))
-      pathname))

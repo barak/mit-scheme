@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.7 1991/11/04 20:30:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.8 1991/11/05 20:37:21 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -37,8 +37,9 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (make-unix-host-type)
-  (make-host-type 'UNIX
+(define (make-unix-host-type index)
+  (make-host-type index
+		  'UNIX
 		  unix/parse-namestring
 		  unix/pathname->namestring
 		  unix/make-pathname
@@ -47,7 +48,8 @@ MIT in each case. |#
 		  unix/directory-pathname-as-file
 		  unix/pathname->truename
 		  unix/user-homedir-pathname
-		  unix/init-file-pathname))
+		  unix/init-file-pathname
+		  unix/pathname-simplify))
 
 ;;;; Pathname Parser
 
@@ -262,3 +264,30 @@ MIT in each case. |#
 	 (merge-pathnames ".scheme.init" (unix/user-homedir-pathname host))))
     (and (file-exists? pathname)
 	 pathname)))
+
+(define (unix/pathname-simplify pathname)
+  (or (and (implemented-primitive-procedure? (ucode-primitive file-eq? 2))
+	   (let ((directory (pathname-directory pathname)))
+	     (and (pair? directory)
+		  (let ((directory*
+			 (cons (car directory)
+			       (reverse!
+				(let loop
+				    ((elements (reverse (cdr directory))))
+				  (if (null? elements)
+				      '()
+				       (let ((head (car elements))
+					     (tail (loop (cdr elements))))
+					 (if (and (eq? head 'UP)
+						  (not (null? tail))
+						  (not (eq? (car tail) 'UP)))
+					     (cdr tail)
+					     (cons head tail)))))))))
+		    (and (not (equal? directory directory*))
+			 (let ((pathname*
+				(pathname-new-directory pathname directory*)))
+			   (and ((ucode-primitive file-eq? 2)
+				 (->namestring pathname)
+				 (->namestring pathname*))
+				pathname*)))))))
+      pathname))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.17 1991/11/05 02:43:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.18 1991/11/05 20:37:02 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -154,7 +154,7 @@ these rules:
 (define (pathname=? x y)
   (let ((x (->pathname x))
 	(y (->pathname y)))
-    (and (eq? (%pathname-host x) (%pathname-host y))
+    (and (host=? (%pathname-host x) (%pathname-host y))
 	 (equal? (%pathname-device x) (%pathname-device y))
 	 (equal? (%pathname-directory x) (%pathname-directory y))
 	 (equal? (%pathname-name x) (%pathname-name y))
@@ -169,6 +169,10 @@ these rules:
 (define (pathname-wild? pathname)
   (let ((pathname (->pathname pathname)))
     ((host-operation/pathname-wild? (%pathname-host pathname)) pathname)))
+
+(define (pathname-simplify pathname)
+  (let ((pathname (->pathname pathname)))
+    ((host-operation/pathname-simplify (%pathname-host pathname)) pathname)))
 
 (define (directory-pathname pathname)
   (let ((pathname (->pathname pathname)))
@@ -298,7 +302,7 @@ these rules:
     (cond ((string? namestring)
 	   ((host-operation/parse-namestring host) namestring host))
 	  ((pathname? namestring)
-	   (if (not (eq? host (pathname-host namestring)))
+	   (if (not (host=? host (pathname-host namestring)))
 	       (error:bad-range-argument namestring 'PARSE-NAMESTRING))
 	   namestring)
 	  (else
@@ -329,7 +333,7 @@ these rules:
 	      *default-pathname-defaults*)))
     (let ((pathname (enough-pathname pathname defaults)))
       (let ((namestring (pathname->namestring pathname)))
-	(if (eq? (%pathname-host pathname) (%pathname-host defaults))
+	(if (host=? (%pathname-host pathname) (%pathname-host defaults))
 	    namestring
 	    (string-append (host-namestring pathname) namestring))))))
 
@@ -350,7 +354,7 @@ these rules:
      (or (%pathname-host pathname) (%pathname-host defaults))
      (or (%pathname-device pathname)
 	 (and (%pathname-host pathname)
-	      (eq? (%pathname-host pathname) (%pathname-host defaults))
+	      (host=? (%pathname-host pathname) (%pathname-host defaults))
 	      (%pathname-device defaults)))
      (let ((directory (%pathname-directory pathname))
 	   (default (%pathname-directory defaults)))
@@ -383,14 +387,14 @@ these rules:
 		  component))))
       (make-pathname
        (and (or (symbol? (%pathname-host pathname))
-		(not (eq? (%pathname-host pathname)
-			  (%pathname-host defaults))))
+		(not (host=? (%pathname-host pathname)
+			     (%pathname-host defaults))))
 	    (%pathname-host pathname))
        (let ((device (%pathname-device pathname)))
 	 (and (or (symbol? device)
 		  (not (equal? device (%pathname-device defaults)))
-		  (not (eq? (%pathname-host pathname)
-			    (%pathname-host defaults))))
+		  (not (host=? (%pathname-host pathname)
+			       (%pathname-host defaults))))
 	      device))
        (let ((directory (%pathname-directory pathname))
 	     (default (%pathname-directory defaults)))
@@ -421,9 +425,8 @@ these rules:
 (define host-types)
 (define local-host)
 
-(define-structure (host-type
-		   (constructor %make-host-type)
-		   (conc-name host-type/))
+(define-structure (host-type (conc-name host-type/))
+  (index false read-only true)
   (name false read-only true)
   (operation/parse-namestring false read-only true)
   (operation/pathname->namestring false read-only true)
@@ -433,35 +436,25 @@ these rules:
   (operation/directory-pathname-as-file false read-only true)
   (operation/pathname->truename false read-only true)
   (operation/user-homedir-pathname false read-only true)
-  (operation/init-file-pathname false read-only true))
-
-(define (make-host-type name . operations)
-  (let ((type (apply %make-host-type name operations)))
-    (let loop ((types host-types))
-      (cond ((null? types)
-	     (set! host-types (cons type host-types)))
-	    ((eq? name (host-type/name (car types)))
-	     (set-car! types type))
-	    (else
-	     (loop (cdr types)))))
-    type))
+  (operation/init-file-pathname false read-only true)
+  (operation/pathname-simplify false read-only true))
 
 (define-structure (host
 		   (named (string->symbol "#[(runtime pathname)host]"))
 		   (constructor %make-host)
 		   (conc-name host/))
-  (type-name false read-only true)
+  (type-index false read-only true)
   (name false read-only true))
 
 (define (make-host type name)
-  (%make-host (host-type/name type) name))
+  (%make-host (host-type/index type) name))
 
 (define (host/type host)
-  (let ((name (host/type-name host)))
-    (let loop ((types host-types))
-      (cond ((null? types) (error "Unknown host type:" host))
-	    ((eq? name (host/type-name (car types))) (car types))
-	    (else (loop (cdr types)))))))
+  (vector-ref host-types (host/type-index host)))
+
+(define (host=? x y)
+  (and (= (host/type-index x) (host/type-index y))
+       (equal? (host/name x) (host/name y))))
 
 (define (guarantee-host host operation)
   (if (not (host? host))
@@ -494,6 +487,9 @@ these rules:
 
 (define (host-operation/init-file-pathname host)
   (host-type/operation/init-file-pathname (host/type host)))
+
+(define (host-operation/pathname-simplify host)
+  (host-type/operation/pathname-simplify (host/type host)))
 
 ;;;; File System Stuff
 
@@ -560,8 +556,9 @@ these rules:
   (add-event-receiver! event:after-restore reset-package!))
 
 (define (reset-package!)
-  (set! host-types '())
-  (set! local-host (make-host (make-unix-host-type) false))
+  (let ((unix-host-type (make-unix-host-type 0)))
+    (set! host-types (vector unix-host-type))
+    (set! local-host (make-host unix-host-type false)))
   (set! *default-pathname-defaults*
 	(make-pathname local-host false false false false false))
   (set! library-directory-path
