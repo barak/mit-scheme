@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm1.scm,v 1.1 1992/02/13 03:15:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm1.scm,v 1.2 1992/02/13 03:34:35 jinx Exp $
 $MC68020-Header: dassm1.scm,v 4.15 90/07/12 16:42:39 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -205,9 +205,9 @@ MIT in each case. |#
     (let ((kind (integer-divide-quotient descriptor))
 	  (length (integer-divide-remainder descriptor)))
 
-      (define (write-caches size writer)
-	(let loop ((index (1+ index))
-		   (how-many (quotient length size)))
+      (define (write-caches offset size writer)
+	(let loop ((index (1+ (+ offset index)))
+		   (how-many (quotient (- length offset) size)))
 	  (if (zero? how-many)
 	      'DONE
 	      (begin
@@ -226,17 +226,20 @@ MIT in each case. |#
 	 (write field)
 	 (write-string "]")))
        (case kind
-	 ((0)
+	 ((0 3)
 	  (write-caches
+	   compiled-code-block/procedure-cache-offset
 	   compiled-code-block/objects-per-procedure-cache
 	   disassembler/write-procedure-cache))
 	 ((1)
 	  (write-caches
+	   0
 	   compiled-code-block/objects-per-variable-cache
 	  (lambda (block index)
 	    (disassembler/write-variable-cache "Reference" block index))))
 	 ((2)
 	  (write-caches
+	   0
 	   compiled-code-block/objects-per-variable-cache
 	  (lambda (block index)
 	    (disassembler/write-variable-cache "Assignment" block index))))
