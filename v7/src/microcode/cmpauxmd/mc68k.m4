@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.4 1989/11/21 23:32:09 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.5 1989/11/23 19:51:10 jinx Exp $
 ###
 ###	Copyright (c) 1989 Massachusetts Institute of Technology
 ###
@@ -36,7 +36,7 @@
 ###	thereof in any advertising, promotional, or sales literature
 ###	without prior written consent from MIT in each case.
 ###
-
+
 #### 68K assembly language (HP/Motorola Syntax) part of the compiled
 #### code interface. See cmpint.c, cmpint-mc68k.h,  and cmpgc.h for
 #### more documentation.
@@ -44,14 +44,16 @@
 #### NOTE:
 ####	Assumptions:
 ####
-####	1) The C compiler divides registers into two groups:
-####	- super temporaries, which are not preserved accross procedure
-####	calls and can always be used. On MC68K: a0, a1, d0, d1
-####	- preserved registers which are saved by the callee if they are
-####	written. On MC68K: all others except linkage registers (a6, sp)
-####
-####	2) All registers (except double floating point registers) and/or
+####	1) All registers (except double floating point registers) and
 ####	stack locations hold a C long object.
+####
+####	2) The C compiler divides registers into three groups:
+####	- Linkage registers, used for procedure calls and global
+####	references.  On MC68K: a6, sp.
+####	- super temporaries, not preserved accross procedure calls and
+####	always usable. On MC68K: a0, a1, d0, d1
+####	- preserved registers saved by the callee if they are written.
+####	On MC68K: all others.
 ####
 ####	3) Arguments, if passed on a stack, are popped by the caller
 ####	or by the procedure return instruction (as on the VAX).  Thus
@@ -60,16 +62,37 @@
 ####	4) There is a hardware or software maintained stack for
 ####	control.  The procedure calling sequence may leave return
 ####	addresses in registers, but they must be saved somewhere for
-####	multiple calls or recursive procedures.  On MC68K: saved on
+####	nested calls and recursive procedures.  On MC68K: saved on
 ####    the stack.
 ####
-####	5) C procedures return values in a super temporary register.
-####    On MC68: d0
+####	5) C procedures return long values in a super temporary
+####    register.  Two word structures are returned in super temporary
+####    registers as well.  On MC68K: d0 is used for long returns.  GCC
+####    returns two word structures in d0/d1, but many other compilers
+####    return the address of the structure in a0.  The code below
+####    must be changed if structures are not returned in d0/d1.
 ####
-####    6) The following code is compatible with gcc on the MC68K but
-####    not (necessarily) other compilers.  GCC returns structures
-####    that fit in 64 bits or less in d0/d1.  Many other compilers
-####    return a pointer to the structure instead.
+####	6) Floating point registers are not preserved by this
+####	interface.  The interface is only called from the Scheme
+####	interpreter, which does not use floating point data.  Thus
+####	although the calling convention would require us to preserve
+####	them, they contain garbage.
+####
+#### Compiled Scheme code uses the following register convention:
+####	- a7 (sp) contains the Scheme stack pointer, not the C stack
+####	pointer.
+####	- a6 (fp) contains a pointer to the Scheme interpreter's
+####	"register" block.  This block contains the compiler's copy of
+####	MemTop, the interpreter's registers (val, env, exp, etc),
+####	temporary locations for compiled code, and the mechanism used
+####	to invoke the hooks in this file.
+####	- a5 contains the Scheme free pointer.
+####	- a4 contains the dynamic link when needed.
+####	- d7 contains the Scheme datum mask.
+####
+####	All other registers are available to the compiler.  A
+####	caller-saves convention is used, so the registers need not be
+####	preserved by subprocedures.
 
 ####	Utility macros and definitions
 
@@ -86,26 +109,45 @@ define(define_debugging_label,
 `	global	$1
 $1:')
 
+# Scheme object representation.  Must match object.h
+
+define(HEX, `0x$1')
+define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
+define(ADDRESS_MASK, eval(((2 ** (32 - TC_LENGTH)) - 1), 16))
+define(TYPE_CODE_FACTOR, eval(2 ** (8 - TC_LENGTH)))
+define(TYPE_CODE_MASK, eval((256 - TYPE_CODE_FACTOR), 16))
+define(CLEAR_TYPE_MASK, eval((TYPE_CODE_FACTOR - 1), 16))
+
+define(TYPE_CODE_TO_BYTE, `$1*TYPE_CODE_FACTOR')
+define(TYPE_CODE_TO_OBJECT, `TYPE_CODE_TO_BYTE($1)*0x1000000')
+
+define(EXTRACT_TYPE_CODE,
+	`ifelse(TC_LENGTH, 8,
+	`mov.b	$1,$2',
+	`mov.b	$1,$2
+	and.b	&HEX(TYPE_CODE_MASK), $2')')
+
+define(COMPARE_TYPE_CODE,
+	`cmp.b	$1,&TYPE_CODE_TO_BYTE($2)')
+
+### External conventions
+
+	set	regblock_val,8		# from const.h (* 4)
+	set	address_mask,HEX(ADDRESS_MASK)
+
+# This must match the compiler (machin.scm)
+
 define(dlink, %a4)			# Dynamic link register (contains a
 					# pointer to a return address) 
 define(rfree, %a5)			# Free pointer
 define(regs, %a6)			# Pointer to Registers[0]
 define(rmask, %d7)			# Mask to clear type code
 
-# Implementation constants -- Must match object.h
-
-define(HEX, `0x$1')
-define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
-define(ADDRESS_MASK, eval(((2 ** (32 - TC_LENGTH)) - 1), 16))
-	set	address_mask,HEX(ADDRESS_MASK)
-
-# This must match const.h (* 4)
-
-	set	regblock_val,8
-
 reference_external(Ext_Stack_Pointer)
 reference_external(Free)
 reference_external(Registers)
+
+# This must match the C compiler
 
 define(switch_to_scheme_registers,
 	`mov.l	%a6,(%sp)
@@ -120,7 +162,7 @@ define(switch_to_C_registers,
 	mov.l	%sp,extern_c_label(Ext_Stack_Pointer)
 	mov.l	c_save_stack,%sp
 	mov.l	(%sp),%a6')
-
+
 ###
 ### Global data
 ###
@@ -148,7 +190,7 @@ define_debugging_label(ring_block_5)
 	long	ring_block_1
 	space	28')
 	text
-
+
 ### Callable by C conventions.  Swaps to Scheme register set and jumps
 ### to the entry point specified by its only argument.
 
@@ -157,26 +199,6 @@ define_c_label(C_to_interface)
 	movm.l	%d2-%d7/%a2-%a5,4(%sp)
 	mov.l	8(%a6),%a0		# Argument: entry point
 	bra.b	interface_to_scheme_internal
-
-### Called by Scheme through a jump instruction in the register block.
-### It is a special version of scheme_to_interface below, used when
-### a return address is stored in the Scheme stack.
-
-define_debugging_label(comentry_scheme_to_interface_jsr)
-define_debugging_label(scheme_to_interface_jsr)
-	mov.l	(%sp)+,%d1              # Return addr -> d1
-	addq.l	&4,%d1			# Skip format info.
-	bra.b	scheme_to_interface
-
-### Called by linker-generated trampolines to invoke the appropriate
-### C-written handler.  The return address on the stack is the address
-### of the trampoline storage area, passed to the C handler as the
-### first argument.
-
-define_debugging_label(comentry_trampoline_to_interface)
-define_debugging_label(trampoline_to_interface)
-	mov.l	(%sp)+,%d1
-###	bra	scheme_to_interface	# Fall through
 
 ### Called by Scheme through a jump instruction in the register block.
 ### It expects an index in %d0, and 4 longword arguments in %d1-%d4
@@ -245,6 +267,68 @@ define_c_label(interface_to_C)
 	unlk	%a6
 	rts	
 
+#### Optimized entry points
+
+### Additional entry points that take care of common cases and are used to
+### shorten code sequences.
+### These are not strictly necessary, since the code sequences emitted by
+### the compiler could use scheme_to_interface instead, but a few instructions
+### are saved this way.
+
+### Called by linker-generated trampolines to invoke the appropriate
+### C-written handler.  The return address on the stack is the address
+### of the trampoline storage area, passed to the C handler as the
+### first argument.
+
+define_debugging_label(comentry_trampoline_to_interface)
+define_debugging_label(trampoline_to_interface)
+	mov.l	(%sp)+,%d1
+	bra	scheme_to_interface
+
+### Called by Scheme through a jump instruction in the register block.
+### It is a special version of scheme_to_interface below, used when
+### a return address is stored in the Scheme stack.
+
+define_debugging_label(comentry_scheme_to_interface_jsr)
+define_debugging_label(scheme_to_interface_jsr)
+	mov.l	(%sp)+,%d1              # Return addr -> d1
+	addq.l	&4,%d1			# Skip format info.
+	bra	scheme_to_interface
+
+	set	tc_compiled_entry,HEX(28)
+	set	offset_apply,HEX(14)
+
+define(call_utility,
+	`movq	&offset_$1,%d0
+	bra	scheme_to_interface')
+
+### Called by Scheme when invoking an unknown procedure.
+### Having this short sequence in assembly language avoids the C call
+### in the common case where the procedure is compiled and the number
+### of arguments is correct.
+### The number of actual arguments is in d2, the procedure on top
+### of the stack.
+
+define_debugging_label(comentry_shortcircuit_apply)
+define_debugging_label(shortcircuit_apply)
+	EXTRACT_TYPE_CODE((%sp),%d0)	# Get procedure type
+	mov.l	(%sp)+,%d1		# Get procedure
+	COMPARE_TYPE_CODE(%d0,tc_compiled_entry)
+	bne.b	shortcircuit_apply_2
+	and.l	rmask,%d1		# Extract entry point
+	mov.l	%d1,%a0
+	mov.b	-3(%a0),%d1		# Extract the frame size
+	ext.w	%d1
+	cmp.w	%d2,%d1			# Is the frame size right?
+	bne.b	shortcircuit_apply_1
+	jmp	(%a0)			# Invoke
+
+define_debugging_label(shortcircuit_apply_1)
+	mov.l	-4(%sp),%d1		# Recover the type code
+					# Fall through
+define_debugging_label(shortcircuit_apply_2)
+	call_utility(apply)
+
 #### TEMPORARY stuff to get it up compatibly with current 68K compiler
 
 ### MANY FIELDS ARE NO LONGER NEEDED.  But we can't change the shape
@@ -293,7 +377,7 @@ define_debugging_label(code_patch_area)
 
 	set offset_primitive_apply,HEX(12)
 	set offset_primitive_lexpr_apply,HEX(13)
-	set offset_apply,HEX(14)
+###	set offset_apply,HEX(14)		# Defined above
 	set offset_error,HEX(15)
 	set offset_lexpr_apply,HEX(16)
 	set offset_link,HEX(17)
@@ -327,10 +411,6 @@ define_debugging_label(code_patch_area)
 	set offset_assignment,HEX(33)
 	set offset_definition,HEX(34)
 	set offset_lookup_apply,HEX(35)
-
-define(call_utility,
-	`movq	&offset_$1,%d0
-	bra	scheme_to_interface')
 
 ### comentry_error
 ### comentry_apply
@@ -655,6 +735,7 @@ define_c_label(asm_reset_hook)
 	setup_register(scheme_to_interface)		# 23	1fe
 	setup_register(trampoline_to_interface)		# 24	204
 	setup_register(scheme_to_interface_jsr)		# 25	20a
+	setup_register(shortcircuit_apply)		# 26	210
 							# free to 31 incl.
 
 	unlk	%a6
