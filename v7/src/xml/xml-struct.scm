@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.19 2003/08/01 03:25:51 cph Exp $
+$Id: xml-struct.scm,v 1.20 2003/08/03 05:55:54 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -69,23 +69,17 @@ USA.
 		       (utf8-string-valid? uri)))
 	     (error:wrong-type-argument uri "an XML name URI" 'XML-INTERN))
 	 (let ((simple (string->symbol string)))
-	   (%%make-xml-name simple
-			    uri
-			    (let ((c (string-find-next-char string #\:)))
-			      (if c
-				  (string->symbol
-				   (string-tail string (fix:+ c 1)))
-				  simple)))))
+	   (%make-xml-name simple
+			   uri
+			   (let ((c (string-find-next-char string #\:)))
+			     (if c
+				 (string->symbol
+				  (string-tail string (fix:+ c 1)))
+				 simple)))))
 	(else
 	 (error:wrong-type-argument string "an XML name string" 'XML-INTERN))))
 
-(define (%make-xml-name prefix local uri)
-  (let ((simple (if prefix (symbol-append prefix ': local) local)))
-    (if uri
-	(%%make-xml-name simple uri local)
-	simple)))
-
-(define (%%make-xml-name simple uri local)
+(define (%make-xml-name simple uri local)
   (let ((uname
 	 (hash-table/intern! (hash-table/intern! universal-names
 						 uri
@@ -410,10 +404,10 @@ USA.
   (name xml-name?)
   (content-type
    (lambda (object)
-     (or (eq? object 'EMPTY)
-	 (eq? object 'ANY)
+     (or (eq? object '|EMPTY|)
+	 (eq? object '|ANY|)
 	 (and (pair? object)
-	      (eq? 'MIX (car object))
+	      (eq? '|#PCDATA| (car object))
 	      (list-of-type? (cdr object) xml-name?))
 	 (letrec
 	     ((children?
@@ -421,8 +415,8 @@ USA.
 		 (maybe-wrapped object
 		   (lambda (object)
 		     (and (pair? object)
-			  (or (eq? 'ALT (car object))
-			      (eq? 'SEQ (car object)))
+			  (or (eq? 'alt (car object))
+			      (eq? 'seq (car object)))
 			  (list-of-type? (cdr object) cp?))))))
 	      (cp?
 	       (lambda (object)
@@ -464,29 +458,29 @@ USA.
 	   object))))
 
 (define (!attlist-type? object)
-  (or (eq? object 'CDATA)
-      (eq? object 'IDREFS)
-      (eq? object 'IDREF)
-      (eq? object 'ID)
-      (eq? object 'ENTITY)
-      (eq? object 'ENTITIES)
-      (eq? object 'NMTOKENS)
-      (eq? object 'NMTOKEN)
+  (or (eq? object '|CDATA|)
+      (eq? object '|IDREFS|)
+      (eq? object '|IDREF|)
+      (eq? object '|ID|)
+      (eq? object '|ENTITY|)
+      (eq? object '|ENTITIES|)
+      (eq? object '|NMTOKENS|)
+      (eq? object '|NMTOKEN|)
       (and (pair? object)
-	   (eq? 'NOTATION (car object))
+	   (eq? '|NOTATION| (car object))
 	   (list-of-type? (cdr object) xml-name?))
       (and (pair? object)
-	   (eq? 'ENUMERATED (car object))
+	   (eq? 'enumerated (car object))
 	   (list-of-type? (cdr object) xml-nmtoken?))))
 
 (define (!attlist-default? object)
-  (or (eq? object 'REQUIRED)
-      (eq? object 'IMPLIED)
+  (or (eq? object '|#REQUIRED|)
+      (eq? object '|#IMPLIED|)
       (and (pair? object)
-	   (eq? 'FIXED (car object))
+	   (eq? '|#FIXED| (car object))
 	   (xml-attribute-value? (cdr object)))
       (and (pair? object)
-	   (eq? 'DEFAULT (car object))
+	   (eq? 'default (car object))
 	   (xml-attribute-value? (cdr object)))))
 
 (define-xml-type !entity

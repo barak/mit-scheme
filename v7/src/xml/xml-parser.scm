@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.31 2003/08/01 19:30:55 cph Exp $
+$Id: xml-parser.scm,v 1.32 2003/08/03 05:55:46 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -22,17 +22,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 
 |#
-
-;; **** Namespace notes: ****
-;;
-;; * Namespace declarations may appear in !ATTLIST default values, and
-;;   must be processed when these declarations are in an internal DTD.
-;;
-;; * In general, default attribute values in an internal DTD must be
-;;   handled by adding appropriate attributes to the corresponding
-;;   elements.
-;;
-;; * DEREFERENCE-ENTITY seems to be expanding content refs wrong.  (???)
 
 ;;;; XML parser
 
@@ -83,6 +72,11 @@ USA.
     (*parser
      (alt (sbracket description "\"" "\"" (match (* (alphabet a1))))
 	  (sbracket description "'" "'" (match (* (alphabet a2))))))))
+
+(define (simple-attribute-value? v)
+  (and (pair? v)
+       (string? (car v))
+       (null? (cdr v))))
 
 ;;;; Top level
 
@@ -121,10 +115,11 @@ USA.
       (fluid-let ((*general-entities* (predefined-entities))
 		  (*standalone?*)
 		  (*internal-dtd?* #t)
+		  (*elt-decls* '())
+		  (*att-decls* '())
 		  (*pi-handlers* pi-handlers)
 		  (*in-dtd?* #f)
-		  (*prefix-bindings* '())
-		  (*attlists* '()))
+		  (*prefix-bindings* '()))
 	(let ((declaration (one-value (parse-declaration buffer))))
 	  (set! *standalone?*
 		(and declaration
@@ -151,10 +146,11 @@ USA.
 
 (define *standalone?*)
 (define *internal-dtd?*)
+(define *elt-decls*)
+(define *att-decls*)
 (define *pi-handlers*)
 (define *in-dtd?*)
 (define *prefix-bindings*)
-(define *attlists*)
 
 (define parse-misc			;[27]
   (*parser
@@ -183,9 +179,7 @@ USA.
 (define (transform-declaration attributes text-decl? p)
   (if (not (for-all? attributes
 	     (lambda (attribute)
-	       (and (pair? (cdr attribute))
-		    (string? (cadr attribute))
-		    (null? (cddr attribute))))))
+	       (simple-attribute-value? (cdr attribute)))))
       (perror p "XML declaration can't contain entity refs" attributes))
   (let ((finish
 	 (lambda (version encoding standalone)
@@ -289,9 +283,11 @@ USA.
    (top-level
     (with-pointer p
       (transform (lambda (v)
-		   (let ((attributes (vector-ref v 1)))
+		   (let* ((name (vector-ref v 0))
+			  (attributes
+			   (process-attr-decls name (vector-ref v 1) p)))
 		     (process-namespace-decls attributes p)
-		     (vector (intern-element-name (vector-ref v 0))
+		     (vector (intern-element-name name)
 			     (map (lambda (attr)
 				    (cons (intern-attribute-name (car attr))
 					  (cdr attr)))
@@ -299,7 +295,7 @@ USA.
 			     (vector-ref v 2))))
 	(bracket "start tag"
 	    (seq "<" parse-uninterned-name)
-	    (match (alt (string ">") (string "/>")))
+	    (match (alt ">" "/>"))
 	  parse-attribute-list))))))
 
 (define parse-end-tag			;[42]
@@ -318,6 +314,70 @@ USA.
 		     parse-pi:element
 		     parse-comment)
 		parse-char-data)))))
+
+(define (process-attr-decls name attributes p)
+  (let ((decl
+	 (and (or *standalone?* *internal-dtd?*)
+	      (find-matching-item *att-decls*
+		(let ((name (string->symbol (car name))))
+		  (lambda (decl)
+		    (eq? name (xml-!attlist-name decl))))))))
+    (if decl
+	(let loop
+	    ((definitions (xml-!attlist-definitions decl))
+	     (attributes attributes))
+	  (if (pair? definitions)
+	      (loop (cdr definitions)
+		    (process-attr-defn (car definitions) attributes p))
+	      attributes))
+	attributes)))
+
+(define (process-attr-defn definition attributes p)
+  (let ((name (symbol-name (car definition)))
+	(type (cadr definition))
+	(default (caddr definition)))
+    (let ((attribute
+	   (find-matching-item attributes
+	     (lambda (attribute)
+	       (string=? name (caar attribute))))))
+      (if attribute
+	  (let ((av (cdr attribute)))
+	    (if (and (pair? default)
+		     (eq? (car default) '|#FIXED|)
+		     (not (attribute-value=? av (cdr default))))
+		(perror (cdar attribute)
+			"Incorrect attribute value"
+			(string->symbol name)))
+	    (if (and (not (eq? type '|CDATA|))
+		     (simple-attribute-value? av))
+		(set-car! av (trim-attribute-whitespace (car av))))
+	    attributes)
+	  (begin
+	    (if (eq? default '|#REQUIRED|)
+		(perror p
+			"Missing required attribute value"
+			(string->symbol name)))
+	    (if (pair? default)
+		(cons (cons (cons name p) (cdr default))
+		      attributes)
+		attributes))))))
+
+(define (attribute-value=? v1 v2)
+  (and (boolean=? (pair? v1) (pair? v2))
+       (if (pair? v1)
+	   (and (let ((i1 (car v1))
+		      (i2 (car v2)))
+		  (cond ((string? i1)
+			 (and (string? i2)
+			      (string=? i1 i2)))
+			((xml-entity-ref? i1)
+			 (and (xml-entity-ref? i2)
+			      (eq? (xml-entity-ref-name i1)
+				   (xml-entity-ref-name i2))))
+			(else
+			 (error "Unknown attribute value item:" i1))))
+		(attribute-value=? (cdr v1) (cdr v2)))
+	   #t)))
 
 ;;;; Other markup
 
@@ -370,12 +430,10 @@ USA.
 
 (define parse-uninterned-name		;[5]
   (*parser
-   (encapsulate (lambda (v) v)
-     (with-pointer p
-       (seq (alt (seq (match match-name) ":")
-		 (values #f))
-	    (match match-name)
-	    (values p))))))
+   (with-pointer p
+     (map (lambda (s) (cons s p))
+	  (match (seq (? (seq match-name ":"))
+		      match-name))))))
 
 (define (simple-name-parser type)
   (let ((m (string-append "Malformed " type " name")))
@@ -414,13 +472,11 @@ USA.
 		    (forbidden-uri
 		     (lambda (uri)
 		       (perror p "Forbidden namespace URI" uri))))
-		(let ((prefix (vector-ref name 0))
-		      (local-part (vector-ref name 1))
+		(let ((s (car name))
+		      (pn (cdr name))
 		      (uri
 		       (lambda ()
-			 (if (not (and (pair? value)
-				       (string? (car value))
-				       (null? (cdr value))))
+			 (if (not (simple-attribute-value? value))
 			     (perror p "Illegal namespace URI" value))
 			 (if (string-null? (car value))
 			     #f		;xmlns=""
@@ -431,18 +487,17 @@ USA.
 				  (or (string=? uri xml-uri)
 				      (string=? uri xmlns-uri)))
 			     (forbidden-uri uri)))))
-		  (cond ((and (not prefix)
-			      (string=? "xmlns" local-part))
+		  (cond ((string=? "xmlns" s)
 			 (let ((uri (uri)))
 			   (guarantee-legal-uri uri)
 			   (cons (cons #f uri) tail)))
-			((and prefix (string=? "xmlns" prefix))
-			 (if (string=? local-part "xmlns")
-			     (perror p "Illegal namespace prefix" local-part))
+			((string-prefix? "xmlns:" s)
+			 (if (string=? "xmlns:xmlns" s)
+			     (perror p "Illegal namespace prefix" s))
 			 (let ((uri (uri)))
 			   (if (not uri) ;legal in XML 1.1
 			       (forbidden-uri ""))
-			   (if (string=? local-part "xml")
+			   (if (string=? "xmlns:xml" s)
 			       (if (not (and uri (string=? uri xml-uri)))
 				   (forbidden-uri uri))
 			       (guarantee-legal-uri uri))
@@ -451,28 +506,36 @@ USA.
 	      *prefix-bindings*)))
   unspecific)
 
-(define (intern-element-name v) (intern-name v #f))
-(define (intern-attribute-name v) (intern-name v #t))
+(define (intern-element-name n) (intern-name n #t))
+(define (intern-attribute-name n) (intern-name n #f))
 
-(define (intern-name v attribute-name?)
-  (let ((prefix (and (vector-ref v 0) (string->symbol (vector-ref v 0))))
-	(local (string->symbol (vector-ref v 1)))
-	(p (vector-ref v 2)))
-    (%make-xml-name prefix
-		    local
-		    (if (or *in-dtd?* (and attribute-name? (not prefix)))
-			#f
-			(case prefix
-			  ((xmlns) xmlns-uri)
-			  ((xml) xml-uri)
-			  (else
-			   (let ((entry (assq prefix *prefix-bindings*)))
-			     (if entry
-				 (cdr entry)
-				 (begin
-				   (if prefix
-				       (perror p "Unknown XML prefix:" prefix))
-				   #f)))))))))
+(define (intern-name n element-name?)
+  (let ((s (car n))
+	(p (cdr n)))
+    (let ((simple (string->symbol s))
+	  (c (string-find-next-char s #\:)))
+      (let ((uri
+	     (and (not *in-dtd?*)
+		  (or element-name? c)
+		  (let ((prefix (and c (string->symbol (string-head s c)))))
+		    (case prefix
+		      ((xmlns) xmlns-uri)
+		      ((xml) xml-uri)
+		      (else
+		       (let ((entry (assq prefix *prefix-bindings*)))
+			 (if entry
+			     (cdr entry)
+			     (begin
+			       (if prefix
+				   (perror p "Unknown XML prefix" prefix))
+			       #f)))))))))
+	(if uri
+	    (%make-xml-name simple
+			    uri
+			    (if c
+				(string->symbol (string-head s (fix:+ c 1)))
+				simple))
+	    simple)))))
 
 (define xml-uri "http://www.w3.org/XML/1998/namespace")
 (define xmlns-uri "http://www.w3.org/2000/xmlns/")
@@ -575,12 +638,12 @@ USA.
 (define parse-reference-deferred
   (*parser
    (match
-    (seq (string "&")
-	 (alt (seq (string "#")
+    (seq "&"
+	 (alt (seq "#"
 		   (alt match-decimal
-			(seq (string "x") match-hexadecimal)))
+			(seq "x" match-hexadecimal)))
 	      match-name)
-	 (string ";")))))
+	 ";"))))
 
 (define parse-entity-reference-name	;[68]
   (*parser
@@ -588,7 +651,7 @@ USA.
      parse-entity-name)))
 
 (define parse-entity-reference-deferred
-  (*parser (match (seq (string "&") match-name (string ";")))))
+  (*parser (match (seq "&" match-name ";"))))
 
 (define parse-parameter-entity-reference-name ;[69]
   (*parser
@@ -680,9 +743,6 @@ USA.
 ;;;; Normalization
 
 (define (normalize-attribute-value elements)
-  ;; The spec also says that non-CDATA values must have further
-  ;; processing: leading and trailing spaces are removed, and
-  ;; sequences of spaces are collapsed.
   (coalesce-strings!
    (reverse!
     (let loop ((elements elements) (result '()))
@@ -820,9 +880,7 @@ USA.
 	      (let ((entity (find-parameter-entity name)))
 		(and entity
 		     (xml-parameter-!entity-value entity))))))
-    (if (and (pair? value)
-	     (string? (car value))
-	     (null? (cdr value)))
+    (if (simple-attribute-value? value)
 	(car value)
 	(begin
 	  (set! *parameter-entities* 'STOP)
@@ -854,9 +912,7 @@ USA.
 		(let ((value (xml-!entity-value entity)))
 		  (cond ((xml-external-id? value) #f)
 			(in-attribute? value)
-			((and (pair? value)
-			      (string? (car value))
-			      (null? (cdr value)))
+			((simple-attribute-value? value)
 			 (reparse-entity-value-string name (car value) p))
 			(else
 			 (if (or *standalone?* *internal-dtd?*)
@@ -999,7 +1055,10 @@ USA.
 
     (*parser
      (encapsulate
-	 (lambda (v) (make-xml-!element (vector-ref v 0) (vector-ref v 1)))
+	 (lambda (v)
+	   (let ((elt (make-xml-!element (vector-ref v 0) (vector-ref v 1))))
+	     ;;(set! *elt-decls* (cons elt *elt-decls*))
+	     elt))
        (sbracket "element declaration" "<!ELEMENT" ">"
 	 S
 	 parse-required-element-name
@@ -1030,7 +1089,7 @@ USA.
    (encapsulate
        (lambda (v)
 	 (let ((attlist (make-xml-!attlist (vector-ref v 0) (vector-ref v 1))))
-	   (set! *attlists* (cons attlist *attlists*))
+	   (set! *att-decls* (cons attlist *att-decls*))
 	   attlist))
      (sbracket "attribute-list declaration" "<!ATTLIST" ">"
        S
@@ -1043,7 +1102,8 @@ USA.
 			(default (vector-ref v 2)))
 		    (list name type
 			  (if (and (not (eq? type '|CDATA|))
-				   (pair? default))
+				   (pair? default)
+				   (simple-attribute-value? (cdr default)))
 			      (list (car default)
 				    (trim-attribute-whitespace (cadr default)))
 			      default))))
@@ -1213,18 +1273,18 @@ USA.
 
 (define parse-external-markup-decl	;[29]
   (let ((parse-!element
-	 (external-decl-parser (*matcher (seq (string "<!ELEMENT") S))
+	 (external-decl-parser (*matcher (seq "<!ELEMENT" S))
 			       parse-!element))
 	(parse-!attlist
-	 (external-decl-parser (*matcher (seq (string "<!ATTLIST") S))
+	 (external-decl-parser (*matcher (seq "<!ATTLIST" S))
 			       parse-!attlist))
 	(parse-!entity
-	 (external-decl-parser (*matcher (seq (string "<!ENTITY")
+	 (external-decl-parser (*matcher (seq "<!ENTITY"
 					      S
-					      (? (seq (string "%") S))))
+					      (? (seq "%" S))))
 			       parse-!entity))
 	(parse-!notation
-	 (external-decl-parser (*matcher (seq (string "<!NOTATION") S))
+	 (external-decl-parser (*matcher (seq "<!NOTATION" S))
 			       parse-!notation)))
     (*parser
      (alt parse-internal-markup-decl
@@ -1249,9 +1309,9 @@ USA.
    (bracket "!INCLUDE section"
        (noise (seq (string conditional-start)
 		   S?
-		   (string "INCLUDE")
+		   "INCLUDE"
 		   S?
-		   (string "[")))
+		   "["))
        (noise (string conditional-end))
      parse-external-subset-decl)))
 
@@ -1260,9 +1320,9 @@ USA.
    (bracket "!IGNORE section"
        (noise (seq (string conditional-start)
 		   S?
-		   (string "IGNORE")
+		   "IGNORE"
 		   S?
-		   (string "[")))
+		   "["))
        (noise (string conditional-end))
      (noise (* match-!ignore-contents)))))
 
