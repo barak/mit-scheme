@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.7 1992/01/30 01:10:03 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.8 1992/01/30 23:29:01 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -126,9 +126,7 @@ MIT in each case. |#
 		      (,(symbol-append
 			 'set-starbase-graphics-descriptor/ name '!)
 		       (graphics-device/descriptor device)
-		       value)))))
-	     (define-settor
-	       (macro (name))))
+		       value))))))
   (define-accessors-and-mutators x-left)
   (define-accessors-and-mutators y-bottom)
   (define-accessors-and-mutators x-right)
