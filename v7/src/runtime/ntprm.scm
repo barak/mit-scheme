@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.11 1997/01/05 23:43:59 cph Exp $
+$Id: ntprm.scm,v 1.12 1997/10/22 05:18:00 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -311,7 +311,11 @@ MIT in each case. |#
 	   (reset-environment-variables!)
 	   (cache-console-channel-descriptor!))))
     (reset!)
-    (add-event-receiver! event:after-restart reset!)))
+    (add-event-receiver! event:after-restart reset!))
+  (set! nt/hide-subprocess-windows? #t)
+  (set! nt/subprocess-argument-quote-char #f)
+  (set! nt/subprocess-argument-escape-char #f)
+  unspecific)
 
 (define (dos/fs-drive-type pathname)
   ;; (system-name . [nfs-]mount-point)
@@ -430,82 +434,180 @@ MIT in each case. |#
 		       (set! port #f)
 		       unspecific))))))))))
 
-(define-structure (nt-select-registry
-		   (conc-name nt-select-registry/)
-		   (constructor nt-select-registry/make))
-  console
+(define-structure (nt-select-registry (conc-name nt-select-registry/))
   descriptors)
 
-(define-integrable (find-descriptor df dl)
-  (list-search-positive dl
-    (lambda (d)
-      (= d df))))
-
 (define (make-select-registry . descriptors)
-  (cond ((find-descriptor console-channel-descriptor descriptors)
-	 => (lambda (ccd)
-	      (nt-select-registry/make console-channel-descriptor
-				       (delq! ccd descriptors))))
-	(else
-	 (nt-select-registry/make false descriptors))))
+  (make-nt-select-registry descriptors))
 
 (define (add-to-select-registry! registry descriptor)
-  (cond ((= descriptor console-channel-descriptor)
-	 (set-nt-select-registry/console! registry console-channel-descriptor))
-	((not (find-descriptor descriptor
-			       (nt-select-registry/descriptors registry)))
-	 (set-nt-select-registry/descriptors!
-	  registry
-	  (cons descriptor (nt-select-registry/descriptors registry))))))
+  (if (not (memv descriptor (nt-select-registry/descriptors registry)))
+      (set-nt-select-registry/descriptors!
+       registry
+       (cons descriptor (nt-select-registry/descriptors registry)))))
 
 (define (remove-from-select-registry! registry descriptor)
-  (cond ((= descriptor console-channel-descriptor)
-	 (set-nt-select-registry/console! registry false))
-	((find-descriptor descriptor (nt-select-registry/descriptors registry))
-	 => (lambda (dr)
-	      (set-nt-select-registry/descriptors!
-	       registry
-	       (delq! dr (nt-select-registry/descriptors registry)))))))
+  (set-nt-select-registry/descriptors!
+   registry
+   (delv! descriptor (nt-select-registry/descriptors registry))))
 
 (define (select-registry-test registry block?)
-  (let ((handles (list->vector (nt-select-registry/descriptors registry))))
-    (let ((nhand (vector-length handles))
-	  (result
-	   (select-internal (nt-select-registry/console registry)
-			    handles
-			    block?)))
-      (cond ((fix:< result 0)
-	     (error "Illegal result from select-internal:" result))
-	    ((fix:= result 0) #f)
-	    ((fix:<= result nhand)
-	     (list (vector-ref handles (fix:- result 1))))
-	    ((fix:= result (fix:+ nhand 1))
-	     (list (nt-select-registry/console registry)))
-	    (else 'INTERRUPT)))))
+  (let ((descriptors (list->vector (nt-select-registry/descriptors registry))))
+    (let ((result
+	   ((ucode-primitive nt:waitformultipleobjects 3)
+	    descriptors #f block?)))
+      (cond ((and (fix:<= 0 result) (fix:< result (vector-length descriptors)))
+	     (list (vector-ref descriptors result)))
+	    ((fix:= result -1) #f)
+	    ((fix:= result -2) 'INTERRUPT)
+	    ((fix:= result -3) 'PROCESS-STATUS-CHANGE)
+	    (else (error "Illegal result from select-internal:" result))))))
 
 (define (select-descriptor descriptor block?)
   (let ((result
-	 (if (= descriptor console-channel-descriptor)
-	     (select-internal #t '#() block?)
-	     (select-internal #f (vector descriptor) block?))))
+	 ((ucode-primitive nt:waitformultipleobjects 3)
+	  (vector descriptor) #f block?)))
     (case result
-      ((0) #f)
-      ((1) 'INPUT-AVAILABLE)
-      ((2 3) 'INTERRUPT)
+      ((0) 'INPUT-AVAILABLE)
+      ((-1) #f)
+      ((-2) 'INTERRUPT)
+      ((-3) 'PROCESS-STATUS-CHANGE)
       (else (error "Illegal result from select-internal:" result)))))
-
-(define (select-internal console? handles block?)
-  (let ((nt/QS_ALLINPUT #xFF)
-	(nt/INFINITE #xFFFFFFFF))
-    (let ((timeout (if block? nt/INFINITE 0)))
-      (if console?
-	  ((ucode-primitive nt:msgwaitformultipleobjects 4)
-	   handles #f timeout nt/QS_ALLINPUT)
-	  ((ucode-primitive nt:waitformultipleobjects 3)
-	   handles #f timeout)))))
 
 (define console-channel-descriptor)
 
 (define (cache-console-channel-descriptor!)
-  (set! console-channel-descriptor ((ucode-primitive get-handle 1) 1))
+  (set! console-channel-descriptor
+	(channel-descriptor-for-select (tty-input-channel)))
   unspecific)
+
+(define nt/hide-subprocess-windows?)
+(define nt/subprocess-argument-quote-char)
+(define nt/subprocess-argument-escape-char)
+
+(define (os/make-subprocess filename arguments environment working-directory
+			    ctty stdin stdout stderr)
+  (if ctty
+      (error "Can't manipulate controlling terminal of subprocess:" ctty))
+  ((ucode-primitive nt-make-subprocess 8)
+   filename
+   (nt/rewrite-subprocess-arguments filename (vector->list arguments))
+   (and environment
+	(nt/rewrite-subprocess-environment (vector->list environment)))
+   working-directory
+   stdin
+   stdout
+   stderr
+   (vector nt/hide-subprocess-windows?)))
+
+(define (nt/rewrite-subprocess-environment strings)
+  (let ((strings
+	 (map car
+	      (sort (map (lambda (binding)
+			   (cons binding
+				 (or (string-find-next-char binding #\=)
+				     (string-length binding))))
+			 strings)
+		    (lambda (s1 s2)
+		      (substring<? (car s1) 0 (cdr s1)
+				   (car s2) 0 (cdr s2)))))))
+    (let ((result
+	   (make-string
+	    (reduce +
+		    0
+		    (map (lambda (s) (fix:+ (string-length s) 1))
+			 strings)))))
+      (let loop ((strings strings) (index 0))
+	(if (not (null? strings))
+	    (let ((n (string-length (car strings))))
+	      (substring-move-left! (car strings) 0 n result index)
+	      (let ((index* (fix:+ index n)))
+		(string-set! result index* #\NUL)
+		(loop (cdr strings) (fix:+ index* 1))))))
+      result)))
+
+(define (nt/rewrite-subprocess-arguments program strings)
+  ;; PROGRAM will eventually be used to determine the appropriate
+  ;; escape character -- strangely enough, this depends on what
+  ;; runtime library PROGRAM is linked with.
+  program
+  (let ((quote-char nt/subprocess-argument-quote-char)
+	(escape-char nt/subprocess-argument-escape-char))
+    (if (not quote-char)
+	(nt/rewrite-subprocess-arguments/no-quoting strings)
+	(nt/rewrite-subprocess-arguments/quoting strings
+						 quote-char escape-char))))
+
+(define (nt/rewrite-subprocess-arguments/no-quoting strings)
+  (if (null? strings)
+      ""
+      (let ((result
+	     (make-string
+	      (fix:+ (reduce +
+			     0
+			     (map (lambda (s) (string-length s)) strings))
+		     (fix:- (length strings) 1)))))
+	(let ((n (string-length (car strings))))
+	  (substring-move-left! (car strings) 0 n result 0)
+	  (let loop ((strings (cdr strings)) (index n))
+	    (if (not (null? strings))
+		(let ((n (string-length (car strings))))
+		  (string-set! result index #\space)
+		  (substring-move-left! (car strings) 0 n
+					result (fix:+ index 1))
+		  (loop (cdr strings) (fix:+ (fix:+ index 1) n))))))
+	result)))
+
+(define (nt/rewrite-subprocess-arguments/quoting strings
+						 quote-char escape-char)
+  (define (analyze-arg s)
+    (let ((need-quotes? #f)
+	  (n (string-length s)))
+      (do ((i 0 (fix:+ i 1))
+	   (j 0
+	      (fix:+ j
+		     (let ((c (string-ref s i)))
+		       (if (or (char=? quote-char c)
+			       (char=? escape-char c))
+			   (begin
+			     (set! need-quotes? #t)
+			     2)
+			   (begin
+			     (if (or (char=? #\space c)
+				     (char=? #\tab c))
+				 (set! need-quotes? #t))
+			     1))))))
+	  ((fix:= i n)
+	   (cons (if need-quotes? (fix:+ j 2) j)
+		 need-quotes?)))))
+  (let ((analyses (map analyze-arg strings)))
+    (let ((result (make-string (reduce + 0 (map car analyses)))))
+      (define (do-arg index s analysis)
+	(if (cdr analysis)
+	    (begin
+	      (vector-set! result index quote-char)
+	      (let ((index (do-arg-1 index s)))
+		(vector-set! result index quote-char)
+		(fix:+ index 1)))
+	    (do-arg-1 index s)))
+      (define (do-arg-1 index s)
+	(let ((n (string-length s)))
+	  (do ((i 0 (fix:+ i 1))
+	       (index index
+		      (let ((c (string-ref s i)))
+			(if (or (char=? quote-char c)
+				(char=? escape-char c))
+			    (begin
+			      (vector-set! result index escape-char)
+			      (vector-set! result (fix:+ index 1) c)
+			      (fix:+ index 2))
+			    (begin
+			      (vector-set! result index c)
+			      (fix:+ index 1))))))
+	      ((fix:= i n) index))))
+      (let loop ((index 0) (strings strings) (analyses analyses))
+	(if (not (null? strings))
+	    (loop (do-arg index (car strings) (car analyses))
+		  (cdr strings)
+		  (cdr analyses))))
+      result)))
