@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2ctty.c,v 1.1 1994/11/28 03:42:55 cph Exp $
+$Id: os2ctty.c,v 1.2 1995/01/06 23:54:53 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,10 +43,8 @@ MIT in each case. */
 #define INTERACTIVE_INTERRUPT_ENABLE	(0x10)
 #define TERMINATE_INTERRUPT_ENABLE	(0x20)
 
-#define ALL_ENABLES							\
-  (CONTROL_B_ENABLE | CONTROL_G_ENABLE | CONTROL_U_ENABLE		\
-   | CONTROL_X_ENABLE | INTERACTIVE_INTERRUPT_ENABLE			\
-   | TERMINATE_INTERRUPT_ENABLE)
+#define ALL_ENABLES
+  (CONTROL_B_ENABLE | CONTROL_G_ENABLE | CONTROL_U_ENABLE | CONTROL_X_ENABLE)
 
 #define CONTROL_B			'\002'
 #define CONTROL_G			'\007'
