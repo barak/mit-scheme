@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.46 1989/08/12 08:31:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.47 1989/08/14 09:14:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -200,7 +200,7 @@ Second arg is prefix arg when called interactively."
 	   (let ((library 
 		  (or (assq name known-libraries)
 		      (editor-error "Unknown library name: " name))))
-	     (temporary-message "Loading " (car library))
+	     (temporary-message "Loading " (car library) "...")
 	     (let ((directory (edwin-binary-directory)))
 	       (for-each
 		(lambda (entry)
@@ -212,7 +212,7 @@ Second arg is prefix arg when called interactively."
 	     (if (not (memq (car library) loaded-libraries))
 		 (set! loaded-libraries (cons (car library) loaded-libraries)))
 	     (run-library-load-hooks! (car library))
-	     (append-message " -- done"))))
+	     (append-message "done"))))
       (cond ((not (library-loaded? name))
 	     (do-it))
 	    ((not force?)
@@ -226,9 +226,10 @@ Second arg PURIFY? means purify the file's contents after loading;
  this is the prefix arg when called interactively."
   "fLoad file\nP"
   (lambda (filename purify?)
-    (temporary-message "Loading file \"" filename "\"")
+    (temporary-message "Loading " filename "...")
     (load-edwin-file filename '(EDWIN) purify?)
-    (append-message " -- done")))
+    (append-message "done")))
+
 (define (load-edwin-file filename environment purify?)
   (with-output-to-transcript-buffer
    (lambda ()
