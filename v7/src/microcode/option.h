@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.4 1991/09/07 22:30:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.5 1991/10/29 22:38:34 jinx Exp $
 
 Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
@@ -70,6 +70,9 @@ int option_gc_window_size;
 int option_gc_write_overlap;
 
 extern void EXFUN (read_command_line_options, (int argc, CONST char ** argv));
+
+extern CONST char * EXFUN (search_for_library_file, (CONST char *));
+
 extern CONST char * EXFUN
   (search_path_for_file,
    (CONST char * option, CONST char * filename, int default_p));
