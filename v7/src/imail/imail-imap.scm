@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.161 2001/05/24 19:03:52 cph Exp $
+;;; $Id: imail-imap.scm,v 1.162 2001/05/24 19:12:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1382,7 +1382,7 @@
      (imap:command:no-response connection 'LOGIN user-id pass-phrase))))
 
 (define (imap:command:select connection mailbox)
-  ((imail-ui:message-wrapper "Select mailbox " mailbox)
+  ((imail-ui:message-wrapper "Selecting mailbox")
    (lambda ()
      (imap:command:no-response connection 'SELECT
 			       (imap:encode-mailbox-name mailbox)))))
