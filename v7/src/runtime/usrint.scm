@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.10 1993/11/04 23:53:13 cph Exp $
+$Id: usrint.scm,v 1.11 1994/08/15 19:36:15 cph Exp $
 
-Copyright (c) 1991-93 Massachusetts Institute of Technology
+Copyright (c) 1991-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,11 +46,34 @@ MIT in each case. |#
       prompt
       (string-append prompt suffix)))
 
+(define (canonicalize-command-prompt prompt)
+  (let ((prompt* (canonicalize-prompt prompt " ")))
+    (if (member prompt* standard-command-prompts)
+	prompt*
+	prompt)))
+
+(define (write-command-prompt port prompt level)
+  (port/with-output-terminal-mode port 'COOKED
+    (lambda ()
+      (fresh-line port)
+      (newline port)
+      (if (member prompt standard-command-prompts)
+	  (begin
+	    (write level port)
+	    (write-string " " port)))
+      (write-string prompt port)
+      (flush-output port))))
+
+(define standard-command-prompts
+  '("]=> "
+    "error> "
+    "break> "
+    "bkpt> "
+    "debug> "
+    "where> "))
+
 (define (prompt-for-command-expression prompt #!optional port)
-  (let ((prompt
-	 (if (string-null? prompt)
-	     prompt
-	     (canonicalize-prompt prompt " ")))
+  (let ((prompt (canonicalize-command-prompt prompt))
 	(port (if (default-object? port) (interaction-i/o-port) port))
 	(level (nearest-cmdl/level)))
     (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-EXPRESSION)))
@@ -59,14 +82,7 @@ MIT in each case. |#
 	  (default/prompt-for-command-expression port prompt level)))))
 
 (define (default/prompt-for-command-expression port prompt level)
-  (port/with-output-terminal-mode port 'COOKED
-    (lambda ()
-      (fresh-line port)
-      (newline port)
-      (write level port)
-      (write-string " " port)
-      (write-string prompt port)
-      (flush-output port)))
+  (write-command-prompt port prompt level)
   (port/with-input-terminal-mode port 'COOKED
     (lambda ()
       (read port))))
@@ -102,10 +118,7 @@ MIT in each case. |#
 		  (nearest-repl/syntax-table)))
 
 (define (prompt-for-command-char prompt #!optional port)
-  (let ((prompt
-	 (if (string-null? prompt)
-	     prompt
-	     (canonicalize-prompt prompt " ")))
+  (let ((prompt (canonicalize-command-prompt prompt))
 	(port (if (default-object? port) (interaction-i/o-port) port))
 	(level (nearest-cmdl/level)))
     (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-CHAR)))
@@ -114,14 +127,7 @@ MIT in each case. |#
 	  (default/prompt-for-command-char port prompt level)))))
 
 (define (default/prompt-for-command-char port prompt level)
-  (port/with-output-terminal-mode port 'COOKED
-    (lambda ()
-      (fresh-line port)
-      (newline port)
-      (write level port)
-      (write-string " " port)
-      (write-string prompt port)
-      (flush-output port)))
+  (write-command-prompt port prompt level)
   (let loop ()
     (let ((char
 	   (port/with-input-terminal-mode port 'RAW
