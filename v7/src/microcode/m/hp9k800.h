@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for HP9000 series  600, 700, 800.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k800.h,v 1.6 1991/08/13 18:19:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k800.h,v 1.7 1992/02/05 01:45:06 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -37,10 +37,17 @@ MIT in each case. */
 
 #if defined(HAVE_STARBASE_GRAPHICS) && !defined(STARBASE_DEVICE_DRIVERS)
 /* Add additional Starbase device drivers here. */
-#define STARBASE_DEVICE_DRIVERS -ldd98550
+#  define STARBASE_DEVICE_DRIVERS -ldd98550
 #endif
 
 /* The following is also needed under HP-UX 8.01: +Obb999 */
 
-#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6 -Wp,-H512000
-#define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
+#ifndef ALTERNATE_CC
+   /* Assume HPC */
+#  define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6 -Wp,-H512000
+#  define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6 -DHPC
+#else
+   /* Assume GCC */
+#  define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
+#  define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6 -DGCC
+#endif
