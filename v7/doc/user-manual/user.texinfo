@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.85 2001/03/08 21:24:08 cph Exp $
+@comment $Id: user.texinfo,v 1.86 2001/03/20 04:30:51 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -34,9 +34,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.85
-@subtitle for Scheme Release 7.5.15
-@subtitle 9 March 2001
+@subtitle Edition 1.86
+@subtitle for Scheme Release 7.5.16
+@subtitle 19 March 2001
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -169,7 +169,7 @@ To install the software in @file{/usr/local}, do the following
 cd /usr/local
 rm -f bin/scheme bin/bchscheme
 rm -rf lib/mit-scheme
-gzip -cd scheme-7.5.14-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.5.16-ix86-gnu-linux.tar.gz | tar xvf -
 @end group
 @end example
 
@@ -187,7 +187,7 @@ First unpack the distribution:
 @example
 mkdir temp
 cd temp
-gzip -cd scheme-7.5.14-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.5.16-ix86-gnu-linux.tar.gz | tar xvf -
 @end example
 
 @item
@@ -527,10 +527,10 @@ itself, clear the screen, and print something like this:
 
 @example
 @group
-Scheme saved on Wednesday February 28, 2001 at 11:53:16 PM
-  Release 7.5.14
-  Microcode 14.2
-  Runtime 14.186
+Scheme saved on Monday March 19, 2001 at 5:18:49 PM
+  Release 7.5.16
+  Microcode 14.3
+  Runtime 14.188
 @end group
 @end example
 
@@ -4711,6 +4711,19 @@ The Algorithmic Language Scheme}.
 These are the changes since release 7.5.0:
 
 @itemize @bullet
+@item
+Release 7.5.16 fixes two limitations in email support.  First, the
+mail-sending interface has been reworked to generate the formatted
+message to a temporary file rather than a buffer.  This allows sending
+very large attachments.  Second, IMAIL's handling of file-based folders
+has been reworked to store a copy of the file in an "external string"
+The in-heap data structures no longer contain excerpts from the file,
+but instead keep indexes into the file and extract the excerpts on
+demand.  This allows reading very large mail files with reasonably-sized
+heaps (however it does require enough virtual memory to hold an image of
+the file).  The actual in-heap storage is quite small, approximately 100
+bytes per message.
+
 @item
 Release 7.5.15 has no user-visible changes.  The crypto code in the
 system has been re-engineered so that it can be dynamically loaded on
