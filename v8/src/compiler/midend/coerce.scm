@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.2 1995/03/23 04:17:10 adams Exp $
+$Id: coerce.scm,v 1.3 1995/03/25 16:02:55 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -77,17 +77,17 @@ wins by about 10%.
   (coerce/env/lookup*! env name `(LOOKUP ,name) 'ORDINARY))
 
 (define-coercer LAMBDA (lambda-list body)
-  (coerce/lambda* env lambda-list body 'LAMBDA))
-
-(define (coerce/lambda* env lambda-list body env-kind)
   (let ((env* (coerce/env/make
-	       env-kind
+	       'LAMBDA
 	       env
 	       (map coerce/binding/make (lambda-list->names lambda-list)))))
-    (let ((body* (coerce/expr env* body)))
-      (set-coerce/env/form! env* body*)
-      (coerce/lambda/finish! env*)
-      `(LAMBDA ,lambda-list ,body*))))
+    (coerce/lambda* env* lambda-list body)))
+
+(define (coerce/lambda* env* lambda-list body)
+  (let ((body* (coerce/expr env* body)))
+    (set-coerce/env/form! env* body*)
+    (coerce/lambda/finish! env*)
+    `(LAMBDA ,lambda-list ,body*)))
 
 (define (coerce/lambda/finish! env)
   (let binding-loop ((bindings (coerce/env/bindings env)))
@@ -95,27 +95,28 @@ wins by about 10%.
 	'done
 	(let* ((binding (car bindings))
 	       (name    (coerce/binding/name binding)))
-	  (let ref-loop ((refs (coerce/binding/operator-refs binding))
-			 (arity-map '()))
-	    (if (null? refs)
-		(begin
-		  (for-each (lambda (arity.refs)
-			      (coerce/rewrite! env name
-					       (car arity.refs)
-					       (cdr arity.refs)))
-		    arity-map)
-		  (binding-loop (cdr bindings)))
-		(let* ((ref  (car refs))
-		       (text (coerce/reference/form ref))
-		       (len  (length (call/operands text)))
-		       (arity.refs (assv len arity-map)))
-		  (cond (arity.refs
-			 (set-cdr! arity.refs
-				   (cons ref (cdr arity.refs)))
-			 (ref-loop (cdr refs) arity-map))
-			(else
-			 (ref-loop (cdr refs)
-				   (cons (list len ref) arity-map)))))))))))
+	  (if (not (coerce/binding/lambda? binding))
+	      (let ref-loop ((refs (coerce/binding/operator-refs binding))
+			     (arity-map '()))
+		(if (null? refs)
+		    (begin
+		      (for-each (lambda (arity.refs)
+				  (coerce/rewrite! env name
+						   (car arity.refs)
+						   (cdr arity.refs)))
+			arity-map)
+		      (binding-loop (cdr bindings)))
+		    (let* ((ref  (car refs))
+			   (text (coerce/reference/form ref))
+			   (len  (length (call/operands text)))
+			   (arity.refs (assv len arity-map)))
+		      (cond (arity.refs
+			     (set-cdr! arity.refs
+				       (cons ref (cdr arity.refs)))
+			     (ref-loop (cdr refs) arity-map))
+			    (else
+			     (ref-loop (cdr refs)
+				       (cons (list len ref) arity-map))))))))))))
 
 (define (coerce/rewrite! env name arity refs)
   ;; Find highest least
@@ -147,6 +148,7 @@ wins by about 10%.
       (lambda ()
 	(list-split refs same-extent?))
     (lambda (same-extent other-extent)
+      same-extent			; ignored, implicit in REFS
       (cond
        ((> arity 120)        'cant)
        ((null? other-extent) 'not-worth-while)
@@ -255,10 +257,26 @@ wins by about 10%.
     `(CALL ,rator*
 	   ,(coerce/expr env cont)
 	   ,@(coerce/expr* env rands)))
+  (define (make-bds lambda-list)
+    (let loop ((ll    lambda-list)
+	       (bds   '())
+	       (rands (cons cont rands)))
+      (cond ((null? ll) bds)
+	    ((eq? (car ll) '#!optional)
+	     (loop (cdr ll) bds rands))
+	    ((or (null? rands)
+		 (memq (car ll) '(#!aux #!rest)))
+	     (map* bds coerce/binding/make (lambda-list->names ll)))
+	    (else
+	     (loop (cdr ll)
+		   (cons (coerce/binding/make2 (car ll) (LAMBDA/? (car rands)))
+			 bds)
+		   (cdr rands))))))
   (cond ((LAMBDA/? rator)
-	 (default
-	   (coerce/lambda* env (lambda/formals rator) (lambda/body rator)
-			   'LET)))
+	 (let* ((formals (lambda/formals rator))
+		(env* (coerce/env/make 'LET env (make-bds formals))))
+	   (default
+	     (coerce/lambda* env* formals (lambda/body rator)))))
 	((LOOKUP/? rator)
 	 (let* ((name  (lookup/name rator))
 		(call  (default `(LOOKUP ,name))))
@@ -300,6 +318,7 @@ wins by about 10%.
     (coerce/binding
      (conc-name coerce/binding/)
      (constructor coerce/binding/make (name))
+     (constructor coerce/binding/make2 (name lambda?))
      (print-procedure
       (standard-unparser-method 'COERCE/BINDING
 	(lambda (binding port)
@@ -307,6 +326,7 @@ wins by about 10%.
 	  (write-string (symbol-name (coerce/binding/name binding)) port)))))
 
   (name #F read-only true)
+  (lambda? #F read-only false)		; Bound to a known lambda?
   (ordinary-refs '() read-only false)
   (operator-refs '() read-only false))
 
