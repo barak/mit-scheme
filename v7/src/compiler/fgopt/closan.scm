@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.5 1988/12/06 18:56:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.6 1988/12/13 13:03:45 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -71,9 +71,7 @@ result, the analysis has been modified to force the closing-limit to
 
 |#
 
-(package (identify-closure-limits!)
-
-(define-export (identify-closure-limits! procs&conts applications lvalues)
+(define (identify-closure-limits! procs&conts applications lvalues)
   (let ((procedures
 	 (list-transform-negative procs&conts procedure-continuation?)))
     (for-each initialize-lvalues-lists! lvalues)
@@ -125,7 +123,10 @@ result, the analysis has been modified to force the closing-limit to
 	     (if (and (rvalue/procedure? value)
 		      (not (procedure-continuation? value)))
 		 (set-procedure-virtual-closure?! value true)))
-	   values)))))
+	   values))
+	(set-combination/model!
+	 application
+	 (rvalue-known-value (combination/operator application))))))
 
 (define (close-passed-out! procedure)
   (if (and (not (procedure-continuation? procedure))
@@ -172,7 +173,7 @@ result, the analysis has been modified to force the closing-limit to
 		   (close-rvalue! operator false class application)
 		   (close-application-arguments! application false)))))
 	  ((or (not (rvalue/procedure? proc))
-	       (procedure-closure-block proc))
+	       (procedure-closure-context proc))
 	   (close-application-arguments! application false))
 	  (else
 	   'DONE))))
@@ -265,8 +266,8 @@ result, the analysis has been modified to force the closing-limit to
       ;; remaining the same.
       (add-closure-reason! procedure reason1 reason2)
       ;; Force the procedure's type to CLOSURE.
-      (if (not (procedure-closure-block procedure))
-	  (set-procedure-closure-block! procedure true))
+      (if (not (procedure-closure-context procedure))
+	  (set-procedure-closure-context! procedure true))
       ;; The code generator needs all callees to be closed.
       (close-callees! (procedure-block procedure)
 		      new-closing-limit
@@ -285,12 +286,6 @@ result, the analysis has been modified to force the closing-limit to
 
 ;; These are like the corresponding standard block operations, but
 ;; they ignore any block drifting caused by envopt.
-
-(define-integrable (original-block-parent block)
-  (let ((procedure (block-procedure block)))
-    (and procedure
-	 (rvalue/procedure? procedure)
-	 (procedure-target-block procedure))))
 
 (define (original-block-ancestor-or-self? block block*)
   (define (loop block)
@@ -336,7 +331,7 @@ result, the analysis has been modified to force the closing-limit to
 						 original-closing-block))))
 	  ((and (not (block<= block original-closing-block))
 		(rvalue/procedure? (block-procedure original-closing-block))
-		(not (procedure-closure-block
+		(not (procedure-closure-context
 		      (block-procedure original-closing-block))))
 	   ;; My original parent has drifted to a place where I can't
 	   ;; be closed.  I must drag it back.
@@ -352,7 +347,7 @@ result, the analysis has been modified to force the closing-limit to
   (let ((myblock (procedure-block procedure)))
     (for-each
      (lambda (procedure*)
-       (if (false? (procedure-closure-block procedure*))
+       (if (false? (procedure-closure-context procedure*))
 	   (let ((closing-block (procedure-closing-limit procedure*))
 		 (original-closing-block (procedure-target-block procedure*)))
 	     ;; No need to do anything if PROCEDURE* hasn't drifted
@@ -393,5 +388,3 @@ result, the analysis has been modified to force the closing-limit to
 			    (rvalue-values
 			     (application-operator application))))
 		(block-applications block*)))))
-
-)
