@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.10 1992/02/04 05:13:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.11 1992/02/05 04:54:53 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -122,22 +122,24 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
-			 (OBJECT->FIXNUM (CONSTANT 4))
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
 			 (OBJECT->FIXNUM (REGISTER (? source)))
-			 (? overflow?)))
-  overflow?				; ignored
-  (convert-index->fixnum/register target source))
-
+			 #f))
+  (fixnum-1-arg target source
+   (lambda (target)
+     (multiply-fixnum-constant target (* n fixnum-1) false))))
+
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 			 (OBJECT->FIXNUM (REGISTER (? source)))
-			 (OBJECT->FIXNUM (CONSTANT 4))
-			 (? overflow?)))
-  overflow?				; ignored
-  (convert-index->fixnum/register target source))
-
-;;; Fixnum Predicates
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 #f))
+  (fixnum-1-arg target source
+   (lambda (target)
+     (multiply-fixnum-constant target (* n fixnum-1) false))))
+
+;;;; Fixnum Predicates
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? register)))
@@ -214,10 +216,13 @@ MIT in each case. |#
 
 (define-rule predicate
   (OVERFLOW-TEST)
-  (set-current-branches! (lambda (label) (LAP (JO (@PCR ,label))))
-			 (lambda (label) (LAP (JNO (@PCR ,label)))))
+  (set-current-branches!
+   (lambda (label)
+     (LAP (JO (@PCR ,label))))
+   (lambda (label)
+     (LAP (JNO (@PCR ,label)))))
   (LAP))
-
+
 ;;;; Utilities
 
 (define (object->fixnum target)
@@ -238,15 +243,45 @@ MIT in each case. |#
 (define-integrable fixnum-bits-mask
   (-1+ fixnum-1))
 
+(define (word->fixnum target)
+  (LAP (AND W ,target (& ,(fix:not fixnum-bits-mask)))))
+
+(define (integer-power-of-2? n)
+  (let loop ((power 1) (exponent 0))
+    (cond ((< n power) false)
+	  ((= n power) exponent)
+	  (else
+	   (loop (* 2 power) (1+ exponent))))))
+
 (define (load-fixnum-constant constant target)
   (if (zero? constant)
       (LAP (XOR W ,target ,target))
       (LAP (MOV W ,target (& ,(* constant fixnum-1))))))
 
-(define (convert-index->fixnum/register target source)
-  (fixnum-1-arg target source
-   (lambda (target)
-     (LAP (SAL W ,target (& ,(+ scheme-type-width 2)))))))
+(define (add-fixnum-constant target constant overflow?)
+  (if (and (zero? constant) (not overflow?))
+      (LAP)
+      (LAP (ADD W ,target (& ,(* constant fixnum-1))))))
+
+(define (multiply-fixnum-constant target constant overflow?)
+  (cond ((zero? constant)
+	 (load-fixnum-constant 0 target))
+	((= constant 1)
+	 (if (not overflow?)
+	     (LAP)
+	     (add-fixnum-constant target 0 overflow?)))
+	((= constant -1)
+	 (LAP (NEG W ,target)))
+	((and (not overflow?)
+	      (integer-power-of-2? (abs constant)))
+	 =>
+	 (lambda (expt-of-2)
+	   (if (negative? constant)
+	       (LAP (SAL W ,target (& ,expt-of-2))
+		    (NEG W ,target))
+	       (LAP (SAL W ,target (& ,expt-of-2))))))
+	(else
+	 (LAP (IMUL W ,target (& ,constant))))))
 
 ;;;; Fixnum operation dispatch
 
@@ -349,21 +384,6 @@ MIT in each case. |#
      ((fixnum-2-args/operate-constant operator) target constant overflow?))))
 
 ;;;; Arithmetic operations
-
-(define (integer-power-of-2? n)
-  (let loop ((power 1) (exponent 0))
-    (cond ((< n power) false)
-	  ((= n power) exponent)
-	  (else
-	   (loop (* 2 power) (1+ exponent))))))
-
-(define (word->fixnum target)
-  (LAP (AND W ,target (& ,(fix:not fixnum-bits-mask)))))
-
-(define (add-fixnum-constant target constant overflow?)
-  (if (and (zero? constant) (not overflow?))
-      (LAP)
-      (LAP (ADD W ,target (& ,(* constant fixnum-1))))))
 
 (define-fixnum-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (target)
@@ -556,24 +576,7 @@ MIT in each case. |#
 
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    (cond ((zero? n)
-	   (load-fixnum-constant 0 target))
-	  ((= n 1)
-	   (if (not overflow?)
-	       (LAP)
-	       (add-fixnum-constant target 0 overflow?)))
-	  ((= n -1)
-	   (LAP (NEG W ,target)))
-	  ((and (not overflow?)
-		(integer-power-of-2? (if (negative? n) (- 0 n) n)))
-	   =>
-	   (lambda (expt-of-2)
-	     (if (negative? n)
-		 (LAP (SAL W ,target (& ,expt-of-2))
-		      (NEG W ,target))
-		 (LAP (SAL W ,target (& ,expt-of-2))))))
-	  (else
-	   (LAP (IMUL W ,target (& ,n)))))))
+    (multiply-fixnum-constant target n overflow?)))
 
 (define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -581,7 +584,7 @@ MIT in each case. |#
     (cond ((= n 1)
 	   (LAP))
 	  ((= n -1)
-	   (NEG W ,target))
+	   (LAP (NEG W ,target)))
 	  ((integer-power-of-2? (if (negative? n) (- 0 n) n))
 	   =>
 	   (lambda (expt-of-2)
