@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.5 1994/12/14 20:56:45 adams Exp $
+$Id: compiler.pkg,v 1.6 1994/12/15 02:32:09 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -88,6 +88,7 @@ MIT in each case. |#
 	  compiler:default-top-level-declarations
 	  compiler:enable-expansion-declarations?
 	  compiler:enable-integration-declarations?
+	  compiler:enable-statistics?
 	  compiler:generate-kmp-files?
 	  compiler:generate-lap-files?
 	  compiler:generate-range-checks?
