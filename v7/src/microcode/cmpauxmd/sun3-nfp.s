@@ -141,7 +141,8 @@ _asm_primitive_apply:
 	movl	c_save_stack,sp
 	movl	a7@,a6
 	movl	d1,a7@-
-	movl	_utility_table+0x12*4,a0
+	lea	_utility_table,a0
+	movl	a0@(0x12*4),a0
 	jsr	a0@
 	lea	a7@(4),sp
 	movl	d0,a0
