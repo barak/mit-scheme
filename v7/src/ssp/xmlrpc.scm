@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xmlrpc.scm,v 1.10 2005/02/08 20:40:31 cph Exp $
+$Id: xmlrpc.scm,v 1.11 2005/02/16 04:31:24 cph Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -299,9 +299,9 @@ USA.
 					   empty?)))
     (if empty?
 	(lambda ()
-	  (make-elt #f))
+	  (make-elt))
 	(lambda contents
-	  (apply make-elt #f contents)))))
+	  (apply make-elt (xml-attrs) contents)))))
 
 (define rpc-elt:array (rpc-elt 'array #f))
 (define rpc-elt:base64 (rpc-elt 'base64 #f))
