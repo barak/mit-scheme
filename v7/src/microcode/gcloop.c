@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.36 1991/06/20 18:13:00 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.37 1991/06/21 01:41:43 cph Exp $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -93,13 +93,13 @@ static int gc_scan_history_index;
   (gc_to_history [gc_scan_history_index]) = To;				\
   if ((++gc_scan_history_index) == GC_SCAN_HISTORY_SIZE)		\
     gc_scan_history_index = 0;						\
-  if ((Temp == gc_trap) ||						\
-      (Scan == gc_scan_trap) ||						\
-      (To == gc_free_trap))						\
-  {									\
-    fprintf(stderr, "\nGCLoop: trap.\n");				\
-    abort ();								\
-  }									\
+  if ((Temp == gc_trap)							\
+      || ((gc_scan_trap != 0) && (Scan >= gc_scan_trap))		\
+      || ((gc_free_trap != 0) && (To >= gc_free_trap)))			\
+    {									\
+      fprintf(stderr, "\nGCLoop: trap.\n");				\
+      abort ();								\
+    }									\
 }
 
 #else
