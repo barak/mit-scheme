@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.44 1991/06/15 00:41:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.45 1991/07/02 18:18:50 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -144,8 +144,8 @@ TERMCAP_SOURCES = tterm.c
 TERMCAP_LIBS = LIBS_TERMCAP
 
 #ifdef HAVE_X_WINDOWS
-X_SOURCES = x11base.c x11term.c x11graph.c 
-X_OBJECTS = x11base.o x11term.o x11graph.o
+X_SOURCES = x11base.c x11term.c x11graph.c x11color.c
+X_OBJECTS = x11base.o x11term.o x11graph.o x11color.o
 X_LIB = LIBX11_MACHINE LIBX11_SYSTEM -lX11
 #endif /* HAVE_X_WINDOWS */
 
@@ -299,6 +299,7 @@ char.c \
 comutl.c \
 daemon.c \
 debug.c \
+dfloat.c \
 error.c \
 extern.c \
 fasdump.c \
@@ -382,6 +383,7 @@ char.o \
 comutl.o \
 daemon.o \
 debug.o \
+dfloat.o \
 error.o \
 extern.o \
 fasload.o \
@@ -596,7 +598,7 @@ fixnum.o : scheme.touch prims.h mul.c
 
 storage.o : scheme.touch gctype.c
 
-char.o string.o : scheme.touch prims.h
+char.o string.o dfloat.o : scheme.touch prims.h
 tterm.o : scheme.touch prims.h osterm.h
 
 boot.o : scheme.touch prims.h version.h option.h ostop.h
@@ -625,7 +627,8 @@ Ppband.o : ansidecl.h config.h errors.h types.h const.h object.h \
 dmpwrld.o : scheme.touch prims.h ux.h osfs.h \
 	unexec.c unexhp9k800.c getpagesize.h
 
-x11base.o x11graph.o x11term.o starbasex.o : scheme.touch prims.h x11.h
+x11base.o x11color.o x11graph.o x11term.o starbasex.o : scheme.touch prims.h \
+	x11.h
 x11base.o : ux.h uxselect.h
 starbase.o : scheme.touch prims.h
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.8 1990/10/02 22:52:22 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.9 1991/07/02 18:18:29 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -165,10 +165,24 @@ struct xwindow
 #define FONT_HEIGHT(f)	(((f) -> ascent) + ((f) -> descent))
 #define FONT_BASE(f)    ((f) -> ascent)
 
+struct ximage
+{
+  unsigned int allocation_index;
+  XImage *image;
+};
+
+#define XI_ALLOCATION_INDEX(xi) ((xi) -> allocation_index)
+#define XI_IMAGE(xi) ((xi -> image))
+
+#define XI_TO_OBJECT(xi) (LONG_TO_UNSIGNED_FIXNUM (XI_ALLOCATION_INDEX (xi)))
+
+#define XV_TO_OBJECT(xv) (LONG_TO_UNSIGNED_FIXNUM (xv))
+
 extern int x_debug;
 
 extern struct xdisplay * EXFUN (x_display_arg, (unsigned int arg));
 extern struct xwindow * EXFUN (x_window_arg, (unsigned int arg));
+extern struct ximage * EXFUN (x_image_arg, (unsigned int arg));
 extern PTR EXFUN (x_malloc, (unsigned int size));
 extern PTR EXFUN (x_realloc, (PTR ptr, unsigned int size));
 extern SCHEME_OBJECT EXFUN (x_window_to_object, (struct xwindow * xw));
@@ -196,3 +210,6 @@ extern struct xwindow * EXFUN
     struct drawing_attributes * attributes,
     struct xwindow_methods * methods,
     unsigned int extra));
+
+extern Visual * EXFUN (x_visual_arg, (unsigned int arg));
+extern struct ximage * EXFUN (x_image_arg, (unsigned int arg));

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.21 1991/05/09 03:49:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.22 1991/07/02 18:18:34 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -77,6 +77,8 @@ struct allocation_table
 
 static struct allocation_table x_display_table;
 static struct allocation_table x_window_table;
+static struct allocation_table x_image_table;
+static struct allocation_table x_visual_table;
 
 static void
 DEFUN (allocation_table_initialize, (table), struct allocation_table * table)
@@ -147,6 +149,20 @@ DEFUN (x_window_arg, (arg), unsigned int arg)
 {
   INITIALIZE_ONCE ();
   return (allocation_item_arg (arg, (&x_window_table)));
+}
+
+struct ximage *
+DEFUN (x_image_arg, (arg), unsigned int arg)
+{
+  INITIALIZE_ONCE ();
+  return (allocation_item_arg (arg, (&x_image_table)));
+}
+
+Visual *
+DEFUN (x_visual_arg, (arg), unsigned int arg)
+{
+  INITIALIZE_ONCE ();
+  return (allocation_item_arg (arg, (&x_visual_table)));
 }
 
 static int
@@ -388,7 +404,8 @@ DEFUN (x_window_to_xw, (window), Window window)
     }
   return (0);
 }
-
+extern void x_destroy_image ();
+    
 static void
 DEFUN (x_close_window, (xw), struct xwindow * xw)
 {
@@ -757,6 +774,7 @@ DEFUN_VOID (initialize_once)
 {
   allocation_table_initialize (&x_display_table);
   allocation_table_initialize (&x_window_table);
+  allocation_table_initialize (&x_image_table);
   XSetErrorHandler (x_error_handler);
   XSetIOErrorHandler (x_io_error_handler);
   add_reload_cleanup (x_close_all_displays);
@@ -1181,4 +1199,30 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-ICON-NAME", Prim_x_window_set_icon_name, 2, 2,
     XSetIconName ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (STRING_ARG (2)));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+/* Support routines for visual and image handling */
+
+extern unsigned int allocate_x_window (xw)
+struct xwindow * xw;
+{ return allocate_table_index((&x_window_table), xw);
+}
+
+extern unsigned int allocate_x_visual (xv)
+Visual * xv;
+{ return allocate_table_index((&x_visual_table), xv);
+}
+
+extern unsigned int allocate_x_image (xi)
+struct ximage * xi;
+{ return allocate_table_index((&x_image_table), xi);
+}
+
+void x_destroy_image (xi)
+struct ximage * xi;
+{ XImage * image = XI_IMAGE (xi);
+  ((x_image_table . items) [XI_ALLOCATION_INDEX (xi)]) = 0;
+  free (image -> data);
+  XDestroyImage (image);
+  free (xi);
 }
