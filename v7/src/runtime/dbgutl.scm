@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.8 1989/08/07 07:36:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.9 1990/02/20 16:15:16 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -53,8 +53,12 @@ MIT in each case. |#
   (if (string? name) (write-string name) (write name)))
 
 (define (debug/read-eval-print-1 environment)
-  (debugger-message
-   (debug/eval (prompt-for-expression "Evaluate expression") environment)))
+  (let ((value
+	 (debug/eval (prompt-for-expression "Evaluate expression")
+		     environment)))
+    (if (undefined-value? value)
+	(debugger-message "\n" ";No value")
+	(debugger-message "\n" "Value: " value))))
 
 (define (output-to-string length thunk)
   (let ((x (with-output-to-truncated-string length thunk)))
