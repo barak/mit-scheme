@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlcon.scm,v 4.26 1993/07/01 03:25:31 gjr Exp $
+$Id: rtlcon.scm,v 4.27 1993/07/09 00:15:05 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -435,13 +435,21 @@ MIT in each case. |#
    (lambda (receiver scfg-append!)
      scfg-append!			;ignore
      (lambda (address offset granularity)
-       (if (not (eq? granularity 'OBJECT))
-	   (error "can't take address of non-object offset" granularity))
        (receiver
-	(if (zero? offset)
-	    address
-	    (rtl:make-offset-address address
-				     (rtl:make-machine-constant offset))))))))
+	(case granularity
+	  ((OBJECT)
+	   (if (zero? offset)
+	       address
+	       (rtl:make-offset-address address
+					(rtl:make-machine-constant offset))))
+	  ((BYTE)
+	   (rtl:make-byte-offset-address address
+					 (rtl:make-machine-constant offset)))
+	  ((FLOAT)
+	   (rtl:make-float-offset-address address
+					  (rtl:make-machine-constant offset)))
+	  (else
+	   (error "ADDRESS: Unknown granularity" granularity))))))))
 
 (define-expression-method 'ENVIRONMENT
   (address-method

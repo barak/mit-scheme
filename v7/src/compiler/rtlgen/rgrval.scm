@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rgrval.scm,v 4.21 1993/07/01 03:27:12 gjr Exp $
+$Id: rgrval.scm,v 4.22 1993/07/09 00:15:16 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -276,8 +276,7 @@ MIT in each case. |#
 		(closure-environment-adjustment nentries entry))))
 	  (if (back-end:= distance 0)
 	      expression
-	      (rtl:bump-closure expression
-				(rtl:make-machine-constant distance))))))))
+	      (rtl:bump-closure expression distance)))))))
 
 (define (make-non-trivial-closure-cons procedure block**)
   (let* ((block (procedure-closing-block procedure))
