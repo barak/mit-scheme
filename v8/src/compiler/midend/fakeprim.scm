@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.3 1994/11/25 22:59:37 jmiller Exp $
+$Id: fakeprim.scm,v 1.4 1994/12/08 16:48:37 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -775,6 +775,11 @@ MIT in each case. |#
   ;;     continuation.
   (make-operator/out-of-line "#[vector-cons]"))
 
+;; These limit the size of an object the is open-coded by bumping free
+;; without a rigourous heap check.
+(define *string-allocate-max-open-coded-length* 4000)
+(define *floating-vector-cons-max-open-coded-length* 500)
+
 (define %string-allocate
   ;; (CALL ',%string-allocate <continuation or #F> <length>)
   ;; Note:

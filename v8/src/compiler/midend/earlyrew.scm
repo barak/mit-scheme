@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: earlyrew.scm,v 1.2 1994/12/08 16:46:54 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -508,23 +508,25 @@ MIT in each case. |#
 ;; This is done this way because of current rtl generator 
 
 (let ((allocation-rewriter
-       (lambda (name out-of-line)
+       (lambda (name out-of-line limit)
 	 (let ((primitive (make-primitive-procedure name)))
 	   (lambda (size)
-	     (let ((default
-		     (lambda ()
-		       `(CALL (QUOTE ,out-of-line) (QUOTE #F) ,size))))
-	       (cond ((earlyrew/number? size)
-		      => (lambda (nbytes)
-			   (if (not (exact-nonnegative-integer? nbytes))
-			       (default)
-			       `(CALL (QUOTE ,primitive) (QUOTE #F) ,size))))
-		     (else
-		      (default)))))))))
+	     (define (default)
+	       `(CALL (QUOTE ,out-of-line) (QUOTE #F) ,size))
+	     (cond ((earlyrew/number? size)
+		    => (lambda (nbytes)
+			 (if (not (and (exact-nonnegative-integer? nbytes)
+				       (<= nbytes limit)))
+			     (default)
+			     `(CALL (QUOTE ,primitive) (QUOTE #F) ,size))))
+		   (else
+		    (default))))))))
   (define-rewrite/early 'STRING-ALLOCATE
-    (allocation-rewriter 'STRING-ALLOCATE %string-allocate))
+    (allocation-rewriter 'STRING-ALLOCATE %string-allocate
+			 *string-allocate-max-open-coded-length*))
   (define-rewrite/early 'FLOATING-VECTOR-CONS
-    (allocation-rewriter 'FLOATING-VECTOR-CONS %floating-vector-cons)))
+    (allocation-rewriter 'FLOATING-VECTOR-CONS %floating-vector-cons 
+			 *floating-vector-cons-max-open-coded-length*)))
 
 ;; *** This can be improved by using %vector-allocate,
 ;; and a non-marked header moved through the vector as it is filled. ***
