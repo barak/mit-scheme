@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.41 1989/10/28 15:37:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.42 1989/11/27 21:57:01 jinx Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -1196,7 +1196,7 @@ print_external_objects(from, count)
 	break;
 
       case TC_BIG_FIXNUM:
-	print_a_bignum (*from++);
+	print_a_bignum (++from);
 	from += (1 + OBJECT_DATUM (*from));
 	break;
 
