@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 4.7 1988/12/19 20:23:28 cph Rel $
+$Id: folcon.scm,v 4.8 1993/08/26 18:00:06 gjr Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Constant Folding
+;; Package: (compiler fg-optimizer fold-constants)
 
 (declare (usual-integrations))
 
@@ -130,6 +131,7 @@ MIT in each case. |#
 			   (set-lvalue-known-value! lvalue value)
 			   true)))))))))
 
+#|
 (define (fold-combinations combinations)
   (if (null? combinations)
       (return-2 false '())
@@ -138,6 +140,33 @@ MIT in each case. |#
 	  (if (fold-combination (car combinations))
 	      (return-2 true not-folded)
 	      (return-2 any-folded? (cons (car combinations) not-folded)))))))
+|#
+
+(define (fold-combinations combinations)
+  ;; (return-2 any-folded? not-folded)
+  (let ((left combinations)
+	(any-folded? false)
+	(not-folded '()))
+    (let restart-loop ()
+      (with-simple-restart 'CONTINUE
+	"Skip this constant-folding operation"
+	(lambda ()
+	  (let fold-loop ()
+	    (if (not (null? left))
+		(begin
+		  (if (fold-combination (car left))
+		      (set! any-folded? true)
+		      (set! not-folded (cons (car left) not-folded)))
+		  (set! left (cdr left))
+		  (fold-loop))))))
+      (if (not (null? left))
+	  (begin
+	    ;; This means that folding the current combination caused an error,
+	    ;; and the user decided to skip.
+	    (set! not-folded (cons (car left) not-folded))
+	    (set! left (cdr left))
+	    (restart-loop))))
+    (return-2 any-folded? (reverse! not-folded))))
 
 (define (fold-combination combination)
   (let ((operator (combination/operator combination))
