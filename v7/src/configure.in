@@ -2,24 +2,24 @@ dnl Process this file with autoconf to produce a configure script.
 
 dnl Copyright (c) 2000-2001 Massachusetts Institute of Technology
 dnl
-dnl This file is part of MIT Scheme.
+dnl This file is part of MIT/GNU Scheme.
 dnl
-dnl MIT Scheme is free software; you can redistribute it and/or modify
-dnl it under the terms of the GNU General Public License as published
-dnl by the Free Software Foundation; either version 2 of the License,
-dnl or (at your option) any later version.
+dnl MIT/GNU Scheme is free software; you can redistribute it and/or
+dnl modify it under the terms of the GNU General Public License as
+dnl published by the Free Software Foundation; either version 2 of the
+dnl License, or (at your option) any later version.
 dnl
-dnl MIT Scheme is distributed in the hope that it will be useful, but
-dnl WITHOUT ANY WARRANTY; without even the implied warranty of
+dnl MIT/GNU Scheme is distributed in the hope that it will be useful,
+dnl but WITHOUT ANY WARRANTY; without even the implied warranty of
 dnl MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 dnl General Public License for more details.
 dnl
 dnl You should have received a copy of the GNU General Public License
-dnl along with MIT Scheme; if not, write to the Free Software
+dnl along with MIT/GNU Scheme; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 dnl 02111-1307, USA.
 
-AC_REVISION([$Id: configure.in,v 1.6 2002/11/20 19:45:46 cph Exp $])
+AC_REVISION([$Id: configure.in,v 1.7 2003/02/14 18:28:00 cph Exp $])
 AC_INIT(microcode/boot.c)
 
 AC_PROG_INSTALL
