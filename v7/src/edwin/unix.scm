@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.95 1999/06/06 18:26:46 cph Exp $
+;;; $Id: unix.scm,v 1.96 1999/08/09 03:26:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -472,10 +472,11 @@ filename suffixes \".bf\" and \".ky\"."
     (cond ((equal? "bf" type)
 	   (call-with-binary-input-file pathname
 	     (lambda (input)
-	       (read-blowfish-file-header input)
 	       (call-with-output-mark mark
 		 (lambda (output)
-		   (blowfish-encrypt-port input output password #f))))))
+		   (blowfish-encrypt-port input output password
+					  (read-blowfish-file-header input)
+					  #f))))))
 	  ((or (equal? "ky" type) (equal? "KY" type))
 	   (insert-string (let ((the-encrypted-file
 				 (call-with-binary-input-file pathname
@@ -508,8 +509,9 @@ filename suffixes \".bf\" and \".ky\"."
 					  (region-end region))))
 	     (call-with-binary-output-file pathname
 	       (lambda (output)
-		 (write-blowfish-file-header output)
-		 (blowfish-encrypt-port input output password #t)))))
+		 (blowfish-encrypt-port input output password
+					(write-blowfish-file-header output)
+					#t)))))
 	  ((or (equal? "ky" type) (equal? "KY" type))
 	   (let ((the-encrypted-file
 		  (encrypt (extract-string (region-start region)
