@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/telnet.scm,v 1.5 1991/11/22 20:29:27 arthur Exp $
+$Id: telnet.scm,v 1.6 1992/10/26 22:37:03 cph Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,14 +50,9 @@ Return before end of process output copies rest of line to end (skipping
 
 Customization: Entry to this mode runs the hooks on comint-mode-hook
 and telnet-mode-hook, in that order."
-
   (set-variable! comint-prompt-regexp
 		 (or (ref-variable telnet-prompt-pattern)
 		     (ref-variable shell-prompt-pattern)))
-  (let ((process (get-buffer-process (current-buffer))))
-    (if process
-	(set-process-filter! process
-			     (make-telnet-filter process))))
   (event-distributor/invoke! (ref-variable telnet-mode-hook)))
 
 (define-key 'telnet #\C-m 'telnet-send-input)
@@ -79,30 +74,35 @@ If port number is typed after hostname (separated by a space),
 use it instead of the default."
   "sTelnet to host\nP"
   (lambda (host new-process?)
-    (select-buffer
-     (let ((mode (ref-mode-object telnet))
-	   (buffer-name
-	     (let ((buffer-name (string-append "*" host "-telnet*")))
-	       (if (not new-process?)
-		   buffer-name
-		   (new-buffer buffer-name)))))
-       (if (re-match-string-forward
-	    (re-compile-pattern "\\([^ ]+\\) \\([^ ]+\\)" false)
-	    true
-	    false
-	    host)
-	   (let ((host
-		  (substring host
-			     (re-match-start-index 1)
-			     (re-match-end-index 1)))
-		 (port
-		  (substring host
-			     (re-match-start-index 2)
-			     (re-match-end-index 2))))
-	     (if (not (exact-nonnegative-integer? (string->number port)))
-		 (editor-error "Port must be a positive integer: " port))
-	     (make-comint mode buffer-name "telnet" host port))
-	   (make-comint mode buffer-name "telnet" host))))))
+    (let ((buffer
+	   (let ((mode (ref-mode-object telnet))
+		 (buffer-name
+		   (let ((buffer-name (string-append "*" host "-telnet*")))
+		     (if (not new-process?)
+			 buffer-name
+			 (new-buffer buffer-name)))))
+	     (if (re-match-string-forward
+		  (re-compile-pattern "\\([^ ]+\\) \\([^ ]+\\)" false)
+		  true
+		  false
+		  host)
+		 (let ((host
+			(substring host
+				   (re-match-start-index 1)
+				   (re-match-end-index 1)))
+		       (port
+			(substring host
+				   (re-match-start-index 2)
+				   (re-match-end-index 2))))
+		   (if (not (exact-nonnegative-integer? (string->number port)))
+		       (editor-error "Port must be a positive integer: " port))
+		   (make-comint mode buffer-name "telnet" host port))
+		 (make-comint mode buffer-name "telnet" host)))))
+      (let ((process (get-buffer-process buffer)))
+	(if process
+	    (set-process-filter! process
+				 (make-telnet-filter process))))
+      (select-buffer buffer))))
 
 (define-command telnet-send-input
   "Send input to telnet process.
