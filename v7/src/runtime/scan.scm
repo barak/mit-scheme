@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scan.scm,v 14.1 1988/06/13 11:50:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scan.scm,v 14.2 1988/06/16 06:28:56 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -53,10 +53,8 @@ MIT in each case. |#
 ;;; OPEN-BLOCK-COMPONENTS, will connect directly to SCAN-DEFINES and
 ;;; UNSCAN-DEFINES, respectively.
 
-(define (initialize-package!)
-  (set! open-block-tag (make-named-tag "OPEN-BLOCK")))
-
-(define open-block-tag)
+(define-integrable open-block-tag
+  (string->symbol "#[OPEN-BLOCK]"))
 
 (define-integrable sequence-2-type
   (ucode-type sequence-2))

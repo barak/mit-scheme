@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.1 1988/06/13 11:54:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.2 1988/06/16 06:29:40 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -40,18 +40,10 @@ MIT in each case. |#
 (define (initialize-package!)
   (set-fluid-let-type! 'SHALLOW)
   (enable-scan-defines!)
-  (set! lambda-tag:unnamed (make-named-tag "UNNAMED-PROCEDURE"))
-  (set! lambda-tag:let (make-named-tag "LET-PROCEDURE"))
-  (set! lambda-tag:fluid-let (make-named-tag "FLUID-LET-PROCEDURE"))
-  (set! lambda-tag:make-environment (make-named-tag "MAKE-ENVIRONMENT"))
   (set! system-global-syntax-table (make-system-global-syntax-table))
   (set! user-initial-syntax-table
 	(make-syntax-table system-global-syntax-table)))
 
-(define lambda-tag:unnamed)
-(define lambda-tag:let)
-(define lambda-tag:fluid-let)
-(define lambda-tag:make-environment)
 (define system-global-syntax-table)
 (define user-initial-syntax-table)
 
@@ -347,6 +339,11 @@ MIT in each case. |#
 			     (if (null? rest)
 				 undefined-conditional-branch
 				 (loop (car rest) (cdr rest))))))))
+
+(define (syntaxer/cond-=>-helper form1-result thunk2 thunk3)
+  (if form1-result
+      ((thunk2) form1-result)
+      (thunk3)))
 
 ;;;; Procedures
 
@@ -595,6 +592,18 @@ MIT in each case. |#
 		     (make-scode-sequence
 		      (append! (map make-definition names values)
 			       (list body)))))
+
+(define-integrable lambda-tag:unnamed
+  (string->symbol "#[UNNAMED-PROCEDURE]"))
+
+(define-integrable lambda-tag:let
+  (string->symbol "#[LET-PROCEDURE]"))
+
+(define-integrable lambda-tag:fluid-let
+  (string->symbol "#[FLUID-LET-PROCEDURE]"))
+
+(define-integrable lambda-tag:make-environment
+  (string->symbol "#[MAKE-ENVIRONMENT]"))
 
 ;;;; Lambda List Parser
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.1 1988/06/13 11:46:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.2 1988/06/16 06:28:28 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -38,11 +38,6 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! lambda-tag:internal-lambda (make-named-tag "INTERNAL-LAMBDA"))
-  (set! lambda-tag:internal-lexpr (make-named-tag "INTERNAL-LEXPR"))
-  (set! block-declaration-tag (make-named-tag "Block Declaration"))
-  (unparser/set-tagged-vector-method! block-declaration-tag
-    (unparser/standard-method 'BLOCK-DECLARATION))
   (lambda-body-procedures clambda/physical-body clambda/set-physical-body!
     (lambda (wrap-body! wrapper-components unwrap-body!
 			unwrapped-body set-unwrapped-body!)
@@ -412,18 +407,11 @@ MIT in each case. |#
 (define set-lambda-body!)
 (define lambda-bound)
 
-(define-integrable (make-block-declaration text)
-  (vector block-declaration-tag text))
+(define-integrable block-declaration-tag
+  (string->symbol "#[Block Declaration]"))
 
-(define (block-declaration? object)
-  (and (vector? object)
-       (not (zero? (vector-length object)))
-       (eq? (vector-ref object 0) block-declaration-tag)))
-
-(define-integrable (block-declaration-text block-declaration)
-  (vector-ref block-declaration 1))
-
-(define block-declaration-tag)
+(define-structure (block-declaration (named block-declaration-tag))
+  (text false read-only true))
 
 ;;;; Simple Lambda/Lexpr
 
@@ -471,8 +459,11 @@ MIT in each case. |#
 
 ;;;; Internal Lambda
 
-(define lambda-tag:internal-lambda)
-(define lambda-tag:internal-lexpr)
+(define-integrable lambda-tag:internal-lambda
+  (string->symbol "#[INTERNAL-LAMBDA]"))
+
+(define-integrable lambda-tag:internal-lexpr
+  (string->symbol "#[INTERNAL-LEXPR]"))
 
 (define-integrable (make-internal-lambda names body)
   (make-slambda lambda-tag:internal-lambda names body))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.1 1988/06/13 11:51:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.2 1988/06/16 06:29:20 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -38,8 +38,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! scode-constant/type-vector (make-scode-constant/type-vector))
-  (set! declaration-tag (make-named-tag "DECLARATION")))
+  (set! scode-constant/type-vector (make-scode-constant/type-vector)))
 
 ;;;; Constant
 
@@ -115,6 +114,12 @@ MIT in each case. |#
 
 (define-integrable (intern string)
   (string->symbol (string-upcase string)))
+
+(define-integrable (symbol-hash symbol)
+  (string-hash (symbol->string symbol)))
+
+(define (symbol-append . symbols)
+  (string->symbol (apply string-append (map symbol->string symbols))))
 
 ;;;; Variable
 
@@ -220,7 +225,8 @@ MIT in each case. |#
 	 (and (pair? text)
 	      (eq? (car text) declaration-tag)))))
 
-(define declaration-tag)
+(define-integrable declaration-tag
+  (string->symbol "#[DECLARATION]"))
 
 (define-integrable (declaration-text declaration)
   (cdr (comment-text declaration)))
