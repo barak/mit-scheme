@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.8 1993/02/15 04:57:13 gjr Exp $
+$Id: lapopt.scm,v 1.9 1993/02/15 05:08:51 gjr Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -311,11 +311,11 @@ MIT in each case. |#
 		  (next* (and next (find-non-label (cdr next)))))
 	     (if (and next
 		      (let ((instr (car next)))
-			(memq (instruction-type instr) '(ALU MEMORY))
-			(not (skips? instr))
-			(not (pc-sensitive? instr))
-			(or (not next*)
-			    (not (skips? (car next*))))))
+			(and (memq (instruction-type instr) '(ALU MEMORY))
+			     (not (skips? instr))
+			     (not (pc-sensitive? instr))
+			     (or (not next*)
+				 (not (skips? (car next*)))))))
 		 (fix-sequences (cdr next)
 				`(,@(reverse
 				     (list-difference (cdr instrs) next))
