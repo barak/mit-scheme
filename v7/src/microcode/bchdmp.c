@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.27 1987/04/16 02:06:33 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.28 1987/04/16 14:35:15 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -42,6 +42,8 @@ MIT in each case. */
 #define In_Fasdump
 #include "bchgcc.h"
 #include "dump.c"
+
+extern Pointer Make_Prim_Exts();
 
 /* (PRIMITIVE-FASDUMP object-to-dump file-name flag)
    Not implemented yet.
