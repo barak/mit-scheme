@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.24 1987/11/23 06:46:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.25 1987/12/18 00:03:51 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -246,67 +246,16 @@ filemodestring (s, a)
    struct stat *s;
    char *a;
 {
-  static char ftypelet ();
-  static void rwx (), setst ();
+  extern char file_type_letter ();
+  extern void rwx (), setst ();
 
-  a[0] = ftypelet (s);
+  (a [0]) = (file_type_letter (s));
   /* Aren't there symbolic names for these byte-fields? */
-  rwx ((s->st_mode & 0700) << 0, &(a[1]));
-  rwx ((s->st_mode & 0070) << 3, &(a[4]));
-  rwx ((s->st_mode & 0007) << 6, &(a[7]));
-  setst (s->st_mode, a);
+  rwx (((s -> st_mode) & 0700) << 0, (& (a [1])));
+  rwx (((s -> st_mode) & 0070) << 3, (& (a [4])));
+  rwx (((s -> st_mode) & 0007) << 6, (& (a [7])));
+  setst ((s -> st_mode), a);
   return;
-}
-
-/* ftypelet - file type letter
-
-   Ftypelet accepts a file status block and returns a character code
-   describing the type of the file.  'd' is returned for directories,
-   'b' for block special files, 'c' for character special files, 'm'
-   for multiplexor files, 'l' for symbolic link, 's' for socket, 'p'
-   for fifo, '-' for any other file type */
-
-static char
-ftypelet (s)
-   struct stat *s;
-{
-  switch (s->st_mode & S_IFMT)
-    {
-    default:
-      return '-';
-    case S_IFDIR:
-      return 'd';
-#ifdef S_IFLNK
-    case S_IFLNK:
-      return 'l';
-#endif
-#ifdef S_IFCHR
-    case S_IFCHR:
-      return 'c';
-#endif
-#ifdef S_IFBLK
-    case S_IFBLK:
-      return 'b';
-#endif
-#ifdef S_IFMPC
-/* These do not seem to exist */
-    case S_IFMPC:
-    case S_IFMPB:
-      return 'm';
-#endif
-#ifdef S_IFSOCK
-    case S_IFSOCK:
-      return 's';
-#endif
-#ifdef S_IFIFO
-    case S_IFIFO:
-      return 'p';
-#endif
-#ifdef S_IFNWK /* hp-ux hack */
-    case S_IFNWK:
-      return 'n';
-#endif
-    }
 }
 
 /* rwx - look at read, write, and execute bits and set character
