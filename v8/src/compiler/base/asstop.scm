@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.3 1995/07/16 22:28:06 adams Exp $
+$Id: asstop.scm,v 1.4 1995/07/27 14:13:55 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -45,7 +45,10 @@ MIT in each case. |#
   (fasdump object pathname))
 
 (define (compiler-output->procedure scode environment)
-  (scode-eval scode environment))
+  (scode-eval (if (compiled-module? scode)
+		  (compiled-module/expression scode)
+		  scode)
+	      environment))
 
 (define (compiler-output->compiled-expression cexp)
   cexp)
@@ -266,13 +269,12 @@ MIT in each case. |#
 			   *recursive-compilation-number*))
 		    (else
 		     (compiler:dump-info-file
-		      (let ((others (recursive-compilation-results)))
-			(if (null? others)
-			    info
-			    (list->vector
-			     (cons info
-				   (map (lambda (other) (vector-ref other 1))
-					others)))))
+		      (let ((all-blocks
+			     (list->vector
+			      (cons info
+				    (map (lambda (other) (vector-ref other 1))
+					 (recursive-compilation-results))))))
+			all-blocks)
 		      pathname)
 		     *info-output-filename*)))
 	    *input-filename-for-temporary-info-info*)))))
@@ -297,56 +299,44 @@ MIT in each case. |#
 
 ;;; Various ways of dumping an info file
 
-(define (compiler:dump-inf-file binf pathname)
-  (fasdump binf pathname true)
-  (announce-info-files pathname))
-
-(define (compiler:dump-bif/bsm-files binf pathname)
-  (let ((bif-path (pathname-new-type pathname "bif"))
-	(bsm-path (pathname-new-type pathname "bsm")))
-    (let ((bsm (split-inf-structure! binf bsm-path)))
-      (fasdump binf bif-path true)
-      (fasdump bsm bsm-path true))
-    (announce-info-files bif-path bsm-path)))
+(define (fasdump-dbg-object object locator file-type compress?)
+  (let ((wrapped-object
+	 (make-dbg-wrapper object (dbg-locator/timestamp locator)))
+	(pathname
+	 (pathname-new-type (dbg-locator/file locator) file-type)))
+    (if compress?
+	(call-with-temporary-filename
+	 (lambda (temporary-file)
+	   (fasdump wrapped-object temporary-file true)
+	   (compress temporary-file pathname)))
+	(fasdump wrapped-object pathname true))
+    (if compiler:noisy?
+	(let ((port (nearest-cmdl/port)))
+	  (fresh-line port)
+	  (write-string ";")
+	  (write (->namestring pathname))
+	  (write-string " dumped ")))
+    unspecific))
   
-(define (compiler:dump-bci/bcs-files binf pathname)
-  (let ((bci-path (pathname-new-type pathname "bci"))
-	(bcs-path (pathname-new-type pathname "bcs")))
-    (let ((bsm (split-inf-structure! binf bcs-path)))
-      (call-with-temporary-filename
-	(lambda (bif-name)
-	  (fasdump binf bif-name true)
-	  (compress bif-name bci-path)))
-      (call-with-temporary-filename
-	(lambda (bsm-name)
-	  (fasdump bsm bsm-name true)
-	  (compress bsm-name bcs-path))))
-    (announce-info-files bci-path bcs-path)))
-  
-(define (compiler:dump-bci-file binf pathname)
-  (let ((bci-path (pathname-new-type pathname "bci")))
-    (split-inf-structure! binf false)
-    (call-with-temporary-filename
-      (lambda (bif-name)
-	(fasdump binf bif-name true)
-	(compress bif-name bci-path)))
-    (announce-info-files bci-path)))
+(define (compiler:dump-inf-file binf locator)
+  (fasdump-dbg-object binf locator "inf" #F))
 
-(define (announce-info-files . files)
-  (if compiler:noisy?
-      (let ((port (nearest-cmdl/port)))
-	(let loop ((files files))
-	  (if (null? files)
-	      unspecific
-	      (begin
-		(fresh-line port)
-		(write-string ";")
-		(write (->namestring (car files)))
-		(write-string " dumped ")
-		(loop (cdr files))))))))
+(define (compiler:dump-bif/bsm-files binf locator)
+  (let ((bsm (split-inf-structure! binf 'DUMPED-SEPARATELY)))
+    (fasdump-dbg-object binf locator "bif" #F)
+    (fasdump-dbg-object bsm  locator "bsm" #F)))
+  
+(define (compiler:dump-bci/bcs-files binf locator)
+  (let ((bsm (split-inf-structure! binf 'DUMPED-SEPARATELY)))
+    (fasdump-dbg-object binf locator "bci" 'COMPRESS)
+    (fasdump-dbg-object bsm  locator "bcs" 'COMPRESS)))
+  
+(define (compiler:dump-bci-file binf locator)
+  (split-inf-structure! binf false)
+  (fasdump-dbg-object binf locator "bci" 'COMPRESS))
 
 (define compiler:dump-info-file
-  compiler:dump-bci/bcs-files)
+  compiler:dump-bci-file)
 
 ;;;; LAP->CODE
 ;;; Example of `lap->code' usage (MC68020):
