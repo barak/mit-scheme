@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.72 1992/02/10 13:52:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.73 1992/09/02 04:38:57 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -281,6 +281,14 @@ DEFUN_VOID (make_fixed_objects_vector)
      ARITY_DISPATCHER_TAG,
      (MAKE_POINTER_OBJECT (TC_LIST, (Free - 2))));
 
+#ifdef DOS386
+  {
+    extern void EXFUN (DOS_initialize_fov, (SCHEME_OBJECT));
+
+    DOS_initialize_fov (fixed_objects_vector);
+  }
+#endif /* DOS386 */
+
   return (fixed_objects_vector);
 }
 
@@ -290,7 +298,7 @@ static void
 DEFUN (Start_Scheme, (Start_Prim, File_Name),
        int Start_Prim AND CONST char * File_Name)
 {
-  extern SCHEME_OBJECT make_primitive ();
+  extern SCHEME_OBJECT EXFUN (make_primitive, (unsigned char *));
   SCHEME_OBJECT FName, Init_Prog, *Fasload_Call, prim;
   fast long i;
   /* Parallel processor test */
