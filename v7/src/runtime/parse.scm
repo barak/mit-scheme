@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.2 1988/07/13 18:41:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.3 1988/07/15 22:31:58 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -56,6 +56,8 @@ MIT in each case. |#
 	(char-set-difference char-set/atom-constituents
 			     (char-set #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9
 				       #\+ #\- #\. #\#)))
+  (set! char-set/not-octal
+	(char-set-invert (char-set #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7)))
 
   (set! lambda-optional-tag (intern "#!optional"))
   (set! lambda-rest-tag (intern "#!rest"))
@@ -81,6 +83,7 @@ MIT in each case. |#
 (define char-set/atom-constituents)
 (define char-set/char-delimiters)
 (define char-set/symbol-leaders)
+(define char-set/not-octal)
 
 (define lambda-optional-tag)
 (define lambda-rest-tag)
@@ -405,14 +408,35 @@ MIT in each case. |#
     (let ((string (read-string char-set/string-delimiters)))
       (if (char=? #\" (read-char))
 	  string
-	  (let ((char (read-char)))
+	  (let ((char
+		 (let ((char (read-char)))
+		   (cond ((char-ci=? char #\t) #\Tab)
+			 ((char-ci=? char #\n) #\Newline)
+			 ((char-ci=? char #\f) #\Page)
+			 ((char->digit char 8)
+			  (octal->char
+			   (string-append (char->string char)
+					  (read-string char-set/not-octal))))
+			 (else char)))))
 	    (string-append string
-			   (char->string
-			    (cond ((char-ci=? char #\t) #\Tab)
-				  ((char-ci=? char #\n) #\Newline)
-				  ((char-ci=? char #\f) #\Page)
-				  (else char)))
+			   (char->string char)
 			   (loop)))))))
+
+(define (octal->char string)
+  (let ((end (string-length string))
+	(loser
+	 (lambda (message)
+	   (error (string-append "Octal string escape " message ":") string))))
+    (if (> end 3)
+	(loser "too long"))
+    (let loop ((index 0) (sum 0))
+      (if (= index end)
+	  (begin
+	    (if (>= sum 256)
+		(loser "exceeds ASCII range"))
+	    (ascii->char sum))
+	  (loop (1+ index)
+		(+ (* sum 8) (char->digit (string-ref string index) 8)))))))
 
 (define (parse-object/char-quote)
   (discard-char)
