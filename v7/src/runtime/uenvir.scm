@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.7 1989/05/21 17:16:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.8 1989/05/25 16:22:27 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -151,9 +151,9 @@ MIT in each case. |#
       (lexical-reference environment name)))
 
 (define (system-global-environment/bound-names environment)
-  (list-transform-negative (obarray->list)
-    (lambda (sym)
-      (lexical-unbound? environment sym))))
+  (list-transform-negative (obarray->list (fixed-objects-item 'OBARRAY))
+    (lambda (symbol)
+      (lexical-unbound? environment symbol))))
 
 (define-integrable (ic-environment? object)
   (object-type? (ucode-type environment) object))
