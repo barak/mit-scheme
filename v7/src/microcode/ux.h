@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.18 1991/01/24 04:33:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.19 1991/01/24 05:04:41 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -118,7 +118,7 @@ enum syserr_names
   syserr_file_too_large,
   syserr_filename_too_long,
   syserr_function_not_implemented,
-  syserr_improper_link
+  syserr_improper_link,
   syserr_inappropriate_io_control_operation,
   syserr_interrupted_function_call,
   syserr_invalid_argument,
@@ -143,7 +143,7 @@ enum syserr_names
   syserr_result_too_large,
   syserr_too_many_links,
   syserr_too_many_open_files,
-  syserr_too_many_open_files,
+  syserr_too_many_open_files
 };
 
 extern void EXFUN (error_system_call, (int code, enum syscall_names name));
