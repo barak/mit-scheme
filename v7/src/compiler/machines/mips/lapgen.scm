@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.2 1990/11/28 22:10:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.3 1990/11/29 02:11:06 cph Rel $
 $MC68020-Header: lapgen.scm,v 4.26 90/01/18 22:43:36 GMT cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -154,13 +154,13 @@ MIT in each case. |#
     ((FLOAT) (fp-store-doubleword source offset base))
     (else (error "unknown register type" source))))
 
-(define (load-constant constant target #!optional delay)
+(define (load-constant constant target #!optional delay-slot?)
   ;; Load a Scheme constant into a machine register.
-  (let ((delay (and (not (default-object? delay)) delay)))
+  (let ((delay-slot? (and (not (default-object? delay-slot?)) delay-slot?)))
     (if (non-pointer-object? constant)
 	(load-immediate (non-pointer->literal constant) target)
 	(LAP ,@(load-pc-relative (constant->label constant) target)
-	     ,@(if delay '((NOP)) '())))))
+	     ,@(if delay-slot? '((NOP)) '())))))
 
 (define (load-non-pointer type datum target)
   ;; Load a Scheme non-pointer constant, defined by type and datum,
