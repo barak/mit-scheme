@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for HP9000 series 300 (or 200)
 
-$Id: hp9k300.h,v 1.11 1993/04/27 10:27:06 cph Exp $
+$Id: hp9k300.h,v 1.12 1993/09/14 21:51:51 gjr Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -76,7 +76,7 @@ MIT in each case. */
       traditional C.
    3. "-Wp,-H512000 -Wc,-Nt30000,-Ns3000" is for use in pre-8.0
       releases.  */
-#define C_SWITCH_MACHINE -Aa -D_HPUX_SOURCE -DCOMPILER_PROCESSOR_TYPE=COMPILER_MC68020_TYPE
+#define C_SWITCH_MACHINE -Aa -D_HPUX_SOURCE -DCOMPILER_PROCESSOR_TYPE=COMPILER_MC68020_TYPE -Dhp9000s300
 
 #else
 

@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for HP9000 series 400 (or 300) with 68040
 
-$Id: hp9k400.h,v 1.7 1993/04/27 10:27:16 cph Exp $
+$Id: hp9k400.h,v 1.8 1993/09/14 21:51:06 gjr Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -76,7 +76,7 @@ MIT in each case. */
       traditional C.
    3. "-Wp,-H512000 -Wc,-Nt30000,-Ns3000" is for use in pre-8.0
       releases.  */
-#define C_SWITCH_MACHINE -Aa -D_HPUX_SOURCE
+#define C_SWITCH_MACHINE -Aa -D_HPUX_SOURCE -Dhp9000s300
 
 #else
 
