@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.11 1995/01/30 03:07:56 adams Exp $
+$Id: rtlgen.scm,v 1.12 1995/01/30 21:45:40 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -972,7 +972,7 @@ MIT in each case. |#
   (machine/cont-adjustment))
 
 (define (rtlgen/closure-adjustment)
-  0)
+  (closure-environment-adjustment 1 0))
 
 (define-integrable rtlgen/chars-per-object
   (quotient address-units-per-object address-units-per-packed-char))
