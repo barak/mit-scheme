@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.10 1992/07/29 22:05:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.11 1992/08/20 01:23:26 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Rules for MIPS.  Shared utilities.
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -80,15 +81,15 @@ MIT in each case. |#
 
 (define available-machine-registers
   (list
-   ;; g0 g1 g2 g3 g4
+   ;; g0 g1 g2 g3
    ;; g8 g9 g10 g11
-   g12 g13 g14 g15 g16 g17 g18 g19
-   ;; g20 g21 g22
-   g23 g24
+   g12 g13 g14 g15 g16 g17 g18
+   ;; g19 g20 g21 g22 g23
+   g24
    ;; g26 g27 g28 g29
    g30
-   g5 g6 g7 g25				; Allocate last
-   ;; g31
+   g7 g6 g5 g4 g25			; Allocate last
+   ;; g31				; could be available if handled right
    fp0 fp2 fp4 fp6 fp8 fp10 fp12 fp14
    fp16 fp18 fp20 fp22 fp24 fp26 fp28 fp30
    ;; fp1 fp3 fp5 fp7 fp9 fp11 fp13 fp15
@@ -558,6 +559,9 @@ MIT in each case. |#
 (define-integrable reg:lexpr-primitive-arity
   (INST-EA (OFFSET #x001C ,regnum:regs-pointer)))
 
+(define-integrable reg:closure-limit
+  (INST-EA (OFFSET #x0024 ,regnum:regs-pointer)))
+
 (define-integrable reg:stack-guard
   (INST-EA (OFFSET #x002C ,regnum:regs-pointer)))
 
@@ -637,3 +641,22 @@ MIT in each case. |#
       (LAP ,@clear-regs
 	   ,@load-regs
 	   ,@(clear-map!)))))
+
+(define (require-register! machine-reg)
+  (flush-register! machine-reg)
+  (need-register! machine-reg))
+
+(define-integrable (flush-register! machine-reg)
+  (prefix-instructions! (clear-registers! machine-reg)))
+
+(define (rtl-target:=machine-register! rtl-reg machine-reg)
+  (if (machine-register? rtl-reg)
+      (begin
+	(require-register! machine-reg)
+	(if (not (= rtl-reg machine-reg))
+	    (suffix-instructions!
+	     (register->register-transfer machine-reg rtl-reg))))
+      (begin
+	(delete-register! rtl-reg)
+	(flush-register! machine-reg)
+	(add-pseudo-register-alias! rtl-reg machine-reg))))

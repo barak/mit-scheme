@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulfix.scm,v 1.5 1992/03/11 09:31:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulfix.scm,v 1.6 1992/08/20 01:28:14 jinx Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Generation Rules: Fixnum Rules
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -293,17 +294,18 @@ MIT in each case. |#
 		 (BGEZ ,regnum:assembler-temp (@PCR ,if-no-overflow))
 		 (NOP)))))
 	(else
-	 (set-current-branches!
-	  (lambda (if-overflow)
-	    (LAP (ADDU ,regnum:first-arg ,src1 ,src1)
-		 (XOR  ,regnum:assembler-temp ,regnum:first-arg ,src1)
-		 (BLTZ ,regnum:assembler-temp (@PCR ,if-overflow))
-		 (ADD  ,tgt 0 ,regnum:first-arg)))
-	  (lambda (if-no-overflow)
-	    (LAP (ADDU ,regnum:first-arg ,src1 ,src1)
-		 (XOR  ,regnum:assembler-temp ,regnum:first-arg ,src1)
-		 (BGEZ ,regnum:assembler-temp (@PCR ,if-no-overflow))
-		 (ADD  ,tgt 0 ,regnum:first-arg))))))
+	 (let ((temp (standard-temporary!)))
+	   (set-current-branches!
+	    (lambda (if-overflow)
+	      (LAP (ADDU ,temp ,src1 ,src1)
+		   (XOR  ,regnum:assembler-temp ,temp ,src1)
+		   (BLTZ ,regnum:assembler-temp (@PCR ,if-overflow))
+		   (ADD  ,tgt 0 ,temp)))
+	    (lambda (if-no-overflow)
+	      (LAP (ADDU ,temp ,src1 ,src1)
+		   (XOR  ,regnum:assembler-temp ,temp ,src1)
+		   (BGEZ ,regnum:assembler-temp (@PCR ,if-no-overflow))
+		   (ADD  ,tgt 0 ,temp)))))))
   (LAP))
 
 (define-arithmetic-method 'MINUS-FIXNUM fixnum-methods/2-args
@@ -344,19 +346,20 @@ MIT in each case. |#
 
 (define (do-multiply tgt src1 src2 overflow?)
   (if overflow?
-      (set-current-branches!
-       (lambda (if-overflow)
-	 (LAP (MFHI ,regnum:first-arg)
-	      (SRA  ,regnum:assembler-temp ,tgt 31)
-	      (BNE  ,regnum:first-arg ,regnum:assembler-temp
-		    (@PCR ,if-overflow))
-	      (NOP)))
-       (lambda (if-no-overflow)
-	 (LAP (MFHI ,regnum:first-arg)
-	      (SRA  ,regnum:assembler-temp ,tgt 31)
-	      (BEQ  ,regnum:first-arg ,regnum:assembler-temp
-		    (@PCR ,if-no-overflow))
-	      (NOP)))))
+      (let ((temp (standard-temporary!)))
+	(set-current-branches!
+	 (lambda (if-overflow)
+	   (LAP (MFHI ,temp)
+		(SRA  ,regnum:assembler-temp ,tgt 31)
+		(BNE  ,temp ,regnum:assembler-temp
+		      (@PCR ,if-overflow))
+		(NOP)))
+	 (lambda (if-no-overflow)
+	   (LAP (MFHI ,temp)
+		(SRA  ,regnum:assembler-temp ,tgt 31)
+		(BEQ  ,temp ,regnum:assembler-temp
+		      (@PCR ,if-no-overflow))
+		(NOP))))))
   (LAP (SRA  ,regnum:assembler-temp ,src1 ,scheme-type-width)
        (MULT ,regnum:assembler-temp ,src2)
        (MFLO ,tgt)))
@@ -448,17 +451,18 @@ MIT in each case. |#
 
 (define (do-left-shift-overflow tgt src power-of-two)
   (if (= tgt src)
-      (set-current-branches!
-       (lambda (if-overflow)
-	 (LAP (SLL  ,regnum:first-arg ,src ,power-of-two)
-	      (SRA  ,regnum:assembler-temp ,regnum:first-arg ,power-of-two)
-	      (BNE  ,regnum:assembler-temp ,src (@PCR ,if-overflow))
-	      (ADD  ,tgt 0 ,regnum:first-arg)))
-       (lambda (if-no-overflow)
-	 (LAP (SLL  ,regnum:first-arg ,src ,power-of-two)
-	      (SRA  ,regnum:assembler-temp ,regnum:first-arg ,power-of-two)
-	      (BEQ  ,regnum:assembler-temp ,src (@PCR ,if-no-overflow))
-	      (ADD  ,tgt 0 ,regnum:first-arg))))
+      (let ((temp (standard-temporary!)))
+	(set-current-branches!
+	 (lambda (if-overflow)
+	   (LAP (SLL  ,temp ,src ,power-of-two)
+		(SRA  ,regnum:assembler-temp ,temp ,power-of-two)
+		(BNE  ,regnum:assembler-temp ,src (@PCR ,if-overflow))
+		(ADD  ,tgt 0 ,temp)))
+	 (lambda (if-no-overflow)
+	   (LAP (SLL  ,temp ,src ,power-of-two)
+		(SRA  ,regnum:assembler-temp ,temp ,power-of-two)
+		(BEQ  ,regnum:assembler-temp ,src (@PCR ,if-no-overflow))
+		(ADD  ,tgt 0 ,temp)))))
       (set-current-branches!
        (lambda (if-overflow)
 	 (LAP (SLL  ,tgt ,src ,power-of-two)

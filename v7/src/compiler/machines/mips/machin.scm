@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/machin.scm,v 1.6 1991/10/25 12:24:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/machin.scm,v 1.7 1992/08/20 01:25:15 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,7 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;; Machine Model for MIPS
+;;;; Machine Model for MIPS
+;;; package: (compiler)
 
 (declare (usual-integrations))
 
@@ -72,8 +73,8 @@ MIT in each case. |#
 (define-integrable execute-cache-size 2) ; Long words per UUO link slot
 (define-integrable closure-entry-size
   ;; Long words in a single closure entry:
-  ;;   GC offset word
-  ;;   JALR
+  ;;   Format + GC offset word
+  ;;   JALR/JAL
   ;;   ADDI
   3)
 
@@ -195,9 +196,11 @@ MIT in each case. |#
 (define-integrable regnum:free g9)
 (define-integrable regnum:scheme-to-interface g10)
 (define-integrable regnum:dynamic-link g11)
+(define-integrable regnum:closure-free g19)
 (define-integrable regnum:address-mask g20)
 (define-integrable regnum:regs-pointer g21)
 (define-integrable regnum:quad-bits g22)
+(define-integrable regnum:closure-hook g23)
 (define-integrable regnum:interface-index g25)
 
 ;;; Fixed-use registers due to architecture or OS calling conventions.
@@ -221,6 +224,8 @@ MIT in each case. |#
 	   (,regnum:memtop              . ,value-class=address)
 	   (,regnum:free                . ,value-class=address)
 	   (,regnum:scheme-to-interface . ,value-class=unboxed)
+	   (,regnum:closure-hook	. ,value-class=unboxed)
+	   (,regnum:closure-free	. ,value-class=unboxed)
 	   (,regnum:dynamic-link        . ,value-class=address)
 	   (,regnum:address-mask        . ,value-class=immediate)
 	   (,regnum:regs-pointer        . ,value-class=unboxed)

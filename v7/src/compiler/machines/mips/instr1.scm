@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr1.scm,v 1.5 1992/03/13 11:04:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr1.scm,v 1.6 1992/08/20 01:22:14 jinx Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -359,3 +359,9 @@ MIT in each case. |#
   ;; (SLL 0 0 0)
   (()
    (LONG (6 0) (5 0) (5 0) (5 0) (5 0) (6 0))))
+
+(define-instruction LONG
+  ((S (? value))
+   (LONG (32 value SIGNED)))
+  ((U (? value))
+   (LONG (32 value UNSIGNED))))

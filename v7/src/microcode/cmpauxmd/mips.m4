@@ -1,9 +1,8 @@
-/* #define DEBUG_INTERFACE */
- ### -*-Midas-*-
+/* #define DEBUG_INTERFACE */ ### -*-Midas-*-
  ###
- ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.5 1992/07/30 15:07:46 jinx Exp $
+ ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.6 1992/08/20 01:20:09 jinx Exp $
  ###
- ###	Copyright (c) 1989-91 Massachusetts Institute of Technology
+ ###	Copyright (c) 1989-1992 Massachusetts Institute of Technology
  ###
  ###	This material was developed by the Scheme project at the
  ###	Massachusetts Institute of Technology, Department of
@@ -53,10 +52,11 @@
  ####	references.  On MIPS: 0 (always 0), 31 (return address),
  ####	28 (global data pointer), and 29 (C stack pointer).
  ####	- super temporaries, not preserved accross procedure calls and
- ####	always usable. On MIPS: 2-15. 4-7 are argument registers,
- ####	2 and 3 are return registers.
+ ####	always usable. On MIPS: 1-15, and 24-25.
+ ####	  4-7 are argument registers,
+ ####	  2 and 3 are return registers.
  ####	- preserved registers saved by the callee if they are written.
- ####	On MIPS: 16-25
+ ####	On MIPS: 16-23.
  ####
  ####	3) Arguments, if passed on a stack, are popped by the caller
  ####	or by the procedure return instruction (as on the VAX).  Thus
@@ -94,27 +94,33 @@
  #### dynamically.  scheme_to_interface_linked and
  #### trampoline_to_interface can be reached at fixed offsets from
  #### scheme_to_interface.
- ####   - gr2  is the returned value register
+ ####	- gr1  is the assembler temporary.
+ ####   - gr2  is the returned value register.
  ####	- gr3  contains the Scheme stack pointer.
- ####   - gr4 - gr7 are used by C for arguments and can't be used
- ####          permanently by Scheme
+ ####   - gr4 - gr7 are used by C for arguments.
  ####	- gr8  contains a cached version of MemTop.
  ####	- gr9  contains the Scheme free pointer.
  ####	- gr10 contains the address of scheme_to_interface.
  ####	- gr11 contains the dynamic link when needed.
+ ####	- gr12 - gr15 have no special uses.
  ####   <CALLEE SAVES REGISTERS BELOW HERE>
- ####   - gr16 - gr 19 aren't used by Scheme
+ ####   - gr16 - gr18 have no special uses.
+ ####   - gr19 contains the closure free pointer.
  ####	- gr20 contains the address mask for machine pointers.
  ####	- gr21 contains a pointer to the Scheme interpreter's
  ####	       "register" block.  This block contains the compiler's
  ####          copy of MemTop, the interpreter's registers (val, env,
  ####          exp, etc), temporary locations for compiled code.
- ####   - gr22 contains the top 6 address bits for heap pointers
+ ####   - gr22 contains the top 6 address bits for heap pointers.
+ ####	- gr23 contains the closure hook.
  ####   <CALLEE SAVES REGISTERS ABOVE HERE>
+ ####	- gr24 has no special use.
  ####   - gr25 is used a an index for dispatch into C.
- ####   - gr26 and 27 are reserved for the OS
- ####   - gr28 contains the pointer to C static variables
- ####   - gr29 contains the C stack pointer
+ ####   - gr26 and 27 are reserved for the OS.
+ ####   - gr28 contains the pointer to C static variables.
+ ####   - gr29 contains the C stack pointer.
+ ####   - gr30 has no special use.
+ ####	- gr31 is used for linkage (JALR, JAL, BGEZAL, and BLTZAL write it).
  ####
  ####	All other registers are available to the compiler.  A
  ####	caller-saves convention is used, so the registers need not be
@@ -123,7 +129,7 @@
  ####   Notice that register gr25 is used for the index used to
  ####   dispatch into the trampolines and interface routines.
 
-	.verstamp	1 31
+ #	.verstamp	1 31
 	.text	
 	.align	2
 	.set	noat
@@ -140,9 +146,11 @@ define(free, 9)
 define(s_to_i, 10)
 define(dynlink, 11)
 
+define(closure_free, 19)
 define(addr_mask, 20)
 define(registers, 21)
 define(heap_bits, 22)
+define(closure_reg, 23)
 	
 define(tramp_index, 25)
 
@@ -185,6 +193,8 @@ C_to_interface:
 	lui	$addr_mask,0xfc00
 	and	$heap_bits,$heap_bits,$addr_mask
 	nor	$addr_mask,$0,$addr_mask
+	la	$closure_reg,closure_hook
+	lw	$closure_free,36($registers)
  # ... fall through ...
  # Argument (in $C_arg1) is a compiled Scheme entry point.  Reload
  # the Scheme registers and go to work...any registers not reloaded
@@ -216,37 +226,39 @@ hook_jump_table:
  # $tramp_index has the offset into the table that is desired.
 	.globl	link_to_interface
 link_to_interface: 	# ...scheme_to_interface-100
-	addi	$31,$31,4	# Skip over format word ...
+	addi	$31,$31,4		# Skip over format word ...
 
 	.globl	trampoline_to_interface
-trampoline_to_interface:	# ...scheme_to_interface-96
+trampoline_to_interface:		# ...scheme_to_interface-96
 	j	scheme_to_interface
-	add	$C_arg2,$0,$31	# Arg2 <- trampoline data area
+	add	$C_arg2,$0,$31		# Arg2 <- trampoline data area
 	
-	j	generate_closure # ...-88
-	sw	$25,4($free)	# ...-84
+	break	1			# ...-88 Used to be generate_closure
+	nop				# ...-84
 
-	j	push_closure_entry	# ...-80
-	sw	$1,0($free)	# ...-76
+	break	2			# ...-80 Used to be push_closure_entry
+	nop				# ...-76
 
-	nop	# ...-72
-	nop	# ...-68
-	nop	# ...-64
-	nop	# ...-60
-	nop	# ...-56
-	nop	# ...-52
-	nop	# ...-48
-	nop	# ...-44
-	nop	# ...-40
-	nop	# ...-36
-	nop	# ...-32
-	nop	# ...-28
-	nop	# ...-24
-	nop	# ...-20
-	nop	# ...-16
-	nop	# ...-12
-	nop	# ...-8
-	nop	# ...-4
+	j	cons_closure		# -72
+	lw	$7,40($registers)	# closure limit -68
+
+	j	cons_multi		# -64
+	lw	$7,40($registers)	# closure limit -60
+
+	nop				# ...-56
+	nop				# ...-52
+	nop				# ...-48
+	nop				# ...-44
+	nop				# ...-40
+	nop				# ...-36
+	nop				# ...-32
+	nop				# ...-28
+	nop				# ...-24
+	nop				# ...-20
+	nop				# ...-16
+	nop				# ...-12
+	nop				# ...-8
+	nop				# ...-4
 
  # DO NOT MOVE the following label, it is used above ...
  #  Argument (in $tramp_index) is index into utility_table for the
@@ -258,6 +270,7 @@ trampoline_to_interface:	# ...scheme_to_interface-96
 	.globl 	scheme_to_interface
 scheme_to_interface:
 	sw	$value,8($registers)
+	sw	$closure_free,36($registers)
 #ifdef DEBUG_INTERFACE
 	lw	$value,Free_Constant
 	addi	$0,$0,0			# Load delay
@@ -303,6 +316,159 @@ after_overflow:
 	jal	$31,$25			# Redispatch ...
 	addi	$0,$0,0			# Branch delay...
 
+	.globl	closure_hook
+closure_hook:
+	# On arrival:
+	# GR31 has address of JAL instruction we were supposed to have
+	# executed.  This code emulates the JAL.
+	# (except that R31 is already set).
+	lw	$at,0($31)		# Load JAL instruction
+	nop				# Load delay slot
+	and	$at,$at,$addr_mask	# clear JAL opcode
+	sll	$at,$at,2		# obtain destination address
+	or	$at,$at,$heap_bits	# insert top bits into destination
+	j	$at			# invoke
+	nop				# jump delay slot
+
+	.globl	cons_closure
+cons_closure:
+	# On arriveal:
+	# - GR31 has the address of the manifest closure header,
+	#   followed by the closure descriptor (2 words),
+	#   followed by the instructions we need to continue with.
+	#   The closure descriptor consists of the format+gc-offset word
+	#   followed by a PC-relative JAL instruction.
+	# - GR4 has the address past the first word on this closure
+	#   (assuming the entry point is at closure-free).
+	# - GR5 has the increment for closure-free.
+	# On return:
+	# - GR4 has the address of the closure
+	# This code assumes that it can clobber registers 7 and at freely.
+ #	lw	$7,40($registers)	# closure limit
+	lw	$at,0($31)		# closure header word
+	subu	$7,$7,$4		# check if it fits
+	bgez	$7,cons_closure_continue
+	or	$4,$closure_free,$0	# setup result
+	or	$7,$31,$0		# Preserve original return address
+	bgezal	$0,invoke_allocate_closure
+	addi	$at,$at,2		# Total size = datum(header) + 2
+
+cons_closure_continue:
+	add	$closure_free,$closure_free,$5	# allocate
+	lw	$5,4($31)		# format+gc-offset word
+	lw	$7,8($31)		# JAL instruction
+	sw	$0,-12($4)		# Make heap parseable
+	sw	$5,-4($4)		# Store format+gc-offset
+	srl	$5,$31,2		# return address -> JAL destination
+	sw	$at,-8($4)		# Store closure header
+	and	$5,$5,$addr_mask	# clear top bits
+	addi	$31,$31,12		# Bump past structure
+	addu	$5,$5,$7		# JAL instruction
+	j	$31			# Return.
+	sw	$5,0($4)		# Store the JAL instruction
+
+	.globl	cons_multi
+cons_multi:
+	# On arriveal:
+	# - GR31 has the address of the manifest closure header,
+	#   followed by n closure descriptors (2 words each),
+	#   followed by the instructions we need to continue with.
+	#   Each closure descriptor consists of the format+gc-offset
+	#   word followed by a PC-relative JAL instruction.
+	# - GR4 has the address past the first word on this closure
+	#   (assuming the entry point is at closure-free).
+	# - GR5 has the increment for closure-free.
+	# - GR6 has the number of entries (>= 1)
+	# On return:
+	# - GR4 has the address of the closure
+	# This code assumes that it can clobber registers 7 and at freely.
+ #	lw	$7,40($registers)	# closure limit
+	lw	$at,0($31)		# closure header word
+	subu	$7,$7,$4		# check if it fits
+	bgez	$7,cons_multi_continue
+	or	$4,$closure_free,$0	# setup result
+	or	$7,$31,$0		# Preserve original return address
+	bgezal	$0,invoke_allocate_closure
+	addi	$at,$at,1		# Total size = datum(header) + 1
+
+cons_multi_continue:
+	add	$closure_free,$closure_free,$5	# allocate
+	sw	$at,-12($4)		# Store closure header
+	sh	$6,-8($4)		# Store number of entries
+	sh	$0,-6($4)		# Tag as multi-closure
+	addi	$7,$4,-4		# Pointer to closure entries
+	srl	$5,$31,2		# return-address -> JAL destination
+	and	$5,$5,$addr_mask	# clear top bits
+	addi	$31,$31,4		# bump to first descriptor
+
+store_loop:
+	lw	$at,0($31)		# format+gc-offset word
+	addi	$6,$6,-1		# decrement count
+	addi	$31,$31,8		# bump pointer to block
+	sw	$at,0($7)		# store into closure
+	lw	$at,-4($31)		# PC-relative JAL
+	addi	$7,$7,12		# bump pointer to closure
+	add	$at,$at,$5		# absolute JAL instruction
+	bgtz	$6,store_loop
+	sw	$at,-8($7)		# store JAL instruction
+	
+	j	$31			# return
+	nop				# delay slot
+
+invoke_allocate_closure:
+ # $at contains in its datum the minimum size to allocate.
+ # $7  contains the "return address" for cons_closure or cons_multi.
+ # $31 contains the return address for invoke_allocate_closure.
+	addi	$sp,$sp,-80
+ # 1 is at, a temp
+	sw	$2,80-4($sp)
+	sw	$3,80-8($sp)
+	and	$4,$at,$addr_mask	# total size (- 1)
+	sw	$5,80-12($sp)
+	sw	$6,80-16($sp)
+	sw	$7,80-20($sp)		# Original value of r31
+ #	sw	$8,0($registers)	# memtop is read-only
+	la	$7,Free
+	sw	$9,0($7)
+	sw	$10,80-24($sp)
+	sw	$11,80-28($sp)
+	sw	$12,80-32($sp)
+	sw	$13,80-36($sp)
+	sw	$14,80-40($sp)
+	sw	$15,80-44($sp)
+ # 16-23 are callee saves
+	sw	$24,80-48($sp)
+	sw	$25,80-52($sp)
+ # 26-29 are taken up by the OS and the C calling convention
+	sw	$30,80-56($sp)
+	sw	$31,80-60($sp)		# return address
+	jal	allocate_closure
+	sw	$closure_free,36($registers) # uncache
+
+	lw	$closure_free,36($registers)
+	lw	$31,80-20($sp)		# original value of r31
+	lw	$30,80-56($sp)
+	lw	$25,80-52($sp)
+	lw	$24,80-48($sp)
+	lw	$15,80-44($sp)
+	lw	$14,80-40($sp)
+	lw	$13,80-36($sp)
+	lw	$12,80-32($sp)
+	lw	$11,80-28($sp)
+	lw	$10,80-24($sp)
+	lw	$9,Free
+	lw	$8,0($registers)
+	lw	$7,80-60($sp)		# return address for invoke...
+	lw	$6,80-16($sp)
+	lw	$5,80-12($sp)
+	lw	$3,80-8($sp)
+	lw	$2,80-4($sp)
+	lw	$at,0($31)		# manifest closure header
+	or	$4,$closure_free,$0	# setup result
+
+	j	$7
+	addi	$sp,$sp,80
+
  # Argument 1 (in $C_arg1) is the returned value
 	.globl interface_to_C
 interface_to_C:
@@ -346,65 +512,10 @@ interface_initialize:
 	nop
 	ori	$25,$25,0xf00	# enable V, Z, O, U traps
 	ctc1	$25,$31		# write FPU control register
+	nop
 	j	$31		# return
 	nop
 	.end	interface_initialize
-
-	.globl	generate_closure
-	.ent	generate_closure
-generate_closure:
-	.frame	$sp,0,$0
-	# On arrival:
-	#   31 is the return address
-	#    1 has the size of the closure (longwords)
-	#    4 has the offset from return address to destination
-	#   25 has the GC offset and format words
-	# Generates the closure on the heap, updating free pointer
- #	sw	$25,4($free)	# Store GC and format words on heap
-	lui	$25,0x3400
-	add	$25,$1,$25
-	sw	$25,0($free)	# Store manifest closure header
-	add	$25,$31,$4	# 25 <- destination address
-	and	$25,$25,$addr_mask
-	srl	$25,$25,2	# JAL will unshift at runtime
-	lui	$4,0x0C00
-	or	$25,$25,$4	# JAL instruction
-	sw	$25,8($free)	# Store in closure
-	lui	$25,0x23FF
-	ori	$25,0xFFF8
-	sw	$25,12($free)	# Store ADDI 31,31,-8
-	addi	$1,$1,1		# 1 longword header
-	sll	$1,$1,2		# longwords -> bytes
-	j	$31		# Done!
-	add	$free,$free,$1	# Increment Free pointer by size
-
-	.end	generate_closure
-
-	.globl	push_closure_entry
-	.ent	push_closure_entry
-push_closure_entry:
-	.frame	$sp,0,$0
-	# On arrival:
-	#   31 is the return address
-	#    1 has the GC offset and format words
-	#    4 has the offset from return address to destination
-	# Push a closure entry on the heap, updating free pointer.
-	# The header for the group of closure entries has already been
-	# generated. 
- #	sw	$1,0($free)	# Store GC and format words on heap
-	add	$1,$31,$4	# 1 <- destination address
-	and	$1,$1,$addr_mask
-	srl	$1,$1,2		# JAL will unshift at runtime
-	lui	$4,0x0C00
-	or	$1,$1,$4	# JAL instruction
-	sw	$1,4($free)	# Store in closure
-	lui	$1,0x23FF
-	ori	$1,0xFFF8
-	sw	$1,8($free)	# Store ADDI 31,31,-8
-	j	$31		# Done!
-	addi	$free,$free,12	# Increment Free pointer
-
-	.end	push_closure_entry
 
 	.globl	Debug_Tight_Loop
 	.ent	Debug_Tight_Loop
