@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Id: dstack.h,v 1.6 1993/06/24 07:08:21 gjr Exp $ */
+/* $Id: dstack.h,v 1.7 1993/10/27 22:14:36 gjr Exp $ */
 
 #ifndef __DSTACK_H__
 #define __DSTACK_H__
@@ -23,7 +23,9 @@
 #include <setjmp.h>
 
 extern void
+#ifndef _SUNOS4
   EXFUN (abort, (void)),
+#endif
   EXFUN (exit, (int)),
   EXFUN (free, (void *));
 
