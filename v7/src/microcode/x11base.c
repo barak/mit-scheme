@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.70 1997/02/05 19:03:58 cph Exp $
+$Id: x11base.c,v 1.71 1998/01/29 05:48:38 cph Exp $
 
-Copyright (c) 1989-97 Massachusetts Institute of Technology
+Copyright (c) 1989-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1451,6 +1451,19 @@ DEFINE_PRIMITIVE ("X-CLOSE-ALL-DISPLAYS", Prim_x_close_all_displays, 0, 0, 0)
   INITIALIZE_ONCE ();
   x_close_all_displays ();
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-DISPLAY-GET-SIZE", Prim_x_display_get_size, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xdisplay * xd = (x_display_arg (1));
+    Display * display = (XD_DISPLAY (xd));
+    long screen = (arg_nonnegative_integer (2));
+    PRIMITIVE_RETURN
+      (cons ((ulong_to_integer (DisplayWidth (display, screen))),
+	     (ulong_to_integer (DisplayHeight (display, screen)))));
+  }
 }
 
 DEFINE_PRIMITIVE ("X-CLOSE-WINDOW", Prim_x_close_window, 1, 1, 0)
