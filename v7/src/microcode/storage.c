@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.23 1987/02/03 16:00:50 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.24 1987/02/09 00:36:08 jinx Exp $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -1549,10 +1549,10 @@ char *Primitive_Names[] = {
 /* 0xB7 in fasdump */	"DUMP-BAND",
 /* 0xB8 in string */	"SUBSTRING-SEARCH",
 /* 0xB9 in fasload */	"LOAD-BAND",
-/* 0xBA in purify */	"CONSTANT?",
-/* 0xBB in purify */	"PURE?",
+/* 0xBA in purutl */	"CONSTANT?",
+/* 0xBB in purutl */	"PURE?",
 /* 0xBC in prim */	"PRIMITIVE-GC-TYPE",
-/* 0xBD in purify */	"IMPURIFY",
+/* 0xBD in purutl */	"IMPURIFY",
 /* 0xBE in hooks */	"WITH-THREADED-CONTINUATION",
 /* 0xBF in hooks */	"WITHIN-CONTROL-POINT",
 /* 0xC0 in sysprim */	"SET-RUN-LIGHT!",
@@ -1596,7 +1596,7 @@ char *Primitive_Names[] = {
 /* 0xE1 in hooks */	"MAKE-STATE-SPACE",
 /* 0xE2 in hooks */	"EXECUTE-AT-NEW-POINT",
 /* 0xE3 in hooks */	"TRANSLATE-TO-POINT",
-/* 0xE4 in purify */	"GET-NEXT-CONSTANT",
+/* 0xE4 in purutl */	"GET-NEXT-CONSTANT",
 
 /* Primitive names continue on the next page */
 
