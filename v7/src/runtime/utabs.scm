@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: utabs.scm,v 14.13 1999/01/02 06:19:10 cph Exp $
+$Id: utabs.scm,v 14.14 2001/09/25 05:08:40 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Microcode Name <-> Code Maps
@@ -94,6 +95,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set! microcode-id/tty-y-size
 	(microcode-identification-item 'CONSOLE-HEIGHT))
   unspecific)
+
+(define (intern string)
+  ((ucode-primitive string->symbol)
+   (let ((size (string-length string)))
+     (let ((result (string-allocate size)))
+       ((ucode-primitive substring-move-right!) string 0 size result 0)
+       ((ucode-primitive substring-downcase!) result 0 size)
+       result))))
 
 (define microcode-tables-identification)
 (define microcode-id/version)
