@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.16 2000/05/18 20:55:05 cph Exp $
+;;; $Id: imail-util.scm,v 1.17 2000/05/19 17:52:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -209,9 +209,6 @@
 	(error "Premature end of file:" port))
     line))
 
-(define (edwin-variable-value name)
-  (variable-value (name->variable name 'ERROR)))
-
 (define (abbreviate-exact-nonnegative-integer n k)
   (if (< n (expt 10 (- k 1)))
       (string-append (string-pad-left (number->string n) (- k 1)) " ")
@@ -240,3 +237,7 @@
 		   ((6) "M")
 		   ((9) "G")
 		   ((12) "T")))))))))
+
+(define (burst-comma-list-string string)
+  (list-transform-negative (map string-trim (burst-string string #\, #f))
+    string-null?))

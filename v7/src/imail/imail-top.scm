@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.69 2000/05/19 17:50:26 cph Exp $
+;;; $Id: imail-top.scm,v 1.70 2000/05/19 17:52:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -388,7 +388,7 @@ With prefix argument N moves forward N messages with these flags."
     (list (command-argument)
 	  (imail-prompt-for-flags "Move to next message with flags")))
   (lambda (n flags)
-    (let ((flags (map string-trim (burst-string flags "," #f))))
+    (let ((flags (burst-comma-list-string flags)))
       (if (null? flags)
 	  (editor-error "No flags have been specified."))
       (for-each (lambda (flag)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.11 2000/05/19 17:50:30 cph Exp $
+;;; $Id: imail-summary.scm,v 1.12 2000/05/19 17:52:34 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -57,7 +57,7 @@ The flags are specified as a comma-separated list of names."
     (list (imail-prompt-for-flags "Flags to summarize by")))
   (lambda (flags-string)
     (imail-summary (string-append "Flags " flags-string)
-		   (let ((flags (parse-comma-list-string flags-string)))
+		   (let ((flags (burst-comma-list-string flags-string)))
 		     (lambda (m)
 		       (there-exists? (message-flags m)
 			 (lambda (flag)
@@ -76,7 +76,7 @@ The recipients are specified as a comma-separated list of names."
      (let ((regexp
 	    (apply regexp-group
 		   (map re-quote-string
-			(parse-comma-list-string recipients-string)))))
+			(burst-comma-list-string recipients-string)))))
        (let ((try
 	      (lambda (s)
 		(and s
@@ -86,10 +86,6 @@ The recipients are specified as a comma-separated list of names."
 	       (try (get-first-header-field-value m "to" #f))
 	       (and (not primary-only?)
 		    (try (get-first-header-field-value m "cc" #f))))))))))
-
-(define (parse-comma-list-string string)
-  (list-transform-negative (map string-trim (burst-string string #\, #f))
-    string-null?))
 
 (define (imail-summary description predicate)
   (let* ((folder (selected-folder))
