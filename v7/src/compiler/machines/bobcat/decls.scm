@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.5 1988/06/14 08:55:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.6 1988/07/20 07:35:52 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -210,29 +210,35 @@ MIT in each case. |#
 			   (set-source-node/modification-time! node false))
 			 (source-node/dependents node))))
 	 source-nodes)))
-  (for-each source-node/syntax! source-nodes/circular-dependencies)
-  (for-each source-node/syntax! source-nodes/by-rank))
+  (for-each source-node/maybe-syntax! source-nodes/circular-dependencies)
+  (for-each source-node/maybe-syntax! source-nodes/by-rank))
+
+(define (source-node/maybe-syntax! node)
+  (if (not (source-node/modification-time node))
+      (source-node/syntax! node)))
+
+(define (sc filename)
+  (source-node/syntax! (filename->source-node filename)))
 
 (define (source-node/syntax! node)
-  (if (not (source-node/modification-time node))
-      (with-values
-	  (lambda ()
-	    (sf/pathname-defaulting (source-node/pathname node) "" false))
-	(lambda (input-pathname bin-pathname spec-pathname)
-	  (sf/internal
-	   input-pathname bin-pathname spec-pathname
-	   (source-node/syntax-table node)
-	   ((if compiler:enable-integration-declarations?
-		identity-procedure
-		(lambda (declarations)
-		  (list-transform-negative declarations
-		    integration-declaration?)))
-	    ((if compiler:enable-expansion-declarations?
-		 identity-procedure
-		 (lambda (declarations)
-		   (list-transform-negative declarations
-		     expansion-declaration?)))
-	     (source-node/declarations node))))))))
+  (with-values
+      (lambda ()
+	(sf/pathname-defaulting (source-node/pathname node) "" false))
+    (lambda (input-pathname bin-pathname spec-pathname)
+      (sf/internal
+       input-pathname bin-pathname spec-pathname
+       (source-node/syntax-table node)
+       ((if compiler:enable-integration-declarations?
+	    identity-procedure
+	    (lambda (declarations)
+	      (list-transform-negative declarations
+		integration-declaration?)))
+	((if compiler:enable-expansion-declarations?
+	     identity-procedure
+	     (lambda (declarations)
+	       (list-transform-negative declarations
+		 expansion-declaration?)))
+	 (source-node/declarations node)))))))
 
 (define-integrable (modification-time node type)
   (file-modification-time
