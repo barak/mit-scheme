@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.10 1988/12/13 13:04:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.11 1988/12/13 13:45:23 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -85,7 +85,7 @@ MIT in each case. |#
 	 continuation)
 	(scfg-append!
 	 (if (and continuation (continuation/effect? continuation))
-	     (effect-prefix operand offset)
+	     (effect-prefix operand)
 	     ((return-operand/value-generator operand)
 	      (lambda (expression)
 		(rtl:make-assignment register:value expression))))
