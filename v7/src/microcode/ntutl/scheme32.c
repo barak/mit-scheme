@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.7 1993/09/13 18:40:22 gjr Exp $
+$Id: scheme32.c,v 1.8 1995/10/24 05:36:00 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,8 +48,9 @@ win32_under_win32s_p (void)
 char *
 win32_allocate_heap (unsigned long size, unsigned long * handle)
 {
+#ifdef CL386
   extern char * malloc (unsigned long);
-
+#endif
   * handle = 0L;
   return ((char *) (malloc (size)));
 }
@@ -95,7 +96,15 @@ struct win32_timer_closure_s
   HWND window;
 };
 
-static void _stdcall
+#ifdef CL386
+#define __STDCALL _stdcall
+#endif
+
+#ifdef __WATCOMC__
+#define __STDCALL __stdcall
+#endif
+
+static void __STDCALL
 win32_nt_timer_tick (UINT wID, UINT wMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
 {
   struct win32_timer_closure_s * scm_timer =

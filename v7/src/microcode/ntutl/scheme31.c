@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: scheme31.c,v 1.5 1993/09/13 18:41:24 gjr Exp $
+$Id: scheme31.c,v 1.6 1995/10/24 05:34:23 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,6 +41,8 @@ MIT in each case. */
 
 /* Utilities */
 
+#ifdef CL386
+
 unsigned short
 getCS (void)
 {
@@ -58,6 +60,21 @@ getSS (void)
 {
   _asm	mov	ax,ss
 }
+
+#else /* not CL386 */
+#ifdef __WATCOMC__
+
+extern unsigned short getCS (void);
+#pragma aux getCS = "mov ax,cs" value [ax];
+
+extern unsigned short getDS (void);
+#pragma aux getDS = "mov ax,ds" value [ax];
+
+extern unsigned short getSS (void);
+#pragma aux getSS = "mov ax,ss" value [ax];
+
+#endif /* __WATCOMC__ */
+#endif /* not CL386 */
 
 static UT32PROC call_16_bit_code = NULL;
 

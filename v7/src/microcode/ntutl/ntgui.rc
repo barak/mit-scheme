@@ -52,6 +52,8 @@ BEGIN
   END
 END
 
+#ifdef __WATCOMC__
+#include "ntdialog.dlg"
+#else
 RCINCLUDE NTDIALOG.DLG
-
-
+#endif
