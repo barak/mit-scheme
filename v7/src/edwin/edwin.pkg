@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.273 2001/07/02 01:45:36 cph Exp $
+$Id: edwin.pkg,v 1.274 2001/09/21 02:56:15 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -1100,7 +1100,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    edwin-variable$vc-checkin-hooks
 	    edwin-variable$vc-checkout-carefully
 	    edwin-variable$vc-command-messages
+	    edwin-variable$vc-default-init-version
+	    edwin-variable$vc-delete-logbuf-window
 	    edwin-variable$vc-display-status
+	    edwin-variable$vc-follow-symlinks
 	    edwin-variable$vc-initial-comment
 	    edwin-variable$vc-keep-workfiles
 	    edwin-variable$vc-log-mode-hook
