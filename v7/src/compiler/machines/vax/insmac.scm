@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.1 1987/08/13 01:14:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.2 1987/08/14 05:02:01 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -50,7 +50,7 @@ MIT in each case. |#
 	 `(MAKE-EFFECTIVE-ADDRESS
 	   ',keyword
 	   ',categories
-	   ,(expand-fields value)))))))
+	   ,(process-fields value)))))))
 
 (syntax-table-define assembler-syntax-table 'DEFINE-EA-TRANSFORMER
   (macro (name category type)
@@ -76,40 +76,77 @@ MIT in each case. |#
     `(define ,name ,value)))
 
 (define (parse-instruction opcode tail ignore)
-  (expand-fields (cons opcode tail)))
+  (process-fields (cons opcode tail)))
 
-(define (expand-fields fields)
+(define (process-fields fields)
+  (if (and (null? (cdr fields))
+	   (eq? (caar fields) 'VARIABLE-WIDTH))
+      (expand-variable-width (car fields))
+      (expand-fields fields
+		     (lambda (code size)
+		       (if (not (zero? (remainder size 8)))
+			   (error "process-fields: bad syllable size" size))
+		       code))))
+
+(define (expand-variable-width field)
+  (let ((binding (cadr field))
+	(clauses (cddr field)))
+    `(LIST
+      ,(variable-width-expression-syntaxer
+	(car binding)			; name
+	(cadr binding)			; expression
+	(map (lambda (clause)
+	       (expand-fields
+		(cdr clause)
+		(lambda (code size)
+		  (if (not (zero? (remainder size 8)))
+		      (error "expand-variable-width: bad clause size" size))
+		  `(,code ,size ,@(car clause)))))
+	     clauses)))))
+
+(define (expand-fields fields receiver)
   (if (null? fields)
-      '()
-      (case (caar fields)
-	((BYTE)
-	 (collect-byte (cdar field)
-		       (expand-fields (cdr fields))))
-	((OPERAND)
-	 `(CONS-SYNTAX
-	   ,(cadar fields)
-	   ,(expand-fields (cdr fields))))
-	((DISPLACEMENT)
-	 (let ((desc (cadar field)))
-	   (let ((expression (cadr desc))
-		 (size (car desc)))
-	     `(CONS-SYNTAX
-	       ,(integer-syntaxer expression 'DISPLACEMENT size)
-	       ,(expand-fields (cdr fields))))))
-	(else
-	 (error "expand-fields: Unknown field kind" (caar field))))))
+      (receiver ''() 0)
+      (expand-fields (cdr fields)
+       (lambda (tail tail-size)
+	 (case (caar fields)
+	   ((BYTE)
+	    (collect-byte (cdar fields)
+			  tail
+			  (lambda (code size)
+			    (receiver code (+ size tail-size)))))
+	   ((OPERAND)
+	    (receiver `(CONS-SYNTAX ,(cadar fields) ,tail)
+		      tail-size))
+	   ((DISPLACEMENT)
+	    (let ((desc (cadar fields)))
+	      (let ((expression (cadr desc))
+		    (size (car desc)))
+		(receiver
+		 `(CONS-SYNTAX
+		   ,(integer-syntaxer expression 'DISPLACEMENT size)
+		   ,tail)
+		 (+ size tail-size)))))
+	   (else
+	    (error "expand-fields: Unknown field kind" (caar fields))))))))
 
-(define (collect-byte components tail)
-  (define (inner components)
+(define (collect-byte components tail receiver)
+  (define (inner components receiver)
     (if (null? components)
-	tail
-	(let ((size (caar components))
-	      (expression (cadar components))
-	      (type (if (null? (cddar components))
-			'UNSIGNED
-			'SIGNED)))
-	  `(CONS-SYNTAX
-	    ,(integer-syntaxer expression type size)
-	    ,(inner (cdr components))))))
-  (inner components))
+	(receiver tail 0)
+	(inner (cdr components)
+	       (lambda (byte-tail byte-size)
+		 (let ((size (caar components))
+		       (expression (cadar components))
+		       (type (if (null? (cddar components))
+				 'UNSIGNED
+				 (caddar components))))
+		   (receiver
+		    `(CONS-SYNTAX
+		      ,(integer-syntaxer expression type size)
+		      ,byte-tail)
+		    (+ size byte-size)))))))
+  (inner components receiver))
+		 
+     
 
