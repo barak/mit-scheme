@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.16 1993/11/22 22:36:28 cph Exp $
+$Id: uxproc.c,v 1.17 1993/11/23 02:33:10 cph Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -306,6 +306,7 @@ DEFUN (OS_make_subprocess,
     }
 
   /* In the child process -- if any errors occur, just exit. */
+  child_pid = (UX_getpid ());
   /* Don't do `transaction_commit ()' here.  Because we used `vfork'
      to spawn the child, the side-effects that are performed by
      `transaction_commit' will occur in the parent as well. */
@@ -330,7 +331,6 @@ DEFUN (OS_make_subprocess,
 	   available, force the child into a different process group. */
 	if (child_jc_status == process_jc_status_jc)
 	  {
-	    pid_t child_pid = (UX_getpid ());
 	    if (((UX_setpgid (child_pid, child_pid)) < 0)
 		|| ((ctty_type == process_ctty_type_inherit_fg)
 		    && (SCHEME_IN_FOREGROUND ())
@@ -357,6 +357,8 @@ DEFUN (OS_make_subprocess,
 #ifdef TIOCSCTTY
 		|| ((UX_ioctl (fd, TIOCSCTTY, 0)) < 0)
 #endif
+		/* Tell the controlling terminal its process group. */
+		|| (((UX_tcsetpgrp (fd, child_pid)) < 0) && (errno != ENOSYS))
 		|| ((child_setup_tty (fd)) < 0))
 	      goto kill_child;
 	    /* Use CTTY for standard I/O if requested. */
