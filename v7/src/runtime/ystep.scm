@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ystep.scm,v 1.1 1994/10/12 07:54:00 cph Exp $
+$Id: ystep.scm,v 1.2 1994/10/13 04:02:08 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -310,9 +310,22 @@ MIT in each case. |#
 (define ynode-exp:top-level (list 'STEPPER-TOP-LEVEL))
 (define ynode-exp:proceed   (list 'STEPPER-PROCEED))
 
-(define ynode-result:waiting (list '<WAITING>))
-(define ynode-result:reduced (list '<REDUCED>))
-(define ynode-result:unknown (list '<UNKNOWN>))
+(define (ynode-exp-special node)
+  (let ((exp (ynode-exp node)))
+    (and (or (eq? ynode-exp:top-level exp)
+	     (eq? ynode-exp:proceed exp))
+	 (car exp))))
+
+(define ynode-result:waiting (list 'WAITING))
+(define ynode-result:reduced (list 'REDUCED))
+(define ynode-result:unknown (list 'UNKNOWN))
+
+(define (ynode-result-special node)
+  (let ((result (ynode-result node)))
+    (and (or (eq? ynode-result:waiting result)
+	     (eq? ynode-result:reduced result)
+	     (eq? ynode-result:unknown result))
+	 (car result))))
 
 (define (ynode-reduced? node)
   (eq? (ynode-result node) ynode-result:reduced))
@@ -358,7 +371,7 @@ MIT in each case. |#
 	     (and previous
 		  (ynode-reduced? previous)
 		  (ynode-reduces-to? previous reduces-to))))))
-
+
 (define (ynode-splice-under node)
   (let ((children (ynode-children node)))
     (set-ynode-children! node '())
@@ -369,7 +382,7 @@ MIT in each case. |#
 	(ynode-needs-redisplay! ynode)
 	(for-each loop (ynode-children node)))
       new-node)))
-
+
 (define (ynode-reductions node)
   (if (ynode-reduced? node)
       (let ((next (ynode-next node)))

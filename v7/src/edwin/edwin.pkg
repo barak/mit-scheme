@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.152 1994/10/12 00:30:50 cph Exp $
+$Id: edwin.pkg,v 1.153 1994/10/13 04:02:54 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -1347,10 +1347,12 @@ MIT in each case. |#
 	  ynode-contract!
 	  ynode-doesnt-need-redisplay!
 	  ynode-exp
+	  ynode-exp-special
 	  ynode-expand!
 	  ynode-hidden-children?
 	  ynode-needs-redisplay?
 	  ynode-result
+	  ynode-result-special
 	  ynode-type
 	  ynode-value-node)
   (initialization (initialize-package!)))
