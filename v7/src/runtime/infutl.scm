@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.56 1994/03/11 05:15:08 cph Exp $
+$Id: infutl.scm,v 1.57 1994/11/20 05:13:14 cph Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -651,8 +651,7 @@ MIT in each case. |#
 		 (string=? file-marker actual-marker))
 	    (call-with-binary-output-file (merge-pathnames ofile)
    	      (lambda (output)					  
-		(let ((size (file-attributes/length (file-attributes ifile))))
-		  (uncompress-ports input output (fix:* size 2)))))
+		(uncompress-ports input output (fix:* (file-length ifile) 2))))
 	    (if-fail "Not a recognized compressed file:" ifile))))))
 
 (define (lookup-uncompressed-file compressed-file if-found if-not-found)

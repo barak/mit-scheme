@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.30 1994/06/02 21:41:07 cph Exp $
+$Id: unxprm.scm,v 1.31 1994/11/20 05:12:40 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -140,6 +140,9 @@ MIT in each case. |#
   (length false read-only true)
   (mode-string false read-only true)
   (inode-number false read-only true))
+
+(define (file-length filename)
+  (file-attributes/length (file-attributes-direct filename)))
 
 (define (file-modification-time-direct filename)
   ((ucode-primitive file-mod-time 1)

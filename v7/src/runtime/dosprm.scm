@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.21 1993/11/09 04:31:37 cph Exp $
+$Id: dosprm.scm,v 1.22 1994/11/20 05:12:28 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -130,6 +130,9 @@ MIT in each case. |#
   (length false read-only true)
   (mode-string false read-only true)
   (inode-number false read-only true))
+
+(define (file-length filename)
+  (file-attributes/length (file-attributes filename)))
 
 (define (file-modification-time filename)
   ((ucode-primitive file-mod-time 1)
