@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.2 2000/01/07 23:10:02 cph Exp $
+;;; $Id: imail-umail.scm,v 1.3 2000/01/13 22:20:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -24,7 +24,12 @@
 
 ;;;; URL
 
-(define-class (<umail-url> (constructor (pathname))) (<file-url>))
+(define-class <umail-url> (<file-url>))
+
+(define make-umail-url
+  (let ((constructor (instance-constructor <umail-url> '(PATHNAME))))
+    (lambda (pathname)
+      (constructor (merge-pathnames pathname)))))
 
 (define-url-protocol "umail" <umail-url>
   (lambda (string)
@@ -33,7 +38,7 @@
 ;;;; Server operations
 
 (define-method %open-folder ((url <umail-url>))
-  (read-umail-file url))
+  (read-umail-file (file-url-pathname url) #f))
 
 (define-method %new-folder ((url <umail-url>))
   (let ((folder (make-umail-folder url '())))
@@ -45,7 +50,7 @@
 (define-class (<umail-folder> (constructor (url messages))) (<file-folder>))
 
 (define-method %write-folder ((folder <folder>) (url <umail-url>))
-  (write-umail-file folder url))
+  (write-umail-file folder (file-url-pathname url) #f))
 
 (define-method poll-folder ((folder <umail-folder>))
   folder
@@ -53,25 +58,30 @@
 
 ;;;; Read unix mail file
 
-(define (read-umail-file url)
-  (let* ((pathname (file-url-pathname url)))
-    (call-with-input-file pathname
-      (lambda (port)
-	(make-umail-folder url (read-umail-messages port))))))
+(define (read-umail-file pathname import?)
+  (call-with-input-file pathname
+    (lambda (port)
+      (read-umail-folder (make-umail-url pathname) port import?))))
 
-(define (read-umail-messages port)
-  (map parse-umail-message
+(define (read-umail-folder url port import?)
+  (make-umail-folder url (read-umail-messages port import?)))
+
+(define (read-umail-messages port import?)
+  (map (lambda (lines)
+	 (parse-umail-message lines import?))
        (burst-list (read-lines port)
 		   (lambda (line)
 		     (re-string-match unix-mail-delimiter line)))))
 
-(define (parse-umail-message lines)
+(define (parse-umail-message lines import?)
   (let ((message
 	 (let loop ((ls (cdr lines)) (header-lines '()))
 	   (if (pair? ls)
 	       (if (string-null? (car ls))
 		   (make-standard-message
-		    (lines->header-fields (reverse! header-lines))
+		    (maybe-strip-imail-headers
+		     import?
+		     (lines->header-fields (reverse! header-lines)))
 		    (lines->string
 		     (map (lambda (line)
 			    (if (string-prefix-ci? ">From " line)
@@ -79,21 +89,27 @@
 				line))
 			  (cdr ls))))
 		   (loop (cdr ls) (cons (car ls) header-lines)))
-	       (make-standard-message (reverse! header-lines) "")))))
+	       (make-standard-message
+		(maybe-strip-imail-headers
+		 import?
+		 (lines->header-fields (reverse! header-lines)))
+		(make-string 0))))))
     (set-message-property message "umail-from-line" (car lines))
     message))
 
 ;;;; Write unix mail file
 
-(define (write-umail-file folder url)
-  (call-with-output-file (file-url-pathname url)
+(define (write-umail-file folder pathname export?)
+  ;; **** Do backup of file here.
+  (call-with-output-file pathname
     (lambda (port)
-      (write-umail-messages (file-folder-messages folder) port))))
+      (write-umail-folder folder port export?))))
 
-(define (write-umail-messages messages port)
-  (for-each (lambda (message) (write-umail-message message port)) messages))
+(define (write-umail-folder folder port export?)
+  (for-each (lambda (message) (write-umail-message message port export?))
+	    (file-folder-messages folder)))
 
-(define (write-umail-message message port)
+(define (write-umail-message message port export?)
   (let ((from-line (get-message-property message "umail-from-line" #f)))
     (if from-line
 	(write-string from-line port)
@@ -110,14 +126,17 @@
 	  (write-string (universal-time->unix-ctime (get-universal-time))
 			port))))
   (newline port)
-  (write-header-field (message-flags->header-field (message-flags message))
-		      port)
-  (for-each (lambda (n.v)
-	      (if (not (string-ci=? "umail-from-line" (car n.v)))
-		  (write-header-field
-		   (message-property->header-field (car n.v) (cdr n.v))
-		   port)))
-	    (message-properties message))
+  (if (not export)
+      (begin
+	(write-header-field
+	 (message-flags->header-field (message-flags message))
+	 port)
+	(for-each (lambda (n.v)
+		    (if (not (string-ci=? "umail-from-line" (car n.v)))
+			(write-header-field
+			 (message-property->header-field (car n.v) (cdr n.v))
+			 port)))
+		  (message-properties message))))
   (write-header-fields (message-header-fields message) port)
   (newline port)
   (for-each (lambda (line)

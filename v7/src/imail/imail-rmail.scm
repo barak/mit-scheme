@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.2 2000/01/07 23:09:17 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.3 2000/01/13 22:17:42 cph Exp $
 ;;;
-;;; Copyright (c) 1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -24,7 +24,12 @@
 
 ;;;; URL
 
-(define-class (<rmail-url> (constructor (pathname))) (<file-url>))
+(define-class <rmail-url> (<file-url>))
+
+(define make-rmail-url
+  (let ((constructor (instance-constructor <rmail-url> '(PATHNAME))))
+    (lambda (pathname)
+      (constructor (merge-pathnames pathname)))))
 
 (define-url-protocol "rmail" <rmail-url>
   (lambda (string)
@@ -33,7 +38,7 @@
 ;;;; Server operations
 
 (define-method %open-folder ((url <rmail-url>))
-  (read-rmail-file url))
+  (read-rmail-file (file-url-pathname url) #f))
 
 (define-method %new-folder ((url <rmail-url>))
   (let ((folder (make-rmail-folder url 'COMPUTE '())))
@@ -47,7 +52,7 @@
   (header-fields accessor header-fields define modifier))
 
 (define-method %write-folder ((folder <folder>) (url <rmail-url>))
-  (write-rmail-file folder url))
+  (write-rmail-file folder (file-url-pathname url) #f))
 
 (define-method poll-folder ((folder <rmail-folder>))
   (rmail-get-new-mail folder))
@@ -89,25 +94,26 @@
 
 ;;;; Read RMAIL file
 
-(define (read-rmail-file url)
-  (let* ((pathname (file-url-pathname url))
-	 (namestring (->namestring pathname)))
-    (call-with-input-file pathname
-      (lambda (port)
-	(let ((folder-headers (read-rmail-prolog port)))
-	  (make-rmail-folder url
-			     folder-headers
-			     (read-rmail-messages port)))))))
+(define (read-rmail-file pathname import?)
+  (call-with-input-file pathname
+    (lambda (port)
+      (read-rmail-folder (make-rmail-url pathname) port import?))))
+
+(define (read-rmail-folder url port import?)
+  (let ((folder-headers (read-rmail-prolog port)))
+    (make-rmail-folder url
+		       folder-headers
+		       (read-rmail-messages port import?))))
 
 (define (read-rmail-prolog port)
   (if (not (string-prefix? "BABYL OPTIONS:" (read-required-line port)))
       (error "Not an RMAIL file:" port))
   (lines->header-fields (read-lines-to-eom port)))
 
-(define (read-rmail-messages port)
-  (source->list (lambda () (read-rmail-message port))))
+(define (read-rmail-messages port import?)
+  (source->list (lambda () (read-rmail-message port import?))))
 
-(define (read-rmail-message port)
+(define (read-rmail-message port import?)
   ;; **** This must be generalized to recognize an RMAIL file that has
   ;; unix-mail format messages appended to it.
   (let ((line (read-line port)))
@@ -115,17 +121,21 @@
 	   line)
 	  ((and (fix:= 1 (string-length line))
 		(char=? rmail-message:start-char (string-ref line 0)))
-	   (read-rmail-message-1 port))
+	   (read-rmail-message-1 port import?))
 	  (else
 	   (error "Malformed RMAIL file:" port)))))
 
-(define (read-rmail-message-1 port)
+(define (read-rmail-message-1 port import?)
   (call-with-values
       (lambda () (parse-attributes-line (read-required-line port)))
     (lambda (formatted? flags)
-      (let* ((headers (read-rmail-header-fields port))
+      (let* ((headers
+	      (maybe-strip-imail-headers import?
+					 (read-rmail-header-fields port)))
 	     (displayed-headers
-	      (lines->header-fields (read-header-lines port)))
+	      (maybe-strip-imail-headers
+	       import?
+	       (lines->header-fields (read-header-lines port))))
 	     (body (read-to-eom port))
 	     (finish
 	      (lambda (headers)
@@ -185,23 +195,21 @@
 
 ;;;; Write RMAIL file
 
-(define (write-rmail-file folder url)
+(define (write-rmail-file folder pathname export?)
   ;; **** Do backup of file here.
-  (call-with-output-file (file-url-pathname url)
+  (call-with-output-file pathname
     (lambda (port)
-      (write-rmail-prolog (header-fields folder) port)
-      (write-rmail-messages (file-folder-messages folder) port))))
+      (write-rmail-folder folder port export?))))
 
-(define (write-rmail-prolog header-fields port)
+(define (write-rmail-folder folder port export?)
   (write-string "BABYL OPTIONS: -*- rmail -*-" port)
   (newline port)
-  (write-header-fields header-fields port)
-  (write-char rmail-message:end-char port))
+  (write-header-fields (header-fields folder) port)
+  (write-char rmail-message:end-char port)
+  (for-each (lambda (message) (write-rmail-message message port export?))
+	    (file-folder-messages folder)))
 
-(define (write-rmail-messages messages port)
-  (for-each (lambda (message) (write-rmail-message message port)) messages))
-
-(define (write-rmail-message message port)
+(define (write-rmail-message message port export?)
   (write-char rmail-message:start-char port)
   (newline port)
   (let ((headers (message-header-fields message))
@@ -210,14 +218,14 @@
     (write-rmail-attributes-line message displayed-headers port)
     (if (not (eq? 'NONE displayed-headers))
 	(begin
-	  (write-rmail-properties message port)
+	  (write-rmail-properties message port export?)
 	  (write-header-fields headers port)
 	  (newline port)))
     (write-string rmail-message:headers-separator port)
     (newline port)
     (if (eq? 'NONE displayed-headers)
 	(begin
-	  (write-rmail-properties message port)
+	  (write-rmail-properties message port export?)
 	  (write-header-fields headers port))
 	(write-header-fields displayed-headers port))
     (newline port)
@@ -242,7 +250,7 @@
 	(write-markers labels))))
   (newline port))
 
-(define (write-rmail-properties message port)
+(define (write-rmail-properties message port export?)
   (let ((alist (message-properties message)))
     (let ((summary-line
 	   (list-search-positive alist
@@ -250,14 +258,15 @@
 	       (string-ci=? "summary-line" (car n.v))))))
       (if summary-line
 	  (%write-header-field (car summary-line) (cdr summary-line) port)))
-    (for-each
-     (lambda (n.v)
-       (if (not (or (string-ci=? "summary-line" (car n.v))
-		    (string-ci=? "displayed-header-fields" (car n.v))))
-	   (write-header-field
-	    (message-property->header-field (car n.v) (cdr n.v))
-	    port)))
-     alist)))
+    (if (not export?)
+	(for-each
+	 (lambda (n.v)
+	   (if (not (or (string-ci=? "summary-line" (car n.v))
+			(string-ci=? "displayed-header-fields" (car n.v))))
+	       (write-header-field
+		(message-property->header-field (car n.v) (cdr n.v))
+		port)))
+	 alist))))
 
 ;;;; Get new mail
 
@@ -279,7 +288,7 @@
 	    (save-folder folder)
 	    (for-each (lambda (folder)
 			(if folder
-			    (delete-folder (folder-url folder))))
+			    (delete-folder folder)))
 		      inbox-folders))
 	  (fix:- (count-messages folder) initial-count)))))
 
@@ -318,7 +327,7 @@
 	       (else
 		(rename-inbox-using-rename pathname)))))
     (and (file-exists? pathname)
-	 (open-folder (make-url "umail" (pathname->short-name pathname))))))
+	 (read-umail-file pathname #t))))
 
 (define (rename-inbox-using-movemail pathname directory)
   (let ((pathname
