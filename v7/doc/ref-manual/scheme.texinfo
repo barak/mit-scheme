@@ -1,16 +1,39 @@
 \input texinfo @c -*-texinfo-*-
-@iftex
-@finalout
-@end iftex
-@comment $Id: scheme.texinfo,v 1.127 2004/10/14 03:54:52 cph Exp $
+@comment $Id: scheme.texinfo,v 1.128 2004/10/15 05:58:23 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
-@setfilename scheme.info
-@settitle MIT/GNU Scheme Reference
-@comment %**end of header (This is for running Texinfo on a region.)
-@setchapternewpage odd
+@setfilename mit-scheme-ref
+@set EDITION 1.102
+@set VERSION 7.7.91
+@set UPDATED 2004-10-15
+@settitle MIT/GNU Scheme @value{VERSION}
 @syncodeindex vr fn
 @syncodeindex pg fn
 @syncodeindex tp fn
+@comment %**end of header (This is for running Texinfo on a region.)
+@setchapternewpage odd
+@finalout
+
+@copying
+This file documents MIT/GNU Scheme @value{VERSION}.
+
+Copyright @copyright{} 1991,1992,1993,1994,1995 Massachusetts Institute of Technology@*
+Copyright @copyright{} 1996,1997,1999,2000,2001 Massachusetts Institute of Technology@*
+Copyright @copyright{} 2002,2003,2004 Massachusetts Institute of Technology@*
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.2 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with the Front-Cover Texts being ``A GNU Manual,''
+and with the Back-Cover Texts as in (a) below.  A copy of the
+license is included in the section entitled ``GNU Free Documentation
+License.''
+
+(a) The FSF's Back-Cover Text is: ``You have freedom to copy and modify
+this GNU Manual, like GNU software.  Copies published by the Free
+Software Foundation raise funds for GNU development.''
+@end quotation
+@end copying
 
 @comment Parts of this document are essentially plagiarized from "Common
 @comment Lisp: The Language".  Those parts are marked by the following
@@ -24,63 +47,28 @@
 * MIT/GNU Scheme Ref: (mit-scheme-ref).	MIT/GNU Scheme Reference Manual
 @end direntry
 
-@tex
-% Don't let TeX put extra vspace around math displays ($$ ... $$),
-% because these always appear inside @tex ... @end tex commands
-% that put space there to begin with.
-\abovedisplayskip=0pt plus 3pt
-\abovedisplayshortskip=0pt plus 3pt
-\belowdisplayskip=0pt plus 3pt
-\belowdisplayshortskip=0pt plus 3pt
-@end tex
-
-@ifinfo
-This file documents the MIT/GNU Scheme system.
-
-Copyright @copyright{} 1991,1992,1993,1994,1995 Massachusetts Institute of Technology@*
-Copyright @copyright{} 1996,1997,1999,2000,2001 Massachusetts Institute of Technology@*
-Copyright @copyright{} 2002,2003,2004 Massachusetts Institute of Technology@*
-
-Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.2 or
-any later version published by the Free Software Foundation; with no
-Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
-Texts.  A copy of the license is included in the section entitled "GNU
-Free Documentation License".
-@end ifinfo
-
 @titlepage
 @title{MIT/GNU Scheme Reference Manual}
-@subtitle Edition 1.101
-@subtitle for Scheme Release 7.7.91
-@subtitle 13 October 2004
+@subtitle Edition @value{EDITION}
+@subtitle for release @value{VERSION}
+@subtitle @value{UPDATED}
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
-
 @page
-
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1991,1992,1993,1994,1995 Massachusetts Institute of Technology@*
-Copyright @copyright{} 1996,1997,1999,2000,2001 Massachusetts Institute of Technology@*
-Copyright @copyright{} 2002,2003 Massachusetts Institute of Technology@*
-
-Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.2 or
-any later version published by the Free Software Foundation; with no
-Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
-Texts.  A copy of the license is included in the section entitled "GNU
-Free Documentation License".
+@insertcopying
 @end titlepage
 
-@node Top, Acknowledgements, (dir), (dir)
+@summarycontents
+@contents
 
-@ifinfo
-Scheme is the UnCommon Lisp.  This Info file is the programmer reference
-document for the MIT/GNU implementation of Scheme.  It describes the
-facilities available for developing programs in MIT/GNU Scheme, and the
-``public'' parts of the implementation.
-@end ifinfo
+@ifnottex
+@node Top, Acknowledgements, (dir), (dir)
+@top MIT/GNU Scheme
+
+@insertcopying
+@end ifnottex
 
 @menu
 * Acknowledgements::            
@@ -484,8 +472,5 @@ Device Independent Bitmap Utilities
 @include gfdl.texinfo
 @include binding-index.texi
 @include concept-index.texi
-
-@summarycontents
-@contents
 
 @bye
