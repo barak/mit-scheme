@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.2 1988/03/14 20:45:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.3 1988/06/03 14:51:51 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -340,10 +340,11 @@ REGISTER-RENUMBERs are equal.
 			instructions))))
 
 (define (add-pseudo-register-alias map register alias saved-into-home?)
-  (let ((entry (map-entries:find-home map register)))
-    (if entry
-	(register-map:add-alias map entry alias)
-	(register-map:add-home map register alias saved-into-home?))))
+  (let ((map (delete-machine-register map alias)))
+    (let ((entry (map-entries:find-home map register)))
+      (if entry
+	  (register-map:add-alias map entry alias)
+	  (register-map:add-home map register alias saved-into-home?)))))
 
 (define (machine-register-contents map register)
   (let ((entry (map-entries:find-alias map register)))
