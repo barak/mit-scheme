@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: applicat.scm,v 1.3 1995/03/12 05:57:14 adams Exp $
+$Id: applicat.scm,v 1.4 1995/04/17 03:40:28 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -57,10 +57,10 @@ MIT in each case. |#
 
 (define-applicator LAMBDA (env lambda-list body)
   `(LAMBDA ,lambda-list
-     ,(applicat/expr (append (map (lambda (name)
-				    (list name false))
-				  (lambda-list->names lambda-list))
-			     env)
+     ,(applicat/expr (map* env
+			   (lambda (name)
+			     (list name false))
+			   (lambda-list->names lambda-list))
 		     body)))
 
 (define-applicator QUOTE (env object)
@@ -113,14 +113,11 @@ MIT in each case. |#
 	 (let* ((lambda-list (cadr rator))
 		(rator* `(LAMBDA ,lambda-list
 			   ,(applicat/expr
-			     (append
-			      (map (lambda (name rand)
-				     (list name
-					   (and (pair? rand)
-						(eq? (car rand) 'LAMBDA))))
-				   lambda-list
-				   rands)
-			      env)
+			     (map env
+				  (lambda (name rand)
+				    (list name (LAMBDA/? rand)))
+				  lambda-list
+				  rands)
 			     (caddr rator)))))
 	   `(CALL ,(applicat/remember rator* rator)
 		  ,(applicat/expr env cont)
@@ -134,22 +131,21 @@ MIT in each case. |#
 		      (applicat/expr env (cadr binding))))
 	      bindings)
      ,(applicat/expr
-       (append (map (lambda (binding)
-		      (list (car binding)
-			    (let ((value (cadr binding)))
-			      (LAMBDA/?  value))))
-		    bindings)
-	       env)
+       (map* env
+	     (lambda (binding)
+	       (list (car binding)
+		     (let ((value (cadr binding)))
+		       (LAMBDA/?  value))))
+	     bindings)
        body)))
 
 (define-applicator LETREC (env bindings body)
-  (let ((env*
-	 (append (map (lambda (binding)
-			(list (car binding)
-			      (let ((value (cadr binding)))
-				(LAMBDA/? value))))
-		      bindings)
-		 env)))
+  (let ((env*  (map* env
+		     (lambda (binding)
+		       (list (car binding)
+			     (let ((value (cadr binding)))
+			       (LAMBDA/? value))))
+		     bindings)))
     `(LETREC ,(map (lambda (binding)
 		     (list (car binding)
 			   (applicat/expr env* (cadr binding))))
