@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.7 1995/11/11 07:24:17 cph Exp $
+$Id: logmer.scm,v 1.8 1995/11/11 07:42:36 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -196,18 +196,23 @@ MIT in each case. |#
 		       (maybe-add-file (pathname-simplify pathname)))))))))
 
     (define (maybe-add-file pathname)
-      (if (and (not (ignored-file-name? pathname))
-	       (under-rcs-control? pathname))
-	  (begin
-	    (set! files (cons pathname files))
-	    unspecific)))
+      (if (not (ignored-file-name? pathname))
+	  (let ((control (rcs-control-file pathname)))
+	    (if control
+		(begin
+		  (set! files (cons control files))
+		  unspecific)))))
 
-    (define (under-rcs-control? pathname)
+    (define (rcs-control-file pathname)
       (let ((directory (directory-pathname pathname))
 	    (name (string-append (file-namestring pathname) ",v")))
-	(or (regular-file?
-	     (merge-pathnames name (merge-pathnames "RCS/" directory)))
-	    (regular-file? (merge-pathnames name directory)))))
+	(let ((p (merge-pathnames name (merge-pathnames "RCS/" directory))))
+	  (if (regular-file? p)
+	      p
+	      (let ((p (merge-pathnames name directory)))
+		(if (regular-file? p)
+		    p
+		    #f))))))
 
     (define (regular-file? pathname)
       (let ((attributes (file-attributes pathname)))
