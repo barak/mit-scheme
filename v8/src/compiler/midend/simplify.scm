@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.13 1995/05/19 20:55:17 adams Exp $
+$Id: simplify.scm,v 1.14 1995/06/22 15:22:26 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -550,7 +550,7 @@ MIT in each case. |#
 	  ((LETREC/? expr)
 	   (small? (letrec/body expr) context 'quota))
 	  ((LET/? expr)
-	   (small?* (map second bindings)
+	   (small?* (map second (let/bindings expr))
 		    (small? (let/body expr) 'SUBPROBLEM quota)))
 	  ((and (CALL/? expr)
 		(equal? (call/continuation expr) '(QUOTE #F)))
