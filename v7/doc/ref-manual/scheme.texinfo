@@ -12338,7 +12338,7 @@ Coordinates (i,j) are "valid coordinates" of picture p if and only if:
 @example
 @group
 (picture-ref (procedure->picture width height f) i j)
-@result {} (exact->inexact (f i j)) for all valid coordinates (i,j)
+@result{} (exact->inexact (f i j)) for all valid coordinates (i,j)
 @end group
 @end example
 @end deffn
