@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpsconv.scm,v 1.11 1995/05/05 12:57:26 adams Exp $
+$Id: cpsconv.scm,v 1.12 1995/05/06 18:25:35 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -297,19 +297,27 @@ MIT in each case. |#
       (internal-error "Empty begin")
       (let walk ((next    (car actions))
 		 (actions (cdr actions)))
-	(if (null? actions)
-	    (cpsconv/expr cont next)
-	    (let ((next-name (cpsconv/new-name 'NEXT))
-		  (ignore (cpsconv/new-ignored-continuation)))
-	      `(LET ((,next-name
-		      (LAMBDA (,ignore)
-			,(walk (car actions)
-			       (cdr actions)))))
-		 ,(cpsconv/expr
-		   (cpsconv/begin-continuation
-		    next-name
-		    (cpsconv/dbg-continuation/make 'BEGIN form next))
-		   next)))))))
+	(cond ((null? actions)
+	       (cpsconv/expr cont next))
+	      ((form/simple? next)
+	       ;; This clause is completely optional but makes for a smaller
+	       ;; program that needs less simplification.
+	       (let ((next* (cpsconv/simple/copy next))
+		     (rest  (walk (car actions) (cdr actions))))
+		 (if (BEGIN/? rest)
+		     `(BEGIN ,next* ,@(begin/exprs rest))
+		     `(BEGIN ,next* ,rest))))
+	      (else
+	       (let ((next-name (cpsconv/new-name 'NEXT)))
+		 `(LET ((,next-name
+			 (LAMBDA (,(cpsconv/new-ignored-continuation))
+			   ,(walk (car actions)
+				  (cdr actions)))))
+		    ,(cpsconv/expr
+		      (cpsconv/begin-continuation
+		       next-name
+		       (cpsconv/dbg-continuation/make 'BEGIN form next))
+		      next))))))))
 
 (define-cps-converter IF (cont pred conseq alt)
   (define (general)
