@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.5 1988/08/18 04:37:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.6 1988/08/18 06:50:25 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -159,25 +159,28 @@ MIT in each case. |#
      (finish (rtl:make-fetch register)))))
 
 (define (return-operator/pop-frames block operator offset extra)
-  (if (or (ic-block? block)
-	  (return-operator/subproblem? operator))
-      (make-null-cfg)
-      (let ((popping-limit (reduction-continuation/popping-limit operator)))
-	(if popping-limit
-	    (rtl:make-assignment register:stack-pointer
-				 (popping-limit/locative block
-							 offset
-							 popping-limit
-							 extra))
-	    (scfg*scfg->scfg!
-	     (rtl:make-link->stack-pointer)
-	     (if (zero? extra)
-		 (make-null-cfg)
-		 (rtl:make-assignment register:stack-pointer
-				      (rtl:make-address
-				       (stack-locative-offset
-					(rtl:make-fetch register:stack-pointer)
-					extra)))))))))
+  (let ((pop-extra
+	 (lambda ()
+	   (if (zero? extra)
+	       (make-null-cfg)
+	       (rtl:make-assignment register:stack-pointer
+				    (rtl:make-address
+				     (stack-locative-offset
+				      (rtl:make-fetch register:stack-pointer)
+				      extra)))))))
+    (if (or (ic-block? block)
+	    (return-operator/subproblem? operator))
+	(pop-extra)
+	(let ((popping-limit (reduction-continuation/popping-limit operator)))
+	  (if popping-limit
+	      (rtl:make-assignment register:stack-pointer
+				   (popping-limit/locative block
+							   offset
+							   popping-limit
+							   extra))
+	      (scfg*scfg->scfg!
+	       (rtl:make-link->stack-pointer)
+	       (pop-extra)))))))
 
 (define-integrable (effect-prefix operand offset)
   ((return-operand/effect-generator operand) offset))
