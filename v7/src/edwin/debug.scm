@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.20 1993/10/06 00:59:18 cph Exp $
+;;;	$Id: debug.scm,v 1.21 1993/10/16 07:40:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -1950,7 +1950,7 @@ once it has been renamed, it will not be deleted automatically.")
 
 (define (operation/prompt-for-confirmation port prompt)
   port
-  (prompt-for-confirmation prompt))
+  (prompt-for-confirmation? prompt))
 
 (define (operation/prompt-for-expression port prompt)
   port

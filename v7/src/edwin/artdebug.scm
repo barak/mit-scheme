@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: artdebug.scm,v 1.22 1993/08/22 17:20:39 gjr Exp $
+;;;	$Id: artdebug.scm,v 1.23 1993/10/16 07:41:27 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -1358,7 +1358,7 @@ Prefix argument means do not kill the debugger buffer."
 
 (define (operation/prompt-for-confirmation port prompt)
   port
-  (prompt-for-confirmation prompt))
+  (prompt-for-confirmation? prompt))
 
 (define interface-port-template
   (make-output-port
