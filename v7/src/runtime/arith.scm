@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.38 1997/05/02 05:32:17 cph Exp $
+$Id: arith.scm,v 1.39 1997/05/03 08:47:26 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -299,7 +299,7 @@ MIT in each case. |#
 		   (2r (int:* 2 (integer-divide-remainder qr))))
 	       (if (or (int:> 2r d)
 		       (and (int:= 2r d)
-			    (fix:zero? (int:remainder q 2))))
+			    (not (fix:zero? (int:remainder q 2)))))
 		   (int:1+ q)
 		   q))))))
     (if (int:negative? n)
