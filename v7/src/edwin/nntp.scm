@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.5 1996/05/09 17:25:52 cph Exp $
+;;;	$Id: nntp.scm,v 1.6 1996/10/15 18:58:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -454,6 +454,7 @@
   (name #f read-only #t)
   (%header-table #f)
   (%header-gdbf 'UNKNOWN)
+  (%body-gdbf 'UNKNOWN)
   (%estimated-n-articles #f)
   (%first-article #f)
   (%last-article #f)
@@ -494,7 +495,7 @@
 
 (define (news-group:last-article group)
   (and (news-group:active? group) (news-group:%last-article group)))
-
+
 (define (news-group:update-server-info! group)
   (set-news-group:server-info!
    group
@@ -510,7 +511,15 @@
       (begin
 	(set-news-group:%estimated-n-articles! group (vector-ref info 0))
 	(set-news-group:%first-article! group (vector-ref info 1))
-	(set-news-group:%last-article! group (vector-ref info 2)))
+	(set-news-group:%last-article! group (vector-ref info 2))
+	(let ((predicate
+	       (lambda (header)
+		 (or (< (news-header:number header)
+			(news-group:%first-article group))
+		     (> (news-header:number header)
+			(news-group:%last-article group))))))
+	  (news-group:purge-header-cache group predicate)
+	  (news-group:purge-pre-read-headers group predicate)))
       (begin
 	(set-news-group:%estimated-n-articles! group info)
 	(set-news-group:%first-article! group #f)
@@ -547,29 +556,40 @@
 (define (news-group:header group number)
   (let ((table (news-group:header-table group)))
     (or (hash-table/get table number #f)
-	(let ((header (parse-header group (get-pre-read-header group number))))
+	(let ((header (parse-header group (get-header group number))))
 	  (if (news-header? header)
 	      (hash-table/put! table number header))
 	  header))))
 
-(define (news-group:id->header group id)
-  (let ((header (parse-header group (read-header group id #t))))
-    (and (news-header? header)
-	 (let ((table (news-group:header-table group))
-	       (number (news-header:number header)))
-	   (or (hash-table/get table number #f)
-	       (begin
-		 (hash-table/put! table number header)
-		 header))))))
+(define (news-group:id->header group id allow-server-probes?)
+  (let ((reply (news-group:id->pre-read-header group id)))
+    (if reply
+	(parse-header group reply)
+	(and allow-server-probes?
+	     (let ((header (parse-header group (read-header group id #t))))
+	       (and (news-header? header)
+		    (let ((table (news-group:header-table group))
+			  (number (news-header:number header)))
+		      (or (hash-table/get table number #f)
+			  (begin
+			    (hash-table/put! table number header)
+			    header)))))))))
+
+(define (news-group:id->pre-read-header group id)
+  (let ((gdbf (news-group:header-gdbf group #f)))
+    (and gdbf
+	 (let ((key (gdbm-fetch gdbf id)))
+	   (and key
+		(get-pre-read-header gdbf key))))))
 
 (define (news-group:cached-header group number)
   (and (news-group:%header-table group)
        (hash-table/get (news-group:%header-table group) number #f)))
 
-(define (news-group:purge-header-cache group predicate all-in-heap?)
+(define (news-group:purge-header-cache group predicate)
   (let ((table (news-group:%header-table group)))
     (if table
-	(if all-in-heap?
+	(if (eq? 'ALL predicate)
 	    (hash-table/clear! table)
 	    (hash-table/for-each table
 	      (lambda (number header)
@@ -630,7 +650,8 @@
 			 (if (fix:= n-to-parse 1) "" "s")
 			 " from "
 			 (news-group:name group)
-			 "... ")))
+			 "... "))
+	 (gdbf (news-group:header-gdbf group #t)))
     (message msg)
     (let loop ((numbers numbers) (n 0) (headers headers))
       (if (null? numbers)
@@ -645,7 +666,9 @@
 		  n
 		  (adjoin-header group
 				 number
-				 (get-pre-read-header group number)
+				 (get-pre-read-header
+				  gdbf
+				  (number->string number))
 				 ignore?
 				 headers)))))))
 
@@ -664,85 +687,200 @@
 	   (hash-table/put! (news-group:header-table group) number header)
 	   (cons header headers)))))
 
-(define (news-group:header-gdbf group)
+;;;; Header Database
+
+(define (news-group:header-gdbf group open?)
   (let ((gdbf (news-group:%header-gdbf group)))
     (if (eq? 'UNKNOWN gdbf)
-	(let ((gdbf
-	       (and (gdbm-available?)
-		    (let ((pathname (news-group:gdbf-pathname group)))
-		      (guarantee-init-file-directory pathname)
-		      (gdbm-open pathname 0 GDBM_WRCREAT #o666)))))
-	  (set-news-group:%header-gdbf! group gdbf)
-	  gdbf)
+	(and open?
+	     (let ((gdbf
+		    (and (gdbm-available?)
+			 (let ((pathname
+				(news-group:header-gdbf-pathname group)))
+			   (guarantee-init-file-directory pathname)
+			   (gdbm-open pathname 0 GDBM_WRCREAT #o666)))))
+	       (if gdbf (gdbm-setopt gdbf gdbm_fastmode 1))
+	       (set-news-group:%header-gdbf! group gdbf)
+	       gdbf))
 	gdbf)))
 
-(define (news-group:gdbf-pathname group)
+(define (news-group:header-gdbf-pathname group)
   (init-file-specifier->pathname
    (list "snr" (news-group:server group) "headers" (news-group:name group))))
 
 (define (news-group:pre-read-headers group numbers)
-  (let ((gdbf (news-group:header-gdbf group)))
+  (let ((gdbf (news-group:header-gdbf group #t)))
     (if gdbf
 	(let ((keys
-	       (list-transform-negative (map number->string numbers)
+	       (list-transform-negative (map ->key numbers)
 		 (lambda (key)
 		   (gdbm-exists? gdbf key)))))
 	  (if (not (null? keys))
 	      (read-headers group keys #t '()
 			    (lambda (key reply replies)
-			      (gdbm-store gdbf key (write-to-string reply)
-					  GDBM_REPLACE)
+			      (store-header gdbf key reply)
 			      replies)))))))
 
-(define (get-pre-read-header group number)
-  (let ((gdbf (news-group:header-gdbf group)))
+(define (get-header group number)
+  (let ((gdbf (news-group:header-gdbf group #t)))
     (if gdbf
-	(let ((key (number->string number)))
-	  (let ((datum (gdbm-fetch gdbf key)))
-	    (cond (datum
-		   (with-input-from-string datum read))
-		  ((nntp-connection:closed? (news-group:connection group))
-		   'UNREACHABLE-ARTICLE)
-		  (else
-		   (let ((reply (read-header group number #t)))
-		     (gdbm-store gdbf key (write-to-string reply) GDBM_REPLACE)
-		     reply)))))
+	(let ((key (->key number)))
+	  (or (get-pre-read-header gdbf key)
+	      (if (nntp-connection:closed? (news-group:connection group))
+		  'UNREACHABLE-ARTICLE
+		  (let ((reply (read-header group number #t)))
+		    (store-header gdbf key reply)
+		    reply))))
 	(read-header group number #t))))
 
+(define (get-pre-read-header gdbf key)
+  (let ((datum (gdbm-fetch gdbf key)))
+    (and datum
+	 (let ((length (string-length datum)))
+	   (if (fix:= length 0)
+	       'NO-SUCH-ARTICLE
+	       (let* ((n1 (find-next-newline datum 0 length))
+		      (n1+1 (fix:+ n1 1))
+		      (n2 (find-next-newline datum n1+1 length)))
+		 (vector (substring datum 0 n1)
+			 (substring datum n1+1 n2)
+			 (substring datum (fix:+ n2 1) length))))))))
+
+(define (store-header gdbf key reply)
+  (if (vector? reply)
+      (begin
+	(gdbm-store gdbf
+		    key
+		    (string-append (vector-ref reply 0)
+				   "\n"
+				   (vector-ref reply 1)
+				   "\n"
+				   (vector-ref reply 2))
+		    GDBM_REPLACE)
+	(gdbm-store gdbf
+		    (vector-ref reply 1)
+		    (vector-ref reply 0)
+		    GDBM_REPLACE))
+      (gdbm-store gdbf key "" GDBM_REPLACE)))
+
+;;;; Body Database
+
+(define (news-group:body-gdbf group open?)
+  (let ((gdbf (news-group:%body-gdbf group)))
+    (if (eq? 'UNKNOWN gdbf)
+	(and open?
+	     (let ((gdbf
+		    (and (gdbm-available?)
+			 (let ((pathname
+				(news-group:body-gdbf-pathname group)))
+			   (guarantee-init-file-directory pathname)
+			   (gdbm-open pathname 0 GDBM_WRCREAT #o666)))))
+	       (if gdbf (gdbm-setopt gdbf gdbm_fastmode 1))
+	       (set-news-group:%body-gdbf! group gdbf)
+	       gdbf))
+	gdbf)))
+
+(define (news-group:body-gdbf-pathname group)
+  (init-file-specifier->pathname
+   (list "snr" (news-group:server group) "bodies" (news-group:name group))))
+
+(define (news-header:read-body header port)
+  (let ((group (news-header:group header))
+	(number (get-header-number header)))
+    (if number
+	(let ((gdbf (news-group:body-gdbf group #t)))
+	  (if gdbf
+	      (write-string (or (gdbm-fetch gdbf number)
+				(pre-read-body group number))
+			    port)
+	      (begin
+		(maybe-switch-groups group)
+		(nntp-body-command (news-group:connection group)
+				   number
+				   port))))
+	(nntp-body-command (news-group:connection group)
+			   (news-header:message-id header)
+			   port))))
+
+(define (news-header:pre-read-body header)
+  (let ((group (news-header:group header)))
+    (let ((gdbf (news-group:body-gdbf group #t)))
+      (if gdbf
+	  (let ((key (get-header-number header)))
+	    (if (not (gdbm-exists? gdbf key))
+		(pre-read-body group key)))))))
+
+(define (news-header:pre-read-body? header)
+  (let ((gdbf (news-group:body-gdbf (news-header:group header) #f)))
+    (and gdbf
+	 (gdbm-exists? gdbf (get-header-number header)))))
+
+(define (get-header-number header)
+  (let ((number (news-header:number header)))
+    (if number
+	(number->string number)
+	(let ((gdbf (news-group:header-gdbf (news-header:group header) #f)))
+	  (and gdbf
+	       (gdbm-fetch gdbf (news-header:message-id header)))))))
+
+(define (pre-read-body group key)
+  (let ((datum
+	 (with-string-output-port
+	   (lambda (port)
+	     (nntp-body-command (news-group:connection group)
+				key
+				port)))))
+    (gdbm-store (news-group:body-gdbf group #t) key datum GDBM_REPLACE)
+    datum))
+
 (define (news-group:purge-pre-read-headers group predicate)
-  (let ((gdbf (news-group:header-gdbf group)))
-    (if gdbf
-	(if (eq? predicate 'ALL)
-	    (begin
-	      (gdbm-close gdbf)
-	      (set-news-group:%header-gdbf! group 'UNKNOWN)
-	      (delete-file-no-errors (news-group:gdbf-pathname group)))
-	    (begin
-	      (let ((keys
-		     (let loop ((key (gdbm-firstkey gdbf)) (keys '()))
-		       (if (not key)
-			   keys
-			   (loop (gdbm-nextkey gdbf key)
-				 (if (predicate (string->number key))
-				     (cons key keys)
-				     keys))))))
-		(if (not (null? keys))
-		    (begin
-		      (with-gdbf-fast gdbf
-			(lambda ()
-			  (for-each (lambda (key) (gdbm-delete gdbf key))
-				    keys)))
-		      (gdbm-reorganize gdbf))))
-	      (gdbm-close gdbf)
-	      (set-news-group:%header-gdbf! group 'UNKNOWN))))))
+  (if (gdbm-available?)
+      (if (eq? predicate 'ALL)
+	  (begin
+	    (set-news-group:%header-gdbf! group 'UNKNOWN)
+	    (set-news-group:%body-gdbf! group 'UNKNOWN)
+	    (delete-file-no-errors (news-group:header-gdbf-pathname group))
+	    (delete-file-no-errors (news-group:body-gdbf-pathname group)))
+	  (let ((purge
+		 (lambda (gdbf body?)
+		   (let ((keys
+			  (let loop ((key (gdbm-firstkey gdbf)) (keys '()))
+			    (if (not key)
+				keys
+				(loop (gdbm-nextkey gdbf key)
+				      (if (predicate
+					   (or (string->number key)
+					       (string->number
+						(gdbm-fetch gdbf key)))
+					   body?)
+					  (cons key keys)
+					  keys))))))
+		     (if (not (null? keys))
+			 (begin
+			   (with-gdbf-fast gdbf
+			     (lambda ()
+			       (for-each (lambda (key) (gdbm-delete gdbf key))
+					 keys)))
+			   (gdbm-reorganize gdbf))))
+		   (gdbm-close gdbf))))
+	    (let ((gdbf (news-group:header-gdbf group #f)))
+	      (if gdbf (purge gdbf #f))
+	      (set-news-group:%header-gdbf! group 'UNKNOWN))
+	    (let ((gdbf (news-group:body-gdbf group #f)))
+	      (if gdbf (purge gdbf #t))
+	      (set-news-group:%body-gdbf! group 'UNKNOWN))))))
 
 (define (with-gdbf-fast gdbf thunk)
+  #|
   (dynamic-wind (lambda ()
 		  (gdbm-setopt gdbf gdbm_fastmode 1))
 		thunk
 		(lambda ()
 		  (gdbm-sync gdbf)
-		  (gdbm-setopt gdbf gdbm_fastmode 0))))
+		  (gdbm-setopt gdbf gdbm_fastmode 0)))
+  |#
+  gdbf
+  (thunk))
 
 ;;;; Read Headers
 
@@ -751,19 +889,22 @@
     (nntp-protect connection
       (lambda ()
 	(let ((switch? (maybe-request-group-switch connection group)))
-	  (nntp-head-request connection
-			     (if (string? specifier)
-				 specifier
-				 (number->string specifier)))
+	  (nntp-head-request connection (->key specifier))
 	  (nntp-drain-output connection)
 	  (maybe-reply-group-switch connection group switch?)
 	  (nntp-head-reply connection prune?))))))
 
-(define (maybe-switch-groups connection group)
-  (let ((switch? (maybe-request-group-switch connection group)))
-    (if switch?
-	(nntp-drain-output connection))
-    (maybe-reply-group-switch connection group switch?)))
+(define (->key object)
+  (if (string? object)
+      object
+      (number->string object)))
+
+(define (maybe-switch-groups group)
+  (let ((connection (news-group:connection group)))
+    (let ((switch? (maybe-request-group-switch connection group)))
+      (if switch?
+	  (nntp-drain-output connection))
+      (maybe-reply-group-switch connection group switch?))))
 
 (define (maybe-request-group-switch connection group)
   (if (nntp-connection:current-group? connection (news-group:name group))
@@ -801,10 +942,7 @@
 	    ((fix:= n 0)
 	     (nntp-drain-output connection)
 	     numbers)
-	  (nntp-head-request connection
-			     (if (string? (car numbers))
-				 (car numbers)
-				 (number->string (car numbers))))))
+	  (nntp-head-request connection (->key (car numbers)))))
 
       (define (receive-replies numbers numbers* replies)
 	(do ((numbers numbers (cdr numbers))
@@ -856,19 +994,19 @@
   (if (vector? reply)
       (let ((header
 	     (make-news-header group
-			       (let ((number (vector-ref reply 0)))
-				 (and (valid-article-number? number)
-				      (token->number number)))
+			       (parse-message-number (vector-ref reply 0))
 			       (vector-ref reply 1)
 			       (vector-ref reply 2))))
-	(if (not (news-header:number header))
+	(if (news-header:number header)
+	    header
 	    (let ((entry
 		   (assoc (news-group:name group) (news-header:xref header))))
-	      (if (and entry (valid-article-number? (cdr entry)))
-		  (set-news-header:number! header
-					   (token->number (cdr entry))))))
-	(and (news-header:number header)
-	     header))
+	      (and entry
+		   (let ((n (parse-message-number (cdr entry))))
+		     (and n
+			  (begin
+			    (set-news-header:number! header n)
+			    header)))))))
       reply))
 
 (define (header-lines->text lines)
@@ -930,17 +1068,15 @@
 	  (string-ci=? (car entry) "xref")))))
 
 (define (header-text-parser name)
-  (let ((regexp (header-regexp name)))
+  (let ((key (string-append name ":")))
     (lambda (text)
-      (let ((start (re-search-string-forward regexp #t #f text)))
+      (let ((start (find-header text key)))
 	(if start
 	    (apply string-append
 		   (reverse!
 		    (let ((end (string-length text)))
 		      (let loop ((start start) (strings '()))
-			(let ((index
-			       (substring-find-next-char text start end
-							 #\newline))
+			(let ((index (find-next-newline text start end))
 			      (accum
 			       (lambda (end)
 				 (cons (substring-trim text start end)
@@ -960,16 +1096,29 @@
 			      (accum end)))))))
 	    "")))))
 
-(define (header-regexp name)
-  (let ((name (string-downcase name)))
-    (or (hash-table/get header-regexp-table name #f)
-	(let ((regexp
-	       (re-compile-pattern (string-append "^" name ":[ \t]*") #t)))
-	  (hash-table/put! header-regexp-table name regexp)
-	  regexp))))
+(define (find-header text key)
+  (let ((end (string-length text))
+	(n (string-length key)))
+    (let loop ((start 0))
+      (let ((end* (fix:+ start n)))
+	(if (and (fix:<= end* end)
+		 (substring-ci=? text start end* key 0 n))
+	    (substring-skip-leading-space string end* end)
+	    (let ((nl (find-next-newline text start end)))
+	      (and nl
+		   (loop (fix:+ nl 1)))))))))
 
-(define header-regexp-table
-  (make-string-hash-table))
+(define (find-next-newline string start end)
+  (and (fix:< start end)
+       (if (char=? #\newline (string-ref string start))
+	   start
+	   (find-next-newline string (fix:+ start 1) end))))
+
+(define (parse-message-number n)
+  (let ((n (substring->nonnegative-integer n 0 (string-length n))))
+    (and n
+	 (> n 0)
+	 n)))
 
 (define (valid-article-number? string)
   (let ((end (string-length string)))
@@ -1034,18 +1183,6 @@
 (define (news-header:< x y)
   (< (news-header:number x) (news-header:number y)))
 
-(define (news-header:read-body header port)
-  (let ((group (news-header:group header))
-	(number (news-header:number header)))
-    (let ((connection (news-group:connection group)))
-      (nntp-body-command connection
-			 (if number
-			     (begin
-			       (maybe-switch-groups connection group)
-			       (number->string number))
-			     (news-header:message-id header))
-			 port))))
-
 (define (news-header:xref header)
   (let loop ((tokens (string-tokenize (news-header:%xref header))))
     (if (null? tokens)
@@ -1104,12 +1241,14 @@
     (for-each loop (news-header:followups header))))
 
 (define (organize-headers-into-threads headers
+				       show-context?
 				       allow-server-probes?
 				       split-different-subjects?
 				       join-same-subjects?)
   (sort (let ((threads
 	       (associate-threads-with-trees
 		(build-followup-trees! headers
+				       show-context?
 				       allow-server-probes?
 				       split-different-subjects?))))
 	  (if join-same-subjects?
@@ -1123,11 +1262,12 @@
 ;;; Organize headers into heterarchies based on References: fields.
 
 (define (build-followup-trees! headers
+			       show-context?
 			       allow-server-probes?
 			       split-different-subjects?)
   (call-with-values
       (lambda ()
-	(map-references-to-headers headers allow-server-probes?))
+	(map-references-to-headers headers show-context? allow-server-probes?))
     (lambda (headers dummy-headers)
       (let ((headers (append dummy-headers headers)))
 	(convert-header-graphs-to-trees headers)
@@ -1137,7 +1277,7 @@
 	  (split-trees-on-subject-changes headers))
       (append! (discard-useless-dummy-headers dummy-headers) headers))))
 
-(define (map-references-to-headers headers allow-server-probes?)
+(define (map-references-to-headers headers show-context? allow-server-probes?)
   (let ((id-table (make-string-hash-table))
 	(queue (make-queue))
 	(dummy-headers '()))
@@ -1156,26 +1296,28 @@
 	  (set-news-header:followup-to!
 	   header
 	   (remove-duplicates
-	    (map (lambda (id)
-		   (or (hash-table/get id-table id #f)
-		       (and allow-server-probes?
-			    (let ((header (news-group:id->header group id)))
-			      (and header
-				   (begin
-				     (if (eq? (hash-table/get id-table
-							      header
-							      #t)
-					      #t)
-					 (begin
-					   (set! headers (cons header headers))
-					   (init-header header)
-					   (enqueue!/unsafe queue header)))
-				     header))))
-		       (let ((header (dummy-news-header group id)))
-			 (set! dummy-headers (cons header dummy-headers))
-			 (init-header header)
-			 header)))
-		 (news-header:followup-to header)))))))
+	    (map
+	     (lambda (id)
+	       (or (hash-table/get id-table id #f)
+		   (and show-context?
+			(let ((header
+			       (news-group:id->header
+				group id allow-server-probes?)))
+			  (and header
+			       (begin
+				 (if (eq? (hash-table/get id-table id #t)
+					  #t)
+				     (begin
+				       (set! headers (cons header headers))
+				       (init-header header)
+				       (if (not (queued?/unsafe queue header))
+					   (enqueue!/unsafe queue header))))
+				 header))))
+		   (let ((header (dummy-news-header group id)))
+		     (set! dummy-headers (cons header dummy-headers))
+		     (init-header header)
+		     header)))
+	     (news-header:followup-to header)))))))
     (for-each
      (lambda (header)
        (for-each
@@ -1491,14 +1633,18 @@
   ;; leading or trailing white space.  The news-header parser makes
   ;; that guarantee.
   (let ((end (string-length subject)))
-    (substring subject
-	       (let loop ((start 0))
-		 (if (substring-prefix-ci? "re:" 0 3 subject start end)
-		     (loop (substring-skip-leading-space subject
-							 (fix:+ start 3)
-							 end))
-		     start))
-	       end)))
+    (if (and (not (fix:= 0 end))
+	     (or (char=? #\r (string-ref subject 0))
+		 (char=? #\R (string-ref subject 0))))
+	(let loop ((start 0))
+	  (if (substring-prefix-ci? "re:" 0 3 subject start end)
+	      (loop (substring-skip-leading-space subject
+						  (fix:+ start 3)
+						  end))
+	      (if (fix:= start 0)
+		  subject
+		  (substring subject start end))))
+	subject)))
 
 (define (assoc-subject subject alist)
   (let loop ((alist alist))
@@ -1639,22 +1785,17 @@
 	string)))
 
 (define (token->number token)
-  (substring->nonnegative-integer token 0 (string-length token)))
+  (or (substring->nonnegative-integer token 0 (string-length token))
+      (error:bad-range-argument token #f)))
 
 (define (substring->nonnegative-integer line start end)
-  (let ((get-digit
-	 (lambda (index)
-	   (let ((n
-		  (fix:- (char->integer (string-ref line index))
-			 (char->integer #\0))))
-	     (if (or (fix:< n 0) (fix:> n 9))
-		 (error:bad-range-argument line #f))
-	     n))))
-    (let loop ((index start) (n 0))
-      (if (fix:= index end)
-	  n
-	  (loop (fix:+ index 1)
-		(+ (* n 10) (get-digit index)))))))
+  (let loop ((index start) (n 0))
+    (if (fix:= index end)
+	n
+	(let ((k (fix:- (vector-8b-ref line index) (char->integer #\0))))
+	  (and (fix:>= k 0)
+	       (fix:< k 10)
+	       (loop (fix:+ index 1) (+ (* n 10) k)))))))
 
 (define (substring-skip-leading-space string start end)
   (let loop ((index start))
