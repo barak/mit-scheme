@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.29 1997/01/01 10:13:19 cph Exp $
+$Id: os2pm.c,v 1.30 1997/04/01 05:57:25 cph Exp $
 
 Copyright (c) 1994-97 Massachusetts Institute of Technology
 
@@ -1426,6 +1426,15 @@ window_set_capture (window_t * window, int capturep)
       capture_window = 0;
       return (WinSetCapture (HWND_DESKTOP, NULLHANDLE));
     }
+}
+
+static LONG
+window_query_sys_value (qid_t qid, HWND window, LONG id)
+{
+  LONG value = (WinQuerySysValue (window, id));
+  if (value == 0)
+    window_error (WinQuerySysValue);
+  return (value);
 }
 
 /* Text Cursors */

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2pm.scm,v 1.6 1995/11/04 02:24:08 cph Exp $
+$Id: os2pm.scm,v 1.7 1997/04/01 05:57:39 cph Exp $
 
-Copyright (c) 1995 Massachusetts Institute of Technology
+Copyright (c) 1995-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -833,6 +833,10 @@ MIT in each case. */
 (define-pm-procedure window_set_capture
   (value ("BOOL" successp))
   (arguments window (int capturep)))
+
+(define-pm-procedure window_query_sys_value
+  (value ("LONG" sysval))
+  (arguments qid ("HWND" window) ("LONG" id)))
 
 ;;; Text Cursors
 

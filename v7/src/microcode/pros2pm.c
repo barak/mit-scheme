@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.19 1997/01/01 10:09:20 cph Exp $
+$Id: pros2pm.c,v 1.20 1997/04/01 05:58:02 cph Exp $
 
 Copyright (c) 1994-97 Massachusetts Institute of Technology
 
@@ -349,6 +349,15 @@ DEFINE_PRIMITIVE ("OS2-WINDOW-HANDLE-FROM-ID", Prim_OS2_window_handle_from_id, 2
     (ulong_to_integer (OS2_window_handle_from_id (pm_qid,
 						  (arg_ulong_integer (1)),
 						  (arg_ulong_integer (2)))));
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-QUERY-SYS-VALUE", Prim_OS2_window_query_sys_value, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (OS2_window_query_sys_value (pm_qid,
+						   (HWND_ARG (1)),
+						   (arg_integer (2)))));
 }
 
 DEFINE_PRIMITIVE ("OS2-MAP-WINDOW-POINT", Prim_OS2_map_window_point, 3, 3, 0)
