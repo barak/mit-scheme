@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.37 1991/12/02 18:46:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.38 1992/05/14 02:59:18 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -982,6 +982,7 @@ MIT in each case. |#
       (set! *interned-static-variables* '())
       (set! *block-label* (generate-label))
       (set! *external-labels* '())
+      (initialize-lap-linearizer!)
       (if *procedure-result?*
 	  (generate-lap *rtl-graphs* '()
 	    (lambda (prefix environment-label free-ref-label n-sections)
