@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.7 1993/10/25 19:06:50 cph Exp $
+$Id: graphics.scm,v 1.8 1993/10/26 23:19:26 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -218,15 +218,14 @@ MIT in each case. |#
 
 
 (define (make-graphics-device type-name . arguments)
-  (let ((descriptor
-	 (apply
-	  (graphics-device-type/operation/open
-	   (cond ((graphics-device-type? type-name) type-name)
-		 ((not type-name) (get-default-graphics-device-type))
-		 (else (lookup-graphics-device-type type-name))))
-	  arguments)))
-    (and descriptor
-	 (%make-graphics-device type descriptor))))
+  (let ((type
+	 (cond ((graphics-device-type? type-name) type-name)
+	       ((not type-name) (get-default-graphics-device-type))
+	       (else (lookup-graphics-device-type type-name)))))
+    (let ((descriptor
+	   (apply (graphics-device-type/operation/open type) arguments)))
+      (and descriptor
+	   (%make-graphics-device type descriptor)))))
 
 (let-syntax
     ((define-graphics-operation
