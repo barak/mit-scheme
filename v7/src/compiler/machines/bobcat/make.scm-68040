@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.25 1987/06/13 21:14:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.26 1987/06/17 02:29:11 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -46,11 +46,11 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 1)
-      (define :modification 23)
+      (define :modification 26)
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.25 1987/06/13 21:14:34 cph Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.26 1987/06/17 02:29:11 cph Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -71,13 +71,17 @@ MIT in each case. |#
 		 "base/mvalue.bin"	;multiple-value support
 
 		 "machines/bobcat/machin.bin" ;machine dependent stuff
-		 "base/toplev.bin"	;top level
+		 "base/toplv1.bin"	;top level
+		 "base/toplv2.bin"
+		 "base/toplv3.bin"
 		 "base/utils.bin"	;odds and ends
 		 "base/cfg1.bin"	;control flow graph
 		 "base/cfg2.bin"
 		 "base/cfg3.bin"
 		 "base/ctypes.bin"	;CFG datatypes
-		 "base/dtypes.bin"	;DFG datatypes
+		 "base/dtype1.bin"	;DFG datatypes
+		 "base/dtype2.bin"
+		 "base/dtype3.bin"
 		 "base/bblock.bin"	;Basic block datatype
 		 "base/dfg.bin"		;data flow graph
 		 "base/rtltyp.bin"	;RTL: type definitions

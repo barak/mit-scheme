@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.10 1987/06/13 21:14:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.11 1987/06/17 02:28:29 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -67,8 +67,9 @@ MIT in each case. |#
 
 (define filenames/dependency-chain/base
   (filename/append "base"
-		   "object" "cfg1" "cfg2" "cfg3" "ctypes" "dtypes" "bblock"
-		   "dfg" "rtltyp" "rtlreg" "rtlcfg" "emodel" "rtypes"))
+		   "object" "cfg1" "cfg2" "cfg3" "ctypes" "dtype1" "dtype2"
+		   "dtype3" "bblock" "dfg" "rtltyp" "rtlreg" "rtlcfg" "emodel"
+		   "rtypes"))
 
 (define filenames/dependency-chain/rcse
   (filename/append "front-end" "rcseht" "rcserq" "rcse1" "rcse2"))
@@ -97,10 +98,10 @@ MIT in each case. |#
 
 (file-dependency/syntax/join
  (append (filename/append "base"
-			  "bblock" "cfg1" "cfg2" "cfg3" "ctypes" "dfg" "dtypes"
-			  "emodel" "linear" "object" "queue" "rtlcfg" "rtlcon"
-			  "rtlexp" "rtlreg" "rtltyp" "rtypes" "sets" "toplev"
-			  "utils")
+			  "bblock" "cfg1" "cfg2" "cfg3" "ctypes" "dfg" "dtype1"
+			  "dtype2" "dtype3" "emodel" "linear" "object" "queue"
+			  "rtlcfg" "rtlcon" "rtlexp" "rtlreg" "rtltyp" "rtypes"
+			  "sets" "toplv1" "toplv2" "toplv3" "utils")
 	 (filename/append "alpha" "dflow1" "dflow2" "dflow3" "dflow4" "dflow5"
 			  "dflow6" "fggen1" "fggen2")
 	 (filename/append "front-end"
