@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 1.1 1987/04/21 23:50:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 1.2 1987/05/28 17:58:38 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -43,6 +43,10 @@ MIT in each case. |#
 	  INVOCATION:LEXPR
 	  INVOCATION:LOOKUP
 	  INVOCATION:PRIMITIVE)))
+
+(define (rtl:machine-register-expression? expression)
+  (and (rtl:register? expression)
+       (machine-register? (rtl:register-number expression))))
 
 (define (rtl:map-subexpressions expression procedure)
   (if (rtl:constant? expression)
