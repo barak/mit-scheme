@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.26 1990/08/21 02:23:26 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.27 1991/01/28 23:11:05 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -545,11 +545,7 @@ MIT in each case. |#
 			     (INST-EA (@A+ 5)))
 	 (MOV UL (& ,(* nentries #x10000)) (@A+ 5))
 	 (MOV UW (& #x4eb9) ,temp2)
-	 ,@(generate-entries entries
-			     (if (= nentries 1)
-				 8
-				 12)
-			     true)
+	 ,@(generate-entries entries 12 true)
 	 ,@(if (odd? nentries)
 	       (LAP (CLR W (@A+ 5)))
 	       (LAP))
