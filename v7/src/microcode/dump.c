@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.35 1992/02/03 23:25:45 jinx Exp $
+$Id: dump.c,v 9.36 1993/02/18 05:14:02 gjr Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,8 +34,14 @@ MIT in each case. */
 
 /* This file contains common code for dumping internal format binary files. */
 
-extern SCHEME_OBJECT compiler_utilities;
-extern long compiler_interface_version, compiler_processor_type;
+#ifndef PSBMAP_H_INCLUDED
+extern long
+  compiler_interface_version,
+  compiler_processor_type;
+
+extern SCHEME_OBJECT
+  compiler_utilities;
+#endif /* PSBMAP_H_INCLUDED */
 
 void
 DEFUN (prepare_dump_header,
