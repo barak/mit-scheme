@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosdir.scm,v 1.7 1999/01/02 06:11:34 cph Exp $
+$Id: dosdir.scm,v 1.8 1999/05/07 21:13:43 cph Exp $
 
 Copyright (c) 1992, 1999 Massachusetts Institute of Technology
 
@@ -19,7 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 |#
 
-;;;; Directory Operations -- DOS (copy of unxdir version 14.9)
+;;;; DOS Directory Reader
 ;;; package: (runtime directory)
 
 (declare (usual-integrations))
@@ -264,7 +264,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (let ((next (segment-matcher rest))
 			 (len (string-length segment)))
 		     (lambda (instance)
-		       (let ((posn (substring? segment instance)))
+		       (let ((posn (string-search-forward instance segment)))
 			 (and posn
 			      (next
 			       (substring instance (+ posn len)
