@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.31 1994/02/21 21:47:46 cph Exp $
+;;;	$Id: rmail.scm,v 1.32 1994/03/22 17:08:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-1993 Massachusetts Institute of Technology
 ;;;
@@ -666,9 +666,10 @@ and reverse search is specified by a negative numeric arg."
 			       (loop memo)))))))))
 	(lambda (memo mark)
 	  (if memo
-	      (begin
+	      (let ((mark (mark-left-inserting-copy mark)))
 		(select-message buffer memo)
 		(set-current-point! mark)
+		(mark-temporary! mark)
 		(message msg "done"))
 	      (editor-failure "Search failed: " regexp)))))))
 
