@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/compiler.pkg,v 1.34 1992/05/26 20:09:59 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/compiler.pkg,v 1.35 1992/05/26 20:21:42 mhwu Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/comp.pkg,v 1.32 1991/05/06 23:09:24 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
@@ -179,12 +179,10 @@ MIT in each case. |#
 	  *rtl-procedures*
 	  *rtl-graphs*)
   (import (runtime compiler-info)
-	  make-dbg-info-vector)
-  (import (runtime unparser)
-	  *unparse-uninterned-symbols-by-name?*)
-  (import (runtime compiler-info)
+	  make-dbg-info-vector
 	  inf-structure->bif/bsm)
-  )
+  (import (runtime unparser)
+	  *unparse-uninterned-symbols-by-name?*))
 
 (define-package (compiler debug)
   (files "base/debug")
