@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dassm1.scm,v 1.4 1995/07/16 22:25:57 adams Exp $
+$Id: dassm1.scm,v 1.5 1995/07/27 14:21:18 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -53,45 +53,35 @@ MIT in each case. |#
     (with-output-to-file (pathname-new-type pathname "lap")
       (lambda ()
 	(fluid-let ((disassembler/base-address 0))
-	  (let ((com-file (pathname-new-type pathname "com")))
-	    (let ((object (fasload com-file)))
-	      (if (compiled-code-address? object)
-		  (let ((block (compiled-code-address->block object)))
+	  (let* ((com-file (pathname-new-type pathname "com"))
+		 (object (fasload com-file)))
+	    (if (not (compiled-module? object))
+		(error "Not a compiled file" com-file))
+	    (let ((blocks
+		   (vector->list
+		    (compiled-module/all-compiled-code-blocks object))))
+	      (if (not (null? blocks))
+		  (do ((blocks blocks (cdr blocks)))
+		      ((null? blocks) unspecific)
 		    (disassembler/write-compiled-code-block
-		     block
-		     (compiled-code-block/dbg-info block symbol-table?)))
-		  (begin
-		    (if (not
-			 (and (scode/comment? object)
-			      (dbg-info-vector? (scode/comment-text object))))
-			(error "Not a compiled file" com-file))
-		    (let ((blocks
-			   (vector->list
-			    (dbg-info-vector/blocks-vector
-			     (scode/comment-text object)))))
-		      (if (not (null? blocks))
-			  (do ((blocks blocks (cdr blocks)))
-			      ((null? blocks) unspecific)
-			    (disassembler/write-compiled-code-block
-			     (car blocks)
-			     (compiled-code-block/dbg-info (car blocks)
-							   symbol-table?))
-			    (if (not (null? (cdr blocks)))
-				(begin
-				  (write-char #\page)
-				  (newline)))))))))))))))
+		     (car blocks)
+		     symbol-table?)
+		    (if (not (null? (cdr blocks)))
+			(begin
+			  (write-char #\page)
+			  (newline))))))))))))
+
 
 (define disassembler/base-address)
 
 (define (compiler:disassemble entry)
   (let ((block (compiled-entry/block entry)))
-    (let ((info (compiled-code-block/dbg-info block true)))
-      (fluid-let ((disassembler/write-offsets? true)
-		  (disassembler/write-addresses? true)
-		  (disassembler/base-address (object-datum block)))
-	(newline)
-	(newline)
-	(disassembler/write-compiled-code-block block info)))))
+    (fluid-let ((disassembler/write-offsets? true)
+		(disassembler/write-addresses? true)
+		(disassembler/base-address (object-datum block)))
+      (newline)
+      (newline)
+      (disassembler/write-compiled-code-block block true))))
 
 (define (compiler:disassemble-memory start words)
   (fluid-let ((disassembler/write-offsets? false)
@@ -103,24 +93,23 @@ MIT in each case. |#
      #F
      (disassembler/instructions/address start (+ start (* 4 words))))))
 
-(define (disassembler/write-compiled-code-block block info)
-  (let ((symbol-table (and info (dbg-info/labels info))))
+(define (disassembler/write-compiled-code-block block symbol-table?)
+  (let ((symbol-table
+	 (and symbol-table?
+	      (compiled-code-block/labels block true))))
     (write-string "Disassembly of ")
     (write block)
-    (let loop ((info (compiled-code-block/debugging-info block)))
-      (cond ((string? info)
-	     (write-string " (")
-	     (write-string info)
-	     (write-string ")"))
-	    ((not (pair? info)))
-	    ((vector? (car info))
-	     (loop (cdr info)))
-	    (else
+    (with-values
+	(lambda () (compiled-entry/filename-and-index block))
+      (lambda (filename block-index)
+	(cond ((not filename)
+	       (write-string " (Block contains wierd dbg info)"))
+	      (else
 	       (write-string " (Block ")
-	       (write (cdr info))
+	       (write block-index)
 	       (write-string " in ")
-	       (write-string (car info))
-	       (write-string ")"))))
+	       (write filename)
+	       (write-string ")")))))
     (write-string ":\n")
     (write-string "Code:\n\n")
     (disassembler/write-instruction-stream
@@ -159,7 +148,7 @@ MIT in each case. |#
 (define (disassembler/write-constants-block block symbol-table)
   (fluid-let ((*unparser-radix* 16))
     (let ((end (system-vector-length block)))
-      (let loop ((index (compiled-code-block/constants-start block)))
+      (let loop ((index (compiled-code-block/marked-start block)))
 	(cond ((not (< index end)) 'DONE)
 	      ((object-type?
 		(let-syntax ((ucode-type
