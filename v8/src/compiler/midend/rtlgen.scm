@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.20 1995/03/18 14:38:59 adams Exp $
+$Id: rtlgen.scm,v 1.21 1995/04/01 16:55:14 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -3257,7 +3257,8 @@ MIT in each case. |#
   (define-tagged-allocator 'MAKE-CELL 1 (machine-tag 'CELL) 'CELL)
   (define-tagged-allocator %make-static-binding 1 (machine-tag 'CELL) #F)
   (define-tagged-allocator 'CONS 2 (machine-tag 'PAIR) 'CONS)
-  (define-tagged-allocator %cons 2 (machine-tag 'PAIR) 'CONS))
+  (define-tagged-allocator %cons 2 (machine-tag 'PAIR) 'CONS)
+  (define-tagged-allocator %make-entity 2 (machine-tag 'ENTITY) 'MAKE-ENTITY))
 
 (define-open-coder/value %make-cell 2
   (let ((tag (machine-tag 'CELL)))
