@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.183 1995/11/04 02:29:00 cph Exp $
+$Id: edwin.pkg,v 1.184 1996/03/21 16:52:41 adams Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1120,19 +1120,30 @@ MIT in each case. |#
     (import (win32)
 	    destroy-window
 	    get-handle
+	    get-window-rect
 	    load-icon
+	    make-rect rect/top rect/left rect/bottom rect/right
 	    message-beep
 	    send-message
 	    set-active-window
 	    set-focus
+	    set-window-pos
 	    set-window-text
 	    sleep
 	    show-window
 	    sw_showminnoactive
+	    SWP_NOSIZE
+	    SWP_NOZORDER
 	    update-window)
     (export (edwin win-commands)
-	    screen->handle
-	    win32-screen/set-name!)
+	    win32-screen/get-position
+	    win32-screen/set-name!
+	    win32-screen/set-font!
+	    win32-screen/set-icon!
+	    win32-screen/set-size!
+	    win32-screen/set-position!
+	    win32-screen/set-foreground-color!
+	    win32-screen/set-background-color!)
     (initialization (initialize-package!)))
 
   (define-package (edwin win32-keys)

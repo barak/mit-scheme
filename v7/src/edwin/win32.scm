@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: win32.scm,v 1.4 1995/06/28 23:29:17 adams Exp $
+;;;	$Id: win32.scm,v 1.5 1996/03/21 16:52:57 adams Exp $
 ;;;
-;;;	Copyright (c) 1994 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -59,7 +59,11 @@
   (win32-screen-write-substring! 7)
   (win32-screen-show-cursor! 2)
   (win32-screen-current-focus 0)
-  (win32-screen-set-icon! 2))
+  (win32-screen-set-icon! 2)
+  (win32-screen-set-default-font! 1)
+  (win32-screen-set-font! 2)
+  (win32-screen-set-foreground-color! 2)
+  (win32-screen-set-background-color! 2))
 
 (define-integrable event:process-output 16)
 (define-integrable event:process-status 32)
@@ -590,3 +594,32 @@
 	(begin
 	  (set-screen-name! screen name)
 	  (set-window-text (screen->handle screen) name)))))
+
+(define (win32-screen/set-font! screen font)
+  (win32-screen-set-font! (screen->handle screen) font))
+
+(define (win32-screen/set-icon! screen icon)
+  (win32-screen-set-icon! (screen->handle screen) icon))
+
+(define (win32-screen/set-foreground-color! screen color)
+  (win32-screen-set-foreground-color! (screen->handle screen) color))
+
+(define (win32-screen/set-background-color! screen color)
+  (win32-screen-set-background-color! (screen->handle screen) color))
+
+;; Missing functionality: to specify the screen's size in characters
+;;
+;;(define (win32-screen/set-size! screen width height)
+;;  (?? (screen->handle screen) width height)
+;;  (update-screen! screen #T))
+
+(define (win32-screen/set-position! screen x y)
+  (set-window-pos (screen->handle screen) 0 0 0
+		  x y
+		  (+ SWP_NOSIZE SWP_NOZORDER)))
+
+(define (win32-screen/get-position screen)
+  (let  ((rect (make-rect 0 0 0 0)))
+    (get-window-rect (screen->handle screen) rect)
+    (values (rect/left rect) (rect/top rect)
+	    (rect/right rect) (rect/bottom rect))))

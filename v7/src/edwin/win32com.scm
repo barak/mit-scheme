@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: win32com.scm,v 1.3 1994/11/06 18:36:57 adams Exp $
+;;;	$Id: win32com.scm,v 1.4 1996/03/21 16:52:48 adams Exp $
 ;;;
-;;;	Copyright (c) 1994 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-1996 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -44,9 +44,6 @@
 
 (declare (usual-integrations))
 
-(define (current-win32-window)
-  (screen->handle (selected-screen)))
-
 (define-command set-icon
   "Set the current window's icon to ICON.
 ICON must be the (string) name of one of the known icons.
@@ -59,9 +56,7 @@ When called interactively, completion is available on the input."
     (let  ((icon  (load-icon (get-handle 0) icon-name)))
       (if (zero? icon)
 	  (error "Unknown icon name" icon-name)
-	  ((ucode-primitive win32-screen-set-icon! 2)
-	   (current-win32-window)
-	   icon)))))
+	  (win32-screen/set-icon! (selected-screen) icon)))))
 
 (define icon-names
   '#("shield3_icon"
@@ -80,6 +75,77 @@ When called interactively, completion is available on the input."
      "environment_icon"
      "mincer_icon"
      "bch_ico"))
+
+
+(define-command set-foreground-color
+  "Set foreground (text) color to COLOR."
+  "sSet foreground color"
+  (lambda (name)
+    (let ((screen (selected-screen)))
+      (win32-screen/set-foreground-color! screen (win32/find-color name))
+      (update-screen! screen #t))))
+  
+(define-command set-background-color
+  "Set background (text) color to COLOR."
+  "sSet background color"
+  (lambda (name)
+    (let ((screen (selected-screen)))
+      (win32-screen/set-background-color! screen (win32/find-color name))
+      (update-screen! screen #t))))
+
+(define-command set-font
+  "Set font to be used for drawing text."
+  "sSet font"
+  (lambda (font)
+    (let ((screen (selected-screen)))
+      (win32-screen/set-font! screen font)
+      (update-screen! screen #t))))
+
+(define-command set-default-font
+  "Set font to be used for drawing text in new windows."
+  "sSet default font"
+  (lambda (font)
+    ((ucode-primitive win32-screen-set-default-font! 1) font)))
+
+;; Missing functionality in win32-screen.
+;;(define-command set-screen-size
+;;  "Set size of editor screen to WIDTH x HEIGHT."
+;;  "nScreen width (chars)\nnScreen height (chars)"
+;;  (lambda (width height)
+;;    (win32-screen/set-size! (selected-screen) (max 2 width) (max 2 height))))
+
+(define-command set-screen-position
+  "Set position of editor screen to (X,Y)."
+  "nX position (pels)\nnY position (pels)"
+  (lambda (x y)
+    (win32-screen/set-position! (selected-screen) x y)))
+
+(define-command show-screen-size
+  "Show size of editor screen."
+  ()
+  (lambda ()
+    (let ((screen (selected-screen)))
+      (call-with-values (lambda () (win32-screen/get-position screen))
+	(lambda (x y r b)		
+	  (message "Screen is "
+		   (screen-x-size screen)
+		   " chars wide and "
+		   (screen-y-size screen)
+		   " chars high ("
+		   (- r x) "x" (- b y)
+		   " pels)"))))))
+
+(define-command show-screen-position
+  "Show position of editor screen.
+This is the position of the upper left-hand corner of the frame border
+surrounding the screen, relative to the upper left-hand corner of the
+desktop."
+  ()
+  (lambda ()
+    (call-with-values (lambda () (win32-screen/get-position (selected-screen)))
+      (lambda (x y r b)
+	r b				; ignored
+	(message "Screen's upper left-hand corner is at (" x "," y ")")))))
 
 
 
