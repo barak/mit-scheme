@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.27 1996/04/24 03:39:17 cph Exp $
+$Id: os2prm.scm,v 1.28 1996/04/24 18:44:26 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
