@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.100 2000/06/02 01:52:46 cph Exp $
+;;; $Id: imail-imap.scm,v 1.101 2000/06/02 02:23:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -84,8 +84,16 @@
 			""))
 
 (define-method url-exists? ((url <imap-url>))
-  url
-  #t)
+  (not
+   (condition?
+    (ignore-errors
+     (lambda ()
+       (with-open-imap-connection url
+	 (lambda (connection)
+	   (imap:command:status connection
+				(imap-url-mailbox url)
+				'(MESSAGES))))
+       #t)))))
 
 (define (compatible-imap-urls? url1 url2)
   ;; Can URL1 and URL2 both be accessed from the same IMAP session?
@@ -1122,6 +1130,9 @@
   ((imail-message-wrapper "Select mailbox " mailbox)
    (lambda ()
      (imap:command:no-response connection 'SELECT mailbox))))
+
+(define (imap:command:status connection mailbox items)
+  (imap:command:no-response connection 'STATUS mailbox items))
 
 (define (imap:command:fetch connection index items)
   (imap:command:single-response imap:response:fetch? connection
