@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: compile.sh,v 1.4 2003/02/14 18:28:14 cph Exp $
+# $Id: compile.sh,v 1.5 2003/03/10 20:12:30 cph Exp $
 #
-# Copyright (c) 2002 Massachusetts Institute of Technology
+# Copyright 2002,2003 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -21,7 +21,15 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
+if [ $# -ge 1 ]; then
+  DIR="${1}"
+elif [ -r "./etc/compile.scm" ]; then
+  DIR="."
+else
+  echo "usage: ${0} DIRECTORY"
+  exit 1
+fi
 if [ -z "${SCHEME_COMPILER}" ]; then
     SCHEME_COMPILER="scheme -compiler -heap 4000"
 fi
-${SCHEME_COMPILER} < "${1}/etc/compile.scm"
+${SCHEME_COMPILER} < "${DIR}/etc/compile.scm"
