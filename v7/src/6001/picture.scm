@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: picture.scm,v 1.28 1999/01/02 06:06:43 cph Exp $
+$Id: picture.scm,v 1.29 1999/02/16 01:00:07 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -462,36 +462,30 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (height (picture-height pic))
 	 (data ( picture-data pic))
 	 (pmin (picture-min pic))
-	 (pmax (picture-max pic))
-	 (char-function
-	  (cond ((= pmin pmax)
-		 (lambda (x) x (ascii->char 0)))
-		(else
-		 (let ((scale (/ 255. (- pmax pmin))))
-		   (lambda (x)
-		     (ascii->char (round->exact (* (- x pmin) scale)))))))))
+	 (pmax (picture-max pic)))
     (call-with-output-file file
       (lambda (port)
-	(let ((write-chars
-	       (lambda (chars port)
-		 (for-each (lambda (char) (write-char char port))
-			   chars))))
-	  ;;P5 is the magic type number for pgm.
-	  (write-chars (string->list "P5") port)
-	  (write-char #\Linefeed port)
-	  (write-chars (string->list (number->string width)) port)
-	  (write-char #\Space port)
-	  (write-chars (string->list (number->string height)) port)
-	  (write-char #\Linefeed port)
-	  ;;write the number of gray levels
-	  (write-chars (string->list (number->string 255)) port)
-	  (write-char #\Linefeed port)
-	  (let rowloop ((row (- height 1)))
-	    (if (< row 0)
-		'done
-		(let ((rowvals
-		       (map char-function
-			    (floating-vector->list (vector-ref data row)))))
-		  (begin
-		    (write-string (list->string rowvals) port)
-		    (rowloop (- row 1)))))))))))
+	;;P5 is the magic type number for pgm.
+	(write-string "P5" port)
+	(write-char #\Linefeed port)
+	(write width port)
+	(write-char #\Space port)
+	(write height port)
+	(write-char #\Linefeed port)
+	;;write the number of gray levels
+	(write 255 port)
+	(write-char #\Linefeed port)
+	(let rowloop ((row (- height 1)))
+	  (if (>= row 0)
+	      (let ((rowvals
+		     (map (cond ((= pmin pmax)
+				 (lambda (x) x (ascii->char 0)))
+				(else
+				 (let ((scale (/ 255. (- pmax pmin))))
+				   (lambda (x)
+				     (ascii->char
+				      (round->exact (* (- x pmin) scale)))))))
+			  (floating-vector->list (vector-ref data row)))))
+		(begin
+		  (write-string (list->string rowvals) port)
+		  (rowloop (- row 1))))))))))
