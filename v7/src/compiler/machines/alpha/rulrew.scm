@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.1 1992/08/29 13:51:35 jinx Exp $
+$Id: rulrew.scm,v 1.2 1993/02/15 17:09:43 gjr Exp $
 
-Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
+Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
 This software was developed at the Digital Equipment Corporation
 Cambridge Research Laboratory.  Permission to copy this software, to
@@ -86,7 +86,8 @@ case.
   (rtl:make-cons-non-pointer
    type
    (rtl:make-machine-constant
-    (careful-object-datum (rtl:object->datum-expression datum)))))
+    (careful-object-datum
+     (rtl:constant-value (rtl:object->datum-expression datum))))))
 
 (define-rule rewriting
   (OBJECT->TYPE (REGISTER (? source register-known-value)))
@@ -96,7 +97,8 @@ case.
 (define-rule rewriting
   (OBJECT->DATUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:constant-non-pointer? source))
-  (rtl:make-machine-constant (careful-object-datum source)))
+  (rtl:make-machine-constant
+   (careful-object-datum (rtl:constant-value source))))
 
 (define (rtl:constant-non-pointer? expression)
   (and (rtl:constant? expression)
@@ -144,6 +146,15 @@ case.
   (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:constant-fixnum? source))
   (rtl:make-object->fixnum source))
+
+(define-rule rewriting
+  (FIXNUM-2-ARGS FIXNUM-LSH
+		 (? operand-1)
+		 (REGISTER (? operand-2 register-known-value))
+		 #F)
+  (QUALIFIER (and (rtl:register? operand-1)
+		  (rtl:constant-fixnum? operand-2)))
+  (rtl:make-fixnum-2-args 'FIXNUM-LSH operand-1 operand-2 #F))
 
 (define-rule rewriting
   (FIXNUM-2-ARGS MULTIPLY-FIXNUM
@@ -225,6 +236,3 @@ case.
 		  (spectrum-type-optimizable? (rtl:machine-constant-value type))))
   (rtl:make-cons-pointer type datum))
 |#
-
-
-	     
