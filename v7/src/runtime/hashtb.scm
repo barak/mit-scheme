@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.15 1993/10/20 21:48:27 cph Exp $
+$Id: hashtb.scm,v 1.16 1993/10/20 22:05:02 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -765,7 +765,7 @@ MIT in each case. |#
 	   (loop tables (system-pair-cdr tables)))
 	  (else
 	   (if previous
-	       (set-cdr! previous (system-pair-cdr tables))
+	       (system-pair-set-cdr! previous (system-pair-cdr tables))
 	       (set! address-hash-tables (system-pair-cdr tables)))
 	   (loop previous (system-pair-cdr tables))))))
 
