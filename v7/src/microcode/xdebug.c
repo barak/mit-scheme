@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.29 1992/02/04 15:50:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.30 1992/05/22 21:08:48 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -138,13 +138,13 @@ DEFUN (Find_In_Area, (Name, From, To, Obj, Mode, print_p, store_p),
 	     ((long) Where), ((long) (*Where)));
 #endif
     if (store_p)
-      *Free++ = (LONG_TO_UNSIGNED_FIXNUM (Where));
+      *Free++ = (LONG_TO_UNSIGNED_FIXNUM ((long) Where));
   }
   return occurrences;
 }
 
 SCHEME_OBJECT
-DEFUN (Find_Who_Points (Obj, Find_Mode, Collect_Mode),
+DEFUN (Find_Who_Points, (Obj, Find_Mode, Collect_Mode),
        SCHEME_OBJECT Obj
        AND int Find_Mode AND int Collect_Mode)
 {
@@ -187,8 +187,8 @@ DEFUN (Find_Who_Points (Obj, Find_Mode, Collect_Mode),
   }
   if (store_p)
   {
-    *Saved_Free = MAKE_OBJECT (TC_MANIFEST_VECTOR, n);
-    return MAKE_POINTER_OBJECT (TC_VECTOR, Saved_Free);
+    *Saved_Free = (MAKE_OBJECT (TC_MANIFEST_VECTOR, n));
+    return (MAKE_POINTER_OBJECT (TC_VECTOR, Saved_Free));
   }
   else
   {
@@ -197,7 +197,7 @@ DEFUN (Find_Who_Points (Obj, Find_Mode, Collect_Mode),
 }
 
 void
-DEFUN (Print_Memory, (Where, How_Many)
+DEFUN (Print_Memory, (Where, How_Many),
        SCHEME_OBJECT * Where
        AND long How_Many)
 {
