@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.70 2000/07/28 15:15:37 cph Exp $
+;;; $Id: vc.scm,v 1.71 2000/08/18 20:22:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -605,9 +605,7 @@ merge in the changes into your working copy."
       (vc-save-workfile-buffer workfile)
       (vc-start-entry workfile "Enter initial comment."
 		      (or comment
-			  (if (ref-variable vc-initial-comment buffer)
-			      #f
-			      ""))
+			  (if (ref-variable vc-initial-comment buffer) #f ""))
 		      (let ((keep?
 			     (or keep?
 				 (ref-variable vc-keep-workfiles buffer))))
@@ -623,9 +621,7 @@ merge in the changes into your working copy."
 	     (vc-backend-checkout master revision #t #f)
 	     (vc-revert-workfile-buffer master #t))))
       (cond ((not (and (let ((value (ref-variable vc-checkout-carefully)))
-			 (if (boolean? value)
-			     value
-			     (value)))
+			 (if (boolean? value) value (value)))
 		       (vc-workfile-modified? master)))
 	     (do-it))
 	    ((cleanup-pop-up-buffers
@@ -1631,11 +1627,10 @@ the value of vc-log-mode-hook."
 	   (extract-string (re-match-start 2) (re-match-end 2))))))
 
 (define (get-cvs-status master parse-output)
-  (let ((pathname (vc-master-workfile master)))
-    (vc-run-command master
-		    `((DIRECTORY ,(directory-pathname pathname))
-		      (BUFFER " *vc-status*"))
-		    "cvs" "status" (file-pathname pathname)))
+  (vc-run-command master
+		  `((BUFFER " *vc-status*"))
+		  "cvs" "status"
+		  (file-pathname (vc-master-workfile master)))
   (parse-output (buffer-start (find-or-create-buffer " *vc-status*"))))
 
 (define (convert-cvs-status status)
@@ -1712,7 +1707,7 @@ the value of vc-log-mode-hook."
       (lambda ()
 	(vc-run-command workfile '() "cvs" "add"
 			"-m" comment
-			workfile)))))
+			(file-pathname workfile))))))
 
 (define-vc-type-operation 'CHECKOUT vc-type:cvs
   (lambda (master revision lock? workfile)
@@ -1730,10 +1725,11 @@ the value of vc-log-mode-hook."
 	      (revision
 	       (vc-run-command master '() "cvs" (and lock? "-w") "update"
 			       (cvs-rev-switch revision)
-			       (vc-master-workfile master)))
+			       (file-pathname (vc-master-workfile master))))
 	      (else
-	       (vc-run-command master '() "cvs" "edit"
-			       (vc-master-workfile master))))))))
+	       (vc-run-command
+		master '() "cvs" "edit"
+		(file-pathname (vc-master-workfile master)))))))))
 
 (define-vc-type-operation 'CHECKIN vc-type:cvs
   (lambda (master revision comment keep?)
@@ -1756,15 +1752,15 @@ the value of vc-log-mode-hook."
 		     (trunk-revision? revision))
 		(vc-run-command master '() "cvs" "commit"
 				"-m" "#intermediate"
-				(vc-master-workfile master)))
+				(file-pathname (vc-master-workfile master))))
 	    (vc-run-command master '() "cvs" "commit"
 			    (cvs-rev-switch revision)
 			    "-m" comment
-			    (vc-master-workfile master))))
+			    (file-pathname (vc-master-workfile master)))))
 	;; If this was an explicit check-in, remove the sticky tag.
 	(if revision
 	    (vc-run-command master '() "cvs" "update" "-A"
-			    (vc-master-workfile master)))))))
+			    (file-pathname (vc-master-workfile master))))))))
 
 (define-vc-type-operation 'REVERT vc-type:cvs
   (lambda (master)
@@ -1772,10 +1768,12 @@ the value of vc-log-mode-hook."
       (lambda ()
 	(let ((workfile (vc-master-workfile master)))
 	  (if (cvs-file-edited? master)
-	      (vc-run-command master '() "cvs" "unedit" workfile)
+	      (vc-run-command master '() "cvs" "unedit"
+			      (file-pathname workfile))
 	      (begin
 		(delete-file-no-errors workfile)
-		(vc-run-command master '() "cvs" "update" workfile))))))))
+		(vc-run-command master '() "cvs" "update"
+				(file-pathname workfile)))))))))
 
 (define-vc-type-operation 'STEAL vc-type:cvs
   (lambda (master revision)
@@ -1804,7 +1802,8 @@ the value of vc-log-mode-hook."
 						 (vc-workfile-buffer master
 								     #f))
 				   "/dev/null"
-				   (vc-master-workfile master)))))
+				   (file-pathname
+				    (vc-master-workfile master))))))
 	  (= 1
 	     (vc-run-command master options "cvs" "diff"
 			     (if simple?
@@ -1813,11 +1812,12 @@ the value of vc-log-mode-hook."
 					       (vc-workfile-buffer master #f)))
 			     (and rev1 (string-append "-r" rev1))
 			     (and rev2 (string-append "-r" rev2))
-			     (vc-master-workfile master)))))))
+			     (file-pathname (vc-master-workfile master))))))))
 
 (define-vc-type-operation 'PRINT-LOG vc-type:cvs
   (lambda (master)
-    (vc-run-command master '() "cvs" "log" (vc-master-workfile master))))
+    (vc-run-command master '() "cvs" "log"
+		    (file-pathname (vc-master-workfile master)))))
 
 (define-vc-type-operation 'CHECK-LOG-ENTRY vc-type:cvs
   (lambda (master log-buffer)
@@ -1833,7 +1833,7 @@ the value of vc-log-mode-hook."
   (with-vc-command-message master "Merging changes into"
     (lambda ()
       (let ((workfile (vc-master-workfile master)))
-	(vc-run-command master '() "cvs" "update" workfile)
+	(vc-run-command master '() "cvs" "update" (file-pathname workfile))
 	(let ((buffer (get-vc-command-buffer))
 	      (fn (re-quote-string (file-namestring workfile))))
 	  (cond ((re-search-forward
@@ -1871,7 +1871,11 @@ the value of vc-log-mode-hook."
 			      "")
 			  "..."))
 	  (status-limit (option 'STATUS (lambda () 0)))
-	  (directory (option 'DIRECTORY working-directory-pathname))
+	  (directory
+	   (option 'DIRECTORY
+		   (if workfile
+		       (lambda () (directory-pathname workfile))
+		       working-directory-pathname)))
 	  (command-buffer
 	   (let ((buffer (option 'BUFFER get-vc-command-buffer)))
 	     (cond ((buffer? buffer) buffer)
