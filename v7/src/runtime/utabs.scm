@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.41 1987/01/23 00:22:10 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.42 1987/03/09 15:00:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -67,6 +67,8 @@
 (define primitive-procedure?)
 (define primitive-procedure-name)
 (define implemented-primitive-procedure?)
+
+(define microcode-identification-item)
 
 (define future?)
 
@@ -207,6 +209,14 @@
 (set! microcode-termination-name
 (named-lambda (microcode-termination-name type)
   (code->name termination-vector-slot type)))
+
+(define identification-vector-slot)
+
+(set! microcode-identification-item
+  (lambda (name)
+    (vector-ref :identification
+		(or (microcode-table-search identification-vector-slot name)
+		    (error "Unknown identification item" name)))))
 
 ;;;; Microcode Primitives
 
@@ -281,9 +291,6 @@
 
 (define (snarf-version)
   (set! :identification (microcode-identify))
-  (set! :release (vector-ref :identification 0))
-  (set! :version (vector-ref :identification 1))
-  (set! :modification (vector-ref :identification 2))
 
   (set! microcode-tables-identification
 	(scode-eval (binary-fasload (microcode-tables-filename))
@@ -314,6 +321,12 @@
 	(fixed-objects-vector-slot 'MICROCODE-TERMINATIONS-VECTOR))
   (set! number-of-microcode-terminations
 	(vector-length (vector-ref fixed-objects termination-vector-slot)))
+
+  (set! identification-vector-slot
+	(fixed-objects-vector-slot 'MICROCODE-IDENTIFICATION-VECTOR))
+  (set! :release (microcode-identification-item 'SYSTEM-RELEASE-STRING))
+  (set! :version (microcode-identification-item 'MICROCODE-VERSION))
+  (set! :modification (microcode-identification-item 'MICROCODE-MODIFICATION))
 
   ;; Predicate to test if object is a future without touching it.
   (set! future? 
