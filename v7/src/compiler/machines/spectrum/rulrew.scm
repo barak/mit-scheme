@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.2 1990/04/03 04:52:59 jinx Exp $
-$MC68020-Header: rulrew.scm,v 1.2 90/04/03 04:52:22 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.3 1990/07/22 18:56:39 jinx Rel $
+$MC68020-rulrew.scm,v 1.3 90/05/03 15:17:42 GMT jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Rewrite Rules
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 

@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.30 1990/04/09 20:35:44 cph Exp $
-$MC68020-Header: lapgen.scm,v 4.31 90/04/01 22:26:01 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.35 1990/07/22 18:53:55 jinx Rel $
+$MC68020-Header: lapgen.scm,v 4.35 90/07/20 15:53:40 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Rules for HPPA.  Shared utilities.
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -407,6 +408,7 @@ MIT in each case. |#
     (conversion source (standard-target! target))))
 
 (define (standard-binary-conversion source1 source2 target conversion)
+  ;; The sources are any register, `target' a pseudo register.
   (let ((source1 (standard-source! source1))
 	(source2 (standard-source! source2)))
     (conversion source1 source2 (standard-target! target))))
@@ -456,6 +458,9 @@ MIT in each case. |#
 (define (lookup-arithmetic-method operator methods)
   (cdr (or (assq operator (cdr methods))
 	   (error "Unknown operator" operator))))
+
+(define-integrable (arithmetic-method? operator methods)
+  (assq operator (cdr methods)))  
 
 (define (fits-in-5-bits-signed? value)
   (<= #x-10 value #xF))
@@ -553,7 +558,17 @@ MIT in each case. |#
 			     (loop (cdr names) (+ 8 index)))))
 		 `(BEGIN ,@(loop names start)))))
   (define-hooks 100
-    store-closure-code))
+    store-closure-code
+    store-closure-entry			; newer version of store-closure-code.
+    multiply-fixnum
+    fixnum-quotient
+    fixnum-remainder
+    fixnum-lsh))
+
+(define (require-registers! . regs)
+  (let ((code (apply clear-registers! regs)))
+    (need-registers! regs)
+    code))
 
 (define (load-interface-args! first second third fourth)
   (let ((clear-regs

@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/decls.scm,v 4.26 1990/03/26 23:36:42 jinx Exp $
-$MC68020-Header: decls.scm,v 4.26 90/02/02 18:39:26 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/decls.scm,v 4.27 1990/07/22 18:53:17 jinx Rel $
+$MC68020-Header: decls.scm,v 4.27 90/05/03 15:17:08 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -384,40 +384,44 @@ MIT in each case. |#
 			 (source-node/declarations node)))))
 	      filenames))
 
-  (let ((front-end-base
-	 (filename/append "base"
-			  "blocks" "cfg1" "cfg2" "cfg3"
-			  "contin" "ctypes" "enumer" "lvalue"
-			  "object" "proced" "rvalue"
-			  "scode" "subprb" "utils"))
-	(spectrum-base
-	 (filename/append "machines/spectrum" "machin"))
-	(rtl-base
-	 (filename/append "rtlbase"
-			  "rgraph" "rtlcfg" "rtlobj" "rtlreg" "rtlty1"
-			  "rtlty2"))
-	(cse-base
-	 (filename/append "rtlopt"
-			  "rcse1" "rcse2" "rcseep" "rcseht" "rcserq" "rcsesr"))
-	(instruction-base
-	 (filename/append "machines/spectrum" "assmd" "machin"))
-	(lapgen-base
-	 (append (filename/append "back" "lapgn3" "regmap")
-		 (filename/append "machines/spectrum" "lapgen")))
-	(assembler-base
-	 (append (filename/append "back" "symtab")
-		 (filename/append "machines/spectrum" "instr1")))
-	(lapgen-body
-	 (append
-	  (filename/append "back" "lapgn1" "lapgn2" "syntax")
-	  (filename/append "machines/spectrum"
-			   "rules1" "rules2" "rules3" "rules4"
-			   "rulfix" "rulflo")))
-	(assembler-body
-	 (append
-	  (filename/append "back" "bittop")
-	  (filename/append "machines/spectrum"
-			   "instr1" "instr2" "instr3"))))
+  (let* ((front-end-base
+	  (filename/append "base"
+			   "blocks" "cfg1" "cfg2" "cfg3"
+			   "contin" "ctypes" "enumer" "lvalue"
+			   "object" "proced" "rvalue"
+			   "scode" "subprb" "utils"))
+	 (spectrum-base
+	  (filename/append "machines/spectrum" "machin"))
+	 (rtl-base
+	  (filename/append "rtlbase"
+			   "rgraph" "rtlcfg" "rtlobj" "rtlreg" "rtlty1"
+			   "rtlty2"))
+	 (cse-base
+	  (filename/append "rtlopt"
+			   "rcse1" "rcseht" "rcserq" "rcsesr"))
+	 (cse-all
+	  (append (filename/append "rtlopt"
+				   "rcse2" "rcseep")
+		  cse-base))
+	 (instruction-base
+	  (filename/append "machines/spectrum" "assmd" "machin"))
+	 (lapgen-base
+	  (append (filename/append "back" "lapgn3" "regmap")
+		  (filename/append "machines/spectrum" "lapgen")))
+	 (assembler-base
+	  (append (filename/append "back" "symtab")
+		  (filename/append "machines/spectrum" "instr1")))
+	 (lapgen-body
+	  (append
+	   (filename/append "back" "lapgn1" "lapgn2" "syntax")
+	   (filename/append "machines/spectrum"
+			    "rules1" "rules2" "rules3" "rules4"
+			    "rulfix" "rulflo")))
+	 (assembler-body
+	  (append
+	   (filename/append "back" "bittop")
+	   (filename/append "machines/spectrum"
+			    "instr1" "instr2" "instr3"))))
 
     (define (file-dependency/integration/join filenames dependencies)
       (for-each (lambda (filename)
@@ -509,13 +513,13 @@ MIT in each case. |#
      (append spectrum-base front-end-base rtl-base))
 
     (file-dependency/integration/join
-     (append cse-base
+     (append cse-all
 	     (filename/append "rtlopt" "ralloc" "rcompr" "rdebug" "rdflow"
 			      "rerite" "rinvex" "rlife" "rtlcsm")
 	     (filename/append "machines/spectrum" "rulrew"))
      (append spectrum-base rtl-base))
 
-    (file-dependency/integration/join cse-base cse-base)
+    (file-dependency/integration/join cse-all cse-base)
 
     (file-dependency/integration/join
      (filename/append "rtlopt" "ralloc" "rcompr" "rdebug" "rlife")

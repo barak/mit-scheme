@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules1.scm,v 4.32 1990/01/25 16:39:51 jinx Exp $
-$MC68020-Header: rules1.scm,v 4.32 90/01/18 22:43:54 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules1.scm,v 4.33 1990/07/22 18:55:17 jinx Rel $
+$MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Generation Rules: Data Transfers
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -63,7 +64,8 @@ MIT in each case. |#
   ;; tag the contents of a register
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? source))))
-  (QUALIFIER (fits-in-5-bits-signed? type))
+  ;; *** Why doesn't it work when qualifier is used? ***
+  ;; (QUALIFIER (fits-in-5-bits-signed? type))
   (deposit-type type (standard-move-to-target! source target)))
 
 (define-rule statement
@@ -82,12 +84,20 @@ MIT in each case. |#
   (object->address (standard-move-to-target! source target)))
 
 (define-rule statement
-  ;; add a constant to a register's contents
+  ;; add a constant offset (in long words) to a register's contents
   (ASSIGN (REGISTER (? target))
 	  (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
   (standard-unary-conversion source target
     (lambda (source target)
       (load-offset (* 4 offset) source target))))
+
+(define-rule statement
+  ;; add a constant offset (in bytes) to a register's contents
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
+  (standard-unary-conversion source target
+    (lambda (source target)
+      (load-offset offset source target))))
 
 (define-rule statement
   ;; read an object from memory

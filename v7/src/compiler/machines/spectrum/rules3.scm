@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.24 1990/04/09 21:07:36 cph Exp $
-$MC68020-Header: rules3.scm,v 4.23 90/01/18 22:44:09 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.25 1990/07/22 18:55:38 jinx Exp $
+$MC68020-Header: rules3.scm,v 4.24 90/05/03 15:17:33 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Generation Rules: Invocations and Entries
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -417,6 +418,104 @@ MIT in each case. |#
 
 ;;;; Closures.  These two statements are intertwined:
 
+(define-rule statement
+  ;; This depends on the following facts:
+  ;; 1- TC_COMPILED_ENTRY is a multiple of two.
+  ;; 2- all the top 6 bits in a data address are 0 except the quad bit
+  ;; 3- type codes are 6 bits long.
+  (CLOSURE-HEADER (? internal-label) (? nentries) (? entry))
+  entry				; Used only if entries may not be word-aligned.
+  (if (zero? nentries)
+      (error "Closure header for closure with no entries!"
+	     internal-label))
+  (let ((procedure (label->object internal-label)))
+    (let ((gc-label (generate-label))
+	  (external-label (rtl-procedure/external-label procedure)))
+      (LAP (LABEL ,gc-label)
+	   ,@(invoke-interface code:compiler-interrupt-closure)
+	   ,@(make-external-label internal-entry-code-word external-label)
+	   ;; This code must match the code and count in microcode/cmpint2.h
+	   (DEP () 0 31 2 ,regnum:ble-return)
+	   ,@(address->entry regnum:ble-return)
+	   (STWM () ,regnum:ble-return (OFFSET -4 0 22))
+	   (LABEL ,internal-label)
+	   ,@(interrupt-check gc-label)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
+			(? min) (? max) (? size)))
+  (cons-closure target procedure-label min max size))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-MULTICLOSURE (? nentries) (? size) (? entries)))
+  ;; entries is a vector of all the entry points
+  (case nentries
+    ((0)
+     (let ((dest (standard-target! target)))
+       (LAP ,@(load-non-pointer (ucode-type manifest-vector)
+				(+ 4 size)
+				dest)
+	    (STWM () ,dest (OFFSET 4 0 ,regnum:free-pointer))
+	    ,@(load-offset -4 regnum:free-pointer dest))))
+    ((1)
+     (let ((entry (vector-ref entries 0)))
+       (cons-closure
+	target (car entry) (cadr entry) (caddr entry) size)))
+    (else
+     (cons-multiclosure target nentries size (vector->list entries)))))
+
+(define (cons-closure target entry min max size)
+  (let* ((flush-reg (require-registers! regnum:first-arg
+					#| regnum:addil-result |#
+				        regnum:ble-return))
+	 (target (standard-target! target)))
+    (LAP ,@flush-reg
+	 ;; Vector header
+	 ,@(load-non-pointer (ucode-type manifest-closure)
+			     (+ size closure-entry-size)
+			     regnum:first-arg)
+	 (STWM () ,regnum:first-arg (OFFSET 4 0 ,regnum:free-pointer))
+	 ;; Entry point is result.
+	 ,@(load-offset 4 regnum:free-pointer target)
+	 ,@(cons-closure-entry entry min max 8)
+	 ;; Allocate space for closed-over variables
+	 ,@(load-offset (* 4 size)
+			regnum:free-pointer
+			regnum:free-pointer))))
+
+(define (cons-multiclosure target nentries size entries)
+  (let* ((flush-reg (require-registers! regnum:first-arg
+					#| regnum:addil-result |#
+					regnum:ble-return))
+	 (target (standard-target! target)))
+    (define (generate-entries offset entries)
+      (if (null? entries)
+	  (LAP)
+	  (let ((entry (car entries)))
+	    (LAP ,@(cons-closure-entry (car entry) (cadr entry) (caddr entry)
+				       offset)
+		 ,@(generate-entries (+ offset (* 4 closure-entry-size))
+				     (cdr entries))))))
+
+    (LAP ,@flush-reg
+	 ;; Vector header
+	 ,@(load-non-pointer (ucode-type manifest-closure)
+			     (+ 1 (* closure-entry-size nentries) size)
+			     regnum:first-arg)
+	 (STWM () ,regnum:first-arg (offset 4 0 ,regnum:free-pointer))
+	 ;; Number of closure entries
+	 ,@(load-entry-format nentries 0 target)
+	 (STWM () ,target (offset 4 0 ,regnum:free-pointer))
+	 ;; First entry point is result.
+	 ,@(load-offset 4 21 target)
+	 ,@(generate-entries 12 entries)
+	 ;; Allocate space for closed-over variables
+	 ,@(load-offset (* 4 size)
+			regnum:free-pointer
+			regnum:free-pointer))))
+
 ;; Magic for compiled entries.
 
 (define compiled-entry-type-im5
@@ -425,7 +524,7 @@ MIT in each case. |#
     (if (or (not (= scheme-type-width 6))
 	    (not (zero? (integer-divide-remainder qr)))
 	    (not (<= 0 immed #x1F)))
-	(error "closure header rule assumptions violated!"))
+	(error "HPPA RTL rules3: closure header rule assumptions violated!"))
     (if (<= immed #x0F)
 	immed
 	(- immed #x20))))
@@ -433,59 +532,29 @@ MIT in each case. |#
 (define-integrable (address->entry register)
   (LAP (DEPI () ,compiled-entry-type-im5 4 5 ,register)))
 
-(define-rule statement
-  ;; This depends on the following facts:
-  ;; 1- tc_compiled_entry is a multiple of two.
-  ;; 2- all the top 6 bits in a data address are 0 except the quad bit
-  ;; 3- type codes are 6 bits long.
-  (CLOSURE-HEADER (? internal-label))
-  (let ((procedure (label->object internal-label)))
-    (let ((gc-label (generate-label))
-	  (external-label (rtl-procedure/external-label procedure)))
-      (LAP (LABEL ,gc-label)
-	   ,@(invoke-interface code:compiler-interrupt-closure)
-	   ,@(make-external-label internal-entry-code-word external-label)
-	   (DEP () 0 31 2 ,regnum:ble-return)
-	   ,@(address->entry regnum:ble-return)
-	   (STWM () ,regnum:ble-return (OFFSET -4 0 22))
-	   (LABEL ,internal-label)
-	   ,@(interrupt-check gc-label)))))
+(define (load-entry-format code-word gc-offset dest)
+  (load-immediate (+ (* code-word #x10000)
+		     (quotient gc-offset 2))
+		  dest))
 
-(define (cons-closure target label min max size ->entry?)
-  (let ((flush-reg (clear-registers! regnum:ble-return)))
-    (need-register! regnum:ble-return)
-    (let ((dest (standard-target! target)))
-      ;; Note: dest is used as a temporary before the BLE instruction,
-      ;; and is written immediately afterwards.
-      (LAP ,@flush-reg
-	   ,@(load-non-pointer (ucode-type manifest-closure) (+ 4 size) dest)
-	   (STWM () ,dest (OFFSET 4 0 21))
-	   ,@(load-immediate
-	      (+ (* (make-procedure-code-word min max) #x10000) 4)
-	      dest)
-	   (STWM () ,dest (OFFSET 4 0 21))
-	   ,@(load-pc-relative-address
-	      (rtl-procedure/external-label (label->object label))
-	      1)
-	   (BLE ()
-		(OFFSET ,hook:compiler-store-closure-code
-			4
-			,regnum:scheme-to-interface-ble))
-	   (COPY () ,regnum:free-pointer ,dest)
-	   ,@(if ->entry?
-		 (address->entry dest)
-		 (LAP))
-	   ,@(load-offset (* 4 size)
-			  regnum:free-pointer
-			  regnum:free-pointer)))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (CONS-POINTER (MACHINE-CONSTANT (? type))
-			(CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
-				      (? min) (? max) (? size))))
-  (QUALIFIER (= type (ucode-type compiled-entry)))
-  (cons-closure target procedure-label min max size true))
+(define (cons-closure-entry entry min max offset)
+  ;; Call an out-of-line hook to do this.
+  ;; Making the instructions is a lot of work!
+  ;; Perhaps there should be a closure hook invoked and the real
+  ;; entry point could follow.  It would also be easier on the GC.
+  (let ((entry-label (rtl-procedure/external-label (label->object entry))))
+    (LAP ,@(load-entry-format (make-procedure-code-word min max)
+			      offset
+			      regnum:first-arg)
+	 (BLE ()
+	      (OFFSET ,hook:compiler-store-closure-entry
+		      4
+		      ,regnum:scheme-to-interface-ble))
+	 (LDO ()
+	      (OFFSET (- ,entry-label (+ *PC* 4))
+		      0
+		      ,regnum:ble-return)
+	      ,regnum:addil-result))))
 
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP generator.

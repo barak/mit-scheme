@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/machin.scm,v 4.21 1990/04/02 15:29:23 jinx Exp $
-$MC68020-Header: machin.scm,v 4.21 90/04/01 22:28:28 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/machin.scm,v 4.22 1990/07/22 18:54:22 jinx Rel $
+$MC68020-Header: machin.scm,v 4.22 90/05/03 15:17:20 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;; Machine Model for Spectrum
+;;; package: (compiler)
 
 (declare (usual-integrations))
 
@@ -84,7 +85,68 @@ MIT in each case. |#
 
 (define-integrable (stack->memory-offset offset) offset)
 (define-integrable ic-block-first-parameter-offset 2)
-(define-integrable closure-block-first-offset 3)
+(define-integrable execute-cache-size 3) ; Long words per UUO link slot
+
+;;;; Closures and multi-closures
+
+;; On the 68k, to save space, entries can be at 2 mod 4 addresses,
+;; which makes it impossible to use an arbitrary closure entry-point
+;; to reference closed-over variables since the compiler only uses
+;; long-word offsets.  Instead, all closure entry points are bumped
+;; back to the first entry point, which is always long-word aligned.
+
+;; On the HP-PA, and all other RISCs, all the entry points are
+;; long-word aligned, so there is no need to bump back to the first
+;; entry point.
+
+(define-integrable closure-entry-size
+  #|
+     Long words in a single closure entry:
+       GC offset word
+       LDIL	L'target,26
+       BLE	R'target(5,26)
+       ADDI	-12,31,31
+   |#
+  4)
+
+;; Given: the number of entry points in a closure, and a particular
+;; entry point number, compute the distance from that entry point to
+;; the first variable slot in the closure object (in long words).
+
+(define (closure-first-offset nentries entry)
+  (if (zero? nentries)
+      1					; Strange boundary case
+      (- (* closure-entry-size (- nentries entry)) 1)))
+
+;; Like the above, but from the start of the complete closure object,
+;; viewed as a vector, and including the header word.
+
+(define (closure-object-first-offset nentries)
+  (case nentries
+    ((0)
+     ;; Vector header only
+     1)
+    ((1)
+     ;; Manifest closure header followed by single entry point
+     (+ 1 closure-entry-size))
+    (else
+     ;; Manifest closure header, number of entries, then entries.
+     (+ 1 1 (* closure-entry-size nentries)))))
+
+;; Bump distance in bytes from one entry point to another.
+;; Used for invocation purposes.
+
+(define (closure-entry-distance nentries entry entry*)
+  nentries				; ignored
+  (* (* closure-entry-size 4) (- entry* entry)))
+
+;; Bump distance in bytes from one entry point to the entry point used
+;; for variable-reference purposes.
+;; On a RISC, this is the entry point itself.
+
+(define (closure-environment-adjustment nentries entry)
+  nentries entry			; ignored
+  0)
 
 ;;;; Machine Registers
 
@@ -328,8 +390,7 @@ MIT in each case. |#
   true)
 
 (define compiler:primitives-with-no-open-coding
-  '(MULTIPLY-FIXNUM INTEGER-MULTIPLY &*
-    DIVIDE-FIXNUM GCD-FIXNUM FIXNUM-QUOTIENT FIXNUM-REMAINDER
+  '(INTEGER-MULTIPLY DIVIDE-FIXNUM GCD-FIXNUM
     INTEGER-QUOTIENT INTEGER-REMAINDER &/
     FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN FLONUM-ACOS
     FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-TRUNCATE))
