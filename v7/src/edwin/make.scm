@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.87 1995/10/31 23:26:55 cph Exp $
+$Id: make.scm,v 3.88 1995/10/31 23:41:33 cph Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -49,7 +49,7 @@ MIT in each case. |#
 	(case microcode-id/operating-system
 	  ((DOS) "edwindos")
 	  ((NT) "edwinw32")
-	  ((OS2) "edwinos2")
+	  ((OS/2) "edwinos2")
 	  ((UNIX) "edwinunx")
 	  (else "edwin"))
 	`((os-type . ,microcode-id/operating-system))
