@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.22 1991/06/15 00:08:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.23 1991/08/27 23:21:20 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -330,12 +330,20 @@ MIT in each case. |#
 			   (*unparse-substring string start index)
 			   (*unparse-char #\\)
 			   (let ((char (string-ref string index)))
-			     (cond ((char=? char #\Tab)
-				    (*unparse-char #\t))
-				   ((char=? char char:newline)
+			     (cond ((char=? char char:newline)
 				    (*unparse-char #\n))
+				   ((char=? char #\Tab)
+				    (*unparse-char #\t))
+				   ((char=? char #\VT)
+				    (*unparse-char #\v))
+				   ((char=? char #\BS)
+				    (*unparse-char #\b))
+				   ((char=? char #\Return)
+				    (*unparse-char #\r))
 				   ((char=? char #\Page)
 				    (*unparse-char #\f))
+				   ((char=? char #\BEL)
+				    (*unparse-char #\a))
 				   ((or (char=? char #\\)
 					(char=? char #\"))
 				    (*unparse-char char))
