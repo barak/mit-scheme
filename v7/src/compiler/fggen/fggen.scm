@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.2 1987/12/30 06:42:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.3 1988/01/02 15:17:31 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -578,26 +578,6 @@ MIT in each case. |#
 
 ;;;; Rewrites
 
-(define (generate/access block continuation expression)
-  (scode/access-components expression
-    (lambda (environment name)
-      (generate/combination
-       block
-       continuation
-       (scode/make-combination (ucode-primitive lexical-reference)
-			       (list environment name))))))
-
-(define (generate/comment block continuation expression)
-  (generate/expression block
-		       continuation
-		       (scode/comment-expression expression)))
-
-(define (generate/delay block continuation expression)
-  (generate/lambda block
-		   continuation
-		   (scode/make-lambda lambda-tag:delay '() '() false '() '()
-				      (scode/delay-expression expression))))
-
 (define (generate/disjunction block continuation expression)
   ((continuation/case continuation
 		      generate/disjunction/value
@@ -628,6 +608,31 @@ MIT in each case. |#
 						   predicate
 						   alternative))))))))
 
+(define (generate/access block continuation expression)
+  (scode/access-components expression
+    (lambda (environment name)
+      (generate/combination
+       block
+       continuation
+       (scode/make-combination (ucode-primitive lexical-reference)
+			       (list environment name))))))
+
+(define (generate/comment block continuation expression)
+  (generate/expression block
+		       continuation
+		       (scode/comment-expression expression)))
+
+(define (generate/delay block continuation expression)
+  (generate/combination
+   block
+   continuation
+   (scode/make-combination
+    (ucode-primitive system-pair-cons)
+    (list (ucode-type delayed)
+	  0
+	  (scode/make-lambda lambda-tag:unnamed '() '() false '() '()
+			     (scode/delay-expression expression))))))
+
 (define (generate/error-combination block continuation expression)
   (scode/error-combination-components expression
     (lambda (message irritants)
