@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.5 1988/12/30 06:44:04 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.6 1989/08/03 23:02:37 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -114,25 +114,14 @@ MIT in each case. |#
   (print-user-friendly-name (car frame-list)))
 
 (define (recursive-where)
-  (if-interpreter-environment (car frame-list)
-    (lambda (environment)
-      (let ((inp (prompt-for-expression "Object to eval and examine-> ")))
-	(write-string "New where!")
-	(debug/where (debug/eval inp environment))))))
+  (let ((inp (prompt-for-expression "Object to eval and examine-> ")))
+    (write-string "New where!")
+    (debug/where (debug/eval inp (car frame-list)))))
 
 (define (enter)
-  (if-interpreter-environment (car frame-list)
-    (lambda (environment)
-      (debug/read-eval-print environment
-			     "You are now in the desired environment"
-			     "Eval-in-env-->"))))
+  (debug/read-eval-print (car frame-list)
+			 "You are now in the desired environment"
+			 "Eval-in-env-->"))
 
 (define (show-object)
-  (if-interpreter-environment (car frame-list) debug/read-eval-print-1))
-
-(define (if-interpreter-environment environment receiver)
-  (if (interpreter-environment? environment)
-      (receiver environment)
-      (begin
-	(newline)
-	(write-string "This frame is not an interpreter environment"))))
+  (debug/read-eval-print-1 (car frame-list)))

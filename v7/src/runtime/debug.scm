@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.13 1989/07/13 18:38:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.14 1989/08/03 23:02:11 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -518,13 +518,12 @@ MIT in each case. |#
 	 (show-current-frame-1 true))))
 
 (define (enter-read-eval-print-loop)
-  (debug/read-eval-print (get-evaluation-environment interpreter-environment?)
+  (debug/read-eval-print (get-evaluation-environment)
 			 "You are now in the desired environment"
 			 "Eval-in-env-->"))
 
 (define (eval-in-current-environment)
-  (debug/read-eval-print-1
-   (get-evaluation-environment interpreter-environment?)))
+  (debug/read-eval-print-1 (get-evaluation-environment)))
 
 (define (enter-where-command)
   (with-current-environment debug/where))
@@ -570,7 +569,7 @@ MIT in each case. |#
   (let ((next (stack-frame/next-subproblem current-subproblem)))
     (if next
 	(let ((invalid-expression? (invalid-expression? current-expression))
-	      (environment (get-evaluation-environment environment?))
+	      (environment (get-evaluation-environment))
 	      (return
 	       (lambda (value)
 		 ((stack-frame->continuation next) value))))
@@ -682,9 +681,10 @@ MIT in each case. |#
       (receiver (car environment-list))
       (print-undefined-environment)))
 
-(define (get-evaluation-environment predicate)
+(define (get-evaluation-environment)
   (if (and (pair? environment-list)
-	   (predicate (car environment-list)))      (car environment-list)
+	   (environment? (car environment-list)))
+      (car environment-list)
       (begin
 	(newline)
 	(write-string "Cannot evaluate in current environment")

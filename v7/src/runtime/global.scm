@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.9 1989/06/09 16:51:27 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.10 1989/08/03 23:03:58 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -99,7 +99,9 @@ MIT in each case. |#
 		   (loop (car rest-elements) (cdr rest-elements))))))))
 
 (define (eval expression environment)
-  (scode-eval (syntax expression system-global-syntax-table) environment))
+  (extended-scode-eval (syntax expression system-global-syntax-table)
+		       environment))
+
 (define-integrable (system-hunk3-cons type cxr0 cxr1 cxr2)
   (object-new-type type (hunk3-cons cxr0 cxr1 cxr2)))
 

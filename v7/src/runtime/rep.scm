@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.9 1989/03/06 19:59:42 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.10 1989/08/03 23:03:04 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -272,7 +272,11 @@ MIT in each case. |#
 			      syntax-table
 			      (make-repl-history reader-history-size)
 			      (make-repl-history printer-history-size))
-	     message))
+	     (cmdl-message/append
+	      message
+	      (cmdl-message/active
+	       (lambda ()
+		 (hook/repl-environment (nearest-repl) environment))))))
 
 (define (repl-driver repl)
   (fluid-let ((hook/error-handler default/error-handler))
@@ -383,12 +387,20 @@ MIT in each case. |#
 (define hook/repl-write)
 
 (define (default/repl-environment repl environment)
-  (let ((package (environment->package environment))
-	(port (cmdl/output-port repl)))
-    (if package
+  (let ((port (cmdl/output-port repl)))
+    (if (not (interpreter-environment? environment))
 	(begin
-	  (write-string "\n;Package: " port)
-	  (write (package/name package) port))))
+	  (write-string
+	   "\n;Warning! this environment is a compiled-code environment:")
+	  (write-string
+	   "\n; Assignments to most compiled-code bindings are prohibited,")
+	  (write-string
+	   "\n; as are certain other environment operations.")))
+    (let ((package (environment->package environment)))
+      (if package
+	  (begin
+	    (write-string "\n;Package: " port)
+	    (write (package/name package) port)))))
   unspecific)
 
 (define (default/repl-read repl)
@@ -399,7 +411,8 @@ MIT in each case. |#
 (define (default/repl-eval repl s-expression environment syntax-table)
   repl					;ignore
   (let ((scode (syntax s-expression syntax-table)))
-    (with-new-history (lambda () (scode-eval scode environment)))))
+    (with-new-history (lambda () (extended-scode-eval scode environment)))))
+
 (define ((cmdl-message/value value) repl)
   (hook/repl-write repl value))
 
