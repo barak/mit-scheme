@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.254 2001/05/26 02:13:40 cph Exp $
+;;; $Id: imail-top.scm,v 1.255 2001/05/26 02:51:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1633,10 +1633,13 @@ Negative argument means search in reverse."
 	(else (error:bad-range-argument protocol))))
 
 (define (imail-default-container)
-  (let ((container (selected-container #f)))
-    (if container
-	(resource-locator container)
-	(container-url-for-prompt (imail-default-url #f)))))
+  (let ((url (selected-url #f)))
+    (if url
+	(container-url url)
+	(let ((container (selected-container #f)))
+	  (if container
+	      (resource-locator container)
+	      (container-url-for-prompt (imail-default-url #f)))))))
 
 (define (maybe-prompt-for-folder prompt . options)
   (or (selected-url-string #f)
