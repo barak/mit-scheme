@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.21 1995/04/01 16:55:14 adams Exp $
+$Id: rtlgen.scm,v 1.22 1995/04/08 19:46:51 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -591,18 +591,25 @@ MIT in each case. |#
   body)
 
 (define (rtlgen/wrap-with-interrupt-check/procedure external? body desc)
-  (rtlgen/wrap-with-intrpt-check (and (rtlgen/generate-interrupt-checks?)
-				      (or *rtlgen/form-calls-external?*
-					  (and (not external?)
-					       *rtlgen/form-calls-internal?*)))
-				 (and (rtlgen/generate-heap-checks?)
-				      (not (= *rtlgen/words-allocated* 0))
-				      *rtlgen/words-allocated*)
-				 (and (rtlgen/generate-stack-checks?)
-				      (not (= *rtlgen/max-stack-depth* 0))
-				      *rtlgen/max-stack-depth*)
-				 body
-				 desc))
+  (rtlgen/wrap-with-intrpt-check
+   ;;  This change is required since the internal procedures are being
+   ;;  compiled as external procedures (trivial closures) at the
+   ;;  moment (this so that they can share entry points).
+   ;;(and (rtlgen/generate-interrupt-checks?)
+   ;;	(or *rtlgen/form-calls-external?*
+   ;;	    (and (not external?)
+   ;;		 *rtlgen/form-calls-internal?*)))
+   (and (rtlgen/generate-interrupt-checks?)
+	(or *rtlgen/form-calls-external?*
+	    *rtlgen/form-calls-internal?*))
+   (and (rtlgen/generate-heap-checks?)
+	(not (= *rtlgen/words-allocated* 0))
+	*rtlgen/words-allocated*)
+   (and (rtlgen/generate-stack-checks?)
+	(not (= *rtlgen/max-stack-depth* 0))
+	*rtlgen/max-stack-depth*)
+   body
+   desc))
 
 (define (rtlgen/wrap-with-interrupt-check/continuation body desc)
   ;; For now, this is dumb about interrupt checks.
