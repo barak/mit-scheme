@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.85 1993/12/11 20:31:44 gjr Exp $
+$Id: bchmmg.c,v 9.86 1994/01/30 03:31:48 gjr Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,15 +41,14 @@ MIT in each case. */
 #include "oscond.h"
 
 #ifdef DOS386
+#  include <string.h>
 #  include "msdos.h"
 #  define SUB_DIRECTORY_DELIMITER '\\'
-   extern char * EXFUN (mktemp, (char *));
 #endif
 
 #ifdef WINNT
 #  include "nt.h"
 #  define SUB_DIRECTORY_DELIMITER '\\'
-   extern char * EXFUN (mktemp, (char *));
 #endif
 
 #ifndef SUB_DIRECTORY_DELIMITER
@@ -229,10 +228,10 @@ DEFUN (io_error_retry_p, (operation_name, noise),
       "X = exit scheme",
       0};
 
-  fprintf (stderr,
-	   "\n%s (%s): GC file error (errno = %s) when manipulating %s.\n",
-	   scheme_program_name, operation_name, (error_name (errno)), noise);
-  fflush (stderr);
+  outf_error ("\n%s (%s): GC file error (errno = %s) when manipulating %s.\n",
+	      scheme_program_name, operation_name, (error_name (errno)),
+	      noise);
+
   while (1)
   {
     switch (userio_choose_option
@@ -244,11 +243,9 @@ DEFUN (io_error_retry_p, (operation_name, noise),
 
       case '\0':
 	/* IO problems, assume everything is scrod. */
-	fprintf
-	  (stderr,
-	   "%s (io_error_retry_p): Problems reading the keyboard; Exitting.\n",
+	outf_fatal 
+	  ("%s (io_error_retry_p): Problems reading the keyboard; Exitting.\n",
 	   scheme_program_name);
-	fflush (stderr);
 	termination_eof ();
 	/*NOTREACHED*/
 
@@ -648,19 +645,16 @@ DEFUN (start_gc_drones, (first_drone, how_many, restarting),
 	    tdron_string, nbuf_string, bufsiz_string,
 	    sdron_string, ndron_string, (keep_gc_file_p ? "1" : "0"),
 	    ((char *) 0));
-    fprintf (stderr,
-	     "\n%s (start_gc_drones): execlp (%s) failed (errno = %s).\n",
-	     scheme_program_name, drone_file_name, (error_name (errno)));
-    fflush (stderr);
+    outf_error ("\n%s (start_gc_drones): execlp (%s) failed (errno = %s).\n",
+		scheme_program_name, drone_file_name, (error_name (errno)));
     drone->state = drone_dead;
     (void) (kill ((getppid ()), SIGCONT));
     _exit (1);
   }
   else if (pid == -1)
   {
-    fprintf (stderr, "\n%s (start_gc_drones): vfork failed (errno = %s).\n",
-	     scheme_program_name, (error_name (errno)));
-    fflush (stderr);
+    outf_error ("\n%s (start_gc_drones): vfork failed (errno = %s).\n",
+		scheme_program_name, (error_name (errno)));
     drone->state = drone_dead;
   }
   else
@@ -720,13 +714,9 @@ DEFUN (invoke_gc_drone,
     buffer->state = old_state;
     drone->state = drone_dead;
     if (errno != ESRCH)
-    {
-      fprintf
-	(stderr,
-	 "\n%s (invoke_gc_drone): kill (%d, SIGCONT) failed; errno = %s.\n",
+      outf_error
+	("\n%s (invoke_gc_drone): kill (%d, SIGCONT) failed; errno = %s.\n",
 	 scheme_program_name, drone->DRONE_PID, (error_name (errno)));
-      fflush (stderr);
-    }
     start_gc_drones (drone_index, 1, 1);
   }
   return (result != -1);
@@ -865,9 +855,8 @@ DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
     malloc_memory = ((char *) (malloc (malloc_size)));
     if (malloc_memory == ((char *) NULL))
     {
-      fprintf
-	(stderr,
-	 "%s (sysV_initialize): Unable to allocate %d bytes (errno = %s).\n",
+      outf_error
+	("%s (sysV_initialize): Unable to allocate %d bytes (errno = %s).\n",
 	 scheme_program_name, malloc_size, (error_name (errno)));
       return (parameterization_termination (1, first_time_p));
     }
@@ -879,12 +868,10 @@ DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
   {
     if ((shmid = (shmget (IPC_PRIVATE, shared_size, 0600))) == -1)
     {
-      fprintf
-	(stderr,
-	 "%s (sysV_initialize): shmget (-, %d, -) failed (errno = %s).\n",
+      outf_error
+	("%s (sysV_initialize): shmget (-, %d, -) failed (errno = %s).\n\
+          \tUnable to allocate shared memory for drone processes.\n",
 	 scheme_program_name, shared_size, (error_name (errno)));
-      fprintf (stderr,
-	       "\tUnable to allocate shared memory for drone processes.\n");
       return (parameterization_termination (0, first_time_p));
     }
     shared_memory = (shmat (shmid, ATTACH_POINT, 0));
@@ -894,12 +881,10 @@ DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
 
       (void) (shmctl (shmid, IPC_RMID, 0));
       shmid = -1;
-      fprintf
-	(stderr,
-	 "%s (sysV_initialize): shmat (%d, 0x%lx, 0) failed. (errno = %s).\n",
+      outf_error
+	("%s (sysV_initialize): shmat (%d, 0x%lx, 0) failed. (errno = %s).\n\
+	  \tUnable to attach shared memory for drone processes.\n",
 	 scheme_program_name, shmid, shared_size, (error_name (saved_errno)));
-      fprintf (stderr,
-	       "\tUnable to attach shared memory for drone processes.\n");
       return (parameterization_termination (0, first_time_p));
     }
     signal (SIGCONT, continue_running);
@@ -907,12 +892,10 @@ DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
 
   if (!(ALIGNED_TO_IO_PAGE_P (shared_memory)))
   {
-    fprintf (stderr,
-	     "%s (sysV_initialize): buffer space is not aligned properly.\n",
-	     scheme_program_name);
-    fprintf (stderr,
-	     "\taddress = 0x%lx; IO_PAGE_SIZE = 0x%lx.\n",
-	     ((long) shared_memory), ((long) IO_PAGE_SIZE));
+    outf_error
+      ("%s (sysV_initialize): buffer space is not aligned properly.\n\
+        \taddress = 0x%lx; IO_PAGE_SIZE = 0x%lx.\n",
+       ((long) shared_memory), ((long) IO_PAGE_SIZE));
     return (parameterization_termination (0, first_time_p));
   }
 
@@ -1007,12 +990,12 @@ DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
     start_gc_drones (0, n_gc_drones, 0);
     if (gc_drones->state != drone_idle)
     {
-      fprintf (stderr,
-	       "%s (sysV_initialize): Problems starting up the GC drones%s.\n",
-	       scheme_program_name,
-	       (((* drone_version) != ((unsigned long) DRONE_VERSION_NUMBER))
-		? " (wrong drone version)"
-		: ""));
+      outf_error
+	("%s (sysV_initialize): Problems starting up the GC drones%s.\n",
+	 scheme_program_name,
+	 (((* drone_version) != ((unsigned long) DRONE_VERSION_NUMBER))
+	  ? " (wrong drone version)"
+	  : ""));
       return (parameterization_termination (0, first_time_p));
     }
     drones_initialized_p = 1;
@@ -1042,20 +1025,14 @@ DEFUN (sysV_shutdown, (final_time_p), int final_time_p)
   }
 
   if ((shared_memory != ((char *) -1)) && ((shmdt (shared_memory)) == -1))
-  {
-    fprintf (stderr, "\n%s (sysV_shutdown): shmdt failed.  errno = %s.\n",
-	     scheme_program_name, (error_name (errno)));
-    fflush (stderr);
-  }
+    outf_error ("\n%s (sysV_shutdown): shmdt failed.  errno = %s.\n",
+		scheme_program_name, (error_name (errno)));
   shared_memory = ((char *) -1);
 
   if ((shmid != -1)
       && (shmctl (shmid, IPC_RMID, ((struct shmid_ds *) 0))) == -1)
-  {
-    fprintf (stderr, "\n%s (sysV_shutdown): shmctl failed.  errno = %s.\n",
-	     scheme_program_name, (error_name (errno)));
-    fflush (stderr);
-  }
+    outf_error ("\n%s (sysV_shutdown): shmctl failed.  errno = %s.\n",
+		scheme_program_name, (error_name (errno)));
   shmid = -1;
 
   return;
@@ -1269,9 +1246,8 @@ DEFUN_VOID (find_idle_buffer)
     next_buffer = new_next_buffer;
   } while (next_buffer != gc_next_buffer);
 
-  fprintf (stderr, "\n%s (find_idle_buffer): All buffers are in use!\n",
-	   scheme_program_name);
-  fflush (stderr);
+  outf_fatal ("\n%s (find_idle_buffer): All buffers are in use!\n",
+	      scheme_program_name);
   Microcode_Termination (TERM_GC_OUT_OF_SPACE);
   /*NOTREACHED*/
 }
@@ -1325,11 +1301,10 @@ DEFUN (read_buffer, (posn, size, noise),
     switch (buffer->state)
     {
       default:
-	fprintf (stderr, "\n%s (read_buffer %s): invalid state.\n",
-		 scheme_program_name, noise);
-	fprintf (stderr, "\tindex = %d; state = %d; position = 0x%lx.\n",
-		 buffer->index, buffer->state, posn);
-	fflush (stderr);
+        outf_error
+	  ("\n%s (read_buffer %s): invalid state.\n\
+	    \tindex = %d; state = %d; position = 0x%lx.\n",
+	   scheme_program_name, noise, buffer->index, buffer->state, posn);
 	/* fall through */
 
       case buffer_read_error:
@@ -1464,10 +1439,8 @@ DEFUN (write_buffer, (buffer, position, size, success, noise),
       old_buffer = entry->buffer;
       old_buffer->state = buffer_idle;
       entry->buffer = buffer;
-      fprintf (stderr,
-	       "\n%s (write_buffer %s): duplicate write at 0x%lx.\n",
-	       scheme_program_name, noise, position);
-      fflush (stderr);
+      outf_error ("\n%s (write_buffer %s): duplicate write at 0x%lx.\n",
+		  scheme_program_name, noise, position);
     }
     do
       entry->drone_index = (find_idle_drone (1));
@@ -1520,10 +1493,8 @@ DEFUN (enqueue_ready_buffer, (buffer, position, size),
     if (index != -1)
       abort_gc_drone (gc_drones + index);
     old_buffer->state = buffer_idle;
-    fprintf (stderr,
-	     "\n%s (enqueue_ready_buffer): Duplicate pre-read at 0x%lx.\n",
-	     scheme_program_name, old_buffer->position);
-    fflush (stderr);
+    outf_error ("\n%s (enqueue_ready_buffer): Duplicate pre-read at 0x%lx.\n",
+		scheme_program_name, old_buffer->position);
   }
   enqueue_buffer (entry, buffer, position, size, buffer_queued);
   STATISTICS_INCR (ready_buffers_enqueued);
@@ -1763,10 +1734,8 @@ do {									\
 static int
 DEFUN (catastrophic_failure, (name), char * name)
 {
-  fprintf (stderr,
-	   "\n%s: Procedure %s should never be called!\n",
-	   scheme_program_name, name);
-  fflush (stderr);
+  outf_fatal ("\n%s: Procedure %s should never be called!\n",
+	      scheme_program_name, name);
   Microcode_Termination (TERM_EXIT);
   /*NOTREACHED*/
 }
@@ -1859,12 +1828,8 @@ DEFUN (close_gc_file, (unlink_p), int unlink_p)
   }
 #endif
   if ((gc_file != -1) && ((close (gc_file)) == -1))
-  {
-    fprintf (stderr,
-	     "\n%s (close_gc_file): error: GC file = \"%s\"; errno = %s.\n",
-	     scheme_program_name, gc_file_name, (error_name (errno)));
-    fflush (stderr);
-  }
+    outf_error ("\n%s (close_gc_file): error: GC file = \"%s\"; errno = %s.\n",
+		scheme_program_name, gc_file_name, (error_name (errno)));
   gc_file = -1;
   if (!keep_gc_file_p && unlink_p)
     unlink (gc_file_name);
@@ -1873,18 +1838,24 @@ DEFUN (close_gc_file, (unlink_p), int unlink_p)
   return;
 }
 
+#define EMPTY_STRING_P(string)						\
+  (((string) == ((char *) NULL)) || ((*(string)) == '\0'))
+
 static void
 DEFUN (termination_open_gc_file, (operation, extra),
        CONST char * operation AND CONST char * extra)
 {
-  if ((operation != ((char *) NULL)) && (*operation != '\0'))
-    fprintf
-      (stderr,
-       "%s (open_gc_file): %s (\"%s\") failed, (errno = %s).\n",
+  if ((! (EMPTY_STRING_P (operation))) && (! (EMPTY_STRING_P (extra))))
+    outf_fatal
+      ("%s (open_gc_file): %s (\"%s\") failed, (errno = %s).\n\t%s.\n",
+       scheme_program_name, operation, gc_file_name, (error_name (errno)),
+       extra);
+  else if (! (EMPTY_STRING_P (operation)))
+    outf_fatal
+      ("%s (open_gc_file): %s (\"%s\") failed, (errno = %s).\n",
        scheme_program_name, operation, gc_file_name, (error_name (errno)));
-  if ((extra != ((char *) NULL)) && (*extra != '\0'))
-    fprintf (stderr, "\t%s.\n", extra);
-  fflush (stderr);
+  else if (! (EMPTY_STRING_P (extra)))
+    outf_fatal ("\t%s.\n", extra);
   termination_init_error ();
   /*NOTREACHED*/
 }
@@ -1898,7 +1869,7 @@ DEFUN (open_gc_file, (size, unlink_p),
 {
   struct stat file_info;
   int position, flags;
-  Boolean exists_p;
+  Boolean temp_p, exists_p;
 
   gc_file_name = &gc_file_name_buffer[0];
   if (option_gc_file[0] == SUB_DIRECTORY_DELIMITER)
@@ -1915,18 +1886,28 @@ DEFUN (open_gc_file, (size, unlink_p),
   }
 
   /* mktemp supposedly only clobbers Xs from the end.
-     If the string does not end in Xs, it is untouched. 
+     If the string does not end in Xs, it should be untouched. 
      This presents a quoting problem, but...
-     Well, it seems to clobber the string if there are no Xs.
+     Unfortunately, it seems to clobber the string when there are no Xs.
    */
 
-#if TRUE
+  temp_p = false;
   position = (strlen (option_gc_file));
   if ((position >= 6)
       && ((strncmp ((option_gc_file + (position - 6)), "XXXXXX", 6)) == 0))
-#endif
-    (void) (mktemp (gc_file_name));
-
+  {
+    char * gc_temp = (mktemp (gc_file_name));
+    if (EMPTY_STRING_P (gc_temp))
+    {
+      outf_fatal
+	("%s (open_gc_file): \
+	  Unable to allocate a temporary file for the spare heap.\n",
+	 scheme_program_name);
+      termination_open_gc_file (((char *) NULL), ((char *) NULL));
+    }
+    temp_p = true;
+  }
+
   flags = GC_FILE_FLAGS;
   gc_file_start_position = (ALIGN_UP_TO_IO_PAGE (option_gc_start_position));
   gc_file_end_position = option_gc_end_position;
@@ -1935,15 +1916,16 @@ DEFUN (open_gc_file, (size, unlink_p),
   gc_file_end_position = (ALIGN_DOWN_TO_IO_PAGE (gc_file_end_position));
   if (gc_file_end_position < gc_file_start_position)
   {
-    fprintf (stderr, "%s (open_gc_file): file bounds are inconsistent.\n",
-	     scheme_program_name);
-    fprintf (stderr, "\trequested start = 0x%lx;\taligned start = 0x%lx.\n",
-	     option_gc_start_position, gc_file_start_position);
-    fprintf (stderr, "\trequested end   = 0x%lx;\taligned end   = 0x%lx.\n",
-	     option_gc_end_position, gc_file_end_position);
+    outf_fatal
+      ("%s (open_gc_file): file bounds are inconsistent.\n\
+        \trequested start = 0x%lx;\taligned start = 0x%lx.\n\
+	\trequested end   = 0x%lx;\taligned end   = 0x%lx.\n",
+       scheme_program_name,
+       option_gc_start_position, gc_file_start_position,
+       option_gc_end_position, gc_file_end_position);
     termination_open_gc_file (((char *) NULL), ((char *) NULL));
   }
-
+
   absolute_gc_file_end_position = gc_file_end_position;
 
   if ((stat (gc_file_name, &file_info)) == -1)
@@ -1976,13 +1958,11 @@ DEFUN (open_gc_file, (size, unlink_p),
     else if (((file_info.st_mode & S_IFMT) != S_IFREG)
 	     && ((file_info.st_mode & S_IFMT) != S_IFBLK))
     {
-      fprintf (stderr,
-	       "%s (open_gc_file): file \"%s\" has unknown/bad type 0x%x.\n",
-	       scheme_program_name, gc_file_name,
-	       ((int) (file_info.st_mode & S_IFMT)));
-      fprintf
-	(stderr,
-	 "\tKnown types: S_IFREG (0x%x), S_IFBLK (0x%x), S_IFCHR (0x%x).\n",
+      outf_fatal
+	("%s (open_gc_file): file \"%s\" has unknown/bad type 0x%x.\n\
+	  \tKnown types: S_IFREG (0x%x), S_IFBLK (0x%x), S_IFCHR (0x%x).\n",
+	 scheme_program_name, gc_file_name,
+	 ((int) (file_info.st_mode & S_IFMT)),
 	 S_IFREG, S_IFBLK, S_IFCHR);
       termination_open_gc_file (((char *) NULL), ((char *) NULL));
     }
@@ -1990,18 +1970,48 @@ DEFUN (open_gc_file, (size, unlink_p),
       can_dump_directly_p = true;
 #endif
   }
-
+
   gc_file = (open (gc_file_name, flags, GC_FILE_MASK));
   if (gc_file == -1)
-    termination_open_gc_file ("open", ((char *) NULL));
+  {
+#if defined(DOS386) || defined(WINNT)
+    /* Under DOS and Windows, errno does not give sufficient information. */
 
-  keep_gc_file_p = (exists_p || option_gc_keep);
+    int saved_errno = errno;
+    char
+      directory_buffer[FILE_NAME_LENGTH],
+      * directory, * directory_end;
+
+    directory = &directory_buffer[0];
+    strcpy (directory, gc_file_name);
+    directory_end = (strrchr (directory, SUB_DIRECTORY_DELIMITER));
+    if (directory_end != ((char *) NULL))
+      * directory_end = '\0';
+    if ((access (directory, F_OK)) != 0)
+    {
+      outf_fatal
+	("\n%s (open_gc_file): GC directory \"%s\" does not exist.\n",
+	 scheme_program_name, directory);
+      termination_open_gc_file (((char *) NULL), ((char *) NULL));
+    }
+    else if ((access (directory, W_OK)) != 0)
+    {
+      outf_fatal
+	("\n%s (open_gc_file): GC directory \"%s\" is read protected.\n",
+	 scheme_program_name, directory);
+      termination_open_gc_file (((char *) NULL), ((char *) NULL));
+    }      
+    else
+      errno = saved_errno;
+#endif /* defined(DOS386) || defined(WINNT) */
+    termination_open_gc_file ("open", ((char *) NULL));
+  }
+
+  keep_gc_file_p = (option_gc_keep || (exists_p && (! temp_p)));
 
 #ifdef UNLINK_BEFORE_CLOSE
   if (!keep_gc_file_p && unlink_p)
-  {
     (void) (unlink (gc_file_name));
-  }
 #endif  
 
 #ifdef HAVE_PREALLOC
@@ -2065,9 +2075,8 @@ DEFUN (open_gc_file, (size, unlink_p),
 	       &ignore);
     if ((strncmp (buffer, (buffer + (2 * IO_PAGE_SIZE)), IO_PAGE_SIZE)) != 0)
     {
-      fprintf (stderr,
-	       "\n%s (open_gc_file): \"%s\" is not a seek-able device.\n",
-	       scheme_program_name, gc_file_name);
+      outf_fatal ("\n%s (open_gc_file): \"%s\" is not a seek-able device.\n",
+		  scheme_program_name, gc_file_name);
       termination_open_gc_file (((char *) NULL), ((char *) NULL));
     }
 #if defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
@@ -2204,23 +2213,22 @@ DEFUN (set_gc_buffer_sizes, (new_buffer_shift), unsigned long new_buffer_shift)
   new_buffer_bytes = (new_buffer_size * (sizeof (SCHEME_OBJECT)));
   if (! (ALIGNED_TO_IO_PAGE_P (new_buffer_bytes)))
   {
-    fprintf (stderr,
-	     "%s (Setup_Memory): improper new_buffer_size.\n",
-	     scheme_program_name);
-    fprintf (stderr, "\tIO_PAGE_SIZE   = 0x%lx bytes.\n",
-	     ((long) IO_PAGE_SIZE));
-    fprintf (stderr, "\tgc_buffer_size = 0x%lx bytes = 0x%lx objects.\n",
-	     new_buffer_bytes, new_buffer_size);
-    fprintf (stderr, "\tIO_PAGE_SIZE should divide gc_buffer_size.\n");
+    outf_error
+      ("%s (Setup_Memory): improper new_buffer_size.\n\
+	\tIO_PAGE_SIZE   = 0x%lx bytes.\n\
+	\tgc_buffer_size = 0x%lx bytes = 0x%lx objects.\n\
+	\tIO_PAGE_SIZE should divide gc_buffer_size.\n",
+       scheme_program_name,
+       ((long) IO_PAGE_SIZE),
+       new_buffer_bytes, new_buffer_size);
     return (-1);
   }
 
   new_buffer_byte_shift = (next_exponent_of_two (new_buffer_bytes));
   if ((((unsigned long) 1L) << new_buffer_byte_shift) != new_buffer_bytes)
   {
-    fprintf
-      (stderr,
-       "%s (Setup_Memory): gc_buffer_bytes (0x%lx) is not a power of 2.\n",
+    outf_error
+      ("%s (Setup_Memory): gc_buffer_bytes (0x%lx) is not a power of 2.\n",
        scheme_program_name, new_buffer_bytes);
     return (-1);
   }
@@ -2231,13 +2239,12 @@ DEFUN (set_gc_buffer_sizes, (new_buffer_shift), unsigned long new_buffer_shift)
   if ((new_extra_buffer_size * (sizeof (SCHEME_OBJECT)))
       != new_buffer_overlap_bytes)
   {
-    fprintf (stderr, " %s (Setup_Memory): improper IO_PAGE_SIZE.\n",
-	     scheme_program_name);
-    fprintf (stderr,
-	     "\tIO_PAGE_SIZE = 0x%lx; (sizeof (SCHEME_OBJECT)) = 0x%lx.\n",
-	     ((long) IO_PAGE_SIZE), ((long) (sizeof (SCHEME_OBJECT))));
-    fprintf (stderr,
-	     "\t(sizeof (SCHEME_OBJECT)) should divide IO_PAGE_SIZE.\n");
+    outf_error
+      (" %s (Setup_Memory): improper IO_PAGE_SIZE.\n\
+	\tIO_PAGE_SIZE = 0x%lx; (sizeof (SCHEME_OBJECT)) = 0x%lx.\n\
+	\t(sizeof (SCHEME_OBJECT)) should divide IO_PAGE_SIZE.\n",
+       scheme_program_name,
+       ((long) IO_PAGE_SIZE), ((long) (sizeof (SCHEME_OBJECT))));
     return (-1);
   }
 
@@ -2268,10 +2275,8 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
   /* Consistency check 1 */
   if (heap_size == 0)
   {
-    fprintf (stderr,
-	     "%s (Setup_Memory): Configuration won't hold initial data.\n",
-	     scheme_program_name);
-    fflush (stderr);
+    outf_fatal ("%s (Setup_Memory): Configuration won't hold initial data.\n",
+		scheme_program_name);
     termination_init_error ();
     /*NOTREACHED*/
   }
@@ -2303,10 +2308,9 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
   /* Consistency check 2 */
   if (Lowest_Allocated_Address == NULL)
   {
-    fprintf (stderr,
-	     "%s (Setup_Memory): Not enough memory for this configuration.\n",
-	     scheme_program_name);
-    fflush (stderr);
+    outf_fatal
+      ("%s (Setup_Memory): Not enough memory for this configuration.\n",
+       scheme_program_name);
     termination_init_error ();
     /*NOTREACHED*/
   }
@@ -2320,14 +2324,11 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
   if (((OBJECT_TYPE (test_value)) != LAST_TYPE_CODE) ||
       ((OBJECT_ADDRESS (test_value)) != Highest_Allocated_Address))
   {
-    fprintf (stderr,
-	     "\
-%s (Setup_Memory): Largest address does not fit in datum field of object.\n",
-	     scheme_program_name);
-    fprintf (stderr,
-	     "\
-\tAllocate less space or re-configure without HEAP_IN_LOW_MEMORY.\n");
-    fflush (stderr);
+    outf_fatal
+      ("%s (Setup_Memory): \
+	Largest address does not fit in datum field of object.\n\
+	\tAllocate less space or re-configure without HEAP_IN_LOW_MEMORY.\n",
+       scheme_program_name);
     Reset_Memory ();
     termination_init_error ();
     /*NOTREACHED*/
@@ -2847,14 +2848,13 @@ DEFUN (read_newspace_address, (addr), SCHEME_OBJECT * addr)
 
   if (position > free_position)
   {
-    fprintf (stderr,
-	     "\n%s (read_newspace_address): Reading outside of GC window!\n",
-	     scheme_program_name);
-    fprintf (stderr, "\t         addr = 0x%lx;\t     position = 0x%lx.\n",
-	     addr, position);
-    fprintf (stderr, "\tscan_position = 0x%lx;\tfree_position = 0x%lx.\n",
-	     scan_position, free_position);
-    fflush (stderr);
+    outf_fatal
+      ("\n%s (read_newspace_address): Reading outside of GC window!\n\
+	\t         addr = 0x%lx;\t     position = 0x%lx.\n\
+	\tscan_position = 0x%lx;\tfree_position = 0x%lx.\n",
+       scheme_program_name,
+       addr, position,
+       scan_position, free_position);
     Microcode_Termination (TERM_EXIT);
     /*NOTREACHED*/    
   }
@@ -3023,10 +3023,8 @@ DEFUN (update_weak_pointer, (Temp), SCHEME_OBJECT Temp)
     default:			/* Non Marked Headers and Broken Hearts */
     case GC_Undefined:
     fail:
-      fprintf (stderr,
-	       "\n%s (update_weak_pointer): Clearing bad object 0x%08lx.\n",
-	       scheme_program_name, Temp);
-      fflush (stderr);
+      outf_error ("\n%s (update_weak_pointer): Clearing bad object 0x%08lx.\n",
+		  scheme_program_name, Temp);
       return (SHARP_F);
   }
 }
@@ -3209,10 +3207,8 @@ DEFUN (GC, (weak_pair_transport_initialized_p),
   result = (GCLoop ((CONSTANT_AREA_START ()), &free_buffer, &Free));
   if (result != end_of_constant_area)
   {
-    fprintf (stderr,
-	     "\n%s (GC): The Constant Space scan ended too early.\n",
-	     scheme_program_name);
-    fflush (stderr);
+    outf_fatal ("\n%s (GC): The Constant Space scan ended too early.\n",
+		scheme_program_name);
     Microcode_Termination (TERM_EXIT);
     /*NOTREACHED*/
   }
@@ -3221,10 +3217,8 @@ DEFUN (GC, (weak_pair_transport_initialized_p),
 		    &free_buffer, &Free));
   if (free_buffer != result)
   {
-    fprintf (stderr,
-	     "\n%s (GC): The Heap scan ended too early.\n",
-	     scheme_program_name);
-    fflush (stderr);
+    outf_fatal ("\n%s (GC): The Heap scan ended too early.\n",
+		scheme_program_name);
     Microcode_Termination (TERM_EXIT);
     /*NOTREACHED*/
   }
@@ -3239,10 +3233,8 @@ DEFUN (GC, (weak_pair_transport_initialized_p),
   result = (GCLoop (result, &free_buffer, &Free));
   if (free_buffer != result)
   {
-    fprintf (stderr,
-	     "\n%s (GC): The Precious Object scan ended too early.\n",
-	     scheme_program_name);
-    fflush (stderr);
+    outf_fatal ("\n%s (GC): The Precious Object scan ended too early.\n",
+		scheme_program_name);
     Microcode_Termination (TERM_EXIT);
     /*NOTREACHED*/
   }
@@ -3349,11 +3341,11 @@ DEFUN (statistics_print, (level, noise), int level AND char * noise)
   {
     sprintf (&format[0], "\t%%-%ds : %%ld\n", name_len);
 
-    printf ("\nGC I/O statistics %s:\n", noise);
+    outf_console ("\nGC I/O statistics %s:\n", noise);
     for (cntr = 0, ptr = &all_gc_statistics[0]; cntr < arlen; cntr++, ptr++)
       if ((* (ptr->counter)) != 0L)
-	printf (&format[0], ptr->name, (* (ptr->counter)));
-    fflush (stdout);
+	outf_console (&format[0], ptr->name, (* (ptr->counter)));
+    outf_flush_console ();
   }
   return;
 }

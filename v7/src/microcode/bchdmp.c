@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.77 1993/12/11 20:32:23 gjr Exp $
+$Id: bchdmp.c,v 9.78 1994/01/30 03:32:11 gjr Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,12 +51,37 @@ MIT in each case. */
 char *
 DEFUN (mktemp, (fname), unsigned char * fname)
 {
-  /* Should call tmpname */
+  /* This assumes that fname ends in at least 3 Xs.
+     tmpname seems too random to use.
+     This, of course, has a window in which another program can
+     create the file.
+   */
+
+  int posn = ((strlen (fname)) - 3);
+  int counter;
+
+  for (counter = 0; counter < 1000; counter++)
+  {
+    sprintf (&fname[posn], "%03d", counter);
+    if ((access (fname, F_OK)) != 0)
+    {
+      int fid = (open (fname,
+		       (O_CREAT | O_EXCL | O_RDWR),
+		       (S_IREAD | S_IWRITE)));
+      if (fid < 0)
+	continue;
+      close (fid);
+      break;
+    }
+  }
+  if (counter >= 1000)
+    return ((char *) NULL);
 
   return ((char *) fname);
 }
 
-#  define FASDUMP_FILENAME "\\tmp\\fasdump.bin"
+#  define FASDUMP_FILENAME_DEFINED
+static char FASDUMP_FILENAME[] = "\\tmp\\faXXXXXX";
 
 #endif /* DOS386 */
 
@@ -64,13 +89,12 @@ DEFUN (mktemp, (fname), unsigned char * fname)
 #  include "nt.h"
 #  include "ntio.h"
 
-extern char * mktemp (char *);
-
-#  define FASDUMP_FILENAME "\\tmp\\fasdump.bin"
+#  define FASDUMP_FILENAME_DEFINED
+static char FASDUMP_FILENAME[] = "\\tmp\\faXXXXXX";
 
 #endif /* WINNT */
 
-#ifndef FASDUMP_FILENAME
+#ifndef FASDUMP_FILENAME_DEFINED
 
 /* Assume Unix */
 
@@ -78,9 +102,10 @@ extern char * mktemp (char *);
 #  include "uxio.h"
 extern int EXFUN (unlink, (CONST char *));
 
-#  define FASDUMP_FILENAME "/tmp/fasdumpXXXXXX"
+#  define FASDUMP_FILENAME_DEFINED
+static char FASDUMP_FILENAME[] = "/tmp/fasdumpXXXXXX";
 
-#endif /* FASDUMP_FILENAME */
+#endif /* FASDUMP_FILENAME_DEFINED */
 
 #include "bchgcc.h"
 
@@ -830,9 +855,10 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     int copy_result;
     SCHEME_OBJECT fasdump_result;
     Tchannel channel, temp_channel;
-    char temp_name [19];
+    char temp_name [(sizeof (FASDUMP_FILENAME)) + 1];
+
     {
-      char * scan1 = FASDUMP_FILENAME;
+      char * scan1 = &FASDUMP_FILENAME[0];
       char * scan2 = temp_name;
       while (1)
 	if (((*scan2++) = (*scan1++)) == '\0')
@@ -840,7 +866,12 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     }
     channel = (arg_channel (2));
 
-    (void) mktemp (temp_name);
+    {
+      char * temp_file = (mktemp (temp_name));
+      if ((temp_file == ((char *) NULL)) || (*temp_file == '\0'))
+	signal_error_from_primitive (ERR_EXTERNAL_RETURN);
+    }
+
     fasdump_result = (dump_to_file (root, (temp_name)));
     if (fasdump_result != SHARP_T)
       PRIMITIVE_RETURN (fasdump_result);

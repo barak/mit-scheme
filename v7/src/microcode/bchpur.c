@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchpur.c,v 9.64 1993/12/07 20:35:53 gjr Exp $
+$Id: bchpur.c,v 9.65 1994/01/30 03:32:04 gjr Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -551,10 +551,8 @@ DEFUN (purify, (object, purify_mode),
   result = (GCLoop ((CONSTANT_AREA_START ()), &free_buffer_ptr, &Free));
   if (result != old_free_const)
   {
-    fprintf (stderr,
-	     "\n%s (purify): The Constant Space scan ended too early.\n",
-	     scheme_program_name);
-    fflush (stderr);
+    outf_fatal ("\n%s (purify): The Constant Space scan ended too early.\n",
+		scheme_program_name);
     Microcode_Termination (TERM_EXIT);
     /*NOTREACHED*/
   }
@@ -566,10 +564,8 @@ DEFUN (purify, (object, purify_mode),
   result = (GCLoop (pending_scan, &free_buffer_ptr, &Free));
   if (free_buffer_ptr != result)
   {
-    fprintf (stderr,
-	     "\n%s (GC): The Heap scan ended too early.\n",
-	     scheme_program_name);
-    fflush (stderr);
+    outf_fatal ("\n%s (GC): The Heap scan ended too early.\n",
+		scheme_program_name);
     Microcode_Termination (TERM_EXIT);
     /*NOTREACHED*/
   }
@@ -584,10 +580,8 @@ DEFUN (purify, (object, purify_mode),
   result = (GCLoop (result, &free_buffer_ptr, &Free));
   if (free_buffer_ptr != result)
   {
-    fprintf (stderr,
-	     "\n%s (GC): The Precious Object scan ended too early.\n",
-	     scheme_program_name);
-    fflush (stderr);
+    outf_fatal ("\n%s (GC): The Precious Object scan ended too early.\n",
+		scheme_program_name);
     Microcode_Termination (TERM_EXIT);
     /*NOTREACHED*/
   }
