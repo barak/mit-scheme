@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.83 1992/04/04 13:07:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.84 1992/04/06 20:13:54 bal Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -535,8 +535,10 @@ MIT in each case. |#
 	  prompt-for-command
 	  prompt-for-completed-string
 	  prompt-for-confirmation?
+	  prompt-for-confirmed-password
 	  prompt-for-key
 	  prompt-for-number
+	  prompt-for-password
 	  prompt-for-string
 	  prompt-for-string-table-name
 	  prompt-for-string-table-value

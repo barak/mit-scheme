@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.153 1992/02/17 22:09:37 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.154 1992/04/06 20:14:08 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -772,3 +772,41 @@ Whilst editing the command, the following commands are available:
   "p"
   (lambda (argument)
     ((ref-command next-complex-command) (- argument))))
+
+;;; Password Prompts
+
+;;; These procedures are used by the encrypt/decrypt-file routines 
+;;; in unix.scm which deal with .KY files.
+
+(define (prompt-for-password prompt)
+  (prompt-for-typein 
+   prompt false
+   (lambda ()
+     (let loop ((ts ""))
+       (let ((input (keyboard-read)))
+	 (if (and (char? input) (char-ascii? input))
+	     (cond ((char=? input #\Return)
+		    ts)
+		   ((char=? input #\C-g)
+		    (abort-current-command))
+		   ((char=? input #\Rubout)
+		    (let ((new-string (string-head ts (-1+ (string-length ts)))))
+		      (set-typein-string!
+		       (make-string (string-length new-string) #\.) true)
+		      (loop new-string)))
+		   (else
+		    (set-typein-string!
+		     (make-string (1+ (string-length ts)) #\.) true)
+		    (loop (string-append ts (char->string input)))))
+	     (loop ts)))))))
+
+(define (prompt-for-confirmed-password)
+  (let ((password1 (prompt-for-password "Password: ")))
+    (let ((password2 (prompt-for-password "Verify: ")))
+      (if (string=? password1 password2)
+	  password1
+	  (begin
+	    (editor-beep)
+	    (message "Passwords do not match!")
+	    (abort-current-command))))))
+
