@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.6 1987/05/29 17:51:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.7 1987/05/31 22:56:05 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -66,6 +66,7 @@ MIT in each case. |#
 (define-rtl-statement interpreter-call:access % environment name)
 (define-rtl-statement interpreter-call:cache-assignment % name value)
 (define-rtl-statement interpreter-call:cache-reference rtl: name safe?)
+(define-rtl-statement interpreter-call:cache-unassigned? rtl: name)
 (define-rtl-statement interpreter-call:define % environment name value)
 (define-rtl-statement interpreter-call:enclose rtl: size)
 (define-rtl-statement interpreter-call:lookup % environment name safe?)
@@ -74,6 +75,8 @@ MIT in each case. |#
 (define-rtl-statement interpreter-call:unbound? % environment name)
 
 (define-rtl-statement invocation:apply % pushed prefix continuation)
+(define-rtl-statement invocation:cache-reference % pushed prefix continuation
+  name)
 (define-rtl-statement invocation:jump % pushed prefix continuation procedure)
 (define-rtl-statement invocation:lexpr % pushed prefix continuation procedure)
 (define-rtl-statement invocation:lookup % pushed prefix continuation
@@ -111,6 +114,11 @@ MIT in each case. |#
 
 (define-integrable (rtl:make-message-receiver:subproblem continuation)
   (%make-message-receiver:subproblem (continuation-label continuation)))
+
+(define (rtl:make-constant value)
+  (if (scode/unassigned-object? value)
+      (rtl:make-unassigned)
+      (rtl:make-constant value)))
 
 ;;;; Locatives
 
