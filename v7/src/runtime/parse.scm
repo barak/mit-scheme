@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.42 2003/07/30 17:25:44 cph Exp $
+$Id: parse.scm,v 14.43 2004/01/15 21:00:08 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,628 +30,420 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! char-set/undefined-atom-delimiters (string->char-set "[]{}"))
-  (set! char-set/whitespace
-	(char-set #\tab #\linefeed #\page #\return #\space))
-  (set! char-set/non-whitespace (char-set-invert char-set/whitespace))
-  (set! char-set/symbol-quotes (string->char-set "|\\"))
-  (set! char-set/atom-delimiters
-	(char-set-union char-set/undefined-atom-delimiters
-			char-set/whitespace
-			char-set/symbol-quotes
-			(string->char-set "\"();'`")))
-  (set! char-set/comment-delimiters (char-set #\newline))
-  (set! char-set/special-comment-leaders (string->char-set "#|"))
-  (set! char-set/string-delimiters (string->char-set "\"\\"))
-  (set! char-set/char-delimiters
-	(char-set-union (string->char-set "-\\") char-set/atom-delimiters))
-  (set! char-set/number-leaders (string->char-set "0123456789+-.#"))
-  (set! char-set/symbol-leaders
-	(char-set-difference (char-set-invert char-set/atom-delimiters)
-			     char-set/number-leaders))
-  (set! char-set/non-digit
-	(char-set-difference (char-set-invert (char-set))
-			     char-set:numeric))
+(define *parser-canonicalize-symbols?* #t)
+(define *parser-radix* 10)
+(define ignore-extra-list-closes #t)
 
-  (set! lambda-optional-tag (object-new-type (microcode-type 'CONSTANT) 3))
-  (set! lambda-rest-tag (object-new-type (microcode-type 'CONSTANT) 4))
-  (set! lambda-auxiliary-tag (intern "#!aux"))
-  (set! dot-symbol (intern "."))
-  (set! named-objects
-	`((NULL . ,(list))
-	  (FALSE . ,#f)
-	  (TRUE . ,#t)
-	  (OPTIONAL . ,lambda-optional-tag)
-	  (REST . ,lambda-rest-tag)
-	  (AUX . ',lambda-auxiliary-tag)))
+(define (parse-object port table)
+  (guarantee-input-port port 'PARSE-OBJECT)
+  (guarantee-parser-table table 'PARSE-OBJECT)
+  ((top-level-parser port) port table))
 
-  (set! *parser-radix* 10)
-  (set! *parser-associate-positions?* #f)
-  (set! *parser-associate-position* parser-associate-positions/default)
-  (set! *parser-current-position* parser-current-position/default)
-  (set! *parser-canonicalize-symbols?* #t)
-  (set! system-global-parser-table (make-system-global-parser-table))
-  (set-current-parser-table! system-global-parser-table))
-
-(define char-set/undefined-atom-delimiters)
-(define char-set/whitespace)
-(define char-set/non-whitespace)
-(define char-set/symbol-quotes)
-(define char-set/atom-delimiters)
-(define char-set/comment-delimiters)
-(define char-set/special-comment-leaders)
-(define char-set/string-delimiters)
-(define char-set/char-delimiters)
-(define char-set/number-leaders)
-(define char-set/symbol-leaders)
-(define char-set/non-digit)
-
-(define lambda-optional-tag)
-(define lambda-rest-tag)
-(define lambda-auxiliary-tag)
-(define *parser-radix*)
-(define *parser-canonicalize-symbols?*)
-(define system-global-parser-table)
-
-(define (make-system-global-parser-table)
-  (let ((table
-	 (make-parser-table parse-object/atom
-			    (collect-list-wrapper parse-object/atom)
-			    parse-object/special-undefined
-			    collect-list/special-undefined)))
-    (for-each (lambda (entry)
-		(apply parser-table/set-entry!
-		       (cons table entry)))
-	      `(("#" ,parse-object/special ,collect-list/special)
-		(,char-set/symbol-leaders ,parse-object/symbol)
-		(("#b" "#B") ,parse-object/numeric-prefix)
-		(("#o" "#O") ,parse-object/numeric-prefix)
-		(("#d" "#D") ,parse-object/numeric-prefix)
-		(("#x" "#X") ,parse-object/numeric-prefix)
-		(("#i" "#I") ,parse-object/numeric-prefix)
-		(("#e" "#E") ,parse-object/numeric-prefix)
-		(("#s" "#S") ,parse-object/numeric-prefix)
-		(("#l" "#L") ,parse-object/numeric-prefix)
-		("#*" ,parse-object/bit-string)
-		("(" ,parse-object/list-open)
-		("#(" ,parse-object/vector-open)
-		(")" ,parse-object/list-close ,collect-list/list-close)
-		(,char-set/whitespace
-		 ,parse-object/whitespace
-		 ,collect-list/whitespace)
-		(,char-set/undefined-atom-delimiters
-		 ,parse-object/undefined-atom-delimiter
-		 ,collect-list/undefined-atom-delimiter)
-		(";" ,parse-object/comment ,collect-list/comment)
-		("#|"
-		 ,parse-object/special-comment
-		 ,collect-list/special-comment)
-		("'" ,parse-object/quote)
-		("`" ,parse-object/quasiquote)
-		("," ,parse-object/unquote)
-		("\"" ,parse-object/string-quote)
-		("#\\" ,parse-object/char-quote)
-		(("#f" "#F") ,parse-object/false)
-		(("#t" "#T") ,parse-object/true)
-		("#!" ,parse-object/named-constant)
-		(("#0" "#1" "#2" "#3" "#4" "#5" "#6" "#7" "#8" "#9")
-		 ,parse-object/special-prefix ,collect-list/special-prefix)
-		("#=" ,parse-object/define-shared)
-		("##" ,parse-object/reference-shared)
-		("#[" ,parse-object/unhash-printed-representation)
-		;;("#$" ,test-recursive-read)
-		("#@" ,parse-object/unhash)))
-    table))
-
-;;;; Top Level
-
-(define (parse-object port parser-table)
-  ((parsing-operation port) port parser-table))
-
-(define (parse-objects port parser-table last-object?)
-  (let ((operation (parsing-operation port)))
+(define (parse-objects port table last-object?)
+  (guarantee-input-port port 'PARSE-OBJECTS)
+  (guarantee-parser-table table 'PARSE-OBJECTS)
+  (let ((parser (top-level-parser port)))
     (let loop ()
-      (let ((object (operation port parser-table)))
+      (let ((object (parser port table)))
 	(if (last-object? object)
 	    '()
 	    (cons-stream object (loop)))))))
 
-(define (parsing-operation port)
+(define (top-level-parser port)
   (or (port/operation port 'READ)
       (let ((read-start (port/operation port 'READ-START))
 	    (read-finish (port/operation port 'READ-FINISH)))
-	(lambda (port parser-table)
+	(lambda (port table)
 	  (if read-start (read-start port))
 	  (let ((object
-		 (within-parser port parser-table parse-object/dispatch)))
+		 (fluid-let ((*shared-objects* (make-shared-objects)))
+		   (let loop ()
+		     (let ((object (dispatch port table)))
+		       (if (eq? object close-parenthesis)
+			   (begin
+			     (if (not (and (eq? port console-input-port)
+					   ignore-extra-list-closes))
+				 (error:illegal-char (car object)))
+			     (loop))
+			   (begin
+			     (if (eq? object close-bracket)
+				 (error:illegal-char (car object)))
+			     object)))))))
 	    (if read-finish (read-finish port))
 	    object)))))
 
-(define (within-parser port parser-table thunk)
-  (if (not (parser-table? parser-table))
-      (error:wrong-type-argument parser-table "parser table" 'WITHIN-PARSER))
-  (fluid-let
-      ((*parser-input-port* port)
-       (*parser-parse-object-table* (parser-table/parse-object parser-table))
-       (*parser-collect-list-table* (parser-table/collect-list parser-table))
-       (*parser-parse-object-special-table*
-	(parser-table/parse-object-special parser-table))
-       (*parser-collect-list-special-table*
-	(parser-table/collect-list-special parser-table))
-       (*parser-current-special-prefix* #f)
-       ;; Only create it on first entry:
-       (*parser-cyclic-context* (or *parser-cyclic-context* (make-context)))
-       (*parser-current-position*
-	(if (not *parser-associate-positions?*)
-	    parser-current-position/default
-	    (current-position-getter port))))
-    (cyclic-parser-post-edit (thunk))))
-
-;;;; Character Operations
-
-(define *parser-input-port*)
-
-(define (peek-char)
-  (let ((char (peek-char/eof-ok)))
-    (if (eof-object? char)
-	(parse-error/end-of-file))
-    char))
-
-(define (peek-char/eof-ok)
-  (let loop ()
-    (or (input-port/peek-char *parser-input-port*)
-	(loop))))
-
-(define (read-char)
-  (let ((char (read-char/eof-ok)))
-    (if (eof-object? char)
-	(parse-error/end-of-file))
-    char))
-
-(define (read-char/eof-ok)
-  (let loop ()
-    (or (input-port/read-char *parser-input-port*)
-	(loop))))
-
-(define-integrable (discard-char)
-  (input-port/discard-char *parser-input-port*))
-
-(define-integrable (read-string delimiters)
-  (input-port/read-string *parser-input-port* delimiters))
-
-(define-integrable (discard-chars delimiters)
-  (input-port/discard-chars *parser-input-port* delimiters))
-
-(define (parse-error/end-of-file)
-  (parse-error "end of file"))
-
-(define (parse-error message #!optional irritant)
-  (let ((message (string-append "PARSE-ERROR: " message)))
-    (if (default-object? irritant)
-	(error message)
-	(error message irritant))))
-
-;;;; Dispatch Points
-
-(define *parser-parse-object-table*)
-(define *parser-collect-list-table*)
-(define *parser-parse-object-special-table*)
-(define *parser-collect-list-special-table*)
-
-(define *parser-current-special-prefix*)
-
-(define-integrable (parse-object/dispatch)
-  (let ((char (peek-char/eof-ok)))
+(define (dispatch port table)
+  (let ((char (read-char port)))
     (if (eof-object? char)
 	char
-	((vector-ref *parser-parse-object-table*
-		     (or (char-ascii? char) (parse-error/non-ascii)))))))
+	(let ((handler (get-handler char (parser-table/initial table))))
+	  (if (not handler)
+	      (error:illegal-char char))
+	  (handler port table char)))))
 
-(define-integrable (collect-list/dispatch)
-  ((vector-ref *parser-collect-list-table* (peek-ascii))))
+(define (dispatch-special port table)
+  (let ((char (read-char/no-eof port)))
+    (let ((handler (get-handler char (parser-table/special table))))
+      (if (not handler)
+	  (error:illegal-char char))
+      (handler port table char))))
 
-(define (parse-object/special)
-  (discard-char)
-  (set! *parser-current-special-prefix* #f)
-  ((vector-ref *parser-parse-object-special-table* (peek-ascii))))
+(define (dispatch/no-eof port table)
+  (let ((object (dispatch port table)))
+    (if (eof-object? object)
+	(error:premature-eof port))
+    object))
 
-(define (collect-list/special)
-  (discard-char)
-  (set! *parser-current-special-prefix* #f)
-  ((vector-ref *parser-collect-list-special-table* (peek-ascii))))
-
-(define-integrable (peek-ascii)
-  (or (char-ascii? (peek-char))
-      (parse-error/non-ascii)))
-
-(define (parse-error/non-ascii)
-  (parse-error "Non-ASCII character encountered" (read-char)))
-
-(define (parse-object/special-undefined)
-  (parse-error "No such special reader macro" (peek-char))
-  (parse-object/dispatch))
-
-(define (collect-list/special-undefined)
-  (parse-error "No such special reader macro" (peek-char))
-  (collect-list/dispatch))
+(define (get-handler char handlers)
+  (let ((n (char->integer char)))
+    (if (not (fix:< n #x100))
+	(error:illegal-char char))
+    (vector-ref handlers n)))
 
-;;;; Recording the position of objects for the compiler
+(define system-global-parser-table)
+(define char-set/constituents)
+(define char-set/atom-delimiters)
+(define char-set/symbol-quotes)
+(define char-set/number-leaders)
+(define char-set/atom-constituents)
+(define char-set/char-constituents)
 
-(define *parser-associate-position*)
-(define *parser-associate-positions?*)
-(define *parser-current-position*)
+(define (initialize-package!)
+  (let* ((constituents
+	  (char-set-difference char-set:graphic
+			       char-set:whitespace))
+	 (atom-delimiters
+	  (char-set-union char-set:whitespace
+			  ;; Note that #\, may break older code.
+			  (string->char-set "()[]{}\";'`,")
+			  (char-set #\U+00AB #\U+00BB)))
+	 (symbol-quotes
+	  (string->char-set "\\|"))
+	 (atom-constituents
+	  (char-set-difference constituents
+			       (char-set-union atom-delimiters
+					       symbol-quotes)))
+	 (number-leaders
+	  (char-set-union char-set:numeric
+			  (string->char-set "+-.")))
+	 (symbol-leaders
+	  (char-set-difference constituents
+			       (char-set-union atom-delimiters
+					       number-leaders)))
+	 (special-number-leaders
+	  (string->char-set "bBoOdDxXiIeEsSlL"))
+	 (char-constituents
+	  (char-set-union char-set:alphanumeric
+			  (string->char-set "+-")))
+	 (store-char (lambda (v c h) (vector-set! v (char->integer c) h)))
+	 (store-char-set
+	  (lambda (v c h)
+	    (for-each (lambda (c) (store-char v c h))
+		      (char-set-members c)))))
+    (let ((initial (make-vector #x100 #f))
+	  (special (make-vector #x100 #f)))
+      (store-char-set initial char-set:whitespace handler:whitespace)
+      (store-char-set initial number-leaders handler:atom)
+      (store-char-set initial symbol-leaders handler:symbol)
+      (store-char-set special special-number-leaders handler:number)
+      (store-char initial #\( handler:list)
+      (store-char special #\( handler:vector)
+      (store-char special #\[ handler:hashed-object)
+      (store-char initial #\) handler:close-parenthesis)
+      (store-char initial #\] handler:close-bracket)
+      (store-char initial #\; handler:comment)
+      (store-char special #\| handler:multi-line-comment)
+      (store-char initial #\' handler:quote)
+      (store-char initial #\` handler:quasiquote)
+      (store-char initial #\, handler:unquote)
+      (store-char initial #\" handler:string)
+      (store-char initial #\# handler:special)
+      (store-char special #\f handler:false)
+      (store-char special #\F handler:false)
+      (store-char special #\t handler:true)
+      (store-char special #\T handler:true)
+      (store-char special #\* handler:bit-string)
+      (store-char special #\\ handler:char)
+      (store-char special #\! handler:named-constant)
+      (store-char special #\@ handler:unhash)
+      (store-char-set special char-set:numeric handler:special-arg)
+      (set! system-global-parser-table (make-parser-table initial special)))
+    (set! char-set/constituents constituents)
+    (set! char-set/atom-delimiters atom-delimiters)
+    (set! char-set/symbol-quotes symbol-quotes)
+    (set! char-set/atom-constituents atom-constituents)
+    (set! char-set/number-leaders number-leaders)
+    (set! char-set/char-constituents char-constituents))
+  (set-current-parser-table! system-global-parser-table)
+  (initialize-condition-types!))
+
+(define (handler:whitespace port table char)
+  char
+  (dispatch port table))
 
-(define-syntax define-accretor
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((offset (cadr form))
-	   (param-list (caddr form))
-	   (body (cdddr form)))
-       `(DEFINE ,param-list
-	  (LET ((CORE
-		 (LAMBDA ()
-		   ,@(map (lambda (expression)
-			    (make-syntactic-closure environment
-				(cdr param-list)
-			      expression))
-			  body))))
-	    (IF *PARSER-ASSOCIATE-POSITIONS?*
-		(RECORDING-OBJECT-POSITION ,offset CORE)
-		(CORE))))))))
+(define (handler:atom port table char)
+  table
+  (receive (string quoted?) (parse-atom port (list char))
+    (if quoted?
+	(%string->symbol string)
+	(or (string->number string *parser-radix*)
+	    (%string->symbol string)))))
 
-(define (current-position-getter port)
-  (cond ((input-port/operation port 'POSITION)
-	 => (lambda (operation)
-	      (lambda (offset)
-		(- (operation port) offset))))
-	((input-port/operation port 'CHARS-REMAINING)
-	 => (lambda (chars-rem)
-	      (let ((len (input-port/operation port 'LENGTH)))
-		(if (not len)
-		    parser-current-position/default
-		    (let ((total-length (len port)))
-		      (lambda (offset)
-			(- total-length
-			   (+ (chars-rem port) offset))))))))
-	(else
-	 parser-current-position/default)))	 
+(define (handler:symbol port table char)
+  table
+  (receive (string quoted?) (parse-atom port (list char))
+    quoted?
+    (%string->symbol string)))
 
-(define (parser-associate-positions/default object position)
-  position				; fnord
-  object)
+(define (handler:number port table char)
+  table
+  (let ((string (parse-atom/no-quoting port (list #\# char))))
+    (or (string->number string *parser-radix*)
+	(error:illegal-number string))))
 
-(define (parser-current-position/default offset)
-  offset				; fnord
+(define (parse-atom port prefix)
+  (let ((port* (open-output-string))
+	(canon
+	 (if *parser-canonicalize-symbols?*
+	     char-downcase
+	     identity-procedure)))
+    (for-each (lambda (char) (write-char char port*)) prefix)
+    (let read-unquoted ((quoted? #f))
+      (let ((char (peek-char port)))
+	(if (or (eof-object? char)
+		(char-set-member? char-set/atom-delimiters char))
+	    (values (get-output-string port*) quoted?)
+	    (begin
+	      (discard-char port)
+	      (cond ((char-set-member? char-set/atom-constituents char)
+		     (write-char (canon char) port*)
+		     (read-unquoted quoted?))
+		    ((char=? char #\\)
+		     (write-char (read-char/no-eof port) port*)
+		     (read-unquoted #t))
+		    ((char=? char #\|)
+		     (let read-quoted ()
+		       (let ((char (read-char/no-eof port)))
+			 (cond ((char-set-member? char-set/constituents char)
+				(write-char char port*)
+				(read-quoted))
+			       ((char=? char #\|)
+				(read-unquoted #t))
+			       ((char=? char #\\)
+				(write-char (read-char/no-eof port) port*)
+				(read-quoted))
+			       (else
+				(error:illegal-char char))))))
+		    (else
+		     (error:illegal-char char)))))))))
+
+(define (parse-atom/no-quoting port prefix)
+  (receive (string quoted?) (parse-atom port prefix)
+    (if quoted?
+	(error:no-quoting-allowed string))
+    string))
+
+(define (handler:list port table char)
+  char
+  (let loop ((objects '()))
+    (let ((object (dispatch/no-eof port table)))
+      (if (eq? object close-parenthesis)
+	  (let ((objects (reverse! objects)))
+	    (fix-up-list! objects)
+	    objects)
+	  (loop (cons object objects))))))
+
+(define (fix-up-list! objects)
+  (let loop ((objects* objects) (prev #f))
+    (if (pair? objects*)
+	(if (eq? (car objects*) '.)
+	    (begin
+	      (if (not (and prev
+			    (pair? (cdr objects*))
+			    (null? (cddr objects*))))
+		  (error:illegal-dot-usage objects))
+	      (set-cdr! prev (cadr objects*)))
+	    (loop (cdr objects*) objects*)))))
+
+(define (handler:vector port table char)
+  char
+  (let loop ((objects '()))
+    (let ((object (dispatch/no-eof port table)))
+      (if (eq? object close-parenthesis)
+	  (list->vector (reverse! objects))
+	  (loop (cons object objects))))))
+
+(define (handler:hashed-object port table char)
+  char
+  (let loop ((objects '()))
+    (let ((object (dispatch/no-eof port table)))
+      (if (eq? object close-bracket)
+	  (let ((objects (reverse! objects)))
+	    (if (and (pair? objects)
+		     (pair? (cdr objects)))
+		(parse-unhash (cadr objects))
+		(error:illegal-hashed-object objects)))
+	  (loop (cons object objects))))))
+
+(define (parse-unhash object)
+  (if (not (exact-nonnegative-integer? object))
+      (error:illegal-unhash object))
+  (if (eq? object 0)
+      #f
+      (or (object-unhash object)
+	  (error:undefined-hash object))))
+
+(define (handler:close-parenthesis port table char)
+  port table char
+  close-parenthesis)
+
+(define (handler:close-bracket port table char)
+  port table char
+  close-bracket)
+
+(define close-parenthesis (list #\)))
+(define close-bracket (list #\]))
+
+(define (handler:comment port table char)
+  char
+  (let loop ()
+    (let ((char (read-char port)))
+      (cond ((eof-object? char) char)
+	    ((char=? char #\newline) unspecific)
+	    (else (loop)))))
+  (dispatch port table))
+
+(define (handler:multi-line-comment port table char)
+  char
+  (let loop ()
+    (case (read-char/no-eof port)
+      ((#\#)
+       (let sharp ()
+	 (case (read-char/no-eof port)
+	   ((#\#) (sharp))
+	   ((#\|) (loop) (loop))
+	   (else (loop)))))
+      ((#\|)
+       (let vbar ()
+	 (case (read-char/no-eof port)
+	   ((#\#) unspecific)
+	   ((#\|) (vbar))
+	   (else (loop)))))
+      (else (loop))))
+  (dispatch port table))
+
+(define (handler:quote port table char)
+  char
+  (list 'QUOTE (dispatch/no-eof port table)))
+
+(define (handler:quasiquote port table char)
+  char
+  (list 'QUASIQUOTE (dispatch/no-eof port table)))
+
+(define (handler:unquote port table char)
+  char
+  (list 'UNQUOTE (dispatch/no-eof port table)))
+
+(define (handler:string port table char)
+  table char
+  (call-with-output-string
+    (lambda (port*)
+      (let loop ()
+	(let ((char (read-char/no-eof port)))
+	  (if (not (char=? char #\"))
+	      (begin
+		(write-char (if (char=? char #\\)
+				(read-char/no-eof port)
+				char)
+			    port*)
+		(loop))))))))
+
+(define (handler:special port table char)
+  char
+  (dispatch-special port table))
+
+(define (handler:false port table char)
+  table
+  (let ((string (parse-atom/no-quoting port (list char))))
+    (if (not (string-ci=? string "f"))
+	(error:illegal-boolean string)))
   #f)
 
-;; Do not integrate this!!! -- GJR
+(define (handler:true port table char)
+  table
+  (let ((string (parse-atom/no-quoting port (list char))))
+    (if (not (string-ci=? string "t"))
+	(error:illegal-boolean string)))
+  #t)
 
-(define (recording-object-position offset parser)
-  (let* ((position (*parser-current-position* offset))
-	 (object (parser)))
-    (*parser-associate-position* object position)
-    object))
-
-;;;; Symbols/Numbers
-
-(define-accretor 0 (parse-object/atom)
-  (let ((s (read-unquoted-atom-segment)))
-    (if (eof-object? s)
-	(parse-error/end-of-file))
-    (if (peek-atom-quote?)
-	(string->symbol (read-quoted-atom s))
-	(or (parse-number s)
-	    (string->symbol s)))))
-
-(define (read-unquoted-atom-segment)
-  (let ((s (read-string char-set/atom-delimiters)))
-    (if (and (not (eof-object? s))
-	     *parser-canonicalize-symbols?*)
-	(string-downcase! s))
-    s))
-
-(define (read-quoted-atom s)
-  (call-with-output-string
-    (lambda (port)
-      (write-string s port)
-      (letrec
-	  ((read-quoted
-	    (lambda ()
-	      (if (char=? (read-char) #\|)
-		  (find-bar)
-		  (begin
-		    (write-char (read-char) port)
-		    (read-unquoted)))))
-	   (find-bar
-	    (lambda ()
-	      (write-string (read-quoted-atom-segment) port)
-	      (if (char=? (read-char) #\|)
-		  (read-unquoted)
-		  (begin
-		    (write-char (read-char) port)
-		    (find-bar)))))
-	   (read-unquoted
-	    (lambda ()
-	      (let ((s (read-unquoted-atom-segment)))
-		(if (not (eof-object? s))
-		    (begin
-		      (write-string s port)
-		      (if (peek-atom-quote?)
-			  (read-quoted))))))))
-	(read-quoted)))))
-
-(define (peek-atom-quote?)
-  (let ((c (peek-char/eof-ok)))
-    (and (char? c)
-	 (or (char=? c #\|)
-	     (char=? c #\\)))))
-
-(define (read-quoted-atom-segment)
-  (let ((s (read-string char-set/symbol-quotes)))
-    (if (eof-object? s)
-	(parse-error/end-of-file))
-    s))
-
-(define (read-atom)
-  (let ((s (read-unquoted-atom-segment)))
-    (if (eof-object? s)
-	(parse-error/end-of-file))
-    (if (peek-atom-quote?)
-	(read-quoted-atom s)
-	s)))
-
-(define-accretor 0 (parse-object/symbol)
-  (string->symbol (read-atom)))
-
-(define (parse-number string)
-  (let ((radix (if (memv *parser-radix* '(2 8 10 16)) *parser-radix* 10)))
-    (if (fix:= radix 10)
-	(string->number string 10)
-	(or (string->number string radix)
-	    (begin
-	      (if (string->number string 10)
-		  (parse-error
-		   "Radix-10 number syntax with non-standard radix:"
-		   string))
-	      #f)))))
-
-(define-accretor 1 (parse-object/numeric-prefix)
-  (let ((number
-	 (let ((char (read-char)))
-	   (string-append (string #\# char) (read-atom)))))
-    (let ((n (parse-number number)))
-      (if (not n)
-	  (parse-error "Bad number syntax" number))
-      n)))
-
-(define-accretor 1 (parse-object/bit-string)
-  (discard-char)
-  (let ((s (read-atom)))
-    (let ((end (string-length s)))
+(define (handler:bit-string port table char)
+  table char
+  (let ((string (parse-atom/no-quoting port '())))
+    (let ((n-bits (string-length string)))
       (unsigned-integer->bit-string
-       end
+       n-bits
        (let loop ((index 0) (result 0))
-	 (if (fix:< index end)
+	 (if (fix:< index n-bits)
 	     (loop (fix:+ index 1)
 		   (+ (* result 2)
-		      (case (string-ref s index)
+		      (case (string-ref string index)
 			((#\0) 0)
 			((#\1) 1)
-			(else (parse-error "Bad bit-string syntax"
-					   (string-append "#*" s))))))
+			(else (error:illegal-bit-string string)))))
 	     result))))))
+
+(define (handler:char port table char)
+  table char
+  (let ((char (read-char/no-eof port)))
+    (if (or (char=? char #\\)
+	    (not (char-alphabetic? char)))
+	char
+	(name->char
+	 (call-with-output-string
+	   (lambda (port*)
+	     (write-char char port*)
+	     (let loop ()
+	       (let ((char (peek-char port)))
+		 (cond ((eof-object? char)
+			unspecific)
+		       ((char-set-member? char-set/char-constituents char)
+			(discard-char port)
+			(write-char char port*)
+			(loop))
+		       ((char=? char #\\)
+			(discard-char port)
+			(write-char (read-char/no-eof port) port*))
+		       (else
+			unspecific))))))))))
 
-;;;; Lists/Vectors
+(define (handler:named-constant port table char)
+  table char
+  (let ((name (intern (parse-atom/no-quoting port '()))))
+    (let ((entry (assq name named-constants)))
+      (if (not entry)
+	  (error:illegal-named-constant name))
+      (cdr entry))))
 
-(define-accretor 0 (parse-object/list-open)
-  (discard-char)
-  (collect-list/top-level))
+(define lambda-optional-tag
+  (object-new-type (ucode-type constant) 3))
 
-(define-accretor 1 (parse-object/vector-open)
-  (discard-char)
-  (list->vector (collect-list/top-level)))
+(define lambda-rest-tag
+  (object-new-type (ucode-type constant) 4))
 
-(define (parse-object/list-close)
-  (if (and ignore-extra-list-closes
-	   (eq? console-input-port *parser-input-port*))
-      (discard-char)
-      (parse-error "Unmatched close paren" (read-char)))
-  (parse-object/dispatch))
+(define lambda-auxiliary-tag
+  '|#!aux|)
 
-(define (collect-list/list-close)
-  (discard-char)
-  (list))
+(define named-constants
+  `((NULL . ())
+    (FALSE . #f)
+    (TRUE . #t)
+    (OPTIONAL . ,lambda-optional-tag)
+    (REST . ,lambda-rest-tag)
+    (AUX . ',lambda-auxiliary-tag)))
 
-(define ignore-extra-list-closes
-  #t)
-
-(define (collect-list/top-level)
-  (let ((value (collect-list/dispatch)))
-    (if (and (pair? value)
-	     (eq? dot-symbol (car value)))
-	(parse-error "Improperly formed dotted list" value)
-	value)))
-
-(define ((collect-list-wrapper parse-object))
-  (let ((first (parse-object)))			;forces order.
-    (let ((rest (collect-list/dispatch)))
-      (if (and (pair? rest)
-	       (eq? dot-symbol (car rest)))
-	  (if (and (pair? (cdr rest))
-		   (null? (cddr rest)))
-	      (cons first (cadr rest))
-	      (parse-error "Improperly formed dotted list" (cons first rest)))
-	  (cons first rest)))))
-
-(define dot-symbol)
-
-;;;; Whitespace/Comments
-
-(define (parse-object/whitespace)
-  (discard-whitespace)
-  (parse-object/dispatch))
-
-(define (collect-list/whitespace)
-  (discard-whitespace)
-  (collect-list/dispatch))
-
-(define (discard-whitespace)
-  (discard-chars char-set/non-whitespace))
-
-(define (parse-object/undefined-atom-delimiter)
-  (parse-error "Undefined atom delimiter" (read-char))
-  (parse-object/dispatch))
-
-(define (collect-list/undefined-atom-delimiter)
-  (parse-error "Undefined atom delimiter" (read-char))
-  (collect-list/dispatch))
-
-(define (parse-object/comment)
-  (discard-comment)
-  (parse-object/dispatch))
-
-(define (collect-list/comment)
-  (discard-comment)
-  (collect-list/dispatch))
-
-(define (discard-comment)
-  (discard-char)
-  (discard-chars char-set/comment-delimiters)
-  (discard-char))
-
-(define (parse-object/special-comment)
-  (discard-special-comment)
-  (parse-object/dispatch))
-
-(define (collect-list/special-comment)
-  (discard-special-comment)
-  (collect-list/dispatch))
-
-(define (discard-special-comment)
-  (discard-char)
-  (let loop ()
-    (discard-chars char-set/special-comment-leaders)
-    (if (char=? #\| (read-char))
-	(if (char=? #\# (peek-char))
-	    (discard-char)
-	    (loop))
-	(begin
-	  (if (char=? #\| (peek-char))
-	      (begin
-		(discard-char)
-		(loop)))
-	  (loop)))))
-
-;;;; Quoting
-
-(define-accretor 0 (parse-object/quote)
-  (discard-char)
-  (list 'QUOTE (parse-object/dispatch)))
-
-(define-accretor 0 (parse-object/quasiquote)
-  (discard-char)
-  (list 'QUASIQUOTE (parse-object/dispatch)))
-
-(define-accretor 0 (parse-object/unquote)
-  (discard-char)
-  (if (char=? #\@ (peek-char))
-      (begin
-	(discard-char)
-	(list 'UNQUOTE-SPLICING (parse-object/dispatch)))
-      (list 'UNQUOTE (parse-object/dispatch))))
-
-(define-accretor 0 (parse-object/string-quote)
-  (discard-char)
-  (let ((head (read-string char-set/string-delimiters)))
-    (if (char=? #\" (read-char))
-	head
-	(call-with-output-string
-	 (lambda (port)
-	   (write-string head port)
-	   (let loop ()
-	     (let ((char
-		    (let ((char (read-char)))
-		      (cond ((char-ci=? char #\n) #\newline)
-			    ((char-ci=? char #\t) #\tab)
-			    ((char-ci=? char #\v) #\vt)
-			    ((char-ci=? char #\b) #\bs)
-			    ((char-ci=? char #\r) #\return)
-			    ((char-ci=? char #\f) #\page)
-			    ((char-ci=? char #\a) #\bel)
-			    ((char->digit char 8)
-			     (let ((c2 (read-char)))
-			       (octal->char char c2 (read-char))))
-			    (else char)))))
-	       (write-char char port)
-	       (write-string (read-string char-set/string-delimiters) port)
-	       (if (char=? #\\ (read-char))
-		   (loop)))))))))
-
-(define (octal->char c1 c2 c3)
-  (let ((d1 (char->digit c1 8))
-	(d2 (char->digit c2 8))
-	(d3 (char->digit c3 8)))
-    (if (not (and d1 d2 d3))
-	(parse-error "Badly formed octal string escape" (string #\\ c1 c2 c3)))
-    (let ((sum (+ (* #o100 d1) (* #o10 d2) d3)))
-      (if (>= sum 256)
-	  (parse-error "Octal string escape exceeds ISO-8859-1 range"
-		       (string #\\ c1 c2 c3)))
-      (integer->char sum))))
-
-(define-accretor 1 (parse-object/char-quote)
-  (discard-char)
-  (if (char=? #\\ (peek-char))
-      (read-char)
-      (name->char
-       (let loop ()
-	 (cond ((char=? #\\ (peek-char))
-		(discard-char)
-		(string (read-char)))
-	       ((char-set-member? char-set/char-delimiters (peek-char))
-		(string (read-char)))
-	       (else
-		(let ((string (read-string char-set/char-delimiters)))
-		  (if (let ((char (peek-char/eof-ok)))
-			(and (not (eof-object? char))
-			     (char=? #\- char)))
-		      (begin
-			(discard-char)
-			(string-append string "-" (loop)))
-		      string))))))))
-
-;;;; Constants
-
-(define-accretor 0 (parse-object/false)
-  (discard-char)
-  #f)
-
-(define-accretor 0 (parse-object/true)
-  (discard-char)
-  #t)
-
-(define-accretor 1 (parse-object/named-constant)
-  (discard-char)
-  (let ((object-name (parse-object/dispatch)))
-    (cdr (or (assq object-name named-objects)
-	     (parse-error "No object by this name" object-name)))))
-
-(define named-objects)
-
-(define (parse-unhash number)
-  (if (not (exact-nonnegative-integer? number))
-      (parse-error "Invalid unhash syntax" number))
-  (let ((object (object-unhash number)))
-    ;; This knows that 0 is the hash of #f.
-    (if (and (false? object) (not (zero? number)))
-	(parse-error "Invalid hash number" number))
-    object))
-
-(define-accretor 1 (parse-object/unhash)
-  (discard-char)
-  (let* ((number (parse-object/dispatch))
-	 (object (parse-unhash number)))
+(define (handler:unhash port table char)
+  char
+  (let ((object (parse-unhash (dispatch/no-eof port table))))
     ;; This may seem a little random, because #@N doesn't just
     ;; return an object.  However, the motivation for this piece of
     ;; syntax is convenience -- and 99.99% of the time the result of
@@ -663,194 +455,181 @@ USA.
 	object
 	(make-quotation object))))
 
-(define-accretor 1 (parse-object/unhash-printed-representation)
-  ;; #[fnord]
-  ;; #[fnord-with-hash-number n ... ]
-  (discard-char)
-  (let* ((name   (parse-object/dispatch)))
-    (discard-whitespace)
-    (if (char=? #\] (peek-char))
-	(begin
-	  (read-char)
-	  (parse-error "No hash number in #[" name)))
-    (let* ((number (parse-object/dispatch))
-	   (object (parse-unhash number)))
-      ;; now gobble up crap until we find the #\]
-      (let loop ()
-	(discard-whitespace)
-	(if (char=? #\] (peek-char))
-	    (read-char)
-	    (begin
-	      (parse-object/dispatch)
-	      (loop))))
-      object)))
+(define (handler:special-arg port table char)
+  (let loop ((n (char->digit char 10)))
+    (let ((char (read-char/no-eof port)))
+      (cond ((char-numeric? char)
+	     (loop (+ (* 10 n) (char->digit char 10))))
+	    ((char=? char #\=)
+	     (let ((object (dispatch/no-eof port table)))
+	       (save-shared-object! n object)
+	       object))
+	    ((char=? char #\#)
+	     (get-shared-object n))
+	    (else
+	     (error:illegal-char char))))))
+
+(define (make-shared-objects)
+  (make-eqv-hash-table))
+
+(define (save-shared-object! n object)
+  (if (not (eq? (hash-table/get *shared-objects* n non-shared-object)
+		non-shared-object))
+      (error:re-shared-object n object))
+  (hash-table/put! *shared-objects* n object))
+
+(define (get-shared-object n)
+  (let ((object (hash-table/get *shared-objects* n non-shared-object)))
+    (if (eq? object non-shared-object)
+	(error:non-shared-object n))
+    object))
+
+(define *shared-objects*)
+(define non-shared-object (list 'NON-SHARED-OBJECT))
 
-;;;; #<number>
+(define (read-char port)
+  (let loop ()
+    (or (input-port/read-char port)
+	(loop))))
 
-(define (parse-object/special-prefix)
-  (parse-special-prefix *parser-parse-object-special-table*))
+(define (read-char/no-eof port)
+  (let ((char (read-char port)))
+    (if (eof-object? char)
+	(error:premature-eof port))
+    char))
 
-(define (collect-list/special-prefix)
-  (parse-special-prefix *parser-collect-list-special-table*))
+(define (discard-char port)
+  (let loop ()
+    (if (not (input-port/discard-char port))
+	(loop))))
 
-(define (parse-special-prefix table)
-  (set! *parser-current-special-prefix*
-	(string->number (read-string char-set/non-digit) 10))
-  ((vector-ref table (peek-ascii))))
+(define (peek-char port)
+  (let loop ()
+    (or (input-port/peek-char port)
+	(loop))))
+
+(define-syntax define-parse-error
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (if (syntax-match? '((+ SYMBOL) EXPRESSION) (cdr form))
+	 (let ((name (caadr form))
+	       (field-names (cdadr form))
+	       (reporter (caddr form)))
+	   (let ((ct (symbol-append 'CONDITION-TYPE: name)))
+	     `(BEGIN
+		(SET! ,ct
+		      (MAKE-CONDITION-TYPE 'ILLEGAL-BIT-STRING
+			  CONDITION-TYPE:PARSE-ERROR
+			  ',field-names
+			(LAMBDA (CONDITION PORT)
+			  (,reporter
+			   ,@(map (lambda (field-name)
+				    `(ACCESS-CONDITION CONDITION ',field-name))
+				  field-names)
+			   PORT))))
+		(SET! ,(symbol-append 'ERROR: name)
+		      (CONDITION-SIGNALLER ,ct
+					   ',field-names
+					   STANDARD-ERROR-HANDLER)))))
+	 (ill-formed-syntax form)))))
+
+(define condition-type:parse-error)
+
+(define condition-type:illegal-bit-string)
+(define condition-type:illegal-boolean)
+(define condition-type:illegal-char)
+(define condition-type:illegal-dot-usage)
+(define condition-type:illegal-hashed-object)
+(define condition-type:illegal-named-constant)
+(define condition-type:illegal-number)
+(define condition-type:illegal-unhash)
+(define condition-type:undefined-hash)
+(define condition-type:no-quoting-allowed)
+(define condition-type:premature-eof)
+(define condition-type:re-shared-object)
+(define condition-type:non-shared-object)
+
+(define error:illegal-bit-string)
+(define error:illegal-boolean)
+(define error:illegal-char)
+(define error:illegal-dot-usage)
+(define error:illegal-hashed-object)
+(define error:illegal-named-constant)
+(define error:illegal-number)
+(define error:illegal-unhash)
+(define error:undefined-hash)
+(define error:no-quoting-allowed)
+(define error:premature-eof)
+(define error:re-shared-object)
+(define error:non-shared-object)
 
-;;;; #n= and #n#
-;;;
-;;;  The fluid variable *parser-cyclic-context* contains the context
-;;;  (roughly read operation) in which the #n= and #n# references are
-;;;  defined.  It is basically a table associating <n> with the
-;;;  reference #<n>#.
-
-(define *parser-cyclic-context* #f)
-
-(define (parse-object/define-shared)
-  (discard-char)
-  (if (not *parser-current-special-prefix*)
-      (parse-error
-       "#= not allowed.  Circular structure syntax #<n>= requires <n>"))
-  (let* ((index *parser-current-special-prefix*)
-	 (ref   
-	  (let ((ref (context/find-reference *parser-cyclic-context*
-					     index)))
-	    ;; The follwing test is not necessary unless we want
-	    ;; to be CLtL compliant
-	    (if ref
-		(parse-error
-		 "Cannot redefine circular structure label #<n>=, <n> ="
-		 index))
-	    (context/touch! *parser-cyclic-context*)
-	    (context/define-reference *parser-cyclic-context* index)))
-	 (text  (parse-object/dispatch)))
-    (if (reference? text)
-	(parse-error
-	 (string-append
-	  "#"  (number->string (reference/index ref))
-	  "=#" (number->string (reference/index text))
-	  "# not allowed.  Circular structure labels must not refer to labels."
-	  )))
-    (context/close-reference ref text)
-    ref))
-
-(define (parse-object/reference-shared)
-  (discard-char)
-  (if (not *parser-current-special-prefix*)
-      (parse-error
-       "## not allowed.  Circular structure syntax #<n># requires <n>"))
-  (let* ((index  *parser-current-special-prefix*)
-	 (ref    (context/find-reference *parser-cyclic-context* index)))
-    (if ref
-	(begin  (context/touch! *parser-cyclic-context*)
-		ref)
-	(parse-error
-	 "Must define circular structure label #<n># before use: <n> ="
-	 index))))
-
-(define (cyclic-parser-post-edit datum)
-  (if *parser-cyclic-context*
-      (context/substitute-cycles *parser-cyclic-context* datum)
-      datum))
-
-;;;; Contexts and References
-
-(define-structure
-  (reference
-   (conc-name reference/))
-  index
-  context
-  text
-  start-touch-count   ; number of #n? things seen when we saw this #n=
-  end-touch-count     ; number of #n? things seen after finishing this one
-                      ;  is #f if this is not yet finished
-                      ; if difference=0 this one contains no references
-  )
-
-(define (reference/contains-references? ref)
-  (not (eqv? (reference/start-touch-count ref)
-	     (reference/end-touch-count ref))))
-
-(define-structure
-  (context
-   (conc-name context/)
-   (constructor %make-context))
-  references        ; some kind of association number->reference
-  touches           ; number of #n# or #n= things see so far
-  )
-
-(define (make-context)   (%make-context '() 0))
-
-(define (context/touch! context)
-  (set-context/touches! context  (fix:+ (context/touches context) 1)))
-
-(define (context/define-reference context index)
-  (let ((ref (make-reference index
-			     context
-			     '()
-			     (context/touches context)
-			     #f)))
-    
-    (set-context/references!
-     context
-     (cons (cons index ref) (context/references context)))
-    ref))
-
-(define (context/close-reference ref text)
-  (set-reference/end-touch-count! ref
-				  (context/touches (reference/context ref)))
-  (set-reference/text! ref text))
-
-(define (context/find-reference context index)
-  (let ((index.ref (assq index (context/references context))))
-    (if index.ref (cdr index.ref) #f)))
-
-;;;  SUBSTITUTE! traverses a tree, replacing all references by their text
-;;;
-;;;  This implementation assumes that #n= and #n# are THE ONLY source
-;;;  of circularity, thus the objects given to SUBSTITUTE! are trees.
-
-(define (substitute! thing)
-  ;(display "[substitute!]")
-  (cond ((pair? thing)    (substitute/pair! thing))
-	((vector? thing)  (substitute/vector! thing))
-	((%record? thing) (substitute/%record! thing))))
-
-(define (substitute/pair! pair)
-  (if (reference? (car pair))
-      (set-car! pair (reference/text (car pair)))
-      (substitute! (car pair)))
-  (if (reference? (cdr pair))
-      (set-cdr! pair (reference/text (cdr pair)))
-      (substitute! (cdr pair))))
-
-(define (substitute/vector! v)
-  (let ((n (vector-length v)))
-    (let loop ((i 0))
-      (if (not (fix:= i n))
-	  (let ((elt (vector-ref v i)))
-	    (if (reference? elt)
-		(vector-set! v i (reference/text elt))
-		(substitute! elt))
-	    (loop (fix:1+ i)))))))
-	
-(define (substitute/%record! r)
-  ;; TEST THIS CODE
-  (do ((i (fix:- (%record-length r) 1) (fix:- i 1)))
-      ((fix:< i 0))
-    (let ((elt (%record-ref r i)))
-      (if (reference? elt)
-	  (%record-set! r i (reference/text elt))
-	  (substitute! elt)))))
-
-(define (context/substitute-cycles context datum)
-  (for-each (lambda (index.ref)
-	      (let ((ref (cdr index.ref)))
-		(if (reference/contains-references? ref)
-		    (substitute! (reference/text ref)))))
-	    (context/references context))
-  (cond ((null? (context/references context))	 datum)
-	((reference? datum)	                 (reference/text datum))
-	(else  (substitute! datum)
-	       datum)))
+(define (initialize-condition-types!)
+  (set! condition-type:parse-error
+	(make-condition-type 'PARSE-ERROR condition-type:error '()
+	  (lambda (condition port)
+	    condition
+	    (write-string "Anonymous parsing error." port))))
+  (define-parse-error (illegal-bit-string string)
+    (lambda (string port)
+      (write-string "Ill-formed bit string: #*" port)
+      (write-string string port)))
+  (define-parse-error (illegal-boolean string)
+    (lambda (string port)
+      (write-string "Ill-formed boolean: #" port)
+      (write-string string port)))
+  (define-parse-error (illegal-char char)
+    (lambda (char port)
+      (write-string "Illegal character: " port)
+      (write char port)))
+  (define-parse-error (illegal-dot-usage objects)
+    (lambda (objects port)
+      (write-string "Ill-formed dotted list: " port)
+      (write objects port)))
+  (define-parse-error (illegal-hashed-object objects)
+    (lambda (objects port)
+      (write-string "Ill-formed object syntax: #[" port)
+      (if (pair? objects)
+	  (begin
+	    (write (car objects) port)
+	    (for-each (lambda (object)
+			(write-char #\space port)
+			(write object port))
+		      (cdr objects))))
+      (write-string "]" port)))
+  (define-parse-error (illegal-named-constant name)
+    (lambda (name port)
+      (write-string "Ill-formed named constant: #!" port)
+      (write name port)))
+  (define-parse-error (illegal-number string)
+    (lambda (string port)
+      (write-string "Ill-formed number: " port)
+      (write-string string port)))
+  (define-parse-error (illegal-unhash object)
+    (lambda (object port)
+      (write-string "Ill-formed unhash syntax: #@" port)
+      (write object port)))
+  (define-parse-error (undefined-hash object)
+    (lambda (object port)
+      (write-string "Undefined hash number: #@" port)
+      (write object port)))
+  (define-parse-error (no-quoting-allowed string)
+    (lambda (string port)
+      (write-string "Quoting not permitted: " port)
+      (write-string string port)))
+  (define-parse-error (premature-eof port)
+    (lambda (port* port)
+      (write-string "Premature EOF on " port)
+      (write port* port)))
+  (define-parse-error (re-shared-object n object)
+    (lambda (n object port)
+      (write-string "Can't re-share object: #" port)
+      (write n port)
+      (write-string "=" port)
+      (write object port)))
+  (define-parse-error (non-shared-object n)
+    (lambda (n port)
+      (write-string "Reference to non-shared object: #" port)
+      (write n port)
+      (write-string "#" port)))
+  unspecific)

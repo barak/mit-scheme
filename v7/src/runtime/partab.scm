@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: partab.scm,v 14.7 2003/02/14 18:28:33 cph Exp $
+$Id: partab.scm,v 14.8 2004/01/15 21:00:12 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1988,1996,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,37 +30,34 @@ USA.
 
 (define-structure (parser-table (constructor %make-parser-table)
 				(conc-name parser-table/))
-  (parse-object false read-only true)
-  (collect-list false read-only true)
-  (parse-object-special false read-only true)
-  (collect-list-special false read-only true))
+  (initial #f read-only #t)
+  (special #f read-only #t))
 
-(define-integrable (guarantee-parser-table table procedure)
+(define (make-parser-table initial special)
+  (if (not (and (vector? initial)
+		(fix:= (vector-length initial) #x100)))
+      (error:wrong-type-argument initial "dispatch vector" 'MAKE-PARSER-TABLE))
+  (if (not (and (vector? special)
+		(fix:= (vector-length special) #x100)))
+      (error:wrong-type-argument special "dispatch vector" 'MAKE-PARSER-TABLE))
+  (%make-parser-table initial special))
+
+(define (guarantee-parser-table table caller)
   (if (not (parser-table? table))
-      (error:wrong-type-argument table "parser table" procedure))
+      (error:wrong-type-argument table "parser table" caller))
   table)
 
-(define (make-parser-table parse-object
-			   collect-list
-			   parse-object-special
-			   collect-list-special)
-  (%make-parser-table (make-vector 256 parse-object)
-		      (make-vector 256 collect-list)
-		      (make-vector 256 parse-object-special)
-		      (make-vector 256 collect-list-special)))
-
 (define (parser-table/copy table)
-  (%make-parser-table (vector-copy (parser-table/parse-object table))
-		      (vector-copy (parser-table/collect-list table))
-		      (vector-copy (parser-table/parse-object-special table))
-		      (vector-copy (parser-table/collect-list-special table))))
+  (%make-parser-table (vector-copy (parser-table/initial table))
+		      (vector-copy (parser-table/special table))))
 
-(define-integrable (current-parser-table)
+(define (current-parser-table)
   *current-parser-table*)
 
 (define (set-current-parser-table! table)
   (guarantee-parser-table table 'SET-CURRENT-PARSER-TABLE!)
-  (set! *current-parser-table* table))
+  (set! *current-parser-table* table)
+  unspecific)
 
 (define (with-current-parser-table table thunk)
   (guarantee-parser-table table 'WITH-CURRENT-PARSER-TABLE)
@@ -68,45 +65,27 @@ USA.
     (thunk)))
 
 (define *current-parser-table*)
-
-(define (parser-table/entry table char receiver)
-  (decode-parser-char table char
-    (lambda (index parse-object-table collect-list-table)
-      (receiver (vector-ref parse-object-table index)
-		(vector-ref collect-list-table index)))))
 
-(define (parser-table/set-entry! table char
-				 parse-object #!optional collect-list)
-  (let ((kernel
-	 (let ((collect-list
-		(if (default-object? collect-list)
-		    (collect-list-wrapper parse-object)
-		    collect-list)))
-	   (lambda (char)
-	     (decode-parser-char table char
-	       (lambda (index parse-object-table collect-list-table)
-		 (vector-set! parse-object-table index parse-object)
-		 (vector-set! collect-list-table index collect-list)))))))
-    (cond ((char-set? char) (for-each kernel (char-set-members char)))
-	  ((pair? char) (for-each kernel char))
-	  (else (kernel char)))))
+(define (parser-table/entry table key)
+  (receive (v n) (decode-key table key 'PARSER-TABLE/ENTRY)
+    (vector-ref v n)))
 
-(define (decode-parser-char table char receiver)
-  (cond ((char? char)
-	 (receiver (char->ascii char)
-		   (parser-table/parse-object table)
-		   (parser-table/collect-list table)))
-	((string? char)
-	 (cond ((= (string-length char) 1)
-		(receiver (char->ascii (string-ref char 0))
-			  (parser-table/parse-object table)
-			  (parser-table/collect-list table)))
-	       ((and (= (string-length char) 2)
-		     (char=? #\# (string-ref char 0)))
-		(receiver (char->ascii (string-ref char 1))
-			  (parser-table/parse-object-special table)
-			  (parser-table/collect-list-special table)))
-	       (else
-		(error "Bad character" char))))
+(define (parser-table/set-entry! table key entry)
+  (receive (v n) (decode-key table key 'PARSER-TABLE/SET-ENTRY!)
+    (vector-set! v n entry)))
+
+(define (decode-key table key caller)
+  (cond ((char? key)
+	 (values (parser-table/initial table)
+		 (char->integer key)))
+	((and (string? key)
+	      (fix:= (string-length key) 1))
+	 (values (parser-table/initial table)
+		 (vector-8b-ref key 0)))
+	((and (string? key)
+	      (fix:= (string-length key) 2)
+	      (char=? #\# (string-ref key 0)))
+	 (values (parser-table/special table)
+		 (vector-8b-ref key 1)))
 	(else
-	 (error "Bad character" char))))
+	 (error:wrong-type-argument key "parser-table key" caller))))
