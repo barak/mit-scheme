@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.3 1995/08/14 21:54:09 adams Exp $
+$Id: rulflo.scm,v 1.4 1995/08/15 00:12:17 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -446,7 +446,7 @@ MIT in each case. |#
    fp4 fp5 fp6 fp7 fp8 fp9 fp10 fp11))
 
 (define registers-to-preserve-around-special-calls
-  (append (list g2 g14 g15 g16 g17)
+  (append (list g14 g15 g16 g17)
 	  caller-saves-registers))
 
 (define (flonum/1-arg/special hook target source)
