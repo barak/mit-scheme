@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xmlrpc.scm,v 1.7 2005/02/05 03:44:10 cph Exp $
+$Id: xmlrpc.scm,v 1.8 2005/02/06 04:41:13 cph Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -23,56 +23,18 @@ USA.
 
 |#
 
-;;;; MIT/GNU Scheme XML-RPC implementation (requires mod-lisp)
+;;;; XML-RPC message codecs
 
 (declare (usual-integrations))
 
-(define-subtree-handler "/xmlrpc/" 'text/xml
-  (lambda (pathname port)
-    (if (eq? (http-request-method) 'post)
-	(let ((entity (http-request-entity)))
-	  (if entity
-	      (let ((document (read-xml (open-input-string entity))))
-		(if document
-		    (write-xml (xml-rpc:process-request document pathname)
-			       port)
-		    (http-status-response 400 "Ill-formed XML entity")))
-	      (http-status-response 400 "Missing XML entity")))
-	(begin
-	  (http-status-response 405 "XML-RPC requires POST method.")
-	  (http-response-header 'allow "POST")))))
-
-(define (xml-rpc:process-request document pathname)
-  (let ((result
-	 (ignore-errors
-	  (lambda ()
-	    (receive (name params) (xml-rpc:parse-request document)
-	      (let ((handler (xml-rpc:get-method-handler pathname name)))
-		(if (not handler)
-		    (error "Unknown method name:" name))
-		(xml-rpc:response
-		 (with-working-directory-pathname (directory-pathname pathname)
-		   (lambda ()
-		     (apply handler params))))))))))
-    (if (condition? result)
-	(xml-rpc:fault 1 (condition/report-string result))
-	result)))
-
-(define (xml-rpc:get-method-handler pathname name)
-  (let ((methods (make-string-hash-table)))
-    (let ((environment (make-expansion-environment pathname)))
-      (environment-define environment 'define-xmlrpc-method
-	(lambda (name handler)
-	  (hash-table/put! methods name handler)))
-      (fluid-let ((load/suppress-loading-message? #t))
-	(load pathname environment)))
-    (hash-table/get methods name #f)))
+(define (xml-rpc:request name . objects)
+  (rpc-elt:method-call (rpc-elt:method-name name)
+		       (rpc-elt:params (map (lambda (object)
+					      (encode-param object))
+					    objects))))
 
 (define (xml-rpc:response object)
-  (rpc-elt:method-response
-   (rpc-elt:params
-    (rpc-elt:param
-     (rpc-elt:value (xml-rpc:encode-object object))))))
+  (rpc-elt:method-response (rpc-elt:params (encode-param object))))
 
 (define (xml-rpc:fault code string)
   (rpc-elt:method-response
@@ -90,52 +52,101 @@ USA.
 		  (lambda (port)
 		    (format-error-message message irritants port)))))
 
-(define (xml-rpc:condition-fault code condition)
+(define (xml-rpc:condition->fault condition code)
   (xml-rpc:fault code (condition/report-string condition)))
-
-(define (xml-rpc:parse-request document)
-  (let ((elt (xml-document-root document))
-	(lose
-	 (lambda ()
-	   (error:bad-range-argument (xml->string document) #f))))
-    (if (not (xml-name=? (xml-element-name elt) '|methodCall|))
-	(lose))
-    (values (let ((s
-		   (xml-rpc:content-string
-		    (xml-rpc:named-child '|methodName| elt lose)
-		    lose)))
-	      (if (not (re-string-match "\\`[a-zA-Z0-9_.:/]+\\'" s))
-		  (lose))
-	      s)
-	    (let ((elt (xml-rpc:named-child 'params elt #f)))
-	      (if elt
-		  (xml-rpc:parse-params elt lose)
-		  '())))))
 
-(define (xml-rpc:parse-params elt lose)
+(define (xml-rpc:parse-request document)
+  (fluid-let ((*document* document)
+	      (*caller* 'xml-rpc:parse-request))
+    (let ((elt (xml-document-root document)))
+      (require (xml-name=? (xml-element-name elt) '|methodCall|))
+      (values (let ((s (content-string (named-child '|methodName| elt))))
+		(require (re-string-match "\\`[a-zA-Z0-9_.:/]+\\'" s))
+		s)
+	      (let ((elt (%named-child 'params elt)))
+		(if elt
+		    (parse-params elt)
+		    '()))))))
+
+(define (xml-rpc:parse-response document)
+  (fluid-let ((*document* document)
+	      (*caller* 'xml-rpc:parse-response))
+    (let ((elt (xml-document-root document)))
+      (require (xml-name=? (xml-element-name elt) '|methodResponse|))
+      (let ((elt (single-child elt)))
+	(cond ((xml-name=? (xml-element-name elt) 'params)
+	       (let ((objects (parse-params elt)))
+		 (require (and (pair? objects) (null? (cdr objects))))
+		 (car objects)))
+	      ((xml-name=? (xml-element-name elt) 'fault)
+	       (let ((alist (decode-value (single-named-child 'value elt))))
+		 (require (and (alist? alist) (= (length alist) 2)))
+		 (let ((p1 (or (assq '|faultCode| alist) (lose)))
+		       (p2 (or (assq '|faultString| alist) (lose))))
+		   (require (exact-integer? (cdr p1)))
+		   (require (string? p2))
+		   (error:xml-rpc-fault (cdr p1) (cdr p2)))))
+	      (else (lose)))))))
+
+(define (parse-params elt)
   (map (lambda (elt)
-	 (xml-rpc:decode-value (xml-rpc:single-named-child 'value elt lose)
-			       lose))
-       (xml-rpc:named-children 'param elt lose)))
+	 (decode-value (single-named-child 'value elt)))
+       (named-children 'param elt)))
+
+(define *document*)
+(define *caller*)
+
+(define (require boolean)
+  (if (not boolean)
+      (lose)))
+
+(define (lose)
+  (error:bad-xml-rpc-message *document* *caller*))
 
-(define (xml-rpc:named-children name elt lose)
+(define condition-type:bad-xml-rpc-message
+  (make-condition-type 'bad-xml-rpc-message condition-type:error
+      '(document caller)
+    (lambda (condition port)
+      (write-string "Malformed XML-RPC message:" port)
+      (newline port)
+      (write-xml (access-condition condition 'document) port))))
+
+(define error:bad-xml-rpc-message
+  (condition-signaller condition-type:bad-xml-rpc-message
+		       '(document caller)
+		       standard-error-handler))
+
+(define condition-type:xml-rpc-fault
+  (make-condition-type 'xml-rpc-fault condition-type:error '(code string)
+    (lambda (condition port)
+      (write-string "Remote procedure call signalled code " port)
+      (write (access-condition condition 'code) port)
+      (write-string ":" port)
+      (newline port)
+      (write-string (access-condition condition 'string) port))))
+
+(define error:xml-rpc-fault
+  (condition-signaller condition-type:xml-rpc-fault
+		       '(code string)
+		       standard-error-handler))
+
+(define (named-children name elt)
   (let loop ((items (xml-element-contents elt)))
     (if (pair? items)
 	(let ((item (car items))
 	      (rest (loop (cdr items))))
 	  (if (xml-element? item)
 	      (begin
-		(if (not (xml-name=? (xml-element-name item) name))
-		    (lose))
+		(require (xml-name=? (xml-element-name item) name))
 		(cons item rest))
 	      (begin
-		(if (not (or (xml-whitespace-string? item)
-			     (xml-comment? item)))
-		    (lose))
+		(require
+		 (or (xml-whitespace-string? item)
+		     (xml-comment? item)))
 		rest)))
 	'())))
 
-(define (xml-rpc:children elt lose)
+(define (all-children elt)
   (let loop ((items (xml-element-contents elt)))
     (if (pair? items)
 	(let ((item (car items))
@@ -143,166 +154,170 @@ USA.
 	  (if (xml-element? item)
 	      (cons item rest)
 	      (begin
-		(if (not (or (xml-whitespace-string? item)
-			     (xml-comment? item)))
-		    (lose))
+		(require
+		 (or (xml-whitespace-string? item)
+		     (xml-comment? item)))
 		rest)))
 	'())))
 
-(define (xml-rpc:named-child name elt lose)
-  (or (find-matching-item (xml-element-contents elt)
-	(lambda (item)
-	  (and (xml-element? item)
-	       (xml-name=? (xml-element-name item) name))))
-      (and lose (lose))))
+(define (named-child name elt)
+  (let ((child (%named-child name elt)))
+    (require child)
+    child))
 
-(define (xml-rpc:single-child elt lose)
-  (let ((children (xml-rpc:children elt lose)))
-    (if (not (and (pair? children)
-		  (null? (cdr children))))
-	(lose))
+(define (%named-child name elt)
+  (find-matching-item (xml-element-contents elt)
+    (lambda (item)
+      (and (xml-element? item)
+	   (xml-name=? (xml-element-name item) name)))))
+
+(define (single-child elt)
+  (let ((children (all-children elt)))
+    (require (and (pair? children) (null? (cdr children))))
     (car children)))
 
-(define (xml-rpc:single-named-child name elt lose)
-  (let ((child (xml-rpc:single-child elt lose)))
-    (if (not (xml-name=? (xml-element-name child) name))
-	(lose))
+(define (single-named-child name elt)
+  (let ((child (single-child elt)))
+    (require (xml-name=? (xml-element-name child) name))
     child))
 
-(define (xml-rpc:decode-object elt lose)
-  (case (xml-element-name elt)
-    ((boolean)
-     (let ((s (xml-rpc:content-string elt lose)))
-       (cond ((string=? s "0") #f)
-	     ((string=? s "1") #t)
-	     (else (lose)))))
-    ((|dateTime.iso8601|)
-     (safe-call lose
-		iso8601-string->decoded-time
-		(xml-rpc:content-string elt lose)))
-    ((double)
-     (let ((x (string->number (xml-rpc:content-string elt lose))))
-       (if (not (and x (flo:flonum? x)))
-	   (lose))
-       x))
-    ((i4 int)
-     (let ((n (string->number (xml-rpc:content-string elt lose))))
-       (if (not (and n
-		     (exact-integer? n)
-		     (<= #x-80000000 n #x7fffffff)))
-	   (lose))
-       n))
-    ((string)
-     (xml-rpc:content-string elt lose))
-    ((base64)
-     (safe-call lose
-		(lambda (string)
-		  (call-with-output-string
-		    (lambda (port)
-		      (call-with-decode-base64-output-port port #f
-			(lambda (port)
-			  (write-string string port))))))
-		(xml-rpc:content-string elt lose)))
-    ((array)
-     (map (lambda (elt) (xml-rpc:decode-value elt lose))
-	  (xml-rpc:named-children 'value
-				  (xml-rpc:single-named-child 'data elt lose)
-				  lose)))
-    ((struct)
-     (map (lambda (elt)
-	    (cons (utf8-string->symbol (xml-rpc:named-child 'name elt lose))
-		  (xml-rpc:decode-value (xml-rpc:named-child 'value elt lose)
-					lose)))
-	  (xml-rpc:named-children 'member elt lose)))
-    (else (lose))))
-
-(define (xml-rpc:content-string elt lose)
-  (let ((items (xml-element-contents elt)))
-    (if (not (and (pair? items)
-		  (string? (car items))
-		  (null? (cdr items))))
-	(lose))
-    (car items)))
-
-(define (safe-call lose procedure . arguments)
-  (let ((value (ignore-errors (lambda () (apply procedure arguments)))))
-    (if (condition? value)
-	(lose)
-	value)))
-
-(define (xml-rpc:decode-value elt lose)
+(define (decode-value elt)
   (let ((items (xml-element-contents elt)))
     (if (and (pair? items)
 	     (string? (car items))
 	     (null? (cdr items)))
 	(car items)
-	(xml-rpc:decode-object (xml-rpc:single-child elt lose) lose))))
+	(let ((elt (single-child elt)))
+	  (case (xml-element-name elt)
+	    ((boolean)
+	     (let ((s (content-string elt)))
+	       (cond ((string=? s "0") #f)
+		     ((string=? s "1") #t)
+		     (else (lose)))))
+	    ((nil)
+	     #!default)
+	    ((|dateTime.iso8601|)
+	     (safe-call iso8601-string->decoded-time (content-string elt)))
+	    ((double)
+	     (let ((x (string->number (content-string elt))))
+	       (require (and x (flo:flonum? x)))
+	       x))
+	    ((i4 int)
+	     (let ((n (string->number (content-string elt))))
+	       (require
+		(and n
+		     (exact-integer? n)
+		     (<= #x-80000000 n #x7fffffff)))
+	       n))
+	    ((string)
+	     (content-string elt))
+	    ((base64)
+	     (safe-call (lambda (string)
+			  (call-with-output-string
+			    (lambda (port)
+			      (call-with-decode-base64-output-port port #f
+				(lambda (port)
+				  (write-string string port))))))
+			(content-string elt)))
+	    ((array)
+	     (map (lambda (elt) (decode-value elt))
+		  (named-children 'value
+				  (single-named-child 'data elt)
+				 )))
+	    ((struct)
+	     (map (lambda (elt)
+		    (cons (utf8-string->symbol (named-child 'name elt))
+			  (decode-value (named-child 'value elt))))
+		  (named-children 'member elt)))
+	    (else (lose)))))))
+
+(define (content-string elt)
+  (let ((items (xml-element-contents elt)))
+    (require
+     (and (pair? items)
+	  (string? (car items))
+	  (null? (cdr items))))
+    (car items)))
+
+(define (safe-call procedure . arguments)
+  (let ((value (ignore-errors (lambda () (apply procedure arguments)))))
+    (require (not (condition? value)))
+    value))
 
-(define (xml-rpc:encode-object object)
-  (cond ((and (exact-integer? object)
-	      (<= #x-80000000 object #x7fffffff))
-	 (rpc-elt:int (number->string object)))
-	((flo:flonum? object)
-	 ;; Probably not right -- formatting issues
-	 (rpc-elt:double (number->string object)))
-	((boolean? object)
-	 (rpc-elt:boolean (if object "1" "0")))
-	((string? object)
-	 (if (utf8-string-valid? object)
-	     (rpc-elt:string object)
-	     (call-with-output-string
-	       (lambda (port)
-		 (let ((context (encode-base64:initialize port #f)))
-		   (encode-base64:update context
-					 object
-					 0
-					 (string-length object))
-		   (encode-base64:finalize context))))))
-	((decoded-time? object)
-	 (rpc-elt:date-time (decoded-time->iso8601-string object)))
-	((and (pair? object)
-	      (list-of-type? object
-		(lambda (item)
-		  (and (pair? item)
-		       (symbol? (car item))))))
-	 (rpc-elt:struct
-	  (map (lambda (item)
-		 (rpc-elt:member
-		  (rpc-elt:name (symbol->utf8-string (car item)))
-		  (xml-rpc:encode-value (cdr item))))
-	       (cdr object))))
-	((list? object)
-	 (rpc-elt:array (rpc-elt:data (map xml-rpc:encode-value object))))
-	(else
-	 (error:wrong-type-argument object
-				    "an XML-RPC object"
-				    'xml-rpc:encode-object))))
+(define (encode-param object)
+  (rpc-elt:param (encode-value object)))
 
-(define (xml-rpc:encode-value v)
-  (rpc-elt:value (xml-rpc:encode-object v)))
+(define (encode-value object)
+  (rpc-elt:value
+   (cond ((and (exact-integer? object)
+	       (<= #x-80000000 object #x7fffffff))
+	  (rpc-elt:int (number->string object)))
+	 ((flo:flonum? object)
+	  ;; Probably not right -- formatting issues
+	  (rpc-elt:double (number->string object)))
+	 ((boolean? object)
+	  (rpc-elt:boolean (if object "1" "0")))
+	 ((default-object? object)
+	  (rpc-elt:nil))
+	 ((string? object)
+	  (if (utf8-string-valid? object)
+	      (rpc-elt:string object)
+	      (call-with-output-string
+		(lambda (port)
+		  (let ((context (encode-base64:initialize port #f)))
+		    (encode-base64:update context
+					  object
+					  0
+					  (string-length object))
+		    (encode-base64:finalize context))))))
+	 ((decoded-time? object)
+	  (rpc-elt:date-time (decoded-time->iso8601-string object)))
+	 ((and (pair? object)
+	       (list-of-type? object
+		 (lambda (item)
+		   (and (pair? item)
+			(symbol? (car item))))))
+	  (rpc-elt:struct
+	   (map (lambda (item)
+		  (rpc-elt:member
+		   (rpc-elt:name (symbol->utf8-string (car item)))
+		   (encode-value (cdr item))))
+		(cdr object))))
+	 ((list? object)
+	  (rpc-elt:array (rpc-elt:data (map encode-value object))))
+	 (else
+	  (error:wrong-type-argument object
+				     "an XML-RPC object"
+				     'encode-value)))))
 
-(define (rpc-elt name)
+(define (rpc-elt name empty?)
   (let ((make-elt
-	 (standard-xml-element-constructor name (null-xml-namespace-iri) #f)))
-    (lambda contents
-      (apply make-elt #f contents))))
+	 (standard-xml-element-constructor name
+					   (null-xml-namespace-iri)
+					   empty?)))
+    (if empty?
+	(lambda ()
+	  (make-elt #f))
+	(lambda contents
+	  (apply make-elt #f contents)))))
 
-(define rpc-elt:array (rpc-elt 'array))
-(define rpc-elt:base64 (rpc-elt 'base64))
-(define rpc-elt:boolean (rpc-elt 'boolean))
-(define rpc-elt:data (rpc-elt 'data))
-(define rpc-elt:date-time (rpc-elt '|dateTime.iso8601|))
-(define rpc-elt:double (rpc-elt 'double))
-(define rpc-elt:fault (rpc-elt 'fault))
-(define rpc-elt:i4 (rpc-elt 'i4))
-(define rpc-elt:int (rpc-elt 'int))
-(define rpc-elt:member (rpc-elt 'member))
-(define rpc-elt:method-call (rpc-elt '|methodCall|))
-(define rpc-elt:method-name (rpc-elt '|methodName|))
-(define rpc-elt:method-response (rpc-elt '|methodResponse|))
-(define rpc-elt:name (rpc-elt 'name))
-(define rpc-elt:param (rpc-elt 'param))
-(define rpc-elt:params (rpc-elt 'params))
-(define rpc-elt:string (rpc-elt 'string))
-(define rpc-elt:struct (rpc-elt 'struct))
-(define rpc-elt:value (rpc-elt 'value))
+(define rpc-elt:array (rpc-elt 'array #f))
+(define rpc-elt:base64 (rpc-elt 'base64 #f))
+(define rpc-elt:boolean (rpc-elt 'boolean #f))
+(define rpc-elt:data (rpc-elt 'data #f))
+(define rpc-elt:date-time (rpc-elt '|dateTime.iso8601| #f))
+(define rpc-elt:double (rpc-elt 'double #f))
+(define rpc-elt:fault (rpc-elt 'fault #f))
+(define rpc-elt:i4 (rpc-elt 'i4 #f))
+(define rpc-elt:int (rpc-elt 'int #f))
+(define rpc-elt:member (rpc-elt 'member #f))
+(define rpc-elt:method-call (rpc-elt '|methodCall| #f))
+(define rpc-elt:method-name (rpc-elt '|methodName| #f))
+(define rpc-elt:method-response (rpc-elt '|methodResponse| #f))
+(define rpc-elt:name (rpc-elt 'name #f))
+(define rpc-elt:nil (rpc-elt 'nil #t))
+(define rpc-elt:param (rpc-elt 'param #f))
+(define rpc-elt:params (rpc-elt 'params #f))
+(define rpc-elt:string (rpc-elt 'string #f))
+(define rpc-elt:struct (rpc-elt 'struct #f))
+(define rpc-elt:value (rpc-elt 'value #f))

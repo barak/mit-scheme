@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.23 2004/12/07 18:21:42 cph Exp $
+$Id: mod-lisp.scm,v 1.24 2005/02/06 04:40:58 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -765,6 +765,47 @@ USA.
 	  unspecific))))
 
 (define url-bindings '())
+
+;;;; XML-RPC
+
+(define (xml-rpc:subtree-handler pathname port)
+  (if (eq? (http-request-method) 'post)
+      (let ((entity (http-request-entity)))
+	(if entity
+	    (let ((document (read-xml (open-input-string entity))))
+	      (if document
+		  (write-xml (process-xmlrpc-request document pathname) port)
+		  (http-status-response 400 "Ill-formed XML entity")))
+	    (http-status-response 400 "Missing XML entity")))
+      (begin
+	(http-status-response 405 "XML-RPC requires POST method.")
+	(http-response-header 'allow "POST"))))
+
+(define (process-xmlrpc-request document pathname)
+  (call-with-current-continuation
+   (lambda (k)
+     (bind-condition-handler (list condition-type:error)
+	 (lambda (condition)
+	   (k (xml-rpc:condition->fault condition 1)))
+       (lambda ()
+	 (receive (name params) (xml-rpc:parse-request document)
+	   (let ((handler (get-xmlrpc-method-handler pathname name)))
+	     (if (not handler)
+		 (error "Unknown method name:" name))
+	     (xml-rpc:response
+	      (with-working-directory-pathname (directory-pathname pathname)
+		(lambda ()
+		  (apply handler params)))))))))))
+
+(define (get-xmlrpc-method-handler pathname name)
+  (let ((methods (make-string-hash-table)))
+    (let ((environment (make-expansion-environment pathname)))
+      (environment-define environment 'define-xmlrpc-method
+	(lambda (name handler)
+	  (hash-table/put! methods name handler)))
+      (fluid-let ((load/suppress-loading-message? #t))
+	(load pathname environment)))
+    (hash-table/get methods name #f)))
 
 ;;;; Utilities
 
