@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.18 1989/05/31 20:02:25 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.19 1989/08/08 01:21:29 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -202,11 +202,21 @@ MIT in each case. |#
   (if (stack-block? block)
       (let ((popping-limit (block-popping-limit block)))
 	(and popping-limit
-	     (let loop ((block block) (offset offset))
-	       (let ((offset (+ offset (block-frame-size block))))
-		 (if (eq? block popping-limit)
-		     offset
-		     (loop (block-parent block) offset))))))      offset))
+	     (let ((offset
+		    (let loop ((block block) (offset offset))
+		      (let ((offset (+ offset (block-frame-size block))))
+			(if (eq? block popping-limit)
+			    offset
+			    (loop (block-parent block) offset)))))
+		   (stack-link (block-stack-link popping-limit)))
+	       (if (and stack-link
+			(continuation-block? stack-link)
+			(continuation/always-known-operator?
+			 (block-procedure stack-link)))
+		   (continuation/next-continuation-offset		    (block-parent stack-link)
+		    offset)
+		   offset))))
+      offset))
 
 (define (generate/continuation-entry/pop-extra continuation)
   (pop-continuation-extra (continuation/closing-block continuation)))
