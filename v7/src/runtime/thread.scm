@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.29 1999/02/24 04:53:43 cph Exp $
+$Id: thread.scm,v 1.30 1999/02/24 05:18:12 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -243,6 +243,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (call-with-current-continuation
 	       (lambda (continuation)
 		 (set-thread/continuation! thread continuation)
+		 (set-thread/block-events?! thread #f)
 		 (thread-not-running thread 'WAITING)))))))))
 
 (define (stop-current-thread)
