@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.14 1993/10/12 00:18:15 cph Exp $
+;;;	$Id: txtprp.scm,v 1.15 1994/10/11 23:10:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -316,6 +316,23 @@
 		      (region-start-index region)
 		      (region-end-index region)
 		      highlight))
+
+(define (highlight-region-excluding-indentation region highlight)
+  (let ((start (region-start region))
+	(end (region-end region)))
+    (let loop ((start start))
+      (let ((start (horizontal-space-end start))
+	    (lend (line-end start 0)))
+	(if (mark<= lend end)
+	    (begin
+	      (let ((end (horizontal-space-start lend)))
+		(if (mark< start end)
+		    (highlight-region (make-region start end) highlight)))
+	      (if (not (group-end? lend))
+		  (loop (mark1+ lend))))
+	    (let ((end (horizontal-space-start end)))
+	      (if (mark< start end)
+		  (highlight-region (make-region start end) highlight))))))))
 
 (define (local-comtabs mark)
   (get-text-property (mark-group mark) (mark-index mark) 'COMMAND-TABLE #f))

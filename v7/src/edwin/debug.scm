@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.29 1994/10/11 23:08:21 cph Exp $
+;;;	$Id: debug.scm,v 1.30 1994/10/11 23:09:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-94 Massachusetts Institute of Technology
 ;;;
@@ -90,23 +90,6 @@
  	(highlight-region-excluding-indentation start-mark end-mark))
     (if start-mark (mark-temporary! start-mark))
     (if end-mark (mark-temporary! end-mark))))
-
-(define (highlight-region-excluding-indentation region highlight)
-  (let ((start (region-start region))
-	(end (region-end region)))
-    (let loop ((start start))
-      (let ((start (horizontal-space-end start))
-	    (lend (line-end start 0)))
-	(if (mark<= lend end)
-	    (begin
-	      (let ((end (horizontal-space-start lend)))
-		(if (mark< start end)
-		    (highlight-region (make-region start end) highlight)))
-	      (if (not (group-end? lend))
-		  (loop (mark1+ lend))))
-	    (let ((end (horizontal-space-start end)))
-	      (if (mark< start end)
-		  (highlight-region (make-region start end) highlight))))))))
 
 ;;;; Browsers
 

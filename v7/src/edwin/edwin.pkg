@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.150 1994/09/08 21:36:46 adams Exp $
+$Id: edwin.pkg,v 1.151 1994/10/11 23:10:21 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -892,6 +892,7 @@ MIT in each case. |#
 	  get-text-properties
 	  get-text-property
 	  highlight-region
+	  highlight-region-excluding-indentation
 	  highlight-subgroup
 	  local-comtabs
 	  next-property-change
