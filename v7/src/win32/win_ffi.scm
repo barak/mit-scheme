@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win_ffi.scm,v 1.3 1993/12/01 03:08:03 adams Exp $
+$Id: win_ffi.scm,v 1.4 1994/10/26 18:39:28 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -58,48 +58,24 @@ MIT in each case. |#
      hIcon hCursor background menu-name name))
 
 
-;(define %call-foreign-function (make-primitive-procedure 'call-ff))
 (define-integrable %call-foreign-function (ucode-primitive call-ff))
 
-;(define int-result (lambda (result) result))
-;(define bool-result (lambda (result) (not (= result 0))))
-;(define void-result (lambda (result) result unspecific))
-;(define nullable-pointer-result (lambda (result) (if (= result 0) #f result)))
-;(define handle-result int-result)
-;(define hwnd-result handle-result)
-
-;(define any-arg (lambda (arg) arg))
-;(define int-arg (lambda (arg) arg))
-;(define bool-arg (lambda (arg) (if arg 1 0)))
-;(define nullable-pointer-arg (lambda (arg) (or arg 0)))
-;(define string-arg
-;  (lambda (arg)
-;    (if (or (eq? arg #f) (string? arg))
-;        arg
-;	((access error ())
-;          "Type error on foreign function argument: Not string" arg))))
-;(define-integrable handle-arg int-arg)
-;(define-integrable hwnd-arg handle-arg)
-
-;(define-integrable hdc-result handle-result)
-;(define-integrable hdc-arg handle-arg)
-
-
 (define (windows-procedure-argument-type-check-error type arg)
-  ((access error ()) "Bad argument type for foreign procedure: " type 'value: arg))
+  ((access error system-global-environment)
+   "Bad argument type for foreign procedure: "  type  'value:  arg))
 
 
 (define-macro (call-case n)
-#|  Generate
-;      (lambda (module-entry)
-;	(let ((arg1-type (list-ref arg-types 0))
-;	      (arg2-type (list-ref arg-types 1)))
-;	  (lambda (arg1 arg2)
-;	    (result-type (%call-foreign-function
-;	                   (module-entry/machine-address module-entry)
-;			   (arg1-type arg1)
-;			   (arg2-type arg2)))))))
-|#
+;;  Generate code like this:
+;;    (lambda (module-entry)
+;;	(let ((arg1-type (list-ref arg-types 0))
+;;	      (arg2-type (list-ref arg-types 1)))
+;;	  (lambda (arg1 arg2)
+;;	    (result-type (%call-foreign-function
+;;	                   (module-entry/machine-address module-entry)
+;;			   (arg1-type arg1)
+;;			   (arg2-type arg2)))))))
+
   (define (map-index f i n)
     (if (<= i n)
 	(cons (f i) (map-index f (1+ i) n))
@@ -154,7 +130,7 @@ MIT in each case. |#
 		    (apply %call-foreign-function
 			   (module-entry/machine-address module-entry)
 			   (map (lambda (f x) (f x)) arg-types args)))
-		   ((access error ())
+		   ((access error system-global-environment)
                     "Wrong arg count for foreign function" 
 		    name
 		    (length args)
@@ -175,11 +151,14 @@ MIT in each case. |#
 ;;  version of the wndproc.  There is a minor complication: the first time
 ;;  that we know what the window handle is happens during the call to
 ;;  GENERAL-SCHEME-WNDPROC, so we can only associate the handle with 
-;;  the window procedure at that time
+;;  the window procedure at that time.  Further, we do not know what first
+;;  or last message is -- Various places in the Win32 API Reference imply
+;;  the first is WM_CREATE or WM_NCCREATE but I have seen the sequence
+;;  [WM_GETMINMAXINFO, WM_NCCALCSIZE, WM_NCCREATE, WM_CREATE].  Similarly,
+;;  WM_NCDESTROY seems to be sent after WM_DESTROY, but who knows what happens
+;;  in other cases?  Ugh.
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
 
 (load-option 'hash-table)
 
@@ -196,42 +175,53 @@ MIT in each case. |#
   (set! wndproc-registry (make-integer-hash-table)))
 
 
-(define newproc #f)
+(define general-scheme-wndproc)
+(define create-scheme-window)
 
-(define (general-scheme-wndproc hwnd message wparam lparam)
-  (let ((wndproc (hash-table/get wndproc-registry hwnd #f)))
-    (if wndproc
-        (wndproc hwnd message wparam lparam)
-        (let ((theproc newproc))
-	  (set! newproc #f)
-	  (if (eq? theproc #f)
-	      (begin
-		(display "\nNo wndproc for ") (display hwnd) (display "!\n")
-		(set! newproc default-scheme-wndproc)))
-	  (hash-table/put! wndproc-registry hwnd theproc)
-	  (theproc hwnd message wparam lparam)))))
+(let ((newproc #f)
+      (mask    0))
 
-(define (create-scheme-window ex-style class name style x y w h
-                               parent menu inst param proc)
-  (set! newproc proc)
-  (create-window-ex ex-style class name style x y w h
-	            parent menu inst param))
+  (define (the-general-scheme-wndproc hwnd message wparam lparam)
+    (cond (newproc
+	   => (lambda (theproc)
+		(set! newproc #F)
+		(hash-table/put! wndproc-registry hwnd theproc)
+		(set-interrupt-enables! mask)
+		(theproc hwnd message wparam lparam)))
+	  ((hash-table/get wndproc-registry hwnd #f)
+	   => (lambda (wndproc)
+		(wndproc hwnd message wparam lparam)))
+	  (else
+	   ((access warn system-global-environment)
+	    "No wndproc for window "  hwnd  'general-scheme-wndproc)
+	   (default-scheme-wndproc hwnd message wparam lparam))))
+
+  (define (the-create-scheme-window ex-style class name style x y w h
+				    parent menu inst param proc)
+    (set! mask (set-interrupt-enables! interrupt-mask/gc-ok))
+    (set! newproc proc)
+    (create-window-ex ex-style class name style x y w h
+		      parent menu inst param))
+
+  (set! general-scheme-wndproc the-general-scheme-wndproc)
+  (set! create-scheme-window   the-create-scheme-window)
+  unspecific)
 
 
-;;
 ;; How do we delete wndprocs from the table?  It is not clear what is the very
 ;; last windows message received by a window. 
+;;
 ;; As a temporary measure we check to see if the windows still exist every GC
 
 (define (wndproc-registry-cleaner)
   (hash-table/for-each wndproc-registry
     (lambda (hwnd wndproc)
-      wndproc
+      wndproc                         ; ignored
       (if (not (is-window? hwnd))
-        (hash-table/remove! wndproc-registry hwnd)))))
+	  (hash-table/remove! wndproc-registry hwnd)))))
 
-;; Use DEFAULT-SCHEME-WNDPROC rather than DEF-WINDOW-PROC so that we can hook in
-;; behaviour for scheme windows
+;; Applications should use DEFAULT-SCHEME-WNDPROC rather than DEF-WINDOW-PROC
+;; so that we can hook in behaviour for all scheme windows.
 
 (define default-scheme-wndproc def-window-proc)
 
@@ -392,6 +382,7 @@ MIT in each case. |#
 (define pt-in-region)      
 (define set-window-long)
 (define set-window-text)
+(define sleep)
 (define translate-message)
 (define unregister-class)      
 
@@ -484,6 +475,10 @@ MIT in each case. |#
   (set! translate-message
     (windows-procedure (translate-message (msg unchecked))
       bool user32.dll "TranslateMessage"))
+
+  (set! sleep
+    (windows-procedure (sleep (msec int))
+      bool kernel32.dll "Sleep"))
 
   (set! dispatch-message
     (windows-procedure (dispatch-message (msg unchecked))
