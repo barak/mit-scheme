@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.51 2002/11/20 19:46:18 cph Exp $
+$Id: arith.scm,v 1.52 2003/01/01 02:35:50 cph Exp $
 
 Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -1787,6 +1787,28 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (inexact? z)
   (not (complex:exact? z)))
 
+(let-syntax
+    ((define-guarantee
+       (sc-macro-transformer
+	(lambda (form environment)
+	  `(DEFINE (,(symbol-append 'GUARANTEE- (car form)) OBJECT OPERATOR)
+	     (IF (NOT (,(symbol-append (car form) '?) OBJECT))
+		 (ERROR:WRONG-TYPE-ARGUMENT OBJECT
+					    ,(close-syntax (cadr form)
+							   environment)
+					    OPERATOR))
+	     OBJECT)))))
+  (define-guarantee number "number")
+  (define-guarantee complex "complex number")
+  (define-guarantee real "real number")
+  (define-guarantee rational "rational number")
+  (define-guarantee integer "integer")
+  (define-guarantee exact "exact number")
+  (define-guarantee exact-rational "exact rational number")
+  (define-guarantee exact-integer "exact integer")
+  (define-guarantee exact-nonnegative-integer "exact non-negative integer")
+  (define-guarantee inexact "inexact number"))
+
 ;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!
 
 (define =)

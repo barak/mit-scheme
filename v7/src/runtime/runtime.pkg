@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.417 2002/12/09 05:39:38 cph Exp $
+$Id: runtime.pkg,v 14.418 2003/01/01 02:36:10 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -2221,6 +2221,16 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  floor
 	  floor->exact
 	  gcd
+	  guarantee-complex
+	  guarantee-exact
+	  guarantee-exact-integer
+	  guarantee-exact-nonnegative-integer
+	  guarantee-exact-rational
+	  guarantee-inexact
+	  guarantee-integer
+	  guarantee-number
+	  guarantee-rational
+	  guarantee-real
 	  imag-part
 	  inexact->exact
 	  inexact?
