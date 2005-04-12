@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: evlcom.scm,v 1.70 2005/04/01 05:07:07 cph Exp $
+$Id: evlcom.scm,v 1.71 2005/04/12 18:39:46 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -347,8 +347,11 @@ Has no effect if evaluate-in-inferior-repl is false."
 		'()
 		(cons expression (loop)))))))))
 
-(define (evaluation-environment buffer #!optional global-ok?)
-  (let ((buffer (->buffer buffer))
+(define (evaluation-environment #!optional buffer global-ok?)
+  (let ((buffer
+	 (if (default-object? buffer)
+	     (current-buffer)
+	     (->buffer buffer)))
 	(non-default
 	 (lambda (object)
 	   (if (environment? object)
