@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.58 2005/03/30 03:50:26 cph Exp $
+$Id: parse.scm,v 14.59 2005/04/12 18:28:31 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -36,7 +36,7 @@ USA.
 (define ignore-extra-list-closes #t)
 (define runtime-parser-radix 10)
 (define runtime-parser-canonicalize-symbols? #t)
-(define runtime-parser-associate-positions? #t)
+(define runtime-parser-associate-positions? #f)
 
 (define (parse-object port environment)
   ((top-level-parser port) port environment))
