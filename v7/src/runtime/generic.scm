@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: generic.scm,v 1.7 2003/07/22 02:12:56 cph Exp $
+$Id: generic.scm,v 1.8 2005/04/12 18:36:32 cph Exp $
 
-Copyright 1996,2003 Massachusetts Institute of Technology
+Copyright 1996,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -269,7 +269,13 @@ USA.
 	  (compute-method-and-store record (list a1 a2 a3 a4))))))
 
 (define (compute-method-and-store record args)
-  (let ((tags (map dispatch-tag args)))
+  (let ((tags
+	 (let ((p (list 'TAGS)))
+	   (do ((args args (cdr args))
+		(p p (cdr p)))
+	       ((not (pair? args)))
+	     (set-cdr! p (list (dispatch-tag (car args)))))
+	   (cdr p))))
     (let ((procedure
 	   (let ((generator (generic-record/generator record))
 		 (generic (generic-record/procedure record)))
@@ -296,7 +302,8 @@ USA.
 	   (%record? (%record-ref object 0))
 	   (eq? dispatch-tag-marker (%record-ref (%record-ref object 0) 0)))
       (%record-ref object 0)
-      (or (vector-ref microcode-type-tag-table (object-type object))
+      (if (vector-ref microcode-type-tag-table (object-type object))
+	  (vector-ref microcode-type-tag-table (object-type object))
 	  ((vector-ref microcode-type-method-table (object-type object))
 	   object))))
 
@@ -389,26 +396,18 @@ USA.
 	     ((2) expression-tag)
 	     (else default-tag))))))
     (let ((boolean-tag (make-built-in-tag 'BOOLEAN)))
-      (if (fix:= (object-type #f) (object-type #t))
-	  (assign-type 'CONSTANT
-		       (lambda (default-tag)
-			 (lambda (object)
-			   (if (or (eq? #f object) (eq? #t object))
-			       boolean-tag
-			       default-tag))))
-	  (begin
-	    (assign-type 'FALSE
-			 (lambda (default-tag)
-			   (lambda (object)
-			     (if (eq? #f object)
-				 boolean-tag
-				 default-tag))))
-	    (assign-type 'CONSTANT
-			 (lambda (default-tag)
-			   (lambda (object)
-			     (if (eq? #t object)
-				 boolean-tag
-				 default-tag)))))))
+      (assign-type 'FALSE
+		   (lambda (default-tag)
+		     (lambda (object)
+		       (if (eq? #f object)
+			   boolean-tag
+			   default-tag))))
+      (assign-type 'CONSTANT
+		   (lambda (default-tag)
+		     (lambda (object)
+		       (if (eq? #t object)
+			   boolean-tag
+			   default-tag)))))
     (assign-type 'FLONUM
 		 (let ((flonum-vector-tag
 			(make-built-in-tag 'FLONUM-VECTOR)))
