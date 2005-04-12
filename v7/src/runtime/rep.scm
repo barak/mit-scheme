@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.64 2005/04/01 04:46:57 cph Exp $
+$Id: rep.scm,v 14.65 2005/04/12 18:47:57 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1998,1999,2001 Massachusetts Institute of Technology
@@ -431,15 +431,15 @@ USA.
 		    (operation repl condition)))
 	      (hook/error-decision
 	       (hook/error-decision repl condition)))))
-  (let ((environment (repl/environment repl)))
-    (port/set-default-environment (cmdl/port repl) environment)
-    (let ((queue (repl/input-queue repl)))
-      (do () (#f)
-	(if (queue-empty? queue)
+  (port/set-default-environment (cmdl/port repl) (repl/environment repl))
+  (let ((queue (repl/input-queue repl)))
+    (do () (#f)
+      (if (queue-empty? queue)
+	  (let ((environment (repl/environment repl)))
 	    (%repl-eval/write (hook/repl-read environment repl)
 			      environment
-			      repl)
-	    ((dequeue! queue) repl))))))
+			      repl))
+	  ((dequeue! queue) repl)))))
 
 (define (run-in-nearest-repl procedure)
   (guarantee-procedure-of-arity procedure 1 'run-in-nearest-repl)
