@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: generic.scm,v 1.8 2005/04/12 18:36:32 cph Exp $
+$Id: generic.scm,v 1.9 2005/04/14 04:42:31 cph Exp $
 
 Copyright 1996,2003,2005 Massachusetts Institute of Technology
 
@@ -307,21 +307,33 @@ USA.
 	  ((vector-ref microcode-type-method-table (object-type object))
 	   object))))
 
-(define (make-built-in-tag name)
-  (let ((entry (assq name built-in-tag-table)))
-    (if entry
-	(cdr entry)
-	(let ((tag (make-dispatch-tag name)))
-	  (set! built-in-tag-table (cons (cons name tag) built-in-tag-table))
+(define (make-built-in-tag names)
+  (let ((tags (map built-in-dispatch-tag names)))
+    (if (there-exists? tags (lambda (tag) tag))
+	(let ((tag (car tags)))
+	  (if (not (and (for-all? (cdr tags)
+			  (lambda (tag*)
+			    (eq? tag* tag)))
+			(let ((names* (dispatch-tag-contents tag)))
+			  (and (for-all? names
+				 (lambda (name)
+				   (memq name names*)))
+			       (for-all? names*
+				 (lambda (name)
+				   (memq name names)))))))
+	      (error "Illegal built-in tag redefinition:" names))
+	  tag)
+	(let ((tag (make-dispatch-tag (list-copy names))))
+	  (set! built-in-tags (cons tag built-in-tags))
 	  tag))))
 
 (define (built-in-dispatch-tags)
-  (map cdr built-in-tag-table))
+  (list-copy built-in-tags))
 
 (define (built-in-dispatch-tag name)
-  (let ((entry (assq name built-in-tag-table)))
-    (and entry
-	 (cdr entry))))
+  (find-matching-item built-in-tags
+    (lambda (tag)
+      (memq name (dispatch-tag-contents tag)))))
 
 (define condition-type:no-applicable-methods)
 (define error:no-applicable-methods)
@@ -346,7 +358,7 @@ USA.
 
 (define standard-generic-procedure-tag)
 (define generic-procedure-records)
-(define built-in-tag-table)
+(define built-in-tags)
 (define microcode-type-tag-table)
 (define microcode-type-method-table)
 
@@ -356,12 +368,15 @@ USA.
   (set! generic-procedure-records (make-eqht))
 
   ;; Initialize the built-in tag tables.
-  (set! built-in-tag-table '())
+  (set! built-in-tags '())
   (set! microcode-type-tag-table
 	(make-initialized-vector (microcode-type/code-limit)
 	  (lambda (code)
 	    (make-built-in-tag
-	     (or (microcode-type/code->name code) 'OBJECT)))))
+	     (let ((names (microcode-type/code->names code)))
+	       (if (pair? names)
+		   names
+		   '(OBJECT)))))))
   (set! microcode-type-method-table
 	(make-vector (microcode-type/code-limit) #f))
   (let ((assign-type
@@ -384,9 +399,9 @@ USA.
       (assign-type 'PROCEDURE procedure-type))
     (assign-type
      'COMPILED-ENTRY
-     (let ((procedure-tag (make-built-in-tag 'COMPILED-PROCEDURE))
-	   (return-address-tag (make-built-in-tag 'COMPILED-RETURN-ADDRESS))
-	   (expression-tag (make-built-in-tag 'COMPILED-EXPRESSION)))
+     (let ((procedure-tag (make-built-in-tag '(COMPILED-PROCEDURE)))
+	   (return-address-tag (make-built-in-tag '(COMPILED-RETURN-ADDRESS)))
+	   (expression-tag (make-built-in-tag '(COMPILED-EXPRESSION))))
        (lambda (default-tag)
 	 (lambda (object)
 	   (case (system-hunk3-cxr0
@@ -395,7 +410,7 @@ USA.
 	     ((1) return-address-tag)
 	     ((2) expression-tag)
 	     (else default-tag))))))
-    (let ((boolean-tag (make-built-in-tag 'BOOLEAN)))
+    (let ((boolean-tag (make-built-in-tag '(BOOLEAN))))
       (assign-type 'FALSE
 		   (lambda (default-tag)
 		     (lambda (object)
@@ -410,14 +425,14 @@ USA.
 			   default-tag)))))
     (assign-type 'FLONUM
 		 (let ((flonum-vector-tag
-			(make-built-in-tag 'FLONUM-VECTOR)))
+			(make-built-in-tag '(FLONUM-VECTOR))))
 		   (lambda (default-tag)
 		     (lambda (object)
 		       (if (fix:= 2 (system-vector-length object))
 			   default-tag
 			   flonum-vector-tag)))))
     (assign-type 'RECORD
-		 (let ((dt-tag (make-built-in-tag 'DISPATCH-TAG)))
+		 (let ((dt-tag (make-built-in-tag '(DISPATCH-TAG))))
 		   (lambda (default-tag)
 		     (lambda (object)
 		       (if (eq? dispatch-tag-marker (%record-ref object 0))
