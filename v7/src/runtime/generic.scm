@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: generic.scm,v 1.12 2005/04/16 04:05:18 cph Exp $
+$Id: generic.scm,v 1.13 2005/04/16 04:26:35 cph Exp $
 
 Copyright 1996,2003,2005 Massachusetts Institute of Technology
 
@@ -69,11 +69,14 @@ USA.
 (define (generic-procedure? object)
   (if (eqht/get generic-procedure-records object #f) #t #f))
 
+(define (generic-record/arity record)
+  (make-procedure-arity (generic-record/arity-min record)
+			(generic-record/arity-max record)
+			#t))
+
 (define (generic-procedure-arity generic)
-  (let ((record
-	 (guarantee-generic-procedure generic 'GENERIC-PROCEDURE-ARITY)))
-    (make-procedure-arity (generic-record/arity-min record)
-			  (generic-record/arity-max record))))
+  (generic-record/arity
+   (guarantee-generic-procedure generic 'GENERIC-PROCEDURE-ARITY)))
 
 (define (generic-procedure-arity-min generic)
   (generic-record/arity-min
@@ -188,8 +191,7 @@ USA.
 	   (wna
 	    (lambda (args)
 	      (error:wrong-number-of-arguments generic
-					       (make-procedure-arity arity-min
-								     arity-max)
+					       (generic-record/arity record)
 					       args))))
 	generic))))
 
