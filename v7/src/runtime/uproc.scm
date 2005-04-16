@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.16 2005/03/29 03:39:23 cph Exp $
+$Id: uproc.scm,v 1.17 2005/04/16 03:39:35 cph Exp $
 
 Copyright 1990,1991,1992,1995,1996,2003 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -152,6 +152,46 @@ USA.
   (guarantee-procedure object caller)
   (if (not (procedure-arity-valid? object arity))
       (error:bad-range-argument object caller)))
+
+(define (make-procedure-arity min #!optional max)
+  (guarantee-index-fixnum min 'MAKE-PROCEDURE-ARITY)
+  (if (or (default-object? max) (eqv? max min))
+      min
+      (begin
+	(if max
+	    (begin
+	      (guarantee-index-fixnum max 'MAKE-PROCEDURE-ARITY)
+	      (if (not (fix:> max min))
+		  (error:bad-range-argument max 'MAKE-PROCEDURE-ARITY))))
+	(cons min max))))
+
+(define (procedure-arity? object)
+  (if (simple-arity? object)
+      #t
+      (general-arity? object)))
+
+(define-guarantee procedure-arity "procedure arity")
+
+(define (procedure-arity-min arity)
+  (cond ((simple-arity? arity) arity)
+	((general-arity? arity) (car arity))
+	(else (error:not-procedure-arity arity 'PROCEDURE-ARITY-MIN))))
+
+(define (procedure-arity-max arity)
+  (cond ((simple-arity? arity) arity)
+	((general-arity? arity) (cdr arity))
+	(else (error:not-procedure-arity arity 'PROCEDURE-ARITY-MAX))))
+
+(define-integrable (simple-arity? object)
+  (index-fixnum? object))
+
+(define-integrable (general-arity? object)
+  (and (pair? object)
+       (index-fixnum? (car object))
+       (if (cdr object)
+	   (and (index-fixnum? (cdr object))
+		(fix:>= (cdr object) (car object)))
+	   #t)))
 
 ;;;; Interpreted Procedures
 

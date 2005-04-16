@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.538 2005/04/14 04:42:45 cph Exp $
+$Id: runtime.pkg,v 14.539 2005/04/16 03:39:25 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1365,20 +1365,26 @@ USA.
 	  error:not-compound-procedure
 	  error:not-primitive-procedure
 	  error:not-procedure
+	  error:not-procedure-arity
 	  guarantee-compiled-procedure
 	  guarantee-compound-procedure
 	  guarantee-primitive-procedure
 	  guarantee-procedure
+	  guarantee-procedure-arity
 	  guarantee-procedure-of-arity
 	  implemented-primitive-procedure?
 	  make-apply-hook
 	  make-arity-dispatched-procedure
 	  make-entity
 	  make-primitive-procedure
+	  make-procedure-arity
 	  primitive-procedure-name
 	  primitive-procedure?
 	  procedure-arity
+	  procedure-arity-max
+	  procedure-arity-min
 	  procedure-arity-valid?
+	  procedure-arity?
 	  procedure-components
 	  procedure-environment
 	  procedure-lambda
