@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.17 2005/04/16 03:39:35 cph Exp $
+$Id: uproc.scm,v 1.18 2005/04/16 04:22:35 cph Exp $
 
 Copyright 1990,1991,1992,1995,1996,2003 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -153,16 +153,22 @@ USA.
   (if (not (procedure-arity-valid? object arity))
       (error:bad-range-argument object caller)))
 
-(define (make-procedure-arity min #!optional max)
+(define (make-procedure-arity min #!optional max simple-ok?)
   (guarantee-index-fixnum min 'MAKE-PROCEDURE-ARITY)
-  (if (or (default-object? max) (eqv? max min))
-      min
-      (begin
-	(if max
-	    (begin
-	      (guarantee-index-fixnum max 'MAKE-PROCEDURE-ARITY)
-	      (if (not (fix:> max min))
-		  (error:bad-range-argument max 'MAKE-PROCEDURE-ARITY))))
+  (let ((max
+	 (if (default-object? max)
+	     min
+	     (begin
+	       (if max
+		   (begin
+		     (guarantee-index-fixnum max 'MAKE-PROCEDURE-ARITY)
+		     (if (not (fix:>= max min))
+			 (error:bad-range-argument max
+						   'MAKE-PROCEDURE-ARITY))))
+	       max))))
+    (if (and (eqv? min max)
+	     (if (default-object? simple-ok?) #f simple-ok?))
+	min
 	(cons min max))))
 
 (define (procedure-arity? object)
