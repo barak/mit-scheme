@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: generic.scm,v 1.9 2005/04/14 04:42:31 cph Exp $
+$Id: generic.scm,v 1.10 2005/04/16 02:23:26 cph Exp $
 
 Copyright 1996,2003,2005 Massachusetts Institute of Technology
 
@@ -418,11 +418,19 @@ USA.
 			   boolean-tag
 			   default-tag))))
       (assign-type 'CONSTANT
-		   (lambda (default-tag)
-		     (lambda (object)
-		       (if (eq? #t object)
-			   boolean-tag
-			   default-tag)))))
+		   (let ((null-tag (make-built-in-tag '(NULL)))
+			 (eof-tag (make-built-in-tag '(EOF)))
+			 (default-object-tag (make-built-in-tag '(DEFAULT)))
+			 (keyword-tag (make-built-in-tag '(LAMBDA-KEYWORD))))
+		     (lambda (default-tag)
+		       (lambda (object)
+			 (case object
+			   ((#T) boolean-tag)
+			   ((()) null-tag)
+			   ((#!eof) eof-tag)
+			   ((#!default) default-object-tag)
+			   ((#!optional #!rest #!key #!aux) keyword-tag)
+			   (else default-tag)))))))
     (assign-type 'FLONUM
 		 (let ((flonum-vector-tag
 			(make-built-in-tag '(FLONUM-VECTOR))))
