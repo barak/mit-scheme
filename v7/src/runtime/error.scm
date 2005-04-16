@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.68 2005/03/29 03:37:58 cph Exp $
+$Id: error.scm,v 14.69 2005/04/16 04:16:05 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
@@ -647,7 +647,7 @@ USA.
     (letrec
 	((constructor
 	  (lambda field-values
-	    (if (not (= arity (length field-values)))
+	    (if (not (fix:= arity (length field-values)))
 		(error:wrong-number-of-arguments constructor
 						 arity
 						 field-values))
@@ -887,24 +887,22 @@ USA.
 		(pluralize-argument count))
 	      (write-string "; it requires " port)
 	      (let ((arity (access-condition condition 'TYPE)))
-		(cond ((not (pair? arity))
-		       (write-string "exactly " port)
-		       (write arity port)
-		       (pluralize-argument arity))
-		      ((not (cdr arity))
-		       (write-string "at least " port)
-		       (write (car arity) port)
-		       (pluralize-argument (car arity)))
-		      ((= (car arity) (cdr arity))
-		       (write-string "exactly " port)
-		       (write (car arity) port)
-		       (pluralize-argument (car arity)))
-		      (else
-		       (write-string "between " port)
-		       (write (car arity) port)
-		       (write-string " and " port)
-		       (write (cdr arity) port)
-		       (write-string " arguments" port))))
+		(let ((arity-min (procedure-arity-min arity))
+		      (arity-max (procedure-arity-max arity)))
+		  (cond ((eqv? arity-min arity-max)
+			 (write-string "exactly " port)
+			 (write arity port)
+			 (pluralize-argument arity))
+			((not arity-max)
+			 (write-string "at least " port)
+			 (write (car arity) port)
+			 (pluralize-argument (car arity)))
+			(else
+			 (write-string "between " port)
+			 (write arity-min port)
+			 (write-string " and " port)
+			 (write arity-max port)
+			 (write-string " arguments" port)))))
 	      (write-char #\. port)))))
 
   (set! condition-type:illegal-pathname-component
