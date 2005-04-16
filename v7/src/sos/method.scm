@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: method.scm,v 1.15 2003/03/08 02:16:14 cph Exp $
+$Id: method.scm,v 1.16 2005/04/16 04:05:39 cph Exp $
 
-Copyright 1995,1997,2003 Massachusetts Institute of Technology
+Copyright 1995,1997,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -83,8 +83,8 @@ USA.
   (guarantee-generic-procedure generic name)
   ;; Assumes that method instantiation has guaranteed that there is at
   ;; least one specializer.  This is handled by GUARANTEE-SPECIALIZERS.
-  (if (< (arity-min (generic-procedure-arity generic))
-	 (length (method-specializers method)))
+  (if (fix:< (generic-procedure-arity-min generic)
+	     (length (method-specializers method)))
       (error:bad-range-argument method name)))
 
 (define (guarantee-method method name)

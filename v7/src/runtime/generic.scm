@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: generic.scm,v 1.11 2005/04/16 03:17:26 cph Exp $
+$Id: generic.scm,v 1.12 2005/04/16 04:05:18 cph Exp $
 
 Copyright 1996,2003,2005 Massachusetts Institute of Technology
 
@@ -37,27 +37,17 @@ USA.
     (if (and name (not (symbol? name)))
 	(error:wrong-type-argument name "symbol" 'MAKE-GENERIC-PROCEDURE))
     (if tag (guarantee-dispatch-tag tag 'MAKE-GENERIC-PROCEDURE))
-    (if (not (or (exact-positive-integer? arity)
-		 (and (pair? arity)
-		      (exact-positive-integer? (car arity))
-		      (or (not (cdr arity))
-			  (and (exact-integer? (cdr arity))
-			       (>= (cdr arity) (car arity)))))))
-	(error:wrong-type-argument arity "arity"
-				   'MAKE-GENERIC-PROCEDURE))
+    (guarantee-procedure-arity arity 'MAKE-GENERIC-PROCEDURE)
+    (if (not (fix:> (procedure-arity-min arity) 0))
+	(error:bad-range-argument arity 'MAKE-GENERIC-PROCEDURE))
     (guarantee-generator generator 'MAKE-GENERIC-PROCEDURE)
     (let ((record
 	   (make-generic-record (or tag standard-generic-procedure-tag)
-				(if (and (pair? arity)
-					 (eqv? (car arity) (cdr arity)))
-				    (car arity)
-				    arity)
+				(procedure-arity-min arity)
+				(procedure-arity-max arity)
 				generator
 				name
-				(new-cache
-				 (if (pair? arity)
-				     (car arity)
-				     arity)))))
+				(new-cache (procedure-arity-min arity)))))
       (let ((generic (compute-apply-generic record)))
 	(set-generic-record/procedure! record generic)
 	(eqht/put! generic-procedure-records generic record)
@@ -66,32 +56,32 @@ USA.
 (define-structure (generic-record
 		   (conc-name generic-record/)
 		   (constructor make-generic-record
-				(tag arity generator name cache)))
+				(tag arity-min arity-max generator name
+				     cache)))
   (tag #f read-only #t)
-  (arity #f read-only #t)
+  (arity-min #f read-only #t)
+  (arity-max #f read-only #t)
   (generator #f)
   (name #f read-only #t)
   cache
   procedure)
 
-(define (generic-record/min-arity record)
-  (arity-min (generic-record/arity record)))
-
-(define (generic-record/max-arity record)
-  (arity-max (generic-record/arity record)))
-
-(define (arity-min arity)
-  (if (pair? arity) (car arity) arity))
-
-(define (arity-max arity)
-  (if (pair? arity) (cdr arity) arity))
-
 (define (generic-procedure? object)
   (if (eqht/get generic-procedure-records object #f) #t #f))
 
 (define (generic-procedure-arity generic)
-  (generic-record/arity
-   (guarantee-generic-procedure generic 'GENERIC-PROCEDURE-ARITY)))
+  (let ((record
+	 (guarantee-generic-procedure generic 'GENERIC-PROCEDURE-ARITY)))
+    (make-procedure-arity (generic-record/arity-min record)
+			  (generic-record/arity-max record))))
+
+(define (generic-procedure-arity-min generic)
+  (generic-record/arity-min
+   (guarantee-generic-procedure generic 'GENERIC-PROCEDURE-ARITY-MIN)))
+
+(define (generic-procedure-arity-max generic)
+  (generic-record/arity-max
+   (guarantee-generic-procedure generic 'GENERIC-PROCEDURE-ARITY-MAX)))
 
 (define (generic-procedure-name generic)
   (generic-record/name
@@ -129,7 +119,7 @@ USA.
 
 (define (%reset-generic-procedure-cache! record)
   (set-generic-record/cache! record
-			     (new-cache (generic-record/min-arity record))))
+			     (new-cache (generic-record/arity-min record))))
 
 (define (%purge-generic-procedure-cache! generic record filter)
   ;; This might have interrupts locked for a long time, and thus is an
@@ -156,22 +146,24 @@ USA.
 ;;;; Generic Procedure Application
 
 (define (compute-apply-generic record)
-  (let ((arity (generic-record/arity record)))
-    (cond ((pair? arity) (apply-generic record))
-	  ((= 1 arity) (apply-generic-1 record))
-	  ((= 2 arity) (apply-generic-2 record))
-	  ((= 3 arity) (apply-generic-3 record))
-	  ((= 4 arity) (apply-generic-4 record))
-	  (else (apply-generic record)))))
+  (let ((arity (generic-record/arity-min record)))
+    (if (and (eqv? arity (generic-record/arity-max record))
+	     (fix:<= arity 4))
+	(case arity
+	  ((1) (apply-generic-1 record))
+	  ((2) (apply-generic-2 record))
+	  ((3) (apply-generic-3 record))
+	  (else (apply-generic-4 record)))
+	(apply-generic record))))
 
 (define (apply-generic record)
-  (let ((min-arity (generic-record/min-arity record))
-	(max-arity (generic-record/max-arity record)))
-    (let ((extra (and max-arity (- max-arity min-arity))))
+  (let ((arity-min (generic-record/arity-min record))
+	(arity-max (generic-record/arity-max record)))
+    (let ((extra (and arity-max (fix:- arity-max arity-min))))
       (letrec
 	  ((generic
 	    (lambda args
-	      (let loop ((args* args) (n min-arity) (tags '()))
+	      (let loop ((args* args) (n arity-min) (tags '()))
 		(if (fix:= n 0)
 		    (begin
 		      (if (and extra
@@ -182,7 +174,8 @@ USA.
 						(fix:- n 1))))))
 			  (wna args))
 		      (let ((procedure
-			     (probe-cache (generic-record/cache record) tags)))
+			     (probe-cache (generic-record/cache record)
+					  tags)))
 			(if procedure
 			    (apply procedure args)
 			    (compute-method-and-store record args))))
@@ -195,7 +188,8 @@ USA.
 	   (wna
 	    (lambda (args)
 	      (error:wrong-number-of-arguments generic
-					       (generic-record/arity record)
+					       (make-procedure-arity arity-min
+								     arity-max)
 					       args))))
 	generic))))
 
@@ -205,20 +199,16 @@ USA.
 				      'GENERIC-PROCEDURE-APPLICABLE?))
 	(tags (map dispatch-tag arguments)))
     (let ((generator (generic-record/generator record))
-	  (arity (generic-record/arity record))
+	  (arity-min (generic-record/arity-min record))
+	  (arity-max (generic-record/arity-max record))
 	  (n-args (length tags)))
       (and generator
-	   (if (pair? arity)
-	       (let ((min-arity (arity-min arity))
-		     (max-arity (arity-max arity)))
-		 (if (fix:= n-args min-arity)
-		     (generator procedure tags)
-		     (and (fix:> n-args min-arity)
-			  (or (not max-arity)
-			      (fix:<= n-args max-arity))
-			  (generator procedure (list-head tags min-arity)))))
-	       (and (fix:= arity n-args)
-		    (generator procedure tags)))))))
+	   (if (fix:= n-args arity-min)
+	       (generator procedure tags)
+	       (and (fix:> n-args arity-min)
+		    (or (not arity-max)
+			(fix:<= n-args arity-max))
+		    (generator procedure (list-head tags arity-min))))))))
 
 (define (apply-generic-1 record)
   (lambda (a1)
