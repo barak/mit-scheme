@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 14.21 2005/03/26 06:15:13 cph Exp $
+$Id: scode.scm,v 14.22 2005/04/16 03:15:22 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,2001,2005 Massachusetts Institute of Technology
@@ -55,12 +55,12 @@ USA.
 		ENTITY
 		ENVIRONMENT
 		EXTENDED-PROCEDURE
+		FALSE
 		FLONUM
 		HUNK3-A
 		INTERNED-SYMBOL
 		NEGATIVE-FIXNUM
 		NON-MARKED-VECTOR
-		NULL
 		PAIR
 		POSITIVE-FIXNUM
 		PRIMITIVE
