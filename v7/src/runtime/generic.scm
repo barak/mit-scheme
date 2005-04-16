@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: generic.scm,v 1.10 2005/04/16 02:23:26 cph Exp $
+$Id: generic.scm,v 1.11 2005/04/16 03:17:26 cph Exp $
 
 Copyright 1996,2003,2005 Massachusetts Institute of Technology
 
@@ -37,11 +37,9 @@ USA.
     (if (and name (not (symbol? name)))
 	(error:wrong-type-argument name "symbol" 'MAKE-GENERIC-PROCEDURE))
     (if tag (guarantee-dispatch-tag tag 'MAKE-GENERIC-PROCEDURE))
-    (if (not (or (and (exact-integer? arity)
-		      (> arity 0))
+    (if (not (or (exact-positive-integer? arity)
 		 (and (pair? arity)
-		      (exact-integer? (car arity))
-		      (> (car arity) 0)
+		      (exact-positive-integer? (car arity))
 		      (or (not (cdr arity))
 			  (and (exact-integer? (cdr arity))
 			       (>= (cdr arity) (car arity)))))))
@@ -178,7 +176,7 @@ USA.
 		    (begin
 		      (if (and extra
 			       (let loop ((args* args*) (n extra))
-				 (and (not (null? args*))
+				 (and (pair? args*)
 				      (or (fix:= n 0)
 					  (loop (cdr args*)
 						(fix:- n 1))))))
@@ -189,7 +187,7 @@ USA.
 			    (apply procedure args)
 			    (compute-method-and-store record args))))
 		    (begin
-		      (if (null? args*)
+		      (if (not (pair? args*))
 			  (wna args))
 		      (loop (cdr args*)
 			    (fix:- n 1)
@@ -414,23 +412,23 @@ USA.
       (assign-type 'FALSE
 		   (lambda (default-tag)
 		     (lambda (object)
-		       (if (eq? #f object)
+		       (if (eq? object #f)
 			   boolean-tag
 			   default-tag))))
       (assign-type 'CONSTANT
 		   (let ((null-tag (make-built-in-tag '(NULL)))
 			 (eof-tag (make-built-in-tag '(EOF)))
-			 (default-object-tag (make-built-in-tag '(DEFAULT)))
+			 (default-tag (make-built-in-tag '(DEFAULT)))
 			 (keyword-tag (make-built-in-tag '(LAMBDA-KEYWORD))))
-		     (lambda (default-tag)
+		     (lambda (constant-tag)
 		       (lambda (object)
-			 (case object
-			   ((#T) boolean-tag)
-			   ((()) null-tag)
-			   ((#!eof) eof-tag)
-			   ((#!default) default-object-tag)
-			   ((#!optional #!rest #!key #!aux) keyword-tag)
-			   (else default-tag)))))))
+			 (cond ((eq? object #t) boolean-tag)
+			       ((null? object) null-tag)
+			       ((eof-object? object) eof-tag)
+			       ((default-object? object) default-tag)
+			       ((memq object '(#!optional #!rest #!key #!aux))
+				keyword-tag)
+			       (else constant-tag)))))))
     (assign-type 'FLONUM
 		 (let ((flonum-vector-tag
 			(make-built-in-tag '(FLONUM-VECTOR))))
