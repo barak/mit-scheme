@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.48 2005/03/29 05:02:11 cph Exp $
+$Id: list.scm,v 14.49 2005/04/28 04:33:36 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -690,6 +690,22 @@ USA.
 	  (if (not (null? items*))
 	      (error:not-list items 'FIND-MATCHING-ITEM))
 	  #f))))
+
+(define (count-matching-items items predicate)
+  (do ((items* items (cdr items*))
+       (n 0 (if (predicate (car items*)) (+ n 1) n)))
+      ((not (pair? items*))
+       (if (not (null? items*))
+	   (error:not-list items 'COUNT-MATCHING-ITEMS))
+       n)))
+
+(define (count-non-matching-items items predicate)
+  (do ((items* items (cdr items*))
+       (n 0 (if (predicate (car items*)) n (+ n 1))))
+      ((not (pair? items*))
+       (if (not (null? items*))
+	   (error:not-list items 'COUNT-NON-MATCHING-ITEMS))
+       n)))
 
 (define (keep-matching-items items predicate)
   (let ((lose (lambda () (error:not-list items 'KEEP-MATCHING-ITEMS))))
