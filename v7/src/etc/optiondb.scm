@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.14 2005/04/30 05:09:55 cph Exp $
+$Id: optiondb.scm,v 1.15 2005/04/30 05:23:00 cph Exp $
 
 Copyright 2000,2001,2002,2004 Massachusetts Institute of Technology
 
@@ -64,9 +64,7 @@ USA.
 				  (pathname-as-directory directory)))
 				(with-working-directory-pathname directory
 				  (lambda ()
-				    (fluid-let
-					((*parser-canonicalize-symbols?* #t))
-				      (load (car files)))))
+				    (load (car files) '(RUNTIME))))
 				(file-loop (cdr files)))
 			    (dir-loop (cdr dirs))))
 		      (dir-loop (cdr dirs))))
