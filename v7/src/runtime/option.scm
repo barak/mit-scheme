@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.46 2005/03/30 03:52:00 cph Exp $
+$Id: option.scm,v 14.47 2005/04/30 05:10:37 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,2001,2002 Massachusetts Institute of Technology
@@ -59,7 +59,9 @@ USA.
 	find-option))
 
     (define (make-load-environment)
-      (extend-top-level-environment system-global-environment))
+      (let ((e (extend-top-level-environment system-global-environment)))
+	(environment-define e '*PARSER-CANONICALIZE-SYMBOLS?* #t)
+	e))
 
     (if (memq name loaded-options)
 	name
