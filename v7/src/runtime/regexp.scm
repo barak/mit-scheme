@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: regexp.scm,v 1.14 2004/12/06 21:27:31 cph Exp $
+$Id: regexp.scm,v 1.15 2005/05/17 18:12:04 cph Exp $
 
-Copyright 1999,2000,2003,2004 Massachusetts Institute of Technology
+Copyright 1999,2000,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -124,7 +124,7 @@ USA.
 
 (define re-string-search-backward
   (make-string-operation re-substring-search-backward))
-
+
 (define (regexp-group . alternatives)
   (let ((alternatives
 	 (list-transform-positive alternatives identity-procedure)))
@@ -137,66 +137,77 @@ USA.
 			     (if (null? (cdr alternatives))
 				 (list "\\)")
 				 (cons "\\|" (loop (cdr alternatives)))))))))))
-
+
 (define (char-set->regexp char-set)
+
+  (define (compute-ranges chars)
+    (let outer ((chars chars) (ranges '()))
+      (if (pair? chars)
+	  (let ((start (car chars)))
+	    (receive (chars end) (find-range-end (cdr chars) start)
+	      (outer chars
+		     (cons (if (char=? end start)
+			       start
+			       (cons start end))
+			   ranges))))
+	  (reverse! ranges))))
+
+  (define (find-range-end chars start)
+    (if (special? start)
+	(values chars start)
+	(let loop ((chars chars) (end start))
+	  (cond ((and (pair? chars)
+		      (fix:= (fix:+ (char->integer end) 1)
+			     (char->integer (car chars))))
+		 (loop (cdr chars) (car chars)))
+		((special? end)
+		 (values (cons end chars)
+			 (integer->char (fix:- (char->integer end) 1))))
+		(else
+		 (values chars end))))))
+
+  (define (special? char)
+    (or (char=? char #\^)
+	(char=? char #\-)
+	(char=? char #\])))
+
+  (define (pull char ranges)
+    (if (memv char ranges)
+	(cons char (delv! char ranges))
+	ranges))
+
+  (define (push char ranges)
+    (if (and (pair? ranges) (eqv? (car ranges) char))
+	(append! (cdr ranges) (list char))
+	ranges))
+
   (let ((chars (char-set-members char-set)))
-    (cond ((null? chars)
-	   "")
-	  ((and (memv (car chars) '(#\^ #\- #\]))
-		(null? (cdr chars)))
-	   (string #\\ (car chars)))
-	  (else
-	   (let ((ranges
-		  (let outer ((chars chars) (ranges '()))
-		    (if (pair? chars)
-			(let ((start (car chars)))
-			  (let inner ((chars (cdr chars)) (end (car chars)))
-			    (if (and (pair? chars)
-				     (fix:= (fix:+ (char->integer end) 1)
-					    (char->integer (car chars))))
-				(inner (cdr chars) (car chars))
-				(outer
-				 chars
-				 (let ((accum
-					(lambda (start end ranges)
-					  (cons (if (and (char=? start end)
-							 (not (char=? #\-
-								      start)))
-						    start
-						    (cons start end))
-						ranges))))
-				   (if (and (not (char=? start end))
-					    (or (char=? #\] start)
-						(char=? #\] end)))
-				       (if (char=? #\] start)
-					   (cons #\] (accum #\^ end ranges))
-					   (accum start #\\ (cons #\] ranges)))
-				       (accum start end ranges)))))))
-			(reverse! ranges)))))
-	     (let ((ranges
-		    (if (memv #\] ranges)
-			(cons #\] (delv! #\] ranges))
-			ranges)))
-	       (let ((n
-		      (let loop ((ranges ranges) (n 2))
-			(if (pair? ranges)
-			    (loop (cdr ranges)
-				  (fix:+ n (if (pair? (car ranges)) 3 1)))
-			    n))))
-		 (let ((s (make-string n)))
-		   (string-set! s 0 #\[)
-		   (let loop ((ranges ranges) (i 1))
-		     (if (pair? ranges)
-			 (loop (cdr ranges)
-			       (let ((range (car ranges)))
-				 (if (pair? range)
-				     (begin
-				       (string-set! s i (car range))
-				       (string-set! s (fix:+ i 1) #\-)
-				       (string-set! s (fix:+ i 2) (cdr range))
-				       (fix:+ i 3))
-				     (begin
-				       (string-set! s i range)
-				       (fix:+ i 1)))))
-			 (string-set! s i #\])))
-		   s))))))))
+    (if (pair? chars)
+	(if (pair? (cdr chars))
+	    (let ((ranges
+		   (push #\^ (pull #\- (pull #\] (compute-ranges chars))))))
+	      (let ((n
+		     (let loop ((ranges ranges) (n 2))
+		       (if (pair? ranges)
+			   (loop (cdr ranges)
+				 (fix:+ n (if (pair? (car ranges)) 3 1)))
+			   n))))
+		(let ((s (make-string n)))
+		  (string-set! s 0 #\[)
+		  (let loop ((ranges ranges) (i 1))
+		    (if (pair? ranges)
+			(loop (cdr ranges)
+			      (let ((range (car ranges)))
+				(if (pair? range)
+				    (begin
+				      (string-set! s i (car range))
+				      (string-set! s (fix:+ i 1) #\-)
+				      (string-set! s (fix:+ i 2) (cdr range))
+				      (fix:+ i 3))
+				    (begin
+				      (string-set! s i range)
+				      (fix:+ i 1)))))
+			(string-set! s i #\])))
+		  s)))
+	    (re-quote-string (car chars)))
+	"")))
