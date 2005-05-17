@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.541 2005/04/28 04:33:50 cph Exp $
+$Id: runtime.pkg,v 14.542 2005/05/17 05:22:44 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4727,8 +4727,12 @@ USA.
   (files "url")
   (parent (runtime))
   (export ()
+	  url:char-set:alpha
+	  url:char-set:alphadigit
+	  url:char-set:digit
 	  url:char-set:escaped
 	  url:char-set:extra
+	  url:char-set:lowalpha
 	  url:char-set:national
 	  url:char-set:punctuation
 	  url:char-set:reserved

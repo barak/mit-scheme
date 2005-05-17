@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.15 2004/02/23 20:51:47 cph Exp $
+$Id: url.scm,v 1.16 2005/05/17 05:22:51 cph Exp $
 
-Copyright 2000,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,7 +26,11 @@ USA.
 ;;;; URL Encoding
 
 (declare (usual-integrations))
-
+
+(define url:char-set:lowalpha)
+(define url:char-set:alpha)
+(define url:char-set:digit)
+(define url:char-set:alphadigit)
 (define url:char-set:safe)
 (define url:char-set:extra)
 (define url:char-set:national)
@@ -38,6 +42,13 @@ USA.
 (define url:char-set:escaped)
 
 (define (initialize-package!)
+  (set! url:char-set:lowalpha (string->char-set "abcdefghijklmnopqrstuvwxyz"))
+  (set! url:char-set:alpha
+	(char-set-union url:char-set:lowalpha
+			(string->char-set "ABCDEFGHIJKLMNOPQRSTUVWXYZ")))
+  (set! url:char-set:digit (string->char-set "0123456789"))
+  (set! url:char-set:alphadigit
+	(char-set-union url:char-set:alpha url:char-set:digit))
   (set! url:char-set:safe (string->char-set "$-_.+"))
   (set! url:char-set:extra (string->char-set "!*'(),"))
   (set! url:char-set:national (string->char-set "{}|\\^~[]`"))
@@ -45,7 +56,7 @@ USA.
   (set! url:char-set:reserved (string->char-set ";/?:@&="))
   (set! url:char-set:hex (string->char-set "0123456789abcdefABCDEF"))
   (set! url:char-set:unreserved
-	(char-set-union char-set:alphanumeric
+	(char-set-union url:char-set:alphadigit
 			url:char-set:safe
 			url:char-set:extra))
   (set! url:char-set:unescaped
@@ -54,7 +65,7 @@ USA.
   (set! url:char-set:escaped
 	(char-set-invert url:char-set:unescaped))
   unspecific)
-
+
 (define url:match:escape
   (*matcher
    (seq "%"
@@ -76,7 +87,7 @@ USA.
    (seq (match url:match:host)
 	(alt (map string->number
 		  (seq (noise ":")
-		       (match (+ (char-set char-set:numeric)))))
+		       (match (+ (char-set url:char-set:digit)))))
 	     (values #f)))))
 
 (define url:match:host
@@ -85,25 +96,25 @@ USA.
 (define url:match:hostname
   (let ((match-tail
 	 (*matcher
-	  (* (alt (char-set char-set:alphanumeric)
+	  (* (alt (char-set url:char-set:alphadigit)
 		  (seq (+ #\-)
-		       (char-set char-set:alphanumeric)))))))
+		       (char-set url:char-set:alphadigit)))))))
     (*matcher
-     (seq (* (seq (char-set char-set:alphanumeric)
+     (seq (* (seq (char-set url:char-set:alphadigit)
 		  match-tail
 		  "."))
-	  (char-set char-set:alphabetic)
+	  (char-set url:char-set:alpha)
 	  match-tail))))
 
 (define url:match:hostnumber
   (*matcher
-   (seq (+ (char-set char-set:numeric))
+   (seq (+ (char-set url:char-set:digit))
 	"."
-	(+ (char-set char-set:numeric))
+	(+ (char-set url:char-set:digit))
 	"."
-	(+ (char-set char-set:numeric))
+	(+ (char-set url:char-set:digit))
 	"."
-	(+ (char-set char-set:numeric)))))
+	(+ (char-set url:char-set:digit)))))
 
 (define (url:string-encoded? string)
   (url:substring-encoded? string 0 (string-length string)))
