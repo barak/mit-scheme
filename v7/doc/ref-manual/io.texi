@@ -1,9 +1,9 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.10 2004/10/16 06:02:55 cph Exp $
+@c $Id: io.texi,v 1.11 2005/05/20 02:14:24 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
-@c Copyright 2002,2003,2004 Massachusetts Institute of Technology
+@c Copyright 2002,2003,2004,2005 Massachusetts Institute of Technology
 @c See file scheme.texinfo for copying conditions.
 
 @node Input/Output, Operating-System Interface, Environments, Top
@@ -573,7 +573,7 @@ indistinguishable from an interactive port that has no ready
 characters.}
 @end deffn
 
-@deffn procedure read [input-port]
+@deffn procedure read [input-port [environment]]
 @cindex expression, input from port
 @cindex external representation, parsing
 @cindex parsing, of external representation
@@ -588,6 +588,10 @@ will also return an end-of-file object.  If an end of file is
 encountered after the beginning of an object's written representation,
 but the written representation is incomplete and therefore not parsable,
 an error is signalled.
+
+@var{Environment} is used to look up the values of control variables
+such as @samp{*parser-radix*}.  If not supplied, it defaults to the
+@acronym{REP} environment.
 @end deffn
 
 @deffn procedure eof-object? object
@@ -702,8 +706,12 @@ that they are both flexible and extremely fast, especially for large
 amounts of data.
 @end deffn
 
-The following variables may be dynamically bound to change the behavior
-of the @code{read} procedure.
+The following variables may be bound or assigned to change the behavior
+of the @code{read} procedure.  They are looked up in the environment
+that is passed to @code{read}, and so may have different values in
+different environments.  It is recommended that the global bindings of
+these variables be left unchanged; make local changes by shadowing the
+global bindings in nested environments.
 
 @defvr variable *parser-radix*
 This variable defines the radix used by the reader when it parses
@@ -1247,17 +1255,20 @@ given, this port defaults to the value of
 @code{(interaction-i/o-port)}; this is initially the console
 @acronym{I/O} port.
 
-@deffn procedure prompt-for-command-expression prompt [port]
+@deffn procedure prompt-for-command-expression prompt [port [environment]]
 Prompts the user for an expression that is to be executed as a command.
 This is the procedure called by the @acronym{REP} loop to read the
 user's expressions.
 
 If @var{prompt} is a string, it is used verbatim as the prompt string.
-Otherwise, it must be a pair whose car is @code{standard} and whose cdr
-is a string; in this case the prompt string is formed by prepending to
-the string the current @acronym{REP} loop ``level number'' and a space.
-Also, a space is appended to the string, unless it already ends in a
-space or is an empty string.
+Otherwise, it must be a pair whose car is the symbol @samp{standard} and
+whose cdr is a string; in this case the prompt string is formed by
+prepending to the string the current @acronym{REP} loop ``level number''
+and a space.  Also, a space is appended to the string, unless it already
+ends in a space or is an empty string.
+
+If @var{environment} is given, it is passed as the second argument to
+@code{read}.
 
 The default behavior of this procedure is to print a fresh line, a
 newline, and the prompt string; flush the output buffer; then read an
@@ -1300,12 +1311,15 @@ as input.  After this mode change, the first such character submitted is
 returned as the value of this procedure.
 @end deffn
 
-@deffn procedure prompt-for-expression prompt [port]
+@deffn procedure prompt-for-expression prompt [port [environment]]
 Prompts the user for an expression.
 
 The prompt string is formed by appending a colon and a space to
 @var{prompt}, unless @var{prompt} already ends in a space or is the null
 string.
+
+If @var{environment} is given, it is passed as the second argument to
+@code{read}.
 
 The default behavior of this procedure is to print a fresh line, a
 newline, and the prompt string; flush the output buffer; then read an
