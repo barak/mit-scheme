@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.16 2005/05/17 05:22:51 cph Exp $
+$Id: url.scm,v 1.17 2005/05/20 04:07:54 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -26,11 +26,12 @@ USA.
 ;;;; URL Encoding
 
 (declare (usual-integrations))
-
+
 (define url:char-set:lowalpha)
 (define url:char-set:alpha)
 (define url:char-set:digit)
 (define url:char-set:alphadigit)
+(define url:char-set:scheme)
 (define url:char-set:safe)
 (define url:char-set:extra)
 (define url:char-set:national)
@@ -49,6 +50,8 @@ USA.
   (set! url:char-set:digit (string->char-set "0123456789"))
   (set! url:char-set:alphadigit
 	(char-set-union url:char-set:alpha url:char-set:digit))
+  (set! url:char-set:scheme
+	(char-set-union url:char-set:alphadigit (string->char-set "+-.")))
   (set! url:char-set:safe (string->char-set "$-_.+"))
   (set! url:char-set:extra (string->char-set "!*'(),"))
   (set! url:char-set:national (string->char-set "{}|\\^~[]`"))
@@ -65,12 +68,6 @@ USA.
   (set! url:char-set:escaped
 	(char-set-invert url:char-set:unescaped))
   unspecific)
-
-(define url:match:escape
-  (*matcher
-   (seq "%"
-	(char-set url:char-set:hex)
-	(char-set url:char-set:hex))))
 
 (define url:match:uchar
   (*matcher
@@ -81,6 +78,17 @@ USA.
   (*matcher
    (alt (char-set url:char-set:unescaped)
 	url:match:escape)))
+
+(define url:match:escape
+  (*matcher
+   (seq "%"
+	(char-set url:char-set:hex)
+	(char-set url:char-set:hex))))
+
+(define url:parse:scheme
+  (*parser
+   (map intern
+	(match (+ url:char-set:scheme)))))
 
 (define url:parse:hostport
   (*parser

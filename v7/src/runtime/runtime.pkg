@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.542 2005/05/17 05:22:44 cph Exp $
+$Id: runtime.pkg,v 14.543 2005/05/20 04:08:10 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4737,6 +4737,7 @@ USA.
 	  url:char-set:punctuation
 	  url:char-set:reserved
 	  url:char-set:safe
+	  url:char-set:scheme
 	  url:char-set:unescaped
 	  url:char-set:unreserved
 	  url:decode-string
@@ -4750,6 +4751,7 @@ USA.
 	  url:match:uchar
 	  url:match:xchar
 	  url:parse:hostport
+	  url:parse:scheme
 	  url:string-encoded?
 	  url:substring-encoded?))
 
