@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sysmac.scm,v 14.13 2005/01/11 03:57:23 cph Exp $
+$Id: sysmac.scm,v 14.14 2005/05/24 19:53:07 cph Exp $
 
 Copyright 1988,2001,2002,2005 Massachusetts Institute of Technology
 
@@ -27,7 +27,7 @@ USA.
 ;;; package: (runtime system-macros)
 
 (declare (usual-integrations))
-
+
 (define-syntax define-primitives
   (sc-macro-transformer
    (lambda (form environment)
@@ -73,9 +73,13 @@ USA.
 		 (g-name (symbol 'guarantee- root))
 		 (e-name (symbol 'error:not- root)))
 	     `(BEGIN
-		(DEFINE (,g-name OBJECT CALLER)
+		(DEFINE (,g-name OBJECT #!OPTIONAL CALLER)
 		  (IF (NOT (,(close-syntax p-name environment) OBJECT))
 		      (,(close-syntax e-name environment) OBJECT CALLER)))
-		(DEFINE (,e-name OBJECT CALLER)
-		  (ERROR:WRONG-TYPE-ARGUMENT OBJECT ,desc CALLER)))))
+		(DEFINE (,e-name OBJECT #!OPTIONAL CALLER)
+		  (ERROR:WRONG-TYPE-ARGUMENT OBJECT
+					     ,desc
+					     (IF (DEFAULT-OBJECT? CALLER)
+						 #F
+						 CALLER))))))
 	 (ill-formed-syntax form)))))
