@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.65 2005/04/12 18:47:57 cph Exp $
+$Id: rep.scm,v 14.66 2005/05/24 04:46:44 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1998,1999,2001 Massachusetts Institute of Technology
@@ -832,13 +832,14 @@ USA.
   (apply breakpoint-procedure 'CONTINUATION-ENVIRONMENT datum arguments))
 
 (define (breakpoint-procedure environment datum . arguments)
-  (signal-breakpoint #f
-		     environment
-		     (cmdl-message/active
-		      (lambda (port)
-			(fresh-line port)
-			(format-error-message datum arguments port)))
-		     "bkpt>"))
+  (signal-breakpoint-1 #f
+		       environment
+		       (cmdl-message/active
+			(lambda (port)
+			  (fresh-line port)
+			  (format-error-message datum arguments port)))
+		       "bkpt>"
+		       "Return from BKPT."))
 
 (define (breakpoint #!optional message environment continuation)
   (signal-breakpoint (if (default-object? continuation)
@@ -849,17 +850,20 @@ USA.
 			 environment)
 		     (if (default-object? message)
 			 "Break!"
-			 message)
-		     "break>"))
+			 message)))
 
-(define (signal-breakpoint continuation environment message prompt)
+(define (signal-breakpoint continuation environment message #!optional prompt)
+  (signal-breakpoint-1 continuation
+		       environment
+		       message
+		       (if (default-object? prompt) "break>" prompt)
+		       "Continue from breakpoint."))
+
+(define (signal-breakpoint-1 continuation environment message prompt reporter)
   (call-with-current-continuation
    (lambda (restart-continuation)
      (let ((continuation (or continuation restart-continuation)))
-       (with-restart 'CONTINUE
-	   (if (string=? "bkpt>" prompt)
-	       "Return from BKPT."
-	       "Continue from breakpoint.")
+       (with-restart 'CONTINUE reporter
 	   (lambda () (restart-continuation unspecific))
 	   values
 	 (lambda ()
