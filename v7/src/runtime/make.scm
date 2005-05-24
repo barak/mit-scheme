@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.97 2004/12/13 03:22:21 cph Exp $
+$Id: make.scm,v 14.98 2005/05/24 04:50:17 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -522,7 +522,7 @@ USA.
    (RUNTIME EMACS-INTERFACE)
    ;; More debugging
    ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)
-   (RUNTIME URL)))
+   (RUNTIME URI)))
 
 (if (eq? os-name 'NT)
     (package-initialize '(RUNTIME WIN32-REGISTRY) 'INITIALIZE-PACKAGE! #f))

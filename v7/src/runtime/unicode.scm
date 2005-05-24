@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.21 2004/12/06 21:27:35 cph Exp $
+$Id: unicode.scm,v 1.22 2005/05/24 04:50:43 cph Exp $
 
-Copyright 2001,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -148,23 +148,13 @@ USA.
        (fix:= (char-bits object) 0)
        (unicode-code-point? (char-code object))))
 
-(define (guarantee-wide-char object caller)
-  (if (not (wide-char? object))
-      (error:not-wide-char object caller)))
-
-(define (error:not-wide-char object caller)
-  (error:wrong-type-argument object "a Unicode character" caller))
+(define-guarantee wide-char "a Unicode character")
 
 (define (unicode-code-point? object)
   (and (index-fixnum? object)
        (legal-code-32? object)))
 
-(define-integrable (guarantee-unicode-code-point object caller)
-  (if (not (unicode-code-point? object))
-      (error:not-unicode-code-point object caller)))
-
-(define (error:not-unicode-code-point object caller)
-  (error:wrong-type-argument object "a Unicode code point" caller))
+(define-guarantee unicode-code-point "a Unicode code point")
 
 (define-integrable (legal-code-32? pt)
   (if (fix:< pt #x10000)
@@ -185,12 +175,7 @@ USA.
   (high1 #f read-only #t)
   (high2 #f read-only #t))
 
-(define-integrable (guarantee-alphabet object caller)
-  (if (not (alphabet? object))
-      (error:not-alphabet object caller)))
-
-(define (error:not-alphabet object caller)
-  (error:wrong-type-argument object "a Unicode alphabet" caller))
+(define-guarantee alphabet "a Unicode alphabet")
 
 (define-integrable (make-alphabet-low)
   (make-string #x100 (integer->char 0)))
@@ -248,12 +233,7 @@ USA.
 	   (fix:< (car item) (cdr item)))
       (unicode-code-point? item)))
 
-(define-integrable (guarantee-well-formed-code-point-list object caller)
-  (if (not (well-formed-code-point-list? object))
-      (error:not-well-formed-code-point-list object caller)))
-
-(define (error:not-well-formed-code-point-list object caller)
-  (error:wrong-type-argument object "a Unicode code-point list" caller))
+(define-guarantee well-formed-code-point-list "a Unicode code-point list")
 
 (define (code-points->alphabet items)
   (guarantee-well-formed-code-point-list items 'CODE-POINTS->ALPHABET)
@@ -380,12 +360,7 @@ USA.
 	       (and (fix:= (vector-8b-ref low i) 0)
 		    (loop (fix:+ i 1))))))))
 
-(define-integrable (guarantee-8-bit-alphabet object caller)
-  (if (not (8-bit-alphabet? object))
-      (error:not-8-bit-alphabet object caller)))
-
-(define (error:not-8-bit-alphabet object caller)
-  (error:wrong-type-argument object "an 8-bit alphabet" caller))
+(define-guarantee 8-bit-alphabet "an 8-bit alphabet")
 
 (define (char-set->alphabet char-set)
   (guarantee-char-set char-set 'CHAR-SET->ALPHABET)
@@ -545,6 +520,8 @@ USA.
 			       (constructor %make-wide-string))
   (contents #f read-only #t))
 
+(define-guarantee wide-string "a Unicode string")
+
 (define (make-wide-string length #!optional char)
   (%make-wide-string
    (make-vector length
@@ -596,13 +573,6 @@ USA.
 	(vector-set! v2 j (vector-ref v1 i))))
     string*))
 
-(define-integrable (guarantee-wide-string object caller)
-  (if (not (wide-string? object))
-      (error:not-wide-string object caller)))
-
-(define (error:not-wide-string object caller)
-  (error:wrong-type-argument object "a Unicode string" caller))
-
 (define (wide-string-index? index string)
   (and (index-fixnum? index)
        (fix:< index (%wide-string-length string))))
@@ -821,6 +791,22 @@ USA.
 	   (legal-code-32? (combiner (n 0) (n 1) (n 2) (n 3)))
 	   (fix:+ start 4))
       start))
+
+(define (utf32-string? object)
+  (and (string? object)
+       (utf32-string-valid? object)))
+
+(define (utf32-be-string? object)
+  (and (string? object)
+       (utf32-be-string-valid? object)))
+
+(define (utf32-le-string? object)
+  (and (string? object)
+       (utf32-le-string-valid? object)))
+
+(define-guarantee utf32-string "UTF-32 string")
+(define-guarantee utf32-be-string "UTF-32BE string")
+(define-guarantee utf32-le-string "UTF-32LE string")
 
 ;;;; UTF-16 representation
 
@@ -929,7 +915,7 @@ USA.
 (define (wide-string->utf16-le-string string #!optional start end)
   (wide-string->utf-string string start end sink-utf16-le-char
 			   'WIDE-STRING->UTF16-LE-STRING))
-
+
 (define (utf16-string-length string #!optional start end)
   (if (host-big-endian?)
       (%utf16-string-length string start end "16BE" be-bytes->digit16
@@ -950,7 +936,7 @@ USA.
     (encoded-string-length string start end type caller
       (lambda (string start end)
 	(validate-utf16-char string start end combiner)))))
-
+
 (define (utf16-string-valid? string #!optional start end)
   (if (host-big-endian?)
       (%utf16-string-valid? string start end be-bytes->digit16
@@ -1004,6 +990,22 @@ USA.
   (fix:+ (fix:+ (fix:lsh (fix:and n0 #x3FF) 10)
 		(fix:and n1 #x3FF))
 	 #x10000))
+
+(define (utf16-string? object)
+  (and (string? object)
+       (utf16-string-valid? object)))
+
+(define (utf16-be-string? object)
+  (and (string? object)
+       (utf16-be-string-valid? object)))
+
+(define (utf16-le-string? object)
+  (and (string? object)
+       (utf16-le-string-valid? object)))
+
+(define-guarantee utf16-string "UTF-16 string")
+(define-guarantee utf16-be-string "UTF-16BE string")
+(define-guarantee utf16-le-string "UTF-16LE string")
 
 ;;;; UTF-8 representation
 
@@ -1090,6 +1092,42 @@ USA.
 (define (utf8-string-valid? string #!optional start end)
   (with-substring-args string start end 'UTF8-STRING-VALID?
     (encoded-string-valid? string start end validate-utf8-char)))
+
+(define (utf8-string? object)
+  (and (string? object)
+       (utf8-string-valid? object)))
+
+(define-guarantee utf8-string "UTF-8 string")
+
+(define (string->utf8-string string #!optional start end)
+  (with-substring-args string start end 'STRING->UTF8-STRING
+    (let ((string*
+	   (make-string
+	    (fix:+ (fix:- end start)
+		   (let loop ((i start) (n 0))
+		     (if (fix:< i end)
+			 (loop (fix:+ i 1)
+			       (if (fix:< (vector-8b-ref string i) #x80)
+				   n
+				   (fix:+ n 1)))
+			 n))))))
+      (let loop ((i start) (i* 0))
+	(if (fix:< i end)
+	    (if (fix:< (vector-8b-ref string i) #x80)
+		(begin
+		  (vector-8b-set! string* i* (vector-8b-ref string i))
+		  (loop (fix:+ i 1) (fix:+ i* 1)))
+		(begin
+		  (vector-8b-set!
+		   string*
+		   i*
+		   (fix:or #xC0 (fix:lsh (vector-8b-ref string i) -6)))
+		  (vector-8b-set!
+		   string*
+		   (fix:+ i* 1)
+		   (fix:or #x80 (fix:and (vector-8b-ref string i) #x3F)))
+		  (loop (fix:+ i 1) (fix:+ i* 2))))))
+      string*)))
 
 (define (validate-utf8-char string start end)
 

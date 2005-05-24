@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.17 2004/12/23 04:43:48 cph Exp $
+$Id: symbol.scm,v 1.18 2005/05/24 04:50:35 cph Exp $
 
-Copyright 1992,1993,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 1992,1993,2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,9 +57,9 @@ USA.
 				      (make-unmapped-unbound-reference-trap)))
 
 (define (utf8-string->uninterned-symbol string)
-  (guarantee-string string 'UTF8-STRING->UNINTERNED-SYMBOL)
+  (guarantee-utf8-string string 'UTF8-STRING->UNINTERNED-SYMBOL)
   ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
-				      string
+				      (string-copy string)
 				      (make-unmapped-unbound-reference-trap)))
 
 (define (string->symbol string)
@@ -71,7 +71,7 @@ USA.
 	((ucode-primitive string->symbol) string*))))
 
 (define (utf8-string->symbol string)
-  (guarantee-string string 'UTF8-STRING->SYMBOL)
+  (guarantee-utf8-string string 'UTF8-STRING->SYMBOL)
   (or ((ucode-primitive find-symbol) string)
       ((ucode-primitive string->symbol) (string-copy string))))
 
@@ -80,7 +80,7 @@ USA.
 
 (define (substring->symbol string start end)
   (guarantee-substring string start end 'SUBSTRING->SYMBOL)
-  ((ucode-primitive string->symbol) (substring->utf8-string string start end)))
+  ((ucode-primitive string->symbol) (string->utf8-string string start end)))
 
 (define (string-head->symbol string end)
   (substring->symbol string 0 end))
@@ -100,50 +100,6 @@ USA.
 	((number? object) (number->string object))
 	((not object) "")
 	(else (error:wrong-type-argument object "symbol component" 'SYMBOL))))
-
-(define (string->utf8-string string)
-  (let ((end (string-length string)))
-    (let ((n (count-non-ascii string 0 end)))
-      (if (fix:> n 0)
-	  (let ((string* (make-string (fix:+ end n))))
-	    (%substring->utf8-string string 0 end string*)
-	    string*)
-	  string))))
-
-(define (substring->utf8-string string start end)
-  (let ((string*
-	 (make-string
-	  (fix:+ (fix:- end start)
-		 (count-non-ascii string start end)))))
-    (%substring->utf8-string string start end string*)
-    string*))
-
-(define (count-non-ascii string start end)
-  (let loop ((i start) (n 0))
-    (if (fix:< i end)
-	(loop (fix:+ i 1)
-	      (if (fix:< (vector-8b-ref string i) #x80)
-		  n
-		  (fix:+ n 1)))
-	n)))
-
-(define (%substring->utf8-string string start end string*)
-  (let loop ((i start) (i* 0))
-    (if (fix:< i end)
-	(if (fix:< (vector-8b-ref string i) #x80)
-	    (begin
-	      (vector-8b-set! string* i* (vector-8b-ref string i))
-	      (loop (fix:+ i 1) (fix:+ i* 1)))
-	    (begin
-	      (vector-8b-set!
-	       string*
-	       i*
-	       (fix:or #xC0 (fix:lsh (vector-8b-ref string i) -6)))
-	      (vector-8b-set!
-	       string*
-	       (fix:+ i* 1)
-	       (fix:or #x80 (fix:and (vector-8b-ref string i) #x3F)))
-	      (loop (fix:+ i 1) (fix:+ i* 2)))))))
 
 (define (intern string)
   (if (string-lower-case? string)

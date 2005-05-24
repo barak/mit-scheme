@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.543 2005/05/20 04:08:10 cph Exp $
+$Id: runtime.pkg,v 14.544 2005/05/24 04:50:28 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4633,9 +4633,29 @@ USA.
 	  char-in-alphabet?
 	  char-set->alphabet
 	  code-points->alphabet
+	  error:not-8-bit-alphabet
+	  error:not-alphabet
+	  error:not-unicode-code-point
+	  error:not-utf16-be-string
+	  error:not-utf16-le-string
+	  error:not-utf16-string
+	  error:not-utf32-be-string
+	  error:not-utf32-le-string
+	  error:not-utf32-string
+	  error:not-utf8-string
+	  error:not-well-formed-code-point-list
+	  error:not-wide-char
+	  error:not-wide-string
 	  guarantee-8-bit-alphabet
 	  guarantee-alphabet
 	  guarantee-unicode-code-point
+	  guarantee-utf16-be-string
+	  guarantee-utf16-le-string
+	  guarantee-utf16-string
+	  guarantee-utf32-be-string
+	  guarantee-utf32-le-string
+	  guarantee-utf32-string
+	  guarantee-utf8-string
 	  guarantee-well-formed-code-point-list
 	  guarantee-wide-char
 	  guarantee-wide-string
@@ -4666,29 +4686,37 @@ USA.
 	  read-utf32-le-char
 	  read-utf8-char
 	  string->alphabet
+	  string->utf8-string
 	  string->wide-string
 	  unicode-code-point?
 	  utf16-be-string->wide-string
 	  utf16-be-string-length
 	  utf16-be-string-valid?
+	  utf16-be-string?
 	  utf16-le-string->wide-string
 	  utf16-le-string-length
 	  utf16-le-string-valid?
+	  utf16-le-string?
 	  utf16-string->wide-string
 	  utf16-string-length
 	  utf16-string-valid?
+	  utf16-string?
 	  utf32-be-string->wide-string
 	  utf32-be-string-length
 	  utf32-be-string-valid?
+	  utf32-be-string?
 	  utf32-le-string->wide-string
 	  utf32-le-string-length
 	  utf32-le-string-valid?
+	  utf32-le-string?
 	  utf32-string->wide-string
 	  utf32-string-length
 	  utf32-string-valid?
+	  utf32-string?
 	  utf8-string->wide-string
 	  utf8-string-length
 	  utf8-string-valid?
+	  utf8-string?
 	  well-formed-code-point-list?
 	  wide-char?
 	  wide-string
@@ -4723,37 +4751,83 @@ USA.
   (export (runtime input-port)
 	  wide-string-contents))
 
-(define-package (runtime url)
+(define-package (runtime uri)
   (files "url")
   (parent (runtime))
   (export ()
-	  url:char-set:alpha
-	  url:char-set:alphadigit
-	  url:char-set:digit
-	  url:char-set:escaped
-	  url:char-set:extra
-	  url:char-set:lowalpha
-	  url:char-set:national
-	  url:char-set:punctuation
-	  url:char-set:reserved
-	  url:char-set:safe
-	  url:char-set:scheme
-	  url:char-set:unescaped
+	  (url:decode-string decode-component)
+	  (url:match:escape match-escape)
+	  (url:parse:hostport parse-hostport)
+	  ->uri
+	  absolute-uri?
+	  char-set:uri-alpha
+	  char-set:uri-alphanum
+	  char-set:uri-digit
+	  char-set:uri-hex
+	  char-set:uri-pchar
+	  char-set:uri-reg-name
+	  char-set:uri-rel-segment
+	  char-set:uri-scheme
+	  char-set:uri-userinfo
+	  char-set:uric
+	  char-set:uric-no-slash
+	  error:not-absolute-uri
+	  error:not-heirarchical-uri
+	  error:not-opaque-uri
+	  error:not-relative-uri
+	  error:not-uri
+	  error:not-uri-authority
+	  error:not-uri-host
+	  error:not-uri-path
+	  error:not-uri-port
+	  error:not-uri-registry-name
+	  error:not-uri-scheme
+	  error:not-uri-server
+	  guarantee-absolute-uri
+	  guarantee-heirarchical-uri
+	  guarantee-opaque-uri
+	  guarantee-relative-uri
+	  guarantee-uri
+	  guarantee-uri-authority
+	  guarantee-uri-host
+	  guarantee-uri-path
+	  guarantee-uri-port
+	  guarantee-uri-registry-name
+	  guarantee-uri-scheme
+	  guarantee-uri-server
+	  heirarchical-uri?
+	  make-uri
+	  make-uri-server
+	  opaque-uri?
+	  parse-uri
+	  relative-uri?
+	  string->uri
+	  uri->string
+	  uri-absolute?
+	  uri-authority
+	  uri-authority?
+	  uri-fragment
+	  uri-heirarchical?
+	  uri-host?
+	  uri-opaque?
+	  uri-path
+	  uri-path-absolute?
+	  uri-path-relative?
+	  uri-path?
+	  uri-port?
+	  uri-query
+	  uri-registry-name?
+	  uri-relative?
+	  uri-scheme
+	  uri-scheme?
+	  uri-server-host
+	  uri-server-port
+	  uri-server-userinfo
+	  uri-server?
+	  uri?
 	  url:char-set:unreserved
-	  url:decode-string
-	  url:decode-substring
 	  url:encode-string
-	  url:encode-substring
-	  url:match:escape
-	  url:match:host
-	  url:match:hostname
-	  url:match:hostnumber
-	  url:match:uchar
-	  url:match:xchar
-	  url:parse:hostport
-	  url:parse:scheme
-	  url:string-encoded?
-	  url:substring-encoded?))
+	  write-uri))
 
 (define-package (runtime postgresql)
   (file-case options
