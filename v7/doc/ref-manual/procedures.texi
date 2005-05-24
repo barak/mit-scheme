@@ -1,12 +1,12 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: procedures.texi,v 1.1 2003/04/15 03:30:08 cph Exp $
+@c $Id: procedures.texi,v 1.2 2005/05/24 19:19:30 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
-@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c Copyright 2002,2003,2005 Massachusetts Institute of Technology
 @c See file scheme.texinfo for copying conditions.
 
-@node Procedures, Environments, Associations, Top
+@node Procedures
 @chapter Procedures
 
 @cindex procedure
@@ -62,12 +62,14 @@ reasons, and may eventually change.
 
 @menu
 * Procedure Operations::        
+* Arity::                       
 * Primitive Procedures::        
 * Continuations::               
 * Application Hooks::           
+* Generic Dispatch::            
 @end menu
 
-@node Procedure Operations, Primitive Procedures, Procedures, Procedures
+@node Procedure Operations, Arity, Procedures, Procedures
 @section Procedure Operations
 
 @deffn procedure apply procedure object object @dots{}
@@ -123,35 +125,72 @@ Returns @code{#t} if @var{object} is a primitive procedure; otherwise
 returns @code{#f}.
 @end deffn
 
-The following two procedures test the @dfn{arity} of a procedure, that
-is, the number of arguments that the procedure accepts.  The results of
-the test may be less restrictive than the effect of calling the
-procedure.  In other words, these procedures may indicate that the
-procedure will accept a given number of arguments, but if you call the
-procedure it may signal a
-@code{condition-type:wrong-number-of-arguments} error.  This is because
-these procedures examine the apparent arity of a procedure.  For
-example, here is a procedure that appears to accept any number of
-arguments, but when called will signal an error if the number of
-arguments is not one:
+@deffn procedure procedure-environment procedure
+Returns the closing environment of @var{procedure}.  Signals an error if
+@var{procedure} is a primitive procedure, or if @var{procedure} is a
+compiled procedure for which the debugging information is unavailable.
+@end deffn
+
+@node Arity, Primitive Procedures, Procedure Operations, Procedures
+@section Arity
+
+@cindex arity
+Each procedure has an @dfn{arity}, which is the minimum and
+(optionally) maximum number of arguments that it will accept.  MIT/GNU
+Scheme provides an abstraction that represents arity, and tests for
+the apparent arity of a procedure.
+
+Arity objects come in two forms: the simple form, an exact
+non-negative integer, represents a fixed number of arguments.  The
+general form is a pair whose @code{car} represents the minimum number
+of arguments and whose @code{cdr} is the maximum number of arguments.
+
+@deffn procedure make-procedure-arity min [max [simple-ok?]]
+Returns an arity object made from @var{min} and @var{max}.  @var{Min}
+must be an exact non-negative integer.  @var{Max} must be an exact
+non-negative integer at least as large as @var{min}.  Alternatively,
+@var{max} may be omitted or given as @samp{#f}, which represents an
+arity with no upper bound.
+
+If @var{simple-ok?} is true, the returned arity is in the simple form
+(an exact non-negative integer) when possible, and otherwise is always
+in the general form.  @var{Simple-ok?} defaults to @samp{#f}.
+@end deffn
+
+@deffn procedure procedure-arity? object
+Returns @samp{#t} if @var{object} is an arity object, and @samp{#f}
+otherwise.
+@end deffn
+
+@deffn procedure guarantee-procedure-arity object caller
+Signals an error if @var{object} is not an arity object.  @var{Caller}
+is a symbol that is printed as part of the error message and is
+intended to be the name of the procedure where the error occurs.
+@end deffn
+
+@deffn procedure procedure-arity-min arity
+@deffnx procedure procedure-arity-max arity
+Return the lower and upper bounds of @var{arity}, respectively.
+@end deffn
+
 @findex condition-type:wrong-number-of-arguments
+The following procedures test for the apparent arity of a procedure.
+The results of the test may be less restrictive than the effect of
+calling the procedure.  In other words, these procedures may indicate
+that the procedure will accept a given number of arguments, but if you
+call the procedure it may signal a
+@code{condition-type:wrong-number-of-arguments} error.  For example,
+here is a procedure that appears to accept any number of arguments,
+but when called will signal an error if the number of arguments is not
+one:
 
 @example
 (lambda arguments (apply car arguments))
 @end example
 
-@deffn procedure procedure-arity-valid? procedure k
-Returns @code{#t} if @var{procedure} accepts @var{k} arguments;
-otherwise returns @code{#f}.
-@end deffn
-
 @deffn procedure procedure-arity procedure
-Returns a description of the number of arguments that @var{procedure}
-accepts.  The result is a newly allocated pair whose car field is the
-minimum number of arguments, and whose cdr field is the maximum
-number of arguments.  The minimum is an exact non-negative integer.  The
-maximum is either an exact non-negative integer, or @code{#f} meaning
-that the procedure has no maximum number of arguments.
+Returns the arity that @var{procedure} accepts.  The result may be in
+either simple or general form.
 
 @example
 @group
@@ -166,13 +205,50 @@ that the procedure has no maximum number of arguments.
 @end example
 @end deffn
 
-@deffn procedure procedure-environment procedure
-Returns the closing environment of @var{procedure}.  Signals an error if
-@var{procedure} is a primitive procedure, or if @var{procedure} is a
-compiled procedure for which the debugging information is unavailable.
+@deffn procedure procedure-arity-valid? procedure arity
+Returns @samp{#t} if @var{procedure} accepts @var{arity}, and
+@samp{#f} otherwise.
 @end deffn
 
-@node Primitive Procedures, Continuations, Procedure Operations, Procedures
+@deffn procedure procedure-of-arity? object arity
+Returns @samp{#t} if @var{object} is a procedure that accepts
+@var{arity}, and @samp{#f} otherwise.  Equivalent to:
+
+@example
+@group
+(and (procedure? @var{object})
+     (procedure-arity-valid? @var{object} @var{arity}))
+@end group
+@end example
+@end deffn
+
+@deffn procedure guarantee-procedure-of-arity object arity caller
+Signals an error if @var{object} is not a procedure accepting
+@var{arity}.  @var{Caller} is a symbol that is printed as part of the
+error message and is intended to be the name of the procedure where
+the error occurs.
+@end deffn
+
+@deffn procedure thunk? object
+Returns @samp{#t} if @var{object} is a procedure that accepts
+zero arguments, and @samp{#f} otherwise.  Equivalent to:
+
+@example
+@group
+(procedure-of-arity? @var{object} 0)
+@end group
+@end example
+@end deffn
+
+@deffn procedure guarantee-thunk object caller
+Signals an error if @var{object} is not a procedure accepting zero
+arguments.  @var{Caller} is a symbol that is printed as part of the
+error message and is intended to be the name of the procedure where
+the error occurs.
+@end deffn
+
+
+@node Primitive Procedures, Continuations, Arity, Procedures
 @section Primitive Procedures
 
 @deffn procedure make-primitive-procedure name [arity]
@@ -400,7 +476,7 @@ is called must be a multiple-value continuation that was created by
 there are @var{object}s.
 @end deffn
 
-@node Application Hooks,  , Continuations, Procedures
+@node Application Hooks, Generic Dispatch, Continuations, Procedures
 @section Application Hooks
 
 @cindex application hook (defn)
@@ -484,4 +560,206 @@ Returns the extra component of @var{entity}.
 @deffn procedure set-entity-extra! entity object
 Changes the extra component of @var{entity} to be @var{object}.  Returns
 an unspecified value.
+@end deffn
+
+@node Generic Dispatch,  , Application Hooks, Procedures
+@section Generic Dispatch
+
+@cindex generic procedure
+@cindex procedure, generic
+MIT/GNU Scheme provides a generic dispatch mechanism that can choose
+an action to take based on the types of a set of objects.  Performance
+is guaranteed by the use of a hash-based method cache.
+
+This is @emph{not} an object-oriented programming system, although it
+can provide the basis for such systems.  The difference is that the
+generic dispatch doesn't have any model for the relationship between
+object types.  Instead, there is a flat space of types and methods are
+selected by procedural examination of the given operand types.
+
+@menu
+* Generic Procedures::          
+* Method Generators::           
+* Dispatch Tags::               
+@end menu
+
+@node Generic Procedures, Method Generators, Generic Dispatch, Generic Dispatch
+@subsection Generic Procedures
+
+@cindex method, of generic procedure
+The core of the dispatch mechanism is the @dfn{generic procedure}.
+This is a procedure that is called in the usual way, but which
+dispatches to a particular @dfn{method} based on the types of its
+arguments.
+
+@deffn procedure make-generic-procedure arity [name]
+Returns a new generic procedure accepting @var{arity}.  @var{Arity}
+must specify a minimum of one argument.
+
+@var{Name} is used for debugging: it is a symbol that has no role in
+the semantics of the generic procedure.  @var{Name} may be @code{#f}
+to indicate that the generic procedure is anonymous.  If @var{name} is
+not specified, it defaults to @samp{#f}.
+
+Examples:
+
+@lisp
+(define foo-bar (make-generic-procedure 2 'bar))
+
+(define foo-baz (make-generic-procedure '(1 . 2) 'foo-baz))
+
+(define foo-mum (make-generic-procedure '(1 . #f)))
+@end lisp
+@end deffn
+
+@deffn procedure generic-procedure? object
+Returns @samp{#t} if @var{object} is a generic procedure,
+and @samp{#f} otherwise.
+@end deffn
+
+@deffn procedure guarantee-generic-procedure object caller
+Signals an error if @var{object} is not a generic procedure.
+@var{Caller} is a symbol that is printed as part of the error message
+and is intended to be the name of the procedure where the error
+occurs.
+@end deffn
+
+@deffn procedure generic-procedure-arity generic
+Returns the arity of @var{generic}, as given to
+@code{make-generic-procedure}.
+@end deffn
+
+@deffn procedure generic-procedure-name generic
+Returns the name of @var{generic}, as given to
+@code{make-generic-procedure}.
+@end deffn
+
+@deffn procedure generic-procedure-applicable? generic operands
+Returns @samp{#t} if @var{generic} is applicable to @var{operands}
+(which must be a list of objects), and @samp{#f} otherwise.
+@end deffn
+
+@deffn {condition type} condition-type:no-applicable-methods operator operands
+This condition type is signalled when a generic procedure is applied
+and there are no applicable methods for the given operands.  The condition's
+@var{operator} field contains the generic procedure and the
+@var{operands} field contains the given operands.
+@end deffn
+
+@deffn {condition type} condition-type:extra-applicable-methods operator operands
+This condition type is signalled when a generic procedure is applied
+and there are more than one applicable methods for the given operands.
+The condition's @var{operator} field contains the generic procedure
+and the @var{operands} field contains the given operands.
+@end deffn
+
+@node Method Generators, Dispatch Tags, Generic Procedures, Generic Dispatch
+@subsection Method Generators
+
+Generic-procedure methods are dynamically chosen by @dfn{generators},
+which are procedures of two arguments.  Each generic procedure has a
+set of associated generators.  Whenever the procedure is applied, each
+associated generator is applied to two arguments: the generic
+procedure and a list of the dispatch tags for the operands.  The
+return value from the generator is either a @dfn{method} (a procedure
+accepting that number of arguments) or @samp{#f}.  In order for the
+application to succeed, exactly one of the generic procedure's
+generators must return a method.
+
+Once a method has been chosen, it is cached.  A subsequent call to the
+generic procedure with operands of the same types will reuse that
+cached method.  Consequently, it is important that generators be
+@dfn{functional}: they must always compute the same value from the
+same arguments.
+
+@deffn procedure add-generic-procedure-generator generic generator
+Adds @var{generator} to @var{generic}'s set of generators and returns
+an unspecified value.
+@end deffn
+
+@deffn procedure remove-generic-procedure-generator generic generator
+Removes @var{generator} from @var{generic}'s set of generators and
+returns an unspecified value.
+@end deffn
+
+@deffn procedure remove-generic-procedure-generators generic tags
+Calls each of @var{generic}'s set of generators on @var{tags} and
+removes each generator that returns a method.  Returns an unspecified
+value.
+@end deffn
+
+@deffn procedure generic-procedure-generator-list generic
+Returns a list of @var{generic}'s generators.
+@end deffn
+
+As a convenience, each generic procedure can have a @dfn{default
+generator}, which is called only when all of the other generators have
+returned @samp{#f}.  When created, a generic procedure has no default
+generator.
+
+@deffn procedure generic-procedure-default-generator generic
+Returns @var{generic}'s default generator.
+@end deffn
+
+@deffn procedure set-generic-procedure-default-generator! generic generator
+Sets @var{generic}'s default generator to @var{generator} and returns
+an unspecified value.
+@end deffn
+
+@node Dispatch Tags,  , Method Generators, Generic Dispatch
+@subsection Dispatch Tags
+
+@cindex dispatch tag
+@cindex tag, dispatch
+A dispatch tag is an object that represents the ``type'' of an
+object, for the purposes of generic dispatch.  Every object has an
+associated dispatch tag.  Built-in objects like pairs or booleans have
+predefined tags, while dynamically typed objects like records have
+tags that are created as needed.
+
+@deffn procedure dispatch-tag object
+Returns the dispatch tag for @var{object}.
+
+@example
+@group
+(dispatch-tag #f)       @result{} #[dispatch-tag 17 (boolean)]
+(dispatch-tag #t)       @result{} #[dispatch-tag 17 (boolean)]
+(dispatch-tag (list))   @result{} #[dispatch-tag 18 (null)]
+(dispatch-tag (list 3)) @result{} #[dispatch-tag 19 (pair list)]
+@end group
+@end example
+@end deffn
+
+@deffn procedure built-in-dispatch-tag name
+Returns the built-in dispatch tag called @var{name}.  @var{Name} must
+be a symbol that is the name of a known built-in dispatch tag.
+
+@example
+@group
+(built-in-dispatch-tag 'boolean) @result{} #[dispatch-tag 17 (boolean)]
+(built-in-dispatch-tag 'null)    @result{} #[dispatch-tag 18 (null)]
+(built-in-dispatch-tag 'pair)    @result{} #[dispatch-tag 19 (pair list)]
+(built-in-dispatch-tag 'list)    @result{} #[dispatch-tag 19 (pair list)]
+@end group
+@end example
+@end deffn
+
+@deffn procedure built-in-dispatch-tags
+Returns a list of the built-in dispatch tags.
+@end deffn
+
+@deffn procedure record-type-dispatch-tag record-type
+Returns the dispatch tag associate with @var{record-type}.  See
+@xref{Records} for more information about record types.
+@end deffn
+
+@deffn procedure dispatch-tag? object
+Returns @samp{#t} if @var{object} is a dispatch tag, and @samp{#f}
+otherwise.
+@end deffn
+
+@deffn procedure guarantee-dispatch-tag object caller
+Signals an error if @var{object} is not a dispatch tag.  @var{Caller}
+is a symbol that is printed as part of the error message and is
+intended to be the name of the procedure where the error occurs.
 @end deffn
