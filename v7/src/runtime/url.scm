@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.18 2005/05/24 04:50:50 cph Exp $
+$Id: url.scm,v 1.19 2005/05/24 19:53:42 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -148,6 +148,13 @@ USA.
 (define-guarantee uri-server "URI server")
 (define-guarantee uri-host "URI host")
 (define-guarantee uri-port "URI port")
+
+(define (->uri object #!optional caller)
+  (cond ((uri? object) object)
+	((string? object) (string->uri object))
+	((symbol? object) (string->uri (symbol-name object)))
+	(else
+	 (error:not-uri object (if (default-object? caller) '->URI caller)))))
 
 (define char-set:uri-alpha)
 (define char-set:uri-digit)
@@ -220,12 +227,6 @@ USA.
   (let ((v (complete-parse parse-uri string start end)))
     (and v
 	 (vector-ref v 0))))
-
-(define (->uri object)
-  (cond ((uri? object) object)
-	((string? object) (string->uri object))
-	((symbol? object) (string->uri (symbol-name object)))
-	(else (error:not-uri object '->URI))))
 
 (define parse-uri
   (*parser
