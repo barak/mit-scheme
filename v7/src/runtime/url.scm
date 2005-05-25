@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.21 2005/05/25 03:16:12 cph Exp $
+$Id: url.scm,v 1.22 2005/05/25 03:18:22 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -265,15 +265,6 @@ USA.
 	       (alt (seq "#" parse-fragment)
 		    (values #f)))))))
 
-(define parse-scheme
-  (*parser
-   (map intern (match match-scheme))))
-
-(define match-scheme
-  (*matcher
-   (seq (char-set char-set:uri-alpha)
-	(* (char-set char-set:uri-scheme)))))
-
 (define parse-relative-uri
   (*parser
    (encapsulate (lambda (v)
@@ -291,6 +282,15 @@ USA.
 	       (values #f))
 	  (alt (seq "#" parse-fragment)
 	       (values #f))))))
+
+(define parse-scheme
+  (*parser
+   (map intern (match match-scheme))))
+
+(define match-scheme
+  (*matcher
+   (seq (char-set char-set:uri-alpha)
+	(* (char-set char-set:uri-scheme)))))
 
 (define parse-net-path
   (*parser
