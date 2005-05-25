@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.19 2005/05/24 19:53:42 cph Exp $
+$Id: url.scm,v 1.20 2005/05/25 03:15:27 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -231,11 +231,8 @@ USA.
 (define parse-uri
   (*parser
    (top-level
-    (seq (alt parse-absolute-uri
-	      parse-relative-uri
-	      (values #f))
-	 (alt (seq "#" parse-fragment)
-	      (values #f))))))
+    (alt parse-absolute-uri
+	 parse-relative-uri))))
 
 (define parse-absolute-uri
   (*parser
