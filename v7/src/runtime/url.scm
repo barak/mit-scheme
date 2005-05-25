@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.20 2005/05/25 03:15:27 cph Exp $
+$Id: url.scm,v 1.21 2005/05/25 03:16:12 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -515,3 +515,126 @@ USA.
   (call-with-output-string
     (lambda (port)
       (write-escaped string url:char-set:unescaped port))))
+
+;;;; Regular expressions
+
+(define (uri-rexp:uri-reference)
+  (rexp-sequence (rexp-alternatives (uri-rexp:absolute-uri)
+				    (uri-rexp:relative-uri))
+		 (rexp-optional "#" (uri-rexp:fragment))))
+
+(define (uri-rexp:absolute-uri)
+  (rexp-sequence (uri-rexp:scheme)
+		 ":"
+		 (rexp-alternatives (uri-rexp:heir-part)
+				    (uri-rexp:opaque-part))))
+
+(define (uri-rexp:relative-uri)
+  (rexp-sequence (rexp-alternatives (uri-rexp:net-path)
+				    (uri-rexp:abs-path)
+				    (uri-rexp:rel-path))
+		 (rexp-optional "?" (uri-rexp:query))))
+
+(define (uri-rexp:heir-part)
+  (rexp-sequence (rexp-alternatives (uri-rexp:net-path)
+				    (uri-rexp:abs-path))
+		 (rexp-optional "?" (uri-rexp:query))))
+
+(define (uri-rexp:opaque-part)
+  (rexp-sequence (uri-rexp:uric-no-slash)
+		 (rexp* (uri-rexp:uric))))
+
+(define (uri-rexp:uric-no-slash)
+  (uri-rexp:escaped char-set:uric-no-slash))
+
+(define (uri-rexp:net-path)
+  (rexp-sequence "//"
+		 (uri-rexp:authority)
+		 (rexp-optional (uri-rexp:abs-path))))
+
+(define (uri-rexp:abs-path)
+  (rexp-sequence "/" (uri-rexp:path-segments)))
+
+(define (uri-rexp:rel-path)
+  (rexp-sequence (uri-rexp:rel-segment)
+		 (rexp-optional (uri-rexp:abs-path))))
+
+(define (uri-rexp:rel-segment)
+  (rexp+ (uri-rexp:escaped char-set:uri-rel-segment)))
+
+(define (uri-rexp:scheme)
+  (rexp-sequence char-set:uri-alpha
+		 (rexp* char-set:uri-scheme)))
+
+(define (uri-rexp:authority)
+  (rexp-alternatives (uri-rexp:server)
+		     (uri-rexp:reg-name)))
+
+(define (uri-rexp:reg-name)
+  (rexp+ (uri-rexp:escaped char-set:uri-reg-name)))
+
+(define (uri-rexp:server)
+  (rexp-sequence (rexp-optional (uri-rexp:userinfo) "@")
+		 (uri-rexp:hostport)))
+
+(define (uri-rexp:userinfo)
+  (rexp* (uri-rexp:escaped char-set:uri-userinfo)))
+
+(define (uri-rexp:hostport)
+  (rexp-sequence (uri-rexp:host)
+		 (rexp-optional ":" (uri-rexp:port))))
+
+(define (uri-rexp:host)
+  (rexp-alternatives (uri-rexp:hostname)
+		     (uri-rexp:ipv4-address)))
+
+(define (uri-rexp:hostname)
+  (rexp-sequence (rexp* (uri-rexp:domainlabel) ".")
+		 (uri-rexp:toplabel)
+		 (rexp-optional ".")))
+
+(define (uri-rexp:domainlabel)
+  (rexp-sequence char-set:uri-alphanum
+		 (rexp-optional (rexp* char-set:uri-alphanum-)
+				char-set:uri-alphanum)))
+
+(define (uri-rexp:toplabel)
+  (rexp-sequence char-set:uri-alpha
+		 (rexp-optional (rexp* char-set:uri-alphanum-)
+				char-set:uri-alphanum)))
+
+(define (uri-rexp:ipv4-address)
+  (let ((digits (rexp+ char-set:uri-digit)))
+    (rexp-sequence digits "." digits "." digits "." digits)))
+
+(define (uri-rexp:port)
+  (rexp* char-set:uri-digit))
+
+(define (uri-rexp:path-segments)
+  (rexp-sequence (uri-rexp:segment)
+		 (rexp* "/" (uri-rexp:segment))))
+
+(define (uri-rexp:segment)
+  (rexp-sequence (rexp* (uri-rexp:pchar))
+		 (rexp* ";" (uri-rexp:param))))
+
+(define (uri-rexp:param)
+  (rexp* (uri-rexp:pchar)))
+
+(define (uri-rexp:pchar)
+  (uri-rexp:escaped char-set:uri-pchar))
+
+(define (uri-rexp:query)
+  (rexp* (uri-rexp:uric)))
+
+(define (uri-rexp:fragment)
+  (rexp* (uri-rexp:uric)))
+
+(define (uri-rexp:uric)
+  (uri-rexp:escaped char-set:uric))
+
+(define (uri-rexp:escaped cs)
+  (rexp-alternatives cs
+		     (rexp-sequence "%"
+				    char-set:uri-hex
+				    char-set:uri-hex)))

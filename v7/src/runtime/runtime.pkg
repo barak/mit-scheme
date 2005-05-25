@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.544 2005/05/24 04:50:28 cph Exp $
+$Id: runtime.pkg,v 14.545 2005/05/25 03:16:03 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4818,6 +4818,36 @@ USA.
 	  uri-query
 	  uri-registry-name?
 	  uri-relative?
+	  uri-rexp:abs-path
+	  uri-rexp:absolute-uri
+	  uri-rexp:authority
+	  uri-rexp:domainlabel
+	  uri-rexp:escaped
+	  uri-rexp:fragment
+	  uri-rexp:heir-part
+	  uri-rexp:host
+	  uri-rexp:hostname
+	  uri-rexp:hostport
+	  uri-rexp:ipv4-address
+	  uri-rexp:net-path
+	  uri-rexp:opaque-part
+	  uri-rexp:param
+	  uri-rexp:path-segments
+	  uri-rexp:pchar
+	  uri-rexp:port
+	  uri-rexp:query
+	  uri-rexp:reg-name
+	  uri-rexp:rel-path
+	  uri-rexp:rel-segment
+	  uri-rexp:relative-uri
+	  uri-rexp:scheme
+	  uri-rexp:segment
+	  uri-rexp:server
+	  uri-rexp:toplabel
+	  uri-rexp:uri-reference
+	  uri-rexp:uric
+	  uri-rexp:uric-no-slash
+	  uri-rexp:userinfo
 	  uri-scheme
 	  uri-scheme?
 	  uri-server-host
