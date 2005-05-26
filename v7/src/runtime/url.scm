@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.23 2005/05/26 05:38:42 cph Exp $
+$Id: url.scm,v 1.24 2005/05/26 13:24:32 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -23,10 +23,10 @@ USA.
 
 |#
 
-;;;; URI Encoding
+;;;; Uniform Resource Identifiers
 ;;; package: (runtime uri)
 
-;;; Based on RFC 2396 <http://ietf.org/rfc/rfc2396.txt>
+;;; RFC 2396 <http://ietf.org/rfc/rfc2396.txt>
 
 (declare (usual-integrations))
 
@@ -167,71 +167,6 @@ USA.
 	((symbol? object) (string->uri (symbol-name object)))
 	(else
 	 (error:not-uri object (if (default-object? caller) '->URI caller)))))
-
-(define char-set:uri-alpha)
-(define char-set:uri-digit)
-(define char-set:uri-alphanum)
-(define char-set:uri-alphanum-)
-(define char-set:uri-hex)
-(define char-set:uri-scheme)
-(define char-set:uric)
-(define char-set:uric-no-slash)
-(define char-set:uri-reg-name)
-(define char-set:uri-userinfo)
-(define char-set:uri-rel-segment)
-(define char-set:uri-pchar)
-
-(define parse-fragment)
-(define parse-query)
-(define parse-reg-name)
-(define parse-userinfo)
-(define parse-rel-segment)
-(define parse-pchar)
-
-(define url:char-set:unreserved)
-(define url:char-set:unescaped)
-
-(define (initialize-package!)
-  (set! char-set:uri-alpha
-	(string->char-set
-	 "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-  (set! char-set:uri-digit (string->char-set "0123456789"))
-  (set! char-set:uri-alphanum
-	(char-set-union char-set:uri-alpha char-set:uri-digit))
-  (set! char-set:uri-alphanum-
-	(char-set-union char-set:uri-alphanum (char-set #\-)))
-  (set! char-set:uri-hex (string->char-set "0123456789abcdefABCDEF"))
-  (set! char-set:uri-scheme
-	(char-set-union char-set:uri-alphanum (string->char-set "+-.")))
-  (set! char-set:uric
-	(char-set-union char-set:uri-alphanum
-			(string->char-set "!'()*-._~")	;mark
-			(string->char-set "$&+,/:;=?@") ;reserved
-			))
-  (let ((component-chars
-	 (lambda (free)
-	   (char-set-difference char-set:uric (string->char-set free)))))
-    (set! char-set:uric-no-slash	(component-chars "/"))
-    (set! char-set:uri-reg-name		(component-chars "/?"))
-    (set! char-set:uri-userinfo		(component-chars "/?@"))
-    (set! char-set:uri-rel-segment	(component-chars "/:?"))
-    (set! char-set:uri-pchar		(component-chars "/;?")))
-
-  (set! parse-fragment (component-parser-* char-set:uric))
-  (set! parse-query parse-fragment)
-  (set! parse-reg-name (component-parser-+ char-set:uri-reg-name))
-  (set! parse-userinfo (component-parser-* char-set:uri-userinfo))
-  (set! parse-rel-segment (component-parser-+ char-set:uri-rel-segment))
-  (set! parse-pchar (component-parser-* char-set:uri-pchar))
-
-  ;; backwards compatibility:
-  (set! url:char-set:unreserved
-	(char-set-union char-set:uri-alphanum
-			(string->char-set "!$'()*+,-._")))
-  (set! url:char-set:unescaped
-	(char-set-union url:char-set:unreserved
-			(string->char-set ";/?:@&=")))
-  unspecific)
 
 ;;;; Parser
 
@@ -630,3 +565,68 @@ USA.
 		     (rexp-sequence "%"
 				    char-set:uri-hex
 				    char-set:uri-hex)))
+
+(define char-set:uri-alpha)
+(define char-set:uri-digit)
+(define char-set:uri-alphanum)
+(define char-set:uri-alphanum-)
+(define char-set:uri-hex)
+(define char-set:uri-scheme)
+(define char-set:uric)
+(define char-set:uric-no-slash)
+(define char-set:uri-reg-name)
+(define char-set:uri-userinfo)
+(define char-set:uri-rel-segment)
+(define char-set:uri-pchar)
+
+(define parse-fragment)
+(define parse-query)
+(define parse-reg-name)
+(define parse-userinfo)
+(define parse-rel-segment)
+(define parse-pchar)
+
+(define url:char-set:unreserved)
+(define url:char-set:unescaped)
+
+(define (initialize-package!)
+  (set! char-set:uri-alpha
+	(string->char-set
+	 "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+  (set! char-set:uri-digit (string->char-set "0123456789"))
+  (set! char-set:uri-alphanum
+	(char-set-union char-set:uri-alpha char-set:uri-digit))
+  (set! char-set:uri-alphanum-
+	(char-set-union char-set:uri-alphanum (char-set #\-)))
+  (set! char-set:uri-hex (string->char-set "0123456789abcdefABCDEF"))
+  (set! char-set:uri-scheme
+	(char-set-union char-set:uri-alphanum (string->char-set "+-.")))
+  (set! char-set:uric
+	(char-set-union char-set:uri-alphanum
+			(string->char-set "!'()*-._~")	;mark
+			(string->char-set "$&+,/:;=?@") ;reserved
+			))
+  (let ((component-chars
+	 (lambda (free)
+	   (char-set-difference char-set:uric (string->char-set free)))))
+    (set! char-set:uric-no-slash	(component-chars "/"))
+    (set! char-set:uri-reg-name		(component-chars "/?"))
+    (set! char-set:uri-userinfo		(component-chars "/?@"))
+    (set! char-set:uri-rel-segment	(component-chars "/:?"))
+    (set! char-set:uri-pchar		(component-chars "/;?")))
+
+  (set! parse-fragment (component-parser-* char-set:uric))
+  (set! parse-query parse-fragment)
+  (set! parse-reg-name (component-parser-+ char-set:uri-reg-name))
+  (set! parse-userinfo (component-parser-* char-set:uri-userinfo))
+  (set! parse-rel-segment (component-parser-+ char-set:uri-rel-segment))
+  (set! parse-pchar (component-parser-* char-set:uri-pchar))
+
+  ;; backwards compatibility:
+  (set! url:char-set:unreserved
+	(char-set-union char-set:uri-alphanum
+			(string->char-set "!$'()*+,-._")))
+  (set! url:char-set:unescaped
+	(char-set-union url:char-set:unreserved
+			(string->char-set ";/?:@&=")))
+  unspecific)
