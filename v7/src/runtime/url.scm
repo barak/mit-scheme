@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.22 2005/05/25 03:18:22 cph Exp $
+$Id: url.scm,v 1.23 2005/05/26 05:38:42 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -31,32 +31,33 @@ USA.
 (declare (usual-integrations))
 
 (define-record-type <uri>
-    (%make-uri scheme authority path-relative? path query fragment)
+    (%make-uri scheme authority path query fragment)
     uri?
-  (scheme uri-scheme)
+  (scheme uri-scheme set-uri-scheme!)
   (authority uri-authority)
-  (path-relative? uri-path-relative?)
   (path uri-path)
   (query uri-query)
-  (fragment uri-fragment))
+  (fragment uri-fragment set-uri-fragment!))
 
-(define (make-uri scheme authority path-relative? path query fragment)
+(define (make-uri scheme authority path query fragment)
   (if scheme (guarantee-uri-scheme scheme 'MAKE-URI))
   (if authority (guarantee-uri-authority authority 'MAKE-URI))
   (guarantee-uri-path path 'MAKE-URI)
   (if query (guarantee-utf8-string query 'MAKE-URI))
   (if fragment (guarantee-utf8-string fragment 'MAKE-URI))
-  (if (string? path)
-      (begin
-	(if (not scheme) (error:bad-range-argument scheme 'MAKE-URI))
-	(if authority (error:bad-range-argument authority 'MAKE-URI))
-	(if path-relative? (error:bad-range-argument path-relative? 'MAKE-URI))
-	(if query (error:bad-range-argument query 'MAKE-URI))))
-  (if (and scheme path-relative?)
-      (error:bad-range-argument path-relative? 'MAKE-URI))
-  (if (and (null? path) (not authority))
+  (if (or (and (path-relative? path) (or scheme authority))
+	  (and (null? path) (not authority))
+	  (and (string? path) (or (not scheme) authority query))
+	  (and (not path) (or scheme authority query)))
       (error:bad-range-argument path 'MAKE-URI))
-  (%make-uri scheme authority (if path-relative? #t #f) path query fragment))
+  (%make-uri scheme authority path query fragment))
+
+(define (path-relative? path)
+  (and (pair? path)
+       (eq? (car path) 'RELATIVE)))
+
+(define-integrable (uri-path-relative? uri)
+  (path-relative? (uri-path uri)))
 
 (define-integrable (uri-path-absolute? uri)
   (not (uri-path-relative? uri)))
@@ -100,22 +101,33 @@ USA.
        (complete-match match-scheme (symbol-name object))))
 
 (define (uri-path? object)
-  (or (and (utf8-string? object)
-	   (fix:> (string-length object) 0))
-      (list-of-type? object
-	(lambda (elt)
-	  (or (utf8-string? elt)
-	      (and (pair? elt)
-		   (utf8-string? (car elt))
-		   (list-of-type? (cdr elt) utf8-string?)))))))
+  (or (not object)
+      (non-null-utf8-string? object)
+      (and (pair? object)
+	   (eq? (car object) 'RELATIVE)
+	   (pair? (cdr object))
+	   (non-null-utf8-string? (cadr object))
+	   (path-items? (cddr object)))
+      (path-items? object)))
+
+(define (non-null-utf8-string? object)
+  (and (utf8-string? object)
+       (fix:> (string-length object) 0)))
+
+(define (path-items? object)
+  (list-of-type? object
+    (lambda (elt)
+      (or (utf8-string? elt)
+	  (and (pair? elt)
+	       (utf8-string? (car elt))
+	       (list-of-type? (cdr elt) utf8-string?))))))
 
 (define (uri-authority? object)
   (or (uri-server? object)
       (uri-registry-name? object)))
 
-(define (uri-registry-name? object)
-  (and (utf8-string? object)
-       (fix:> (string-length object) 0)))
+(define-integrable (uri-registry-name? object)
+  (non-null-utf8-string? object))
 
 (define-record-type <uri-server>
     (%make-uri-server host port userinfo)
@@ -231,57 +243,39 @@ USA.
 (define parse-uri
   (*parser
    (top-level
-    (alt parse-absolute-uri
-	 parse-relative-uri))))
+    (encapsulate (lambda (v)
+		   (%make-uri (vector-ref v 0)
+			      (vector-ref v 1)
+			      (vector-ref v 2)
+			      (vector-ref v 3)
+			      (vector-ref v 4)))
+      (seq (alt parse-absolute-uri
+		parse-relative-uri
+		(values #f #f #f #f))
+	   (alt (seq "#" parse-fragment)
+		(values #f)))))))
 
 (define parse-absolute-uri
   (*parser
-   (alt (encapsulate (lambda (v)
-		       (let ((path (vector-ref v 1)))
-			 (%make-uri (vector-ref v 0)
-				    (vector-ref path 0)
-				    (vector-ref path 1)
-				    (vector-ref path 2)
-				    (vector-ref v 2)
-				    (vector-ref v 3))))
-	  (seq parse-scheme
-	       ":"
-	       (alt parse-net-path parse-abs-path)
-	       (alt (seq "?" parse-query)
-		    (values #f))
-	       (alt (seq "#" parse-fragment)
-		    (values #f))))
-	(encapsulate (lambda (v)
-		       (%make-uri (vector-ref v 0)
-				  #f
-				  #f
-				  (vector-ref v 1)
-				  #f
-				  (vector-ref v 2)))
-	  (seq parse-scheme
-	       ":"
-	       (match (seq (char-set char-set:uric-no-slash)
-			   (* (char-set char-set:uric))))
-	       (alt (seq "#" parse-fragment)
-		    (values #f)))))))
+   (seq parse-scheme
+	":"
+	(alt (seq (alt parse-net-path
+		       parse-abs-path)
+		  (alt (seq "?" parse-query)
+		       (values #f)))
+	     (seq (values #f)
+		  (match (seq (char-set char-set:uric-no-slash)
+			      (* (char-set char-set:uric))))
+		  (values #f))))))
 
 (define parse-relative-uri
   (*parser
-   (encapsulate (lambda (v)
-		  (let ((path (vector-ref v 0)))
-		    (%make-uri #f
-			       (vector-ref path 0)
-			       (vector-ref path 1)
-			       (vector-ref path 2)
-			       (vector-ref v 1)
-			       (vector-ref v 2))))
-     (seq (alt parse-net-path
-	       parse-abs-path
-	       parse-rel-path)
-	  (alt (seq "?" parse-query)
-	       (values #f))
-	  (alt (seq "#" parse-fragment)
-	       (values #f))))))
+   (seq (values #f)
+	(alt parse-net-path
+	     parse-abs-path
+	     parse-rel-path)
+	(alt (seq "?" parse-query)
+	     (values #f)))))
 
 (define parse-scheme
   (*parser
@@ -294,25 +288,24 @@ USA.
 
 (define parse-net-path
   (*parser
-   (encapsulate (lambda (v) (vector (vector-ref v 0) #f (vector-ref v 1)))
-     (seq "//"
-	  parse-authority
-	  (alt (encapsulate vector->list
-		 (* (seq "/" parse-segment)))
-	       (values '()))))))
-
-(define parse-abs-path
-  (*parser
-   (map (lambda (p) (vector #f #f p))
+   (seq "//"
+	parse-authority
 	(encapsulate vector->list
 	  (* (seq "/" parse-segment))))))
 
+(define parse-abs-path
+  (*parser
+   (seq (values #f)
+	(encapsulate vector->list
+	  (+ (seq "/" parse-segment))))))
+
 (define parse-rel-path
   (*parser
-   (map (lambda (p) (vector #f #t p))
-	(encapsulate vector->list
-	  (seq parse-rel-segment
-	       (* (seq "/" parse-segment)))))))
+   (seq (values #f)
+	(map (lambda (p) (cons 'RELATIVE p))
+	     (encapsulate vector->list
+	       (seq parse-rel-segment
+		    (* (seq "/" parse-segment))))))))
 
 (define parse-segment
   (*parser
@@ -385,7 +378,6 @@ USA.
 (define (%write-uri uri port)
   (let ((scheme (uri-scheme uri))
 	(authority (uri-authority uri))
-	(path-relative? (uri-path-relative? uri))
 	(path (uri-path uri))
 	(query (uri-query uri))
 	(fragment (uri-fragment uri)))
@@ -401,9 +393,9 @@ USA.
 	   (write-string "//" port)
 	   (write-authority authority port)
 	   (write-abs-path path port))
-	  (path-relative?
-	   (write-escaped (car path) char-set:uri-rel-segment port)
-	   (write-abs-path (cdr path) port))
+	  ((path-relative? path)
+	   (write-escaped (cadr path) char-set:uri-rel-segment port)
+	   (write-abs-path (cddr path) port))
 	  (else
 	   (write-abs-path path port)))
     (if query
