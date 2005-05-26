@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.24 2005/05/26 13:24:32 cph Exp $
+$Id: url.scm,v 1.25 2005/05/26 17:43:20 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -47,20 +47,24 @@ USA.
   (if fragment (guarantee-utf8-string fragment 'MAKE-URI))
   (if (or (and (path-relative? path) (or scheme authority))
 	  (and (null? path) (not authority))
-	  (and (string? path) (or (not scheme) authority query))
-	  (and (not path) (or scheme authority query)))
+	  (and (string? path) (or (not scheme) authority query)))
       (error:bad-range-argument path 'MAKE-URI))
   (%make-uri scheme authority path query fragment))
 
 (define (path-relative? path)
+  (or (and (pair? path)
+	   (not (string-null? (car path))))
+      (null? path)))
+
+(define (path-absolute? path)
   (and (pair? path)
-       (eq? (car path) 'RELATIVE)))
+       (string-null? (car path))))
 
 (define-integrable (uri-path-relative? uri)
   (path-relative? (uri-path uri)))
 
 (define-integrable (uri-path-absolute? uri)
-  (not (uri-path-relative? uri)))
+  (path-absolute? (uri-path uri)))
 
 (define-integrable (uri-relative? uri)
   (if (uri-scheme uri) #f #t))
@@ -90,37 +94,37 @@ USA.
   (and (uri? object)
        (uri-heirarchical? object)))
 
+(define (base-uri? object)
+  (and (uri? object)
+       (uri-absolute? object)
+       (uri-heirarchical? object)))
+
 (define-guarantee uri "URI")
 (define-guarantee relative-uri "relative URI")
 (define-guarantee absolute-uri "absolute URI")
 (define-guarantee opaque-uri "opaque URI")
 (define-guarantee heirarchical-uri "heirarchical URI")
+(define-guarantee base-uri "base URI")
 
 (define (uri-scheme? object)
   (and (interned-symbol? object)
        (complete-match match-scheme (symbol-name object))))
 
 (define (uri-path? object)
-  (or (not object)
-      (non-null-utf8-string? object)
+  (or (non-null-utf8-string? object)
       (and (pair? object)
-	   (eq? (car object) 'RELATIVE)
-	   (pair? (cdr object))
-	   (non-null-utf8-string? (cadr object))
-	   (path-items? (cddr object)))
-      (path-items? object)))
+	   (utf8-string? (car object))
+	   (list-of-type? (cdr object)
+	     (lambda (elt)
+	       (or (utf8-string? elt)
+		   (and (pair? elt)
+			(utf8-string? (car elt))
+			(list-of-type? (cdr elt) utf8-string?))))))
+      (null? object)))
 
 (define (non-null-utf8-string? object)
   (and (utf8-string? object)
        (fix:> (string-length object) 0)))
-
-(define (path-items? object)
-  (list-of-type? object
-    (lambda (elt)
-      (or (utf8-string? elt)
-	  (and (pair? elt)
-	       (utf8-string? (car elt))
-	       (list-of-type? (cdr elt) utf8-string?))))))
 
 (define (uri-authority? object)
   (or (uri-server? object)
@@ -160,20 +164,73 @@ USA.
 (define-guarantee uri-server "URI server")
 (define-guarantee uri-host "URI host")
 (define-guarantee uri-port "URI port")
+
+;;;; Merging
+
+(define (merge-uris uri base-uri)
+  (guarantee-base-uri base-uri 'MERGE-URIS)
+  (let ((uri (->uri uri 'MERGE-URIS)))
+    (if (uri-absolute? uri)
+	uri
+	(%make-uri (uri-scheme base-uri)
+		   (or (uri-authority uri) (uri-authority base-uri))
+		   (if (uri-path-relative? uri)
+		       (merge-paths uri (uri-path base-uri))
+		       (uri-path uri))
+		   (uri-query (if (and (not (uri-authority uri))
+				       (null? (uri-path uri))
+				       (not (uri-query uri)))
+				  base-uri
+				  uri))
+		   (uri-fragment uri)))))
+
+(define (merge-paths uri base-path)
+  (let ((path
+	 (append (if (pair? (cdr base-path))
+		     (except-last-pair base-path)
+		     base-path)
+		 (list-copy (uri-path uri)))))
+    ;; Eliminate "." segments.
+    (let loop ((path (cdr path)) (p path))
+      (if (pair? path)
+	  (if (equal? (car path) ".")
+	      (if (pair? (cdr path))
+		  (begin
+		    (set-cdr! p (cdr path))
+		    (loop (cdr path) p))
+		  (set-car! path ""))
+	      (loop (cdr path) path))))
+    ;; Eliminate "foo/.." segments.
+    (let loop ()
+      (if (let loop ((path (cdr path)) (p path))
+	    (and (pair? path)
+		 (if (and (not (equal? (car path) ".."))
+			  (pair? (cdr path))
+			  (equal? (cadr path) ".."))
+		     (begin
+		       (set-cdr! p (cddr path))
+		       #t)
+		     (loop (cdr path) path))))
+	  (loop)))
+    ;; Error if path starts with "../".
+    (if (and (pair? (cdr path))
+	     (equal? (cadr path) ".."))
+	(error:bad-range-argument uri 'MERGE-URIS))
+    path))
 
 (define (->uri object #!optional caller)
   (cond ((uri? object) object)
 	((string? object) (string->uri object))
 	((symbol? object) (string->uri (symbol-name object)))
-	(else
-	 (error:not-uri object (if (default-object? caller) '->URI caller)))))
+	(else (error:not-uri object caller))))
 
 ;;;; Parser
 
 (define (string->uri string #!optional start end)
   (let ((v (complete-parse parse-uri string start end)))
-    (and v
-	 (vector-ref v 0))))
+    (if (not v)
+	(error:bad-range-argument string 'STRING->URI))
+    (vector-ref v 0)))
 
 (define parse-uri
   (*parser
@@ -186,7 +243,7 @@ USA.
 			      (vector-ref v 4)))
       (seq (alt parse-absolute-uri
 		parse-relative-uri
-		(values #f #f #f #f))
+		(values #f #f '() #f))
 	   (alt (seq "#" parse-fragment)
 		(values #f)))))))
 
@@ -226,21 +283,22 @@ USA.
    (seq "//"
 	parse-authority
 	(encapsulate vector->list
-	  (* (seq "/" parse-segment))))))
+	  (seq (values "")
+	       (* (seq "/" parse-segment)))))))
 
 (define parse-abs-path
   (*parser
    (seq (values #f)
 	(encapsulate vector->list
-	  (+ (seq "/" parse-segment))))))
+	  (seq (values "")
+	       (+ (seq "/" parse-segment)))))))
 
 (define parse-rel-path
   (*parser
    (seq (values #f)
-	(map (lambda (p) (cons 'RELATIVE p))
-	     (encapsulate vector->list
-	       (seq parse-rel-segment
-		    (* (seq "/" parse-segment))))))))
+	(encapsulate vector->list
+	  (seq parse-rel-segment
+	       (* (seq "/" parse-segment)))))))
 
 (define parse-segment
   (*parser
@@ -311,36 +369,32 @@ USA.
   (%write-uri uri port))
 
 (define (%write-uri uri port)
-  (let ((scheme (uri-scheme uri))
-	(authority (uri-authority uri))
-	(path (uri-path uri))
-	(query (uri-query uri))
-	(fragment (uri-fragment uri)))
-    (if scheme
-	(begin
-	  (write scheme port)
-	  (write-char #\: port)))
+  (if (uri-scheme uri)
+      (begin
+	(write (uri-scheme uri) port)
+	(write-char #\: port)))
+  (let ((path (uri-path uri)))
     (cond ((string? path)
 	   (write-escaped-substring path 0 1 char-set:uric-no-slash port)
 	   (write-escaped-substring path 1 (string-length path) char-set:uric
 				    port))
-	  (authority
+	  ((uri-authority uri)
 	   (write-string "//" port)
-	   (write-authority authority port)
+	   (write-authority (uri-authority uri) port)
 	   (write-abs-path path port))
-	  ((path-relative? path)
-	   (write-escaped (cadr path) char-set:uri-rel-segment port)
-	   (write-abs-path (cddr path) port))
-	  (else
-	   (write-abs-path path port)))
-    (if query
-	(begin
-	  (write-char #\? port)
-	  (write-escaped query char-set:uric port)))
-    (if fragment
-	(begin
-	  (write-char #\# port)
-	  (write-escaped fragment char-set:uric port)))))
+	  ((path-absolute? path)
+	   (write-abs-path path port))
+	  ((pair? path)
+	   (write-escaped (car path) char-set:uri-rel-segment port)
+	   (write-abs-path path port))))
+  (if (uri-query uri)
+      (begin
+	(write-char #\? port)
+	(write-escaped (uri-query uri) char-set:uric port)))
+  (if (uri-fragment uri)
+      (begin
+	(write-char #\# port)
+	(write-escaped (uri-fragment uri) char-set:uric port))))
 
 (define (write-authority authority port)
   (if (uri-server? authority)
@@ -368,7 +422,7 @@ USA.
 		(if (string? segment)
 		    (write-pchar segment)
 		    (for-each write-pchar segment)))
-	      path)))
+	      (cdr path))))
 
 ;;;; Escape codecs
 
