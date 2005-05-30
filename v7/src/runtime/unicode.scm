@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.22 2005/05/24 04:50:43 cph Exp $
+$Id: unicode.scm,v 1.23 2005/05/30 04:10:47 cph Exp $
 
 Copyright 2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -1216,10 +1216,14 @@ USA.
 		   ,(lambda (port char)
 		      (guarantee-wide-char char 'WRITE-CHAR)
 		      ((port/state port) char)))
-		  (EXTRACT-OUTPUT!
+		  (EXTRACT-OUTPUT
 		   ,(lambda (port)
 		      (%make-wide-string
 		       (get-output-objects (port/state port)))))
+		  (EXTRACT-OUTPUT!
+		   ,(lambda (port)
+		      (%make-wide-string
+		       (get-output-objects! (port/state port)))))
 		  (WRITE-SELF
 		   ,(lambda (port port*)
 		      port
@@ -1324,9 +1328,12 @@ USA.
 		(guarantee-wide-char char 'WRITE-CHAR)
 		(sink-char char (port/state port))
 		1))
-	    (EXTRACT-OUTPUT!
+	    (EXTRACT-OUTPUT
 	     ,(lambda (port)
 		(get-output-bytes (port/state port))))
+	    (EXTRACT-OUTPUT!
+	     ,(lambda (port)
+		(get-output-bytes! (port/state port))))
 	    (WRITE-SELF
 	     ,(let ((suffix (string-append " to " coding-name " string")))
 		(lambda (port port*)
@@ -1383,7 +1390,12 @@ USA.
   (let ((bytes #f)
 	(index))
     (lambda (byte)
-      (if (eq? byte 'EXTRACT-OUTPUT!)
+      (case byte
+	((EXTRACT-OUTPUT)
+	 (if bytes
+	     (string-head bytes index)
+	     (make-string 0)))
+	((EXTRACT-OUTPUT!)
 	  (without-interrupts
 	   (lambda ()
 	     (if bytes
@@ -1391,23 +1403,24 @@ USA.
 		   (set! bytes #f)
 		   (set-string-maximum-length! bytes* index)
 		   bytes*)
-		 (make-string 0))))
-	  (without-interrupts
-	   (lambda ()
-	     (cond ((not bytes)
-		    (set! bytes (make-string 128))
-		    (set! index 0))
-		   ((not (fix:< index (string-length bytes)))
-		    (let ((bytes*
-			   (make-string (fix:* (string-length bytes) 2))))
-		      (string-move! bytes bytes* 0)
-		      (set! bytes bytes*))))
-	     (vector-8b-set! bytes index byte)
-	     (set! index (fix:+ index 1))
-	     unspecific))))))
+		 (make-string 0)))))
+	(else
+	 (without-interrupts
+	  (lambda ()
+	    (cond ((not bytes)
+		   (set! bytes (make-string 128))
+		   (set! index 0))
+		  ((not (fix:< index (string-length bytes)))
+		   (let ((bytes*
+			  (make-string (fix:* (string-length bytes) 2))))
+		     (string-move! bytes bytes* 0)
+		     (set! bytes bytes*))))
+	    (vector-8b-set! bytes index byte)
+	    (set! index (fix:+ index 1))
+	    unspecific)))))))
 
-(define (get-output-bytes buffer)
-  (buffer 'EXTRACT-OUTPUT!))
+(define (get-output-bytes buffer) (buffer 'EXTRACT-OUTPUT))
+(define (get-output-bytes! buffer) (buffer 'EXTRACT-OUTPUT!))
 
 (define (call-with-output-byte-buffer generator)
   (let ((buffer (open-output-byte-buffer)))
@@ -1437,34 +1450,39 @@ USA.
   (let ((objects #f)
 	(index))
     (lambda (object)
-      (if (eq? object extract-output-tag)
-	  (without-interrupts
-	   (lambda ()
+      (cond ((eq? object extract-output-tag)
 	     (if objects
-		 (let ((objects* objects))
-		   (set! objects #f)
-		   (if (fix:< index (vector-length objects*))
-		       (vector-head objects* index)
-		       objects*))
-		 (make-vector 0))))
-	  (without-interrupts
-	   (lambda ()
-	     (cond ((not objects)
-		    (set! objects (make-vector 128))
-		    (set! index 0))
-		   ((not (fix:< index (vector-length objects)))
-		    (set! objects
-			  (vector-grow objects
-				       (fix:* (vector-length objects) 2)))))
-	     (vector-set! objects index object)
-	     (set! index (fix:+ index 1))
-	     unspecific))))))
+		 (vector-head objects index)
+		 (make-vector 0)))
+	    ((eq? object extract-output!-tag)
+	     (without-interrupts
+	      (lambda ()
+		(if objects
+		    (let ((objects* objects))
+		      (set! objects #f)
+		      (if (fix:< index (vector-length objects*))
+			  (vector-head objects* index)
+			  objects*))
+		    (make-vector 0)))))
+	    (else
+	     (without-interrupts
+	      (lambda ()
+		(cond ((not objects)
+		       (set! objects (make-vector 128))
+		       (set! index 0))
+		      ((not (fix:< index (vector-length objects)))
+		       (set! objects
+			     (vector-grow objects
+					  (fix:* (vector-length objects) 2)))))
+		(vector-set! objects index object)
+		(set! index (fix:+ index 1))
+		unspecific)))))))
 
-(define (get-output-objects buffer)
-  (buffer extract-output-tag))
+(define (get-output-objects buffer) (buffer extract-output-tag))
+(define (get-output-objects! buffer) (buffer extract-output!-tag))
 
-(define extract-output-tag
-  (list 'EXTRACT-OUTPUT!))
+(define extract-output-tag (list 'EXTRACT-OUTPUT))
+(define extract-output!-tag (list 'EXTRACT-OUTPUT!))
 
 (define (call-with-output-object-buffer generator)
   (let ((buffer (open-output-object-buffer)))
