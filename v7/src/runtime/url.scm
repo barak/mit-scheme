@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.25 2005/05/26 17:43:20 cph Exp $
+$Id: url.scm,v 1.26 2005/05/30 02:48:55 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -26,7 +26,7 @@ USA.
 ;;;; Uniform Resource Identifiers
 ;;; package: (runtime uri)
 
-;;; RFC 2396 <http://ietf.org/rfc/rfc2396.txt>
+;;; RFC 3986 <http://ietf.org/rfc/rfc3986.txt>
 
 (declare (usual-integrations))
 
@@ -40,119 +40,89 @@ USA.
   (fragment uri-fragment set-uri-fragment!))
 
 (define (make-uri scheme authority path query fragment)
-  (if scheme (guarantee-uri-scheme scheme 'MAKE-URI))
-  (if authority (guarantee-uri-authority authority 'MAKE-URI))
-  (guarantee-uri-path path 'MAKE-URI)
-  (if query (guarantee-utf8-string query 'MAKE-URI))
-  (if fragment (guarantee-utf8-string fragment 'MAKE-URI))
-  (if (or (and (path-relative? path) (or scheme authority))
-	  (and (null? path) (not authority))
-	  (and (string? path) (or (not scheme) authority query)))
-      (error:bad-range-argument path 'MAKE-URI))
-  (%make-uri scheme authority path query fragment))
-
-(define (path-relative? path)
-  (or (and (pair? path)
-	   (not (string-null? (car path))))
-      (null? path)))
-
-(define (path-absolute? path)
-  (and (pair? path)
-       (string-null? (car path))))
-
-(define-integrable (uri-path-relative? uri)
-  (path-relative? (uri-path uri)))
-
-(define-integrable (uri-path-absolute? uri)
-  (path-absolute? (uri-path uri)))
-
-(define-integrable (uri-relative? uri)
-  (if (uri-scheme uri) #f #t))
-
-(define-integrable (uri-absolute? uri)
-  (if (uri-scheme uri) #t #f))
-
-(define-integrable (uri-opaque? uri)
-  (string? (uri-path uri)))
-
-(define-integrable (uri-heirarchical? uri)
-  (not (uri-opaque? uri)))
-
-(define (relative-uri? object)
-  (and (uri? object)
-       (uri-relative? object)))
+  (let ((path (if (equal? path '("")) '() path)))
+    (if scheme (guarantee-uri-scheme scheme 'MAKE-URI))
+    (if authority (guarantee-uri-authority authority 'MAKE-URI))
+    (guarantee-uri-path path 'MAKE-URI)
+    (if query (guarantee-utf8-string query 'MAKE-URI))
+    (if fragment (guarantee-utf8-string fragment 'MAKE-URI))
+    (if (and authority (pair? path) (path-relative? path))
+	(error:bad-range-argument path 'MAKE-URI))
+    (%make-uri scheme
+	       authority
+	       (if scheme
+		   (remove-dot-segments path)
+		   path)
+	       query
+	       fragment)))
 
 (define (absolute-uri? object)
   (and (uri? object)
        (uri-absolute? object)))
 
-(define (opaque-uri? object)
+(define (relative-uri? object)
   (and (uri? object)
-       (uri-opaque? object)))
+       (uri-relative? object)))
 
-(define (heirarchical-uri? object)
-  (and (uri? object)
-       (uri-heirarchical? object)))
+(define-integrable (uri-absolute? uri)
+  (if (uri-scheme uri) #t #f))
 
-(define (base-uri? object)
-  (and (uri? object)
-       (uri-absolute? object)
-       (uri-heirarchical? object)))
+(define-integrable (uri-relative? uri)
+  (if (uri-scheme uri) #f #t))
 
 (define-guarantee uri "URI")
 (define-guarantee relative-uri "relative URI")
 (define-guarantee absolute-uri "absolute URI")
-(define-guarantee opaque-uri "opaque URI")
-(define-guarantee heirarchical-uri "heirarchical URI")
-(define-guarantee base-uri "base URI")
 
 (define (uri-scheme? object)
   (and (interned-symbol? object)
-       (complete-match match-scheme (symbol-name object))))
+       (complete-match matcher:scheme (symbol-name object))))
+
+;;; A well-formed path is a list of N segments which is equivalent to
+;;; a string in which there is a slash between each adjacent pair of
+;;; segments.   In other words, there are N-1 slashes.  If the string
+;;; begins with a slash, the internal form begins with an empty
+;;; segment, and if it ends with a slash the internal form ends with
+;;; an empty segment.
 
 (define (uri-path? object)
-  (or (non-null-utf8-string? object)
-      (and (pair? object)
-	   (utf8-string? (car object))
-	   (list-of-type? (cdr object)
-	     (lambda (elt)
-	       (or (utf8-string? elt)
-		   (and (pair? elt)
-			(utf8-string? (car elt))
-			(list-of-type? (cdr elt) utf8-string?))))))
-      (null? object)))
+  (list-of-type? object utf8-string?))
 
-(define (non-null-utf8-string? object)
-  (and (utf8-string? object)
-       (fix:> (string-length object) 0)))
+(define (uri-path-absolute? path)
+  (guarantee-uri-path path 'URI-PATH-ABSOLUTE?)
+  (path-absolute? path))
 
-(define (uri-authority? object)
-  (or (uri-server? object)
-      (uri-registry-name? object)))
+(define (path-absolute? path)
+  (and (pair? path)
+       (fix:= (string-length (car path)) 0)))
 
-(define-integrable (uri-registry-name? object)
-  (non-null-utf8-string? object))
+(define (uri-path-relative? path)
+  (guarantee-uri-path path 'URI-PATH-RELATIVE?)
+  (path-relative? path))
 
-(define-record-type <uri-server>
-    (%make-uri-server host port userinfo)
-    uri-server?
-  (host uri-server-host)
-  (port uri-server-port)
-  (userinfo uri-server-userinfo))
+(define-integrable (path-relative? path)
+  (not (path-absolute? path)))
 
-(define (make-uri-server host port userinfo)
-  (if host (guarantee-uri-host host 'MAKE-URI-SERVER))
-  (if port (guarantee-uri-port port 'MAKE-URI-SERVER))
-  (if userinfo (guarantee-utf8-string userinfo 'MAKE-URI-SERVER))
-  (if (not host)
-      (begin
-	(if port (error:bad-range-argument port 'MAKE-URI-SERVER))
-	(if userinfo (error:bad-range-argument userinfo 'MAKE-URI-SERVER))))
-  (%make-uri-server host port userinfo))
+(define-record-type <uri-authority>
+    (%make-uri-authority userinfo host port)
+    uri-authority?
+  (userinfo uri-authority-userinfo)
+  (host uri-authority-host)
+  (port uri-authority-port))
+
+(define (make-uri-authority userinfo host port)
+  (if userinfo (guarantee-uri-userinfo userinfo 'MAKE-URI-AUTHORITY))
+  (guarantee-uri-host host 'MAKE-URI-AUTHORITY)
+  (if port (guarantee-uri-port port 'MAKE-URI-AUTHORITY))
+  (%make-uri-authority userinfo host port))
+
+(define (uri-userinfo? object)
+  (and (string? object)
+       (complete-match parser:userinfo object)))
 
 (define (uri-host? object)
   (and (string? object)
-       (complete-match match-host object)))
+       (complete-match matcher:host object)))
 
 (define (uri-port? object)
   (exact-nonnegative-integer? object))
@@ -160,197 +130,467 @@ USA.
 (define-guarantee uri-scheme "URI scheme")
 (define-guarantee uri-path "URI path")
 (define-guarantee uri-authority "URI authority")
-(define-guarantee uri-registry-name "URI registry name")
-(define-guarantee uri-server "URI server")
+(define-guarantee uri-userinfo "URI userinfo")
 (define-guarantee uri-host "URI host")
 (define-guarantee uri-port "URI port")
+
+(define (uri=? u1 u2)
+  (let ((u1 (->uri u1 'URI=?))
+	(u2 (->uri u2 'URI=?)))
+    (and (eq? (uri-scheme u1) (uri-scheme u2))
+	 (%component=? %uri-authority=? (uri-authority u1) (uri-authority u2))
+	 (let loop ((p1 (uri-path u1)) (p2 (uri-path u2)))
+	   (if (pair? p1)
+	       (and (pair? p2)
+		    (string=? (car p1) (car p2))
+		    (loop (cdr p1) (cdr p2)))
+	       (null? p2)))
+	 (%component=? string=? (uri-query u1) (uri-query u2))
+	 (%component=? string=? (uri-fragment u1) (uri-fragment u2)))))
+
+(define (uri-authority=? a1 a2)
+  (guarantee-uri-authority a1 'URI-AUTHORITY=?)
+  (guarantee-uri-authority a2 'URI-AUTHORITY=?)
+  (%uri-authority=? a1 a2))
+
+(define (%uri-authority=? a1 a2)
+  (and (%component=? string=?
+		     (uri-authority-userinfo a1)
+		     (uri-authority-userinfo a2))
+       (string=? (uri-authority-host a1) (uri-authority-host a2))
+       (%component=? = (uri-authority-port a1) (uri-authority-port a2))))
+
+(define (%component=? predicate x1 x2)
+  (if x1
+      (and x2 (predicate x1 x2))
+      (not x2)))
+
+(define (uri->alist uri)
+  `(,@(if (uri-scheme uri)
+	  `((scheme ,(uri-scheme uri)))
+	  '())
+    ,@(if (uri-authority uri)
+	  (let ((a (uri-authority uri)))
+	    `(,@(if (uri-authority-userinfo a)
+		    `((userinfo ,(uri-authority-userinfo a)))
+		    '())
+	      (host ,(uri-authority-host a))
+	      ,@(if (uri-authority-port a)
+		    `((port ,(uri-authority-port a)))
+		    '())))
+	  '())
+    (path ,(uri-path uri))
+    ,@(if (uri-query uri)
+	  `((query ,(uri-query uri)))
+	  '())
+    ,@(if (uri-fragment uri)
+	  `((fragment ,(uri-fragment uri)))
+	  '())))
 
 ;;;; Merging
 
 (define (merge-uris uri base-uri)
-  (guarantee-base-uri base-uri 'MERGE-URIS)
+  (guarantee-absolute-uri base-uri 'MERGE-URIS)
   (let ((uri (->uri uri 'MERGE-URIS)))
-    (if (uri-absolute? uri)
-	uri
-	(%make-uri (uri-scheme base-uri)
-		   (or (uri-authority uri) (uri-authority base-uri))
-		   (if (uri-path-relative? uri)
-		       (merge-paths uri (uri-path base-uri))
-		       (uri-path uri))
-		   (uri-query (if (and (not (uri-authority uri))
-				       (null? (uri-path uri))
-				       (not (uri-query uri)))
-				  base-uri
-				  uri))
-		   (uri-fragment uri)))))
+    (cond ((uri-scheme uri)
+	   (%make-uri (uri-scheme uri)
+		      (uri-authority uri)
+		      (remove-dot-segments (uri-path uri))
+		      (uri-query uri)
+		      (uri-fragment uri)))
+	  ((uri-authority uri)
+	   (%make-uri (uri-scheme base-uri)
+		      (uri-authority uri)
+		      (remove-dot-segments (uri-path uri))
+		      (uri-query uri)
+		      (uri-fragment uri)))
+	  ((null? (uri-path uri))
+	   (%make-uri (uri-scheme base-uri)
+		      (uri-authority base-uri)
+		      (uri-path base-uri)
+		      (or (uri-query uri) (uri-query base-uri))
+		      (uri-fragment uri)))
+	  (else
+	   (%make-uri (uri-scheme base-uri)
+		      (uri-authority base-uri)
+		      (remove-dot-segments
+		       (merge-paths (uri-path uri) base-uri))
+		      (uri-query uri)
+		      (uri-fragment uri))))))
 
-(define (merge-paths uri base-path)
-  (let ((path
-	 (append (if (pair? (cdr base-path))
-		     (except-last-pair base-path)
-		     base-path)
-		 (list-copy (uri-path uri)))))
-    ;; Eliminate "." segments.
-    (let loop ((path (cdr path)) (p path))
-      (if (pair? path)
-	  (if (equal? (car path) ".")
-	      (if (pair? (cdr path))
-		  (begin
-		    (set-cdr! p (cdr path))
-		    (loop (cdr path) p))
-		  (set-car! path ""))
-	      (loop (cdr path) path))))
-    ;; Eliminate "foo/.." segments.
-    (let loop ()
-      (if (let loop ((path (cdr path)) (p path))
-	    (and (pair? path)
-		 (if (and (not (equal? (car path) ".."))
-			  (pair? (cdr path))
-			  (equal? (cadr path) ".."))
-		     (begin
-		       (set-cdr! p (cddr path))
-		       #t)
-		     (loop (cdr path) path))))
-	  (loop)))
-    ;; Error if path starts with "../".
-    (if (and (pair? (cdr path))
-	     (equal? (cadr path) ".."))
-	(error:bad-range-argument uri 'MERGE-URIS))
-    path))
+(define (merge-paths ref-path base-uri)
+  (cond ((path-absolute? ref-path)
+	 ref-path)
+	((and (uri-authority base-uri)
+	      (null? (uri-path base-uri)))
+	 (cons "" ref-path))
+	(else
+	 (let ((path (uri-path base-uri)))
+	   (if (and (pair? path)
+		    (pair? (cdr path)))
+	       (append (except-last-pair path) ref-path)
+	       ref-path)))))
+
+(define (remove-dot-segments path)
+  ;; At all times, (APPEND INPUT (REVERSE OUTPUT)) must be well
+  ;; formed.  If both INPUT and OUTPUT are non-null, the slash
+  ;; separating them is assumed to be in INPUT.
+  (letrec
+      ((no-output
+	(lambda (input)
+	  (if (pair? input)
+	      (let ((segment (car input))
+		    (input (cdr input)))
+		(if (or (string=? segment "..")
+			(string=? segment "."))
+		    ;; Rules A and D
+		    (no-output input)
+		    ;; Rule E
+		    (some-output input (list segment))))
+	      '())))
+       (some-output
+	(lambda (input output)
+	  (if (pair? input)
+	      (let ((segment (car input))
+		    (input (cdr input)))
+		(cond ((string=? segment ".")
+		       ;; Rule B
+		       (maybe-done input output))
+		      ((string=? segment "..")
+		       ;; Rule C
+		       (maybe-done input
+				   (if (pair? (cdr output))
+				       (cdr output)
+				       (list ""))))
+		      (else
+		       ;; Rule E
+		       (some-output input (cons segment output)))))
+	      output)))
+       (maybe-done
+	(lambda (input output)
+	  (if (pair? input)
+	      (some-output input output)
+	      (cons "" output)))))
+    (reverse! (no-output path))))
+
+;;;; Matching and parsing utilities
+
+(define (complete-match matcher string #!optional start end)
+  (let ((buffer (string->parser-buffer string start end)))
+    (and (matcher buffer)
+	 (not (peek-parser-buffer-char buffer)))))
+
+(define (complete-parse parser string #!optional start end)
+  (let ((buffer (string->parser-buffer string start end)))
+    (let ((v (parser buffer)))
+      (and v
+	   (not (peek-parser-buffer-char buffer))
+	   v))))
+
+(define (match-n*n n matcher)
+  (guarantee-exact-nonnegative-integer n 'MATCH-N*N)
+  (cond ((= n 0)
+	 (lambda (buffer)
+	   buffer
+	   #t))
+	((= n 1)
+	 matcher)
+	(else
+	 (lambda (buffer)
+	   (let ((p (get-parser-buffer-pointer buffer)))
+	     (let loop ((i 1))
+	       (if (<= i n)
+		   (if (matcher buffer)
+		       (loop (+ i 1))
+		       (begin
+			 (set-parser-buffer-pointer! buffer p)
+			 #f))
+		   #t)))))))
+
+(define (match-0*n n matcher)
+  (guarantee-exact-nonnegative-integer n 'MATCH-0*N)
+  (cond ((= n 0)
+	 (lambda (buffer)
+	   buffer
+	   #t))
+	((= n 1)
+	 (lambda (buffer)
+	   (matcher buffer)
+	   #t))
+	(else
+	 (lambda (buffer)
+	   (let loop ((i 1))
+	     (if (and (<= i n) (matcher buffer))
+		 (loop (+ i 1))
+		 #t))))))
+
+(define (match-n*m n m matcher)
+  (guarantee-exact-nonnegative-integer n 'MATCH-N*M)
+  (guarantee-exact-nonnegative-integer m 'MATCH-N*M)
+  (if (not (<= n m))
+      (error:bad-range-argument m 'MATCH-N*M))
+  (let ((prefix (match-n*n n matcher))
+	(suffix (match-0*n (- m n) matcher)))
+    (lambda (buffer)
+      (and (prefix buffer)
+	   (suffix buffer)))))
+
+(define (match-n* n matcher)
+  (guarantee-exact-nonnegative-integer n 'MATCH-N*)
+  (let ((prefix (match-n*n n matcher)))
+    (lambda (buffer)
+      (and (prefix buffer)
+	   (let loop ()
+	     (and (matcher buffer)
+		  (loop)))))))
+
+;;;; Parser
 
 (define (->uri object #!optional caller)
   (cond ((uri? object) object)
 	((string? object) (string->uri object))
 	((symbol? object) (string->uri (symbol-name object)))
 	(else (error:not-uri object caller))))
-
-;;;; Parser
+
+(define (->absolute-uri object #!optional caller)
+  (cond ((absolute-uri? object) object)
+	((string? object) (string->absolute-uri object))
+	((symbol? object) (string->absolute-uri (symbol-name object)))
+	(else (error:not-absolute-uri object caller))))
+
+(define (->relative-uri object #!optional caller)
+  (cond ((relative-uri? object) object)
+	((string? object) (string->relative-uri object))
+	((symbol? object) (string->relative-uri (symbol-name object)))
+	(else (error:not-relative-uri object caller))))
 
 (define (string->uri string #!optional start end)
-  (let ((v (complete-parse parse-uri string start end)))
+  (%string->uri parse-uri string start end 'STRING->URI))
+
+(define (string->absolute-uri string #!optional start end)
+  (%string->uri parse-absolute-uri string start end 'STRING->ABSOLUTE-URI))
+
+(define (string->relative-uri string #!optional start end)
+  (%string->uri parse-relative-uri string start end 'STRING->RELATIVE-URI))
+
+(define (%string->uri parser string start end caller)
+  (let ((v (complete-parse parser string start end)))
     (if (not v)
-	(error:bad-range-argument string 'STRING->URI))
+	(error:bad-range-argument string caller))
     (vector-ref v 0)))
 
 (define parse-uri
-  (*parser
-   (top-level
-    (encapsulate (lambda (v)
-		   (%make-uri (vector-ref v 0)
-			      (vector-ref v 1)
-			      (vector-ref v 2)
-			      (vector-ref v 3)
-			      (vector-ref v 4)))
-      (seq (alt parse-absolute-uri
-		parse-relative-uri
-		(values #f #f '() #f))
-	   (alt (seq "#" parse-fragment)
-		(values #f)))))))
+  (*parser (top-level (encapsulate encapsulate-uri parser:uri-reference))))
 
 (define parse-absolute-uri
-  (*parser
-   (seq parse-scheme
-	":"
-	(alt (seq (alt parse-net-path
-		       parse-abs-path)
-		  (alt (seq "?" parse-query)
-		       (values #f)))
-	     (seq (values #f)
-		  (match (seq (char-set char-set:uric-no-slash)
-			      (* (char-set char-set:uric))))
-		  (values #f))))))
+  (*parser (top-level (encapsulate encapsulate-uri parser:uri))))
 
 (define parse-relative-uri
+  (*parser (top-level (encapsulate encapsulate-uri parser:relative-ref))))
+
+(define (encapsulate-uri v)
+  (%make-uri (vector-ref v 0)
+	     (vector-ref v 1)
+	     (vector-ref v 2)
+	     (vector-ref v 3)
+	     (vector-ref v 4)))
+
+(define parser:uri
   (*parser
-   (seq (values #f)
-	(alt parse-net-path
-	     parse-abs-path
-	     parse-rel-path)
-	(alt (seq "?" parse-query)
+   (seq parser:scheme
+	":"
+	parser:hier-part
+	(alt (seq "?" parser:query)
+	     (values #f))
+	(alt (seq "#" parser:fragment)
 	     (values #f)))))
 
-(define parse-scheme
+(define parser:hier-part
   (*parser
-   (map intern (match match-scheme))))
+   (alt (seq "//" parser:authority parser:path-abempty)
+	(seq (values #f) parser:path-absolute)
+	(seq (values #f) parser:path-rootless)
+	(seq (values #f) parser:path-empty))))
 
-(define match-scheme
+(define parser:uri-reference
+  (*parser
+   (alt parser:uri
+	parser:relative-ref)))
+
+(define parser:relative-ref
+  (*parser
+   (seq (values #f)
+	parser:relative-part
+	(alt (seq "?" parser:query)
+	     (values #f))
+	(alt (seq "#" parser:fragment)
+	     (values #f)))))
+
+(define parser:relative-part
+  (*parser
+   (alt (seq "//" parser:authority parser:path-abempty)
+	(seq (values #f) parser:path-absolute)
+	(seq (values #f) parser:path-noscheme)
+	(seq (values #f) parser:path-empty))))
+
+(define parser:scheme
+  (*parser
+   (map intern (match matcher:scheme))))
+
+(define matcher:scheme
   (*matcher
    (seq (char-set char-set:uri-alpha)
 	(* (char-set char-set:uri-scheme)))))
-
-(define parse-net-path
-  (*parser
-   (seq "//"
-	parse-authority
-	(encapsulate vector->list
-	  (seq (values "")
-	       (* (seq "/" parse-segment)))))))
 
-(define parse-abs-path
-  (*parser
-   (seq (values #f)
-	(encapsulate vector->list
-	  (seq (values "")
-	       (+ (seq "/" parse-segment)))))))
-
-(define parse-rel-path
-  (*parser
-   (seq (values #f)
-	(encapsulate vector->list
-	  (seq parse-rel-segment
-	       (* (seq "/" parse-segment)))))))
-
-(define parse-segment
+(define parser:authority
   (*parser
    (encapsulate (lambda (v)
-		  (if (fix:> (vector-length v) 1)
-		      (vector->list v)
-		      (vector-ref v 0)))
-     (seq parse-pchar
-	  (* (seq ";" parse-pchar))))))
-
-(define parse-authority
+		  (%make-uri-authority (vector-ref v 0)
+				       (vector-ref v 1)
+				       (vector-ref v 2)))
+     (seq (alt (seq parser:userinfo "@")
+	       (values #f))
+	  parser:hostport))))
+
+(define parser:hostport
   (*parser
-   (alt (encapsulate (lambda (v)
-		       (%make-uri-server (vector-ref v 1)
-					 (vector-ref v 2)
-					 (vector-ref v 0)))
-	  (seq (alt parse-userinfo
-		    (values #f))
-	       parse-hostport))
-	parse-reg-name
-	(values (%make-uri-server #f #f #f)))))
-
-(define parse-hostport
-  (*parser
-   (seq (match match-host)
-	(alt (seq (noise ":")
-		  (alt (map string->number (match match-digits))
-		       (values #f)))
+   (seq (map uri-string-downcase
+	     (match matcher:host))
+	(alt (seq ":"
+		  (map (lambda (s)
+			 (if (fix:> (string-length s) 0)
+			     (string->number s)
+			     #f))
+		       (match (* (char-set char-set:uri-digit)))))
 	     (values #f)))))
 
-(define match-host
-  (*matcher (alt match-hostname match-ipv4-address)))
+;; This is a kludge to work around fact that STRING-DOWNCASE only
+;; works on ISO 8859-1 strings, and we are using UTF-8 strings.
 
-(define match-hostname
-  (let ((match-tail
-	 (*matcher
-	  (? (seq (* (char-set char-set:uri-alphanum-))
-		  (char-set char-set:uri-alphanum))))))
-    (*matcher
-     (seq (* (seq (char-set char-set:uri-alphanum)
-		  match-tail
-		  "."))
-	  (char-set char-set:uri-alpha)
-	  match-tail
-	  (? ".")))))
+(define (uri-string-downcase string)
+  (call-with-utf8-output-string
+   (lambda (output)
+     (let ((input (open-utf8-input-string string)))
+       (let loop ()
+	 (let ((char (read-char input)))
+	   (if (not (eof-object? char))
+	       (begin
+		 (write-char (char-downcase char) output)
+		 (loop)))))))))
 
-(define match-ipv4-address
+(define matcher:host
   (*matcher
-   (seq match-digits "." match-digits "." match-digits "." match-digits)))
+   (alt matcher:ip-literal
+	;; subsumed by MATCHER:REG-NAME
+	;;matcher:ipv4-address
+	matcher:reg-name)))
 
-(define match-digits
-  (*matcher (+ (char-set char-set:uri-digit))))
+(define matcher:ip-literal
+  (*matcher
+   (seq "["
+	(alt matcher:ipv6-address
+	     matcher:ipvfuture)
+	"]")))
+
+(define matcher:ipvfuture
+  (*matcher
+   (seq "v"
+	(+ (char-set char-set:uri-hex))
+	"."
+	(+ (char-set char-set:uri-ipvfuture)))))
+
+(define matcher:ipv6-address
+  (let ((h16: (*matcher (seq matcher:h16 ":"))))
+    (let ((h16:2 (match-n*n 2 h16:))
+	  (h16:3 (match-n*n 3 h16:))
+	  (h16:4 (match-n*n 4 h16:))
+	  (h16:5 (match-n*n 5 h16:))
+	  (h16:6 (match-n*n 6 h16:))
+	  (h16:*1 (match-0*n 1 h16:))
+	  (h16:*2 (match-0*n 2 h16:))
+	  (h16:*3 (match-0*n 3 h16:))
+	  (h16:*4 (match-0*n 4 h16:))
+	  (h16:*5 (match-0*n 5 h16:))
+	  (h16:*6 (match-0*n 6 h16:)))
+      (*matcher
+       (alt (seq                                   h16:6 matcher:ls32)
+	    (seq                              "::" h16:5 matcher:ls32)
+	    (seq (? (seq        matcher:h16)) "::" h16:4 matcher:ls32)
+	    (seq (? (seq h16:*1 matcher:h16)) "::" h16:3 matcher:ls32)
+	    (seq (? (seq h16:*2 matcher:h16)) "::" h16:2 matcher:ls32)
+	    (seq (? (seq h16:*3 matcher:h16)) "::" h16:  matcher:ls32)
+	    (seq (? (seq h16:*4 matcher:h16)) "::"       matcher:ls32)
+	    (seq (? (seq h16:*5 matcher:h16)) "::"       matcher:h16 )
+	    (seq (? (seq h16:*6 matcher:h16)) "::"                   ))))))
+
+(define matcher:h16
+  (match-n*m 1 4 (*matcher (char-set char-set:uri-hex))))
+
+(define matcher:ls32
+  (*matcher
+   (alt (seq matcher:h16 ":" matcher:h16)
+	matcher:ipv4-address)))
+
+(define matcher:ipv4-address
+  (*matcher
+   (seq matcher:dec-octet
+	"."
+	matcher:dec-octet
+	"."
+	matcher:dec-octet
+	"."
+	matcher:dec-octet)))
+
+(define matcher:dec-octet
+  (*matcher
+   (alt "0"
+	(seq "1"
+	     (? (seq (char-set char-set:uri-digit)
+		     (? (char-set char-set:uri-digit)))))
+	(seq "2"
+	     (? (alt (seq (char-set (string->char-set "01234"))
+			  (? (char-set char-set:uri-digit)))
+		     (seq "5"
+			  (? (char-set (string->char-set "012345"))))
+		     (char-set (string->char-set "6789")))))
+	(seq (char-set (string->char-set "3456789"))
+	     (? (char-set char-set:uri-digit))))))
+
+(define parser:path-abempty
+  (*parser
+   (encapsulate (lambda (v)
+		  (let ((segments (vector->list v)))
+		    (if (pair? segments)
+			(cons "" segments)
+			segments)))
+     (* (seq "/" parser:segment)))))
+
+(define parser:path-absolute
+  (*parser
+   (encapsulate (lambda (v)
+		  (let ((segments (vector->list v)))
+		    (if (pair? segments)
+			(cons "" segments)
+			(list "" ""))))
+     (seq "/"
+	  (? (seq parser:segment-nz
+		  (* (seq "/" parser:segment))))))))
+
+(define parser:path-noscheme
+  (*parser
+   (encapsulate vector->list
+     (seq parser:segment-nz-nc
+	  (* (seq "/" parser:segment))))))
+
+(define parser:path-rootless
+  (*parser
+   (encapsulate vector->list
+     (seq parser:segment-nz
+	  (* (seq "/" parser:segment))))))
+
+(define (parser:path-empty buffer)
+  buffer
+  (vector '()))
 
 ;;;; Output
 
@@ -373,70 +613,64 @@ USA.
       (begin
 	(write (uri-scheme uri) port)
 	(write-char #\: port)))
+  (if (uri-authority uri)
+      (write-authority (uri-authority uri) port))
   (let ((path (uri-path uri)))
-    (cond ((string? path)
-	   (write-escaped-substring path 0 1 char-set:uric-no-slash port)
-	   (write-escaped-substring path 1 (string-length path) char-set:uric
-				    port))
-	  ((uri-authority uri)
-	   (write-string "//" port)
-	   (write-authority (uri-authority uri) port)
-	   (write-abs-path path port))
-	  ((path-absolute? path)
-	   (write-abs-path path port))
-	  ((pair? path)
-	   (write-escaped (car path) char-set:uri-rel-segment port)
-	   (write-abs-path path port))))
+    (if (pair? path)
+	(begin
+	  (if (uri-scheme uri)
+	      (write-segment (car path) port)
+	      (write-encoded (car path) char-set:uri-segment-nc port))
+	  (for-each (lambda (segment)
+		      (write-char #\/ port)
+		      (write-segment segment port))
+		    (cdr path)))))
   (if (uri-query uri)
       (begin
 	(write-char #\? port)
-	(write-escaped (uri-query uri) char-set:uric port)))
+	(write-encoded (uri-query uri) char-set:uri-query port)))
   (if (uri-fragment uri)
       (begin
 	(write-char #\# port)
-	(write-escaped (uri-fragment uri) char-set:uric port))))
+	(write-encoded (uri-fragment uri) char-set:uri-fragment port))))
 
 (define (write-authority authority port)
-  (if (uri-server? authority)
+  (write-string "//" port)
+  (if (uri-authority-userinfo authority)
       (begin
-	(if (uri-server-userinfo authority)
-	    (begin
-	      (write-escaped (uri-server-userinfo authority)
-			     char-set:uri-userinfo
-			     port)
-	      (write-char #\@ port)))
-	(if (uri-server-host authority)
-	    (write-string (uri-server-host authority) port))
-	(if (uri-server-port authority)
-	    (begin
-	      (write-char #\: port)
-	      (write (uri-server-port authority) port))))
-      (write-escaped authority char-set:uri-reg-name port)))
+	(write-encoded (uri-authority-userinfo authority)
+		       char-set:uri-userinfo
+		       port)
+	(write-char #\@ port)))
+  (if (uri-authority-host authority)
+      (write-encoded (uri-authority-host authority)
+		     char-set:uri-opaque-auth
+		     port))
+  (if (uri-authority-port authority)
+      (begin
+	(write-char #\: port)
+	(write (uri-authority-port authority) port))))
 
-(define (write-abs-path path port)
-  (let ((write-pchar
-	 (lambda (string)
-	   (write-escaped string char-set:uri-pchar port))))
-    (for-each (lambda (segment)
-		(write-char #\/ port)
-		(if (string? segment)
-		    (write-pchar segment)
-		    (for-each write-pchar segment)))
-	      (cdr path))))
+(define (write-segment segment port)
+  (write-encoded segment char-set:uri-segment port))
 
 ;;;; Escape codecs
 
 (define (component-parser-* cs)
-  (*parser
-   (map decode-component
-	(match (* (alt (char-set cs) match-escape))))))
+  (let ((matcher (component-matcher-* cs)))
+    (*parser (map decode-component (match matcher)))))
 
 (define (component-parser-+ cs)
-  (*parser
-   (map decode-component
-	(match (+ (alt (char-set cs) match-escape))))))
+  (let ((matcher (component-matcher-+ cs)))
+    (*parser (map decode-component (match matcher)))))
 
-(define match-escape
+(define (component-matcher-* cs)
+  (*matcher (* (alt (char-set cs) matcher:pct-encoded))))
+
+(define (component-matcher-+ cs)
+  (*matcher (+ (alt (char-set cs) matcher:pct-encoded))))
+
+(define matcher:pct-encoded
   (*matcher
    (seq "%"
 	(char-set char-set:uri-hex)
@@ -464,157 +698,197 @@ USA.
 			(loop (fix:+ i 1)))))))))
       string))
 
-(define (write-escaped string unescaped port)
-  (write-escaped-substring string 0 (string-length string) unescaped port))
+(define (write-encoded string unescaped port)
+  (write-encoded-substring string 0 (string-length string) unescaped port))
 
-(define (write-escaped-substring string start end unescaped port)
+(define (write-encoded-substring string start end unescaped port)
   (do ((i start (fix:+ i 1)))
       ((not (fix:< i end)))
     (let ((char (string-ref string i)))
       (if (char-set-member? unescaped char)
 	  (write-char char port)
-	  (let ((s (number->string (char->integer char) 16)))
+	  (begin
 	    (write-char #\% port)
-	    (if (fix:= (string-length s) 1)
-		(write-char #\0 port))
-	    (write-string s port))))))
-
-(define (complete-match matcher string #!optional start end)
-  (let ((buffer (string->parser-buffer string start end)))
-    (and (matcher buffer)
-	 (not (peek-parser-buffer-char buffer)))))
-
-(define (complete-parse parser string #!optional start end)
-  (let ((buffer (string->parser-buffer string start end)))
-    (let ((v (parser buffer)))
-      (and v
-	   (not (peek-parser-buffer-char buffer))
-	   v))))
+	    (write-string (string-pad-left
+			   (string-upcase (number->string (char->integer char)
+							  16))
+			   2
+			   #\0)
+			  port))))))
 
 ;; backwards compatibility:
 (define (url:encode-string string)
   (call-with-output-string
     (lambda (port)
-      (write-escaped string url:char-set:unescaped port))))
+      (write-encoded string url:char-set:unescaped port))))
 
 ;;;; Regular expressions
 
-(define (uri-rexp:uri-reference)
-  (rexp-sequence (rexp-alternatives (uri-rexp:absolute-uri)
-				    (uri-rexp:relative-uri))
+(define (uri-rexp:uri)
+  (rexp-sequence (uri-rexp:scheme)
+		 ":"
+		 (uri-rexp:hier-part)
+		 (rexp-optional "?" (uri-rexp:query))
 		 (rexp-optional "#" (uri-rexp:fragment))))
+
+(define (uri-rexp:hier-part)
+  (rexp-alternatives (rexp-sequence "//"
+				    (uri-rexp:authority)
+				    (uri-rexp:path-abempty))
+		     (uri-rexp:path-absolute)
+		     (uri-rexp:path-rootless)
+		     (uri-rexp:path-empty)))
+
+(define (uri-rexp:uri-reference)
+  (rexp-alternatives (uri-rexp:uri)
+		     (uri-rexp:relative-ref)))
 
 (define (uri-rexp:absolute-uri)
   (rexp-sequence (uri-rexp:scheme)
 		 ":"
-		 (rexp-alternatives (uri-rexp:heir-part)
-				    (uri-rexp:opaque-part))))
-
-(define (uri-rexp:relative-uri)
-  (rexp-sequence (rexp-alternatives (uri-rexp:net-path)
-				    (uri-rexp:abs-path)
-				    (uri-rexp:rel-path))
+		 (uri-rexp:hier-part)
 		 (rexp-optional "?" (uri-rexp:query))))
 
-(define (uri-rexp:heir-part)
-  (rexp-sequence (rexp-alternatives (uri-rexp:net-path)
-				    (uri-rexp:abs-path))
-		 (rexp-optional "?" (uri-rexp:query))))
+(define (uri-rexp:relative-ref)
+  (rexp-sequence (uri-rexp:relative-part)
+		 (rexp-optional "?" (uri-rexp:query))
+		 (rexp-optional "#" (uri-rexp:fragment))))
 
-(define (uri-rexp:opaque-part)
-  (rexp-sequence (uri-rexp:uric-no-slash)
-		 (rexp* (uri-rexp:uric))))
-
-(define (uri-rexp:uric-no-slash)
-  (uri-rexp:escaped char-set:uric-no-slash))
-
-(define (uri-rexp:net-path)
-  (rexp-sequence "//"
-		 (uri-rexp:authority)
-		 (rexp-optional (uri-rexp:abs-path))))
-
-(define (uri-rexp:abs-path)
-  (rexp-sequence "/" (uri-rexp:path-segments)))
-
-(define (uri-rexp:rel-path)
-  (rexp-sequence (uri-rexp:rel-segment)
-		 (rexp-optional (uri-rexp:abs-path))))
-
-(define (uri-rexp:rel-segment)
-  (rexp+ (uri-rexp:escaped char-set:uri-rel-segment)))
+(define (uri-rexp:relative-part)
+  (rexp-alternatives (rexp-sequence "//"
+				    (uri-rexp:authority)
+				    (uri-rexp:path-abempty))
+		     (uri-rexp:path-absolute)
+		     (uri-rexp:path-noscheme)
+		     (uri-rexp:path-empty)))
 
 (define (uri-rexp:scheme)
   (rexp-sequence char-set:uri-alpha
 		 (rexp* char-set:uri-scheme)))
 
+(define (uri-rexp:opaque-auth)
+  (rexp* char-set:uri-opaque-auth))
+
 (define (uri-rexp:authority)
-  (rexp-alternatives (uri-rexp:server)
-		     (uri-rexp:reg-name)))
-
-(define (uri-rexp:reg-name)
-  (rexp+ (uri-rexp:escaped char-set:uri-reg-name)))
-
-(define (uri-rexp:server)
   (rexp-sequence (rexp-optional (uri-rexp:userinfo) "@")
-		 (uri-rexp:hostport)))
-
-(define (uri-rexp:userinfo)
-  (rexp* (uri-rexp:escaped char-set:uri-userinfo)))
-
-(define (uri-rexp:hostport)
-  (rexp-sequence (uri-rexp:host)
+		 (uri-rexp:host)
 		 (rexp-optional ":" (uri-rexp:port))))
 
+(define (uri-rexp:userinfo)
+  (rexp* (uri-rexp:pct-encoded char-set:uri-userinfo)))
+
 (define (uri-rexp:host)
-  (rexp-alternatives (uri-rexp:hostname)
-		     (uri-rexp:ipv4-address)))
-
-(define (uri-rexp:hostname)
-  (rexp-sequence (rexp* (uri-rexp:domainlabel) ".")
-		 (uri-rexp:toplabel)
-		 (rexp-optional ".")))
-
-(define (uri-rexp:domainlabel)
-  (rexp-sequence char-set:uri-alphanum
-		 (rexp-optional (rexp* char-set:uri-alphanum-)
-				char-set:uri-alphanum)))
-
-(define (uri-rexp:toplabel)
-  (rexp-sequence char-set:uri-alpha
-		 (rexp-optional (rexp* char-set:uri-alphanum-)
-				char-set:uri-alphanum)))
-
-(define (uri-rexp:ipv4-address)
-  (let ((digits (rexp+ char-set:uri-digit)))
-    (rexp-sequence digits "." digits "." digits "." digits)))
+  (rexp-alternatives (uri-rexp:ip-literal)
+		     (uri-rexp:ipv4-address)
+		     (uri-rexp:reg-name)))
 
 (define (uri-rexp:port)
   (rexp* char-set:uri-digit))
+
+(define (uri-rexp:ip-literal)
+  (rexp-sequence "["
+		 (rexp-alternatives (uri-rexp:ipv6-address)
+				    (uri-rexp:ipvfuture))
+		 "]"))
 
-(define (uri-rexp:path-segments)
-  (rexp-sequence (uri-rexp:segment)
+(define (uri-rexp:ipvfuture)
+  (rexp-sequence "v"
+		 (rexp+ char-set:uri-hex)
+		 "."
+		 (rexp+ char-set:uri-ipvfuture)))
+
+(define (uri-rexp:ipv6-address)
+  (let ((h16 (uri-rexp:h16))
+	(ls32 (uri-rexp:ls32))
+	(alt rexp-alternatives)
+	(seq rexp-sequence)
+	(? rexp-optional))
+    (alt (seq                                   (rexp-n*n 6 h16 ":") ls32)
+	 (seq                              "::" (rexp-n*n 5 h16 ":") ls32)
+	 (seq (?                      h16) "::" (rexp-n*n 4 h16 ":") ls32)
+	 (seq (? (rexp-0*n 1 h16 ":") h16) "::" (rexp-n*n 3 h16 ":") ls32)
+	 (seq (? (rexp-0*n 2 h16 ":") h16) "::" (rexp-n*n 2 h16 ":") ls32)
+	 (seq (? (rexp-0*n 3 h16 ":") h16) "::" (rexp-n*n 1 h16 ":") ls32)
+	 (seq (? (rexp-0*n 4 h16 ":") h16) "::"                      ls32)
+	 (seq (? (rexp-0*n 5 h16 ":") h16) "::"                      h16 )
+	 (seq (? (rexp-0*n 6 h16 ":") h16) "::"                          ))))
+
+(define (uri-rexp:h16)
+  (rexp-n*m 1 4 char-set:uri-hex))
+
+(define (uri-rexp:ls32)
+  (rexp-alternatives (rexp-sequence (uri-rexp:h16)
+				    ":"
+				    (uri-rexp:h16))
+		     (uri-rexp:ipv4-address)))
+
+(define (uri-rexp:ipv4-address)
+  (rexp-sequence (uri-rexp:dec-octet)
+		 "."
+		 (uri-rexp:dec-octet)
+		 "."
+		 (uri-rexp:dec-octet)
+		 "."
+		 (uri-rexp:dec-octet)))
+
+(define (uri-rexp:dec-octet)
+  (rexp-alternatives (rexp-sequence char-set:uri-digit)
+		     (rexp-sequence (string->char-set "123456789")
+				    char-set:uri-digit)
+		     (rexp-sequence "1"
+				    char-set:uri-digit
+				    char-set:uri-digit)
+		     (rexp-sequence "2"
+				    (string->char-set "01234")
+				    char-set:uri-digit)
+		     (rexp-sequence "25"
+				    (string->char-set "012345"))))
+
+(define (uri-rexp:reg-name)
+  (rexp* (uri-rexp:pct-encoded char-set:uri-reg-name)))
+
+(define (uri-rexp:path)
+  (rexp-alternatives (uri-rexp:path-abempty)
+		     (uri-rexp:path-absolute)
+		     (uri-rexp:path-noscheme)
+		     (uri-rexp:path-rootless)
+		     (uri-rexp:path-empty)))
+
+(define (uri-rexp:path-abempty)
+  (rexp* "/" (uri-rexp:segment)))
+
+(define (uri-rexp:path-absolute)
+  (rexp-sequence "/"
+		 (rexp-optional (uri-rexp:segment-nz)
+				(rexp* "/" (uri-rexp:segment)))))
+
+(define (uri-rexp:path-noscheme)
+  (rexp-sequence (uri-rexp:segment-nz-nc)
 		 (rexp* "/" (uri-rexp:segment))))
 
+(define (uri-rexp:path-rootless)
+  (rexp-sequence (uri-rexp:segment-nz)
+		 (rexp* "/" (uri-rexp:segment))))
+
+(define (uri-rexp:path-empty)
+  (rexp-sequence))
+
 (define (uri-rexp:segment)
-  (rexp-sequence (rexp* (uri-rexp:pchar))
-		 (rexp* ";" (uri-rexp:param))))
+  (rexp* (uri-rexp:pct-encoded char-set:uri-segment)))
 
-(define (uri-rexp:param)
-  (rexp* (uri-rexp:pchar)))
+(define (uri-rexp:segment-nz)
+  (rexp+ (uri-rexp:pct-encoded char-set:uri-segment)))
 
-(define (uri-rexp:pchar)
-  (uri-rexp:escaped char-set:uri-pchar))
+(define (uri-rexp:segment-nz-nc)
+  (rexp+ (uri-rexp:pct-encoded char-set:uri-segment-nc)))
 
 (define (uri-rexp:query)
-  (rexp* (uri-rexp:uric)))
+  (rexp* char-set:uri-query))
 
 (define (uri-rexp:fragment)
-  (rexp* (uri-rexp:uric)))
+  (rexp* char-set:uri-fragment))
 
-(define (uri-rexp:uric)
-  (uri-rexp:escaped char-set:uric))
-
-(define (uri-rexp:escaped cs)
+(define (uri-rexp:pct-encoded cs)
   (rexp-alternatives cs
 		     (rexp-sequence "%"
 				    char-set:uri-hex
@@ -622,23 +896,24 @@ USA.
 
 (define char-set:uri-alpha)
 (define char-set:uri-digit)
-(define char-set:uri-alphanum)
-(define char-set:uri-alphanum-)
 (define char-set:uri-hex)
 (define char-set:uri-scheme)
-(define char-set:uric)
-(define char-set:uric-no-slash)
-(define char-set:uri-reg-name)
 (define char-set:uri-userinfo)
-(define char-set:uri-rel-segment)
-(define char-set:uri-pchar)
+(define char-set:uri-opaque-auth)
+(define char-set:uri-ipvfuture)
+(define char-set:uri-reg-name)
+(define char-set:uri-segment)
+(define char-set:uri-segment-nc)
+(define char-set:uri-query)
+(define char-set:uri-fragment)
 
-(define parse-fragment)
-(define parse-query)
-(define parse-reg-name)
-(define parse-userinfo)
-(define parse-rel-segment)
-(define parse-pchar)
+(define parser:userinfo)
+(define matcher:reg-name)
+(define parser:segment)
+(define parser:segment-nz)
+(define parser:segment-nz-nc)
+(define parser:query)
+(define parser:fragment)
 
 (define url:char-set:unreserved)
 (define url:char-set:unescaped)
@@ -648,39 +923,120 @@ USA.
 	(string->char-set
 	 "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
   (set! char-set:uri-digit (string->char-set "0123456789"))
-  (set! char-set:uri-alphanum
-	(char-set-union char-set:uri-alpha char-set:uri-digit))
-  (set! char-set:uri-alphanum-
-	(char-set-union char-set:uri-alphanum (char-set #\-)))
   (set! char-set:uri-hex (string->char-set "0123456789abcdefABCDEF"))
   (set! char-set:uri-scheme
-	(char-set-union char-set:uri-alphanum (string->char-set "+-.")))
-  (set! char-set:uric
-	(char-set-union char-set:uri-alphanum
-			(string->char-set "!'()*-._~")	;mark
-			(string->char-set "$&+,/:;=?@") ;reserved
-			))
-  (let ((component-chars
-	 (lambda (free)
-	   (char-set-difference char-set:uric (string->char-set free)))))
-    (set! char-set:uric-no-slash	(component-chars "/"))
-    (set! char-set:uri-reg-name		(component-chars "/?"))
+	(char-set-union char-set:uri-alpha
+			char-set:uri-digit
+			(string->char-set "+-.")))
+  (let* ((uri-char
+	  (char-set-union char-set:uri-alpha
+			  char-set:uri-digit
+			  (string->char-set "!$&'()*+,-./:;=?@_~")))
+	 (component-chars
+	  (lambda (free)
+	    (char-set-difference uri-char (string->char-set free)))))
     (set! char-set:uri-userinfo		(component-chars "/?@"))
-    (set! char-set:uri-rel-segment	(component-chars "/:?"))
-    (set! char-set:uri-pchar		(component-chars "/;?")))
+    (set! char-set:uri-ipvfuture	char-set:uri-userinfo)
+    (set! char-set:uri-reg-name		(component-chars "/:?@"))
+    (set! char-set:uri-segment		(component-chars "/?"))
+    (set! char-set:uri-segment-nc	(component-chars "/:?"))
+    (set! char-set:uri-query		uri-char)
+    (set! char-set:uri-fragment		uri-char)
 
-  (set! parse-fragment (component-parser-* char-set:uric))
-  (set! parse-query parse-fragment)
-  (set! parse-reg-name (component-parser-+ char-set:uri-reg-name))
-  (set! parse-userinfo (component-parser-* char-set:uri-userinfo))
-  (set! parse-rel-segment (component-parser-+ char-set:uri-rel-segment))
-  (set! parse-pchar (component-parser-* char-set:uri-pchar))
+    (set! char-set:uri-opaque-auth
+	  (char-set-union (component-chars "/?")
+			  (string->char-set "[]"))))
+
+  (set! parser:userinfo		(component-parser-* char-set:uri-userinfo))
+  (set! matcher:reg-name	(component-matcher-* char-set:uri-reg-name))
+  (set! parser:segment		(component-parser-* char-set:uri-segment))
+  (set! parser:segment-nz	(component-parser-+ char-set:uri-segment))
+  (set! parser:segment-nz-nc	(component-parser-+ char-set:uri-segment-nc))
+  (set! parser:query		(component-parser-* char-set:uri-query))
+  (set! parser:fragment		(component-parser-* char-set:uri-fragment))
 
   ;; backwards compatibility:
   (set! url:char-set:unreserved
-	(char-set-union char-set:uri-alphanum
+	(char-set-union char-set:uri-alpha
+			char-set:uri-digit
 			(string->char-set "!$'()*+,-._")))
   (set! url:char-set:unescaped
 	(char-set-union url:char-set:unreserved
 			(string->char-set ";/?:@&=")))
   unspecific)
+
+;;;; Testing
+
+(define (test-merge-uris #!optional verbose?)
+  (let ((verbose? (if (default-object? verbose?) #f verbose?))
+	(base-uri
+	 (string->uri "http://a/b/c/d;p?q"))
+	(normal-examples
+	 '(("g:h"           "g:h")
+	   ("g"             "http://a/b/c/g")
+	   ("./g"           "http://a/b/c/g")
+	   ("g/"            "http://a/b/c/g/")
+	   ("/g"            "http://a/g")
+	   ("//g"           "http://g")
+	   ("?y"            "http://a/b/c/d;p?y")
+	   ("g?y"           "http://a/b/c/g?y")
+	   ("#s"            "http://a/b/c/d;p?q#s")
+	   ("g#s"           "http://a/b/c/g#s")
+	   ("g?y#s"         "http://a/b/c/g?y#s")
+	   (";x"            "http://a/b/c/;x")
+	   ("g;x"           "http://a/b/c/g;x")
+	   ("g;x?y#s"       "http://a/b/c/g;x?y#s")
+	   (""              "http://a/b/c/d;p?q")
+	   ("."             "http://a/b/c/")
+	   ("./"            "http://a/b/c/")
+	   (".."            "http://a/b/")
+	   ("../"           "http://a/b/")
+	   ("../g"          "http://a/b/g")
+	   ("../.."         "http://a/")
+	   ("../../"        "http://a/")
+	   ("../../g"       "http://a/g")))
+	(abnormal-examples
+	 '(("../../../g"    "http://a/g")
+	   ("../../../../g" "http://a/g")
+	   ("/./g"          "http://a/g")
+	   ("/../g"         "http://a/g")
+	   ("g."            "http://a/b/c/g.")
+	   (".g"            "http://a/b/c/.g")
+	   ("g.."           "http://a/b/c/g..")
+	   ("..g"           "http://a/b/c/..g")
+	   ("./../g"        "http://a/b/g")
+	   ("./g/."         "http://a/b/c/g/")
+	   ("g/./h"         "http://a/b/c/g/h")
+	   ("g/../h"        "http://a/b/c/h")
+	   ("g;x=1/./y"     "http://a/b/c/g;x=1/y")
+	   ("g;x=1/../y"    "http://a/b/c/y")
+	   ("g?y/./x"       "http://a/b/c/g?y/./x")
+	   ("g?y/../x"      "http://a/b/c/g?y/../x")
+	   ("g#s/./x"       "http://a/b/c/g#s/./x")
+	   ("g#s/../x"      "http://a/b/c/g#s/../x")
+	   ("http:g"        "http:g")))
+	(n-errors 0))
+    (let ((run-examples
+	   (lambda (examples)
+	     (for-each (lambda (p)
+			 (let ((reference (car p))
+			       (result (cadr p)))
+			   (let ((s
+				  (uri->string
+				   (merge-uris reference base-uri))))
+			     (cond ((not (string=? s result))
+				    (set! n-errors (+ n-errors 1))
+				    (write-line (list reference result s)))
+				   (verbose?
+				    (write-line (list reference result s)))))))
+		       examples))))
+      (if verbose? (write-string "Normal examples:\n"))
+      (run-examples normal-examples)
+      (if verbose? (write-string "\nAbnormal examples:\n"))
+      (run-examples abnormal-examples)
+      (if verbose? (newline))
+      (if (> n-errors 0)
+	  (write n-errors)
+	  (write-string "No"))
+      (write-string " errors found")
+      (newline))))

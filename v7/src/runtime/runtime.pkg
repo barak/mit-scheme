@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.547 2005/05/30 02:46:52 cph Exp $
+$Id: runtime.pkg,v 14.548 2005/05/30 02:48:44 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4760,108 +4760,106 @@ USA.
   (parent (runtime))
   (export ()
 	  (url:decode-string decode-component)
-	  (url:match:escape match-escape)
-	  (url:parse:hostport parse-hostport)
+	  (url:match:escape matcher:pct-encoded)
+	  (url:parse:hostport parser:hostport)
+	  ->absolute-uri
+	  ->relative-uri
 	  ->uri
 	  absolute-uri?
-	  base-uri?
 	  char-set:uri-alpha
-	  char-set:uri-alphanum
 	  char-set:uri-digit
+	  char-set:uri-fragment
 	  char-set:uri-hex
-	  char-set:uri-pchar
+	  char-set:uri-ipvfuture
+	  char-set:uri-opaque-auth
+	  char-set:uri-query
 	  char-set:uri-reg-name
-	  char-set:uri-rel-segment
 	  char-set:uri-scheme
+	  char-set:uri-segment
+	  char-set:uri-segment-nc
 	  char-set:uri-userinfo
-	  char-set:uric
-	  char-set:uric-no-slash
 	  error:not-absolute-uri
-	  error:not-base-uri
-	  error:not-heirarchical-uri
-	  error:not-opaque-uri
 	  error:not-relative-uri
 	  error:not-uri
 	  error:not-uri-authority
 	  error:not-uri-host
 	  error:not-uri-path
 	  error:not-uri-port
-	  error:not-uri-registry-name
 	  error:not-uri-scheme
-	  error:not-uri-server
+	  error:not-uri-userinfo
 	  guarantee-absolute-uri
-	  guarantee-base-uri
-	  guarantee-heirarchical-uri
-	  guarantee-opaque-uri
 	  guarantee-relative-uri
 	  guarantee-uri
 	  guarantee-uri-authority
 	  guarantee-uri-host
 	  guarantee-uri-path
 	  guarantee-uri-port
-	  guarantee-uri-registry-name
 	  guarantee-uri-scheme
-	  guarantee-uri-server
-	  heirarchical-uri?
+	  guarantee-uri-userinfo
 	  make-uri
-	  make-uri-server
+	  make-uri-authority
 	  merge-uris
-	  opaque-uri?
+	  parse-absolute-uri
+	  parse-relative-uri
 	  parse-uri
 	  relative-uri?
+	  string->absolute-uri
+	  string->relative-uri
 	  string->uri
+	  test-merge-uris
+	  uri->alist
 	  uri->string
 	  uri-absolute?
 	  uri-authority
+	  uri-authority-host
+	  uri-authority-port
+	  uri-authority-userinfo
+	  uri-authority=?
 	  uri-authority?
 	  uri-fragment
-	  uri-heirarchical?
 	  uri-host?
-	  uri-opaque?
 	  uri-path
 	  uri-path-absolute?
 	  uri-path-relative?
 	  uri-path?
 	  uri-port?
 	  uri-query
-	  uri-registry-name?
 	  uri-relative?
-	  uri-rexp:abs-path
 	  uri-rexp:absolute-uri
 	  uri-rexp:authority
-	  uri-rexp:domainlabel
-	  uri-rexp:escaped
+	  uri-rexp:dec-octet
 	  uri-rexp:fragment
-	  uri-rexp:heir-part
+	  uri-rexp:h16
+	  uri-rexp:hier-part
 	  uri-rexp:host
-	  uri-rexp:hostname
-	  uri-rexp:hostport
+	  uri-rexp:ip-literal
 	  uri-rexp:ipv4-address
-	  uri-rexp:net-path
-	  uri-rexp:opaque-part
-	  uri-rexp:param
-	  uri-rexp:path-segments
-	  uri-rexp:pchar
+	  uri-rexp:ipv6-address
+	  uri-rexp:ipvfuture
+	  uri-rexp:ls32
+	  uri-rexp:opaque-auth
+	  uri-rexp:path
+	  uri-rexp:path-abempty
+	  uri-rexp:path-absolute
+	  uri-rexp:path-empty
+	  uri-rexp:path-noscheme
+	  uri-rexp:path-rootless
+	  uri-rexp:pct-encoded
 	  uri-rexp:port
 	  uri-rexp:query
 	  uri-rexp:reg-name
-	  uri-rexp:rel-path
-	  uri-rexp:rel-segment
-	  uri-rexp:relative-uri
+	  uri-rexp:relative-part
+	  uri-rexp:relative-ref
 	  uri-rexp:scheme
 	  uri-rexp:segment
-	  uri-rexp:server
-	  uri-rexp:toplabel
+	  uri-rexp:segment-nz
+	  uri-rexp:segment-nz-nc
+	  uri-rexp:uri
 	  uri-rexp:uri-reference
-	  uri-rexp:uric
-	  uri-rexp:uric-no-slash
 	  uri-rexp:userinfo
 	  uri-scheme
 	  uri-scheme?
-	  uri-server-host
-	  uri-server-port
-	  uri-server-userinfo
-	  uri-server?
+	  uri=?
 	  uri?
 	  url:char-set:unreserved
 	  url:encode-string
