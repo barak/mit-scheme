@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rexp.scm,v 1.22 2003/02/14 18:28:33 cph Exp $
+$Id: rexp.scm,v 1.23 2005/05/30 02:45:04 cph Exp $
 
-Copyright (c) 2000, 2001, 2002 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -236,3 +236,33 @@ USA.
 			 chars*)
 		  chars*))
 	(apply char-set chars*))))
+
+(define (rexp-n*m n m . rexps)
+  (guarantee-exact-nonnegative-integer n 'REXP-N*M)
+  (guarantee-exact-nonnegative-integer m 'REXP-N*M)
+  (if (not (<= n m))
+      (error:bad-range-argument m 'REXP-N*M))
+  (let ((rexp (apply rexp-sequence rexps)))
+    (let loop ((i 1))
+      (cond ((<= i n)
+	     (rexp-sequence rexp (loop (+ i 1))))
+	    ((<= i m)
+	     (rexp-optional rexp (loop (+ i 1))))
+	    (else
+	     (rexp-sequence))))))
+
+(define (rexp-n*n n . rexps)
+  (apply rexp-n*m n n rexps))
+
+(define (rexp-0*n n . rexps)
+  (apply rexp-n*m 0 n rexps))
+
+(define (rexp-n* n . rexps)
+  (guarantee-exact-nonnegative-integer n 'REXP-N*)
+  (let ((rexp (apply rexp-sequence rexps)))
+    (if (= n 0)
+	(rexp* rexp)
+	(let loop ((i 1))
+	  (if (< i n)
+	      (rexp-sequence rexp (loop (+ i 1)))
+	      (rexp+ rexp))))))

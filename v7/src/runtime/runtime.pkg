@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.546 2005/05/26 17:43:15 cph Exp $
+$Id: runtime.pkg,v 14.547 2005/05/30 02:46:52 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4491,6 +4491,7 @@ USA.
   (export ()
 	  rexp*
 	  rexp+
+	  rexp-0*n
 	  rexp->regexp
 	  rexp-alternatives
 	  rexp-any-char
@@ -4499,6 +4500,9 @@ USA.
 	  rexp-group
 	  rexp-line-end
 	  rexp-line-start
+	  rexp-n*
+	  rexp-n*m	  
+	  rexp-n*n
 	  rexp-not-syntax-char
 	  rexp-not-word-char
 	  rexp-not-word-edge
