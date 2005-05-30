@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.27 2005/05/30 04:42:36 cph Exp $
+$Id: url.scm,v 1.28 2005/05/30 18:49:38 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -280,13 +280,6 @@ USA.
     (and (matcher buffer)
 	 (not (peek-parser-buffer-char buffer)))))
 
-(define (complete-parse parser string #!optional start end)
-  (let ((buffer (string->parser-buffer string start end)))
-    (let ((v (parser buffer)))
-      (and v
-	   (not (peek-parser-buffer-char buffer))
-	   v))))
-
 (define (match-n*n n matcher)
   (guarantee-exact-nonnegative-integer n 'MATCH-N*N)
   (cond ((= n 0)
@@ -346,23 +339,32 @@ USA.
 
 ;;;; Parser
 
-(define (->uri object #!optional caller)
-  (cond ((uri? object) object)
-	((string? object) (string->uri object))
-	((symbol? object) (string->uri (symbol-name object)))
-	(else (error:not-uri object caller))))
+(define-syntax define-uri-coercion
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (if (syntax-match? '(SYMBOL) (cdr form))
+	 (let* ((root (cadr form)))
+	   `(DEFINE (,(symbol '-> root) OBJECT #!OPTIONAL CALLER)
+	      (IF (,(symbol root '?) OBJECT)
+		  OBJECT
+		  (OR (COMPLETE-PARSE
+		       ,(symbol 'PARSE- root)
+		       (OR (->PARSER-BUFFER OBJECT)
+			   (,(symbol 'ERROR:NOT- root) OBJECT CALLER)))
+		      (ERROR:BAD-RANGE-ARGUMENT OBJECT CALLER)))))
+	 (ill-formed-syntax form)))))
 
-(define (->absolute-uri object #!optional caller)
-  (cond ((absolute-uri? object) object)
-	((string? object) (string->absolute-uri object))
-	((symbol? object) (string->absolute-uri (symbol-name object)))
-	(else (error:not-absolute-uri object caller))))
+(define-uri-coercion uri)
+(define-uri-coercion absolute-uri)
+(define-uri-coercion relative-uri)
 
-(define (->relative-uri object #!optional caller)
-  (cond ((relative-uri? object) object)
-	((string? object) (string->relative-uri object))
-	((symbol? object) (string->relative-uri (symbol-name object)))
-	(else (error:not-relative-uri object caller))))
+(define (->parser-buffer object)
+  (cond ((or (string? object) (wide-string? object))
+	 (string->parser-buffer object))
+	((input-port? object) (input-port->parser-buffer object))
+	((symbol? object) (string->parser-buffer (symbol->wide-string object)))
+	(else #f)))
 
 (define (string->uri string #!optional start end)
   (%string->uri parse-uri string start end 'STRING->URI))
@@ -374,10 +376,14 @@ USA.
   (%string->uri parse-relative-uri string start end 'STRING->RELATIVE-URI))
 
 (define (%string->uri parser string start end caller)
-  (let ((v (complete-parse parser string start end)))
-    (if (not v)
-	(error:bad-range-argument string caller))
-    (vector-ref v 0)))
+  (or (complete-parse parser (string->parser-buffer string start end))
+      (error:bad-range-argument string caller)))
+
+(define (complete-parse parser buffer)
+  (let ((v (parser buffer)))
+    (and v
+	 (not (peek-parser-buffer-char buffer))
+	 (vector-ref v 0))))
 
 (define parse-uri
   (*parser (top-level (encapsulate encapsulate-uri parser:uri-reference))))
