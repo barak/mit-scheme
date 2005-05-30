@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.59 2005/04/12 18:28:31 cph Exp $
+$Id: parse.scm,v 14.60 2005/05/30 18:48:43 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -220,15 +220,15 @@ USA.
   ctx
   (receive (string quoted?) (parse-atom port db (list char))
     (if quoted?
-	(%string->symbol string)
+	(string->symbol string)
 	(or (string->number string (db-radix db))
-	    (%string->symbol string)))))
+	    (string->symbol string)))))
 
 (define (handler:symbol port db ctx char)
   ctx
   (receive (string quoted?) (parse-atom port db (list char))
     quoted?
-    (%string->symbol string)))
+    (string->symbol string)))
 
 (define (handler:number port db ctx char1 char2)
   ctx

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.18 2005/05/24 04:50:35 cph Exp $
+$Id: symbol.scm,v 1.19 2005/05/30 18:49:01 cph Exp $
 
 Copyright 1992,1993,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -51,32 +51,30 @@ USA.
       (error:wrong-type-argument object "uninterned symbol" caller)))
 
 (define (string->uninterned-symbol string)
-  (guarantee-string string 'STRING->UNINTERNED-SYMBOL)
-  ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
-				      (string->utf8-string string)
-				      (make-unmapped-unbound-reference-trap)))
+  (make-uninterned-symbol (if (string? string)
+			      (string->utf8-string string)
+			      (wide-string->utf8-string string))))
 
 (define (utf8-string->uninterned-symbol string)
-  (guarantee-utf8-string string 'UTF8-STRING->UNINTERNED-SYMBOL)
+  (make-uninterned-symbol (if (utf8-string? string)
+			      (string-copy string)
+			      (wide-string->utf8-string string))))
+
+(define (make-uninterned-symbol string)
   ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
-				      (string-copy string)
+				      string
 				      (make-unmapped-unbound-reference-trap)))
 
 (define (string->symbol string)
-  (guarantee-string string 'STRING->SYMBOL)
-  (let ((string* (string->utf8-string string)))
-    (if (eq? string* string)
-	(or ((ucode-primitive find-symbol) string)
-	    ((ucode-primitive string->symbol) (string-copy string)))
-	((ucode-primitive string->symbol) string*))))
+  ((ucode-primitive string->symbol) (if (string? string)
+					(string->utf8-string string)
+					(wide-string->utf8-string string))))
 
 (define (utf8-string->symbol string)
-  (guarantee-utf8-string string 'UTF8-STRING->SYMBOL)
-  (or ((ucode-primitive find-symbol) string)
-      ((ucode-primitive string->symbol) (string-copy string))))
-
-(define (%string->symbol string)
-  ((ucode-primitive string->symbol) (string->utf8-string string)))
+  (if (utf8-string? string)
+      (or ((ucode-primitive find-symbol) string)
+	  ((ucode-primitive string->symbol) (string-copy string)))
+      ((ucode-primitive string->symbol) (wide-string->utf8-string string))))
 
 (define (substring->symbol string start end)
   (guarantee-substring string start end 'SUBSTRING->SYMBOL)
@@ -149,5 +147,8 @@ USA.
 (define (symbol->utf8-string symbol)
   (string-copy (symbol-name symbol)))
 
+(define (symbol->wide-string symbol)
+  (utf8-string->wide-string (symbol-name symbol)))
+
 (define (symbol->string symbol)
-  (wide-string->string (utf8-string->wide-string (symbol-name symbol))))
+  (wide-string->string (symbol->wide-string symbol)))
