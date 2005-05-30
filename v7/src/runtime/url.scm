@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.26 2005/05/30 02:48:55 cph Exp $
+$Id: url.scm,v 1.27 2005/05/30 04:42:36 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -1040,3 +1040,220 @@ USA.
 	  (write-string "No"))
       (write-string " errors found")
       (newline))))
+
+;;;; Partial URIs
+
+(define (string->partial-uri string #!optional start end puri)
+  (parse-partial-uri (open-input-string string start end) puri))
+
+(define (parse-partial-uri port #!optional puri)
+  (let ((puri
+	 (if (default-object? puri)
+	     (make-partial-uri ppu:start (open-output-string) #f #f #f #f #f)
+	     (begin
+	       (guarantee-partial-uri puri 'PARSE-PARTIAL-URI)
+	       puri))))
+    ((partial-uri-state puri) port puri)))
+
+(define (partial-uri->string puri)
+  (call-with-output-string
+    (lambda (port)
+      (write-partial-uri puri port))))
+
+(define (write-partial-uri puri port)
+  (guarantee-partial-uri puri 'WRITE-PARTIAL-URI)
+  (let ((write-component
+	 (lambda (component)
+	   (if component
+	       (write-string component port)))))
+    (write-component (partial-uri-scheme puri))
+    (write-component (partial-uri-authority puri))
+    (write-component (partial-uri-path puri))
+    (write-component (partial-uri-query puri))
+    (write-component (partial-uri-fragment puri))))
+
+(define-record-type <partial-uri>
+    (make-partial-uri state buffer scheme authority path query fragment)
+    partial-uri?
+  (state partial-uri-state set-partial-uri-state!)
+  (buffer partial-uri-buffer)
+  (scheme partial-uri-scheme set-partial-uri-scheme!)
+  (authority partial-uri-authority set-partial-uri-authority!)
+  (path partial-uri-path set-partial-uri-path!)
+  (query partial-uri-query set-partial-uri-query!)
+  (fragment partial-uri-fragment set-partial-uri-fragment!))
+
+(define-guarantee partial-uri "partial URI")
+
+(define (partial-uri-state-name puri)
+  (let ((state (partial-uri-state puri)))
+    (let loop ((ps state-names))
+      (if (not (pair? ps))
+	  (error "Unknown partial-URI state:" state))
+      (if (eq? (cdar ps) state)
+	  (caar ps)
+	  (loop (cdr ps))))))
+
+(define (define-state-name name state)
+  (let loop ((ps state-names))
+    (if (pair? ps)
+	(if (eq? (caar ps) name)
+	    (set-cdr! (car ps) state)
+	    (loop (cdr ps)))
+	(begin
+	  (set! state-names (cons (cons name state) state-names))
+	  unspecific))))
+
+(define state-names '())
+
+(define (accumulate char puri)
+  (write-char char (partial-uri-buffer puri)))
+
+(define (buffer-string puri)
+  (get-output-string! (partial-uri-buffer puri)))
+
+(define (buffer->scheme puri)
+  (set-partial-uri-scheme! puri (buffer-string puri)))
+
+(define (buffer->authority puri)
+  (set-partial-uri-authority! puri (buffer-string puri)))
+
+(define (buffer->path puri)
+  (set-partial-uri-path! puri (buffer-string puri)))
+
+(define (buffer->query puri)
+  (set-partial-uri-query! puri (buffer-string puri)))
+
+(define (buffer->fragment puri)
+  (set-partial-uri-fragment! puri (buffer-string puri)))
+
+(define-syntax define-ppu-state
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (if (syntax-match? '(SYMBOL + (SYMBOL * DATUM)) (cdr form))
+	 (let* ((state-name (cadr form))
+		(name (symbol 'PPU: state-name))
+		(clauses (cddr form))
+		(expand-transition
+		 (lambda (clause)
+		   (append
+		    (append-map
+		     (lambda (action)
+		       (if (syntax-match? '('SET SYMBOL) action)
+			   `((,(symbol 'BUFFER-> (cadr action)) PURI))
+			   '()))
+		     (cdr clause))
+		    (if (eq? (car clause) 'EOF)
+			'()
+			'((ACCUMULATE CHAR PURI)))
+		    (append-map
+		     (lambda (action)
+		       (if (syntax-match? '('SET-AFTER SYMBOL) action)
+			   `((,(symbol 'BUFFER-> (cadr action)) PURI))
+			   '()))
+		     (cdr clause))
+		    (append-map
+		     (lambda (action)
+		       (cond ((symbol? action)
+			      `((,(symbol 'PPU: action) PORT PURI)))
+			     ((or (syntax-match? '('SET SYMBOL) action)
+				  (syntax-match? '('SET-AFTER SYMBOL) action))
+			      '())
+			     (else
+			      (error "Unknown action:" action))))
+		     (cdr clause))
+		    (if (eq? (car clause) 'EOF)
+			'(PURI)
+			'())))))
+	   `(BEGIN
+	      (DEFINE (,name PORT PURI)
+		(SET-PARTIAL-URI-STATE! PURI ,name)
+		(LET ((CHAR (READ-CHAR PORT)))
+		  (COND ((EOF-OBJECT? CHAR)
+			 ,@(expand-transition
+			    (or (assq 'EOF clauses)
+				'(EOF))))
+			,@(append-map
+			   (lambda (clause)
+			     (let ((key (car clause)))
+			       (cond ((eq? key 'EOF)
+				      '())
+				     ((fix:= (string-length (symbol-name key))
+					     1)
+				      `(((CHAR=? CHAR
+						 ,(string-ref (symbol-name key)
+							      0))
+					 ,@(expand-transition clause))))
+				     (else
+				      `(((CHAR-SET-MEMBER?
+					  ,(symbol 'CHAR-SET:URI- key)
+					  CHAR)
+					 ,@(expand-transition clause)))))))
+			   clauses)
+			(ELSE
+			 (UNREAD-CHAR CHAR PORT)
+			 #F))))
+	      (DEFINE-STATE-NAME ',state-name ,name)))
+	 (ill-formed-syntax form)))))
+
+(define-ppu-state start
+  (/ init-slash)
+  (alpha scheme)
+  (segment-nc segment-nz-nc)
+  (? (set path) query)
+  (|#| (set path) fragment)
+  (EOF (set path)))
+
+(define-ppu-state scheme
+  (scheme scheme)
+  (segment-nc segment-nz-nc)
+  (: (set-after scheme) hier-part)
+  (/ path)
+  (? (set path) query)
+  (|#| (set path) fragment)
+  (EOF (set path)))
+
+(define-ppu-state segment-nz-nc
+  (segment-nc segment-nz-nc)
+  (/ path)
+  (? (set path) query)
+  (|#| (set path) fragment)
+  (EOF (set path)))
+
+(define-ppu-state hier-part
+  (segment path)
+  (/ init-slash)
+  (? (set path) query)
+  (|#| (set path) fragment)
+  (EOF (set path)))
+
+(define-ppu-state init-slash
+  (segment path)
+  (/ authority)
+  (? (set path) query)
+  (|#| (set path) fragment)
+  (EOF (set path)))
+
+(define-ppu-state authority
+  (opaque-auth authority)
+  (/ (set authority) path)
+  (? (set authority) query)
+  (|#| (set authority) fragment)
+  (EOF (set authority)))
+
+(define-ppu-state path
+  (segment path)
+  (/ path)
+  (? (set path) query)
+  (|#| (set path) fragment)
+  (EOF (set path)))
+
+(define-ppu-state query
+  (query query)
+  (|#| (set query) fragment)
+  (EOF (set query)))
+
+(define-ppu-state fragment
+  (fragment fragment)
+  (EOF (set fragment)))
