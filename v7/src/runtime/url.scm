@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.28 2005/05/30 18:49:38 cph Exp $
+$Id: url.scm,v 1.29 2005/05/31 20:12:31 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -1076,7 +1076,8 @@ USA.
     (write-component (partial-uri-authority puri))
     (write-component (partial-uri-path puri))
     (write-component (partial-uri-query puri))
-    (write-component (partial-uri-fragment puri))))
+    (write-component (partial-uri-fragment puri))
+    (write-component (partial-uri-extra puri))))
 
 (define-record-type <partial-uri>
     (make-partial-uri state buffer scheme authority path query fragment)
@@ -1090,8 +1091,21 @@ USA.
   (fragment partial-uri-fragment set-partial-uri-fragment!))
 
 (define-guarantee partial-uri "partial URI")
+
+(define (partial-uri-extra puri)
+  (let ((s (get-output-string (partial-uri-buffer puri))))
+    (and (fix:> (string-length s) 0)
+	 s)))
 
 (define (partial-uri-state-name puri)
+  (let ((name (%partial-uri-state-name puri)))
+    (case name
+      ((HIER-PART INIT-SLASH)
+       (if (partial-uri-scheme puri) 'HIER-PART 'RELATIVE-PART))
+      ((SEGMENT-NZ-NC) 'PATH)
+      (else name))))
+
+(define (%partial-uri-state-name puri)
   (let ((state (partial-uri-state puri)))
     (let loop ((ps state-names))
       (if (not (pair? ps))
@@ -1137,70 +1151,57 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
+
+     (define (reorder-clauses clauses)
+       (let ((eof (assq 'EOF clauses)))
+	 (if eof
+	     (cons eof (delq eof clauses))
+	     (cons '(EOF) clauses))))
+
+     (define (expand-clause clause)
+       (let ((key (car clause))
+	     (actions (cdr clause)))
+	 (for-each (lambda (action)
+		     (if (not (or (action:set1? action)
+				  (action:set2? action)
+				  (action:new-state? action)))
+			 (error "Unknown action:" action)))
+		   actions)
+	 (let ((expand-actions
+		(lambda (predicate generator)
+		  (map generator (keep-matching-items actions predicate)))))
+	   `(,(cond ((eq? key 'EOF)
+		     `(EOF-OBJECT? CHAR))
+		    ((fix:= (string-length (symbol-name key)) 1)
+		     `(CHAR=? CHAR ,(string-ref (symbol-name key) 0)))
+		    (else
+		     `(CHAR-SET-MEMBER? ,(symbol 'CHAR-SET:URI- key) CHAR)))
+	     ,@(expand-actions action:set1? expand:set)
+	     ,@(if (eq? key 'EOF) '() '((ACCUMULATE CHAR PURI)))
+	     ,@(expand-actions action:set2? expand:set)
+	     ,@(expand-actions action:new-state? expand:new-state)
+	     ,@(if (eq? key 'EOF) '(PURI) '())))))
+
+     (define (action:set1? action) (syntax-match? '('SET SYMBOL) action))
+     (define (action:set2? action) (syntax-match? '('SET-AFTER SYMBOL) action))
+     (define (expand:set action) `(,(symbol 'BUFFER-> (cadr action)) PURI))
+
+     (define (action:new-state? action) (symbol? action))
+     (define (expand:new-state action) `(,(symbol 'PPU: action) PORT PURI))
+
      (if (syntax-match? '(SYMBOL + (SYMBOL * DATUM)) (cdr form))
-	 (let* ((state-name (cadr form))
-		(name (symbol 'PPU: state-name))
-		(clauses (cddr form))
-		(expand-transition
-		 (lambda (clause)
-		   (append
-		    (append-map
-		     (lambda (action)
-		       (if (syntax-match? '('SET SYMBOL) action)
-			   `((,(symbol 'BUFFER-> (cadr action)) PURI))
-			   '()))
-		     (cdr clause))
-		    (if (eq? (car clause) 'EOF)
-			'()
-			'((ACCUMULATE CHAR PURI)))
-		    (append-map
-		     (lambda (action)
-		       (if (syntax-match? '('SET-AFTER SYMBOL) action)
-			   `((,(symbol 'BUFFER-> (cadr action)) PURI))
-			   '()))
-		     (cdr clause))
-		    (append-map
-		     (lambda (action)
-		       (cond ((symbol? action)
-			      `((,(symbol 'PPU: action) PORT PURI)))
-			     ((or (syntax-match? '('SET SYMBOL) action)
-				  (syntax-match? '('SET-AFTER SYMBOL) action))
-			      '())
-			     (else
-			      (error "Unknown action:" action))))
-		     (cdr clause))
-		    (if (eq? (car clause) 'EOF)
-			'(PURI)
-			'())))))
-	   `(BEGIN
-	      (DEFINE (,name PORT PURI)
-		(SET-PARTIAL-URI-STATE! PURI ,name)
-		(LET ((CHAR (READ-CHAR PORT)))
-		  (COND ((EOF-OBJECT? CHAR)
-			 ,@(expand-transition
-			    (or (assq 'EOF clauses)
-				'(EOF))))
-			,@(append-map
-			   (lambda (clause)
-			     (let ((key (car clause)))
-			       (cond ((eq? key 'EOF)
-				      '())
-				     ((fix:= (string-length (symbol-name key))
-					     1)
-				      `(((CHAR=? CHAR
-						 ,(string-ref (symbol-name key)
-							      0))
-					 ,@(expand-transition clause))))
-				     (else
-				      `(((CHAR-SET-MEMBER?
-					  ,(symbol 'CHAR-SET:URI- key)
-					  CHAR)
-					 ,@(expand-transition clause)))))))
-			   clauses)
-			(ELSE
-			 (UNREAD-CHAR CHAR PORT)
-			 #F))))
-	      (DEFINE-STATE-NAME ',state-name ,name)))
+	 (let ((state-name (cadr form))
+	       (clauses (cddr form)))
+	   (let ((name (symbol 'PPU: state-name)))
+	     `(BEGIN
+		(DEFINE (,name PORT PURI)
+		  (SET-PARTIAL-URI-STATE! PURI ,name)
+		  (LET ((CHAR (READ-CHAR PORT)))
+		    (COND ,@(map expand-clause (reorder-clauses clauses))
+			  (ELSE
+			   (ACCUMULATE CHAR PURI)
+			   PURI))))
+		(DEFINE-STATE-NAME ',state-name ,name))))
 	 (ill-formed-syntax form)))))
 
 (define-ppu-state start
