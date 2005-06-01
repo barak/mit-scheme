@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.30 2005/06/01 05:00:15 cph Exp $
+$Id: url.scm,v 1.31 2005/06/01 05:08:21 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -1062,7 +1062,7 @@ USA.
   (%parse-partial-uri port ppu:start-absolute))
 
 (define (%parse-partial-uri port initial-state)
-  (initial-state port (make-partial-uri initial-state)))
+  (initial-state port  (open-output-string) (make-partial-uri initial-state)))
 
 (define (partial-uri->string puri)
   (call-with-output-string
@@ -1086,10 +1086,9 @@ USA.
     (write-component (partial-uri-extra puri) "" "")))
 
 (define-record-type <partial-uri>
-    (%make-partial-uri state buffer scheme authority path query fragment extra)
+    (%make-partial-uri state scheme authority path query fragment extra)
     partial-uri?
   (state partial-uri-state set-partial-uri-state!)
-  (buffer partial-uri-buffer)
   (scheme partial-uri-scheme set-partial-uri-scheme!)
   (authority partial-uri-authority set-partial-uri-authority!)
   (path partial-uri-path set-partial-uri-path!)
@@ -1100,7 +1099,7 @@ USA.
 (define-guarantee partial-uri "partial URI")
 
 (define (make-partial-uri state)
-  (%make-partial-uri state (open-output-string) #f #f #f #f #f #f))
+  (%make-partial-uri state #f #f #f #f #f #f))
 
 (define (partial-uri-state-name puri)
   (let ((name (%partial-uri-state-name puri)))
@@ -1133,29 +1132,23 @@ USA.
 
 (define state-names '())
 
-(define (accumulate char puri)
-  (write-char char (partial-uri-buffer puri)))
+(define (buffer->scheme buffer puri)
+  (set-partial-uri-scheme! puri (get-output-string! buffer)))
 
-(define (buffer-string puri)
-  (get-output-string! (partial-uri-buffer puri)))
+(define (buffer->authority buffer puri)
+  (set-partial-uri-authority! puri (get-output-string! buffer)))
 
-(define (buffer->scheme puri)
-  (set-partial-uri-scheme! puri (buffer-string puri)))
+(define (buffer->path buffer puri)
+  (set-partial-uri-path! puri (get-output-string! buffer)))
 
-(define (buffer->authority puri)
-  (set-partial-uri-authority! puri (buffer-string puri)))
+(define (buffer->query buffer puri)
+  (set-partial-uri-query! puri (get-output-string! buffer)))
 
-(define (buffer->path puri)
-  (set-partial-uri-path! puri (buffer-string puri)))
+(define (buffer->fragment buffer puri)
+  (set-partial-uri-fragment! puri (get-output-string! buffer)))
 
-(define (buffer->query puri)
-  (set-partial-uri-query! puri (buffer-string puri)))
-
-(define (buffer->fragment puri)
-  (set-partial-uri-fragment! puri (buffer-string puri)))
-
-(define (buffer->extra puri)
-  (set-partial-uri-extra! puri (buffer-string puri)))
+(define (buffer->extra buffer puri)
+  (set-partial-uri-extra! puri (get-output-string! buffer)))
 
 (define-syntax define-ppu-state
   (sc-macro-transformer
@@ -1184,35 +1177,36 @@ USA.
 			  (else (error "Unknown action:" action))))
 		  actions)
 	   ,@(if (eq? key 'EOF)
-		 '((BUFFER->EXTRA PURI)
+		 '((BUFFER->EXTRA BUFFER PURI)
 		   (VALUES PURI #F))
 		 '()))))
 
      (define (action:push? action) (syntax-match? '('PUSH ? SYMBOL) action))
      (define (expand:push action)
-       `(ACCUMULATE ,(if (pair? (cdr action))
+       `(WRITE-CHAR ,(if (pair? (cdr action))
 			 (string-ref (symbol-name (cadr action)) 0)
 			 'CHAR)
-		    PURI))
+		    BUFFER))
 
      (define (action:set? action) (syntax-match? '('SET SYMBOL) action))
-     (define (expand:set action) `(,(symbol 'BUFFER-> (cadr action)) PURI))
+     (define (expand:set action)
+       `(,(symbol 'BUFFER-> (cadr action)) BUFFER PURI))
 
      (define (action:go? action) (symbol? action))
-     (define (expand:go action) `(,(symbol 'PPU: action) PORT PURI))
+     (define (expand:go action) `(,(symbol 'PPU: action) PORT BUFFER PURI))
 
      (if (syntax-match? '(SYMBOL + (SYMBOL * DATUM)) (cdr form))
 	 (let ((state-name (cadr form))
 	       (clauses (cddr form)))
 	   (let ((name (symbol 'PPU: state-name)))
 	     `(BEGIN
-		(DEFINE (,name PORT PURI)
+		(DEFINE (,name PORT BUFFER PURI)
 		  (SET-PARTIAL-URI-STATE! PURI ,name)
 		  (LET ((CHAR (READ-CHAR PORT)))
 		    (COND ,@(map expand-clause (reorder-clauses clauses))
 			  (ELSE
 			   (UNREAD-CHAR CHAR PORT)
-			   (BUFFER->EXTRA PURI)
+			   (BUFFER->EXTRA BUFFER PURI)
 			   (VALUES PURI #T)))))
 		(DEFINE-STATE-NAME ',state-name ,name))))
 	 (ill-formed-syntax form)))))
