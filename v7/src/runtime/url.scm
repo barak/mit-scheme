@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.29 2005/05/31 20:12:31 cph Exp $
+$Id: url.scm,v 1.30 2005/06/01 05:00:15 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -1049,17 +1049,20 @@ USA.
 
 ;;;; Partial URIs
 
-(define (string->partial-uri string #!optional start end puri)
-  (parse-partial-uri (open-input-string string start end) puri))
+(define (string->partial-uri string #!optional start end)
+  (parse-partial-uri (open-input-string string start end)))
 
-(define (parse-partial-uri port #!optional puri)
-  (let ((puri
-	 (if (default-object? puri)
-	     (make-partial-uri ppu:start (open-output-string) #f #f #f #f #f)
-	     (begin
-	       (guarantee-partial-uri puri 'PARSE-PARTIAL-URI)
-	       puri))))
-    ((partial-uri-state puri) port puri)))
+(define (string->partial-absolute-uri string #!optional start end)
+  (parse-partial-absolute-uri (open-input-string string start end)))
+
+(define (parse-partial-uri port)
+  (%parse-partial-uri port ppu:start-reference))
+
+(define (parse-partial-absolute-uri port)
+  (%parse-partial-uri port ppu:start-absolute))
+
+(define (%parse-partial-uri port initial-state)
+  (initial-state port (make-partial-uri initial-state)))
 
 (define (partial-uri->string puri)
   (call-with-output-string
@@ -1069,18 +1072,21 @@ USA.
 (define (write-partial-uri puri port)
   (guarantee-partial-uri puri 'WRITE-PARTIAL-URI)
   (let ((write-component
-	 (lambda (component)
+	 (lambda (component prefix suffix)
 	   (if component
-	       (write-string component port)))))
-    (write-component (partial-uri-scheme puri))
-    (write-component (partial-uri-authority puri))
-    (write-component (partial-uri-path puri))
-    (write-component (partial-uri-query puri))
-    (write-component (partial-uri-fragment puri))
-    (write-component (partial-uri-extra puri))))
+	       (begin
+		 (write-string prefix port)
+		 (write-string component port)
+		 (write-string suffix port))))))
+    (write-component (partial-uri-scheme puri) "" ":")
+    (write-component (partial-uri-authority puri) "//" "")
+    (write-component (partial-uri-path puri) "" "")
+    (write-component (partial-uri-query puri) "?" "")
+    (write-component (partial-uri-fragment puri) "#" "")
+    (write-component (partial-uri-extra puri) "" "")))
 
 (define-record-type <partial-uri>
-    (make-partial-uri state buffer scheme authority path query fragment)
+    (%make-partial-uri state buffer scheme authority path query fragment extra)
     partial-uri?
   (state partial-uri-state set-partial-uri-state!)
   (buffer partial-uri-buffer)
@@ -1088,21 +1094,22 @@ USA.
   (authority partial-uri-authority set-partial-uri-authority!)
   (path partial-uri-path set-partial-uri-path!)
   (query partial-uri-query set-partial-uri-query!)
-  (fragment partial-uri-fragment set-partial-uri-fragment!))
+  (fragment partial-uri-fragment set-partial-uri-fragment!)
+  (extra partial-uri-extra set-partial-uri-extra!))
 
 (define-guarantee partial-uri "partial URI")
 
-(define (partial-uri-extra puri)
-  (let ((s (get-output-string (partial-uri-buffer puri))))
-    (and (fix:> (string-length s) 0)
-	 s)))
+(define (make-partial-uri state)
+  (%make-partial-uri state (open-output-string) #f #f #f #f #f #f))
 
 (define (partial-uri-state-name puri)
   (let ((name (%partial-uri-state-name puri)))
     (case name
+      ((START-REFERENCE START-ABSOLUTE) 'START)
+      ((SCHEME-REFERENCE SCHEME-ABSOLUTE) 'SCHEME)
+      ((SEGMENT-NZ-NC) 'PATH)
       ((HIER-PART INIT-SLASH)
        (if (partial-uri-scheme puri) 'HIER-PART 'RELATIVE-PART))
-      ((SEGMENT-NZ-NC) 'PATH)
       (else name))))
 
 (define (%partial-uri-state-name puri)
@@ -1146,6 +1153,9 @@ USA.
 
 (define (buffer->fragment puri)
   (set-partial-uri-fragment! puri (buffer-string puri)))
+
+(define (buffer->extra puri)
+  (set-partial-uri-extra! puri (buffer-string puri)))
 
 (define-syntax define-ppu-state
   (sc-macro-transformer
@@ -1161,33 +1171,35 @@ USA.
      (define (expand-clause clause)
        (let ((key (car clause))
 	     (actions (cdr clause)))
-	 (for-each (lambda (action)
-		     (if (not (or (action:set1? action)
-				  (action:set2? action)
-				  (action:new-state? action)))
-			 (error "Unknown action:" action)))
-		   actions)
-	 (let ((expand-actions
-		(lambda (predicate generator)
-		  (map generator (keep-matching-items actions predicate)))))
-	   `(,(cond ((eq? key 'EOF)
-		     `(EOF-OBJECT? CHAR))
-		    ((fix:= (string-length (symbol-name key)) 1)
-		     `(CHAR=? CHAR ,(string-ref (symbol-name key) 0)))
-		    (else
-		     `(CHAR-SET-MEMBER? ,(symbol 'CHAR-SET:URI- key) CHAR)))
-	     ,@(expand-actions action:set1? expand:set)
-	     ,@(if (eq? key 'EOF) '() '((ACCUMULATE CHAR PURI)))
-	     ,@(expand-actions action:set2? expand:set)
-	     ,@(expand-actions action:new-state? expand:new-state)
-	     ,@(if (eq? key 'EOF) '(PURI) '())))))
+	 `(,(cond ((eq? key 'EOF)
+		   `(EOF-OBJECT? CHAR))
+		  ((fix:= (string-length (symbol-name key)) 1)
+		   `(CHAR=? CHAR ,(string-ref (symbol-name key) 0)))
+		  (else
+		   `(CHAR-SET-MEMBER? ,(symbol 'CHAR-SET:URI- key) CHAR)))
+	   ,@(map (lambda (action)
+		    (cond ((action:push? action) (expand:push action))
+			  ((action:set? action) (expand:set action))
+			  ((action:go? action) (expand:go action))
+			  (else (error "Unknown action:" action))))
+		  actions)
+	   ,@(if (eq? key 'EOF)
+		 '((BUFFER->EXTRA PURI)
+		   (VALUES PURI #F))
+		 '()))))
 
-     (define (action:set1? action) (syntax-match? '('SET SYMBOL) action))
-     (define (action:set2? action) (syntax-match? '('SET-AFTER SYMBOL) action))
+     (define (action:push? action) (syntax-match? '('PUSH ? SYMBOL) action))
+     (define (expand:push action)
+       `(ACCUMULATE ,(if (pair? (cdr action))
+			 (string-ref (symbol-name (cadr action)) 0)
+			 'CHAR)
+		    PURI))
+
+     (define (action:set? action) (syntax-match? '('SET SYMBOL) action))
      (define (expand:set action) `(,(symbol 'BUFFER-> (cadr action)) PURI))
 
-     (define (action:new-state? action) (symbol? action))
-     (define (expand:new-state action) `(,(symbol 'PPU: action) PORT PURI))
+     (define (action:go? action) (symbol? action))
+     (define (expand:go action) `(,(symbol 'PPU: action) PORT PURI))
 
      (if (syntax-match? '(SYMBOL + (SYMBOL * DATUM)) (cdr form))
 	 (let ((state-name (cadr form))
@@ -1199,68 +1211,78 @@ USA.
 		  (LET ((CHAR (READ-CHAR PORT)))
 		    (COND ,@(map expand-clause (reorder-clauses clauses))
 			  (ELSE
-			   (ACCUMULATE CHAR PURI)
-			   PURI))))
+			   (UNREAD-CHAR CHAR PORT)
+			   (BUFFER->EXTRA PURI)
+			   (VALUES PURI #T)))))
 		(DEFINE-STATE-NAME ',state-name ,name))))
 	 (ill-formed-syntax form)))))
 
-(define-ppu-state start
-  (/ init-slash)
-  (alpha scheme)
-  (segment-nc segment-nz-nc)
+(define-ppu-state start-reference
+  (/ (push) init-slash)
+  (alpha (push) scheme-reference)
+  (segment-nc (push) segment-nz-nc)
   (? (set path) query)
   (|#| (set path) fragment)
-  (EOF (set path)))
+  (EOF))
 
-(define-ppu-state scheme
-  (scheme scheme)
-  (segment-nc segment-nz-nc)
-  (: (set-after scheme) hier-part)
-  (/ path)
+(define-ppu-state scheme-reference
+  (scheme (push) scheme-reference)
+  (segment-nc (push) segment-nz-nc)
+  (: (set scheme) hier-part)
+  (/ (push) path)
   (? (set path) query)
   (|#| (set path) fragment)
-  (EOF (set path)))
+  (EOF))
 
 (define-ppu-state segment-nz-nc
-  (segment-nc segment-nz-nc)
-  (/ path)
+  (segment-nc (push) segment-nz-nc)
+  (/ (push) path)
   (? (set path) query)
   (|#| (set path) fragment)
   (EOF (set path)))
 
+(define-ppu-state start-absolute
+  (alpha (push) scheme-absolute)
+  (EOF))
+
+(define-ppu-state scheme-absolute
+  (scheme (push) scheme-absolute)
+  (: (set scheme) hier-part)
+  (EOF))
+
 (define-ppu-state hier-part
-  (segment path)
+  (segment (push) path)
   (/ init-slash)
   (? (set path) query)
   (|#| (set path) fragment)
-  (EOF (set path)))
+  (EOF))
 
 (define-ppu-state init-slash
-  (segment path)
+  (segment (push /) (push) path)
   (/ authority)
-  (? (set path) query)
-  (|#| (set path) fragment)
-  (EOF (set path)))
+  (? (push /) (set path) query)
+  (|#| (push /) (set path) fragment)
+  (EOF))
 
 (define-ppu-state authority
-  (opaque-auth authority)
-  (/ (set authority) path)
+  (opaque-auth (push) authority)
+  (/ (set authority) (push) path)
   (? (set authority) query)
   (|#| (set authority) fragment)
   (EOF (set authority)))
 
 (define-ppu-state path
-  (segment path)
-  (/ path)
+  (segment (push) path)
+  (/ (push) path)
   (? (set path) query)
   (|#| (set path) fragment)
   (EOF (set path)))
 
 (define-ppu-state query
-  (query query)
+  (query (push) query)
   (|#| (set query) fragment)
   (EOF (set query)))
 
 (define-ppu-state fragment
-  (fragment fragment)
+  (fragment (push) fragment)
   (EOF (set fragment)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.552 2005/05/31 20:12:18 cph Exp $
+$Id: runtime.pkg,v 14.553 2005/06/01 05:00:07 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4802,6 +4802,7 @@ USA.
 	  make-uri-authority
 	  merge-uris
 	  parse-absolute-uri
+	  parse-partial-absolute-uri
 	  parse-partial-uri
 	  parse-relative-uri
 	  parse-uri
@@ -4816,6 +4817,7 @@ USA.
 	  partial-uri?
 	  relative-uri?
 	  string->absolute-uri
+	  string->partial-absolute-uri
 	  string->partial-uri
 	  string->relative-uri
 	  string->uri
