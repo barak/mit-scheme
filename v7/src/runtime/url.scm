@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.31 2005/06/01 05:08:21 cph Exp $
+$Id: url.scm,v 1.32 2005/06/01 05:13:07 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -1147,8 +1147,9 @@ USA.
 (define (buffer->fragment buffer puri)
   (set-partial-uri-fragment! puri (get-output-string! buffer)))
 
-(define (buffer->extra buffer puri)
-  (set-partial-uri-extra! puri (get-output-string! buffer)))
+(define (ppu-finish buffer puri error?)
+  (set-partial-uri-extra! puri (get-output-string! buffer))
+  (values puri error?))
 
 (define-syntax define-ppu-state
   (sc-macro-transformer
@@ -1177,8 +1178,7 @@ USA.
 			  (else (error "Unknown action:" action))))
 		  actions)
 	   ,@(if (eq? key 'EOF)
-		 '((BUFFER->EXTRA BUFFER PURI)
-		   (VALUES PURI #F))
+		 '((PPU-FINISH BUFFER PURI #F))
 		 '()))))
 
      (define (action:push? action) (syntax-match? '('PUSH ? SYMBOL) action))
@@ -1206,8 +1206,7 @@ USA.
 		    (COND ,@(map expand-clause (reorder-clauses clauses))
 			  (ELSE
 			   (UNREAD-CHAR CHAR PORT)
-			   (BUFFER->EXTRA BUFFER PURI)
-			   (VALUES PURI #T)))))
+			   (PPU-FINISH BUFFER PURI #T)))))
 		(DEFINE-STATE-NAME ',state-name ,name))))
 	 (ill-formed-syntax form)))))
 
