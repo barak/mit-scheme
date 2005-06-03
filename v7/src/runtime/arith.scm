@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.62 2005/01/11 03:56:44 cph Exp $
+$Id: arith.scm,v 1.63 2005/06/03 03:01:58 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2001,2002 Massachusetts Institute of Technology
@@ -407,7 +407,7 @@ USA.
 
   (define-integrable (digit->char digit radix)
     radix ; ignored
-    (string-ref "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" digit))
+    (string-ref "0123456789abcdefghijklmnopqrstuvwxyz" digit))
 
   (define (print-fixnum n min-digits tail)
     (let loop ((n n) (n-digits 0) (tail tail))
