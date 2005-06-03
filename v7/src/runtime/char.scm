@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.25 2004/02/25 20:59:02 cph Exp $
+$Id: char.scm,v 14.26 2005/06/03 13:32:16 cph Exp $
 
 Copyright 1986,1987,1988,1991,1995,1997 Massachusetts Institute of Technology
-Copyright 1998,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 1998,2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,9 +47,7 @@ USA.
 (define-integrable (%char-bits char)
   (fix:lsh (char->integer char) -21))
 
-(define-integrable (guarantee-char char procedure)
-  (if (not (char? char))
-      (error:wrong-type-argument char "character" procedure)))
+(define-guarantee char "character")
 
 (define (make-char code bits)
   (guarantee-limited-index-fixnum code char-code-limit 'MAKE-CHAR)
@@ -201,9 +199,7 @@ USA.
        (fix:<= 2 object)
        (fix:<= object 36)))
 
-(define (guarantee-radix object caller)
-  (if (not (radix? object))
-      (error:wrong-type-argument object "radix" caller)))
+(define-guarantee radix "radix")
 
 (define (digit->char digit #!optional radix)
   (guarantee-limited-index-fixnum digit
@@ -213,7 +209,7 @@ USA.
 					(guarantee-radix radix 'DIGIT->CHAR)
 					radix))
 				  'DIGIT->CHAR)
-  (string-ref "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" digit))
+  (string-ref "0123456789abcdefghijklmnopqrstuvwxyz" digit))
 
 (define (char->digit char #!optional radix)
   (guarantee-char char 'CHAR->DIGIT)

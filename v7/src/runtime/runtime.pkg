@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.553 2005/06/01 05:00:07 cph Exp $
+$Id: runtime.pkg,v 14.554 2005/06/03 13:32:27 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -981,6 +981,8 @@ USA.
 	  chars->ascii
 	  code->char
 	  digit->char
+	  error:not-char
+	  error:not-radix
 	  guarantee-char
 	  guarantee-radix
 	  integer->char
@@ -2390,6 +2392,17 @@ USA.
 	  >
 	  >=
 	  atan
+	  error:not-complex
+	  error:not-exact
+	  error:not-exact-integer
+	  error:not-exact-nonnegative-integer
+	  error:not-exact-positive-integer
+	  error:not-exact-rational
+	  error:not-inexact
+	  error:not-integer
+	  error:not-number
+	  error:not-rational
+	  error:not-real
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
 	  flo:significand-digits-base-10
