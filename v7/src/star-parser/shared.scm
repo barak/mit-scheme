@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: shared.scm,v 1.28 2005/06/04 03:41:50 cph Exp $
+$Id: shared.scm,v 1.29 2005/06/04 04:02:41 cph Exp $
 
 Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
 
@@ -808,11 +808,11 @@ USA.
 		 ,@(map peephole-optimize (cddr expression))))
 	     ((LET)
 	      `(LET ,(cadr expression)
-		 ,@(map (lambda (binding)
-			  `(,(car binding)
-			    ,(peephole-optimize (cadr binding))))
-			(caddr expression))
-		 ,@(map peephole-optimize (cdddr expression))))
+		 ,(map (lambda (binding)
+			 `(,(car binding)
+			   ,(peephole-optimize (cadr binding))))
+		       (caddr expression))
+		 ,(peephole-optimize (cadddr expression))))
 	     (else
 	      (map peephole-optimize expression))))
 	  (else expression))))
