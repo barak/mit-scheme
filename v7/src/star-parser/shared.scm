@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: shared.scm,v 1.29 2005/06/04 04:02:41 cph Exp $
+$Id: shared.scm,v 1.30 2005/06/04 05:58:19 cph Exp $
 
 Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
 
@@ -70,8 +70,21 @@ USA.
 (define (run-optimizers expression)
   (if debug:disable-optimizers?
       expression
-      (peephole-optimize
-       (optimize-pointer-usage (optimize-by-substitution expression) '()))))
+      (let ((expression*
+	     (trace-optimizer-tl
+	      "after all optimizations"
+	      (peephole-optimize
+	       (trace-optimizer-tl
+		"after pointer optimization"
+		(optimize-pointer-usage
+		 (trace-optimizer-tl
+		  "after substitution"
+		  (optimize-by-substitution
+		   (trace-optimizer-tl "before optimization"
+				       expression)))))))))
+	(if (equal? expression* expression)
+	    expression
+	    (run-optimizers expression*)))))
 
 (define (strip-protection-wrappers expression)
   (if (pair? expression)
@@ -651,7 +664,18 @@ USA.
 
 ;;;; Pointer optimizer
 
-(define (optimize-pointer-usage expression pointers)
+(define (optimize-pointer-usage expression)
+  (optimize-pointer-usage* expression (make-empty-pointers)))
+
+(define (optimize-pointer-usage* expression pointers)
+  #|
+  (fresh-line)
+  (write-string ";optimize-pointer-usage*")
+  (newline)
+  (pp expression)
+  (pp pointers)
+  (newline)
+  |#
   (cond ((or (find-matching-item pointer-optimizations
 	       (lambda (p)
 		 (syntax-match? (car p) expression)))
@@ -663,16 +687,15 @@ USA.
 		(if (equal? expression* expression)
 		    expression
 		    (begin
-		      (trace-optimization 'POINTER expression expression*)
-		      (optimize-pointer-usage expression* pointers))))))
+		      (trace-optimization 'POINTER expression expression*
+					  pointers)
+		      (optimize-pointer-usage* expression* pointers))))))
 	((pair? expression)
 	 (map (lambda (expression)
-		(optimize-pointer-usage expression pointers))
+		(optimize-pointer-usage* expression pointers))
 	      expression))
 	((identifier? expression)
-	 (if (memq expression pointers)
-	     (car (last-pair pointers))
-	     expression))
+	 (canonicalize-pointer-ref expression pointers))
 	(else expression)))
 
 (define (define-pointer-optimization pattern optimizer)
@@ -698,7 +721,79 @@ USA.
 	  unspecific))))
 
 (define default-pointer-optimizations '())
+
+(define (make-empty-pointers)
+  (cons #f '()))
 
+(define (current-pointer pointers)
+  (car pointers))
+
+(define (current-pointer? identifier pointers)
+  (memq identifier (%current-pointers pointers)))
+
+(define (new-pointer expression identifier pointers)
+  (optimize-pointer-usage* expression (%new-pointer identifier pointers)))
+
+(define (no-pointer expression pointers)
+  (optimize-pointer-usage* expression (%no-pointer pointers)))
+
+(define (drop-pointer-refs expression identifiers pointers)
+  (optimize-pointer-usage* expression
+			   (%drop-pointer-refs identifiers pointers)))
+
+(define (canonicalize-pointer-ref identifier pointers)
+  ;; Use outermost equivalent reference.
+  (let ((ids (%id-pointers identifier pointers)))
+    (if (pair? ids)
+	(car (last-pair ids))
+	identifier)))
+
+(define (%new-pointer identifier pointers)
+  (if (car pointers)
+      (let ((ids (%current-pointers pointers)))
+	(if (memq identifier ids)
+	    pointers
+	    (cons (car pointers)
+		  (replace-item ids (cons identifier ids) (cdr pointers)))))
+      (let ((ids (%id-pointers identifier pointers)))
+	(if (pair? ids)
+	    (cons (car (last-pair ids)) (cdr pointers))
+	    (cons identifier (cons (list identifier) (cdr pointers)))))))
+
+(define (replace-item from to items)
+  (let loop ((items items))
+    (if (not (pair? items))
+	(error:bad-range-argument from 'REPLACE-ITEM))
+    (if (eq? (car items) from)
+	(cons to (cdr items))
+	(cons (car items) (loop (cdr items))))))
+
+(define (%no-pointer pointers)
+  (if (car pointers)
+      (cons #f (cdr pointers))
+      pointers))
+
+(define (%drop-pointer-refs identifiers pointers)
+  (cons #f
+	(map (lambda (ids)
+	       (delete-matching-items ids
+		 (lambda (id)
+		   (memq id identifiers))))
+	     (cdr pointers))))
+
+(define (%current-pointers pointers)
+  (if (car pointers)
+      (find-matching-item (cdr pointers)
+	(lambda (identifiers)
+	  (memq (car pointers) identifiers)))
+      '()))
+
+(define (%id-pointers identifier pointers)
+  (or (find-matching-item (cdr pointers)
+	(lambda (ids)
+	  (memq identifier ids)))
+      '()))
+
 (define-pointer-optimization
   '('BEGIN
      ('SET-PARSER-BUFFER-POINTER! EXPRESSION IDENTIFIER)
@@ -707,11 +802,13 @@ USA.
     (let ((action (cadr expression))
 	  (tail (caddr expression)))
       (let ((identifier (caddr action)))
-	(if (memq identifier pointers)
-	    (optimize-pointer-usage tail pointers)
+	(if (current-pointer? identifier pointers)
+	    (optimize-pointer-usage* tail pointers)
 	    `(BEGIN
-	       ,action
-	       ,(optimize-pointer-usage tail (cons identifier pointers))))))))
+	       (SET-PARSER-BUFFER-POINTER!
+		,(optimize-pointer-usage* (cadr action) pointers)
+		,(canonicalize-pointer-ref identifier pointers))
+	       ,(new-pointer tail identifier pointers)))))))
 
 (define-pointer-optimization '(('LAMBDA (IDENTIFIER) EXPRESSION)
 			       ('GET-PARSER-BUFFER-POINTER EXPRESSION))
@@ -719,12 +816,12 @@ USA.
     (let ((identifier (car (cadr (car expression))))
 	  (operand (cadr expression))
 	  (body (caddr (car expression))))
-      (let ((body (optimize-pointer-usage body (cons identifier pointers))))
-	(if (and (internal-identifier? identifier)
-		 (= (car (count-references (list identifier) body)) 0))
+      (let ((body (new-pointer body identifier pointers)))
+	(if (current-pointer pointers)
+	    ;; IDENTIFIER is an alias, so don't bind it.
 	    body
 	    `((LAMBDA (,identifier) ,body) ,operand))))))
-
+
 (define-pointer-optimization '('PROTECT EXPRESSION)
   (lambda (expression pointers)
     pointers
@@ -732,35 +829,35 @@ USA.
 
 (define-pointer-optimization '('IF EXPRESSION EXPRESSION EXPRESSION)
   (lambda (expression pointers)
-    `(IF ,(optimize-pointer-usage (cadr expression) pointers)
-	 ,(optimize-pointer-usage (caddr expression) '())
-	 ,(optimize-pointer-usage (cadddr expression) pointers))))
+    `(IF ,(optimize-pointer-usage* (cadr expression) pointers)
+	 ,(no-pointer (caddr expression) pointers)
+	 ,(no-pointer (cadddr expression) pointers))))
 
 (define-pointer-optimization '('IF EXPRESSION EXPRESSION)
   (lambda (expression pointers)
-    `(IF ,(optimize-pointer-usage (cadr expression) pointers)
-	 ,(optimize-pointer-usage (caddr expression) '()))))
-
+    `(IF ,(optimize-pointer-usage* (cadr expression) pointers)
+	 ,(no-pointer (caddr expression) pointers))))
+
 (define-pointer-optimization '('AND * EXPRESSION)
   (lambda (expression pointers)
     (if (pair? (cdr expression))
-	`(AND ,(optimize-pointer-usage (cadr expression) pointers)
-	      ,@(map (lambda (expression)
-		       (optimize-pointer-usage expression '()))
+	`(AND ,(optimize-pointer-usage* (cadr expression) pointers)
+	      ,@(map (lambda (expression) (no-pointer expression pointers))
 		     (cddr expression)))
 	expression)))
 
 (define-pointer-optimization '('OR * EXPRESSION)
   (lambda (expression pointers)
-    `(OR ,@(map (lambda (expression)
-		  (optimize-pointer-usage expression pointers))
-		(cdr expression)))))
+    (if (pair? (cdr expression))
+	`(OR ,(optimize-pointer-usage* (cadr expression) pointers)
+	     ,@(map (lambda (expression) (no-pointer expression pointers))
+		    (cddr expression)))
+	expression)))
 
 (define-default-pointer-optimization '('LAMBDA (* IDENTIFIER) EXPRESSION)
   (lambda (expression pointers)
-    pointers
     `(LAMBDA ,(cadr expression)
-       ,(optimize-pointer-usage (caddr expression) '()))))
+       ,(no-pointer (caddr expression) pointers))))
 
 (define-default-pointer-optimization '(('LAMBDA (* IDENTIFIER) EXPRESSION)
 				       . (* EXPRESSION))
@@ -769,22 +866,22 @@ USA.
 	  (operands (cdr expression)))
       (let ((parameters (cadr operator)))
 	`((LAMBDA ,parameters
-	    ,(optimize-pointer-usage (caddr operator)
-				     (delete-matching-items pointers
-				       (lambda (pointer)
-					 (memq pointer parameters)))))
-	  ,@operands)))))
+	    ,(drop-pointer-refs (caddr operator) parameters pointers))
+	  ,@(if (= (length operands) 1)
+		(list (optimize-pointer-usage* (car operands) pointers))
+		;; Here we don't know which operand goes first.
+		(map (lambda (operand)
+		       (no-pointer operand pointers))
+		     operands)))))))
 
 (define-default-pointer-optimization
   '('LET IDENTIFIER (* (IDENTIFIER EXPRESSION)) EXPRESSION)
   (lambda (expression pointers)
-    pointers
     `(LET ,(cadr expression)
        ,(map (lambda (binding)
-	       `(,(car binding)
-		 ,(optimize-pointer-usage (cadr binding) '())))
+	       `(,(car binding) ,(no-pointer (cadr binding) pointers)))
 	     (caddr expression))
-       ,(optimize-pointer-usage (cadddr expression) '()))))
+       ,(no-pointer (cadddr expression) pointers))))
 
 ;;;; Peephole optimizer
 
@@ -1031,17 +1128,30 @@ USA.
 	    (cons (car expressions) (loop (cdr expressions))))
 	'())))
 
-(define (trace-optimization keyword before after)
-  (if debug:trace-optimization?
+(define (trace-optimization keyword before after . extra)
+  (if (eq? debug:trace-optimization? 'ALL)
       (let ((port (trace-output-port)))
 	(fresh-line port)
 	(pp before port)
+	(for-each (lambda (x) (pp x port)) extra)
 	(write-string "==" port)
 	(write keyword port)
 	(write-string "==>" port)
 	(newline port)
 	(pp after port)
 	(newline port))))
+
+(define (trace-optimizer-tl tag expression)
+  (if debug:trace-optimization?
+      (let ((port (trace-output-port)))
+	(fresh-line port)
+	(write-string ";" port)
+	(write-string tag port)
+	(write-string ":" port)
+	(newline)
+	(pp expression port)
+	(newline port)))
+  expression)
 
 ;;; Edwin Variables:
 ;;; Eval: (scheme-indent-method 'define-peephole-optimizer 2)
