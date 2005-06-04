@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: matcher.scm,v 1.33 2004/02/16 05:46:41 cph Exp $
+$Id: matcher.scm,v 1.34 2005/06/04 03:42:28 cph Exp $
 
-Copyright 2001,2002,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -128,6 +128,16 @@ USA.
   (lambda (expression)
     `(SEQ ,expression (DISCARD-MATCHED))))
 
+(define-*matcher-expander 'N*
+  (lambda (n expression)
+    `(SEQ (N*N ,n ,expression)
+	  (* ,expression))))
+
+(define-*matcher-expander 'N*M
+  (lambda (n m expression)
+    `(SEQ (N*N ,n ,expression)
+	  (*N ,(- m n) ,expression))))
+
 (define-matcher-preprocessor '(ALT SEQ)
   (lambda (expression external-bindings internal-bindings)
     `(,(car expression)
@@ -143,6 +153,16 @@ USA.
 				      external-bindings
 				      internal-bindings))))
 
+(define-matcher-preprocessor '(N*N *N)
+  (lambda (expression external-bindings internal-bindings)
+    (check-n-args 2 expression
+      (lambda (expression)
+	(exact-nonnegative-integer? (cadr expression))))
+    `(,(car expression) ,(cadr expression)
+			,(preprocess-matcher-expression (caddr expression)
+							external-bindings
+							internal-bindings))))
+
 (define-matcher-preprocessor '(CHAR CHAR-CI NOT-CHAR NOT-CHAR-CI ALPHABET)
   (lambda (expression external-bindings internal-bindings)
     external-bindings internal-bindings
@@ -361,3 +381,78 @@ USA.
 	     (backtracking-kf pointer
 	       (lambda ()
 		 (delay-call ks kf2)))))))))
+
+(define-matcher (n*n n expression)
+  (if (<= n 4)
+      (open-code-n*n n expression pointer ks kf free-names)
+      (close-code-n*n n expression pointer ks kf free-names)))
+
+(define (open-code-n*n n expression pointer ks kf free-names)
+  (let loop ((n n) (pointer pointer) (kf kf))
+    (if (> n 0)
+	(bind-delayed-lambdas
+	 (lambda (ks)
+	   (compile-matcher-expression expression pointer ks kf
+				       free-names))
+	 (make-matcher-ks-lambda
+	  (lambda (kf)
+	    (loop (- n 1) #f kf))))
+	(delay-call ks kf))))
+
+(define (close-code-n*n n expression pointer ks kf free-names)
+  ;; Assume (>= N 1).
+  pointer
+  (let ((l1 (make-loop-identifier))
+	(n1 (make-value-identifier))
+	(kf2 (make-kf-identifier)))
+    `(LET ,l1 ((,n1 ,n) (,kf2 ,(delay-reference kf)))
+       (IF (> ,n1 1)
+	   ,(bind-delayed-lambdas
+	     (lambda (ks)
+	       (compile-matcher-expression expression #f ks kf2 free-names))
+	     (make-matcher-ks-lambda
+	      (lambda (kf)
+		`(,l1 (- ,n1 1) ,kf))))
+	   ,(compile-matcher-expression expression #f ks kf2 free-names)))))
+
+(define-matcher (*n n expression)
+  (if (<= n 4)
+      (open-code-*n n expression pointer ks kf free-names)
+      (close-code-*n n expression pointer ks kf free-names)))
+
+(define (open-code-*n n expression pointer ks kf free-names)
+  (bind-delayed-lambdas
+   (lambda (kf)
+     (let loop ((n n) (pointer pointer) (kf kf))
+       (if (> n 0)
+	   (bind-delayed-lambdas
+	    (lambda (ks)
+	      (compile-matcher-expression expression pointer ks kf free-names))
+	    (make-matcher-ks-lambda
+	     (lambda (kf)
+	       (loop (- n 1) #f kf))))
+	   (delay-call ks kf))))
+   (make-kf-lambda
+    (lambda ()
+      (delay-call ks kf)))))
+
+(define (close-code-*n n expression pointer ks kf free-names)
+  ;; Assume (>= N 1).
+  pointer
+  (bind-delayed-lambdas
+   (lambda (kf)
+     (let ((l1 (make-loop-identifier))
+	   (n1 (make-value-identifier))
+	   (kf2 (make-kf-identifier)))
+       `(LET ,l1 ((,n1 ,n) (,kf2 ,(delay-reference kf)))
+	  (IF (> ,n1 1)
+	      ,(bind-delayed-lambdas
+		(lambda (ks)
+		  (compile-matcher-expression expression #f ks kf2 free-names))
+		(make-matcher-ks-lambda
+		 (lambda (kf)
+		   `(,l1 (- ,n1 1) ,kf))))
+	      ,(compile-matcher-expression expression #f ks kf2 free-names)))))
+   (make-kf-lambda
+    (lambda ()
+      (delay-call ks kf)))))
