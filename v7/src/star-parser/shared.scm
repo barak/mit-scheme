@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: shared.scm,v 1.30 2005/06/04 05:58:19 cph Exp $
+$Id: shared.scm,v 1.31 2005/06/04 23:44:05 cph Exp $
 
 Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
 
@@ -725,9 +725,6 @@ USA.
 (define (make-empty-pointers)
   (cons #f '()))
 
-(define (current-pointer pointers)
-  (car pointers))
-
 (define (current-pointer? identifier pointers)
   (memq identifier (%current-pointers pointers)))
 
@@ -817,7 +814,7 @@ USA.
 	  (operand (cadr expression))
 	  (body (caddr (car expression))))
       (let ((body (new-pointer body identifier pointers)))
-	(if (current-pointer pointers)
+	(if (= (car (count-references (list identifier) body)) 0)
 	    ;; IDENTIFIER is an alias, so don't bind it.
 	    body
 	    `((LAMBDA (,identifier) ,body) ,operand))))))
