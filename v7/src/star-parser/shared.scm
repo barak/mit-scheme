@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: shared.scm,v 1.27 2003/03/07 20:53:22 cph Exp $
+$Id: shared.scm,v 1.28 2005/06/04 03:41:50 cph Exp $
 
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,10 +30,8 @@ USA.
 (define *buffer-name*)
 (define *environment*)
 (define *closing-environment*)
-(define debug:disable-substitution-optimizer? #f)
-(define debug:disable-pointer-optimizer? #f)
-(define debug:disable-peephole-optimizer? #f)
-(define debug:trace-substitution? #f)
+(define debug:disable-optimizers? #f)
+(define debug:trace-optimization? #f)
 
 (define (generate-external-procedure expression environment
 				     preprocessor generator)
@@ -47,50 +45,35 @@ USA.
 	     (b (make-synthetic-identifier 'B)))
 	 (let ((expression
 		(preprocessor expression external-bindings internal-bindings)))
-	   (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
-				(cdr external-bindings))
-	     `(LAMBDA (,b)
-		;; Note that PROTECT is used here as a marker to identify
-		;; code that has potential side effects.  See below for
-		;; an explanation.
-		,(fluid-let ((*buffer-name* `(PROTECT ,b)))
-		   (maybe-make-let (map (lambda (b)
-					  (list (cdr b) (car b)))
-					(cdr internal-bindings))
-		     (strip-protection-wrappers
-		      (run-optimizers
-		       (generator
-			expression
-			(append (map cdr (cdr external-bindings))
-				(map cdr (cdr internal-bindings))))))))))))))))
+	   (let ((body
+		  ;; Note that PROTECT is used here as a marker to
+		  ;; identify code that has potential side effects.
+		  ;; See below for an explanation.
+		  (fluid-let ((*buffer-name* `(PROTECT ,b)))
+		     (maybe-make-let (map (lambda (b)
+					    (list (cdr b) (car b)))
+					  (cdr internal-bindings))
+		       (strip-protection-wrappers
+			(run-optimizers
+			 (generator
+			  expression
+			  (append (map cdr (cdr external-bindings))
+				  (map cdr (cdr internal-bindings))))))))))
+	     (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
+				  (cdr external-bindings))
+	       `(LAMBDA (,b)
+		  ,@(if (> (car (count-references (list b) body)) 0)
+			'()
+			(list b))
+		  ,body)))))))))
 
 (define (run-optimizers expression)
-  (let ((expression*
-	 (maybe-peephole-optimize
-	  (maybe-optimize-pointer-usage
-	   (maybe-optimize-by-substitution expression)))))
-    (if (equal? expression* expression)
-	expression
-	(run-optimizers expression*))))
-
-(define (maybe-optimize-by-substitution expression)
-  (if debug:disable-substitution-optimizer?
+  (if debug:disable-optimizers?
       expression
-      (optimize-by-substitution expression)))
-
-(define (maybe-optimize-pointer-usage expression)
-  (if debug:disable-pointer-optimizer?
-      expression
-      (optimize-pointer-usage expression #f)))
-
-(define (maybe-peephole-optimize expression)
-  (if debug:disable-peephole-optimizer?
-      expression
-      (peephole-optimize expression)))
+      (peephole-optimize
+       (optimize-pointer-usage (optimize-by-substitution expression) '()))))
 
 (define (strip-protection-wrappers expression)
-  ;; Remove PROTECT wrappers from EXPRESSION.  Used after substitution
-  ;; optimization is complete.
   (if (pair? expression)
       (case (car expression)
 	((LAMBDA)
@@ -112,24 +95,23 @@ USA.
 ;;;; Support for preprocessing
 
 (define (check-0-args expression)
-  (if (not (null? (cdr expression)))
-      (error "Malformed expression:" expression)))
+  (check-n-args 0 expression))
 
 (define (check-1-arg expression #!optional predicate)
-  (if (and (pair? (cdr expression))
-	   (null? (cddr expression))
-	   (or (default-object? predicate)
-	       (predicate expression)))
-      (cadr expression)
-      (error "Malformed expression:" expression)))
+  (check-n-args 1 expression predicate)
+  (cadr expression))
 
 (define (check-2-args expression #!optional predicate)
-  (if (not (and (pair? (cdr expression))
-		(pair? (cddr expression))
-		(null? (cdddr expression))
+  (check-n-args 2 expression predicate))
+
+(define (check-n-args n expression #!optional predicate)
+  (if (not (and (eqv? (list?->length (cdr expression)) n)
 		(or (default-object? predicate)
 		    (predicate expression))))
-      (error "Malformed expression:" expression)))
+      (error:ill-formed-expression expression)))
+
+(define (error:ill-formed-expression expression)
+  (error "Ill-formed expression:" expression))
 
 (define (handle-complex-expression expression bindings)
   (if (or (char? expression)
@@ -269,6 +251,9 @@ USA.
 (define (make-value-identifier)
   (generate-identifier 'V))
 
+(define (make-loop-identifier)
+  (generate-identifier 'L))
+
 (define (generate-identifier prefix)
   (string->uninterned-symbol
    (string-append
@@ -393,14 +378,7 @@ USA.
   (if (equal? result expression)
       expression
       (begin
-	(if debug:trace-substitution?
-	    (begin
-	      (fresh-line)
-	      (pp expression)
-	      (write-string "==>")
-	      (newline)
-	      (pp result)
-	      (newline)))
+	(trace-optimization 'SUBSTITUTE expression result)
 	(optimize-by-substitution result))))
 
 (define (compute-substitutions identifiers operands body)
@@ -665,7 +643,7 @@ USA.
 		(for-each (lambda (expression)
 			    (loop expression alist))
 			  expression))))
-	    ((symbol? expression)
+	    ((identifier? expression)
 	     (let ((entry (assq expression alist)))
 	       (if entry
 		   (set-cdr! entry (+ (cdr entry) 1)))))))
@@ -673,70 +651,140 @@ USA.
 
 ;;;; Pointer optimizer
 
-(define (optimize-pointer-usage expression pointer)
-  (cond ((not (pair? expression))
-	 expression)
-	((eq? (car expression) 'LAMBDA)
-	 (let ((parameters (cadr expression)))
-	   `(LAMBDA ,parameters
-	      ,(optimize-pointer-usage (caddr expression) #f))))
-	((eq? (car expression) 'LET)
-	 (let ((name (cadr expression))
-	       (bindings
-		(map (lambda (binding)
-		       `(,(car binding)
-			 ,(optimize-pointer-usage (cadr binding) pointer)))
-		     (caddr expression))))
-	   `(LET ,name ,bindings
-	      ,(optimize-pointer-usage (cadddr expression)
-				       (if (or (eq? pointer name)
-					       (assq pointer bindings))
-					   #f
-					   pointer)))))
-	((eq? (car expression) 'PROTECT)
-	 expression)
-	((eq? (car expression) 'IF)
-	 `(IF ,(optimize-pointer-usage (cadr expression) pointer)
-	      ,(optimize-pointer-usage (caddr expression) #f)
-	      ,(optimize-pointer-usage (cadddr expression) pointer)))
-	((syntax-match? '(('LAMBDA (IDENTIFIER) EXPRESSION)
-			  ('GET-PARSER-BUFFER-POINTER EXPRESSION))
-			expression)
-	 (let ((operator (car expression))
-	       (operand (cadr expression)))
-	   (let ((identifier (car (cadr operator))))
-	     (let ((body (optimize-pointer-usage (caddr operator) identifier)))
-	       (if (and (internal-identifier? identifier)
-			(= (car (count-references (list identifier) body)) 0))
-		   body
-		   `((LAMBDA (,identifier) ,body) ,operand))))))
-	((syntax-match? '(('LAMBDA (* IDENTIFIER) EXPRESSION)
-			  . (* EXPRESSION))
-			expression)
-	 (let ((operator (car expression))
-	       (operands (cdr expression)))
-	   (let ((parameters (cadr operator)))
-	     `((LAMBDA ,parameters
-		 ,(optimize-pointer-usage (caddr operator)
-					  (if (memq pointer parameters)
-					      #f
-					      pointer)))
-	       ,@operands))))
-	((syntax-match?
-	  '('BEGIN
-	     ('SET-PARSER-BUFFER-POINTER! EXPRESSION IDENTIFIER)
-	     EXPRESSION)
-	  expression)
-	 (let* ((action (cadr expression))
-		(pointer* (caddr action))
-		(tail (optimize-pointer-usage (caddr expression) pointer*)))
-	   (if (eq? pointer* pointer)
-	       tail
-	       `(BEGIN ,action ,tail))))
-	(else
+(define (optimize-pointer-usage expression pointers)
+  (cond ((or (find-matching-item pointer-optimizations
+	       (lambda (p)
+		 (syntax-match? (car p) expression)))
+	     (find-matching-item default-pointer-optimizations
+	       (lambda (p)
+		 (syntax-match? (car p) expression))))
+	 => (lambda (p)
+	      (let ((expression* ((cdr p) expression pointers)))
+		(if (equal? expression* expression)
+		    expression
+		    (begin
+		      (trace-optimization 'POINTER expression expression*)
+		      (optimize-pointer-usage expression* pointers))))))
+	((pair? expression)
 	 (map (lambda (expression)
-		(optimize-pointer-usage expression pointer))
-	      expression))))
+		(optimize-pointer-usage expression pointers))
+	      expression))
+	((identifier? expression)
+	 (if (memq expression pointers)
+	     (car (last-pair pointers))
+	     expression))
+	(else expression)))
+
+(define (define-pointer-optimization pattern optimizer)
+  (let ((p (assoc pattern pointer-optimizations)))
+    (if p
+	(set-cdr! p optimizer)
+	(begin
+	  (set! pointer-optimizations
+		(cons (cons pattern optimizer)
+		      pointer-optimizations))
+	  unspecific))))
+
+(define pointer-optimizations '())
+
+(define (define-default-pointer-optimization pattern optimizer)
+  (let ((p (assoc pattern default-pointer-optimizations)))
+    (if p
+	(set-cdr! p optimizer)
+	(begin
+	  (set! default-pointer-optimizations
+		(cons (cons pattern optimizer)
+		      default-pointer-optimizations))
+	  unspecific))))
+
+(define default-pointer-optimizations '())
+
+(define-pointer-optimization
+  '('BEGIN
+     ('SET-PARSER-BUFFER-POINTER! EXPRESSION IDENTIFIER)
+     EXPRESSION)
+  (lambda (expression pointers)
+    (let ((action (cadr expression))
+	  (tail (caddr expression)))
+      (let ((identifier (caddr action)))
+	(if (memq identifier pointers)
+	    (optimize-pointer-usage tail pointers)
+	    `(BEGIN
+	       ,action
+	       ,(optimize-pointer-usage tail (cons identifier pointers))))))))
+
+(define-pointer-optimization '(('LAMBDA (IDENTIFIER) EXPRESSION)
+			       ('GET-PARSER-BUFFER-POINTER EXPRESSION))
+  (lambda (expression pointers)
+    (let ((identifier (car (cadr (car expression))))
+	  (operand (cadr expression))
+	  (body (caddr (car expression))))
+      (let ((body (optimize-pointer-usage body (cons identifier pointers))))
+	(if (and (internal-identifier? identifier)
+		 (= (car (count-references (list identifier) body)) 0))
+	    body
+	    `((LAMBDA (,identifier) ,body) ,operand))))))
+
+(define-pointer-optimization '('PROTECT EXPRESSION)
+  (lambda (expression pointers)
+    pointers
+    expression))
+
+(define-pointer-optimization '('IF EXPRESSION EXPRESSION EXPRESSION)
+  (lambda (expression pointers)
+    `(IF ,(optimize-pointer-usage (cadr expression) pointers)
+	 ,(optimize-pointer-usage (caddr expression) '())
+	 ,(optimize-pointer-usage (cadddr expression) pointers))))
+
+(define-pointer-optimization '('IF EXPRESSION EXPRESSION)
+  (lambda (expression pointers)
+    `(IF ,(optimize-pointer-usage (cadr expression) pointers)
+	 ,(optimize-pointer-usage (caddr expression) '()))))
+
+(define-pointer-optimization '('AND * EXPRESSION)
+  (lambda (expression pointers)
+    (if (pair? (cdr expression))
+	`(AND ,(optimize-pointer-usage (cadr expression) pointers)
+	      ,@(map (lambda (expression)
+		       (optimize-pointer-usage expression '()))
+		     (cddr expression)))
+	expression)))
+
+(define-pointer-optimization '('OR * EXPRESSION)
+  (lambda (expression pointers)
+    `(OR ,@(map (lambda (expression)
+		  (optimize-pointer-usage expression pointers))
+		(cdr expression)))))
+
+(define-default-pointer-optimization '('LAMBDA (* IDENTIFIER) EXPRESSION)
+  (lambda (expression pointers)
+    pointers
+    `(LAMBDA ,(cadr expression)
+       ,(optimize-pointer-usage (caddr expression) '()))))
+
+(define-default-pointer-optimization '(('LAMBDA (* IDENTIFIER) EXPRESSION)
+				       . (* EXPRESSION))
+  (lambda (expression pointers)
+    (let ((operator (car expression))
+	  (operands (cdr expression)))
+      (let ((parameters (cadr operator)))
+	`((LAMBDA ,parameters
+	    ,(optimize-pointer-usage (caddr operator)
+				     (delete-matching-items pointers
+				       (lambda (pointer)
+					 (memq pointer parameters)))))
+	  ,@operands)))))
+
+(define-default-pointer-optimization
+  '('LET IDENTIFIER (* (IDENTIFIER EXPRESSION)) EXPRESSION)
+  (lambda (expression pointers)
+    pointers
+    `(LET ,(cadr expression)
+       ,(map (lambda (binding)
+	       `(,(car binding)
+		 ,(optimize-pointer-usage (cadr binding) '())))
+	     (caddr expression))
+       ,(optimize-pointer-usage (cadddr expression) '()))))
 
 ;;;; Peephole optimizer
 
@@ -749,22 +797,24 @@ USA.
 	       (let ((expression* ((cddar entries) expression)))
 		 (if (equal? expression* expression)
 		     expression
-		     (peephole-optimize expression*)))
+		     (begin
+		       (trace-optimization 'PEEPHOLE expression expression*)
+		       (peephole-optimize expression*))))
 	       (loop (cdr entries))))
-	  ((and (pair? expression)
-		(symbol? (car expression)))
-	   (let ((expression*
-		  (let ((optimizer
-			 (hash-table/get default-peephole-optimizers
-					 (car expression)
-					 #f)))
-		    (if optimizer
-			(optimizer expression)
-			(cons (car expression)
-			      (map peephole-optimize (cdr expression)))))))
-	     (if (equal? expression* expression)
-		 expression
-		 (peephole-optimize expression*))))
+	  ((pair? expression)
+	   (case (car expression)
+	     ((LAMBDA)
+	      `(LAMBDA ,(cadr expression)
+		 ,@(map peephole-optimize (cddr expression))))
+	     ((LET)
+	      `(LET ,(cadr expression)
+		 ,@(map (lambda (binding)
+			  `(,(car binding)
+			    ,(peephole-optimize (cadr binding))))
+			(caddr expression))
+		 ,@(map peephole-optimize (cdddr expression))))
+	     (else
+	      (map peephole-optimize expression))))
 	  (else expression))))
 
 (define (define-peephole-optimizer pattern predicate optimizer)
@@ -777,12 +827,7 @@ USA.
 		(cons (cons pattern datum) peephole-optimizer-patterns))
 	  unspecific))))
 
-(define (define-default-peephole-optimizer keyword optimizer)
-  (hash-table/put! default-peephole-optimizers keyword optimizer)
-  keyword)
-
 (define peephole-optimizer-patterns '())
-(define default-peephole-optimizers (make-eq-hash-table))
 
 (define (predicate-not-or expression)
   (not (and (pair? (cadr expression))
@@ -924,11 +969,6 @@ USA.
   (lambda (expression)
     `(LAMBDA ,(cadr expression) ,(peephole-optimize (caddr expression)))))
 
-(define-default-peephole-optimizer 'LAMBDA
-  (lambda (expression)
-    `(LAMBDA ,(cadr expression)
-       ,@(map peephole-optimize (cddr expression)))))
-
 (define-peephole-optimizer '('VECTOR-MAP EXPRESSION ('VECTOR EXPRESSION)) #f
   (lambda (expression)
     `(VECTOR (,(cadr expression) ,(cadr (caddr expression))))))
@@ -990,6 +1030,18 @@ USA.
 	    (loop (append (cdar expressions) (cdr expressions)))
 	    (cons (car expressions) (loop (cdr expressions))))
 	'())))
+
+(define (trace-optimization keyword before after)
+  (if debug:trace-optimization?
+      (let ((port (trace-output-port)))
+	(fresh-line port)
+	(pp before port)
+	(write-string "==" port)
+	(write keyword port)
+	(write-string "==>" port)
+	(newline port)
+	(pp after port)
+	(newline port))))
 
 ;;; Edwin Variables:
 ;;; Eval: (scheme-indent-method 'define-peephole-optimizer 2)
