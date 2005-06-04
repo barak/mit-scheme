@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.32 2005/06/01 05:13:07 cph Exp $
+$Id: url.scm,v 1.33 2005/06/04 23:48:25 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -133,6 +133,11 @@ USA.
 (define-guarantee uri-userinfo "URI userinfo")
 (define-guarantee uri-host "URI host")
 (define-guarantee uri-port "URI port")
+
+(define (complete-match matcher string #!optional start end)
+  (let ((buffer (string->parser-buffer string start end)))
+    (and (matcher buffer)
+	 (not (peek-parser-buffer-char buffer)))))
 
 (define (uri=? u1 u2)
   (let ((u1 (->uri u1 'URI=?))
@@ -273,70 +278,6 @@ USA.
 	      (cons "" output)))))
     (reverse! (no-output path))))
 
-;;;; Matching and parsing utilities
-
-(define (complete-match matcher string #!optional start end)
-  (let ((buffer (string->parser-buffer string start end)))
-    (and (matcher buffer)
-	 (not (peek-parser-buffer-char buffer)))))
-
-(define (match-n*n n matcher)
-  (guarantee-exact-nonnegative-integer n 'MATCH-N*N)
-  (cond ((= n 0)
-	 (lambda (buffer)
-	   buffer
-	   #t))
-	((= n 1)
-	 matcher)
-	(else
-	 (lambda (buffer)
-	   (let ((p (get-parser-buffer-pointer buffer)))
-	     (let loop ((i 1))
-	       (if (<= i n)
-		   (if (matcher buffer)
-		       (loop (+ i 1))
-		       (begin
-			 (set-parser-buffer-pointer! buffer p)
-			 #f))
-		   #t)))))))
-
-(define (match-0*n n matcher)
-  (guarantee-exact-nonnegative-integer n 'MATCH-0*N)
-  (cond ((= n 0)
-	 (lambda (buffer)
-	   buffer
-	   #t))
-	((= n 1)
-	 (lambda (buffer)
-	   (matcher buffer)
-	   #t))
-	(else
-	 (lambda (buffer)
-	   (let loop ((i 1))
-	     (if (and (<= i n) (matcher buffer))
-		 (loop (+ i 1))
-		 #t))))))
-
-(define (match-n*m n m matcher)
-  (guarantee-exact-nonnegative-integer n 'MATCH-N*M)
-  (guarantee-exact-nonnegative-integer m 'MATCH-N*M)
-  (if (not (<= n m))
-      (error:bad-range-argument m 'MATCH-N*M))
-  (let ((prefix (match-n*n n matcher))
-	(suffix (match-0*n (- m n) matcher)))
-    (lambda (buffer)
-      (and (prefix buffer)
-	   (suffix buffer)))))
-
-(define (match-n* n matcher)
-  (guarantee-exact-nonnegative-integer n 'MATCH-N*)
-  (let ((prefix (match-n*n n matcher)))
-    (lambda (buffer)
-      (and (prefix buffer)
-	   (let loop ()
-	     (and (matcher buffer)
-		  (loop)))))))
-
 ;;;; Parser
 
 (define-syntax define-uri-coercion
@@ -460,13 +401,11 @@ USA.
 
 (define parser:hostport
   (*parser
-   (seq (map uri-string-downcase
-	     (match matcher:host))
+   (seq (map uri-string-downcase (match matcher:host))
 	(alt (seq ":"
 		  (map (lambda (s)
-			 (if (fix:> (string-length s) 0)
-			     (string->number s)
-			     #f))
+			 (and (fix:> (string-length s) 0)
+			      (string->number s)))
 		       (match (* (char-set char-set:uri-digit)))))
 	     (values #f)))))
 
@@ -506,37 +445,21 @@ USA.
 	(+ (char-set char-set:uri-ipvfuture)))))
 
 (define matcher:ipv6-address
-  (let ((h16: (*matcher (seq matcher:h16 ":"))))
-    (let ((h16:2 (match-n*n 2 h16:))
-	  (h16:3 (match-n*n 3 h16:))
-	  (h16:4 (match-n*n 4 h16:))
-	  (h16:5 (match-n*n 5 h16:))
-	  (h16:6 (match-n*n 6 h16:))
-	  (h16:*1 (match-0*n 1 h16:))
-	  (h16:*2 (match-0*n 2 h16:))
-	  (h16:*3 (match-0*n 3 h16:))
-	  (h16:*4 (match-0*n 4 h16:))
-	  (h16:*5 (match-0*n 5 h16:))
-	  (h16:*6 (match-0*n 6 h16:)))
-      (*matcher
-       (alt (seq                                   h16:6 matcher:ls32)
-	    (seq                              "::" h16:5 matcher:ls32)
-	    (seq (? (seq        matcher:h16)) "::" h16:4 matcher:ls32)
-	    (seq (? (seq h16:*1 matcher:h16)) "::" h16:3 matcher:ls32)
-	    (seq (? (seq h16:*2 matcher:h16)) "::" h16:2 matcher:ls32)
-	    (seq (? (seq h16:*3 matcher:h16)) "::" h16:  matcher:ls32)
-	    (seq (? (seq h16:*4 matcher:h16)) "::"       matcher:ls32)
-	    (seq (? (seq h16:*5 matcher:h16)) "::"       matcher:h16 )
-	    (seq (? (seq h16:*6 matcher:h16)) "::"                   ))))))
+  (let*
+      ((h16 (*matcher (n*m 1 4 (char-set char-set:uri-hex))))
+       (h16: (*matcher (seq h16 ":")))
+       (ls32 (*matcher (alt (seq h16 ":" h16) matcher:ipv4-address)))
+       (m1 (*matcher (seq                                (n*n 6 h16:) ls32)))
+       (m2 (*matcher (seq                           "::" (n*n 5 h16:) ls32)))
+       (m3 (*matcher (seq (? (seq             h16)) "::" (n*n 4 h16:) ls32)))
+       (m4 (*matcher (seq (? (seq (*n 1 h16:) h16)) "::" (n*n 3 h16:) ls32)))
+       (m5 (*matcher (seq (? (seq (*n 2 h16:) h16)) "::" (n*n 2 h16:) ls32)))
+       (m6 (*matcher (seq (? (seq (*n 3 h16:) h16)) "::"        h16:  ls32)))
+       (m7 (*matcher (seq (? (seq (*n 4 h16:) h16)) "::"              ls32)))
+       (m8 (*matcher (seq (? (seq (*n 5 h16:) h16)) "::"              h16 )))
+       (m9 (*matcher (seq (? (seq (*n 6 h16:) h16)) "::"                  ))))
+    (*matcher (alt m1 m2 m3 m4 m5 m6 m7 m8 m9))))
 
-(define matcher:h16
-  (match-n*m 1 4 (*matcher (char-set char-set:uri-hex))))
-
-(define matcher:ls32
-  (*matcher
-   (alt (seq matcher:h16 ":" matcher:h16)
-	matcher:ipv4-address)))
-
 (define matcher:ipv4-address
   (*matcher
    (seq matcher:dec-octet
