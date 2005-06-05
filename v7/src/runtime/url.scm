@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.34 2005/06/05 19:28:32 cph Exp $
+$Id: url.scm,v 1.35 2005/06/05 19:31:29 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -445,6 +445,9 @@ USA.
 	(+ (char-set char-set:uri-ipvfuture)))))
 
 (define matcher:ipv6-address
+  ;; This is artificially broken into separate clauses M1 ... M9 as a
+  ;; work-around for a bug in the compiler.  The LET* is used so that
+  ;; the clauses each fit on a single line.
   (let*
       ((h16 (*matcher (n*m 1 4 (char-set char-set:uri-hex))))
        (h16: (*matcher (seq h16 ":")))
