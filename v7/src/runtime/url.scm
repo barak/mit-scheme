@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.33 2005/06/04 23:48:25 cph Exp $
+$Id: url.scm,v 1.34 2005/06/05 19:28:32 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -732,15 +732,15 @@ USA.
 	(alt rexp-alternatives)
 	(seq rexp-sequence)
 	(? rexp-optional))
-    (alt (seq                                   (rexp-n*n 6 h16 ":") ls32)
-	 (seq                              "::" (rexp-n*n 5 h16 ":") ls32)
-	 (seq (?                      h16) "::" (rexp-n*n 4 h16 ":") ls32)
-	 (seq (? (rexp-0*n 1 h16 ":") h16) "::" (rexp-n*n 3 h16 ":") ls32)
-	 (seq (? (rexp-0*n 2 h16 ":") h16) "::" (rexp-n*n 2 h16 ":") ls32)
-	 (seq (? (rexp-0*n 3 h16 ":") h16) "::" (rexp-n*n 1 h16 ":") ls32)
-	 (seq (? (rexp-0*n 4 h16 ":") h16) "::"                      ls32)
-	 (seq (? (rexp-0*n 5 h16 ":") h16) "::"                      h16 )
-	 (seq (? (rexp-0*n 6 h16 ":") h16) "::"                          ))))
+    (alt (seq                                  (rexp-n*n 6 h16 ":") ls32)
+	 (seq                             "::" (rexp-n*n 5 h16 ":") ls32)
+	 (seq (?                     h16) "::" (rexp-n*n 4 h16 ":") ls32)
+	 (seq (? (rexp-*n 1 h16 ":") h16) "::" (rexp-n*n 3 h16 ":") ls32)
+	 (seq (? (rexp-*n 2 h16 ":") h16) "::" (rexp-n*n 2 h16 ":") ls32)
+	 (seq (? (rexp-*n 3 h16 ":") h16) "::" (rexp-n*n 1 h16 ":") ls32)
+	 (seq (? (rexp-*n 4 h16 ":") h16) "::"                      ls32)
+	 (seq (? (rexp-*n 5 h16 ":") h16) "::"                      h16 )
+	 (seq (? (rexp-*n 6 h16 ":") h16) "::"                          ))))
 
 (define (uri-rexp:h16)
   (rexp-n*m 1 4 char-set:uri-hex))

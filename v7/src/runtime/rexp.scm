@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rexp.scm,v 1.23 2005/05/30 02:45:04 cph Exp $
+$Id: rexp.scm,v 1.24 2005/06/05 19:28:16 cph Exp $
 
 Copyright 2000,2001,2002,2005 Massachusetts Institute of Technology
 
@@ -254,7 +254,7 @@ USA.
 (define (rexp-n*n n . rexps)
   (apply rexp-n*m n n rexps))
 
-(define (rexp-0*n n . rexps)
+(define (rexp-*n n . rexps)
   (apply rexp-n*m 0 n rexps))
 
 (define (rexp-n* n . rexps)
