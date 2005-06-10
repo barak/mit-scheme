@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: linden.scm,v 1.130 2005/06/10 01:42:43 cph Exp $
+$Id: linden.scm,v 1.131 2005/06/10 01:50:39 cph Exp $
 
 Copyright 1987,1989,1991,1995,1996,2005 Massachusetts Institute of Technology
 
@@ -175,7 +175,7 @@ is used to calculate the indentation for that form."
 
 (define (find-indent-method start end)
   (let ((name (extract-string start end)))
-    (or (let ((v (name->variable (symbol 'LISP-INDENT: name) #f)))
+    (or (let ((v (name->variable (symbol 'LISP-INDENT/ name) #f)))
 	  (and v
 	       (variable-local-value start v)))
 	(let ((methods (ref-variable lisp-indent-methods start)))

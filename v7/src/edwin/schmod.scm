@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: schmod.scm,v 1.71 2005/06/10 01:42:52 cph Exp $
+$Id: schmod.scm,v 1.72 2005/06/10 01:50:46 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1998 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -159,7 +159,7 @@ The following commands evaluate Scheme expressions:
 
 (define (scheme-indent-method name method)
   (define-variable-local-value! (selected-buffer)
-      (name->variable (symbol 'LISP-INDENT: name) 'INTERN)
+      (name->variable (symbol 'LISP-INDENT/ name) 'INTERN)
     method))
 
 (for-each (lambda (entry)
