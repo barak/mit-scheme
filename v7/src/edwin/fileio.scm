@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.165 2004/02/17 04:59:29 cph Exp $
+$Id: fileio.scm,v 1.166 2005/06/10 01:51:23 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2004 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -446,7 +446,9 @@ after you find a file.  If you explicitly request such a scan with
 				   (continuation #f))
 			       (lambda ()
 				 (if (string-ci=? var "Eval")
-				     (evaluate val)
+				     (with-selected-buffer buffer
+				       (lambda ()
+					 (evaluate val)))
 				     (define-variable-local-value! buffer
 					 (name->variable (intern var))
 				       (evaluate val))))))))
