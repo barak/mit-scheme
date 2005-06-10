@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: linden.scm,v 1.129 2003/02/14 18:28:12 cph Exp $
+$Id: linden.scm,v 1.130 2005/06/10 01:42:43 cph Exp $
 
-Copyright 1986, 1989-1999 Massachusetts Institute of Technology
+Copyright 1987,1989,1991,1995,1996,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -169,20 +169,24 @@ is used to calculate the indentation for that form."
 		   ((exact-integer? method)
 		    (lisp-indent-special-form method state indent-point
 					      normal-indent))
-		   ((procedure? method)
+		   ((procedure-of-arity? method 3)
 		    (method state indent-point normal-indent))
 		   (else #f)))))))
 
 (define (find-indent-method start end)
-  (or (let ((methods (ref-variable lisp-indent-methods start)))
-	(and methods
-	     (string-table-get methods (extract-string start end))))
-      (let loop ((alist (cdr (ref-variable lisp-indent-regexps start))))
-	(and (not (null? alist))
-	     (if (re-match-forward (caar alist) start end #t)
-		 (cdar alist)
-		 (loop (cdr alist)))))))
-
+  (let ((name (extract-string start end)))
+    (or (let ((v (name->variable (symbol 'LISP-INDENT: name) #f)))
+	  (and v
+	       (variable-local-value start v)))
+	(let ((methods (ref-variable lisp-indent-methods start)))
+	  (and methods
+	       (string-table-get methods name)))
+	(let loop ((alist (cdr (ref-variable lisp-indent-regexps start))))
+	  (and (pair? alist)
+	       (if (re-match-forward (caar alist) start end #t)
+		   (cdar alist)
+		   (loop (cdr alist))))))))
+
 ;;; Indent the first subform in a definition at the body indent.
 ;;; Indent subsequent subforms normally.
 
@@ -323,7 +327,7 @@ is used to calculate the indentation for that form."
 				   comment-start))))))
 
 (define (compute-indentation start stack)
-  (cond ((null? stack)
+  (cond ((not (pair? stack))
 	 (let ((indent (calculate-lisp-indentation start)))
 	   (if (pair? indent)
 	       (car indent)
