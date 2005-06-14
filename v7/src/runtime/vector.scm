@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.23 2003/02/14 18:28:34 cph Exp $
+$Id: vector.scm,v 14.24 2005/06/14 18:17:38 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -118,33 +118,40 @@ USA.
 	    (loop (fix:+ index 1)))))
     vector))
 
-(define (vector-map procedure vector)
-  (if (vector? procedure)
-      ;; KLUDGE: accept arguments in old order.
-      (vector-map vector procedure)
-      (begin
-	(guarantee-vector vector 'VECTOR-MAP)
-	(let ((length (vector-length vector)))
-	  (if (fix:= 0 length)
-	      vector
-	      (let ((result (make-vector length)))
-		(let loop ((index 0))
-		  (if (fix:< index length)
-		      (begin
-			(vector-set! result
-				     index
-				     (procedure (vector-ref vector index)))
-			(loop (fix:+ index 1)))))
-		result))))))
+(define (vector-map procedure vector . vectors)
+  (guarantee-vector vector 'VECTOR-MAP)
+  (for-each (lambda (v) (guarantee-vector v 'VECTOR-MAP)) vectors)
+  (let ((n (vector-length vector)))
+    (for-each (lambda (v)
+		(if (not (fix:= (vector-length v) n))
+		    (error:bad-range-argument v 'VECTOR-MAP)))
+	      vectors)
+    (let ((result (make-vector n)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((not (fix:< i n)))
+	(vector-set! result
+		     i
+		     (apply procedure
+			    (vector-ref vector i)
+			    (map (lambda (v) (vector-ref v i)) vectors))))
+      result)))
+
+(define (vector-for-each procedure vector . vectors)
+  (guarantee-vector vector 'VECTOR-FOR-EACH)
+  (for-each (lambda (v) (guarantee-vector v 'VECTOR-FOR-EACH)) vectors)
+  (let ((n (vector-length vector)))
+    (for-each (lambda (v)
+		(if (not (fix:= (vector-length v) n))
+		    (error:bad-range-argument v 'VECTOR-FOR-EACH)))
+	      vectors)
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i n)) unspecific)
+      (apply procedure
+	     (vector-ref vector i)
+	     (map (lambda (v) (vector-ref v i)) vectors)))))
 
 (define (for-each-vector-element vector procedure)
-  (guarantee-vector vector 'FOR-EACH-VECTOR-ELEMENT)
-  (let ((length (vector-length vector)))
-    (let loop ((index 0))
-      (if (fix:< index length)
-	  (begin
-	    (procedure (vector-ref vector index))
-	    (loop (fix:+ index 1)))))))
+  (vector-for-each procedure vector))
 
 (define (vector-of-type? vector predicate)
   (and (vector? vector)
