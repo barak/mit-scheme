@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.557 2005/06/14 18:17:34 cph Exp $
+$Id: runtime.pkg,v 14.558 2005/06/16 17:15:15 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -577,6 +577,8 @@ USA.
 	  for-each-vector-element
 	  guarantee-subvector
 	  guarantee-vector
+	  guarantee-vector-of-type
+	  guarantee-vector-of-unique-symbols
 	  list->vector
 	  make-initialized-vector
 	  make-vector
@@ -611,6 +613,7 @@ USA.
 	  vector-map
 	  vector-move!
 	  vector-of-type?
+	  vector-of-unique-symbols?
 	  vector-ref
 	  vector-second
 	  vector-set!

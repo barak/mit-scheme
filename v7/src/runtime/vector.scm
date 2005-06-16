@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.24 2005/06/14 18:17:38 cph Exp $
+$Id: vector.scm,v 14.25 2005/06/16 17:15:19 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -152,14 +152,6 @@ USA.
 
 (define (for-each-vector-element vector procedure)
   (vector-for-each procedure vector))
-
-(define (vector-of-type? vector predicate)
-  (and (vector? vector)
-       (let ((n (vector-length vector)))
-	 (let loop ((i 0))
-	   (or (fix:= i n)
-	       (and (predicate (vector-ref vector i))
-		    (loop (fix:+ i 1))))))))
 
 (define (subvector-find-next-element vector start end item)
   (guarantee-subvector vector start end 'SUBVECTOR-FIND-NEXT-ELEMENT)
@@ -252,3 +244,33 @@ USA.
 (define (vector-uniform? vector)
   (guarantee-vector vector 'VECTOR-UNIFORM?)
   (subvector-uniform? vector 0 (vector-length vector)))
+
+(define (vector-of-type? object predicate)
+  (and (vector? object)
+       (let ((n (vector-length object)))
+	 (let loop ((i 0))
+	   (if (fix:< i n)
+	       (and (predicate (vector-ref object i))
+		    (loop (fix:+ i 1)))
+	       #t)))))
+
+(define (guarantee-vector-of-type object predicate description caller)
+  (if (not (vector-of-type? object predicate))
+      (error:wrong-type-argument object description caller)))
+
+(define (vector-of-unique-symbols? object)
+  (and (vector? object)
+       (let ((n (vector-length object)))
+	 (let loop ((i 0))
+	   (if (fix:< i n)
+	       (let ((elt (vector-ref object i)))
+		 (and (symbol? elt)
+		      (let find-dup ((i (fix:+ i 1)))
+			(if (fix:< i n)
+			    (and (not (eq? (vector-ref object i) elt))
+				 (find-dup (fix:+ i 1)))
+			    #t))
+		      (loop (fix:+ i 1))))
+	       #t)))))
+
+(define-guarantee vector-of-unique-symbols "vector of unique symbols")
