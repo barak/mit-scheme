@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.289 2005/04/01 05:07:03 cph Exp $
+$Id: edwin.pkg,v 1.290 2005/06/24 17:34:31 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -102,6 +102,11 @@ USA.
 	 )
 
   (parent ())
+  (import (runtime parser)
+	  (*parser-associate-positions?* runtime-parser-associate-positions?)
+	  (*parser-canonicalize-symbols?* runtime-parser-canonicalize-symbols?)
+	  (*parser-radix* runtime-parser-radix)
+	  (*parser-table* runtime-parser-table))
   (import (runtime character)
 	  bucky-bits->prefix)
   (import (runtime char-syntax)
