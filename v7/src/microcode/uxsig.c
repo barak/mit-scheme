@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.39 2003/02/14 18:28:24 cph Exp $
+$Id: uxsig.c,v 1.40 2005/06/26 04:34:48 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1994,1996 Massachusetts Institute of Technology
+Copyright 2000,2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -391,8 +392,7 @@ DEFUN_STD_HANDLER (sighnd_control_b,
   tty_set_next_interrupt_char (CONTROL_B_INTERRUPT_CHAR);
 })
 
-static void EXFUN
-  (interactive_interrupt_handler, (struct FULL_SIGCONTEXT * scp));
+static void EXFUN (interactive_interrupt_handler, (FULL_SIGCONTEXT_T * scp));
 
 static
 DEFUN_STD_HANDLER (sighnd_interactive,
@@ -737,7 +737,7 @@ DEFUN (OS_tty_map_interrupt_char, (int_char), cc_t int_char)
 static void EXFUN (print_interactive_help, (void));
 static void EXFUN (print_interrupt_chars, (void));
 static void EXFUN (examine_memory, (void));
-static void EXFUN (reset_query, (struct FULL_SIGCONTEXT * scp));
+static void EXFUN (reset_query, (FULL_SIGCONTEXT_T * scp));
 static void EXFUN (interactive_back_trace, (void));
 
 #define INTERACTIVE_NEWLINE()						\
@@ -750,7 +750,7 @@ static void EXFUN (interactive_back_trace, (void));
 }
 
 static void
-DEFUN (interactive_interrupt_handler, (scp), struct FULL_SIGCONTEXT * scp)
+DEFUN (interactive_interrupt_handler, (scp), FULL_SIGCONTEXT_T * scp)
 {
   if (!option_emacs_subprocess)
     {
@@ -1038,7 +1038,7 @@ DEFUN (invoke_soft_reset, (name), char * name)
 }
 
 static void
-DEFUN (reset_query, (scp), struct FULL_SIGCONTEXT * scp)
+DEFUN (reset_query, (scp), FULL_SIGCONTEXT_T * scp)
 {
   putc ('\n', stdout);
   fflush (stdout);

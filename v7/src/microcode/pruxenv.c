@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: pruxenv.c,v 1.21 2003/02/14 18:28:23 cph Exp $
+$Id: pruxenv.c,v 1.22 2005/06/26 04:34:39 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright 1990,1991,1992l,1993,1995,1997 Massachusetts Institute of Technology
+Copyright 2000,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +29,7 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 #include "ux.h"
+#include "uxtrap.h"
 
 #ifdef HAVE_SOCKETS
 #  include "uxsock.h"
@@ -215,19 +217,25 @@ DEFINE_PRIMITIVE ("HOSTNAME", Prim_hostname, 0, 0,
   }
 }
 
-
-
-
 DEFINE_PRIMITIVE ("INSTRUCTION-ADDRESS->COMPILED-CODE-BLOCK",
 		  Prim_instruction_address_to_compiled_code_block, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
-      extern SCHEME_OBJECT find_ccblock(long);
-      long the_pc = (INTEGER_P (ARG_REF (1)))
-	? (integer_to_long (ARG_REF (1)))
-	: ((long) OBJECT_ADDRESS (ARG_REF (1)));
-      PRIMITIVE_RETURN (find_ccblock (the_pc));
+    SCHEME_OBJECT object = (ARG_REF (1));
+    unsigned long pc;
+    if (INTEGER_P (object))
+      {
+	if (! (integer_to_ulong_p (object)))
+	  error_bad_range_arg (1);
+	pc = (integer_to_ulong (object));
+      }
+    else
+      {
+	if (! (COMPILED_CODE_ADDRESS_P (object)))
+	  error_bad_range_arg (1);
+	pc = ((unsigned long) (OBJECT_ADDRESS (object)));
+      }
+    PRIMITIVE_RETURN (find_ccblock (pc));
   }
 }
-

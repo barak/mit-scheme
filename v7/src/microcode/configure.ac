@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [14.15], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.4 2005/01/06 19:08:43 cph Exp $])
+AC_INIT([MIT/GNU Scheme], [14.16], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_REVISION([$Id: configure.ac,v 1.5 2005/06/26 04:35:35 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET

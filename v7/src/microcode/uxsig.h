@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsig.h,v 1.8 2003/02/14 18:28:24 cph Exp $
+$Id: uxsig.h,v 1.9 2005/06/26 04:34:56 cph Exp $
 
-Copyright (c) 1993-2000 Massachusetts Institute of Technology
+Copyright 1993,1994,2000,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -53,7 +53,7 @@ Tsignal_handler_result							\
 DEFUN (name, (signo, info, pscp),					\
        int signo AND							\
        SIGINFO_T info AND						\
-       struct SIGCONTEXT * pscp)					\
+       SIGCONTEXT_T * pscp)						\
 {									\
   int STD_HANDLER_abortp;						\
   DECLARE_FULL_SIGCONTEXT (scp);					\
@@ -79,7 +79,7 @@ Tsignal_handler_result							\
 DEFUN (name, (signo, info, pscp),					\
        int signo AND							\
        SIGINFO_T info AND						\
-       struct SIGCONTEXT * pscp)					\
+       SIGCONTEXT_T * pscp)						\
 {									\
   int STD_HANDLER_abortp;						\
   DECLARE_FULL_SIGCONTEXT (scp);					\
