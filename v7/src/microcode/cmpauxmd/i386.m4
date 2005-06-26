@@ -1,9 +1,9 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.63 2003/10/31 20:45:35 cph Exp $
+### $Id: i386.m4,v 1.64 2005/06/26 04:31:47 cph Exp $
 ###
 ### Copyright 1992,1997,1998,2000,2001 Massachusetts Institute of Technology
-### Copyright 2002,2003 Massachusetts Institute of Technology
+### Copyright 2002,2003,2005 Massachusetts Institute of Technology
 ###
 ### This file is part of MIT/GNU Scheme.
 ###
@@ -538,6 +538,12 @@ define_debugging_label(scheme_to_interface_call)
 
 define_hook_label(scheme_to_interface)
 define_debugging_label(scheme_to_interface)
+
+# These two moves must happen _before_ the ffree instructions below.
+# Otherwise recovery from SIGFPE there will fail.
+	OP(mov,l)	TW(REG(esp),EVR(sp_register))
+	OP(mov,l)	TW(rfree,EVR(Free))
+
 IF387(`
 	OP(cmp,l)	TW(IMM(0),ABS(EVR(i387_presence)))
 	je	scheme_to_interface_proceed
@@ -551,8 +557,6 @@ IF387(`
 	ffree	ST(7)
 scheme_to_interface_proceed:
 ')
-	OP(mov,l)	TW(REG(esp),EVR(sp_register))
-	OP(mov,l)	TW(rfree,EVR(Free))
 
 	OP(mov,l)	TW(EVR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EVR(C_Frame_Pointer),REG(ebp))
