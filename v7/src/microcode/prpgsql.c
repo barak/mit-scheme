@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prpgsql.c,v 1.8 2005/01/16 04:12:59 cph Exp $
+$Id: prpgsql.c,v 1.9 2005/06/26 05:36:52 cph Exp $
 
 Copyright 2003,2005 Massachusetts Institute of Technology
 
@@ -30,7 +30,7 @@ USA.
 #include "usrdef.h"
 #include "os.h"
 
-#include <postgresql/libpq-fe.h>
+#include <libpq-fe.h>
 
 #define ARG_CONN(n) ((PGconn *) (arg_ulong_integer (n)))
 #define ARG_RESULT(n) ((PGresult *) (arg_ulong_integer (n)))

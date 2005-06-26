@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: makegen.scm,v 1.6 2003/02/14 18:28:31 cph Exp $
+$Id: makegen.scm,v 1.7 2005/06/26 05:36:52 cph Exp $
 
 Copyright 2000,2001,2003 Massachusetts Institute of Technology
 
@@ -143,7 +143,7 @@ USA.
    (unbreak-lines
     (call-with-output-string
      (lambda (port)
-       (run-shell-command (string-append "gcc -M -DMIT_SCHEME " filename)
+       (run-shell-command (string-append "./makegen-cc " filename)
 			  'OUTPUT port))))))
 
 (define (unbreak-lines string)

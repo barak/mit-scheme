@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.24 2005/01/11 03:44:43 cph Exp $
+# $Id: Makefile.in.in,v 1.25 2005/06/26 05:36:52 cph Exp $
 #
 # Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 #
@@ -173,7 +173,7 @@ MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c bchdef.c
 CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 
 DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
-	cmpauxmd.m4 cmpintmd.h TAGS
+	cmpauxmd.m4 cmpintmd.h TAGS makegen-cc
 
 MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps config.h.in configure
 
