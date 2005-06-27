@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.40 2005/06/26 04:35:03 cph Exp $
+$Id: uxtrap.c,v 1.41 2005/06/27 06:03:36 cph Exp $
 
 Copyright 1990,1991,1992,1993,1995,1997 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003,2005 Massachusetts Institute of Technology
@@ -33,10 +33,9 @@ USA.
 
 #ifdef HAS_COMPILER_SUPPORT
 #  include "gccode.h"
-#endif
-
-#if defined(HAVE_STRUCT_SIGCONTEXT) && defined(HAS_COMPILER_SUPPORT) && !defined(USE_STACKLETS)
-#  define ENABLE_TRAP_RECOVERY 1
+#  if defined(HAVE_SIGCONTEXT) && !defined(USE_STACKLETS)
+#    define ENABLE_TRAP_RECOVERY 1
+#  endif
 #endif
 
 extern CONST char * EXFUN (find_signal_name, (int signo));
@@ -65,6 +64,9 @@ static struct ux_sig_code_desc ux_signal_codes [64];
   i += 1;								\
 }
 
+#define DECLARE_GENERIC_SIGNAL_CODE(v, n)				\
+  DECLARE_UX_SIGNAL_CODE ((-1), (~ 0L), v, n)
+
 enum pc_location
 {
   pcl_heap,
@@ -90,10 +92,10 @@ static enum trap_state user_trap_state;
 static enum trap_state saved_trap_state;
 static int saved_signo;
 static SIGINFO_T saved_info;
-static DECLARE_FULL_SIGCONTEXT (saved_scp);
+static SIGCONTEXT_T * saved_scp;
 
 static void EXFUN
-  (continue_from_trap, (int, SIGINFO_T, FULL_SIGCONTEXT_T *));
+  (continue_from_trap, (int, SIGINFO_T, SIGCONTEXT_T *));
 
 static SCHEME_OBJECT * EXFUN (find_heap_address, (unsigned long));
 static SCHEME_OBJECT * EXFUN (find_constant_address, (unsigned long));
@@ -106,14 +108,14 @@ static SCHEME_OBJECT * EXFUN
 static void EXFUN
   (setup_trap_frame, (int,
 		      SIGINFO_T,
-		      FULL_SIGCONTEXT_T *,
+		      SIGCONTEXT_T *,
 		      struct trap_recovery_info *,
 		      SCHEME_OBJECT *));
 
 static void EXFUN (initialize_ux_signal_codes, (void));
 
 static SCHEME_OBJECT EXFUN
-  (find_signal_code_name, (int, SIGINFO_T, FULL_SIGCONTEXT_T *));
+  (find_signal_code_name, (int, SIGINFO_T, SIGCONTEXT_T *));
 
 static enum pc_location EXFUN
   (classify_pc, (unsigned long, SCHEME_OBJECT **, unsigned int *));
@@ -141,7 +143,7 @@ DEFUN (OS_set_trap_state, (state), enum trap_state state)
 }
 
 void
-DEFUN (hard_reset, (scp), FULL_SIGCONTEXT_T * scp)
+DEFUN (hard_reset, (scp), SIGCONTEXT_T * scp)
 {
   /* 0 is an invalid signal, it means a user requested reset. */
   continue_from_trap (0, 0, scp);
@@ -196,7 +198,7 @@ DEFUN (trap_handler, (message, signo, info, scp),
        CONST char * message AND
        int signo AND
        SIGINFO_T info AND
-       FULL_SIGCONTEXT_T * scp)
+       SIGCONTEXT_T * scp)
 {
   int code = ((SIGINFO_VALID_P (info)) ? (SIGINFO_CODE (info)) : 0);
   Boolean stack_overflowed_p = (STACK_OVERFLOWED_P ());
@@ -346,9 +348,9 @@ static void
 DEFUN (continue_from_trap, (signo, info, scp),
        int signo AND
        SIGINFO_T info AND
-       FULL_SIGCONTEXT_T * scp)
+       SIGCONTEXT_T * scp)
 {
-  unsigned long pc = (FULL_SIGCONTEXT_PC (scp));
+  unsigned long pc = (SIGCONTEXT_PC (scp));
   SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
   SCHEME_OBJECT * block_addr;
   int index;
@@ -372,8 +374,8 @@ DEFUN (continue_from_trap, (signo, info, scp),
 
     case pcl_heap:
     case pcl_constant:
-      new_sp = ((SCHEME_OBJECT *) (FULL_SIGCONTEXT_SCHSP (scp)));
-      Free = ((SCHEME_OBJECT *) (FULL_SIGCONTEXT_RFREE (scp)));
+      new_sp = ((SCHEME_OBJECT *) (SIGCONTEXT_SCHSP (scp)));
+      Free = ((SCHEME_OBJECT *) (SIGCONTEXT_RFREE (scp)));
       SET_RECOVERY_INFO
 	(STATE_COMPILED_CODE,
 	 (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_addr)),
@@ -389,8 +391,8 @@ DEFUN (continue_from_trap, (signo, info, scp),
       break;
 
     case pcl_builtin:
-      new_sp = ((SCHEME_OBJECT *) (FULL_SIGCONTEXT_SCHSP (scp)));
-      Free = ((SCHEME_OBJECT *) (FULL_SIGCONTEXT_RFREE (scp)));
+      new_sp = ((SCHEME_OBJECT *) (SIGCONTEXT_SCHSP (scp)));
+      Free = ((SCHEME_OBJECT *) (SIGCONTEXT_RFREE (scp)));
       SET_RECOVERY_INFO
 	(STATE_BUILTIN,
 	 (LONG_TO_UNSIGNED_FIXNUM (index)),
@@ -432,13 +434,13 @@ DEFUN (continue_from_trap, (signo, info, scp),
   (recovery_info . extra_trap_info) =
     (MAKE_POINTER_OBJECT (TC_NON_MARKED_VECTOR, Free));
   (*Free++) =
-    (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (2 + FULL_SIGCONTEXT_NREGS)));
+    (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (2 + SIGCONTEXT_NREGS)));
   (*Free++) = ((SCHEME_OBJECT) pc);
-  (*Free++) = ((SCHEME_OBJECT) (FULL_SIGCONTEXT_SP (scp)));
+  (*Free++) = ((SCHEME_OBJECT) (SIGCONTEXT_SP (scp)));
   {
     unsigned long * scan
-      = ((unsigned long *) (FULL_SIGCONTEXT_FIRST_REG (scp)));
-    unsigned long * end = (scan + FULL_SIGCONTEXT_NREGS);
+      = ((unsigned long *) (SIGCONTEXT_FIRST_REG (scp)));
+    unsigned long * end = (scan + SIGCONTEXT_NREGS);
     while (scan < end)
       (*Free++) = ((SCHEME_OBJECT) (*scan++));
   }
@@ -574,7 +576,7 @@ static void
 DEFUN (continue_from_trap, (signo, info, scp),
        int signo AND
        SIGINFO_T info AND
-       FULL_SIGCONTEXT_T * scp)
+       SIGCONTEXT_T * scp)
 {
   if (Free < MemTop)
     Free = MemTop;
@@ -599,7 +601,7 @@ static void
 DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
        int signo AND
        SIGINFO_T info AND
-       FULL_SIGCONTEXT_T * scp AND
+       SIGCONTEXT_T * scp AND
        struct trap_recovery_info * trinfo AND
        SCHEME_OBJECT * new_stack_pointer)
 {
@@ -673,14 +675,28 @@ DEFUN_VOID (initialize_ux_signal_codes)
 {
   unsigned int i = 0;
   INITIALIZE_UX_SIGNAL_CODES ();
-  DECLARE_UX_SIGNAL_CODE (0, 0, 0, ((char *) 0));
+
+#ifdef _POSIX_REALTIME_SIGNALS
+  DECLARE_GENERIC_SIGNAL_CODE
+    (SI_USER, "signal sent by kill");
+  DECLARE_GENERIC_SIGNAL_CODE
+    (SI_QUEUE, "signal sent by sigqueue");
+  DECLARE_GENERIC_SIGNAL_CODE
+    (SI_TIMER, "signal generated by timer expiration");
+  DECLARE_GENERIC_SIGNAL_CODE
+    (SI_ASYNCIO, "signal generated by asynchronous I/O completion");
+  DECLARE_GENERIC_SIGNAL_CODE
+    (SI_MESGQ, "signal generated by message queue arrival");
+#endif /* _POSIX_REALTIME_SIGNALS */
+
+  DECLARE_UX_SIGNAL_CODE (0, 0, 0, 0);
 }
 
 static SCHEME_OBJECT
 DEFUN (find_signal_code_name, (signo, info, scp),
        int signo AND
        SIGINFO_T info AND
-       FULL_SIGCONTEXT_T * scp)
+       SIGCONTEXT_T * scp)
 {
   unsigned long code = 0;
   char * name = 0;
@@ -692,7 +708,7 @@ DEFUN (find_signal_code_name, (signo, info, scp),
 	{
 	  struct ux_sig_code_desc * entry = (& (ux_signal_codes[0]));
 	  while ((entry -> signo) != 0)
-	    if (((entry -> signo) == signo)
+	    if ((((entry -> signo) < 0) || ((entry -> signo) == signo))
 		&& (((entry -> code_mask) & code) == (entry -> code_value)))
 	      {
 		name = (entry -> name);

@@ -1,9 +1,10 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.77 2003/05/17 02:21:22 cph Exp $
+$Id: ux.h,v 1.78 2005/06/27 06:03:10 cph Exp $
 
 Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,1999,2000,2003 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -270,7 +271,12 @@ USA.
 #include "syscall.h"
 
 typedef RETSIGTYPE Tsignal_handler_result;
-typedef RETSIGTYPE (*Tsignal_handler) ();
+
+#ifdef _POSIX_REALTIME_SIGNALS
+   typedef void (*Tsignal_handler) (int, siginfo_t *, void *);
+#else
+   typedef RETSIGTYPE EXFUN ((*Tsignal_handler), (int));
+#endif
 
 #ifdef VOID_SIGNAL_HANDLERS
 #  define SIGNAL_HANDLER_RETURN() return

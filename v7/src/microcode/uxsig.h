@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.h,v 1.9 2005/06/26 04:34:56 cph Exp $
+$Id: uxsig.h,v 1.10 2005/06/27 06:03:29 cph Exp $
 
 Copyright 1993,1994,2000,2005 Massachusetts Institute of Technology
 
@@ -28,9 +28,7 @@ USA.
 #ifndef SCM_UXSIG_H
 #define SCM_UXSIG_H
 
-#ifdef HAVE_POSIX_SIGNALS
-   extern void EXFUN (INSTALL_HANDLER, (int, Tsignal_handler));
-#else
+#ifndef HAVE_POSIX_SIGNALS
 #  ifdef HAVE_SIGHOLD
 #    define INSTALL_HANDLER UX_sigset
 #    define NEED_HANDLER_TRANSACTION
@@ -53,11 +51,10 @@ Tsignal_handler_result							\
 DEFUN (name, (signo, info, pscp),					\
        int signo AND							\
        SIGINFO_T info AND						\
-       SIGCONTEXT_T * pscp)						\
+       SIGCONTEXT_ARG_T * pscp)						\
 {									\
   int STD_HANDLER_abortp;						\
-  DECLARE_FULL_SIGCONTEXT (scp);					\
-  INITIALIZE_FULL_SIGCONTEXT (pscp, scp);				\
+  DECLARE_SIGCONTEXT (scp, pscp);					\
   record_signal_delivery (signo);					\
   STD_HANDLER_abortp = (enter_interruption_extent ());			\
   statement;								\
@@ -79,11 +76,10 @@ Tsignal_handler_result							\
 DEFUN (name, (signo, info, pscp),					\
        int signo AND							\
        SIGINFO_T info AND						\
-       SIGCONTEXT_T * pscp)						\
+       SIGCONTEXT_ARG_T * pscp)						\
 {									\
   int STD_HANDLER_abortp;						\
-  DECLARE_FULL_SIGCONTEXT (scp);					\
-  INITIALIZE_FULL_SIGCONTEXT (pscp, scp);				\
+  DECLARE_SIGCONTEXT (scp, pscp);					\
   ENTER_HANDLER (signo);						\
   record_signal_delivery (signo);					\
   STD_HANDLER_abortp = (enter_interruption_extent ());			\

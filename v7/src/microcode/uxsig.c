@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.40 2005/06/26 04:34:48 cph Exp $
+$Id: uxsig.c,v 1.41 2005/06/27 06:03:21 cph Exp $
 
 Copyright 1990,1991,1992,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 2000,2001,2005 Massachusetts Institute of Technology
@@ -45,17 +45,22 @@ extern void EXFUN (tty_set_next_interrupt_char, (cc_t c));
 
 #ifdef HAVE_POSIX_SIGNALS
 
+#ifdef _POSIX_REALTIME_SIGNALS
+#  define SIGACT_HANDLER(act) ((act) -> sa_sigaction)
+#else
+#  define SIGACT_HANDLER(act) ((act) -> sa_handler)
+#  ifndef SA_SIGINFO
+#    define SA_SIGINFO 0
+#  endif
+#endif
+
 static Tsignal_handler
 DEFUN (current_handler, (signo), int signo)
 {
   struct sigaction act;
   UX_sigaction (signo, 0, (&act));
-  return (act . sa_handler);
+  return (SIGACT_HANDLER (&act));
 }
-
-#ifndef SA_SIGINFO
-#define SA_SIGINFO 0
-#endif
 
 void
 DEFUN (INSTALL_HANDLER, (signo, handler),
@@ -63,10 +68,19 @@ DEFUN (INSTALL_HANDLER, (signo, handler),
        Tsignal_handler handler)
 {
   struct sigaction act;
-  (act . sa_handler) = handler;
+  if ((handler == ((Tsignal_handler) SIG_IGN))
+      || (handler == ((Tsignal_handler) SIG_DFL)))
+    {
+      (act . sa_handler) = ((PTR) handler);
+      (act . sa_flags) = 0;
+    }
+  else
+    {
+      (SIGACT_HANDLER (&act)) = handler;
+      (act . sa_flags) = SA_SIGINFO;
+    }
   UX_sigemptyset (& (act . sa_mask));
   UX_sigaddset ((& (act . sa_mask)), signo);
-  (act . sa_flags) = SA_SIGINFO;
   UX_sigaction (signo, (&act), 0);
 }
 
@@ -166,7 +180,7 @@ DEFUN_VOID (unblock_signals)
 void
 DEFUN (deactivate_handler, (signo), int signo)
 {
-  INSTALL_HANDLER (signo, SIG_IGN);
+  INSTALL_HANDLER (signo, ((Tsignal_handler) SIG_IGN));
 }
 
 void
@@ -392,7 +406,7 @@ DEFUN_STD_HANDLER (sighnd_control_b,
   tty_set_next_interrupt_char (CONTROL_B_INTERRUPT_CHAR);
 })
 
-static void EXFUN (interactive_interrupt_handler, (FULL_SIGCONTEXT_T * scp));
+static void EXFUN (interactive_interrupt_handler, (SIGCONTEXT_T * scp));
 
 static
 DEFUN_STD_HANDLER (sighnd_interactive,
@@ -418,7 +432,7 @@ DEFUN (stop_signal_default, (signo), int signo)
 
     /* Temporarily unbind this handler. */
     handler = (current_handler (signo));
-    INSTALL_HANDLER (signo, SIG_DFL);
+    INSTALL_HANDLER (signo, ((Tsignal_handler) SIG_DFL));
 
     /* Perform the default action for this signal. */
     UX_sigemptyset (&signo_mask);
@@ -613,12 +627,15 @@ DEFUN (bind_handler, (signo, handler),
        int signo AND
        Tsignal_handler handler)
 {
-  Tsignal_handler
-    old_handler = ((signo == 0) ? SIG_DFL : (current_handler (signo)));
+  Tsignal_handler old_handler
+    = ((signo == 0)
+       ? ((Tsignal_handler) SIG_DFL)
+       : (current_handler (signo)));
 
   if ((signo != 0) 
-      && ((old_handler == SIG_DFL)
-	  || ((old_handler == SIG_IGN) && (signo == SIGCHLD)))
+      && ((old_handler == ((Tsignal_handler) SIG_DFL))
+	  || ((old_handler == ((Tsignal_handler) SIG_IGN))
+	      && (signo == SIGCHLD)))
       && ((handler != ((Tsignal_handler) sighnd_stop))
 	  || (UX_SC_JOB_CONTROL ())))
     INSTALL_HANDLER (signo, handler);
@@ -663,7 +680,7 @@ DEFUN_VOID (UX_initialize_signals)
   /* If this signal is ignored, then the system call that would have
      caused it will return EPIPE instead.  This is much easier for us
      to handle. */
-  bind_handler (SIGPIPE,	SIG_IGN);
+  bind_handler (SIGPIPE,	((Tsignal_handler) SIG_IGN));
   if ((isatty (STDIN_FILENO)) || option_emacs_subprocess)
     {
       if (getenv ("USE_SCHEMATIK_STYLE_INTERRUPTS"))
@@ -720,7 +737,7 @@ DEFUN_VOID (UX_initialize_child_signals)
   unblock_all_signals ();
   /* SIGPIPE was ignored above; we must set it back to the default
      because some programs depend on this.  */
-  INSTALL_HANDLER (SIGPIPE, SIG_DFL);
+  INSTALL_HANDLER (SIGPIPE, ((Tsignal_handler) SIG_DFL));
 }
 
 /* Interactive Interrupt Handler */
@@ -737,7 +754,7 @@ DEFUN (OS_tty_map_interrupt_char, (int_char), cc_t int_char)
 static void EXFUN (print_interactive_help, (void));
 static void EXFUN (print_interrupt_chars, (void));
 static void EXFUN (examine_memory, (void));
-static void EXFUN (reset_query, (FULL_SIGCONTEXT_T * scp));
+static void EXFUN (reset_query, (SIGCONTEXT_T * scp));
 static void EXFUN (interactive_back_trace, (void));
 
 #define INTERACTIVE_NEWLINE()						\
@@ -750,7 +767,7 @@ static void EXFUN (interactive_back_trace, (void));
 }
 
 static void
-DEFUN (interactive_interrupt_handler, (scp), FULL_SIGCONTEXT_T * scp)
+DEFUN (interactive_interrupt_handler, (scp), SIGCONTEXT_T * scp)
 {
   if (!option_emacs_subprocess)
     {
@@ -1038,7 +1055,7 @@ DEFUN (invoke_soft_reset, (name), char * name)
 }
 
 static void
-DEFUN (reset_query, (scp), FULL_SIGCONTEXT_T * scp)
+DEFUN (reset_query, (scp), SIGCONTEXT_T * scp)
 {
   putc ('\n', stdout);
   fflush (stdout);
@@ -1322,15 +1339,15 @@ DEFUN (signal, (signo, handler),
   struct sigaction act;
   struct sigaction oact;
 
-  (act . sa_handler) = handler;
+  (SIGACT_HANDLER (&act)) = handler;
   UX_sigemptyset (& (act . sa_mask));
   (act . sa_flags) = (SA_RESETHAND | SA_NODEFER);
-  if (handler == SIG_IGN)
+  if (handler == ((Tsignal_handler) SIG_IGN))
     (act . sa_flags) |= SA_NOCLDWAIT;
   if ((UX_sigaction (signo, (&act), (&oact))) < 0)
     return (SIG_ERR);
   else
-    return (oact . sa_handler);
+    return (SIGACT_HANDLER (&oact));
 }
 
 /* It is best to reinstall the SIGCHLD handler after `grantpt' is
