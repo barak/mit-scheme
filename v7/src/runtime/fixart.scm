@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: fixart.scm,v 1.13 2003/03/03 12:42:13 cph Exp $
+$Id: fixart.scm,v 1.14 2005/06/30 17:38:33 cph Exp $
 
 Copyright 1994,1996,1999,2000,2001,2003 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -117,50 +118,34 @@ USA.
   (if (not (fix:< object limit))
       (error:bad-range-argument object caller)))
 
-(define-integrable (fix:<= x y)
-  (not (fix:> x y)))
+(define-integrable (fix:<= x y) (not (fix:> x y)))
+(define-integrable (fix:>= x y) (not (fix:< x y)))
+(define-integrable (int:<= x y) (not (int:> x y)))
+(define-integrable (int:>= x y) (not (int:< x y)))
+(define (flo:<= x y) (or (flo:< x y) (flo:= x y)))
+(define (flo:>= x y) (or (flo:> x y) (flo:= x y)))
 
-(define-integrable (fix:>= x y)
-  (not (fix:< x y)))
+(define (fix:min n m) (if (fix:< n m) n m))
+(define (fix:max n m) (if (fix:> n m) n m))
 
-(define (fix:min n m)
-  (if (fix:< n m) n m))
+(define (flo:min n m)
+  (cond ((flo:< n m) n)
+	((flo:<= m n) m)
+	(else (error:bad-range-argument n 'FLO:MIN))))
 
-(define (fix:max n m)
-  (if (fix:> n m) n m))
-
-(define-integrable (int:<= x y)
-  (not (int:> x y)))
-
-(define-integrable (int:>= x y)
-  (not (int:< x y)))
+(define (flo:max n m)
+  (cond ((flo:> n m) n)
+	((flo:>= m n) m)
+	(else (error:bad-range-argument n 'FLO:MAX))))
 
 (define-integrable (int:->flonum n)
   ((ucode-primitive integer->flonum 2) n #b10))
 
-(define-integrable (flo:<= x y)
-  (not (flo:> x y)))
-
-(define-integrable (flo:>= x y)
-  (not (flo:< x y)))
-
-(define (flo:min n m)
-  (if (flo:< n m) n m))
-
-(define (flo:max n m)
-  (if (flo:> n m) n m))
-
 (define (->flonum x)
-  (if (not (real? x))
-      (error:wrong-type-argument x "real number" '->FLONUM))
+  (guarantee-real x '->FLONUM)
   (exact->inexact (real-part x)))
 
 (define (flo:finite? x)
-  (not (cond ((flo:> x 0.)
-	      (and (flo:> x 1.)
-		   (flo:= x (flo:/ x 2.))))
-	     ((flo:< x 0.)
-	      (and (flo:< x -1.)
-		   (flo:= x (flo:/ x 2.))))
-	     (else
-	      (flo:= x 0.)))))
+  (if (or (flo:> x 1.) (flo:< x -1.))
+      (not (flo:= x (flo:/ x 2.)))
+      (and (flo:<= x 1.) (flo:>= x -1.))))

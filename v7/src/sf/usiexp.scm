@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.45 2005/01/06 18:10:44 cph Exp $
+$Id: usiexp.scm,v 4.46 2005/06/30 17:39:12 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1997,2000,2001 Massachusetts Institute of Technology
@@ -554,7 +554,7 @@ USA.
        (constant/make (and expr (object/scode expr))
 		      (string->symbol (constant/value (car operands)))))
       (if-not-expanded)))
-
+
 (define (intern-expansion expr operands if-expanded if-not-expanded block)
   block
   (if (and (pair? operands)
@@ -575,36 +575,6 @@ USA.
 			 block
 			 (ucode-primitive integer->flonum 2)
 			 (list (car operands) (constant/make #f #b10))))
-      (if-not-expanded)))
-
-(define (flo:<=-expansion expr operands if-expanded if-not-expanded block)
-  (if (and (pair? operands)
-	   (pair? (cdr operands))
-	   (null? (cddr operands)))
-      (if-expanded
-       (make-combination
-	expr
-	block
-	(ucode-primitive not)
-	(list (make-combination #f
-				block
-				(ucode-primitive flonum-greater?)
-				operands))))
-      (if-not-expanded)))
-
-(define (flo:>=-expansion expr operands if-expanded if-not-expanded block)
-  (if (and (pair? operands)
-	   (pair? (cdr operands))
-	   (null? (cddr operands)))
-      (if-expanded
-       (make-combination
-	expr
-	block
-	(ucode-primitive not)
-	(list (make-combination #f
-				block
-				(ucode-primitive flonum-less?)
-				operands))))
       (if-not-expanded)))
 
 ;;;; Tables
@@ -665,8 +635,6 @@ USA.
     fix:<=
     fix:=
     fix:>=
-    flo:<=
-    flo:>=
     fourth
     int:->flonum
     int:integer?
@@ -748,8 +716,6 @@ USA.
    fix:<=-expansion
    fix:=-expansion
    fix:>=-expansion
-   flo:<=-expansion
-   flo:>=-expansion
    fourth-expansion
    int:->flonum-expansion
    exact-integer?-expansion
