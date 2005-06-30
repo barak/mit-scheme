@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fixart.scm,v 1.14 2005/06/30 17:38:33 cph Exp $
+$Id: fixart.scm,v 1.15 2005/06/30 17:44:31 cph Exp $
 
 Copyright 1994,1996,1999,2000,2001,2003 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -118,25 +118,33 @@ USA.
   (if (not (fix:< object limit))
       (error:bad-range-argument object caller)))
 
-(define-integrable (fix:<= x y) (not (fix:> x y)))
-(define-integrable (fix:>= x y) (not (fix:< x y)))
-(define-integrable (int:<= x y) (not (int:> x y)))
-(define-integrable (int:>= x y) (not (int:< x y)))
-(define (flo:<= x y) (or (flo:< x y) (flo:= x y)))
-(define (flo:>= x y) (or (flo:> x y) (flo:= x y)))
+(define-integrable (fix:<= n m) (not (fix:> n m)))
+(define-integrable (fix:>= n m) (not (fix:< n m)))
+(define-integrable (int:<= n m) (not (int:> n m)))
+(define-integrable (int:>= n m) (not (int:< n m)))
 
 (define (fix:min n m) (if (fix:< n m) n m))
 (define (fix:max n m) (if (fix:> n m) n m))
 
-(define (flo:min n m)
-  (cond ((flo:< n m) n)
-	((flo:<= m n) m)
-	(else (error:bad-range-argument n 'FLO:MIN))))
+(define (flo:<= x y) (or (flo:< x y) (flo:= x y)))
+(define (flo:>= x y) (or (flo:> x y) (flo:= x y)))
 
-(define (flo:max n m)
-  (cond ((flo:> n m) n)
-	((flo:>= m n) m)
-	(else (error:bad-range-argument n 'FLO:MAX))))
+(define (flo:min x y)
+  (cond ((flo:< x y) x)
+	((flo:> x y) y)
+	((flo:= x y) x)
+	(else (error:bad-range-argument (if (flo:finite? x) x y) 'FLO:MIN))))
+
+(define (flo:max x y)
+  (cond ((flo:< x y) y)
+	((flo:> x y) x)
+	((flo:= x y) y)
+	(else (error:bad-range-argument (if (flo:finite? x) x y) 'FLO:MAX))))
+
+(define (flo:finite? x)
+  (if (or (flo:> x 1.) (flo:< x -1.))
+      (not (flo:= x (flo:/ x 2.)))
+      (and (flo:<= x 1.) (flo:>= x -1.))))
 
 (define-integrable (int:->flonum n)
   ((ucode-primitive integer->flonum 2) n #b10))
@@ -144,8 +152,3 @@ USA.
 (define (->flonum x)
   (guarantee-real x '->FLONUM)
   (exact->inexact (real-part x)))
-
-(define (flo:finite? x)
-  (if (or (flo:> x 1.) (flo:< x -1.))
-      (not (flo:= x (flo:/ x 2.)))
-      (and (flo:<= x 1.) (flo:>= x -1.))))
