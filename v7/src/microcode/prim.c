@@ -1,9 +1,9 @@
 /* -*-C-*-
 
-$Id: prim.c,v 9.43 2004/11/21 04:21:06 cph Exp $
+$Id: prim.c,v 9.44 2005/06/30 20:04:22 cph Exp $
 
 Copyright 1986,1987,1988,1989,1992,1993 Massachusetts Institute of Technology
-Copyright 1996,2004 Massachusetts Institute of Technology
+Copyright 1996,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -59,11 +59,20 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-DATUM", Prim_prim_obj_datum, 1, 1,
   "Return the datum part of OBJECT as an unsigned integer.")
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (OBJECT_DATUM (ARG_REF (1))));
+  PRIMITIVE_RETURN (ulong_to_integer (OBJECT_DATUM (ARG_REF (1))));
 }
 
-DEFINE_PRIMITIVE ("MAKE-NON-POINTER-OBJECT", Prim_make_non_pointer_object, 1, 1,
-  "Convert the unsigned integer NUMBER into a fixnum.\n\
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-ADDRESS", Prim_prim_obj_address, 1, 1,
+  "Return the address part of OBJECT as an unsigned integer.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (ulong_to_integer ((unsigned long) (OBJECT_ADDRESS (ARG_REF (1)))));
+}
+
+DEFINE_PRIMITIVE ("MAKE-NON-POINTER-OBJECT", Prim_make_non_ptr_object, 1, 1,
+  "(NUMBER)\n\
+Convert the unsigned integer NUMBER into a fixnum.\n\
 Assert: (= (OBJECT-DATUM (MAKE-NON-POINTER-OBJECT X)) X).")
 {
   PRIMITIVE_HEADER (1);
