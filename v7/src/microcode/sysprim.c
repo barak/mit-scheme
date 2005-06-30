@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.50 2003/02/14 18:28:24 cph Exp $
+$Id: sysprim.c,v 9.51 2005/06/30 20:04:53 cph Exp $
 
-Copyright (c) 1987-2000, 2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1995,1996,1998,2000 Massachusetts Institute of Technology
+Copyright 2002,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,6 +34,7 @@ USA.
 #include "ostop.h"
 
 extern long EXFUN (OS_set_trap_state, (long));
+extern double EXFUN (arg_flonum, (int));
 
 /* Pretty random primitives */
 
@@ -165,4 +168,58 @@ DEFINE_PRIMITIVE ("SCHEME-PROGRAM-NAME", Prim_scheme_program_name, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (char_pointer_to_string ((char *) (scheme_program_name)));
+}
+
+DEFINE_PRIMITIVE ("READ-BYTE-FROM-MEMORY", Prim_read_byte_from_memory, 1, 1,
+  "(ADDRESS)\n\
+Read a byte from memory at ADDRESS and return it as an unsigned integer.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (* ((unsigned char *) (arg_ulong_integer (1)))));
+}
+
+DEFINE_PRIMITIVE ("READ-WORD-FROM-MEMORY", Prim_read_word_from_memory, 1, 1,
+  "(ADDRESS)\n\
+Read a word from memory at ADDRESS and return it as an unsigned integer.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (* ((unsigned long *) (arg_ulong_integer (1)))));
+}
+
+DEFINE_PRIMITIVE ("READ-FLOAT-FROM-MEMORY", Prim_read_float_from_memory, 1, 1,
+  "(ADDRESS)\n\
+Read a float from memory at ADDRESS and return it as a flonum.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (double_to_flonum (* ((double *) (arg_ulong_integer (1)))));
+}
+
+DEFINE_PRIMITIVE ("WRITE-BYTE-TO-MEMORY", Prim_write_byte_to_memory, 2, 2,
+  "(BYTE ADDRESS)\n\
+Write BYTE to memory at ADDRESS.")
+{
+  PRIMITIVE_HEADER (2);
+  (* ((unsigned char *) (arg_ulong_integer (2))))
+    = (arg_index_integer (1, 0x100));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("WRITE-WORD-TO-MEMORY", Prim_write_word_to_memory, 2, 2,
+  "(WORD ADDRESS)\n\
+Write WORD to memory at ADDRESS.")
+{
+  PRIMITIVE_HEADER (2);
+  (* ((unsigned long *) (arg_ulong_integer (2)))) = (arg_ulong_integer (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("WRITE-FLOAT-TO-MEMORY", Prim_write_float_to_memory, 2, 2,
+  "(FLOAT ADDRESS)\n\
+Write FLOAT to memory at ADDRESS.")
+{
+  PRIMITIVE_HEADER (2);
+   (* ((double *) (arg_ulong_integer (2)))) = (arg_flonum (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
