@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prim.c,v 9.44 2005/06/30 20:04:22 cph Exp $
+$Id: prim.c,v 9.45 2005/07/01 19:38:39 cph Exp $
 
 Copyright 1986,1987,1988,1989,1992,1993 Massachusetts Institute of Technology
 Copyright 1996,2004,2005 Massachusetts Institute of Technology
@@ -28,6 +28,18 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
+
+static unsigned long
+DEFUN (arg_type, (arg), int arg)
+{
+  return (arg_ulong_index_integer (arg, (1L << TYPE_CODE_LENGTH)));
+}
+
+static unsigned long
+DEFUN (arg_datum, (arg), int arg)
+{
+  return (arg_ulong_index_integer (arg, (1L << DATUM_LENGTH)));
+}
 
 /* Low level object manipulation */
 
@@ -63,37 +75,77 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-DATUM", Prim_prim_obj_datum, 1, 1,
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-ADDRESS", Prim_prim_obj_address, 1, 1,
-  "Return the address part of OBJECT as an unsigned integer.")
+  "(OBJECT)\n\
+Return the address part of OBJECT as an unsigned integer.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
     (ulong_to_integer ((unsigned long) (OBJECT_ADDRESS (ARG_REF (1)))));
 }
 
-DEFINE_PRIMITIVE ("MAKE-NON-POINTER-OBJECT", Prim_make_non_ptr_object, 1, 1,
-  "(NUMBER)\n\
-Convert the unsigned integer NUMBER into a fixnum.\n\
-Assert: (= (OBJECT-DATUM (MAKE-NON-POINTER-OBJECT X)) X).")
+DEFINE_PRIMITIVE ("PRIMITIVE-DATUM->ADDRESS", Prim_prim_datum_to_addr, 1, 1,
+  "(DATUM)\n\
+Return the memory address corresponding to DATUM.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (LONG_TO_UNSIGNED_FIXNUM
-     (arg_index_integer (1, (((unsigned long) 1) << DATUM_LENGTH))));
+    (ulong_to_integer ((unsigned long) (DATUM_TO_ADDRESS (arg_datum (1)))));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-ADDRESS->DATUM", Prim_prim_addr_to_datum, 1, 1,
+  "(ADDRESS)\n\
+Return the object datum corresponding to ADDRESS.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (ADDRESS_TO_DATUM (arg_ulong_integer (1))));
+}
+
+DEFINE_PRIMITIVE ("MAKE-NON-POINTER-OBJECT", Prim_make_non_ptr_object, 1, 1,
+  "(DATUM)\n\
+Convert the unsigned integer DATUM into a fixnum.\n\
+Assert: (= (OBJECT-DATUM (MAKE-NON-POINTER-OBJECT X)) X).")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (arg_datum (1)));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET-TYPE", Prim_prim_obj_set_type, 2, 2,
-  "Return a new object made from TYPE-CODE and the datum part of OBJECT.")
+  "(TYPE OBJECT)\n\
+Return a new object made from TYPE and the datum part of OBJECT.")
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN
-    (OBJECT_NEW_TYPE
-     ((arg_index_integer (1, (MAX_TYPE_CODE + 1))), (ARG_REF (2))));
+  PRIMITIVE_RETURN (OBJECT_NEW_TYPE ((arg_type (1)), (ARG_REF (2))));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-EQ?", Prim_prim_obj_eq_p, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((ARG_REF (1)) == (ARG_REF (2))));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-MAKE-OBJECT", Prim_prim_make_obj, 2, 2,
+  "(TYPE DATUM)\n\
+Return a new object made from TYPE and DATUM.")
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN (MAKE_OBJECT ((arg_type (1)), (arg_datum (2))));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT->INTEGER", Prim_prim_obj_to_integer, 1, 1,
+  "(OBJECT)\n\
+Return the integer representation of OBJECT.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (ulong_to_integer (ARG_REF (1)));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-INTEGER->OBJECT", Prim_prim_integer_to_obj, 1, 1,
+  "(INTEGER)\n\
+Return the object whose representation is INTEGER.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (arg_ulong_integer (1));
 }
 
 /* Low level memory references.
