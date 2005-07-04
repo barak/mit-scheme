@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.41 2005/06/27 06:03:21 cph Exp $
+$Id: uxsig.c,v 1.42 2005/07/04 13:51:19 cph Exp $
 
 Copyright 1990,1991,1992,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 2000,2001,2005 Massachusetts Institute of Technology
@@ -530,7 +530,8 @@ DEFUN_STD_HANDLER (sighnd_terminate,
     : 0)))
 
 #ifdef HAS_COMPILER_SUPPORT
-#  ifdef __IA32__
+#  include "cmpintmd.h"
+#  if (COMPILER_PROCESSOR_TYPE == COMPILER_IA32_TYPE)
 
 #define FPE_RESET_TRAPS()						\
 {									\

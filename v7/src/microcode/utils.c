@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.85 2003/02/14 18:28:24 cph Exp $
+$Id: utils.c,v 9.86 2005/07/04 13:51:10 cph Exp $
 
 Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
@@ -1081,7 +1081,10 @@ DEFUN (Translate_To_Point, (Target), SCHEME_OBJECT Target)
   /*NOTREACHED*/
 }
 
-#ifndef __OS2__
+#ifdef __WIN32__
+
+#include <windows.h>
+#include "cmpintmd.h"
 
 SCHEME_OBJECT
 DEFUN_VOID (Compiler_Get_Fixed_Objects)
@@ -1096,10 +1099,6 @@ extern SCHEME_OBJECT EXFUN (Re_Enter_Interpreter, (void));
 extern SCHEME_OBJECT EXFUN
   (C_call_scheme, (SCHEME_OBJECT, long, SCHEME_OBJECT *));
 
-#ifdef __WIN32__
-#  include <windows.h>
-#endif
-
 SCHEME_OBJECT
 DEFUN (C_call_scheme, (proc, nargs, argvec),
        SCHEME_OBJECT proc
@@ -1109,7 +1108,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
   SCHEME_OBJECT primitive, prim_lexpr, * sp, result;
   SCHEME_OBJECT * callers_last_return_code;
 
-#ifdef __IA32__
+#ifdef (COMPILER_PROCESSOR_TYPE == COMPILER_IA32_TYPE)
   extern void * C_Frame_Pointer;
   extern void * C_Stack_Pointer;
   void * cfp = C_Frame_Pointer;
@@ -1127,7 +1126,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
       abort_to_interpreter (ERR_CANNOT_RECURSE);
       /*NOTREACHED*/
     sp = sp_register;
-
+
    Will_Push ((2 * CONTINUATION_SIZE) + (nargs + STACK_ENV_EXTRA_SLOTS + 1));
     {
       long i;
@@ -1156,7 +1155,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
     Registers[REGBLOCK_LEXPR_ACTUALS] = prim_lexpr;
     Registers[REGBLOCK_PRIMITIVE] = primitive;
   }
-#ifdef __IA32__
+#ifdef (COMPILER_PROCESSOR_TYPE == COMPILER_IA32_TYPE)
 #ifdef CL386
   __finally  
 #endif
