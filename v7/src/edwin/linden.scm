@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: linden.scm,v 1.131 2005/06/10 01:50:39 cph Exp $
+$Id: linden.scm,v 1.132 2005/07/14 19:35:15 cph Exp $
 
 Copyright 1987,1989,1991,1995,1996,2005 Massachusetts Institute of Technology
 
@@ -273,14 +273,15 @@ is used to calculate the indentation for that form."
 ;;;; Indent Comment
 
 (define (lisp-comment-locate mark)
-  (and (re-search-forward ";+[ \t]*" mark (line-end mark 0))
+  (and (re-search-forward "\\(#;\\|;+\\)[ \t]*" mark (line-end mark 0))
        (cons (re-match-start 0) (re-match-end 0))))
 
 (define (lisp-comment-indentation mark #!optional stack)
   (let ((column
 	 (cond ((match-forward ";;;" mark)
 		0)
-	       ((match-forward ";;" mark)
+	       ((or (match-forward ";;" mark)
+		    (match-forward "#;" mark))
 		(compute-indentation mark
 				     (if (default-object? stack) '() stack)))
 	       (else
