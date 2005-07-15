@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.57 2005/07/15 05:31:42 cph Exp $
+$Id: object.h,v 9.58 2005/07/15 05:31:58 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1993,1995,1997,1998,2000,2001 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
