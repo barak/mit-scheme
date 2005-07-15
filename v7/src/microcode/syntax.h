@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: syntax.h,v 1.13 2005/07/15 05:31:18 cph Exp $
+$Id: syntax.h,v 1.14 2005/07/15 05:33:08 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1993,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
