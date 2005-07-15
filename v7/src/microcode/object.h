@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.56 2004/11/21 04:18:43 cph Exp $
+$Id: object.h,v 9.57 2005/07/15 05:31:42 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1993,1995,1997,1998,2000,2001 Massachusetts Institute of Technology
@@ -139,11 +139,11 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 } while (0)
 
 #ifndef DATUM_TO_ADDRESS
-#define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) (datum))
+#  define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) (datum))
 #endif
 
 #ifndef ADDRESS_TO_DATUM
-#define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) (address))
+#  define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) (address))
 #endif
 
 #else /* not HEAP_IN_LOW_MEMORY (portable version) */
@@ -164,11 +164,11 @@ extern SCHEME_OBJECT * memory_base;
 } while (0)
 
 #ifndef DATUM_TO_ADDRESS
-#define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) ((datum) + memory_base))
+#  define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) ((datum) + memory_base))
 #endif
 
 #ifndef ADDRESS_TO_DATUM
-#define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) ((address) - memory_base))
+#  define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) ((address) - memory_base))
 #endif
 
 #endif /* HEAP_IN_LOW_MEMORY */
@@ -396,6 +396,11 @@ extern SCHEME_OBJECT * memory_base;
    - ((long) ((((unsigned long) TC_FIXNUM) << DATUM_LENGTH)		\
 	      | FIXNUM_SIGN_BIT)))
 
+#define ULONG_TO_FIXNUM_P(value) (((value) & SIGN_MASK) == 0)
+#define ULONG_TO_FIXNUM(value) (FIXNUM_ZERO + (value))
+#define FIXNUM_TO_ULONG_P(fixnum) (((OBJECT_DATUM (fixnum)) & SIGN_MASK) == 0)
+#define FIXNUM_TO_ULONG(fixnum) (OBJECT_DATUM (fixnum))
+
 #define FIXNUM_TO_DOUBLE(fixnum) ((double) (FIXNUM_TO_LONG (fixnum)))
 
 #define DOUBLE_TO_FIXNUM_P(number)					\
@@ -501,16 +506,16 @@ if ((ADDRESS_CONSTANT_P (OBJECT_ADDRESS (Old_Pointer))) &&		\
   signal_error_from_primitive (ERR_WRITE_INTO_PURE_SPACE);		\
 
 #ifndef FLOATING_ALIGNMENT
-#define FLOATING_ALIGNMENT	0
-#endif /* not FLOATING_ALIGNMENT */
+#  define FLOATING_ALIGNMENT 0
+#endif
 
 #define FLOATING_ALIGNED_P(ptr)						\
   ((((unsigned long) ((ptr) + 1)) & FLOATING_ALIGNMENT) == 0)
 
 #define ALIGN_FLOAT(Where) do						\
 {									\
-  while (! (FLOATING_ALIGNED_P (Where)))				\
-    *Where++ = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0));		\
+  while (!FLOATING_ALIGNED_P (Where))					\
+    (*(Where)++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0));		\
 } while (0)
 
 #endif /* SCM_OBJECT_H */
