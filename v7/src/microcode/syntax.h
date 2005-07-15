@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syntax.h,v 1.12 2003/02/14 18:28:23 cph Exp $
+$Id: syntax.h,v 1.13 2005/07/15 05:31:18 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -28,9 +28,7 @@ USA.
 /* NOTE: This program was created by translation from the syntax table
 code of GNU Emacs; it was translated from the original C to 68000
 assembly language (in 1986), and then translated back from 68000
-assembly language to C (in 1987).  Users should be aware that the GNU
-GENERAL PUBLIC LICENSE may apply to this code.  A copy of that license
-should have been included along with this file. */
+assembly language to C (in 1987).  */
 
 /* CODE is the syntax code for the character. */
 #define SYNTAX_ENTRY_CODE(entry) ((enum syntaxcode) ((entry) & 0xF))
@@ -89,13 +87,13 @@ enum syntaxcode			/* The possible syntax codes. */
   };
 
 #define SYNTAX_ENTRY_QUOTE(entry)					\
-  (((SYNTAX_ENTRY_CODE (entry)) == syntaxcode_escape) ||		\
-   ((SYNTAX_ENTRY_CODE (entry)) == syntaxcode_charquote))
+  (((SYNTAX_ENTRY_CODE (entry)) == syntaxcode_escape)			\
+   || ((SYNTAX_ENTRY_CODE (entry)) == syntaxcode_charquote))
 
 /* This array, indexed by a character, contains the syntax code which that
    character signifies (as a char).  For example,
    ((enum syntaxcode) syntax_spec_code['w']) is syntaxcode_word. */
-extern char syntax_spec_code[0200];
+extern unsigned char syntax_spec_code [0x80];
 
 #define SYNTAX_TABLE_P(argument)					\
   ((VECTOR_P (argument)) && ((VECTOR_LENGTH (argument)) == 0x100))
