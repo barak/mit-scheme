@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: scheme.h,v 9.41 2003/02/14 18:28:23 cph Exp $
+$Id: scheme.h,v 9.42 2005/07/15 04:23:36 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1993 Massachusetts Institute of Technology
+Copyright 1997,2000,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,29 +27,26 @@ USA.
 /* General declarations for the SCode interpreter.  This
    file is INCLUDED by others and contains declarations only. */
 
-/* Certain debuggers cannot really deal with variables in registers.
-   When debugging, NO_REGISTERS can be defined. */
-
 #ifndef SCM_SCHEME_H
-#define SCM_SCHEME_H
+#define SCM_SCHEME_H 1
 
-#ifdef NO_REGISTERS
+/* Don't use this any more -- trust the compiler.  */
 #define fast
-#else
-#define fast			register
+
+/* For forward references */
+#define forward extern
+
+#ifndef __GNUC__
+#  define __inline__
 #endif
 
 #ifdef ENABLE_DEBUGGING_TOOLS
-#define Consistency_Check	true
-#define ENABLE_PRIMITIVE_PROFILING
+#  define Consistency_Check (1)
+#  define ENABLE_PRIMITIVE_PROFILING
 #else
-#define Consistency_Check	false
-#ifdef ENABLE_PRIMITIVE_PROFILING
-#undef ENABLE_PRIMITIVE_PROFILING
+#  define Consistency_Check (0)
+#  undef ENABLE_PRIMITIVE_PROFILING
 #endif
-#endif
-
-#define forward		extern	/* For forward references */
 
 #include "config.h"
 
@@ -75,7 +73,7 @@ USA.
 #include "interp.h"	/* Macros for interpreter */
 
 #ifdef butterfly
-#include "butterfly.h"
+#  include "butterfly.h"
 #endif
 
 #include "outf.h"	/* Formatted output for errors */
@@ -85,8 +83,9 @@ USA.
 #include "bignum.h"	/* Bignum declarations */
 #include "prim.h"	/* Declarations for primitives. */
 #include "float.h"	/* Floating-point parameters */
+
 #if (FLT_RADIX != 2)
-#include "error: floating point radix not 2!  Arithmetic won't work."
+#  include "error: floating point radix not 2!  Arithmetic won't work."
 #endif
 
 #endif /* SCM_SCHEME_H */
