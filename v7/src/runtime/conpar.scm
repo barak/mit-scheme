@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.47 2005/03/13 05:02:12 cph Exp $
+$Id: conpar.scm,v 14.48 2005/07/16 03:44:04 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2001,2003,2004,2005 Massachusetts Institute of Technology
@@ -465,8 +465,7 @@ USA.
 ;;;; Unparser
 
 (define (stack-frame->continuation stack-frame)
-  (make-continuation 'REENTRANT
-		     (stack-frame->control-point stack-frame)
+  (make-continuation (stack-frame->control-point stack-frame)
 		     (stack-frame/dynamic-state stack-frame)
 		     #f))
 
