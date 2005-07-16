@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syntax.c,v 1.29 2005/07/15 05:31:09 cph Exp $
+$Id: syntax.c,v 1.30 2005/07/16 03:46:42 cph Exp $
 
 Copyright 1987,1988,1989,1991,1993,1996 Massachusetts Institute of Technology
 Copyright 2000,2004,2005 Massachusetts Institute of Technology
@@ -144,9 +144,10 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
   length = (STRING_LENGTH (ARG_REF (1)));
   scan = (STRING_LOC ((ARG_REF (1)), 0));
 
-  if ((length--) > 0)
+  if (length > 0)
     {
       unsigned long c = (*scan++);
+      length -= 1;
       if (c >= 0200) error_bad_range_arg (1);
       result = (syntax_spec_code[c]);
       if (result == ILLEGAL) error_bad_range_arg (1);
@@ -154,9 +155,10 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
   else
     result = ((unsigned long) syntaxcode_whitespace);
 
-  if ((length--) > 0)
+  if (length > 0)
     {
       unsigned long c = (*scan++);
+      length -= 1;
       if (c != ' ') result |= (c << 4);
     }
 
