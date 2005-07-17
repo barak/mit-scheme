@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: contin.scm,v 14.14 2005/07/16 03:44:12 cph Exp $
+$Id: contin.scm,v 14.15 2005/07/17 02:27:05 cph Exp $
 
 Copyright 1988,1989,1991,1992,1999,2005 Massachusetts Institute of Technology
 
@@ -35,23 +35,23 @@ USA.
 	    (make-continuation control-point
 			       (get-dynamic-state)
 			       (get-thread-event-block))))
-       (%within-continuation k (lambda () (receiver k)))))))
+       (%within-continuation k #f (lambda () (receiver k)))))))
 
 (define (within-continuation k thunk)
   (guarantee-continuation k 'WITHIN-CONTINUATION)
-  (%within-continuation k thunk))
+  (%within-continuation k #f thunk))
 
 (define (make-continuation control-point dynamic-state block-thread-events?)
-  (make-entity (lambda (k value) (%within-continuation k (lambda () value)))
+  (make-entity (lambda (k value) (%within-continuation k #f (lambda () value)))
 	       (make-%continuation control-point
 				   dynamic-state
 				   block-thread-events?)))
 
-(define-integrable (%within-continuation k thunk)
+(define (%within-continuation k thread-switch? thunk)
   ((ucode-primitive within-control-point 2)
    (continuation/control-point k)
    (lambda ()
-     (set-dynamic-state! (continuation/dynamic-state k) #f)
+     (set-dynamic-state! (continuation/dynamic-state k) thread-switch?)
      (set-thread-event-block! (continuation/block-thread-events? k))
      (thunk))))
 
