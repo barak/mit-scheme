@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.86 2005/07/04 13:51:10 cph Exp $
+$Id: utils.c,v 9.87 2005/07/17 02:12:50 cph Exp $
 
 Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
@@ -1108,7 +1108,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
   SCHEME_OBJECT primitive, prim_lexpr, * sp, result;
   SCHEME_OBJECT * callers_last_return_code;
 
-#ifdef (COMPILER_PROCESSOR_TYPE == COMPILER_IA32_TYPE)
+#if (COMPILER_PROCESSOR_TYPE == COMPILER_IA32_TYPE)
   extern void * C_Frame_Pointer;
   extern void * C_Stack_Pointer;
   void * cfp = C_Frame_Pointer;
@@ -1155,7 +1155,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
     Registers[REGBLOCK_LEXPR_ACTUALS] = prim_lexpr;
     Registers[REGBLOCK_PRIMITIVE] = primitive;
   }
-#ifdef (COMPILER_PROCESSOR_TYPE == COMPILER_IA32_TYPE)
+#if (COMPILER_PROCESSOR_TYPE == COMPILER_IA32_TYPE)
 #ifdef CL386
   __finally  
 #endif
