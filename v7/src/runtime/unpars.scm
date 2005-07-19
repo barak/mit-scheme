@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.63 2005/03/30 03:51:11 cph Exp $
+$Id: unpars.scm,v 14.64 2005/07/19 03:49:26 cph Exp $
 
 Copyright 1986,1987,1990,1991,1992,1995 Massachusetts Institute of Technology
 Copyright 1996,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -255,14 +255,14 @@ USA.
 
 (define (unparse/default object)
   (let ((type (user-object-type object)))
-    (case ((ucode-primitive primitive-object-gc-type 1) object)
-      ((1 2 3 4 -3 -4)		; cell pair triple quad vector compiled
+    (case (object-gc-type object)
+      ((CELL PAIR TRIPLE QUADRUPLE VECTOR COMPILED-ENTRY)
        (*unparse-with-brackets type object #f))
-      ((0)			; non pointer
+      ((NON-POINTER)
        (*unparse-with-brackets type object
 	 (lambda ()
 	   (*unparse-datum object))))
-      (else			; undefined, gc special
+      (else				;UNDEFINED, GC-INTERNAL
        (*unparse-with-brackets type #f
 	 (lambda ()
 	   (*unparse-datum object)))))))
