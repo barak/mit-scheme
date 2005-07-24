@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.52 2005/07/09 03:28:14 cph Exp $
+$Id: uxio.c,v 1.53 2005/07/24 05:06:40 cph Exp $
 
 Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,2000,2001,2003 Massachusetts Institute of Technology
@@ -240,12 +240,6 @@ DEFUN (OS_channel_write_dump_file, (channel, buffer, nbytes),
   int scr = (UX_write ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
   return ((scr < 0) ? 0 : scr);
 }
-
-#ifdef HAVE_STRING_H
-#  include <string.h>
-#else
-   extern int EXFUN (strlen, (CONST char *));
-#endif
 
 void
 DEFUN (OS_channel_write_string, (channel, string),
