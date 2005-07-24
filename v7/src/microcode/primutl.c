@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.78 2004/01/08 17:52:34 cph Exp $
+$Id: primutl.c,v 9.79 2005/07/24 05:08:30 cph Exp $
 
 Copyright 1993,2000,2001,2004 Massachusetts Institute of Technology
 
@@ -103,27 +103,25 @@ extern int
 
 /* Common utilities. */
 
-#ifndef _toupper
-#  define _toupper toupper
-#endif
-
 int
-DEFUN (strcmp_ci, (s1, s2), fast char * s1 AND fast char * s2)
+DEFUN (strcmp_ci, (s1, s2), char * s1 AND char * s2)
 {
-  fast int diff;
+  const unsigned char * p1 = ((unsigned char *) s1);
+  const unsigned char * p2 = ((unsigned char *) s2);
+  int diff;
 
-  while ((*s1 != '\0') && (*s2 != '\0'))
-  {
-    fast int c1 = (*s1++);
-    fast int c2 = (*s2++);
-    if (islower (c1)) c1 = (_toupper (c1));
-    if (islower (c2)) c2 = (_toupper (c2));
-    diff = (c1 - c2);
-    if (diff != 0)
-      return ((diff > 0) ? 1 : -1);
-  }
-  diff = (*s1 - *s2);
-  return ((diff == 0) ? 0 : ((diff > 0) ? 1 : -1));
+  while ((*p1 != '\0') && (*p2 != '\0'))
+    {
+      int c1 = (*p1++);
+      int c2 = (*p2++);
+      c1 = (toupper (c1));
+      c2 = (toupper (c2));
+      diff = (c1 - c2);
+      if (diff != 0)
+	return ((diff > 0) ? 1 : -1);
+    }
+  diff = (((int) (*p1)) - ((int) (*p2)));
+  return ((diff == 0) ? 0 : (diff > 0) ? 1 : (-1));
 }
 
 SCHEME_OBJECT
