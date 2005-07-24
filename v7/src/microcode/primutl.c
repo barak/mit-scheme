@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.79 2005/07/24 05:08:30 cph Exp $
+$Id: primutl.c,v 9.80 2005/07/24 05:08:55 cph Exp $
 
-Copyright 1993,2000,2001,2004 Massachusetts Institute of Technology
+Copyright 1993,2000,2001,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
