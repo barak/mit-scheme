@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: confshared.h,v 11.7 2003/07/22 02:19:51 cph Exp $
+$Id: confshared.h,v 11.8 2005/07/24 05:21:11 cph Exp $
 
 Copyright 2000,2002,2003 Massachusetts Institute of Technology
 
@@ -374,7 +374,7 @@ typedef unsigned long SCHEME_OBJECT;
 
 #endif /* __alpha */
 
-#ifdef USE_MMAP_HEAP_MALLOC
+#if defined(USE_MMAP_HEAP_MALLOC) && defined(HEAP_IN_LOW_MEMORY)
    extern void * mmap_heap_malloc (unsigned long);
 #  define HEAP_MALLOC mmap_heap_malloc
 #  define HEAP_FREE(address)
