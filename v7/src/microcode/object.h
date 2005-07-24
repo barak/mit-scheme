@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.58 2005/07/15 05:31:58 cph Exp $
+$Id: object.h,v 9.59 2005/07/24 05:10:03 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1993,1995,1997,1998,2000,2001 Massachusetts Institute of Technology
@@ -120,7 +120,7 @@ USA.
 /* Machine dependencies */
 
 #ifndef HEAP_MALLOC
-#  define HEAP_MALLOC malloc
+#  define HEAP_MALLOC OS_malloc
 #endif
 
 #ifdef HEAP_IN_LOW_MEMORY	/* Storing absolute addresses */
