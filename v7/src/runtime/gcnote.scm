@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gcnote.scm,v 14.16 2003/02/14 18:28:32 cph Exp $
+$Id: gcnote.scm,v 14.17 2005/07/31 02:54:39 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -57,7 +57,7 @@ USA.
   (print-statistic statistic (notification-output-port)))
 
 (define (print-gc-statistics)
-  (let ((status ((ucode-primitive gc-space-status))))
+  (let ((status (gc-space-status)))
     (let ((granularity (vector-ref status 0))
 	  (write-number
 	   (lambda (n c)

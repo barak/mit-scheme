@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.98 2005/05/24 04:50:17 cph Exp $
+$Id: make.scm,v 14.99 2005/07/31 02:54:44 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
@@ -99,7 +99,6 @@ USA.
 (define-integrable exit-with-value (ucode-primitive exit-with-value))
 (define-integrable file-exists? (ucode-primitive file-exists? 1))
 (define-integrable garbage-collect (ucode-primitive garbage-collect))
-(define-integrable get-next-constant (ucode-primitive get-next-constant))
 (define-integrable get-primitive-name (ucode-primitive get-primitive-name))
 (define-integrable lexical-reference (ucode-primitive lexical-reference))
 (define-integrable link-variables (ucode-primitive link-variables 4))
@@ -153,7 +152,6 @@ USA.
 ;;;; GC, Interrupts, Errors
 
 (define safety-margin 4500)
-(define constant-space/base (get-next-constant))
 
 (let ((condition-handler/gc
        (lambda (interrupt-code interrupt-enables)
@@ -381,9 +379,6 @@ USA.
   (load-files files1)
   (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME GARBAGE-COLLECTOR) 'INITIALIZE-PACKAGE! #t)
-  (lexical-assignment (package-reference '(RUNTIME GARBAGE-COLLECTOR))
-		      'CONSTANT-SPACE/BASE
-		      constant-space/base)
   (package-initialize '(RUNTIME RANDOM-NUMBER) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME GENERIC-PROCEDURE) 'INITIALIZE-TAG-CONSTANTS!
 		      #t)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.559 2005/07/16 03:44:22 cph Exp $
+$Id: runtime.pkg,v 14.560 2005/07/31 02:54:50 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -140,7 +140,7 @@ USA.
 	  default-object?
 	  error:not-unparser-method
 	  future?
-	  get-next-constant
+	  gc-space-status
 	  guarantee-unparser-method
 	  interrupt-bit/after-gc
 	  interrupt-bit/gc

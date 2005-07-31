@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.31 2004/10/01 02:29:35 cph Exp $
+$Id: gconst.scm,v 4.32 2005/07/31 02:55:18 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
-Copyright 1993,1994,1997,2001,2004 Massachusetts Institute of Technology
+Copyright 1993,1994,1997,2001,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -135,7 +135,6 @@ USA.
     GENERAL-CAR-CDR
     GET-FIXED-OBJECTS-VECTOR
     GET-INTERRUPT-ENABLES
-    GET-NEXT-CONSTANT
     HUNK3-CONS
     INDEX-FIXNUM?
     INT:*
