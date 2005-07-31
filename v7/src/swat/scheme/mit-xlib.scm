@@ -548,10 +548,9 @@ This will print a whole lot of crap.  Break glass in case of emergency only.
 
 
 (define check-space
-  (let ((get-status (make-primitive-procedure 'gc-space-status))
-	(set-debug-flags! (make-primitive-procedure 'set-debug-flags!)))
+  (let ((set-debug-flags! (make-primitive-procedure 'set-debug-flags!)))
     (lambda ()
-      (let* ((status (get-status))
+      (let* ((status (gc-space-status))
 	     (free (vector-ref status 5))
 	     (top (vector-ref status 6))
 	     (space (- top free)))
