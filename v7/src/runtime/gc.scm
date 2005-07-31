@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.19 2005/07/31 02:54:33 cph Exp $
+$Id: gc.scm,v 14.20 2005/07/31 02:58:35 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
