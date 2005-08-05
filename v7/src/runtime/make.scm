@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.100 2005/08/05 20:02:56 cph Exp $
+$Id: make.scm,v 14.101 2005/08/05 20:04:19 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
@@ -99,7 +99,6 @@ USA.
 (define-integrable exit-with-value (ucode-primitive exit-with-value))
 (define-integrable file-exists? (ucode-primitive file-exists? 1))
 (define-integrable garbage-collect (ucode-primitive garbage-collect))
-(define-integrable get-primitive-name (ucode-primitive get-primitive-name))
 (define-integrable lexical-reference (ucode-primitive lexical-reference))
 (define-integrable link-variables (ucode-primitive link-variables 4))
 (define-integrable microcode-identify (ucode-primitive microcode-identify))
@@ -116,9 +115,6 @@ USA.
 
 (define-integrable get-fixed-objects-vector
   (ucode-primitive get-fixed-objects-vector))
-
-(define-integrable get-primitive-address
-  (ucode-primitive get-primitive-address))
 
 (define-integrable lexical-unreferenceable?
   (ucode-primitive lexical-unreferenceable?))
@@ -280,10 +276,6 @@ USA.
 
 (define (intern string)
   (string->symbol (string-downcase string)))
-
-(define (implemented-primitive-procedure? primitive)
-  (get-primitive-address (intern (get-primitive-name (object-datum primitive)))
-			 #f))
 
 (define fasload-purification-queue
   '())
