@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.99 2005/07/31 02:54:44 cph Exp $
+$Id: make.scm,v 14.100 2005/08/05 20:02:56 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
@@ -247,20 +247,12 @@ USA.
 	       bin-file)))))
 
 (define (file->object filename purify? optional?)
-  (let* ((block-name (string-append "runtime_" filename))
-	 (value (initialize-c-compiled-block block-name)))
-    (cond (value
-	   (tty-write-string newline-string)
-	   (tty-write-string block-name)
-	   (tty-write-string " initialized")
-	   (remember-to-purify purify? filename value))
-	  ((map-filename filename)
-	   => (lambda (mapped)
-		(fasload mapped purify?)))
-	  ((not optional?)
-	   (fatal-error (string-append "Could not find " filename)))
-	  (else
-	   #f))))
+  (cond ((map-filename filename)
+	 => (lambda (mapped)
+	      (fasload mapped purify?)))
+	((not optional?)
+	 (fatal-error (string-append "Could not find " filename)))
+	(else #f)))
 
 (define (eval object environment)
   (let ((value (scode-eval object environment)))
@@ -295,14 +287,6 @@ USA.
 
 (define fasload-purification-queue
   '())
-
-(define initialize-c-compiled-block
-  (let ((prim (ucode-primitive initialize-c-compiled-block 1)))
-    (if (implemented-primitive-procedure? prim)
-	prim
-	(lambda (name)
-	  name				; ignored
-	  #f))))
 
 (define os-name
   (intern os-name-string))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.47 2005/04/30 05:10:37 cph Exp $
+$Id: option.scm,v 14.48 2005/08/05 20:03:01 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,2001,2002 Massachusetts Institute of Technology
@@ -117,24 +117,17 @@ USA.
 	  (runtime (pathname-as-directory "runtime")))
       (for-each (lambda (file)
 		  (let ((file (force* file)))
-		    (cond 
-		     (((ucode-primitive initialize-c-compiled-block 1)
-		       (string-append "runtime_" file))
-		      => (lambda (obj)
-			   (purify obj)
-			   (scode-eval obj environment)))
-		     (else
-		      (let* ((options (library-directory-pathname "options"))
-			     (pathname (merge-pathnames file options)))
-			(with-directory-rewriting-rule options runtime
-			  (lambda ()
-			    (with-working-directory-pathname
-				(directory-pathname pathname)
-			      (lambda ()
-				(load pathname
-				      environment
-				      'DEFAULT
-				      #t))))))))))
+		    (let* ((options (library-directory-pathname "options"))
+			   (pathname (merge-pathnames file options)))
+		      (with-directory-rewriting-rule options runtime
+			(lambda ()
+			  (with-working-directory-pathname
+			      (directory-pathname pathname)
+			    (lambda ()
+			      (load pathname
+				    environment
+				    'DEFAULT
+				    #t))))))))
 		files)
       (flush-purification-queue!)
       (eval init-expression environment))))
