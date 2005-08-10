@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.36 2004/11/19 17:34:27 cph Exp $
+$Id: random.scm,v 14.37 2005/08/10 18:16:59 cph Exp $
 
 Copyright 1988,1989,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -154,7 +155,10 @@ USA.
 	   (error:wrong-type-argument modulus "real number" 'RANDOM)))))
 
 (define (flo:random-unit state)
-  (flo:/ (int:->flonum (%random-integer flimit state)) flimit.))
+  ;; Guarantee that (< 0 returned-value 1)
+  (flo:/ (flo:+ (int:->flonum (%random-integer (int:- flimit 1) state))
+		1.)
+	 flimit.))
 
 (define (random-byte-vector n #!optional state)
   (let ((state (guarantee-random-state state 'RANDOM-BYTE-VECTOR))
@@ -184,10 +188,7 @@ USA.
 	       unit))))
     (if (flo:flonum? unit)
 	;; Ignore UNIT and return maximum precision.
-	(let ((m (int:- flimit 1)))
-	  (lambda ()
-	    (flo:/ (flo:+ (int:->flonum (%random-integer m source)) 1.)
-		   flimit.)))
+	(lambda () (flo:random-unit source))
 	;; Limit the maximum size of UNIT to avoid problems.
 	(let ((m (- (truncate (/ 1 (min 1/65536 unit))) 1)))
 	  (lambda ()
@@ -356,16 +357,16 @@ USA.
 	(flo:vector-set! result i (flo:vector-ref vector i)))
       result)))
 
-(define (copy-random-state! s1 s2)
+(define (copy-random-state! source target)
   (without-interrupts
    (lambda ()
-     (set-random-state-index! s1 (random-state-index s2))
-     (set-random-state-borrow! s1 (random-state-borrow s2))
-     (let ((v1 (random-state-vector s1))
-	   (v2 (random-state-vector s2)))
+     (set-random-state-index! target (random-state-index source))
+     (set-random-state-borrow! target (random-state-borrow source))
+     (let ((vs (random-state-vector source))
+	   (vt (random-state-vector target)))
        (do ((i 0 (fix:+ i 1)))
 	   ((fix:= i r))
-	 (flo:vector-set! v1 i (flo:vector-ref v2 i)))))))
+	 (flo:vector-set! vt i (flo:vector-ref vs i)))))))
 
 (define (guarantee-random-state state procedure)
   (if (if (default-object? state) #f state)
@@ -403,8 +404,9 @@ USA.
 (define (finalize-random-state-type!)
   (add-event-receiver! event:after-restore
     (lambda ()
-      (set! *random-state* (make-random-state #t))
-      unspecific))
+      (random-source-randomize! *random-state*)
+      (if (not (eq? default-random-source *random-state*))
+	  (random-source-randomize! default-random-source))))
   (named-structure/set-tag-description! random-state-tag
     (make-define-structure-type 'VECTOR
 				'RANDOM-STATE
