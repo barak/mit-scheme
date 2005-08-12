@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.18 2005/04/16 04:22:35 cph Exp $
+$Id: uproc.scm,v 1.19 2005/08/12 13:17:30 cph Exp $
 
 Copyright 1990,1991,1992,1995,1996,2003 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -346,7 +346,9 @@ USA.
 (define-integrable (entity-extra entity)
   (system-pair-cdr entity))
 
-(define-integrable (set-entity-procedure! entity procedure)
+(define (set-entity-procedure! entity procedure)
+  (if (procedure-chains-to procedure entity)
+      (error:bad-range-argument procedure 'SET-ENTITY-PROCEDURE!))
   (system-pair-set-car! entity procedure))
 
 (define-integrable (set-entity-extra! entity extra)
@@ -367,7 +369,7 @@ USA.
 (define (%entity-extra/apply-hook? extra)
   ;; The wabbit cares about this one.
   (and (object-type? (ucode-type hunk3) extra)
-       (eq? apply-hook-tag (system-hunk3-cxr0 extra))))
+       (eq? (system-hunk3-cxr0 extra) apply-hook-tag)))
 
 (define apply-hook-tag
   "apply-hook-tag")
@@ -378,12 +380,14 @@ USA.
 (define-integrable (apply-hook-extra apply-hook)
   (system-hunk3-cxr2 (entity-extra apply-hook)))
 
-(define-integrable (set-apply-hook-procedure! apply-hook procedure)
+(define (set-apply-hook-procedure! apply-hook procedure)
+  (if (procedure-chains-to procedure apply-hook)
+      (error:bad-range-argument procedure 'SET-APPLY-HOOK-PROCEDURE!))
   (system-hunk3-set-cxr1! (entity-extra apply-hook) procedure))
 
 (define-integrable (set-apply-hook-extra! apply-hook procedure)
   (system-hunk3-set-cxr2! (entity-extra apply-hook) procedure))
-
+
 ;;;; Arity dispatched entities
 
 (define (make-arity-dispatched-procedure default . dispatched-cases)
@@ -401,3 +405,27 @@ USA.
        (fix:< 0 (vector-length (entity-extra object)))
        (eq? (vector-ref (entity-extra object) 0)
 	    (fixed-objects-item 'ARITY-DISPATCHER-TAG))))
+
+(define (procedure-chains-to p1 p2)
+  (let loop ((p1 p1))
+    (if (eq? p1 p2)
+	#t
+	(if (%entity? p1)
+	    (cond ((%entity-is-apply-hook? p1)
+		   (loop (apply-hook-procedure p1)))
+		  ((arity-dispatched-procedure? p1)
+		   (let ((v (entity-extra p1)))
+		     (let ((n (vector-length v)))
+		       (let per-arity ((i 1))
+			 (if (< i n)
+			     (if (let ((p (vector-ref v i)))
+				   (and p
+					(loop p)))
+				 #t
+				 (per-arity (fix:+ i 1)))
+			     #f)))))
+		  (else
+		   (loop (entity-procedure p1))))
+	    
+	    
+	    #f))))
