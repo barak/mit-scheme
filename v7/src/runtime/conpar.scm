@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.48 2005/07/16 03:44:04 cph Exp $
+$Id: conpar.scm,v 14.49 2005/08/20 01:57:26 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2001,2003,2004,2005 Massachusetts Institute of Technology
@@ -473,8 +473,6 @@ USA.
   (with-values (lambda () (unparse/stack-frame stack-frame))
     (lambda (element-stream next-control-point)
       (make-control-point
-       #f
-       0
        (stack-frame/interrupt-mask stack-frame)
        (let ((history (stack-frame/history stack-frame)))
 	 (if (eq? history undefined-history)

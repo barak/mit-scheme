@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.560 2005/07/31 02:54:50 cph Exp $
+$Id: runtime.pkg,v 14.561 2005/08/20 01:57:37 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1202,8 +1202,6 @@ USA.
 	  control-point/next-control-point
 	  control-point/previous-history-control-point
 	  control-point/previous-history-offset
-	  control-point/reusable?
-	  control-point/unused-length
 	  control-point?
 	  make-control-point))
 
