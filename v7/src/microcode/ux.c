@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.25 2005/07/24 05:19:44 cph Exp $
+$Id: ux.c,v 1.26 2005/08/22 01:07:05 cph Exp $
 
 Copyright 1991,1992,1993,1996,1997,2000 Massachusetts Institute of Technology
 Copyright 2002,2003,2005 Massachusetts Institute of Technology
@@ -26,6 +26,10 @@ USA.
 
 #include "scheme.h"
 #include "ux.h"
+
+#ifdef VALGRIND_MODE
+#  include <valgrind/valgrind.h>
+#endif
 
 void
 DEFUN (UX_prim_check_errno, (name), enum syscall_names name)
@@ -684,16 +688,21 @@ mmap_heap_malloc (unsigned long requested_length)
 {
   unsigned long min_result = MMAP_BASE_ADDRESS;
   unsigned long max_result = (1UL << DATUM_LENGTH);
+  unsigned long request;
   unsigned long search_result;
   void * result;
 
-  switch (find_suitable_address (requested_length,
+  {
+    unsigned long ps = (UX_getpagesize ());
+    request = (((requested_length + (ps - 1)) / ps) * ps);
+  }
+  switch (find_suitable_address (request,
 				 min_result,
 				 max_result,
 				 (&search_result)))
     {
     case fsa_good_address:
-      result = (mmap_heap_malloc_1 (search_result, requested_length, 1));
+      result = (mmap_heap_malloc_1 (search_result, request, 1));
       break;
 
     case fsa_no_address:
@@ -701,29 +710,33 @@ mmap_heap_malloc (unsigned long requested_length)
       break;
 
     default:
-      result = (mmap_heap_malloc_1 (min_result, requested_length, 1));
+      result = (mmap_heap_malloc_1 (min_result, request, 1));
       if (result == 0)
 	/* Can't get exact address; try for something nearby.  */
-	result = (mmap_heap_malloc_1 (min_result, requested_length, 0));
+	result = (mmap_heap_malloc_1 (min_result, request, 0));
       break;
     }
-  return
-    (((result != 0)
-      && (((unsigned long) result) >= min_result)
-      && ((((unsigned long) result) + requested_length) <= max_result))
-     ? result
-     : (OS_malloc (requested_length)));
+  if (result != 0)
+    {
+      if ((((unsigned long) result) >= min_result)
+	  && ((((unsigned long) result) + request) <= max_result))
+	{
+#ifdef VALGRIND_MODE
+	  VALGRIND_MALLOCLIKE_BLOCK (result, request, 0, 0);
+#endif
+	  return (result);
+	}
+      munmap (result, request);
+    }
+  return (OS_malloc (requested_length));
 }
 
 static void *
-mmap_heap_malloc_1 (unsigned long address,
-		    unsigned long requested_length,
-		    int fixedp)
+mmap_heap_malloc_1 (unsigned long address, unsigned long request, int fixedp)
 {
-  unsigned long ps = (UX_getpagesize ());
   void * addr
     = (mmap (((void *) address),
-	     (((requested_length + (ps - 1)) / ps) * ps),
+	     request,
 	     (PROT_EXEC | PROT_READ | PROT_WRITE),
 	     (MAP_PRIVATE | MAP_ANONYMOUS | (fixedp ? MAP_FIXED : 0)),
 	     /* Ignored by GNU/Linux, required by FreeBSD and Solaris.  */
