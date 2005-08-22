@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.26 2005/08/22 01:07:05 cph Exp $
+$Id: ux.c,v 1.27 2005/08/22 01:15:07 cph Exp $
 
 Copyright 1991,1992,1993,1996,1997,2000 Massachusetts Institute of Technology
 Copyright 2002,2003,2005 Massachusetts Institute of Technology
@@ -702,7 +702,7 @@ mmap_heap_malloc (unsigned long requested_length)
 				 (&search_result)))
     {
     case fsa_good_address:
-      result = (mmap_heap_malloc_1 (search_result, request, 1));
+      result = (mmap_heap_malloc_1 (search_result, request, true));
       break;
 
     case fsa_no_address:
@@ -710,10 +710,7 @@ mmap_heap_malloc (unsigned long requested_length)
       break;
 
     default:
-      result = (mmap_heap_malloc_1 (min_result, request, 1));
-      if (result == 0)
-	/* Can't get exact address; try for something nearby.  */
-	result = (mmap_heap_malloc_1 (min_result, request, 0));
+      result = (mmap_heap_malloc_1 (min_result, request, false));
       break;
     }
   if (result != 0)
