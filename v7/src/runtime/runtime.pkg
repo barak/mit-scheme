@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.561 2005/08/20 01:57:37 cph Exp $
+$Id: runtime.pkg,v 14.562 2005/09/07 19:20:09 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4559,6 +4559,7 @@ USA.
 	  call-with-decode-base64-output-port
 	  call-with-decode-binhex40-output-port
 	  call-with-decode-quoted-printable-output-port
+	  call-with-decode-uue-output-port
 	  decode-base64:finalize
 	  decode-base64:initialize
 	  decode-base64:update
@@ -4568,6 +4569,9 @@ USA.
 	  decode-quoted-printable:finalize
 	  decode-quoted-printable:initialize
 	  decode-quoted-printable:update
+	  decode-uue:finalize
+	  decode-uue:initialize
+	  decode-uue:update
 	  encode-base64:finalize
 	  encode-base64:initialize
 	  encode-base64:update
@@ -4576,7 +4580,8 @@ USA.
 	  encode-quoted-printable:update
 	  make-decode-base64-port
 	  make-decode-binhex40-port
-	  make-decode-quoted-printable-port))
+	  make-decode-quoted-printable-port
+	  make-decode-uue-port))
 
 (define-package (runtime parser-buffer)
   (files "parser-buffer")
