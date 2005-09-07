@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.290 2004/10/29 16:32:24 cph Exp $
+$Id: imail-top.scm,v 1.291 2005/09/07 19:24:28 cph Exp $
 
 Copyright 1999,2000,2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -2710,6 +2711,8 @@ Negative argument means search in reverse."
      (call-with-decode-base64-output-port port text? generator))
     ((BINHEX40)
      (call-with-decode-binhex40-output-port port text? generator))
+    ((X-UUENCODE)
+     (call-with-decode-uue-output-port port text? generator))
     (else
      (generator port))))
 
