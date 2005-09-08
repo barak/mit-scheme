@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.53 2005/03/19 05:21:21 cph Exp $
+$Id: record.scm,v 1.54 2005/09/08 19:12:37 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -464,10 +464,6 @@ USA.
 	(substring string 1 (fix:- n 1))
 	string)))
 
-(define-integrable (guarantee-list-of-unique-symbols object procedure)
-  (if (not (list-of-unique-symbols? object))
-      (error:wrong-type-argument object "list of unique symbols" procedure)))
-
 (define (list-of-unique-symbols? object)
   (and (list-of-type? object symbol?)
        (let loop ((elements object))
@@ -477,13 +473,9 @@ USA.
 		 (loop (cdr elements)))
 	     #t))))
 
-(define-integrable (guarantee-record-type record-type procedure)
-  (if (not (record-type? record-type))
-      (error:wrong-type-argument record-type "record type" procedure)))
-
-(define-integrable (guarantee-record record caller)
-  (if (not (record? record))
-      (error:wrong-type-argument record "record" caller)))
+(define-guarantee list-of-unique-symbols "list of unique symbols")
+(define-guarantee record-type "record type")
+(define-guarantee record "record")
 
 ;;;; Runtime support for DEFINE-STRUCTURE
 
