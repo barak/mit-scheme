@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.35 2005/06/05 19:31:29 cph Exp $
+$Id: url.scm,v 1.36 2005/09/08 18:51:30 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -38,6 +38,12 @@ USA.
   (path uri-path)
   (query uri-query)
   (fragment uri-fragment set-uri-fragment!))
+
+(set-record-type-unparser-method! <uri>
+  (standard-unparser-method 'URI
+    (lambda (uri port)
+      (write-char #\space port)
+      (%write-uri uri port))))
 
 (define (make-uri scheme authority path query fragment)
   (let ((path (if (equal? path '("")) '() path)))
@@ -109,6 +115,12 @@ USA.
   (userinfo uri-authority-userinfo)
   (host uri-authority-host)
   (port uri-authority-port))
+
+(set-record-type-unparser-method! <uri-authority>
+  (standard-unparser-method 'URI-AUTHORITY
+    (lambda (authority port)
+      (write-char #\space port)
+      (write-authority authority port))))
 
 (define (make-uri-authority userinfo host port)
   (if userinfo (guarantee-uri-userinfo userinfo 'MAKE-URI-AUTHORITY))
@@ -1021,6 +1033,12 @@ USA.
   (query partial-uri-query set-partial-uri-query!)
   (fragment partial-uri-fragment set-partial-uri-fragment!)
   (extra partial-uri-extra set-partial-uri-extra!))
+
+(set-record-type-unparser-method! <partial-uri>
+  (standard-unparser-method 'PARTIAL-URI
+    (lambda (puri port)
+      (write-char #\space port)
+      (write-partial-uri puri port))))
 
 (define-guarantee partial-uri "partial URI")
 
