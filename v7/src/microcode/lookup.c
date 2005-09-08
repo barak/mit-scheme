@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.71 2005/09/08 02:02:04 cph Exp $
+$Id: lookup.c,v 9.72 2005/09/08 02:31:19 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1996,1997,2000,2001,2005 Massachusetts Institute of Technology
@@ -554,8 +554,7 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
   SCHEME_OBJECT * target_cell;
   
   if (! ((ENVIRONMENT_P (target_environment))
-	 && (ENVIRONMENT_P (source_environment))
-	 && (target_environment != source_environment)))
+	 && (ENVIRONMENT_P (source_environment))))
     return (ERR_BAD_FRAME);
 
   source_cell = (find_binding_cell (source_environment, source_symbol, 0));
@@ -567,6 +566,9 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
     return (ERR_UNBOUND_VARIABLE);
 
   target_cell = (scan_frame (target_environment, target_symbol, 1));
+  if (target_cell == source_cell)
+    return (PRIM_DONE);
+
   if ((target_cell != 0)
       && ((get_trap_kind (*target_cell)) == TRAP_COMPILER_CACHED))
     {
