@@ -73,7 +73,7 @@ $(INFO_TARGET): imail.texinfo gfdl.texinfo
 
 imail.html: imail.texinfo gfdl.texinfo
 	rm -f imail*.html
-	texi2html -split_chapter imail.texinfo
+	texi2html --split=chapter --output=. imail.texinfo
 
 imail.pdf: imail.texinfo gfdl.texinfo
 	texi2pdf imail.texinfo

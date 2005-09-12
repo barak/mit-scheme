@@ -73,7 +73,7 @@ $(INFO_TARGET): sos.texinfo gfdl.texinfo
 
 sos.html: sos.texinfo gfdl.texinfo
 	rm -f sos*.html
-	texi2html -split_chapter sos.texinfo
+	texi2html --split=chapter --output=. sos.texinfo
 
 sos.pdf: sos.texinfo gfdl.texinfo
 	texi2pdf sos.texinfo

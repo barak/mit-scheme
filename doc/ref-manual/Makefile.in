@@ -95,7 +95,7 @@ $(INFO_TARGET): $(SOURCES)
 
 scheme.html: $(SOURCES)
 	rm -f scheme*.html
-	texi2html -split_chapter scheme.texinfo
+	texi2html --split=chapter --output=. scheme.texinfo
 
 scheme.pdf: $(SOURCES)
 	texi2pdf scheme.texinfo

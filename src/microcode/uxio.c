@@ -240,7 +240,7 @@ DEFUN (OS_channel_write_dump_file, (channel, buffer, nbytes),
   return ((scr < 0) ? 0 : scr);
 }
 
-#ifdef _POSIX
+#ifdef __STDC__
 #include <string.h>
 #else
 extern int EXFUN (strlen, (CONST char *));

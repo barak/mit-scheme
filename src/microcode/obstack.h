@@ -280,19 +280,24 @@ int obstack_chunk_size (struct obstack *obstack);
 #define obstack_ptr_grow(OBSTACK,datum)					\
 ({ struct obstack *__o = (OBSTACK);					\
    ((__o->next_free + sizeof (void *) > __o->chunk_limit)		\
-    ? _obstack_newchunk (__o, sizeof (void *)) : 0),			\
-   *((void **)__o->next_free)++ = ((void *)datum);			\
+    ? _obstack_newchunk (__o, sizeof (void *)) : 0);			\
+   *(const void **) __o->next_free = (datum);				\
+   __o->next_free += sizeof (const void *);				\
    (void) 0; })
 
 #define obstack_int_grow(OBSTACK,datum)					\
 ({ struct obstack *__o = (OBSTACK);					\
    ((__o->next_free + sizeof (int) > __o->chunk_limit)			\
-    ? _obstack_newchunk (__o, sizeof (int)) : 0),			\
-   *((int *)__o->next_free)++ = ((int)datum);				\
+    ? _obstack_newchunk (__o, sizeof (int)) : 0);			\
+   *(int *) __o->next_free = (datum);					\
+   __o->next_free += sizeof (int);					\
    (void) 0; })
 
-#define obstack_ptr_grow_fast(h,aptr) (*((void **)(h)->next_free)++ = (void *)aptr)
-#define obstack_int_grow_fast(h,aint) (*((int *)(h)->next_free)++ = (int)aint)
+#define obstack_ptr_grow_fast(h,aptr)					\
+  (((const void **) ((h)->next_free += sizeof (void *)))[-1] = (aptr))
+
+#define obstack_int_grow_fast(h,aint)					\
+  (((int *) ((h)->next_free += sizeof (int)))[-1] = (aint))
 
 #define obstack_blank(OBSTACK,length)					\
 ({ struct obstack *__o = (OBSTACK);					\
@@ -374,8 +379,11 @@ int obstack_chunk_size (struct obstack *obstack);
    ? (_obstack_newchunk ((h), sizeof (int)), 0) : 0),			\
   *((int *)(((h)->next_free+=sizeof(int))-sizeof(int))) = ((int)datum))
 
-#define obstack_ptr_grow_fast(h,aptr) (*((char **)(h)->next_free)++ = (char *)aptr)
-#define obstack_int_grow_fast(h,aint) (*((int *)(h)->next_free)++ = (int)aint)
+#define obstack_ptr_grow_fast(h,aptr)					\
+  (((const void **) ((h)->next_free += sizeof (void *)))[-1] = (aptr))
+
+#define obstack_int_grow_fast(h,aint)					\
+  (((int *) ((h)->next_free += sizeof (int)))[-1] = (aint))
 
 #define obstack_blank(h,length)						\
 ( (h)->temp = (length),							\

@@ -1,3 +1,15 @@
+mit-scheme (7.7.90-5.1) unstable; urgency=low
+
+  * NMU during BSP.
+  * Fix build failure with gcc 4.0.  Closes: #323739.
+    - src/microcode/obstack.h: Casts can no longer be combined with `++'
+      (backported from the current glibc version).
+    - src/microcode/uxio.c: Include <string.h> for strlen.
+  * doc/*/Makefile.in: texi2html now creates a subdirectory by default;
+    invoke it with `--output=.'.
+
+ -- Matej Vela <vela@debian.org>  Mon, 12 Sep 2005 10:13:58 +0200
+
 mit-scheme (7.7.90-5) unstable; urgency=low
 
   * Add "libx11-dev" to build-depends.  (closes: Bug#290845)

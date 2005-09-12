@@ -73,7 +73,7 @@ $(INFO_TARGET): user.texinfo gfdl.texinfo
 
 user.html: user.texinfo gfdl.texinfo
 	rm -f user*.html
-	texi2html -split_chapter user.texinfo
+	texi2html --split=chapter --output=. user.texinfo
 
 user.pdf: user.texinfo gfdl.texinfo
 	texi2pdf user.texinfo
