@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: artdebug.scm,v 1.33 2003/02/14 18:28:10 cph Exp $
+$Id: artdebug.scm,v 1.35 2005/04/01 05:06:51 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1998 Massachusetts Institute of Technology
-Copyright 1999,2001,2003 Massachusetts Institute of Technology
+Copyright 1999,2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -515,11 +515,11 @@ The evaluation occurs in the dynamic state of the current frame."
       (let ((environment (dstate-evaluation-environment dstate))
 	    (continuation
 	     (stack-frame->continuation (dstate/subproblem dstate)))
-	    (repl-eval hook/repl-eval))
+	    (old-hook hook/repl-eval))
 	(fluid-let
 	    ((in-debugger-evaluation? #t)
 	     (hook/repl-eval
-	      (lambda (expression environment)
+	      (lambda (expression environment repl)
 		(let ((unique (cons 'unique 'id)))
 		  (let ((result
 			 (call-with-current-continuation
@@ -532,8 +532,9 @@ The evaluation occurs in the dynamic state of the current frame."
 				      (continuation* (cons unique condition)))
 				  (lambda ()
 				    (continuation*
-				     (repl-eval expression
-						environment))))))))))
+				     (old-hook expression
+					       environment
+					       repl))))))))))
 		    (if (and (pair? result)
 			     (eq? unique (car result)))
 			(error (cdr result))
@@ -1301,13 +1302,11 @@ Prefix argument means do not kill the debugger buffer."
       value)))
 
 (define (operation/write-char port char)
+  (guarantee-8-bit-char char)
   (region-insert-char! (port/state port) char))
 
 (define (operation/write-substring port string start end)
   (region-insert-substring! (port/state port) string start end))
-
-(define (operation/fresh-line port)
-  (guarantee-newline (port/state port)))
 
 (define (operation/x-size port)
   (let ((buffer (mark-buffer (port/state port))))
@@ -1334,8 +1333,8 @@ Prefix argument means do not kill the debugger buffer."
   (newline port)
   (newline port))
 
-(define (operation/prompt-for-expression port prompt)
-  port
+(define (operation/prompt-for-expression port environment prompt)
+  port environment
   (prompt-for-expression prompt))
 
 (define (operation/prompt-for-confirmation port prompt)
@@ -1346,7 +1345,6 @@ Prefix argument means do not kill the debugger buffer."
   (make-port-type
    `((WRITE-CHAR ,operation/write-char)
      (WRITE-SUBSTRING ,operation/write-substring)
-     (FRESH-LINE ,operation/fresh-line)
      (X-SIZE ,operation/x-size)
      (DEBUGGER-FAILURE ,operation/debugger-failure)
      (DEBUGGER-MESSAGE ,operation/debugger-message)

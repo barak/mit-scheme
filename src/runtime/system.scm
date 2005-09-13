@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: system.scm,v 14.15 2003/02/14 18:28:34 cph Exp $
+$Id: system.scm,v 14.16 2004/12/13 03:22:21 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1991,1998 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,20 +35,19 @@ USA.
 				 'ADD-SUBSYSTEM-IDENTIFICATION!))
   (let ((version
 	 (let loop ((version version))
-	   (append-map
-	    (lambda (version)
-	      (cond ((exact-nonnegative-integer? version)
-		     (list version))
-		    ((string? version)
-		     (if (string-null? version)
-			 '()
-			 (list version)))
-		    ((list? version)
-		     (loop version))
-		    (else
-		     (error "Illegal subsystem version:"
-			    version))))
-	    version))))
+	   (append-map (lambda (version)
+			 (cond ((exact-nonnegative-integer? version)
+				(list version))
+			       ((string? version)
+				(if (string-null? version)
+				    '()
+				    (list version)))
+			       ((list? version)
+				(loop version))
+			       (else
+				(error "Illegal subsystem version:"
+				       version))))
+		       version))))
     (let ((entry (find-entry name)))
       (if entry
 	  (begin
@@ -61,7 +61,7 @@ USA.
 
 (define (remove-subsystem-identification! name)
   (let loop ((previous #f) (entries subsystem-identifications))
-    (if (not (null? entries))
+    (if (pair? entries)
 	(if (match-entry? name (car entries))
 	    (begin
 	      (if previous
@@ -100,19 +100,19 @@ USA.
 		    (string-append name " " s)))))))
 
 (define (version-string version)
-  (if (null? version)
-      ""
+  (if (pair? version)
       (let loop ((version version))
 	(let ((s
 	       (if (string? (car version))
 		   (car version)
 		   (number->string (car version)))))
-	  (if (null? (cdr version))
-	      s
-	      (string-append s "." (loop (cdr version))))))))
+	  (if (pair? (cdr version))
+	      (string-append s "." (loop (cdr version)))
+	      s)))
+      ""))
 
 (define (find-entry name)
-  (list-search-positive subsystem-identifications
+  (find-matching-item subsystem-identifications
     (lambda (entry)
       (match-entry? name entry))))
 
@@ -124,8 +124,3 @@ USA.
 			(string-length s)))))
 
 (define subsystem-identifications '())
-
-;;; Upwards compatibility.
-
-(define (add-identification! name version modification)
-  (add-subsystem-identification! name (list version modification)))

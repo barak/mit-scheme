@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.16 2003/02/14 18:28:02 cph Exp $
+$Id: lapgen.scm,v 1.17 2004/07/01 01:19:57 cph Exp $
 
-Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1993,1998,2001,2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -522,9 +522,6 @@ USA.
 
 (define-integrable (word-register? reg)
   (eq? (register-type reg) 'WORD))
-
-(define (register-types-compatible? type1 type2)
-  (boolean=? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
 
 (define (register-reference num)
   (comp-internal-error "Should not be using register allocator"

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: struct.scm,v 1.98 2003/02/14 18:28:13 cph Exp $
+$Id: struct.scm,v 1.99 2005/03/31 18:55:57 cph Exp $
 
 Copyright 1985,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
-Copyright 1994,1999,2000,2001,2003 Massachusetts Institute of Technology
+Copyright 1994,1999,2000,2001,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -626,6 +626,12 @@ USA.
 	 (%make-region start end))
 	(else
 	 (%make-region end start))))
+
+(define (region? object)
+  (and (pair? object)
+       (mark? (car object))
+       (mark? (cdr object))
+       (mark<= (car object) (cdr object))))
 
 (define-integrable (region-group region)
   (mark-group (region-start region)))

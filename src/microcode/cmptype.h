@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmptype.h,v 1.5 2003/02/14 18:28:18 cph Exp $
+$Id: cmptype.h,v 1.6 2005/07/04 13:49:29 cph Exp $
 
-Copyright (c) 1993, 1999, 2000 Massachusetts Institute of Technology
+Copyright 1993,2000,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,23 +23,23 @@ USA.
 
 */
 
-/*
- *
- * Processor type definitions
- *
- */
-
-/*
-This file contains the associations between processor numbers and
-their descriptions.  This file should only be modified by the Scheme
-project at MIT, to avoid conflicts.
+/* Processor type definitions */
 
-These numbers are the numbers stored in Scheme images (bands) so that
-the microcode can detect whether the compiled code in the band is
-compatible with it.
+#ifndef SCM_CMPTYPE_H
+#define SCM_CMPTYPE_H 1
 
-These _are not_ the same numbers as the PROC_TYPE_XXX used to 
-configure the microcode under Unix (cf.h)---they probably should be.
+/* This file contains the associations between processor numbers and
+   their descriptions.  This file should only be modified by the
+   Scheme project at MIT, to avoid conflicts.
+
+   These numbers are the numbers stored in Scheme images (bands) so
+   that the microcode can detect whether the compiled code in the band
+   is compatible with it.
+
+   These _are not_ the same numbers as the PROC_TYPE_XXX used to
+   configure the microcode under Unix (cf.h)---they probably should
+   be.
+
 
 Number	Description
 ______	___________
@@ -92,10 +92,11 @@ ______	___________
 	The Scheme compiler produces C to be compiled by the
 	same C compiler as the microcode.
 
+13	Scheme Virtual Machine
+	The compiler produces code for a virtual machine that is
+	written in C and embedded in the microcode.
+
 */
-
-#ifndef CMPTYPE_H_INCLUDED
-#define CMPTYPE_H_INCLUDED
 
 #define COMPILER_NONE_TYPE			0
 #define COMPILER_MC68020_TYPE			1
@@ -110,5 +111,6 @@ ______	___________
 #define COMPILER_ALPHA_TYPE			10
 #define COMPILER_MIPS_TYPE			11
 #define COMPILER_LOSING_C_TYPE			12
+#define COMPILER_SVM_TYPE			13
 
-#endif /* CMPTYPE_H_INCLUDED */
+#endif /* SCM_CMPTYPE_H */

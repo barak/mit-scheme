@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.65 2003/02/14 18:28:13 cph Exp $
+$Id: process.scm,v 1.67 2004/02/17 04:59:54 cph Exp $
 
 Copyright 1991,1992,1993,1996,1997,1999 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -577,40 +577,31 @@ after the listing is made.)"
 	(output-port
 	 (and output-mark
 	      (mark->output-port
-	       (if (pair? output-mark) (car output-mark) output-mark))))
-	(mark-translation
-	 (lambda (mark)
-	   (let ((pathname
-		  (let ((buffer (mark-buffer mark)))
-		    (and buffer
-			 (buffer-pathname buffer)))))
-	     (if pathname
-		 (pathname-newline-translation pathname)
-		 'DEFAULT)))))
+	       (if (pair? output-mark) (car output-mark) output-mark)))))
     (let ((result
 	   (run-synchronous-process-1 output-port
 	     (lambda ()
 	       (run-synchronous-subprocess
 		program arguments
 		'INPUT input-port
-		'INPUT-LINE-TRANSLATION
-		(if input-region
-		    (let ((mark (region-start input-region)))
-		      (and (ref-variable translate-file-data-on-output mark)
-			   (mark-translation mark)))
-		    'DEFAULT)
 		'OUTPUT output-port
-		'OUTPUT-LINE-TRANSLATION
-		(if output-port
-		    (let ((mark (output-port->mark output-port)))
-		      (and (ref-variable translate-file-data-on-input mark)
-			   (mark-translation mark)))
-		    'DEFAULT)
 		'REDISPLAY-HOOK
-		(and (if (pair? output-mark) (cdr output-mark) #f)
+		(and (pair? output-mark)
+		     (cdr output-mark)
 		     (lambda () (update-screens! '(IGNORE-INPUT))))
 		'WORKING-DIRECTORY directory
-		'USE-PTY? pty?)))))
+		'USE-PTY? pty?
+		'LINE-ENDING
+		(if (cond (input-region
+			   (ref-variable translate-file-data-on-output
+					 (region-start input-region)))
+			  (output-mark
+			   (ref-variable translate-file-data-on-input
+					 output-mark))
+			  (else #t))
+		    #f
+		    'NEWLINE)
+		)))))
       (if input-port (close-port input-port))
       (if output-port (close-port output-port))
       result)))

@@ -1,9 +1,9 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.100 2003/03/06 05:41:19 cph Exp $
+$Id: interp.c,v 9.102 2004/11/19 04:16:07 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
-Copyright 1992,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1992,2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1407,7 +1407,7 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 		  for (i = (nargs + 1); (--i) >= 0; )
 		    (*scan++) = (STACK_POP ());
 		  for (i = (params - nargs); (--i) >= 0; )
-		    (*scan++) = UNASSIGNED_OBJECT;
+		    (*scan++) = DEFAULT_OBJECT;
 		  if (rest_flag)
 		    (*scan++) = EMPTY_LIST;
 		  for (i = auxes; (--i) >= 0; )

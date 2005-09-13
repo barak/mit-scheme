@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.31 2003/02/14 18:28:32 cph Exp $
+$Id: emacs.scm,v 14.40 2005/04/01 04:46:43 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1991,1993,1994,1999 Massachusetts Institute of Technology
+Copyright 2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,10 +31,10 @@ USA.
 
 ;;;; Prompting
 
-(define (emacs/prompt-for-command-expression port prompt level)
+(define (emacs/prompt-for-command-expression port environment prompt level)
   (transmit-modeline-string port prompt level)
   (transmit-signal port #\R)
-  (read port))
+  (read port environment))
 
 (define (emacs/prompt-for-command-char port prompt level)
   (transmit-modeline-string port prompt level)
@@ -59,9 +60,9 @@ USA.
   '(("debug> " "[Debug]")
     ("where> " "[Where]")))
 
-(define (emacs/prompt-for-expression port prompt)
+(define (emacs/prompt-for-expression port environment prompt)
   (transmit-signal-with-argument port #\i prompt)
-  (read port))
+  (read port environment))
 
 (define (emacs/prompt-for-confirmation port prompt)
   (transmit-signal-with-argument
@@ -106,28 +107,25 @@ USA.
 	 "(set-window-start (selected-window) xscheme-temp-1 nil)"))
       (thunk)))
 
-(define emacs-presentation-top-justify?
-  false)
+(define emacs-presentation-top-justify? #f)
 
 ;;;; Interrupt Support
 
 (define (emacs/clean-input/flush-typeahead char)
   char
   (let loop ()
-    (if (not (char=? #\NUL (input-port/read-char the-console-port)))
+    (if (not (char=? #\U+0000 (input-port/read-char the-console-port)))
 	(loop)))
-  true)
+  #t)
 
 (define (emacs/^G-interrupt)
   (transmit-signal the-console-port #\g))
-
+
 ;;;; Miscellaneous Hooks
 
-(define (emacs/write-result port expression object hash-number)
+(define (emacs/write-result port expression object hash-number environment)
   expression
-  (cond ((eq? object emacs/write-result/ignore)
-	 unspecific)
-	((undefined-value? object)
+  (cond ((undefined-value? object)
 	 (transmit-signal-with-argument port #\v ""))
 	(hash-number
 	 ;; The #\P command used to do something useful, but now
@@ -140,30 +138,37 @@ USA.
 	  (number->string hash-number)
 	  ": %s\" xscheme-prompt))"))
 	(else
-	 (transmit-signal-with-argument port #\v (write-to-string object)))))
-
-(define emacs/write-result/ignore
-  (list 'EMACS/WRITE-RESULT/IGNORE))
+	 (transmit-signal-with-argument
+	  port #\v
+	  (call-with-output-string
+	    (lambda (port)
+	      (write object port environment)))))))
 
 (define (emacs/error-decision repl condition)
-  repl condition
-  (transmit-signal the-console-port #\z)
-  (beep the-console-port)
-  (if paranoid-error-decision?
-      (cmdl-interrupt/abort-previous)))
+  condition
+  (let ((port (cmdl/port repl)))
+    (if (eq? port the-console-port)
+	(begin
+	  (transmit-signal port #\z)
+	  (beep port)
+	  (if paranoid-error-decision?
+	      (cmdl-interrupt/abort-previous))))))
 
-(define paranoid-error-decision?
-  false)
+(define paranoid-error-decision? #f)
 
 (define (emacs/set-default-directory port pathname)
   (transmit-signal-with-argument port #\w (->namestring pathname)))
 
 (define (emacs/read-start port)
   (transmit-signal port #\s)
-  (port/read-start the-console-port))
+  (let ((operation (deferred-operation 'READ-START)))
+    (if operation
+	(operation port))))
 
 (define (emacs/read-finish port)
-  (port/read-finish the-console-port)
+  (let ((operation (deferred-operation 'READ-FINISH)))
+    (if operation
+	(operation port)))
   (transmit-signal port #\f))
 
 ;;;; Protocol Encoding
@@ -218,75 +223,48 @@ USA.
 
 ;;;; Initialization
 
-(define emacs-console-port)
-(define console-output-channel)
+(define vanilla-console-port-type)
+(define emacs-console-port-type)
 
 (define (initialize-package!)
-  (set! emacs-console-port
-	(make-port (make-port-type
-		    `((PROMPT-FOR-EXPRESSION ,emacs/prompt-for-expression)
-		      (PROMPT-FOR-COMMAND-CHAR ,emacs/prompt-for-command-char)
-		      (PROMPT-FOR-COMMAND-EXPRESSION
-		       ,emacs/prompt-for-command-expression)
-		      (PROMPT-FOR-CONFIRMATION ,emacs/prompt-for-confirmation)
-		      (DEBUGGER-FAILURE ,emacs/debugger-failure)
-		      (DEBUGGER-MESSAGE ,emacs/debugger-message)
-		      (DEBUGGER-PRESENTATION ,emacs/debugger-presentation)
-		      (WRITE-RESULT ,emacs/write-result)
-		      (SET-DEFAULT-DIRECTORY ,emacs/set-default-directory)
-		      (READ-START ,emacs/read-start)
-		      (READ-FINISH ,emacs/read-finish)
-		      (GC-START ,emacs/gc-start)
-		      (GC-FINISH ,emacs/gc-finish))
-		    the-console-port-type)
-		   (port/state the-console-port)))
-  ;; YUCCH!  Kludge to copy mutex of console port into emacs port.
-  (set-port/thread-mutex! emacs-console-port
-			  (port/thread-mutex the-console-port))
-  (set-console-i/o-port! (select-console-port))
-  (add-event-receiver! event:after-restore reset-console-port!))
+  (set! vanilla-console-port-type (port/type the-console-port))
+  (set! emacs-console-port-type
+	(make-port-type
+	 `((PROMPT-FOR-EXPRESSION ,emacs/prompt-for-expression)
+	   (PROMPT-FOR-COMMAND-CHAR ,emacs/prompt-for-command-char)
+	   (PROMPT-FOR-COMMAND-EXPRESSION ,emacs/prompt-for-command-expression)
+	   (PROMPT-FOR-CONFIRMATION ,emacs/prompt-for-confirmation)
+	   (DEBUGGER-FAILURE ,emacs/debugger-failure)
+	   (DEBUGGER-MESSAGE ,emacs/debugger-message)
+	   (DEBUGGER-PRESENTATION ,emacs/debugger-presentation)
+	   (WRITE-RESULT ,emacs/write-result)
+	   (SET-DEFAULT-DIRECTORY ,emacs/set-default-directory)
+	   (READ-START ,emacs/read-start)
+	   (READ-FINISH ,emacs/read-finish)
+	   (GC-START ,emacs/gc-start)
+	   (GC-FINISH ,emacs/gc-finish))
+	 vanilla-console-port-type))
+  (add-event-receiver! event:after-restore
+    (lambda ()
+      (let ((type (select-console-port-type)))
+	(if (let ((type (port/type the-console-port)))
+	      (or (eq? type vanilla-console-port-type)
+		  (eq? type emacs-console-port-type)))
+	    (set-port/type! the-console-port type))))))
 
-(define (reset-console-port!)
-  ;; This is a kludge.  Maybe this method shouldn't be used.
-  (let* ((new-port (select-console-port))
-	 (old-port?
-	  (lambda (port)
-	    (and (or (eq? port the-console-port)
-		     (eq? port emacs-console-port))
-		 (not (eq? port new-port)))))
-	 (replacement-port
-	  (lambda (port)
-	    (cond ((old-port? port) new-port)
-		  ((and (transcriptable-port? port)
-			(old-port? (encapsulated-port/port port)))
-		   (make-transcriptable-port new-port))
-		  (else #f)))))
-    (if (let ((port console-i/o-port))
-	  (or (eq? port the-console-port)
-	      (eq? port emacs-console-port)))
-	(set-console-i/o-port! new-port))
-    (do ((pairs standard-port-accessors (cdr pairs)))
-	((null? pairs))
-      (let ((port (replacement-port ((caar pairs)))))
-	(if port
-	    ((cdar pairs) port))))
-    (do ((cmdl (nearest-cmdl) (cmdl/parent cmdl)))
-	((not cmdl))
-      (let ((port (replacement-port (cmdl/port cmdl))))
-	(if port
-	    (set-cmdl/port! cmdl port))))))
-
-(define (select-console-port)
-  (set! console-output-channel (port/output-channel the-console-port))
+(define (select-console-port-type)
   (if ((ucode-primitive under-emacs? 0))
       (begin
 	(set! hook/clean-input/flush-typeahead
 	      emacs/clean-input/flush-typeahead)
 	(set! hook/^G-interrupt emacs/^G-interrupt)
 	(set! hook/error-decision emacs/error-decision)
-	emacs-console-port)
+	emacs-console-port-type)
       (begin
-	(set! hook/clean-input/flush-typeahead false)
-	(set! hook/^G-interrupt false)
-	(set! hook/error-decision false)
-	the-console-port)))
+	(set! hook/clean-input/flush-typeahead #f)
+	(set! hook/^G-interrupt #f)
+	(set! hook/error-decision #f)
+	vanilla-console-port-type)))
+
+(define (deferred-operation name)
+  (port-type/operation vanilla-console-port-type name))

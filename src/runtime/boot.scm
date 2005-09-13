@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.15 2003/02/14 18:28:32 cph Exp $
+$Id: boot.scm,v 14.21 2005/07/31 02:54:29 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 1993,1996,2001,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,48 +29,47 @@ USA.
 
 (declare (usual-integrations))
 
-(define standard-unparser-method)
-(define unparser/standard-method)
-(let ((make-method
-       (lambda (name unparser)
-	 (lambda (state object)
-	   (let ((port (unparser-state/port state))
-		 (hash-string (number->string (hash object))))
-	     (if *unparse-with-maximum-readability?*
-		 (begin
-		   (write-string "#@" port)
-		   (write-string hash-string port))
-		 (begin
-		   (write-string "#[" port)
-		   (if (string? name)
-		       (write-string name port)
-		       (with-current-unparser-state state
-			 (lambda (port)
-			   (write name port))))
-		   (write-char #\space port)
-		   (write-string hash-string port)
-		   (if unparser (unparser state object))
-		   (write-char #\] port))))))))
-  (set! standard-unparser-method
-	(lambda (name unparser)
-	  (make-method name
-		       (and unparser
-			    (lambda (state object)
-			      (with-current-unparser-state state
-				(lambda (port)
-				  (unparser object port))))))))
-  (set! unparser/standard-method
-	(lambda (name #!optional unparser)
-	  (make-method name
-		       (and (not (default-object? unparser))
-			    unparser
-			    (lambda (state object)
-			      (unparse-char state #\space)
-			      (unparser state object)))))))
+(define (standard-unparser-method name unparser)
+  (make-method name
+	       (and unparser
+		    (lambda (state object)
+		      (with-current-unparser-state state
+			(lambda (port)
+			  (unparser object port)))))))
+
+(define (unparser/standard-method name #!optional unparser)
+  (make-method name
+	       (and (not (default-object? unparser))
+		    unparser
+		    (lambda (state object)
+		      (unparse-char state #\space)
+		      (unparser state object)))))
+
+(define (make-method name unparser)
+  (lambda (state object)
+    (let ((port (unparser-state/port state))
+	  (hash-string (number->string (hash object))))
+      (if *unparse-with-maximum-readability?*
+	  (begin
+	    (write-string "#@" port)
+	    (write-string hash-string port))
+	  (begin
+	    (write-string "#[" port)
+	    (if (string? name)
+		(write-string name port)
+		(with-current-unparser-state state
+		  (lambda (port)
+		    (write name port))))
+	    (write-char #\space port)
+	    (write-string hash-string port)
+	    (if unparser (unparser state object))
+	    (write-char #\] port))))))
 
 (define (unparser-method? object)
   (and (procedure? object)
        (procedure-arity-valid? object 2)))
+
+(define-guarantee unparser-method "unparser method")
 
 (define-integrable interrupt-bit/stack     #x0001)
 (define-integrable interrupt-bit/global-gc #x0002)
@@ -85,9 +85,6 @@ USA.
 
 ;; GC & stack overflow only
 (define-integrable interrupt-mask/gc-ok    #x0007)
-
-;; GC, stack overflow, and keyboard only
-(define-integrable interrupt-mask/no-background #x0017)
 
 ;; GC, stack overflow, and timer only
 (define-integrable interrupt-mask/timer-ok #x0047)
@@ -105,21 +102,25 @@ USA.
       (thunk))))
 
 (define (without-interrupts thunk)
-  (with-interrupt-mask interrupt-mask/gc-ok
+  (with-limited-interrupts interrupt-mask/gc-ok
     (lambda (interrupt-mask)
       interrupt-mask
       (thunk))))
 
-(define (without-background-interrupts thunk)
-  (with-interrupt-mask interrupt-mask/no-background
-    (lambda (interrupt-mask)
-      interrupt-mask
-      (thunk))))
+(define (with-limited-interrupts limit-mask procedure)
+  (with-interrupt-mask (fix:and limit-mask (get-interrupt-enables))
+    procedure))
 
 (define-primitives
   (object-pure? pure?)
   (object-constant? constant?)
-  get-next-constant)
+  gc-space-status)
 
 (define-integrable (future? object)
   ((ucode-primitive object-type? 2) (ucode-type future) object))
+
+(define-integrable (default-object? object)
+  (eq? object (default-object)))
+
+(define-integrable (default-object)
+  (object-new-type (ucode-type constant) 7))

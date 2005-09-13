@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dired.scm,v 1.193 2003/02/14 18:28:11 cph Exp $
+$Id: dired.scm,v 1.194 2004/03/30 04:45:01 cph Exp $
 
 Copyright 1986, 1989-2001 Massachusetts Institute of Technology
 
@@ -498,14 +498,24 @@ With a prefix argument you can edit the current listing switches instead."
 (define (dired-toggle-switch switch)
   (dired-change-listing-switches
    (lambda (switches)
-     (let ((index (string-find-next-char switches switch)))
-       (if index
-	   (let ((switches
-		  (string-append (string-head switches index)
-				 (string-tail switches (fix:+ index 1)))))
-	     (if (string=? "-" switches) "" switches))
-	   (string-append (if (string-null? switches) "-" switches)
-			  (string switch)))))))
+     (let loop ((switches (burst-string switches char-set:whitespace #t)))
+       (if (pair? switches)
+	   (let ((index
+		  (and (string-prefix? "-" (car switches))
+		       (not (string-prefix? "--" (car switches)))
+		       (string-find-next-char (car switches) switch))))
+	     (if index
+		 (let ((s1
+			(string-append (string-head (car switches) index)
+				       (string-tail (car switches)
+						    (fix:+ index 1))))
+		       (s2 (reduce string-append-separated "" (cdr switches))))
+		   (if (string=? "-" s1)
+		       s2
+		       (string-append-separated s1 s2)))
+		 (string-append-separated (car switches)
+					  (loop (cdr switches)))))
+	   (string #\- switch))))))
 
 (define (dired-change-listing-switches procedure)
   (local-set-variable! dired-listing-switches

@@ -1,9 +1,9 @@
 ;;; -*-Midas-*-
 ;;;
-;;; $Id: i386.m4,v 1.62 2003/05/17 20:55:45 cph Exp $
+;;; $Id: i386.m4,v 1.64 2005/06/26 04:31:47 cph Exp $
 ;;;
 ;;; Copyright 1992,1997,1998,2000,2001 Massachusetts Institute of Technology
-;;; Copyright 2002,2003 Massachusetts Institute of Technology
+;;; Copyright 2002,2003,2005 Massachusetts Institute of Technology
 ;;;
 ;;; This file is part of MIT/GNU Scheme.
 ;;;
@@ -168,10 +168,11 @@ _i386_interface_initialize:
 i386_initialize_no_fp:
 	mov	dword ptr _i387_presence,eax
 ; Do a bunch of hair to determine if we need to do cache synchronization.
-; First, test to see if the CPUID instruction is supported.
+; See if the CPUID instruction is supported.
 	xor	eax,eax
 	mov	dword ptr _ia32_cpuid_supported,eax
 	mov	dword ptr _ia32_cpuid_needed,eax
+; First test: can we toggle the AC bit?
 	pushfd
 	pop	eax
 	mov	ecx,eax
@@ -180,10 +181,22 @@ i386_initialize_no_fp:
 	popfd
 	pushfd
 	pop	eax
+; if AC bit can't be toggled, this is a 386 (and doesn't support CPUID).
 	xor	eax,ecx
 	jz		no_cpuid_instr
-; Restore original EFLAGS.
-	push	ecx
+	push	ecx			; restore EFLAGS
+	popfd
+; Now test to see if the ID bit can be toggled.
+	mov	eax,ecx
+	xor	eax,000200000H
+	push	eax
+	popfd
+	pushfd
+	pop	eax
+; if ID bit can't be toggled, this is a 486 that doesn't support CPUID.
+	xor	eax,ecx
+	jz		no_cpuid_instr
+	push	ecx			; restore EFLAGS
 	popfd
 ; Now we know that cpuid is supported.
 	mov	dword ptr _ia32_cpuid_supported,000000001H
@@ -277,6 +290,10 @@ scheme_to_interface_call:
 asm_scheme_to_interface_:
 	public scheme_to_interface
 scheme_to_interface:
+; These two moves must happen _before_ the ffree instructions below.
+; Otherwise recovery from SIGFPE there will fail.
+	mov	_sp_register,esp
+	mov	_Free,edi
 	cmp	dword ptr _i387_presence,0
 	je	scheme_to_interface_proceed
 	ffree	st(0)					; Free floating "regs"
@@ -288,8 +305,6 @@ scheme_to_interface:
 	ffree	st(6)
 	ffree	st(7)
 scheme_to_interface_proceed:
-	mov	_sp_register,esp
-	mov	_Free,edi
 	mov	esp,_C_Stack_Pointer
 	mov	ebp,_C_Frame_Pointer
 	sub	esp,8	; alloc struct return

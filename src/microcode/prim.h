@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: prim.h,v 9.49 2003/02/14 18:28:22 cph Exp $
+$Id: prim.h,v 9.50 2004/01/07 05:30:26 cph Exp $
 
-Copyright (c) 1987-2002 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1992,1993,2001 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,7 +39,7 @@ extern int * Primitive_Arity_Table;
 extern int * Primitive_Count_Table;
 extern CONST char ** Primitive_Name_Table;
 extern CONST char ** Primitive_Documentation_Table;
-extern long MAX_PRIMITIVE;
+extern unsigned long MAX_PRIMITIVE;
 
 extern SCHEME_OBJECT EXFUN
   (declare_primitive,

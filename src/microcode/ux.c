@@ -1,9 +1,9 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.24 2003/05/17 02:21:17 cph Exp $
+$Id: ux.c,v 1.27 2005/08/22 01:15:07 cph Exp $
 
 Copyright 1991,1992,1993,1996,1997,2000 Massachusetts Institute of Technology
-Copyright 2002,2003 Massachusetts Institute of Technology
+Copyright 2002,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,7 +24,12 @@ USA.
 
 */
 
+#include "scheme.h"
 #include "ux.h"
+
+#ifdef VALGRIND_MODE
+#  include <valgrind/valgrind.h>
+#endif
 
 void
 DEFUN (UX_prim_check_errno, (name), enum syscall_names name)
@@ -654,7 +659,7 @@ DEFUN_VOID (UX_getpagesize)
 #endif /* HAVE_SYSCONF */
 #endif /* EMULATE_GETPAGESIZE */
 
-#ifdef USE_MMAP_HEAP_MALLOC
+#if defined(USE_MMAP_HEAP_MALLOC) && defined(HEAP_IN_LOW_MEMORY)
 
 #ifdef VALGRIND_MODE
 #  define MMAP_BASE_ADDRESS 0x10000
@@ -666,13 +671,69 @@ DEFUN_VOID (UX_getpagesize)
 #  define MAP_FAILED ((void *) (-1))
 #endif
 
-static void *
-mmap_heap_malloc_1 (unsigned long requested_length, int fixedp)
+typedef enum
+  {
+    fsa_no_proc,
+    fsa_no_address,
+    fsa_good_address
+  } fsa_status_t;
+
+static void * mmap_heap_malloc_1 (unsigned long, unsigned long, int);
+static fsa_status_t find_suitable_address
+  (unsigned long, unsigned long, unsigned long, unsigned long *);
+static int discard_line (FILE *);
+
+void *
+mmap_heap_malloc (unsigned long requested_length)
 {
-  unsigned long ps = (UX_getpagesize ());
+  unsigned long min_result = MMAP_BASE_ADDRESS;
+  unsigned long max_result = (1UL << DATUM_LENGTH);
+  unsigned long request;
+  unsigned long search_result;
+  void * result;
+
+  {
+    unsigned long ps = (UX_getpagesize ());
+    request = (((requested_length + (ps - 1)) / ps) * ps);
+  }
+  switch (find_suitable_address (request,
+				 min_result,
+				 max_result,
+				 (&search_result)))
+    {
+    case fsa_good_address:
+      result = (mmap_heap_malloc_1 (search_result, request, true));
+      break;
+
+    case fsa_no_address:
+      result = 0;
+      break;
+
+    default:
+      result = (mmap_heap_malloc_1 (min_result, request, false));
+      break;
+    }
+  if (result != 0)
+    {
+      if ((((unsigned long) result) >= min_result)
+	  && ((((unsigned long) result) + request) <= max_result))
+	{
+#ifdef VALGRIND_MODE
+	  VALGRIND_MALLOCLIKE_BLOCK (result, request, 0, 0);
+#endif
+	  return (result);
+	}
+      munmap (result, request);
+    }
+  return (OS_malloc (requested_length));
+}
+
+static void *
+mmap_heap_malloc_1 (unsigned long address, unsigned long request, int fixedp)
+{
   void * addr
-    = (mmap (((void *) MMAP_BASE_ADDRESS),
-	     (((requested_length + (ps - 1)) / ps) * ps),
+    = (mmap (((void *) address),
+	     request,
 	     (PROT_EXEC | PROT_READ | PROT_WRITE),
 	     (MAP_PRIVATE | MAP_ANONYMOUS | (fixedp ? MAP_FIXED : 0)),
 	     /* Ignored by GNU/Linux, required by FreeBSD and Solaris.  */
@@ -681,17 +742,59 @@ mmap_heap_malloc_1 (unsigned long requested_length, int fixedp)
   return ((addr == MAP_FAILED) ? 0 : addr);
 }
 
-void *
-mmap_heap_malloc (unsigned long requested_length)
+static fsa_status_t
+find_suitable_address (unsigned long n_bytes,
+		       unsigned long lower_limit,
+		       unsigned long upper_limit,
+		       unsigned long * addr_r)
 {
-  void * addr = (mmap_heap_malloc_1 (requested_length, 1));
-  if (addr == 0)
-    /* Can't get exact address; try for something nearby.  */
-    addr = (mmap_heap_malloc_1 (requested_length, 0));
-  if (addr == 0)
-    /* mmap not returning anything useful.  */
-    addr = (UX_malloc (requested_length));
-  return (addr);
+  char fn [64];
+  FILE * s;
+  unsigned long start = lower_limit;
+
+  sprintf (fn, "/proc/%d/maps", (getpid ()));
+  s = (fopen (fn, "r"));
+  if (s == 0)
+    return (fsa_no_proc);
+
+  while ((start + n_bytes) <= upper_limit)
+    {
+      unsigned long end;
+      unsigned long next_start;
+      int rc = (fscanf (s, "%lx-%lx ", (&end), (&next_start)));
+      if (rc == EOF)
+	{
+	  fclose (s);
+	  return (fsa_no_address);
+	}
+      if (! ((rc == 2) && (end <= next_start) && (discard_line (s))))
+	{
+	  fclose (s);
+	  return (fsa_no_proc);
+	}
+      if ((start + n_bytes) <= end)
+	{
+	  (*addr_r) = start;
+	  fclose (s);
+	  return (fsa_good_address);
+	}
+      start = next_start;
+    }
+  fclose (s);
+  return (fsa_no_address);
 }
 
-#endif /* USE_MMAP_HEAP_MALLOC */
+static int
+discard_line (FILE * s)
+{
+  while (1)
+    {
+      int c = (fgetc (s));
+      if (c == EOF)
+	return (0);
+      if (c == '\n')
+	return (1);
+    }
+}
+
+#endif /* USE_MMAP_HEAP_MALLOC && HEAP_IN_LOW_MEMORY */

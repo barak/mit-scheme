@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sgraph_a.c,v 1.18 2003/02/14 18:28:23 cph Exp $
+$Id: sgraph_a.c,v 1.19 2004/11/21 04:18:52 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -63,7 +63,7 @@ arg_plotting_box (arg_number, plotting_box)
       }
       TOUCH_IN_PRIMITIVE ((PAIR_CDR (object)), object);
     }
-  if (object != EMPTY_LIST)
+  if (!EMPTY_LIST_P (object))
     error_wrong_type_arg (arg_number);
   return;
 }
@@ -323,7 +323,7 @@ DEFINE_PRIMITIVE ("POLYGON2D", Prim_polygon2d, 2,2, 0)
       error_bad_range_arg (2);
     TOUCH_IN_PRIMITIVE ((PAIR_CDR (object)), object);
   }
-  if (object != EMPTY_LIST)
+  if (!EMPTY_LIST_P (object))
     error_wrong_type_arg (2);
 
   (clist [count]) = (clist [0]);

@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.116 2003/07/22 02:19:51 cph Exp $
+$Id: boot.c,v 9.118 2005/01/01 05:43:57 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,7 +44,6 @@ extern void EXFUN (Setup_Memory, (int, int, int));
 extern void EXFUN (compiler_initialize, (long fasl_p));
 extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
 extern void EXFUN (OS_announcement, (void));
-extern SCHEME_OBJECT EXFUN (char_pointer_to_symbol, (unsigned char *));
 
 static void EXFUN (Start_Scheme, (int, CONST char *));
 static void EXFUN (Enter_Interpreter, (void));
@@ -708,17 +707,18 @@ DEFINE_PRIMITIVE ("RELOAD-SAVE-STRING", Prim_reload_save_string, 1, 1, 0)
       CHECK_ARG (1, STRING_P);
       {
 	unsigned int length = (STRING_LENGTH (ARG_REF (1)));
-	reload_saved_string = (malloc (length));
-	if (reload_saved_string == 0)
-	  error_external_return ();
-	reload_saved_string_length = length;
-	{
-	  char * scan = ((char *) (STRING_LOC ((ARG_REF (1)), 0)));
-	  char * end = (scan + length);
-	  char * scan_result = reload_saved_string;
-	  while (scan < end)
-	    (*scan_result++) = (*scan++);
-	}
+	if (length > 0)
+	  {
+	    reload_saved_string = (OS_malloc (length));
+	    reload_saved_string_length = length;
+	    {
+	      char * scan = ((char *) (STRING_LOC ((ARG_REF (1)), 0)));
+	      char * end = (scan + length);
+	      char * scan_result = reload_saved_string;
+	      while (scan < end)
+		(*scan_result++) = (*scan++);
+	    }
+	  }
       }
     }
   PRIMITIVE_RETURN (UNSPECIFIC);

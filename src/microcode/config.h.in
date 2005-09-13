@@ -2,7 +2,7 @@
 
 /*
 
-Copyright 2000,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,6 +43,9 @@ USA.
 
 /* Define to 1 if you have the <curses.h> header file. */
 #undef HAVE_CURSES_H
+
+/* Define to 1 if you have the <db.h> header file. */
+#undef HAVE_DB_H
 
 /* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
    */
@@ -99,6 +102,9 @@ USA.
 /* Define to 1 if you have the `getpgrp' function. */
 #undef HAVE_GETPGRP
 
+/* Define to 1 if you have the `getpt' function. */
+#undef HAVE_GETPT
+
 /* Define to 1 if you have the `gettimeofday' function. */
 #undef HAVE_GETTIMEOFDAY
 
@@ -126,6 +132,9 @@ USA.
 /* Define if curses library is present. */
 #undef HAVE_LIBCURSES
 
+/* Define if db4 library is present. */
+#undef HAVE_LIBDB4
+
 /* Define to 1 if you have the `dl' library (-ldl). */
 #undef HAVE_LIBDL
 
@@ -149,6 +158,9 @@ USA.
 
 /* Define if PostgreSQL libpq library is present. */
 #undef HAVE_LIBPQ
+
+/* Define to 1 if you have the <libpq-fe.h> header file. */
+#undef HAVE_LIBPQ_FE_H
 
 /* Define if termcap library is present. */
 #undef HAVE_LIBTERMCAP
@@ -206,9 +218,6 @@ USA.
 
 /* Define to 1 if you have the `poll' function. */
 #undef HAVE_POLL
-
-/* Define to 1 if you have the <postgresql/libpq-fe.h> header file. */
-#undef HAVE_POSTGRESQL_LIBPQ_FE_H
 
 /* Define to 1 if you have the `prealloc' function. */
 #undef HAVE_PREALLOC
@@ -438,6 +447,9 @@ USA.
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
+/* Define to 1 if the C compiler supports function prototypes. */
+#undef PROTOTYPES
+
 /* Define as the return type of signal handlers (`int' or `void'). */
 #undef RETSIGTYPE
 
@@ -481,6 +493,9 @@ USA.
 #ifndef __CHAR_UNSIGNED__
 # undef __CHAR_UNSIGNED__
 #endif
+
+/* Define like PROTOTYPES; this can be used by system headers. */
+#undef __PROTOTYPES
 
 /* Define to `unsigned char' if <termios.h> doesn't define. */
 #undef cc_t

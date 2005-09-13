@@ -1,0 +1,3 @@
+@node Binding Index, Concept Index, GNU Free Documentation License, Top
+@appendix Binding Index
+@printindex fn

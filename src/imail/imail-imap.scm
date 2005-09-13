@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.200 2003/09/19 03:26:50 cph Exp $
+$Id: imail-imap.scm,v 1.203 2004/12/07 07:25:26 cph Exp $
 
-Copyright 1999,2000,2001,2003 Massachusetts Institute of Technology
+Copyright 1999,2000,2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -580,9 +580,8 @@ USA.
       (let ((url (imap-connection-url connection)))
 	(let ((port
 	       (open-tcp-stream-socket (imap-url-host url)
-				       (or (imap-url-port url) "imap2")
-				       #f
-				       "\n")))
+				       (or (imap-url-port url) "imap2"))))
+	  (port/set-line-ending port 'NEWLINE)
 	  (let ((response
 		 (imap:catch-no-response #f
 		   (lambda ()
@@ -1331,17 +1330,21 @@ USA.
   (error "Unrecognized MIME bodystructure:" body))
 
 (define (parse-mime-parameters parameters)
-  (let ((lose (lambda () (error "Malformed MIME parameters:" parameters))))
-    (let loop ((parameters parameters) (alist '()))
-      (if (pair? parameters)
-	  (if (pair? (cdr parameters))
-	      (loop (cddr parameters)
-		    (cons (cons (intern (car parameters)) (cadr parameters))
-			  alist))
-	      (lose))
-	  (if (null? parameters)
-	      (reverse! alist)
-	      (lose))))))
+  (if parameters
+      (let ((lose
+	     (lambda () (error "Malformed MIME parameters:" parameters))))
+	(let loop ((parameters parameters) (alist '()))
+	  (if (pair? parameters)
+	      (if (pair? (cdr parameters))
+		  (loop (cddr parameters)
+			(cons (cons (intern (car parameters))
+				    (cadr parameters))
+			      alist))
+		  (lose))
+	      (if (null? parameters)
+		  (reverse! alist)
+		  (lose)))))
+      '()))
 
 (define (parse-mime-disposition disposition)
   (and disposition
@@ -1741,17 +1744,17 @@ USA.
       (write-string string port))))
 
 (define (file->string pathname)
-  (call-with-input-file pathname
+  (call-with-output-string
     (lambda (port)
-      ((input-port/custom-operation port 'REST->STRING) port))))
+      (file->port pathname port))))
 
 (define (file->port pathname output-port)
   (call-with-input-file pathname
     (lambda (input-port)
-      (let ((buffer (make-string 4096)))
+      (let ((buffer (make-string #x1000)))
 	(let loop ()
 	  (let ((n (read-string! buffer input-port)))
-	    (if (> n 0)
+	    (if (fix:> n 0)
 		(begin
 		  (write-substring buffer 0 n output-port)
 		  (loop)))))))))

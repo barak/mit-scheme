@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.40 2003/09/16 04:32:59 cph Exp $
+$Id: xml-parser.scm,v 1.64 2004/10/12 23:20:58 cph Exp $
 
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -72,11 +72,8 @@ USA.
     (*parser
      (alt (sbracket description "\"" "\"" (match (* (alphabet a1))))
 	  (sbracket description "'" "'" (match (* (alphabet a2))))))))
-
-(define (simple-attribute-value? v)
-  (and (pair? v)
-       (string? (car v))
-       (null? (cdr v))))
+
+;;;; Entry points
 
 (define (read-xml-file pathname #!optional pi-handlers)
   (call-with-input-file pathname
@@ -84,53 +81,161 @@ USA.
       (read-xml port (if (default-object? pi-handlers) '() pi-handlers)))))
 
 (define (read-xml port #!optional pi-handlers)
-  (parse-xml-document (input-port->parser-buffer port)
-		      (if (default-object? pi-handlers) '() pi-handlers)))
+  (let ((coding (determine-coding port)))
+    (parse-xml (input-port->parser-buffer port)
+	       coding
+	       (if (default-object? pi-handlers)
+		   '()
+		   (begin
+		     (guarantee-pi-handlers pi-handlers 'READ-XML)
+		     pi-handlers)))))
 
-(define (string->xml string #!optional pi-handlers)
-  (parse-xml-document (string->parser-buffer string)
-		      (if (default-object? pi-handlers) '() pi-handlers)))
+(define (string->xml string #!optional start end pi-handlers)
+  (parse-xml (string->parser-buffer string
+				    (if (default-object? start) #f start)
+				    (if (default-object? end) #f end))
+	     (if (string? string)
+		 'ISO-8859-1
+		 'ANY)
+	     (if (default-object? pi-handlers)
+		 '()
+		 (begin
+		   (guarantee-pi-handlers pi-handlers 'STRING->XML)
+		   pi-handlers))))
 
-(define (substring->xml string start end #!optional pi-handlers)
-  (parse-xml-document (substring->parser-buffer string start end)
-		      (if (default-object? pi-handlers) '() pi-handlers)))
+(define (guarantee-pi-handlers object caller)
+  (if (not (list-of-type? object
+	     (lambda (entry)
+	       (and (pair? entry)
+		    (symbol? (car entry))
+		    (pair? (cdr entry))
+		    (procedure? (cadr entry))
+		    (procedure-arity-valid? (cadr entry) 1)
+		    (null? (cddr entry))))))
+      (error:wrong-type-argument object "handler alist" caller)))
+
+;;;; Character coding
+
+(define (determine-coding port)
+  (port/set-coding port 'ISO-8859-1)
+  (port/set-line-ending port 'XML-1.0)
+  (receive (coding name char) (determine-coding-1 port)
+    (if coding (port/set-coding port coding))
+    (if char (unread-char char port))
+    name))
+
+(define (determine-coding-1 port)
+  (let ((rc
+	 (lambda ()
+	   (let ((c (read-char port)))
+	     (if (eof-object? c)
+		 (error "EOF while determining char coding."))
+	     c)))
+	(lose
+	 (lambda chars
+	   (error "Illegal starting bytes:" (map char->integer chars)))))
+    (let ((c0 (rc)))
+      (case c0
+	((#\U+00)
+	 (let* ((c1 (rc))
+		(c2 (rc))
+		(c3 (rc)))
+	   (if (and (char=? c1 #\U+00)
+		    (char=? c2 #\U+FE)
+		    (char=? c3 #\U+FF))
+	       (values 'UTF-32BE 'UTF-32 #f)
+	       (lose c0 c1 c2 c3))))
+	((#\U+EF)
+	 (let* ((c1 (rc))
+		(c2 (rc)))
+	   (if (and (char=? c1 #\U+BB) (char=? c2 #\U+BF))
+	       (values 'UTF-8 'UTF-8 #f)
+	       (lose c0 c1 c2))))
+	((#\U+FE)
+	 (let ((c1 (rc)))
+	   (if (char=? c1 #\U+FF)
+	       (values 'UTF-16BE 'UTF-16 #f)
+	       (lose c0 c1))))
+	((#\U+FF)
+	 (let* ((c1 (rc))
+		(c2 (rc))
+		(c3 (rc)))
+	   (if (char=? c1 #\U+FE)
+	       (if (and (char=? c2 #\U+00) (char=? c3 #\U+00))
+		   (values 'UTF-32LE 'UTF-32 #f)
+		   (values 'UTF-16LE
+			   'UTF-16
+			   (wide-string-ref
+			    (utf16-le-string->wide-string (string c2 c3))
+			    0)))
+	       (lose c0 c1 c2 c3))))
+	((#\U+3C)
+	 (values #f 'NO-BOM #\<))
+	(else
+	 (values 'UTF-8 'UTF-8 c0))))))
+
+(define (finish-coding buffer coding declaration)
+  (let ((port (parser-buffer-port buffer)))
+    (if port
+	(let* ((declared (normalize-coding port declaration))
+	       (lose
+		(lambda ()
+		  (error "Incorrect encoding declaration:" declared))))
+	  (case coding
+	    ((UTF-8 UTF-16)
+	     (if (not (or (not declared) (eq? declared coding)))
+		 (lose)))
+	    ((UTF-32)
+	     (if (not (eq? declared coding))
+		 (lose)))
+	    ((NO-BOM)
+	     (if (coding-requires-bom? declared)
+		 (lose))
+	     (port/set-coding port (or declared 'UTF-8)))
+	    ((ANY) unspecific)
+	    (else (error:bad-range-argument coding #f)))))))
+
+(define (normalize-coding port declaration)
+  (let ((coding
+	 (and declaration
+	      (let ((coding (xml-declaration-encoding declaration)))
+		(and coding
+		     (intern coding))))))
+    (if (and coding
+	     (not (port/known-coding? port coding))
+	     (port/supports-coding? port))
+	(error:bad-range-argument coding #f))
+    coding))
+
+(define (coding-requires-bom? coding)
+  (memq coding '(UTF-16 UTF-16BE UTF-16LE UTF-32 UTF-32BE UTF-32LE)))
 
 ;;;; Top level
 
-(define (parse-xml-document buffer #!optional pi-handlers) ;[1,22]
-  (if (not (parser-buffer? buffer))
-      (error:wrong-type-argument buffer "parser buffer" 'PARSE-XML-DOCUMENT))
-  (let ((pi-handlers (if (default-object? pi-handlers) '() pi-handlers)))
-    (if (not (list-of-type? pi-handlers
-	       (lambda (entry)
-		 (and (pair? entry)
-		      (symbol? (car entry))
-		      (pair? (cdr entry))
-		      (procedure? (cadr entry))
-		      (procedure-arity-valid? (cadr entry) 1)
-		      (null? (cddr entry))))))
-	(error:wrong-type-argument pi-handlers "handler alist"
-				   'PARSE-XML-DOCUMENT))
-    (let ((one-value (lambda (v) (and v (vector-ref v 0)))))
-      (fluid-let ((*general-entities* (predefined-entities))
-		  (*standalone?*)
-		  (*internal-dtd?* #t)
-		  (*elt-decls* '())
-		  (*att-decls* '())
-		  (*pi-handlers* pi-handlers)
-		  (*in-dtd?* #f)
-		  (*prefix-bindings* '()))
-	(let ((declaration (one-value (parse-declaration buffer))))
-	  (set! *standalone?*
-		(and declaration
-		     (equal? (xml-declaration-standalone declaration)
-			     "yes")))
-	  (let* ((misc-1 (one-value (parse-misc buffer)))
-		 (dtd
-		  (one-value
-		   (fluid-let ((*in-dtd?* #t))
-		     (parse-dtd buffer))))
-		 (misc-2 (if dtd (one-value (parse-misc buffer)) '()))
+(define (parse-xml buffer coding pi-handlers) ;[1,22]
+  (let ((one-value (lambda (v) (and v (vector-ref v 0)))))
+    (fluid-let ((*general-entities* (predefined-entities))
+		(*standalone?*)
+		(*internal-dtd?* #t)
+		(*elt-decls* '())
+		(*att-decls* '())
+		(*pi-handlers* pi-handlers)
+		(*in-dtd?* #f)
+		(*prefix-bindings* '()))
+      (let ((declaration (one-value (parse-declaration buffer))))
+	(set! *standalone?*
+	      (and declaration
+		   (equal? (xml-declaration-standalone declaration)
+			   "yes")))
+	(finish-coding buffer coding declaration)
+	(let* ((misc-1 (one-value (parse-misc buffer)))
+	       (dtd
+		(one-value
+		 (fluid-let ((*in-dtd?* #t))
+		   (parse-dtd buffer)))))
+	  (if (html-dtd? dtd)
+	      (add-html-entities!))
+	  (let* ((misc-2 (if dtd (one-value (parse-misc buffer)) '()))
 		 (element
 		  (or (one-value (parse-element buffer))
 		      (perror buffer "Missing root element")))
@@ -148,9 +253,12 @@ USA.
 (define *internal-dtd?*)
 (define *elt-decls*)
 (define *att-decls*)
-(define *pi-handlers*)
+(define *pi-handlers* '())
 (define *in-dtd?*)
 (define *prefix-bindings*)
+
+(define (xml-processing-instructions-handlers)
+  *pi-handlers*)
 
 (define parse-misc			;[27]
   (*parser
@@ -181,10 +289,6 @@ USA.
   (xml-declaration-parser "XML text declaration" #t))
 
 (define (transform-declaration attributes text-decl? p)
-  (if (not (for-all? attributes
-	     (lambda (attribute)
-	       (simple-attribute-value? (cdr attribute)))))
-      (perror p "XML declaration can't contain entity refs" attributes))
   (let ((finish
 	 (lambda (version encoding standalone)
 	   (if (and (not text-decl?) (not version))
@@ -211,10 +315,10 @@ USA.
 	 (results '()))
       (if (pair? names)
 	  (if (pair? attributes)
-	      (if (eq? (caar attributes) (car names))
+	      (if (eq? (xml-attribute-name (car attributes)) (car names))
 		  (loop (cdr attributes)
 			(cdr names)
-			(cons (cadar attributes) results))
+			(cons (xml-attribute-value (car attributes)) results))
 		  (loop attributes
 			(cdr names)
 			(cons #f results)))
@@ -242,65 +346,57 @@ USA.
 
 ;;;; Elements
 
-(define (parse-element buffer)		;[39]
-  (let ((p (get-parser-buffer-pointer buffer)))
+(define (parse-element b)		;[39]
+  (let ((p (get-parser-buffer-pointer b)))
     (fluid-let ((*prefix-bindings* *prefix-bindings*))
-      (let ((v (parse-start-tag buffer)))
+      (let ((v (parse-start-tag b)))
 	(and v
-	     (vector
-	      (make-xml-element
-	       (vector-ref v 0)
-	       (vector-ref v 1)
-	       (if (string=? (vector-ref v 2) ">")
-		   (let loop ((elements '#()))
-		     (let ((v* (parse-end-tag buffer)))
-		       (if v*
-			   (begin
-			     (if (not (eq? (vector-ref v 0) (vector-ref v* 0)))
-				 (perror p "Mismatched start tag"
-					 (vector-ref v 0) (vector-ref v* 0)))
-			     (let ((contents
-				    (coalesce-strings!
-				     (delete-matching-items!
-					 (vector->list elements)
-				       (lambda (element)
-					 (and (string? element)
-					      (string-null? element)))))))
-			       (if (null? contents)
-				   ;; Preserve fact that this element
-				   ;; was formed by a start/end tag pair
-				   ;; rather than by an empty-element
-				   ;; tag.
-				   (list "")
-				   contents)))
-			   (let ((v* (parse-content buffer)))
-			     (if (not v*)
-				 (perror p "Unterminated start tag"
-					 (vector-ref v 0)))
-			     (if (equal? v* '#(""))
-				 (perror p "Unknown content"))
-			     (loop (vector-append elements v*))))))
-		   '()))))))))
+	     (begin
+	       (namespace-processing! v p)
+	       (vector (let ((name (vector-ref v 0)))
+			 (make-xml-element name
+					   (vector-ref v 1)
+					   (if (string=? (vector-ref v 2) ">")
+					       (parse-element-content b p name)
+					       '()))))))))))
 
 (define parse-start-tag			;[40,44]
   (*parser
    (top-level
-    (with-pointer p
-      (transform (lambda (v)
-		   (let* ((name (vector-ref v 0))
-			  (attributes
-			   (process-attr-decls name (vector-ref v 1) p)))
-		     (process-namespace-decls attributes)
-		     (vector (intern-element-name name)
-			     (map (lambda (attr)
-				    (cons (intern-attribute-name (car attr))
-					  (cdr attr)))
-				  attributes)
-			     (vector-ref v 2))))
-	(bracket "start tag"
-	    (seq "<" parse-uninterned-name)
-	    (match (alt ">" "/>"))
-	  parse-attribute-list))))))
+    (bracket "start tag"
+	(seq "<" parse-unexpanded-name)
+	(match (alt ">" "/>"))
+      parse-attribute-list))))
+
+(define (namespace-processing! v p)
+  (let* ((uname (vector-ref v 0))
+	 (attrs (process-attr-decls (car uname) (vector-ref v 1) p)))
+    (process-namespace-decls attrs)
+    (vector-set! v 0 (expand-element-name uname))
+    (for-each (lambda (attr)
+		(set-xml-attribute-name! attr
+					 (expand-attribute-name
+					  (xml-attribute-name attr))))
+	      attrs)))
+
+(define (parse-element-content b p name)
+  (let ((vc (parse-content b)))
+    (if (not vc)
+	(perror p "Unterminated start tag" name))
+    (let ((ve (parse-end-tag b)))
+      (if (not ve)
+	  (if (peek-parser-buffer-char b)
+	      (perror (get-parser-buffer-pointer b) "Unknown content")
+	      (perror p "Unterminated start tag" name)))
+      (if (not (xml-name=? (vector-ref ve 0) name))
+	  (perror p "Mismatched start tag" (vector-ref ve 0) name))
+      (let ((content (coalesce-strings! (vector->list vc))))
+	(if (null? content)
+	    ;; Preserve fact that this element was formed by a
+	    ;; start/end tag pair rather than by an empty
+	    ;; element tag.
+	    (list "")
+	    content)))))
 
 (define parse-end-tag			;[42]
   (*parser
@@ -321,98 +417,88 @@ USA.
 
 ;;;; Attribute defaulting
 
-(define (process-attr-decls name attributes p)
+(define (process-attr-decls qname attrs p)
   (let ((decl
 	 (and (or *standalone?* *internal-dtd?*)
 	      (find-matching-item *att-decls*
-		(let ((name (string->symbol (car name))))
-		  (lambda (decl)
-		    (eq? name (xml-!attlist-name decl))))))))
+		(lambda (decl)
+		  (xml-name=? (xml-!attlist-name decl) qname))))))
     (if decl
-	(let loop
-	    ((definitions (xml-!attlist-definitions decl))
-	     (attributes attributes))
-	  (if (pair? definitions)
-	      (loop (cdr definitions)
-		    (process-attr-defn (car definitions) attributes p))
-	      attributes))
-	attributes)))
+	(do ((defns (xml-!attlist-definitions decl) (cdr defns))
+	     (attrs attrs (process-attr-defn (car defns) attrs p)))
+	    ((not (pair? defns)) attrs))
+	attrs)))
 
-(define (process-attr-defn definition attributes p)
-  (let ((name (symbol-name (car definition)))
-	(type (cadr definition))
-	(default (caddr definition)))
-    (let ((attribute
-	   (find-matching-item attributes
-	     (lambda (attribute)
-	       (string=? name (caar attribute))))))
-      (if attribute
-	  (let ((av (cdr attribute)))
+(define (process-attr-defn defn attrs p)
+  (let ((qname (car defn))
+	(type (cadr defn))
+	(default (caddr defn)))
+    (let ((attr
+	   (find-matching-item attrs
+	     (lambda (attr)
+	       (xml-name=? (car (xml-attribute-name attr)) qname)))))
+      (if attr
+	  (let ((av (xml-attribute-value attr)))
 	    (if (and (pair? default)
 		     (eq? (car default) '|#FIXED|)
-		     (not (attribute-value=? av (cdr default))))
-		(perror (cdar attribute)
-			"Incorrect attribute value"
-			(string->symbol name)))
-	    (if (and (not (eq? type '|CDATA|))
-		     (simple-attribute-value? av))
-		(set-car! av (trim-attribute-whitespace (car av))))
-	    attributes)
+		     (not (string=? av (cdr default))))
+		(perror (cdar attr) "Incorrect attribute value" qname))
+	    (if (not (eq? type '|CDATA|))
+		(set-xml-attribute-value! attr (trim-attribute-whitespace av)))
+	    attrs)
 	  (begin
 	    (if (eq? default '|#REQUIRED|)
-		(perror p
-			"Missing required attribute value"
-			(string->symbol name)))
+		(perror p "Missing required attribute value" qname))
 	    (if (pair? default)
-		(cons (cons (cons name p) (cdr default))
-		      attributes)
-		attributes))))))
-
-(define (attribute-value=? v1 v2)
-  (and (boolean=? (pair? v1) (pair? v2))
-       (if (pair? v1)
-	   (and (let ((i1 (car v1))
-		      (i2 (car v2)))
-		  (cond ((string? i1)
-			 (and (string? i2)
-			      (string=? i1 i2)))
-			((xml-entity-ref? i1)
-			 (and (xml-entity-ref? i2)
-			      (eq? (xml-entity-ref-name i1)
-				   (xml-entity-ref-name i2))))
-			(else
-			 (error "Unknown attribute value item:" i1))))
-		(attribute-value=? (cdr v1) (cdr v2)))
-	   #t)))
+		(cons (%make-xml-attribute (cons qname p) (cdr default)) attrs)
+		attrs))))))
 
 ;;;; Other markup
 
 (define (bracketed-region-parser description start end)
-  (let ((parser (terminated-region-parser description alphabet:xml-char end)))
+  (let ((parser
+	 (terminated-region-parser description alphabet:xml-char #t end)))
     (*parser (sbracket description start end parser))))
 
-(define (terminated-region-parser description alphabet . ends)
-  (let ((matcher (apply terminated-region-matcher description alphabet ends)))
+(define (terminated-region-parser description alphabet must-match? end)
+  (let ((matcher
+	 (terminated-region-matcher description alphabet must-match? end)))
     (*parser (map normalize-line-endings (match matcher)))))
 
-(define (terminated-region-matcher description alphabet . ends)
+(define (terminated-region-matcher description alphabet must-match? . ends)
   description
   (lambda (buffer)
     (let loop ()
-      (if (and (not (there-exists? ends
-		      (lambda (end)
-			(match-parser-buffer-string-no-advance buffer
-							       end))))
-	       (match-utf8-char-in-alphabet buffer alphabet))
-	  (loop)
-	  #t))))
+      (cond ((there-exists? ends
+	       (lambda (end)
+		 (match-parser-buffer-string-no-advance buffer end)))
+	     #t)
+	    ((match-parser-buffer-char-in-alphabet buffer alphabet)
+	     (loop))
+	    (must-match?
+	     (let ((p (get-parser-buffer-pointer buffer))
+		   (c (peek-parser-buffer-char buffer)))
+	       (if c
+		   (perror p "Illegal character" c)
+		   (perror p "Unexpected EOF"))))
+	    (else #t)))))
 
 (define parse-char-data			;[14]
-  (terminated-region-parser "character data" alphabet:char-data "]]>"))
+  (let ((parse-body
+	 (terminated-region-parser "character data"
+				   alphabet:char-data
+				   #f
+				   "]]>")))
+    (*parser
+     (transform (lambda (v)
+		  (if (string-null? (vector-ref v 0))
+		      '#()
+		      v))
+       parse-body))))
 
 (define parse-comment			;[15]
   (let ((parse-body
-	 (terminated-region-parser "comment" alphabet:xml-char "--")))
+	 (terminated-region-parser "comment" alphabet:xml-char #t "--")))
     (*parser
      (encapsulate
 	 (lambda (v)
@@ -429,173 +515,150 @@ USA.
   (*parser (require-success "Malformed element name" parse-element-name)))
 
 (define parse-element-name
-  (*parser (map intern-element-name parse-uninterned-name)))
+  (*parser (map expand-element-name parse-unexpanded-name)))
 
 (define parse-attribute-name
-  (*parser (map intern-attribute-name parse-uninterned-name)))
+  (*parser (map expand-attribute-name parse-unexpanded-name)))
 
-(define parse-uninterned-name		;[5]
+(define parse-unexpanded-name		;[5]
   (*parser
    (with-pointer p
-     (map (lambda (s) (cons s p))
-	  (match (seq (? (seq match-name ":"))
-		      match-name))))))
+     (map (lambda (s) (cons (make-xml-qname s) p))
+	  (match match-name)))))
 
 (define (simple-name-parser type)
   (let ((m (string-append "Malformed " type " name")))
-    (*parser (require-success m (map xml-intern (match match-name))))))
+    (*parser (require-success m (map make-xml-qname (match match-name))))))
 
 (define parse-entity-name (simple-name-parser "entity"))
 (define parse-pi-name (simple-name-parser "processing-instructions"))
 (define parse-notation-name (simple-name-parser "notation"))
 
 (define (match-name buffer)
-  (and (match-utf8-char-in-alphabet buffer alphabet:name-initial)
+  (and (match-parser-buffer-char-in-alphabet buffer alphabet:name-initial)
        (let loop ()
-	 (if (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
+	 (if (match-parser-buffer-char-in-alphabet buffer
+						   alphabet:name-subsequent)
 	     (loop)
 	     #t))))
 
 (define parse-required-name-token	;[7]
   (*parser
    (require-success "Malformed XML name token"
-     (map xml-intern (match match-name-token)))))
+     (map make-xml-nmtoken (match match-name-token)))))
 
 (define (match-name-token buffer)
-  (and (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
+  (and (match-parser-buffer-char-in-alphabet buffer alphabet:name-subsequent)
        (let loop ()
-	 (if (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
+	 (if (match-parser-buffer-char-in-alphabet buffer
+						   alphabet:name-subsequent)
 	     (loop)
 	     #t))))
 
-(define (process-namespace-decls attributes)
+;;;; Namespaces
+
+(define (process-namespace-decls attrs)
   (set! *prefix-bindings*
-	(let loop ((attributes attributes))
-	  (if (pair? attributes)
-	      (let ((name (caar attributes))
-		    (value (cdar attributes))
-		    (tail (loop (cdr attributes))))
-		(let ((s (car name))
-		      (pn (cdr name)))
-		  (let ((uri
-			 (lambda ()
-			   (if (not (simple-attribute-value? value))
-			       (perror pn "Illegal namespace URI" value))
-			   (if (string-null? (car value))
-			       #f	;xmlns=""
-			       (car value))))
-			(forbidden-uri
-			 (lambda (uri)
-			   (perror pn "Forbidden namespace URI" uri))))
-		    (let ((guarantee-legal-uri
-			   (lambda (uri)
-			     (if (and uri
-				      (or (string=? uri xml-uri)
-					  (string=? uri xmlns-uri)))
-				 (forbidden-uri uri)))))
-		      (cond ((string=? "xmlns" s)
-			     (let ((uri (uri)))
-			       (guarantee-legal-uri uri)
-			       (cons (cons #f uri) tail)))
-			    ((string-prefix? "xmlns:" s)
-			     (if (string=? "xmlns:xmlns" s)
-				 (perror pn "Illegal namespace prefix" s))
-			     (let ((uri (uri)))
-			       (if (not uri) ;legal in XML 1.1
-				   (forbidden-uri ""))
-			       (if (string=? "xmlns:xml" s)
-				   (if (not (and uri (string=? uri xml-uri)))
-				       (forbidden-uri uri))
-				   (guarantee-legal-uri uri))
-			       (cons (cons (string->symbol (string-tail s 6))
-					   uri)
-				     tail)))
+	(let loop ((attrs attrs))
+	  (if (pair? attrs)
+	      (let ((uname (xml-attribute-name (car attrs)))
+		    (value (xml-attribute-value (car attrs)))
+		    (tail (loop (cdr attrs))))
+		(let ((qname (car uname))
+		      (p (cdr uname)))
+		  (let ((get-iri (lambda () (make-xml-namespace-iri value)))
+			(forbidden-iri
+			 (lambda (iri)
+			   (perror p "Forbidden namespace IRI" iri))))
+		    (let ((guarantee-legal-iri
+			   (lambda (iri)
+			     (if (or (eq? iri xml-iri)
+				     (eq? iri xmlns-iri))
+				 (forbidden-iri iri)))))
+		      (cond ((xml-name=? qname 'xmlns)
+			     (let ((iri (get-iri)))
+			       (guarantee-legal-iri iri)
+			       (cons (cons (null-xml-name-prefix) iri) tail)))
+			    ((xml-name-prefix=? qname 'xmlns)
+			     (if (xml-name=? qname 'xmlns:xmlns)
+				 (perror p "Illegal namespace prefix" qname))
+			     (let ((iri (get-iri)))
+			       (if (xml-name=? qname 'xmlns:xml)
+				   (if (not (eq? iri xml-iri))
+				       (forbidden-iri iri))
+				   (guarantee-legal-iri iri))
+			       (cons (cons (xml-name-local qname) iri) tail)))
 			    (else tail))))))
 	      *prefix-bindings*)))
   unspecific)
 
-(define (intern-element-name n) (intern-name n #t))
-(define (intern-attribute-name n) (intern-name n #f))
+(define (expand-element-name uname) (expand-name uname #f))
+(define (expand-attribute-name uname) (expand-name uname #t))
 
-(define (intern-name n element-name?)
-  (let ((s (car n))
-	(p (cdr n)))
-    (let ((simple (string->symbol s))
-	  (c (string-find-next-char s #\:)))
-      (let ((uri
-	     (and (not *in-dtd?*)
-		  (or element-name? c)
-		  (let ((prefix (and c (string->symbol (string-head s c)))))
-		    (case prefix
-		      ((xmlns) xmlns-uri)
-		      ((xml) xml-uri)
-		      (else
-		       (let ((entry (assq prefix *prefix-bindings*)))
-			 (if entry
-			     (cdr entry)
-			     (begin
-			       (if prefix
-				   (perror p "Unknown XML prefix" prefix))
-			       #f)))))))))
-	(if uri
-	    (%make-xml-name simple
-			    (string->symbol uri)
-			    (if c
-				(string->symbol (string-tail s (fix:+ c 1)))
-				simple))
-	    simple)))))
+(define (expand-name uname attribute-name?)
+  (let ((qname (car uname))
+	(p (cdr uname)))
+    (if *in-dtd?*
+	qname
+	(let ((iri (lookup-namespace-prefix qname p attribute-name?)))
+	  (if (null-xml-namespace-iri? iri)
+	      qname
+	      (%make-xml-name qname iri))))))
 
-(define xml-uri "http://www.w3.org/XML/1998/namespace")
-(define xmlns-uri "http://www.w3.org/2000/xmlns/")
+(define (lookup-namespace-prefix qname p attribute-name?)
+  (let ((prefix (xml-qname-prefix qname)))
+    (cond ((eq? prefix 'xmlns)
+	   xmlns-iri)
+	  ((eq? prefix 'xml)
+	   xml-iri)
+	  ((and attribute-name?
+		(null-xml-name-prefix? prefix))
+	   (null-xml-namespace-iri))
+	  (else
+	   (let ((entry (assq prefix *prefix-bindings*)))
+	     (if entry
+		 (cdr entry)
+		 (begin
+		   (if (not (null-xml-name-prefix? prefix))
+		       (perror p "Undeclared XML prefix" prefix))
+		   (null-xml-namespace-iri))))))))
 
 ;;;; Processing instructions
 
-(define (pi-parser valid-content?) ;[16,17]
+(define (pi-parser valid-content-item?) ;[16,17]
   (let ((description "processing instructions")
 	(start "<?")
 	(end "?>"))
     (let ((parse-body
-	   (terminated-region-parser description alphabet:xml-char end)))
+	   (terminated-region-parser description alphabet:xml-char #t end)))
       (*parser
        (with-pointer p
 	 (transform
 	     (lambda (v)
 	       (let ((name (vector-ref v 0))
-		     (text
-		      (and (fix:= (vector-length v) 2)
-			   (vector-ref v 1))))
+		     (text (vector-ref v 1)))
 		 (if (string-ci=? (symbol-name name) "xml")
 		     (perror p "Reserved XML processor name" name))
-		 (if text
-		     (let ((entry (assq name *pi-handlers*)))
-		       (if entry
-			   (let ((content ((cadr entry) text)))
-			     (if (not (list-of-type? content valid-content?))
-				 (perror p
-					 "Illegal output from XML processor"
-					 name))
-			     (list->vector content))
-			   (vector
-			    (make-xml-processing-instructions name text))))
-		     (vector))))
+		 (let ((entry (assq name *pi-handlers*)))
+		   (if entry
+		       (let ((content ((cadr entry) text)))
+			 (if (not (list-of-type? content valid-content-item?))
+			     (perror p
+				     "Illegal output from XML processor"
+				     name))
+			 (list->vector content))
+		       (vector
+			(make-xml-processing-instructions name text))))))
 	   (sbracket description start end
 	     parse-pi-name
-	     (? (seq S parse-body)))))))))
+	     (alt (seq S parse-body)
+		  (values "")))))))))
 
 (define parse-pi:misc
-  (pi-parser
-   (lambda (object)
-     (or (string? object)
-	 (xml-comment? object)
-	 (xml-processing-instructions? object)))))
+  (pi-parser xml-misc-content-item?))
 
 (define parse-pi:element
-  (pi-parser
-   (lambda (object)
-     (or (string? object)
-	 (xml-element? object)
-	 (xml-comment? object)
-	 (xml-processing-instructions? object)))))
+  (pi-parser xml-content-item?))
 
 (define parse-pi:internal-markup-decl
   (pi-parser
@@ -642,9 +705,7 @@ USA.
 	(with-pointer p
 	  (transform
 	      (lambda (v)
-		(let ((name (vector-ref v 0)))
-		  (or (dereference-entity name #f p)
-		      (vector (make-xml-entity-ref name)))))
+		(dereference-entity (vector-ref v 0) #f p))
 	    parse-entity-reference-name)))))
 
 (define parse-reference-deferred
@@ -677,25 +738,29 @@ USA.
 
 ;;;; Attributes
 
-(define (attribute-list-parser parse-name)
+(define (attribute-list-parser parse-name name=?)
   (let ((parse-attribute (attribute-parser parse-name)))
     (*parser
      (with-pointer p
        (encapsulate
 	   (lambda (v)
-	     (let ((alist (vector->list v)))
-	       (do ((alist alist (cdr alist)))
-		   ((not (pair? alist)))
-		 (let ((entry (assq (caar alist) (cdr alist))))
-		   (if entry
-		       (perror p "Duplicate entry in attribute list"))))
-	       alist))
+	     (let ((attrs (vector->list v)))
+	       (do ((attrs attrs (cdr attrs)))
+		   ((not (pair? attrs)))
+		 (let ((name (xml-attribute-name (car attrs))))
+		   (if (there-exists? (cdr attrs)
+			 (lambda (attr)
+			   (name=? (xml-attribute-name attr) name)))
+		       (perror p "Attributes with same name" name))))
+	       attrs))
 	 (seq (* parse-attribute)
 	      S?))))))
 
 (define (attribute-parser parse-name)	;[41,25]
   (*parser
-   (encapsulate (lambda (v) (cons (vector-ref v 0) (vector-ref v 1)))
+   (encapsulate (lambda (v)
+		  (%make-xml-attribute (vector-ref v 0)
+				       (vector-ref v 1)))
      (seq S
 	  parse-name
 	  S?
@@ -703,21 +768,23 @@ USA.
 	  S?
 	  parse-attribute-value))))
 
-(define parse-declaration-attributes
-  (attribute-list-parser (*parser (map xml-intern (match match-name)))))
-
 (define parse-attribute-list
-  (attribute-list-parser parse-uninterned-name))
+  (attribute-list-parser parse-unexpanded-name
+			 (lambda (a b) (xml-name=? (car a) (car b)))))
 
+(define parse-declaration-attributes
+  (attribute-list-parser (*parser (map make-xml-qname (match match-name)))
+			 xml-name=?))
+
 (define (attribute-value-parser alphabet parse-reference)
   (let ((a1 (alphabet- alphabet (string->alphabet "\"")))
 	(a2 (alphabet- alphabet (string->alphabet "'"))))
     (*parser
      (encapsulate (lambda (v)
-		    (let ((elements (vector->list v)))
+		    (let ((elements (coalesce-strings! (vector->list v))))
 		      (if (null? elements)
 			  (list "")
-			  (coalesce-strings! elements))))
+			  elements)))
        (alt (sbracket "attribute value" "\"" "\""
 	      (* (alt (match (+ (alphabet a1)))
 		      parse-reference)))
@@ -748,62 +815,49 @@ USA.
 	 (attribute-value-parser alphabet:char-data
 				 parse-reference-deferred)))
     (*parser
-     (map normalize-attribute-value
-	  (require-success "Malformed attribute value"
-	    parser)))))
+     (map (lambda (elements)
+	    (if (not (and (pair? elements)
+			  (string? (car elements))
+			  (null? (cdr elements))))
+		(error "Uncoalesced attribute value:" elements))
+	    (normalize-attribute-value (car elements)))
+	  (require-success "Malformed attribute value" parser)))))
 
 ;;;; Normalization
 
-(define (normalize-attribute-value elements)
-  (coalesce-strings!
-   (reverse!
-    (let loop ((elements elements) (result '()))
-      (if (pair? elements)
-	  (let ((element (car elements))
-		(elements (cdr elements)))
-	    (if (string? element)
-		(let ((buffer
-		       (string->parser-buffer
-			(normalize-line-endings element))))
-		  (let normalize-string
-		      ((port (open-output-string))
-		       (result result))
-		    (let* ((p (get-parser-buffer-pointer buffer))
-			   (char (read-parser-buffer-char buffer)))
-		      (case char
-			((#f)
-			 (loop elements
-			       (cons (get-output-string port) result)))
-			((#\tab #\newline #\return)
-			 (write-char #\space port)
-			 (normalize-string port result))
-			((#\&)
-			 (set-parser-buffer-pointer! buffer p)
-			 (let ((v (parse-char-reference buffer)))
-			   (if v
-			       (begin
-				 (write-string (vector-ref v 0) port)
-				 (normalize-string port result))
-			       (normalize-string
-				(open-output-string)
-				(let ((name
-				       (vector-ref
-					(parse-entity-reference-name buffer)
-					0))
-				      (result
-				       (cons (get-output-string port) result)))
-				  (let ((v (dereference-entity name #t p)))
-				    (if v
-					(expand-entity-value name p
-					  (lambda ()
-					    (loop v result)))
-					(cons (make-xml-entity-ref name)
-					      result))))))))
-			(else
-			 (write-char char port)
-			 (normalize-string port result))))))
-		(loop elements (cons element result))))
-	  result)))))
+(define (normalize-attribute-value string)
+  (call-with-output-string
+    (lambda (port)
+      (let normalize-string ((string string))
+	(let ((b (string->parser-buffer (normalize-line-endings string))))
+	  (let loop ()
+	    (let* ((p (get-parser-buffer-pointer b))
+		   (char (read-parser-buffer-char b)))
+	      (case char
+		((#f)
+		 unspecific)
+		((#\tab #\newline #\return)
+		 (write-char #\space port)
+		 (loop))
+		((#\&)
+		 (set-parser-buffer-pointer! b p)
+		 (let ((v (parse-char-reference b)))
+		   (if v
+		       (begin
+			 (write-string (vector-ref v 0) port)
+			 (loop))
+		       (begin
+			 (let ((name
+				(vector-ref (parse-entity-reference-name b)
+					    0)))
+			   (let ((value (dereference-entity name #t p)))
+			     (expand-entity-value name p
+			       (lambda ()
+				 (normalize-string value)))))
+			 (loop)))))
+		(else
+		 (write-char char port)
+		 (loop))))))))))
 
 (define (trim-attribute-whitespace string)
   (call-with-output-string
@@ -892,7 +946,9 @@ USA.
 	      (let ((entity (find-parameter-entity name)))
 		(and entity
 		     (xml-parameter-!entity-value entity))))))
-    (if (simple-attribute-value? value)
+    (if (and (pair? value)
+	     (string? (car value))
+	     (null? (cdr value)))
 	(car value)
 	(begin
 	  (set! *parameter-entities* 'STOP)
@@ -910,29 +966,24 @@ USA.
 
 (define (dereference-entity name in-attribute? p)
   (if (eq? *general-entities* 'STOP)
-      #f
-      (begin
-	(if (assq name *entity-expansion-nesting*)
-	    (perror p "Circular entity reference" name))
-	(let ((entity (find-entity name)))
-	  (if entity
-	      (begin
-		(if (xml-unparsed-!entity? entity)
-		    (perror p "Reference to unparsed entity" name))
-		(let ((value (xml-!entity-value entity)))
-		  (cond ((xml-external-id? value) #f)
-			(in-attribute? value)
-			((simple-attribute-value? value)
-			 (reparse-entity-value-string name (car value) p))
-			(else
-			 (if (or *standalone?* *internal-dtd?*)
-			     (perror p "Reference to partially-defined entity"
-				     name))
-			 #f))))
-	      (begin
-		(if (or *standalone?* *internal-dtd?*)
-		    (perror p "Reference to undefined entity" name))
-		#f))))))
+      (perror p "Reference to externally-defined entity" name))
+  (if (assq name *entity-expansion-nesting*)
+      (perror p "Circular entity reference" name))
+  (let ((entity (find-entity name)))
+    (if (not entity)
+	(perror p "Reference to undefined entity" name))
+    (if (xml-unparsed-!entity? entity)
+	(perror p "Reference to unparsed entity" name))
+    (let ((value (xml-!entity-value entity)))
+      (if (xml-external-id? value)
+	  (perror p "Reference to external entity" name))
+      (if (not (and (pair? value)
+		    (string? (car value))
+		    (null? (cdr value))))
+	  (perror p "Reference to partially-defined entity" name))
+      (if in-attribute?
+	  (car value)
+	  (reparse-entity-value-string name (car value) p)))))
 
 (define (reparse-entity-value-string name string p)
   (let ((v
@@ -959,6 +1010,12 @@ USA.
 	     (car entities)
 	     (loop (cdr entities))))))
 
+(define (add-html-entities!)
+  (if (pair? *general-entities*)
+      (begin
+	(set! *general-entities* (append *general-entities* html-entities))
+	unspecific)))
+
 (define (predefined-entities)
   (list (make-xml-!entity 'lt '("&#60;"))
 	(make-xml-!entity 'gt '(">"))
@@ -969,10 +1026,10 @@ USA.
 (define *general-entities*)
 (define *entity-expansion-nesting* '())
 
-(define (make-external-id id uri p)
+(define (make-external-id id iri p)
   (if *standalone?*
       (perror p "Illegal external reference in standalone document"))
-  (make-xml-external-id id uri))
+  (make-xml-external-id id iri))
 
 ;;;; Document-type declarations
 
@@ -1074,8 +1131,8 @@ USA.
 	 parse-required-element-name
 	 S
 	 ;;[46]
-	 (alt (map xml-intern (match "EMPTY"))
-	      (map xml-intern (match "ANY"))
+	 (alt (map make-xml-qname (match "EMPTY"))
+	      (map make-xml-qname (match "ANY"))
 	      ;;[51]
 	      (encapsulate vector->list
 		(with-pointer p
@@ -1112,10 +1169,9 @@ USA.
 			(default (vector-ref v 2)))
 		    (list name type
 			  (if (and (not (eq? type '|CDATA|))
-				   (pair? default)
-				   (simple-attribute-value? (cdr default)))
-			      (list (car default)
-				    (trim-attribute-whitespace (cadr default)))
+				   (pair? default))
+			      (cons (car default)
+				    (trim-attribute-whitespace (cdr default)))
 			      default))))
 	      (seq S
 		   parse-attribute-name
@@ -1127,14 +1183,14 @@ USA.
 
 (define parse-!attlist-type		;[54,57]
   (*parser
-   (alt (map xml-intern
+   (alt (map make-xml-qname
 	     ;;[55,56]
 	     (match (alt "CDATA" "IDREFS" "IDREF" "ID"
 			 "ENTITY" "ENTITIES" "NMTOKENS" "NMTOKEN")))
 	;;[58]
 	(encapsulate vector->list
 	  (bracket "notation type"
-	      (seq (map xml-intern (match "NOTATION"))
+	      (seq (map make-xml-qname (match "NOTATION"))
 		   S
 		   "(")
 	      ")"
@@ -1343,7 +1399,7 @@ USA.
 		match-!ignore)))))
 
 (define match-!ignore			;[65]
-  (terminated-region-matcher "ignore section" alphabet:xml-char
+  (terminated-region-matcher "ignore section" alphabet:xml-char #t
 			     conditional-start conditional-end))
 
 (define parse-parameterized-conditional

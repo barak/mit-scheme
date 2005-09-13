@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: where.scm,v 14.13 2003/02/14 18:28:34 cph Exp $
+$Id: where.scm,v 14.14 2005/04/01 04:47:16 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,7 +42,7 @@ USA.
 	 command-set
 	 (cmdl-message/active
 	  (lambda (port)
-	    (show-current-frame wstate true port)
+	    (show-current-frame wstate #t port)
 	    (debugger-message
 	     port
 	     "You are now in the environment inspector.  Type q to quit, ? for commands.")))
@@ -83,7 +84,7 @@ USA.
 (define command-set)
 
 (define (show wstate port)
-  (show-current-frame wstate false port))
+  (show-current-frame wstate #f port))
 
 (define (show-current-frame wstate brief? port)
   (debugger-presentation port
@@ -99,31 +100,35 @@ USA.
 
 (define (parent wstate port)
   (let ((frame-list (wstate/frame-list wstate)))
-    (if (eq? true (environment-has-parent? (car frame-list)))
+    (if (eq? #t (environment-has-parent? (car frame-list)))
 	(begin
 	  (set-wstate/frame-list! wstate
 				  (cons (environment-parent (car frame-list))
 					frame-list))
-	  (show-current-frame wstate true port))
+	  (show-current-frame wstate #t port))
 	(debugger-failure port "The current frame has no parent"))))
 
 (define (son wstate port)
   (let ((frames (wstate/frame-list wstate)))
-    (if (null? (cdr frames))
-	(debugger-failure
-	 port
-	 "This is the original frame; its children cannot be found")
+    (if (pair? (cdr frames))
 	(begin
 	  (set-wstate/frame-list! wstate (cdr frames))
-	  (show-current-frame wstate true port)))))
+	  (show-current-frame wstate #t port))
+	(debugger-failure
+	 port
+	 "This is the original frame; its children cannot be found"))))
 
 (define (command/print-environment-procedure wstate port)
   (show-environment-procedure (car (wstate/frame-list wstate)) port))
 
 (define (recursive-where wstate port)
-  (let ((inp (prompt-for-expression "Object to evaluate and examine" port)))
-    (debugger-message port "New where!")
-    (debug/where (debug/eval inp (car (wstate/frame-list wstate))))))
+  (let ((environment (car (wstate/frame-list wstate))))
+    (let ((inp
+	   (prompt-for-expression "Object to evaluate and examine"
+				  port
+				  environment)))
+      (debugger-message port "New where!")
+      (debug/where (debug/eval inp environment)))))
 
 (define (enter wstate port)
   port

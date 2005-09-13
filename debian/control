@@ -2,8 +2,8 @@ Source: mit-scheme
 Section: devel
 Priority: optional
 Maintainer: Chris Hanson <cph@debian.org>
-Build-Depends: debhelper (>= 4.0.0), m4, mit-scheme, autotools-dev, libssl-dev, libmhash-dev, libmcrypt-dev, libgdbm-dev, postgresql-dev, libncurses5-dev, libx11-dev, tetex-bin, tetex-extra, texi2html, texinfo
-Standards-Version: 3.6.1
+Build-Depends: debhelper (>= 4.0.0), m4, mit-scheme, autotools-dev, libssl-dev, libmhash-dev, libmcrypt-dev, libgdbm-dev, libpq-dev, libncurses5-dev, libx11-dev, tetex-bin, tetex-extra, texinfo
+Standards-Version: 3.6.2
 
 Package: mit-scheme
 Architecture: i386

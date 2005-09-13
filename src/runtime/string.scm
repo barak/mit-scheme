@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.53 2003/02/26 00:24:29 cph Exp $
+$Id: string.scm,v 14.58 2005/01/07 15:10:23 cph Exp $
 
 Copyright 1986,1987,1988,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -102,6 +102,9 @@ USA.
 	  (%substring-fill! result 0 length char)
 	  result))))
 
+(define (make-vector-8b length #!optional ascii)
+  (make-string length (if (default-object? ascii) ascii (ascii->char ascii))))
+
 (define (string-fill! string char)
   (guarantee-string string 'STRING-FILL!)
   (guarantee-char char 'STRING-FILL!)
@@ -152,6 +155,8 @@ USA.
 	  (begin
 	    (if (not (char? (car chars)))
 		(error:wrong-type-datum (car chars) "character"))
+	    (if (not (fix:< (char->integer (car chars)) #x100))
+		(error:not-8-bit-char (car chars)))
 	    (string-set! result index (car chars))
 	    (loop (cdr chars) (fix:+ index 1)))
 	  result))))
@@ -398,6 +403,43 @@ USA.
       (let ((char (string-ref string j)))
 	(string-set! string j (string-ref string i))
 	(string-set! string i char)))))
+
+(define (vector-8b->hexadecimal bytes)
+  (define-integrable (hex-char k)
+    (string-ref "0123456789abcdef" (fix:and k #x0F)))
+  (guarantee-string bytes 'VECTOR-8B->HEXADECIMAL)
+  (let ((n (vector-8b-length bytes)))
+    (let ((s (make-string (fix:* 2 n))))
+      (do ((i 0 (fix:+ i 1))
+	   (j 0 (fix:+ j 2)))
+	  ((not (fix:< i n)))
+	(string-set! s j (hex-char (fix:lsh (vector-8b-ref bytes i) -4)))
+	(string-set! s (fix:+ j 1) (hex-char (vector-8b-ref bytes i))))
+      s)))
+
+(define (hexadecimal->vector-8b string)
+  (guarantee-string string 'HEXADECIMAL->VECTOR-8B)
+  (let ((end (string-length string))
+	(lose
+	 (lambda ()
+	   (error:bad-range-argument string 'HEXADECIMAL->VECTOR-8B))))
+    (define-integrable (hex-digit char)
+      (let ((d
+	     (fix:- (char->integer char)
+		    (char->integer #\0))))
+	(if (not (and (fix:<= 0 d) (fix:< d 16)))
+	    (lose))
+	d))
+    (if (not (fix:= (fix:and end 1) 0))
+	(lose))
+    (let ((bytes (make-vector-8b (fix:lsh end -1))))
+      (do ((i 0 (fix:+ i 2))
+	   (j 0 (fix:+ j 1)))
+	  ((not (fix:< i end)))
+	(vector-8b-set! bytes j
+			(fix:+ (fix:lsh (hex-digit (string-ref string i)) 4)
+			       (hex-digit (string-ref string (fix:+ i 1))))))
+      bytes)))
 
 ;;;; Case
 
@@ -1337,20 +1379,24 @@ USA.
 (define external-strings)
 (define (initialize-package!)
   (set! external-strings
-	(make-gc-finalizer (ucode-primitive deallocate-external-string)))
+	(make-gc-finalizer (ucode-primitive deallocate-external-string)
+			   external-string?
+			   external-string-descriptor
+			   set-external-string-descriptor!))
   unspecific)
 
 (define-structure external-string
-  (descriptor #f read-only #t)
+  descriptor
   (length #f read-only #t))
 
 (define (allocate-external-string n-bytes)
   (without-interrupts
    (lambda ()
-     (let ((descriptor ((ucode-primitive allocate-external-string) n-bytes)))
-       (let ((xstring (make-external-string descriptor n-bytes)))
-	 (add-to-gc-finalizer! external-strings xstring descriptor)
-	 xstring)))))
+     (add-to-gc-finalizer!
+      external-strings
+      (make-external-string
+       ((ucode-primitive allocate-external-string) n-bytes)
+       n-bytes)))))
 
 (define (xstring? object)
   (or (string? object)
@@ -1429,7 +1475,7 @@ USA.
   (guarantee-string-index start caller)
   (if (not (fix:<= start end))
       (error:bad-range-argument start caller))
-  end)
+  start)
 
 (define-integrable (guarantee-2-substrings string1 start1 end1
 					   string2 start2 end2

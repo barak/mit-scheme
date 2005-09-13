@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: uxterm.c,v 1.30 2003/02/14 18:28:24 cph Exp $
+$Id: uxterm.c,v 1.31 2004/01/18 06:04:49 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright 1991,1992,1993,1995,1997,2000 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -779,6 +780,10 @@ DEFUN (open_pty_master_bsd, (master_fd, master_fname),
   return (0);
 }
 
+#ifndef O_NOCTTY
+#  define O_NOCTTY 0
+#endif
+
 /* Open an available pty, putting channel in (*ptyv),
    and return the file name of the pty.
    Signal error if none available.  */
@@ -792,7 +797,11 @@ DEFUN (OS_open_pty_master, (master_fd, master_fname),
   while (1)
     {
       static char slave_name [24];
-      int fd = (UX_open ("/dev/ptmx", O_RDWR, 0));
+#ifdef HAVE_GETPT
+      int fd = (getpt ());
+#else
+      int fd = (UX_open ("/dev/ptmx", (O_RDWR | O_NOCTTY), 0));
+#endif
       if (fd < 0)
 	{
 	  if (errno == EINTR)

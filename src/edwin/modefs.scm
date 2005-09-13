@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: modefs.scm,v 1.164 2003/02/25 20:53:22 cph Exp $
+$Id: modefs.scm,v 1.166 2004/01/16 19:11:09 cph Exp $
 
 Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -132,7 +132,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\m-! 'shell-command)
 (define-key 'fundamental #\m-% 'query-replace)
 (define-key 'fundamental #\m-\' 'abbrev-prefix-mark)
-(define-key 'fundamental #\m-, 'tags-loop-continue)
+(define-key 'fundamental #\m-\, 'tags-loop-continue)
 (define-key 'fundamental #\m-- 'auto-argument)
 (define-key 'fundamental #\m-. 'find-tag)
 (define-key 'fundamental #\m-/ 'dabbrev-expand)
@@ -155,8 +155,8 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\m-\[ 'backward-paragraph)
 (define-key 'fundamental #\m-\\ 'delete-horizontal-space)
 (define-key 'fundamental #\m-\] 'forward-paragraph)
-(define-key 'fundamental #\m-( 'insert-parentheses)
-(define-key 'fundamental #\m-) 'move-past-close-and-reindent)
+(define-key 'fundamental #\m-\( 'insert-parentheses)
+(define-key 'fundamental #\m-\) 'move-past-close-and-reindent)
 (define-key 'fundamental #\m-^ 'delete-indentation)
 (define-key 'fundamental #\m-a 'backward-sentence)
 (define-key 'fundamental #\m-b 'backward-word)

@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.91 2003/04/14 19:56:18 cph Exp $
+$Id: make.scm,v 14.101 2005/08/05 20:04:19 cph Exp $
 
-Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
-Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
-Copyright (c) 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -99,8 +99,6 @@ USA.
 (define-integrable exit-with-value (ucode-primitive exit-with-value))
 (define-integrable file-exists? (ucode-primitive file-exists? 1))
 (define-integrable garbage-collect (ucode-primitive garbage-collect))
-(define-integrable get-next-constant (ucode-primitive get-next-constant))
-(define-integrable get-primitive-name (ucode-primitive get-primitive-name))
 (define-integrable lexical-reference (ucode-primitive lexical-reference))
 (define-integrable link-variables (ucode-primitive link-variables 4))
 (define-integrable microcode-identify (ucode-primitive microcode-identify))
@@ -117,9 +115,6 @@ USA.
 
 (define-integrable get-fixed-objects-vector
   (ucode-primitive get-fixed-objects-vector))
-
-(define-integrable get-primitive-address
-  (ucode-primitive get-primitive-address))
 
 (define-integrable lexical-unreferenceable?
   (ucode-primitive lexical-unreferenceable?))
@@ -153,7 +148,6 @@ USA.
 ;;;; GC, Interrupts, Errors
 
 (define safety-margin 4500)
-(define constant-space/base (get-next-constant))
 
 (let ((condition-handler/gc
        (lambda (interrupt-code interrupt-enables)
@@ -218,7 +212,7 @@ USA.
 
 (define (package-initialization-sequence specs)
   (let loop ((specs specs))
-    (if (not (null? specs))
+    (if (pair? specs)
 	(let ((spec (car specs)))
 	  (if (or (not (pair? spec))
 		  (symbol? (car spec)))
@@ -249,20 +243,12 @@ USA.
 	       bin-file)))))
 
 (define (file->object filename purify? optional?)
-  (let* ((block-name (string-append "runtime_" filename))
-	 (value (initialize-c-compiled-block block-name)))
-    (cond (value
-	   (tty-write-string newline-string)
-	   (tty-write-string block-name)
-	   (tty-write-string " initialized")
-	   (remember-to-purify purify? filename value))
-	  ((map-filename filename)
-	   => (lambda (mapped)
-		(fasload mapped purify?)))
-	  ((not optional?)
-	   (fatal-error (string-append "Could not find " filename)))
-	  (else
-	   #f))))
+  (cond ((map-filename filename)
+	 => (lambda (mapped)
+	      (fasload mapped purify?)))
+	((not optional?)
+	 (fatal-error (string-append "Could not find " filename)))
+	(else #f)))
 
 (define (eval object environment)
   (let ((value (scode-eval object environment)))
@@ -291,20 +277,8 @@ USA.
 (define (intern string)
   (string->symbol (string-downcase string)))
 
-(define (implemented-primitive-procedure? primitive)
-  (get-primitive-address (intern (get-primitive-name (object-datum primitive)))
-			 #f))
-
 (define fasload-purification-queue
   '())
-
-(define initialize-c-compiled-block
-  (let ((prim (ucode-primitive initialize-c-compiled-block 1)))
-    (if (implemented-primitive-procedure? prim)
-	prim
-	(lambda (name)
-	  name				; ignored
-	  #f))))
 
 (define os-name
   (intern os-name-string))
@@ -337,7 +311,6 @@ USA.
   (export 'PACKAGE/NAME)
   (export 'PACKAGE/PARENT)
   (export 'PACKAGE/REFERENCE)
-  (export 'PACKAGE/SYSTEM-LOADER)
   (export 'PACKAGE?)
   (export 'SYSTEM-GLOBAL-PACKAGE))
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
@@ -355,13 +328,13 @@ USA.
 (let ((files1
        '(("gcdemn" . (RUNTIME GC-DAEMONS))
 	 ("gc" . (RUNTIME GARBAGE-COLLECTOR))
-	 ("boot" . ())
-	 ("queue" . ())
-	 ("equals" . ())
+	 ("boot" . (RUNTIME BOOT-DEFINITIONS))
+	 ("queue" . (RUNTIME SIMPLE-QUEUE))
+	 ("equals" . (RUNTIME EQUALITY))
 	 ("list" . (RUNTIME LIST))
-	 ("symbol" . ())
+	 ("symbol" . (RUNTIME SYMBOL))
 	 ("uproc" . (RUNTIME PROCEDURE))
-	 ("fixart" . ())
+	 ("fixart" . (RUNTIME FIXNUM-ARITHMETIC))
 	 ("random" . (RUNTIME RANDOM-NUMBER))
 	 ("gentag" . (RUNTIME GENERIC-PROCEDURE))
 	 ("poplat" . (RUNTIME POPULATION))
@@ -371,7 +344,8 @@ USA.
        '(("prop1d" . (RUNTIME 1D-PROPERTY))
 	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
 	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))
-	 ("gcfinal" . (RUNTIME GC-FINALIZER))))
+	 ("gcfinal" . (RUNTIME GC-FINALIZER))
+	 ("string" . (RUNTIME STRING))))
       (load-files
        (lambda (files)
 	 (do ((files files (cdr files)))
@@ -381,10 +355,6 @@ USA.
   (load-files files1)
   (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME GARBAGE-COLLECTOR) 'INITIALIZE-PACKAGE! #t)
-  (lexical-assignment (package-reference '(RUNTIME GARBAGE-COLLECTOR))
-		      'CONSTANT-SPACE/BASE
-		      constant-space/base)
-  (package-initialize '(RUNTIME LIST) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME RANDOM-NUMBER) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME GENERIC-PROCEDURE) 'INITIALIZE-TAG-CONSTANTS!
 		      #t)
@@ -400,6 +370,7 @@ USA.
   (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME GC-FINALIZER) 'INITIALIZE-PACKAGE! #t)
+  (package-initialize '(RUNTIME STRING) 'INITIALIZE-PACKAGE! #t)
 
   ;; Load everything else.
   ((lexical-reference environment-for-package 'LOAD-PACKAGES-FROM-FILE)
@@ -488,6 +459,8 @@ USA.
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME LOAD)
    (RUNTIME UNICODE)
+   (RUNTIME SIMPLE-FILE-OPS)
+   ((RUNTIME OS-PRIMITIVES) INITIALIZE-MIME-TYPES! #f)
    ;; Syntax
    (RUNTIME NUMBER-PARSER)
    (RUNTIME PARSER)
@@ -516,12 +489,14 @@ USA.
    (RUNTIME STARBASE-GRAPHICS)
    (RUNTIME X-GRAPHICS)
    (RUNTIME OS2-GRAPHICS)
-   (RUNTIME STRING)
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (RUNTIME EMACS-INTERFACE)
    ;; More debugging
    ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)
-   (RUNTIME URL)))
+   (RUNTIME URI)))
+
+(if (eq? os-name 'NT)
+    (package-initialize '(RUNTIME WIN32-REGISTRY) 'INITIALIZE-PACKAGE! #f))
 
 (let ((obj (file->object "site" #t #t)))
   (if obj

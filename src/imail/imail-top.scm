@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.287 2003/02/14 18:28:14 cph Exp $
+$Id: imail-top.scm,v 1.291 2005/09/07 19:24:28 cph Exp $
 
-Copyright 1999,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1999,2000,2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -164,7 +165,7 @@ Otherwise, they are inserted into the message body."
   "List of regular expressions matching character-set names.
 Text messages using these character sets are displayed inline;
  when other character sets are used, the text is treated as an attachment."
-  (list "us-ascii" "iso-8859-[0-9]+" "utf-[78]"
+  (list "us-ascii" "iso-8859-[0-9]+" "utf-?[78]"
 	"unicode-[0-9]+-[0-9]+-utf-[78]" ; RFC 1641
 	"windows-[0-9]+" "unknown-8bit")
   list-of-strings?)
@@ -1207,7 +1208,9 @@ With negative argument, forward the message with all headers;
 	 (if (ref-variable imail-forward-using-mime mail-buffer)
 	     (add-buffer-mime-attachment!
 	      mail-buffer
-	      'MESSAGE 'RFC822 '() '(INLINE)
+	      (make-mime-type 'MESSAGE 'RFC822)
+	      '()
+	      '(INLINE)
 	      (map header-field->mail-header
 		   (let ((headers (message-header-fields message)))
 		     (if raw?
@@ -1800,7 +1803,7 @@ Negative argument means search in reverse."
       (apply prompt-for-container prompt #f options)))
 
 (define (prompt-for-url prompt default . options)
-  (%prompt-for-url prompt default options url-exists?))
+  (%prompt-for-url prompt default options #f))
 
 (define (prompt-for-folder prompt default . options)
   (%prompt-for-url prompt default options
@@ -1845,8 +1848,9 @@ Negative argument means search in reverse."
 				  if-unique if-not-unique if-not-found))
 	   (lambda (string)
 	     (url-string-completions string imail-default-url))
-	   (lambda (string)
-	     (predicate (imail-parse-partial-url string)))
+	   (and predicate
+		(lambda (string)
+		  (predicate (imail-parse-partial-url string))))
 	   'DEFAULT-TYPE 'INSERTED-DEFAULT
 	   options)))
 
@@ -2707,6 +2711,8 @@ Negative argument means search in reverse."
      (call-with-decode-base64-output-port port text? generator))
     ((BINHEX40)
      (call-with-decode-binhex40-output-port port text? generator))
+    ((X-UUENCODE)
+     (call-with-decode-uue-output-port port text? generator))
     (else
      (generator port))))
 

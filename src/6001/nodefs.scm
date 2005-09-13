@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: nodefs.scm,v 1.15 2003/02/14 18:28:00 cph Exp $
+$Id: nodefs.scm,v 1.16 2005/04/01 05:09:26 cph Exp $
 
 Copyright 1991,1992,1993,1995,2001,2003 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,9 +33,8 @@ USA.
   (set! hook/repl-eval student/repl-eval)
   unspecific)
 
-(define (student/repl-eval repl s-expression environment)
+(define (student/repl-eval s-expression environment repl)
   (repl-scode-eval
-   repl
    (rewrite-scode (syntax s-expression environment)
 		  (and repl
 		       (let ((port (cmdl/port repl)))
@@ -44,7 +44,8 @@ USA.
 				 'CURRENT-EXPRESSION-CONTEXT)))
 			   (and operation
 				(operation port s-expression))))))
-   environment))
+   environment
+   repl))
 
 (define (rewrite-scode expression context)
   (let ((expression

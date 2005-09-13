@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.21 2003/02/14 18:28:32 cph Exp $
+$Id: fileio.scm,v 1.22 2004/02/16 05:36:25 cph Exp $
 
-Copyright (c) 1991-2001 Massachusetts Institute of Technology
+Copyright 1991,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
+Copyright 2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,8 +31,7 @@ USA.
 
 (define (initialize-package!)
   (let ((input-operations
-	 `((LENGTH ,operation/length)
-	   (REST->STRING ,operation/rest->string)))
+	 `((LENGTH ,operation/length)))
 	(other-operations
 	 `((WRITE-SELF ,operation/write-self)
 	   (PATHNAME ,operation/pathname)
@@ -51,72 +51,67 @@ USA.
 (define output-file-type)
 (define i/o-file-type)
 
-(define input-buffer-size 512)
-(define output-buffer-size 512)
+(define-structure (fstate (type vector)
+			  (initial-offset 4) ;must match "genio.scm"
+			  (constructor #f))
+  (pathname #f read-only #t))
+
+(define (operation/length port)
+  (channel-file-length (port/input-channel port)))
+
+(define (operation/pathname port)
+  (fstate-pathname (port/state port)))
+
+(define operation/truename
+  ;; This works for unix because truename and pathname are the same.
+  ;; On operating system where they differ, there must be support to
+  ;; determine the truename.
+  operation/pathname)
+
+(define (operation/write-self port output-port)
+  (write-string " for file: " output-port)
+  (write (operation/truename port) output-port))
 
 (define (open-input-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-input-channel (->namestring pathname)))
 	 (port
-	  (make-port
-	   input-file-type
-	   (make-file-state
-	    (make-input-buffer channel
-			       input-buffer-size
-			       (pathname-newline-translation pathname))
-	    #f
-	    pathname))))
+	  (make-port input-file-type
+		     (make-gstate channel #f 'TEXT pathname))))
     (set-channel-port! channel port)
+    (port/set-line-ending port (file-line-ending pathname))
     port))
 
 (define (open-output-file filename #!optional append?)
   (let* ((pathname (merge-pathnames filename))
 	 (channel
 	  (let ((filename (->namestring pathname)))
-	    (if (and (not (default-object? append?)) append?)
+	    (if (if (default-object? append?) #f append?)
 		(file-open-append-channel filename)
 		(file-open-output-channel filename))))
 	 (port
-	  (make-port
-	   output-file-type
-	   (make-file-state
-	    #f
-	    (make-output-buffer channel
-				output-buffer-size
-				(pathname-newline-translation pathname))
-	    pathname))))
+	  (make-port output-file-type
+		     (make-gstate #f channel 'TEXT pathname))))
     (set-channel-port! channel port)
+    (port/set-line-ending port (file-line-ending pathname))
     port))
 
 (define (open-i/o-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-io-channel (->namestring pathname)))
-	 (translation (pathname-newline-translation pathname))
 	 (port
-	  (make-port
-	   i/o-file-type
-	   (make-file-state
-	    (make-input-buffer channel input-buffer-size translation)
-	    (make-output-buffer channel output-buffer-size translation)
-	    pathname))))
+	  (make-port i/o-file-type
+		     (make-gstate channel channel 'TEXT pathname))))
     (set-channel-port! channel port)
+    (port/set-line-ending port (file-line-ending pathname))
     port))
 
-(define (pathname-newline-translation pathname)
-  (let ((end-of-line (pathname-end-of-line-string pathname)))
-    (and (not (string=? "\n" end-of-line))
-	 end-of-line)))
-
 (define (open-binary-input-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-input-channel (->namestring pathname)))
 	 (port
 	  (make-port input-file-type
-		     (make-file-state (make-input-buffer channel
-							 input-buffer-size
-							 #f)
-				      #f
-				      pathname))))
+		     (make-gstate channel #f 'BINARY pathname))))
     (set-channel-port! channel port)
     port))
 
@@ -124,16 +119,12 @@ USA.
   (let* ((pathname (merge-pathnames filename))
 	 (channel
 	  (let ((filename (->namestring pathname)))
-	    (if (and (not (default-object? append?)) append?)
+	    (if (if (default-object? append?) #f append?)
 		(file-open-append-channel filename)
 		(file-open-output-channel filename))))
 	 (port
 	  (make-port output-file-type
-		     (make-file-state #f
-				      (make-output-buffer channel
-							  output-buffer-size
-							  #f)
-				      pathname))))
+		     (make-gstate #f channel 'BINARY pathname))))
     (set-channel-port! channel port)
     port))
 
@@ -142,13 +133,7 @@ USA.
 	 (channel (file-open-io-channel (->namestring pathname)))
 	 (port
 	  (make-port i/o-file-type
-		     (make-file-state (make-input-buffer channel
-							 input-buffer-size
-							 #f)
-				      (make-output-buffer channel
-							  output-buffer-size
-							  #f)
-				      pathname))))
+		     (make-gstate channel channel 'BINARY pathname))))
     (set-channel-port! channel port)
     port))
 
@@ -198,52 +183,3 @@ USA.
 
 (define with-output-to-binary-file
   (make-with-output-to-file call-with-binary-output-file))
-
-(define-structure (file-state (type vector)
-			      (conc-name file-state/))
-  ;; First two elements of this vector are required by the generic
-  ;; I/O port operations.
-  (input-buffer #f read-only #t)
-  (output-buffer #f read-only #t)
-  (pathname #f read-only #t))
-
-(define (operation/length port)
-  (channel-file-length (port/input-channel port)))
-
-(define (operation/pathname port)
-  (file-state/pathname (port/state port)))
-
-(define operation/truename
-  ;; This works for unix because truename and pathname are the same.
-  ;; On operating system where they differ, there must be support to
-  ;; determine the truename.
-  operation/pathname)
-
-(define (operation/write-self port output-port)
-  (write-string " for file: " output-port)
-  (write (operation/truename port) output-port))
-
-(define (operation/rest->string port)
-  ;; This operation's intended purpose is to snarf an entire file in
-  ;; a single gulp, exactly what a text editor would need.
-  (let ((buffer (file-state/input-buffer (port/state port))))
-    (let ((remaining (input-buffer/chars-remaining buffer))
-	  (fill-buffer
-	   (lambda (string)
-	     (let ((length (string-length string)))
-	       (let loop ()
-		 (or (input-buffer/read-substring buffer string 0 length)
-		     (loop)))))))
-      (if remaining
-	  (let ((result (make-string remaining)))
-	    (let ((n (fill-buffer result)))
-	      (if (fix:< n remaining)
-		  (substring result 0 n)
-		  result)))
-	  (let loop ((strings '()))
-	    (let ((string (make-string input-buffer-size)))
-	      (let ((n (fill-buffer string)))
-		(if (fix:< n input-buffer-size)
-		    (apply string-append
-			   (reverse! (cons (substring string 0 n) strings)))
-		    (loop (cons string strings))))))))))

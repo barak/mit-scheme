@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.51 2003/02/14 18:28:33 cph Exp $
+$Id: os2prm.scm,v 1.54 2004/10/28 03:21:39 cph Exp $
 
 Copyright 1994,1995,1997,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2003 Massachusetts Institute of Technology
+Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -263,7 +263,7 @@ USA.
 (define (dos/fs-long-filenames? pathname)
   (not (string-ci=? "fat" (car (dos/fs-drive-type pathname)))))
 
-(define (os/file-end-of-line-translation pathname)
+(define (file-line-ending pathname)
   (let ((type (dos/fs-drive-type pathname)))
     ;; "ext2" is the Linux ext2 file-system driver.  "NFS" is the IBM
     ;; TCP/IP NFS driver, which we further qualify by examining the
@@ -276,15 +276,20 @@ USA.
 		   (and colon
 			(fix:< (fix:+ colon 1) (string-length mount))
 			(char=? #\/ (string-ref mount (fix:+ colon 1)))))))
-	#f
-	"\r\n")))
+	'LF
+	'CRLF)))
 
-(define (os/default-end-of-line-translation)
-  "\r\n")
+(define (default-line-ending)
+  'CRLF)
 
 (define (copy-file from to)
   ((ucode-primitive os2-copy-file 2) (->namestring (merge-pathnames from))
 				     (->namestring (merge-pathnames to))))
+
+(define (os/suffix-mime-type suffix)
+  ;; **** not yet implemented ****
+  suffix
+  #f)
 
 (define (init-file-specifier->pathname specifier)
 

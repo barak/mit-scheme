@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: syntax.c,v 1.27 2003/02/14 18:28:23 cph Exp $
+$Id: syntax.c,v 1.30 2005/07/16 03:46:42 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1991,1993,1996 Massachusetts Institute of Technology
+Copyright 2000,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -42,36 +43,77 @@ should have been included along with this file. */
 /* Convert a letter which signifies a syntax code
    into the code it signifies. */
 
-#define ILLEGAL ((char) syntaxcode_max)
+#define ILLEGAL ((unsigned char) syntaxcode_max)
 
-char syntax_spec_code[0200] =
+unsigned char syntax_spec_code [0x80] =
   {
     ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL,
     ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL,
     ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL,
     ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL,
 
-    ((char) syntaxcode_whitespace), ILLEGAL, ((char) syntaxcode_string),
-        ILLEGAL, ((char) syntaxcode_math), ILLEGAL, ILLEGAL,
-        ((char) syntaxcode_quote),
-    ((char) syntaxcode_open), ((char) syntaxcode_close), ILLEGAL, ILLEGAL,
-        ILLEGAL, ((char) syntaxcode_whitespace), ((char) syntaxcode_punct),
-        ((char) syntaxcode_charquote),
+    ((unsigned char) syntaxcode_whitespace),
+    ILLEGAL,
+    ((unsigned char) syntaxcode_string),
+    ILLEGAL,
+    ((unsigned char) syntaxcode_math),
+    ILLEGAL,
+    ILLEGAL,
+    ((unsigned char) syntaxcode_quote),
+
+    ((unsigned char) syntaxcode_open),
+    ((unsigned char) syntaxcode_close),
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ((unsigned char) syntaxcode_whitespace),
+    ((unsigned char) syntaxcode_punct),
+    ((unsigned char) syntaxcode_charquote),
+
     ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL,
-    ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ((char) syntaxcode_comment),
-        ILLEGAL, ((char) syntaxcode_endcomment), ILLEGAL,
+
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ((unsigned char) syntaxcode_comment),
+    ILLEGAL,
+    ((unsigned char) syntaxcode_endcomment),
+    ILLEGAL,
 
     ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL,
     ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL,
-    ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL,
-        ((char) syntaxcode_word),
-    ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ((char) syntaxcode_escape), ILLEGAL,
-        ILLEGAL, ((char) syntaxcode_symbol),
+
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ((unsigned char) syntaxcode_word),
+
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ((unsigned char) syntaxcode_escape),
+    ILLEGAL,
+    ILLEGAL,
+    ((unsigned char) syntaxcode_symbol),
 
     ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL,
     ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL,
-    ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL,
-        ((char) syntaxcode_word),
+
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ILLEGAL,
+    ((unsigned char) syntaxcode_word),
+
     ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL, ILLEGAL
   };
 
@@ -82,18 +124,19 @@ unsigned char syntax_code_spec[13] =
     ' ', '.', 'w', '_', '(', ')', '\'', '\"', '$', '\\', '/', '<', '>'
   };
 
-#define MERGE_PREFIX_BIT(bit)						\
+#define MERGE_PREFIX_BIT(bit) do					\
 {									\
   if ((result & bit) != 0)						\
     error_bad_range_arg (1);						\
   result |= bit;							\
-}
+} while (0)
 
 #define MERGE_COMMENT(bit) MERGE_PREFIX_BIT ((bit) << 12)
 
 DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
 {
-  long length, c, result;
+  unsigned long length;
+  unsigned long result;
   unsigned char * scan;
   PRIMITIVE_HEADER (1);
 
@@ -101,19 +144,21 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
   length = (STRING_LENGTH (ARG_REF (1)));
   scan = (STRING_LOC ((ARG_REF (1)), 0));
 
-  if ((length--) > 0)
+  if (length > 0)
     {
-      c = (*scan++);
+      unsigned long c = (*scan++);
+      length -= 1;
       if (c >= 0200) error_bad_range_arg (1);
-      result = (syntax_spec_code [c]);
+      result = (syntax_spec_code[c]);
       if (result == ILLEGAL) error_bad_range_arg (1);
     }
   else
-    result = ((long) syntaxcode_whitespace);
+    result = ((unsigned long) syntaxcode_whitespace);
 
-  if ((length--) > 0)
+  if (length > 0)
     {
-      c = (*scan++);
+      unsigned long c = (*scan++);
+      length -= 1;
       if (c != ' ') result |= (c << 4);
     }
 
@@ -146,7 +191,7 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
   if (((SYNTAX_ENTRY_CODE (result)) == syntaxcode_endcomment)
       && (! ((SYNTAX_ENTRY_COMMENT_BITS (result)) & COMEND_FIRST)))
     MERGE_COMMENT (COMEND_FIRST_A);
-  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (result));
+  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (result));
 }
 
 DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
@@ -883,6 +928,8 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 		}
 	    }
 	}
+      in_comment = 0;
+      continue;
 
     not_in_comment:
       in_comment = 0;

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.16 2003/02/14 18:28:32 cph Exp $
+$Id: crypto.scm,v 14.18 2003/11/10 21:45:55 cph Exp $
 
-Copyright (c) 2000-2002 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -42,16 +42,20 @@ USA.
 	    ((eq? name (vector-ref mhash-algorithm-names i)) i)
 	    (else (loop (fix:+ i 1)))))))
 
-(define-structure mhash-context (index #f read-only #t))
-(define-structure mhash-hmac-context (index #f read-only #t))
+(define-structure mhash-context index)
+(define-structure mhash-hmac-context index)
 
 (define (guarantee-mhash-context object procedure)
   (if (not (mhash-context? object))
-      (error:wrong-type-argument object "mhash context" procedure)))
+      (error:wrong-type-argument object "mhash context" procedure))
+  (if (not (mhash-context-index object))
+      (error:bad-range-argument object procedure)))
 
 (define (guarantee-mhash-hmac-context object procedure)
   (if (not (mhash-hmac-context? object))
-      (error:wrong-type-argument object "mhash HMAC context" procedure)))
+      (error:wrong-type-argument object "mhash HMAC context" procedure))
+  (if (not (mhash-hmac-context-index object))
+      (error:bad-range-argument object procedure)))
 
 (define (mhash-type-names)
   (names-vector->list mhash-algorithm-names))
@@ -67,16 +71,13 @@ USA.
        (let ((index ((ucode-primitive mhash_init 1) id)))
 	 (if (not index)
 	     (error "Unable to allocate mhash context:" name))
-	 (let ((context (make-mhash-context index)))
-	   (add-to-gc-finalizer! mhash-contexts context index)
-	   context))))))
+	 (add-to-gc-finalizer! mhash-contexts (make-mhash-context index)))))))
 
 (define (mhash-update context string start end)
   (guarantee-mhash-context context 'MHASH-UPDATE)
   ((ucode-primitive mhash 4) (mhash-context-index context) string start end))
 
 (define (mhash-end context)
-  (guarantee-mhash-context context 'MHASH-END)
   (remove-from-gc-finalizer! mhash-contexts context))
 
 (define (mhash-hmac-init name key)
@@ -87,9 +88,8 @@ USA.
        (let ((index ((ucode-primitive mhash_hmac_init 3) id key pblock)))
 	 (if (not index)
 	     (error "Unable to allocate mhash HMAC context:" name))
-	 (let ((context (make-mhash-hmac-context index)))
-	   (add-to-gc-finalizer! mhash-hmac-contexts context index)
-	   context))))))
+	 (add-to-gc-finalizer! mhash-hmac-contexts
+			       (make-mhash-hmac-context index)))))))
 
 (define (mhash-hmac-update context string start end)
   (guarantee-mhash-hmac-context context 'MHASH-HMAC-UPDATE)
@@ -97,7 +97,6 @@ USA.
 			     string start end))
 
 (define (mhash-hmac-end context)
-  (guarantee-mhash-hmac-context context 'MHASH-HMAC-END)
   (remove-from-gc-finalizer! mhash-hmac-contexts context))
 
 (define mhash-keygen-names)
@@ -219,9 +218,15 @@ USA.
 		      (ucode-primitive mhash_count 0)
 		      (ucode-primitive mhash_get_hash_name 1)))
 	       (set! mhash-contexts
-		     (make-gc-finalizer (ucode-primitive mhash_end 1)))
+		     (make-gc-finalizer (ucode-primitive mhash_end 1)
+					mhash-context?
+					mhash-context-index
+					set-mhash-context-index!))
 	       (set! mhash-hmac-contexts
-		     (make-gc-finalizer (ucode-primitive mhash_hmac_end 1)))
+		     (make-gc-finalizer (ucode-primitive mhash_hmac_end 1)
+					mhash-hmac-context?
+					mhash-hmac-context-index
+					set-mhash-hmac-context-index!))
 	       (set! mhash-keygen-names
 		     (make-names-vector
 		      (ucode-primitive mhash_keygen_count 0)
@@ -341,11 +346,13 @@ USA.
 (define mcrypt-algorithm-names-vector)
 (define mcrypt-mode-names-vector)
 (define mcrypt-contexts)
-(define-structure mcrypt-context (index #f read-only #t))
+(define-structure mcrypt-context index)
 
 (define (guarantee-mcrypt-context object procedure)
   (if (not (mcrypt-context? object))
-      (error:wrong-type-argument object "mcrypt context" procedure)))
+      (error:wrong-type-argument object "mcrypt context" procedure))
+  (if (not (mcrypt-context-index object))
+      (error:bad-range-argument object procedure)))
 
 (define (mcrypt-available?)
   (load-library-object-file "prmcrypt" #f)
@@ -355,8 +362,10 @@ USA.
 	 (if (not mcrypt-initialized?)
 	     (begin
 	       (set! mcrypt-contexts
-		     (make-gc-finalizer
-		      (ucode-primitive mcrypt_generic_end 1)))
+		     (make-gc-finalizer (ucode-primitive mcrypt_generic_end 1)
+					mcrypt-context?
+					mcrypt-context-index
+					set-mcrypt-context-index!))
 	       (set! mcrypt-algorithm-names-vector
 		     ((ucode-primitive mcrypt_list_algorithms 0)))
 	       (set! mcrypt-mode-names-vector
@@ -377,11 +386,11 @@ USA.
 (define (mcrypt-open-module algorithm mode)
   (without-interrupts
    (lambda ()
-     (let ((index ((ucode-primitive mcrypt_module_open 2) algorithm mode)))
-       (let ((context (make-mcrypt-context index)))
-	 (add-to-gc-finalizer! mcrypt-contexts context index)
-	 context)))))
-
+     (add-to-gc-finalizer! mcrypt-contexts
+			   (make-mcrypt-context
+			    ((ucode-primitive mcrypt_module_open 2) algorithm
+								    mode))))))
+
 (define (mcrypt-init context key init-vector)
   (guarantee-mcrypt-context context 'MCRYPT-INIT)
   (let ((code
@@ -411,9 +420,8 @@ USA.
 	       code))))
 
 (define (mcrypt-end context)
-  (guarantee-mcrypt-context context 'MCRYPT-END)
   (remove-from-gc-finalizer! mcrypt-contexts context))
-
+
 (define (mcrypt-generic-unary name context-op module-op)
   (lambda (object)
     (cond ((mcrypt-context? object) (context-op (mcrypt-context-index object)))
@@ -437,7 +445,7 @@ USA.
    'MCRYPT-BLOCK-ALGORITHM?
    (ucode-primitive mcrypt_enc_is_block_algorithm 1)
    (ucode-primitive mcrypt_module_is_block_algorithm 1)))
-
+
 (define mcrypt-block-mode?
   (mcrypt-generic-unary
    'MCRYPT-BLOCK-MODE?
@@ -470,7 +478,7 @@ USA.
   (guarantee-mcrypt-context context 'MCRYPT-MODE-NAME)
   ((ucode-primitive mcrypt_enc_get_modes_name 1)
    (mcrypt-context-index context)))
-
+
 (define (mcrypt-encrypt-port algorithm mode input output key init-vector
 			     encrypt?)
   ;; Assumes that INPUT is in blocking mode.

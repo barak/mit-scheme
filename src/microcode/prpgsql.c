@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prpgsql.c,v 1.5 2003/07/21 00:54:46 cph Exp $
+$Id: prpgsql.c,v 1.9 2005/06/26 05:36:52 cph Exp $
 
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,7 +30,7 @@ USA.
 #include "usrdef.h"
 #include "os.h"
 
-#include <postgresql/libpq-fe.h>
+#include <libpq-fe.h>
 
 #define ARG_CONN(n) ((PGconn *) (arg_ulong_integer (n)))
 #define ARG_RESULT(n) ((PGresult *) (arg_ulong_integer (n)))
@@ -149,16 +149,6 @@ DEFINE_PRIMITIVE ("PQ-RESULT-ERROR-MESSAGE", Prim_pq_result_error_message,
 DEFINE_PRIMITIVE ("PQ-CLEAR", Prim_pq_clear, 1, 1, 0)
   RESULT_TO_UNSPECIFIC (PQclear)
 
-DEFINE_PRIMITIVE ("PQ-ESCAPE-STRING", Prim_pq_escape_string, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  CHECK_ARG (1, STRING_P);
-  PRIMITIVE_RETURN
-    (ulong_to_integer (PQescapeString ((STRING_ARG (2)),
-				       (STRING_LOC ((ARG_REF (1)), 0)),
-				       (STRING_LENGTH (ARG_REF (1))))));
-}
-
 DEFINE_PRIMITIVE ("PQ-N-TUPLES", Prim_pq_n_tuples, 1, 1, 0)
   RESULT_TO_INT (PQntuples)
 
@@ -196,3 +186,116 @@ DEFINE_PRIMITIVE ("PQ-CMD-STATUS", Prim_pq_cmd_status, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("PQ-CMD-TUPLES", Prim_pq_cmd_tuples, 1, 1, 0)
   RESULT_TO_STRING (PQcmdTuples)
+
+DEFINE_PRIMITIVE ("PQ-GET-LINE", Prim_pq_get_line, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (2, STRING_P);
+  PRIMITIVE_RETURN
+    (long_to_integer (PQgetline ((ARG_CONN (1)),
+				 (STRING_LOC ((ARG_REF (2)), 0)),
+				 (STRING_LENGTH (ARG_REF (2))))));
+}
+
+DEFINE_PRIMITIVE ("PQ-PUT-LINE", Prim_pq_put_line, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (2, STRING_P);
+  PRIMITIVE_RETURN
+    (long_to_integer (PQputnbytes ((ARG_CONN (1)),
+				   (STRING_LOC ((ARG_REF (2)), 0)),
+				   (STRING_LENGTH (ARG_REF (2))))));
+}
+
+DEFINE_PRIMITIVE ("PQ-END-COPY", Prim_pq_end_copy, 1, 1, 0)
+  CONN_TO_INT (PQendcopy)
+
+DEFINE_PRIMITIVE ("PQ-ESCAPE-STRING", Prim_pq_escape_string, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, STRING_P);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (PQescapeString ((STRING_ARG (2)),
+				       (STRING_LOC ((ARG_REF (1)), 0)),
+				       (STRING_LENGTH (ARG_REF (1))))));
+}
+
+DEFINE_PRIMITIVE ("PQ-ESCAPE-BYTEA", Prim_pq_escape_bytea, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, STRING_P);
+  {
+    size_t escaped_length;
+    unsigned char * escaped
+      = (PQescapeBytea ((STRING_LOC ((ARG_REF (1)), 0)),
+			 (STRING_LENGTH (ARG_REF (1))),
+			 (&escaped_length)));
+    SCHEME_OBJECT s = (char_pointer_to_string (escaped));
+    PQfreemem (escaped);
+    PRIMITIVE_RETURN (s);
+  }
+}
+
+DEFINE_PRIMITIVE ("PQ-UNESCAPE-BYTEA", Prim_pq_unescape_bytea, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    size_t unescaped_length;
+    unsigned char * unescaped
+      = (PQunescapeBytea ((STRING_ARG (1)), (&unescaped_length)));
+    if (unescaped == 0)
+      error_bad_range_arg (1);
+    {
+      SCHEME_OBJECT s = (memory_to_string (unescaped_length, unescaped));
+      PQfreemem (unescaped);
+      PRIMITIVE_RETURN (s);
+    }
+  }
+}
+
+#ifdef COMPILE_AS_MODULE
+
+char *
+DEFUN_VOID (dload_initialize_file)
+{
+  declare_primitive ("PQ-CONNECT-DB", Prim_pq_connect_db, 2, 2, 0);
+  declare_primitive ("PQ-CONNECT-START", Prim_pq_connect_start, 2, 2, 0);
+  declare_primitive ("PQ-CONNECT-POLL", Prim_pq_connect_poll, 1, 1, 0);
+  declare_primitive ("PQ-STATUS", Prim_pq_status, 1, 1, 0);
+  declare_primitive ("PQ-FINISH", Prim_pq_finish, 1, 1, 0);
+  declare_primitive ("PQ-RESET", Prim_pq_reset, 1, 1, 0);
+  declare_primitive ("PQ-RESET-START", Prim_pq_reset_start, 1, 1, 0);
+  declare_primitive ("PQ-RESET-POLL", Prim_pq_reset_poll, 1, 1, 0);
+  declare_primitive ("PQ-DB", Prim_pq_db, 1, 1, 0);
+  declare_primitive ("PQ-USER", Prim_pq_user, 1, 1, 0);
+  declare_primitive ("PQ-PASS", Prim_pq_pass, 1, 1, 0);
+  declare_primitive ("PQ-HOST", Prim_pq_host, 1, 1, 0);
+  declare_primitive ("PQ-PORT", Prim_pq_port, 1, 1, 0);
+  declare_primitive ("PQ-TTY", Prim_pq_tty, 1, 1, 0);
+  declare_primitive ("PQ-OPTIONS", Prim_pq_options, 1, 1, 0);
+  declare_primitive ("PQ-ERROR-MESSAGE", Prim_pq_error_message, 1, 1, 0);
+  declare_primitive ("PQ-EXEC", Prim_pq_exec, 3, 3, 0);
+  declare_primitive
+    ("PQ-MAKE-EMPTY-PG-RESULT", Prim_pq_make_empty_pg_result, 3, 3, 0);
+  declare_primitive ("PQ-RESULT-STATUS", Prim_pq_result_status, 1, 1, 0);
+  declare_primitive ("PQ-RES-STATUS", Prim_pq_res_status, 1, 1, 0);
+  declare_primitive
+    ("PQ-RESULT-ERROR-MESSAGE", Prim_pq_result_error_message, 1, 1, 0);
+  declare_primitive ("PQ-CLEAR", Prim_pq_clear, 1, 1, 0);
+  declare_primitive ("PQ-N-TUPLES", Prim_pq_n_tuples, 1, 1, 0);
+  declare_primitive ("PQ-N-FIELDS", Prim_pq_n_fields, 1, 1, 0);
+  declare_primitive ("PQ-FIELD-NAME", Prim_pq_fname, 2, 2, 0);
+  declare_primitive ("PQ-GET-VALUE", Prim_pq_get_value, 3, 3, 0);
+  declare_primitive ("PQ-GET-IS-NULL?", Prim_pq_get_is_null, 3, 3, 0);
+  declare_primitive ("PQ-CMD-STATUS", Prim_pq_cmd_status, 1, 1, 0);
+  declare_primitive ("PQ-CMD-TUPLES", Prim_pq_cmd_tuples, 1, 1, 0);
+  declare_primitive ("PQ-GET-LINE", Prim_pq_get_line, 2, 2, 0);
+  declare_primitive ("PQ-PUT-LINE", Prim_pq_put_line, 2, 2, 0);
+  declare_primitive ("PQ-END-COPY", Prim_pq_end_copy, 1, 1, 0);
+  declare_primitive ("PQ-ESCAPE-STRING", Prim_pq_escape_string, 2, 2, 0);
+  declare_primitive ("PQ-ESCAPE-BYTEA", Prim_pq_escape_bytea, 1, 1, 0);
+  declare_primitive ("PQ-UNESCAPE-BYTEA", Prim_pq_unescape_bytea, 1, 1, 0);
+  return ("#prpgsql");
+}
+
+#endif /* COMPILE_AS_MODULE */

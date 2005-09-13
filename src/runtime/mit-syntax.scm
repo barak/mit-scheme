@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.19 2003/04/17 02:52:08 cph Exp $
+$Id: mit-syntax.scm,v 14.22 2004/11/18 18:16:04 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -342,6 +343,7 @@ USA.
     SRFI-8
     SRFI-9
     SRFI-23
+    SRFI-27
     SRFI-30))
 
 (define-er-macro-transformer 'RECEIVE system-global-environment
@@ -606,7 +608,7 @@ USA.
   (lambda (form rename compare)
     (capture-expansion-history
      (lambda (history)
-       (syntax-check '(KEYWORD EXPRESSION + (DATUM + EXPRESSION)) form history)
+       (syntax-check '(KEYWORD EXPRESSION + (DATUM * EXPRESSION)) form history)
        (call-with-syntax-error-procedure
 	(lambda (syntax-error)
 	  (letrec
@@ -861,18 +863,6 @@ USA.
        (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form history)
        `(,(rename 'CONS) ,(cadr form)
 			 (,(rename 'DELAY) ,(caddr form)))))))
-
-(define-compiler 'DEFAULT-OBJECT? system-global-environment
-  (lambda (form environment history)
-    (syntax-check '(KEYWORD IDENTIFIER) form history)
-    (let ((item
-	   (classify/subexpression (cadr form)
-				   environment
-				   history
-				   select-cadr)))
-      (if (not (variable-item? item))
-	  (syntax-error history "Variable required in this context:" form))
-      (output/unassigned-test (variable-item/name item)))))
 
 (define-er-macro-transformer 'DEFINE-INTEGRABLE system-global-environment
   (lambda (form rename compare)

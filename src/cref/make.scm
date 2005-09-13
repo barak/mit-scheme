@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.27 2003/02/14 18:28:10 cph Exp $
+$Id: make.scm,v 1.28 2004/12/13 03:22:21 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,1996,1998,1999,2000,2001 Massachusetts Institute of Technology
+Copyright 2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,14 +29,13 @@ USA.
 
 (declare (usual-integrations))
 
-(with-working-directory-pathname
-    (directory-pathname (current-load-pathname))
+(load-option 'RB-TREE)
+(with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     ((access with-directory-rewriting-rule
 	     (->environment '(RUNTIME COMPILER-INFO)))
      (working-directory-pathname)
      (pathname-as-directory "cref")
      (lambda ()
-       (load-option 'RB-TREE)
        (load-package-set "cref")))))
-(add-identification! "CREF" 2 3)
+(add-subsystem-identification! "CREF" '(2 3))

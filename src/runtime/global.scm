@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.61 2003/04/14 19:56:15 cph Exp $
+$Id: global.scm,v 14.72 2004/11/19 07:14:30 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
-Copyright 1998,2000,2001,2003 Massachusetts Institute of Technology
+Copyright 1998,2000,2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,7 +33,7 @@ USA.
 
 (define-primitives
   error-procedure
-  set-interrupt-enables! enable-interrupts! with-interrupt-mask
+  get-interrupt-enables set-interrupt-enables! with-interrupt-mask
   get-fixed-objects-vector with-history-disabled
   (primitive-procedure-arity 1)
   (primitive-procedure-documentation 1)
@@ -44,7 +44,6 @@ USA.
 
   ;; Pointers
   (object-type 1)
-  (object-gc-type 1)
   (object-datum 1)
   (object-type? 2)
   (object-new-type object-set-type 2)
@@ -114,6 +113,9 @@ USA.
 (define-integrable (system-hunk3-cons type cxr0 cxr1 cxr2)
   (object-new-type type (hunk3-cons cxr0 cxr1 cxr2)))
 
+(define (limit-interrupts! limit-mask)
+  (set-interrupt-enables! (fix:and limit-mask (get-interrupt-enables))))
+
 (define (object-component-binder get-component set-component!)
   (lambda (object new-value thunk)
     (let ((old-value))
@@ -160,9 +162,8 @@ USA.
       (with-output-to-truncated-string max (lambda () (write object)))))
 
 (define (pa procedure)
-  (cond ((not (procedure? procedure))
-	 (error "Must be a procedure" procedure))
-	((procedure-lambda procedure)
+  (guarantee-procedure procedure 'PA)
+  (cond ((procedure-lambda procedure)
 	 => (lambda (scode)
 	      (pp (unsyntax-lambda-list scode))))
 	((and (primitive-procedure? procedure)
@@ -260,11 +261,83 @@ USA.
 (define (unbind-variable environment name)
   ((ucode-primitive unbind-variable 2) (->environment environment) name))
 
-(define-integrable (object-non-pointer? object)
-  (zero? (object-gc-type object)))
+(define (object-gc-type object)
+  (%encode-gc-type ((ucode-primitive object-gc-type 1) object)))
 
-(define-integrable (object-pointer? object)
-  (not (object-non-pointer? object)))
+(define (type-code->gc-type code)
+  (%encode-gc-type ((ucode-primitive type-code->gc-type 1) code)))
+
+(define (%encode-gc-type t)
+  (if (not (and (fix:fixnum? t)
+		(fix:>= t -4)
+		(fix:<= t 4)))
+      (error "Illegal GC-type value:" t))
+  (vector-ref '#(COMPILED-ENTRY VECTOR GC-INTERNAL UNDEFINED NON-POINTER
+				CELL PAIR TRIPLE QUADRUPLE)
+	      (fix:+ t 4)))
+
+(define (object-non-pointer? object)
+  (case (object-gc-type object)
+    ((NON-POINTER) #t)
+    ((GC-INTERNAL)
+     (or (object-type? (ucode-type manifest-nm-vector) object)
+	 (object-type? (ucode-type manifest-special-nm-vector) object)
+	 (and (object-type? (ucode-type reference-trap) object)
+	      (<= (object-datum object) trap-max-immediate))))
+    (else #f)))
+
+(define (object-pointer? object)
+  (case (object-gc-type object)
+    ((CELL PAIR TRIPLE QUADRUPLE VECTOR COMPILED-ENTRY) #t)
+    ((GC-INTERNAL)
+     (or (object-type? (ucode-type broken-heart) object)
+	 (and (object-type? (ucode-type reference-trap) object)
+	      (> (object-datum object) trap-max-immediate))))
+    (else #f)))
+
+(define (non-pointer-type-code? code)
+  (case (type-code->gc-type code)
+    ((NON-POINTER) #t)
+    ((GC-INTERNAL)
+     (or (fix:= (ucode-type manifest-nm-vector) code)
+	 (fix:= (ucode-type manifest-special-nm-vector) code)))
+    (else #f)))
+
+(define (pointer-type-code? code)
+  (case (type-code->gc-type code)
+    ((CELL PAIR TRIPLE QUADRUPLE VECTOR COMPILED-ENTRY) #t)
+    ((GC-INTERNAL) (fix:= (ucode-type broken-heart) code))
+    (else #f)))
+
+(define (undefined-value? object)
+  ;; Note: the unparser takes advantage of the fact that objects
+  ;; satisfying this predicate also satisfy:
+  ;; (object-type? (ucode-type constant) object)
+  (or (eq? object undefined-conditional-branch)
+      ;; same as `undefined-conditional-branch'.
+      ;; (eq? object *the-non-printing-object*)
+      ;; (eq? object unspecific)
+      (eq? object (object-new-type (ucode-type constant) 2))))
+
+(define unspecific
+  (object-new-type (ucode-type constant) 1))
+
+(define (obarray->list #!optional obarray)
+  (let ((obarray
+	 (if (default-object? obarray)
+	     (fixed-objects-item 'OBARRAY)
+	     obarray)))
+    (let per-bucket
+	((index (fix:- (vector-length obarray) 1))
+	 (accumulator '()))
+      (if (fix:< index 0)
+	  accumulator
+	  (let per-symbol
+	      ((bucket (vector-ref obarray index))
+	       (accumulator accumulator))
+	    (if (pair? bucket)
+		(per-symbol (cdr bucket) (cons (car bucket) accumulator))
+		(per-bucket (fix:- index 1) accumulator)))))))
 
 (define (impurify object)
   (if (and (object-pointer? object) (object-pure? object))
@@ -302,36 +375,60 @@ USA.
 		   (write-string " -- done" port)
 		   (newline port))))
 	(do-it no-print no-print))))
+
+;;;; Hook lists
 
-(define (undefined-value? object)
-  ;; Note: the unparser takes advantage of the fact that objects
-  ;; satisfying this predicate also satisfy:
-  ;; (object-type? (microcode-type 'CONSTANT) object)
-  (or (eq? object undefined-conditional-branch)
-      ;; same as `undefined-conditional-branch'.
-      ;; (eq? object *the-non-printing-object*)
-      ;; (eq? object unspecific)
-      (eq? object (microcode-object/unassigned))))
+(define-record-type <hook-list>
+    (%make-hook-list hooks)
+    hook-list?
+  (hooks hook-list-hooks set-hook-list-hooks!))
 
-(define unspecific
-  (object-new-type (ucode-type constant) 1))
+(define (make-hook-list)
+  (%make-hook-list '()))
 
-(define *the-non-printing-object*
-  unspecific)
+(define (guarantee-hook-list object caller)
+  (if (not (hook-list? object))
+      (error:not-hook-list object caller)))
 
-(define (obarray->list #!optional obarray)
-  (let ((obarray
-	 (if (default-object? obarray)
-	     (fixed-objects-item 'OBARRAY)
-	     obarray)))
-    (let per-bucket
-	((index (fix:- (vector-length obarray) 1))
-	 (accumulator '()))
-      (if (fix:< index 0)
-	  accumulator
-	  (let per-symbol
-	      ((bucket (vector-ref obarray index))
-	       (accumulator accumulator))
-	    (if (pair? bucket)
-		(per-symbol (cdr bucket) (cons (car bucket) accumulator))
-		(per-bucket (fix:- index 1) accumulator)))))))
+(define (error:not-hook-list object caller)
+  (error:wrong-type-argument object "hook list" caller))
+
+(define (append-hook-to-list hook-list key hook)
+  (guarantee-hook-list hook-list 'APPEND-HOOK-TO-LIST)
+  (let loop ((alist (hook-list-hooks hook-list)) (prev #f))
+    (if (pair? alist)
+	(loop (cdr alist)
+	      (if (eq? (caar alist) key)
+		  (begin
+		    (if prev
+			(set-cdr! prev (cdr alist))
+			(set-hook-list-hooks! hook-list (cdr alist)))
+		    prev)
+		  alist))
+	(let ((tail (list (cons key hook))))
+	  (if prev
+	      (set-cdr! prev tail)
+	      (set-hook-list-hooks! hook-list tail))))))
+
+(define (remove-hook-from-list hook-list key)
+  (guarantee-hook-list hook-list 'REMOVE-HOOK-FROM-LIST)
+  (let loop ((alist (hook-list-hooks hook-list)) (prev #f))
+    (if (pair? alist)
+	(loop (cdr alist)
+	      (if (eq? (caar alist) key)
+		  (begin
+		    (if prev
+			(set-cdr! prev (cdr alist))
+			(set-hook-list-hooks! hook-list (cdr alist)))
+		    prev)
+		  alist)))))
+
+(define (hook-in-list? hook-list key)
+  (guarantee-hook-list hook-list 'HOOK-IN-LIST?)
+  (if (assq key (hook-list-hooks hook-list)) #t #f))
+
+(define (run-hooks-in-list hook-list . arguments)
+  (guarantee-hook-list hook-list 'RUN-HOOKS-IN-LIST)
+  (for-each (lambda (p)
+	      (apply (cdr p) arguments))
+	    (hook-list-hooks hook-list)))

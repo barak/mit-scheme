@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pmlook.scm,v 1.11 2003/02/14 18:28:01 cph Exp $
+$Id: pmlook.scm,v 1.12 2004/07/05 03:59:36 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1992,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,52 +28,59 @@ USA.
 
 (declare (usual-integrations))
 
-(define pattern-variable-tag
-  (intern "#[(compiler pattern-matcher/lookup)pattern-variable]"))
+;;; PATTERN-LOOKUP returns either #F or a thunk that is the result of
+;;; the matching rule result expression.
 
-;;; PATTERN-LOOKUP returns either false or a pair whose car is the
-;;; item matched and whose cdr is the list of variable values.  Use
-;;; PATTERN-VARIABLES to get a list of names that is in the same order
-;;; as the list of values.
+(define (pattern-lookup matchers instance)
+  (let loop ((matchers matchers))
+    (and (pair? matchers)
+	 (or ((car matchers) instance)
+	     (loop (cdr matchers))))))
 
-(define (pattern-lookup entries instance)
-  (define (lookup-loop entries values bindings)
-    (define (match pattern instance)
-      (if (pair? pattern)
-	  (if (eq? (car pattern) pattern-variable-tag)
-	      (let ((entry (memq (cdr pattern) bindings)))
-		(if (not entry)
-		    (begin (set! bindings (cons (cdr pattern) bindings))
-			   (set! values (cons instance values))
-			   true)
-		    (eqv? instance
-			  (list-ref values (- (length bindings)
-					      (length entry))))))
-	      (and (pair? instance)
-		   (match (car pattern) (car instance))
-		   (match (cdr pattern) (cdr instance))))
-	  (eqv? pattern instance)))
-
-    (and (not (null? entries))
-	 (or (and (match (caar entries) instance)
-		  (pattern-lookup/bind (cdar entries) values))
-	     (lookup-loop (cdr entries) '() '()))))
-  (lookup-loop entries '() '()))
-
-(define-integrable (pattern-lookup/bind binder values)
-  (apply binder values))
+(define (pattern-lookup-1 pattern body instance)
+  (let loop
+      ((pattern pattern)
+       (instance instance)
+       (vars '())
+       (vals '())
+       (k (lambda (vars vals) vars (apply body vals))))
+    (cond ((pattern-variable? pattern)
+	   (let ((var (pattern-variable-name pattern)))
+	     (let find-var ((vars* vars) (vals* vals))
+	       (if (pair? vars*)
+		   (if (eq? (car vars*) var)
+		       (and (eqv? (car vals*) instance)
+			    (k vars vals))
+		       (find-var (cdr vars*) (cdr vals*)))
+		   (k (cons var vars) (cons instance vals))))))
+	  ((pair? pattern)
+	   (and (pair? instance)
+		(loop (car pattern)
+		      (car instance)
+		      vars
+		      vals
+		      (lambda (vars vals)
+			(loop (cdr pattern)
+			      (cdr instance)
+			      vars
+			      vals
+			      k)))))
+	  (else
+	   (and (eqv? pattern instance)
+		(k vars vals))))))
 
 (define (pattern-variables pattern)
-  (let ((variables '()))
-    (define (loop pattern)
-      (if (pair? pattern)
-	  (if (eq? (car pattern) pattern-variable-tag)
-	      (if (not (memq (cdr pattern) variables))
-		  (set! variables (cons (cdr pattern) variables)))
-	      (begin (loop (car pattern))
-		     (loop (cdr pattern))))))
-    (loop pattern)
-    variables))
+  (let loop ((pattern pattern) (vars '()) (k (lambda (vars) vars)))
+    (cond ((pattern-variable? pattern)
+	   (k (let ((var (pattern-variable-name pattern)))
+		(if (memq var vars)
+		    vars
+		    (cons var vars)))))
+	  ((pair? pattern)
+	   (loop (car pattern)
+		 vars
+		 (lambda (vars) (loop (cdr pattern) vars k))))
+	  (else (k vars)))))
 
 (define-integrable (make-pattern-variable name)
   (cons pattern-variable-tag name))
@@ -81,6 +88,9 @@ USA.
 (define (pattern-variable? object)
   (and (pair? object)
        (eq? (car object) pattern-variable-tag)))
+
+(define pattern-variable-tag
+  '|#[(compiler pattern-matcher/lookup)pattern-variable]|)
 
 (define-integrable (pattern-variable-name var)
   (cdr var))

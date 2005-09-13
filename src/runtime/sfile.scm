@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.35 2003/09/05 20:51:22 cph Exp $
+$Id: sfile.scm,v 14.40 2005/01/11 03:57:16 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
-Copyright 1999,2001,2003 Massachusetts Institute of Technology
+Copyright 1999,2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -180,6 +180,8 @@ USA.
   (<= (or (file-modification-time p1) -1)
       (or (file-modification-time p2) -1)))
 
+;;;; Temporary files
+
 (define (call-with-temporary-filename receiver)
   (call-with-temporary-file-pathname
    (lambda (pathname)
@@ -216,7 +218,9 @@ USA.
        (vector-set! objects slot
 		    (delete! filename (vector-ref objects slot)))
        ((ucode-primitive set-fixed-objects-vector! 1) objects)))))
-
+
+;;;; Init files
+
 (define (guarantee-init-file-specifier object procedure)
   (if (not (init-file-specifier? object))
       (error:wrong-type-argument object "init-file specifier" procedure)))
@@ -246,3 +250,130 @@ USA.
   (let ((pathname (init-file-specifier->pathname specifier)))
     (guarantee-init-file-directory pathname)
     (open-output-file pathname (if (default-object? append?) #f append?))))
+
+;;;; MIME types
+
+(define (pathname-mime-type pathname)
+  (pathname-type->mime-type (pathname-type pathname)))
+
+(define (pathname-type->mime-type type)
+  (and (string? type)
+       (let ((mime-type (hash-table/get local-type-map type #f)))
+	 (if mime-type
+	     (and (mime-type? mime-type)
+		  mime-type)
+	     (let ((string (os/suffix-mime-type type)))
+	       (and string
+		    (string->mime-type string)))))))
+
+(define (associate-pathname-type-with-mime-type type mime-type)
+  (guarantee-string type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
+  (guarantee-mime-type mime-type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
+  (hash-table/put! local-type-map type mime-type))
+
+(define (disassociate-pathname-type-from-mime-type type)
+  (guarantee-string type 'DISASSOCIATE-PATHNAME-TYPE-FROM-MIME-TYPE)
+  (hash-table/put! local-type-map type 'DISASSOCIATED))
+
+(define-record-type <mime-type>
+    (%%make-mime-type top-level subtype)
+    mime-type?
+  (top-level mime-type/top-level)
+  (subtype mime-type/subtype))
+
+(define (make-mime-type top-level subtype)
+  (guarantee-mime-token top-level 'MAKE-MIME-TYPE)
+  (guarantee-mime-token subtype 'MAKE-MIME-TYPE)
+  (%make-mime-type top-level subtype))
+
+(define (%make-mime-type top-level subtype)
+  (let ((e (vector-length top-level-mime-types))
+	(new (lambda () (%%make-mime-type top-level subtype))))
+    (let loop ((i 0))
+      (if (fix:< i e)
+	  (if (eq? (vector-ref top-level-mime-types i) top-level)
+	      (hash-table/intern! (vector-ref interned-mime-types i)
+				  subtype
+				  new)
+	      (loop (fix:+ i 1)))
+	  (hash-table/intern! unusual-interned-mime-types
+			      (cons top-level subtype)
+			      new)))))
+
+(define top-level-mime-types
+  '#(TEXT IMAGE AUDIO VIDEO APPLICATION MULTIPART MESSAGE))
+
+(set-record-type-unparser-method! <mime-type>
+  (standard-unparser-method 'MIME-TYPE
+    (lambda (mime-type port)
+      (write-char #\space port)
+      (write-string (mime-type->string mime-type) port))))
+
+(define interned-mime-types)
+(define unusual-interned-mime-types)
+(define char-set:mime-token)
+(define local-type-map)
+
+(define (initialize-package!)
+  (set! interned-mime-types
+	(vector-map (lambda (token) token (make-eq-hash-table))
+		    top-level-mime-types))
+  (set! unusual-interned-mime-types (make-equal-hash-table))
+  (set! char-set:mime-token
+	(char-set-difference (ascii-range->char-set #x21 #x7F)
+			     (string->char-set "()<>@,;:\\\"/[]?=")))
+  (set! local-type-map (make-string-hash-table))
+  (associate-pathname-type-with-mime-type "scm"
+					  (make-mime-type 'TEXT 'X-SCHEME))
+  unspecific)
+
+(define (mime-type->string mime-type)
+  (guarantee-mime-type mime-type 'MIME-TYPE->STRING)
+  (string-append (symbol-name (mime-type/top-level mime-type))
+		 "/"
+		 (symbol-name (mime-type/subtype mime-type))))
+
+(define (string->mime-type string)
+  (guarantee-mime-type-string string 'STRING->MIME-TYPE)
+  (let ((slash (string-find-next-char string #\/)))
+    (%make-mime-type (intern (string-head string slash))
+		     (intern (string-tail string (fix:+ slash 1))))))
+
+(define (mime-type-string? object)
+  (and (string? object)
+       (string-is-mime-type? object)))
+
+(define (string-is-mime-type? string)
+  (let ((end (string-length string)))
+    (let ((i (check-mime-token-syntax string 0 end)))
+      (and (fix:> i 0)
+	   (fix:< i end)
+	   (char=? (string-ref string i) #\/)
+	   (fix:< (fix:+ i 1) end)
+	   (fix:= end (check-mime-token-syntax string (fix:+ i 1) end))
+	   i))))
+
+(define (mime-token? object)
+  (and (interned-symbol? object)
+       (string-is-mime-token? (symbol-name object))))
+
+(define (mime-token-string? object)
+  (and (string? object)
+       (string-is-mime-token? object)))
+
+(define (string-is-mime-token? string)
+  (let ((end (string-length string)))
+    (fix:= end (check-mime-token-syntax string 0 end))))
+
+(define (check-mime-token-syntax string start end)
+  (let loop ((i start))
+    (if (fix:< i end)
+	(if (char-set-member? char-set:mime-token (string-ref string i))
+	    (loop (fix:+ i 1))
+	    i)
+	end)))
+
+(define-guarantee mime-type "MIME type")
+(define-guarantee mime-type-string "MIME type string")
+(define-guarantee mime-token "MIME token")
+(define-guarantee mime-token-string "MIME token string")

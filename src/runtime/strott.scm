@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: strott.scm,v 14.11 2003/02/14 18:28:34 cph Exp $
+$Id: strott.scm,v 14.12 2004/02/16 05:38:42 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1988,1993,1999,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,64 +28,59 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! output-string-port-type
-	(make-port-type `((WRITE-SELF ,operation/write-self)
-			  (WRITE-CHAR ,operation/write-char)
-			  (WRITE-SUBSTRING ,operation/write-substring))
-			#f)))
-
 (define (with-output-to-truncated-string max thunk)
   (call-with-current-continuation
-   (lambda (return)
-     (cons #f
-	   (apply string-append
-		  (reverse!
-		   (let ((state
-			  (make-output-string-state return max '() max)))
-		     (with-output-to-port
-			 (make-port output-string-port-type state)
-		       thunk)
-		     (output-string-state/accumulator state))))))))
+   (lambda (k)
+     (let ((state (make-astate k max (make-string (fix:min max 128)) 0)))
+       (with-output-to-port (make-port output-string-port-type state)
+	 thunk)
+       (cons #f
+	     (without-interrupts
+	      (lambda ()
+		(string-head (astate-chars state)
+			     (astate-index state)))))))))
 
 (define output-string-port-type)
+(define (initialize-package!)
+  (set! output-string-port-type
+	(make-port-type
+	 `((WRITE-CHAR
+	    ,(lambda (port char)
+	       (guarantee-8-bit-char char)
+	       (let ((state (port/state port)))
+		 (without-interrupts
+		  (lambda ()
+		    (let* ((n (astate-index state)))
+		      (if (fix:< n (astate-max-length state))
+			  (let ((n* (fix:+ n 1)))
+			    (if (fix:= n (string-length (astate-chars state)))
+				(grow-accumulator! state n*))
+			    (string-set! (astate-chars state) n char)
+			    (set-astate-index! state n*))
+			  ((astate-return state)
+			   (cons #t (string-copy (astate-chars state)))))))))
+	       1))
+	   (WRITE-SELF
+	    ,(lambda (port output-port)
+	       port
+	       (write-string " to string (truncating)" output-port))))
+	 #f))
+  unspecific)
 
-(define-structure (output-string-state (type vector)
-				       (conc-name output-string-state/))
+(define-structure (astate (type vector))
   (return #f read-only #t)
   (max-length #f read-only #t)
-  accumulator
-  counter)
+  chars
+  index)
 
-(define (operation/write-char port char)
-  (let ((state (port/state port)))
-    (let ((accumulator (output-string-state/accumulator state))
-	  (counter (output-string-state/counter state)))
-      (if (zero? counter)
-	  ((output-string-state/return state)
-	   (cons #t (apply string-append (reverse! accumulator))))
-	  (begin
-	    (set-output-string-state/accumulator!
-	     state
-	     (cons (string char) accumulator))
-	    (set-output-string-state/counter! state (-1+ counter)))))))
-
-(define (operation/write-substring port string start end)
-  (let ((state (port/state port)))
-    (let ((accumulator
-	   (cons (substring string start end)
-		 (output-string-state/accumulator state)))
-	  (counter (- (output-string-state/counter state) (- end start))))
-      (if (negative? counter)
-	  ((output-string-state/return state)
-	   (cons #t
-		 (substring (apply string-append (reverse! accumulator))
-			    0
-			    (output-string-state/max-length state))))
-	  (begin
-	    (set-output-string-state/accumulator! state accumulator)
-	    (set-output-string-state/counter! state counter))))))
-
-(define (operation/write-self port output-port)
-  port
-  (write-string " to string (truncating)" output-port))
+(define (grow-accumulator! state min-size)
+  (let* ((old (astate-chars state))
+	 (n (string-length old))
+	 (new
+	  (make-string
+	   (let loop ((n (fix:+ n n)))
+	     (if (fix:>= n min-size)
+		 (fix:min n (astate-max-length state))
+		 (loop (fix:+ n n)))))))
+    (substring-move! old 0 n new 0)
+    (set-astate-chars! state new)))

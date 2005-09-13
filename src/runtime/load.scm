@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.66 2003/09/05 20:51:14 cph Exp $
+$Id: load.scm,v 14.72 2005/07/19 03:48:44 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -71,13 +72,11 @@ USA.
 (define (load filename/s #!optional environment syntax-table purify?)
   syntax-table				;ignored
   (let ((environment
-	 ;; Kludge until optional defaulting fixed.
-	 (if (or (default-object? environment)
-		 (eq? environment default-object))
-	     default-object
+	 (if (default-object? environment)
+	     environment
 	     (->environment environment)))
 	(purify?
-	 (if (or (default-object? purify?) (eq? purify? default-object))
+	 (if (default-object? purify?)
 	     #f
 	     purify?)))
     (handle-load-hooks
@@ -133,20 +132,10 @@ USA.
     (lambda (result hooks)
       (for-each (lambda (hook) (hook)) hooks)
       result)))
-
-(define default-object
-  (list 'DEFAULT-OBJECT))
 
 (define (load-noisily filename #!optional environment syntax-table purify?)
-  syntax-table				;ignored
   (fluid-let ((load-noisily? #t))
-    (load filename
-	  ;; This defaulting is a kludge until we get the optional
-	  ;; defaulting fixed.  Right now it must match the defaulting
-	  ;; of `load'.
-	  (if (default-object? environment) default-object environment)
-	  'DEFAULT
-	  (if (default-object? purify?) default-object purify?))))
+    (load filename environment syntax-table purify?)))
 
 (define (load-latest . args)
   (fluid-let ((load/default-find-pathname-with-type find-latest-file))
@@ -230,13 +219,11 @@ USA.
 			  purify?))
 	(let ((value-stream
 	       (lambda ()
-		 (eval-stream (read-stream port) environment))))
+		 (eval-stream (read-stream port environment) environment))))
 	  (if load-noisily?
 	      (write-stream (value-stream)
 			    (lambda (exp&value)
-			      (hook/repl-write (nearest-repl)
-					       (car exp&value)
-					       (cdr exp&value))))
+			      (repl-write (cdr exp&value) (car exp&value))))
 	      (loading-message load/suppress-loading-message? pathname
 		(lambda ()
 		  (write-stream (value-stream)
@@ -277,7 +264,7 @@ USA.
 (define (load-scode-end scode environment purify?)
   (if purify? (purify (load/purification-root scode)))
   (extended-scode-eval scode
-		       (if (eq? environment default-object)
+		       (if (default-object? environment)
 			   (nearest-repl/environment)
 			   environment)))
 
@@ -352,14 +339,14 @@ USA.
 			 (cdr frob))))))
       object))
 
-(define (read-file filename)
+(define (read-file filename #!optional environment)
   (call-with-input-file (pathname-default-version filename 'NEWEST)
     (lambda (port)
-      (stream->list (read-stream port)))))
+      (stream->list (read-stream port environment)))))
 
-(define (read-stream port)
+(define (read-stream port environment)
   (parse-objects port
-		 (current-parser-table)
+		 environment
 		 (lambda (object)
 		   (and (eof-object? object)
 			(begin
@@ -368,14 +355,9 @@ USA.
 
 (define (eval-stream stream environment)
   (stream-map stream
-	      (let ((repl (nearest-repl)))
-		(let* ((environment
-			(if (eq? environment default-object)
-			    (repl/environment repl)
-			    environment)))
-		  (lambda (s-expression)
-		    (cons s-expression
-			  (hook/repl-eval #f s-expression environment)))))))
+	      (lambda (s-expression)
+		(cons s-expression
+		      (repl-eval s-expression environment)))))
 
 (define (write-stream stream write)
   (if (stream-pair? stream)
@@ -561,139 +543,17 @@ USA.
     (lambda ()
       (set! generate-suspend-file? #f)
       unspecific))
-  (argument-command-line-parser "load" #t load)
+  (argument-command-line-parser "load" #t
+    (lambda (arg)
+      (run-in-nearest-repl
+       (lambda (repl)
+	 (load arg (repl/environment repl))))))
   (argument-command-line-parser "eval" #t
     (lambda (arg)
-      (eval (with-input-from-string arg read) user-initial-environment))))
-
-;;;; Loader for packed binaries
-
-(define (load-packed-binaries pathname fname count environment)
-  (define (process-bunch alist)
-    (let ((real-load load)
-	  (real-fasload fasload)
-	  (real-file-exists? file-exists?)
-	  (real-file-directory? file-directory?)
-	  (to-purify '()))
-      (fluid-let
-	  ((load
-	    (lambda (fname #!optional env syntax-table purify?)
-	      syntax-table		;ignored
-	      (let ((env (if (default-object? env) default-object env))
-		    (purify?
-		     (if (default-object? purify?) default-object purify?)))
-		(let ((place (find-filename fname alist)))
-		  (if (not place)
-		      (real-load fname env 'DEFAULT purify?)
-		      (handle-load-hooks
-		       (lambda ()
-			 (let ((scode (caddr place)))
-			   (loading-message fname
-					    load/suppress-loading-message?
-					    ";Pseudo-loading ")
-			   (if (and (not (eq? purify? default-object)) purify?)
-			       (set! to-purify
-				     (cons (load/purification-root scode)
-					   to-purify)))
-			   (fluid-let ((load/current-pathname (cadr place)))
-			     (extended-scode-eval scode
-						  (if (eq? env default-object)
-						      environment
-						      env)))))))))))
-	   (fasload
-	    (lambda (filename #!optional suppress-message?)
-	      (let ((suppress-message?
-		     (if (default-object? suppress-message?)
-			 load/suppress-loading-message?
-			 suppress-message?))
-		    (place (find-filename filename alist)))
-		(if (not place)
-		    (real-fasload filename suppress-message?)
-		    (begin
-		      (loading-message filename
-		                       suppress-message?
-				       ";Pseudo-fasloading ")
-		      (caddr place))))))
-	   (file-exists?
-	    (lambda (fname)
-	      (or (find-filename fname alist)
-		  (real-file-exists? fname))))
-	   (file-directory?
-	    (lambda (dname)
-	      (or (directory-represented? dname alist)
-		  (real-file-directory? dname)))))
-        (load (caar alist)))
-      (set! alist)
-      (for-each purify (reverse! to-purify)))
-    (flush-purification-queue!))
-
-  (define (find-filename fname alist)
-    (search-alist (->pathname fname) alist
-      (lambda (path1 path2)
-	(and (equal? (pathname-directory path1)
-		     (pathname-directory path2))
-	     (equal? (pathname-name path1)
-		     (pathname-name path2))
-	     (or (equal? (pathname-type path1) (pathname-type path2))
-		 (and (member (pathname-type path1) '(#f "bin" "com"))
-		      (member (pathname-type path2) '(#f "bin" "com"))))))))
-
-  (define (directory-represented? dname alist)
-    (search-alist (pathname-as-directory (->pathname dname)) alist
-      (lambda (path1 path2)
-	(equal? (pathname-directory path1)
-		(pathname-directory path2)))))
-
-  (define (search-alist path alist predicate?)
-    (let loop ((alist alist))
-      (and (pair? alist)
-	   (if (predicate? path (cadar alist))
-	       (car alist)
-	       (loop (cdr alist))))))
-
-  (define (loading-message fname suppress? kind)
-    (if (not suppress?)
-	(let ((port (notification-output-port)))
-	  (fresh-line port)
-	  (write-string kind port)
-	  (write-string (->namestring (->pathname fname)) port)
-	  (write-string "..." port)
-	  (newline port))))
-
-  (with-binary-input-file (->truename pathname)
-    (lambda (channel)
-      ((ucode-primitive binary-fasload) channel) ; Dismiss header.
-      (let ((process-next-bunch
-	     (lambda ()
-	       (process-bunch
-		(map (lambda (pair)
-		       (list (car pair)
-			     (->pathname (car pair))
-			     (cdr pair)))
-		     ((ucode-primitive binary-fasload) channel))))))
-	(do ((count count (-1+ count)))
-	    ((= count 1)
-	     (process-next-bunch))
-	  (process-next-bunch))))))
-
-(define (with-binary-input-file file action)
-  (with-binary-file-channel file action
-    open-binary-input-file
-    port/input-channel
-    'with-binary-input-file))
-
-(define (with-binary-file-channel file action open extract-channel name)
-  (let ((port #f))
-    (dynamic-wind
-     (lambda ()
-       (if port
-           (error "cannot re-enter with-binary-file-channel" name)))
-     (lambda ()
-       (set! port (open file))
-       (action (channel-descriptor (extract-channel port))))
-     (lambda ()
-       (if (and port
-                (not (eq? port #t)))
-           (begin
-             (close-port port)
-             (set! port #t)))))))
+      (run-in-nearest-repl
+       (lambda (repl)
+	 (let ((environment (repl/environment repl)))
+	   (repl-eval/write (read (open-input-string arg)
+				  environment)
+			    environment
+			    repl)))))))

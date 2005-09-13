@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.122 2003/04/25 03:50:34 cph Exp $
+$Id: make.scm,v 4.124 2004/12/13 03:22:21 cph Exp $
 
-Copyright (c) 1991,1992,1993,1994,1997 Massachusetts Institute of Technology
-Copyright (c) 1998,1999,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1991,1992,1993,1994,1997,1998 Massachusetts Institute of Technology
+Copyright 1999,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,12 +30,12 @@ USA.
 
 (lambda (architecture-name)
   architecture-name
+  (load-option 'COMPRESS)
+  (load-option 'RB-TREE)
   ((access with-directory-rewriting-rule
 	   (->environment '(RUNTIME COMPILER-INFO)))
    (working-directory-pathname)
    (pathname-as-directory "compiler")
    (lambda ()
-     (load-option 'COMPRESS)
-     (load-option 'RB-TREE)
      (load-package-set "compiler")))
-  (add-identification! "LIAR" 4 116))
+  (add-subsystem-identification! "LIAR" '(4 117)))

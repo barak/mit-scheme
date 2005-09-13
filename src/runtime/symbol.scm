@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.11 2003/07/29 03:45:02 cph Exp $
+$Id: symbol.scm,v 1.19 2005/05/30 18:49:01 cph Exp $
 
-Copyright 1992,1993,2001,2003 Massachusetts Institute of Technology
+Copyright 1992,1993,2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -51,18 +51,54 @@ USA.
       (error:wrong-type-argument object "uninterned symbol" caller)))
 
 (define (string->uninterned-symbol string)
-  (guarantee-string string 'STRING->UNINTERNED-SYMBOL)
+  (make-uninterned-symbol (if (string? string)
+			      (string->utf8-string string)
+			      (wide-string->utf8-string string))))
+
+(define (utf8-string->uninterned-symbol string)
+  (make-uninterned-symbol (if (utf8-string? string)
+			      (string-copy string)
+			      (wide-string->utf8-string string))))
+
+(define (make-uninterned-symbol string)
   ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
 				      string
 				      (make-unmapped-unbound-reference-trap)))
 
 (define (string->symbol string)
-  ;; Calling STRING-COPY prevents the symbol from being affected if
-  ;; the string is mutated.  The string is copied only if the symbol
-  ;; is created.
-  (or ((ucode-primitive find-symbol) string)
-      ((ucode-primitive string->symbol) (string-copy string))))
+  ((ucode-primitive string->symbol) (if (string? string)
+					(string->utf8-string string)
+					(wide-string->utf8-string string))))
 
+(define (utf8-string->symbol string)
+  (if (utf8-string? string)
+      (or ((ucode-primitive find-symbol) string)
+	  ((ucode-primitive string->symbol) (string-copy string)))
+      ((ucode-primitive string->symbol) (wide-string->utf8-string string))))
+
+(define (substring->symbol string start end)
+  (guarantee-substring string start end 'SUBSTRING->SYMBOL)
+  ((ucode-primitive string->symbol) (string->utf8-string string start end)))
+
+(define (string-head->symbol string end)
+  (substring->symbol string 0 end))
+
+(define (string-tail->symbol string start)
+  (substring->symbol string start (string-length string)))
+
+(define (symbol . objects)
+  ((ucode-primitive string->symbol)
+   (apply string-append (map ->utf8-string objects))))
+
+(define (->utf8-string object)
+  (cond ((symbol? object) (symbol-name object))
+	((string? object) (string->utf8-string object))
+	((wide-string? object) (wide-string->utf8-string object))
+	((wide-char? object) (wide-string->utf8-string (wide-string object)))
+	((number? object) (number->string object))
+	((not object) "")
+	(else (error:wrong-type-argument object "symbol component" 'SYMBOL))))
+
 (define (intern string)
   (if (string-lower-case? string)
       (string->symbol string)
@@ -78,20 +114,23 @@ USA.
   (guarantee-symbol symbol 'SYMBOL-NAME)
   (system-pair-car symbol))
 
-(define-integrable (symbol->string symbol)
-  (string-copy (symbol-name symbol)))
-
 (define (symbol-append . symbols)
   ((ucode-primitive string->symbol)
-   (apply string-append (map symbol-name symbols))))
+   (apply string-append
+	  (map (lambda (symbol)
+		 (guarantee-symbol symbol 'SYMBOL-APPEND)
+		 (system-pair-car symbol))
+	       symbols))))
 
-(define-integrable (symbol-hash symbol)
+(define (symbol-hash symbol)
   (string-hash (symbol-name symbol)))
 
-(define-integrable (symbol-hash-mod symbol modulus)
+(define (symbol-hash-mod symbol modulus)
   (string-hash-mod (symbol-name symbol) modulus))
 
 (define (symbol<? x y)
+  (guarantee-symbol x 'SYMBOL<?)
+  (guarantee-symbol y 'SYMBOL<?)
   (let ((sx (system-pair-car x))
 	(sy (system-pair-car y)))
     (let ((lx (string-length sx))
@@ -104,3 +143,12 @@ USA.
 		 (loop (fix:+ i 1)))
 		(else
 		 (fix:< (vector-8b-ref sx i) (vector-8b-ref sy i)))))))))
+
+(define (symbol->utf8-string symbol)
+  (string-copy (symbol-name symbol)))
+
+(define (symbol->wide-string symbol)
+  (utf8-string->wide-string (symbol-name symbol)))
+
+(define (symbol->string symbol)
+  (wide-string->string (symbol->wide-string symbol)))

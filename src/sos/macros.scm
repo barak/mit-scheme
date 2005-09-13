@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.17 2003/02/14 18:28:35 cph Exp $
+$Id: macros.scm,v 1.18 2004/12/06 18:30:09 cph Exp $
 
-Copyright 1993-2002 Massachusetts Institute of Technology
+Copyright 1997,1998,2000,2001,2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -450,10 +450,9 @@ USA.
 	  ((scode-walk scode-walker expr) name expr)))
        (do-exprs
 	(lambda (name exprs)
-	  (if (pair? exprs)
-	      (or (do-expr name (car exprs))
-		  (do-exprs name (cdr exprs)))
-	      '())))
+	  (and (pair? exprs)
+	       (or (do-expr name (car exprs))
+		   (do-exprs name (cdr exprs))))))
        (scode-walker
 	(make-scode-walker
 	 (lambda (name expr) name expr #f)

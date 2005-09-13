@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.65 2003/02/14 18:28:19 cph Exp $
+$Id: hooks.c,v 9.66 2004/11/21 04:17:44 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -84,7 +84,7 @@ Invoke PROCEDURE on the arguments contained in list-of-ARGS.")
 	number_of_args += 2;
       }
     }
-    if (scan_list != EMPTY_LIST)
+    if (!EMPTY_LIST_P (scan_list))
       error_wrong_type_arg (2);
   }
 

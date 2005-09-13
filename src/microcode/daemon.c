@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: daemon.c,v 9.33 2003/02/14 18:28:18 cph Exp $
+$Id: daemon.c,v 9.34 2004/11/21 04:17:22 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -52,7 +52,7 @@ DEFINE_PRIMITIVE ("CLOSE-LOST-OPEN-FILES", Prim_close_lost_open_files, 1, 1, 0)
     SCHEME_OBJECT file_list = (ARG_REF (1));
     SCHEME_OBJECT * smash = (PAIR_CDR_LOC (file_list));
     SCHEME_OBJECT cell = (*smash);
-    while (cell != EMPTY_LIST)
+    while (!EMPTY_LIST_P (cell))
       {
 	SCHEME_OBJECT weak_cell = (FAST_PAIR_CAR (cell));
 	if ((FAST_PAIR_CAR (weak_cell)) == SHARP_F)
@@ -96,7 +96,6 @@ DEFUN (rehash_pair, (pair, hash_table, table_size),
   FAST_MEMORY_SET (hash_table,
 		   hash_address,
 		   (MAKE_POINTER_OBJECT (TC_LIST, new_pair)));
-  return;
 }
 
 static void
@@ -106,7 +105,7 @@ DEFUN (rehash_bucket, (bucket, hash_table, table_size),
 {
   fast SCHEME_OBJECT weak_pair;
 
-  while (*bucket != EMPTY_LIST)
+  while (!EMPTY_LIST_P (*bucket))
   {
     weak_pair = (FAST_PAIR_CAR (*bucket));
     if ((FAST_PAIR_CAR (weak_pair)) != SHARP_F)
@@ -115,7 +114,6 @@ DEFUN (rehash_bucket, (bucket, hash_table, table_size),
     }
     bucket = (PAIR_CDR_LOC (*bucket));
   }
-  return;
 }
 
 static void
@@ -125,7 +123,7 @@ DEFUN (splice_and_rehash_bucket, (bucket, hash_table, table_size),
 {
   fast SCHEME_OBJECT weak_pair;
 
-  while ((*bucket) != EMPTY_LIST)
+  while (!EMPTY_LIST_P (*bucket))
   {
     weak_pair = (FAST_PAIR_CAR (*bucket));
     if ((FAST_PAIR_CAR (weak_pair)) != SHARP_F)
@@ -136,7 +134,6 @@ DEFUN (splice_and_rehash_bucket, (bucket, hash_table, table_size),
     else
       *bucket = (FAST_PAIR_CDR (*bucket));
   }
-  return;
 }
 
 /* (REHASH unhash-table hash-table)

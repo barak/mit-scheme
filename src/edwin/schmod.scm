@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: schmod.scm,v 1.67 2003/08/01 19:23:23 cph Exp $
+$Id: schmod.scm,v 1.72 2005/06/10 01:50:46 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1998 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -99,33 +99,45 @@ The following commands evaluate Scheme expressions:
 
 (define scheme-mode:syntax-table (make-char-syntax-table))
 
-(modify-syntax-entries! scheme-mode:syntax-table #\nul #\/ "_")
-(modify-syntax-entries! scheme-mode:syntax-table #\: #\@ "_")
-(modify-syntax-entries! scheme-mode:syntax-table #\[ #\` "_")
-(modify-syntax-entries! scheme-mode:syntax-table #\{ #\rubout "_")
-
-(set-char-syntax! scheme-mode:syntax-table #\space " ")
 (set-char-syntax! scheme-mode:syntax-table #\tab " ")
-(set-char-syntax! scheme-mode:syntax-table #\page " ")
-(set-char-syntax! scheme-mode:syntax-table #\[ "(]")
-(set-char-syntax! scheme-mode:syntax-table #\] ")[")
-(set-char-syntax! scheme-mode:syntax-table #\{ "(}")
-(set-char-syntax! scheme-mode:syntax-table #\} "){")
-(set-char-syntax! scheme-mode:syntax-table #\| "\" 23")
-
-(set-char-syntax! scheme-mode:syntax-table #\; "< ")
 (set-char-syntax! scheme-mode:syntax-table #\newline "> ")
+(set-char-syntax! scheme-mode:syntax-table #\page " ")
+(set-char-syntax! scheme-mode:syntax-table #\space " ")
 
-(set-char-syntax! scheme-mode:syntax-table #\' "  p")
-(set-char-syntax! scheme-mode:syntax-table #\` "  p")
-(set-char-syntax! scheme-mode:syntax-table #\, "_ p")
-(set-char-syntax! scheme-mode:syntax-table #\@ "_ p")
-(set-char-syntax! scheme-mode:syntax-table #\# "_ p14")
-
+(set-char-syntax! scheme-mode:syntax-table #\! "_")
 (set-char-syntax! scheme-mode:syntax-table #\" "\" ")
-(set-char-syntax! scheme-mode:syntax-table #\\ "\\ ")
+(set-char-syntax! scheme-mode:syntax-table #\# "_ p14")
+(set-char-syntax! scheme-mode:syntax-table #\$ "_")
+(set-char-syntax! scheme-mode:syntax-table #\% "_")
+(set-char-syntax! scheme-mode:syntax-table #\& "_")
+(set-char-syntax! scheme-mode:syntax-table #\' "  p")
 (set-char-syntax! scheme-mode:syntax-table #\( "()")
 (set-char-syntax! scheme-mode:syntax-table #\) ")(")
+(set-char-syntax! scheme-mode:syntax-table #\* "_")
+(set-char-syntax! scheme-mode:syntax-table #\+ "_")
+(set-char-syntax! scheme-mode:syntax-table #\, "  p")
+(set-char-syntax! scheme-mode:syntax-table #\- "_")
+(set-char-syntax! scheme-mode:syntax-table #\. "_")
+(set-char-syntax! scheme-mode:syntax-table #\/ "_")
+(set-char-syntax! scheme-mode:syntax-table #\@ "_ p")
+
+(set-char-syntax! scheme-mode:syntax-table #\: "_")
+(set-char-syntax! scheme-mode:syntax-table #\; "< ")
+(set-char-syntax! scheme-mode:syntax-table #\< "_")
+(set-char-syntax! scheme-mode:syntax-table #\= "_")
+(set-char-syntax! scheme-mode:syntax-table #\> "_")
+(set-char-syntax! scheme-mode:syntax-table #\? "_")
+
+(set-char-syntax! scheme-mode:syntax-table #\[ "(]")
+(set-char-syntax! scheme-mode:syntax-table #\\ "\\ ")
+(set-char-syntax! scheme-mode:syntax-table #\] ")[")
+(set-char-syntax! scheme-mode:syntax-table #\^ "_")
+(set-char-syntax! scheme-mode:syntax-table #\_ "_")
+(set-char-syntax! scheme-mode:syntax-table #\` "  p")
+(set-char-syntax! scheme-mode:syntax-table #\{ "(}")
+(set-char-syntax! scheme-mode:syntax-table #\| "\" 23")
+(set-char-syntax! scheme-mode:syntax-table #\} "){")
+(set-char-syntax! scheme-mode:syntax-table #\? "_")
 
 ;;;; Indentation
 
@@ -145,13 +157,16 @@ The following commands evaluate Scheme expressions:
 (define scheme-mode:indent-methods
   (make-string-table))
 
-(define (scheme-indent-method symbol method)
-  (string-table-put! scheme-mode:indent-methods
-		     (symbol->string symbol)
-		     method))
+(define (scheme-indent-method name method)
+  (define-variable-local-value! (selected-buffer)
+      (name->variable (symbol 'LISP-INDENT/ name) 'INTERN)
+    method))
 
 (for-each (lambda (entry)
-	    (for-each (lambda (name) (scheme-indent-method name (car entry)))
+	    (for-each (lambda (name)
+			(string-table-put! scheme-mode:indent-methods
+					   (symbol->string name)
+					   (car entry)))
 		      (cdr entry)))
 	  `(;; R4RS keywords:
 	    (0 BEGIN DELAY)
@@ -178,7 +193,8 @@ The following commands evaluate Scheme expressions:
 	       WITH-INPUT-FROM-PORT WITH-INPUT-FROM-STRING WITH-OUTPUT-TO-PORT
 	       CALL-WITH-VALUES WITH-VALUES WITHIN-CONTINUATION
 	       KEEP-MATCHING-ITEMS KEEP-MATCHING-ITEMS! DELETE-MATCHING-ITEMS
-	       DELETE-MATCHING-ITEMS! FIND-MATCHING-ITEM
+	       DELETE-MATCHING-ITEMS! FIND-MATCHING-ITEM FIND-NON-MATCHING-ITEM
+	       COUNT-MATCHING-ITEMS COUNT-NON-MATCHING-ITEMS
 	       LIST-TRANSFORM-POSITIVE LIST-TRANSFORM-NEGATIVE
 	       LIST-SEARCH-POSITIVE LIST-SEARCH-NEGATIVE
 	       FOR-ALL? THERE-EXISTS? LIST-OF-TYPE? VECTOR-OF-TYPE?)
@@ -210,18 +226,21 @@ The following commands evaluate Scheme expressions:
       (standard-completion (extract-string start end)
 	(lambda (prefix if-unique if-not-unique if-not-found)
 	  (let ((completions
-		 (let ((completions
-			(obarray-completions
-			 (if *parser-canonicalize-symbols?*
-			     (string-downcase prefix)
-			     prefix))))
-		   (if (not bound-only?)
-		       completions
-		       (let ((environment (evaluation-environment #f)))
-			 (list-transform-positive completions
+		 (let ((environment (evaluation-environment #f)))
+		   (let ((completions
+			  (obarray-completions
+			   (if (and bound-only?
+				    (environment-lookup
+				     environment
+				     '*PARSER-CANONICALIZE-SYMBOLS?*))
+			       (string-downcase prefix)
+			       prefix))))
+		     (if bound-only?
+			 (keep-matching-items completions
 			   (lambda (name)
-			     (environment-bound? environment name))))))))
-	    (cond ((null? completions)
+			     (environment-bound? environment name)))
+			 completions)))))
+	    (cond ((not (pair? completions))
 		   (if-not-found))
 		  ((null? (cdr completions))
 		   (if-unique (system-pair-car (car completions))))

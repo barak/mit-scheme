@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.18 2003/02/14 18:28:32 cph Exp $
+$Id: gc.scm,v 14.20 2005/07/31 02:58:35 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -223,7 +224,6 @@ USA.
   item)
 
 (define (constant-space/in-use)
-  (- (get-next-constant) constant-space/base))
-
-;; This is set to the correct value during the cold load.
-(define constant-space/base)
+  (let ((v (gc-space-status)))
+    (- (vector-ref v 2)
+       (vector-ref v 1))))

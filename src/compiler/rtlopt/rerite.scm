@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rerite.scm,v 1.6 2003/02/14 18:28:08 cph Exp $
+$Id: rerite.scm,v 1.7 2004/07/05 03:59:36 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright 1990,1992,1993,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,9 +28,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define-structure (rewriting-rules
-		   (conc-name rewriting-rules/)
-		   (constructor make-rewriting-rules ()))
+(define-structure (rewriting-rules (conc-name rewriting-rules/)
+				   (constructor make-rewriting-rules ()))
   (assignment '())
   (statement '())
   (register '())
@@ -46,11 +45,11 @@ USA.
 (define (rtl-rewriting:post-cse rgraphs)
   (walk-rgraphs rules:post-cse rgraphs))
 
-(define (add-rewriting-rule! pattern result-procedure)
-  (new-rewriting-rule! rules:post-cse pattern result-procedure))
+(define (add-rewriting-rule! pattern matcher)
+  (new-rewriting-rule! rules:post-cse pattern matcher))
 
-(define (add-pre-cse-rewriting-rule! pattern result-procedure)
-  (new-rewriting-rule! rules:pre-cse pattern result-procedure))
+(define (add-pre-cse-rewriting-rule! pattern matcher)
+  (new-rewriting-rule! rules:pre-cse pattern matcher))
 
 (define (walk-rgraphs rules rgraphs)
   (if (not (and (null? (rewriting-rules/assignment rules))
@@ -121,45 +120,44 @@ USA.
 		 (pattern-lookup (cdr entries) expression))))
       (pattern-lookup (rewriting-rules/generic rules) expression)))
 
-(define (new-rewriting-rule! rules pattern result-procedure)
-  (let ((entry (cons pattern result-procedure)))
-    (if (not (and (pair? pattern) (symbol? (car pattern))))
-	(set-rewriting-rules/generic! rules
-				      (cons entry
-					    (rewriting-rules/generic rules)))
-	(let ((keyword (car pattern)))
-	  (cond ((eq? keyword 'ASSIGN)
-		 (set-rewriting-rules/assignment!
-		  rules
-		  (cons entry (rewriting-rules/assignment rules))))
-		((eq? keyword 'REGISTER)
-		 (set-rewriting-rules/register!
-		  rules
-		  (cons entry (rewriting-rules/register rules))))
-		((memq keyword rtl:expression-types)
-		 (let ((entries
-			(assq keyword (rewriting-rules/expression rules))))
-		   (if entries
-		       (set-cdr! entries (cons entry (cdr entries)))
-		       (set-rewriting-rules/expression!
-			rules
-			(cons (list keyword entry)
-			      (rewriting-rules/expression rules))))))
-		((or (memq keyword rtl:statement-types)
-		     (memq keyword rtl:predicate-types))
-		 (let ((entries
-			(assq keyword (rewriting-rules/statement rules))))
-		   (if entries
-		       (set-cdr! entries (cons entry (cdr entries)))
-		       (set-rewriting-rules/statement!
-			rules
-			(cons (list keyword entry)
-			      (rewriting-rules/statement rules))))))
-		(else
-		 (error "illegal RTL type" keyword))))))
+(define (new-rewriting-rule! rules pattern matcher)
+  (if (and (pair? pattern) (symbol? (car pattern)))
+      (let ((keyword (car pattern)))
+	(cond ((eq? keyword 'ASSIGN)
+	       (set-rewriting-rules/assignment!
+		rules
+		(cons matcher (rewriting-rules/assignment rules))))
+	      ((eq? keyword 'REGISTER)
+	       (set-rewriting-rules/register!
+		rules
+		(cons matcher (rewriting-rules/register rules))))
+	      ((memq keyword rtl:expression-types)
+	       (let ((entries
+		      (assq keyword (rewriting-rules/expression rules))))
+		 (if entries
+		     (set-cdr! entries (cons matcher (cdr entries)))
+		     (set-rewriting-rules/expression!
+		      rules
+		      (cons (list keyword matcher)
+			    (rewriting-rules/expression rules))))))
+	      ((or (memq keyword rtl:statement-types)
+		   (memq keyword rtl:predicate-types))
+	       (let ((entries
+		      (assq keyword (rewriting-rules/statement rules))))
+		 (if entries
+		     (set-cdr! entries (cons matcher (cdr entries)))
+		     (set-rewriting-rules/statement!
+		      rules
+		      (cons (list keyword matcher)
+			    (rewriting-rules/statement rules))))))
+	      (else
+	       (error "illegal RTL type" keyword))))
+      (set-rewriting-rules/generic! rules
+				    (cons matcher
+					  (rewriting-rules/generic rules))))
   pattern)
-
-(define-rule add-pre-cse-rewriting-rule!
+
+(define-rule pre-cse-rewriting
   (OBJECT->ADDRESS (? source))
   (QUALIFIER (value-class=address? (rtl:expression-value-class source)))
   source)
@@ -168,7 +166,7 @@ USA.
 ;; Probably closure bumping should not use byte-offset-address, and use
 ;; a new rtl type, but...
 
-(define-rule add-pre-cse-rewriting-rule!
+(define-rule pre-cse-rewriting
   (CONS-POINTER (MACHINE-CONSTANT (? type))
 		(REGISTER (? datum register-known-value)))
   (QUALIFIER

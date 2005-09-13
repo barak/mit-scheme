@@ -1,3 +1,12 @@
+mit-scheme (7.7.90+20050912-1) unstable; urgency=low
+
+  * Acknowledge NMU (thanks Matej!).  (closes: Bug#323739)
+  * New upstream snapshot.
+  * Bump standards version to 3.6.2 (no changes).
+  * Drop texi2html from build dependencies; no longer used.
+
+ -- Chris Hanson <cph@debian.org>  Mon, 12 Sep 2005 21:36:33 -0400
+
 mit-scheme (7.7.90-5.1) unstable; urgency=low
 
   * NMU during BSP.

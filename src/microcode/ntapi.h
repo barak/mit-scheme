@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntapi.h,v 1.16 2003/07/12 03:22:08 cph Exp $
+$Id: ntapi.h,v 1.17 2004/12/20 04:36:44 cph Exp $
 
-Copyright 1997,1999,2000,2002,2003 Massachusetts Institute of Technology
+Copyright 1997,1999,2000,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -65,6 +65,7 @@ enum syscall_names
   apicall_RegSetValueEx,
   apicall_RemoveDirectory,
   apicall_SetCurrentDirectory,
+  apicall_SetEndOfFile,
   apicall_SetFileAttributes,
   apicall_SetFilePointer,
   apicall_SetFileTime,
@@ -926,6 +927,7 @@ static char * syscall_names_table [] =
   "reg-set-value-ex",
   "remove-directory",
   "set-current-directory",
+  "set-end-of-file",
   "set-file-attributes",
   "set-file-pointer",
   "set-file-time",

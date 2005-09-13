@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rmail.scm,v 1.75 2003/02/14 18:28:13 cph Exp $
+$Id: rmail.scm,v 1.76 2004/01/16 19:11:14 cph Exp $
 
 Copyright 1991,1992,1993,1994,1995,1999 Massachusetts Institute of Technology
 Copyright 2000,2001,2003 Massachusetts Institute of Technology
@@ -287,8 +287,8 @@ together with two commands to return to regular RMAIL:
 (define-key 'rmail #\w		'rmail-edit-current-message)
 (define-key 'rmail #\c-d	'rmail-delete-backward)
 
-(define-key 'rmail-edit '(#\c-c #\c-c)	'rmail-cease-edit)
-(define-key 'rmail-edit '(#\c-c #\c-])	'rmail-abort-edit)
+(define-key 'rmail-edit '(#\c-c #\c-c) 'rmail-cease-edit)
+(define-key 'rmail-edit '(#\c-c #\c-\]) 'rmail-abort-edit)
 
 (define-command rmail
   "Read and edit incoming mail.

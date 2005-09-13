@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.47 2003/04/25 03:27:55 cph Exp $
+$Id: record.scm,v 1.54 2005/09/08 19:12:37 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
-Copyright 1997,2002,2003 Massachusetts Institute of Technology
+Copyright 1997,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -70,8 +70,9 @@ USA.
 	  (%record #f
 		   #f
 		   "record-type"
-		   '#(NAME DISPATCH-TAG FIELD-NAMES DEFAULT-INITS)
-		   (vector-cons 4 (lambda () #f)))))
+		   '#(DISPATCH-TAG NAME FIELD-NAMES DEFAULT-INITS EXTENSION)
+		   (vector-cons 5 (lambda () #f))
+		   #f)))
     (set! record-type-type-tag (make-dispatch-tag type))
     (%record-set! type 0 record-type-type-tag)
     (%record-set! type 1 record-type-type-tag))
@@ -89,7 +90,7 @@ USA.
 		  (%record-type-name (dispatch-tag-contents tag))
 		  #f))
 		((eq? tag record-type-type-tag)
-		 (standard-unparser-method 'TYPE
+		 (standard-unparser-method 'RECORD-TYPE
 		   (lambda (type port)
 		     (write-char #\space port)
 		     (display (%record-type-name type) port))))
@@ -136,7 +137,8 @@ USA.
 		     #f
 		     (->type-name type-name)
 		     names
-		     (vector-cons n (lambda () #f))))
+		     (vector-cons n (lambda () #f))
+		     #f))
 	   (tag (make-dispatch-tag record-type)))
       (%record-set! record-type 1 tag)
       (if (not (default-object? default-inits))
@@ -163,12 +165,18 @@ USA.
 (define-integrable (%record-type-default-inits record-type)
   (%record-ref record-type 4))
 
+(define-integrable (%record-type-extension record-type)
+  (%record-ref record-type 5))
+
+(define-integrable (%set-record-type-extension! record-type extension)
+  (%record-set! record-type 5 extension))
+
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))
 
 (define-integrable (%record-type-length record-type)
   (fix:+ 1 (%record-type-n-fields record-type)))
-
+
 (define (record-type-dispatch-tag record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-DISPATCH-TAG)
   (%record-type-dispatch-tag record-type))
@@ -182,16 +190,10 @@ USA.
   ;; Can't use VECTOR->LIST here because it isn't available at cold load.
   (let ((v (%record-type-field-names record-type)))
     (subvector->list v 0 (vector-length v))))
-
+
 (define (record-type-default-inits record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-DEFAULT-INITS)
-  (let* ((v (%record-type-default-inits record-type))
-	 (n (vector-length v))
-	 (v* (vector-cons n #f)))
-    (do ((i 0 (fix:+ i 1)))
-	((not (fix:< i n)))
-      (vector-set! v* i (vector-ref v i)))
-    v*))
+  (vector->list (%record-type-default-inits record-type)))
 
 (define (set-record-type-default-inits! record-type default-inits)
   (let ((caller 'SET-RECORD-TYPE-DEFAULT-INITS!))
@@ -234,16 +236,26 @@ USA.
 
 (define set-record-type-unparser-method!/after-boot
   (named-lambda (set-record-type-unparser-method! record-type method)
-    (if (not (or (not method) (procedure? method)))
-	(error:wrong-type-argument method "unparser method"
-				   'SET-RECORD-TYPE-UNPARSER-METHOD!))
-    (let ((tag (record-type-dispatch-tag record-type)))
-      (remove-generic-procedure-generators unparse-record
-					   (list (make-dispatch-tag #f) tag))
-      (add-generic-procedure-generator unparse-record
-	(lambda (generic tags)
-	  generic
-	  (and (eq? (cadr tags) tag) method))))))
+    (guarantee-record-type record-type 'SET-RECORD-TYPE-UNPARSER-METHOD!)
+    (if method
+	(guarantee-unparser-method method 'SET-RECORD-TYPE-UNPARSER-METHOD!))
+    (let ((tag (%record-type-dispatch-tag record-type)))
+      (remove-generic-procedure-generators
+       unparse-record
+       (list (record-type-dispatch-tag rtd:unparser-state) tag))
+      (if method
+	  (add-generic-procedure-generator unparse-record
+	    (lambda (generic tags)
+	      generic
+	      (and (eq? (cadr tags) tag) method)))))))
+
+(define (record-type-extension record-type)
+  (guarantee-record-type record-type 'RECORD-TYPE-EXTENSION)
+  (%record-type-extension record-type))
+
+(define (set-record-type-extension! record-type extension)
+  (guarantee-record-type record-type 'SET-RECORD-TYPE-EXTENSION!)
+  (%set-record-type-extension! record-type extension))
 
 (define (record-constructor record-type #!optional field-names)
   (guarantee-record-type record-type 'RECORD-CONSTRUCTOR)
@@ -362,8 +374,7 @@ USA.
 			     (symbol? (car kl))
 			     (pair? (cdr kl))))
 		   (if (not (null? kl))
-		       (error:wrong-type-argument keyword-list "keyword list"
-						  constructor)))
+		       (error:not-keyword-list keyword-list constructor)))
 		(let ((i (record-type-field-index record-type (car kl) #t)))
 		  (if (not (vector-ref seen? i))
 		      (begin
@@ -453,10 +464,6 @@ USA.
 	(substring string 1 (fix:- n 1))
 	string)))
 
-(define-integrable (guarantee-list-of-unique-symbols object procedure)
-  (if (not (list-of-unique-symbols? object))
-      (error:wrong-type-argument object "list of unique symbols" procedure)))
-
 (define (list-of-unique-symbols? object)
   (and (list-of-type? object symbol?)
        (let loop ((elements object))
@@ -466,13 +473,9 @@ USA.
 		 (loop (cdr elements)))
 	     #t))))
 
-(define-integrable (guarantee-record-type record-type procedure)
-  (if (not (record-type? record-type))
-      (error:wrong-type-argument record-type "record type" procedure)))
-
-(define-integrable (guarantee-record record caller)
-  (if (not (record? record))
-      (error:wrong-type-argument record "record" caller)))
+(define-guarantee list-of-unique-symbols "list of unique symbols")
+(define-guarantee record-type "record type")
+(define-guarantee record "record")
 
 ;;;; Runtime support for DEFINE-STRUCTURE
 
@@ -601,7 +604,7 @@ USA.
 	    (do ((args arguments (cddr args)))
 		((not (pair? args)))
 	      (if (not (pair? (cdr args)))
-		  (error "Keyword list does not have even length:" arguments))
+		  (error:not-keyword-list arguments #f))
 	      (let ((field-name (car args)))
 		(let loop ((i 0))
 		  (if (not (fix:< i n))

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: subst.scm,v 4.19 2003/02/14 18:28:35 cph Exp $
+$Id: subst.scm,v 4.20 2004/11/23 03:22:12 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1992,1993 Massachusetts Institute of Technology
+Copyright 1995,2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -174,7 +175,7 @@ USA.
       object))
 
 (define (constant-value? value environment operations)
-  (let check ((value value) (top? true))
+  (let check ((value value) (top? #t))
     (or (constant? value)
 	(and (reference? value)
 	     (or (not top?)
@@ -183,19 +184,19 @@ USA.
 			(block/safe? (variable/block var))
 			(environment/lookup environment var
 			  (lambda (value*)
-			    (check value* false))
+			    (check value* #f))
 			  (lambda ()
 			    ;; unknown value
 			    (operations/lookup operations var
 			      (lambda (operation info)
 				operation info
-				false)
+				#f)
 			      (lambda ()
 				;; No operations
-				true)))
+				#t)))
 			  (lambda ()
 			    ;; not found variable
-			    true)))))))))
+			    #t)))))))))
 
 (define (integrate/reference-operator expression operations environment
 				      block operator operands)
@@ -283,7 +284,7 @@ USA.
 			    (open-block/make
 			     (and expression (object/scode expression))
 			     block variables
-			     vals actions true)
+			     vals actions #t)
 			    (open-block/optimizing-make
 			     expression block variables vals
 			     actions operations environment)))))))))))
@@ -435,7 +436,8 @@ you ask for.
 	 (integrate/reference-operator expression operations environment
 				       block operator operands))
 	((and (access? operator)
-	      (system-global-environment? (access/environment operator)))
+	      (constant/system-global-environment?
+	       (access/environment operator)))
 	 (integrate/access-operator expression operations environment
 				    block operator operands))
 	((and (constant? operator)
@@ -520,7 +522,7 @@ you ask for.
     environment
     (integrate/quotation expression)))
 
-;; Optimize (if () a b) => b; (if #t a b) => a
+;; Optimize (if #f a b) => b; (if #t a b) => a
 
 (define-method/integrate 'CONDITIONAL
   (lambda (operations environment expression)
@@ -534,13 +536,13 @@ you ask for.
 			operations environment
 			(conditional/alternative expression))))
       (if (constant? predicate)
-	  (if (null? (constant/value predicate))
-	      alternative
-	      consequent)
+	  (if (constant/value predicate)
+	      consequent
+	      alternative)
 	  (conditional/make (conditional/scode expression)
 			    predicate consequent alternative)))))
 
-;; Optimize (or () a) => a; (or #t a) => #t
+;; Optimize (or #f a) => a; (or #t a) => #t
 
 (define-method/integrate 'DISJUNCTION
   (lambda (operations environment expression)
@@ -550,9 +552,9 @@ you ask for.
 			operations environment
 			(disjunction/alternative expression))))
       (if (constant? predicate)
-	  (if (null? (constant/value predicate))
-	      alternative
-	      predicate)
+	  (if (constant/value predicate)
+	      predicate
+	      alternative)
 	  (disjunction/make (disjunction/scode expression)
 			    predicate alternative)))))
 
@@ -615,7 +617,7 @@ you ask for.
   (lambda (operations environment expression)
     (let ((environment* (access/environment expression))
 	  (name (access/name expression)))
-      (if (system-global-environment? environment*)
+      (if (constant/system-global-environment? environment*)
 	  (let ((entry (assq name usual-integrations/constant-alist)))
 	    (if entry
 		(constant/make (access/scode expression)
@@ -627,9 +629,9 @@ you ask for.
 					     environment*)
 		       name)))))
 
-(define (system-global-environment? expression)
+(define (constant/system-global-environment? expression)
   (and (constant? expression)
-       (eq? false (constant/value expression))))
+       (system-global-environment? (constant/value expression))))
 
 (define-method/integrate 'DELAY
   (lambda (operations environment expression)
@@ -667,7 +669,7 @@ you ask for.
 	  ((assq name usual-integrations/expansion-alist)
 	   => (lambda (entry)
 		((cdr entry) expression operands
-			     identity-procedure dont-integrate false)))
+			     identity-procedure dont-integrate #f)))
 	  (else
 	   (dont-integrate)))))
 
@@ -820,14 +822,14 @@ you ask for.
 			   (cdr operands)))))
 
   (define (listify-tail operands)
-    (let ((const-null (constant/make false '())))
+    (let ((const-null (constant/make #f '())))
       (if (null? operands)
 	  const-null
-	  (let ((const-cons (constant/make false (ucode-primitive cons))))
+	  (let ((const-cons (constant/make #f (ucode-primitive cons))))
 	    (let walk ((operands operands))
 	      (if (null? operands)
 		  const-null
-		  (combination/make false
+		  (combination/make #f
 				    block
 				    const-cons
 				    (list (car operands)
@@ -876,9 +878,9 @@ you ask for.
 		  (expression (delayed-integration/value delayed-integration)))
 	      (set-delayed-integration/state! delayed-integration
 					      'BEING-INTEGRATED)
-	      (set-delayed-integration/environment! delayed-integration false)
-	      (set-delayed-integration/operations! delayed-integration false)
-	      (set-delayed-integration/value! delayed-integration false)
+	      (set-delayed-integration/environment! delayed-integration #f)
+	      (set-delayed-integration/operations! delayed-integration #f)
+	      (set-delayed-integration/value! delayed-integration #f)
 	      (integrate/expression operations environment expression))))
        (set-delayed-integration/state! delayed-integration 'INTEGRATED)
        (set-delayed-integration/value! delayed-integration value)))
@@ -997,7 +999,7 @@ forms are simply removed.
 			 (procedure/name operator)
 			 required
 			 '()
-			 false
+			 #f
 			 (procedure/body operator))
 			referenced-operands))))
 	      (if (null? unreferenced-operands)
@@ -1177,10 +1179,10 @@ forms are simply removed.
 		   (constructor %make-node (type vars))
 		   (conc-name %node-))
   type
-  (vars false read-only true)
+  (vars #f read-only #t)
   (needs (empty-nodeset))
   (needed-by (empty-nodeset))
-  (depth false))
+  (depth #f))
 
 (define-integrable (make-base-node)
   (%make-node 'BASE (empty-varset)))
@@ -1410,22 +1412,22 @@ forms are simply removed.
 			   this-vars)))
 
 	       (if (eq? this-type 'LET)
-		   (let ((block (block/make block true this-vars)))
+		   (let ((block (block/make block #t this-vars)))
 		     (loop (cdr template)
 			   block
 			   (combination/optimizing-make
 			    expression
 			    block
 			    (procedure/make
-			     false
+			     #f
 			     block
 			     lambda-tag:let
 			     this-vars
 			     '()
-			     false
+			     #f
 			     code)
 			    this-vals)))
-		   (let ((block (block/make block true this-vars)))
+		   (let ((block (block/make block #t this-vars)))
 		     (loop (cdr template)
 			   block
 			   (open-block/make

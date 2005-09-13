@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.10 2003/02/14 18:48:11 cph Exp $
+# $Id: Setup.sh,v 1.12 2004/12/07 04:29:58 cph Exp $
 #
-# Copyright 2000 Massachusetts Institute of Technology
+# Copyright 2000,2001,2003,2004 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -45,10 +45,8 @@ maybe_link lib/edwin/etc/TUTORIAL ../../../etc/TUTORIAL
 maybe_link lib/edwin/etc/mime.types ../../../etc/mime.types
 maybe_link lib/edwin/autoload ../../edwin
 
-SUBDIRS=""
-
 for SUBDIR in 6001 compiler cref edwin imail microcode rcs \
-	runtime runtime-check sf sos star-parser win32 xml; do
+	runtime runtime-check sf sos ssp star-parser win32 xdoc xml; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
     ( cd ${SUBDIR} && ./Setup.sh ) || exit 1

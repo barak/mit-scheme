@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intprm.c,v 1.11 2003/02/14 18:28:19 cph Exp $
+$Id: intprm.c,v 1.12 2004/11/21 04:18:27 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -221,7 +221,7 @@ Converts the list to an integer.  NEGATIVE? specifies the sign.")
 	    error_bad_range_arg (1);
 	  n_digits += 1;
 	  scan = (PAIR_CDR (scan));
-	  if (scan == EMPTY_LIST)
+	  if (EMPTY_LIST_P (scan))
 	    break;
 	  if (!PAIR_P (scan))
 	    error_wrong_type_arg (1);

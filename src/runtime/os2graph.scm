@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.23 2003/03/10 20:53:34 cph Exp $
+$Id: os2graph.scm,v 1.25 2003/11/10 21:46:16 cph Exp $
 
 Copyright 1995,1996,1997,1999,2000 Massachusetts Institute of Technology
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
@@ -95,8 +95,10 @@ USA.
       (fill-from-byte-vector ,os2-image/fill-from-byte-vector))))
   (set! event-descriptor #f)
   (set! event-previewer-registration #f)
-  (set! window-finalizer (make-gc-finalizer os2win-close))
-  (set! image-finalizer (make-gc-finalizer destroy-memory-ps))
+  (set! window-finalizer
+	(make-gc-finalizer os2win-close window? window/wid set-window/wid!))
+  (set! image-finalizer
+	(make-gc-finalizer destroy-memory-ps image? image/ps set-image/ps!))
   (set! user-event-mask user-event-mask:default)
   (set! user-event-queue (make-queue))
   (initialize-color-table)
@@ -160,15 +162,13 @@ USA.
 		       (exact->inexact (/ (- width 1) 2))
 		       (exact->inexact (/ (- height 1) 2)))))
     (set-window/backing-image! window (create-image width height))
-    (add-to-gc-finalizer! window-finalizer window wid)
-    window))
+    (add-to-gc-finalizer! window-finalizer window)))
 
 (define (close-window window)
   (if (window/wid window)
       (begin
 	(destroy-image (window/backing-image window))
-	(remove-from-gc-finalizer! window-finalizer window)
-	(set-window/wid! window #f))))
+	(remove-from-gc-finalizer! window-finalizer window))))
 
 (define-integrable (os2-graphics-device/wid device)
   (window/wid (graphics-device/descriptor device)))
@@ -927,9 +927,7 @@ USA.
 (define (create-image width height)
   (let ((ps (os2ps-create-memory-ps)))
     (os2ps-set-bitmap ps (os2ps-create-bitmap ps width height))
-    (let ((image (make-image ps width height #f)))
-      (add-to-gc-finalizer! image-finalizer image ps)
-      image)))
+    (add-to-gc-finalizer! image-finalizer (make-image ps width height #f))))
 
 (define (os2-image/set-colormap image colormap)
   ;; Kludge: IMAGE/FILL-FROM-BYTE-VECTOR doesn't accept a colormap
@@ -943,10 +941,7 @@ USA.
   (destroy-image (image/descriptor image)))
 
 (define (destroy-image image)
-  (if (image/ps image)
-      (begin
-	(remove-from-gc-finalizer! image-finalizer image)
-	(set-image/ps! image #f))))
+  (remove-from-gc-finalizer! image-finalizer image))
 
 (define (destroy-memory-ps ps)
   (let ((bitmap (os2ps-set-bitmap ps #f)))

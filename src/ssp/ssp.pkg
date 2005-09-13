@@ -1,0 +1,125 @@
+#| -*-Scheme-*-
+
+$Id: ssp.pkg,v 1.20 2005/02/19 04:35:39 cph Exp $
+
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
+
+;;;; SSP: packaging
+
+(global-definitions "../runtime/runtime")
+(global-definitions "../xml/xml")
+
+(define-package (runtime ssp)
+  (parent (runtime)))
+
+(define-package (runtime ssp-expander-environment)
+  (files "expenv")
+  (parent ())
+  (export (runtime ssp xhtml-expander)
+	  expander-environment))
+
+(define-package (runtime ssp mod-lisp)
+  (files "mod-lisp")
+  (parent (runtime ssp))
+  (import (runtime debugger)
+	  command/earlier-subproblem
+	  command/print-subproblem
+	  dstate/subproblem
+	  make-initial-dstate)
+  (export ()
+	  start-mod-lisp-server)
+  (export (runtime ssp)
+	  define-mime-handler
+	  define-subtree-handler
+	  define-url-bindings
+	  http-authenticator:basic
+	  http-browser-type
+	  html-content-type
+	  http-request-cookie
+	  http-request-cookies
+	  http-request-entity
+	  http-request-header
+	  http-request-header-bindings
+	  http-request-method
+	  http-request-pathname
+	  http-request-post-parameter
+	  http-request-post-parameter-bindings
+	  http-request-post-parameter-multiple
+	  http-request-url
+	  http-request-url-parameter
+	  http-request-url-parameter-bindings
+	  http-request-user-name
+	  http-response-entity
+	  http-response-header
+	  http-response-redirect
+	  http-response-unauthorized
+	  http-status-response
+	  in-mod-lisp?
+	  mod-lisp-expander
+	  start-logging-requests
+	  stop-logging-requests
+	  trace-i/o-filename
+	  trace-requests?
+	  url-binding-value)
+  (export (runtime ssp-expander-environment)
+	  define-url-bindings
+	  http-authenticator:basic
+	  http-browser-type
+	  html-content-type
+	  http-request-cookie
+	  http-request-cookies
+	  http-request-entity
+	  http-request-header
+	  http-request-header-bindings
+	  http-request-method
+	  http-request-pathname
+	  http-request-post-parameter
+	  http-request-post-parameter-bindings
+	  http-request-post-parameter-multiple
+	  http-request-url
+	  http-request-url-parameter
+	  http-request-url-parameter-bindings
+	  http-request-user-name
+	  http-response-cookie
+	  http-response-header
+	  http-status-response
+	  url-binding-value))
+
+(define-package (runtime ssp xhtml-expander)
+  (files "xhtml-expander")
+  (parent (runtime ssp))
+  (export ()
+	  expand-xhtml-file
+	  read/expand-xml-file)
+  (export (runtime ssp)
+	  expander-eval
+	  make-expansion-environment)
+  (export (runtime ssp-expander-environment)
+	  emit
+	  define-sabbr
+	  get-sabbr))
+
+(define-package (runtime ssp xml-rpc)
+  (files "xmlrpc")
+  (parent (runtime ssp))
+  (export ()
+	  xml-rpc:subtree-handler))

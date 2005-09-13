@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.20 2003/03/21 17:51:23 cph Exp $
+$Id: usrint.scm,v 1.21 2005/04/01 04:47:12 cph Exp $
 
 Copyright 1991,1992,1993,1994,1995,2001 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,81 +31,63 @@ USA.
 
 ;;;; Prompting
 
-(define (canonicalize-prompt prompt suffix)
-  (if (let ((length (string-length prompt)))
-	(and (not (fix:= length 0))
-	     (char=? (string-ref prompt (fix:- length 1)) #\space)))
-      prompt
-      (string-append prompt suffix)))
-
-(define (canonicalize-command-prompt prompt)
-  (cond ((string? prompt)
-	 prompt)
-	((and (pair? prompt)
-	      (eq? 'STANDARD (car prompt))
-	      (string? (cdr prompt)))
-	 (cons (car prompt) (canonicalize-prompt (cdr prompt) " ")))
-	(else
-	 (error:wrong-type-datum prompt "a string or standard prompt"))))
-
-(define (write-command-prompt port prompt level)
-  (if (not (nearest-cmdl/batch-mode?))
-      (port/with-output-terminal-mode port 'COOKED
-	(lambda ()
-	  (fresh-line port)
-	  (newline port)
-	  (if (and (pair? prompt)
-		   (eq? 'STANDARD (car prompt)))
-	      (begin
-		(write level port)
-		(write-string " " port)
-		(write-string (cdr prompt) port))
-	      (write-string prompt port))
-	  (flush-output port)))))
-
-(define (prompt-for-command-expression prompt #!optional port)
+(define (prompt-for-command-expression prompt #!optional port environment)
   (let ((prompt (canonicalize-command-prompt prompt))
-	(port (if (default-object? port) (interaction-i/o-port) port))
+	(port (optional-port port 'PROMPT-FOR-COMMAND-EXPRESSION))
+	(environment
+	 (optional-environment environment 'PROMPT-FOR-COMMAND-EXPRESSION))
 	(level (nearest-cmdl/level)))
     (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-EXPRESSION)))
       (if operation
-	  (operation port prompt level)
-	  (default/prompt-for-command-expression port prompt level)))))
+	  (operation port environment prompt level)
+	  (begin
+	    (write-command-prompt port prompt level)
+	    (port/with-input-terminal-mode port 'COOKED
+	      (lambda ()
+		(read port environment))))))))
 
-(define (default/prompt-for-command-expression port prompt level)
-  (write-command-prompt port prompt level)
-  (port/with-input-terminal-mode port 'COOKED
-    (lambda ()
-      (read port))))
-
-(define (prompt-for-expression prompt #!optional port)
-  (let ((prompt (canonicalize-prompt prompt ": "))
-	(port (if (default-object? port) (interaction-i/o-port) port)))
-    (let ((operation (port/operation port 'PROMPT-FOR-EXPRESSION)))
-      (if operation
-	  (operation port prompt)
-	  (default/prompt-for-expression port prompt)))))
-
-(define (default/prompt-for-expression port prompt)
-  (port/with-output-terminal-mode port 'COOKED
-    (lambda ()
-      (fresh-line port)
-      (newline port)
-      (write-string prompt port)
-      (flush-output port)))
-  (port/with-input-terminal-mode port 'COOKED
-    (lambda ()
-      (read port))))
+(define (prompt-for-expression prompt #!optional port environment)
+  (%prompt-for-expression
+   (optional-port port 'PROMPT-FOR-EXPRESSION)
+   (optional-environment environment 'PROMPT-FOR-EXPRESSION)
+   prompt))
 
 (define (prompt-for-evaluated-expression prompt #!optional environment port)
-  (hook/repl-eval #f
-		  (prompt-for-expression prompt
-					 (if (default-object? port)
-					     (interaction-i/o-port)
-					     port))
-		  (if (default-object? environment)
-		      (nearest-repl/environment)
-		      environment)))
+  (let ((environment
+	 (optional-environment environment 'PROMPT-FOR-EVALUATED-EXPRESSION))
+	(port (optional-port port 'PROMPT-FOR-EVALUATED-EXPRESSION)))
+    (repl-eval (%prompt-for-expression port environment prompt)
+	       environment)))
+
+(define (%prompt-for-expression port environment prompt)
+  (let ((prompt (canonicalize-prompt prompt ": ")))
+    (let ((operation (port/operation port 'PROMPT-FOR-EXPRESSION)))
+      (if operation
+	  (operation port environment prompt)
+	  (begin
+	    (port/with-output-terminal-mode port 'COOKED
+	      (lambda ()
+		(fresh-line port)
+		(newline port)
+		(write-string prompt port)
+		(flush-output port)))
+	    (port/with-input-terminal-mode port 'COOKED
+	      (lambda ()
+		(read port environment))))))))
+
+(define (optional-port port caller)
+  (if (default-object? port)
+      (interaction-i/o-port)
+      (begin
+	(guarantee-i/o-port port caller)
+	port)))
+
+(define (optional-environment environment caller)
+  (if (default-object? environment)
+      (nearest-repl/environment)
+      (begin
+	(guarantee-environment environment caller)
+	environment)))
 
 (define (prompt-for-command-char prompt #!optional port)
   (let ((prompt (canonicalize-command-prompt prompt))
@@ -177,6 +159,38 @@ USA.
 	     (flush-output port)))
 	 (loop))))))
 
+(define (canonicalize-prompt prompt suffix)
+  (if (let ((length (string-length prompt)))
+	(and (not (fix:= length 0))
+	     (char=? (string-ref prompt (fix:- length 1)) #\space)))
+      prompt
+      (string-append prompt suffix)))
+
+(define (canonicalize-command-prompt prompt)
+  (cond ((string? prompt)
+	 prompt)
+	((and (pair? prompt)
+	      (eq? 'STANDARD (car prompt))
+	      (string? (cdr prompt)))
+	 (cons (car prompt) (canonicalize-prompt (cdr prompt) " ")))
+	(else
+	 (error:wrong-type-datum prompt "a string or standard prompt"))))
+
+(define (write-command-prompt port prompt level)
+  (if (not (nearest-cmdl/batch-mode?))
+      (port/with-output-terminal-mode port 'COOKED
+	(lambda ()
+	  (fresh-line port)
+	  (newline port)
+	  (if (and (pair? prompt)
+		   (eq? 'STANDARD (car prompt)))
+	      (begin
+		(write level port)
+		(write-string " " port)
+		(write-string (cdr prompt) port))
+	      (write-string prompt port))
+	  (flush-output port)))))
+
 ;;;; Debugger Support
 
 (define (port/debugger-failure port message)
@@ -211,13 +225,20 @@ USA.
 
 ;;;; Miscellaneous Hooks
 
-(define (port/write-result port expression value hash-number)
-  (let ((operation (port/operation port 'WRITE-RESULT)))
+(define (port/write-result port expression value hash-number
+			   #!optional environment)
+  (let ((operation (port/operation port 'WRITE-RESULT))
+	(environment
+	 (if (default-object? environment)
+	     (nearest-repl/environment)
+	     (begin
+	       (guarantee-environment environment 'PORT/WRITE-RESULT)
+	       environment))))
     (if operation
-	(operation port expression value hash-number)
-	(default/write-result port expression value hash-number))))
+	(operation port expression value hash-number environment)
+	(default/write-result port expression value hash-number environment))))
 
-(define (default/write-result port expression object hash-number)
+(define (default/write-result port expression object hash-number environment)
   expression
   (if (not (nearest-cmdl/batch-mode?))
       (port/with-output-terminal-mode port 'COOKED
@@ -232,9 +253,9 @@ USA.
 		(if hash-number
 		    (begin
 		      (write-string " " port)
-		      (write hash-number port)))
+		      (write hash-number port environment)))
 		(write-string ": " port)
-		(write object port)))))))
+		(write object port environment)))))))
 
 (define write-result:undefined-value-is-special? true)
 

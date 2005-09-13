@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: edwin.sf,v 1.32 2003/02/14 18:28:12 cph Exp $
+$Id: edwin.sf,v 1.33 2005/01/11 03:13:23 cph Exp $
 
-Copyright 1991-2001 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1992,1995,1996 Massachusetts Institute of Technology
+Copyright 1999,2000,2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -67,5 +68,5 @@ USA.
 
 (load "decls")
 
-(cref/generate-constructors "edwin")
+(cref/generate-constructors "edwin" 'ALL)
 (sf-conditionally "edwin.ldr")

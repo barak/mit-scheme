@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.11 2003/02/14 18:28:14 cph Exp $
+$Id: optiondb.scm,v 1.15 2005/04/30 05:23:00 cph Exp $
 
-Copyright (c) 2000-2002 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -64,7 +64,7 @@ USA.
 				  (pathname-as-directory directory)))
 				(with-working-directory-pathname directory
 				  (lambda ()
-				    (load (car files))))
+				    (load (car files) '(RUNTIME))))
 				(file-loop (cdr files)))
 			    (dir-loop (cdr dirs))))
 		      (dir-loop (cdr dirs))))
@@ -98,6 +98,9 @@ USA.
 (define-load-option 'SOS
   (guarded-system-loader '(sos) "sos"))
 
+(define-load-option 'SSP
+  (guarded-system-loader '(runtime ssp) "ssp"))
+
 (define-load-option 'STUDENT
   (guarded-system-loader '(student) "6001"))
 
@@ -106,6 +109,9 @@ USA.
 
 (define-load-option 'WIN32
   (guarded-system-loader '(win32) "win32"))
+
+(define-load-option 'XDOC
+  (guarded-system-loader '(runtime ssp xdoc) "xdoc"))
 
 (define-load-option 'XML
   (guarded-system-loader '(runtime xml) "xml"))

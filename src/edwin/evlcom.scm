@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: evlcom.scm,v 1.68 2003/02/14 18:28:12 cph Exp $
+$Id: evlcom.scm,v 1.71 2005/04/12 18:39:46 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -249,44 +249,52 @@ Has no effect if evaluate-in-inferior-repl is false."
 
 ;;;; Expression Prompts
 
-(define (prompt-for-expression-value prompt #!optional default . options)
-  (let ((buffer (current-buffer)))
+(define (prompt-for-expression-value prompt #!optional default environment
+				     . options)
+  (let ((environment
+	 (if (default-object? environment)
+	     (evaluation-environment)
+	     (begin
+	       (guarantee-environment environment 'PROMPT-FOR-EXPRESSION-VALUE)
+	       environment))))
     (eval-with-history (apply prompt-for-expression
 			      prompt
-			      (cond ((default-object? default)
-				     default-object-kludge)
-				    ((or (symbol? default)
-					 (pair? default)
-					 (vector? default))
-				     `',default)
-				    (else default))
+			      (if (or (symbol? default)
+				      (pair? default)
+				      (vector? default))
+				  `',default
+				  default)
+			      environment
 			      options)
-		       (evaluation-environment buffer))))
+		       environment)))
 
-(define (prompt-for-expression prompt #!optional default-object . options)
-  (read-from-string
-   (apply prompt-for-string
-	  prompt
-	  (and (not (or (default-object? default-object)
-			(eq? default-object-kludge default-object)))
-	       (write-to-string default-object))
-	  'MODE
-	  (let ((environment (ref-variable scheme-environment)))
+(define (prompt-for-expression prompt #!optional default environment . options)
+  (let ((environment
+	 (if (default-object? environment)
+	     (evaluation-environment)
+	     (begin
+	       (guarantee-environment environment 'PROMPT-FOR-EXPRESSION)
+	       environment))))
+    (read-from-string
+     (apply prompt-for-string
+	    prompt
+	    (if (default-object? default)
+		#f
+		(write-to-string default))
+	    'MODE
 	    (lambda (buffer)
 	      (set-buffer-major-mode! buffer
 				      (ref-mode-object prompt-for-expression))
 	      ;; This sets up the correct environment in the typein buffer
 	      ;; so that completion of variables works right.
-	      (local-set-variable! scheme-environment environment buffer)))
-	  options)))
+	      (local-set-variable! scheme-environment environment buffer))
+	    options)
+     environment)))
 
-(define default-object-kludge
-  (list 'DEFAULT-OBJECT-KLUDGE))
-
-(define (read-from-string string)
+(define (read-from-string string environment)
   (bind-condition-handler (list condition-type:error) evaluation-error-handler
     (lambda ()
-      (with-input-from-string string read))))
+      (read (open-input-string string) environment))))
 
 (define-major-mode prompt-for-expression scheme #f
   (mode-description (ref-mode-object minibuffer-local))
@@ -304,7 +312,7 @@ Has no effect if evaluate-in-inferior-repl is false."
 ;;;; Evaluation
 
 (define (evaluate-region region environment)
-  (let ((buffer (mark-buffer (region-start region))))
+  (let ((buffer (->buffer region)))
     (let ((evaluation-input-recorder
 	   (ref-variable evaluation-input-recorder buffer)))
       (if evaluation-input-recorder
@@ -319,24 +327,31 @@ Has no effect if evaluate-in-inferior-repl is false."
 	evaluation-error-handler
       (lambda ()
 	(let loop
-	    ((expressions (read-expressions-from-region region))
+	    ((expressions (read-expressions-from-region region environment))
 	     (result unspecific))
 	  (if (null? expressions)
 	      result
 	      (loop (cdr expressions)
 		    (editor-eval buffer (car expressions) environment))))))))
 
-(define (read-expressions-from-region region)
-  (with-input-from-region region
-    (lambda ()
-      (let loop ()
-	(let ((expression (read)))
-	  (if (eof-object? expression)
-	      '()
-	      (cons expression (loop))))))))
+(define (read-expressions-from-region region #!optional environment)
+  (let ((environment
+	 (if (default-object? environment)
+	     (evaluation-environment region)
+	     environment)))
+    (call-with-input-region region
+      (lambda (port)
+	(let loop ()
+	  (let ((expression (read port environment)))
+	    (if (eof-object? expression)
+		'()
+		(cons expression (loop)))))))))
 
-(define (evaluation-environment buffer #!optional global-ok?)
-  (let ((buffer (or buffer (current-buffer)))
+(define (evaluation-environment #!optional buffer global-ok?)
+  (let ((buffer
+	 (if (default-object? buffer)
+	     (current-buffer)
+	     (->buffer buffer)))
 	(non-default
 	 (lambda (object)
 	   (if (environment? object)
@@ -421,7 +436,7 @@ Set by Scheme evaluation code to update the mode line."
   (bind-condition-handler (list condition-type:error)
       evaluation-error-handler
     (lambda ()
-      (hook/repl-eval #f expression environment))))
+      (repl-eval expression environment))))
 
 (define (evaluation-error-handler condition)
   (maybe-debug-scheme-error 'EVALUATION condition)

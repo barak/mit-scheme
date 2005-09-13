@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 14.19 2003/02/14 18:28:33 cph Exp $
+$Id: scode.scm,v 14.22 2005/04/16 03:15:22 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -54,12 +55,12 @@ USA.
 		ENTITY
 		ENVIRONMENT
 		EXTENDED-PROCEDURE
+		FALSE
 		FLONUM
 		HUNK3-A
 		INTERNED-SYMBOL
 		NEGATIVE-FIXNUM
 		NON-MARKED-VECTOR
-		NULL
 		PAIR
 		POSITIVE-FIXNUM
 		PRIMITIVE
@@ -105,12 +106,8 @@ USA.
 
 ;;;; Definition/Assignment
 
-(define (make-definition name #!optional value)
-  (&typed-pair-cons (ucode-type definition)
-		    name
-		    (if (default-object? value)
-			(make-unassigned-reference-trap)
-			value)))
+(define-integrable (make-definition name value)
+  (&typed-pair-cons (ucode-type definition) name value))
 
 (define-integrable (definition? object)
   (object-type? (ucode-type definition) object))
@@ -128,12 +125,8 @@ USA.
 (define-integrable (assignment? object)
   (object-type? (ucode-type assignment) object))
 
-(define (make-assignment-from-variable variable #!optional value)
-  (&typed-pair-cons (ucode-type assignment)
-		    variable
-		    (if (default-object? value)
-			(make-unassigned-reference-trap)
-			value)))
+(define-integrable (make-assignment-from-variable variable value)
+  (&typed-pair-cons (ucode-type assignment) variable value))
 
 (define-integrable (assignment-variable assignment)
   (system-pair-car assignment))
@@ -145,11 +138,8 @@ USA.
   (receiver (assignment-variable assignment)
 	    (assignment-value assignment)))
 
-(define (make-assignment name #!optional value)
-  (make-assignment-from-variable (make-variable name)
-				 (if (default-object? value)
-				     (make-unassigned-reference-trap)
-				     value)))
+(define-integrable (make-assignment name value)
+  (make-assignment-from-variable (make-variable name) value))
 
 (define-integrable (assignment-name assignment)
   (variable-name (assignment-variable assignment)))

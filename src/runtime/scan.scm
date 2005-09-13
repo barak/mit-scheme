@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: scan.scm,v 14.8 2003/02/14 18:28:33 cph Exp $
+$Id: scan.scm,v 14.9 2005/03/26 04:16:57 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -131,7 +132,8 @@ USA.
 			    body*)))))
 
 (define (unscan-loop names body receiver)
-  (cond ((null? names) (receiver '() body))
+  (cond ((not (pair? names))
+	 (receiver '() body))
 	((assignment? body)
 	 (assignment-components body
 	   (lambda (name value)
@@ -176,7 +178,10 @@ USA.
        (vector open-block-tag names declarations)
        (if (null? names)
 	   '()
-	   (make-sequence (map make-definition names)))
+	   (make-sequence
+	    (map (lambda (name)
+		   (make-definition name (make-unassigned-reference-trap)))
+		 names)))
        body)))
 
 (define (open-block? object)

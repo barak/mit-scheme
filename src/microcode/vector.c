@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: vector.c,v 9.41 2003/02/14 18:28:24 cph Exp $
+$Id: vector.c,v 9.42 2004/11/21 04:19:06 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -280,7 +280,7 @@ DEFUN (list_to_vector, (result_type, argument_number),
       (*Free++) = (PAIR_CAR (list));
       TOUCH_IN_PRIMITIVE ((PAIR_CDR (list)), list);
     }
-  if (list != EMPTY_LIST)
+  if (!EMPTY_LIST_P (list))
     error_wrong_type_arg (argument_number);
   (*result) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, count));
   return (MAKE_POINTER_OBJECT (result_type, result));

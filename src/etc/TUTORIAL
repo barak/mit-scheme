@@ -375,7 +375,7 @@ original file under a changed name in case your changes turn out
 to be a mistake.
 
 If you look near the bottom of the screen you will see a line that
-begins and ends with dashes, and contains the string "Emacs: TUTORIAL".
+begins and ends with dashes, and contains the string "Edwin: TUTORIAL".
 Your copy of the Emacs tutorial is called "TUTORIAL".  Whatever
 file you find, that file's name will appear in that precise
 spot.
@@ -522,7 +522,7 @@ Then type the two "arguments"--the string to be replaced, and the string
 to replace it with--each one ended with a Return.
 
 >> Move the cursor to the blank line two lines below this one.
-   Then type M-x repl s<Return>changed<Return>altered<Return>.
+   Then type M-x repla s<Return>changed<Return>altered<Return>.
 
    Notice how this line has changed: you've replaced
    the word c-h-a-n-g-e-d with "altered" wherever it occured

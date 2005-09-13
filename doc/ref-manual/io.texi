@@ -1,9 +1,9 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.2 2003/04/26 02:43:49 cph Exp $
+@c $Id: io.texi,v 1.11 2005/05/20 02:14:24 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
-@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c Copyright 2002,2003,2004,2005 Massachusetts Institute of Technology
 @c See file scheme.texinfo for copying conditions.
 
 @node Input/Output, Operating-System Interface, Environments, Top
@@ -30,7 +30,7 @@ implementation of custom ports and high-performance @acronym{I/O}.
 * Port Primitives::             
 * Parser Buffers::              
 * Parser Language::             
-* XML Parser::                  
+* XML Support::                 
 @end menu
 
 @node Ports, File Ports, Input/Output, Input/Output
@@ -573,7 +573,7 @@ indistinguishable from an interactive port that has no ready
 characters.}
 @end deffn
 
-@deffn procedure read [input-port]
+@deffn procedure read [input-port [environment]]
 @cindex expression, input from port
 @cindex external representation, parsing
 @cindex parsing, of external representation
@@ -588,6 +588,10 @@ will also return an end-of-file object.  If an end of file is
 encountered after the beginning of an object's written representation,
 but the written representation is incomplete and therefore not parsable,
 an error is signalled.
+
+@var{Environment} is used to look up the values of control variables
+such as @samp{*parser-radix*}.  If not supplied, it defaults to the
+@acronym{REP} environment.
 @end deffn
 
 @deffn procedure eof-object? object
@@ -617,7 +621,7 @@ character, or to end of file if no terminating character was found.
 terminating character, as a newly allocated string.
 
 This procedure ignores the blocking mode of the port, blocking
-unconditionally until it sees either a delimiter or eof of file.  If end
+unconditionally until it sees either a delimiter or end of file.  If end
 of file is encountered before any characters are read, an end-of-file
 object is returned.
 
@@ -702,8 +706,12 @@ that they are both flexible and extremely fast, especially for large
 amounts of data.
 @end deffn
 
-The following variables may be dynamically bound to change the behavior
-of the @code{read} procedure.
+The following variables may be bound or assigned to change the behavior
+of the @code{read} procedure.  They are looked up in the environment
+that is passed to @code{read}, and so may have different values in
+different environments.  It is recommended that the global bindings of
+these variables be left unchanged; make local changes by shadowing the
+global bindings in nested environments.
 
 @defvr variable *parser-radix*
 This variable defines the radix used by the reader when it parses
@@ -1247,17 +1255,20 @@ given, this port defaults to the value of
 @code{(interaction-i/o-port)}; this is initially the console
 @acronym{I/O} port.
 
-@deffn procedure prompt-for-command-expression prompt [port]
+@deffn procedure prompt-for-command-expression prompt [port [environment]]
 Prompts the user for an expression that is to be executed as a command.
 This is the procedure called by the @acronym{REP} loop to read the
 user's expressions.
 
 If @var{prompt} is a string, it is used verbatim as the prompt string.
-Otherwise, it must be a pair whose car is @code{standard} and whose cdr
-is a string; in this case the prompt string is formed by prepending to
-the string the current @acronym{REP} loop ``level number'' and a space.
-Also, a space is appended to the string, unless it already ends in a
-space or is an empty string.
+Otherwise, it must be a pair whose car is the symbol @samp{standard} and
+whose cdr is a string; in this case the prompt string is formed by
+prepending to the string the current @acronym{REP} loop ``level number''
+and a space.  Also, a space is appended to the string, unless it already
+ends in a space or is an empty string.
+
+If @var{environment} is given, it is passed as the second argument to
+@code{read}.
 
 The default behavior of this procedure is to print a fresh line, a
 newline, and the prompt string; flush the output buffer; then read an
@@ -1300,12 +1311,15 @@ as input.  After this mode change, the first such character submitted is
 returned as the value of this procedure.
 @end deffn
 
-@deffn procedure prompt-for-expression prompt [port]
+@deffn procedure prompt-for-expression prompt [port [environment]]
 Prompts the user for an expression.
 
 The prompt string is formed by appending a colon and a space to
 @var{prompt}, unless @var{prompt} already ends in a space or is the null
 string.
+
+If @var{environment} is given, it is passed as the second argument to
+@code{read}.
 
 The default behavior of this procedure is to print a fresh line, a
 newline, and the prompt string; flush the output buffer; then read an
@@ -1592,7 +1606,7 @@ Each of these procedures invokes the respective operation on
 @example
 @group
 (input-port/read-char @var{input-port})
-((input-port/operation @var{input-port} 'read-char) @var{input-port})
+((port/operation @var{input-port} 'read-char) @var{input-port})
 @end group
 @end example
 @end deffn
@@ -1678,7 +1692,7 @@ Each of these procedures invokes the respective operation on
 @example
 @group
 (output-port/write-char @var{output-port} @var{char})
-((output-port/operation @var{output-port} 'write-char)
+((port/operation @var{output-port} 'write-char)
  @var{output-port} @var{char})
 @end group
 @end example
@@ -2109,7 +2123,7 @@ Returns the character or line index, respectively, of @var{pointer}.
 Both indexes are zero-based.
 @end deffn
 
-@node Parser Language, XML Parser, Parser Buffers, Input/Output
+@node Parser Language, XML Support, Parser Buffers, Input/Output
 @section Parser Language
 
 @cindex Parser language
@@ -2802,26 +2816,25 @@ procedure.  @var{Table} must satisfy @code{parser-macros?}, and
 @var{thunk} must be a procedure of no arguments.
 @end deffn
 
-@node XML Parser,  , Parser Language, Input/Output
-@section XML Parser
 
-@cindex XML parser
-@cindex parser, XML
+@node XML Support,  , Parser Language, Input/Output
+@section XML Support
+
 MIT/GNU Scheme provides a simple non-validating @acronym{XML} parser.
-This parser is mostly conformant, with the exception that it doesn't
-support @acronym{UTF-16}.  The parser also does not support external
-document type declarations (@acronym{DTD}s).  The output of the parser
-is a record tree that closely reflects the structure of the
-@acronym{XML} document.
+This parser is believed to be conformant with @acronym{XML} 1.0.  It
+passes all of the tests in the "xmltest" directory of the @acronym{XML}
+conformance tests (dated 2001-03-15).  The parser supports @acronym{XML}
+namespaces; it doesn't support external document type declarations
+(@acronym{DTD}s), and it doesn't yet support @acronym{XML} 1.1.  The
+output of the parser is a record tree that closely reflects the
+structure of the @acronym{XML} document.
 
-@cindex XML output
-@cindex output, XML
-There is also an output mechanism that writes an @acronym{XML} record
-tree to a port.  There is no guarantee that parsing an @acronym{XML}
-document and writing it back out will make a verbatim copy of the
-document.  The output will be semantically identical but may have
-small syntactic differences.  For example, comments are discarded by
-the parser, and entities are substituted during the parsing process.
+MIT/GNU Scheme also provides support for writing an @acronym{XML} record
+tree to an output port.  There is no guarantee that parsing an
+@acronym{XML} document and writing it back out will make a verbatim copy
+of the document.  The output will be semantically identical but may have
+small syntactic differences.  For example, entities are substituted
+during the parsing process.
 
 The purpose of the @acronym{XML} support is to provide a mechanism for
 reading and writing simple @acronym{XML} documents.  In the future
@@ -2841,49 +2854,392 @@ execute
 @noindent
 once before compiling any code that uses it.
 
-The @acronym{XML} interface consists of an input procedure, an output
-procedure, and a set of record types.
+@menu
+* XML Input::                   
+* XML Output::                  
+* XML Names::                   
+* XML Structure::               
+@end menu
 
-@deffn procedure parse-xml-document buffer
-This procedure parses an @acronym{XML} input stream and returns a
-newly-allocated @acronym{XML} record tree.  The @var{buffer} argument
-must be a parser buffer (@pxref{Parser Buffers}).  Most errors in the
-input stream are detected and signalled, with information identifying
-the location of the error where possible.  Note that the input stream
-is assumed to be @acronym{UTF-8}.
-@end deffn
 
-@deffn procedure write-xml xml-document port
-This procedure writes an @acronym{XML} record tree to @var{port}.  The
-@var{xml-document} argument must be a record of type
-@code{xml-document}, which is the root record of an @acronym{XML}
-record tree.  The output is encoded in @acronym{UTF-8}.
-@end deffn
+@node XML Input, XML Output, XML Support, XML Support
+@subsection XML Input
 
-@cindex XML names
-@cindex names, XML
-@acronym{XML} names are represented in memory as symbols.  All symbols
-appearing within @acronym{XML} records are @acronym{XML} names.
-Because @acronym{XML} names are case sensitive, there is a procedure
-to intern these symbols:
+@cindex XML parser
+@cindex parser, XML
+@cindex XML input
+@cindex input, XML
+The primary entry point for the @acronym{XML} parser is @code{read-xml},
+which reads characters from a port and returns an @acronym{XML} document
+record.  The character coding of the input is determined by reading some
+of the input stream and looking for a byte order mark and/or an encoding
+in the @acronym{XML} declaration.  We support all @acronym{ISO} 8859
+codings, as well as @acronym{UTF-8}, @acronym{UTF-16}, and
+@acronym{UTF-32}.
 
-@deffn procedure xml-intern string
-@cindex XML name
-Returns the @acronym{XML} name called @var{string}.  @acronym{XML}
-names are represented as symbols, but unlike ordinary Scheme symbols,
-they are case sensitive.  The following is true for any two strings
-@var{string1} and @var{string2}:
+When an @acronym{XHTML} document is read, the parser provides entity
+definitions for all of the named @acronym{XHTML} characters; for
+example, it defines @samp{&nbsp;} and @samp{&copy;}.  In order for a
+document to be recognized as @acronym{XHTML}, it must contain an
+@acronym{XHTML} @acronym{DTD}, such as this:
 
 @example
 @group
-(let ((name1 (xml-intern @var{string1}))
-      (name2 (xml-intern @var{string2})))
-  (if (string=? @var{string1} @var{string2})
-      (eq? name1 name2)
-      (not (eq? name1 name2))))
+<!DOCTYPE html
+          PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+@end group
+@end example
+
+@noindent
+At present the parser recognizes @acronym{XHTML} Strict 1.0 and
+@acronym{XHTML} 1.1 documents.
+
+@deffn procedure read-xml port [pi-handlers]
+Read an @acronym{XML} document from @var{port} and return the
+corresponding @acronym{XML} document record.
+
+@var{Pi-handlers}, if specified, must be an association list.  Each
+element of @var{pi-handlers} must be a list of two elements: a symbol
+and a procedure.  When the parser encounters processing instructions
+with a name that appears in @var{pi-handlers}, the procedure is called
+with one argument, which is the text of the processing instructions.
+The procedure must return a list of @acronym{XML} structure records that
+are legal for the context of the processing instructions.
+@end deffn
+
+@deffn procedure read-xml-file pathname [pi-handlers]
+This convenience procedure simplifies reading @acronym{XML} from a file.
+It is roughly equivalent to
+
+@example
+@group
+(define (read-xml-file pathname #!optional pi-handlers)
+  (call-with-input-file pathname
+    (lambda (port)
+      (read-xml port
+                (if (default-object? pi-handlers)
+                    '()
+                    pi-handlers)))))
 @end group
 @end example
 @end deffn
+
+@deffn procedure string->xml string [start [end [pi-handlers]]]
+This convenience procedure simplifies reading @acronym{XML} from a
+string.  The @var{string} argument may be a string or a wide string.
+It is roughly equivalent to
+
+@example
+@group
+(define (string->xml string #!optional start end pi-handlers)
+  (read-xml (open-input-string string
+                               (if (default-object? start)
+                                   0
+                                   start)
+                               (if (default-object? end)
+                                   (string-length string)
+                                   end))
+            (if (default-object? pi-handlers)
+                '()
+                pi-handlers)))
+@end group
+@end example
+@end deffn
+
+
+@node XML Output, XML Names, XML Input, XML Support
+@subsection XML Output
+
+@cindex XML output
+@cindex output, XML
+The following procedures serialize @acronym{XML} document records into
+character sequences.  All are virtually identical except for the way
+that the character sequence is represented.
+
+Each procedure will accept either an @code{xml-document} record or any
+of the other @acronym{XML} record types.  This makes it possible to
+write fragments of @acronym{XML} documents, although you should keep in
+mind that such fragments aren't documents and won't generally be
+accepted by any @acronym{XML} parser.
+
+If the @var{xml} being written is an @code{xml-document} record, the
+procedures @code{write-xml} and @code{write-xml-file} will look for a
+contained @code{xml-declaration} record and its @code{encoding}
+attribute.  If the @code{encoding} is a supported value, the output will
+be encoded as specified; otherwise it will be encoded as
+@acronym{UTF-8}.
+
+When an @acronym{XHTML} document record is written, named
+@acronym{XHTML} characters are translated into their corresponding
+entities.  For example, the character @samp{#\U+00A0} is written as
+@samp{&nbsp;}.  In order for an @acronym{XML} document record to be
+recognized as @acronym{XHTML}, it must have a @acronym{DTD} record that
+satisfies the predicate @code{html-dtd?}.
+
+@deffn procedure write-xml xml port
+Write @var{xml} to @var{port}.  Note that character encoding will only
+be done if @var{port} supports it.
+@end deffn
+
+@deffn procedure write-xml-file xml pathname
+Write @var{xml} to the file specified by @var{pathname}.  Roughly
+equivalent to
+
+@example
+@group
+(define (write-xml-file xml pathname)
+  (call-with-output-file pathname
+    (lambda (port)
+      (write-xml xml port))))
+@end group
+@end example
+@end deffn
+
+@deffn procedure xml->wide-string xml
+Convert @var{xml} to a wide string.  No character encoding is used,
+since wide strings can represent all characters without encoding.
+Roughly equivalent to
+
+@example
+@group
+(define (xml->wide-string xml)
+  (call-with-wide-output-string
+   (lambda (port)
+     (write-xml xml port))))
+@end group
+@end example
+@end deffn
+
+@deffn procedure xml->string xml
+Convert @var{xml} to a character string encoded as @acronym{UTF-8}.
+Roughly equivalent to
+
+@example
+@group
+(define (xml->string xml)
+  (wide-string->utf8-string (xml->wide-string xml)))
+@end group
+@end example
+@end deffn
+
+
+@node XML Names, XML Structure, XML Output, XML Support
+@subsection XML Names
+
+@cindex XML names
+@cindex names, XML
+MIT/GNU Scheme implements @acronym{XML} names in a slightly complex way.
+Unfortunately, this complexity is a direct consequence of the definition
+of @acronym{XML} names rather than a mis-feature of this implementation.
+
+The reason that @acronym{XML} names are complex is that @acronym{XML}
+namespace support, which was added after @acronym{XML} was standardized,
+is not very well integrated with the core @acronym{XML} definition.  The
+most obvious problem is that names can't have associated namespaces when
+they appear in the @acronym{DTD} of a document, even if the body of the
+document uses them.  Consequently, it must be possible to compare
+non-associated names with associated names.
+
+@cindex Internationalized Resource Identifier
+@cindex IRI, of XML name
+@cindex qname, of XML name
+An @acronym{XML} name consists of two parts: the @dfn{qname}, which is a
+symbol, possibly including a namespace prefix; and the
+@dfn{Internationalized Resource Identifier} (@acronym{IRI}), which
+identifies an optional namespace.
+
+@deffn procedure make-xml-name qname iri
+Creates and returns an @acronym{XML} name.  @var{Qname} must be a symbol
+whose name satisfies @code{string-is-xml-name?}.  @var{Iri} must be an
+@code{xml-namespace-iri} record.  The returned value is an @acronym{XML}
+name that satisfies @code{xml-name?}.
+
+If @var{iri} is the @dfn{null} namespace (satisfies
+@code{null-xml-name-prefix?}), the returned value is a symbol equivalent
+to @var{qname}.  This means that an ordinary symbol can be used as an
+@acronym{XML} name when there is no namespace associated with the name.
+
+For convenience, @var{qname} may be a string, in which case it is
+converted to a symbol using @code{make-xml-qname}.
+
+For convenience, @var{iri} may be a string, in which case it is
+converted to an @code{xml-namespace-iri} record using
+@code{make-xml-namespace-iri}.
+@end deffn
+
+@deffn procedure xml-name? object
+Returns @code{#t} if @var{object} is an @acronym{XML} name, and
+@code{#f} otherwise.
+@end deffn
+
+@deffn procedure xml-name-qname xml-name
+Returns the @dfn{qname} of @var{xml-name} as a symbol.
+@end deffn
+
+@deffn procedure xml-name-iri xml-name
+Returns the @dfn{IRI} of @var{xml-name} as an @code{xml-namespace-iri}
+record.
+@end deffn
+
+@deffn procedure xml-name-string xml-name
+Returns the @dfn{qname} of @var{xml-name} as a string.  Equivalent to
+
+@example
+(symbol-name (xml-name-qname @var{xml-name}))
+@end example
+@end deffn
+
+@cindex prefix, of XML name
+@cindex local part, of XML name
+The next two procedures get the @dfn{prefix} and @dfn{local part} of an
+@acronym{XML} name, respectively.  The prefix of an @acronym{XML} name
+is the part of the qname to the left of the colon, while the local part
+is the part of the qname to the right of the colon.  If there is no
+colon in the qname, the local part is the entire qname, and the prefix
+is the null symbol (i.e.@: @samp{||}).
+
+@deffn procedure xml-name-prefix xml-name
+Returns the @dfn{prefix} of @var{xml-name} as a symbol.
+@end deffn
+
+@deffn procedure xml-name-local xml-name
+Returns the @dfn{local part} of @var{xml-name} as a symbol.
+@end deffn
+
+@cindex comparison, of XML names
+@cindex equality, of XML names
+The next procedure compares two @acronym{XML} names for equality.  The
+rules for equality are slightly complex, in order to permit comparing
+names in the @acronym{DTD} with names in the document body.  So, if both
+of the names have non-null namespace @acronym{IRI}s, then the names are
+equal if and only if their local parts are equal and their
+@acronym{IRI}s are equal.  (The prefixes of the names are not considered
+in this case.)  Otherwise, the names are equal if and only if their
+qnames are equal.
+
+@deffn procedure xml-name=? xml-name-1 xml-name-2
+Returns @code{#t} if @var{xml-name-1} and @var{xml-name-2} are the same
+name, and @code{#f} otherwise.
+@end deffn
+
+These next procedures define the data abstraction for qnames.  While
+qnames are represented as symbols, only symbols whose names satisfy
+@code{string-is-xml-name?} are qnames.
+
+@deffn procedure make-xml-qname string
+@var{String} must satisfy @code{string-is-xml-name?}.  Returns the qname
+corresponding to @var{string} (the symbol whose name is @var{string}).
+@end deffn
+
+@deffn procedure xml-qname? object
+Returns @code{#t} if @var{object} is a qname, otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure xml-qname-string qname
+Returns a newly allocated string that is a copy of @var{qname}'s string.
+Roughly equivalent to @code{symbol->string}.
+@end deffn
+
+@deffn procedure xml-qname-prefix qname
+Returns the prefix of @var{qname} as a symbol.
+@end deffn
+
+@deffn procedure xml-qname-local qname
+Returns the local part of @var{qname} as a symbol.
+@end deffn
+
+The prefix of a qname or @acronym{XML} name may be absent if there is no
+colon in the name.  The absent, or null, prefix is abstracted by the
+next two procedures.  Note that the null prefix is a symbol, just like
+non-null prefixes.
+
+@deffn procedure null-xml-name-prefix
+Returns the null prefix.
+@end deffn
+
+@deffn procedure null-xml-name-prefix? object
+Returns @code{#t} if @var{object} is the null prefix, otherwise returns
+@code{#f}.
+@end deffn
+
+These next procedures define the data abstraction for namespace
+@acronym{IRI}s.  Conceptually, an @acronym{IRI} is a string with a
+particular syntax, but this implementation uses an abstract
+representation that speeds up type and equality testing.  Two
+@acronym{IRI}s are tested for equality using @code{eq?}.
+
+@deffn procedure make-xml-namespace-iri string
+@var{String} must be a syntactically valid @acronym{IRI} encoded in
+@acronym{UTF-8}.  Returns the corresponding @acronym{IRI}.
+@end deffn
+
+@deffn procedure xml-namespace-iri? object
+Returns @code{#t} if @var{object} is an @acronym{IRI} record, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn procedure xml-namespace-iri-string iri
+@var{Iri} must satisfy @code{xml-namespace-iri?}.  Returns a newly
+allocated string that is a copy of the string used to create @var{iri}.
+@end deffn
+
+The @acronym{IRI} of an @acronym{XML} name may be null if there is no
+namespace associated with the name.  The null @acronym{IRI} is
+abstracted by the following two procedures.  Note that the null
+@acronym{IRI} satisfies the predicate @code{xml-namespace-iri?}.
+
+@deffn procedure null-xml-namespace-iri
+Returns the null @acronym{IRI} record.
+@end deffn
+
+@deffn procedure null-xml-namespace-iri? object
+Returns @code{#t} if @var{object} is the null @acronym{IRI} record,
+otherwise returns @code{#f}.
+@end deffn
+
+The following values are two distinguished @acronym{IRI} records.
+
+@defvr variable xml-iri
+@code{xml-iri} is the @acronym{IRI} reserved for use by the
+@acronym{XML} recommendation.  This @acronym{IRI} must be used with the
+@samp{xml} prefix.
+@end defvr
+
+@defvr variable xmlns-iri
+@code{xmlns-iri} is the @acronym{IRI} reserved for use by the
+@acronym{XML} namespace recommendation.  This @acronym{IRI} must be used
+with the @samp{xmlns} prefix.
+@end defvr
+
+
+@deffn procedure make-xml-nmtoken string
+@end deffn
+
+@deffn procedure xml-nmtoken? object
+@end deffn
+
+@deffn procedure xml-nmtoken-string xml-nmtoken
+@end deffn
+
+
+@deffn procedure string-is-xml-name? string
+@end deffn
+
+@deffn procedure string-is-xml-nmtoken? string
+@end deffn
+
+
+@deffn procedure make-xml-name-hash-table [initial-size]
+@end deffn
+
+@deffn procedure xml-name-hash xml-name modulus
+@end deffn
+
+
+@node XML Structure,  , XML Names, XML Support
+@subsection XML Structure
 
 The output from the @acronym{XML} parser and the input to the
 @acronym{XML} output procedure is a complex data structure composed of
@@ -2977,20 +3333,17 @@ The @code{xml-declaration} record represents the @samp{<?xml @dots{}
 @findex make-xml-element
 @findex xml-element-name
 @findex xml-element-attributes
-@findex xml-element-contents
+@findex xml-element-content
 @findex set-xml-element-name!
 @findex set-xml-element-attributes!
-@findex set-xml-element-contents!
-The @code{xml-element} record represents general @acronym{XML}
-elements; the bulk of a typical @acronym{XML} document consists of
-these elements.  @var{Name} is the element name (a symbol).
-@var{Attributes} is a list of attributes; each attribute is a pair
-whose @sc{car} is the attribute name (a symbol), and whose @sc{cdr} is
-the attribute value (a string).  @var{Contents} is a list of the
-contents of the element.  Each element of this list is either a
-string, an @code{xml-element} record, an
-@code{xml-processing-instructions} record, or an
-@code{xml-uninterpreted} record.
+@findex set-xml-element-content!
+The @code{xml-element} record represents general @acronym{XML} elements;
+the bulk of a typical @acronym{XML} document consists of these elements.
+@var{Name} is the element name (an @acronym{XML} name).
+@var{Attributes} is a list of @acronym{XML} attribute objects.
+@var{Contents} is a list of the contents of the element.  Each element
+of this list is either a string, an @code{xml-element} record or an
+@code{xml-processing-instructions} record.
 @end deftp
 
 @deftp {record type} xml-processing-instructions name text
@@ -3008,22 +3361,6 @@ will be processed by another interpreter; for example they might
 contain @acronym{PHP} programs.  The @var{name} field is the processor
 name (a symbol), and the @var{text} field is the body of the
 instructions (a string).
-@end deftp
-
-@deftp {record type} xml-uninterpreted text
-@vindex <xml-uninterpreted>
-@findex xml-uninterpreted?
-@findex make-xml-uninterpreted
-@findex xml-uninterpreted-text
-@findex set-xml-uninterpreted-text!
-Some documents contain entity references that can't be expanded by the
-parser, perhaps because the document requires an external
-@acronym{DTD}.  Such references are left uninterpreted in the output
-by wrapping them in @code{xml-uninterpreted} records.  In some
-situations, for example when they are embedded in attribute values,
-the surrounding text is also included in the @code{xml-uninterpreted}
-record.  The @var{text} field contains the uninterpreted @acronym{XML}
-text (a string).
 @end deftp
 
 @deftp {record type} xml-dtd root external internal
@@ -3112,13 +3449,11 @@ correspond to the @acronym{XML} keywords of the same names.
 
 @item
 A list @samp{(#FIXED @var{value})} corresponds to the @samp{#FIXED
-"@var{value}"} syntax.  @var{Value} is represented as a string, but
-might also be an @code{xml-uninterpreted} record.
+"@var{value}"} syntax.  @var{Value} is represented as a string.
 
 @item
 A list @samp{(DEFAULT @var{value})} corresponds to the
-@samp{"@var{value}"} syntax.  @var{Value} is represented as a string,
-but might also be an @code{xml-uninterpreted} record.
+@samp{"@var{value}"} syntax.  @var{Value} is represented as a string.
 @end itemize
 @end deftp
 
@@ -3130,10 +3465,9 @@ but might also be an @code{xml-uninterpreted} record.
 @findex xml-!entity-value
 @findex set-xml-!entity-name!
 @findex set-xml-!entity-value!
-The @code{xml-!entity} record represents a general entity
-declaration.  @var{Name} is an @acronym{XML} name for the entity.
-@var{Value} is the entity's value, either a string, an
-@code{xml-uninterpreted} record, or an @code{xml-external-id} record.
+The @code{xml-!entity} record represents a general entity declaration.
+@var{Name} is an @acronym{XML} name for the entity.  @var{Value} is the
+entity's value, either a string or an @code{xml-external-id} record.
 @end deftp
 
 @deftp {record type} xml-parameter-!entity name value
@@ -3146,8 +3480,8 @@ declaration.  @var{Name} is an @acronym{XML} name for the entity.
 @findex set-xml-parameter-!entity-value!
 The @code{xml-parameter-!entity} record represents a parameter entity
 declaration.  @var{Name} is an @acronym{XML} name for the entity.
-@var{Value} is the entity's value, either a string, an
-@code{xml-uninterpreted} record, or an @code{xml-external-id} record.
+@var{Value} is the entity's value, either a string or an
+@code{xml-external-id} record.
 @end deftp
 
 @deftp {record type} xml-unparsed-!entity name id notation
@@ -3179,18 +3513,18 @@ The @code{xml-!notation} record represents a notation declaration.
 @code{xml-external-id} record.
 @end deftp
 
-@deftp {record type} xml-external-id id uri
+@deftp {record type} xml-external-id id iri
 @vindex <xml-external-id>
 @findex xml-external-id?
 @findex make-xml-external-id
 @findex xml-external-id-id
-@findex xml-external-id-uri
+@findex xml-external-id-iri
 @findex set-xml-external-id-id!
-@findex set-xml-external-id-uri!
+@findex set-xml-external-id-iri!
 The @code{xml-external-id} record is a reference to an external
 @acronym{DTD}.  This reference consists of two parts: @var{id} is a
 public @acronym{ID} literal, corresponding to the @samp{PUBLIC}
-keyword, while @var{uri} is a system literal, corresponding to the
+keyword, while @var{iri} is a system literal, corresponding to the
 @samp{SYSTEM} keyword.  Either or both may be present, depending on
 the context.  Each is represented as a string.
 @end deftp

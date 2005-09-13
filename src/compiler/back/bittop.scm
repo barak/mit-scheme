@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: bittop.scm,v 1.24 2003/02/14 18:28:00 cph Exp $
+$Id: bittop.scm,v 1.25 2005/04/16 03:08:47 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright 1993,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -156,7 +157,7 @@ USA.
 		       code-block)
 	  ((ucode-primitive primitive-object-set! 3)
 	   output-block 0
-	   (object-new-type (ucode-type null) total-length))
+	   (object-new-type (ucode-type manifest-vector) total-length))
 	  (insert-objects! output-block objects (fix:+ bl 1))
 	  output-block))))
 

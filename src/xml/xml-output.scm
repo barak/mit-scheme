@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.24 2003/08/22 15:13:19 cph Exp $
+$Id: xml-output.scm,v 1.35 2004/10/15 18:34:20 cph Exp $
 
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,36 +28,52 @@ USA.
 (declare (usual-integrations))
 
 (define (write-xml xml port . options)
+  (set-coding xml port)
   (write-xml-1 xml port options))
 
 (define (write-xml-file xml pathname . options)
   (call-with-output-file pathname
     (lambda (port)
+      (set-coding xml port)
       (write-xml-1 xml port options))))
 
-(define (xml->string xml . options)
-  (call-with-output-string
-   (lambda (port)
-     (write-xml-1 xml port options))))
+(define (set-coding xml port)
+  (let ((coding
+	 (or (normalize-coding port
+			       (and (xml-document? xml)
+				    (xml-document-declaration xml)))
+	     'UTF-8)))
+    (port/set-coding port coding)
+    (port/set-line-ending port 'TEXT)
+    (if (coding-requires-bom? coding)
+	(write-char #\U+FEFF port))))
 
 (define (xml->wide-string xml . options)
   (call-with-wide-output-string
    (lambda (port)
      (write-xml-1 xml port options))))
 
+(define (xml->string xml . options)
+  (wide-string->utf8-string (apply xml->wide-string xml options)))
+
 (define (write-xml-1 xml port options)
-  (%write-xml xml (make-ctx port options)))
+  (%write-xml xml
+	      (apply make-ctx
+		     'CHAR-MAP (if (and (xml-document? xml)
+					(html-dtd? (xml-document-dtd xml)))
+				   html-char->name-map
+				   (lambda (char) char #f))
+		     'PORT port
+		     options)))
 
 (define-structure (ctx (type-descriptor <ctx>)
-		       (keyword-constructor %make-ctx)
+		       (keyword-constructor make-ctx)
 		       (print-procedure
 			(standard-unparser-method 'XML-OUTPUT-CONTEXT #f)))
+  (char-map #f read-only #t)
   (port #f read-only #t)
   (indent-attributes? #f read-only #t)
   (indent-dtd? #f read-only #t))
-
-(define (make-ctx port options)
-  (apply %make-ctx 'PORT port options))
 
 (define (emit-char char ctx)
   (let ((port (ctx-port ctx)))
@@ -69,7 +85,10 @@ USA.
 	  (write-string ";" port)))))
 
 (define (emit-string string ctx)
-  (write-string string (ctx-port ctx)))
+  (let ((port (ctx-port ctx)))
+    (for-each-wide-char string
+      (lambda (char)
+	(write-char char port)))))
 
 (define (emit-newline ctx)
   (newline (ctx-port ctx)))
@@ -117,17 +136,17 @@ USA.
 
 (define-method %write-xml ((element <xml-element>) ctx)
   (let ((name (xml-element-name element))
-	(contents (xml-element-contents element)))
+	(content (xml-element-content element)))
     (emit-string "<" ctx)
     (write-xml-name name ctx)
     (write-xml-attributes (xml-element-attributes element)
-			  (if (pair? contents) 1 3)
+			  (if (pair? content) 1 3)
 			  ctx)
-    (if (pair? contents)
+    (if (pair? content)
 	(begin
 	  (emit-string ">" ctx)
 	  (for-each (lambda (content) (%write-xml content ctx))
-		    contents)
+		    content)
 	  (emit-string "</" ctx)
 	  (write-xml-name name ctx)
 	  (emit-string ">" ctx))
@@ -249,10 +268,10 @@ USA.
 		    (emit-string "(" ctx)
 		    (if (pair? (cdr type))
 			(begin
-			  (write-xml-name (cadr type) ctx)
-			  (for-each (lambda (name)
+			  (write-xml-nmtoken (cadr type) ctx)
+			  (for-each (lambda (nmtoken)
 				      (emit-string "|" ctx)
-				      (write-xml-name name ctx))
+				      (write-xml-nmtoken nmtoken ctx))
 				    (cddr type))))
 		    (emit-string ")" ctx))
 		   (else
@@ -333,62 +352,48 @@ USA.
   (write-xml-name (xml-parameter-entity-ref-name ref) ctx)
   (emit-string ";" ctx))
 
-(define (write-xml-attributes attributes suffix-cols ctx)
+(define (write-xml-attributes attrs suffix-cols ctx)
   (let ((col
 	 (and (ctx-indent-attributes? ctx)
 	      (ctx-start-col ctx))))
     (if (and col
-	     (pair? attributes)
-	     (pair? (cdr attributes))
+	     (pair? attrs)
+	     (pair? (cdr attrs))
 	     (>= (+ col
-		    (xml-attributes-columns attributes)
+		    (xml-attributes-columns attrs)
 		    suffix-cols)
 		 (ctx-x-size ctx)))
 	(begin
 	  (emit-char #\space ctx)
-	  (write-xml-attribute (car attributes) ctx)
-	  (for-each (lambda (attribute)
+	  (write-xml-attribute (car attrs) ctx)
+	  (for-each (lambda (attr)
 		      (write-indent (+ col 1) ctx)
-		      (write-xml-attribute attribute ctx))
-		    (cdr attributes)))
-	(for-each (lambda (attribute)
+		      (write-xml-attribute attr ctx))
+		    (cdr attrs)))
+	(for-each (lambda (attr)
 		    (emit-char #\space ctx)
-		    (write-xml-attribute attribute ctx))
-		  attributes))))
+		    (write-xml-attribute attr ctx))
+		  attrs))))
 
-(define (xml-attributes-columns attributes)
-  (let loop ((attributes attributes) (n-cols 0))
-    (if (pair? attributes)
-	(loop (cdr attributes)
-	      (+ n-cols 1 (xml-attribute-columns (car attributes))))
-	n-cols)))
+(define (xml-attributes-columns attrs)
+  (do ((attrs attrs (cdr attrs))
+       (n-cols 0 (+ n-cols 1 (xml-attribute-columns (car attrs)))))
+      ((not (pair? attrs)) n-cols)))
 
-(define (write-xml-attribute attribute ctx)
-  (write-xml-name (car attribute) ctx)
+(define (write-xml-attribute attr ctx)
+  (write-xml-name (xml-attribute-name attr) ctx)
   (emit-char #\= ctx)
-  (write-xml-attribute-value (cdr attribute) ctx))
+  (write-xml-attribute-value (xml-attribute-value attr) ctx))
 
 (define (write-xml-attribute-value value ctx)
   (emit-char #\" ctx)
-  (for-each (lambda (item)
-	      (if (string? item)
-		  (write-xml-string item ctx)
-		  (%write-xml item ctx)))
-	    value)
+  (write-xml-string value ctx)
   (emit-char #\" ctx))
 
-(define (xml-attribute-columns attribute)
-  (+ (xml-name-columns (car attribute))
-     1
-     (let loop ((items (cdr attribute)) (n 2))
-       (if (pair? items)
-	   (loop (cdr items)
-		 (+ n
-		    (if (string? (car items))
-			(xml-string-columns (car items))
-			(+ (xml-name-columns (xml-entity-ref-name (car items)))
-			   2))))
-	   n))))
+(define (xml-attribute-columns attr)
+  (+ (xml-name-columns (xml-attribute-name attr))
+     3
+     (xml-string-columns (xml-attribute-value attr))))
 
 (define (write-xml-string string ctx)
   (write-escaped-string string
@@ -416,6 +421,9 @@ USA.
 
 (define (xml-name-columns name)
   (utf8-string-length (xml-name-string name)))
+
+(define (write-xml-nmtoken nmtoken ctx)
+  (emit-string (xml-nmtoken-string nmtoken) ctx))
 
 (define (write-entity-value value col ctx)
   (if (xml-external-id? value)
@@ -445,15 +453,15 @@ USA.
 	  (write-indent col ctx)
 	  (emit-string "PUBLIC " ctx)
 	  (quoted-string (xml-external-id-id id))
-	  (if (xml-external-id-uri id)
+	  (if (xml-external-id-iri id)
 	      (begin
 		(write-indent col ctx)
-		(quoted-string (xml-external-id-uri id)))))
+		(quoted-string (xml-external-id-iri id)))))
 	(begin
 	  (write-indent col ctx)
 	  (emit-string "SYSTEM" ctx)
 	  (emit-string " " ctx)
-	  (quoted-string (xml-external-id-uri id))))))
+	  (quoted-string (xml-external-id-iri id))))))
 
 (define (write-indent col ctx)
   (if col
@@ -471,10 +479,16 @@ USA.
 (define (write-escaped-string string escapes ctx)
   (for-each-wide-char string
     (lambda (char)
-      (let ((e (assq char escapes)))
-	(if e
-	    (emit-string (cdr e) ctx)
-	    (emit-char char ctx))))))
+      (cond ((assq char escapes)
+	     => (lambda (e)
+		  (emit-string (cdr e) ctx)))
+	    (((ctx-char-map ctx) char)
+	     => (lambda (name)
+		  (emit-char #\& ctx)
+		  (emit-string (symbol-name name) ctx)
+		  (emit-char #\; ctx)))
+	    (else
+	     (emit-char char ctx))))))
 
 (define (for-each-wide-char string procedure)
   (let ((port (open-input-string string)))

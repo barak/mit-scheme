@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.15 2003/03/14 20:02:18 cph Exp $
+$Id: uproc.scm,v 1.19 2005/08/12 13:17:30 cph Exp $
 
 Copyright 1990,1991,1992,1995,1996,2003 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,21 +37,10 @@ USA.
 	(%primitive-procedure? object)
 	(%compiled-procedure? object))))
 
-(define (guarantee-procedure object procedure)
-  (if (not (procedure? object))
-      (error:wrong-type-argument object "procedure" procedure)))
-
-(define (guarantee-compound-procedure object procedure)
-  (if (not (compound-procedure? object))
-      (error:wrong-type-argument object "compound procedure" procedure)))
-
-(define (guarantee-primitive-procedure object procedure)
-  (if (not (primitive-procedure? object))
-      (error:wrong-type-argument object "primitive procedure" procedure)))
-
-(define (guarantee-compiled-procedure object procedure)
-  (if (not (compiled-procedure? object))
-      (error:wrong-type-argument object "compiled procedure" procedure)))
+(define-guarantee procedure "procedure")
+(define-guarantee compound-procedure "compound procedure")
+(define-guarantee primitive-procedure "primitive procedure")
+(define-guarantee compiled-procedure "compiled procedure")
 
 (define (procedure-lambda procedure)
   (discriminate-procedure procedure
@@ -151,6 +141,63 @@ USA.
 (define (thunk? object)
   (and (procedure? object)
        (procedure-arity-valid? object 0)))
+
+(define-guarantee thunk "thunk")
+
+(define-integrable (procedure-of-arity? object arity)
+  (and (procedure? object)
+       (procedure-arity-valid? object arity)))
+
+(define (guarantee-procedure-of-arity object arity caller)
+  (guarantee-procedure object caller)
+  (if (not (procedure-arity-valid? object arity))
+      (error:bad-range-argument object caller)))
+
+(define (make-procedure-arity min #!optional max simple-ok?)
+  (guarantee-index-fixnum min 'MAKE-PROCEDURE-ARITY)
+  (let ((max
+	 (if (default-object? max)
+	     min
+	     (begin
+	       (if max
+		   (begin
+		     (guarantee-index-fixnum max 'MAKE-PROCEDURE-ARITY)
+		     (if (not (fix:>= max min))
+			 (error:bad-range-argument max
+						   'MAKE-PROCEDURE-ARITY))))
+	       max))))
+    (if (and (eqv? min max)
+	     (if (default-object? simple-ok?) #f simple-ok?))
+	min
+	(cons min max))))
+
+(define (procedure-arity? object)
+  (if (simple-arity? object)
+      #t
+      (general-arity? object)))
+
+(define-guarantee procedure-arity "procedure arity")
+
+(define (procedure-arity-min arity)
+  (cond ((simple-arity? arity) arity)
+	((general-arity? arity) (car arity))
+	(else (error:not-procedure-arity arity 'PROCEDURE-ARITY-MIN))))
+
+(define (procedure-arity-max arity)
+  (cond ((simple-arity? arity) arity)
+	((general-arity? arity) (cdr arity))
+	(else (error:not-procedure-arity arity 'PROCEDURE-ARITY-MAX))))
+
+(define-integrable (simple-arity? object)
+  (index-fixnum? object))
+
+(define-integrable (general-arity? object)
+  (and (pair? object)
+       (index-fixnum? (car object))
+       (if (cdr object)
+	   (and (index-fixnum? (cdr object))
+		(fix:>= (cdr object) (car object)))
+	   #t)))
 
 ;;;; Interpreted Procedures
 
@@ -299,7 +346,9 @@ USA.
 (define-integrable (entity-extra entity)
   (system-pair-cdr entity))
 
-(define-integrable (set-entity-procedure! entity procedure)
+(define (set-entity-procedure! entity procedure)
+  (if (procedure-chains-to procedure entity)
+      (error:bad-range-argument procedure 'SET-ENTITY-PROCEDURE!))
   (system-pair-set-car! entity procedure))
 
 (define-integrable (set-entity-extra! entity extra)
@@ -320,7 +369,7 @@ USA.
 (define (%entity-extra/apply-hook? extra)
   ;; The wabbit cares about this one.
   (and (object-type? (ucode-type hunk3) extra)
-       (eq? apply-hook-tag (system-hunk3-cxr0 extra))))
+       (eq? (system-hunk3-cxr0 extra) apply-hook-tag)))
 
 (define apply-hook-tag
   "apply-hook-tag")
@@ -331,12 +380,14 @@ USA.
 (define-integrable (apply-hook-extra apply-hook)
   (system-hunk3-cxr2 (entity-extra apply-hook)))
 
-(define-integrable (set-apply-hook-procedure! apply-hook procedure)
+(define (set-apply-hook-procedure! apply-hook procedure)
+  (if (procedure-chains-to procedure apply-hook)
+      (error:bad-range-argument procedure 'SET-APPLY-HOOK-PROCEDURE!))
   (system-hunk3-set-cxr1! (entity-extra apply-hook) procedure))
 
 (define-integrable (set-apply-hook-extra! apply-hook procedure)
   (system-hunk3-set-cxr2! (entity-extra apply-hook) procedure))
-
+
 ;;;; Arity dispatched entities
 
 (define (make-arity-dispatched-procedure default . dispatched-cases)
@@ -354,3 +405,27 @@ USA.
        (fix:< 0 (vector-length (entity-extra object)))
        (eq? (vector-ref (entity-extra object) 0)
 	    (fixed-objects-item 'ARITY-DISPATCHER-TAG))))
+
+(define (procedure-chains-to p1 p2)
+  (let loop ((p1 p1))
+    (if (eq? p1 p2)
+	#t
+	(if (%entity? p1)
+	    (cond ((%entity-is-apply-hook? p1)
+		   (loop (apply-hook-procedure p1)))
+		  ((arity-dispatched-procedure? p1)
+		   (let ((v (entity-extra p1)))
+		     (let ((n (vector-length v)))
+		       (let per-arity ((i 1))
+			 (if (< i n)
+			     (if (let ((p (vector-ref v i)))
+				   (and p
+					(loop p)))
+				 #t
+				 (per-arity (fix:+ i 1)))
+			     #f)))))
+		  (else
+		   (loop (entity-procedure p1))))
+	    
+	    
+	    #f))))

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.36 2003/02/14 18:28:00 cph Exp $
+$Id: make.scm,v 15.38 2005/03/30 03:52:20 cph Exp $
 
-Copyright (c) 1991-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1991,1992,1993,1995,1996,1998 Massachusetts Institute of Technology
+Copyright 1999,2001,2002,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,16 +39,14 @@ USA.
        (if (and (eq? 'UNIX microcode-id/operating-system)
 		(string-ci=? "HP-UX" microcode-id/operating-system-variant))
 	   (load "floppy" (->environment '(EDWIN))))))))
-(add-identification! "6.001" 15 31)
+(add-subsystem-identification! "6.001" '(15 31))
 
 ;;; Customize the runtime system:
 (set! repl:allow-restart-notifications? #f)
 (set! repl:write-result-hash-numbers? #f)
-(set! *unparse-disambiguate-null-as-itself?* #f)
-(set! *unparse-disambiguate-null-lambda-list?* true)
-(set! *pp-default-as-code?* true)
+(set! *pp-default-as-code?* #t)
 (set! *pp-named-lambda->define?* 'LAMBDA)
-(set! x-graphics:auto-raise? true)
+(set! x-graphics:auto-raise? #t)
 (set! (access write-result:undefined-value-is-special?
 	      (->environment '(RUNTIME USER-INTERFACE)))
       #f)

@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.64 2003/02/14 18:28:18 cph Exp $
+$Id: extern.h,v 9.65 2005/01/01 05:44:05 cph Exp $
 
-Copyright (c) 1987-2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1995,1996,1997,2000 Massachusetts Institute of Technology
+Copyright 2001,2002,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -217,6 +219,13 @@ extern SCHEME_OBJECT EXFUN
 extern SCHEME_OBJECT EXFUN (char_pointer_to_string, (CONST unsigned char *));
 extern SCHEME_OBJECT EXFUN
   (char_pointer_to_string_no_gc, (CONST unsigned char *));
+extern CONST char * EXFUN (arg_symbol, (int));
+extern CONST char * EXFUN (arg_interned_symbol, (int));
+extern SCHEME_OBJECT EXFUN (string_to_symbol, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (char_pointer_to_symbol, (CONST char *));
+extern SCHEME_OBJECT EXFUN (memory_to_symbol, (unsigned long, CONST char *));
+extern SCHEME_OBJECT EXFUN (find_symbol, (unsigned long, CONST char *));
+
 
 /* Random and OS utilities */
 extern Boolean EXFUN (Restore_History, (SCHEME_OBJECT));

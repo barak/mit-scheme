@@ -1,6 +1,7 @@
+m4trace:configure.ac:6: -1- AC_INIT([MIT/GNU Scheme documentation], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme-doc])
 m4trace:configure.ac:6: -1- m4_pattern_forbid([^_?A[CHUM]_])
 m4trace:configure.ac:6: -1- m4_pattern_forbid([_AC_])
-m4trace:configure.ac:6: -1- m4_pattern_forbid([^LIBOBJS$], [do not use LIBOBJS directly, use AC_LIBOBJ (see section `AC_LIBOBJ vs. LIBOBJS'])
+m4trace:configure.ac:6: -1- m4_pattern_forbid([^LIBOBJS$], [do not use LIBOBJS directly, use AC_LIBOBJ (see section `AC_LIBOBJ vs LIBOBJS'])
 m4trace:configure.ac:6: -1- m4_pattern_allow([^AS_FLAGS$])
 m4trace:configure.ac:6: -1- m4_pattern_forbid([^_?m4_])
 m4trace:configure.ac:6: -1- m4_pattern_forbid([^dnl$])
@@ -58,13 +59,28 @@ m4trace:configure.ac:32: -1- AC_PROG_LN_S
 m4trace:configure.ac:32: -1- AC_SUBST([LN_S], [$as_ln_s])
 m4trace:configure.ac:33: -1- AC_PROG_MAKE_SET
 m4trace:configure.ac:33: -1- AC_SUBST([SET_MAKE])
+m4trace:configure.ac:42: -1- _m4_warn([obsolete], [The macro `AC_HELP_STRING' is obsolete.
+You should run autoupdate.], [autoconf/general.m4:219: AC_HELP_STRING is expanded from...
+autoconf/general.m4:1303: AC_ARG_ENABLE is expanded from...
+configure.ac:42: the top level])
 m4trace:configure.ac:51: -1- AC_SUBST([htmldir])
+m4trace:configure.ac:54: -1- _m4_warn([obsolete], [The macro `AC_HELP_STRING' is obsolete.
+You should run autoupdate.], [autoconf/general.m4:219: AC_HELP_STRING is expanded from...
+autoconf/general.m4:1303: AC_ARG_ENABLE is expanded from...
+configure.ac:54: the top level])
 m4trace:configure.ac:63: -1- AC_SUBST([pdfdir])
+m4trace:configure.ac:66: -1- _m4_warn([obsolete], [The macro `AC_HELP_STRING' is obsolete.
+You should run autoupdate.], [autoconf/general.m4:219: AC_HELP_STRING is expanded from...
+autoconf/general.m4:1303: AC_ARG_ENABLE is expanded from...
+configure.ac:66: the top level])
 m4trace:configure.ac:75: -1- AC_SUBST([psdir])
 m4trace:configure.ac:77: -1- AC_SUBST([INST_TARGETS])
-m4trace:configure.ac:89: -1- AC_CONFIG_FILES([
+m4trace:configure.ac:85: -1- AC_CONFIG_FILES([
 	Makefile
+	make-common
 	imail/Makefile
 	ref-manual/Makefile
 	sos/Makefile
 	user-manual/Makefile])
+m4trace:configure.ac:86: -1- AC_SUBST([LIB@&t@OBJS], [$ac_libobjs])
+m4trace:configure.ac:86: -1- AC_SUBST([LTLIBOBJS], [$ac_ltlibobjs])
