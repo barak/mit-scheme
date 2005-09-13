@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.291 2005/09/07 19:24:28 cph Exp $
+$Id: imail-top.scm,v 1.292 2005/09/13 14:19:26 cph Exp $
 
 Copyright 1999,2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -165,7 +165,7 @@ Otherwise, they are inserted into the message body."
   "List of regular expressions matching character-set names.
 Text messages using these character sets are displayed inline;
  when other character sets are used, the text is treated as an attachment."
-  (list "us-ascii" "iso-8859-[0-9]+" "utf-?[78]"
+  (list "us-ascii" "iso-?8859-[0-9]+" "utf-?[78]"
 	"unicode-[0-9]+-[0-9]+-utf-[78]" ; RFC 1641
 	"windows-[0-9]+" "unknown-8bit")
   list-of-strings?)
