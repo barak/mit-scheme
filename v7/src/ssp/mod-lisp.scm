@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.28 2005/03/31 05:24:39 cph Exp $
+$Id: mod-lisp.scm,v 1.29 2005/09/17 01:20:50 cph Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -646,7 +646,7 @@ USA.
   (if (let ((type (http-browser-type)))
 	(and (pair? type)
 	     (eq? (car type) 'IE)))
-      "text/xml"
+      "text/html"
       "application/xhtml+xml"))
 
 (define (http-browser-type)
