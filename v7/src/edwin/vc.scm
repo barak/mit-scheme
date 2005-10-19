@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.84 2003/03/14 01:30:46 cph Exp $
+$Id: vc.scm,v 1.85 2005/10/19 05:31:55 cph Exp $
 
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -343,12 +343,11 @@ Otherwise, VC will compare the file to the copy in the repository."
 	  (vc-type-display-name (vc-master-type master))
 	  (if (ref-variable vc-display-status buffer)
 	      (if revision
-		  (let ()
-		    (string-append
-		     (cond ((not locker) "-")
-			   ((string=? locker user-name) ":")
-			   (else (string-append ":" locker ":")))
-		     revision))
+		  (string-append
+		   (cond ((not locker) "-")
+			 ((string=? locker user-name) ":")
+			 (else (string-append ":" locker ":")))
+		   revision)
 		  " @@")
 	      ""))
 	 buffer)
@@ -1903,6 +1902,302 @@ the value of vc-log-mode-hook."
 		(else
 		 (pop-up-buffer buffer #f)
 		 (error "Couldn't analyze cvs update result."))))))))
+
+;;;; Subversion Commands
+
+(define vc-type:svn
+  (make-vc-type 'SVN "SVN" "\$Id\$"))
+
+(define-vc-type-operation 'RELEASE vc-type:svn
+  (lambda ()
+    (and (= 0 (vc-run-command #f '() "svn" "--version"))
+	 (re-search-forward "svn, version \\([0-9.]+\\)"
+			    (buffer-start (get-vc-command-buffer)))
+	 (extract-string (re-match-start 1) (re-match-end 1)))))
+
+(define-vc-type-operation 'FIND-MASTER vc-type:svn
+  (lambda (workfile)
+    (find-svn-master workfile)))
+
+(define-vc-type-operation 'VALID? vc-type:svn
+  (lambda (master)
+    (let ((status (get-svn-status (vc-master-workfile master))))
+      (and status
+	   (svn-status-working-revision status)))))
+
+(define-vc-type-operation 'DEFAULT-REVISION vc-type:svn
+  (lambda (master error?)
+    (let ((workfile (vc-master-workfile master)))
+      (let ((status (get-svn-status workfile)))
+	(or (and status
+		 (svn-status-working-revision status))
+	    (and error?
+		 (error "Unable to determine default Subversion revision:"
+			workfile)))))))
+
+(define-vc-type-operation 'WORKFILE-REVISION vc-type:svn
+  (lambda (master)
+    (let ((workfile (vc-master-workfile master)))
+      (let ((status (get-svn-status workfile)))
+	(if status
+	    (svn-status-last-change-revision status)
+	    (error "Workfile has no revision:" workfile))))))
+
+(define-vc-type-operation 'LOCKING-USER vc-type:svn
+  (lambda (master revision)
+    ;; The workfile is "locked" if it is modified.
+    ;; We consider the workfile's owner to be the locker.
+    (let ((workfile (vc-master-workfile master)))
+      (let ((status (get-svn-status workfile)))
+	(and status
+	     (or (not revision)
+		 (equal? revision (svn-status-working-revision status)))
+	     (memq (svn-status-type status)
+		   '(ADDED CONFLICTED DELETED MERGED MODIFIED))
+	     (unix/uid->string
+	      (file-attributes/uid (file-attributes workfile))))))))
+
+(define-vc-type-operation 'LIKELY-CONTROL-TYPE? vc-type:svn
+  (lambda (workfile)
+    (file-directory? (svn-directory workfile))))
+
+(define-vc-type-operation 'REGISTER vc-type:svn
+  (lambda (workfile revision comment keep?)
+    revision comment keep?
+    (with-vc-command-message workfile "Registering"
+      (lambda ()
+	(vc-run-command workfile '() "svn" "add" (file-pathname workfile))))))
+
+(define-vc-type-operation 'CHECKOUT vc-type:svn
+  (lambda (master revision lock? workfile)
+    lock?
+    (let ((workfile* (file-pathname (vc-master-workfile master))))
+      (with-vc-command-message master "Checking out"
+	(lambda ()
+	  (cond (workfile
+		 (delete-file-no-errors workfile)
+		 (vc-run-shell-command master '() "svn" "cat"
+				       (svn-rev-switch revision)
+				       workfile*
+				       ">"
+				       workfile))
+		(else
+		 (vc-run-command master '() "svn" "update"
+				 (svn-rev-switch revision)
+				 workfile*))))))))
+
+(define-vc-type-operation 'CHECKIN vc-type:svn
+  (lambda (master revision comment keep?)
+    keep?
+    (with-vc-command-message master "Checking in"
+      (lambda ()
+	(vc-run-command master '() "svn" "commit"
+			(svn-rev-switch revision)
+			"--message" comment
+			(file-pathname (vc-master-workfile master)))))))
+
+(define-vc-type-operation 'REVERT vc-type:svn
+  (lambda (master)
+    (with-vc-command-message master "Reverting"
+      (lambda ()
+	(vc-run-command master '() "svn" "revert"
+			(file-pathname (vc-master-workfile master)))))))
+
+(define-vc-type-operation 'STEAL vc-type:svn
+  (lambda (master revision)
+    master revision
+    (error "There are no Subversion locks to steal.")))
+
+(define-vc-type-operation 'DIFF vc-type:svn
+  (lambda (master rev1 rev2 simple?)
+    (let ((options
+	   `((STATUS 1)
+	     (BUFFER ,(get-vc-diff-buffer simple?)))))
+      (if (equal? "0" (vc-backend-workfile-revision master))
+	  ;; This file is added but not yet committed; there is no
+	  ;; master file.
+	  (begin
+	    (if (or rev1 rev2)
+		(error "No revisions exist:" (vc-master-workfile master)))
+	    (if simple?
+		;; File is added but not committed; we regard this as
+		;; "changed".
+		#t
+		;; Diff against /dev/null.
+		(= 1
+		   (vc-run-command master options "diff"
+				   (ref-variable diff-switches
+						 (vc-workfile-buffer master
+								     #f))
+				   "/dev/null"
+				   (file-pathname
+				    (vc-master-workfile master))))))
+	  (= 1
+	     (vc-run-command master options "svn" "diff"
+			     (and simple?
+				  (ref-variable
+				   diff-switches
+				   (vc-workfile-buffer master #f)))
+			     (and rev1 (string-append "-r" rev1))
+			     (and rev2 (string-append "-r" rev2))
+			     (file-pathname (vc-master-workfile master))))))))
+
+(define-vc-type-operation 'PRINT-LOG vc-type:svn
+  (lambda (master)
+    (vc-run-command master '() "svn" "log"
+		    (file-pathname (vc-master-workfile master)))))
+
+(define-vc-type-operation 'CHECK-LOG-ENTRY vc-type:svn
+  (lambda (master log-buffer)
+    master log-buffer
+    unspecific))
+
+(define-vc-type-operation 'CHECK-HEADERS vc-type:svn
+  (lambda (master buffer)
+    master
+    (check-rcs-headers buffer)))
+
+(define (find-svn-master workfile)
+  (and (not (let ((output (%get-svn-status workfile)))
+	      (or (not output)
+		  (string-null? output)
+		  (string-prefix? "?" output))))
+       (let ((fn (merge-pathnames "entries" (svn-directory workfile))))
+	 (and (file-regular? fn)
+	      (make-vc-master vc-type:svn fn workfile)))))
+
+(define (svn-directory workfile)
+  (subdirectory-pathname workfile ".svn"))
+
+(define (svn-rev-switch revision)
+  (and revision
+       (list "-r" revision)))
+
+(define (get-svn-status workfile)
+  (let ((raw (%get-svn-status workfile)))
+    (and raw
+	 (parse-svn-status raw))))
+
+(define (%get-svn-status workfile)
+  (let ((port (open-output-string)))
+    (let ((status
+	   (run-shell-command
+	    (string-append "svn status --verbose " (file-namestring workfile))
+	    'output port
+	    'working-directory (directory-pathname workfile))))
+      (and (eqv? status 0)
+	   (get-output-string port)))))
+
+(define (parse-svn-status status)
+  (and status
+       (not (string-null? status))
+       (let ((type (decode-svn-status-0 (string-ref status 0))))
+	 (if (eq? type 'UNVERSIONED)
+	     type
+	     (let ((regs (re-string-match svn-status-regexp status #f)))
+	       (and regs
+		    (make-svn-status
+		     type
+		     (decode-svn-status-1 (string-ref status 1))
+		     (decode-svn-status-2 (string-ref status 2))
+		     (decode-svn-status-3 (string-ref status 3))
+		     (decode-svn-status-4 (string-ref status 4))
+		     (decode-svn-status-5 (string-ref status 5))
+		     (decode-svn-status-7 (string-ref status 7))
+		     (decode-svn-working-revision
+		      (re-match-extract status regs 1))
+		     (decode-svn-last-change-revision
+		      (re-match-extract status regs 2))
+		     (re-match-extract status regs 3))))))))
+
+(define svn-status-regexp
+  (string-append ".[ CM][ L][ +][ S][ KOTB] [ *]"
+		 " +\\([0-9]+\\|-\\|\\?\\)"
+		 " +\\([0-9]+\\|\\?\\)"
+		 " +\\([^ ]+\\)"
+		 " +"))
+
+(define-record-type <svn-status>
+    (make-svn-status type properties locked? history? switched? lock-token
+		     updated? working-revision
+		     last-change-revision last-change-author)
+    svn-status?
+  (type svn-status-type)
+  (properties svn-status-properties)
+  (locked? svn-status-locked?)
+  (history? svn-status-history?)
+  (switched? svn-status-switched?)
+  (lock-token svn-status-lock-token)
+  (updated? svn-status-updated?)
+  (working-revision svn-status-working-revision)
+  (last-change-revision svn-status-last-change-revision)
+  (last-change-author svn-status-last-change-author))
+
+(define (decode-svn-status-0 char)
+  (case char
+    ((#\space) 'UNMODIFIED)
+    ((#\A) 'ADDED)
+    ((#\C) 'CONFLICTED)
+    ((#\D) 'DELETED)
+    ((#\G) 'MERGED)
+    ((#\I) 'IGNORED)
+    ((#\M) 'MODIFIED)
+    ((#\R) 'REPLACED)
+    ((#\X) 'USED-BY-EXTERNALS)
+    ((#\?) 'UNVERSIONED)
+    ((#\!) 'MISSING)
+    ((#\~) 'OBSTRUCTED)
+    (else (error "Unknown status char 0:" char))))
+
+(define (decode-svn-status-1 char)
+  (case char
+    ((#\space) 'UNMODIFIED)
+    ((#\C) 'CONFLICTED)
+    ((#\M) 'MODIFIED)
+    (else (error "Unknown status char 1:" char))))
+
+(define (decode-svn-status-2 char)
+  (case char
+    ((#\space) #f)
+    ((#\L) #t)
+    (else (error "Unknown status char 2:" char))))
+
+(define (decode-svn-status-3 char)
+  (case char
+    ((#\space) #f)
+    ((#\+) #t)
+    (else (error "Unknown status char 3:" char))))
+
+(define (decode-svn-status-4 char)
+  (case char
+    ((#\space) #f)
+    ((#\S) #t)
+    (else (error "Unknown status char 4:" char))))
+
+(define (decode-svn-status-5 char)
+  (case char
+    ((#\space) #f)
+    ((#\K) 'PRESENT)
+    ((#\O) 'ABSENT)
+    ((#\T) 'STOLEN)
+    ((#\B) 'BROKEN)
+    (else (error "Unknown status char 5:" char))))
+
+(define (decode-svn-status-7 char)
+  (case char
+    ((#\space) #f)
+    ((#\*) #t)
+    (else (error "Unknown status char 7:" char))))
+
+(define (decode-svn-working-revision string)
+  (if (string=? string "?")
+      #f
+      string))
+
+(define (decode-svn-last-change-revision string)
+  (if (string=? string "?")
+      #f
+      string))
 
 ;;;; Command Execution
 
