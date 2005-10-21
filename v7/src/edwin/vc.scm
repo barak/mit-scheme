@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.86 2005/10/21 02:46:59 cph Exp $
+$Id: vc.scm,v 1.87 2005/10/21 17:20:39 cph Exp $
 
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
@@ -2321,7 +2321,7 @@ the value of vc-log-mode-hook."
 
 (define (decode-svn-last-change-revision string)
   (if (string=? string "?")
-      #f
+      "0"
       string))
 
 ;;;; Command Execution
