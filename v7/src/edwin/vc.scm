@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.85 2005/10/19 05:31:55 cph Exp $
+$Id: vc.scm,v 1.86 2005/10/21 02:46:59 cph Exp $
 
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
@@ -534,7 +534,7 @@ merge in the changes into your working copy."
 		   ;; revert, because the user might intend to save
 		   ;; after finishing the log entry.
 		   (cond ((or (and buffer (buffer-modified? buffer))
-			      (vc-workfile-modified? master))
+			      (vc-backend-workfile-modified? master))
 			  (vc-checkin master revision? comment))
 			 ;; DO NOT revert the file without asking the
 			 ;; user!
@@ -550,30 +550,28 @@ merge in the changes into your working copy."
 	       (lambda ()
 		 (vc-save-workfile-buffer workfile)
 		 (vc-checkout master revision?))))
-	  (if (cvs-master? master)
-	      (case (cvs-status master)
-		((UP-TO-DATE)
-		 (let ((buffer (vc-workfile-buffer master #f)))
-		   (cond ((or (and buffer (buffer-modified? buffer))
-			      (cvs-file-edited? master))
-			  (do-checkin))
-			 ((or revision? (cvs-workfile-protected? workfile))
-			  (do-checkout))
-			 ((not from-dired?)
-			  (message (buffer-name buffer) " is up to date.")))))
-		((NEEDS-CHECKOUT NEEDS-MERGE)
-		 (vc-next-action-merge master from-dired?))
-		((LOCALLY-MODIFIED LOCALLY-ADDED LOCALLY-REMOVED)
-		 (do-checkin))
-		((UNRESOLVED-CONFLICT)
-		 (message (->namestring workfile)
-			  " has an unresolved conflict."))
-		(else
-		 (error "Unable to determine CVS status of file:" workfile)))
-	      (let ((owner (vc-backend-locking-user master #f)))
-		(cond ((not owner) (do-checkout))
-		      ((string=? owner (current-user-name)) (do-checkin))
-		      (else (vc-steal-lock master revision? comment owner))))))
+	  (let ((keyword (vc-backend-next-action master)))
+	    (case keyword
+	      ((CHECKIN)
+	       (do-checkin))
+	      ((CHECKOUT)
+	       (do-checkout))
+	      ((UNMODIFIED)
+	       (cond (revision?
+		      (do-checkout))
+		     ((not from-dired?)
+		      (message (buffer-name (vc-workfile-buffer master #f))
+			       " is up to date."))))
+	      ((MERGE)
+	       (vc-next-action-merge master from-dired?))
+	      ((RESOLVE-CONFLICT)
+	       (message (->namestring workfile)
+			" has an unresolved conflict."))
+	      ((STEAL-LOCK)
+	       (vc-steal-lock master revision? comment
+			      (vc-backend-locking-user master #f)))
+	      (else
+	       (error "Unknown next action keyword:" keyword)))))
 	(vc-register workfile revision? comment 'LOCK))))
 
 (define (vc-next-action-dired buffer)
@@ -591,12 +589,7 @@ merge in the changes into your working copy."
 		   (lambda (file)
 		     (let ((master (file-vc-master (car file) #f)))
 		       (and master
-			    (if (cvs-master? master)
-				(memq (cvs-status master)
-				      '(LOCALLY-MODIFIED
-					LOCALLY-ADDED
-					LOCALLY-REMOVED))
-				(vc-backend-locking-user master #f))))))
+			    (eq? (vc-backend-next-action master) 'CHECKIN)))))
 		 #f
 		 "")
 	     (lambda (comment)
@@ -646,7 +639,7 @@ merge in the changes into your working copy."
 	     (vc-revert-workfile-buffer master #t))))
       (cond ((not (and (let ((value (ref-variable vc-checkout-carefully)))
 			 (if (boolean? value) value (value)))
-		       (vc-workfile-modified? master)))
+		       (vc-backend-workfile-modified? master)))
 	     (do-it))
 	    ((cleanup-pop-up-buffers
 	      (lambda ()
@@ -674,10 +667,7 @@ merge in the changes into your working copy."
   (let ((revision (vc-get-revision revision? "New version level")))
     (vc-save-workfile-buffer (vc-master-workfile master))
     (vc-start-entry master "Enter a change comment." comment
-		    (let ((keep?
-			   (or (cvs-master? master)
-			       (ref-variable vc-keep-workfiles
-					     (vc-workfile-buffer master #f)))))
+		    (let ((keep? (vc-backend-keep-workfiles? master)))
 		      (lambda (comment)
 			(vc-backend-checkin master revision
 					    (if (blank-string? comment)
@@ -794,7 +784,7 @@ and two version designators specifying which versions to compare."
       (call-with-values
 	  (lambda ()
 	    (let ((previous
-		   (and (not (vc-workfile-modified? master))
+		   (and (not (vc-backend-workfile-modified? master))
 			(previous-revision revision))))
 	      (if previous
 		  (values previous revision)
@@ -814,7 +804,7 @@ and two version designators specifying which versions to compare."
   (vc-save-workfile-buffer (vc-master-workfile master))
   (let ((rev1 (vc-normalize-revision rev1))
 	(rev2 (vc-normalize-revision rev2)))
-    (if (and (or rev1 rev2 (vc-workfile-modified? master))
+    (if (and (or rev1 rev2 (vc-backend-workfile-modified? master))
 	     (run-diff master rev1 rev2))
 	(begin
 	  (pop-up-vc-diff-buffer #t)
@@ -836,7 +826,8 @@ and two version designators specifying which versions to compare."
 		      (vc-master-workfile master)
 	(lambda (tm tw)
 	  (let ((modified? (vc-backend-diff master rev1 rev2 #f)))
-	    (set-vc-cvs-workfile-mtime-string! master tm tw modified?)
+	    (if (cvs-master? master)
+		(set-vc-cvs-workfile-mtime-string! master tm tw modified?))
 	    modified?)))
       (vc-backend-diff master rev1 rev2 #f)))
 
@@ -896,7 +887,7 @@ to that version."
   (lambda ()
     (let* ((master (current-vc-master #t))
 	   (buffer (vc-workfile-buffer master #t)))
-      (if (or (and (vc-workfile-modified? master)
+      (if (or (and (vc-backend-workfile-modified? master)
 		   (or (ref-variable vc-suppress-confirm)
 		       (cleanup-pop-up-buffers
 			(lambda ()
@@ -986,18 +977,8 @@ Normally shows only locked files; prefix arg says to show all files."
        (if (and attr (not (file-attributes/type attr)))
 	   (let ((status
 		  (let ((master (file-vc-master file #f)))
-		    (cond ((not master)
-			   #f)
-			  ((cvs-master? master)
-			   (case (cvs-status master)
-			     ((LOCALLY-MODIFIED) "modified")
-			     ((LOCALLY-ADDED) "added")
-			     ((NEEDS-CHECKOUT) "patch")
-			     ((NEEDS-MERGE) "merge")
-			     ((UNRESOLVED-CONFLICT) "conflict")
-			     (else #f)))
-			  (else
-			   (vc-backend-locking-user master #f))))))
+		    (and master
+			 (vc-backend-workfile-status-string master)))))
 	     (if (or status all-files?)
 		 (generate-vc-dired-line file attr status mark))))))
    (directory-read directory)))
@@ -1234,6 +1215,18 @@ the value of vc-log-mode-hook."
   ;; The user holding the lock on that revision is returned.  If there
   ;;   is no lock, or if the lock cannot be determined, #F is returned.
   (vc-call 'LOCKING-USER master revision))
+
+(define (vc-backend-workfile-modified? master)
+  (vc-call 'WORKFILE-MODIFIED? master))
+
+(define (vc-backend-next-action master)
+  (vc-call 'NEXT-ACTION master))
+
+(define (vc-backend-keep-workfiles? master)
+  (vc-call 'KEEP-WORKFILES? master))
+
+(define (vc-backend-workfile-status-string master)
+  (vc-call 'WORKFILE-STATUS-STRING master))
 
 (define (vc-backend-register workfile revision comment keep?)
   ;; WORKFILE is an absolute pathname to an existing file.
@@ -1463,7 +1456,31 @@ the value of vc-log-mode-hook."
 			(lambda ()
 			  (read-buffer buffer workfile #f)
 			  (parse-buffer buffer)))))))))))))
+
+(define-vc-type-operation 'WORKFILE-MODIFIED? vc-type:rcs
+  (lambda (master)
+    (read-cached-value-2 master 'MODIFIED?
+			 (vc-master-pathname master)
+			 (vc-master-workfile master)
+      (lambda (tm tw)
+	tm tw
+	(vc-backend-diff master #f #f #t)))))
+
+(define-vc-type-operation 'NEXT-ACTION vc-type:rcs
+  (lambda (master)
+    (let ((owner (vc-backend-locking-user master #f)))
+      (cond ((not owner) 'CHECKOUT)
+	    ((string=? owner (current-user-name)) 'CHECKIN)
+	    (else 'STEAL-LOCK)))))
 
+(define-vc-type-operation 'KEEP-WORKFILES? vc-type:rcs
+  (lambda (master)
+    (ref-variable vc-keep-workfiles (vc-workfile-buffer master #f))))
+
+(define-vc-type-operation 'WORKFILE-STATUS-STRING vc-type:rcs
+  (lambda (master)
+    (vc-backend-locking-user master #f)))
+
 (define-vc-type-operation 'LOCKING-USER vc-type:rcs
   (lambda (master revision)
     (let ((admin (get-rcs-admin master)))
@@ -1657,7 +1674,7 @@ the value of vc-log-mode-hook."
 
 (define (cvs-status master)
   (if (vc-cvs-stay-local? master)
-      (if (vc-workfile-modified? master)
+      (if (vc-backend-workfile-modified? master)
 	  'LOCALLY-MODIFIED
 	  'UP-TO-DATE)
       (get-cvs-status master
@@ -1670,10 +1687,11 @@ the value of vc-log-mode-hook."
 (define (cvs-default-revision master)
   (get-cvs-status master
     (lambda (m)
-      (and (re-search-forward
-	    "\\(RCS Version\\|RCS Revision\\|Repository revision\\):[ \t]+\\([0-9.]+\\)"
-	    m)
+      (and (re-search-forward cvs-status-regexp m)
 	   (extract-string (re-match-start 2) (re-match-end 2))))))
+
+(define cvs-status-regexp
+  "\\(RCS Version\\|RCS Revision\\|Repository revision\\):[ \t]+\\([0-9.]+\\)")
 
 (define (get-cvs-status master parse-output)
   (vc-run-command master
@@ -1706,6 +1724,29 @@ the value of vc-log-mode-hook."
 (define (cvs-rev-switch revision)
   (and revision
        (list "-r" revision)))
+
+(define (vc-cvs-stay-local? master)
+  (ref-variable vc-cvs-stay-local (vc-workfile-buffer master #f)))
+
+(define (vc-cvs-workfile-mtime-string master)
+  (read-cached-value-2 master 'CVS-MTIME-STRING
+		       (vc-master-pathname master)
+		       (vc-master-workfile master)
+    (lambda (tm tw)
+      (and tm tw
+	   (let ((entry (find-cvs-entry master)))
+	     (and entry
+		  (caddr entry)))))))
+
+(define (set-vc-cvs-workfile-mtime-string! master tm tw modified?)
+  (if (and tm tw (not modified?))
+      (begin
+	;; This breaks the READ-CACHED-VALUE-2 abstraction:
+	(vc-master-put! master 'CVS-MTIME-STRING
+			(vector (file-time->global-ctime-string tw) tm tw))
+	(let ((buffer (pathname->buffer (vc-master-workfile master))))
+	  (if buffer
+	      (vc-mode-line master buffer))))))
 
 (define-vc-type-operation 'RELEASE vc-type:cvs
   (lambda ()
@@ -1749,9 +1790,60 @@ the value of vc-log-mode-hook."
 	  (file-attributes/uid
 	   (file-attributes (vc-master-workfile master)))))))
 
+(define-vc-type-operation 'WORKFILE-MODIFIED? vc-type:cvs
+  (lambda (master)
+    (read-cached-value-2 master 'MODIFIED?
+			 (vc-master-pathname master)
+			 (vc-master-workfile master)
+      (lambda (tm tw)
+	(if (and tm tw
+		 (let ((ts (vc-cvs-workfile-mtime-string master)))
+		   (and ts
+			(string=? ts (file-time->global-ctime-string tw)))))
+	    #f
+	    (or (vc-cvs-stay-local? master)
+		(let ((modified? (vc-backend-diff master #f #f #t)))
+		  (set-vc-cvs-workfile-mtime-string! master tm tw modified?)
+		  modified?)))))))
+
+(define-vc-type-operation 'NEXT-ACTION vc-type:cvs
+  (lambda (master)
+    (case (cvs-status master)
+      ((UP-TO-DATE)
+       (if (or (vc-workfile-buffer-modified? master)
+	       (cvs-file-edited? master))
+	   'CHECKIN
+	   'UNMODIFIED))
+      ((NEEDS-CHECKOUT NEEDS-MERGE) 'MERGE)
+      ((LOCALLY-MODIFIED LOCALLY-ADDED LOCALLY-REMOVED) 'CHECKIN)
+      ((UNRESOLVED-CONFLICT) 'RESOLVE-CONFLICT)
+      (else
+       (error "Unable to determine CVS status of file:"
+	      (vc-master-workfile master))))))
+
+(define-vc-type-operation 'KEEP-WORKFILES? vc-type:cvs
+  (lambda (master)
+    master
+    #t))
+
+(define-vc-type-operation 'WORKFILE-STATUS-STRING vc-type:cvs
+  (lambda (master)
+    (case (cvs-status master)
+      ((LOCALLY-MODIFIED) "modified")
+      ((LOCALLY-ADDED) "added")
+      ((NEEDS-CHECKOUT) "patch")
+      ((NEEDS-MERGE) "merge")
+      ((UNRESOLVED-CONFLICT) "conflict")
+      (else #f))))
+
 (define-vc-type-operation 'LIKELY-CONTROL-TYPE? vc-type:cvs
   (lambda (workfile)
     (file-directory? (cvs-directory workfile))))
+
+(define-vc-type-operation 'STEAL vc-type:cvs
+  (lambda (master revision)
+    master revision
+    (error "You cannot steal a CVS lock; there are no CVS locks to steal.")))
 
 (define-vc-type-operation 'REGISTER vc-type:cvs
   (lambda (workfile revision comment keep?)
@@ -1826,11 +1918,6 @@ the value of vc-log-mode-hook."
 		(delete-file-no-errors workfile)
 		(vc-run-command master '() "cvs" "update"
 				(file-pathname workfile)))))))))
-
-(define-vc-type-operation 'STEAL vc-type:cvs
-  (lambda (master revision)
-    master revision
-    (error "You cannot steal a CVS lock; there are no CVS locks to steal.")))
 
 (define-vc-type-operation 'DIFF vc-type:cvs
   (lambda (master rev1 rev2 simple?)
@@ -1915,9 +2002,22 @@ the value of vc-log-mode-hook."
 			    (buffer-start (get-vc-command-buffer)))
 	 (extract-string (re-match-start 1) (re-match-end 1)))))
 
+(define-vc-type-operation 'LIKELY-CONTROL-TYPE? vc-type:svn
+  (lambda (workfile)
+    (file-directory? (svn-directory workfile))))
+
 (define-vc-type-operation 'FIND-MASTER vc-type:svn
   (lambda (workfile)
-    (find-svn-master workfile)))
+    (and (not (let ((output (%get-svn-status workfile)))
+		(or (not output)
+		    (string-null? output)
+		    (string-prefix? "?" output))))
+	 (make-vc-master vc-type:svn
+			 (merge-pathnames "entries" (svn-directory workfile))
+			 workfile))))
+
+(define (svn-directory workfile)
+  (subdirectory-pathname workfile ".svn"))
 
 (define-vc-type-operation 'VALID? vc-type:svn
   (lambda (master)
@@ -1928,20 +2028,13 @@ the value of vc-log-mode-hook."
 (define-vc-type-operation 'DEFAULT-REVISION vc-type:svn
   (lambda (master error?)
     (let ((workfile (vc-master-workfile master)))
-      (let ((status (get-svn-status workfile)))
-	(or (and status
-		 (svn-status-working-revision status))
-	    (and error?
-		 (error "Unable to determine default Subversion revision:"
-			workfile)))))))
+      (let ((status (get-svn-status workfile error?)))
+	(and status
+	     (svn-status-working-revision status))))))
 
 (define-vc-type-operation 'WORKFILE-REVISION vc-type:svn
   (lambda (master)
-    (let ((workfile (vc-master-workfile master)))
-      (let ((status (get-svn-status workfile)))
-	(if status
-	    (svn-status-last-change-revision status)
-	    (error "Workfile has no revision:" workfile))))))
+    (svn-status-last-change-revision (get-svn-status master #t))))
 
 (define-vc-type-operation 'LOCKING-USER vc-type:svn
   (lambda (master revision)
@@ -1951,16 +2044,55 @@ the value of vc-log-mode-hook."
       (let ((status (get-svn-status workfile)))
 	(and status
 	     (or (not revision)
-		 (equal? revision (svn-status-working-revision status)))
-	     (memq (svn-status-type status)
-		   '(ADDED CONFLICTED DELETED MERGED MODIFIED))
+		 (equal? revision (svn-status-last-change-revision status)))
+	     (svn-status-modified? status)
 	     (unix/uid->string
 	      (file-attributes/uid (file-attributes workfile))))))))
 
-(define-vc-type-operation 'LIKELY-CONTROL-TYPE? vc-type:svn
-  (lambda (workfile)
-    (file-directory? (svn-directory workfile))))
+(define-vc-type-operation 'WORKFILE-MODIFIED? vc-type:svn
+  (lambda (master)
+    (let ((status (get-svn-status master)))
+      (and status
+	   (svn-status-modified? status)))))
+
+(define (svn-status-modified? status)
+  (memq (svn-status-type status)
+	'(ADDED CONFLICTED DELETED MERGED MODIFIED REPLACED)))
 
+(define-vc-type-operation 'NEXT-ACTION vc-type:svn
+  (lambda (master)
+    (let ((status (get-svn-status master #t)))
+      (let ((type (svn-status-type status)))
+	(case type
+	  ((UNMODIFIED)
+	   (if (vc-workfile-buffer-modified? master)
+	       'CHECKIN
+	       'UNMODIFIED))
+	  ((MODIFIED ADDED DELETED REPLACED) 'CHECKIN)
+	  ((CONFLICTED) 'RESOLVE-CONFLICT)
+	  ((MISSING) 'CHECKOUT)
+	  (else (error "Unknown SVN status type:" type)))))))
+
+(define-vc-type-operation 'KEEP-WORKFILES? vc-type:svn
+  (lambda (master)
+    master
+    #t))
+
+(define-vc-type-operation 'WORKFILE-STATUS-STRING vc-type:svn
+  (lambda (master)
+    (let ((status (get-svn-status master)))
+      (and status
+	   (let ((type (svn-status-type status)))
+	     (case type
+	       ((ADDED) "added")
+	       ((CONFLICTED) "conflicted")
+	       ((DELETED) "deleted")
+	       ((MERGED) "merged")
+	       ((MODIFIED) "modified")
+	       ((REPLACED) "replaced")
+	       ((MISSING) "missing")
+	       (else #f)))))))
+
 (define-vc-type-operation 'REGISTER vc-type:svn
   (lambda (workfile revision comment keep?)
     revision comment keep?
@@ -2010,37 +2142,37 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'DIFF vc-type:svn
   (lambda (master rev1 rev2 simple?)
-    (let ((options
-	   `((STATUS 1)
-	     (BUFFER ,(get-vc-diff-buffer simple?)))))
-      (if (equal? "0" (vc-backend-workfile-revision master))
-	  ;; This file is added but not yet committed; there is no
-	  ;; master file.
-	  (begin
-	    (if (or rev1 rev2)
-		(error "No revisions exist:" (vc-master-workfile master)))
-	    (if simple?
-		;; File is added but not committed; we regard this as
-		;; "changed".
-		#t
-		;; Diff against /dev/null.
-		(= 1
-		   (vc-run-command master options "diff"
-				   (ref-variable diff-switches
-						 (vc-workfile-buffer master
-								     #f))
-				   "/dev/null"
-				   (file-pathname
-				    (vc-master-workfile master))))))
-	  (= 1
-	     (vc-run-command master options "svn" "diff"
-			     (and simple?
-				  (ref-variable
-				   diff-switches
-				   (vc-workfile-buffer master #f)))
-			     (and rev1 (string-append "-r" rev1))
-			     (and rev2 (string-append "-r" rev2))
-			     (file-pathname (vc-master-workfile master))))))))
+    (let ((buffer (get-vc-diff-buffer simple?)))
+      (let ((options `((STATUS 1) (BUFFER ,buffer))))
+	(if (equal? "0" (vc-backend-workfile-revision master))
+	    ;; This file is added but not yet committed; there is no
+	    ;; master file.
+	    (begin
+	      (if (or rev1 rev2)
+		  (error "No revisions exist:" (vc-master-workfile master)))
+	      (if simple?
+		  ;; File is added but not committed; we regard this as
+		  ;; "changed".
+		  #t
+		  ;; Diff against /dev/null.
+		  (= 1
+		     (vc-run-command master options "diff"
+				     (ref-variable diff-switches
+						   (vc-workfile-buffer master
+								       #f))
+				     "/dev/null"
+				     (file-pathname
+				      (vc-master-workfile master))))))
+	    (begin
+	      (vc-run-command master options "svn" "diff"
+			      (and simple?
+				   (ref-variable
+				    diff-switches
+				    (vc-workfile-buffer master #f)))
+			      (and rev1 (string-append "-r" rev1))
+			      (and rev2 (string-append "-r" rev2))
+			      (file-pathname (vc-master-workfile master)))
+	      (> (buffer-length buffer) 0)))))))
 
 (define-vc-type-operation 'PRINT-LOG vc-type:svn
   (lambda (master)
@@ -2057,26 +2189,19 @@ the value of vc-log-mode-hook."
     master
     (check-rcs-headers buffer)))
 
-(define (find-svn-master workfile)
-  (and (not (let ((output (%get-svn-status workfile)))
-	      (or (not output)
-		  (string-null? output)
-		  (string-prefix? "?" output))))
-       (let ((fn (merge-pathnames "entries" (svn-directory workfile))))
-	 (and (file-regular? fn)
-	      (make-vc-master vc-type:svn fn workfile)))))
-
-(define (svn-directory workfile)
-  (subdirectory-pathname workfile ".svn"))
-
 (define (svn-rev-switch revision)
   (and revision
        (list "-r" revision)))
 
-(define (get-svn-status workfile)
-  (let ((raw (%get-svn-status workfile)))
-    (and raw
-	 (parse-svn-status raw))))
+(define (get-svn-status workfile #!optional required?)
+  (let ((workfile
+	 (if (vc-master? workfile)
+	     (vc-master-workfile workfile)
+	     workfile)))
+    (let ((status (parse-svn-status (%get-svn-status workfile))))
+      (if (and (not status) (if (default-object? required?) #f required?))
+	  (error "Unable to determine SVN status of file:" workfile))
+      status)))
 
 (define (%get-svn-status workfile)
   (let ((port (open-output-string)))
@@ -2384,6 +2509,11 @@ the value of vc-log-mode-hook."
 	(find-file-noselect pathname #f)
 	(pathname->buffer pathname))))
 
+(define (vc-workfile-buffer-modified? master)
+  (let ((buffer (vc-workfile-buffer master #f)))
+    (and buffer
+	 (buffer-modified? buffer))))
+
 (define (vc-workfile-string master)
   (->namestring (vc-master-workfile master)))
 
@@ -2418,46 +2548,6 @@ the value of vc-log-mode-hook."
 		    "diff" '("--brief" "/dev/null" "/dev/null")
 		    'OUTPUT #F))))
       result)))
-
-(define (vc-workfile-modified? master)
-  (read-cached-value-2 master 'MODIFIED?
-		       (vc-master-pathname master)
-		       (vc-master-workfile master)
-    (lambda (tm tw)
-      (if (eq? vc-type:cvs (vc-master-type master))
-	  (if (and tm tw
-		   (let ((ts (vc-cvs-workfile-mtime-string master)))
-		     (and ts
-			  (string=? ts (file-time->global-ctime-string tw)))))
-	      #f
-	      (or (vc-cvs-stay-local? master)
-		  (let ((modified? (vc-backend-diff master #f #f #t)))
-		    (set-vc-cvs-workfile-mtime-string! master tm tw modified?)
-		    modified?)))
-	  (vc-backend-diff master #f #f #t)))))
-
-(define (vc-cvs-stay-local? master)
-  (ref-variable vc-cvs-stay-local (vc-workfile-buffer master #f)))
-
-(define (vc-cvs-workfile-mtime-string master)
-  (read-cached-value-2 master 'CVS-MTIME-STRING
-		       (vc-master-pathname master)
-		       (vc-master-workfile master)
-    (lambda (tm tw)
-      (and tm tw
-	   (let ((entry (find-cvs-entry master)))
-	     (and entry
-		  (caddr entry)))))))
-
-(define (set-vc-cvs-workfile-mtime-string! master tm tw modified?)
-  (if (and (not modified?) tm tw (eq? vc-type:cvs (vc-master-type master)))
-      (begin
-	;; This breaks the READ-CACHED-VALUE-2 abstraction:
-	(vc-master-put! master 'CVS-MTIME-STRING
-			(vector (file-time->global-ctime-string tw) tm tw))
-	(let ((buffer (pathname->buffer (vc-master-workfile master))))
-	  (if buffer
-	      (vc-mode-line master buffer))))))
 
 (define (vc-revert-workfile-buffer master dont-confirm?)
   (let ((buffer (vc-workfile-buffer master #f)))
