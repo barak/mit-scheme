@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.81 2004/12/28 06:41:33 cph Exp $
+$Id: io.scm,v 14.82 2005/10/23 21:01:06 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -488,9 +488,11 @@ USA.
    (encode-select-registry-mode mode))
   (set-select-registry-length! registry #f))
 
-(define (test-for-io-on-channel channel mode)
+(define (test-for-io-on-channel channel mode #!optional block?)
   (test-for-io-on-descriptor (channel-descriptor-for-select channel)
-			     (channel-blocking? channel)
+			     (if (default-object? block?)
+				 (channel-blocking? channel)
+				 block?)
 			     mode))
 
 (define (channel-has-input? channel)
