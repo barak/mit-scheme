@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.25 2004/02/16 05:38:23 cph Exp $
+$Id: socket.scm,v 1.26 2005/10/23 21:10:02 cph Exp $
 
 Copyright 1996,1997,1998,1999,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2004 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -94,7 +94,9 @@ USA.
 	     (let ((do-test
 		    (lambda (k)
 		      (let ((result
-			     (test-for-io-on-channel server-socket 'READ)))
+			     (test-for-io-on-channel server-socket
+						     'READ
+						     block?)))
 			(case result
 			  ((READ)
 			   (open-channel
