@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: hlpcom.scm,v 1.128 2004/10/14 03:08:14 cph Exp $
+$Id: hlpcom.scm,v 1.129 2005/10/23 20:41:22 cph Exp $
 
 Copyright 1986,1989,1990,1991,1993,1998 Massachusetts Institute of Technology
-Copyright 2000,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2000,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,26 +41,7 @@ It reads another character (a subcommand) and dispatches on it."
 	       (cleanup-pop-up-buffers
 		(lambda ()
 		  (let ((buffer (temporary-buffer "*Help*")))
-		    (insert-string 
-		     "You have typed C-h, the help character.  Type a Help option:
-
-A  command-apropos.  Type a substring, and see a list of commands
-              that contain that substring.
-B  describe-bindings.  Display table of all key bindings.
-C  describe-key-briefly.  Type a key sequence;
-              it prints the name of the command that sequence runs.
-F  describe-function.  Type a command name and get its documentation.
-I  info.  The Info documentation reader.
-K  describe-key.  Type a key sequence;
-              it prints the full documentation.
-L  view-lossage.  Prints the last 100 characters you typed.
-M  describe-mode.  Print documentation of current major mode,
-              which describes the commands peculiar to it.
-S  describe-syntax.  Display contents of syntax table, plus explanations.
-T  help-with-tutorial.  Select the Emacs learn-by-doing tutorial.
-V  describe-variable.  Type a variable name and get its documentation.
-W  where-is.  Type a command name and get its key binding."
-		     (buffer-point buffer))
+		    (insert-string the-help-text (buffer-point buffer))
 		    (set-buffer-point! buffer (buffer-start buffer))
 		    (buffer-not-modified! buffer)
 		    (pop-up-buffer buffer #f)
@@ -93,6 +74,26 @@ W  where-is.  Type a command name and get its key binding."
 				   (loop))
 				  (else char)))))))))
 	       char)))))
+
+(define the-help-text
+  "You have typed C-h, the help character.  Type a Help option:
+
+A  command-apropos.  Type a substring, and see a list of commands
+              that contain that substring.
+B  describe-bindings.  Display table of all key bindings.
+C  describe-key-briefly.  Type a key sequence;
+              it prints the name of the command that sequence runs.
+F  describe-function.  Type a command name and get its documentation.
+I  info.  The Info documentation reader.
+K  describe-key.  Type a key sequence;
+              it prints the full documentation.
+L  view-lossage.  Prints the last 100 characters you typed.
+M  describe-mode.  Print documentation of current major mode,
+              which describes the commands peculiar to it.
+S  describe-syntax.  Display contents of syntax table, plus explanations.
+T  help-with-tutorial.  Select the Emacs learn-by-doing tutorial.
+V  describe-variable.  Type a variable name and get its documentation.
+W  where-is.  Type a command name and get its key binding.")
 
 ;;;; Commands and Keys
 
@@ -240,7 +241,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 ;;;; Other Stuff
 
 (define-command apropos
-  "Show all commands, variables, and modes whose names contain a match for REGEXP."
+  "Show all commands, variables, and modes matching REGEXP."
   "sApropos (regexp)"
   (lambda (regexp)
     (with-output-to-help-display
@@ -275,7 +276,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
        (write-description (mode-description (current-major-mode)))))))
 
 (define-command help-with-tutorial
-  "Visit the Emacs learn-by-doing tutorial."
+  "Visit the Edwin learn-by-doing tutorial."
   ()
   (lambda ()
     (delete-other-windows (current-window))
@@ -296,11 +297,20 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 						 (buffer-end buffer))
 				 0)))
 		(delete-string (line-end mark -1) (line-end mark 0))
-		(insert-newlines (- (window-y-size (current-window))
-				    (+ 4 (region-count-lines
-					  (make-region (buffer-start buffer)
-						       mark))))
-				 mark))
+		(let ((wanted-newlines
+		       (- (window-y-size (current-window))
+			  ;; Add four to account for the length of the
+			  ;; message about using C-v.
+			  (+ 4
+			     (region-count-lines
+			      (make-region (buffer-start buffer) mark))))))
+		  (if (> wanted-newlines 0)
+		      (insert-newlines wanted-newlines mark)
+		      (begin
+			;; Add a single newline anyway for aesthetics.
+			(insert-newline mark)
+			(message "Tutorial does not fit in window;"
+				 " type C-v to scroll down.")))))
 	      (set-buffer-point! buffer (buffer-start buffer))
 	      (buffer-not-modified! buffer)))))))
 
@@ -352,84 +362,78 @@ If you want VALUE to be a string, you must surround it with doublequotes."
   (let* ((string (description->string description))
 	 (buffer (if (default-object? buffer) (current-buffer) buffer))
 	 (end (string-length string)))
-    (letrec
-	((find-escape
-	  (lambda (start* comtabs)
-	    (let loop ((start start*))
-	      (let ((index (substring-find-next-char string start end #\\)))
-		(if (not index)
-		    (list (substring string start* end))
-		    (let ((next (fix:+ index 1)))
-		      (cond ((fix:= next end)
-			     (list (substring string start* end)))
-			    ((char=? #\[ (string-ref string next))
-			     (find-terminator start* index #\]
-					      subst-key comtabs))
-			    ((char=? #\{ (string-ref string next))
-			     (find-terminator start* index #\}
-					      show-bindings comtabs))
-			    ((char=? #\< (string-ref string next))
-			     (find-terminator start* index #\>
-					      new-mode comtabs))
-			    ((char=? #\= (string-ref string next))
-			     (cons (substring string start* index)
-				   (quote-next (fix:+ next 1) comtabs)))
-			    (else
-			     (loop next)))))))))
-	 (find-terminator
-	  (lambda (start slash char procedure comtabs)
-	    (cons (substring string start slash)
-		  (let ((start (fix:+ slash 2)))
-		    (let ((terminator
-			   (substring-find-next-char string start end char)))
-		      (if (not terminator)
-			  (error "Missing terminator character:" char))
-		      (procedure (intern (substring string start terminator))
-				 (fix:+ terminator 1)
-				 comtabs))))))
-	 (subst-key
-	  (lambda (argument next comtabs)
-	    (cons (let ((command (name->command argument #f)))
-		    (if command
-			(let ((bindings (comtab-key-bindings comtabs command)))
-			  (if (pair? bindings)
-			      (xkey->name (car bindings))
-			      (string-append "M-x "
-					     (command-name-string command))))
-			(string-append "M-x " (symbol-name argument))))
-		  (find-escape next comtabs))))
-	 (show-bindings
-	  (lambda (argument next comtabs)
-	    comtabs
-	    (cons (call-with-output-string
-		   (lambda (port)
-		     (describe-bindings
-		      (mode-comtabs (name->mode argument 'ERROR))
-		      #f
-		      port)
-		     (newline port)))
-		  (find-escape next comtabs))))
-	 (new-mode
-	  (lambda (argument next comtabs)
-	    comtabs
-	    (find-escape next
-			 (mode-comtabs (name->mode argument 'ERROR)))))
-	 (quote-next
-	  (lambda (start comtabs)
-	    (if (fix:= start end)
-		(finish start)
-		(let ((next (fix:+ start 1)))
-		  (if (char=? #\\ (string-ref string start))
-		      (if (fix:= next end)
-			  (finish start)
-			  (continue start (fix:+ next 1) comtabs))
-		      (continue start next comtabs))))))
-	 (continue
-	  (lambda (start end comtabs)
-	    (cons (substring string start end)
-		  (find-escape end comtabs))))
-	 (finish
-	  (lambda (start)
-	    (list (substring string start end)))))
-      (apply string-append
-	     (find-escape 0 (buffer-comtabs buffer))))))
+
+    (define (find-escape start* comtabs)
+      (let loop ((start start*))
+	(let ((index (substring-find-next-char string start end #\\)))
+	  (if (not index)
+	      (list (substring string start* end))
+	      (let ((next (fix:+ index 1)))
+		(cond ((fix:= next end)
+		       (list (substring string start* end)))
+		      ((char=? #\[ (string-ref string next))
+		       (find-terminator start* index #\] subst-key comtabs))
+		      ((char=? #\{ (string-ref string next))
+		       (find-terminator start* index #\}
+					show-bindings comtabs))
+		      ((char=? #\< (string-ref string next))
+		       (find-terminator start* index #\> new-mode comtabs))
+		      ((char=? #\= (string-ref string next))
+		       (cons (substring string start* index)
+			     (quote-next (fix:+ next 1) comtabs)))
+		      (else
+		       (loop next))))))))
+
+    (define (find-terminator start slash char procedure comtabs)
+      (cons (substring string start slash)
+	    (let ((start (fix:+ slash 2)))
+	      (let ((terminator
+		     (substring-find-next-char string start end char)))
+		(if (not terminator)
+		    (error "Missing terminator character:" char))
+		(procedure (intern (substring string start terminator))
+			   (fix:+ terminator 1)
+			   comtabs)))))
+
+    (define (subst-key argument next comtabs)
+      (cons (let ((command (name->command argument #f)))
+	      (if command
+		  (let ((bindings (comtab-key-bindings comtabs command)))
+		    (if (pair? bindings)
+			(xkey->name (car bindings))
+			(string-append "M-x " (command-name-string command))))
+		  (string-append "M-x " (symbol-name argument))))
+	    (find-escape next comtabs)))
+
+    (define (show-bindings argument next comtabs)
+      comtabs
+      (cons (call-with-output-string
+	     (lambda (port)
+	       (describe-bindings (mode-comtabs (name->mode argument 'ERROR))
+				  #f
+				  port)
+	       (newline port)))
+	    (find-escape next comtabs)))
+
+    (define (new-mode argument next comtabs)
+      comtabs
+      (find-escape next (mode-comtabs (name->mode argument 'ERROR))))
+
+    (define (quote-next start comtabs)
+      (if (fix:= start end)
+	  (finish start)
+	  (let ((next (fix:+ start 1)))
+	    (if (char=? #\\ (string-ref string start))
+		(if (fix:= next end)
+		    (finish start)
+		    (continue start (fix:+ next 1) comtabs))
+		(continue start next comtabs)))))
+
+    (define (continue start end comtabs)
+      (cons (substring string start end)
+	    (find-escape end comtabs)))
+
+    (define (finish start)
+      (list (substring string start end)))
+
+    (apply string-append (find-escape 0 (buffer-comtabs buffer)))))
