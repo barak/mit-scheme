@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.37 2005/02/17 17:52:08 cph Exp $
+$Id: port.scm,v 1.38 2005/10/24 01:45:41 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -659,17 +659,20 @@ USA.
 
 (define (input-port? object)
   (and (port? object)
-       (port-type/supports-input? (port/type object))))
+       (port-type/supports-input? (port/type object))
+       #t))
 
 (define (output-port? object)
   (and (port? object)
-       (port-type/supports-output? (port/type object))))
+       (port-type/supports-output? (port/type object))
+       #t))
 
 (define (i/o-port? object)
   (and (port? object)
        (let ((type (port/type object)))
 	 (and (port-type/supports-input? type)
-	      (port-type/supports-output? type)))))
+	      (port-type/supports-output? type)
+	      #t))))
 
 (define-integrable (guarantee-port port caller)
   (if (not (port? port))
