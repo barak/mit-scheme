@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.24 2005/10/24 02:51:23 cph Exp $
+$Id: fileio.scm,v 1.25 2005/10/24 05:35:26 cph Exp $
 
 Copyright 1991,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
 Copyright 2001,2004,2005 Massachusetts Institute of Technology
@@ -68,7 +68,7 @@ USA.
 
 (define (operation/write-self port output-port)
   (write-string " for file: " output-port)
-  (write (operation/truename port) output-port))
+  (write (->namestring (operation/truename port)) output-port))
 
 (define (open-input-file filename)
   (let* ((pathname (merge-pathnames filename))
