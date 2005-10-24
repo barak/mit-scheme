@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.54 2005/09/08 19:12:37 cph Exp $
+$Id: record.scm,v 1.55 2005/10/24 05:31:07 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -228,9 +228,15 @@ USA.
 
 (define set-record-type-unparser-method!
   (named-lambda (set-record-type-unparser-method!/booting record-type method)
-    (set! deferred-unparser-methods
-	  (cons (cons record-type method) deferred-unparser-methods))
-    unspecific))
+    (let loop ((ms deferred-unparser-methods))
+      (if (pair? ms)
+	  (if (eq? (caar ms) record-type)
+	      (set-cdr! (car ms) method)
+	      (loop (cdr ms)))
+	  (begin
+	    (set! deferred-unparser-methods
+		  (cons (cons record-type method) deferred-unparser-methods))
+	    unspecific)))))
 
 (define deferred-unparser-methods '())
 
