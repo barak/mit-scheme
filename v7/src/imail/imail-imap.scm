@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.203 2004/12/07 07:25:26 cph Exp $
+$Id: imail-imap.scm,v 1.204 2005/10/24 01:26:40 cph Exp $
 
-Copyright 1999,2000,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 1999,2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -379,11 +379,12 @@ USA.
 	     (let ((url (imap-url-new-mailbox url mailbox)))
 	       (set-imap-folder-url-list-time! url t)
 	       (set-imap-folder-url-exists?! url #t)
-	       (set-imap-folder-url-selectable?! url
-						 (not (memq '\NOSELECT flags)))
+	       (set-imap-folder-url-selectable?!
+		url
+		(not (memq '\\NOSELECT flags)))
 	       (set-imap-folder-url-corresponding-container!
 		url
-		(and (not (memq '\NOINFERIORS flags))
+		(and (not (memq '\\NOINFERIORS flags))
 		     (imap-url-new-mailbox url (string-append mailbox "/"))))
 	       url)))
 	 (with-open-imap-connection url
@@ -1048,10 +1049,7 @@ USA.
 	(intern flag))))
 
 (define standard-imap-flags
-  (map (lambda (s)
-	 (cons (intern (string-append "\\" s))
-	       s))
-       '("seen" "answered" "flagged" "deleted" "draft" "recent")))
+  '(\\SEEN \\ANSWERED \\FLAGGED \\DELETED \\DRAFT \\RECENT))
 
 (define-method message-internal-time ((message <imap-message>))
   (imap:response:fetch-attribute
@@ -2349,10 +2347,10 @@ USA.
 	     (let ((pflags (imap:response-code:permanentflags code)))
 	       (set-imap-folder-permanent-keywords?!
 		folder
-		(if (memq '\* pflags) #t #f))
+		(if (memq '\\* pflags) #t #f))
 	       (set-imap-folder-permanent-flags!
 		folder
-		(map imap-flag->imail-flag (delq '\* pflags)))))))
+		(map imap-flag->imail-flag (delq '\\* pflags)))))))
 	((imap:response-code:read-only? code)
 	 (with-imap-connection-folder connection
 	   (lambda (folder)
