@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: shared.scm,v 1.31 2005/06/04 23:44:05 cph Exp $
+$Id: shared.scm,v 1.32 2005/10/24 05:07:38 riastradh Exp $
 
 Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
 
@@ -808,16 +808,30 @@ USA.
 	       ,(new-pointer tail identifier pointers)))))))
 
 (define-pointer-optimization '(('LAMBDA (IDENTIFIER) EXPRESSION)
-			       ('GET-PARSER-BUFFER-POINTER EXPRESSION))
+                               ('GET-PARSER-BUFFER-POINTER EXPRESSION))
   (lambda (expression pointers)
     (let ((identifier (car (cadr (car expression))))
-	  (operand (cadr expression))
-	  (body (caddr (car expression))))
-      (let ((body (new-pointer body identifier pointers)))
-	(if (= (car (count-references (list identifier) body)) 0)
-	    ;; IDENTIFIER is an alias, so don't bind it.
-	    body
-	    `((LAMBDA (,identifier) ,body) ,operand))))))
+          (operand (cadr expression))
+          (body (caddr (car expression))))
+      (let ((optimized-body (new-pointer body identifier pointers)))
+        ;; Don't bind the identifier if it is internal and unused.  The
+        ;; condition that the identifier be internal avoids a problem
+        ;; of not counting references that are in the user's code,
+        ;; which COUNT-REFERENCES can't descend into.
+        (if (and (internal-identifier? identifier)
+                 (zero? (car (count-references (list identifier)
+                                               optimized-body))))
+            optimized-body
+            `((LAMBDA (,identifier)
+                ;++ If we already have a pointer, the optimizer ought
+                ;++ to introduce a (DECLARE (INTEGRATE ,identifier))
+                ;++ here so that the scode optimizer will integrate the
+                ;++ variable, even though the parser optimizer won't,
+                ;++ but later passes of the parser optimizer can't
+                ;++ handle LAMBDAs with more than one subform.
+                ,optimized-body)
+              ,(or (car pointers)
+                   operand)))))))
 
 (define-pointer-optimization '('PROTECT EXPRESSION)
   (lambda (expression pointers)
