@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.23 2005/10/24 02:47:47 cph Exp $
+$Id: fileio.scm,v 1.24 2005/10/24 02:51:23 cph Exp $
 
 Copyright 1991,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
 Copyright 2001,2004,2005 Massachusetts Institute of Technology
@@ -53,7 +53,9 @@ USA.
   (pathname #f read-only #t))
 
 (define (operation/length port)
-  (channel-file-length (port/input-channel port)))
+  (channel-file-length
+   (or (port/input-channel port)
+       (port/output-channel port))))
 
 (define (operation/pathname port)
   (fstate-pathname (port/state port)))
