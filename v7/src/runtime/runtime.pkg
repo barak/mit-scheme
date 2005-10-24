@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.564 2005/09/29 19:16:39 cph Exp $
+$Id: runtime.pkg,v 14.565 2005/10/24 02:30:08 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2172,6 +2172,7 @@ USA.
 	  guarantee-unique-keyword-list
 	  guarantee-weak-list
 	  keep-matching-items
+	  keep-matching-items!
 	  keyword-list->alist
 	  keyword-list?
 	  last-pair
