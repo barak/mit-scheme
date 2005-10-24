@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: basic.scm,v 1.143 2003/02/14 18:28:11 cph Exp $
+$Id: basic.scm,v 1.144 2005/10/24 01:55:50 cph Exp $
 
-Copyright 1986, 1989-2000 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1999,2000,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -50,7 +51,6 @@ Whichever character you type to run this command is inserted."
 	       ((ref-command expand-abbrev) point)
 	       (if (not (fix:= t (group-modified-tick (mark-group point))))
 		   (set! hairy? #t))))
-	 (insert-chars char n)
 	 (if (and allow-auto-fill?
 		  (or (char=? #\space char)
 		      (char=? #\newline char))
@@ -59,6 +59,7 @@ Whichever character you type to run this command is inserted."
 	       (auto-fill-break (current-point))
 	       (if (not (fix:= t (group-modified-tick (mark-group point))))
 		   (set! hairy? #t))))
+	 (insert-chars char n)
 	 hairy?)))
 
 (define (read-quoted-char prompt-string)
