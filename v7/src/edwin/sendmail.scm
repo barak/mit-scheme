@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.85 2004/10/29 20:05:06 cph Exp $
+$Id: sendmail.scm,v 1.86 2005/10/24 02:23:41 cph Exp $
 
 Copyright 1991,1992,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1997,1998,2000,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -694,9 +695,12 @@ the user from the mailer."
 		 (lambda (name value)
 		   (if (and value (not (mail-field-start h-start h-end name)))
 		       (mail-insert-field-value h-end name value)))))
+	    (add-field "Date" (universal-time->string (get-universal-time)))
 	    ;; If there is a From and no Sender, put in a Sender.
-	    (if (mail-field-start h-start h-end "From")
-		(add-field "Sender" (mail-from-string mail-buffer)))
+	    (add-field (if (mail-field-start h-start h-end "From")
+			   "Sender"
+			   "From")
+		       (mail-from-string mail-buffer))
 	    (add-field "Organization" (mail-organization-string mail-buffer))
 	    (add-field "User-Agent" (mailer-version-string mail-buffer)))
 	  (let ((v (receiver h-start h-end b-start b-end)))
@@ -743,14 +747,18 @@ the user from the mailer."
 	(if (ref-variable mail-relay-host lookup-context)
 	    (let ((recipients (compute-message-recipients h-start h-end)))
 	      (write-message-file h-start h-end b-start b-end message-pathname)
-	      (write-fcc-messages fcc-pathnames message-pathname)
+	      (write-fcc-messages fcc-pathnames
+				  message-pathname
+				  lookup-context)
 	      (lambda ()
 		(send-mail-using-smtp message-pathname
 				      recipients
 				      lookup-context)))
 	    (begin
 	      (write-message-file h-start h-end b-start b-end message-pathname)
-	      (write-fcc-messages fcc-pathnames message-pathname)
+	      (write-fcc-messages fcc-pathnames
+				  message-pathname
+				  lookup-context)
 	      (lambda ()
 		(send-mail-using-sendmail message-pathname lookup-context))))
 	message-pathname)))))
@@ -787,17 +795,18 @@ the user from the mailer."
 	    (mark-temporary! m)
 	    pathnames)))))
 
-(define (write-fcc-messages pathnames message-pathname)
+(define (write-fcc-messages pathnames message-pathname lookup-context)
   (for-each
    (let ((append-message
 	  (let ((header-line
 		 (string-append
 		  "From "
-		  (current-user-name)
+		  (user-mail-address lookup-context)
 		  " "
-		  (universal-time->string (get-universal-time)))))
-	    (lambda (port)
-	      (newline port)
+		  (universal-time->local-ctime-string (get-universal-time)))))
+	    (lambda (length port)
+	      (if (> length 0)
+		  (newline port))
 	      (write-string header-line port)
 	      (newline port)
 	      (call-with-input-file message-pathname
@@ -820,8 +829,13 @@ the user from the mailer."
      (lambda (pathname)
        (let ((buffer (pathname->buffer pathname)))
 	 (if buffer
-	     (call-with-output-mark (buffer-end buffer) append-message)
-	     (call-with-append-file pathname append-message)))))
+	     (call-with-output-mark (buffer-end buffer)
+	       (lambda (port)
+		 (append-message (buffer-length buffer) port)))
+	     (call-with-append-file pathname
+	       (lambda (port)
+		 (append-message ((port/operation port 'LENGTH) port)
+				 port)))))))
    pathnames))
 
 (define (compute-message-recipients h-start h-end)
