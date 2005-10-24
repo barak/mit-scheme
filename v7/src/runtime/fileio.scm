@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.22 2004/02/16 05:36:25 cph Exp $
+$Id: fileio.scm,v 1.23 2005/10/24 02:47:47 cph Exp $
 
 Copyright 1991,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
-Copyright 2001,2004 Massachusetts Institute of Technology
+Copyright 2001,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,21 +30,17 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (let ((input-operations
-	 `((LENGTH ,operation/length)))
-	(other-operations
+  (let ((other-operations
 	 `((WRITE-SELF ,operation/write-self)
+	   (LENGTH ,operation/length)
 	   (PATHNAME ,operation/pathname)
 	   (TRUENAME ,operation/truename))))
     (set! input-file-type
-	  (make-port-type (append input-operations other-operations)
-			  generic-input-type))
+	  (make-port-type other-operations generic-input-type))
     (set! output-file-type
-	  (make-port-type other-operations
-			  generic-output-type))
+	  (make-port-type other-operations generic-output-type))
     (set! i/o-file-type
-	  (make-port-type (append input-operations other-operations)
-			  generic-i/o-type)))
+	  (make-port-type other-operations generic-i/o-type)))
   unspecific)
 
 (define input-file-type)
