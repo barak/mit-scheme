@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.204 2005/10/24 01:26:40 cph Exp $
+$Id: imail-imap.scm,v 1.205 2005/10/26 21:44:43 cph Exp $
 
 Copyright 1999,2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -1049,7 +1049,10 @@ USA.
 	(intern flag))))
 
 (define standard-imap-flags
-  '(\\SEEN \\ANSWERED \\FLAGGED \\DELETED \\DRAFT \\RECENT))
+  (map (lambda (s)
+	 (cons (intern (string-append "\\" s))
+	       s))
+       '("seen" "answered" "flagged" "deleted" "draft" "recent")))
 
 (define-method message-internal-time ((message <imap-message>))
   (imap:response:fetch-attribute
