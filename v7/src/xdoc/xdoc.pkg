@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xdoc.pkg,v 1.5 2004/11/24 20:56:35 cph Exp $
+$Id: xdoc.pkg,v 1.6 2005/11/03 19:29:18 cph Exp $
 
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -182,6 +182,8 @@ USA.
 	  db-save-output!
 	  db-set-persistent-value!)
   (export (runtime ssp-expander-environment)
+	  close-database
+	  database-connection
 	  db-change-user-password
 	  db-clear-late-flag
 	  db-clear-submitter
@@ -216,4 +218,5 @@ USA.
 	  db-user-administrator?
 	  db-user-enabled?
 	  db-user-real-name
-	  db-valid-password?))
+	  db-valid-password?
+	  with-database-connection))
