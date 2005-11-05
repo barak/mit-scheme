@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: undo.scm,v 1.65 2005/11/05 06:18:31 cph Exp $
+$Id: undo.scm,v 1.66 2005/11/05 06:19:39 cph Exp $
 
 Copyright 1987,1989,1991,1992,1993,2000 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -53,7 +53,7 @@ USA.
   ;; Called to say that POINT's group should have no undo data,
   ;; usually because it has just been filled from a file.
   (let ((group (mark-group point)))
-    (if (not (eq? #t (group-undo-data group)))
+    (if (undo-enabled? group)
 	(set-group-undo-data! group '()))))
 
 (define (undo-boundary! point)
@@ -67,13 +67,20 @@ USA.
   (group-undo-boundary! (buffer-group (window-buffer window))))
 
 (define (group-undo-boundary! group)
-  (if (not (or (eq? #t (group-undo-data group))
-	       ;; Don't allow a boundary to be inserted as the last
-	       ;; element of the list.
-	       (null? (group-undo-data group))
-	       ;; Don't allow two boundaries to be adjacent.
-	       (eq? #f (car (group-undo-data group)))))
-      (set-group-undo-data! group (cons #f (group-undo-data group)))))
+  (if (not (let ((items (group-undo-data group)))
+	     (or (eq? #t items)
+		 ;; Don't allow a boundary to be inserted as the last
+		 ;; element of the list.
+		 (not (pair? items))
+		 ;; Don't allow two boundaries to be adjacent.
+		 (eq? #f (car items)))))
+      (record-item! group #f)))
+
+(define (undo-enabled? group)
+  (not (eq? #t (group-undo-data group))))
+
+(define (record-item! group item)
+  (set-group-undo-data! group (cons item (group-undo-data group))))
 
 ;;;; Recording Hooks
 
@@ -83,79 +90,67 @@ USA.
 ;;; performed, so that it can extract the characters being deleted.
 
 (define (undo-record-insertion! group start end)
-  (cond ((eq? #t (group-undo-data group))
-	 unspecific)
-	((not (group-modified? group))
-	 (undo-record-first-change! group)
-	 (set-group-undo-data! group
-			       (cons (cons start end)
-				     (group-undo-data group))))
-	((and (pair? (group-undo-data group))
-	      (pair? (car (group-undo-data group)))
-	      (fix:fixnum? (caar (group-undo-data group)))
-	      (fix:fixnum? (cdar (group-undo-data group)))
-	      (fix:= (cdar (group-undo-data group)) start))
-	 (set-cdr! (car (group-undo-data group)) end))
-	(else
-	 (set-group-undo-data! group
-			       (cons (cons start end)
-				     (group-undo-data group))))))
+  (if (undo-enabled? group)
+      (let ((data (group-undo-data group)))
+	;; Optimize for two successive insertions.
+	(if (and (group-modified? group)
+		 (pair? data)
+		 (pair? (car data))
+		 (fix:fixnum? (caar data))
+		 (fix:fixnum? (cdar data))
+		 (fix:= (cdar data) start))
+	    (set-cdr! (car data) end)
+	    (begin
+	      (record-first-change! group)
+	      (record-item! group (cons start end)))))))
 
 (define (undo-record-deletion! group start end)
-  (if (not (eq? #t (group-undo-data group)))
+  (if (undo-enabled? group)
       (begin
-	(if (not (group-modified? group))
-	    (undo-record-first-change! group))
+	(record-first-change! group)
 	(if (group-text-properties group)
-	    (set-group-undo-data!
-	     group
-	     (cons (cons 'REINSERT-PROPERTIES
-			 (group-extract-properties group start end))
-		   (group-undo-data group))))
-	(set-group-undo-data!
-	 group
-	 (let ((text (group-extract-string group start end))
-	       (point (mark-index (group-point group))))
-	   (cond ((fix:= point start)
-		  (cons (cons text start)
-			(group-undo-data group)))
-		 ((fix:= point end)
-		  (cons (cons text (fix:- 0 start))
-			(group-undo-data group)))
-		 (else
-		  (cons* (cons text start)
-			 point
-			 (group-undo-data group)))))))))
+	    (record-properties! group
+				(group-extract-properties group start end)))
+	(record-item! group
+		      (let ((point (mark-index (group-point group))))
+			(cons (group-extract-string group start end)
+			      ;; Optimize undo storage when point is
+			      ;; at edge of deletion.
+			      (cond ((fix:= point start)
+				     start)
+				    ((and (fix:= point end)
+					  (fix:> start 0))
+				     (fix:- 0 start))
+				    (else
+				     (record-point! group)
+				     start))))))))
 
 (define (undo-record-replacement! group start end)
-  (if (not (eq? #t (group-undo-data group)))
+  (if (undo-enabled? group)
       (begin
-	(if (not (group-modified? group))
-	    (undo-record-first-change! group))
-	(set-group-undo-data!
-	 group
-	 (let ((text (group-extract-string group start end))
-	       (point (mark-index (group-point group))))
-	   (cons* (cons* 'REPLACEMENT text start)
-		  point
-		  (group-undo-data group)))))))
+	(record-first-change! group)
+	(record-point! group)
+	(record-item! group
+		      (cons* 'REPLACEMENT
+			     (group-extract-string group start end)
+			     start)))))
 
 (define (undo-record-property-changes! group properties)
-    (if (not (eq? #t (group-undo-data group)))
-	(begin
-	  (if (not (group-modified? group))
-	      (undo-record-first-change! group))
-	  (set-group-undo-data!
-	   group
-	   (cons (cons 'REINSERT-PROPERTIES properties)
-		 (group-undo-data group))))))
+  (if (undo-enabled? group)
+      (begin
+	(record-first-change! group)
+	(record-properties! group properties))))
 
-(define (undo-record-first-change! group)
+(define (record-first-change! group)
   (let ((buffer (group-buffer group)))
-    (if buffer
-	(set-group-undo-data! group
-			      (cons (cons #t (buffer-modification-time buffer))
-				    (group-undo-data group))))))
+    (if (and buffer (not (group-modified? group)))
+	(record-item! group (cons #t (buffer-modification-time buffer))))))
+
+(define (record-point! group)
+  (record-item! group (mark-index (group-point group))))
+
+(define (record-properties! group properties)
+  (record-item! group (cons 'REINSERT-PROPERTIES properties)))
 
 ;;;; Truncation
 
@@ -188,7 +183,7 @@ which includes both the saved text and other data."
 		 (round (/ words bytes/word)))))
 	(do ((buffers (bufferset-buffer-list (editor-bufferset edwin-editor))
 		      (cdr buffers)))
-	    ((null? buffers))
+	    ((not (pair? buffers)))
 	  (let ((buffer (car buffers)))
 	    (truncate-undo-data!
 	     (group-undo-data (buffer-group buffer))
@@ -198,54 +193,49 @@ which includes both the saved text and other data."
 (add-gc-daemon!/no-restore truncate-buffer-undo-lists!)
 (add-event-receiver! event:after-restore truncate-buffer-undo-lists!)
 
-(define (truncate-undo-data! undo-data min-size max-size)
-  (letrec
-      ((loop
-	(lambda (undo-data prev size boundary)
-	  (cond ((null? undo-data)
-		 ;; We've reached the end of the list, so no
-		 ;; truncation is needed.
-		 unspecific)
-		((eq? #f (car undo-data))
-		 ;; We've reached a boundary.  If it's the first
-		 ;; boundary, continue regardless of size, otherwise
-		 ;; continue only if we haven't yet reached MIN-SIZE.
-		 (if (and boundary (fix:> size min-size))
-		     ;; If we've exceeded MAX-SIZE, truncate at the
-		     ;; previous boundary, otherwise truncate here.
-		     (set-cdr! (if (fix:> size max-size) boundary prev) '())
-		     (loop (cdr undo-data) undo-data (fix:+ size 2) prev)))
-		(else
-		 ;; Normal case: count the storage used by this element.
-		 (loop (cdr undo-data)
-		       undo-data
-		       (fix:+ size
-			      (if (pair? (car undo-data))
-				  (fix:+
-				   4
-				   (let ((a (caar undo-data))
-					 (b (cdar undo-data)))
-				     (cond ((eq? 'REINSERT-PROPERTIES a)
-					    (reinsert-properties-size b))
-					   ((eq? 'REPLACEMENT a)
-					    (fix:+ 2
-						   (system-vector-length
-						    (car b))))
-					   ((string? a)
-					    (fix:+ 1 (system-vector-length a)))
-					   (else 0))))
-				  2))
-		       boundary))))))
-    (cond ((or (null? undo-data)
-	       (eq? #t undo-data))
-	   unspecific)
-	  ((eq? #f (car undo-data))
-	   ;; If list starts with a boundary, skip over it.  We want
-	   ;; to include the first non-null undo operation in the
-	   ;; result.
-	   (loop (cdr undo-data) undo-data 2 #f))
-	  (else
-	   (loop undo-data #f 0 #f)))))
+(define (truncate-undo-data! items min-size max-size)
+  (if (pair? items)
+      (letrec
+	  ((loop
+	    (lambda (items prev size boundary)
+	      (if (and boundary (fix:> size max-size))
+		  ;; If we've exceeded MAX-SIZE, truncate at the
+		  ;; previous boundary.
+		  (set-cdr! boundary '())
+		  (if (pair? items)
+		      (if (eq? #f (car items))
+			  ;; If this is the first boundary, continue
+			  ;; regardless of size, otherwise continue
+			  ;; only if we haven't yet reached MIN-SIZE.
+			  (if (and boundary (fix:> size min-size))
+			      (set-cdr! prev '())
+			      (continue items size prev))
+			  (continue items size boundary))))))
+	   (continue
+	    (lambda (items size boundary)
+	      (loop (cdr items)
+		    items
+		    (fix:+ size (undo-item-size (car items)))
+		    boundary))))
+	(if (eq? #f (car items))
+	    ;; If list starts with a boundary, skip over it.  We want
+	    ;; to include the first undo operation in the result.
+	    (continue items 0 #f)
+	    (loop items #f 0 #f)))))
+
+(define (undo-item-size item)
+  (if (pair? item)
+      (fix:+ 4
+	     (let ((a (car item))
+		   (b (cdr item)))
+	       (cond ((eq? 'REINSERT-PROPERTIES a)
+		      (reinsert-properties-size b))
+		     ((eq? 'REPLACEMENT a)
+		      (fix:+ 2 (system-vector-length (car b))))
+		     ((string? a)
+		      (fix:+ 1 (system-vector-length a)))
+		     (else 0))))
+      2))
 
 ;;;; M-x undo
 
@@ -282,7 +272,7 @@ A numeric argument serves as a repeat count."
   (let loop ((undo-data undo-data) (n n))
     (if (> n 0)
 	(begin
-	  (if (null? undo-data)
+	  (if (not (pair? undo-data))
 	      (editor-error "No further undo information: "
 			    (buffer-name buffer)))
 	  (loop (undo-one-step buffer undo-data) (- n 1)))
@@ -291,7 +281,7 @@ A numeric argument serves as a repeat count."
 (define (undo-one-step buffer data)
   ;; Perform one undo step on BUFFER, returning the unused portion of DATA.
   (let ((group (buffer-group buffer))
-	(point (mark-left-inserting-copy (buffer-point buffer)))
+	(point (mark-temporary-copy (buffer-point buffer)))
 	(outside-visible-range
 	 (lambda ()
 	   (editor-error
@@ -300,7 +290,6 @@ A numeric argument serves as a repeat count."
     (let ((finish
 	   (lambda (data)
 	     (set-buffer-point! buffer point)
-	     (mark-temporary! point)
 	     data)))
       (let loop ((data data))
 	(if (pair? data)
