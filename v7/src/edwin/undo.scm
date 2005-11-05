@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: undo.scm,v 1.63 2005/07/31 02:59:32 cph Exp $
+$Id: undo.scm,v 1.64 2005/11/05 04:23:00 cph Exp $
 
-Copyright 1985, 1989-2000 Massachusetts Institute of Technology
+Copyright 1987,1989,1991,1992,1993,2000 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
