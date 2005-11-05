@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: undo.scm,v 1.64 2005/11/05 04:23:00 cph Exp $
+$Id: undo.scm,v 1.65 2005/11/05 06:18:31 cph Exp $
 
 Copyright 1987,1989,1991,1992,1993,2000 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -94,8 +94,8 @@ USA.
 	      (pair? (car (group-undo-data group)))
 	      (fix:fixnum? (caar (group-undo-data group)))
 	      (fix:fixnum? (cdar (group-undo-data group)))
-	      (fix:= (cdr (group-undo-data group)) start))
-	 (set-cdr! (group-undo-data group) end))
+	      (fix:= (cdar (group-undo-data group)) start))
+	 (set-cdr! (car (group-undo-data group)) end))
 	(else
 	 (set-group-undo-data! group
 			       (cons (cons start end)
