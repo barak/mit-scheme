@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: tagutl.scm,v 1.62 2003/02/14 18:28:13 cph Exp $
+$Id: tagutl.scm,v 1.63 2005/11/06 13:35:25 cph Exp $
 
-Copyright 1986, 1989-2000 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1999,2000,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -100,7 +101,7 @@ See documentation of variable tags-table-pathnames."
 		    (cdr find-tag-pathnames-list)))))
 
 (define (first-tags-table-buffer)
-  (if (not (ref-variable tags-table-pathnames))
+  (if (not (pair? (ref-variable tags-table-pathnames)))
       (dispatch-on-command (ref-command-object visit-tags-table)))
   (set! find-tag-pathnames-list (ref-variable tags-table-pathnames))
   (let* ((pathname (car find-tag-pathnames-list))
@@ -115,8 +116,8 @@ See documentation of variable tags-table-pathnames."
       #f))
   
 (define (next-tags-table-buffer)
-  (if (and find-tag-pathnames-list
-	   (not (null? (cdr find-tag-pathnames-list))))
+  (if (and (pair? find-tag-pathnames-list)
+	   (pair? (cdr find-tag-pathnames-list)))
       (let ((pathname (second find-tag-pathnames-list)))
 	(set! find-tag-pathnames-list
 	      (cdr find-tag-pathnames-list))
@@ -300,7 +301,7 @@ command."
 
 (define (tags-loop-start)
   (let ((pathnames tags-loop-pathnames))
-    (if (null? pathnames)
+    (if (not (pair? pathnames))
 	(begin
 	  (set! tags-loop-continuation #f)
 	  (editor-error "All files processed.")))
@@ -430,8 +431,8 @@ killed if they are not modified."
 (define (get-all-pathnames buffers)
   (let ((pathnames (tags-table-pathnames buffers))
 	(includes (append-map get-included-pathnames buffers)))
-    (if (null? includes)
-	pathnames
+    (if (pair? includes)
 	(append pathnames
 		(get-all-pathnames
-		 (pathnames->tags-table-buffers includes))))))
+		 (pathnames->tags-table-buffers includes)))
+	pathnames)))
