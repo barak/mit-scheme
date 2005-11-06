@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: bufwiu.scm,v 1.37 2003/02/14 18:28:11 cph Exp $
+$Id: bufwiu.scm,v 1.38 2005/11/06 16:30:58 cph Exp $
 
-Copyright 1986, 1989-2000 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1993,1994 Massachusetts Institute of Technology
+Copyright 1996,2000,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -128,10 +129,10 @@ USA.
 	  (window-needs-redisplay! window)))
     (let ((point (%window-point-index window)))
       (cond ((fix:< point start)
-	     (%set-window-point-index! window start)
+	     (set-window-point-index! window start)
 	     (%set-window-point-moved?! window 'SINCE-START-SET))
 	    ((fix:< end point)
-	     (%set-window-point-index! window end)
+	     (set-window-point-index! window end)
 	     (%set-window-point-moved?! window 'SINCE-START-SET))))))
 
 ;;;; Update
@@ -407,7 +408,7 @@ USA.
       ((%window-debug-trace window) 'window window
 				    'direct-output-forward-char!))
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (%set-window-point-index! window (fix:+ (%window-point-index window) 1))
+    (set-window-point-index! window (fix:+ (%window-point-index window) 1))
     (let ((x-start
 	   (fix:+ (inferior-x-start (%window-cursor-inferior window)) 1))
 	  (y-start (inferior-y-start (%window-cursor-inferior window))))
@@ -424,7 +425,7 @@ USA.
       ((%window-debug-trace window) 'window window
 				    'direct-output-backward-char!))
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (%set-window-point-index! window (fix:- (%window-point-index window) 1))
+    (set-window-point-index! window (fix:- (%window-point-index window) 1))
     (let ((x-start
 	   (fix:- (inferior-x-start (%window-cursor-inferior window)) 1))
 	  (y-start (inferior-y-start (%window-cursor-inferior window))))
