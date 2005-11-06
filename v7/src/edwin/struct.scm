@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: struct.scm,v 1.99 2005/03/31 18:55:57 cph Exp $
+$Id: struct.scm,v 1.100 2005/11/06 16:17:00 cph Exp $
 
 Copyright 1985,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2003,2005 Massachusetts Institute of Technology
@@ -176,7 +176,10 @@ USA.
 	 (group-gap-start group))))
 
 (define-integrable (set-group-point! group point)
-  (set-group-%point! group (mark-left-inserting-copy point)))
+  (set-group-point-index! group (mark-index point)))
+
+(define-integrable (set-group-point-index! group index)
+  (set-mark-index! (group-point group) index))
 
 (define (group-absolute-start group)
   (make-temporary-mark group 0 #f))

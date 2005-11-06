@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: buffer.scm,v 1.192 2005/03/31 19:00:03 cph Exp $
+$Id: buffer.scm,v 1.193 2005/11/06 16:16:48 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1998,1999,2000 Massachusetts Institute of Technology
@@ -174,6 +174,9 @@ The buffer is guaranteed to be deselected at that time."
 
 (define-integrable (%set-buffer-point! buffer mark)
   (set-group-point! (buffer-group buffer) mark))
+
+(define-integrable (%set-buffer-point-index! buffer index)
+  (set-group-point-index! (buffer-group buffer) index))
 
 (define-integrable (minibuffer? buffer)
   (char=? (string-ref (buffer-name buffer) 0) #\Space))

@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: bufwin.scm,v 1.313 2003/02/14 18:28:11 cph Exp $
+$Id: bufwin.scm,v 1.314 2005/11/06 16:16:55 cph Exp $
 
-Copyright 1986, 1989-2000, 2002 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1999,2000,2002 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -228,11 +230,14 @@ USA.
   (with-instance-variables buffer-window window (point*)
     (set! point point*)))
 
-(define-integrable (%set-window-point-index! window index)
-  (%set-window-point! window
-		      (make-permanent-mark (%window-group window)
-					   index
-					   #t)))
+(define (%set-window-point-index! window index)
+  (let ((point (%window-point window)))
+    (if point
+	(set-mark-index! point index)
+	(%set-window-point! window
+			    (make-permanent-mark (%window-group window)
+						 index
+						 #t)))))
 
 (define-integrable (%window-cursor-inferior window)
   (with-instance-variables buffer-window window () cursor-inferior))
