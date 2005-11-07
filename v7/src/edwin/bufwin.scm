@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bufwin.scm,v 1.315 2005/11/06 16:30:54 cph Exp $
+$Id: bufwin.scm,v 1.316 2005/11/07 06:58:45 cph Exp $
 
 Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1999,2000,2002 Massachusetts Institute of Technology
@@ -231,13 +231,19 @@ USA.
     (set! point point*)))
 
 (define (%set-window-point-index! window index)
+  #| Optimization causes lossage.  -- cph
   (let ((point (%window-point window)))
     (if point
 	(set-mark-index! point index)
 	(%set-window-point! window
 			    (make-permanent-mark (%window-group window)
 						 index
-						 #t)))))
+						 #t))))
+  |#
+  (%set-window-point! window
+		      (make-permanent-mark (%window-group window)
+					   index
+					   #t)))
 
 (define (set-window-point-index! window index)
   (%set-window-point-index! window index)

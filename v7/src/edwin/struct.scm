@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: struct.scm,v 1.100 2005/11/06 16:17:00 cph Exp $
+$Id: struct.scm,v 1.101 2005/11/07 06:58:50 cph Exp $
 
 Copyright 1985,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2003,2005 Massachusetts Institute of Technology
@@ -179,7 +179,9 @@ USA.
   (set-group-point-index! group (mark-index point)))
 
 (define-integrable (set-group-point-index! group index)
-  (set-mark-index! (group-point group) index))
+  ;; Optimization causes lossage.  -- cph
+  ;; (set-mark-index! (group-point group) index)
+  (set-group-%point! group (make-permanent-mark group index #t)))
 
 (define (group-absolute-start group)
   (make-temporary-mark group 0 #f))
