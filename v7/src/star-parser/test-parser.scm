@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: test-parser.scm,v 1.6 2003/02/14 18:28:35 cph Exp $
+$Id: test-parser.scm,v 1.7 2005/11/09 21:26:53 riastradh Exp $
 
 Copyright 2001 Massachusetts Institute of Technology
 
@@ -46,11 +46,11 @@ USA.
   (*parser
    (encapsulate vector->list
      (seq (noise (string "("))
-	  (noise (* (alphabet char-set:whitespace)))
+	  (noise (* (char-set char-set:whitespace)))
 	  (? (seq parse-element
-		  (* (seq (noise (+ (alphabet char-set:whitespace)))
+		  (* (seq (noise (+ (char-set char-set:whitespace)))
 			  parse-element))))
-	  (noise (* (alphabet char-set:whitespace)))
+	  (noise (* (char-set char-set:whitespace)))
 	  (noise (string ")"))))))
 
 (define parse-element
@@ -63,22 +63,22 @@ USA.
   (*parser (map string->number (match match-num-10))))
 
 (define parse-whitespace
-  (*parser (noise (+ (alphabet char-set:whitespace)))))
+  (*parser (noise (+ (char-set char-set:whitespace)))))
 
 (define parse-optional-whitespace
-  (*parser (noise (* (alphabet char-set:whitespace)))))
+  (*parser (noise (* (char-set char-set:whitespace)))))
 
 (define match-identifier
-  (let* ((initial-alphabet
+  (let* ((initial-char-set
 	  (char-set-union char-set:alphabetic
 			  (string->char-set "!$%&*/:<=>?^_~")))
-	 (subsequent-alphabet
-	  (char-set-union initial-alphabet
+	 (subsequent-char-set
+	  (char-set-union initial-char-set
 			  char-set:numeric
 			  (string->char-set "+-.@"))))
     (*matcher
-     (alt (seq (alphabet initial-alphabet)
-	       (* (alphabet subsequent-alphabet)))
+     (alt (seq (char-set initial-char-set)
+	       (* (char-set subsequent-char-set)))
 	  (string "+")
 	  (string "-")
 	  (string "...")))))
@@ -98,7 +98,7 @@ USA.
    (alt (seq match-ureal-10
 	     (? (alt match-angle-10
 		     match-imaginary-10)))
-	(seq (alphabet (string->char-set "+-"))
+	(seq (char-set (string->char-set "+-"))
 	     (alt (seq match-ureal-10
 		       (? (alt match-angle-10
 			       match-imaginary-10
@@ -108,41 +108,41 @@ USA.
 (define match-angle-10
   (*matcher
    (seq (string "@")
-	(? (alphabet (string->char-set "+-")))
+	(? (char-set (string->char-set "+-")))
 	match-ureal-10)))
 
 (define match-imaginary-10
   (*matcher
-   (seq (alphabet (string->char-set "+-"))
+   (seq (char-set (string->char-set "+-"))
 	(? match-ureal-10)
 	(string-ci "i"))))
 
 (define match-ureal-10
   (*matcher
-   (alt (seq (+ (alphabet char-set:numeric))
+   (alt (seq (+ (char-set char-set:numeric))
 	     (? (alt (seq (string ".")
-			  (* (alphabet char-set:numeric))
+			  (* (char-set char-set:numeric))
 			  (* (string "#"))
 			  (? match-exponent-10))
 		     (seq (string "/")
-			  (+ (alphabet char-set:numeric))
+			  (+ (char-set char-set:numeric))
 			  (* (string "#")))
 		     (seq (+ (string "#"))
 			  (? (alt (seq (string ".")
 				       (* (string "#"))
 				       (? match-exponent-10))
 				  (seq (string "/")
-				       (+ (alphabet char-set:numeric))
+				       (+ (char-set char-set:numeric))
 				       (* (string "#")))
 				  match-exponent-10)))
 		     match-exponent-10)))
 	(seq (string ".")
-	     (+ (alphabet char-set:numeric))
+	     (+ (char-set char-set:numeric))
 	     (* (string "#"))
 	     (? match-exponent-10)))))
 
 (define match-exponent-10
   (*matcher
-   (seq (alphabet (string->char-set "esfdlESFDL"))
-	(? (alphabet (string->char-set "+-")))
-	(+ (alphabet char-set:numeric)))))
+   (seq (char-set (string->char-set "esfdlESFDL"))
+	(? (char-set (string->char-set "+-")))
+	(+ (char-set char-set:numeric)))))
