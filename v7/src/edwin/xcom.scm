@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: xcom.scm,v 1.24 2003/02/14 18:28:14 cph Exp $
+$Id: xcom.scm,v 1.25 2005/11/12 22:34:58 cph Exp $
 
 Copyright 1989,1990,1994,1996,2000,2001 Massachusetts Institute of Technology
-Copyright 2002,2003 Massachusetts Institute of Technology
+Copyright 2002,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,10 +31,10 @@ USA.
 (define-primitives
   (x-set-default-font 2)
   (x-window-clear 1)
-  (x-window-lower 1)
-  (x-window-raise 1)
   (x-window-get-position 1)
   (x-window-get-size 1)
+  (x-window-lower 1)
+  (x-window-raise 1)
   (x-window-set-background-color 2)
   (x-window-set-border-color 2)
   (x-window-set-border-width 2)
@@ -48,9 +48,10 @@ USA.
   (x-window-set-size 3)
   (x-window-x-size 1)
   (x-window-y-size 1)
+  (xterm-reconfigure 3)
+  (xterm-set-size 3)
   (xterm-x-size 1)
-  (xterm-y-size 1)
-  (xterm-set-size 3))
+  (xterm-y-size 1))
 
 (define (current-xterm)
   (screen-xterm (selected-screen)))
@@ -98,7 +99,7 @@ USA.
 	    (y-size (xterm-y-size xterm)))
 	(if (not (x-window-set-font xterm font))
 	    (editor-error "Unknown font name: " font))
-	(xterm-set-size xterm x-size y-size)))))
+	(xterm-reconfigure xterm x-size y-size)))))
 
 (define-command set-default-font
   "Set text font to be used in new frames."
