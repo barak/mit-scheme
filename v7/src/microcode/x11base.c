@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.81 2004/02/03 18:46:50 cph Exp $
+$Id: x11base.c,v 1.82 2005/11/12 22:53:33 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,2000,2001 Massachusetts Institute of Technology
-Copyright 2003,2004 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,7 +40,7 @@ extern void EXFUN (block_signals, (void));
 extern void EXFUN (unblock_signals, (void));
 
 #ifndef X_DEFAULT_FONT
-#define X_DEFAULT_FONT "fixed"
+#  define X_DEFAULT_FONT "fixed"
 #endif
 
 int x_debug = 0;
@@ -54,6 +54,9 @@ static const char * x_default_font = 0;
 }
 
 static void EXFUN (initialize_once, (void));
+
+static void move_window (struct xwindow *, int, int);
+static void check_expected_move (struct xwindow *);
 
 PTR
 DEFUN (x_malloc, (size), unsigned int size)
@@ -258,65 +261,86 @@ DEFUN (x_io_error_handler, (display), Display * display)
 {
   fprintf (stderr, "\nX IO Error\n");
   fflush (stderr);
-#if 0
-  error_external_return ();
-#else
   termination_eof ();
-#endif
   return (0);
 }
 
-static int
-DEFUN (x_error_handler, (display, error_event),
-       Display * display AND
-       XErrorEvent * error_event)
+typedef struct
 {
-  char buffer [2048];
-  XGetErrorText (display, (error_event -> error_code),
-		 buffer, (sizeof (buffer)));
-  fprintf (stderr, "\nX Error: %s\n", buffer);
-  fprintf (stderr, "         Request code: %d\n",
-	   (error_event -> request_code));
-  fprintf (stderr, "         Error serial: %lx\n", (error_event -> serial));
-  fflush (stderr);
-#if 0
-  error_external_return ();
-#else
-  termination_eof ();
-#endif
+  char message [2048];
+  char terminate_p;
+  unsigned char code;
+} x_error_info_t;
+
+static x_error_info_t x_error_info;
+
+static int
+x_error_handler (Display * display, XErrorEvent * error_event)
+{
+  (x_error_info.code) = (error_event->error_code);
+  XGetErrorText (display,
+		 (error_event->error_code),
+		 (x_error_info.message),
+		 (sizeof (x_error_info.message)));
+  if (x_error_info.terminate_p)
+    {
+      fprintf (stderr, "\nX Error: %s\n", (x_error_info.message));
+      fprintf (stderr, "         Request code: %d\n",
+	       (error_event->request_code));
+      fprintf (stderr, "         Error serial: %lx\n", (error_event->serial));
+      fflush (stderr);
+      termination_eof ();
+    }
   return (0);
 }
 
-typedef int EXFUN ((* x_error_handler_t), (Display *, XErrorEvent *));
-
 static void
-DEFUN (unbind_x_error_handler, (storage), PTR storage)
+DEFUN (unbind_x_error_info, (storage), PTR storage)
 {
-  (void) (XSetErrorHandler (* ((x_error_handler_t *) storage)));
+  x_error_info = (* ((x_error_info_t *) storage));
+}
+
+static void *
+push_x_error_info (Display * display)
+{
+  void * handle;
+  x_error_info_t * storage;
+
+  XSync (display, False);
+  handle = dstack_position;
+  storage = (dstack_alloc (sizeof (x_error_info_t)));
+  (*storage) = x_error_info;
+  ((x_error_info.message) [0]) = '\0';
+  (x_error_info.terminate_p) = 0;
+  (x_error_info.code) = 0;
+  dstack_protect (unbind_x_error_info, storage);
+  return (handle);
 }
 
 static void
-DEFUN (bind_x_error_handler, (handler), x_error_handler_t handler)
+pop_x_error_info (void * position)
 {
-  x_error_handler_t * storage = (dstack_alloc (sizeof (x_error_handler_t)));
-  (*storage) = (XSetErrorHandler (handler));
-  dstack_protect (unbind_x_error_handler, storage);
+  dstack_set_position (position);
 }
 
-static jmp_buf x_prim_checkpoint;
+static unsigned char
+x_error_code (Display * display)
+{
+  XSync (display, False);
+  return (x_error_info.code);
+}
 
 static int
-DEFUN (catch_x_errors_handler, (display, event),
-       Display * display AND
-       XErrorEvent * event)
+any_x_errors_p (Display * display)
 {
-  longjmp (x_prim_checkpoint, (event -> error_code));
+  return ((x_error_code (display)) != 0);
 }
 
-#define CATCH_X_ERRORS(target)						\
-{									\
-  bind_x_error_handler (catch_x_errors_handler);			\
-  (target) = (setjmp (x_prim_checkpoint));				\
+static SCHEME_OBJECT
+x_error_message (void)
+{
+  return
+    (char_pointer_to_string_no_gc ((unsigned char *) (x_error_info.message)));
 }
 
 /* Defaults and Attributes */
@@ -462,7 +486,7 @@ DEFUN (x_default_attributes,
       (x_get_default
        (display, resource_name, resource_class,
 	"borderWidth", "BorderWidth", 0));
-    (attributes -> border_width) = ((s == 0) ? 1 : (atoi (s)));
+    (attributes -> border_width) = ((s == 0) ? 0 : (atoi (s)));
   }
   {
     char * s =
@@ -498,6 +522,54 @@ DEFUN (x_default_attributes,
        (display, resource_name, resource_class,
 	"pointerColor", "Foreground", foreground_pixel));
   }
+}
+
+static int
+get_wm_decor_geometry (struct xwindow * xw)
+{
+  Display * display = (XW_DISPLAY (xw));
+  Window decor = (XW_WINDOW (xw));
+  void * handle = (push_x_error_info (display));
+  Window root;
+  unsigned int depth;
+
+  {
+    Window parent;
+    Window * children;
+    unsigned int n_children;
+    while (1)
+      {
+	if ((!XQueryTree (display, decor,
+			  (&root), (&parent), (&children), (&n_children)))
+	    || (any_x_errors_p (display)))
+	  {
+	    pop_x_error_info (handle);
+	    error_external_return ();
+	  }
+	if (children != 0)
+	  XFree (children);
+	if (parent == root)
+	  break;
+	decor = parent;
+      }
+  }
+  if ((!XGetGeometry (display,
+		      decor,
+		      (&root),
+		      (& (XW_WM_DECOR_X (xw))),
+		      (& (XW_WM_DECOR_Y (xw))),
+		      (& (XW_WM_DECOR_PIXEL_WIDTH (xw))),
+		      (& (XW_WM_DECOR_PIXEL_HEIGHT (xw))),
+		      (& (XW_WM_DECOR_BORDER_WIDTH (xw))),
+		      (&depth)))
+      || (any_x_errors_p (display)))
+    {
+      pop_x_error_info (handle);
+      error_external_return ();
+    }
+  pop_x_error_info (handle);
+  /* Return true iff the window has been reparented by the WM.  */
+  return (decor != (XW_WINDOW (xw)));
 }
 
 /* Open/Close Windows and Displays */
@@ -545,8 +617,9 @@ DEFUN (x_make_window, (xd, window, x_size, y_size, attributes, methods, extra),
      background_pixel);
   XDefineCursor (display, window, mouse_cursor);
   XSelectInput (display, window, 0);
-  xw =
-    (x_malloc (((sizeof (struct xwindow)) - (sizeof (xw -> extra))) + extra));
+  xw
+    = (x_malloc (((sizeof (struct xwindow)) - (sizeof (xw -> extra)))
+		 + extra));
   (XW_ALLOCATION_INDEX (xw)) = (allocate_table_index ((&x_window_table), xw));
   (XW_XD (xw)) = xd;
   (XW_WINDOW (xw)) = window;
@@ -563,6 +636,9 @@ DEFUN (x_make_window, (xd, window, x_size, y_size, attributes, methods, extra),
   (XW_CURSOR_GC (xw)) = cursor_gc;
   (XW_MOUSE_CURSOR (xw)) = mouse_cursor;
   (XW_EVENT_MASK (xw)) = 0;
+  (XW_CHECK_EXPECTED_MOVE_P (xw)) = 0;
+  (XW_MOVE_OFFSET_X (xw)) = 0;
+  (XW_MOVE_OFFSET_Y (xw)) = 0;
   return (xw);
 }
 
@@ -644,7 +720,7 @@ DEFUN (xw_set_class_hint, (xw, name, class),
   (class_hint -> res_name) = ((char *) name);
   (class_hint -> res_class) = ((char *) class);
   XSetClassHint ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), class_hint);
-  XFree ((PTR) class_hint);
+  XFree (class_hint);
 }
 
 void
@@ -658,7 +734,7 @@ DEFUN (xw_set_wm_input_hint, (xw, input_hint),
   (hints -> flags) = InputHint;
   (hints -> input) = (input_hint != 0);
   XSetWMHints ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), hints);
-  XFree ((PTR) hints);
+  XFree (hints);
 }
 
 void
@@ -733,16 +809,16 @@ DEFUN (xw_make_window_map, (xw, resource_name, resource_class, map_p),
 
 /* Event Processing */
 
-static void
-DEFUN (xw_process_event, (xw, event),
-       struct xwindow * xw AND
-       XEvent * event)
+/* Returns non-zero value if caller should ignore the event.  */
+
+static int
+xw_process_event (struct xwindow * xw, XEvent * event)
 {
   if (x_debug > 0)
     {
       char * type_name;
-      fprintf (stderr, "\nX event: ");
-      switch (event -> type)
+      fprintf (stderr, "\nX event on 0x%lx: ", ((event->xany) . window));
+      switch (event->type)
 	{
 	case ButtonPress:	type_name = "ButtonPress"; break;
 	case ButtonRelease:	type_name = "ButtonRelease"; break;
@@ -766,24 +842,44 @@ DEFUN (xw_process_event, (xw, event),
 	case SelectionClear:	type_name = "SelectionClear"; break;
 	case SelectionRequest:	type_name = "SelectionRequest"; break;
 	case UnmapNotify:	type_name = "UnmapNotify"; break;
-	case VisibilityNotify:	type_name = "VisibilityNotify"; break;
+
+	case VisibilityNotify:
+	  fprintf (stderr, "VisibilityNotify; state=");
+	  switch ((event->xvisibility) . state)
+	    {
+	    case VisibilityUnobscured:
+	      fprintf (stderr, "unobscured");
+	      break;
+	    case VisibilityPartiallyObscured:
+	      fprintf (stderr, "partially-obscured");
+	      break;
+	    case VisibilityFullyObscured:
+	      fprintf (stderr, "fully-obscured");
+	      break;
+	    default:
+	      fprintf (stderr, "%d", ((event->xvisibility) . state));
+	      break;
+	    }
+	  goto debug_done;
+
 	case ConfigureNotify:
-	  {
-	    fprintf (stderr, "ConfigureNotify; width = %d, height = %d",
-		     ((event -> xconfigure) . width),
-		     ((event -> xconfigure) . height));
-	    goto debug_done;
-	  }
+	  fprintf (stderr, "ConfigureNotify; x=%d y=%d width=%d height=%d",
+		   ((event->xconfigure) . x),
+		   ((event->xconfigure) . y),
+		   ((event->xconfigure) . width),
+		   ((event->xconfigure) . height));
+	  goto debug_done;
+
 	case ClientMessage:
 	  {
 	    struct xdisplay * xd = (XW_XD (xw));
-	    if ((((event -> xclient) . message_type) == (XD_WM_PROTOCOLS (xd)))
-		&& (((event -> xclient) . format) == 32))
+	    if ((((event->xclient) . message_type) == (XD_WM_PROTOCOLS (xd)))
+		&& (((event->xclient) . format) == 32))
 	      {
-		if (((Atom) (((event -> xclient) . data . l) [0]))
+		if (((Atom) (((event->xclient) . data . l) [0]))
 		    == (XD_WM_DELETE_WINDOW (xd)))
 		  type_name = "WM_DELETE_WINDOW";
-		else if (((Atom) (((event -> xclient) . data . l) [0]))
+		else if (((Atom) (((event->xclient) . data . l) [0]))
 			 == (XD_WM_TAKE_FOCUS (xd)))
 		  type_name = "WM_TAKE_FOCUS";
 		else
@@ -791,35 +887,29 @@ DEFUN (xw_process_event, (xw, event),
 	      }
 	    else
 	      {
-		fprintf (stderr,
-			 "ClientMessage; message_type = 0x%x, format = %d",
-			 ((unsigned int) ((event -> xclient) . message_type)),
-			 ((event -> xclient) . format));
+		fprintf (stderr, "ClientMessage; message_type=0x%x format=%d",
+			 ((unsigned int) ((event->xclient) . message_type)),
+			 ((event->xclient) . format));
 		goto debug_done;
 	      }
 	  }
 	  break;
 	case PropertyNotify:
 	  {
-	    fprintf
-	      (stderr,
-	       "PropertyNotify; window=%ld, atom=%ld, time=%ld, state=%d",
-	       ((event -> xproperty) . window),
-	       ((event -> xproperty) . atom),
-	       ((event -> xproperty) . time),
-	       ((event -> xproperty) . state));
+	    fprintf (stderr, "PropertyNotify; atom=%ld time=%ld state=%d",
+		     ((event->xproperty) . atom),
+		     ((event->xproperty) . time),
+		     ((event->xproperty) . state));
 	    goto debug_done;
 	  }
 	case SelectionNotify:
 	  {
 	    fprintf
-	      (stderr,
-	       "SelectionNotify; req=%ld, sel=%ld, targ=%ld, prop=%ld, t=%ld",
-	       ((event -> xselection) . requestor),
-	       ((event -> xselection) . selection),
-	       ((event -> xselection) . target),
-	       ((event -> xselection) . property),
-	       ((event -> xselection) . time));
+	      (stderr, "SelectionNotify; sel=%ld targ=%ld prop=%ld t=%ld",
+	       ((event->xselection) . selection),
+	       ((event->xselection) . target),
+	       ((event->xselection) . property),
+	       ((event->xselection) . time));
 	    goto debug_done;
 	  }
 	default:		type_name = 0; break;
@@ -827,25 +917,47 @@ DEFUN (xw_process_event, (xw, event),
       if (type_name != 0)
 	fprintf (stderr, "%s", type_name);
       else
-	fprintf (stderr, "%d", (event -> type));
+	fprintf (stderr, "%d", (event->type));
     debug_done:
-      fprintf (stderr, "\n");
+      fprintf (stderr, "%s\n",
+	       (((event->xany) . send_event) ? "; synthetic" : ""));
       fflush (stderr);
     }
-  switch (event -> type)
+  switch (event->type)
     {
     case MappingNotify:
-      switch ((event -> xmapping) . request)
+      switch ((event->xmapping) . request)
 	{
 	case MappingKeyboard:
 	case MappingModifier:
-	  XRefreshKeyboardMapping (& (event -> xmapping));
+	  XRefreshKeyboardMapping (& (event->xmapping));
 	  break;
 	}
       break;
     }
   if (xw != 0)
-    (* (XW_EVENT_PROCESSOR (xw))) (xw, event);
+    {
+      switch (event->type)
+	{
+	case ReparentNotify:
+	  get_wm_decor_geometry (xw);
+	  /* Perhaps reparented due to a WM restart.  Reset this.  */
+	  (XW_WM_TYPE (xw)) = X_WMTYPE_UNKNOWN;
+	  break;
+
+	case ConfigureNotify:
+	  /* If the window has been reparented, ignore non-synthetic
+	     events.  */
+	  if ((get_wm_decor_geometry (xw))
+	      && (! ((event->xconfigure) . send_event)))
+	    return (1);
+	  if (XW_CHECK_EXPECTED_MOVE_P (xw))
+	    check_expected_move (xw);
+	  break;
+	}
+      (* (XW_EVENT_PROCESSOR (xw))) (xw, event);
+    }
+  return (0);
 }
 
 enum event_type
@@ -1357,7 +1469,8 @@ DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
 		   || ((event . type) == SelectionNotify)
 		   || ((event . type) == SelectionRequest))))
 	  continue;
-	xw_process_event (xw, (&event));
+	if (xw_process_event (xw, (&event)))
+	  continue;
       }
       (XD_CACHED_EVENT (xd)) = event;
       (XD_CACHED_EVENT_P (xd)) = 1;
@@ -1391,6 +1504,9 @@ DEFUN_VOID (initialize_once)
   allocation_table_initialize (&x_display_table);
   allocation_table_initialize (&x_window_table);
   allocation_table_initialize (&x_image_table);
+  ((x_error_info.message) [0]) = '\0';
+  (x_error_info.terminate_p) = 1;
+  (x_error_info.code) = 0;
   XSetErrorHandler (x_error_handler);
   XSetIOErrorHandler (x_io_error_handler);
   add_reload_cleanup (x_close_all_displays);
@@ -1973,29 +2089,20 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-INPUT-FOCUS", Prim_x_window_set_input_focus, 2, 
 {
   PRIMITIVE_HEADER (2);
   {
-    PTR VOLATILE position = dstack_position;
     struct xwindow * xw = (x_window_arg (1));
-    unsigned char status;
+    Display * display = (XW_DISPLAY (xw));
+    void * handle = (push_x_error_info (display));
 
-    CATCH_X_ERRORS (status);
-    if (status == 0)
+    XSetInputFocus (display,
+		    (XW_WINDOW (xw)),
+		    RevertToParent,
+		    ((Time) (arg_ulong_integer (2))));
+    if (any_x_errors_p (display))
       {
-	Display * display = (XW_DISPLAY (xw));
-	XSetInputFocus
-	  (display,
-	   (XW_WINDOW (xw)),
-	   RevertToParent,
-	   ((Time) (arg_ulong_integer (2))));
-	/* Force the message out now; otherwise the error-catching
-	   code will be ineffective.  */
-	XSync (display, 0);
-      }
-    else
-      {
-	dstack_set_position (position);
+	pop_x_error_info (handle);
 	error_bad_range_arg (1);
       }
-    dstack_set_position (position);
+    pop_x_error_info (handle);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -2098,39 +2205,18 @@ DEFINE_PRIMITIVE ("X-WINDOW-LOWER", Prim_x_window_lower, 1, 1, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-static Window
-DEFUN (get_window_frame, (display, w), Display * display AND Window w)
-{
-  Window root;
-  Window parent;
-  Window * children;
-  unsigned int n_children;
-  while (1)
-    {
-      if (! (XQueryTree (display, w,
-			 (&root), (&parent), (&children), (&n_children))))
-	error_external_return ();
-      XFree ((PTR) children);
-      if (parent == root)
-	return (w);
-      w = parent;
-    }
-}
-
 DEFINE_PRIMITIVE ("X-WINDOW-GET-SIZE", Prim_x_window_get_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
     struct xwindow * xw = (x_window_arg (1));
-    Display * display = (XW_DISPLAY (xw));
-    Window w = (get_window_frame (display, (XW_WINDOW (xw))));
-    XWindowAttributes a;
-    int extra;
-    if (! (XGetWindowAttributes (display, w, (&a))))
-      error_external_return ();
-    extra = (2 * (a . border_width));
-    PRIMITIVE_RETURN (cons ((long_to_integer ((a . width) + extra)),
-			    (long_to_integer ((a . height) + extra))));
+    unsigned int extra;
+
+    get_wm_decor_geometry (xw);
+    extra = (2 * (XW_WM_DECOR_BORDER_WIDTH (xw)));
+    PRIMITIVE_RETURN
+      (cons ((ulong_to_integer ((XW_WM_DECOR_PIXEL_WIDTH (xw)) + extra)),
+	     (ulong_to_integer ((XW_WM_DECOR_PIXEL_HEIGHT (xw)) + extra))));
   }
 }
 
@@ -2139,58 +2225,63 @@ DEFINE_PRIMITIVE ("X-WINDOW-GET-POSITION", Prim_x_window_get_position, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   {
     struct xwindow * xw = (x_window_arg (1));
-    Display * display = (XW_DISPLAY (xw));
-    Window w = (get_window_frame (display, (XW_WINDOW (xw))));
-    XWindowAttributes a;
-    if (! (XGetWindowAttributes (display, w, (&a))))
-      error_external_return ();
-    PRIMITIVE_RETURN (cons ((long_to_integer (a . x)),
-			    (long_to_integer (a . y))));
+    get_wm_decor_geometry (xw);
+    PRIMITIVE_RETURN (cons ((long_to_integer (XW_WM_DECOR_X (xw))),
+			    (long_to_integer (XW_WM_DECOR_Y (xw)))));
   }
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-SET-POSITION", Prim_x_window_set_position, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-  {
-    struct xwindow * xw = (x_window_arg (1));
-    int x = (arg_integer (2));
-    int y = (arg_integer (3));
-    Display * display = (XW_DISPLAY (xw));
-    Window me = (XW_WINDOW (xw));
-    Window frame = (get_window_frame (display, me));
-    if (me != frame)
-      {
-	int px;
-	int py;
-	Window child;
-
-	if (! (XTranslateCoordinates
-	       (display, me, frame, x, y, (&px), (&py), (&child))))
-	  error_bad_range_arg (1);
-	x = px;
-	y = py;
-      }
-    /* This is a kludge; Emacs does the same thing.  Apparently,
-       failing to do this results in incorrect behavior, but the need
-       for this offset is not documented and the Emacs maintainers are
-       mystified as to why it is necessary.  */
-    {
-      XWindowAttributes a;
-      if (! (XGetWindowAttributes (display, frame, (&a))))
-	error_external_return ();
-      x += (a . border_width);
-      y += (a . border_width);
-    }
-    XMoveWindow (display, me, x, y);
-  }
+  move_window ((x_window_arg (1)),
+	       (arg_integer (2)),
+	       (arg_integer (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+static void
+move_window (struct xwindow * xw, int x, int y)
+{
+  if ((XW_UPDATE_NORMAL_HINTS (xw)) != 0)
+    (* (XW_UPDATE_NORMAL_HINTS (xw))) (xw);
+  if ((XW_WM_TYPE (xw)) == X_WMTYPE_A)
+    {
+      x += (XW_MOVE_OFFSET_X (xw));
+      y += (XW_MOVE_OFFSET_Y (xw));
+    }
+  XMoveWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), x, y);
+  if ((XW_WM_TYPE (xw)) == X_WMTYPE_UNKNOWN)
+    {
+      (XW_EXPECTED_X (xw)) = x;
+      (XW_EXPECTED_Y (xw)) = y;
+      (XW_CHECK_EXPECTED_MOVE_P (xw)) = 1;
+    }
+}
+
+static void
+check_expected_move (struct xwindow * xw)
+{
+  if (((XW_WM_DECOR_X (xw)) == (XW_EXPECTED_X (xw)))
+      && ((XW_WM_DECOR_Y (xw)) == (XW_EXPECTED_Y (xw))))
+    {
+      if ((XW_WM_TYPE (xw)) == X_WMTYPE_UNKNOWN)
+	(XW_WM_TYPE (xw)) = X_WMTYPE_B;
+    }
+  else
+    {
+      (XW_WM_TYPE (xw)) = X_WMTYPE_A;
+      (XW_MOVE_OFFSET_X (xw)) = ((XW_EXPECTED_X (xw)) - (XW_WM_DECOR_X (xw)));
+      (XW_MOVE_OFFSET_Y (xw)) = ((XW_EXPECTED_Y (xw)) - (XW_WM_DECOR_Y (xw)));
+      move_window (xw, (XW_EXPECTED_X (xw)), (XW_EXPECTED_Y (xw)));
+    }
+  (XW_CHECK_EXPECTED_MOVE_P (xw)) = 0;
 }
 
 /* Font Structure Primitive */
 
 #define FONT_STRUCTURE_MAX_CONVERTED_SIZE (10+1 + 256+1 + ((5+1) * (256+2)))
-  /* font-structure-words  +
+  /* font-structure-words +
      char-struct-vector +
      char-struct-words * maximum-number-possible */
 
@@ -2354,22 +2445,18 @@ DEFINE_PRIMITIVE ("X-GET-ATOM-NAME", Prim_x_get_atom_name, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   {
-    PTR VOLATILE position = dstack_position;
-    unsigned char status;
-    SCHEME_OBJECT result;
-
-    CATCH_X_ERRORS (status);
-    if (status == 0)
-      {
-	char * name
-	  = (XGetAtomName ((XD_DISPLAY (x_display_arg (1))),
-			   (arg_ulong_integer (2))));
-	result = (char_pointer_to_string ((unsigned char *) name));
-	XFree (name);
-      }
-    else
-      result = (ulong_to_integer (status));
-    dstack_set_position (position);
+    struct xdisplay * xd = (x_display_arg (1));
+    Display * display = (XD_DISPLAY (xd));
+    void * handle = (push_x_error_info (display));
+    char * name = (XGetAtomName (display, (arg_ulong_integer (2))));
+    unsigned char error_code = (x_error_code (display));
+    SCHEME_OBJECT result
+      = ((error_code == 0)
+	 ? (char_pointer_to_string ((unsigned char *) name))
+	 : (ulong_to_integer (error_code)));
+    if (name != 0)
+      XFree (name);
+    pop_x_error_info (handle);
     PRIMITIVE_RETURN (result);
   }
 }
@@ -2400,14 +2487,14 @@ DEFUN (char_ptr_to_prop_data_16, (data, nitems),
   return (result);
 }
 
-static CONST char *
+static const unsigned char *
 DEFUN (prop_data_32_to_char_ptr, (vector, length_return),
        SCHEME_OBJECT vector AND
        unsigned long * length_return)
 {
   unsigned long nitems = (VECTOR_LENGTH (vector));
   unsigned long length = (nitems * 4);
-  char * data = (dstack_alloc (length));
+  unsigned char * data = (dstack_alloc (length));
   unsigned long index;
   for (index = 0; (index < nitems); index += 1)
     {
@@ -2420,14 +2507,14 @@ DEFUN (prop_data_32_to_char_ptr, (vector, length_return),
   return (data);
 }
 
-static CONST char *
+static const unsigned char *
 DEFUN (prop_data_16_to_char_ptr, (vector, length_return),
        SCHEME_OBJECT vector AND
        unsigned long * length_return)
 {
   unsigned long nitems = (VECTOR_LENGTH (vector));
   unsigned long length = (nitems * 2);
-  char * data = (dstack_alloc (length));
+  unsigned char * data = (dstack_alloc (length));
   unsigned long index;
   for (index = 0; (index < nitems); index += 1)
     {
@@ -2501,16 +2588,16 @@ DEFINE_PRIMITIVE ("X-CHANGE-PROPERTY", Prim_x_change_property, 7, 7, 0)
 {
   PRIMITIVE_HEADER (7);
   {
-    PTR VOLATILE position = dstack_position;
     Display * display = (XD_DISPLAY (x_display_arg (1)));
     Window window = (arg_ulong_integer (2));
     Atom property = (arg_ulong_integer (3));
     Atom type = (arg_ulong_integer (4));
     int format = (arg_nonnegative_integer (5));
     int mode = (arg_index_integer (6, 3));
-    CONST char * VOLATILE data = 0;
+    const unsigned char * data = 0;
     unsigned long dlen;
-    unsigned char status;
+    void * handle;
+    unsigned char error_code;
 
     switch (format)
       {
@@ -2535,17 +2622,12 @@ DEFINE_PRIMITIVE ("X-CHANGE-PROPERTY", Prim_x_change_property, 7, 7, 0)
 	error_bad_range_arg (5);
 	break;
       }
-    CATCH_X_ERRORS (status);
-    if (status == 0)
-      {
-	XChangeProperty (display, window, property, type, format, mode,
-			 data, dlen);
-	/* Flush the display queue, because we need to see the errors
-	   immediately while we're looking for them.  */
-	XFlush (display);
-      }
-    dstack_set_position (position);
-    PRIMITIVE_RETURN (ulong_to_integer (status));
+
+    handle = (push_x_error_info (display));
+    XChangeProperty (display, window, property, type, format, mode, data, dlen);
+    error_code = (x_error_code (display));
+    pop_x_error_info (handle);
+    PRIMITIVE_RETURN (ulong_to_integer (error_code));
   }
 }
 
