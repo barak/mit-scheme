@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11term.c,v 1.30 2005/11/12 22:53:36 cph Exp $
+$Id: x11term.c,v 1.31 2005/11/13 03:45:59 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 2000,2005 Massachusetts Institute of Technology
@@ -484,94 +484,87 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
     Display * display = (XD_DISPLAY (xd));
     struct drawing_attributes attributes;
     struct xwindow_methods methods;
-    CONST char * resource_name = RESOURCE_NAME;
-    CONST char * resource_class = RESOURCE_CLASS;
+    const char * resource_name = RESOURCE_NAME;
+    const char * resource_class = RESOURCE_CLASS;
     int map_p;
-    
+    XSizeHints * size_hints;
+    int x_pos;
+    int y_pos;
+    int x_size;
+    int y_size;
+    unsigned int x_csize;
+    unsigned int y_csize;
+    Window window;
+    struct xwindow * xw;
+    unsigned int map_size;
+
     x_decode_window_map_arg
       ((ARG_REF (3)), (&resource_name), (&resource_class), (&map_p));
     x_default_attributes
       (display, resource_name, resource_class, (&attributes));
-    (methods . deallocator) = xterm_deallocate;
-    (methods . event_processor) = xterm_process_event;
-    (methods . x_coordinate_map) = xterm_x_coordinate_map;
-    (methods . y_coordinate_map) = xterm_y_coordinate_map;
-    (methods . update_normal_hints) = xterm_update_normal_hints;
-    {
-      unsigned int extra = (2 * (attributes . internal_border_width));
-      int x_pos;
-      int y_pos;
-      int x_size;
-      int y_size;
-      XSizeHints * size_hints =
-	(xterm_make_size_hints ((attributes . font), extra));
-      int geometry_mask =
-	(XWMGeometry
-	 (display,
-	  (DefaultScreen (display)),
-	  (((ARG_REF (2)) == SHARP_F)
-	   ? (x_get_default
-	      (display, resource_name, resource_class,
-	       "geometry", "Geometry", 0))
-	   : (STRING_ARG (2))),
-	  DEFAULT_GEOMETRY,
-	  (attributes . border_width),
-	  size_hints,
-	  (&x_pos), (&y_pos), (&x_size), (&y_size),
-	  (& (size_hints -> win_gravity))));
-      unsigned int x_csize =
-	((x_size - (size_hints -> base_width)) / (size_hints -> width_inc));
-      unsigned int y_csize =
-	((y_size - (size_hints -> base_height)) / (size_hints -> height_inc));
-      Window window =
-	(XCreateSimpleWindow
-	 (display, (RootWindow (display, (DefaultScreen (display)))),
-	  x_pos, y_pos, x_size, y_size,
-	  (attributes . border_width),
-	  (attributes . border_pixel),
-	  (attributes . background_pixel)));
-      if (window == 0)
-	error_external_return ();
-      {
-	struct xwindow * xw =
-	  (x_make_window
-	   (xd,
-	    window,
-	    (x_size - (size_hints -> base_width)),
-	    (y_size - (size_hints -> base_height)),
-	    (&attributes),
-	    (&methods),
-	    (sizeof (struct xterm_extra))));
-	unsigned int map_size = (x_csize * y_csize);
-	(XW_X_CSIZE (xw)) = x_csize;
-	(XW_Y_CSIZE (xw)) = y_csize;
-	(XW_CURSOR_X (xw)) = 0;
-	(XW_CURSOR_Y (xw)) = 0;
-	(XW_CURSOR_VISIBLE_P (xw)) = 0;
-	(XW_CURSOR_ENABLED_P (xw)) = 1;
-	{
-	  char * scan = (x_malloc (map_size));
-	  char * end = (scan + map_size);
-	  (XW_CHARACTER_MAP (xw)) = scan;
-	  while (scan < end)
-	    (*scan++) = BLANK_CHAR;
-	}
-	{
-	  char * scan = (x_malloc (map_size));
-	  char * end = (scan + map_size);
-	  (XW_HIGHLIGHT_MAP (xw)) = scan;
-	  while (scan < end)
-	    (*scan++) = DEFAULT_HL;
-	}
-	(size_hints -> flags) |= PWinGravity;
-	xterm_set_wm_normal_hints (xw, size_hints);
-	xw_set_wm_input_hint (xw, 1);
-	xw_set_wm_name (xw, "scheme-terminal");
-	xw_set_wm_icon_name (xw, "scheme-terminal");
-	xw_make_window_map (xw, resource_name, resource_class, map_p);
-	PRIMITIVE_RETURN (XW_TO_OBJECT (xw));
-      }
-    }
+    (methods.deallocator) = xterm_deallocate;
+    (methods.event_processor) = xterm_process_event;
+    (methods.x_coordinate_map) = xterm_x_coordinate_map;
+    (methods.y_coordinate_map) = xterm_y_coordinate_map;
+    (methods.update_normal_hints) = xterm_update_normal_hints;
+
+    size_hints
+      = (xterm_make_size_hints ((attributes.font),
+				(2 * (attributes.internal_border_width))));
+    XWMGeometry (display,
+		 (DefaultScreen (display)),
+		 (((ARG_REF (2)) == SHARP_F)
+		  ? (x_get_default
+		     (display, resource_name, resource_class,
+		      "geometry", "Geometry", 0))
+		  : (STRING_ARG (2))),
+		 DEFAULT_GEOMETRY,
+		 (attributes.border_width),
+		 size_hints,
+		 (&x_pos), (&y_pos), (&x_size), (&y_size),
+		 (& (size_hints->win_gravity)));
+    x_csize
+      = ((x_size - (size_hints->base_width)) / (size_hints->width_inc));
+    y_csize
+      = ((y_size - (size_hints->base_height)) / (size_hints->height_inc));
+
+    window = (XCreateSimpleWindow
+	      (display, (RootWindow (display, (DefaultScreen (display)))),
+	       x_pos, y_pos, x_size, y_size,
+	       (attributes.border_width),
+	       (attributes.border_pixel),
+	       (attributes.background_pixel)));
+    if (window == 0)
+      error_external_return ();
+
+    xw = (x_make_window
+	  (xd,
+	   window,
+	   (x_size - (size_hints->base_width)),
+	   (y_size - (size_hints->base_height)),
+	   (&attributes),
+	   (&methods),
+	   (sizeof (struct xterm_extra))));
+    (XW_X_CSIZE (xw)) = x_csize;
+    (XW_Y_CSIZE (xw)) = y_csize;
+    (XW_CURSOR_X (xw)) = 0;
+    (XW_CURSOR_Y (xw)) = 0;
+    (XW_CURSOR_VISIBLE_P (xw)) = 0;
+    (XW_CURSOR_ENABLED_P (xw)) = 1;
+
+    map_size = (x_csize * y_csize);
+    (XW_CHARACTER_MAP (xw)) = (x_malloc (map_size));
+    memset ((XW_CHARACTER_MAP (xw)), BLANK_CHAR, map_size);
+    (XW_HIGHLIGHT_MAP (xw)) = (x_malloc (map_size));
+    memset ((XW_CHARACTER_MAP (xw)), DEFAULT_HL, map_size);
+
+    (size_hints->flags) |= PWinGravity;
+    xterm_set_wm_normal_hints (xw, size_hints);
+    xw_set_wm_input_hint (xw, 1);
+    xw_set_wm_name (xw, "scheme-terminal");
+    xw_set_wm_icon_name (xw, "scheme-terminal");
+    xw_make_window_map (xw, resource_name, resource_class, map_p);
+    PRIMITIVE_RETURN (XW_TO_OBJECT (xw));
   }
 }
 
