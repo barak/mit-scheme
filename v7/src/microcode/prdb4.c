@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prdb4.c,v 1.2 2005/03/20 22:01:45 cph Exp $
+$Id: prdb4.c,v 1.3 2005/11/13 03:53:47 cph Exp $
 
 Copyright 2004,2005 Massachusetts Institute of Technology
 
@@ -23,12 +23,22 @@ USA.
 
 */
 
-/* Interface to the Berkeley DB library */
+/* Interface to the Berkeley DB library
+   Tested with versions 4.2 and 4.3  */
 
 #include "scheme.h"
 #include "prims.h"
 #include <errno.h>
 #include <db.h>
+
+#define UNIFIED_VERSION							\
+  ((DB_VERSION_MAJOR * 0x10000)						\
+   + (DB_VERSION_MINOR * 0x100)						\
+   + DB_VERSION_PATCH)
+
+#if (UNIFIED_VERSION >= 0x040300)
+#  define VERSION_43 1
+#endif
 
 #define ARG_DB(n) ((DB *) (arg_ulong_integer (n)))
 #define ARG_DB_ENV(n) ((DB_ENV *) (arg_ulong_integer (n)))
@@ -54,12 +64,20 @@ DEFINE_PRIMITIVE ("DB4:RC->NAME", Prim_db4_rc_to_name, 1, 1, 0)
     switch (rc)
       {
 	RC_TO_NAME_CASE (0, "ok");
+#ifdef VERSION_43
+	RC_TO_NAME_CASE (DB_BUFFER_SMALL, "db_buffer_small");
+#endif
 	RC_TO_NAME_CASE (DB_DONOTINDEX, "db_donotindex");
+#ifndef VERSION_43
 	RC_TO_NAME_CASE (DB_FILEOPEN, "db_fileopen");
+#endif
 	RC_TO_NAME_CASE (DB_KEYEMPTY, "db_keyempty");
 	RC_TO_NAME_CASE (DB_KEYEXIST, "db_keyexist");
 	RC_TO_NAME_CASE (DB_LOCK_DEADLOCK, "db_lock_deadlock");
 	RC_TO_NAME_CASE (DB_LOCK_NOTGRANTED, "db_lock_notgranted");
+#ifdef VERSION_43
+	RC_TO_NAME_CASE (DB_LOG_BUFFER_FULL, "db_log_buffer_full");
+#endif
 	RC_TO_NAME_CASE (DB_NOSERVER, "db_noserver");
 	RC_TO_NAME_CASE (DB_NOSERVER_HOME, "db_noserver_home");
 	RC_TO_NAME_CASE (DB_NOSERVER_ID, "db_noserver_id");
@@ -73,15 +91,28 @@ DEFINE_PRIMITIVE ("DB4:RC->NAME", Prim_db4_rc_to_name, 1, 1, 0)
 	RC_TO_NAME_CASE (DB_REP_NEWMASTER, "db_rep_newmaster");
 	RC_TO_NAME_CASE (DB_REP_NEWSITE, "db_rep_newsite");
 	RC_TO_NAME_CASE (DB_REP_NOTPERM, "db_rep_notperm");
+#ifndef VERSION_43
 	RC_TO_NAME_CASE (DB_REP_OUTDATED, "db_rep_outdated");
+#endif
+#ifdef VERSION_43
+	RC_TO_NAME_CASE (DB_REP_STARTUPDONE, "db_rep_startupdone");
+#endif
 	RC_TO_NAME_CASE (DB_REP_UNAVAIL, "db_rep_unavail");
 	RC_TO_NAME_CASE (DB_RUNRECOVERY, "db_runrecovery");
 	RC_TO_NAME_CASE (DB_SECONDARY_BAD, "db_secondary_bad");
 	RC_TO_NAME_CASE (DB_VERIFY_BAD, "db_verify_bad");
+#ifdef VERSION_43
+	RC_TO_NAME_CASE (DB_VERSION_MISMATCH, "db_version_mismatch");
+#endif
 	RC_TO_NAME_CASE (DB_ALREADY_ABORTED, "db_already_aborted");
 	RC_TO_NAME_CASE (DB_DELETED, "db_deleted");
 	RC_TO_NAME_CASE (DB_LOCK_NOTEXIST, "db_lock_notexist");
 	RC_TO_NAME_CASE (DB_NEEDSPLIT, "db_needsplit");
+#ifdef VERSION_43
+	RC_TO_NAME_CASE (DB_REP_EGENCHG, "db_rep_egenchg");
+	RC_TO_NAME_CASE (DB_REP_LOGREADY, "db_rep_logready");
+	RC_TO_NAME_CASE (DB_REP_PAGEDONE, "db_rep_pagedone");
+#endif
 	RC_TO_NAME_CASE (DB_SURPRISE_KID, "db_surprise_kid");
 	RC_TO_NAME_CASE (DB_SWAPBYTES, "db_swapbytes");
 	RC_TO_NAME_CASE (DB_TIMEOUT, "db_timeout");
@@ -108,12 +139,20 @@ DEFINE_PRIMITIVE ("DB4:NAME->RC", Prim_db4_name_to_rc, 1, 1, 0)
   {
     const char * name = (arg_interned_symbol (1));
     NAME_TO_RC_CASE ("ok", 0);
+#ifdef VERSION_43
+    NAME_TO_RC_CASE ("db_buffer_small", DB_BUFFER_SMALL);
+#endif
     NAME_TO_RC_CASE ("db_donotindex", DB_DONOTINDEX);
+#ifndef VERSION_43
     NAME_TO_RC_CASE ("db_fileopen", DB_FILEOPEN);
+#endif
     NAME_TO_RC_CASE ("db_keyempty", DB_KEYEMPTY);
     NAME_TO_RC_CASE ("db_keyexist", DB_KEYEXIST);
     NAME_TO_RC_CASE ("db_lock_deadlock", DB_LOCK_DEADLOCK);
     NAME_TO_RC_CASE ("db_lock_notgranted", DB_LOCK_NOTGRANTED);
+#ifdef VERSION_43
+    NAME_TO_RC_CASE ("db_log_buffer_full", DB_LOG_BUFFER_FULL);
+#endif
     NAME_TO_RC_CASE ("db_noserver", DB_NOSERVER);
     NAME_TO_RC_CASE ("db_noserver_home", DB_NOSERVER_HOME);
     NAME_TO_RC_CASE ("db_noserver_id", DB_NOSERVER_ID);
@@ -127,15 +166,28 @@ DEFINE_PRIMITIVE ("DB4:NAME->RC", Prim_db4_name_to_rc, 1, 1, 0)
     NAME_TO_RC_CASE ("db_rep_newmaster", DB_REP_NEWMASTER);
     NAME_TO_RC_CASE ("db_rep_newsite", DB_REP_NEWSITE);
     NAME_TO_RC_CASE ("db_rep_notperm", DB_REP_NOTPERM);
+#ifndef VERSION_43
     NAME_TO_RC_CASE ("db_rep_outdated", DB_REP_OUTDATED);
+#endif
+#ifdef VERSION_43
+    NAME_TO_RC_CASE ("db_rep_startupdone", DB_REP_STARTUPDONE);
+#endif
     NAME_TO_RC_CASE ("db_rep_unavail", DB_REP_UNAVAIL);
     NAME_TO_RC_CASE ("db_runrecovery", DB_RUNRECOVERY);
     NAME_TO_RC_CASE ("db_secondary_bad", DB_SECONDARY_BAD);
     NAME_TO_RC_CASE ("db_verify_bad", DB_VERIFY_BAD);
+#ifdef VERSION_43
+    NAME_TO_RC_CASE ("db_version_mismatch", DB_VERSION_MISMATCH);
+#endif
     NAME_TO_RC_CASE ("db_already_aborted", DB_ALREADY_ABORTED);
     NAME_TO_RC_CASE ("db_deleted", DB_DELETED);
     NAME_TO_RC_CASE ("db_lock_notexist", DB_LOCK_NOTEXIST);
     NAME_TO_RC_CASE ("db_needsplit", DB_NEEDSPLIT);
+#ifdef VERSION_43
+    NAME_TO_RC_CASE ("db_rep_egenchg", DB_REP_EGENCHG);
+    NAME_TO_RC_CASE ("db_rep_logready", DB_REP_LOGREADY);
+    NAME_TO_RC_CASE ("db_rep_pagedone", DB_REP_PAGEDONE);
+#endif
     NAME_TO_RC_CASE ("db_surprise_kid", DB_SURPRISE_KID);
     NAME_TO_RC_CASE ("db_swapbytes", DB_SWAPBYTES);
     NAME_TO_RC_CASE ("db_timeout", DB_TIMEOUT);
@@ -210,11 +262,17 @@ DEFINE_PRIMITIVE ("DB4:DB-GET-ENV", Prim_db4_db_get_env, 2, 2, 0)
   {
     DB * db = (ARG_DB (1));
     SCHEME_OBJECT p = (ARG_REF (2));
+#ifdef VERSION_43
+    DB_ENV * db_env = ((db -> get_env) (db));
+    SET_PAIR_CAR (p, (ANY_TO_UINT (db_env)));
+    RETURN_RC (0);
+#else
     DB_ENV * db_env;
     int rc = ((db -> get_env) (db, (&db_env)));
     if (rc == 0)
       SET_PAIR_CAR (p, (ANY_TO_UINT (db_env)));
     RETURN_RC (rc);
+#endif
   }
 }
 
@@ -290,11 +348,16 @@ DEFINE_PRIMITIVE ("DB4:DB-GET-TRANSACTIONAL", Prim_db4_db_get_transactional, 2, 
   {
     DB * db = (ARG_DB (1));
     SCHEME_OBJECT p = (ARG_REF (2));
+#ifdef VERSION_43
+    SET_PAIR_CAR (p, (BOOLEAN_TO_OBJECT ((db -> get_transactional) (db))));
+    RETURN_RC (0);
+#else
     int b;
     int rc = ((db -> get_transactional) (db, (&b)));
     if (rc == 0)
       SET_PAIR_CAR (p, (BOOLEAN_TO_OBJECT (b)));
     RETURN_RC (rc);
+#endif
   }
 }
 
