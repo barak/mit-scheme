@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.83 2005/11/13 03:47:00 cph Exp $
+$Id: x11base.c,v 1.84 2005/11/15 00:33:51 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,2000,2001 Massachusetts Institute of Technology
@@ -318,9 +318,9 @@ push_x_error_info (Display * display)
 }
 
 static void
-pop_x_error_info (void * position)
+pop_x_error_info (void * handle)
 {
-  dstack_set_position (position);
+  dstack_set_position (handle);
 }
 
 static unsigned char
@@ -2592,6 +2592,7 @@ DEFINE_PRIMITIVE ("X-CHANGE-PROPERTY", Prim_x_change_property, 7, 7, 0)
     void * handle;
     unsigned char error_code;
 
+    handle = (push_x_error_info (display));
     switch (format)
       {
       case 8:
@@ -2615,8 +2616,6 @@ DEFINE_PRIMITIVE ("X-CHANGE-PROPERTY", Prim_x_change_property, 7, 7, 0)
 	error_bad_range_arg (5);
 	break;
       }
-
-    handle = (push_x_error_info (display));
     XChangeProperty (display, window, property, type, format, mode, data, dlen);
     error_code = (x_error_code (display));
     pop_x_error_info (handle);
