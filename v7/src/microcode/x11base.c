@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.84 2005/11/15 00:33:51 cph Exp $
+$Id: x11base.c,v 1.85 2005/11/16 04:00:16 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,2000,2001 Massachusetts Institute of Technology
@@ -939,12 +939,11 @@ xw_process_event (struct xwindow * xw, XEvent * event)
 	  break;
 
 	case ConfigureNotify:
-	  /* If the window has been reparented, ignore non-synthetic
-	     events.  */
-	  if ((get_wm_decor_geometry (xw))
-	      && (! ((event->xconfigure) . send_event)))
-	    return (1);
-	  if (XW_CHECK_EXPECTED_MOVE_P (xw))
+	  /* If the window has been reparented, don't check
+	     non-synthetic events.  */
+	  if ((XW_CHECK_EXPECTED_MOVE_P (xw))
+	      && (! ((get_wm_decor_geometry (xw))
+		     && (! ((event->xconfigure) . send_event)))))
 	    check_expected_move (xw);
 	  break;
 	}
