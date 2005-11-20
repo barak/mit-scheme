@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.22 2004/11/18 18:16:04 cph Exp $
+$Id: mit-syntax.scm,v 14.23 2005/11/20 04:12:59 riastradh Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 Copyright 2004 Massachusetts Institute of Technology
@@ -262,27 +262,23 @@ USA.
       (let ((history (item/history item)))
 	(syntax-error history "Syntactic binding value must be a keyword:"
 		      (history/original-form history))))
-  (overloaded-binding-theory environment name item history))
+  (syntactic-environment/define environment
+                                name
+                                (item/new-history item #f))
+  ;; User-defined macros at top level are preserved in the output.
+  (if (and (keyword-value-item? item)
+           (syntactic-environment/top-level? environment))
+      (make-binding-item history
+                         (rename-top-level-identifier name)
+                         item)
+      (make-null-binding-item history)))
 
 (define (variable-binding-theory environment name item history)
   (if (keyword-item? item)
       (let ((history (item/history item)))
 	(syntax-error history "Binding value may not be a keyword:"
 		      (history/original-form history))))
-  (overloaded-binding-theory environment name item history))
-
-(define (overloaded-binding-theory environment name item history)
-  (if (keyword-item? item)
-      (begin
-	(syntactic-environment/define environment
-				      name
-				      (item/new-history item #f))
-	;; User-defined macros at top level are preserved in the output.
-	(if (and (keyword-value-item? item)
-		 (syntactic-environment/top-level? environment))
-	    (make-binding-item history name item)
-	    (make-null-binding-item history)))
-      (make-binding-item history (bind-variable! environment name) item)))
+  (make-binding-item history (bind-variable! environment name) item))
 
 ;;;; SRFI features
 
