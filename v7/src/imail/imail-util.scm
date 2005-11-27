@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-util.scm,v 1.44 2004/02/16 05:49:16 cph Exp $
+$Id: imail-util.scm,v 1.45 2005/11/27 06:35:24 riastradh Exp $
 
 Copyright 2000,2001,2003,2004 Massachusetts Institute of Technology
 
@@ -156,9 +156,9 @@ USA.
 		    (if (default-object? line-ending) "\n" line-ending)))
 
 (define (substring->lines string start end #!optional line-ending)
-  (let ((line-ending (if (default-object? line-ending) "\n" line-ending))
-	(n (string-length line-ending)))
-    (let ((indexes (substring-search-all line-ending string start end)))
+  (let ((line-ending (if (default-object? line-ending) "\n" line-ending)))
+    (let ((indexes (substring-search-all line-ending string start end))
+          (n (string-length line-ending)))
       (if (pair? indexes)
 	  (begin
 	    (let loop ((start start) (indexes indexes))
