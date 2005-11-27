@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-file.scm,v 1.84 2003/02/14 18:28:14 cph Exp $
+$Id: imail-file.scm,v 1.85 2005/11/27 06:40:53 riastradh Exp $
 
-Copyright 1999,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1999,2000,2001,2002,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -514,7 +514,7 @@ USA.
 	     (xsubstring (file-message-xstring message)
 			 (file-external-ref/start item)
 			 (file-external-ref/end item)))
-	    (call-next-method message))))))
+            item)))))
 
 (define-file-external-message-method message-header-fields
   <file-message>
