@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.32 2004/05/27 16:06:31 cph Exp $
+$Id: genio.scm,v 1.33 2005/11/29 06:41:45 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
-Copyright 2003,2004 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,7 +43,7 @@ USA.
 
 (define-structure (gstate (type vector) (constructor #f))
   ;; Changes to this structure must be copied to "fileio.scm" and
-  ;; "ttyio.scm".
+  ;; "ttyio.scm", "strnin.scm", "strout.scm", and "strott.scm".
   (input-buffer #f read-only #t)
   (output-buffer #f read-only #t)
   coding
@@ -116,6 +116,9 @@ USA.
 	  (make-port-type (append input-operations
 				  output-operations
 				  other-operations)
+			  #f))
+    (set! generic-no-i/o-type
+	  (make-port-type other-operations
 			  #f)))
   (initialize-name-maps!)
   (initialize-conditions!))
@@ -123,6 +126,7 @@ USA.
 (define generic-input-type)
 (define generic-output-type)
 (define generic-i/o-type)
+(define generic-no-i/o-type)
 
 ;;;; Input operations
 
@@ -312,7 +316,8 @@ USA.
 	 (eq-intersection (known-input-codings)
 			  (known-output-codings)))
 	((input-port? port) (known-input-codings))
-	(else (known-output-codings))))
+	((output-port? port) (known-output-codings))
+	(else '())))
 
 (define (generic-io/line-ending port)
   (gstate-line-ending (port/state port)))
@@ -340,7 +345,8 @@ USA.
 	 (eq-intersection (known-input-line-endings)
 			  (known-output-line-endings)))
 	((input-port? port) (known-input-line-endings))
-	(else (known-output-line-endings))))
+	((output-port? port) (known-output-line-endings))
+	(else '())))
 
 (define (line-ending channel name for-output?)
   (guarantee-symbol name #f)

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.13 2004/02/16 05:38:37 cph Exp $
+$Id: strnin.scm,v 14.14 2005/11/29 06:50:59 cph Exp $
 
 Copyright 1988,1990,1993,1999,2003,2004 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,19 +34,17 @@ USA.
 
 (define (open-input-string string #!optional start end)
   (guarantee-string string 'OPEN-INPUT-STRING)
-  (let ((end
-	 (if (or (default-object? end) (not end))
-	     (string-length string)
-	     (guarantee-substring-end-index end (string-length string)
-					    'OPEN-INPUT-STRING))))
+  (let* ((end
+	  (if (or (default-object? end) (not end))
+	      (string-length string)
+	      (guarantee-substring-end-index end (string-length string)
+					     'OPEN-INPUT-STRING)))
+	 (start
+	  (if (or (default-object? start) (not start))
+	      0
+	      (guarantee-substring-start-index start end 'OPEN-INPUT-STRING))))
     (make-port input-string-port-type
-	       (make-istate
-		string
-		(if (or (default-object? start) (not start))
-		    0
-		    (guarantee-substring-start-index start end
-						     'OPEN-INPUT-STRING))
-		end))))
+	       (make-gstate #f #f 'TEXT string start end))))
 
 (define input-string-port-type)
 (define (initialize-package!)
@@ -70,10 +69,12 @@ USA.
 	    ,(lambda (port output-port)
 	       port
 	       (write-string " from string" output-port))))
-	 #f))
+	 generic-no-i/o-type))
   unspecific)
 
-(define-structure (istate (type vector))
+(define-structure (istate (type vector)
+			  (initial-offset 4) ;must match "genio.scm"
+			  (constructor #f))
   (string #f read-only #t)
   start
   (end #f read-only #t))

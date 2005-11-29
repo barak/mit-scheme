@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.20 2005/05/30 04:10:38 cph Exp $
+$Id: strout.scm,v 14.21 2005/11/29 06:54:11 cph Exp $
 
 Copyright 1988,1990,1993,1999,2000,2001 Massachusetts Institute of Technology
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
@@ -30,7 +30,8 @@ USA.
 (declare (usual-integrations))
 
 (define (open-output-string)
-  (make-port accumulator-output-port-type (make-astate)))
+  (make-port accumulator-output-port-type
+	     (make-gstate #f #f 'TEXT #f #f)))
 
 (define (get-output-string port)
   ((port/operation port 'EXTRACT-OUTPUT) port))
@@ -48,8 +49,10 @@ USA.
     (lambda (port)
       (with-output-to-port port thunk))))
 
-(define-structure (astate (type vector) (constructor make-astate ()))
-  (chars #f)
+(define-structure (astate (type vector)
+			  (initial-offset 4) ;must match "genio.scm"
+			  (constructor #f))
+  chars
   index)
 
 (define (maybe-reset-astate state)
@@ -123,5 +126,5 @@ USA.
 	    ,(lambda (port output-port)
 	       port
 	       (write-string " to string" output-port))))
-	 #f))
+	 generic-no-i/o-type))
   unspecific)

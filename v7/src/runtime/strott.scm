@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: strott.scm,v 14.12 2004/02/16 05:38:42 cph Exp $
+$Id: strott.scm,v 14.13 2005/11/29 06:52:28 cph Exp $
 
-Copyright 1988,1993,1999,2004 Massachusetts Institute of Technology
+Copyright 1988,1993,1999,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,7 +31,8 @@ USA.
 (define (with-output-to-truncated-string max thunk)
   (call-with-current-continuation
    (lambda (k)
-     (let ((state (make-astate k max (make-string (fix:min max 128)) 0)))
+     (let ((state
+	    (make-gstate #f #f 'TEXT k max (make-string (fix:min max 128)) 0)))
        (with-output-to-port (make-port output-string-port-type state)
 	 thunk)
        (cons #f
@@ -64,10 +65,12 @@ USA.
 	    ,(lambda (port output-port)
 	       port
 	       (write-string " to string (truncating)" output-port))))
-	 #f))
+	 generic-no-i/o-type))
   unspecific)
 
-(define-structure (astate (type vector))
+(define-structure (astate (type vector)
+			  (initial-offset 4) ;must match "genio.scm"
+			  (constructor #f))
   (return #f read-only #t)
   (max-length #f read-only #t)
   chars
