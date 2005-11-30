@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.290 2005/06/24 17:34:31 cph Exp $
+$Id: edwin.pkg,v 1.291 2005/11/30 04:55:45 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -1114,67 +1114,7 @@ USA.
 	    x-button5-down
 	    x-button5-up)
     (export (edwin screen x-screen)
-	    update-xterm-screen-names!))
-
-  (define-package (edwin vc)
-    (files "vc")
-    (parent (edwin))
-    (export (edwin)
-	    edwin-command$vc-diff
-	    edwin-command$vc-directory
-	    edwin-command$vc-dired
-	    edwin-command$vc-finish-logentry
-	    edwin-command$vc-insert-headers
-	    edwin-command$vc-next-action
-	    edwin-command$vc-print-log
-	    edwin-command$vc-register
-	    edwin-command$vc-revert-buffer
-	    edwin-command$vc-toggle-read-only
-	    edwin-command$vc-version-diff
-	    edwin-command$vc-version-other-window
-	    edwin-mode$vc-log
-	    edwin-variable$diff-switches
-	    edwin-variable$vc-checkin-hooks
-	    edwin-variable$vc-checkout-carefully
-	    edwin-variable$vc-command-messages
-	    edwin-variable$vc-cvs-stay-local
-	    edwin-variable$vc-default-init-version
-	    edwin-variable$vc-delete-logbuf-window
-	    edwin-variable$vc-display-status
-	    edwin-variable$vc-follow-symlinks
-	    edwin-variable$vc-initial-comment
-	    edwin-variable$vc-keep-workfiles
-	    edwin-variable$vc-log-mode-hook
-	    edwin-variable$vc-make-backup-files
-	    edwin-variable$vc-mode-line-status
-	    edwin-variable$vc-rcs-preserve-mod-times
-	    edwin-variable$vc-suppress-confirm))
-
-  (define-package (edwin rcs-parse)
-    (files "rcsparse")
-    (parent (edwin))
-    (export (edwin)
-	    parse-rcs-admin
-	    rcs-admin/access-list
-	    rcs-admin/branch
-	    rcs-admin/comment
-	    rcs-admin/description
-	    rcs-admin/expand
-	    rcs-admin/head
-	    rcs-admin/locks
-	    rcs-admin/strict?
-	    rcs-admin/symbols
-	    rcs-admin?
-	    rcs-delta/author
-	    rcs-delta/branches
-	    rcs-delta/date
-	    rcs-delta/next
-	    rcs-delta/number
-	    rcs-delta/state
-	    rcs-delta?
-	    rcs-find-delta
-	    rcs-number-head
-	    rcs-number-length)))
+	    update-xterm-screen-names!)))
 
  ((nt)
   (global-definitions "../win32/win32")
@@ -1485,6 +1425,66 @@ USA.
     (export (edwin screen os2-screen)
 	    update-os2-screen-names!))))
 
+(define-package (edwin vc)
+  (files "vc")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$vc-diff
+	  edwin-command$vc-directory
+	  edwin-command$vc-dired
+	  edwin-command$vc-finish-logentry
+	  edwin-command$vc-insert-headers
+	  edwin-command$vc-next-action
+	  edwin-command$vc-print-log
+	  edwin-command$vc-register
+	  edwin-command$vc-revert-buffer
+	  edwin-command$vc-toggle-read-only
+	  edwin-command$vc-version-diff
+	  edwin-command$vc-version-other-window
+	  edwin-mode$vc-log
+	  edwin-variable$diff-switches
+	  edwin-variable$vc-checkin-hooks
+	  edwin-variable$vc-checkout-carefully
+	  edwin-variable$vc-command-messages
+	  edwin-variable$vc-cvs-stay-local
+	  edwin-variable$vc-default-init-version
+	  edwin-variable$vc-delete-logbuf-window
+	  edwin-variable$vc-display-status
+	  edwin-variable$vc-follow-symlinks
+	  edwin-variable$vc-initial-comment
+	  edwin-variable$vc-keep-workfiles
+	  edwin-variable$vc-log-mode-hook
+	  edwin-variable$vc-make-backup-files
+	  edwin-variable$vc-mode-line-status
+	  edwin-variable$vc-rcs-preserve-mod-times
+	  edwin-variable$vc-suppress-confirm))
+
+(define-package (edwin rcs-parse)
+  (files "rcsparse")
+  (parent (edwin))
+  (export (edwin)
+	  parse-rcs-admin
+	  rcs-admin/access-list
+	  rcs-admin/branch
+	  rcs-admin/comment
+	  rcs-admin/description
+	  rcs-admin/expand
+	  rcs-admin/head
+	  rcs-admin/locks
+	  rcs-admin/strict?
+	  rcs-admin/symbols
+	  rcs-admin?
+	  rcs-delta/author
+	  rcs-delta/branches
+	  rcs-delta/date
+	  rcs-delta/next
+	  rcs-delta/number
+	  rcs-delta/state
+	  rcs-delta?
+	  rcs-find-delta
+	  rcs-number-head
+	  rcs-number-length))
+
 (define-package (edwin sendmail)
   (files "sendmail")
   (parent (edwin))
