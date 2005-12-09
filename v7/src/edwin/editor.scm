@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: editor.scm,v 1.259 2004/02/16 05:43:21 cph Exp $
+$Id: editor.scm,v 1.260 2005/12/09 07:06:23 riastradh Exp $
 
 Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -526,7 +526,10 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 
 (define null-output-port
   (make-port (make-port-type
-	      `((WRITE-CHAR ,(lambda (port char) port char unspecific)))
+	      `((WRITE-CHAR ,(lambda (port char)
+			       port char
+			       ;; Return the number of characters written.
+			       1)))
 	      #f)
 	     #f))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.38 2005/10/24 01:45:41 cph Exp $
+$Id: port.scm,v 1.39 2005/12/09 07:06:23 riastradh Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -381,7 +381,9 @@ USA.
 		   (set-port/unread! port #f)
 		   1)
 		 (let ((n (defer port string start end)))
-		   (transcribe-substring string start (fix:+ start n) port)
+		   (if (and n (fix:> n 0))
+		       (transcribe-substring string start (fix:+ start n)
+					     port))
 		   n)))))
 	(read-wide-substring
 	 (let ((defer (op 'READ-WIDE-SUBSTRING)))
@@ -407,7 +409,8 @@ USA.
 		   (set-port/unread! port #f)
 		   1)
 		 (let ((n (defer port string start end)))
-		   (transcribe-substring string start (+ start n) port)
+		   (if (and n (fix:> n 0))
+		       (transcribe-substring string start (+ start n) port))
 		   n))))))
     (lambda (name)
       (case name
@@ -452,7 +455,7 @@ USA.
 		   (begin
 		     (set-port/previous!
 		      port
-		      (string-ref string (fix:+ start (fix:- n 1))))
+		      (wide-string-ref string (fix:+ start (fix:- n 1))))
 		     (transcribe-substring string start (fix:+ start n) port)))
 	       n))))
 	(write-external-substring

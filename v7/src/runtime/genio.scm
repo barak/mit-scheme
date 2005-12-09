@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.33 2005/11/29 06:41:45 cph Exp $
+$Id: genio.scm,v 1.34 2005/12/09 07:06:23 riastradh Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
@@ -669,7 +669,7 @@ USA.
 	    (be (min page-size (- end start))))
 	(let ((n (read-to-8-bit ib bounce 0 be)))
 	  (if (and n (fix:> n 0))
-	      (substring-move! bounce 0 n string start))
+	      (xsubstring-move! bounce 0 n string start))
 	  n))))
 
 (define (input-buffer-in-8-bit-mode? ib)

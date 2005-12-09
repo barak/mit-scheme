@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.23 2005/05/30 04:10:47 cph Exp $
+$Id: unicode.scm,v 1.24 2005/12/09 07:06:23 riastradh Exp $
 
 Copyright 2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -1215,7 +1215,9 @@ USA.
 		`((WRITE-CHAR
 		   ,(lambda (port char)
 		      (guarantee-wide-char char 'WRITE-CHAR)
-		      ((port/state port) char)))
+		      ((port/state port) char)
+		      ;; Return the number of characters written.
+		      1))
 		  (EXTRACT-OUTPUT
 		   ,(lambda (port)
 		      (%make-wide-string
