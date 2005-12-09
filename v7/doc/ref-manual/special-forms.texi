@@ -1,9 +1,9 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: special-forms.texi,v 1.2 2003/04/25 20:40:22 cph Exp $
+@c $Id: special-forms.texi,v 1.3 2005/12/09 20:25:59 riastradh Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
-@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c Copyright 2002,2003,2005 Massachusetts Institute of Technology
 @c See file scheme.texinfo for copying conditions.
 
 @node Special Forms, Equivalence Predicates, Overview, Top
@@ -2771,6 +2771,7 @@ existing practice rather than introducing new functionality.
 @menu
 * cond-expand (SRFI 0)::        
 * receive (SRFI 8)::            
+* and-let* (SRFI 2)::
 * define-record-type (SRFI 9)::  
 @end menu
 
@@ -2847,7 +2848,7 @@ special form is allowed.  This is an extension of the semantics defined
 by @acronym{SRFI 0}, which only allows @code{cond-expand} at top level.
 @end deffn
 
-@node receive (SRFI 8), define-record-type (SRFI 9), cond-expand (SRFI 0), SRFI syntax
+@node receive (SRFI 8), and-let* (SRFI 2), cond-expand (SRFI 0), SRFI syntax
 @subsection receive (SRFI 8)
 
 @cindex SRFI 8
@@ -2939,7 +2940,57 @@ the extended environment.  The results of the last expression in the
 body are the values of the @samp{receive} expression.
 @end deffn
 
-@node define-record-type (SRFI 9),  , receive (SRFI 8), SRFI syntax
+@node and-let* (SRFI 2), define-record-type (SRFI 9), receive (SRFI 8), SRFI syntax
+@subsection and-let* (SRFI 2)
+
+@cindex SRFI 2
+@uref{http://srfi.schemers.org/srfi-2/srfi-2.html,@acronym{SRFI} 2}
+provides a form that combines @samp{and} and @samp{let*} for a
+logically short-circuiting sequential binding operator.
+
+@deffn {special form} and-let* (clause @dots{}) body
+Runs through each of the clauses left-to-right, short-circuiting like
+@samp{and} in that the first false clause will result in the whole
+@samp{and-let*} form returning false.  If a body is supplied, and all
+of the clauses evaluate true, then the body is evaluated sequentially
+as if in a @samp{begin} form, and the value of the @samp{and-let*}
+expression is the value of the last body form, evaluated in a tail
+position with respect to the @samp{and-let*} expression.  If no body
+is supplied, the value of the last clause, also evaluated in a tail
+position with respect to the @samp{and-let*} expression, is used
+instead.
+
+Each @var{clause} should have one of the following forms:
+
+@table @samp
+@item @var{identifier}
+in which case @var{identifier}'s value is tested.
+
+@item (@var{expression})
+in which case the value of @var{expression} is tested.
+
+@item (@var{identifier} @var{expression})
+in which case @var{expression} is evaluated, and, if its value is not
+false, @var{identifier} is bound to that value for the remainder of
+the clauses and the optional body.
+@end table
+@end deffn
+
+@comment More examples, please!
+
+Example:
+
+@example
+@group
+(and-let* ((list (compute-list))
+           ((pair? list))
+           (item (car list))
+           ((integer? item)))
+  (sqrt item))
+@end group
+@end example
+
+@node define-record-type (SRFI 9),  , and-let* (SRFI 2), SRFI syntax
 @subsection define-record-type (SRFI 9)
 
 @cindex SRFI 9

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: schmod.scm,v 1.72 2005/06/10 01:50:46 cph Exp $
+$Id: schmod.scm,v 1.73 2005/12/09 20:25:59 riastradh Exp $
 
 Copyright 1986,1989,1990,1991,1992,1998 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -179,6 +179,7 @@ The following commands evaluate Scheme expressions:
 	       CALL-WITH-OUTPUT-FILE WITH-OUTPUT-TO-FILE)
 
 	    ;; SRFI keywords:
+            (1 AND-LET*)
 	    (2 RECEIVE)
 	    (3 DEFINE-RECORD-TYPE)
 
