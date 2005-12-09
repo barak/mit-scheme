@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.291 2005/11/30 04:55:45 cph Exp $
+$Id: edwin.pkg,v 1.292 2005/12/09 20:34:15 riastradh Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -1674,9 +1674,11 @@ USA.
 	  rfc822:parse-msg-id
 	  rfc822:parse-word
 	  rfc822:quote-string
+          rfc822:unquote-string
 	  rfc822:received-header-components
 	  rfc822:string->addresses
 	  rfc822:string->tokens
+          rfc822:string-tokenizer
 	  rfc822:strip-comments
 	  rfc822:strip-quoted-names
 	  rfc822:tokens->string))
