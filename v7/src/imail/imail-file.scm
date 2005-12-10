@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-file.scm,v 1.85 2005/11/27 06:40:53 riastradh Exp $
+$Id: imail-file.scm,v 1.86 2005/12/10 06:45:32 riastradh Exp $
 
 Copyright 1999,2000,2001,2002,2003,2005 Massachusetts Institute of Technology
 
@@ -18,7 +18,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02111-1301,
 USA.
 
 |#
@@ -461,9 +461,9 @@ USA.
   folder
   unspecific)
 
-(define-method folder-supports-mime? ((folder <file-folder>))
-  folder
-  #f)
+; (define-method folder-supports-mime? ((folder <file-folder>))
+;   folder
+;   #f)
 
 (define-method preload-folder-outlines ((folder <file-folder>))
   folder

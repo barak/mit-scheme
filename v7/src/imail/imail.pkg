@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail.pkg,v 1.100 2003/02/14 18:28:14 cph Exp $
+$Id: imail.pkg,v 1.101 2005/12/10 06:45:32 riastradh Exp $
 
-Copyright 2000-2001 Massachusetts Institute of Technology
+Copyright 2000,2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +18,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02111-1301,
 USA.
 
 |#
@@ -34,6 +34,19 @@ USA.
   (files "imail-util"
 	 "imail-core")
   (parent (edwin)))
+
+(define-package (edwin imail mime)
+  (files "imail-mime")
+  (parent (edwin imail))
+  (export (edwin imail)
+          define-mime-media-parser
+          mime:basic-media-parser
+          mime:parse-multipart
+          mime:default-content-type
+          <message-part>
+          message-part-string
+          message-part-start
+          message-part-end))
 
 (define-package (edwin imail file-folder)
   (files "imail-file")

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.292 2005/09/13 14:19:26 cph Exp $
+$Id: imail-top.scm,v 1.293 2005/12/10 06:45:32 riastradh Exp $
 
 Copyright 1999,2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -19,7 +19,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02111-1301,
 USA.
 
 |#
@@ -2702,19 +2702,6 @@ Negative argument means search in reverse."
   (body #f read-only #t)
   (selector #f read-only #t)
   (context #f read-only #t))
-
-(define (call-with-mime-decoding-output-port encoding port text? generator)
-  (case encoding
-    ((QUOTED-PRINTABLE)
-     (call-with-decode-quoted-printable-output-port port text? generator))
-    ((BASE64)
-     (call-with-decode-base64-output-port port text? generator))
-    ((BINHEX40)
-     (call-with-decode-binhex40-output-port port text? generator))
-    ((X-UUENCODE)
-     (call-with-decode-uue-output-port port text? generator))
-    (else
-     (generator port))))
 
 ;;;; Automatic wrap/fill
 

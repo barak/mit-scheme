@@ -1,0 +1,521 @@
+#| -*-Scheme-*-
+
+$Id $
+
+Copyright 2005 Taylor Campbell
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02111-1301,
+USA.
+
+|#
+
+;;;; IMAIL mail reader: MIME parser
+
+(declare (usual-integrations))
+
+(define-method folder-supports-mime? ((folder <folder>))
+  folder
+  #t)
+
+(define-method mime-message-body-structure ((message <message>))
+  (or (get-property message 'MIME-MESSAGE-BODY-STRUCTURE #f)
+      (cond ((mime:get-version-header message)
+             => (lambda (version-string)
+                  (if (mime:version-1.0? version-string)
+                      (let ((body-structure
+                             (mime:parse-body-structure message)))
+                        (store-property! message
+                                         'MIME-MESSAGE-BODY-STRUCTURE
+                                         body-structure)
+                        body-structure)
+                      (error "MIME version not 1.0:"
+                             version-string
+                             message))))
+            (else #f))))
+
+(define (mime:parse-body-structure message)
+  (let ((content-type
+         (parse-first-named-header message "Content-Type"
+                                   mime:default-content-type
+                                   mime:parse-content-type))
+        (encoding
+         (parse-first-named-header message "Content-Transfer-Encoding"
+                                   mime:default-encoding
+                                   mime:parse-encoding)))
+    (let ((type (car content-type))
+          (subtype (cadr content-type))
+          (parameters (cddr content-type)))
+      ;; Bizarre code organization here.  I can't think of a better
+      ;; way to structure this code.
+      ((or (and-let* ((encoding
+                       (named-mime-encoding (or encoding '7BIT)
+                                            #f))
+                      (top-level (assq type mime:media-parsers))
+                      (parser (cond ((assq subtype (cddr top-level))
+                                     => cdr)
+                                    ((cadr top-level))
+                                    (else #f))))
+             (lambda ()
+               (parser message type subtype parameters encoding)))
+           (lambda ()
+             (mime:basic-media-parser message type subtype parameters
+                                      #f)))))))
+
+(define-method write-mime-message-body-part
+    ((message <message>) selector cache? port)
+  cache?
+  (let loop ((sel selector)
+             (part (mime-message-body-structure message)))
+    (let ((item (car sel))
+          (sel (cdr sel)))
+      (cond ((exact-nonnegative-integer? item)
+             (if (mime-body-multipart? part)
+                 (let ((subpart
+                        (list-ref (mime-body-multipart-parts part)
+                                  item)))
+                   (if (null? sel)
+                       (begin
+                         (if (message? subpart)
+                             (begin
+                               (write-header-fields
+                                (message-header-fields subpart)
+                                port)
+                               (newline port)))
+                         (write-message-body subpart port))
+                       (loop sel subpart)))
+                 (error "Selecting part of non-multipart:" part sel)))
+            ((null? sel)
+             (case item
+               ((TEXT)
+                (write-message-body part port))
+               ((HEADER)
+                (write-header-fields part port))
+               (else
+                (error "Invalid message MIME body selector tail:"
+                       sel
+                       message))))
+            (else
+             (error "Invalid message MIME body selector:"
+                    selector
+                    message))))))
+
+;;;; MIME-Version Header Field
+
+(define (mime:get-version-header message)
+  (get-first-header-field-value (message-header-fields message)
+                                "MIME-Version"
+                                ;; No error if not found.
+                                #f))
+
+(define (mime:version-1.0? string)
+  (let ((tokens (mime:string->non-ignored-tokens string)))
+    (let loop ((in tokens)
+               (out '()))
+      (if (pair? in)
+          (let ((token (car in))
+                (in (cdr in)))
+            (cond ((string? token)
+                   (loop in (cons token out)))
+                  ((char? token)
+                   (loop in (cons (string token) out)))
+                  (else #f)))
+          (string=? (apply string-append (reverse! out))
+                    "1.0")))))
+
+(define mime:media-parsers '())
+
+;++ What about top-level media types whose subtypes are mandated to
+;++ have common syntax?
+
+(define (define-mime-media-parser type subtype parser)
+  (cond ((assq type mime:media-parsers)
+         => (lambda (top-level)
+              (if subtype
+                  (let ((subtype-parsers (cddr top-level)))
+                    (cond ((assq subtype subtype-parsers)
+                           => (lambda (sub-level)
+                                (warn "Replacing MIME parser:"
+                                      (symbol type '/ subtype)
+                                      (cdr sub-level)
+                                      (error-irritant/noise " with")
+                                      parser)
+                                (set-cdr! top-level parser)))
+                          (else
+                           (set-cdr! (cdr top-level)
+                                     (cons (cons subtype parser)
+                                           subtype-parsers)))))
+                  (begin
+                    (if (cadr top-level)
+                        (warn "Replacing default MIME parser:"
+                              type
+                              (cadr top-level)
+                              (error-irritant/noise " with")
+                              parser))
+                    (set-car! (cdr top-level) parser)))))
+        (else
+         (set! mime:media-parsers
+               (cons (cons type
+                           (if subtype
+                               (list #f (cons subtype parser))
+                               (list parser)))
+                     mime:media-parsers)))))
+
+(define-class <message-part> ()
+  (string define accessor)
+  (start  define accessor)
+  (end    define accessor))
+
+(define-method message-body ((message <message-part>))
+  (values (message-part-string message)
+          (message-part-start  message)
+          (message-part-end    message)))
+
+(define-method write-message-body ((message <message-part>) port)
+  (write-substring (message-part-string message)
+                   (message-part-start  message)
+                   (message-part-end    message)
+                   port))
+
+(define-class (<mime-body-basic-part>
+               (constructor make-mime-body-basic-part
+                            (string
+                             start end
+                             type subtype parameters
+                             id description
+                             encoding
+                             n-octets
+                             md5
+                             disposition language)))
+    (<mime-body-basic> <message-part>))
+
+;;; This is the default media parser, equivalent to a Content-Type of
+;;; APPLICATION/OCTET-STREAM.
+
+(define mime:basic-media-parser
+  (lambda (message type subtype parameters encoding)
+    (receive (string start end) (message-body message)
+      (make-mime-body-basic-part
+       string start end
+       type subtype parameters
+       (mime:get-content-id message)
+       (mime:get-content-description message)
+       encoding
+       (message-length message)
+       (ignore-errors (lambda () (md5-substring string start end))
+                      (lambda (condition) condition #f))
+       (mime:get-content-disposition message)
+       (mime:get-content-language message)))))
+
+;;; This is unnecessary, but it's nice to make things explicit.
+
+(define-mime-media-parser 'APPLICATION 'OCTET-STREAM
+  mime:basic-media-parser)
+
+(define-class (<mime-body-text-part>
+               (constructor make-mime-body-text-part
+                            (string
+                             start end
+                             subtype parameters
+                             id description
+                             encoding
+                             n-octets n-lines
+                             md5
+                             disposition language)))
+    (<mime-body-text> <message-part>))
+
+(define-mime-media-parser 'TEXT #f
+  (lambda (message type subtype parameters encoding)
+    type                                ;ignore
+    (receive (string start end) (message-body message)
+      (receive (octets lines) (count-octets&lines string start end)
+        (make-mime-body-text-part
+         string start end
+         subtype parameters
+         (mime:get-content-id message)
+         (mime:get-content-description message)
+         (mime-encoding/name encoding)
+         octets lines
+         (ignore-errors (lambda () (md5-substring string start end))
+                        (lambda (condition) condition #f))
+         (mime:get-content-disposition message)
+         (mime:get-content-language message))))))
+
+(define (count-octets&lines string start end)
+  (let loop ((i start) (octets 0) (lines 0))
+    (if (fix:= i end)
+        (values octets lines)
+        (loop (fix:+ i 1)
+              (fix:+ octets 1)
+              (if (char=? (string-ref string i) #\newline)
+                  (fix:+ lines 1)
+                  lines)))))
+
+;;;; Multipart Media
+
+(define-mime-media-parser 'MULTIPART #f
+  (lambda (message type subtype parameters encoding)
+    type                                ;ignore
+    (mime:parse-multipart message subtype parameters encoding)))
+
+(define-mime-media-parser 'MULTIPART 'DIGEST
+  (lambda (message type subtype parameters encoding)
+    type                                ;ignore
+    (fluid-let ((mime:default-content-type '(MESSAGE RFC822)))
+      (mime:parse-multipart message subtype parameters encoding))))
+
+(define (mime:parse-multipart message subtype parameters encoding)
+  (let* ((parts (mime:parse-multipart-subparts message parameters
+                                               encoding))
+         (enclosure (make-mime-body-multipart
+                     subtype parameters
+                     parts
+                     (mime:get-content-disposition message)
+                     (mime:get-content-language message))))
+    (for-each (lambda (part)
+                (set-mime-body-enclosure! part enclosure))
+              parts)
+    enclosure))
+
+(define (mime:parse-multipart-subparts message parameters encoding)
+  (let ((boundary (mime:get-boundary parameters message)))
+    (let ((do-it (lambda (body start end)
+                   (mime:parse-parts
+                    body
+                    (mime:multipart-message-parts body start end
+                                                  boundary)))))
+      (if (mime-encoding/identity? message)
+          (call-with-values (lambda () (message-body message))
+            do-it)
+          (let ((body
+                 (call-with-output-string
+                   (lambda (output-port)
+                     (call-with-mime-decoding-output-port
+                         encoding output-port #t
+                       (lambda (output-port)
+                         (write-message-body message output-port)))))))
+            (do-it body 0 (string-length body)))))))
+
+(define (mime:get-boundary parameters message)
+  (cond ((assq 'BOUNDARY parameters)
+         => (lambda (probe)
+              (string-append "--" (cdr probe))))
+        (else
+         (error "MIME multipart message has no boundary:"
+                message))))
+
+(define (mime:multipart-message-parts string start end boundary)
+  (let ((boundary-length (string-length boundary)))
+
+    (define (loop part-start search-start parts)
+      (cond ((substring-search-forward boundary string
+                                       search-start end)
+             => (lambda (boundary-start)
+                  (let ((boundary-end
+                         (+ boundary-start boundary-length)))
+                    (if (or (zero? boundary-start)
+                            (char=? (string-ref string
+                                                (- boundary-start 1))
+                                    #\newline))
+                        (continue part-start
+                                  (if (zero? boundary-start)
+                                      0
+                                      (- boundary-start 1))
+                                  boundary-end
+                                  parts)
+                        (loop part-start boundary-end parts)))))
+            (else (lose parts))))
+
+    (define (continue part-start part-end boundary-end parts)
+      (cond ((and (>= end (+ boundary-end 2))
+                  (char=? #\- (string-ref string boundary-end))
+                  (char=? #\- (string-ref string (+ boundary-end 1))))
+             (win (cons (cons part-start part-end) parts)))
+            ((skip-lwsp-until-newline string boundary-end end)
+             => (lambda (next-line-start)
+                  (loop next-line-start
+                        next-line-start
+                        (cons (cons part-start part-end) parts))))
+            (else
+             (loop part-start boundary-end parts))))
+
+    (define (win parts)
+      (cdr (reverse! parts)))
+
+    (define (lose parts)
+      (cdr (reverse! parts)))
+
+    (loop start start '())))
+
+;;;;; MIME Part Messages
+
+(define-class (<message-part-message>
+               (constructor make-message-part-message
+                            (header-fields string start end)))
+    ;** Do not rearrange this!  The MESSAGE-BODY method on
+    ;** <MESSAGE-PART> must be more given precedence over that on
+    ;** <MESSAGE>!
+    (<message-part> <message>))
+
+(define (mime:parse-part string header-start header-end body-end)
+  (mime:parse-body-structure
+   (make-message-part-message (lines->header-fields
+                               (substring->lines string header-start
+                                                 header-end))
+                              string
+                              (+ header-end 1)
+                              body-end)))
+
+(define (mime:parse-parts body parts)
+  (map (lambda (part)
+         (mime:parse-body-structure
+          (let ((start (car part))
+                (end (cdr part)))
+            (cond ((substring-search-forward "\n\n" body start end)
+                   => (lambda (header-end)
+                        (make-message-part-message
+                         (lines->header-fields
+                          (substring->lines body start
+                                            ;; Add trailing newline.
+                                            (+ header-end 1)))
+                         body
+                         ;; Skip the two newlines.
+                         (+ header-end 2)
+                         end)))
+                  (else
+                   ;; Grossly assume that this means there are no
+                   ;; headers.
+                   (make-message-part-message '() body start end))))))
+       parts))
+
+;;;; Content-Type Header Fields
+
+(define mime:default-content-type '(TEXT PLAIN (CHARSET . "us-ascii")))
+
+(define (mime:parse-content-type string)
+  (let ((tokens (mime:string->non-ignored-tokens string)))
+    (if (pair? tokens)
+        (let ((type (car tokens))
+              (tokens (cdr tokens)))
+          (if (and (string? type)
+                   (pair? tokens))
+              (let ((slash (car tokens))
+                    (tokens (cdr tokens)))
+                (if (and (eqv? slash #\/)
+                         (pair? tokens))
+                    (let ((subtype (car tokens))
+                          (tokens (cdr tokens)))
+                      (if (string? subtype)
+                          (cons* (intern type)
+                                 (intern subtype)
+                                 (mime:parse-parameters
+                                  tokens
+                                  "Content-Type"))
+                          #f))
+                    #f))
+              #f))
+        #f)))
+
+;;;; Other Content-... Fields
+
+(define mime:default-encoding '7BIT)
+
+(define (mime:parse-encoding encoding)
+  (let ((tokens (mime:string->non-ignored-tokens encoding)))
+    (if (and (pair? tokens)
+             (string? (car tokens))
+             (null? (cdr tokens)))
+        (intern (car tokens))
+        #f)))
+
+(define (mime:get-content-id message)
+  (parse-first-named-header message "Content-ID" #f rfc822:parse-msg-id))
+
+(define (mime:get-content-description message)
+  (parse-first-named-header message "Content-Description" #f
+                            mime:parse-encoded-header-value))
+
+(define (mime:parse-encoded-header-value value)
+  ;++ implement
+  value)
+
+(define (mime:get-content-disposition message)
+  (parse-first-named-header message "Content-Disposition" #f
+                            mime:parse-disposition))
+
+(define (mime:parse-disposition disposition)
+  (let ((tokens (mime:string->non-ignored-tokens disposition)))
+    (if (pair? tokens)
+        (let ((type (car tokens))
+              (tokens (cdr tokens)))
+          (if (string? type)
+              (cons (intern type)
+                    (mime:parse-parameters tokens
+                                           "Content-Disposition"))
+              #f))
+        #f)))
+
+(define (mime:get-content-language message)
+  ;++ implement
+  #f)
+
+;;;; Extended RFC 822 Tokenizer
+
+(define mime:special-chars
+        (char-set #\( #\) #\< #\> #\@
+                  #\, #\; #\: #\\ #\"
+                  #\/ #\[ #\] #\? #\=))
+
+;;; STRING->TOKENS includes whitespace & parenthesis comments;
+;;; STRING->NON-IGNORED-TOKENS omits them.
+
+(define mime:string->tokens
+        (rfc822:string-tokenizer mime:special-chars #t))
+
+(define mime:string->non-ignored-tokens
+        (rfc822:string-tokenizer mime:special-chars #f))
+
+;;; Too bad the parser language works only on strings; it would be
+;;; nice to be able to use it for general tokens, like RFC822 tokens.
+
+(define (mime:parse-parameters tokens header-name)
+  (let ((lose (lambda (tokens)
+                (warn (string-append "Malformed " header-name
+                                     " parameter tokens:")
+                      tokens)
+                '())))
+    (let recur ((tokens tokens))
+      (if (pair? tokens)
+          (let ((lose (lambda () (lose tokens))))
+            (let ((semi (car tokens))
+                  (tokens (cdr tokens)))
+              (if (and (eqv? semi #\;)
+                       (pair? tokens))
+                  (let ((attribute (car tokens))
+                        (tokens (cdr tokens)))
+                    (if (pair? tokens)
+                        (let ((equals (car tokens))
+                              (tokens (cdr tokens)))
+                          (if (and (eqv? equals #\=)
+                                   (pair? tokens))
+                              (cons (cons (intern attribute)
+                                          (rfc822:unquote-string
+                                           (car tokens)))
+                                    (recur (cdr tokens)))
+                              (lose)))
+                        (lose)))
+                  (lose))))
+          '()))))

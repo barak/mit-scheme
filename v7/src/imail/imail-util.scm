@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-util.scm,v 1.45 2005/11/27 06:35:24 riastradh Exp $
+$Id: imail-util.scm,v 1.46 2005/12/10 06:45:32 riastradh Exp $
 
-Copyright 2000,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +18,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02111-1301,
 USA.
 
 |#
@@ -137,6 +137,17 @@ USA.
 	     (char-lwsp? (string-ref string (fix:- end 1))))
 	(loop (fix:- end 1))
 	end)))
+
+(define (skip-lwsp-until-newline string start end)
+  (let loop ((index start))
+    (cond ((= index end)
+           #f)
+          ((char-lwsp? (string-ref string index))
+           (loop (+ index 1)))
+          ((char=? (string-ref string index) #\newline)
+           (+ index 1))
+          (else
+           #f))))
 
 (define (quote-lines lines)
   (map (lambda (line)

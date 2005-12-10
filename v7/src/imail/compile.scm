@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.21 2005/01/11 03:13:23 cph Exp $
+$Id: compile.scm,v 1.22 2005/12/10 06:45:32 riastradh Exp $
 
 Copyright 2000,2001,2003,2005 Massachusetts Institute of Technology
 
@@ -18,7 +18,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02111-1301,
 USA.
 
 |#
@@ -36,6 +36,7 @@ USA.
 		"imail-core"
 		"imail-file"
 		"imail-imap"
+		"imail-mime"
 		"imail-rmail"
 		"imail-summary"
 		"imail-top"
