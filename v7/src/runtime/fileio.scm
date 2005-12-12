@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.25 2005/10/24 05:35:26 cph Exp $
+$Id: fileio.scm,v 1.26 2005/12/12 21:41:23 cph Exp $
 
 Copyright 1991,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
 Copyright 2001,2004,2005 Massachusetts Institute of Technology
@@ -35,12 +35,13 @@ USA.
 	   (LENGTH ,operation/length)
 	   (PATHNAME ,operation/pathname)
 	   (TRUENAME ,operation/truename))))
-    (set! input-file-type
-	  (make-port-type other-operations generic-input-type))
-    (set! output-file-type
-	  (make-port-type other-operations generic-output-type))
-    (set! i/o-file-type
-	  (make-port-type other-operations generic-i/o-type)))
+    (let ((make-type
+	   (lambda (source sink)
+	     (make-port-type other-operations
+			     (generic-i/o-port-type source sink)))))
+      (set! input-file-type (make-type 'CHANNEL #f))
+      (set! output-file-type (make-type #f 'CHANNEL))
+      (set! i/o-file-type (make-type 'CHANNEL 'CHANNEL))))
   unspecific)
 
 (define input-file-type)

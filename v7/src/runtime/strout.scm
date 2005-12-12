@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.21 2005/11/29 06:54:11 cph Exp $
+$Id: strout.scm,v 14.22 2005/12/12 21:55:39 cph Exp $
 
 Copyright 1988,1990,1993,1999,2000,2001 Massachusetts Institute of Technology
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
@@ -31,7 +31,8 @@ USA.
 
 (define (open-output-string)
   (make-port accumulator-output-port-type
-	     (make-gstate #f #f 'TEXT #f #f)))
+	     (receive (sink extract extract!) (make-accumulator-sink)
+	       (make-gstate #f sink 'TEXT extract extract!))))
 
 (define (get-output-string port)
   ((port/operation port 'EXTRACT-OUTPUT) port))
@@ -52,79 +53,70 @@ USA.
 (define-structure (astate (type vector)
 			  (initial-offset 4) ;must match "genio.scm"
 			  (constructor #f))
-  chars
-  index)
+  extract
+  extract!)
 
-(define (maybe-reset-astate state)
-  (if (not (astate-chars state))
-      (begin
-	(set-astate-chars! state (make-string 128))
-	(set-astate-index! state 0))))
-
-(define (maybe-grow-accumulator! state min-size)
-  (if (fix:> min-size (string-length (astate-chars state)))
-      (let* ((old (astate-chars state))
-	     (n (string-length old))
-	     (new
-	      (make-string
-	       (let loop ((n (fix:+ n n)))
-		 (if (fix:>= n min-size)
-		     n
-		     (loop (fix:+ n n)))))))
-	(substring-move! old 0 n new 0)
-	(set-astate-chars! state new))))
-
 (define accumulator-output-port-type)
 (define (initialize-package!)
   (set! accumulator-output-port-type
 	(make-port-type
 	 `((EXTRACT-OUTPUT
 	    ,(lambda (port)
-	       (let ((state (port/state port)))
-		 (if (astate-chars state)
-		     (string-head (astate-chars state)
-				  (astate-index state))
-		     (make-string 0)))))
+	       (output-port/flush-output port)
+	       ((astate-extract (port/state port)))))
 	   (EXTRACT-OUTPUT!
 	    ,(lambda (port)
-	       (let ((state (port/state port)))
-		 (without-interrupts
-		  (lambda ()
-		    (let ((s (astate-chars state)))
-		      (if s
-			  (begin
-			    (set-astate-chars! state #f)
-			    (set-string-maximum-length! s (astate-index state))
-			    s)
-			  (make-string 0))))))))
-	   (WRITE-CHAR
-	    ,(lambda (port char)
-	       (guarantee-8-bit-char char)
-	       (let ((state (port/state port)))
-		 (without-interrupts
-		  (lambda ()
-		    (maybe-reset-astate state)
-		    (let* ((n (astate-index state))
-			   (n* (fix:+ n 1)))
-		      (maybe-grow-accumulator! state n*)
-		      (string-set! (astate-chars state) n char)
-		      (set-astate-index! state n*)))))
-	       1))
-	   (WRITE-SUBSTRING
-	    ,(lambda (port string start end)
-	       (let ((state (port/state port)))
-		 (without-interrupts
-		  (lambda ()
-		    (maybe-reset-astate state)
-		    (let* ((n (astate-index state))
-			   (n* (fix:+ n (fix:- end start))))
-		      (maybe-grow-accumulator! state n*)
-		      (substring-move! string start end (astate-chars state) n)
-		      (set-astate-index! state n*)))))
-	       (fix:- end start)))
+	       (output-port/flush-output port)
+	       ((astate-extract! (port/state port)))))
 	   (WRITE-SELF
 	    ,(lambda (port output-port)
 	       port
 	       (write-string " to string" output-port))))
-	 generic-no-i/o-type))
+	 (generic-i/o-port-type #f #t)))
   unspecific)
+
+(define (make-accumulator-sink)
+  (let ((chars #f)
+	(index 0))
+
+    (define (write-substring string start end)
+      (let ((n (fix:+ index (fix:- end start))))
+	(cond ((not chars)
+	       (set! chars (new-chars 128 n)))
+	      ((fix:> n (string-length chars))
+	       (set! chars
+		     (let ((new (new-chars (string-length chars) n)))
+		       (substring-move! chars 0 index new 0)
+		       new))))
+	(substring-move! string start end chars index)
+	(set! index n)
+	(fix:- end start)))
+
+    (define (new-chars start min-length)
+      (make-string
+       (let loop ((n start))
+	 (if (fix:>= n min-length)
+	     n
+	     (loop (fix:+ n n))))))
+
+    (values (make-non-channel-sink
+	     (lambda (string start end)
+	       (without-interrupts
+		(lambda ()
+		  (write-substring string start end)))))
+	    (lambda ()
+	      (without-interrupts
+	       (lambda ()
+		 (if chars
+		     (string-head chars index)
+		     (make-string 0)))))
+	    (lambda ()
+	      (without-interrupts
+	       (lambda ()
+		 (if chars
+		     (let ((s chars))
+		       (set! chars #f)
+		       (set! index 0)
+		       (set-string-maximum-length! s index)
+		       s)
+		     (make-string 0))))))))

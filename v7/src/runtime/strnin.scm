@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.14 2005/11/29 06:50:59 cph Exp $
+$Id: strnin.scm,v 14.15 2005/12/12 21:52:35 cph Exp $
 
 Copyright 1988,1990,1993,1999,2003,2004 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -44,37 +44,29 @@ USA.
 	      0
 	      (guarantee-substring-start-index start end 'OPEN-INPUT-STRING))))
     (make-port input-string-port-type
-	       (make-gstate #f #f 'TEXT string start end))))
+	       (make-gstate (make-string-source string start end) #f 'TEXT))))
+
+(define (make-string-source string start end)
+  (let ((index start))
+    (make-non-channel-source
+     (lambda ()
+       (fix:< index end))
+     (lambda (string* start* end*)
+       (let ((n
+	      (fix:min (fix:- end index)
+		       (fix:- end* start*))))
+	 (let ((limit (fix:+ index n)))
+	   (substring-move! string index limit string* start)
+	   (set! index limit))
+	 n)))))
 
 (define input-string-port-type)
 (define (initialize-package!)
   (set! input-string-port-type
 	(make-port-type
-	 `((CHAR-READY?
-	    ,(lambda (port)
-	       (let ((s (port/state port)))
-		 (fix:< (istate-start s) (istate-end s)))))
-	   (READ-CHAR
-	    ,(lambda (port)
-	       (let ((s (port/state port)))
-		 (without-interrupts
-		  (lambda ()
-		    (let ((start (istate-start s)))
-		      (if (fix:< start (istate-end s))
-			  (begin
-			    (set-istate-start! s (fix:+ start 1))
-			    (string-ref (istate-string s) start))
-			  (make-eof-object port))))))))
-	   (WRITE-SELF
+	 `((WRITE-SELF
 	    ,(lambda (port output-port)
 	       port
 	       (write-string " from string" output-port))))
-	 generic-no-i/o-type))
+	 (generic-i/o-port-type #t #f)))
   unspecific)
-
-(define-structure (istate (type vector)
-			  (initial-offset 4) ;must match "genio.scm"
-			  (constructor #f))
-  (string #f read-only #t)
-  start
-  (end #f read-only #t))

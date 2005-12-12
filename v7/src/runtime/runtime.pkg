@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.566 2005/11/29 06:46:06 cph Exp $
+$Id: runtime.pkg,v 14.567 2005/12/12 21:48:29 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1724,7 +1724,7 @@ USA.
   (export ()
 	  make-generic-i/o-port)
   (export (runtime console-i/o-port)
-	  generic-i/o-type
+	  generic-i/o-port-type
 	  generic-io/char-ready?
 	  generic-io/flush-output
 	  generic-io/read-char
@@ -1733,19 +1733,20 @@ USA.
 	  port-input-buffer
 	  set-input-buffer-contents!)
   (export (runtime file-i/o-port)
-	  generic-i/o-type
-	  generic-input-type
-	  generic-output-type
+	  generic-i/o-port-type
 	  make-gstate)
   (export (runtime string-input)
-	  generic-no-i/o-type
-	  make-gstate)
+	  generic-i/o-port-type
+	  make-gstate
+	  make-non-channel-source)
   (export (runtime string-output)
-	  generic-no-i/o-type
-	  make-gstate)
+	  generic-i/o-port-type
+	  make-gstate
+	  make-non-channel-sink)
   (export (runtime truncated-string-output)
-	  generic-no-i/o-type
-	  make-gstate)
+	  generic-i/o-port-type
+	  make-gstate
+	  make-non-channel-sink)
   (initialization (initialize-package!)))
 
 (define-package (runtime gensym)
@@ -4035,6 +4036,7 @@ USA.
   (files "strott")
   (parent (runtime))
   (export ()
+	  call-with-truncated-output-string
 	  with-output-to-truncated-string)
   (initialization (initialize-package!)))
 

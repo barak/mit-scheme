@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.21 2005/03/20 16:09:46 cph Exp $
+$Id: ttyio.scm,v 1.22 2005/12/12 21:55:44 cph Exp $
 
 Copyright 1991,1993,1996,1999,2003,2004 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -31,7 +31,8 @@ USA.
 
 (define (initialize-package!)
   (let ((input-channel (tty-input-channel))
-	(output-channel (tty-output-channel)))
+	(output-channel (tty-output-channel))
+	(gtype (generic-i/o-port-type 'CHANNEL 'CHANNEL)))
     (let ((type
 	   (make-port-type
 	    `((BEEP ,operation/beep)
@@ -43,14 +44,17 @@ USA.
 	      (WRITE-SELF ,operation/write-self)
 	      (X-SIZE ,operation/x-size)
 	      (Y-SIZE ,operation/y-size))
-	    generic-i/o-type)))
+	    gtype)))
       (let ((port (make-port type (make-cstate input-channel output-channel))))
 	(set-channel-port! input-channel port)
 	(set-channel-port! output-channel port)
 	(set! the-console-port port)
 	(set-console-i/o-port! port)
 	(set-current-input-port! port)
-	(set-current-output-port! port))))
+	(set-current-output-port! port)))
+    (set! *char-ready? (port-type/char-ready? gtype))
+    (set! *read-char (port-type/read-char gtype))
+    (set! *unread-char (port-type/unread-char gtype)))
   (add-event-receiver! event:before-exit save-console-input)
   (add-event-receiver! event:after-restore reset-console))
 
@@ -96,6 +100,9 @@ USA.
 (define console-i/o-port)
 (define console-input-port)
 (define console-output-port)
+(define *char-ready?)
+(define *read-char)
+(define *unread-char)
 
 (define (operation/read-char port)
   (let ((char (generic-io/read-char port)))
@@ -111,14 +118,14 @@ USA.
 
 (define (operation/read-finish port)
   (let loop ()
-    (if ((port-type/char-ready? generic-i/o-type) port)
-	(let ((char ((port-type/read-char generic-i/o-type) port)))
+    (if (*char-ready? port)
+	(let ((char (*read-char port)))
 	  (if (not (eof-object? char))
 	      (begin
 		(maybe-echo-input port char)
 		(if (char-whitespace? char)
 		    (loop)
-		    ((port-type/unread-char generic-i/o-type) port char)))))))
+		    (*unread-char port char)))))))
   (output-port/discretionary-flush port))
 
 (define (maybe-echo-input port char)
