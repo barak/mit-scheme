@@ -1,7 +1,7 @@
 
-# $Id: release-prefix,v 1.8 2002/01/29 01:36:20 cph Exp $
+# $Id: release-prefix,v 1.9 2005/12/13 06:41:05 cph Exp $
 #
-# Copyright (c) 2000-2002 Massachusetts Institute of Technology
+# Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ get_release ()
 get_release_prefix ()
 {
     v="${1:-$(get_release)}"
-    echo "scheme-${v}"
+    echo "mit-scheme-${v}"
 }
 
 get_release_tag ()

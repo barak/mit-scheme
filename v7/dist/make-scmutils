@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: make-scmutils,v 1.4 2002/11/20 18:20:40 cph Exp $
+# $Id: make-scmutils,v 1.5 2005/12/13 06:41:03 cph Exp $
 #
-# Copyright (c) 2001, 2002 Massachusetts Institute of Technology
+# Copyright 2001,2002,2004 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #
 # 2. Link or copy a scheme binary release into it:
 #
-#	ln /scheme/v7/dist/X.Y.Z/scheme-X.Y.Z-ix86-gnu-linux.tar.gz .
+#	ln /scheme/v7/dist/X.Y.Z/mit-scheme-X.Y.Z-ix86-gnu-linux.tar.gz .
 #
 # 3. Run this script:
 #
@@ -41,18 +41,20 @@ if [ $# -gt 0 ]; then
     exit 1
 fi
 
-SCHEME_TAR=$(ls scheme-*-ix86-gnu-linux.tar.gz 2> /dev/null)
+SCHEME_TAR=$(ls mit-scheme-*-ix86-gnu-linux.tar.gz 2> /dev/null)
 if [ -z "${SCHEME_TAR}" ]; then
-    echo "Unable to find file 'scheme-X.Y.Z-ix86-gnu-linux.tar.gz'"
+    echo "Unable to find file 'mit-scheme-X.Y.Z-ix86-gnu-linux.tar.gz'"
     exit 1
 fi
-SVERSION=$(echo "${SCHEME_TAR}" | tail -1 | sed -e 's/^scheme-\(..*\)-ix86-gnu-linux\.tar\.gz$/\1/')
+SVERSION=$(echo "${SCHEME_TAR}" | tail -1 | sed -e 's/^mit-scheme-\(..*\)-ix86-gnu-linux\.tar\.gz$/\1/')
+
+echo "MIT/GNU Scheme version: ${SVERSION}"
 
 TL_DIR="$(pwd)"
 SOURCE_DIR="/sw/scmutils"
 DIST_DIR="/scheme/v7/dist"
 
-SCHEME_DIR="${TL_DIR}/scheme-${SVERSION}"
+SCHEME_DIR="${TL_DIR}/mit-scheme-${SVERSION}"
 SBINDIR="${SCHEME_DIR}/bin"
 SAUXDIR="${SCHEME_DIR}/lib/mit-scheme"
 
@@ -76,7 +78,7 @@ INSTALL_DATA="${INSTALL} -m 644"
 SCHEME="${SBINDIR}/scheme -library ${SAUXDIR}"
 
 if [ ! -f "${STAMP_UNPACK}" ];then
-    echo "Unpack MIT Scheme"
+    echo "Unpack MIT/GNU Scheme"
     rm -rf "${SCHEME_DIR}"
     ${MKDIR} "${SCHEME_DIR}"
     (cd "${SCHEME_DIR}"; tar xzf "../${SCHEME_TAR}")
@@ -90,20 +92,22 @@ if [ ! -f "${STAMP_BUILD}" ];then
     cpx -qsE "${SOURCE_DIR}/src" "${BUILD_DIR}"
     rm -f "${BUILD_DIR}/load.scm"
     ln -s "${SOURCE_DIR}/dist/load.scm" "${BUILD_DIR}/."
-    cd "${BUILD_DIR}"
-    echo "Compile binaries"
-    ${SCHEME} -compiler -heap 4000 > compile.out \
+    (
+	cd "${BUILD_DIR}"
+	echo "Compile binaries"
+	${SCHEME} -compiler -heap 4000 > compile.out \
 <<EOF
 (load "compile")
 EOF
-    echo "Compiler output in ${BUILD_DIR}/compile.out"
-    echo "Generate mechanics band"
-    ${SCHEME} -edwin -compiler -heap 4000 > load.out \
+	echo "Compiler output in ${BUILD_DIR}/compile.out"
+	echo "Generate mechanics band"
+	${SCHEME} -edwin -compiler -heap 4000 > load.out \
 <<EOF
 (load "load")
 (disk-save "edwin-mechanics.com")
 EOF
-    echo "Output in ${BUILD_DIR}/load.out"
+	echo "Output in ${BUILD_DIR}/load.out"
+    )
     touch "${STAMP_BUILD}"
 fi
 
@@ -117,7 +121,7 @@ if [ ! -f "${STAMP_IMAGE}" ];then
     ${MKDIR} "${BINDIR}"
     ${MKDIR} "${AUXDIR}"
 
-    echo "Copy MIT Scheme"
+    echo "Copy MIT/GNU Scheme"
     ${MKDIR} "${MBINDIR}"
     cpx -q "${SBINDIR}"/* "${MBINDIR}/."
     ${MKDIR} "${MAUXDIR}"
@@ -211,7 +215,7 @@ rm -rf "${STAMP_IMAGE}" "${IMAGE_DIR}"
 echo "Remove build directory"
 rm -rf "${STAMP_BUILD}" "${BUILD_DIR}"
 
-echo "Remove MIT Scheme directory"
+echo "Remove MIT/GNU Scheme directory"
 rm -rf "${STAMP_UNPACK}" "${SCHEME_DIR}"
 
 echo "All done; tar file is ${TARFILE}"

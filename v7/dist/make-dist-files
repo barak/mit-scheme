@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.22 2002/06/18 00:51:18 cph Exp $
+# $Id: make-dist-files,v 1.23 2005/12/13 06:41:02 cph Exp $
 #
-# Copyright (c) 2000-2002 Massachusetts Institute of Technology
+# Copyright 2000,2001,2002,2003,2005 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,13 +31,21 @@ VERSION="${2}"
 DESTINATION="${3}"
 
 case "${TYPE}" in
-6001|all|std)
-  ;;
-*)
-  echo "Unknown distribution type: ${TYPE}"
-  exit 1
-  ;;
+(6001 | all | std)
+    ;;
+(snapshot)
+    [ "${VERSION}" ] || VERSION="snapshot"
+    ;;
+(*)
+    echo "Unknown distribution type: ${TYPE}"
+    echo "Valid types: std all 6001 snapshot"
+    exit 1
+    ;;
 esac
+
+if [ "${VERSION}" = "snapshot" ]; then
+    VERSION=$(date +%Y%m%d)
+fi
 
 DIST_DIR="/scheme/v7/dist"
 
@@ -46,7 +54,7 @@ DIST_DIR="/scheme/v7/dist"
 TL_DIR="$(pwd)"
 BUILD_DIR_REL="$(get_release_prefix "${VERSION}")"
 BUILD_DIR="${TL_DIR}/${BUILD_DIR_REL}"
-SRC_FILE="${BUILD_DIR}-src.tar.gz"
+SRC_FILE="${BUILD_DIR}.tar.gz"
 STAMP_BUILD="${TL_DIR}/stamp-build"
 STAMP_IMAGE="${TL_DIR}/stamp-image"
 
@@ -60,7 +68,7 @@ if [ ! -f "${SRC_FILE}" ]; then
 fi
 
 MKDIR="install -d -m 755"
-INSTALL="install -p"
+INSTALL="install --preserve-timestamps"
 INSTALL_DATA="${INSTALL} -m 644"
 
 # It takes a lot of work to build the image.
@@ -72,8 +80,8 @@ if [ ! -f "${STAMP_BUILD}" ];then
     tar xzf "${SRC_FILE}"
 
     cd "${BUILD_DIR}/src"
-    ./configure --enable-static-libs=yes --enable-dynamic-crypto=no \
-	--with-mcrypt=no
+    ./configure --enable-static-libs=yes --enable-dynamic-modules=no \
+	--with-mcrypt=no --with-libpq=no --with-db4=no
     make
 
     cd "${BUILD_DIR}/doc"
@@ -84,7 +92,7 @@ if [ ! -f "${STAMP_BUILD}" ];then
 fi
 
 if [ ! -f "${STAMP_IMAGE}" ]; then
-    rm -rf ${IMAGE_DIR}
+    rm -rf "${IMAGE_DIR}"
 
     cd "${BUILD_DIR}/src"
     make install DESTDIR="${IMAGE_DIR}"
@@ -101,26 +109,24 @@ if [ ! -f "${STAMP_IMAGE}" ]; then
     ${INSTALL_DATA} ${DIST_DIR}/info/r5rs.* "${AUXDIR}/edwin/info/."
 
     ALL_BANDS="runtime.com compiler.com edwin.com all.com 6001.com"
-    case ${TYPE} in
-    std)
+    case "${TYPE}" in
+    (std | snapshot)
 	for BAND in ${ALL_BANDS}; do
 	    case "${BAND}" in
-	    "runtime.com"|"all.com")
+	    ("runtime.com"|"all.com")
 		;;
-	    *)
+	    (*)
 		rm -f "${AUXDIR}/${BAND}"
 		;;
 	    esac
 	done
 	;;
-    all)
-	;;
-    6001)
+    (6001)
 	for BAND in ${ALL_BANDS}; do
 	    case "${BAND}" in
-	    "6001.com")
+	    ("6001.com")
 		;;
-	    *)
+	    (*)
 		rm -f "${AUXDIR}/${BAND}"
 		;;
 	    esac
@@ -143,41 +149,48 @@ make_tarfile ()
 }
 
 if [ "${DESTINATION}" = "" ]; then
-  PRE="${BUILD_DIR_REL}-ix86"
-  make_tarfile "${PRE}-gnu-linux"
-  ${INSTALL} ${DIST_DIR}/freebsd-bin/* "${BINDIR}/."
-  make_tarfile "${PRE}-freebsd"
+    PRE="${BUILD_DIR_REL}-ix86"
+    make_tarfile "${PRE}-gnu-linux"
+    if [ -f "${DIST_DIR}/freebsd-bin/scheme" ]; then
+	${INSTALL} "${DIST_DIR}/freebsd-bin/"* "${BINDIR}/."
+	make_tarfile "${PRE}-freebsd"
+    fi
 else
-  make_tarfile "${DESTINATION}"
+    make_tarfile "${DESTINATION}"
 fi
 
 rm -rf "${STAMP_IMAGE}" "${IMAGE_DIR}"
 
-make_doc_file ()
-{
-    DOCFILE="${BUILD_DIR}-${2}.${3}"
-    rm -f "${DOCFILE}"
-    (cd "${TL_DIR}"; ${1} "${DOCFILE}" "${BUILD_DIR_REL}/${2}")
-    chmod a-w "${DOCFILE}"
-}
+case "${TYPE}" in
+(std | all | 6001)
+    make_doc_file ()
+    {
+	DOCFILE="${BUILD_DIR}-${2}.${3}"
+	rm -f "${DOCFILE}"
+	(cd "${TL_DIR}"; ${1} "${DOCFILE}" "${BUILD_DIR_REL}/${2}")
+	chmod a-w "${DOCFILE}"
+    }
 
-for TYPE in html info pdf ps; do
-    IMAGE_ROOT="doc-${TYPE}"
-    IMAGE_DIR="${BUILD_DIR}/${IMAGE_ROOT}"
-    rm -rf "${IMAGE_DIR}"
-    mkdir "${IMAGE_DIR}"
-    (
-	cd "${BUILD_DIR}/doc"
-	make "install-${TYPE}" "${TYPE}dir=${IMAGE_DIR}"
-    )
-    make_doc_file "tar cvzf" "${IMAGE_ROOT}" "tar.gz"
-    make_doc_file "zip -r" "${IMAGE_ROOT}" "zip"
-    case "${TYPE}" in
-    html | pdf)
-	rm -rf "${TL_DIR}/${IMAGE_ROOT}"
-	mv -f "${IMAGE_DIR}" "${TL_DIR}/."
-	;;
-    esac
-done
+    for FMT in html info pdf ps; do
+	IMAGE_ROOT="doc-${FMT}"
+	IMAGE_DIR="${BUILD_DIR}/${IMAGE_ROOT}"
+	rm -rf "${IMAGE_DIR}"
+	mkdir "${IMAGE_DIR}"
+	(
+	    cd "${BUILD_DIR}/doc"
+	    make "install-${FMT}" "${FMT}dir=${IMAGE_DIR}"
+	)
+	make_doc_file "tar cvzf" "${IMAGE_ROOT}" "tar.gz"
+	make_doc_file "zip -r" "${IMAGE_ROOT}" "zip"
+	case "${FMT}" in
+	(html | pdf)
+	    rm -rf "${TL_DIR}/${IMAGE_ROOT}"
+	    mv -f "${IMAGE_DIR}" "${TL_DIR}/."
+	    ;;
+	esac
+    done
+    ;;
+esac
 
+cd "${TL_DIR}"
 rm -rf "${STAMP_BUILD}" "${BUILD_DIR}"

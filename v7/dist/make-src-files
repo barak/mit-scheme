@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.20 2002/06/18 17:59:21 cph Exp $
+# $Id: make-src-files,v 1.21 2005/12/13 06:41:04 cph Exp $
 #
-# Copyright (c) 2000-2002 Massachusetts Institute of Technology
+# Copyright 2000,2001,2002,2003,2005 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,63 +22,80 @@
 . /scheme/v7/dist/release-prefix
 
 if [ $# -eq 0 ]; then
-  VERSION="$(get_release)"
+    VERSION="$(get_release)"
 elif [ $# -eq 1 ]; then
-  VERSION="${1}"
+    VERSION="${1}"
 else
-  echo "usage: $0 [VERSION]"
-  exit 1
+    echo "usage: $0 [VERSION]"
+    echo "  VERSION may be 'snapshot' to specify today's date"
+    exit 1
 fi
 
-INSTALL="install"
+INSTALL="install --preserve-timestamps"
 INSTALL_DATA="${INSTALL} -m 644"
-PREFIX="$(get_release_prefix "${VERSION}")"
-TAG="$(get_release_tag "${VERSION}")"
-CVS="cvs -d /scheme/cvsroot"
 
-rm -rf ${PREFIX}
-mkdir ${PREFIX}
+if [ "${VERSION}" = "snapshot" ]; then
+    SNAPSHOT_P=true
+    PREFIX="$(get_release_prefix $(date +%Y%m%d))"
+    TAG_FLAG="-D"
+    TAG=$(date --iso-8601=seconds)
+else
+    SNAPSHOT_P=
+    PREFIX="$(get_release_prefix "${VERSION}")"
+    TAG_FLAG="-r"
+    TAG="$(get_release_tag "${VERSION}")"
+fi
+
+CVS="cvs -d ${USER}@subversions.gnu.org:/cvsroot/mit-scheme"
+
+rm -rf "${PREFIX}"
+mkdir "${PREFIX}"
+
+if [ -z "${SNAPSHOT_P}" ]; then
+    (
+	cd /scheme/v7/src/runtime
+	TAG_STATUS="$(${CVS} status -v version.scm | fgrep ${TAG})"
+	if [ -z "${TAG_STATUS}" ]; then
+	    ${CVS} rtag "${TAG}" mit-scheme/v7/doc mit-scheme/v7/src \
+		mit-scheme/etc/xscheme.el
+	fi
+    )
+fi
 
 (
-    cd /scheme/v7/src/runtime
-    TAG_STATUS="$(${CVS} status -v version.scm | fgrep ${TAG})"
-    if [ -z "${TAG_STATUS}" ]; then
-	${CVS} rtag ${TAG} v7/doc v7/src etc/xscheme.el
-    fi
-)
-
-(
-    cd ${PREFIX}
-    ${CVS} export -r ${TAG} -d src v7/src
+    cd "${PREFIX}"
+    ${CVS} export "${TAG_FLAG}" "${TAG}" -d src mit-scheme/v7/src
     (cd src; ./Setup.sh)
-    ${CVS} export -r ${TAG} -d doc v7/doc
+    ${CVS} export "${TAG_FLAG}" "${TAG}" -d doc mit-scheme/v7/doc
     (cd doc; autoconf)
-    ${CVS} export -r ${TAG} etc/xscheme.el
+    ${CVS} export "${TAG_FLAG}" "${TAG}" -d etc mit-scheme/etc/xscheme.el
 )
 
-find ${PREFIX} -type f -print | xargs chmod g-w
-find ${PREFIX} -type d -print | xargs chmod g-w
+find "${PREFIX}" -type f -print | xargs chmod g-w
+find "${PREFIX}" -type d -print | xargs chmod g-w
 
 ${INSTALL_DATA} /scheme/v7/src/ChangeLog changelog.txt
-${INSTALL_DATA} /scheme/v7/src/ChangeLog ${PREFIX}/src/.
-${INSTALL_DATA} /scheme/v7/doc/ChangeLog ${PREFIX}/doc/.
-${INSTALL_DATA} /scheme/v7/dist/Makefile ${PREFIX}/.
+${INSTALL_DATA} /scheme/v7/src/ChangeLog "${PREFIX}/src/."
+${INSTALL_DATA} /scheme/v7/doc/ChangeLog "${PREFIX}/doc/."
+${INSTALL_DATA} /scheme/v7/dist/Makefile "${PREFIX}/."
 
-tarfile=${PREFIX}-src.tar.gz
-zipfile=${PREFIX}-src.zip
-ucfile=${PREFIX}-src-ucode.tar.gz
+tarfile="${PREFIX}.tar.gz"
+zipfile="${PREFIX}.zip"
+ucfile="${PREFIX}-ucode.tar.gz"
 
-rm -f ${tarfile}
-rm -f ${zipfile}
-rm -f ${ucfile}
+rm -f "${tarfile}"
+rm -f "${zipfile}"
+rm -f "${ucfile}"
 
-tar cvzf ${tarfile} ${PREFIX}
-tar cvzf ${ucfile} ${PREFIX}/src/COPYING ${PREFIX}/src/microcode
+tar cvzf "${tarfile}" "${PREFIX}"
+tar cvzf "${ucfile}" "${PREFIX}/src/COPYING" "${PREFIX}/src/microcode"
+chmod -w changelog.txt "${tarfile}" "${ucfile}"
 
-rm -rf ${PREFIX}/src/lib
-symlinks -rd ${PREFIX}
-zip -rl ${zipfile} ${PREFIX}
+if [ -z "${SNAPSHOT_P}" ]; then
+    rm -rf "${PREFIX}/src/lib"
+    symlinks -rd "${PREFIX}"
+    zip -rl "${zipfile}" "${PREFIX}"
+    chmod -w "${zipfile}"
+fi
 
-chmod -w changelog.txt ${tarfile} ${zipfile} ${ucfile}
-
-rm -rf ${PREFIX}
+rm -rf "${PREFIX}"
