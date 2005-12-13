@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id $
+$Id: imail-mime.scm,v 1.2 2005/12/13 01:41:39 cph Exp $
 
 Copyright 2005 Taylor Campbell
 
@@ -135,7 +135,7 @@ USA.
                   (else #f)))
           (string=? (apply string-append (reverse! out))
                     "1.0")))))
-
+
 (define mime:media-parsers '())
 
 ;++ What about top-level media types whose subtypes are mandated to
@@ -173,7 +173,7 @@ USA.
                                (list #f (cons subtype parser))
                                (list parser)))
                      mime:media-parsers)))))
-
+
 (define-class <message-part> ()
   (string define accessor)
   (start  define accessor)
@@ -421,14 +421,13 @@ USA.
                       (if (string? subtype)
                           (cons* (intern type)
                                  (intern subtype)
-                                 (mime:parse-parameters
-                                  tokens
-                                  "Content-Type"))
+                                 (mime:parse-parameters tokens
+							"Content-Type"))
                           #f))
                     #f))
               #f))
         #f)))
-
+
 ;;;; Other Content-... Fields
 
 (define mime:default-encoding '7BIT)
@@ -475,18 +474,18 @@ USA.
 ;;;; Extended RFC 822 Tokenizer
 
 (define mime:special-chars
-        (char-set #\( #\) #\< #\> #\@
-                  #\, #\; #\: #\\ #\"
-                  #\/ #\[ #\] #\? #\=))
+  (char-set #\( #\) #\< #\> #\@
+	    #\, #\; #\: #\\ #\"
+	    #\/ #\[ #\] #\? #\=))
 
 ;;; STRING->TOKENS includes whitespace & parenthesis comments;
 ;;; STRING->NON-IGNORED-TOKENS omits them.
 
 (define mime:string->tokens
-        (rfc822:string-tokenizer mime:special-chars #t))
+  (rfc822:string-tokenizer mime:special-chars #t))
 
 (define mime:string->non-ignored-tokens
-        (rfc822:string-tokenizer mime:special-chars #f))
+  (rfc822:string-tokenizer mime:special-chars #f))
 
 ;;; Too bad the parser language works only on strings; it would be
 ;;; nice to be able to use it for general tokens, like RFC822 tokens.
