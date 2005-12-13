@@ -5,7 +5,7 @@
 
 umask 002
 
-exec > /scheme/etc/update-rcs-log.out 2>&1
+exec > /tmp/update-rcs-log.out 2>&1
 
 export PATH="/usr/local/bin:${PATH}"
 
@@ -16,7 +16,7 @@ if [ -z "${CVS2CL}" ]; then
 fi
 
 COMMON="--revisions --usermap /scheme/v7/src/etc/usermap --domain zurich.csail.mit.edu --stdout --no-wrap --separate-header --window 3600"
-GOPTS_SCHEME="-d:ext:anoncvs@subversions.gnu.org:/cvsroot/mit-scheme"
+GOPTS_SCHEME="-d:ext:anoncvs@cvs.savannah.gnu.org:/cvsroot/mit-scheme"
 GOPTS_HTML="-d:ext:anoncvs@savannah.gnu.org:/webcvs/mit-scheme"
 O="ChangeLog"
 N="${O}.new"
