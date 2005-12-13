@@ -16,8 +16,8 @@ if [ -z "${CVS2CL}" ]; then
 fi
 
 COMMON="--revisions --usermap /scheme/v7/src/etc/usermap --domain zurich.csail.mit.edu --stdout --no-wrap --separate-header --window 3600"
-GOPTS_SCHEME="-d:ext:anoncvs@cvs.savannah.gnu.org:/cvsroot/mit-scheme"
-GOPTS_HTML="-d:ext:anoncvs@savannah.gnu.org:/webcvs/mit-scheme"
+GOPTS_SCHEME="-d:pserver:anonymous@cvs.savannah.gnu.org:/cvsroot/mit-scheme"
+GOPTS_HTML="-d:pserver:anonymous@cvs.savannah.gnu.org:/webcvs/mit-scheme"
 O="ChangeLog"
 N="${O}.new"
 
