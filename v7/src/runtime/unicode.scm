@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.24 2005/12/09 07:06:23 riastradh Exp $
+$Id: unicode.scm,v 1.25 2005/12/13 15:29:52 cph Exp $
 
 Copyright 2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -131,15 +131,6 @@ USA.
 (define (port->byte-sink port)
   (lambda (byte)
     (write-char (integer->char byte) port)))
-
-(define ((make-call-with-output-string open-output-string) generator)
-  (let ((port (open-output-string)))
-    (generator port)
-    (get-output-string port)))
-
-(define (initialize-package!)
-  (initialize-wide-ports!)
-  (initialize-utf-ports!))
 
 ;;;; Unicode characters
 
@@ -638,19 +629,6 @@ USA.
 
 ;;;; UTF-32 representation
 
-(define (read-utf32-char port)
-  (if (host-big-endian?)
-      (read-utf32-be-char port)
-      (read-utf32-le-char port)))
-
-(define (read-utf32-be-char port)
-  (or (source-utf32-be-char (port->byte-source port) 'READ-UTF32-BE-CHAR)
-      (make-eof-object port)))
-
-(define (read-utf32-le-char port)
-  (or (source-utf32-le-char (port->byte-source port) 'READ-UTF32-LE-CHAR)
-      (make-eof-object port)))
-
 (define (source-utf32-be-char source caller)
   (source-utf32-char source utf32-be-bytes->code-point caller))
 
@@ -682,19 +660,6 @@ USA.
      (fix:lsh b1 8)
      b0))
 
-(define (write-utf32-char char port)
-  (if (host-big-endian?)
-      (write-utf32-be-char char port)
-      (write-utf32-le-char char port)))
-
-(define (write-utf32-be-char char port)
-  (guarantee-wide-char char 'WRITE-UTF32-BE-CHAR)
-  (sink-utf32-be-char char (port->byte-sink port)))
-
-(define (write-utf32-le-char char port)
-  (guarantee-wide-char char 'WRITE-UTF32-LE-CHAR)
-  (sink-utf32-le-char char (port->byte-sink port)))
-
 (define-integrable (sink-utf32-be-char char sink)
   (let ((pt (char->integer char)))
     (sink 0)
@@ -810,19 +775,6 @@ USA.
 
 ;;;; UTF-16 representation
 
-(define (read-utf16-char port)
-  (if (host-big-endian?)
-      (read-utf16-be-char port)
-      (read-utf16-le-char port)))
-
-(define (read-utf16-be-char port)
-  (or (source-utf16-be-char (port->byte-source port) 'READ-UTF16-BE-CHAR)
-      (make-eof-object port)))
-
-(define (read-utf16-le-char port)
-  (or (source-utf16-le-char (port->byte-source port) 'READ-UTF16-LE-CHAR)
-      (make-eof-object port)))
-
 (define (source-utf16-be-char source caller)
   (source-utf16-char source be-bytes->digit16 caller))
 
@@ -853,19 +805,6 @@ USA.
 	       (error "Truncated UTF-16 input."))
 	   (combinator b0 b1)))))
 
-(define (write-utf16-char char port)
-  (if (host-big-endian?)
-      (write-utf16-be-char char port)
-      (write-utf16-le-char char port)))
-
-(define (write-utf16-be-char char port)
-  (guarantee-wide-char char 'WRITE-UTF16-BE-CHAR)
-  (sink-utf16-be-char char (port->byte-sink port)))
-
-(define (write-utf16-le-char char port)
-  (guarantee-wide-char char 'WRITE-UTF16-LE-CHAR)
-  (sink-utf16-le-char char (port->byte-sink port)))
-
 (define-integrable (sink-utf16-be-char char sink)
   (sink-utf16-char char sink
 		   (lambda (digit sink)
@@ -885,7 +824,7 @@ USA.
 	(let ((s (fix:- pt #x10000)))
 	  (dissecter (fix:or #xD800 (fix:lsh s -10)) sink)
 	  (dissecter (fix:or #xDC00 (fix:and s #x3FF)) sink)))))
-
+
 (define (utf16-string->wide-string string #!optional start end)
   (utf-string->wide-string string start end
 			   (if (host-big-endian?)
@@ -1009,10 +948,6 @@ USA.
 
 ;;;; UTF-8 representation
 
-(define (read-utf8-char port)
-  (or (source-utf8-char (port->byte-source port) 'READ-UTF8-CHAR)
-      (make-eof-object port)))
-
 (define (source-utf8-char source caller)
   (let ((b0 (source))
 	(get-next
@@ -1049,10 +984,6 @@ USA.
   (utf-string->wide-string string start end
 			   source-utf8-char
 			   'UTF8-STRING->WIDE-STRING))
-
-(define (write-utf8-char char port)
-  (guarantee-wide-char char 'WRITE-UTF8-CHAR)
-  (sink-utf8-char char (port->byte-sink port)))
 
 (define (sink-utf8-char char sink)
   (let ((pt (char->integer char)))
@@ -1078,7 +1009,7 @@ USA.
 	   (sink (subsequent-char 12))
 	   (sink (subsequent-char 6))
 	   (sink (subsequent-char 0))))))
-
+
 (define (wide-string->utf8-string string #!optional start end)
   (wide-string->utf-string string start end
 			   sink-utf8-char
@@ -1205,10 +1136,9 @@ USA.
 ;;;; Wide string ports
 
 (define open-wide-output-string)
-(define call-with-wide-output-string)
 (define open-wide-input-string)
 
-(define (initialize-wide-ports!)
+(define (initialize-package!)
   (set! open-wide-output-string
 	(let ((type
 	       (make-port-type
@@ -1216,7 +1146,6 @@ USA.
 		   ,(lambda (port char)
 		      (guarantee-wide-char char 'WRITE-CHAR)
 		      ((port/state port) char)
-		      ;; Return the number of characters written.
 		      1))
 		  (EXTRACT-OUTPUT
 		   ,(lambda (port)
@@ -1233,8 +1162,6 @@ USA.
 		#f)))
 	  (lambda ()
 	    (make-port type (open-output-object-buffer)))))
-  (set! call-with-wide-output-string
-	(make-call-with-output-string open-wide-output-string))
   (set! open-wide-input-string
 	(let ((type
 	       (make-port-type
@@ -1250,116 +1177,16 @@ USA.
 	  (lambda (string #!optional start end)
 	    (guarantee-wide-string string 'OPEN-WIDE-INPUT-STRING)
 	    (make-port type
-		       (open-input-object-buffer
-			(wide-string-contents string)
-			start
-			end
-			'OPEN-WIDE-INPUT-STRING)))))
+		       (open-input-object-buffer (wide-string-contents string)
+						 start
+						 end
+						 'OPEN-WIDE-INPUT-STRING)))))
   unspecific)
-
-;;;; UTF-xx string ports
 
-(define open-utf8-input-string)
-(define open-utf8-output-string)
-(define call-with-utf8-output-string)
-(define open-utf16-input-string)
-(define open-utf16-output-string)
-(define call-with-utf16-output-string)
-(define open-utf16-be-input-string)
-(define open-utf16-be-output-string)
-(define call-with-utf16-be-output-string)
-(define open-utf16-le-input-string)
-(define open-utf16-le-output-string)
-(define call-with-utf16-le-output-string)
-(define open-utf32-input-string)
-(define open-utf32-output-string)
-(define call-with-utf32-output-string)
-(define open-utf32-be-input-string)
-(define open-utf32-be-output-string)
-(define call-with-utf32-be-output-string)
-(define open-utf32-le-input-string)
-(define open-utf32-le-output-string)
-(define call-with-utf32-le-output-string)
-
-(define (initialize-utf-ports!)
-  (let-syntax
-      ((define-openers
-	 (sc-macro-transformer
-	  (lambda (form environment)
-	    (if (syntax-match? '(SYMBOL DATUM) (cdr form))
-		(let ((root (cadr form))
-		      (name (caddr form))
-		      (sink
-		       (lambda (root)
-			 (symbol-append 'SINK- root '-CHAR)))
-		      (source
-		       (lambda (root)
-			 (symbol-append 'SOURCE- root '-CHAR))))
-		  (let ((prim
-			 (lambda (sink/source)
-			   (if (memq root '(UTF16 UTF32))
-			       `(IF (HOST-BIG-ENDIAN?)
-				    ,(sink/source (symbol-append root '-BE))
-				    ,(sink/source (symbol-append root '-LE)))
-			       (sink/source root))))
-			(n1 (symbol-append 'OPEN- root '-OUTPUT-STRING))
-			(n2 (symbol-append 'CALL-WITH- root '-OUTPUT-STRING))
-			(n3 (symbol-append 'OPEN- root '-INPUT-STRING)))
-		    `(BEGIN
-		       (SET! ,n1
-			     (MAKE-UTF-OUTPUT-OPENER ,name ,(prim sink)))
-		       (SET! ,n2
-			     (MAKE-CALL-WITH-OUTPUT-STRING ,n1))
-		       (SET! ,n3
-			     (MAKE-UTF-INPUT-OPENER ,name ,(prim source))))))
-		(ill-formed-syntax form))))))
-    (define-openers utf8 "UTF-8")
-    (define-openers utf16 "UTF-16")
-    (define-openers utf16-be "UTF-16BE")
-    (define-openers utf16-le "UTF-16LE")
-    (define-openers utf32 "UTF-32")
-    (define-openers utf32-be "UTF-32BE")
-    (define-openers utf32-le "UTF-32LE")
-    unspecific))
-
-(define (make-utf-output-opener coding-name sink-char)
-  (let ((type
-	 (make-port-type
-	  `((WRITE-CHAR
-	     ,(lambda (port char)
-		(guarantee-wide-char char 'WRITE-CHAR)
-		(sink-char char (port/state port))
-		1))
-	    (EXTRACT-OUTPUT
-	     ,(lambda (port)
-		(get-output-bytes (port/state port))))
-	    (EXTRACT-OUTPUT!
-	     ,(lambda (port)
-		(get-output-bytes! (port/state port))))
-	    (WRITE-SELF
-	     ,(let ((suffix (string-append " to " coding-name " string")))
-		(lambda (port port*)
-		  port
-		  (write-string suffix port*)))))
-	  #f)))
-    (lambda ()
-      (make-port type (open-output-byte-buffer)))))
-
-(define (make-utf-input-opener coding-name source-char)
-  (let ((type
-	 (make-port-type
-	  `((READ-CHAR
-	     ,(lambda (port)
-		(or (source-char (port/state port) 'READ-CHAR)
-		    (make-eof-object port))))
-	    (WRITE-SELF
-	     ,(let ((suffix (string-append " from " coding-name " string")))
-		(lambda (port output-port)
-		  port
-		  (write-string suffix output-port)))))
-	  #f)))
-    (lambda (bytes #!optional start end)
-      (make-port type (open-input-byte-buffer bytes start end #f)))))
+(define (call-with-wide-output-string generator)
+  (let ((port (open-wide-output-string)))
+    (generator port)
+    (get-output-string port)))
 
 (define (utf-string->wide-string string start end source-char caller)
   (let ((source (open-input-byte-buffer string start end caller)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.36 2005/09/08 18:51:30 cph Exp $
+$Id: url.scm,v 1.37 2005/12/13 15:29:58 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -425,9 +425,11 @@ USA.
 ;; works on ISO 8859-1 strings, and we are using UTF-8 strings.
 
 (define (uri-string-downcase string)
-  (call-with-utf8-output-string
+  (call-with-output-string
    (lambda (output)
-     (let ((input (open-utf8-input-string string)))
+     (port/set-coding output 'UTF-8)
+     (let ((input (open-input-string string)))
+       (port/set-coding input 'UTF-8)
        (let loop ()
 	 (let ((char (read-char input)))
 	   (if (not (eof-object? char))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.35 2004/10/15 18:34:20 cph Exp $
+$Id: xml-output.scm,v 1.36 2005/12/13 15:30:33 cph Exp $
 
-Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -492,8 +492,9 @@ USA.
 
 (define (for-each-wide-char string procedure)
   (let ((port (open-input-string string)))
+    (port/set-coding port 'UTF-8)
     (let loop ()
-      (let ((char (read-utf8-char port)))
+      (let ((char (read-char port)))
 	(if (not (eof-object? char))
 	    (begin
 	      (procedure char)

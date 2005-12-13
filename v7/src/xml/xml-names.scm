@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.8 2004/12/23 04:44:18 cph Exp $
+$Id: xml-names.scm,v 1.9 2005/12/13 15:30:28 cph Exp $
 
-Copyright 2003,2004 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -242,7 +242,10 @@ USA.
     (if (or (not c)
 	    (let ((i (fix:+ c 1))
 		  (e (string-length s)))
-	      (and (let ((char (read-utf8-char (open-input-string s i e))))
+	      (and (let ((char
+			  (let ((port (open-input-string s i e)))
+			    (port/set-coding port 'UTF-8)
+			    (read-char port))))
 		     (and (not (eof-object? char))
 			  (not (char=? char #\:))
 			  (char-in-alphabet? char alphabet:name-initial)))

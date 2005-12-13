@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.567 2005/12/12 21:48:29 cph Exp $
+$Id: runtime.pkg,v 14.568 2005/12/13 15:29:46 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4660,13 +4660,6 @@ USA.
 	  alphabet->code-points
 	  alphabet->string
 	  alphabet?
-	  call-with-utf16-be-output-string
-	  call-with-utf16-le-output-string
-	  call-with-utf16-output-string
-	  call-with-utf32-be-output-string
-	  call-with-utf32-le-output-string
-	  call-with-utf32-output-string
-	  call-with-utf8-output-string
 	  call-with-wide-output-string
 	  char-in-alphabet?
 	  char-set->alphabet
@@ -4700,29 +4693,8 @@ USA.
 	  guarantee-wide-string-index
 	  guarantee-wide-substring
 	  make-wide-string
-	  open-utf16-be-input-string
-	  open-utf16-be-output-string
-	  open-utf16-input-string
-	  open-utf16-le-input-string
-	  open-utf16-le-output-string
-	  open-utf16-output-string
-	  open-utf32-be-input-string
-	  open-utf32-be-output-string
-	  open-utf32-input-string
-	  open-utf32-le-input-string
-	  open-utf32-le-output-string
-	  open-utf32-output-string
-	  open-utf8-input-string
-	  open-utf8-output-string
 	  open-wide-input-string
 	  open-wide-output-string
-	  read-utf16-be-char
-	  read-utf16-char
-	  read-utf16-le-char
-	  read-utf32-be-char
-	  read-utf32-char
-	  read-utf32-le-char
-	  read-utf8-char
 	  string->alphabet
 	  string->utf8-string
 	  string->wide-string
@@ -4771,14 +4743,7 @@ USA.
 	  wide-string-ref
 	  wide-string-set!
 	  wide-string?
-	  wide-substring
-	  write-utf16-be-char
-	  write-utf16-char
-	  write-utf16-le-char
-	  write-utf32-be-char
-	  write-utf32-char
-	  write-utf32-le-char
-	  write-utf8-char)
+	  wide-substring)
   (export (runtime parser-buffer)
 	  %wide-string-length
 	  %wide-string-ref
@@ -4787,7 +4752,8 @@ USA.
   (export (runtime generic-i/o-port)
 	  wide-string-contents)
   (export (runtime input-port)
-	  wide-string-contents))
+	  wide-string-contents)
+  (initialization (initialize-package!)))
 
 (define-package (runtime uri)
   (files "url")

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.47 2004/10/15 18:34:22 cph Exp $
+$Id: xml-struct.scm,v 1.48 2005/12/13 15:30:44 cph Exp $
 
-Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -161,7 +161,8 @@ USA.
   (cond ((wide-char? object)
 	 (call-with-output-string
 	   (lambda (port)
-	     (write-utf8-char object port))))
+	     (port/set-coding port 'UTF-8)
+	     (write-char object port))))
 	((wide-string? object)
 	 (wide-string->utf8-string object))
 	((and (string? object)

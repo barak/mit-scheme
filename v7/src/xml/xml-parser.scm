@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.64 2004/10/12 23:20:58 cph Exp $
+$Id: xml-parser.scm,v 1.65 2005/12/13 15:30:39 cph Exp $
 
-Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -683,7 +683,8 @@ USA.
 		   (perror p "Disallowed Unicode character" char))
 	       (call-with-output-string
 		 (lambda (port)
-		   (write-utf8-char char port))))))))
+		   (port/set-coding port 'UTF-8)
+		   (write-char char port))))))))
     (*parser
      (with-pointer p
        (sbracket "character reference" "&#" ";"

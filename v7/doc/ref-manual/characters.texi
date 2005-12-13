@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: characters.texi,v 1.6 2004/10/15 05:23:31 cph Exp $
+@c $Id: characters.texi,v 1.7 2005/12/13 15:31:02 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -865,30 +865,6 @@ available in both orders, which are indicated by names containing
 procedures that implement @dfn{host-endian} order, which is either
 big-endian or little-endian depending on the underlying computer
 architecture.
-
-@deffn procedure read-utf8-char port
-@deffnx procedure read-utf16-be-char port
-@deffnx procedure read-utf16-le-char port
-@deffnx procedure read-utf16-char port
-@deffnx procedure read-utf32-be-char port
-@deffnx procedure read-utf32-le-char port
-@deffnx procedure read-utf32-char port
-Each of these procedures reads a single wide character from the given
-@var{port}.  @var{Port} is treated as a stream of bytes encoded in the
-corresponding @samp{utfNN} representation.
-@end deffn
-
-@deffn procedure write-utf8-char wide-char port
-@deffnx procedure write-utf16-be-char wide-char port
-@deffnx procedure write-utf16-le-char wide-char port
-@deffnx procedure write-utf32-be-char wide-char port
-@deffnx procedure write-utf32-le-char wide-char port
-@deffnx procedure write-utf16-char wide-char port
-@deffnx procedure write-utf32-char wide-char port
-Each of these procedures writes @var{wide-char} to the given @var{port}.
-@var{Wide-char} is encoded in the corresponding @samp{utfNN}
-representation and written to @var{port} as a stream of bytes.
-@end deffn
 
 @deffn procedure utf8-string->wide-string string [start [end]]
 @deffnx procedure utf16-be-string->wide-string string [start [end]]
