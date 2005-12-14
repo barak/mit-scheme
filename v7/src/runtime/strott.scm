@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strott.scm,v 14.14 2005/12/12 21:55:23 cph Exp $
+$Id: strott.scm,v 14.15 2005/12/14 05:44:45 cph Exp $
 
 Copyright 1988,1993,1999,2004,2005 Massachusetts Institute of Technology
 
@@ -35,7 +35,12 @@ USA.
 	    (make-port output-string-port-type
 		       (receive (sink extract extract!)
 			   (make-accumulator-sink limit k)
-			 (make-gstate #f sink 'TEXT extract extract!)))))
+			 (make-gstate #f
+				      sink
+				      'ISO-8859-1
+				      'NEWLINE
+				      extract
+				      extract!)))))
        (generator port)
        (cons #f (get-output-string port))))))
 

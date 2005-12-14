@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.15 2005/12/12 21:52:35 cph Exp $
+$Id: strnin.scm,v 14.16 2005/12/14 05:44:41 cph Exp $
 
 Copyright 1988,1990,1993,1999,2003,2004 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -44,7 +44,10 @@ USA.
 	      0
 	      (guarantee-substring-start-index start end 'OPEN-INPUT-STRING))))
     (make-port input-string-port-type
-	       (make-gstate (make-string-source string start end) #f 'TEXT))))
+	       (make-gstate (make-string-source string start end)
+			    #f
+			    'ISO-8859-1
+			    'NEWLINE))))
 
 (define (make-string-source string start end)
   (let ((index start))

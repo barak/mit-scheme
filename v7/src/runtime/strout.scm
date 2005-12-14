@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.22 2005/12/12 21:55:39 cph Exp $
+$Id: strout.scm,v 14.23 2005/12/14 05:44:49 cph Exp $
 
 Copyright 1988,1990,1993,1999,2000,2001 Massachusetts Institute of Technology
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
@@ -32,7 +32,7 @@ USA.
 (define (open-output-string)
   (make-port accumulator-output-port-type
 	     (receive (sink extract extract!) (make-accumulator-sink)
-	       (make-gstate #f sink 'TEXT extract extract!))))
+	       (make-gstate #f sink 'ISO-8859-1 'NEWLINE extract extract!))))
 
 (define (get-output-string port)
   ((port/operation port 'EXTRACT-OUTPUT) port))

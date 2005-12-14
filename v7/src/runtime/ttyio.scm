@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.22 2005/12/12 21:55:44 cph Exp $
+$Id: ttyio.scm,v 1.23 2005/12/14 05:44:53 cph Exp $
 
 Copyright 1991,1993,1996,1999,2003,2004 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -82,6 +82,7 @@ USA.
 (define (make-cstate input-channel output-channel)
   (make-gstate input-channel
 	       output-channel
+	       'TEXT
 	       'TEXT
 	       (channel-type=file? input-channel)))
 

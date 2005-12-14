@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.35 2005/12/12 21:45:36 cph Exp $
+$Id: genio.scm,v 1.36 2005/12/14 05:44:36 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
@@ -35,7 +35,7 @@ USA.
   (let ((port
 	 (make-port (generic-i/o-port-type (source-type source)
 					   (sink-type sink))
-		    (make-gstate source sink 'TEXT))))
+		    (make-gstate source sink 'TEXT 'TEXT))))
     (let ((ib (port-input-buffer port)))
       (if ib
 	  ((source/set-port (input-buffer-source ib)) port)))
@@ -80,14 +80,18 @@ USA.
   coding
   line-ending)
 
-(define (make-gstate source sink type . extra)
+(define (make-gstate source sink coder-name normalizer-name . extra)
   (list->vector
    (cons* (and source
-	       (make-input-buffer (->source source 'MAKE-GSTATE) type))
+	       (make-input-buffer (->source source 'MAKE-GSTATE)
+				  coder-name
+				  normalizer-name))
 	  (and sink
-	       (make-output-buffer (->sink sink 'MAKE-GSTATE) type))
-	  type
-	  type
+	       (make-output-buffer (->sink sink 'MAKE-GSTATE)
+				   coder-name
+				   normalizer-name))
+	  coder-name
+	  normalizer-name
 	  extra)))
 
 (define-integrable (port-input-buffer port)
@@ -394,7 +398,7 @@ USA.
 	  (and for-output?
 	       (known-input-line-ending? name)
 	       (not (known-output-line-ending? name))))
-      (if (and channel (eq? 'TCP-STREAM-SOCKET (channel-type channel)))
+      (if (and channel (eq? (channel-type channel) 'TCP-STREAM-SOCKET))
 	  'CRLF
 	  (default-line-ending))
       name))
@@ -623,14 +627,16 @@ USA.
   decode
   normalize)
 
-(define (make-input-buffer source type)
+(define (make-input-buffer source coder-name normalizer-name)
   (%make-input-buffer source
 		      (make-string byte-buffer-length)
 		      byte-buffer-length
 		      byte-buffer-length
-		      (name->decoder type)
+		      (name->decoder coder-name)
 		      (name->normalizer
-		       (line-ending ((source/get-channel source)) type #f))))
+		       (line-ending ((source/get-channel source))
+				    normalizer-name
+				    #f))))
 
 (define (input-buffer-open? ib)
   ((source/open? (input-buffer-source ib))))
@@ -821,13 +827,15 @@ USA.
   encode
   denormalize)
 
-(define (make-output-buffer sink type)
+(define (make-output-buffer sink coder-name normalizer-name)
   (%make-output-buffer sink
 		       (make-string byte-buffer-length)
 		       0
-		       (name->encoder type)
+		       (name->encoder coder-name)
 		       (name->denormalizer
-			(line-ending ((sink/get-channel sink)) type #t))))
+			(line-ending ((sink/get-channel sink))
+				     normalizer-name
+				     #t))))
 
 (define (output-buffer-open? ob)
   ((sink/open? (output-buffer-sink ob))))
