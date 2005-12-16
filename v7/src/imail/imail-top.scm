@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.293 2005/12/10 06:45:32 riastradh Exp $
+$Id: imail-top.scm,v 1.294 2005/12/16 02:04:59 riastradh Exp $
 
 Copyright 1999,2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -2307,8 +2307,10 @@ Negative argument means search in reverse."
     (insert-header-fields message (and raw? (not (eq? raw? 'BODY-ONLY))) mark)
     (cond ((and raw? (not (eq? raw? 'HEADERS-ONLY)))
 	   (insert-message-body message mark))
-	  ((folder-supports-mime? (message-folder message))
-	   (insert-mime-message-body message mark inline-only? left-margin))
+	  ((mime-message-body-structure message)
+	   => (lambda (body-structure)
+                (insert-mime-message-body message body-structure
+                                          mark inline-only? left-margin)))
 	  (else
 	   (call-with-auto-wrapped-output-mark mark left-margin message
 	     (lambda (port)
@@ -2380,10 +2382,11 @@ Negative argument means search in reverse."
 
 ;;;; MIME message formatting
 
-(define (insert-mime-message-body message mark inline-only? left-margin)
+(define (insert-mime-message-body message body-structure
+                                  mark inline-only? left-margin)
   (walk-mime-message-part
    message
-   (mime-message-body-structure message)
+   body-structure
    '()
    (make-walk-mime-context inline-only? left-margin #f '())
    mark))

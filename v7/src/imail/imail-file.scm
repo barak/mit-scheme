@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-file.scm,v 1.86 2005/12/10 06:45:32 riastradh Exp $
+$Id: imail-file.scm,v 1.87 2005/12/16 02:04:59 riastradh Exp $
 
 Copyright 1999,2000,2001,2002,2003,2005 Massachusetts Institute of Technology
 
@@ -460,10 +460,6 @@ USA.
 (define-method disconnect-folder ((folder <file-folder>))
   folder
   unspecific)
-
-; (define-method folder-supports-mime? ((folder <file-folder>))
-;   folder
-;   #f)
 
 (define-method preload-folder-outlines ((folder <file-folder>))
   folder

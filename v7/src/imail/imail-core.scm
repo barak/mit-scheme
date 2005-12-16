@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.152 2005/12/10 06:45:32 riastradh Exp $
+$Id: imail-core.scm,v 1.153 2005/12/16 02:04:59 riastradh Exp $
 
 Copyright 1999,2000,2001,2003,2005 Massachusetts Institute of Technology
 
@@ -573,11 +573,6 @@ USA.
 ;; automatically reconnect as needed.
 
 (define-generic disconnect-folder (folder))
-
-;; -------------------------------------------------------------------
-;; Return #T if FOLDER supports MIME parsing.
-
-(define-generic folder-supports-mime? (folder))
 
 ;; -------------------------------------------------------------------
 ;; Preload outline information about each message in the folder.

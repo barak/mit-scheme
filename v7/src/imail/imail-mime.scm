@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-mime.scm,v 1.2 2005/12/13 01:41:39 cph Exp $
+$Id: imail-mime.scm,v 1.3 2005/12/16 02:04:59 riastradh Exp $
 
 Copyright 2005 Taylor Campbell
 
@@ -27,10 +27,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define-method folder-supports-mime? ((folder <folder>))
-  folder
-  #t)
-
 (define-method mime-message-body-structure ((message <message>))
   (or (get-property message 'MIME-MESSAGE-BODY-STRUCTURE #f)
       (cond ((mime:get-version-header message)
