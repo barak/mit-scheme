@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-mime.scm,v 1.3 2005/12/16 02:04:59 riastradh Exp $
+$Id: imail-mime.scm,v 1.4 2005/12/18 03:27:00 cph Exp $
 
 Copyright 2005 Taylor Campbell
 
@@ -49,28 +49,22 @@ USA.
                                    mime:default-content-type
                                    mime:parse-content-type))
         (encoding
-         (parse-first-named-header message "Content-Transfer-Encoding"
-                                   mime:default-encoding
-                                   mime:parse-encoding)))
+	 (named-mime-encoding
+	  (or (parse-first-named-header message "Content-Transfer-Encoding"
+					mime:default-encoding
+					mime:parse-encoding)
+	      '7BIT))))
     (let ((type (car content-type))
           (subtype (cadr content-type))
           (parameters (cddr content-type)))
-      ;; Bizarre code organization here.  I can't think of a better
-      ;; way to structure this code.
-      ((or (and-let* ((encoding
-                       (named-mime-encoding (or encoding '7BIT)
-                                            #f))
-                      (top-level (assq type mime:media-parsers))
-                      (parser (cond ((assq subtype (cddr top-level))
-                                     => cdr)
-                                    ((cadr top-level))
-                                    (else #f))))
-             (lambda ()
-               (parser message type subtype parameters encoding)))
-           (lambda ()
-             (mime:basic-media-parser message type subtype parameters
-                                      #f)))))))
-
+      ((let ((top-level (assq type mime:media-parsers))
+	     (default mime:basic-media-parser))
+	 (cond ((not top-level) default)
+	       ((assq subtype (cddr top-level)) => cdr)
+	       ((cadr top-level))
+	       (else default)))
+       message type subtype parameters encoding))))
+
 (define-method write-mime-message-body-part
     ((message <message>) selector cache? port)
   cache?
@@ -168,12 +162,17 @@ USA.
                            (if subtype
                                (list #f (cons subtype parser))
                                (list parser)))
-                     mime:media-parsers)))))
+                     mime:media-parsers))
+	 unspecific)))
 
 (define-class <message-part> ()
   (string define accessor)
   (start  define accessor)
   (end    define accessor))
+
+(define-method message-length ((message <message-part>))
+  (- (message-part-end message)
+     (message-part-start message)))
 
 (define-method message-body ((message <message-part>))
   (values (message-part-string message)
@@ -209,7 +208,7 @@ USA.
        type subtype parameters
        (mime:get-content-id message)
        (mime:get-content-description message)
-       encoding
+       (mime-encoding/name encoding)
        (message-length message)
        (ignore-errors (lambda () (md5-substring string start end))
                       (lambda (condition) condition #f))
