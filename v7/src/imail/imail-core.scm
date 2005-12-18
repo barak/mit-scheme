@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.153 2005/12/16 02:04:59 riastradh Exp $
+$Id: imail-core.scm,v 1.154 2005/12/18 03:25:29 cph Exp $
 
 Copyright 1999,2000,2001,2003,2005 Massachusetts Institute of Technology
 
@@ -595,7 +595,7 @@ USA.
 	 initial-value #f))
 
 (define-method write-instance ((message <message>) port)
-  (write-instance-helper 'MESSAGE message port 
+  (write-instance-helper 'MESSAGE message port
     (lambda ()
       (write-char #\space port)
       (write (message-folder message) port)
@@ -1103,7 +1103,7 @@ USA.
 		(cdr entry))))))
 
 (define-method write-instance ((body <mime-body>) port)
-  (write-instance-helper 'MIME-BODY body port 
+  (write-instance-helper 'MIME-BODY body port
     (lambda ()
       (write-char #\space port)
       (write-string (mime-body-type-string body) port))))
@@ -1181,10 +1181,7 @@ USA.
   (host define accessor))
 
 ;;;; MIME Encoding Registry
-
 ;;; This should probably be moved to the runtime's MIME codec package.
-
-(define mime-encodings '())
 
 (define-structure (mime-encoding
                    (conc-name mime-encoding/)
@@ -1192,8 +1189,7 @@ USA.
                     (standard-unparser-method 'MIME-ENCODING
                       (lambda (encoding output-port)
                         (write-char #\space output-port)
-                        (write (mime-encoding/name encoding)
-                               output-port))))
+                        (write (mime-encoding/name encoding) output-port))))
                    (constructor %make-mime-encoding))
   (name                          #f read-only #t)
   (identity?                     #f read-only #t)
@@ -1206,151 +1202,71 @@ USA.
   (decoding-port-maker           #f read-only #t)
   (caller-with-decoding-port     #f read-only #t))
 
-(define (make-mime-identity-encoding name)
-  (%make-mime-encoding
-   name #t
+(define-guarantee mime-encoding "MIME codec")
 
-   identity-mime-encoding:initialize
-   output-port/flush-output
-   output-port/write-string
-
-   identity-mime-encoding:initialize
-   output-port/flush-output
-   output-port/write-string
-
-   identity-mime-encoding:initialize
-   (lambda (port text? generator)
-     text?
-     (generator port))))
-
-(define (identity-mime-encoding:initialize port text?)
-  text?
-  (guarantee-output-port port 'IDENTITY-MIME-ENCODING:INITIALIZE)
-  port)
-
-(define (make-mime-encoding name
-          encode:initialize encode:finalize encode:update
-          decode:initialize decode:finalize decode:update
-          make-port call-with-port)
-  (%make-mime-encoding
-   name #f
-   encode:initialize encode:finalize encode:update
-   decode:initialize decode:finalize decode:update
-   make-port call-with-port))
+(define mime-encodings
+  (make-eq-hash-table))
 
 (define (define-mime-encoding name
-          encode:initialize encode:finalize encode:update
-          decode:initialize decode:finalize decode:update
-          make-port call-with-port)
-  (let ((encoding 
-         (make-mime-encoding name
-                             encode:initialize encode:finalize encode:update
-                             decode:initialize decode:finalize decode:update
-                             make-port call-with-port)))
-    (cond ((find-tail (lambda (encoding)
-                        (eq? (mime-encoding/name encoding)
-                             name))
-                      mime-encodings)
-           => (lambda (tail)
-                (warn "Replacing MIME encoding:" (car tail))
-                (set-car! tail encoding)))
-          (else
-           (set! mime-encodings (cons encoding mime-encodings))))))
+			      encode:initialize encode:finalize encode:update
+			      decode:initialize decode:finalize decode:update
+			      make-port call-with-port)
+  (hash-table/put!
+   mime-encodings
+   name
+   (%make-mime-encoding name #f
+			encode:initialize encode:finalize encode:update
+			decode:initialize decode:finalize decode:update
+			make-port call-with-port))
+  name)
 
 (define (define-identity-mime-encoding name)
-  (let ((encoding (make-mime-identity-encoding name)))
-    (cond ((find-tail (lambda (encoding)
-                        (eq? (mime-encoding/name encoding)
-                             name))
-                      mime-encodings)
-           => (lambda (tail)
-                (cond ((not (mime-encoding/identity? (car tail)))
-                       (warn "Replacing MIME encoding with identity:"
-                             (car tail))
-                       (set-car! tail encoding)))))
-          (else
-           (set! mime-encodings (cons encoding mime-encodings))))))
+  (hash-table/put! mime-encodings
+		   name
+		   (%make-mime-encoding name #t
 
-(define (find-tail predicate list)
-  (let loop ((l list))
-    (cond ((pair? l)
-           (if (predicate (car l))
-               (car l)
-               (loop (cdr l))))
-          ((null? l)
-           #f)
-          (else
-           (error:wrong-type-argument list "proper list"
-                                      'FIND-TAIL)))))
+					(lambda (port text?) text? port)
+					output-port/flush-output
+					output-port/write-string
 
-(define (named-mime-encoding name #!optional error?)
-  (or (find-matching-item mime-encodings
-        (lambda (encoding)
-          (eq? (mime-encoding/name encoding)
-               name)))
-      (and error? (error "No such named MIME encoding known:" name))))
+					(lambda (port text?) text? port)
+					output-port/flush-output
+					output-port/write-string
 
-(define (mime-encoder encoding)
-  (select-mime-encoding encoding
-    (lambda ()
-      (values identity-mime-encoding:initialize
-              output-port/write-substring
-              flush-output))
-    (lambda (encoding)
-      (let ((initializer (mime-encoding/encoder-initializer encoding))
-            (finalizer   (mime-encoding/encoder-finalizer   encoding))
-            (updater     (mime-encoding/encoder-updater     encoding)))
-        (if (and initializer finalizer updater)
-            (values initializer finalizer updater)
-            (error "MIME encoding encoder unimplemented:"
-                   encoding))))))
+					(lambda (port text?) text? port)
+					(lambda (port text? generator)
+					  text?
+					  (generator port)))))
 
-(define (mime-decoder encoding)
-  (select-mime-encoding encoding
-    (lambda ()
-      (values identity-mime-encoding:initialize
-              output-port/write-substring
-              flush-output))
-    (lambda (encoding)
-      (let ((initializer (mime-encoding/decoder-initializer encoding))
-            (finalizer   (mime-encoding/decoder-finalizer   encoding))
-            (updater     (mime-encoding/decoder-updater     encoding)))
-        (if (and initializer finalizer updater)
-            (values initializer finalizer updater)
-            (error "MIME encoding decoder unimplemented:"
-                   encoding))))))
+(define (named-mime-encoding name)
+  (or (hash-table/get mime-encodings name #f)
+      (let ((encoding (make-unknown-mime-encoding name)))
+	(hash-table/put! mime-encodings name encoding)
+	encoding)))
 
-(define (make-mime-decoding-output-port encoding port text?)
-  (select-mime-encoding* encoding mime-encoding/decoding-port-maker
-    (lambda () port)
-    (lambda (make-decoding-port)
-      (make-decoding-port port text?))))
+(define (make-unknown-mime-encoding name)
+  (let ((lose (lambda args args (error "Unknown MIME encoding name:" name))))
+    (%make-mime-encoding name #f
+			 lose lose lose
+			 lose lose lose
+			 lose lose)))
 
-(define (call-with-mime-decoding-output-port encoding port text?
-          generator)
-  (select-mime-encoding* encoding
-      mime-encoding/caller-with-decoding-port
-    (lambda () (generator port))
-    (lambda (call-with-decoding-port)
-      (call-with-decoding-port port text? generator))))
-
-(define (select-mime-encoding encoding lose win)
-  (cond ((mime-encoding? encoding)
-         (win encoding))
-        ((named-mime-encoding encoding)
-         => win)
-        (else
-         (warn "Unknown MIME encoding:" encoding)
-         (lose))))
-
-(define (select-mime-encoding* encoding selector lose win)
-  (select-mime-encoding encoding
-    lose
-    (lambda (encoding) (win (selector encoding)))))
+(define (call-with-mime-decoding-output-port encoding port text? generator)
+  ((mime-encoding/caller-with-decoding-port
+    (if (symbol? encoding)
+	(named-mime-encoding encoding)
+	(begin
+	  (guarantee-mime-encoding encoding
+				   'CALL-WITH-MIME-DECODING-OUTPUT-PORT)
+	  encoding)))
+   port text? generator))
 
 (define-identity-mime-encoding '7BIT)
 (define-identity-mime-encoding '8BIT)
 (define-identity-mime-encoding 'BINARY)
+;; Next two are random values sometimes used by Outlook.
+(define-identity-mime-encoding '7-BIT)
+(define-identity-mime-encoding '8-BIT)
 
 (define-mime-encoding 'QUOTED-PRINTABLE
   encode-quoted-printable:initialize
@@ -1379,8 +1295,8 @@ USA.
   decode-binhex40:update
   make-decode-binhex40-port
   call-with-decode-binhex40-output-port)
-
+
 ;;; Edwin Variables:
-;;; Eval: (scheme-indent-method 'SELECT-MIME-ENCODING 1)
-;;; Eval: (scheme-indent-method 'SELECT-MIME-ENCODING* 2)
+;;; lisp-indent/select-mime-encoding: 1
+;;; lisp-indent/select-mime-encoding*: 2
 ;;; End:
