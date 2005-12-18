@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.568 2005/12/13 15:29:46 cph Exp $
+$Id: runtime.pkg,v 14.569 2005/12/18 00:20:43 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4880,7 +4880,8 @@ USA.
 	  url:char-set:unreserved
 	  url:encode-string
 	  write-partial-uri
-	  write-uri))
+	  write-uri)
+  (initialization (initialize-package!)))
 
 (define-package (runtime postgresql)
   (file-case options
