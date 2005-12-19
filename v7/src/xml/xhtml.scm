@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.15 2004/11/17 05:59:13 cph Exp $
+$Id: xhtml.scm,v 1.16 2005/12/19 04:03:14 cph Exp $
 
-Copyright 2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -91,21 +91,20 @@ USA.
   (%make-document html-1.1-dtd attrs items))
 
 (define (%make-document dtd attrs items)
-  (let ((attr
-	 (find-matching-item attrs
-	   (lambda (attr)
-	     (xml-name=? (xml-attribute-name attr) 'xmlns)))))
-    (if (and attr (not (string=? (xml-attribute-value attr) html-iri-string)))
-	(error "Default namespace must be HTML:" (xml-attribute-value attr)))
-    (make-xml-document (make-xml-declaration "1.0" "UTF-8" #f)
-		       '("\n")
-		       dtd
-		       '("\n")
-		       (html:html (if attr
-				      attrs
-				      (xml-attrs 'xmlns html-iri attrs))
-				  items)
-		       '())))
+  (make-xml-document (make-xml-declaration
+		      (or (find-xml-attr 'xml-decl-version attrs) "1.0")
+		      (or (find-xml-attr 'xml-decl-encoding attrs) "UTF-8")
+		      (find-xml-attr 'xml-decl-standalone attrs))
+		     '("\n")
+		     dtd
+		     '("\n")
+		     (html:html (xml-attrs 'xmlns html-iri
+					   'xml-decl-version #f
+					   'xml-decl-encoding #f
+					   'xml-decl-standalone #f
+					   attrs)
+				items)
+		     '("\n")))
 
 (define-syntax define-html-element
   (sc-macro-transformer
