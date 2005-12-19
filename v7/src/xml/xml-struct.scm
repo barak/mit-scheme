@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.48 2005/12/13 15:30:44 cph Exp $
+$Id: xml-struct.scm,v 1.49 2005/12/19 04:00:37 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -431,16 +431,13 @@ USA.
     xml-attribute-namespace-decl?))
 
 (define (xml-element-namespace-iri elt prefix)
-  (let ((attr
-	 (find-matching-item (xml-element-attributes elt)
-	   (let ((qname
-		  (if (null-xml-name-prefix? prefix)
-		      'xmlns
-		      (symbol-append 'xmlns: prefix))))
-	     (lambda (attr)
-	       (xml-name=? (xml-attribute-name attr) qname))))))
-    (and attr
-	 (make-xml-namespace-iri (xml-attribute-value attr)))))
+  (let ((value
+	 (find-xml-attr (if (null-xml-name-prefix? prefix)
+			    'xmlns
+			    (symbol-append 'xmlns: prefix))
+			elt)))
+    (and value
+	 (make-xml-namespace-iri value))))
 
 (define (xml-element-namespace-prefix elt iri)
   (let ((iri (xml-namespace-iri-string iri)))
@@ -486,29 +483,54 @@ USA.
 	   (xml-name=? (xml-element-name object) name)))))
 
 (define (xml-attrs . items)
-  (let loop ((items items))
-    (if (pair? items)
-	(let ((item (car items))
-	      (items (cdr items)))
-	  (cond ((and (xml-name? item)
-		      (pair? items))
-		 (let ((value (car items))
-		       (attrs (loop (cdr items))))
-		   (if value
-		       (cons (make-xml-attribute
-			      item
-			      (if (eq? value #t)
-				  (symbol-name item)
-				  (convert-xml-string-value value)))
-			     attrs)
-		       attrs)))
-		((xml-attribute? item)
-		 (cons item (loop items)))
-		((list-of-type? item xml-attribute?)
-		 (append item (loop items)))
-		(else
-		 (error "Unknown item passed to xml-attrs:" item))))
-	'())))
+  (let ((flush
+	 (lambda (name attrs)
+	   (delete-matching-items! attrs
+	     (lambda (attr)
+	       (eq? (xml-attribute-name attr) name))))))
+    (let ((accum
+	   (lambda (attr attrs)
+	     (cons attr (flush (xml-attribute-name attr) attrs)))))
+      (let loop ((items items))
+	(if (pair? items)
+	    (let ((item (car items))
+		  (items (cdr items)))
+	      (cond ((and (xml-name? item)
+			  (pair? items))
+		     (let ((value (car items))
+			   (attrs (loop (cdr items))))
+		       (if value
+			   (accum (make-xml-attribute
+				   item
+				   (if (eq? value #t)
+				       (symbol-name item)
+				       (convert-xml-string-value value)))
+				  attrs)
+			   (flush item attrs))))
+		    ((xml-attribute? item)
+		     (accum item (loop items)))
+		    ((list-of-type? item xml-attribute?)
+		     (do ((attrs item (cdr attrs))
+			  (attrs* (loop items) (accum (car attrs) attrs*)))
+			 ((not (pair? attrs)) attrs*)))
+		    (else
+		     (error "Unknown item passed to xml-attrs:" item))))
+	    '())))))
+
+(define (find-xml-attr name elt)
+  (guarantee-xml-name name 'FIND-XML-ATTR)
+  (let loop
+      ((attrs
+	(if (xml-element? elt)
+	    (xml-element-attributes elt)
+	    (begin
+	      (guarantee-list-of-type elt xml-attribute? "XML attributes"
+				      'FIND-XML-ATTR)
+	      elt))))
+    (and (pair? attrs)
+	 (if (xml-name=? (xml-attribute-name (car attrs)) name)
+	     (xml-attribute-value (car attrs))
+	     (loop (cdr attrs))))))
 
 (define (flatten-xml-element-content item)
   (letrec
