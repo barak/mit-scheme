@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.16 2005/12/14 05:44:41 cph Exp $
+$Id: strnin.scm,v 14.17 2005/12/20 15:53:04 cph Exp $
 
 Copyright 1988,1990,1993,1999,2003,2004 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -59,7 +59,7 @@ USA.
 	      (fix:min (fix:- end index)
 		       (fix:- end* start*))))
 	 (let ((limit (fix:+ index n)))
-	   (substring-move! string index limit string* start)
+	   (substring-move! string index limit string* start*)
 	   (set! index limit))
 	 n)))))
 
