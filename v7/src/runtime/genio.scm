@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.36 2005/12/14 05:44:36 cph Exp $
+$Id: genio.scm,v 1.37 2005/12/20 01:52:56 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
@@ -78,7 +78,8 @@ USA.
   (input-buffer #f read-only #t)
   (output-buffer #f read-only #t)
   coding
-  line-ending)
+  line-ending
+  column)
 
 (define (make-gstate source sink coder-name normalizer-name . extra)
   (list->vector
@@ -120,6 +121,7 @@ USA.
 	 `((BUFFERED-OUTPUT-BYTES ,generic-io/buffered-output-bytes)
 	   (CLOSE-OUTPUT ,generic-io/close-output)
 	   (FLUSH-OUTPUT ,generic-io/flush-output)
+	   (OUTPUT-COLUMN ,generic-io/output-column)
 	   (OUTPUT-OPEN? ,generic-io/output-open?)
 	   (WRITE-CHAR ,generic-io/write-char)
 	   (WRITE-EXTERNAL-SUBSTRING ,generic-io/write-external-substring)
@@ -256,6 +258,10 @@ USA.
 
 (define (generic-io/flush-output port)
   (force-drain-output-buffer (port-output-buffer port)))
+
+
+(define (generic-io/output-column port)
+  (output-buffer-column (port-output-buffer port)))
 
 (define (generic-io/output-channel port)
   (let ((ob (port-output-buffer port)))
@@ -825,7 +831,8 @@ USA.
   (bytes #f read-only #t)
   start
   encode
-  denormalize)
+  denormalize
+  column)
 
 (define (make-output-buffer sink coder-name normalizer-name)
   (%make-output-buffer sink
@@ -835,7 +842,14 @@ USA.
 		       (name->denormalizer
 			(line-ending ((sink/get-channel sink))
 				     normalizer-name
-				     #t))))
+				     #t))
+		       (and (column-tracking-coder? coder-name) 0)))
+
+(define (column-tracking-coder? coder-name)
+  (or (eq? coder-name 'TEXT)
+      (eq? coder-name 'US-ASCII)
+      (eq? coder-name 'ASCII)
+      (string-prefix-ci? "ISO-8859-" (symbol-name coder-name))))
 
 (define (output-buffer-open? ob)
   ((sink/open? (output-buffer-sink ob))))
@@ -893,6 +907,11 @@ USA.
   (and (fix:< (output-buffer-start ob) page-size)
        (begin
 	 ((output-buffer-denormalize ob) ob char)
+	 (let ((column (output-buffer-column ob)))
+	   (if column
+	       (set-output-buffer-column!
+		ob
+		(if (char=? char #\newline) 0 (fix:+ column 1)))))
 	 #t)))
 
 (define (output-buffer-in-8-bit-mode? ib)
@@ -905,11 +924,16 @@ USA.
    (fix:+ (output-buffer-start ob)
 	  ((output-buffer-encode ob) ob (char->integer char)))))
 
-(define (set-output-buffer-coding! ib coding)
-  (set-output-buffer-encode! ib (name->encoder coding)))
+(define (set-output-buffer-coding! ob coding)
+  (set-output-buffer-encode! ob (name->encoder coding))
+  (if (column-tracking-coder? coding)
+      (if (not (output-buffer-column ob))
+	  (set! ob 0))
+      (set! ob #f))
+  unspecific)
 
-(define (set-output-buffer-line-ending! ib name)
-  (set-output-buffer-denormalize! ib (name->denormalizer name)))
+(define (set-output-buffer-line-ending! ob name)
+  (set-output-buffer-denormalize! ob (name->denormalizer name)))
 
 (define (write-substring:string ob string start end)
   (if (output-buffer-in-8-bit-mode? ob)
