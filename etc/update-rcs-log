@@ -15,7 +15,7 @@ if [ -z "${CVS2CL}" ]; then
     exit 1
 fi
 
-kinit -k -t /home/cph/cron.keytab
+kinit -k -t /home/cph/cron.keytab cph/cron
 aklog
 
 COMMON="--revisions --usermap /scheme/v7/src/etc/usermap --domain zurich.csail.mit.edu --stdout --no-wrap --separate-header --window 3600"
