@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.87 2005/10/21 17:20:39 cph Exp $
+$Id: vc.scm,v 1.88 2005/12/22 18:54:12 cph Exp $
 
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
@@ -2034,7 +2034,9 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'WORKFILE-REVISION vc-type:svn
   (lambda (master)
-    (svn-status-last-change-revision (get-svn-status master #t))))
+    (let ((status (get-svn-status master #f)))
+      (and status
+	   (svn-status-last-change-revision status)))))
 
 (define-vc-type-operation 'LOCKING-USER vc-type:svn
   (lambda (master revision)
