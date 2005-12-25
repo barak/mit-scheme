@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: nntp.scm,v 1.29 2004/06/07 19:49:38 cph Exp $
+$Id: nntp.scm,v 1.30 2005/12/25 05:56:58 riastradh Exp $
 
 Copyright 1995,1996,1997,1998,1999,2003 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -403,7 +403,10 @@ USA.
   (output-port/flush-output (nntp-connection:port connection)))
 
 (define (nntp-read-line connection)
-  (input-port/read-line (nntp-connection:port connection)))
+  (let ((line (input-port/read-line (nntp-connection:port connection))))
+    (if (eof-object? line)
+        (error "Premature EOF from NNTP connection:" connection))
+    line))
 
 (define (nntp-response-number line)
   (if (fix:< (string-length line) 3)
