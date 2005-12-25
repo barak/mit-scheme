@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.41 2005/10/23 21:07:19 cph Exp $
+$Id: tterm.scm,v 1.42 2005/12/25 17:04:39 riastradh Exp $
 
 Copyright 1990,1991,1993,1994,1998,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -491,11 +491,13 @@ USA.
   unspecific)
 
 (define (console-enter! screen)
+  (add-event-receiver! event:console-resize resize-screen)
   (maybe-output screen (ts-enter-termcap-mode (screen-description screen)))
   (set-screen-cursor-x! screen false)
   (set-screen-cursor-y! screen false))
 
 (define (console-exit! screen)
+  (remove-event-receiver! event:console-resize resize-screen)
   (let ((description (screen-description screen)))
     (move-cursor screen 0 (fix:-1+ (screen-y-size screen)))
     (exit-standout-mode screen)

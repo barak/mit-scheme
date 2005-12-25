@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: intrpt.scm,v 14.25 2004/10/01 03:39:02 cph Exp $
+$Id: intrpt.scm,v 14.26 2005/12/25 17:04:39 riastradh Exp $
 
 Copyright 1986,1987,1988,1990,1991,1992 Massachusetts Institute of Technology
-Copyright 1993,1994,2004 Massachusetts Institute of Technology
+Copyright 1993,1994,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,6 +36,7 @@ USA.
 	(fixed-objects-vector-slot 'INTERRUPT-MASK-VECTOR))
   (set! index:termination-vector
 	(fixed-objects-vector-slot 'MICROCODE-TERMINATIONS-PROCEDURES))
+  (set! event:console-resize (make-event-distributor))
   (set! hook/clean-input/flush-typeahead false)
   (set! hook/clean-input/keep-typeahead false)
   (set! hook/^B-interrupt false)
@@ -71,6 +72,7 @@ USA.
 (define-integrable character-slot 4)
 (define-integrable after-gc-slot 5)
 (define-integrable timer-slot 6)
+(define-integrable console-resize-slot 7)
 (define-integrable suspend-slot 8)
 ;; Room for Descartes profiler interrupt handlers
 (define-integrable illegal-interrupt-slot 15)
@@ -120,6 +122,12 @@ USA.
   ;; GC that occurs while we are running the daemons.  This helps
   ;; prevent us from getting into a loop just running the daemons.
   (clear-interrupts! interrupt-bit/after-gc))
+
+(define event:console-resize)
+(define (console-resize-handler interrupt-code interrupt-enables)
+  interrupt-code interrupt-enables
+  (clear-interrupts! interrupt-bit/global-3)
+  (event-distributor/invoke! event:console-resize))
 
 (define ((illegal-interrupt-handler interrupt-bit)
 	 interrupt-code interrupt-enables)
@@ -240,6 +248,11 @@ USA.
 		      suspend-interrupt-handler)
 	 (vector-set! interrupt-mask-vector suspend-slot
 		      interrupt-mask/timer-ok)
+
+         (vector-set! system-interrupt-vector console-resize-slot
+                      console-resize-handler)
+         (vector-set! interrupt-mask-vector console-resize-slot
+                      interrupt-mask/all)
 
 	 (vector-set! termination-vector
 		      (microcode-termination 'GC-OUT-OF-SPACE)

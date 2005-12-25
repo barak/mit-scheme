@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.42 2005/07/04 13:51:19 cph Exp $
+$Id: uxsig.c,v 1.43 2005/12/25 17:04:39 riastradh Exp $
 
 Copyright 1990,1991,1992,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 2000,2001,2005 Massachusetts Institute of Technology
@@ -494,6 +494,15 @@ DEFUN_VOID (OS_restartable_exit)
   stop_signal_default (SIGTSTP);
 }
 
+static
+DEFUN_STD_HANDLER (sighnd_console_resize,
+{
+  extern void EXFUN (UX_initialize_tty, (void));
+  UX_initialize_tty ();
+  request_console_resize_interrupt ();
+})
+
+
 /* The following conditionalization would more naturally be expressed
    by conditionalizing the code inside the handler, but the Sun
    compiler won't accept this conditionalization.  */
@@ -706,6 +715,7 @@ DEFUN_VOID (UX_initialize_signals)
       bind_handler (SIGSYS,	sighnd_software_trap);
       bind_handler (SIGABRT,	sighnd_software_trap);
       bind_handler (SIGPROF,	sighnd_software_trap);
+      bind_handler (SIGWINCH,	sighnd_console_resize);
     }
   {
     struct signal_descriptor * scan = signal_descriptors;
