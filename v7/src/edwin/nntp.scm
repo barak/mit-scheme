@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: nntp.scm,v 1.30 2005/12/25 05:56:58 riastradh Exp $
+$Id: nntp.scm,v 1.31 2005/12/25 17:43:52 riastradh Exp $
 
 Copyright 1995,1996,1997,1998,1999,2003 Massachusetts Institute of Technology
 Copyright 2004,2005 Massachusetts Institute of Technology
@@ -341,7 +341,11 @@ USA.
       '(RESPONSE)
     (lambda (condition port)
       (write-string "NNTP error: " port)
-      (write-string (nntp-error/response condition) port))))
+      (let ((response (nntp-error/response condition)))
+        (write-string (if (eof-object? response)
+                          "connection lost"
+                          response)
+                      port)))))
 
 (define nntp-error/response
   (condition-accessor condition-type:nntp-error 'RESPONSE))
@@ -373,9 +377,11 @@ USA.
 	   (lambda (condition)
 	     ;; If the server closed the connection, try again.  This
 	     ;; should automatically re-open the connection.
-	     (case (nntp-response-number (nntp-error/response condition))
-	       ((205 503)
-		(within-continuation k try))))
+             (let ((response (nntp-error/response condition)))
+               (if (or (eof-object? response)
+                       (memv (nntp-response-number response)
+                             '(205 503)))
+                   (within-continuation k try))))
 	 try)))))
 
 ;;;; NNTP I/O
@@ -405,7 +411,7 @@ USA.
 (define (nntp-read-line connection)
   (let ((line (input-port/read-line (nntp-connection:port connection))))
     (if (eof-object? line)
-        (error "Premature EOF from NNTP connection:" connection))
+        (nntp-error line))
     line))
 
 (define (nntp-response-number line)
