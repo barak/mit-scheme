@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [14.16], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.6 2005/06/26 05:36:52 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.7 2005/12/25 05:59:46 riastradh Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -883,7 +883,7 @@ AC_OUTPUT
 # Make custom compilation program for "makegen.scm".
 rm -f makegen-cc
 echo "#!/bin/sh" > makegen-cc
-echo "exec gcc -M -DMIT_SCHEME ${CPPFLAGS} \"\${1}\"" >> makegen-cc
+echo "exec gcc -MM -DMIT_SCHEME ${CPPFLAGS} \"\${1}\"" >> makegen-cc
 chmod +x makegen-cc
 
 if test "${MODULE_RULES}" != "/dev/null"; then
