@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.39 2005/12/09 07:06:23 riastradh Exp $
+$Id: port.scm,v 1.40 2005/12/25 05:10:02 riastradh Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -212,7 +212,12 @@ USA.
 (define (provide-default-input-operations op)
   (let ((char-ready? (or (op 'CHAR-READY?) (lambda (port) port #t)))
 	(read-char (op 'READ-CHAR)))
-    (let ((read-substring
+    (let ((discard-char
+           (or (op 'DISCARD-CHAR)
+               (lambda (port)
+                 (read-char port)
+                 unspecific)))
+          (read-substring
 	   (or (op 'READ-SUBSTRING)
 	       (lambda (port string start end)
 		 (let ((char (read-char port)))
@@ -266,6 +271,7 @@ USA.
 	  (case name
 	    ((CHAR-READY?) char-ready?)
 	    ((READ-CHAR) read-char)
+            ((DISCARD-CHAR) discard-char)
 	    ((READ-SUBSTRING) read-substring)
 	    ((READ-WIDE-SUBSTRING) read-wide-substring)
 	    ((READ-EXTERNAL-SUBSTRING) read-external-substring)
@@ -366,11 +372,12 @@ USA.
 			 (transcribe-char char port)))
 		   char)))))
 	(discard-char
-	 (lambda (port)
-	   (if (not (port/unread port))
-	       (error "No character to discard:" port))
-	   (set-port/unread! port #f)
-	   unspecific))
+	 (let ((defer (op 'DISCARD-CHAR)))
+           (lambda (port)
+             (if (port/unread port)
+                 (set-port/unread! port #f)
+                 (defer port))
+             unspecific)))
 	(read-substring
 	 (let ((defer (op 'READ-SUBSTRING)))
 	   (lambda (port string start end)
