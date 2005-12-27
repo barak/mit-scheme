@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: nntp.scm,v 1.31 2005/12/25 17:43:52 riastradh Exp $
+$Id: nntp.scm,v 1.32 2005/12/27 06:22:06 riastradh Exp $
 
 Copyright 1995,1996,1997,1998,1999,2003 Massachusetts Institute of Technology
 Copyright 2004,2005 Massachusetts Institute of Technology
@@ -1779,12 +1779,6 @@ USA.
       thread)))
 
 ;;;; Miscellaneous
-
-(define (input-port/read-line port)
-  (let ((line (input-port/read-string port char-set:newline)))
-    ;; Discard delimiter, if any -- this is a no-op at EOF.
-    (input-port/discard-char port)
-    line))
 
 (define (input-port/discard-line port)
   (input-port/discard-chars port char-set:newline)
