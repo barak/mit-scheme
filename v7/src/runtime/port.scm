@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.40 2005/12/25 05:10:02 riastradh Exp $
+$Id: port.scm,v 1.41 2005/12/31 15:43:42 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -212,12 +212,7 @@ USA.
 (define (provide-default-input-operations op)
   (let ((char-ready? (or (op 'CHAR-READY?) (lambda (port) port #t)))
 	(read-char (op 'READ-CHAR)))
-    (let ((discard-char
-           (or (op 'DISCARD-CHAR)
-               (lambda (port)
-                 (read-char port)
-                 unspecific)))
-          (read-substring
+    (let ((read-substring
 	   (or (op 'READ-SUBSTRING)
 	       (lambda (port string start end)
 		 (let ((char (read-char port)))
@@ -271,7 +266,6 @@ USA.
 	  (case name
 	    ((CHAR-READY?) char-ready?)
 	    ((READ-CHAR) read-char)
-            ((DISCARD-CHAR) discard-char)
 	    ((READ-SUBSTRING) read-substring)
 	    ((READ-WIDE-SUBSTRING) read-wide-substring)
 	    ((READ-EXTERNAL-SUBSTRING) read-external-substring)
@@ -372,7 +366,7 @@ USA.
 			 (transcribe-char char port)))
 		   char)))))
 	(discard-char
-	 (let ((defer (op 'DISCARD-CHAR)))
+	 (let ((defer (op 'READ-CHAR)))
            (lambda (port)
              (if (port/unread port)
                  (set-port/unread! port #f)
