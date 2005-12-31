@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.43 2005/12/25 17:04:39 riastradh Exp $
+$Id: uxsig.c,v 1.44 2005/12/31 20:02:16 riastradh Exp $
 
 Copyright 1990,1991,1992,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 2000,2001,2005 Massachusetts Institute of Technology
@@ -497,8 +497,8 @@ DEFUN_VOID (OS_restartable_exit)
 static
 DEFUN_STD_HANDLER (sighnd_console_resize,
 {
-  extern void EXFUN (UX_initialize_tty, (void));
-  UX_initialize_tty ();
+  extern void EXFUN (UX_reinitialize_tty, (void));
+  UX_reinitialize_tty ();
   request_console_resize_interrupt ();
 })
 

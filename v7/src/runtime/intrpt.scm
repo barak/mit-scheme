@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: intrpt.scm,v 14.26 2005/12/25 17:04:39 riastradh Exp $
+$Id: intrpt.scm,v 14.27 2005/12/31 20:02:16 riastradh Exp $
 
 Copyright 1986,1987,1988,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,2004,2005 Massachusetts Institute of Technology
@@ -127,7 +127,11 @@ USA.
 (define (console-resize-handler interrupt-code interrupt-enables)
   interrupt-code interrupt-enables
   (clear-interrupts! interrupt-bit/global-3)
-  (event-distributor/invoke! event:console-resize))
+  (cond ((console-thread)
+         => (lambda (thread)
+              (signal-thread-event thread
+                (lambda ()
+                  (event-distributor/invoke! event:console-resize)))))))
 
 (define ((illegal-interrupt-handler interrupt-bit)
 	 interrupt-code interrupt-enables)
