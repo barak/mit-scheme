@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wincom.scm,v 1.135 2003/02/14 18:28:14 cph Exp $
+$Id: wincom.scm,v 1.136 2006/01/02 04:20:59 riastradh Exp $
 
 Copyright 1987, 1989-2000 Massachusetts Institute of Technology
 
@@ -334,6 +334,13 @@ or if the window is the only window of its frame."
   "Make the current window fill the screen."
   ()
   (lambda () (delete-other-windows (selected-window))))
+
+(define-command kill-buffer-and-window
+  "Kill the current buffer and delete the window it was in."
+  ()
+  (lambda ()
+    (kill-buffer-interactive (current-buffer))
+    (window-delete! (selected-window))))
 
 (define-command other-window
   "Select the ARG'th different window."
