@@ -1,19 +1,18 @@
 ;; -*-emacs-lisp-*-
-;;
 ;; Emacs startup file for the Debian GNU/Linux mit-scheme package
-;;
-;; Originally contributed by Nils Naumann <naumann@unileoben.ac.at>
-;; Modified by Dirk Eddelbuettel <edd@debian.org>
-;; Adapted for dh-make by Jim Van Zandt <jrv@vanzandt.mv.com>
 
-;; The mit-scheme package follows the Debian/GNU Linux 'emacsen' policy and
-;; byte-compiles its elisp files for each 'emacs flavor' (emacs19,
-;; xemacs19, emacs20, xemacs20...).  The compiled code is then
-;; installed in a subdirectory of the respective site-lisp directory.
-;; We have to add this to the load-path:
+(if (not (file-exists-p "/usr/share/emacs/site-lisp/mit-scheme"))
+    (message "Package mit-scheme removed but not purged.  Skipping setup.")
 
-(setq load-path
-      (nconc load-path
-	     (list (concat "/usr/share/"
-			   (symbol-name flavor)
-			   "/site-lisp/mit-scheme"))))
+  ;; Byte-compiled files go in "flavor-specific" directories.
+  (let ((dir
+	 (concat "/usr/share/"
+		 (symbol-name debian-emacs-flavor)
+		 "/site-lisp/mit-scheme")))
+    (if (fboundp 'debian-pkg-add-load-path-item)
+	(debian-pkg-add-load-path-item dir)
+	(add-to-list 'load-path dir t)))
+  
+  ;; Source files go in generic directories.  They are added to the
+  ;; path, at the end, so that C-h f can find them.
+  (add-to-list 'load-path "/usr/share/emacs/site-lisp/mit-scheme" t))

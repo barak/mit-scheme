@@ -6,8 +6,8 @@ Abstract: A detailed description of the MIT/GNU Scheme runtime system.
 Section: Apps/Programming
 
 Format: HTML
-Index: /usr/share/doc/mit-scheme/html/scheme.html
-Files: /usr/share/doc/mit-scheme/html/scheme*.html
+Index: /usr/share/doc/mit-scheme/html/mit-scheme-ref/index.html
+Files: /usr/share/doc/mit-scheme/html/mit-scheme-ref/*.html
 
 Format: pdf
-Files: /usr/share/doc/mit-scheme/pdf/scheme.pdf
+Files: /usr/share/doc/mit-scheme/pdf/mit-scheme-ref.pdf

@@ -11,8 +11,8 @@ Abstract: This document describes how to install and use MIT/GNU Scheme.
 Section: Apps/Programming
 
 Format: HTML
-Index: /usr/share/doc/mit-scheme/html/user.html
-Files: /usr/share/doc/mit-scheme/html/user*.html
+Index: /usr/share/doc/mit-scheme/html/mit-scheme-user/index.html
+Files: /usr/share/doc/mit-scheme/html/mit-scheme-user/*.html
 
 Format: pdf
-Files: /usr/share/doc/mit-scheme/pdf/user.pdf
+Files: /usr/share/doc/mit-scheme/pdf/mit-scheme-user.pdf

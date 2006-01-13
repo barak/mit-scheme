@@ -1,11 +1,14 @@
-#!/bin/sh -e
+#!/bin/sh
 # /usr/lib/emacsen-common/packages/remove/mit-scheme
+set -e
 
-FLAVOR="${1}"
-PACKAGE="mit-scheme"
-FILES="xscheme.elc"
+FLAVOR=${1}
 
-if [ "${FLAVOR}" != "emacs" ]; then
-    echo "remove/${PACKAGE}: purging byte-compiled files for ${FLAVOR}"
-    rm -rf "/usr/share/${FLAVOR}/site-lisp/${PACKAGE}"
+PACKAGE=mit-scheme
+ELCDIR=/usr/share/${FLAVOR}/site-lisp/${PACKAGE}
+
+if [ ${FLAVOR} != emacs ]; then
+    echo remove/${PACKAGE}: purging byte-compiled files for ${FLAVOR}
+    rm -f ${ELCDIR}/*.elc
+    rmdir --ignore-fail-on-non-empty ${ELCDIR}
 fi

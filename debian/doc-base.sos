@@ -6,8 +6,8 @@ Abstract: SOS is an object-oriented programming extension for MIT/GNU Scheme.
 Section: Apps/Programming
 
 Format: HTML
-Index: /usr/share/doc/mit-scheme/html/sos.html
-Files: /usr/share/doc/mit-scheme/html/sos*.html
+Index: /usr/share/doc/mit-scheme/html/mit-scheme-sos/index.html
+Files: /usr/share/doc/mit-scheme/html/mit-scheme-sos/*.html
 
 Format: pdf
-Files: /usr/share/doc/mit-scheme/pdf/sos.pdf
+Files: /usr/share/doc/mit-scheme/pdf/mit-scheme-sos.pdf

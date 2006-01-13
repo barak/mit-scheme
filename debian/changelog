@@ -1,3 +1,15 @@
+mit-scheme (7.7.90+20050912-2) unstable; urgency=low
+
+  * Fix broken doc-base files.  (closes: Bug#345096)
+  * Fix Emacs control scripts to match current policy.
+    (closes: Bug#328897)
+  * Change "etc/xscheme.el" to refer to "MIT/GNU Scheme".
+  * Patch "src/microcode/prdb4.c" to work with DB 4.3 and 4.4.
+  * Update FSF address "debian/copyright".
+  * Add documentation license to "debian/copyright".
+
+ -- Chris Hanson <cph@debian.org>  Fri, 13 Jan 2006 12:45:43 -0500
+
 mit-scheme (7.7.90+20050912-1) unstable; urgency=low
 
   * Acknowledge NMU (thanks Matej!).  (closes: Bug#323739)

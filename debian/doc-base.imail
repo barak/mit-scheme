@@ -8,8 +8,8 @@ Abstract: IMAIL is program for reading electronic mail.
 Section: Apps/Net
 
 Format: HTML
-Index: /usr/share/doc/mit-scheme/html/imail.html
-Files: /usr/share/doc/mit-scheme/html/imail*.html
+Index: /usr/share/doc/mit-scheme/html/mit-scheme-imail/index.html
+Files: /usr/share/doc/mit-scheme/html/mit-scheme-imail/*.html
 
 Format: pdf
-Files: /usr/share/doc/mit-scheme/pdf/imail.pdf
+Files: /usr/share/doc/mit-scheme/pdf/mit-scheme-imail.pdf
