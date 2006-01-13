@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prdb4.c,v 1.3 2005/11/13 03:53:47 cph Exp $
+$Id: prdb4.c,v 1.4 2006/01/13 05:47:35 cph Exp $
 
 Copyright 2004,2005 Massachusetts Institute of Technology
 
@@ -38,6 +38,9 @@ USA.
 
 #if (UNIFIED_VERSION >= 0x040300)
 #  define VERSION_43 1
+#endif
+#if (UNIFIED_VERSION >= 0x040400)
+#  define VERSION_44 1
 #endif
 
 #define ARG_DB(n) ((DB *) (arg_ulong_integer (n)))
@@ -106,7 +109,9 @@ DEFINE_PRIMITIVE ("DB4:RC->NAME", Prim_db4_rc_to_name, 1, 1, 0)
 #endif
 	RC_TO_NAME_CASE (DB_ALREADY_ABORTED, "db_already_aborted");
 	RC_TO_NAME_CASE (DB_DELETED, "db_deleted");
+#ifndef VERSION_44
 	RC_TO_NAME_CASE (DB_LOCK_NOTEXIST, "db_lock_notexist");
+#endif
 	RC_TO_NAME_CASE (DB_NEEDSPLIT, "db_needsplit");
 #ifdef VERSION_43
 	RC_TO_NAME_CASE (DB_REP_EGENCHG, "db_rep_egenchg");
@@ -181,7 +186,9 @@ DEFINE_PRIMITIVE ("DB4:NAME->RC", Prim_db4_name_to_rc, 1, 1, 0)
 #endif
     NAME_TO_RC_CASE ("db_already_aborted", DB_ALREADY_ABORTED);
     NAME_TO_RC_CASE ("db_deleted", DB_DELETED);
+#ifndef VERSION_44
     NAME_TO_RC_CASE ("db_lock_notexist", DB_LOCK_NOTEXIST);
+#endif
     NAME_TO_RC_CASE ("db_needsplit", DB_NEEDSPLIT);
 #ifdef VERSION_43
     NAME_TO_RC_CASE ("db_rep_egenchg", DB_REP_EGENCHG);
