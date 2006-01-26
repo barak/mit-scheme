@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.16 2005/12/19 04:03:14 cph Exp $
+$Id: xhtml.scm,v 1.17 2006/01/26 05:42:37 cph Exp $
 
-Copyright 2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -83,7 +83,7 @@ USA.
 
 (define html-1.0-dtd (make-xml-dtd 'html html-1.0-external-id '()))
 (define html-1.1-dtd (make-xml-dtd 'html html-1.1-external-id '()))
-
+
 (define (html-1.0-document attrs . items)
   (%make-document html-1.0-dtd attrs items))
 
@@ -91,20 +91,34 @@ USA.
   (%make-document html-1.1-dtd attrs items))
 
 (define (%make-document dtd attrs items)
-  (make-xml-document (make-xml-declaration
-		      (or (find-xml-attr 'xml-decl-version attrs) "1.0")
-		      (or (find-xml-attr 'xml-decl-encoding attrs) "UTF-8")
-		      (find-xml-attr 'xml-decl-standalone attrs))
-		     '("\n")
-		     dtd
-		     '("\n")
-		     (html:html (xml-attrs 'xmlns html-iri
-					   'xml-decl-version #f
-					   'xml-decl-encoding #f
-					   'xml-decl-standalone #f
-					   attrs)
-				items)
-		     '("\n")))
+  (receive (decl items) (parse-decl items)
+    (receive (styles items) (parse-styles items)
+      (make-xml-document decl
+			 '("\n")
+			 dtd
+			 (cons "\n"
+			       (append-map! (lambda (style)
+					      (list style "\n"))
+					    styles))
+			 (html:html (xml-attrs 'xmlns html-iri
+					       attrs)
+				    items)
+			 '("\n")))))
+
+(define (parse-decl items)
+  (if (and (pair? items)
+	   (xml-declaration? (car items)))
+      (values (car items) (cdr items))
+      (values (make-xml-declaration "1.0" "UTF-8" #f) items)))
+
+(define (parse-styles items)
+  (let loop ((items items) (styles '()))
+    (if (and (pair? items)
+	     (xml-processing-instructions? (car items))
+	     (eq? (xml-processing-instructions-name (car items))
+		  'xml-stylesheet))
+	(loop (cdr items) (cons (car items) styles))
+	(values (reverse! styles) items))))
 
 (define-syntax define-html-element
   (sc-macro-transformer
