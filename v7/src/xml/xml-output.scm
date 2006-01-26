@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.37 2005/12/19 04:11:32 cph Exp $
+$Id: xml-output.scm,v 1.38 2006/01/26 05:53:49 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -163,8 +163,13 @@ USA.
 (define-method %write-xml ((pi <xml-processing-instructions>) ctx)
   (emit-string "<?" ctx)
   (write-xml-name (xml-processing-instructions-name pi) ctx)
-  (emit-string " " ctx)
-  (emit-string (xml-processing-instructions-text pi) ctx)
+  (let ((text (xml-processing-instructions-text pi)))
+    (if (fix:> (string-length text) 0)
+	(begin
+	  (if (not (char-set-member? char-set:xml-whitespace
+				     (string-ref text 0)))
+	      (emit-string " " ctx))
+	  (emit-string text ctx))))
   (emit-string "?>" ctx))
 
 (define-method %write-xml ((dtd <xml-dtd>) ctx)
