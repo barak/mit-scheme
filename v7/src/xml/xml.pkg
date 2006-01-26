@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.59 2005/12/19 04:00:32 cph Exp $
+$Id: xml.pkg,v 1.60 2006/01/26 05:44:25 cph Exp $
 
-Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -254,6 +254,7 @@ USA.
 	  xml-processing-instructions-name
 	  xml-processing-instructions-text
 	  xml-processing-instructions?
+	  xml-stylesheet
 	  xml-unparsed-!entity-id
 	  xml-unparsed-!entity-name
 	  xml-unparsed-!entity-notation

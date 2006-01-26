@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.49 2005/12/19 04:00:37 cph Exp $
+$Id: xml-struct.scm,v 1.50 2006/01/26 05:44:33 cph Exp $
 
-Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -466,6 +466,21 @@ USA.
 	  (if (char-whitespace? (wide-string-ref ws (fix:- n 1))) "" " "))
 	 " "))))
 
+(define (xml-stylesheet . items)
+  (make-xml-processing-instructions
+   'xml-stylesheet
+   (call-with-output-string
+     (lambda (port)
+       (for-each (lambda (attr)
+		   (write-char #\space port)
+		   (write-string (xml-name-string (xml-attribute-name attr))
+				 port)
+		   (write-char #\= port)
+		   (write-char #\" port)
+		   (write-string (xml-attribute-value attr) port)
+		   (write-char #\" port))
+		 (apply xml-attrs items))))))
+
 (define (standard-xml-element-constructor qname iri empty?)
   (let ((name (make-xml-name qname iri)))
     (if empty?
@@ -481,7 +496,7 @@ USA.
     (lambda (object)
       (and (xml-element? object)
 	   (xml-name=? (xml-element-name object) name)))))
-
+
 (define (xml-attrs . items)
   (let ((flush
 	 (lambda (name attrs)
