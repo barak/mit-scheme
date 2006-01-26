@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-expander.scm,v 1.5 2006/01/26 03:53:24 cph Exp $
+$Id: xhtml-expander.scm,v 1.6 2006/01/26 03:53:46 cph Exp $
 
-Copyright 2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2002,2003,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
