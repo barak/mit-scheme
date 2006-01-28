@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.17 2006/01/26 05:42:37 cph Exp $
+$Id: xhtml.scm,v 1.18 2006/01/28 02:48:32 cph Exp $
 
 Copyright 2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -52,37 +52,45 @@ USA.
 (define (error:not-html-element-name object caller)
   (error:wrong-type-argument object "HTML element name" caller))
 
+(define-syntax define-html-id
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(DATUM DATUM DATUM) (cdr form))
+	 (let ((version (cadr form))
+	       (public-id (caddr form))
+	       (system-id (cadddr form)))
+	   (let ((pid-name (symbol 'HTML- version '-PUBLIC-ID))
+		 (sid-name (symbol 'HTML- version '-SYSTEM-ID))
+		 (eid-name (symbol 'HTML- version '-EXTERNAL-ID))
+		 (dtd-name (symbol 'HTML- version '-DTD)))
+	     `(BEGIN
+		(DEFINE ,pid-name ,public-id)
+		(DEFINE ,sid-name ,system-id)
+		(DEFINE ,eid-name (MAKE-XML-EXTERNAL-ID ,pid-name ,sid-name))
+		(DEFINE ,dtd-name (MAKE-XML-DTD 'html ,eid-name '())))))
+	 (ill-formed-syntax form)))))
+
+(define-html-id "1.0"
+  "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/MarkUp/DTD/xhtml1-strict.dtd")
+
+(define-html-id "1.1"
+  "-//W3C//DTD XHTML 1.1//EN"
+  "http://www.w3.org/MarkUp/DTD/xhtml11.dtd")
+
+(define (html-public-id? id)
+  (and (string? id)
+       (string-prefix? "-//W3C//DTD XHTML " id)))
+
 (define (html-external-id? object)
   (and (xml-external-id? object)
-       (let ((id (xml-external-id-id object))
-	     (iri (xml-external-id-iri object)))
-	 (and id
-	      iri
-	      (or (and (string=? id html-1.0-public-id)
-		       (string=? iri html-1.0-system-id))
-		  (and (string=? id html-1.1-public-id)
-		       (string=? iri html-1.1-system-id)))))))
-
-(define html-1.0-public-id "-//W3C//DTD XHTML 1.0 Strict//EN")
-(define html-1.0-system-id "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd")
-
-(define html-1.0-external-id
-  (make-xml-external-id html-1.0-public-id html-1.0-system-id))
-
-(define html-1.1-public-id "-//W3C//DTD XHTML 1.1//EN")
-(define html-1.1-system-id "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd")
-
-(define html-1.1-external-id
-  (make-xml-external-id html-1.1-public-id html-1.1-system-id))
+       (html-public-id? (xml-external-id-id object))))
 
 (define (html-dtd? object)
   (and (xml-dtd? object)
        (eq? (xml-dtd-root object) 'html)
        (html-external-id? (xml-dtd-external object))
        (null? (xml-dtd-internal object))))
-
-(define html-1.0-dtd (make-xml-dtd 'html html-1.0-external-id '()))
-(define html-1.1-dtd (make-xml-dtd 'html html-1.1-external-id '()))
 
 (define (html-1.0-document attrs . items)
   (%make-document html-1.0-dtd attrs items))
