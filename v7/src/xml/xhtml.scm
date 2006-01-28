@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.18 2006/01/28 02:48:32 cph Exp $
+$Id: xhtml.scm,v 1.19 2006/01/28 02:50:42 cph Exp $
 
 Copyright 2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -55,6 +55,7 @@ USA.
 (define-syntax define-html-id
   (sc-macro-transformer
    (lambda (form environment)
+     environment
      (if (syntax-match? '(DATUM DATUM DATUM) (cdr form))
 	 (let ((version (cadr form))
 	       (public-id (caddr form))
