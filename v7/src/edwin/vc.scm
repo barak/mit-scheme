@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.88 2005/12/22 18:54:12 cph Exp $
+$Id: vc.scm,v 1.89 2006/01/29 06:03:42 cph Exp $
 
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -2008,7 +2008,8 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'FIND-MASTER vc-type:svn
   (lambda (workfile)
-    (and (not (let ((output (%get-svn-status workfile)))
+    (and (file-directory? (svn-directory workfile))
+	 (not (let ((output (%get-svn-status workfile)))
 		(or (not output)
 		    (string-null? output)
 		    (string-prefix? "?" output))))
