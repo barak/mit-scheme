@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 1.7 2003/07/22 02:19:51 cph Exp $
+$Id: config.h,v 1.8 2006/01/29 06:37:30 cph Exp $
 
 Copyright 2000,2001,2003 Massachusetts Institute of Technology
 
@@ -34,6 +34,10 @@ USA.
 #  define CL386
 #endif
 
+#if defined (__WATCOMC__) && (__WATCOMC__ >= 1240)
+#  define __OPEN_WATCOM_14__
+#endif
+
 #include <sys/types.h>
 #include <time.h>
 
@@ -43,12 +47,15 @@ typedef _off_t off_t;
 typedef short nlink_t;
 #endif
 
-typedef unsigned short mode_t;
-typedef unsigned long pid_t;
-typedef short uid_t;
-typedef short gid_t;
+#ifndef __OPEN_WATCOM_14__
+  typedef unsigned short mode_t;
+  typedef unsigned long pid_t;
+  typedef short uid_t;
+  typedef short gid_t;
+  typedef long ssize_t;
+#endif
+
 typedef unsigned char cc_t;
-typedef long ssize_t;
 
 /* The number of bytes in a unsigned long.  */
 #define SIZEOF_UNSIGNED_LONG 4
