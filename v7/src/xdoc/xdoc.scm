@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xdoc.scm,v 1.3 2006/01/30 20:23:05 cph Exp $
+$Id: xdoc.scm,v 1.4 2006/01/30 21:05:45 cph Exp $
 
 Copyright 2003,2004,2006 Massachusetts Institute of Technology
 
@@ -1291,7 +1291,7 @@ USA.
 	(xml-name=? name 'style)
 	(and (xml-name-prefix=? name 'xmlns)
 	     (not (string=? (xml-attribute-value attr)
-			    (xml-namespace-uri-string xdoc-uri)))))))
+			    (uri->string xdoc-uri)))))))
 
 (define (merged-attribute? attr)
   (let ((name (xml-attribute-name attr)))
@@ -1405,7 +1405,7 @@ USA.
 ;;;; XDOC element data types
 
 (define xdoc-uri
-  (make-xml-namespace-uri "http://mit.edu/2003/XDOC"))
+  (->absolute-uri "http://mit.edu/2003/XDOC"))
 
 (define (xdoc-name? name)
   (xml-name-uri=? name xdoc-uri))

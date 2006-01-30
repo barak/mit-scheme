@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.51 2006/01/30 20:20:46 cph Exp $
+$Id: xml-struct.scm,v 1.52 2006/01/30 21:05:33 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -437,10 +437,12 @@ USA.
 			    (symbol-append 'xmlns: prefix))
 			elt)))
     (and value
-	 (make-xml-namespace-uri value))))
+	 (if (string-null? value)
+	     (null-xml-namespace-uri)
+	     (->absolute-uri value)))))
 
 (define (xml-element-namespace-prefix elt uri)
-  (let ((uri (xml-namespace-uri-string uri)))
+  (let ((uri (uri->string uri)))
     (let ((attr
 	   (find-matching-item (xml-element-attributes elt)
 	     (lambda (attr)
@@ -569,7 +571,7 @@ USA.
   (cond ((xml-content-item? value) value)
 	((symbol? value) (symbol-name value))
 	((number? value) (number->string value))
-	((xml-namespace-uri? value) (xml-namespace-uri-string value))
+	((uri? value) (uri->string value))
 	((list-of-type? value xml-nmtoken?) (nmtokens->string value))
 	(else (error:wrong-type-datum value "XML string value"))))
 

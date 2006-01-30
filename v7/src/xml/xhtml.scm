@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.20 2006/01/30 20:20:40 cph Exp $
+$Id: xhtml.scm,v 1.21 2006/01/30 21:05:29 cph Exp $
 
 Copyright 2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -28,7 +28,7 @@ USA.
 (declare (usual-integrations))
 
 (define html-uri-string "http://www.w3.org/1999/xhtml")
-(define html-uri (make-xml-namespace-uri html-uri-string))
+(define html-uri (->absolute-uri html-uri-string))
 
 (define (html-element? object)
   (and (xml-element? object)

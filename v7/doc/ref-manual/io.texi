@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.12 2006/01/30 20:22:41 cph Exp $
+@c $Id: io.texi,v 1.13 2006/01/30 21:05:54 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -3052,7 +3052,7 @@ identifies an optional namespace.
 @deffn procedure make-xml-name qname uri
 Creates and returns an @acronym{XML} name.  @var{Qname} must be a symbol
 whose name satisfies @code{string-is-xml-name?}.  @var{Uri} must be an
-@code{xml-namespace-uri} record.  The returned value is an @acronym{XML}
+absolute @acronym{URI} record.  The returned value is an @acronym{XML}
 name that satisfies @code{xml-name?}.
 
 If @var{uri} is the @dfn{null} namespace (satisfies
@@ -3064,8 +3064,8 @@ For convenience, @var{qname} may be a string, in which case it is
 converted to a symbol using @code{make-xml-qname}.
 
 For convenience, @var{uri} may be a string, in which case it is
-converted to an @code{xml-namespace-uri} record using
-@code{make-xml-namespace-uri}.
+converted to an absolute @acronym{URI} record using
+@code{->absolute-uri}.
 @end deffn
 
 @deffn procedure xml-name? object
@@ -3078,7 +3078,7 @@ Returns the @dfn{qname} of @var{xml-name} as a symbol.
 @end deffn
 
 @deffn procedure xml-name-uri xml-name
-Returns the @dfn{URI} of @var{xml-name} as an @code{xml-namespace-uri}
+Returns the @dfn{URI} of @var{xml-name} as an absolute @acronym{URI}
 record.
 @end deffn
 
@@ -3169,26 +3169,6 @@ These next procedures define the data abstraction for namespace
 particular syntax, but this implementation uses an abstract
 representation that speeds up type and equality testing.  Two
 @acronym{URI}s are tested for equality using @code{eq?}.
-
-@deffn procedure make-xml-namespace-uri string
-@var{String} must be a syntactically valid @acronym{URI} encoded in
-@acronym{UTF-8}.  Returns the corresponding @acronym{URI}.
-@end deffn
-
-@deffn procedure xml-namespace-uri? object
-Returns @code{#t} if @var{object} is an @acronym{URI} record, otherwise
-returns @code{#f}.
-@end deffn
-
-@deffn procedure xml-namespace-uri-string uri
-@var{Uri} must satisfy @code{xml-namespace-uri?}.  Returns a newly
-allocated string that is a copy of the string used to create @var{uri}.
-@end deffn
-
-The @acronym{URI} of an @acronym{XML} name may be null if there is no
-namespace associated with the name.  The null @acronym{URI} is
-abstracted by the following two procedures.  Note that the null
-@acronym{URI} satisfies the predicate @code{xml-namespace-uri?}.
 
 @deffn procedure null-xml-namespace-uri
 Returns the null @acronym{URI} record.

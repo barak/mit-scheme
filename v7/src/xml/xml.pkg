@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.62 2006/01/30 20:20:41 cph Exp $
+$Id: xml.pkg,v 1.63 2006/01/30 21:05:30 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -36,18 +36,14 @@ USA.
   (files "xml-names")
   (parent (runtime xml))
   (export ()
-	  <xml-namespace-uri>
 	  error:not-xml-name
-	  error:not-xml-namespace-uri
 	  error:not-xml-nmtoken
 	  error:not-xml-qname
 	  guarantee-xml-name
-	  guarantee-xml-namespace-uri
 	  guarantee-xml-nmtoken
 	  guarantee-xml-qname
 	  make-xml-name
 	  make-xml-name-hash-table
-	  make-xml-namespace-uri
 	  make-xml-nmtoken
 	  make-xml-qname
 	  null-xml-name-prefix
@@ -68,8 +64,6 @@ USA.
 	  xml-name-uri=?
 	  xml-name=?
 	  xml-name?
-	  xml-namespace-uri-string
-	  xml-namespace-uri?
 	  xml-nmtoken-string
 	  xml-nmtoken?
 	  xml-qname-local

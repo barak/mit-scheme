@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.66 2006/01/30 20:20:44 cph Exp $
+$Id: xml-parser.scm,v 1.67 2006/01/30 21:05:32 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -566,7 +566,11 @@ USA.
 		    (tail (loop (cdr attrs))))
 		(let ((qname (car uname))
 		      (p (cdr uname)))
-		  (let ((get-uri (lambda () (make-xml-namespace-uri value)))
+		  (let ((get-uri
+			 (lambda ()
+			   (if (string-null? value)
+			       (null-xml-namespace-uri)
+			       (->absolute-uri value))))
 			(forbidden-uri
 			 (lambda (uri)
 			   (perror p "Forbidden namespace URI" uri))))

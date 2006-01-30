@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.10 2006/01/30 20:20:42 cph Exp $
+$Id: xml-names.scm,v 1.11 2006/01/30 21:05:31 cph Exp $
 
 Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -29,7 +29,7 @@ USA.
 
 (define (make-xml-name qname uri)
   (let ((qname (make-xml-qname qname))
-	(uri (make-xml-namespace-uri uri)))
+	(uri (->absolute-uri uri)))
     (if (null-xml-namespace-uri? uri)
 	qname
 	(begin
@@ -274,37 +274,6 @@ USA.
 
 ;;;; Namespace URI
 
-(define (make-xml-namespace-uri object)
-  (if (string? object)
-      (begin
-	(if (not (string-is-namespace-uri? object))
-	    (error:bad-range-argument object 'MAKE-XML-NAMESPACE-URI))
-	(hash-table/intern! namespace-uris object
-	  (lambda ()
-	    (%make-xml-namespace-uri object))))
-      (begin
-	(guarantee-xml-namespace-uri object 'MAKE-XML-NAMESPACE-URI)
-	object)))
-
-(define (string-is-namespace-uri? object)
-  ;; See RFC 1630 for correct syntax.
-  (utf8-string-valid? object))
-
-(define namespace-uris
-  (make-string-hash-table))
-
-(define-record-type <xml-namespace-uri>
-    (%make-xml-namespace-uri string)
-    xml-namespace-uri?
-  (string %xml-namespace-uri-string))
-
-(define (guarantee-xml-namespace-uri object caller)
-  (if (not (xml-namespace-uri? object))
-      (error:not-xml-namespace-uri object caller)))
-
-(define (xml-namespace-uri-string uri)
-  (string-copy (%xml-namespace-uri-string uri)))
-
 (define (null-xml-namespace-uri? object)
   (eq? object null-namespace-uri))
 
@@ -312,13 +281,10 @@ USA.
   null-namespace-uri)
 
 (define null-namespace-uri
-  (make-xml-namespace-uri ""))
-
-(define (error:not-xml-namespace-uri object caller)
-  (error:wrong-type-argument object "an XML namespace URI" caller))
+  (->relative-uri ""))
 
 (define xml-uri
-  (make-xml-namespace-uri "http://www.w3.org/XML/1998/namespace"))
+  (->absolute-uri "http://www.w3.org/XML/1998/namespace"))
 
 (define xmlns-uri
-  (make-xml-namespace-uri "http://www.w3.org/2000/xmlns/"))
+  (->absolute-uri "http://www.w3.org/2000/xmlns/"))
