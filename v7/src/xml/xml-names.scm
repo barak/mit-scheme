@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.9 2005/12/13 15:30:28 cph Exp $
+$Id: xml-names.scm,v 1.10 2006/01/30 20:20:42 cph Exp $
 
-Copyright 2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,38 +27,38 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-xml-name qname iri)
+(define (make-xml-name qname uri)
   (let ((qname (make-xml-qname qname))
-	(iri (make-xml-namespace-iri iri)))
-    (if (null-xml-namespace-iri? iri)
+	(uri (make-xml-namespace-uri uri)))
+    (if (null-xml-namespace-uri? uri)
 	qname
 	(begin
-	  (check-prefix+iri qname iri)
-	  (%make-xml-name qname iri)))))
+	  (check-prefix+uri qname uri)
+	  (%make-xml-name qname uri)))))
 
-(define (check-prefix+iri qname iri)
+(define (check-prefix+uri qname uri)
   (if (let ((s (symbol-name qname)))
 	(let ((c (find-prefix-separator s)))
 	  (case c
 	    ((#f) #f)
-	    ((ILLEGAL) iri)
+	    ((ILLEGAL) uri)
 	    (else
 	     (let ((prefix (utf8-string->symbol (string-head s c))))
 	       (or (and (eq? prefix 'xml)
-			(not (eq? iri xml-iri)))
+			(not (eq? uri xml-uri)))
 		   (and (eq? prefix 'xmlns)
-			(not (eq? iri xmlns-iri)))))))))
-      (error:bad-range-argument iri 'MAKE-XML-NAME)))
+			(not (eq? uri xmlns-uri)))))))))
+      (error:bad-range-argument uri 'MAKE-XML-NAME)))
 
-(define (%make-xml-name qname iri)
+(define (%make-xml-name qname uri)
   (let ((uname
 	 (let ((local (xml-qname-local qname)))
 	   (hash-table/intern! (hash-table/intern! expanded-names
-						   iri
+						   uri
 						   make-eq-hash-table)
 			       local
 			       (lambda ()
-				 (make-expanded-name iri
+				 (make-expanded-name uri
 						     local
 						     (make-eq-hash-table)))))))
     (hash-table/intern! (expanded-name-combos uname)
@@ -146,13 +146,13 @@ USA.
 (define (xml-name-qname=? name qname)
   (eq? (xml-name-qname name) qname))
 
-(define (xml-name-iri name)
-  (cond ((xml-qname? name) (null-xml-namespace-iri))
-	((combo-name? name) (expanded-name-iri (combo-name-expanded name)))
-	(else (error:not-xml-name name 'XML-NAME-IRI))))
+(define (xml-name-uri name)
+  (cond ((xml-qname? name) (null-xml-namespace-uri))
+	((combo-name? name) (expanded-name-uri (combo-name-expanded name)))
+	(else (error:not-xml-name name 'XML-NAME-URI))))
 
-(define (xml-name-iri=? name iri)
-  (eq? (xml-name-iri name) iri))
+(define (xml-name-uri=? name uri)
+  (eq? (xml-name-uri name) uri))
 
 (define (xml-name-prefix name)
   (xml-qname-prefix
@@ -266,59 +266,59 @@ USA.
       (write (combo-name-qname name) port))))
 
 (define-record-type <expanded-name>
-    (make-expanded-name iri local combos)
+    (make-expanded-name uri local combos)
     expanded-name?
-  (iri expanded-name-iri)
+  (uri expanded-name-uri)
   (local expanded-name-local)
   (combos expanded-name-combos))
 
-;;;; Namespace IRI
+;;;; Namespace URI
 
-(define (make-xml-namespace-iri object)
+(define (make-xml-namespace-uri object)
   (if (string? object)
       (begin
-	(if (not (string-is-namespace-iri? object))
-	    (error:bad-range-argument object 'MAKE-XML-NAMESPACE-IRI))
-	(hash-table/intern! namespace-iris object
+	(if (not (string-is-namespace-uri? object))
+	    (error:bad-range-argument object 'MAKE-XML-NAMESPACE-URI))
+	(hash-table/intern! namespace-uris object
 	  (lambda ()
-	    (%make-xml-namespace-iri object))))
+	    (%make-xml-namespace-uri object))))
       (begin
-	(guarantee-xml-namespace-iri object 'MAKE-XML-NAMESPACE-IRI)
+	(guarantee-xml-namespace-uri object 'MAKE-XML-NAMESPACE-URI)
 	object)))
 
-(define (string-is-namespace-iri? object)
+(define (string-is-namespace-uri? object)
   ;; See RFC 1630 for correct syntax.
   (utf8-string-valid? object))
 
-(define namespace-iris
+(define namespace-uris
   (make-string-hash-table))
 
-(define-record-type <xml-namespace-iri>
-    (%make-xml-namespace-iri string)
-    xml-namespace-iri?
-  (string %xml-namespace-iri-string))
+(define-record-type <xml-namespace-uri>
+    (%make-xml-namespace-uri string)
+    xml-namespace-uri?
+  (string %xml-namespace-uri-string))
 
-(define (guarantee-xml-namespace-iri object caller)
-  (if (not (xml-namespace-iri? object))
-      (error:not-xml-namespace-iri object caller)))
+(define (guarantee-xml-namespace-uri object caller)
+  (if (not (xml-namespace-uri? object))
+      (error:not-xml-namespace-uri object caller)))
 
-(define (xml-namespace-iri-string iri)
-  (string-copy (%xml-namespace-iri-string iri)))
+(define (xml-namespace-uri-string uri)
+  (string-copy (%xml-namespace-uri-string uri)))
 
-(define (null-xml-namespace-iri? object)
-  (eq? object null-namespace-iri))
+(define (null-xml-namespace-uri? object)
+  (eq? object null-namespace-uri))
 
-(define (null-xml-namespace-iri)
-  null-namespace-iri)
+(define (null-xml-namespace-uri)
+  null-namespace-uri)
 
-(define null-namespace-iri
-  (make-xml-namespace-iri ""))
+(define null-namespace-uri
+  (make-xml-namespace-uri ""))
 
-(define (error:not-xml-namespace-iri object caller)
-  (error:wrong-type-argument object "an XML namespace IRI" caller))
+(define (error:not-xml-namespace-uri object caller)
+  (error:wrong-type-argument object "an XML namespace URI" caller))
 
-(define xml-iri
-  (make-xml-namespace-iri "http://www.w3.org/XML/1998/namespace"))
+(define xml-uri
+  (make-xml-namespace-uri "http://www.w3.org/XML/1998/namespace"))
 
-(define xmlns-iri
-  (make-xml-namespace-iri "http://www.w3.org/2000/xmlns/"))
+(define xmlns-uri
+  (make-xml-namespace-uri "http://www.w3.org/2000/xmlns/"))

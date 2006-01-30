@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-rpc.scm,v 1.3 2005/03/25 18:43:12 cph Exp $
+$Id: xml-rpc.scm,v 1.4 2006/01/30 20:20:45 cph Exp $
 
-Copyright 2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -306,7 +306,7 @@ USA.
 (define (rpc-elt name empty?)
   (let ((make-elt
 	 (standard-xml-element-constructor name
-					   (null-xml-namespace-iri)
+					   (null-xml-namespace-uri)
 					   empty?)))
     (if empty?
 	(lambda ()

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.50 2006/01/26 05:44:33 cph Exp $
+$Id: xml-struct.scm,v 1.51 2006/01/30 20:20:46 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -259,7 +259,7 @@ USA.
   (id (lambda (object)
 	(or (not object)
 	    (public-id? object))))
-  (iri canonicalize
+  (uri canonicalize
        (lambda (object)
 	 (and object
 	      (canonicalize-char-data object)))))
@@ -419,7 +419,7 @@ USA.
 (define-xml-printer external-id
   (lambda (dtd)
     (or (xml-external-id-id dtd)
-	(xml-external-id-iri dtd))))
+	(xml-external-id-uri dtd))))
 
 (define (xml-attribute-namespace-decl? attr)
   (let ((name (xml-attribute-name attr)))
@@ -430,22 +430,22 @@ USA.
   (keep-matching-items (xml-element-attributes elt)
     xml-attribute-namespace-decl?))
 
-(define (xml-element-namespace-iri elt prefix)
+(define (xml-element-namespace-uri elt prefix)
   (let ((value
 	 (find-xml-attr (if (null-xml-name-prefix? prefix)
 			    'xmlns
 			    (symbol-append 'xmlns: prefix))
 			elt)))
     (and value
-	 (make-xml-namespace-iri value))))
+	 (make-xml-namespace-uri value))))
 
-(define (xml-element-namespace-prefix elt iri)
-  (let ((iri (xml-namespace-iri-string iri)))
+(define (xml-element-namespace-prefix elt uri)
+  (let ((uri (xml-namespace-uri-string uri)))
     (let ((attr
 	   (find-matching-item (xml-element-attributes elt)
 	     (lambda (attr)
 	       (and (xml-attribute-namespace-decl? attr)
-		    (string=? (xml-attribute-value attr) iri))))))
+		    (string=? (xml-attribute-value attr) uri))))))
       (and attr
 	   (let ((name (xml-attribute-name attr)))
 	     (if (xml-name=? name 'xmlns)
@@ -481,8 +481,8 @@ USA.
 		   (write-char #\" port))
 		 (apply xml-attrs items))))))
 
-(define (standard-xml-element-constructor qname iri empty?)
-  (let ((name (make-xml-name qname iri)))
+(define (standard-xml-element-constructor qname uri empty?)
+  (let ((name (make-xml-name qname uri)))
     (if empty?
 	(lambda items
 	  (make-xml-element name (apply xml-attrs items) '()))
@@ -491,8 +491,8 @@ USA.
 			    (if (not attrs) '() attrs)
 			    (flatten-xml-element-content items))))))
 
-(define (standard-xml-element-predicate qname iri)
-  (let ((name (make-xml-name qname iri)))
+(define (standard-xml-element-predicate qname uri)
+  (let ((name (make-xml-name qname uri)))
     (lambda (object)
       (and (xml-element? object)
 	   (xml-name=? (xml-element-name object) name)))))
@@ -569,7 +569,7 @@ USA.
   (cond ((xml-content-item? value) value)
 	((symbol? value) (symbol-name value))
 	((number? value) (number->string value))
-	((xml-namespace-iri? value) (xml-namespace-iri-string value))
+	((xml-namespace-uri? value) (xml-namespace-uri-string value))
 	((list-of-type? value xml-nmtoken?) (nmtokens->string value))
 	(else (error:wrong-type-datum value "XML string value"))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.61 2006/01/28 02:48:36 cph Exp $
+$Id: xml.pkg,v 1.62 2006/01/30 20:20:41 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -36,30 +36,27 @@ USA.
   (files "xml-names")
   (parent (runtime xml))
   (export ()
-	  <xml-namespace-iri>
+	  <xml-namespace-uri>
 	  error:not-xml-name
-	  error:not-xml-namespace-iri
+	  error:not-xml-namespace-uri
 	  error:not-xml-nmtoken
 	  error:not-xml-qname
 	  guarantee-xml-name
-	  guarantee-xml-namespace-iri
+	  guarantee-xml-namespace-uri
 	  guarantee-xml-nmtoken
 	  guarantee-xml-qname
 	  make-xml-name
 	  make-xml-name-hash-table
-	  make-xml-namespace-iri
+	  make-xml-namespace-uri
 	  make-xml-nmtoken
 	  make-xml-qname
 	  null-xml-name-prefix
 	  null-xml-name-prefix?
-	  null-xml-namespace-iri
-	  null-xml-namespace-iri?
+	  null-xml-namespace-uri
+	  null-xml-namespace-uri?
 	  string-is-xml-name?
 	  string-is-xml-nmtoken?
-	  xml-iri
 	  xml-name-hash
-	  xml-name-iri
-	  xml-name-iri=?
 	  xml-name-local
 	  xml-name-local=?
 	  xml-name-prefix
@@ -67,17 +64,20 @@ USA.
 	  xml-name-qname
 	  xml-name-qname=?
 	  xml-name-string
+	  xml-name-uri
+	  xml-name-uri=?
 	  xml-name=?
 	  xml-name?
-	  xml-namespace-iri-string
-	  xml-namespace-iri?
+	  xml-namespace-uri-string
+	  xml-namespace-uri?
 	  xml-nmtoken-string
 	  xml-nmtoken?
 	  xml-qname-local
 	  xml-qname-prefix
 	  xml-qname-string
 	  xml-qname?
-	  xmlns-iri)
+	  xml-uri
+	  xmlns-uri)
   (export (runtime xml)
 	  %make-xml-name
 	  string-composed-of?
@@ -184,7 +184,7 @@ USA.
 	  set-xml-element-name!
 	  set-xml-entity-ref-name!
 	  set-xml-external-id-id!
-	  set-xml-external-id-iri!
+	  set-xml-external-id-uri!
 	  set-xml-parameter-!entity-name!
 	  set-xml-parameter-!entity-value!
 	  set-xml-parameter-entity-ref-name!
@@ -242,7 +242,7 @@ USA.
 	  xml-entity-ref-name
 	  xml-entity-ref?
 	  xml-external-id-id
-	  xml-external-id-iri
+	  xml-external-id-uri
 	  xml-external-id?
 	  xml-misc-content-item?
 	  xml-misc-content?
@@ -327,8 +327,8 @@ USA.
 	  html-element-names
 	  html-element?
 	  html-external-id?
-	  html-iri
 	  html-public-id?
+	  html-uri
 	  html:a
 	  html:a?
 	  html:abbr

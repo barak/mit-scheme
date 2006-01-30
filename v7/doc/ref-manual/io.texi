@@ -1,9 +1,9 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.11 2005/05/20 02:14:24 cph Exp $
+@c $Id: io.texi,v 1.12 2006/01/30 20:22:41 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
-@c Copyright 2002,2003,2004,2005 Massachusetts Institute of Technology
+@c Copyright 2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 @c See file scheme.texinfo for copying conditions.
 
 @node Input/Output, Operating-System Interface, Environments, Top
@@ -3042,20 +3042,20 @@ document uses them.  Consequently, it must be possible to compare
 non-associated names with associated names.
 
 @cindex Internationalized Resource Identifier
-@cindex IRI, of XML name
+@cindex URI, of XML name
 @cindex qname, of XML name
 An @acronym{XML} name consists of two parts: the @dfn{qname}, which is a
 symbol, possibly including a namespace prefix; and the
-@dfn{Internationalized Resource Identifier} (@acronym{IRI}), which
+@dfn{Internationalized Resource Identifier} (@acronym{URI}), which
 identifies an optional namespace.
 
-@deffn procedure make-xml-name qname iri
+@deffn procedure make-xml-name qname uri
 Creates and returns an @acronym{XML} name.  @var{Qname} must be a symbol
-whose name satisfies @code{string-is-xml-name?}.  @var{Iri} must be an
-@code{xml-namespace-iri} record.  The returned value is an @acronym{XML}
+whose name satisfies @code{string-is-xml-name?}.  @var{Uri} must be an
+@code{xml-namespace-uri} record.  The returned value is an @acronym{XML}
 name that satisfies @code{xml-name?}.
 
-If @var{iri} is the @dfn{null} namespace (satisfies
+If @var{uri} is the @dfn{null} namespace (satisfies
 @code{null-xml-name-prefix?}), the returned value is a symbol equivalent
 to @var{qname}.  This means that an ordinary symbol can be used as an
 @acronym{XML} name when there is no namespace associated with the name.
@@ -3063,9 +3063,9 @@ to @var{qname}.  This means that an ordinary symbol can be used as an
 For convenience, @var{qname} may be a string, in which case it is
 converted to a symbol using @code{make-xml-qname}.
 
-For convenience, @var{iri} may be a string, in which case it is
-converted to an @code{xml-namespace-iri} record using
-@code{make-xml-namespace-iri}.
+For convenience, @var{uri} may be a string, in which case it is
+converted to an @code{xml-namespace-uri} record using
+@code{make-xml-namespace-uri}.
 @end deffn
 
 @deffn procedure xml-name? object
@@ -3077,8 +3077,8 @@ Returns @code{#t} if @var{object} is an @acronym{XML} name, and
 Returns the @dfn{qname} of @var{xml-name} as a symbol.
 @end deffn
 
-@deffn procedure xml-name-iri xml-name
-Returns the @dfn{IRI} of @var{xml-name} as an @code{xml-namespace-iri}
+@deffn procedure xml-name-uri xml-name
+Returns the @dfn{URI} of @var{xml-name} as an @code{xml-namespace-uri}
 record.
 @end deffn
 
@@ -3112,9 +3112,9 @@ Returns the @dfn{local part} of @var{xml-name} as a symbol.
 The next procedure compares two @acronym{XML} names for equality.  The
 rules for equality are slightly complex, in order to permit comparing
 names in the @acronym{DTD} with names in the document body.  So, if both
-of the names have non-null namespace @acronym{IRI}s, then the names are
+of the names have non-null namespace @acronym{URI}s, then the names are
 equal if and only if their local parts are equal and their
-@acronym{IRI}s are equal.  (The prefixes of the names are not considered
+@acronym{URI}s are equal.  (The prefixes of the names are not considered
 in this case.)  Otherwise, the names are equal if and only if their
 qnames are equal.
 
@@ -3165,51 +3165,51 @@ Returns @code{#t} if @var{object} is the null prefix, otherwise returns
 @end deffn
 
 These next procedures define the data abstraction for namespace
-@acronym{IRI}s.  Conceptually, an @acronym{IRI} is a string with a
+@acronym{URI}s.  Conceptually, an @acronym{URI} is a string with a
 particular syntax, but this implementation uses an abstract
 representation that speeds up type and equality testing.  Two
-@acronym{IRI}s are tested for equality using @code{eq?}.
+@acronym{URI}s are tested for equality using @code{eq?}.
 
-@deffn procedure make-xml-namespace-iri string
-@var{String} must be a syntactically valid @acronym{IRI} encoded in
-@acronym{UTF-8}.  Returns the corresponding @acronym{IRI}.
+@deffn procedure make-xml-namespace-uri string
+@var{String} must be a syntactically valid @acronym{URI} encoded in
+@acronym{UTF-8}.  Returns the corresponding @acronym{URI}.
 @end deffn
 
-@deffn procedure xml-namespace-iri? object
-Returns @code{#t} if @var{object} is an @acronym{IRI} record, otherwise
+@deffn procedure xml-namespace-uri? object
+Returns @code{#t} if @var{object} is an @acronym{URI} record, otherwise
 returns @code{#f}.
 @end deffn
 
-@deffn procedure xml-namespace-iri-string iri
-@var{Iri} must satisfy @code{xml-namespace-iri?}.  Returns a newly
-allocated string that is a copy of the string used to create @var{iri}.
+@deffn procedure xml-namespace-uri-string uri
+@var{Uri} must satisfy @code{xml-namespace-uri?}.  Returns a newly
+allocated string that is a copy of the string used to create @var{uri}.
 @end deffn
 
-The @acronym{IRI} of an @acronym{XML} name may be null if there is no
-namespace associated with the name.  The null @acronym{IRI} is
+The @acronym{URI} of an @acronym{XML} name may be null if there is no
+namespace associated with the name.  The null @acronym{URI} is
 abstracted by the following two procedures.  Note that the null
-@acronym{IRI} satisfies the predicate @code{xml-namespace-iri?}.
+@acronym{URI} satisfies the predicate @code{xml-namespace-uri?}.
 
-@deffn procedure null-xml-namespace-iri
-Returns the null @acronym{IRI} record.
+@deffn procedure null-xml-namespace-uri
+Returns the null @acronym{URI} record.
 @end deffn
 
-@deffn procedure null-xml-namespace-iri? object
-Returns @code{#t} if @var{object} is the null @acronym{IRI} record,
+@deffn procedure null-xml-namespace-uri? object
+Returns @code{#t} if @var{object} is the null @acronym{URI} record,
 otherwise returns @code{#f}.
 @end deffn
 
-The following values are two distinguished @acronym{IRI} records.
+The following values are two distinguished @acronym{URI} records.
 
-@defvr variable xml-iri
-@code{xml-iri} is the @acronym{IRI} reserved for use by the
-@acronym{XML} recommendation.  This @acronym{IRI} must be used with the
+@defvr variable xml-uri
+@code{xml-uri} is the @acronym{URI} reserved for use by the
+@acronym{XML} recommendation.  This @acronym{URI} must be used with the
 @samp{xml} prefix.
 @end defvr
 
-@defvr variable xmlns-iri
-@code{xmlns-iri} is the @acronym{IRI} reserved for use by the
-@acronym{XML} namespace recommendation.  This @acronym{IRI} must be used
+@defvr variable xmlns-uri
+@code{xmlns-uri} is the @acronym{URI} reserved for use by the
+@acronym{XML} namespace recommendation.  This @acronym{URI} must be used
 with the @samp{xmlns} prefix.
 @end defvr
 
@@ -3513,18 +3513,18 @@ The @code{xml-!notation} record represents a notation declaration.
 @code{xml-external-id} record.
 @end deftp
 
-@deftp {record type} xml-external-id id iri
+@deftp {record type} xml-external-id id uri
 @vindex <xml-external-id>
 @findex xml-external-id?
 @findex make-xml-external-id
 @findex xml-external-id-id
-@findex xml-external-id-iri
+@findex xml-external-id-uri
 @findex set-xml-external-id-id!
-@findex set-xml-external-id-iri!
+@findex set-xml-external-id-uri!
 The @code{xml-external-id} record is a reference to an external
 @acronym{DTD}.  This reference consists of two parts: @var{id} is a
 public @acronym{ID} literal, corresponding to the @samp{PUBLIC}
-keyword, while @var{iri} is a system literal, corresponding to the
+keyword, while @var{uri} is a system literal, corresponding to the
 @samp{SYSTEM} keyword.  Either or both may be present, depending on
 the context.  Each is represented as a string.
 @end deftp

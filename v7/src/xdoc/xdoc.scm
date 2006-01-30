@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xdoc.scm,v 1.2 2004/11/26 15:17:27 cph Exp $
+$Id: xdoc.scm,v 1.3 2006/01/30 20:23:05 cph Exp $
 
-Copyright 2003,2004 Massachusetts Institute of Technology
+Copyright 2003,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -354,7 +354,7 @@ USA.
 (define (generate-xdoc-html root)
   (if (not (xd:xdoc? root))
       (error "Top level element must be <xd:xdoc>:" root))
-  (html:html (xdoc-attributes root 'xmlns html-iri)
+  (html:html (xdoc-attributes root 'xmlns html-uri)
 	     "\n"
 	     (html:head #f
 			"\n  "
@@ -1291,7 +1291,7 @@ USA.
 	(xml-name=? name 'style)
 	(and (xml-name-prefix=? name 'xmlns)
 	     (not (string=? (xml-attribute-value attr)
-			    (xml-namespace-iri-string xdoc-iri)))))))
+			    (xml-namespace-uri-string xdoc-uri)))))))
 
 (define (merged-attribute? attr)
   (let ((name (xml-attribute-name attr)))
@@ -1404,11 +1404,11 @@ USA.
 
 ;;;; XDOC element data types
 
-(define xdoc-iri
-  (make-xml-namespace-iri "http://mit.edu/2003/XDOC"))
+(define xdoc-uri
+  (make-xml-namespace-uri "http://mit.edu/2003/XDOC"))
 
 (define (xdoc-name? name)
-  (xml-name-iri=? name xdoc-iri))
+  (xml-name-uri=? name xdoc-uri))
 
 (define (xdoc-name=? name local)
   (and (xdoc-name? name)
@@ -1476,10 +1476,10 @@ USA.
        (let ((qname (symbol-append 'xd: local)))
 	 `(BEGIN
 	    (DEFINE ,qname
-	      (STANDARD-XML-ELEMENT-CONSTRUCTOR ',qname XDOC-IRI
+	      (STANDARD-XML-ELEMENT-CONSTRUCTOR ',qname XDOC-URI
 						,(eq? content-type 'empty)))
 	    (DEFINE ,(symbol-append qname '?)
-	      (LET ((NAME (MAKE-XML-NAME ',qname XDOC-IRI)))
+	      (LET ((NAME (MAKE-XML-NAME ',qname XDOC-URI)))
 		(LAMBDA (OBJECT)
 		  (AND (XML-ELEMENT? OBJECT)
 		       (XML-NAME=? (XML-ELEMENT-NAME OBJECT) NAME)))))

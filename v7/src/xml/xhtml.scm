@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.19 2006/01/28 02:50:42 cph Exp $
+$Id: xhtml.scm,v 1.20 2006/01/30 20:20:40 cph Exp $
 
 Copyright 2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -27,12 +27,12 @@ USA.
 
 (declare (usual-integrations))
 
-(define html-iri-string "http://www.w3.org/1999/xhtml")
-(define html-iri (make-xml-namespace-iri html-iri-string))
+(define html-uri-string "http://www.w3.org/1999/xhtml")
+(define html-uri (make-xml-namespace-uri html-uri-string))
 
 (define (html-element? object)
   (and (xml-element? object)
-       (xml-name-iri=? (xml-element-name object) html-iri)))
+       (xml-name-uri=? (xml-element-name object) html-uri)))
 
 (define (guarantee-html-element object caller)
   (if (not (html-element? object))
@@ -43,7 +43,7 @@ USA.
 
 (define (html-element-name? object)
   (and (xml-name? object)
-       (xml-name-iri=? object html-iri)))
+       (xml-name-uri=? object html-uri)))
 
 (define (guarantee-html-element-name object caller)
   (if (not (html-element-name? object))
@@ -109,7 +109,7 @@ USA.
 			       (append-map! (lambda (style)
 					      (list style "\n"))
 					    styles))
-			 (html:html (xml-attrs 'xmlns html-iri
+			 (html:html (xml-attrs 'xmlns html-uri
 					       attrs)
 				    items)
 			 '("\n")))))
@@ -139,15 +139,15 @@ USA.
 	       (empty? (pair? (cdddr form))))
 	   `(BEGIN
 	      (DEFINE ,(symbol-append 'HTML: name)
-		(STANDARD-XML-ELEMENT-CONSTRUCTOR ',name HTML-IRI ,empty?))
+		(STANDARD-XML-ELEMENT-CONSTRUCTOR ',name HTML-URI ,empty?))
 	      (DEFINE ,(symbol-append 'HTML: name '?)
-		(STANDARD-XML-ELEMENT-PREDICATE ',name HTML-IRI))
+		(STANDARD-XML-ELEMENT-PREDICATE ',name HTML-URI))
 	      (DEFINE-HTML-ELEMENT-CONTEXT ',name ',context)))
 	 (ill-formed-syntax form)))))
 
 (define (define-html-element-context qname context)
   (hash-table/put! element-context-map
-		   (make-xml-name qname html-iri)
+		   (make-xml-name qname html-uri)
 		   context)
   qname)
 
@@ -250,9 +250,9 @@ USA.
 (define-html-element ul		block)
 (define-html-element var	inline)
 
-(define (html:href iri . contents)
+(define (html:href uri . contents)
   (apply html:a
-	 (xml-attrs 'href iri)
+	 (xml-attrs 'href uri)
 	 contents))
 
 (define (html:id-def tag . contents)
@@ -264,13 +264,13 @@ USA.
 (define (html:id-ref tag . contents)
   (apply html:href (string-append "#" tag) contents))
 
-(define (html:rel-link rel iri)
+(define (html:rel-link rel uri)
   (html:link 'rel rel
-	     'href iri))
+	     'href uri))
 
-(define (html:style-link iri)
+(define (html:style-link uri)
   (html:link 'rel "stylesheet"
-	     'href iri
+	     'href uri
 	     'type "text/css"))
 
 (define (html:http-equiv name value)
