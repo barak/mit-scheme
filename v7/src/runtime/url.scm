@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.37 2005/12/13 15:29:58 cph Exp $
+$Id: url.scm,v 1.38 2006/01/31 06:47:47 cph Exp $
 
-Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2000,2001,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,7 +43,7 @@ USA.
   (standard-unparser-method 'URI
     (lambda (uri port)
       (write-char #\space port)
-      (%write-uri uri port))))
+      (write (uri->string uri) port))))
 
 (define (make-uri scheme authority path query fragment)
   (let ((path (if (equal? path '("")) '() path)))
