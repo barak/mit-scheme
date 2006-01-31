@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: parser-buffer.scm,v 1.14 2004/02/24 20:34:50 cph Exp $
+$Id: parser-buffer.scm,v 1.15 2006/01/31 17:43:37 cph Exp $
 
-Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -54,10 +54,7 @@ USA.
 
 (define (string->parser-buffer string #!optional start end)
   (if (string? string)
-      (let ((string
-	     (string->wide-string string
-				  (if (default-object? start) #f start)
-				  (if (default-object? end) #f end))))
+      (let ((string (string->wide-string string start end)))
 	(make-parser-buffer string 0 (%wide-string-length string) 0 0 #f #t 0))
       (begin
 	(guarantee-wide-string string 'STRING->PARSER-BUFFER)
