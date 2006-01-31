@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.48 2005/08/04 02:14:48 cph Exp $
+$Id: pp.scm,v 14.49 2006/01/31 06:41:43 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1117,11 +1117,14 @@ USA.
 ;;;  or the print-name of a symbol wasn't worth the speed that would
 ;;;  be gained by keeping it around.
 
-(define-integrable (symbol-length symbol)
-  (string-length (symbol-name symbol)))
+(define (symbol-length symbol)
+  (string-length
+   (call-with-output-string
+     (lambda (port)
+       (write symbol port)))))
 
-(define-integrable (*unparse-symbol symbol)
-  (*unparse-string (symbol-name symbol)))
+(define (*unparse-symbol symbol)
+  (write symbol output-port))
 
 (define-structure (prefix-node
 		   (conc-name prefix-node-)
