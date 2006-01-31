@@ -1,10 +1,11 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.571 2005/12/25 17:04:39 riastradh Exp $
+$Id: runtime.pkg,v 14.572 2006/01/31 18:50:03 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -2570,6 +2571,7 @@ USA.
 	  make-pathname
 	  merge-pathnames
 	  parse-namestring
+	  pathname->uri
 	  pathname-absolute?
 	  pathname-as-directory
 	  pathname-default
