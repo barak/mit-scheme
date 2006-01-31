@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.14 2006/01/31 06:15:55 cph Exp $
+@c $Id: io.texi,v 1.15 2006/01/31 06:30:48 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -2852,7 +2852,7 @@ execute
 @findex load-option
 
 @noindent
-once before compiling any code that uses it.
+once before running any code that uses it.
 
 @menu
 * XML Input::                   
@@ -2917,10 +2917,7 @@ It is roughly equivalent to
 (define (read-xml-file pathname #!optional pi-handlers)
   (call-with-input-file pathname
     (lambda (port)
-      (read-xml port
-                (if (default-object? pi-handlers)
-                    '()
-                    pi-handlers)))))
+      (read-xml port pi-handlers))))
 @end group
 @end example
 @end deffn
@@ -2933,16 +2930,8 @@ It is roughly equivalent to
 @example
 @group
 (define (string->xml string #!optional start end pi-handlers)
-  (read-xml (open-input-string string
-                               (if (default-object? start)
-                                   0
-                                   start)
-                               (if (default-object? end)
-                                   (string-length string)
-                                   end))
-            (if (default-object? pi-handlers)
-                '()
-                pi-handlers)))
+  (read-xml (open-input-string string start end)
+            pi-handlers))
 @end group
 @end example
 @end deffn
@@ -3140,7 +3129,7 @@ Returns @code{#t} if @var{object} is a qname, otherwise returns
 
 @deffn procedure xml-qname-string qname
 Returns a newly allocated string that is a copy of @var{qname}'s string.
-Roughly equivalent to @code{symbol->string}.
+Roughly equivalent to @code{symbol->utf8-string}.
 @end deffn
 
 @deffn procedure xml-qname-prefix qname
@@ -3506,5 +3495,6 @@ The @code{xml-external-id} record is a reference to an external
 public @acronym{ID} literal, corresponding to the @samp{PUBLIC}
 keyword, while @var{uri} is a system literal, corresponding to the
 @samp{SYSTEM} keyword.  Either or both may be present, depending on
-the context.  Each is represented as a string.
+the context.  @var{Id} is represented as a string, while @var{uri} is
+represented as a @acronym{URI} record.
 @end deftp
