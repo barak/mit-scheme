@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.11 2006/01/30 21:05:31 cph Exp $
+$Id: xml-names.scm,v 1.12 2006/01/31 06:14:16 cph Exp $
 
 Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -29,7 +29,7 @@ USA.
 
 (define (make-xml-name qname uri)
   (let ((qname (make-xml-qname qname))
-	(uri (->absolute-uri uri)))
+	(uri (->uri uri)))
     (if (null-xml-namespace-uri? uri)
 	qname
 	(begin
@@ -37,17 +37,17 @@ USA.
 	  (%make-xml-name qname uri)))))
 
 (define (check-prefix+uri qname uri)
-  (if (let ((s (symbol-name qname)))
-	(let ((c (find-prefix-separator s)))
-	  (case c
-	    ((#f) #f)
-	    ((ILLEGAL) uri)
-	    (else
-	     (let ((prefix (utf8-string->symbol (string-head s c))))
-	       (or (and (eq? prefix 'xml)
-			(not (eq? uri xml-uri)))
-		   (and (eq? prefix 'xmlns)
-			(not (eq? uri xmlns-uri)))))))))
+  (if (not (and (uri-absolute? uri)
+		(let ((s (symbol-name qname)))
+		  (let ((c (find-prefix-separator s)))
+		    (case c
+		      ((#f) #t)
+		      ((ILLEGAL) #f)
+		      (else
+		       (case (utf8-string->symbol (string-head s c))
+			 ((xml) (uri=? uri xml-uri))
+			 ((xmlns) (uri=? uri xmlns-uri))
+			 (else #t))))))))
       (error:bad-range-argument uri 'MAKE-XML-NAME)))
 
 (define (%make-xml-name qname uri)
@@ -78,6 +78,17 @@ USA.
 
 (define (error:not-xml-name object caller)
   (error:wrong-type-argument object "an XML Name" caller))
+
+(define (null-xml-namespace-uri? object)
+  (and (uri? object)
+       (uri=? object null-namespace-uri)))
+
+(define (null-xml-namespace-uri)
+  null-namespace-uri)
+
+(define null-namespace-uri (->relative-uri ""))
+(define xml-uri (->absolute-uri "http://www.w3.org/XML/1998/namespace"))
+(define xmlns-uri (->absolute-uri "http://www.w3.org/2000/xmlns/"))
 
 (define (make-xml-nmtoken object)
   (if (string? object)
@@ -152,7 +163,7 @@ USA.
 	(else (error:not-xml-name name 'XML-NAME-URI))))
 
 (define (xml-name-uri=? name uri)
-  (eq? (xml-name-uri name) uri))
+  (uri=? (xml-name-uri name) uri))
 
 (define (xml-name-prefix name)
   (xml-qname-prefix
@@ -271,20 +282,3 @@ USA.
   (uri expanded-name-uri)
   (local expanded-name-local)
   (combos expanded-name-combos))
-
-;;;; Namespace URI
-
-(define (null-xml-namespace-uri? object)
-  (eq? object null-namespace-uri))
-
-(define (null-xml-namespace-uri)
-  null-namespace-uri)
-
-(define null-namespace-uri
-  (->relative-uri ""))
-
-(define xml-uri
-  (->absolute-uri "http://www.w3.org/XML/1998/namespace"))
-
-(define xmlns-uri
-  (->absolute-uri "http://www.w3.org/2000/xmlns/"))

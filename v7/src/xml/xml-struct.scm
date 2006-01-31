@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.52 2006/01/30 21:05:33 cph Exp $
+$Id: xml-struct.scm,v 1.53 2006/01/31 06:14:29 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -262,7 +262,7 @@ USA.
   (uri canonicalize
        (lambda (object)
 	 (and object
-	      (canonicalize-char-data object)))))
+	      (->uri (canonicalize-char-data object))))))
 
 (define (public-id? object)
   (string-composed-of? object char-set:xml-public-id))
@@ -442,17 +442,16 @@ USA.
 	     (->absolute-uri value)))))
 
 (define (xml-element-namespace-prefix elt uri)
-  (let ((uri (uri->string uri)))
-    (let ((attr
-	   (find-matching-item (xml-element-attributes elt)
-	     (lambda (attr)
-	       (and (xml-attribute-namespace-decl? attr)
-		    (string=? (xml-attribute-value attr) uri))))))
-      (and attr
-	   (let ((name (xml-attribute-name attr)))
-	     (if (xml-name=? name 'xmlns)
-		 (null-xml-name-prefix)
-		 (xml-name-local name)))))))
+  (let ((attr
+	 (find-matching-item (xml-element-attributes elt)
+	   (lambda (attr)
+	     (and (xml-attribute-namespace-decl? attr)
+		  (uri=? (->uri (xml-attribute-value attr)) uri))))))
+    (and attr
+	 (let ((name (xml-attribute-name attr)))
+	   (if (xml-name=? name 'xmlns)
+	       (null-xml-name-prefix)
+	       (xml-name-local name))))))
 
 ;;;; Convenience procedures
 

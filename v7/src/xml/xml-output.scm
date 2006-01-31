@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.39 2006/01/30 20:20:43 cph Exp $
+$Id: xml-output.scm,v 1.40 2006/01/31 06:14:20 cph Exp $
 
-Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -464,12 +464,12 @@ USA.
 	  (if (xml-external-id-uri id)
 	      (begin
 		(write-indent col ctx)
-		(quoted-string (xml-external-id-uri id)))))
+		(quoted-string (uri->string (xml-external-id-uri id))))))
 	(begin
 	  (write-indent col ctx)
 	  (emit-string "SYSTEM" ctx)
 	  (emit-string " " ctx)
-	  (quoted-string (xml-external-id-uri id))))))
+	  (quoted-string (uri->string (xml-external-id-uri id)))))))
 
 (define (write-indent col ctx)
   (if col

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.67 2006/01/30 21:05:32 cph Exp $
+$Id: xml-parser.scm,v 1.68 2006/01/31 06:14:25 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -570,14 +570,15 @@ USA.
 			 (lambda ()
 			   (if (string-null? value)
 			       (null-xml-namespace-uri)
-			       (->absolute-uri value))))
+			       (string->absolute-uri value))))
 			(forbidden-uri
 			 (lambda (uri)
-			   (perror p "Forbidden namespace URI" uri))))
+			   (perror p "Forbidden namespace URI"
+				   (uri->string uri)))))
 		    (let ((guarantee-legal-uri
 			   (lambda (uri)
-			     (if (or (eq? uri xml-uri)
-				     (eq? uri xmlns-uri))
+			     (if (or (uri=? uri xml-uri)
+				     (uri=? uri xmlns-uri))
 				 (forbidden-uri uri)))))
 		      (cond ((xml-name=? qname 'xmlns)
 			     (let ((uri (get-uri)))
@@ -588,7 +589,7 @@ USA.
 				 (perror p "Illegal namespace prefix" qname))
 			     (let ((uri (get-uri)))
 			       (if (xml-name=? qname 'xmlns:xml)
-				   (if (not (eq? uri xml-uri))
+				   (if (not (uri=? uri xml-uri))
 				       (forbidden-uri uri))
 				   (guarantee-legal-uri uri))
 			       (cons (cons (xml-name-local qname) uri) tail)))

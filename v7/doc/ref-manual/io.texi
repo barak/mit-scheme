@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.13 2006/01/30 21:05:54 cph Exp $
+@c $Id: io.texi,v 1.14 2006/01/31 06:15:55 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -3041,31 +3041,32 @@ they appear in the @acronym{DTD} of a document, even if the body of the
 document uses them.  Consequently, it must be possible to compare
 non-associated names with associated names.
 
-@cindex Internationalized Resource Identifier
+@cindex Uniform Resource Identifier
 @cindex URI, of XML name
 @cindex qname, of XML name
 An @acronym{XML} name consists of two parts: the @dfn{qname}, which is a
 symbol, possibly including a namespace prefix; and the
-@dfn{Internationalized Resource Identifier} (@acronym{URI}), which
+@dfn{Uniform Resource Identifier} (@acronym{URI}), which
 identifies an optional namespace.
 
 @deffn procedure make-xml-name qname uri
 Creates and returns an @acronym{XML} name.  @var{Qname} must be a symbol
-whose name satisfies @code{string-is-xml-name?}.  @var{Uri} must be an
-absolute @acronym{URI} record.  The returned value is an @acronym{XML}
-name that satisfies @code{xml-name?}.
+whose name satisfies @code{string-is-xml-name?}.  @var{Uri} must satisfy
+either @code{absolute-uri?} or @code{null-xml-namespace-uri?}.  The
+returned value is an @acronym{XML} name that satisfies @code{xml-name?}.
 
 If @var{uri} is the @dfn{null} namespace (satisfies
-@code{null-xml-name-prefix?}), the returned value is a symbol equivalent
-to @var{qname}.  This means that an ordinary symbol can be used as an
-@acronym{XML} name when there is no namespace associated with the name.
+@code{null-xml-namespace-uri?}), the returned value is a symbol
+equivalent to @var{qname}.  This means that an ordinary symbol can be
+used as an @acronym{XML} name when there is no namespace associated with
+the name.
 
 For convenience, @var{qname} may be a string, in which case it is
 converted to a symbol using @code{make-xml-qname}.
 
-For convenience, @var{uri} may be a string, in which case it is
-converted to an absolute @acronym{URI} record using
-@code{->absolute-uri}.
+For convenience, @var{uri} may be any object that @code{->uri} is able
+to convert to a @acronym{URI} record, provided the resulting
+@acronym{URI} meets the above restrictions.
 @end deffn
 
 @deffn procedure xml-name? object
@@ -3078,8 +3079,8 @@ Returns the @dfn{qname} of @var{xml-name} as a symbol.
 @end deffn
 
 @deffn procedure xml-name-uri xml-name
-Returns the @dfn{URI} of @var{xml-name} as an absolute @acronym{URI}
-record.
+Returns the @dfn{URI} of @var{xml-name}.  The result always satisfies
+@code{absolute-uri?} or @code{null-xml-namespace-uri?}.
 @end deffn
 
 @deffn procedure xml-name-string xml-name
@@ -3164,19 +3165,18 @@ Returns @code{#t} if @var{object} is the null prefix, otherwise returns
 @code{#f}.
 @end deffn
 
-These next procedures define the data abstraction for namespace
-@acronym{URI}s.  Conceptually, an @acronym{URI} is a string with a
-particular syntax, but this implementation uses an abstract
-representation that speeds up type and equality testing.  Two
-@acronym{URI}s are tested for equality using @code{eq?}.
+The namespace @acronym{URI} of an @acronym{XML} name may be null,
+meaning that there is no namespace associated with the name.  This
+namespace is represented by a relative @acronym{URI} record whose string
+representation is the null string.
 
 @deffn procedure null-xml-namespace-uri
-Returns the null @acronym{URI} record.
+Returns the null namespace @acronym{URI} record.
 @end deffn
 
 @deffn procedure null-xml-namespace-uri? object
-Returns @code{#t} if @var{object} is the null @acronym{URI} record,
-otherwise returns @code{#f}.
+Returns @code{#t} if @var{object} is the null namespace @acronym{URI}
+record, otherwise returns @code{#f}.
 @end deffn
 
 The following values are two distinguished @acronym{URI} records.
