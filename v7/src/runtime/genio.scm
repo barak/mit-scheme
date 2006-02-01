@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.37 2005/12/20 01:52:56 cph Exp $
+$Id: genio.scm,v 1.38 2006/02/01 06:13:07 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
-Copyright 2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -911,7 +911,10 @@ USA.
 	   (if column
 	       (set-output-buffer-column!
 		ob
-		(if (char=? char #\newline) 0 (fix:+ column 1)))))
+		(case char
+		  ((#\newline) 0)
+		  ((#\tab) (fix:+ column (fix:- 8 (fix:remainder column 8))))
+		  (else (fix:+ column 1))))))
 	 #t)))
 
 (define (output-buffer-in-8-bit-mode? ib)
