@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.22 2006/02/02 02:49:56 cph Exp $
+# $Id: make-src-files,v 1.23 2006/02/02 03:06:47 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
@@ -91,11 +91,9 @@ tar cvzf "${tarfile}" "${PREFIX}"
 tar cvzf "${ucfile}" "${PREFIX}/src/COPYING" "${PREFIX}/src/microcode"
 chmod -w changelog.txt "${tarfile}" "${ucfile}"
 
-if [ -z "${SNAPSHOT_P}" ]; then
-    rm -rf "${PREFIX}/src/lib"
-    symlinks -rd "${PREFIX}"
-    zip -rl "${zipfile}" "${PREFIX}"
-    chmod -w "${zipfile}"
-fi
+rm -rf "${PREFIX}/src/lib"
+symlinks -rd "${PREFIX}"
+zip -rl "${zipfile}" "${PREFIX}"
+chmod -w "${zipfile}"
 
 rm -rf "${PREFIX}"
