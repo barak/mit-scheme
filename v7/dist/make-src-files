@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.21 2005/12/13 06:41:04 cph Exp $
+# $Id: make-src-files,v 1.22 2006/02/02 02:49:56 cph Exp $
 #
-# Copyright 2000,2001,2002,2003,2005 Massachusetts Institute of Technology
+# Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ else
     TAG="$(get_release_tag "${VERSION}")"
 fi
 
-CVS="cvs -d ${USER}@subversions.gnu.org:/cvsroot/mit-scheme"
+CVS="cvs -d ${USER}@cvs.savannah.gnu.org:/sources/mit-scheme"
 
 rm -rf "${PREFIX}"
 mkdir "${PREFIX}"
