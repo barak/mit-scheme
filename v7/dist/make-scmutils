@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: make-scmutils,v 1.5 2005/12/13 06:41:03 cph Exp $
+# $Id: make-scmutils,v 1.6 2006/02/02 03:46:46 cph Exp $
 #
-# Copyright 2001,2002,2004 Massachusetts Institute of Technology
+# Copyright 2001,2002,2004,2006 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ fi
 
 SCHEME_TAR=$(ls mit-scheme-*-ix86-gnu-linux.tar.gz 2> /dev/null)
 if [ -z "${SCHEME_TAR}" ]; then
-    echo "Unable to find file 'mit-scheme-X.Y.Z-ix86-gnu-linux.tar.gz'"
+    echo "Unable to find file 'mit-scheme-*-ix86-gnu-linux.tar.gz'"
     exit 1
 fi
 SVERSION=$(echo "${SCHEME_TAR}" | tail -1 | sed -e 's/^mit-scheme-\(..*\)-ix86-gnu-linux\.tar\.gz$/\1/')
@@ -51,7 +51,7 @@ SVERSION=$(echo "${SCHEME_TAR}" | tail -1 | sed -e 's/^mit-scheme-\(..*\)-ix86-g
 echo "MIT/GNU Scheme version: ${SVERSION}"
 
 TL_DIR="$(pwd)"
-SOURCE_DIR="/sw/scmutils"
+SOURCE_DIR="/projects/scmutils"
 DIST_DIR="/scheme/v7/dist"
 
 SCHEME_DIR="${TL_DIR}/mit-scheme-${SVERSION}"
@@ -75,7 +75,7 @@ MKDIR="install -d -m 755"
 INSTALL="install -p"
 INSTALL_DATA="${INSTALL} -m 644"
 
-SCHEME="${SBINDIR}/scheme -library ${SAUXDIR}"
+SCHEME="${SBINDIR}/scheme --library ${SAUXDIR}"
 
 if [ ! -f "${STAMP_UNPACK}" ];then
     echo "Unpack MIT/GNU Scheme"
@@ -95,13 +95,13 @@ if [ ! -f "${STAMP_BUILD}" ];then
     (
 	cd "${BUILD_DIR}"
 	echo "Compile binaries"
-	${SCHEME} -compiler -heap 4000 > compile.out \
+	${SCHEME} --compiler --heap 4000 > compile.out \
 <<EOF
 (load "compile")
 EOF
 	echo "Compiler output in ${BUILD_DIR}/compile.out"
 	echo "Generate mechanics band"
-	${SCHEME} -edwin -compiler -heap 4000 > load.out \
+	${SCHEME} --edwin --compiler --heap 4000 > load.out \
 <<EOF
 (load "load")
 (disk-save "edwin-mechanics.com")
@@ -123,16 +123,16 @@ if [ ! -f "${STAMP_IMAGE}" ];then
 
     echo "Copy MIT/GNU Scheme"
     ${MKDIR} "${MBINDIR}"
-    cpx -q "${SBINDIR}"/* "${MBINDIR}/."
+    cp -a "${SBINDIR}"/* "${MBINDIR}/."
     ${MKDIR} "${MAUXDIR}"
     (
 	cd "${SAUXDIR}"
 	for FILE in *; do
 	    case "${FILE}" in
-	    *.com)
+	    (*.com)
 		;;
-	    *)
-		cpx -q "${FILE}" "${MAUXDIR}/."
+	    (*)
+		cp -a "${FILE}" "${MAUXDIR}/."
 		;;
 	    esac
 	done
