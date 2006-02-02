@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.572 2006/01/31 18:50:03 cph Exp $
+$Id: runtime.pkg,v 14.573 2006/02/02 01:02:07 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4765,12 +4765,18 @@ USA.
   (files "url")
   (parent (runtime))
   (export ()
+	  (guarantee-absolute-uri ->absolute-uri)
+	  (guarantee-relative-uri ->relative-uri)
+	  (guarantee-uri ->uri)
 	  (url:decode-string decode-component)
 	  (url:match:escape matcher:pct-encoded)
 	  (url:parse:hostport parser:hostport)
 	  ->absolute-uri
 	  ->relative-uri
 	  ->uri
+	  <partial-uri>
+	  <uri-authority>
+	  <uri>
 	  absolute-uri?
 	  char-set:uri-alpha
 	  char-set:uri-digit
@@ -4784,9 +4790,7 @@ USA.
 	  char-set:uri-segment
 	  char-set:uri-segment-nc
 	  char-set:uri-userinfo
-	  error:not-absolute-uri
 	  error:not-partial-uri
-	  error:not-relative-uri
 	  error:not-uri
 	  error:not-uri-authority
 	  error:not-uri-host
@@ -4794,10 +4798,7 @@ USA.
 	  error:not-uri-port
 	  error:not-uri-scheme
 	  error:not-uri-userinfo
-	  guarantee-absolute-uri
 	  guarantee-partial-uri
-	  guarantee-relative-uri
-	  guarantee-uri
 	  guarantee-uri-authority
 	  guarantee-uri-host
 	  guarantee-uri-path
