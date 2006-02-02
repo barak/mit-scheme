@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-expander.scm,v 1.6 2006/01/26 03:53:46 cph Exp $
+$Id: xhtml-expander.scm,v 1.7 2006/02/02 20:08:24 cph Exp $
 
 Copyright 2002,2003,2004,2006 Massachusetts Institute of Technology
 
@@ -40,7 +40,17 @@ USA.
 			      (string-append (html-content-type)
 					     "; charset="
 					     (xml-document-charset document))))
+    (if (not (xml-document-declaration document))
+	(set-xml-document-declaration! document
+				       (make-xml-declaration "1.0" #f #f)))
+    (if (not (xml-document-dtd document))
+	(set-xml-document-dtd! document html-1.0-dtd))
     (let ((root (xml-document-root document)))
+      (if (not (find-xml-attr 'xmlns root))
+	  (set-xml-element-attributes!
+	   root
+	   (cons (make-xml-attribute 'xmlns html-uri)
+		 (xml-element-attributes root))))
       (set-xml-element-contents!
        root
        (cons* "\n"
