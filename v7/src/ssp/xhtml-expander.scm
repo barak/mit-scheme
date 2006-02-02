@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-expander.scm,v 1.7 2006/02/02 20:08:24 cph Exp $
+$Id: xhtml-expander.scm,v 1.8 2006/02/02 20:49:54 cph Exp $
 
 Copyright 2002,2003,2004,2006 Massachusetts Institute of Technology
 
@@ -35,11 +35,6 @@ USA.
   (let ((document
 	 (read/expand-xml-file pathname
 			       (make-expansion-environment pathname))))
-    (if (in-mod-lisp?)
-	(http-response-header 'content-type
-			      (string-append (html-content-type)
-					     "; charset="
-					     (xml-document-charset document))))
     (if (not (xml-document-declaration document))
 	(set-xml-document-declaration! document
 				       (make-xml-declaration "1.0" #f #f)))
@@ -62,6 +57,11 @@ USA.
 		(universal-time->local-time-string (get-universal-time))
 		". "))
 	      (xml-element-contents root))))
+    (if (in-mod-lisp?)
+	(http-response-header 'content-type
+			      (string-append (html-content-type)
+					     "; charset="
+					     (xml-document-charset document))))
     (write-xml document port 'INDENT-DTD? #t)))
 
 (define (xml-document-charset document)
