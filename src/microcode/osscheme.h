@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osscheme.h,v 1.13 2003/02/14 18:28:22 cph Exp $
+$Id: osscheme.h,v 1.14 2005/12/25 17:04:39 riastradh Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -56,6 +56,7 @@ extern void EXFUN (request_attention_interrupt, (void));
 extern int  EXFUN (test_and_clear_attention_interrupt, (void));
 #endif /* __OS2__ */
 
+extern void EXFUN (request_console_resize_interrupt, (void));
 extern void EXFUN (request_character_interrupt, (void));
 extern void EXFUN (request_timer_interrupt, (void));
 extern void EXFUN (request_suspend_interrupt, (void));

@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: bufwin.scm,v 1.313 2003/02/14 18:28:11 cph Exp $
+$Id: bufwin.scm,v 1.316 2005/11/07 06:58:45 cph Exp $
 
-Copyright 1986, 1989-2000, 2002 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1999,2000,2002 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -228,11 +230,24 @@ USA.
   (with-instance-variables buffer-window window (point*)
     (set! point point*)))
 
-(define-integrable (%set-window-point-index! window index)
+(define (%set-window-point-index! window index)
+  #| Optimization causes lossage.  -- cph
+  (let ((point (%window-point window)))
+    (if point
+	(set-mark-index! point index)
+	(%set-window-point! window
+			    (make-permanent-mark (%window-group window)
+						 index
+						 #t))))
+  |#
   (%set-window-point! window
 		      (make-permanent-mark (%window-group window)
 					   index
 					   #t)))
+
+(define (set-window-point-index! window index)
+  (%set-window-point-index! window index)
+  (%set-buffer-point-index! (%window-buffer window) index))
 
 (define-integrable (%window-cursor-inferior window)
   (with-instance-variables buffer-window window () cursor-inferior))
@@ -910,9 +925,8 @@ USA.
     (if (%window-debug-trace window)
 	((%window-debug-trace window) 'window window 'set-point! mark))
     (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-      (%set-window-point-index! window (mark-index mark))
+      (set-window-point-index! window (mark-index mark))
       (%set-window-point-moved?! window 'SINCE-START-SET)
-      (%set-buffer-point! (%window-buffer window) mark)
       (window-needs-redisplay! window)
       (set-interrupt-enables! mask)
       unspecific)))
@@ -988,7 +1002,7 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 	       unspecific))
 	    (point-y
 	     (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-	       (%set-window-point-index!
+	       (set-window-point-index!
 		window
 		(or (predict-index window start y-start
 				   (vector-ref cws 4) point-y)
@@ -1237,7 +1251,7 @@ If this is zero, point is always centered after it moves off screen."
 	(begin
 	  (if point-not-visible-error?
 	      (error "point not visible at end of redisplay"))
-	  (%set-window-point-index!
+	  (set-window-point-index!
 	   window
 	   (or (predict-index window
 			      (%window-start-line-index window)

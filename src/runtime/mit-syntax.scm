@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.22 2004/11/18 18:16:04 cph Exp $
+$Id: mit-syntax.scm,v 14.24 2005/12/09 20:25:59 riastradh Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 Copyright 2004 Massachusetts Institute of Technology
@@ -262,27 +262,23 @@ USA.
       (let ((history (item/history item)))
 	(syntax-error history "Syntactic binding value must be a keyword:"
 		      (history/original-form history))))
-  (overloaded-binding-theory environment name item history))
+  (syntactic-environment/define environment
+                                name
+                                (item/new-history item #f))
+  ;; User-defined macros at top level are preserved in the output.
+  (if (and (keyword-value-item? item)
+           (syntactic-environment/top-level? environment))
+      (make-binding-item history
+                         (rename-top-level-identifier name)
+                         item)
+      (make-null-binding-item history)))
 
 (define (variable-binding-theory environment name item history)
   (if (keyword-item? item)
       (let ((history (item/history item)))
 	(syntax-error history "Binding value may not be a keyword:"
 		      (history/original-form history))))
-  (overloaded-binding-theory environment name item history))
-
-(define (overloaded-binding-theory environment name item history)
-  (if (keyword-item? item)
-      (begin
-	(syntactic-environment/define environment
-				      name
-				      (item/new-history item #f))
-	;; User-defined macros at top level are preserved in the output.
-	(if (and (keyword-value-item? item)
-		 (syntactic-environment/top-level? environment))
-	    (make-binding-item history name item)
-	    (make-null-binding-item history)))
-      (make-binding-item history (bind-variable! environment name) item)))
+  (make-binding-item history (bind-variable! environment name) item))
 
 ;;;; SRFI features
 
@@ -339,6 +335,7 @@ USA.
 
 (define supported-srfi-features
   '(SRFI-0
+    SRFI-2
     SRFI-6
     SRFI-8
     SRFI-9
@@ -813,6 +810,52 @@ USA.
 	(lambda (history)
 	  (syntax-check '(KEYWORD EXPRESSION) form history)
 	  (descend-quasiquote (cadr form) 0 finalize-quasiquote)))))))
+
+;;;; SRFI 2: AND-LET*
+
+;;; The SRFI document is a little unclear about the semantics, imposes
+;;; the weird restriction that variables may be duplicated (citing
+;;; LET*'s similar restriction, which doesn't actually exist), and the
+;;; reference implementation is highly non-standard and hard to
+;;; follow.  This passes all of the tests except for the one that
+;;; detects duplicate bound variables, though.
+
+(define-er-macro-transformer 'AND-LET* system-global-environment
+  (lambda (form rename compare)
+    compare
+    (let ((%and (rename 'AND))
+          (%let (rename 'LET))
+          (%begin (rename 'BEGIN)))
+      (cond ((syntax-match? '(() * FORM) (cdr form))
+             `(,%begin #T ,@(cddr form)))
+            ((syntax-match? '((* DATUM) * FORM) (cdr form))
+             (let ((clauses (cadr form))
+                   (body (cddr form)))
+               (define (expand clause recur)
+                 (cond ((syntax-match? 'IDENTIFIER clause)
+                        (recur clause))
+                       ((syntax-match? '(EXPRESSION) clause)
+                        (recur (car clause)))
+                       ((syntax-match? '(IDENTIFIER EXPRESSION) clause)
+                        (let ((tail (recur (car clause))))
+                          (and tail `(,%let (,clause) ,tail))))
+                       (else #f)))
+               (define (recur clauses make-body)
+                 (expand (car clauses)
+                         (let ((clauses (cdr clauses)))
+                           (if (null? clauses)
+                               make-body
+                               (lambda (conjunct)
+                                 `(,%and ,conjunct
+                                         ,(recur clauses make-body)))))))
+               (or (recur clauses
+                          (if (null? body)
+                              (lambda (conjunct) conjunct)
+                              (lambda (conjunct)
+                                `(,%and ,conjunct (,%begin ,@body)))))
+                   (ill-formed-syntax form))))
+            (else
+             (ill-formed-syntax form))))))
 
 ;;;; MIT-specific syntax
 

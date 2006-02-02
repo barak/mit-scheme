@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: switch.scm,v 4.28 2003/02/14 18:28:01 cph Exp $
+$Id: switch.scm,v 4.29 2005/12/19 19:29:56 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright 1993,1994,2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -52,7 +53,7 @@ USA.
 (define compiler:generate-type-checks? #f)
 (define compiler:generate-stack-checks? #t)
 (define compiler:open-code-flonum-checks? #f)
-(define compiler:use-multiclosures? #t)
+(define compiler:use-multiclosures? #f)
 (define compiler:coalescing-constant-warnings? #t)
 (define compiler:cross-compiling? #f)
 ;; This only works in the C back end, right now

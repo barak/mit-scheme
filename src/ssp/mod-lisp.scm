@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.28 2005/03/31 05:24:39 cph Exp $
+$Id: mod-lisp.scm,v 1.30 2005/09/20 19:23:15 cph Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -126,7 +126,9 @@ USA.
 	    (expand default-type handler)
 	    (begin
 	      (maybe-parse-post-variables request)
-	      (let ((type (file-content-type pathname)))
+	      (let ((type
+		     (or (file-content-type pathname)
+			 "application/octet-stream")))
 		(expand type
 			(get-mime-handler type)))))))
     response))
@@ -646,7 +648,7 @@ USA.
   (if (let ((type (http-browser-type)))
 	(and (pair? type)
 	     (eq? (car type) 'IE)))
-      "text/xml"
+      "text/html"
       "application/xhtml+xml"))
 
 (define (http-browser-type)

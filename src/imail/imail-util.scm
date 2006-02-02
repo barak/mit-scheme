@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-util.scm,v 1.44 2004/02/16 05:49:16 cph Exp $
+$Id: imail-util.scm,v 1.46 2005/12/10 06:45:32 riastradh Exp $
 
-Copyright 2000,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 2000,2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +18,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02111-1301,
 USA.
 
 |#
@@ -138,6 +138,17 @@ USA.
 	(loop (fix:- end 1))
 	end)))
 
+(define (skip-lwsp-until-newline string start end)
+  (let loop ((index start))
+    (cond ((= index end)
+           #f)
+          ((char-lwsp? (string-ref string index))
+           (loop (+ index 1)))
+          ((char=? (string-ref string index) #\newline)
+           (+ index 1))
+          (else
+           #f))))
+
 (define (quote-lines lines)
   (map (lambda (line)
 	 (string-append "\t" line))
@@ -156,9 +167,9 @@ USA.
 		    (if (default-object? line-ending) "\n" line-ending)))
 
 (define (substring->lines string start end #!optional line-ending)
-  (let ((line-ending (if (default-object? line-ending) "\n" line-ending))
-	(n (string-length line-ending)))
-    (let ((indexes (substring-search-all line-ending string start end)))
+  (let ((line-ending (if (default-object? line-ending) "\n" line-ending)))
+    (let ((indexes (substring-search-all line-ending string start end))
+          (n (string-length line-ending)))
       (if (pair? indexes)
 	  (begin
 	    (let loop ((start start) (indexes indexes))

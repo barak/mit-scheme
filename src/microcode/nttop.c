@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.35 2004/03/09 06:26:50 cph Exp $
+$Id: nttop.c,v 1.36 2006/01/29 06:37:30 cph Exp $
 
 Copyright 1993,1997,1998,2000,2003,2004 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -478,13 +479,14 @@ OS_restore_external_state (void)
   return;
 }
 
+#ifndef __OPEN_WATCOM_14__
 void 
 bcopy (const char * s1, char * s2, int n)
 {
   while (n-- > 0)
     *s2++ = *s1++;
-  return;
 }
+#endif
 
 void *
 OS_malloc (unsigned int size)

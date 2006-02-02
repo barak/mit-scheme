@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.22 2003/02/14 18:28:21 cph Exp $
+$Id: ntscreen.h,v 1.23 2006/01/29 06:37:30 cph Exp $
 
-Copyright (c) 1993-2000 Massachusetts Institute of Technology
+Copyright 1993,1994,1995,1996,1997,1998 Massachusetts Institute of Technology
+Copyright 1999,2000,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -267,10 +268,10 @@ extern void Screen_WriteChar (HANDLE, char);
 extern void Screen_WriteText (HANDLE, char*);
 extern int  Screen_Read (HANDLE, BOOL, char *, int);
 extern void Screen_SetCursorPosition (HANDLE, int line, int column);
-extern void Screen_SetMenu (HANDLE, HMENU);
+extern void Screen_SetMenu (SCREEN, HMENU);
 extern void Screen_SetMode (HANDLE, int);
 extern int  Screen_GetMode (HANDLE);
-extern VOID Screen_GetSize (HANDLE, int *rows, int *columns);
+extern VOID Screen_GetSize (HWND, int *rows, int *columns);
 extern void screen_char_dimensions (HWND, int *, int *);
 
 /* The following return zero iff no events */

@@ -1,10 +1,11 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.563 2005/09/08 19:12:49 cph Exp $
+$Id: runtime.pkg,v 14.573 2006/02/02 01:02:07 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1724,7 +1725,7 @@ USA.
   (export ()
 	  make-generic-i/o-port)
   (export (runtime console-i/o-port)
-	  generic-i/o-type
+	  generic-i/o-port-type
 	  generic-io/char-ready?
 	  generic-io/flush-output
 	  generic-io/read-char
@@ -1733,10 +1734,20 @@ USA.
 	  port-input-buffer
 	  set-input-buffer-contents!)
   (export (runtime file-i/o-port)
-	  generic-i/o-type
-	  generic-input-type
-	  generic-output-type
+	  generic-i/o-port-type
 	  make-gstate)
+  (export (runtime string-input)
+	  generic-i/o-port-type
+	  make-gstate
+	  make-non-channel-source)
+  (export (runtime string-output)
+	  generic-i/o-port-type
+	  make-gstate
+	  make-non-channel-sink)
+  (export (runtime truncated-string-output)
+	  generic-i/o-port-type
+	  make-gstate
+	  make-non-channel-sink)
   (initialization (initialize-package!)))
 
 (define-package (runtime gensym)
@@ -2034,6 +2045,8 @@ USA.
 (define-package (runtime interrupt-handler)
   (files "intrpt")
   (parent (runtime))
+  (export ()
+          event:console-resize)
   (export (runtime emacs-interface)
 	  hook/^G-interrupt
 	  hook/clean-input/flush-typeahead)
@@ -2154,6 +2167,8 @@ USA.
 	  fifth
 	  find-matching-item
 	  find-non-matching-item
+	  find-unique-matching-item
+	  find-unique-non-matching-item
 	  first
 	  fold-left
 	  fold-right
@@ -2172,6 +2187,7 @@ USA.
 	  guarantee-unique-keyword-list
 	  guarantee-weak-list
 	  keep-matching-items
+	  keep-matching-items!
 	  keyword-list->alist
 	  keyword-list?
 	  last-pair
@@ -2555,6 +2571,7 @@ USA.
 	  make-pathname
 	  merge-pathnames
 	  parse-namestring
+	  pathname->uri
 	  pathname-absolute?
 	  pathname-as-directory
 	  pathname-default
@@ -3986,8 +4003,9 @@ USA.
 (define-package (runtime system-macros)
   (files "sysmac")
   (parent (runtime))
+  (export ()
+	  define-guarantee)
   (export (runtime)
-	  define-guarantee
 	  define-primitives
 	  ucode-primitive
 	  ucode-return-address
@@ -4024,6 +4042,7 @@ USA.
   (files "strott")
   (parent (runtime))
   (export ()
+	  call-with-truncated-output-string
 	  with-output-to-truncated-string)
   (initialization (initialize-package!)))
 
@@ -4647,13 +4666,6 @@ USA.
 	  alphabet->code-points
 	  alphabet->string
 	  alphabet?
-	  call-with-utf16-be-output-string
-	  call-with-utf16-le-output-string
-	  call-with-utf16-output-string
-	  call-with-utf32-be-output-string
-	  call-with-utf32-le-output-string
-	  call-with-utf32-output-string
-	  call-with-utf8-output-string
 	  call-with-wide-output-string
 	  char-in-alphabet?
 	  char-set->alphabet
@@ -4687,29 +4699,8 @@ USA.
 	  guarantee-wide-string-index
 	  guarantee-wide-substring
 	  make-wide-string
-	  open-utf16-be-input-string
-	  open-utf16-be-output-string
-	  open-utf16-input-string
-	  open-utf16-le-input-string
-	  open-utf16-le-output-string
-	  open-utf16-output-string
-	  open-utf32-be-input-string
-	  open-utf32-be-output-string
-	  open-utf32-input-string
-	  open-utf32-le-input-string
-	  open-utf32-le-output-string
-	  open-utf32-output-string
-	  open-utf8-input-string
-	  open-utf8-output-string
 	  open-wide-input-string
 	  open-wide-output-string
-	  read-utf16-be-char
-	  read-utf16-char
-	  read-utf16-le-char
-	  read-utf32-be-char
-	  read-utf32-char
-	  read-utf32-le-char
-	  read-utf8-char
 	  string->alphabet
 	  string->utf8-string
 	  string->wide-string
@@ -4758,14 +4749,7 @@ USA.
 	  wide-string-ref
 	  wide-string-set!
 	  wide-string?
-	  wide-substring
-	  write-utf16-be-char
-	  write-utf16-char
-	  write-utf16-le-char
-	  write-utf32-be-char
-	  write-utf32-char
-	  write-utf32-le-char
-	  write-utf8-char)
+	  wide-substring)
   (export (runtime parser-buffer)
 	  %wide-string-length
 	  %wide-string-ref
@@ -4774,18 +4758,25 @@ USA.
   (export (runtime generic-i/o-port)
 	  wide-string-contents)
   (export (runtime input-port)
-	  wide-string-contents))
+	  wide-string-contents)
+  (initialization (initialize-package!)))
 
 (define-package (runtime uri)
   (files "url")
   (parent (runtime))
   (export ()
+	  (guarantee-absolute-uri ->absolute-uri)
+	  (guarantee-relative-uri ->relative-uri)
+	  (guarantee-uri ->uri)
 	  (url:decode-string decode-component)
 	  (url:match:escape matcher:pct-encoded)
 	  (url:parse:hostport parser:hostport)
 	  ->absolute-uri
 	  ->relative-uri
 	  ->uri
+	  <partial-uri>
+	  <uri-authority>
+	  <uri>
 	  absolute-uri?
 	  char-set:uri-alpha
 	  char-set:uri-digit
@@ -4799,9 +4790,7 @@ USA.
 	  char-set:uri-segment
 	  char-set:uri-segment-nc
 	  char-set:uri-userinfo
-	  error:not-absolute-uri
 	  error:not-partial-uri
-	  error:not-relative-uri
 	  error:not-uri
 	  error:not-uri-authority
 	  error:not-uri-host
@@ -4809,10 +4798,7 @@ USA.
 	  error:not-uri-port
 	  error:not-uri-scheme
 	  error:not-uri-userinfo
-	  guarantee-absolute-uri
 	  guarantee-partial-uri
-	  guarantee-relative-uri
-	  guarantee-uri
 	  guarantee-uri-authority
 	  guarantee-uri-host
 	  guarantee-uri-path
@@ -4901,7 +4887,8 @@ USA.
 	  url:char-set:unreserved
 	  url:encode-string
 	  write-partial-uri
-	  write-uri))
+	  write-uri)
+  (initialization (initialize-package!)))
 
 (define-package (runtime postgresql)
   (file-case options

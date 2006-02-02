@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.22 2003/02/14 18:28:14 cph Exp $
+$Id: ed-ffi.scm,v 1.23 2005/12/10 06:45:32 riastradh Exp $
 
-Copyright 2000,2001,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +18,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02111-1301,
 USA.
 
 |#
@@ -30,6 +30,7 @@ USA.
     ("imail-core"	(edwin imail))
     ("imail-file"	(edwin imail file-folder))
     ("imail-imap"	(edwin imail imap-folder))
+    ("imail-mime"       (edwin imail mime))
     ("imail-rmail"	(edwin imail file-folder rmail-folder))
     ("imail-summary"	(edwin imail front-end summary))
     ("imail-top"	(edwin imail front-end))

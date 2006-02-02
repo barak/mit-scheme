@@ -1,5 +1,5 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: user.texinfo,v 1.105 2004/10/17 03:09:07 cph Exp $
+@comment $Id: user.texinfo,v 1.106 2006/01/13 05:27:40 cph Exp $
 @comment %**start of header
 @setfilename mit-scheme-user
 @set EDITION 1.90
@@ -2133,7 +2133,7 @@ storage available after collection, an exact non-negative integer.
 to system tasks after the need for a garbage collection is detected and
 before the garbage collector is started.  (An example of such a system
 task is changing the run-light to show ``gc'' when scheme is running
-under Emacs.)  @strong{Note well}: you should not specify
+under Emacs.)  @strong{Note well} that you should not specify
 @var{safety-margin} unless you know what you are doing.  If you specify
 a value that is too small, you can put Scheme in an unusable state.
 @end deffn

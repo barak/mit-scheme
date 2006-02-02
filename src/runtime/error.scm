@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.69 2005/04/16 04:16:05 cph Exp $
+$Id: error.scm,v 14.70 2006/01/07 02:20:57 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
@@ -210,13 +210,12 @@ USA.
 	      (let ((values (%condition/field-values condition)))
 		(do ((i indexes (cdr i))
 		     (v field-values (cdr v)))
-		    ((or (not (pair? i))
-			 (not (pair? v)))
+		    ((not (and (pair? i) (pair? v)))
 		     (if (or (pair? i) (pair? v))
 			 (error:wrong-number-of-arguments
 			  constructor
-			  (+ (length indexes) 1)
-			  (cons continuation field-values))))
+			  (fix:+ (length indexes) 2)
+			  (cons* continuation restarts field-values))))
 		  (vector-set! values (car i) (car v))))
 	      condition))))
       constructor)))

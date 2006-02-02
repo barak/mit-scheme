@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: xterm.scm,v 1.73 2003/10/24 04:53:51 cph Exp $
+$Id: xterm.scm,v 1.74 2005/11/12 22:31:01 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1996,1998,1999,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -208,25 +208,25 @@ USA.
 ;;; Meanwhile, X-VISIBILITY tracks Visibility events.  When the window
 ;;; is both exposed and mapped, VISIBILITY reflects X-VISIBILITY.
 
-(define-integrable (screen-x-visibility screen)
+(define (screen-x-visibility screen)
   (xterm-screen-state/x-visibility (screen-state screen)))
 
 (define (set-screen-x-visibility! screen flag)
   (set-xterm-screen-state/x-visibility! (screen-state screen) flag)
   (update-visibility! screen))
 
-(define-integrable (screen-mapped? screen)
+(define (screen-mapped? screen)
   (xterm-screen-state/mapped? (screen-state screen)))
 
 (define (set-screen-mapped?! screen flag)
   (set-xterm-screen-state/mapped?! (screen-state screen) flag)
   (update-visibility! screen))
 
-(define-integrable (screen-unexposed? screen)
+(define (screen-unexposed? screen)
   (xterm-screen-state/unexposed? (screen-state screen)))
 
-(define-integrable (set-screen-unexposed?! screen items)
-  (set-xterm-screen-state/unexposed?! (screen-state screen) items))
+(define (set-screen-unexposed?! screen value)
+  (set-xterm-screen-state/unexposed?! (screen-state screen) value))
 
 (define-integrable (screen-exposed? screen)
   (not (screen-unexposed? screen)))
@@ -250,7 +250,7 @@ USA.
 				  (screen-x-visibility screen)
 				  'UNMAPPED))))
 
-(define-integrable (screen-xterm screen)
+(define (screen-xterm screen)
   (xterm-screen-state/xterm (screen-state screen)))
 
 (define (xterm->screen xterm)
@@ -260,25 +260,25 @@ USA.
 	     (car screens)
 	     (loop (cdr screens))))))
 
-(define-integrable (screen-display screen)
+(define (screen-display screen)
   (xterm-screen-state/display (screen-state screen)))
 
-(define-integrable (screen-redisplay-flag screen)
+(define (screen-redisplay-flag screen)
   (xterm-screen-state/redisplay-flag (screen-state screen)))
 
-(define-integrable (set-screen-redisplay-flag! screen flag)
+(define (set-screen-redisplay-flag! screen flag)
   (set-xterm-screen-state/redisplay-flag! (screen-state screen) flag))
 
-(define-integrable (screen-selected? screen)
+(define (screen-selected? screen)
   (xterm-screen-state/selected? (screen-state screen)))
 
-(define-integrable (set-screen-selected?! screen selected?)
+(define (set-screen-selected?! screen selected?)
   (set-xterm-screen-state/selected?! (screen-state screen) selected?))
 
-(define-integrable (screen-name screen)
+(define (screen-name screen)
   (xterm-screen-state/name (screen-state screen)))
 
-(define-integrable (set-screen-name! screen name)
+(define (set-screen-name! screen name)
   (set-xterm-screen-state/name! (screen-state screen) name))
 
 (define (xterm-screen/set-name screen name)
@@ -288,10 +288,10 @@ USA.
 	  (set-screen-name! screen name)
 	  (x-window-set-name (screen-xterm screen) name)))))
 
-(define-integrable (screen-icon-name screen)
+(define (screen-icon-name screen)
   (xterm-screen-state/icon-name (screen-state screen)))
 
-(define-integrable (set-screen-icon-name! screen name)
+(define (set-screen-icon-name! screen name)
   (set-xterm-screen-state/icon-name! (screen-state screen) name))
 
 (define (xterm-screen/set-icon-name screen name)
@@ -367,7 +367,7 @@ USA.
   (x-window-beep (screen-xterm screen))
   (xterm-screen/flush! screen))
 
-(define-integrable (xterm-screen/flush! screen)
+(define (xterm-screen/flush! screen)
   (x-display-flush (screen-display screen)))
 
 (define (xterm-screen/write-char! screen x y char highlight)
@@ -654,7 +654,7 @@ USA.
 (define event-handlers
   (make-vector number-of-event-types #f))
 
-(define-integrable (define-event-handler event-type handler)
+(define (define-event-handler event-type handler)
   (vector-set! event-handlers event-type handler))
 
 (define-event-handler event-type:button-down
@@ -971,7 +971,7 @@ USA.
 	    (and (put-1 mode (subpart data start end))
 		 (loop end (- nw qw) mode:append)))))))
 
-(define-integrable (property-quantum display)
+(define (property-quantum display)
   ;; The limit on the size of a property quantum is the maximum
   ;; request size less the size of the largest header needed.  The
   ;; relevant packets are the GetProperty reply packet (header size 8)

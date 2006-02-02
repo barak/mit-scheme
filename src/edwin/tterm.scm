@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.40 2004/02/16 05:43:59 cph Exp $
+$Id: tterm.scm,v 1.42 2005/12/25 17:04:39 riastradh Exp $
 
 Copyright 1990,1991,1993,1994,1998,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -248,10 +248,7 @@ USA.
 			((not have-select?)
 			 (and block? (read-event block?)))
 			(else
-			 (case (test-for-io-on-descriptor
-				(channel-descriptor-for-select channel)
-				block?
-				'READ)
+			 (case (test-for-io-on-channel channel 'READ block?)
 			   ((#F) #f)
 			   ((PROCESS-STATUS-CHANGE) event:process-status)
 			   ((INTERRUPT) (loop))
@@ -494,11 +491,13 @@ USA.
   unspecific)
 
 (define (console-enter! screen)
+  (add-event-receiver! event:console-resize resize-screen)
   (maybe-output screen (ts-enter-termcap-mode (screen-description screen)))
   (set-screen-cursor-x! screen false)
   (set-screen-cursor-y! screen false))
 
 (define (console-exit! screen)
+  (remove-event-receiver! event:console-resize resize-screen)
   (let ((description (screen-description screen)))
     (move-cursor screen 0 (fix:-1+ (screen-y-size screen)))
     (exit-standout-mode screen)

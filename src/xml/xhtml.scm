@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.15 2004/11/17 05:59:13 cph Exp $
+$Id: xhtml.scm,v 1.21 2006/01/30 21:05:29 cph Exp $
 
-Copyright 2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,12 +27,12 @@ USA.
 
 (declare (usual-integrations))
 
-(define html-iri-string "http://www.w3.org/1999/xhtml")
-(define html-iri (make-xml-namespace-iri html-iri-string))
+(define html-uri-string "http://www.w3.org/1999/xhtml")
+(define html-uri (->absolute-uri html-uri-string))
 
 (define (html-element? object)
   (and (xml-element? object)
-       (xml-name-iri=? (xml-element-name object) html-iri)))
+       (xml-name-uri=? (xml-element-name object) html-uri)))
 
 (define (guarantee-html-element object caller)
   (if (not (html-element? object))
@@ -43,7 +43,7 @@ USA.
 
 (define (html-element-name? object)
   (and (xml-name? object)
-       (xml-name-iri=? object html-iri)))
+       (xml-name-uri=? object html-uri)))
 
 (define (guarantee-html-element-name object caller)
   (if (not (html-element-name? object))
@@ -52,38 +52,47 @@ USA.
 (define (error:not-html-element-name object caller)
   (error:wrong-type-argument object "HTML element name" caller))
 
+(define-syntax define-html-id
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (if (syntax-match? '(DATUM DATUM DATUM) (cdr form))
+	 (let ((version (cadr form))
+	       (public-id (caddr form))
+	       (system-id (cadddr form)))
+	   (let ((pid-name (symbol 'HTML- version '-PUBLIC-ID))
+		 (sid-name (symbol 'HTML- version '-SYSTEM-ID))
+		 (eid-name (symbol 'HTML- version '-EXTERNAL-ID))
+		 (dtd-name (symbol 'HTML- version '-DTD)))
+	     `(BEGIN
+		(DEFINE ,pid-name ,public-id)
+		(DEFINE ,sid-name ,system-id)
+		(DEFINE ,eid-name (MAKE-XML-EXTERNAL-ID ,pid-name ,sid-name))
+		(DEFINE ,dtd-name (MAKE-XML-DTD 'html ,eid-name '())))))
+	 (ill-formed-syntax form)))))
+
+(define-html-id "1.0"
+  "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/MarkUp/DTD/xhtml1-strict.dtd")
+
+(define-html-id "1.1"
+  "-//W3C//DTD XHTML 1.1//EN"
+  "http://www.w3.org/MarkUp/DTD/xhtml11.dtd")
+
+(define (html-public-id? id)
+  (and (string? id)
+       (string-prefix? "-//W3C//DTD XHTML " id)))
+
 (define (html-external-id? object)
   (and (xml-external-id? object)
-       (let ((id (xml-external-id-id object))
-	     (iri (xml-external-id-iri object)))
-	 (and id
-	      iri
-	      (or (and (string=? id html-1.0-public-id)
-		       (string=? iri html-1.0-system-id))
-		  (and (string=? id html-1.1-public-id)
-		       (string=? iri html-1.1-system-id)))))))
-
-(define html-1.0-public-id "-//W3C//DTD XHTML 1.0 Strict//EN")
-(define html-1.0-system-id "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd")
-
-(define html-1.0-external-id
-  (make-xml-external-id html-1.0-public-id html-1.0-system-id))
-
-(define html-1.1-public-id "-//W3C//DTD XHTML 1.1//EN")
-(define html-1.1-system-id "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd")
-
-(define html-1.1-external-id
-  (make-xml-external-id html-1.1-public-id html-1.1-system-id))
+       (html-public-id? (xml-external-id-id object))))
 
 (define (html-dtd? object)
   (and (xml-dtd? object)
        (eq? (xml-dtd-root object) 'html)
        (html-external-id? (xml-dtd-external object))
        (null? (xml-dtd-internal object))))
-
-(define html-1.0-dtd (make-xml-dtd 'html html-1.0-external-id '()))
-(define html-1.1-dtd (make-xml-dtd 'html html-1.1-external-id '()))
-
+
 (define (html-1.0-document attrs . items)
   (%make-document html-1.0-dtd attrs items))
 
@@ -91,21 +100,34 @@ USA.
   (%make-document html-1.1-dtd attrs items))
 
 (define (%make-document dtd attrs items)
-  (let ((attr
-	 (find-matching-item attrs
-	   (lambda (attr)
-	     (xml-name=? (xml-attribute-name attr) 'xmlns)))))
-    (if (and attr (not (string=? (xml-attribute-value attr) html-iri-string)))
-	(error "Default namespace must be HTML:" (xml-attribute-value attr)))
-    (make-xml-document (make-xml-declaration "1.0" "UTF-8" #f)
-		       '("\n")
-		       dtd
-		       '("\n")
-		       (html:html (if attr
-				      attrs
-				      (xml-attrs 'xmlns html-iri attrs))
-				  items)
-		       '())))
+  (receive (decl items) (parse-decl items)
+    (receive (styles items) (parse-styles items)
+      (make-xml-document decl
+			 '("\n")
+			 dtd
+			 (cons "\n"
+			       (append-map! (lambda (style)
+					      (list style "\n"))
+					    styles))
+			 (html:html (xml-attrs 'xmlns html-uri
+					       attrs)
+				    items)
+			 '("\n")))))
+
+(define (parse-decl items)
+  (if (and (pair? items)
+	   (xml-declaration? (car items)))
+      (values (car items) (cdr items))
+      (values (make-xml-declaration "1.0" "UTF-8" #f) items)))
+
+(define (parse-styles items)
+  (let loop ((items items) (styles '()))
+    (if (and (pair? items)
+	     (xml-processing-instructions? (car items))
+	     (eq? (xml-processing-instructions-name (car items))
+		  'xml-stylesheet))
+	(loop (cdr items) (cons (car items) styles))
+	(values (reverse! styles) items))))
 
 (define-syntax define-html-element
   (sc-macro-transformer
@@ -117,15 +139,15 @@ USA.
 	       (empty? (pair? (cdddr form))))
 	   `(BEGIN
 	      (DEFINE ,(symbol-append 'HTML: name)
-		(STANDARD-XML-ELEMENT-CONSTRUCTOR ',name HTML-IRI ,empty?))
+		(STANDARD-XML-ELEMENT-CONSTRUCTOR ',name HTML-URI ,empty?))
 	      (DEFINE ,(symbol-append 'HTML: name '?)
-		(STANDARD-XML-ELEMENT-PREDICATE ',name HTML-IRI))
+		(STANDARD-XML-ELEMENT-PREDICATE ',name HTML-URI))
 	      (DEFINE-HTML-ELEMENT-CONTEXT ',name ',context)))
 	 (ill-formed-syntax form)))))
 
 (define (define-html-element-context qname context)
   (hash-table/put! element-context-map
-		   (make-xml-name qname html-iri)
+		   (make-xml-name qname html-uri)
 		   context)
   qname)
 
@@ -228,9 +250,9 @@ USA.
 (define-html-element ul		block)
 (define-html-element var	inline)
 
-(define (html:href iri . contents)
+(define (html:href uri . contents)
   (apply html:a
-	 (xml-attrs 'href iri)
+	 (xml-attrs 'href uri)
 	 contents))
 
 (define (html:id-def tag . contents)
@@ -242,13 +264,13 @@ USA.
 (define (html:id-ref tag . contents)
   (apply html:href (string-append "#" tag) contents))
 
-(define (html:rel-link rel iri)
+(define (html:rel-link rel uri)
   (html:link 'rel rel
-	     'href iri))
+	     'href uri))
 
-(define (html:style-link iri)
+(define (html:style-link uri)
   (html:link 'rel "stylesheet"
-	     'href iri
+	     'href uri
 	     'type "text/css"))
 
 (define (html:http-equiv name value)

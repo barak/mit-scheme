@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.166 2005/06/10 01:51:23 cph Exp $
+$Id: fileio.scm,v 1.167 2006/01/27 21:05:52 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -341,6 +341,7 @@ and the cdrs of which are major modes."
      ("pas" . pascal)
      ("php" . php)
      ("php3" . php)
+     ("rdf" . html)
      ("s" . scheme)
      ("scm" . scheme)
      ("text" . text)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xpath.scm,v 1.3 2004/08/12 06:18:44 cph Exp $
+$Id: xpath.scm,v 1.4 2006/01/30 20:20:47 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -117,11 +117,11 @@ USA.
 	(make-xml-name qname (expand-prefix prefix node)))))
 
 (define (expand-prefix prefix node)
-  (cond ((eq? prefix 'xml) xml-iri)
-	((eq? prefix 'xmlns) xmlns-iri)
+  (cond ((eq? prefix 'xml) xml-uri)
+	((eq? prefix 'xmlns) xmlns-uri)
 	(else
 	 (let loop ((node node))
-	   (or (xml-element-namespace-iri (node-item node) prefix)
+	   (or (xml-element-namespace-uri (node-item node) prefix)
 	       (let ((parent (parent-node node)))
 		 (if (not (element-node? parent))
 		     (error:bad-range-argument prefix 'EXPAND-PREFIX))
@@ -359,11 +359,11 @@ USA.
      (simple-node-test
       (lambda (node)
 	(and (element-node? node)
-	     (xml-name-iri=? (node-name node) (expand-prefix prefix node))))))
+	     (xml-name-uri=? (node-name node) (expand-prefix prefix node))))))
     ((attribute)
      (simple-node-test
       (lambda (node)
-	(xml-name-iri=? (node-name node)
+	(xml-name-uri=? (node-name node)
 			(expand-prefix prefix (node-parent node))))))
     ((namespace) null-node-test)
     (else (error:bad-range-argument type 'NODE-TEST:PREFIX:*))))

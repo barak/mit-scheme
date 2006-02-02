@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.32 2005/01/23 17:53:05 cph Exp $
+$Id: hashtb.scm,v 1.33 2005/09/29 19:15:54 cph Exp $
 
 Copyright 1990,1991,1993,1994,1995,2003 Massachusetts Institute of Technology
 Copyright 2004,2005 Massachusetts Institute of Technology
@@ -225,7 +225,13 @@ USA.
 
 (define (hash-table/count table)
   (guarantee-hash-table table 'HASH-TABLE/COUNT)
-  (table-count table))
+  (let loop ()
+    (let ((count (table-count table)))
+      (if (table-needs-rehash? table)
+	  (begin
+	    (rehash-table! table)
+	    (loop))
+	  count))))
 
 (define (hash-table/size table)
   (guarantee-hash-table table 'HASH-TABLE/SIZE)
