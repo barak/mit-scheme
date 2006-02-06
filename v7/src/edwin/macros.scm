@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.77 2006/02/06 18:43:01 cph Exp $
+$Id: macros.scm,v 1.78 2006/02/06 18:50:45 cph Exp $
 
 Copyright 1987,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1999,2001,2002,2006 Massachusetts Institute of Technology
@@ -42,11 +42,11 @@ USA.
 	   (receive (table name-map)
 	       (case type
 		 ((MODE)
-		  (values editor-modes mode-name->scheme-name))
+		  (values 'EDITOR-MODES mode-name->scheme-name))
 		 ((COMMAND)
-		  (values editor-commands command-name->scheme-name))
+		  (values 'EDITOR-COMMANDS command-name->scheme-name))
 		 ((VARIABLE)
-		  (values editor-variables variable-name->scheme-name))
+		  (values 'EDITOR-VARIABLES variable-name->scheme-name))
 		 (else
 		  (error "Unknown alias type:" type)))
 	   `(BEGIN

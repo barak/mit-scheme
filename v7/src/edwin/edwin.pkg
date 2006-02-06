@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.292 2005/12/09 20:34:15 riastradh Exp $
+$Id: edwin.pkg,v 1.293 2006/02/06 18:46:44 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -169,6 +169,7 @@ USA.
 	  command-defined?
 	  command-name->scheme-name
 	  define-command
+	  define-editor-alias
 	  define-major-mode
 	  define-minor-mode
 	  define-variable
