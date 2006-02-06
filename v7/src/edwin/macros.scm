@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.75 2003/02/14 18:28:12 cph Exp $
+$Id: macros.scm,v 1.76 2006/02/06 18:40:29 cph Exp $
 
-Copyright 1986, 1989-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1987,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
+Copyright 1999,2001,2002,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,6 +30,30 @@ USA.
 
 ;; Upwards compatibility:
 (define edwin-syntax-table (->environment '(EDWIN)))
+
+(define-syntax define-editor-alias
+  (sc-macro-transformer
+   (lambda (form env)
+     (if (syntax-match? '(SYMBOL SYMBOL SYMBOL) (cdr form))
+	 (let ((type (cadr form))
+	       (new (caddr form))
+	       (old (cadddr form)))
+	   (receive (table name-map)
+	       (case type
+		 ((MODE)
+		  (values editor-modes mode-name->scheme-name))
+		 ((COMMAND)
+		  (values editor-commands command-name->scheme-name))
+		 ((VARIABLE)
+		  (values editor-variables variable-name->scheme-name))
+		 (else
+		  (error "Unknown alias type:" type)))
+	   `(BEGIN
+	      (DEFINE ,(name-map new) ,(name-map old))
+	      (STRING-TABLE-PUT! ,table
+				 ,(symbol->string new)
+				 ,(name-map old)))))
+	 (ill-formed-syntax form)))))
 
 (define-syntax define-command
   (rsc-macro-transformer
