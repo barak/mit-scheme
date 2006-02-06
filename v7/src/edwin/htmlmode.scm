@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: htmlmode.scm,v 1.11 2003/09/23 16:25:39 cph Exp $
+$Id: htmlmode.scm,v 1.12 2006/02/06 18:24:52 cph Exp $
 
-Copyright 1999,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1999,2000,2001,2002,2003,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,24 +23,24 @@ USA.
 
 |#
 
-;;;; Major Mode for HTML
+;;;; Major Mode for XML
 
 (declare (usual-integrations))
 
-(define-major-mode html text "HTML"
-  "Major mode for editing HTML.
+(define-major-mode xml text "XML"
+  "Major mode for editing XML.
 
-\\{html}"
+\\{xml}"
   (lambda (buffer)
-    (local-set-variable! syntax-table html-syntax-table buffer)
+    (local-set-variable! syntax-table xml-syntax-table buffer)
     (local-set-variable! indent-line-procedure
 			 (ref-command indent-relative)
 			 buffer)
-    (local-set-variable! paragraph-separate html-paragraph-separator buffer)
-    (local-set-variable! paragraph-start html-paragraph-separator buffer)
+    (local-set-variable! paragraph-separate xml-paragraph-separator buffer)
+    (local-set-variable! paragraph-start xml-paragraph-separator buffer)
     (local-set-variable! syntax-ignore-comments-backwards #f buffer)
-    (local-set-variable! comment-locator-hook html-comment-locate buffer)
-    (local-set-variable! comment-indent-hook html-comment-indentation buffer)
+    (local-set-variable! comment-locator-hook xml-comment-locate buffer)
+    (local-set-variable! comment-indent-hook xml-comment-indentation buffer)
     (local-set-variable! comment-start "<!-- " buffer)
     (local-set-variable! comment-end " -->" buffer)
     (local-set-variable!
@@ -48,11 +48,11 @@ USA.
      "[.?!][]\"')}]*\\(<[^>]*>\\)*\\($\\| $\\|\t\\|  \\)[ \t\n]*"
      buffer)
     (local-set-variable! local-abbrev-table
-			 (ref-variable html-mode-abbrev-table buffer)
+			 (ref-variable xml-mode-abbrev-table buffer)
 			 buffer)
-    (event-distributor/invoke! (ref-variable html-mode-hook buffer) buffer)))
+    (event-distributor/invoke! (ref-variable xml-mode-hook buffer) buffer)))
 
-(define html-paragraph-separator
+(define xml-paragraph-separator
   (let ((lwsp (rexp* (char-set #\space #\tab #\U+A0))))
     (rexp->regexp
      (rexp-sequence
@@ -64,20 +64,20 @@ USA.
       lwsp
       (rexp-line-end)))))
 
-(define-command html-mode
-  "Enter HTML mode."
+(define-command xml-mode
+  "Enter XML mode."
   ()
-  (lambda () (set-current-major-mode! (ref-mode-object html))))
+  (lambda () (set-current-major-mode! (ref-mode-object xml))))
 
-(define-variable html-mode-abbrev-table
-  "Mode-specific abbrev table for HTML.")
-(define-abbrev-table 'html-mode-abbrev-table '())
+(define-variable xml-mode-abbrev-table
+  "Mode-specific abbrev table for XML.")
+(define-abbrev-table 'xml-mode-abbrev-table '())
 
-(define-variable html-mode-hook
-  "An event distributor that is invoked when entering HTML mode."
+(define-variable xml-mode-hook
+  "An event distributor that is invoked when entering XML mode."
   (make-event-distributor))
 
-(define html-syntax-table
+(define xml-syntax-table
   (let ((syntax-table (make-char-syntax-table text-mode:syntax-table)))
     (set-char-syntax! syntax-table #\< "(>")
     (set-char-syntax! syntax-table #\! ". ")
@@ -89,10 +89,17 @@ USA.
     (set-char-syntax! syntax-table #\: "_")
     syntax-table))
 
-(define (html-comment-locate mark)
+(define (xml-comment-locate mark)
   (and (re-search-forward "<!--+[ \t]*" (line-start mark 0) (line-end mark 0))
        (cons (re-match-start 0) (re-match-end 0))))
 
-(define (html-comment-indentation mark)
+(define (xml-comment-indentation mark)
   mark
   0)
+
+;; Backwards compatibility:
+(define edwin-mode$html edwin-mode$xml)
+(define edwin-command$html-mode edwin-command$xml-mode)
+(define edwin-variable$html-mode-abbrev-table
+  edwin-variable$xml-mode-abbrev-table)
+(define html-syntax-table xml-syntax-table)
