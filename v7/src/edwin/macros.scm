@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.76 2006/02/06 18:40:29 cph Exp $
+$Id: macros.scm,v 1.77 2006/02/06 18:43:01 cph Exp $
 
 Copyright 1987,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1999,2001,2002,2006 Massachusetts Institute of Technology
@@ -34,6 +34,7 @@ USA.
 (define-syntax define-editor-alias
   (sc-macro-transformer
    (lambda (form env)
+     env
      (if (syntax-match? '(SYMBOL SYMBOL SYMBOL) (cdr form))
 	 (let ((type (cadr form))
 	       (new (caddr form))
