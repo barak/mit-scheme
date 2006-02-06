@@ -1,10 +1,10 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: user.texinfo,v 1.106 2006/01/13 05:27:40 cph Exp $
+@comment $Id: user.texinfo,v 1.107 2006/02/06 02:14:26 cph Exp $
 @comment %**start of header
 @setfilename mit-scheme-user
-@set EDITION 1.90
-@set VERSION 7.7.91
-@set UPDATED 2004-10-16
+@set EDITION 1.91
+@set VERSION 7.7.90+
+@set UPDATED 2006-02-05
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -26,6 +26,7 @@ This manual documents the use of MIT/GNU Scheme @value{VERSION}.
 
 Copyright @copyright{} 1991,1993,1999,2000 Massachusetts Institute of Technology@*
 Copyright @copyright{} 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright @copyright{} 2006 Massachusetts Institute of Technology
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -97,22 +98,19 @@ and debug programs, and use the editor.  The release notes are included
 as an appendix.
 
 @cindex Unix
-@cindex OS/2
 @cindex Windows
 @cindex PC
 This document discusses many operating-system specific features of the
-MIT/GNU Scheme implementation.  In order to simplify the discussion, we use
-abbreviations to refer to some operating systems.  When the text uses
-the term @dfn{unix}, this means any of the unix systems that we support,
-including GNU/Linux, *BSD, HP-UX, Ultrix, NeXT, and SunOS.  The term
-@dfn{OS/2} means the IBM OS/2 operating system, version 2.1 or later.
-We use the term @dfn{Windows} to collectively refer to the Microsoft
-Windows 32-bit operating systems: Windows 95, Windows 98, Windows ME,
-Windows NT, Windows 2000, and Windows XP.  We use the term @dfn{PC} to
-refer to any computer running OS/2 or Windows.  Thus we consider a PC to
-be a system with a @acronym{DOS}-like file system, using backslashes for
-directory separators, drive letters, @sc{cr-lf} line termination, and
-(potentially) the hideous 8.3 short filenames.
+MIT/GNU Scheme implementation.  In order to simplify the discussion, we
+use abbreviations to refer to some operating systems.  When the text
+uses the term @dfn{unix}, this means any of the unix systems that we
+support, including GNU/Linux and the BSD variants.  We use the term
+@dfn{Windows} to collectively refer to the modern Microsoft Windows
+32-bit operating systems: Windows NT, Windows 2000, and Windows XP.  We
+use the term @dfn{PC} to refer to any computer running Windows.  Thus we
+consider a PC to be a system with a @acronym{DOS}-like file system,
+using backslashes for directory separators, drive letters, @sc{cr-lf}
+line termination, and (potentially) the hideous 8.3 short filenames.
 
 @cindex Web site
 The primary distribution site for this software is
@@ -142,15 +140,14 @@ system you are using.
 @node Installation, Running Scheme, Introduction, Top
 @chapter Installation
 
-This chapter describes how to install MIT/GNU Scheme release 7.7.
-The release is supported under several different operating systems:
-unix, OS/2, and Windows.  Read the section detailing the installation
-for the operating system that you are using.
+This chapter describes how to install MIT/GNU Scheme.  The release is
+supported under various unix and Windows operating systems.  Read the
+section detailing the installation for the operating system that you are
+using.
 
 @menu
 * Unix Installation::           
 * Windows Installation::        
-* OS/2 Installation::           
 * Optional Configuration::      
 @end menu
 
@@ -251,7 +248,7 @@ You should now be able to run MIT/GNU Scheme.  @xref{Running
 Scheme}, for more information.
 @end itemize
 
-@node Windows Installation, OS/2 Installation, Unix Installation, Installation
+@node Windows Installation, Optional Configuration, Unix Installation, Installation
 @section Windows Installation
 
 This section describes how to install MIT/GNU Scheme on Windows
@@ -267,181 +264,9 @@ to be installed, and the name of the folder in which the shortcuts are
 to be placed.
 
 To uninstall the software, open up the @samp{Control Panel}, run
-@samp{Add/Remove Programs}, and double-click on @samp{MIT/GNU Scheme 7.7}.
+@samp{Add/Remove Programs}, and double-click on @samp{MIT/GNU Scheme}.
 
-@node OS/2 Installation, Optional Configuration, Windows Installation, Installation
-@section OS/2 Installation
-
-This section describes how to install MIT/GNU Scheme on a machine
-running OS/2 2.1 or later.  This release of MIT/GNU Scheme has
-been tested only on OS/2 Warp 4.0.  It was compiled using IBM Visual Age
-C++ version 3.0 and the OS/2 Toolkit version 4.0.
-
-@menu
-* OS/2 Installation Procedure::  
-* Environment Variables for OS/2 Installation::  
-@end menu
-
-@node OS/2 Installation Procedure, Environment Variables for OS/2 Installation, OS/2 Installation, OS/2 Installation
-@subsection OS/2 Installation Procedure
-
-After unpacking the @sc{zip} file, @file{os2.zip}, you will have these
-directories containing the following files:
-
-@table @file
-@item exe
-The executable programs @command{scheme.exe} and @command{bchschem.exe}.
-
-@item dll
-The dynamic link libraries @file{blowfish.dll}, @file{gdbm.dll}, and
-@file{md5.dll}.
-
-@item doc
-Documentation files in @acronym{HTML}.
-
-@item lib
-A directory containing the data files needed by Scheme when it is
-running.
-@end table
-
-Perform the following steps to install Scheme:
-
-@enumerate
-@item
-Move the executable files @command{scheme.exe} and
-@command{bchschem.exe} from @file{exe} to any directory that appears in
-your @env{PATH} environment variable.  You may either add the @file{exe}
-directory to your path by editing @file{config.sys} and rebooting, or
-you may move the files in @file{exe} to an existing directory that is
-already on your @env{PATH}.
-
-Depending on your needs, you may want to keep only one of these files;
-chances are you'll only be using one of them.  Of course, you may also
-keep both programs around if you think you might use them both.
-@xref{Memory Usage}, for more information about the tradeoffs between
-these two programs.
-
-@item
-Move the dynamic link libraries from @file{dll} to any directory that
-appears in your @env{LIBPATH} environment variable.  As above, you may
-either add @file{dll} to your @env{LIBPATH}, or move the files in
-@file{dll} to a directory that is already on your @env{LIBPATH}.
-
-@item
-You may move the @file{lib} directory anywhere you like.  You may rename
-it to anything you like.  (Here at MIT, we use
-@file{c:\scheme\lib}.)  After you have chosen where it will be located,
-set the @env{MITSCHEME_LIBRARY_PATH} environment variable in
-@file{config.sys} to be that location.
-
-For example, if you decide to store the directory as @file{c:\schdata},
-you would add the following to @file{config.sys}:
-
-@example
-SET MITSCHEME_LIBRARY_PATH=C:\SCHDATA
-@end example
-
-@noindent
-(Remember that you must reboot OS/2 after editing @file{config.sys} in
-order for the changes to take effect.)
-
-You can override the setting of this environment variable with the
-@option{--library} command-line option to Scheme, for example:
-
-@example
-scheme --library d:\myscm\mylib
-@end example
-
-@noindent
-If you supply a @option{--library} option, it is not necessary to have
-the environment variable defined.  For example, instead of editing
-@file{config.sys}, you might create a @file{.cmd} file to invoke Scheme
-and pass it the @option{--library} option automatically.
-
-@item
-@emph{Optional:} Move the @file{doc} directory anywhere you like, or
-delete it if you do not want to keep the documentation.
-
-@item
-@emph{Optional:} Consider setting some of the environment variables
-described below.
-@end enumerate
-
-@node Environment Variables for OS/2 Installation,  , OS/2 Installation Procedure, OS/2 Installation
-@subsection Environment Variables
-
-This section documents several of the environment variables that Scheme
-uses, and gives an example for each one.  These are the environment
-variables that must usually be defined when installing Scheme under
-OS/2.  For complete documentation of all of the environment variables
-used by Scheme, see @ref{Environment Variables}.
-
-Note that environment variables are usually defined in the OS/2
-@file{config.sys} file.  After editing the @file{config.sys} file, it is
-necessary to reboot OS/2 before the changes will take effect.
-
-@table @env
-@item MITSCHEME_LIBRARY_PATH
-@nvindex MITSCHEME_LIBRARY_PATH
-says where to find Scheme's data files.  This is the only required
-environment variable (but is not required when Scheme is invoked with
-the @option{--library} command-line option).
-
-@example
-SET MITSCHEME_LIBRARY_PATH=C:\SCHEME\LIB
-@end example
-
-@item MITSCHEME_INF_DIRECTORY
-@nvindex MITSCHEME_INF_DIRECTORY
-tells Scheme where to find debugging information for the runtime system.
-The default value for this environment variable is a subdirectory
-@file{src} located in the directory specified by
-@env{MITSCHEME_LIBRARY_PATH}.
-
-@example
-SET MITSCHEME_INF_DIRECTORY=C:\SCHEME\LIB\SRC
-@end example
-
-@item TMPDIR
-@nvindex TMPDIR
-tells Scheme the name of a directory where it can store temporary files.
-
-@example
-SET TMPDIR=C:\TMP
-@end example
-
-@item HOME
-@nvindex HOME
-tells Scheme where your ``home'' directory is located.  This is where
-Scheme looks for init files, and it is also what the @file{~/} (or
-@file{~\\}) filename prefix expands to.  If not specified, Scheme uses
-the root directory of the current drive.
-
-@example
-SET HOME=C:\CPH
-@end example
-
-@item USER
-@nvindex USER
-tells Scheme your user name.  This is used for several purposes,
-including the name that will be used as your email address.
-
-@example
-SET USER=cph
-@end example
-
-@item SHELL
-@nvindex SHELL
-tells Edwin what shell program to use in shell buffers and for running
-shell commands.  If not specified, this defaults to the standard OS/2
-shell, @file{cmd.exe}.
-
-@example
-SET SHELL=C:\4OS2251\4OS2.EXE
-@end example
-@end table
-
-@node Optional Configuration,  , OS/2 Installation, Installation
+@node Optional Configuration,  , Windows Installation, Installation
 @section Optional Configuration
 
 As distributed, Scheme contains several large files.  You might not need
@@ -523,7 +348,7 @@ using command-line options and environment variables.
 @node Basics of Starting Scheme, Customizing Scheme, Running Scheme, Running Scheme
 @section Basics of Starting Scheme
 
-Under unix and OS/2, MIT/GNU Scheme is invoked by typing
+Under unix, MIT/GNU Scheme is invoked by typing
 
 @example
 scheme
@@ -601,14 +426,13 @@ varied by command-line options.  @xref{Command-Line Options}.
 
 @item
 @cindex command scripts
-@dfn{Command scripts or batch files}.
-You might like to write scripts that invoke Scheme with your favorite
-command-line options.  For example, you might not have enough memory to
-run Edwin or the compiler with its default memory parameters (it will
-print something like ``Not enough memory for this configuration'' and
-halt when started), so you can write a shell script (unix), @file{.bat}
-file (Windows), or @file{.cmd} file (OS/2) that will invoke Scheme with
-the appropriate @option{--heap} and other parameters.
+@dfn{Command scripts or batch files}.  You might like to write scripts
+that invoke Scheme with your favorite command-line options.  For
+example, you might not have enough memory to run Edwin or the compiler
+with its default memory parameters (it will print something like ``Not
+enough memory for this configuration'' and halt when started), so you
+can write a shell script (unix) or @file{.bat} file (Windows) that will
+invoke Scheme with the appropriate @option{--heap} and other parameters.
 
 @item
 @cindex init file
@@ -638,8 +462,8 @@ environment variables.  @xref{Environment Variables}.
 @item
 @dfn{Icons}.
 @cindex icons
-Under OS/2 and Windows, and with some window managers under X11, it is
-possible to create icons that invoke Scheme with different parameters.
+Under Windows, and with some window managers under X11, it is possible
+to create icons that invoke Scheme with different parameters.
 @end itemize
 
 @node Memory Usage, Command-Line Options, Customizing Scheme, Running Scheme
@@ -742,7 +566,7 @@ command-line options, see @ref{Custom Command-line Options}.
 
 Note that MIT/GNU Scheme supports only @dfn{long} options, that
 is, options specified by verbose names, as opposed to @dfn{short}
-options, which are specified by single characters.  As of release 7.7.2,
+options, which are specified by single characters.  As of release 7.7.90,
 all options start with two hyphens, for compatibility with GNU
 coding standards (and most modern programs).  Prior to this release,
 options started with a single hyphen.  While the single-hyphen style
@@ -1161,7 +985,6 @@ procedure, e.g.@:
 * Runtime Environment Variables::  
 * Edwin Environment Variables::  
 * Windows Environment Variables::  
-* OS/2 Environment Variables::  
 @end menu
 
 @node Microcode Environment Variables, Bchscheme Environment Variables, Environment Variables, Environment Variables
@@ -1314,8 +1137,7 @@ These environment variables are referred to by the runtime system.
 @item @env{HOME}
 @nvindex HOME
 Directory in which to look for init files.  E.g.@: @file{c:\users\joe}
-or @file{/home/joe}.  This variable needs to be set on OS/2 and
-Windows 9x.  Under Windows NT/2000/XP, the environment variables
+or @file{/home/joe}.  Under Windows NT/2000/XP, the environment variables
 @env{HOMEDRIVE} and @env{HOMEPATH}, set by the operating system, are
 used instead.  Under unix, @env{HOME} is set by the login shell.
 
@@ -1327,8 +1149,8 @@ used instead.  Under unix, @env{HOME} is set by the login shell.
 @nvindex TMP
 Directory for various temporary files.  The variables are tried in the
 given order.  If none of them is suitable, built-in defaults are used:
-under unix, @file{/var/tmp}, @file{/usr/tmp}, @file{/tmp}; under OS/2
-and Windows, @file{\temp}, @file{\tmp}, and @file{\} (all on the system
+under unix, @file{/var/tmp}, @file{/usr/tmp}, @file{/tmp}; under
+Windows, @file{\temp}, @file{\tmp}, and @file{\} (all on the system
 drive).
 
 @item @env{MITSCHEME_INF_DIRECTORY} (default: @file{SRC} on the library path)
@@ -1406,7 +1228,7 @@ Number of text columns on the screen, for systems that don't support
 @samp{TIOCGWINSZ}.
 @end table
 
-@node Windows Environment Variables, OS/2 Environment Variables, Edwin Environment Variables, Environment Variables
+@node Windows Environment Variables, , Edwin Environment Variables, Environment Variables
 @subsection Environment Variables for Microsoft Windows
 
 These environment variables are specific to the Microsoft Windows
@@ -1478,34 +1300,6 @@ searching for a subdirectory with the user's login name.
 @c @nvindex MITSCHEME_TRAP_ALT_ESCAPE
 @c Boolean option specifying the handling of system command accelerators.
 @c These options do not actually work.
-@end table
-
-@node OS/2 Environment Variables,  , Windows Environment Variables, Environment Variables
-@subsection Environment Variables for OS/2
-
-These environment variables are specific to the OS/2 implementation.
-
-@table @env
-@item USER
-@nvindex USER
-Specifies the login name of the user running Scheme.  This is used for
-several different purposes.  If this variable is undefined, an error is
-signalled when the username is required.
-
-@item USERDIR
-@nvindex USERDIR
-Specifies a directory that contains the home directories of users.  One
-of the places in which Scheme looks for the user's home directory, by
-searching for a subdirectory with the user's login name.  This variable
-is used only when @env{HOME} is not defined; we recommend using
-@env{HOME} rather than @env{USERDIR}.
-
-@item COMSPEC
-@nvindex COMSPEC
-Specifies the command shell.  This is set in all versions of OS/2 (and
-is required for proper operation of the operating system).  Scheme uses
-this to determine the user's shell if the environment variable
-@env{SHELL} is not defined.
 @end table
 
 @node Starting Scheme from Microsoft Windows, Leaving Scheme, Environment Variables, Running Scheme
@@ -1606,19 +1400,11 @@ commands correspond to the procedures @code{exit} and @code{quit},
 respectively.
 
 @item
-@emph{Graphical-interface buttons that you can activate.}  Under OS/2
-and Windows, closing the console window (Scheme's main window) causes
+@emph{Graphical-interface buttons that you can activate.}  Under
+Windows, closing the console window (Scheme's main window) causes
 Scheme to be terminated.  Under any operating system, closing an Edwin
 window causes that window to go away, and if it is the only Edwin
 window, it terminates Scheme as well.
-
-Under OS/2, there are two distinct ways to close the console window.
-The first is to use any of the usual window-closing methods, such as the
-@samp{Close} system-menu item or double-clicking on the system-menu
-icon.  When this is done, you will be presented with a dialog that gives
-you the option to close the window with or without termating Scheme.
-The second way is to select the @samp{Exit} item from the @samp{File}
-menu, which terminates Scheme immediately with no dialog.
 @end itemize
 
 @node Using Scheme, Compiling Programs, Running Scheme, Top
@@ -1717,7 +1503,7 @@ be destroyed, and you may not be able to find out what happened.
 @kindex C-c
 Scheme has several interrupt keys, which vary depending on the
 underlying operating system: under unix, @kbd{C-g} and @kbd{C-c}; under
-OS/2 and Windows, @kbd{C-g}, @kbd{C-b}, @kbd{C-x} and @kbd{C-u}.  The
+Windows, @kbd{C-g}, @kbd{C-b}, @kbd{C-x} and @kbd{C-u}.  The
 @kbd{C-g} key stops any Scheme evaluation that is running and returns
 you to the top level @acronym{REPL}.  @kbd{C-c} prompts you for another
 character and performs some action based on that character.  It is not
@@ -4160,7 +3946,7 @@ MIT/GNU Scheme, as it is guaranteed to be correct for your version
 of Scheme.
 
 This interface works under unix only, because it requires unix signals
-for its operation.  Porting it to either OS/2 or Windows would require
+for its operation.  Porting it to either Windows would require
 reimplementing the interface to eliminate the use of signals.  We have
 no plans to do this.
 
@@ -4396,10 +4182,6 @@ Unix only.  Causes Edwin to run on Scheme's console, or in unix
 terminology, the standard input and output.  If the console is not a
 terminal device, or is not powerful enough to run Edwin, an error will
 be signalled at initialization time.
-
-@item (pm)
-OS/2 only.  Creates a Presentation Manager window and uses it as Edwin's
-main window.
 
 @item (win32)
 Windows only.  Creates a window and uses it as Edwin's main window.
