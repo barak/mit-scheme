@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: htmlmode.scm,v 1.13 2006/02/06 18:26:54 cph Exp $
+$Id: htmlmode.scm,v 1.14 2006/02/06 18:41:04 cph Exp $
 
 Copyright 1999,2000,2001,2002,2003,2006 Massachusetts Institute of Technology
 
@@ -43,6 +43,7 @@ USA.
     (local-set-variable! comment-indent-hook xml-comment-indentation buffer)
     (local-set-variable! comment-start "<!-- " buffer)
     (local-set-variable! comment-end " -->" buffer)
+    (local-set-variable! comment-multi-line #t buffer)
     (local-set-variable!
      sentence-end
      "[.?!][]\"')}]*\\(<[^>]*>\\)*\\($\\| $\\|\t\\|  \\)[ \t\n]*"
@@ -97,10 +98,9 @@ USA.
   mark
   0)
 
-;; Backwards compatibility:
-(define edwin-mode$html edwin-mode$xml)
-(define edwin-command$html-mode edwin-command$xml-mode)
-(define edwin-variable$html-mode-hook edwin-variable$xml-mode-hook)
-(define edwin-variable$html-mode-abbrev-table
-  edwin-variable$xml-mode-abbrev-table)
+;; Backwards compatibility
+(define-editor-alias mode html xml)
+(define-editor-alias command html-mode xml-mode)
+(define-editor-alias variable html-mode-hook xml-mode-hook)
+(define-editor-alias variable html-mode-abbrev-table xml-mode-abbrev-table)
 (define html-syntax-table xml-syntax-table)
