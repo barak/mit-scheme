@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.68 2006/01/31 06:14:25 cph Exp $
+$Id: xml-parser.scm,v 1.69 2006/02/12 02:48:53 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -297,6 +297,8 @@ USA.
 			(match-xml-version (string->parser-buffer version))
 			#t))
 	       (perror p "Malformed XML version" version))
+	   (if (and version (not (string=? version "1.0")))
+	       (perror p "Unsupported XML version" version))
 	   (if (not (if encoding
 			(match-encoding (string->parser-buffer encoding))
 			(not text-decl?)))
