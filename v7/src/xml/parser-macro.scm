@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: parser-macro.scm,v 1.8 2003/02/14 18:28:38 cph Exp $
+$Id: parser-macro.scm,v 1.9 2006/02/15 06:08:07 cph Exp $
 
-Copyright 2001 Massachusetts Institute of Technology
+Copyright 2001,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -45,9 +45,8 @@ USA.
 		    (PERROR
 		     ,v
 		     ,(if (string? description)
-			  (string-append "Unterminated " description)
-			  `(STRING-APPEND "Unterminated "
-					  ,description))))))))))
+			  (string-append "Malformed " description)
+			  `(STRING-APPEND "Malformed " ,description))))))))))
 
 (define-*parser-macro (sbracket description open close . body)
   `(BRACKET ,description (NOISE (STRING ,open)) (NOISE (STRING ,close))

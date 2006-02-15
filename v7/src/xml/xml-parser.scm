@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.69 2006/02/12 02:48:53 cph Exp $
+$Id: xml-parser.scm,v 1.70 2006/02/15 06:08:12 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -293,9 +293,8 @@ USA.
 	 (lambda (version encoding standalone)
 	   (if (and (not text-decl?) (not version))
 	       (perror p "Missing XML version"))
-	   (if (not (if version
-			(match-xml-version (string->parser-buffer version))
-			#t))
+	   (if (and version
+		    (not (match-xml-version (string->parser-buffer version))))
 	       (perror p "Malformed XML version" version))
 	   (if (and version (not (string=? version "1.0")))
 	       (perror p "Unsupported XML version" version))
@@ -330,7 +329,8 @@ USA.
 		    (finish (caddr results) (cadr results) (car results)))))
 	  (begin
 	    (if (pair? attributes)
-		(perror p "Extra attributes in XML declaration" attributes))
+		(perror p "Extra attributes in XML declaration"
+			(map xml-attribute-name attributes)))
 	    (if text-decl?
 		(finish (cadr results) (car results) #f)
 		(finish (caddr results) (cadr results) (car results))))))))
@@ -746,7 +746,7 @@ USA.
 
 ;;;; Attributes
 
-(define (attribute-list-parser parse-name name=?)
+(define (attribute-list-parser parse-name ->name)
   (let ((parse-attribute (attribute-parser parse-name)))
     (*parser
      (with-pointer p
@@ -755,10 +755,11 @@ USA.
 	     (let ((attrs (vector->list v)))
 	       (do ((attrs attrs (cdr attrs)))
 		   ((not (pair? attrs)))
-		 (let ((name (xml-attribute-name (car attrs))))
+		 (let ((name (->name (xml-attribute-name (car attrs)))))
 		   (if (there-exists? (cdr attrs)
 			 (lambda (attr)
-			   (name=? (xml-attribute-name attr) name)))
+			   (xml-name=? (->name (xml-attribute-name attr))
+				       name)))
 		       (perror p "Attributes with same name" name))))
 	       attrs))
 	 (seq (* parse-attribute)
@@ -778,11 +779,11 @@ USA.
 
 (define parse-attribute-list
   (attribute-list-parser parse-unexpanded-name
-			 (lambda (a b) (xml-name=? (car a) (car b)))))
+			 (lambda (a) (car a))))
 
 (define parse-declaration-attributes
   (attribute-list-parser (*parser (map make-xml-qname (match match-name)))
-			 xml-name=?))
+			 (lambda (a) a)))
 
 (define (attribute-value-parser alphabet parse-reference)
   (let ((a1 (alphabet- alphabet (string->alphabet "\"")))
@@ -979,7 +980,7 @@ USA.
       (perror p "Circular entity reference" name))
   (let ((entity (find-entity name)))
     (if (not entity)
-	(perror p "Reference to undefined entity" name))
+	(perror p "Reference to undeclared entity" name))
     (if (xml-unparsed-!entity? entity)
 	(perror p "Reference to unparsed entity" name))
     (let ((value (xml-!entity-value entity)))
@@ -988,7 +989,7 @@ USA.
       (if (not (and (pair? value)
 		    (string? (car value))
 		    (null? (cdr value))))
-	  (perror p "Reference to partially-defined entity" name))
+	  (perror p "Reference to partially-declared entity" name))
       (if in-attribute?
 	  (car value)
 	  (reparse-entity-value-string name (car value) p)))))
@@ -1148,15 +1149,14 @@ USA.
 		       S?
 		       (map string->symbol (match "#PCDATA"))
 		       (alt (seq S? ")")
-			    (seq (* (seq S? "|" S?
-					 parse-required-element-name))
+			    (seq (* (seq S? "|" S? parse-element-name))
 				 S?
 				 ")*")
 
 			    (sexp
 			     (lambda (buffer)
 			       buffer
-			       (perror p "Unterminated !ELEMENT type")))))))
+			       (perror p "Ill-formed declaration value")))))))
 	      parse-children))))))
 
 (define parse-!attlist			;[52,53]
