@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.43 2006/01/31 18:50:02 cph Exp $
+$Id: pathnm.scm,v 14.44 2006/02/16 05:36:38 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
@@ -301,38 +301,34 @@ these rules:
 
 (define (pathname->uri pathname)
   (let ((pathname (->pathname pathname)))
-    (receive (scheme authority)
-	(if (pathname-absolute? pathname)
-	    (values 'file (make-uri-authority #f "" #f))
-	    (values #f #f))
-      (make-uri scheme
-		authority
-		(map (lambda (x)
-		       (if (eq? x 'WILD)
-			   "*"
-			   (string->utf8-string x)))
-		     (let ((missing?
-			    (lambda (x)
-			      (or (not x)
-				  (eq? x 'UNSPECIFIC)))))
-		       (append (if (pathname-absolute? pathname)
-				   (list "")
-				   '())
-			       (let ((device (pathname-device pathname))
-				     (directory (pathname-directory pathname)))
-				 (if (missing? device)
-				     (if (missing? directory)
-					 '()
-					 (cdr directory))
-				     (cons device (cdr directory))))
-			       (let ((name (file-namestring pathname)))
-				 (if (missing? name)
-				     (if (pathname-absolute? pathname)
-					 (list "")
-					 '())
-				     (list name))))))
-		#f
-		#f))))
+    (make-uri (if (pathname-absolute? pathname) 'file #f)
+	      #f
+	      (map (lambda (x)
+		     (if (eq? x 'WILD)
+			 "*"
+			 (string->utf8-string x)))
+		   (let ((missing?
+			  (lambda (x)
+			    (or (not x)
+				(eq? x 'UNSPECIFIC)))))
+		     (append (if (pathname-absolute? pathname)
+				 (list "")
+				 '())
+			     (let ((device (pathname-device pathname))
+				   (directory (pathname-directory pathname)))
+			       (if (missing? device)
+				   (if (missing? directory)
+				       '()
+				       (cdr directory))
+				   (cons device (cdr directory))))
+			     (let ((name (file-namestring pathname)))
+			       (if (missing? name)
+				   (if (pathname-absolute? pathname)
+				       (list "")
+				       '())
+				   (list name))))))
+	      #f
+	      #f)))
 
 ;;;; Pathname Syntax
 
