@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.41 2006/02/18 01:42:13 cph Exp $
+$Id: url.scm,v 1.42 2006/02/18 02:59:27 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -32,7 +32,7 @@ USA.
 
 (define-record-type <uri>
     (%%make-uri scheme authority path query fragment string)
-    %uri?
+    uri?
   (scheme %uri-scheme)
   (authority %uri-authority)
   (path %uri-path)
@@ -88,21 +88,20 @@ USA.
 
 (define (uri-fragment uri)
   (%uri-fragment (->uri uri 'URI-FRAGMENT)))
-
+
 (define (uri-absolute? uri)
   (if (uri-scheme uri) #t #f))
 
 (define (uri-relative? uri)
   (if (uri-scheme uri) #f #t))
 
-(define (uri? object)
-  (%->uri object parse-uri 'URI? #f))
-
 (define (absolute-uri? object)
-  (%->uri object parse-absolute-uri 'ABSOLUTE-URI? #f))
+  (and (uri? object)
+       (uri-absolute? object)))
 
 (define (relative-uri? object)
-  (%->uri object parse-relative-uri 'ABSOLUTE-URI? #f))
+  (and (uri? object)
+       (uri-relative? object)))
 
 (define (error:not-uri object caller)
   (error:wrong-type-argument object "URI" caller))
@@ -332,7 +331,7 @@ USA.
 	  (lambda (string)
 	    (or (hash-table/get interned-uris string #f)
 		(do-parse (utf8-string->wide-string string))))))
-    (cond ((%uri? object)
+    (cond ((uri? object)
 	   object)
 	  ((string? object)
 	   (do-string object))
