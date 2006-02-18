@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.63 2006/01/30 21:05:30 cph Exp $
+$Id: xml.pkg,v 1.64 2006/02/18 04:31:55 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -516,3 +516,44 @@ USA.
 	  xml-rpc:request
 	  xml-rpc:response
 	  xml-rpc:simple-fault))
+
+(define-package (runtime rdf)
+  (files)
+  (parent (runtime)))
+
+(define-package (runtime rdf structures)
+  (files "rdf-struct")
+  (parent (runtime rdf))
+  (export ()
+	  <rdf-bnode>
+	  <rdf-literal>
+	  <rdf-triple>
+	  error:not-rdf-bnode
+	  error:not-rdf-literal
+	  error:not-rdf-triple
+	  guarantee-rdf-bnode
+	  guarantee-rdf-literal
+	  guarantee-rdf-triple
+	  make-rdf-bnode
+	  make-rdf-literal
+	  make-rdf-triple
+	  rdf-bnode-name
+	  rdf-bnode?
+	  rdf-literal-language
+	  rdf-literal-text
+	  rdf-literal-type
+	  rdf-literal?
+	  rdf-triple-object
+	  rdf-triple-predicate
+	  rdf-triple-subject
+	  rdf-triple?)
+  (export (runtime rdf nt)
+	  match-bnode-name
+	  match-language))
+
+(define-package (runtime rdf nt)
+  (files "rdf-nt")
+  (parent (runtime rdf))
+  (export ()
+	  read-rdf/nt
+	  write-rdf/nt))

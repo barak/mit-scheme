@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.8 2005/12/19 03:58:56 cph Exp $
+$Id: ed-ffi.scm,v 1.9 2006/02/18 04:31:38 cph Exp $
 
-Copyright 2001,2005 Massachusetts Institute of Technology
+Copyright 2001,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,7 +26,9 @@ USA.
 ;;;; XML: Edwin buffer packaging info
 
 (standard-scheme-find-file-initialization
- '#(("xhtml" (runtime xml html))
+ '#(("rdf-nt" (runtime rdf nt))
+    ("rdf-struct" (runtime rdf structures))
+    ("xhtml" (runtime xml html))
     ("xhtml-entities" (runtime xml html))
     ("xml-chars" (runtime xml parser))
     ("xml-names" (runtime xml names))
