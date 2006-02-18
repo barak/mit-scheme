@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.40 2006/02/02 01:02:12 cph Exp $
+$Id: url.scm,v 1.41 2006/02/18 01:42:13 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -370,13 +370,13 @@ USA.
 	 (vector-ref v 0))))
 
 (define parse-uri
-  (*parser (top-level (encapsulate encapsulate-uri parser:uri-reference))))
+  (*parser (encapsulate encapsulate-uri parser:uri-reference)))
 
 (define parse-absolute-uri
-  (*parser (top-level (encapsulate encapsulate-uri parser:uri))))
+  (*parser (encapsulate encapsulate-uri parser:uri)))
 
 (define parse-relative-uri
-  (*parser (top-level (encapsulate encapsulate-uri parser:relative-ref))))
+  (*parser (encapsulate encapsulate-uri parser:relative-ref)))
 
 (define (encapsulate-uri v)
   (%make-uri (vector-ref v 0)
