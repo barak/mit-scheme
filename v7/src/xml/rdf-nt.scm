@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-nt.scm,v 1.1 2006/02/18 04:31:47 cph Exp $
+$Id: rdf-nt.scm,v 1.2 2006/02/24 17:47:25 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -29,7 +29,33 @@ USA.
 
 ;;;; Decoder
 
+(define (read-rdf/nt-file pathname)
+  (fluid-let ((*bnodes* (make-bnode-table)))
+    (call-with-input-file pathname
+      (lambda (port)
+	(let loop ((triples '()))
+	  (let ((triple (%read-rdf/nt port)))
+	    (if (eof-object? triple)
+		triples
+		(loop (cons triple triples)))))))))
+
+(define (rdf/nt-file->source pathname)
+  (fluid-let ((*bnodes* (make-bnode-table)))
+    (let ((port (open-input-file pathname)))
+      (lambda ()
+	(let ((triple (%read-rdf/nt port)))
+	  (if (eof-object? triple)
+	      #f
+	      triple))))))
+
 (define (read-rdf/nt port)
+  (fluid-let ((*bnodes* (bnode-table port)))
+    (let ((triple (%read-rdf/nt port)))
+      (if (eof-object? triple)
+	  (drop-bnode-table port))
+      triple)))
+
+(define (%read-rdf/nt port)
   (let loop ()
     (let ((line (read-line port)))
       (if (eof-object? line)
@@ -40,7 +66,7 @@ USA.
 	    (if (fix:= (vector-length v) 0)
 		(loop)
 		(vector-ref v 0)))))))
-
+
 (define parse-one-line
   (*parser
    (complete
@@ -70,7 +96,7 @@ USA.
 
 (define parse-node-id
   (*parser
-   (encapsulate (lambda (v) (make-rdf-bnode (vector-ref v 0)))
+   (encapsulate (lambda (v) (make-bnode (vector-ref v 0)))
      (seq "_:"
 	  (match match-bnode-name)))))
 
@@ -137,6 +163,25 @@ USA.
     (port/set-coding port 'UTF-8)
     (loop)))
 
+(define *bnodes*)
+
+(define (make-bnode-table)
+  (make-string-hash-table))
+
+(define (bnode-table port)
+  (or (port/get-property port 'BNODE-TABLE #f)
+      (let ((table (make-string-hash-table)))
+	(port/set-property! port 'BNODE-TABLE table)
+	table)))
+
+(define (drop-bnode-table port)
+  (port/remove-property! port 'BNODE-TABLE))
+
+(define (make-bnode name)
+  (hash-table/intern! *bnodes* name
+    (lambda ()
+      (make-rdf-bnode name))))
+
 (define match-language
   (*matcher
    (seq (+ (char-set char-set:language-head))
