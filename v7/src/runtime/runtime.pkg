@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.573 2006/02/02 01:02:07 cph Exp $
+$Id: runtime.pkg,v 14.574 2006/02/24 17:42:51 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1907,6 +1907,7 @@ USA.
 	  port-type?
 	  port/coding
 	  port/copy
+	  port/get-property
 	  port/input-blocking-mode
 	  port/input-channel
 	  port/input-terminal-mode
@@ -1920,12 +1921,14 @@ USA.
 	  port/output-blocking-mode
 	  port/output-channel
 	  port/output-terminal-mode
+	  port/remove-property!
 	  port/set-coding
 	  port/set-input-blocking-mode
 	  port/set-input-terminal-mode
 	  port/set-line-ending
 	  port/set-output-blocking-mode
 	  port/set-output-terminal-mode
+	  port/set-property!
 	  port/state
 	  port/supports-coding?
 	  port/thread-mutex

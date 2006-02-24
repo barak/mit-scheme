@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.41 2005/12/31 15:43:42 cph Exp $
+$Id: port.scm,v 1.42 2006/02/24 17:42:50 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -635,11 +635,17 @@ USA.
 	  (set-cdr! p value)
 	  (set-port/properties! port (cons (cons name value) alist))))))
 
+(define (port/remove-property! port name)
+  (guarantee-symbol name 'PORT/REMOVE-PROPERTY!)
+  (set-port/properties! port (del-assq! name (port/properties port))))
+
 (define (port/transcript port)
   (port/get-property port 'TRANSCRIPT #f))
 
 (define (set-port/transcript! port tport)
-  (port/set-property! port 'TRANSCRIPT tport))
+  (if tport
+      (port/set-property! port 'TRANSCRIPT tport)
+      (port/remove-property! port 'TRANSCRIPT)))
 
 (define (transcribe-char char port)
   (let ((tport (port/transcript port)))
