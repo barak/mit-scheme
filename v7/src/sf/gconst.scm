@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.32 2005/07/31 02:55:18 cph Exp $
+$Id: gconst.scm,v 4.33 2006/02/26 04:26:37 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1997,2001,2004,2005 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -194,7 +195,6 @@ USA.
     SET-INTERRUPT-ENABLES!
     SET-STRING-LENGTH!
     STRING-ALLOCATE
-    STRING-HASH
     STRING-HASH-MOD
     STRING-LENGTH
     STRING-MAXIMUM-LENGTH
