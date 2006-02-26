@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.574 2006/02/24 17:42:51 cph Exp $
+$Id: runtime.pkg,v 14.575 2006/02/26 03:00:49 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -785,6 +785,7 @@ USA.
 	  string-capitalize
 	  string-capitalize!
 	  string-capitalized?
+	  string-ci-hash
 	  string-ci<=?
 	  string-ci<?
 	  string-ci=?
@@ -1792,13 +1793,35 @@ USA.
   (files "hashtb")
   (parent (runtime))
   (export ()
+	  (hash-table-delete! hash-table/remove!)
+	  (hash-table-equivalence-function hash-table/key=?)
+	  (hash-table-hash-function hash-table/key-hash)
+	  (hash-table-keys hash-table/key-list)
+	  (hash-table-ref/default hash-table/get)
+	  (hash-table-set! hash-table/put!)
+	  (hash-table-size hash-table/count)
+	  (hash-table-update!/default hash-table/modify!)
+	  (hash-table-values hash-table/datum-list)
+	  (hash-table-walk hash-table/for-each)
+	  alist->hash-table
 	  eq-hash
 	  eq-hash-mod
 	  equal-hash
 	  equal-hash-mod
 	  eqv-hash
 	  eqv-hash-mod
+	  error:not-hash-table
+	  guarantee-hash-table
+	  ;name conflict:
+	  ;hash
+	  hash-by-identity
 	  hash-table->alist
+	  hash-table-copy
+	  hash-table-exists?
+	  hash-table-fold
+	  hash-table-merge!
+	  hash-table-ref
+	  hash-table-update!
 	  hash-table/clean!
 	  hash-table/clear!
 	  hash-table/count
@@ -1810,6 +1833,7 @@ USA.
 	  hash-table/key-list
 	  hash-table/key=?
 	  hash-table/lookup
+	  hash-table/modify!
 	  hash-table/put!
 	  hash-table/rehash-size
 	  hash-table/rehash-threshold
@@ -1819,6 +1843,7 @@ USA.
 	  make-eq-hash-table
 	  make-equal-hash-table
 	  make-eqv-hash-table
+	  make-hash-table
 	  make-object-hash-table
 	  make-string-hash-table
 	  make-strong-eq-hash-table

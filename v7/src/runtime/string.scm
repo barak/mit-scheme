@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.58 2005/01/07 15:10:23 cph Exp $
+$Id: string.scm,v 14.59 2006/02/26 03:00:55 cph Exp $
 
 Copyright 1986,1987,1988,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,7 +47,6 @@ USA.
   set-string-length!
   set-string-maximum-length!
   string-allocate
-  string-hash
   string-hash-mod
   string-length
   string-maximum-length
@@ -73,6 +72,14 @@ USA.
 
 (define-integrable (vector-8b-find-previous-char-ci string start end ascii)
   (substring-find-previous-char-ci string start end (ascii->char ascii)))
+
+(define (string-hash key #!optional modulus)
+  (if (default-object? modulus)
+      ((ucode-primitive string-hash) key)
+      ((ucode-primitive string-hash-mod) key modulus)))
+
+(define (string-ci-hash key #!optional modulus)
+  (string-hash (string-downcase key) modulus))
 
 ;;; Character optimizations
 
