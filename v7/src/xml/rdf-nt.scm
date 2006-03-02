@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-nt.scm,v 1.2 2006/02/24 17:47:25 cph Exp $
+$Id: rdf-nt.scm,v 1.3 2006/03/02 03:18:42 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -40,13 +40,15 @@ USA.
 		(loop (cons triple triples)))))))))
 
 (define (rdf/nt-file->source pathname)
-  (fluid-let ((*bnodes* (make-bnode-table)))
-    (let ((port (open-input-file pathname)))
-      (lambda ()
-	(let ((triple (%read-rdf/nt port)))
-	  (if (eof-object? triple)
-	      #f
-	      triple))))))
+  (let ((port (open-input-file pathname))
+	(table (make-bnode-table)))
+    (lambda ()
+      (let ((triple
+	     (fluid-let ((*bnodes* table))
+	       (%read-rdf/nt port))))
+	(if (eof-object? triple)
+	    #f
+	    triple)))))
 
 (define (read-rdf/nt port)
   (fluid-let ((*bnodes* (bnode-table port)))
