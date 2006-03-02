@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.64 2005/07/19 03:49:26 cph Exp $
+$Id: unpars.scm,v 14.65 2006/03/02 20:53:02 cph Exp $
 
 Copyright 1986,1987,1990,1991,1992,1995 Massachusetts Institute of Technology
 Copyright 1996,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -331,7 +332,7 @@ USA.
 
 (define (unparse/uninterned-symbol symbol)
   (if *unparse-uninterned-symbols-by-name?*
-      (*unparse-string (symbol-name symbol))
+      (unparse-symbol symbol)
       (*unparse-with-brackets 'UNINTERNED-SYMBOL symbol
 	(lambda ()
 	  (unparse-symbol symbol)))))

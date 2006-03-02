@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.49 2006/01/31 06:41:43 cph Exp $
+$Id: pp.scm,v 14.50 2006/03/02 20:52:57 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
@@ -217,7 +217,9 @@ USA.
 
 (define (pp-top-level expression port as-code? indentation list-depth)
   (fluid-let ((x-size (- (or *pp-forced-x-size* (output-port/x-size port)) 1))
-	      (output-port port))
+	      (output-port port)
+	      (*unparse-uninterned-symbols-by-name?*
+	       *pp-uninterned-symbols-by-name*))
     (let* ((numerical-walk
 	    (if *pp-avoid-circularity?*
 		numerical-walk-avoid-circularities
