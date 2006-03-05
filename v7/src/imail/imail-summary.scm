@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-summary.scm,v 1.51 2003/02/14 18:28:14 cph Exp $
+$Id: imail-summary.scm,v 1.52 2006/03/05 04:05:00 cph Exp $
 
-Copyright 2000-2002 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -275,11 +275,17 @@ SUBJECT is a string of regexps separated by commas."
 		(imail-summary-select-message buffer message)))))))
 
 (define (fill-imail-summary-buffer! buffer folder predicate)
+  (buffer-remove! buffer 'IMAIL-SUMMARY-MESSAGES)
   (let ((end (folder-length folder)))
     (let ((messages
 	   (let loop ((i 0) (messages '()))
 	     (if (< i end)
-		 (loop (+ i 1) (cons (get-message folder i) messages))
+		 (loop (+ i 1)
+		       (let ((message (get-message folder i)))
+			 (if (or (not predicate)
+				 (predicate message))
+			     (cons message messages)
+			     messages)))
 		 (reverse! messages))))
 	  (index-digits (exact-nonnegative-integer-digits end))
 	  (show-date? (ref-variable imail-summary-show-date buffer))
@@ -307,19 +313,11 @@ SUBJECT is a string of regexps separated by commas."
 		      (max 4 (- (mark-x-size mark) (+ (mark-column mark) 1)))
 		      mark)
 	(insert-newline mark)
-	(for-each
-	 (lambda (message)
-	   (if (or (not predicate) (predicate message))
-	       (begin
-		 (let ((m (get-property message 'IMAIL-SUMMARY-MARK #f)))
-		   (if m
-		       (mark-temporary! m)))
-		 (store-property! message
-				  'IMAIL-SUMMARY-MARK
-				  (mark-right-inserting-copy mark))
-		 (write-imail-summary-line! message index-digits mark))))
-	 messages)
-	(mark-temporary! mark)))))
+	(for-each (lambda (message)
+		    (write-imail-summary-line! message index-digits mark))
+		  messages)
+	(mark-temporary! mark))
+      (buffer-put! buffer 'IMAIL-SUMMARY-MESSAGES (list->vector messages)))))
 
 (define (write-imail-summary-line! message index-digits mark)
   (insert-char #\space mark)
@@ -544,7 +542,13 @@ SUBJECT is a string of regexps separated by commas."
 	(round->exact (* (window-y-size window) height)))))
 
 (define (imail-summary-find-message buffer message)
-  (let ((mark (get-property message 'IMAIL-SUMMARY-MARK #f)))
+  (let ((mark
+	 (let ((index
+		(let ((mv (buffer-get buffer 'IMAIL-SUMMARY-MESSAGES)))
+		  (and mv
+		       (vector-find-next-element mv message)))))
+	   (and index
+		(line-start (imail-summary-first-line buffer) index #f)))))
     (if (and mark
 	     (eqv? (imail-summary-selected-message-index mark)
 		   (message-index message)))
