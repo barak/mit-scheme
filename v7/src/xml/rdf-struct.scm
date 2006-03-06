@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.1 2006/02/18 04:31:51 cph Exp $
+$Id: rdf-struct.scm,v 1.2 2006/03/06 02:29:33 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -53,11 +53,18 @@ USA.
 
 (define-guarantee rdf-bnode "RDF bnode")
 
-(define (make-rdf-bnode name)
-  (if (not (and (string? name)
-		(complete-match match-bnode-name name)))
-      (error:wrong-type-argument name "RDF bnode name" 'RDF-BNODE))
-  (%make-rdf-bnode name))
+(define (make-rdf-bnode #!optional name)
+  (%make-rdf-bnode
+   (cond ((default-object? name)
+	  (generate-bnode-name))
+	 ((and (string? name)
+	       (complete-match match-bnode-name name))
+	  name)
+	 (else
+	  (error:wrong-type-argument name "RDF bnode name" 'RDF-BNODE)))))
+
+(define (generate-bnode-name)
+  (vector-8b->hexadecimal (random-byte-vector 8)))
 
 (define-record-type <rdf-literal>
     (%make-rdf-literal text type)
