@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.42 2006/02/18 02:59:27 cph Exp $
+$Id: url.scm,v 1.43 2006/03/06 04:42:59 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -311,20 +311,20 @@ USA.
 ;;;; Parser
 
 (define (->uri object #!optional caller)
-  (%->uri object parse-uri caller #t))
+  (%->uri object parse-uri caller))
 
 (define (->absolute-uri object #!optional caller)
-  (%->uri object parse-absolute-uri caller #t))
+  (%->uri object parse-absolute-uri caller))
 
 (define (->relative-uri object #!optional caller)
-  (%->uri object parse-relative-uri caller #t))
+  (%->uri object parse-relative-uri caller))
 
-(define (%->uri object parser caller error?)
+(define (%->uri object parser caller)
   ;; Kludge: take advantage of fact that (NOT (NOT #!DEFAULT)).
   (let* ((do-parse
 	  (lambda (string)
 	    (let ((uri (complete-parse parser (string->parser-buffer string))))
-	      (if (and (not uri) error?)
+	      (if (and (not uri) caller)
 		  (error:bad-range-argument object caller))
 	      uri)))
 	 (do-string
@@ -342,7 +342,7 @@ USA.
 	     (or (hash-table/get interned-uris string #f)
 		 (do-parse object))))
 	  (else
-	   (if error? (error:not-uri object caller))
+	   (if caller (error:not-uri object caller))
 	   #f))))
 
 (define (string->uri string #!optional start end)
