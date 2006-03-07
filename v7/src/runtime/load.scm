@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.73 2006/03/07 06:40:17 cph Exp $
+$Id: load.scm,v 14.74 2006/03/07 19:35:56 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004,2005 Massachusetts Institute of Technology
+Copyright 2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -85,20 +85,19 @@ USA.
      (lambda ()
        (let ((kernel
 	      (lambda (filename last-file?)
-		(call-with-values
-		    (lambda () (find-pathname filename load/default-types))
-		  (lambda (pathname loader)
-		    (fluid-let ((load/current-pathname pathname)
-				(*load-properties* (list 'LOAD-PROPERTIES)))
-		      (let ((load-it
-			     (lambda ()
-			       (loader pathname
-				       environment
-				       purify?
-				       load-noisily?))))
-			(cond (last-file? (load-it))
-			      (load-noisily? (write-line (load-it)))
-			      (else (load-it) unspecific)))))))))
+		(receive (pathname loader)
+		    (find-pathname filename load/default-types)
+		  (fluid-let ((load/current-pathname pathname)
+			      (*load-properties* (list 'LOAD-PROPERTIES)))
+		    (let ((load-it
+			   (lambda ()
+			     (loader pathname
+				     environment
+				     purify?
+				     load-noisily?))))
+		      (cond (last-file? (load-it))
+			    (load-noisily? (write-line (load-it)))
+			    (else (load-it) unspecific))))))))
 	 (if (pair? filename/s)
 	     (let loop ((filenames filename/s))
 	       (if (pair? (cdr filenames))
@@ -109,12 +108,12 @@ USA.
 	     (kernel filename/s #t)))))))
 
 (define (fasload filename #!optional suppress-loading-message?)
-  (call-with-values (lambda () (find-pathname filename fasload/default-types))
-    (lambda (pathname loader)
-      (loader pathname
-	      (if (default-object? suppress-loading-message?)
-		  load/suppress-loading-message?
-		  suppress-loading-message?)))))
+  (receive (pathname loader)
+      (find-pathname filename fasload/default-types)
+    (loader pathname
+	    (if (default-object? suppress-loading-message?)
+		load/suppress-loading-message?
+		suppress-loading-message?))))
 
 (define (current-load-pathname)
   (if (not load/loading?) (error condition-type:not-loading))
@@ -148,15 +147,13 @@ USA.
   unspecific)
 
 (define (handle-load-hooks thunk)
-  (call-with-values
-      (lambda ()
-	(fluid-let ((load/loading? #t)
-		    (load/after-load-hooks '()))
-	  (let ((result (thunk)))
-	    (values result (reverse load/after-load-hooks)))))
-    (lambda (result hooks)
-      (for-each (lambda (hook) (hook)) hooks)
-      result)))
+  (receive (result hooks)
+      (fluid-let ((load/loading? #t)
+		  (load/after-load-hooks '()))
+	(let ((result (thunk)))
+	  (values result (reverse load/after-load-hooks))))
+    (for-each (lambda (hook) (hook)) hooks)
+    result))
 
 (define (load-noisily filename #!optional environment syntax-table purify?)
   (fluid-let ((load-noisily? #t))
@@ -195,13 +192,11 @@ USA.
 	  ((pathname-type pathname)
 	   (fail))
 	  (else
-	   (call-with-values
-	       (lambda ()
-		 (load/default-find-pathname-with-type pathname default-types))
-	     (lambda (pathname loader)
-	       (if (not pathname)
-		   (fail)
-		   (values pathname loader))))))))
+	   (receive (pathname loader)
+	       (load/default-find-pathname-with-type pathname default-types)
+	     (if (not pathname)
+		 (fail)
+		 (values pathname loader)))))))
 
 (define (search-types-in-order pathname default-types)
   (let loop ((types default-types))
@@ -414,12 +409,11 @@ USA.
 	    (if (option-keyword? keyword)
 		(let ((parser (find-keyword-parser keyword)))
 		  (if parser
-		      (call-with-values (lambda () (parser command-line))
-			(lambda (next tail-action)
-			  (if tail-action
-			      (set! after-parsing-actions
-				    (cons tail-action after-parsing-actions)))
-			  (process-keyword next unused)))
+		      (receive (next tail-action) (parser command-line)
+			(if tail-action
+			    (set! after-parsing-actions
+				  (cons tail-action after-parsing-actions)))
+			(process-keyword next unused))
 		      (find-next-keyword command-line unused)))
 		(begin
 		  (warn "Invalid keyword:" keyword)
