@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.578 2006/03/07 20:22:49 cph Exp $
+$Id: runtime.pkg,v 14.579 2006/03/07 20:40:24 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2281,11 +2281,11 @@ USA.
   (export ()
 	  argument-command-line-parser
 	  condition-type:not-loading
+	  current-eval-unit
 	  current-load-pathname
 	  fasload
 	  fasload-latest
 	  fasload/default-types
-	  get-load-property
 	  load
 	  load-latest
 	  load-library-object-file
@@ -2299,8 +2299,8 @@ USA.
 	  load/suppress-loading-message?
 	  read-file
 	  set-command-line-parser!
-	  set-load-property!
-	  simple-command-line-parser)
+	  simple-command-line-parser
+	  with-eval-unit)
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-errors)
@@ -4860,7 +4860,6 @@ USA.
 	  string->partial-uri
 	  string->relative-uri
 	  string->uri
-	  test-merge-uris
 	  uri->alist
 	  uri->string
 	  uri->symbol

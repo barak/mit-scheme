@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.74 2006/03/07 19:35:56 cph Exp $
+$Id: load.scm,v 14.75 2006/03/07 20:40:16 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -45,8 +45,7 @@ USA.
 	`(("com" ,fasload/internal)
 	  ("bin" ,fasload/internal)))
   (set! load/default-find-pathname-with-type search-types-in-order)
-  (set! load/current-pathname)
-  (set! *load-properties* #f)
+  (set! *eval-unit* #f)
   (set! condition-type:not-loading
 	(make-condition-type 'NOT-LOADING condition-type:error '()
 	  "No file being loaded."))
@@ -61,8 +60,7 @@ USA.
 (define load/suppress-loading-message?)
 (define load/default-types)
 (define load/after-load-hooks)
-(define load/current-pathname)
-(define *load-properties*)
+(define *eval-unit*)
 (define condition-type:not-loading)
 (define load/default-find-pathname-with-type)
 (define fasload/default-types)
@@ -87,17 +85,17 @@ USA.
 	      (lambda (filename last-file?)
 		(receive (pathname loader)
 		    (find-pathname filename load/default-types)
-		  (fluid-let ((load/current-pathname pathname)
-			      (*load-properties* (list 'LOAD-PROPERTIES)))
-		    (let ((load-it
-			   (lambda ()
-			     (loader pathname
-				     environment
-				     purify?
-				     load-noisily?))))
-		      (cond (last-file? (load-it))
-			    (load-noisily? (write-line (load-it)))
-			    (else (load-it) unspecific))))))))
+		  (with-eval-unit (pathname->uri pathname)
+		    (lambda ()
+		      (let ((load-it
+			     (lambda ()
+			       (loader pathname
+				       environment
+				       purify?
+				       load-noisily?))))
+			(cond (last-file? (load-it))
+			      (load-noisily? (write-line (load-it)))
+			      (else (load-it) unspecific)))))))))
 	 (if (pair? filename/s)
 	     (let loop ((filenames filename/s))
 	       (if (pair? (cdr filenames))
@@ -114,32 +112,20 @@ USA.
 	    (if (default-object? suppress-loading-message?)
 		load/suppress-loading-message?
 		suppress-loading-message?))))
-
+
+(define (current-eval-unit #!optional error?)
+  (or *eval-unit*
+      (begin
+	(if error? (error condition-type:not-loading))
+	#f)))
+
+(define (with-eval-unit uri thunk)
+  (fluid-let ((*eval-unit* (->absolute-uri uri 'WITH-EVAL-UNIT)))
+    (thunk)))
+
 (define (current-load-pathname)
-  (if (not load/loading?) (error condition-type:not-loading))
-  load/current-pathname)
-
-(define (get-load-property key #!optional default)
-  (let ((props (get-load-properties)))
-    (let ((p (and props (assq key (cdr props)))))
-      (if p
-	  (cdr p)
-	  (begin
-	    (if (default-object? default)
-		(error:bad-range-argument key 'GET-LOAD-PROPERTY))
-	    default)))))
-
-(define (set-load-property! key datum)
-  (let ((props (get-load-properties)))
-    (if props
-	(let ((p (assq key (cdr props))))
-	  (if p
-	      (set-cdr! p datum)
-	      (set-cdr! props (cons (cons key datum) (cdr props))))))))
-
-(define (get-load-properties)
-  (if (not *load-properties*) (warn "No file being loaded."))
-  *load-properties*)
+  (or (uri->pathname (current-eval-unit) #f)
+      (error condition-type:not-loading)))
 
 (define (load/push-hook! hook)
   (if (not load/loading?) (error condition-type:not-loading))
