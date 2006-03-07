@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-nt.scm,v 1.3 2006/03/02 03:18:42 cph Exp $
+$Id: rdf-nt.scm,v 1.4 2006/03/07 02:51:08 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -102,21 +102,19 @@ USA.
      (seq "_:"
 	  (match match-bnode-name)))))
 
-(define match-bnode-name
-  (*matcher
-   (seq (char-set char-set:name-head)
-	(* (char-set char-set:name-tail)))))
-
 (define parse-literal
   (*parser
    (encapsulate (lambda (v)
-		  (make-rdf-literal (vector-ref v 0) (vector-ref v 1)))
+		  (%make-rdf-literal (vector-ref v 0) (vector-ref v 1)))
      (seq #\"
 	  parse-string
 	  #\"
-	  (alt (seq #\@ (match match-language))
+	  (alt (seq #\@ parse-language)
 	       (seq "^^" parse-uri-ref)
 	       (values #f))))))
+
+(define parse-language
+  (*parser (map intern (match match-language))))
 
 (define (parse-string b)
   (let ((port (open-output-string)))
@@ -184,11 +182,6 @@ USA.
     (lambda ()
       (make-rdf-bnode name))))
 
-(define match-language
-  (*matcher
-   (seq (+ (char-set char-set:language-head))
-	(* (seq #\- (+ (char-set char-set:language-tail)))))))
-
 (define match-ws*
   (*matcher (* (char-set char-set:ws))))
 
@@ -207,21 +200,6 @@ USA.
 
 (define char-set:unescaped
   (char-set-difference char-set:character (char-set #\" #\\)))
-
-(define char-set:name-head
-  (char-set-union (ascii-range->char-set #x41 #x5B)
-		  (ascii-range->char-set #x61 #x7B)))
-
-(define char-set:name-tail
-  (char-set-union char-set:name-head
-		  (ascii-range->char-set #x30 #x3A)))
-
-(define char-set:language-head
-  (ascii-range->char-set #x61 #x7B))
-
-(define char-set:language-tail
-  (char-set-union char-set:language-head
-		  (ascii-range->char-set #x30 #x3A)))
 
 ;;;; Encoder
 
