@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.44 2006/02/16 05:36:38 cph Exp $
+$Id: pathnm.scm,v 14.45 2006/03/07 20:22:45 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
@@ -298,7 +298,7 @@ these rules:
 		    (or (%pathname-name pathname) name)
 		    (or (%pathname-type pathname) type)
 		    (or (%pathname-version pathname) version))))
-
+
 (define (pathname->uri pathname)
   (let ((pathname (->pathname pathname)))
     (make-uri (if (pathname-absolute? pathname) 'file #f)
@@ -307,28 +307,76 @@ these rules:
 		     (if (eq? x 'WILD)
 			 "*"
 			 (string->utf8-string x)))
-		   (let ((missing?
-			  (lambda (x)
-			    (or (not x)
-				(eq? x 'UNSPECIFIC)))))
-		     (append (if (pathname-absolute? pathname)
-				 (list "")
-				 '())
-			     (let ((device (pathname-device pathname))
-				   (directory (pathname-directory pathname)))
-			       (if (missing? device)
-				   (if (missing? directory)
-				       '()
-				       (cdr directory))
-				   (cons device (cdr directory))))
-			     (let ((name (file-namestring pathname)))
-			       (if (missing? name)
-				   (if (pathname-absolute? pathname)
-				       (list "")
-				       '())
-				   (list name))))))
+		   (append (if (pathname-absolute? pathname)
+			       (list "")
+			       '())
+			   (let ((device (pathname-device pathname))
+				 (directory (pathname-directory pathname)))
+			     (if (missing-component? device)
+				 (if (missing-component? directory)
+				     '()
+				     (cdr directory))
+				 (cons device (cdr directory))))
+			   (let ((name (file-namestring pathname)))
+			     (if (missing-component? name)
+				 (if (pathname-absolute? pathname)
+				     (list "")
+				     '())
+				 (list name)))))
 	      #f
 	      #f)))
+
+(define (uri->pathname uri)
+  (let ((uri (->uri uri 'URI->PATHNAME))
+	(defaults *default-pathname-defaults*)
+	(lose (lambda () (error:bad-range-argument uri 'URI->PATHNAME)))
+	(finish
+	 (lambda (device path keyword)
+	   (receive (directory name type)
+	       (if (pair? path)
+		   (let ((d (cons keyword (except-last-pair path)))
+			 (s (car (last-pair path))))
+		     (if (string-null? s)
+			 (values d #f #f)
+			 (let ((pn (parse-namestring s)))
+			   (values d
+				   (pathname-name pn)
+				   (pathname-type pn)))))
+		   (values (list keyword) #f #f))
+	     (make-pathname #f
+			    device
+			    directory
+			    name
+			    type
+			    #f)))))
+    (let ((scheme (uri-scheme uri))
+	  (path
+	   (map (lambda (x)
+		  (if (string=? x "*")
+		      'WILD
+		      (utf8-string->string x)))
+		(uri-path uri))))
+      (case scheme
+	((file)
+	 (if (not (and (pair? path)
+		       (string-null? (car path))))
+	     (lose))
+	 (let ((path (cdr path)))
+	   (receive (device path)
+	       (let ((device (pathname-device defaults)))
+		 (if (and (pair? path)
+			  (not (missing-component? device)))
+		     (values (car path) (cdr path))
+		     (values device path)))
+	     (if (not (pair? path))
+		 (lose))
+	     (finish device path 'ABSOLUTE))))
+	((#f) (finish #f path 'RELATIVE))
+	(else (error:bad-range-argument uri 'URI->PATHNAME))))))
+
+(define (missing-component? x)
+  (or (not x)
+      (eq? x 'UNSPECIFIC)))
 
 ;;;; Pathname Syntax
 
