@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.576 2006/03/07 06:40:24 cph Exp $
+$Id: runtime.pkg,v 14.577 2006/03/07 19:56:21 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4759,6 +4759,7 @@ USA.
 	  utf32-string-length
 	  utf32-string-valid?
 	  utf32-string?
+	  utf8-string->string
 	  utf8-string->wide-string
 	  utf8-string-length
 	  utf8-string-valid?
