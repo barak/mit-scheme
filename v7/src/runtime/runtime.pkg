@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.575 2006/02/26 03:00:49 cph Exp $
+$Id: runtime.pkg,v 14.576 2006/03/07 06:40:24 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2285,6 +2285,7 @@ USA.
 	  fasload
 	  fasload-latest
 	  fasload/default-types
+	  get-load-property
 	  load
 	  load-latest
 	  load-library-object-file
@@ -2298,6 +2299,7 @@ USA.
 	  load/suppress-loading-message?
 	  read-file
 	  set-command-line-parser!
+	  set-load-property!
 	  simple-command-line-parser)
   (initialization (initialize-package!)))
 

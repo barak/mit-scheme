@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.72 2005/07/19 03:48:44 cph Exp $
+$Id: load.scm,v 14.73 2006/03/07 06:40:17 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -46,6 +46,7 @@ USA.
 	  ("bin" ,fasload/internal)))
   (set! load/default-find-pathname-with-type search-types-in-order)
   (set! load/current-pathname)
+  (set! *load-properties* #f)
   (set! condition-type:not-loading
 	(make-condition-type 'NOT-LOADING condition-type:error '()
 	  "No file being loaded."))
@@ -61,6 +62,7 @@ USA.
 (define load/default-types)
 (define load/after-load-hooks)
 (define load/current-pathname)
+(define *load-properties*)
 (define condition-type:not-loading)
 (define load/default-find-pathname-with-type)
 (define fasload/default-types)
@@ -86,7 +88,8 @@ USA.
 		(call-with-values
 		    (lambda () (find-pathname filename load/default-types))
 		  (lambda (pathname loader)
-		    (fluid-let ((load/current-pathname pathname))
+		    (fluid-let ((load/current-pathname pathname)
+				(*load-properties* (list 'LOAD-PROPERTIES)))
 		      (let ((load-it
 			     (lambda ()
 			       (loader pathname
@@ -112,10 +115,32 @@ USA.
 	      (if (default-object? suppress-loading-message?)
 		  load/suppress-loading-message?
 		  suppress-loading-message?)))))
-
+
 (define (current-load-pathname)
   (if (not load/loading?) (error condition-type:not-loading))
   load/current-pathname)
+
+(define (get-load-property key #!optional default)
+  (let ((props (get-load-properties)))
+    (let ((p (and props (assq key (cdr props)))))
+      (if p
+	  (cdr p)
+	  (begin
+	    (if (default-object? default)
+		(error:bad-range-argument key 'GET-LOAD-PROPERTY))
+	    default)))))
+
+(define (set-load-property! key datum)
+  (let ((props (get-load-properties)))
+    (if props
+	(let ((p (assq key (cdr props))))
+	  (if p
+	      (set-cdr! p datum)
+	      (set-cdr! props (cons (cons key datum) (cdr props))))))))
+
+(define (get-load-properties)
+  (if (not *load-properties*) (warn "No file being loaded."))
+  *load-properties*)
 
 (define (load/push-hook! hook)
   (if (not load/loading?) (error condition-type:not-loading))
