@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.45 2006/03/07 20:22:45 cph Exp $
+$Id: pathnm.scm,v 14.46 2006/03/07 20:29:34 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
@@ -326,10 +326,9 @@ these rules:
 	      #f
 	      #f)))
 
-(define (uri->pathname uri)
-  (let ((uri (->uri uri 'URI->PATHNAME))
+(define (uri->pathname uri #!optional error?)
+  (let ((uri (->uri uri (and error? 'URI->PATHNAME)))
 	(defaults *default-pathname-defaults*)
-	(lose (lambda () (error:bad-range-argument uri 'URI->PATHNAME)))
 	(finish
 	 (lambda (device path keyword)
 	   (receive (directory name type)
@@ -343,36 +342,35 @@ these rules:
 				   (pathname-name pn)
 				   (pathname-type pn)))))
 		   (values (list keyword) #f #f))
-	     (make-pathname #f
-			    device
-			    directory
-			    name
-			    type
-			    #f)))))
+	     (make-pathname #f device directory name type #f)))))
     (let ((scheme (uri-scheme uri))
 	  (path
 	   (map (lambda (x)
 		  (if (string=? x "*")
 		      'WILD
 		      (utf8-string->string x)))
-		(uri-path uri))))
+		(uri-path uri)))
+	  (lose
+	   (lambda ()
+	     (if error? (error:bad-range-argument uri 'URI->PATHNAME))
+	     #f)))
       (case scheme
 	((file)
-	 (if (not (and (pair? path)
-		       (string-null? (car path))))
-	     (lose))
-	 (let ((path (cdr path)))
-	   (receive (device path)
-	       (let ((device (pathname-device defaults)))
-		 (if (and (pair? path)
-			  (not (missing-component? device)))
-		     (values (car path) (cdr path))
-		     (values device path)))
-	     (if (not (pair? path))
-		 (lose))
-	     (finish device path 'ABSOLUTE))))
+	 (if (and (pair? path)
+		  (string-null? (car path)))
+	     (let ((path (cdr path)))
+	       (receive (device path)
+		   (let ((device (pathname-device defaults)))
+		     (if (and (pair? path)
+			      (not (missing-component? device)))
+			 (values (car path) (cdr path))
+			 (values device path)))
+		 (if (pair? path)
+		     (finish device path 'ABSOLUTE)
+		     (lose))))
+	     (lose)))
 	((#f) (finish #f path 'RELATIVE))
-	(else (error:bad-range-argument uri 'URI->PATHNAME))))))
+	(else (lose))))))
 
 (define (missing-component? x)
   (or (not x)
