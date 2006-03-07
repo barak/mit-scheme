@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.4 2006/03/07 02:51:12 cph Exp $
+$Id: rdf-struct.scm,v 1.5 2006/03/07 06:16:22 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -37,14 +37,9 @@ USA.
 (define-guarantee rdf-triple "RDF triple")
 
 (define (make-rdf-triple subject predicate object)
-  (%make-rdf-triple (if (rdf-bnode? subject)
-			subject
-			(->absolute-uri subject 'MAKE-RDF-TRIPLE))
-		    (->absolute-uri predicate 'MAKE-RDF-TRIPLE)
-		    (if (or (rdf-bnode? object)
-			    (rdf-literal? object))
-			object
-			(->absolute-uri object 'MAKE-RDF-TRIPLE))))
+  (%make-rdf-triple (canonicalize-rdf-subject subject 'MAKE-RDF-TRIPLE)
+		    (canonicalize-rdf-predicate predicate 'MAKE-RDF-TRIPLE)
+		    (canonicalize-rdf-object object 'MAKE-RDF-TRIPLE)))
 
 (define-record-type <rdf-bnode>
     (%make-rdf-bnode name)
@@ -128,6 +123,21 @@ USA.
     (let ((o (rdf-triple-object triple)))
       (if (not (rdf-literal? o))
 	  (add o (rdf-index-objects index))))))
+
+(define (canonicalize-rdf-subject subject #!optional caller)
+  (if (rdf-bnode? subject)
+      subject
+      (->absolute-uri subject caller)))
+
+(define (canonicalize-rdf-predicate predicate #!optional caller)
+  (->absolute-uri predicate caller))
+
+(define (canonicalize-rdf-object object #!optional caller)
+  (cond ((or (rdf-bnode? object)
+	     (rdf-literal? object))
+	 object)
+	((string? object) (make-rdf-literal object #f))
+	(else (->absolute-uri object caller))))
 
 (define match-bnode-name
   (let* ((name-head

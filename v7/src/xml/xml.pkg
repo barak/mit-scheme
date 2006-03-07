@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.66 2006/03/07 02:51:16 cph Exp $
+$Id: xml.pkg,v 1.67 2006/03/07 06:16:26 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -530,6 +530,9 @@ USA.
 	  <rdf-literal>
 	  <rdf-triple>
 	  add-to-rdf-index
+	  canonicalize-rdf-object
+	  canonicalize-rdf-predicate
+	  canonicalize-rdf-subject
 	  error:not-rdf-bnode
 	  error:not-rdf-index
 	  error:not-rdf-literal
