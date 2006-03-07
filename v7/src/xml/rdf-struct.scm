@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.3 2006/03/06 02:32:15 cph Exp $
+$Id: rdf-struct.scm,v 1.4 2006/03/07 02:51:12 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -70,7 +70,7 @@ USA.
 	  (error:wrong-type-argument name "RDF bnode name" 'RDF-BNODE)))))
 
 (define (generate-bnode-name)
-  (vector-8b->hexadecimal (random-byte-vector 8)))
+  (string-append "B" (vector-8b->hexadecimal (random-byte-vector 8))))
 
 (define-record-type <rdf-literal>
     (%make-rdf-literal text type)
@@ -84,8 +84,9 @@ USA.
   (guarantee-utf8-string text 'RDF-LITERAL)
   (%make-rdf-literal text
 		     (if (or (not type)
-			     (and (string? type)
-				  (complete-match match-language type)))
+			     (and (symbol? type)
+				  (complete-match match-language
+						  (symbol-name type))))
 			 type
 			 (->absolute-uri type 'RDF-LITERAL))))
 
@@ -98,8 +99,57 @@ USA.
   (let ((type (%rdf-literal-type literal)))
     (and (not (absolute-uri? type))
 	 type)))
+
+(define-record-type <rdf-index>
+    (%make-rdf-index subjects predicates objects)
+    rdf-index?
+  (subjects rdf-index-subjects)
+  (predicates rdf-index-predicates)
+  (objects rdf-index-objects))
 
-(define (complete-match matcher string #!optional start end)
-  (let ((buffer (string->parser-buffer string start end)))
+(define-guarantee rdf-index "RDF index")
+
+(define (make-rdf-index)
+  (%make-rdf-index (make-eq-hash-table)
+		   (make-eq-hash-table)
+		   (make-eq-hash-table)))
+
+(define (add-to-rdf-index triple index)
+  (let ((add
+	 (lambda (key index)
+	   (hash-table/put! index
+			    key
+			    (cons triple
+				  (hash-table/get index
+						  key
+						  '()))))))
+    (add (rdf-triple-subject triple) (rdf-index-subjects index))
+    (add (rdf-triple-predicate triple) (rdf-index-predicates index))
+    (let ((o (rdf-triple-object triple)))
+      (if (not (rdf-literal? o))
+	  (add o (rdf-index-objects index))))))
+
+(define match-bnode-name
+  (let* ((name-head
+	  (char-set-union (ascii-range->char-set #x41 #x5B)
+			  (ascii-range->char-set #x61 #x7B)))
+	 (name-tail
+	  (char-set-union name-head
+			  (ascii-range->char-set #x30 #x3A))))
+    (*matcher
+     (seq (char-set name-head)
+	  (* (char-set name-tail))))))
+
+(define match-language
+  (let* ((language-head (ascii-range->char-set #x61 #x7B))
+	 (language-tail
+	  (char-set-union language-head
+			  (ascii-range->char-set #x30 #x3A))))
+    (*matcher
+     (seq (+ (char-set language-head))
+	  (* (seq #\- (+ (char-set language-tail))))))))
+
+(define (complete-match matcher string)
+  (let ((buffer (string->parser-buffer string)))
     (and (matcher buffer)
 	 (not (peek-parser-buffer-char buffer)))))

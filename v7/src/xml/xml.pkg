@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.65 2006/02/24 17:47:26 cph Exp $
+$Id: xml.pkg,v 1.66 2006/03/07 02:51:16 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -526,19 +526,28 @@ USA.
   (parent (runtime rdf))
   (export ()
 	  <rdf-bnode>
+	  <rdf-index>
 	  <rdf-literal>
 	  <rdf-triple>
+	  add-to-rdf-index
 	  error:not-rdf-bnode
+	  error:not-rdf-index
 	  error:not-rdf-literal
 	  error:not-rdf-triple
 	  guarantee-rdf-bnode
+	  guarantee-rdf-index
 	  guarantee-rdf-literal
 	  guarantee-rdf-triple
 	  make-rdf-bnode
+	  make-rdf-index
 	  make-rdf-literal
 	  make-rdf-triple
 	  rdf-bnode-name
 	  rdf-bnode?
+	  rdf-index-objects
+	  rdf-index-predicates
+	  rdf-index-subjects
+	  rdf-index?
 	  rdf-literal-language
 	  rdf-literal-text
 	  rdf-literal-type
@@ -548,6 +557,7 @@ USA.
 	  rdf-triple-subject
 	  rdf-triple?)
   (export (runtime rdf nt)
+	  %make-rdf-literal
 	  match-bnode-name
 	  match-language))
 

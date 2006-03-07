@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-nt.scm,v 1.4 2006/03/07 02:51:08 cph Exp $
+$Id: rdf-nt.scm,v 1.5 2006/03/07 02:52:49 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -238,7 +238,7 @@ USA.
 	((rdf-literal-language literal)
 	 => (lambda (lang)
 	      (write-char #\@ port)
-	      (write-string lang port)))))
+	      (write-string (symbol-name lang) port)))))
 
 (define (write-literal-text text port)
   (let ((text (open-input-string text)))
