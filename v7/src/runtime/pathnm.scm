@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.46 2006/03/07 20:29:34 cph Exp $
+$Id: pathnm.scm,v 14.47 2006/03/09 05:29:28 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
@@ -304,9 +304,9 @@ these rules:
     (make-uri (if (pathname-absolute? pathname) 'file #f)
 	      #f
 	      (map (lambda (x)
-		     (if (eq? x 'WILD)
-			 "*"
-			 (string->utf8-string x)))
+		     (cond ((eq? x 'WILD) "*")
+			   ((eq? x 'UP) "..")
+			   (else (string->utf8-string x))))
 		   (append (if (pathname-absolute? pathname)
 			       (list "")
 			       '())
@@ -346,9 +346,9 @@ these rules:
     (let ((scheme (uri-scheme uri))
 	  (path
 	   (map (lambda (x)
-		  (if (string=? x "*")
-		      'WILD
-		      (utf8-string->string x)))
+		  (cond ((string=? x "*") 'WILD)
+			((string=? x "..") 'UP)
+			(else (utf8-string->string x))))
 		(uri-path uri)))
 	  (lose
 	   (lambda ()
