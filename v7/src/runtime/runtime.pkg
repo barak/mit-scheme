@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.579 2006/03/07 20:40:24 cph Exp $
+$Id: runtime.pkg,v 14.580 2006/03/09 19:18:33 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -158,6 +158,8 @@ USA.
 	  interrupt-mask/timer-ok
 	  object-constant?
 	  object-pure?
+	  simple-parser-method
+	  simple-unparser-method
 	  standard-unparser-method
 	  unparser-method?
 	  unparser/standard-method
@@ -2532,6 +2534,7 @@ USA.
 	  *parser-canonicalize-symbols?*
 	  *parser-radix*
 	  *parser-table*
+	  define-bracketed-object-parser-method
 	  parse-object
 	  parse-objects
 	  system-global-parser-table)

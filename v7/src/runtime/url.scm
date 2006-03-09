@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.43 2006/03/06 04:42:59 cph Exp $
+$Id: url.scm,v 1.44 2006/03/09 19:18:34 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -41,10 +41,15 @@ USA.
   (string %uri-string))
 
 (set-record-type-unparser-method! <uri>
-  (standard-unparser-method 'URI
-    (lambda (uri port)
-      (write-char #\space port)
-      (write (uri->string uri) port))))
+  (simple-unparser-method 'URI
+    (lambda (uri)
+      (list (uri->string uri)))))
+
+(define uri-parser-method
+  (simple-parser-method
+   (lambda (objects)
+     (and (pair? objects)
+	  (string->uri (car objects))))))
 
 (define (make-uri scheme authority path query fragment)
   (let ((path (if (equal? path '("")) '() path)))
@@ -57,9 +62,7 @@ USA.
 	(error:bad-range-argument path 'MAKE-URI))
     (%make-uri scheme
 	       authority
-	       (if scheme
-		   (remove-dot-segments path)
-		   path)
+	       (if scheme (remove-dot-segments path) path)
 	       query
 	       fragment)))
 
@@ -938,7 +941,7 @@ USA.
   (set! url:char-set:unescaped
 	(char-set-union url:char-set:unreserved
 			(string->char-set ";/?:@&=")))
-  unspecific)
+  (define-bracketed-object-parser-method 'URI uri-parser-method))
 
 ;;;; Testing
 

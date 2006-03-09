@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.47 2006/03/09 05:29:28 cph Exp $
+$Id: pathnm.scm,v 14.48 2006/03/09 19:18:32 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
@@ -115,12 +115,13 @@ these rules:
   (type #f read-only #t)
   (version #f read-only #t))
 
-(define (guarantee-pathname object caller)
-  (if (not (pathname? object))
-      (error:not-pathname object caller)))
+(define-guarantee pathname "pathname")
 
-(define (error:not-pathname object caller)
-  (error:wrong-type-argument object "pathname" caller))
+(define pathname-parser-method
+  (simple-parser-method
+   (lambda (objects)
+     (and (pair? objects)
+	  (->pathname (car objects))))))
 
 (define (->pathname object)
   (pathname-arg object #f '->PATHNAME))
@@ -703,3 +704,6 @@ these rules:
 (define (initialize-package!)
   (reset-package!)
   (add-event-receiver! event:after-restore reset-package!))
+
+(define (initialize-parser-method!)
+  (define-bracketed-object-parser-method 'PATHNAME pathname-parser-method))

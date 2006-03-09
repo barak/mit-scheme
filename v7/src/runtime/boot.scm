@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.21 2005/07/31 02:54:29 cph Exp $
+$Id: boot.scm,v 14.22 2006/03/09 19:18:29 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
-Copyright 1993,1996,2001,2004,2005 Massachusetts Institute of Technology
+Copyright 1993,1996,2001,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,6 +36,20 @@ USA.
 		      (with-current-unparser-state state
 			(lambda (port)
 			  (unparser object port)))))))
+
+(define (simple-unparser-method name method)
+  (standard-unparser-method name
+    (lambda (object port)
+      (for-each (lambda (object)
+		  (write-char #\space port)
+		  (write object port))
+		(method object)))))
+
+(define (simple-parser-method procedure)
+  (lambda (objects lose)
+    (or (and (pair? (cdr objects))
+	     (procedure (cddr objects)))
+	(lose))))
 
 (define (unparser/standard-method name #!optional unparser)
   (make-method name
