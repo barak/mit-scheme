@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.48 2006/03/09 19:18:32 cph Exp $
+$Id: pathnm.scm,v 14.49 2006/03/09 19:20:58 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
@@ -104,10 +104,9 @@ these rules:
 		   (constructor %make-pathname)
 		   (conc-name %pathname-)
 		   (print-procedure
-		    (standard-unparser-method 'PATHNAME
-		      (lambda (pathname port)
-			(write-char #\space port)
-			(write (->namestring pathname) port)))))
+		    (simple-unparser-method 'PATHNAME
+		      (lambda (pathname)
+			(list (->namestring pathname))))))
   (host #f read-only #t)
   (device #f read-only #t)
   (directory #f read-only #t)
