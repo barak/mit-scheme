@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.5 2006/03/07 06:16:22 cph Exp $
+$Id: rdf-struct.scm,v 1.6 2006/03/09 06:23:23 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -52,7 +52,7 @@ USA.
   (standard-unparser-method 'RDF-BNODE
     (lambda (bnode port)
       (write-char #\space port)
-      (write (rdf-bnode-name bnode)))))
+      (write (rdf-bnode-name bnode) port))))
 
 (define (make-rdf-bnode #!optional name)
   (%make-rdf-bnode
