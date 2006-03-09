@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.44 2006/03/09 19:18:34 cph Exp $
+$Id: url.scm,v 1.45 2006/03/09 19:30:05 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -30,20 +30,21 @@ USA.
 
 (declare (usual-integrations))
 
-(define-record-type <uri>
-    (%%make-uri scheme authority path query fragment string)
-    uri?
-  (scheme %uri-scheme)
-  (authority %uri-authority)
-  (path %uri-path)
-  (query %uri-query)
-  (fragment %uri-fragment)
-  (string %uri-string))
-
-(set-record-type-unparser-method! <uri>
-  (simple-unparser-method 'URI
-    (lambda (uri)
-      (list (uri->string uri)))))
+(define-structure (uri
+		   (type vector)
+		   (named '|#[(runtime uri)uri]|)
+		   (constructor %%make-uri)
+		   (conc-name %uri-)
+		   (print-procedure
+		    (simple-unparser-method 'URI
+		      (lambda (uri)
+			(list (uri->string uri))))))
+  (scheme #f read-only #t)
+  (authority #f read-only #t)
+  (path #f read-only #t)
+  (query #f read-only #t)
+  (fragment #f read-only #t)
+  (string #f read-only #t))
 
 (define uri-parser-method
   (simple-parser-method
@@ -138,21 +139,20 @@ USA.
 (define-integrable (path-relative? path)
   (not (path-absolute? path)))
 
-(define-record-type <uri-authority>
-    (%%make-uri-authority userinfo host port)
-    uri-authority?
-  (userinfo uri-authority-userinfo)
-  (host uri-authority-host)
-  (port uri-authority-port))
-
-(set-record-type-unparser-method! <uri-authority>
-  (standard-unparser-method 'URI-AUTHORITY
-    (lambda (authority port)
-      (write-char #\space port)
-      (write (call-with-output-string
-	       (lambda (port)
-		 (write-authority authority port)))
-	     port))))
+(define-structure (uri-authority
+		   (type vector)
+		   (named '|#[(runtime uri)uri-authority]|)
+		   (constructor %%make-uri-authority)
+		   (conc-name %uri-authority-)
+		   (print-procedure
+		    (simple-unparser-method 'URI-AUTHORITY
+		      (lambda (authority)
+			(list (call-with-output-string
+				(lambda (port)
+				  (write-authority authority port))))))))
+  (userinfo #f read-only #t)
+  (host #f read-only #t)
+  (port #f read-only #t))
 
 (define (make-uri-authority userinfo host port)
   (if userinfo (guarantee-uri-userinfo userinfo 'MAKE-URI-AUTHORITY))
@@ -169,6 +169,18 @@ USA.
       (%%make-uri-authority userinfo host port))))
 
 (define interned-uri-authorities)
+
+(define (uri-authority-userinfo authority)
+  (guarantee-uri-authority authority 'URI-AUTHORITY-USERINFO)
+  (%uri-authority-userinfo authority))
+
+(define (uri-authority-host authority)
+  (guarantee-uri-authority authority 'URI-AUTHORITY-HOST)
+  (%uri-authority-host authority))
+
+(define (uri-authority-port authority)
+  (guarantee-uri-authority authority 'URI-AUTHORITY-PORT)
+  (%uri-authority-port authority))
 
 (define (uri-userinfo? object)
   (and (string? object)
