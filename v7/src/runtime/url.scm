@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.45 2006/03/09 19:30:05 cph Exp $
+$Id: url.scm,v 1.46 2006/03/10 01:46:26 cph Exp $
 
 Copyright 2000,2001,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -31,8 +31,7 @@ USA.
 (declare (usual-integrations))
 
 (define-structure (uri
-		   (type vector)
-		   (named '|#[(runtime uri)uri]|)
+		   (type-descriptor <uri>)
 		   (constructor %%make-uri)
 		   (conc-name %uri-)
 		   (print-procedure
@@ -140,8 +139,7 @@ USA.
   (not (path-absolute? path)))
 
 (define-structure (uri-authority
-		   (type vector)
-		   (named '|#[(runtime uri)uri-authority]|)
+		   (type-descriptor <uri-authority>)
 		   (constructor %%make-uri-authority)
 		   (conc-name %uri-authority-)
 		   (print-procedure
@@ -221,12 +219,12 @@ USA.
 	    '())
       ,@(if (%uri-authority uri)
 	    (let ((a (%uri-authority uri)))
-	      `(,@(if (uri-authority-userinfo a)
-		      `((userinfo ,(uri-authority-userinfo a)))
+	      `(,@(if (%uri-authority-userinfo a)
+		      `((userinfo ,(%uri-authority-userinfo a)))
 		      '())
-		(host ,(uri-authority-host a))
-		,@(if (uri-authority-port a)
-		      `((port ,(uri-authority-port a)))
+		(host ,(%uri-authority-host a))
+		,@(if (%uri-authority-port a)
+		      `((port ,(%uri-authority-port a)))
 		      '())))
 	    '())
       (path ,(%uri-path uri))
@@ -620,9 +618,9 @@ USA.
 	(write-encoded fragment char-set:uri-fragment port))))
 
 (define (write-authority authority port)
-  (%write-authority (uri-authority-userinfo authority)
-		    (uri-authority-host authority)
-		    (uri-authority-port authority)
+  (%write-authority (%uri-authority-userinfo authority)
+		    (%uri-authority-host authority)
+		    (%uri-authority-port authority)
 		    port))
 
 (define (%write-authority userinfo host port output)

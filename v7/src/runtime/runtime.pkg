@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.581 2006/03/09 19:30:04 cph Exp $
+$Id: runtime.pkg,v 14.582 2006/03/10 01:46:20 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4810,6 +4810,8 @@ USA.
 	  ->relative-uri
 	  ->uri
 	  <partial-uri>
+	  <uri-authority>
+	  <uri>
 	  absolute-uri?
 	  char-set:uri-alpha
 	  char-set:uri-digit
