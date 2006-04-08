@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [14.16], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.7 2005/12/25 05:59:46 riastradh Exp $])
+AC_INIT([MIT/GNU Scheme], [14.17], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_REVISION([$Id: configure.ac,v 1.8 2006/04/08 03:07:26 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -540,6 +540,7 @@ fi
 dnl Checks for system characteristics.
 AC_CANONICAL_HOST
 AC_PATH_XTRA
+AC_SYS_LARGEFILE
 AC_SYS_LONG_FILE_NAMES
 AC_SYS_RESTARTABLE_SYSCALLS
 
