@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.23 2006/02/02 03:06:47 cph Exp $
+# $Id: make-src-files,v 1.24 2006/04/14 18:33:51 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
@@ -21,13 +21,12 @@
 
 . /scheme/v7/dist/release-prefix
 
-if [ $# -eq 0 ]; then
-    VERSION="$(get_release)"
-elif [ $# -eq 1 ]; then
+if [ $# -eq 1 ]; then
     VERSION="${1}"
 else
-    echo "usage: $0 [VERSION]"
+    echo "usage: $0 VERSION"
     echo "  VERSION may be 'snapshot' to specify today's date"
+    echo "  or 'standard' to specify standard release"
     exit 1
 fi
 
@@ -40,6 +39,9 @@ if [ "${VERSION}" = "snapshot" ]; then
     TAG_FLAG="-D"
     TAG=$(date --iso-8601=seconds)
 else
+    if [ "${VERSION}" = "standard" ]; then
+	VERSION="$(get_release)"
+    fi
     SNAPSHOT_P=
     PREFIX="$(get_release_prefix "${VERSION}")"
     TAG_FLAG="-r"
