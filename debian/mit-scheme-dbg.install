@@ -1,0 +1,3 @@
+usr/lib/mit-scheme/SRC
+usr/lib/mit-scheme/*/*.bci
+usr/lib/mit-scheme/edwin/autoload/*.bci

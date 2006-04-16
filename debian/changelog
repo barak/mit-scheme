@@ -1,3 +1,11 @@
+mit-scheme (7.7.90+20060414-1) unstable; urgency=low
+
+  * New upstream snapshot.
+  * Move documentation to new package with separate "upstream".
+  * Move .bci files into separate package.  (closes: Bug#358339)
+
+ -- Chris Hanson <cph@debian.org>  Sat, 15 Apr 2006 21:18:11 -0400
+
 mit-scheme (7.7.90+20060201-1) unstable; urgency=low
 
   * New upstream snapshot.

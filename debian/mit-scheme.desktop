@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=MIT/GNU Scheme
+Exec=/usr/bin/mit-scheme
+TryExec=mit-scheme
+Terminal=false
+Type=Application
+Categories=Application;Development;IDE

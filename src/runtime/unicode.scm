@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.25 2005/12/13 15:29:52 cph Exp $
+$Id: unicode.scm,v 1.26 2006/03/07 19:56:25 cph Exp $
 
 Copyright 2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -1059,6 +1059,18 @@ USA.
 		   (fix:or #x80 (fix:and (vector-8b-ref string i) #x3F)))
 		  (loop (fix:+ i 1) (fix:+ i* 2))))))
       string*)))
+
+(define (utf8-string->string string #!optional start end)
+  (let ((input (open-input-string string start end)))
+    (port/set-coding input 'UTF-8)
+    (call-with-output-string
+      (lambda (output)
+	(let loop ()
+	  (let ((c (read-char input)))
+	    (if (not (eof-object? c))
+		(begin
+		  (write-char c output)
+		  (loop)))))))))
 
 (define (validate-utf8-char string start end)
 

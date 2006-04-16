@@ -6,7 +6,7 @@
 #export DH_VERBOSE=1
 
 AUTOTOOLS := /usr/share/misc
-DESTDIR := $(shell pwd)/debian/mit-scheme
+DESTDIR := $(shell pwd)/debian/tmp
 
 export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
@@ -27,31 +27,22 @@ CFLAGS += -g
 PREFIX = /usr
 LIBDIR = $(PREFIX)/lib/mit-scheme
 EMACSDIR = $(PREFIX)/share/emacs/site-lisp/mit-scheme
-INFODIR = $(PREFIX)/share/info
 MANDIR = $(PREFIX)/share/man
-DOCDIR = $(PREFIX)/share/doc/mit-scheme
-HTMLDIR = $(DOCDIR)/html
-PDFDIR = $(DOCDIR)/pdf
 
 INSTALL = install --preserve-timestamps
 
-CONF_FLAGS += --prefix=$(PREFIX) --mandir=$(MANDIR) --infodir=$(INFODIR)
-SRC_CONF_FLAGS :=
-DOC_CONF_FLAGS := --enable-html=$(HTMLDIR) \
-	--enable-pdf=$(PDFDIR) \
-	--enable-ps=no
+CONF_FLAGS += --prefix=$(PREFIX) --mandir=$(MANDIR)
 
-configure: configure-stamp
-configure-stamp: autotools
+configure: configure-stamp autotools
+configure-stamp:
 	dh_testdir
-	cd src; CFLAGS="$(CFLAGS)" ./configure $(CONF_FLAGS) $(SRC_CONF_FLAGS)
-	cd doc; CFLAGS="$(CFLAGS)" ./configure $(CONF_FLAGS) $(DOC_CONF_FLAGS)
+	cd src; CFLAGS="$(CFLAGS)" ./configure $(CONF_FLAGS)
 	touch configure-stamp
 
 autotools:
-	-rm -f config.sub config.guess
-	ln -s $(AUTOTOOLS)/config.sub .
-	ln -s $(AUTOTOOLS)/config.guess .
+	-rm -f src/config.sub src/config.guess
+	cp -a $(AUTOTOOLS)/config.sub src/.
+	cp -a $(AUTOTOOLS)/config.guess src/.
 
 build: configure-stamp build-stamp
 build-stamp:
@@ -70,17 +61,18 @@ install: build
 	dh_testdir
 	dh_testroot
 	dh_clean -k
-	dh_installdirs
+	dh_installdirs --package=mit-scheme --tmpdir=debian/tmp
 	cd src;$(MAKE) install DESTDIR=$(DESTDIR)
 	mv $(DESTDIR)$(PREFIX)/bin/scheme $(DESTDIR)$(PREFIX)/bin/mit-scheme
 	for FILE in 6001.com compiler.com edwin.com runtime.com gcdrone; do \
-	    rm -f $(DESTDIR)/$(LIBDIR)/$${FILE}; \
+	    rm -f $(DESTDIR)$(LIBDIR)/$${FILE}; \
 	done
-	cd doc;$(MAKE) install-html DESTDIR=$(DESTDIR)
-	cd doc;$(MAKE) install-pdf DESTDIR=$(DESTDIR)
-	$(INSTALL) -m 644 etc/*.el $(DESTDIR)/$(EMACSDIR)/.
-	rm -f $(DESTDIR)/$(LIBDIR)/edwin/etc/mime.types
-	ln -s /etc/mime.types $(DESTDIR)/$(LIBDIR)/edwin/etc/.
+	$(INSTALL) -m 644 debian/mit-scheme.desktop \
+	    $(DESTDIR)$(PREFIX)/share/applications/.
+	$(INSTALL) -m 644 etc/*.el $(DESTDIR)$(EMACSDIR)/.
+	rm -f $(DESTDIR)$(LIBDIR)/edwin/etc/mime.types
+	ln -s /etc/mime.types $(DESTDIR)$(LIBDIR)/edwin/etc/.
+	dh_install --sourcedir=debian/tmp
 
 # Build architecture-independent files here.
 binary-indep: build install
@@ -90,21 +82,28 @@ binary-indep: build install
 binary-arch: build install
 	dh_testdir
 	dh_testroot
+	dh_installchangelogs src/ChangeLog
 	dh_installdocs
 	dh_installexamples
 	dh_installmenu
+	dh_desktop
+#	dh_installdebconf	
+#	dh_installlogrotate
 	dh_installemacsen
-	dh_installcron
-	dh_installman debian/mit-scheme.1 debian/bchscheme.1
-	dh_installinfo doc/imail/mit-scheme-imail.info*
-	dh_installinfo doc/ref-manual/mit-scheme-ref.info*
-	dh_installinfo doc/sos/mit-scheme-sos.info*
-	dh_installinfo doc/user-manual/mit-scheme-user.info*
-	dh_installchangelogs src/ChangeLog
+#	dh_installcatalogs
+#	dh_installpam
+#	dh_installmime
+#	dh_installinit
+#	dh_installcron
+	dh_installinfo
+	dh_installman
 	dh_link
 	dh_strip
 	dh_compress
 	dh_fixperms
+#	dh_perl
+#	dh_python
+#	dh_makeshlibs
 	dh_installdeb
 	dh_shlibdeps
 	dh_gencontrol

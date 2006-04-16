@@ -9,12 +9,12 @@ Copyright:
 
    MIT/GNU Scheme is Copyright (C) 1984, 1985, 1986, 1987, 1988, 1989,
    1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-   2001, 2002, 2003, 2004, 2005 Massachusetts Institute of Technology,
-   77 Massachusetts Avenue, Cambridge MA 02139, USA.  MIT/GNU Scheme
-   is released under the GNU General Public License with the
-   additional exemption that compiling, linking, and/or using OpenSSL
-   is allowed.  On Debian GNU/Linux systems, the complete text of the
-   GNU General Public License can be found in
+   2001, 2002, 2003, 2004, 2005, 2006 Massachusetts Institute of
+   Technology, 77 Massachusetts Avenue, Cambridge MA 02139, USA.
+   MIT/GNU Scheme is released under the GNU General Public License
+   with the additional exemption that compiling, linking, and/or using
+   OpenSSL is allowed.  On Debian GNU/Linux systems, the complete text
+   of the GNU General Public License can be found in
    `/usr/share/common-licenses/GPL'.
 
    ----------------------------------------------------------------
@@ -33,26 +33,3 @@ Copyright:
    along with MIT/GNU Scheme; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
    02110-1301, USA.
-
-   ================================================================
-
-   The MIT/GNU Scheme Reference Manual and related manuals are
-   Copyright (C) 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1999, 2000,
-   2001, 2002, 2003, 2004, 2005 Massachusetts Institute of Technology,
-   77 Massachusetts Avenue, Cambridge MA 02139, USA.  They are
-   released under the GNU Free Documentation License.  See section
-   "GNU Free Documentation License" in
-   "file:/usr/share/doc/mit-scheme/html/mit-scheme-ref/" for details.
-
-   ----------------------------------------------------------------
-
-   Permission is granted to copy, distribute and/or modify this
-   document under the terms of the GNU Free Documentation License,
-   Version 1.2 or any later version published by the Free Software
-   Foundation; with no Invariant Sections, with the Front-Cover Texts
-   being "A GNU Manual," and with the Back-Cover Texts as in (a)
-   below.
-
-   (a) The FSF's Back-Cover Text is: "You have freedom to copy and
-   modify this GNU Manual, like GNU software.  Copies published by the
-   Free Software Foundation raise funds for GNU development."

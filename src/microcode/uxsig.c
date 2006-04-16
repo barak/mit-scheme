@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.44 2005/12/31 20:02:16 riastradh Exp $
+$Id: uxsig.c,v 1.45 2006/03/11 04:15:45 cph Exp $
 
 Copyright 1990,1991,1992,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 2000,2001,2005 Massachusetts Institute of Technology
@@ -40,6 +40,7 @@ extern cc_t EXFUN (OS_ctty_int_char, (void));
 extern cc_t EXFUN (OS_ctty_tstp_char, (void));
 extern cc_t EXFUN (OS_ctty_disabled_char, (void));
 extern void EXFUN (tty_set_next_interrupt_char, (cc_t c));
+extern void EXFUN (UX_reinitialize_tty, (void));
 
 /* Signal Manipulation */
 
@@ -497,7 +498,6 @@ DEFUN_VOID (OS_restartable_exit)
 static
 DEFUN_STD_HANDLER (sighnd_console_resize,
 {
-  extern void EXFUN (UX_reinitialize_tty, (void));
   UX_reinitialize_tty ();
   request_console_resize_interrupt ();
 })
@@ -517,10 +517,11 @@ DEFUN_STD_HANDLER (sighnd_timer,
 
 #else /* not HAVE_SETITIMER */
 
+extern void EXFUN (reschedule_alarm, (void));
+
 static
 DEFUN_STD_HANDLER (sighnd_timer,
 {
-  extern void EXFUN (reschedule_alarm, (void));
   reschedule_alarm ();
   request_timer_interrupt ();
 })
@@ -542,12 +543,8 @@ DEFUN_STD_HANDLER (sighnd_terminate,
 #  include "cmpintmd.h"
 #  if (COMPILER_PROCESSOR_TYPE == COMPILER_IA32_TYPE)
 
-#define FPE_RESET_TRAPS()						\
-{									\
-  /* Reinitialize the floating-point control word.  */			\
-  extern void EXFUN (i386_interface_initialize, (void));		\
-  i386_interface_initialize ();						\
-}
+extern void EXFUN (i386_interface_initialize, (void));
+#define FPE_RESET_TRAPS i386_interface_initialize
 
 #  endif
 #endif

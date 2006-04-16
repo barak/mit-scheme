@@ -1,3 +1,0 @@
-@node Concept Index, , Binding Index, Top
-@appendix Concept Index
-@printindex cp

@@ -2,16 +2,35 @@ Source: mit-scheme
 Section: devel
 Priority: optional
 Maintainer: Chris Hanson <cph@debian.org>
-Build-Depends: debhelper (>= 4.0.0), m4, mit-scheme, autotools-dev, libssl-dev, libmhash-dev, libmcrypt-dev, libgdbm-dev, libpq-dev, libncurses5-dev, libx11-dev, tetex-bin, tetex-extra, texinfo
+Build-Depends: debhelper (>= 4.0.0), m4, mit-scheme, autotools-dev, libssl-dev, libmhash-dev, libmcrypt-dev, libgdbm-dev, libpq-dev, libncurses5-dev, libx11-dev
 Standards-Version: 3.6.2
 
 Package: mit-scheme
 Architecture: i386
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: mime-support
+Suggests: mit-scheme-dbg
 Description: MIT/GNU Scheme development environment
  MIT/GNU Scheme is an implementation of the Scheme programming language,
  providing an interpreter, compiler, source-code debugger, integrated
  Emacs-like editor, and a large runtime library.  MIT/GNU Scheme is best
  suited to programming large applications with a rapid development
  cycle.
+ .
+ This package contains the development environment.
+
+Package: mit-scheme-dbg
+Architecture: i386
+Depends: mit-scheme (= ${Source-Version}), ${misc:Depends}
+Enhances: mit-scheme (= ${Source-Version})
+Description: MIT/GNU Scheme debugging files
+ MIT/GNU Scheme is an implementation of the Scheme programming language,
+ providing an interpreter, compiler, source-code debugger, integrated
+ Emacs-like editor, and a large runtime library.  MIT/GNU Scheme is best
+ suited to programming large applications with a rapid development
+ cycle.
+ .
+ This package contains debugging files for the development
+ environment.  These files provide support for debugging the MIT/GNU
+ Scheme system, and are useful only if you need to see the system
+ internals while you are debugging.

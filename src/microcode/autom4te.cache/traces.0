@@ -1,4 +1,4 @@
-m4trace:configure.ac:3: -1- AC_INIT([MIT/GNU Scheme], [14.16], [bug-mit-scheme@gnu.org], [mit-scheme])
+m4trace:configure.ac:3: -1- AC_INIT([MIT/GNU Scheme], [14.17], [bug-mit-scheme@gnu.org], [mit-scheme])
 m4trace:configure.ac:3: -1- m4_pattern_forbid([^_?A[CHUM]_])
 m4trace:configure.ac:3: -1- m4_pattern_forbid([_AC_])
 m4trace:configure.ac:3: -1- m4_pattern_forbid([^LIBOBJS$], [do not use LIBOBJS directly, use AC_LIBOBJ (see section `AC_LIBOBJ vs LIBOBJS'])
@@ -56,7 +56,7 @@ m4trace:configure.ac:7: -1- AC_PROG_MAKE_SET
 m4trace:configure.ac:7: -1- AC_SUBST([SET_MAKE])
 m4trace:configure.ac:54: -1- AH_OUTPUT([00001], [/*
 
-Copyright 2000,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2000,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -686,87 +686,93 @@ m4trace:configure.ac:542: -1- AC_SUBST([X_CFLAGS])
 m4trace:configure.ac:542: -1- AC_SUBST([X_PRE_LIBS])
 m4trace:configure.ac:542: -1- AC_SUBST([X_LIBS])
 m4trace:configure.ac:542: -1- AC_SUBST([X_EXTRA_LIBS])
-m4trace:configure.ac:543: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LONG_FILE_NAMES])
-m4trace:configure.ac:543: -1- AH_OUTPUT([HAVE_LONG_FILE_NAMES], [/* Define to 1 if you support file names longer than 14 characters. */
+m4trace:configure.ac:543: -1- AC_DEFINE_TRACE_LITERAL([_FILE_OFFSET_BITS])
+m4trace:configure.ac:543: -1- AH_OUTPUT([_FILE_OFFSET_BITS], [/* Number of bits in a file offset, on hosts where this is settable. */
+#undef _FILE_OFFSET_BITS])
+m4trace:configure.ac:543: -1- AC_DEFINE_TRACE_LITERAL([_LARGE_FILES])
+m4trace:configure.ac:543: -1- AH_OUTPUT([_LARGE_FILES], [/* Define for large files, on AIX-style hosts. */
+#undef _LARGE_FILES])
+m4trace:configure.ac:544: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LONG_FILE_NAMES])
+m4trace:configure.ac:544: -1- AH_OUTPUT([HAVE_LONG_FILE_NAMES], [/* Define to 1 if you support file names longer than 14 characters. */
 #undef HAVE_LONG_FILE_NAMES])
-m4trace:configure.ac:544: -1- _m4_warn([obsolete], [AC_SYS_RESTARTABLE_SYSCALLS: AC_SYS_RESTARTABLE_SYSCALLS is useful only when supporting very
+m4trace:configure.ac:545: -1- _m4_warn([obsolete], [AC_SYS_RESTARTABLE_SYSCALLS: AC_SYS_RESTARTABLE_SYSCALLS is useful only when supporting very
 old systems that lack `sigaction' and `SA_RESTART'.  Don't bother with
 this macro unless you need to support very old systems like 4.2BSD and
 SVR3.], [autoconf/specific.m4:312: AC_SYS_RESTARTABLE_SYSCALLS is expanded from...
-configure.ac:544: the top level])
-m4trace:configure.ac:544: -1- AC_CHECK_HEADERS([unistd.h])
-m4trace:configure.ac:544: -1- AH_OUTPUT([HAVE_UNISTD_H], [/* Define to 1 if you have the <unistd.h> header file. */
+configure.ac:545: the top level])
+m4trace:configure.ac:545: -1- AC_CHECK_HEADERS([unistd.h])
+m4trace:configure.ac:545: -1- AH_OUTPUT([HAVE_UNISTD_H], [/* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H])
-m4trace:configure.ac:544: -1- _m4_warn([cross], [AC_RUN_IFELSE called without default to allow cross compiling], [autoconf/general.m4:2281: AC_RUN_IFELSE is expanded from...
+m4trace:configure.ac:545: -1- _m4_warn([cross], [AC_RUN_IFELSE called without default to allow cross compiling], [autoconf/general.m4:2281: AC_RUN_IFELSE is expanded from...
 autoconf/general.m4:1799: AC_CACHE_VAL is expanded from...
 autoconf/general.m4:1808: AC_CACHE_CHECK is expanded from...
 autoconf/specific.m4:312: AC_SYS_RESTARTABLE_SYSCALLS is expanded from...
-configure.ac:544: the top level])
-m4trace:configure.ac:544: -1- AC_DEFINE_TRACE_LITERAL([HAVE_RESTARTABLE_SYSCALLS])
-m4trace:configure.ac:544: -1- AH_OUTPUT([HAVE_RESTARTABLE_SYSCALLS], [/* Define to 1 if system calls automatically restart after interruption by a
+configure.ac:545: the top level])
+m4trace:configure.ac:545: -1- AC_DEFINE_TRACE_LITERAL([HAVE_RESTARTABLE_SYSCALLS])
+m4trace:configure.ac:545: -1- AH_OUTPUT([HAVE_RESTARTABLE_SYSCALLS], [/* Define to 1 if system calls automatically restart after interruption by a
    signal. */
 #undef HAVE_RESTARTABLE_SYSCALLS])
-m4trace:configure.ac:571: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBCRYPTO])
-m4trace:configure.ac:571: -1- AH_OUTPUT([HAVE_LIBCRYPTO], [/* Define if OpenSSL crypto library is present. */
+m4trace:configure.ac:572: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBCRYPTO])
+m4trace:configure.ac:572: -1- AH_OUTPUT([HAVE_LIBCRYPTO], [/* Define if OpenSSL crypto library is present. */
 #undef HAVE_LIBCRYPTO])
-m4trace:configure.ac:603: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBMHASH])
-m4trace:configure.ac:603: -1- AH_OUTPUT([HAVE_LIBMHASH], [/* Define if mhash library is present. */
+m4trace:configure.ac:604: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBMHASH])
+m4trace:configure.ac:604: -1- AH_OUTPUT([HAVE_LIBMHASH], [/* Define if mhash library is present. */
 #undef HAVE_LIBMHASH])
-m4trace:configure.ac:620: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBMCRYPT])
-m4trace:configure.ac:620: -1- AH_OUTPUT([HAVE_LIBMCRYPT], [/* Define if mcrypt library is present. */
+m4trace:configure.ac:621: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBMCRYPT])
+m4trace:configure.ac:621: -1- AH_OUTPUT([HAVE_LIBMCRYPT], [/* Define if mcrypt library is present. */
 #undef HAVE_LIBMCRYPT])
-m4trace:configure.ac:637: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBBLOWFISH])
-m4trace:configure.ac:637: -1- AH_OUTPUT([HAVE_LIBBLOWFISH], [/* Define if blowfish library is present. */
+m4trace:configure.ac:638: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBBLOWFISH])
+m4trace:configure.ac:638: -1- AH_OUTPUT([HAVE_LIBBLOWFISH], [/* Define if blowfish library is present. */
 #undef HAVE_LIBBLOWFISH])
-m4trace:configure.ac:656: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBMD5])
-m4trace:configure.ac:656: -1- AH_OUTPUT([HAVE_LIBMD5], [/* Define if md5 library is present. */
+m4trace:configure.ac:657: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBMD5])
+m4trace:configure.ac:657: -1- AH_OUTPUT([HAVE_LIBMD5], [/* Define if md5 library is present. */
 #undef HAVE_LIBMD5])
-m4trace:configure.ac:673: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBGDBM])
-m4trace:configure.ac:673: -1- AH_OUTPUT([HAVE_LIBGDBM], [/* Define if gdbm library is present. */
+m4trace:configure.ac:674: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBGDBM])
+m4trace:configure.ac:674: -1- AH_OUTPUT([HAVE_LIBGDBM], [/* Define if gdbm library is present. */
 #undef HAVE_LIBGDBM])
-m4trace:configure.ac:687: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBDB4])
-m4trace:configure.ac:687: -1- AH_OUTPUT([HAVE_LIBDB4], [/* Define if db4 library is present. */
+m4trace:configure.ac:688: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBDB4])
+m4trace:configure.ac:688: -1- AH_OUTPUT([HAVE_LIBDB4], [/* Define if db4 library is present. */
 #undef HAVE_LIBDB4])
-m4trace:configure.ac:701: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBNCURSES])
-m4trace:configure.ac:701: -1- AH_OUTPUT([HAVE_LIBNCURSES], [/* Define if ncurses library is present. */
+m4trace:configure.ac:702: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBNCURSES])
+m4trace:configure.ac:702: -1- AH_OUTPUT([HAVE_LIBNCURSES], [/* Define if ncurses library is present. */
 #undef HAVE_LIBNCURSES])
-m4trace:configure.ac:707: -1- AC_DEFINE_TRACE_LITERAL([LIBNCURSES_DEFINES_TPARAM])
-m4trace:configure.ac:707: -1- AH_OUTPUT([LIBNCURSES_DEFINES_TPARAM], [/* Define if ncurses library defines `tparam\'. */
+m4trace:configure.ac:708: -1- AC_DEFINE_TRACE_LITERAL([LIBNCURSES_DEFINES_TPARAM])
+m4trace:configure.ac:708: -1- AH_OUTPUT([LIBNCURSES_DEFINES_TPARAM], [/* Define if ncurses library defines `tparam\'. */
 #undef LIBNCURSES_DEFINES_TPARAM])
-m4trace:configure.ac:715: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBCURSES])
-m4trace:configure.ac:715: -1- AH_OUTPUT([HAVE_LIBCURSES], [/* Define if curses library is present. */
+m4trace:configure.ac:716: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBCURSES])
+m4trace:configure.ac:716: -1- AH_OUTPUT([HAVE_LIBCURSES], [/* Define if curses library is present. */
 #undef HAVE_LIBCURSES])
-m4trace:configure.ac:721: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBTERMCAP])
-m4trace:configure.ac:721: -1- AH_OUTPUT([HAVE_LIBTERMCAP], [/* Define if termcap library is present. */
+m4trace:configure.ac:722: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBTERMCAP])
+m4trace:configure.ac:722: -1- AH_OUTPUT([HAVE_LIBTERMCAP], [/* Define if termcap library is present. */
 #undef HAVE_LIBTERMCAP])
-m4trace:configure.ac:733: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBPQ])
-m4trace:configure.ac:733: -1- AH_OUTPUT([HAVE_LIBPQ], [/* Define if PostgreSQL libpq library is present. */
+m4trace:configure.ac:734: -1- AC_DEFINE_TRACE_LITERAL([HAVE_LIBPQ])
+m4trace:configure.ac:734: -1- AH_OUTPUT([HAVE_LIBPQ], [/* Define if PostgreSQL libpq library is present. */
 #undef HAVE_LIBPQ])
-m4trace:configure.ac:800: -1- _m4_warn([obsolete], [The macro `AC_TRY_RUN' is obsolete.
+m4trace:configure.ac:801: -1- _m4_warn([obsolete], [The macro `AC_TRY_RUN' is obsolete.
 You should run autoupdate.], [autoconf/general.m4:2289: AC_TRY_RUN is expanded from...
-configure.ac:800: the top level])
-m4trace:configure.ac:800: -1- _m4_warn([cross], [AC_RUN_IFELSE called without default to allow cross compiling], [autoconf/general.m4:2281: AC_RUN_IFELSE is expanded from...
+configure.ac:801: the top level])
+m4trace:configure.ac:801: -1- _m4_warn([cross], [AC_RUN_IFELSE called without default to allow cross compiling], [autoconf/general.m4:2281: AC_RUN_IFELSE is expanded from...
 autoconf/general.m4:2289: AC_TRY_RUN is expanded from...
-configure.ac:800: the top level])
-m4trace:configure.ac:835: -1- AC_DEFINE_TRACE_LITERAL([HAS_COMPILER_SUPPORT])
-m4trace:configure.ac:835: -1- AH_OUTPUT([HAS_COMPILER_SUPPORT], [/* Define if architecture has native-code compiler support. */
+configure.ac:801: the top level])
+m4trace:configure.ac:836: -1- AC_DEFINE_TRACE_LITERAL([HAS_COMPILER_SUPPORT])
+m4trace:configure.ac:836: -1- AH_OUTPUT([HAS_COMPILER_SUPPORT], [/* Define if architecture has native-code compiler support. */
 #undef HAS_COMPILER_SUPPORT])
-m4trace:configure.ac:862: -1- AC_SUBST([AS_FLAGS])
-m4trace:configure.ac:863: -1- AC_SUBST([GC_HEAD_FILES])
-m4trace:configure.ac:864: -1- AC_SUBST([LIB_X11])
-m4trace:configure.ac:865: -1- AC_SUBST([M4_FLAGS])
-m4trace:configure.ac:866: -1- AC_SUBST([OPTIONAL_OBJECTS])
-m4trace:configure.ac:867: -1- AC_SUBST([OPTIONAL_SOURCES])
-m4trace:configure.ac:868: -1- AC_SUBST([STATIC_LIBS])
-m4trace:configure.ac:869: -1- AC_SUBST([STATIC_PREFIX])
-m4trace:configure.ac:870: -1- AC_SUBST([STATIC_SUFFIX])
-m4trace:configure.ac:871: -1- AC_SUBST([PRBFISH_LIBS])
-m4trace:configure.ac:872: -1- AC_SUBST([PRMD5_LIBS])
-m4trace:configure.ac:873: -1- AC_SUBST([SCHEME_DEFS])
-m4trace:configure.ac:874: -1- AC_SUBST([DLD_LDFLAGS])
-m4trace:configure.ac:875: -1- AC_SUBST([MODULE_TARGETS])
-m4trace:configure.ac:877: -1- AC_SUBST([MODULE_CFLAGS])
-m4trace:configure.ac:878: -1- AC_SUBST([MODULE_LDFLAGS])
-m4trace:configure.ac:880: -1- AC_CONFIG_FILES([Makefile])
-m4trace:configure.ac:881: -1- AC_SUBST([LIB@&t@OBJS], [$ac_libobjs])
-m4trace:configure.ac:881: -1- AC_SUBST([LTLIBOBJS], [$ac_ltlibobjs])
+m4trace:configure.ac:863: -1- AC_SUBST([AS_FLAGS])
+m4trace:configure.ac:864: -1- AC_SUBST([GC_HEAD_FILES])
+m4trace:configure.ac:865: -1- AC_SUBST([LIB_X11])
+m4trace:configure.ac:866: -1- AC_SUBST([M4_FLAGS])
+m4trace:configure.ac:867: -1- AC_SUBST([OPTIONAL_OBJECTS])
+m4trace:configure.ac:868: -1- AC_SUBST([OPTIONAL_SOURCES])
+m4trace:configure.ac:869: -1- AC_SUBST([STATIC_LIBS])
+m4trace:configure.ac:870: -1- AC_SUBST([STATIC_PREFIX])
+m4trace:configure.ac:871: -1- AC_SUBST([STATIC_SUFFIX])
+m4trace:configure.ac:872: -1- AC_SUBST([PRBFISH_LIBS])
+m4trace:configure.ac:873: -1- AC_SUBST([PRMD5_LIBS])
+m4trace:configure.ac:874: -1- AC_SUBST([SCHEME_DEFS])
+m4trace:configure.ac:875: -1- AC_SUBST([DLD_LDFLAGS])
+m4trace:configure.ac:876: -1- AC_SUBST([MODULE_TARGETS])
+m4trace:configure.ac:878: -1- AC_SUBST([MODULE_CFLAGS])
+m4trace:configure.ac:879: -1- AC_SUBST([MODULE_LDFLAGS])
+m4trace:configure.ac:881: -1- AC_CONFIG_FILES([Makefile])
+m4trace:configure.ac:882: -1- AC_SUBST([LIB@&t@OBJS], [$ac_libobjs])
+m4trace:configure.ac:882: -1- AC_SUBST([LTLIBOBJS], [$ac_ltlibobjs])

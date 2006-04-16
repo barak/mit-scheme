@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.60 2005/05/30 18:48:43 cph Exp $
+$Id: parse.scm,v 14.61 2006/03/09 19:18:31 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -168,6 +168,7 @@ USA.
     (set! char-set/number-leaders number-leaders))
   (set! *parser-table* system-global-parser-table)
   (set! runtime-parser-table system-global-parser-table)
+  (set! hashed-object-interns (make-strong-eq-hash-table))
   (initialize-condition-types!))
 
 (define-integrable (atom-delimiter? char)
@@ -333,26 +334,6 @@ USA.
 	  (list->vector (reverse! objects))
 	  (loop (cons object objects))))))
 
-(define (handler:hashed-object port db ctx char1 char2)
-  ctx char1 char2
-  (let loop ((objects '()))
-    (let ((object (read-in-context port db 'CLOSE-BRACKET-OK)))
-      (if (eq? object close-bracket)
-	  (let ((objects (reverse! objects)))
-	    (if (and (pair? objects)
-		     (pair? (cdr objects)))
-		(parse-unhash (cadr objects))
-		(error:illegal-hashed-object objects)))
-	  (loop (cons object objects))))))
-
-(define (parse-unhash object)
-  (if (not (exact-nonnegative-integer? object))
-      (error:illegal-unhash object))
-  (if (eq? object 0)
-      #f
-      (or (object-unhash object)
-	  (error:undefined-hash object))))
-
 (define (handler:close-parenthesis port db ctx char)
   db
   (cond ((eq? ctx 'CLOSE-PAREN-OK)
@@ -372,6 +353,60 @@ USA.
 
 (define close-parenthesis (list 'CLOSE-PARENTHESIS))
 (define close-bracket (list 'CLOSE-BRACKET))
+
+(define (handler:hashed-object port db ctx char1 char2)
+  ctx char1 char2
+  (let loop ((objects '()))
+    (let ((object (read-in-context port db 'CLOSE-BRACKET-OK)))
+      (if (eq? object close-bracket)
+	  (let* ((objects (reverse! objects))
+		 (lose (lambda () (error:illegal-hashed-object objects))))
+	    (let ((method
+		   (and (pair? objects)
+			(interned-symbol? (car objects))
+			(hash-table/get hashed-object-interns
+					(car objects)
+					(lambda (objects lose)
+					  (if (pair? (cdr objects))
+					      (parse-unhash (cadr objects))
+					      (lose)))))))
+	      (if method
+		  (bind-condition-handler (list condition-type:error)
+		      (lambda (condition) condition (lose))
+		    (lambda ()
+		      (method objects lose)))
+		  (lose))))
+	  (loop (cons object objects))))))
+
+(define (define-bracketed-object-parser-method name method)
+  (guarantee-interned-symbol name 'DEFINE-BRACKETED-OBJECT-PARSER-METHOD)
+  (guarantee-procedure-of-arity method 2
+				'DEFINE-BRACKETED-OBJECT-PARSER-METHOD)
+  (hash-table/put! hashed-object-interns name method))
+
+(define hashed-object-interns)
+
+(define (handler:unhash port db ctx char1 char2)
+  ctx char1 char2
+  (let ((object (parse-unhash (parse-number port db '()))))
+    ;; This may seem a little random, because #@N doesn't just
+    ;; return an object.  However, the motivation for this piece of
+    ;; syntax is convenience -- and 99.99% of the time the result of
+    ;; this syntax will be evaluated, and the user will expect the
+    ;; result of the evaluation to be the object she was referring
+    ;; to.  If the quotation isn't there, the user just gets
+    ;; confused.
+    (if (scode-constant? object)
+	object
+	(make-quotation object))))
+
+(define (parse-unhash object)
+  (if (not (exact-nonnegative-integer? object))
+      (error:illegal-unhash object))
+  (if (eq? object 0)
+      #f
+      (or (object-unhash object)
+	  (error:undefined-hash object))))
 
 (define (handler:quote port db ctx char)
   ctx char
@@ -482,7 +517,7 @@ USA.
 				  char)
 			      port*)
 		  (loop)))))))))
-
+
 (define (handler:named-constant port db ctx char1 char2)
   ctx char1 char2
   (let ((name (parse-atom/no-quoting port db '())))
@@ -502,20 +537,6 @@ USA.
 (define lambda-rest-tag (object-new-type (ucode-type constant) 4))
 (define lambda-aux-tag (object-new-type (ucode-type constant) 8))
 (define lambda-key-tag (object-new-type (ucode-type constant) 5))
-
-(define (handler:unhash port db ctx char1 char2)
-  ctx char1 char2
-  (let ((object (parse-unhash (parse-number port db '()))))
-    ;; This may seem a little random, because #@N doesn't just
-    ;; return an object.  However, the motivation for this piece of
-    ;; syntax is convenience -- and 99.99% of the time the result of
-    ;; this syntax will be evaluated, and the user will expect the
-    ;; result of the evaluation to be the object she was referring
-    ;; to.  If the quotation isn't there, the user just gets
-    ;; confused.
-    (if (scode-constant? object)
-	object
-	(make-quotation object))))
 
 (define (handler:special-arg port db ctx char1 char2)
   ctx char1
