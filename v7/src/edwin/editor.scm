@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: editor.scm,v 1.260 2005/12/09 07:06:23 riastradh Exp $
+$Id: editor.scm,v 1.261 2006/04/30 04:11:38 riastradh Exp $
 
 Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -190,7 +190,9 @@ USA.
 		  (newline port)))
 	       (cmdl-message/strings
 		"You are in an interaction window of the Edwin editor."
-		"Type C-h for help.  C-h m will describe some commands.")))))))
+                "Type `C-h' for help, or `C-h t' for a tutorial."
+                "`C-h m' will describe some commands."
+                "`C-h' means: hold down the Ctrl key and type `h'.")))))))
 
 (define inhibit-editor-init-file? #f)
 (define init-file-loaded? #f)
