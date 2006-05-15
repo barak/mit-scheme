@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: editor.scm,v 1.261 2006/04/30 04:11:38 riastradh Exp $
+$Id: editor.scm,v 1.262 2006/05/15 02:43:49 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
