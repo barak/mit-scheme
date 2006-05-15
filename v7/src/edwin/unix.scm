@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unix.scm,v 1.118 2004/02/16 05:44:05 cph Exp $
+$Id: unix.scm,v 1.119 2006/05/15 01:50:40 riastradh Exp $
 
 Copyright 1989,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1999,2000,2002,2003 Massachusetts Institute of Technology
@@ -165,6 +165,39 @@ Includes the new backup.  Must be > 0."
 			  (unix/current-uid))
 		       (= (file-attributes/gid attributes)
 			  (unix/current-gid))))))))
+
+(define (os/newest-numeric-backup pathname)
+  (define (first-loop filenames)
+    (if (null? filenames)
+        #f
+        (cond ((os/numeric-backup-filename? (car filenames))
+               => (lambda (root.version)
+                    (max-loop (cdr filenames)
+                              (car filenames)
+                              (cdr root.version))))
+              (else (first-loop (cdr filenames))))))
+  (define (max-loop filenames filename version)
+    (if (null? filenames)
+        filename
+        (cond ((os/numeric-backup-filename? (car filenames))
+               => (lambda (root.version)
+                    (if (> (cdr root.version) version)
+                        (max-loop (cdr filenames)
+                                  (car filenames)
+                                  (cdr root.version))
+                        (max-loop (cdr filenames) filename version))))
+              (else (max-loop (cdr filenames) filename version)))))
+  (first-loop (os/directory-list-completions
+               (directory-namestring pathname)
+               (string-append (file-namestring pathname) ".~"))))
+
+(define (os/newest-backup pathname)
+  (or (os/newest-numeric-backup pathname)
+      (find-matching-item
+          (os/directory-list-completions
+           (directory-namestring pathname)
+           (string-append (file-namestring pathname) "~"))
+        os/backup-filename?)))
 
 (define (os/buffer-backup-pathname truename buffer)
   (call-with-values
