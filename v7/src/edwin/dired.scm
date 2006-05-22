@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: dired.scm,v 1.194 2004/03/30 04:45:01 cph Exp $
+$Id: dired.scm,v 1.195 2006/05/22 05:34:55 cph Exp $
 
-Copyright 1986, 1989-2001 Massachusetts Institute of Technology
+Copyright 1987,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+Copyright 2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -287,7 +289,7 @@ Type `h' after entering dired for more info."
   "Read the current buffer."
   ()
   (lambda ()
-    (revert-buffer (current-buffer) true true)))
+    (revert-buffer (current-buffer) #t #t)))
 
 (define-command dired-flag-file-deletion
   "Mark the current file to be killed."
@@ -691,7 +693,7 @@ Actions controlled by variables list-directory-brief-switches
       (list (prompt-for-directory (if argument
 				      "List directory (verbose)"
 				      "List directory (brief)")
-				  false)
+				  #f)
 	    argument)))
   (lambda (directory argument)
     (let ((directory (->pathname directory))
@@ -709,20 +711,15 @@ Actions controlled by variables list-directory-brief-switches
 			point))
       (set-buffer-point! buffer (buffer-start buffer))
       (buffer-not-modified! buffer)
-      (pop-up-buffer buffer false))))
+      (pop-up-buffer buffer #f))))
 
 ;;;; Utilities
 
 (define (dired-filename-start lstart)
-  (let ((eol (line-end lstart 0)))
-    (let ((m
-	   (re-search-forward
-	    "\\(Jan\\|Feb\\|Mar\\|Apr\\|May\\|Jun\\|Jul\\|Aug\\|Sep\\|Oct\\|Nov\\|Dec\\)[ ]+[0-9]+"
-	    lstart
-	    eol
-	    false)))
-      (and m
-	   (re-match-forward " *[^ ]* *" m eol)))))
+  (re-match-forward directory-listing-before-filename-regexp
+		    lstart
+		    (line-end lstart 0)
+		    #f))
 
 (define (dired-filename-string lstart)
   (let ((start (dired-filename-start lstart)))
@@ -788,6 +785,107 @@ Actions controlled by variables list-directory-brief-switches
 	  (procedure point))
       (move-mark-to! point (line-start point 1)))
     (mark-temporary! point)))
+
+;;; Regular expression to match up to the file name in a directory
+;;; listing.  The default value is designed to recognize dates and
+;;; times regardless of the language.
+
+;;; Stolen from Emacs 22 and translated to REXP format.
+
+(define directory-listing-before-filename-regexp
+  (let* ((l
+	  (char-set-union char-set:alphabetic
+			  (ascii-range->char-set #x80 #x100)))
+	 (l? (rexp-optional l))
+	 (l-or-quote (char-set-union l (char-set #\')))
+	 (digit (string->char-set "0123456789"))
+	 ;; In some locales, month abbreviations are as short as 2 letters,
+	 ;; and they can be followed by ".".
+	 ;; In Breton, a month name  can include a quote character.
+	 (month
+	  (rexp-sequence (rexp-n* 2 l-or-quote)
+			 (rexp-optional ".")))
+	 (s " ")
+	 (s+ (rexp+ s))
+	 (yyyy (rexp-n*n 4 char-set:numeric))
+	 (dd (rexp-sequence (string->char-set " 0123") digit))
+	 (HH:MM (rexp-sequence (string->char-set " 012")
+			       digit
+			       (string->char-set ":.")
+			       (string->char-set "012345")
+			       digit))
+	 (seconds (rexp-sequence (string->char-set "0123456")
+				 digit
+				 (rexp-optional (string->char-set ".,")
+						(rexp+ digit))))
+	 (zone (rexp-sequence (string->char-set "-+")
+			      (string->char-set "012")
+			      digit
+			      (string->char-set "012345")
+			      digit))
+	 (iso-mm-dd (rexp-sequence (string->char-set "01")
+				   digit
+				   "-"
+				   (string->char-set "0123")
+				   digit))
+	 (iso-time
+	  (rexp-sequence HH:MM
+			 (rexp-optional ":"
+					seconds
+					(rexp-optional (rexp-optional s)
+						       zone))))
+	 (iso
+	  (rexp-alternatives (rexp-sequence (rexp-optional yyyy "-")
+					    iso-mm-dd
+					    (string->char-set " T")
+					    iso-time)
+			     (rexp-sequence yyyy
+					    "-"
+					    iso-mm-dd)))
+	 (western
+	  (rexp-sequence
+	   (rexp-alternatives (rexp-sequence month s+ dd)
+			      (rexp-sequence dd (rexp-optional ".") s month))
+	   s+
+	   (rexp-alternatives HH:MM yyyy)))
+	 (western-comma
+	  (rexp-sequence month s+ dd "," s+ yyyy))
+	 ;; Japanese MS-Windows ls-lisp has one-digit months, and
+	 ;; omits the Kanji characters after month and day-of-month.
+	 ;; On Mac OS X 10.3, the date format in East Asian locales is
+	 ;; day-of-month digits followed by month digits.
+	 (mm (rexp-sequence (rexp-optional (string->char-set " 01"))
+			    digit))
+	 (east-asian
+	  (rexp-sequence
+	   (rexp-alternatives (rexp-sequence mm l? s dd l? s+)
+			      (rexp-sequence dd s mm s+))
+	   (rexp-alternatives HH:MM
+			      (rexp-sequence yyyy l?)))))
+    ;; The "[0-9]" below requires the previous column to end in a digit.
+    ;; This avoids recognizing `1 may 1997' as a date in the line:
+    ;; -r--r--r--   1 may      1997        1168 Oct 19 16:49 README
+
+    ;; The "[BkKMGTPEZY]?" below supports "ls -alh" output.
+    ;; The ".*" below finds the last match if there are multiple matches.
+    ;; This avoids recognizing `jservice  10  1024' as a date in the line:
+    ;; drwxr-xr-x  3 jservice  10  1024 Jul  2  1997 esg-host
+
+    ;; vc dired listings provide the state or blanks between file
+    ;; permissions and date.  The state is always surrounded by
+    ;; parantheses:
+    ;; -rw-r--r-- (modified) 2005-10-22 21:25 files.el
+    ;; This is not supported yet.
+    (rexp-compile
+     (rexp-sequence (rexp* (rexp-any-char))
+		    digit
+		    (rexp-optional (string->char-set "BkKMGTPEZY"))
+		    s
+		    (rexp-alternatives western
+				       western-comma
+				       east-asian
+				       iso)
+		    s+))))
 
 (define (dired-redisplay pathname #!optional mark)
   (let ((lstart
