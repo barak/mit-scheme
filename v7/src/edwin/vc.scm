@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.90 2006/04/24 01:12:12 cph Exp $
+$Id: vc.scm,v 1.91 2006/05/31 01:18:36 cph Exp $
 
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2005,2006 Massachusetts Institute of Technology
@@ -2207,15 +2207,18 @@ the value of vc-log-mode-hook."
       status)))
 
 (define (%get-svn-status workfile)
-  (let ((port (open-output-string)))
-    (let ((status
-	   (run-synchronous-subprocess
-	    "svn"
-	    (list "status" "--verbose" (file-namestring workfile))
-	    'output port
-	    'working-directory (directory-pathname workfile))))
-      (and (eqv? status 0)
-	   (get-output-string port)))))
+  (let ((directory (directory-pathname workfile)))
+    (let ((program (os/find-program "svn" directory #!default #f)))
+      (and program
+	   (let ((port (open-output-string)))
+	     (let ((status
+		    (run-synchronous-subprocess
+		     path
+		     (list "status" "--verbose" (file-namestring workfile))
+		     'output port
+		     'working-directory directory)))
+	       (and (eqv? status 0)
+		    (get-output-string port))))))))
 
 (define (parse-svn-status status)
   (and status
