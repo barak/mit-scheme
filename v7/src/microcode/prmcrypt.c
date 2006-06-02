@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prmcrypt.c,v 1.5 2003/02/14 18:28:23 cph Exp $
+$Id: prmcrypt.c,v 1.6 2006/06/02 03:06:56 ihtfisp Exp $
 
 Copyright (c) 2001 Massachusetts Institute of Technology
 
@@ -29,7 +29,15 @@ USA.
 #include "prims.h"
 #include "usrdef.h"
 #include "os.h"
-#include <mcrypt.h>
+
+#ifdef HAVE_MCRYPT_H
+#  include <mcrypt.h>
+#else
+/*
+** Hack:  Dependency suppressed to appease "makegen/makegen.scm".
+**        This is OK since it cannot link w/o the library anyway.
+*/
+#endif
 
 static SCHEME_OBJECT
 cp2s (char * cp)
