@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: compile.sh,v 1.5 2003/03/10 20:12:30 cph Exp $
+# $Id: compile.sh,v 1.6 2006/06/02 06:37:44 ihtfisp Exp $
 #
 # Copyright 2002,2003 Massachusetts Institute of Technology
 #
@@ -30,6 +30,6 @@ else
   exit 1
 fi
 if [ -z "${SCHEME_COMPILER}" ]; then
-    SCHEME_COMPILER="scheme -compiler -heap 4000"
+    SCHEME_COMPILER="scheme --compiler --heap 4000"
 fi
 ${SCHEME_COMPILER} < "${DIR}/etc/compile.scm"

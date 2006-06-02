@@ -1,5 +1,8 @@
 #!/bin/sh
-scheme -large <<***EOF***
+if [ -z "${SCHEME_LARGE}" ]; then
+    SCHEME_LARGE="scheme --large"
+fi
+${SCHEME_LARGE} <<***EOF***
 (load-option 'RCS)
 (rcs-directory-log "."
 		   '((CHANGELOG? #t)
