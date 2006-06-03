@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: files-other.scm,v 1.4 2003/02/14 18:28:31 cph Exp $
+$Id: files-other.scm,v 1.5 2006/06/03 08:10:10 ihtfisp Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -29,3 +29,4 @@ USA.
 "bintopsb"
 "findprim"
 "psbtobin"
+"ppband"
