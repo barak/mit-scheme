@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.52 2003/02/14 18:28:22 cph Exp $
+$Id: ppband.c,v 9.53 2006/06/03 08:05:20 ihtfisp Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -24,7 +24,7 @@ USA.
 */
 
 /* Dumps Scheme FASL in user-readable form. */
-
+
 #include <stdio.h>
 #include <ctype.h>
 #include "config.h"
@@ -34,8 +34,17 @@ USA.
 #include "object.h"
 #include "gccode.h"
 #include "sdata.h"
+#include "scheme.h"		/* For `fast' and several other niceties */
 
-#define fast register
+#ifdef STDC_HEADERS
+#  include <stdlib.h>		/* For `malloc', `free' and `exit' (Linux) */
+#else
+   extern PTR EXFUN (malloc, (int));
+   extern void EXFUN (free, (PTR));
+
+   extern void EXFUN (exit, (int));
+#endif
+
 
 #undef HEAP_MALLOC
 #define HEAP_MALLOC malloc
@@ -58,8 +67,6 @@ DEFUN (gc_death, (code, message, scan, free),
 }
 
 /* These are needed by load.c */
-
-static SCHEME_OBJECT * memory_base;
 
 #ifdef OS2
 
@@ -244,8 +251,6 @@ DEFUN (scheme_symbol, (From), long From)
   return;
 }
 
-static char string_buffer[10];
-
 #define PRINT_OBJECT(type, datum) do					\
 {									\
   printf ("[%s %lx]", type, datum);					\
@@ -393,7 +398,7 @@ DEFUN (show_area, (area, start, end, name),
   return (area);
 }
 
-void
+int
 DEFUN (main, (argc, argv),
        int argc AND
        char **argv)
@@ -402,7 +407,7 @@ DEFUN (main, (argc, argv),
 
   while (1)
   {
-    fast SCHEME_OBJECT *Next;
+    fast SCHEME_OBJECT *Next = ((SCHEME_OBJECT *) NULL);
     long total_length, load_length;
 
     if (argc == 1)
@@ -436,11 +441,14 @@ DEFUN (main, (argc, argv),
     }
     else
     {
+      const char * mbase_format_string = "%lx";	/* sscanf warns if literals */
+      const char * count_format_string = "%lu";
+
       Const_Count = 0;
       Primitive_Table_Size = 0;
-      sscanf (argv[1], "%lx", ((long) &Heap_Base));
-      sscanf (argv[2], "%lx", ((long) &Const_Base));
-      sscanf (argv[3], "%ld", ((long) &Heap_Count));
+      sscanf (argv[1], mbase_format_string, ((long) &Heap_Base));
+      sscanf (argv[2], mbase_format_string, ((long) &Const_Base));
+      sscanf (argv[3], count_format_string, ((long) &Heap_Count));
       printf ("Heap Base = 0x%lx; Constant Base = 0x%lx; Heap Count = %ld\n",
 	      Heap_Base, Const_Base, Heap_Count);
     }
@@ -506,4 +514,5 @@ DEFUN (main, (argc, argv),
     free ((char *) Data);
     counter = 1;
   }
+  return (0);
 }
