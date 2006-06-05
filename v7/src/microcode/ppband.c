@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.56 2006/06/05 11:35:14 ihtfisp Exp $
+$Id: ppband.c,v 9.57 2006/06/05 13:02:51 ihtfisp Exp $
 
 Copyright (c) 1987-2006 Massachusetts Institute of Technology
 
@@ -330,6 +330,9 @@ DEFUN (Display_raw_data_hex_Scheme_object, (Location, Count, Area),
 
 // char *Type_Names[] = TYPE_NAME_TABLE; /* We get this now from "storage.c" */
 
+forward Boolean EXFUN (Display_constant, (long Location,
+					  long Type,
+					  long The_Datum));
 void
 DEFUN (Display, (Location, Type, The_Datum),
                  long Location AND
@@ -355,13 +358,15 @@ DEFUN (Display, (Location, Type, The_Datum),
       break;
 
     case TC_CONSTANT:
-      if (The_Datum == 0)
       {
-	printf ("#T\n");
-	return;
+	Boolean recognized_scheme_constant_p =
+	  (Display_constant (Location, Type, The_Datum));
+
+	if (recognized_scheme_constant_p)
+	  return; /* Deed done. */
+	else
+	  NON_POINTER ("CONSTANT"); /* "const.h" implies this alias. */
       }
-      else
-	NON_POINTER ("MAGIC_CONSTANT"); /* "const.h" implies this alias. */
       break;
 
     case TC_CHARACTER:
@@ -424,6 +429,71 @@ DEFUN (Display, (Location, Type, The_Datum),
   PRINT_OBJECT (the_string, Points_To);
   putchar ('\n');
   return;
+}
+
+#define RECOGNIZED_SCHEME_CONSTANT	TRUE
+
+Boolean
+DEFUN (Display_constant, (Location, Type, The_Datum),
+			  long Location AND /* unused - For tracking */
+			  long Type     AND /* unused - For tracking */
+			  long The_Datum)
+{
+  switch (The_Datum)		/* See "const.h". */
+    {
+    case 0:			/* #t		*//* a.k.a. SHARP_T        */
+      printf ("#T");
+      printf ("\n");
+      return (RECOGNIZED_SCHEME_CONSTANT);
+
+    case 1:			/* unspecific	*//* a.k.a. UNSPECIFIC     */
+      printf ("UNSPECIFIC");
+      printf ("\n");
+      return (RECOGNIZED_SCHEME_CONSTANT);
+
+    case 2:			/* [non-object] */
+      printf ("[Non-Object]");
+      printf ("\n");
+      return (RECOGNIZED_SCHEME_CONSTANT);
+
+    case 3:			/* #!optional	*/
+      printf ("#!OPTIONAL");
+      printf ("\n");
+      return (RECOGNIZED_SCHEME_CONSTANT);
+
+    case 4:			/* #!rest	*/
+      printf ("#!REST");
+      printf ("\n");
+      return (RECOGNIZED_SCHEME_CONSTANT);
+
+    case 5:			/* #!key	*/
+      printf ("#!KEY");
+      printf ("\n");
+      return (RECOGNIZED_SCHEME_CONSTANT);
+
+    case 6:			/* #!eof	*/
+      printf ("#!EOF");
+      printf ("\n");
+      return (RECOGNIZED_SCHEME_CONSTANT);
+
+    case 7:			/* #!default	*//* a.k.a. DEFAULT_OBJECT */
+      printf ("DEFAULT_OBJECT");
+      printf ("\n");
+      return (RECOGNIZED_SCHEME_CONSTANT);
+
+    case 8:			/* #!aux	*/
+      printf ("#!AUX");
+      printf ("\n");
+      return (RECOGNIZED_SCHEME_CONSTANT);
+
+    case 9:			/* '()		*//* a.k.a. EMPTY_LIST     */
+      printf ("EMPTY_LIST");
+      printf ("\n");
+      return (RECOGNIZED_SCHEME_CONSTANT);
+
+    default:
+      return (! RECOGNIZED_SCHEME_CONSTANT);
+    }
 }
 
 forward \
