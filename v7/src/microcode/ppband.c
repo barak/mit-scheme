@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.55 2006/06/05 11:03:43 ihtfisp Exp $
+$Id: ppband.c,v 9.56 2006/06/05 11:35:14 ihtfisp Exp $
 
 Copyright (c) 1987-2006 Massachusetts Institute of Technology
 
@@ -38,11 +38,15 @@ USA.
 
 #ifdef STDC_HEADERS
 #  include <stdlib.h>		/* For `malloc', `free' and `exit' (Linux) */
+#  include <string.h>		/* For `strlen' and `strcpy' */
 #else
    extern PTR EXFUN (malloc, (int));
    extern void EXFUN (free, (PTR));
 
    extern void EXFUN (exit, (int));
+
+   extern int EXFUN (strcmp, (CONST char *, CONST char *));
+   extern int EXFUN (strlen, (CONST char *));
 #endif
 
 
@@ -654,6 +658,7 @@ DEFUN (main, (argc, argv),
       /* Show only heap for FASL headerless data files */
       Const_Count = 0;
       Primitive_Table_Size = 0;
+      C_Code_Table_Size = 0;
 
       /* Fake minimal bases to keep RELOCATE/Data_Load() happy */
       sscanf (argv[1], mbase_format_string, ((long) &Heap_Base));
@@ -692,7 +697,8 @@ DEFUN (main, (argc, argv),
     **          were witnessed by the dump but _multiple_bytes_of_data_were_
     **          _dumped_for_each_item_witnessed_.  Don't get confused by this.
     */
-    load_length = (Heap_Count + Const_Count + Primitive_Table_Size);
+    load_length = (Heap_Count + Const_Count + Primitive_Table_Size
+		   /**/                     +    C_Code_Table_Size);
     Data = ((SCHEME_OBJECT *)
 	    (malloc (PPBAND_NUM_DATA_WORDS_TO_ALLOCATE)));
     if (Data == NULL)
@@ -774,6 +780,70 @@ DEFUN (main, (argc, argv),
       }
       printf ("\n");
     }
+
+    if ((C_Code_Table_Size > 0) && (Next < end_of_memory))
+    {
+      long dumped_initial_entry_number, nentries;
+      fast long entries, count;
+
+      /* This is done in case the file is short.  See `<EOM>' marker above. */
+      end_of_memory[0] = ((SCHEME_OBJECT) 0);
+      end_of_memory[1] = ((SCHEME_OBJECT) 0);
+      end_of_memory[2] = ((SCHEME_OBJECT) 0);
+      end_of_memory[3] = ((SCHEME_OBJECT) 0);
+
+      entries = C_Code_Table_Length;
+
+      printf ("\n");
+
+      printf ("\nC Code table: number of entries = %ld\n\n", entries);
+
+      /* See: <microcode/cmpauxmd/c.c>:cons_c_code_table(). */
+      dumped_initial_entry_number = (UNSIGNED_FIXNUM_TO_LONG (* Next));
+      Next += 1;
+      printf ("Initial Entry Number = %lu (0x%02lx)\n\n",
+	      dumped_initial_entry_number,
+	      dumped_initial_entry_number);
+      /*
+       * For each C code block existent in the world, fasdump dumps its entry
+       * count and name string at the end of the fasdump file.  Show them now.
+       *
+       * Details: see <microcode/cmpauxmd/c.c>:copy_c_code_block_information().
+       *
+       * For comparison, see <microcode/cmpauxmd/c.c>:install_c_code_table().
+       *
+       */
+      for (count = 0;
+	   ((count < entries) && (Next < end_of_memory));
+	   count += 1)
+      {
+	int nlen, size;
+	char * ncopy;
+
+	nentries = (UNSIGNED_FIXNUM_TO_LONG (*Next));
+	Next += 1;
+	nlen = (strlen ((char *) Next)); /* `fasdump'd a native C string */
+	size = (nlen + 1);
+
+	ncopy = ((char *) (malloc (size)));
+	if (ncopy == ((char *) NULL))
+	{
+	  fprintf (stderr,
+		   "Allocation of C code block no.%lu name string failed.\n",
+		   count);
+	  exit (1);
+	  /*NOTREACHED*/
+	}
+	(void) strcpy (ncopy, ((char *) Next));
+
+	printf ("Index = 0x%02lx; NEntries = %2lu; Name = \"%s\"\n",
+		count, nentries, ncopy);
+	printf ("size = %u\n", size);
+	Next += (1 + nlen);
+      }
+      printf ("\n");
+    }
+
     if (argc != 1)
       exit (0);
     free ((char *) Data);
