@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.54 2006/06/05 09:51:07 ihtfisp Exp $
+$Id: ppband.c,v 9.55 2006/06/05 11:03:43 ihtfisp Exp $
 
 Copyright (c) 1987-2006 Massachusetts Institute of Technology
 
@@ -646,13 +646,16 @@ DEFUN (main, (argc, argv),
       printf ("Dumped object (relocated) at 0x%lx\n",
 	      (Relocate (Dumped_Object)));
     }
-    else
+    else if (argc == 4)	 /* Forge FASL header bases for RELOCATE/Data_Load() */
     {
       const char * mbase_format_string = "%lx";	/* sscanf warns if literals */
       const char * count_format_string = "%lu";
 
+      /* Show only heap for FASL headerless data files */
       Const_Count = 0;
       Primitive_Table_Size = 0;
+
+      /* Fake minimal bases to keep RELOCATE/Data_Load() happy */
       sscanf (argv[1], mbase_format_string, ((long) &Heap_Base));
       sscanf (argv[2], mbase_format_string, ((long) &Const_Base));
       sscanf (argv[3], count_format_string, ((long) &Heap_Count));
@@ -660,14 +663,46 @@ DEFUN (main, (argc, argv),
 	      Heap_Base, Const_Base, Heap_Count);
     }
 
+    else
+    {
+      printf("\nUsage: %s < FILE"
+	     "\n       %s Heap_Base Const_Base Heap_Count < FILE"
+	     "\n"
+	     "\n where  FILE  is a fasdumped MIT Scheme file to inspect."
+	     "\n",
+	     argv[0], argv[0]);
+      fprintf (stderr, "\nerror: %s: 0 or 3 arguments required (saw %u).\n",
+	       argv[0], argc);
+      exit (1);
+      /* NOTREACHED */
+    }
+
+    /*
+    ** We allocate one Scheme object to serve as an end-of-memory sentinel, so
+    ** the total allocation in units of Scheme objects is `load_length' plus 1.
+    */
+#define PPBAND_NUM_SCHEME_OBJECTS_TO_ALLOCATE	(load_length + 1) /* <EOM> */
+#define PPBAND_NUM_DATA_WORDS_TO_ALLOCATE \
+       (PPBAND_NUM_SCHEME_OBJECTS_TO_ALLOCATE * (sizeof (SCHEME_OBJECT)))
+    /*
+    ** Caveat:  The Heap_Count and Const_Count measure how many Scheme objs are
+    **          in each area whereas Primitive_Table_Size and C_Code_Table_Size
+    **          measure how many Scheme object sized parcels were dumped there.
+    **          By contrast, the xx_Table_Length's measure how many table items
+    **          were witnessed by the dump but _multiple_bytes_of_data_were_
+    **          _dumped_for_each_item_witnessed_.  Don't get confused by this.
+    */
     load_length = (Heap_Count + Const_Count + Primitive_Table_Size);
     Data = ((SCHEME_OBJECT *)
-	    (malloc (sizeof (SCHEME_OBJECT) * (load_length + 4))));
+	    (malloc (PPBAND_NUM_DATA_WORDS_TO_ALLOCATE)));
     if (Data == NULL)
     {
-      fprintf (stderr, "Allocation of %ld words failed.\n", (load_length + 4));
+      fprintf (stderr,
+	       "Allocation of %lu words failed.\n",
+	       PPBAND_NUM_DATA_WORDS_TO_ALLOCATE);
       exit (1);
     }
+
     total_length = (Load_Data (load_length, Data));
     end_of_memory = &Data[total_length];
     if (total_length != load_length)
@@ -675,6 +710,14 @@ DEFUN (main, (argc, argv),
       printf ("The FASL file does not have the right length.\n");
       printf ("Expected %ld objects.  Obtained %ld objects.\n\n",
 	      ((long) load_length), ((long) total_length));
+      /*
+       * The following truncates area counts/sizes upon running out of Data
+       * space.  The first area that is too big to fit and all those checked
+       * afterward will be ignored (dropped on the floor) as if not present.
+       *
+       * I'm not taking credit for this cleverness, just documenting the non-
+       * obvious.  The code is straightforward once you know the intent.  -mrb
+       */
       if (total_length < Heap_Count)
 	Heap_Count = total_length;
       total_length -= Heap_Count;
@@ -683,6 +726,9 @@ DEFUN (main, (argc, argv),
       total_length -= Const_Count;
       if (total_length < Primitive_Table_Size)
 	Primitive_Table_Size = total_length;
+      total_length -= Primitive_Table_Size;
+      if (total_length < C_Code_Table_Size)
+	C_Code_Table_Size = total_length;
     }
 
     if (Heap_Count > 0)
@@ -694,22 +740,34 @@ DEFUN (main, (argc, argv),
       long arity, size;
       fast long entries, count;
 
-      /* This is done in case the file is short. */
+      /* This is done in case the file is short.  See `<EOM>' marker above. */
       end_of_memory[0] = ((SCHEME_OBJECT) 0);
       end_of_memory[1] = ((SCHEME_OBJECT) 0);
       end_of_memory[2] = ((SCHEME_OBJECT) 0);
       end_of_memory[3] = ((SCHEME_OBJECT) 0);
 
       entries = Primitive_Table_Length;
-      printf ("\nPrimitive table: number of entries = %ld\n\n", entries);
 
+      printf ("\n");
+
+      printf ("\nPrimitive table: number of entries = %ld\n\n", entries);
+      /*
+       * For each primitive existent in the world, fasdump dumps its arity
+       * and name string at the end of the fasdump file.  Show them now.
+       *
+       * See <microcode/primutl.c>:copy_primitive_information() for details.
+       *
+       * For comparison, see <microcode/primutl.c>:install_primitive_table().
+       *
+       */
       for (count = 0;
 	   ((count < entries) && (Next < end_of_memory));
 	   count += 1)
       {
 	arity = (FIXNUM_TO_LONG (*Next));
 	Next += 1;
-	size = (OBJECT_DATUM (*Next));
+	size = (OBJECT_DATUM (*Next)); /* word count of Scheme char string */
+
 	printf ("Number = %3lx; Arity = %2ld; Name = ", count, arity);
 	scheme_string ((Next - Data), true);
 	Next += (1 + size);
