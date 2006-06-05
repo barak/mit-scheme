@@ -1,8 +1,8 @@
-# -*-Makefile-*-
+# -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.26 2006/06/03 08:10:10 ihtfisp Exp $
+# $Id: Makefile.in.in,v 1.27 2006/06/05 09:49:02 ihtfisp Exp $
 #
-# Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+# Copyright 2000-2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -166,9 +166,9 @@ psbtobin_DEPENDENCIES =
 psbtobin_LDFLAGS = 
 psbtobin_LIBS = $(LIBS)
 
-ppband_SOURCES = ppband.c outf.c load.c
+ppband_SOURCES = ppband.c outf.c
 ppband_OBJECTS = ppband.o outf.o
-ppband_DEPENDENCIES = 
+ppband_DEPENDENCIES = load.c storage.c
 ppband_LDFLAGS = 
 ppband_LIBS = $(LIBS)
 
