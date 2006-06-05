@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.57 2006/06/05 13:02:51 ihtfisp Exp $
+$Id: ppband.c,v 9.58 2006/06/05 13:08:08 ihtfisp Exp $
 
 Copyright (c) 1987-2006 Massachusetts Institute of Technology
 
@@ -382,6 +382,10 @@ DEFUN (Display, (Location, Type, The_Datum),
       NON_POINTER (Type_Names[Type]);
       break;
 
+    case TC_LIST:
+      POINTER ("PAIR");		/* See comment for LIST in "sdata.h". */
+      break;
+
     case TC_INTERNED_SYMBOL:
       PRINT_OBJECT ("INTERNED-SYMBOL", Points_To);
       printf (" = ");
