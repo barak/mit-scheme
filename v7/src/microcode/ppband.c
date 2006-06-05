@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.60 2006/06/05 15:04:20 ihtfisp Exp $
+$Id: ppband.c,v 9.61 2006/06/05 17:02:25 ihtfisp Exp $
 
 Copyright (c) 1987-2006 Massachusetts Institute of Technology
 
@@ -88,13 +88,13 @@ USA.
 
 void
 DEFUN (gc_death, (code, message, scan, free),
-       signed long code
+       signed long code		/* So says "gccode.h", anyway. */
        AND char * message
        AND SCHEME_OBJECT * scan
        AND SCHEME_OBJECT * free)
 {
   outf_fatal ("\n");
-  outf_fatal ("gc_death:  %s.\n", message);
+  outf_fatal ("gc_death [%s = 0x%lx]: %s.\n", Term_Names[code], code, message);
   outf_fatal ("scan = 0x%lx; free = 0x%lx\n", scan, free);
 
   exit (1);
@@ -117,8 +117,8 @@ extern off_t EXFUN (OS2_fwrite, (char *, unsigned int, off_t, FILE *));
 
 #endif /* OS2 */
 
-long
-DEFUN (Load_Data, (Count, To_Where), long Count AND SCHEME_OBJECT *To_Where)
+unsigned long
+DEFUN (Load_Data, (Count, To_Where), unsigned long Count AND SCHEME_OBJECT *To_Where)
 {
 #ifdef OS2
   setmode ((fileno (stdin)), O_BINARY);
@@ -135,36 +135,47 @@ DEFUN (Load_Data, (Count, To_Where), long Count AND SCHEME_OBJECT *To_Where)
 #include "load.c"
 
 #ifdef HEAP_IN_LOW_MEMORY
-#if defined(hp9000s800) || defined(__hp9000s800)
+#  if defined(hp9000s800) || defined(__hp9000s800)
+#    define File_To_Pointer(P)						\
+        ((((unsigned long) (P)) & DATUM_MASK) / (sizeof (SCHEME_OBJECT)))
+#  else
+#    define File_To_Pointer(P)						\
+         (((unsigned long) (P))               / (sizeof (SCHEME_OBJECT)))
+#  endif /* [__]hp9000s800 */
+#else
 #  define File_To_Pointer(P)						\
-    ((((long) (P)) & DATUM_MASK) / (sizeof (SCHEME_OBJECT)))
-#else
-#  define File_To_Pointer(P) ((P) / (sizeof (SCHEME_OBJECT)))
-#endif /* hp9000s800 */
-#else
-#  define File_To_Pointer(P) (P)
-#endif
+        ((unsigned long) (P))
+#endif /* HEAP_IN_LOW_MEMORY */
+
 
 #ifndef Conditional_Bug
-#  define Relocate(P)							\
-	(((long) (P) < Const_Base) ?					\
-	 (File_To_Pointer (((long) (P)) - Heap_Base)) :			\
-	 (Heap_Count + (File_To_Pointer (((long) (P)) - Const_Base))))
-#else
-#  define Relocate_Into(What, P)					\
-if (((long) (P)) < Const_Base)						\
-  (What) = (File_To_Pointer (((long) (P)) - Heap_Base));		\
-else									\
-  (What) = Heap_Count + (File_To_Pointer (((long) P) - Const_Base));
 
-static long Relocate_Temp;
-#  define Relocate(P)	(Relocate_Into (Relocate_Temp, P), Relocate_Temp)
-#endif
+#  define Relocate(P)							\
+(((unsigned long) (P) < Const_Base) ?					\
+ (File_To_Pointer (((unsigned long) (P)) - Heap_Base)) :		\
+ (Heap_Count + (File_To_Pointer (((unsigned long) (P)) - Const_Base))))
+
+#else
+
+   static unsigned long  Relocate_Temp;
+
+#  define Relocate(P)							\
+         (Relocate_Into (Relocate_Temp, P), Relocate_Temp)
+
+#  define Relocate_Into(What, P)					\
+	if (((unsigned long) (P)) < Const_Base)				\
+	  (What) = (File_To_Pointer (((unsigned long) (P)) - Heap_Base))\
+	else								\
+	  (What) = (Heap_Count +					\
+		    (File_To_Pointer (((unsigned long) P) - Const_Base)))
+
+#endif /* Conditional_Bug */
+
 
 static SCHEME_OBJECT *Data, *end_of_memory;
 
 void
-DEFUN (print_long_as_string, (string), char *string)
+DEFUN (print_scheme_object_as_string, (string), char *string)
 {
   int i;
   char *temp;
@@ -172,7 +183,7 @@ DEFUN (print_long_as_string, (string), char *string)
 
   temp = string;
   putchar ('"');
-  for (i = 0; i < (sizeof (long)); i++)
+  for (i = 0; i < (sizeof (SCHEME_OBJECT)); i++)
   {
     c = *temp++;
     if (isgraph ((int) c))
@@ -183,7 +194,7 @@ DEFUN (print_long_as_string, (string), char *string)
   printf ("\" = ");
 
   temp = string;
-  for (i = 0; i < (sizeof (long)); i++)
+  for (i = 0; i < (sizeof (SCHEME_OBJECT)); i++)
   {
     c = *temp++;
     if (isgraph ((int) c))
@@ -245,16 +256,16 @@ DEFUN (print_long_as_string, (string), char *string)
 }
 
 Boolean
-DEFUN (scheme_string, (From, Quoted), long From AND Boolean Quoted)
+DEFUN (scheme_string, (From, Quoted), unsigned long From AND Boolean Quoted)
 {
-  fast long i, Count;
+  fast unsigned long i, Count;
   fast char *Chars;
 
   Chars = ((char *) &Data[From +  STRING_CHARS]);
   if ((Chars < ((char *) end_of_memory))
       && (Chars >= ((char *) Data)))
   {
-    Count = ((long) (Data[From + STRING_LENGTH_INDEX]));
+    Count = ((unsigned long) (Data[From + STRING_LENGTH_INDEX]));
     if (&Chars[Count] < ((char *) end_of_memory))
     {
       if (Quoted)
@@ -275,7 +286,7 @@ DEFUN (scheme_string, (From, Quoted), long From AND Boolean Quoted)
 #define via(File_Address) Relocate (OBJECT_DATUM (Data[File_Address]))
 
 void
-DEFUN (scheme_symbol, (From), long From)
+DEFUN (scheme_symbol, (From), unsigned long From)
 {
   SCHEME_OBJECT *symbol;
 
@@ -305,9 +316,9 @@ DEFUN (scheme_symbol, (From), long From)
 #  error "`ppband' assumes that (CHAR_BIT == 8) is true."
 #endif
 
-forward void EXFUN (Display, (long Location,
-			      long Type,
-			      long The_Datum));
+forward void EXFUN (Display, (unsigned long Location,
+			      unsigned long Type,
+			      unsigned long The_Datum));
 void
 DEFUN (Display_raw_type_dat_Scheme_object, (Location, Count, Area),
        fast unsigned long Location AND
@@ -326,7 +337,7 @@ DEFUN (Display_raw_type_dat_Scheme_object, (Location, Count, Area),
 
 void
 DEFUN (Display_raw_hilo_hex_Scheme_object, (Location, Count, Area),
-       fast unsigned long Location AND /* unused - For tracking */
+       fast unsigned long Location AND /* unused - For tracing */
        fast unsigned long Count AND
        fast SCHEME_OBJECT *Area)
 {
@@ -339,7 +350,7 @@ DEFUN (Display_raw_hilo_hex_Scheme_object, (Location, Count, Area),
 	    Location+i,
 	    UNSIGNED_LONG_HIGH_HALF((unsigned long) (* (Area+i))),
 	    UNSIGNED_LONG_LOW_HALF( (unsigned long) (* (Area+i))));
-    print_long_as_string ((char *) (Area+i));
+    print_scheme_object_as_string ((char *) (Area+i));
     putchar ('\n');
   }
 }
@@ -362,18 +373,18 @@ DEFUN (Display_raw_hilo_hex_Scheme_object, (Location, Count, Area),
 
 // char *Type_Names[] = TYPE_NAME_TABLE; /* We get this now from "storage.c" */
 
-forward Boolean EXFUN (Display_constant, (long Location,
-					  long Type,
-					  long The_Datum));
+forward Boolean EXFUN (Display_constant, (unsigned long Location,
+					  unsigned long Type,
+					  unsigned long The_Datum));
 void
 DEFUN (Display, (Location, Type, The_Datum),
-                 long Location AND
-                 long Type AND
-                 long The_Datum)
+                 unsigned long Location AND
+                 unsigned long Type AND
+                 unsigned long The_Datum)
 {
   char string_buf[100];
   char *the_string;
-  long Points_To;
+  unsigned long Points_To;
 
   printf (Display_LOC_TYPE_DAT_FORMAT_STRING, Location, Type, The_Datum);
   Points_To = Relocate ((SCHEME_OBJECT *) The_Datum);
@@ -439,7 +450,7 @@ DEFUN (Display, (Location, Type, The_Datum),
     case TC_FIXNUM:
       PRINT_OBJECT ("FIXNUM", The_Datum);
       Points_To = (FIXNUM_TO_LONG ((MAKE_OBJECT (Type, The_Datum))));
-      printf (" = %ld\n", Points_To);
+      printf (" = %ld\n", ((signed long) Points_To));
       return;
 
     case TC_REFERENCE_TRAP:
@@ -463,7 +474,7 @@ DEFUN (Display, (Location, Type, The_Datum),
       break;
   }
   PRINT_OBJECT (the_string, Points_To);
-  printf ("\tDatum = %ld (%lu)\n", Points_To, The_Datum);
+  printf ("\tDatum = %ld (%lu)\n", ((signed long) Points_To), The_Datum);
   return;
 }
 
@@ -471,9 +482,9 @@ DEFUN (Display, (Location, Type, The_Datum),
 
 Boolean
 DEFUN (Display_constant, (Location, Type, The_Datum),
-			  long Location AND /* unused - For tracking */
-			  long Type     AND /* unused - For tracking */
-			  long The_Datum)
+			  unsigned long Location AND /* unused - For tracing */
+			  unsigned long Type     AND /* unused - For tracing */
+			  unsigned long The_Datum)
 {
   switch (The_Datum)		/* See "const.h". */
     {
@@ -539,8 +550,8 @@ unsigned long EXFUN (show_area_raw_hex_count_for_special_non_pointer_types,
 SCHEME_OBJECT *
 DEFUN (show_area, (area, start, end, name),
        fast SCHEME_OBJECT *area AND
-       long start AND
-       fast long end AND
+       unsigned long start AND
+       fast unsigned long end AND
        char *name)
 {
   /*
@@ -562,7 +573,7 @@ DEFUN (show_area, (area, start, end, name),
    *
    */
 
-  fast long i;
+  fast unsigned long i;
 
   printf ("\n");
   printf ("\n===========================================================");
@@ -728,18 +739,18 @@ DEFUN (main, (argc, argv),
   while (1)
   {
     fast SCHEME_OBJECT *Next = ((SCHEME_OBJECT *) NULL);
-    long total_length, load_length;
+    unsigned long total_length, load_length;
 
 #ifdef ENABLE_PPBAND_DEBUGGING_TOOLS_STORAGE_LAYOUT_DISPLAY
     /* debug hooks */
-    long  Heap_first,  Heap_last,  Heap_size,  Heap_length,  Heap_top;
-    long Const_first, Const_last, Const_size, Const_length, Const_top;
-    long Prims_first, Prims_last, Prims_size, Prims_length;
-    long CCode_first, CCode_last, CCode_size, CCode_length;
+    unsigned long  Heap_first,  Heap_last,  Heap_size,  Heap_length,  Heap_top;
+    unsigned long Const_first, Const_last, Const_size, Const_length, Const_top;
+    unsigned long Prims_first, Prims_last, Prims_size, Prims_length;
+    unsigned long CCode_first, CCode_last, CCode_size, CCode_length;
 
     /* debug hooks for symmetry w.r.t. Heap and Constant spaces */
-    long Prims_count;
-    long CCode_count;
+    unsigned long Prims_count;
+    unsigned long CCode_count;
 #endif
 
     if (argc == 1)
@@ -782,9 +793,9 @@ DEFUN (main, (argc, argv),
       C_Code_Table_Size = 0;
 
       /* Fake minimal bases to keep RELOCATE/Data_Load() happy */
-      sscanf (argv[1], mbase_format_string, ((long) &Heap_Base));
-      sscanf (argv[2], mbase_format_string, ((long) &Const_Base));
-      sscanf (argv[3], count_format_string, ((long) &Heap_Count));
+      sscanf (argv[1], mbase_format_string, ((unsigned long) &Heap_Base));
+      sscanf (argv[2], mbase_format_string, ((unsigned long) &Const_Base));
+      sscanf (argv[3], count_format_string, ((unsigned long) &Heap_Count));
       printf ("Heap Base = 0x%lx; Constant Base = 0x%lx; Heap Count = %lu\n",
 	      Heap_Base, Const_Base, Heap_Count);
     }
@@ -932,8 +943,8 @@ DEFUN (main, (argc, argv),
     if (total_length != load_length)
     {
       printf ("The FASL file does not have the right length.\n");
-      printf ("Expected %ld objects.  Obtained %ld objects.\n\n",
-	      ((long) load_length), ((long) total_length));
+      printf ("Expected %lu objects.  Obtained %lu objects.\n\n",
+	      ((unsigned long) load_length), ((unsigned long) total_length));
       /*
        * The following truncates area counts/sizes upon running out of Data
        * space.  The first area that is too big to fit and all those checked
@@ -961,8 +972,9 @@ DEFUN (main, (argc, argv),
       Next = show_area (Next, Heap_Count, (Heap_Count + Const_Count), "Constant Space");
     if ((Primitive_Table_Size > 0) && (Next < end_of_memory))
     {
-      long arity, size;
-      fast long entries, count;
+        signed long arity;	/* Note:  LEXPR and UNKNOWN prim arity < 0. */
+      unsigned long size;
+      fast unsigned long entries, count;
 
       /* This is done in case the file is short.  See `<EOM>' marker above. */
       end_of_memory[0] = ((SCHEME_OBJECT) 0);
@@ -1040,8 +1052,8 @@ DEFUN (main, (argc, argv),
 
     if ((C_Code_Table_Size > 0) && (Next < end_of_memory))
     {
-      long dumped_initial_entry_number, nentries;
-      fast long entries, count;
+      unsigned long dumped_initial_entry_number, nentries;
+      fast unsigned long entries, count;
 
       /* This is done in case the file is short.  See `<EOM>' marker above. */
       end_of_memory[0] = ((SCHEME_OBJECT) 0);
