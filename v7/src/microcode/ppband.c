@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.53 2006/06/03 08:05:20 ihtfisp Exp $
+$Id: ppband.c,v 9.54 2006/06/05 09:51:07 ihtfisp Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,6 +44,9 @@ USA.
 
    extern void EXFUN (exit, (int));
 #endif
+
+
+#include "storage.c"		/* For `Type_Names' and "gctype.c" goodies */
 
 
 #undef HEAP_MALLOC
@@ -127,7 +130,7 @@ static long Relocate_Temp;
 #endif
 
 static SCHEME_OBJECT *Data, *end_of_memory;
-
+
 void
 DEFUN (print_long_as_string, (string), char *string)
 {
@@ -251,6 +254,60 @@ DEFUN (scheme_symbol, (From), long From)
   return;
 }
 
+#if (CHAR_BIT == 8)
+#  if (SIZEOF_UNSIGNED_LONG == 4)	/* 32-bit word versions */
+#    if (TYPE_CODE_LENGTH == 8) /* So DATUM_LENGTH == 24, so ----v */
+#      define Display_LOC_TYPE_DAT_FORMAT_STRING "%6lx:    %2lx|%6lx   "
+#      define Display_LOC_DATA_RAW_FORMAT_STRING "          %08lx    = "
+#    endif
+#    if (TYPE_CODE_LENGTH == 6)	/* So DATUM_LENGTH == 26, so ---v */
+#      define Display_LOC_TYPE_DAT_FORMAT_STRING "%7lx:   %2lx|%7lx  "
+#      define Display_LOC_DATA_RAW_FORMAT_STRING "          %08lx    = "
+#    endif
+#  else
+#    error "`ppband' assumes that (SIZEOF_UNSIGNED_LONG == 4) is true."
+#  endif
+#else
+#  error "`ppband' assumes that (CHAR_BIT == 8) is true."
+#endif
+
+forward void EXFUN (Display, (long Location,
+			      long Type,
+			      long The_Datum));
+void
+DEFUN (Display_raw_type_dat_Scheme_object, (Location, Count, Area),
+       fast unsigned long Location AND
+       fast unsigned long Count AND
+       fast SCHEME_OBJECT *Area)
+{
+  fast unsigned long i;
+
+  for (i = 0; ((i < Count) && (Area+i < end_of_memory)); i += 1)
+  {
+    /* Show as deconstructed raw Scheme datum. */
+    Display (Location+i, (OBJECT_TYPE ((* (Area+i)))),
+	     /**/       (OBJECT_DATUM ((* (Area+i)))));
+  }
+}
+
+void
+DEFUN (Display_raw_data_hex_Scheme_object, (Location, Count, Area),
+       fast unsigned long Location AND /* unused - For tracking */
+       fast unsigned long Count AND
+       fast SCHEME_OBJECT *Area)
+{
+  fast unsigned long i;
+
+  for (i = 0; ((i < Count) && (Area+i < end_of_memory)); i += 1)
+  {
+    /* Show as raw hex anything that cannot be scanned as Scheme data. */
+    printf (Display_LOC_DATA_RAW_FORMAT_STRING,
+	    ((unsigned long) (* (Area+i))));
+    print_long_as_string ((char *) (Area+i));
+    putchar ('\n');
+  }
+}
+
 #define PRINT_OBJECT(type, datum) do					\
 {									\
   printf ("[%s %lx]", type, datum);					\
@@ -260,16 +317,14 @@ DEFUN (scheme_symbol, (From), long From)
 {									\
   the_string = string;							\
   Points_To = The_Datum;						\
-  break;								\
 } while (0)
 
 #define POINTER(string) do						\
 {									\
   the_string = string;							\
-  break;								\
 } while (0)
 
-char *Type_Names[] = TYPE_NAME_TABLE;
+// char *Type_Names[] = TYPE_NAME_TABLE; /* We get this now from "storage.c" */
 
 void
 DEFUN (Display, (Location, Type, The_Datum),
@@ -281,7 +336,7 @@ DEFUN (Display, (Location, Type, The_Datum),
   char *the_string;
   long Points_To;
 
-  printf ("%5lx: %2lx|%6lx     ", Location, Type, The_Datum);
+  printf (Display_LOC_TYPE_DAT_FORMAT_STRING, Location, Type, The_Datum);
   Points_To = Relocate ((SCHEME_OBJECT *) The_Datum);
 
   switch (Type)
@@ -292,7 +347,8 @@ DEFUN (Display, (Location, Type, The_Datum),
 	printf ("#F\n");
 	return;
       }
-      NON_POINTER ("NULL");
+      NON_POINTER ("MANIFEST-VECTOR");	/* "types.h" defines this alias. */
+      break;
 
     case TC_CONSTANT:
       if (The_Datum == 0)
@@ -300,8 +356,9 @@ DEFUN (Display, (Location, Type, The_Datum),
 	printf ("#T\n");
 	return;
       }
-      /* fall through */
-
+      else
+	NON_POINTER ("MAGIC_CONSTANT"); /* "const.h" implies this alias. */
+      break;
 
     case TC_CHARACTER:
     case TC_RETURN_CODE:
@@ -310,7 +367,11 @@ DEFUN (Display, (Location, Type, The_Datum),
     case TC_PCOMB0:
     case TC_MANIFEST_SPECIAL_NM_VECTOR:
     case TC_MANIFEST_NM_VECTOR:
+    case TC_MANIFEST_CLOSURE:
+    case TC_STACK_ENVIRONMENT:
+    case TC_LINKAGE_SECTION:
       NON_POINTER (Type_Names[Type]);
+      break;
 
     case TC_INTERNED_SYMBOL:
       PRINT_OBJECT ("INTERNED-SYMBOL", Points_To);
@@ -341,6 +402,7 @@ DEFUN (Display, (Location, Type, The_Datum),
 	NON_POINTER ("REFERENCE-TRAP");
       else
 	POINTER ("REFERENCE-TRAP");
+      break;
 
     case TC_BROKEN_HEART:
       if (The_Datum == 0)
@@ -353,12 +415,17 @@ DEFUN (Display, (Location, Type, The_Datum),
 	sprintf (&string_buf[0], "0x%02lx ", Type);
 	POINTER (&string_buf[0]);
       }
+      break;
   }
   PRINT_OBJECT (the_string, Points_To);
   putchar ('\n');
   return;
 }
 
+forward \
+unsigned long EXFUN (show_area_raw_hex_count_for_special_non_pointer_types,
+		     (fast SCHEME_OBJECT *));
+
 SCHEME_OBJECT *
 DEFUN (show_area, (area, start, end, name),
        fast SCHEME_OBJECT *area AND
@@ -366,36 +433,176 @@ DEFUN (show_area, (area, start, end, name),
        fast long end AND
        char *name)
 {
+  /*
+   * Begin update of old ver.9.50 of 2000/12/05 (this file) to match the more
+   *  current "uxtrap.c" ver.1.31 of 2001/12/16.  This file had bit rotted.
+   *
+   * Old code was botching counts so could get out of step w/ data in memory:
+   *
+   *   count =
+   *	((OBJECT_TYPE (*area) == TC_LINKAGE_SECTION)
+   *	 ? (READ_CACHE_LINKAGE_COUNT (*area))
+   *	 : (OBJECT_DATUM (*area)));
+   *
+   * New code avoids direct counts in favor of direct `area' computations since
+   *   the "cmpgc.h" COUNT/END macros automagically scale by entry sizes while
+   *   also skipping intervening headers & format words and accommodating both
+   *   short and long object formats for TC_MANIFEST_CLOSUREs (all of which the
+   *   old bit-rotted code was now botching here in the future).
+   *
+   */
+
   fast long i;
 
   printf ("\n%s contents:\n\n", name);
   for (i = start; i < end;  area++, i++)
   {
-    if (((OBJECT_TYPE (*area)) == TC_MANIFEST_NM_VECTOR) ||
-	((OBJECT_TYPE (*area)) == TC_MANIFEST_CLOSURE) ||
-	((OBJECT_TYPE (*area)) == TC_LINKAGE_SECTION))
-    {
-      fast long j, count;
+    /* Show object header */
+    Display (i, (OBJECT_TYPE (*area)), (OBJECT_DATUM (*area)));
 
-      count =
-	((OBJECT_TYPE (*area) == TC_LINKAGE_SECTION)
-	 ? (READ_CACHE_LINKAGE_COUNT (*area))
-	 : (OBJECT_DATUM (*area)));
-      Display (i, (OBJECT_TYPE (*area)), (OBJECT_DATUM (*area)));
-      area += 1;
-      for (j = 0; j < count ; j++, area++)
-      {
-        printf ("          %08lx    = ", ((unsigned long) (*area)));
-	print_long_as_string ((char *) area);
-	putchar ('\n');
-      }
-      i += count;
-      area -= 1;
+    /* Show object contents as raw hex bits if it's a non-scannable region */
+    if (GC_Type_Special(*area))	/* Courtesy "gc.h"<-"gctype.c"<-"storage.c" */
+    {
+      fast unsigned long count;
+
+      count = show_area_raw_hex_count_for_special_non_pointer_types(area);
+
+      Display_raw_data_hex_Scheme_object ((i + 1), count, (area + 1));
+
+      i    += count; /* Loopy `i++' will count the header we also Display'd. */
+      area += count; /* Ditto `area++'. */
     }
-    else
-      Display (i, (OBJECT_TYPE (*area)), (OBJECT_DATUM (*area)));
   }
   return (area);
+}
+
+unsigned long
+DEFUN (show_area_raw_hex_count_for_special_non_pointer_types, (area),
+       fast SCHEME_OBJECT *area)
+{
+  fast unsigned long raw_hex_count; /* computed indirectly via `area_end' */
+
+  /*
+   * Begin update of old ver.9.50 of 2000/12/05 (this file) to match the more
+   *  current "uxtrap.c" ver.1.31 of 2001/12/16.  This file had bit rotted.
+   *
+   * Old code was botching counts so could get out of step w/ data in memory.
+   *
+   * New code avoids direct counts in favor of direct `area' computations since
+   *   the "cmpgc.h" COUNT/END macros automagically scale by entry sizes while
+   *   also skipping intervening headers & format words and accommodating both
+   *   short and long object formats for TC_MANIFEST_CLOSUREs (all of which the
+   *   old bit-rotted code was now botching here in the future).
+   *
+   * For details, see fasdump.c, fasload.c, gcloop.c, purify.c, bintopsb.c, &c.
+   *
+   * For comparison, see skippy `uxtrap.c:find_block_address_in_area()' code.
+   *
+   * Note that we compute END-style ``one-object-shy-of-the-first-byte-after''
+   * area pointers (called `area_end') since:  a) the END-macro based cases
+   * already compute this directly, while:  b) the COUNT-macro based cases can
+   * ``cheat'' by just adding the computed count to AREA, ignoring the header,
+   * to (in effect) also compute an END-like area pointer one shy of the first
+   * byte after the end of the object data.  This allows all cases to share
+   * a common ``show-the-raw-hex'' code block at the end of the loop.
+   *
+   */
+
+  fast SCHEME_OBJECT * area_end; /* value for AREA when pointing at last obj */
+  {
+      fast SCHEME_OBJECT object = (*area); /* current candidate */
+
+      Switch_by_GC_Type(object)	/* Courtesy of "gccode.h" (q.v.) */
+	{
+	case TC_LINKAGE_SECTION:
+	  {
+	    switch (READ_LINKAGE_KIND (object))
+	      {
+	      case GLOBAL_OPERATOR_LINKAGE_KIND:
+	      case        OPERATOR_LINKAGE_KIND:
+		{
+		  unsigned long \
+		    count  = (READ_OPERATOR_LINKAGE_COUNT (object));
+		  area_end =  (END_OPERATOR_LINKAGE_AREA (area, count));
+		}
+		break;
+
+	      default:	/* This should never arise in true linkage sections. */
+#if BAD_TYPES_LETHAL	/* This is handy for gdbugging:  please don't delete.*/
+		{
+		  char gc_death_message_buffer[100];
+
+		  sprintf(gc_death_message_buffer,
+			  "show_area:  Unknown compiler linkage kind (0x%lx).",
+			  ((unsigned long) (OBJECT_TYPE (object))));
+
+		  gc_death (TERM_EXIT, gc_death_message_buffer, area, NULL);
+		  /*NOTREACHED*/
+		}
+#else
+		/* Fall through, no reason to crash here. */
+#endif
+	      case       REFERENCE_LINKAGE_KIND:
+	      case      ASSIGNMENT_LINKAGE_KIND:
+	      case CLOSURE_PATTERN_LINKAGE_KIND:
+		{
+		  unsigned long \
+		    count  = (READ_CACHE_LINKAGE_COUNT (object));
+		  area_end = (area + count); /* Cheat:  ignores header */
+		}
+		break;
+	      }	/* End `switch' on READ_LINKAGE_KIND */
+	  }
+	  break;
+
+	case TC_MANIFEST_CLOSURE:
+	  {
+	    SCHEME_OBJECT * word_after_header = (area + 1); /* Cf. "cmpgc.h" */
+	    {
+	      unsigned long \
+	        count  =  (MANIFEST_CLOSURE_COUNT (word_after_header));
+	      area_end =  (MANIFEST_CLOSURE_END   (area, count)); /* Cheat!! */
+	    }
+	  }
+	  break;
+
+	case TC_MANIFEST_NM_VECTOR:
+	  {
+	    {
+	      unsigned long \
+	        count  = (OBJECT_DATUM (object));
+	      area_end = (area + count); /* Cheat:  ignores header */
+	    }
+	  }
+	  break;
+
+	default:
+	  /* Missing Non Pointer types (must always be treated specially):
+
+	     TC_BROKEN_HEART
+	     TC_MANIFEST_SPECIAL_NM_VECTOR
+	     TC_REFERENCE_TRAP
+
+	     ...are handled by the `Display' procedure w/o resorting to a block
+	     of raw hex spewage, thank you very much.  MANIFEST_SPECIAL_NM_VECT
+	     is just a noise header, for example, with no non-scannable data
+	     following it.  The other two cases are handled similarly.
+	  */
+	  {
+	    area_end = area;	/* i.e., nothing to show as raw bits, thanks */
+	  }
+	  break;
+
+	} /* End `switch' GC_Type() case analysis */
+
+    } /* End of `area_end' replacement for rotted old `count' computation */
+
+
+  /* Compulsively name return values to make the code more self-documenting. */
+
+  raw_hex_count = (area_end - area);
+
+  return(raw_hex_count);
 }
 
 int
@@ -481,7 +688,7 @@ DEFUN (main, (argc, argv),
     if (Heap_Count > 0)
       Next = show_area (Data, 0, Heap_Count, "Heap");
     if (Const_Count > 0)
-      Next = show_area (Next, Heap_Count, Const_Count, "Constant Space");
+      Next = show_area (Next, Heap_Count, (Heap_Count + Const_Count), "Constant Space");
     if ((Primitive_Table_Size > 0) && (Next < end_of_memory))
     {
       long arity, size;
