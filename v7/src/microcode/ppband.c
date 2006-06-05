@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.58 2006/06/05 13:08:08 ihtfisp Exp $
+$Id: ppband.c,v 9.59 2006/06/05 14:29:12 ihtfisp Exp $
 
 Copyright (c) 1987-2006 Massachusetts Institute of Technology
 
@@ -53,9 +53,21 @@ USA.
 #include "storage.c"		/* For `Type_Names' and "gctype.c" goodies */
 
 
+#if (CHAR_BIT == 8)
+#  if (SIZEOF_UNSIGNED_LONG == 4)	/* 32-bit word versions */
+#    define UNSIGNED_LONG_HIGH_HALF(unsigned_long) ((unsigned_long) >> 16)
+#    define UNSIGNED_LONG_LOW_HALF(unsigned_long)  ((unsigned_long) & 0xFFFF)
+#  else
+#    error "`ppband' assumes that (SIZEOF_UNSIGNED_LONG == 4) is true."
+#  endif
+#else
+#  error "`ppband' assumes that (CHAR_BIT == 8) is true."
+#endif
+
+
 #undef HEAP_MALLOC
 #define HEAP_MALLOC malloc
-
+
 /* These are needed when there is no compiler support. */
 
 extern void EXFUN (gc_death,
@@ -240,8 +252,8 @@ DEFUN (scheme_string, (From, Quoted), long From AND Boolean Quoted)
     }
   }
   if (Quoted)
-    printf ("String not in memory; datum = %lx\n", From);
-  return (false);
+    printf ("String not in memory; datum = 0x%lx\n", From);
+  return (false);		/*        <0x><> */
 }
 
 #define via(File_Address) Relocate (OBJECT_DATUM (Data[File_Address]))
@@ -254,19 +266,21 @@ DEFUN (scheme_symbol, (From), long From)
   symbol = &Data[From+SYMBOL_NAME];
   if ((symbol >= end_of_memory) ||
       (!(scheme_string (via (From + SYMBOL_NAME), false))))
-    printf ("symbol not in memory; datum = %lx\n", From);
-  return;
+    printf ("Symbol not in memory; datum = 0x%lx\n", From);
+  return; /*<S><>*/                    /* <0x><> */
 }
 
 #if (CHAR_BIT == 8)
 #  if (SIZEOF_UNSIGNED_LONG == 4)	/* 32-bit word versions */
 #    if (TYPE_CODE_LENGTH == 8) /* So DATUM_LENGTH == 24, so ----v */
 #      define Display_LOC_TYPE_DAT_FORMAT_STRING "%6lx:    %2lx|%6lx   "
-#      define Display_LOC_DATA_RAW_FORMAT_STRING "          %08lx    = "
+#      define Display_LOC_HILO_RAW_FORMAT_STRING "%6lx:                "\
+                                                "[%04lx|%04lx]  =  "
 #    endif
 #    if (TYPE_CODE_LENGTH == 6)	/* So DATUM_LENGTH == 26, so ---v */
 #      define Display_LOC_TYPE_DAT_FORMAT_STRING "%7lx:   %2lx|%7lx  "
-#      define Display_LOC_DATA_RAW_FORMAT_STRING "          %08lx    = "
+#      define Display_LOC_HILO_RAW_FORMAT_STRING "%7lx:               "\
+                                                "[%04lx|%04lx]  =  "
 #    endif
 #  else
 #    error "`ppband' assumes that (SIZEOF_UNSIGNED_LONG == 4) is true."
@@ -295,7 +309,7 @@ DEFUN (Display_raw_type_dat_Scheme_object, (Location, Count, Area),
 }
 
 void
-DEFUN (Display_raw_data_hex_Scheme_object, (Location, Count, Area),
+DEFUN (Display_raw_hilo_hex_Scheme_object, (Location, Count, Area),
        fast unsigned long Location AND /* unused - For tracking */
        fast unsigned long Count AND
        fast SCHEME_OBJECT *Area)
@@ -305,8 +319,10 @@ DEFUN (Display_raw_data_hex_Scheme_object, (Location, Count, Area),
   for (i = 0; ((i < Count) && (Area+i < end_of_memory)); i += 1)
   {
     /* Show as raw hex anything that cannot be scanned as Scheme data. */
-    printf (Display_LOC_DATA_RAW_FORMAT_STRING,
-	    ((unsigned long) (* (Area+i))));
+    printf (Display_LOC_HILO_RAW_FORMAT_STRING,
+	    Location+i,
+	    UNSIGNED_LONG_HIGH_HALF((unsigned long) (* (Area+i))),
+	    UNSIGNED_LONG_LOW_HALF( (unsigned long) (* (Area+i))));
     print_long_as_string ((char *) (Area+i));
     putchar ('\n');
   }
@@ -314,8 +330,8 @@ DEFUN (Display_raw_data_hex_Scheme_object, (Location, Count, Area),
 
 #define PRINT_OBJECT(type, datum) do					\
 {									\
-  printf ("[%s %lx]", type, datum);					\
-} while (0)
+  printf ("[%s 0x%lx]", type, datum);					\
+} while (0) /*<0x><>*/
 
 #define NON_POINTER(string) do						\
 {									\
@@ -431,7 +447,7 @@ DEFUN (Display, (Location, Type, The_Datum),
       break;
   }
   PRINT_OBJECT (the_string, Points_To);
-  putchar ('\n');
+  printf ("\tDatum = %ld (%lu)\n", Points_To, The_Datum);
   return;
 }
 
@@ -532,7 +548,10 @@ DEFUN (show_area, (area, start, end, name),
 
   fast long i;
 
+  printf ("\n");
+  printf ("\n===========================================================");
   printf ("\n%s contents:\n\n", name);
+
   for (i = start; i < end;  area++, i++)
   {
     /* Show object header */
@@ -545,7 +564,7 @@ DEFUN (show_area, (area, start, end, name),
 
       count = show_area_raw_hex_count_for_special_non_pointer_types(area);
 
-      Display_raw_data_hex_Scheme_object ((i + 1), count, (area + 1));
+      Display_raw_hilo_hex_Scheme_object ((i + 1), count, (area + 1));
 
       i    += count; /* Loopy `i++' will count the header we also Display'd. */
       area += count; /* Ditto `area++'. */
@@ -738,7 +757,7 @@ DEFUN (main, (argc, argv),
       sscanf (argv[1], mbase_format_string, ((long) &Heap_Base));
       sscanf (argv[2], mbase_format_string, ((long) &Const_Base));
       sscanf (argv[3], count_format_string, ((long) &Heap_Count));
-      printf ("Heap Base = 0x%lx; Constant Base = 0x%lx; Heap Count = %ld\n",
+      printf ("Heap Base = 0x%lx; Constant Base = 0x%lx; Heap Count = %lu\n",
 	      Heap_Base, Const_Base, Heap_Count);
     }
 
@@ -830,7 +849,12 @@ DEFUN (main, (argc, argv),
 
       printf ("\n");
 
-      printf ("\nPrimitive table: number of entries = %ld\n\n", entries);
+      printf ("\n===========================================================");
+      printf ("\nPrimitive Table contents:\n");
+
+      printf ("\n---------------");
+      printf ("\nPrimitive table:  Number of entries = %lu (0x%03lx)\n\n",
+	      entries, entries);
       /*
        * For each primitive existent in the world, fasdump dumps its arity
        * and name string at the end of the fasdump file.  Show them now.
@@ -847,8 +871,8 @@ DEFUN (main, (argc, argv),
 	arity = (FIXNUM_TO_LONG (*Next));
 	Next += 1;
 	size = (OBJECT_DATUM (*Next)); /* word count of Scheme char string */
-
-	printf ("Number = %3lx; Arity = %2ld; Name = ", count, arity);
+	/**/          /* <0x><><%0> */
+	printf ("Number = 0x%03lx; Arity = %2ld; Name = ", count, arity);
 	scheme_string ((Next - Data), true);
 	Next += (1 + size);
       }
@@ -870,7 +894,12 @@ DEFUN (main, (argc, argv),
 
       printf ("\n");
 
-      printf ("\nC Code table: number of entries = %ld\n\n", entries);
+      printf ("\n===========================================================");
+      printf ("\nC Code Table contents:\n");
+
+      printf ("\n------------");
+      printf ("\nC Code table:  Number of entries = %lu (0x%03lx)\n\n",
+	      entries, entries);
 
       /* See: <microcode/cmpauxmd/c.c>:cons_c_code_table(). */
       dumped_initial_entry_number = (UNSIGNED_FIXNUM_TO_LONG (* Next));
