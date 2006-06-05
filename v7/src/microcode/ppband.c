@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.63 2006/06/05 17:57:43 ihtfisp Exp $
+$Id: ppband.c,v 9.64 2006/06/05 18:09:38 ihtfisp Exp $
 
 Copyright (c) 1987-2006 Massachusetts Institute of Technology
 
@@ -389,8 +389,10 @@ DEFUN (Display, (Location, Type, The_Datum),
   printf (Display_LOC_TYPE_DAT_FORMAT_STRING, Location, Type, The_Datum);
   Points_To = Relocate ((SCHEME_OBJECT *) The_Datum);
 
-  switch (Type)
-  { /* "Strange" cases */
+  switch (Type)			/* I.e., `Switch_by_GC_Type(object)' */
+  {
+    /* "Strange" cases */
+
     case TC_NULL:
       if (The_Datum == 0)
       {
@@ -411,23 +413,63 @@ DEFUN (Display, (Location, Type, The_Datum),
 	  NON_POINTER ("CONSTANT"); /* "const.h" implies this alias. */
       }
       break;
+
+    /* Non-"Strange" Non_Pointer cases */
 
-    case TC_CHARACTER:
+    case_TC_FIXNUMs:		/* Courtesy of "types.h" (q.v.) */
+      PRINT_OBJECT ("FIXNUM", The_Datum);
+      Points_To = (FIXNUM_TO_LONG ((MAKE_OBJECT (Type, The_Datum))));
+      printf (" = %ld\n", ((signed long) Points_To));
+      return;
+
+      /* ------
+       * Caveat:  The above special cases _must_ precede `case_Non_Pointer'.
+       * ------
+       *
+       * As much as we'd dearly like to use `case_Non_Pointer' here
+       * (defined from "gccode.h", q.v.), that results in duplicate
+       * case values.  Instead, we enumerate the remaining Non_Pointer
+       * cases in the order in which they would have expanded by using
+       * `case_Non_Pointer' (with duplicates commented out).
+       */
+//  ----
+//  From `case_simple_Non_Pointer' of "gccode.h":
+//  ----
+//  case TC_NULL:
+//  case TC_CONSTANT:
     case TC_RETURN_CODE:
-    case TC_PRIMITIVE:
     case TC_THE_ENVIRONMENT:
+//  ----
+//  From `case_Fasload_Non_Pointer' of "gccode.h" (also includes preceding):
+//  ----
+//  case_TC_FIXNUMs:
+    case TC_CHARACTER:
+//  ----
+//  From `case_Non_Pointer' of "gccode.h" (which alss includes the preceding):
+//  ----
+    case TC_PRIMITIVE:
     case TC_PCOMB0:
-    case TC_MANIFEST_SPECIAL_NM_VECTOR:
-    case TC_MANIFEST_NM_VECTOR:
-    case TC_MANIFEST_CLOSURE:
     case TC_STACK_ENVIRONMENT:
+//  ----
+//  From ``Missing Non Pointer types'' of "gccode.h".
+//  ----
+//  case TC_BROKEN_HEART:		Treated specially below...
+    case TC_MANIFEST_NM_VECTOR:
+    case TC_MANIFEST_SPECIAL_NM_VECTOR:
+//  case TC_RETURN_CODE:		Treated specially below...
+    case TC_MANIFEST_CLOSURE:
     case TC_LINKAGE_SECTION:
+
       NON_POINTER (Type_Names[Type]);
       break;
 
+    /* Special GC Fasdump_Pair of "gccode.h" */
+
     case TC_LIST:
       POINTER ("PAIR");		/* See comment for LIST in "sdata.h". */
       break;
+
+    /* Non-Fasdump GC Pairs of "gccode.h" */
 
     case TC_INTERNED_SYMBOL:
       PRINT_OBJECT ("INTERNED-SYMBOL", Points_To);
@@ -441,17 +483,15 @@ DEFUN (Display, (Location, Type, The_Datum),
       scheme_symbol (Points_To);
       return;
 
+    /* Special case:  CHARACTER-STRING */
+
     case TC_CHARACTER_STRING:
       PRINT_OBJECT ("CHARACTER-STRING", Points_To);
       printf (" = ");
       scheme_string (Points_To, true);
       return;
 
-    case TC_FIXNUM:
-      PRINT_OBJECT ("FIXNUM", The_Datum);
-      Points_To = (FIXNUM_TO_LONG ((MAKE_OBJECT (Type, The_Datum))));
-      printf (" = %ld\n", ((signed long) Points_To));
-      return;
+    /* "Special" non-Non Pointer types of "gccode.h" */
 
     case TC_REFERENCE_TRAP:
       if (The_Datum <= TRAP_MAX_IMMEDIATE)
@@ -463,6 +503,10 @@ DEFUN (Display, (Location, Type, The_Datum),
     case TC_BROKEN_HEART:
       if (The_Datum == 0)
 	Points_To = 0;
+      /* Fall through... */
+
+    /* The rest are non-special Pointer types.  See "gccode.h" for details. */
+
     default:
       if (Type <= LAST_TYPE_CODE)
 	POINTER (Type_Names[Type]);
@@ -473,6 +517,9 @@ DEFUN (Display, (Location, Type, The_Datum),
       }
       break;
   }
+
+  /* The preceding will have established `the_string' and `Points_To'. */
+
   PRINT_OBJECT (the_string, Points_To);
   printf ("\tDatum = %ld (%lu)\n", ((signed long) Points_To), The_Datum);
   return;
