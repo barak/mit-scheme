@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.61 2006/06/05 17:02:25 ihtfisp Exp $
+$Id: ppband.c,v 9.62 2006/06/05 17:28:10 ihtfisp Exp $
 
 Copyright (c) 1987-2006 Massachusetts Institute of Technology
 
@@ -449,7 +449,7 @@ DEFUN (Display, (Location, Type, The_Datum),
 
     case TC_FIXNUM:
       PRINT_OBJECT ("FIXNUM", The_Datum);
-      Points_To = (FIXNUM_TO_LONG ((MAKE_OBJECT (Type, The_Datum))));
+      Points_To = (FIXNUM_TO_ULONG ((MAKE_OBJECT (Type, The_Datum))));
       printf (" = %ld\n", ((signed long) Points_To));
       return;
 
@@ -1082,7 +1082,7 @@ DEFUN (main, (argc, argv),
       printf ("\nC Code table:  Number of entries = %lu\n\n", entries);
 
       /* See: <microcode/cmpauxmd/c.c>:cons_c_code_table(). */
-      dumped_initial_entry_number = (UNSIGNED_FIXNUM_TO_LONG (* Next));
+      dumped_initial_entry_number = (FIXNUM_TO_ULONG (* Next));
       printf ("Initial Entry Number = %lu (0x%02lx)\n\n",
 	      dumped_initial_entry_number,
 	      dumped_initial_entry_number);
@@ -1097,7 +1097,7 @@ DEFUN (main, (argc, argv),
       printf ("\nC Code table:  Number of entries = %lu\n\n", entries);
 
       /* See: <microcode/cmpauxmd/c.c>:cons_c_code_table(). */
-      dumped_initial_entry_number = (UNSIGNED_FIXNUM_TO_LONG (* Next));
+      dumped_initial_entry_number = (FIXNUM_TO_ULONG (* Next));
       printf ("Initial Entry Number = %lu (0x%02lx)\n\n",
 	      dumped_initial_entry_number,
 	      dumped_initial_entry_number);
@@ -1123,7 +1123,7 @@ DEFUN (main, (argc, argv),
 	      entries, entries);
 
       /* See: <microcode/cmpauxmd/c.c>:cons_c_code_table(). */
-      dumped_initial_entry_number = (UNSIGNED_FIXNUM_TO_LONG (* Next));
+      dumped_initial_entry_number = (FIXNUM_TO_ULONG (* Next));
       Next += 1;
       printf ("Initial Entry Number = %lu (0x%02lx)\n\n",
 	      dumped_initial_entry_number,
@@ -1136,7 +1136,7 @@ DEFUN (main, (argc, argv),
 	int nlen, size;
 	char * ncopy;
 
-	nentries = (UNSIGNED_FIXNUM_TO_LONG (*Next));
+	nentries = (FIXNUM_TO_ULONG (*Next));
 	Next += 1;
 	nlen = (strlen ((char *) Next)); /* `fasdump'd a native C string */
 	size = (nlen + 1);
