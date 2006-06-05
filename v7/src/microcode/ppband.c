@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.59 2006/06/05 14:29:12 ihtfisp Exp $
+$Id: ppband.c,v 9.60 2006/06/05 15:04:20 ihtfisp Exp $
 
 Copyright (c) 1987-2006 Massachusetts Institute of Technology
 
@@ -53,6 +53,22 @@ USA.
 #include "storage.c"		/* For `Type_Names' and "gctype.c" goodies */
 
 
+#ifdef      ENABLE_DEBUGGING_TOOLS
+#  ifndef   ENABLE_PPBAND_DEBUGGING_TOOLS
+#    define ENABLE_PPBAND_DEBUGGING_TOOLS
+#  endif
+#endif
+#if         ENABLE_PPBAND_DEBUGGING_TOOLS
+#  ifndef   ENABLE_PPBAND_DEBUGGING_TOOLS_STORAGE_LAYOUT_DISPLAY
+#    define ENABLE_PPBAND_DEBUGGING_TOOLS_STORAGE_LAYOUT_DISPLAY
+#  endif
+#endif
+#if 0				/* Maybe make this a switch arg some day */
+#define ENABLE_PPBAND_DEBUGGING_TOOLS_IMPLIES_EARLY_EXIT /* Header checks */
+#endif
+#    define ENABLE_PPBAND_DEBUGGING_TOOLS_STORAGE_LAYOUT_DISPLAY // MRB likes
+
+
 #if (CHAR_BIT == 8)
 #  if (SIZEOF_UNSIGNED_LONG == 4)	/* 32-bit word versions */
 #    define UNSIGNED_LONG_HIGH_HALF(unsigned_long) ((unsigned_long) >> 16)
@@ -68,22 +84,22 @@ USA.
 #undef HEAP_MALLOC
 #define HEAP_MALLOC malloc
 
-/* These are needed when there is no compiler support. */
-
-extern void EXFUN (gc_death,
-		   (long code, char *, SCHEME_OBJECT *, SCHEME_OBJECT *));
-
-extern char
-  gc_death_message_buffer[];
+/* This is needed when there is no compiler support.  Cf. "boot.c". */
 
 void
 DEFUN (gc_death, (code, message, scan, free),
-       long code AND char * message
-       AND SCHEME_OBJECT * scan AND SCHEME_OBJECT * free)
+       signed long code
+       AND char * message
+       AND SCHEME_OBJECT * scan
+       AND SCHEME_OBJECT * free)
 {
-  fprintf (stderr, "gc_death: %s.\n", message);
+  outf_fatal ("\n");
+  outf_fatal ("gc_death:  %s.\n", message);
+  outf_fatal ("scan = 0x%lx; free = 0x%lx\n", scan, free);
+
   exit (1);
 }
+
 
 /* These are needed by load.c */
 
@@ -714,6 +730,18 @@ DEFUN (main, (argc, argv),
     fast SCHEME_OBJECT *Next = ((SCHEME_OBJECT *) NULL);
     long total_length, load_length;
 
+#ifdef ENABLE_PPBAND_DEBUGGING_TOOLS_STORAGE_LAYOUT_DISPLAY
+    /* debug hooks */
+    long  Heap_first,  Heap_last,  Heap_size,  Heap_length,  Heap_top;
+    long Const_first, Const_last, Const_size, Const_length, Const_top;
+    long Prims_first, Prims_last, Prims_size, Prims_length;
+    long CCode_first, CCode_last, CCode_size, CCode_length;
+
+    /* debug hooks for symmetry w.r.t. Heap and Constant spaces */
+    long Prims_count;
+    long CCode_count;
+#endif
+
     if (argc == 1)
     {
       switch (Read_Header ())
@@ -775,6 +803,101 @@ DEFUN (main, (argc, argv),
       /* NOTREACHED */
     }
 
+#ifdef ENABLE_PPBAND_DEBUGGING_TOOLS_STORAGE_LAYOUT_DISPLAY
+    /*
+    ** Fill in some handy debug hooks
+    */
+
+    /* Given:  tops */
+
+    Heap_top  = Dumped_Heap_Top;
+    Const_top = Dumped_Constant_Top;
+
+    /* Given:  sizes and lengths */
+
+    Prims_size   = Primitive_Table_Size;
+    Prims_length = Primitive_Table_Length;
+
+    CCode_size   =    C_Code_Table_Size;
+    CCode_length =    C_Code_Table_Length;
+
+    /* Derived:  sizes and lengths */
+
+    Heap_size   = ( Heap_top -  Heap_Base);
+    Heap_length = ( Heap_size >> 2);
+
+    if (Const_Count == 0)
+    {
+     Const_size   = 0;
+     Const_length = 0;
+    }
+    else
+    {
+     Const_size   = (Const_top - Const_Base);
+     Const_length = (Const_size >> 2);
+    }
+
+    /* Derived:  firsts and lasts */
+
+    Heap_first  = 0;
+    Heap_last   = ( Heap_first +  Heap_length - 1);
+
+    Const_first = ( Heap_last  + 1);
+    Const_last  = (Const_first + Const_length - 1);
+
+    Prims_first = (Const_last  + 1);
+    Prims_last  = (Prims_first + Prims_length - 1);
+
+    CCode_first = (Prims_last  + 1);
+    CCode_last  = (CCode_first + CCode_length - 1);
+
+    /* Derived:  counts */
+
+    Prims_count = (Prims_last - Prims_first + 1);
+    CCode_count = (CCode_last - CCode_first + 1);
+
+    /* Show and tell */
+
+    printf ("\n");
+    printf ("\n-----------------------");
+    printf ("\nPartition Configuration:");
+    printf ("\n");
+    printf ("\nHeap_first   = 0x%08lx (%10lu)",	Heap_first,	Heap_first);
+    printf ("\nHeap_top     = 0x%08lx (%10lu)",	Heap_top,	Heap_top);
+    printf ("\nHeap_Base    = 0x%08lx (%10lu)",	Heap_Base,	Heap_Base);
+    printf ("\nHeap_size    = 0x%08lx (%10lu)",	Heap_size,	Heap_size);
+    printf ("\nHeap_length  = 0x%08lx (%10lu)",	Heap_length,	Heap_length);
+    printf ("\nHeap_Count   = 0x%08lx (%10lu)",	Heap_Count,	Heap_Count);
+    printf ("\nHeap_last    = 0x%08lx (%10lu)",	Heap_last,	Heap_last);
+    printf ("\n");
+    printf ("\nConst_first  = 0x%08lx (%10lu)", Const_first,	Const_first);
+    printf ("\nConst_top    = 0x%08lx (%10lu)",	Const_top,	Const_top);
+    printf ("\nConst_Base   = 0x%08lx (%10lu)",	Const_Base,	Const_Base);
+    printf ("\nConst_size   = 0x%08lx (%10lu)",	Const_size,	Const_size);
+    printf ("\nConst_length = 0x%08lx (%10lu)",	Const_length,	Const_length);
+    printf ("\nConst_Count  = 0x%08lx (%10lu)",	Const_Count,	Const_Count);
+    printf ("\nConst_last   = 0x%08lx (%10lu)",	Const_last,	Const_last);
+    printf ("\n");
+    printf ("\nPrims_first  = 0x%08lx (%10lu)", Prims_first,	Prims_first);
+    printf ("\nPrims_size   = 0x%08lx (%10lu)",	Prims_size,	Prims_size);
+    printf ("\nPrims_length = 0x%08lx (%10lu)",	Prims_length,	Prims_length);
+    printf ("\nPrims_count  = 0x%08lx (%10lu)",	Prims_count,	Prims_count);
+    printf ("\nPrims_last   = 0x%08lx (%10lu)",	Prims_last,	Prims_last);
+    printf ("\n");
+    printf ("\nCCode_first  = 0x%08lx (%10lu)", CCode_first,	CCode_first);
+    printf ("\nCCode_size   = 0x%08lx (%10lu)",	CCode_size,	CCode_size);
+    printf ("\nCCode_length = 0x%08lx (%10lu)",	CCode_length,	CCode_length);
+    printf ("\nCCode_count  = 0x%08lx (%10lu)",	CCode_count,	CCode_count);
+    printf ("\nCCode_last   = 0x%08lx (%10lu)",	CCode_last,	CCode_last);
+    printf ("\n");
+    printf ("\n");
+
+#ifdef ENABLE_PPBAND_DEBUGGING_TOOLS_IMPLIES_EARLY_EXIT
+    exit(0);  /* Just wanted quick check of dump file header/partition info. */
+#endif
+
+#endif /* ENABLE_PPBAND_DEBUGGING_TOOLS_STORAGE_LAYOUT_DISPLAY */
+
     /*
     ** We allocate one Scheme object to serve as an end-of-memory sentinel, so
     ** the total allocation in units of Scheme objects is `load_length' plus 1.
@@ -801,7 +924,9 @@ DEFUN (main, (argc, argv),
 	       PPBAND_NUM_DATA_WORDS_TO_ALLOCATE);
       exit (1);
     }
-
+#ifdef ENABLE_PPBAND_DEBUGGING_TOOLS
+    bzero(Data, PPBAND_DATA_WORDS_TO_ALLOCATE);
+#endif
     total_length = (Load_Data (load_length, Data));
     end_of_memory = &Data[total_length];
     if (total_length != load_length)
@@ -849,12 +974,37 @@ DEFUN (main, (argc, argv),
 
       printf ("\n");
 
+#ifdef ENABLE_PPBAND_DEBUGGING_TOOLS
+      /*
+       * For each primitive existent in the world, fasdump dumps its arity
+       * and name string at the end of the fasdump file.  Spew them now.
+       *
+       * See <microcode/primutl.c>:copy_primitive_information() for details.
+       *
+       * For comparison, see <microcode/primutl.c>:install_primitive_table().
+       *
+       */
       printf ("\n===========================================================");
-      printf ("\nPrimitive Table contents:\n");
+      printf ("\nRaw Scheme format of Primitive Table contents:\n");
 
       printf ("\n---------------");
       printf ("\nPrimitive table:  Number of entries = %lu (0x%03lx)\n\n",
 	      entries, entries);
+
+      Display_raw_type_dat_Scheme_object (0, entries, Next);
+
+
+      printf ("\n===========================================================");
+      printf ("\nRaw hex format of Primitive Table contents:\n");
+
+      printf ("\n---------------");
+      printf ("\nPrimitive table:  Number of entries = %lu (0x%03lx)\n\n",
+	      entries, entries);
+
+      Display_raw_hilo_hex_Scheme_object (0, entries, Next);
+
+#endif /* ENABLE_PPBAND_DEBUGGING_TOOLS */
+
       /*
        * For each primitive existent in the world, fasdump dumps its arity
        * and name string at the end of the fasdump file.  Show them now.
@@ -864,6 +1014,13 @@ DEFUN (main, (argc, argv),
        * For comparison, see <microcode/primutl.c>:install_primitive_table().
        *
        */
+      printf ("\n===========================================================");
+      printf ("\nPrimitive Table contents:\n");
+
+      printf ("\n---------------");
+      printf ("\nPrimitive table:  Number of entries = %lu (0x%03lx)\n\n",
+	      entries, entries);
+
       for (count = 0;
 	   ((count < entries) && (Next < end_of_memory));
 	   count += 1)
@@ -871,7 +1028,9 @@ DEFUN (main, (argc, argv),
 	arity = (FIXNUM_TO_LONG (*Next));
 	Next += 1;
 	size = (OBJECT_DATUM (*Next)); /* word count of Scheme char string */
-	/**/          /* <0x><><%0> */
+#ifdef ENABLE_PPBAND_DEBUGGING_TOOLS
+	printf ("size = %2lu; ", size);
+#endif /**/           /* <0x><><%0> */
 	printf ("Number = 0x%03lx; Arity = %2ld; Name = ", count, arity);
 	scheme_string ((Next - Data), true);
 	Next += (1 + size);
@@ -894,6 +1053,56 @@ DEFUN (main, (argc, argv),
 
       printf ("\n");
 
+#ifdef ENABLE_PPBAND_DEBUGGING_TOOLS
+      /*
+       * For each C code block existent in the world, fasdump dumps its entry
+       * count and name string at the end of the fasdump file.  Spew them now.
+       *
+       * Details: see <microcode/cmpauxmd/c.c>:copy_c_code_block_information().
+       *
+       * For comparison, see <microcode/cmpauxmd/c.c>:install_c_code_table().
+       *
+       */
+      printf ("\n===========================================================");
+      printf ("\nRaw Scheme format of C Code Table contents:\n");
+
+      printf ("\n------------");
+      printf ("\nC Code table:  Number of entries = %lu\n\n", entries);
+
+      /* See: <microcode/cmpauxmd/c.c>:cons_c_code_table(). */
+      dumped_initial_entry_number = (UNSIGNED_FIXNUM_TO_LONG (* Next));
+      printf ("Initial Entry Number = %lu (0x%02lx)\n\n",
+	      dumped_initial_entry_number,
+	      dumped_initial_entry_number);
+
+      Display_raw_type_dat_Scheme_object (0, entries, Next);
+
+
+      printf ("\n===========================================================");
+      printf ("\nRaw hex format of C Code Table contents:\n");
+
+      printf ("\n------------");
+      printf ("\nC Code table:  Number of entries = %lu\n\n", entries);
+
+      /* See: <microcode/cmpauxmd/c.c>:cons_c_code_table(). */
+      dumped_initial_entry_number = (UNSIGNED_FIXNUM_TO_LONG (* Next));
+      printf ("Initial Entry Number = %lu (0x%02lx)\n\n",
+	      dumped_initial_entry_number,
+	      dumped_initial_entry_number);
+
+      Display_raw_hilo_hex_Scheme_object (0, entries, Next);
+
+#endif /* ENABLE_PPBAND_DEBUGGING_TOOLS */
+
+      /*
+       * For each C code block existent in the world, fasdump dumps its entry
+       * count and name string at the end of the fasdump file.  Show them now.
+       *
+       * Details: see <microcode/cmpauxmd/c.c>:copy_c_code_block_information().
+       *
+       * For comparison, see <microcode/cmpauxmd/c.c>:install_c_code_table().
+       *
+       */
       printf ("\n===========================================================");
       printf ("\nC Code Table contents:\n");
 
@@ -907,15 +1116,7 @@ DEFUN (main, (argc, argv),
       printf ("Initial Entry Number = %lu (0x%02lx)\n\n",
 	      dumped_initial_entry_number,
 	      dumped_initial_entry_number);
-      /*
-       * For each C code block existent in the world, fasdump dumps its entry
-       * count and name string at the end of the fasdump file.  Show them now.
-       *
-       * Details: see <microcode/cmpauxmd/c.c>:copy_c_code_block_information().
-       *
-       * For comparison, see <microcode/cmpauxmd/c.c>:install_c_code_table().
-       *
-       */
+
       for (count = 0;
 	   ((count < entries) && (Next < end_of_memory));
 	   count += 1)
