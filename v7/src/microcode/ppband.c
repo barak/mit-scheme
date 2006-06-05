@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.62 2006/06/05 17:28:10 ihtfisp Exp $
+$Id: ppband.c,v 9.63 2006/06/05 17:57:43 ihtfisp Exp $
 
 Copyright (c) 1987-2006 Massachusetts Institute of Technology
 
@@ -449,7 +449,7 @@ DEFUN (Display, (Location, Type, The_Datum),
 
     case TC_FIXNUM:
       PRINT_OBJECT ("FIXNUM", The_Datum);
-      Points_To = (FIXNUM_TO_ULONG ((MAKE_OBJECT (Type, The_Datum))));
+      Points_To = (FIXNUM_TO_LONG ((MAKE_OBJECT (Type, The_Datum))));
       printf (" = %ld\n", ((signed long) Points_To));
       return;
 
