@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dired.scm,v 1.195 2006/05/22 05:34:55 cph Exp $
+$Id: dired.scm,v 1.196 2006/06/10 04:17:51 cph Exp $
 
 Copyright 1987,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -873,12 +873,12 @@ Actions controlled by variables list-directory-brief-switches
 
     ;; vc dired listings provide the state or blanks between file
     ;; permissions and date.  The state is always surrounded by
-    ;; parantheses:
+    ;; parentheses:
     ;; -rw-r--r-- (modified) 2005-10-22 21:25 files.el
-    ;; This is not supported yet.
+    ;; Support for this was added to Edwin by cph.
     (rexp-compile
      (rexp-sequence (rexp* (rexp-any-char))
-		    digit
+		    (char-set-union digit (char-set #\)))
 		    (rexp-optional (string->char-set "BkKMGTPEZY"))
 		    s
 		    (rexp-alternatives western
