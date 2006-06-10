@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.68 2006/06/10 03:52:00 cph Exp $
+$Id: xml.pkg,v 1.69 2006/06/10 04:43:09 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -573,3 +573,9 @@ USA.
 	  rdf/nt-file->source
 	  write-rdf/nt
 	  write-rdf/nt-file))
+
+(define-package (runtime rdf turtle)
+  (files "turtle")
+  (parent (runtime rdf))
+  (export ()
+	  read-rdf/turtle-file))

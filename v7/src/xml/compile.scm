@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.17 2006/02/18 04:31:34 cph Exp $
+$Id: compile.scm,v 1.18 2006/06/10 04:42:43 cph Exp $
 
 Copyright 2001,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -47,5 +47,6 @@ USA.
 		    "xhtml"
 		    "xhtml-entities"
 		    "rdf-struct"
-		    "rdf-nt"))))
+		    "rdf-nt"
+		    "turtle"))))
     (cref/generate-constructors "xml" 'ALL)))
