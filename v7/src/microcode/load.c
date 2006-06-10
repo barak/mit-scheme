@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: load.c,v 9.42 2006/06/03 08:00:15 ihtfisp Exp $
+$Id: load.c,v 9.43 2006/06/10 05:24:54 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 1993,1995,1997,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 

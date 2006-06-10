@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prmcrypt.c,v 1.6 2006/06/02 03:06:56 ihtfisp Exp $
+$Id: prmcrypt.c,v 1.7 2006/06/10 05:24:54 cph Exp $
 
-Copyright (c) 2001 Massachusetts Institute of Technology
+Copyright 2001,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 

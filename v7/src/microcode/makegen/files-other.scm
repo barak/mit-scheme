@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: files-other.scm,v 1.5 2006/06/03 08:10:10 ihtfisp Exp $
+$Id: files-other.scm,v 1.6 2006/06/10 05:24:54 cph Exp $
 
-Copyright (c) 2000 Massachusetts Institute of Technology
+Copyright 2000,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 

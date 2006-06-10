@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: utabmd.sh,v 1.6 2006/06/02 06:50:11 ihtfisp Exp $
+# $Id: utabmd.sh,v 1.7 2006/06/10 05:24:54 cph Exp $
 #
-# Copyright 2002,2003 Massachusetts Institute of Technology
+# Copyright 2002,2003,2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #

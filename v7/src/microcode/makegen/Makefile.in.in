@@ -1,8 +1,8 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.27 2006/06/05 09:49:02 ihtfisp Exp $
+# $Id: Makefile.in.in,v 1.28 2006/06/10 05:24:54 cph Exp $
 #
-# Copyright 2000-2006 Massachusetts Institute of Technology
+# Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #

@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.64 2006/06/05 18:09:38 ihtfisp Exp $
+$Id: ppband.c,v 9.65 2006/06/10 05:24:54 cph Exp $
 
-Copyright (c) 1987-2006 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 1993,1999,2000,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 

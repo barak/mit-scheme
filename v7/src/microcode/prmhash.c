@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prmhash.c,v 11.8 2006/06/02 03:06:56 ihtfisp Exp $
+$Id: prmhash.c,v 11.9 2006/06/10 05:24:54 cph Exp $
 
-Copyright (c) 2000-2001 Massachusetts Institute of Technology
+Copyright 2000,2001,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
