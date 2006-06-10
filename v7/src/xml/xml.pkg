@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.67 2006/03/07 06:16:26 cph Exp $
+$Id: xml.pkg,v 1.68 2006/06/10 03:52:00 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -571,4 +571,5 @@ USA.
 	  read-rdf/nt
 	  read-rdf/nt-file
 	  rdf/nt-file->source
-	  write-rdf/nt))
+	  write-rdf/nt
+	  write-rdf/nt-file))

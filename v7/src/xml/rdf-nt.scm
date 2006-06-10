@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-nt.scm,v 1.5 2006/03/07 02:52:49 cph Exp $
+$Id: rdf-nt.scm,v 1.6 2006/06/10 03:52:00 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -202,6 +202,13 @@ USA.
   (char-set-difference char-set:character (char-set #\" #\\)))
 
 ;;;; Encoder
+
+(define (write-rdf/nt-file triples pathname)
+  (call-with-output-file pathname
+    (lambda (port)
+      (for-each (lambda (triple)
+		  (write-rdf/nt triple port))
+		triples))))
 
 (define (write-rdf/nt triple port)
   (let ((s (rdf-triple-subject triple)))
