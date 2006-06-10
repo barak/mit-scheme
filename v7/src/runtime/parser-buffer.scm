@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parser-buffer.scm,v 1.15 2006/01/31 17:43:37 cph Exp $
+$Id: parser-buffer.scm,v 1.16 2006/06/10 04:06:47 cph Exp $
 
 Copyright 2001,2002,2003,2004,2006 Massachusetts Institute of Technology
 
@@ -126,6 +126,14 @@ USA.
      ", char "
      (number->string (+ (parser-buffer-pointer-index pointer) 1)))))
 
+(define (parser-buffer-error ptr msg . irritants)
+  (apply error
+	 (string-append msg
+			" at "
+			(parser-buffer-position-string ptr)
+			(if (pair? irritants) ":" "."))
+	 irritants))
+
 (define (read-parser-buffer-char buffer)
   ;; Attempt to read the next character from BUFFER, starting at the
   ;; current position.  If there is a character available, increment
@@ -152,7 +160,7 @@ USA.
   (and (guarantee-buffer-chars buffer (fix:+ index 1))
        (%wide-string-ref (parser-buffer-string buffer)
 			 (fix:+ (parser-buffer-index buffer) index))))
-
+
 (define (match-parser-buffer-char buffer char)
   (match-char buffer char char=?))
 
@@ -176,7 +184,7 @@ USA.
 
 (define (match-parser-buffer-not-char-ci-no-advance buffer char)
   (match-char-not-no-advance buffer char char-ci=?))
-
+
 (define (match-parser-buffer-char-in-set buffer set)
   (match-char buffer set char-in-set?))
 
