@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.26 2005/10/23 21:10:02 cph Exp $
+$Id: socket.scm,v 1.27 2006/06/11 03:03:22 cph Exp $
 
 Copyright 1996,1997,1998,1999,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,7 +38,12 @@ USA.
     (make-generic-i/o-port channel channel)))
 
 (define (open-tcp-stream-socket-channel host-name service)
-  (let ((host (vector-ref (get-host-by-name host-name) 0))
+  (let ((host
+	 (vector-ref (or (get-host-by-name host-name)
+			 (error:bad-range-argument
+			  host-name
+			  'open-tcp-stream-socket-channel))
+		     0))
 	(port (tcp-service->port service)))
     (open-channel
      (lambda (p)
