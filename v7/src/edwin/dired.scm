@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dired.scm,v 1.197 2006/06/10 06:09:37 cph Exp $
+$Id: dired.scm,v 1.198 2006/06/11 03:06:23 cph Exp $
 
 Copyright 1987,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -879,7 +879,9 @@ Actions controlled by variables list-directory-brief-switches
     (rexp-compile
      (rexp-sequence (rexp* (rexp-any-char))
 		    (rexp-alternatives
-		     (rexp-sequence digit (string->char-set "BkKMGTPEZY"))
+		     (rexp-sequence digit
+				    (rexp-optional
+				     (string->char-set "BkKMGTPEZY")))
 		     ")")
 		    s+
 		    (rexp-alternatives western
