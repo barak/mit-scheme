@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.293 2006/02/06 18:46:44 cph Exp $
+$Id: edwin.pkg,v 1.294 2006/06/12 20:46:28 riastradh Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -1761,12 +1761,14 @@ USA.
 	  edwin-command$news-move-to-summary
 	  edwin-command$news-new-groups
 	  edwin-command$news-next-article
+          edwin-command$news-next-article-in-thread
 	  edwin-command$news-next-thread-article
 	  edwin-command$news-next-unread-article
 	  edwin-command$news-next-unread-article-in-thread
 	  edwin-command$news-output-article
 	  edwin-command$news-output-article-to-rmail-file
 	  edwin-command$news-previous-article
+          edwin-command$news-previous-article-in-thread
 	  edwin-command$news-previous-thread-article
 	  edwin-command$news-previous-unread-article
 	  edwin-command$news-previous-unread-article-in-thread
@@ -1815,9 +1817,11 @@ USA.
 	  edwin-variable$news-group-show-author-name
 	  edwin-variable$news-group-show-context-headers
 	  edwin-variable$news-group-show-seen-headers
+          edwin-variable$news-header-filter
 	  edwin-variable$news-hide-groups
 	  edwin-variable$news-initially-collapse-threads
 	  edwin-variable$news-join-threads-with-same-subject
+          edwin-variable$news-kept-headers
 	  edwin-variable$news-refresh-group-when-selected
 	  edwin-variable$news-server
 	  edwin-variable$news-server-initial-refresh
@@ -1828,7 +1832,9 @@ USA.
 	  edwin-variable$news-show-nonexistent-groups
 	  edwin-variable$news-show-unsubscribed-groups
 	  edwin-variable$news-sort-groups
-	  edwin-variable$news-split-threads-on-subject-changes))
+	  edwin-variable$news-split-threads-on-subject-changes
+          news-header-splitting-filter
+          news-header-regexp-filter))
 
 (define-package (edwin nntp)
   (files "nntp")

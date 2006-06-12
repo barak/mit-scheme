@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: snr.scm,v 1.65 2004/06/07 19:49:55 cph Exp $
+$Id: snr.scm,v 1.66 2006/06/12 20:46:28 riastradh Exp $
 
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2003,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -81,6 +81,15 @@ This variable can be set to #F to disable the timeout altogether.
 [THIS VARIABLE CURRENTLY HAS NO EFFECT.]"
   #f
   (lambda (object) (or (not object) (exact-nonnegative-integer? object))))
+
+(define-variable news-header-filter
+  "Procedure for filtering news headers, or #F for no filter.
+Every header read by the news reader is filtered through this filter.  If it
+  returns false, the header is ignored."
+  #f
+  (lambda (filter)
+    (or (not filter)
+        (procedure-of-arity? filter 1))))
 
 ;;; Variables for News-group-list buffers:
 
@@ -263,6 +272,24 @@ The default value of this variable is (SUBSCRIBED (HEADERS BODIES))."
 	     (or (eq? 'HEADERS element)
 		 (eq? 'BODIES element))))
 	 (null? (cddr object)))))
+
+(define-variable news-kept-headers
+  "A list of regular expressions matching header fields to display.
+Header fields matching these regexps are shown in the given order, and
+  other header fields are hidden.
+This variable overrides RMAIL-IGNORED-HEADERS; to use RMAIL-IGNORED-HEADERS,
+  set NEWS-KEPT-HEADERS to #F."
+  '("date:" "from:" "newsgroups:" "subject:")
+  (lambda (obj)
+    (or (not obj)
+        (list-of-type? obj regular-expression?))))
+
+(define (regular-expression? obj)
+  (or (string? obj)
+      (compiled-regexp? obj)
+      ;++ This should be stricter about strings, and it should also
+      ;++ support REXPs.
+      ))
 
 (define-command rnews
   "Start a News reader.
@@ -2352,15 +2379,53 @@ Otherwise, the standard pruned header is shown."
 
 (define (insert-news-header header buffer truncate?)
   (let ((hend (mark-left-inserting-copy (buffer-start buffer)))
-	(text (news-header:text header)))
-    (if (and (not (string-null? text))
-	     (char=? #\newline (string-ref text 0)))
-	(insert-substring text 1 (string-length text) hend)
-	(insert-string text hend))
-    (insert-newline hend)
-    (if truncate? (delete-ignored-headers (buffer-start buffer) hend))
-    (mark-temporary! hend))
-  (buffer-put! buffer 'NEWS-ARTICLE-HEADER-TRUNCATED? truncate?))
+        (text (news-header:text header)))
+    (cond ((and truncate?
+                (ref-variable news-kept-headers))
+           => (lambda (regexps)
+                (insert-filtered-news-header text regexps hend buffer)
+                (insert-newline hend)))
+          (else
+           (if (and (not (string-null? text))
+                    (char=? #\newline (string-ref text 0)))
+               (insert-substring text 1 (string-length text) hend)
+               (insert-string text hend))
+           (insert-newline hend)
+           (if truncate? (delete-ignored-headers (buffer-start buffer) hend))))
+    (mark-temporary! hend)
+    (buffer-put! buffer 'NEWS-ARTICLE-HEADER-TRUNCATED? truncate?)))
+
+(define (insert-filtered-news-header text regexps mark buffer)
+  (for-each (lambda (regexp)
+              (cond ((re-string-search-forward (string-append "^" regexp)
+                                               text
+                                               #t)
+                     => (lambda (match)
+                          (let ((start-index (re-match-start-index 0 match)))
+                            (insert-substring text start-index
+                                              (find-header-end text
+                                                               start-index)
+                                              mark))
+                          (insert-newline mark)))))
+            regexps))
+
+(define (find-header-end text start-index)
+  (let* ((limit (string-length text))
+         (scan-line (lambda (start)
+                      (cond ((substring-find-next-char text start limit
+                                                       #\newline)
+                             => fix:1+)
+                            (else #f)))))
+    (let loop ((index (scan-line start-index)))
+      (cond ((or (not index) (fix:= index limit))
+             limit)
+            ((let ((char (string-ref text index)))
+               (or (char=? char #\space)
+                   (char=? char #\tab)))
+             (loop (scan-line index)))
+            (else
+             ;; Lose the trailing newline.
+             (fix:-1+ index))))))
 
 (define (delete-ignored-headers hstart hend)
   (let ((regexp (ref-variable rmail-ignored-headers hstart)))
@@ -2405,6 +2470,8 @@ This mode's commands include:
 \\[news-previous-article]	read the previous article
 \\[news-next-unread-article]	read the next unread article
 \\[news-previous-unread-article]	read the previous unread article
+\\[news-next-article-in-thread]	read the next article in this thread
+\\[news-previous-article-in-thread]	read the previous article in this thiread
 \\[news-next-unread-article-in-thread]	read the next unread article in this thread
 \\[news-previous-unread-article-in-thread]	read the previous unread article in this thread
 \\[news-next-thread-article]	read the first article of the next thread
@@ -2435,6 +2502,7 @@ This mode's commands include:
 (define-key 'news-article #\rubout '(news-article . #\m-v))
 (define-key 'news-article #\c 'news-toggle-article-context)
 (define-key 'news-article #\d 'news-next-article)
+(define-key 'news-article #\D 'news-next-article-in-thread)
 (define-key 'news-article #\f 'news-forward-article)
 (define-key 'news-article #\i 'news-ignore-article-thread)
 (define-key 'news-article #\n 'news-next-unread-article)
@@ -2449,6 +2517,7 @@ This mode's commands include:
 (define-key 'news-article #\R 'news-compose-followup-article)
 (define-key 'news-article #\t 'news-toggle-article-header)
 (define-key 'news-article #\u 'news-previous-article)
+(define-key 'news-article #\U 'news-previous-article-in-thread)
 
 (define-command news-next-article
   "Select a buffer containing the next article in the News group.
@@ -2490,6 +2559,28 @@ Kill the current buffer in either case."
      (lambda (buffer header)
        (news-group-buffer:previous-header buffer header
 					  news-header:unread?)))))
+
+(define-command news-next-article-in-thread
+  "Select a buffer containing the next article in this thread.
+If there is no such article, return to the News-group buffer.
+Kill the current buffer in either case."
+  ()
+  (lambda ()
+    (news-article-header-motion-command
+     (lambda (buffer header)
+       buffer
+       (news-thread:next-header header news-header:real?)))))
+
+(define-command news-previous-article-in-thread
+  "Select a buffer containing the previous article in this thread.
+If there is no such article, return to the News-group buffer.
+Kill the current buffer in either case."
+  ()
+  (lambda ()
+    (news-article-header-motion-command
+     (lambda (buffer header)
+       buffer
+       (news-thread:previous-header header news-header:real?)))))
 
 (define-command news-next-unread-article-in-thread
   "Select a buffer containing the next unread article in this thread.
@@ -4049,53 +4140,28 @@ With prefix arg, replaces the file with the list information."
 
 (define (news-group:get-headers group argument buffer)
   (let ((connection (news-group:connection group))
-	(all?
-	 (or (command-argument-multiplier-only? argument)
-	     (ref-variable news-group-show-seen-headers buffer)))
-	(limit
-	 (and argument
-	      (not (command-argument-multiplier-only? argument))
-	      (command-argument-value argument))))
+        (all?
+         (or (command-argument-multiplier-only? argument)
+             (ref-variable news-group-show-seen-headers buffer)))
+        (limit
+         (and argument
+              (not (command-argument-multiplier-only? argument))
+              (command-argument-value argument))))
     (if (and (command-argument-multiplier-only? argument)
-	     (nntp-connection:closed? connection))
-	(nntp-connection:reopen connection))
+             (nntp-connection:closed? connection))
+        (nntp-connection:reopen connection))
     (if (and (ref-variable news-refresh-group-when-selected
-			   (news-server-buffer buffer #f))
-	     (not (nntp-connection:closed? connection)))
-	(news-group:update-ranges! group))
-    (call-with-values
-	(lambda ()
-	  (split-list
-	   (news-group:headers
-	    group
-	    (if all?
-		(news-group:all-header-numbers group)
-		(let ((ns (news-group:unread-header-numbers group)))
-		  (if limit
-		      (let ((lns (length ns)))
-			(cond ((<= lns (abs limit)) ns)
-			      ((< limit 0) (list-head ns (- limit)))
-			      (else (list-tail ns (- (length ns) limit)))))
-		      ns)))
-	    (let ((table (news-group:get-ignored-subjects group #f)))
-	      (if table
-		  (let ((t (get-universal-time))
-			(show-ignored? (not all?)))
-		    (lambda (header)
-		      (and (news-header:ignore?! header table t)
-			   (begin
-			     (set-news-header:status! header #\I)
-			     (article-number-seen! group
-						   (news-header:number header))
-			     show-ignored?))))
-		  (lambda (header) header #f))))
-	   news-header?))
-      (lambda (headers invalid)
-	(for-each (lambda (entry)
-		    (if (not (eq? (car entry) 'UNREACHABLE-ARTICLE))
-			(article-number-seen! group (cdr entry))))
-		  invalid)
-	headers))))
+                           (news-server-buffer buffer #f))
+             (not (nntp-connection:closed? connection)))
+        (news-group:update-ranges! group))
+    (receive (headers invalid)
+        (split-list (news-group:headers* group all? limit buffer)
+                    news-header?)
+      (for-each (lambda (entry)
+                  (if (not (eq? (car entry) 'UNREACHABLE-ARTICLE))
+                      (article-number-seen! group (cdr entry))))
+                invalid)
+      headers)))
 
 (define (news-group:get-unread-headers group buffer)
   (news-group:update-ranges! group)
@@ -4105,6 +4171,89 @@ With prefix arg, replaces the file with the list information."
       ;; and marks them as such.
       (news-group:get-headers group #f buffer))
   (news-group:close-database group))
+
+(define (news-group:headers* group all? limit context)
+  (news-group:headers
+   group
+   (if all?
+       (news-group:all-header-numbers group)
+       (let ((ns (news-group:unread-header-numbers group)))
+         (if limit
+             (let ((lns (length ns)))
+               (cond ((<= lns (abs limit)) ns)
+                     ((< limit 0) (list-head ns (- limit)))
+                     (else (list-tail ns (- (length ns) limit)))))
+             ns)))
+   (let ((ignore-header?
+          (let ((filter (ref-variable news-header-filter context)))
+            (or (and filter
+                     (lambda (header)
+                       (not (filter header))))
+                (lambda (header) header #f))))
+         (table
+          (news-group:get-ignored-subjects group #f)))
+     (if table
+         (let ((t (get-universal-time))
+               (show-ignored? (not all?)))
+           (lambda (header)
+             (and (ignore-header? header)
+                  (news-header:ignore?! header table t)
+                  (begin
+                    (set-news-header:status! header #\I)
+                    (article-number-seen! group
+                                          (news-header:number header))
+                    show-ignored?))))
+         ignore-header?))))
+
+;;;; Header Filter Combinators
+
+(define (news-header-splitting-filter unit-filter)
+  (lambda (header)
+    (let* ((text (news-header:text header))
+           (limit (string-length text))
+           (start (if (and (fix:> limit 1)
+                           (char=? (string-ref text 0) #\newline))
+                      1
+                      0)))
+      (let loop ((start start) (index start))
+        (cond ((substring-find-next-char text index limit #\newline)
+               => (lambda (line-end)
+                    (let ((next-line-start (fix:1+ line-end)))
+                      (if (fix:= next-line-start limit)
+                          (unit-filter text start line-end)
+                          (let ((char (string-ref text next-line-start)))
+                            (if (or (char=? char #\space)
+                                    (char=? char #\tab))
+                                (loop start next-line-start)
+                                (and (unit-filter text start line-end)
+                                     (loop next-line-start
+                                           next-line-start))))))))
+              ((fix:= start limit)
+               #t)
+              (else
+               (unit-filter text start limit)))))))
+
+(define (news-header-regexp-filter specifiers)
+  (news-header-splitting-filter
+   (let ((table (alist->string-table
+                 (map (lambda (specifier)
+                        (cons (car specifier)
+                              (re-compile-pattern (cdr specifier)
+                                                  #f)))      ; Don't case-fold.
+                      specifiers)
+                 #t)))      ; Case-insensitive
+     (lambda (text start end)
+       (cond ((substring-find-next-char text start end #\:)
+              => (lambda (colon-index)
+                   (cond ((string-table-get table
+                                            (substring text start colon-index))
+                          => (lambda (regexp)
+                               (not (re-substring-match regexp text
+                                                        ;; Skip colon & space.
+                                                        (fix:+ colon-index 2)
+                                                        end))))
+                         (else #t))))
+             (else #t))))))
 
 (define (article-number-seen! group number)
   (set-news-group:ranges-deleted!
