@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.583 2006/06/10 04:06:47 cph Exp $
+$Id: runtime.pkg,v 14.584 2006/06/12 05:07:18 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2115,10 +2115,15 @@ USA.
   (files "list")
   (parent (runtime))
   (export ()
+	  (improper-list? dotted-list?)
 	  (list-search-negative find-non-matching-item)
 	  (list-search-positive find-matching-item)
+	  (list-tabulate make-initialized-list)	;SRFI-1
 	  (list-transform-negative delete-matching-items)
 	  (list-transform-positive keep-matching-items)
+	  (mapcan append-map!)
+	  (mapcan* append-map*!)
+	  (proper-list? list?)		;SRFI-1
 	  add-member-procedure
 	  alist->keyword-list
 	  alist-copy
@@ -2164,6 +2169,7 @@ USA.
 	  cddr
 	  cdr
 	  circular-list
+	  circular-list?		;SRFI-1
 	  cons
 	  cons*
 	  count-matching-items
@@ -2184,8 +2190,11 @@ USA.
 	  delq!
 	  delv
 	  delv!
+	  dotted-list?			;SRFI-1
 	  eighth
 	  error:not-alist
+	  error:not-circular-list
+	  error:not-dotted-list
 	  error:not-keyword-list
 	  error:not-list
 	  error:not-pair
@@ -2200,6 +2209,7 @@ USA.
 	  find-unique-matching-item
 	  find-unique-non-matching-item
 	  first
+	  fold
 	  fold-left
 	  fold-right
 	  for-each
@@ -2207,6 +2217,8 @@ USA.
 	  general-car-cdr
 	  get-keyword-value
 	  guarantee-alist
+	  guarantee-circular-list
+	  guarantee-dotted-list
 	  guarantee-keyword-list
 	  guarantee-list
 	  guarantee-list->length
@@ -2216,10 +2228,12 @@ USA.
 	  guarantee-restricted-keyword-list
 	  guarantee-unique-keyword-list
 	  guarantee-weak-list
+	  iota				;SRFI-1
 	  keep-matching-items
 	  keep-matching-items!
 	  keyword-list->alist
 	  keyword-list?
+	  last				;SRFI-1
 	  last-pair
 	  length
 	  list
@@ -2232,6 +2246,7 @@ USA.
 	  list-of-type?->length
 	  list-ref
 	  list-tail
+	  list=				;SRFI-1
 	  list?
 	  list?->length
 	  make-circular-list
@@ -2239,13 +2254,13 @@ USA.
 	  make-list
 	  map
 	  map*
-	  mapcan
-	  mapcan*
 	  member
 	  member-procedure
 	  memq
 	  memv
 	  ninth
+	  not-pair?			;SRFI-1
+	  null-list?			;SRFI-1
 	  null?
 	  pair?
 	  reduce
@@ -2275,7 +2290,8 @@ USA.
 	  weak-pair/car?
 	  weak-pair?
 	  weak-set-car!
-	  weak-set-cdr!))
+	  weak-set-cdr!
+	  xcons))
 
 (define-package (runtime load)
   (files "load")
