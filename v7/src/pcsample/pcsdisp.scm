@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pcsdisp.scm,v 1.5 2003/02/14 18:28:31 cph Exp $
+$Id: pcsdisp.scm,v 1.6 2006/06/12 04:19:43 cph Exp $
 
-Copyright (c) 1993, 1999 Massachusetts Institute of Technology
+Copyright 1993,1999,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -411,10 +411,9 @@ USA.
 			   `(CODE-BLOCK ,ID TRAMPOLINE)
 			   (cddr samples)))
 			 (else '())))
-		  (tramp-tally (reduce (lambda (elt so-far) ; tally # samples
-					 (flo:+ so-far (second elt)))
-				       0.
-				       tramps)))
+		  ;; tally # samples
+		  (tramp-tally (apply + (map second tramps))))
+
 	     (if (null? tramps)
 		 (no-trampolines-of-sort ID-string)
 		 `(,ID-fnord! ,tramp-tally ,@tramps))))
@@ -628,10 +627,7 @@ USA.
 #|
     ;; Reality check...
     ;; Do: (apply + (map car lst))... reality check...
-    (let ((total-count (car (reduce (lambda (stat tacc)
-				      `(,(flo:+ (car stat) (car tacc))))
-				    '(0.)
-				    sorted-status))))
+    (let ((total-count (apply + (map car sorted-status))))
       (cond ((not (flo:= total-count tally))
 	     (warn "; Damned total-count != tally. Foo." total-count tally))))
 |#

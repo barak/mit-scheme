@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.92 2006/05/31 01:19:39 cph Exp $
+$Id: vc.scm,v 1.93 2006/06/12 04:19:43 cph Exp $
 
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2005,2006 Massachusetts Institute of Technology
@@ -2395,9 +2395,10 @@ the value of vc-log-mode-hook."
 
 (define (vc-run-shell-command master options command . arguments)
   (vc-run-command master options "/bin/sh" "-c"
-		  (reduce string-append-separated
-			  ""
-			  (vc-command-arguments (cons command arguments)))))
+		  (reduce-right string-append-separated
+				""
+				(vc-command-arguments
+				 (cons command arguments)))))
 
 (define (pop-up-vc-command-buffer select?)
   (let ((buffer (get-vc-command-buffer)))

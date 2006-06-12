@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dired.scm,v 1.198 2006/06/11 03:06:23 cph Exp $
+$Id: dired.scm,v 1.199 2006/06/12 04:19:43 cph Exp $
 
 Copyright 1987,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -511,7 +511,10 @@ With a prefix argument you can edit the current listing switches instead."
 			(string-append (string-head (car switches) index)
 				       (string-tail (car switches)
 						    (fix:+ index 1))))
-		       (s2 (reduce string-append-separated "" (cdr switches))))
+		       (s2
+			(reduce-right string-append-separated
+				      ""
+				      (cdr switches))))
 		   (if (string=? "-" s1)
 		       s2
 		       (string-append-separated s1 s2)))
