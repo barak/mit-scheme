@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.51 2006/06/12 05:07:09 cph Exp $
+$Id: list.scm,v 14.52 2006/06/12 17:53:05 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -318,6 +318,9 @@ USA.
     (if (pair? tree)
 	(cons (walk (car tree)) (walk (cdr tree)))
 	tree)))
+
+(define (car+cdr pair)
+  (values (car pair) (cdr pair)))
 
 ;;;; Weak Pairs
 
@@ -406,7 +409,7 @@ USA.
 			items*))
 		  (begin
 		    (if (not (null? items*))
-			(error:not-weak-list items 'WEAK-MEMQ))
+			(error:not-weak-list items 'WEAK-DELQ!))
 		    '()))))
 	   (locate-initial-segment
 	    (lambda (last this)
@@ -417,7 +420,7 @@ USA.
 				(trim-initial-segment (system-pair-cdr this)))
 		      (locate-initial-segment this (system-pair-cdr this)))
 		  (if (not (null? this))
-		      (error:not-weak-list items 'WEAK-MEMQ))))))
+		      (error:not-weak-list items 'WEAK-DELQ!))))))
     (trim-initial-segment items)))
 
 ;;;; Standard Selectors
@@ -946,138 +949,108 @@ USA.
 ;;;; Membership lists
 
 (define (memq item items)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (eq? (car items*) item)
-	    items*
-	    (loop (cdr items*)))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-list items 'MEMQ))
-	  #f))))
+  (%member item items eq? 'MEMQ))
 
 (define (memv item items)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (eqv? (car items*) item)
-	    items*
-	    (loop (cdr items*)))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-list items 'MEMV))
-	  #f))))
+  (%member item items eqv? 'MEMV))
 
-(define (member item items #!optional predicate)
-  (let ((predicate (if (default-object? predicate) equal? predicate)))
-    (let loop ((items* items))
-      (if (pair? items*)
-	  (if (predicate (car items*) item)
-	      items*
-	      (loop (cdr items*)))
-	  (begin
-	    (if (not (null? items*))
-		(error:not-list items 'MEMBER))
-	    #f)))))
+(define (member item items #!optional =)
+  (let ((= (if (default-object? =) equal? =)))
+    (%member item items = 'MEMBER)))
 
-(define (member-procedure predicate #!optional caller)
+(define (member-procedure = #!optional caller)
   (lambda (item items)
-    (let loop ((items* items))
-      (if (pair? items*)
-	  (if (predicate (car items*) item)
-	      items*
-	      (loop (cdr items*)))
+    (%member item items = caller)))
+
+(define (add-member-procedure = #!optional caller)
+  (lambda (item items)
+    (if (%member item items = caller)
+	items
+	(cons item items))))
+
+(define-integrable (%member item items = caller)
+  (let ((lose (lambda () (error:not-list items caller))))
+    (let loop ((items items))
+      (if (pair? items)
+	  (if (= (car items) item)
+	      items
+	      (loop (cdr items)))
 	  (begin
-	    (if (not (null? items*))
-		(error:not-list items caller))
+	    (if (not (null? items))
+		(lose))
 	    #f)))))
-
-(define delq)
-(define delv)
-(define delete)
-
-(let-syntax
-    ((fast-delete-member
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
-	     (let ((name (cadr form))
-		   (predicate (close-syntax (caddr form) environment)))
-	       `(SET!
-		 ,name
-		 (NAMED-LAMBDA (,name ITEM ITEMS)
-		   (LET ((LOSE (LAMBDA () (ERROR:NOT-LIST ITEMS ',name))))
-		     (COND ((PAIR? ITEMS)
-			    (LET ((HEAD (CONS (CAR ITEMS) '())))
-			      (LET LOOP ((ITEMS (CDR ITEMS)) (PREVIOUS HEAD))
-				(COND ((PAIR? ITEMS)
-				       (IF (,predicate (CAR ITEMS) ITEM)
-					   (LOOP (CDR ITEMS) PREVIOUS)
-					   (LET ((NEW (CONS (CAR ITEMS) '())))
-					     (SET-CDR! PREVIOUS NEW)
-					     (LOOP (CDR ITEMS) NEW))))
-				      ((NOT (NULL? ITEMS)) (LOSE))))
-			      (IF (,predicate (CAR ITEMS) ITEM)
-				  (CDR HEAD)
-				  HEAD)))
-			   ((NULL? ITEMS) ITEMS)
-			   (ELSE (LOSE)))))))
-	     (ill-formed-syntax form))))))
-  (fast-delete-member delq eq?)
-  (fast-delete-member delv eqv?)
-  (fast-delete-member delete equal?))
-
-(define (add-member-procedure predicate #!optional caller)
-  (let ((member (member-procedure predicate caller)))
-    (lambda (item items)
-      (if (member item items)
-	  items
-	  (cons item items)))))
 
 (define ((delete-member-procedure deletor predicate) item items)
   ((deletor (lambda (match) (predicate match item))) items))
 
-(define delq!)
-(define delv!)
-(define delete!)
+(define (delq item items)
+  (%delete item items eq? 'DELQ))
 
-(let-syntax
-    ((fast-delete-member!
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
-	     (let ((name (cadr form))
-		   (predicate (close-syntax (caddr form) environment)))
-	       `(SET!
-		 ,name
-		 (NAMED-LAMBDA (,name ITEM ITEMS)
-		   (LETREC
-		       ((TRIM-INITIAL-SEGMENT
-			 (LAMBDA (ITEMS*)
-			   (IF (PAIR? ITEMS*)
-			       (IF (,predicate ITEM (CAR ITEMS*))
-				   (TRIM-INITIAL-SEGMENT (CDR ITEMS*))
-				   (BEGIN
-				     (LOCATE-INITIAL-SEGMENT ITEMS*
-							     (CDR ITEMS*))
-				     ITEMS*))
-			       (BEGIN
-				 (IF (NOT (NULL? ITEMS*))
-				     (ERROR:NOT-LIST ITEMS ',name))
-				 '()))))
-			(LOCATE-INITIAL-SEGMENT
-			 (LAMBDA (LAST THIS)
-			   (IF (PAIR? THIS)
-			       (IF (,predicate ITEM (CAR THIS))
-				   (SET-CDR! LAST
-					     (TRIM-INITIAL-SEGMENT (CDR THIS)))
-				   (LOCATE-INITIAL-SEGMENT THIS (CDR THIS)))
-			       (IF (NOT (NULL? THIS))
-				   (ERROR:NOT-LIST ITEMS ',name))))))
-		     (TRIM-INITIAL-SEGMENT ITEMS)))))
-	     (ill-formed-syntax form))))))
-  (fast-delete-member! delq! eq?)
-  (fast-delete-member! delv! eqv?)
-  (fast-delete-member! delete! equal?))
+(define (delv item items)
+  (%delete item items eqv? 'DELQ))
+
+(define (delete item items #!optional =)
+  (let ((= (if (default-object? =) equal? =)))
+    (%delete item items = 'DELETE)))
+
+(define-integrable (%delete item items = caller)
+  (let ((lose (lambda () (error:not-list items caller))))
+    (if (pair? items)
+	(let ((head (cons (car items) '())))
+	  (let loop ((items (cdr items)) (previous head))
+	    (cond ((pair? items)
+		   (if (= (car items) item)
+		       (loop (cdr items) previous)
+		       (let ((new (cons (car items) '())))
+			 (set-cdr! previous new)
+			 (loop (cdr items) new))))
+		  ((not (null? items))
+		   (lose))))
+	  (if (= (car items) item)
+	      (cdr head)
+	      head))
+	(begin
+	  (if (not (null? items))
+	      (lose))
+	  items))))
+
+(define (delq! item items)
+  (%delete! item items eq? 'DELQ!))
+
+(define (delv! item items)
+  (%delete! item items eqv? 'DELV!))
+
+(define (delete! item items #!optional =)
+  (let ((= (if (default-object? =) equal? =)))
+    (%delete! item items = 'DELETE!)))
+
+(define-integrable (%delete! item items = caller)
+  (letrec
+      ((trim-initial-segment
+	(lambda (items)
+	  (if (pair? items)
+	      (if (= item (car items))
+		  (trim-initial-segment (cdr items))
+		  (begin
+		    (locate-initial-segment items (cdr items))
+		    items))
+	      (begin
+		(if (not (null? items))
+		    (lose))
+		'()))))
+       (locate-initial-segment
+	(lambda (last this)
+	  (if (pair? this)
+	      (if (= item (car this))
+		  (set-cdr! last
+			    (trim-initial-segment (cdr this)))
+		  (locate-initial-segment this (cdr this)))
+	      (if (not (null? this))
+		  (error:not-list items caller)))))
+       (lose
+	(lambda ()
+	  (error:not-list items caller))))
+    (trim-initial-segment items)))
 
 ;;;; Association lists
 
@@ -1086,149 +1059,8 @@ USA.
 
 (define-guarantee alist "association list")
 
-(define (assq key alist)
-  (let loop ((alist* alist))
-    (if (pair? alist*)
-	(begin
-	  (if (not (pair? (car alist*)))
-	      (error:not-alist alist 'ASSQ))
-	  (if (eq? (caar alist*) key)
-	      (car alist*)
-	      (loop (cdr alist*))))
-	(begin
-	  (if (not (null? alist*))
-	      (error:not-alist alist 'ASSQ))
-	  #f))))
-
-(define (assv key alist)
-  (let loop ((alist* alist))
-    (if (pair? alist*)
-	(begin
-	  (if (not (pair? (car alist*)))
-	      (error:not-alist alist 'ASSV))
-	  (if (eqv? (caar alist*) key)
-	      (car alist*)
-	      (loop (cdr alist*))))
-	(begin
-	  (if (not (null? alist*))
-	      (error:not-alist alist 'ASSV))
-	  #f))))
-
-(define (assoc key alist #!optional predicate)
-  (let ((predicate (if (default-object? predicate) equal? predicate)))
-    (let loop ((alist* alist))
-      (if (pair? alist*)
-	  (begin
-	    (if (not (pair? (car alist*)))
-		(error:not-alist alist 'ASSOC))
-	    (if (predicate (caar alist*) key)
-		(car alist*)
-		(loop (cdr alist*))))
-	  (begin
-	    (if (not (null? alist*))
-		(error:not-alist alist 'ASSOC))
-	    #f)))))
-
-(define (association-procedure predicate selector #!optional caller)
-  (lambda (key items)
-    (let loop ((items* items))
-      (if (pair? items*)
-	  (if (predicate (selector (car items*)) key)
-	      (car items*)
-	      (loop (cdr items*)))
-	  (begin
-	    (if (not (null? items*))
-		(error:not-list items caller))
-	    #f)))))
-
-(define del-assq)
-(define del-assv)
-(define del-assoc)
-
-(let-syntax
-    ((fast-del-assoc
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
-	     (let ((name (cadr form))
-		   (predicate (close-syntax (caddr form) environment)))
-	       `(SET!
-		 ,name
-		 (NAMED-LAMBDA (,name ITEM ITEMS)
-		   (LET ((LOSE (LAMBDA () (ERROR:NOT-ALIST ITEMS ',name))))
-		     (COND ((PAIR? ITEMS)
-			    (IF (NOT (PAIR? (CAR ITEMS))) (LOSE))
-			    (LET ((HEAD (CONS (CAR ITEMS) '())))
-			      (LET LOOP ((ITEMS* (CDR ITEMS)) (PREVIOUS HEAD))
-				(COND ((PAIR? ITEMS*)
-				       (IF (NOT (PAIR? (CAR ITEMS*))) (LOSE))
-				       (IF (,predicate (CAAR ITEMS*) ITEM)
-					   (LOOP (CDR ITEMS*) PREVIOUS)
-					   (LET ((NEW (CONS (CAR ITEMS*) '())))
-					     (SET-CDR! PREVIOUS NEW)
-					     (LOOP (CDR ITEMS*) NEW))))
-				      ((NOT (NULL? ITEMS*)) (LOSE))))
-			      (IF (,predicate (CAAR ITEMS) ITEM)
-				  (CDR HEAD)
-				  HEAD)))
-			   ((NULL? ITEMS) ITEMS)
-			   (ELSE (LOSE)))))))
-	     (ill-formed-syntax form))))))
-  (fast-del-assoc del-assq eq?)
-  (fast-del-assoc del-assv eqv?)
-  (fast-del-assoc del-assoc equal?))
-
-(define ((delete-association-procedure deletor predicate selector) key alist)
-  ((deletor (lambda (entry) (predicate (selector entry) key))) alist))
-
-(define del-assq!)
-(define del-assv!)
-(define del-assoc!)
-
-(let-syntax
-    ((fast-del-assoc!
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
-	     (let ((name (cadr form))
-		   (predicate (close-syntax (caddr form) environment)))
-	       `(SET!
-		 ,name
-		 (NAMED-LAMBDA (,name ITEM ITEMS)
-		   (LETREC
-		       ((TRIM-INITIAL-SEGMENT
-			 (LAMBDA (ITEMS*)
-			   (IF (PAIR? ITEMS*)
-			       (BEGIN
-				 (IF (NOT (PAIR? (CAR ITEMS*))) (LOSE))
-				 (IF (,predicate (CAAR ITEMS*) ITEM)
-				     (TRIM-INITIAL-SEGMENT (CDR ITEMS*))
-				     (BEGIN
-				       (LOCATE-INITIAL-SEGMENT ITEMS*
-							       (CDR ITEMS*))
-				       ITEMS*)))
-			       (BEGIN
-				 (IF (NOT (NULL? ITEMS*)) (LOSE))
-				 '()))))
-			(LOCATE-INITIAL-SEGMENT
-			 (LAMBDA (LAST THIS)
-			   (COND ((PAIR? THIS)
-				  (IF (NOT (PAIR? (CAR THIS))) (LOSE))
-				  (IF (,predicate (CAAR THIS) ITEM)
-				      (SET-CDR!
-				       LAST
-				       (TRIM-INITIAL-SEGMENT (CDR THIS)))
-				      (LOCATE-INITIAL-SEGMENT THIS
-							      (CDR THIS))))
-				 ((NOT (NULL? THIS)) (LOSE)))))
-			(LOSE
-			 (LAMBDA ()
-			   (ERROR:NOT-ALIST ITEMS ',name))))
-		     (TRIM-INITIAL-SEGMENT ITEMS)))))
-	     (ill-formed-syntax form))))))
-  (fast-del-assoc! del-assq! eq?)
-  (fast-del-assoc! del-assv! eqv?)
-  (fast-del-assoc! del-assoc! equal?))
+(define (alist-cons key datum alist)
+  (cons (cons key datum) alist))
 
 (define (alist-copy alist)
   (let ((lose (lambda () (error:not-alist alist 'ALIST-COPY))))
@@ -1249,6 +1081,133 @@ USA.
 	       (lose)))
 	  ((null? alist) alist)
 	  (else (lose)))))
+
+(define (association-procedure predicate selector #!optional caller)
+  (lambda (key items)
+    (let ((lose (lambda () (error:not-list items caller))))
+      (let loop ((items items))
+	(if (pair? items)
+	    (if (predicate (selector (car items)) key)
+		(car items)
+		(loop (cdr items)))
+	    (begin
+	      (if (not (null? items))
+		  (lose))
+	      #f))))))
+
+(define ((delete-association-procedure deletor predicate selector) key alist)
+  ((deletor (lambda (entry) (predicate (selector entry) key))) alist))
+
+(define (assq key alist)
+  (%assoc key alist eq? 'ASSQ))
+
+(define (assv key alist)
+  (%assoc key alist eqv? 'ASSV))
+
+(define (assoc key alist #!optional =)
+  (let ((= (if (default-object? =) equal? =)))
+    (%assoc key alist = 'ASSOC)))
+
+(define-integrable (%assoc key alist = caller)
+  (let ((lose (lambda () (error:not-alist alist caller))))
+    (let loop ((alist alist))
+      (if (pair? alist)
+	  (begin
+	    (if (not (pair? (car alist)))
+		(lose))
+	    (if (= (caar alist) key)
+		(car alist)
+		(loop (cdr alist))))
+	  (begin
+	    (if (not (null? alist))
+		(lose))
+	    #f)))))
+
+(define (del-assq key alist)
+  (%alist-delete key alist eq? 'DEL-ASSQ))
+
+(define (del-assv key alist)
+  (%alist-delete key alist eqv? 'DEL-ASSV))
+
+(define (del-assoc key alist)
+  (%alist-delete key alist equal? 'DEL-ASSOC))
+
+(define (alist-delete key alist #!optional =)
+  (let ((= (if (default-object? =) equal? =)))
+    (%alist-delete key alist = 'ALIST-DELETE)))
+
+(define-integrable (%alist-delete key alist = caller)
+  (let ((lose (lambda () (error:not-alist alist caller))))
+    (if (pair? alist)
+	(begin
+	  (if (not (pair? (car alist)))
+	      (lose))
+	  (let ((head (cons (car alist) '())))
+	    (let loop ((alist (cdr alist)) (previous head))
+	      (cond ((pair? alist)
+		     (if (not (pair? (car alist)))
+			 (lose))
+		     (if (= (caar alist) key)
+			 (loop (cdr alist) previous)
+			 (let ((new (cons (car alist) '())))
+			   (set-cdr! previous new)
+			   (loop (cdr alist) new))))
+		    ((not (null? alist))
+		     (lose))))
+	    (if (= (caar alist) key)
+		(cdr head)
+		head)))
+	(begin
+	  (if (not (null? alist))
+	      (lose))
+	  alist))))
+
+(define (del-assq! key alist)
+  (%alist-delete! key alist eq? 'DEL-ASSQ!))
+
+(define (del-assv! key alist)
+  (%alist-delete! key alist eqv? 'DEL-ASSV!))
+
+(define (del-assoc! key alist)
+  (%alist-delete! key alist equal? 'DEL-ASSOC!))
+
+(define (alist-delete! key alist #!optional =)
+  (let ((= (if (default-object? =) equal? =)))
+    (%alist-delete! key alist = 'ALIST-DELETE!)))
+
+(define-integrable (%alist-delete! item items = caller)
+  (letrec
+      ((trim-initial-segment
+	(lambda (items)
+	  (if (pair? items)
+	      (begin
+		(if (not (pair? (car items)))
+		    (lose))
+		(if (= (caar items) item)
+		    (trim-initial-segment (cdr items))
+		    (begin
+		      (locate-initial-segment items (cdr items))
+		      items)))
+	      (begin
+		(if (not (null? items))
+		    (lose))
+		'()))))
+       (locate-initial-segment
+	(lambda (last this)
+	  (cond ((pair? this)
+		 (if (not (pair? (car this)))
+		     (lose))
+		 (if (= (caar this) item)
+		     (set-cdr!
+		      last
+		      (trim-initial-segment (cdr this)))
+		     (locate-initial-segment this (cdr this))))
+		((not (null? this))
+		 (lose)))))
+       (lose
+	(lambda ()
+	  (error:not-alist items caller))))
+    (trim-initial-segment items)))
 
 ;;;; Keyword lists
 
@@ -1340,11 +1299,11 @@ USA.
   (if (not (pair? (cdr list)))
       '()
       (let ((head (cons (car list) '())))
-	(let loop ((list* (cdr list)) (previous head))
-	  (if (pair? (cdr list*))
-	      (let ((new (cons (car list*) '())))
+	(let loop ((list (cdr list)) (previous head))
+	  (if (pair? (cdr list))
+	      (let ((new (cons (car list) '())))
 		(set-cdr! previous new)
-		(loop (cdr list*) new))
+		(loop (cdr list) new))
 	      head)))))
 
 (define (except-last-pair! list)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.584 2006/06/12 05:07:18 cph Exp $
+$Id: runtime.pkg,v 14.585 2006/06/12 17:53:11 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -932,7 +932,7 @@ USA.
 	  advice
 	  advise-entry
 	  advise-exit
-	  break
+	  ;;break
 	  break-both
 	  break-entry
 	  break-exit
@@ -2126,7 +2126,10 @@ USA.
 	  (proper-list? list?)		;SRFI-1
 	  add-member-procedure
 	  alist->keyword-list
+	  alist-cons
 	  alist-copy
+	  alist-delete
+	  alist-delete!
 	  alist?
 	  append
 	  append!
@@ -2153,6 +2156,7 @@ USA.
 	  caddr
 	  cadr
 	  car
+	  car+cdr			;SRFI-1
 	  cdaaar
 	  cdaadr
 	  cdaar
@@ -2292,6 +2296,72 @@ USA.
 	  weak-set-car!
 	  weak-set-cdr!
 	  xcons))
+
+(define-package (runtime srfi-1)
+  (files "srfi-1")
+  (parent (runtime))
+  (export ()
+	  any
+	  append-reverse
+	  append-reverse!
+	  break
+	  break!
+	  concatenate
+	  concatenate!
+	  count
+	  delete-duplicates
+	  delete-duplicates!
+	  drop
+	  drop-right
+	  drop-right!
+	  drop-while
+	  every
+	  filter
+	  filter!
+	  filter-map
+	  find
+	  find-tail
+	  length+
+	  list-index
+	  lset-adjoin
+	  lset-diff+intersection
+	  lset-diff+intersection!
+	  lset-difference
+	  lset-difference!
+	  lset-intersection
+	  lset-intersection!
+	  lset-union
+	  lset-union!
+	  lset-xor
+	  lset-xor!
+	  lset<=
+	  lset=
+	  map!
+	  map-in-order
+	  pair-fold
+	  pair-fold-right
+	  pair-for-each
+	  partition
+	  partition!
+	  remove
+	  remove!
+	  span
+	  span!
+	  split-at
+	  split-at!
+	  take
+	  take!
+	  take-right
+	  take-while
+	  take-while!
+	  unfold
+	  unfold-right
+	  unzip1
+	  unzip2
+	  unzip3
+	  unzip4
+	  unzip5
+	  zip))
 
 (define-package (runtime load)
   (files "load")

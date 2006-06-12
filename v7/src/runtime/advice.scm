@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: advice.scm,v 14.20 2003/02/14 18:28:32 cph Exp $
+$Id: advice.scm,v 14.21 2006/06/12 17:53:02 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1993 Massachusetts Institute of Technology
-Copyright 1999,2000,2003 Massachusetts Institute of Technology
+Copyright 1999,2000,2003,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -337,8 +337,6 @@ USA.
 
 (define (break-both procedure)
   (advise-both procedure break-entry-advice break-exit-advice))
-
-(define break break-both)
 
 (define unbreak-entry
   (specific-entry-unadviser break-entry-advice))
