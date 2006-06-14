@@ -1,9 +1,9 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: lists.texi,v 1.1 2003/04/15 03:29:50 cph Exp $
+@c $Id: lists.texi,v 1.2 2006/06/14 04:26:50 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
-@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c Copyright 2002,2003,2006 Massachusetts Institute of Technology
 @c See file scheme.texinfo for copying conditions.
 
 @node Lists, Vectors, Strings, Top
@@ -94,15 +94,15 @@ list one moment and not the next:
 @group
 (define x (list 'a 'b 'c))
 (define y x)
-y                                       @result{}  (a b c)
-(list? y)                               @result{}  #t
-(set-cdr! x 4)                          @result{}  @r{unspecified}
-x                                       @result{}  (a . 4)
-(eqv? x y)                              @result{}  #t
-y                                       @result{}  (a . 4)
-(list? y)                               @result{}  #f
-(set-cdr! x x)                          @result{}  @r{unspecified}
-(list? y)                               @result{}  #f
+y                                       @result{} (a b c)
+(list? y)                               @result{} #t
+(set-cdr! x 4)                          @result{} @r{unspecified}
+x                                       @result{} (a . 4)
+(eqv? x y)                              @result{} #t
+y                                       @result{} (a . 4)
+(list? y)                               @result{} #f
+(set-cdr! x x)                          @result{} @r{unspecified}
+(list? y)                               @result{} #f
 @end group
 @end example
 
@@ -164,10 +164,10 @@ Returns @code{#t} if @var{object} is a pair; otherwise returns
 
 @example
 @group
-(pair? '(a . b))                        @result{}  #t
-(pair? '(a b c))                        @result{}  #t
-(pair? '())                             @result{}  #f
-(pair? '#(a b))                         @result{}  #f
+(pair? '(a . b))                        @result{} #t
+(pair? '(a b c))                        @result{} #t
+(pair? '())                             @result{} #f
+(pair? '#(a b))                         @result{} #f
 @end group
 @end example
 @end deffn
@@ -181,12 +181,21 @@ Returns a newly allocated pair whose car is @var{obj1} and whose cdr is
 
 @example
 @group
-(cons 'a '())                           @result{}  (a)
-(cons '(a) '(b c d))                    @result{}  ((a) b c d)
-(cons "a" '(b c))                       @result{}  ("a" b c)
-(cons 'a 3)                             @result{}  (a . 3)
-(cons '(a b) 'c)                        @result{}  ((a b) . c)
+(cons 'a '())                           @result{} (a)
+(cons '(a) '(b c d))                    @result{} ((a) b c d)
+(cons "a" '(b c))                       @result{} ("a" b c)
+(cons 'a 3)                             @result{} (a . 3)
+(cons '(a b) 'c)                        @result{} ((a b) . c)
 @end group
+@end example
+@end deffn
+
+@deffn procedure xcons obj1 obj2
+(@acronym{SRFI} 1) Returns a newly allocated pair whose car is
+@var{obj2} and whose cdr is @var{obj1}.
+
+@example
+(xcons '(b c) 'a)                       @result{} (a b c)
 @end example
 @end deffn
 
@@ -198,9 +207,9 @@ error to take the @code{car} of the empty list.
 
 @example
 @group
-(car '(a b c))                          @result{}  a
-(car '((a) b c d))                      @result{}  (a)
-(car '(1 . 2))                          @result{}  1
+(car '(a b c))                          @result{} a
+(car '((a) b c d))                      @result{} (a)
+(car '(1 . 2))                          @result{} 1
 (car '())                               @error{} Illegal datum
 @end group
 @end example
@@ -212,9 +221,27 @@ error to take the @code{cdr} of the empty list.
 
 @example
 @group
-(cdr '((a) b c d))                      @result{}  (b c d)
-(cdr '(1 . 2))                          @result{}  2
+(cdr '((a) b c d))                      @result{} (b c d)
+(cdr '(1 . 2))                          @result{} 2
 (cdr '())                               @error{} Illegal datum
+@end group
+@end example
+@end deffn
+
+@deffn procedure car+cdr pair
+(@acronym{SRFI} 1) The fundamental pair deconstructor:
+
+@example
+(lambda (p) (values (car p) (cdr p)))
+@end example
+
+@example
+@group
+(receive (a b) (car+cdr (cons 1 2))
+  (write-line a)
+  (write-line b))
+@print{} 1
+@print{} 2
 @end group
 @end example
 @end deffn
@@ -227,7 +254,7 @@ by @code{set-car!} is unspecified.
 @group
 (define (f) (list 'not-a-constant-list))
 (define (g) '(constant-list))
-(set-car! (f) 3)                        @result{}  @r{unspecified}
+(set-car! (f) 3)                        @result{} @r{unspecified}
 (set-car! (g) 3)                        @error{} Illegal datum
 @end group
 @end example
@@ -314,8 +341,9 @@ Here is a partial table of path/operation equivalents:
 @deffn procedure tree-copy tree
 @cindex copying, of tree
 @cindex tree, copying
-This copies an arbitrary @var{tree} constructed from pairs, copying both
-the car and cdr elements of every pair.  This could have been defined by
+(@acronym{SRFI} 1) This copies an arbitrary @var{tree} constructed
+from pairs, copying both the car and cdr elements of every pair.  This
+could have been defined by
 
 @example
 @group
@@ -337,8 +365,8 @@ Returns a list of its arguments.
 
 @example
 @group
-(list 'a (+ 3 4) 'c)                    @result{}  (a 7 c)
-(list)                                  @result{}  ()
+(list 'a (+ 3 4) 'c)                    @result{} (a 7 c)
+(list)                                  @result{} ()
 @end group
 @end example
 
@@ -353,25 +381,30 @@ These expressions are equivalent:
 @end deffn
 
 @deffn procedure make-list k [element]
-This procedure returns a newly allocated list of length @var{k},
-whose elements are all @var{element}.  If @var{element} is not supplied,
-it defaults to the empty list.
+(@acronym{SRFI} 1) This procedure returns a newly allocated list of
+length @var{k}, whose elements are all @var{element}.  If
+@var{element} is not supplied, it defaults to the empty list.
+
+@example
+(make-list 4 'c)                        @result{} (c c c c)
+@end example
 @end deffn
 
 @deffn procedure cons* object object @dots{}
 @findex list
-@code{cons*} is similar to @code{list}, except that @code{cons*} conses
-together the last two arguments rather than consing the last argument
-with the empty list.  If the last argument is not a list the result is
-an improper list.  If the last argument is a list, the result is a list
-consisting of the initial arguments and all of the items in the final
-argument.  If there is only one argument, the result is the argument.
+(@acronym{SRFI} 1) @code{cons*} is similar to @code{list}, except that
+@code{cons*} conses together the last two arguments rather than
+consing the last argument with the empty list.  If the last argument
+is not a list the result is an improper list.  If the last argument is
+a list, the result is a list consisting of the initial arguments and
+all of the items in the final argument.  If there is only one
+argument, the result is the argument.
 
 @example
 @group
-(cons* 'a 'b 'c)                        @result{}  (a b . c)
-(cons* 'a 'b '(c d))                    @result{}  (a b c d)
-(cons* 'a)                              @result{}  a
+(cons* 'a 'b 'c)                        @result{} (a b . c)
+(cons* 'a 'b '(c d))                    @result{} (a b c d)
+(cons* 'a)                              @result{} a
 @end group
 @end example
 
@@ -385,9 +418,24 @@ These expressions are equivalent:
 @end example
 @end deffn
 
+@deffn procedure list-tabulate k init-proc
+@deffnx procedure make-initialized-list k init-proc
+Returns a @var{k}-element list.  Element @var{i} of the list, where 0
+<= @var{i} < @var{k}, is produced by (@var{init-proc} @var{i}).  No
+guarantee is made about the dynamic order in which @var{init-proc} is
+applied to these indices.
+
+@example
+(list-tabulate 4 values) => (0 1 2 3)
+@end example
+
+@code{list-tabulate} is defined by @acronym{SRFI} 1.
+@end deffn
+
 @deffn procedure list-copy list
-Returns a newly allocated copy of @var{list}.  This copies each of the
-pairs comprising @var{list}.  This could have been defined by
+(@acronym{SRFI} 1) Returns a newly allocated copy of @var{list}.  This
+copies each of the pairs comprising @var{list}.  This could have been
+defined by
 
 @example
 @group
@@ -396,6 +444,25 @@ pairs comprising @var{list}.  This could have been defined by
       '()
       (cons (car list)
             (list-copy (cdr list)))))
+@end group
+@end example
+@end deffn
+
+@deffn procedure iota count [start [step]]
+(@acronym{SRFI} 1) Returns a list containing the elements
+
+@example
+(@var{start} @var{start}+@var{step} @dots{} @var{start}+(@var{count}-1)*@var{step})
+@end example
+
+@var{Count} must be an exact non-negative integer, while @var{start}
+and @var{step} can be any numbers.  The @var{start} and @var{step}
+parameters default to 0 and 1, respectively.
+
+@example
+@group
+(iota 5) @result{} (0 1 2 3 4)
+(iota 5 0 -0.1) @result{} (0 -0.1 -0.2 -0.3 -0.4)
 @end group
 @end example
 @end deffn
@@ -410,12 +477,12 @@ the elements of the given subvector.  The inverse of @code{vector->list}
 is @code{list->vector}.
 
 @example
-(vector->list '#(dah dah didah))        @result{}  (dah dah didah)
+(vector->list '#(dah dah didah))        @result{} (dah dah didah)
 @end example
 @end deffn
 
-@deffn {procedure} string->list string
-@deffnx {procedure} substring->list string start end
+@deffn procedure string->list string
+@deffnx procedure substring->list string start end
 @cindex string, converting to list
 @findex list->string
 @code{string->list} returns a newly allocated list of the character
@@ -426,8 +493,8 @@ elements of the given substring.  The inverse of @code{string->list} is
 
 @example
 @group
-(string->list "abcd")                   @result{}  (#\a #\b #\c #\d)
-(substring->list "abcdef" 1 3)          @result{}  (#\b #\c)
+(string->list "abcd")                   @result{} (#\a #\b #\c #\d)
+(substring->list "abcdef" 1 3)          @result{} (#\b #\c)
 @end group
 @end example
 @end deffn
@@ -452,12 +519,38 @@ of @code{pair?} or @code{null?}.
 
 @example
 @group
-(list? '(a b c))                        @result{}  #t
-(list? '())                             @result{}  #t
-(list? '(a . b))                        @result{}  #f
+(list? '(a b c))                        @result{} #t
+(list? '())                             @result{} #t
+(list? '(a . b))                        @result{} #f
 (let ((x (list 'a)))
   (set-cdr! x x)
-  (list? x))                            @result{}  #f
+  (list? x))                            @result{} #f
+@end group
+@end example
+@end deffn
+
+@deffn procedure circular-list? object
+(@acronym{SRFI} 1) Returns @code{#t} if @var{object} is a circular
+list, otherwise returns @code{#f}.
+
+@example
+@group
+(dotted-list? (list 'a 'b 'c))          @result{} #f
+(dotted-list? (cons* 'a 'b 'c))         @result{} #t
+(dotted-list? (circular-list 'a 'b 'c)) @result{} #f
+@end group
+@end example
+@end deffn
+
+@deffn procedure dotted-list? object
+(@acronym{SRFI} 1) Returns @code{#t} if @var{object} is an improper
+list, otherwise returns @code{#f}.
+
+@example
+@group
+(circular-list? (list 'a 'b 'c))        @result{} #f
+(circular-list? (cons* 'a 'b 'c))       @result{} #f
+(circular-list? (circular-list 'a 'b 'c)) @result{} #t
 @end group
 @end example
 @end deffn
@@ -468,9 +561,24 @@ a proper list.
 
 @example
 @group
-(length '(a b c))                       @result{}  3
-(length '(a (b) (c d e)))               @result{}  3
-(length '())                            @result{}  0
+(length '(a b c))                       @result{} 3
+(length '(a (b) (c d e)))               @result{} 3
+(length '())                            @result{} 0
+(length (circular-list 'a 'b 'c))       @error{}
+@end group
+@end example
+@end deffn
+
+@deffn procedure length+ clist
+(@acronym{SRFI} 1) Returns the length of @var{clist}, if it is a proper
+list.  Returns @code{#f} if @var{clist} is a circular list.  Otherwise
+signals an error.
+
+@example
+@group
+(length+ (list 'a 'b 'c))               @result{} 3
+(length+ (cons* 'a 'b 'c))              @error{}
+(length+ (circular-list 'a 'b 'c))      @result{} #f
 @end group
 @end example
 @end deffn
@@ -483,9 +591,9 @@ Returns @code{#t} if @var{object} is the empty list; otherwise returns
 
 @example
 @group
-(null? '(a . b))                        @result{}  #f
-(null? '(a b c))                        @result{}  #f
-(null? '())                             @result{}  #t
+(null? '(a . b))                        @result{} #f
+(null? '(a b c))                        @result{} #f
+(null? '())                             @result{} #t
 @end group
 @end example
 @end deffn
@@ -501,10 +609,10 @@ less than the length of the list.  The first element of a list has index
 
 @example
 @group
-(list-ref '(a b c d) 2)                 @result{}  c
+(list-ref '(a b c d) 2)                 @result{} c
 (list-ref '(a b c d)
           (inexact->exact (round 1.8)))
-     @result{}  c
+     @result{} c
 @end group
 @end example
 
@@ -568,17 +676,17 @@ with @var{list}.  @var{K} must not be greater than the length of
 @var{list}.
 @end deffn
 
-@deffn {procedure} append list @dots{}
+@deffn procedure append list @dots{}
 @cindex appending, of lists
 Returns a list consisting of the elements of the first @var{list}
 followed by the elements of the other @var{list}s.
 
 @example
 @group
-(append '(x) '(y))                      @result{}  (x y)
-(append '(a) '(b c d))                  @result{}  (a b c d)
-(append '(a (b)) '((c)))                @result{}  (a (b) (c))
-(append)                                @result{}  ()
+(append '(x) '(y))                      @result{} (x y)
+(append '(a) '(b c d))                  @result{} (a b c d)
+(append '(a (b)) '((c)))                @result{} (a (b) (c))
+(append)                                @result{} ()
 @end group
 @end example
 
@@ -589,8 +697,8 @@ not a proper list.
 
 @example
 @group
-(append '(a b) '(c . d))                @result{}  (a b c . d)
-(append '() 'a)                         @result{}  a
+(append '(a b) '(c . d))                @result{} (a b c . d)
+(append '() 'a)                         @result{} a
 @end group
 @end example
 @end deffn
@@ -606,10 +714,10 @@ example:
 (define x '(a b c))
 (define y '(d e f))
 (define z '(g h))
-(append! x y z)                         @result{}  (a b c d e f g h)
-x                                       @result{}  (a b c d e f g h)
-y                                       @result{}  (d e f g h)
-z                                       @result{}  (g h)
+(append! x y z)                         @result{} (a b c d e f g h)
+x                                       @result{} (a b c d e f g h)
+y                                       @result{} (d e f g h)
+z                                       @result{} (g h)
 @end group
 @end example
 @end deffn
@@ -703,17 +811,17 @@ like @code{(set! x (delete! x))}.
 @example
 @group
 (define x '(a b c b))
-(delete 'b x)                           @result{}  (a c)
-x                                       @result{}  (a b c b)
+(delete 'b x)                           @result{} (a c)
+x                                       @result{} (a b c b)
 
 (define x '(a b c b))
-(delete! 'b x)                          @result{}  (a c)
-x                                       @result{}  (a c)
+(delete! 'b x)                          @result{} (a c)
+x                                       @result{} (a c)
 @r{;; Returns correct result:}
-(delete! 'a x)                          @result{}  (c)
+(delete! 'a x)                          @result{} (c)
 
 @r{;; Didn't modify what x points to:}
-x                                       @result{}  (a c)
+x                                       @result{} (a c)
 @end group
 @end example
 @end deffn
@@ -801,13 +909,13 @@ return useful values rather than just @code{#t} or @code{#f}.}
 
 @example
 @group
-(memq 'a '(a b c))                      @result{}  (a b c)
-(memq 'b '(a b c))                      @result{}  (b c)
-(memq 'a '(b c d))                      @result{}  #f
-(memq (list 'a) '(b (a) c))             @result{}  #f
-(member (list 'a) '(b (a) c))           @result{}  ((a) c)
-(memq 101 '(100 101 102))               @result{}  @r{unspecified}
-(memv 101 '(100 101 102))               @result{}  (101 102)
+(memq 'a '(a b c))                      @result{} (a b c)
+(memq 'b '(a b c))                      @result{} (b c)
+(memq 'a '(b c d))                      @result{} #f
+(memq (list 'a) '(b (a) c))             @result{} #f
+(member (list 'a) '(b (a) c))           @result{} ((a) c)
+(memq 101 '(100 101 102))               @result{} @r{unspecified}
+(memv 101 '(100 101 102))               @result{} (101 102)
 @end group
 @end example
 @end deffn
@@ -827,7 +935,7 @@ This could be used to define @code{memv} as follows:
 @section Mapping of Lists
 @cindex mapping, of list
 
-@deffn {procedure} map procedure list list @dots{}
+@deffn procedure map procedure list list @dots{}
 @var{Procedure} must be a procedure taking as many arguments as there
 are @var{list}s.  If more than one @var{list} is given, then they must
 all be the same length.  @code{map} applies @var{procedure} element-wise
@@ -838,14 +946,14 @@ applied to the elements of the @var{list}s is unspecified; use
 
 @example
 @group
-(map cadr '((a b) (d e) (g h)))           @result{}  (b e h)
-(map (lambda (n) (expt n n)) '(1 2 3 4))  @result{}  (1 4 27 256)
-(map + '(1 2 3) '(4 5 6))                 @result{}  (5 7 9)
+(map cadr '((a b) (d e) (g h)))           @result{} (b e h)
+(map (lambda (n) (expt n n)) '(1 2 3 4))  @result{} (1 4 27 256)
+(map + '(1 2 3) '(4 5 6))                 @result{} (5 7 9)
 (let ((count 0))
   (map (lambda (ignored)
          (set! count (+ count 1))
          count)
-       '(a b c)))                         @result{}  @r{unspecified}
+       '(a b c)))                         @result{} @r{unspecified}
 @end group
 @end example
 @end deffn
@@ -895,7 +1003,7 @@ following are equivalent, except that the former is more efficient:
 @end example
 @end deffn
 
-@deffn {procedure} for-each procedure list list @dots{}
+@deffn procedure for-each procedure list list @dots{}
 The arguments to @code{for-each} are like the arguments to @code{map},
 but @code{for-each} calls @var{procedure} for its side effects rather
 than for its values.  Unlike @code{map}, @code{for-each} is guaranteed
@@ -909,7 +1017,7 @@ is unspecified.
   (for-each (lambda (i)
               (vector-set! v i (* i i)))
             '(0 1 2 3 4))
-  v)                            @result{}  #(0 1 4 9 16)
+  v)                            @result{} #(0 1 4 9 16)
 @end group
 @end example
 @end deffn
@@ -934,12 +1042,12 @@ are reduced in a left-associative fashion.  For example:
 
 @example
 @group
-(reduce + 0 '(1 2 3 4))                 @result{}  10
-(reduce + 0 '(1 2))                     @result{}  3
-(reduce + 0 '(1))                       @result{}  1
-(reduce + 0 '())                        @result{}  0
-(reduce + 0 '(foo))                     @result{}  foo
-(reduce list '() '(1 2 3 4))            @result{}  (((1 2) 3) 4)
+(reduce + 0 '(1 2 3 4))                 @result{} 10
+(reduce + 0 '(1 2))                     @result{} 3
+(reduce + 0 '(1))                       @result{} 1
+(reduce + 0 '())                        @result{} 0
+(reduce + 0 '(foo))                     @result{} foo
+(reduce list '() '(1 2 3 4))            @result{} (((1 2) 3) 4)
 @end group
 @end example
 @end deffn
@@ -948,7 +1056,7 @@ are reduced in a left-associative fashion.  For example:
 Like @code{reduce} except that it is right-associative.
 
 @example
-(reduce-right list '() '(1 2 3 4))      @result{}  (1 (2 (3 4)))
+(reduce-right list '() '(1 2 3 4))      @result{} (1 (2 (3 4)))
 @end example
 @end deffn
 
@@ -959,9 +1067,9 @@ Combines all of the elements of @var{list} using the binary operation
 
 @example
 @group
-(fold-right + 0 '(1 2 3 4))             @result{}  10
+(fold-right + 0 '(1 2 3 4))             @result{} 10
 (fold-right + 0 '(foo))                 @error{} Illegal datum
-(fold-right list '() '(1 2 3 4))        @result{}  (1 (2 (3 (4 ()))))
+(fold-right list '() '(1 2 3 4))        @result{} (1 (2 (3 (4 ()))))
 @end group
 @end example
 
@@ -1000,7 +1108,7 @@ is iterative in nature, combining the elements as the list is traversed.
 
 @example
 @group
-(fold-left list '() '(1 2 3 4))         @result{}  ((((() 1) 2) 3) 4)
+(fold-left list '() '(1 2 3 4))         @result{} ((((() 1) 2) 3) 4)
 
 (define (length list)
   (fold-left (lambda (sum element) (+ sum 1)) 0 list))
@@ -1050,6 +1158,9 @@ respectively, except that the returned lists are circular.
   (append! objects objects))
 @end group
 @end example
+
+@code{circular-list} is compatible with @acronym{SRFI} 1, but extended
+so that it can be called with no arguments.
 @end deffn
 
 @deffn procedure reverse list
@@ -1059,8 +1170,8 @@ Returns a newly allocated list consisting of the top-level elements of
 
 @example
 @group
-(reverse '(a b c))                  @result{}  (c b a)
-(reverse '(a (b c) d (e (f))))      @result{}  ((e (f)) d (b c) a)
+(reverse '(a b c))                  @result{} (c b a)
+(reverse '(a (b c) d (e (f))))      @result{} ((e (f)) d (b c) a)
 @end group
 @end example
 @end deffn
@@ -1086,7 +1197,7 @@ distinct elements of @var{sequence}, then it must be the case that
 @group
 (and (@var{procedure} @var{x} @var{y})
      (@var{procedure} @var{y} @var{x}))
-     @result{}  #f
+     @result{} #f
 @end group
 @end example
 
@@ -1104,7 +1215,7 @@ precedes @var{y}, it is the case that
 @example
 @group
 (@var{procedure} @var{y} @var{x})
-     @result{}  #f
+     @result{} #f
 @end group
 @end example
 
