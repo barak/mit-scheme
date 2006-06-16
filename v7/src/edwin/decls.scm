@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.74 2006/06/16 17:55:27 riastradh Exp $
+$Id: decls.scm,v 1.75 2006/06/16 18:35:45 riastradh Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -133,6 +133,7 @@ USA.
 		"debian-changelog"
 		"debug"
 		"debuge"
+		"diff"
 		"dired"
 		"diros2"
 		"dirunx"
@@ -216,7 +217,6 @@ USA.
 		"txtprp"
 		"undo"
 		"unix"
-                "diff"
 		"vc"
 		"verilog"
 		"vhdl"
