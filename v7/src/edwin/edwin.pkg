@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.294 2006/06/12 20:46:28 riastradh Exp $
+$Id: edwin.pkg,v 1.295 2006/06/16 17:55:27 riastradh Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -1426,6 +1426,18 @@ USA.
     (export (edwin screen os2-screen)
 	    update-os2-screen-names!))))
 
+(define-package (edwin diff)
+  (files "diff")
+  (parent (edwin))
+  (export (edwin)
+          diff-to-buffer
+          edwin-command$diff
+          edwin-command$diff-auto-save
+          edwin-command$diff-backup
+          edwin-command$diff-buffer-with-file
+          edwin-variable$diff-program
+          edwin-variable$diff-switches))
+
 (define-package (edwin vc)
   (files "vc")
   (parent (edwin))
@@ -1443,7 +1455,6 @@ USA.
 	  edwin-command$vc-version-diff
 	  edwin-command$vc-version-other-window
 	  edwin-mode$vc-log
-	  edwin-variable$diff-switches
 	  edwin-variable$vc-checkin-hooks
 	  edwin-variable$vc-checkout-carefully
 	  edwin-variable$vc-command-messages

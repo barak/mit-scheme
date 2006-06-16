@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.93 2006/06/12 04:19:43 cph Exp $
+$Id: vc.scm,v 1.94 2006/06/16 17:55:27 riastradh Exp $
 
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2005,2006 Massachusetts Institute of Technology
@@ -85,11 +85,6 @@ This can be overriden by giving a prefix argument to \\[vc-register]."
   "If true, display run messages from back-end commands."
   #f
   boolean?)
-
-(define-variable diff-switches
-  "A list of strings specifying switches to be be passed to diff."
-  '("-c")
-  list-of-strings?)
 
 (define-variable vc-checkin-hooks
   "An event distributor that is invoked after a checkin is done."
