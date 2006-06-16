@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.295 2006/06/16 17:55:27 riastradh Exp $
+$Id: edwin.pkg,v 1.296 2006/06/16 19:02:27 riastradh Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -1732,6 +1732,29 @@ USA.
 	  ynode-type
 	  ynode-value-node)
   (initialization (initialize-package!)))
+
+(define-package (edwin paredit)
+  (files "paredit")
+  (parent (edwin))
+  (export (edwin)
+          edwin-command$paredit-backslash
+          edwin-command$paredit-backward
+          edwin-command$paredit-backward-delete
+          edwin-command$paredit-close-list
+          edwin-command$paredit-close-list-and-newline
+          edwin-command$paredit-close-string-and-newline
+          edwin-command$paredit-doublequote
+          edwin-command$paredit-forward
+          edwin-command$paredit-forward-delete
+          edwin-command$paredit-kill
+          edwin-command$paredit-mode
+          edwin-command$paredit-newline
+          edwin-command$paredit-open-list
+          edwin-command$paredit-raise-sexp
+          edwin-command$paredit-recentre-on-sexp
+          edwin-command$paredit-splice-sexp
+          edwin-command$paredit-wrap-sexp
+          edwin-mode$paredit))
 
 (define-package (edwin news-reader)
   (files "snr")

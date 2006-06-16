@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.75 2006/06/16 18:35:45 riastradh Exp $
+$Id: decls.scm,v 1.76 2006/06/16 19:02:27 riastradh Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -181,6 +181,7 @@ USA.
 		"occur"
 		"os2"
 		"os2com"
+		"paredit"
 		"pasmod"
 		"print"
 		"process"
