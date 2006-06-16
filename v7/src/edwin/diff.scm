@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: diff.scm,v 1.1 2006/06/16 17:55:27 riastradh Exp $
+$Id: diff.scm,v 1.2 2006/06/16 18:33:21 riastradh Exp $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
@@ -37,7 +37,9 @@ Domain.  All warranties are disclaimed.
   (lambda ()
     (list (prompt-for-existing-file
            "Diff with backup"
-           (list (buffer-pathname (selected-buffer))))))
+           (cond ((buffer-pathname (selected-buffer))
+                  => list)
+                 (else #f)))))
   (lambda (filename)
     (select-buffer
      (diff-to-buffer (or (os/newest-backup filename)
