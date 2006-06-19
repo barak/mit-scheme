@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: snr.scm,v 1.66 2006/06/12 20:46:28 riastradh Exp $
+$Id: snr.scm,v 1.67 2006/06/19 18:02:28 cph Exp $
 
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
 Copyright 2001,2003,2004,2006 Massachusetts Institute of Technology
@@ -2396,6 +2396,7 @@ Otherwise, the standard pruned header is shown."
     (buffer-put! buffer 'NEWS-ARTICLE-HEADER-TRUNCATED? truncate?)))
 
 (define (insert-filtered-news-header text regexps mark buffer)
+  buffer
   (for-each (lambda (regexp)
               (cond ((re-string-search-forward (string-append "^" regexp)
                                                text
