@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: paredit.scm,v 1.1 2006/06/16 19:02:27 riastradh Exp $
+$Id: paredit.scm,v 1.2 2006/06/19 18:02:55 cph Exp $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
@@ -620,7 +620,7 @@ With a numerical prefix argument N, kill N S-expressions backward in
          (if (> argument 1)
              (save-excursion
               (lambda ()
-                (let loop ((n n))
+                (let loop ((n argument))
                   (lisp-indent-line #f)
                   (modify-current-point!
                    (lambda (point)
@@ -629,7 +629,7 @@ With a numerical prefix argument N, kill N S-expressions backward in
                   (let ((m (- n 1)))
                     (if (positive? m)
                         (loop m))))))))
-        ((negative? n)
+        ((negative? argument)
          (save-excursion
           (lambda ()
             (let loop ((n n))
