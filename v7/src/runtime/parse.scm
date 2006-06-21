@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.61 2006/03/09 19:18:31 cph Exp $
+$Id: parse.scm,v 14.62 2006/06/21 02:57:28 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -503,14 +503,12 @@ USA.
   (call-with-output-string
     (lambda (port*)
       (let ((char (read-char/no-eof port)))
-	(guarantee-constituent char)
 	(write-char char port*)
 	(let loop ()
 	  (let ((char (peek-char port)))
 	    (if (not (or (eof-object? char)
 			 (atom-delimiter? char)))
 		(begin
-		  (guarantee-constituent char)
 		  (discard-char port)
 		  (write-char (if (char=? char #\\)
 				  (read-char/no-eof port)
