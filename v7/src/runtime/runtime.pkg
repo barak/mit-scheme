@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.585 2006/06/12 17:53:11 cph Exp $
+$Id: runtime.pkg,v 14.586 2006/06/21 03:00:05 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4043,6 +4043,7 @@ USA.
   (files "strnin")
   (parent (runtime))
   (export ()
+	  call-with-input-string
 	  open-input-string
 	  (string->input-port open-input-string)
 	  with-input-from-string)
