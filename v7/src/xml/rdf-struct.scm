@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.7 2006/06/22 04:48:28 cph Exp $
+$Id: rdf-struct.scm,v 1.8 2006/06/22 18:35:27 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -49,10 +49,9 @@ USA.
 (define-guarantee rdf-bnode "RDF bnode")
 
 (set-record-type-unparser-method! <rdf-bnode>
-  (standard-unparser-method 'RDF-BNODE
-    (lambda (bnode port)
-      (write-char #\space port)
-      (write (rdf-bnode-name bnode) port))))
+  (simple-unparser-method 'RDF-BNODE
+    (lambda (bnode)
+      (rdf-bnode-name bnode))))
 
 (define (make-rdf-bnode #!optional name)
   (%make-rdf-bnode
@@ -74,6 +73,14 @@ USA.
   (type %rdf-literal-type))
 
 (define-guarantee rdf-literal "RDF literal")
+
+(set-record-type-unparser-method! <rdf-literal>
+  (simple-unparser-method 'RDF-LITERAL
+    (lambda (literal)
+      (list (let ((s (rdf-literal-text literal)))
+	      (if (fix:<= (string-length s) 64)
+		  s
+		  (string-append (string-head s 60) " ...")))))))
 
 (define (make-rdf-literal text type)
   (guarantee-utf8-string text 'RDF-LITERAL)
