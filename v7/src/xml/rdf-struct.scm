@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.6 2006/03/09 06:23:23 cph Exp $
+$Id: rdf-struct.scm,v 1.7 2006/06/22 04:48:28 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -79,7 +79,7 @@ USA.
   (guarantee-utf8-string text 'RDF-LITERAL)
   (%make-rdf-literal text
 		     (if (or (not type)
-			     (and (symbol? type)
+			     (and (interned-symbol? type)
 				  (complete-match match-language
 						  (symbol-name type))))
 			 type
@@ -94,6 +94,10 @@ USA.
   (let ((type (%rdf-literal-type literal)))
     (and (not (absolute-uri? type))
 	 type)))
+
+(define (rdf-literal=? l1 l2)
+  (and (string=? (rdf-literal-text l1) (rdf-literal-text l2))
+       (eq? (%rdf-literal-type l1) (%rdf-literal-type l2))))
 
 (define-record-type <rdf-index>
     (%make-rdf-index subjects predicates objects)

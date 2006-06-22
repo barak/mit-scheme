@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.69 2006/06/10 04:43:09 cph Exp $
+$Id: xml.pkg,v 1.70 2006/06/22 04:48:33 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -554,6 +554,7 @@ USA.
 	  rdf-literal-language
 	  rdf-literal-text
 	  rdf-literal-type
+	  rdf-literal=?
 	  rdf-literal?
 	  rdf-triple-object
 	  rdf-triple-predicate
