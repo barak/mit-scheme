@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-nt.scm,v 1.6 2006/06/10 03:52:00 cph Exp $
+$Id: rdf-nt.scm,v 1.7 2006/06/22 19:17:26 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -212,36 +212,36 @@ USA.
 
 (define (write-rdf/nt triple port)
   (let ((s (rdf-triple-subject triple)))
-    (cond ((uri? s) (write-uri-ref s port))
-	  ((rdf-bnode? s) (write-bnode s port))))
+    (cond ((uri? s) (write-rdf-uri-ref s port))
+	  ((rdf-bnode? s) (write-rdf-bnode s port))))
   (write-char #\space port)
-  (write-uri-ref (rdf-triple-predicate triple) port)
+  (write-rdf-uri-ref (rdf-triple-predicate triple) port)
   (write-char #\space port)
   (let ((o (rdf-triple-object triple)))
-    (cond ((uri? o) (write-uri-ref o port))
-	  ((rdf-bnode? o) (write-bnode o port))
-	  ((rdf-literal? o) (write-literal o port))))
+    (cond ((uri? o) (write-rdf-uri-ref o port))
+	  ((rdf-bnode? o) (write-rdf-bnode o port))
+	  ((rdf-literal? o) (write-rdf-literal o port))))
   (write-char #\space port)
   (write-char #\. port)
   (newline port))
 
-(define (write-uri-ref uri port)
+(define (write-rdf-uri-ref uri port)
   (write-char #\< port)
   (write-uri uri port)
   (write-char #\> port))
 
-(define (write-bnode bnode port)
+(define (write-rdf-bnode bnode port)
   (write-string "_:" port)
   (write-string (rdf-bnode-name bnode) port))
 
-(define (write-literal literal port)
+(define (write-rdf-literal literal port)
   (write-char #\" port)
   (write-literal-text (rdf-literal-text literal) port)
   (write-char #\" port)
   (cond ((rdf-literal-type literal)
 	 => (lambda (uri)
 	      (write-string "^^" port)
-	      (write-uri-ref uri port)))
+	      (write-rdf-uri-ref uri port)))
 	((rdf-literal-language literal)
 	 => (lambda (lang)
 	      (write-char #\@ port)
