@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.19 2005/05/30 18:49:01 cph Exp $
+$Id: symbol.scm,v 1.20 2006/06/22 15:17:50 cph Exp $
 
 Copyright 1992,1993,2001,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -100,15 +101,43 @@ USA.
 	(else (error:wrong-type-argument object "symbol component" 'SYMBOL))))
 
 (define (intern string)
-  (if (string-lower-case? string)
-      (string->symbol string)
-      ((ucode-primitive string->symbol) (string-downcase string))))
+  ((ucode-primitive string->symbol)
+   (utf8-string-downcase
+    (if (string? string)
+	string
+	(wide-string->utf8-string string)))))
 
 (define (intern-soft string)
   ((ucode-primitive find-symbol)
-   (if (string-lower-case? string)
-       string
-       (string-downcase string))))
+   (utf8-string-downcase
+    (if (string? string)
+	string
+	(wide-string->utf8-string string)))))
+
+(define (utf8-string-downcase string)
+  (if (ascii-string? string)
+      ;; Needed during cold load.
+      (string-downcase string)
+      (call-with-input-string string
+	(lambda (input)
+	  (port/set-coding input 'utf-8)
+	  (call-with-output-string
+	    (lambda (output)
+	      (port/set-coding output 'utf-8)
+	      (let loop ()
+		(let ((c (read-char input)))
+		  (if (not (eof-object? c))
+		      (begin
+			(write-char (char-downcase c) output)
+			(loop)))))))))))
+
+(define (ascii-string? string)
+  (let ((end (string-length string)))
+    (let loop ((i 0))
+      (if (fix:< i end)
+	  (and (fix:< (vector-8b-ref string i) #x80)
+	       (loop (fix:+ i 1)))
+	  #t))))
 
 (define (symbol-name symbol)
   (guarantee-symbol symbol 'SYMBOL-NAME)
