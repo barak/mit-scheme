@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.2 2006/06/23 17:20:28 cph Exp $
+$Id: turtle.scm,v 1.3 2006/06/23 18:50:03 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -465,8 +465,11 @@ USA.
 (define (post-process-parser-output stmts base-uri)
   (let ((prefixes
 	 (map (lambda (p)
-		(cons (cadr p)
-		      (uri->string (merge-uris (caddr p) base-uri))))
+		(let ((prefix (cadr p))
+		      (v (uri->string (merge-uris (caddr p) base-uri))))
+		  (if prefix
+		      (register-rdf-qname-prefix (symbol prefix ':) v))
+		  (cons prefix v)))
 	      (keep-matching-items stmts
 		(lambda (stmt)
 		  (eq? (car stmt) 'prefix))))))
