@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.73 2006/06/23 18:49:30 cph Exp $
+$Id: xml.pkg,v 1.74 2006/06/23 19:35:26 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -533,6 +533,7 @@ USA.
 	  canonicalize-rdf-object
 	  canonicalize-rdf-predicate
 	  canonicalize-rdf-subject
+	  canonicalize-rdf-uri
 	  default-rdf-prefixes
 	  error:not-rdf-bnode
 	  error:not-rdf-index
