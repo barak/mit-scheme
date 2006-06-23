@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.71 2006/06/22 19:17:29 cph Exp $
+$Id: xml.pkg,v 1.72 2006/06/23 17:20:30 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -560,7 +560,7 @@ USA.
 	  rdf-triple-predicate
 	  rdf-triple-subject
 	  rdf-triple?)
-  (export (runtime rdf nt)
+  (export (runtime rdf)
 	  %make-rdf-literal
 	  match-bnode-name
 	  match-language))
@@ -582,4 +582,7 @@ USA.
   (files "turtle")
   (parent (runtime rdf))
   (export ()
-	  read-rdf/turtle-file))
+	  read-rdf/turtle-file)
+  (export (runtime rdf)
+	  match:name
+	  match:prefix-name))

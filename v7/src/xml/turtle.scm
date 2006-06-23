@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.1 2006/06/10 04:43:02 cph Exp $
+$Id: turtle.scm,v 1.2 2006/06/23 17:20:28 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -154,14 +154,20 @@ USA.
 				       "Expected close parenthesis"))))))))))
 
 (define parse:name
-  (*parser
-   (match (seq (alphabet alphabet:name-start-char)
-	       (* (alphabet alphabet:name-char))))))
+  (*parser (match match:name)))
+
+(define match:name
+  (*matcher
+   (seq (alphabet alphabet:name-start-char)
+	(* (alphabet alphabet:name-char)))))
 
 (define parse:prefix-name
-  (*parser
-   (match (seq (alphabet alphabet:prefix-name-start-char)
-	       (* (alphabet alphabet:name-char))))))
+  (*parser (match match:prefix-name)))
+
+(define match:prefix-name
+  (*matcher
+   (seq (alphabet alphabet:prefix-name-start-char)
+	(* (alphabet alphabet:name-char)))))
 
 ;;;; Literals
 
