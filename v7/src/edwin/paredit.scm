@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: paredit.scm,v 1.4 2006/06/27 18:39:45 riastradh Exp $
+$Id: paredit.scm,v 1.5 2006/06/27 18:43:59 riastradh Exp $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
@@ -582,6 +582,7 @@ With a numerical prefix argument N, kill N S-expressions backward in
   enclosing list.  If N is negative, kill forward."
   "P"
   (lambda (argument)
+    (undo-record-point!)
     (if argument (paredit-kill-surrounding-sexps-for-splice argument))
     (let* ((before-open (backward-up-list (current-point) 1 'ERROR))
            (before-close
@@ -668,6 +669,7 @@ With a numerical prefix argument N, kill N S-expressions backward in
              (paredit-save-excursion (lambda ()
                                        (insert-char #\space))))
             (else
+             (undo-record-point!)
              (split-sexp-at-point))))))
 
 (define (split-sexp-at-point)
