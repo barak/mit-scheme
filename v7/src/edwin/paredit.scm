@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: paredit.scm,v 1.3 2006/06/19 18:03:24 cph Exp $
+$Id: paredit.scm,v 1.4 2006/06/27 18:39:45 riastradh Exp $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
@@ -61,6 +61,10 @@ With a prefix argument, enable paredit mode if the argument is
             (#\M-r  paredit-raise-sexp)
             (#\M-s  paredit-splice-sexp)   ;++ This conflicts with M-s
                                            ;++ for STEP-DEFUN.  Hmmmm.
+
+            ;; Splitting and Joining
+            (#\M-S paredit-split-sexp)
+            (#\M-J paredit-join-sexps)
             ))
 
 ;;;; Basic Editing Commands
@@ -639,6 +643,112 @@ With a numerical prefix argument N, kill N S-expressions backward in
                      (lisp-indent-sexp (current-point))
                      (loop (+ n 1))))))))))
 
+;;;; Splitting and Joining
+
+(define-command paredit-split-sexp
+  "Split the list or string the point is on in two."
+  ()
+  (lambda ()
+    (let ((state (current-parse-state)))
+      (cond ((parse-state-in-string? state)
+             (insert-char #\")
+             (paredit-save-excursion
+              (lambda ()
+                (insert-char #\space)
+                (insert-char #\"))))
+            ((or (parse-state-in-comment? state)
+                 (mark-right-char-quoted? (current-point)))
+             (editor-error
+              "Invalid context for S-expression splitting."))
+            ((let ((point (current-point)))
+               (and (memv (char-syntax (mark-left-char point))
+                          '(#\w #\_))
+                    (memv (char-syntax (mark-right-char point))
+                          '(#\w #\_))))
+             (paredit-save-excursion (lambda ()
+                                       (insert-char #\space))))
+            (else
+             (split-sexp-at-point))))))
+
+(define (split-sexp-at-point)
+  (let ((open (backward-up-list (current-point) 1 'ERROR))
+        (close (forward-up-list (current-point) 1 'ERROR)))
+    (let ((open-char (mark-right-char open))
+          (close-char (mark-left-char close)))
+      (let ((new-close (cond ((backward-one-sexp (current-point))
+                              => forward-one-sexp)
+                             (else (mark1+ open))))
+            (new-open (cond ((forward-one-sexp (current-point))
+                             => backward-one-sexp)
+                            (else (mark-1+ close)))))
+        (if (mark< new-open new-close)  ;Can't actually happen...
+            (editor-error               ;I guess Democritus was right!
+             "Splitting atom!  RUN, before critical mass!!"))
+        (let ((new-close (mark-left-inserting-copy new-close))
+              (new-open (mark-left-inserting-copy new-open)))
+          (insert-char close-char new-close)
+          (mark-temporary! new-close)
+          (paredit-save-excursion
+           (lambda ()
+             (if (not (char=? (char-syntax (mark-left-char new-open))
+                              #\space))
+                 (insert-char #\space new-open))
+             (mark-temporary! new-open)
+             (insert-char open-char new-open)
+             (if (mark/= (line-start (current-point) 0)
+                         (line-start new-open 0))
+                 (with-current-point new-open
+                   lisp-indent-line-and-sexp)
+                 (lisp-indent-sexp new-open)))))))))
+
+(define-command paredit-join-sexps
+  "Join the S-expressions adjacent on either side of the point.
+Both must be lists, strings, or atoms; error if there is mismatch."
+  ()
+  (lambda ()
+    (let ((state (current-parse-state)))
+      (if (or (parse-state-in-comment? state)
+              (parse-state-in-string? state) ;foo
+              (mark-right-char-quoted? (current-point)))
+          (editor-error "Invalid context for S-expression joining.")
+          (let ((left-point (end-of-sexp-backward (current-point)))
+                (right-point (start-of-sexp-forward (current-point))))
+            (cond ((mark< right-point left-point)
+                   (editor-error "Joining single S-expression."))
+                  ((intervening-text? left-point right-point)
+                   (editor-error
+                    "S-expressions to join have intervenining text."))
+                  (else
+                   (paredit-save-excursion
+                    (lambda ()
+                      (join-sexps left-point right-point))))))))))
+
+(define (join-sexps left-point right-point)
+  (let ((left-syntax (char-syntax (mark-left-char left-point)))
+        (right-syntax (char-syntax (mark-right-char right-point))))
+    (cond ((and (char=? left-syntax #\))
+                (char=? right-syntax #\())
+           (let ((right-point
+                  (if (mark/= left-point right-point)
+                      right-point
+                      (begin (insert-char #\space right-point)
+                             (mark1+ right-point)))))
+             (delete-right-char right-point)
+             (delete-left-char left-point))
+           (lisp-indent-sexp
+            (backward-up-list (current-point) 1 'ERROR)))
+          ((and (char=? left-syntax #\")
+                (char=? right-syntax #\"))
+           (delete-string (mark-1+ left-point)
+                          (mark1+ right-point)))
+          ((or (and (memq left-syntax  '(#\w #\_))
+                    (memq right-syntax '(#\w #\_))))
+           ;; Word or symbol
+           (delete-string left-point right-point))
+          (else
+           (editor-error
+            "Mismatched S-expressions to join.")))))
+
 ;;;; Miscellaneous Utilities
 
 (define (current-parse-state #!optional point)
@@ -686,6 +796,22 @@ With a numerical prefix argument N, kill N S-expressions backward in
         (insert-char close after)
         (insert-space #t (mark1+ after)))
       (set-current-point! point))))
+
+(define (paredit-save-excursion thunk)
+  (let ((point) (mark))
+    (dynamic-wind
+     (lambda ()
+       (set! point (mark-right-inserting-copy (current-point)))
+       (set! mark (mark-right-inserting-copy (current-mark))))
+     thunk
+     (lambda ()
+       (let ((point (set! point))
+             (mark (set! mark)))
+         (let ((buffer (mark-buffer point)))
+           (if (buffer-alive? buffer)
+               (begin (select-buffer buffer)
+                      (set-current-point! point)
+                      (set-current-mark! mark)))))))))
 
 (define (insert-newline-preserving-comment #!optional mark)
   (let ((mark (if (default-object? mark) (current-point) mark)))
@@ -729,6 +855,16 @@ With a numerical prefix argument N, kill N S-expressions backward in
                         (make-region (mark-1+ after-semi)
                                      eol)))))
             (else #f)))))
+
+(define (start-of-sexp-forward mark)
+  (backward-sexp (forward-sexp mark 1 'ERROR) 1))
+
+(define (end-of-sexp-backward mark)
+  (forward-sexp (backward-sexp mark 1 'ERROR) 1))
+
+(define (intervening-text? start end)
+  (mark/= (skip-whitespace-forward start end)
+          end))
 
 (define (lisp-indent-line-and-sexp)
   (lisp-indent-line #f)
