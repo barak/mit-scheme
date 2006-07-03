@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 1.94 2006/07/03 19:05:02 riastradh Exp $
+$Id: syntax.scm,v 1.95 2006/07/03 19:28:03 riastradh Exp $
 
 Copyright 1987,1989,1991,1992,1996,1997 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2002,2004 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 

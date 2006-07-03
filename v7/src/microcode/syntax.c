@@ -1,9 +1,9 @@
 /* -*-C-*-
 
-$Id: syntax.c,v 1.31 2006/07/03 19:05:02 riastradh Exp $
+$Id: syntax.c,v 1.32 2006/07/03 19:28:03 riastradh Exp $
 
 Copyright 1987,1988,1989,1991,1993,1996 Massachusetts Institute of Technology
-Copyright 2000,2004,2005 Massachusetts Institute of Technology
+Copyright 2000,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
