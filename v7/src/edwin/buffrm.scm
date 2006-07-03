@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: buffrm.scm,v 1.62 2003/02/14 18:28:11 cph Exp $
+$Id: buffrm.scm,v 1.63 2006/07/03 19:41:23 riastradh Exp $
 
-Copyright 1986, 1989-2000, 2002 Massachusetts Institute of Technology
+Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
+Copyright 2000,2002,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -398,7 +400,7 @@ Automatically becomes local when set in any fashion."
 			(let ((buffer (window-buffer window)))
 			  (make-saved-window
 			   buffer
-			   (mark-left-inserting-copy (window-point window))
+			   (mark-right-inserting-copy (window-point window))
 			   (let ((ring (buffer-mark-ring buffer)))
 			     (if (ring-empty? ring)
 				 #f

@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: curren.scm,v 1.147 2003/02/14 18:28:11 cph Exp $
+$Id: curren.scm,v 1.148 2006/07/03 19:41:22 riastradh Exp $
 
-Copyright 1986, 1989-2001 Massachusetts Institute of Technology
+Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
+Copyright 2000,2001,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -661,14 +663,15 @@ The buffer is guaranteed to be selected at that time."
   (mark-column (current-point)))
 
 (define (save-excursion thunk)
-  (let ((point (mark-left-inserting-copy (current-point)))
+  (let ((point (mark-right-inserting-copy (current-point)))
 	(mark (mark-right-inserting-copy (current-mark))))
     (thunk)
     (let ((buffer (mark-buffer point)))
       (if (buffer-alive? buffer)
 	  (begin
-	    (set-buffer-point! buffer point)
-	    (set-buffer-mark! buffer mark))))))
+	    (select-buffer buffer)
+	    (set-current-point! point)
+	    (set-current-mark! mark))))))
 
 ;;;; Mark and Region
 

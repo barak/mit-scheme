@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: paredit.scm,v 1.6 2006/07/03 19:05:02 riastradh Exp $
+$Id: paredit.scm,v 1.7 2006/07/03 19:41:23 riastradh Exp $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
@@ -653,7 +653,7 @@ With a numerical prefix argument N, kill N S-expressions backward in
     (let ((state (current-parse-state)))
       (cond ((parse-state-in-string? state)
              (insert-char #\")
-             (paredit-save-excursion
+             (save-excursion
               (lambda ()
                 (insert-char #\space)
                 (insert-char #\"))))
@@ -666,8 +666,8 @@ With a numerical prefix argument N, kill N S-expressions backward in
                           '(#\w #\_))
                     (memv (char-syntax (mark-right-char point))
                           '(#\w #\_))))
-             (paredit-save-excursion (lambda ()
-                                       (insert-char #\space))))
+             (save-excursion (lambda ()
+                               (insert-char #\space))))
             (else
              (undo-record-point!)
              (split-sexp-at-point))))))
@@ -690,7 +690,7 @@ With a numerical prefix argument N, kill N S-expressions backward in
               (new-open (mark-left-inserting-copy new-open)))
           (insert-char close-char new-close)
           (mark-temporary! new-close)
-          (paredit-save-excursion
+          (save-excursion
            (lambda ()
              (if (not (char=? (char-syntax (mark-left-char new-open))
                               #\space))
@@ -721,7 +721,7 @@ Both must be lists, strings, or atoms; error if there is mismatch."
                    (editor-error
                     "S-expressions to join have intervenining text."))
                   (else
-                   (paredit-save-excursion
+                   (save-excursion
                     (lambda ()
                       (join-sexps left-point right-point))))))))))
 
@@ -789,22 +789,6 @@ Both must be lists, strings, or atoms; error if there is mismatch."
         (insert-char close after)
         (insert-space #t (mark1+ after)))
       (set-current-point! point))))
-
-(define (paredit-save-excursion thunk)
-  (let ((point) (mark))
-    (dynamic-wind
-     (lambda ()
-       (set! point (mark-right-inserting-copy (current-point)))
-       (set! mark (mark-right-inserting-copy (current-mark))))
-     thunk
-     (lambda ()
-       (let ((point (set! point))
-             (mark (set! mark)))
-         (let ((buffer (mark-buffer point)))
-           (if (buffer-alive? buffer)
-               (begin (select-buffer buffer)
-                      (set-current-point! point)
-                      (set-current-mark! mark)))))))))
 
 (define (insert-newline-preserving-comment #!optional mark)
   (let ((mark (if (default-object? mark) (current-point) mark)))
