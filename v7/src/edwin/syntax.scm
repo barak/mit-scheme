@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 1.93 2004/11/19 16:59:27 cph Exp $
+$Id: syntax.scm,v 1.94 2006/07/03 19:05:02 riastradh Exp $
 
 Copyright 1987,1989,1991,1992,1996,1997 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2002,2004 Massachusetts Institute of Technology
@@ -243,6 +243,7 @@ a comment ending."
   ;; COMMENT-START is valid when COMMENT-STATE is not #f.
   (comment-state #f read-only #t)
   (quoted? #f read-only #t)
+  (start-of-sexp #f)
   (last-sexp #f)
   (containing-sexp #f)
   (location #f)
@@ -256,6 +257,11 @@ a comment ending."
       (parse-state-in-string? state)
       (parse-state-quoted? state)
       (not (= (parse-state-depth state) 0))))
+
+(define (parse-state-end-of-sexp state)
+  (cond ((parse-state-start-of-sexp state)
+         => forward-one-sexp)
+        (else #f)))
 
 (define (forward-to-sexp-start mark end)
   (parse-state-location (parse-partial-sexp mark end 0 #t)))
@@ -279,6 +285,10 @@ a comment ending."
 	    (mark-index end)
 	    target-depth stop-before? old-state)))
       ;; Convert the returned indices to marks.
+      (if (parse-state-start-of-sexp state)
+          (set-parse-state-start-of-sexp!
+           state
+           (make-mark group (parse-state-start-of-sexp state))))
       (if (parse-state-last-sexp state)
 	  (set-parse-state-last-sexp! 
 	   state 

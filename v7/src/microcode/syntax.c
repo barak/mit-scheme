@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syntax.c,v 1.30 2005/07/16 03:46:42 cph Exp $
+$Id: syntax.c,v 1.31 2006/07/03 19:05:02 riastradh Exp $
 
 Copyright 1987,1988,1989,1991,1993,1996 Massachusetts Institute of Technology
 Copyright 2000,2004,2005 Massachusetts Institute of Technology
@@ -1059,19 +1059,24 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
   FAST_VECTOR_SET (result, 3, (BOOLEAN_TO_OBJECT (quoted)));
   FAST_VECTOR_SET
     (result, 4,
+     (((level -> last) == NULL)
+      ? SHARP_F
+      : (LONG_TO_UNSIGNED_FIXNUM ((SCAN_TO_INDEX (level -> last)) - 1))));
+  FAST_VECTOR_SET
+    (result, 5,
      (((level -> previous) == NULL)
       ? SHARP_F
       : (LONG_TO_UNSIGNED_FIXNUM ((SCAN_TO_INDEX (level -> previous)) - 1))));
   FAST_VECTOR_SET
-    (result, 5,
+    (result, 6,
      (((level == level_start) || (((level - 1) -> last) == NULL))
       ? SHARP_F
       : (LONG_TO_UNSIGNED_FIXNUM
 	 ((SCAN_TO_INDEX ((level - 1) -> last)) - 1))));
   FAST_VECTOR_SET
-    (result, 6, (LONG_TO_UNSIGNED_FIXNUM (SCAN_TO_INDEX (start))));
+    (result, 7, (LONG_TO_UNSIGNED_FIXNUM (SCAN_TO_INDEX (start))));
   FAST_VECTOR_SET
-    (result, 7,
+    (result, 8,
      ((in_comment == 0)
       ? SHARP_F
       : (LONG_TO_UNSIGNED_FIXNUM (SCAN_TO_INDEX (comment_start)))));

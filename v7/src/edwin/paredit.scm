@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: paredit.scm,v 1.5 2006/06/27 18:43:59 riastradh Exp $
+$Id: paredit.scm,v 1.6 2006/07/03 19:05:02 riastradh Exp $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
@@ -760,15 +760,6 @@ Both must be lists, strings, or atoms; error if there is mismatch."
     (parse-partial-sexp (or (this-definition-start point)
                             (buffer-start (current-buffer)))
                         point)))
-
-;++ These are wrong, but, argh, I don't think Edwin preserves enough
-;++ information to make them right.
-
-(define (parse-state-end-of-sexp state)
-  (forward-one-sexp (forward-one-sexp (parse-state-last-sexp state))))
-
-(define (parse-state-start-of-sexp state)
-  (backward-one-sexp (parse-state-end-of-sexp state)))
 
 (define (insert-sexp-pair open close sexps #!optional mark)
 
