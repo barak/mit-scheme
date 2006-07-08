@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.3 2006/06/23 18:50:03 cph Exp $
+$Id: turtle.scm,v 1.4 2006/07/08 00:24:09 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -34,7 +34,7 @@ USA.
 	(post-process-parser-output
 	 (parse-turtle-doc (input-port->parser-buffer port))
 	 (if (default-object? base-uri)
-	     (pathname->uri pathname)
+	     (pathname->uri (merge-pathnames pathname))
 	     (merge-uris (file-namestring pathname)
 			 (->absolute-uri base-uri 'read-turtle-file))))))))
 
