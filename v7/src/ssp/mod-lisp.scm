@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.30 2005/09/20 19:23:15 cph Exp $
+$Id: mod-lisp.scm,v 1.31 2006/07/20 17:09:44 riastradh Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -801,20 +801,6 @@ USA.
       (if (not (eof-object? line))
 	  (begin
 	    (procedure line)
-	    (loop))))))
-
-(define (stack-trace condition port)
-  (let ((dstate (make-initial-dstate condition)))
-    (command/print-subproblem dstate port)
-    (let loop ()
-      (if (let ((next
-		 (stack-frame/next-subproblem
-		  (dstate/subproblem dstate))))
-	    (and next (not (stack-frame/repl-eval-boundary? next))))
-	  (begin
-	    (newline port)
-	    (newline port)
-	    (command/earlier-subproblem dstate port)
 	    (loop))))))
 
 ;;;; Logging
