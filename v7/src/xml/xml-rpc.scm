@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-rpc.scm,v 1.4 2006/01/30 20:20:45 cph Exp $
+$Id: xml-rpc.scm,v 1.5 2006/07/25 18:21:44 riastradh Exp $
 
 Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -294,12 +294,13 @@ USA.
 
 (define (encode-string string)
   (if (utf8-string-valid? string)
-      (rpc-elt:string string)
-      (call-with-output-string
-	(lambda (port)
-	  (let ((context (encode-base64:initialize port #f)))
-	    (encode-base64:update context string 0 (string-length string))
-	    (encode-base64:finalize context))))))
+      string
+      (rpc-elt:base64
+       (call-with-output-string
+	 (lambda (port)
+	   (let ((context (encode-base64:initialize port #f)))
+	     (encode-base64:update context string 0 (string-length string))
+	     (encode-base64:finalize context)))))))
 
 (define *xml-rpc:encode-value-handler* #f)
 
