@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.75 2006/03/07 20:40:16 cph Exp $
+$Id: load.scm,v 14.76 2006/07/26 19:10:33 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -46,6 +46,7 @@ USA.
 	  ("bin" ,fasload/internal)))
   (set! load/default-find-pathname-with-type search-types-in-order)
   (set! *eval-unit* #f)
+  (set! *current-load-environment* 'NONE)
   (set! condition-type:not-loading
 	(make-condition-type 'NOT-LOADING condition-type:error '()
 	  "No file being loaded."))
@@ -61,6 +62,7 @@ USA.
 (define load/default-types)
 (define load/after-load-hooks)
 (define *eval-unit*)
+(define *current-load-environment*)
 (define condition-type:not-loading)
 (define load/default-find-pathname-with-type)
 (define fasload/default-types)
@@ -73,37 +75,40 @@ USA.
   syntax-table				;ignored
   (let ((environment
 	 (if (default-object? environment)
-	     environment
+	     (if (eq? *current-load-environment* 'NONE)
+		 (nearest-repl/environment)
+		 *current-load-environment*)
 	     (->environment environment)))
 	(purify?
 	 (if (default-object? purify?)
 	     #f
 	     purify?)))
-    (handle-load-hooks
-     (lambda ()
-       (let ((kernel
-	      (lambda (filename last-file?)
-		(receive (pathname loader)
-		    (find-pathname filename load/default-types)
-		  (with-eval-unit (pathname->uri pathname)
-		    (lambda ()
-		      (let ((load-it
-			     (lambda ()
-			       (loader pathname
-				       environment
-				       purify?
-				       load-noisily?))))
-			(cond (last-file? (load-it))
-			      (load-noisily? (write-line (load-it)))
-			      (else (load-it) unspecific)))))))))
-	 (if (pair? filename/s)
-	     (let loop ((filenames filename/s))
-	       (if (pair? (cdr filenames))
-		   (begin
-		     (kernel (car filenames) #f)
-		     (loop (cdr filenames)))
-		   (kernel (car filenames) #t)))
-	     (kernel filename/s #t)))))))
+    (fluid-let ((*current-load-environment* environment))
+      (handle-load-hooks
+       (lambda ()
+	 (let ((kernel
+		(lambda (filename last-file?)
+		  (receive (pathname loader)
+		      (find-pathname filename load/default-types)
+		    (with-eval-unit (pathname->uri pathname)
+		      (lambda ()
+			(let ((load-it
+			       (lambda ()
+				 (loader pathname
+					 environment
+					 purify?
+					 load-noisily?))))
+			  (cond (last-file? (load-it))
+				(load-noisily? (write-line (load-it)))
+				(else (load-it) unspecific)))))))))
+	   (if (pair? filename/s)
+	       (let loop ((filenames filename/s))
+		 (if (pair? (cdr filenames))
+		     (begin
+		       (kernel (car filenames) #f)
+		       (loop (cdr filenames)))
+		     (kernel (car filenames) #t)))
+	       (kernel filename/s #t))))))))
 
 (define (fasload filename #!optional suppress-loading-message?)
   (receive (pathname loader)
