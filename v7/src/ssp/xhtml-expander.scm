@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-expander.scm,v 1.9 2006/02/02 20:53:23 cph Exp $
+$Id: xhtml-expander.scm,v 1.10 2006/07/26 19:04:41 cph Exp $
 
 Copyright 2002,2003,2004,2006 Massachusetts Institute of Technology
 
@@ -93,9 +93,11 @@ USA.
     (environment-define environment 'document-pathname pathname)
     (environment-define environment 'load
 			(let ((directory (directory-pathname pathname)))
-			  (lambda (pathname)
+			  (lambda (pathname #!optional target)
 			    (load (merge-pathnames pathname directory)
-				  environment))))
+				  (if (default-object? target)
+				      environment
+				      target)))))
     environment))
 
 (define ((pi-expander environment) text)
