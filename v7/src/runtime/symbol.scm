@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.20 2006/06/22 15:17:50 cph Exp $
+$Id: symbol.scm,v 1.21 2006/07/27 00:03:57 cph Exp $
 
 Copyright 1992,1993,2001,2003,2004,2005 Massachusetts Institute of Technology
 Copyright 2006 Massachusetts Institute of Technology
@@ -39,17 +39,9 @@ USA.
 (define-integrable (uninterned-symbol? object)
   (object-type? (ucode-type uninterned-symbol) object))
 
-(define-integrable (guarantee-symbol object caller)
-  (if (not (symbol? object))
-      (error:wrong-type-argument object "symbol" caller)))
-
-(define-integrable (guarantee-interned-symbol object caller)
-  (if (not (interned-symbol? object))
-      (error:wrong-type-argument object "interned symbol" caller)))
-
-(define-integrable (guarantee-uninterned-symbol object caller)
-  (if (not (uninterned-symbol? object))
-      (error:wrong-type-argument object "uninterned symbol" caller)))
+(define-guarantee symbol "symbol")
+(define-guarantee interned-symbol "interned symbol")
+(define-guarantee uninterned-symbol "uninterned symbol")
 
 (define (string->uninterned-symbol string)
   (make-uninterned-symbol (if (string? string)

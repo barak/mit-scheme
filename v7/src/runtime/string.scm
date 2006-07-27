@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.59 2006/02/26 03:00:55 cph Exp $
+$Id: string.scm,v 14.60 2006/07/27 00:03:52 cph Exp $
 
 Copyright 1986,1987,1988,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -1441,9 +1441,8 @@ USA.
 ;; menaingful message. Structuring the code this way significantly
 ;; reduces code bloat from large integrated procedures.
 
-(define-integrable (guarantee-string object procedure)
-  (if (not (string? object))
-      (error:wrong-type-argument object "string" procedure)))
+(define-guarantee string "string")
+(define-guarantee xstring "xstring")
 
 (define-integrable (guarantee-2-strings object1 object2 procedure)
   (if (not (and (string? object1) (string? object2)))
