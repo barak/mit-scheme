@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.74 2006/06/23 19:35:26 cph Exp $
+$Id: xml.pkg,v 1.75 2006/07/27 20:14:09 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -528,27 +528,32 @@ USA.
 	  <rdf-bnode>
 	  <rdf-index>
 	  <rdf-literal>
+	  <rdf-prefix-registry>
 	  <rdf-triple>
 	  add-to-rdf-index
 	  canonicalize-rdf-object
 	  canonicalize-rdf-predicate
 	  canonicalize-rdf-subject
 	  canonicalize-rdf-uri
-	  default-rdf-prefixes
+	  copy-rdf-prefix-registry
+	  current-rdf-prefix-registry
 	  error:not-rdf-bnode
 	  error:not-rdf-index
 	  error:not-rdf-literal
+	  error:not-rdf-prefix-registry
 	  error:not-rdf-qname
 	  error:not-rdf-triple
 	  guarantee-rdf-bnode
 	  guarantee-rdf-index
 	  guarantee-rdf-literal
+	  guarantee-rdf-prefix-registry
 	  guarantee-rdf-qname
 	  guarantee-rdf-triple
 	  make-rdf-bnode
 	  make-rdf-index
 	  make-rdf-literal
 	  make-rdf-triple
+	  new-rdf-prefix-registry
 	  rdf-bnode-name
 	  rdf-bnode?
 	  rdf-index-objects
@@ -560,14 +565,14 @@ USA.
 	  rdf-literal-type
 	  rdf-literal=?
 	  rdf-literal?
+	  rdf-prefix-registry?
 	  rdf-qname->uri
 	  rdf-qname?
 	  rdf-triple-object
 	  rdf-triple-predicate
 	  rdf-triple-subject
 	  rdf-triple?
-	  register-rdf-qname-prefix
-	  registered-rdf-prefixes
+	  register-rdf-prefix
 	  uri->rdf-qname
 	  write-rdf-uri)
   (export (runtime rdf)

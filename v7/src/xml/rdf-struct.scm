@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.10 2006/06/23 18:49:28 cph Exp $
+$Id: rdf-struct.scm,v 1.11 2006/07/27 20:14:06 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -186,33 +186,38 @@ USA.
 
 ;;;; Qnames
 
-(define (register-rdf-qname-prefix name expansion)
-  (guarantee-interned-symbol name 'REGISTER-RDF-QNAME-PREFIX)
+(define (register-rdf-prefix name expansion #!optional registry)
+  (guarantee-interned-symbol name 'REGISTER-RDF-PREFIX)
   (if (not (complete-match match-prefix (symbol-name name)))
-      (error:bad-range-argument name 'REGISTER-RDF-QNAME-PREFIX))
-  (let ((p (assq name registered-prefixes))
-	(new
-	 (uri->string (->absolute-uri expansion 'REGISTER-RDF-QNAME-PREFIX))))
-    (if p
-	(if (not (string=? (cdr p) new))
-	    (begin
-	      (warn "RDF prefix override:" name (cdr p) new)
-	      (set-cdr! p new)))
-	(set! registered-prefixes
-	      (cons (cons name new) registered-prefixes))))
+      (error:bad-range-argument name 'REGISTER-RDF-PREFIX))
+  (let ((registry (check-registry registry 'REGISTER-RDF-PREFIX)))
+    (let ((p (assq name (registry-bindings registry)))
+	  (new
+	   (uri->string
+	    (->absolute-uri expansion 'REGISTER-RDF-PREFIX))))
+      (if p
+	  (if (not (string=? (cdr p) new))
+	      (begin
+		(warn "RDF prefix override:" name (cdr p) new)
+		(set-cdr! p new)))
+	  (set-registry-bindings! registry
+				  (cons (cons name new)
+					(registry-bindings registry))))))
   name)
 
-(define (uri->rdf-qname uri)
+(define (uri->rdf-qname uri #!optional registry)
   (let ((s (uri->string (->absolute-uri uri 'URI->RDF-QNAME))))
     (let ((p
-	   (find-matching-item registered-prefixes
+	   (find-matching-item
+	       (registry-bindings
+		(check-registry registry 'URI->RDF-QNAME))
 	     (lambda (p)
 	       (string-prefix? (cdr p) s)))))
       (and p
 	   (symbol (car p)
 		   (string-tail s (string-length (cdr p))))))))
 
-(define (rdf-qname->uri qname #!optional error?)
+(define (rdf-qname->uri qname #!optional error? registry)
   (let ((maybe-lose
 	 (lambda ()
 	   (if error? (error:not-rdf-qname qname 'RDF-QNAME->URI))
@@ -220,14 +225,14 @@ USA.
     (if (and (interned-symbol? qname)
 	     (complete-match match-qname (symbol-name qname)))
 	(receive (prefix local) (split-qname qname)
-	  (let ((p (assq prefix registered-prefixes)))
+	  (let ((p (assq prefix (check-registry registry 'RDF-QNAME->URI))))
 	    (if p
 		(->absolute-uri (string-append (cdr p) local))
 		(maybe-lose))))
 	(maybe-lose))))
 
-(define (rdf-qname? object)
-  (if (rdf-qname->uri object #f) #t #f))
+(define (rdf-qname? object #!optional registry)
+  (if (rdf-qname->uri object #f registry) #t #f))
 
 (define-guarantee rdf-qname "RDF qname")
 
@@ -242,18 +247,32 @@ USA.
 
 (define match-prefix
   (*matcher (seq match:prefix-name ":")))
+
+(define-record-type <rdf-prefix-registry>
+    (make-rdf-prefix-registry bindings)
+    rdf-prefix-registry?
+  (bindings registry-bindings set-registry-bindings!))
 
-(define (reset-rdf-qname-prefixes)
-  (set! registered-prefixes (default-rdf-prefixes))
-  unspecific)
+(define-guarantee rdf-prefix-registry "RDF QName prefix registry")
 
-(define (registered-rdf-prefixes)
-  (alist-copy registered-prefixes))
+(define (copy-rdf-prefix-registry #!optional registry)
+  (make-rdf-prefix-registry
+   (registry-bindings (check-registry registry 'COPY-RDF-PREFIX-REGISTRY))))
 
-(define (default-rdf-prefixes)
-  (alist-copy default-prefixes))
+(define (check-registry registry caller)
+  (if (default-object? registry)
+      current-registry
+      (begin
+	(guarantee-rdf-prefix-registry registry caller)
+	registry)))
 
-(define registered-prefixes)
+(define (current-rdf-prefix-registry)
+  current-registry)
+
+(define current-registry)
+
+(define (new-rdf-prefix-registry)
+  (make-rdf-prefix-registry (alist-copy default-prefixes)))
 
 (define default-prefixes
   '((rdf: . "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
@@ -261,4 +280,8 @@ USA.
     (owl: . "http://www.w3.org/2002/07/owl#")
     (xsd: . "http://www.w3.org/2001/XMLSchema#")))
 
-(reset-rdf-qname-prefixes)
+(define (reset-rdf-prefixes)
+  (set! current-registry (new-rdf-prefix-registry))
+  unspecific)
+
+(reset-rdf-prefixes)

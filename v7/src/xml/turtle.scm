@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.4 2006/07/08 00:24:09 cph Exp $
+$Id: turtle.scm,v 1.5 2006/07/27 20:14:08 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -468,7 +468,7 @@ USA.
 		(let ((prefix (cadr p))
 		      (v (uri->string (merge-uris (caddr p) base-uri))))
 		  (if prefix
-		      (register-rdf-qname-prefix (symbol prefix ':) v))
+		      (register-rdf-prefix (symbol prefix ':) v))
 		  (cons prefix v)))
 	      (keep-matching-items stmts
 		(lambda (stmt)
