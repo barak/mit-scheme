@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.6 2003/02/14 18:28:10 cph Exp $
+# $Id: Makefile.in,v 1.7 2006/07/27 00:42:48 riastradh Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -66,8 +66,8 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 AUXDIR = @AUXDIR@
 EDDIR = $(AUXDIR)/edwin
 EODIR = $(EDDIR)/autoload
-EDOPTS = debian-changelog eystep manual midas nntp pasmod print pwedit \
-	 pwparse snr sort techinfo telnet tximod verilog vhdl webster
+EDOPTS = debian-changelog eystep manual midas nntp paredit pasmod print \
+	 pwedit pwparse snr sort techinfo telnet tximod verilog vhdl webster
 
 all:
 	echo "No ALL action"
