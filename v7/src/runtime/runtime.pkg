@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.587 2006/07/20 17:09:44 riastradh Exp $
+$Id: runtime.pkg,v 14.588 2006/07/27 00:00:06 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4788,6 +4788,7 @@ USA.
 	  alphabet->char-set
 	  alphabet->code-points
 	  alphabet->string
+	  alphabet-predicate
 	  alphabet?
 	  call-with-wide-output-string
 	  char-in-alphabet?
@@ -4806,6 +4807,8 @@ USA.
 	  error:not-well-formed-code-point-list
 	  error:not-wide-char
 	  error:not-wide-string
+	  for-all-chars-in-string?
+	  for-any-char-in-string?
 	  guarantee-8-bit-alphabet
 	  guarantee-alphabet
 	  guarantee-unicode-code-point
