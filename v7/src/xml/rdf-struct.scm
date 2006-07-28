@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.12 2006/07/28 02:54:20 cph Exp $
+$Id: rdf-struct.scm,v 1.13 2006/07/28 04:01:11 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -208,11 +208,15 @@ USA.
 (define (uri->rdf-qname uri #!optional error? registry)
   (let ((s (uri->string (->absolute-uri uri 'URI->RDF-QNAME))))
     (let ((p
-	   (find-matching-item
-	       (registry-bindings
-		(check-registry registry 'URI->RDF-QNAME))
-	     (lambda (p)
-	       (string-prefix? (cdr p) s)))))
+	   (let ((alist
+		  (registry-bindings
+		   (check-registry registry 'URI->RDF-QNAME)))
+		 (filter (lambda (p) (string-prefix? (cdr p) s))))
+	     (or (find-matching-item alist
+		   (lambda (p)
+		     (and (not (eq? (car p) ':))
+			  (filter p))))
+		 (find-matching-item alist filter)))))
       (if (and error? (not p))
 	  (error:bad-range-argument uri 'URI->RDF-QNAME))
       (and p
@@ -232,7 +236,7 @@ USA.
 		       (registry-bindings
 			(check-registry registry 'RDF-QNAME->URI)))))
 	    (if p
-		(->absolute-uri (string-append (cdr p) local))
+		(->absolute-uri (string-append (cdr p) local) 'RDF-QNAME->URI)
 		(maybe-lose))))
 	(maybe-lose))))
 
