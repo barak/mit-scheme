@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.75 2006/07/27 20:14:09 cph Exp $
+$Id: xml.pkg,v 1.76 2006/07/28 02:54:27 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -525,6 +525,7 @@ USA.
   (files "rdf-struct")
   (parent (runtime rdf))
   (export ()
+	  *default-rdf-prefix-registry*
 	  <rdf-bnode>
 	  <rdf-index>
 	  <rdf-literal>
@@ -536,7 +537,6 @@ USA.
 	  canonicalize-rdf-subject
 	  canonicalize-rdf-uri
 	  copy-rdf-prefix-registry
-	  current-rdf-prefix-registry
 	  error:not-rdf-bnode
 	  error:not-rdf-index
 	  error:not-rdf-literal
@@ -565,6 +565,7 @@ USA.
 	  rdf-literal-type
 	  rdf-literal=?
 	  rdf-literal?
+	  rdf-prefix-registry->alist
 	  rdf-prefix-registry?
 	  rdf-qname->uri
 	  rdf-qname?

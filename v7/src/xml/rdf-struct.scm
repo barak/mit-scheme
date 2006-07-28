@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.11 2006/07/27 20:14:06 cph Exp $
+$Id: rdf-struct.scm,v 1.12 2006/07/28 02:54:20 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -139,7 +139,7 @@ USA.
       (->absolute-uri uri caller)))
 
 (define (write-rdf-uri uri port)
-  (let ((qname (uri->rdf-qname uri)))
+  (let ((qname (uri->rdf-qname uri #f)))
     (if qname
 	(write-string (symbol-name qname) port)
 	(write-rdf-uri-ref uri port))))
@@ -205,7 +205,7 @@ USA.
 					(registry-bindings registry))))))
   name)
 
-(define (uri->rdf-qname uri #!optional registry)
+(define (uri->rdf-qname uri #!optional error? registry)
   (let ((s (uri->string (->absolute-uri uri 'URI->RDF-QNAME))))
     (let ((p
 	   (find-matching-item
@@ -213,6 +213,8 @@ USA.
 		(check-registry registry 'URI->RDF-QNAME))
 	     (lambda (p)
 	       (string-prefix? (cdr p) s)))))
+      (if (and error? (not p))
+	  (error:bad-range-argument uri 'URI->RDF-QNAME))
       (and p
 	   (symbol (car p)
 		   (string-tail s (string-length (cdr p))))))))
@@ -225,7 +227,10 @@ USA.
     (if (and (interned-symbol? qname)
 	     (complete-match match-qname (symbol-name qname)))
 	(receive (prefix local) (split-qname qname)
-	  (let ((p (assq prefix (check-registry registry 'RDF-QNAME->URI))))
+	  (let ((p
+		 (assq prefix
+		       (registry-bindings
+			(check-registry registry 'RDF-QNAME->URI)))))
 	    (if p
 		(->absolute-uri (string-append (cdr p) local))
 		(maybe-lose))))
@@ -243,10 +248,10 @@ USA.
 	      (string-tail s i)))))
 
 (define match-qname
-  (*matcher (seq match:prefix-name ":" match:name)))
+  (*matcher (seq match-prefix match:name)))
 
 (define match-prefix
-  (*matcher (seq match:prefix-name ":")))
+  (*matcher (seq (? match:prefix-name) ":")))
 
 (define-record-type <rdf-prefix-registry>
     (make-rdf-prefix-registry bindings)
@@ -255,21 +260,27 @@ USA.
 
 (define-guarantee rdf-prefix-registry "RDF QName prefix registry")
 
+(define (rdf-prefix-registry->alist #!optional registry)
+  (alist-copy
+   (registry-bindings
+    (check-registry registry 'RDF-PREFIX-REGISTRY->ALIST))))
+
 (define (copy-rdf-prefix-registry #!optional registry)
   (make-rdf-prefix-registry
-   (registry-bindings (check-registry registry 'COPY-RDF-PREFIX-REGISTRY))))
+   (alist-copy
+    (registry-bindings (check-registry registry 'COPY-RDF-PREFIX-REGISTRY)))))
 
 (define (check-registry registry caller)
   (if (default-object? registry)
-      current-registry
+      (let ((registry *default-rdf-prefix-registry*))
+	(if (rdf-prefix-registry? registry)
+	    registry
+	    (begin
+	      (warn "*default-rdf-prefix-registry* has illegal value.")
+	      (new-rdf-prefix-registry))))
       (begin
 	(guarantee-rdf-prefix-registry registry caller)
 	registry)))
-
-(define (current-rdf-prefix-registry)
-  current-registry)
-
-(define current-registry)
 
 (define (new-rdf-prefix-registry)
   (make-rdf-prefix-registry (alist-copy default-prefixes)))
@@ -280,8 +291,5 @@ USA.
     (owl: . "http://www.w3.org/2002/07/owl#")
     (xsd: . "http://www.w3.org/2001/XMLSchema#")))
 
-(define (reset-rdf-prefixes)
-  (set! current-registry (new-rdf-prefix-registry))
-  unspecific)
-
-(reset-rdf-prefixes)
+(define *default-rdf-prefix-registry*
+  (new-rdf-prefix-registry))
