@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-rpc.scm,v 1.5 2006/07/25 18:21:44 riastradh Exp $
+$Id: xml-rpc.scm,v 1.6 2006/07/28 16:23:08 riastradh Exp $
 
 Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -293,7 +293,12 @@ USA.
 				       'encode-value))))))
 
 (define (encode-string string)
-  (if (utf8-string-valid? string)
+  (if (and (utf8-string-valid? string)
+           (for-all-chars-in-string? (alphabet-predicate alphabet:xml-char)
+                                     string
+                                     0
+                                     (string-length string)
+                                     'UTF-8))
       string
       (rpc-elt:base64
        (call-with-output-string
