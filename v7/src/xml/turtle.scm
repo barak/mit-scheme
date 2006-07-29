@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.5 2006/07/27 20:14:08 cph Exp $
+$Id: turtle.scm,v 1.6 2006/07/29 01:25:58 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -89,24 +89,22 @@ USA.
 		  ";"))))))
 
 (define parse:predicate-object-list-1
-  (*parser
-   (encapsulate (lambda (v)
-		  (cons (vector-ref v 0)
-			(vector-ref v 1)))
-     (seq (alt parse:resource
-	       (map (lambda (v) v rdf:type)
-		    (match "a")))
-	  (alt parse:ws+
-	       (error #f "Expected whitespace"))
-	  (encapsulate vector->list
-	    (seq parse:object-required
-		 (* (seq parse:ws*
-			 ","
-			 parse:ws*
-			 parse:object-required))))))))
-
-(define rdf:type
-  (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
+  (let ((rdf:type (->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#type")))
+    (*parser
+     (encapsulate (lambda (v)
+		    (cons (vector-ref v 0)
+			  (vector-ref v 1)))
+       (seq (alt parse:resource
+		 (map (lambda (v) v rdf:type)
+		      (match "a")))
+	    (alt parse:ws+
+		 (error #f "Expected whitespace"))
+	    (encapsulate vector->list
+	      (seq parse:object-required
+		   (* (seq parse:ws*
+			   ","
+			   parse:ws*
+			   parse:object-required)))))))))
 
 (define parse:subject
   (*parser (alt parse:resource parse:blank)))
@@ -261,7 +259,7 @@ USA.
 (define parse:boolean
   (*parser
    (map (lambda (s) (make-rdf-literal s xsd:boolean))
-	(alt "true" "false"))))
+	(match (alt "true" "false")))))
 
 (define xsd:boolean
   (string->uri "http://www.w3.org/2001/XMLSchema#boolean"))
@@ -457,7 +455,7 @@ USA.
 			     (not (char=? char #\newline))))
 		      (loop)))
 		#t)))))
-
+
 ;;;; Post-processing
 
 ;;; This code does prefix expansion and URI merging.
