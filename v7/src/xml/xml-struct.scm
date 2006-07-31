@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.54 2006/02/02 20:50:26 cph Exp $
+$Id: xml-struct.scm,v 1.55 2006/07/31 18:55:43 riastradh Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -153,9 +153,17 @@ USA.
 
 (define (xml-char-data? object)
   (or (wide-char? object)
-      (wide-string? object)
-      (and (string? object)
-	   (utf8-string-valid? object))))
+      (and (or (wide-string? object)
+               (and (string? object)
+                    (utf8-string-valid? object)))
+           (string-of-xml-chars? object))))
+
+(define (string-of-xml-chars? string)
+  (for-all-chars-in-string? (alphabet-predicate alphabet:xml-char)
+                            string
+                            0
+                            (string-length string)
+                            'UTF-8))
 
 (define (canonicalize-char-data object)
   (cond ((wide-char? object)
@@ -165,9 +173,12 @@ USA.
 	     (write-char object port))))
 	((wide-string? object)
 	 (wide-string->utf8-string object))
-	((and (string? object)
-	      (utf8-string-valid? object))
-	 object)
+	((string? object)
+	 (cond ((not (utf8-string-valid? object))
+                (error:wrong-type-datum object "valid UTF-8 XML char data"))
+               ((not (string-of-xml-chars? object))
+                (error:wrong-type-datum object "well-formed XML char data"))
+               (else object)))
 	((uri? object)
 	 (uri->string object))
 	(else (error:wrong-type-datum object "an XML char data"))))
@@ -196,7 +207,7 @@ USA.
       (xml-comment? object)
       (xml-element? object)
       (xml-processing-instructions? object)))
-
+
 (define (canonicalize-content content)
   (letrec
       ((search
