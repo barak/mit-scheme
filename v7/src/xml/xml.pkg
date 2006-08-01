@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.78 2006/08/01 04:23:35 cph Exp $
+$Id: xml.pkg,v 1.79 2006/08/01 17:23:50 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -552,10 +552,10 @@ USA.
 	  guarantee-rdf-prefix-registry
 	  guarantee-rdf-qname
 	  guarantee-rdf-triple
-	  join-rdf-qname
 	  make-rdf-bnode
 	  make-rdf-index
 	  make-rdf-literal
+	  make-rdf-qname
 	  make-rdf-triple
 	  new-rdf-prefix-registry
 	  rdf-bnode-name
@@ -574,6 +574,8 @@ USA.
 	  rdf-prefix-registry?
 	  rdf-prefix?
 	  rdf-qname->uri
+	  rdf-qname-local
+	  rdf-qname-prefix
 	  rdf-qname?
 	  rdf-triple-object
 	  rdf-triple-predicate

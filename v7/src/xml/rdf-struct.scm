@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.14 2006/08/01 02:50:45 cph Exp $
+$Id: rdf-struct.scm,v 1.15 2006/08/01 17:23:49 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -239,19 +239,29 @@ USA.
 	    (if error? (error:bad-range-argument qname 'RDF-QNAME->URI))
 	    #f)))))
 
+(define (make-rdf-qname prefix local)
+  (guarantee-rdf-prefix prefix 'MAKE-RDF-QNAME)
+  (guarantee-string local 'MAKE-RDF-QNAME)
+  (if (not (complete-match match:name local))
+      (error:bad-range-argument local 'MAKE-RDF-QNAME))
+  (symbol prefix local))
+
+(define (rdf-qname-prefix qname)
+  (guarantee-rdf-qname qname 'RDF-QNAME-PREFIX)
+  (let ((s (symbol-name qname)))
+    (symbol (string-head s (fix:+ (string-find-next-char s #\:) 1)))))
+
+(define (rdf-qname-local qname)
+  (guarantee-rdf-qname qname 'RDF-QNAME-LOCAL)
+  (let ((s (symbol-name qname)))
+    (string-tail s (fix:+ (string-find-next-char s #\:) 1))))
+
 (define (split-rdf-qname qname)
   (guarantee-rdf-qname qname 'SPLIT-RDF-QNAME)
   (let ((s (symbol-name qname)))
     (let ((i (fix:+ (string-find-next-char s #\:) 1)))
       (values (symbol (string-head s i))
 	      (string-tail s i)))))
-
-(define (join-rdf-qname prefix local)
-  (guarantee-rdf-prefix prefix 'JOIN-RDF-QNAME)
-  (guarantee-string local 'JOIN-RDF-QNAME)
-  (if (not (complete-match match:name local))
-      (error:bad-range-argument local 'JOIN-RDF-QNAME))
-  (symbol prefix local))
 
 (define (rdf-qname? object)
   (and (interned-symbol? object)
