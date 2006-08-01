@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.13 2006/07/28 04:01:11 cph Exp $
+$Id: rdf-struct.scm,v 1.14 2006/08/01 02:50:45 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -186,24 +186,31 @@ USA.
 
 ;;;; Qnames
 
-(define (register-rdf-prefix name expansion #!optional registry)
-  (guarantee-interned-symbol name 'REGISTER-RDF-PREFIX)
-  (if (not (complete-match match-prefix (symbol-name name)))
-      (error:bad-range-argument name 'REGISTER-RDF-PREFIX))
+(define (register-rdf-prefix prefix expansion #!optional registry)
+  (guarantee-rdf-prefix prefix 'REGISTER-RDF-PREFIX)
   (let ((registry (check-registry registry 'REGISTER-RDF-PREFIX)))
-    (let ((p (assq name (registry-bindings registry)))
+    (let ((p (assq prefix (registry-bindings registry)))
 	  (new
 	   (uri->string
 	    (->absolute-uri expansion 'REGISTER-RDF-PREFIX))))
       (if p
 	  (if (not (string=? (cdr p) new))
 	      (begin
-		(warn "RDF prefix override:" name (cdr p) new)
+		(warn "RDF prefix override:" prefix (cdr p) new)
 		(set-cdr! p new)))
 	  (set-registry-bindings! registry
-				  (cons (cons name new)
+				  (cons (cons prefix new)
 					(registry-bindings registry))))))
-  name)
+  prefix)
+
+(define (rdf-prefix-expansion prefix #!optional registry)
+  (guarantee-rdf-prefix prefix 'RDF-PREFIX-EXPANSION)
+  (let ((p
+	 (assq prefix
+	       (registry-bindings
+		(check-registry registry 'RDF-PREFIX-EXPANSION)))))
+    (and p
+	 (cdr p))))
 
 (define (uri->rdf-qname uri #!optional error? registry)
   (let ((s (uri->string (->absolute-uri uri 'URI->RDF-QNAME))))
@@ -224,39 +231,46 @@ USA.
 		   (string-tail s (string-length (cdr p))))))))
 
 (define (rdf-qname->uri qname #!optional error? registry)
-  (let ((maybe-lose
-	 (lambda ()
-	   (if error? (error:not-rdf-qname qname 'RDF-QNAME->URI))
-	   #f)))
-    (if (and (interned-symbol? qname)
-	     (complete-match match-qname (symbol-name qname)))
-	(receive (prefix local) (split-qname qname)
-	  (let ((p
-		 (assq prefix
-		       (registry-bindings
-			(check-registry registry 'RDF-QNAME->URI)))))
-	    (if p
-		(->absolute-uri (string-append (cdr p) local) 'RDF-QNAME->URI)
-		(maybe-lose))))
-	(maybe-lose))))
+  (receive (prefix local) (split-rdf-qname qname)
+    (let ((expansion (rdf-prefix-expansion prefix registry)))
+      (if expansion
+	  (->absolute-uri (string-append expansion local) 'RDF-QNAME->URI)
+	  (begin
+	    (if error? (error:bad-range-argument qname 'RDF-QNAME->URI))
+	    #f)))))
 
-(define (rdf-qname? object #!optional registry)
-  (if (rdf-qname->uri object #f registry) #t #f))
-
-(define-guarantee rdf-qname "RDF qname")
-
-(define (split-qname qname)
+(define (split-rdf-qname qname)
+  (guarantee-rdf-qname qname 'SPLIT-RDF-QNAME)
   (let ((s (symbol-name qname)))
     (let ((i (fix:+ (string-find-next-char s #\:) 1)))
       (values (symbol (string-head s i))
 	      (string-tail s i)))))
+
+(define (join-rdf-qname prefix local)
+  (guarantee-rdf-prefix prefix 'JOIN-RDF-QNAME)
+  (guarantee-string local 'JOIN-RDF-QNAME)
+  (if (not (complete-match match:name local))
+      (error:bad-range-argument local 'JOIN-RDF-QNAME))
+  (symbol prefix local))
+
+(define (rdf-qname? object)
+  (and (interned-symbol? object)
+       (complete-match match-qname (symbol-name object))))
+
+(define-guarantee rdf-qname "RDF QName")
+
+(define (rdf-prefix? object)
+  (and (interned-symbol? object)
+       (complete-match match-prefix (symbol-name object))))
+
+(define-guarantee rdf-prefix "RDF prefix")
 
 (define match-qname
   (*matcher (seq match-prefix match:name)))
 
 (define match-prefix
   (*matcher (seq (? match:prefix-name) ":")))
-
+
 (define-record-type <rdf-prefix-registry>
     (make-rdf-prefix-registry bindings)
     rdf-prefix-registry?

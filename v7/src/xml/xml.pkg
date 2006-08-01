@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.76 2006/07/28 02:54:27 cph Exp $
+$Id: xml.pkg,v 1.77 2006/08/01 02:50:50 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -540,15 +540,18 @@ USA.
 	  error:not-rdf-bnode
 	  error:not-rdf-index
 	  error:not-rdf-literal
+	  error:not-rdf-prefix
 	  error:not-rdf-prefix-registry
 	  error:not-rdf-qname
 	  error:not-rdf-triple
 	  guarantee-rdf-bnode
 	  guarantee-rdf-index
 	  guarantee-rdf-literal
+	  guarantee-rdf-prefix
 	  guarantee-rdf-prefix-registry
 	  guarantee-rdf-qname
 	  guarantee-rdf-triple
+	  join-rdf-qname
 	  make-rdf-bnode
 	  make-rdf-index
 	  make-rdf-literal
@@ -565,8 +568,10 @@ USA.
 	  rdf-literal-type
 	  rdf-literal=?
 	  rdf-literal?
+	  rdf-prefix-expansion
 	  rdf-prefix-registry->alist
 	  rdf-prefix-registry?
+	  rdf-prefix?
 	  rdf-qname->uri
 	  rdf-qname?
 	  rdf-triple-object
@@ -574,6 +579,7 @@ USA.
 	  rdf-triple-subject
 	  rdf-triple?
 	  register-rdf-prefix
+	  split-rdf-qname
 	  uri->rdf-qname
 	  write-rdf-uri)
   (export (runtime rdf)
