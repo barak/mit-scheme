@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.590 2006/08/02 16:27:09 riastradh Exp $
+$Id: runtime.pkg,v 14.591 2006/08/02 18:18:12 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -5048,10 +5048,10 @@ USA.
 	  http-response/first-header-field
 	  http-response/all-header-fields
 	  http-response/header-fields
-	  http-response/http-version
 	  http-response/reason
 	  http-response/status-code
 	  http-response/status-type
+	  http-response/version
 	  http-version
 	  http-version?
 	  http-version=?

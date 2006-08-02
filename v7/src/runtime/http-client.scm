@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-client.scm,v 14.1 2006/08/02 16:27:09 riastradh Exp $
+$Id: http-client.scm,v 14.2 2006/08/02 18:18:10 cph Exp $
 
 Copyright 2006 Taylor R. Campbell
 
@@ -332,7 +332,7 @@ USA.
   (let* ((string (string-allocate length))
          (octets (read-substring! string 0 length input-port)))
     (if (fix:< octets length)
-        (string-prefix string octets)
+        (string-head string octets)
         string)))
 
 ;;;; RFC 822 Header Fields
@@ -344,15 +344,18 @@ USA.
 (define (rfc822:header-field? obj)
   (and (pair? obj)
        (symbol? (car obj))
-       (let* ((name (symbol-name (car obj)))
-              (length (string-length name)))
-         (and (> length 0)
-              (rfc822:header-field-name? name 0 length)))
+       (let ((name (symbol-name (car obj))))
+         (rfc822:header-field-name? name 0 (string-length name)))
        (pair? (cdr obj))
        (string? (cadr obj))
        (null? (cddr obj))))
 
 (define-guarantee rfc822:header-field "RFC 822 header field")
+
+(define (rfc822:header-field-name? string start end)
+  (and (fix:< start end)
+       (not (substring-find-next-char-in-set
+	     string start end rfc822:char-set:not-header-constituents))))
 
 (define (rfc822:make-header-field name value) (list name value))
 (define (rfc822:header-field-name header) (car header))
@@ -386,7 +389,7 @@ USA.
 
 (define (rfc822:header-fields->string header-fields)
   (call-with-output-string
-    (lambda ()
+    (lambda (port)
       (rfc822:write-header-fields header-fields port))))
 
 (define (rfc822:write-header-field header-field port)
@@ -467,6 +470,9 @@ USA.
 (define rfc822:char-set:header-constituents
   (char-set-difference (ascii-range->char-set 33 127)
 		       (char-set #\:)))
+
+(define rfc822:char-set:not-header-constituents
+  (char-set-invert rfc822:char-set:header-constituents))
 
 (define rfc822:matcher:header-field-line-content
   (*matcher (* (not-char #\newline))))
