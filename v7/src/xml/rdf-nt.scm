@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-nt.scm,v 1.7 2006/06/22 19:17:26 cph Exp $
+$Id: rdf-nt.scm,v 1.8 2006/08/02 05:05:10 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -30,7 +30,7 @@ USA.
 ;;;; Decoder
 
 (define (read-rdf/nt-file pathname)
-  (fluid-let ((*bnodes* (make-bnode-table)))
+  (fluid-let ((*rdf-bnode-registry* (make-rdf-bnode-registry)))
     (call-with-input-file pathname
       (lambda (port)
 	(let loop ((triples '()))
@@ -41,20 +41,20 @@ USA.
 
 (define (rdf/nt-file->source pathname)
   (let ((port (open-input-file pathname))
-	(table (make-bnode-table)))
+	(registry (make-rdf-bnode-registry)))
     (lambda ()
       (let ((triple
-	     (fluid-let ((*bnodes* table))
+	     (fluid-let ((*rdf-bnode-registry* registry))
 	       (%read-rdf/nt port))))
 	(if (eof-object? triple)
 	    #f
 	    triple)))))
 
 (define (read-rdf/nt port)
-  (fluid-let ((*bnodes* (bnode-table port)))
+  (fluid-let ((*rdf-bnode-registry* (port/bnode-registry port)))
     (let ((triple (%read-rdf/nt port)))
       (if (eof-object? triple)
-	  (drop-bnode-table port))
+	  (port/drop-bnode-registry port))
       triple)))
 
 (define (%read-rdf/nt port)
@@ -98,7 +98,7 @@ USA.
 
 (define parse-node-id
   (*parser
-   (encapsulate (lambda (v) (make-bnode (vector-ref v 0)))
+   (encapsulate (lambda (v) (make-rdf-bnode (vector-ref v 0)))
      (seq "_:"
 	  (match match-bnode-name)))))
 
@@ -162,25 +162,6 @@ USA.
 
     (port/set-coding port 'UTF-8)
     (loop)))
-
-(define *bnodes*)
-
-(define (make-bnode-table)
-  (make-string-hash-table))
-
-(define (bnode-table port)
-  (or (port/get-property port 'BNODE-TABLE #f)
-      (let ((table (make-string-hash-table)))
-	(port/set-property! port 'BNODE-TABLE table)
-	table)))
-
-(define (drop-bnode-table port)
-  (port/remove-property! port 'BNODE-TABLE))
-
-(define (make-bnode name)
-  (hash-table/intern! *bnodes* name
-    (lambda ()
-      (make-rdf-bnode name))))
 
 (define match-ws*
   (*matcher (* (char-set char-set:ws))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.6 2006/07/29 01:25:58 cph Exp $
+$Id: turtle.scm,v 1.7 2006/08/02 05:05:20 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -31,12 +31,13 @@ USA.
   (let ((pathname (pathname-default-type pathname "ttl")))
     (call-with-input-file pathname
       (lambda (port)
-	(post-process-parser-output
-	 (parse-turtle-doc (input-port->parser-buffer port))
-	 (if (default-object? base-uri)
-	     (pathname->uri (merge-pathnames pathname))
-	     (merge-uris (file-namestring pathname)
-			 (->absolute-uri base-uri 'read-turtle-file))))))))
+	(fluid-let ((*rdf-bnode-registry* (make-rdf-bnode-registry)))
+	  (post-process-parser-output
+	   (parse-turtle-doc (input-port->parser-buffer port))
+	   (if (default-object? base-uri)
+	       (pathname->uri (merge-pathnames pathname))
+	       (merge-uris (file-namestring pathname)
+			   (->absolute-uri base-uri 'read-turtle-file)))))))))
 
 (define (parse-turtle-doc buffer)
   (parse:ws* buffer)
