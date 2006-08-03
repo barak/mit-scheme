@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syntax.c,v 1.32 2006/07/03 19:28:03 riastradh Exp $
+$Id: syntax.c,v 1.33 2006/08/03 04:00:12 riastradh Exp $
 
 Copyright 1987,1988,1989,1991,1993,1996 Massachusetts Institute of Technology
 Copyright 2000,2004,2005,2006 Massachusetts Institute of Technology
@@ -1038,7 +1038,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
   start -= 1;
 
  done:
-  result = (allocate_marked_vector (TC_VECTOR, 8, true));
+  result = (allocate_marked_vector (TC_VECTOR, 9, true));
   FAST_VECTOR_SET (result, 0, (LONG_TO_FIXNUM (depth)));
   FAST_VECTOR_SET
     (result, 1,
