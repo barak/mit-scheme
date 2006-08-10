@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.15 2006/01/31 06:30:48 cph Exp $
+@c $Id: io.texi,v 1.16 2006/08/10 05:28:05 savannah-arthur Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -2733,7 +2733,7 @@ language.
 The parser and matcher languages provide a macro facility so that
 common patterns can be abstracted.  The macro facility allows new
 expression types to be independently defined in the two languages.
-The macros are defined in heirarchically organized tables, so that
+The macros are defined in hierarchically organized tables, so that
 different applications can have private macro bindings.
 
 @deffn {special form} define-*matcher-macro formals expression
@@ -3212,7 +3212,7 @@ with the @samp{xmlns} prefix.
 
 The output from the @acronym{XML} parser and the input to the
 @acronym{XML} output procedure is a complex data structure composed of
-a heirarchy of typed components.  Each component is a record whose
+a hierarchy of typed components.  Each component is a record whose
 fields correspond to parts of the @acronym{XML} structure that the
 record represents.  There are no special operations on these records;
 each is a tuple with named subparts.  The root record type is
