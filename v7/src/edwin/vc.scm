@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.94 2006/06/16 17:55:27 riastradh Exp $
+$Id: vc.scm,v 1.95 2006/08/15 04:32:19 cph Exp $
 
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2005,2006 Massachusetts Institute of Technology
@@ -2007,7 +2007,8 @@ the value of vc-log-mode-hook."
 	 (not (let ((output (%get-svn-status workfile)))
 		(or (not output)
 		    (string-null? output)
-		    (string-prefix? "?" output))))
+		    (string-prefix? "?" output)
+		    (string-prefix? "I" output))))
 	 (make-vc-master vc-type:svn
 			 (merge-pathnames "entries" (svn-directory workfile))
 			 workfile))))
@@ -2219,7 +2220,8 @@ the value of vc-log-mode-hook."
   (and status
        (not (string-null? status))
        (let ((type (decode-svn-status-0 (string-ref status 0))))
-	 (if (eq? type 'UNVERSIONED)
+	 (if (or (eq? type 'UNVERSIONED)
+		 (eq? type 'IGNORED))
 	     type
 	     (let ((regs (re-string-match svn-status-regexp status #f)))
 	       (and regs
