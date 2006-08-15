@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syntax.c,v 1.33 2006/08/03 04:00:12 riastradh Exp $
+$Id: syntax.c,v 1.34 2006/08/15 04:23:56 cph Exp $
 
 Copyright 1987,1988,1989,1991,1993,1996 Massachusetts Institute of Technology
 Copyright 2000,2004,2005,2006 Massachusetts Institute of Technology
@@ -739,6 +739,8 @@ struct levelstruct { unsigned char * last, * previous; };
   (level -> last) = start;						\
 } while (0)
 
+#define STATE_ARG_LENGTH 9
+
 DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 {
   long target_depth;
@@ -781,7 +783,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
       quoted = false;
     }
   else if ((VECTOR_P (state_argument)) &&
-	   (VECTOR_LENGTH (state_argument)) == 8)
+	   (VECTOR_LENGTH (state_argument)) == STATE_ARG_LENGTH)
     {
       SCHEME_OBJECT temp;
 
@@ -1038,7 +1040,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
   start -= 1;
 
  done:
-  result = (allocate_marked_vector (TC_VECTOR, 9, true));
+  result = (allocate_marked_vector (TC_VECTOR, STATE_ARG_LENGTH, true));
   FAST_VECTOR_SET (result, 0, (LONG_TO_FIXNUM (depth)));
   FAST_VECTOR_SET
     (result, 1,
