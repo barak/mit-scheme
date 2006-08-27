@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.38 2006/02/01 06:13:07 cph Exp $
+$Id: genio.scm,v 1.39 2006/08/27 21:37:21 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
@@ -996,7 +996,7 @@ USA.
 		    (else (- i start)))))
 	  (- end start)))))
 
-;;;; ISO-8859 codecs
+;;;; 8-bit codecs
 
 (define-decoder 'ISO-8859-1
   (lambda (ib)
@@ -1017,36 +1017,31 @@ USA.
 (define-encoder-alias 'TEXT 'ISO-8859-1)
 (define-decoder-alias 'US-ASCII 'ISO-8859-1)
 (define-encoder-alias 'ASCII 'ISO-8859-1)
-
-(define-syntax define-iso-8859-map
+
+(define-syntax define-8-bit-codecs
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(+ DATUM) (cdr form))
-	 (let ((name
-		(intern
-		 (string-append "iso-8859-" (number->string (cadr form))))))
-	   (let ((decoding-map (symbol 'DECODING-MAP: name))
-		 (encoding-map (symbol 'ENCODING-MAP: name)))
-	     `(BEGIN
-		(DEFINE-DECODER ',name
-		  (LET ((,decoding-map
-			 #(,@(let loop ((i 0))
-			       (if (fix:= i #xA1)
-				   (cddr form)
-				   (cons i (loop (fix:+ i 1))))))))
-		    (LAMBDA (IB)
-		      (DECODE-ISO-8859 IB ,decoding-map))))
-		(DEFINE-ENCODER ',name
-		  (LET ((,encoding-map
-			 (RECEIVE (LHS RHS)
-			     (REVERSE-ISO-8859-MAP ',(cddr form))
-			   (CONS LHS RHS))))
-		    (LAMBDA (OB CP)
-		      (ENCODE-ISO-8859 OB CP ,encoding-map)))))))
+     (if (syntax-match? '(SYMBOL + DATUM) (cdr form))
+	 (let ((name (cadr form))
+	       (start (caddr form))
+	       (code-points (cdddr form)))
+	   `(BEGIN
+	      (DEFINE-DECODER ',name
+		(LET ((TABLE
+		       #(,@(let loop ((i 0))
+			     (if (fix:< i start)
+				 (cons i (loop (fix:+ i 1)))
+				 code-points)))))
+		  (LAMBDA (IB)
+		    (DECODE-8-BIT IB TABLE))))
+	      (DEFINE-ENCODER ',name
+		(RECEIVE (LHS RHS) (REVERSE-ISO-8859-MAP ,start ',(cddr form))
+		  (LAMBDA (OB CP)
+		    (ENCODE-8-BIT OB CP ,start LHS RHS))))))
 	 (ill-formed-syntax form)))))
 
-(define (decode-iso-8859 ib table)
+(define (decode-8-bit ib table)
   (let ((cp
 	 (vector-ref table
 		     (vector-8b-ref (input-buffer-bytes ib)
@@ -1057,44 +1052,44 @@ USA.
 	  cp)
 	(error:char-decoding ib))))
 
-(define (encode-iso-8859 ob cp table)
+(define (encode-8-bit ob cp start map-lhs map-rhs)
   (vector-8b-set! (input-buffer-bytes ob)
 		  (input-buffer-start ob)
-		  (if (fix:< cp #xA1)
+		  (if (fix:< cp start)
 		      cp
-		      (let ((lhs (car table)))
-			(let loop ((low 0) (high (vector-length lhs)))
-			  (if (not (fix:< low high))
-			      (error:char-encoding ob cp))
-			  (let ((i (fix:quotient (fix:+ low high) 2)))
-			    (cond ((fix:< cp (vector-ref lhs i))
-				   (loop low i))
-				  ((fix:> cp (vector-ref lhs i))
-				   (loop (fix:+ i 1) high))
-				  (else
-				   (vector-8b-ref (cdr table) i))))))))
+		      (let loop ((low 0) (high (vector-length map-lhs)))
+			(if (not (fix:< low high))
+			    (error:char-encoding ob cp))
+			(let ((i (fix:quotient (fix:+ low high) 2)))
+			  (cond ((fix:< cp (vector-ref map-lhs i))
+				 (loop low i))
+				((fix:> cp (vector-ref map-lhs i))
+				 (loop (fix:+ i 1) high))
+				(else
+				 (vector-8b-ref map-rhs i)))))))
   1)
-
-(define (reverse-iso-8859-map code-points)
-  (let ((lhs (make-vector #x5F))
-	(rhs (make-string #x5F)))
-    (do ((alist (sort (let loop ((code-points code-points) (i #xA1))
-			(if (pair? code-points)
-			    (if (car code-points)
-				(cons (cons (car code-points) i)
-				      (loop (cdr code-points) (fix:+ i 1)))
-				(loop (cdr code-points) (fix:+ i 1)))
-			    '()))
-		  (lambda (a b)
-		    (fix:< (car a) (car b))))
-		(cdr alist))
-	 (i 0 (fix:+ i 1)))
-	((not (pair? alist)))
-      (vector-set! lhs i (caar alist))
-      (vector-8b-set! rhs i (cdar alist)))
-    (values lhs rhs)))
 
-(define-iso-8859-map 2
+(define (reverse-iso-8859-map start code-points)
+  (let ((n (length code-points)))
+    (let ((lhs (make-vector n))
+	  (rhs (make-vector-8b n)))
+      (do ((alist (sort (let loop ((code-points code-points) (i start))
+			  (if (pair? code-points)
+			      (if (car code-points)
+				  (cons (cons (car code-points) i)
+					(loop (cdr code-points) (fix:+ i 1)))
+				  (loop (cdr code-points) (fix:+ i 1)))
+			      '()))
+		    (lambda (a b)
+		      (fix:< (car a) (car b))))
+		  (cdr alist))
+	   (i 0 (fix:+ i 1)))
+	  ((not (pair? alist)))
+	(vector-set! lhs i (caar alist))
+	(vector-8b-set! rhs i (cdar alist)))
+      (values lhs rhs))))
+
+(define-8-bit-codecs iso-8859-2 #xA1
   #x0104 #x02D8 #x0141 #x00A4 #x013D #x015A #x00A7 #x00A8
   #x0160 #x015E #x0164 #x0179 #x00AD #x017D #x017B #x00B0
   #x0105 #x02DB #x0142 #x00B4 #x013E #x015B #x02C7 #x00B8
@@ -1108,7 +1103,7 @@ USA.
   #x0144 #x0148 #x00F3 #x00F4 #x0151 #x00F6 #x00F7 #x0159
   #x016F #x00FA #x0171 #x00FC #x00FD #x0163 #x02D9)
 
-(define-iso-8859-map 3
+(define-8-bit-codecs iso-8859-3 #xA1
   #x0126 #x02D8 #x00A3 #x00A4 #f     #x0124 #x00A7 #x00A8
   #x0130 #x015E #x011E #x0134 #x00AD #f     #x017B #x00B0
   #x0127 #x00B2 #x00B3 #x00B4 #x00B5 #x0125 #x00B7 #x00B8
@@ -1122,7 +1117,7 @@ USA.
   #x00F1 #x00F2 #x00F3 #x00F4 #x0121 #x00F6 #x00F7 #x011D
   #x00F9 #x00FA #x00FB #x00FC #x016D #x015D #x02D9)
 
-(define-iso-8859-map 4
+(define-8-bit-codecs iso-8859-4 #xA1
   #x0104 #x0138 #x0156 #x00A4 #x0128 #x013B #x00A7 #x00A8
   #x0160 #x0112 #x0122 #x0166 #x00AD #x017D #x00AF #x00B0
   #x0105 #x02DB #x0157 #x00B4 #x0129 #x013C #x02C7 #x00B8
@@ -1136,7 +1131,7 @@ USA.
   #x0146 #x014D #x0137 #x00F4 #x00F5 #x00F6 #x00F7 #x00F8
   #x0173 #x00FA #x00FB #x00FC #x0169 #x016B #x02D9)
 
-(define-iso-8859-map 5
+(define-8-bit-codecs iso-8859-5 #xA1
   #x0401 #x0402 #x0403 #x0404 #x0405 #x0406 #x0407 #x0408
   #x0409 #x040A #x040B #x040C #x00AD #x040E #x040F #x0410
   #x0411 #x0412 #x0413 #x0414 #x0415 #x0416 #x0417 #x0418
@@ -1149,8 +1144,8 @@ USA.
   #x0449 #x044A #x044B #x044C #x044D #x044E #x044F #x2116
   #x0451 #x0452 #x0453 #x0454 #x0455 #x0456 #x0457 #x0458
   #x0459 #x045A #x045B #x045C #x00A7 #x045E #x045F)
-
-(define-iso-8859-map 6
+
+(define-8-bit-codecs iso-8859-6 #xA1
   #f     #f     #f     #x00A4 #f     #f     #f     #f    
   #f     #f     #f     #x060C #x00AD #f     #f     #f    
   #f     #f     #f     #f     #f     #f     #f     #f    
@@ -1162,9 +1157,9 @@ USA.
   #x0641 #x0642 #x0643 #x0644 #x0645 #x0646 #x0647 #x0648
   #x0649 #x064A #x064B #x064C #x064D #x064E #x064F #x0650
   #x0651 #x0652 #f     #f     #f     #f     #f     #f    
-  #f     #f     #f     #f     #f     #f     #f    )
-
-(define-iso-8859-map 7
+  #f     #f     #f     #f     #f     #f     #f)
+
+(define-8-bit-codecs iso-8859-7 #xA1
   #x2018 #x2019 #x00A3 #f     #f     #x00A6 #x00A7 #x00A8
   #x00A9 #f     #x00AB #x00AC #x00AD #f     #x2015 #x00B0
   #x00B1 #x00B2 #x00B3 #x0384 #x0385 #x0386 #x00B7 #x0388
@@ -1176,9 +1171,9 @@ USA.
   #x03B1 #x03B2 #x03B3 #x03B4 #x03B5 #x03B6 #x03B7 #x03B8
   #x03B9 #x03BA #x03BB #x03BC #x03BD #x03BE #x03BF #x03C0
   #x03C1 #x03C2 #x03C3 #x03C4 #x03C5 #x03C6 #x03C7 #x03C8
-  #x03C9 #x03CA #x03CB #x03CC #x03CD #x03CE #f    )
+  #x03C9 #x03CA #x03CB #x03CC #x03CD #x03CE #f)
 
-(define-iso-8859-map 8
+(define-8-bit-codecs iso-8859-8 #xA1
   #f     #x00A2 #x00A3 #x00A4 #x00A5 #x00A6 #x00A7 #x00A8
   #x00A9 #x00D7 #x00AB #x00AC #x00AD #x00AE #x00AF #x00B0
   #x00B1 #x00B2 #x00B3 #x00B4 #x00B5 #x00B6 #x00B7 #x00B8
@@ -1190,9 +1185,9 @@ USA.
   #x05D1 #x05D2 #x05D3 #x05D4 #x05D5 #x05D6 #x05D7 #x05D8
   #x05D9 #x05DA #x05DB #x05DC #x05DD #x05DE #x05DF #x05E0
   #x05E1 #x05E2 #x05E3 #x05E4 #x05E5 #x05E6 #x05E7 #x05E8
-  #x05E9 #x05EA #f     #f     #x200E #x200F #f    )
+  #x05E9 #x05EA #f     #f     #x200E #x200F #f)
 
-(define-iso-8859-map 9
+(define-8-bit-codecs iso-8859-9 #xA1
   #x00A1 #x00A2 #x00A3 #x00A4 #x00A5 #x00A6 #x00A7 #x00A8
   #x00A9 #x00AA #x00AB #x00AC #x00AD #x00AE #x00AF #x00B0
   #x00B1 #x00B2 #x00B3 #x00B4 #x00B5 #x00B6 #x00B7 #x00B8
@@ -1206,7 +1201,7 @@ USA.
   #x00F1 #x00F2 #x00F3 #x00F4 #x00F5 #x00F6 #x00F7 #x00F8
   #x00F9 #x00FA #x00FB #x00FC #x0131 #x015F #x00FF)
 
-(define-iso-8859-map 10
+(define-8-bit-codecs iso-8859-10 #xA1
   #x0104 #x0112 #x0122 #x012A #x0128 #x0136 #x00A7 #x013B
   #x0110 #x0160 #x0166 #x017D #x00AD #x016A #x014A #x00B0
   #x0105 #x0113 #x0123 #x012B #x0129 #x0137 #x00B7 #x013C
@@ -1219,8 +1214,8 @@ USA.
   #x00E9 #x0119 #x00EB #x0117 #x00ED #x00EE #x00EF #x00F0
   #x0146 #x014D #x00F3 #x00F4 #x00F5 #x00F6 #x0169 #x00F8
   #x0173 #x00FA #x00FB #x00FC #x00FD #x00FE #x0138)
-
-(define-iso-8859-map 11
+
+(define-8-bit-codecs iso-8859-11 #xA1
   #x0E01 #x0E02 #x0E03 #x0E04 #x0E05 #x0E06 #x0E07 #x0E08
   #x0E09 #x0E0A #x0E0B #x0E0C #x0E0D #x0E0E #x0E0F #x0E10
   #x0E11 #x0E12 #x0E13 #x0E14 #x0E15 #x0E16 #x0E17 #x0E18
@@ -1232,9 +1227,9 @@ USA.
   #x0E41 #x0E42 #x0E43 #x0E44 #x0E45 #x0E46 #x0E47 #x0E48
   #x0E49 #x0E4A #x0E4B #x0E4C #x0E4D #x0E4E #x0E4F #x0E50
   #x0E51 #x0E52 #x0E53 #x0E54 #x0E55 #x0E56 #x0E57 #x0E58
-  #x0E59 #x0E5A #x0E5B #f     #f     #f     #f    )
-
-(define-iso-8859-map 13
+  #x0E59 #x0E5A #x0E5B #f     #f     #f     #f)
+
+(define-8-bit-codecs iso-8859-13 #xA1
   #x201D #x00A2 #x00A3 #x00A4 #x201E #x00A6 #x00A7 #x00D8
   #x00A9 #x0156 #x00AB #x00AC #x00AD #x00AE #x00C6 #x00B0
   #x00B1 #x00B2 #x00B3 #x201C #x00B5 #x00B6 #x00B7 #x00F8
@@ -1248,7 +1243,7 @@ USA.
   #x0144 #x0146 #x00F3 #x014D #x00F5 #x00F6 #x00F7 #x0173
   #x0142 #x015B #x016B #x00FC #x017C #x017E #x2019)
 
-(define-iso-8859-map 14
+(define-8-bit-codecs iso-8859-14 #xA1
   #x1E02 #x1E03 #x00A3 #x010A #x010B #x1E0A #x00A7 #x1E80
   #x00A9 #x1E82 #x1E0B #x1EF2 #x00AD #x00AE #x0178 #x1E1E
   #x1E1F #x0120 #x0121 #x1E40 #x1E41 #x00B6 #x1E56 #x1E81
@@ -1262,7 +1257,7 @@ USA.
   #x00F1 #x00F2 #x00F3 #x00F4 #x00F5 #x00F6 #x1E6B #x00F8
   #x00F9 #x00FA #x00FB #x00FC #x00FD #x0177 #x00FF)
 
-(define-iso-8859-map 15
+(define-8-bit-codecs iso-8859-15 #xA1
   #x00A1 #x00A2 #x00A3 #x20AC #x00A5 #x0160 #x00A7 #x0161
   #x00A9 #x00AA #x00AB #x00AC #x00AD #x00AE #x00AF #x00B0
   #x00B1 #x00B2 #x00B3 #x017D #x00B5 #x00B6 #x00B7 #x017E
@@ -1276,7 +1271,7 @@ USA.
   #x00F1 #x00F2 #x00F3 #x00F4 #x00F5 #x00F6 #x00F7 #x00F8
   #x00F9 #x00FA #x00FB #x00FC #x00FD #x00FE #x00FF)
 
-(define-iso-8859-map 16
+(define-8-bit-codecs iso-8859-16 #xA1
   #x0104 #x0105 #x0141 #x20AC #x201E #x0160 #x00A7 #x0161
   #x00A9 #x0218 #x00AB #x0179 #x00AD #x017A #x017B #x00B0
   #x00B1 #x010C #x0142 #x017D #x201D #x00B6 #x00B7 #x017E
@@ -1289,6 +1284,186 @@ USA.
   #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #x0111
   #x0144 #x00F2 #x00F3 #x00F4 #x0151 #x00F6 #x015B #x0171
   #x00F9 #x00FA #x00FB #x00FC #x0119 #x021B #x00FF)
+
+(define-8-bit-codecs windows-1250 #x80
+  #x20ac #f     #x201a #f     #x201e #x2026 #x2020 #x2021
+  #f     #x2030 #x0160 #x2039 #x015a #x0164 #x017d #x0179
+  #f     #x2018 #x2019 #x201c #x201d #x2022 #x2013 #x2014
+  #f     #x2122 #x0161 #x203a #x015b #x0165 #x017e #x017a
+  #x00a0 #x02c7 #x02d8 #x0141 #x00a4 #x0104 #x00a6 #x00a7
+  #x00a8 #x00a9 #x015e #x00ab #x00ac #x00ad #x00ae #x017b
+  #x00b0 #x00b1 #x02db #x0142 #x00b4 #x00b5 #x00b6 #x00b7
+  #x00b8 #x0105 #x015f #x00bb #x013d #x02dd #x013e #x017c
+  #x0154 #x00c1 #x00c2 #x0102 #x00c4 #x0139 #x0106 #x00c7
+  #x010c #x00c9 #x0118 #x00cb #x011a #x00cd #x00ce #x010e
+  #x0110 #x0143 #x0147 #x00d3 #x00d4 #x0150 #x00d6 #x00d7
+  #x0158 #x016e #x00da #x0170 #x00dc #x00dd #x0162 #x00df
+  #x0155 #x00e1 #x00e2 #x0103 #x00e4 #x013a #x0107 #x00e7
+  #x010d #x00e9 #x0119 #x00eb #x011b #x00ed #x00ee #x010f
+  #x0111 #x0144 #x0148 #x00f3 #x00f4 #x0151 #x00f6 #x00f7
+  #x0159 #x016f #x00fa #x0171 #x00fc #x00fd #x0163 #x02d9)
+
+(define-8-bit-codecs windows-1251 #x80
+  #x0402 #x0403 #x201a #x0453 #x201e #x2026 #x2020 #x2021
+  #x20ac #x2030 #x0409 #x2039 #x040a #x040c #x040b #x040f
+  #x0452 #x2018 #x2019 #x201c #x201d #x2022 #x2013 #x2014
+  #f     #x2122 #x0459 #x203a #x045a #x045c #x045b #x045f
+  #x00a0 #x040e #x045e #x0408 #x00a4 #x0490 #x00a6 #x00a7
+  #x0401 #x00a9 #x0404 #x00ab #x00ac #x00ad #x00ae #x0407
+  #x00b0 #x00b1 #x0406 #x0456 #x0491 #x00b5 #x00b6 #x00b7
+  #x0451 #x2116 #x0454 #x00bb #x0458 #x0405 #x0455 #x0457
+  #x0410 #x0411 #x0412 #x0413 #x0414 #x0415 #x0416 #x0417
+  #x0418 #x0419 #x041a #x041b #x041c #x041d #x041e #x041f
+  #x0420 #x0421 #x0422 #x0423 #x0424 #x0425 #x0426 #x0427
+  #x0428 #x0429 #x042a #x042b #x042c #x042d #x042e #x042f
+  #x0430 #x0431 #x0432 #x0433 #x0434 #x0435 #x0436 #x0437
+  #x0438 #x0439 #x043a #x043b #x043c #x043d #x043e #x043f
+  #x0440 #x0441 #x0442 #x0443 #x0444 #x0445 #x0446 #x0447
+  #x0448 #x0449 #x044a #x044b #x044c #x044d #x044e #x044f)
+
+(define-8-bit-codecs windows-1252 #x80
+  #x20ac #f     #x201a #x0192 #x201e #x2026 #x2020 #x2021
+  #x02c6 #x2030 #x0160 #x2039 #x0152 #f     #x017d #f
+  #f     #x2018 #x2019 #x201c #x201d #x2022 #x2013 #x2014
+  #x02dc #x2122 #x0161 #x203a #x0153 #f     #x017e #x0178
+  #x00a0 #x00a1 #x00a2 #x00a3 #x00a4 #x00a5 #x00a6 #x00a7
+  #x00a8 #x00a9 #x00aa #x00ab #x00ac #x00ad #x00ae #x00af
+  #x00b0 #x00b1 #x00b2 #x00b3 #x00b4 #x00b5 #x00b6 #x00b7
+  #x00b8 #x00b9 #x00ba #x00bb #x00bc #x00bd #x00be #x00bf
+  #x00c0 #x00c1 #x00c2 #x00c3 #x00c4 #x00c5 #x00c6 #x00c7
+  #x00c8 #x00c9 #x00ca #x00cb #x00cc #x00cd #x00ce #x00cf
+  #x00d0 #x00d1 #x00d2 #x00d3 #x00d4 #x00d5 #x00d6 #x00d7
+  #x00d8 #x00d9 #x00da #x00db #x00dc #x00dd #x00de #x00df
+  #x00e0 #x00e1 #x00e2 #x00e3 #x00e4 #x00e5 #x00e6 #x00e7
+  #x00e8 #x00e9 #x00ea #x00eb #x00ec #x00ed #x00ee #x00ef
+  #x00f0 #x00f1 #x00f2 #x00f3 #x00f4 #x00f5 #x00f6 #x00f7
+  #x00f8 #x00f9 #x00fa #x00fb #x00fc #x00fd #x00fe #x00ff)
+
+(define-8-bit-codecs windows-1253 #x80
+  #x20ac #f     #x201a #x0192 #x201e #x2026 #x2020 #x2021
+  #f     #x2030 #f     #x2039 #f     #f     #f     #f
+  #f     #x2018 #x2019 #x201c #x201d #x2022 #x2013 #x2014
+  #f     #x2122 #f     #x203a #f     #f     #f     #f
+  #x00a0 #x0385 #x0386 #x00a3 #x00a4 #x00a5 #x00a6 #x00a7
+  #x00a8 #x00a9 #f     #x00ab #x00ac #x00ad #x00ae #x2015
+  #x00b0 #x00b1 #x00b2 #x00b3 #x0384 #x00b5 #x00b6 #x00b7
+  #x0388 #x0389 #x038a #x00bb #x038c #x00bd #x038e #x038f
+  #x0390 #x0391 #x0392 #x0393 #x0394 #x0395 #x0396 #x0397
+  #x0398 #x0399 #x039a #x039b #x039c #x039d #x039e #x039f
+  #x03a0 #x03a1 #f     #x03a3 #x03a4 #x03a5 #x03a6 #x03a7
+  #x03a8 #x03a9 #x03aa #x03ab #x03ac #x03ad #x03ae #x03af
+  #x03b0 #x03b1 #x03b2 #x03b3 #x03b4 #x03b5 #x03b6 #x03b7
+  #x03b8 #x03b9 #x03ba #x03bb #x03bc #x03bd #x03be #x03bf
+  #x03c0 #x03c1 #x03c2 #x03c3 #x03c4 #x03c5 #x03c6 #x03c7
+  #x03c8 #x03c9 #x03ca #x03cb #x03cc #x03cd #x03ce #f)
+
+(define-8-bit-codecs windows-1254 #x80
+  #x20ac #f     #x201a #x0192 #x201e #x2026 #x2020 #x2021
+  #x02c6 #x2030 #x0160 #x2039 #x0152 #f     #f     #f
+  #f     #x2018 #x2019 #x201c #x201d #x2022 #x2013 #x2014
+  #x02dc #x2122 #x0161 #x203a #x0153 #f     #f     #x0178
+  #x00a0 #x00a1 #x00a2 #x00a3 #x00a4 #x00a5 #x00a6 #x00a7
+  #x00a8 #x00a9 #x00aa #x00ab #x00ac #x00ad #x00ae #x00af
+  #x00b0 #x00b1 #x00b2 #x00b3 #x00b4 #x00b5 #x00b6 #x00b7
+  #x00b8 #x00b9 #x00ba #x00bb #x00bc #x00bd #x00be #x00bf
+  #x00c0 #x00c1 #x00c2 #x00c3 #x00c4 #x00c5 #x00c6 #x00c7
+  #x00c8 #x00c9 #x00ca #x00cb #x00cc #x00cd #x00ce #x00cf
+  #x011e #x00d1 #x00d2 #x00d3 #x00d4 #x00d5 #x00d6 #x00d7
+  #x00d8 #x00d9 #x00da #x00db #x00dc #x0130 #x015e #x00df
+  #x00e0 #x00e1 #x00e2 #x00e3 #x00e4 #x00e5 #x00e6 #x00e7
+  #x00e8 #x00e9 #x00ea #x00eb #x00ec #x00ed #x00ee #x00ef
+  #x011f #x00f1 #x00f2 #x00f3 #x00f4 #x00f5 #x00f6 #x00f7
+  #x00f8 #x00f9 #x00fa #x00fb #x00fc #x0131 #x015f #x00ff)
+
+(define-8-bit-codecs windows-1255 #x80
+  #x20ac #f     #x201a #x0192 #x201e #x2026 #x2020 #x2021
+  #x02c6 #x2030 #f     #x2039 #f     #f     #f     #f
+  #f     #x2018 #x2019 #x201c #x201d #x2022 #x2013 #x2014
+  #x02dc #x2122 #f     #x203a #f     #f     #f     #f
+  #x00a0 #x00a1 #x00a2 #x00a3 #x20aa #x00a5 #x00a6 #x00a7
+  #x00a8 #x00a9 #x00d7 #x00ab #x00ac #x00ad #x00ae #x00af
+  #x00b0 #x00b1 #x00b2 #x00b3 #x00b4 #x00b5 #x00b6 #x00b7
+  #x00b8 #x00b9 #x00f7 #x00bb #x00bc #x00bd #x00be #x00bf
+  #x05b0 #x05b1 #x05b2 #x05b3 #x05b4 #x05b5 #x05b6 #x05b7
+  #x05b8 #x05b9 #f     #x05bb #x05bc #x05bd #x05be #x05bf
+  #x05c0 #x05c1 #x05c2 #x05c3 #x05f0 #x05f1 #x05f2 #x05f3
+  #x05f4 #f     #f     #f     #f     #f     #f     #f
+  #x05d0 #x05d1 #x05d2 #x05d3 #x05d4 #x05d5 #x05d6 #x05d7
+  #x05d8 #x05d9 #x05da #x05db #x05dc #x05dd #x05de #x05df
+  #x05e0 #x05e1 #x05e2 #x05e3 #x05e4 #x05e5 #x05e6 #x05e7
+  #x05e8 #x05e9 #x05ea #f     #f     #x200e #x200f #f)
+
+(define-8-bit-codecs windows-1256 #x80
+  #x20ac #x067e #x201a #x0192 #x201e #x2026 #x2020 #x2021
+  #x02c6 #x2030 #x0679 #x2039 #x0152 #x0686 #x0698 #x0688
+  #x06af #x2018 #x2019 #x201c #x201d #x2022 #x2013 #x2014
+  #x06a9 #x2122 #x0691 #x203a #x0153 #x200c #x200d #x06ba
+  #x00a0 #x060c #x00a2 #x00a3 #x00a4 #x00a5 #x00a6 #x00a7
+  #x00a8 #x00a9 #x06be #x00ab #x00ac #x00ad #x00ae #x00af
+  #x00b0 #x00b1 #x00b2 #x00b3 #x00b4 #x00b5 #x00b6 #x00b7
+  #x00b8 #x00b9 #x061b #x00bb #x00bc #x00bd #x00be #x061f
+  #x06c1 #x0621 #x0622 #x0623 #x0624 #x0625 #x0626 #x0627
+  #x0628 #x0629 #x062a #x062b #x062c #x062d #x062e #x062f
+  #x0630 #x0631 #x0632 #x0633 #x0634 #x0635 #x0636 #x00d7
+  #x0637 #x0638 #x0639 #x063a #x0640 #x0641 #x0642 #x0643
+  #x00e0 #x0644 #x00e2 #x0645 #x0646 #x0647 #x0648 #x00e7
+  #x00e8 #x00e9 #x00ea #x00eb #x0649 #x064a #x00ee #x00ef
+  #x064b #x064c #x064d #x064e #x00f4 #x064f #x0650 #x00f7
+  #x0651 #x00f9 #x0652 #x00fb #x00fc #x200e #x200f #x06d2)
+
+(define-8-bit-codecs windows-1257 #x80
+  #x20ac #f     #x201a #f     #x201e #x2026 #x2020 #x2021
+  #f     #x2030 #f     #x2039 #f     #x00a8 #x02c7 #x00b8
+  #f     #x2018 #x2019 #x201c #x201d #x2022 #x2013 #x2014
+  #f     #x2122 #f     #x203a #f     #x00af #x02db #f
+  #x00a0 #f     #x00a2 #x00a3 #x00a4 #f     #x00a6 #x00a7
+  #x00d8 #x00a9 #x0156 #x00ab #x00ac #x00ad #x00ae #x00c6
+  #x00b0 #x00b1 #x00b2 #x00b3 #x00b4 #x00b5 #x00b6 #x00b7
+  #x00f8 #x00b9 #x0157 #x00bb #x00bc #x00bd #x00be #x00e6
+  #x0104 #x012e #x0100 #x0106 #x00c4 #x00c5 #x0118 #x0112
+  #x010c #x00c9 #x0179 #x0116 #x0122 #x0136 #x012a #x013b
+  #x0160 #x0143 #x0145 #x00d3 #x014c #x00d5 #x00d6 #x00d7
+  #x0172 #x0141 #x015a #x016a #x00dc #x017b #x017d #x00df
+  #x0105 #x012f #x0101 #x0107 #x00e4 #x00e5 #x0119 #x0113
+  #x010d #x00e9 #x017a #x0117 #x0123 #x0137 #x012b #x013c
+  #x0161 #x0144 #x0146 #x00f3 #x014d #x00f5 #x00f6 #x00f7
+  #x0173 #x0142 #x015b #x016b #x00fc #x017c #x017e #x02d9)
+
+(define-8-bit-codecs windows-1258 #x80
+  #x20ac #f     #x201a #x0192 #x201e #x2026 #x2020 #x2021
+  #x02c6 #x2030 #f     #x2039 #x0152 #f     #f     #f
+  #f     #x2018 #x2019 #x201c #x201d #x2022 #x2013 #x2014
+  #x02dc #x2122 #f     #x203a #x0153 #f     #f     #x0178
+  #x00a0 #x00a1 #x00a2 #x00a3 #x00a4 #x00a5 #x00a6 #x00a7
+  #x00a8 #x00a9 #x00aa #x00ab #x00ac #x00ad #x00ae #x00af
+  #x00b0 #x00b1 #x00b2 #x00b3 #x00b4 #x00b5 #x00b6 #x00b7
+  #x00b8 #x00b9 #x00ba #x00bb #x00bc #x00bd #x00be #x00bf
+  #x00c0 #x00c1 #x00c2 #x0102 #x00c4 #x00c5 #x00c6 #x00c7
+  #x00c8 #x00c9 #x00ca #x00cb #x0300 #x00cd #x00ce #x00cf
+  #x0110 #x00d1 #x0309 #x00d3 #x00d4 #x01a0 #x00d6 #x00d7
+  #x00d8 #x00d9 #x00da #x00db #x00dc #x01af #x0303 #x00df
+  #x00e0 #x00e1 #x00e2 #x0103 #x00e4 #x00e5 #x00e6 #x00e7
+  #x00e8 #x00e9 #x00ea #x00eb #x0301 #x00ed #x00ee #x00ef
+  #x0111 #x00f1 #x0323 #x00f3 #x00f4 #x01a1 #x00f6 #x00f7
+  #x00f8 #x00f9 #x00fa #x00fb #x00fc #x01b0 #x20ab #x00ff)
+
+(define-8-bit-codecs windows-874 #x80
+  #x20ac #f     #f     #f     #f     #x2026 #f     #f
+  #f     #f     #f     #f     #f     #f     #f     #f
+  #f     #x2018 #x2019 #x201c #x201d #x2022 #x2013 #x2014
+  #f     #f     #f     #f     #f     #f     #f     #f
+  #x00a0 #x0e01 #x0e02 #x0e03 #x0e04 #x0e05 #x0e06 #x0e07
+  #x0e08 #x0e09 #x0e0a #x0e0b #x0e0c #x0e0d #x0e0e #x0e0f
+  #x0e10 #x0e11 #x0e12 #x0e13 #x0e14 #x0e15 #x0e16 #x0e17
+  #x0e18 #x0e19 #x0e1a #x0e1b #x0e1c #x0e1d #x0e1e #x0e1f
+  #x0e20 #x0e21 #x0e22 #x0e23 #x0e24 #x0e25 #x0e26 #x0e27
+  #x0e28 #x0e29 #x0e2a #x0e2b #x0e2c #x0e2d #x0e2e #x0e2f
+  #x0e30 #x0e31 #x0e32 #x0e33 #x0e34 #x0e35 #x0e36 #x0e37
+  #x0e38 #x0e39 #x0e3a #f     #f     #f     #f     #x0e3f
+  #x0e40 #x0e41 #x0e42 #x0e43 #x0e44 #x0e45 #x0e46 #x0e47
+  #x0e48 #x0e49 #x0e4a #x0e4b #x0e4c #x0e4d #x0e4e #x0e4f
+  #x0e50 #x0e51 #x0e52 #x0e53 #x0e54 #x0e55 #x0e56 #x0e57
+  #x0e58 #x0e59 #x0e5a #x0e5b #f     #f     #f     #f)
 
 #|
 (define (read-iso-8859-directory directory)
