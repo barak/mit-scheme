@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.61 2003/02/14 18:28:23 cph Exp $
+$Id: psbtobin.c,v 9.62 2006/08/27 15:49:37 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,2000,2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -598,11 +599,11 @@ DEFUN (Read_External, (N, Table, To),
 
       case TC_CHARACTER:
       {
-	long the_char_code;
+	unsigned long the_char_code;
 
 	getc (portable_file);	/* Space */
 	VMS_BUG (the_char_code = 0);
-	fscanf (portable_file, "%3lx", &the_char_code);
+	fscanf (portable_file, "%6lx", &the_char_code);
 	*Table++ = (MAKE_OBJECT (TC_CHARACTER, the_char_code));
 	continue;
       }
@@ -659,9 +660,8 @@ DEFUN (print_external_objects, (area_name, Table, N),
       }
       case TC_CHARACTER:
         fprintf (stderr,
-		 "Table[%6d] = Character %c = 0x%02x\n",
+		 "Table[%6d] = Character 0x%06x\n",
 		 (N - (Table_End - Table)),
-		 (OBJECT_DATUM (*Table)),
 		 (OBJECT_DATUM (*Table)));
 	break;
 

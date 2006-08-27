@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.76 2003/02/14 18:28:15 cph Exp $
+$Id: bintopsb.c,v 9.77 2006/08/27 15:49:30 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1997,1998,2000 Massachusetts Institute of Technology
+Copyright 2001,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1556,7 +1558,7 @@ DEFUN (print_binary_objects, (from, count),
 	break;
 
       case TC_CHARACTER:
-	fprintf (portable_file, "%02x %03x\n",
+	fprintf (portable_file, "%02x %06x\n",
 		 TC_CHARACTER, ((*from) & MASK_MIT_ASCII));
 	from += 1;
 	break;
