@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.60 2006/07/27 00:03:52 cph Exp $
+$Id: string.scm,v 14.61 2006/08/27 03:03:11 savannah-arthur Exp $
 
 Copyright 1986,1987,1988,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -1438,7 +1438,7 @@ USA.
 ;; The guarantors are integrated.  Most are structured as combination of
 ;; simple tests which the compiler can open-code, followed by a call to a
 ;; GUARANTEE-.../FAIL version which does the tests again to signal a
-;; menaingful message. Structuring the code this way significantly
+;; meaningful message.  Structuring the code this way significantly
 ;; reduces code bloat from large integrated procedures.
 
 (define-guarantee string "string")
