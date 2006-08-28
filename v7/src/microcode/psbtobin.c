@@ -1,9 +1,10 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.62 2006/08/27 15:49:37 cph Exp $
+$Id: psbtobin.c,v 9.63 2006/08/28 16:58:26 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,2000,2001,2005 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -660,7 +661,7 @@ DEFUN (print_external_objects, (area_name, Table, N),
       }
       case TC_CHARACTER:
         fprintf (stderr,
-		 "Table[%6d] = Character 0x%06x\n",
+		 "Table[%6d] = Character 0x%07x\n",
 		 (N - (Table_End - Table)),
 		 (OBJECT_DATUM (*Table)));
 	break;
