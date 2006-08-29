@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.39 2006/08/27 21:37:21 cph Exp $
+$Id: genio.scm,v 1.40 2006/08/29 03:48:57 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
@@ -1036,7 +1036,7 @@ USA.
 		  (LAMBDA (IB)
 		    (DECODE-8-BIT IB TABLE))))
 	      (DEFINE-ENCODER ',name
-		(RECEIVE (LHS RHS) (REVERSE-ISO-8859-MAP ,start ',(cddr form))
+		(RECEIVE (LHS RHS) (REVERSE-ISO-8859-MAP ,start ',code-points)
 		  (LAMBDA (OB CP)
 		    (ENCODE-8-BIT OB CP ,start LHS RHS))))))
 	 (ill-formed-syntax form)))))
