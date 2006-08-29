@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: scomb.scm,v 14.23 2003/02/14 18:28:33 cph Exp $
+$Id: scomb.scm,v 14.24 2006/08/29 04:17:58 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1995,1997,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,7 +32,8 @@ USA.
 
 (define (initialize-package!)
   (set! combination/constant-folding-operators
-	(map make-primitive-procedure
+	(map (lambda (name)
+	       (make-primitive-procedure name #t))
 	     '(
 	       &*
 	       &+
