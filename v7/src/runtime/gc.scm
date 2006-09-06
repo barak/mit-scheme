@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.20 2005/07/31 02:58:35 cph Exp $
+$Id: gc.scm,v 14.21 2006/09/06 04:53:41 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
-Copyright 1992,1993,2005 Massachusetts Institute of Technology
+Copyright 1992,1993,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,14 +30,14 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! gc-boot-loading? true)
+  (set! gc-boot-loading? #t)
   (set! hook/gc-flip default/gc-flip)
   (set! hook/purify default/purify)
   (set! hook/stack-overflow default/stack-overflow)
   (set! hook/hardware-trap default/hardware-trap)
   (set! default-safety-margin 4500)
-  (set! pure-space-queue '())
-  (set! constant-space-queue '())
+  (set! pure-space-queue (list 'PURE-SPACE-QUEUE))
+  (set! constant-space-queue (list 'CONSTANT-SPACE-QUEUE))
   (set! hook/gc-start default/gc-start)
   (set! hook/gc-finish default/gc-finish)
   (let ((fixed-objects (get-fixed-objects-vector)))
@@ -68,39 +68,30 @@ USA.
 (define default-safety-margin)
 
 (define (default/gc-flip safety-margin)
-  (define (real-default)
-    (gc-flip-internal safety-margin))
-
-  (cond ((not (null? pure-space-queue))
-	 (let ((result (purify-internal pure-space-queue true safety-margin)))
-	   (cond ((not (pair? result))
-		  ;; Wrong phase -- wait until next time.
-		  (real-default))
-		 ((not (car result))
-		  (set! pure-space-queue (cdr pure-space-queue))
-		  (queued-purification-failure)
-		  (cdr result))
-		 (else
-		  (set! pure-space-queue '())
-		  (cdr result)))))
-	((not (null? constant-space-queue))
-	 (let ((result
-		(purify-internal constant-space-queue false safety-margin)))
-	   (cond ((not (pair? result))
-		  ;; Wrong phase -- wait until next time.
-		  (real-default))
-		 ((not (car result))
-		  (set! constant-space-queue (cdr constant-space-queue))
-		  (queued-purification-failure)
-		  (cdr result))
-		 (else
-		  (set! constant-space-queue '())
-		  (cdr result)))))
-	(else
-	 (real-default))))
+  (let ((try-queue
+	 (lambda (queue pure?)
+	   (let ((items (cdr queue)))
+	     (and (pair? items)
+		  (let ((result
+			 (purify-internal (if (pair? (cdr items))
+					      items
+					      (car items))
+					  pure?
+					  safety-margin)))
+		    (and (pair? result)
+			 (begin
+			   (if (car result)
+			       (set-cdr! queue '())
+			       (begin
+				 (set-cdr! queue (cdr items))
+				 (queued-purification-failure)))
+			   (cdr result)))))))))
+    (or (try-queue pure-space-queue)
+	(try-queue constant-space-queue)
+	(gc-flip-internal safety-margin))))
 
 (define (queued-purification-failure)
-  (warn "Unable to purify all queued items; dequeuing one"))
+  (warn "Unable to purify all queued items; dequeuing one."))
 
 (define (default/purify item pure-space? queue?)
   (if (not (if pure-space? (object-pure? item) (object-constant? item)))
@@ -116,9 +107,7 @@ USA.
 			(loop))
 		       ((not (car result))
 			(error "PURIFY: not enough room in constant space"
-			       item))
-		       (else
-			unspecific)))))
+			       item))))))
 	    (pure-space?
 	     (with-absolutely-no-interrupts
 	      (lambda ()
@@ -159,11 +148,11 @@ USA.
       result)))
 
 (define (default/gc-start)
-  false)
+  #f)
 
 (define (default/gc-finish start-value space-remaining)
   start-value space-remaining
-  false)
+  #f)
 
 (define (gc-finish start-value space-remaining)
   (if (< space-remaining 4096)
@@ -182,7 +171,7 @@ USA.
 	    (cmdl-message/active
 	     (lambda (port)
 	       port
-	       (with-gc-notification! true gc-clean)))))))
+	       (with-gc-notification! #t gc-clean)))))))
   ((ucode-primitive request-interrupts! 1) interrupt-bit/after-gc)
   (hook/gc-finish start-value space-remaining))
 
@@ -209,8 +198,8 @@ USA.
 		       safety-margin)))))
 
 (define (flush-purification-queue!)
-  (if (or (not (null? pure-space-queue))
-	  (not (null? constant-space-queue)))
+  (if (or (pair? pure-space-queue)
+	  (pair? constant-space-queue))
       (begin
 	(gc-flip)
 	(flush-purification-queue!))))
@@ -219,8 +208,8 @@ USA.
   ;; Purify an item -- move it into pure space and clean everything by
   ;; doing a gc-flip.
   (hook/purify item
-	       (if (default-object? pure-space?) true pure-space?)
-	       (if (default-object? queue?) true queue?))
+	       (if (default-object? pure-space?) #t pure-space?)
+	       (if (default-object? queue?) #t queue?))
   item)
 
 (define (constant-space/in-use)
