@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.21 2006/09/06 04:53:41 cph Exp $
+$Id: gc.scm,v 14.22 2006/09/06 04:54:55 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,2005,2006 Massachusetts Institute of Technology
@@ -86,8 +86,8 @@ USA.
 				 (set-cdr! queue (cdr items))
 				 (queued-purification-failure)))
 			   (cdr result)))))))))
-    (or (try-queue pure-space-queue)
-	(try-queue constant-space-queue)
+    (or (try-queue pure-space-queue #t)
+	(try-queue constant-space-queue #f)
 	(gc-flip-internal safety-margin))))
 
 (define (queued-purification-failure)
