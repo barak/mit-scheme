@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: gdatab.scm,v 14.8 2003/02/14 18:28:32 cph Exp $
+$Id: gdatab.scm,v 14.9 2006/09/06 04:49:45 cph Exp $
 
-Copyright (c) 1988, 1989, 1990, 1999 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,7 +34,8 @@ USA.
   (set! event:before-exit (make-event-distributor))
   (set! tagged-pair-methods (make-1d-table))
   (set! tagged-vector-methods (make-1d-table))
-  (set! named-structure-descriptions (make-1d-table)))
+  (set! named-structure-descriptions (make-1d-table))
+  unspecific)
 
 (define event:after-restore)
 (define event:after-restart)
@@ -44,21 +45,19 @@ USA.
 (define named-structure-descriptions)
 
 (define (unparser/tagged-pair-method tag)
-  (and (not (future? tag))
-       (1d-table/get tagged-pair-methods tag false)))
+  (1d-table/get tagged-pair-methods tag #f))
 
 (define (unparser/set-tagged-pair-method! tag method)
   (1d-table/put! tagged-pair-methods tag method))
 
 (define (unparser/tagged-vector-method tag)
-  (and (not (future? tag))
-       (1d-table/get tagged-vector-methods tag false)))
+  (1d-table/get tagged-vector-methods tag #f))
 
 (define (unparser/set-tagged-vector-method! tag method)
   (1d-table/put! tagged-vector-methods tag method))
 
 (define (named-structure/get-tag-description tag)
-  (1d-table/get named-structure-descriptions tag false))
+  (1d-table/get named-structure-descriptions tag #f))
 
 (define (named-structure/set-tag-description! tag description)
   (1d-table/put! named-structure-descriptions tag description))
