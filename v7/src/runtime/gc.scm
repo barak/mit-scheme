@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.22 2006/09/06 04:54:55 cph Exp $
+$Id: gc.scm,v 14.23 2006/09/06 04:59:30 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,2005,2006 Massachusetts Institute of Technology
@@ -95,29 +95,24 @@ USA.
 
 (define (default/purify item pure-space? queue?)
   (if (not (if pure-space? (object-pure? item) (object-constant? item)))
-      (cond ((not queue?)
-	     (let loop ()
-	       (let ((result
-		      (purify-internal item
-				       pure-space?
-				       default-safety-margin)))
-		 (cond ((not (pair? result))
-			;; Wrong phase -- try again.
-			(gc-flip)
-			(loop))
-		       ((not (car result))
-			(error "PURIFY: not enough room in constant space"
-			       item))))))
-	    (pure-space?
-	     (with-absolutely-no-interrupts
+      (if queue?
+	  (let ((queue (if pure-space? pure-space-queue constant-space-queue)))
+	    (with-absolutely-no-interrupts
 	      (lambda ()
-		(set! pure-space-queue (cons item pure-space-queue))
+		(set-cdr! queue (cons item (cdr queue)))
 		unspecific)))
-	    (else
-	     (with-absolutely-no-interrupts
-	      (lambda ()
-		(set! constant-space-queue (cons item constant-space-queue))
-		unspecific))))))
+	  (let loop ()
+	    (let ((result
+		   (purify-internal item
+				    pure-space?
+				    default-safety-margin)))
+	      (cond ((not (pair? result))
+		     ;; Wrong phase -- try again.
+		     (gc-flip)
+		     (loop))
+		    ((not (car result))
+		     (error "PURIFY: not enough room in constant space"
+			    item))))))))
 
 (define (default/stack-overflow)
   (abort->nearest "Aborting!: maximum recursion depth exceeded"))
@@ -198,8 +193,8 @@ USA.
 		       safety-margin)))))
 
 (define (flush-purification-queue!)
-  (if (or (pair? pure-space-queue)
-	  (pair? constant-space-queue))
+  (if (or (pair? (cdr pure-space-queue))
+	  (pair? (cdr constant-space-queue)))
       (begin
 	(gc-flip)
 	(flush-purification-queue!))))
