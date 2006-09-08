@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.65 2006/03/02 20:53:02 cph Exp $
+$Id: unpars.scm,v 14.66 2006/09/08 14:39:25 cph Exp $
 
 Copyright 1986,1987,1990,1991,1992,1995 Massachusetts Institute of Technology
 Copyright 1996,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -474,10 +474,8 @@ USA.
 (define (safe-vector-ref vector index)
   (if (with-absolutely-no-interrupts
        (lambda ()
-	 (or (object-type? (ucode-type manifest-nm-vector)
-			   (vector-ref vector index))
-	     (object-type? (ucode-type manifest-special-nm-vector)
-			   (vector-ref vector index)))))
+	 (object-type? (ucode-type manifest-nm-vector)
+		       (vector-ref vector index))))
       (error "Attempt to unparse partially marked vector."))
   (map-reference-trap (lambda () (vector-ref vector index))))
 

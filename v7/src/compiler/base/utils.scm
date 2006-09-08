@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 4.29 2004/08/15 04:54:45 cph Exp $
+$Id: utils.scm,v 4.30 2006/09/08 14:38:45 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
-Copyright 1994,2001,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 1994,2001,2001,2003,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -195,8 +195,7 @@ USA.
       (object-type? (ucode-type character) object)
       (object-type? (ucode-type unassigned) object)
       (object-type? (ucode-type the-environment) object)
-      (object-type? (ucode-type manifest-nm-vector) object)
-      (object-type? (ucode-type manifest-special-nm-vector) object)))
+      (object-type? (ucode-type manifest-nm-vector) object)))
 
 (define (object-immutable? object)
   (or (non-pointer-object? object)

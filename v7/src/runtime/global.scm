@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.72 2004/11/19 07:14:30 cph Exp $
+$Id: global.scm,v 14.73 2006/09/08 14:39:12 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
-Copyright 1998,2000,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 1998,2000,2001,2003,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -281,7 +281,6 @@ USA.
     ((NON-POINTER) #t)
     ((GC-INTERNAL)
      (or (object-type? (ucode-type manifest-nm-vector) object)
-	 (object-type? (ucode-type manifest-special-nm-vector) object)
 	 (and (object-type? (ucode-type reference-trap) object)
 	      (<= (object-datum object) trap-max-immediate))))
     (else #f)))
@@ -298,9 +297,7 @@ USA.
 (define (non-pointer-type-code? code)
   (case (type-code->gc-type code)
     ((NON-POINTER) #t)
-    ((GC-INTERNAL)
-     (or (fix:= (ucode-type manifest-nm-vector) code)
-	 (fix:= (ucode-type manifest-special-nm-vector) code)))
+    ((GC-INTERNAL) (fix:= (ucode-type manifest-nm-vector) code))
     (else #f)))
 
 (define (pointer-type-code? code)
