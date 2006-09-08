@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.77 2006/06/16 17:55:27 riastradh Exp $
+$Id: edwin.ldr,v 1.78 2006/09/08 12:43:11 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -109,7 +109,6 @@ USA.
 	(load "modes" environment)
 	(load "buffer" environment)
 	(load "bufset" environment)
-	(load "undo" (->environment '(EDWIN UNDO)))
 	(load "display" (->environment '(EDWIN DISPLAY-TYPE)))
 	(load "screen" (->environment '(EDWIN SCREEN)))
 	(load "winren" environment)
@@ -130,6 +129,8 @@ USA.
 	(load "edtstr" environment)
 	(load "editor" environment)
 	(load "curren" environment)
+	;; "undo" must be loaded after "editor":
+	(load "undo" (->environment '(EDWIN UNDO)))
 	(load "simple" environment)
 	(load "debuge" environment)
 	(load "modlin" (->environment '(EDWIN MODELINE-STRING)))
