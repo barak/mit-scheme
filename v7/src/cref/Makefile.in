@@ -1,6 +1,6 @@
-# $Id: Makefile.in,v 1.5 2004/10/29 05:30:30 cph Exp $
+# $Id: Makefile.in,v 1.6 2006/09/09 02:31:30 cph Exp $
 #
-# Copyright 2001,2004 Massachusetts Institute of Technology
+# Copyright 2001,2004,2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -34,6 +34,7 @@ exec_prefix = @exec_prefix@
 bindir = @bindir@
 sbindir = @sbindir@
 libexecdir = @libexecdir@
+datarootdir = @datarootdir@
 datadir = @datadir@
 sysconfdir = @sysconfdir@
 sharedstatedir = @sharedstatedir@

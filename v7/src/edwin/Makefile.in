@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.8 2006/07/27 16:50:31 cph Exp $
+# $Id: Makefile.in,v 1.9 2006/09/09 02:31:30 cph Exp $
 #
 # Copyright 2000,2001,2006 Massachusetts Institute of Technology
 #
@@ -39,6 +39,7 @@ exec_prefix = @exec_prefix@
 bindir = @bindir@
 sbindir = @sbindir@
 libexecdir = @libexecdir@
+datarootdir = @datarootdir@
 datadir = @datadir@
 sysconfdir = @sysconfdir@
 sharedstatedir = @sharedstatedir@
