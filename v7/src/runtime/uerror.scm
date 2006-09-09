@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.52 2003/02/14 18:28:34 cph Exp $
+$Id: uerror.scm,v 14.53 2006/09/09 03:30:23 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1996,2001,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -51,17 +52,22 @@ USA.
 
 (define error-handler-vector)
 (define default-error-handler)
+(define unknown-error-names)
 
 (define (define-error-handler error-name handler)
-  (vector-set! error-handler-vector
-	       (or (microcode-error/name->code error-name)
-		   (error "Unknown microcode error name:" error-name))
-	       (lambda (error-code interrupt-enables)
-		 (set-interrupt-enables! interrupt-enables)
-		 (call-with-current-continuation
-		  (lambda (continuation)
-		    (handler continuation)
-		    (default-error-handler continuation error-code))))))
+  (let ((error-code (microcode-error/name->code error-name)))
+    (if error-code
+	(vector-set! error-handler-vector
+		     error-code
+		     (lambda (error-code interrupt-enables)
+		       (set-interrupt-enables! interrupt-enables)
+		       (call-with-current-continuation
+			(lambda (continuation)
+			  (handler continuation)
+			  (default-error-handler continuation error-code)))))
+	(begin
+	  (set! unknown-error-names (cons error-name unknown-error-names))
+	  unspecific))))
 
 (define (define-low-level-handler error-name handler)
   (vector-set! error-handler-vector
@@ -430,6 +436,8 @@ USA.
 	    (doit (vector-ref error-code 0)
 		  (subvector->list error-code 1 (vector-length error-code)))
 	    (doit error-code '()))))))
+
+(set! unknown-error-names '())
 
 (define-low-level-handler 'ERROR-WITH-ARGUMENT
   (lambda (continuation argument)
