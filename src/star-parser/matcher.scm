@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: matcher.scm,v 1.34 2005/06/04 03:42:28 cph Exp $
+$Id: matcher.scm,v 1.35 2006/06/10 04:12:32 cph Exp $
 
-Copyright 2001,2002,2004,2005 Massachusetts Institute of Technology
+Copyright 2001,2002,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -137,6 +137,13 @@ USA.
   (lambda (n m expression)
     `(SEQ (N*N ,n ,expression)
 	  (*N ,(- m n) ,expression))))
+
+(define-*matcher-expander 'ERROR
+  (lambda (ptr msg . irritants)
+    (let ((v (generate-uninterned-symbol)))
+      `(SEXP (LAMBDA (,v)
+	       ,@(if ptr (list v) '())
+	       (PARSER-BUFFER-ERROR ,(or ptr v) ,msg ,@irritants))))))
 
 (define-matcher-preprocessor '(ALT SEQ)
   (lambda (expression external-bindings internal-bindings)

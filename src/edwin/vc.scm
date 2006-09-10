@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.89 2006/01/29 06:03:42 cph Exp $
+$Id: vc.scm,v 1.95 2006/08/15 04:32:19 cph Exp $
 
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2005,2006 Massachusetts Institute of Technology
@@ -85,11 +85,6 @@ This can be overriden by giving a prefix argument to \\[vc-register]."
   "If true, display run messages from back-end commands."
   #f
   boolean?)
-
-(define-variable diff-switches
-  "A list of strings specifying switches to be be passed to diff."
-  '("-c")
-  list-of-strings?)
 
 (define-variable vc-checkin-hooks
   "An event distributor that is invoked after a checkin is done."
@@ -2012,7 +2007,8 @@ the value of vc-log-mode-hook."
 	 (not (let ((output (%get-svn-status workfile)))
 		(or (not output)
 		    (string-null? output)
-		    (string-prefix? "?" output))))
+		    (string-prefix? "?" output)
+		    (string-prefix? "I" output))))
 	 (make-vc-master vc-type:svn
 			 (merge-pathnames "entries" (svn-directory workfile))
 			 workfile))))
@@ -2207,20 +2203,25 @@ the value of vc-log-mode-hook."
       status)))
 
 (define (%get-svn-status workfile)
-  (let ((port (open-output-string)))
-    (let ((status
-	   (run-shell-command
-	    (string-append "svn status --verbose " (file-namestring workfile))
-	    'output port
-	    'working-directory (directory-pathname workfile))))
-      (and (eqv? status 0)
-	   (get-output-string port)))))
+  (let ((directory (directory-pathname workfile)))
+    (let ((program (os/find-program "svn" directory #!default #f)))
+      (and program
+	   (let ((port (open-output-string)))
+	     (let ((status
+		    (run-synchronous-subprocess
+		     program
+		     (list "status" "--verbose" (file-namestring workfile))
+		     'output port
+		     'working-directory directory)))
+	       (and (eqv? status 0)
+		    (get-output-string port))))))))
 
 (define (parse-svn-status status)
   (and status
        (not (string-null? status))
        (let ((type (decode-svn-status-0 (string-ref status 0))))
-	 (if (eq? type 'UNVERSIONED)
+	 (if (or (eq? type 'UNVERSIONED)
+		 (eq? type 'IGNORED))
 	     type
 	     (let ((regs (re-string-match svn-status-regexp status #f)))
 	       (and regs
@@ -2391,9 +2392,10 @@ the value of vc-log-mode-hook."
 
 (define (vc-run-shell-command master options command . arguments)
   (vc-run-command master options "/bin/sh" "-c"
-		  (reduce string-append-separated
-			  ""
-			  (vc-command-arguments (cons command arguments)))))
+		  (reduce-right string-append-separated
+				""
+				(vc-command-arguments
+				 (cons command arguments)))))
 
 (define (pop-up-vc-command-buffer select?)
   (let ((buffer (get-vc-command-buffer)))

@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.86 2005/10/24 02:23:41 cph Exp $
+$Id: sendmail.scm,v 1.87 2006/06/12 04:19:43 cph Exp $
 
 Copyright 1991,1992,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1997,1998,2000,2001,2003,2004 Massachusetts Institute of Technology
-Copyright 2005 Massachusetts Institute of Technology
+Copyright 2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -111,21 +111,19 @@ Otherwise, only one valid recipient is required."
 
 (define-variable mail-yank-ignored-headers
   "Delete these headers from old message when it's inserted in a reply."
-  (reduce (lambda (x y) (string-append x "\\|" y))
-	  ""
-	  '("^via:"
-	    "^mail-from:"
-	    "^origin:"
-	    "^status:"
-	    "^remailed"
-	    "^received:"
-	    "^[a-z-]*message-id:"
-	    "^summary-line:"
-	    "^to:"
-	    "^cc:"
-	    "^subject:"
-	    "^in-reply-to:"
-	    "^return-path:"))
+  (regexp-group "^via:"
+		"^mail-from:"
+		"^origin:"
+		"^status:"
+		"^remailed"
+		"^received:"
+		"^[a-z-]*message-id:"
+		"^summary-line:"
+		"^to:"
+		"^cc:"
+		"^subject:"
+		"^in-reply-to:"
+		"^return-path:")
   string?)
 
 (define-variable mail-interactive

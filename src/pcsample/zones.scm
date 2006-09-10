@@ -118,10 +118,7 @@
 (define (display-zone-report)
   (read-zone-counts!)
   (let ((zones (get-zones)))
-    (let ((total
-	   (fold-left (lambda (sum zone) (+ sum (pc-sample-zone/count zone)))
-		      0
-		      zones)))
+    (let ((total (apply + (map pc-sample-zone/count zones))))
       (let ((pct (if (zero? total)
 		     (lambda (zone) zone 0)
 		     (lambda (zone)

@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.54 2003/02/14 18:28:11 cph Exp $
+$Id: ed-ffi.scm,v 1.55 2006/06/26 16:16:18 riastradh Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+Copyright 1996,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -66,6 +68,7 @@ USA.
     ("debian-changelog" (edwin debian-changelog))
     ("debug"	(edwin debugger))
     ("debuge"	(edwin))
+    ("diff"	(edwin diff))
     ("dired"	(edwin dired))
     ("diros2"	(edwin dired))
     ("dirunx"	(edwin dired))
@@ -124,6 +127,7 @@ USA.
     ("os2com"	(edwin os2-commands))
     ("os2term"	(edwin screen os2-screen))
     ("outline"	(edwin))
+    ("paredit"	(edwin paredit))
     ("pasmod"	(edwin))
     ("paths"	(edwin))
     ("print"	(edwin))

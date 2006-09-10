@@ -1,6 +1,8 @@
-# $Id: Makefile.in.in,v 1.25 2005/06/26 05:36:52 cph Exp $
+# -*- Makefile -*-
 #
-# Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+# $Id: Makefile.in.in,v 1.29 2006/06/10 05:38:02 cph Exp $
+#
+# Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -34,6 +36,7 @@ exec_prefix = @exec_prefix@
 bindir = @bindir@
 sbindir = @sbindir@
 libexecdir = @libexecdir@
+datarootdir = @datarootdir@
 datadir = @datadir@
 sysconfdir = @sysconfdir@
 sharedstatedir = @sharedstatedir@
@@ -123,7 +126,7 @@ SHARED_OBJECTS = $(CORE_OBJECTS) $(OS_PRIM_OBJECTS) $(UNIX_OBJECTS) \
 # **** Program definitions ****
 
 bin_PROGRAMS = scheme bchscheme
-aux_PROGRAMS = gcdrone
+aux_PROGRAMS = gcdrone ppband
 aux_LIBS = $(MODULE_TARGETS)
 aux_DATA = utabmd.bin
 EXTRA_PROGRAMS = findprim bintopsb psbtobin
@@ -163,6 +166,12 @@ psbtobin_OBJECTS = psbtobin.o missing.o
 psbtobin_DEPENDENCIES = 
 psbtobin_LDFLAGS = 
 psbtobin_LIBS = $(LIBS)
+
+ppband_SOURCES = ppband.c outf.c
+ppband_OBJECTS = ppband.o outf.o
+ppband_DEPENDENCIES = load.c storage.c
+ppband_LDFLAGS = 
+ppband_LIBS = $(LIBS)
 
 ALL_PROGRAMS = $(bin_PROGRAMS) $(aux_PROGRAMS)
 ALL_LIBS = $(aux_LIBS)
@@ -228,6 +237,10 @@ bintopsb: $(bintopsb_OBJECTS) $(bintopsb_DEPENDENCIES)
 psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
 	-rm -f $@
 	$(LINK) $(psbtobin_LDFLAGS) $(psbtobin_OBJECTS) $(psbtobin_LIBS)
+
+ppband: $(ppband_OBJECTS) $(ppband_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(ppband_LDFLAGS) $(ppband_OBJECTS) $(ppband_LIBS)
 
 utabmd.bin: utabmd.scm
 	./utabmd.sh

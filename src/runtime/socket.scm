@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.26 2005/10/23 21:10:02 cph Exp $
+$Id: socket.scm,v 1.28 2006/06/11 03:04:17 cph Exp $
 
 Copyright 1996,1997,1998,1999,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,30 +28,6 @@ USA.
 ;;; package: (runtime socket)
 
 (declare (usual-integrations))
-
-(define (open-tcp-stream-socket host-name service)
-  (let ((channel (open-tcp-stream-socket-channel host-name service)))
-    (make-generic-i/o-port channel channel)))
-
-(define (open-unix-stream-socket filename)
-  (let ((channel (open-unix-stream-socket-channel filename)))
-    (make-generic-i/o-port channel channel)))
-
-(define (open-tcp-stream-socket-channel host-name service)
-  (let ((host (vector-ref (get-host-by-name host-name) 0))
-	(port (tcp-service->port service)))
-    (open-channel
-     (lambda (p)
-       (with-thread-timer-stopped
-	 (lambda ()
-	   ((ucode-primitive new-open-tcp-stream-socket 3) host port p)))))))
-
-(define (open-unix-stream-socket-channel filename)
-  (open-channel
-   (lambda (p)
-     (with-thread-timer-stopped
-       (lambda ()
-	 ((ucode-primitive new-open-unix-stream-socket 2) filename p))))))
 
 (define (open-tcp-server-socket service #!optional host)
   (let ((server-socket (create-tcp-server-socket)))
@@ -120,6 +96,35 @@ USA.
     (and channel
 	 (make-generic-i/o-port channel channel))))
 
+(define (open-tcp-stream-socket host-name service)
+  (let ((channel (open-tcp-stream-socket-channel host-name service)))
+    (make-generic-i/o-port channel channel)))
+
+(define (open-unix-stream-socket filename)
+  (let ((channel (open-unix-stream-socket-channel filename)))
+    (make-generic-i/o-port channel channel)))
+
+(define (open-tcp-stream-socket-channel host-name service)
+  (let ((host
+	 (vector-ref (or (get-host-by-name host-name)
+			 (error:bad-range-argument
+			  host-name
+			  'open-tcp-stream-socket-channel))
+		     0))
+	(port (tcp-service->port service)))
+    (open-channel
+     (lambda (p)
+       (with-thread-timer-stopped
+	 (lambda ()
+	   ((ucode-primitive new-open-tcp-stream-socket 3) host port p)))))))
+
+(define (open-unix-stream-socket-channel filename)
+  (open-channel
+   (lambda (p)
+     (with-thread-timer-stopped
+       (lambda ()
+	 ((ucode-primitive new-open-unix-stream-socket 2) filename p))))))
+
 (define (get-host-by-name host-name)
   (with-thread-timer-stopped
     (lambda ()

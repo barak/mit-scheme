@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.102 2006/03/09 19:18:30 cph Exp $
+$Id: make.scm,v 14.103 2006/08/02 16:27:09 riastradh Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
@@ -494,7 +494,8 @@ USA.
    (RUNTIME EMACS-INTERFACE)
    ;; More debugging
    ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)
-   (RUNTIME URI)))
+   (RUNTIME URI)
+   (RUNTIME HTTP-CLIENT)))
 
 (if (eq? os-name 'NT)
     (package-initialize '(RUNTIME WIN32-REGISTRY) 'INITIALIZE-PACKAGE! #f))

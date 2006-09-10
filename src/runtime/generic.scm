@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: generic.scm,v 1.13 2005/04/16 04:26:35 cph Exp $
+$Id: generic.scm,v 1.14 2006/04/30 01:43:55 cph Exp $
 
-Copyright 1996,2003,2005 Massachusetts Institute of Technology
+Copyright 1996,2003,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,6 +24,7 @@ USA.
 |#
 
 ;;;; Generic Procedures
+;;; package: (runtime generic-procedure)
 
 (declare (usual-integrations)
 	 (integrate-external "gentag" "gencache"))
@@ -262,8 +263,9 @@ USA.
   (let ((tags
 	 (let ((p (list 'TAGS)))
 	   (do ((args args (cdr args))
-		(p p (cdr p)))
-	       ((not (pair? args)))
+		(p p (cdr p))
+		(i (generic-record/arity-min record) (fix:- i 1)))
+	       ((not (fix:> i 0)))
 	     (set-cdr! p (list (dispatch-tag (car args)))))
 	   (cdr p))))
     (let ((procedure

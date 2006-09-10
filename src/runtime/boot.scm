@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.22 2006/03/09 19:18:29 cph Exp $
+$Id: boot.scm,v 14.23 2006/09/06 04:49:40 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1993,1996,2001,2004,2005,2006 Massachusetts Institute of Technology
@@ -129,9 +129,6 @@ USA.
   (object-pure? pure?)
   (object-constant? constant?)
   gc-space-status)
-
-(define-integrable (future? object)
-  ((ucode-primitive object-type? 2) (ucode-type future) object))
 
 (define-integrable (default-object? object)
   (eq? object (default-object)))

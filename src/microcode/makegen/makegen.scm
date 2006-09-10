@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: makegen.scm,v 1.7 2005/06/26 05:36:52 cph Exp $
+$Id: makegen.scm,v 1.9 2006/06/10 05:24:54 cph Exp $
 
-Copyright 2000,2001,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2003,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -141,7 +141,10 @@ USA.
 (define (generate-rule filename)
   (parse-rule
    (unbreak-lines
-    (call-with-output-string
+    ((if (lexical-unreferenceable? system-global-environment ; E.g., Build 7.7
+				   'call-with-output-string) ;       using 7.6?
+	 with-string-output-port ;; For backward compatibility (pre-7.7)
+	 call-with-output-string)
      (lambda (port)
        (run-shell-command (string-append "./makegen-cc " filename)
 			  'OUTPUT port))))))

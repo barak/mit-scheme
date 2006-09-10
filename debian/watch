@@ -1,0 +1,5 @@
+version=3
+opts="dversionmangle=s/^([\d\.]+)\+([\d]+)$/$2/" \
+  http://ftp.gnu.org/gnu/mit-scheme/snapshot.pkg/([\d]+)/mit-scheme-([\d]+)\.tar\.(?:gz|bz2) debian uupdate
+#http://ftp.gnu.org/gnu/mit-scheme/testing.pkg/([\d\.]+)/mit-scheme-([\d\.]+)\.tar\.(?:gz|bz2) debian uupdate
+#http://ftp.gnu.org/gnu/mit-scheme/stable.pkg/([\d\.]+)/mit-scheme-([\d\.]+)(?:-src)?\.tar\.(?:gz|bz2) debian uupdate

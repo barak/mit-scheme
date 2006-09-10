@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 1.69 2005/04/01 05:06:57 cph Exp $
+$Id: debug.scm,v 1.70 2006/06/12 04:19:43 cph Exp $
 
 Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004,2005 Massachusetts Institute of Technology
+Copyright 2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1710,7 +1710,7 @@ once it has been renamed, it will not be deleted automatically.")
 			      names
 			      '())))
 		      env-list))
-	 (names2 (reduce append '() names1))
+	 (names2 (reduce-right append '() names1))
 	 (names3 (let loop ((l names2))
 		     (if (null? l)
 			 l

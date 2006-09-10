@@ -1,0 +1,25 @@
+/* XPM */
+static char *lambda-2[] = {
+/* columns rows colors chars-per-pixel */
+"32 16 3 1",
+"  c black",
+". c gray100",
+"X c None",
+/* pixels */
+"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+"XXX.  .XXXXXXXXXXXXXXXXXX.  .XXX",
+"XX.  .XXXX.   .XXXXXXXXXXX.  .XX",
+"X.  .XXXXXX.   .XXXXXXXXXXX.  .X",
+"X.  .XXXXXXX.   .XXXXXXXXXX.  .X",
+"X.  .XXXXXXXX.   .XXXXXXXXX.  .X",
+"X.  .XXXXXXXXX.   .XXXXXXXX.  .X",
+"X.  .XXXXXXXXX.   .  XXXXXX.  .X",
+"X.  .XXXXXXXX.     .XXX   X.  .X",
+"X.  .XXXXXXX.  .    .XX   X.  .X",
+"X.  .XXXXX.   .XX.   .    X.  .X",
+"X.  .XXX .   .XXX .   .   X.  .X",
+"X.  .X  .   .    XX.   .  X.  .X",
+"XX.  ..     .XXXXXX.     ..  .  ",
+"XXX.  ......XXXXXXXX......  . XX",
+"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+};

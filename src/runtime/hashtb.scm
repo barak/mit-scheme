@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.34 2006/02/26 03:00:38 cph Exp $
+$Id: hashtb.scm,v 1.35 2006/08/02 05:54:51 savannah-arthur Exp $
 
 Copyright 1990,1991,1993,1994,1995,2003 Massachusetts Institute of Technology
 Copyright 2004,2005,2006 Massachusetts Institute of Technology
@@ -760,7 +760,14 @@ USA.
 ;;;; SRFI-69 compatability
 
 (define (make-hash-table #!optional key=? key-hash initial-size)
-  (%make-hash-table (custom-table-type key=? key-hash) initial-size))
+  (%make-hash-table (custom-table-type
+		     (if (default-object? key=?)
+			 equal?
+			 key=?)
+		     (if (default-object? key-hash)
+			 equal-hash-mod
+			 key-hash))
+		    initial-size))
 
 (define (custom-table-type key=? key-hash)
   (cond ((and (eq? key=? eq?)

@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.167 2006/01/27 21:05:52 cph Exp $
+$Id: fileio.scm,v 1.168 2006/04/29 01:29:56 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -399,61 +399,60 @@ after you find a file.  If you explicitly request such a scan with
 	(suffix (extract-string end (line-end end 0))))
     (let ((prefix? (not (string-null? prefix)))
 	  (suffix? (not (string-null? suffix))))
+
       (define (loop mark)
 	(let ((start (line-start mark 1)))
 	  (if (not start) (editor-error "Missing local variables entry"))
 	  (do-line start (line-end start 0))))
 
       (define (do-line start end)
+
 	(define (check-suffix mark)
 	  (if (and suffix? (not (match-forward suffix mark)))
 	      (editor-error "Local variables entry missing suffix")))
+
 	(let ((m1
 	       (horizontal-space-end
 		(if prefix?
 		    (or (match-forward prefix start end #f)
 			(editor-error "Local variables entry missing prefix"))
 		    start))))
-	  (let ((m2
-		 (let ((m2 (char-search-forward #\: m1 end)))
-		   (if (not m2)
-		       (editor-error "Missing colon in local variables entry"))
-		   (mark-1+ m2))))
-	    (let ((var (extract-string m1 (horizontal-space-start m2)))
-		  (m3 (horizontal-space-end (mark1+ m2))))
-	      (if (not (string-ci=? var "End"))
-		  (with-input-from-mark m3 read
-		    (lambda (val m4)
-		      (check-suffix (horizontal-space-end m4))
-		      (if (string-ci=? var "Mode")
-			  (let ((mode
-				 (string-table-get editor-modes
-						   (extract-string m3 m4))))
-			    (if mode
-				((if (mode-major? mode)
-				     set-buffer-major-mode!
-				     enable-buffer-minor-mode!)
-				 buffer mode)))
-			  (call-with-current-continuation
-			   (lambda (continuation)
-			     (bind-condition-handler
-				 (list condition-type:error)
-				 (lambda (condition)
-				   condition
-				   (editor-beep)
-				   (message
-				    "Error while processing local variable: "
-				    var)
-				   (continuation #f))
-			       (lambda ()
-				 (if (string-ci=? var "Eval")
-				     (with-selected-buffer buffer
-				       (lambda ()
+	  (cond ((re-match-forward "End:[ \t]*" m1 end)
+		 (check-suffix (re-match-end 0)))
+		((re-search-forward ":[ \t]+" m1 end)
+		 (let ((var (extract-string m1 (re-match-start 0)))
+		       (m2 (re-match-end 0)))
+		   (if (line-end? m2)
+		       (editor-error "Missing value for local variable:" var))
+		   (with-input-from-mark m2 read
+		     (lambda (val m3)
+		       (check-suffix (horizontal-space-end m3))
+		       (if (string-ci=? var "Mode")
+			   (let ((mode
+				  (string-table-get editor-modes
+						    (extract-string m2 m3))))
+			     (if mode
+				 ((if (mode-major? mode)
+				      set-buffer-major-mode!
+				      enable-buffer-minor-mode!)
+				  buffer mode)))
+			   (if (condition?
+				(ignore-errors
+				 (lambda ()
+				   (if (string-ci=? var "Eval")
+				       (with-selected-buffer buffer
+					 (lambda ()
+					   (evaluate val)))
+				       (define-variable-local-value! buffer
+					   (name->variable (intern var))
 					 (evaluate val)))
-				     (define-variable-local-value! buffer
-					 (name->variable (intern var))
-				       (evaluate val))))))))
-		      (loop m4))))))))
+				   #f)))
+			       (editor-error
+				"Error while processing local variable:"
+				var)))
+		       (loop m3)))))
+		(else
+		 (editor-error "Missing colon in local variables entry")))))
 
       (loop start))))
 

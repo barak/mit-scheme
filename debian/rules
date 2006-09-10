@@ -70,6 +70,8 @@ install: build
 	$(INSTALL) -m 644 debian/mit-scheme.desktop \
 	    $(DESTDIR)$(PREFIX)/share/applications/.
 	$(INSTALL) -m 644 etc/*.el $(DESTDIR)$(EMACSDIR)/.
+	$(INSTALL) -m 644 icons/* \
+	    $(DESTDIR)$(PREFIX)/share/pixmaps/mit-scheme/.
 	rm -f $(DESTDIR)$(LIBDIR)/edwin/etc/mime.types
 	ln -s /etc/mime.types $(DESTDIR)$(LIBDIR)/edwin/etc/.
 	dh_install --sourcedir=debian/tmp

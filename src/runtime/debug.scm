@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 14.46 2005/04/01 04:46:36 cph Exp $
+$Id: debug.scm,v 14.47 2006/07/20 17:09:44 riastradh Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1999,2001,2002,2005 Massachusetts Institute of Technology
@@ -84,6 +84,20 @@ USA.
 	     "You are now in the debugger.  Type q to quit, ? for commands.")))
 	 "debug>"
 	 dstate)))))
+
+(define (stack-trace condition port)
+  (let ((dstate (make-initial-dstate condition)))
+    (command/print-subproblem dstate port)
+    (let loop ()
+      (if (let ((next
+		 (stack-frame/next-subproblem
+		  (dstate/subproblem dstate))))
+	    (and next (not (stack-frame/repl-eval-boundary? next))))
+	  (begin
+	    (newline port)
+	    (newline port)
+	    (command/earlier-subproblem dstate port)
+	    (loop))))))
 
 (define (make-initial-dstate object)
   (let ((make-dstate

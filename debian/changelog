@@ -1,3 +1,14 @@
+mit-scheme (7.7.90+20060906-1) unstable; urgency=low
+
+  * New upstream.
+  * Fix Priority of mit-scheme-dbg to match overrides.
+  * Use debhelper v5.
+  * Add icon to menu entry.
+  * Add debian/watch file.
+  * Bump standards-version (no changes).
+
+ -- Chris Hanson <cph@debian.org>  Sat,  9 Sep 2006 20:54:21 -0400
+
 mit-scheme (7.7.90+20060414-1) unstable; urgency=low
 
   * New upstream snapshot.

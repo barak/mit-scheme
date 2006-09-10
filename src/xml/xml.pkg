@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.67 2006/03/07 06:16:26 cph Exp $
+$Id: xml.pkg,v 1.80 2006/08/02 05:05:25 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -270,7 +270,8 @@ USA.
 	  %make-xml-parameter-!entity
 	  %make-xml-parameter-entity-ref
 	  %make-xml-processing-instructions
-	  %make-xml-unparsed-!entity))
+	  %make-xml-unparsed-!entity
+	  string-of-xml-chars?))
 
 (define-package (runtime xml parser)
   (files "xml-chars" "xml-parser")
@@ -525,26 +526,42 @@ USA.
   (files "rdf-struct")
   (parent (runtime rdf))
   (export ()
+	  *default-rdf-prefix-registry*
+	  *rdf-bnode-registry*
 	  <rdf-bnode>
 	  <rdf-index>
 	  <rdf-literal>
+	  <rdf-prefix-registry>
 	  <rdf-triple>
 	  add-to-rdf-index
 	  canonicalize-rdf-object
 	  canonicalize-rdf-predicate
 	  canonicalize-rdf-subject
+	  canonicalize-rdf-uri
+	  copy-rdf-prefix-registry
 	  error:not-rdf-bnode
 	  error:not-rdf-index
 	  error:not-rdf-literal
+	  error:not-rdf-prefix
+	  error:not-rdf-prefix-registry
+	  error:not-rdf-qname
 	  error:not-rdf-triple
 	  guarantee-rdf-bnode
 	  guarantee-rdf-index
 	  guarantee-rdf-literal
+	  guarantee-rdf-prefix
+	  guarantee-rdf-prefix-registry
+	  guarantee-rdf-qname
 	  guarantee-rdf-triple
+	  handle->rdf-bnode
+	  make-rdf-bnode-registry
 	  make-rdf-bnode
 	  make-rdf-index
 	  make-rdf-literal
+	  make-rdf-qname
 	  make-rdf-triple
+	  new-rdf-prefix-registry
+	  rdf-bnode->handle
 	  rdf-bnode-name
 	  rdf-bnode?
 	  rdf-index-objects
@@ -554,15 +571,30 @@ USA.
 	  rdf-literal-language
 	  rdf-literal-text
 	  rdf-literal-type
+	  rdf-literal=?
 	  rdf-literal?
+	  rdf-prefix-expansion
+	  rdf-prefix-registry->alist
+	  rdf-prefix-registry?
+	  rdf-prefix?
+	  rdf-qname->uri
+	  rdf-qname-local
+	  rdf-qname-prefix
+	  rdf-qname?
 	  rdf-triple-object
 	  rdf-triple-predicate
 	  rdf-triple-subject
-	  rdf-triple?)
-  (export (runtime rdf nt)
+	  rdf-triple?
+	  register-rdf-prefix
+	  split-rdf-qname
+	  uri->rdf-qname
+	  write-rdf-uri)
+  (export (runtime rdf)
 	  %make-rdf-literal
 	  match-bnode-name
-	  match-language))
+	  match-language
+	  port/bnode-registry
+	  port/drop-bnode-registry))
 
 (define-package (runtime rdf nt)
   (files "rdf-nt")
@@ -571,4 +603,17 @@ USA.
 	  read-rdf/nt
 	  read-rdf/nt-file
 	  rdf/nt-file->source
-	  write-rdf/nt))
+	  write-rdf-bnode
+	  write-rdf-literal
+	  write-rdf-uri-ref
+	  write-rdf/nt
+	  write-rdf/nt-file))
+
+(define-package (runtime rdf turtle)
+  (files "turtle")
+  (parent (runtime rdf))
+  (export ()
+	  read-rdf/turtle-file)
+  (export (runtime rdf)
+	  match:name
+	  match:prefix-name))

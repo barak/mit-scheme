@@ -2,4 +2,5 @@
   needs="X11"\
   section="Apps/Programming"\
   title="MIT/GNU Scheme"\
-  command="mit-scheme --compiler --edwin --edit"
+  icon="/usr/share/pixmaps/mit-scheme/lambda2.xpm" \
+  command="/usr/bin/mit-scheme --edit"

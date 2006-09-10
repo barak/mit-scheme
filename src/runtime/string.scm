@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.59 2006/02/26 03:00:55 cph Exp $
+$Id: string.scm,v 14.61 2006/08/27 03:03:11 savannah-arthur Exp $
 
 Copyright 1986,1987,1988,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -1438,12 +1438,11 @@ USA.
 ;; The guarantors are integrated.  Most are structured as combination of
 ;; simple tests which the compiler can open-code, followed by a call to a
 ;; GUARANTEE-.../FAIL version which does the tests again to signal a
-;; menaingful message. Structuring the code this way significantly
+;; meaningful message.  Structuring the code this way significantly
 ;; reduces code bloat from large integrated procedures.
 
-(define-integrable (guarantee-string object procedure)
-  (if (not (string? object))
-      (error:wrong-type-argument object "string" procedure)))
+(define-guarantee string "string")
+(define-guarantee xstring "xstring")
 
 (define-integrable (guarantee-2-strings object1 object2 procedure)
   (if (not (and (string? object1) (string? object2)))

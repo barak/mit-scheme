@@ -1,3 +1,1182 @@
+2006-09-06 01:06  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.6.2.8), fasdump.c (9.68.2.10):
+
+	Add debugging tests to fasdump to guarantee that none of the memory is
+	changed by the operation.
+
+2006-09-06 00:59  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/gc.scm (14.23):
+
+	More fixes.
+
+2006-09-06 00:54  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/gc.scm (14.22):
+
+	Fix typo in previous change.
+
+2006-09-06 00:53  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/gc.scm (14.21):
+
+	Change handling of purification queue so that the list wrapper is
+	deleted when there's only a single item in the queue.  Simplify logic
+	for handling queues.
+
+2006-09-06 00:49  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: boot.scm (14.23), gdatab.scm (14.9), runtime.pkg
+	  (14.593):
+
+	Eliminate FUTURE?.
+
+2006-09-05 15:24  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/gcloop.c (9.51.2.14):
+
+	Put in backwards-compatibility hack so that older bands can still be
+	used.
+
+2006-09-05 15:17  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: const.h (9.52.2.4), debug.c (9.58.2.5), extern.h
+	  (9.65.2.6), fasload.c (9.96.2.12), gcloop.c (9.51.2.13), interp.c
+	  (9.102.2.6), types.h (9.40.2.5), utabmd.scm (9.88.2.4), xdebug.c
+	  (9.37.2.4):
+
+	Eliminate now-unused TC_MANIFEST_SPECIAL_NM_VECTOR.
+
+2006-09-05 15:10  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: errors.h (9.46.2.5), extern.h (9.65.2.5), fasload.c
+	  (9.96.2.11), hunk.c (9.31.2.3), list.c (9.35.2.3), nttrap.c
+	  (1.26.2.5), object.h (9.59.2.7), os2xcpt.c (1.15.2.4), prim.c
+	  (9.45.2.3), purify.c (9.65.2.10), purutl.c (9.54.2.10), uxtrap.c
+	  (1.41.2.5), vector.c (9.42.2.3):
+
+	Eliminate distinction between pure and constant space, greatly
+	simplifying purification and eliminating impurification.  This is
+	reasonable because the pure portion of constant space is typically
+	0.7% in all of our bands.
+
+2006-09-04 23:14  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: boot.c (9.118.2.4), cmpint.c (1.103.2.7), errors.h
+	  (9.46.2.4), extern.h (9.65.2.4), fasdump.c (9.68.2.9), fasl.c
+	  (1.1.2.3), fasl.h (9.40.2.6), fasload.c (9.96.2.10), gccode.h
+	  (9.60.2.7), gcloop.c (9.51.2.12), intrpt.h (1.24.2.4), memmag.c
+	  (9.71.2.6), memmag.h (1.10.2.4), nttrap.c (1.26.2.4), object.h
+	  (9.59.2.6), os2xcpt.c (1.15.2.3), purify.c (9.65.2.9), purutl.c
+	  (9.54.2.9), storage.c (9.60.2.5), sysprim.c (9.51.2.3), term.c
+	  (1.20.2.3), utabmd.scm (9.88.2.3), utils.c (9.87.2.7), uxtrap.c
+	  (1.41.2.4), xdebug.c (9.37.2.3), cmpintmd/alpha.h (1.7.2.2),
+	  cmpintmd/mc68k.h (1.38.2.3), cmpintmd/mips.h (1.25.2.3):
+
+	Another redesign of the garbage collector, this time to use one heap
+	and to allocate a special "tospace" outside of the tagged address
+	space.  This allows much larger heaps to be used, at a cost in GC time
+	and complexity.
+
+	Related changes: Change "active_heap" to "heap" everywhere; delete all
+	references to "inactive_heap".  Change INITIALIZE_INTERRUPTS to take
+	an interrupt mask as an argument.  Add new error code
+	ERR_FASDUMP_OBJECT_TOO_LARGE.  Remove unused error code
+	ERR_IMPURIFY_OUT_OF_SPACE.
+
+2006-09-04 23:09  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/primutl.c (9.80.2.3):
+
+	Change make_table_entry to build string directly, rather than by using
+	allocate_vector, since this allows it to be used in tospace.
+	Unfortunately it does introduce another place that knows about the
+	structure of strings.
+
+2006-09-04 23:07  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/option.c (1.61.2.4):
+
+	Fix bug: logic to supply default temporary directory was broken.
+
+2006-09-02 20:56  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: interp.h (9.50.2.3), stack.h (9.44.2.4):
+
+	Introduce STACK_LOCATIVE_LESS_P and use it to fix an abstraction
+	breaker.
+
+2006-08-30 16:03  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: fasload.c (9.96.2.9), gccode.h (9.60.2.6), gcloop.c
+	  (9.51.2.11), purutl.c (9.54.2.8):
+
+	Introduce std_gc_scan to handle case where no tranport occurs.
+
+2006-08-30 15:20  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: fasload.c (9.96.2.8), purutl.c (9.54.2.7):
+
+	Provide values for new GCTX fields.
+
+2006-08-30 15:20  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/gcloop.c (9.51.2.10):
+
+	Handle case where GCTX_PTO is null.
+
+2006-08-30 14:54  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/fasdump.c (9.68.2.8):
+
+	Provide from_start and from_end when building GC context.
+
+2006-08-30 01:17  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: const.h (9.52.2.3), fasl.c (1.1.2.2), fasl.h
+	  (9.40.2.5), gc.h (9.36.2.4), gccode.h (9.60.2.5), gcloop.c
+	  (9.51.2.9), gctype.c (9.36.2.4), memmag.c (9.71.2.5), memmag.h
+	  (1.10.2.3), object.h (9.59.2.5), outf.c (1.14.2.3), purify.c
+	  (9.65.2.8), purutl.c (9.54.2.6), scheme.h (9.42.2.3), storage.c
+	  (9.60.2.4), trap.h (9.51.2.3), types.h (9.40.2.4), utils.c
+	  (9.87.2.6):
+
+	More GC cleanup:
+	  - don't include "scheme.h" in "gcloop.c" or in "outf.c"
+	  - move former contents of "memmag.h" to "memmag.c"
+	  - move non-GC-core definitions from "gc.h" to "memmag.h"
+	  - change "scheme.h" to include "memmag.h"
+	  - change "object.h" to include "types.h"
+	  - change "gccode.h" to include "gc.h"
+	  - move GC-core definitions from "const.h" to "object.h"
+	  - move contents of "gctype.c" to "gcloop.c"
+	  - simplify GC error signalling and use hook to abort GC
+	  - eliminate BAD_TYPES_INNOCUOUS
+
+2006-08-29 22:59  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: boot.c (9.118.2.3), extern.h (9.65.2.3), fasdump.c
+	  (9.68.2.7), gccode.h (9.60.2.4), gcloop.c (9.51.2.8), memmag.c
+	  (9.71.2.4), purify.c (9.65.2.7), purutl.c (9.54.2.5), stack.h
+	  (9.44.2.3):
+
+	Reorganize GC so that all core GC functionality is in gcloop.c and can
+	(hopefully) be used independent of the rest of the microcode.
+
+2006-08-29 15:40  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: fasdump.c (9.68.2.6), fasl.c (1.1.2.1), fasl.h
+	  (9.40.2.4), fasload.c (9.96.2.7), option.c (1.61.2.3),
+	  makegen/files-core.scm (1.4.2.4):
+
+	Move all fasl I/O to new file "fasl.c", and rewrite it so that it
+	doesn't use any run-time facilities of the microcode.  This will allow
+	it to be reused to build standalone programs.
+
+2006-08-29 15:39  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/types.h (9.40.2.3):
+
+	Simple cleanups.
+
+2006-08-29 15:38  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/object.h (9.59.2.4):
+
+	Make sure various constants are unsigned.
+
+2006-08-29 00:44  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: cmpgc.h (1.34.2.3), cmpint.h (10.12.2.3),
+	  configure.ac (1.6.2.7), debug.c (9.58.2.4), fasdump.c (9.68.2.5),
+	  fasload.c (9.96.2.6), gcloop.c (9.51.2.7), gctype.c (9.36.2.3),
+	  hooks.c (9.66.2.4), interp.c (9.102.2.5), lookup.c (9.70.2.4),
+	  memmag.c (9.71.2.3), pruxenv.c (1.22.2.3), purify.c (9.65.2.6),
+	  purutl.c (9.54.2.4), storage.c (9.60.2.3), utils.c (9.87.2.5),
+	  uxtrap.c (1.41.2.3), uxtrap.h (1.35.2.3), cmpintmd/none.h
+	  (1.1.2.1), makegen/files-core.scm (1.4.2.3),
+	  makegen/files-optional.scm (1.6.2.3):
+
+	Provide support for running the system without any compiled-code
+	support.  This involves a dummy architecture description, plus a lot
+	of conditionalizations.
+
+2006-08-29 00:37  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpintmd/: i386.h (1.37.2.3), svm1.h (1.1.2.3):
+
+	Don't include config.h and cmpint.h because these files are always
+	included from cmpint.h, which includes config.h.
+
+2006-08-29 00:17  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/scomb.scm (14.24):
+
+	When building constant-folding list, be tolerant of primitives that
+	aren't implemented by the microcode.
+
+2006-08-28 23:48  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/genio.scm (1.40):
+
+	Fix typo in previous change.
+
+2006-08-28 13:03  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: confshared.h (11.8.2.3), object.h (9.59.2.3), uxtop.c
+	  (1.30.2.3):
+
+	Move definition of SCHEME_OBJECT to "object.h".
+
+2006-08-28 12:58  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: bintopsb.c (9.78), psbtobin.c (9.63):
+
+	Re-fix previous change -- forgot to account for bucky bits.
+
+2006-08-27 17:37  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/genio.scm (1.39):
+
+	Add windows 8-bit codecs.
+
+2006-08-27 11:49  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: bintopsb.c (9.77), psbtobin.c (9.62):
+
+	Change representation of characters in PSB files to account for
+	unicode.
+
+2006-08-26 23:03  savannah-arthur
+
+	* runtime/string.scm (14.61):
+
+	Fixed typo in comment.
+
+2006-08-20 19:19  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/utils.c (9.87.2.4):
+
+	Change error message for application to show something more useful.
+
+2006-08-17 13:13  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: errors.h (9.46.2.3), fasload.c (9.96.2.5), utils.c
+	  (9.87.2.3):
+
+	Fix out-of-date error messages.
+
+2006-08-16 15:25  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/intrpt.h (1.24.2.3):
+
+	Fix thinko in compiled-code interrupt signalling.
+
+2006-08-16 15:15  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: fasdump.c (9.68.2.4), fasload.c (9.96.2.4), gccode.h
+	  (9.60.2.3), gcloop.c (9.51.2.6), purify.c (9.65.2.5), purutl.c
+	  (9.54.2.3):
+
+	Make precheck_from be part of GC table.  Fix major bug that caused
+	second phase of purify to be a no-op.
+
+2006-08-16 15:14  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/debug.c (9.58.2.3):
+
+	Fix printing of symbol names.
+
+2006-08-16 00:23  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.6.2.6), prmcrypt.c (1.5.2.3),
+	  prmhash.c (11.6.2.4), syntax.c (1.30.2.3), utabmd.sh (1.5.2.2),
+	  makegen/Makefile.in.in (1.25.2.3), makegen/makegen.scm (1.7.2.2),
+	  makegen/makeinit.sh (1.10.2.3):
+
+	Merge changes from trunk.
+
+2006-08-16 00:11  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/syntax.c (1.35):
+
+	Make symbolic names for parse-state vector, and use them
+	consistently.  This fixes two more bugs associated with this change.
+
+2006-08-15 23:46  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: hooks.c (9.66.2.3), interp.c (9.102.2.4):
+
+	Eliminate compiler warnings.
+
+2006-08-15 23:45  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.6.2.5):
+
+	Change to work with GCC prior to version 4.
+
+2006-08-15 21:32  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/purify.c (9.65.2.4):
+
+	Fix two thinkos.
+
+2006-08-15 00:32  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/vc.scm (1.95):
+
+	Fix bug: "ignored" files should be treated the same as "unversioned"
+	when deciding whether they are under version control.
+
+2006-08-15 00:23  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/syntax.c (1.34):
+
+	Fix typo in previous change.
+
+2006-08-09 01:48  savannah-arthur
+
+	* runtime/: runtime.pkg (14.592), strout.scm (14.24):
+
+	Added new `port-position' procedure.  On a port created using
+	`open-output-string', e.g. through `with-output-to-string', this
+	procedure returns the current position in the output buffer.  For
+	example:
+
+	  1 ]=> (define foo)
+
+	  ;Value: foo
+
+	  1 ]=> (with-output-to-string
+		  (lambda ()
+		    (write-string "foo")
+		    (set! foo (port-position (current-output-port)))
+	            (write-string "bar")))
+	  ;Value 1: "foobar"
+
+	  1 ]=> foo
+
+	  ;Value: 3
+
+	  1 ]=>
+
+2006-08-03 00:00  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/syntax.c (1.33):
+
+	Update the size of parse states according to the recently added field,
+	so that we don't write off the end of the vector's storage.
+
+2006-08-02 14:18  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: http-client.scm (14.2), runtime.pkg (14.591):
+
+	Fix various compiler warnings.
+
+2006-08-02 12:27  Taylor Campbell <net/mumble/campbell>
+
+	* runtime/: http-client.scm (14.1), make.scm (14.103), runtime.pkg
+	  (14.590):
+
+	New simple HTTP client abstraction.
+
+2006-08-02 01:54  savannah-arthur
+
+	* runtime/hashtb.scm (1.35):
+
+	Fixed bug in `make-hash-table' and `alist->hash-table': neither
+	provided defaults for `key=?' or `key-hash', so both created
+	nonfunctioning hash tables if called without both of those parameters.
+
+2006-08-02 01:05  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-nt.scm (1.8), rdf-struct.scm (1.16), turtle.scm (1.7),
+	  xml.pkg (1.80):
+
+	Clean up handling of bnode registration.  Add mechanism for giving
+	string "handles" to bnodes, so that in-memory bnodes can be uniquely
+	identified.  (Bnode names are scoped to a document and are unsuitable
+	for this purpose.)
+
+2006-08-01 13:23  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-struct.scm (1.15), xml.pkg (1.79):
+
+	Tweak qname abstraction again.
+
+2006-08-01 00:23  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: xml.pkg (1.78), xml-rpc.scm (1.7):
+
+	Share the definition of STRING-OF-XML-CHARS? with "xml-rpc.scm".
+
+2006-07-31 22:50  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-struct.scm (1.14), xml.pkg (1.77):
+
+	Round out the RDF QName abstraction a bit.  Change RDF-QNAME? to be a
+	syntactic test that doesn't check any registry.
+
+2006-07-31 14:55  Taylor Campbell <net/mumble/campbell>
+
+	* xml/xml-struct.scm (1.55):
+
+	Tighten XML-CHAR-DATA? and CANONICALIZE-CHAR-DATA so that they refuse
+	characters or entity references not included in the XML-CHAR alphabet.
+
+	This may have a small performance cost when constructing XML trees,
+	and it will have to change for XML 1.1, which relaxes the restriction
+	on XML character data.  It could have been done in the XML writer,
+	since the parser already checks this, but this way offers guarantees
+	about the validity of any XML data in Scheme, and these guarantees are
+	probably good things.
+
+2006-07-28 21:25  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.6):
+
+	Fix bug in parsing of booleans; they were matched but treated as
+	noise, causing triples containing them to be elided.
+
+2006-07-28 12:23  Taylor Campbell <net/mumble/campbell>
+
+	* xml/xml-rpc.scm (1.6):
+
+	Add the condition of whether all characters are in the XML-CHAR
+	alphabet to ENCODE-STRING's decision of whether to return raw
+	strings or base64-encoded data.
+
+2006-07-28 00:10  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/schmod.scm (1.74):
+
+	Add CALL-WITH-INPUT-STRING to indentation table.
+
+2006-07-28 00:01  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/rdf-struct.scm (1.13):
+
+	In URI->RDF-QNAME, don't use blank prefix if another is available.
+
+2006-07-27 22:54  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-struct.scm (1.12), xml.pkg (1.76):
+
+	Fix typo in previous change.  Tweak interface to export a variable
+	with the default prefix registry, so that it can be dynamically bound.
+
+2006-07-27 16:14  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-struct.scm (1.11), turtle.scm (1.5), xml.pkg (1.75):
+
+	Allow RDF prefix procedures to take an optional registry, and export a
+	data abstraction for registries.
+
+2006-07-27 12:50  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/Makefile.in (1.8):
+
+	Update copyright dates.
+
+2006-07-26 20:42  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/Makefile.in (1.7):
+
+	Belatedly add paredit to the list of optional packages to install.
+
+2006-07-26 20:03  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: runtime.pkg (14.589), string.scm (14.60), symbol.scm
+	  (1.21):
+
+	Add missing guarantors for symbols and strings.
+
+2006-07-26 20:00  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: runtime.pkg (14.588), unicode.scm (1.27):
+
+	Implement FOR-ALL-CHARS-IN-STRING? and FOR-ANY-CHAR-IN-STRING?.
+
+2006-07-26 15:10  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/load.scm (14.76):
+
+	Change LOAD so that nested loads use environment of enclosing load as
+	target.  Previously they used the nearest REPL environment.
+	(Non-nested loads retain the old behavior.)
+
+2006-07-26 15:04  Chris Hanson <edu/mit/csail/cph>
+
+	* ssp/xhtml-expander.scm (1.10):
+
+	Allow LOAD in expander environment to take optional target
+	environment.
+
+2006-07-25 14:21  Taylor Campbell <net/mumble/campbell>
+
+	* xml/xml-rpc.scm (1.5):
+
+	Change string encoding so that base64-encoded strings are properly
+	wrapped in `base64' elements, and so that non-base64-encoded strings
+	are not wrapped in superfluous `string' elements.
+
+2006-07-20 13:09  Taylor Campbell <net/mumble/campbell>
+
+	* runtime/debug.scm (14.47), runtime/runtime.pkg (14.587),
+	  ssp/mod-lisp.scm (1.31), ssp/ssp.pkg (1.21):
+
+	Move STACK-TRACE from mod_lisp server to the run-time system.
+
+2006-07-07 20:24  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.4):
+
+	Make sure that base URI is absolute.
+
+2006-07-03 15:41  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/: curren.scm (1.148), buffrm.scm (1.63), paredit.scm (1.7):
+
+	Change SAVE-EXCURSION and SCREEN-WINDOW-CONFIGURATION to make
+	right-inserting copies of the point, rather than left-inserting.
+	This way, insertion of text at point inside the SAVE-EXCURSION region
+	will have no effect on the original point.
+
+	Change SAVE-EXCURSION to select the original buffer after the
+	supplied thunk returns.
+
+	Remove PAREDIT-SAVE-EXCURSION, whose functionality is now subsumed by
+	the new SAVE-EXCURSION.
+
+2006-07-03 15:28  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/syntax.scm (1.95), microcode/syntax.c (1.32):
+
+	Update copyright years.
+
+2006-07-03 15:05  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/paredit.scm (1.6), edwin/syntax.scm (1.94),
+	  microcode/syntax.c (1.31):
+
+	Implement PARSE-STATE-START-OF-SEXP and PARSE-STATE-END-OF-SEXP
+	properly in Edwin's partial S-expression parser.  This fixes a long-
+	standing bug in paredit whereby character deletion in strings that
+	were the first elements of lists would cause segmentation faults.
+
+2006-06-27 14:43  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/paredit.scm (1.5):
+
+	Call UNDO-RECORD-POINT! before modifications in `paredit-splice-sexp'
+	and `paredit-split-sexp' commands, so that their undoing works as
+	expected.
+
+2006-06-27 14:39  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/paredit.scm (1.4):
+
+	Implement paredit-split-sexp (M-S) and paredit-join-sexps (M-J).
+
+2006-06-26 12:16  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/ed-ffi.scm (1.55):
+
+	Add entries for diff.scm and paredit.scm to ed-ffi.scm.
+
+2006-06-23 15:35  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/xml.pkg (1.74):
+
+	Export CANONICALIZE-RDF-URI.
+
+2006-06-23 14:50  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.3):
+
+	Register qname prefixes when reading file.
+
+2006-06-23 14:49  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-struct.scm (1.10), xml.pkg (1.73):
+
+	Add support for RDF qnames.
+
+2006-06-23 14:49  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/ed-ffi.scm (1.10):
+
+	Add entry for "turtle.scm".
+
+2006-06-23 13:20  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: turtle.scm (1.2), xml.pkg (1.72):
+
+	Export qname matchers for use in rdf-struct.
+
+2006-06-22 15:17  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-nt.scm (1.7), rdf-struct.scm (1.9), xml.pkg (1.71):
+
+	Export procedures to write the elements of a triple.
+
+2006-06-22 14:35  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/rdf-struct.scm (1.8):
+
+	Add unparser for RDF literals.
+
+2006-06-22 11:17  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/symbol.scm (1.20):
+
+	Change INTERN and INTERN-SOFT to accept UTF-8 strings.
+
+2006-06-22 00:48  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-struct.scm (1.7), xml.pkg (1.70):
+
+	Implement RDF-LITERAL=?.
+
+2006-06-21 09:45  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/parse.scm (14.63):
+
+	Handle atom delimiters specially when they are the first character
+	after "#\".
+
+2006-06-20 23:00  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: runtime.pkg (14.586), strnin.scm (14.18):
+
+	Define CALL-WITH-INPUT-STRING, since I keep assuming it's there.
+
+2006-06-20 22:57  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/parse.scm (14.62):
+
+	Eliminate overly-restrictive error tests from character syntax.
+
+2006-06-19 14:02  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/: paredit.scm (1.2), paredit.scm (1.3):
+
+	Fixed references to unbound variable.
+
+2006-06-19 14:02  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/snr.scm (1.67):
+
+	Eliminate compiler warning.
+
+2006-06-16 15:02  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/: decls.scm (1.76), edwin.pkg (1.296), loadef.scm (1.49),
+	  paredit.scm (1.1):
+
+	New Edwin library Paredit.
+
+2006-06-16 14:35  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/decls.scm (1.75):
+
+	Move diff.scm to proper alphabetical location in syntaxed filename list.
+
+2006-06-16 14:33  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/diff.scm (1.2):
+
+	Fix Edwin command DIFF-BACKUP for case wherein selected buffer has no
+	associated file.
+
+2006-06-16 13:55  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/: decls.scm (1.74), diff.scm (1.1), edwin.ldr (1.77),
+	  edwin.pkg (1.295), vc.scm (1.94):
+
+	Implement Unix diff(1) front end.
+
+	New Edwin variables:
+	  diff-program
+
+	New Edwin commands:
+	  diff (compare two files)
+	  diff-backup (compare buffer's file with its most recent backup)
+	  diff-buffer-with-file (compare buffer with its underlying file)
+	  diff-auto-save (compare buffer with its auto-save file)
+
+2006-06-12 16:46  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/: edwin.pkg (1.294), snr.scm (1.66):
+
+	Implement two kinds of filtering in Edwin's simple news reader:
+	filtering out messages that match criteria, such as spam; and
+	filtering headers of kept messages.
+
+	See the documentation strings for the new Edwin variables
+	NEWS-HEADER-FILTER and NEWS-KEPT-HEADERS.  New procedures
+	NEWS-HEADER-SPLITTING-FILTER and NEWS-HEADER-REGEXP-FILTER are useful
+	for constructing the value of NEWS-HEADER-FILTER.  For example,
+	I have this in my .edwin, so that any messages with xref headers
+	whose values contain `gmane.spam.detected' on any Gmane news servers
+	will be ignored:
+
+	  (add-event-receiver! (ref-variable news-group-mode-hook)
+	    (let ((gmane-spam-filter
+	           (news-header-regexp-filter
+	            '(("xref" . ".*gmane\\.spam\\.detected.*")))))
+	      (lambda (buffer)
+	        (if (string-prefix? "gmane." (buffer-name buffer))
+	            (local-set-variable! news-header-filter
+	                                 gmane-spam-filter
+	                                 buffer)))))
+
+2006-06-12 13:53  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: advice.scm (14.21), list.scm (14.52), mit-syntax.scm
+	  (14.26), runtime.pkg (14.585), srfi-1.scm (1.1):
+
+	Finish integrating SRFI-1 support.
+
+2006-06-12 01:07  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: list.scm (14.51), runtime.pkg (14.584):
+
+	Make some changes in preparation for integration of SRFI-1 support:
+
+	. Some of the (simpler) new procedures have been installed verbatim
+	  from John Kraemer's edit of Olin's implementation.  Some others were
+	  rewritten, but many others have yet to be installed.
+
+	. The mapping procedures have been extended to accept arguments of
+	  different lengths (as required).
+
+	. MEMBER and ASSOC have been extended to take an extra optional
+	  argument (as required).
+
+	. REDUCE has been changed to have the SRFI-1 semantics.  This means
+	  that (REDUCE CONS '() '(A B C)) now returns
+
+	      (c b . a)
+
+	  where it used to return
+
+	      ((a . b) . c)
+
+	  This is an incompatible change; hopefully it won't be too painful
+	  for the users.
+
+	. FOLD-RIGHT has been extended to support multiple list arguments.
+
+	. FOLD-LEFT remains unchanged but is now considered obsolete; SRFI-1
+	  provides FOLD instead, with different semantics.
+
+	Additionally, the definition of WEAK-LIST? was wrong and has been
+	fixed.
+
+2006-06-12 00:19  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/debug.scm (1.70), edwin/dired.scm (1.199), edwin/notify.scm
+	  (1.24), edwin/sendmail.scm (1.87), edwin/vc.scm (1.93),
+	  pcsample/pcsdisp.scm (1.6), pcsample/zones.scm (1.3):
+
+	Change or eliminate some calls to REDUCE and FOLD-LEFT that might
+	cause trouble with the SRFI-1 definitions.
+
+2006-06-10 23:06  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/dired.scm (1.198):
+
+	Fix typo in previous change.
+
+2006-06-10 23:04  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/socket.scm (1.28):
+
+	Repaginate.
+
+2006-06-10 23:03  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/socket.scm (1.27):
+
+	Generate sensible error message when GET-HOST-BY-NAME returns #F.
+
+2006-06-10 11:06  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.11):
+
+	Delete unused statements from previous change.
+
+2006-06-10 02:12  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/compile.sh (1.7):
+
+	Fix copyright date.
+
+2006-06-10 02:09  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/dired.scm (1.197):
+
+	Previous change wasn't quite right.  Some more tweaking seems to help.
+
+2006-06-10 01:38  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/Makefile.in.in (1.29):
+
+	Add missing datarootdir definition needed by newer versions of
+	autoconf.
+
+2006-06-10 01:24  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: load.c (9.43), ppband.c (9.65), prmcrypt.c (1.7),
+	  prmhash.c (11.9), utabmd.sh (1.7), makegen/Makefile.in.in (1.28),
+	  makegen/files-other.scm (1.6), makegen/makegen.scm (1.9),
+	  makegen/makeinit.sh (1.12):
+
+	Fix copyright dates on changed files.
+
+2006-06-10 00:45  Chris Hanson <edu/mit/csail/cph>
+
+	* imail/update-changelog.sh (1.4):
+
+	Remove obsolete file.
+
+2006-06-10 00:42  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: compile.scm (1.18), load.scm (1.17), test-turtle.scm (1.1),
+	  turtle.scm (1.1), xml.pkg (1.69):
+
+	Add parsing support for RDF/Turtle.
+
+2006-06-10 00:17  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/dired.scm (1.196):
+
+	Tweak DIRECTORY-LISTING-BEFORE-FILENAME-REGEXP to add support for
+	VC-Dired mode.
+
+2006-06-10 00:12  Chris Hanson <edu/mit/csail/cph>
+
+	* star-parser/: matcher.scm (1.35), parser.scm (1.36):
+
+	Implement ERROR macros.
+
+2006-06-10 00:06  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: parser-buffer.scm (1.16), runtime.pkg (14.583):
+
+	Implement PARSER-BUFFER-ERROR.
+
+2006-06-09 23:52  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-nt.scm (1.6), xml.pkg (1.68):
+
+	Implement WRITE-RDF/NT-FILE.
+
+2006-06-05 14:09  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/ppband.c (9.64):
+
+	Rationalized the order of clauses in `Display()' to better reflect
+	the order following `Switch_by_GC_Type()' in "gccode.h".
+
+2006-06-05 13:57  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/ppband.c (9.63):
+
+	Just shoot me now.  FIXNUMs should continue to appear as signed data.
+
+2006-06-05 13:28  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/ppband.c (9.62):
+
+	Oops.  UNSIGNED_FIXNUM_TO_LONG() should be FIXNUM_TO_ULONG().
+	Scheme 7.6 didn't have that so I misled myself into confusion.
+
+2006-06-05 13:02  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/ppband.c (9.61):
+
+	I was sick of seeing negative values in high memory due to sign bit.
+	The only signed longs here are the `gc_death' code (so says "gccode.h")
+	and the `Points_To' cast of FIXNUMs (since cannot determine sign).
+
+2006-06-05 11:04  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/ppband.c (9.60):
+
+	Debugging tools (both for debugging `ppband' and the heap image).
+
+2006-06-05 10:29  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/ppband.c (9.59):
+
+	Generally improved output formatting.  More info is better than less.
+
+	1. Split hi/lo for easier visual parsing into words.
+	2. Modest string tweaks (like "0x" prefix for hex).
+	3. Boundary separators for ease of `grep' to next section.
+	4. `Datum = ...' everywhere.  More info is useful in general.
+
+2006-06-05 09:08  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/ppband.c (9.58):
+
+	Display TC_LIST as ``PAIR'' as per comment in "sdata.h".
+
+2006-06-05 09:02  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/ppband.c (9.57):
+
+	Handle recognized constants specially (like UNSPECIFIC and EMPTY_LIST).
+
+2006-06-05 07:35  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/ppband.c (9.56):
+
+	Display `C_Code_Table' if non-zero (not unlike the Primitive_Table).
+
+2006-06-05 07:03  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/ppband.c (9.55):
+
+	Add a usage string to `main()' so folks can see how to invoke it.
+	Clean up the scratch area allocation and truncation (document same).
+
+2006-06-05 05:51  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/ppband.c (9.54):
+
+	Fixed bit-rotted `show_area's count-based MANIFEST_CLOSURE botchery,
+	broken `break'-embedding macrology (got whacked in ver.9.46) and such:
+
+	0. Include "storage.c" for `Type_Names' and "gctype.c" goodies.
+	1. Fixed dropped high-order bit on addr & datum hex print (6-bit type).
+	2. Explicit (not embedded) `break's after (NON_)POINTER() macro calls.
+	3. Made `TC_NULL' & `TC_TRUE' print less misleadingly when not #T/#F.
+	4. Patched MANIFEST_CLOSUREs, STACK_ENVIRONMENTs & LINKAGE_SECTIONs as:
+	5. Area-based display a la "uxtrap.c" using GC macros is much cleaner
+	   (despite the odd redefinition of `MANIFEST_CLOSURE_END()' ver.1.31).
+	6. Fixed bogus `Next' update for `Const_Count' non-zero (fix end addr).
+
+2006-06-05 05:49  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/makegen/Makefile.in.in (1.27):
+
+	Added "storage.c" to list of dependencies needed for "ppband.c".
+	Moved "load.c" to list of dependencies since `#include'd, not linked.
+	Fixed ill-formed mode line in passing (sigh).
+
+2006-06-03 04:10  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/makegen/: Makefile.in.in (1.26), files-other.scm (1.5):
+
+	Resurrect the `ppband' fasdump/band parser and heap pretty-print tool.
+
+	This tool is very useful for perusing the heap (think GC debugging).
+	I'm not its original author but I am its most loyal fan!
+
+	Stay tuned for more clean up before giving it a spin.  For those who
+	just cannot wait, try:  ./ppband < runtime.com > /usr/tmp/runtime.txt
+
+2006-06-03 04:05  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/ppband.c (9.53):
+
+	This is a minimal resurrection of a handy, though bit-rotted, old tool.
+
+	Subsequent patches make it more palatable and likely to be maintained.
+	Stay tuned for more clean up before giving it a spin.  I've staged the
+	commits so successive versions can be built and tinkered with rather
+	than doing one massive re-write than cannot be easily factored out.
+
+	Fixed some compiler warnings:
+
+	Defer to "scheme.h" for deprecated `fast' and several other niceties.
+	Added missing `#include <stdlib.h>' (for `malloc()',`free()',`exit()').
+	Removed obsolete static `memory_base' global ("load.c" no longer uses).
+	Removed obsolete static `string_buffer[10]' global (no longer used).
+	Fixed `main()' return type to canonical `int' (and made it return so).
+	Initialized uninitialized `Next' ptr to `((SCHEME_OBJECT *) NULL)'.
+	Appeased `sscanf()' by passing constant strings, not string literals.
+
+2006-06-03 04:00  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/load.c (9.42):
+
+	Fixed some compiler warnings:
+
+	1. Added missing `#include "outf.h"' directive (for `outf_error()').
+	2. Conditionalize `computed_checksum' decl to avoid "unused" warning.
+
+2006-06-02 10:21  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/usermap (1.6):
+
+	Add Ziggy's new ID.
+
+2006-06-02 03:46  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* README.txt (1.5):
+
+	Added (excessive) step-by-step detail on non-easy CVS bootstrapping.
+
+	Note:	Please feel free to edit, clarify, and condense these added
+		sections to taste.  The more I tried to shorten them, the
+		longer they became.  I clearly should never touch them again.
+
+	Brief:	This hopefully should alleviate some of the pain in building
+	        MIT/GNU Scheme for the first time from CVS sources on a system
+		that may or may not already have a compatible MIT/GNU Scheme
+		installed or for which there may or may not exist a compatible
+		binary release one can simple download and install and run.
+
+	Excerpts:
+
+	These more detailed build instructions cover the case where no binary
+	release corresponding to the CVS sources runs successfully on your
+	system or none can be installed in the usual system-wide location(s).
+
+	...
+
+	In short, to transition a pristine checked out CVS source tree
+	installation from the ``maintainer-clean'' CVS build state into the
+	``distribution'' build state, the "./Setup.sh" uses MIT/GNU Scheme
+	itself to grovel over the Scheme sources to build up Scheme system
+	file dependencies and other distribution-specific configuration data.
+
+	...
+
+	Naturally, this results in a bit of a chicken-and-egg puzzle.
+
+2006-06-02 03:00  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/makegen/makegen.scm (1.8):
+
+	For backward compatibility, if new `call-with-output-string' is not
+	defined, try using the old `with-string-output-port' name instead.
+
+	In short, 7.7 defines a backward-compatible package alias but 7.6 does
+	not define a forward-compatible anticipatory alias (obviously).
+
+	This is needed when, say, building 7.7 CVS sources using release 7.6
+	installed binaries as a bootstrap Scheme:  the new "makegen.scm" uses
+	the new name but old bootstrap "runtime"s may define only the old name.
+
+	This patch, coupled with the ${SCHEME_LARGE} and ${SCHEME_COMPILER}
+	generalizations of the `*.sh' build scripts, make it possible to call
+	"src/Setup.sh" to transition a CVS source directory to a "distribution"
+	state without first having the CVS Scheme installed to bootstrap.  This
+	consequently avoids a particularly subtle chicken-and-egg puzzle.
+
+	A forthcoming update to "src/README.txt" spells out the details.
+
+2006-06-02 02:50  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/utabmd.sh (1.6):
+
+	Replace non-backward-compatible `--eval' null input w/ shell echo pipe.
+
+	Specifically, double dashes are preferred in env var default values
+	but they should be avoided in explicit command lines since they die
+	when the bootstrap ${SCHEME_COMPILER} predates the double dash syntax.
+
+	This really just substitutes one hack for another but at least it now
+	works for release 7.6 as well as 7.7 (so you can now build the latter
+	from CVS using the former to bootstrap from 7.6 into 7.7).
+
+2006-06-02 02:37  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* etc/compile.sh (1.6), imail/update-changelog.sh (1.3),
+	  microcode/makegen/makeinit.sh (1.11):
+
+	Replace hard-wired "scheme" calls with retargetable defaulted env vars.
+
+	Use GNU standard double-dashed switch args by default in release 7.7+.
+
+	This forces you to rebind the env var if building w/ pre-7.7 bootstrap,
+	which is good:  it makes you be explicit about mis-matched bootstraps.
+
+	A forthcoming update to "src/README.txt" spells out the details.
+
+2006-06-01 23:06  Michael R. Blair <edu/mit/csail/zurich/ziggy>
+
+	* microcode/: configure.ac (1.10), prmcrypt.c (1.6), prmhash.c
+	  (11.8):
+
+	Suppress <mcrypt.h> & <mhash.h> includes when files are not present.
+
+	This avoids "makegen.scm" spewing syntactic crud (error/failure
+	messages) into "Makefile.deps" (and thus "Makefile.in" & "Makefile")
+	during the invocation of "./Setup.sh" by virtue of "prmcrypt" and
+	"prmhash" appearing in "makegen/files-optional.scm".
+
+	Note how "prmd5.c" is already nicely conditionalized on `HAVE_MD5_H'.
+
+2006-05-30 21:19  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/vc.scm (1.92):
+
+	Fix typo in previous change.
+
+2006-05-30 21:18  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/vc.scm (1.91):
+
+	Prevent error visiting svn-managed file when "svn" not installed.
+
+2006-05-22 01:34  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/dired.scm (1.195):
+
+	Fix parsing of dired lines to work with other locales.
+
+2006-05-14 22:43  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/: editor.scm (1.262), unix.scm (1.120):
+
+	Bump copyright dates.
+
+2006-05-14 21:50  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/unix.scm (1.119):
+
+	Implement OS/NEWEST-BACKUP for Unix.
+
+	This should probably be implemented for DOS some day, but I'm not a DOS
+	hacker, and I need this only for a diff front end, which won't run on
+	DOS anyway.
+
+2006-04-30 00:11  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/editor.scm (1.261):
+
+	Expand the startup message on how to get help to include the tutorial
+	key, and clarify the meaning of `C-h'.
+
+2006-04-29 21:43  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/generic.scm (1.14):
+
+	Fix bug: wrong number of tags was being stored in cache when variadic
+	generic procedure had a method with more than the minimum number of
+	arguments and was called with that number of arguments.  (Thanks to
+	Zev Benjamin for finding this.)
+
+2006-04-28 21:29  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/fileio.scm (1.168):
+
+	Allow variable names to contain colons in "Edwin Variables:" section.
+
+2006-04-23 21:12  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/vc.scm (1.90):
+
+	Fix bug: use of RUN-SHELL-COMMAND in SVN support wasn't working when
+	filename had spaces in it.  Instead use RUN-SYNCHRONOUS-SUBPROCESS.
+
 2006-04-07 23:07  Chris Hanson <edu/mit/csail/cph>
 
 	* microcode/: configure.ac (1.8), configure.ac (1.9), configure.ac

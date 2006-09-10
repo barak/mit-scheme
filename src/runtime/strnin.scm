@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.17 2005/12/20 15:53:04 cph Exp $
+$Id: strnin.scm,v 14.18 2006/06/21 03:00:11 cph Exp $
 
 Copyright 1988,1990,1993,1999,2003,2004 Massachusetts Institute of Technology
-Copyright 2005 Massachusetts Institute of Technology
+Copyright 2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -48,6 +48,12 @@ USA.
 			    #f
 			    'ISO-8859-1
 			    'NEWLINE))))
+
+(define (call-with-input-string string procedure)
+  (let ((port (open-input-string string)))
+    (let ((value (procedure port)))
+      (close-input-port port)
+      value)))
 
 (define (make-string-source string start end)
   (let ((index start))
