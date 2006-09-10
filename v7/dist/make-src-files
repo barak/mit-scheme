@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.24 2006/04/14 18:33:51 cph Exp $
+# $Id: make-src-files,v 1.25 2006/09/10 01:41:25 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
@@ -73,6 +73,7 @@ fi
     ${CVS} export "${TAG_FLAG}" "${TAG}" -d etc mit-scheme/etc/xscheme.el
 )
 
+find "${PREFIX}" -type d -name autom4te.cache | xargs rm -rf
 find "${PREFIX}" -type f -print | xargs chmod g-w
 find "${PREFIX}" -type d -print | xargs chmod g-w
 
