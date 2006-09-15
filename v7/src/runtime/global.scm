@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.73 2006/09/08 14:39:12 cph Exp $
+$Id: global.scm,v 14.74 2006/09/15 01:20:04 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2003,2004,2006 Massachusetts Institute of Technology
@@ -265,7 +265,7 @@ USA.
   (%encode-gc-type ((ucode-primitive object-gc-type 1) object)))
 
 (define (type-code->gc-type code)
-  (%encode-gc-type ((ucode-primitive type-code->gc-type 1) code)))
+  (%encode-gc-type ((ucode-primitive type->gc-type 1) code)))
 
 (define (%encode-gc-type t)
   (if (not (and (fix:fixnum? t)
