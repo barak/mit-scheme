@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.103 2006/08/02 16:27:09 riastradh Exp $
+$Id: make.scm,v 14.104 2006/09/15 01:23:11 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -402,7 +402,6 @@ USA.
    (RUNTIME APPLY)
    (RUNTIME HASH)			; First GC daemon!
    (RUNTIME PRIMITIVE-IO)
-   (RUNTIME SAVE/RESTORE)
    (RUNTIME SYSTEM-CLOCK)
    ((RUNTIME GC-FINALIZER) INITIALIZE-EVENTS! #t)
    ;; Basic data structures

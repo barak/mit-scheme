@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.593 2006/09/06 04:49:53 cph Exp $
+$Id: runtime.pkg,v 14.594 2006/09/15 01:23:19 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -3098,7 +3098,6 @@ USA.
   (export ()
 	  disk-restore
 	  disk-save
-	  dump-world
 	  identify-world)
   (export (runtime gc-daemons)
 	  *within-restore-window?*)

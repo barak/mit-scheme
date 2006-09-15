@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.45 2004/10/01 04:32:36 cph Exp $
+$Id: savres.scm,v 14.46 2006/09/15 01:23:27 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1995 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,7 +31,6 @@ USA.
 (declare (usual-integrations))
 
 ;;; (DISK-SAVE  filename #!optional identify)
-;;; (DUMP-WORLD filename #!optional identify)
 ;;; Saves a world image in FILENAME.  IDENTIFY has the following meaning:
 ;;;
 ;;;    [] Not supplied => ^G on restore (normal for saving band).
@@ -39,49 +38,17 @@ USA.
 ;;;    [] #F => Returns normally on restore; value is true iff restored.
 ;;;    [] Otherwise => Returns normally, running `event:after-restart'.
 ;;;
-;;; The image saved by DISK-SAVE does not include the "microcode", the
-;;; one saved by DUMP-WORLD does, and is an executable file.
+;;; The image saved by DISK-SAVE does not include the "microcode".
 
-(define (initialize-package!)
-  (set! disk-save (setup-image disk-save/kernel))
-  (set! dump-world (setup-image dump-world/kernel))
-  unspecific)
-
-(define disk-save)
-(define dump-world)
+(define world-id "Image")
+(define time-world-saved #f)
 (define *within-restore-window?* #f)
 
-(define (setup-image save-image)
-  (lambda (filename #!optional identify)
-    (let ((identify
-	   (if (default-object? identify) world-identification identify))
-	  (time (local-decoded-time)))
-      (gc-clean)
-      (save-image
-       filename
-       (lambda ()
-	 (set! time-world-saved time)
-	 (if (string? identify) unspecific #f))
-       (lambda ()
-	 (set! time-world-saved time)
-	 (fluid-let ((*within-restore-window?* #t))
-	   (event-distributor/invoke! event:after-restore))
-	 (start-thread-timer)
-	 (cond ((string? identify)
-		(set! world-identification identify)
-		(abort->top-level
-		 (lambda (cmdl)
-		   (if (not (cmdl/batch-mode? cmdl))
-		       (identify-world (cmdl/port cmdl)))
-		   (event-distributor/invoke! event:after-restart))))
-	       ((not identify)
-		#t)
-	       (else
-		(event-distributor/invoke! event:after-restart)
-		#t)))))))
-
-(define (disk-save/kernel filename after-suspend after-restore)
-  (let ((filename (->namestring (merge-pathnames filename))))
+(define (disk-save filename #!optional id)
+  (let ((filename (->namestring (merge-pathnames filename)))
+	(id (if (default-object? id) world-id id))
+	(time (local-decoded-time)))
+    (gc-clean)
     ((without-interrupts
       (lambda ()
 	(call-with-current-continuation
@@ -89,32 +56,42 @@ USA.
 	   ;; GC cannot be allowed before the fixed-objects-vector
 	   ;; is reset after restoring.
 	   (with-absolutely-no-interrupts
-	       (lambda ()
-		 (let ((fixed-objects (get-fixed-objects-vector)))
-		   ((ucode-primitive call-with-current-continuation)
-		    (lambda (restart)
-		      (with-interrupt-mask interrupt-mask/gc-ok
-			(lambda (interrupt-mask)
-			  interrupt-mask
-			  (gc-flip)
-			  (do ()
-			      (((ucode-primitive dump-band) restart filename))
-			    (with-simple-restart 'RETRY "Try again."
-			      (lambda ()
-				(error "Disk save failed:" filename))))
-			  (continuation after-suspend)))))
-		   ((ucode-primitive set-fixed-objects-vector!)
-		    fixed-objects))))
+	     (lambda ()
+	       (let ((fixed-objects (get-fixed-objects-vector)))
+		 ((ucode-primitive call-with-current-continuation)
+		  (lambda (restart)
+		    (with-interrupt-mask interrupt-mask/gc-ok
+		      (lambda (interrupt-mask)
+			interrupt-mask
+			(gc-flip)
+			(do ()
+			    (((ucode-primitive dump-band) restart filename))
+			  (with-simple-restart 'RETRY "Try again."
+			    (lambda ()
+			      (error "Disk save failed:" filename))))
+			(continuation
+			 (lambda ()
+			   (set! time-world-saved time)
+			   (if (string? id) unspecific #f)))))))
+		 ((ucode-primitive set-fixed-objects-vector!) fixed-objects))))
 	   (re-read-microcode-tables!)
-	   after-restore)))))))
-
-(define (dump-world/kernel filename after-suspend after-restore)
-  (gc-flip)
-  ((with-absolutely-no-interrupts
-    (lambda ()
-      (if ((ucode-primitive dump-world 1) filename)
-	  after-restore
-	  after-suspend)))))
+	   (lambda ()
+	     (set! time-world-saved time)
+	     (fluid-let ((*within-restore-window?* #t))
+	       (event-distributor/invoke! event:after-restore))
+	     (start-thread-timer)
+	     (cond ((string? id)
+		    (set! world-id id)
+		    (abort->top-level
+		     (lambda (cmdl)
+		       (if (not (cmdl/batch-mode? cmdl))
+			   (identify-world (cmdl/port cmdl)))
+		       (event-distributor/invoke! event:after-restart))))
+		   ((not id)
+		    #t)
+		   (else
+		    (event-distributor/invoke! event:after-restart)
+		    #t))))))))))
 
 (define (disk-restore #!optional filename)
   ;; Force order of events -- no need to run event:before-exit if
@@ -142,12 +119,6 @@ USA.
     (event-distributor/invoke! event:before-exit)
     ((ucode-primitive load-band) filename)))
 
-(define world-identification "Image")
-(define time-world-saved #f)
-(define license-statement
-  "This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
-
 (define (identify-world #!optional port)
   (let ((port
 	 (if (default-object? port)
@@ -162,7 +133,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
     (newline port)
     (if time-world-saved
 	(begin
-	  (write-string world-identification port)
+	  (write-string world-id port)
 	  (write-string " saved on " port)
 	  (write-string (decoded-time/date-string time-world-saved) port)
 	  (write-string " at " port)
@@ -176,3 +147,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
 			      "  "
 			      " || "
 			      "")))
+
+(define license-statement
+  "This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
