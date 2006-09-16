@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: configure,v 1.6 2003/02/14 18:28:00 cph Exp $
+# $Id: configure,v 1.7 2006/09/16 11:19:09 gjr Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright (c) 2000, 2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -45,8 +45,7 @@ if test ! -e machine; then
 	MACHINE=vax
 	;;
     * )
-	echo "Unable to determine machine type."
-	exit 1
+	MACHINE=C
 	;;
     esac
     ln -s machines/${MACHINE} machine

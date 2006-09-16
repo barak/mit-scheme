@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: makegen.scm,v 1.9 2006/06/10 05:24:54 cph Exp $
+$Id: makegen.scm,v 1.10 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 2000,2001,2003,2005,2006 Massachusetts Institute of Technology
 
@@ -99,6 +99,18 @@ USA.
 	((WRITE-DEPENDENCIES)
 	 (guarantee-nargs 0)
 	 (write-dependencies file-lists deps-filename output))
+	((WRITE-COMPILED)
+	 (guarantee-nargs 1)
+	 (let ((entry (assoc (cadr command) file-lists)))
+	   (if (not entry)
+	       (malformed))
+	   (write-items (append-map (lambda (entry)
+				      (map enough-namestring
+					   (directory-read entry)))
+				    (cdr entry))
+			column
+			output)
+	   0))
 	(else
 	 (error "Unknown command:" command)))))))
 
@@ -106,8 +118,10 @@ USA.
   (maybe-update-dependencies
    deps-filename
    (sort (append-map (lambda (file-list)
-		       (map (lambda (base) (string-append base ".c"))
-			    (cdr file-list)))
+		       (if (string=? (car file-list) "files-compiled")
+			   '()
+			   (map (lambda (base) (string-append base ".c"))
+				(cdr file-list))))
 		     file-lists)
      string<?))
   (call-with-input-file deps-filename

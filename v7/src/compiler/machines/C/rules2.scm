@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules2.scm,v 1.5 2003/02/14 18:28:02 cph Exp $
+$Id: rules2.scm,v 1.6 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1992, 1999 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -90,16 +90,16 @@ USA.
     (LAP)))
 
 (define-rule predicate
-  ;; Branch if virtual register contains the specified type number
+  ;; Branch if virtual register contains a legal index fixnum
   (PRED-1-ARG INDEX-FIXNUM?
 	      (REGISTER (? source)))
   (let ((source (standard-source! source 'ULONG)))
     (set-current-branches!
      (lambda (if-true-label)
-       (LAP "if (INDEX_FIXNUM_P" ,source ")\n\t  goto " ,if-true-label
+       (LAP "if (INDEX_FIXNUM_P (" ,source "))\n\t  goto " ,if-true-label
 	    ";\n\t"))
      (lambda (if-false-label)
-       (LAP "if (!(INDEX_FIXNUM_P" ,source "))\n\t  goto " ,if-false-label
+       (LAP "if (!(INDEX_FIXNUM_P (" ,source ")))\n\t  goto " ,if-false-label
 	    ";\n\t")))
     (LAP)))
 

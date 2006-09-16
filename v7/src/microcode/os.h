@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os.h,v 1.9 2003/02/14 18:28:22 cph Exp $
+$Id: os.h,v 1.10 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2000, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,6 +30,7 @@ USA.
 
 typedef unsigned int Tchannel;
 
+extern PTR EXFUN (OS_malloc_init, (unsigned int));
 extern PTR EXFUN (OS_malloc, (unsigned int));
 extern PTR EXFUN (OS_realloc, (PTR, unsigned int));
 extern void EXFUN (OS_free, (PTR));

@@ -1,9 +1,9 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.27 2005/08/22 01:15:07 cph Exp $
+$Id: ux.c,v 1.28 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1991,1992,1993,1996,1997,2000 Massachusetts Institute of Technology
-Copyright 2002,2003,2005 Massachusetts Institute of Technology
+Copyright 2002,2003,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -616,6 +616,17 @@ DEFUN (fpathconf, (filedes, parameter), int filedes AND int parameter)
 }
 #endif /* EMULATE_FPATHCONF */
 
+/* This is called during initialization, when the error system is not
+   set up.
+*/
+
+void *
+DEFUN (OS_malloc_init, (size), unsigned int size)
+{
+  void * result = (UX_malloc (size));
+  return (result);
+}
+
 void *
 DEFUN (OS_malloc, (size), unsigned int size)
 {

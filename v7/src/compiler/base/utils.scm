@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 4.30 2006/09/08 14:38:45 cph Exp $
+$Id: utils.scm,v 4.31 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1994,2001,2001,2003,2004,2006 Massachusetts Institute of Technology
@@ -187,11 +187,14 @@ USA.
   '|#[delay-lambda]|)
 
 (define (non-pointer-object? object)
-  ;; Use of OBJECT-NON-POINTER? appears to cause problems.
-  ;; This should be figured out when I have more time.  -- cph
+  ;; We can't use `object/non-pointer?' here because the C
+  ;; back-end requires more stringent constraints on fixnums.
+  ;; It may have other constraints on other types
   (or (object-type? (ucode-type false) object)
       (object-type? (ucode-type true) object)
-      (fix:fixnum? object)
+      (and (fix:fixnum? object)
+	   (fix:< object signed-fixnum/upper-limit)
+	   (not (fix:< object signed-fixnum/lower-limit)))
       (object-type? (ucode-type character) object)
       (object-type? (ucode-type unassigned) object)
       (object-type? (ucode-type the-environment) object)

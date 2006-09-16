@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: tterm.c,v 1.16 2003/02/14 18:28:24 cph Exp $
+$Id: tterm.c,v 1.17 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1990-2002 Massachusetts Institute of Technology
+Copyright (c) 1990-2002, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -112,6 +112,9 @@ DEFINE_PRIMITIVE ("TERMCAP-PARAM-STRING", Prim_termcap_param_string, 5, 5, 0)
   PRIMITIVE_HEADER (5);
   {
     char s [4096];
+#if defined(__netbsd__)
+    PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) NULL));
+#else
     (void) tparam
       ((STRING_ARG (1)), s, (sizeof (s)),
        (arg_nonnegative_integer (2)),
@@ -119,6 +122,7 @@ DEFINE_PRIMITIVE ("TERMCAP-PARAM-STRING", Prim_termcap_param_string, 5, 5, 0)
        (arg_nonnegative_integer (4)),
        (arg_nonnegative_integer (5)));
     PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) s));
+#endif
   }
 }
 

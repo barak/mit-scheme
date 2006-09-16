@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.29 2006/06/10 05:38:02 cph Exp $
+# $Id: Makefile.in.in,v 1.30 2006/09/16 11:19:09 gjr Exp $
 #
 # Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
@@ -60,6 +60,20 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
+# **** C back end stuff (I) ****
+
+COMPILED_DEFS = @COMPILED_DEFS@
+
+COMPILED_SOURCES = @(write-compiled "files-compiled")@
+
+COMPILED_OBJECTS = $(COMPILED_SOURCES:.c=.o)
+
+COMPILED_SOURCES_1 = @COMPILED_SOURCES_1@
+
+COMPILED_OBJECTS_1 = @COMPILED_OBJECTS_1@
+
+# **** End C back end stuff (I) ***
+
 # **** Tool configuration ****
 
 AUXDIR = $(libdir)/mit-scheme
@@ -71,7 +85,7 @@ TAR = tar
 GZIP_ENV = --best
 
 DEFS = -DMIT_SCHEME -DDEFAULT_LIBRARY_PATH=\"$(AUXDIR)\" @DEFS@ \
-       @SCHEME_DEFS@ -I. -I$(srcdir) -I.
+	$(COMPILED_DEFS) @SCHEME_DEFS@ -I. -I$(srcdir) -I.
 CFLAGS = @CFLAGS@
 X_CFLAGS = @X_CFLAGS@
 CPPFLAGS = @CPPFLAGS@
@@ -89,8 +103,8 @@ ASSEMBLE = $(AS) $(AS_FLAGS)
 # **** Configured files ****
 
 GC_HEAD_FILES = @GC_HEAD_FILES@
-OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
-OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@
+OPTIONAL_SOURCES = @OPTIONAL_SOURCES@ $(COMPILED_SOURCES_1)
+OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@ $(COMPILED_OBJECTS_1)
 STATIC_LIBS = @STATIC_PREFIX@ @STATIC_LIBS@ @STATIC_SUFFIX@
 X_LIBS = @X_PRE_LIBS@ @LIB_X11@ @X_EXTRA_LIBS@
 PRBFISH_LIBS = @PRBFISH_LIBS@
@@ -182,7 +196,7 @@ MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c bchdef.c
 CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 
 DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
-	cmpauxmd.m4 cmpintmd.h TAGS makegen-cc
+	cmpauxmd.m4 cmpauxmd.c cmpintmd.h TAGS makegen-cc
 
 MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps config.h.in configure
 
@@ -192,7 +206,7 @@ MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps config.h.in configure
 .SUFFIXES: .c .o .s .m4
 
 .c.o:
-	$(COMPILE) -c $*.c
+	$(COMPILE) -o $*.o -c $*.c
 
 .m4.s:
 	$(EXPAND) $*.m4 > $*.s
@@ -210,7 +224,7 @@ scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
 	-rm -f $@
 	$(LINK) $(scheme_LDFLAGS) $(scheme_OBJECTS) $(scheme_LIBS)
 
-usrdef.c: $(SHARED_SOURCES) $(STD_GC_SOURCES) findprim
+usrdef.c: $(SHARED_SOURCES) $(STD_GC_SOURCES) findprim Makefile
 	-rm -f $@
 	./findprim $(SHARED_SOURCES) $(STD_GC_SOURCES) > usrdef.c
 
@@ -218,7 +232,7 @@ bchscheme: $(bchscheme_OBJECTS) $(bchscheme_DEPENDENCIES)
 	-rm -f $@
 	$(LINK) $(bchscheme_LDFLAGS) $(bchscheme_OBJECTS) $(bchscheme_LIBS)
 
-bchdef.c: $(SHARED_SOURCES) $(BCH_GC_SOURCES) findprim
+bchdef.c: $(SHARED_SOURCES) $(BCH_GC_SOURCES) findprim Makefile
 	-rm -f $@
 	./findprim $(SHARED_SOURCES) $(BCH_GC_SOURCES) > bchdef.c
 
@@ -336,6 +350,53 @@ install-auxDATA: $(aux_DATA)
 # **** File dependencies ****
 
 @(write-dependencies)@
+
+# **** C back end stuff (II) ****
+
+@CMPAUXMDO@ : cmpauxmd.c liarc.tch prims.h bignum.h bitstr.h avltree.h \
+	outf.h extern.h
+
+compinit.o : compinit.c compinit.h liarc.tch
+
+unstackify.o: unstackify.c stackops.h liarc.tch
+
+LIARC_HEAD_FILES = \
+ansidecl.h \
+config.h \
+dstack.h \
+default.h \
+object.h \
+sdata.h \
+types.h \
+errors.h \
+const.h \
+interp.h \
+prim.h \
+trap.h \
+outf.h \
+extern.h \
+$(GC_HEAD_FILES)
+
+#/* The following includes liarc.tch in case COMPILED_SOURCES is empty,
+#   to prevent fgrep from reading stdin.
+# */
+compinit.h : $(COMPILED_SOURCES) liarc.tch Makefile
+	@echo "#*** Generating" $@ "because of" $?
+	rm -f $@
+	grep -E \^DECLARE_COMPILED_CODE liarc.tch $(COMPILED_SOURCES) | \
+	sed -e 's/.*:/  /' -e 's/)/);/' > $@
+	grep -E \^DECLARE_COMPILED_DATA liarc.tch $(COMPILED_SOURCES) | \
+	sed -e 's/.*:/  /' -e 's/)/);/' >> $@
+	grep -E \^DECLARE_DATA_OBJECT liarc.tch $(COMPILED_SOURCES) | \
+	sed -e 's/.*:/  /' -e 's/)/);/' >> $@
+
+foo $(COMPILED_OBJECTS) : liarc.tch
+liarc.tch: liarc.h $(LIARC_HEAD_FILES)
+	@echo "#** Generating" $@ because of $?
+	rm -f $@
+	echo "touch" > $@
+
+# **** End C back end stuff (II) ***
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

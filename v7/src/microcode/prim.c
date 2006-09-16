@@ -1,9 +1,9 @@
 /* -*-C-*-
 
-$Id: prim.c,v 9.45 2005/07/01 19:38:39 cph Exp $
+$Id: prim.c,v 9.46 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1986,1987,1988,1989,1992,1993 Massachusetts Institute of Technology
-Copyright 1996,2004,2005 Massachusetts Institute of Technology
+Copyright 1996,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -98,7 +98,8 @@ Return the object datum corresponding to ADDRESS.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (ulong_to_integer (ADDRESS_TO_DATUM (arg_ulong_integer (1))));
+    (ulong_to_integer
+     (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) (arg_ulong_integer (1)))));
 }
 
 DEFINE_PRIMITIVE ("MAKE-NON-POINTER-OBJECT", Prim_make_non_ptr_object, 1, 1,

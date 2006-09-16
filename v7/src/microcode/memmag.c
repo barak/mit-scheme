@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.71 2003/02/14 18:28:20 cph Exp $
+$Id: memmag.c,v 9.72 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1987-2000, 2002 Massachusetts Institute of Technology
+Copyright (c) 1987-2000, 2002, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,6 +40,7 @@ USA.
 #include "prims.h"
 #include "memmag.h"
 #include "gccode.h"
+#include "os.h"
 
 /* Imports */
 

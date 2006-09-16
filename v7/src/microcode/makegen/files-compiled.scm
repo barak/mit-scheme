@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.6 2006/09/16 11:19:09 gjr Exp $
+$Id: files-compiled.scm,v 1.1 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1992, 1999, 2006 Massachusetts Institute of Technology
+Copyright (c) 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,20 +23,19 @@ USA.
 
 |#
 
-;;;; Compiler: System Construction
+;;;; Unix-specific C files.
 
-(declare (usual-integrations))
-
-(begin
-  (declare-shared-library "sf+compiler" (lambda () true))
-  (let ((value ((load "base/make")
-		(string-append "C/" microcode-id/machine-type))))
-    (set! (access compiler:compress-top-level? (->environment '(compiler)))
-	  true)
-    (set! (access compiler:compile-data-files-as-expressions?
-		  (->environment '(compiler top-level)))
-	  false)
-    (set! (access compiler:fggen-unmap-reference-traps-early?
-		  (->environment '(compiler fg-generator)))
-	  false)
-    value))
+"utabmd.c"
+"../runtime/*.c"
+"../sf/*.c"
+"../cref/*.c"
+"../compiler/*.c"
+"../compiler/back/*.c"
+"../compiler/base/*.c"
+"../compiler/fggen/*.c"
+"../compiler/fgopt/*.c"
+"../compiler/machines/C/*.c"
+"../compiler/rtlbase/*.c"
+"../compiler/rtlgen/*.c"
+"../compiler/rtlopt/*.c"
+"../star-parser/*.c"

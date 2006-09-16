@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: utabmd.scm,v 9.88 2005/04/16 03:12:24 cph Exp $
+$Id: utabmd.scm,v 9.89 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
-Copyright 1993,1994,2001,2002,2005 Massachusetts Institute of Technology
+Copyright 1993,1994,2001,2002,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -607,8 +607,9 @@ USA.
 	       OS-NAME-STRING			;08
 	       OS-VARIANT-STRING		;09
 	       STACK-TYPE-STRING		;0A
+	       MACHINE-TYPE-STRING		;0B
 	       ))
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.88 2005/04/16 03:12:24 cph Exp $"
+"$Id: utabmd.scm,v 9.89 2006/09/16 11:19:09 gjr Exp $"

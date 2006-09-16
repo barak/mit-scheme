@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.15 2003/02/14 18:28:02 cph Exp $
+$Id: ctop.scm,v 1.16 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,11 +32,12 @@ USA.
 
 (define compiled-output-extension "c")
 (define compiler:invoke-c-compiler? true)
-(define compiler:c-compiler-name "cc")
+(define compiler:invoke-verbose? true)
+(define compiler:c-compiler-name #f)
 (define compiler:c-compiler-switches 'UNKNOWN)
-(define compiler:c-linker-name 'UNKNOWN)
+(define compiler:c-linker-name #f)
 (define compiler:c-linker-switches 'UNKNOWN)
-(define compiler:c-linker-output-extension 'UNKNOWN)
+(define compiler:c-linker-output-extension #f)
 
 (define (compiler-file-output object pathname)
   (let ((pair (vector-ref object 1)))
@@ -44,6 +45,11 @@ USA.
       (lambda (port)
 	(write-string (cdr pair) port)))
     (if compiler:invoke-c-compiler? (c-compile pathname))))
+
+(define (compile-data-from-file obj pathname)
+  (let ((res (stringify-data obj (merge-pathnames pathname))))
+    ;; Make output palatable to compiler-file-output
+    (vector #f (cons #f res))))
 
 (define (compiler-output->procedure compiler-output environment)
   (finish-c-compilation
@@ -114,59 +120,108 @@ USA.
 		       ;; (c-output-extension)
 		       ))))))
 
-(define (c-compile pathname)
-  ;; Some c compilers do not leave the output file in the same place.
-  (with-working-directory-pathname
-    (directory-pathname pathname)
-    (lambda ()
-      (fluid-let ((*call/cc-c-compiler* compiler:c-compiler-name)
-		  (*call/cc-warn?* false))
-	(let ((source (enough-namestring pathname))
-	      (object (enough-namestring (pathname-new-type pathname "o")))
-	      (call/cc*
-	       (lambda (l)
-		 (let ((result (apply call/cc l)))
-		   #|
-		   ;; Some C compilers always fail
-		   (if (not (zero? result))
-		       (error "compiler: C compiler/linker failed"))
-		   |#
-		   result))))
-	  (if compiler:noisy?
-	      (begin
-		(newline)
-		(display ";Compiling ")
-		(display source)))
-	  (call/cc* (append (c-compiler-switches) (list source)))
-	  (set! *call/cc-c-compiler* (c-linker-name))
-	  (if compiler:noisy?
-	      (begin
-		(newline)
-		(display ";Linking ")
-		(display object)))
-	  (call/cc* (append (list "-o")
-			    (list
-			     (enough-namestring
-			      (pathname-new-type pathname
-						 (c-output-extension))))
-			    (c-linker-switches)
-			    (list object)))
-	  (delete-file object))))))
+(define (list->command-line l)
+  (let ((l (reverse l)))
+    (if (null? l)
+	""
+	(let loop ((res (car l))
+		   (l (cdr l)))
+	  (if (null? l)
+	      res
+	      (loop (string-append (car l) " " res)
+		    (cdr l)))))))  
 
-(define (c-output-extension)
-  (cond ((not (eq? compiler:c-linker-output-extension 'UNKNOWN))
-	 compiler:c-linker-output-extension)
-	((assoc microcode-id/operating-system-variant
-		c-compiler-switch-table)
-	 => (lambda (place)
-	      (set! compiler:c-linker-output-extension (cadr place))
-	      (cadr place)))
-	(else
-	 (error "c-output-extension: Unknown OS"
-		microcode-id/operating-system-variant))))
-
+(define (c-compile pathname)
+  (let ((source (enough-namestring pathname))
+	(object (enough-namestring (pathname-new-type pathname "o")))
+	(call-program*
+	 (lambda (l)
+	   (let ((command-line (list->command-line l)))
+	     (if compiler:invoke-verbose?
+		 (begin
+		   (newline)
+		   (write-string ";Executing \"")
+		   (write-string command-line)
+		   (write-string "\"")))
+	     (let ((result ((ucode-primitive system) command-line)))
+					#|
+	       ;; Some C compilers always fail
+	       (if (not (zero? result))
+		   (error "compiler: C compiler/linker failed"))
+	       |#
+	       result)))))
+    (if compiler:noisy?
+	(begin
+	  (newline)
+	  (display ";Compiling ")
+	  (display source)))
+    (call-program* (cons (c-compiler-name)
+			 (append (c-compiler-switches)
+				 (cons*
+				  "-o"
+				  object
+				  (list source)))))
+    (if compiler:noisy?
+	(begin
+	  (newline)
+	  (display ";Linking ")
+	  (display object)))
+    (call-program*
+     (cons (c-linker-name)
+	   (append (list "-o")
+		   (list
+		    (enough-namestring
+		     (pathname-new-type pathname
+					(c-output-extension))))
+		   (c-linker-switches)
+		   (list object))))
+    (delete-file object)))
+
 (define c-compiler-switch-table
-  `(("AIX"
+  `(
+    ;; 32-bit PowerPC MacOSX
+    ("MacOSX"				; "MacOSX-PowerPC-32"
+     "dylib"
+     ("-g" "-O2" "-fno-common" "-DPIC" "-c")
+     ("-dynamiclib" "-flat_namespace" "-undefined" "suppress")
+     "cc"
+     "ld")
+    ;; 64-bit PowerPC MacOSX
+    ("MacOSX-PowerPC-64"
+     "dylib"
+     ("-m64" "-g" "-O2" "-fno-common" "-DPIC" "-c")
+     ("-m64" "-dynamiclib" "-flat_namespace" "-undefined" "suppress")
+     "gcc-4.0"
+     "ld")
+    ;; 32-bit i386 Linux
+    ("GNU/Linux"			; "GNU/Linux-IA-32"
+     "so"
+     ("-m32" "-g" "-O2" "-fPIC" "-c")
+     ("-m32" "-shared")
+     "cc"
+     "ld")
+    ;; 64-bit x86_64 Linux
+    ("GNU/Linux-x86-64"
+     "so"
+     ("-m64" "-g" "-O2" "-fPIC" "-c")
+     ("-m64" "-shared")
+     "cc"
+     "ld")
+    ("GNU/Linux-ia64"
+     "so"
+     ("-g" "-O2" "-fPIC" "-c")
+     ("-shared")
+     "cc"
+     "ld")
+    ("NETBSD-x86-64"
+     "so"
+     ("-g" "-O2" "-fPIC" "-c")
+     ("-shared")
+     "cc"
+     "ld")
+    #|
+    ;; All the following are old stuff that probably no longer works
+    ("AIX"
      "so"
      ("-c" "-O" "-D_AIX")
      ,(lambda (dir)
@@ -175,73 +230,100 @@ USA.
 			     (->namestring (merge-pathnames dir "liarc.exp")))
 	      (string-append "-bI:"
 			     (->namestring (merge-pathnames dir "scheme.imp")))
-	      "-edload_initialize_file")))
+	      "-edload_initialize_file"))
+     
+     "cc"
+     "cc")
     ("HP-UX"
      "sl"
      ("-c" "+z" "-O" "-Ae" "-D_HPUX")
-     ("-b"))
+     ("-b")
+     "cc"
+     "ld")
     ("OSF"
      "so"
      ("-c" "-std1" "-O")
-     ("-shared" "-expect_unresolved" "'*'"))
+     ("-shared" "-expect_unresolved" "'*'")
+     "cc"
+     "ld")
     ("SunOS"
      "so"
      ("-c" "-pic" "-O" "-Dsun4" "-D_SUNOS4" "-w")
-     ())))
+     ()
+     "cc"
+     "ld")
+    |#
+    ))
+
+(define (find-switches fail-name)
+  (or (assoc (string-append microcode-id/operating-system-variant
+			    "-"
+			    microcode-id/machine-type)
+	     c-compiler-switch-table)
+      (assoc microcode-id/operating-system-variant
+	     c-compiler-switch-table)
+      (and fail-name
+	   (error fail-name "Unknown OS/machine"))))
+
+(define (c-output-extension)
+  (or compiler:c-linker-output-extension
+      (let ((new (list-ref (find-switches 'c-output-extension) 1)))
+	(set! compiler:c-linker-output-extension new)
+	new)))
+
+(define (c-compiler-name)
+  (or compiler:c-linker-name
+      (let ((new (let ((place (find-switches #f)))
+		   (if place
+		       (list-ref place 4)
+		       "cc"))))
+	(set! compiler:c-linker-name new)
+	new)))
 
 (define (c-compiler-switches)
   (if (not (eq? compiler:c-compiler-switches 'UNKNOWN))
       compiler:c-compiler-switches
-      (let ((place (assoc microcode-id/operating-system-variant
-			  c-compiler-switch-table))
+      (let ((place (find-switches 'c-compiler-switches))
 	    (dir (system-library-directory-pathname "include")))
-	(cond ((not place)
-	       (error 'c-compiler-switches "Unknown OS"
-		      microcode-id/operating-system-variant))
-	      ((not dir)
-	       (error 'c-compiler-switches
-		      "Cannot find \"include\" directory"))
-	      (else
-	       (let ((result
-		      (append
-		       (caddr place)
-		       (list
-			(string-append
-			 "-I"
-			 (->namestring
-			  (directory-pathname-as-file dir)))))))
-		 (set! compiler:c-compiler-switches result)
-		 result))))))
-
+	(if (not dir)
+	    (error 'c-compiler-switches
+		   "Cannot find \"include\" directory")
+	    (let ((result
+		   (append
+		    (list-ref place 2)
+		    (list
+		     (string-append
+		      "-I"
+		      (->namestring
+		       (directory-pathname-as-file dir)))))))
+	      (set! compiler:c-compiler-switches result)
+	      result)))))
+
 (define (c-linker-name)
-  (if (not (eq? compiler:c-linker-name 'UNKNOWN))
-      compiler:c-linker-name
-      (let ((new (if (string=? "AIX" microcode-id/operating-system-variant)
-		     "cc"
-		     "ld")))
+  (or compiler:c-linker-name
+      (let ((new (let ((place (find-switches #f)))
+		   (if place
+		       (list-ref place 5)
+		       "ld"))))
 	(set! compiler:c-linker-name new)
 	new)))
 
 (define (c-linker-switches)
-  (cond ((not (eq? compiler:c-linker-switches 'UNKNOWN))
-	 compiler:c-linker-switches)
-	((assoc microcode-id/operating-system-variant c-compiler-switch-table)
-	 => (lambda (place)
-	      (let ((switches
-		     (let ((switches (cadddr place)))
-		       (if (not (scode/procedure? switches))
-			   switches
-			   (let ((dir (system-library-directory-pathname
-				       "include")))
-			     (if (not dir)
-				 (error 'c-linker-switches
-					"Cannot find \"include\" directory"))
-			     (switches dir))))))
-		(set! compiler:c-linker-switches switches)
-		switches)))
-	(else
-	 (error 'c-linker-switches "Unknown OS"
-		microcode-id/operating-system-variant))))
+  (if (not (eq? compiler:c-linker-switches 'UNKNOWN))
+      compiler:c-linker-switches
+      (let* ((place (find-switches 'c-linker-switches))
+	     (switches
+	      (let ((switches (list-ref place 3)))
+		(if (not (procedure? switches))
+		    switches
+		    (let ((dir (system-library-directory-pathname
+				"include")))
+		      (if (not dir)
+			  (error 'c-linker-switches
+				 "Cannot find \"include\" directory"))
+		      (switches dir))))))
+	(set! compiler:c-linker-switches switches)
+	switches)))
 
 (define (recursive-compilation-results)
   (sort *recursive-compilation-results*
@@ -252,6 +334,7 @@ USA.
 ;; Global variables for assembler and linker
 
 (define *recursive-compilation-results*)
+(define *shared-namestring*)
 
 ;; First set: phase/rtl-generation
 ;; Last used: phase/link
@@ -280,6 +363,7 @@ USA.
 (define *ntags*)
 (define *labels*)
 (define *code*)
+(define *proxy*)
 
 ;; First set: phase/output-generation
 (define *result*)
@@ -299,7 +383,8 @@ USA.
        ,@some-lap))
 
 (define (bind-assembler&linker-top-level-variables thunk)
-  (fluid-let ((*recursive-compilation-results* '()))
+  (fluid-let ((*recursive-compilation-results* '())
+	      (*shared-namestring* #f))
     (thunk)))
 
 (define (bind-assembler&linker-variables thunk)
@@ -327,7 +412,8 @@ USA.
 	      (*C-data-name*)
 	      (*ntags*)
 	      (*labels*)
-	      (*code*))
+	      (*code*)
+	      (*proxy*))
     (thunk)))
 
 (define (assembler&linker-reset!)
@@ -357,6 +443,7 @@ USA.
   (set! *ntags*)
   (set! *labels*)
   (set! *code*)
+  (set! *proxy*)
   unspecific)
 
 (define (initialize-back-end!)
@@ -408,12 +495,13 @@ USA.
 		       (cons "foo.bar" *recursive-compilation-number*)))
 		  (else
 		   pathname))))
-       (lambda (code-name data-name ntags labels code)
+       (lambda (code-name data-name ntags labels code proxy)
 	 (set! *C-code-name* code-name)
 	 (set! *C-data-name* data-name)
 	 (set! *ntags* ntags)
 	 (set! *labels* labels)
 	 (set! *code* code)
+	 (set! *proxy* proxy)
 	 unspecific)))))
 
 (define (phase/output-generation)
@@ -434,19 +522,22 @@ USA.
 		      (translate-label (vector-ref linking-info index))))
 		   (index *recursive-compilation-number*)
 		   (name (fake-compiled-block-name index)))
-	      (cons (make-fake-compiled-procedure
-		     name
-		     (translate-label *entry-label*))
-		    (vector
+	      (let ((fcb
 		     (make-fake-compiled-block name
-					       *C-code-name*
-					       *C-data-name*
-					       *code*
+					       *C-code-name* ; tag
+					       *C-code-name* ; c-proc
+					       *C-data-name* ; d-proc
+					       *code* 	     ; c-code
 					       index
-					       *ntags*)
-		     (translate-symbol 0)
-		     (translate-symbol 1)
-		     (translate-symbol 2))))
+					       *ntags*
+					       *proxy*))
+		    (lab (translate-label *entry-label*)))
+		(cons (make-fake-compiled-procedure name lab fcb lab)
+		      (vector
+		       fcb
+		       (translate-symbol 0)
+		       (translate-symbol 1)
+		       (translate-symbol 2)))))
 	    (cons *C-code-name*
 		  *code*)))
 
@@ -458,6 +549,7 @@ USA.
 	(set! *entry-label*)
 	(set! *ic-procedure-headers*)
 	(set! *code*)
+	(set! *proxy*)
 	unspecific)))
 
 (define (phase/info-generation-2 labels pathname)

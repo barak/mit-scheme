@@ -1,9 +1,9 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.41 2005/06/27 06:03:36 cph Exp $
+$Id: uxtrap.c,v 1.42 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1990,1991,1992,1993,1995,1997 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003,2005 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,6 +35,10 @@ USA.
 #  include "gccode.h"
 #  if defined(HAVE_SIGCONTEXT) && !defined(USE_STACKLETS)
 #    define ENABLE_TRAP_RECOVERY 1
+#  endif
+   /* FIXME: Support ppc, ppc64, x86_64, and ia64 */
+#  if defined(__ppc__) || defined(__ppc64__) || defined(__x86_64__) || defined(__ia64__)
+#    undef ENABLE_TRAP_RECOVERY
 #  endif
 #endif
 
@@ -316,6 +320,8 @@ DEFUN (trap_handler, (message, signo, info, scp),
     }
 }
 
+#define PC_ALIGNED_P(pc) ((((unsigned long) (pc)) & PC_ALIGNMENT_MASK) == 0)
+
 #ifdef ENABLE_TRAP_RECOVERY
 
 /* Heuristic recovery from Unix signals (traps).
@@ -334,8 +340,6 @@ DEFUN (trap_handler, (message, signo, info, scp),
 
 #define ALIGNED_P(addr)							\
   ((((unsigned long) (addr)) & SCHEME_ALIGNMENT_MASK) == 0)
-
-#define PC_ALIGNED_P(pc) ((((unsigned long) (pc)) & PC_ALIGNMENT_MASK) == 0)
 
 #define SET_RECOVERY_INFO(s, arg1, arg2) do				\
 {									\

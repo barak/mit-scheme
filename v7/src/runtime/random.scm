@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.37 2005/08/10 18:16:59 cph Exp $
+$Id: random.scm,v 14.38 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1988,1989,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2003,2004 Massachusetts Institute of Technology
-Copyright 2005 Massachusetts Institute of Technology
+Copyright 2005, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -402,7 +402,7 @@ USA.
   unspecific)
 
 (define (finalize-random-state-type!)
-  (add-event-receiver! event:after-restore
+  (add-event-receiver! event:after-restart
     (lambda ()
       (random-source-randomize! *random-state*)
       (if (not (eq? default-random-source *random-state*))

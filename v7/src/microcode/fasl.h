@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasl.h,v 9.40 2003/02/14 18:28:18 cph Exp $
+$Id: fasl.h,v 9.41 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,7 +30,11 @@ USA.
 
 /* FASL Version */
 
-#define FASL_FILE_MARKER	0xFAFAFAFA
+#if (SIZEOF_UNSIGNED_LONG == 8)
+#define FASL_FILE_MARKER	0xFAFAFAFAFAFAFAFAULL
+#else
+#define FASL_FILE_MARKER	0xFAFAFAFAUL
+#endif
 
 /* The FASL file has a header which begins as follows: */
 

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.73 2004/12/06 21:33:30 cph Exp $
+$Id: opncod.scm,v 4.74 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
-Copyright 1993,1997,1998,2001,2004 Massachusetts Institute of Technology
+Copyright 1993,1997,1998,2001,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -386,6 +386,24 @@ USA.
       (if-test
        (pcfg/prefer-consequent!
 	(rtl:make-type-test (rtl:make-object->type expression) type)))))
+
+;; The C back end can't use generate-type-test for this because
+;; fixnums in the running system (e.g. 64 bits) may be too wide for
+;; the portable C output (which assumes no more than 32 bits)
+;; Important: This is only used by the open coded generic arithmetic.
+
+(define (generate-fixnum-test expression if-false if-true if-test)
+  (if (rtl:constant? expression)
+      (if (let ((value (rtl:constant-value expression)))
+	    (and (fix:fixnum? value)
+		 (fix:< value signed-fixnum/upper-limit)
+		 (not (fix:< value signed-fixnum/lower-limit))))
+	  (if-true)
+	  (if-false))
+      (if-test
+       (pcfg/prefer-consequent!
+	(rtl:make-type-test (rtl:make-object->type expression)
+			    (ucode-type fixnum))))))
 
 ;; A bunch of these directly use the open coding for fixnum arithmetic.
 ;; This is not reasonable since the port may not include such open codings.
@@ -1427,7 +1445,7 @@ USA.
 		(generic-default generic-op combination expressions
 				 false finish)))
 	   (let ((give-it-up (give-it-up)))
-	     (generate-binary-type-test (ucode-type fixnum) op1 op2
+	     (generate-binary-fixnum-test op1 op2
 	       (lambda ()
 		 give-it-up)
 	       (lambda ()
@@ -1452,7 +1470,7 @@ USA.
        (lambda (combination expressions predicate? finish)
 	 (let ((op1 (car expressions))
 	       (op2 (cadr expressions)))
-	   (generate-binary-type-test (ucode-type fixnum) op1 op2
+	   (generate-binary-fixnum-test op1 op2
 	     (generic-default generic-op combination expressions predicate?
 			      finish)
 	     (lambda ()
@@ -1467,17 +1485,17 @@ USA.
      '(0 1)
      true)))
 
-(define (generate-binary-type-test type op1 op2 give-it-up do-it)
-  (generate-type-test type op1
+(define (generate-binary-fixnum-test op1 op2 give-it-up do-it)
+  (generate-fixnum-test op1
     give-it-up
     (lambda ()
-      (generate-type-test type op2
+      (generate-fixnum-test op2
 	give-it-up
 	do-it
 	(lambda (test)
 	  (pcfg*scfg->scfg! test (do-it) (give-it-up)))))
     (lambda (test)
-      (generate-type-test type op2
+      (generate-fixnum-test op2
 	give-it-up
 	(lambda ()
 	  (pcfg*scfg->scfg! test (do-it) (give-it-up)))
@@ -1496,7 +1514,7 @@ USA.
 	   (let ((give-it-up
 		  ((generic-default generic-op combination expressions
 				    false finish))))
-	     (generate-unary-type-test (ucode-type fixnum) op
+	     (generate-unary-fixnum-test op
 	       (lambda ()
 		 give-it-up)
 	       (lambda ()
@@ -1519,7 +1537,7 @@ USA.
      (let ((fix-op (generic->fixnum-op generic-op)))
        (lambda (combination expressions predicate? finish)
 	 (let ((op (car expressions)))
-	   (generate-unary-type-test (ucode-type fixnum) op
+	   (generate-unary-fixnum-test op
 	     (generic-default generic-op combination expressions predicate?
 			      finish)
 	     (lambda ()
@@ -1530,8 +1548,8 @@ USA.
      '(0)
      true)))
 
-(define (generate-unary-type-test type op give-it-up do-it)
-  (generate-type-test type op
+(define (generate-unary-fixnum-test op give-it-up do-it)
+  (generate-fixnum-test op
     give-it-up
     do-it
     (lambda (test)

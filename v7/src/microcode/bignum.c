@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.52 2004/10/17 21:35:40 cph Exp $
+$Id: bignum.c,v 9.53 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1996,1997,2000 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -679,7 +679,7 @@ DEFUN (bignum_to_double, (bignum), bignum_type bignum)
 	if (current_digit_bit_count == BIGNUM_DIGIT_LENGTH) {
 	  if (index == 0) /* there is no guard bit */
 	    goto finished;
-	  guard_bit_mask = (1 << (BIGNUM_DIGIT_LENGTH - 1));
+	  guard_bit_mask = (1UL << (BIGNUM_DIGIT_LENGTH - 1));
 	  rounding_correction = 1;
 	  index -= 1;
 	} else {

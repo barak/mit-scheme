@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.6 2003/02/14 18:28:02 cph Exp $
+$Id: rulrew.scm,v 1.7 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -137,7 +137,7 @@ USA.
 
 (define (rtl:constant-fixnum? expression)
   (and (rtl:constant? expression)
-       (fix:fixnum? (rtl:constant-value expression))))
+       (signed-fixnum? (rtl:constant-value expression))))
 
 (define-rule rewriting
   (FLOAT-OFFSET (REGISTER (? base register-known-value))

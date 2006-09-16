@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: confshared.h,v 11.8 2005/07/24 05:21:11 cph Exp $
+$Id: confshared.h,v 11.9 2006/09/16 11:19:09 gjr Exp $
 
-Copyright 2000,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2002,2003,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -123,6 +123,10 @@ typedef unsigned long SCHEME_OBJECT;
 #define FASL_APOLLO_PRISM	17
 #define FASL_ALPHA		18
 #define FASL_RS6000		19
+#define FASL_PPC32		20
+#define FASL_X86_64		21
+#define FASL_PPC64		22
+#define FASL_IA64		23
 
 #ifdef vax
 
@@ -130,7 +134,6 @@ typedef unsigned long SCHEME_OBJECT;
 
 #define MACHINE_TYPE		"vax"
 #define FASL_INTERNAL_FORMAT	FASL_VAX
-#define TYPE_CODE_LENGTH	6
 #define HEAP_IN_LOW_MEMORY
 
 /* Not on these, however */
@@ -189,7 +192,6 @@ typedef unsigned long SCHEME_OBJECT;
 #define MACHINE_TYPE		"hp9000s800"
 #endif
 #define FASL_INTERNAL_FORMAT	FASL_HP_SPECTRUM
-#define TYPE_CODE_LENGTH	6
 #define FLOATING_ALIGNMENT	0x7
 
 /* Heap resides in data space, pointed at by space register 5.
@@ -239,7 +241,6 @@ typedef unsigned long SCHEME_OBJECT;
 #define FASL_INTERNAL_FORMAT	FASL_68020
 #endif
 #define HEAP_IN_LOW_MEMORY
-#define TYPE_CODE_LENGTH	6
 
 #endif /* hp9000s300 */
 
@@ -270,7 +271,6 @@ typedef unsigned long SCHEME_OBJECT;
 #ifdef sun3
 #  define MACHINE_TYPE		"sun3"
 #  define FASL_INTERNAL_FORMAT	FASL_68020
-#  define TYPE_CODE_LENGTH	6
 #  define HEAP_IN_LOW_MEMORY
 #  define HAVE_DOUBLE_TO_LONG_BUG
 #endif
@@ -285,7 +285,6 @@ typedef unsigned long SCHEME_OBJECT;
 #ifdef NeXT
 #  define MACHINE_TYPE		"next"
 #  define FASL_INTERNAL_FORMAT	FASL_68020
-#  define TYPE_CODE_LENGTH	6
 #  define HEAP_IN_LOW_MEMORY
 #endif
 
@@ -297,7 +296,6 @@ typedef unsigned long SCHEME_OBJECT;
 
 #define FASL_INTERNAL_FORMAT	FASL_IA32
 #define HEAP_IN_LOW_MEMORY
-#define TYPE_CODE_LENGTH	6
 
 #ifdef sequent
 #  define MACHINE_TYPE		"sequent386"
@@ -311,13 +309,16 @@ typedef unsigned long SCHEME_OBJECT;
 #  define MACHINE_TYPE		"IA-32"
 #endif
 
+#ifdef NATIVE_CODE_IS_C
+#undef HEAP_IN_LOW_MEMORY
+#endif
+
 #endif /* __IA32__ */
 
 #ifdef mips
 
 #define MACHINE_TYPE		"mips"
 #define FASL_INTERNAL_FORMAT	FASL_MIPS
-#define TYPE_CODE_LENGTH	6
 #define FLOATING_ALIGNMENT   	0x7
 
 #if defined(_IRIX6) && defined(HAS_COMPILER_SUPPORT) && !defined(NATIVE_CODE_IS_C)
@@ -482,7 +483,6 @@ extern void EXFUN (win32_stack_reset, (void));
 #if _ISP__M68K
 #define MACHINE_TYPE          "Apollo 68k"
 #define FASL_INTERNAL_FORMAT  FASL_APOLLO_68K
-#define TYPE_CODE_LENGTH	6
 #else
 #define MACHINE_TYPE          "Apollo Prism"
 #define FASL_INTERNAL_FORMAT  FASL_APOLLO_PRISM
@@ -499,12 +499,30 @@ extern void EXFUN (win32_stack_reset, (void));
 #define MAX_FLONUM_EXPONENT    1023
 #endif
 
+#ifdef __ppc__
+#define MACHINE_TYPE		"PowerPC-32"
+#define FASL_INTERNAL_FORMAT	FASL_PPC32
+#define FLOATING_ALIGNMENT	0x7
+#endif
+
+#ifdef __ppc64__
+#define MACHINE_TYPE		"PowerPC-64"
+#define FASL_INTERNAL_FORMAT	FASL_PPC64
+#endif
+
+#ifdef __x86_64__
+#define MACHINE_TYPE		"x86-64"
+#define FASL_INTERNAL_FORMAT	FASL_X86_64
+#endif
+
+#ifdef __ia64__
+#define MACHINE_TYPE		"ia64"
+#define FASL_INTERNAL_FORMAT	FASL_IA64
+#endif
+
 #ifdef NATIVE_CODE_IS_C
 #  ifndef HAS_COMPILER_SUPPORT
 #    define HAS_COMPILER_SUPPORT
-#  endif
-#  ifndef TYPE_CODE_LENGTH
-#    define TYPE_CODE_LENGTH 6
 #  endif
 #endif
 
@@ -522,7 +540,7 @@ extern void EXFUN (win32_stack_reset, (void));
 #endif
 
 #ifndef TYPE_CODE_LENGTH
-#  define TYPE_CODE_LENGTH 8
+#  define TYPE_CODE_LENGTH 6
 #endif
 
 /* The GNU C compiler does not have any of these bugs. */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ptrvec.c,v 1.5 2003/02/14 18:28:23 cph Exp $
+$Id: ptrvec.c,v 1.6 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (C) 1990-1999 Massachusetts Institute of Technology
+Copyright (C) 1990-1999, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,10 +26,15 @@ USA.
 #include "outf.h"
 #include "dstack.h"
 
+#if defined(__linux__) || defined(__APPLE__) || defined(__netbsd__)
+#else
+extern PTR EXFUN (malloc, (unsigned int length));
+extern PTR EXFUN (realloc, (PTR ptr, unsigned int length));
+#endif
+
 static PTR
 DEFUN (xmalloc, (length), unsigned int length)
 {
-  extern PTR EXFUN (malloc, (unsigned int length));
   PTR result = (malloc (length));
   if (result == 0)
     {
@@ -43,7 +48,6 @@ DEFUN (xmalloc, (length), unsigned int length)
 static PTR
 DEFUN (xrealloc, (ptr, length), PTR ptr AND unsigned int length)
 {
-  extern PTR EXFUN (realloc, (PTR ptr, unsigned int length));
   PTR result = (realloc (ptr, length));
   if (result == 0)
     {

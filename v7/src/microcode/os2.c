@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2.c,v 1.10 2003/02/14 18:28:22 cph Exp $
+$Id: os2.c,v 1.11 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright (c) 1994-1999, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -154,6 +154,17 @@ OS_free (void * ptr)
 }
 
 #endif /* not OS2_USE_SUBHEAP_MALLOC */
+
+/* This is called during initialization, when the error system is not
+   set up.
+*/
+
+void *
+OS_malloc_init (unsigned int size)
+{
+  void * result = (OS2_malloc_noerror (size));
+  return (result);
+}
 
 void *
 OS_malloc (unsigned int size)

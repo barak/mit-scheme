@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.11 2003/02/14 18:28:02 cph Exp $
+$Id: compiler.sf,v 1.12 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -39,7 +39,8 @@ USA.
 (if (lexical-unreferenceable? (->environment '(COMPILER)) 'SYNTAX-FILES!)
     (let ((sf-and-load
 	   (lambda (files package)
-	     (sf-conditionally files)
+	     (fluid-let ((sf/default-syntax-table (->environment package)))
+	       (sf-conditionally files))
 	     (for-each (lambda (file)
 			 (load (string-append file ".bin") package))
 		       files))))
@@ -50,20 +51,17 @@ USA.
       (newline)
       (sf-and-load '("base/switch") '(COMPILER))
       (sf-and-load '("base/macros") '(COMPILER MACROS))
-      ((access initialize-package! (->environment '(COMPILER MACROS))))
       (sf-and-load '("machines/C/decls") '(COMPILER DECLARATIONS))
       (let ((environment (->environment '(COMPILER DECLARATIONS))))
 	(set! (access source-file-expression environment) "*.scm")
 	((access initialize-package! environment)))
       (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
       (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
-      (sf-and-load '("rtlbase/valclass") '(COMPILER))
-      (fluid-let ((sf/default-syntax-table (->environment '(COMPILER))))
-	(sf-and-load '("machines/C/machin") '(COMPILER)))
-      (set! (access endianness (->environment '(COMPILER))) 'BIG)
+      (sf-and-load '("machines/C/machin") '(COMPILER))
       (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
       (sf-and-load '("base/scode") '(COMPILER))
-      (sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))))
+      (sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))
+      (sf-and-load '("back/syerly") '(COMPILER LAP-SYNTAXER))))
 
 ;; Resyntax any files that need it.
 ((access syntax-files! (->environment '(COMPILER))))

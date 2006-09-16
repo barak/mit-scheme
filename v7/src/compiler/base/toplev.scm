@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.64 2003/02/14 18:28:01 cph Exp $
+$Id: toplev.scm,v 4.65 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2001, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,11 +33,13 @@ USA.
 (define compile-file:override-usual-integrations '())
 (define compile-file:sf-only? #f)
 (define compile-file:force? #f)
+(define compiler:compile-data-files-as-expressions? #t)
 (define compile-file)
 (let ((scm-pathname (lambda (path) (pathname-new-type path "scm")))
       (bin-pathname (lambda (path) (pathname-new-type path "bin")))
       (ext-pathname (lambda (path) (pathname-new-type path "ext")))
-      (com-pathname (lambda (path) (pathname-new-type path "com"))))
+      (com-pathname (lambda (path)
+		      (pathname-new-type path compiled-output-extension))))
 
   (define (process-file input-file output-file dependencies processor)
     (let ((doit (lambda () (processor input-file output-file dependencies))))
@@ -136,20 +138,25 @@ USA.
 	 (and (not (default-object? output-string)) output-string)
 	 (make-pathname #f #f #f #f "bin" 'NEWEST)
 	 (lambda (input-pathname output-pathname)
-	   (maybe-open-file
-	    compiler:generate-rtl-files?
-	    (pathname-new-type output-pathname "rtl")
-	    (lambda (rtl-output-port)
-	      (maybe-open-file compiler:generate-lap-files?
-			       (pathname-new-type output-pathname "lap")
-			       (lambda (lap-output-port)
-				 (fluid-let ((*debugging-key*
-					      (random-byte-vector 32)))
-				   (compile-scode/internal
-				    (compiler-fasload input-pathname)
-				    (pathname-new-type output-pathname "inf")
-				    rtl-output-port
-				    lap-output-port))))))))
+	   (let ((scode (compiler-fasload input-pathname)))
+	     (if (and (scode/constant? scode)
+		      (not compiler:compile-data-files-as-expressions?))
+		 (compile-data-from-file scode output-pathname)
+		 (maybe-open-file
+		  compiler:generate-rtl-files?
+		  (pathname-new-type output-pathname "rtl")
+		  (lambda (rtl-output-port)
+		    (maybe-open-file
+		     compiler:generate-lap-files?
+		     (pathname-new-type output-pathname "lap")
+		     (lambda (lap-output-port)
+		       (fluid-let ((*debugging-key*
+				    (random-byte-vector 32)))
+			 (compile-scode/internal
+			  scode
+			  (pathname-new-type output-pathname "inf")
+			  rtl-output-port
+			  lap-output-port))))))))))
 	unspecific)))
 
 (define *debugging-key*)
@@ -180,7 +187,7 @@ USA.
 		      (newline)))
 		(compiler-file-output
 		 (transform input-pathname output-pathname)
-				      output-pathname)))))
+		 output-pathname)))))
 	 (kernel
 	  (if compiler:batch-mode?
 	      (batch-kernel core)
@@ -195,17 +202,22 @@ USA.
 	   (if (scode/comment? scode)
 	       (scode/comment-expression scode)
 	       scode))))
-    (if (scode/open-block? scode)
-	(scode/open-block-components scode
-	  (lambda (names declarations body)
-	    (if (null? names)
-		(scan-defines body
-		  (lambda (names declarations* body)
-		    (make-open-block names
-				     (append declarations declarations*)
-				     body)))
-		scode)))
-	(scan-defines scode make-open-block))))
+    (cond ((scode/constant? scode)
+	   scode)
+	  ((scode/open-block? scode)
+	   (scode/open-block-components
+	    scode
+	    (lambda (names declarations body)
+	      (if (null? names)
+		  (scan-defines
+		   body
+		   (lambda (names declarations* body)
+		     (make-open-block names
+				      (append declarations declarations*)
+				      body)))
+		  scode))))
+	  (else
+	   (scan-defines scode make-open-block)))))
 
 ;;;; Alternate Entry Points
 

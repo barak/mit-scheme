@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.65 2006/06/10 05:24:54 cph Exp $
+$Id: ppband.c,v 9.66 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1993,1999,2000,2006 Massachusetts Institute of Technology
@@ -74,8 +74,11 @@ USA.
 #  if (SIZEOF_UNSIGNED_LONG == 4)	/* 32-bit word versions */
 #    define UNSIGNED_LONG_HIGH_HALF(unsigned_long) ((unsigned_long) >> 16)
 #    define UNSIGNED_LONG_LOW_HALF(unsigned_long)  ((unsigned_long) & 0xFFFF)
+#  elif (SIZEOF_UNSIGNED_LONG == 8)	/* 32-bit word versions */
+#    define UNSIGNED_LONG_HIGH_HALF(unsigned_long) ((unsigned_long) >> 32)
+#    define UNSIGNED_LONG_LOW_HALF(unsigned_long)  ((unsigned_long) & 0xFFFFFFFF)
 #  else
-#    error "`ppband' assumes that (SIZEOF_UNSIGNED_LONG == 4) is true."
+#    error "Unexpected SIZEOF_UNSIGNED_LONG for ppband."
 #  endif
 #else
 #  error "`ppband' assumes that (CHAR_BIT == 8) is true."
@@ -310,8 +313,12 @@ DEFUN (scheme_symbol, (From), unsigned long From)
 #      define Display_LOC_HILO_RAW_FORMAT_STRING "%7lx:               "\
                                                 "[%04lx|%04lx]  =  "
 #    endif
+#  elif (SIZEOF_UNSIGNED_LONG == 8)
+#      define Display_LOC_TYPE_DAT_FORMAT_STRING "%7lx:   %2lx|%15lx  "
+#      define Display_LOC_HILO_RAW_FORMAT_STRING "%7lx:               "\
+                                                "[%08lx|%08lx]  =  "
 #  else
-#    error "`ppband' assumes that (SIZEOF_UNSIGNED_LONG == 4) is true."
+#    error "Unexpected SIZEOF_UNSIGNED_LONG for ppband."
 #  endif
 #else
 #  error "`ppband' assumes that (CHAR_BIT == 8) is true."

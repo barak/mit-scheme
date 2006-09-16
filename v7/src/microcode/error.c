@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: error.c,v 1.9 2003/02/14 18:28:18 cph Exp $
+$Id: error.c,v 1.10 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (C) 1990-2000 Massachusetts Institute of Technology
+Copyright (C) 1990-2000, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,7 +30,11 @@ USA.
 static PTR
 DEFUN (xmalloc, (length), unsigned int length)
 {
+#if defined(__linux__) || defined(__APPLE__) || defined(__netbsd__)
+#else
   extern PTR EXFUN (malloc, (unsigned int length));
+#endif
+
   PTR result = (malloc (length));
   if (result == 0)
     {

@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.48 2005/08/05 20:03:01 cph Exp $
+$Id: option.scm,v 14.49 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,2001,2002 Massachusetts Institute of Technology
-Copyright 2005 Massachusetts Institute of Technology
+Copyright 2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -88,6 +88,7 @@ USA.
 
 (define (standard-load-options)
   (or (library-file? "options/optiondb")
+      (library-file? "runtime/optiondb") ; for C back end
       (error "Cannot locate a load-option database")
       "optiondb"))
 
@@ -99,9 +100,23 @@ USA.
   (let loop ((file-types load/default-types))
     (and (pair? file-types)
 	 (let ((full-pathname (pathname-new-type pathname (caar file-types))))
-	   (if (file-exists? full-pathname)
-	       pathname			; not FULL-PATHNAME
-	       (loop (cdr file-types)))))))
+	   (cond ((file-exists? full-pathname)
+		  ; not FULL-PATHNAME    
+		  pathname)
+		 ((not (caar file-types))
+		  (let ((prim
+			 (ucode-primitive initialize-c-compiled-block 1))
+			(d (pathname-directory pathname)))
+		    (if (and (implemented-primitive-procedure? prim)
+			     (pair? d)
+			     (prim (string-append
+				    (car (last-pair d))
+				    "_"
+				    (pathname-name pathname))))
+			pathname
+			(loop (cdr file-types)))))
+		 (else
+		  (loop (cdr file-types))))))))
 
 (define loaded-options '())
 (define *options* '())			; Current options.
@@ -117,17 +132,24 @@ USA.
 	  (runtime (pathname-as-directory "runtime")))
       (for-each (lambda (file)
 		  (let ((file (force* file)))
-		    (let* ((options (library-directory-pathname "options"))
-			   (pathname (merge-pathnames file options)))
-		      (with-directory-rewriting-rule options runtime
-			(lambda ()
-			  (with-working-directory-pathname
-			      (directory-pathname pathname)
-			    (lambda ()
-			      (load pathname
-				    environment
-				    'DEFAULT
-				    #t))))))))
+		    (cond 
+		     (((ucode-primitive initialize-c-compiled-block 1)
+		       (string-append "runtime_" file))
+		      => (lambda (obj)
+			   (purify obj)
+			   (scode-eval obj environment)))
+		     (else
+		      (let* ((options (library-directory-pathname "options"))
+			     (pathname (merge-pathnames file options)))
+			(with-directory-rewriting-rule options runtime
+			  (lambda ()
+			    (with-working-directory-pathname
+				(directory-pathname pathname)
+			      (lambda ()
+				(load pathname
+				      environment
+				      'DEFAULT
+				      #t))))))))))
 		files)
       (flush-purification-queue!)
       (eval init-expression environment))))

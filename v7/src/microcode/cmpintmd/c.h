@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: c.h,v 1.9 2003/02/14 18:28:31 cph Exp $
+$Id: c.h,v 1.10 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,12 +31,16 @@ USA.
 
 #define COMPILER_PROCESSOR_TYPE			COMPILER_LOSING_C_TYPE
 
+#ifndef NATIVE_CODE_IS_C
+#define NATIVE_CODE_IS_C
+#endif
+
 #define WRITE_LABEL_DESCRIPTOR(entry,kind,offset) do			\
 {									\
-  SCHEME_OBJECT * ent = ((SCHEME_OBJECT *) (entry));			\
+  SCHEME_OBJECT * _ent = ((SCHEME_OBJECT *) (entry));			\
 									\
-  COMPILED_ENTRY_FORMAT_WORD (entry) = (kind);				\
-  COMPILED_ENTRY_OFFSET_WORD (entry) =					\
+  COMPILED_ENTRY_FORMAT_WORD (_ent) = (kind);				\
+  COMPILED_ENTRY_OFFSET_WORD (_ent) =					\
     (WORD_OFFSET_TO_OFFSET_WORD (offset));				\
 } while (0)
 

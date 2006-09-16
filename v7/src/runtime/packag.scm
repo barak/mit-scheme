@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.47 2005/08/05 20:03:05 cph Exp $
+$Id: packag.scm,v 14.48 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1988,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1998,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004,2005 Massachusetts Institute of Technology
+Copyright 2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -165,6 +165,15 @@ USA.
 
 (define system-loader/enable-query? #f)
 
+(define (quasi-fasload pathname)
+  (let ((prim (ucode-primitive initialize-c-compiled-block 1))
+	(path (merge-pathnames pathname)))
+    (or (and (implemented-primitive-procedure? prim)
+	     (prim (string-append (car (last-pair (pathname-directory path)))
+				  "_"
+				  (pathname-name path))))
+	(fasload pathname))))
+
 (define (load-package-set filename #!optional options)
   (let ((os-type microcode-id/operating-system))
     (let ((pathname (package-set-pathname filename os-type))
@@ -173,7 +182,7 @@ USA.
 		 (if (default-object? options) '() options))))
       (with-working-directory-pathname (directory-pathname pathname)
 	(lambda ()
-	  (let ((file (fasload pathname)))
+	  (let ((file (quasi-fasload pathname)))
 	    (if (not (package-file? file))
 		(error "Malformed package-description file:" pathname))
 	    (construct-packages-from-file file)
@@ -188,7 +197,13 @@ USA.
 		     (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
 		    (load-component
 		     (lambda (component environment)
-		       (load component environment 'DEFAULT #t))))
+		       (let ((value
+			      (filename->compiled-object filename component)))
+			 (if value
+			     (begin
+			       (purify (load/purification-root value))
+			       (scode-eval value environment))
+			     (load component environment 'DEFAULT #t))))))
 		(if alternate-loader
 		    (alternate-loader load-component options)
 		    (begin
@@ -213,6 +228,25 @@ USA.
 				  (else "-unk")))
 		 "pkd"
 		 (pathname-version pathname)))
+
+(define (filename->compiled-object system component)
+  (let ((prim (ucode-primitive initialize-c-compiled-block 1)))
+    (and (implemented-primitive-procedure? prim)
+	 (let* ((name
+		 (let* ((p (->pathname component))
+			(d (pathname-directory p)))
+		   (string-append
+		    (if (pair? d) (car (last-pair d)) system)
+		    "_"
+		    (pathname-name p))))
+		(value (prim name)))
+	   (if (or (not value) load/suppress-loading-message?)
+	       value
+	       (let ((port (notification-output-port)))
+		 (fresh-line port)
+		 (write-string ";Initialized " port)
+		 (write name port)
+		 value))))))
 
 (define-integrable (make-package-file tag version descriptions loads)
   (vector tag version descriptions loads))

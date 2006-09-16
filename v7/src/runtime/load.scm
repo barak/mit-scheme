@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.76 2006/07/26 19:10:33 cph Exp $
+$Id: load.scm,v 14.77 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -36,13 +36,19 @@ USA.
   (set! load/loading? #f)
   (set! load/suppress-loading-message? #f)
   (set! load/default-types
-	`(("com" ,load/internal)
+	`((#f ,wrapper/load/built-in)
+	  ("com" ,load/internal)
 	  ("so" ,load-object-file)
 	  ("sl" ,load-object-file)
+	  ("dylib" ,load-object-file)
 	  ("bin" ,load/internal)
 	  ("scm" ,load/internal)))
   (set! fasload/default-types
-	`(("com" ,fasload/internal)
+	`((#f ,wrapper/fasload/built-in)
+	  ("so" ,fasload-object-file)
+	  ("sl" ,fasload-object-file)
+	  ("dylib" ,fasload-object-file)
+	  ("com" ,fasload/internal)
 	  ("bin" ,fasload/internal)))
   (set! load/default-find-pathname-with-type search-types-in-order)
   (set! *eval-unit* #f)
@@ -189,33 +195,70 @@ USA.
 		 (fail)
 		 (values pathname loader)))))))
 
+(define (try-built-in pathname wrapper)
+  (let ((prim (ucode-primitive initialize-c-compiled-block 1))
+	(d (pathname-directory pathname)))
+    (if (or (not (implemented-primitive-procedure? prim))
+	    (not (pair? d)))
+	(values #f #f)
+	(let* ((name (string-append (car (last-pair d))
+				    "_"
+				    (pathname-name pathname)))
+	       (value (prim name)))
+	  (if (not value)
+	      (values #f #f)
+	      (values pathname (wrapper value)))))))
+
 (define (search-types-in-order pathname default-types)
   (let loop ((types default-types))
-    (if (pair? types)
-	(let ((pathname (pathname-new-type pathname (caar types))))
-	  (if (file-exists? pathname)
-	      (values pathname (cadar types))
-	      (loop (cdr types))))
-	(values #f #f))))
+    (cond ((not (pair? types))
+	   (values #f #f))
+	  ((caar types)
+	   (let ((pathname (pathname-new-type pathname (caar types))))
+	     (if (file-exists? pathname)
+		 (values pathname (cadar types))
+		 (loop (cdr types)))))
+	  (else
+	   (call-with-values
+	       (lambda ()
+		 (try-built-in pathname (cadar types)))
+	     (lambda (pathname loader)
+	       (if pathname
+		   (values pathname loader)
+		   (loop (cdr types)))))))))
+
+;; This always considers a built-in to be the newest.
 
 (define (find-latest-file pathname default-types)
   (let loop ((types default-types)
 	     (latest-pathname #f)
 	     (latest-loader #f)
 	     (latest-time 0))
-    (if (not (pair? types))
-	(values latest-pathname latest-loader)
-	(let ((pathname (pathname-new-type pathname (caar types)))
-	      (skip
+    (cond ((not (pair? types))
+	   (values latest-pathname latest-loader))
+	  ((not (caar types))
+	   (call-with-values
 	       (lambda ()
-		 (loop (cdr types)
-		       latest-pathname
-		       latest-loader
-		       latest-time))))
-	  (let ((time (file-modification-time-indirect pathname)))
-	    (if (and time (> time latest-time))
-		(loop (cdr types) pathname (cadar types) time)
-		(skip)))))))
+		 (try-built-in pathname (cadar types)))
+	     (lambda (pathname* loader*)
+	       (if pathname*
+		   (values pathname* loader*)
+		   (loop (cdr types)
+			 latest-pathname
+			 latest-loader
+			 latest-time)))))
+	  (else
+	   (let ((pathname (pathname-new-type pathname (caar types)))
+		 (skip
+		  (lambda ()
+		    (loop (cdr types)
+			  latest-pathname
+			  latest-loader
+			  latest-time))))
+	     (let ((time (file-modification-time-indirect pathname)))
+	       (if (and time (> time latest-time))
+		   (loop (cdr types) pathname (cadar types) time)
+		   (skip))))))))
 
 (define (load/internal pathname environment purify? load-noisily?)
   (let* ((port (open-input-file pathname))
@@ -253,16 +296,14 @@ USA.
       (fasload/update-debugging-info! value pathname)
       value)))
 
-(define (load-object-file pathname environment purify? load-noisily?)
-  load-noisily?		; ignored
+(define (fasload-object-file pathname suppress-loading-message?)
   (loading-message
-   load/suppress-loading-message? pathname
+   suppress-loading-message? pathname
    (lambda ()
-     (let* ((handle
-	     ((ucode-primitive load-object-file 1) (->namestring pathname)))
-	    (cth
-	     ((ucode-primitive object-lookup-symbol 3)
-	      handle "dload_initialize_file" 0)))
+     (let* ((handle ((ucode-primitive load-object-file 1)
+		     (->namestring pathname)))
+	    (cth ((ucode-primitive object-lookup-symbol 3)
+		  handle "dload_initialize_file" 0)))
        (if (not cth)
 	   (error "load-object-file: Cannot find init procedure" pathname))
        (let ((scode ((ucode-primitive initialize-c-compiled-block 1)
@@ -270,7 +311,31 @@ USA.
 		      ((ucode-primitive invoke-c-thunk 1)
 		       cth)))))
 	 (fasload/update-debugging-info! scode pathname)
-	 (load-scode-end scode environment purify?))))))
+	 scode)))))
+
+(define (wrapper/fasload/built-in value)
+  (lambda (pathname suppress-loading-message?)
+    (loading-message
+     suppress-loading-message? pathname
+     (lambda ()
+       (fasload/update-debugging-info! value pathname)
+       value))))
+
+(define (load-object-file pathname environment purify? load-noisily?)
+  load-noisily?		; ignored
+  (load-scode-end
+   (fasload-object-file pathname load/suppress-loading-message?)
+   environment
+   purify?))
+
+(define (wrapper/load/built-in scode)
+  (lambda (pathname environment purify? load-noisily?)
+    load-noisily?			; ignored
+    (loading-message
+     load/suppress-loading-message? pathname
+     (lambda ()
+       (fasload/update-debugging-info! scode pathname)
+       (load-scode-end scode environment purify?)))))
 
 (define (load-scode-end scode environment purify?)
   (if purify? (purify (load/purification-root scode)))

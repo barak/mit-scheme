@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.36 2006/01/29 06:37:30 cph Exp $
+$Id: nttop.c,v 1.37 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1993,1997,1998,2000,2003,2004 Massachusetts Institute of Technology
 Copyright 2006 Massachusetts Institute of Technology
@@ -487,6 +487,17 @@ bcopy (const char * s1, char * s2, int n)
     *s2++ = *s1++;
 }
 #endif
+
+/* This is called during initialization, when the error system is not
+   set up.
+*/
+
+void *
+OS_malloc_init (unsigned int size)
+{
+  void * result = (malloc (size));
+  return (result);
+}
 
 void *
 OS_malloc (unsigned int size)

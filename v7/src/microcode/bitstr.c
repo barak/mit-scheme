@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.65 2003/02/14 18:28:15 cph Exp $
+$Id: bitstr.c,v 9.66 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2000, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,8 +35,9 @@ USA.
 
 static void EXFUN
   (copy_bits, (SCHEME_OBJECT *, long, SCHEME_OBJECT *, long, long));
+extern SCHEME_OBJECT EXFUN (allocate_bit_string, (long));
 
-static SCHEME_OBJECT
+SCHEME_OBJECT
 DEFUN (allocate_bit_string, (length), long length)
 {
   long total_pointers;

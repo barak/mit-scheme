@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.16 2003/02/14 18:28:01 cph Exp $
+$Id: compiler.pkg,v 1.17 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,7 +34,6 @@ USA.
 	 "base/sets"			;set abstraction
 	 "base/mvalue"			;multiple-value support
 	 "base/scode"			;SCode abstraction
-	 "rtlbase/valclass"		;RTL: value classes
 	 "machines/C/machin"		;machine dependent stuff
 	 "machines/C/cutl"		;back-end odds and ends
 	 "base/utils"			;odds and ends
@@ -62,6 +61,7 @@ USA.
 	 "rtlbase/rtlcfg"		;RTL: CFG types
 	 "rtlbase/rtlobj"		;RTL: CFG objects
 	 "rtlbase/regset"		;RTL: register sets
+	 "rtlbase/valclass"		;RTL: value classes
 
 	 "back/insseq"			;LAP instruction sequences
 	 )
@@ -83,6 +83,7 @@ USA.
 	  compiler:implicit-self-static?
 	  compiler:intersperse-rtl-in-lap?
 	  compiler:noisy?
+	  compiler:open-code-floating-point-arithmetic?
 	  compiler:open-code-flonum-checks?
 	  compiler:open-code-primitives?
 	  compiler:optimize-environments?
@@ -186,10 +187,34 @@ USA.
 
 (define-package (compiler macros)
   (files "base/macros")
-  (parent ())
-  (import (runtime macros)
-	  parse-define-syntax)
-  (initialization (initialize-package!)))
+  (parent (compiler))
+  (export (compiler)
+	  cfg-node-case
+	  define-enumeration
+	  define-export
+	  define-lvalue
+	  define-pnode
+	  define-root-type
+	  define-rtl-expression
+	  define-rtl-predicate
+	  define-rtl-statement
+	  define-rule
+	  define-rvalue
+	  define-snode
+	  define-vector-slots
+	  descriptor-list
+	  enumeration-case
+	  inst-ea
+	  lap
+	  last-reference
+	  make-lvalue
+	  make-pnode
+	  make-rvalue
+	  make-snode
+	  package
+	  rule-matcher)
+  (import (runtime syntactic-closures)
+	  syntax-match?))
 
 (define-package (compiler declarations)
   (files "machines/C/decls")
@@ -211,6 +236,10 @@ USA.
 	  cbf
 	  cf
 	  compile-bin-file
+	  compile-file
+	  compile-file:force?
+	  compile-file:override-usual-integrations
+	  compile-file:sf-only?
 	  compile-procedure
 	  compile-scode
 	  compiler:c-compiler-name
@@ -222,6 +251,7 @@ USA.
 	  compiler:reset!
 	  ;; cross-compile-bin-file
 	  ;; cross-compile-bin-file-end
+	  ;; lap->code
 	  )
   (export (compiler)
 	  canonicalize-label-name)
@@ -237,6 +267,7 @@ USA.
 	  *block-label*
 	  *disambiguator*
 	  *external-labels*
+	  *shared-namestring*
 	  *special-labels*
 	  label->object
 	  *invoke-interface*
@@ -280,6 +311,7 @@ USA.
   (export (compiler)
 	  make-pattern-variable
 	  pattern-lookup
+	  pattern-lookup-1
 	  pattern-variable-name
 	  pattern-variable?
 	  pattern-variables))
@@ -288,10 +320,14 @@ USA.
   (files "base/pmpars")
   (parent (compiler))
   (export (compiler)
+	  make-rule-matcher
 	  parse-rule
+	  rule->matcher
 	  rule-result-expression)
   (export (compiler macros)
+	  make-rule-matcher
 	  parse-rule
+	  rule->matcher
 	  rule-result-expression))
 
 (define-package (compiler pattern-matcher/early)
@@ -621,7 +657,9 @@ USA.
   (export (compiler top-level)
 	  rtl-rewriting:post-cse
 	  rtl-rewriting:pre-cse)
-  (export (compiler lap-syntaxer) add-rewriting-rule!))
+  (export (compiler lap-syntaxer)
+	  add-rewriting-rule!
+	  add-pre-cse-rewriting-rule!))
 
 (define-package (compiler rtl-optimizer lifetime-analysis)
   (files "rtlopt/rlife")
@@ -643,7 +681,8 @@ USA.
   (files "back/lapgn1"			;LAP generator
 	 "back/lapgn2"			; "      "
 	 "back/regmap"			;Hardware register allocator
-	 "machines/C/cout"		;converts partial C code into one one big string
+	 "machines/C/cout"		;converts partial C code
+					; into one one big string
 	 "machines/C/lapgen"		;code generation rules
 	 "machines/C/rules1"		;  "      "        "
 	 "machines/C/rules2"		;  "      "        "
@@ -652,20 +691,19 @@ USA.
 	 "machines/C/rulfix"		;  "      "        "
 	 "machines/C/rulflo"		;  "      "        "
 	 "machines/C/rulrew"		;code rewriting rules
+	 "machines/C/traditional"	;traditional object construction
+	 "machines/C/stackify"		;denser object construction
+	 "machines/C/stackops"		;denser object construction
 	 )
   (parent (compiler))
   (export ()
 	  *C-procedure-name*)
   (export (compiler)
 	  available-machine-registers
-	  fits-in-16-bits-signed?
-	  fits-in-16-bits-unsigned?
-	  top-16-bits-only?
 	  lap-generator/match-rtl-instruction
 	  lap:make-entry-point
 	  lap:make-label-statement
-	  lap:make-unconditional-branch
-	  lap:syntax-instruction)
+	  lap:make-unconditional-branch)
   (export (compiler top-level)
 	  *block-associations*
 	  current-register-list
@@ -683,7 +721,10 @@ USA.
 	  make-table
 	  objects
 	  permanent-register-list
-	  stringify)
+	  stringify
+	  stringify-data)
+  (import (runtime string)
+	  %string-append)
   (import (scode-optimizer expansion)
 	  scode->scode-expander))
 

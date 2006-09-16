@@ -1,10 +1,11 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.118 2005/01/01 05:43:57 cph Exp $
+$Id: boot.c,v 9.119 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,7 +37,12 @@ USA.
 #include "ostop.h"
 #include "ostty.h"
 
+#if defined(__linux__) || defined(__APPLE__) || defined(__netbsd__)
+#include <unistd.h>
+#else
 extern PTR EXFUN (malloc, (unsigned int size));
+#endif
+
 extern void EXFUN (free, (PTR ptr));
 extern void EXFUN (init_exit_scheme, (void));
 extern void EXFUN (Clear_Memory, (int, int, int));
@@ -583,6 +589,7 @@ DEFUN (stack_death, (name), CONST char * name)
 #define ID_OS_NAME		8	/* OS name (string) */
 #define ID_OS_VARIANT		9	/* OS variant (string) */
 #define ID_STACK_TYPE		10	/* Scheme stack type (string) */
+#define ID_MACHINE_TYPE		11	/* Machine type (string) */
 
 #ifdef USE_STACKLETS
 #define STACK_TYPE_STRING "stacklets"
@@ -617,6 +624,9 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
   FAST_VECTOR_SET (Result, ID_STACK_TYPE,
 		   (char_pointer_to_string
 		    ((unsigned char *) STACK_TYPE_STRING)));
+  FAST_VECTOR_SET (Result, ID_MACHINE_TYPE,
+		   (char_pointer_to_string
+		    ((unsigned char *) MACHINE_TYPE)));
   PRIMITIVE_RETURN (Result);
 }
 

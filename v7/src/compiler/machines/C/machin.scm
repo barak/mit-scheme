@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.10 2003/02/14 18:28:02 cph Exp $
+$Id: machin.scm,v 1.11 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -50,9 +50,10 @@ USA.
 
 ;; We expect a C long to be at least 32 bits wide,
 ;; but not necessarily two's complement.
+;; Tags won't be wider than 6 bits
 
 (define-integrable min-long-width 32)
-(define-integrable max-tag-width 8)
+(define-integrable max-tag-width 6)
 
 (define-integrable guaranteed-long/upper-limit
   (expt 2 (-1+ min-long-width)))
@@ -63,6 +64,9 @@ USA.
   (expt 2 (- min-long-width (1+ max-tag-width))))
 (define signed-fixnum/lower-limit
   (- signed-fixnum/upper-limit))
+
+(define-integrable unsigned-fixnum/upper-limit
+  (* 2 signed-fixnum/upper-limit))
 
 (define-integrable (stack->memory-offset offset) offset)
 (define-integrable ic-block-first-parameter-offset 2)
@@ -132,19 +136,16 @@ USA.
 
 ;;; Fixed-use registers due to architecture or OS calling conventions.
 
-(define machine-register-value-class
-  (let ((special-registers
-	 `((,regnum:stack-pointer . ,value-class=address)
-	   (,regnum:regs . ,value-class=unboxed)
-	   (,regnum:free . ,value-class=address)
-	   (,regnum:dynamic-link . ,value-class=address)
-	   (,regnum:value . ,value-class=object))))
-
-    (lambda (register)
-      (let ((lookup (assv register special-registers)))
-	(cond
-	 ((not (null? lookup)) (cdr lookup))
-	 (else (error "illegal machine register" register)))))))
+(define (machine-register-value-class register)
+  (cond ((or (= register regnum:regs)
+	     (= register regnum:stack-pointer)
+	     (= register regnum:free)
+	     (= register regnum:dynamic-link))
+	 value-class=address)
+	((= register regnum:value)
+	 value-class=object)
+	(else
+	 (error "illegal machine register" register))))
 
 (define-integrable (machine-register-known-value register)
   register				;ignore
@@ -153,6 +154,7 @@ USA.
 ;;;; Interpreter Registers
 
 (define-integrable register-block/memtop-offset 0)
+(define-integrable register-block/int-mask-offset 1)
 (define-integrable register-block/value-offset 2)
 (define-integrable register-block/environment-offset 3)
 (define-integrable register-block/dynamic-link-offset 4) ; compiler temp
@@ -264,6 +266,8 @@ USA.
   (case rtl-register
     ((MEMORY-TOP)
      register-block/memtop-offset)
+    ((INT-MASK)
+     register-block/int-mask-offset)
     ((STACK-GUARD)
      register-block/stack-guard-offset)
     ((ENVIRONMENT)

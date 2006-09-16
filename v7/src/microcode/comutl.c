@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: comutl.c,v 1.33 2003/02/14 18:28:18 cph Exp $
+$Id: comutl.c,v 1.34 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -167,13 +167,10 @@ DEFINE_PRIMITIVE ("INITIALIZE-C-COMPILED-BLOCK",
   "Given the tag of a compiled object, return the object.")
 {
 #ifdef NATIVE_CODE_IS_C
-  extern SCHEME_OBJECT * EXFUN (initialize_C_compiled_block, (int, char *));
-  SCHEME_OBJECT * block, val;
-  
-  block = (initialize_C_compiled_block (1, (STRING_ARG (1))));
-  val = ((block == ((SCHEME_OBJECT *) NULL))
-	 ? SHARP_F
-	 : (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, block)));
+  extern SCHEME_OBJECT EXFUN (initialize_C_compiled_block, (int, char *));
+  SCHEME_OBJECT val;
+
+  val = (initialize_C_compiled_block (1, (STRING_ARG (1))));
   PRIMITIVE_RETURN (val);
 #else
   PRIMITIVE_RETURN (SHARP_F);

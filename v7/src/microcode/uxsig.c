@@ -1,9 +1,9 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.45 2006/03/11 04:15:45 cph Exp $
+$Id: uxsig.c,v 1.46 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1990,1991,1992,1993,1994,1996 Massachusetts Institute of Technology
-Copyright 2000,2001,2005 Massachusetts Institute of Technology
+Copyright 2000,2001,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -63,6 +63,16 @@ DEFUN (current_handler, (signo), int signo)
   return (SIGACT_HANDLER (&act));
 }
 
+/* Work-around for 64-bit environment bug on Mac OSX */
+
+#if defined(__APPLE__) && defined(__LP64__)
+#define SA_SIGINFO_EXTRA SA_64REGSET
+#endif
+
+#ifndef SA_SIGINFO_EXTRA
+#define SA_SIGINFO_EXTRA 0
+#endif
+
 void
 DEFUN (INSTALL_HANDLER, (signo, handler),
        int signo AND
@@ -78,7 +88,7 @@ DEFUN (INSTALL_HANDLER, (signo, handler),
   else
     {
       (SIGACT_HANDLER (&act)) = handler;
-      (act . sa_flags) = SA_SIGINFO;
+      (act . sa_flags) = (SA_SIGINFO | SA_SIGINFO_EXTRA);
     }
   UX_sigemptyset (& (act . sa_mask));
   UX_sigaddset ((& (act . sa_mask)), signo);
@@ -328,7 +338,9 @@ DEFUN_VOID (initialize_signal_descriptors)
   defsignal (SIGTRAP, "SIGTRAP",	dfl_terminate,	CORE_DUMP);
   defsignal (SIGIOT, "SIGIOT",		dfl_terminate,	CORE_DUMP);
   defsignal (SIGEMT, "SIGEMT",		dfl_terminate,	CORE_DUMP);
+#ifndef __APPLE__
   defsignal (SIGFPE, "SIGFPE",		dfl_terminate,	CORE_DUMP);
+#endif /* __APPLE__ */
   defsignal (SIGKILL, "SIGKILL",	dfl_terminate,	(NOIGNORE | NOBLOCK | NOCATCH));
   defsignal (SIGBUS, "SIGBUS",		dfl_terminate,	CORE_DUMP);
   defsignal (SIGSEGV, "SIGSEGV",	dfl_terminate,	CORE_DUMP);
@@ -676,7 +688,9 @@ DEFUN_VOID (UX_initialize_signals)
   initialize_signal_descriptors ();
   initialize_signal_debugging ();
   bind_handler (SIGINT,		sighnd_control_g);
+#ifndef __APPLE__
   bind_handler (SIGFPE,		sighnd_fpe);
+#endif /* __APPLE__ */
   bind_handler (SIGALRM,	sighnd_timer);
   bind_handler (SIGVTALRM,	sighnd_timer);
   bind_handler (SIGUSR1,	sighnd_save_then_terminate);

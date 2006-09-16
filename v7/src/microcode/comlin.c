@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -21,7 +21,7 @@ USA.
 
 */
 
-/* $Id: comlin.c,v 1.11 2003/02/14 18:28:18 cph Exp $
+/* $Id: comlin.c,v 1.12 2006/09/16 11:19:09 gjr Exp $
  *
  * This file contains the scheme command parser.
  *
@@ -215,7 +215,7 @@ DEFUN (parse_keywords,
 
 	  case BOOLEAN_KYWRD:
 	  {
-	    boolean value;
+	    boolean value = false;
 
 	    if (*argument != '\0')
 	    {

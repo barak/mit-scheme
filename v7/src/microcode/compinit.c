@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: compinit.c,v 1.6 2003/02/14 18:28:18 cph Exp $
+$Id: compinit.c,v 1.7 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,16 +23,18 @@ USA.
 
 */
 
+#define LIARC_IN_MICROCODE
 #include "liarc.h"
 
 #undef DECLARE_COMPILED_CODE
 #undef DECLARE_COMPILED_DATA
+#undef DECLARE_DATA_OBJECT
 
 #define DECLARE_COMPILED_CODE(name, nentries, decl_code, code) do	\
 {									\
   extern int EXFUN (decl_code, (void));					\
   extern SCHEME_OBJECT * EXFUN (code,					\
-				(SCHEME_OBJECT *, unsigned long));	\
+				(SCHEME_OBJECT *, entry_count_t));	\
   int result =								\
     (declare_compiled_code (name, nentries, decl_code, code));		\
   if (result != 0)							\
@@ -42,8 +44,17 @@ USA.
 #define DECLARE_COMPILED_DATA(name, decl_data, data) do			\
 {									\
   extern int EXFUN (decl_data, (void));					\
-  extern SCHEME_OBJECT * EXFUN (data, (unsigned long));			\
+  extern SCHEME_OBJECT * EXFUN (data, (entry_count_t));			\
   int result = (declare_compiled_data (name, decl_data, data));		\
+  if (result != 0)							\
+    return (result);							\
+} while (0)
+
+#define DECLARE_DATA_OBJECT(name, data) do				\
+{									\
+  extern SCHEME_OBJECT EXFUN (data, (void));				\
+									\
+  int result = (declare_data_object (name, data));			\
   if (result != 0)							\
     return (result);							\
 } while (0)

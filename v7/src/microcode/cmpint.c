@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.104 2006/01/29 06:37:30 cph Exp $
+$Id: cmpint.c,v 1.105 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -240,7 +240,7 @@ EXTENTRY (interface_to_scheme);
 
 #define ENTER_SCHEME(ep) return (C_to_interface ((PTR) (ep)))
 
-#else /* CMPINT_USE_STRUCS */
+#else /* not CMPINT_USE_STRUCS */
 
 typedef instruction * utility_result;
 
@@ -256,14 +256,14 @@ long C_return_value;
 
 #define RETURN_TO_C(code) do						\
 {									\
-  (*DSU_result) = interface_to_C_hook;					\
+  (*DSU_result) = ((instruction *) interface_to_C_hook);		\
   C_return_value = (code);						\
   return;								\
 } while (0)
 
 #define RETURN_TO_SCHEME(ep) do						\
 {									\
-  (*DSU_result) = (ep);							\
+  (*DSU_result) = ((instruction *) (ep));				\
   return;								\
 } while (0)
 
@@ -839,13 +839,6 @@ DEFINE_SCHEME_UTILITY_1 (comutil_return_to_interpreter, tramp_data_raw)
   RETURN_TO_C (PRIM_DONE);
 }
 
-#if (COMPILER_PROCESSOR_TYPE != COMPILER_IA32_TYPE)
-
-#define INVOKE_RETURN_ADDRESS()					\
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()))
-
-#else /* COMPILER_IA32_TYPE */
-
 static void EXFUN
   (compiler_interrupt_common, (utility_result *, SCHEME_ADDR, SCHEME_OBJECT));
 
@@ -854,6 +847,13 @@ static void EXFUN
   compiler_interrupt_common (DSU_result, (a1), (a2));			\
   return;								\
 } while (0)
+
+#if (COMPILER_PROCESSOR_TYPE != COMPILER_IA32_TYPE)
+
+#define INVOKE_RETURN_ADDRESS()					\
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()))
+
+#else /* COMPILER_IA32_TYPE */
 
 #define INVOKE_RETURN_ADDRESS() do					\
 {									\

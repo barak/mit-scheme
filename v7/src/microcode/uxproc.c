@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.29 2003/02/14 18:28:24 cph Exp $
+$Id: uxproc.c,v 1.30 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright (c) 1990-2001, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -335,8 +335,12 @@ DEFUN (OS_make_subprocess,
       {
 	/* If the control terminal is not inherited, force the child
 	   into a different session. */
+#ifdef __APPLE__
+	  UX_setsid ();
+#else
 	if ((UX_setsid ()) < 0)
 	  goto kill_child;
+#endif
 	/* If the control terminal is explicit, open the given device
 	   now so it becomes the control terminal. */
 	if (ctty_type == process_ctty_type_explicit)

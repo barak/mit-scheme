@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.61 2003/03/21 17:28:25 cph Exp $
+$Id: option.c,v 1.62 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
-Copyright 2002,2003 Massachusetts Institute of Technology
+Copyright 2002,2003,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1015,6 +1015,8 @@ DEFUN (read_band_header, (filename, header),
        CONST char * filename AND
        SCHEME_OBJECT * header)
 {
+  int result = 1;
+
 #ifdef __WIN32__
 
   HANDLE handle
@@ -1029,14 +1031,12 @@ DEFUN (read_band_header, (filename, header),
   DWORD bytes_read;
   if (handle == INVALID_HANDLE_VALUE)
     return (0);
+
   if (! ((ReadFile (handle, header, bytes_to_read, (&bytes_read), 0))
 	 && (bytes_read == bytes_to_read)))
-    {
-      CloseHandle (handle);
-      return (0);
-    }
+    result = 0;
+
   CloseHandle (handle);
-  return (1);
 
 #else /* not __WIN32__ */
 
@@ -1045,14 +1045,24 @@ DEFUN (read_band_header, (filename, header),
     return (0);
   if ((fread (header, (sizeof (SCHEME_OBJECT)), FASL_HEADER_LENGTH, stream))
       != FASL_HEADER_LENGTH)
-    {
-      fclose (stream);
-      return (0);
-    }
+    result = 0;
+
   fclose (stream);
-  return (1);
 
 #endif /* not __WIN32__ */
+
+  /* Note: This is an approximation to whether the file can be loaded
+     as a band.
+     Mostly it catches wrong-format files (e.g. bands for another arch.)
+  */
+
+  if (((header[FASL_Offset_Marker]) != FASL_FILE_MARKER)
+      || ((The_Version (header[FASL_Offset_Version])) != FASL_READ_VERSION)
+      || ((The_Machine_Type (header[FASL_Offset_Version]))
+	  != FASL_INTERNAL_FORMAT))
+    result = 0;
+
+  return (result);
 }
 
 static int
@@ -1181,6 +1191,7 @@ DEFUN (read_command_line_options, (argc, argv),
        CONST char ** argv)
 {
   int band_sizes_valid = 0;
+  int fail_fasl_if_no_utab = 0;
   unsigned long band_constant_size;
   unsigned long band_heap_size;
 
@@ -1304,6 +1315,9 @@ DEFUN (read_command_line_options, (argc, argv),
 				(option_large_sizes
 				 ? DEFAULT_LARGE_STACK
 				 : DEFAULT_SMALL_STACK)));
+
+  fail_fasl_if_no_utab = (option_fasl_file != 0);
+
   if (option_utabmd_file != 0)
     xfree (option_utabmd_file);
   if (option_raw_utabmd != 0)
@@ -1315,15 +1329,22 @@ DEFUN (read_command_line_options, (argc, argv),
 				   option_raw_utabmd,
 				   UTABMD_FILE_VARIABLE,
 				   DEFAULT_UTABMD_FILE,
-				   (option_fasl_file != 0)));
+				   fail_fasl_if_no_utab));
     }
   else
+  {
+#ifdef NATIVE_CODE_IS_C
+    /* FIXME: This should check if we have "microcode_utabmd" compiled */
+    fail_fasl_if_no_utab = 0;
+#endif
+
     option_utabmd_file =
       (standard_filename_option ("utab",
 				 option_raw_utab,
 				 UTABMD_FILE_VARIABLE,
 				 DEFAULT_UTABMD_FILE,
-				 (option_fasl_file != 0)));
+				 fail_fasl_if_no_utab));
+  }
 
   /* These are only meaningful for bchscheme. */
 

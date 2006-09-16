@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.9 2003/03/10 20:51:49 cph Exp $
+$Id: decls.scm,v 1.10 2006/09/16 11:19:09 gjr Exp $
 
-Copyright 1993,2001,2003 Massachusetts Institute of Technology
+Copyright 1993,2001,2003,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -196,8 +196,11 @@ USA.
 	      (and binary (< source binary) binary))))
      (set-source-node/modification-time! node modification-time)
      (if (not modification-time)
-	 (begin (write-string "\nSource file newer than binary: ")
-		(write (source-node/filename node))))))
+	 (begin
+	   (fresh-line)
+	   (write-string "Source file newer than binary: ")
+	   (write (source-node/filename node))
+	   (newline)))))
    source-nodes)
   (if compiler:enable-integration-declarations?
       (begin
@@ -214,10 +217,12 @@ USA.
 				       (> time* time)))))
 			    (if newer?
 				(begin
-				  (write-string "\nBinary file ")
+				  (fresh-line)
+				  (write-string "Binary file ")
 				  (write (source-node/filename node))
 				  (write-string " newer than dependency ")
-				  (write (source-node/filename node*))))
+				  (write (source-node/filename node*))
+				  (newline)))
 			    newer?))))
 		 (set-source-node/modification-time! node #f))))
 	 source-nodes)
@@ -227,10 +232,12 @@ USA.
 	       (for-each (lambda (node*)
 			   (if (source-node/modification-time node*)
 			       (begin
-				 (write-string "\nBinary file ")
+				 (fresh-line)
+				 (write-string "Binary file ")
 				 (write (source-node/filename node*))
 				 (write-string " depends on ")
-				 (write (source-node/filename node))))
+				 (write (source-node/filename node))
+				 (newline)))
 			   (set-source-node/modification-time! node* #f))
 			 (source-node/forward-closure node))))
 	 source-nodes)))
@@ -239,7 +246,10 @@ USA.
 		  (pathname-delete!
 		   (pathname-new-type (source-node/pathname node) "ext"))))
 	    source-nodes/by-rank)
-  (write-string "\n\nBegin pass 1:")
+  (fresh-line)
+  (newline)
+  (write-string "Begin pass 1:")
+  (newline)
   (for-each (lambda (node)
 	      (if (not (source-node/modification-time node))
 		  (source-node/syntax! node)))
@@ -249,7 +259,10 @@ USA.
 	  (and (not (source-node/modification-time node))
 	       (source-node/circular? node))))
       (begin
-	(write-string "\n\nBegin pass 2:")
+	(fresh-line)
+	(newline)
+	(write-string "Begin pass 2:")
+	(newline)
 	(for-each (lambda (node)
 		    (if (not (source-node/modification-time node))
 			(if (source-node/circular? node)
@@ -270,15 +283,19 @@ USA.
 (define (pathname-touch! pathname)
   (if (file-exists? pathname)
       (begin
-	(write-string "\nTouch file: ")
+	(fresh-line)
+	(write-string "Touch file: ")
 	(write (enough-namestring pathname))
+	(newline)
 	(file-touch pathname))))
 
 (define (pathname-delete! pathname)
   (if (file-exists? pathname)
       (begin
-	(write-string "\nDelete file: ")
+	(fresh-line)
+	(write-string "Delete file: ")
 	(write (enough-namestring pathname))
+	(newline)
 	(delete-file pathname))))
 
 (define (sc filename)
@@ -316,7 +333,7 @@ USA.
 		     filenames))))
     (file-dependency/syntax/join
      (append (filename/append "base"
-			      "toplev"	; "asstop" "crstop"
+			      "toplev"
 			      "blocks" "cfg1" "cfg2" "cfg3" "constr"
 			      "contin" "ctypes" "debug" "enumer"
 			      "infnew" "lvalue" "object" "pmerly" "proced"
@@ -325,7 +342,8 @@ USA.
 	     (filename/append "back"
 			      "insseq" "lapgn1" "lapgn2" "linear" "regmap")
 	     (filename/append "machines/C"
-			      "cout" "ctop" "machin" "rulrew" "rgspcm")
+			      "cout" "ctop" "traditional" "stackify" "stackops"
+			      "machin" "rulrew" "rgspcm")
 	     (filename/append "fggen"
 			      "declar" "fggen" "canon")
 	     (filename/append "fgopt"
@@ -348,13 +366,15 @@ USA.
     (file-dependency/syntax/join
      (filename/append "machines/C"
 		      "lapgen"
-		      "rules1" "rules2" "rules3" "rules4" "rulfix" "rulflo" "cout")
+		      "rules1" "rules2" "rules3" "rules4" "rulfix" "rulflo"
+		      "cout" "traditional" "stackify" "stackops")
      (->environment '(COMPILER LAP-SYNTAXER)))))
 
 ;;;; Integration Dependencies
 
 (define (initialize/integration-dependencies!)
 
+  #|
   (define (add-declaration! declaration filenames)
     (for-each (lambda (filenames)
 		(let ((node (filename->source-node filenames)))
@@ -363,6 +383,7 @@ USA.
 		   (cons declaration
 			 (source-node/declarations node)))))
 	      filenames))
+  |#
 
   (let* ((front-end-base
 	  (filename/append "base"
@@ -374,8 +395,8 @@ USA.
 	  (filename/append "machines/C" "machin"))
 	 (rtl-base
 	  (filename/append "rtlbase"
-			   "regset" "rgraph" "rtlcfg" "rtlobj"
-			   "rtlreg" "rtlty1" "rtlty2"))
+			   "rgraph" "rtlcfg" "rtlobj" "rtlreg" "rtlty1"
+			   "rtlty2"))
 	 (cse-base
 	  (filename/append "rtlopt"
 			   "rcse1" "rcseht" "rcserq" "rcsesr"))
@@ -393,7 +414,8 @@ USA.
 	   (filename/append "back" "lapgn1" "lapgn2")
 	   (filename/append "machines/C"
 			    "rules1" "rules2" "rules3" "rules4"
-			    "rulfix" "rulflo" "cout"
+			    "rulfix" "rulflo"
+			    "cout" "traditional" "stackify" "stackops"
 			    ))))
     
     (define (file-dependency/integration/join filenames dependencies)
@@ -440,7 +462,6 @@ USA.
     (define-integration-dependencies "machines/C" "machin" "rtlbase"
       "rtlreg" "rtlty1" "rtlty2")
 
-    (define-integration-dependencies "rtlbase" "regset" "base")
     (define-integration-dependencies "rtlbase" "rgraph" "base" "cfg1" "cfg2")
     (define-integration-dependencies "rtlbase" "rgraph" "machines/C"
       "machin")
@@ -449,6 +470,8 @@ USA.
     (define-integration-dependencies "rtlbase" "rtlcon" "base" "cfg3" "utils")
     (define-integration-dependencies "rtlbase" "rtlcon" "machines/C"
       "machin")
+    (file-dependency/integration/join (filename/append "rtlbase" "rtlcon")
+				      rtl-base)
     (define-integration-dependencies "rtlbase" "rtlexp" "rtlbase"
       "rtlreg" "rtlty1")
     (define-integration-dependencies "rtlbase" "rtline" "base" "cfg1" "cfg2")
@@ -510,7 +533,9 @@ USA.
 		   lapgen-base
 		   lapgen-body
 		   (filename/append "back" "linear"))))
+      #|
       (add-declaration! '(USUAL-DEFINITION (SET EXPT)) dependents)
+      |#
       (file-dependency/integration/join dependents instruction-base))
 
     (file-dependency/integration/join (append lapgen-base lapgen-body)
@@ -519,7 +544,7 @@ USA.
     (define-integration-dependencies "back" "lapgn1" "base"
       "cfg1" "cfg2" "utils")
     (define-integration-dependencies "back" "lapgn1" "rtlbase"
-      "regset" "rgraph" "rtlcfg")
+      "rgraph" "rtlcfg")
     (define-integration-dependencies "back" "lapgn2" "rtlbase" "rtlreg")
     (define-integration-dependencies "back" "linear" "base" "cfg1" "cfg2")
     (define-integration-dependencies "back" "linear" "rtlbase" "rtlcfg")

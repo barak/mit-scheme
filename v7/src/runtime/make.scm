@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.104 2006/09/15 01:23:11 cph Exp $
+$Id: make.scm,v 14.105 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
@@ -243,12 +243,20 @@ USA.
 	       bin-file)))))
 
 (define (file->object filename purify? optional?)
-  (cond ((map-filename filename)
-	 => (lambda (mapped)
-	      (fasload mapped purify?)))
-	((not optional?)
-	 (fatal-error (string-append "Could not find " filename)))
-	(else #f)))
+  (let* ((block-name (string-append "runtime_" filename))
+	 (value (initialize-c-compiled-block block-name)))
+    (cond (value
+	   (tty-write-string newline-string)
+	   (tty-write-string block-name)
+	   (tty-write-string " initialized")
+	   (remember-to-purify purify? filename value))
+	  ((map-filename filename)
+	   => (lambda (mapped)
+		(fasload mapped purify?)))
+	  ((not optional?)
+	   (fatal-error (string-append "Could not find " filename)))
+	  (else
+	   #f))))
 
 (define (eval object environment)
   (let ((value (scode-eval object environment)))
@@ -279,6 +287,19 @@ USA.
 
 (define fasload-purification-queue
   '())
+
+(define (implemented-primitive-procedure? primitive)
+  ((ucode-primitive get-primitive-address)
+   (intern ((ucode-primitive get-primitive-name) (object-datum primitive)))
+   #f))
+
+(define initialize-c-compiled-block
+  (let ((prim (ucode-primitive initialize-c-compiled-block 1)))
+    (if (implemented-primitive-procedure? prim)
+	prim
+	(lambda (name)
+	  name				; ignored
+	  #f))))
 
 (define os-name
   (intern os-name-string))
@@ -316,11 +337,13 @@ USA.
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
 
 (define packages-file
-  (fasload (cond ((eq? os-name 'NT) "runtime-w32.pkd")
-		 ((eq? os-name 'OS/2) "runtime-os2.pkd")
-		 ((eq? os-name 'UNIX) "runtime-unx.pkd")
-		 (else "runtime-unk.pkd"))
-	   #f))
+  (let ((name (cond ((eq? os-name 'NT) "runtime-w32")
+		    ((eq? os-name 'OS/2) "runtime-os2")
+		    ((eq? os-name 'UNIX) "runtime-unx")
+		    (else "runtime-unk"))))
+    (or (initialize-c-compiled-block (string-append "runtime_" name))
+	(fasload (string-append name ".pkd") #f))))
+
 ((lexical-reference environment-for-package 'CONSTRUCT-PACKAGES-FROM-FILE)
  packages-file)
 

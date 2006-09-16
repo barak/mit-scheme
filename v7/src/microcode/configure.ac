@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [14.17], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.11 2006/06/10 15:06:07 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.12 2006/09/16 11:19:09 gjr Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -148,6 +148,10 @@ DLD_LDFLAGS=
 MODULE_BASES=
 MODULE_CFLAGS="-DCOMPILE_AS_MODULE"
 MODULE_LDFLAGS=
+COMPILED_DEFS=
+CMPAUXMDO=
+COMPILED_SOURCES_1=
+COMPILED_OBJECTS_1=
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -828,6 +832,11 @@ hppa*)
 i?86)
     scheme_arch=i386
     ;;
+# x86_64)
+#     scheme_arch=i386
+#     CFLAGS="${CFLAGS} -m32"
+#     LDFLAGS="${LDFLAGS} -m32"
+#     ;;
 m68k|m680?0)
     scheme_arch=mc68k
     ;;
@@ -846,6 +855,21 @@ if test "${scheme_arch}" != ""; then
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
     GC_HEAD_FILES="${GC_HEAD_FILES} cmpintmd.h"
+    CMPAUXMDO="Ignore-me.o"
+else
+    AC_DEFINE([HAS_COMPILER_SUPPORT], [1],
+	[Define if architecture has native-code compiler support.])
+    AC_DEFINE([NATIVE_CODE_IS_C], [1],
+        [Define that the compiler outputs C code instead of binaries.])
+    test -f cmpauxmd.c || ${LN_S} cmpauxmd/c.c cmpauxmd.c
+    test -f cmpintmd.h || ${LN_S} cmpintmd/c.h cmpintmd.h
+    COMPILED_DEFS="${COMPILED_DEFS} -DCOMPILE_FOR_STATIC_LINKING"
+    COMPILED_SOURCES_1="\$(COMPILED_SOURCES)"
+    COMPILED_OBJECTS_1="\$(COMPILED_OBJECTS)"
+    OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.c unstackify.c compinit.c"
+    OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o unstackify.o compinit.o"
+    GC_HEAD_FILES="${GC_HEAD_FILES} cmpintmd.h"
+    CMPAUXMDO="cmpauxmd.o"    
 fi
 
 for base in ${OPTIONAL_BASES}; do
@@ -884,6 +908,10 @@ AC_SUBST([MODULE_TARGETS])
 AC_SUBST_FILE([MODULE_RULES])
 AC_SUBST([MODULE_CFLAGS])
 AC_SUBST([MODULE_LDFLAGS])
+AC_SUBST([COMPILED_DEFS])
+AC_SUBST([CMPAUXMDO])
+AC_SUBST([COMPILED_SOURCES_1])
+AC_SUBST([COMPILED_OBJECTS_1])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

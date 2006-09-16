@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.80 2005/07/24 05:08:55 cph Exp $
+$Id: primutl.c,v 9.81 2006/09/16 11:19:09 gjr Exp $
 
-Copyright 1993,2000,2001,2004,2005 Massachusetts Institute of Technology
+Copyright 1993,2000,2001,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -345,9 +345,25 @@ DEFUN (install_primitive, (name, code, nargs_lo, nargs_hi, docstr),
 SCHEME_OBJECT
 DEFUN (make_primitive, (name, arity), char * name AND int arity)
 {
-  SCHEME_OBJECT result;
+  /* This copies the name (and probes twice) because unstackify'd
+     primitive name strings are ephemeral.
+  */
 
-  result = (declare_primitive (name,
+  SCHEME_OBJECT result;
+  char * name_to_insert;
+  tree_node prim = (tree_lookup (prim_procedure_tree, name));
+				 
+  if (prim != ((tree_node) NULL))
+    name_to_insert = ((char *) (prim->name));
+  else
+  {
+    name_to_insert = ((char *) (malloc (1 + (strlen (name)))));
+    if (name_to_insert == ((char *) NULL))
+      error_in_system_call (syserr_not_enough_space, syscall_malloc);
+    strcpy (name_to_insert, name);
+  }
+
+  result = (declare_primitive (name_to_insert,
 			       Prim_unimplemented,
 			       arity,
 			       arity,

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.63 2006/08/28 16:58:26 cph Exp $
+$Id: psbtobin.c,v 9.64 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,2000,2001,2005 Massachusetts Institute of Technology
@@ -759,7 +759,7 @@ DEFUN (when, (what, message), Boolean what AND char * message)
 void
 DEFUN (relocation_error, (addr), long addr)
 {
-  fprintf (stderr, "%s: Out of range address %d.\n",
+  fprintf (stderr, "%s: Out of range address %ld.\n",
 	   program_name, addr);
   inconsistency ();
   /*NOTREACHED*/
@@ -870,7 +870,7 @@ DEFUN (Read_Pointers_and_Relocate, (how_many, to),
 
 	VMS_BUG (base_type = 0);
 	VMS_BUG (base_datum = 0);
-	fscanf (portable_file, "%02x %lx", &base_type, &base_datum);
+	fscanf (portable_file, "%02lx %lx", &base_type, &base_datum);
 	temp = (Relocate (base_datum));
 	if (c_compiled_p)
 	  entry_addr = &temp[The_Datum];
@@ -1159,8 +1159,8 @@ DEFUN_VOID (Read_Header_and_Allocate)
   if (Portable_Version != PORTABLE_VERSION)
   {
     fprintf (stderr, "%s: Portable version mismatch:\n", program_name);
-    fprintf (stderr, "Portable File Version %4d\n", Portable_Version);
-    fprintf (stderr, "Expected:     Version %4d\n", PORTABLE_VERSION);
+    fprintf (stderr, "Portable File Version %4ld\n", Portable_Version);
+    fprintf (stderr, "Expected:     Version %4ld\n", PORTABLE_VERSION);
     quit (1);
   }
 
@@ -1173,7 +1173,8 @@ DEFUN_VOID (Read_Header_and_Allocate)
   {
     fprintf (stderr, "%s: Binary version mismatch:\n", program_name);
     fprintf (stderr,
-	     "Portable File Version %4d; Binary Version %4d; Subversion %4d\n",
+	     "Portable File Version %4ld;"
+	     " Binary Version %4d; Subversion %4ld\n",
 	     Portable_Version, Version, Sub_Version);
     fprintf (stderr,
 	     "Expected:     Version %4d; Binary Version %4d; Subversion %4d\n",
@@ -1196,7 +1197,7 @@ DEFUN_VOID (Read_Header_and_Allocate)
     else
       fprintf (stderr, "%s: %s\n", program_name,
 	       "Portable file contains \"unexpected\" non-marked vectors.");
-    fprintf (stderr, "Machine specified in the portable file: %4d\n",
+    fprintf (stderr, "Machine specified in the portable file: %4ld\n",
 	     Machine);
     fprintf (stderr, "Machine Expected:                       %4d\n",
 	     FASL_INTERNAL_FORMAT);
@@ -1309,7 +1310,7 @@ DEFUN_VOID (do_it)
     SCHEME_OBJECT
       * primitive_table, * primitive_table_end,
       * c_code_table, * c_code_table_end,
-      * Dumped_Object;
+      * Dumped_Object = ((SCHEME_OBJECT *) NULL);
     Boolean result;
     long Size;
 

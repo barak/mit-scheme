@@ -1,4 +1,0 @@
-#!/bin/csh -f
-
-cd $jw/microcode
-make -k -f xmakefile scheme

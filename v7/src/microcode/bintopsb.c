@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.78 2006/08/28 16:58:24 cph Exp $
+$Id: bintopsb.c,v 9.79 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,2000 Massachusetts Institute of Technology
@@ -546,7 +546,7 @@ DEFUN (print_a_bit_string, (from), SCHEME_OBJECT * from)
 {
   SCHEME_OBJECT the_bit_string;
   fast long bits_remaining, leftover_bits;
-  fast SCHEME_OBJECT accumulator, next_word, *scan;
+  fast SCHEME_OBJECT accumulator = ((SCHEME_OBJECT) 0), next_word, *scan;
 
   the_bit_string = (MAKE_POINTER_OBJECT (TC_BIT_STRING, from));
   bits_remaining = (BIT_STRING_LENGTH (the_bit_string));
@@ -926,7 +926,7 @@ DEFUN (copy_c_compiled_block, (Fre, Old_Contents, Old_Address),
 #define DO_C_COMPILED_ENTRY(Code, Rel, Fre, Scn, Obj, FObj)		\
   COMPILER_BAD_STMT ("DO_C_COMPILED_ENTRY")
 
-#define  DO_C_COMPILED_BLOCK(Code, Rel, Fre, Scn, Obj, FObj)
+#define  DO_C_COMPILED_BLOCK(Code, Rel, Fre, Scn, Obj, FObj)		\
   COMPILER_BAD_STMT ("DO_C_COMPILED_BLOCK")
 
 #endif /* HAS_COMPILER_SUPPORT */

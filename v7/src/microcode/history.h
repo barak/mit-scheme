@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: history.h,v 9.33 2003/02/14 18:28:19 cph Exp $
+$Id: history.h,v 9.34 2006/09/16 11:19:09 gjr Exp $
 
-Copyright (c) 1987-1990, 1999, 2002 Massachusetts Institute of Technology
+Copyright (c) 1987-1990, 1999, 2002, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,7 +40,7 @@ USA.
 #define RIB_MARK		2
 
 #define HISTORY_MARK_TYPE (UNMARKED_HISTORY_TYPE ^ MARKED_HISTORY_TYPE)
-#define HISTORY_MARK_MASK (HISTORY_MARK_TYPE << DATUM_LENGTH)
+#define HISTORY_MARK_MASK (((unsigned long) HISTORY_MARK_TYPE) << DATUM_LENGTH)
 
 #if ((UNMARKED_HISTORY_TYPE | HISTORY_MARK_TYPE) != MARKED_HISTORY_TYPE)
 #include "error: Bad history types in types.h and history.h"

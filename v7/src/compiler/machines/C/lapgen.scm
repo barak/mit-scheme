@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.17 2004/07/01 01:19:57 cph Exp $
+$Id: lapgen.scm,v 1.18 2006/09/16 11:19:09 gjr Exp $
 
-Copyright 1993,1998,2001,2002,2004 Massachusetts Institute of Technology
+Copyright 1993,1998,2001,2002,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -548,7 +548,7 @@ USA.
 		       'REGISTER->HOME-TRANSFER one two))
 
 (define (lap:make-label-statement label)
-  (LAP "\n" ,label ":\n\t" ))
+  (LAP "\nDEFLABEL(" ,label ");\n\t" ))
 
 (define (lap:make-unconditional-branch label)
   (LAP "goto " ,label ";\n\t"))

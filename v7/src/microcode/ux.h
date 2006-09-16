@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.78 2005/06/27 06:03:10 cph Exp $
+$Id: ux.h,v 1.79 2006/09/16 11:19:09 gjr Exp $
 
 Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,1999,2000,2003 Massachusetts Institute of Technology
-Copyright 2005 Massachusetts Institute of Technology
+Copyright 2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,6 +44,10 @@ USA.
 #  define SYSTEM_VARIANT "Domain"
 #endif
 
+#ifdef __APPLE__
+#  define SYSTEM_VARIANT "MacOSX"
+#endif
+
 #ifdef __bsdi__			/* works on bsdi 3.0 */
 #  define SYSTEM_VARIANT "BSDI BSD/OS"
 #endif
@@ -62,6 +66,10 @@ USA.
 
 #ifdef __linux__
 #  define SYSTEM_VARIANT "GNU/Linux"
+#endif
+
+#if defined(__netbsd__) || defined(__NetBSD__)
+#  define SYSTEM_VARIANT "NETBSD"
 #endif
 
 #ifdef _NEXTOS
@@ -581,6 +589,12 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #  define EMULATE_GETPAGESIZE
 #endif
 
+#ifdef __APPLE__
+/* poll is somewhat busted on Mac OSX 10.4 (Tiger).  Force the use of select */
+
+#undef HAVE_POLL
+#endif
+
 #ifdef HAVE_POLL
 #  ifndef INFTIM
 #    define INFTIM (-1)
