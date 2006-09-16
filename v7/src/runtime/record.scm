@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.55 2005/10/24 05:31:07 cph Exp $
+$Id: record.scm,v 1.56 2006/09/16 05:29:17 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
-Copyright 1997,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 1997,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -295,24 +295,23 @@ USA.
       (let ((tag (%record-type-dispatch-tag record-type))
 	    (n-fields (%record-type-n-fields record-type)))
 	(expand-cases tag n-fields 16
-	  (let ((length (fix:+ 1 n-fields)))
+	  (let ((reclen (fix:+ 1 n-fields)))
 	    (letrec
 		((constructor
 		  (lambda field-values
-		    (let ((record (%make-record length #f))
+		    (let ((record (%make-record reclen #f))
 			  (lose
 			   (lambda ()
 			     (error:wrong-number-of-arguments constructor
 							      n-fields
 							      field-values))))
 		      (%record-set! record 0 tag)
-		      (let loop ((i 1) (values field-values))
-			(if (fix:< i length)
-			    (begin
-			      (if (not (pair? values)) (lose))
-			      (%record-set! record i (car values))
-			      (loop (cdr values) (fix:+ i 1)))
-			    (if (not (null? values)) (lose))))
+		      (do ((i 1 (fix:+ i 1))
+			   (vals field-values (cdr vals)))
+			  ((not (fix:< i reclen))
+			   (if (not (null? vals)) (lose)))
+			(if (not (pair? vals)) (lose))
+			(%record-set! record i (car vals)))
 		      record))))
 	      constructor)))))))
 
