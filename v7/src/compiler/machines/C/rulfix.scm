@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.7 2003/02/14 18:28:02 cph Exp $
+$Id: rulfix.scm,v 1.8 2006/09/17 12:10:04 gjr Exp $
 
-Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002, 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -466,31 +466,40 @@ USA.
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? source1))
 		      (REGISTER (? source2)))
-  (compare (fixnum-pred-2->cc predicate)
-	   (standard-source! source1 'LONG)
-	   (standard-source! source2 'LONG)))
+  ((comparator predicate)
+   (fixnum-pred-2->cc predicate)
+   (standard-source! source1 'LONG)
+   (standard-source! source2 'LONG)))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? source))
 		      (OBJECT->FIXNUM (CONSTANT (? constant))))
-  (compare (fixnum-pred-2->cc predicate)
-	   (standard-source! source 'LONG)
-	   (longify constant)))
+  ((comparator predicate)
+   (fixnum-pred-2->cc predicate)
+   (standard-source! source 'LONG)
+   (longify constant)))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (OBJECT->FIXNUM (CONSTANT (? constant)))
 		      (REGISTER (? source)))
-  (compare (fixnum-pred-2->cc predicate)
-	   (longify constant)
-	   (standard-source! source 'LONG)))
+  ((comparator predicate)
+   (fixnum-pred-2->cc predicate)
+   (longify constant)
+   (standard-source! source 'LONG)))
  
+(define-integrable (comparator predicate)
+  (if (memq predicate '(UNSIGNED-LESS-THAN-FIXNUM?
+			UNSIGNED-GREATER-THAN-FIXNUM?))
+      compare/unsigned
+      compare))
+
 (define (fixnum-pred-2->cc predicate)
   (case predicate
     ((EQUAL-FIXNUM?) " == ")
-    ((LESS-THAN-FIXNUM?) " < ")
-    ((GREATER-THAN-FIXNUM?) " > ")
+    ((LESS-THAN-FIXNUM? UNSIGNED-LESS-THAN-FIXNUM?) " < ")
+    ((GREATER-THAN-FIXNUM? UNSIGNED-GREATER-THAN-FIXNUM?) " > ")
     (else
      (error "unknown fixnum predicate" predicate))))
 

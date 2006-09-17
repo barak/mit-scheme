@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.16 2006/09/16 11:19:09 gjr Exp $
+$Id: ctop.scm,v 1.17 2006/09/17 12:10:04 gjr Exp $
 
 Copyright (c) 1992-1999, 2006 Massachusetts Institute of Technology
 
@@ -143,8 +143,8 @@ USA.
 		   (write-string ";Executing \"")
 		   (write-string command-line)
 		   (write-string "\"")))
-	     (let ((result ((ucode-primitive system) command-line)))
-					#|
+	     (let ((result (run-shell-command command-line)))
+	       #|
 	       ;; Some C compilers always fail
 	       (if (not (zero? result))
 		   (error "compiler: C compiler/linker failed"))

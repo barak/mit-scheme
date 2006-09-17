@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.6 2006/09/16 11:19:09 gjr Exp $
+$Id: make.scm,v 1.7 2006/09/17 12:10:04 gjr Exp $
 
 Copyright (c) 1992, 1999, 2006 Massachusetts Institute of Technology
 
@@ -26,6 +26,8 @@ USA.
 ;;;; Compiler: System Construction
 
 (declare (usual-integrations))
+
+(load-option 'synchronous-subprocess)
 
 (begin
   (declare-shared-library "sf+compiler" (lambda () true))

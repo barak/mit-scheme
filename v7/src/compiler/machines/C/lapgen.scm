@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.18 2006/09/16 11:19:09 gjr Exp $
+$Id: lapgen.scm,v 1.19 2006/09/17 12:10:04 gjr Exp $
 
 Copyright 1993,1998,2001,2002,2004,2006 Massachusetts Institute of Technology
 
@@ -564,6 +564,16 @@ USA.
      (LAP "if (" ,val1 ,cc ,val2 ")\n\t  goto " ,label ";\n\t"))
    (lambda (label)
      (LAP "if (!(" ,val1 ,cc ,val2 "))\n\t  goto " ,label ";\n\t")))
+  (LAP))
+
+(define (compare/unsigned cc val1 val2)
+  (set-current-branches!
+   (lambda (label)
+     (LAP "if (((unsigned long) " ,val1 ")"
+	  ,cc "((unsigned long) " ,val2 "))\n\t  goto " ,label ";\n\t"))
+   (lambda (label)
+     (LAP "if (!(((unsigned long) " ,val1 ")"
+	  ,cc "((unsigned long) " ,val2 ")))\n\t  goto " ,label ";\n\t")))
   (LAP))
 
 (define (define-arithmetic-method operator methods method)
