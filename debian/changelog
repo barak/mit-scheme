@@ -1,3 +1,10 @@
+mit-scheme (7.7.90+20060906-2) unstable; urgency=low
+
+  * debian/mit-scheme.emacsen-remove: don't purge if directory doesn't
+    exist.  (closes: Bug#387788)
+
+ -- Chris Hanson <cph@debian.org>  Tue, 19 Sep 2006 12:43:46 -0400
+
 mit-scheme (7.7.90+20060906-1) unstable; urgency=low
 
   * New upstream.

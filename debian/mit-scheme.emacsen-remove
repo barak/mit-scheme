@@ -7,7 +7,7 @@ FLAVOR=${1}
 PACKAGE=mit-scheme
 ELCDIR=/usr/share/${FLAVOR}/site-lisp/${PACKAGE}
 
-if [ ${FLAVOR} != emacs ]; then
+if [ ${FLAVOR} != emacs ] && [ -d ${ELCDIR} ]; then
     echo remove/${PACKAGE}: purging byte-compiled files for ${FLAVOR}
     rm -f ${ELCDIR}/*.elc
     rmdir --ignore-fail-on-non-empty ${ELCDIR}
