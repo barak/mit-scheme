@@ -1,3 +1,10 @@
+mit-scheme (7.7.90+20060906-3) unstable; urgency=low
+
+  * No changes; rebuild with downgraded openssl in order to permit
+    transition into testing.
+
+ -- Chris Hanson <cph@debian.org>  Wed, 20 Sep 2006 21:59:42 -0400
+
 mit-scheme (7.7.90+20060906-2) unstable; urgency=low
 
   * debian/mit-scheme.emacsen-remove: don't purge if directory doesn't
