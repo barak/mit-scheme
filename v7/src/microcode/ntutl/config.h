@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: config.h,v 1.9 2006/09/21 04:52:14 cph Exp $
+$Id: config.h,v 1.10 2006/09/21 04:52:54 cph Exp $
 
-Copyright 2000,2001,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2003,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
