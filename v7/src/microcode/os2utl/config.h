@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: config.h,v 1.7 2003/07/22 02:19:51 cph Exp $
+$Id: config.h,v 1.8 2006/09/21 04:52:38 cph Exp $
 
-Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -87,13 +87,13 @@ typedef unsigned char cc_t;
 #define PACKAGE_NAME "MIT/GNU Scheme"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "MIT/GNU Scheme 14.11"
+#define PACKAGE_STRING "MIT/GNU Scheme 14.17"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "mit-scheme"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "14.11"
+#define PACKAGE_VERSION "14.17"
 
 /* Include the shared configuration header.  */
 #include "confshared.h"
