@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.124 2004/12/13 03:22:21 cph Exp $
+$Id: make.scm,v 4.125 2006/09/24 23:56:11 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1998 Massachusetts Institute of Technology
-Copyright 1999,2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 1999,2001,2002,2003,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,4 +38,4 @@ USA.
    (pathname-as-directory "compiler")
    (lambda ()
      (load-package-set "compiler")))
-  (add-subsystem-identification! "LIAR" '(4 117)))
+  (add-subsystem-identification! "LIAR" '(4 118)))
