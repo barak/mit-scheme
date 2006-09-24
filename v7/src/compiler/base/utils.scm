@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 4.31 2006/09/16 11:19:09 gjr Exp $
+$Id: utils.scm,v 4.32 2006/09/24 23:51:57 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1994,2001,2001,2003,2004,2006 Massachusetts Institute of Technology
@@ -193,8 +193,8 @@ USA.
   (or (object-type? (ucode-type false) object)
       (object-type? (ucode-type true) object)
       (and (fix:fixnum? object)
-	   (fix:< object signed-fixnum/upper-limit)
-	   (not (fix:< object signed-fixnum/lower-limit)))
+	   (>= object signed-fixnum/lower-limit)
+	   (< object signed-fixnum/upper-limit))
       (object-type? (ucode-type character) object)
       (object-type? (ucode-type unassigned) object)
       (object-type? (ucode-type the-environment) object)

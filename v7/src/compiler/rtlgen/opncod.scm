@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.74 2006/09/16 11:19:09 gjr Exp $
+$Id: opncod.scm,v 4.75 2006/09/24 23:51:35 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1997,1998,2001,2004,2006 Massachusetts Institute of Technology
@@ -396,8 +396,8 @@ USA.
   (if (rtl:constant? expression)
       (if (let ((value (rtl:constant-value expression)))
 	    (and (fix:fixnum? value)
-		 (fix:< value signed-fixnum/upper-limit)
-		 (not (fix:< value signed-fixnum/lower-limit))))
+		 (>= value signed-fixnum/lower-limit)
+		 (< value signed-fixnum/upper-limit)))
 	  (if-true)
 	  (if-false))
       (if-test
