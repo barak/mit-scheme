@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: script.scm,v 1.1 2006/09/16 11:19:09 gjr Exp $
+$Id: script.scm,v 1.2 2006/09/25 05:57:34 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -26,39 +26,25 @@ USA.
 ;;;; Program to compile MIT/GNU Scheme
 
 ;;; This is used to compile a part of the system written in Scheme.
-;;; This is the part of the system statically linked into the microcode
-;;; when using the C back end of the compiler.
+;;; This is the part of the system statically linked into the
+;;; microcode when using the C back end of the compiler.
 
-;; (set! compiler:invoke-c-compiler? false)
-
-(fluid-let ((compiler:invoke-c-compiler? false))
-  (with-working-directory-pathname
-   "../microcode"
-   (lambda ()
-     (if (or (not (file-exists? "utabmd.bin"))
-	     (> (file-modification-time-indirect "utabmd.scm")
-		(file-modification-time-indirect "utabmd.bin")))
-	 (sf "utabmd"))
-     (cbf "utabmd")))
-  (let ((dirs '("runtime" "sf" "cref" "compiler")))
-    (for-each
-     (lambda (dir)
-       (with-working-directory-pathname
-	(string-append "../" dir)
-	(lambda ()
-	  (load (string-append dir ".sf")))))
-     dirs)
-    (for-each
-     (lambda (dir)
-       (with-working-directory-pathname
-	(string-append "../" dir)
-	(lambda ()
-	  (load (string-append dir ".cbf"))
-	  (cbf (string-append dir "-unx.pkd")))))
-     dirs))
-  (with-working-directory-pathname
-   "../star-parser"
-   (lambda ()
-     (load "compile.scm")
-     (cbf "parser-unx.pkd")))
-  )
+(fluid-let ((compiler:invoke-c-compiler? #f))
+  (with-working-directory-pathname "microcode"
+    (lambda ()
+      (if (or (not (file-exists? "utabmd.bin"))
+	      (> (file-modification-time-indirect "utabmd.scm")
+		 (file-modification-time-indirect "utabmd.bin")))
+	  (sf "utabmd"))
+      (cbf "utabmd")))
+  (for-each (lambda (dir)
+	      (with-working-directory-pathname dir
+		(lambda ()
+		  (load (string-append dir ".sf"))
+		  (load (string-append dir ".cbf"))
+		  (cbf (string-append dir "-unx.pkd")))))
+	    '("runtime" "sf" "cref" "compiler"))
+  (with-working-directory-pathname "star-parser"
+    (lambda ()
+      (load "compile.scm")
+      (cbf "parser-unx.pkd"))))
