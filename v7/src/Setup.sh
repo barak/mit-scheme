@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.13 2006/09/16 11:19:08 gjr Exp $
+# $Id: Setup.sh,v 1.14 2006/09/25 04:38:45 cph Exp $
 #
 # Copyright 2000,2001,2003,2004,2006 Massachusetts Institute of Technology
 #
@@ -50,5 +50,5 @@ for SUBDIR in 6001 compiler cref edwin imail rcs runtime runtime-check \
               sf sos ssp star-parser win32 xdoc xml microcode; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
-    ( cd ${SUBDIR} && ./Setup.sh ) || exit 1
+    ( cd ${SUBDIR} && ./Setup.sh "$@" ) || exit 1
 done

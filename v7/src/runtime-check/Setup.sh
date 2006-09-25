@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.8 2003/02/14 18:48:13 cph Exp $
+# $Id: Setup.sh,v 1.9 2006/09/25 04:39:12 cph Exp $
 #
-# Copyright 2000,2001 Massachusetts Institute of Technology
+# Copyright 2000,2001,2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -24,14 +24,9 @@
 # Utility to set up an MIT/GNU Scheme build directory.
 # The working directory must be the build directory.
 
-if [ $# -ne 0 ]; then
-    echo "usage: $0"
-    exit 1
-fi
-
 . ../etc/functions.sh
 
-../etc/Setup.sh
+../etc/Setup.sh "$@"
 
 for FNS in `cd ../runtime; ls *.scm`; do
     FN="`basename ${FNS} .scm`.bin"

@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.6 2003/02/14 18:48:11 cph Exp $
+# $Id: Setup.sh,v 1.7 2006/09/25 04:38:51 cph Exp $
 #
-# Copyright 2000 Massachusetts Institute of Technology
+# Copyright 2000,2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -24,14 +24,9 @@
 # Utility to set up the MIT/GNU Scheme compiler directory.
 # The working directory must be the compiler directory.
 
-if [ $# -ne 0 ]; then
-    echo "usage: $0"
-    exit 1
-fi
-
 . ../etc/functions.sh
 
-../etc/Setup.sh
+../etc/Setup.sh "$@"
 
 for N in 1 2 3; do
     maybe_link machines/vax/dinstr${N}.scm instr${N}.scm

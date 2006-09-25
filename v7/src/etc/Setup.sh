@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.9 2003/02/14 18:48:11 cph Exp $
+# $Id: Setup.sh,v 1.10 2006/09/25 04:38:56 cph Exp $
 #
-# Copyright 2000 Massachusetts Institute of Technology
+# Copyright 2000,2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -23,11 +23,6 @@
 
 # Utility to set up an MIT/GNU Scheme build directory.
 # The working directory must be the build directory.
-
-if [ $# -ne 0 ]; then
-    echo "usage: $0"
-    exit 1
-fi
 
 . ../etc/functions.sh
 

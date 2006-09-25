@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: Setup.sh,v 1.8 2003/02/14 18:48:11 cph Exp $
+# $Id: Setup.sh,v 1.9 2006/09/25 04:39:01 cph Exp $
 #
-# Copyright 2000 Massachusetts Institute of Technology
+# Copyright 2000,2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -34,5 +34,5 @@ if [ ! -x configure ]; then
 fi
 ( cd cmpauxmd && make )
 if [ ! -f Makefile.in ]; then
-    makegen/makeinit.sh
+    makegen/makeinit.sh "$@"
 fi
