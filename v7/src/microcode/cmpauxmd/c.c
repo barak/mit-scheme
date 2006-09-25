@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.16 2006/09/16 11:19:09 gjr Exp $
+$Id: c.c,v 1.17 2006/09/25 04:36:56 cph Exp $
 
-Copyright (c) 1992-1999, 2002, 2006 Massachusetts Institute of Technology
+Copyright 1993,2002,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,6 +30,13 @@ USA.
 #include "bignum.h"
 #include "bitstr.h"
 #include "avltree.h"
+
+#ifdef HAVE_STDLIB_H
+#  include <stdlib.h>
+#else
+   extern PTR EXFUN (malloc, (unsigned long));
+   extern PTR EXFUN (realloc, (PTR, unsigned long));
+#endif
 
 #ifdef BUG_GCC_LONG_CALLS
 
@@ -171,9 +178,6 @@ DEFUN (unspecified_code, (entry, dispatch),
   return (&dummy_entry);
 }
 
-extern PTR EXFUN (malloc, (unsigned long));
-extern PTR EXFUN (realloc, (PTR, unsigned long));
-
 PTR
 DEFUN (lrealloc, (ptr, size), PTR ptr AND unsigned long size)
 {
