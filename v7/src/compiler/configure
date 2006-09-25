@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: configure,v 1.7 2006/09/16 11:19:09 gjr Exp $
+# $Id: configure,v 1.8 2006/09/25 04:40:04 cph Exp $
 #
-# Copyright (c) 2000, 2006 Massachusetts Institute of Technology
+# Copyright 2000,2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -21,35 +21,57 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-if test ! -e machine; then
-    case `./config.guess` in
-    alpha-* | alphaev[56]-* | alphaev56-* | alphapca56-* )
-	MACHINE=alpha
+enable_c_back_end="no"
+
+while test $# -gt 0; do
+    case "${1}" in
+    (--enable-c-back-end)
+	enable_c_back_end="yes"
+	shift
 	;;
-    m68k-* )
-	MACHINE=bobcat
+    (--disable-c-back-end)
+	enable_c_back_end="no"
+	shift
 	;;
-    i[3456]86-* )
-	MACHINE=i386
-	;;
-    mips-* | mipsel-* )
-	MACHINE=mips
-	;;
-    sparc-* )
-	MACHINE=sparc
-	;;
-    hppa-* | hppa1.[01]-* | hppa2.?-* )
-	MACHINE=spectrum
-	;;
-    vax-* )
-	MACHINE=vax
-	;;
-    * )
-	MACHINE=C
+    (*)
+	shift
 	;;
     esac
-    ln -s machines/${MACHINE} machine
+done
+
+if test ! -e machine; then
+    if test "${enable_c_back_end}" = "yes"; then
+	MACHINE="C"
+    else
+	case `./config.guess` in
+	(alpha-* | alphaev[56]-* | alphaev56-* | alphapca56-*)
+	    MACHINE="alpha"
+	    ;;
+	(m68k-*)
+	    MACHINE="bobcat"
+	    ;;
+	(i[3456]86-*)
+	    MACHINE="i386"
+	    ;;
+	(mips-* | mipsel-*)
+	    MACHINE="mips"
+	    ;;
+	(sparc-*)
+	    MACHINE="sparc"
+	    ;;
+	(hppa-* | hppa1.[01]-* | hppa2.?-*)
+	    MACHINE="spectrum"
+	    ;;
+	(vax-*)
+	    MACHINE="vax"
+	    ;;
+	(*)
+	    MACHINE="C"
+	    ;;
+	esac
+    fi
+    ln -s "machines/${MACHINE}" machine
 fi
-for FN in compiler.cbf compiler.pkg compiler.sf make.com; do \
-    test -e ${FN} || ln -s machine/${FN} .; \
+for FN in compiler.cbf compiler.pkg compiler.sf make.com; do
+    test -h "${FN}" || ln -s "machine/${FN}" .;
 done

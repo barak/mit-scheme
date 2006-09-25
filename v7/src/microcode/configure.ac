@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.13 2006/09/24 23:54:12 cph Exp $])
+AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_REVISION([$Id: configure.ac,v 1.14 2006/09/25 04:40:10 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -110,6 +110,8 @@ AH_BOTTOM(
 #endif /* SCM_CONFIG_H */])
 
 dnl Feature options.
+AC_ARG_ENABLE([c-back-end],
+[[  --enable-c-back-end     Build portable system with C output [no]]])
 AC_ARG_ENABLE([static-libs],
 [[  --enable-static-libs    Link some libraries statically [no]]])
 AC_ARG_ENABLE([dynamic-modules],
@@ -128,6 +130,8 @@ AC_ARG_WITH([db4],
 [[  --with-db4              Use Berkeley DB v4 library if available [yes]]])
 AC_ARG_WITH([libpq],
 [[  --with-libpq            Use PostgreSQL libpq library if available [yes]]])
+
+enable_c_back_end="${enable_c_back_end:-no}"
 
 dnl Substitution variables to be filled in below.
 AS_FLAGS=
@@ -818,38 +822,42 @@ fi
 
 dnl Add architecture-dependent customizations.
 dnl This is mostly support for native-code compilation.
+AC_MSG_CHECKING([for native-code support])
 scheme_arch=
 OPTIONAL_BASES="${OPTIONAL_BASES} cmpint"
 GC_HEAD_FILES="gccode.h cmpgc.h"
-case "$host_cpu" in
-alpha*)
-    scheme_arch=alpha
-    ;;
-hppa*)
-    scheme_arch=hppa
-    GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
-    ;;
-i?86)
-    scheme_arch=i386
-    ;;
-# x86_64)
-#     scheme_arch=i386
-#     CFLAGS="${CFLAGS} -m32"
-#     LDFLAGS="${LDFLAGS} -m32"
-#     ;;
-m68k|m680?0)
-    scheme_arch=mc68k
-    ;;
-mips*)
-    scheme_arch=mips
-    ;;
-vax)
-    scheme_arch=vax
-    ;;
-esac
+if test "${enable_c_back_end}" = "no"; then
+    case "$host_cpu" in
+    alpha*)
+	scheme_arch=alpha
+	;;
+    hppa*)
+	scheme_arch=hppa
+	GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
+	;;
+    i?86)
+	scheme_arch=i386
+	;;
+    # x86_64)
+    #     scheme_arch=i386
+    #     CFLAGS="${CFLAGS} -m32"
+    #     LDFLAGS="${LDFLAGS} -m32"
+    #     ;;
+    m68k|m680?0)
+	scheme_arch=mc68k
+	;;
+    mips*)
+	scheme_arch=mips
+	;;
+    vax)
+	scheme_arch=vax
+	;;
+    esac
+fi
+AC_DEFINE([HAS_COMPILER_SUPPORT], [1],
+    [Define if architecture has native-code compiler support.])
 if test "${scheme_arch}" != ""; then
-    AC_DEFINE([HAS_COMPILER_SUPPORT], [1],
-	[Define if architecture has native-code compiler support.])
+    AC_MSG_RESULT([yes, for ${scheme_arch}])
     test -f cmpauxmd.m4 || ${LN_S} cmpauxmd/${scheme_arch}.m4 cmpauxmd.m4
     test -f cmpintmd.h || ${LN_S} cmpintmd/${scheme_arch}.h cmpintmd.h
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
@@ -857,8 +865,7 @@ if test "${scheme_arch}" != ""; then
     GC_HEAD_FILES="${GC_HEAD_FILES} cmpintmd.h"
     CMPAUXMDO="Ignore-me.o"
 else
-    AC_DEFINE([HAS_COMPILER_SUPPORT], [1],
-	[Define if architecture has native-code compiler support.])
+    AC_MSG_RESULT([yes, using portable C code])
     AC_DEFINE([NATIVE_CODE_IS_C], [1],
         [Define that the compiler outputs C code instead of binaries.])
     test -f cmpauxmd.c || ${LN_S} cmpauxmd/c.c cmpauxmd.c

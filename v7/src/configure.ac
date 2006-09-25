@@ -1,12 +1,12 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.2 2004/11/01 19:21:21 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.3 2006/09/25 04:39:59 cph Exp $])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_PROG_MAKE_SET
 
 AC_COPYRIGHT(
-[Copyright 2000,2001,2004 Massachusetts Institute of Technology
+[Copyright 2000,2001,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -25,6 +25,9 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 ])
+
+AC_ARG_ENABLE([c-back-end],
+[[  --enable-c-back-end     Build portable system with C output [no]]])
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
