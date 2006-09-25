@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: makegen.scm,v 1.10 2006/09/16 11:19:09 gjr Exp $
+$Id: makegen.scm,v 1.11 2006/09/25 05:56:12 cph Exp $
 
 Copyright 2000,2001,2003,2005,2006 Massachusetts Institute of Technology
 
@@ -80,39 +80,30 @@ USA.
 	   (lambda (n)
 	     (if (not (= n (length (cdr command))))
 		 (malformed)))))
-      (let ((write-suffixed
-	     (lambda (suffix)
+      (let ((map-over-entries
+	     (lambda (procedure)
 	       (guarantee-nargs 1)
 	       (let ((entry (assoc (cadr command) file-lists)))
 		 (if (not entry)
 		     (malformed))
-		 (write-items (map (lambda (file) (string-append file suffix))
-				   (cdr entry))
+		 (write-items (map procedure (cdr entry))
 			      column
 			      output)
 		 0))))
-      (case (car command)
-	((WRITE-SOURCES)
-	 (write-suffixed ".c"))
-	((WRITE-OBJECTS)
-	 (write-suffixed ".o"))
-	((WRITE-DEPENDENCIES)
-	 (guarantee-nargs 0)
-	 (write-dependencies file-lists deps-filename output))
-	((WRITE-COMPILED)
-	 (guarantee-nargs 1)
-	 (let ((entry (assoc (cadr command) file-lists)))
-	   (if (not entry)
-	       (malformed))
-	   (write-items (append-map (lambda (entry)
-				      (map enough-namestring
-					   (directory-read entry)))
-				    (cdr entry))
-			column
-			output)
-	   0))
-	(else
-	 (error "Unknown command:" command)))))))
+	(case (car command)
+	  ((WRITE-SOURCES)
+	   (map-over-entries (lambda (entry) (string-append entry ".c"))))
+	  ((WRITE-OBJECTS)
+	   (map-over-entries (lambda (entry) (string-append entry ".o"))))
+	  ((WRITE-DEPENDENCIES)
+	   (guarantee-nargs 0)
+	   (write-dependencies file-lists deps-filename output))
+	  ((WRITE-COMPILED)
+	   (map-over-entries
+	    (lambda (entry)
+	      (string-append "$(wildcard " entry ")"))))
+	  (else
+	   (error "Unknown command:" command)))))))
 
 (define (write-dependencies file-lists deps-filename output)
   (maybe-update-dependencies
