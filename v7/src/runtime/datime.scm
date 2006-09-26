@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.40 2004/06/23 03:45:50 cph Exp $
+$Id: datime.scm,v 14.41 2006/09/26 06:58:53 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1993 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2000,2003 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -409,7 +409,7 @@ USA.
 		 (d2 (decoded-time/month dt))
 		 "-"
 		 (d2 (decoded-time/day dt))
-		 " "
+		 "T"
 		 (d2 (decoded-time/hour dt))
 		 ":"
 		 (d2 (decoded-time/minute dt))
