@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.12 2003/02/14 18:48:11 cph Exp $
+# $Id: Clean.sh,v 1.13 2006/09/28 23:48:27 cph Exp $
 #
-# Copyright 2000,2001,2002 Massachusetts Institute of Technology
+# Copyright 2000,2001,2002,2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -84,8 +84,8 @@ for KEYWORD in ${KEYWORDS}; do
 	rm -f *.bin *.ext
 	;;
     rm-com)
-	echo "rm -f *.com *.bci"
-	rm -f *.com *.bci
+	echo "rm -f *.com *.bci *.c *.o *.so *.sl *.dylib"
+	rm -f *.com *.bci *.c *.o *.so *.sl *.dylib
 	;;
     rm-old-pkg)
 	echo "rm -f *.bco *.bld *.glo *.con *.ldr"
