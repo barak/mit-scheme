@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.26 2003/02/14 18:28:35 cph Exp $
+$Id: toplev.scm,v 4.27 2006/09/29 19:30:07 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright 1993,1995,1997,2000,2001,2002 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,7 +37,7 @@ USA.
 (define (integrate/procedure procedure)
   (procedure-components procedure
     (lambda (*lambda environment)
-      (scode-eval (integrate/scode *lambda false) environment))))
+      (scode-eval (integrate/scode *lambda #f) environment))))
 
 (define (integrate/sexp s-expression environment declarations receiver)
   (integrate/simple (lambda (s-expressions)
@@ -52,15 +54,15 @@ USA.
 	       (and (not (default-object? spec-string)) spec-string)))
 
 (define (syntax&integrate s-expression declarations #!optional environment)
-  (fluid-let ((sf:noisy? false))
+  (fluid-let ((sf:noisy? #f))
     (integrate/sexp s-expression
 		    (if (default-object? environment)
 			(nearest-repl/environment)
 			environment)
 		    declarations
-		    false)))
+		    #f)))
 
-(define sf:noisy? true)
+(define sf:noisy? #t)
 
 (define (sf/set-usual-integrations-default-deletions! del-list)
   (if (not (list-of-symbols? del-list))
@@ -100,15 +102,11 @@ USA.
       (error "Malformed binding of SF/TOP-LEVEL-DEFINITIONS:"
 	     sf/top-level-definitions))
   (for-each (lambda (input-string)
-	      (call-with-values
-		  (lambda ()
-		    (sf/pathname-defaulting input-string
-					    bin-string
-					    spec-string))
-		(lambda (input-pathname bin-pathname spec-pathname)
-		  (sf/internal input-pathname bin-pathname spec-pathname
-			       sf/default-syntax-table
-			       sf/default-declarations))))
+	      (receive (input-pathname bin-pathname spec-pathname)
+		  (sf/pathname-defaulting input-string bin-string spec-string)
+		(sf/internal input-pathname bin-pathname spec-pathname
+			     sf/default-syntax-table
+			     sf/default-declarations)))
 	    (if (pair? input-string)
 		input-string
 		(list input-string))))
@@ -131,20 +129,20 @@ USA.
 	      (if bin-string
 		  (merge-pathnames bin-string bin-path)
 		  bin-path))
-	    false)))
+	    #f)))
 
 (define (sf/internal input-pathname bin-pathname spec-pathname
 		     environment declarations)
   spec-pathname				;ignored
   (let ((start-date (get-decoded-time)))
     (if sf:noisy?
-	(begin
-	  (fresh-line)
-	  (write-string "Syntax file: ")
-	  (write (enough-namestring input-pathname))
-	  (write-string " ")
-	  (write (enough-namestring bin-pathname))
-	  (newline)))
+	(let ((port (notification-output-port)))
+	  (fresh-line port)
+	  (write-string "Syntax file: " port)
+	  (write (enough-namestring input-pathname) port)
+	  (write-string " " port)
+	  (write (enough-namestring bin-pathname) port)
+	  (newline port)))
     (fasdump (make-comment
 	      `((SOURCE-FILE . ,(->namestring input-pathname))
 		(DATE ,(decoded-time/year start-date)
@@ -163,25 +161,23 @@ USA.
 	       (make-pathname (pathname-host input-pathname)
 			      (pathname-device input-pathname)
 			      (pathname-directory input-pathname)
-			      false
+			      #f
 			      externs-pathname-type
 			      'NEWEST)))
-    (call-with-values
-	(lambda ()
-	  (integrate/file input-pathname environment declarations))
-      (lambda (expression externs-block externs)
-	(if output-pathname
-	    (write-externs-file (pathname-new-type output-pathname
-						   externs-pathname-type)
-				externs-block
-				externs))
-	expression))))
+    (receive (expression externs-block externs)
+	(integrate/file input-pathname environment declarations)
+      (if output-pathname
+	  (write-externs-file (pathname-new-type output-pathname
+						 externs-pathname-type)
+			      externs-block
+			      externs))
+      expression)))
 
 (define externs-pathname-type
   "ext")
 
 (define sf/default-externs-pathname
-  (make-pathname false false false false externs-pathname-type 'NEWEST))
+  (make-pathname #f #f #f #f externs-pathname-type 'NEWEST))
 
 (define (read-externs-file pathname)
   (let ((pathname (merge-pathnames pathname sf/default-externs-pathname)))
@@ -197,7 +193,7 @@ USA.
 			   (number->string version)
 			   "):")
 			  namestring)
-		   (values false '()))))
+		   (values #f '()))))
 	    (cond ((and (vector? object)
 			(>= (vector-length object) 4)
 			(eq? externs-file-tag (vector-ref object 0))
@@ -216,7 +212,7 @@ USA.
 		   (error "Not an externs file:" namestring))))
 	  (begin
 	    (warn "Nonexistent externs file:" namestring)
-	    (values false '()))))))
+	    (values #f '()))))))
 
 (define (write-externs-file pathname externs-block externs)
   (cond ((not (null? externs))
@@ -251,19 +247,17 @@ USA.
 	  expression))))
 
 (define (integrate/kernel get-scode)
-  (fluid-let ((previous-name false)
-	      (previous-process-time false)
-	      (previous-real-time false))
-    (call-with-values
-	(lambda ()
-	  (call-with-values
-	      (lambda ()
-		(call-with-values (lambda () (phase:transform (get-scode)))
-		  phase:optimize))
-	    phase:generate-scode))
-      (lambda (expression externs-block externs)
-	(end-phase)
-	(values expression externs-block externs)))))
+  (fluid-let ((previous-name #f)
+	      (previous-process-time #f)
+	      (previous-real-time #f))
+    (receive (expression externs-block externs)
+	(call-with-values
+	    (lambda ()
+	      (call-with-values (lambda () (phase:transform (get-scode)))
+		phase:optimize))
+	  phase:generate-scode)
+      (end-phase)
+      (values expression externs-block externs))))
 
 (define (phase:read filename)
   (mark-phase "Read")
@@ -288,9 +282,9 @@ USA.
 
 (define (phase:generate-scode operations environment expression)
   (mark-phase "Generate SCode")
-  (call-with-values (lambda () (operations->external operations environment))
-    (lambda (externs-block externs)
-      (values (cgen/external expression) externs-block externs))))
+  (receive (externs-block externs)
+      (operations->external operations environment)
+    (values (cgen/external expression) externs-block externs)))
 
 (define previous-name)
 (define previous-process-time)
@@ -298,13 +292,13 @@ USA.
 
 (define (mark-phase this-name)
   (end-phase)
-  (if sf:noisy?
-      (begin
-	(fresh-line)
-	(write-string "    ")
-	(write-string this-name)
-	(write-string "...")
-	(newline)))
+  (if (eq? sf:noisy? 'old-style)
+      (let ((port (notification-output-port)))
+	(fresh-line port)
+	(write-string "    " port)
+	(write-string this-name port)
+	(write-string "..." port)
+	(newline port)))
   (set! previous-name this-name)
   unspecific)
 
@@ -322,13 +316,13 @@ USA.
 
 ;; Should match the compiler.  We'll merge the two at some point.
 (define (time-report prefix process-time real-time)
-  (if sf:noisy?
-      (begin
-	(fresh-line)
-	(write-string prefix)
-	(write-string ": ")
-	(write (/ (exact->inexact process-time) 1000))
-	(write-string " (process time); ")
-	(write (/ (exact->inexact real-time) 1000))
-	(write-string " (real time)")
-	(newline))))
+  (if (eq? sf:noisy? 'old-style)
+      (let ((port (notification-output-port)))
+	(fresh-line port)
+	(write-string prefix port)
+	(write-string ": " port)
+	(write (/ (exact->inexact process-time) 1000) port)
+	(write-string " (process time); " port)
+	(write (/ (exact->inexact real-time) 1000) port)
+	(write-string " (real time)" port)
+	(newline port))))
