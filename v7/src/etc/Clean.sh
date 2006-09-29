@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.13 2006/09/28 23:48:27 cph Exp $
+# $Id: Clean.sh,v 1.14 2006/09/29 19:28:56 cph Exp $
 #
 # Copyright 2000,2001,2002,2006 Massachusetts Institute of Technology
 #
@@ -60,7 +60,8 @@ maintainer-clean)
     ;;
 esac
 
-. ../etc/functions.sh
+TOPDIR="${TOPDIR:-..}"
+. "${TOPDIR}/etc/functions.sh"
 
 if [ "${DIST}" = "yes" ]; then
     if [ -f Makefile.in ] && [ -f Makefile ]; then
@@ -70,10 +71,10 @@ if [ "${DIST}" = "yes" ]; then
 fi
 
 if [ "${MAINTAINER}" = "yes" ]; then
-    maybe_unlink Makefile ../Makefile.std
+    maybe_unlink Makefile "${TOPDIR}/Makefile.std"
     maybe_unlink .edwin-ffi ed-ffi.scm
     for FN in Clean.sh Setup.sh Stage.sh Tags.sh; do
-	maybe_unlink "${FN}" "../etc/${FN}"
+	maybe_unlink "${FN}" "${TOPDIR}/etc/${FN}"
     done
 fi
 
@@ -92,8 +93,8 @@ for KEYWORD in ${KEYWORDS}; do
 	rm -f *.bco *.bld *.glo *.con *.ldr
 	;;
     rm-pkg)
-	echo "rm -f *.crf *.fre *.pkd"
-	rm -f *.crf *.fre *.pkd
+	echo "rm -f *-unx.* *-w32.* *-os2.*"
+	rm -f *-unx.* *-w32.* *-os2.*
 	;;
     esac
 done

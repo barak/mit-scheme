@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.8 2003/02/14 18:48:11 cph Exp $
+# $Id: Clean.sh,v 1.9 2006/09/29 19:28:54 cph Exp $
 #
-# Copyright 2000,2001,2003 Massachusetts Institute of Technology
+# Copyright 2000,2001,2003,2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -25,16 +25,19 @@
 # The working directory must be the compiler directory.
 
 if [ $# -ne 1 ]; then
-    echo "usage: $0 <command>"
+    echo "usage: ${0} <command>"
     exit 1
 fi
 
-../etc/Clean.sh "${1}" rm-pkg
+TOPDIR="${TOPDIR:-$(pwd)/..}"
+export TOPDIR
+CLEANSH="${TOPDIR}/etc/Clean.sh"
+"${CLEANSH}" "${1}" rm-pkg
 
 for SUBDIR in back base fggen fgopt machine rtlbase rtlgen rtlopt; do
-    if [ -d ${SUBDIR} ]; then
+    if [ -d "${SUBDIR}" ]; then
 	echo "making ${1} in ${SUBDIR}"
-	(cd ${SUBDIR} && rm -f *.bin *.ext *.com *.bci)
+	(cd "${SUBDIR}" && "${CLEANSH}" "${1}" rm-bin rm-com)
     fi
 done
 
