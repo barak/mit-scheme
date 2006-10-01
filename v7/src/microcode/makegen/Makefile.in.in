@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.32 2006/10/01 20:56:52 cph Exp $
+# $Id: Makefile.in.in,v 1.33 2006/10/01 21:00:46 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
@@ -138,13 +138,13 @@ EXTRA_PROGRAMS = findprim bintopsb psbtobin
 scheme_SOURCES = $(SHARED_SOURCES) $(STD_GC_SOURCES) usrdef.c
 scheme_OBJECTS = $(SHARED_OBJECTS) $(STD_GC_OBJECTS) usrdef.o
 scheme_DEPENDENCIES = 
-scheme_LDFLAGS = @X_LIBS@ @DLD_LDFLAGS@
+scheme_LDFLAGS = @DLD_LDFLAGS@
 scheme_LIBS = $(STATIC_LIBS) $(X_LIBS) $(LIBS)
 
 bchscheme_SOURCES = $(SHARED_SOURCES) $(BCH_GC_SOURCES) bchdef.c
 bchscheme_OBJECTS = $(SHARED_OBJECTS) $(BCH_GC_OBJECTS) bchdef.o
 bchscheme_DEPENDENCIES = 
-bchscheme_LDFLAGS = @X_LIBS@ @DLD_LDFLAGS@
+bchscheme_LDFLAGS = @DLD_LDFLAGS@
 bchscheme_LIBS = $(STATIC_LIBS) $(X_LIBS) $(LIBS)
 
 bchdrn_SOURCES = bchdrn.c bchutl.c
