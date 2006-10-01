@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.14 2006/09/25 04:40:10 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.15 2006/10/01 20:56:45 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -153,9 +153,9 @@ MODULE_BASES=
 MODULE_CFLAGS="-DCOMPILE_AS_MODULE"
 MODULE_LDFLAGS=
 COMPILED_DEFS=
-CMPAUXMDO=
 COMPILED_SOURCES_1=
 COMPILED_OBJECTS_1=
+CMPAUXMDO=
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -547,7 +547,7 @@ fi
 
 dnl Checks for system characteristics.
 AC_CANONICAL_HOST
-AC_PATH_XTRA
+AC_PATH_X
 AC_SYS_LARGEFILE
 AC_SYS_LONG_FILE_NAMES
 AC_SYS_RESTARTABLE_SYSCALLS
@@ -870,12 +870,17 @@ else
         [Define that the compiler outputs C code instead of binaries.])
     test -f cmpauxmd.c || ${LN_S} cmpauxmd/c.c cmpauxmd.c
     test -f cmpintmd.h || ${LN_S} cmpintmd/c.h cmpintmd.h
-    COMPILED_DEFS="${COMPILED_DEFS} -DCOMPILE_FOR_STATIC_LINKING"
-    COMPILED_SOURCES_1="\$(COMPILED_SOURCES)"
-    COMPILED_OBJECTS_1="\$(COMPILED_OBJECTS)"
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.c unstackify.c compinit.c"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o unstackify.o compinit.o"
     GC_HEAD_FILES="${GC_HEAD_FILES} cmpintmd.h"
+    COMPILED_DEFS="-DCOMPILE_FOR_STATIC_LINKING"
+    COMPILED_SOURCES="utabmd.c"
+    for D in runtime sf cref star-parser compiler; do
+    	COMPILED_SOURCES="${COMPILED_SOURCES} \$(wildcard ../${D}/*.c"
+    done
+    for D in back base fggen fgopt machines/C rtlbase rtlgen rtlopt; do
+    	COMPILED_SOURCES="${COMPILED_SOURCES} \$(wildcard ../compiler/${D}/*.c"
+    done
     CMPAUXMDO="cmpauxmd.o"    
 fi
 
@@ -916,9 +921,9 @@ AC_SUBST_FILE([MODULE_RULES])
 AC_SUBST([MODULE_CFLAGS])
 AC_SUBST([MODULE_LDFLAGS])
 AC_SUBST([COMPILED_DEFS])
+AC_SUBST([COMPILED_SOURCES])
+AC_SUBST([COMPILED_OBJECTS])
 AC_SUBST([CMPAUXMDO])
-AC_SUBST([COMPILED_SOURCES_1])
-AC_SUBST([COMPILED_OBJECTS_1])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
