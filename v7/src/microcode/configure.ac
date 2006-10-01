@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.15 2006/10/01 20:56:45 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.16 2006/10/01 21:11:39 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -876,10 +876,10 @@ else
     COMPILED_DEFS="-DCOMPILE_FOR_STATIC_LINKING"
     COMPILED_SOURCES="utabmd.c"
     for D in runtime sf cref star-parser compiler; do
-    	COMPILED_SOURCES="${COMPILED_SOURCES} \$(wildcard ../${D}/*.c"
+    	COMPILED_SOURCES="${COMPILED_SOURCES} \$(wildcard ../${D}/*.c)"
     done
     for D in back base fggen fgopt machines/C rtlbase rtlgen rtlopt; do
-    	COMPILED_SOURCES="${COMPILED_SOURCES} \$(wildcard ../compiler/${D}/*.c"
+    	COMPILED_SOURCES="${COMPILED_SOURCES} \$(wildcard ../compiler/${D}/*.c)"
     done
     CMPAUXMDO="cmpauxmd.o"    
 fi
